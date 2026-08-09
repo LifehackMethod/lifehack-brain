@@ -17,7 +17,7 @@ gate.** Your job is to put something real in front of the human so they rule on 
 **This is a targeting phase, not a reading phase:** everything downstream spends real money and real human
 attention on what survives here. Fence: THIS pile only.
 
-**Paths + pile:** `BASKET` = `$BASKET`. `MACHINE="$(/usr/sbin/scutil --get ComputerName | grep -qi studio && echo studio || echo mba)"`.
+**Paths + pile:** `ROOT="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && pwd)"` (the folder you cloned — every path below is relative to it). `BASKET` = `$BASKET`. `MACHINE="$(/usr/sbin/scutil --get ComputerName | grep -qi studio && echo studio || echo mba)"`.
 `FLAT` resolves per-corpus, with a legacy fallback so an already-flattened corpus is never orphaned
 or re-flattened:
 ```bash
@@ -72,7 +72,7 @@ format. Read it DIRECTLY — the shape `project-manager` reads — before readin
 earlier sittings learned about this person is in front of you. ⛔ **Never via that skill's Create/
 Frame-intake path** — there is no intake gate here; the brief is simply loaded.
 ```bash
-bash "$HOME/lifehack-brain/system/hooks/pm_flag.sh" status   # names the armed brief, or `none`
+bash "$ROOT/system/hooks/pm_flag.sh" status   # names the armed brief, or `none`
 ```
 `none` → arm the corpus's brief with `pm_flag.sh arm "<abs brief path>" "<slug>" root`. Read its
 `## Current State` and `## SCRATCHPAD` before `2.2`.

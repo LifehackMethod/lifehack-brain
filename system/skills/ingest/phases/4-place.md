@@ -50,14 +50,15 @@
 
 ## Paths + arm the anchor (do this first)
 ```bash
-T="$HOME/lifehack-brain/system/tools/cowork-ingest"
+ROOT="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && pwd)"   # the folder you cloned; everything below is relative to it
+T="$ROOT/system/tools/cowork-ingest"
 # Same brain root PHASE 1 recorded — resolved, never guessed. ⛔ STOPS rather than picking a folder for them.
 DRIVE="$(python3 "$T/pipeline.py" brain-root --quiet)" || { echo "STOP: no brain root set yet — run PHASE 1's step 1.0, or: python3 $T/pipeline.py brain-root --set \"<that folder>\" [--create]"; exit 1; }
-export INGEST_CORPUS="${INGEST_CORPUS:-cowork-bulk-ingestion}"   # the corpus slug; unset = today's one corpus, byte-identical
+export INGEST_CORPUS="${INGEST_CORPUS:-my-corpus}"   # the corpus slug; one per corpus you ingest
 export COWORK_WORK="$DRIVE/state/projects/$INGEST_CORPUS/work"
 MAP="$COWORK_WORK/corpus-map.json"
 ANCHOR="$HOME/.cache/cowork-ingest/$INGEST_CORPUS/ingest-anchor.txt"; mkdir -p "$(dirname "$ANCHOR")"
-S="$HOME/lifehack-brain/system/hooks/skill_anchor.sh"
+S="$ROOT/system/hooks/skill_anchor.sh"
 python3 $T/pipeline.py assert --map "$MAP" || { echo "MAP NOT v2 — run: python3 $T/corpus_map.py migrate --map \"$MAP\""; exit 1; }
 python3 $T/pipeline.py anchor --phase 4 --out "$ANCHOR"     # phase 4 = PLACE
 bash "$S" arm ingest "$ANCHOR"     # ONE skill now — REFRESH the anchor, never hand it off (2026-08-05)
@@ -235,7 +236,7 @@ signed off on and write the file somewhere they never saw — the file written m
 **C. DEDUP-FIRST, canon-bound only (inbox DEDUP-FIRST + canon-audit, inlined).** Before writing a
 canon-candidate, scan existing canon for a duplicate/conflict:
 ```bash
-python3 $HOME/lifehack-brain/system/tools/canon_conflict_scan.py --canon-root "$DRIVE/desks/<desk>/canon" --terms "<key,terms>" --title "<title>" --json
+python3 $ROOT/system/tools/canon_conflict_scan.py --canon-root "$DRIVE/desks/<desk>/canon" --terms "<key,terms>" --title "<title>" --json
 ```
 NEW → proceed to proposals. DUPLICATE → drop it (say so). CONFLICT → **surface to the human, never auto-resolve**
 (the living desk wins). This is the "first do no harm" wall.

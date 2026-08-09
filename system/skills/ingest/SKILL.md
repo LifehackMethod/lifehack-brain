@@ -119,15 +119,16 @@ why…"). The human watching you spelunk through errors is the failure. Trust th
 
 ## Paths (set once)
 ```bash
-T="$HOME/lifehack-brain/system/tools/cowork-ingest"
+ROOT="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && pwd)"   # the folder you cloned; everything below is relative to it
+T="$ROOT/system/tools/cowork-ingest"
 # WHERE THIS SKILL WRITES — asked once, remembered forever. ⛔ Never guessed: if nothing is remembered this
 # STOPS rather than picking a folder for them (step 1.0 asks, then records it).
 DRIVE="$(python3 "$T/pipeline.py" brain-root --quiet)" || { echo "STOP: no brain root set yet — ask them where their AI brain lives (or make one), then: python3 $T/pipeline.py brain-root --set \"<that folder>\" [--create]"; exit 1; }
-export INGEST_CORPUS="${INGEST_CORPUS:-cowork-bulk-ingestion}"   # the corpus slug; unset = today's one corpus, byte-identical
+export INGEST_CORPUS="${INGEST_CORPUS:-my-corpus}"   # the corpus slug; one per corpus you ingest
 export COWORK_WORK="$DRIVE/state/projects/$INGEST_CORPUS/work"
 MAP="$COWORK_WORK/corpus-map.json"
 ANCHOR="$HOME/.cache/cowork-ingest/$INGEST_CORPUS/ingest-anchor.txt"; mkdir -p "$(dirname "$ANCHOR")"
-S="$HOME/lifehack-brain/system/hooks/skill_anchor.sh"
+S="$ROOT/system/hooks/skill_anchor.sh"
 ```
 
 ## Step A — assert the map is ready
@@ -148,10 +149,10 @@ PHASE="${PB%%|*}"; BASKET="${PB##*|}"
 python3 $T/pipeline.py anchor --phase "$PHASE" --basket "$BASKET" --out "$ANCHOR"
 bash "$S" arm ingest "$ANCHOR"     # the existing UserPromptSubmit hook re-injects it every turn
 # Pin the live "second brain filling up" HUD to the bottom status bar (statusline.sh redraws it every turn).
-bash "$HOME/lifehack-brain/system/tools/skill_hud.sh" set "$(python3 $T/pipeline.py hud --map "$MAP")" 2>/dev/null || true
+bash "$ROOT/system/tools/skill_hud.sh" set "$(python3 $T/pipeline.py hud --map "$MAP")" 2>/dev/null || true
 ```
 Re-run that `skill_hud.sh set …` line after any batch that changes the counts, so the bar stays live. On
-`DONE`, clear it: `bash "$HOME/lifehack-brain/system/tools/skill_hud.sh" clear`.
+`DONE`, clear it: `bash "$ROOT/system/tools/skill_hud.sh" clear`.
 Then load the matching phase file and run it top-to-bottom. **Each phase opens by printing the plain
 "where we are" header for the human** (`pipeline.py progress`) — the every-turn orientation banner — then a
 plain sentence about what that step does. Don't skip it; it's how a first-timer stays oriented.
