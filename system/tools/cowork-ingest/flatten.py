@@ -182,9 +182,16 @@ def main():
     ap.add_argument("--limit", type=int, default=None, help="cap conversations (for a quick verify run)")
     args = ap.parse_args()
 
-    shards = sorted(glob.glob(os.path.join(args.raw, "conversations-*.json")))
+    # ⛔ DASH-OPTIONAL AND RECURSIVE (2026-08-09). This globbed `conversations-*.json` — with a literal
+    # dash, top level only. A real ChatGPT export is `conversations.json`, SINGULAR, so this matched
+    # nothing on a genuine export and only ever worked on a manually-sharded corpus. Detection upstream
+    # was fixed first, which made this WORSE for a moment: the format was recognised and then produced
+    # "no conversations-*.json under ...", which reads like a deeper failure instead of a naming one.
+    # Fix both ends of a rename, or the second half becomes a more confusing version of the first.
+    shards = sorted(set(glob.glob(os.path.join(args.raw, "**", "conversations*.json"), recursive=True))
+                    - set(glob.glob(os.path.join(args.raw, "**", "_manifest.json"), recursive=True)))
     if not shards:
-        print(f"ERROR: no conversations-*.json under {args.raw}", file=sys.stderr)
+        print(f"ERROR: no conversations*.json anywhere under {args.raw}", file=sys.stderr)
         sys.exit(1)
 
     os.makedirs(args.out, exist_ok=True)
