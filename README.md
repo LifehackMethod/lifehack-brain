@@ -36,11 +36,18 @@ the `system` folder into the folder you made in step 1.
 Open the Claude desktop app, go to the **Code** tab, and point it at your folder.
 No terminal, nothing to install.
 
-**4. Say what you want.**
+**4. Have your material ready.**
+
+Whatever you want sorted — a ChatGPT export, a folder of notes, a big document.
+Know where it is on your computer. You'll hand it over in the next step by
+dragging it into the chat window, which pastes its location for you.
+
+**5. Say what you want.**
 
     /ingest
 
-That starts the sorting process. It'll ask you questions and show you its work
+It'll ask where your brain lives, then ask for your material — drag the file or
+folder in when it does. From there it asks questions and shows you its work
 before it writes anything.
 
 ---
