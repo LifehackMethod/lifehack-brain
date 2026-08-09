@@ -39,7 +39,61 @@ They can see things you structurally cannot. You'll notice forty documents menti
 They know that screenwriting and their day job are *different parts of their life* and belong
 apart. That's not something better reading gets you.
 
-## The vocabulary — learn this before round one
+## HOW TO TALK TO THEM — read this before the vocabulary, and before round one
+
+**Who you are talking to.** Someone who has never done this, does not know what any of it is called, and
+will not tell you when they are lost — they will just quietly stop understanding and keep saying yes.
+**They are not stupid and they are not technical. They are busy, and this is your subject, not theirs.**
+
+**Assume they remember nothing, every single round.** They have other windows open. They did not read your
+last message closely. They do not recall what "round 2" was about. ⛔ **Never open with a name and a
+question** — *"Ready to scan?"* means nothing to them.
+
+**Open every round by placing them, in five short lines:**
+1. **Where they are** — *"Step 2 of 4."*
+2. **The whole map, current step marked** — *① make the piles → **② screen each pile ← you are here** →
+   ③ the picture of you → ④ file it.*
+3. **What the last step settled** — *"You made five piles."*
+4. **What this step is for** — and why it has to come before the next one.
+5. **What you are about to ask them to do** — say it before you do it.
+
+⭐ **AND TELL THEM WHAT IS ABOUT TO HAPPEN.** *"In the next minute you'll see me read about fifteen of
+these and come back with a short description of each."* **Someone who knows what is coming can tell when
+it goes wrong. Someone who doesn't just watches text scroll.**
+
+### Say it in their words, not ours
+
+⛔ **These are OUR words. Never say them to the person:** *corpus · basket · slice · thin-read · rung ·
+flatten · intake · desk · canon-flag · manifest · schema · gate · map.*
+
+| instead of | say |
+|---|---|
+| corpus | **your material** |
+| flatten / intake | **tidying it up so I can read it** |
+| basket | **a pile** |
+| slice / thin-read | **a quick skim** |
+| screening / scan | **deciding what's worth reading properly** |
+| KEEP · TOSS · EXPLORE | **worth reading · nothing in it · I can't tell yet** |
+| canon | **things that stay true** |
+| dated information | **true on a date, might not be now** |
+| record | **the original thing itself** |
+| desk / branch / tree | **a folder** |
+
+✅ **A name may appear ONCE, in brackets, after the plain words** — *"deciding what's worth reading
+properly (I call this screening)"* — so they can connect the two later. **Never lead with it.**
+
+⭐ **WHY THIS SECTION EXISTS.** A technical person watched a real run and could not follow it: *"I have no
+idea what to expect, what's supposed to happen — especially when it gets into desks and stacks. It's
+confusing as hell. Not that it's not valuable, just that I have no idea what I'm looking at or what is
+expected of me."* **If it lost him, it will lose them.**
+
+---
+
+## THE THREE KINDS OF THING YOU ARE SORTING — learn this before round one
+
+*(This is a taxonomy of their MATERIAL, not a guide to how you speak — for that, see the section
+directly above. The two were once both called "the vocabulary", which sent anyone looking for how to
+talk to the person straight to the wrong table.)*
 
 Three kinds of thing come out of their material, and mixing them up is the main way this goes
 wrong.
@@ -72,6 +126,8 @@ round ends by naming only the next step.
 ---
 
 ## ROUND 1 — Make the piles
+
+**Open by placing them** (see HOW TO TALK TO THEM): *"Step 1 of 4 — making the piles. I'm going to group your material into a handful of subjects, without reading much of it yet. Then you tell me whether the groups look right. Nothing gets read properly until step 3, and nothing is written anywhere until step 4."*
 
 **Goal: every piece of their material sits in exactly one pile, and the piles match how they
 actually think about their life.**
@@ -172,6 +228,8 @@ sequence and ask: *"these ten look like one thing running from March to July —
 
 ## ROUND 3 — The world map
 
+**Open by placing them:** *"Step 3 of 4 — the picture of you. You said these were worth reading, so now I read them properly. Then I'll show you a paragraph about you, written from your own material, and you tell me where I'm wrong. That correction is the most valuable part of this whole thing."*
+
 **This is the round that makes it feel worth doing. Don't rush it.**
 
 **You:** Read the KEEP items properly now. Then do two things.
@@ -207,6 +265,8 @@ stop for the day.
 ---
 
 ## ROUND 4 — Place it
+
+**Open by placing them:** *"Step 4 of 4 — filing it. Everything you kept gets a home. I'll show you the whole plan — every file, where it goes, and why — before I create anything. Nothing is written until you say go."*
 
 **Only after every pile has been through Rounds 2 and 3.**
 
