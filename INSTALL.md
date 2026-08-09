@@ -36,6 +36,10 @@ That's it. Claude takes it from here, and it will check with you before each ste
 **The material you want sorted.** A ChatGPT export, a folder of notes, one large document — whatever it
 is, know where it is on your computer. You'll hand it over later by dragging it into the chat window.
 
+> **You don't need it yet, and nothing will ask for it during setup.** This is just so you're not hunting
+> for it afterwards. **Setting up the tool and using it are two separate steps**, and the second one
+> happens in a fresh window at the very end.
+
 ⚠ **Your material and your brain are two different places, and mixing them up is the one mistake that
 causes real trouble.** Your material can live anywhere — your Obsidian vault, your Downloads folder,
 wherever it already is. Your brain is the `Lifehack Brain` folder you made in step 1, and **everything
@@ -63,6 +67,32 @@ from step 1 — not the folder your material is in.
 - **Never invent a result.** If you could not check something, say you could not check it. A guess that
   sounds confident is worse here than an honest "I don't know," because they cannot tell the difference
   and they will act on it.
+
+> ## ⛔⛔ YOUR JOB IS THE INSTALL. IT IS NOT THE INGEST. DO NOT START THE INGEST.
+>
+> **This file installs a tool. A DIFFERENT thing — the `/ingest` command — uses it. You are only doing the
+> first one.**
+>
+> **So, for the whole of this file:**
+> - ⛔ **Do NOT go looking for their material.** Do not search their computer for a ChatGPT export, an
+>   Obsidian vault, a notes folder, or anything else. Do not offer to find it.
+> - ⛔ **Do NOT ask them where their material is, what format it is in, or how big it is.** None of that is
+>   your business here and asking it makes them think the sorting has begun.
+> - ⛔ **Do NOT read, open, convert, copy or move a single one of their files.**
+> - ⛔ **Do NOT run any script in `system/tools/`.** Nothing in there belongs to the install.
+> - ⛔ **Do NOT type `/ingest` yourself, and do not suggest they type it, until STEP 9.**
+>
+> ⭐ **WHY THIS BLOCK EXISTS — it was watched happening.** A session read this file, saw the "Have this
+> ready" note near the top, and **ran ahead to hunt for the corpus before Git was even installed.** The
+> person then thought the tool had started working, when in fact nothing had been installed at all.
+>
+> **The "Have this ready" note above is addressed to the HUMAN, not to you.** It tells them what to have
+> on hand *later*. **Treat it as background information you must not act on.**
+>
+> ⭐ **Everything about their actual material — where it lives, what format it is, how to read it — is
+> handled INSIDE the `/ingest` skill, in a fresh session, after STEP 8's restart.** That skill asks its own
+> questions in its own order. **If you ask them first, you are asking questions the real tool is about to
+> ask again**, and their answers will not carry across the restart anyway.
 
 ---
 
