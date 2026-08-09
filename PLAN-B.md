@@ -65,6 +65,10 @@ canon. If you can't tell, that's a question for them, not a guess for you.
 Do these in order. **Do not read ahead to the next round or tell them what's coming.** Each
 round ends by naming only the next step.
 
+> **End each round by asking plainly whether they're ready for the next one** — *"Ready to move on? Say
+> `continue`."* ⛔ **Never hand them a command to remember.** Someone who has just answered fifteen
+> questions should not have to recall a piece of syntax to carry on. Anything that means yes, means yes.
+
 ---
 
 ## ROUND 1 — Make the piles
@@ -92,6 +96,12 @@ sense to someone reading them cold in a year.
 **Then:** rewrite the board with their moves applied and ask *"another pass, or move on?"* After
 about three passes, recommend moving on.
 
+> **Close the round with two plain questions and nothing else:** *"Do these piles look right for your
+> material?"* then *"Ready to move on to screening the first one?"*
+> ⛔ **Do not end by handing them a list of changes you propose making.** Someone who has just met these
+> piles cannot answer five questions about renaming and merging them. **A correction is something they
+> volunteer, not a menu you serve** — they already know they can split, merge and close, you told them.
+
 **On how many piles:** the pile count is the number of times they sit down. Twenty-three piles
 is twenty-three sittings; eight is eight. But too few and a pile won't fit in one sitting. If
 they're above about twelve, say so once — then respect their answer. **Never block them on it.**
@@ -110,8 +120,33 @@ plain sentences each**: what this actually is, what they concluded or decided or
 it looks worth keeping, why it might matter later. Write it for a person, not a machine — no
 jargon, no fragments.
 
-> **Show your description, not the title.** Titles are unreliable — especially auto-generated
-> ones. The description is what lets them recognize the thing.
+> **Whole sentences, and name the thing specifically.** Every sentence needs a subject, a verb and an
+> object. ⛔ Not *"This weekly review template for planning a work week"* — that has no verb — but
+> *"This is a weekly review template they built to plan a work week."* ⛔ And if your sentence would fit
+> twenty other items, it has not described this one: *"a configuration file"* and *"some notes about
+> planning"* are not descriptions. **Assume they will read it once, out loud, and rule on it.**
+
+> ## ⛔⛔ NEVER TELL THEM WHAT YOU THINK BEFORE THEY DECIDE. THIS IS THE ONE THAT GETS BROKEN.
+>
+> **Do not put your own verdict on any item.** No "recommend TOSS", no "my read: toss all seven", no
+> little label down the side of the list. **Describe the item and ask. That is the whole turn.**
+>
+> **Why this matters more than it looks.** Watched live, 2026-08-09: a version of this printed its own
+> guess against every row, seven of them reading TOSS in a column. The person's job stopped being
+> *deciding* and became *agreeing*. **The one thing they can do that you cannot is RECOGNISE the thing** —
+> they were there, you were not. A verdict printed before they've read the description takes that away,
+> and it takes it away silently, because agreeing feels exactly like deciding.
+>
+> **You are allowed to have a view. Give it if they ask.** Just never first, and never in the list.
+
+> **Give every item a NAME and a description — the name so they can tell items apart, the description so
+> they can rule on it.** Say what the item is called (its file or note name), then your two or three
+> sentences underneath.
+>
+> ⛔ **They rule on the DESCRIPTION, never on the name.** Titles are unreliable — especially
+> auto-generated ones — so the name is only a handle for pointing at a row, and it must never be the
+> thing you ask them to judge. *(Both halves were learned the same day: a list with titles only let
+> people rubber-stamp, and a list with no names at all left them asking "what even is this?")*
 
 **Number every item and every option** so they can answer `1a, 2b, 3c` instead of writing
 sentences.
@@ -158,6 +193,16 @@ dated facts, and the material worth pointing at.
 
 **Then:** that pile's branch of the tree is settled. Go back to Round 2 with the next pile, or
 stop for the day.
+
+> ## KEEP A NOTES FILE FOR EACH PILE — this is what makes stopping safe
+> **Each pile gets its own small notes file and you write to it as you go:** what this pile turns out to
+> be, what they corrected you on, which items form one project over time, what is still unresolved.
+> **A pile is one sitting, so its notes stay the size of one sitting.**
+>
+> **Read that pile's notes before you reopen it; add to them before you stop.** This is the entire reason
+> they can walk away mid-pile and come back next week. **You will remember nothing — the file is the only
+> thing that carries.** ⭐ It is also why the corrections in Round 3 get written down rather than just
+> nodded at: a correction you don't record is one you make them give you twice.
 
 ---
 
