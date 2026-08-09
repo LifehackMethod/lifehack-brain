@@ -17,7 +17,7 @@ gate.** Your job is to put something real in front of the human so they rule on 
 **This is a targeting phase, not a reading phase:** everything downstream spends real money and real human
 attention on what survives here. Fence: THIS pile only.
 
-**Paths + pile:** `ROOT="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && pwd)"` (the folder you cloned — every path below is relative to it). `BASKET` = `$BASKET`. `MACHINE="$(/usr/sbin/scutil --get ComputerName | grep -qi studio && echo studio || echo mba)"`.
+**Paths + pile:** `ROOT="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && pwd)"` (the folder you cloned — every path below is relative to it). `BASKET` = `$BASKET`. `MACHINE="$(uname -n 2>/dev/null || echo local)"`   # any machine, any OS — only needs to be stable per machine.
 `FLAT` resolves per-corpus, with a legacy fallback so an already-flattened corpus is never orphaned
 or re-flattened:
 ```bash
