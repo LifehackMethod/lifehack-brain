@@ -26,10 +26,15 @@ just won't have a backup.
 
 **2. Get these files.**
 
-On the green **Code** button above, choose **Download ZIP**. Unzip it, and move
-the `system` folder into the folder you made in step 1.
+On the green **Code** button above, choose **Download ZIP**. Unzip it, then move
+**everything inside** into the folder you made in step 1 — including the `.claude`
+folder, which your computer may hide by default.
 
-*(If you already know git, clone it instead — same result.)*
+On a Mac, press **⌘ + Shift + .** in Finder to show hidden files. **Don't skip
+it** — `.claude` is what makes the `/ingest` command exist. Without it nothing
+happens when you type it.
+
+*(If you know git, just clone the repo instead — nothing to move, nothing hidden.)*
 
 **3. Open that folder in Claude.**
 
@@ -55,6 +60,7 @@ before it writes anything.
 ## What's in here
 
     system/          ← ours. an update replaces this. nothing you write lives here.
+      agents/        ← the specialist readers the skill uses
       skills/
         ingest/      ← the one thing it does today
 

@@ -77,11 +77,35 @@ def _run_flatten_py(raw_dir, out_dir):
     subprocess.run(cmd, check=True)
 
 
+def _tree_glob(raw_dir, pattern):
+    """Every `pattern` file ANYWHERE under raw_dir, sorted.
+
+    RECURSIVE since 2026-08-09. It was top-level-only, and on a real Obsidian vault that
+    ingested 1 file of 24 and printed `converted 1 of 1` — a complete-looking success,
+    because the denominator was the glob's own result. Folder-organised notes are the
+    normal case, not an edge case.
+
+    `glob` with `**` deliberately SKIPS dot-directories, which is what keeps `.obsidian/`
+    and `.claude/` out for free. Do not swap this for os.walk without re-adding that filter,
+    or the ingest starts eating config.
+    """
+    return sorted(glob.glob(os.path.join(raw_dir, "**", pattern), recursive=True))
+
+
+def _has_manifest_anywhere(raw_dir):
+    """True if a prior flatten output sits ANYWHERE in the tree — the recursive read makes a
+    top-level-only check insufficient: a stale flatten dir nested one level down would be
+    re-ingested as source, feeding the system its own output."""
+    return bool(glob.glob(os.path.join(raw_dir, "**", "_manifest.json"), recursive=True))
+
+
 def _is_markdown_dir(raw):
-    """Dir of `*.md` files (top-level). No output-dir trap here: every converter in this file
-    (and flatten.py) writes ONLY `.txt` output, never `.md` — a markdown corpus can never be
-    mistaken for a prior flatten output."""
-    return os.path.isdir(raw) and bool(glob.glob(os.path.join(raw, "*.md")))
+    """Dir containing `*.md` files at ANY depth. No output-dir trap for the format itself:
+    every converter here (and flatten.py) writes ONLY `.txt`, never `.md` — but a nested
+    prior flatten output is still refused, see `_has_manifest_anywhere`."""
+    return (os.path.isdir(raw)
+            and not _has_manifest_anywhere(raw)
+            and bool(_tree_glob(raw, "*.md")))
 
 
 def _convert_markdown_dir(raw_dir, out_dir):
@@ -108,9 +132,9 @@ def _is_plaintext_dir(raw):
     """
     if not os.path.isdir(raw):
         return False
-    if os.path.isfile(os.path.join(raw, "_manifest.json")):
+    if _has_manifest_anywhere(raw):     # NESTED prior output counts too, not just top-level
         return False
-    return bool(glob.glob(os.path.join(raw, "*.txt")))
+    return bool(_tree_glob(raw, "*.txt"))
 
 
 def _convert_plaintext_dir(raw_dir, out_dir):
@@ -127,28 +151,47 @@ def _convert_flat_dir(raw_dir, out_dir, pattern, fmt_label):
     skips EVERYTHING, `do_flatten`'s zero-output check refuses the whole run rather than
     reporting FLATTENED on nothing."""
     os.makedirs(out_dir, exist_ok=True)
-    paths = sorted(glob.glob(os.path.join(raw_dir, pattern)))
+    paths = _tree_glob(raw_dir, pattern)
+
+    # ⛔ OUTPUT NAMES COME FROM THE RELATIVE PATH, NEVER THE BASENAME.
+    # This is the trap that makes the recursive read dangerous if you only add `**`.
+    # Flat input guaranteed unique basenames; a tree does not. A vault with `./CLAUDE.md`
+    # and `./Projects/Thing/CLAUDE.md` maps BOTH to `CLAUDE.txt` — the second overwrites the
+    # first, and `written` still counts 2. That trades a loud drop for a SILENT one, which is
+    # strictly worse. Found by a real run against a real Obsidian vault, 2026-08-09.
+    def _outname(p):
+        rel = os.path.relpath(p, raw_dir)
+        return os.path.splitext(rel)[0].replace(os.sep, "__") + ".txt"
+
+    # Fail loudly if a future change ever reintroduces a collision, rather than overwriting.
+    _names = [_outname(p) for p in paths]
+    if len(set(_names)) != len(_names):
+        dupes = sorted({n for n in _names if _names.count(n) > 1})
+        raise SystemExit(f"REFUSED: output name collision — {len(dupes)} duplicate(s): "
+                         f"{', '.join(dupes[:5])}. Two sources would write the same file.")
+
     manifest_rows = {}
     written = skipped_empty = 0
     for p in paths:
         with open(p, "r", errors="replace") as fh:
             body = fh.read().strip()
-        base = os.path.splitext(os.path.basename(p))[0]
-        name = f"{base}.txt"
+        rel = os.path.relpath(p, raw_dir)               # provenance: the PATH, not the basename
+        base = os.path.splitext(rel)[0]
+        name = _outname(p)
         if not body:
             skipped_empty += 1
             continue
         header = [
             f"# {base}",
             f"# source_format: {fmt_label}",
-            f"# source_file: {os.path.basename(p)}",
+            f"# source_file: {rel}",
             "",
             "## document",
         ]
         with open(os.path.join(out_dir, name), "w") as fh:
             fh.write("\n".join(header) + "\n" + body + "\n")
         manifest_rows[name] = {
-            "file": name, "title": base, "source_file": os.path.basename(p), "chars": len(body),
+            "file": name, "title": base, "source_file": rel, "chars": len(body),
         }
         written += 1
     with open(os.path.join(out_dir, "_manifest.json"), "w") as fh:
@@ -157,8 +200,16 @@ def _convert_flat_dir(raw_dir, out_dir, pattern, fmt_label):
             "format": fmt_label, "source_files": len(paths),
             "written": written, "skipped_empty": skipped_empty, "rows": manifest_rows,
         }, fh, indent=2)
-    print(f"OK: converted {written} of {len(paths)} {fmt_label} file(s) "
+    # ⚠ REPORT AGAINST THE TREE, NOT THE GLOB. The old line printed `written of len(paths)`
+    # where paths WAS the glob result, so the denominator could never reveal what the glob
+    # never matched — `converted 1 of 1` while 23 files sat unread. State the tree total so
+    # the number is falsifiable.
+    tree_total = len(_tree_glob(raw_dir, pattern))
+    print(f"OK: converted {written} of {tree_total} {fmt_label} file(s) found in the tree "
           f"({skipped_empty} empty skipped) -> {out_dir}")
+    if tree_total and written < tree_total - skipped_empty:
+        print(f"⚠ WARNING: {tree_total - skipped_empty - written} file(s) present in the tree "
+              f"were NOT converted. This should be zero — investigate before relying on this run.")
 
 
 # ── W3: a single large document (--raw is a FILE) — MECHANICAL split, zero LLM ─────────────
