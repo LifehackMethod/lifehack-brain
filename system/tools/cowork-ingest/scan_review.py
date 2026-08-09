@@ -32,7 +32,7 @@ chat content and spawns nothing.
 Usage:
   python3 scan_review.py show --map <corpus-map.json> --basket <B> [--page N] [--page-size K]
 """
-import argparse, os, sys, textwrap
+import argparse, os, re, sys, textwrap
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
@@ -83,6 +83,38 @@ def _row_size_label(r):
     return None
 
 
+def _row_name(key, r):
+    """The short human-readable IDENTIFIER for a row — the answer to "what IS this?" (2026-08-09).
+
+    ⛔ THIS IS NOT THE THING THEY RULE ON. The 2-3 sentence description below it is, and that has not
+    changed. This is a HANDLE so the human can tell one row from another and say the name back out loud.
+
+    Measured live on 2026-08-09 (a real Obsidian vault, watched over screen-share): the screen rendered
+    description-only and the operator could not identify a single item — "It doesn't have a name. What is
+    it? It's not showing a file name." 2-scan.md bans leading with the TITLE because a ChatGPT export's
+    auto-titles are junk ("the title is never good when it comes to ChatGPT") — that ban is about what the
+    human JUDGES on, and it stands. A corpus of hand-named notes is the opposite case: the filename is the
+    single most recognisable thing about the note. Showing both costs one line and settles the ambiguity.
+    """
+    stem = str(r.get("file") or key or "").strip()
+    stem = re.sub(r"\.(md|markdown|txt|json)$", "", stem, flags=re.I)
+    stem = stem.rsplit("/", 1)[-1]
+    # Flattened corpora prefix an ISO date and/or an index; strip them so the NAME leads — but ONLY when
+    # a real name survives. A daily note IS its date ("2025-01-02.md"), and stripping that leaves "01 02",
+    # which is worse than the raw filename. Strip speculatively, keep only if the result still says
+    # something.
+    for pat in (r"^\d{4}-\d{2}-\d{2}[-_ ]+", r"^\d{2,5}[-_]"):
+        trimmed = re.sub(pat, "", stem)
+        if re.search(r"[A-Za-z]{3}", trimmed):
+            stem = trimmed
+    stem = re.sub(r"[-_]+", " ", stem).strip()
+    if not stem:
+        return "(unnamed)"
+    if len(stem) > 56:
+        stem = stem[:55].rstrip() + "…"
+    return stem
+
+
 def _verdict_legend():
     """Render VERDICTS as ≤2-line-each plain reflowed text (no box-drawing — the graphical layer was
     cut 2026-08-04). One block, reused verbatim so the vocabulary never drifts into scattered literals."""
@@ -116,7 +148,7 @@ def cmd_show(a):
 
     if total == 0:
         print(pipeline.compose_screen([f'  ✓  "{pretty}" is fully sorted — nothing left to rule here.'],
-                                      pipeline.compose_action_bar("Type /ingest for the next pile →"),
+                                      pipeline.compose_action_bar("Say 'continue' for the next pile →"),
                                       header_lines=header, title=title, title_right=title_right))
         return 0
 
@@ -138,13 +170,21 @@ def cmd_show(a):
     for i in range(start, end):
         k, r = rows_all[i]
         n = i + 1
-        verb = pipeline.verb_label(r.get("scan_guess"))
-        if verb in ("MINE", "—"):
-            verb = "KEEP"                            # unsure/MINE → KEEP (advances; the human can still
-                                                       # toss or explore) — display-only translation from
-                                                       # pipeline.py's cross-screen MINE token into this
-                                                       # phase's KEEP/TOSS/EXPLORE vocabulary (SPEC §8);
-                                                       # pipeline.py itself is untouched.
+        # ⛔⛔ THE MACHINE'S GUESS IS NOT PRINTED. DO NOT PUT IT BACK. (2026-08-09, the author, watching a
+        # live run over screen-share: "It should NOT give a recommendation, it should just ask you.
+        # This is totally wrong.")
+        #
+        # This row used to open with `verb_label(scan_guess)` — the READER AGENT'S OWN GUESS — rendered
+        # as a hard label: "1  TOSS — …", "2  TOSS — …". Seven rows of TOSS in a column reads as a
+        # verdict already reached, and the human's turn collapses into agreeing with it. The measured
+        # sentence at the bottom of that screen was "my read: toss all 7" — for a vault the operator had
+        # never seen, on descriptions that did not even name the notes.
+        #
+        # `scan_guess` is STILL WRITTEN and still used downstream — nothing about the data changed. It
+        # is only withheld from the human at the moment of ruling, which is the entire job of this
+        # screen: 2-scan.md's TURN 2 exists because "WHAT THE HUMAN CONTRIBUTES THAT THE MACHINE CANNOT
+        # IS RECOGNITION." A recommendation printed before recognition anchors it and throws that away.
+        name = _row_name(k, r)
         flagged = bool(r.get("sensitive"))
         gist = (r.get("scan_summary") or "").strip() or "(no summary — open it yourself to decide)"
         size_lbl = _row_size_label(r)
@@ -159,12 +199,13 @@ def cmd_show(a):
         # clipped description hands them a title by another name.
         # Reflowing (not clipping, and not hand-wrapping into a fixed-width box — the boxed layer was CUT
         # on 2026-08-04) is what lets the 2-3 sentence floor actually reach the screen.
-        prefix = f'  {n:>2}  {verb:<4}{size_part}{warn} — '
-        body_w = max(24, pipeline._DW - len(prefix) - 2)
-        wrapped = textwrap.wrap(gist, width=body_w) or [""]
-        rows.append(f"{prefix}{wrapped[0]}")
-        for cont in wrapped[1:]:
-            rows.append(f"{' ' * len(prefix)}{cont}")
+        # NAME on its own line so the eye lands on "what is this" first, then the substance beneath it.
+        rows.append(f'  {n:>2}  {name}{size_part}{warn}')
+        pad = " " * 6
+        body_w = max(24, pipeline._DW - len(pad) - 2)
+        for cont in (textwrap.wrap(gist, width=body_w) or [""]):
+            rows.append(f"{pad}{cont}")
+        rows.append("")
     if end < total:
         rows.append(f"      … {total - end} more — press ENTER to see the next page …")
 

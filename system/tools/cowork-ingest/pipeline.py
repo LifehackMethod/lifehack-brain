@@ -234,31 +234,36 @@ def sort_is_confirmed(m):
     return any(b.get("basket_status", "queued") != "queued" for b in baskets_of(m).values())
 
 
-# ── 9.1.2 — THE PHASE-1 → BRIEF GATE (SPEC.md `1.10`, the author 2026-08-08) ──────────────────────────
-# "the new project would have been set up at the end of phase one… before we're even allowed to go to
-# phase two, it would round up all of the things from phase one and make sure to persist them into this
-# new system, this new brief, before it proceeds to phase two." `m["brief_written"]` is the run-scoped
-# completion flag this reads — set by `brief_write()` below the instant a brief is actually written to
-# disk (never on a dry-run, never guessed). Mirrors `sort_confirmed`/`sort_is_confirmed` EXACTLY: same
+# ── 9.1.2 — THE PHASE-1 → SCRATCHPAD GATE ────────────────────────────────────────────────────────────
+# The author's original requirement, and it still holds word for word — only the ARTIFACT changed:
+# "before we're even allowed to go to phase two, it would round up all of the things from phase one and
+# make sure to persist them... before it proceeds to phase two." `m["pad_written"]` is the run-scoped
+# completion flag this reads — set by `pad_write()` the instant the pad is actually written to disk
+# (never on a dry-run, never guessed). Mirrors `sort_confirmed`/`sort_is_confirmed` EXACTLY: same
 # top-level-flag shape, same grandfather clause, for the same reason (build-sop fault-vs-decision rule —
 # a field's ABSENCE must mean the SAFE thing for state written before the field existed). Without the
-# grandfather, arming this on the live 1,521-chat/23-basket corpus (which predates `1.10` entirely) would
-# brick it: PHASE 1 is already closed (grandfathered via `sort_is_confirmed`), so there is no path back
-# to a state that could ever set `brief_written` — the exact bricked-flow failure [SL-16] already names.
-def brief_is_written(m):
-    """Did PHASE 1 actually persist into a project brief before PHASE 2 opened (SPEC `1.10`)? True if the
-    flag is set, OR (legacy grandfather) any basket has already progressed past `queued` — proof PHASE 2
-    already opened before this flag existed."""
-    if m.get("brief_written"):
+# grandfather, arming this on a corpus already part-way through would brick it: PHASE 1 is already closed
+# (grandfathered via `sort_is_confirmed`), so there is no path back to a state that could ever set the
+# flag — the exact bricked-flow failure [SL-16] already names.
+def pad_exists(m):
+    """Did PHASE 1 actually persist its rulings into the corpus scratchpad before PHASE 2 opened? True if
+    the flag is set, OR (legacy grandfather) any basket has already progressed past `queued` — proof
+    PHASE 2 already opened before this flag existed.
+
+    ⚖ RENAMED FROM `brief_is_written` 2026-08-09 when the project-brief seam became a plain scratchpad.
+    ⛔ THE GATE ITSELF IS UNCHANGED AND MUST STAY. Only its dependency moved. It reads the legacy
+    `brief_written` key as well, so a corpus part-way through a run under the old seam is not bricked —
+    same fault-vs-decision rule as `sort_is_confirmed`: a field's ABSENCE must mean the SAFE thing."""
+    if m.get("pad_written") or m.get("brief_written"):
         return True
     return any(b.get("basket_status", "queued") != "queued" for b in baskets_of(m).values())
 
 
-def mark_brief_written(m, corpus_id, path, now_iso=None):
+def mark_pad_written(m, corpus_id, path, now_iso=None):
     """The run-scoped completion flag PHASE 2 gates on — set ONLY by a real (non-dry-run) disk write in
-    `brief_write()`, never guessed, never set by anything claiming completion without the artifact."""
-    m["brief_written"] = {"at": now_iso or _now_iso(), "path": path, "corpus_id": corpus_id}
-    return m["brief_written"]
+    `pad_write()`, never guessed, never set by anything claiming completion without the artifact."""
+    m["pad_written"] = {"at": now_iso or _now_iso(), "path": path, "corpus_id": corpus_id}
+    return m["pad_written"]
 
 
 def current_phase(m):
@@ -274,11 +279,11 @@ def current_phase(m):
         return ("1", None)                       # fresh corpus → SORT (wide, once)
     if not sort_is_confirmed(m):
         return ("1", None)                       # baskets exist but the human never RULED them → finish SORT
-    if not brief_is_written(m):
-        # 9.1.2: PHASE 2 REFUSES to open until `1.10` has persisted PHASE 1 into this corpus's project
-        # brief. Closed outcome set for this seam is {1,2,3,4,BLOCKED-<reason>} — never a bare None a
+    if not pad_exists(m):
+        # 9.1.2: PHASE 2 REFUSES to open until PHASE 1's rulings have been persisted to this corpus's
+        # scratchpad. Closed outcome set for this seam is {1,2,3,4,BLOCKED-<reason>} — never a bare None a
         # caller could mistake for "phase 1" or silently `str()` into something that looks like success.
-        return ("BLOCKED-NO-BRIEF", None)        # named: brief-write (`1.10`) has not run for this corpus
+        return ("BLOCKED-NO-PAD", None)          # named: `pad-init` has not run for this corpus
     # MINE EVERYTHING FIRST: sweep pending piles; the FIRST that still needs scan/read wins.
     for name, b in _pending_baskets_sorted(m):
         st = b.get("basket_status")
@@ -962,63 +967,40 @@ def validate_topics(topics, vocab=None, vocab_path=None):
     return (not bad), bad, v
 
 
-# ── 9.1.1 / 9.1.2 — brief-write: the PHASE 1 → project-brief seam (SPEC.md `1.10`, the author 2026-08-08) ──
-# "the new project would have been set up at the end of phase one… before we're even allowed to go to
-# phase two, it would round up all of the things from phase one and make sure to persist them into this
-# new system, this new brief, before it proceeds to phase two." (SPEC.md:792-798). This is the TOOL half
-# of that seam: it reads the CANONICAL brief skeleton straight from `system/schemas/project-doc-schema.md`
-# (never a second, hand-maintained copy) and seeds it from the corpus map's PHASE 1 output — the pile
-# boundaries + counts. `1-sort.md`'s `1.10` step (owned elsewhere) calls this and the map's
-# `brief_written` flag (set here, on a real write) is what gates PHASE 2 (`current_phase()` above).
+# ── 9.1.1 / 9.1.2 — pad-init: the PHASE 1 → SCRATCHPAD seam ──────────────────────────────────────────
+# ⚖⭐ REPLACED THE PROJECT-BRIEF SEAM ENTIRELY, 2026-08-09, on the author's ruling: "take out of my skill
+# a major functionality... it works out of the project manager file for its world model brain. That's no
+# longer the case... forget project manager, forget integrating with that skill. It's literally just going
+# to create one scratchpad that it writes to, and it persists knowledge and notes that it needs to write."
 #
-# THE PROJECT-IDENTITY TRAP (SPEC.md item 20): `state/projects/cowork-bulk-ingestion/brief.md` is the
-# SKILL'S OWN engineering project, not any corpus's world model — a "find a nearby project" heuristic
-# would silently offer to inherit the skill's own build history as if it were personal facts about the
-# human. So `corpus_id` is always EXPLICIT (a CLI flag) or derived ONLY from data this exact corpus map
-# itself carries (its own `source` field) — never from filesystem proximity.
+# ⭐ IT IS ALSO A SHIPPING FIX, NOT ONLY A SIMPLIFICATION — record that, because it closes three real
+# defects at once and a future session must not "restore" the old seam thinking it was harmless:
+#   1. The old compose_brief() read `system/schemas/project-doc-schema.md` off disk and REFUSED without it.
+#      That file is NOT part of a shipped package, so the seam was dead on any machine but the author's.
+#   2. _brief_target_path() took a DRIVE ROOT and wrote to `state/projects/<id>/brief.md` — a personal
+#      filesystem layout that does not exist on a student's computer.
+#   3. It made the skill depend on a SECOND skill (project-manager) and on a hook to find the armed brief.
+# ⇒ The pad has NO schema file, NO external read, NO drive root, and NO sibling-skill dependency. Its root
+# is simply the folder the human already named, and it lives beside their own material under `memory/`.
+#
+# ⛔ THE GATE SURVIVED THE REWRITE — ON PURPOSE. `pad_exists()` below is the same guard the old
+# `brief_is_written()` was: PHASE 2 must not open on nothing. Only its DEPENDENCY was removed, never the
+# gate itself. Deleting it would let a run start with no memory of PHASE 1's rulings at all.
 #
 # THE CLOSED OUTCOME SET (code/LLM-seam law: never a bare null/empty indistinguishable from success):
-#   WRITTEN                  — a fresh brief was composed (and, outside --dry-run, written to disk) this call.
-#   NO-BRIEF                 — a brief ALREADY EXISTS at the target path; nothing written. Briefs are "fine
-#                               china" (project-doc-schema.md §0) — never blindly overwritten. An idempotent
-#                               no-op, not a failure — this is the "no outcome was reached" member.
-#   REFUSED-SCHEMA-MISMATCH  — the schema file is missing, unreadable, or its REQUIRED spine no longer
-#                               matches what this code expects. Refuses rather than emitting a skeleton
-#                               that only resembles the real one (a prior build's heading-regex matched the
-#                               WRONG section right before a deletion — near-misses are refused, not guessed).
-BRIEF_OUTCOMES = ("WRITTEN", "NO-BRIEF", "REFUSED-SCHEMA-MISMATCH")
+#   CREATED   — no pad existed; a fresh one was written with the standing skeleton, seeded from PHASE 1.
+#   APPENDED  — a pad already existed; this run's entry was APPENDED beneath it. Nothing was overwritten.
+#   REFUSED   — the target could not be written (unwritable path, or no root given outside --dry-run).
+#               The "no outcome was reached" member: never silently treated as success.
+PAD_OUTCOMES = ("CREATED", "APPENDED", "REFUSED")
 
-_SCHEMA_HEADER_RE = re.compile(r'^### (\d+\.|\+)\s*(.+)$', re.MULTILINE)
-# The REQUIRED spine, order-sensitive — §0 through §8 numbered, "+" the unnumbered footer (project-doc-
-# schema.md's own words: "footer — one line, not a numbered section"). If the schema's spine ever
-# changes, this constant goes stale ON PURPOSE: parse_schema_sections() then REFUSES instead of silently
-# emitting the old shape forever — a check that can never fail is not a check.
-_EXPECTED_BRIEF_SECTIONS = ("0", "1", "2", "3", "4", "5", "6", "7", "8", "+")
-
-
-def _default_schema_path():
-    return os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                          "..", "..", "schemas", "project-doc-schema.md"))
-
-
-def parse_schema_sections(schema_path=None):
-    """Read the CANONICAL brief skeleton straight from project-doc-schema.md. Returns
-    (ok, sections, problems): sections = [(num, title), ...] in schema order, title stripped of its
-    trailing italic annotation. ok=False on ANY drift from the expected spine — refuse, don't approximate."""
-    p = schema_path or _default_schema_path()
-    if not os.path.isfile(p):
-        return False, [], [f"schema file not found: {p}"]
-    text = open(p).read()
-    sections = []
-    for m in _SCHEMA_HEADER_RE.finditer(text):
-        num = m.group(1).rstrip(".")
-        title = re.sub(r'\s*\*\(.*?\)\*\s*$', '', m.group(2).strip()).strip()
-        sections.append((num, title))
-    got = tuple(n for n, _ in sections)
-    if got != _EXPECTED_BRIEF_SECTIONS:
-        return False, sections, [f"schema spine drift: expected {_EXPECTED_BRIEF_SECTIONS}, got {got} — "
-                                 f"refusing rather than emitting a skeleton that only resembles the real one"]
-    return True, sections, []
+# The standing skeleton — FOUR headings, deliberately. This is a scratchpad, not a schema. It exists so a
+# later sitting has somewhere obvious to put things, not so anything can be validated against it. ⛔ Do not
+# grow this into a schema and do not add a parser for it; that is precisely what was just removed.
+PAD_HEADINGS = ("What this corpus is",
+                "What the human corrected me on",
+                "Confirmed subject-arcs",
+                "Open threads")
 
 
 def _slugify(s):
@@ -1046,108 +1028,100 @@ def _phase1_summary_lines(m):
     return lines, len(rows), len(bs)
 
 
-def compose_brief(m, corpus_id, title=None, now_iso=None, notes=None, schema_path=None):
-    """Build the brief.md TEXT for this corpus's PHASE-1 close. Returns (outcome, text_or_None, detail) —
-    outcome is one of BRIEF_OUTCOMES ('NO-BRIEF' is never returned here — that is a filesystem fact only
-    `brief_write()` below can know; this function is pure composition, no disk I/O)."""
-    ok, sections, problems = parse_schema_sections(schema_path)
-    if not ok:
-        return "REFUSED-SCHEMA-MISMATCH", None, "; ".join(problems)
+def _pad_target_path(root, corpus_id, basket=None):
+    """`<root>/memory/<corpus_id>/<basket>/scratchpad.md`, or the corpus-level pad when basket is None.
+
+    ⚖⭐ ONE PAD PER PILE, 2026-08-09 (the author, mid-build): "instead of one major scratchpad, each pile
+    in phase one gets its own scratchpad... and then each of those piles is what the scratchpad gets
+    written to when we're working in that pile."
+    ⭐ WHY IT IS THE BETTER SHAPE, not just the asked-for one: a pile IS a sitting (`1-sort.md`: "the pile
+    count is the number of times the human sits down"). Keeping the notes beside the material they are
+    about means a pad never grows past what one sitting produced, and picking a pile back up loads only
+    that pile's history instead of every other pile's.
+    The corpus-level pad still exists for anything that spans piles; it is not the working surface.
+    The pad is the HUMAN's data and lives in the human's tier — never under the code tier, which on a
+    shipped package is a git working copy."""
+    parts = [root, "memory", corpus_id] + ([basket] if basket else []) + ["scratchpad.md"]
+    return os.path.join(*parts)
+
+
+def compose_pad(m, corpus_id, now_iso=None, notes=None, basket=None):
+    """The pad's INITIAL text — skeleton + what PHASE 1 settled. Pure composition, no disk I/O.
+    With `basket`, it is seeded with THAT pile's own contents rather than the whole corpus."""
     now = now_iso or _now_iso()
     date = now[:10]
     lines_pile, n_chats, n_baskets = _phase1_summary_lines(m)
-    disp_title = title or f"{corpus_id} — world model"
-    body = {
-        "0": ['> 🛑 **LLM NOTICE — READ FIRST.** This brief is high-value, human-in-the-loop, VERIFIED '
-              'knowledge — the *fine china* of the system. Operate with extreme care: prefer append over '
-              'rewrite, never condense or "improve" settled content, and treat the DESIRED OUTCOME (§1) as '
-              'read-only. When unsure, ASK the human — do not edit.'],
-        "1": [
-            '> ⚠ **HUMAN-IN-THE-LOOP APPROVAL REQUIRED TO CHANGE.** Human-authored, human-only. Do NOT '
-            'override, rewrite, condense, or "improve" this desired outcome without EXPLICIT human approval '
-            'in-session.',
-            '',
-            f'Turn the personal chat corpus `{corpus_id}` into a complete, human-ruled world map — every pile '
-            f'boundary confirmed, every chat screened and either kept, tossed, or read deep — ready to file '
-            f'into Lifehack as real folders with their own canon. [INFERRED — seeded at PHASE 1 close from '
-            f'the corpus id; confirm/refine with the human.]',
-        ],
-        "2": [
-            '    ▲ 10,000 — PHASE 1 (SORT) just closed for this corpus; the pile boundaries are ruled, '
-            'nothing mined or filed yet.',
-            '    ▲  5,000 — mining every pile through SCAN → DEEP-READ, one at a time, before PHASE 4 files '
-            'everything.',
-            '    ▲ ground — SCAN the first pile.',
-            '',
-            '✅ LOCKED', '(none yet)', '',
-            '⛔ RULED-OUT', '(none yet)', '',
-            '❓ OPEN', '(none yet)',
-        ],
-        "3": [
-            '> This standalone section is retired. Its two jobs are now split cleaner: the fast '
-            '"do-NOT-retry" scan lives in the §2 DECISION BOARD → ⛔ RULED-OUT bucket, and the full dead-end '
-            'story (with its why) lives in the §4 STORY LOG.',
-        ],
-        "4": [
-            f'- {date} — PHASE 1 (SORT) closed: {n_chats} chat(s) sorted into {n_baskets} pile(s), '
-            f'human-ruled. → STATUS: locked → the pile boundaries this ingestion run files from.',
-        ],
-        "5": [
-            f'- TODO: mine every pile (SCAN → DEEP-READ) then file at PHASE 4 — done when every one of the '
-            f'{n_baskets} basket(s) reads `committed`.',
-        ],
-        "6": [
-            f'- Corpus map for `{corpus_id}` — pass via `--map` to every `pipeline.py` call for this run.',
-            '- `COWORK_WORK` — the run scratch dir (raw conclusions, staged extractions) for this corpus.',
-        ],
-        "7": (['PHASE 1 output (seeded at brief-write — read-only history; check it belongs here before '
-               'adding new working notes on top of it):', ''] + (lines_pile or ['(no piles yet)'])),
-        "8": ['- Corpus map (the source of every count above).'],
-        "+": ['`system/journal.md`, entries tagged for this corpus.'],
-    }
-    if notes and notes.strip():
-        body["4"].append(f'- {date} — PHASE 1 ruling notes (verbatim, from the sort turn): {notes.strip()}')
-
-    out = ["---", f"id: root-{corpus_id}", f"slug: {corpus_id}", f'title: "{disp_title}"',
-           "record_type: project-doc", "memory_tier: episodic", "desk: root", "parent: —", "status: active",
-           f"created_at: {date}", f"updated_at: {date}", "authority: user", "---", "", f"# {disp_title}", ""]
-    for num, stitle in sections:
-        out.append(f"## {stitle}" if num == "+" else f"## {num}. {stitle}")
-        out.extend(body.get(num, []))
-        out.append("")
-    return "WRITTEN", "\n".join(out).rstrip() + "\n", None
+    if basket:
+        n_here = sum(1 for _k, _r in basket_chats(m, basket))
+        out = [f"# Notes on the `{basket}` pile", "",
+               f"_(part of `{corpus_id}`)_", "",]
+    else:
+        out = [f"# Notes on `{corpus_id}`", "",
+           "> This file is YOURS. The tool reads it at the start of every sitting so it does not ask you the",
+           "> same thing twice, and appends to it as you rule things. Edit it freely — nothing validates it.",
+           ""]
+    for h in PAD_HEADINGS:
+        out += [f"## {h}", ""]
+        if h == "What this corpus is":
+            if basket:
+                out += [f"- {date} — this pile holds {n_here} chat(s). It was ruled by you at the end of "
+                        f"PHASE 1, out of {n_chats} chat(s) across {n_baskets} pile(s).", ""]
+            else:
+                out += [f"- {date} — PHASE 1 (SORT) closed: {n_chats} chat(s) sorted into {n_baskets} "
+                        f"pile(s), ruled by you.", ""] + (lines_pile or ["- (no piles yet)"]) + [""]
+        elif h == "Open threads" and notes and notes.strip():
+            out += [f"- {date} — your ruling notes from the sort turn: {notes.strip()}", ""]
+        else:
+            out += ["- (nothing yet)", ""]
+    return "\n".join(out).rstrip() + "\n"
 
 
-def _brief_target_path(drive_root, corpus_id):
-    return os.path.join(drive_root, "state", "projects", corpus_id, "brief.md")
+def pad_write(m, corpus_id, root, now_iso=None, notes=None, entry=None, dry_run=False, basket=None):
+    """Create the pad if absent, APPEND to it if present. Returns (outcome, path_or_None, detail) with
+    outcome in PAD_OUTCOMES.
 
-
-def brief_write(m, corpus_id, drive_root, title=None, now_iso=None, notes=None, dry_run=False,
-                schema_path=None):
-    """The disk-owning half of the seam: composes via compose_brief(), checks NO-BRIEF idempotency (a
-    brief is fine china — never blindly overwritten), and writes atomically. Returns
-    (outcome, path_or_None, detail) — `detail` carries the full TEXT on a dry-run WRITTEN, an error string
-    on REFUSED-SCHEMA-MISMATCH, an explanation on NO-BRIEF, and None on a real successful write."""
-    outcome, text, err = compose_brief(m, corpus_id, title=title, now_iso=now_iso, notes=notes,
-                                       schema_path=schema_path)
-    if outcome != "WRITTEN":
-        return outcome, None, err
-    target = _brief_target_path(drive_root, corpus_id) if drive_root else None
-    if target and os.path.isfile(target):
-        return "NO-BRIEF", target, f"a brief already exists at {target} — not overwritten (fine china)"
-    if dry_run or not target:
-        return "WRITTEN", target, text
-    import tempfile as _tf
-    os.makedirs(os.path.dirname(target), exist_ok=True)
-    fd, tmp = _tf.mkstemp(dir=os.path.dirname(target), suffix=".tmp")
+    ⛔ APPEND, NEVER OVERWRITE. The old seam returned NO-BRIEF and refused to touch an existing file, which
+    meant everything learned after PHASE 1 had nowhere to go. A pad that can only be created once is a
+    write-once file wearing a scratchpad's name."""
+    if not root:
+        if dry_run:
+            return "CREATED", None, compose_pad(m, corpus_id, now_iso=now_iso, notes=notes, basket=basket)
+        return "REFUSED", None, "no root given — pass --root (the folder the human named as their brain)"
+    target = _pad_target_path(root, corpus_id, basket)
+    exists = os.path.isfile(target)
+    if exists:
+        stamp = (now_iso or _now_iso())[:10]
+        text = (entry or "").strip() or "(nothing new recorded this sitting)"
+        addition = f"\n\n---\n\n### {stamp}\n\n{text}\n"
+    else:
+        addition = compose_pad(m, corpus_id, now_iso=now_iso, notes=notes, basket=basket)
+    if dry_run:
+        return ("APPENDED" if exists else "CREATED"), target, addition
     try:
-        with os.fdopen(fd, "w") as f:
-            f.write(text)
-        os.replace(tmp, target)
-    finally:
-        if os.path.exists(tmp):
-            os.remove(tmp)
-    return "WRITTEN", target, None
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        with open(target, "a" if exists else "w", encoding="utf-8") as f:
+            f.write(addition)
+    except OSError as e:
+        return "REFUSED", target, f"could not write {target}: {e}"
+    return ("APPENDED" if exists else "CREATED"), target, None
+
+def pad_init_all(m, corpus_id, root, now_iso=None, notes=None, dry_run=False):
+    """PHASE 1 close: give EVERY pile its own pad, plus one corpus-level pad for anything spanning them.
+    Returns (results, refused) where results is [(basket_or_None, outcome, path)].
+
+    ⛔ NEVER PARTIAL-SUCCEED SILENTLY. A pile whose pad could not be written is returned in `refused` and
+    the caller exits non-zero. A run that quietly skipped one pile would leave that pile with no memory at
+    all, and the failure would only surface as the model "forgetting" three sittings later — by which time
+    nobody can tell it from ordinary context loss."""
+    results, refused = [], []
+    for b in [None] + sorted(baskets_of(m).keys()):
+        outcome, path, detail = pad_write(m, corpus_id, root, now_iso=now_iso,
+                                          notes=(notes if b is None else None),
+                                          dry_run=dry_run, basket=b)
+        results.append((b, outcome, path))
+        if outcome == "REFUSED":
+            refused.append((b, detail))
+    return results, refused
 
 
 # ── CLI (the SKILL.md bash steps call these) ──
@@ -2181,21 +2155,21 @@ def main():
     rs = sub.add_parser("rescan"); rs.add_argument("--map", required=True); rs.add_argument("--basket", required=True)
     hs = sub.add_parser("hash"); hs.add_argument("--map", required=True); hs.add_argument("--flat-dir", required=True)
     rl = sub.add_parser("relink"); rl.add_argument("--map", required=True); rl.add_argument("--flat-dir", required=True)
-    bw = sub.add_parser("brief-write", help="PHASE 1 → project-brief seam (SPEC `1.10`): compose + write "
-                        "this corpus's brief.md from the canonical schema, seeded with PHASE 1's pile boundaries")
+    bw = sub.add_parser("pad-init", help="PHASE 1 → scratchpad seam: create memory/<corpus>/scratchpad.md "
+                        "seeded with PHASE 1's pile boundaries, or APPEND this sitting's entry if it exists")
     bw.add_argument("--map", required=True)
     bw.add_argument("--corpus-id", dest="corpus_id", help="explicit corpus slug (never inferred by "
-                    "filesystem proximity — SPEC item 20); defaults to a slugified form of the map's own "
-                    "`source` field if omitted")
-    bw.add_argument("--drive-root", dest="drive_root", help="the Lifehack root "
-                    "(state/projects/<corpus-id>/brief.md is written under it); omit for --dry-run only")
-    bw.add_argument("--title")
+                    "filesystem proximity); defaults to a slugified form of the map's own `source` field")
+    bw.add_argument("--root", dest="root", help="the brain folder the human named "
+                    "(memory/<corpus-id>/scratchpad.md is written under it); omit for --dry-run only")
     bw.add_argument("--notes", help="free text, or @<path> to read it from a file — the human's "
-                    "split/merge/close ruling narrative from the SORT turn, folded into STORY LOG")
+                    "split/merge/close ruling narrative from the SORT turn")
+    bw.add_argument("--entry", help="free text to APPEND when the pad already exists (a later sitting)")
+    bw.add_argument("--basket", help="write to THIS pile's own pad (memory/<corpus>/<basket>/scratchpad.md). "
+                    "Omit at PHASE 1 close to create one pad per pile in a single call.")
     bw.add_argument("--now")
     bw.add_argument("--dry-run", dest="dry_run", action="store_true",
-                    help="print the exact file that would be written; never touches disk, never sets brief_written")
-    bw.add_argument("--schema", dest="schema_path", help="override path to project-doc-schema.md")
+                    help="print exactly what would be written; never touches disk, never sets pad_written")
     tc = sub.add_parser("topic-check", help="fail-closed membership check for a written `topic:` value "
                         "against the CLOSED vocabulary in system/topic-vocab.md")
     tc.add_argument("--topics", nargs="+", required=True,
@@ -2439,31 +2413,47 @@ def main():
         _save(m, a.map)
         print(f"OK sort-confirm: SORT closed by the human over {len(baskets_of(m))} basket(s) — "
               f"/ingest now advances to SCAN.")
-    elif a.cmd == "brief-write":
+    elif a.cmd == "pad-init":
         m = load(a.map)
         corpus_id = a.corpus_id or _slugify(m.get("source") or "corpus")
         notes = a.notes
         if notes and notes.startswith("@"):
             notes = open(notes[1:]).read()
-        outcome, path, detail = brief_write(m, corpus_id, a.drive_root, title=a.title, now_iso=a.now,
-                                            notes=notes, dry_run=a.dry_run, schema_path=a.schema_path)
-        if outcome == "REFUSED-SCHEMA-MISMATCH":
-            print(f"REFUSED-SCHEMA-MISMATCH brief-write: {detail}")
-            sys.exit(1)
-        if outcome == "NO-BRIEF":
-            print(f"NO-BRIEF: {detail}")
+        entry = a.entry
+        if entry and entry.startswith("@"):
+            entry = open(entry[1:]).read()
+        # No --basket and no --entry => PHASE 1 close: one pad per pile, in one call.
+        if not a.basket and not entry:
+            results, refused = pad_init_all(m, corpus_id, a.root, now_iso=a.now, notes=notes,
+                                            dry_run=a.dry_run)
+            for b, outcome, path in results:
+                print(f"  {outcome:<9} {'(corpus)' if b is None else b:<28} → {path}")
+            if refused:
+                for b, detail in refused:
+                    print(f"REFUSED pad-init [{b or '(corpus)'}]: {detail}")
+                sys.exit(1)
+            if a.dry_run:
+                sys.exit(0)
+            mark_pad_written(m, corpus_id, results[0][2], a.now)
+            _save(m, a.map)
+            print(f"OK pad-init: {len(results)} pad(s) — one per pile, plus the corpus pad "
+                  f"(m['pad_written'] set — PHASE 2 unblocks)")
             sys.exit(0)
-        # WRITTEN
+        outcome, path, detail = pad_write(m, corpus_id, a.root, now_iso=a.now, notes=notes,
+                                          entry=entry, dry_run=a.dry_run, basket=a.basket)
+        if outcome == "REFUSED":
+            print(f"REFUSED pad-init: {detail}")
+            sys.exit(1)
         if a.dry_run:
-            rel = os.path.join("state", "projects", corpus_id, "brief.md")
-            print(f"DRY-RUN brief-write: WOULD WRITE → {path or rel}"
-                  + ("" if a.drive_root else "  (pass --drive-root for the absolute path)"))
+            rel = os.path.join("memory", corpus_id, a.basket or "", "scratchpad.md")
+            print(f"DRY-RUN pad-init: WOULD {outcome} → {path or rel}"
+                  + ("" if a.root else "  (pass --root for the absolute path)"))
             print("─" * 60)
             print(detail)
             sys.exit(0)
-        mark_brief_written(m, corpus_id, path, a.now)
+        mark_pad_written(m, corpus_id, path, a.now)
         _save(m, a.map)
-        print(f"OK brief-write: WRITTEN → {path}  (m['brief_written'] set — PHASE 2 unblocks)")
+        print(f"OK pad-init: {outcome} → {path}  (m['pad_written'] set — PHASE 2 unblocks)")
     elif a.cmd == "topic-check":
         ok, bad, vocab = validate_topics(a.topics, vocab_path=a.vocab_path)
         if vocab is None:

@@ -59,15 +59,19 @@ before it writes anything.
 
 ## What's in here
 
-    system/          ← ours. an update replaces this. nothing you write lives here.
+    .claude/         ← ours. the command itself — this is where Claude looks.
       agents/        ← the specialist readers the skill uses
       skills/
         ingest/      ← the one thing it does today
 
+    system/          ← ours. the programs that do the sorting.
+
+    PLAN-B.md        ← the manual backup, if the tool ever misbehaves
+
     memory/          ← yours. updates never touch it.
 
-**The split is the whole design.** Everything we send you lives in `system/`.
-Everything you write lives in `memory/`. When you update, only `system/` changes —
+**The split is the whole design.** Everything we send you lives in `.claude/` and `system/`.
+Everything you write lives in `memory/`. When you update, only those change —
 your own notes aren't part of this repository at all, so there's nothing here that
 could overwrite them.
 
@@ -75,7 +79,7 @@ could overwrite them.
 
 ## If something goes wrong
 
-Open `system/skills/ingest/PLAN-B.md`, drag it into a fresh Claude conversation,
+Open `PLAN-B.md` in the top folder, drag it into a fresh Claude conversation,
 and say *"help me."*
 
 It's a complete backup. It walks your AI through the same process by hand, without
@@ -87,4 +91,4 @@ needing the tool to work. You get the same result, it just takes a bit longer.
 
 Ask Claude: *"check if there's an update to my brain and install it."*
 
-It'll replace `system/` with the newer version and leave `memory/` alone.
+It'll replace our folders with the newer version and leave `memory/` alone.

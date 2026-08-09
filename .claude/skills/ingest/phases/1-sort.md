@@ -1,5 +1,28 @@
 # PHASE 1 — SORT (wide, once)
 
+> ## 📖 REFERENCE — `PLAN-B.md`, in the top folder. Read it when in doubt.
+>
+> It states this same method in four plain rounds that map 1:1 onto the four phases. **Your matching round is `ROUND 1 — Make the piles`.** Read it when you are unsure what should happen next, what a
+turn should look like, or how something should be said to the human.
+> It is far shorter than this file, and it is the reference for **TONE and SHAPE**.
+>
+> ⭐ **WHY IT IS THE REFERENCE AND NOT A BACKUP (2026-08-09).** A window pointed at nothing but `PLAN-B.md`
+> — no tools, no state file, no automation — **ran this method BETTER than this skill did**, watched live.
+> The operator's verdict on its output: *"that's exactly what it's supposed to look like."* Nothing was
+> wrong with the doctrine here; it was buried. PLAN-B is the same doctrine at a readable altitude.
+>
+> ⛔ **WHERE THEY DISAGREE ON MECHANISM — a command, a path, a flag — THIS FILE WINS.** PLAN-B deliberately
+> describes the no-tools path, so its mechanics are absent by design; following it for commands breaks the
+> run. ⭐ **WHERE THEY DISAGREE ON HOW TO TREAT THE HUMAN, PLAN-B WINS.** That is what it is for:
+> *"silence is never consent"* · *"never pre-filter"* · *"EXPLORE is not a verdict, it's a deferral with a
+> request"* · *"you may never type something as canon yourself — only they elevate."*
+>
+> ⚠ **ONE RECONCILIATION, so nobody trips on it.** PLAN-B says *"show your description, NOT the title."*
+> The ruling screen now also shows a short NAME per row. **These do not conflict:** PLAN-B's ban is on the
+> human RULING BY title; the name is only an identifier so they can tell rows apart, and the 2–3 sentence
+> description still carries the substance they judge on. Both complaints came from the same person in the
+> same five minutes — *"it doesn't have a name, what is it?"* and the title ban.
+
 > **⚖ REWRITTEN 2026-08-06 against `SPEC.md` §7.** §7 was locked 2026-08-04/05 ("fully specified") and never
 > reached this driver — unlike Phases 2 and 3, that gap was UNDISCLOSED: the old ~30-line driver read as
 > done, so nobody noticed it was thin. This pass carries every SPEC §7 turn and PRESENTATION block into the
@@ -83,7 +106,7 @@ python3 $T/pipeline.py brain-root --set "<the folder they named>"     # add --cr
 ⛔ **Never pick a folder for them, and never fall back to the current directory.** `NOT-SET` is a genuine
 stop, not a prompt to be clever — putting someone's brain somewhere they did not choose is the failure this
 step exists to prevent. ⛔ **And never ask twice**: once recorded it is read from
-`~/.config/lifehack/brain-root` by every later run and every later phase, forever.
+`~/.config/claudeops/brain-root` by every later run and every later phase, forever.
 
 **`1.0a` FLATTEN — a format fork, never a guess.** Turns the raw export into the flattened `.txt` shape
 every later phase reads. Detection is by **inspecting `$RAW_EXPORT`** (does it contain
@@ -268,6 +291,26 @@ at all:* the pile count is the number of times the human sits down — 23 piles 
 scan→read→reflect, 8 is 8. But too few and a pile won't fit one sitting — a 43-chat pile took a full
 session once. Real floor, real ceiling; only the human feels where it is.
 
+⛔⛔ **BUT THE PHASE DOES NOT *CLOSE* ON A PROPOSAL — IT CLOSES ON TWO PLAIN QUESTIONS (2026-08-09).**
+The nudge above belongs INSIDE the loop, offered at most once, and **never as the last thing on screen.**
+**Measured live 2026-08-09:** SORT ended by proposing five separate changes — rename this pile, move these
+out, merge those — and the operator, who had just met the piles, could not answer any of them:
+*"That's a little weird… it really just wants to know, do you approve of these piles? Do these piles seem
+correct for the corpus? And then it should ask, are you ready to go to the next phase. This is simpler
+than that — it shouldn't be that complicated."*
+
+⇒ **THE CLOSING SCREEN ASKS EXACTLY TWO THINGS, IN THIS ORDER, AND NOTHING ELSE:**
+> **①** *"Do these piles look right for your material?"*
+> **②** *"Ready to move to phase 2 — screening the first pile?"*
+
+**A correction is something they VOLUNTEER, never a menu you hand them.** If they want a pile merged,
+renamed or dropped they will say so; the action bar already tells them how (`"toss <pile>"`). ⛔ **Do not
+enumerate candidate edits at the close, do not attach a numbered change-list to these two questions, and
+do not ask them to rule on the pile TAXONOMY here** — whether "job search" and "product design" should
+both live under one broader heading is a **PHASE 4** question, decided when the folder schema is built and
+the human can see the whole shape at once. *(That was the operator's own read the same day: "maybe that's
+a step at the end, actually… the final phase is when it makes the folder schema.")*
+
 ---
 
 ## FINAL TURN — CLOSE SORT 🤖
@@ -298,25 +341,31 @@ has actually fired — this step rounds up everything PHASE 1 just settled (the 
 split/merge/close the human ruled, the counts) and writes it into a NEW project for this corpus, one per
 corpus:
 ```bash
-python3 $T/pipeline.py brief-write --map "$MAP"
+ROOT="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && pwd)"   # the brain folder
+python3 $T/pipeline.py pad-init --map "$MAP" --root "$ROOT"   # one pad PER PILE, plus a corpus pad
 ```
 **Reproduce whatever path it reports in your OWN reply** — never leave it in the collapsed command block;
-that path is what you tell the human next. Written and read **directly, in the shape `project-manager`
-reads** — ⛔ **never via that skill's Create/Frame-intake path.** There is no intake loop here; this is a
-plain write, nothing more.
+that path is what you tell the human next.
+
+> ⚖⭐ **THIS USED TO WRITE A PROJECT BRIEF THROUGH `project-manager`. IT NO LONGER DOES (2026-08-09).**
+> The author's ruling: *"forget project manager, forget integrating with that skill. It's literally just
+> going to create one scratchpad that it writes to."* ⇒ **one plain file, `memory/<corpus>/scratchpad.md`,
+> in the human's own tier.** ⛔ **Do not re-introduce a schema, a brief, or a second skill here.** The old
+> path read a schema file that is not part of a shipped package and wrote to a personal Drive layout that
+> does not exist on anyone else's machine — it was dead everywhere but the author's laptop.
 **Naming rule binds here too** (SPEC §0a ruling 2): the pile names are the first draft of the folder names,
 so they stay **generic subjects** — `financial`, `hobbies`, `art` — ⛔ never persona-style desk names.
 **Refuses on:** `1.6` not having run yet — there is nothing to persist. **PHASE 2 does not open until this
-step has run**; its own `2.0b` LOADS the exact file this step just wrote — that file IS the world model
-(SPEC §5c C1), no new artifact, no new format.
+step has run** — that gate is real and survived the rewrite (`pipeline.py` → `pad_exists`); its own `2.0b`
+reads the exact file this step just wrote.
 
 Tell the human plainly:
 
 > **PRESENTATION — paste verbatim:**
 >
-> *One more thing before you go — I've set up a project brief for this corpus, so nothing we just decided
-> gets lost between sessions. It's saved at `{path reported by brief-write}`. Every later pass reads it and
-> adds to it, so the picture only gets sharper from here.*
+> *One more thing before you go — I've started a notes file for this material, so nothing we just decided
+> gets lost between sittings. It's saved at `{path reported by pad-init}`, and it's yours — you can open it
+> and read it any time. Every later pass reads it and adds to it, so the picture only gets sharper.*
 
 Then tell the human plainly what just happened with the phase itself:
 
@@ -325,9 +374,11 @@ Then tell the human plainly what just happened with the phase itself:
 > *That's your structure: {N} piles, {M} chats placed, {K} closed by you. Still nothing read, nothing
 > saved.*
 >
-> *Next is scanning {first pile} — that's where I start actually reading. Type `/ingest` when you're
+> *Next is scanning {first pile} — that's where I start actually reading. Say `continue` when you're
 > ready.*
 
-Relay the `suggest` line, then: **"Type `/ingest` to continue."** **Then it STOPS.** ⛔ Does not roll into
+Relay the `suggest` line, then ask: **"Ready to move on to the next phase? Say `continue`."**
+⛔ **Never hand them a slash-command as the way forward** — accept `continue` / `next` / `yes` / `/ingest`
+equally (2026-08-09; see `2-scan.md` `2.11` for the measured reason). **Then it STOPS.** ⛔ Does not roll into
 SCAN. The human re-invokes; **the re-invocation is the re-anchor.**
 **NEXT:** `2-scan.md`.

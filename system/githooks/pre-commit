@@ -1,0 +1,39 @@
+#!/bin/sh
+# REFUSE any commit that would put the person's own notes into this repository.
+#
+# WHY THIS IS CODE AND NOT A LINE IN THE README: pushing personal material to a PUBLIC repository is
+# IRREVERSIBLE -- it is cached and indexed even if deleted afterwards -- and the mistake happens at the
+# exact moment nobody is thinking about it (a hurried `git add -A`). A rule you have to remember is not a
+# control. This fires whether or not anyone remembers it.
+#
+# WHO IT ACTUALLY PROTECTS -- stated honestly, because the general framing overstates it: an ordinary
+# student CANNOT reach this repository at all; they clone a public repo and hold no write credentials, so
+# for them the leak path does not exist. This guard exists for the handful of COLLABORATORS who do have
+# push access and are running the tool on their own real material.
+#
+# WHAT IT DOES NOT DO: it does not stop someone who deliberately passes --no-verify, and it protects
+# nobody who never ran `git config core.hooksPath system/githooks`. It is a guard, not a sandbox. The
+# sandbox is keeping `memory/` outside the repository altogether.
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+
+offenders=$(printf '%s\n' "$staged" | grep -E '^memory/' | grep -v -x 'memory/README.md')
+
+if [ -n "$offenders" ]; then
+	echo ""
+	echo "  ⛔ COMMIT REFUSED — this would put personal notes into a public repository."
+	echo ""
+	echo "  These staged files live under memory/, which is YOUR material and must never be committed:"
+	printf '%s\n' "$offenders" | sed 's/^/      /'
+	echo ""
+	echo "  Unstage them and commit again:"
+	echo ""
+	printf '%s\n' "$offenders" | sed 's|^|      git restore --staged "|; s|$|"|'
+	echo ""
+	echo "  (Only memory/README.md may be committed. If you genuinely need to override this, you know how"
+	echo "   — but read the line above twice first: a push to a public repo cannot be taken back.)"
+	echo ""
+	exit 1
+fi
+
+exit 0

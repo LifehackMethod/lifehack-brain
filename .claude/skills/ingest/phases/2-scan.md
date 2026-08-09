@@ -1,5 +1,28 @@
 # PHASE 2 — SCREEN A PILE (one pile: thin-read every chat, then YOU rule it)
 
+> ## 📖 REFERENCE — `PLAN-B.md`, in the top folder. Read it when in doubt.
+>
+> It states this same method in four plain rounds that map 1:1 onto the four phases. **Your matching round is `ROUND 2 — Screen one pile`.** Read it when you are unsure what should happen next, what a
+turn should look like, or how something should be said to the human.
+> It is far shorter than this file, and it is the reference for **TONE and SHAPE**.
+>
+> ⭐ **WHY IT IS THE REFERENCE AND NOT A BACKUP (2026-08-09).** A window pointed at nothing but `PLAN-B.md`
+> — no tools, no state file, no automation — **ran this method BETTER than this skill did**, watched live.
+> The operator's verdict on its output: *"that's exactly what it's supposed to look like."* Nothing was
+> wrong with the doctrine here; it was buried. PLAN-B is the same doctrine at a readable altitude.
+>
+> ⛔ **WHERE THEY DISAGREE ON MECHANISM — a command, a path, a flag — THIS FILE WINS.** PLAN-B deliberately
+> describes the no-tools path, so its mechanics are absent by design; following it for commands breaks the
+> run. ⭐ **WHERE THEY DISAGREE ON HOW TO TREAT THE HUMAN, PLAN-B WINS.** That is what it is for:
+> *"silence is never consent"* · *"never pre-filter"* · *"EXPLORE is not a verdict, it's a deferral with a
+> request"* · *"you may never type something as canon yourself — only they elevate."*
+>
+> ⚠ **ONE RECONCILIATION, so nobody trips on it.** PLAN-B says *"show your description, NOT the title."*
+> The ruling screen now also shows a short NAME per row. **These do not conflict:** PLAN-B's ban is on the
+> human RULING BY title; the name is only an identifier so they can tell rows apart, and the 2–3 sentence
+> description still carries the substance they judge on. Both complaints came from the same person in the
+> same five minutes — *"it doesn't have a name, what is it?"* and the title ban.
+
 **CHAIN DISCIPLINE.** One link in the `/ingest` chain. Run top to bottom. Your ONLY exit is the NEXT
 pointer at the bottom. Do not read ahead. Do not produce outputs this file doesn't ask for.
 
@@ -66,18 +89,23 @@ does not.**
 **Handle every plumbing hiccup QUIETLY** — a lock, a quarantine, an empty result: resolve it and say it in
 ONE plain sentence. NEVER put a debugging expedition on screen.
 
-**`2.0b` Load the run's PROJECT BRIEF — this is the world model.**
-The corpus has a project brief, and **that brief IS the world model** — no new artifact, no new file
-format. Read it DIRECTLY — the shape `project-manager` reads — before reading a single chat, so everything
-earlier sittings learned about this person is in front of you. ⛔ **Never via that skill's Create/
-Frame-intake path** — there is no intake gate here; the brief is simply loaded.
+**`2.0b` Read the corpus SCRATCHPAD — this is the world model.**
+One plain file, written by PHASE 1 and appended to as the run proceeds. Read it before reading a single
+chat, so everything earlier sittings learned about this person is in front of you.
 ```bash
-bash "$ROOT/system/hooks/pm_flag.sh" status   # names the armed brief, or `none`
+cat "$ROOT/memory/$INGEST_CORPUS/$BASKET/scratchpad.md" 2>/dev/null || echo "(no scratchpad for this pile yet)"
 ```
-`none` → arm the corpus's brief with `pm_flag.sh arm "<abs brief path>" "<slug>" root`. Read its
-`## Current State` and `## SCRATCHPAD` before `2.2`.
+⭐ **EACH PILE HAS ITS OWN PAD (2026-08-09).** You read **this pile's** pad, not the whole corpus's —
+*"each pile in phase one gets its own scratchpad, and then each of those piles is what the scratchpad gets
+written to when we're working in that pile."* **A pile is one sitting**, so its pad stays the size of one
+sitting and picking the pile back up loads only its own history. *(There is also a corpus-level pad for
+anything that genuinely spans piles; it is not the working surface.)*
+⛔ **Nothing else is consulted here — no project brief, no `project-manager`, no schema, no hook
+(2026-08-09).** The author's ruling: *"forget project manager... it's literally just going to create one
+scratchpad that it writes to, and it persists knowledge and notes that it needs to write."* **If it is not
+in that file, it is not known.**
 ⛔ **Deliberately NOT a self-improving system** — that ambition was ruled *"a little too complicated"* and
-is not being built. A brief that gets read AND written to is the whole mechanism.
+is not being built. **A file that gets read AND written to is the whole mechanism.**
 
 **`2.0c` Offer to inherit a previous corpus's world model — OFFER it, never assume it, and ONLY ONCE PER RUN.**
 Check the once-per-run flag before asking anything:
@@ -159,11 +187,28 @@ Reader prompt:
 > *"For each `===== ITEM: <file> =====` block, return a JSON array row
 > `{\"file\": \"<file>\", \"guess\": \"toss|research\", \"gist\": \"<description>\"}`.*
 > ***2–3 sentences minimum, always*** *— what this chat actually is, what the person concluded/decided/
-> built, and (keepers) why it might matter later. Write it for a non-technical person: no jargon, no
-> fragments, no one-line blurbs.*"
+> built, and (keepers) why it might matter later.*
+> ***EVERY SENTENCE IS A WHOLE SENTENCE: a stated subject, a verb, an object.*** *⛔ No fragments. ⛔ Never
+> open with a bare demonstrative — not "This weekly review template for planning a work week" (no verb,
+> no subject) but "This is a weekly review template the person built to plan a work week."*
+> ***NAME THE THING SPECIFICALLY in the first sentence*** *— the actual subject, tool, company, person or
+> project it is about. ⛔ "a system configuration file" and "some notes about planning" are vague enough to
+> describe half the corpus; if your sentence would fit twenty other chats, it has not identified this one.*
+> *Write it for a non-technical reader who has never seen this material and will not ask a follow-up
+> question: no jargon, no abbreviations, no one-line blurbs.*"
 
 **The 2–3 sentence floor is not a style note** — it is the exact input the human's ruling rests on.
 *"We need at least two sentences if not three."*
+
+⛔ **THE WHOLE-SENTENCE + SPECIFIC-NOUN RULES ARE NOT STYLE EITHER — both were measured failing on
+2026-08-09**, on a live run watched over screen-share. The screen returned *"This weekly review template
+for planning a work week"* — a fragment with no verb — and *"This is a system configuration file for
+Obsidian note-taking vault describing folder structure"*, which is grammatical and still identifies
+nothing. The operator's verdict on both: *"It did not have subject, verb, object agreement… it did not use
+a specific noun. It just referenced something very vague. It's not considering that this is a **boomer**
+who is our audience and who needs to be **led** through it."* ⭐ **The audience is the constraint: someone
+who will read the sentence once, out loud, and rule on it. A fragment makes them re-read; a vague noun
+makes them guess.**
 
 Collect automatically — **never hand-copy reader JSON**:
 ```bash
@@ -178,7 +223,7 @@ Detect chats on the page that are really **one arc**, and present them **chronol
 newest**, labelled as a sequence — then offer the reading:
 > *"These ten look like one project over time — starting `<date>` and running to `<date>`. Is that right?"*
 
-Write what they say into the brief (`2.10`).
+Write what they say into the scratchpad (`2.10`).
 ⛔ **Never assert the most recent one is the definitive one.** You offer the chronology; the human rules.
 *Why:* several small chats on one subject over time **is a project**, and seeing a sequence is a different
 act of judgment than seeing a list.
@@ -191,8 +236,19 @@ python3 $T/scan_review.py show --map "$MAP" --basket "$BASKET"
 ```
 **Reproduce the whole screen in your OWN reply.** Do NOT leave it in the collapsed command block — the
 human sees only "+N lines" and thinks nothing happened. *If it isn't in your message, they did not see it.*
-The screen shows, per chat: **the 2–3 sentence description · the size · a ⚠ flag if enormous or sensitive.**
-⛔ **NOT the title** — *"the title is never good when it comes to ChatGPT."*
+The screen shows, per chat: **a short NAME derived from the filename · the size · a ⚠ flag if enormous or
+sensitive · then the 2–3 sentence description beneath it.**
+⛔ **THE MACHINE'S OWN GUESS IS NOT ON THE SCREEN, AND MUST NEVER BE PUT BACK (2026-08-09).** The row used
+to open with `scan_guess` rendered as a hard label — *"1 TOSS · 2 TOSS · 3 TOSS"* — and the operator's
+ruling was immediate: *"It should NOT give a recommendation, it should just ask you. This is totally
+wrong."* **A column of TOSS is a verdict already reached**, and the human's turn degrades into agreeing
+with it — which throws away the exact thing `2.7` says only they can supply: **RECOGNITION.** The guess is
+still written to the map and still used downstream; it is withheld only at the moment of ruling.
+⚠ **The NAME is an IDENTIFIER, not the thing they rule on** — the description still carries the substance.
+This is not a reversal of *"the title is never good when it comes to ChatGPT"*: that ban is about what the
+human JUDGES on. A row with no name at all was measured the same day — *"It doesn't have a name. What is
+it? It's not showing a file name"* — and for a corpus of hand-named notes the filename is the most
+recognisable thing about the note.
 **It names all three verdicts on screen, with one line each**, and ends with ONE clear action.
 ⛔ **EVERY ITEM AND EVERY OPTION IS NUMBERED**, so the human can say `1a, 2b, 3c`.
 **Why the numbering is hard and stays:** they are **dictating**. An unnumbered list forces them to restate
@@ -240,12 +296,17 @@ overriding how it started versus how it ended. We want just the larger summary."
 **Security is unchanged:** the wider slice is still cut from gate-sanitized text and still read by a
 tool-less agent. Widening the slice does not widen the attack surface.
 
-**`2.10` Write what was learned into the PROJECT BRIEF.**
-Append to the run's brief (`2.0b`): confirmed subject-arcs, corrections the human made, observations about
-how this person works — anything that would otherwise have to be rediscovered.
-*Why:* the pile spans sittings and windows. **Context is RAM; the brief is storage.** And this is the step
-that makes the world model real — a brief that only gets read is a document; a brief that gets written to
-as the run proceeds is a picture that sharpens.
+**`2.10` Write what was learned into the SCRATCHPAD.**
+Append to the corpus scratchpad (`2.0b`): confirmed subject-arcs, corrections the human made, observations
+about how this person works — anything that would otherwise have to be rediscovered.
+```bash
+python3 $T/pipeline.py pad-init --map "$MAP" --root "$ROOT" --basket "$BASKET" --entry "<what you learned, in plain prose>"
+```
+*Why:* the pile spans sittings and windows. **Context is RAM; the scratchpad is storage.** And this is the
+step that makes the world model real — a file that only gets read is a document; a file that gets written
+to as the run proceeds is a picture that sharpens.
+⭐ **The four standing headings are a place to put things, not a schema** — nothing validates them, and
+you may write plainly under any of them.
 
 ---
 
@@ -256,7 +317,7 @@ as the run proceeds is a picture that sharpens.
 - **Offer it every round, verbatim:**
   > *"`N` chats came back with a closer look, and `M` are still to see. Another round, or stop here for
   > now? — I'd suggest another round, because the pile can't close until the explore stack is empty."*
-- **What carries between rounds:** the explore stack · the brief · every ruling already made (never re-asked).
+- **What carries between rounds:** the explore stack · the scratchpad · every ruling already made (never re-asked).
 - **The exit backstop:** the human can stop at any time; the pile simply stays open and resumes.
   ⛔ **What you may NEVER do is CLOSE the pile with an explore stack outstanding.**
 - **Round-over-round the material must CHANGE, not merely repeat.** A round that returns the same kind of
@@ -279,7 +340,13 @@ unrecoverable**, which is exactly what earns a hard gate.
 
 Mid-pile stop (chats still unscanned/unruled) → `--status skim-interrupted` (resumable).
 
-Tell the human plainly what just happened, relay the suggest line, then: **"Type `/ingest` to continue."**
+Tell the human plainly what just happened, relay the suggest line, then ask, in these words or close to
+them: **"Ready to move on to the next phase? Say `continue`."**
+⛔ **Do NOT tell them to type a slash-command to carry on (2026-08-09).** Watched live, the close read
+*"Type `/ingest` to continue"* and the operator's reaction was immediate: *"it should say A or B to
+continue… just say continue. I want to go to the next phase. Proceed to the next phase."* **A person who
+has just answered fifteen questions should not be handed a command to remember.** Accept `continue`,
+`next`, `yes`, or `/ingest` — all of them mean the same thing.
 **Then it STOPS.** ⛔ Does not roll into the world map. The human re-invokes; **the re-invocation is the
 re-anchor.**
 **NEXT:** `3-deep-read.md`.
