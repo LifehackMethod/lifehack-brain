@@ -113,14 +113,50 @@ def _descend_single_wrapper(d, depth=3):
     return d
 
 
+def _in_git_worktree(path):
+    """Is `path` inside a git working copy? Walks up looking for a `.git`. Pure filesystem — no subprocess,
+    so it is safe to call before anything has been created."""
+    p = os.path.abspath(path)
+    while True:
+        if os.path.exists(os.path.join(p, ".git")):
+            return p
+        parent = os.path.dirname(p)
+        if parent == p:
+            return None
+        p = parent
+
+
+def _unpack_dir(out_dir):
+    """WHERE AN ARCHIVE IS ALLOWED TO LAND. Never inside a git working copy.
+
+    ⛔⛔ MEASURED 2026-08-09, watched live: a session was told "extract the zip to a folder", extracted it
+    INSIDE the person's brain folder — which IS a git working copy — and git immediately began tracking
+    **6,228 changes**, including the export's `users.json` (their email address and phone number). It
+    could not actually reach the public repo, because a student holds no push credentials; but the rule
+    is the one stated in the room that day: **"use the root folder as file storage, not the git
+    repository — nothing from the user's perspective should be tracked in the git repo."**
+    ⭐ A raw export is the single most sensitive object in this whole pipeline: it is the person's entire
+    history, unsorted, unscreened, and it contains vendor account files nobody asked for. It never enters
+    a tracked tree, and the decision is CODE'S, not a session's, because the failing case was a session
+    doing exactly what a human told it to."""
+    if not _in_git_worktree(out_dir):
+        return os.path.join(os.path.dirname(os.path.abspath(out_dir)), "_unpacked")
+    safe = os.path.join(os.path.expanduser("~"), ".cache", "cowork-ingest", "_unpacked")
+    os.makedirs(safe, exist_ok=True)
+    return safe
+
+
 def resolve_input(raw, out_dir):
     """Return (path, notes). `path` is a directory (or the original file for the large-document format).
     `notes` are plain sentences to show the human — unwrapping must never be silent, or they will not
     understand what the tool actually read."""
     notes = []
     if os.path.isfile(raw) and raw.lower().endswith(".zip"):
-        dest = os.path.join(os.path.dirname(os.path.abspath(out_dir)),
-                            "_unpacked", os.path.splitext(os.path.basename(raw))[0])
+        base = _unpack_dir(out_dir)
+        dest = os.path.join(base, os.path.splitext(os.path.basename(raw))[0])
+        if _in_git_worktree(out_dir):
+            notes.append("your brain folder is version-controlled, so I unpacked the export OUTSIDE it — "
+                         "your raw export is never tracked or uploaded")
         if not os.path.isdir(dest) or not os.listdir(dest):
             os.makedirs(dest, exist_ok=True)
             _safe_extract(raw, dest)

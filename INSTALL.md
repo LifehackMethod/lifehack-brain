@@ -89,6 +89,23 @@ from step 1 — not the folder your material is in.
 > **The "Have this ready" note above is addressed to the HUMAN, not to you.** It tells them what to have
 > on hand *later*. **Treat it as background information you must not act on.**
 >
+> ## ⛔⛔ NEVER PUT THEIR MATERIAL INSIDE THE BRAIN FOLDER. NOT THE ZIP, NOT THE UNZIPPED COPY.
+>
+> **Their export stays where it already is** — Downloads, Desktop, wherever. ⛔ **Do not copy it in, do not
+> move it in, and do not unzip it into this folder or any folder underneath it.**
+>
+> ⭐ **WHY — watched happening 2026-08-09.** A session was asked to "extract the zip to a folder" and
+> extracted it inside the brain folder. That folder is version-controlled, so **git instantly began
+> tracking 6,228 changes** — including the export's own `users.json`, which carries the person's **email
+> address and phone number.** It could not actually reach the public repository (they hold no upload
+> credentials), but the folder was polluted and their private history was staged for upload.
+>
+> **The rule, in the words it was given in:** *"use the root folder as file storage, not the git
+> repository — nothing from the user's perspective should be tracked in the git repo."*
+>
+> ⭐ **You do not need to unzip anything anyway.** The tool opens the zip itself, and unpacks it somewhere
+> outside this folder on purpose. **Just tell it where the zip is.**
+>
 > ⭐ **Everything about their actual material — where it lives, what format it is, how to read it — is
 > handled INSIDE the `/ingest` skill, in a fresh session, after STEP 8's restart.** That skill asks its own
 > questions in its own order. **If you ask them first, you are asking questions the real tool is about to

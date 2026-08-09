@@ -9,3 +9,10 @@ memory/*
 Thumbs.db
 __pycache__/
 *.pyc
+
+# Raw corpus material must never be tracked. The tool unpacks outside the repo by design; this is the
+# backstop for a human or a session that puts one here by hand (measured 2026-08-09: 6,228 files).
+_unpacked/
+*.zip
+conversations.json
+users.json

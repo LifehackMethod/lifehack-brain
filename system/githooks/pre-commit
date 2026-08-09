@@ -17,7 +17,13 @@
 
 staged=$(git diff --cached --name-only --diff-filter=ACMR)
 
-offenders=$(printf '%s\n' "$staged" | grep -E '^memory/' | grep -v -x 'memory/README.md')
+# memory/ is theirs. The rest are raw-corpus fingerprints: an export unpacked into the repo by hand is
+# the measured failure (2026-08-09, 6,228 files staged, including a users.json holding an email address
+# and a phone number). .gitignore does not catch a file that is force-added or was tracked before it was
+# ignored, which is exactly why this check exists as well.
+offenders=$(printf '%s\n' "$staged" \
+	| grep -E '^memory/|(^|/)_unpacked/|\.zip$|(^|/)conversations\.json$|(^|/)users\.json$' \
+	| grep -v -x 'memory/README.md')
 
 if [ -n "$offenders" ]; then
 	echo ""

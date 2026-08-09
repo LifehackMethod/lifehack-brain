@@ -1,5 +1,12 @@
 # PHASE 1 — SORT (wide, once)
 
+> ## ⛔ THEIR MATERIAL STAYS OUTSIDE THE BRAIN FOLDER. NEVER COPY OR UNZIP IT IN.
+> Point the tool at wherever their export already lives — `intake.py` opens a `.zip` itself and unpacks it
+> **outside** any version-controlled folder, deliberately. ⛔ **Do not extract it "somewhere convenient"
+> first.** Measured 2026-08-09: doing that put 6,228 files under version control, including the export's
+> `users.json` (their email address and phone number). *(The code now refuses to unpack into a tracked
+> folder — this line is so you never try.)*
+
 > ## 📖 REFERENCE — `PLAN-B.md`, in the top folder. Read it when in doubt.
 >
 > It states this same method in four plain rounds that map 1:1 onto the four phases. **Your matching round is `ROUND 1 — Make the piles`.** Read it when you are unsure what should happen next, what a
