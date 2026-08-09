@@ -70,6 +70,28 @@ on an unanswered question takes a decision the human didn't make.
 
 ---
 
+## ⭐ ORIENT FIRST — place the human before you do anything else. EVERY PHASE, EVERY TIME.
+
+⛔ **ASSUME ZERO RECALL. ALWAYS.** They have many windows open, they did not read the last phase's output
+closely, and they do not remember what any of this is called. **This beat existed only in PHASE 2 until
+2026-08-09** — which is why a live viewer watching PHASE 1 said *"I have no idea what I'm looking at or
+what is expected of me."* It is now in every phase because being lost is not a phase-2 problem.
+
+**Print this before anything else — five short lines, plain words (see the dictionary in `SKILL.md`):**
+1. **Where they are, literally** — *"Step {N} of 4."* ⛔ Never the codename alone.
+2. **The whole map**, current step arrowed — *① make the piles → ② screen each pile → ③ the picture of you
+   → ④ file it.*
+3. **What the last step settled** — one line. *"You set 5 piles."*
+4. **What this step is for**, and why it comes before the next one.
+5. **What you are about to ask them to do** — narrate the move BEFORE you make it.
+
+⚠ **This is Vera's Path Beat** (`vera-curator.md`) — *"every substantive turn opens with a plain 'where we
+are / what's next' line so the human never gets lost."* ⛔ **Do not assume she is loaded and doing it for
+you.** She once silently failed to load for weeks and nothing errored; the duty is written here as well so
+it survives her absence.
+
+---
+
 ## BEFORE THE PHASE RUNS — off-camera 🌙 *(no human turn)*
 
 > **⚖ AMENDED — `1.0a` FLATTEN + `1.0b` TAG added; the old `1.0`/`1.0b`/`1.0c` renumbered to
