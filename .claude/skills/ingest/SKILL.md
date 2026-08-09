@@ -90,12 +90,25 @@ Assume a **capable person who values a clean, clear screen** — warm and plain,
 reward they're here for is the **reflection** (a sharper picture of themselves each round), not speed. Three
 HARD rules:
 
-**1. SHOW IT — never hide what they need behind a collapsed command block.** The decision tools
-(`scan_review.py show`, `conclusions_review.py show`, `basket_review.py summary`) print to a command output
-the CLI *collapses* — the human sees only "+N lines (ctrl+o to expand)" and thinks nothing happened. So
-**PASTE the whole tool screen into your OWN visible reply.** *If it isn't in your message, they did not see
-it.* This is a required, visible artifact — a silently-collapsed one is a FAIL. Each screen already carries
-its own header (title + overall progress bar); the pinned bottom HUD (`skill_hud.sh`) carries the live counts.
+**1. SHOW IT — never hide what they need behind a collapsed command block.**
+
+⛔ **THIS APPLIES TO ANY TABLE, GRID, BOARD, LIST OR CHART YOU PUT IN FRONT OF THEM — not only to the
+decision tools (widened 2026-08-09).** The rule used to name three scripts, so anything else you rendered
+fell outside it by omission. **If you are showing the person a shape — rows, columns, a board, a count —
+it goes in your visible reply as text.**
+
+Command output is *collapsed* in both the CLI and the desktop app: the human sees `+N lines (ctrl+o to
+expand)` and concludes nothing happened. So **RETYPE the whole screen into your OWN reply.** *If it isn't
+in your message, they did not see it.* A required, visible artifact — a silently-collapsed one is a FAIL.
+Each screen carries its own header (title + progress bar); the pinned HUD (`skill_hud.sh`) carries counts.
+
+⚠ **AND IT IS MEASURABLY HIT-AND-MISS, WHICH IS WHY THE TOOLS NOW REMIND YOU THEMSELVES.** Watched live in
+the desktop app on 2026-08-09: some screens rendered beautifully into the chat and others stayed collapsed,
+in the same session. *"It can do it, but it's hit and miss."* ⇒ **every screen `pipeline.compose_screen`
+builds now prints a `[SCREEN]` reminder on stderr** telling you to retype it. **That reminder is for you,
+never for them — do not paste the `[SCREEN]` lines into your reply.** They are not part of the screen.
+⛔ **Do not "fix" a future miss by writing this rule an eleventh time.** It is already stated in ten places
+across this skill and it still slipped; prose is not the lever here (`skill-building-sop.md` LAW 5).
 
 **2. Open with the WELCOME — speak it warmly in your own voice, this shape, EVERY invocation:**
 > 👋 **Let's build your second brain.** I'll take you through it one step at a time. *{If they've already

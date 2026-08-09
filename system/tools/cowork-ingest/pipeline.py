@@ -584,7 +584,25 @@ def compose_screen(rows, action_bar, header_lines=None, title=None, title_right=
         ━  [title band]  ━   header/HUD lines   ─   rows   ─   ▶ action   ━
     `rows` = pre-formatted item lines (the caller numbers + labels them via verb_label). `action_bar` is
     the last content line (build it with compose_action_bar). `header_lines` = the optional HUD grid /
-    lead. A screen ALWAYS ends with the action bar as its last non-rule line."""
+    lead. A screen ALWAYS ends with the action bar as its last non-rule line.
+
+    ⭐⭐ IT ALSO EMITS A REMINDER ON **STDERR** TELLING THE MODEL TO PASTE THE SCREEN INTO ITS REPLY.
+    Not decoration, and not a duplicate of the prose rule — it is that rule moved to where it can be seen.
+
+    THE PROBLEM (2026-08-09, watched in the desktop app): tables and grids render inside a COLLAPSED tool
+    block. The person sees "+34 lines" and believes nothing happened. The operator's note: *"if you render
+    a table for the user, make sure you render it to the chat and don't hide it inside of a collapsed
+    command"* — and *"we saw it render nicely a couple of times; it can do it, but it's hit and miss."*
+
+    ⛔ WHY NOT SIMPLY SAY IT AGAIN IN THE SKILL: **it is already said in TEN places, including as rule #1
+    of SKILL.md, and it is still hit and miss.** An eleventh restatement is the failure mode, not the fix
+    (`skill-building-sop.md` LAW 5 — prose decays). The model does not lack the rule; it is reading a
+    screen out of a tool result while the rule sits in a file loaded twenty turns ago. **Attaching the
+    reminder to the artifact delivers it at the only moment it is actionable.**
+
+    ⭐ STDERR RATHER THAN STDOUT, AND THAT CHOICE IS LOAD-BEARING: the nudge must reach the MODEL without
+    becoming part of the screen the model pastes to the HUMAN. On stdout it would be quoted back to the
+    person as "paste everything above", which is gibberish to them."""
     rule = "━" * _DW
     thin = "─" * _DW
     L = [rule]
@@ -600,7 +618,18 @@ def compose_screen(rows, action_bar, header_lines=None, title=None, title_right=
     L.append(thin)
     L.append(action_bar)
     L.append(rule)
-    return "\n".join(L)
+    out = "\n".join(L)
+    # THE NUDGE — stderr only, so it reaches the model and never the person. See the docstring.
+    try:
+        sys.stderr.write(
+            "\n[SCREEN] The block above is what the person must SEE. In the desktop app this is COLLAPSED "
+            "-- they see only \"+N lines\" and think nothing happened.\n"
+            "[SCREEN] RETYPE IT IN FULL IN YOUR REPLY, as text, before you say anything else. Every row, "
+            "every number, the action line last. Do not summarise it, do not shorten it, do not describe "
+            "it.\n[SCREEN] If it is not in your message, they did not see it.\n")
+    except Exception:
+        pass          # a screen must render even if stderr is closed; the nudge is never load-bearing
+    return out
 
 
 # ── F2.3 — brain_count (the pure-query tally that feeds the reflection + the HUD) ────────────────
