@@ -1,0 +1,9 @@
+# Everything the person writes lives in memory/ and is theirs alone.
+# Ignore all of it; keep only the signpost README so the folder ships empty
+# and an update has nothing of theirs to overwrite.
+memory/*
+!memory/README.md
+
+# OS noise
+.DS_Store
+Thumbs.db
