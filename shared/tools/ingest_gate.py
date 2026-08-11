@@ -44,10 +44,27 @@ from safe_input import scan_for_injection         # system/tools/safe_input.py
 SENTINEL = os.path.join(CODE_ROOT, "shared", "tools", "sentinel_response.py")
 VALID_SOURCE_TYPES = {"email", "web", "file", "calendar", "api"}
 
-# CONTENT tier: the coverage breadcrumb ledger lives on the Drive spine (env-overridable for tests).
-# Resolved from the brain root the user chose, never a hardcoded cloud path. Empty is fine —
-# PROVENANCE_LOG below just falls back to a local cache dir.
-DRIVE = os.environ.get("LIFEHACK_ROOT", os.path.expanduser("~/.cache/ingest-gate"))
+# The coverage breadcrumb ledger lives under the notes root the person chose (env-overridable for
+# tests). Resolved through the ONE resolver, never a hardcoded cloud path.
+#
+# ⭐ FIXED 2026-08-11 (migration T2.1): this line used to read the LIFEHACK_ROOT environment
+# variable and nothing else. On an ordinary install the root is PERSISTED, not exported — so the
+# variable is unset, the fallback fired, and every coverage breadcrumb went to ~/.cache instead of
+# to the person's notes. Nothing broke and nothing said anything, which is why it survived: the
+# gate still gated, it just kept its receipts somewhere nobody would look. The whole point of the
+# breadcrumb is that coverage is mechanical rather than something you assert, and a ledger in a
+# cache directory cannot do that job. It now goes through resolve_brain_root, which reads the
+# persisted pointer as well. NOT-SET still falls back to the cache dir — a fresh install with no
+# root chosen must still record rather than drop the line on the floor.
+_SHARED = os.path.join(CODE_ROOT, "shared")
+if _SHARED not in sys.path:
+    sys.path.insert(0, _SHARED)
+try:
+    from brain_root import resolve_brain_root       # shared/brain_root.py — the one root variable
+    _NOTES_ROOT = resolve_brain_root()[1]
+except Exception:
+    _NOTES_ROOT = None
+DRIVE = _NOTES_ROOT or os.path.expanduser("~/.cache/ingest-gate")
 PROVENANCE_LOG = os.environ.get("INGEST_PROVENANCE_LOG", f"{DRIVE}/state/status/ingest-provenance.jsonl")
 
 # POSTURE (Window 5): "enforce" (default since the W5 cutover 2026-06-20) = fail-CLOSED — a read that

@@ -65,6 +65,16 @@
             "statusMessage": "Recording the active plan..."
           }
         ]
+      },
+      {
+        "matcher": "Bash|WebFetch|WebSearch|Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/ingest_gate_enforce.sh\"",
+            "statusMessage": "Checking where this text came from..."
+          }
+        ]
       }
     ]
   },
