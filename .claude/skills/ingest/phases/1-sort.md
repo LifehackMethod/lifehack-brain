@@ -135,7 +135,7 @@ python3 $T/pipeline.py brain-root --set "<the folder they named>"     # add --cr
 ⛔ **Never pick a folder for them, and never fall back to the current directory.** `NOT-SET` is a genuine
 stop, not a prompt to be clever — putting someone's brain somewhere they did not choose is the failure this
 step exists to prevent. ⛔ **And never ask twice**: once recorded it is read from
-`~/.config/claudeops/brain-root` by every later run and every later phase, forever.
+`~/.config/lifehack/brain-root` by every later run and every later phase, forever.
 
 **`1.0a` FLATTEN — a format fork, never a guess.** Turns the raw export into the flattened `.txt` shape
 every later phase reads. Detection is by **inspecting `$RAW_EXPORT`** (does it contain
