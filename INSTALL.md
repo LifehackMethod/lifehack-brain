@@ -543,3 +543,54 @@ to your account, and neither it nor your authentication is part of this package.
 
 ⛔ **Until you have done that sit-down, do not run an authentication flow on your own and do not hand
 your account details to anything.** Nothing here needs them yet.
+
+## What the sit-down covers
+
+Do these in order, together, once. None of it is needed to use everything else in this package.
+
+**1 — Install `gws` and log in.** It is the command-line tool that talks to Google. Install it however
+your machine installs things, then run its login and grant only the scopes you actually intend to use.
+Check it landed and that the login took:
+
+```bash
+command -v gws          # a path means it is installed
+gws auth status         # says which account is connected
+```
+
+⛔ **Never `gws auth logout`, and never delete or move `~/.config/gws/`.** That directory is the
+login for every window on this machine, and there is no undo — you would redo this sit-down. If
+something looks broken, run `gws auth status` and read what it says before touching anything.
+
+**2 — Put your own identifiers in your notes folder, not in this repo.** Which calendar, which
+spreadsheet, which task list — those are yours, and they are the kind of thing a public repository
+must never carry. They live at `<notes>/config/`, one small file per thing, named so a stranger
+could tell what it is:
+
+```
+<notes>/config/sheets.md     # "billing tracker → 1AbC...", one line per sheet you use
+<notes>/config/cal.md        # which calendar things get written to
+```
+
+A skill that needs an id reads it from there. If the file is not there, the skill says so rather than
+guessing — which is the correct behaviour, and the reason nothing is pre-filled.
+
+**3 — `clasp`, only if you want Apps Script.** `clasp` is Google's command-line tool for Apps Script,
+and `/google-sheet` uses it for logic a formula cannot express. **Skip this unless you hit that wall** —
+formulas, `ARRAYFORMULA` and the self-check layer all work with no clasp installed at all, and most
+sheets never need it. If you do install it, its credential (`~/.clasprc.json`) is machine-local and
+must never be committed, exactly like the `gws` login.
+
+## What is guarded once you are connected
+
+Two hooks watch spreadsheet writes from the moment you register them, and they are worth knowing about
+before they surprise you:
+
+- **You must read a sheet's `_LLM_GUIDE` tab before writing to it.** Every sheet this system builds
+  carries one, holding its structure and its rules. The first write to a sheet in a session is refused
+  with an instruction to read that tab; after that, writes go through for twelve hours.
+- **A write that would land on a formula is refused outright.** Google's own cell protection does not
+  stop a write authenticated as the file's owner — which is you — so this is the only place it can be
+  stopped. Appending rows is never blocked. Changing a formula on purpose means showing yourself the
+  exact before and after and re-running with `LIFEHACK_SHEET_CONFIRM=1` in front of the command.
+
+Neither hook touches anything that is not a `gws sheets` command, and neither needs `jq`.

@@ -128,6 +128,16 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/enforce_egress_allowlist.sh\"",
             "statusMessage": "Checking where this call is going..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_sheet_writes.sh\"",
+            "statusMessage": "Checking this sheet's own instructions were read first..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_sheet_formula_writes.sh\"",
+            "statusMessage": "Checking this write would not land on a formula..."
           }
         ]
       }
