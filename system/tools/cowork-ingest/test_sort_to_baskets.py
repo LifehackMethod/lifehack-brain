@@ -116,7 +116,13 @@ class TestOnePadPerPile(Case):
         self.phase_one()
         root = os.path.join(self.tmp, "notes")
         os.makedirs(root)
-        self.run_tool("pipeline.py", "pad-init", "--map", self.map, "--root", root)
+        # ⛔ 2026-08-11 D1.2.1: this fixture's map is a flat tmp path, not shaped like
+        # .../projects/<corpus>/work/<file>.json, so the corpus id can no longer be resolved from the
+        # path (and must never be guessed from `source`, which corpus_map.py sets to "world-tags.json"
+        # here — that names the tag file, not the corpus). --corpus-id makes the resolution explicit,
+        # same as a real caller whose map does not live under a `projects/` tree would have to.
+        self.run_tool("pipeline.py", "pad-init", "--map", self.map, "--root", root,
+                      "--corpus-id", "test-corpus")
         pads = set()
         for dirpath, _dirnames, filenames in os.walk(root):
             for f in filenames:

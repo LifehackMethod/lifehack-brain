@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""test_bootstrap.py — day one makes exactly three things, and no fourth.
+"""test_bootstrap.py — day one makes exactly four things, and no fifth.
 
 Run:  python3 system/tools/test_bootstrap.py
 
 The "and nothing else" half is the one that needs teeth. It is easy and tempting for a later change to
 have this scaffold a helpful starting structure; that would hand every person a guess about how their
-own life divides up, which is the thing this system refuses to do everywhere else.
+own life divides up, which is the thing this system refuses to do everywhere else. That includes the
+root canon added 2026-08-11 (task 2.1.1): its FRAME ships empty, never pre-filled canon lines.
 """
 
+import hashlib
 import os
 import shutil
 import subprocess
@@ -20,7 +22,12 @@ REPO = os.path.normpath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, HERE)
 import bootstrap  # noqa: E402
 
-EXPECTED = {"system/journal.md", "system/project-registry.md", "state/projects/"}
+EXPECTED = {"system/journal.md", "system/project-registry.md", "state/projects/", "canon.md"}
+
+
+def sha256(path):
+    with open(path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
 
 
 def tree(root):
@@ -46,13 +53,13 @@ class Case(unittest.TestCase):
 
 class TestExactly(Case):
 
-    def test_creates_the_three(self):
+    def test_creates_the_four(self):
         created, existed = bootstrap.bootstrap(self.root)
         self.assertEqual(set(created), EXPECTED)
         self.assertEqual(existed, [])
 
     def test_and_nothing_else(self):
-        """The load-bearing one. Whatever appears on disk is EXACTLY the three, plus the two parent
+        """The load-bearing one. Whatever appears on disk is EXACTLY the four, plus the two parent
         directories they have to live in — no subject folders, no example note, no template."""
         bootstrap.bootstrap(self.root)
         self.assertEqual(tree(self.root), EXPECTED | {"system/", "state/"})
@@ -80,6 +87,62 @@ class TestIdempotent(Case):
         bootstrap.bootstrap(self.root)
         with open(j, encoding="utf-8") as f:
             self.assertIn("must not lose", f.read())
+
+
+class TestRootCanon(Case):
+    """task 2.1.1's own acceptance test: the root canon is created once, seeded with purpose only,
+    and a second run leaves it byte-identical — proven by hash, not by inspection."""
+
+    def test_root_canon_created_on_fresh_root(self):
+        created, existed = bootstrap.bootstrap(self.root)
+        self.assertIn("canon.md", created)
+        self.assertEqual(existed, [])
+        p = os.path.join(self.root, "canon.md")
+        self.assertTrue(os.path.isfile(p))
+        with open(p, encoding="utf-8") as f:
+            body = f.read()
+        # frame, not content: a purpose line, no numeric threshold, and no canon bullet yet.
+        self.assertIn("intent", body.lower())
+        self.assertNotRegex(body, r"\bno more than\b|\bmax(imum)?\s*\d|\d+\s*lines?\b",
+                            "a numeric size threshold leaked into the seeded root canon")
+        self.assertNotIn("\n- ", body, "a canon line was pre-filled — it must ship empty")
+
+    def test_second_run_does_not_modify_root_canon(self):
+        """The load-bearing check: hash before, hash after — not just 'still contains the phrase'."""
+        bootstrap.bootstrap(self.root)
+        p = os.path.join(self.root, "canon.md")
+        before = sha256(p)
+        created, existed = bootstrap.bootstrap(self.root)
+        after = sha256(p)
+        self.assertEqual(before, after, "a second run changed the root canon's bytes")
+        self.assertNotIn("canon.md", created)
+        self.assertIn("canon.md", existed)
+
+    def test_second_run_does_not_modify_a_hand_edited_root_canon(self):
+        """Mirrors test_never_clobbers_real_content above, for the fourth artifact specifically."""
+        bootstrap.bootstrap(self.root)
+        p = os.path.join(self.root, "canon.md")
+        with open(p, "a", encoding="utf-8") as f:
+            f.write("- the human's own line, added by hand\n")
+        before = sha256(p)
+        bootstrap.bootstrap(self.root)
+        after = sha256(p)
+        self.assertEqual(before, after)
+        with open(p, encoding="utf-8") as f:
+            self.assertIn("the human's own line", f.read())
+
+    def test_existing_three_still_created_and_not_clobbered_alongside_the_fourth(self):
+        """The fourth artifact must not have come at the cost of the first three."""
+        created, existed = bootstrap.bootstrap(self.root)
+        for rel in ("system/journal.md", "system/project-registry.md", "state/projects/"):
+            self.assertIn(rel, created)
+        j = os.path.join(self.root, "system", "journal.md")
+        with open(j, "w", encoding="utf-8") as f:
+            f.write("2026-08-11 — must not lose this either\n")
+        before = sha256(j)
+        bootstrap.bootstrap(self.root)
+        after = sha256(j)
+        self.assertEqual(before, after)
 
 
 class TestRefuses(Case):

@@ -1061,6 +1061,64 @@ def _slugify(s):
     return s or "corpus"
 
 
+def _corpus_id_from_map_path(map_path):
+    """Extract `<corpus>` from a `--map` path shaped exactly like `.../projects/<corpus>/work/<file>.json`
+    — the ONLY filesystem-derived signal `resolve_corpus_id()` trusts, because it is evidence about the
+    file actually being operated on, not a guess. Returns None (never a guess) if the shape does not
+    genuinely match: no `projects` segment, no `work` directory directly above the file, or the file is
+    nested any deeper than that."""
+    if not map_path:
+        return None
+    try:
+        parts = os.path.normpath(os.path.abspath(map_path)).split(os.sep)
+    except Exception:
+        return None
+    for i, seg in enumerate(parts):
+        if seg != "projects" or i + 3 >= len(parts):
+            continue
+        corpus, work_dir, fname = parts[i + 1], parts[i + 2], parts[i + 3]
+        if corpus and work_dir == "work" and fname.endswith(".json") and i + 4 == len(parts):
+            return corpus
+    return None
+
+
+def resolve_corpus_id(explicit_corpus_id, map_path, env_var="INGEST_CORPUS"):
+    """Resolve the corpus id used to build `memory/<corpus_id>/...` — NEVER derived from the map's
+    `source` field. `source` names the TAG FILE the map was built from (e.g. `world-tags.json`), not the
+    corpus; using it silently wrote pads to a folder nothing reads (`memory/world-tags/...`) — that was
+    the live defect this replaces.
+
+    Resolution order (first hit wins):
+      1. `explicit_corpus_id` (the caller's `--corpus-id`) — the caller said so directly.
+      2. the map's OWN PATH, if shaped like `.../projects/<corpus>/work/<file>.json` — the strongest
+         filesystem evidence about the file actually in hand. Rejected outright (never guessed) when the
+         shape doesn't genuinely match.
+      3. `$<env_var>` (default `INGEST_CORPUS`) — ranked below the map path on purpose: an env var is a
+         session leftover that can point at a DIFFERENT corpus than the map actually being operated on.
+      4. REFUSE — naming all three ways to supply it. Never falls back to `source` or the literal
+         `"corpus"`.
+
+    Returns `(corpus_id, source_label)` on success, or `(None, refusal_message)` on failure — the label/
+    message exists so the caller can always say WHERE the value came from, or why none could be found."""
+    if explicit_corpus_id:
+        return explicit_corpus_id, "--corpus-id"
+    from_path = _corpus_id_from_map_path(map_path)
+    if from_path:
+        return from_path, f"the map's own path ({map_path})"
+    env_val = os.environ.get(env_var)
+    if env_val:
+        return env_val, f"${env_var}"
+    return None, (
+        "could not resolve a corpus id. Supply ONE of: "
+        "(1) --corpus-id <slug>, "
+        "(2) a --map path shaped like .../projects/<corpus>/work/<file>.json, "
+        f"(3) the ${env_var} environment variable. "
+        "Never falls back to the map's `source` field or a literal \"corpus\" — `source` names the tag "
+        "file the map was built from, not the corpus, and a wrong guess writes pads to a folder nothing "
+        "reads."
+    )
+
+
 def _phase1_summary_lines(m):
     """Pile boundaries + counts — the ONLY PHASE-1 history the corpus map actually carries. ⚠ The map has
     NO persisted split/merge/close AUDIT TRAIL (BASKET_DEFAULTS has no notes/history field) — only the
@@ -1128,16 +1186,41 @@ def compose_pad(m, corpus_id, now_iso=None, notes=None, basket=None):
     return "\n".join(out).rstrip() + "\n"
 
 
+def _dated_block(entry, now_iso=None):
+    """The append branch's exact block format, factored out so the create branch can use the SAME text
+    for the caller's entry rather than silently dropping it. Returns '' when there is no entry text —
+    the create branch must add a skeleton alone, never an empty block."""
+    text = (entry or "").strip()
+    if not text:
+        return ""
+    stamp = (now_iso or _now_iso())[:10]
+    return f"\n\n---\n\n### {stamp}\n\n{text}\n"
+
+
 def pad_write(m, corpus_id, root, now_iso=None, notes=None, entry=None, dry_run=False, basket=None):
     """Create the pad if absent, APPEND to it if present. Returns (outcome, path_or_None, detail) with
     outcome in PAD_OUTCOMES.
 
     ⛔ APPEND, NEVER OVERWRITE. The old seam returned NO-BRIEF and refused to touch an existing file, which
     meant everything learned after PHASE 1 had nowhere to go. A pad that can only be created once is a
-    write-once file wearing a scratchpad's name."""
+    write-once file wearing a scratchpad's name.
+
+    ⛔ THE CREATE BRANCH USED TO DROP `entry` ON THE FLOOR — it built the skeleton via `compose_pad()` and
+    never looked at the caller's text at all. A first-ever `pad-init --entry "..."` printed OK and lost the
+    note (avitals25, issue #2). The create branch now appends the SAME dated block the append branch
+    writes, straight after the skeleton — skeleton alone when there is no entry, never an empty block.
+
+    ⛔ NEVER REPORT SUCCESS ON TRUST ALONE. A clean `open()`/`write()` does not mean the bytes are actually
+    on disk in the shape the caller asked for (a wrong path, a stale cached handle, a partial write can all
+    look clean). After writing, this RE-READS the target and confirms what was supposed to land is actually
+    in it — entry text present when an entry was given, non-empty skeleton headings present when it wasn't
+    — and returns REFUSED with a clear detail on anything short of that, even though the write itself
+    raised no exception."""
     if not root:
         if dry_run:
-            return "CREATED", None, compose_pad(m, corpus_id, now_iso=now_iso, notes=notes, basket=basket)
+            preview = compose_pad(m, corpus_id, now_iso=now_iso, notes=notes, basket=basket)
+            preview += _dated_block(entry, now_iso=now_iso)
+            return "CREATED", None, preview
         return "REFUSED", None, "no root given — pass --root (the folder the human named as their brain)"
     target = _pad_target_path(root, corpus_id, basket)
     exists = os.path.isfile(target)
@@ -1147,6 +1230,7 @@ def pad_write(m, corpus_id, root, now_iso=None, notes=None, entry=None, dry_run=
         addition = f"\n\n---\n\n### {stamp}\n\n{text}\n"
     else:
         addition = compose_pad(m, corpus_id, now_iso=now_iso, notes=notes, basket=basket)
+        addition += _dated_block(entry, now_iso=now_iso)
     if dry_run:
         return ("APPENDED" if exists else "CREATED"), target, addition
     try:
@@ -1155,6 +1239,27 @@ def pad_write(m, corpus_id, root, now_iso=None, notes=None, entry=None, dry_run=
             f.write(addition)
     except OSError as e:
         return "REFUSED", target, f"could not write {target}: {e}"
+
+    # READ-BACK: the write raised nothing, but that alone is not proof. Re-read from disk and confirm
+    # what was supposed to land is actually there before this function is allowed to claim success.
+    try:
+        with open(target, "r", encoding="utf-8") as f:
+            written = f.read()
+    except OSError as e:
+        return "REFUSED", target, f"wrote {target} but could not read it back to confirm: {e}"
+
+    stripped_entry = (entry or "").strip()
+    if stripped_entry:
+        if stripped_entry not in written:
+            return "REFUSED", target, (
+                f"wrote {target} but the entry text is NOT present on read-back — the save did not take")
+    else:
+        if not written.strip():
+            return "REFUSED", target, f"wrote {target} but the file is EMPTY on read-back — the save did not take"
+        missing = [h for h in PAD_HEADINGS if h not in written]
+        if missing:
+            return "REFUSED", target, (
+                f"wrote {target} but skeleton heading(s) missing on read-back: {missing} — the save did not take")
     return ("APPENDED" if exists else "CREATED"), target, None
 
 def pad_init_all(m, corpus_id, root, now_iso=None, notes=None, dry_run=False):
@@ -2175,8 +2280,10 @@ def main():
     bw = sub.add_parser("pad-init", help="PHASE 1 → scratchpad seam: create memory/<corpus>/scratchpad.md "
                         "seeded with PHASE 1's pile boundaries, or APPEND this sitting's entry if it exists")
     bw.add_argument("--map", required=True)
-    bw.add_argument("--corpus-id", dest="corpus_id", help="explicit corpus slug (never inferred by "
-                    "filesystem proximity); defaults to a slugified form of the map's own `source` field")
+    bw.add_argument("--corpus-id", dest="corpus_id", help="explicit corpus slug; if omitted, resolved from "
+                    "the --map path's own shape (.../projects/<corpus>/work/<file>.json), then "
+                    "$INGEST_CORPUS, then REFUSED — NEVER from the map's `source` field (that names the "
+                    "tag file the map was built from, not the corpus)")
     bw.add_argument("--root", dest="root", help="the brain folder the human named "
                     "(memory/<corpus-id>/scratchpad.md is written under it); omit for --dry-run only")
     bw.add_argument("--notes", help="free text, or @<path> to read it from a file — the human's "
@@ -2432,7 +2539,13 @@ def main():
               f"/ingest now advances to SCAN.")
     elif a.cmd == "pad-init":
         m = load(a.map)
-        corpus_id = a.corpus_id or _slugify(m.get("source") or "corpus")
+        # ⛔ NEVER `_slugify(m.get("source") or "corpus")` — `source` names the TAG FILE the map was built
+        # from, not the corpus, and that silent guess wrote pads to a folder nothing reads
+        # (`memory/world-tags/...`). resolve_corpus_id() REFUSES instead of guessing (D1.2.1).
+        corpus_id, corpus_source = resolve_corpus_id(a.corpus_id, a.map)
+        if corpus_id is None:
+            print(f"REFUSED pad-init: {corpus_source}")
+            sys.exit(1)
         notes = a.notes
         if notes and notes.startswith("@"):
             notes = open(notes[1:]).read()
@@ -2454,7 +2567,7 @@ def main():
             mark_pad_written(m, corpus_id, results[0][2], a.now)
             _save(m, a.map)
             print(f"OK pad-init: {len(results)} pad(s) — one per pile, plus the corpus pad "
-                  f"(m['pad_written'] set — PHASE 2 unblocks)")
+                  f"(corpus_id={corpus_id} via {corpus_source}; m['pad_written'] set — PHASE 2 unblocks)")
             sys.exit(0)
         outcome, path, detail = pad_write(m, corpus_id, a.root, now_iso=a.now, notes=notes,
                                           entry=entry, dry_run=a.dry_run, basket=a.basket)
@@ -2470,7 +2583,8 @@ def main():
             sys.exit(0)
         mark_pad_written(m, corpus_id, path, a.now)
         _save(m, a.map)
-        print(f"OK pad-init: {outcome} → {path}  (m['pad_written'] set — PHASE 2 unblocks)")
+        print(f"OK pad-init: {outcome} → {path}  "
+              f"(corpus_id={corpus_id} via {corpus_source}; m['pad_written'] set — PHASE 2 unblocks)")
     elif a.cmd == "topic-check":
         ok, bad, vocab = validate_topics(a.topics, vocab_path=a.vocab_path)
         if vocab is None:
