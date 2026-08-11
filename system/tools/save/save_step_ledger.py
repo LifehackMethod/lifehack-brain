@@ -76,7 +76,7 @@ NO_ARTIFACT_IDS = {"0.4", "SC-1", "tier", "canon-gate", "8", "9"}
 # `/checkin` had NO coverage table. Its three tool-backed checks (`checkin_open`, `gauge_check`,
 # `board_check`) fire every run because each returns an exit code; its ONE prose-only step — Step
 # 3.58's blind-reader handoff proof — was skipped on 2026-08-08 and only Enver asking "did the haiku
-# agent run?" surfaced it. `skill-building-sop.md` LAW 4.2: a model cannot report on its own
+# agent run?" surfaced it. `system/sops/skill-building-sop-extract.md`: a model cannot report on its own
 # compliance, and the Step 3.57 receipt asked for that verdict as a self-reported LINE.
 # ⇒ This spine exists so a `/checkin` close that skipped the reader CANNOT render clean.
 # ⛔ DO NOT GROW IT into a mirror of the /save spine. Every row here must be a step whose absence is

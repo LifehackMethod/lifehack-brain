@@ -10,7 +10,7 @@ authority: user
 
 <!-- CODE-SPIRAL-v2 BEGIN -->
 > ⚠ **PROVISIONAL — 2026-08-09.** Best current thinking, not doctrine. Full record:
-> it sits in tension with `skill-building-sop.md` LAW 1 and has not been ruled on.
+> it sits in tension with the skill-building SOP's LAW 1 and has not been ruled on.
 >
 > **A failure appears → *"how do we DETECT this?"* is almost always the WRONG FIRST QUESTION.** The model
 > is rarely bad at detecting; it is bad at **REMEMBERING TO LOOK**. Detection code answers a delivery
@@ -142,15 +142,15 @@ never removes them**, and a build carrying rules it does not need is slower and,
 2. **CODE-ONLY PRODUCT — the LLM is scaffolding and is ABSENT at runtime.** You are using Claude to build
    a thing that then runs without a model in it (a spreadsheet whose logic is all formulas; a pure script,
    a hook, a migration). Ordinary engineering rules apply, plus whatever
-   domain row matches below. **`system/sops/skill-building-sop.md` does NOT bind** — there is no runtime
+   domain row matches below. **the skill-building SOP (which travels with `skill-builder`, not this release) does NOT bind** — there is no runtime
    model to keep on-frame, so every law about prose decay, judgment fences, and drift is inert here.
 3. **LLM-ONLY PRODUCT — a prose skill with no code behind it.** There is nothing to gate, so most of
-   `skill-building-sop.md` PART II (the enforcement toolbox) is **inert — do not manufacture gates for
-   something with no mechanical surface.** **LAW 5 (prose decay, `skill-building-sop.md:183`) is the whole
+   the skill-building SOP's enforcement toolbox is **inert — do not manufacture gates for
+   something with no mechanical surface.** **prose decay (`system/sops/skill-building-sop-extract.md`) is the whole
    risk**, and §II.1's **REFRESH** family (`:249` — fresh contexts working off a file spine) is the only
    one of the four families that touches decay. Read those two; skip the rest of PART II.
 4. **HYBRID — code and the LLM in one running product, meant to work together.** ⭐ **A SEAM EXISTS.**
-   The full `system/sops/skill-building-sop.md` binds, **plus THE CODE/LLM SEAM** — what the handoff between
+   The full skill-building SOP binds (it travels with `skill-builder`), **plus THE CODE/LLM SEAM** — what the handoff between
    the two halves has to be made of. **You do not need to fetch it:** the rule is carried inline, verbatim,
    in `/autoplan` STEP 2 and `/build` Step 0 (a pointer nobody follows is not a rule).
    The evidence behind it lives in the author's own notes and does not ship; the rule above is the
@@ -164,7 +164,7 @@ A build can also be multiple types below. This question, though, has exactly one
 > already exists, the type is a property of **the running thing you are adding to**, never of your edit. A
 > purely mechanical gate added to a skill that has a model in it is still a **HYBRID** build — because the
 > seam it has to survive is the skill's, not the gate's. Getting this backwards routes you to type 2 and
-> tells you the whole `skill-building-sop.md` is inert, which is the exact opposite of the truth.
+> tells you the whole skill-building SOP is inert, which is the exact opposite of the truth.
 > *(Added 2026-08-05 from the cold-reader test: a fresh reader given only these files reached the right
 > answer but flagged this as the one place it could have gone the wrong way.)*
 

@@ -29,7 +29,7 @@ pass the check.
 
 ⛔ WHY A TOOL AND NOT A PARAGRAPH. The nine competing `WHERE WE ARE` blocks were
 told not to accumulate, in prose, for weeks. They accumulated. `gauge_check` is
-what actually stopped it. `skill-building-sop.md` LAW 4.2: a model cannot report
+what actually stopped it. `system/sops/skill-building-sop-extract.md`: a model cannot report
 on its own compliance — so this verdict comes from an exit code, never a reading.
 
 THE CLOSED OUTCOME SET (code→model seam; the model never invents a member):

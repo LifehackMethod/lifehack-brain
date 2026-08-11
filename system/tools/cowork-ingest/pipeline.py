@@ -601,7 +601,7 @@ def compose_screen(rows, action_bar, header_lines=None, title=None, title_right=
 
     ⛔ WHY NOT SIMPLY SAY IT AGAIN IN THE SKILL: **it is already said in TEN places, including as rule #1
     of SKILL.md, and it is still hit and miss.** An eleventh restatement is the failure mode, not the fix
-    (`skill-building-sop.md` LAW 5 — prose decays). The model does not lack the rule; it is reading a
+    (the prose-decay rule (`system/sops/skill-building-sop-extract.md`) — prose decays). The model does not lack the rule; it is reading a
     screen out of a tool result while the rule sits in a file loaded twenty turns ago. **Attaching the
     reminder to the artifact delivers it at the only moment it is actionable.**
 
