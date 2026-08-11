@@ -95,6 +95,11 @@ BASKET_DEFAULTS = {"basket_status": "queued", "basket_lock": None, "sort_order":
                    # back to designing the whole tree from scratch every run, destroying the reason for the
                    # restructure ([SL-21]: the piles ARE the draft tree). OPTIONAL-ADDITIVE: absent on every
                    # pre-existing map; readers default via .get and no migration is required.
+                   # SHAPE ([5.1.1], 2026-08-11): a pile can earn MORE THAN ONE branch (propose_folder_shape()
+                   # can legitimately return a 'nested' path AND a 'sibling' path for the same pile). This
+                   # field therefore holds EITHER a bare string (one branch — the original, still-common shape)
+                   # OR a JSON list of strings (2+ branches). Never read this field directly — use
+                   # `folder_branches(b)`, which normalizes both shapes to a list.
                    "folder_branch": None}
 
 # THE FINDING TYPES — the closed vocabulary of [SL-23] (canonical · dated · record). The last two split by
@@ -1595,16 +1600,73 @@ def coalesced_evidence(basket, work_dir=None):
     return (path, found)
 
 
+def folder_branches(b):
+    """The ONE reader for `folder_branch` — always returns a list, never a bare string and never None.
+    ADDITIVE (2026-08-11, [5.1.1]): `propose_folder_shape()` can legitimately return SEVERAL paths for
+    one pile (e.g. a 'nested' subject and a 'sibling' subject both earned by the same pile's material),
+    but the field predates that and was written/read as ONE string. Two on-disk shapes are both real and
+    both must keep working forever, with no migration:
+      - legacy / the common case: a bare string  → ["that string"]
+      - richer (2+ branches ruled for this pile) → the list itself, as written
+      - never ruled                              → [] (b.get("folder_branch") is None or "")
+    Every reader of `folder_branch` — inside this file or in the phase prose — should prefer this helper
+    over touching `b.get("folder_branch")` directly, so it never has to re-solve the string-vs-list case."""
+    fb = b.get("folder_branch") if isinstance(b, dict) else None
+    if fb is None:
+        return []
+    if isinstance(fb, (list, tuple)):
+        out = []
+        for x in fb:
+            s = str(x or "").strip()
+            if s and s not in out:
+                out.append(s)
+        return out
+    s = str(fb).strip()
+    return [s] if s else []
+
+
 def set_folder_branch(m, basket, branch):
     """PHASE 3 (the world map) writes the folder shape this pile earned; PHASE 4 (place it) reads it.
-    The human rules it; code only stores and later proves it is present."""
+    The human rules it; code only stores and later proves it is present.
+
+    ADDITIVE (2026-08-11, [5.1.1]): `propose_folder_shape()` can legitimately propose MORE than one path
+    for a single pile — e.g. one subject 'nested' under the pile's own folder and another 'diverse'
+    subject sitting 'sibling' beside it. Before this fix, this function stored a single bare string, so
+    only the LAST call's branch survived and every earlier one was silently overwritten — never surfaced
+    as lost, just gone.
+
+    `branch` now accepts either a single string OR a list/tuple of strings (a pile ruled all its branches
+    in one call). Whatever is already recorded (read via `folder_branches()`, so a legacy bare string is
+    honoured) is UNIONED with the new value(s), de-duplicated, order preserved — repeat calls ACCUMULATE,
+    they never clobber a prior ruling.
+
+    ⛔ NO SCHEMA MIGRATION. The on-disk shape is chosen by how many branches this pile actually has, not
+    by a version flag:
+      - exactly ONE branch  → stored as a bare string, BYTE-FOR-BYTE what every existing reader (this
+        file's own `world-map-state` print, and the phase-prose readers in `4-place.md` that this task
+        does not touch) already expects. The single-branch case — still the overwhelming common one — is
+        unchanged.
+      - TWO OR MORE branches → stored as a JSON list of strings. This is new information a pre-fix reader
+        cannot represent; see this function's docstring continuation in the 5.1.1 report for how each
+        known consumer behaves when it meets a list instead of a string — none of them raise, none of
+        them silently drop data, and the visibly-wrong output (a Python list where a path was expected)
+        is judged the safer failure mode over quietly keeping only one path."""
     b = baskets_of(m).get(basket)
     if b is None:
         return False, f"no such basket '{basket}'"
-    if not str(branch or "").strip():
+    if isinstance(branch, (list, tuple)):
+        new_vals = [str(x or "").strip() for x in branch]
+    else:
+        new_vals = [str(branch or "").strip()]
+    new_vals = [v for v in new_vals if v]
+    if not new_vals:
         return False, "REFUSED: a folder branch cannot be blank — it is the pile's place in the tree."
-    b["folder_branch"] = str(branch).strip()
-    return True, f"folder_branch = {b['folder_branch']}"
+    merged = folder_branches(b)
+    for v in new_vals:
+        if v not in merged:
+            merged.append(v)
+    b["folder_branch"] = merged[0] if len(merged) == 1 else merged
+    return True, f"folder_branch = {b['folder_branch']!r}"
 
 
 def set_finding_type(work_dir, basket, chat, index, ftype):
@@ -1958,7 +2020,8 @@ def validate_turn_outcome(value):
 
 def propose_folder_shape(basket, subjects, page_size=10):
     """9.6.5 — TURN 5's LAYOUT MECHANICS. the author's ruling, 2026-08-05, `authority: user`
-    (`system/knowledge-altitude.md:54-68`): too BIG -> subdivide (nest, same territory, more shelves
+    (restated in full right here, not a pointer into `system/knowledge-altitude.md` — a ClaudeOps-internal
+    doctrine file this repo does not ship; [5.2.1], 2026-08-11): too BIG -> subdivide (nest, same territory, more shelves
     beneath it); too DIVERSE -> separate (siblings, NOT nested — mutually irrelevant bodies of knowledge
     degrade each other if loaded together). WHICH subjects are diverse vs. which are just a big single
     topic is a SEMANTIC call the model/human makes (never this function); this function only lays out the
@@ -2196,7 +2259,11 @@ def main():
                     help="force the PHASE 3 world-map gate (every finding typed + a folder_branch set) even if "
                          "this pile never started one — the switch Phase 3's driver flips when it ships")
     fb = sub.add_parser("folder-branch", help="PHASE 3: record the folder shape this pile earned (PHASE 4 reads it)")
-    fb.add_argument("--map", required=True); fb.add_argument("--basket", required=True); fb.add_argument("--branch", required=True)
+    fb.add_argument("--map", required=True); fb.add_argument("--basket", required=True)
+    fb.add_argument("--branch", required=True, nargs="+",
+                    help="one or more folder paths this pile earned — pass SEVERAL space-separated when "
+                         "propose_folder_shape() legitimately returned more than one (e.g. a nested subject "
+                         "AND a sibling); a single value still works exactly as before ([5.1.1], 2026-08-11)")
     ft = sub.add_parser("finding-type", help=f"PHASE 3: the human's ruling on ONE finding ({'/'.join(FINDING_TYPES)})")
     ft.add_argument("--basket", required=True); ft.add_argument("--file", required=True)
     ft.add_argument("--index", type=int, required=True); ft.add_argument("--type", required=True, choices=list(FINDING_TYPES))
@@ -2455,9 +2522,14 @@ def main():
         m = load(a.map)
         b = baskets_of(m).get(a.basket) or {}
         typed, untyped = world_map_state(a.basket, getattr(a, "work", None))
-        branch = b.get("folder_branch")
+        branches = folder_branches(b)   # ADDITIVE reader (5.1.1) — handles a legacy bare string or a richer list
         print(f"basket: {a.basket}")
-        print(f"folder_branch: {branch or '— NOT SET (PHASE 4 would have to redesign the tree)'}")
+        if not branches:
+            print("folder_branch: — NOT SET (PHASE 4 would have to redesign the tree)")
+        elif len(branches) == 1:
+            print(f"folder_branch: {branches[0]}")
+        else:
+            print(f"folder_branch ({len(branches)} branches): " + ", ".join(branches))
         if untyped is None:
             print("findings: no coalesced evidence yet (run: pipeline.py coalesce)")
         else:

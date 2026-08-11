@@ -242,16 +242,19 @@ it survives her absence.
    ```bash
    python3 $T/pipeline.py folder-shape --basket "$BASKET" --subjects '[{"name":"<subject>","item_count":<n>,"relation":"core|diverse"}, …]'
    ```
-   **Two different problems, two different fixes** *(ruled 2026-08-05, `authority: user`,
-   `system/knowledge-altitude.md:54-68`)*: too **BIG** → subdivide (**nest** — same territory, more shelves
+   **Two different problems, two different fixes** *(ruled 2026-08-05, `authority: user` — restated in
+   full right here, not a pointer into `system/knowledge-altitude.md`, which this repo does not ship —
+   [5.2.1], 2026-08-11)*: too **BIG** → subdivide (**nest** — same territory, more shelves
    beneath it); too **DIVERSE** → separate (**siblings, NOT nested** — a body of knowledge that would
    actively confuse a session loaded next to unrelated material sits BESIDE the pile's folder, never
    underneath it). Apply the **cost test** to each candidate depth: the highest folder where a fact is still
    always-true, and no higher — a line placed high is charged to every descendant that walks past it. Show
    the proposal plainly, paths + the one-line why; a light pile with one small subject just stays one flat
-   folder. → **feedback turn.** Record what they rule, once:
+   folder. → **feedback turn.** Record what they rule, once — **pass every path this pile earned in the SAME
+   call** (space-separated) when the proposal came back with more than one, e.g. one `nested` subject and one
+   `sibling` subject; a single path still works exactly as it always did:
    ```bash
-   python3 $T/pipeline.py folder-branch --map "$MAP" --basket "$BASKET" --branch "<where this pile belongs>"
+   python3 $T/pipeline.py folder-branch --map "$MAP" --basket "$BASKET" --branch "<path one>" ["<path two>" …]
    ```
 
    **EVERY FEEDBACK TURN offers the SAME THREE MOVES, plus the fourth outcome code enforces on its own:**

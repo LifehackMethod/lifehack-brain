@@ -216,7 +216,10 @@ SUPPOSED to work, for the altitude doctrine and all of this stuff.")*
 
 ⭐ **THE BAR IS THE IDEAL SYSTEM, NOT THE OBSERVED ONE.** ⛔ A future session must **not** copy the shape of
 The author's own existing `desks/` tree as it stands — he has explicitly disowned it as containing junk.
-The target is the doctrine: `system/knowledge-altitude.md` and the altitude rules it carries.
+The target is the doctrine: the altitude rules **§C3 below** restates in full. *(⚠ [5.2.1], 2026-08-11:
+`system/knowledge-altitude.md` itself is a ClaudeOps-internal doctrine file — it is NOT shipped in this
+repo, so this no longer names it as something to go open; every test it states is already inlined at
+§C3 and in `pipeline.py`'s `propose_folder_shape()` docstring.)*
 
 ### §0c — THE TENSION SWARM, 2026-08-08 · what it found, what was adopted, and **what was rejected and why**
 
@@ -722,12 +725,15 @@ A Lifehack knowledge home is: **`canon/`** (a FOLDER) holding **`current.md`** (
 
 **C3 — THE PLACEMENT DOCTRINE THE TREE MUST OBEY** *(verified 2026-08-08; these are the author's own prior rulings,
 not new invention — `/ingest` was under-specified against them).*
-- ⭐ **THE SPLIT TEST HAS TWO HALVES, and the spec only carried one.** `knowledge-altitude.md:54-68` *(the author,
-  2026-08-05, `authority: user`)*: **too BIG → subdivide (nest)** · **too DIVERSE → separate (siblings, not
-  nested)** — *"not that the folder is large, but that two bodies of knowledge would actively degrade each other
-  if loaded together."* ⇒ **PHASE 3's folder-shape step must apply BOTH.** *"Subdivide where there is enough
-  material"* is the BIG half only, and the DIVERSE half is what decides sibling-vs-child.
-- **PLACEMENT IS A COST CURVE** (`knowledge-altitude.md:38-42,76-89`): *"A canon fact belongs at the highest
+- ⭐ **THE SPLIT TEST HAS TWO HALVES, and the spec only carried one.** *(the author, 2026-08-05,
+  `authority: user` — restated in full right here, not a pointer into `system/knowledge-altitude.md`,
+  which this repo does not ship — [5.2.1], 2026-08-11)*: **too BIG → subdivide (nest)** · **too DIVERSE →
+  separate (siblings, not nested)** — *"not that the folder is large, but that two bodies of knowledge
+  would actively degrade each other if loaded together."* ⇒ **PHASE 3's folder-shape step must apply
+  BOTH.** *"Subdivide where there is enough material"* is the BIG half only, and the DIVERSE half is what
+  decides sibling-vs-child.
+- **PLACEMENT IS A COST CURVE** *(restated in full here, not a citation into the unshipped
+  `system/knowledge-altitude.md` — [5.2.1])*: *"A canon fact belongs at the highest
   folder where it is still always-true for everything in that folder — **and no higher**"*; `/read` walks every
   ancestor, so *"anything placed in a parent is paid for by every descendant… the question is not 'what is this
   about' but **'who has to bear the cost of it.'**"* Test: *every child needs it → parent; one branch → that
