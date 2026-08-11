@@ -20,3 +20,9 @@ Summarize only your most recent response conversationally for me. Do not recap t
 
 ## Format (R-6)
 ≤3 sentences, plain prose, no bullet lists, no headers. One sentence per main point from the **last response only**; lead with the single most important takeaway. **Do not use for** full-thread recaps or multi-turn distillations.
+
+## What this skill needs OUTSIDE its own folder
+
+**Nothing.** It is prose end to end — no scripts, no shared files, no hooks. That is a
+claim worth stating rather than leaving to be inferred: an empty manifest table and a
+missing one look identical, and only one of them means "checked".

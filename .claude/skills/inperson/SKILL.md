@@ -86,3 +86,9 @@ Set the narrative off visually, then respond immediately in character:
   could be anybody's is the failure mode, not the safe default.
 - Do not invent a character from nothing. If there is no file and no conversation history, ask who to invoke.
 - **Clean spoken voice, not a messy transcript.** The response should read like the character speaking naturally and articulately — carried by their word choice, rhythm, and characteristic phrases. Do not force false starts, fillers, or fragmented drift.
+
+## What this skill needs OUTSIDE its own folder
+
+**Nothing.** It is prose end to end — no scripts, no shared files, no hooks. That is a
+claim worth stating rather than leaving to be inferred: an empty manifest table and a
+missing one look identical, and only one of them means "checked".

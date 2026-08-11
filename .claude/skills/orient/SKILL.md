@@ -23,3 +23,9 @@ Orient me in terms of the three altitudes and their desired outcomes.
 Then orient me chronologically: what have we done in the near past, what are we doing right now, and what are we doing in the near future.
 
 I just need to get oriented so I can remember what was happening in this build.
+
+## What this skill needs OUTSIDE its own folder
+
+**Nothing.** It is prose end to end — no scripts, no shared files, no hooks. That is a
+claim worth stating rather than leaving to be inferred: an empty manifest table and a
+missing one look identical, and only one of them means "checked".

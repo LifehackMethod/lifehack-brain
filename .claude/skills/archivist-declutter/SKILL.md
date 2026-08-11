@@ -113,3 +113,11 @@ waiting on a person to rule on it.*
 one line: **the scanner just FLAGS, and the next `/save` picks it up.** So nothing here waits for a
 review command that does not exist. Write the queue, say where it is, and stop. When you next run
 `/save`, the open proposals are there to be dealt with.
+
+## What this skill needs OUTSIDE its own folder
+
+| what | where | status |
+|---|---|---|
+| the intent law it checks against | `system/intent-doctrine.md` | shipped |
+| the altitude law it checks against | `system/knowledge-altitude.md` | ⛔ does NOT ship — a donor-internal doctrine file. Where a rule needs it, the rule states it in full rather than pointing |
+| the guards it inventories | `system/hooks/` | shipped |

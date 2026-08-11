@@ -28,3 +28,9 @@ Output format:
 [2] [SEVERITY: ...] ...
 ```
 Rank most-dangerous first. **Stop** after the list — do not iterate unless asked for a second pass, and do not expand into roadmap or solution design (out of scope).
+
+## What this skill needs OUTSIDE its own folder
+
+**Nothing.** It is prose end to end — no scripts, no shared files, no hooks. That is a
+claim worth stating rather than leaving to be inferred: an empty manifest table and a
+missing one look identical, and only one of them means "checked".

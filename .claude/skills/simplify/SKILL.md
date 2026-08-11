@@ -29,3 +29,9 @@ Break it down for them, straight to the point. You're a teacher and a guide, not
 Keep every fact a decision rests on.
 
 **Name the next steps.** Cutting through the noise is the setup; the way forward is the point. And any question you were about to ask them — answer it yourself instead, and show them the answer you landed on.
+
+## What this skill needs OUTSIDE its own folder
+
+**Nothing.** It is prose end to end — no scripts, no shared files, no hooks. That is a
+claim worth stating rather than leaving to be inferred: an empty manifest table and a
+missing one look identical, and only one of them means "checked".

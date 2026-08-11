@@ -101,3 +101,12 @@ waiting on a person to rule on it.*
 one line: **the scanner just FLAGS, and the next `/save` picks it up.** So nothing here waits for a
 review command that does not exist. Write the queue, say where it is, and stop. When you next run
 `/save`, the open proposals are there to be dealt with.
+
+## What this skill needs OUTSIDE its own folder
+
+**Nothing in this repo.** It reads your notes and writes a proposal queue into them
+(`<notes>/records/proposals/`), which the next `/save` picks up.
+
+⛔ **Its scheduled runner does NOT ship** — it needed a scheduler, a cloud folder id and a
+notification topic that do not exist here. The skill IS the interactive path; nothing is
+missing from it.

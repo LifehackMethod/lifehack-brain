@@ -31,3 +31,9 @@ They reach for you when there's a lot of technical detail and a complicated call
 **Two deltas.** Where things stood before this run versus where they stand now — and where that leaves us against the DESIRED OUTCOME. The second one is the point; the first only sets it up.
 
 Keep every technical element: the goal isn't less detail, it's detail they can finally follow. Every word you spend should buy them understanding — if it doesn't, it was filler and the boil-down already told you so.
+
+## What this skill needs OUTSIDE its own folder
+
+**Nothing.** It is prose end to end — no scripts, no shared files, no hooks. That is a
+claim worth stating rather than leaving to be inferred: an empty manifest table and a
+missing one look identical, and only one of them means "checked".

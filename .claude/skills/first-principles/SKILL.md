@@ -246,3 +246,9 @@ the user explicitly chooses Option 2.
 - Produce a plan instead of an artifact
 - Loop forever without a handoff
 - Tell the user their goal is wrong — surface it and let them decide
+
+## What this skill needs OUTSIDE its own folder
+
+**Nothing.** It is prose end to end — no scripts, no shared files, no hooks. That is a
+claim worth stating rather than leaving to be inferred: an empty manifest table and a
+missing one look identical, and only one of them means "checked".

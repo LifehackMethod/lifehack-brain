@@ -89,3 +89,11 @@ waiting on a person to rule on it.*
 one line: **the scanner just FLAGS, and the next `/save` picks it up.** So nothing here waits for a
 review command that does not exist. Write the queue, say where it is, and stop. When you next run
 `/save`, the open proposals are there to be dealt with.
+
+## What this skill needs OUTSIDE its own folder
+
+| what | where | status |
+|---|---|---|
+| the build doctrine it cites | `system/sops/build-sop.md` | shipped |
+
+Everything else it touches is in your notes, not in this repo.

@@ -120,3 +120,17 @@ waiting on a person to rule on it.*
 one line: **the scanner just FLAGS, and the next `/save` picks it up.** So nothing here waits for a
 review command that does not exist. Write the queue, say where it is, and stop. When you next run
 `/save`, the open proposals are there to be dealt with.
+
+## What this skill needs OUTSIDE its own folder
+
+| what | where | status |
+|---|---|---|
+| the pinned auditor agent | `.claude/agents/archivist.md` | shipped — `tools:` pinned, read-only by construction |
+| the notes-root resolver | `shared/brain_root.py` | shipped |
+| the layout it audits against | `docs/data-layout.md` | shipped |
+| the read guard it checks for | `system/hooks/ingest_gate_enforce.sh` | shipped |
+
+⛔ **Three of the donor's twelve checks were removed, not ported** — see this file's own
+notes: they audited failure modes that cannot occur here (a symlink layer that does not
+exist, a content-path drift a resolver already prevents, and a mail plane that does not
+ship). A check for an impossible failure reports PASS for ever.

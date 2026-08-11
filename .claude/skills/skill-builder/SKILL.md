@@ -81,3 +81,21 @@ A human describes what they want. This skill works out the phases, drafts what e
 ## Governing doctrine
 
 Defers entirely to `system/sops/skill-building-sop.md` for the laws, the enforcement toolbox and the verification machinery. **This skill owns the interview and the chain — never a second copy of the doctrine.**
+
+## What this skill needs OUTSIDE its own folder
+
+| what | where | status |
+|---|---|---|
+| the governing doctrine | `system/sops/skill-building-sop.md` | shipped — this skill owns the interview and the chain, never a second copy of the laws |
+| the purpose-before-rails gate | `system/parts/order_lint.py` | shipped |
+| the phase gate | `system/parts/phase_gate.py` | shipped |
+| the required-section check | `system/parts/section_present.py` | shipped |
+| the forbidden-content engine | `system/parts/forbidden_content.py` | shipped |
+| a worked example of the shape it builds | `.claude/skills/ingest/` + its `SPEC.md` | shipped |
+| **a second tester** | `system/tools/conformance-lab/` | ⛔ **does NOT ship.** Measured 2026-08-08: every subject in that lab's rule registry is a throwaway skill it generates itself or an adversarial scenario — never an existing skill's slug — so it has no door for "test skill X". It also resolved its registry to a path in the author's cloud folder and would spawn paid model calls. `scripts/run_tester.sh` says so and carries on. |
+| ⛔ `.claude/skills/skill-tester/` | a second tester | **ruled CUT** before this migration. `TESTER: NO-TESTER-RAN` is the live value today, not a placeholder awaiting a better tool. |
+| parts it cites that did not cross | `system/parts/capture_gate_selftest.py` · `completeness_receipt.py` · `precondition_gate.py` · `system/hooks/scratch_capture_gate.sh` · `shared/tools/` | ⛔ named in `SPEC.md`'s own citation block; nothing is coming |
+
+⚠ **Its three vendored scripts were dropped, not ported.** `order_lint.py`, `phase_gate.py`
+and `forbidden_content.py` sat beside this skill AND in `system/parts/`, byte-identical. A
+part with two copies has two behaviours the day one of them is fixed.
