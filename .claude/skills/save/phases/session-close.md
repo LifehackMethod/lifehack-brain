@@ -153,13 +153,36 @@ Not a blocker. A skip is accepted — and **logged in the journal entry**, so th
 
 ### Brief compaction — right after the debt check
 
-If **all three** hold: (a) this is a session close, (b) an active project brief was resolved, and (c)
-the pad actually has something in it — then run the compaction. Condition (c) is **a file read, not a
-judgment**:
+If **all three** hold: (a) this is a session close, (b) the brief came from **the flag (step 0) or the
+logbook recovery (step 0.4)**, and (c) the pad actually has something in it — then run the compaction.
+Condition (c) is **a file read, not a judgment**:
 
 ```bash
 python3 "$ROOT/system/tools/save/pad_archive.py" state "<abs brief>"
 ```
+
+> ⛔ **(b) IS ABOUT PROVENANCE — WHERE THE BRIEF CAME FROM, NOT WHETHER ONE EXISTS.** Step 0.5's
+> ladder can also produce a brief path: it matches your work against the project registry and asks
+> you to confirm the name. **That brief is NOT eligible for compaction.** Downstream, an armed brief
+> and a registry-matched one are the same string, which is how a window that never armed anything
+> reaches this step holding someone else's brief.
+>
+> **Why the distinction is worth a rule.** Clearing the pad does not delete notes — it *graduates*
+> each one into an append-only story log as a settled decision, a dead end, or an open thread. Those
+> calls cannot be taken back, and a window that did not do the work cannot make them correctly.
+> `/checkin` protects the identical act with a hash proving that window wrote to the pad; this skill
+> has no such proof and does not need one, because the honest question here is simply *where did this
+> path come from.*
+>
+> **So: if step 0 returned `none` AND step 0.4 recovered nothing, skip — out loud, naming the reason:**
+>
+> > ⊘ **compaction SKIPPED** — brief resolved from the registry, not armed for this window. The next
+> > `/checkin` will compact it.
+>
+> A silent skip is indistinguishable from never having looked. *(Found 2026-08-11 by running it: a
+> `/save` with no flag and no recovery matched a project from the registry and compacted its brief —
+> 6,815 characters archived, graduated and cleared. Nothing was lost, because the archive chain
+> verifies and the clear is hash-gated, which is exactly how a missing gate stays invisible.)*
 
 > ⛔ **ASK THE FILE, NEVER THE MODEL.** This used to read *"the scratchpad holds real content"* — a
 > call made by eye. A `/save` once wrote a brief, skipped compaction, and printed a clean coverage
