@@ -9,13 +9,18 @@ If you ran `/ingest` before today, some of your work may be sitting somewhere yo
 
 ## Do this
 
-Two lines, in your terminal, one at a time.
+**1. Get the fixes.** Open the tool folder in Claude and say:
 
-Get the fixes:
+&nbsp;&nbsp;&nbsp;&nbsp;*"check if there is an update to my brain and install it"*
 
-&nbsp;&nbsp;&nbsp;&nbsp;`cd ~/lifehack-brain && git pull`
+That's the same update you'd do any other time. It replaces the tool folder and cannot touch your notes —
+they live somewhere else entirely.
 
-Then find out whether any of it touched you:
+**2. Then find out whether any of this touched you.** In the same window:
+
+&nbsp;&nbsp;&nbsp;&nbsp;*"run the notes check"*
+
+or, in a terminal in that folder:
 
 &nbsp;&nbsp;&nbsp;&nbsp;`bash system/tools/check-my-notes.sh`
 

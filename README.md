@@ -1,5 +1,20 @@
 # Lifehack Brain
 
+> ### ⚠ If you set this up before August 11, please read this
+>
+> Two bugs meant `/ingest` could tell you it had saved your work when it hadn't. Both are fixed. If you
+> already ran it, some of your work may be sitting somewhere you can't see — **nothing was deleted**, and
+> most of it takes a minute to put right.
+>
+> **What to do:** open the tool folder in Claude and say *"check if there is an update to my brain and
+> install it"*, then *"run the notes check"*. It reads your files and tells you plainly what it found. It
+> changes nothing.
+>
+> Full explanation, including the one thing that can't be recovered:
+> **[IF-YOU-RAN-THIS-BEFORE-AUG-11.md](IF-YOU-RAN-THIS-BEFORE-AUG-11.md)**
+>
+> If you're setting this up for the first time today, none of this affects you. Carry on below.
+
 A starting point for an AI that remembers you.
 
 Right now it does one thing, and does it well: it takes a pile of your own
