@@ -283,8 +283,16 @@ canon-candidate, scan existing canon for a duplicate/conflict:
 ```bash
 python3 $ROOT/system/tools/canon_conflict_scan.py --canon-root "$DRIVE/desks/<desk>/canon" --terms "<key,terms>" --title "<title>" --json
 ```
-NEW → proceed to proposals. DUPLICATE → drop it (say so). CONFLICT → **surface to the human, never auto-resolve**
-(the living desk wins). This is the "first do no harm" wall.
+**Read the exit code before you read the output** — the four outcomes are not interchangeable:
+
+| rc | means | what you do |
+|---|---|---|
+| 0 | it read canon and reports | classify: NEW → proceed · DUPLICATE → drop it, say so · CONFLICT → **surface both sides to the human, never auto-resolve** (the living folder wins) |
+| 3 | `NO-CANON-YET` — nothing has been written there | proceed, and **say that is why it was clean.** "There is no canon here" is not "I checked canon" |
+| 4 | `CANNOT-READ` — canon exists but could not be read | **STOP. Do not write.** An incomplete scan certifies nothing |
+| 2 | bad arguments | fix the call; a scan with no terms is theatre |
+
+This is the "first do no harm" wall.
 
 **D. Write the file (the filer IS the placer — human already approved at CONFIRM).**
 **Gate the `topic:` value FIRST — this runs BEFORE you write a single byte of frontmatter.** Every file below
