@@ -75,6 +75,31 @@
             "statusMessage": "Checking where this text came from..."
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_canon_write.sh\"",
+            "statusMessage": "Checking what is going into the always-loaded layer..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_cross_project_write.sh\"",
+            "statusMessage": "Checking this belongs to the project you are on..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_pm_flag_store.sh\"",
+            "statusMessage": "Checking nothing rewrites which project this window is on..."
+          }
+        ]
       }
     ]
   },

@@ -1,0 +1,121 @@
+#!/bin/bash
+# ── LLM CONTEXT ──────────────────────────────────────────────────────────────
+# WHY: canon is the one thing that is loaded into every conversation before anything else. That is
+#      its whole value and its whole danger. A line that lands there is carried forward forever
+#      without ever being re-examined, and every session pays for it in context whether or not that
+#      conversation had anything to do with the subject. So canon has two properties, and both need
+#      defending mechanically rather than by good intentions: it stays TRUE over time, and it stays
+#      SMALL.
+# GUARDS: a Write or Edit to a canon file — anything under a `canon/` directory, plus the top-level
+#      `canon.md` — that is either
+#        (a) FAST-STALE: it carries a shelf-life, an expiry, or a snapshot marker. Something with an
+#            expiry date in the always-loaded layer is a fact that will quietly go wrong and keep
+#            being believed. Those belong in records/, dated, retrieved on demand.
+#        (b) OVERSIZED: over 3,200 characters. Derived, not picked — see the rail below.
+# REDIRECT: both denials say the same thing in different words — this belongs in records/, where
+#      `/read` pulls it when it is relevant instead of every session paying for it forever.
+# SIGNPOST: what canon is for lives in `system/knowledge-altitude.md` and `docs/data-layout.md`.
+#      Change the rule there first; do not weaken this guard to get one write through.
+# FAIL_POSTURE: closed — unparseable input denies.
+# UPDATED: 2026-08-11 (ported; the authority rail dropped, the size rail re-derived, the top-level
+#      canon file brought into scope)
+#
+# ── (a) THE SIZE RAIL: 3,200 characters, and where that number comes from ────────────────────────
+# NOT copied from the donor system, where it was measured against a different shape entirely — one
+# insight per file, a whole directory of them. Here a canon file is an ACCUMULATING list of lines
+# about one subject, so the donor's number would have had a completely different meaning.
+# Re-derived against this repository's own already-shipped constant:
+#   `system/hooks/session_context_loader.sh:28` loads every subject's canon at session start and
+#   stops at 20,000 characters TOTAL, announcing what it had to leave out.
+#   20,000 / 3,200 = 6.25 — so six subject folders can each sit at this rail and still all load.
+#   A seventh starts pushing folders out of the session floor entirely.
+# At roughly 200 characters a line that is about sixteen standing lines per subject, which is a
+# generous ceiling for "the things that stay true" about one area of a life.
+# ⛔ This is a deny WITH a redirect, not a ban: long material is welcome in records/, where it is
+# pulled on demand. ⚠ Do NOT raise it to make one write fit. Raising it re-opens the drift it closes,
+# and it does so silently — the cost lands on every future session, not on the one that raised it.
+#
+# ── (b) WHAT WAS DELIBERATELY LEFT OUT: the `authority: user` rail ───────────────────────────────
+# The donor also refused any new canon file whose frontmatter did not carry `authority: user`, on
+# the reasoning that only a human may promote something to canon. It is not ported, for two reasons,
+# and the second is the one that decided it:
+#
+#   1. IT DOES NOT DO WHAT IT LOOKS LIKE IT DOES. `authority: user` is SELF-ATTESTATION — a machine
+#      can type that line exactly as easily as a person can. It never protected against the hijacked
+#      write it was written for; it only protected against a careless one that forgot the field.
+#   2. IT BREAKS THIS PRODUCT ON DAY ONE. Measured 2026-08-11 against the canon this repository's own
+#      `/save` writes after a person has approved it: exit 2, BLOCKED, "missing authority: user".
+#      `/save` appends an approved line to `state/projects/<slug>/canon/current.md`, which carries no
+#      frontmatter at all. So the first canon a person ever writes would be refused by a guard
+#      shipped alongside the skill that wrote it. A guard that fires on correct work is one people
+#      learn to route around, and then it is protecting nothing.
+#
+# What replaced it is stronger because it is interactive rather than textual: `/save` stops and shows
+# the candidate line to the person before anything is written (`.claude/skills/save/phases/
+# standard-steps.md`, the canon-gated pause). A pause a human answers cannot be typed past.
+# ⚖ PENDING: this is a security-surface change and the owner's confirmation is outstanding. To
+# restore the rail, re-add a check for `^authority:\s*user` on a Write and deny without it — one
+# block in the python below. Do not restore it without also fixing what /save writes, or the
+# product breaks again in exactly the way measured above.
+# ─────────────────────────────────────────────────────────────────────────────
+# guard_canon_write.sh — PreToolUse hook (matcher: Write|Edit)
+
+INPUT=$(cat)
+
+PYCHECK=$(cat <<'PY'
+import sys, json, os
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    print("PARSE_ERROR"); sys.exit()
+ti = d.get("tool_input", {}) or {}
+path = ti.get("file_path") or ti.get("path") or ""
+content = ti.get("content", ti.get("new_string", "")) or ""
+
+# IN SCOPE: anything inside a canon/ directory, and the top-level canon.md.
+# THE SECOND HALF IS NOT IN THE DONOR. It was added here because this repository has a canon file
+# that the donor's path test could not see: `<notes>/canon.md`, the root canon — the one file whose
+# own text says it is carried into every conversation forever, and the canon of every project that
+# has no folder of its own (shared/registry.py, Project.canon). Leaving the single most
+# always-loaded file out of a guard whose entire argument is "always-loaded costs are paid forever"
+# would have shipped the guard with its main target missing.
+in_canon_dir = "/canon/" in path
+is_root_canon = os.path.basename(path) == "canon.md"
+if not (in_canon_dir or is_root_canon):
+    print("ALLOW"); sys.exit()
+
+MAX_CHARS = 3200
+if len(content) > MAX_CHARS:
+    print(f"BLOCK_SIZE|{len(content)}|{MAX_CHARS}"); sys.exit()
+
+low = content.lower()
+stale = ["shelf-life:", "shelf_life:", "expires:", "tier: snapshot",
+         "record_type: snapshot", "type: snapshot"]
+hit = next((s for s in stale if s in low), None)
+if hit:
+    print("BLOCK_STALE|" + hit); sys.exit()
+print("ALLOW")
+PY
+)
+
+RESULT=$(printf '%s' "$INPUT" | python3 -c "$PYCHECK")
+
+R="WHAT CANON IS: the few things that stay true, small enough that every session can afford to carry them. Two tests, and a line has to pass both. (1) Will this still be true in six months, with no expiry date attached? If it has a date on it, it is a record, not canon. (2) Can a completely fresh session read this line ALONE, with no other context, and act on it correctly? If it needs the conversation around it, it is not finished. Everything else goes in records/, dated — nothing is lost, it is just pulled when it is relevant instead of carried always. SOURCE: system/knowledge-altitude.md + docs/data-layout.md."
+
+case "$RESULT" in
+  ALLOW) exit 0 ;;
+  PARSE_ERROR)
+    printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: guard_canon_write could not read the tool input, so it is failing closed. ${R}\"}" >&2
+    exit 2 ;;
+  BLOCK_SIZE*)
+    _T="${RESULT#BLOCK_SIZE|}"; GOT="${_T%%|*}"; LIM="${_T##*|}"
+    printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: this canon file is ${GOT} characters against a ${LIM}-character rail. WHY: canon is loaded at the start of EVERY session, so its size is a cost paid forever by every conversation, including the ones that have nothing to do with this subject. The session loader stops at 20,000 characters across all your subjects and tells you what it left out — at this rail six subjects fit, and a file this size is starting to crowd the others off the page. A canon file this long is almost always reference material that drifted into the always-on layer. REDIRECT: put it in records/ (dated) and let /read pull it when it is relevant. If it genuinely IS canon, it is too long — cut it to the lines that a fresh session could read alone and act on. RULE: system/knowledge-altitude.md. Raise the rail there, with reason, never to make one write fit. ${R}\"}" >&2
+    exit 2 ;;
+  BLOCK_STALE*)
+    MARK="${RESULT#BLOCK_STALE|}"
+    printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: this canon write carries an expiry marker ('${MARK}'). WHY: canon is the layer nothing re-checks. A fact with a shelf-life put there does not expire — it just quietly becomes wrong and keeps being believed, in every conversation, because it is loaded before anything that could correct it. REDIRECT: write it to records/ with its date, where /read can see how old it is and say so. ${R}\"}" >&2
+    exit 2 ;;
+  *)
+    printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: guard_canon_write ended in a state it does not recognise, so it is failing closed. ${R}\"}" >&2
+    exit 2 ;;
+esac

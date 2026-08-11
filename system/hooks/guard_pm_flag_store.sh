@@ -1,0 +1,118 @@
+#!/bin/bash
+# ── LLM CONTEXT ──────────────────────────────────────────────────────────────
+# WHY: WHICH PROJECT A WINDOW IS WORKING ON IS FIXED FOR THE LIFE OF THAT WINDOW. `pm_flag.sh`
+#      enforces that — it refuses to re-point a window at a different project, and refuses to
+#      un-point it. But the thing it is guarding is a handful of plain files under ~/.claude/run/pm/,
+#      and a session has full shell access to them. An adversarial audit executed the bypass in one
+#      command: write the flag file directly and the refusal is simply skipped — no error, no exit
+#      code, no line in the log. So `pm_flag.sh` is the DECISION, and this hook is the only thing
+#      that makes it a lock rather than a polite convention.
+#      THE INCIDENT BEHIND IT: a session re-pointed its own window from one project to another on
+#      its own judgment, twice in one day, and then wrote two handoff notes aimed at the wrong
+#      project. Nobody noticed until much later, because nothing said anything.
+# GUARDS: any Write/Edit whose target is under ~/.claude/run/pm/, and any Bash command that NAMES
+#      that folder AND carries a write or destroy token (a redirect · rm · mv · cp · tee · sed -i ·
+#      truncate · chmod · ln · dd · an interpreter doing a write). It matches the WRITE-TO-TARGET
+#      pattern, never the bare keyword — an `ls`, `cat` or `grep` of the store stays allowed, and so
+#      does an ordinary `pm_flag.sh arm|status|locked`, which is the sanctioned writer.
+# REDIRECT: the only sanctioned writer is `bash <repo>/system/hooks/pm_flag.sh arm|clear|status|locked`.
+#      You cannot change which project this window is on. Open a NEW window and run
+#      `/checkin <project>` there. READING another project's brief or plan needs no arming at all.
+# SIGNPOST: the rule and its reasoning live in `system/hooks/pm_flag.sh`'s own header; this guard's
+#      matrix is `system/hooks/tests/test_write_custody_guards.sh`. Change those first.
+# FAIL_POSTURE: closed — unparseable input denies.
+#
+# ⚠ THIS IS A SPEED BUMP, NOT A WALL, AND IT IS SAID PLAINLY SO NOBODY OVER-TRUSTS IT.
+#   An audit charged with defeating it walked past with four `cd` commands and a relative redirect,
+#   and again with a path held in a variable, an aliased verb, rsync, base64 piped to a shell, and a
+#   relative Write path. It matches TEXT. It does not parse a shell, resolve variables, follow a
+#   `cd`, or resolve a symlink — so anything that can read this file can step around it.
+#   That was accepted rather than overlooked. The goal is NOTICING, not preventing: the owner's
+#   ruling is "I don't mind being able to write into a different brief. What I want is for it not to
+#   change without me seeing it." The load-bearing controls are `pm_flag.sh`'s own refusal (which an
+#   obedient session cannot reach around, because tripping it requires no evasion) and
+#   `guard_cross_project_write.sh`'s one-time alarm. This raises the cost of a careless direct write.
+#   ⛔ Do NOT add regex rules believing they close the gap — the only real fix is an operating-system
+#   boundary, a store owned by a user the agent cannot write as, which is a deliberately deferred
+#   decision. More regex buys false positives, and a guard that fires on correct work gets routed
+#   around, which costs more than the hole it was patching.
+# UPDATED: 2026-08-11 (ported; paths resolved from this script, personal references removed)
+# ─────────────────────────────────────────────────────────────────────────────
+# guard_pm_flag_store.sh — PreToolUse hook (matcher: Bash|Write|Edit)
+
+# Where the sanctioned writer lives, resolved FROM THIS SCRIPT — never a hardcoded home directory.
+_HOOKDIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
+_REPO="${_HOOKDIR%/system/hooks}"
+[ "$_REPO" = "$_HOOKDIR" ] && _REPO="$(cd "$_HOOKDIR" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null)"
+
+INPUT=$(cat)
+PARSED=$(printf '%s' "$INPUT" | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+ti = d.get('tool_input') or {}
+print((d.get('tool_name') or '').strip())
+print((ti.get('command') or '').replace('\n', ';'))   # a newline IS a separator, never a space
+print((ti.get('file_path') or '').strip())
+") || { printf '%s\n' '{"decision":"block","reason":"BLOCKED: guard_pm_flag_store could not read the hook input, so it is failing closed. The project-arming store (~/.claude/run/pm/) is protected; run the action through pm_flag.sh instead."}' >&2; exit 2; }
+
+TOOL=$(printf '%s' "$PARSED"  | sed -n '1p')
+COMMAND=$(printf '%s' "$PARSED" | sed -n '2p')
+FILEPATH=$(printf '%s' "$PARSED" | sed -n '3p')
+
+DENY="{\"decision\":\"block\",\"reason\":\"BLOCKED: direct write to the project-arming store (~/.claude/run/pm/). WHY: which project a window is working on is fixed for the life of that window — pm_flag.sh refuses to re-point a window or un-point it, and writing these files by hand is exactly how that refusal gets skipped. An audit proved a one-line direct write silently re-points a window with no refusal and no trace. The incident behind the rule: a session re-pointed itself mid-work and then wrote two handoff notes aimed at the wrong project. REDIRECT: the only sanctioned writer is \`bash ${_REPO}/system/hooks/pm_flag.sh arm|clear|status|locked\`. You cannot change which project THIS window is on — open a new window and run \`/checkin <project>\` there. READING another project's brief or plan needs no arming: just open the file. Reads of this store (ls/cat/grep) are allowed. RULE: the header of system/hooks/pm_flag.sh.\"}"
+
+# --- Write/Edit: the tool IS a write. Any target inside the store is denied outright.
+case "$TOOL" in
+  Write|Edit|NotebookEdit)
+    case "$FILEPATH" in
+      *"/.claude/run/pm/"*) printf '%s\n' "$DENY" >&2; exit 2 ;;
+    esac
+    exit 0 ;;
+esac
+
+# --- Bash: only deny when the command NAMES the store AND carries a write/destroy token.
+# Path-BOUNDARY anchored: `.claude/run/pm` must be followed by a `/`, a quote, whitespace, or the end
+# of the string. Without this, sibling folders like run/pm-ack were treated as the protected store —
+# found when the guard blocked the very build of its own successor.
+printf '%s' "$COMMAND" | grep -qE '\.claude/run/pm($|[/"'"'"'[:space:]])' || exit 0
+
+# --- Tier 1: unambiguous write/destroy tokens, EACH ANCHORED TO THE STORE PATH.
+# ⛔ THE FALSE POSITIVE THIS SHAPE FIXES fired three times in one session, and the third time it
+# blocked the very edit that repairs it, because the patch text pairs the verb list with the store
+# path. The verb list used to match a destroy token ANYWHERE in a command that merely MENTIONED the
+# store — so a fixture teardown (`rm -rf /tmp/checkin-fixture`) sitting in the same script as a pure
+# READ of the store was denied, twice, while someone was verifying a documented procedure.
+# ⭐ THE RULE, which this guard's own header already claimed: match the WRITE-TO-TARGET pattern,
+# never the keyword alone.
+# ⇒ Each verb must be followed, WITHIN THE SAME COMMAND SEGMENT (no `;`, `&` or `|` between), by the
+# store path. A delete aimed at the store still denies; a delete aimed at /tmp in a script that also
+# reads the store does not. Flattening newlines to `;` above is what makes "same segment" mean
+# anything in a multi-line script — as a space it silently joined two unrelated commands into one.
+# STATED LOSS: a destroy whose target is only in a variable is not caught. It never was — the
+# boundary check above exits when the literal path is absent — and this guard does not resolve
+# variables, as the header says. That is a narrow, contrived miss traded against a repeated false
+# positive on read-only work.
+if printf '%s' "$COMMAND" | grep -qE '(>>?[[:space:]]*[^|&;]*\.claude/run/pm|(^|[[:space:]!;&|(])(rmdir|rm|mv|cp|tee|truncate|ln|install|dd|chmod|chown|touch|shred|unlink)[[:space:]][^;&|]*\.claude/run/pm|(sed|perl)[[:space:]]+-[a-zA-Z]*i[^;&|]*\.claude/run/pm)'; then
+  printf '%s\n' "$DENY" >&2
+  exit 2
+fi
+
+# --- Tier 2: an INTERPRETER only counts as a write when the command ALSO shows a write verb.
+# ⛔⛔ THE FALSE POSITIVE THIS FIXES, and it is the same disease as Tier 1's. The bare tokens
+# python3|perl|ruby|node|php used to sit in Tier 1, so ANY script that merely MENTIONED the store was
+# denied — including a pure read. That broke a real, shipped instruction: `/checkin`'s gate tells a
+# session to read a value out of this store, and the guard denied it. The step was unrunnable as
+# written. A guard that blocks the system's own documented procedure protects nothing; it teaches
+# sessions to route around it.
+# ⛔ Do NOT "fix" a future false positive by adding more nouns above — that direction buys a silent
+# false negative. Narrow by evidence of a WRITE instead, the way this does.
+if printf '%s' "$COMMAND" | grep -qE '(^|[[:space:]!;&|(])(python3?|perl|ruby|node|php)([[:space:]]|$)'; then
+  if printf '%s' "$COMMAND" | grep -qE "(open\([^)]*['\"](w|a|x|r\+|w\+|a\+)|\.write\(|\.writelines\(|\.writeText|writeFileSync|write_text|os\.replace|os\.rename|os\.remove|os\.unlink|shutil\.(copy|move)|Path\([^)]*\)\.(write|unlink|rename)|mkstemp|NamedTemporaryFile)"; then
+    printf '%s\n' "$DENY" >&2
+    exit 2
+  fi
+fi
+exit 0
