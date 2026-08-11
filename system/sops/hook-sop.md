@@ -25,8 +25,9 @@ reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live i
 >   parsing, the deny format, registration, `chmod`. **It is on no ship list, and this page is the
 >   decision half of a pair.** Until it crosses, §5's first pointer leads nowhere and the mechanics you
 >   need are in the shipped hooks themselves — `system/hooks/pm_flag.sh` is the fullest worked example.
-> - ⏳ **`/calculate` is a skill that lands in Phase 3.** The §3 story that mentions it is still true
->   about hooks; the command is simply not here yet. (`/websearch` has since arrived.)
+> - ✅ **`/calculate` has arrived**, with the two scripts the §3 story is about:
+>   `system/hooks/numbers_flag.sh` (the switch) and `system/hooks/inject_compute_mechanically.sh`
+>   (the per-turn half). (`/websearch` arrived before it.)
 > **Not shipped — where a §3 story cites one of these, the story's evidence is in the story; the
 > pointer was only ever the filing location of the original write-up:**
 >

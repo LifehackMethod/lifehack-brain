@@ -110,6 +110,8 @@ EXEMPT_FILES = {
 UNREGISTERED_OK = {
     "pm_flag.sh": "a command-line tool the skills call directly (arm/status/clear), not a hook",
     "skill_anchor.sh": "same — the arming half; `skill_anchor_inject.sh` is the registered hook",
+    "numbers_flag.sh": "same — `/calculate` calls it directly; `inject_compute_mechanically.sh` is "
+                       "the registered hook that reads what it writes",
 }
 
 # A backticked `/word` is usually a skill here — but not always, and neither of these is ours to

@@ -51,6 +51,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/save_routing_hint.sh\"",
             "statusMessage": "Checking where a save goes..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/inject_compute_mechanically.sh\"",
+            "statusMessage": "Checking whether this turn has maths in it..."
           }
         ]
       }
