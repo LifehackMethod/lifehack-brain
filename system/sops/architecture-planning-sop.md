@@ -23,7 +23,6 @@ authority: user
 > - ⏳ `/advisory-council` — **lands in Phase 3.** It is the engine stages 1, 4 and 6 are written around.
 >   Until it does, run those stages as what they are: pose the question to two or three independent
 >   readings, keep them from seeing each other, then chair the disagreement yourself.
-> - ⏳ `/websearch` — **lands in Phase 3.** The load-bearing fork below wants the other one anyway.
 > - ⛔ `/scope` — **never built anywhere.** The line below is an old TODO, kept because
 >   the wish is legitimate and the reader should not go hunting for a loader that has never existed.
 > - ⛔ `system/canon-purpose-map.md` — **not a shipped file.** Where a document lives is recorded in your

@@ -222,4 +222,4 @@ dedup will match this file by slug rather than duplicating it.
 | `system/tools/safe_search_api.sh` | the only sanctioned search path | ✅ here — needs a serper.dev key, see INSTALL.md |
 | `system/tools/safe_fetch.py` | the only sanctioned fetch path | ✅ here |
 | `docs/data-layout.md` | where records go | ✅ here |
-| `/websearch` | the one-fact sibling this skill contrasts itself with | ⏳ lands in Phase 3 — until then, the contrast above describes a command you do not have yet |
+| `/websearch` | the one-fact sibling this skill contrasts itself with | ✅ here |
