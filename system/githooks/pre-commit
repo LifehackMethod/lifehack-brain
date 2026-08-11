@@ -17,19 +17,28 @@
 
 staged=$(git diff --cached --name-only --diff-filter=ACMR)
 
-# memory/ is theirs. The rest are raw-corpus fingerprints: an export unpacked into the repo by hand is
-# the measured failure (2026-08-09, 6,228 files staged, including a users.json holding an email address
-# and a phone number). .gitignore does not catch a file that is force-added or was tracked before it was
-# ignored, which is exactly why this check exists as well.
+# memory/ is theirs. state/ is the ingest's working notes about their material -- half-sorted piles,
+# extracted conclusions, a map of what is in their export -- which is just as personal as the material
+# itself. It lives outside the repo by design (under the data root they chose), so nothing should ever
+# stage from here; this pattern is the backstop for the day something does. The rest are raw-corpus
+# fingerprints: an export unpacked into the repo by hand is the measured failure (2026-08-09, 6,228
+# files staged, including a users.json holding an email address and a phone number). .gitignore does not
+# catch a file that is force-added or was tracked before it was ignored, which is exactly why this check
+# exists as well.
+#
+# state/ deliberately has NO .gitignore entry to match. A folder that is never created inside the repo
+# needs no rule, and an ignore line would quietly teach the opposite -- that state/ belongs here and is
+# merely hidden. Absence is the real control; this is the cheap second one.
 offenders=$(printf '%s\n' "$staged" \
-	| grep -E '^memory/|(^|/)_unpacked/|\.zip$|(^|/)conversations\.json$|(^|/)users\.json$' \
+	| grep -E '^memory/|(^|/)state/|(^|/)_unpacked/|\.zip$|(^|/)conversations\.json$|(^|/)users\.json$' \
 	| grep -v -x 'memory/README.md')
 
 if [ -n "$offenders" ]; then
 	echo ""
 	echo "  ⛔ COMMIT REFUSED — this would put personal notes into a public repository."
 	echo ""
-	echo "  These staged files live under memory/, which is YOUR material and must never be committed:"
+	echo "  These staged files are YOUR material -- memory/ is what you write, state/ is what the ingest"
+	echo "  worked out about it -- and neither may be committed:"
 	printf '%s\n' "$offenders" | sed 's/^/      /'
 	echo ""
 	echo "  Unstage them and commit again:"
