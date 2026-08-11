@@ -250,7 +250,7 @@ match the spec's ITEM-LOOP* — was **rejected by the main session**: a literal 
 record, dozens to 100+ turns on this corpus. **The batching is correct; the row's depth is the defect.**
 Recorded at `4.3` as **INTENT WAS WRONG**.
 
-**⛔ NOT ADOPTED — two are ENVER'S CALL and the session refused to close them:**
+**⛔ NOT ADOPTED — two are THE OWNER'S CALL and the session refused to close them:**
 1. **Knowledge folder vs full DESK** (§5c C2). The swarm proved the CODE had already decided it —
    `4-place.md:144-145` called `desk_scaffold.py` unconditionally, so PHASE 4 as it then stood would have built
    **23 desks and printed 23 hand-paste registry blocks.** ⭐ **The finding is adopted; the DECISION is not made
@@ -602,7 +602,7 @@ for 4). Kept as the record of the sketch it grew from; **read §10, not this.**
 
 ### 5c. CROSS-CUTTING COMPONENTS — they belong to no single phase *(added 2026-08-08)*
 
-**⚖ C1 — THE WORLD-MODEL COMPACTION ENGINE.** ⚠ **NOT BUILT · ✅ DESIGNED 2026-08-08 (Phase 9, task 9.7.1) — the design below is a PROPOSAL AWAITING ENVER; the build (9.7.2) is gated on his nod.**
+**⚖ C1 — THE WORLD-MODEL COMPACTION ENGINE.** ⚠ **NOT BUILT · ✅ DESIGNED 2026-08-08 (Phase 9, task 9.7.1) — the design below is a PROPOSAL AWAITING THE OWNER; the build (9.7.2) is gated on his nod.**
 *(the author, 2026-08-08, `authority: user`: "when we make the scratch pad we could be reading a ton of information…
 We will have to make a larger overarching rule about what's gonna get written into the scratch pad and what
 might get deleted once it gets finally finished, because the scratch pad could get pretty fucking big… over time
@@ -700,7 +700,7 @@ A Lifehack knowledge home is: **`canon/`** (a FOLDER) holding **`current.md`** (
 - ⛔ **`topic:` COMES FROM A CLOSED SET** (`topic-vocab.md:17-21`): *"Use an existing slug or it doesn't get
   tagged — new slugs are added HERE first… the archivist proposes; the author approves… Never rename."* **PHASE 4
   may not invent a topic slug.**
-- ✅ **RULED 2026-08-08 BY ENVER — KNOWLEDGE FOLDERS, NOT DESKS.** Verbatim: *"We're doing folders versus desks.
+- ✅ **RULED 2026-08-08 BY THE OWNER — KNOWLEDGE FOLDERS, NOT DESKS.** Verbatim: *"We're doing folders versus desks.
   That's the first one."* ⇒ `/ingest` generates **`canon/current.md` + `canon/purpose.md` + `records/`** and
   **NOTHING ELSE** — ⛔ no `desk-registry.yaml` entry, no `CLAUDE.md`, no `health_producer`, no `pulse_slot`, no
   `status_tile_path`. **Promotion to a real DESK is a separate, deliberate human act, later, if a folder earns
@@ -2082,7 +2082,7 @@ fans out" has to run from here, not from the far side of Turn 1.
 - After about three rounds, recommend moving on and say why — past that it is usually taste rather than
   signal.
 
-> ❓ **OPEN — ENVER'S RULING OWED. Does the paragraph ACCUMULATE across piles?** By pile four, does it
+> ❓ **OPEN — THE OWNER'S RULING OWED. Does the paragraph ACCUMULATE across piles?** By pile four, does it
 > carry what piles one through three taught it, or is each pile's paragraph drawn only from that pile?
 > **This changes what `3.2` is built from and it is not a detail** — it is the difference between four
 > separate observations and one picture getting sharper.

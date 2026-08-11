@@ -1780,7 +1780,12 @@ def worldmap_material(basket, work_dir=None):
     return (path, out)
 
 
-_BULLET_RE = re.compile(r'^\s*([-*•◦▪‣·]|\d+[.)])\s+')
+# ⚠ `+` WAS MISSING UNTIL 2026-08-11, found by this check's first test rather than in use.
+# It is one of markdown's three standard bullet characters (`-`, `*`, `+`), so a paragraph
+# written with it sailed through the one rule in this phase that is not negotiable on taste.
+# A hole in a prose-only check is silent by construction: the output still looks like a list
+# to the human reading it, and nothing said so.
+_BULLET_RE = re.compile(r'^\s*([-*+•◦▪‣·]|\d+[.)])\s+')
 
 
 _WM_STOP = set("""about above after again against all also and any are because been before being below between
