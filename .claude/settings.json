@@ -138,6 +138,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_sheet_formula_writes.sh\"",
             "statusMessage": "Checking this write would not land on a formula..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_calendar_writes.sh\"",
+            "statusMessage": "Checking which calendar this would write to..."
           }
         ]
       }

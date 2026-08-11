@@ -116,6 +116,8 @@ UNREGISTERED_OK = {
                         "registered hook that reads what it writes",
     "throughline_flag.sh": "same — `/throughline` arms and clears it directly; "
                            "`guard_throughline_write_scope.sh` is the registered hook it switches",
+    "scratch_flag.sh": "same — a skill arms it when it opens a scratchpad; `system/statusline.sh` "
+                       "is what reads it, and a status bar is not a hook",
 }
 
 # A backticked `/word` is usually a skill here — but not always, and neither of these is ours to
