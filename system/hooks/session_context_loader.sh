@@ -6,8 +6,8 @@
 #      memory. This SessionStart hook puts the standing-true floor in front of every session without
 #      anyone having to think to search for it.
 # GUARDS: Nothing — this is a context loader, not a blocker. It never stops a session.
-# REDIRECT: N/A (non-blocking). Reads <data root>/desks/*/canon/*.md, resolved through
-#      shared/brain_root.py. Set the data root with: python3 shared/brain_root.py --set <path>
+# REDIRECT: N/A (non-blocking). Reads <data root>/canon.md and <data root>/desks/*/canon/current.md,
+#      resolved through shared/brain_root.py. Set the data root with: python3 shared/brain_root.py --set <path>
 # SIGNPOST: the data-root contract lives in shared/brain_root.py; the folder shape it reads is what
 #      /ingest PHASE 4 builds (.claude/skills/ingest/phases/4-place.md).
 # FAIL_POSTURE: LOUD. Never silently succeeds — see the note below.
@@ -80,6 +80,33 @@ fi
 echo "=== Session context (loaded automatically) ==="
 echo "Your notes: $ROOT"
 
+TOTAL=0
+
+# ── THE ROOT CANON: the few things true for every conversation, on any subject ───────────────────
+# ⭐ THIS BLOCK IS A BUG FIX (2026-08-11), and the bug was a promise nothing kept. This loader read
+# the subject folders and stopped there — while FOUR shipped places told the person the opposite:
+# `system/tools/bootstrap.py` writes the sentence "a cold session loads this file before it loads
+# anything else… carried into every conversation that follows, forever" INTO THE FILE ITSELF, and
+# `.claude/skills/ingest/phases/4-place.md` says it three more times, once while making the person
+# read every line of it aloud precisely because of that weight. None of it was true. `/read` opens
+# the file on demand, which is a different claim entirely — on demand is not every session.
+# It is the same shape as the journal bug found on the same day: a path that looks fine, is never
+# exercised, and fails in the direction that looks like "you have not written anything yet."
+#
+# IT GOES FIRST, and it is never the thing the ceiling drops. It is the smallest file here — the
+# canon-write guard caps it at 3,200 characters — and it is the one every subject defers up to. A
+# session that has the subjects but not the root has the details without the frame.
+ROOT_CANON="$ROOT/canon.md"
+if [ -s "$ROOT_CANON" ]; then
+  RC_BODY="$(cat "$ROOT_CANON" 2>/dev/null)"
+  if [ -n "$RC_BODY" ]; then
+    TOTAL=${#RC_BODY}
+    echo ""
+    echo "--- true for everything ---"
+    printf '%s\n' "$RC_BODY"
+  fi
+fi
+
 # ── The standing floor: one canon file per subject folder ────────────────────────────────────────
 # /ingest PHASE 4 builds <root>/desks/<subject>/canon/current.md — "the things that stay true" — and
 # that is what belongs in front of every session. Dated records are NOT loaded: they are retrieved on
@@ -89,14 +116,15 @@ CANON=("$ROOT"/desks/*/canon/current.md)
 shopt -u nullglob 2>/dev/null
 
 if [ "${#CANON[@]}" -eq 0 ]; then
-  echo "No subject folders yet — nothing standing to load. Run /ingest to build them, or just start"
-  echo "working and /save will make them as it goes."
+  echo ""
+  echo "No subject folders yet — nothing standing to load beyond the above. Run /ingest to build them,"
+  echo "or just start working and /save will make them as it goes."
   echo "=== end session context ==="
   exit 0
 fi
 
+echo ""
 echo "Standing notes from ${#CANON[@]} subject folder(s):"
-TOTAL=0
 SHOWN=0
 for f in "${CANON[@]}"; do
   SUBJECT="$(basename "$(dirname "$(dirname "$f")")")"
