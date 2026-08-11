@@ -46,6 +46,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/skill_anchor_inject.sh\"",
             "statusMessage": "Re-anchoring the running skill..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/save_routing_hint.sh\"",
+            "statusMessage": "Checking where a save goes..."
           }
         ]
       }
