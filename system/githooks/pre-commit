@@ -51,4 +51,29 @@ if [ -n "$offenders" ]; then
 	exit 1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# Every file, skill and hook these documents NAME must be here, or its line must say what happened
+# to it. See system/tools/citation_lint.py for the rule and the three markers.
+#
+# WHY ON EVERY COMMIT AND NOT ONLY WHEN A .md CHANGES: this breaks most often from the other side.
+# Nobody edits a document to make its citation dangle -- they move or rename the file it points at,
+# and the document that goes stale is one they never opened.
+#
+# WHY IT FAILS OPEN WITHOUT python3 AND THE CHECK ABOVE DOES NOT: that one protects a person's
+# private notes from an irreversible push, so it must never be skippable. This one protects the
+# documentation's accuracy, and blocking a commit because an interpreter is missing would cost more
+# than the drift it caught. It says so rather than passing quietly.
+repo=$(git rev-parse --show-toplevel)
+if command -v python3 >/dev/null 2>&1; then
+	if ! python3 "$repo/system/tools/citation_lint.py" --quiet; then
+		echo "  Commit refused. Fix the lines above, or run the lint yourself to see them again:"
+		echo ""
+		echo "      python3 system/tools/citation_lint.py"
+		echo ""
+		exit 1
+	fi
+else
+	echo "  ⚠ citation lint SKIPPED — no python3 on PATH. Documentation citations were NOT checked."
+fi
+
 exit 0

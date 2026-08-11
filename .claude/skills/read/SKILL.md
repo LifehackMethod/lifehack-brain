@@ -342,6 +342,6 @@ search `<broader term>` / the journal segments / a different subject?"* **Never 
 | `system/hooks/pm_flag.sh` | which project is live | ✅ here |
 | `system/hooks/session_context_loader.sh` | puts subject canon in context at session start — the reason step 0.6 skips it | ✅ here |
 | `docs/data-layout.md` | where everything under `$DATA` lives | ✅ here |
-| `system/schemas/project-doc-schema.md` | the brief's section names, for the pickup read | lands in T1.14 |
-| `system/knowledge-altitude.md` | the doctrine behind step 3.9 | lands in T1.14 |
-| `system/confidence-model.md` | the tiers and confidence vocabulary step 5b reads | lands in T1.14 |
+| `system/schemas/project-doc-schema.md` | the brief's section names, for the pickup read | ✅ here |
+| `system/knowledge-altitude.md` | the doctrine behind step 3.9 | ✅ here |
+| `system/confidence-model.md` | the tiers and confidence vocabulary step 5b reads | ✅ here |

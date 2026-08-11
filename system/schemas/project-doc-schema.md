@@ -112,7 +112,8 @@ machine-edited** (in the brief OR the plan).
 > doctrine reads the top rung off this line — so write it as a destination, not a task list. ⚠ It is the
 > project's 10k, not always the *session's*: a standing goal can sit ABOVE every brief (*"we're fixing this
 > skill because we want a machine that builds better skills"*), and that outranks this line when it applies.
-> **This FRAME *is* the project's declared INTENT** (`system/intent-doctrine.md`): a project is a BOUNDED
+> **This FRAME *is* the project's declared INTENT** (⏳ **UNRULED** — the parent law
+> `system/intent-doctrine.md` is on no ship list; the rule it supplies is the next clause): a project is a BOUNDED
 > object, so its intent is a **DESIRED OUTCOME** (a definition-of-done), not a standing PURPOSE. A brief with no
 > confirmed desired outcome is an object missing its intent — the archivist flags it (check O / check P).
 

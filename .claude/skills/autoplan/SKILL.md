@@ -106,7 +106,7 @@ keeping copies identical, not a reason to have copies.
 | `system/hooks/pm_flag.sh` · `plan_flag.sh` | which project and plan are armed | ✅ here |
 | `system/build-rules-index.md` | the three binding rule blocks, in one place | ✅ here |
 | `.claude/agents/worker.md` | the read-only explorer | ✅ here |
-| `system/sops/plan-sharpening-sop.md` | the shared world-model load and session mining | lands in T1.14 |
-| `system/sops/architecture-planning-sop.md` | the plan's required shape | lands in T1.14 |
-| `system/sops/build-conductor-sop.md` | the gear doctrine | lands in T1.14 |
+| `system/sops/plan-sharpening-sop.md` | the shared world-model load and session mining | ✅ here |
+| `system/sops/architecture-planning-sop.md` | the plan's required shape | ✅ here |
+| `system/sops/build-conductor-sop.md` | the gear doctrine | ✅ here |
 | `docs/data-layout.md` | where plans and briefs live | ✅ here |

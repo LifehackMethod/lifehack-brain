@@ -285,7 +285,7 @@ the human names that the piles didn't suggest. Then scaffold.
    Propose splits as a best-guess, by number; a small desk → *"this one stays a single folder for now."*
 3. **Scaffold each confirmed desk**: `python3 $T/folder_scaffold.py --drive-root "$DRIVE" --path "desks/<slug>"
    --purpose "<one line>" --topic "<slug, from THEIR memory/topic-vocab.md>" --desk "<slug>"`. *(2026-08-08: this
-   used to call the older whole-desk scaffolding tool and print a `system/desk-registry.yaml` block for the
+   used to call the older whole-desk scaffolding tool and print a ⛔ `system/desk-registry.yaml` block (neither is shipped) for the
    human to paste — that tool is NOT deleted, it stays for a deliberate later promotion, but a Phase 4
    scaffold is a plain knowledge folder — `canon/current.md` + `canon/purpose.md` + `records/`, no registry
    entry — which is `folder_scaffold.py`'s job; it prints nothing to paste, so there is no registry step here.)*

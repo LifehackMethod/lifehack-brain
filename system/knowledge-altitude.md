@@ -16,9 +16,17 @@ authority: user
 > this work is happening, never injected into every conversation. (It passes its own test by NOT sitting at the
 > summit.) Plain language by design: a cold session must be able to use it.
 >
-> **This is the [Intent Doctrine](intent-doctrine.md) applied to knowledge.** `system/intent-doctrine.md` is the
-> parent law (every object declares its intent — purpose for standing things, desired-outcome for bounded ones);
-> altitude is that same law applied to one case: *where a piece of knowledge sits.*
+> **This is the INTENT DOCTRINE applied to knowledge:** every object declares its intent — a purpose for a
+> standing thing, a desired outcome for a bounded one — and altitude is that same law applied to one case,
+> *where a piece of knowledge sits.*
+> ⏳ **UNRULED** — the parent law itself, `system/intent-doctrine.md`, is on no ship list; the sentence
+> above is the whole of it that this page needs.
+>
+> ⛔ **`/archivist-review` · `system/archivist/placement-trial-log.md` ·
+> `system/research/2026-06-13-preload-vs-pointer-consensus.md` — not shipped.** The archivist's review
+> command and its probation log belong to a family that stays with the author; §9's probation is
+> therefore a description of how that judgment was earned, not a step you can run. The research record
+> is one of their own findings — the conclusion it supports is stated where it is cited.
 
 ## What canon IS — durability × altitude (the definition)
 

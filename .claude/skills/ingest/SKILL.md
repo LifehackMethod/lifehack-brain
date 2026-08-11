@@ -204,20 +204,20 @@ their location from the repo root, so a different layout breaks them.
 | `system/hooks/skill_anchor.sh` | the per-turn anchor each phase arms | ✅ here |
 | `.claude/agents/ingest-tagger.md` · `.claude/agents/ingest-conclusions.md` | the tool-less readers PHASE 1 and PHASE 3 **spawn** — the skill dies at the tagging step without them | ✅ here |
 | `system/githooks/pre-commit` | refuses a commit carrying the person's own material; needs `git config core.hooksPath system/githooks` | ✅ here |
-| `system/hooks/skill_anchor_inject.sh` | the injector `skill_anchor.sh` writes flags **for**. Without it the anchor is armed and never shown — silently. | ⏳ lands with the harness floor |
+| `system/hooks/skill_anchor_inject.sh` | the injector `skill_anchor.sh` writes flags **for**. Without it the anchor is armed and never shown — silently. | ✅ here |
 | `settings.json` | nothing above is registered with the harness until this exists | ⏳ lands with the harness floor |
-| `system/hooks/ingest_gate_enforce.sh` | the hook that stops the main session reading the locked scratch (`3-deep-read.md`) — the enforcement half of the reader/actor split | ⏳ lands with the security wall |
+| `system/hooks/ingest_gate_enforce.sh` | the hook that stops the main session reading the locked scratch (`3-deep-read.md`) — the enforcement half of the reader/actor split | ⏳ lands with the security wall (Phase 2) |
 | `system/hooks/guard_canon_write.sh` | ⚖ **STALE 2026-08-11 — the rule it was to enforce was REVERSED.** It was to gate "the machine must never write canon"; canon is now written directly at its earned altitude, human-reviewed at the end. **The hook does not exist on disk and is no longer owed for that purpose.** Any future canon gate is a NEW decision, not this one. | ⛔ not owed |
-| `system/knowledge-altitude.md` | the too-big/too-small subdivide rules PHASE 3 cites by line | ⏳ lands with the doctrine set |
-| `.claude/skills/read/` | PHASE 4 hands off to it | ⏳ lands with the core skills |
-| `.claude/skills/archivist-route/` | PHASE 4 reuses its ranking contract inline rather than rebuilding it | ⏳ lands with the archivist family |
+| `system/knowledge-altitude.md` | the too-big/too-small subdivide rules PHASE 3 cites by line | ✅ here |
+| `.claude/skills/read/` | PHASE 4 hands off to it | ✅ here |
+| `.claude/skills/archivist-route/` | PHASE 4 reuses its ranking contract inline rather than rebuilding it | ⏳ lands with the archivist family (Phase 3) |
 
 **Named here so nobody hunts for them — these are NOT missing:**
 
 | Referenced | Why it is not here |
 |---|---|
 | the topic vocabulary | It is **yours**, not ours. Both PHASE 4 gates — `folder_scaffold.py` and `pipeline.py topic-check` — look for `memory/topic-vocab.md` beside your material, and refuse with instructions rather than inventing one. A taxonomy of your life shipped by someone else is worse than none. |
-| `system/desk-registry.yaml` · `desk_scaffold.py` | Promoting a folder to a full desk is a separate, deliberate act, later. PHASE 4 makes plain knowledge folders and nothing else. |
+| `system/desk-registry.yaml` · `desk_scaffold.py` | ⛔ **not shipped.** Promoting a folder to a full desk is a separate, deliberate act, later. PHASE 4 makes plain knowledge folders and nothing else. |
 | `skill-building-sop.md` | The author's own SOP for building skills. Cited for single rules; it is not part of running an ingest. |
 | `skills/ingest-filer/SKILL.md` | A skill that stopped existing on 2026-08-05 when the filer folded back in as `phases/4-place.md`. Historical mentions only. |
 | `3-world-map.md` | Deliberately **not built** — see the note near the end of this file. The stale name is kept on purpose. |

@@ -5,8 +5,8 @@
 > one idea**, and that idea is below in full. Landing the whole thing here to carry one paragraph would
 > ship 2,300 lines nobody reads to hold a rule everybody needs.
 >
-> Source: `system/sops/skill-building-sop.md` → **LAW 4, item 2**. The full document travels with the
-> skill-building work.
+> Source: ⏳ `system/sops/skill-building-sop.md` → **LAW 4, item 2**. All 2,327 lines of it land in
+> Phase 3, with the skill-building work; this page is the one rule the core skills cite.
 
 ---
 

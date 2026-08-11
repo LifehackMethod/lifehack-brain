@@ -17,6 +17,25 @@ reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live i
 
 > **This doc owns WHEN to build a hook and WHICH kind. It does NOT repeat the mechanics — `system/hook-contract.md` owns those.** It is the single **front door** for hooks: it POINTS at the canonical homes, never copies them. Keep it short — if it grows into a second mechanics manual, it has failed. (Council-ratified 2026-06-17; diverge→argue→converge.)
 
+> ⓘ **WHAT THIS PAGE POINTS AT THAT IS NOT IN THIS REPOSITORY.** A front door is only as good as the
+> rooms behind it, so the missing rooms are named here rather than discovered by a reader who goes
+> looking. This block is the whole list.
+>
+> - ⏳ **UNRULED — `system/hook-contract.md`.** The mechanics half of this page: exit codes, stdin
+>   parsing, the deny format, registration, `chmod`. **It is on no ship list, and this page is the
+>   decision half of a pair.** Until it crosses, §5's first pointer leads nowhere and the mechanics you
+>   need are in the shipped hooks themselves — `system/hooks/pm_flag.sh` is the fullest worked example.
+> - ⏳ **`/websearch` and `/calculate` are skills that land in Phase 3.** The §3 stories that mention
+>   them are still true about hooks; the commands are simply not here yet.
+> **Not shipped — where a §3 story cites one of these, the story's evidence is in the story; the
+> pointer was only ever the filing location of the original write-up:**
+>
+> - ⛔ `docs/architecture.md` — the author's own map of their whole system.
+> - ⛔ `docs/skill-conformance.md` — their conformance checker's rulebook.
+> - ⛔ `system/reference/settings.json` — one machine's symlink source, which the single-machine
+>   model here made meaningless. Registration lives in `.claude/settings.json` and travels by `git pull`.
+> - ⛔ `system/sops/build-sop.md` — see the same entry under `system/build-rules-index.md`.
+
 ## §1 — When to reach for a hook at all
 - A hook is for a **hard invariant that must survive model drift + compaction** — justified by EITHER **(a)** a real past incident, OR **(b)** a catastrophic-**silent** failure on an unrecoverable surface (auth/credentials · the wrong calendar · a destructive write · the wrong machine). *"It would be nice to enforce"* is **not** justification.
 - **Climb the escalation ladder first — a hook is the LAST rung:** instruction (CLAUDE.md) → a binary gate inside a skill → the user-turn boundary → a hook. Don't open with the heaviest tool.

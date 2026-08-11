@@ -222,3 +222,4 @@ dedup will match this file by slug rather than duplicating it.
 | `system/tools/safe_search_api.sh` | the only sanctioned search path | lands in Phase 2 |
 | `system/tools/safe_fetch.py` | the only sanctioned fetch path | lands in Phase 2 |
 | `docs/data-layout.md` | where records go | ✅ here |
+| `/websearch` | the one-fact sibling this skill contrasts itself with | ⏳ lands in Phase 3 — until then, the contrast above describes a command you do not have yet |

@@ -4,7 +4,8 @@
 > particular running system, with 49 companion files. None of that ships here. **Two skills cite it for
 > one idea**, and the idea is below.
 >
-> Source: `system/organism/manual.md` → *THE CODE/LLM SEAM*.
+> Source: ⛔ `system/organism/manual.md` → *THE CODE/LLM SEAM*. **That file is not shipped** — it and its
+> 49 element files describe the author's own running system. This page is the whole of what crossed.
 >
 > ⚠ **Provisional, and it was provisional there too.** It is best current thinking, not doctrine, and
 > it sits in open tension with the rule that code owns the perimeter and the model works inside it.

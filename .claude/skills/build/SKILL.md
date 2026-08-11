@@ -231,10 +231,11 @@ plan time; the close stops it being hidden at finish time.
 | Needed | Why | Status |
 |---|---|---|
 | `system/build-rules-index.md` | question zero, the routing table, and the three binding rule blocks | ✅ here |
-| `system/sops/build-sop.md` | the general build do's | lands in T1.14 |
-| `system/sops/architecture-planning-sop.md` | the Phase → Feature → Task discipline | lands in T1.14 |
-| `system/sops/build-conductor-sop.md` | the gear doctrine | lands in T1.14 |
-| `system/sops/skill-building-sop.md` | binds a hybrid build | extract lands in T1.14 |
+| `system/sops/build-sop.md` | the general build do's | ⏳ UNRULED — on no ship list; `system/build-rules-index.md` says what this skill has meanwhile |
+| `system/sops/architecture-planning-sop.md` | the Phase → Feature → Task discipline | ✅ here |
+| `system/sops/build-conductor-sop.md` | the gear doctrine | ✅ here |
+| `system/sops/skill-building-sop-extract.md` | LAW 4.2 — a model cannot report on its own compliance | ✅ here |
+| `system/sops/skill-building-sop.md` | the whole SOP, which binds a hybrid build | ⏳ lands in Phase 3, with `skill-builder` |
 
 ⭐ **This skill calls no tools of its own.** It is pure prose and a mandate — everything it runs belongs
 to the plan it is executing. **Keep it that way.**

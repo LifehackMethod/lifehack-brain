@@ -162,9 +162,9 @@ Plus the flag readers (`system/hooks/pm_flag.sh status`, `plan_flag.sh path`), w
 | `system/tools/canon_conflict_scan.py` | reads canon content before a canon write | ✅ here |
 | `system/hooks/pm_flag.sh` · `plan_flag.sh` | which project and plan are live | ✅ here |
 | `system/hooks/save_routing_hint.sh` | tells a session where a bare "save this" goes | ✅ here |
-| `system/tools/save/pm_flag_recover.py` | recovers a project flag that expired mid-session | lands in T1.8 |
-| `system/confidence-model.md` | the tier ladder and the register vocabulary | lands in T1.14 |
-| `system/knowledge-altitude.md` | the canon altitudes the panel names | lands in T1.14 |
-| `system/schemas/project-doc-schema.md` | the brief's shape, for the sync step | lands in T1.14 |
-| `system/schemas/backlog-entry-schema.md` | the debt-ledger tags | lands in T1.14 |
+| `system/tools/save/pm_flag_recover.py` | recovers a project flag that expired mid-session | ✅ here |
+| `system/confidence-model.md` | the tier ladder and the register vocabulary | ✅ here |
+| `system/knowledge-altitude.md` | the canon altitudes the panel names | ✅ here |
+| `system/schemas/project-doc-schema.md` | the brief's shape, for the sync step | ✅ here |
+| `system/schemas/backlog-entry-schema.md` | the debt-ledger tags | ✅ here |
 | `docs/data-layout.md` | where everything under `$DATA` goes | ✅ here |

@@ -1,0 +1,300 @@
+#!/usr/bin/env python3
+"""Tests for citation_lint — built around the one failure that costs anything: a document that
+points at a file which is not here, and nothing says so.
+
+Every case builds a whole throwaway repository (settings.json, a hooks directory, a skills
+directory) and runs the lint against it with --root, so nothing here reads the real tree. That
+matters more than usual for this tool: its denominator IS the tree, so a test that leaked into the
+real one would pass or fail for reasons that have nothing to do with the code.
+
+Run: python3 system/tools/test_citation_lint.py
+"""
+import os
+import shutil
+import sys
+import tempfile
+import unittest
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import citation_lint as lint                                    # noqa: E402
+
+SETTINGS = """{
+  "hooks": {"UserPromptSubmit": [{"hooks": [{"type": "command",
+    "command": "bash \\"${CLAUDE_PROJECT_DIR}/system/hooks/live.sh\\""}]}]}
+}
+"""
+
+
+class Fixture(unittest.TestCase):
+    """A throwaway repo. `write` makes a file, `lint` returns (exit code, printed output)."""
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp(prefix="citelint-")
+        self.write(".claude/settings.json", SETTINGS)
+        self.write("system/hooks/live.sh", "#!/bin/sh\nexit 0\n")
+        os.makedirs(os.path.join(self.root, ".claude", "skills"))
+
+    def tearDown(self):
+        shutil.rmtree(self.root, ignore_errors=True)
+
+    def write(self, rel, text):
+        full = os.path.join(self.root, rel)
+        os.makedirs(os.path.dirname(full), exist_ok=True)
+        with open(full, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        return full
+
+    def skill(self, name):
+        self.write(".claude/skills/%s/SKILL.md" % name, "# %s\n" % name)
+
+    def lint(self):
+        from io import StringIO
+        held, sys.stdout = sys.stdout, StringIO()
+        try:
+            rc = lint.main(["--root", self.root])
+            return rc, sys.stdout.getvalue()
+        finally:
+            sys.stdout = held
+
+
+class PathsMustResolve(Fixture):
+    def test_a_dangling_path_fails_and_the_output_names_it(self):
+        self.write("docs/a.md", "Run `system/tools/nope.py` first.\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 1)
+        self.assertIn("system/tools/nope.py", out)
+        self.assertIn("docs/a.md:1", out)
+
+    def test_the_same_citation_passes_once_the_file_exists(self):
+        self.write("docs/a.md", "Run `system/tools/real.py` first.\n")
+        self.write("system/tools/real.py", "#\n")
+        self.assertEqual(self.lint()[0], 0)
+
+    def test_a_directory_citation_resolves(self):
+        self.write("docs/a.md", "See `system/hooks/`.\n")
+        self.assertEqual(self.lint()[0], 0)
+
+    def test_a_glob_resolves_when_something_matches_and_fails_when_nothing_does(self):
+        self.write("docs/a.md", "Bring `system/tools/*.py` along.\n")
+        self.assertEqual(self.lint()[0], 1)
+        self.write("system/tools/one.py", "#\n")
+        self.assertEqual(self.lint()[0], 0)
+
+    def test_a_line_anchor_is_stripped_before_the_file_is_looked_for(self):
+        # `tool.py:138-160` is a citation of tool.py, not of a file with a colon in its name.
+        self.write("system/tools/tool.py", "#\n")
+        self.write("docs/a.md", "The rule is at `system/tools/tool.py:138-160`.\n")
+        self.assertEqual(self.lint()[0], 0)
+
+    def test_arguments_after_the_path_are_stripped(self):
+        self.write("docs/a.md", "Run `system/hooks/live.sh status` to see it.\n")
+        self.assertEqual(self.lint()[0], 0)
+
+    def test_placeholders_and_variables_are_not_citations(self):
+        self.write("docs/a.md",
+                   "Writes `state/projects/<slug>/brief.md` via `$ROOT/system/tools/x.py` "
+                   "and `system/tools/{name}.py`.\n")
+        self.assertEqual(self.lint()[0], 0)
+
+    def test_a_path_outside_this_repo_is_not_a_citation(self):
+        # ~/.config and /tmp are named constantly and are nobody's promise to ship.
+        self.write("docs/a.md", "Stored at `~/.config/lifehack/brain-root`, scratch in `/tmp/rdr`.\n")
+        self.assertEqual(self.lint()[0], 0)
+
+    def test_the_notes_folder_journal_is_not_expected_in_the_repo(self):
+        # The regression this guards: demanding a person's journal be committed to a public repo.
+        self.write("docs/a.md", "Entries append to `system/journal.md`.\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 0)
+        self.assertIn("under the notes folder", out)
+
+    def test_the_persons_own_material_is_never_scanned(self):
+        self.write("memory/mine.md", "My note about `system/tools/nope.py`.\n")
+        self.assertEqual(self.lint()[0], 0)
+
+    def test_a_bak_file_is_not_scanned(self):
+        self.write("docs/a.md.bak", "Old text citing `system/tools/nope.py`.\n")
+        self.assertEqual(self.lint()[0], 0)
+
+
+class TheThreeClaims(Fixture):
+    def test_a_present_claim_for_a_missing_file_fails_and_says_which_claim_broke(self):
+        self.write("docs/a.md", "| `system/tools/nope.py` | why | ✅ here |\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 1)
+        self.assertIn("claimed ✅ here and is NOT here", out)
+
+    def test_a_deferral_naming_an_open_phase_is_accepted_and_reported(self):
+        self.write("docs/a.md", "| `system/tools/later.py` | why | lands in Phase 2 |\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 0)
+        self.assertIn("phase 2", out)
+
+    def test_a_deferral_naming_a_closed_landing_fails(self):
+        # The whole point of the closed set: T1.14 is over, so a row still waiting on it is a lie.
+        self.write("docs/a.md", "| `system/tools/later.py` | why | lands in T1.14 |\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 1)
+        self.assertIn("not open", out)
+
+    def test_a_deferral_with_no_landing_at_all_fails(self):
+        self.write("docs/a.md", "| `system/tools/later.py` | why | lands in eventually |\n")
+        self.assertEqual(self.lint()[0], 1)
+
+    def test_a_deferral_for_a_file_that_has_since_arrived_fails(self):
+        self.write("system/tools/later.py", "#\n")
+        self.write("docs/a.md", "| `system/tools/later.py` | why | lands in Phase 2 |\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 1)
+        self.assertIn("HAS LANDED", out)
+
+    def test_a_decline_is_accepted(self):
+        self.write("docs/a.md", "- ⛔ `system/tools/nope.py` — not shipped: it is theirs, not ours.\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 0)
+        self.assertIn("1 declined", out)
+
+    def test_a_claim_covers_the_whole_file_not_just_its_own_line(self):
+        self.write("docs/a.md",
+                   "> ⛔ `system/tools/nope.py` — not shipped.\n\n"
+                   "Later on, the same `system/tools/nope.py` comes up again.\n"
+                   "And again: `system/tools/nope.py`.\n")
+        self.assertEqual(self.lint()[0], 0)
+
+    def test_a_claim_covers_a_path_that_wrapped_onto_the_next_line(self):
+        # The measured failure that widened the rule: three of this lint's own banners.
+        self.write("docs/a.md",
+                   "> - ⛔ **not shipped** — the author's own document lives at\n"
+                   ">   `system/tools/nope.py` and never crossed.\n")
+        self.assertEqual(self.lint()[0], 0)
+
+    def test_a_claim_does_not_leak_past_a_blank_line(self):
+        self.write("docs/a.md",
+                   "> ⛔ `system/tools/one.py` — not shipped.\n\n"
+                   "An ordinary paragraph naming `system/tools/two.py`.\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 1)
+        self.assertIn("two.py", out)
+        self.assertNotIn("one.py", out)
+
+    def test_a_claim_does_not_leak_into_the_next_bullet(self):
+        self.write("docs/a.md",
+                   "- ⛔ `system/tools/one.py` — not shipped.\n"
+                   "- `system/tools/two.py` is required.\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 1)
+        self.assertIn("two.py", out)
+
+    def test_worded_status_does_not_count_in_ordinary_prose(self):
+        # The measured false positive: a planning rule reading "...or lands in this block".
+        self.write("docs/a.md",
+                   "Nothing vanishes: each item maps to a task or lands in the `system/tools/cut.py` block.\n")
+        self.assertEqual(self.lint()[0], 1)
+
+    def test_a_reason_column_does_not_promise_what_it_merely_mentions(self):
+        self.write("system/tools/here.py", "#\n")
+        self.write("docs/a.md",
+                   "| `system/tools/here.py` | imports `system/tools/gone.py` | ✅ here |\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 1)
+        self.assertIn("gone.py", out)
+        self.assertIn("nothing on this line", out)
+
+    def test_a_routing_table_claims_its_second_column_when_the_first_holds_no_path(self):
+        self.write("docs/a.md",
+                   "| building… | read first | status |\n|---|---|---|\n"
+                   "| **a hook** | `system/tools/later.py` | lands in Phase 2 |\n")
+        self.assertEqual(self.lint()[0], 0)
+
+
+class SkillsMustExist(Fixture):
+    def test_a_command_with_no_skill_behind_it_fails(self):
+        self.write("docs/a.md", "Then run `/websearch` for a single fact.\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 1)
+        self.assertIn(".claude/skills/websearch/", out)
+
+    def test_the_same_command_passes_once_the_skill_is_there(self):
+        self.skill("websearch")
+        self.write("docs/a.md", "Then run `/websearch` for a single fact.\n")
+        self.assertEqual(self.lint()[0], 0)
+
+    def test_a_harness_command_is_not_ours_to_ship(self):
+        self.write("docs/a.md", "Run `/clear` and start again.\n")
+        self.assertEqual(self.lint()[0], 0)
+
+    def test_a_path_fragment_is_not_a_command(self):
+        # /dev/null, /tmp, and a bare /records segment are not slash commands.
+        self.write("docs/a.md", "Send it to `/dev/null`; scratch lives in `/tmp`.\n")
+        self.assertEqual(self.lint()[0], 0)
+
+    def test_a_missing_command_can_be_accounted_for_like_any_other_citation(self):
+        self.write("docs/a.md", "- ⏳ `/websearch` — lands in Phase 3.\n\nRun `/websearch` for a fact.\n")
+        self.assertEqual(self.lint()[0], 0)
+
+
+class HooksBothWays(Fixture):
+    def test_a_registration_with_no_file_behind_it_fails(self):
+        os.remove(os.path.join(self.root, "system/hooks/live.sh"))
+        rc, out = self.lint()
+        self.assertEqual(rc, 1)
+        self.assertIn("registered and is not on disk", out)
+
+    def test_a_hook_on_disk_that_is_registered_nowhere_fails(self):
+        self.write("system/hooks/orphan.sh", "#!/bin/sh\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 1)
+        self.assertIn("registered nowhere, declared nowhere", out)
+
+    def test_an_unregistered_script_declared_in_the_config_passes(self):
+        self.write("system/hooks/orphan.sh", "#!/bin/sh\n")
+        lint.UNREGISTERED_OK["orphan.sh"] = "a test fixture"
+        try:
+            self.assertEqual(self.lint()[0], 0)
+        finally:
+            del lint.UNREGISTERED_OK["orphan.sh"]
+
+    def test_a_test_beside_the_hooks_is_not_treated_as_an_unregistered_hook(self):
+        self.write("system/hooks/tests/verify-something.sh", "#!/bin/sh\n")
+        self.assertEqual(self.lint()[0], 0)
+
+    def test_unreadable_settings_is_CANNOT_READ_never_clean(self):
+        # rc 4 is the house no-outcome code: "the check did not run" must not read as "nothing wrong".
+        self.write(".claude/settings.json", "{ not json")
+        rc, out = self.lint()
+        self.assertEqual(rc, lint.CANNOT_READ)
+        self.assertIn("CANNOT-READ", out)
+
+
+class NeverAFalseClean(Fixture):
+    """The failures that would make a green run mean nothing."""
+
+    def test_a_missing_settings_file_is_CANNOT_READ_not_a_pass(self):
+        os.remove(os.path.join(self.root, ".claude/settings.json"))
+        rc, _ = self.lint()
+        self.assertEqual(rc, lint.CANNOT_READ)
+
+    def test_a_root_that_does_not_exist_is_CANNOT_READ(self):
+        self.assertEqual(lint.main(["--root", os.path.join(self.root, "gone")]), lint.CANNOT_READ)
+
+    def test_the_clean_line_reports_a_denominator_it_did_not_get_from_the_documents(self):
+        self.write("system/tools/real.py", "#\n")
+        self.write("docs/a.md", "Run `system/tools/real.py`.\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 0)
+        self.assertIn("registrations", out)
+        self.assertIn("hook files", out)
+
+    def test_an_exempt_file_is_named_in_the_count_rather_than_silently_skipped(self):
+        self.write("docs/exempt.md", "Points at `system/tools/nope.py` in another tree.\n")
+        lint.EXEMPT_FILES["docs/exempt.md"] = "a test fixture"
+        try:
+            rc, out = self.lint()
+            self.assertEqual(rc, 0)
+            self.assertIn("1 exempt file", out)
+        finally:
+            del lint.EXEMPT_FILES["docs/exempt.md"]
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

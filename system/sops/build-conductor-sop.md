@@ -50,8 +50,9 @@ There are **two distinct roles**, and conflating them is a primary failure mode 
   holds that build's ground-level detail. Anchor: `skills/project-manager/ANCHOR.md`.
 - **Observation Deck** — WATCHES builds to improve the SOP/systems; is **not part of any build**.
   Never advises a build's execution (cells, sub-agent prompts, curls, edits); only extracts the
-  systemic lesson. Product = edits to this SOP, skills, hooks. Anchor:
-  `system/anchors/observation-deck-anchor.md`.
+  systemic lesson. Product = edits to this SOP, skills, hooks.
+  *(Its per-turn anchor file, ⛔ `system/anchors/observation-deck-anchor.md`, is not shipped — it re-injects
+  the mode's own reminder every turn, and nothing here arms it. The mode works read from this page.)*
 
 **The trap:** arming the *Build Lead* anchor on a window whose real job is observation/coordination
 pulls it straight into one build's weeds — it will start advising cells and curl commands and lose

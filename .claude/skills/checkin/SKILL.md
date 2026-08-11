@@ -170,7 +170,7 @@ Each comes from a tool's exit code. **Quote the token in the receipt** — its a
 | `.claude/agents/worker.md` | the blind reader — read-only by construction | ✅ here |
 | `system/tools/checkin/gauge_check.py` | check 4, the competing-gauges check | ✅ here |
 | `system/tools/checkin/board_check.py` | check 5, the stale-queue check | ✅ here |
-| `system/schemas/project-doc-schema.md` | the brief's sections and the compaction procedure | lands in T1.14 |
-| `system/work-altitude-doctrine.md` | how a rung is composed | lands in T1.14 |
-| `system/sops/plan-sharpening-sop.md` | the shared world-model load and the session mining | lands in T1.14 |
-| `system/sops/architecture-planning-sop.md` | the shape a planned task must carry | lands in T1.14 |
+| `system/schemas/project-doc-schema.md` | the brief's sections and the compaction procedure | ✅ here |
+| `system/work-altitude-doctrine.md` | how a rung is composed | ✅ here |
+| `system/sops/plan-sharpening-sop.md` | the shared world-model load and the session mining | ✅ here |
+| `system/sops/architecture-planning-sop.md` | the shape a planned task must carry | ✅ here |
