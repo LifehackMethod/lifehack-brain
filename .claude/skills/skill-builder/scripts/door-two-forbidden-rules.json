@@ -1,0 +1,16 @@
+[
+  {
+    "id": "no-stale-prompts-folder-claim",
+    "mode": "regex",
+    "pattern": "NOT BUILT[\\s\\S]{0,200}no\\s+`?prompts/?`?\\s+folder\\s+exists",
+    "flags": ["i"],
+    "why": "the prompt library at .claude/skills/skill-builder/prompts/ EXISTS (phase-1.md through phase-6.md, verified by ls this session) -- six phase drivers each carried a stale 'NOT BUILT ... no prompts/ folder exists yet' claim that silently disabled the per-phase prompt scoping (§8g) on every run. This is skill-building-sop.md §V.4d: a claim's proximity to a thing is not evidence about it. Catches a regression of the exact stale wording; deliberately narrow (requires both NOT BUILT and the folder-does-not-exist claim within 200 chars) so it never fires on legitimate mentions of the prompts/ folder or of other, real NOT BUILT gaps elsewhere in a driver."
+  },
+  {
+    "id": "no-prompt-library-absence-claim-any-wording",
+    "mode": "regex",
+    "pattern": "(?:`?prompts?/?`?[\\s\\S]{0,160}?(?:does\\s+not(?:\\s+yet)?\\s+exist|doesn['’]t\\s+exist|is\\s+not\\s+built)|(?:does\\s+not(?:\\s+yet)?\\s+exist|doesn['’]t\\s+exist|is\\s+not\\s+built)[\\s\\S]{0,160}?`?prompts?/?`?|no\\s+`?prompts/?`?\\s*folder|has\\s+no\\s+prompt)(?![\"”])",
+    "flags": ["i"],
+    "why": "a SEVENTH instance of the same stale claim survived the first sweep in 4-swarm.md's DATA-reader charge, worded WITHOUT the 'NOT BUILT' marker the sibling rule keys on ('a prompts/ folder that does not yet exist ... until it is built') -- caught by a coordinator probe 2026-08-08, fixed by hand in 4-swarm.md, and this rule exists so the WORDING never matters again, not just the one marker. Independent second signal deliberately kept alongside no-stale-prompts-folder-claim, not a replacement for it. Requires the absence-phrase to sit within 160 chars of a prompt(s) mention (or be self-contained, e.g. 'no prompts/ folder', 'has no prompt') -- this window is what keeps it off unrelated absence claims elsewhere in a driver (e.g. 5-build.md:106 '/skill-tester DOES NOT EXIST YET', which has no prompt mention anywhere near it). KNOWN, DELIBERATE BOUND: the trailing (?![\"”]) excludes a match whose absence-phrase is immediately followed by a closing quote mark, so a corrected/quoted dead claim like 4-swarm.md's '(Corrected 2026-08-08: this bullet read \"...does not yet exist\" and told this reader...)' is read as a quoted corpse, not a live claim -- this is a LOCAL, single-character heuristic (immediate next char only), not true quote-span detection; a future correction note that does not close its quote immediately after the absence-phrase's last word would not be recognised as quoted and WOULD be flagged. Does not cover the word 'missing' (e.g. 'if that file is missing') -- out of the phrase list this rule was asked to cover; a future stale claim worded that way would need a further addition."
+  }
+]

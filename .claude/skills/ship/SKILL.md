@@ -1,5 +1,8 @@
 ---
 name: ship
+skill: ship
+shape: interactive-workflow
+status: active
 description: "Runs the shipping lane end to end — scrub, judge, gate, then the push — so the sequence from your private working tree to a public repo can never be half-run. Use on \"/ship\", \"ship this\", \"publish this\". Starting the lane is safe and reversible; the PUSH itself is always your explicit act and this skill cannot take it for you."
 ---
 

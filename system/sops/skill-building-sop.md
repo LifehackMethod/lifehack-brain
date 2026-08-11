@@ -48,17 +48,32 @@ reader_note: >
 > - ⛔ **Evidence in the author's own notes** — every lesson here cites the project record where it
 >   was learned, and those live under a personal notes folder, not in any repository: `records/2026-07-13-translator-voice-debug-history.md` · `records/decision/2026-06-04-design-claudeops-skill.md` · `records/decision/2026-06-27-numbers-integrity-enforcement.md` · `records/decision/2026-07-02-plans-backup-hole-postmortem.md` · `records/decision/2026-07-13-scratchpad-in-brief.md` · `records/decision/2026-07-13-statusbar-hud-build.md` · `records/decision/2026-07-28-model-efficiency-plan-abandoned.md` · `records/decisions/2026-07-17-claudegate-two-way-overwrite.md` · `records/insight/2026-08-01-agent-name-discards-report.md` · `records/insight/2026-08-05-the-code-llm-seam.md` · `records/log/2026-05-30-datagate-websearch-automation.md` · `records/log/2026-05-31-claudeops-v2-audit.md` · `records/log/2026-06-03-relay-ghost-root-cause-fix.md` · `records/log/2026-06-07-overmyshoulder-dev-browser-root-cause.md` · `records/logs/2026-05-26-cross-machine-sync-infrastructure.md` · `records/reference/2026-07-12-stage2-email-interpret-method.md` · and 13 more of the same kind.
 >   The lesson is complete without them; the path was the filing location of the original write-up.
-> - ⛔ **The shared-primitives library** — `system/parts/` · `system/parts/README.md` · `system/parts/accrual_gate.py` · `system/parts/bounded_input.py` · `system/parts/capture_gate_selftest.py` · `system/parts/completeness_receipt.py` · `system/parts/fanout_budget.py` · `system/parts/fanout_completeness.py` · `system/parts/fanout_gate.py` · `system/parts/forbidden_content.py` · `system/parts/identifier_redaction.py` · `system/parts/map_carry_receipt.py` · `system/parts/move_aside.py` · `system/parts/order_lint.py` · `system/parts/phase_gate.py` · `system/parts/precondition_gate.py` · `system/parts/residue_scrub.py` · `system/parts/routing_evals.py` · `system/parts/section_present.py` · `system/parts/voted_judge.py` · `system/parts/write_ledger.py`
+> - ✅ **The shared-primitives library — SIX OF THESE HAVE SINCE LANDED, and this line was corrected
+>   rather than left to rot.** `system/parts/` now exists here and holds
+>   `forbidden_content.py` · `move_aside.py` · `residue_scrub.py` (with the shipping lane) and
+>   `order_lint.py` · `phase_gate.py` · `section_present.py` (with `/skill-builder`). Every citation of
+>   those six on this page now resolves, and `system/parts/run_selftests.sh` gates them.
+> - ⛔ **The rest of that library is still not here** — `system/parts/README.md` · `system/parts/accrual_gate.py` · `system/parts/bounded_input.py` · `system/parts/capture_gate_selftest.py` · `system/parts/completeness_receipt.py` · `system/parts/fanout_budget.py` · `system/parts/fanout_completeness.py` · `system/parts/fanout_gate.py` · `system/parts/identifier_redaction.py` · `system/parts/map_carry_receipt.py` · `system/parts/precondition_gate.py` · `system/parts/routing_evals.py` · `system/parts/voted_judge.py` · `system/parts/write_ledger.py`
 > - ⛔ **Tools from the donor system** — `system/tools/checkin_open.py` · `system/tools/conformance-lab/t5_grade.py` · `system/tools/fanout-lab/` · `system/tools/gauge_check.py` · `system/tools/health_line.py` · `system/tools/ingest_coverage.py` · `system/tools/ingest_setdiff.py` · `system/tools/new-skill.sh` · `system/tools/section_archive.py` · `system/tools/skill_promise_check.py` · `system/tools/skill_promise_sweep.py`
 > - ⛔ **Hooks from the donor system** — `system/hooks/guard_agent_return_channel.sh` · `system/hooks/mirror_plans.sh` · `system/hooks/scratch_capture_gate.sh`
-> - ⛔ **The shipping lane** — `system/shipping-lane/judge.py` · `system/shipping-lane/scrub.py` · `system/shipping-lane/scrub.py:110,368`
-> - ⛔ **Other documents** — `.claude/skills/extension/` · `.claude/skills/invocation/` · `.claude/skills/skill-builder/` · `shared/tools/intake_reader.py` · `system/factory/emit_gate.py` · `system/factory/extract_clauses.py` · `system/factory/route_to_part.py` · `system/reference/settings.json` · `system/security-canon.md` · `system/sops/skill-irl-findings.md`
+> - ✅ **The shipping lane has since landed** — `system/shipping-lane/judge.py` and `system/shipping-lane/scrub.py` are both here now, with `/ship`. 
+>   ⛔ Line numbers cited elsewhere on this page against the donor's copies of those two files will
+>   not match, because both were rewritten so their rules come from the reader's own identity file
+>   rather than the author's name.
+> - ⛔ **Other documents** — `.claude/skills/extension/` · `.claude/skills/invocation/` · `shared/tools/intake_reader.py` · `system/factory/emit_gate.py` · `system/factory/extract_clauses.py` · `system/factory/route_to_part.py` · `system/reference/settings.json` · `system/security-canon.md` · `system/sops/skill-irl-findings.md`
 >
 > ⚠ **`system/parts/` is the big one, and it is worth knowing why.** That library is where the donor
 > system kept its small reusable gates — a fan-out budget, a write ledger, a completeness receipt.
 > This page cites them constantly as worked examples of *"build the gate once, source it everywhere."*
-> **The principle is the transferable part.** Two of them did cross under different names
-> (`shared/bounded_input.py`, `shared/emit/verdicts.py`); the rest are inventory, not assets.
+> **The principle is the transferable part**, and six of the parts have now crossed because a shipped
+> skill actually needed them — which is the rule this page teaches, applied to itself: a part crosses
+> when it has a caller, never because it is good. Two more crossed earlier under different names
+> (`shared/bounded_input.py`, `shared/emit/verdicts.py`). The remainder are inventory, not assets.
+>
+> ⚠ **THIS BLOCK GOES STALE EVERY TIME SOMETHING LANDS, AND A STALE ONE IS WORSE THAN NONE** — it
+> tells a reader not to bother looking for a file that is right there. It was wrong in ten places the
+> day `/ship` and `/skill-builder` landed. `system/tools/citation_lint.py` catches exactly this and is
+> what caught it; re-run it after anything crosses.
 
 **How to build a ClaudeOps skill that fires when it should, runs the right flow, obeys its own procedure, and
 holds the line over a long session — without over-building.**
@@ -757,7 +772,8 @@ one actually needs.
   [--selftest]`. Don't use for: proving a REQUIRED thing is present — it only proves an absence; section_present
   is its mirror image for presence.
 - **`system/parts/move_aside.py`** — destructive-op safety net: keeps `.prev` generations, never `rm`s.
-  CALLERS: 3 in the live `/ship` lane — `system/shipping-lane/scrub.py:110,368`, `judge.py:223`,
+  CALLERS: 3 in the live `/ship` lane — ⛔ `system/shipping-lane/scrub.py:110,368` (donor line
+  numbers; both files are here but were rewritten, so the numbers no longer match), `judge.py:223`,
   `push_gate.py:219`. **Absent from every prior version of this table despite being live in production — a
   bigger miss than any missing marker.** INTERFACE: `move_aside.py --target PATH [--keep N] [--dry-run]
   [--json] [--selftest]`. Don't use for: a correctness or completeness check — it says nothing about whether
@@ -1340,7 +1356,7 @@ the thing lives:
   three skills carrying it (`/ship`, `/onboard-probe`, `/world-model-builder`), after `/autoplan`'s removal
   on 2026-08-04. **The fleet now has zero.**
   **CONFIRMED TRUE — 2026-08-06, later the same day.** The claim above was false when first written:
-  ⏳ `/skill-builder` — which lands later in phase 3 — still carried the flag, scaffolded that same day
+  ✅ `/skill-builder` — which has since landed — still carried the flag, scaffolded that same day
   from a stale copy of this rule (its own spec cited the pre-retirement text as if it were still live).
   It was removed the same day.
   `grep -rn "^disable-model-invocation" skills/*/SKILL.md` now returns zero — the fleet actually has zero.

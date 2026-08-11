@@ -1,0 +1,141 @@
+{
+  "_comment": [
+    "THE ARTIFACT FLOOR for /skill-builder -- the six rows ratified by the owner 2026-08-08 (F2.5.1).",
+    "Source of every clause: state/projects/skill-builder/records/2026-08-07-artifact-floor-six-rows.md",
+    "",
+    "WHAT THIS GRADES: the RUN-EVIDENCE file a single pass through the chain leaves behind --",
+    "one file, six '## BUILDER PHASE N' sections. phase_gate.py slices to the phase's own",
+    "section (never the cumulative file) and checks that phase's requires/forbids.",
+    "",
+    "WHAT THIS DOES *NOT* GRADE: the six phase DRIVER files in phases/. Their step lists are",
+    "L7/L14 HARD-locked -- 'Only the human may change it' -- so nothing here touches them.",
+    "",
+    "THE BOUND, ADOPTED NOT RE-LITIGATED (phase_gate.py's own DECLARED UNCHECKABLE block):",
+    "a 'requires' pattern check proves the declared text is PRESENT in the phase's own slice.",
+    "It CANNOT prove the matched text is real work -- 'no trace independent of the artifact",
+    "exists'. That is TERMINAL; do not try to fix it with a substantive-content heuristic",
+    "(built, measured and REVERTED already). So every phase below ALSO requires its own",
+    "INDEPENDENT TRACE field -- a value the phase could not have written by itself (a git",
+    "hash, a foreign session id, a fan-out return count). THAT is the causation half.",
+    "'forbids' is NOT covered by the bound and stays sound as built.",
+    "",
+    "SCHEMA NOTE, learned by running it 2026-08-08: 'requires' entries take a bare {id,",
+    "pattern}. 'forbids' entries are delegated whole to forbidden_content.py and take",
+    "{id, mode, term|pattern} -- mode 'declaration' (a labelled assignment) or 'mention' (any",
+    "word-boundary hit) or 'regex' (explicit pattern, required for anything the other two",
+    "do not cover). Every forbids rule below is mode 'regex' because each targets a",
+    "field-value shape, not a bare term. Mixing the two schemas returns CANNOT EVALUATE --",
+    "fail-closed, which is correct behaviour and is how this note got written.",
+    "",
+    "RANKED BY HOW REAL THE GATE IS (from F2.5.1): phase 5 (git hash) and phase 6 (foreign",
+    "session id) are strongest -- neither can be produced by the phase that claims them.",
+    "Phase 1 is WEAKEST and is deliberately NOT sold as gated: two of its three done-clauses",
+    "are human_in_the_loop and no independent trace exists. Recorded, not smoothed."
+  ],
+  "skill": "skill-builder",
+  "spec_source": ".claude/skills/skill-builder/SPEC.md",
+  "artifact": "run-evidence.md",
+  "marker": "✅ phase {n} complete",
+  "phases": {
+    "1": {
+      "name": "define the desired outcome  [WEAKEST -- see _comment]",
+      "_tag": "human_in_the_loop on clauses (a) and (b); enforceable on clause (c) only",
+      "_independent_trace": "NONE. The same session writes both the brief and its own arm row.",
+      "requires": [
+        {"id": "outcome-decision", "pattern": "OUTCOME-RECORD:\\s*(ARMED-BRIEF|NO-BRIEF-ONE-STEP)",
+         "why": "closed set, LAW 1. Step 1.7 legitimately writes NO brief for a one-step skill, so absence of a brief is a legal outcome -- but the DECISION must be recorded either way."},
+        {"id": "arm-trace", "pattern": "ARM-EVENT:\\s*\\S+",
+         "why": "the arm-events.log row citation. Weak (same session writes it) -- it proves an output exists, never that the phase happened."}
+      ],
+      "forbids": [
+        {"id": "no-unrecorded-outcome", "mode": "regex", "pattern": "OUTCOME-RECORD:\\s*(NOT-RECORDED|TBD)\\b",
+         "why": "the no-outcome member must break loudly, never pass silently"}
+      ]
+    },
+    "2": {
+      "name": "propose the phases + each phase's desired outcome",
+      "_tag": "enforceable",
+      "_independent_trace": "the human's raw answer at fork 2.6, captured verbatim by fork.py",
+      "requires": [
+        {"id": "provenance", "pattern": "PROVENANCE:\\s*(HUMAN-AUTHORED|MACHINE-ACCEPTED)",
+         "why": "step 2.9: 'Record, for each phase, whether its done is the human's own words or a machine draft the human accepted.' Closed set."},
+        {"id": "fork-verdict", "pattern": "FORK:\\s*2\\.6\\s*=\\s*B",
+         "why": "the phase cannot close on anything but B; this is the independent trace"}
+      ],
+      "forbids": [
+        {"id": "no-blank-provenance", "mode": "regex", "pattern": "PROVENANCE:\\s*(NOT-RECORDED|TBD)\\b",
+         "why": "a builder-drafted outcome the human never saw is 'a guess wearing a locked outcome's clothes' (driver stop-check)"}
+      ]
+    },
+    "3": {
+      "name": "decide the steps  [STRONGEST STRUCTURAL -- every clause is a field check]",
+      "_tag": "enforceable, fully",
+      "_independent_trace": "the denominator comes from BUILDER PHASE 2's artifact -- this phase cannot set its own bar (LAW 4.1: pin the denominator first)",
+      "requires": [
+        {"id": "setdiff-receipt", "pattern": "SET-DIFF:\\s*missing=\\d+",
+         "why": "LAW 4.1 -- completeness is permanently a native-id set-diff in code, never a model's judgement"},
+        {"id": "denominator-pinned", "pattern": "DECLARED:\\s*\\d+\\s*\\(from BUILDER PHASE 2\\)",
+         "why": "the denominator must be traceable to the PRIOR phase, or completeness is asserted not proven"},
+        {"id": "step-fields", "pattern": "STEP-FIELDS:\\s*violations=\\d+",
+         "why": "every step carries purpose + actor + layer; every human step declares LLM or CODE with a valid-answer set and a failure mode"}
+      ],
+      "forbids": [
+        {"id": "no-missing-steps", "mode": "regex", "pattern": "SET-DIFF:\\s*missing=[1-9]",
+         "why": "a phase that silently lost its step list must refuse, not report clean"},
+        {"id": "no-step-violations", "mode": "regex", "pattern": "STEP-FIELDS:\\s*violations=[1-9]",
+         "why": "a step missing its actor, layer, or (for a CODE step) its valid-answer set and failure mode"}
+      ]
+    },
+    "4": {
+      "name": "the tension swarm",
+      "_tag": "enforceable",
+      "_independent_trace": "four separate subagent processes -- a skipped swarm has no returns to capture",
+      "requires": [
+        {"id": "fanout-capture", "pattern": "READERS-RETURNED:\\s*\\d+\\s*/\\s*4",
+         "why": "LAW 4.1 -- fire the check AT THE FAN-OUT RETURN BOUNDARY, never at phase exit, where the drop is already invisible"},
+        {"id": "rulings-complete", "pattern": "RULINGS:\\s*adopted=\\d+\\s+rejected=\\d+\\s+decided-differently=\\d+",
+         "why": "step 4.10 -- 'the rejections matter as much as the fixes; an unrecorded rejection gets re-proposed by the next reader who looks'"},
+        {"id": "carry-receipt", "pattern": "CARRY-RECEIPT:\\s*(OK|dropped=\\d+)",
+         "why": "step 4.5 -- 'nothing is thrown away'. map_carry_receipt.py proves every finding reached the record or was explicitly declared dropped."}
+      ],
+      "forbids": [
+        {"id": "no-silent-swarm-skip", "mode": "regex", "pattern": "READERS-RETURNED:\\s*0\\s*/\\s*4",
+         "why": "LAW 1b -- an unreachable reader maps onto no-outcome, NEVER onto clean"}
+      ]
+    },
+    "5": {
+      "name": "build it  [STRONGEST CAUSATION -- git computes the hash]",
+      "_tag": "enforceable",
+      "_independent_trace": "the git commit hash. A model cannot write a valid hash for a diff that does not exist.",
+      "requires": [
+        {"id": "commit", "pattern": "COMMIT:\\s*[0-9a-f]{7,40}",
+         "why": "the only literally un-forgeable trace in the chain"},
+        {"id": "sop-cited", "pattern": "SOP-CITED:\\s*(yes|true)",
+         "why": "step 5.6 -- 'a plan that cites nothing did not check anything'"},
+        {"id": "tester-verdict", "pattern": "TESTER:\\s*(PASSED|FAILED|NO-TESTER-RAN)",
+         "why": "LAW 1b -- the no-outcome member is what keeps 'no tester ran' honest instead of clean. /skill-tester is ruled skipped (the owner 2026-08-07), so NO-TESTER-RAN is the live value."}
+      ],
+      "forbids": [
+        {"id": "no-fake-pass", "mode": "regex", "pattern": "TESTER:\\s*(assumed|probably|likely|n/?a)\\b",
+         "why": "step 5.10 -- 'an untested skill is never recorded as a passing one'"}
+      ]
+    },
+    "6": {
+      "name": "the live run and the loop back",
+      "_tag": "enforceable",
+      "_independent_trace": "a FOREIGN session id in arm-events.log. Session A structurally cannot produce it -- it would have to be a different session.",
+      "requires": [
+        {"id": "foreign-session", "pattern": "SESSION-B:\\s*[0-9a-f]{8}-[0-9a-f-]{4,}",
+         "why": "the strongest free trace in the system -- the log already records exactly these fields"},
+        {"id": "observations-carried", "pattern": "OBSERVATIONS:\\s*carried=\\d+\\s+out-of-scope=\\d+",
+         "why": "driver stop-check -- 'an observation that lives only in the transcript is lost'"},
+        {"id": "stop-verdict", "pattern": "FORK:\\s*6\\.13\\s*=\\s*B",
+         "why": "'the human says it is good enough to stop' is the only clause that can close this phase"}
+      ],
+      "forbids": [
+        {"id": "no-self-session", "mode": "regex", "pattern": "SESSION-B:\\s*(same|self|SESSION-A)\\b",
+         "why": "if session B is session A, the whole point of the two-window split is gone"}
+      ]
+    }
+  }
+}
