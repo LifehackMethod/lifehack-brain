@@ -18,6 +18,14 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import citation_lint as lint                                    # noqa: E402
 
+# ⭐ TAKE AN OPEN PHASE FROM THE LINT ITSELF, never a hardcoded name.
+# These fixtures need "a phase that is still open" — the NAME is irrelevant to what they prove.
+# Two of them said "Phase 2", and when Phase 2 closed on 2026-08-11 both went red: not because the
+# lint broke, but because the tests had quietly become assertions about the project's schedule
+# rather than about the rule. A test coupled to a calendar fails on a date rather than on a defect,
+# and whoever hits it has to work out which of the two it was.
+OPEN_PHASE = sorted(k for k in lint.OPEN_LANDINGS if k.startswith("phase"))[0]
+
 SETTINGS = """{
   "hooks": {"UserPromptSubmit": [{"hooks": [{"type": "command",
     "command": "bash \\"${CLAUDE_PROJECT_DIR}/system/hooks/live.sh\\""}]}]}
@@ -125,10 +133,10 @@ class TheThreeClaims(Fixture):
         self.assertIn("claimed ✅ here and is NOT here", out)
 
     def test_a_deferral_naming_an_open_phase_is_accepted_and_reported(self):
-        self.write("docs/a.md", "| `system/tools/later.py` | why | lands in Phase 2 |\n")
+        self.write("docs/a.md", f"| `system/tools/later.py` | why | lands in {OPEN_PHASE} |\n")
         rc, out = self.lint()
         self.assertEqual(rc, 0)
-        self.assertIn("phase 2", out)
+        self.assertIn(OPEN_PHASE, out)
 
     def test_a_deferral_naming_a_closed_landing_fails(self):
         # The whole point of the closed set: T1.14 is over, so a row still waiting on it is a lie.
@@ -203,7 +211,7 @@ class TheThreeClaims(Fixture):
     def test_a_routing_table_claims_its_second_column_when_the_first_holds_no_path(self):
         self.write("docs/a.md",
                    "| building… | read first | status |\n|---|---|---|\n"
-                   "| **a hook** | `system/tools/later.py` | lands in Phase 2 |\n")
+                   f"| **a hook** | `system/tools/later.py` | lands in {OPEN_PHASE} |\n")
         self.assertEqual(self.lint()[0], 0)
 
 
