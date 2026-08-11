@@ -161,6 +161,9 @@ def main():
     p = argparse.ArgumentParser(description="passes engine: cluster → rule whole baskets → deep-dive survivors")
     sub = p.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("summary"); s.add_argument("--map", required=True)
+    # ⚠ The default is the NARROW set (only what the tagger gave no category to). The SORT board wants
+    # the WIDE set -- `--include untouched,maybe-skip` -- or the human rules on pile boundaries having
+    # been shown only the junk candidates. PHASE 1 passes it explicitly for exactly that reason.
     s.add_argument("--include", default="maybe-skip"); s.set_defaults(fn=cmd_summary)
     u = sub.add_parser("unclustered"); u.add_argument("--map", required=True)
     u.add_argument("--include", default="maybe-skip"); u.add_argument("--limit", type=int, default=0)

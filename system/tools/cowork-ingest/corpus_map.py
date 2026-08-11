@@ -205,8 +205,17 @@ def do_migrate(a):
     m.setdefault("baskets", {})
     rows = m.get("rows", {})
     for r in rows.values():
-        # basket key = the existing Pass-1 subject cluster, then a deep-dive vein, else UNCLUSTERED
-        if not r.get("basket"):
+        # basket key = the existing Pass-1 subject cluster, then a deep-dive vein, else UNCLUSTERED.
+        #
+        # ⚠ THE SECOND CLAUSE IS LOAD-BEARING — without it the piles never become baskets. PHASE 1 runs
+        # `migrate` at step 1.0d, BEFORE any chat has a subject, so every row is seeded UNCLUSTERED.
+        # It then sorts chats into piles (1.2, writing `subject`) and says "re-migrate to seed the new
+        # baskets" (1.2b) — but a plain `if not r.get("basket")` is already satisfied by the string
+        # "UNCLUSTERED", so the re-migrate did nothing and every chat stayed in one giant basket
+        # forever. Measured on a fixture corpus: 10 chats sorted into 5 piles produced ONE basket, and
+        # `pad-init` — "one pad per pile" — wrote one pad.
+        # Re-seeding only when the basket is still UNCLUSTERED never overwrites a real basket.
+        if not r.get("basket") or (r["basket"] == "UNCLUSTERED" and r.get("subject")):
             r["basket"] = r.get("subject") or r.get("vein") or "UNCLUSTERED"
         for col, default in pipeline.CHAT_V2_DEFAULTS.items():
             r.setdefault(col, default)

@@ -240,13 +240,17 @@ tags are the entire input, on purpose. Each chat written to exactly one pile:
 **`1.2b` Cluster the unclustered pile (metadata only, never bodies).** Read the TITLES of chats whose
 `basket` is `UNCLUSTERED` or a giant catch-all, group them into ad-hoc subjects, write each back the same
 way as `1.2`, then re-`migrate` to seed the new baskets. `python3 $T/basket_review.py unclustered --map
-"$MAP"` shows what's left. Keep baskets human-sized — a 500-chat basket is not sorted, it's a pile that
+"$MAP" --include untouched,maybe-skip` shows what's left. Keep baskets human-sized — a 500-chat basket is not sorted, it's a pile that
 still needs splitting.
 
 **`1.3` Report what came back — AFTER the long operation.**
 ```bash
 python3 $T/pipeline.py progress --map "$MAP" --just-did "grouped your old chats into subject piles" --next "look over the groups and tell me which whole piles are pure junk"
-python3 $T/basket_review.py summary --map "$MAP"
+# ⛔ --include is REQUIRED here. Left off, it defaults to `maybe-skip` -- the chats the tagger gave NO
+# category to -- so the board shows only the junk candidates and every tagged chat is invisible. The
+# human would then rule on pile boundaries having been shown almost nothing. Measured on a fixture
+# corpus: 10 chats sorted into 5 piles rendered as "0 chats, 0 piles".
+python3 $T/basket_review.py summary --map "$MAP" --include untouched,maybe-skip
 ```
 **Reproduce the whole screen in your OWN reply.** Do NOT leave it in the collapsed command block — the
 human sees only "+N lines" and thinks nothing happened. Then say, in these words or close to them:
@@ -289,7 +293,7 @@ number three" was read as a toss when the human meant keep — caught only becau
 
 **`1.5` Write it**, then re-render the board and offer the choice:
 ```bash
-python3 $T/basket_review.py summary --map "$MAP"
+python3 $T/basket_review.py summary --map "$MAP" --include untouched,maybe-skip   # see 1.3 on why --include
 ```
 
 > **PRESENTATION — paste verbatim:**
@@ -370,8 +374,12 @@ has actually fired — this step rounds up everything PHASE 1 just settled (the 
 split/merge/close the human ruled, the counts) and writes it into a NEW project for this corpus, one per
 corpus:
 ```bash
-ROOT="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && pwd)"   # the brain folder
-python3 $T/pipeline.py pad-init --map "$MAP" --root "$ROOT"   # one pad PER PILE, plus a corpus pad
+# ⛔ --root is THEIR notes folder, NOT this repo. `pad_write` says so in its own contract: the root "is
+# simply the folder the human already named". This line used to pass `git rev-parse --show-toplevel`,
+# which is the folder the TOOL was cloned into — so every pad landed inside the tool folder and would
+# have been wiped by the next update. Resolve it the same way every other phase does.
+DRIVE="$(python3 "$T/pipeline.py" brain-root --quiet)" || { echo "STOP: no brain root set yet — go back to step 1.0"; exit 1; }
+python3 $T/pipeline.py pad-init --map "$MAP" --root "$DRIVE"   # one pad PER PILE, plus a corpus pad
 ```
 **Reproduce whatever path it reports in your OWN reply** — never leave it in the collapsed command block;
 that path is what you tell the human next.
