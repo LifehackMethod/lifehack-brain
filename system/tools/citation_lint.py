@@ -81,7 +81,6 @@ from verdicts import CANNOT_READ, print_cannot_read           # noqa: E402
 # every row still waiting on it -- which is precisely the set of promises that phase was supposed to
 # keep and did not. Leaving a closed label in place converts the lint into a rubber stamp.
 OPEN_LANDINGS = {
-    "phase 2": "the security wall and the web plane",
     "phase 3": "the remaining skills",
     "phase 4": "the author's own cutover",
     "phase 5": "cleanup and the final gate",
