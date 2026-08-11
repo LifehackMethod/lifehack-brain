@@ -506,6 +506,26 @@ Install them when you first hit one. Plain text, markdown and CSV need nothing.
 
 ---
 
+# NOTIFICATIONS ON YOUR PHONE — optional, and off until you set it up
+
+Nothing pushes to your phone unless you give it somewhere to push to. If you want it, pick a long
+unguessable string as your topic, subscribe to that topic in the **ntfy** app, and write it down:
+
+```bash
+mkdir -p ~/.config/lifehack
+umask 077 && printf %s 'your-long-unguessable-topic' > ~/.config/lifehack/ntfy-topic
+```
+
+**Treat that string as a password.** Anyone who knows it can read every notification you send.
+
+Two things are true of it by design. **A notification is a doorbell, never the parcel** — it says
+something happened and where to look, and never carries names, amounts or content, because a push
+lands on a lock screen. And **the volume is capped in code, not by good intentions**: no more than
+three per source per day, nothing during quiet hours, and the same message never twice. A genuine
+emergency ignores all three, which is the only reason the other three can be trusted.
+
+---
+
 # THE GOOGLE-CONNECTED PARTS — the readers are here, the connection is not
 
 The **sanitizing side** now ships: `system/tools/safe_calendar.py` and `system/tools/safe_tasks.py`
