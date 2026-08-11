@@ -54,10 +54,12 @@ set, the honest answer is "not set" and the tool refuses.
 > voice rules ban the jargon out loud while the path keeps it. Don't rename the folder to fix the
 > vocabulary; the fix is in how you talk, and it is already made.
 
-Three of those exist on day one and nothing else does: `system/journal.md`,
-`system/project-registry.md`, and the projects folder. `system/tools/bootstrap.py` makes exactly those
-and refuses to make more, for the reason written at the top of that file — which subjects your life
-divides into is yours to discover, and a starter folder is a guess that teaches itself as the answer.
+Four of those exist on day one and nothing else does: `system/journal.md`,
+`system/project-registry.md`, the projects folder, and `canon.md` — the last of these shipped **empty
+of canon lines, carrying only its own purpose**, so a later step has a floor to write onto instead of
+open air. `system/tools/bootstrap.py` makes exactly those and refuses to make more, for the reason
+written at the top of that file: which subjects your life divides into is yours to discover, and a
+starter folder is a guess that teaches itself as the answer.
 
 ## A project
 

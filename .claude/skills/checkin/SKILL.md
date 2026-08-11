@@ -168,8 +168,8 @@ Each comes from a tool's exit code. **Quote the token in the receipt** — its a
 | `system/tools/save/save_step_ledger.py` | the coverage table, `--ns checkin` | ✅ here |
 | `system/tools/save/pm_flag_recover.py` | recovers a flag that expired mid-session | ✅ here |
 | `.claude/agents/worker.md` | the blind reader — read-only by construction | ✅ here |
-| `system/tools/checkin/gauge_check.py` | check 4, the competing-gauges check | lands in T1.10 |
-| `system/tools/checkin/board_check.py` | check 5, the stale-queue check | lands in T1.10 |
+| `system/tools/checkin/gauge_check.py` | check 4, the competing-gauges check | ✅ here |
+| `system/tools/checkin/board_check.py` | check 5, the stale-queue check | ✅ here |
 | `system/schemas/project-doc-schema.md` | the brief's sections and the compaction procedure | lands in T1.14 |
 | `system/work-altitude-doctrine.md` | how a rung is composed | lands in T1.14 |
 | `system/sops/plan-sharpening-sop.md` | the shared world-model load and the session mining | lands in T1.14 |
