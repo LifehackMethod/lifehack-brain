@@ -9,6 +9,26 @@
 # Nothing here is required for the system to work -- it is a display. It degrades field by field:
 # a marker file that does not exist simply does not render.
 
+# ── hash_key: the fallback session key, and it MUST match everywhere ──────────────────────────────
+# When the harness gives us no session id we key on the working directory instead. `shasum` does that
+# on macOS and Linux and is ABSENT from Git Bash on Windows, where it produces an EMPTY key — so every
+# window on that machine would collide on one flag, silently.
+# ⚠ SHA-1 DELIBERATELY, NOT SHA-256: this must equal what `shasum` prints, or a machine that has
+# shasum and a machine that does not would key the SAME folder differently. One writer and one reader
+# disagreeing about the key is worse than having no key at all.
+# ⚠ This snippet is IDENTICAL in every file that needs it (plan_flag, pm_flag, pm_persist, skill_anchor,
+# skill_anchor_inject, statusline). Keep it that way — the next platform fix should land in one shape.
+# ⚠ DEFINE IT AT THE TOP, never beside its first use: these files branch on whether the harness gave
+# us a session id, and a definition placed inside that branch is not defined on the other one.
+# TEMPORARY: Git Bash is the documented Windows floor; a real Windows story is still owed.
+hash_key() {
+  _hk="$(printf '%s' "$1" | shasum 2>/dev/null | cut -c1-12)"
+  if [ -z "$_hk" ]; then
+    _hk="$(printf '%s' "$1" | python3 -c 'import hashlib,sys; sys.stdout.write(hashlib.sha1(sys.stdin.buffer.read()).hexdigest())' 2>/dev/null | cut -c1-12)"
+  fi
+  printf '%s' "$_hk"
+}
+
 INPUT=$(cat)
 
 MODEL=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); m=d.get('model',{}); print(m.get('display_name','') or m.get('name','') if isinstance(m,dict) else m)" 2>/dev/null)
@@ -63,7 +83,7 @@ if [ -n "$SID" ]; then
   PLAN_FLAG="$RUN/plan/plan-sess-$SID.flag"
   SCRATCH_FLAG="$RUN/scratch/scratch-sess-$SID.flag"
 else
-  H=$(printf '%s' "$PWD" | shasum 2>/dev/null | cut -c1-12)
+  H=$(hash_key "$PWD")
   PM_FLAG="$RUN/pm/pm-cwd-$H.flag"
   PLAN_FLAG="$RUN/plan/plan-cwd-$H.flag"
   SCRATCH_FLAG="$RUN/scratch/scratch-cwd-$H.flag"

@@ -35,6 +35,26 @@
 #   pm_flag.sh status                              # print active doc or "none"
 #   pm_flag.sh locked                              # print the locked slug, or "none"
 # exit 0 = ok · 1 = usage/arg error · 2 = unknown verb · 3 = REFUSED BY THE LOCK
+# ── hash_key: the fallback session key, and it MUST match everywhere ──────────────────────────────
+# When the harness gives us no session id we key on the working directory instead. `shasum` does that
+# on macOS and Linux and is ABSENT from Git Bash on Windows, where it produces an EMPTY key — so every
+# window on that machine would collide on one flag, silently.
+# ⚠ SHA-1 DELIBERATELY, NOT SHA-256: this must equal what `shasum` prints, or a machine that has
+# shasum and a machine that does not would key the SAME folder differently. One writer and one reader
+# disagreeing about the key is worse than having no key at all.
+# ⚠ This snippet is IDENTICAL in every file that needs it (plan_flag, pm_flag, pm_persist, skill_anchor,
+# skill_anchor_inject, statusline). Keep it that way — the next platform fix should land in one shape.
+# ⚠ DEFINE IT AT THE TOP, never beside its first use: these files branch on whether the harness gave
+# us a session id, and a definition placed inside that branch is not defined on the other one.
+# TEMPORARY: Git Bash is the documented Windows floor; a real Windows story is still owed.
+hash_key() {
+  _hk="$(printf '%s' "$1" | shasum 2>/dev/null | cut -c1-12)"
+  if [ -z "$_hk" ]; then
+    _hk="$(printf '%s' "$1" | python3 -c 'import hashlib,sys; sys.stdout.write(hashlib.sha1(sys.stdin.buffer.read()).hexdigest())' 2>/dev/null | cut -c1-12)"
+  fi
+  printf '%s' "$_hk"
+}
+
 set +e
 TTL_HOURS="${PM_TTL_HOURS:-36}"
 FLAGDIR="$HOME/.claude/run/pm"; mkdir -p "$FLAGDIR" 2>/dev/null
@@ -42,7 +62,7 @@ if [ -n "$CLAUDE_CODE_SESSION_ID" ]; then
   KEY="sess-$CLAUDE_CODE_SESSION_ID"
   LOCKABLE=1
 else
-  KEY="cwd-$(printf '%s' "$PWD" | shasum 2>/dev/null | cut -c1-12)"
+  KEY="cwd-$(hash_key "$PWD")"
   LOCKABLE=0   # two windows in one folder share this key — a lock here would misfire
 fi
 FLAG="$FLAGDIR/pm-$KEY.flag"
