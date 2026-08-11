@@ -48,15 +48,33 @@ STUB = {
 #
 # Resolution order, first hit wins:
 #   1. --vocab <path>                       explicit, always wins
-#   2. <brain root>/memory/topic-vocab.md   the person's own, the normal case
-#   3. system/topic-vocab.md                legacy in-repo copy; supported so an existing install does not
-#                                           break, but never shipped and never created here.
-def _brain_root():
-    """The folder the person opened — this file sits at <root>/system/tools/cowork-ingest/."""
-    return os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
+#   2. <data root>/memory/topic-vocab.md    the person's own, the normal case
+#   3. <repo>/memory/topic-vocab.md         back-compat: where it was looked for before the data root
+#                                           moved outside the repo. Still honoured, never created here.
+#   4. <repo>/system/topic-vocab.md         legacy in-repo copy; supported so an existing install does
+#                                           not break, but never shipped and never created here.
+#
+# ⚖ 2026-08-11 — rung 2 used to resolve under the REPO, not the data root. That predated the rule that
+# the person's material lives OUTSIDE the repo entirely, and it contradicted this file's own reasoning
+# three lines up: the vocabulary belongs "beside the material it describes". The material is at the data
+# root, so the vocabulary is too. Rung 3 keeps anyone who already put one in the repo working.
+_REPO = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
 
 
-VOCAB_PATH = os.path.join(_brain_root(), "memory", "topic-vocab.md")
+def _data_root():
+    """The folder the person's material lives in, via the one resolver. None when it is not set —
+    never guessed, and rungs 3/4 simply carry on without it."""
+    try:
+        sys.path.insert(0, os.path.join(_REPO, "shared"))
+        import brain_root
+        return brain_root.resolve_brain_root()[1]
+    except Exception:
+        return None
+
+
+_DR = _data_root()
+VOCAB_PATH = os.path.join(_DR, "memory", "topic-vocab.md") if _DR else None
+REPO_VOCAB_PATH = os.path.join(_REPO, "memory", "topic-vocab.md")
 LEGACY_VOCAB_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                   "..", "..", "topic-vocab.md"))
 SLUG_RE = re.compile(r"^- `([a-z0-9-]+)`")
@@ -64,7 +82,7 @@ SLUG_RE = re.compile(r"^- `([a-z0-9-]+)`")
 
 def resolve_vocab(explicit=None):
     """First existing path in the order above, or None. Returns (path_or_None, tried_list)."""
-    tried = [p for p in (explicit, VOCAB_PATH, LEGACY_VOCAB_PATH) if p]
+    tried = [p for p in (explicit, VOCAB_PATH, REPO_VOCAB_PATH, LEGACY_VOCAB_PATH) if p]
     for p in tried:
         if os.path.isfile(p):
             return p, tried
@@ -94,7 +112,7 @@ def main():
     ap.add_argument("--purpose", required=True, help="one-line PURPOSE — never a done-when (intent-doctrine.md)")
     ap.add_argument("--topic", required=True, help="comma-separated topic slug(s), drawn ONLY from your topic vocabulary")
     ap.add_argument("--vocab", default=None, help="explicit path to the topic vocabulary; defaults to "
-                    "<brain root>/memory/topic-vocab.md (yours), then the legacy in-repo copy")
+                    "<data root>/memory/topic-vocab.md (yours), then the in-repo fallbacks")
     ap.add_argument("--desk", default="root", help="owning desk slug for the frontmatter desk: field (default: root)")
     ap.add_argument("--title", default=None, help="display title (default: derived from the last path segment)")
     ap.add_argument("--not", dest="near_miss", default=None, help="OPTIONAL — the ONE near-miss line (never an exclusion list)")

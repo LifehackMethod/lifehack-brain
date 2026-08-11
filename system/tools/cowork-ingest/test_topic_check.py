@@ -42,12 +42,15 @@ class VocabCase(unittest.TestCase):
             f.write(VOCAB)
         # Point both resolvers at throwaway paths so a developer's real vocabulary is never consulted
         # and the in-repo legacy path (which must not exist) is never confused with a temp file.
-        self._saved = (folder_scaffold.VOCAB_PATH, folder_scaffold.LEGACY_VOCAB_PATH)
-        folder_scaffold.VOCAB_PATH = os.path.join(self.tmp, "brain", "memory", "topic-vocab.md")
+        self._saved = (folder_scaffold.VOCAB_PATH, folder_scaffold.REPO_VOCAB_PATH,
+                       folder_scaffold.LEGACY_VOCAB_PATH)
+        folder_scaffold.VOCAB_PATH = os.path.join(self.tmp, "data", "memory", "topic-vocab.md")
+        folder_scaffold.REPO_VOCAB_PATH = os.path.join(self.tmp, "repo", "memory", "topic-vocab.md")
         folder_scaffold.LEGACY_VOCAB_PATH = os.path.join(self.tmp, "repo", "system", "topic-vocab.md")
 
     def tearDown(self):
-        folder_scaffold.VOCAB_PATH, folder_scaffold.LEGACY_VOCAB_PATH = self._saved
+        (folder_scaffold.VOCAB_PATH, folder_scaffold.REPO_VOCAB_PATH,
+         folder_scaffold.LEGACY_VOCAB_PATH) = self._saved
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def _plant(self, path):
@@ -60,7 +63,7 @@ class TestResolutionOrder(VocabCase):
     def test_nothing_resolves_when_nothing_exists(self):
         resolved, tried = pipeline.resolve_topic_vocab()
         self.assertIsNone(resolved)
-        self.assertEqual(len(tried), 2, "both fallbacks should be reported as tried")
+        self.assertEqual(len(tried), 3, "every rung should be reported as tried, so the refusal can name them")
 
     def test_explicit_wins(self):
         self._plant(folder_scaffold.VOCAB_PATH)
@@ -72,6 +75,18 @@ class TestResolutionOrder(VocabCase):
         self._plant(folder_scaffold.LEGACY_VOCAB_PATH)
         resolved, _ = pipeline.resolve_topic_vocab()
         self.assertEqual(resolved, folder_scaffold.VOCAB_PATH)
+
+    def test_the_data_root_beats_the_in_repo_back_compat_copy(self):
+        """Their notes moved out of the repo; a vocabulary left behind in the old place must not win."""
+        self._plant(folder_scaffold.VOCAB_PATH)
+        self._plant(folder_scaffold.REPO_VOCAB_PATH)
+        resolved, _ = pipeline.resolve_topic_vocab()
+        self.assertEqual(resolved, folder_scaffold.VOCAB_PATH)
+
+    def test_an_in_repo_vocabulary_still_works_for_an_existing_install(self):
+        self._plant(folder_scaffold.REPO_VOCAB_PATH)
+        resolved, _ = pipeline.resolve_topic_vocab()
+        self.assertEqual(resolved, folder_scaffold.REPO_VOCAB_PATH)
 
     def test_legacy_in_repo_still_resolves_for_an_existing_install(self):
         self._plant(folder_scaffold.LEGACY_VOCAB_PATH)
