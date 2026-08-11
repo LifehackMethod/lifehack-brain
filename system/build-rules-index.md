@@ -179,7 +179,7 @@ A build can also be multiple types below. This question, though, has exactly one
 | **a hook** | `system/sops/hook-sop.md` | ✅ here |
 | **a hook — the mechanics half** | `system/hook-contract.md` | ✅ here |
 | **a skill** | `system/sops/skill-building-sop-extract.md` | ✅ here — LAW 4.2, the one rule the core skills cite |
-| **a skill — the whole SOP** | `system/sops/skill-building-sop.md` | ⏳ lands in Phase 3, with `skill-builder` |
+| **a skill — the whole SOP** | `system/sops/skill-building-sop.md` | ✅ here — all 2,300 lines, with a banner naming what it cites that is not |
 | **memory, a doc, or a where-does-this-live decision** | `docs/data-layout.md` · `system/knowledge-altitude.md` | data-layout ✅ here; knowledge-altitude lands in T1.14 |
 | **a design, dashboard or interface** | `system/sops/design-process-sop.md` | ✅ here |
 | **anything security-touching** | the security wall docs | land in Phase 2 |
