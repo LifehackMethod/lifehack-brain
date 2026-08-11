@@ -15,6 +15,17 @@ reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live i
 
 # Hook SOP — when & how to reach for a hook
 
+> ## ⓘ WHAT THIS PAGE CITES THAT IS NOT IN THIS REPOSITORY
+>
+> This page earns its length by naming the exact record where each lesson was learned. Those records
+> live in the author's own notes folder, not in any repository, and they are named here rather than
+> discovered one dead link at a time.
+>
+> **⛔ None of it is coming**, and none of it is needed: where a rule cites one, the evidence is IN
+> the rule. The path was only ever the filing location of the original write-up.
+>
+> - ⛔ `records/2026-07-13-translator-voice-debug-history.md` · `records/decision/2026-06-27-numbers-integrity-enforcement.md` · `records/log/2026-05-30-datagate-websearch-automation.md` · `state/debt-ledger.md` · `state/projects/project-system/brief.md` · `state/projects/security/security-hardening/brief.md` · `state/projects/skill-builder/records/2026-08-07-dead-end-harvest.md` · `state/projects/translator-voice/brief.md`
+
 > **This doc owns WHEN to build a hook and WHICH kind. It does NOT repeat the mechanics — `system/hook-contract.md` owns those.** It is the single **front door** for hooks: it POINTS at the canonical homes, never copies them. Keep it short — if it grows into a second mechanics manual, it has failed. (Council-ratified 2026-06-17; diverge→argue→converge.)
 
 > ⓘ **WHAT THIS PAGE POINTS AT THAT IS NOT IN THIS REPOSITORY.** A front door is only as good as the

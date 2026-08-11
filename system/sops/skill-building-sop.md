@@ -28,6 +28,13 @@ reader_note: >
 
 # Skill-Building Playbook v2
 
+> ## ⓘ WHAT THIS PAGE CITES THAT IS NOT IN THIS REPOSITORY
+>
+> Named here rather than discovered one dead link at a time.
+>
+> - ⛔ `records/research/2026-07-25-code-vs-llm-enforcement-split.md` · `state/debt-ledger.md` · `state/projects/claudeops-cowork/brief.md` · `state/projects/cowork-bulk-ingestion/brief.md` · `state/projects/huddle/huddle-skill/brief.md` · `state/projects/infrastructure/claudeops-correct-architecture/brief.md` · `state/projects/ingest-skill/brief.md` · `state/projects/project-system/brief.md` · `state/projects/security/security-hardening/brief.md` · `state/projects/security/sentinel-gateway/records/2026-07-03-reader-actor-enforcement-proof.md` · `state/projects/skill-builder/brief.md` · `state/projects/skill-system/brief.md` · `state/projects/translator-voice/brief.md` — records in the author's own notes folder, cited as where a lesson was
+>   learned. Not in any repository, and not needed: the evidence is in the rule.
+
 > ## ⓘ WHAT THIS PAGE POINTS AT THAT IS NOT IN THIS REPOSITORY
 >
 > This is 2,300 lines of hard-won skill-building doctrine, and it earns its length by citing the
@@ -38,6 +45,9 @@ reader_note: >
 > the lesson — the path was only ever the filing location of the original write-up. Read the rule; it
 > is complete without the citation.
 >
+> - ⛔ **Evidence in the author's own notes** — every lesson here cites the project record where it
+>   was learned, and those live under a personal notes folder, not in any repository: `records/2026-07-13-translator-voice-debug-history.md` · `records/decision/2026-06-04-design-claudeops-skill.md` · `records/decision/2026-06-27-numbers-integrity-enforcement.md` · `records/decision/2026-07-02-plans-backup-hole-postmortem.md` · `records/decision/2026-07-13-scratchpad-in-brief.md` · `records/decision/2026-07-13-statusbar-hud-build.md` · `records/decision/2026-07-28-model-efficiency-plan-abandoned.md` · `records/decisions/2026-07-17-claudegate-two-way-overwrite.md` · `records/insight/2026-08-01-agent-name-discards-report.md` · `records/insight/2026-08-05-the-code-llm-seam.md` · `records/log/2026-05-30-datagate-websearch-automation.md` · `records/log/2026-05-31-claudeops-v2-audit.md` · `records/log/2026-06-03-relay-ghost-root-cause-fix.md` · `records/log/2026-06-07-overmyshoulder-dev-browser-root-cause.md` · `records/logs/2026-05-26-cross-machine-sync-infrastructure.md` · `records/reference/2026-07-12-stage2-email-interpret-method.md` · and 13 more of the same kind.
+>   The lesson is complete without them; the path was the filing location of the original write-up.
 > - ⛔ **The shared-primitives library** — `system/parts/` · `system/parts/README.md` · `system/parts/accrual_gate.py` · `system/parts/bounded_input.py` · `system/parts/capture_gate_selftest.py` · `system/parts/completeness_receipt.py` · `system/parts/fanout_budget.py` · `system/parts/fanout_completeness.py` · `system/parts/fanout_gate.py` · `system/parts/forbidden_content.py` · `system/parts/identifier_redaction.py` · `system/parts/map_carry_receipt.py` · `system/parts/move_aside.py` · `system/parts/order_lint.py` · `system/parts/phase_gate.py` · `system/parts/precondition_gate.py` · `system/parts/residue_scrub.py` · `system/parts/routing_evals.py` · `system/parts/section_present.py` · `system/parts/voted_judge.py` · `system/parts/write_ledger.py`
 > - ⛔ **Tools from the donor system** — `system/tools/checkin_open.py` · `system/tools/conformance-lab/t5_grade.py` · `system/tools/fanout-lab/` · `system/tools/gauge_check.py` · `system/tools/health_line.py` · `system/tools/ingest_coverage.py` · `system/tools/ingest_setdiff.py` · `system/tools/new-skill.sh` · `system/tools/section_archive.py` · `system/tools/skill_promise_check.py` · `system/tools/skill_promise_sweep.py`
 > - ⛔ **Hooks from the donor system** — `system/hooks/guard_agent_return_channel.sh` · `system/hooks/mirror_plans.sh` · `system/hooks/scratch_capture_gate.sh`

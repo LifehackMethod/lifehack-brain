@@ -125,6 +125,44 @@ class PathsMustResolve(Fixture):
         self.assertEqual(self.lint()[0], 0)
 
 
+class DataPathsAreNotInvisible(Fixture):
+    """⭐ THE BLIND SPOT THIS CLASS EXISTS TO KEEP CLOSED, found 2026-08-11.
+
+    The lint only recognised a path whose first segment is a top-level directory OF THE REPO. This
+    repo has no `state/`, so `state/telos.md` — a file that ships in neither migration — fell
+    through both branches and was never checked at all. Those are exactly the paths the migration
+    moved, so they are the ones most likely to be stale.
+    """
+
+    def test_a_data_file_without_its_root_is_a_finding(self):
+        self.write("doc.md", "See `state/telos.md` for the year goal.\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 1, "an unprefixed data-side FILE must be a finding, not invisible")
+        self.assertIn("state/telos.md", out)
+
+    def test_the_same_path_written_with_its_root_is_data_and_is_skipped(self):
+        # `<notes>/` says "this lives on a machine the lint cannot see", which is a real answer.
+        # Demanding that a person's journal be committed to a public repo is what everything else
+        # here exists to prevent.
+        self.write("doc.md", "See `<notes>/state/telos.md` for the year goal.\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 0, "a path that names the notes folder is accounted for")
+
+    def test_a_relative_shape_is_not_read_as_a_data_path(self):
+        """`canon/` and `records/` are usually RELATIVE to a folder already named in the sentence.
+        Treating them as roots once produced a banner asserting that `canon/purpose.md` was a
+        record in somebody's private notes — the opposite of true; it is the layout this repo
+        builds. A check that makes a document lie to satisfy it is worse than the gap it closed."""
+        self.write("doc.md", "Each subject folder gets a `canon/purpose.md` and a `records/` dir.\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 0, "a relative sub-path is not a claim about a data root")
+
+    def test_a_bare_data_directory_is_not_a_file_claim(self):
+        self.write("doc.md", "Plans live in `plans/`, one per name.\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 0, "a directory shape describes a layout; it claims no file")
+
+
 class TheThreeClaims(Fixture):
     def test_a_present_claim_for_a_missing_file_fails_and_says_which_claim_broke(self):
         self.write("docs/a.md", "| `system/tools/nope.py` | why | ✅ here |\n")

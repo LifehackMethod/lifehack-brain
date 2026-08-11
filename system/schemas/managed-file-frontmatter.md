@@ -104,7 +104,7 @@ the `records/` canonical list above and use `record_type: project-doc`.
 | `project-doc` | `state/briefs/{slug}.md` (or `<your notes>/state/briefs/` for root) | Living project source-of-truth; rehydratable operating state | skill \| user |
 
 `id` for a project doc is a stable singleton key `{desk}-{slug}` (no date — the
-doc is continuous, not session-stamped). See `state/briefs/README.md`.
+doc is continuous, not session-stamped). See `<notes>/state/briefs/README.md`.
 
 ---
 
@@ -114,7 +114,7 @@ doc is continuous, not session-stamped). See `state/briefs/README.md`.
 |----------|---------|---------|
 | `state/projects/{slug}/records/{type}/` | `YYYY-MM-DD-{slug}.md` | `2026-03-25-discovery.md` |
 | `state/projects/{slug}/state/` | fixed names | `current.md`, `open-loops.md` |
-| `state/projects/{slug}/` | `brief.md` (the project doc) | `state/projects/widget/brief.md` |
+| `state/projects/{slug}/` | `brief.md` (the project doc) | `<notes>/state/projects/widget/brief.md` |
 | `state/projects/{slug}/canon/` | fixed name | `current.md` |
 | `state/projects/{slug}/sources/` | subdirs: `inbox/`, `reference/`, `research/` | `2026-03-25-transcript.md` |
 | `state/projects/{slug}/_registry.md` | fixed name | — |
@@ -127,8 +127,8 @@ doc is continuous, not session-stamped). See `state/briefs/README.md`.
 
 Every session:
 - `records/daily/{YYYY-MM-DD}.md` — session wrap-up
-- `state/current.md` — update live posture
-- `state/open-loops.md` — update domino list
+- `<notes>/state/current.md` — update live posture
+- `<notes>/state/open-loops.md` — update domino list
 - `records/decisions/{YYYY-MM-DD}-{slug}.md` — only on durable state change
 
 No logs, no insights, no proposals.

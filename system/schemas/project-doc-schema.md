@@ -83,7 +83,7 @@ authority: user
 | §7 | SCRATCHPAD | **GAUGE-with-lifecycle** | dumb capture → graduate → CLEAR. The only section with a clearing mechanism (`pad_archive.py`) — and the only one that has never bloated |
 | §8 | ARTIFACTS | **LOG** | a record of what was produced; append |
 
-**Why this table exists, measured 2026-08-06.** `state/projects/skill-system/brief.md` was found holding
+**Why this table exists, measured 2026-08-06.** `<notes>/state/projects/<slug>/brief.md` was found holding
 **NINE competing status surfaces** inside §2 — eight hand-written `WHERE WE ARE` blocks plus the three-rung
 altitude block — **FOUR of them each declaring "SUPERSEDES EVERY BLOCK ABOVE. READ THIS ONE,"** in
 scrambled date order. §2 had reached **762 lines: 45.3% the size of the append-only STORY LOG and 23.4% of
@@ -191,7 +191,7 @@ not intent — §1 states the destination once; this states where we ARE, zoomed
 > heading, anywhere in §2** — not `WHERE WE ARE`, not `STATUS`, not "the previous one might still be
 > useful." If the block is stale, FIX IT. If you cannot tell whether it's stale, say so IN the block.
 >
-> **Measured 2026-08-06 in `state/projects/skill-system/brief.md`:** §2 had grown to **741 lines of a
+> **Measured 2026-08-06 in `<notes>/state/projects/<slug>/brief.md`:** §2 had grown to **741 lines of a
 > 3,177-line brief (23%)** holding **NINE competing status surfaces** — eight hand-written `WHERE WE ARE`
 > blocks plus this one. **FOUR of them each declared "SUPERSEDES EVERY BLOCK ABOVE. READ THIS ONE,"** and
 > they sat in scrambled date order (08-05, 08-04, 08-04, 07-29, 08-01, 08-01, 08-02, 08-03). **The

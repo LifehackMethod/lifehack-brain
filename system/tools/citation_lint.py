@@ -227,6 +227,58 @@ def is_repo_path(span, tops):
     return "/" in span and head in tops
 
 
+# ⭐ THE BLIND SPOT THIS CLOSES, found 2026-08-11. `is_repo_path` only recognises a citation whose
+# FIRST SEGMENT is a real top-level directory OF THIS REPO. A path under the person's notes folder
+# usually is not: this repo has no `state/`, no `records/`, no `canon/`, no `plans/`. So every
+# citation written as a bare `state/telos.md` or `records/research/x.md` fell through BOTH branches
+# and was never checked at all -- neither as a repo path (wrong head) nor as anything else.
+#
+# That is not a small gap here. Those are precisely the paths this migration MOVED, so they are the
+# ones most likely to be stale, and a citation of a file that ships in neither migration read as
+# perfectly fine. `state/telos.md` sailed through exactly that way.
+#
+# The fix is not to resolve them -- they live on a machine this lint cannot see, and demanding that
+# a person's journal be committed to a public repository is the opposite of what everything else
+# here enforces. The fix is to demand they be WRITTEN so a reader can tell: `<notes>/state/...`.
+# A path with that prefix is data, and is counted and skipped. A path without it, whose head is one
+# of the data roots below, is a citation nobody can classify -- which is the finding.
+# ⚠ `canon/` AND `records/` ARE DELIBERATELY NOT HERE, and leaving them in was a mistake worth
+# recording. Both are commonly written RELATIVE to a folder already established in the sentence —
+# "read its `canon/purpose.md`", "this project's own `records/`" — where the leading segment is not
+# a root at all. Treating them as roots produced a banner on `docs/data-layout.md` asserting that
+# `canon/purpose.md` was a record in somebody's private notes, which is the opposite of true: it is
+# the layout this repo builds. A check that makes a document lie to satisfy it is worse than the gap
+# it closed. The four below only ever appear anchored.
+DATA_ROOTS = {
+    "state": "projects, briefs, open loops",
+    "plans": "plans are data, not repo files",
+    "councils": "advisor rosters",
+    "config": "your own identifiers",
+}
+NOTES_PREFIXES = ("<notes>/", "<data>/", "$NOTES/", "{notes}/")
+
+
+# Only a specific FILE counts. `records/insights/` inside a paragraph about the six record types is
+# a type NAME, not a claim that a file is somewhere -- and flagging those produced 150-odd findings
+# that mean nothing, which is how a check gets switched off. A path ending in a real extension is
+# claiming a file exists; a bare directory shape is describing a layout. Measured on 2026-08-11: the
+# narrow rule keeps the finding that started this (`state/telos.md`, a file in neither migration)
+# and drops every one of the shape-only hits.
+_FILEY = (".md", ".py", ".sh", ".json", ".yaml", ".yml", ".txt", ".jsonl")
+
+
+def data_root_shape(span):
+    """UNPREFIXED if it names a specific file under a data root without saying so, PREFIXED if the
+    prefix is there, else None."""
+    for pre in NOTES_PREFIXES:
+        if span.startswith(pre):
+            return "PREFIXED"
+    head = span.split("/")[0]
+    if "/" in span and head in DATA_ROOTS and span.endswith(_FILEY):
+        return "UNPREFIXED"
+    return None
+
+
 def resolves(root, path):
     full = os.path.join(root, path)
     if "*" in path:
@@ -326,6 +378,13 @@ def lint_paths_and_skills(root, findings, counts):
                     counts["skill_citations"] += 1
                     exists = name in have_skills
                     target = ".claude/skills/%s/" % name
+                elif data_root_shape(key) == "PREFIXED":
+                    counts["data_paths"] += 1
+                    continue
+                elif data_root_shape(key) == "UNPREFIXED":
+                    counts["path_citations"] += 1
+                    exists = False
+                    target = key
                 elif is_repo_path(key, tops):
                     if key.rstrip("/") in DATA_PATHS:
                         counts["data_paths"] += 1

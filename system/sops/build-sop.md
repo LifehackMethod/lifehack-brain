@@ -12,6 +12,17 @@ authority: user
 
 # Build SOP
 
+> ## ⓘ WHAT THIS PAGE CITES THAT IS NOT IN THIS REPOSITORY
+>
+> This page earns its length by naming the exact record where each lesson was learned. Those records
+> live in the author's own notes folder, not in any repository, and they are named here rather than
+> discovered one dead link at a time.
+>
+> **⛔ None of it is coming**, and none of it is needed: where a rule cites one, the evidence is IN
+> the rule. The path was only ever the filing location of the original write-up.
+>
+> - ⛔ `records/2026-07-13-translator-voice-debug-history.md` · `records/decision/2026-06-04-design-claudeops-skill.md` · `records/decision/2026-07-13-statusbar-hud-build.md` · `records/decision/2026-07-28-model-efficiency-plan-abandoned.md` · `records/log/2026-08-07-project-arming-lock-adversarial-audit.md` · `records/reference/2026-07-12-stage2-email-interpret-method.md` · `state/projects/claudeops-cowork/brief.md` · `state/projects/huddle/huddle-skill/brief.md` · `state/projects/ingest-skill/brief.md` · `state/projects/project-system/brief.md` · `state/projects/skill-builder/records/2026-08-07-dead-end-harvest.md` · `state/projects/skill-system/brief.md` · `state/projects/translator-voice/brief.md`
+
 > Loaded on-demand by the `/build` skill — NOT always-on. Apply the **General** do's to ANY build;
 > read a **domain** section only when it applies. Append lessons here as builds teach them — this is
 > how `/build` gets smarter over time. ⛔ The map that registered its home in the system this came

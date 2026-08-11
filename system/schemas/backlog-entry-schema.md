@@ -26,7 +26,7 @@ note: >
 
 ## Why a schema (the two-axis model)
 
-`state/debt-ledger.md` already encodes **type** structurally — an item's section IS its type
+`<notes>/state/debt-ledger.md` already encodes **type** structurally — an item's section IS its type
 (`## Open` = debt, `## Projects` = project, …). What's missing is a **state** (lifecycle) axis:
 without it, the groomer can't tell a `blocked` item (externally waiting — zero staleness defect)
 from an `actionable` item (should be moving). The two axes — **`type` + `state`** — are what make
