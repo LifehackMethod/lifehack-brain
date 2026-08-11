@@ -1,0 +1,70 @@
+{
+  "permissions": {
+    "defaultMode": "default",
+    "deny": [
+      "Read(~/.ssh/**)",
+      "Edit(~/.ssh/**)",
+      "Read(~/.gnupg/**)",
+      "Edit(~/.gnupg/**)",
+      "Read(~/.aws/**)",
+      "Edit(~/.aws/**)",
+      "Read(~/.kube/**)",
+      "Edit(~/.kube/**)",
+      "Read(~/Library/Keychains/**)",
+      "Edit(~/Library/Keychains/**)",
+      "Read(**/.env)",
+      "Edit(**/.env)",
+      "Read(**/.env.local)",
+      "Edit(**/.env.local)",
+      "Edit(.claude/settings.json)",
+      "Edit(.claude/agents/**)",
+      "Edit(.claude/skills/**)",
+      "Edit(system/hooks/**)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/session_context_loader.sh\"",
+            "statusMessage": "Loading your standing notes..."
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/pm_persist.sh\"",
+            "statusMessage": "Checking the active project..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/skill_anchor_inject.sh\"",
+            "statusMessage": "Re-anchoring the running skill..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/plan_flag.sh\" record",
+            "statusMessage": "Recording the active plan..."
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash \"${CLAUDE_PROJECT_DIR}/system/statusline.sh\""
+  }
+}
