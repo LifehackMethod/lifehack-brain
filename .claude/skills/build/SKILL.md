@@ -231,7 +231,7 @@ plan time; the close stops it being hidden at finish time.
 | Needed | Why | Status |
 |---|---|---|
 | `system/build-rules-index.md` | question zero, the routing table, and the three binding rule blocks | ✅ here |
-| `system/sops/build-sop.md` | the general build do's | ⏳ UNRULED — on no ship list; `system/build-rules-index.md` says what this skill has meanwhile |
+| `system/sops/build-sop.md` | the general build do's, plus the `DO NOT BUILD` register | ✅ here |
 | `system/sops/architecture-planning-sop.md` | the Phase → Feature → Task discipline | ✅ here |
 | `system/sops/build-conductor-sop.md` | the gear doctrine | ✅ here |
 | `system/sops/skill-building-sop-extract.md` | LAW 4.2 — a model cannot report on its own compliance | ✅ here |

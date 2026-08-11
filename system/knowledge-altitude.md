@@ -19,8 +19,9 @@ authority: user
 > **This is the INTENT DOCTRINE applied to knowledge:** every object declares its intent — a purpose for a
 > standing thing, a desired outcome for a bounded one — and altitude is that same law applied to one case,
 > *where a piece of knowledge sits.*
-> ⏳ **UNRULED** — the parent law itself, `system/intent-doctrine.md`, is on no ship list; the sentence
-> above is the whole of it that this page needs.
+> ✅ The parent law itself is `system/intent-doctrine.md`, which is here. The sentence above is the
+> whole of it that this page needs; read the doctrine when you are deciding what KIND of intent a
+> thing carries.
 >
 > ⛔ **`/archivist-review` · `system/archivist/placement-trial-log.md` ·
 > `system/research/2026-06-13-preload-vs-pointer-consensus.md` — not shipped.** The archivist's review

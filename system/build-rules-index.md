@@ -116,10 +116,10 @@ authority: user
 - `[PARTIAL §x]` — only section x confirmed current.
 
 ## ALWAYS — every build, regardless of type
-- ⏳ **UNRULED** — `system/sops/build-sop.md`, hard-won build do's, general plus a domain section when one
-  applies. **This page's first ALWAYS rule points at a document that is on no ship list.** 637 lines of
-  build doctrine that is not personal and not here; until that is ruled on, the rules below are what
-  `/build` actually has. `[VERIFIED 2026-06-20]`
+- ✅ `system/sops/build-sop.md` — hard-won build do's: a general section that applies to everything, and
+  a domain section for scheduled/background work. It carries the `DO NOT BUILD` register that
+  `system/tools/deadend_check.py` searches, which is the part worth reading before you build anything.
+  `[VERIFIED 2026-06-20]`
 - `system/sops/architecture-planning-sop.md` — the **Phase → Feature → Task** discipline every plan/build follows. `[VERIFIED 2026-06-20]`
 - `system/sops/build-conductor-sop.md` — the **four gears**: when to run the work yourself and when to fan it out to sub-agents, and how to run each. `[VERIFIED 2026-06-22]`
 
@@ -177,7 +177,7 @@ A build can also be multiple types below. This question, though, has exactly one
 | building… | read first (binding) | status |
 |---|---|---|
 | **a hook** | `system/sops/hook-sop.md` | ✅ here |
-| **a hook — the mechanics half** | `system/hook-contract.md` | ⏳ UNRULED — on no ship list; hook-sop's own banner says what to do meanwhile |
+| **a hook — the mechanics half** | `system/hook-contract.md` | ✅ here |
 | **a skill** | `system/sops/skill-building-sop-extract.md` | ✅ here — LAW 4.2, the one rule the core skills cite |
 | **a skill — the whole SOP** | `system/sops/skill-building-sop.md` | ⏳ lands in Phase 3, with `skill-builder` |
 | **memory, a doc, or a where-does-this-live decision** | `docs/data-layout.md` · `system/knowledge-altitude.md` | data-layout ✅ here; knowledge-altitude lands in T1.14 |

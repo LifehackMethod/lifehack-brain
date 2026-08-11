@@ -121,7 +121,10 @@ UNREGISTERED_OK = {
 # A backticked `/word` is usually a skill here — but not always, and neither of these is ours to
 # ship: the harness's own commands, and the top of a filesystem path.
 HARNESS_COMMANDS = {"clear", "config", "workflows", "compact", "help", "model", "resume"}
-FILESYSTEM_ROOTS = {"tmp", "dev", "etc", "var", "usr", "bin", "opt", "home", "mnt", "proc", "srv", "run"}
+# `sbin` is here for the same reason as `bin`: a document discussing cron's minimal PATH writes
+# `/sbin` and `/usr/sbin`, and without this the lint reads those as citations of skills nobody has.
+FILESYSTEM_ROOTS = {"tmp", "dev", "etc", "var", "usr", "bin", "sbin", "opt", "home", "mnt", "proc",
+                    "srv", "run", "lib", "sys"}
 
 # Directories never scanned. `memory/` is the person's own material and is not ours to lint.
 SKIP_DIRS = {".git", "memory", ".venv", "node_modules", "__pycache__"}
