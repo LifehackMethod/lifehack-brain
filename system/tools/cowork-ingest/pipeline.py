@@ -965,20 +965,43 @@ def set_corpus_inherit_offered(m, now_iso=None):
 _TOPIC_SLUG_RE = re.compile(r"^- `([a-z0-9][a-z0-9-]*)`", re.MULTILINE)
 
 
-def _default_topic_vocab_path():
-    return os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                          "..", "..", "topic-vocab.md"))
+# ⚖⭐ ONE RESOLVER, IMPORTED — NOT A SECOND COPY (2026-08-11). This gate used to look ONLY in the repo
+# (`system/topic-vocab.md`, two directories up). `folder_scaffold.py` — the OTHER tool PHASE 4 runs, six
+# lines apart in the same phase file — was corrected on 2026-08-09 to treat the vocabulary as the
+# person's own data, and carries the ruling in full at its :39-53:
+#
+#     "A topic vocabulary is a taxonomy OF A PERSON'S LIFE. Shipping one hands every student someone
+#      else's categories and quietly tells them that is how their own material should be divided."
+#
+# So the two gates disagreed: `folder_scaffold` would accept a slug from the person's own vocabulary
+# that this one then refused, in the same phase, minutes apart. That is worse than either behaviour on
+# its own. Fixed by IMPORTING its resolver rather than restating it — a restated rule is a rule that
+# drifts, and this pair has now drifted once already.
+#
+# Resolution order (folder_scaffold's, verbatim): --vocab → <brain root>/memory/topic-vocab.md →
+# the legacy in-repo copy. NO vocabulary file ships; when none resolves this REFUSES and teaches.
+def _vocab_owner():
+    """`folder_scaffold` owns the vocabulary contract. Imported lazily so a broken sibling cannot stop
+    the rest of this pipeline from loading."""
+    import folder_scaffold
+    return folder_scaffold
+
+
+def resolve_topic_vocab(path=None):
+    """(path_or_None, paths_tried). Delegates — see the note above."""
+    return _vocab_owner().resolve_vocab(path)
 
 
 def load_topic_vocab(path=None):
-    """Parse the CLOSED topic vocabulary straight from system/topic-vocab.md — read live, every call,
-    never a hardcoded copy that can go stale. Returns a set of slugs, or None if the vocab file itself
-    could not be read (the caller fails CLOSED on None, never treats 'couldn't check' as 'passes')."""
-    p = path or _default_topic_vocab_path()
-    if not os.path.isfile(p):
+    """The CLOSED topic vocabulary, read live on every call. Returns a set of slugs, or None if no
+    vocabulary resolved at all (the caller fails CLOSED on None — 'couldn't check' is never 'passes').
+    Parsing is folder_scaffold's, which stops at the '## Not topics' heading: those entries are
+    record_type/doctrine markers, not subjects, and must never validate as a topic slug."""
+    fs = _vocab_owner()
+    resolved, _tried = fs.resolve_vocab(path)
+    if resolved is None:
         return None
-    text = open(p).read()
-    return set(_TOPIC_SLUG_RE.findall(text))
+    return fs.load_vocab(resolved)
 
 
 def validate_topics(topics, vocab=None, vocab_path=None):
@@ -2165,10 +2188,10 @@ def main():
     bw.add_argument("--dry-run", dest="dry_run", action="store_true",
                     help="print exactly what would be written; never touches disk, never sets pad_written")
     tc = sub.add_parser("topic-check", help="fail-closed membership check for a written `topic:` value "
-                        "against the CLOSED vocabulary in system/topic-vocab.md")
+                        "against the person's own CLOSED vocabulary (memory/topic-vocab.md)")
     tc.add_argument("--topics", nargs="+", required=True,
                     help="one or more topic slugs to validate (topic: is a LIST in practice)")
-    tc.add_argument("--vocab", dest="vocab_path", help="override path to topic-vocab.md")
+    tc.add_argument("--vocab", dest="vocab_path", help="explicit path to the topic vocabulary; defaults to <brain root>/memory/topic-vocab.md (theirs), then the legacy in-repo copy")
     ci = sub.add_parser("corpus-inherit-offered", help="ONCE-PER-RUN flag: the PHASE 2 inheritance offer "
                         "(`2.0c`) has been shown to the human — stops it re-asking on every pile")
     ci.add_argument("--map", required=True)
@@ -2451,13 +2474,25 @@ def main():
     elif a.cmd == "topic-check":
         ok, bad, vocab = validate_topics(a.topics, vocab_path=a.vocab_path)
         if vocab is None:
-            print("REFUSED topic-check: cannot read the topic vocabulary (system/topic-vocab.md) — "
-                  "refusing; an unreadable vocab is never permission.")
+            # ⛔ REFUSE, and NAME EVERY PATH TRIED — the same wording folder_scaffold.py prints, because
+            # a person hitting one of these two gates must not be taught two different things. A bare
+            # "cannot read the vocabulary" sent a real person hunting through a repo for a file that was
+            # never supposed to be there.
+            resolved, tried = resolve_topic_vocab(a.vocab_path)
+            print("REFUSED topic-check: no topic vocabulary found. Looked for, in order:\n"
+                  + "\n".join(f"    {p}" for p in tried)
+                  + "\n\n  The topic vocabulary is a list of the subject areas YOUR OWN material divides"
+                    " into,\n  so it is yours to write and it lives with your notes, not in the tool.\n"
+                    "  Create memory/topic-vocab.md with one line per subject:\n\n"
+                    "      - `financial`\n      - `health`\n      - `writing`\n\n"
+                    "  ⛔ This tool will not invent one for you — an invented taxonomy of your life is"
+                    " worse\n     than no taxonomy at all.")
             sys.exit(1)
         if not ok:
-            print(f"REFUSED topic-check: {bad} not in the closed vocabulary ({len(vocab)} slug(s) known). "
-                  f"Unknown slugs are NEVER auto-added — the archivist proposes, the author approves "
-                  f"(system/topic-vocab.md).")
+            resolved, _tried = resolve_topic_vocab(a.vocab_path)
+            print(f"REFUSED topic-check: topic slug(s) not in the closed vocabulary ({resolved}): {bad}. "
+                  f"{len(vocab)} slug(s) known. Use an existing slug, or add it there FIRST — this tool "
+                  f"never invents one.")
             sys.exit(1)
         print(f"OK topic-check: {a.topics} — all in the closed vocabulary.")
     elif a.cmd == "corpus-inherit-offered":

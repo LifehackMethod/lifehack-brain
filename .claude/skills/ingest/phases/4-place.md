@@ -209,7 +209,7 @@ the human sees the WHOLE shape rather than one branch), and take corrections. Th
    thumb: a desk with 3+ clearly-distinct sub-themes AND enough notes to fill them). A light desk stays flat.
    Propose splits as a best-guess, by number; a small desk → *"this one stays a single folder for now."*
 3. **Scaffold each confirmed desk**: `python3 $T/folder_scaffold.py --drive-root "$DRIVE" --path "desks/<slug>"
-   --purpose "<one line>" --topic "<slug,from system/topic-vocab.md>" --desk "<slug>"`. *(2026-08-08: this
+   --purpose "<one line>" --topic "<slug, from THEIR memory/topic-vocab.md>" --desk "<slug>"`. *(2026-08-08: this
    used to call the older whole-desk scaffolding tool and print a `system/desk-registry.yaml` block for the
    human to paste — that tool is NOT deleted, it stays for a deliberate later promotion, but a Phase 4
    scaffold is a plain knowledge folder — `canon/current.md` + `canon/purpose.md` + `records/`, no registry
@@ -218,7 +218,7 @@ the human sees the WHOLE shape rather than one branch), and take corrections. Th
 </details>
 
 **Scaffold each confirmed folder**: `python3 $T/folder_scaffold.py --drive-root "$DRIVE" --path "desks/<folder_branch>"
---purpose "<one line>" --topic "<slug,from system/topic-vocab.md>" --desk "<owning-desk-slug>"`. *(2026-08-08:
+--purpose "<one line>" --topic "<slug, from THEIR memory/topic-vocab.md>" --desk "<owning-desk-slug>"`. *(2026-08-08:
 points at `folder_scaffold.py` now — it makes exactly what a Phase 4 folder needs, `canon/current.md` +
 `canon/purpose.md` + `records/`, and prints nothing to paste — there is no registry step at this level; the
 older whole-desk scaffolding tool (which DOES print a `desk-registry.yaml` block) is kept, unused here, for
@@ -293,10 +293,13 @@ carries a `topic:` slug; check it against the closed vocabulary before authoring
 python3 $T/pipeline.py topic-check --topics <slug> [<slug2> ...]
 ```
 Exit 0 → the slug(s) are in the closed vocabulary — write the frontmatter as planned below. Non-zero → **STOP,
-do not write the file.** The tool names the closed set it checked against; pick an existing slug from
-`system/topic-vocab.md`, or send the human to the archivist to propose a new one FIRST, then re-run this check
-before writing. ⛔ **NEVER invent a slug and NEVER edit `system/topic-vocab.md` yourself** — only the archivist
-proposes, only the human approves (the vocab file's own write-authority rule).
+do not write the file.** The tool names the file it checked against and every path it tried; pick an existing
+slug from it, or ask the human to add one FIRST, then re-run this check before writing.
+
+⛔ **The vocabulary is THEIRS and it lives with their notes** (`memory/topic-vocab.md`), not in this repo —
+nothing ships one. **Never invent a slug, and never edit their vocabulary yourself.** If they have no
+vocabulary yet the tool refuses and prints how to start one; hand them that, do not write it for them. A
+taxonomy of someone's life, authored by a machine, is worse than no taxonomy at all.
 - **A record (`finding_type: record`)** → a **STUB FILE**, `desks/<desk>/<folder>/<YYYY-MM-DD>-<slug>.md`,
   with a valid frontmatter envelope (`title · record_type · desk · topic · created_at · status: active ·
   authority: user · confidence:<CONFIRMED|INFERRED> · source_refs:[the source chat]`) whose BODY is only
