@@ -20,9 +20,10 @@ authority: user
 > them name a command that has not landed, and two pointers name files that never will. Stated up front
 > so a reader meets the gap here rather than at stage 4.
 >
-> - ⏳ `/advisory-council` — **lands in Phase 3.** It is the engine stages 1, 4 and 6 are written around.
->   Until it does, run those stages as what they are: pose the question to two or three independent
->   readings, keep them from seeing each other, then chair the disagreement yourself.
+> - ✅ `/advisory-council` — here. It is the engine stages 1, 4 and 6 are written around. It ships with
+>   one example roster and no library; before you rely on those stages, write a roster whose lenses are
+>   the perspectives you keep failing to consider. Read its cost note first — the advisors run on the
+>   expensive model, deliberately, and a full round is not free.
 > - ⛔ `/scope` — **never built anywhere.** The line below is an old TODO, kept because
 >   the wish is legitimate and the reader should not go hunting for a loader that has never existed.
 > - ⛔ `system/canon-purpose-map.md` — **not a shipped file.** Where a document lives is recorded in your
