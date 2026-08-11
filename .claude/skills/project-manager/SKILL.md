@@ -60,7 +60,7 @@ $DATA/state/projects/{slug}/canon/current.md   what this project has settled
 **HARD — the folder's last path segment MUST equal the slug.** A category above it is fine
 (`state/projects/infrastructure/{slug}/`); the leaf is not. Create the folder *as* the slug, never
 named after the work — a person must be able to find a project by its slug alone. Audit with
-`python3 $ROOT/system/tools/check_slug_folder.py`. Depth cap: 3 levels; phases live *in* the brief,
+`python3 $ROOT/system/tools/project-manager/check_slug_folder.py`. Depth cap: 3 levels; phases live *in* the brief,
 never as folders.
 
 Then register it, so `/read`, `/save` and `/checkin` can resolve the slug — one pipe-separated row
@@ -202,7 +202,7 @@ If not, the doc is not done.
 | `shared/brain_root.py` | the one resolver for where the person's notes live | ✅ here |
 | `system/hooks/pm_flag.sh` · `plan_flag.sh` · `skill_anchor.sh` | the per-turn flags | ✅ here |
 | `system/hooks/pm_persist.sh` | re-injects the armed project every turn | ✅ here |
-| `system/tools/check_slug_folder.py` | audits folder-name/slug drift | lands in T1.3 |
+| `system/tools/project-manager/check_slug_folder.py` | audits folder-name/slug drift | ✅ here |
 | `system/schemas/project-doc-schema.md` | the full brief schema | lands in T1.14 |
 | `system/sops/build-conductor-sop.md` | the build doctrine `ANCHOR.md` points at | lands in T1.14 |
 | `system/sops/design-process-sop.md` | design builds only | lands in T1.14 |
