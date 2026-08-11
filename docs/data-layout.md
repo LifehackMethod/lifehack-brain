@@ -72,6 +72,19 @@ A project is a **folder**, and the folder's name is the project's slug:
 └── canon/current.md  what this project has settled
 ```
 
+**Three more files appear beside the brief, written by the tool and never by hand.** They are named
+here because otherwise the first person to see one has to guess whether something went wrong:
+
+| beside the brief | what it is |
+|---|---|
+| `<slug>/brief.md.pad-archive.md` | the append-only archive of every scratchpad, written before any pad is cleared. Nothing is ever deleted from it. It is the reason a compaction is safe: the clear will not run without a fresh receipt proving this file already holds the text. |
+| `<slug>/brief.md.<section>-archive.md` | the same, for a named section — `## 2. CURRENT STATE` graduating at a check-in produces `brief.md.2-current-state-...-archive.md`. |
+| `<slug>/brief.md.pre-section-archive-<date>.bak` | a whole-file backup taken before a *named-section* archive only, because the caller then deletes by hand. The pad's own clear is code-owned and hash-gated, so it needs no backup and takes none. |
+
+You may delete an old `.bak`. Do not hand-edit the two archives, and never hand-clear a section that
+has one: `pad_archive.py` matches a hash to prove what it is deleting, and an edit by hand breaks
+that match — which is a refusal, not a loss, but it costs you the session's compaction.
+
 **The folder's last path segment must equal the slug.** A category above it is fine
 (`state/projects/infrastructure/<slug>/`); the leaf is not. This stops the drift where a project
 called one thing lives in a folder called another and a cold session finds neither.
