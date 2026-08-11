@@ -2012,54 +2012,19 @@ def set_basket_status(m, basket, status, work_dir=None, require_world_map=False)
 # BACK-COMPAT ONLY, set via INGEST_LEGACY_ROOT_GLOB, so an existing corpus keeps resolving. (4) otherwise
 # NOT-SET. Closed outcome set {RESOLVED, NOT-SET}; NOT-SET is the no-outcome member and must NEVER fall
 # through to a guess, a default, or the cwd — every caller checks for it and stops, naming the fix.
-BRAIN_ROOT_ENV = "LIFEHACK_ROOT"
-BRAIN_ROOT_CONFIG = os.path.expanduser("~/.config/lifehack/brain-root")
-# Step (3), back-compat only, and DELIBERATELY not hardcoded: the original owner exports
-# INGEST_LEGACY_ROOT_GLOB so an existing corpus keeps resolving where it always did. Unset on
-# every other machine, which makes step (3) a no-op rather than a stranger's path. Empty is
-# skipped entirely in resolve_brain_root below.
-BRAIN_ROOT_LEGACY_GLOB = os.path.expanduser(os.environ.get("INGEST_LEGACY_ROOT_GLOB", ""))
-
-
-def resolve_brain_root():
-    """The one resolver every caller (skill drivers, tests, this CLI) goes through. Returns
-    (source, path) with source in {"env", "persisted", "legacy-glob"} and path a real directory, OR
-    (None, None) for NOT-SET. Never guesses, never defaults to cwd, never invents a path."""
-    env = os.environ.get(BRAIN_ROOT_ENV)
-    if env and os.path.isdir(env):
-        return "env", env
-    if os.path.isfile(BRAIN_ROOT_CONFIG):
-        try:
-            persisted = open(BRAIN_ROOT_CONFIG).read().strip()
-        except OSError:
-            persisted = ""
-        if persisted and os.path.isdir(persisted):
-            return "persisted", persisted
-    if BRAIN_ROOT_LEGACY_GLOB:          # unset on a fresh install -> step (3) is a no-op, never a guess
-        import glob as _glob
-        for hit in sorted(_glob.glob(BRAIN_ROOT_LEGACY_GLOB)):
-            if os.path.isdir(hit):
-                return "legacy-glob", hit
-    return None, None
-
-
-def set_brain_root(path, create=False):
-    """`brain-root --set <path>`. REFUSES a nonexistent path unless create=True (then makes it, parents
-    included). REFUSES a path that exists but is a FILE (never silently picks its parent dir). Persists
-    the resolved absolute path to BRAIN_ROOT_CONFIG, creating ~/.config/lifehack/ if needed. Returns
-    (ok, message-or-path)."""
-    resolved = os.path.abspath(os.path.expanduser(path))
-    if os.path.exists(resolved):
-        if not os.path.isdir(resolved):
-            return False, f"REFUSED: '{resolved}' exists and is a FILE, not a directory"
-    else:
-        if not create:
-            return False, f"REFUSED: '{resolved}' does not exist — pass --create to make it"
-        os.makedirs(resolved, exist_ok=True)
-    os.makedirs(os.path.dirname(BRAIN_ROOT_CONFIG), exist_ok=True)
-    with open(BRAIN_ROOT_CONFIG, "w") as f:
-        f.write(resolved + "\n")
-    return True, resolved
+# ⬇ THE IMPLEMENTATION MOVED (migration T0.1, 2026-08-11) to <repo>/shared/brain_root.py — the one
+# root variable the WHOLE system resolves through, not just this pipeline. The contract above is
+# unchanged; the code is imported so there is exactly one copy of it, and every other tool gets the
+# same answer this pipeline gets.
+_SHARED_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "shared"))
+if _SHARED_DIR not in sys.path:
+    sys.path.insert(0, _SHARED_DIR)
+try:
+    from brain_root import (BRAIN_ROOT_ENV, BRAIN_ROOT_CONFIG, BRAIN_ROOT_LEGACY_GLOB,
+                            resolve_brain_root, set_brain_root)
+except ImportError as _brain_root_err:   # fail LOUD, never degrade — without the resolver every write is a guess
+    sys.exit("FATAL: cannot import brain_root from %s — the data-root resolver is missing. "
+             "Fix: restore <repo>/shared/brain_root.py. (%s)" % (_SHARED_DIR, _brain_root_err))
 
 
 def main():

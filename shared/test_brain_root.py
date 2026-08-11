@@ -1,0 +1,145 @@
+#!/usr/bin/env python3
+"""test_brain_root.py — the teeth on the one root variable.
+
+Run:  python3 shared/test_brain_root.py          (from the repo root)
+      python3 -m unittest discover -s shared -p 'test_*.py'
+
+Every case here is a way the resolver could quietly hand back a WRONG directory. A resolver that
+guesses is worse than one that refuses, so the NOT-SET cases matter as much as the RESOLVED ones.
+No third-party test runner — stdlib unittest only, because a student's fresh clone has nothing
+installed.
+"""
+
+import os
+import shutil
+import sys
+import tempfile
+import unittest
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import brain_root  # noqa: E402
+
+
+class BrainRootCase(unittest.TestCase):
+    """Isolates the three inputs the resolver reads: the env var, the persisted file, the legacy glob.
+    None of the real ones are touched — the persisted-config path is redirected into a temp dir, so a
+    developer's own ~/.config/lifehack/brain-root survives the suite untouched."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="brain-root-test-")
+        self.data = os.path.join(self.tmp, "my-data")
+        os.makedirs(self.data)
+        self._saved = (brain_root.BRAIN_ROOT_CONFIG, brain_root.BRAIN_ROOT_LEGACY_GLOB,
+                       os.environ.get(brain_root.BRAIN_ROOT_ENV))
+        brain_root.BRAIN_ROOT_CONFIG = os.path.join(self.tmp, "config", "brain-root")
+        brain_root.BRAIN_ROOT_LEGACY_GLOB = ""
+        os.environ.pop(brain_root.BRAIN_ROOT_ENV, None)
+
+    def tearDown(self):
+        brain_root.BRAIN_ROOT_CONFIG, brain_root.BRAIN_ROOT_LEGACY_GLOB, env = self._saved
+        os.environ.pop(brain_root.BRAIN_ROOT_ENV, None)
+        if env is not None:
+            os.environ[brain_root.BRAIN_ROOT_ENV] = env
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+
+class TestResolve(BrainRootCase):
+
+    def test_env_wins(self):
+        os.environ[brain_root.BRAIN_ROOT_ENV] = self.data
+        self.assertEqual(brain_root.resolve_brain_root(), ("env", self.data))
+
+    def test_env_pointing_nowhere_is_ignored_not_obeyed(self):
+        """A stale env var must not resolve to a directory that does not exist."""
+        os.environ[brain_root.BRAIN_ROOT_ENV] = os.path.join(self.tmp, "gone")
+        self.assertEqual(brain_root.resolve_brain_root(), (None, None))
+
+    def test_persisted(self):
+        ok, res = brain_root.set_brain_root(self.data)
+        self.assertTrue(ok, res)
+        self.assertEqual(brain_root.resolve_brain_root(), ("persisted", self.data))
+
+    def test_env_beats_persisted(self):
+        other = os.path.join(self.tmp, "other")
+        os.makedirs(other)
+        brain_root.set_brain_root(self.data)
+        os.environ[brain_root.BRAIN_ROOT_ENV] = other
+        self.assertEqual(brain_root.resolve_brain_root(), ("env", other))
+
+    def test_persisted_pointing_at_a_deleted_folder_falls_through(self):
+        brain_root.set_brain_root(self.data)
+        shutil.rmtree(self.data)
+        self.assertEqual(brain_root.resolve_brain_root(), (None, None))
+
+    def test_legacy_glob(self):
+        legacy = os.path.join(self.tmp, "legacy", "SomeCloud", "_Brain")
+        os.makedirs(legacy)
+        brain_root.BRAIN_ROOT_LEGACY_GLOB = os.path.join(self.tmp, "legacy", "*", "_Brain")
+        self.assertEqual(brain_root.resolve_brain_root(), ("legacy-glob", legacy))
+
+    def test_legacy_glob_unset_is_a_noop_not_a_guess(self):
+        """The default on every machine but the original author's. Step 3 must vanish, not improvise."""
+        self.assertEqual(brain_root.BRAIN_ROOT_LEGACY_GLOB, "")
+        self.assertEqual(brain_root.resolve_brain_root(), (None, None))
+
+    def test_not_set_is_the_answer_when_nothing_is_configured(self):
+        """The whole point: no env, no persisted file, no glob -> NOT-SET. Never the cwd."""
+        source, path = brain_root.resolve_brain_root()
+        self.assertIsNone(source)
+        self.assertIsNone(path)
+        self.assertNotEqual(path, os.getcwd())
+
+
+class TestSet(BrainRootCase):
+
+    def test_refuses_a_file_masquerading_as_a_dir(self):
+        f = os.path.join(self.tmp, "not-a-folder.md")
+        with open(f, "w") as fh:
+            fh.write("x")
+        ok, msg = brain_root.set_brain_root(f)
+        self.assertFalse(ok)
+        self.assertIn("is a FILE", msg)
+        self.assertFalse(os.path.exists(brain_root.BRAIN_ROOT_CONFIG),
+                         "a refused --set must not persist anything")
+
+    def test_refuses_a_missing_path_without_create(self):
+        ok, msg = brain_root.set_brain_root(os.path.join(self.tmp, "nope"))
+        self.assertFalse(ok)
+        self.assertIn("--create", msg)
+
+    def test_create_makes_it_parents_included(self):
+        deep = os.path.join(self.tmp, "a", "b", "c")
+        ok, res = brain_root.set_brain_root(deep, create=True)
+        self.assertTrue(ok, res)
+        self.assertTrue(os.path.isdir(deep))
+        self.assertEqual(brain_root.resolve_brain_root(), ("persisted", deep))
+
+    def test_persists_an_absolute_path(self):
+        rel = os.path.relpath(self.data, os.getcwd())
+        ok, res = brain_root.set_brain_root(rel)
+        self.assertTrue(ok, res)
+        self.assertTrue(os.path.isabs(res))
+        with open(brain_root.BRAIN_ROOT_CONFIG) as fh:
+            self.assertEqual(fh.read().strip(), self.data)
+
+
+class TestCli(BrainRootCase):
+    """The CLI is the surface INSTALL and the skills call. Its exit codes are the contract."""
+
+    def test_quiet_exits_1_when_not_set(self):
+        self.assertEqual(brain_root.main(["--quiet"]), 1)
+
+    def test_quiet_exits_0_and_prints_the_path(self):
+        os.environ[brain_root.BRAIN_ROOT_ENV] = self.data
+        self.assertEqual(brain_root.main(["--quiet"]), 0)
+
+    def test_set_then_resolve_round_trip(self):
+        self.assertEqual(brain_root.main(["--set", self.data]), 0)
+        self.assertEqual(brain_root.main([]), 0)
+
+    def test_set_a_missing_path_exits_1(self):
+        self.assertEqual(brain_root.main(["--set", os.path.join(self.tmp, "nope")]), 1)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
