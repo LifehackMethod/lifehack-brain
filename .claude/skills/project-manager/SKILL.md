@@ -206,5 +206,5 @@ If not, the doc is not done.
 | `system/schemas/project-doc-schema.md` | the full brief schema | lands in T1.14 |
 | `system/sops/build-conductor-sop.md` | the build doctrine `ANCHOR.md` points at | lands in T1.14 |
 | `system/sops/design-process-sop.md` | design builds only | lands in T1.14 |
-| `system/tools/save/pad_archive.py` | `/save` uses it to archive the pad before clearing | lands in T1.2 |
+| `system/tools/save/pad_archive.py` | archives a section and proves it landed, before anything is cleared | ✅ here |
 | `docs/data-layout.md` | where everything under `$DATA` goes | ✅ here |

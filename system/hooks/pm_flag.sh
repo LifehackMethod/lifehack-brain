@@ -202,9 +202,10 @@ case "$1" in
     _PM_HOOKDIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
     _PM_REPO="$(cd "$_PM_HOOKDIR" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null)"
     [ -n "$_PM_REPO" ] || _PM_REPO="${_PM_HOOKDIR%/system/hooks}"
-    # Silent-degrade is DELIBERATE and stays until pad_archive.py ships (migration T1.2): no pad module
+    # Silent-degrade on ANY failure is DELIBERATE: no pad module, or a brief with no scratchpad,
     # means no fingerprint line, which the writer below already treats as "armed without one".
-    PAD_SHA="$(python3 - "$2" "$_PM_REPO/system/tools" 2>/dev/null <<'_PADSHA_EOF'
+    # (pad_archive.py landed at system/tools/save/ in T1.2, merged with section_archive.py.)
+    PAD_SHA="$(python3 - "$2" "$_PM_REPO/system/tools/save" 2>/dev/null <<'_PADSHA_EOF'
 import sys, os
 sys.path.insert(0, sys.argv[2])
 try:
