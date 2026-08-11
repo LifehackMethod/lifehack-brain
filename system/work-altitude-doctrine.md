@@ -43,7 +43,7 @@ more than a bug.
 |---|---|---|
 | **Ground** | What am I actually touching right now? | the task in front of you — the file, the function, the failing test |
 | **5,000 ft** | What does this sit inside? | the plan's `Phase ▸ Feature`, **or** the seam-neighbourhood this code interlocks with, **or** the generalizable learning this fix is producing |
-| **10,000 ft** | What is this ultimately for? | **the brief's desired outcome** — or a standing goal that sits above every brief, or `state/telos.md` |
+| **10,000 ft** | What is this ultimately for? | **the brief's desired outcome** — or a standing goal that sits above every brief, which is what `<notes>/canon.md` is for |
 
 **The 10,000-foot view is not capped by the project.** A brief's desired outcome is the usual answer and the
 first place to look, but it is not the only legal one. Sometimes the real reason for the work sits *above*
@@ -100,18 +100,19 @@ larger frame. **Expand into prose only on a DRIFT** — when the ground work has
 
 ## 6. What fires this
 
-- ⏳ **`system/hooks/inject_work_altitude.sh` — lands in Phase 3** with `/altitude`. A `UserPromptSubmit` INJECT hook. It fires on the same
-  100,000-token bucket the scratchpad uses (`scratch_capture_gate.sh:28`), offset **10,000 tokens earlier**
-  so the re-anchor *usually* lands about one turn before the scratchpad rollup — the captured decisions are
-  then filed by a session that has just restated its frame. ⚠ **Usually, not always.** An adversarial audit
-  on 2026-08-05 refuted the stronger claim: the offset only wins when a single turn adds fewer than 10,000
-  tokens between the two checks. A tool-heavy turn (a large file read, an agent fan-out — 85k → 150k in one
-  step was demonstrated) fires the rollup first and this re-anchor at the start of the *next* turn. Both
-  hooks still do their jobs; only the sequencing inverts, and no signal reports it. The ordering is a
-  worthwhile bet, not a property to rely on. It also re-fires immediately after a compaction,
-  detected as the token count dropping below its own watermark.
-- ⏳ **`/altitude`** — **lands in Phase 3.** Sets the top two rungs by hand for work that has no brief and
-  no plan but does have a real 10,000-foot view. Also prints the current read on demand.
+- ✅ **`system/hooks/inject_work_altitude.sh`** — a `UserPromptSubmit` INJECT hook, registered. It fires
+  once per 50,000-token bucket of context, offset 10,000 tokens, and again immediately after a compaction
+  (detected as the token count dropping below its own watermark). Tune both with `ALTITUDE_CAPTURE_EVERY`
+  and `ALTITUDE_OFFSET`.
+  ⚠ **The offset carries a lesson that is worth more than the number.** In the system this came from it
+  was a bet on firing about one turn before a sibling capture hook, so that captured decisions were filed
+  by a session which had just restated its frame — and an adversarial audit on 2026-08-05 refuted the bet:
+  it only wins when a single turn adds fewer than 10,000 tokens between the two checks, and a tool-heavy
+  turn (85k → 150k in one step, demonstrated) inverts the order silently. That sibling hook is not part of
+  this repo, so the bet is moot here and the offset survives only because it staggers the fire points off
+  round numbers. **An ordering that nothing reports is not an ordering you have.**
+- ✅ **`/altitude`** — sets the top two rungs by hand for work that has no brief and no plan but does have
+  a real 10,000-foot view. Also prints the current read on demand.
 
 **The hook parses nothing.** It hands over the brief and plan **paths** and lets the session read them.
 Measured 2026-08-05 across three real briefs: the FRAME heading and the desired-outcome formatting both vary

@@ -56,6 +56,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/inject_compute_mechanically.sh\"",
             "statusMessage": "Checking whether this turn has maths in it..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/inject_work_altitude.sh\"",
+            "statusMessage": "Re-asking what this work is for..."
           }
         ]
       }
@@ -93,6 +98,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_cross_project_write.sh\"",
             "statusMessage": "Checking this belongs to the project you are on..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_throughline_write_scope.sh\"",
+            "statusMessage": "Checking a read-only investigation stays read-only..."
           }
         ]
       },

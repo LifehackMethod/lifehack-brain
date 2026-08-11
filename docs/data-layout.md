@@ -244,6 +244,7 @@ The diagram above is the shape; this is the list, so nothing has to be inferred 
 | `<notes>/state/current.md` | `/save` | where things stand changes |
 | `<notes>/records/<type>/` | `/save` | a finding belongs to no one project |
 | `<notes>/records/research/` | `/research` | every run |
+| `<notes>/records/insights/throughline/` | `/throughline` | once per run — and it is the ONLY thing that run may write |
 | `<notes>/plans/<name>.md` | `/autoplan` | a plan is written or sharpened |
 | `<notes>/config/` | a person, by hand | account IDs and the like, kept out of the repo |
 | `<notes>/config/numbers-auto-arm` | a person, by hand | optional — subject folders that turn on `/calculate` by themselves |

@@ -112,6 +112,10 @@ UNREGISTERED_OK = {
     "skill_anchor.sh": "same — the arming half; `skill_anchor_inject.sh` is the registered hook",
     "numbers_flag.sh": "same — `/calculate` calls it directly; `inject_compute_mechanically.sh` is "
                        "the registered hook that reads what it writes",
+    "altitude_flag.sh": "same — `/altitude` calls it directly; `inject_work_altitude.sh` is the "
+                        "registered hook that reads what it writes",
+    "throughline_flag.sh": "same — `/throughline` arms and clears it directly; "
+                           "`guard_throughline_write_scope.sh` is the registered hook it switches",
 }
 
 # A backticked `/word` is usually a skill here — but not always, and neither of these is ours to
