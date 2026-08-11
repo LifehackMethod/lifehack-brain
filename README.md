@@ -10,70 +10,75 @@ More will land here over time. When it does, you'll get it with one update.
 
 ---
 
-## Setting it up
+## Two folders, and which is which
 
-**1. Pick where your brain lives.**
+This is the only idea you need to hold, and it takes about a minute:
 
-Make a folder on your computer, inside whatever cloud service you already use —
-your Google Drive folder, your Dropbox folder, your OneDrive folder.
+**The tool goes in one folder. Your notes go in a different one.**
 
-This matters and it's worth thirty seconds: you want a **real folder on your own
-machine that happens to sync**, not a website you log into. Your AI opens files
-directly; it can't reach into a browser tab. The syncing is just your backup.
+    ~/lifehack-brain/     ← the tool. ours. replaced whole on every update.
+    ~/My Notes/           ← everything you write. yours. never touched.
 
-If you don't use any of those, a plain folder in your Documents works fine. You
-just won't have a backup.
+They are separate on purpose. An update replaces the tool folder completely, so
+nothing you wrote can be caught up in it — there is nothing of yours in there to
+overwrite.
 
-**2. Get these files.**
+**One rule about where the tool folder goes: keep it out of your cloud folder.**
+Not inside Google Drive, not inside Dropbox, not inside OneDrive, not inside
+iCloud Drive. Anywhere else is fine — your home folder is perfect.
 
-On the green **Code** button above, choose **Download ZIP**. Unzip it, then move
-**everything inside** into the folder you made in step 1 — including the `.claude`
-folder, which your computer may hide by default.
+> **Why, in one paragraph.** The tool folder is a git repository, and git works
+> by constantly making and deleting hundreds of small files as it goes. Cloud
+> sync tools watch for exactly that and try to upload each one, mid-operation.
+> The two fight, and it does not show up as a clear error — it shows up as a
+> folder that quietly corrupts, or an update that half-applies. Every hour spent
+> on that is an hour spent on a problem that never had to exist.
 
-On a Mac, press **⌘ + Shift + .** in Finder to show hidden files. **Don't skip
-it** — `.claude` is what makes the `/ingest` command exist. Without it nothing
-happens when you type it.
+**Your notes folder is the opposite: put it wherever you like, cloud included.**
+That is the folder worth backing up, and nothing about it fights with syncing.
+Inside Google Drive or Dropbox is a good choice.
 
-*(If you know git, just clone the repo instead — nothing to move, nothing hidden.)*
-
-**3. Open that folder in Claude.**
-
-Open the Claude desktop app, go to the **Code** tab, and point it at your folder.
-No terminal, nothing to install.
-
-**4. Have your material ready.**
-
-Whatever you want sorted — a ChatGPT export, a folder of notes, a big document.
-Know where it is on your computer. You'll hand it over in the next step by
-dragging it into the chat window, which pastes its location for you.
-
-**5. Say what you want.**
-
-    /ingest
-
-It'll ask where your brain lives, then ask for your material — drag the file or
-folder in when it does. From there it asks questions and shows you its work
-before it writes anything.
+> It does have to be a **real folder on your own computer** that happens to
+> sync, not a website you log into. Your AI opens files directly and cannot
+> reach into a browser tab. The syncing is your backup, nothing more.
 
 ---
 
-## What's in here
+## Setting it up
+
+**Hand `INSTALL.md` to Claude and say "set up my brain."** It does the rest and
+checks with you at each step. About ten minutes.
+
+If you would rather see what it will do first, `INSTALL.md` is written to be
+read. The short version:
+
+1. Get the tool: `git clone https://github.com/LifehackMethod/lifehack-brain.git`
+   somewhere outside any cloud folder.
+2. Open **that** folder in Claude — the Code tab of the desktop app.
+3. Tell it once where your notes live. It remembers, permanently.
+4. Restart Claude, then type `/ingest`.
+
+**Step 2 matters more than it looks.** Claude only finds this tool when you open
+the folder it lives in. Open a folder inside it, or a different folder
+altogether, and nothing loads — with no error, which is the annoying part.
+
+---
+
+## What is in here
 
     .claude/         ← ours. the command itself — this is where Claude looks.
       agents/        ← the specialist readers the skill uses
       skills/
         ingest/      ← the one thing it does today
+      settings.json  ← wires it all up the moment you clone
 
     system/          ← ours. the programs that do the sorting.
 
+    CLAUDE.md        ← ours. the standing instructions every session opens with.
     PLAN-B.md        ← the manual backup, if the tool ever misbehaves
 
-    memory/          ← yours. updates never touch it.
-
-**The split is the whole design.** Everything we send you lives in `.claude/` and `system/`.
-Everything you write lives in `memory/`. When you update, only those change —
-your own notes aren't part of this repository at all, so there's nothing here that
-could overwrite them.
+Your own notes are **not in this list**, because they are not in this folder.
+They are wherever you said in step 3.
 
 ---
 
@@ -82,13 +87,15 @@ could overwrite them.
 Open `PLAN-B.md` in the top folder, drag it into a fresh Claude conversation,
 and say *"help me."*
 
-It's a complete backup. It walks your AI through the same process by hand, without
-needing the tool to work. You get the same result, it just takes a bit longer.
+It is a complete backup. It walks your AI through the same process by hand,
+without needing the tool to work. You get the same result, it just takes a bit
+longer.
 
 ---
 
 ## Getting updates
 
-Ask Claude: *"check if there's an update to my brain and install it."*
+Ask Claude: *"check if there is an update to my brain and install it."*
 
-It'll replace our folders with the newer version and leave `memory/` alone.
+It replaces this folder with the newer version. Your notes are somewhere else
+entirely, so an update cannot reach them even by accident.

@@ -11,21 +11,44 @@ You hand this file to Claude and answer its questions.
 
 ---
 
+## The one thing to get right: two folders, not one
+
+**The tool goes in one folder. Everything you write goes in a different one.**
+
+    ~/lifehack-brain/     ← the tool. ours. replaced whole on every update.
+    ~/My Notes/           ← everything you write. yours. never touched.
+
+Keeping them apart is what makes updates safe: the tool folder gets replaced
+wholesale, and there is nothing of yours inside it to lose.
+
+**⛔ The tool folder must NOT be inside a cloud folder.** Not inside Google Drive,
+Dropbox, OneDrive or iCloud Drive. Your home folder is perfect.
+
+> **Why.** The tool folder is a git repository, and git constantly makes and
+> deletes hundreds of small files as it works. Cloud sync tools notice each one
+> and try to upload it mid-operation. The two fight, and it never shows up as a
+> clear error — it shows up as a folder that quietly corrupts, or an update that
+> half-applies.
+
+**Your notes folder is the opposite — put it wherever you like, cloud included.**
+That is the one worth backing up, and nothing about it fights with syncing.
+
+> It has to be a **real folder on your computer** that happens to sync, not a
+> website you log into. Your AI opens files directly and cannot reach into a
+> browser tab. The syncing is only your backup.
+
+---
+
 ## What you do — three steps, about ten minutes
 
-**1. Make a folder for your brain.**
-Somewhere you'll find it again. Inside your Google Drive folder, your Dropbox folder, your OneDrive
-folder — whichever one you already use — or plain `Documents` if you use none of them.
+**1. Open a folder in Claude.** The Claude desktop app → the **Code** tab → any
+folder outside your cloud folder. Your home folder is fine. The tool will be
+fetched into a new folder inside it.
 
-Call it **`Lifehack Brain`**.
+**2. Drag this file into the chat and say: "Set up my brain."**
 
-> It has to be a **real folder on your own computer** that happens to sync, not a website you log into.
-> Your AI opens files directly and cannot reach into a browser tab. The syncing is only your backup.
-
-**2. Open that folder in Claude.**
-Open the Claude desktop app → the **Code** tab → point it at the folder you just made.
-
-**3. Drag this file into the chat and say: "Set up my brain."**
+**3. Answer its questions.** One of them is where your notes should live. Have an
+answer ready, or say "make me one" and it will.
 
 That's it. Claude takes it from here, and it will check with you before each step.
 
@@ -40,11 +63,11 @@ is, know where it is on your computer. You'll hand it over later by dragging it 
 > for it afterwards. **Setting up the tool and using it are two separate steps**, and the second one
 > happens in a fresh window at the very end.
 
-⚠ **Your material and your brain are two different places, and mixing them up is the one mistake that
-causes real trouble.** Your material can live anywhere — your Obsidian vault, your Downloads folder,
-wherever it already is. Your brain is the `Lifehack Brain` folder you made in step 1, and **everything
-this tool produces belongs in there.** When you're asked where your brain lives, answer with the folder
-from step 1 — not the folder your material is in.
+⚠ **Your material and your notes folder are two different places, and mixing them up is the one mistake
+that causes real trouble.** Your material can live anywhere — your Obsidian vault, your Downloads
+folder, wherever it already is. Your notes folder is the one you name in step 3, and **everything this
+tool produces belongs in there.** When you're asked where your notes live, answer with that folder —
+not the folder your material is in.
 
 ---
 ---
@@ -80,7 +103,7 @@ from step 1 — not the folder your material is in.
 >   your business here and asking it makes them think the sorting has begun.
 > - ⛔ **Do NOT read, open, convert, copy or move a single one of their files.**
 > - ⛔ **Do NOT run any script in `system/tools/`.** Nothing in there belongs to the install.
-> - ⛔ **Do NOT type `/ingest` yourself, and do not suggest they type it, until STEP 9.**
+> - ⛔ **Do NOT type `/ingest` yourself, and do not suggest they type it, until STEP 10.**
 >
 > ⭐ **WHY THIS BLOCK EXISTS — it was watched happening.** A session read this file, saw the "Have this
 > ready" note near the top, and **ran ahead to hunt for the corpus before Git was even installed.** The
@@ -89,13 +112,13 @@ from step 1 — not the folder your material is in.
 > **The "Have this ready" note above is addressed to the HUMAN, not to you.** It tells them what to have
 > on hand *later*. **Treat it as background information you must not act on.**
 >
-> ## ⛔⛔ NEVER PUT THEIR MATERIAL INSIDE THE BRAIN FOLDER. NOT THE ZIP, NOT THE UNZIPPED COPY.
+> ## ⛔⛔ NEVER PUT THEIR MATERIAL INSIDE THE TOOL FOLDER. NOT THE ZIP, NOT THE UNZIPPED COPY.
 >
 > **Their export stays where it already is** — Downloads, Desktop, wherever. ⛔ **Do not copy it in, do not
 > move it in, and do not unzip it into this folder or any folder underneath it.**
 >
 > ⭐ **WHY — watched happening 2026-08-09.** A session was asked to "extract the zip to a folder" and
-> extracted it inside the brain folder. That folder is version-controlled, so **git instantly began
+> extracted it inside the tool folder. That folder is version-controlled, so **git instantly began
 > tracking 6,228 changes** — including the export's own `users.json`, which carries the person's **email
 > address and phone number.** It could not actually reach the public repository (they hold no upload
 > credentials), but the folder was polluted and their private history was staged for upload.
@@ -107,7 +130,7 @@ from step 1 — not the folder your material is in.
 > outside this folder on purpose. **Just tell it where the zip is.**
 >
 > ⭐ **Everything about their actual material — where it lives, what format it is, how to read it — is
-> handled INSIDE the `/ingest` skill, in a fresh session, after STEP 8's restart.** That skill asks its own
+> handled INSIDE the `/ingest` skill, in a fresh session, after STEP 9's restart.** That skill asks its own
 > questions in its own order. **If you ask them first, you are asking questions the real tool is about to
 > ask again**, and their answers will not carry across the restart anyway.
 
@@ -198,50 +221,58 @@ clicking Install.** If they miss it, nothing will work later and the reason will
 
 ---
 
-## STEP 4 — Confirm where the brain goes, out loud
+## STEP 4 — Work out where the tool folder goes, and check it is not in a cloud folder
 
-Find out where you currently are:
+Find out where you are:
 ```bash
 pwd
 ```
 
-**Show them that folder and ask, in plain words: "Is this where you want your brain to live?"**
+The tool will be fetched into a **new sub-folder here called `lifehack-brain`**. Say that out loud —
+give them the full path — and ask if that is somewhere sensible. If not, ask them where, and have them
+drag the folder into the chat, which pastes its location.
 
-- **Yes** → that's the target. Continue.
-- **No** → ask them for the right folder. Have them drag it into the chat, which pastes its location.
+⛔ **Then check it is not inside a cloud folder. This is not optional.**
 
-⚠ **Do not skip this and do not assume.** This exact confusion was watched happening in a real test: the
-person pointed the tool at their notes folder and the output landed in their notes folder instead of
-their brain. **The folder their material is in is not the folder their brain lives in.**
+```bash
+case "$(pwd)" in
+  *Library/CloudStorage*|*Google?Drive*|*GoogleDrive*|*Dropbox*|*OneDrive*|*iCloud*|*"Mobile Documents"*)
+    echo "IN A CLOUD FOLDER — pick somewhere else" ;;
+  *) echo "NOT IN A CLOUD FOLDER — good" ;;
+esac
+```
 
----
+**If it says it is in a cloud folder, stop and move.** Tell them plainly: *"This folder is inside your
+cloud storage, and the tool can't live there — the syncing and the tool fight each other, and it goes
+wrong in ways that are hard to spot. Your home folder is a good place. Where would you like it?"*
+Then `cd` to the folder they name and run the check again.
+
+⚠ **Their notes are a separate question and it comes later, in STEP 7.** Do not ask about them now, and
+do not let this folder become the answer to that question by default.
 
 ## STEP 5 — Fetch the files
 
-From inside the target folder:
+One command, from the folder you just confirmed:
 
 ```bash
-git clone https://github.com/LifehackMethod/lifehack-brain.git .
+git clone https://github.com/LifehackMethod/lifehack-brain.git
+cd lifehack-brain
 ```
 
-**If it refuses because the folder isn't empty**, that is normal and recoverable — the folder probably
-already has this file in it. Do this instead:
-```bash
-git init
-git remote add origin https://github.com/LifehackMethod/lifehack-brain.git
-git fetch origin
-git checkout -f -t origin/main
-```
+That makes a new `lifehack-brain` folder and puts everything in it. **There is nothing to unzip, move,
+or unhide** — the `.claude` folder your computer hides by default arrives already in the right place.
 
 Then confirm it landed:
 ```bash
 ls .claude/skills/ingest/SKILL.md && echo "the skill is here"
 ```
 
-**Tell them what arrived**, in a sentence: the tool itself, the specialist readers it uses, and an empty
-`memory/` folder that is theirs.
+**Tell them what arrived**, in a sentence: the tool itself, and the specialist readers it uses.
 
----
+> ⛔ **If `git clone` refuses because a folder called `lifehack-brain` is already there**, do NOT try to
+> merge into it and do NOT `git init` an existing folder. Ask them whether that folder is an older copy
+> they can rename or delete, then clone again. A repository assembled by hand out of two half-copies is
+> the kind of thing nobody can diagnose later.
 
 ## STEP 6 — Confirm the pieces arrived
 
@@ -271,7 +302,54 @@ by hand produces a setup nobody can diagnose later.
 
 ---
 
-## STEP 7 — Prove it can actually run, before you promise them anything
+## STEP 7 — Ask where their notes should live, and set up day one
+
+**This is the question the whole system hangs on. Ask it once, properly, and never guess the answer.**
+
+Ask them, in these words or close to them:
+
+> **"Where should everything you write end up? This is separate from the tool folder — it's the one
+> worth backing up, so somewhere inside Google Drive or Dropbox is a good choice. If you don't have a
+> preference I'll make you one right next to the tool folder."**
+
+Have them drag the folder into the chat if it exists, which pastes its location. If they have no
+preference, the default below sits one level above the tool folder — outside it, beside it.
+
+Then record it. **This is remembered permanently; they will never be asked again.**
+
+```bash
+python3 shared/brain_root.py --set "<the folder they named>"     # add --create if it does not exist yet
+```
+
+Default, if they had no preference:
+```bash
+python3 shared/brain_root.py --set "$(cd .. && pwd)/My Notes" --create
+```
+
+Confirm it took, and say the path back to them in a sentence:
+```bash
+python3 shared/brain_root.py
+```
+
+Then make the three files a new setup starts with:
+```bash
+python3 system/tools/bootstrap.py
+```
+
+**Tell them what that did, in plain words:** *"I've made you three empty things in that folder — a
+journal, a list of projects, and somewhere for project notes to go. They fill themselves in as you
+work."*
+
+⛔ **It makes those three and nothing else, deliberately.** Do not add folders for subjects you think
+they might need. How their life divides up is theirs to find out, and a guess handed over on day one
+teaches them the guess is the answer.
+
+⚠ **If `--set` refuses**, read them the reason — it will say the folder does not exist (add `--create`)
+or that they pointed at a file. Do not work around it.
+
+---
+
+## STEP 8 — Prove it can actually run, before you promise them anything
 
 **A check you skipped is not a check that passed.** Run this one:
 
@@ -285,16 +363,20 @@ the process, in a way that looks like something they did.
 
 **If it printed `TOOLS OK`, the install is good. Continue.**
 
-> **A known gap, stated so nobody wastes time hunting it.** One file that the *final* step needs —
-> `system/topic-vocab.md`, used when the folder structure is written out at the very end — is not in this
-> release yet. **It does not affect anything up to that point:** sorting into piles, screening them, and
-> the deep read all work without it. It arrives in the next update, which you get by asking Claude to
-> check for one. ⛔ **Do not treat its absence as a broken install and do not try to write the file
-> yourself** — an invented vocabulary is worse than a missing one.
+> **One thing that is missing ON PURPOSE, stated so nobody hunts for it.** The very last step of an
+> ingest asks which subject each thing belongs to, and checks the answer against a list of subjects.
+> **That list is theirs and it is not in this package.** Nothing ships one, and the tools refuse rather
+> than inventing one — a taxonomy of somebody's life, written by a machine, is worse than none.
+>
+> When they reach that point the tool prints exactly what to do: write
+> `memory/topic-vocab.md` **inside their notes folder**, one line per subject, in the form
+> `` - `money` ``. ⛔ **Do not pre-empt it, do not write the file for them, and do not treat its
+> absence as a broken install.** Everything before that step — sorting into piles, screening them, the
+> deep read — works without it.
 
 ---
 
-## STEP 8 — ⛔⛔ THE ONE STEP EVERYTHING ELSE DEPENDS ON: MAKE THEM RESTART CLAUDE
+## STEP 9 — ⛔⛔ THE ONE STEP EVERYTHING ELSE DEPENDS ON: MAKE THEM RESTART CLAUDE
 
 **Claude loads skills and agents when a session opens. This session opened before those files existed,
 so it cannot see them yet.**
@@ -307,14 +389,20 @@ skipping it does not fail loudly, it fails quietly and convincingly.
 Tell them, in these words or very close to them:
 
 > **"Everything is installed. Now you have to quit Claude completely and open it again — not a new chat,
-> the whole app. When it comes back, open this same folder. Until you do that, Claude can't see the new
-> command yet. I'll wait."**
+> the whole app. When it comes back, open the `lifehack-brain` folder — that exact folder, not the one
+> above it and not a folder inside it. Until you do that, Claude can't see the new command yet. I'll
+> wait."**
+
+⚠ **Say "that exact folder" and mean it.** Claude reads this tool's wiring from a `.claude` folder in
+whatever folder you open, and it does **not** look upwards. Open the folder above, or a folder inside,
+and nothing loads — no warning, no error, everything simply absent. Tested and confirmed: from one
+level down, zero of it starts.
 
 Then **STOP. Do not continue this file. Do not offer to run `/ingest` yourself.**
 
 ---
 
-## STEP 9 — After they restart (this is the first thing to do in the NEW session)
+## STEP 10 — After they restart (this is the first thing to do in the NEW session)
 
 Confirm the command exists before they type anything:
 
@@ -324,8 +412,8 @@ ls .claude/skills/ingest/SKILL.md
 
 Then tell them:
 
-> **"You're set up. Type `/ingest` and press enter. It'll ask where your brain lives — that's this
-> folder. Then it'll ask for your material — drag the file or folder into the chat and it'll fill in the
+> **"You're set up. Type `/ingest` and press enter. It already knows where your notes go — you told it
+> during setup. It'll ask for your material: drag the file or folder into the chat and it'll fill in the
 > location for you. From there it asks you questions and shows you its work before it writes anything."**
 
 ---
@@ -336,7 +424,7 @@ Then tell them:
 **Read the symptom, not the error message.** These are the three things that actually happen.
 
 **1. You type `/ingest` and nothing happens, or Claude starts improvising.**
-Almost always the session wasn't restarted. Go back to **STEP 8** and do it properly — quit the whole
+Almost always the session wasn't restarted. Go back to **STEP 9** and do it properly — quit the whole
 app, not just the chat. If that doesn't fix it, re-run **STEP 6**'s check to confirm the files arrived.
 
 **2. Something says a module or a file can't be found.**
@@ -353,17 +441,43 @@ process by hand, without needing any of the tools to work. You get the same resu
 # WHAT'S IN HERE, AND WHY IT'S SPLIT THIS WAY
 
 ```
-Lifehack Brain/
-├── .claude/     ← ours. The command itself — this is where Claude looks.
-│   ├── agents/      the specialist readers the tool uses
-│   └── skills/      the tool itself
-├── system/      ← ours. The programs that do the sorting.
-├── PLAN-B.md    ← the manual backup, if the tool ever misbehaves
-└── memory/      ← YOURS. Updates never touch it.
+lifehack-brain/          ← OURS. replaced whole on every update.
+├── .claude/                 the command itself — this is where Claude looks
+│   ├── agents/              the specialist readers the tool uses
+│   ├── skills/              the tool itself
+│   └── settings.json        wires it up the moment you clone
+├── system/                  the programs that do the sorting
+├── CLAUDE.md                the standing instructions every session opens with
+└── PLAN-B.md                the manual backup, if the tool ever misbehaves
+
+My Notes/                ← YOURS. a different folder, outside this one.
+├── system/journal.md        what happened, as it happens
+├── system/project-registry.md   so a cold session can find an old project
+├── state/briefs/            project notes
+└── desks/                   a folder per subject, once you have run an ingest
 ```
 
-**The split is the whole design.** Everything sent to you lives in `.claude/` and `system/`. Everything
-you write lives in `memory/`. When you update, only the first two change — what you wrote is not part of
-this repository at all, so there is nothing here that could overwrite it.
+**The split is the whole design.** Everything sent to you is in the first folder. Everything you write
+is in the second. An update replaces the first one completely — and cannot reach the second even by
+accident, because your notes are not in this repository at all.
 
 **To get updates later, ask Claude:** *"check if there's an update to my brain and install it."*
+
+---
+
+# THE GOOGLE-CONNECTED PARTS — not here yet, and what they will need
+
+Some of what is coming — reading your calendar, working with your mail, building spreadsheets — needs a
+connection to **your own** Google account. **None of it is in this package yet**, so there is nothing to
+set up today and nothing to go looking for.
+
+Stated now so the shape is not a surprise later:
+
+- **You connect your own account.** Nobody else's credentials are involved and nothing is shared. The
+  tools ship; the account they talk to is yours.
+- **Your own identifiers — which calendar, which spreadsheet — live in your notes folder**, at
+  `config/`, never in this repository. Same rule as everything else you own.
+- **It is a sit-down, not a click.** Expect to do it with someone the first time.
+
+⛔ **Until those parts ship, do not install Google tooling, do not run an authentication flow, and do not
+ask them for account details.** Nothing here uses them.
