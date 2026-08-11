@@ -132,8 +132,45 @@ the conversation that produced it. If it needs the backstory, it is a record, no
 ## The journal
 
 One file, appended to, never edited: `<notes>/system/journal.md`. When it gets long, older months
-move to `<notes>/system/journal/YYYY-MM.md` and a reader searches the current file plus whichever
-segment covers the dates it wants.
+move to `<notes>/system/journal/YYYY-MM.md`.
+
+**Anything reading the journal reads the current file AND the segments.** Reading only the current
+file loses everything older than the last rotation, and it fails *quietly*: the result comes back
+short and looks like a quiet stretch rather than a truncated search.
+
+```bash
+grep -h "| <slug> |" "<notes>"/system/journal/*.md "<notes>/system/journal.md" 2>/dev/null | tail -20
+```
+
+**Two entry shapes, and no others.**
+
+A **ledger row** — one line, for every artifact saved:
+
+```
+{YYYY-MM-DD} | {desk} | {slug} | {event} | supersedes: {path or —} | → {artifact-path}
+```
+
+- `event` is what changed **and why**, readable with no other context. Not a filename echo. Bad:
+  *"Updated state."* Good: *"Moved the venue to second choice after the quote came back double; the
+  budget line changes."*
+- `supersedes` is a path or `—`. **Never a concept.** `[partial: …]` when only part of the old file
+  is invalidated; `[renamed]` when a file moved rather than being superseded; two comma-separated
+  paths when two files became one.
+- `slug` must exist in the registry before it is used.
+
+A **session entry** — a block, written when the story matters more than the row: something failed and
+shaped the outcome, an architectural decision was made, or the session pivoted.
+
+```markdown
+## SESSION — {YYYY-MM-DD} | {slug}
+
+**Session:** {what was worked on — one sentence}
+**Follows:** {what this picked up from — the cause-and-effect link, or "—" if it starts something}
+**Failed / changed:** {what did not work, what pivoted, and why}
+**Key findings:** {the two to four conclusions that matter}
+**End state:** {where it stands — what is open, what is done}
+**Missteps:** {anything that cost time or should not be repeated}
+```
 
 It is the backstop. A brief is overwritten in place all the time and that is safe **only** because the
 journal kept what the brief used to say. Anything precious — a dead end, a decision, a number — goes

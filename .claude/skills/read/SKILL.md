@@ -60,13 +60,16 @@ If the flag command errors, ignore it and carry on. It never blocks a read.
 
 ## Step 0.6 — Resolve the project, and walk its canon branch
 
-Given a slug — from the flag, the argument, or step 1's signals — resolve it through
-`$DATA/system/project-registry.md`:
+Given a slug — from the flag, the argument, or step 1's signals — **ask the resolver:**
 
-1. The row has a 5th `{path}` field → the brief is `{path}/brief.md`.
-2. No `{path}` → the older flat shape, `$DATA/state/briefs/<slug>.md`.
+```bash
+python3 "$ROOT/shared/registry.py" "<slug>"
+```
 
-Both resolve, always. A half-migrated set of notes never breaks lookup.
+It prints the layout (`folder` or `flat`) and the brief, records and canon paths. `NOT-REGISTERED`
+(rc 3) means there is no such project: say so and say where you looked. Both shapes resolve, always —
+a half-migrated set of notes never breaks lookup — and the rule lives in `shared/registry.py` and
+nowhere else.
 
 **Then walk the branch and load canon along it — lazily, most specific first:**
 

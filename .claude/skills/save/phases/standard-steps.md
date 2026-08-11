@@ -77,15 +77,19 @@ offer one candidate — *"I'll save: X. Correct?"* — but **default to acting, 
 
 ## Step 2 — Resolve the project folder
 
-Look the slug up in `$DATA/system/project-registry.md`:
+**Ask the resolver; do not restate the rule.**
 
-- **The row has a 5th `{path}` field** → the folder is `{path}`; the brief is `{path}/brief.md`;
-  records go in `{path}/records/`; canon is `{path}/canon/current.md`.
-- **No `{path}`** → the older flat shape: the brief is `$DATA/state/briefs/<slug>.md`, and records go
-  to `$DATA/records/<type>/`.
+```bash
+python3 "$ROOT/shared/registry.py" "<slug>"
+```
 
-Both resolve, always. That dual resolution is the safety invariant — a save works whether or not a set
-of notes has been migrated.
+It prints the layout (`folder` or `flat`) and the three paths — brief, records, canon — marking any
+that do not exist yet. `NOT-REGISTERED` with rc 3 means there is no such row: **say so and offer to
+register one.** Never invent a folder.
+
+Both shapes resolve, always. That dual resolution is the safety invariant — a save works whether or
+not a set of notes has been migrated. The rule lives in `shared/registry.py` and nowhere else, so the
+four skills that need it cannot drift apart.
 
 ## Step 3 — Route
 

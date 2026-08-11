@@ -71,11 +71,18 @@ appended to `$DATA/system/project-registry.md`:
 ```
 
 `{status}` is `active` · `paused` · `complete` · `split → [a, b]`. `{path}` is the folder relative to
-`$DATA`. `{desk}` is `root` unless the person uses desks.
+`$DATA`. `{desk}` is `root` unless the person uses desks. **Build the row with the resolver rather
+than by hand** — it refuses a folder whose last segment is not the slug, which is the drift above:
+
+```bash
+python3 -c "import sys; sys.path.insert(0,'$ROOT/shared'); import registry; \
+  print(registry.format_row('<slug>', '<display name>', 'state/projects/<slug>'))"
+```
 
 **A brief may also be found as a flat file** — `$DATA/state/briefs/{slug}.md` — because that is what
-older notes hold. **Read that shape; never create it.** One brief per slug, for the project's whole
-life, updated in place, never dated or duplicated.
+older notes hold. **Read that shape; never create it.** Both resolve; `python3 "$ROOT/shared/registry.py"
+"<slug>"` is the one place that knows how. One brief per slug, for the project's whole life, updated
+in place, never dated or duplicated.
 
 Folders are created lazily, on first write. This is the person's own working state — writing here needs
 no separate approval. When you do not know the slug, **ask** — never silently infer one.
