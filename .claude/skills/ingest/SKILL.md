@@ -207,7 +207,7 @@ their location from the repo root, so a different layout breaks them.
 | `system/hooks/skill_anchor_inject.sh` | the injector `skill_anchor.sh` writes flags **for**. Without it the anchor is armed and never shown — silently. | ⏳ lands with the harness floor |
 | `settings.json` | nothing above is registered with the harness until this exists | ⏳ lands with the harness floor |
 | `system/hooks/ingest_gate_enforce.sh` | the hook that stops the main session reading the locked scratch (`3-deep-read.md`) — the enforcement half of the reader/actor split | ⏳ lands with the security wall |
-| `system/hooks/guard_canon_write.sh` | makes the canon write gate code rather than prose (`4-place.md`) | ⏳ lands with the security wall |
+| `system/hooks/guard_canon_write.sh` | ⚖ **STALE 2026-08-11 — the rule it was to enforce was REVERSED.** It was to gate "the machine must never write canon"; canon is now written directly at its earned altitude, human-reviewed at the end. **The hook does not exist on disk and is no longer owed for that purpose.** Any future canon gate is a NEW decision, not this one. | ⛔ not owed |
 | `system/knowledge-altitude.md` | the too-big/too-small subdivide rules PHASE 3 cites by line | ⏳ lands with the doctrine set |
 | `.claude/skills/read/` | PHASE 4 hands off to it | ⏳ lands with the core skills |
 | `.claude/skills/archivist-route/` | PHASE 4 reuses its ranking contract inline rather than rebuilding it | ⏳ lands with the archivist family |

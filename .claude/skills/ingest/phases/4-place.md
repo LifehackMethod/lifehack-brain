@@ -86,8 +86,15 @@ it survives her absence.
 - **The corpus-map (`work/corpus-map.json`) is your memory + state machine.** Read it; never trust recollection.
 - **The machine never eliminates; the human sees everything.** Every keeper is placed, pointer-ized, or
   explicitly set aside — nothing is dropped unseen. You PROPOSE; the human RULES, by number.
-- **Canon is NEVER auto-written.** A canon-candidate goes to `records/proposals/` with `vetted: false` — never
-  to `canon/`. The `guard_canon_write.sh` hook enforces this; don't fight it, honor it. Word each proposed line to pass the STANDALONE TEST — a cold, zero-context session can fully understand it alone (precise + self-sufficient; matters more than length).
+- **Canon is written directly, at the altitude it earns — never into a holding room.** ⚖ **REVERSED
+  2026-08-11 (Enver, `authority: user`).** The old rule routed every canon-candidate into `records/proposals/`
+  with `vetted: false`, behind a SEPARATE second key nobody came back to spend — a student ran the whole
+  skill, approved 54 items one at a time, and got **five empty canon files**: *"the pipeline walks you to a
+  door and the door has no handle on either side."* There is no more holding room and no second key. The
+  human's ordinary yes at CONFIRM (`4.3`) is what authorizes the write; PLACE (`4.4.D`) then writes the file
+  straight into `canon/` — at whichever altitude the closed-set test there decides, never guessed, never
+  invented. Word every written line to pass the STANDALONE TEST — a cold, zero-context session can fully
+  understand it alone (precise + self-sufficient; matters more than length).
 - **FIRST DO NO HARM — search before you add.** Before writing anything canon-bound, run the dedup/conflict
   scan; the living desk WINS over a stale ingested snapshot. Drop or surface a conflict; never silently overwrite.
 - **Blind chain the phases.** Run LOAD → SCHEMA → CONFIRM → PLACE in order; don't skip ahead. Nothing writes
@@ -192,8 +199,73 @@ Any pile listed `⚠ NO BRANCH RULED` goes **back to Phase 3** for that pile —
 Per-pile detail (branch + how many findings carry a human-chosen type):
 `python3 $T/pipeline.py world-map-state --map "$MAP" --basket "<pile>"`
 
-**Assemble the tree from the per-pile branches** Phase 3 recorded, present it whole (this is the first time
-the human sees the WHOLE shape rather than one branch), and take corrections. Then scaffold.
+**Assemble the tree from the per-pile branches** Phase 3 recorded — this is the first time the human sees
+the WHOLE shape rather than one branch at a time.
+
+### 4.2a — THE CHECKPOINT SCREEN (before anything is scaffolded)
+
+⭐ **Placed here on purpose: a wrong desk re-files everything beneath it.** Before you scaffold a single
+folder or write a single canon line, show the human the whole tree — root + derived desks — and get their go.
+
+**Compute the real counts — never guess them, never round them.** The desks derive from the piles; grouping
+piles into desks by their ruled `folder_branch` is the same operation `4.2`'s "READ WHAT PHASE 3 ALREADY
+RULED" block just did — this reuses that data, it does not re-derive it:
+```bash
+python3 - "$MAP" "$T" <<'PY'
+import json, sys
+sys.path.insert(0, sys.argv[2])
+import pipeline
+m = json.load(open(sys.argv[1]))
+baskets = pipeline.baskets_of(m)
+rows = pipeline.rows_of(m)
+counts = {}
+for r in rows.values():
+    b = r.get("basket")
+    if b:
+        counts[b] = counts.get(b, 0) + 1
+desks = {}
+for name, b in sorted(baskets.items()):
+    if b.get("basket_status") == "declined":
+        continue
+    for branch in pipeline.folder_branches(b):
+        desk = branch.split("/")[0]
+        desks.setdefault(desk, []).append((name, counts.get(name, 0)))
+print("ROOT — the top-level canon.md — loads into EVERY conversation, on ANY subject")
+print()
+for desk, piles in sorted(desks.items()):
+    total = sum(c for _, c in piles)
+    names = ", ".join(p for p, _ in piles)
+    print(f"{desk}: {total} chat(s) — from pile(s): {names}")
+PY
+```
+
+Render the screen from that output, in this shape:
+1. **The root, named plainly** — *"Here's your AI brain."* One line: everything lives under `$DRIVE`, and its
+   top file (`canon.md`) is the one thing loaded into EVERY conversation you ever have here.
+2. **The derived desks, each with its EVIDENCE, never an opinion** — *"Based on your piles, I'd make
+   {N} folders:"* one numbered line per desk, and ⭐ **every desk states WHY, with the real count the script
+   just printed** — e.g. *"a health desk, because 200 of your chats were health."* ⛔ Never invent or round a
+   count; if a desk has a small number, say the small number.
+3. ⚠ **The payoff — written new for this screen, say it close to these words** (it is not written elsewhere
+   in this skill; do not go hunting for it, this is the first time it is stated): *"You'll be able to open a
+   conversation from any one of these folders and get exactly the right knowledge about that domain — without
+   overloading your context window."* This is the sentence that makes the whole run make sense to them —
+   without it they cannot value the structure they are about to approve.
+4. **Reassure, then point DOWN, never WIDE:**
+   - *"You can always manually add a folder on your own in the future at any time."* ⭐ Say this every time —
+     without it the screen reads as a locked decision and people freeze.
+   - A desk holds sub-domains beneath it; if one ever feels cramped, the release valve is a folder
+     UNDERNEATH it, never a new one beside it.
+   - Word the guidance AS a recommendation, never a rule: *"it's highly recommended to limit the number of
+     desks to begin with, and you can always add in the future if it turns out to be necessary."*
+5. ⛔⛔ **ADVISORY, NEVER BLOCKING.** Dead-end `[B14]`: a hard threshold on category count fought the discovery
+   process this phase exists to do and blocked the live corpus within hours — it was converted to an advisory.
+   The screen MAY say the pile/desk count looks high; it may **NEVER refuse, and it always proceeds** on the
+   human's go regardless of the count. ⭐ **The asymmetry is the design: the guidance binds the SHAPE you
+   propose, never the human's choice.**
+
+Take corrections by number, same as every other screen in this skill — merge, split, rename, or add a desk
+the human names that the piles didn't suggest. Then scaffold.
 
 <details><summary>The superseded design-it-here procedure, kept — it is what to fall back to if Phase 3's branches are missing</summary>
 
@@ -204,6 +276,9 @@ the human sees the WHOLE shape rather than one branch), and take corrections. Th
    > 1. **Money** (piles: taxes, investing, budgeting) — 34 notes
    > 2. **Health** (piles: fitness, medical) — 12 notes
    > 3. **Writing** (pile: essays) — 8 notes …"*
+   Even on this fallback path, the screen is not done at the numbered list — follow it with the SAME
+   checkpoint content `4.2a` requires: the payoff sentence, the reassurance, and the advisory-not-blocking
+   framing. Evidence counts alone are not the whole screen.
 2. **Sub-folders ONLY when a desk earns them (canon-audit's crowding/altitude rule, inlined).** A desk stays
    ONE flat `records/` folder unless it has **enough material that a single folder would be crowded** (rule of
    thumb: a desk with 3+ clearly-distinct sub-themes AND enough notes to fill them). A light desk stays flat.
@@ -226,7 +301,7 @@ a deliberate later promotion.)*
 **Every folder is a knowledge boundary with its own canon file and a stated purpose** — that is the skill's
 whole deliverable, not a nicety. → go to `4.3`.
 
-## 4.3 — CONFIRM (the TOOL-PRINTED filing plan + the two-key canon gate)
+## 4.3 — CONFIRM (the TOOL-PRINTED filing plan, ONE key for everything on it)
 The confirm screen is **PRINTED BY A TOOL, not hand-assembled** (hand-listing is what drifts). Build the plan
 as a small JSON, then render + PASTE the screen:
 **Rank each item's `home` HERE, ONCE, before the human ever sees this screen** (reuse `archivist-route`
@@ -246,16 +321,22 @@ JSON
 python3 $T/filer_review.py show --plan /tmp/filer-plan.json --map "$MAP"
 ```
 `filer_review.py` renders it through the ONE shared screen template (title + %-bar → **SAVE** rows → the ONE
-action last), records/pointers first and canon-candidates LAST, each flagged **⚠** as needing the separate
-permanent key. **SAVE is the honest verb here** (this is the only screen where anything is actually saved).
-Reproduce the whole screen in your reply — never leave it collapsed, never re-format the rows into prose.
-- **Two keys.** A plain "yes" (or "1 yes, 2 yes, 3 change to Health") approves the **records + pointers**. Each
-  **canon-candidate** (the ⚠ rows) needs a SEPARATE explicit key — *"yes, save this as a permanent note"* — and
-  even then it writes to `records/proposals/`, never `canon/`. Never let the ordinary yes imply the permanent one.
+action last), records/pointers first and canon-candidates LAST, each flagged **⚠** so the human can see at a
+glance which rows are headed for `canon/` rather than `records/`. **SAVE is the honest verb here** (this is
+the only screen where anything is actually saved). Reproduce the whole screen in your reply — never leave it
+collapsed, never re-format the rows into prose.
+- **One key, not two.** ⚖ **REVERSED 2026-08-11** — there is no more separate "yes, save this as permanent"
+  phrase. A plain "yes" (or "1 yes, 2 yes, 3 change to Health") approves EVERYTHING shown this turn, canon
+  rows included; the ⚠ flag is information, not a second door. *(The retired second key was, in the SPEC's
+  own words, "a string match on content the writer itself wrote… not a gate" — it was the actor grading its
+  own homework, and it was the exact door a student found had no handle: her 54 approvals never turned into
+  a write.)* WHERE in the tree a canon row lands — root, its own desk, a sub-folder, or nowhere at all — is
+  decided at PLACE (`4.4.D.1`), the same way `record_type` already is; CONFIRM approves that an item is worth
+  keeping, not the altitude it earns.
 - **The anti-rush gate:** you may not place an item until you can state *what it is + which home it earns + why*.
   PLACE acts ONLY on the items the human confirmed this turn. → go to `4.4`.
 
-## 4.4 — PLACE (write the records + canon-proposals; dedup; record the fate)
+## 4.4 — PLACE (write the records + the canon lines themselves; dedup; record the fate)
 
 > ⛔ **A RECORD GETS A STUB FILE — THE ORIGINAL IS NEVER MOVED, NEVER REWRITTEN** *(ruled 2026-08-05: "we're
 > not going to bother spending LLM tokens rewriting it"; ruled three times — this line previously had it
@@ -308,6 +389,61 @@ slug from it, or ask the human to add one FIRST, then re-run this check before w
 nothing ships one. **Never invent a slug, and never edit their vocabulary yourself.** If they have no
 vocabulary yet the tool refuses and prints how to start one; hand them that, do not write it for them. A
 taxonomy of someone's life, authored by a machine, is worse than no taxonomy at all.
+
+**D.1 — FOR CANON ROWS ONLY: pick the altitude, from a closed set, before you write.** ⚖ **REVERSED
+2026-08-11** — a canon-candidate no longer parks in `records/proposals/`; it is authored straight into
+`canon/`, at whichever altitude it earns. Use the SAME two tests already inlined in `propose_folder_shape()`
+(`pipeline.py:1959-1998`) — do not re-derive or re-word them, cite them:
+① **too BIG → subdivide (nest, same territory, more shelves beneath it); too DIVERSE → separate (siblings,
+NOT nested — mutually irrelevant bodies of knowledge degrade each other if loaded together).**
+② **the cost test — place a fact at the highest folder where it is still always-true, and no higher; a line
+placed high is charged to every descendant that walks past it** — which resolves, in the SPEC's own words
+(`SPEC.md:730-734`), as *"the question is not 'what is this about' but 'who has to bear the cost of it.'"*
+
+The pick is made along THIS item's own approved `home` lineage ONLY — never a different branch than CONFIRM
+already showed the human (re-ranking `home` here is still forbidden, see `A` above). Walk `home` (e.g.
+`money/taxes/roth-ira`) into its ancestor chain (`money` → `money/taxes` → `money/taxes/roth-ira`) and choose
+exactly ONE member of this closed set:
+
+| member | means | writes to |
+|---|---|---|
+| `root` | true for EVERY conversation, any subject | `$DRIVE/canon.md` — via `4.5`, never written from here directly |
+| `desk` | true everywhere under this item's top-level desk | that desk's `canon/current.md` |
+| `sub-folder` | true for an intermediate branch of `home`, not the whole desk | that branch's `canon/current.md` — only offered when `home` actually has an intermediate segment |
+| `deep` | true only within `home` itself, no higher | `home`'s own `canon/current.md` |
+| `records` | real, but not always-true at ANY altitude in this lineage | the ordinary record path (the `record` bullet below) |
+| `drop` | ⭐ **you could not judge the altitude** — the fact is real, the placement call isn't clear | routes to `records`, same as above, **never to canon** — *"I could not judge" must never be spelled the same as "it belongs at root."* |
+
+**Code enforces membership fail-closed** — anything off this list is refused, never silently absorbed. Shape
+of the check (apply it to each canon row's `home` + the member you picked, before writing anything):
+```python
+CLOSED_SET = {"root", "desk", "sub-folder", "deep", "records", "drop"}
+def resolve_altitude(home, pick):
+    chain = (home or "").split("/")
+    ancestors = ["/".join(chain[:i + 1]) for i in range(len(chain))]  # desk, desk/sub, ..., home itself
+    if pick not in CLOSED_SET:
+        return False, None, f"REFUSED: {pick!r} not in {sorted(CLOSED_SET)} — pick again, do not absorb it."
+    if pick == "root":
+        return True, "ROOT_CANON", None            # goes to 4.5, never written from 4.4 directly
+    if pick in ("records", "drop"):
+        return True, "RECORD", None                # falls through to the ordinary record/dated path, never canon/
+    if pick == "desk" and ancestors:
+        return True, "DESK_CANON", f"{ancestors[0]}/canon/current.md"
+    if pick == "deep" and ancestors:
+        return True, "DEEP_CANON", f"{ancestors[-1]}/canon/current.md"
+    if pick == "sub-folder":
+        if len(ancestors) < 3:
+            return False, None, "REFUSED: 'sub-folder' needs a branch between desk and home — this item's home is too shallow; pick 'desk' or 'deep' instead."
+        return True, "SUBFOLDER_CANON", f"{ancestors[-2]}/canon/current.md"
+    return False, None, "REFUSED: unreachable pick/ancestor combination — re-check home and pick again."
+```
+State the member you picked and the one-line reason **inside the file you write** — a canon line filed
+without saying why it earned its altitude fails the STANDALONE TEST above.
+
+⛔ **MODEL-REACH: SESSION only.** This altitude pick happens here, in skill prose, inside a live `/ingest`
+turn. It does not run in cron and has no autonomous/background form anywhere in this skill — no later
+background path may assume this judgment step has already happened for material it hasn't seen a human turn on.
+
 - **A record (`finding_type: record`)** → a **STUB FILE**, `desks/<desk>/<folder>/<YYYY-MM-DD>-<slug>.md`,
   with a valid frontmatter envelope (`title · record_type · desk · topic · created_at · status: active ·
   authority: user · confidence:<CONFIRMED|INFERRED> · source_refs:[the source chat]`) whose BODY is only
@@ -317,8 +453,15 @@ taxonomy of someone's life, authored by a machine, is worse than no taxonomy at 
   dated-but-valuable finding, written out (this is the one case worth spending tokens on, because the
   number/fact has a shelf-life and won't still be sitting readable in the original chat by the time anyone
   needs it again).
-- **A canon-candidate (`finding_type: canonical`)** → `desks/<desk>/records/proposals/<YYYY-MM-DD>-<slug>.md`,
-  same envelope PLUS `vetted: false` and a `## Why this could be canon` note, AUTHORED. NEVER write under `canon/`.
+- **A canon-candidate, altitude `root`** → do NOT write it from here. Route it to `4.5`, where every root
+  write gets its own one-at-a-time surfacing — root's cost is what it is.
+- **A canon-candidate, altitude `desk` / `sub-folder` / `deep`** → append the AUTHORED line to that level's
+  `canon/current.md` (the path `D.1` resolved), same frontmatter discipline as every other write here
+  (`topic:` gated first, `authority: user`, `confidence:`). No `vetted:` field — the write here IS the vet;
+  there is nothing left to vet afterward.
+- **A canon-candidate, altitude `records` or `drop`** → file it exactly like a plain `record` (above) — a
+  stub pointing at the source chat, never a canon claim. If the pick was `drop`, name it plainly in the
+  close-out (`STOP-CHECK`, below): the fact was kept, but no altitude was found for it.
 - **A pointer** (a placement call made here for an oversized keeper, not a `finding_type`) → a tiny record
   whose body is just the source pointer + one-line what-it-is (no full content).
 
@@ -329,9 +472,11 @@ python3 $T/pipeline.py commit-mark --map "$MAP" --file "<file>"
 ```
 For a pointer/defer/decline use `--status pointer-only|deferred|declined` (each needs `--human-approved`).
 
-**Safe-class + carve-out (retired-autoplace rule, inlined + cited).** The filer writes only the SAFE class:
-dated records + proposals. It NEVER auto-executes a carve-out item — any `CLAUDE.md` edit, any skill edit, any
-`canon/current.md` or root-canon write, any hard-delete, any contested verdict. Those stay human-only.
+**Safe-class + carve-out (retired-autoplace rule, inlined + cited).** The filer writes records, dated items,
+and — ⚖ **as of 2026-08-11** — canon, at the altitude `D.1` decided, once the human approved the item this
+turn. It still NEVER auto-executes anything the human did not see and approve THIS turn: any `CLAUDE.md`
+edit, any skill edit, any hard-delete, any contested verdict, or — per `4.5` — any ROOT canon line without
+that line's own one-at-a-time go. Those stay human-only, always.
 **NOT harvested (cut as overhead the per-item human approval already covers):** the vet 3-lens panel, the
 cross-run ledger, the per-run auto-place cap.
 
@@ -339,17 +484,54 @@ cross-run ledger, the per-run auto-place cap.
 
 > **Merged in from the old Phase 6 (PROMOTE), 2026-08-05.** It was never a phase — it has one human turn
 > and it belongs to the end of placing.
+> ⚖ **REVERSED 2026-08-11 (Enver, `authority: user`) — `/ingest` now writes this file DIRECTLY, the same way
+> `/save` writes canon: behind a human go, never behind a holding room.** `bootstrap.py` (task 2.1.1) already
+> created `$DRIVE/canon.md`, seeded with its own purpose line and zero canon lines — this step is what puts
+> the first real lines into it. This does not conflict with "the author writes the high-tier bars, not the
+> machine" (`SPEC.md:744-747`): that doctrine is honored by the human's explicit go on EACH line below, not
+> by a second key that was never actually gating anything.
 
-Each folder already carries its own canon file (`4.2`). **The ROOT canon is different: it is what a cold
-session loads for EVERY conversation, so a line placed there is charged to every descendant, forever.**
+Each folder already carries its own canon file (`4.2a`/`4.4.D`). **The ROOT canon is different: it is what a
+cold session loads for EVERY conversation, so a line placed there is charged to every descendant, forever.**
 *(Verified: `/read` chain-walks parent canon — `skills/read/SKILL.md` Step 0.6. The placement rule is a
 COST rule.)*
 
-- Surface root-canon candidates **ONE AT A TIME**, each with what it would cost to carry everywhere.
-- ⛔ **Canon is NEVER auto-written.** A candidate goes to `records/proposals/` with `vetted: false`.
-- ⚠ **Known weakness, stated rather than hidden:** the "second key" is today a string match on content the
-  writer wrote. **That is not a gate** — it is the actor grading its own homework. Treat root-canon
-  promotion as human-only in practice, whatever the code appears to allow.
+- **This is the ONLY place `canon.md` gets written.** A `4.4.D.1` pick of `root` routes here — nothing writes
+  to it from anywhere else in this phase.
+- Surface each root-canon candidate **ONE AT A TIME**, plainly stating what it would cost to carry into
+  every future conversation, on any subject. Get the human's plain go on THAT line before you write it — the
+  same anti-rush gate `4.3` already states (*"you may not place an item until you can state what it is +
+  which home it earns + why"*), applied at the one altitude where the cost is highest.
+- On a plain go, append the line under `$DRIVE/canon.md`'s `# Canon` heading, below its existing intent
+  block. No `vetted:` field, no `records/proposals/` detour — the write here IS the record.
+- ⛔ **Still never silent, never batched.** A root line is the single most expensive thing this phase can
+  write. If you are unsure whether one earns it, it doesn't — route it to `records` or a lower altitude
+  instead (`4.4.D.1`'s `drop` member exists exactly for this doubt).
+
+## 4.6 — THE OPTIONAL REVIEW PASS (canon only — this is what makes it fast)
+
+One optional pass, offered once, at the very end — after every folder is filed and root canon (`4.5`) is
+settled. ⛔ **Canon only.** Not records, not dated items — *"we don't need to go back and review all the
+records and the data information that's not as important."* Records already got their one look at CONFIRM
+(`4.3`); this pass exists because canon is the one thing that loads into every future conversation, and it
+deserves a second look while the run is still fresh, rather than being found wrong three weeks from now.
+
+Offer it in plain words: *"Want a quick pass over everything I filed as canon, before we close out? Totally
+optional — the run is complete either way."*
+
+⛔ **OPTIONAL MEANS OPTIONAL.** Declining completes the run cleanly — no warning, no nag, no "are you sure."
+A "no" goes straight to `STOP-CHECK`.
+
+On a "yes," **your attention follows the altitude curve — this is what makes the pass fast, not merely
+thorough:**
+- **Read every line of root canon (`$DRIVE/canon.md`) out loud, one at a time.** It loads into EVERY future
+  conversation, forever — that is exactly what earns it the closest look.
+- **Skim desk-level canon** (`canon/current.md` under each folder) — a quick pass, not line-by-line.
+- **Do not review deep canon at all.** It only loads when that specific branch is actually in play — *"it
+  barely loads, so overload is harmless."*
+Say plainly WHY the top gets the attention and the bottom doesn't — the human should leave this pass
+understanding the curve, not just having sat through it. Take corrections the same way every other screen in
+this phase does — by number, written back immediately. Then → `STOP-CHECK`.
 
 ## STOP-CHECK + close
 When every keeper is filed, close each pile and finish:
@@ -365,12 +547,32 @@ bash "$S" clear ingest
 ```
 The `basket-status committed` write REFUSES a pile with any un-closed keeper (the done-gate — no gold left
 behind); if it refuses, finish those items first. Then tell the human, warmly and plainly, what just got filed
-and where — a clean end-count — and that their whole history is now organized. STOP.
+and where — a clean end-count.
+⚠ **Use these words, and only these, for what each count means — this close-out is composed freehand, and
+freehand is exactly where a run mis-describes itself:**
+- **"written as canon"** — ONLY for a line that is, at this moment, actually sitting in a `canon/current.md`
+  or `$DRIVE/canon.md` on disk. ⛔ **Never say "permanent" for anything that is not on disk in a canon file.**
+  A student was told 54 items were "permanent" while every one of them sat unwritten in a proposals folder —
+  this is the exact mis-description that cannot repeat.
+- **"filed as a record"** — for a stub or authored dated item under `records/`.
+- **"kept, but not filed as canon"** — for anything that resolved to `records`/`drop` at the altitude test
+  (`4.4.D.1`): it is saved, it is real, it simply did not earn a canon spot.
+Also report, as a plain OBSERVATION and never as a rule: root canon should read materially SHORTER than the
+deepest folder's canon — that is the shape correct placement produces, not a target anything enforces. If
+root came out longer than a leaf, say so plainly; that is worth the human noticing, not a failure to
+silently paper over.
+Close by saying their whole history is now organized. STOP.
 
 ## Failure modes (do not)
-- Writing to `canon/` (proposals only) · auto-resolving a canon conflict (surface it) · placing an item the
-  human didn't confirm this turn · assigning `canon`/`rule` type · running from a subagent · scaffolding a desk
-  the human didn't confirm · trusting memory over the map · claiming "filed" without the record on disk +
-  the map fate recorded · re-building archivist-route / canon-audit / the vet panel instead of reusing/citing them ·
-  re-ranking an item's `home` at PLACE (`4.4`) after CONFIRM (`4.3`) already showed the human that home and
-  they approved it — rank once, at `4.3`, and reuse; the file written must be the file approved.
+- Writing canon anywhere the closed-set test (`4.4.D.1`) didn't resolve to, or off a member not in
+  `{root, desk, sub-folder, deep, records, drop}` · writing to `$DRIVE/canon.md` from anywhere but `4.5` ·
+  spelling "I could not judge" (`drop`) the same as "it belongs at root" · claiming a canon-candidate is
+  "permanent"/"written as canon" when it is not actually on disk in a canon file · auto-resolving a canon
+  conflict (surface it) · placing an item the human didn't confirm this turn · assigning `canon`/`rule` as a
+  RECORD's `record_type` (that field is for records/dated items only, never canon — see `B`) · running from a
+  subagent · scaffolding a desk the human didn't confirm · trusting memory over the map · claiming "filed"
+  without the record (or canon line) on disk + the map fate recorded · re-building archivist-route /
+  canon-audit / the vet panel instead of reusing/citing them · re-ranking an item's `home` at PLACE (`4.4`)
+  after CONFIRM (`4.3`) already showed the human that home and they approved it — rank once, at `4.3`, and
+  reuse; the file written must be the file approved · introducing any numeric line cap or size threshold on a
+  canon file (`knowledge-altitude.md` §7 — the bound is altitude, size is only ever an OUTPUT you report).

@@ -155,8 +155,13 @@ it survives her absence.
    finding and set the manifest flag the filer reads:
    - stage the durable conclusion → `python3 $T/pipeline.py read --map "$MAP" --file "<f>" --extraction "$COWORK_WORK/extraction-$BASKET.json"`
    - a conclusion whose `suggested_category` is **canon** (an always-true principle the person ADOPTED — the
-     2-year test) → `python3 $T/pipeline.py flag --map "$MAP" --file "<f>" --canon true` (the filer proposes it
-     to `records/proposals/`, **never** `canon/`).
+     2-year test) → `python3 $T/pipeline.py flag --map "$MAP" --file "<f>" --canon true`.
+     ⚖ **REVERSED 2026-08-11 (Enver, `authority: user`) — this line used to say the filer *"proposes it to
+     `records/proposals/`, **never** `canon/`."* That holding room is GONE.** PHASE 4 now writes canon
+     **directly**, at the altitude the fact earns, and one optional human pass at the end reviews it.
+     ⛔ **Flagging it here still does NOT place it** — this flag only marks the finding as canon-SHAPED. The
+     altitude (`root · desk · sub-folder · deep · records · drop`) is picked in `4-place.md` `4.4 D.1`, from a
+     closed set, with `drop` meaning *"I could not judge"* and routing to records — never to canon.
 
 4. **GIANT keepers — sample head+tail + FLAG (a HARD accuracy gate).** `${#GIANT[@]}` == 0 → skip to Step 5.
    Mark each giant sampled, then pack a **head+tail sample** (`--slice giant` = the `GIANT_COVER` fraction cut
