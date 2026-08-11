@@ -248,6 +248,8 @@ The diagram above is the shape; this is the list, so nothing has to be inferred 
 | `<notes>/plans/<name>.md` | `/autoplan` | a plan is written or sharpened |
 | `<notes>/config/` | a person, by hand | account IDs and the like, kept out of the repo |
 | `<notes>/config/numbers-auto-arm` | a person, by hand | optional — subject folders that turn on `/calculate` by themselves |
+| `<notes>/config/ship-identity.md` | a person, by hand | **required before `/ship` runs at all** — the terms that identify you, one per line. The lane refuses rather than scan for nobody |
+| `<notes>/config/ship-rewrites.json` | a person, by hand | optional — `/ship`'s cosmetic substitutions, which get fixed and reported rather than blocking |
 | `<notes>/councils/` | a person, by hand | if advisor rosters are used |
 | `<notes>/memory/topic-vocab.md` | a person, by hand | your subjects, in your words |
 | `<notes>/desks/<subject>/canon/` | `/ingest` | once per subject it finds |

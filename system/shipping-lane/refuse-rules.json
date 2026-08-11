@@ -1,0 +1,19 @@
+[
+  {"id": "path-home-unix", "mode": "regex", "pattern": "(?:/Users/|/home/)[A-Za-z0-9._-]+", "to": "$HOME", "tier": "1-identity", "why": "a macOS or Linux home path. The segment after /Users/ or /home/ IS the account name, so the path identifies its owner and does not exist on anyone else's machine. AUTO-RESOLVABLE: $HOME is the correct portable form, so this one substitution is mechanical and unambiguous — it is a refuse-tier rule that carries a 'to', which is why it fixes rather than blocks"},
+  {"id": "path-home-windows", "mode": "regex", "pattern": "(?i)[A-Za-z]:\\\\Users\\\\[A-Za-z0-9._ -]+", "tier": "1-identity", "why": "the Windows form of the same leak (C:\\Users\\<account>). NO 'to' ON PURPOSE, unlike path-home-unix: there is no single portable spelling that is right in both a shell line and a prose sentence, and guessing one would quietly rewrite a path into something that does not work. Reported and blocked, so a human picks the replacement. Git Bash is this project's documented Windows floor, which is why the form is covered at all"},
+
+  {"id": "path-drive-cloudstorage", "mode": "regex", "pattern": "CloudStorage/GoogleDrive-", "tier": "1-identity", "why": "the Google Drive mount form on macOS; the segment that follows it is the account address the Drive belongs to"},
+  {"id": "path-drive-account", "mode": "regex", "pattern": "GoogleDrive-[A-Za-z0-9._%+-]+@", "tier": "1-identity", "why": "a Drive mount embeds a full email address in the path itself — the account name is part of the directory name, so the path leaks the address even when no address is written out"},
+
+  {"id": "key-openai", "mode": "regex", "pattern": "sk-[A-Za-z0-9]{20,}", "tier": "1-secret", "why": "OpenAI-style API key"},
+  {"id": "key-anthropic", "mode": "regex", "pattern": "sk-ant-[A-Za-z0-9_\\-]{20,}", "tier": "1-secret", "why": "Anthropic API key — the hyphen after 'ant' means key-openai cannot catch this form"},
+  {"id": "key-github-token", "mode": "regex", "pattern": "gh[pousr]_[A-Za-z0-9]{20,}", "tier": "1-secret", "why": "GitHub personal-access / OAuth / server / refresh token"},
+  {"id": "key-github-pat", "mode": "regex", "pattern": "github_pat_[A-Za-z0-9_]{20,}", "tier": "1-secret", "why": "GitHub fine-grained personal access token"},
+  {"id": "key-google-api", "mode": "regex", "pattern": "AIza[A-Za-z0-9_\\-]{30,}", "tier": "1-secret", "why": "Google API key"},
+  {"id": "key-google-oauth", "mode": "regex", "pattern": "ya29\\.[A-Za-z0-9_\\-]{20,}", "tier": "1-secret", "why": "Google OAuth access token — the Google auth path issues these"},
+  {"id": "key-slack", "mode": "regex", "pattern": "xox[baprs]-[A-Za-z0-9\\-]{10,}", "tier": "1-secret", "why": "Slack bot/app/user token"},
+  {"id": "key-aws", "mode": "regex", "pattern": "AKIA[0-9A-Z]{16}", "tier": "1-secret", "why": "AWS access key id"},
+  {"id": "key-private-block", "mode": "regex", "pattern": "-----BEGIN [A-Z ]*PRIVATE KEY-----", "tier": "1-secret", "why": "an embedded private key of any type"},
+  {"id": "key-bearer", "mode": "regex", "pattern": "Bearer [A-Za-z0-9._~+/\\-]{20,}", "tier": "1-secret", "why": "a bearer token pasted into a doc, script or example"},
+  {"id": "key-assignment", "mode": "regex", "pattern": "(?i)(api[_-]?key|secret|passwd|password|access[_-]?token)[\"'\\s]*[:=]\\s*[\"'][A-Za-z0-9_\\-]{16,}[\"']", "tier": "1-secret", "why": "a credential assigned to a named variable — catches key formats no shape-rule anticipates. PATTERN FIXED 2026-08-05 (ReDoS, red-team-found): the old form had two adjacent star-quantified groups sharing the space character (`[\"' ]*` then `\\s*`) — ambiguous over any run of spaces, O(n^2) backtracking on a failed match (a 60KB padded file took ~14-22s). Merged into a single `[\"'\\s]*` quantifier over the union charset before the `[:=]` — same matches, no ambiguity"}
+]
