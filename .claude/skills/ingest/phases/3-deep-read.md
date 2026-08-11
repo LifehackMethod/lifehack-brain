@@ -37,9 +37,7 @@ research chats of THIS pile.
 (~100k characters — nearly every chat), reading the FULL chat in ONE cache-backed pass is BOTH the most
 accurate move (the reader sees everything, skims nothing) AND — with prompt caching — the cheapest, so
 accuracy and token-cost stop trading off. **There is no slicing and no re-reading a span you already saw at
-SCAN.** One reader pass per keeper; the **HUMAN is the second pass**. (Records:
-`records/decisions/2026-07-12-ingest-read-strategy-council-conclusions.md` ·
-`records/briefing/2026-07-12-reading-skill-whole-read-vs-slice-principle.md`.)
+SCAN.** One reader pass per keeper; the **HUMAN is the second pass**.
 
 **The rare GIANT (> ~100k chars).** Too big to read whole without the reader sliding into the skim zone, so it
 is **SAMPLED head+tail (30% coverage) and FLAGGED for you to rule — never filed silently.** A sampled giant is

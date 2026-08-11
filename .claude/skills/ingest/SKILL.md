@@ -188,6 +188,46 @@ why…"). The human watching you spelunk through errors is the failure. Trust th
 - **Load ONE phase file at a time. NEVER read ahead** into another phase's file, and never tell the user
   what's coming phases ahead. Each phase file ends by naming ONLY the next step.
 
+## What this skill needs OUTSIDE its own folder — the ship manifest
+
+⭐ **Anyone copying `/ingest` anywhere must bring these too, at these exact paths.** The code computes
+their location from the repo root, so a different layout breaks them.
+
+| Needed | Why | Status |
+|---|---|---|
+| `system/tools/cowork-ingest/*` | the pipeline itself, plus `corpus-map-schema.md` (the map's schema + column ownership) | ✅ here |
+| `shared/brain_root.py` | the one resolver that answers "where does this person's data live" — `pipeline.py` imports it, and every path below `$DRIVE` comes from it | ✅ here |
+| `shared/tools/ingest_gate.py` | the security gate every read passes through | ✅ here |
+| `system/tools/sanitize.py` · `system/tools/safe_input.py` | what `ingest_gate` itself imports | ✅ here |
+| `system/tools/canon_conflict_scan.py` | PHASE 4's duplicate/contradiction scan before anything reaches canon | ✅ here |
+| `system/tools/skill_hud.sh` | the pinned counts bar | ✅ here |
+| `system/hooks/skill_anchor.sh` | the per-turn anchor each phase arms | ✅ here |
+| `.claude/agents/ingest-tagger.md` · `.claude/agents/ingest-conclusions.md` | the tool-less readers PHASE 1 and PHASE 3 **spawn** — the skill dies at the tagging step without them | ✅ here |
+| `system/githooks/pre-commit` | refuses a commit carrying the person's own material; needs `git config core.hooksPath system/githooks` | ✅ here |
+| `system/hooks/skill_anchor_inject.sh` | the injector `skill_anchor.sh` writes flags **for**. Without it the anchor is armed and never shown — silently. | ⏳ lands with the harness floor |
+| `settings.json` | nothing above is registered with the harness until this exists | ⏳ lands with the harness floor |
+| `system/hooks/ingest_gate_enforce.sh` | the hook that stops the main session reading the locked scratch (`3-deep-read.md`) — the enforcement half of the reader/actor split | ⏳ lands with the security wall |
+| `system/hooks/guard_canon_write.sh` | makes the canon write gate code rather than prose (`4-place.md`) | ⏳ lands with the security wall |
+| `system/knowledge-altitude.md` | the too-big/too-small subdivide rules PHASE 3 cites by line | ⏳ lands with the doctrine set |
+| `.claude/skills/read/` | PHASE 4 hands off to it | ⏳ lands with the core skills |
+| `.claude/skills/archivist-route/` | PHASE 4 reuses its ranking contract inline rather than rebuilding it | ⏳ lands with the archivist family |
+
+**Named here so nobody hunts for them — these are NOT missing:**
+
+| Referenced | Why it is not here |
+|---|---|
+| the topic vocabulary | It is **yours**, not ours. `folder_scaffold.py` looks for `memory/topic-vocab.md` beside your material and refuses rather than inventing one — a taxonomy of your life shipped by someone else is worse than none. ⚠ `pipeline.py topic-check` still looks only in the repo; the two do not yet agree, and that is a known open item. |
+| `system/desk-registry.yaml` · `desk_scaffold.py` | Promoting a folder to a full desk is a separate, deliberate act, later. PHASE 4 makes plain knowledge folders and nothing else. |
+| `skill-building-sop.md` | The author's own SOP for building skills. Cited for single rules; it is not part of running an ingest. |
+| `skills/ingest-filer/SKILL.md` | A skill that stopped existing on 2026-08-05 when the filer folded back in as `phases/4-place.md`. Historical mentions only. |
+| `3-world-map.md` | Deliberately **not built** — see the note near the end of this file. The stale name is kept on purpose. |
+| `SPEC.md`'s own file references | It is a build record as well as a spec; its citations point into the author's project tree. Its banner says so. |
+
+⚠ **Two of these were missed twice by hand-checks that only looked inside `cowork-ingest/`.** Re-derive
+rather than trust this table — walk the imports transitively from every `.py` in
+`system/tools/cowork-ingest/`, and grep the phase files for spawned agent names. A hand-kept list rots
+and then lies, which is worse than none.
+
 ## Paths (set once)
 ```bash
 ROOT="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && pwd)"   # the folder you cloned; everything below is relative to it
