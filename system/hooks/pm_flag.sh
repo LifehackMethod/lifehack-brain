@@ -174,9 +174,19 @@ case "$1" in
     # and a re-arm refreshes everything EXCEPT it. A baseline you can re-take on demand is not a
     # baseline.
     _EXISTING_PAD_SHA="$(grep '^pad_sha_at_arm=' "$FLAG" 2>/dev/null | cut -d= -f2-)"
-    PAD_SHA="$(python3 - "$2" 2>/dev/null <<'_PADSHA_EOF'
+    # Where pad_archive.py lives, resolved FROM THIS SCRIPT -- never a hardcoded home dir, never $PWD.
+    # A hook runs with the CALLER's working directory, which is the person's project folder, so a bare
+    # `git rev-parse` would answer for THAT repo, not this one. Anchoring it at the hook's own path is
+    # what makes it repo-relative. The trim fallback covers a clone with no git available (a downloaded
+    # ZIP, or git off PATH). Plain $0, not BASH_SOURCE: this file has to parse under dash too.
+    _PM_HOOKDIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
+    _PM_REPO="$(cd "$_PM_HOOKDIR" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null)"
+    [ -n "$_PM_REPO" ] || _PM_REPO="${_PM_HOOKDIR%/system/hooks}"
+    # Silent-degrade is DELIBERATE and stays until pad_archive.py ships (migration T1.2): no pad module
+    # means no fingerprint line, which the writer below already treats as "armed without one".
+    PAD_SHA="$(python3 - "$2" "$_PM_REPO/system/tools" 2>/dev/null <<'_PADSHA_EOF'
 import sys, os
-sys.path.insert(0, os.path.expanduser("~/lifehack-brain/system/tools"))
+sys.path.insert(0, sys.argv[2])
 try:
     import pad_archive as pa
     pad = pa.extract_scratchpad(open(sys.argv[1], encoding="utf-8").read())
