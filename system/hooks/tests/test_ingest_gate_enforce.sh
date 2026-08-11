@@ -29,8 +29,9 @@ ja() { python3 -c "import json,sys; print(json.dumps({'tool_name':sys.argv[1],'t
 
 # label · expected exit · payload-json
 run() {
-  local label="$1" exp="$2" payload="$3" got
-  printf '%s' "$payload" | LIFEHACK_ROOT="$NOTES" bash "$HOOK" >/dev/null 2>&1
+  local label="$1" exp="$2" payload="$3"; shift 3
+  local got
+  printf '%s' "$payload" | env LIFEHACK_ROOT="$NOTES" "$@" bash "$HOOK" >/dev/null 2>&1
   got=$?
   if [ "$got" = "$exp" ]; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL [$label]: expected exit $exp, got $got"; fi
 }
@@ -83,7 +84,12 @@ echo "-- INSIDE THE TRUSTED ZONE: ordinary work is untouched (expect 0) --"
 check "repo .md"                0 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/README.md'}))" "$REPO")"
 check "repo .py"                0 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/shared/brain_root.py'}))" "$REPO")"
 check "repo .sh"                0 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/system/hooks/pm_flag.sh'}))" "$REPO")"
-check "harness ~/.claude"       0 Read "$(python3 -c "import json,os;print(json.dumps({'file_path':os.path.expanduser('~/.claude/settings.json')}))")"
+# A REAL file under a throwaway ~/.claude — deliberately not this machine's own, whose
+# settings.json is a symlink pointing out of the tree. Since paths are canonicalised before they
+# are compared, a symlink that leads outside the trusted zone resolves outside it, which is the
+# safe direction and not what this case is about.
+mkdir -p "$NOTES/fakehome/.claude"; printf 'x\n' > "$NOTES/fakehome/.claude/settings.json"
+run "harness ~/.claude" 0 "$(j Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/fakehome/.claude/settings.json'}))" "$NOTES")")" HOME="$NOTES/fakehome"
 check "notes brief"             0 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/state/projects/x/brief.md'}))" "$NOTES")"
 check "notes, no extension"     0 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/state/NOTES'}))" "$NOTES")"
 check "benign ls"               0 Bash '{"command":"ls -la /tmp"}'
@@ -92,6 +98,37 @@ check "calendar via safe"       0 Bash '{"command":"python3 system/tools/safe_ca
 check "tasks via safe"          0 Bash '{"command":"python3 system/tools/safe_tasks.py {}"}'
 check "drive export via safe"   0 Bash '{"command":"gws drive files export --params {} > /tmp/d.txt && python3 system/tools/safe_read.py /tmp/d.txt"}'
 check "unmatched tool"          0 Glob '{"pattern":"**/*.md"}'
+
+echo "-- ⭐ THE SHAPE OF THE ROOT MUST NOT DECIDE WHETHER YOU CAN READ YOUR OWN NOTES --"
+# THE BUG THIS BLOCK EXISTS FOR, found on 2026-08-11 by running a real session rather than a
+# fixture: the session could not read its own canon. The tool hands this hook the RESOLVED path —
+# symlinks followed, doubled slashes collapsed — while the allowlist held whatever string had been
+# configured. On macOS that alone is fatal: /tmp and /var ARE symlinks, so a notes folder anywhere
+# under either arrives as /private/... and matches nothing.
+#
+# ⚠ AND HERE IS WHY THE SUITE ABOVE MISSED IT, which is the lesson worth keeping: every case above
+# passes the SAME STRING to both sides. Of course it matches. A test that supplies both halves of a
+# comparison can only ever prove the comparison is reflexive. These cases hand the hook one form and
+# the payload another, which is what actually happens in the wild.
+CANON_TARGET="$(python3 -c "import os,sys;print(os.path.realpath(sys.argv[1]+'/state/projects/x/brief.md'))" "$NOTES")"
+CANON_PAYLOAD="$(j Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]}))" "$CANON_TARGET")")"
+
+for shape in "trailing slash:$NOTES/" "doubled slash:$NOTES//" "trailing dot:$NOTES/." ; do
+  label="${shape%%:*}"; root="${shape#*:}"
+  printf '%s' "$CANON_PAYLOAD" | env LIFEHACK_ROOT="$root" bash "$HOOK" >/dev/null 2>&1
+  if [ $? = 0 ]; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL [root with a $label]: own notes were treated as somebody else's"; fi
+done
+
+# The symlink case, which is the one macOS creates for you whether you want it or not.
+LINKED="$NOTES/linked-notes"
+ln -s "$NOTES" "$LINKED" 2>/dev/null
+printf '%s' "$CANON_PAYLOAD" | env LIFEHACK_ROOT="$LINKED" bash "$HOOK" >/dev/null 2>&1
+if [ $? = 0 ]; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL [root reached through a symlink]: own notes were treated as somebody else's"; fi
+
+# And the carve-out has to survive the same treatment, or memory/ silently becomes trusted.
+MEM_PAYLOAD="$(j Read "$(python3 -c "import json,os,sys;print(json.dumps({'file_path':os.path.realpath(sys.argv[1]+'/memory/topic-vocab.md')}))" "$NOTES")")"
+printf '%s' "$MEM_PAYLOAD" | env LIFEHACK_ROOT="$LINKED" bash "$HOOK" >/dev/null 2>&1
+if [ $? = 2 ]; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL [carve-out through a symlinked root]: memory/ became trusted"; fi
 
 echo "-- FAIL-CLOSED: it cannot read its own input (expect 2) --"
 printf 'not json at all' | bash "$HOOK" >/dev/null 2>&1
