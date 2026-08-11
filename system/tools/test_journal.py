@@ -208,5 +208,45 @@ class Cli(Base):
         self.assertIn("No journal entries", out)
 
 
+class FindsTheNotesFolderOnItsOwn(Base):
+    """The path every CALLER actually takes, and the one nothing above covers.
+
+    Every test in `Cli` passes --root, which is the one shape that never touches the resolver. That
+    is why a broken repo-root computation survived this file's twenty-three tests and was found only
+    by running a real session: `_REPO` was one directory short, so `shared/` was looked for at
+    `system/shared`, the import failed, and every call refused with "no notes folder is set" -- which
+    is ALSO the correct answer when nobody has set a root. A wrong answer wearing a right answer's
+    face. `/read` step 2b and `/save` step 7 both call it exactly this way, with no --root at all.
+    """
+
+    def _run_with_env(self, *args):
+        env = dict(os.environ, LIFEHACK_ROOT=self.root)
+        p = subprocess.run([sys.executable, TOOL, *args], capture_output=True, text=True, env=env)
+        return p.returncode, p.stdout, p.stderr
+
+    def test_repo_root_actually_contains_shared_brain_root(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("journal_under_test", TOOL)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertTrue(os.path.exists(os.path.join(mod._REPO, "shared", "brain_root.py")),
+                        "_REPO does not point at the repository root: %s" % mod._REPO)
+
+    def test_a_slice_resolves_the_root_from_the_environment_with_no_root_flag(self):
+        self.cur("2026-08-10 | root | widget | A real row, with a reason. | supersedes: — | → x.md")
+        rc, out, err = self._run_with_env("slice", "--slug", "widget")
+        self.assertEqual(rc, 0, err)
+        self.assertIn("A real row", out)
+        self.assertNotIn("no notes folder is set", out + err)
+
+    def test_an_append_resolves_the_root_from_the_environment_too(self):
+        rc, _out, err = self._run_with_env(
+            "append", "--slug", "widget", "--event",
+            "Chose local computation over an API call, because it must work offline.",
+            "--to", "state/projects/widget/brief.md")
+        self.assertEqual(rc, 0, err)
+        self.assertIn("widget", open(os.path.join(self.root, "system", "journal.md")).read())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

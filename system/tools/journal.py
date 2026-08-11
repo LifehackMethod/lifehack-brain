@@ -43,7 +43,12 @@ import re
 import sys
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_REPO = os.path.normpath(os.path.join(_HERE, ".."))
+# system/tools/ -> the repo root is TWO levels up, not one. It was one until 2026-08-11, which put
+# `shared/` at system/shared -- a directory that does not exist -- so the import below always failed,
+# notes_root() always returned None, and every call refused with "no notes folder is set". Silent,
+# because the refusal is also the correct answer when nobody has set a root: the tool looked like it
+# was working. `test_repo_root_actually_contains_shared_brain_root` fails if this drifts again.
+_REPO = os.path.normpath(os.path.join(_HERE, "..", ".."))
 
 JOURNAL_REL = os.path.join("system", "journal.md")
 SEGMENT_DIR_REL = os.path.join("system", "journal")
