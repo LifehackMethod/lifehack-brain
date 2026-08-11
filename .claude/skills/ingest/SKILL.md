@@ -197,7 +197,8 @@ their location from the repo root, so a different layout breaks them.
 |---|---|---|
 | `system/tools/cowork-ingest/*` | the pipeline itself, plus `corpus-map-schema.md` (the map's schema + column ownership) | ✅ here |
 | `shared/brain_root.py` | the one resolver that answers "where does this person's data live" — `pipeline.py` imports it, and every path below `$DRIVE` comes from it | ✅ here |
-| `shared/tools/ingest_gate.py` | the security gate every read passes through | ✅ here |
+| `shared/gate/ingest_gate.py` | the security gate every read passes through | ✅ here |
+| `shared/gate/sentinel_response.py` | what the gate calls to decide whether a finding is noise or an attempt on the session | ✅ here |
 | `system/tools/sanitize.py` · `system/tools/safe_input.py` | what `ingest_gate` itself imports | ✅ here |
 | `system/tools/canon_conflict_scan.py` | PHASE 4's duplicate/contradiction scan before anything reaches canon | ✅ here |
 | `system/tools/skill_hud.sh` | the pinned counts bar | ✅ here |

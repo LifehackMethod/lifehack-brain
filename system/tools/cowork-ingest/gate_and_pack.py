@@ -5,7 +5,7 @@ gate_and_pack.py — the CONTROLLER stage of the bulk world-model ingestion.
 Sits between `flatten.py` (raw ChatGPT JSON → clean per-chat text) and the tool-less
 `ingest-reader` subagent. For every flattened conversation it:
 
-  1. runs `shared/tools/ingest_gate.py gate(desk, "file", text)` — the ONE on-path
+  1. runs `shared/gate/ingest_gate.py gate(desk, "file", text)` — the ONE on-path
      sanitize → injection-scan → Sentinel-route entry point. (source_type="file".)
   2. DANGER (`passed=False`) → the item is ALREADY contained by Sentinel; we log it to
      the quarantine manifest and SKIP — never spawn a reader on it.
@@ -33,10 +33,12 @@ Usage:
 """
 import argparse, glob, json, os, sys
 
-# Import the frozen on-path gate (shared/tools/ingest_gate.py).
+# Import the frozen on-path gate (shared/gate/ingest_gate.py).
 # This file lives at ROOT/system/tools/cowork-ingest/ — 4 dirnames up reaches the clone root.
+# ⚠ THIS ARITHMETIC IS THE FRAGILE PART. Moving EITHER file changes it, and a wrong count fails at
+# import time with a bare ModuleNotFoundError that says nothing about which side moved.
 CODE_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-_SHARED = os.path.join(CODE_ROOT, "shared", "tools")
+_SHARED = os.path.join(CODE_ROOT, "shared", "gate")
 if _SHARED not in sys.path:
     sys.path.insert(0, _SHARED)
 from ingest_gate import gate   # noqa: E402

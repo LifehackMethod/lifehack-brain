@@ -219,7 +219,7 @@ def redact_findings(text: str, findings: list) -> str:
 # scan result so a security tool can never break a normal read.
 import json as _json
 import subprocess as _sp
-_SENTINEL_GATE = os.path.normpath(os.path.join(_THIS_DIR, "..", "..", "shared", "tools", "sentinel_response.py"))
+_SENTINEL_GATE = os.path.normpath(os.path.join(_THIS_DIR, "..", "..", "shared", "gate", "sentinel_response.py"))
 
 
 def route_findings(findings: list, source: str, item: str = "") -> str:
@@ -273,7 +273,7 @@ def provenance_route(desk_id: str, source_type: str, raw_text: str, item: str = 
     route_findings call in the safe_* wrappers. Returns the gate dict, or None on failure. DEFENSIVE:
     never raises, never blocks the read (a security tool can never break a normal read)."""
     try:
-        _shared = os.path.normpath(os.path.join(_THIS_DIR, "..", "..", "shared", "tools"))
+        _shared = os.path.normpath(os.path.join(_THIS_DIR, "..", "..", "shared", "gate"))
         if _shared not in sys.path:
             sys.path.insert(0, _shared)
         import ingest_gate

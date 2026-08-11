@@ -56,7 +56,7 @@ def _log_block(bad_hosts):
         _repo = os.path.dirname(os.path.dirname(_here))
         # One definition of where the event log lives, imported rather than restated — a restated
         # path drifts, and then half the wall is writing somewhere nobody reads.
-        sys.path.insert(0, os.path.join(_repo, "shared", "tools"))
+        sys.path.insert(0, os.path.join(_repo, "shared", "gate"))
         from sentinel_response import LOG
         lt = _t.localtime(); off = _t.strftime("%z", lt); off = (off[:3] + ":" + off[3:]) if off else "+00:00"
         rec = {"ts": _t.strftime("%Y-%m-%dT%H:%M:%S", lt) + off, "source": "hook/egress",

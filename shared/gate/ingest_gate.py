@@ -32,7 +32,7 @@ CONTRACT (frozen v1.0):
 """
 import sys, os, json, hashlib, subprocess
 
-CODE_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # shared/tools/ → root
+CODE_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # shared/gate/ → root
 _SYS_TOOLS = os.path.join(CODE_ROOT, "system", "tools")
 if _SYS_TOOLS not in sys.path:
     sys.path.insert(0, _SYS_TOOLS)
@@ -41,7 +41,7 @@ if _SYS_TOOLS not in sys.path:
 from sanitize import sanitize, NO_CAP            # system/tools/sanitize.py
 from safe_input import scan_for_injection         # system/tools/safe_input.py
 
-SENTINEL = os.path.join(CODE_ROOT, "shared", "tools", "sentinel_response.py")
+SENTINEL = os.path.join(CODE_ROOT, "shared", "gate", "sentinel_response.py")
 VALID_SOURCE_TYPES = {"email", "web", "file", "calendar", "api"}
 
 # The coverage breadcrumb ledger lives under the notes root the person chose (env-overridable for

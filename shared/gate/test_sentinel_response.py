@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """test_sentinel_response.py — the teeth on the verdict half of the gate.
 
-Run:  python3 shared/tools/test_sentinel_response.py
-      python3 -m unittest discover -s shared/tools -p 'test_*.py'
+Run:  python3 shared/gate/test_sentinel_response.py
+      python3 -m unittest discover -s shared/gate -p 'test_*.py'
 
 WHAT THESE CASES ARE ACTUALLY PROTECTING. Every one of them is a way this tool could quietly stop
 being a control while still looking like one:
