@@ -465,19 +465,61 @@ accident, because your notes are not in this repository at all.
 
 ---
 
-# THE GOOGLE-CONNECTED PARTS — not here yet, and what they will need
+# WEB SEARCH — one key, and it is optional
 
-Some of what is coming — reading your calendar, working with your mail, building spreadsheets — needs a
-connection to **your own** Google account. **None of it is in this package yet**, so there is nothing to
-set up today and nothing to go looking for.
+Searching the web needs an API key from **serper.dev**, which has a free tier. Without one, search
+simply refuses and says so; everything else works normally.
 
-Stated now so the shape is not a surprise later:
+There is deliberately no second path. The system this came from had a fallback that drove a real
+Chrome window, and it is not here: it depended on a separate browser plugin, and a fallback that
+cannot work is worse than none, because you find out at the moment you needed it.
 
-- **You connect your own account.** Nobody else's credentials are involved and nothing is shared. The
-  tools ship; the account they talk to is yours.
+Put the key in a file — this is the version that also works for anything running on a schedule:
+
+```bash
+mkdir -p ~/.config/lifehack
+umask 077 && printf %s 'your-key-here' > ~/.config/lifehack/serper-key
+```
+
+It is also read from `$SERPER_API_KEY`, and on a Mac from the keychain (service `serper-api-key`,
+account `lifehack`) — in that order, keychain last. The keychain belongs to your logged-in desktop
+session, so anything running unattended cannot see it; the file can.
+
+**Every result is sanitized before it reaches the conversation.** Titles and snippets are written by
+whoever owns the page, so they are treated as somebody else's text, not as facts.
+
+---
+
+# READING DOCUMENTS — three optional libraries
+
+PDFs, Word files and spreadsheets are read through tools that strip what you cannot see: white text,
+hidden rows, hidden Word runs, and spreadsheet cells that are secretly formulas. Each needs one
+library, and each tells you the exact command the first time you need it:
+
+```bash
+pip install pdfplumber      # .pdf
+pip install python-docx     # .docx
+pip install openpyxl        # .xlsx
+```
+
+Install them when you first hit one. Plain text, markdown and CSV need nothing.
+
+---
+
+# THE GOOGLE-CONNECTED PARTS — the readers are here, the connection is not
+
+The **sanitizing side** now ships: `system/tools/safe_calendar.py` and `system/tools/safe_tasks.py`
+take a calendar or task list and run every piece of free text through the same filter as everything
+else — because an invite's title and description are written by whoever sent it, and anyone who
+knows your address can send you one.
+
+What is **not** here is the connection. These tools call a command-line tool called `gws` that talks
+to your account, and neither it nor your authentication is part of this package.
+
+- **You connect your own account.** Nobody else's credentials are involved and nothing is shared.
 - **Your own identifiers — which calendar, which spreadsheet — live in your notes folder**, at
   `config/`, never in this repository. Same rule as everything else you own.
 - **It is a sit-down, not a click.** Expect to do it with someone the first time.
 
-⛔ **Until those parts ship, do not install Google tooling, do not run an authentication flow, and do not
-ask them for account details.** Nothing here uses them.
+⛔ **Until you have done that sit-down, do not run an authentication flow on your own and do not hand
+your account details to anything.** Nothing here needs them yet.

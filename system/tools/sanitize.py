@@ -21,8 +21,19 @@ import sys
 _UNSAFE_UNICODE_RE = re.compile(
     "["
     "\u200b-\u200f"              # zero-width spaces / joiners
-    "\u202a-\u202e"              # bidirectional formatting overrides
+    "\u202a-\u202e"              # bidi EMBEDDINGS and OVERRIDES (LRE RLE PDF LRO RLO)
     "\u2060-\u2064"              # word joiner, invisible operators
+    # \u2b50 ADDED 2026-08-11 \u2014 the bidi ISOLATES (U+2066 LRI \u00b7 U+2067 RLI \u00b7 U+2068 FSI \u00b7 U+2069 PDI).
+    # They were missing, and they are not a footnote: they are the OTHER HALF of the same attack.
+    # A bidi control makes text DISPLAY in a different order than it is stored, so a person reading
+    # the file and a model reading the file see two different things \u2014 which is the entire point of
+    # this function. The override family above was stripped and the isolate family sailed through.
+    # Unicode added the isolates in 6.3 as the modern replacement for the overrides, so they are the
+    # ones a current tool actually emits, and CVE-2021-42574 ("Trojan Source") names all nine
+    # together. Found by a test written against this file's own stated promise on 2026-08-11:
+    # U+2066 and U+2069 survived a sanitize() call that removed everything either side of them.
+    # (U+2065 is unassigned, so the widened range costs nothing.)
+    "\u2065-\u2069"              # bidi ISOLATES \u2014 same power as the overrides above
     "\u206a-\u206f"              # deprecated format characters
     "\ufeff"                     # BOM
     "\x00-\x08"                  # C0 controls (keep \t \n \r)
