@@ -153,12 +153,12 @@ the worst shape: the slice comes back short and looks like a quiet project rathe
 search.
 
 ```bash
-# the current file, plus every rotated segment — oldest first, so the arc reads forwards
-grep -h "| <slug> |" "$DATA"/system/journal/*.md "$DATA/system/journal.md" 2>/dev/null | tail -20
+python3 "$ROOT/system/tools/journal.py" slice --slug "<slug>" --limit 20
 ```
 
-When you want a specific period, name the segment (`journal/2026-06.md`) instead of scanning all of
-them.
+It reads the segments and the current file, oldest first so the arc reads forwards, and prints the
+coverage disclaimer at the foot. When you want one specific period, read that segment directly
+(`$DATA/system/journal/2026-06.md`).
 
 **Empty slice** → say so: *"No journal entries for `<slug>`. Either nothing has been saved, or this is
 new."*

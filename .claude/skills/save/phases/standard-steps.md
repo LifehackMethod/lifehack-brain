@@ -209,7 +209,15 @@ journal it only if it materially changes the project's chronology.
 Write a full session entry when any of these is true: several failed attempts, an architecture
 decision, a pivot, or a session spanning more than one phase. Otherwise the ledger row is enough.
 
-The ledger row, appended to `$DATA/system/journal.md`:
+The ledger row — **appended by the tool, which validates it**:
+
+```bash
+python3 "$ROOT/system/tools/journal.py" append --slug "<slug>" \
+  --event "<what changed AND why>" --to "<artifact path>" [--supersedes "<path>"]
+```
+
+It refuses a filename echo and refuses a `supersedes` that is a concept rather than a path, then reads
+the line back off disk. The shape it writes:
 
 ```
 {YYYY-MM-DD} | {desk} | {slug} | {event} | supersedes: {path or —} | → {artifact-path}

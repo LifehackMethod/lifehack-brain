@@ -73,7 +73,8 @@ A project is a **folder**, and the folder's name is the project's slug:
 **The folder's last path segment must equal the slug.** A category above it is fine
 (`state/projects/infrastructure/<slug>/`); the leaf is not. This stops the drift where a project
 called one thing lives in a folder called another and a cold session finds neither.
-`system/tools/check_slug_folder.py` audits it.
+`system/tools/project-manager/check_slug_folder.py` audits it after the fact, and
+`shared/registry.py`'s `format_row()` refuses to write such a row in the first place.
 
 Its row in `<notes>/system/project-registry.md` is five fields, pipe-separated:
 
@@ -139,8 +140,13 @@ file loses everything older than the last rotation, and it fails *quietly*: the 
 short and looks like a quiet stretch rather than a truncated search.
 
 ```bash
-grep -h "| <slug> |" "<notes>"/system/journal/*.md "<notes>/system/journal.md" 2>/dev/null | tail -20
+python3 system/tools/journal.py slice --slug "<slug>"     # segments + current, oldest first
+python3 system/tools/journal.py rotate --dry-run          # what a rotation would move
 ```
+
+`rotate` moves every entry from a **completed** month into its segment and leaves the current month
+where it is — rotating a half-finished month would split it across two files and make every reader
+join it back together. It reads each segment back before removing a line from the current file.
 
 **Two entry shapes, and no others.**
 
