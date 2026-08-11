@@ -87,8 +87,24 @@ if not MECH.search(cmd):
     sys.exit(0)
 
 # Pull out the hostnames: http(s):// URLs, plus the bare host argument to nc/telnet.
+#
+# ⛔ THE EXCLUDED SET ENDS THE HOST AT SHELL PUNCTUATION, and every character in it is there because
+# leaving it out produced a real false block. A URL with no path runs to the end of the word, so
+# whatever the shell put next got glued onto the hostname — and since none of it is legal in a host,
+# the result matched nothing on the list and the call was refused. Measured, all five:
+#     ${API_URL:-https://api.anthropic.com}      → api.anthropic.com}      BLOCKED
+#     curl https://api.anthropic.com;echo done   → api.anthropic.com;echo  BLOCKED
+#     curl https://api.anthropic.com&            → api.anthropic.com&      BLOCKED
+#     curl https://api.anthropic.com|head        → api.anthropic.com|head  BLOCKED
+#     curl https://api.anthropic.com,https://…   → api.anthropic.com,https BLOCKED
+# Each one refused a command that was going somewhere explicitly allowed. That is the failure this
+# file's own FAIL_POSTURE note warns about — a false positive is how a wall gets unregistered.
+# ⚠ Ending the host EARLIER can only make it MORE likely to match the list, so the obvious worry is
+# that this lets something through. It does not: the negative control is in the suite — a stranger
+# wrapped in exactly the same punctuation is still blocked, because the shortened name is the REAL
+# host and the real host is the thing being checked.
 hosts = set()
-for m in re.finditer(r'https?://([^/\s"\'`)\\<>]+)', cmd):
+for m in re.finditer(r'https?://([^/\s"\'`)};&|,\\<>]+)', cmd):
     hp = m.group(1)
     if '@' in hp:
         hp = hp.split('@', 1)[1]     # strip any user:pass@ prefix

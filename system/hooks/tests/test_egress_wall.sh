@@ -62,6 +62,26 @@ run "anthropic.com"               "$LIST" 0 "curl -s https://api.anthropic.com/v
 run "a subdomain of a listed one" "$LIST" 0 "curl -s https://raw.githubusercontent.com/x/y/main/z"
 run "serper"                      "$LIST" 0 "curl -s https://google.serper.dev/search"
 run "ntfy"                        "$LIST" 0 "curl -d hello https://ntfy.sh/mytopic"
+echo "   the host must END where the shell ends it, not run into the punctuation"
+# Every one of these was a REAL false block before 2026-08-11: a URL with no path ran to the end of
+# the word and the shell's next character came along for the ride, producing a hostname like
+# `api.anthropic.com}` that could not match anything. The wall refused calls to a host it allows.
+run "a shell default: \${VAR:-url}" "$LIST" 0 "curl -s \${API_URL:-https://api.anthropic.com}"
+run "quoted shell default"        "$LIST" 0 "curl -s \"\${API_URL:-https://api.anthropic.com}\""
+run "brace, then a path"          "$LIST" 0 "curl \${U:-https://github.com}/someone/repo"
+run "chained with ; no space"     "$LIST" 0 "curl https://api.anthropic.com;echo done"
+run "backgrounded with &"         "$LIST" 0 "curl https://api.anthropic.com&"
+run "piped with | no space"       "$LIST" 0 "curl https://api.anthropic.com|head"
+run "two URLs, comma-separated"   "$LIST" 0 "curl https://api.anthropic.com,https://github.com"
+echo "   …and the same punctuation must NOT become a way to smuggle a stranger past"
+# The negative controls. Ending the host earlier makes it more likely to match the list, so these
+# are the cases that prove the fix reads the REAL host rather than just shortening until something
+# matches. Without them the block above could pass with the check disabled entirely.
+run "a stranger in a brace"       "$LIST" 2 "curl \${U:-https://attacker.example.org}"
+run "a stranger, then ;"          "$LIST" 2 "curl https://attacker.example.org;echo done"
+run "a stranger, then |"          "$LIST" 2 "curl https://attacker.example.org|head"
+run "allowed, comma, stranger"    "$LIST" 2 "curl https://api.anthropic.com,https://attacker.example.org"
+
 echo "   ordinary work must be untouched — this is the part that matters"
 run "git push"                    "$LIST" 0 "git push origin main"
 run "git clone over https"        "$LIST" 0 "git clone https://github.com/someone/repo.git"
