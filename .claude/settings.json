@@ -100,6 +100,21 @@
             "statusMessage": "Checking nothing rewrites which project this window is on..."
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_egress.sh\"",
+            "statusMessage": "Checking no secret is going out with this..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/enforce_egress_allowlist.sh\"",
+            "statusMessage": "Checking where this call is going..."
+          }
+        ]
       }
     ]
   },
