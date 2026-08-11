@@ -62,7 +62,7 @@ eyeballed — see this session's verify output.)*
   - §0a — THE RULINGS, each with its verbatim source
   - §0b — THE SKILL'S END-STATE DESIRED OUTCOME
   - §0c — THE TENSION SWARM, 2026-08-08
-  - §0d — BOTH "ENVER'S CALL" ITEMS ARE NOW CLOSED
+  - §0d — BOTH "THE OWNER'S CALL" ITEMS ARE NOW CLOSED
   - §0e — TEMPLATE SECTION RECONCILIATION
 - **1. What this IS**
 - **2. Inputs**
@@ -266,7 +266,7 @@ Recorded at `4.3` as **INTENT WAS WRONG**.
    EXEMPT**, on the author's own words that this brief *"functions a little bit differently than a project brief
    normally functions."* **One line from him settles it.**
 
-### §0d — BOTH "ENVER'S CALL" ITEMS ARE NOW CLOSED (later the same day, 2026-08-08)
+### §0d — BOTH "THE OWNER'S CALL" ITEMS ARE NOW CLOSED (later the same day, 2026-08-08)
 ⚠ **§0c above was written BEFORE these two landed. Read this section as superseding §0c's "NOT ADOPTED" list.**
 *(A conformance check run afterwards reported the spec **BLOCKED** on exactly these two — correctly, against the
 text as it then stood. The block was this document lagging behind the human, not a real obstacle.)*
@@ -1057,7 +1057,7 @@ governing rule.**
    unchanged.
 7. **`ingest_setdiff.py` / `ingest_coverage.py`** — built, proven, wired to nothing. Wire, or retire?
    ⚠ **2026-08-08: confirmed accurate for THIS skill, and the name is ambiguous.** Both are wired into
-   `conformance-lab/` and `system-health.py`, and cited by `clair-desk.md:401` for the desk-mail lane — but
+   `conformance-lab/` and `system-health.py`, and cited by a desk-mail lane in the donor system — but
    **nothing in `skills/ingest/` or `system/tools/cowork-ingest/` calls either.** Also: `system/tools/` and
    `shared/tools/` each hold a *different* file named `ingest_coverage.py`. Say which one you mean.
 8. ✅ **ANSWERED 2026-08-08 FROM THE EVIDENCE — `flatten` AND `tag` ARE PHASE 1 STEPS. LAW 8 VERDICT: BUILD.**

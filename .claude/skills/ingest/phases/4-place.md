@@ -87,7 +87,7 @@ it survives her absence.
 - **The machine never eliminates; the human sees everything.** Every keeper is placed, pointer-ized, or
   explicitly set aside — nothing is dropped unseen. You PROPOSE; the human RULES, by number.
 - **Canon is written directly, at the altitude it earns — never into a holding room.** ⚖ **REVERSED
-  2026-08-11 (Enver, `authority: user`).** The old rule routed every canon-candidate into `records/proposals/`
+  2026-08-11 (`authority: user`).** The old rule routed every canon-candidate into `records/proposals/`
   with `vetted: false`, behind a SEPARATE second key nobody came back to spend — a student ran the whole
   skill, approved 54 items one at a time, and got **five empty canon files**: *"the pipeline walks you to a
   door and the door has no handle on either side."* There is no more holding room and no second key. The
@@ -484,7 +484,7 @@ cross-run ledger, the per-run auto-place cap.
 
 > **Merged in from the old Phase 6 (PROMOTE), 2026-08-05.** It was never a phase — it has one human turn
 > and it belongs to the end of placing.
-> ⚖ **REVERSED 2026-08-11 (Enver, `authority: user`) — `/ingest` now writes this file DIRECTLY, the same way
+> ⚖ **REVERSED 2026-08-11 (`authority: user`) — `/ingest` now writes this file DIRECTLY, the same way
 > `/save` writes canon: behind a human go, never behind a holding room.** `bootstrap.py` (task 2.1.1) already
 > created `$DRIVE/canon.md`, seeded with its own purpose line and zero canon lines — this step is what puts
 > the first real lines into it. This does not conflict with "the author writes the high-tier bars, not the

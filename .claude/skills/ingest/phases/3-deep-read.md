@@ -156,7 +156,7 @@ it survives her absence.
    - stage the durable conclusion → `python3 $T/pipeline.py read --map "$MAP" --file "<f>" --extraction "$COWORK_WORK/extraction-$BASKET.json"`
    - a conclusion whose `suggested_category` is **canon** (an always-true principle the person ADOPTED — the
      2-year test) → `python3 $T/pipeline.py flag --map "$MAP" --file "<f>" --canon true`.
-     ⚖ **REVERSED 2026-08-11 (Enver, `authority: user`) — this line used to say the filer *"proposes it to
+     ⚖ **REVERSED 2026-08-11 (`authority: user`) — this line used to say the filer *"proposes it to
      `records/proposals/`, **never** `canon/`."* That holding room is GONE.** PHASE 4 now writes canon
      **directly**, at the altitude the fact earns, and one optional human pass at the end reviews it.
      ⛔ **Flagging it here still does NOT place it** — this flag only marks the finding as canon-SHAPED. The

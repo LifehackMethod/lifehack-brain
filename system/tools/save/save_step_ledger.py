@@ -75,7 +75,7 @@ NO_ARTIFACT_IDS = {"0.4", "SC-1", "tier", "canon-gate", "8", "9"}
 # ⭐⭐ THE `/checkin` SPINE (W14.7, 2026-08-09) — deliberately TINY, and the reason is the finding.
 # `/checkin` had NO coverage table. Its three tool-backed checks (`checkin_open`, `gauge_check`,
 # `board_check`) fire every run because each returns an exit code; its ONE prose-only step — Step
-# 3.58's blind-reader handoff proof — was skipped on 2026-08-08 and only Enver asking "did the haiku
+# 3.58's blind-reader handoff proof — was skipped on 2026-08-08 and only a human asking "did the haiku
 # agent run?" surfaced it. `system/sops/skill-building-sop-extract.md`: a model cannot report on its own
 # compliance, and the Step 3.57 receipt asked for that verdict as a self-reported LINE.
 # ⇒ This spine exists so a `/checkin` close that skipped the reader CANNOT render clean.
@@ -147,7 +147,7 @@ _BLOCK_TS_RE = re.compile(
 # current pad, and `stamp compact` ACCEPTED it (rc 0). The freshness test only ever asked
 # "is this block NEWER than my start?", which any future timestamp satisfies trivially.
 # ⭐ WHY THAT MATTERS HERE SPECIFICALLY: this archive is written by TWO MACHINES into ONE file — the
-# live project-system archive already interleaves host=Envers-MacBook-Air.local and the Studio. A
+# donor system's archive interleaved two hosts in one file, and this one can too. A
 # clock-ahead machine can therefore mint a block that reads as proof THIS run archived the pad.
 # ⚠ This risk was DECLINED on 2026-08-08 as "errs toward refusing, the safe direction." The
 # measurement DISCONFIRMED that. Recorded rather than quietly corrected.
@@ -724,7 +724,7 @@ def cmd_selftest(_a) -> int:
 
     # ── W14.7 (2026-08-09, v2 after the adversarial audit): the /checkin spine ────────────────
     # ⛔ Every check below was proven able to FAIL before it was kept — a check nobody has watched
-    # fail is a check nobody has tested (`33a1671`'s lesson, and Enver's rule: a helper's own
+    # fail is a check nobody has tested (`33a1671`'s lesson, and the house rule: a helper's own
     # certification is not evidence). NOTE the shape change from v1: `render` is called with an
     # EMPTY conditions dict, because the /checkin spine has no conditions left to supply.
     ck = {"started": 1, "stamps": {"compact": 1, "graduate": 1, "reader": 1},
