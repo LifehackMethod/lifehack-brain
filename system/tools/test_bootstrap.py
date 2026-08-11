@@ -20,7 +20,7 @@ REPO = os.path.normpath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, HERE)
 import bootstrap  # noqa: E402
 
-EXPECTED = {"system/journal.md", "system/project-registry.md", "state/briefs/"}
+EXPECTED = {"system/journal.md", "system/project-registry.md", "state/projects/"}
 
 
 def tree(root):

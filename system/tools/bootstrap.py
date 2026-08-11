@@ -11,7 +11,7 @@ Run once, after you have told the system where your notes live:
 /ingest builds every subject folder correctly: a canon file for what stays true, a records folder for
 what happened on a date, a stated purpose. What it builds NOTHING of is the layer ABOVE those folders.
 Its own phase file says so outright — "there is no registry step at this level" — and a grep across
-the whole shipped skill finds zero code that creates a journal, a project registry, or a briefs
+the whole shipped skill finds zero code that creates a journal, a project registry, or a projects
 folder. So a new person's day one is a set of subject folders sitting in an otherwise empty room.
 
 It self-heals in use: /save writes a journal line and creates the journal if it is missing, and the
@@ -35,7 +35,11 @@ sys.path.insert(0, os.path.join(REPO, "shared"))
 
 JOURNAL = "system/journal.md"
 REGISTRY = "system/project-registry.md"
-BRIEFS = "state/briefs"
+# The project folder. A project is a FOLDER named exactly its slug, holding brief.md +
+# records/ + canon/ (docs/data-layout.md). The older flat shape, state/briefs/<slug>.md,
+# stays READABLE forever but is never created — an empty folder nothing writes to teaches
+# a shape that does not exist, which is the exact thing this file refuses to do elsewhere.
+BRIEFS = "state/projects"
 
 # Deliberately thin. A one-line title so a human opening the file knows what it is, and NOT a schema —
 # the row format belongs to the tools that write these, not to the thing that creates them empty.

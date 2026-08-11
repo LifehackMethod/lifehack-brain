@@ -43,11 +43,16 @@ set, the honest answer is "not set" and the tool refuses.
 ├── councils/                        rosters of advisors, if you use them
 ├── memory/
 │   └── topic-vocab.md               your subjects, in your words — written by you, never shipped
-└── <subject>/                       whatever `/ingest` built from your own material
+└── desks/<subject>/                 one folder per subject, built by `/ingest` from your material
     ├── canon/current.md
     ├── canon/purpose.md
     └── records/
 ```
+
+> **A note on the word `desks`.** That is the folder name `/ingest` writes, and it is kept because the
+> code writes it. In anything you *say* to a person it is "a folder per subject" — `/ingest`'s own
+> voice rules ban the jargon out loud while the path keeps it. Don't rename the folder to fix the
+> vocabulary; the fix is in how you talk, and it is already made.
 
 Three of those exist on day one and nothing else does: `system/journal.md`,
 `system/project-registry.md`, and the projects folder. `system/tools/bootstrap.py` makes exactly those
@@ -157,7 +162,7 @@ the author's live notes on 2026-08-11.
 | `records/canon/` held the root desk's canon (38 files) | no such folder | canon is either the one top-level file or a folder's own `canon/`. A third home was a desk-era artifact. |
 | `plans/` split into a folder per machine (`Mac`, `Envers-Air`, …, five of them, 359 files) | one flat `plans/` | there is one machine. The two-machine plane is not part of this system. |
 | `state/machine-log.md` recorded which machine changed what | gone | same reason. |
-| `desks/<desk>/…` mirrored the whole layout per desk | not here | desks are the author's own and are not part of this release. `{desk}` survives only as a registry field. |
+| a desk was a heavy thing — `state/`, `views/`, `sources/inbox/`, its own `CLAUDE.md`, a registry entry, a health producer | `desks/<subject>/` here is the light subset only: `canon/current.md`, `canon/purpose.md`, `records/` | `/ingest` builds the subset and nothing more, on purpose. Promotion to the heavy shape is a deliberate human act, later, if a folder earns it — and that machinery is not in this release. |
 | the topic vocabulary shipped in the repo | never ships | see the note under Types. It is yours; the tools refuse and teach rather than invent one. |
 | four record types existed for one desk each (`clients`, `billing`, `source-ingests`, `source-summaries`) | not here | they describe one person's work, not a general category. |
 
@@ -185,7 +190,9 @@ The diagram above is the shape; this is the list, so nothing has to be inferred 
 | `<notes>/config/` | a person, by hand | account IDs and the like, kept out of the repo |
 | `<notes>/councils/` | a person, by hand | if advisor rosters are used |
 | `<notes>/memory/topic-vocab.md` | a person, by hand | your subjects, in your words |
-| `<notes>/<subject>/canon/`, `<subject>/records/` | `/ingest` | once per subject it finds |
+| `<notes>/desks/<subject>/canon/` | `/ingest` | once per subject it finds |
+| `<notes>/desks/<subject>/records/` | `/ingest` | a stub file per finding it places |
+| `<notes>/desks/<subject>/records/proposals/` | `/ingest` | a canon candidate, awaiting your ruling |
 
 ## When you add something that writes
 

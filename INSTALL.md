@@ -453,8 +453,8 @@ lifehack-brain/          ← OURS. replaced whole on every update.
 My Notes/                ← YOURS. a different folder, outside this one.
 ├── system/journal.md        what happened, as it happens
 ├── system/project-registry.md   so a cold session can find an old project
-├── state/briefs/            project notes
-└── desks/                   a folder per subject, once you have run an ingest
+├── state/projects/<name>/   one folder per project: its brief, its records, its canon
+└── desks/<subject>/         a folder per subject, once you have run an ingest
 ```
 
 **The split is the whole design.** Everything sent to you is in the first folder. Everything you write
