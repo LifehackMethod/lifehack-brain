@@ -1,207 +1,260 @@
-# When something breaks — tell me directly
+# When something breaks, tell me — without having to explain it
 
-You already have your Lifehack Brain installed. This adds one thing: when something goes wrong, you can
-say **"file a bug"** and it lands on my desk, with everything I need to fix it, without you having to
-describe it.
+Right now, when something goes wrong, you have to describe it to me and I have to guess. This changes
+that. Once it's set up, you just say **"file a bug"** and the whole thing — what you were doing, the
+actual error, which version you're on — comes straight to me.
 
-This is how the last two bugs got fixed. One of you hit a problem on Windows, filed it this way, and it
-was fixed the next day. That only works if I can see the actual error rather than a description of it.
+This is not theoretical. Someone in this class hit a problem on Windows, sent it this way, and it was
+fixed the next day.
 
-**You need one thing: a free GitHub account.** That's the only new requirement. Two minutes, no card,
-nothing to install on the website's side.
-
----
-
-## What you do — about five minutes, once
-
-**1. Make a free GitHub account.** Go to <https://github.com/signup>. You need an email address and a
-username. Nothing else. Write the username down.
-
-**2. Open your `lifehack-brain` folder in Claude's Code tab**, the same way you always do.
-
-**3. Drag this file into the chat and say: "Set up bug reports."**
-
-**4. Answer its questions.** There is one step where it shows you a short code and opens your browser —
-you type the code in and click a green button. That's the whole sign-in.
-
-That's it. From then on, whenever something goes wrong, say **"file a bug."**
+**It takes about five minutes and you need one thing: a free GitHub account.** That's it. No card, no
+downloads on your end.
 
 ---
 
-## What happens when you file one
+## What you do
 
-Claude writes the report for you — what you were doing, the exact error, and which version you're on.
-**Then it shows you the whole thing and waits.** Nothing is sent until you say yes.
+**Open your `lifehack-brain` folder the way you always do, drag this file into the chat, and say:**
 
-⚠ **Read it before you say yes.** A bug report is a public page on the internet. Anyone can find it, and
-it stays there. Claude strips out your name and your folder paths before showing you, but you are the
-last check, and you are the only one who knows whether a line of your own writing has ended up in there.
-**If you see anything of yours in it, say no.** Nothing is lost by refusing — it will just take the
-private bits out and show you again.
+> **"Set up bug reports."**
 
+Then just answer its questions. There are only two moments where it needs you: making the free account
+(it'll give you the link and wait), and clicking one button in your browser to prove the account is
+yours.
+
+Everything else it does itself. **You will not have to type any commands.**
+
+---
+
+## Afterwards
+
+Whenever something goes wrong — anything, even if you're not sure it's a bug — say **"file a bug."**
+
+It writes the report, **shows you the whole thing, and waits.** Nothing is sent until you say yes.
+
+⚠ **Do read it before you say yes.** A bug report is a public page on the internet and it stays there.
+It takes your name and your folder paths out before showing you, but you're the last check — you're the
+only one who knows whether a line of your own writing has crept in. **If you spot anything of yours,
+just say no.** It'll take it out and show you again. There's no limit and nothing is lost.
+
+---
+---
+---
+
+# ⬇ EVERYTHING BELOW THIS LINE IS FOR CLAUDE. YOU DON'T NEED TO READ IT.
+
+*(It's the setup instructions. It's meant to look like this. Nothing here is for you to do.)*
+
+---
 ---
 ---
 
 # INSTRUCTIONS FOR CLAUDE
 
-**You are adding bug reporting to someone who already has this installed. Read all of this before you do
-anything.**
+**You are adding bug reporting for a non-technical person who already has this installed.**
 
-**All the behaviour rules from `INSTALL.md` still apply** — whole sentences, never a status token, one
-step at a time, say what you're about to do and what happened, and never invent a result you didn't
-actually get.
+> ## ⛔⛔ THEY MUST NEVER SEE A COMMAND. THIS IS THE WHOLE BRIEF.
+>
+> **This person did not open a terminal to get here — they typed a sentence.** A block of shell in the
+> chat reads to them as *"this was supposed to be easy and now it isn't."*
+>
+> - ⛔ **Never print a command, never ask them to run one, never ask them to approve one.** Run it
+>   yourself and say in one plain sentence what happened.
+> - ⛔ **Never send them to a download page and never make them choose between two files.** Anything that
+>   can be fetched, you fetch.
+> - ⛔ **Never show them a status token.** Not `OK`, not `✓`, not an exit code. Whole sentences.
+> - ⛔ **Never invent a result.** If you couldn't check something, say you couldn't. They cannot tell a
+>   confident guess from a fact, and they will act on it.
+>
+> **There are exactly TWO things they do themselves**, because nobody can do them for them: create the
+> account, and click Authorize in their browser. **Everything else is yours.**
 
-> ## ⛔⛔ THE INSTALL IS ALREADY DONE. DO NOT RE-RUN IT.
+> ## ⛔ THE INSTALL IS ALREADY DONE. DO NOT RE-RUN IT.
 >
 > Do not check for git or Python, do not clone anything, do not touch their notes folder, do not run
-> `bootstrap.py`, and do not offer to run `/ingest`. **All of that already happened.** If it turns out it
-> didn't, say so and stop — send them back to `INSTALL.md`. Do not try to complete a half-install from
-> inside this file.
+> `bootstrap.py`, do not offer to run `/ingest`. If it turns out they aren't actually installed, say so
+> and send them to `INSTALL.md`. **Do not finish a half-install from inside this file.**
 
 ---
 
-## STEP A — Confirm you're in the right place
+## STEP 0 — Say what's about to happen
+
+Tell them, in about three sentences: you're setting up bug reporting, it takes about five minutes,
+there are two moments where you'll need them and you'll do the rest, and you'll say what's happening as
+you go. Then ask if they're ready and wait.
+
+---
+
+## STEP A — Quietly confirm you're in the right folder
 
 ```bash
 test -f .claude/skills/ingest/SKILL.md && git rev-parse --show-toplevel
 ```
 
-If that prints a path, they're inside their tool folder and you can continue.
+**Say nothing about this if it works** — just continue. It's a sanity check, not a milestone, and
+narrating it makes the setup feel longer than it is.
 
-**If it doesn't, stop.** Tell them plainly: *"I need to be in your lifehack-brain folder to set this up —
-could you open that folder in the Code tab and drag this file in again?"*
-
----
-
-## STEP B — The GitHub account
-
-Ask them: **"Do you have a GitHub account yet?"**
-
-**If no:** send them to <https://github.com/signup>, tell them it's free and takes two minutes, and say
-you'll wait. Do not walk them through the form — it changes, and it's self-explanatory. When they say
-they're done, ask for their username and say it back to them.
-
-**If yes:** ask for the username and move on.
-
-⛔ **Never ask for their password, and never offer to sign up on their behalf.** The next step is how they
-prove who they are, and it never involves you seeing a credential.
+**If it fails**, say: *"I need to be in your lifehack-brain folder for this — could you open that folder
+and drag this file in again?"* Then stop.
 
 ---
 
-## STEP C — The GitHub command-line tool
+## STEP B — The account
+
+Ask: **"Do you already have a GitHub account?"**
+
+**If yes**, move on. Don't ask for the username — you don't need it and it's one more thing for them to
+go and look up.
+
+**If no**, say roughly: *"You'll need a free one — it's the only thing I can't do for you. Go to
+https://github.com/signup, it takes about two minutes and just needs an email address and a username
+you pick. Tell me when you're back."* **Then wait.** Do not narrate the signup form; it changes, and
+they can read.
+
+⛔ **Never ask for their password.** The next step is how they prove who they are and it never involves
+you seeing a credential.
+
+---
+
+## STEP C — Make sure the GitHub tool is available, installing it yourself if it isn't
 
 ```bash
 command -v gh
 ```
 
-**If that printed a path**, tell them it's already installed and move on.
+**If that printed a path, it's already here.** Say one sentence — *"Good, the tool I need is already on
+your machine"* — and go to STEP D. Use `gh` as the command for the rest of this file.
 
-**If it printed nothing — Mac:** send them to <https://github.com/cli/cli/releases/latest>. Tell them to
-scroll to the list of files and download **the one file ending in `.pkg`** — there is only one, and it
-works on every Mac. Then double-click it. It's a normal installer with a Continue button.
+**If it printed nothing, install it yourself. Do not send them anywhere.** Tell them first:
+*"You're missing one small tool. I'll fetch it — about thirty seconds, and it goes in your own home
+folder, so nothing needs an administrator password."*
 
-**If it printed nothing — Windows:**
-```powershell
-winget install --id GitHub.cli -e --source winget
+```bash
+set -e
+mkdir -p "$HOME/.local/bin"
+case "$(uname -m)" in
+  arm64|aarch64) GH_ARCH=arm64 ;;
+  *)             GH_ARCH=amd64 ;;
+esac
+GH_URL="$(curl -sSL https://api.github.com/repos/cli/cli/releases/latest \
+  | python3 -c "import sys,json,os
+d=json.load(sys.stdin)
+want='macOS_'+os.environ['GH_ARCH']+'.zip'
+print(next(a['browser_download_url'] for a in d['assets'] if a['name'].endswith(want)))")"
+curl -sSL "$GH_URL" -o /tmp/gh.zip
+unzip -qo /tmp/gh.zip -d /tmp/gh-unpack
+find /tmp/gh-unpack -type f -name gh -perm -u+x -exec cp {} "$HOME/.local/bin/gh" \;
+rm -rf /tmp/gh.zip /tmp/gh-unpack
+"$HOME/.local/bin/gh" --version
 ```
-If `winget` isn't available, same releases page, the file ending in `.msi`.
 
-⛔ **Do not continue until `command -v gh` prints a path.** They may need to close and reopen the Code tab
-before it's found — that's normal, and worth telling them before they think it failed.
+⚠ **On Windows this won't work — the download is a Mac build.** If `uname -s` isn't `Darwin`, install it
+for them with `winget install --id GitHub.cli -e --source winget` instead, and if `winget` isn't there,
+that is the one case where you have to send them to
+<https://github.com/cli/cli/releases/latest> for the file ending in `.msi`. Say sorry for the detour.
+
+⛔ **From here on, if you installed it, the command is `~/.local/bin/gh`, not `gh`.** Their shell won't
+find the bare name yet and you will spend ten confusing minutes on it. **Use the full path everywhere
+below.**
+
+⛔ **If the install fails, stop and read them the real error.** Don't try a second method, don't
+improvise, and don't tell them to install it themselves. Say the setup can't finish and that they should
+send you the error — the rest of their system is unaffected.
 
 ---
 
-## STEP D — Sign in
+## STEP D — Sign them in
 
-Before you run anything, tell them what is about to appear:
+**Tell them what's coming before you run it**, because this step waits on them:
 
-> **"This is going to show you a short code — something like `A1B2-C3D4` — and then open your browser.
-> Type the code in and click the green Authorize button. Come back and tell me when you've done it."**
+> **"This is going to show you a short code — something like `A1B2-C3D4` — and open your browser. Type
+> that code in and click the green Authorize button. Come back and tell me when it's done."**
 
 ```bash
 gh auth login --hostname github.com --git-protocol https --web
 ```
 
-⚠ **The code expires after a few minutes.** If they wander off and it times out, just run it again —
-nothing is broken and there's no limit on retries.
+⚠ **The code expires after a few minutes.** If they take too long, just run it again — nothing is broken
+and there's no limit.
 
-Confirm it worked:
+Then check it took:
+
 ```bash
 gh auth status
 ```
 
-Tell them in a sentence which account is now connected. **If it says they're not logged in, say so
-plainly and run this step again** — do not tell them it probably worked.
+Say in a sentence which account is connected. **If it says they're not signed in, say so plainly and run
+it again.** Never tell them it probably worked.
 
 ---
 
-## STEP E — Prove they can reach the project
+## STEP E — Check they can reach the project
 
 ```bash
 gh issue list --repo LifehackMethod/lifehack-brain --limit 3
 ```
 
-If that returns anything — even an empty list — they can reach it.
+Anything back — even nothing — means they can reach it.
 
-⛔ **Do NOT file a test issue.** There is already one on there called "test", and thirty more would bury
-the real reports. **Their first genuine bug is the test.** Say that to them, so they don't think
-something is unfinished.
+⛔ **Do NOT file a test issue.** There's already one on there called "test", and thirty more would bury
+the real reports. **Their first real bug is the test.** Tell them that, so they don't think it's
+unfinished.
 
 ---
 
-## STEP F — Tell them the phrase, then stop
+## STEP F — Give them the phrase, then stop
 
-> **"You're set. Whenever something goes wrong — anything at all, even if you're not sure it's a bug —
-> just say 'file a bug'. I'll write it up, show it to you, and only send it once you say yes."**
+> **"You're set. Whenever something goes wrong — anything, even if you're not sure it's a bug — just say
+> 'file a bug'. I'll write it up, show it to you, and only send it once you say yes."**
 
-Then stop. Do not file anything now.
+**Then stop. Do not file anything now.**
 
 ---
 ---
 
 # HOW TO FILE ONE — read this when they say "file a bug"
 
-## What goes in it
+## Gather this before you write anything
 
-**A report that names the exact thing that broke gets fixed in a day. A report that says "it didn't work"
-gets a conversation instead of a fix.** Gather all of this before you write anything:
+**A report naming the exact thing that broke gets fixed in a day. "It didn't work" gets a conversation
+instead of a fix.**
 
-- **What they were trying to do**, in their own words. Ask if you don't know.
-- **The exact command or step** that failed.
-- **The real error text** — the actual last lines, not your summary of them.
-- **Which version they're on:** `git rev-parse --short HEAD`
-- **What kind of computer:** `uname -s`
+- **What they were trying to do**, in their own words — ask if you don't know.
+- **The exact step or command** that failed.
+- **The real error text.** The actual last lines, not your summary of them.
+- **Their version:** `git rev-parse --short HEAD`
+- **Their machine:** `uname -s`
 - **Whether it happens every time**, if they know.
 
 ## What must NOT go in it — this is the part that matters
 
-**This is a public page on the internet and it is permanent.** Before you show them anything, take out:
+**This becomes a public page, it is permanent, and search engines index it.** Before you show them
+anything, take out:
 
-- **Their home folder path.** Replace `/Users/theirname/...` with `~/...`. Their real name is very often
-  in that path and they will not notice it.
-- **Anything they have written.** Note content, journal lines, project names, file names from their own
-  notes folder. **The error is the evidence, not what they were writing when it happened.**
-- **Anything from their `config/` folder** — sheet ids, calendar ids, email addresses.
-- **API keys and tokens**, obviously, in any form.
+- **Their home folder path.** Replace `/Users/theirname/...` with `~/...`. **Their real name is usually
+  in that path and they will not notice it.**
+- **Anything they have written.** Note content, journal lines, project names, filenames from their notes
+  folder. **The error is the evidence — not what they happened to be writing when it appeared.**
+- **Anything from their `config/` folder:** sheet ids, calendar ids, email addresses.
+- **Keys and tokens**, in any form.
 
-⛔ **If you cannot tell whether something is theirs or ours, leave it out and say in the report that you
-left something out.** A slightly thinner bug report is a rounding error. A leaked line of someone's
-private writing is not retrievable — GitHub keeps it, and search engines index it.
+⛔ **If you can't tell whether something is theirs or ours, take it out and say in the report that you
+did.** A thinner bug report costs nothing. A leaked line of someone's private writing cannot be taken
+back.
 
-## Then show them, and wait
+## Show them, and wait
 
-Print the whole report — title and body, exactly as it will appear — and ask:
+Print the whole report — title and body, exactly as it will appear — then ask:
 
-> **"Here's what I'd send. It goes on a public page that anyone can read and it stays there. Have a look,
-> and tell me if anything in it is yours."**
+> **"Here's what I'd send. It goes on a public page anyone can read, and it stays there. Have a look and
+> tell me if anything in it is yours."**
 
-⛔ **Wait for an actual yes.** Silence is not a yes, and "ok" to a different question is not a yes. **If
-they say no, ask what to take out, remove it, and show them again.** There is no limit on how many times
-you do this.
+⛔ **Wait for a real yes.** Silence isn't a yes, and "ok" to a different question isn't a yes. **If they
+say no, ask what to take out, take it out, and show them again.** No limit.
 
 ## Then send it
 
-Write the approved body to a scratch file **outside this folder**, then send it:
+Write the approved body to a scratch file **outside this folder**, then send:
 
 ```bash
 cat > /tmp/lifehack-bug.md <<'EOF'
@@ -213,12 +266,11 @@ gh issue create --repo LifehackMethod/lifehack-brain \
   --body-file /tmp/lifehack-bug.md
 ```
 
-⛔ **The scratch file goes in `/tmp`, never inside this folder.** Anything written inside the tool folder
-gets picked up by git, which is the one thing this whole system is arranged to prevent.
+⛔ **The scratch file goes in `/tmp`, never inside this folder.** Anything written in the tool folder
+gets picked up by git, which is the single thing this whole system is arranged to prevent.
 
-That prints a web address. **Give it to them and tell them what it is:** *"That's your report — that link
-is where you can watch it get fixed."*
+That prints a web address. **Hand it to them and say what it is:** *"That's your report — that link is
+where you can watch it get fixed."*
 
-**If the command fails**, read them the actual error. The two likely causes are that their sign-in
-expired (run `gh auth status`, and STEP D again if needed) or they have no internet. Do not retry
-silently.
+**If it fails**, read them the real error. It's almost always an expired sign-in (check `gh auth status`,
+redo STEP D) or no internet. **Do not retry silently.**
