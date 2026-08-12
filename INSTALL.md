@@ -13,14 +13,25 @@ You hand this file to Claude and answer its questions.
 
 ## What it builds — one folder, and everything lives inside it
 
-    AI Brain/                 <- the ONE folder you open. every time.
-    ├── lifehack-brain/          the tool. ours. replaced whole on every update.
-    └── data/                    everything you write. yours. never touched.
+    AI Brain/                 <- the ONE folder you open. every time. THIS folder IS the tool.
+    ├── .claude/                 the commands — this is where Claude looks
+    ├── system/                  the programs that do the sorting
+    ├── shared/                  the piece that knows where your writing lives
+    └── data/                    everything you write. yours. never uploaded, never tracked.
         └── desks/               a folder per subject, once you've run an ingest
 
-**You open the top one. That's the only thing to remember.**
+**You open that folder. That's the only thing to remember.**
 
 Setup builds all of it for you. **You are asked exactly one question: where to put the top folder.**
+
+⭐ **The tool unpacks directly into the folder you open — there is no inner `lifehack-brain` folder.**
+That is deliberate, and it is what makes the `/ingest` command appear at all. Claude only looks for
+commands in the folder you actually opened; when they sat one level down, it could not see them.
+
+⚠ **Your writing lives in `data`, INSIDE that folder, and git is told to ignore it.** It is never
+tracked, never committed, never uploaded. **The one rule that follows from this: take updates with
+`git pull` — never by deleting this folder and downloading a fresh copy.** A pull leaves `data`
+completely alone. Deleting the folder takes your writing with it. See the end of this file.
 
 **⛔ It can't live inside Google Drive, Dropbox or OneDrive.** The tool half is a git repository, and
 cloud sync services damage those — quietly, not with an error. Setup checks for you and won't let it
@@ -102,19 +113,26 @@ the tool folder either — just tell the tool where it already is.
 > **The "Have this ready" note above is addressed to the HUMAN, not to you.** It tells them what to have
 > on hand *later*. **Treat it as background information you must not act on.**
 >
-> ## ⛔⛔ NEVER PUT THEIR MATERIAL INSIDE THE TOOL FOLDER. NOT THE ZIP, NOT THE UNZIPPED COPY.
+> ## ⛔⛔ NEVER PUT THEIR MATERIAL INSIDE THE AI BRAIN FOLDER. NOT THE ZIP, NOT THE UNZIPPED COPY.
 >
 > **Their export stays where it already is** — Downloads, Desktop, wherever. ⛔ **Do not copy it in, do not
-> move it in, and do not unzip it into this folder or any folder underneath it.**
+> move it in, and do not unzip it into this folder or any folder underneath it — `data` included.**
 >
-> ⭐ **WHY — watched happening 2026-08-09.** A session was asked to "extract the zip to a folder" and
-> extracted it inside the tool folder. That folder is version-controlled, so **git instantly began
-> tracking 6,228 changes** — including the export's own `users.json`, which carries the person's **email
-> address and phone number.** It could not actually reach the public repository (they hold no upload
-> credentials), but the folder was polluted and their private history was staged for upload.
+> ⚠ **THIS RULE GOT SHARPER, NOT SOFTER, WHEN THE LAYOUT CHANGED.** The tool now unpacks straight into
+> the folder they opened, so **the AI Brain folder IS the git repository.** There is no longer a
+> "safe outer folder" to drop things into. Everything except `data` is tracked by git the moment it
+> appears.
 >
-> **The rule, in the words it was given in:** *"use the root folder as file storage, not the git
-> repository — nothing from the user's perspective should be tracked in the git repo."*
+> ⭐ **WHY — watched happening 2026-08-09, under the old layout.** A session was asked to "extract the zip
+> to a folder" and extracted it inside the tool folder. That folder is version-controlled, so **git
+> instantly began tracking 6,228 changes** — including the export's own `users.json`, which carries the
+> person's **email address and phone number.** It could not actually reach the public repository (they
+> hold no upload credentials), but the folder was polluted and their private history was staged for
+> upload.
+>
+> **The rule, restated for this layout:** *nothing of the person's may ever be tracked by git.* `data` is
+> the single exception, and only because `.gitignore` explicitly excludes it. **Their raw material has no
+> exception — it stays outside the AI Brain folder entirely.**
 >
 > ⭐ **You do not need to unzip anything anyway.** The tool opens the zip itself, and unpacks it somewhere
 > outside this folder on purpose. **Just tell it where the zip is.**
@@ -279,40 +297,63 @@ does later will be able to reach it.
 > install, the answer is a different folder, never elevation. **A real student lost their install to
 > exactly that detour on 2026-08-12.**
 
-## STEP 5 — Fetch the tool INTO the folder you're already in
+## STEP 5 — Fetch the tool INTO the folder you're already in — note the trailing dot
 
 ```bash
-git clone https://github.com/LifehackMethod/lifehack-brain.git
+git clone https://github.com/LifehackMethod/lifehack-brain.git .
 ```
 
-**That creates `lifehack-brain` as a subfolder right here. That is exactly right.** ⛔ Do not `cd`
-anywhere first, and do not clone into a folder you created yourself.
+**The `.` on the end is the whole point.** It unpacks the tool *into* the folder they already opened,
+rather than making a `lifehack-brain` subfolder inside it. ⛔ Do not `cd` anywhere first, and do not
+drop the dot.
+
+> ⛔⛔ **WHY THE DOT — CHANGED 2026-08-12, AND THE OLD WAY SILENTLY DID NOT WORK.**
+> The tool used to clone into a `lifehack-brain` subfolder, and the instructions said the commands
+> would be found from the folder above it. **They were not.** Claude only loads commands from the
+> folder you actually open. A `.claude` folder one level down is not read at startup, so `/ingest`
+> simply never appeared — **with no error, and nothing to search for.** Putting the repository at the
+> top level is what fixes it.
+>
+> ⚠ **A second, separate trap sat underneath that one, and it is worth knowing about because it looks
+> identical.** If the tool ever ends up in a folder *below* the one you opened, Claude also treats it as
+> a different, untrusted project — and refuses to load its commands until that folder is trusted in its
+> own right. **Same symptom, different cause. Both are cured by cloning to the top level.**
 
 Confirm it landed:
 ```bash
-ls lifehack-brain/.claude/skills/ingest/SKILL.md && echo "the skill is here"
+ls .claude/skills/ingest/SKILL.md && echo "the skill is here"
 ```
 
 **Tell them what arrived**, in a sentence: the tool itself, and the specialist readers it uses.
 
-⭐ **The skills live inside that subfolder and are found from the folder above it — verified
-2026-08-12.** ⛔ **Do NOT symlink anything into `~/.claude/`.** Symlinks are Mac-coupled and this has to
-work on Windows too.
+⛔ **Do NOT symlink anything into `~/.claude/`.** Symlinks are Mac-coupled and this has to work on
+Windows too.
 
-> ⛔ **If `git clone` refuses because a `lifehack-brain` folder is already here**, do NOT merge into it
-> and do NOT `git init` an existing folder. Ask whether it's an older copy they can rename or delete,
-> then clone again.
+> ⛔ **If `git clone` refuses because the folder is not empty**, do NOT `git init` it and do NOT merge by
+> hand. Find out what is in there first:
+>
+> ```bash
+> ls -A
+> ```
+>
+> **If it is an older copy of the tool**, ask whether they can rename or delete it, then clone again.
+> **If it is a `data` folder from a previous install, that is their writing — do not delete it.** Move
+> it aside, clone, then move it back:
+>
+> ```bash
+> mv data ../data-keep && git clone https://github.com/LifehackMethod/lifehack-brain.git . && mv ../data-keep data
+> ```
 
 ## STEP 6 — Confirm the pieces arrived, and turn on the safety catch
 
 ```bash
-test -f lifehack-brain/.claude/skills/ingest/SKILL.md && test -d lifehack-brain/.claude/agents && echo "FILES OK" || echo "FILES MISSING"
+test -f .claude/skills/ingest/SKILL.md && test -d .claude/agents && echo "FILES OK" || echo "FILES MISSING"
 ```
 
 **If `FILES OK`**, turn on the catch that keeps their own writing out of the repository:
 
 ```bash
-cd lifehack-brain && git config core.hooksPath system/githooks && cd .. && echo "SAFETY CATCH ON"
+git config core.hooksPath system/githooks && echo "SAFETY CATCH ON"
 ```
 
 **Say what that did, in one plain sentence:** *"I've turned on a safety catch — if anything ever tries to
@@ -332,55 +373,92 @@ Delete what's there and run **STEP 5** again.
 > jottings — it is their entire memory. **Measured 2026-08-12: several students answered it with a bare
 > "ok" and silently got a folder in the wrong place; others stalled on it and never restarted. It even
 > confused a student whose install was otherwise working perfectly.**
-> ⭐ **There is no decision here. `data` sits beside `lifehack-brain`. That is the design.**
+> ⭐ **There is no decision here. `data` sits inside the AI Brain folder. That is the design.**
 
 ```bash
 mkdir -p data
-python3 lifehack-brain/shared/brain_root.py --set "$PWD/data"
-cd lifehack-brain && python3 system/tools/bootstrap.py && cd ..
+python3 shared/brain_root.py --set "$PWD/data"
+python3 system/tools/bootstrap.py
 ```
 
+**Now prove git is ignoring it.** `data` lives *inside* the repository, so this is the line that keeps
+their writing out of version control — and a check you skip is a check that failed.
+
+```bash
+git check-ignore -q data && echo "DATA IS IGNORED — good" || echo "⛔ DATA IS NOT IGNORED — STOP"
+```
+
+⛔ **If it says `NOT IGNORED`, stop and fix it before going further.** The `.gitignore` that ships with
+the tool already lists `data/`; if the check fails, the clone is incomplete or something overwrote it.
+Re-run **STEP 5**. **Do not carry on and do not `git add` anything** — an ingest run into an untracked-
+but-not-ignored `data` is exactly how someone's private history gets staged for upload.
+
 **Then say what you made, in one plain sentence, and move on:** *"Your writing goes in a folder called
-`data`, right next to the tool. I've put a journal, a project list and somewhere for project notes in
-there — they fill themselves in as you work."*
+`data`, inside your AI Brain. I've put a journal, a project list and somewhere for project notes in
+there — they fill themselves in as you work. Git is set to ignore it completely, so none of it can ever
+be uploaded."*
 
 ⛔ **`desks/` is NOT created here.** Those appear inside `data` the first time they run an ingest, one
 per subject, built from their own material. **Do not pre-create them and do not invent subject names.**
 
 ---
 
-### ⚠ Then mention syncing — ONCE, as a recommendation. It is NOT a requirement and NOT a gate.
+### ⚠ Then mention backups — ONCE, as a recommendation. It is NOT a requirement and NOT a gate.
 
-**Say it, and accept whatever they say back:**
+> ⛔⛔ **DO NOT TELL THEM TO POINT DROPBOX OR GOOGLE DRIVE AT `data`. THAT ADVICE IS OBSOLETE AND IT NO
+> LONGER WORKS.** It was correct when `data` sat *beside* the repository and could simply live in a
+> synced folder. **It now sits inside a folder that must stay OUT of cloud sync**, and a cloud client
+> cannot sync a subfolder of a folder it is not syncing. Anyone following the old advice ends up either
+> failing quietly or dragging the whole repository into Dropbox — which is the one thing STEP 4 exists
+> to prevent.
 
-> *"One thing worth doing when you have a minute: point Google Drive or Dropbox at the `data` folder, so
-> your writing is synced. It's the part that's yours and can't be re-downloaded. Not required — you can
-> do it any time."*
+**Say this instead, and accept whatever they say back:**
 
-⛔ **Do NOT set it up for them, do NOT walk them through the menus now, and do NOT block the install on
-it.** They are ten minutes into a setup and this is the least urgent thing in the file.
+> *"One thing worth doing when you have a minute: every so often, copy the `data` folder somewhere
+> that's backed up — Dropbox, an external drive, wherever you keep things. It's the part that's yours
+> and can't be re-downloaded. Everything else here I can fetch again in a second. Not required, and it
+> can wait."*
 
-⛔⛔ **BUT IF THEY DO IT, IT MUST BE `data` AND NOTHING ELSE. NEVER THE FOLDER ABOVE IT.** That one holds
-the git repository, and syncing it recreates the corruption problem STEP 4 exists to prevent. **Say that
-sentence out loud when you mention it — it is the only part of this that can hurt them.**
+If they want it now, give them the one line and let them run it:
+
+```bash
+cp -R "$PWD/data" ~/Dropbox/brain-backup-$(date +%F)
+```
+
+⛔ **Do NOT set up a sync client for them, do NOT walk them through the menus now, and do NOT block the
+install on it.** They are ten minutes into a setup and this is the least urgent thing in the file.
+
+⛔⛔ **AND THE ONE SENTENCE THAT CAN ACTUALLY HURT THEM: NEVER MOVE THE AI BRAIN FOLDER INTO A CLOUD
+FOLDER.** It *is* the git repository now, and syncing it recreates the corruption problem STEP 4 exists
+to prevent. **Say that out loud when backups come up** — someone who wants their notes synced will reach
+for exactly that, because the notes are inside it.
 
 ## STEP 8 — Prove it can actually run, before you promise them anything
 
 **A check you skipped is not a check that passed.**
 
 ```bash
-cd lifehack-brain && python3 -c "import sys; sys.path.insert(0,'system/tools/cowork-ingest'); import pipeline; print('TOOLS OK')" && cd ..
+python3 -c "import sys; sys.path.insert(0,'system/tools/cowork-ingest'); import pipeline; print('TOOLS OK')"
 ```
 
 **If it does not print `TOOLS OK`, stop.** Tell them plainly the install is incomplete and read them the
 last line of the error. **Do not tell them to try `/ingest` anyway.**
 
-Then confirm the shape — **exactly two folders, nothing else:**
+Then confirm the shape — **the tool at the top level, `data` beneath it:**
 ```bash
-ls -A
+test -d .claude && test -d system && test -d shared && test -d data && echo "SHAPE OK" || echo "SHAPE WRONG"
 ```
-⛔ **It must show `data` and `lifehack-brain`.** Anything else means something went wrong; say so rather
-than continuing.
+⛔ **If it says `SHAPE WRONG`, something went wrong** — say so rather than continuing. The most likely
+cause is a clone without the trailing dot in **STEP 5**, which buries everything in a `lifehack-brain`
+subfolder. Check with `ls -A`; if you see one, that is the fault.
+
+**Last, prove nothing of theirs is staged for upload.** This is the check that matters most:
+```bash
+git status --porcelain
+```
+⛔ **It must print NOTHING AT ALL.** Empty output means `data` is properly ignored and no stray file has
+crept into the repository. **If anything is listed, stop and read it out** — do not commit it, do not
+`git add` it, and do not continue until you understand what it is.
 
 > **One thing missing ON PURPOSE.** The last step of an ingest asks which subject each thing belongs to
 > and checks it against a list of subjects. **That list is theirs and is not in this package.** The tool
@@ -401,12 +479,14 @@ Tell them, in these words or very close:
 > **"Everything's installed. Now quit Claude completely and open it again — the whole app, not just a
 > new chat. When it comes back, open this exact same folder: `<pwd>`. I'll wait."**
 
-⭐ **Give them the literal path. They reopen the SAME folder they're in now** — the one holding `data`
-and `lifehack-brain`. **Not `lifehack-brain`, not `data`.** Everything the tool needs is reachable from
-here; open one of the inner folders and half the system is outside its reach.
+⭐ **Give them the literal path. They reopen the SAME folder they're in now** — the AI Brain folder
+itself, the one holding `.claude` and `data`. **Not `data`, and not any folder inside it.** This is the
+folder the commands live in; open anything below it and `/ingest` will not exist.
 
-⚠ **If they have installed before, they will reach for `lifehack-brain` out of habit, because the old
-instructions told them to. Say so explicitly.**
+⚠ **If they installed before the 2026-08-12 layout change, they will go hunting for an inner
+`lifehack-brain` folder, because the old instructions told them to open the folder above it. There
+isn't one any more — the tool IS this folder. Say so explicitly**, or they will open the parent
+directory out of habit and land somewhere with no tool in it at all.
 
 Then **STOP. Do not continue this file. Do not offer to run `/ingest` yourself.**
 
@@ -415,11 +495,11 @@ Then **STOP. Do not continue this file. Do not offer to run `/ingest` yourself.*
 Confirm the command exists before they type anything:
 
 ```bash
-ls lifehack-brain/.claude/skills/ingest/SKILL.md
+ls .claude/skills/ingest/SKILL.md
 ```
 
-⭐ **You are in the AI Brain folder and the tool is one level down. That is correct and is how it should
-look.**
+⭐ **You are in the AI Brain folder and the tool is right here in it, not one level down. That is
+correct and is how it should look.**
 
 Then tell them:
 
@@ -452,34 +532,65 @@ process by hand, without needing any of the tools to work. You get the same resu
 # WHAT'S IN HERE, AND WHY IT'S SPLIT THIS WAY
 
 ```
-AI Brain/                        <- YOU OPEN THIS ONE. always. every session.
-├── lifehack-brain/              <- OURS. replaced whole on every update.
-│   ├── .claude/                     the commands — this is where Claude looks
-│   │   ├── agents/                  the specialist readers the tool uses
-│   │   ├── skills/                  the tools themselves
-│   │   └── settings.json            wires it up the moment you clone
-│   ├── system/                      the programs that do the sorting
-│   ├── CLAUDE.md                    the standing instructions every session opens with
-│   ├── UPDATE.md                    how to take a newer version, and what it cannot touch
-│   └── PLAN-B.md                    the manual backup, if the tool ever misbehaves
-└── data/                        <- YOURS. the only thing backed up.
+AI Brain/                        <- YOU OPEN THIS ONE. always. every session. IT IS the tool.
+├── .claude/                         the commands — this is where Claude looks
+│   ├── agents/                      the specialist readers the tool uses
+│   ├── skills/                      the tools themselves
+│   └── settings.json                wires it up the moment you clone
+├── system/                          the programs that do the sorting
+├── shared/                          the piece that knows where your writing lives
+├── .gitignore                       the line that keeps `data` out of git — do not edit
+├── CLAUDE.md                        the standing instructions every session opens with
+├── PLAN-B.md                        the manual backup, if the tool ever misbehaves
+└── data/                        <- YOURS. ignored by git. the only thing worth backing up.
+    ├── canon.md                     the things about you that stay true
     ├── system/journal.md            what happened, as it happens
     ├── system/project-registry.md   so a cold session can find an old project
-    ├── state/briefs/                project notes
+    ├── state/projects/              project notes
     └── desks/                       a folder per subject — built by your first ingest
         ├── <subject>/               one per pile the ingest finds in your own material
         └── <subject>/
 ```
 
-**The split is the whole design.** Everything sent to you is in `lifehack-brain`. Everything you write
-is in `data`, including the desks your ingest builds. An update replaces the first one completely — and
-cannot reach the second even by accident, because your writing is not in that repository at all.
+**The split is still the whole design — but it is now enforced by `.gitignore`, not by folder
+distance.** Everything sent to you is tracked by git. Everything *you* write lives in `data`, including
+the desks your ingest builds, and git is told to ignore it completely: never tracked, never committed,
+never uploaded.
 
-⭐ **And you open the folder ABOVE both of them.** That is what lets the tool reach your writing while
-keeping it out of the repository. Opening one of the inner folders instead is the single most common way
-this goes wrong.
+⭐ **And you open the top folder — the one the tool itself is in.** That is what lets Claude find the
+`/ingest` command at all. Opening a folder above it or below it is the single most common way this goes
+wrong.
 
-**To get updates later, ask Claude:** *"check if there's an update to my brain and install it."*
+## Taking an update later
+
+**Ask Claude:** *"check if there's an update to my brain and install it."*
+
+⛔⛔ **THE ONE RULE THAT MATTERS: UPDATE WITH `git pull`. NEVER BY DELETING THIS FOLDER AND DOWNLOADING A
+FRESH COPY.**
+
+```bash
+git pull
+```
+
+**A pull replaces the tool files and leaves `data` completely alone**, because git ignores it and
+therefore never touches it. That is the safe path, and it is the only one anybody should use.
+
+⚠ **Deleting the folder and re-cloning would take your writing with it.** Under the layout used before
+2026-08-12 that was survivable — `data` sat outside the repository, so wiping the tool folder could not
+reach it. **It sits inside now, so that safety net is gone.** If you ever genuinely need a fresh copy of
+the tool, move `data` out first and move it back afterwards:
+
+```bash
+mv data ~/Desktop/data-keep      # then delete + re-clone, then:
+mv ~/Desktop/data-keep data
+```
+
+⭐ **Before any update, the honest check is one command.** If it prints nothing at all, `data` is
+properly ignored and a pull cannot touch it:
+
+```bash
+git status --porcelain
+```
 
 ---
 
