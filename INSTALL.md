@@ -11,48 +11,46 @@ You hand this file to Claude and answer its questions.
 
 ---
 
-## The one thing to get right: two folders, not one
+## The one thing to get right: ONE folder, holding two
 
-**The tool goes in one folder. Everything you write goes in a different one.**
+**Everything lives inside one folder you'll call your AI Brain.** Inside it, two things sit side by side:
 
-    ~/lifehack-brain/     ← the tool. ours. replaced whole on every update.
-    ~/My Notes/           ← everything you write. yours. never touched.
+    AI Brain/              <- YOURS. a normal folder on your computer.
+    ├── lifehack-brain/       the tool. ours. replaced whole on every update.
+    └── data/                 everything you write. yours. never touched.
 
-Keeping them apart is what makes updates safe: the tool folder gets replaced
-wholesale, and there is nothing of yours inside it to lose.
+**That outer folder is the one you open in Claude, every time.** Not the ones inside it.
 
-**⛔ The tool folder must NOT be inside a cloud folder.** Not inside Google Drive,
-Dropbox, OneDrive or iCloud Drive. Your home folder is perfect.
+**⛔ Your AI Brain folder must be a REAL folder on your computer — not one that lives inside Google
+Drive, Dropbox or OneDrive.**
 
-> **Why.** The tool folder is a git repository, and git constantly makes and
-> deletes hundreds of small files as it works. Cloud sync tools notice each one
-> and try to upload it mid-operation. The two fight, and it never shows up as a
-> clear error — it shows up as a folder that quietly corrupts, or an update that
-> half-applies.
+> **Why.** The tool half is a git repository, and git constantly makes and deletes hundreds of small
+> files as it works. Cloud sync tools notice each one and try to upload it mid-operation. The two fight,
+> and it never shows up as a clear error — it shows up as a folder that quietly corrupts, or an update
+> that half-applies.
 
-**Your notes folder is the opposite — put it wherever you like, cloud included.**
-That is the one worth backing up, and nothing about it fights with syncing.
+**But you should absolutely still back it up — just the `data` half.** That's the part that is yours and
+irreplaceable; the tool can always be downloaded again. Setup walks you through pointing Google Drive,
+OneDrive or Dropbox at `data` and nothing else.
 
-> It has to be a **real folder on your computer** that happens to sync, not a
-> website you log into. Your AI opens files directly and cannot reach into a
-> browser tab. The syncing is only your backup.
-
----
+> ⭐ **These are two different things and it matters.** *Living inside Google Drive* means the files are
+> Google's, shown through a window on your machine. *Being backed up by Google Drive* means the files are
+> genuinely on your hard drive and Drive keeps a copy. **You want the second one.**
 
 ## What you do — three steps, about ten minutes
 
-**1. Open a folder in Claude.** The Claude desktop app → the **Code** tab → any
-folder outside your cloud folder. Your home folder is fine. The tool will be
-fetched into a new folder inside it.
+**1. Open a folder in Claude.** The Claude desktop app, the **Code** tab, and any folder that is *not*
+inside Google Drive, Dropbox or OneDrive. Your home folder is fine. Setup builds your AI Brain there.
 
 **2. Drag this file into the chat and say: "Set up my brain."**
 
-**3. Answer its questions.** One of them is where your notes should live. Have an
-answer ready, or say "make me one" and it will.
+**3. Answer its questions.** One is what to call your AI Brain folder. Another is whether you want it
+backed up, and to what. Have an answer ready, or say "you pick" and it will.
 
 That's it. Claude takes it from here, and it will check with you before each step.
 
----
+⚠ **If it ever goes quiet, look for a small box with an Allow button.** It isn't stuck — it's waiting on
+you.
 
 ## Have this ready
 
@@ -63,11 +61,11 @@ is, know where it is on your computer. You'll hand it over later by dragging it 
 > for it afterwards. **Setting up the tool and using it are two separate steps**, and the second one
 > happens in a fresh window at the very end.
 
-⚠ **Your material and your notes folder are two different places, and mixing them up is the one mistake
+⚠ **Your material and your `data` folder are two different places, and mixing them up is the one mistake
 that causes real trouble.** Your material can live anywhere — your Obsidian vault, your Downloads
-folder, wherever it already is. Your notes folder is the one you name in step 3, and **everything this
-tool produces belongs in there.** When you're asked where your notes live, answer with that folder —
-not the folder your material is in.
+folder, wherever it already is. **`data` is the folder setup builds inside your AI Brain, and everything
+this tool produces belongs in there.** ⛔ Never move your raw material into it, and never move it into
+the tool folder either — just tell the tool where it already is.
 
 ---
 ---
@@ -98,7 +96,7 @@ not the folder your material is in.
 >
 > **So, for the whole of this file:**
 > - ⛔ **Do NOT go looking for their material.** Do not search their computer for a ChatGPT export, an
->   Obsidian vault, a notes folder, or anything else. Do not offer to find it.
+>   Obsidian vault, an AI Brain folder, or anything else. Do not offer to find it.
 > - ⛔ **Do NOT ask them where their material is, what format it is in, or how big it is.** None of that is
 >   your business here and asking it makes them think the sorting has begun.
 > - ⛔ **Do NOT read, open, convert, copy or move a single one of their files.**
@@ -213,211 +211,256 @@ installer.
 ```powershell
 winget install --id Python.Python.3.12 -e --source winget
 ```
-Or <https://www.python.org/downloads/windows/>. ⚠ **Tell them explicitly: on the first screen of the
-Windows installer there is a checkbox that says "Add python.exe to PATH" and they must tick it before
-clicking Install.** If they miss it, nothing will work later and the reason will be invisible.
+
+> ⛔⛔ **TWO WINDOWS TRAPS, BOTH MEASURED ON REAL STUDENTS (2026-08-12). Read them BEFORE running the
+> command above — both look like something the student did wrong, and neither is.**
+>
+> **TRAP 1 — `winget` is often BLOCKED, and that is not an error.** Verbatim from a failed run:
+> *"I'm blocked by the app's security policy from launching installers."* **Do not diagnose it, do not
+> retry it, do not apologise at length.** One sentence — *"Windows won't let me run the installer for
+> you, so this bit is yours"* — then send them to <https://www.python.org/downloads/windows/> and wait.
+>
+> **TRAP 2 — WINDOWS SHIPS DECOY `python.exe` AND `python3.exe` FILES.** They are Microsoft Store
+> shortcuts, and Windows puts their folder EARLY on the PATH, so they beat a real installation.
+> **The symptom is the confusing part: typing `python` opens the Store, or prints nothing, even after
+> Python installed perfectly.** The student will be certain they installed it. They will be right.
+> **The fix:** Settings → Apps → **Advanced app settings** → **App execution aliases** → switch OFF both
+> `python.exe` and `python3.exe`. Fastest route: Start menu, type "Manage app execution aliases".
+> ⭐ **THEN OPEN A NEW WINDOW.** It does not take effect in one already open, and it will look like the
+> fix failed. **Say that before they check.**
+> ⚠ Reversible, and turns nothing off that they use. Say so — "disable" frightens people.
+
+⚠ **However it gets installed, tell them explicitly: the Windows installer's first screen has a checkbox
+reading "Add python.exe to PATH" and they must tick it before clicking Install.** Miss it and nothing
+works later, invisibly.
 
 ⛔ **Do not continue until Python answers with 3.9 or higher.**
 
 ---
 
-## STEP 4 — Work out where the tool folder goes, and check it is not in a cloud folder
+## STEP 4 — Build their AI Brain folder, in a place that is NOT cloud-synced
 
-Find out where you are:
+**This is the folder everything else goes inside, and the one they will open every time.**
+
+**Ask them what to call it.** Most people say "AI Brain" and that is a good default. Use their answer.
+
+**Where it goes, by operating system:**
+
+| | where the AI Brain folder goes |
+|---|---|
+| **Mac** | `~/<their name>` — the home folder |
+| **Windows** | `%USERPROFILE%\Documents\<their name>` — ⛔ **NOT the top-level home folder.** Windows refuses write access there in this app; a real student hit it and had to be relocated mid-install. |
+
+Say the full path out loud and ask if it's sensible. If they'd rather it went elsewhere, take their
+answer — **then run the check below on their choice.**
+
+⛔ **Check it is not inside a cloud folder. Not optional, and it must be THIS check.**
+
 ```bash
-pwd
+python3 - "$PWD" <<'PY'
+import os, sys
+p = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else os.getcwd())
+low = p.replace("\\", "/").lower() + "/"
+# folder names the cloud clients ALWAYS create, on either OS. "my drive" and "shared drives"
+# are how Google Drive mounts on WINDOWS, where the path is a bare drive letter (G:\My Drive\...)
+# and never contains the word "google".
+tokens = ["library/cloudstorage", "google drive", "googledrive", "/my drive/",
+          "/shared drives/", "/shared drive/", "onedrive", "dropbox",
+          "icloud", "mobile documents", "/box/", "/sync.com/", "pcloud"]
+hit = next((t for t in tokens if t in low), None)
+if hit:
+    print("IN A CLOUD FOLDER - pick somewhere else (matched: %s)" % hit.strip("/")); sys.exit(2)
+print("NOT IN A CLOUD FOLDER - good"); sys.exit(0)
+PY
 ```
 
-The tool will be fetched into a **new sub-folder here called `lifehack-brain`**. Say that out loud —
-give them the full path — and ask if that is somewhere sensible. If not, ask them where, and have them
-drag the folder into the chat, which pastes its location.
+> ⛔⛔ **DO NOT REPLACE THIS WITH A SHELL `case` STATEMENT. ONE WAS HERE AND IT WAS BLIND ON WINDOWS.**
+> The old version matched Mac path shapes only. **Google Drive on Windows mounts as a drive letter —
+> `G:\My Drive\AI Brain` — which contains no occurrence of the word "Google" at all**, so the check
+> printed *"NOT IN A CLOUD FOLDER — good"* while sitting inside Google Drive. It caught Dropbox and
+> OneDrive by name and missed the one the student was actually using. *(Found 2026-08-12 on a real
+> Windows run.)* Python is used because STEP 3 guarantees it exists and it behaves identically on both
+> operating systems.
 
-⛔ **Then check it is not inside a cloud folder. This is not optional.**
+**If it says it is in a cloud folder, move.** Tell them plainly: *"This spot is inside your cloud
+storage, and the tool can't live there — the syncing and the tool damage each other in ways that are
+hard to spot. Where else would you like it?"* Then re-run the check on the new location.
 
+Create it:
 ```bash
-case "$(pwd)" in
-  *Library/CloudStorage*|*Google?Drive*|*GoogleDrive*|*Dropbox*|*OneDrive*|*iCloud*|*"Mobile Documents"*)
-    echo "IN A CLOUD FOLDER — pick somewhere else" ;;
-  *) echo "NOT IN A CLOUD FOLDER — good" ;;
-esac
+mkdir -p "<the AI Brain path>"
 ```
 
-**If it says it is in a cloud folder, stop and move.** Tell them plainly: *"This folder is inside your
-cloud storage, and the tool can't live there — the syncing and the tool fight each other, and it goes
-wrong in ways that are hard to spot. Your home folder is a good place. Where would you like it?"*
-Then `cd` to the folder they name and run the check again.
+⚠ **Their backup is a SEPARATE question and it comes in STEP 7 — and the answer there is allowed to be
+Google Drive.** Do not ask about it now, and **do not let them come away thinking their writing can't be
+backed up.** It can, and it should be.
 
-⚠ **Their notes are a separate question and it comes later, in STEP 7.** Do not ask about them now, and
-do not let this folder become the answer to that question by default.
+## STEP 5 — Fetch the tool INTO their AI Brain folder
 
-## STEP 5 — Fetch the files
-
-One command, from the folder you just confirmed:
+Go into the folder STEP 4 made, then clone. **The clone creates `lifehack-brain` as a subfolder — that
+is exactly what we want.**
 
 ```bash
-git clone https://github.com/LifehackMethod/lifehack-brain.git
-cd lifehack-brain
+cd "<the AI Brain path>" && git clone https://github.com/LifehackMethod/lifehack-brain.git
 ```
 
-That makes a new `lifehack-brain` folder and puts everything in it. **There is nothing to unzip, move,
-or unhide** — the `.claude` folder your computer hides by default arrives already in the right place.
-
-Then confirm it landed:
+Confirm it landed:
 ```bash
-ls .claude/skills/ingest/SKILL.md && echo "the skill is here"
+ls "<the AI Brain path>/lifehack-brain/.claude/skills/ingest/SKILL.md" && echo "the skill is here"
 ```
 
 **Tell them what arrived**, in a sentence: the tool itself, and the specialist readers it uses.
 
-> ⛔ **If `git clone` refuses because a folder called `lifehack-brain` is already there**, do NOT try to
-> merge into it and do NOT `git init` an existing folder. Ask them whether that folder is an older copy
-> they can rename or delete, then clone again. A repository assembled by hand out of two half-copies is
-> the kind of thing nobody can diagnose later.
+⭐ **The skills live inside that repo and are found from the folder above it — verified 2026-08-12.**
+⛔ **Do NOT symlink anything into `~/.claude/`.** Symlinks are Mac-coupled and this has to work on
+Windows too. The tool is discovered where it sits.
 
-## STEP 6 — Confirm the pieces arrived
+> ⛔ **If `git clone` refuses because a `lifehack-brain` folder is already there**, do NOT merge into it
+> and do NOT `git init` an existing folder. Ask whether that folder is an older copy they can rename or
+> delete, then clone again. A repository assembled by hand from two half-copies is the kind of thing
+> nobody can diagnose later.
 
-One check. Claude only discovers a skill inside a folder called `.claude`, so confirm it's there:
-
-```bash
-test -f .claude/skills/ingest/SKILL.md && test -d .claude/agents && echo "FILES OK" || echo "FILES MISSING"
-```
-
-**If it says `FILES OK`**, turn on the safety catch that keeps their own notes out of the repository, and
-then move on:
+## STEP 6 — Confirm the pieces arrived, and turn on the safety catch
 
 ```bash
-git config core.hooksPath system/githooks && echo "SAFETY CATCH ON"
+cd "<the AI Brain path>/lifehack-brain" && test -f .claude/skills/ingest/SKILL.md && test -d .claude/agents && echo "FILES OK" || echo "FILES MISSING"
 ```
 
-**Tell them what that did, in one plain sentence:** *"I've turned on a safety catch — if anything ever
-tries to upload your own notes to the internet, it will stop and refuse."*
-⚠ **This line IS the install.** The check itself ships inside the folder, but git ignores it until this
-command points at it — without this, the file is decoration.
-
-**If it says `FILES MISSING`**, the download did not complete. ⛔ **Do not try to assemble or copy the
-files yourself.** Delete what's there and run **STEP 5** again — a half-finished download that you patch
-by hand produces a setup nobody can diagnose later.
-
-> *(There is nothing to repair or wire up here. The files ship in the exact place Claude looks for them.)*
-
----
-
-## STEP 7 — Ask where their notes should live, and set up day one
-
-**This is the question the whole system hangs on. Ask it once, properly, and never guess the answer.**
-
-Ask them, in these words or close to them:
-
-> **"Where should everything you write end up? This is separate from the tool folder — it's the one
-> worth backing up, so somewhere inside Google Drive or Dropbox is a good choice. If you don't have a
-> preference I'll make you one right next to the tool folder."**
-
-Have them drag the folder into the chat if it exists, which pastes its location. If they have no
-preference, the default below sits one level above the tool folder — outside it, beside it.
-
-Then record it. **This is remembered permanently; they will never be asked again.**
+**If `FILES OK`**, turn on the catch that keeps their own writing out of the repository:
 
 ```bash
-python3 shared/brain_root.py --set "<the folder they named>"     # add --create if it does not exist yet
+cd "<the AI Brain path>/lifehack-brain" && git config core.hooksPath system/githooks && echo "SAFETY CATCH ON"
 ```
 
-Default, if they had no preference:
+**Say what that did, in one plain sentence:** *"I've turned on a safety catch — if anything ever tries to
+upload your own notes to the internet, it will stop and refuse."*
+
+⚠ **This line IS the install.** The check ships inside the folder, but git ignores it until this command
+points at it. Without it, the file is decoration.
+
+**If `FILES MISSING`**, the download didn't complete. ⛔ **Do not assemble or copy files yourself.**
+Delete what's there and run **STEP 5** again — a half-finished download patched by hand produces a setup
+nobody can diagnose later.
+
+## STEP 7 — Make their `data` folder, and set up backup mirroring
+
+**This is the question the whole system hangs on. Get it right once and they are never asked again.**
+
+**7a. Create it — it sits BESIDE the tool, inside the AI Brain folder.**
 ```bash
-python3 shared/brain_root.py --set "$(cd .. && pwd)/My Notes" --create
+mkdir -p "<the AI Brain path>/data"
+python3 "<the AI Brain path>/lifehack-brain/shared/brain_root.py" --set "<the AI Brain path>/data"
+python3 "<the AI Brain path>/lifehack-brain/shared/brain_root.py"
 ```
+Say the path back to them in a sentence. ⚠ **If `--set` refuses, read them the reason and do not work
+around it.**
 
-Confirm it took, and say the path back to them in a sentence:
+**7b. Make the three files a new setup starts with.**
 ```bash
-python3 shared/brain_root.py
+cd "<the AI Brain path>/lifehack-brain" && python3 system/tools/bootstrap.py
 ```
+**In plain words:** *"I've made you three empty things in there — a journal, a list of projects, and
+somewhere for project notes. They fill themselves in as you work."*
 
-Then make the three files a new setup starts with:
-```bash
-python3 system/tools/bootstrap.py
-```
+⛔ **It makes those three and nothing else, deliberately.** Do not add folders for subjects you imagine
+they need. How their life divides up is theirs to find out, and a guess handed over on day one teaches
+them the guess is the answer.
 
-**Tell them what that did, in plain words:** *"I've made you three empty things in that folder — a
-journal, a list of projects, and somewhere for project notes to go. They fill themselves in as you
-work."*
+**7c. ⭐ NOW SET UP BACKUP MIRRORING — and this is the step most people never had.**
 
-⛔ **It makes those three and nothing else, deliberately.** Do not add folders for subjects you think
-they might need. How their life divides up is theirs to find out, and a guess handed over on day one
-teaches them the guess is the answer.
+Ask: *"Do you want your writing backed up to the cloud? I'd recommend it — this is the part that's
+yours and can't be re-downloaded."*
 
-⚠ **If `--set` refuses**, read them the reason — it will say the folder does not exist (add `--create`)
-or that they pointed at a file. Do not work around it.
+⛔⛔ **POINT IT AT `data` AND NOTHING ELSE. NEVER THE FOLDER ABOVE IT.** The folder above holds the git
+repository, and backing that up recreates the exact corruption problem STEP 4 exists to prevent.
 
----
+- **Google Drive** *(and Dropbox works the same way)*: *"Click the Drive icon in your menu bar, then the
+  gear, then Preferences. On the left choose **Folders from your computer**. Click **Add folder**, pick
+  `<the AI Brain path>/data`, and tick **Sync with Google Drive**."*
+  ⭐ Google documents that folders added this way can only **mirror**, never stream — so the files stay
+  genuinely on their disk. That is exactly what we want.
+- **OneDrive on Windows:** ⚠ **OneDrive can only back up Desktop, Documents and Pictures. There is no
+  "add any folder" control.** This is why STEP 4 puts the AI Brain inside `Documents` on Windows — their
+  backup then comes from OneDrive's Documents backup. Tell them: *"Click the OneDrive cloud icon,
+  Settings, 'Sync and backup', 'Manage backup', and make sure Documents is switched on."*
+- **They say no thanks:** fine. **Say plainly, once:** *"Then nothing is backing this up. If the machine
+  dies, it's gone. You can turn this on any time."* Do not argue.
+
+⛔ **A Google SHARED drive is never an acceptable answer.** Those can only stream, never keep real files.
+If they name one, say so and pick something else.
 
 ## STEP 8 — Prove it can actually run, before you promise them anything
 
-**A check you skipped is not a check that passed.** Run this one:
+**A check you skipped is not a check that passed.**
 
 ```bash
-python3 -c "import sys; sys.path.insert(0,'system/tools/cowork-ingest'); import pipeline; print('TOOLS OK')"
+cd "<the AI Brain path>/lifehack-brain" && python3 -c "import sys; sys.path.insert(0,'system/tools/cowork-ingest'); import pipeline; print('TOOLS OK')"
 ```
 
-**If it does not print `TOOLS OK`, stop.** Tell them plainly that the install is incomplete, and read them
-the last line of the error. Do not tell them to try `/ingest` anyway — it would fail much later, deep in
+**If it does not print `TOOLS OK`, stop.** Tell them plainly the install is incomplete and read them the
+last line of the error. **Do not tell them to try `/ingest` anyway** — it would fail much later, deep in
 the process, in a way that looks like something they did.
 
-**If it printed `TOOLS OK`, the install is good. Continue.**
+Then confirm the shape is right — **exactly two folders inside the AI Brain, nothing else:**
+```bash
+ls -A "<the AI Brain path>"
+```
+⛔ **It must show exactly `data` and `lifehack-brain`.** A third thing means something went wrong; say so
+rather than continuing.
 
-> **One thing that is missing ON PURPOSE, stated so nobody hunts for it.** The very last step of an
-> ingest asks which subject each thing belongs to, and checks the answer against a list of subjects.
-> **That list is theirs and it is not in this package.** Nothing ships one, and the tools refuse rather
-> than inventing one — a taxonomy of somebody's life, written by a machine, is worse than none.
->
-> When they reach that point the tool prints exactly what to do: write
-> `memory/topic-vocab.md` **inside their notes folder**, one line per subject, in the form
-> `` - `money` ``. ⛔ **Do not pre-empt it, do not write the file for them, and do not treat its
-> absence as a broken install.** Everything before that step — sorting into piles, screening them, the
-> deep read — works without it.
-
----
+> **One thing missing ON PURPOSE, stated so nobody hunts for it.** The last step of an ingest asks which
+> subject each thing belongs to, and checks the answer against a list of subjects. **That list is theirs
+> and is not in this package.** Nothing ships one, and the tools refuse rather than inventing one — a
+> taxonomy of somebody's life, written by a machine, is worse than none. When they reach that point the
+> tool prints exactly what to do. ⛔ **Do not pre-empt it, do not write the file for them, and do not
+> treat its absence as a broken install.**
 
 ## STEP 9 — ⛔⛔ THE ONE STEP EVERYTHING ELSE DEPENDS ON: MAKE THEM RESTART CLAUDE
 
-**Claude loads skills and agents when a session opens. This session opened before those files existed,
-so it cannot see them yet.**
+**Claude loads its commands when a session opens. This session opened before those files existed, so it
+cannot see them yet.**
 
-**This is not optional and it is not a formality.** In a real test, someone skipped it and Claude read
-the skill file as a *document* instead of *running* it — it produced something that looked roughly right,
-took twenty minutes, and was not the tool at all. **Nothing errored.** That is what makes this dangerous:
-skipping it does not fail loudly, it fails quietly and convincingly.
+**Not optional and not a formality.** In a real test someone skipped it and Claude read the skill file as
+a *document* instead of *running* it — it produced something that looked roughly right, took twenty
+minutes, and was not the tool at all. **Nothing errored.** That is what makes it dangerous: skipping it
+fails quietly and convincingly.
 
-Tell them, in these words or very close to them:
+Tell them, in these words or very close:
 
-> **"Everything is installed. Now you have to quit Claude completely and open it again — not a new chat,
-> the whole app. When it comes back, open the `lifehack-brain` folder — that exact folder, not the one
-> above it and not a folder inside it. Until you do that, Claude can't see the new command yet. I'll
-> wait."**
+> **"Everything's installed. Now quit Claude completely and open it again — the whole app, not just a
+> new chat. When it comes back, open the folder called `<their AI Brain name>`. That exact folder — not
+> the ones inside it. I'll wait."**
 
-⚠ **Say "that exact folder" and mean it.** Claude reads this tool's wiring from a `.claude` folder in
-whatever folder you open, and it does **not** look upwards. Open the folder above, or a folder inside,
-and nothing loads — no warning, no error, everything simply absent. Tested and confirmed: from one
-level down, zero of it starts.
+⚠ **Say "that exact folder" and mean it, and be precise about WHICH one.** They open the **AI Brain**
+folder — the outer one. **Not `lifehack-brain`, and not `data`.** Everything the tool needs is reachable
+from the outer folder; open one of the inner ones and half the system is outside its reach.
+
+⭐ **This is the single biggest change from the old instructions**, which told people to open
+`lifehack-brain` itself. That is what left their writing outside the tool's reach. **If they have done
+this before, they will reach for the wrong folder out of habit — say so plainly.**
 
 Then **STOP. Do not continue this file. Do not offer to run `/ingest` yourself.**
 
----
-
-## STEP 10 — After they restart (this is the first thing to do in the NEW session)
+## STEP 10 — After they restart (the first thing to do in the NEW session)
 
 Confirm the command exists before they type anything:
 
 ```bash
-ls .claude/skills/ingest/SKILL.md
+ls lifehack-brain/.claude/skills/ingest/SKILL.md
 ```
+
+⭐ **Note the path — you are in the AI Brain folder and the tool is one level down.** That is correct and
+it is how it is supposed to look.
 
 Then tell them:
 
-> **"You're set up. Type `/ingest` and press enter. It already knows where your notes go — you told it
-> during setup. It'll ask for your material: drag the file or folder into the chat and it'll fill in the
-> location for you. From there it asks you questions and shows you its work before it writes anything."**
+> **"You're set up. Type `/ingest` and press enter. It already knows where your writing goes — you told
+> it during setup. It'll ask for your material: drag the file or folder into the chat and it'll fill in
+> the location for you. From there it asks you questions and shows you its work before it writes
+> anything."**
 
----
----
+⚠ **And remind them once:** *"If it ever goes quiet, look for a small box with an Allow button. It's
+waiting on you, not stuck."*
 
 # IF SOMETHING GOES WRONG
 
@@ -441,25 +484,31 @@ process by hand, without needing any of the tools to work. You get the same resu
 # WHAT'S IN HERE, AND WHY IT'S SPLIT THIS WAY
 
 ```
-lifehack-brain/          ← OURS. replaced whole on every update.
-├── .claude/                 the command itself — this is where Claude looks
-│   ├── agents/              the specialist readers the tool uses
-│   ├── skills/              the tool itself
-│   └── settings.json        wires it up the moment you clone
-├── system/                  the programs that do the sorting
-├── CLAUDE.md                the standing instructions every session opens with
-└── PLAN-B.md                the manual backup, if the tool ever misbehaves
-
-My Notes/                ← YOURS. a different folder, outside this one.
-├── system/journal.md        what happened, as it happens
-├── system/project-registry.md   so a cold session can find an old project
-├── state/projects/<name>/   one folder per project: its brief, its records, its canon
-└── desks/<subject>/         a folder per subject, once you have run an ingest
+AI Brain/                    <- YOU OPEN THIS ONE. always. every session.
+├── lifehack-brain/          <- OURS. replaced whole on every update.
+│   ├── .claude/                 the commands themselves — this is where Claude looks
+│   │   ├── agents/              the specialist readers the tool uses
+│   │   ├── skills/              the tools themselves
+│   │   └── settings.json        wires it up the moment you clone
+│   ├── system/                  the programs that do the sorting
+│   ├── CLAUDE.md                the standing instructions every session opens with
+│   ├── UPDATE.md                how to take a newer version, and what it cannot touch
+│   ├── folderfix.md             repairs an older, wrongly-shaped install
+│   └── PLAN-B.md                the manual backup, if the tool ever misbehaves
+└── data/                    <- YOURS. the only thing backed up.
+    ├── system/journal.md            what happened, as it happens
+    ├── system/project-registry.md   so a cold session can find an old project
+    ├── state/briefs/                project notes
+    └── desks/                       a folder per subject, once you have run an ingest
 ```
 
-**The split is the whole design.** Everything sent to you is in the first folder. Everything you write
-is in the second. An update replaces the first one completely — and cannot reach the second even by
-accident, because your notes are not in this repository at all.
+**The split is the whole design.** Everything sent to you is in `lifehack-brain`. Everything you write
+is in `data`. An update replaces the first one completely — and cannot reach the second even by
+accident, because your writing is not in that repository at all.
+
+⭐ **And you open the folder ABOVE both of them**, which is what lets the tool reach your writing while
+keeping it out of the repository. Opening one of the inner folders instead is the single most common way
+this goes wrong.
 
 **To get updates later, ask Claude:** *"check if there's an update to my brain and install it."*
 
@@ -475,7 +524,7 @@ Stated now so the shape is not a surprise later:
 
 - **You connect your own account.** Nobody else's credentials are involved and nothing is shared. The
   tools ship; the account they talk to is yours.
-- **Your own identifiers — which calendar, which spreadsheet — live in your notes folder**, at
+- **Your own identifiers — which calendar, which spreadsheet — live in your `data` folder**, at
   `config/`, never in this repository. Same rule as everything else you own.
 - **It is a sit-down, not a click.** Expect to do it with someone the first time.
 
