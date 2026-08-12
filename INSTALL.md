@@ -417,11 +417,35 @@ Then tell them:
 > location for you. From there it asks you questions and shows you its work before it writes anything."**
 
 ---
+
+## STEP 11 — Mention bug reporting, then leave it alone
+
+**Say this once, at the end, and do not start it:**
+
+> **"One more thing, whenever you have five spare minutes — there's a file next to this one called
+> `REPORT-A-BUG.md`. It sets you up so that when something breaks you can just say 'file a bug' and it
+> goes straight to the person who maintains this, with the actual error attached. It needs a free GitHub
+> account. Not now — it's a separate five minutes, and you don't need it to start using this."**
+
+⛔ **Do not set it up now, do not check whether they have a GitHub account, and do not install anything
+for it.** They have just finished a ten-minute install and the next thing they should do is use the
+thing they installed. **It is a separate session with its own file**, exactly like `/ingest` is.
+
+⭐ **Why it's worth mentioning at all:** the fastest bug fix so far came from someone who filed one this
+way — the report carried the real error, so it was fixed the next day. A bug nobody reports gets found
+by the next person instead.
+
+---
 ---
 
 # IF SOMETHING GOES WRONG
 
 **Read the symptom, not the error message.** These are the three things that actually happen.
+
+> ⭐ **And if none of them is your problem, tell whoever maintains this.** `REPORT-A-BUG.md`, sitting
+> beside this file, sets that up in about five minutes — after which you just say **"file a bug"** and
+> the actual error goes where it can be fixed. **A problem nobody reports gets found by the next person
+> instead.**
 
 **1. You type `/ingest` and nothing happens, or Claude starts improvising.**
 Almost always the session wasn't restarted. Go back to **STEP 9** and do it properly — quit the whole
@@ -460,6 +484,7 @@ lifehack-brain/          ← OURS. replaced whole on every update.
 ├── system/                  the programs that do the sorting
 ├── CLAUDE.md                the standing instructions every session opens with
 ├── UPDATE.md                how to take a newer version, and what it cannot touch
+├── REPORT-A-BUG.md          five minutes, once, so you can say "file a bug"
 └── PLAN-B.md                the manual backup, if the tool ever misbehaves
 
 My Notes/                ← YOURS. a different folder, outside this one.
