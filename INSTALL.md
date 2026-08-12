@@ -31,13 +31,16 @@ else — that's the part that's yours and can't be re-downloaded.
 
 ## What you do — about ten minutes
 
-**1. Open a folder in Claude.** The desktop app, the **Code** tab, any folder that isn't inside Google
-Drive, Dropbox or OneDrive. Your Documents folder is fine.
+**1. Make a folder and open it in Claude.** Call it whatever you like — "AI Brain" is the usual. Put it
+somewhere ordinary like your Documents folder. Then: Claude desktop app, the **Code** tab, open that
+folder.
+
+**⛔ Not inside Google Drive, Dropbox or OneDrive.** Setup checks, and will send you back if it is.
 
 **2. Drag this file into the chat and say: "Set up my brain."**
 
-**3. Say yes when it asks where to put your AI Brain folder.** That's the only decision. It builds the
-rest.
+**3. That's it.** The folder you opened *is* your AI Brain — setup builds everything inside it and
+doesn't ask you where anything goes.
 
 ⚠ **If it goes quiet, look for a small box with an Allow button.** It isn't stuck — it's waiting on you.
 
@@ -227,102 +230,89 @@ works later, invisibly.
 
 ---
 
-## STEP 4 — Build the AI Brain folder. ONE question, then get on with it.
+## STEP 4 — ⛔ THE FOLDER THEY ALREADY OPENED **IS** THE AI BRAIN. DO NOT CREATE ANOTHER ONE.
 
-⛔⛔ **THIS IS THE ONLY THING YOU ASK THEM IN THE WHOLE INSTALL. Everything below STEP 4 you build
-without asking.** Every extra question is a place the install stalls, and it has stalled on questions
-more than on anything else.
+> ⛔⛔ **DO NOT ASK THEM WHERE TO PUT IT. DO NOT OFFER A DEFAULT. DO NOT CREATE A NEW FOLDER.**
+> **They already chose it — it is the folder this session is running in.** Every question here is a
+> place the install stalls, and on 2026-08-12 it stalled on this question more than on anything else.
+> ⭐ **On WINDOWS this matters most:** the old instructions sent people to `C:\Users\<name>\`, which is
+> not where their session was running, and it produced permission detours that cost real students their
+> install. **Use the session's own folder. Never `C:\Users\` .**
 
-**Offer a default. Do not make them invent one.**
-
-| | offer this |
-|---|---|
-| **Mac** | `~/AI Brain` |
-| **Windows** | `%USERPROFILE%\Documents\AI Brain` |
-
-Say it in one sentence and let them agree or name another: *"I'll put your AI Brain folder at
-`<path>` — everything lives inside it. Want it somewhere else instead?"*
-
-⛔ **NEVER offer a protected system location.** Not `C:\Users\` itself, not `C:\Program Files`, not
-`C:\ProgramData`, not `/System`, not `/Library`. **If they name one, say plainly it's a protected
-system folder and offer the default again.**
-
-⛔ **Then check their answer is not inside a cloud folder. Not optional, and it must be THIS check.**
+**Find out where you are and say it back to them in one sentence:**
 
 ```bash
-python3 - "<the path they chose>" <<'PY'
-import os, sys
-p = os.path.abspath(sys.argv[1])
-low = p.replace("\\", "/").lower() + "/"
-# folder names the cloud clients ALWAYS create, on either OS. "my drive" and "shared drives"
-# are how Google Drive mounts on WINDOWS, where the path is a bare drive letter (G:\My Drive\...)
-# and never contains the word "google".
+pwd
+```
+
+*"You're set up in `<path>` — that's your AI Brain folder. Everything goes inside it."*
+
+⛔ **Now check that folder is usable. This is the only thing that can send you back to them.**
+
+```bash
+python3 - "$PWD" <<'PY'
+import os, re, sys
+p = os.path.abspath(sys.argv[1]); low = p.replace("\\", "/").lower() + "/"
 cloud = ["library/cloudstorage", "google drive", "googledrive", "/my drive/", "/shared drives/",
          "/shared drive/", "onedrive", "dropbox", "icloud", "mobile documents", "/box/", "pcloud"]
-# protected system locations — never install here
-prot = ["/program files", "/programdata", "/windows/", "/system/", "/library/"]
-import re
+prot  = ["/program files", "/programdata", "/windows/", "/system/", "/library/"]
 if re.fullmatch(r"[a-z]:/users/?", low) or low in ("/users/", "/home/"):
-    print("PROTECTED - that is the system users folder, pick a folder inside it"); sys.exit(3)
+    print("PROTECTED - the bare users folder"); sys.exit(3)
 hit = next((t for t in cloud if t in low), None)
-if hit:
-    print("IN A CLOUD FOLDER - pick somewhere else (matched: %s)" % hit.strip("/")); sys.exit(2)
+if hit: print("IN A CLOUD FOLDER - matched: %s" % hit.strip("/")); sys.exit(2)
 hit = next((t for t in prot if t in low), None)
-if hit:
-    print("PROTECTED SYSTEM FOLDER - pick somewhere else (matched: %s)" % hit.strip("/")); sys.exit(3)
+if hit: print("PROTECTED SYSTEM FOLDER - matched: %s" % hit.strip("/")); sys.exit(3)
 print("GOOD"); sys.exit(0)
 PY
 ```
 
-> ⛔⛔ **DO NOT REPLACE THIS WITH A SHELL `case` STATEMENT. ONE WAS HERE AND IT WAS BLIND ON WINDOWS.**
-> **Google Drive on Windows mounts as a drive letter — `G:\My Drive\AI Brain` — containing no
-> occurrence of the word "Google" at all**, so the old check printed *"not in a cloud folder — good"*
-> while sitting inside Google Drive. *(Found 2026-08-12 on a real Windows run.)*
+**`GOOD` → say nothing about it and carry straight on to STEP 5.**
 
-Create it:
-```bash
-mkdir -p "<the path>"
-```
+**Anything else → this is the one time you ask them something.** Say plainly why this spot won't work —
+*"this folder is inside your cloud storage, and the tool half can't live there; cloud syncing damages it
+quietly"* — then: *"Quit Claude, open it again on a folder that isn't inside Google Drive, Dropbox or
+OneDrive — your Documents folder is a good spot — and drag this file in again."* **Then STOP.** Do not
+try to create a folder elsewhere and carry on; they must reopen the session there, or nothing the tool
+does later will be able to reach it.
 
-⛔ **If `mkdir` fails with a permission error, DO NOT ask for administrator rights and DO NOT retry the
-same place.** Say *"Windows won't let me write there — I'll use `<their Documents folder>` instead"*,
-and move on. **A real student lost their install to exactly this detour.**
+> ⛔ **Never test writability by asking for administrator rights.** If a write fails anywhere in this
+> install, the answer is a different folder, never elevation. **A real student lost their install to
+> exactly that detour on 2026-08-12.**
 
-## STEP 5 — Fetch the tool INTO their AI Brain folder
-
-Go into the folder STEP 4 made, then clone. **The clone creates `lifehack-brain` as a subfolder — that
-is exactly what we want.**
+## STEP 5 — Fetch the tool INTO the folder you're already in
 
 ```bash
-cd "<the AI Brain path>" && git clone https://github.com/LifehackMethod/lifehack-brain.git
+git clone https://github.com/LifehackMethod/lifehack-brain.git
 ```
+
+**That creates `lifehack-brain` as a subfolder right here. That is exactly right.** ⛔ Do not `cd`
+anywhere first, and do not clone into a folder you created yourself.
 
 Confirm it landed:
 ```bash
-ls "<the AI Brain path>/lifehack-brain/.claude/skills/ingest/SKILL.md" && echo "the skill is here"
+ls lifehack-brain/.claude/skills/ingest/SKILL.md && echo "the skill is here"
 ```
 
 **Tell them what arrived**, in a sentence: the tool itself, and the specialist readers it uses.
 
-⭐ **The skills live inside that repo and are found from the folder above it — verified 2026-08-12.**
-⛔ **Do NOT symlink anything into `~/.claude/`.** Symlinks are Mac-coupled and this has to work on
-Windows too. The tool is discovered where it sits.
+⭐ **The skills live inside that subfolder and are found from the folder above it — verified
+2026-08-12.** ⛔ **Do NOT symlink anything into `~/.claude/`.** Symlinks are Mac-coupled and this has to
+work on Windows too.
 
-> ⛔ **If `git clone` refuses because a `lifehack-brain` folder is already there**, do NOT merge into it
-> and do NOT `git init` an existing folder. Ask whether that folder is an older copy they can rename or
-> delete, then clone again. A repository assembled by hand from two half-copies is the kind of thing
-> nobody can diagnose later.
+> ⛔ **If `git clone` refuses because a `lifehack-brain` folder is already here**, do NOT merge into it
+> and do NOT `git init` an existing folder. Ask whether it's an older copy they can rename or delete,
+> then clone again.
 
 ## STEP 6 — Confirm the pieces arrived, and turn on the safety catch
 
 ```bash
-cd "<the AI Brain path>/lifehack-brain" && test -f .claude/skills/ingest/SKILL.md && test -d .claude/agents && echo "FILES OK" || echo "FILES MISSING"
+test -f lifehack-brain/.claude/skills/ingest/SKILL.md && test -d lifehack-brain/.claude/agents && echo "FILES OK" || echo "FILES MISSING"
 ```
 
 **If `FILES OK`**, turn on the catch that keeps their own writing out of the repository:
 
 ```bash
-cd "<the AI Brain path>/lifehack-brain" && git config core.hooksPath system/githooks && echo "SAFETY CATCH ON"
+cd lifehack-brain && git config core.hooksPath system/githooks && cd .. && echo "SAFETY CATCH ON"
 ```
 
 **Say what that did, in one plain sentence:** *"I've turned on a safety catch — if anything ever tries to
@@ -332,23 +322,22 @@ upload your own notes to the internet, it will stop and refuse."*
 points at it. Without it, the file is decoration.
 
 **If `FILES MISSING`**, the download didn't complete. ⛔ **Do not assemble or copy files yourself.**
-Delete what's there and run **STEP 5** again — a half-finished download patched by hand produces a setup
-nobody can diagnose later.
+Delete what's there and run **STEP 5** again.
 
 ## STEP 7 — Build `data`. ⛔ ASK THEM NOTHING.
 
 > ⛔⛔ **THIS STEP USED TO ASK *"Where should everything you write end up?"* AND IT WAS THE SINGLE
 > BIGGEST CAUSE OF FAILED INSTALLS. DO NOT REINTRODUCE IT IN ANY FORM.**
 > It defaulted to a folder called "My Notes", which made people think it was a scratch folder for
-> jottings — it is their entire memory. **Measured 2026-08-12: multiple students answered it with a bare
-> "ok" and silently got a folder in the wrong place; others stalled on it and never restarted.** It even
-> confused a student whose install was otherwise working perfectly.
-> ⭐ **There is no decision here. `data` goes inside the AI Brain folder. That is the design.**
+> jottings — it is their entire memory. **Measured 2026-08-12: several students answered it with a bare
+> "ok" and silently got a folder in the wrong place; others stalled on it and never restarted. It even
+> confused a student whose install was otherwise working perfectly.**
+> ⭐ **There is no decision here. `data` sits beside `lifehack-brain`. That is the design.**
 
 ```bash
-mkdir -p "<the AI Brain path>/data"
-python3 "<the AI Brain path>/lifehack-brain/shared/brain_root.py" --set "<the AI Brain path>/data"
-cd "<the AI Brain path>/lifehack-brain" && python3 system/tools/bootstrap.py
+mkdir -p data
+python3 lifehack-brain/shared/brain_root.py --set "$PWD/data"
+cd lifehack-brain && python3 system/tools/bootstrap.py && cd ..
 ```
 
 **Then say what you made, in one plain sentence, and move on:** *"Your writing goes in a folder called
@@ -356,35 +345,47 @@ cd "<the AI Brain path>/lifehack-brain" && python3 system/tools/bootstrap.py
 there — they fill themselves in as you work."*
 
 ⛔ **`desks/` is NOT created here.** Those appear inside `data` the first time they run an ingest, one
-per subject, built from their own material. **Do not pre-create them and do not invent subject names** —
-how their life divides up is theirs to find out, and a guess handed over on day one teaches them the
-guess is the answer.
+per subject, built from their own material. **Do not pre-create them and do not invent subject names.**
+
+---
+
+### ⚠ Then mention syncing — ONCE, as a recommendation. It is NOT a requirement and NOT a gate.
+
+**Say it, and accept whatever they say back:**
+
+> *"One thing worth doing when you have a minute: point Google Drive or Dropbox at the `data` folder, so
+> your writing is synced. It's the part that's yours and can't be re-downloaded. Not required — you can
+> do it any time."*
+
+⛔ **Do NOT set it up for them, do NOT walk them through the menus now, and do NOT block the install on
+it.** They are ten minutes into a setup and this is the least urgent thing in the file.
+
+⛔⛔ **BUT IF THEY DO IT, IT MUST BE `data` AND NOTHING ELSE. NEVER THE FOLDER ABOVE IT.** That one holds
+the git repository, and syncing it recreates the corruption problem STEP 4 exists to prevent. **Say that
+sentence out loud when you mention it — it is the only part of this that can hurt them.**
 
 ## STEP 8 — Prove it can actually run, before you promise them anything
 
 **A check you skipped is not a check that passed.**
 
 ```bash
-cd "<the AI Brain path>/lifehack-brain" && python3 -c "import sys; sys.path.insert(0,'system/tools/cowork-ingest'); import pipeline; print('TOOLS OK')"
+cd lifehack-brain && python3 -c "import sys; sys.path.insert(0,'system/tools/cowork-ingest'); import pipeline; print('TOOLS OK')" && cd ..
 ```
 
 **If it does not print `TOOLS OK`, stop.** Tell them plainly the install is incomplete and read them the
-last line of the error. **Do not tell them to try `/ingest` anyway** — it would fail much later, deep in
-the process, in a way that looks like something they did.
+last line of the error. **Do not tell them to try `/ingest` anyway.**
 
-Then confirm the shape is right — **exactly two folders inside the AI Brain, nothing else:**
+Then confirm the shape — **exactly two folders, nothing else:**
 ```bash
-ls -A "<the AI Brain path>"
+ls -A
 ```
-⛔ **It must show exactly `data` and `lifehack-brain`.** A third thing means something went wrong; say so
-rather than continuing.
+⛔ **It must show `data` and `lifehack-brain`.** Anything else means something went wrong; say so rather
+than continuing.
 
-> **One thing missing ON PURPOSE, stated so nobody hunts for it.** The last step of an ingest asks which
-> subject each thing belongs to, and checks the answer against a list of subjects. **That list is theirs
-> and is not in this package.** Nothing ships one, and the tools refuse rather than inventing one — a
-> taxonomy of somebody's life, written by a machine, is worse than none. When they reach that point the
-> tool prints exactly what to do. ⛔ **Do not pre-empt it, do not write the file for them, and do not
-> treat its absence as a broken install.**
+> **One thing missing ON PURPOSE.** The last step of an ingest asks which subject each thing belongs to
+> and checks it against a list of subjects. **That list is theirs and is not in this package.** The tool
+> prints exactly what to do when they reach it. ⛔ **Do not pre-empt it, do not write the file for them,
+> and do not treat its absence as a broken install.**
 
 ## STEP 9 — ⛔⛔ THE ONE STEP EVERYTHING ELSE DEPENDS ON: MAKE THEM RESTART CLAUDE
 
@@ -392,23 +393,20 @@ rather than continuing.
 cannot see them yet.**
 
 **Not optional and not a formality.** In a real test someone skipped it and Claude read the skill file as
-a *document* instead of *running* it — it produced something that looked roughly right, took twenty
-minutes, and was not the tool at all. **Nothing errored.** That is what makes it dangerous: skipping it
-fails quietly and convincingly.
+a *document* instead of *running* it — twenty minutes of plausible work that wasn't the tool. **Nothing
+errored.** That is what makes it dangerous.
 
 Tell them, in these words or very close:
 
 > **"Everything's installed. Now quit Claude completely and open it again — the whole app, not just a
-> new chat. When it comes back, open the folder called `<their AI Brain name>`. That exact folder — not
-> the ones inside it. I'll wait."**
+> new chat. When it comes back, open this exact same folder: `<pwd>`. I'll wait."**
 
-⚠ **Say "that exact folder" and mean it, and be precise about WHICH one.** They open the **AI Brain**
-folder — the outer one. **Not `lifehack-brain`, and not `data`.** Everything the tool needs is reachable
-from the outer folder; open one of the inner ones and half the system is outside its reach.
+⭐ **Give them the literal path. They reopen the SAME folder they're in now** — the one holding `data`
+and `lifehack-brain`. **Not `lifehack-brain`, not `data`.** Everything the tool needs is reachable from
+here; open one of the inner folders and half the system is outside its reach.
 
-⭐ **This is the single biggest change from the old instructions**, which told people to open
-`lifehack-brain` itself. That is what left their writing outside the tool's reach. **If they have done
-this before, they will reach for the wrong folder out of habit — say so plainly.**
+⚠ **If they have installed before, they will reach for `lifehack-brain` out of habit, because the old
+instructions told them to. Say so explicitly.**
 
 Then **STOP. Do not continue this file. Do not offer to run `/ingest` yourself.**
 
@@ -420,18 +418,17 @@ Confirm the command exists before they type anything:
 ls lifehack-brain/.claude/skills/ingest/SKILL.md
 ```
 
-⭐ **Note the path — you are in the AI Brain folder and the tool is one level down.** That is correct and
-it is how it is supposed to look.
+⭐ **You are in the AI Brain folder and the tool is one level down. That is correct and is how it should
+look.**
 
 Then tell them:
 
-> **"You're set up. Type `/ingest` and press enter. It already knows where your writing goes — you told
-> it during setup. It'll ask for your material: drag the file or folder into the chat and it'll fill in
-> the location for you. From there it asks you questions and shows you its work before it writes
-> anything."**
+> **"You're set up. Type `/ingest` and press enter. It already knows where your writing goes. It'll ask
+> for your material: drag the file or folder into the chat and it'll fill in the location. From there it
+> asks you questions and shows you its work before it writes anything."**
 
-⚠ **And remind them once:** *"If it ever goes quiet, look for a small box with an Allow button. It's
-waiting on you, not stuck."*
+⚠ **And once:** *"If it ever goes quiet, look for a small box with an Allow button. It's waiting on you,
+not stuck."*
 
 # IF SOMETHING GOES WRONG
 
