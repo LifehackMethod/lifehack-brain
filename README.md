@@ -114,3 +114,7 @@ Ask Claude: *"check if there is an update to my brain and install it."*
 
 It replaces this folder with the newer version. Your notes are somewhere else
 entirely, so an update cannot reach them even by accident.
+
+The steps behind that sentence are in **`UPDATE.md`**, next to this file. You do
+not need to read it — Claude follows it. It is there so an update is a procedure
+with checks rather than a command someone half-remembers.

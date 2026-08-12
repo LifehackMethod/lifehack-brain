@@ -459,6 +459,7 @@ lifehack-brain/          ← OURS. replaced whole on every update.
 │   └── settings.json        wires it up the moment you clone
 ├── system/                  the programs that do the sorting
 ├── CLAUDE.md                the standing instructions every session opens with
+├── UPDATE.md                how to take a newer version, and what it cannot touch
 └── PLAN-B.md                the manual backup, if the tool ever misbehaves
 
 My Notes/                ← YOURS. a different folder, outside this one.
