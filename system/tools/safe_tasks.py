@@ -15,12 +15,12 @@ Usage (list):
     python3 safe_tasks.py [--desk <id>] '<params-json>'
         where <params-json> is the SAME object you would pass to
         `gws tasks tasks list --params`, e.g.
-        '{"tasklist":"cDJFQjd4dF94UjNiRzFRSg","showCompleted":false,"showDeleted":false,"maxResults":100}'
+        '{"tasklist":"YOUR_TASKLIST_ID","showCompleted":false,"showDeleted":false,"maxResults":100}'
 
 Usage (get single task):
     python3 safe_tasks.py [--desk <id>] --get '<params-json>'
         where <params-json> is the object for `gws tasks tasks get --params`, e.g.
-        '{"tasklist":"cDJFQjd4dF94UjNiRzFRSg","task":"TASK_ID"}'
+        '{"tasklist":"YOUR_TASKLIST_ID","task":"TASK_ID"}'
 
 Output (DEFAULT — isolate mode, 2026-07-04): structural JSON on stdout (ids/status/due/parent) + a
         `_reader_scratch` path; free-text (title/notes) is moved to a LOCKED /tmp/rdr file and replaced
