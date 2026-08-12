@@ -13,10 +13,13 @@ You hand this file to Claude and answer its questions.
 
 ## The one thing to get right: two folders, not one
 
-**The tool goes in one folder. Everything you write goes in a different one.**
+**The tool goes in one folder. Your brain — everything you write — lives in a different one.**
 
     ~/lifehack-brain/     ← the tool. ours. replaced whole on every update.
-    ~/My Notes/           ← everything you write. yours. never touched.
+    your AI Brain folder  ← everything you write. yours. never touched.
+
+**You probably already have the second one** — whatever you've been calling your AI Brain. Setup will
+ask you to confirm its name, and build into that. If you don't have one, it makes you one.
 
 Keeping them apart is what makes updates safe: the tool folder gets replaced
 wholesale, and there is nothing of yours inside it to lose.
@@ -30,8 +33,9 @@ Dropbox, OneDrive or iCloud Drive. Your home folder is perfect.
 > clear error — it shows up as a folder that quietly corrupts, or an update that
 > half-applies.
 
-**Your notes folder is the opposite — put it wherever you like, cloud included.**
-That is the one worth backing up, and nothing about it fights with syncing.
+**Your AI Brain folder is the opposite — Google Drive or Dropbox is a GOOD place for it.**
+That is the one worth backing up, and nothing about it fights with syncing. The
+rule above is only about the tool.
 
 > It has to be a **real folder on your computer** that happens to sync, not a
 > website you log into. Your AI opens files directly and cannot reach into a
@@ -47,8 +51,9 @@ fetched into a new folder inside it.
 
 **2. Drag this file into the chat and say: "Set up my brain."**
 
-**3. Answer its questions.** One of them is where your notes should live. Have an
-answer ready, or say "make me one" and it will.
+**3. Answer its questions.** One of them is **what your AI Brain folder is called** —
+so it builds into the one you already have. Know its name, or say "make me one"
+and it will.
 
 That's it. Claude takes it from here, and it will check with you before each step.
 
@@ -63,11 +68,11 @@ is, know where it is on your computer. You'll hand it over later by dragging it 
 > for it afterwards. **Setting up the tool and using it are two separate steps**, and the second one
 > happens in a fresh window at the very end.
 
-⚠ **Your material and your notes folder are two different places, and mixing them up is the one mistake
+⚠ **Your material and your AI Brain folder are two different places, and mixing them up is the one mistake
 that causes real trouble.** Your material can live anywhere — your Obsidian vault, your Downloads
-folder, wherever it already is. Your notes folder is the one you name in step 3, and **everything this
-tool produces belongs in there.** When you're asked where your notes live, answer with that folder —
-not the folder your material is in.
+folder, wherever it already is. Your AI Brain folder is the one you confirm in step 3, and **everything
+this tool produces belongs in there.** When you're asked what your brain folder is called, answer with
+that one — not the folder your material is in.
 
 ---
 ---
@@ -98,7 +103,7 @@ not the folder your material is in.
 >
 > **So, for the whole of this file:**
 > - ⛔ **Do NOT go looking for their material.** Do not search their computer for a ChatGPT export, an
->   Obsidian vault, a notes folder, or anything else. Do not offer to find it.
+>   Obsidian vault, an AI Brain folder, or anything else. Do not offer to find it.
 > - ⛔ **Do NOT ask them where their material is, what format it is in, or how big it is.** None of that is
 >   your business here and asking it makes them think the sorting has begun.
 > - ⛔ **Do NOT read, open, convert, copy or move a single one of their files.**
@@ -302,28 +307,52 @@ by hand produces a setup nobody can diagnose later.
 
 ---
 
-## STEP 7 — Ask where their notes should live, and set up day one
+## STEP 7 — Confirm WHERE THEIR BRAIN IS, and set up day one
 
 **This is the question the whole system hangs on. Ask it once, properly, and never guess the answer.**
 
+> ⭐⭐ **ASK IT AS A CONFIRMATION, NOT A DECISION — THIS IS THE POINT OF THE STEP.**
+> **They almost certainly already have an AI Brain folder, and they named it themselves.** Asking
+> *"where should everything you write end up?"* invents a new concept and makes them design something.
+> **Asking them to confirm a folder they already own is a far smaller thing to answer**, and it lands on
+> a name they can see on their screen.
+>
+> ⚠ **The word "notes" is what causes the confusion — do not use it.** It sounds like somewhere to keep
+> notes. **It is their whole memory:** their journal, their projects, their desks, everything the system
+> ever writes. **Call it their brain**, because that is what they already call it.
+
 Ask them, in these words or close to them:
 
-> **"Where should everything you write end up? This is separate from the tool folder — it's the one
-> worth backing up, so somewhere inside Google Drive or Dropbox is a good choice. If you don't have a
-> preference I'll make you one right next to the tool folder."**
+> **"Quick one before I finish — do you already have an AI Brain folder? What's it called, and where is
+> it? I want to make sure I build your brain into the right place rather than somewhere new."**
 
-Have them drag the folder into the chat if it exists, which pastes its location. If they have no
-preference, the default below sits one level above the tool folder — outside it, beside it.
+**Then let them answer, and confirm it back to them by name.** Have them drag the folder into the chat
+if that's easier — it pastes the location.
+
+**Three things they might say, and what each one means:**
+
+- **"Yes, it's called `<name>`"** — perfect. **That folder is the answer.** Say it back: *"Got it —
+  everything you write is going into `<name>`, and it'll build itself out in there as you work."*
+- **"It's in Google Drive / Dropbox"** — **that is correct and good**, not a problem. Their brain is the
+  thing worth backing up. ⚠ **Do not confuse this with the tool folder rule from STEP 4** — the tool
+  can't live in cloud storage; **their brain absolutely can, and should.** Say that out loud, because
+  they may have just heard the opposite from you ten minutes ago and will think you contradicted
+  yourself.
+- **"I don't have one"** — then make them one, using the default below, and tell them plainly:
+  *"I've made you one — that's your brain now, and everything the system writes goes in there."*
+
+⛔ **Never point their brain at the tool folder**, and never let it default there by accident. They are
+two different places and keeping them apart is the whole design.
 
 Then record it. **This is remembered permanently; they will never be asked again.**
 
 ```bash
-python3 shared/brain_root.py --set "<the folder they named>"     # add --create if it does not exist yet
+python3 shared/brain_root.py --set "<the folder they confirmed>"   # add --create if it does not exist yet
 ```
 
-Default, if they had no preference:
+Only if they genuinely don't have one:
 ```bash
-python3 shared/brain_root.py --set "$(cd .. && pwd)/My Notes" --create
+python3 shared/brain_root.py --set "$(cd .. && pwd)/My Brain" --create
 ```
 
 Confirm it took, and say the path back to them in a sentence:
@@ -336,7 +365,7 @@ Then make the three files a new setup starts with:
 python3 system/tools/bootstrap.py
 ```
 
-**Tell them what that did, in plain words:** *"I've made you three empty things in that folder — a
+**Tell them what that did, in plain words:** *"I've made you three empty things inside your brain — a
 journal, a list of projects, and somewhere for project notes to go. They fill themselves in as you
 work."*
 
@@ -369,7 +398,7 @@ the process, in a way that looks like something they did.
 > than inventing one — a taxonomy of somebody's life, written by a machine, is worse than none.
 >
 > When they reach that point the tool prints exactly what to do: write
-> `memory/topic-vocab.md` **inside their notes folder**, one line per subject, in the form
+> `memory/topic-vocab.md` **inside their AI Brain folder**, one line per subject, in the form
 > `` - `money` ``. ⛔ **Do not pre-empt it, do not write the file for them, and do not treat its
 > absence as a broken install.** Everything before that step — sorting into piles, screening them, the
 > deep read — works without it.
@@ -412,7 +441,7 @@ ls .claude/skills/ingest/SKILL.md
 
 Then tell them:
 
-> **"You're set up. Type `/ingest` and press enter. It already knows where your notes go — you told it
+> **"You're set up. Type `/ingest` and press enter. It already knows where your brain is — you told it
 > during setup. It'll ask for your material: drag the file or folder into the chat and it'll fill in the
 > location for you. From there it asks you questions and shows you its work before it writes anything."**
 
@@ -461,7 +490,7 @@ Drag it into a **fresh** Claude conversation and say **"help me."** It walks you
 process by hand, without needing any of the tools to work. You get the same result; it just takes longer.
 
 **4. Your own notes ended up inside the tool folder, and git is now tracking them.**
-This happens if an export got unzipped, or a notes folder got copied, INSIDE the folder you cloned
+This happens if an export got unzipped, or an AI Brain folder got copied, INSIDE the folder you cloned
 rather than beside it — the mistake **STEP 4** and **STEP 7** exist to prevent. It is not dangerous:
 you cannot upload anything to a repository you do not own. But your private history should not be
 sitting in a folder pointed at a public one. Run this from the tool folder:
@@ -487,7 +516,7 @@ lifehack-brain/          ← OURS. replaced whole on every update.
 ├── REPORT-A-BUG.md          five minutes, once, so you can say "file a bug"
 └── PLAN-B.md                the manual backup, if the tool ever misbehaves
 
-My Notes/                ← YOURS. a different folder, outside this one.
+<your AI Brain>/         ← YOURS. a different folder, outside this one.
 ├── system/journal.md        what happened, as it happens
 ├── system/project-registry.md   so a cold session can find an old project
 ├── state/projects/<name>/   one folder per project: its brief, its records, its canon
@@ -496,7 +525,7 @@ My Notes/                ← YOURS. a different folder, outside this one.
 
 **The split is the whole design.** Everything sent to you is in the first folder. Everything you write
 is in the second. An update replaces the first one completely — and cannot reach the second even by
-accident, because your notes are not in this repository at all.
+accident, because your brain is not in this repository at all.
 
 **To get updates later, ask Claude:** *"check if there's an update to my brain and install it."*
 
@@ -574,7 +603,7 @@ What is **not** here is the connection. These tools call a command-line tool cal
 to your account, and neither it nor your authentication is part of this package.
 
 - **You connect your own account.** Nobody else's credentials are involved and nothing is shared.
-- **Your own identifiers — which calendar, which spreadsheet — live in your notes folder**, at
+- **Your own identifiers — which calendar, which spreadsheet — live in your AI Brain folder**, at
   `config/`, never in this repository. Same rule as everything else you own.
 - **It is a sit-down, not a click.** Expect to do it with someone the first time.
 
@@ -598,7 +627,7 @@ gws auth status         # says which account is connected
 login for every window on this machine, and there is no undo — you would redo this sit-down. If
 something looks broken, run `gws auth status` and read what it says before touching anything.
 
-**2 — Put your own identifiers in your notes folder, not in this repo.** Which calendar, which
+**2 — Put your own identifiers in your AI Brain folder, not in this repo.** Which calendar, which
 spreadsheet, which task list — those are yours, and they are the kind of thing a public repository
 must never carry. They live at `<notes>/config/`, one small file per thing, named so a stranger
 could tell what it is:
