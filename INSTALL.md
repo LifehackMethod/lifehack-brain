@@ -11,46 +11,35 @@ You hand this file to Claude and answer its questions.
 
 ---
 
-## The one thing to get right: ONE folder, holding two
+## What it builds — one folder, and everything lives inside it
 
-**Everything lives inside one folder you'll call your AI Brain.** Inside it, two things sit side by side:
+    AI Brain/                 <- the ONE folder you open. every time.
+    ├── lifehack-brain/          the tool. ours. replaced whole on every update.
+    └── data/                    everything you write. yours. never touched.
+        └── desks/               a folder per subject, once you've run an ingest
 
-    AI Brain/              <- YOURS. a normal folder on your computer.
-    ├── lifehack-brain/       the tool. ours. replaced whole on every update.
-    └── data/                 everything you write. yours. never touched.
+**You open the top one. That's the only thing to remember.**
 
-**That outer folder is the one you open in Claude, every time.** Not the ones inside it.
+Setup builds all of it for you. **You are asked exactly one question: where to put the top folder.**
 
-**⛔ Your AI Brain folder must be a REAL folder on your computer — not one that lives inside Google
-Drive, Dropbox or OneDrive.**
+**⛔ It can't live inside Google Drive, Dropbox or OneDrive.** The tool half is a git repository, and
+cloud sync services damage those — quietly, not with an error. Setup checks for you and won't let it
+happen.
 
-> **Why.** The tool half is a git repository, and git constantly makes and deletes hundreds of small
-> files as it works. Cloud sync tools notice each one and try to upload it mid-operation. The two fight,
-> and it never shows up as a clear error — it shows up as a folder that quietly corrupts, or an update
-> that half-applies.
+**Your writing still gets backed up.** Setup points your cloud service at the `data` folder and nothing
+else — that's the part that's yours and can't be re-downloaded.
 
-**But you should absolutely still back it up — just the `data` half.** That's the part that is yours and
-irreplaceable; the tool can always be downloaded again. Setup walks you through pointing Google Drive,
-OneDrive or Dropbox at `data` and nothing else.
+## What you do — about ten minutes
 
-> ⭐ **These are two different things and it matters.** *Living inside Google Drive* means the files are
-> Google's, shown through a window on your machine. *Being backed up by Google Drive* means the files are
-> genuinely on your hard drive and Drive keeps a copy. **You want the second one.**
-
-## What you do — three steps, about ten minutes
-
-**1. Open a folder in Claude.** The Claude desktop app, the **Code** tab, and any folder that is *not*
-inside Google Drive, Dropbox or OneDrive. Your home folder is fine. Setup builds your AI Brain there.
+**1. Open a folder in Claude.** The desktop app, the **Code** tab, any folder that isn't inside Google
+Drive, Dropbox or OneDrive. Your Documents folder is fine.
 
 **2. Drag this file into the chat and say: "Set up my brain."**
 
-**3. Answer its questions.** One is what to call your AI Brain folder. Another is whether you want it
-backed up, and to what. Have an answer ready, or say "you pick" and it will.
+**3. Say yes when it asks where to put your AI Brain folder.** That's the only decision. It builds the
+rest.
 
-That's it. Claude takes it from here, and it will check with you before each step.
-
-⚠ **If it ever goes quiet, look for a small box with an Allow button.** It isn't stuck — it's waiting on
-you.
+⚠ **If it goes quiet, look for a small box with an Allow button.** It isn't stuck — it's waiting on you.
 
 ## Have this ready
 
@@ -238,62 +227,66 @@ works later, invisibly.
 
 ---
 
-## STEP 4 — Build their AI Brain folder, in a place that is NOT cloud-synced
+## STEP 4 — Build the AI Brain folder. ONE question, then get on with it.
 
-**This is the folder everything else goes inside, and the one they will open every time.**
+⛔⛔ **THIS IS THE ONLY THING YOU ASK THEM IN THE WHOLE INSTALL. Everything below STEP 4 you build
+without asking.** Every extra question is a place the install stalls, and it has stalled on questions
+more than on anything else.
 
-**Ask them what to call it.** Most people say "AI Brain" and that is a good default. Use their answer.
+**Offer a default. Do not make them invent one.**
 
-**Where it goes, by operating system:**
-
-| | where the AI Brain folder goes |
+| | offer this |
 |---|---|
-| **Mac** | `~/<their name>` — the home folder |
-| **Windows** | `%USERPROFILE%\Documents\<their name>` — ⛔ **NOT the top-level home folder.** Windows refuses write access there in this app; a real student hit it and had to be relocated mid-install. |
+| **Mac** | `~/AI Brain` |
+| **Windows** | `%USERPROFILE%\Documents\AI Brain` |
 
-Say the full path out loud and ask if it's sensible. If they'd rather it went elsewhere, take their
-answer — **then run the check below on their choice.**
+Say it in one sentence and let them agree or name another: *"I'll put your AI Brain folder at
+`<path>` — everything lives inside it. Want it somewhere else instead?"*
 
-⛔ **Check it is not inside a cloud folder. Not optional, and it must be THIS check.**
+⛔ **NEVER offer a protected system location.** Not `C:\Users\` itself, not `C:\Program Files`, not
+`C:\ProgramData`, not `/System`, not `/Library`. **If they name one, say plainly it's a protected
+system folder and offer the default again.**
+
+⛔ **Then check their answer is not inside a cloud folder. Not optional, and it must be THIS check.**
 
 ```bash
-python3 - "$PWD" <<'PY'
+python3 - "<the path they chose>" <<'PY'
 import os, sys
-p = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else os.getcwd())
+p = os.path.abspath(sys.argv[1])
 low = p.replace("\\", "/").lower() + "/"
 # folder names the cloud clients ALWAYS create, on either OS. "my drive" and "shared drives"
 # are how Google Drive mounts on WINDOWS, where the path is a bare drive letter (G:\My Drive\...)
 # and never contains the word "google".
-tokens = ["library/cloudstorage", "google drive", "googledrive", "/my drive/",
-          "/shared drives/", "/shared drive/", "onedrive", "dropbox",
-          "icloud", "mobile documents", "/box/", "/sync.com/", "pcloud"]
-hit = next((t for t in tokens if t in low), None)
+cloud = ["library/cloudstorage", "google drive", "googledrive", "/my drive/", "/shared drives/",
+         "/shared drive/", "onedrive", "dropbox", "icloud", "mobile documents", "/box/", "pcloud"]
+# protected system locations — never install here
+prot = ["/program files", "/programdata", "/windows/", "/system/", "/library/"]
+import re
+if re.fullmatch(r"[a-z]:/users/?", low) or low in ("/users/", "/home/"):
+    print("PROTECTED - that is the system users folder, pick a folder inside it"); sys.exit(3)
+hit = next((t for t in cloud if t in low), None)
 if hit:
     print("IN A CLOUD FOLDER - pick somewhere else (matched: %s)" % hit.strip("/")); sys.exit(2)
-print("NOT IN A CLOUD FOLDER - good"); sys.exit(0)
+hit = next((t for t in prot if t in low), None)
+if hit:
+    print("PROTECTED SYSTEM FOLDER - pick somewhere else (matched: %s)" % hit.strip("/")); sys.exit(3)
+print("GOOD"); sys.exit(0)
 PY
 ```
 
 > ⛔⛔ **DO NOT REPLACE THIS WITH A SHELL `case` STATEMENT. ONE WAS HERE AND IT WAS BLIND ON WINDOWS.**
-> The old version matched Mac path shapes only. **Google Drive on Windows mounts as a drive letter —
-> `G:\My Drive\AI Brain` — which contains no occurrence of the word "Google" at all**, so the check
-> printed *"NOT IN A CLOUD FOLDER — good"* while sitting inside Google Drive. It caught Dropbox and
-> OneDrive by name and missed the one the student was actually using. *(Found 2026-08-12 on a real
-> Windows run.)* Python is used because STEP 3 guarantees it exists and it behaves identically on both
-> operating systems.
-
-**If it says it is in a cloud folder, move.** Tell them plainly: *"This spot is inside your cloud
-storage, and the tool can't live there — the syncing and the tool damage each other in ways that are
-hard to spot. Where else would you like it?"* Then re-run the check on the new location.
+> **Google Drive on Windows mounts as a drive letter — `G:\My Drive\AI Brain` — containing no
+> occurrence of the word "Google" at all**, so the old check printed *"not in a cloud folder — good"*
+> while sitting inside Google Drive. *(Found 2026-08-12 on a real Windows run.)*
 
 Create it:
 ```bash
-mkdir -p "<the AI Brain path>"
+mkdir -p "<the path>"
 ```
 
-⚠ **Their backup is a SEPARATE question and it comes in STEP 7 — and the answer there is allowed to be
-Google Drive.** Do not ask about it now, and **do not let them come away thinking their writing can't be
-backed up.** It can, and it should be.
+⛔ **If `mkdir` fails with a permission error, DO NOT ask for administrator rights and DO NOT retry the
+same place.** Say *"Windows won't let me write there — I'll use `<their Documents folder>` instead"*,
+and move on. **A real student lost their install to exactly this detour.**
 
 ## STEP 5 — Fetch the tool INTO their AI Brain folder
 
@@ -342,52 +335,30 @@ points at it. Without it, the file is decoration.
 Delete what's there and run **STEP 5** again — a half-finished download patched by hand produces a setup
 nobody can diagnose later.
 
-## STEP 7 — Make their `data` folder, and set up backup mirroring
+## STEP 7 — Build `data`. ⛔ ASK THEM NOTHING.
 
-**This is the question the whole system hangs on. Get it right once and they are never asked again.**
+> ⛔⛔ **THIS STEP USED TO ASK *"Where should everything you write end up?"* AND IT WAS THE SINGLE
+> BIGGEST CAUSE OF FAILED INSTALLS. DO NOT REINTRODUCE IT IN ANY FORM.**
+> It defaulted to a folder called "My Notes", which made people think it was a scratch folder for
+> jottings — it is their entire memory. **Measured 2026-08-12: multiple students answered it with a bare
+> "ok" and silently got a folder in the wrong place; others stalled on it and never restarted.** It even
+> confused a student whose install was otherwise working perfectly.
+> ⭐ **There is no decision here. `data` goes inside the AI Brain folder. That is the design.**
 
-**7a. Create it — it sits BESIDE the tool, inside the AI Brain folder.**
 ```bash
 mkdir -p "<the AI Brain path>/data"
 python3 "<the AI Brain path>/lifehack-brain/shared/brain_root.py" --set "<the AI Brain path>/data"
-python3 "<the AI Brain path>/lifehack-brain/shared/brain_root.py"
-```
-Say the path back to them in a sentence. ⚠ **If `--set` refuses, read them the reason and do not work
-around it.**
-
-**7b. Make the three files a new setup starts with.**
-```bash
 cd "<the AI Brain path>/lifehack-brain" && python3 system/tools/bootstrap.py
 ```
-**In plain words:** *"I've made you three empty things in there — a journal, a list of projects, and
-somewhere for project notes. They fill themselves in as you work."*
 
-⛔ **It makes those three and nothing else, deliberately.** Do not add folders for subjects you imagine
-they need. How their life divides up is theirs to find out, and a guess handed over on day one teaches
-them the guess is the answer.
+**Then say what you made, in one plain sentence, and move on:** *"Your writing goes in a folder called
+`data`, right next to the tool. I've put a journal, a project list and somewhere for project notes in
+there — they fill themselves in as you work."*
 
-**7c. ⭐ NOW SET UP BACKUP MIRRORING — and this is the step most people never had.**
-
-Ask: *"Do you want your writing backed up to the cloud? I'd recommend it — this is the part that's
-yours and can't be re-downloaded."*
-
-⛔⛔ **POINT IT AT `data` AND NOTHING ELSE. NEVER THE FOLDER ABOVE IT.** The folder above holds the git
-repository, and backing that up recreates the exact corruption problem STEP 4 exists to prevent.
-
-- **Google Drive** *(and Dropbox works the same way)*: *"Click the Drive icon in your menu bar, then the
-  gear, then Preferences. On the left choose **Folders from your computer**. Click **Add folder**, pick
-  `<the AI Brain path>/data`, and tick **Sync with Google Drive**."*
-  ⭐ Google documents that folders added this way can only **mirror**, never stream — so the files stay
-  genuinely on their disk. That is exactly what we want.
-- **OneDrive on Windows:** ⚠ **OneDrive can only back up Desktop, Documents and Pictures. There is no
-  "add any folder" control.** This is why STEP 4 puts the AI Brain inside `Documents` on Windows — their
-  backup then comes from OneDrive's Documents backup. Tell them: *"Click the OneDrive cloud icon,
-  Settings, 'Sync and backup', 'Manage backup', and make sure Documents is switched on."*
-- **They say no thanks:** fine. **Say plainly, once:** *"Then nothing is backing this up. If the machine
-  dies, it's gone. You can turn this on any time."* Do not argue.
-
-⛔ **A Google SHARED drive is never an acceptable answer.** Those can only stream, never keep real files.
-If they name one, say so and pick something else.
+⛔ **`desks/` is NOT created here.** Those appear inside `data` the first time they run an ingest, one
+per subject, built from their own material. **Do not pre-create them and do not invent subject names** —
+how their life divides up is theirs to find out, and a guess handed over on day one teaches them the
+guess is the answer.
 
 ## STEP 8 — Prove it can actually run, before you promise them anything
 
@@ -484,29 +455,30 @@ process by hand, without needing any of the tools to work. You get the same resu
 # WHAT'S IN HERE, AND WHY IT'S SPLIT THIS WAY
 
 ```
-AI Brain/                    <- YOU OPEN THIS ONE. always. every session.
-├── lifehack-brain/          <- OURS. replaced whole on every update.
-│   ├── .claude/                 the commands themselves — this is where Claude looks
-│   │   ├── agents/              the specialist readers the tool uses
-│   │   ├── skills/              the tools themselves
-│   │   └── settings.json        wires it up the moment you clone
-│   ├── system/                  the programs that do the sorting
-│   ├── CLAUDE.md                the standing instructions every session opens with
-│   ├── UPDATE.md                how to take a newer version, and what it cannot touch
-│   ├── folderfix.md             repairs an older, wrongly-shaped install
-│   └── PLAN-B.md                the manual backup, if the tool ever misbehaves
-└── data/                    <- YOURS. the only thing backed up.
+AI Brain/                        <- YOU OPEN THIS ONE. always. every session.
+├── lifehack-brain/              <- OURS. replaced whole on every update.
+│   ├── .claude/                     the commands — this is where Claude looks
+│   │   ├── agents/                  the specialist readers the tool uses
+│   │   ├── skills/                  the tools themselves
+│   │   └── settings.json            wires it up the moment you clone
+│   ├── system/                      the programs that do the sorting
+│   ├── CLAUDE.md                    the standing instructions every session opens with
+│   ├── UPDATE.md                    how to take a newer version, and what it cannot touch
+│   └── PLAN-B.md                    the manual backup, if the tool ever misbehaves
+└── data/                        <- YOURS. the only thing backed up.
     ├── system/journal.md            what happened, as it happens
     ├── system/project-registry.md   so a cold session can find an old project
     ├── state/briefs/                project notes
-    └── desks/                       a folder per subject, once you have run an ingest
+    └── desks/                       a folder per subject — built by your first ingest
+        ├── <subject>/               one per pile the ingest finds in your own material
+        └── <subject>/
 ```
 
 **The split is the whole design.** Everything sent to you is in `lifehack-brain`. Everything you write
-is in `data`. An update replaces the first one completely — and cannot reach the second even by
-accident, because your writing is not in that repository at all.
+is in `data`, including the desks your ingest builds. An update replaces the first one completely — and
+cannot reach the second even by accident, because your writing is not in that repository at all.
 
-⭐ **And you open the folder ABOVE both of them**, which is what lets the tool reach your writing while
+⭐ **And you open the folder ABOVE both of them.** That is what lets the tool reach your writing while
 keeping it out of the repository. Opening one of the inner folders instead is the single most common way
 this goes wrong.
 
