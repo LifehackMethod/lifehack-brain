@@ -1,5 +1,5 @@
 ---
-skill: simplify
+name: simplify
 description: "Re-render everything since your last message for someone who just said 'I still don't understand.' Use on \"/simplify\" — condenses (vs /explain unpacks)."
 shape: utility
 title: Simplify

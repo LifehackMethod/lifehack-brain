@@ -1,5 +1,5 @@
 ---
-skill: save
+name: save
 title: "Save — put what happened where it belongs"
 shape: interactive-workflow
 status: active

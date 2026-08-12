@@ -1,5 +1,5 @@
 ---
-skill: ingest
+name: ingest
 description: "Turn a personal text corpus — chat export, document, or notes — into a folder schema you can drop into Lifehack — make the piles, screen each one, see a world map of yourself, then file it. Use on \"/ingest\"; Vera the Curator guides it."
 title: "Ingest — the world-model builder (bulk personal-corpus mining + filing, led by Vera the Curator)"
 shape: interactive-workflow

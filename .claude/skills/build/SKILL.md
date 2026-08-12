@@ -1,5 +1,5 @@
 ---
-skill: build
+name: build
 title: "Build — execute the plan, and close honestly"
 shape: interactive-workflow
 status: active

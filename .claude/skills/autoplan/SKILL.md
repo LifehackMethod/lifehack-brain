@@ -1,5 +1,5 @@
 ---
-skill: autoplan
+name: autoplan
 title: "Autoplan — plan against what the system actually is"
 shape: interactive-workflow
 status: active

@@ -1,5 +1,5 @@
 ---
-skill: research
+name: research
 title: "Research — where independent practitioners actually converge"
 shape: interactive-workflow
 status: active

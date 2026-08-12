@@ -1,5 +1,5 @@
 ---
-skill: project-manager
+name: project-manager
 description: "Maintains a living project doc as the single source of truth for long-arc work. Use on \"where are we on\", \"rehydrate\", \"start/update the project doc\", or any multi-session work."
 title: "Project Manager — the living project doc"
 shape: interactive-workflow

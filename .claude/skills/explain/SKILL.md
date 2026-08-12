@@ -1,5 +1,5 @@
 ---
-skill: explain
+name: explain
 description: "Re-render everything since your last message as the clearest human translation — boiled down to its spine, then rehydrated by a great teacher. All technical detail kept, invisible work surfaced. Use on \"/explain\", \"explain that\", \"what did that mean\"."
 shape: utility
 title: Explain

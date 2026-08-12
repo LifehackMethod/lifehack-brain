@@ -1,5 +1,5 @@
 ---
-skill: checkin
+name: checkin
 title: "Check-in — re-orient, and leave the record sharper"
 shape: interactive-workflow
 status: active

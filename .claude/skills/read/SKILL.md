@@ -1,5 +1,5 @@
 ---
-skill: read
+name: read
 title: "Read — pull the right things back in"
 shape: utility
 status: active
