@@ -16,3 +16,15 @@ _unpacked/
 *.zip
 conversations.json
 users.json
+
+# ── YOUR WRITING LIVES HERE, INSIDE THE REPO (layout change, 2026-08-12) ──────
+# The tool now clones into the folder you open, so `data` sits inside the
+# repository rather than beside it. THIS LINE is what keeps it out of git:
+# never tracked, never committed, never uploaded. It replaces the folder
+# distance that used to do that job.
+#
+# ⛔ DO NOT REMOVE IT, and do not let anything add data/ with `git add -f`.
+# ⛔ Update with `git pull` — it leaves data/ untouched. NEVER update by
+#    deleting this folder and re-cloning; that takes your writing with it.
+#    See "Taking an update later" in INSTALL.md.
+data/
