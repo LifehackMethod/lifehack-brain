@@ -436,6 +436,17 @@ There is a complete manual backup: **`PLAN-B.md`**, sitting right next to this f
 Drag it into a **fresh** Claude conversation and say **"help me."** It walks your AI through the same
 process by hand, without needing any of the tools to work. You get the same result; it just takes longer.
 
+**4. Your own notes ended up inside the tool folder, and git is now tracking them.**
+This happens if an export got unzipped, or a notes folder got copied, INSIDE the folder you cloned
+rather than beside it — the mistake **STEP 4** and **STEP 7** exist to prevent. It is not dangerous:
+you cannot upload anything to a repository you do not own. But your private history should not be
+sitting in a folder pointed at a public one. Run this from the tool folder:
+
+    sh system/tools/untrack-my-stuff.sh
+
+**It does not delete anything.** It takes your material out of git's index with `git rm --cached` and
+leaves every file exactly where it is on disk. It shows you what it found and asks before acting.
+
 ---
 
 # WHAT'S IN HERE, AND WHY IT'S SPLIT THIS WAY

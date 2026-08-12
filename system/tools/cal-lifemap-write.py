@@ -1,6 +1,17 @@
 #!/usr/bin/env python3
 """cal-lifemap-write.py — deterministic section-replace tool for the canonical Life Map.
 
+⚠ NOTHING IN THIS REPOSITORY CALLS THIS FILE, AND THAT IS RECORDED RATHER THAN FIXED.
+Measured 2026-08-11 by a reachability pass over every capability file here: no skill, hook,
+document or peer module invokes it. Its caller is the WEEKLY cadence skill, which writes the
+Weekly Win into the Life Map — and that skill is held back, so this tool arrived ahead of the
+only thing that runs it. The DAILY skill does not use it: a day's plan hangs off a task in the
+goals list, it does not rewrite a Life Map section.
+
+Left in place deliberately. Deleting a working, tested tool because its caller is late is how a
+capability gets rebuilt from scratch six months later. When the weekly skill lands, this is
+already here and this note comes out. Until then, treat it as hand-run only.
+
 Overwrites ONE horizon section's body in the Life Map markdown while leaving every
 other byte of the file identical. No LLM in this path — fully mechanical.
 
