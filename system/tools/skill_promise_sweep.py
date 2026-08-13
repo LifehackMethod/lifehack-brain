@@ -112,11 +112,26 @@ def render_table(reports):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--root", default=os.environ.get("LIFEHACK_ROOT", REPO_ROOT))
+    # ⛔ NOT $LIFEHACK_ROOT. That is the person's NOTES folder; it holds no
+    # `.claude/skills/`, so defaulting to it made this sweep walk an empty set and
+    # report "0 skills scanned ... 0 REFUSED", exit 0 -- a clean bill of health for
+    # a scan that never happened. The skills swept here are repo artifacts, always.
+    ap.add_argument("--root", default=REPO_ROOT,
+                    help="clone to sweep (default: this repo). Skills are repo artifacts, "
+                         "never notes artifacts.")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
 
     reports = sweep(args.root)
+
+    # A sweep that found no skills has not passed -- it has failed to look. Refusing
+    # loudly here is what stops a mis-pointed --root reading as a clean audit.
+    if not reports:
+        print("NO SKILLS FOUND under {!r} -- nothing was scanned, so this is NOT a pass.\n"
+              "Point --root at a clone containing .claude/skills/.".format(args.root),
+              file=sys.stderr)
+        sys.exit(2)
+
     refused = sum(1 for r in reports if r["verdict"] == "REFUSED")
 
     if args.json:

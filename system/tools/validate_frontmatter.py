@@ -35,14 +35,19 @@ FORBIDDEN_FIELDS = {"artifact_type"}  # record_type is the canonical name
 def validate_file(filepath):
     """
     Validate frontmatter of a markdown file.
-    Returns (valid: bool, message: str).
+    Returns (valid, message), where valid is True (valid), False (violation) or
+    None (CANNOT EVALUATE -- no file to read, or not markdown).
+
+    None is not a pass. A caller that treats "the file is not there" as valid
+    cannot tell a clean record from a write that silently failed, which is the
+    exact failure this validator exists to catch downstream of /research.
     """
     # Only check markdown files
     if not filepath.endswith(".md"):
-        return True, f"skip: {filepath} is not markdown"
+        return None, f"cannot evaluate: {filepath} is not markdown"
 
     if not os.path.isfile(filepath):
-        return True, f"skip: {filepath} does not exist"
+        return None, f"cannot evaluate: {filepath} does not exist"
 
     # Only validate what THIS SYSTEM writes. A person's own files, dropped anywhere in their notes
     # folder, are theirs — a validator that lectures somebody about the frontmatter on a file they
@@ -108,6 +113,13 @@ def main():
 
     filepath = sys.argv[1]
     valid, message = validate_file(filepath)
+
+    if valid is None:
+        # Documented exit 2: there was nothing to validate. Never silently a pass --
+        # the caller asked whether a specific file is good, and the honest answer is
+        # that it could not be read.
+        print(f"? {message}", file=sys.stderr)
+        sys.exit(2)
 
     if not valid:
         print(f"✗ {message}", file=sys.stderr)

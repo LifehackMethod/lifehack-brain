@@ -112,9 +112,12 @@ run "a whole-column update"   2 "$WRITES" "gws sheets spreadsheets values update
 run "structural batchUpdate"  2 "$WRITES" "gws sheets spreadsheets batchUpdate --params '{\"spreadsheetId\":\"$SID\"}'"
 echo "   the confirmation marker is the only way past, and it must be the NEW name"
 run "with the confirm marker" 0 "$WRITES" "LIFEHACK_SHEET_CONFIRM=1 gws sheets spreadsheets values clear --params '{\"spreadsheetId\":\"$SID\",\"range\":\"Data!A:Z\"}'"
-# The donor's marker was LIFEHACK_SHEET_CONFIRM. If both were honoured, a stale command copied from
-# old notes would silently keep its bypass and nobody would learn the name had changed.
-run "the retired marker"      2 "$WRITES" "LIFEHACK_SHEET_CONFIRM=1 gws sheets spreadsheets values clear --params '{\"spreadsheetId\":\"$SID\",\"range\":\"Data!A:Z\"}'"
+# ⚠ THIS CASE USED TO BE UNSATISFIABLE. It re-ran the byte-identical command and marker as the
+# passing case above it and asserted the opposite exit, so it could never go green and never
+# exercised anything. The property actually worth guarding is that ONLY the exact current marker
+# opens the gate -- a near-miss copied from old notes must not. If you know the real retired
+# donor name, substitute it here; the assertion holds either way.
+run "a near-miss marker"      2 "$WRITES" "SHEET_CONFIRM=1 gws sheets spreadsheets values clear --params '{\"spreadsheetId\":\"$SID\",\"range\":\"Data!A:Z\"}'"
 echo "   creating a NEW sheet has no guide to read and nothing to destroy"
 run "create"                  0 "$WRITES" "gws sheets spreadsheets create --params '{\"title\":\"new\"}'"
 
