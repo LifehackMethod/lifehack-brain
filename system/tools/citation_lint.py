@@ -119,7 +119,19 @@ HARNESS_COMMANDS = {"clear", "config", "workflows", "compact", "help", "model", 
 FILESYSTEM_ROOTS = {"tmp", "dev", "etc", "var", "usr", "bin", "opt", "home", "mnt", "proc", "srv", "run"}
 
 # Directories never scanned. `memory/` is the person's own material and is not ours to lint.
-SKIP_DIRS = {".git", "memory", ".venv", "node_modules", "__pycache__"}
+# ⛔ `data` AND `memory` ARE THE PERSON'S OWN MATERIAL — NEVER LINT THEM (data added 2026-08-12).
+# This linter checks that paths cited in OUR documentation actually exist here. The person's notes are
+# not our documentation: a path they mention in their own file is a fact about their world, not a broken
+# citation in ours, and there is nothing for anyone to "fix".
+#
+# WHY IT REGRESSED. Under the old layout their notes lived OUTSIDE the repo, so the walk could never
+# reach them and only `memory` needed skipping. The 2026-08-12 layout change moved their data to `data/`
+# INSIDE the repo — gitignored, but this walks the filesystem, not the git index. The first real ingest
+# put 17 of their files here and the pre-commit hook then refused the very next commit, citing paths from
+# inside their own notes. Every ingest armed a landmine for the next commit.
+#
+# ⚠ Keep this in step with `.gitignore`: anything there that holds the person's material belongs here too.
+SKIP_DIRS = {".git", "data", "memory", ".venv", "node_modules", "__pycache__"}
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 
