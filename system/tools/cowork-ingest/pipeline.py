@@ -1584,6 +1584,51 @@ def mark_committed(m, f, now_iso=None):
     return True, "ok"
 
 
+def scan_evidence(basket, work_dir=None):
+    """THE INDEPENDENT TRACE behind a SHORT keeper's finding (2026-08-12). Returns
+    (path, {chat_key: has_content}), or (path, None) when no SCAN reader output exists for this pile.
+
+    The twin of `coalesced_evidence`, for the one case that function cannot answer. A chat at or under
+    WHOLE_READ_MAX is read WHOLE by the SCAN reader, so DEEP-READ deliberately skips it and reuses that
+    summary as the finding. Its proof therefore lives in `scan-raw/<basket>/agent-*.json` — the raw files
+    `agent_output.py` harvested from the readers — not in `raw-conclusions-<basket>.json`.
+
+    Same posture as its twin: unreadable evidence is NO evidence, and a missing directory fails closed. The
+    session can type `extraction: scan-summary` all it likes; if no reader ever returned a gist for the
+    chat, this returns False for it and the pile does not close."""
+    work = work_dir or os.environ.get("COWORK_WORK")
+    if not work:
+        return (None, None)
+    path = os.path.join(work, "scan-raw", basket)
+    if not os.path.isdir(path):
+        return (path, None)
+    found = {}
+    try:
+        names = sorted(os.listdir(path))
+    except OSError:
+        return (path, None)
+    for name in names:
+        if not name.endswith(".json"):
+            continue
+        try:
+            data = json.load(open(os.path.join(path, name), encoding="utf-8"))
+        except Exception:
+            continue                 # one bad file is not evidence; it is also not a veto on the others
+        if isinstance(data, dict):
+            data = data.get("items") or data.get("results") or data.get("gists") or []
+        if not isinstance(data, list):
+            continue
+        for el in data:
+            if not isinstance(el, dict):
+                continue
+            key = el.get("file") or el.get("chat") or el.get("id")
+            if not key:
+                continue
+            body = str(el.get("gist") or el.get("summary") or "").strip()
+            found[key] = bool(body) or found.get(key, False)
+    return (path, found if found else None)
+
+
 def coalesced_evidence(basket, work_dir=None):
     """THE INDEPENDENT TRACE behind a DEEP-READ (F8.3, 2026-08-06). Returns (path, {chat_key: has_content})
     for this basket's coalesced reader output, or (path, None) when that file does not exist yet.
@@ -2155,6 +2200,34 @@ def set_basket_status(m, basket, status, work_dir=None, require_world_map=False)
     if status == "read-complete":
         keepers = [k for k, r in _basket_chats(m, basket)
                    if not _is_done(r) and r.get("skim_verdict") == "research"]
+        # ★ THE SHORT-CHAT PATH (2026-08-12). A keeper at or under WHOLE_READ_MAX was ALREADY read whole by
+        # the SCAN reader, so `3-deep-read.md` Step 2 explicitly does NOT spawn a deep reader for it: "its
+        # SCAN summary IS the finding." That left this gate unsatisfiable — it demanded a deep-read trace
+        # that the phase had just been told not to produce, so a pile whose keepers are all short could
+        # NEVER close. Found on the first real run against a notes vault, where most notes are short.
+        #
+        # ⛔ THE FIX IS NOT TO WEAKEN THE GATE. Its principle stands: never accept a value the session can
+        # type. These keepers HAVE an independent trace — it is simply the SCAN reader's output rather than
+        # the deep reader's. So we check THAT file instead, with the same fail-closed posture. A keeper is
+        # only routed here when the row itself records the short path (`extraction == "scan-summary"`),
+        # which `read --extraction scan-summary` sets and nothing else does.
+        short_keepers = [k for k in keepers
+                         if str(dict(_basket_chats(m, basket)).get(k, {}).get("extraction") or "")
+                         .strip() == "scan-summary"]
+        if short_keepers:
+            sev_path, sfound = scan_evidence(basket, work_dir)
+            if sfound is None:
+                return False, (f"REFUSED: basket '{basket}' has {len(short_keepers)} short keeper(s) whose "
+                               f"finding came from the SCAN read, but the SCAN reader output is missing — "
+                               f"expected '{sev_path}'. A short chat is exempt from a second read, never "
+                               f"from evidence. Re-run the SCAN collect for this pile before closing.")
+            hollow_short = [k for k in short_keepers if not sfound.get(k)]
+            if hollow_short:
+                return False, (f"REFUSED: basket '{basket}' has {len(hollow_short)} short keeper(s) with no "
+                               f"content in the SCAN reader evidence ('{sev_path}') — the row claims a "
+                               f"scan-summary finding the readers never produced: "
+                               f"{hollow_short[:3]}{'…' if len(hollow_short) > 3 else ''}")
+            keepers = [k for k in keepers if k not in set(short_keepers)]
         if keepers:
             ev_path, found = coalesced_evidence(basket, work_dir)
             if found is None:
