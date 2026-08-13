@@ -51,7 +51,7 @@ The **deep, on-demand auditor of a single desk's entire canon tree** — `desks/
 
 - **READ-ONLY / PROPOSE-ONLY.** Never edit, move, or delete a canon file. The ONLY write is the proposal log on Drive. Execution is `/archivist-review`'s job — this skill ends at the proposal.
 - **Subagents sonnet-only, waves of 2–3, never 6+** (the proven headless ceiling; per `archivist-deepmine`). Fan out via the **Agent tool**, not Workflow.
-- **Read the bars, never regenerate them.** Read `<notes>/system/archivist/home-intents.md` (the authored `intent:`/`not:` bar per home) + `<notes>/<notes>/system/canon-purpose-map.md` (the Territory Map: `accepts:` + STATED|INFERRED). Regenerating the map is `archivist-audit`'s job — never this skill's.
+- **Read the bars, never regenerate them.** Read `<notes>/system/archivist/home-intents.md` (the authored `intent:`/`not:` bar per home) + `<notes>/system/canon-purpose-map.md` (the Territory Map: `accepts:` + STATED|INFERRED). Regenerating the map is `archivist-audit`'s job — never this skill's.
 - **Stay in the fence.** No line-level always-loaded-layer audit (that's `archivist-declutter`). No whole-filesystem structural audit (that's `archivist-audit`). One desk's canon tree, at folder/file depth.
 - **A clean desk is a valid result.** "Tidy — little to propose" is a correct output (like deepmine on a young desk). Do not manufacture findings.
 
@@ -170,7 +170,7 @@ Format: `- {YYYY-MM-DD} · v{x} · desk:{d} · MISS: <what it missed/misclassifi
 
 ## Reference
 
-- Consumes: `<notes>/system/archivist/home-intents.md` · `<notes>/<notes>/system/canon-purpose-map.md` · the target desk's canon tree.
+- Consumes: `<notes>/system/archivist/home-intents.md` · `<notes>/system/canon-purpose-map.md` · the target desk's canon tree.
 - Produces: `<notes>/records/proposals/archivist-{YYYY-MM-DD}-canon-audit-{subject}.md` (see the handoff note at the foot; formerly fed `/archivist-review`).
 - Related: `/archivist-declutter` (line-level, always-loaded only) · `/archivist-audit` (weekly, whole-system) · `/archivist-deepmine` (the fan-out pattern this copies).
 

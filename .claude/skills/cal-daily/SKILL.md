@@ -23,6 +23,14 @@ read of the situation and ask the person to correct you; never a blank page, nev
 
 Runs **interactively in the main session** (human-in-the-loop — never a subagent). One morning launch; consolidates the old `cal-1..5`.
 
+## Paths (set once)
+
+```bash
+ROOT="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && pwd)"
+```
+Every `system/tools/*.py` and `shared/*.py` call below is `$ROOT`-anchored — a bare relative
+invocation only works when the shell happens to already sit at the repo root.
+
 ## ⛔ THE LAW — this is an INTERROGATIVE process, not a conclusory one
 The LLM's instinct is to run to a recommendation and hand over an answer. **Fight that.** This skill is here to
 **surface and interrogate** — to pull what's real out of their head and their data — NOT to solve, conclude, or
@@ -69,8 +77,8 @@ The interrogation must never freeze while a write happens. So the work runs in t
     fact it should have folded in Pass 1). Don't paper over it with a re-read — fix the scratchpad.
   - **A sweep for what's GENUINELY NEW since 4am = legitimate** — do it **light**: metadata only (subjects/senders/
     snippets/titles), filtered to new-since-the-pull, **never re-ingesting bodies**.
-- **The light-sweep tools (seconds, no bodies).** Email → `python3 system/tools/cal-light-sweep.py` (metadata-only
-  `gws gmail threads list` for new-since-pull). Tasks → `python3 system/tools/cal-vault-pull.py --tasks-only`
+- **The light-sweep tools (seconds, no bodies).** Email → `python3 "$ROOT/system/tools/cal-light-sweep.py"` (metadata-only
+  `gws gmail threads list` for new-since-pull). Tasks → `python3 "$ROOT/system/tools/cal-vault-pull.py" --tasks-only`
   (rewrites only `tasks.json`; use after a reorg or for a freshness refill, then reseed + re-render the board).
   Calendar's day-list is already cheap. One light call when the person asks — never the full rebuild.
 - **Calendar writes → your agent calendar ONLY**, never the calendar your life is in. The id is the
@@ -87,7 +95,7 @@ The interrogation must never freeze while a write happens. So the work runs in t
   refused any task write which did not reference that parent id. It guards a task surface that is
   personal plumbing and did not cross, so here the rule above is enforced by the skill and by the
   confirmation gate, not by code. Said plainly rather than implied: this one is a rule, not a wall.
-  Read the ids with `python3 shared/cal_config.py`.
+  Read the ids with `python3 "$ROOT/shared/cal_config.py"`.
 - **Task writes → Google Tasks.**
 - **NEVER write synchronously mid-pass.** Don't stop the conversation to save a file or write a task/event. **Queue
   it** (to the scratchpad / the WRITE-LEDGER) and let a **gear-2 background worker** flush it — the scribe at pass

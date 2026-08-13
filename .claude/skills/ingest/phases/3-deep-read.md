@@ -111,7 +111,7 @@ it survives her absence.
    SHORT=(); WHOLE=(); GIANT=()
    for f in "${RESEARCH[@]}"; do
      n=$(wc -c < "$FLAT/$f" 2>/dev/null || echo 0)
-     mode=$(python3 -c "import sys,pipeline as p; n=int(sys.argv[1]); print('short' if p.read_whole_at_scan(n) else p.read_mode(n))" "$n")
+     mode=$(cd "$T" && python3 -c "import sys,pipeline as p; n=int(sys.argv[1]); print('short' if p.read_whole_at_scan(n) else p.read_mode(n))" "$n")
      case "$mode" in short) SHORT+=("$f");; whole) WHOLE+=("$f");; sample) GIANT+=("$f");; esac
    done
    for f in "${SHORT[@]}"; do python3 $T/pipeline.py read --map "$MAP" --file "$f" --extraction "scan-summary"; done

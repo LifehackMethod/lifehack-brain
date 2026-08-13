@@ -156,8 +156,8 @@ Snapshot the source tree's state so Step 5's rail is checkable, and make ONE wor
 directory for the whole run:
 
     REPO=$(git rev-parse --show-toplevel)
-    cd "$REPO" && git status --porcelain | sort > /tmp/ship-gitstatus-before.txt
-    WORK=$(mktemp -d /tmp/ship-XXXXXX)
+    cd "$REPO" && git status --porcelain | sort > "$(python3 "$REPO/shared/paths.py" scratchfile ship ship-gitstatus-before.txt)"
+    WORK=$(python3 "$REPO/shared/paths.py" scratch ship "run-$$")
 
 Then compose the effective rule set **once**, into `$WORK`, and use it for every step
 below:
@@ -256,8 +256,8 @@ and does **not** block.
 
 Then prove the originals were never touched:
 
-    cd "$REPO" && git status --porcelain | sort > /tmp/ship-gitstatus-after.txt && \
-      diff /tmp/ship-gitstatus-before.txt /tmp/ship-gitstatus-after.txt && echo "ORIGINALS UNTOUCHED"
+    cd "$REPO" && git status --porcelain | sort > "$(python3 "$REPO/shared/paths.py" scratchfile ship ship-gitstatus-after.txt)" && \
+      diff "$(python3 "$REPO/shared/paths.py" scratchfile ship ship-gitstatus-before.txt)" "$(python3 "$REPO/shared/paths.py" scratchfile ship ship-gitstatus-after.txt)" && echo "ORIGINALS UNTOUCHED"
 
 **A difference here is a stop condition, not a note.**
 

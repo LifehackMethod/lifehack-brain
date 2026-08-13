@@ -27,7 +27,7 @@ killed). You hand the confirmed ledger to ONE background **clerk** sub-agent, an
    - **TASKS → topical Google Tasks list:** `gws tasks tasks insert --params '{"tasklist":"<LIST_ID>"}' --json '{"title":"..."}'`
      (resolve the list via `gws tasks tasklists list --params '{}'`). New durable to-dos only (dedup already applied).
    - **DAILY WIN → subtasks under the Life Map Daily Win parent.** Each confirmed domino becomes a child of the
-     `✅ Daily Win:` task: `gws tasks tasks insert --params '{"tasklist":"$(python3 shared/cal_config.py --get goals_tasklist)","parent":"$(python3 shared/cal_config.py --get daily_parent_task)"}' --json '{"title":"<TAG — move>"}'`.
+     `✅ Daily Win:` task: `gws tasks tasks insert --params '{"tasklist":"$(python3 "$ROOT/shared/cal_config.py" --get goals_tasklist)","parent":"$(python3 "$ROOT/shared/cal_config.py" --get daily_parent_task)"}' --json '{"title":"<TAG — move>"}'`.
      This is the ONE allowed Life Map write — `guard_tasks_writes.sh` passes it BECAUSE it references the Daily Win
      parent. **Never** insert a non-Daily-Win Life Map task, touch the Weekly/Monthly/Yearly Win tasks, or delete anything.
    - **DURABLE RECORDS → files, not Google.** Findings / decisions / system-debt with no calendar/task home → write to

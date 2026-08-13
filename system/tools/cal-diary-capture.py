@@ -30,7 +30,8 @@ The headless runner (cal-diary-run.sh) exports the keychain-free gws-cron env be
 import argparse, json, os, re, subprocess, sys, time
 from datetime import datetime, timedelta, time as dtime, timezone
 
-GWS = "/opt/homebrew/bin/gws"
+GWS = __import__("shutil").which("gws") or "gws"  # PATH first, like cal-light-sweep.py/cal-vault-pull.py —
+# was hardcoded Homebrew-only, so it broke Windows AND Intel Macs (Intel Homebrew installs to /usr/local)
 # The notes folder, through the one resolver. ⛔ NOT a default and NOT a guess: the tool this came
 # from hardcoded one person's Drive path, so on any other machine it wrote its vault into a
 # directory that did not exist. `resolve_brain_root()` returns (source, path); NOT-SET is (None,

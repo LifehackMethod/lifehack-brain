@@ -131,6 +131,14 @@ folder, so nothing needs an administrator password."*
 
 ```bash
 set -e
+# ⛔ macOS ONLY. This downloads a macOS_*.zip, so it is wrong everywhere else. The gate used to be
+# PROSE sitting BELOW this block ("on Windows use winget instead") — and a prose gate is a wish, not
+# a control: nothing stopped the block being run first and failing halfway. Now it refuses itself.
+if [ "$(uname -s 2>/dev/null || echo Windows)" != "Darwin" ]; then
+  echo "NOT-MACOS: skip this block. Windows -> winget install --id GitHub.cli"
+  echo "           Linux   -> your package manager, or https://cli.github.com"
+  exit 0
+fi
 mkdir -p "$HOME/.local/bin"
 case "$(uname -m)" in
   arm64|aarch64) GH_ARCH=arm64 ;;
@@ -257,16 +265,18 @@ say no, ask what to take out, take it out, and show them again.** No limit.
 Write the approved body to a scratch file **outside this folder**, then send:
 
 ```bash
-cat > /tmp/lifehack-bug.md <<'EOF'
+ROOT="$(git rev-parse --show-toplevel)"
+BUGFILE="$(python3 "$ROOT/shared/paths.py" scratchfile lifehack-bug.md)"
+cat > "$BUGFILE" <<'EOF'
 <the body they approved, exactly as they saw it>
 EOF
 
 gh issue create --repo LifehackMethod/lifehack-brain \
   --title "<one line naming the thing that broke>" \
-  --body-file /tmp/lifehack-bug.md
+  --body-file "$BUGFILE"
 ```
 
-⛔ **The scratch file goes in `/tmp`, never inside this folder.** Anything written in the tool folder
+⛔ **The scratch file goes in the OS scratch folder (`paths.py scratchfile`, never a literal `/tmp`, which is not a real location on Windows), never inside this folder.** Anything written in the tool folder
 gets picked up by git, which is the single thing this whole system is arranged to prevent.
 
 That prints a web address. **Hand it to them and say what it is:** *"That's your report — that link is

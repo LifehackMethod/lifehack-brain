@@ -16,7 +16,7 @@ YOU ARE THE **DETECTIVE**, doing a postmortem. Commit a read of yesterday; ask t
    from here on, EVERY turn you prune stale / update / add **in context** (the scribe persists it at each pass boundary;
    you do NOT rewrite the file every turn). (It's deleted in Pass 5 by the clerk.)
    - **Freshness check (the only sanctioned re-pull).** The vault is a 4:10am snapshot. If the person says he reorganized
-     tasks, or it's clearly stale against his edits, fire **one** `python3 system/tools/cal-vault-pull.py --tasks-only`
+     tasks, or it's clearly stale against his edits, fire **one** `python3 "$ROOT/system/tools/cal-vault-pull.py" --tasks-only`
      (seconds; tasks only), then reseed from the refreshed `tasks.json`. One batched refill — never piecemeal live reads.
 
 2. **Roam yesterday** (Cal reads freely): yesterday's calendar (vault `calendar.json` holds the prior 7d), the unified
