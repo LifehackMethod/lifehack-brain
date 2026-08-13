@@ -109,10 +109,11 @@ output path). `FLAT` resolves per-corpus, with a legacy fallback so an already-f
 is never orphaned or re-flattened:
 ```bash
 RAW_EXPORT="$COWORK_WORK/raw-export"
-FLAT="$HOME/.cache/cowork-ingest/$INGEST_CORPUS/flatten"
-# ⛔ The legacy fallback is SCOPED TO THE ORIGINAL CORPUS ONLY. Without this guard a BRAND-NEW corpus
-# resolves FLAT to the original corpus's flatten dir and silently reads someone else's chats.
-if [ "$INGEST_CORPUS" = "cowork-bulk-ingestion" ] && [ ! -d "$FLAT" ] && [ -d "$HOME/.cache/cowork-ingest/flatten" ]; then FLAT="$HOME/.cache/cowork-ingest/flatten"; fi
+# ⛔ ASK for the path, never build it. `paths.py flatten` keeps BOTH rules that used to be spelled
+# out in shell here: an already-flattened corpus is never orphaned, AND the pre-slug fallback stays
+# SCOPED to the original corpus so a brand-new one can never read its chats. See flatten_dir().
+# `$HOME/.cache` is not a real place on Windows, which is why this is no longer a literal.
+FLAT="$(python3 "$ROOT/shared/paths.py" flatten "$INGEST_CORPUS")"
 ```
 
 **`1.0` WHERE DOES THIS GO? — the one question asked before anything is written, and only ever once.**

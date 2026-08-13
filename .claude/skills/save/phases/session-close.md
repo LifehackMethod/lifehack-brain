@@ -33,8 +33,12 @@ The variable is `$CLAUDE_CODE_SESSION_ID`. Transcripts sit directly in the proje
 no `conversations/` subdirectory. **If `$TRANSCRIPT` is empty**, fall back to what is in context and
 **say so in the journal entry**, so the lossy pass is visible rather than assumed away.
 
-Write what you extract to a working file (`/tmp/save-extract-<date>.md`) so it survives compaction and
-can be re-read on a later pass.
+Write what you extract to a working file so it survives compaction and can be re-read on a later
+pass. ⛔ Ask for the path rather than writing a literal `/tmp/…`, which is not a real location on
+Windows:
+```bash
+EXTRACT="$(python3 "$ROOT/shared/paths.py" scratchfile save "save-extract-$(date +%F).md")"
+```
 
 **(b) Several targeted passes, not one sweep.** One pass each for:
 

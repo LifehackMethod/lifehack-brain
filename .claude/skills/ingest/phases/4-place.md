@@ -109,7 +109,8 @@ DRIVE="$(python3 "$T/pipeline.py" brain-root --quiet)" || { echo "STOP: no brain
 export INGEST_CORPUS="${INGEST_CORPUS:-my-corpus}"   # the corpus slug; one per corpus you ingest
 export COWORK_WORK="$DRIVE/state/projects/$INGEST_CORPUS/work"
 MAP="$COWORK_WORK/corpus-map.json"
-ANCHOR="$HOME/.cache/cowork-ingest/$INGEST_CORPUS/ingest-anchor.txt"; mkdir -p "$(dirname "$ANCHOR")"
+# ⛔ ASK, never build — same anchor PHASE 1 wrote; legacy file wins if one exists (anchor_file()).
+ANCHOR="$(python3 "$ROOT/shared/paths.py" anchor "$INGEST_CORPUS")"
 S="$ROOT/system/hooks/skill_anchor.sh"
 python3 $T/pipeline.py assert --map "$MAP" || { echo "MAP NOT v2 — run: python3 $T/corpus_map.py migrate --map \"$MAP\""; exit 1; }
 python3 $T/pipeline.py anchor --phase 4 --out "$ANCHOR"     # phase 4 = PLACE
@@ -131,7 +132,10 @@ output, `raw-conclusions-<basket>.json` (written by `set_finding_type()`, read b
 manifest row per finding (a chat can carry several):
 ```bash
 # every human-typed finding, straight from the coalesced reader output — never the map's old flags
-python3 - "$MAP" "$T" <<'PY'
+# ⛔ scratchfile, not scratch: `scratch filer-manifest.json` would create a DIRECTORY of that name
+# and the json.dump below would die on it.
+MANIFEST="$(python3 "$ROOT/shared/paths.py" scratchfile filer filer-manifest.json)"
+python3 - "$MAP" "$T" "$MANIFEST" <<'PY'
 import json, sys, os
 sys.path.insert(0, sys.argv[2])
 import pipeline
@@ -158,7 +162,7 @@ for basket in sorted(m.get("baskets", {})):
                             "finding_type": ftype})
 print(f"{len(keepers)} typed finding(s) across {len(set(k['basket'] for k in keepers))} pile(s)"
       + (f"  ·  ⚠ {untyped} UNTYPED — back to Phase 3, do not file blind" if untyped else ""))
-json.dump(keepers, open("/tmp/filer-manifest.json","w"), indent=0)
+json.dump(keepers, open(sys.argv[3], "w"), indent=0)
 PY
 ```
 Tell the human, plainly: *"I've got everything you kept — {N} notes across {M} topics. Nothing's saved yet; you'll
@@ -312,13 +316,14 @@ project's own / `[INFERRED]` canon — treat its first pick skeptically and pref
 in SCHEMA / the pile's `folder_branch` from Phase 3.
 ```bash
 # one row per keeper: {title, home:"desk/folder", kind:"record|dated|pointer|canon", why, date (kind=dated only)}
-#   — build this from your SCHEMA proposals + /tmp/filer-manifest.json (finding_type: canonical→"canon",
+#   — build this from your SCHEMA proposals + $MANIFEST (finding_type: canonical→"canon",
 #     dated→"dated", record→"record"; a pointer is a placement CALL you make at 4.4, not a finding_type)
 #   — "home" is archivist-route's #1 ranked candidate, decided NOW — this is the ONLY place `home` is computed
-cat > /tmp/filer-plan.json <<'JSON'
+PLAN="$(python3 "$ROOT/shared/paths.py" scratchfile filer filer-plan.json)"
+cat > "$PLAN" <<'JSON'
 [ {"title":"…","home":"money/records","kind":"record","why":"…"}, … ]
 JSON
-python3 $T/filer_review.py show --plan /tmp/filer-plan.json --map "$MAP"
+python3 $T/filer_review.py show --plan "$PLAN" --map "$MAP"
 ```
 `filer_review.py` renders it through the ONE shared screen template (title + %-bar → **SAVE** rows → the ONE
 action last), records/pointers first and canon-candidates LAST, each flagged **⚠** so the human can see at a
@@ -348,7 +353,7 @@ collapsed, never re-format the rows into prose.
 For each CONFIRMED item, in the safest-first order:
 
 **A. Reuse the approved home — NEVER re-rank it here.** The home was already ranked ONCE, at `4.3`, before the
-human approved this exact plan (`/tmp/filer-plan.json`'s `home` field) — that ranking + the human's approval
+human approved this exact plan (`$PLAN`'s `home` field) — that ranking + the human's approval
 of it IS `archivist-route`'s "caller surfaces them for the human's one-tap pick, then writes" (its contract,
 cited above). Calling `archivist-route` again here would rank a DIFFERENT home than the one the human just
 signed off on and write the file somewhere they never saw — the file written must be the file approved. Take
