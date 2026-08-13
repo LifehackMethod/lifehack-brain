@@ -41,7 +41,12 @@ import sys
 # ⭐ THIS FILE RE-TYPED IT ANYWAY, HOURS AFTER THE FIX SHIPPED — the eighth instance, caught by the
 # lead re-running the helper's work rather than reading its report. That is the whole argument for
 # the shared module: the rule is only obeyed when it cannot be forgotten.
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# ⛔ This added `system/tools/` — the directory THIS file sits in — while `verdicts.py`
+# lives at `shared/emit/`. Every invocation, `--help` included, died on
+# ModuleNotFoundError. The shared module only stops the rule being forgotten if the
+# path to it is right.
+_REPO = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+sys.path.insert(0, os.path.join(_REPO, "shared", "emit"))
 from verdicts import CANNOT_READ
 
 # Id shape this repo writes: W11.3, T27.1, F3.1, 15.2, T8.1b (0-2 leading caps,
