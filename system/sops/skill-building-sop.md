@@ -32,7 +32,7 @@ reader_note: >
 >
 > Named here rather than discovered one dead link at a time.
 >
-> - ⛔ `records/research/2026-07-25-code-vs-llm-enforcement-split.md` · `state/debt-ledger.md` · `state/projects/claudeops-cowork/brief.md` · `state/projects/cowork-bulk-ingestion/brief.md` · `state/projects/huddle/huddle-skill/brief.md` · `state/projects/infrastructure/claudeops-correct-architecture/brief.md` · `state/projects/ingest-skill/brief.md` · `state/projects/project-system/brief.md` · `state/projects/security/security-hardening/brief.md` · `state/projects/security/sentinel-gateway/records/2026-07-03-reader-actor-enforcement-proof.md` · `state/projects/skill-builder/brief.md` · `state/projects/skill-system/brief.md` · `state/projects/translator-voice/brief.md` — records in the author's own notes folder, cited as where a lesson was
+> - ⛔ `records/research/2026-07-25-code-vs-llm-enforcement-split.md` · `state/debt-ledger.md` · `state/projects/lifehack-cowork/brief.md` · `state/projects/cowork-bulk-ingestion/brief.md` · `state/projects/huddle/huddle-skill/brief.md` · `state/projects/infrastructure/lifehack-correct-architecture/brief.md` · `state/projects/ingest-skill/brief.md` · `state/projects/project-system/brief.md` · `state/projects/security/security-hardening/brief.md` · `state/projects/security/sentinel-gateway/records/2026-07-03-reader-actor-enforcement-proof.md` · `state/projects/skill-builder/brief.md` · `state/projects/skill-system/brief.md` · `state/projects/translator-voice/brief.md` — records in the author's own notes folder, cited as where a lesson was
 >   learned. Not in any repository, and not needed: the evidence is in the rule.
 
 > ## ⓘ WHAT THIS PAGE POINTS AT THAT IS NOT IN THIS REPOSITORY
@@ -46,7 +46,7 @@ reader_note: >
 > is complete without the citation.
 >
 > - ⛔ **Evidence in the author's own notes** — every lesson here cites the project record where it
->   was learned, and those live under a personal notes folder, not in any repository: `records/2026-07-13-translator-voice-debug-history.md` · `records/decision/2026-06-04-design-claudeops-skill.md` · `records/decision/2026-06-27-numbers-integrity-enforcement.md` · `records/decision/2026-07-02-plans-backup-hole-postmortem.md` · `records/decision/2026-07-13-scratchpad-in-brief.md` · `records/decision/2026-07-13-statusbar-hud-build.md` · `records/decision/2026-07-28-model-efficiency-plan-abandoned.md` · `records/decisions/2026-07-17-claudegate-two-way-overwrite.md` · `records/insight/2026-08-01-agent-name-discards-report.md` · `records/insight/2026-08-05-the-code-llm-seam.md` · `records/log/2026-05-30-datagate-websearch-automation.md` · `records/log/2026-05-31-claudeops-v2-audit.md` · `records/log/2026-06-03-relay-ghost-root-cause-fix.md` · `records/log/2026-06-07-overmyshoulder-dev-browser-root-cause.md` · `records/logs/2026-05-26-cross-machine-sync-infrastructure.md` · `records/reference/2026-07-12-stage2-email-interpret-method.md` · and 13 more of the same kind.
+>   was learned, and those live under a personal notes folder, not in any repository: `records/2026-07-13-translator-voice-debug-history.md` · `records/decision/2026-06-04-design-lifehack-skill.md` · `records/decision/2026-06-27-numbers-integrity-enforcement.md` · `records/decision/2026-07-02-plans-backup-hole-postmortem.md` · `records/decision/2026-07-13-scratchpad-in-brief.md` · `records/decision/2026-07-13-statusbar-hud-build.md` · `records/decision/2026-07-28-model-efficiency-plan-abandoned.md` · `records/decisions/2026-07-17-claudegate-two-way-overwrite.md` · `records/insight/2026-08-01-agent-name-discards-report.md` · `records/insight/2026-08-05-the-code-llm-seam.md` · `records/log/2026-05-30-datagate-websearch-automation.md` · `records/log/2026-05-31-lifehack-v2-audit.md` · `records/log/2026-06-03-relay-ghost-root-cause-fix.md` · `records/log/2026-06-07-overmyshoulder-dev-browser-root-cause.md` · `records/logs/2026-05-26-cross-machine-sync-infrastructure.md` · `records/reference/2026-07-12-stage2-email-interpret-method.md` · and 13 more of the same kind.
 >   The lesson is complete without them; the path was the filing location of the original write-up.
 > - ✅ **The shared-primitives library — SIX OF THESE HAVE SINCE LANDED, and this line was corrected
 >   rather than left to rot.** `system/parts/` now exists here and holds
@@ -75,7 +75,7 @@ reader_note: >
 > day `/ship` and `/skill-builder` landed. `system/tools/citation_lint.py` catches exactly this and is
 > what caught it; re-run it after anything crosses.
 
-**How to build a ClaudeOps skill that fires when it should, runs the right flow, obeys its own procedure, and
+**How to build a Lifehack skill that fires when it should, runs the right flow, obeys its own procedure, and
 holds the line over a long session — without over-building.**
 
 ## 🧭 ROUTE — find your question, not the outline
@@ -304,7 +304,7 @@ position is the second, plus the verification machinery in PART V that neither h
 > **WHAT STILL STANDS, and why the section is kept rather than deleted:** the HELD/ERODED table's *held* half
 > is real data · the two-sided tell (the fifth `elif`; "be thorough") is correct and still cited · the
 > membership half was independently corroborated by `records/research/2026-07-25-code-vs-llm-enforcement-split.md`
-> (four blind angles, all blind to ClaudeOps). **Also note §II.2 already said "gradient leaks, binary holds"** —
+> (four blind angles, all blind to Lifehack). **Also note §II.2 already said "gradient leaks, binary holds"** —
 > this section partly re-derived doctrine that was already here, one altitude up.
 
 Everything above tells you **which side** a piece of work goes on. It does not tell you what the **handoff**
@@ -456,7 +456,7 @@ very row depends on is exactly that bet. Policy moves faster than architecture. 
   own comment saying it outright — *"CLAUDE_BIN is absolute — no PATH dependency."*
 - ⛔ **AUTH.** With the absolute path but a stripped env, `claude -p` returns
   **`Not logged in · Please run /login`** — measured. ✅ **FIX, also already the house pattern:** the
-  `TOKEN_FILE="$HOME/.config/claudeops/claude-oauth-token"` those same three runners use.
+  `TOKEN_FILE="$HOME/.config/lifehack/claude-oauth-token"` those same three runners use.
 - ⛔ **SCHEMA — PATH+AUTH fixed still doesn't buy you a valid shape.** `claude -p --json-schema` does
   **NOT** guarantee schema-valid output — Anthropic states this outright in GitHub issue
   `anthropics/claude-code#9058` (open). Issue `#23265` adds a reproducible cold-start bug (first call
@@ -533,7 +533,7 @@ two independent diagnoses.
 3. **Visual/experiential claims are proven by looking** — render to an image and read it; only a vision read
    counts as proof of visual layout.
 
-**The ClaudeOps form:** the `✅ phase N complete` marker is written **only by a checker script** that verified the
+**The Lifehack form:** the `✅ phase N complete` marker is written **only by a checker script** that verified the
 phase's required artifacts exist. The model never stamps its own homework. A completion claim is backed by a
 **side-effect check** (does the file exist, does the row read back) — because `[C]` a schema check happily passes
 a well-formed lie.
@@ -960,11 +960,11 @@ what they are: patterns worth building, not things to reach for today.
   replaced by a hard block (`exit 2`) redirecting to `/websearch`.
 - **[A36]** Tried: `block_primary_calendar.sh`'s `deny()` written to `exit 0` on both failure paths. Failed:
   `exit 0` **= ALLOW** — calendar-write protection was silently non-functional. `found 2026-05-31, fixed
-  2026-06-01` · `records/log/2026-05-31-claudeops-v2-audit.md` → `deny()` corrected to `exit 2`.
+  2026-06-01` · `records/log/2026-05-31-lifehack-v2-audit.md` → `deny()` corrected to `exit 2`.
 - **[A37]** Tried: three hooks (`observability_logger.sh`, `validate_on_write.sh`, `auto_register_skill.sh`)
   reading their PostToolUse payload from `$1`. Failed: the harness delivers payload via **STDIN, not `$1`** —
   **zero real entries captured despite 300+ daily calls.** `found 2026-05-31, fixed 2026-06-01` ·
-  `records/log/2026-05-31-claudeops-v2-audit.md` → read stdin via `$(cat)`.
+  `records/log/2026-05-31-lifehack-v2-audit.md` → read stdin via `$(cat)`.
 - **[B8]** Tried: `deny()` using `exit 0` inside a PreToolUse-style hook. Failed: fails **open** — the block
   JSON emits but the write still executes. `2026-06-17` ·
   `state/projects/security/security-hardening/brief.md:44-77` → `exit 2`.
@@ -995,12 +995,12 @@ what they are: patterns worth building, not things to reach for today.
   `records/insight/2026-08-01-agent-name-discards-report.md` → `system/hooks/guard_agent_return_channel.sh` +
   "don't name fan-out helpers at all."
 - **[B7]** Tried: polite prompt instructions as enforcement gates in a skill. Failed: "the AI reasons past
-  prose gates." `NO-DATE` · `state/projects/claudeops-cowork/brief.md:280-298` → external bash
+  prose gates." `NO-DATE` · `state/projects/lifehack-cowork/brief.md:280-298` → external bash
   `test -f GATE.ok || exit 1`, never skill prose.
 - **[B31]** Tried: having `/build` read all ~25 doctrine docs, or a prose "remember the rules" line. Failed:
   graded **D unanimously** by council — floods context (nobody reads a 22.8k-word file per build), and a
   prose reminder is what **LAW 3 above already names checkbox theater** (cross-ref, not restated). `2026-06-20`
-  · `state/projects/infrastructure/claudeops-correct-architecture/brief.md:351-390` → a slim
+  · `state/projects/infrastructure/lifehack-correct-architecture/brief.md:351-390` → a slim
   build-type → ≤3-docs router, fetch-not-recall.
 - **[B38]** Tried: adding a new RULE to a voice/style skill to fix reply length. Failed: "a rule says what to
   cut and gets nodded at" — this is **§II.2's "the model argues with rules"** playing out again (cross-ref);
@@ -1074,7 +1074,7 @@ what they are: patterns worth building, not things to reach for today.
 - **[A13]** Tried: a multi-agent "council" of same-model design-critique personas. Failed: "same-model
   personas don't reproduce independent reviewers" (cites Park 2024) — error amplification. **§IV.10 already
   states this** ("same-base-model agents share a homogeneity floor no prompt fully removes," cross-ref).
-  `2026-06-04` · `records/decision/2026-06-04-design-claudeops-skill.md` → one skill, 7 lenses as internal
+  `2026-06-04` · `records/decision/2026-06-04-design-lifehack-skill.md` → one skill, 7 lenses as internal
   sections.
 - **[A35]** Tried: a mechanical section-counter (≥5 bold headers = "reads like a report") as the sole
   wall-of-text detector. Failed: couldn't distinguish a mild wall from a genuinely good reply. `2026-07-12` ·
@@ -1140,7 +1140,7 @@ this stays the complete lookup, not filed under LOCAL where their binding scope 
   PRINTING, COUNTING, COMPARING and REFUSING are not" section exists to state** (cross-ref, line ~175) — not
   restated. `NO-DATE` · `state/projects/project-system/brief.md:91` → LLM-judgment section matching.
 - **[B9]** Tried: undocumented forks of one skill (plan-week / -browser / -deluxe / -noviz). Failed: drifted
-  silently, no single source of truth. `NO-DATE (LOG-01)` · `state/projects/claudeops-cowork/brief.md:280-298`
+  silently, no single source of truth. `NO-DATE (LOG-01)` · `state/projects/lifehack-cowork/brief.md:280-298`
   → one live skill per role, extended in place, versioned in frontmatter.
 - **[B12]** Tried: exempting encoded strings (base64 etc.) from the injection scanner. Failed: exploitable —
   attackers hide payloads in the exemption. `NO-DATE` · `state/projects/ingest-skill/brief.md:147-172` → the
@@ -1211,16 +1211,16 @@ though none of these bind a future build.
   state.
 - **[A14]** Tried: deferring aesthetics/component-design/accessibility to external plugin skills. Failed:
   dead pointers to tools the user doesn't use; live "which tool owns this?" confusion. `2026-06-04` ·
-  `records/decision/2026-06-04-design-claudeops-skill.md` → one comprehensive skill.
-- **[A15]** Tried: building design-claudeops as a slash COMMAND rather than a SKILL. Failed: reversed once
+  `records/decision/2026-06-04-design-lifehack-skill.md` → one comprehensive skill.
+- **[A15]** Tried: building design-lifehack as a slash COMMAND rather than a SKILL. Failed: reversed once
   auto-invocation became a hard requirement. `2026-06-04` ·
-  `records/decision/2026-06-04-design-claudeops-skill.md` → built as a skill.
+  `records/decision/2026-06-04-design-lifehack-skill.md` → built as a skill.
 - **[A16]** Tried: lifting the content of 73 downloaded `DESIGN.md` brand specs into the constraint kit.
   Failed: "it's all the easy part... the last mile is absent in all 73." `2026-06-04` ·
-  `records/decision/2026-06-04-design-claudeops-skill.md` → steal the container, author the craft rules
+  `records/decision/2026-06-04-design-lifehack-skill.md` → steal the container, author the craft rules
   ourselves.
 - **[A17]** Tried: two separate constraint-kit files (dashboard vs marketing). Failed: unnecessary
-  duplication. `2026-06-04` · `records/decision/2026-06-04-design-claudeops-skill.md` → one file, profile
+  duplication. `2026-06-04` · `records/decision/2026-06-04-design-lifehack-skill.md` → one file, profile
   toggle.
 - **[A18]** Tried: a "clear the gate" reset command + growth/archiving for ClaudeGate. Failed: moot — the
   overwrite design means the file never grows. `2026-07-17` ·
@@ -1275,7 +1275,7 @@ though none of these bind a future build.
   · `state/projects/ingest-skill/brief.md:182-183` → reversed into one skill.
 - **[B32]** Tried: a blocking/code-verified gate in v1 of the `/build` doctrine router. Failed: would halt
   background builds. `2026-06-20` ·
-  `state/projects/infrastructure/claudeops-correct-architecture/brief.md:351-390` → advisory v1 + a hook as a
+  `state/projects/infrastructure/lifehack-correct-architecture/brief.md:351-390` → advisory v1 + a hook as a
   named future seam.
 - **[B34]** Tried: a background watch loop for huddle "breadcrumbs." Failed: writes to a file the human can't
   see — "kills the live feed." `NO-DATE` · `state/projects/huddle/huddle-skill/brief.md:58-86` → `coord-wait`
@@ -1381,7 +1381,7 @@ into every session for nothing.
 
 ## III.2 — Declare its INTENT (three layers, written before anything else)
 
-**Why this exists.** In ClaudeOps the LLM *is* the runtime — a skill doesn't run by blind execution, it runs by a
+**Why this exists.** In Lifehack the LLM *is* the runtime — a skill doesn't run by blind execution, it runs by a
 fresh session **understanding** what the skill is for and acting on that. A skill that never states its own
 intent forces the session to **guess**, and guessing on a load-bearing skill is the failure mode this step
 prevents. This is `intent-doctrine.md`'s system-wide law ("every object declares why it exists") applied to
@@ -1577,7 +1577,7 @@ an evidence gap for a behavior gap.
 
 The paragraph above settles how to **grade** an unverifiable rule. It does not settle what to **do** about one,
 and stopping at INCONCLUSIVE is how a real gap gets filed as a paperwork problem. There is a third move, and
-**ClaudeOps has been using it for a year without naming it**:
+**Lifehack has been using it for a year without naming it**:
 
 > **When a rule's evidence surface is NOWHERE, do not check the BEHAVIOUR — take away the CAPABILITY, so the
 > failure cannot occur at all.**
@@ -1800,7 +1800,7 @@ blocking validator hook for a single genuinely critical gate.
 
 ## §IV.9 — Draw the Path Beat on the status bar (a skill's own HUD line)
 
-A leading/multi-stage skill can render its Path Beat on the **status bar** — a line ABOVE the locked ClaudeOps
+A leading/multi-stage skill can render its Path Beat on the **status bar** — a line ABOVE the locked Lifehack
 core (`proj · plan · scratch` + the `model · ctx · cost · desk` bar). The status-bar HUD *is* §IV.4's Path Beat
 made visible, drawn by the harness instead of the model.
 
@@ -1943,8 +1943,8 @@ obvious error.
 **What happened.** Our judge launched `claude -p` from a neutral `cwd` and its docstring called that a *"blind
 judge run … no project context."* It was not blind. **`claude -p` performs CLAUDE.md AUTO-DISCOVERY, which
 reaches `~/.claude/CLAUDE.md` from every directory.** A probe confirmed it live — the judge answered
-`sees_claudeops: true — organism map, safety rails, canon files loaded`. So **a judge deciding what ClaudeOps
-can enforce was holding ClaudeOps' own enforcement doctrine while deciding.** Three attempts to isolate it by
+`sees_lifehack: true — organism map, safety rails, canon files loaded`. So **a judge deciding what Lifehack
+can enforce was holding Lifehack' own enforcement doctrine while deciding.** Three attempts to isolate it by
 moving the cwd or by `--system-prompt` all failed: auth and context arrive through the same directory. The
 vendor's actual seam is the `--bare` flag.
 

@@ -12,14 +12,14 @@ authority: user
 
 # Intent Doctrine
 
-> **Purpose of this doc:** state the one law — that every object in ClaudeOps carries its INTENT — so a fresh,
+> **Purpose of this doc:** state the one law — that every object in Lifehack carries its INTENT — so a fresh,
 > memoryless session can act correctly on it. Read when **creating, auditing, or placing ANY object** (folder,
 > desk, canon, project, skill, hook, cron). Lives LOW (it governs how we *design* the OS, not every chat) — and
 > it declares its own purpose right here, eating its own dogfood. **Parent of `system/knowledge-altitude.md`**,
 > which is this same law applied to one case: knowledge placement.
 
 ## 1. The one law
-**Every object in ClaudeOps declares its INTENT, because the LLM is the runtime — and an LLM acts by
+**Every object in Lifehack declares its INTENT, because the LLM is the runtime — and an LLM acts by
 *understanding*, not by blind execution.**
 
 Dead code never needs to know why it exists; it runs deterministically regardless. But our runtime is an LLM

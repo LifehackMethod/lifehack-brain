@@ -1,6 +1,6 @@
 # Constraint Kit — what "good" looks like
 
-The ground truth `design-claudeops` checks against (critique) and builds from (build).
+The ground truth `design-lifehack` checks against (critique) and builds from (build).
 The skill **applies** these rules — it does not re-derive them. Container format stolen
 from the DESIGN.md spec (Google Stitch; ~70 shipped brand specs converged on it). The
 **Layout & IA** cargo (section A) is ours — that section is empty in all 73 brand specs,

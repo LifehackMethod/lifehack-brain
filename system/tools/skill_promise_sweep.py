@@ -40,7 +40,7 @@ CHECK_MODULE_PATH = os.path.join(TOOLS_DIR, "skill_promise_check.py")
 
 # system/tools/ -> repo root, the same relative-to-this-file convention shared/paths.py
 # and every other ported tool uses (never a hardcoded install path). Overridable via
-# --root / $CLAUDEOPS_ROOT for a session working against a different checkout.
+# --root / $LIFEHACK_ROOT for a session working against a different checkout.
 REPO_ROOT = os.path.normpath(os.path.join(TOOLS_DIR, "..", ".."))
 
 # This repo's skills live under .claude/skills/ (a real dir of per-item symlinks into the
@@ -112,7 +112,7 @@ def render_table(reports):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--root", default=os.environ.get("CLAUDEOPS_ROOT", REPO_ROOT))
+    ap.add_argument("--root", default=os.environ.get("LIFEHACK_ROOT", REPO_ROOT))
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
 

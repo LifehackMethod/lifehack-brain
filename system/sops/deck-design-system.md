@@ -1,14 +1,14 @@
-# Deck Design System — the ClaudeOps house rules for building presentations
+# Deck Design System — the Lifehack house rules for building presentations
 
-> **Scope: HOUSE-WIDE.** Every deck built in ClaudeOps — bootcamp lessons, consulting decks, client work.
+> **Scope: HOUSE-WIDE.** Every deck built in Lifehack — bootcamp lessons, consulting decks, client work.
 > **Read §0 before building a single slide.**
 
 > ## ⚠ THIS FILE IS RULES ONLY. IT IS NOT THE DESIGN SYSTEM.
 >
 > **The authoritative design system lives with the engine, not here:**
-> `_ClaudeOps/state/projects/ai-bootcamp-lesson1/deck/`
+> `_Lifehack/state/projects/ai-bootcamp-lesson1/deck/`
 > — `design-system.md` (tokens) · `layout-grammar.md` (which layout for which job + negative rules) ·
-> `decision-log.md` · `deck-workflow.md` · and the engine itself, `claudeops_deck.py`.
+> `decision-log.md` · `deck-workflow.md` · and the engine itself, `lifehack_deck.py`.
 >
 > **Those documents are generated from the real template by whoever builds against it — sampled from
 > rendered pixels and verified against a working build.** This file used to carry its own token table and
@@ -77,7 +77,7 @@ Adjacent terms: a **theme** is Google's technical container · a **slide master*
 
 ## §2 — The four documents a deck system must have
 
-Any deck system in ClaudeOps produces these four, in its own `deck/` folder:
+Any deck system in Lifehack produces these four, in its own `deck/` folder:
 
 1. **`design-system.md`** — the tokens. Every value as a number, never a description.
 2. **`layout-grammar.md`** — **the one that never exists and always matters.** Per layout: its name, its
@@ -93,7 +93,7 @@ Any deck system in ClaudeOps produces these four, in its own `deck/` folder:
 prove nothing** — every defect in the 2026-08-01 build was found by looking at a rendered image, none by
 reading JSON.
 
-*(Note: `Read` on a PNG in `/tmp` is blocked by `ingest_gate_enforce.sh`. Copy renders into a `_ClaudeOps/`
+*(Note: `Read` on a PNG in `/tmp` is blocked by `ingest_gate_enforce.sh`. Copy renders into a `_Lifehack/`
 folder first.)*
 
 **A useful, proven method for learning an unfamiliar template:** render all its slides to PNG, hand them to

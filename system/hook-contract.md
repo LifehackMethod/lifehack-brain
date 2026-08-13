@@ -20,7 +20,7 @@ Every hook must open with this block immediately after the shebang:
 # ─────────────────────────────────────────────────────────────────────────────
 ```
 
-**REDIRECT must be specific.** "See ClaudeOps architecture" is not a redirect.
+**REDIRECT must be specific.** "See Lifehack architecture" is not a redirect.
 Give Claude the exact path, ID, or command it needs to recover.
 
 **SIGNPOST — mandatory.** A hook's purpose is not just to BLOCK — it is to

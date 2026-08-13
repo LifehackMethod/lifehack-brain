@@ -52,7 +52,7 @@ counter-pressure: **pointers up high, content down low.** It does for LINES what
 ## The targets (the always-loaded layers — the scarce summit space)
 Only the layers that load EVERY session, where bloat is most expensive. In altitude order:
 1. **Global** `~/.claude/CLAUDE.md` (the summit — loads every session, every machine, cwd-independent).
-2. **Root shell** `_ClaudeOps/CLAUDE.md` (loads every ClaudeOps session).
+2. **Root shell** `_Lifehack/CLAUDE.md` (loads every Lifehack session).
 3. **Each desk** `$ROOT/desks/{desk}/CLAUDE.md` + `<notes>/desks/{desk}/canon/current.md` (loads every conversation in that desk).
 Do NOT walk deep sub-folder canon here — that's "sea level, thick air, cheap" (a fat low canon is fine by design).
 This pass is about the layers whose every line is paid for on every load.

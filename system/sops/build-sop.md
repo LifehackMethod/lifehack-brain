@@ -21,7 +21,7 @@ authority: user
 > **⛔ None of it is coming**, and none of it is needed: where a rule cites one, the evidence is IN
 > the rule. The path was only ever the filing location of the original write-up.
 >
-> - ⛔ `records/2026-07-13-translator-voice-debug-history.md` · `records/decision/2026-06-04-design-claudeops-skill.md` · `records/decision/2026-07-13-statusbar-hud-build.md` · `records/decision/2026-07-28-model-efficiency-plan-abandoned.md` · `records/log/2026-08-07-project-arming-lock-adversarial-audit.md` · `records/reference/2026-07-12-stage2-email-interpret-method.md` · `state/projects/claudeops-cowork/brief.md` · `state/projects/huddle/huddle-skill/brief.md` · `state/projects/ingest-skill/brief.md` · `state/projects/project-system/brief.md` · `state/projects/skill-builder/records/2026-08-07-dead-end-harvest.md` · `state/projects/skill-system/brief.md` · `state/projects/translator-voice/brief.md`
+> - ⛔ `records/2026-07-13-translator-voice-debug-history.md` · `records/decision/2026-06-04-design-lifehack-skill.md` · `records/decision/2026-07-13-statusbar-hud-build.md` · `records/decision/2026-07-28-model-efficiency-plan-abandoned.md` · `records/log/2026-08-07-project-arming-lock-adversarial-audit.md` · `records/reference/2026-07-12-stage2-email-interpret-method.md` · `state/projects/lifehack-cowork/brief.md` · `state/projects/huddle/huddle-skill/brief.md` · `state/projects/ingest-skill/brief.md` · `state/projects/project-system/brief.md` · `state/projects/skill-builder/records/2026-08-07-dead-end-harvest.md` · `state/projects/skill-system/brief.md` · `state/projects/translator-voice/brief.md`
 
 > Loaded on-demand by the `/build` skill — NOT always-on. Apply the **General** do's to ANY build;
 > read a **domain** section only when it applies. Append lessons here as builds teach them — this is
@@ -68,7 +68,7 @@ authority: user
 
 - **No silent demotion carries into execution — the close must be honest.** The plan's No-Silent-Demotion guard (`architecture-planning-sop.md`) stops in-scope work being hidden at plan-time; the executor must not re-open the leak at run-time. Two rules: (1) **never quietly skip/defer an in-scope task** — that's a checkpoint, not a silent drop; default is build-it-now, deferral needs a reason AND the user's OK; (2) **never report a build "done" while any in-scope `Phase ▸ Feature ▸ Task` is unbuilt** — reconcile every task ✅/✗, name every ✗ LOUD with its reason at the TOP of the report, treat a partial as ✗, and file it to OPEN LOOPS. A task you didn't mention is assumed built; silence-as-completion is the exact months-later failure. (Full mechanism: `/build` SKILL → "No illusion of completion.")
 
-- **When a ruling is overturned, the ⛔ RULED-OUT / DON'T-RETRY board is a MANDATORY search target — not just the document that demoted it.** A ruling that survives on that board outranks the doc it was demoted in: it will kill the same idea on sight, forever, until the board itself is corrected. `system/schemas/project-doc-schema.md` defines that bucket in EVERY ClaudeOps brief, so **the hole is system-wide, not one brief's quirk** — any demotion/overturn pass must grep the RULED-OUT bucket itself, not just the section being edited. **Measured: a demotion pass found a THIRD surviving copy at `brief.md:995` that the session had missed.**
+- **When a ruling is overturned, the ⛔ RULED-OUT / DON'T-RETRY board is a MANDATORY search target — not just the document that demoted it.** A ruling that survives on that board outranks the doc it was demoted in: it will kill the same idea on sight, forever, until the board itself is corrected. `system/schemas/project-doc-schema.md` defines that bucket in EVERY Lifehack brief, so **the hole is system-wide, not one brief's quirk** — any demotion/overturn pass must grep the RULED-OUT bucket itself, not just the section being edited. **Measured: a demotion pass found a THIRD surviving copy at `brief.md:995` that the session had missed.**
 
 - **Never put backticks in a `git commit -m` message under zsh — they command-substitute.** zsh runs
   `` `word` `` as a command, so the quoted identifiers are silently dropped from the message (and you get
@@ -104,8 +104,8 @@ authority: user
   every one fail-safes → thrash. (2026-07-12 intake backfill: ~5 of ~200 records in 15 min this way.) **FIX:**
   bundle ~10–15 items into ONE prompt/call — amortizes the cold-start (~29s for a bundle of 12 vs ~7 min
   one-at-a-time, a ~15× win). Verdict-only batching + a precise second pass for the rare hit keeps it simple.
-  If an `ANTHROPIC_API_KEY` exists, prefer the direct API (no cold-start at all) — but ClaudeOps runs on a
-  **subscription, so usually there is NO API key** (checked env, `~/.config/claudeops/secrets/`, keychain). Also:
+  If an `ANTHROPIC_API_KEY` exists, prefer the direct API (no cold-start at all) — but Lifehack runs on a
+  **subscription, so usually there is NO API key** (checked env, `~/.config/lifehack/secrets/`, keychain). Also:
   a **SUBAGENT shelling `claude -p` double-nests and times out worse** — run bulk `claude -p` from the MAIN
   session, not a spawned agent. **This is the textbook case for the "prove the cheap risky integration on a
   synthetic input FIRST" rule above:** ONE timed batch would have exposed the cold-start cost in 30 seconds
@@ -235,7 +235,7 @@ authority: user
 - **Never launch a watchable run detached.** `nohup … &` makes the run invisible in the operator's
   window. Use `python3 -u` or the Agent tool so progress is observable.
 
-- **Quote every Drive path.** The ClaudeOps Drive root contains a space (`"My Drive"`). An unquoted
+- **Quote every Drive path.** The Lifehack Drive root contains a space (`"My Drive"`). An unquoted
   path dies mid-argument — and it fails in a way that looks like a different bug entirely.
 
 ## Measurement — sizing, grading, and pricing an experiment
@@ -547,7 +547,7 @@ authority: user
   / `AttributeError` case) — go read that bullet, not restated here.
 - **A13 — a multi-agent "council" of same-model design-critique personas.** FAILED: "same-model
   personas don't reproduce independent reviewers" (cites Park 2024) — error amplification. `2026-06-04`
-  · `records/decision/2026-06-04-design-claudeops-skill.md`. REPLACED-BY: one skill, 7 lenses as
+  · `records/decision/2026-06-04-design-lifehack-skill.md`. REPLACED-BY: one skill, 7 lenses as
   internal sections. `UNIVERSAL`
 - **A35 — a mechanical section-counter (>=5 bold headers = "reads like a report") as the sole
   wall-of-text detector.** FAILED: couldn't distinguish a mild wall from a genuinely good reply.
@@ -594,7 +594,7 @@ authority: user
   level" — measured, no effect. `NO-DATE` · `state/projects/skill-system/brief.md:122-136`. REPLACED-BY:
   abandoned. `UNIVERSAL`
 - **B7 — polite prompt instructions as enforcement gates in a skill.** FAILED: "the AI reasons past
-  prose gates." `NO-DATE (LOG-04)` · `state/projects/claudeops-cowork/brief.md:280-298`. REPLACED-BY:
+  prose gates." `NO-DATE (LOG-04)` · `state/projects/lifehack-cowork/brief.md:280-298`. REPLACED-BY:
   an external bash gate (`test -f GATE.ok || exit 1`), never skill prose. `UNIVERSAL` — same family as
   the "prose reminder is fakeable checkbox theater" finding in General's build-router bullet.
 

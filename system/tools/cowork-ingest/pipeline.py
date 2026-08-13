@@ -2220,7 +2220,7 @@ def validate_turn_outcome(value):
 
 def propose_folder_shape(basket, subjects, page_size=10):
     """9.6.5 — TURN 5's LAYOUT MECHANICS. the author's ruling, 2026-08-05, `authority: user`
-    (restated in full right here, not a pointer into `system/knowledge-altitude.md` — a ClaudeOps-internal
+    (restated in full right here, not a pointer into `system/knowledge-altitude.md` — a Lifehack-internal
     doctrine file this repo does not ship; [5.2.1], 2026-08-11): too BIG -> subdivide (nest, same territory, more shelves
     beneath it); too DIVERSE -> separate (siblings, NOT nested — mutually irrelevant bodies of knowledge
     degrade each other if loaded together). WHICH subjects are diverse vs. which are just a big single

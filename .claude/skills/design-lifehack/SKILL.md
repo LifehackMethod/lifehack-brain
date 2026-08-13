@@ -1,9 +1,9 @@
 ---
 topic: [status-dashboard, skill-design]
-name: design-claudeops
+name: design-lifehack
 description: "Use to design, critique, redesign, or tweak any dashboard, app, or data-facing UI — including a status board of your own. Fires when a view \"feels off,\" when you say \"I don't like this\" but can't say why, when reviewing a screenshot, or when asked what a view should show, how to structure it, or how to make it better. The Whisperer — a detective that finds WHICH desired-outcome a view violates and WHERE, then fixes it while preserving the locked look."
-skill: design-claudeops
-title: The Whisperer (design-claudeops)
+skill: design-lifehack
+title: The Whisperer (design-lifehack)
 shape: interactive-workflow
 anchor: ANCHOR.md
 status: active
@@ -104,7 +104,7 @@ Your FIRST action on invocation. The Skill Anchor hook then re-injects your spin
 every turn, so you keep LEADING instead of drifting into following the client as the session grows long:
 
 ```bash
-bash "$ROOT/system/hooks/skill_anchor.sh" arm design-claudeops "$ROOT/.claude/skills/design-claudeops/ANCHOR.md"
+bash "$ROOT/system/hooks/skill_anchor.sh" arm design-lifehack "$ROOT/.claude/skills/design-lifehack/ANCHOR.md"
 ```
 
 When this session's design work is done, clear it (a 12h TTL backstops if you forget):
@@ -259,7 +259,7 @@ turn. One teach-back per concept per turn.
 
 A "dashboard" = its design folder. A project-anchored cartridge lives at
 `<notes>/state/projects/{slug}/design/` — see Gate A below; a standalone one lives wherever you put it,
-deliberately. `/design-claudeops <name>` loads that binder; it is your working state,
+deliberately. `/design-lifehack <name>` loads that binder; it is your working state,
 **read every turn, pruned not append-only.** Standard docs:
 
 - `design-system.md` — the LOCKED skin (colors, type, card hierarchy).

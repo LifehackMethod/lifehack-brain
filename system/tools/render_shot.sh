@@ -1,7 +1,7 @@
 #!/bin/bash
 # render_shot.sh — Render an HTML file (or URL) to a PNG so Claude can SEE it.
 #
-# Purpose: closes the design-claudeops see->critique->iterate loop WITHOUT a
+# Purpose: closes the design-lifehack see->critique->iterate loop WITHOUT a
 # human. The skill builds an HTML dashboard, calls this to render it to a PNG,
 # then `Read`s the PNG and critiques its own work — no over-the-shoulder, no
 # live browser, no extension, no human screenshotting by hand.

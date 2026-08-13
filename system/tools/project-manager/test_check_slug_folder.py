@@ -37,10 +37,10 @@ class Detects(unittest.TestCase):
 
     def test_a_mismatched_leaf_is_reported(self):
         checked, bad = csf.check(rows(
-            "root | claudeops-organism | Organism | active | state/projects/organism-build"))
+            "root | lifehack-organism | Organism | active | state/projects/organism-build"))
         self.assertEqual(checked, 1)
         self.assertEqual(len(bad), 1)
-        self.assertEqual(bad[0][0], "claudeops-organism")
+        self.assertEqual(bad[0][0], "lifehack-organism")
         self.assertEqual(bad[0][1], "organism-build")
 
     def test_a_row_ending_in_brief_md_compares_the_folder_not_the_file(self):

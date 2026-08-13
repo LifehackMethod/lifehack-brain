@@ -223,7 +223,7 @@ in a browser tab.
      protections (3–4 passes + cleanup).
 5. **The line (the documented regret pattern):** data-driven formatting (conditional formatting, set-once
    header styles) is reliable. Visual/layout **precision** is not what a spreadsheet is for → that goes to
-   **HTML**, which renders instantly and has a real layout engine. ✅ `/design-claudeops` is built for
+   **HTML**, which renders instantly and has a real layout engine. ✅ `/design-lifehack` is built for
    HTML and not for Sheets — don't run the design swamp inside a grid.
 
 ## Pointers

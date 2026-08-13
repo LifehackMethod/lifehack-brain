@@ -112,9 +112,9 @@ run "a whole-column update"   2 "$WRITES" "gws sheets spreadsheets values update
 run "structural batchUpdate"  2 "$WRITES" "gws sheets spreadsheets batchUpdate --params '{\"spreadsheetId\":\"$SID\"}'"
 echo "   the confirmation marker is the only way past, and it must be the NEW name"
 run "with the confirm marker" 0 "$WRITES" "LIFEHACK_SHEET_CONFIRM=1 gws sheets spreadsheets values clear --params '{\"spreadsheetId\":\"$SID\",\"range\":\"Data!A:Z\"}'"
-# The donor's marker was CLAUDEOPS_SHEET_CONFIRM. If both were honoured, a stale command copied from
+# The donor's marker was LIFEHACK_SHEET_CONFIRM. If both were honoured, a stale command copied from
 # old notes would silently keep its bypass and nobody would learn the name had changed.
-run "the retired marker"      2 "$WRITES" "CLAUDEOPS_SHEET_CONFIRM=1 gws sheets spreadsheets values clear --params '{\"spreadsheetId\":\"$SID\",\"range\":\"Data!A:Z\"}'"
+run "the retired marker"      2 "$WRITES" "LIFEHACK_SHEET_CONFIRM=1 gws sheets spreadsheets values clear --params '{\"spreadsheetId\":\"$SID\",\"range\":\"Data!A:Z\"}'"
 echo "   creating a NEW sheet has no guide to read and nothing to destroy"
 run "create"                  0 "$WRITES" "gws sheets spreadsheets create --params '{\"title\":\"new\"}'"
 
@@ -136,7 +136,7 @@ import json; print(json.dumps({'tool_input':{'command':'gws sheets spreadsheets 
 printf '%s' "$MSG" | grep -q "_LLM_GUIDE" && ok || bad "deny names the tab to read" "$MSG"
 printf '%s' "$MSG" | grep -q "LIFEHACK_SHEET_CONFIRM" && ok || bad "deny names the current marker" "$MSG"
 printf '%s' "$MSG" | grep -q "google-sheet-sop.md" && ok || bad "deny names the rule" "$MSG"
-printf '%s' "$MSG" | grep -qv "CLAUDEOPS_SHEET_CONFIRM" && ok || bad "deny still names the retired marker" "$MSG"
+printf '%s' "$MSG" | grep -qv "LIFEHACK_SHEET_CONFIRM" && ok || bad "deny still names the retired marker" "$MSG"
 
 echo
 if [ "$fail" = 0 ]; then echo "RESULT: $pass passed, 0 failed."; echo "SHEET GUARDS GREEN"; exit 0

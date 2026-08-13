@@ -217,7 +217,7 @@ SUPPOSED to work, for the altitude doctrine and all of this stuff.")*
 ⭐ **THE BAR IS THE IDEAL SYSTEM, NOT THE OBSERVED ONE.** ⛔ A future session must **not** copy the shape of
 The author's own existing `desks/` tree as it stands — he has explicitly disowned it as containing junk.
 The target is the doctrine: the altitude rules **§C3 below** restates in full. *(⚠ [5.2.1], 2026-08-11:
-`system/knowledge-altitude.md` itself is a ClaudeOps-internal doctrine file — it is NOT shipped in this
+`system/knowledge-altitude.md` itself is a Lifehack-internal doctrine file — it is NOT shipped in this
 repo, so this no longer names it as something to go open; every test it states is already inlined at
 §C3 and in `pipeline.py`'s `propose_folder_shape()` docstring.)*
 
@@ -362,7 +362,7 @@ reaction to that failure. A spec clause that would let any of those three recur 
   > ⭐ **THE BRIDGE — added 2026-08-08, because this document states TWO outcomes and a cold reader hits them
   > as a contradiction.** The 2026-07-12 FRAME says the product is the EXPERIENCE (*"the reward is being seen,
   > not being finished"*); §0b and the 2026-08-04 reframe say the product is an ARTIFACT (*"the output is A
-  > PERSONAL FOLDER SCHEMA READY TO INTRODUCE INTO CLAUDEOPS"*). **Both are true, and this is how they fit:
+  > PERSONAL FOLDER SCHEMA READY TO INTRODUCE INTO LIFEHACK"*). **Both are true, and this is how they fit:
   > the SCHEMA is the DELIVERABLE; the REFLECTION is HOW THE SCHEMA BECOMES CORRECT.** A map of someone's
   > knowledge cannot be accurate unless that person corrects it, so the game is not decoration on the output —
   > it is the accuracy mechanism that produces it. ⇒ **This is why PHASE 3 is the heart of the skill and not a

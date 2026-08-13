@@ -4,7 +4,7 @@
 Writes desks/cal/diary/YYYY/MM/DD.md from sources that ALREADY EXIST — no new emit jobs,
 NO LLM (mechanical + ported only):
   - system/journal.md   : entry rows + session blocks for the date, grouped by desk
-                          (this is "what got built/debugged/decided", cross-desk incl. ClaudeOps)
+                          (this is "what got built/debugged/decided", cross-desk incl. Lifehack)
                           FORMAT-TOLERANT by contract — the journal writes six shapes and all
                           six are read; see "JOURNAL FORMAT TOLERANCE" below before touching it.
                           Locked by system/tools/test_cal_diary_capture.py — run it after any edit.

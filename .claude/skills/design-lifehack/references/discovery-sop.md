@@ -100,5 +100,5 @@ is here.*
 
 The binder carries a **stage marker** that names **sub-scope, not just a number** ("Stage 6/6 — BUILD: Overview
 built · Flow/Archivist/Security STUB · 1 of 4 screens") — a bare "Stage X done" hides a partial build.
-`/design-claudeops <name>` reads it and resumes there (jump back on request). Decision-log + dated snapshots
+`/design-lifehack <name>` reads it and resumes there (jump back on request). Decision-log + dated snapshots
 already exist. **Never rename binder files mid-project** — that's a documented continuity bug.
