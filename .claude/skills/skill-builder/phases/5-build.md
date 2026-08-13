@@ -71,7 +71,7 @@ four-move opening and format rules; do not invent one and label it "verbatim."
 
 ├ 🙋 🤝 **5.4** ⑂ **THE FORK.** `→ CODE (A|B)`
 ```bash
-python3 .claude/skills/skill-builder/scripts/fork.py "<the human's raw answer>"
+python3 "$ROOT/.claude/skills/skill-builder/scripts/fork.py" "<the human's raw answer>"
 ```
 　· **A → amend the spec and re-check → BACK TO 5.2.**
 　· **B → proceed → CONTINUE TO 5.5.**
@@ -87,8 +87,8 @@ check anything — repeat the invocation rather than accept it.
 
 **RUNNABLE — the S1 seam check (SPEC.md §8h):**
 ```bash
-python3 system/parts/section_present.py \
-  --rules .claude/skills/skill-builder/scripts/seam-rules.json \
+python3 "$ROOT/system/parts/section_present.py" \
+  --rules "$ROOT/.claude/skills/skill-builder/scripts/seam-rules.json" \
   --artifact "<path to the plan file /autoplan just returned>"
 ```
 　· exit `0` → **PLAN-CITES-SOP** — `skill-building-sop.md` literally appears in the returned plan;
@@ -108,7 +108,7 @@ will be stopped.
 
 ├ 🙋 🤝 **5.8** ⑂ **THE FORK.** `→ CODE (A|B)`
 ```bash
-python3 .claude/skills/skill-builder/scripts/fork.py "<the human's raw answer>"
+python3 "$ROOT/.claude/skills/skill-builder/scripts/fork.py" "<the human's raw answer>"
 ```
 　· **A → the human says what to change, the plan is redone → BACK TO 5.5.**
 　· **B → CONTINUE TO 5.9.**
@@ -128,7 +128,7 @@ subject, so it has no door for "test skill X"; `run_tester.sh` reports its absen
 
 **RUNNABLE — the S3 seam check (SPEC.md §8h):**
 ```bash
-bash .claude/skills/skill-builder/scripts/run_tester.sh "<path to the built skill's directory>"
+bash "$ROOT/.claude/skills/skill-builder/scripts/run_tester.sh" "<path to the built skill's directory>"
 ```
 　· prints exactly one verdict line — `TESTER: PASSED` · `TESTER: FAILED` · `TESTER: NO-TESTER-RAN` —
 the closed three-member set for this seam, then a short note underneath of what it searched and what it

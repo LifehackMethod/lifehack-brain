@@ -18,6 +18,16 @@ summary: Mine a desk's records back-catalog for buried promotable insight + stal
 > `<notes>/`, never the code
 > clone. Sessions launch from the clone now, so resolve these against that absolute Drive root.
 
+## Paths (set once)
+
+```bash
+ROOT="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && pwd)"
+DATA="$(python3 "$ROOT/shared/brain_root.py" --quiet)" || {
+  echo "STOP: nobody has said where their notes live yet."
+  echo "Ask them, then: python3 $ROOT/shared/brain_root.py --set \"<that folder>\" --create"; exit 1; }
+```
+Documentation consistency with the rest of this skill family — `<notes>` above is `$DATA`, resolved
+here rather than left for a session to work out on its own initiative.
 
 Mine a desk's **records back-catalog** for buried, promotable insight + stale-bulk delete
 candidates. This is the standing Archivist's **reach** — the periodic deep pass the weekly
@@ -104,7 +114,8 @@ review command that does not exist. Write the queue, say where it is, and stop. 
 
 ## What this skill needs OUTSIDE its own folder
 
-**Nothing in this repo.** It reads your notes and writes a proposal queue into them
+**`shared/brain_root.py`** — the resolver for where `<notes>` points; not "nothing in this repo."
+It reads your notes and writes a proposal queue into them
 (`<notes>/records/proposals/`), which the next `/save` picks up.
 
 ⛔ **Its scheduled runner does NOT ship** — it needed a scheduler, a cloud folder id and a

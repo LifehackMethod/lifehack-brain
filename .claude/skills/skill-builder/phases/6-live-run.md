@@ -99,7 +99,7 @@ nothing is missing, say session B can be closed.
 
 ├ 🙋 🤝 **6.10** ⑂ **THE FORK.** `→ CODE (A|B)`
 ```bash
-python3 .claude/skills/skill-builder/scripts/fork.py "<the human's raw answer>"
+python3 "$ROOT/.claude/skills/skill-builder/scripts/fork.py" "<the human's raw answer>"
 ```
 　· **A → the human pastes the new prompt into session B and returns → BACK TO 6.7.**
 　· **B → session B is closed → CONTINUE TO 6.11.**
@@ -117,7 +117,7 @@ it.
 
 ├ 🙋 🤝 **6.13** ⑂ **THE FORK.** `→ CODE (A|B)`
 ```bash
-python3 .claude/skills/skill-builder/scripts/fork.py "<the human's raw answer>"
+python3 "$ROOT/.claude/skills/skill-builder/scripts/fork.py" "<the human's raw answer>"
 ```
 　· **A → redraft → BACK TO 6.11.**
 　· **B → CONTINUE TO 6.14.**

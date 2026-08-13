@@ -134,7 +134,7 @@ opening-moves doctrine instead.
 
 ├ 🙋 🤝 **4.8** ⑂ **THE FORK.** `→ CODE (A|B)`
 ```bash
-python3 .claude/skills/skill-builder/scripts/fork.py "<the human's raw answer>"
+python3 "$ROOT/.claude/skills/skill-builder/scripts/fork.py" "<the human's raw answer>"
 ```
 　· **A → the human rules on each tension** (accept the fix, reject it, or decide it differently)
 **→ CONTINUE TO 4.9.**

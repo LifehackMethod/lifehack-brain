@@ -143,7 +143,7 @@ unnumbered list forces them to restate a whole sentence to point at it.
 ├ 🙋 🤝 **3.7** ⑂ **THE FORK.** `→ CODE (A|B)` — this answer gates the phase, so it must be one of the
 two.
 ```bash
-python3 .claude/skills/skill-builder/scripts/fork.py "<the human's raw answer>"
+python3 "$ROOT/.claude/skills/skill-builder/scripts/fork.py" "<the human's raw answer>"
 ```
 　· **B → the human accepts these steps → SKIP TO 3.10.**
 　· **A → the human says what is wrong** (a step missing, one that does not belong, one in the wrong

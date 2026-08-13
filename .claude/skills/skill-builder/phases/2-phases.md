@@ -125,7 +125,7 @@ human …` — never a title-then-dash-then-fragment.
 ├ 🙋 🤝 **2.6** ⑂ **THE FORK.** `→ CODE (A|B)` — this answer gates the phase, so it must be one of the
 two, and an answer that is neither breaks loudly and re-asks.
 ```bash
-python3 .claude/skills/skill-builder/scripts/fork.py "<the human's raw answer>"
+python3 "$ROOT/.claude/skills/skill-builder/scripts/fork.py" "<the human's raw answer>"
 ```
 　· **B → the human is accepting the board as it stands → SKIP TO 2.9.**
 　· **A → the human says what is wrong** (reorder, merge, split, rename, rewrite a "done", or name

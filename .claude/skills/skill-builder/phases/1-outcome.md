@@ -147,7 +147,7 @@ plain language. Teach as you go (L9) and say where they are (L10).
 ⛔ Neither answer breaks loudly and re-asks — the human always knows the door is there.
 Read the human's raw answer through the fork reader (§8f's closed vocabulary, already built):
 ```bash
-python3 .claude/skills/skill-builder/scripts/fork.py "<the human's raw answer>"
+python3 "$ROOT/.claude/skills/skill-builder/scripts/fork.py" "<the human's raw answer>"
 ```
 Prints `A`, `B`, or `NO_OUTCOME` and exits non-zero on `NO_OUTCOME` — an unrecognised answer is never
 read as consent. On `NO_OUTCOME`, re-ask; do not guess which one they meant.
@@ -165,7 +165,7 @@ methods, wording — is version one and expected to change.
 **The brief IS the scratchpad** — there is no second place. A one-step skill gets neither brief nor
 plan. Arm/inspect it the way the rest of this system does:
 ```bash
-bash system/hooks/pm_flag.sh status   # names the armed brief, or `none`
+bash "$ROOT/system/hooks/pm_flag.sh" status   # names the armed brief, or `none`
 ```
 Waiting until the end of the phase means someone who walks away mid-conversation leaves no orphan file.
 

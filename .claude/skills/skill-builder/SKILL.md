@@ -23,6 +23,14 @@ updated_at: 2026-08-06
 
 **Starting this skill is a deliberate act** — it opens hours of work across several sessions.
 
+## Paths (set once)
+
+```bash
+ROOT="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && pwd)"
+```
+Every `scripts/`, `system/parts/` and `system/hooks/` call in the phase files below is `$ROOT`-anchored
+— a bare relative invocation only works when the shell happens to already sit at the repo root.
+
 ## Purpose
 
 A human describes what they want. This skill works out the phases, drafts what each one has to accomplish, shows its guesses, and lets the human correct what is wrong. Then it checks the result against the rulebook, has it planned, has it built, has it tested, and sends the human off to run it for real — and what breaks in that run comes back into the spec rather than into a patch.

@@ -18,6 +18,16 @@ summary: Line-level sink/split audit of the always-loaded layers against each ho
 > `<notes>/`, never the code
 > clone. Sessions launch from the clone now, so resolve these against that absolute Drive root.
 
+## Paths (set once)
+
+```bash
+ROOT="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && pwd)"
+DATA="$(python3 "$ROOT/shared/brain_root.py" --quiet)" || {
+  echo "STOP: nobody has said where their notes live yet."
+  echo "Ask them, then: python3 $ROOT/shared/brain_root.py --set \"<that folder>\" --create"; exit 1; }
+```
+Documentation consistency with the rest of this skill family — `<notes>` above is `$DATA`, resolved
+here rather than left for a session to work out on its own initiative.
 
 The **line-level sink/split audit** — the archivist's harness-leanness immune system. Re-tests existing lines in
 the always-loaded layers (global + root + desk `CLAUDE.md` / canon) against each home's declared `intent`, and
@@ -119,5 +129,5 @@ review command that does not exist. Write the queue, say where it is, and stop. 
 | what | where | status |
 |---|---|---|
 | the intent law it checks against | `system/intent-doctrine.md` | shipped |
-| the altitude law it checks against | `system/knowledge-altitude.md` | ⛔ does NOT ship — a donor-internal doctrine file. Where a rule needs it, the rule states it in full rather than pointing |
+| the altitude law it checks against | `system/knowledge-altitude.md` | shipped — 266 lines |
 | the guards it inventories | `system/hooks/` | shipped |
