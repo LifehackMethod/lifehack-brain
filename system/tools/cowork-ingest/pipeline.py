@@ -2217,49 +2217,59 @@ except ImportError as _brain_root_err:   # fail LOUD, never degrade — without 
     sys.exit("FATAL: cannot import brain_root from %s — the data-root resolver is missing. "
              "Fix: restore <repo>/shared/brain_root.py. (%s)" % (_SHARED_DIR, _brain_root_err))
 
+# ⬇ THE MACHINE-SHAPED PATHS (2026-08-12). `--map` used to be reconstructed in shell by every skill
+# and passed back in. It is derivable from the brain root and the corpus slug, so it is a DEFAULT
+# now, not a required argument — which is what lets a skill's command block be a bare invocation
+# with no shell variables in it, and therefore run under PowerShell as well as bash.
+try:
+    import paths as _paths
+except ImportError as _paths_err:        # same discipline as above: loud, never a guessed fallback
+    sys.exit("FATAL: cannot import paths from %s — the path resolver is missing. "
+             "Fix: restore <repo>/shared/paths.py. (%s)" % (_SHARED_DIR, _paths_err))
+
 
 def main():
     ap = argparse.ArgumentParser(description="shared brain for the ingest-1..4 chain")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    a1 = sub.add_parser("assert"); a1.add_argument("--map", required=True)
-    a2 = sub.add_parser("next"); a2.add_argument("--map", required=True)
-    ph = sub.add_parser("phase"); ph.add_argument("--map", required=True)
-    a3 = sub.add_parser("suggest"); a3.add_argument("--map", required=True)
+    a1 = sub.add_parser("assert"); a1.add_argument("--map")
+    a2 = sub.add_parser("next"); a2.add_argument("--map")
+    ph = sub.add_parser("phase"); ph.add_argument("--map")
+    a3 = sub.add_parser("suggest"); a3.add_argument("--map")
     a3.add_argument("--skill", required=True); a3.add_argument("--basket")
-    a4 = sub.add_parser("lock"); a4.add_argument("--map", required=True); a4.add_argument("--basket", required=True)
+    a4 = sub.add_parser("lock"); a4.add_argument("--map"); a4.add_argument("--basket", required=True)
     a4.add_argument("--machine", required=True); a4.add_argument("--skill", required=True)
     a4.add_argument("--now"); a4.add_argument("--ttl", type=int, default=1800)
-    a5 = sub.add_parser("unlock"); a5.add_argument("--map", required=True); a5.add_argument("--basket", required=True)
-    sc = sub.add_parser("scan"); sc.add_argument("--map", required=True); sc.add_argument("--file", required=True)
+    a5 = sub.add_parser("unlock"); a5.add_argument("--map"); a5.add_argument("--basket", required=True)
+    sc = sub.add_parser("scan"); sc.add_argument("--map"); sc.add_argument("--file", required=True)
     sc.add_argument("--guess", help="machine best-guess: toss | research | park (a HINT, not the ruling)")
     sc.add_argument("--summary", default="", help="the gate-sanitized one-line gist"); sc.add_argument("--now")
-    sk = sub.add_parser("skim"); sk.add_argument("--map", required=True); sk.add_argument("--file", required=True)
+    sk = sub.add_parser("skim"); sk.add_argument("--map"); sk.add_argument("--file", required=True)
     sk.add_argument("--verdict", required=True, help="toss | research | park | explore")
     sk.add_argument("--note", default="")
     sk.add_argument("--human-approved", action="store_true", help="REQUIRED for toss/park (they close the chat) — NOT needed for explore (closes nothing)"); sk.add_argument("--now")
-    rd = sub.add_parser("read"); rd.add_argument("--map", required=True); rd.add_argument("--file", required=True)
+    rd = sub.add_parser("read"); rd.add_argument("--map"); rd.add_argument("--file", required=True)
     rd.add_argument("--extraction"); rd.add_argument("--deep", action="store_true"); rd.add_argument("--now")
-    cm = sub.add_parser("commit-mark"); cm.add_argument("--map", required=True); cm.add_argument("--file", required=True); cm.add_argument("--now")
-    fl = sub.add_parser("flag"); fl.add_argument("--map", required=True); fl.add_argument("--file", required=True)
+    cm = sub.add_parser("commit-mark"); cm.add_argument("--map"); cm.add_argument("--file", required=True); cm.add_argument("--now")
+    fl = sub.add_parser("flag"); fl.add_argument("--map"); fl.add_argument("--file", required=True)
     fl.add_argument("--canon", choices=["true", "false"], help="DEEP-READ level-2: mark a canon-CANDIDATE (→ level-3 full read)")
     fl.add_argument("--pointer", choices=["true", "false"], help="DEEP-READ level-2: mark a big-but-only-a-record chat (→ pointer-ize, no full read)")
-    gi = sub.add_parser("giant"); gi.add_argument("--map", required=True); gi.add_argument("--file", required=True)
+    gi = sub.add_parser("giant"); gi.add_argument("--map"); gi.add_argument("--file", required=True)
     gi.add_argument("--sampled", choices=["true", "false"], help="DEEP-READ: this keeper was over the whole-read ceiling → SAMPLED head+tail (miner sets)")
     gi.add_argument("--ruled", choices=["true", "false"], help="the HUMAN's say-go that they saw it was sampled (unblocks the done-gate; needs --human-approved)")
     gi.add_argument("--human-approved", action="store_true", help="REQUIRED for --ruled true (only the human rules a sampled giant)")
     sc = sub.add_parser("sort-confirm", help="PHASE 1 CLOSE: the human has ruled the basket boundaries (the gate current_phase() reads)")
-    sc.add_argument("--map", required=True)
+    sc.add_argument("--map")
     sc.add_argument("--human-approved", dest="human_approved", action="store_true",
                     help="REQUIRED — only the human closes SORT; the miner can never set this")
     sc.add_argument("--now")
-    bs = sub.add_parser("basket-status"); bs.add_argument("--map", required=True); bs.add_argument("--basket", required=True); bs.add_argument("--status", required=True)
+    bs = sub.add_parser("basket-status"); bs.add_argument("--map"); bs.add_argument("--basket", required=True); bs.add_argument("--status", required=True)
     bs.add_argument("--work", help="work dir holding raw-conclusions-<basket>.json — the READER EVIDENCE the "
                                    "read-complete gate reads (defaults to $COWORK_WORK)")
     bs.add_argument("--require-world-map", dest="require_world_map", action="store_true",
                     help="force the PHASE 3 world-map gate (every finding typed + a folder_branch set) even if "
                          "this pile never started one — the switch Phase 3's driver flips when it ships")
     fb = sub.add_parser("folder-branch", help="PHASE 3: record the folder shape this pile earned (PHASE 4 reads it)")
-    fb.add_argument("--map", required=True); fb.add_argument("--basket", required=True)
+    fb.add_argument("--map"); fb.add_argument("--basket", required=True)
     fb.add_argument("--branch", required=True, nargs="+",
                     help="one or more folder paths this pile earned — pass SEVERAL space-separated when "
                          "propose_folder_shape() legitimately returned more than one (e.g. a nested subject "
@@ -2269,7 +2279,7 @@ def main():
     ft.add_argument("--index", type=int, required=True); ft.add_argument("--type", required=True, choices=list(FINDING_TYPES))
     ft.add_argument("--work", help="work dir holding raw-conclusions-<basket>.json (defaults to $COWORK_WORK)")
     wm = sub.add_parser("world-map-state", help="PHASE 4 reads this: the pile's folder branch + how many findings are typed")
-    wm.add_argument("--map", required=True); wm.add_argument("--basket", required=True)
+    wm.add_argument("--map"); wm.add_argument("--basket", required=True)
     wm.add_argument("--work", help="work dir holding raw-conclusions-<basket>.json (defaults to $COWORK_WORK)")
 
     # ── §9.6 THE WORLD MAP — TURN 1 (the paragraph) ─────────────────────────────────────────────
@@ -2319,7 +2329,7 @@ def main():
                     '"core"|"diverse"}, …] — relation is the semantic call; this only lays out the paths')
     fs.add_argument("--page-size", type=int, default=10)
 
-    bl = sub.add_parser("basket-list"); bl.add_argument("--map", required=True); bl.add_argument("--basket", required=True)
+    bl = sub.add_parser("basket-list"); bl.add_argument("--map"); bl.add_argument("--basket", required=True)
     bl.add_argument("--research", action="store_true", help="only skim_verdict=research (the chats going to DEEP-READ)")
     bl.add_argument("--keepers-only", action="store_true", help="alias of --research")
     bl.add_argument("--unscanned", action="store_true", help="SCAN: chats needing a slice-read (no gist yet, unruled)")
@@ -2328,11 +2338,11 @@ def main():
     bl.add_argument("--unskimmed", action="store_true"); bl.add_argument("--all", action="store_true")
     bl.add_argument("--files-only", dest="files_only", action="store_true", help="print ONLY the file keys, one per line (safe to read into a shell array — no parsing)")
     an = sub.add_parser("anchor"); an.add_argument("--map"); an.add_argument("--phase", required=True); an.add_argument("--basket"); an.add_argument("--out", required=True)
-    pr = sub.add_parser("progress"); pr.add_argument("--map", required=True); pr.add_argument("--just-did", dest="just_did"); pr.add_argument("--next", dest="next_action")
-    hu = sub.add_parser("hud"); hu.add_argument("--map", required=True)                       # F2.2: the one-line statusline HUD
-    hg = sub.add_parser("hud-grid"); hg.add_argument("--map", required=True); hg.add_argument("--active")  # the multi-line screen grid
-    br = sub.add_parser("brain"); br.add_argument("--map", required=True)                     # F2.3: the mined/filed/canon tally
-    rf = sub.add_parser("reflect"); rf.add_argument("--map", required=True); rf.add_argument("--basket", required=True)
+    pr = sub.add_parser("progress"); pr.add_argument("--map"); pr.add_argument("--just-did", dest="just_did"); pr.add_argument("--next", dest="next_action")
+    hu = sub.add_parser("hud"); hu.add_argument("--map")                       # F2.2: the one-line statusline HUD
+    hg = sub.add_parser("hud-grid"); hg.add_argument("--map"); hg.add_argument("--active")  # the multi-line screen grid
+    br = sub.add_parser("brain"); br.add_argument("--map")                     # F2.3: the mined/filed/canon tally
+    rf = sub.add_parser("reflect"); rf.add_argument("--map"); rf.add_argument("--basket", required=True)
     rf.add_argument("--in", dest="infiles", nargs="+", required=True, help="raw-conclusions JSON file(s) for this basket")
     rf.add_argument("--since", help="ISO ts: rows read/committed at-or-after this are 🆕 NEW this round")
     rf.add_argument("--brain-before", dest="brain_before", type=int, help="the mined count BEFORE this basket (for 'brain grew N→M')")
@@ -2340,13 +2350,13 @@ def main():
     co = sub.add_parser("coalesce")                                                          # F5.3: the reader→review seam
     co.add_argument("--dir", required=True, help="the dir agent_output.py wrote agent-<label>.json into")
     co.add_argument("--out", required=True, help="the single raw-conclusions-<basket>.json conclusions_review.py reads")
-    sv = sub.add_parser("salvage"); sv.add_argument("--map", required=True); sv.add_argument("--basket", required=True); sv.add_argument("--raw", required=True); sv.add_argument("--out", required=True)
-    rs = sub.add_parser("rescan"); rs.add_argument("--map", required=True); rs.add_argument("--basket", required=True)
-    hs = sub.add_parser("hash"); hs.add_argument("--map", required=True); hs.add_argument("--flat-dir", required=True)
-    rl = sub.add_parser("relink"); rl.add_argument("--map", required=True); rl.add_argument("--flat-dir", required=True)
+    sv = sub.add_parser("salvage"); sv.add_argument("--map"); sv.add_argument("--basket", required=True); sv.add_argument("--raw", required=True); sv.add_argument("--out", required=True)
+    rs = sub.add_parser("rescan"); rs.add_argument("--map"); rs.add_argument("--basket", required=True)
+    hs = sub.add_parser("hash"); hs.add_argument("--map"); hs.add_argument("--flat-dir", required=True)
+    rl = sub.add_parser("relink"); rl.add_argument("--map"); rl.add_argument("--flat-dir", required=True)
     bw = sub.add_parser("pad-init", help="PHASE 1 → scratchpad seam: create memory/<corpus>/scratchpad.md "
                         "seeded with PHASE 1's pile boundaries, or APPEND this sitting's entry if it exists")
-    bw.add_argument("--map", required=True)
+    bw.add_argument("--map")
     bw.add_argument("--corpus-id", dest="corpus_id", help="explicit corpus slug; if omitted, resolved from "
                     "the --map path's own shape (.../projects/<corpus>/work/<file>.json), then "
                     "$INGEST_CORPUS, then REFUSED — NEVER from the map's `source` field (that names the "
@@ -2368,7 +2378,7 @@ def main():
     tc.add_argument("--vocab", dest="vocab_path", help="explicit path to the topic vocabulary; defaults to <brain root>/memory/topic-vocab.md (theirs), then the legacy in-repo copy")
     ci = sub.add_parser("corpus-inherit-offered", help="ONCE-PER-RUN flag: the PHASE 2 inheritance offer "
                         "(`2.0c`) has been shown to the human — stops it re-asking on every pile")
-    ci.add_argument("--map", required=True)
+    ci.add_argument("--map")
     ci.add_argument("--now")
     ci.add_argument("--check", action="store_true",
                     help="just report whether it's already been offered (exit 0=yes, 1=not yet); "
@@ -2382,6 +2392,19 @@ def main():
     brt.add_argument("--quiet", action="store_true",
                      help="print ONLY the resolved path (for a shell to consume), or nothing + exit 1")
     a = ap.parse_args()
+
+    # ── `--map` DEFAULTS INSTEAD OF BEING REQUIRED (2026-08-12) ──────────────────────────────────
+    # Passing it explicitly still wins, so nothing that already supplies it changes behaviour. When
+    # it is omitted we derive it — the same value the ten shell preambles used to build by hand.
+    # ⛔ If the brain root is NOT-SET we STOP and name the fix. We do NOT fall back to the cwd or to
+    # a default folder: writing someone's notes somewhere they did not choose is the exact failure
+    # the resolver chain exists to prevent, and swallowing it here would hide it one level deeper.
+    if getattr(a, "map", None) is None and hasattr(a, "map"):
+        a.map = _paths.corpus_map()
+        if a.map is None:
+            sys.exit("STOP: no brain root is set, so there is nowhere to read or write.\n"
+                     "      Set it with:  %s %s --set \"<the folder they named>\" [--create]"
+                     % (_paths.interpreter(), os.path.join(_SHARED_DIR, "brain_root.py")))
 
     if a.cmd == "assert":
         # DURABILITY GUARD: a Drive conflict-copy next to the map = split-brain state → HALT before any skill reads.
