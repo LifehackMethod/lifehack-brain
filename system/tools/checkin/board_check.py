@@ -79,6 +79,30 @@ GROUND_HDR = re.compile(r'^\s*[*_>\s]*▲\s*ground\b', re.I)
 # reading this must resolve BOARD-CLEAN, never RUNG-ORPHANED.
 NO_TASK_PLANNED = re.compile(r'no\s+task\s+planned', re.I)
 
+# The ground rung has always had a way to say "deliberately empty" (NO_TASK_PLANNED above).
+# The three board buckets did not, so a natural placeholder — "- (nothing open right now)" —
+# counted as a real open item and the board reported work that does not exist.
+#
+# Prose cannot be guessed at safely here: "- (nothing open right now)" and "- Nothing ships
+# until pricing is signed off" open with the same word and only one is a placeholder. So this
+# matches on STRUCTURE, and needs both halves — the bullet opens with an emptiness word, AND
+# it is either fully bracketed or at most three words long. A real item starting with
+# "nothing" or "none" is longer and unbracketed, so it is never swallowed. Erring toward
+# counting an item is the safe direction: a spurious open item is visible, a dropped one is not.
+_EMPTY_WORD = re.compile(r'^(none|nothing|empty|n/?a|nil|no)\b', re.I)
+
+
+def is_empty_bucket_marker(line):
+    """True when a bullet only marks its bucket as deliberately empty."""
+    body = line.strip().lstrip('-*').strip()
+    if not body:
+        return False
+    bracketed = (body[0], body[-1]) in (('(', ')'), ('[', ']'))
+    inner = body[1:-1].strip() if bracketed else body
+    if not _EMPTY_WORD.match(inner):
+        return False
+    return bracketed or len(inner.split()) <= 3
+
 # "the plan says this is finished" — every shape a plan in the wild actually uses.
 #
 # ⚖ WIDENED 2026-08-11 (migration T1.10). The list below used to hold only the four shapes ONE
@@ -137,6 +161,8 @@ def open_items(brief):
         if BUCKET_END.match(l) and not OPEN_HDR.match(l):
             break
         if l.strip().startswith(("-", "*")):
+            if is_empty_bucket_marker(l):
+                continue   # an explicit "nothing here" marker is not an item
             out.append((i + 1, l))
     return out
 

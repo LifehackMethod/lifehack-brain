@@ -175,5 +175,35 @@ class DoesNotCryWolf(Base):
         self.assertEqual(rc, BOARD_CLEAN, out)
 
 
+class EmptyBucketMarker(unittest.TestCase):
+    """A bucket can say it is deliberately empty without that counting as work.
+
+    The ground rung already had this (`no task planned`); the three board buckets did not, so
+    "- (nothing open right now)" was counted as a real open item. The risk in fixing it is the
+    opposite error — swallowing a genuine item that happens to open with "nothing" or "none" —
+    so both directions are pinned here.
+    """
+
+    def marker(self, line):
+        sys.path.insert(0, HERE)
+        import board_check
+        return board_check.is_empty_bucket_marker(line)
+
+    def test_explicit_empty_markers_are_not_items(self):
+        for line in ("- (nothing open right now)", "- none", "- (none)", "- nothing yet",
+                     "- N/A", "- no items", "- [empty]", "* nothing"):
+            self.assertTrue(self.marker(line), f"should be treated as empty: {line!r}")
+
+    def test_real_items_starting_with_an_empty_word_still_count(self):
+        for line in ("- Nothing ships until pricing is signed off",
+                     "- none of the vendors replied, chase them",
+                     "- No decision yet on the pricing tier"):
+            self.assertFalse(self.marker(line), f"should stay an item: {line!r}")
+
+    def test_ordinary_items_are_unaffected(self):
+        for line in ("- fix the login bug", "- decide on pricing"):
+            self.assertFalse(self.marker(line), f"should stay an item: {line!r}")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

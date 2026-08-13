@@ -192,7 +192,7 @@ it survives her absence.
    advertises on its first page** — dies on the very same `FAIL: no batch file for vein` that Step 3's
    own `coalesce` was written to cure. Same disease, other branch:
    ```bash
-   python3 $T/pipeline.py coalesce-scan --map "$MAP" --basket "$BASKET"
+   python3 $T/pipeline.py coalesce-scan --map "$MAP" --basket "$BASKET" --work "$COWORK_WORK"
    ```
    It carries each SHORT keeper's SCAN finding into the file Step 5 reads. **Safe to run even when Step
    3 DID happen** — it only adds rows that are not already there, so when in doubt, run it.
@@ -201,7 +201,7 @@ it survives her absence.
    ("run the plumbing quietly, never read source") had no way to discover it. The ninth
    build-with-no-caller recorded in this system.
 
-5. **Dense confirm + STAGE the manifest.** `python3 $T/conclusions_review.py show --vein "$BASKET"` — relay the
+5. **Dense confirm + STAGE the manifest.** `python3 $T/conclusions_review.py show --vein "$BASKET" --work "$COWORK_WORK"` — relay the
    full dense list (every research chat, one NUMBERED row, incl. the giants marked *sampled*). Conclusions are
    GUESSES; the human confirms/corrects and may ADD net-new facts. Stage the confirmed findings to
    `$COWORK_WORK/extraction-$BASKET.json`, each read chat pointing at it (via the `read` calls above).
