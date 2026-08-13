@@ -1,6 +1,7 @@
-# Everything the person writes lives in memory/ and is theirs alone.
-# Ignore all of it; keep only the signpost README so the folder ships empty
-# and an update has nothing of theirs to overwrite.
+# LEGACY. Until 2026-08-12 the person's writing lived in memory/; it now lives in
+# data/ (see the block further down). This rule stays so that anyone who installed
+# before that date, or who puts something here by mistake, is still protected --
+# and memory/README.md now says plainly that this folder is not the place.
 memory/*
 !memory/README.md
 

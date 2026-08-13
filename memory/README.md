@@ -1,13 +1,15 @@
-# This folder is yours
+# This folder is a leftover. Your writing is NOT here.
 
-Everything you write lives here. Nothing we send you ever does.
+**Everything you write lives in `data/`**, in the folder you opened, beside this one.
 
-When you install an update, only the `system/` folder gets replaced. This one is
-left alone — your notes aren't part of the repository at all, so there's nothing
-here for an update to overwrite.
+This directory is left over from an earlier layout, before the tool started
+unpacking into the folder you open. Until 2026-08-12 your notes did live here.
+They do not any more, and nothing reads this folder.
 
-You don't need to create anything by hand. Run `/ingest` and it builds the shape
-as it goes: a folder per subject, and inside each one a place for the things that
-stay true and a place for the things that happened on a date.
+**If you have put anything in here, move it into `data/`** — otherwise no command
+will ever find it. Nothing is lost either way: git ignores both folders, so an
+update cannot touch what you wrote in either place.
 
-This file is just a signpost. You can delete it once the folder has real contents.
+You do not need to create anything by hand. Run `/ingest` and it builds the shape
+inside `data/` as it goes: a folder per subject, and inside each one a place for
+the things that stay true and a place for the things that happened on a date.
