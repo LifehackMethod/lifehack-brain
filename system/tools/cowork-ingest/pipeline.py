@@ -110,8 +110,26 @@ FINDING_TYPES = ("canonical", "dated", "record")
 
 
 def load(path):
-    with open(path) as f:
-        return json.load(f)
+    """Read the corpus map. The 33 callers all route through here, so both platform fixes live here.
+
+    ⚠ `encoding="utf-8"` is NOT decoration. Python on Windows defaults to the locale encoding
+    (cp1252), and this file is full of the person's own chat titles — emoji, smart quotes, any
+    language they happen to write in. Reading it without the encoding either raises
+    UnicodeDecodeError mid-run or, worse, silently mojibakes their titles into the map that every
+    later phase reads as truth.
+
+    ⚠ A missing map is NOT an error condition — it is the ordinary state of a machine that has not
+    ingested anything yet, and it was the first thing a new person hit. It used to surface as a raw
+    FileNotFoundError traceback pointing at this line, which reads as "the tool is broken" rather
+    than "there is nothing here yet"."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        sys.exit("NOTHING INGESTED YET — there is no corpus map at:\n"
+                 "    %s\n"
+                 "That file is built by PHASE 1 of the ingest, from your own material.\n"
+                 "Fix: run /ingest and let it make the piles first." % path)
 
 
 def rows_of(m):

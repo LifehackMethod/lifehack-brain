@@ -1,8 +1,17 @@
 #!/usr/bin/env python3
 """brain_root.py — THE one root variable. Every data path in this system resolves through here.
 
-THE RESIDENCY RULE: the brain is the git repo. The data is OUTSIDE it, one directory level above,
-wherever the person says. This module is the only thing that knows where that data root is.
+THE RESIDENCY RULE (rewritten 2026-08-12, when the layout changed — see INSTALL.md): the brain is
+the git repo, and it IS the folder the person opens. Their data lives at `data/` INSIDE it, kept out
+of version control by one line in `.gitignore` rather than by sitting in a different folder.
+
+⚠ The old rule said the data lived OUTSIDE the repo, one level above. That stopped being true when
+the tool started cloning into the folder you open; the wording is corrected here because this module
+is what every other tool asks, and a stale answer here misleads all of them at once.
+
+⭐ None of that changes this module's contract. The root is still asked once, remembered forever, and
+resolved through the same ordered routes below. `data/` inside the repo is merely the value a normal
+install now persists — it is not a default, not a fallback, and never a guess.
 
 LIFTED, NOT INVENTED (migration T0.1, 2026-08-11): this is the resolver that has been running inside
 `system/tools/cowork-ingest/pipeline.py` since 2026-08-08 — moved out verbatim so that every tool,
@@ -58,7 +67,7 @@ def resolve_brain_root():
         return "env", env
     if os.path.isfile(BRAIN_ROOT_CONFIG):
         try:
-            persisted = open(BRAIN_ROOT_CONFIG).read().strip()
+            persisted = open(BRAIN_ROOT_CONFIG, encoding="utf-8").read().strip()
         except OSError:
             persisted = ""
         if persisted and os.path.isdir(persisted):
@@ -85,7 +94,7 @@ def set_brain_root(path, create=False):
             return False, f"REFUSED: '{resolved}' does not exist — pass --create to make it"
         os.makedirs(resolved, exist_ok=True)
     os.makedirs(os.path.dirname(BRAIN_ROOT_CONFIG), exist_ok=True)
-    with open(BRAIN_ROOT_CONFIG, "w") as f:
+    with open(BRAIN_ROOT_CONFIG, "w", encoding="utf-8") as f:
         f.write(resolved + "\n")
     return True, resolved
 
