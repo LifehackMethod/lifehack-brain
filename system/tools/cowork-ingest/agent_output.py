@@ -45,7 +45,19 @@ Usage:
 """
 import argparse, glob, json, os, sys
 
-PROJECTS = os.path.expanduser("~/.claude/projects")
+# ⛔ FOLLOW THE CONFIG DIR. Claude Code writes every transcript under its ACTIVE config directory, and
+# that is `~/.claude` only when nobody has moved it. `CLAUDE_CONFIG_DIR` moves it — which is exactly what
+# the sanctioned isolated-run recipe does in order to test a repo without this machine's own hooks
+# answering for it (records/context/2026-08-11-isolated-config-dir-recipe.md).
+# MEASURED 2026-08-13: under that recipe the tagger ran perfectly and wrote a 42 KB and a 49 KB
+# transcript into the isolated dir -- and this line looked in `~/.claude/projects`, found nothing, and
+# reported `MISS: no transcript found`. The reader had done its job; the collector was looking in the
+# wrong house. That single hardcode is why `/ingest` had never once been driven end to end under
+# isolation -- the run dies in PHASE 1 before the first human turn.
+# ⭐ A student never sets CLAUDE_CONFIG_DIR, so this changes nothing for them. It changes whether this
+# tool can be TESTED at all, which is the thing that was actually broken.
+PROJECTS = os.path.join(
+    os.environ.get("CLAUDE_CONFIG_DIR") or os.path.expanduser("~/.claude"), "projects")
 
 
 def _norm(agent_id):
