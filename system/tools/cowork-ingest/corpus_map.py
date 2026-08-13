@@ -75,7 +75,25 @@ def save(obj, path):
 
 
 def do_init(a):
-    tags = json.load(open(a.tags))
+    # ⛔ A MISSING TAGS FILE IS A NORMAL OUTCOME, NOT A CRASH. Until 2026-08-13 this line was a bare
+    # `json.load(open(a.tags))`, so the commonest real failure in PHASE 1 -- the tagger step did not
+    # produce world-tags.json, because a reader was blocked, a spawn returned nothing, or a pile was
+    # quarantined -- surfaced to a person who has never opened a terminal as a raw Python traceback
+    # ending in FileNotFoundError. Found by a fake-user drive, 2026-08-13.
+    # A traceback tells them the tool is broken. It is not; the step before it did not finish.
+    if not os.path.isfile(a.tags):
+        print("CANNOT START: no tag file at " + a.tags)
+        print("  The step before this one -- tagging your material -- did not finish, so there is")
+        print("  nothing yet to build the map from. This is not a broken install.")
+        print("  Re-run the tagging step; if it reported anything missing or quarantined, fix that first.")
+        sys.exit(1)
+    try:
+        tags = json.load(open(a.tags, encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        print("CANNOT START: the tag file at " + a.tags + " is not readable JSON.")
+        print("  (" + str(e) + ")")
+        print("  It was written incompletely -- re-run the tagging step rather than editing it by hand.")
+        sys.exit(1)
     rows = tags.get("rows", tags if isinstance(tags, list) else [])
     out = {"source": os.path.basename(a.tags), "rows": {}}
     for r in rows:
