@@ -52,17 +52,17 @@ until you have ruled each one** (`pipeline.py`'s giant-ruling done-gate).
   never read). The giant sample is cut from the **SANITIZED** text **AFTER** the gate, so an injection buried in
   the dropped middle **was still scanned on the full body first.**
 - The **main session NEVER reads a chat body** — only the sub-agent reads the gate-sanitized bundle in the
-  locked scratch (`/tmp/ingest_body/…`, which `ingest_gate_enforce.sh` blocks the main session from reading).
+  locked scratch (`paths.py scratch ingest_body …`, which `ingest_gate_enforce.sh` blocks the main session
+  from reading).
 
 **Paths + pile:** `BASKET` = `$BASKET`. `MACHINE="$(hostname | grep -qi studio && echo studio || echo mba)"`.
 `FLAT` resolves per-corpus, with a legacy fallback so an already-flattened corpus is never orphaned
 or re-flattened:
 ```bash
-FLAT="$HOME/.cache/cowork-ingest/$INGEST_CORPUS/flatten"
-# ⛔ Legacy fallback SCOPED TO THE ORIGINAL CORPUS ONLY — else a new corpus reads the old one's chats.
-if [ "$INGEST_CORPUS" = "cowork-bulk-ingestion" ] && [ ! -d "$FLAT" ] && [ -d "$HOME/.cache/cowork-ingest/flatten" ]; then FLAT="$HOME/.cache/cowork-ingest/flatten"; fi
+# ⛔ ASK, never build — legacy-wins AND the original-corpus scoping both live in flatten_dir().
+FLAT="$(python3 "$ROOT/shared/paths.py" flatten "$INGEST_CORPUS")"
+SCRATCH="$(python3 "$ROOT/shared/paths.py" scratch ingest_body "read-$BASKET")"
 ```
-`SCRATCH="/tmp/ingest_body/read-$BASKET"`.
 
 ## ⭐ ORIENT FIRST — place the human before you do anything else. EVERY PHASE, EVERY TIME.
 

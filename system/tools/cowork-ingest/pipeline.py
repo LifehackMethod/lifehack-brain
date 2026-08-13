@@ -110,8 +110,26 @@ FINDING_TYPES = ("canonical", "dated", "record")
 
 
 def load(path):
-    with open(path) as f:
-        return json.load(f)
+    """Read the corpus map. The 33 callers all route through here, so both platform fixes live here.
+
+    ⚠ `encoding="utf-8"` is NOT decoration. Python on Windows defaults to the locale encoding
+    (cp1252), and this file is full of the person's own chat titles — emoji, smart quotes, any
+    language they happen to write in. Reading it without the encoding either raises
+    UnicodeDecodeError mid-run or, worse, silently mojibakes their titles into the map that every
+    later phase reads as truth.
+
+    ⚠ A missing map is NOT an error condition — it is the ordinary state of a machine that has not
+    ingested anything yet, and it was the first thing a new person hit. It used to surface as a raw
+    FileNotFoundError traceback pointing at this line, which reads as "the tool is broken" rather
+    than "there is nothing here yet"."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        sys.exit("NOTHING INGESTED YET — there is no corpus map at:\n"
+                 "    %s\n"
+                 "That file is built by PHASE 1 of the ingest, from your own material.\n"
+                 "Fix: run /ingest and let it make the piles first." % path)
 
 
 def rows_of(m):
@@ -1566,6 +1584,51 @@ def mark_committed(m, f, now_iso=None):
     return True, "ok"
 
 
+def scan_evidence(basket, work_dir=None):
+    """THE INDEPENDENT TRACE behind a SHORT keeper's finding (2026-08-12). Returns
+    (path, {chat_key: has_content}), or (path, None) when no SCAN reader output exists for this pile.
+
+    The twin of `coalesced_evidence`, for the one case that function cannot answer. A chat at or under
+    WHOLE_READ_MAX is read WHOLE by the SCAN reader, so DEEP-READ deliberately skips it and reuses that
+    summary as the finding. Its proof therefore lives in `scan-raw/<basket>/agent-*.json` — the raw files
+    `agent_output.py` harvested from the readers — not in `raw-conclusions-<basket>.json`.
+
+    Same posture as its twin: unreadable evidence is NO evidence, and a missing directory fails closed. The
+    session can type `extraction: scan-summary` all it likes; if no reader ever returned a gist for the
+    chat, this returns False for it and the pile does not close."""
+    work = work_dir or os.environ.get("COWORK_WORK")
+    if not work:
+        return (None, None)
+    path = os.path.join(work, "scan-raw", basket)
+    if not os.path.isdir(path):
+        return (path, None)
+    found = {}
+    try:
+        names = sorted(os.listdir(path))
+    except OSError:
+        return (path, None)
+    for name in names:
+        if not name.endswith(".json"):
+            continue
+        try:
+            data = json.load(open(os.path.join(path, name), encoding="utf-8"))
+        except Exception:
+            continue                 # one bad file is not evidence; it is also not a veto on the others
+        if isinstance(data, dict):
+            data = data.get("items") or data.get("results") or data.get("gists") or []
+        if not isinstance(data, list):
+            continue
+        for el in data:
+            if not isinstance(el, dict):
+                continue
+            key = el.get("file") or el.get("chat") or el.get("id")
+            if not key:
+                continue
+            body = str(el.get("gist") or el.get("summary") or "").strip()
+            found[key] = bool(body) or found.get(key, False)
+    return (path, found if found else None)
+
+
 def coalesced_evidence(basket, work_dir=None):
     """THE INDEPENDENT TRACE behind a DEEP-READ (F8.3, 2026-08-06). Returns (path, {chat_key: has_content})
     for this basket's coalesced reader output, or (path, None) when that file does not exist yet.
@@ -1667,6 +1730,107 @@ def set_folder_branch(m, basket, branch):
             merged.append(v)
     b["folder_branch"] = merged[0] if len(merged) == 1 else merged
     return True, f"folder_branch = {b['folder_branch']!r}"
+
+
+def coalesce_scan_findings(work_dir, basket, m):
+    """Carry a SHORT keeper's finding into the coalesced file so PHASE 4 can see it (2026-08-12).
+
+    THE GAP THIS CLOSES. A keeper at or under WHOLE_READ_MAX is read whole at SCAN and never sent to a
+    deep reader, so `read --extraction scan-summary` stages its finding on the MAP ROW. But PHASE 4's
+    manifest reads `raw-conclusions-<basket>.json` and nothing else — so a pile made only of short
+    keepers produced a coalesced file that did not exist, and its findings were invisible to filing.
+    `fitrecomp` hit exactly that: one note, read, closed, and then silently absent from the manifest.
+
+    ⛔ This INVENTS NOTHING. The text it carries across is the gist the SCAN reader returned, which is
+    the same independent trace `scan_evidence()` checks — it is being moved into the shape PHASE 4
+    reads, not created. A chat with no reader gist is skipped rather than given an empty finding.
+
+    Merges rather than overwrites: a pile can hold both short and deep keepers (job-hunter does), and
+    the deep readers' output must survive. Returns (path, added_count)."""
+    work = work_dir or os.environ.get("COWORK_WORK")
+    if not work:
+        return (None, 0)
+    _, gists = scan_evidence(basket, work)
+    if not gists:
+        return (None, 0)
+    out = os.path.join(work, f"raw-conclusions-{basket}.json")
+    existing = []
+    if os.path.exists(out):
+        try:
+            existing = json.load(open(out, encoding="utf-8"))
+            if isinstance(existing, dict):
+                existing = existing.get("conclusions") or existing.get("items") or []
+        except Exception:
+            existing = []
+    have = {el.get("file") for el in existing if isinstance(el, dict)}
+
+    # the raw gist TEXT, re-read from the reader files (scan_evidence returns only has-content flags)
+    texts = {}
+    sdir = os.path.join(work, "scan-raw", basket)
+    for name in sorted(os.listdir(sdir)) if os.path.isdir(sdir) else []:
+        if not name.endswith(".json"):
+            continue
+        try:
+            data = json.load(open(os.path.join(sdir, name), encoding="utf-8"))
+        except Exception:
+            continue
+        if isinstance(data, dict):
+            data = data.get("items") or data.get("results") or []
+        for el in data if isinstance(data, list) else []:
+            if isinstance(el, dict):
+                k = el.get("file") or el.get("chat") or el.get("id")
+                t = str(el.get("gist") or el.get("summary") or "").strip()
+                if k and t:
+                    texts[k] = t
+
+    added = 0
+    for chat, row in _basket_chats(m, basket):
+        if chat in have:
+            continue                                   # a deep read already produced its finding
+        if str(row.get("extraction") or "").strip() != "scan-summary":
+            continue                                   # not the short path — not ours to carry
+        text = texts.get(chat)
+        if not text:
+            continue                                   # no reader gist = no finding, never a blank one
+        existing.append({"file": chat, "conclusions": [{"text": text}],
+                         "category": None, "freshness": None, "source": "scan-summary"})
+        added += 1
+    if added:
+        json.dump(existing, open(out, "w", encoding="utf-8"), indent=1, ensure_ascii=False)
+    return (out, added)
+
+
+def list_findings(work_dir, m, basket=None):
+    """Every finding across the corpus, with its human-set type or None. The READ side of
+    `set_finding_type` — which existed with no way to see what needed ruling (2026-08-12).
+
+    PHASE 4 refuses to file an untyped finding, and rightly: the type is the human's durability ruling
+    and code must never guess it. But nothing rendered the list, so the only way to answer the gate was
+    to already know what it was asking about. Returns a list of
+    {basket, file, index, text, finding_type}."""
+    work = work_dir or os.environ.get("COWORK_WORK")
+    out = []
+    for b in sorted(m.get("baskets", {})):
+        if basket and b != basket:
+            continue
+        path, _ = coalesced_evidence(b, work)
+        if not path or not os.path.exists(path):
+            continue
+        try:
+            data = json.load(open(path, encoding="utf-8"))
+        except Exception:
+            continue
+        if isinstance(data, dict):
+            data = data.get("conclusions") or data.get("items") or data.get("results") or []
+        for el in data if isinstance(data, list) else []:
+            if not isinstance(el, dict):
+                continue
+            chat = el.get("file") or el.get("chat") or el.get("id")
+            for i, c in enumerate(_conclusions_of(el)):
+                out.append({"basket": b, "file": chat, "index": i,
+                            "text": (c.get("text") or "").strip(),
+                            "finding_type": c.get("type")})
+    return out
 
 
 def set_finding_type(work_dir, basket, chat, index, ftype):
@@ -2137,6 +2301,34 @@ def set_basket_status(m, basket, status, work_dir=None, require_world_map=False)
     if status == "read-complete":
         keepers = [k for k, r in _basket_chats(m, basket)
                    if not _is_done(r) and r.get("skim_verdict") == "research"]
+        # ★ THE SHORT-CHAT PATH (2026-08-12). A keeper at or under WHOLE_READ_MAX was ALREADY read whole by
+        # the SCAN reader, so `3-deep-read.md` Step 2 explicitly does NOT spawn a deep reader for it: "its
+        # SCAN summary IS the finding." That left this gate unsatisfiable — it demanded a deep-read trace
+        # that the phase had just been told not to produce, so a pile whose keepers are all short could
+        # NEVER close. Found on the first real run against a notes vault, where most notes are short.
+        #
+        # ⛔ THE FIX IS NOT TO WEAKEN THE GATE. Its principle stands: never accept a value the session can
+        # type. These keepers HAVE an independent trace — it is simply the SCAN reader's output rather than
+        # the deep reader's. So we check THAT file instead, with the same fail-closed posture. A keeper is
+        # only routed here when the row itself records the short path (`extraction == "scan-summary"`),
+        # which `read --extraction scan-summary` sets and nothing else does.
+        short_keepers = [k for k in keepers
+                         if str(dict(_basket_chats(m, basket)).get(k, {}).get("extraction") or "")
+                         .strip() == "scan-summary"]
+        if short_keepers:
+            sev_path, sfound = scan_evidence(basket, work_dir)
+            if sfound is None:
+                return False, (f"REFUSED: basket '{basket}' has {len(short_keepers)} short keeper(s) whose "
+                               f"finding came from the SCAN read, but the SCAN reader output is missing — "
+                               f"expected '{sev_path}'. A short chat is exempt from a second read, never "
+                               f"from evidence. Re-run the SCAN collect for this pile before closing.")
+            hollow_short = [k for k in short_keepers if not sfound.get(k)]
+            if hollow_short:
+                return False, (f"REFUSED: basket '{basket}' has {len(hollow_short)} short keeper(s) with no "
+                               f"content in the SCAN reader evidence ('{sev_path}') — the row claims a "
+                               f"scan-summary finding the readers never produced: "
+                               f"{hollow_short[:3]}{'…' if len(hollow_short) > 3 else ''}")
+            keepers = [k for k in keepers if k not in set(short_keepers)]
         if keepers:
             ev_path, found = coalesced_evidence(basket, work_dir)
             if found is None:
@@ -2212,64 +2404,82 @@ if _SHARED_DIR not in sys.path:
     sys.path.insert(0, _SHARED_DIR)
 try:
     from brain_root import (BRAIN_ROOT_ENV, BRAIN_ROOT_CONFIG, BRAIN_ROOT_LEGACY_GLOB,
-                            resolve_brain_root, set_brain_root)
+                            read_persisted, resolve_brain_root, set_brain_root)
 except ImportError as _brain_root_err:   # fail LOUD, never degrade — without the resolver every write is a guess
     sys.exit("FATAL: cannot import brain_root from %s — the data-root resolver is missing. "
              "Fix: restore <repo>/shared/brain_root.py. (%s)" % (_SHARED_DIR, _brain_root_err))
+
+# ⬇ THE MACHINE-SHAPED PATHS (2026-08-12). `--map` used to be reconstructed in shell by every skill
+# and passed back in. It is derivable from the brain root and the corpus slug, so it is a DEFAULT
+# now, not a required argument — which is what lets a skill's command block be a bare invocation
+# with no shell variables in it, and therefore run under PowerShell as well as bash.
+try:
+    import paths as _paths
+except ImportError as _paths_err:        # same discipline as above: loud, never a guessed fallback
+    sys.exit("FATAL: cannot import paths from %s — the path resolver is missing. "
+             "Fix: restore <repo>/shared/paths.py. (%s)" % (_SHARED_DIR, _paths_err))
 
 
 def main():
     ap = argparse.ArgumentParser(description="shared brain for the ingest-1..4 chain")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    a1 = sub.add_parser("assert"); a1.add_argument("--map", required=True)
-    a2 = sub.add_parser("next"); a2.add_argument("--map", required=True)
-    ph = sub.add_parser("phase"); ph.add_argument("--map", required=True)
-    a3 = sub.add_parser("suggest"); a3.add_argument("--map", required=True)
+    a1 = sub.add_parser("assert"); a1.add_argument("--map")
+    a2 = sub.add_parser("next"); a2.add_argument("--map")
+    ph = sub.add_parser("phase"); ph.add_argument("--map")
+    a3 = sub.add_parser("suggest"); a3.add_argument("--map")
     a3.add_argument("--skill", required=True); a3.add_argument("--basket")
-    a4 = sub.add_parser("lock"); a4.add_argument("--map", required=True); a4.add_argument("--basket", required=True)
+    a4 = sub.add_parser("lock"); a4.add_argument("--map"); a4.add_argument("--basket", required=True)
     a4.add_argument("--machine", required=True); a4.add_argument("--skill", required=True)
     a4.add_argument("--now"); a4.add_argument("--ttl", type=int, default=1800)
-    a5 = sub.add_parser("unlock"); a5.add_argument("--map", required=True); a5.add_argument("--basket", required=True)
-    sc = sub.add_parser("scan"); sc.add_argument("--map", required=True); sc.add_argument("--file", required=True)
+    a5 = sub.add_parser("unlock"); a5.add_argument("--map"); a5.add_argument("--basket", required=True)
+    sc = sub.add_parser("scan"); sc.add_argument("--map"); sc.add_argument("--file", required=True)
     sc.add_argument("--guess", help="machine best-guess: toss | research | park (a HINT, not the ruling)")
     sc.add_argument("--summary", default="", help="the gate-sanitized one-line gist"); sc.add_argument("--now")
-    sk = sub.add_parser("skim"); sk.add_argument("--map", required=True); sk.add_argument("--file", required=True)
+    sk = sub.add_parser("skim"); sk.add_argument("--map"); sk.add_argument("--file", required=True)
     sk.add_argument("--verdict", required=True, help="toss | research | park | explore")
     sk.add_argument("--note", default="")
     sk.add_argument("--human-approved", action="store_true", help="REQUIRED for toss/park (they close the chat) — NOT needed for explore (closes nothing)"); sk.add_argument("--now")
-    rd = sub.add_parser("read"); rd.add_argument("--map", required=True); rd.add_argument("--file", required=True)
+    rd = sub.add_parser("read"); rd.add_argument("--map"); rd.add_argument("--file", required=True)
     rd.add_argument("--extraction"); rd.add_argument("--deep", action="store_true"); rd.add_argument("--now")
-    cm = sub.add_parser("commit-mark"); cm.add_argument("--map", required=True); cm.add_argument("--file", required=True); cm.add_argument("--now")
-    fl = sub.add_parser("flag"); fl.add_argument("--map", required=True); fl.add_argument("--file", required=True)
+    cm = sub.add_parser("commit-mark"); cm.add_argument("--map"); cm.add_argument("--file", required=True); cm.add_argument("--now")
+    fl = sub.add_parser("flag"); fl.add_argument("--map"); fl.add_argument("--file", required=True)
     fl.add_argument("--canon", choices=["true", "false"], help="DEEP-READ level-2: mark a canon-CANDIDATE (→ level-3 full read)")
     fl.add_argument("--pointer", choices=["true", "false"], help="DEEP-READ level-2: mark a big-but-only-a-record chat (→ pointer-ize, no full read)")
-    gi = sub.add_parser("giant"); gi.add_argument("--map", required=True); gi.add_argument("--file", required=True)
+    gi = sub.add_parser("giant"); gi.add_argument("--map"); gi.add_argument("--file", required=True)
     gi.add_argument("--sampled", choices=["true", "false"], help="DEEP-READ: this keeper was over the whole-read ceiling → SAMPLED head+tail (miner sets)")
     gi.add_argument("--ruled", choices=["true", "false"], help="the HUMAN's say-go that they saw it was sampled (unblocks the done-gate; needs --human-approved)")
     gi.add_argument("--human-approved", action="store_true", help="REQUIRED for --ruled true (only the human rules a sampled giant)")
     sc = sub.add_parser("sort-confirm", help="PHASE 1 CLOSE: the human has ruled the basket boundaries (the gate current_phase() reads)")
-    sc.add_argument("--map", required=True)
+    sc.add_argument("--map")
     sc.add_argument("--human-approved", dest="human_approved", action="store_true",
                     help="REQUIRED — only the human closes SORT; the miner can never set this")
     sc.add_argument("--now")
-    bs = sub.add_parser("basket-status"); bs.add_argument("--map", required=True); bs.add_argument("--basket", required=True); bs.add_argument("--status", required=True)
+    bs = sub.add_parser("basket-status"); bs.add_argument("--map"); bs.add_argument("--basket", required=True); bs.add_argument("--status", required=True)
     bs.add_argument("--work", help="work dir holding raw-conclusions-<basket>.json — the READER EVIDENCE the "
                                    "read-complete gate reads (defaults to $COWORK_WORK)")
     bs.add_argument("--require-world-map", dest="require_world_map", action="store_true",
                     help="force the PHASE 3 world-map gate (every finding typed + a folder_branch set) even if "
                          "this pile never started one — the switch Phase 3's driver flips when it ships")
     fb = sub.add_parser("folder-branch", help="PHASE 3: record the folder shape this pile earned (PHASE 4 reads it)")
-    fb.add_argument("--map", required=True); fb.add_argument("--basket", required=True)
+    fb.add_argument("--map"); fb.add_argument("--basket", required=True)
     fb.add_argument("--branch", required=True, nargs="+",
                     help="one or more folder paths this pile earned — pass SEVERAL space-separated when "
                          "propose_folder_shape() legitimately returned more than one (e.g. a nested subject "
                          "AND a sibling); a single value still works exactly as before ([5.1.1], 2026-08-11)")
+    lf = sub.add_parser("findings", help="LIST every finding with its human-set type (or UNTYPED) — the read side of finding-type")
+    lf.add_argument("--map", required=True); lf.add_argument("--basket")
+    lf.add_argument("--work"); lf.add_argument("--untyped-only", action="store_true")
+    lf.set_defaults(cmd="findings")
+    cs = sub.add_parser("coalesce-scan", help="carry SHORT keepers' SCAN findings into raw-conclusions-<basket>.json so PHASE 4 can see them")
+    cs.add_argument("--map", required=True); cs.add_argument("--basket", required=True)
+    cs.add_argument("--work")
+    cs.set_defaults(cmd="coalesce-scan")
     ft = sub.add_parser("finding-type", help=f"PHASE 3: the human's ruling on ONE finding ({'/'.join(FINDING_TYPES)})")
     ft.add_argument("--basket", required=True); ft.add_argument("--file", required=True)
     ft.add_argument("--index", type=int, required=True); ft.add_argument("--type", required=True, choices=list(FINDING_TYPES))
     ft.add_argument("--work", help="work dir holding raw-conclusions-<basket>.json (defaults to $COWORK_WORK)")
     wm = sub.add_parser("world-map-state", help="PHASE 4 reads this: the pile's folder branch + how many findings are typed")
-    wm.add_argument("--map", required=True); wm.add_argument("--basket", required=True)
+    wm.add_argument("--map"); wm.add_argument("--basket", required=True)
     wm.add_argument("--work", help="work dir holding raw-conclusions-<basket>.json (defaults to $COWORK_WORK)")
 
     # ── §9.6 THE WORLD MAP — TURN 1 (the paragraph) ─────────────────────────────────────────────
@@ -2319,7 +2529,7 @@ def main():
                     '"core"|"diverse"}, …] — relation is the semantic call; this only lays out the paths')
     fs.add_argument("--page-size", type=int, default=10)
 
-    bl = sub.add_parser("basket-list"); bl.add_argument("--map", required=True); bl.add_argument("--basket", required=True)
+    bl = sub.add_parser("basket-list"); bl.add_argument("--map"); bl.add_argument("--basket", required=True)
     bl.add_argument("--research", action="store_true", help="only skim_verdict=research (the chats going to DEEP-READ)")
     bl.add_argument("--keepers-only", action="store_true", help="alias of --research")
     bl.add_argument("--unscanned", action="store_true", help="SCAN: chats needing a slice-read (no gist yet, unruled)")
@@ -2328,11 +2538,11 @@ def main():
     bl.add_argument("--unskimmed", action="store_true"); bl.add_argument("--all", action="store_true")
     bl.add_argument("--files-only", dest="files_only", action="store_true", help="print ONLY the file keys, one per line (safe to read into a shell array — no parsing)")
     an = sub.add_parser("anchor"); an.add_argument("--map"); an.add_argument("--phase", required=True); an.add_argument("--basket"); an.add_argument("--out", required=True)
-    pr = sub.add_parser("progress"); pr.add_argument("--map", required=True); pr.add_argument("--just-did", dest="just_did"); pr.add_argument("--next", dest="next_action")
-    hu = sub.add_parser("hud"); hu.add_argument("--map", required=True)                       # F2.2: the one-line statusline HUD
-    hg = sub.add_parser("hud-grid"); hg.add_argument("--map", required=True); hg.add_argument("--active")  # the multi-line screen grid
-    br = sub.add_parser("brain"); br.add_argument("--map", required=True)                     # F2.3: the mined/filed/canon tally
-    rf = sub.add_parser("reflect"); rf.add_argument("--map", required=True); rf.add_argument("--basket", required=True)
+    pr = sub.add_parser("progress"); pr.add_argument("--map"); pr.add_argument("--just-did", dest="just_did"); pr.add_argument("--next", dest="next_action")
+    hu = sub.add_parser("hud"); hu.add_argument("--map")                       # F2.2: the one-line statusline HUD
+    hg = sub.add_parser("hud-grid"); hg.add_argument("--map"); hg.add_argument("--active")  # the multi-line screen grid
+    br = sub.add_parser("brain"); br.add_argument("--map")                     # F2.3: the mined/filed/canon tally
+    rf = sub.add_parser("reflect"); rf.add_argument("--map"); rf.add_argument("--basket", required=True)
     rf.add_argument("--in", dest="infiles", nargs="+", required=True, help="raw-conclusions JSON file(s) for this basket")
     rf.add_argument("--since", help="ISO ts: rows read/committed at-or-after this are 🆕 NEW this round")
     rf.add_argument("--brain-before", dest="brain_before", type=int, help="the mined count BEFORE this basket (for 'brain grew N→M')")
@@ -2340,13 +2550,13 @@ def main():
     co = sub.add_parser("coalesce")                                                          # F5.3: the reader→review seam
     co.add_argument("--dir", required=True, help="the dir agent_output.py wrote agent-<label>.json into")
     co.add_argument("--out", required=True, help="the single raw-conclusions-<basket>.json conclusions_review.py reads")
-    sv = sub.add_parser("salvage"); sv.add_argument("--map", required=True); sv.add_argument("--basket", required=True); sv.add_argument("--raw", required=True); sv.add_argument("--out", required=True)
-    rs = sub.add_parser("rescan"); rs.add_argument("--map", required=True); rs.add_argument("--basket", required=True)
-    hs = sub.add_parser("hash"); hs.add_argument("--map", required=True); hs.add_argument("--flat-dir", required=True)
-    rl = sub.add_parser("relink"); rl.add_argument("--map", required=True); rl.add_argument("--flat-dir", required=True)
+    sv = sub.add_parser("salvage"); sv.add_argument("--map"); sv.add_argument("--basket", required=True); sv.add_argument("--raw", required=True); sv.add_argument("--out", required=True)
+    rs = sub.add_parser("rescan"); rs.add_argument("--map"); rs.add_argument("--basket", required=True)
+    hs = sub.add_parser("hash"); hs.add_argument("--map"); hs.add_argument("--flat-dir", required=True)
+    rl = sub.add_parser("relink"); rl.add_argument("--map"); rl.add_argument("--flat-dir", required=True)
     bw = sub.add_parser("pad-init", help="PHASE 1 → scratchpad seam: create memory/<corpus>/scratchpad.md "
                         "seeded with PHASE 1's pile boundaries, or APPEND this sitting's entry if it exists")
-    bw.add_argument("--map", required=True)
+    bw.add_argument("--map")
     bw.add_argument("--corpus-id", dest="corpus_id", help="explicit corpus slug; if omitted, resolved from "
                     "the --map path's own shape (.../projects/<corpus>/work/<file>.json), then "
                     "$INGEST_CORPUS, then REFUSED — NEVER from the map's `source` field (that names the "
@@ -2368,7 +2578,7 @@ def main():
     tc.add_argument("--vocab", dest="vocab_path", help="explicit path to the topic vocabulary; defaults to <brain root>/memory/topic-vocab.md (theirs), then the legacy in-repo copy")
     ci = sub.add_parser("corpus-inherit-offered", help="ONCE-PER-RUN flag: the PHASE 2 inheritance offer "
                         "(`2.0c`) has been shown to the human — stops it re-asking on every pile")
-    ci.add_argument("--map", required=True)
+    ci.add_argument("--map")
     ci.add_argument("--now")
     ci.add_argument("--check", action="store_true",
                     help="just report whether it's already been offered (exit 0=yes, 1=not yet); "
@@ -2382,6 +2592,19 @@ def main():
     brt.add_argument("--quiet", action="store_true",
                      help="print ONLY the resolved path (for a shell to consume), or nothing + exit 1")
     a = ap.parse_args()
+
+    # ── `--map` DEFAULTS INSTEAD OF BEING REQUIRED (2026-08-12) ──────────────────────────────────
+    # Passing it explicitly still wins, so nothing that already supplies it changes behaviour. When
+    # it is omitted we derive it — the same value the ten shell preambles used to build by hand.
+    # ⛔ If the brain root is NOT-SET we STOP and name the fix. We do NOT fall back to the cwd or to
+    # a default folder: writing someone's notes somewhere they did not choose is the exact failure
+    # the resolver chain exists to prevent, and swallowing it here would hide it one level deeper.
+    if getattr(a, "map", None) is None and hasattr(a, "map"):
+        a.map = _paths.corpus_map()
+        if a.map is None:
+            sys.exit("STOP: no brain root is set, so there is nowhere to read or write.\n"
+                     "      Set it with:  %s %s --set \"<the folder they named>\" [--create]"
+                     % (_paths.interpreter(), os.path.join(_SHARED_DIR, "brain_root.py")))
 
     if a.cmd == "assert":
         # DURABILITY GUARD: a Drive conflict-copy next to the map = split-brain state → HALT before any skill reads.
@@ -2512,6 +2735,21 @@ def main():
             sys.exit(1)
         _save(m, a.map)
         print(f"OK folder-branch: {a.basket} — {msg}")
+    elif a.cmd == "findings":
+        rows = list_findings(getattr(a, "work", None), load(a.map), a.basket)
+        if a.untyped_only:
+            rows = [r for r in rows if r["finding_type"] not in FINDING_TYPES]
+        for r in rows:
+            print(json.dumps(r, ensure_ascii=False))
+        n_un = sum(1 for r in rows if r["finding_type"] not in FINDING_TYPES)
+        print(f"# {len(rows)} finding(s) · {n_un} UNTYPED", file=sys.stderr)
+    elif a.cmd == "coalesce-scan":
+        m = load(a.map)
+        path, added = coalesce_scan_findings(getattr(a, "work", None), a.basket, m)
+        if not path:
+            print(f"FAIL coalesce-scan: no SCAN reader output for basket {a.basket!r}")
+            sys.exit(1)
+        print(f"OK coalesce-scan: carried {added} short finding(s) into {path}")
     elif a.cmd == "finding-type":
         ok, msg = set_finding_type(getattr(a, "work", None), a.basket, a.file, a.index, a.type)
         if not ok:
@@ -2692,12 +2930,19 @@ def main():
         print(f"OK corpus-inherit-offered: recorded at {rec['at']} — /ingest will not re-ask this run.")
     elif a.cmd == "brain-root":
         if a.set_path:
+            # ⛔ Read BEFORE writing — the overwrite is silent otherwise, and the silence IS the bug
+            # (issue #4). Mirrors shared/brain_root.py's CLI; both doors onto one global value.
+            previous = read_persisted()
             ok, res = set_brain_root(a.set_path, create=a.create)
             if not ok:
                 print(res)
                 sys.exit(1)
             verb = "created + " if a.create else ""
             print(f"RESOLVED: {res}  (source: persisted — just {verb}set via --set)")
+            if previous and os.path.abspath(previous) != os.path.abspath(res):
+                print(f"⚠ REPLACED a brain root that was already set: {previous}")
+                print("  That value was global — anything else pointing there now resolves here instead.")
+                print(f"  To put it back: pipeline.py brain-root --set \"{previous}\"")
         else:
             source, path = resolve_brain_root()
             if path is None:
