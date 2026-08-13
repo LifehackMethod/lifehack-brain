@@ -27,7 +27,15 @@ CHAT = "Projects__Thing__Note.txt"
 class ScanEvidenceCase(unittest.TestCase):
     def setUp(self):
         self.work = tempfile.mkdtemp(prefix="lifehack-scanev-")
-        self.raw = os.path.join(self.work, "scan-raw", "pile")
+        # ⛔ HARDCODED ON PURPOSE, AND IT MUST STAY HARDCODED. This is the name 2-scan.md:51 tells
+        # the model to write (`RAW="$COWORK_WORK/raw-scan-$BASKET"`), so this line is the WRITER's
+        # side of the contract and the only reason this file can catch a mismatch.
+        # Until 2026-08-13 it said `os.path.join(self.work, "scan-raw", "pile")` -- a directory
+        # nothing in the pipeline has ever created. The test built it by hand, so it passed on a
+        # handoff that could not work, for the whole life of the feature. **Do NOT "tidy" this into
+        # pipeline.scan_raw_dir(): importing the path from the code under test is exactly how this
+        # bug hid.** If the two ever disagree again, this line is what fails.
+        self.raw = os.path.join(self.work, "raw-scan-pile")
 
     def write_reader(self, payload, name="agent-abc.json"):
         os.makedirs(self.raw, exist_ok=True)

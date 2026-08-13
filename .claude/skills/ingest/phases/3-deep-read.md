@@ -185,6 +185,22 @@ it survives her absence.
    **Never auto-proceed; never stage a giant the human hasn't ruled.** (Its staged conclusion must carry a
    `sampled: not read whole` note so the filer + the human always see it was partial.)
 
+   ⛔ **IF STEP 3 DID NOT RUN — every keeper was SHORT — DO THIS FIRST, OR STEP 5 CANNOT OPEN.**
+   A chat at or under `WHOLE_READ_MAX` was already read WHOLE at SCAN, so Step 3 deliberately spawns no
+   reader and therefore writes no `raw-conclusions-$BASKET.json`. `conclusions_review.py` REQUIRES that
+   file. So a pile whose keepers are all short — **an ordinary folder of notes, which `INSTALL.md`
+   advertises on its first page** — dies on the very same `FAIL: no batch file for vein` that Step 3's
+   own `coalesce` was written to cure. Same disease, other branch:
+   ```bash
+   python3 $T/pipeline.py coalesce-scan --map "$MAP" --basket "$BASKET"
+   ```
+   It carries each SHORT keeper's SCAN finding into the file Step 5 reads. **Safe to run even when Step
+   3 DID happen** — it only adds rows that are not already there, so when in doubt, run it.
+   ⚠ **Why this line did not exist until 2026-08-13:** `coalesce-scan` shipped on 2026-08-12 with **no
+   caller anywhere** — not here, not in any skill file. A model following this document as instructed
+   ("run the plumbing quietly, never read source") had no way to discover it. The ninth
+   build-with-no-caller recorded in this system.
+
 5. **Dense confirm + STAGE the manifest.** `python3 $T/conclusions_review.py show --vein "$BASKET"` — relay the
    full dense list (every research chat, one NUMBERED row, incl. the giants marked *sampled*). Conclusions are
    GUESSES; the human confirms/corrects and may ADD net-new facts. Stage the confirmed findings to

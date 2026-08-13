@@ -1615,13 +1615,30 @@ def mark_committed(m, f, now_iso=None):
     return True, "ok"
 
 
+def scan_raw_dir(work, basket):
+    """THE ONE SPELLING of the SCAN reader's output directory. Do not inline it again.
+
+    ⛔ WHY THIS FUNCTION EXISTS (2026-08-13). It was written in two places as
+    `os.path.join(work, "scan-raw", basket)` and 2-scan.md:51 writes
+    `$COWORK_WORK/raw-scan-$BASKET`. Different name AND different shape -- a `scan-raw/<basket>`
+    subdirectory versus a `raw-scan-<basket>` sibling. **Nothing in the shipped pipeline has ever
+    written `scan-raw/`**; only this reader and its own unit test, which hand-built the directory it
+    expected and therefore passed while the real SCAN -> DEEP-READ handoff could not work at all.
+    The consequence: a pile whose keepers are all SHORT -- an ordinary notes vault, the exact case
+    b275bb7 was written to rescue -- refused to close, with a message naming "vein" and "batch file"
+    to a person who has never opened a terminal.
+    ⭐ The fix is the shape, not the string: two call sites spelling one path is the defect. One
+    function, both callers, and the writer's own name (`raw-scan-<basket>`) is the truth."""
+    return os.path.join(work, "raw-scan-" + basket)
+
+
 def scan_evidence(basket, work_dir=None):
     """THE INDEPENDENT TRACE behind a SHORT keeper's finding (2026-08-12). Returns
     (path, {chat_key: has_content}), or (path, None) when no SCAN reader output exists for this pile.
 
     The twin of `coalesced_evidence`, for the one case that function cannot answer. A chat at or under
     WHOLE_READ_MAX is read WHOLE by the SCAN reader, so DEEP-READ deliberately skips it and reuses that
-    summary as the finding. Its proof therefore lives in `scan-raw/<basket>/agent-*.json` — the raw files
+    summary as the finding. Its proof therefore lives in `raw-scan-<basket>/agent-*.json` — the raw files
     `agent_output.py` harvested from the readers — not in `raw-conclusions-<basket>.json`.
 
     Same posture as its twin: unreadable evidence is NO evidence, and a missing directory fails closed. The
@@ -1630,7 +1647,7 @@ def scan_evidence(basket, work_dir=None):
     work = work_dir or os.environ.get("COWORK_WORK")
     if not work:
         return (None, None)
-    path = os.path.join(work, "scan-raw", basket)
+    path = scan_raw_dir(work, basket)
     if not os.path.isdir(path):
         return (path, None)
     found = {}
@@ -1797,7 +1814,7 @@ def coalesce_scan_findings(work_dir, basket, m):
 
     # the raw gist TEXT, re-read from the reader files (scan_evidence returns only has-content flags)
     texts = {}
-    sdir = os.path.join(work, "scan-raw", basket)
+    sdir = scan_raw_dir(work, basket)
     for name in sorted(os.listdir(sdir)) if os.path.isdir(sdir) else []:
         if not name.endswith(".json"):
             continue
