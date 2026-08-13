@@ -1,0 +1,42 @@
+# Line endings. This file exists for one reason: Git for Windows defaults to
+# core.autocrlf=true, which rewrites LF to CRLF on checkout. A shell script that
+# arrives with CRLF fails on the FIRST LINE with
+#
+#     bad interpreter: /bin/bash^M: no such file or directory
+#
+# — an error that names the interpreter, so it reads as "bash is broken" rather
+# than "the file was mangled on the way in". Nothing in the tool can detect or
+# recover from it, because nothing in the tool gets to run.
+#
+# ⛔ Do not remove these lines to "clean up". They are the whole defence, and the
+#    failure they prevent is invisible until a Windows machine tries to install.
+
+# Baseline: let git normalise text in the repository, decide per-file below.
+* text=auto
+
+# ── Executed files — MUST be LF on every platform ─────────────────────────────
+# These are run, not just read. A CRLF in them is a syntax error, not a cosmetic
+# difference.
+*.sh              text eol=lf
+*.py              text eol=lf
+*.bash            text eol=lf
+
+# The git hook that refuses a commit carrying the person's own material. It has
+# no extension, so the *.sh rule above does not reach it — and it is the single
+# worst file to lose to a line-ending bug, because when it fails to run there is
+# no error, just an unprotected repository.
+system/githooks/*  text eol=lf
+
+# ── Data and documents — normalise, but harmless either way ───────────────────
+*.md              text
+*.json            text
+*.yaml            text
+*.yml             text
+*.txt             text
+
+# ── Never touch ───────────────────────────────────────────────────────────────
+*.zip             binary
+*.png             binary
+*.jpg             binary
+*.gif             binary
+*.pdf             binary

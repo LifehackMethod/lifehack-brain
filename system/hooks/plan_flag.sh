@@ -58,8 +58,18 @@ def h1(t):
         if m: return m.group(1).strip()
     return ""
 try: d = json.load(sys.stdin)
-except Exception: d = {}
-ti = d.get("tool_input", {}) or {}
+except Exception: d = None
+# `null`, `[]`, `"str"` and `5` are all VALID JSON that are NOT objects, so json.load returns them
+# happily and the except above never fires - then .get() raises AttributeError. The traceback goes
+# to /dev/null (see the 2>/dev/null closing this block), RESULT comes back empty, and the flag is
+# simply never written. Nothing anywhere says so.
+#
+# ⚠ The cost is NOT a blocked tool call - the record branch exits 0 regardless, verified. The cost
+# is that the crash lands BEFORE the resolution below, so the branch never runs at all.
+HAVE_PAYLOAD = isinstance(d, dict)
+if not HAVE_PAYLOAD: d = {}
+ti = d.get("tool_input") or {}
+if not isinstance(ti, dict): ti = {}
 name = h1(ti.get("plan", ""))
 # PRIMARY: the harness hands us the exact plan file on ExitPlanMode (planFilePath).
 # The newest-mtime glob below is a LAST-RESORT fallback only - it cross-wires across
@@ -67,7 +77,13 @@ name = h1(ti.get("plan", ""))
 target = (ti.get("planFilePath") or "").strip()
 if target:
     target = os.path.expanduser(target)
-if not target:
+# ⛔ HAVE_PAYLOAD gates the glob deliberately. A payload that is not an object told us NOTHING, and
+# the glob is the known-hazardous route - it cross-wires parallel plan-mode windows (build-sop
+# 2026-07-13), which is why it is last-resort even on a good payload. Reaching for it on a payload we
+# could not read would arm a plan the person never pointed at, silently, and a wrong plan marker is
+# worse than none: it is indistinguishable from a right one. An object with no planFilePath still
+# reaches the glob exactly as before - only unreadable input is refused.
+if not target and HAVE_PAYLOAD:
     files = sorted(glob.glob(os.path.expanduser("~/.claude/plans/*.md")), key=os.path.getmtime, reverse=True)
     target = files[0] if files else ""
 if not name and target:

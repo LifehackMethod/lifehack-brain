@@ -44,11 +44,11 @@ attention on what survives here. Fence: THIS pile only.
 `FLAT` resolves per-corpus, with a legacy fallback so an already-flattened corpus is never orphaned
 or re-flattened:
 ```bash
-FLAT="$HOME/.cache/cowork-ingest/$INGEST_CORPUS/flatten"
-# ⛔ Legacy fallback SCOPED TO THE ORIGINAL CORPUS ONLY — else a new corpus reads the old one's chats.
-if [ "$INGEST_CORPUS" = "cowork-bulk-ingestion" ] && [ ! -d "$FLAT" ] && [ -d "$HOME/.cache/cowork-ingest/flatten" ]; then FLAT="$HOME/.cache/cowork-ingest/flatten"; fi
+# ⛔ ASK, never build — legacy-wins AND the original-corpus scoping both live in flatten_dir().
+FLAT="$(python3 "$ROOT/shared/paths.py" flatten "$INGEST_CORPUS")"
+SCRATCH="$(python3 "$ROOT/shared/paths.py" scratch ingest_body "scan-$BASKET")"
 ```
-`SCRATCH="/tmp/ingest_body/scan-$BASKET"`. `RAW="$COWORK_WORK/raw-scan-$BASKET"`.
+`RAW="$COWORK_WORK/raw-scan-$BASKET"`.
 
 ---
 

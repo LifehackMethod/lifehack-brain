@@ -7,15 +7,8 @@
 
 ## The one rule this all rests on
 
-From `README.md`, verbatim:
-
-> **The tool goes in one folder. Your notes go in a different one.**
->
-> **One rule about where the tool folder goes: keep it out of your cloud folder.** Not inside Google
-> Drive, not inside Dropbox, not inside OneDrive, not inside iCloud Drive. Anywhere else is fine —
-> your home folder is perfect.
->
-> **Your notes folder is the opposite: put it wherever you like, cloud included.**
+**Your notes live in `data`, and one line in `.gitignore` keeps them out of git** — never tracked,
+never committed, never uploaded. Put the folder itself wherever suits you.
 
 Everywhere below, `<notes>/` means the folder that rule is about — whatever
 `shared/brain_root.py` resolves. Not the current directory, not the repo, not a guess. When it is not

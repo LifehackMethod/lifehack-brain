@@ -239,7 +239,11 @@ DRIVE="$(python3 "$T/pipeline.py" brain-root --quiet)" || { echo "STOP: no brain
 export INGEST_CORPUS="${INGEST_CORPUS:-my-corpus}"   # the corpus slug; one per corpus you ingest
 export COWORK_WORK="$DRIVE/state/projects/$INGEST_CORPUS/work"
 MAP="$COWORK_WORK/corpus-map.json"
-ANCHOR="$HOME/.cache/cowork-ingest/$INGEST_CORPUS/ingest-anchor.txt"; mkdir -p "$(dirname "$ANCHOR")"
+# ⛔ ASK for the path, never build it. `$HOME/.cache` is not a real place on Windows, and an
+# anchor stranded in the old location reads as "never ran" — the run then silently redoes work
+# already done. `paths.py anchor` keeps an existing legacy file if there is one (anchor_file())
+# and creates the parent directory itself.
+ANCHOR="$(python3 "$ROOT/shared/paths.py" anchor "$INGEST_CORPUS")"
 S="$ROOT/system/hooks/skill_anchor.sh"
 ```
 
@@ -311,5 +315,6 @@ once the whole history is filed. If a run is interrupted mid-corpus, leave the a
 
 **Cold-restore (after a crash / reboot / kill mid-run):** just **re-run `/ingest`** — the Drive corpus-map
 resumes at the last rung it recorded, and any reader bundles that were wiped re-pack from `flatten` on demand.
-**The bundles under `/tmp/ingest_body/` are regenerable SCRATCH, never durable state** — the durable state is
+**The reader bundles — `python3 "$ROOT/shared/paths.py" scratch ingest_body` — are regenerable SCRATCH,
+never durable state** — the durable state is
 the corpus-map (Drive) + the staged conclusions; a lost bundle costs a re-pack, never lost work.

@@ -132,6 +132,54 @@ def bootstrap(root, dry_run=False):
     return created, existed
 
 
+def ensure_python3_shim(dry_run=False):
+    """Guarantee that the bare word `python3` resolves on this machine. Windows only.
+
+    ⭐ WHY THIS EXISTS (2026-08-12). Every command in every skill is written `python3 …`, one
+    convention, literal and copy-pasteable. That word is true on macOS and Linux and FALSE on a
+    standard Windows install: python.org ships `python.exe` and no `python3.exe`, and INSTALL.md's
+    own Windows fix — disabling the Microsoft Store execution aliases in STEP 3, TRAP 2 — removes
+    the only `python3.exe` the machine had. So the install instructions actively created the
+    breakage, and every one of the ~150 skill commands failed on the word.
+
+    Rather than branch every command by platform, or make the model substitute a token 150 times,
+    the install restores what the Store alias used to provide: a two-line `python3.cmd` beside the
+    real interpreter. `sys.executable`'s own folder is the right home for it — it is per-user and
+    already on PATH, because the installer put it there.
+
+    Returns (status, detail) with status in {"not-needed", "already", "created", "would-create",
+    "refused"}. ⛔ A refusal NEVER fails the install: it is reported with the manual fix, because a
+    person who cannot write one file still has a working tool everywhere except that word."""
+    if os.name != "nt":
+        return "not-needed", "not Windows — `python3` is the real name here"
+
+    import shutil
+    if shutil.which("python3"):
+        return "already", "`python3` already resolves on PATH"
+
+    target_dir = os.path.dirname(os.path.abspath(sys.executable))
+    shim = os.path.join(target_dir, "python3.cmd")
+    if os.path.exists(shim):
+        return "already", shim
+    if dry_run:
+        return "would-create", shim
+
+    # `%~dp0` is the folder this .cmd sits in, so the shim keeps pointing at its own neighbour even
+    # if the folder is later moved or renamed. `%*` forwards every argument untouched.
+    body = '@echo off\r\n"%~dp0python.exe" %*\r\n'
+    try:
+        with open(shim, "w", encoding="ascii", newline="") as f:
+            f.write(body)
+    except OSError as e:
+        return "refused", (
+            "could not write %s (%s).\n"
+            "     Not fatal. Either re-run this step from a shell that can write there, or create\n"
+            "     that file by hand with these two lines:\n"
+            "         @echo off\n"
+            '         "%%~dp0python.exe" %%*' % (shim, e))
+    return "created", shim
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="create the four top-level things nothing else creates")
     ap.add_argument("--root", help="the folder your notes live in (default: the one already chosen)")
@@ -153,6 +201,16 @@ def main(argv=None):
         print("  already there, left alone: %s" % p)
     if not created:
         print("Nothing to do — the shape is already in place.")
+
+    # The one machine-shaped thing this step owns besides the folders: making `python3` a real word
+    # on Windows, so the skills' commands are literally runnable there. Silent on macOS and Linux.
+    status, detail = ensure_python3_shim(dry_run=a.dry_run)
+    if status == "created":
+        print("  made `python3` work on this machine: %s" % detail)
+    elif status == "would-create":
+        print("  would make `python3` work on this machine: %s" % detail)
+    elif status == "refused":
+        print("  ⚠ `python3` is not a working command here, and I could not fix it:\n     %s" % detail)
     return 0
 
 

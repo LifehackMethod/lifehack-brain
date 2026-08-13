@@ -6,14 +6,19 @@
 
 ## The shape of the thing
 
-**The repo is the brain. Your notes are not in it.** This folder holds skills, tools and hooks —
-the machinery. Everything *you* write lives in a separate folder you choose once, outside this one, so
-an update can replace the machinery without touching a word of yours. That folder is resolved by
+**The repo is the brain, and their notes sit inside it — untracked.** This folder holds skills, tools
+and hooks — the machinery — and everything *they* write lives in `data/` beneath it, kept out of git by
+one line in `.gitignore`: never tracked, never committed, never uploaded. That folder is resolved by
 `shared/brain_root.py` and by nothing else; every path any tool writes to comes from there.
 
 If it is not set, the honest answer is "not set" — **never guess a folder, never fall back to the
 current directory.** Putting someone's notes somewhere they did not choose is the failure this rule
 exists to prevent. Set it with `python3 shared/brain_root.py --set "<folder>"`.
+
+⛔ **Updates are `git pull` — never delete-and-re-clone.** A pull leaves `data/` untouched; deleting
+this folder destroys it. Their notes used to be safe by living elsewhere; since 2026-08-12 they are not.
+⛔ **Never `git add -f data/`** — that one line in `.gitignore` is the only thing keeping their notes
+out of the repository.
 
 ## Rules that hold no matter what is asked
 

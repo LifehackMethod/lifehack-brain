@@ -10,6 +10,8 @@ No third-party test runner — stdlib unittest only, because a student's fresh c
 installed.
 """
 
+import contextlib
+import io
 import os
 import shutil
 import sys
@@ -139,6 +141,64 @@ class TestCli(BrainRootCase):
 
     def test_set_a_missing_path_exits_1(self):
         self.assertEqual(brain_root.main(["--set", os.path.join(self.tmp, "nope")]), 1)
+
+
+class TestReplacementIsNeverSilent(BrainRootCase):
+    """Issue #4. The config is ONE global value outside the repo, so a second install repoints the
+    first. That is allowed — it is what the caller asked for — but it may never happen quietly."""
+
+    def setUp(self):
+        super().setUp()
+        self.other = os.path.join(self.tmp, "other-brain")
+        os.makedirs(self.other)
+
+    def _set(self, path):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = brain_root.main(["--set", path])
+        return rc, buf.getvalue()
+
+    def test_read_persisted_is_none_before_anything_is_set(self):
+        self.assertIsNone(brain_root.read_persisted())
+
+    def test_read_persisted_returns_the_raw_value(self):
+        brain_root.set_brain_root(self.data)
+        self.assertEqual(brain_root.read_persisted(), self.data)
+
+    def test_read_persisted_reports_a_root_whose_folder_is_gone(self):
+        """resolve_brain_root() hides this by returning NOT-SET; the whole point of read_persisted()
+        is that a root pointing at a deleted folder is the case most worth reporting."""
+        brain_root.set_brain_root(self.data)
+        shutil.rmtree(self.data)
+        self.assertEqual(brain_root.read_persisted(), self.data)
+        self.assertEqual(brain_root.resolve_brain_root(), (None, None))
+
+    def test_first_set_says_nothing_about_replacing(self):
+        rc, out = self._set(self.data)
+        self.assertEqual(rc, 0)
+        self.assertNotIn("REPLACED", out)
+
+    def test_overwriting_a_different_root_warns_and_names_the_old_one(self):
+        self._set(self.data)
+        rc, out = self._set(self.other)
+        self.assertEqual(rc, 0, "the overwrite still SUCCEEDS — this is a warning, not a refusal")
+        self.assertIn("REPLACED", out)
+        self.assertIn(self.data, out, "the warning must name the path it replaced, or it is useless")
+
+    def test_setting_the_same_root_twice_is_not_a_warning(self):
+        """A re-run of a normal install must stay quiet, or the warning becomes noise and is ignored
+        on the one run where it matters."""
+        self._set(self.data)
+        rc, out = self._set(self.data)
+        self.assertEqual(rc, 0)
+        self.assertNotIn("REPLACED", out)
+
+    def test_a_refused_set_leaves_the_previous_root_alone(self):
+        self._set(self.data)
+        rc, out = self._set(os.path.join(self.tmp, "does-not-exist"))
+        self.assertEqual(rc, 1)
+        self.assertNotIn("REPLACED", out)
+        self.assertEqual(brain_root.read_persisted(), self.data)
 
 
 if __name__ == "__main__":

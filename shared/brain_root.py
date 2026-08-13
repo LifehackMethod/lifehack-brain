@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 """brain_root.py — THE one root variable. Every data path in this system resolves through here.
 
-THE RESIDENCY RULE: the brain is the git repo. The data is OUTSIDE it, one directory level above,
-wherever the person says. The repo is never inside a cloud-sync folder; the data may be, at their
-choice. This module is the only thing that knows where that data root is.
+THE RESIDENCY RULE (rewritten 2026-08-12, when the layout changed — see INSTALL.md): the brain is
+the git repo, and it IS the folder the person opens. Their data lives at `data/` INSIDE it, kept out
+of version control by one line in `.gitignore` rather than by sitting in a different folder.
+
+⚠ The old rule said the data lived OUTSIDE the repo, one level above. That stopped being true when
+the tool started cloning into the folder you open; the wording is corrected here because this module
+is what every other tool asks, and a stale answer here misleads all of them at once.
+
+⭐ None of that changes this module's contract. The root is still asked once, remembered forever, and
+resolved through the same ordered routes below. `data/` inside the repo is merely the value a normal
+install now persists — it is not a default, not a fallback, and never a guess.
 
 LIFTED, NOT INVENTED (migration T0.1, 2026-08-11): this is the resolver that has been running inside
 `system/tools/cowork-ingest/pipeline.py` since 2026-08-08 — moved out verbatim so that every tool,
@@ -59,7 +67,7 @@ def resolve_brain_root():
         return "env", env
     if os.path.isfile(BRAIN_ROOT_CONFIG):
         try:
-            persisted = open(BRAIN_ROOT_CONFIG).read().strip()
+            persisted = open(BRAIN_ROOT_CONFIG, encoding="utf-8").read().strip()
         except OSError:
             persisted = ""
         if persisted and os.path.isdir(persisted):
@@ -70,6 +78,28 @@ def resolve_brain_root():
             if os.path.isdir(hit):
                 return "legacy-glob", hit
     return None, None
+
+
+def read_persisted():
+    """The RAW value in BRAIN_ROOT_CONFIG, or None. Deliberately NOT `resolve_brain_root()`.
+
+    WHY THE DISTINCTION MATTERS (issue #4, 2026-08-12). `resolve_brain_root()` answers "where do I
+    write?" and consults $LIFEHACK_ROOT and the legacy glob to do it. This answers a narrower and
+    more dangerous question: "what is `--set` about to overwrite?" The config file is ONE global
+    value living outside the repo, so a second install — a re-clone, a second brain, a second person
+    on the same machine — silently repoints the first. Reproduced: after install two runs `--set`,
+    install one resolves to install two's data folder.
+
+    Returns the string even if it no longer exists on disk: a root pointing at a deleted folder is
+    exactly the case a caller most needs to report, and `resolve_brain_root()` hides it by returning
+    NOT-SET."""
+    if not os.path.isfile(BRAIN_ROOT_CONFIG):
+        return None
+    try:
+        value = open(BRAIN_ROOT_CONFIG, encoding="utf-8").read().strip()
+    except OSError:
+        return None
+    return value or None
 
 
 def set_brain_root(path, create=False):
@@ -86,7 +116,7 @@ def set_brain_root(path, create=False):
             return False, f"REFUSED: '{resolved}' does not exist — pass --create to make it"
         os.makedirs(resolved, exist_ok=True)
     os.makedirs(os.path.dirname(BRAIN_ROOT_CONFIG), exist_ok=True)
-    with open(BRAIN_ROOT_CONFIG, "w") as f:
+    with open(BRAIN_ROOT_CONFIG, "w", encoding="utf-8") as f:
         f.write(resolved + "\n")
     return True, resolved
 
@@ -106,12 +136,20 @@ def main(argv=None):
     ap.add_argument("--quiet", action="store_true", help="print only the path; exit 1 if NOT-SET")
     a = ap.parse_args(argv)
     if a.set_path:
+        # ⛔ Read BEFORE writing. The overwrite is silent otherwise, and silence is the bug (issue #4).
+        previous = read_persisted()
         ok, res = set_brain_root(a.set_path, create=a.create)
         if not ok:
             print(res)
             return 1
         verb = "created + " if a.create else ""
         print(f"RESOLVED: {res}  (source: persisted — just {verb}set via --set)")
+        if previous and os.path.abspath(previous) != os.path.abspath(res):
+            # NOT a failure — the caller asked for this. But it is never allowed to happen quietly:
+            # one global config means the OTHER install that pointed here now resolves to `res` too.
+            print(f"⚠ REPLACED a brain root that was already set: {previous}")
+            print("  That value was global — anything else pointing there now resolves here instead.")
+            print(f"  To put it back: {os.path.basename(__file__)} --set \"{previous}\"")
         return 0
     source, path = resolve_brain_root()
     if path is None:
