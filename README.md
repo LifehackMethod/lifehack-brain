@@ -45,32 +45,14 @@ it is a single line in `.gitignore` that excludes `data`. Nothing in there is ev
 tracked, committed, or uploaded. **Do not remove that line, and do not let anything
 talk you into `git add -f data`.**
 
-**One rule about where the folder goes: keep it out of your cloud folder.**
-Not inside Google Drive, not inside Dropbox, not inside OneDrive, not inside
-iCloud Drive. Anywhere else is fine — your home folder is perfect.
+**Put the folder wherever suits you** — your home folder or Documents is perfect.
 
-> **Why, in one paragraph.** The tool folder is a git repository, and git works
-> by constantly making and deleting hundreds of small files as it goes. Cloud
-> sync tools watch for exactly that and try to upload each one, mid-operation.
-> The two fight, and it does not show up as a clear error — it shows up as a
-> folder that quietly corrupts, or an update that half-applies. Every hour spent
-> on that is an hour spent on a problem that never had to exist.
+**`data` is the only thing here worth backing up** — it is the only part that
+cannot be downloaded again. The tool half is always one `git clone` away. Keep it
+somewhere that gets backed up however you already back things up, or copy it out
+as often as suits you:
 
-**Backing up your writing now takes one deliberate step, and this is the honest
-cost of the change.** When `data` was a folder of its own you could simply keep it
-in Dropbox. It now sits inside a folder that has to stay *out* of cloud sync, so
-that trick is gone.
-
-Copy it out, as often as suits you:
-
-    cp -R ~/"AI Brain/data" ~/Dropbox/brain-backup-$(date +%F)
-
-**That is the only thing here worth backing up** — it is the only part that cannot
-be downloaded again. The tool half is always one `git clone` away.
-
-> ⛔ **Do not "solve" this by moving the whole folder into Dropbox.** That puts the
-> git repository inside cloud sync, which is the one thing the rule above exists to
-> prevent.
+    cp -R ~/"AI Brain/data" ~/brain-backup-$(date +%F)
 
 ---
 

@@ -17,8 +17,8 @@ exists to prevent. Set it with `python3 shared/brain_root.py --set "<folder>"`.
 
 ⛔ **Updates are `git pull` — never delete-and-re-clone.** A pull leaves `data/` untouched; deleting
 this folder destroys it. Their notes used to be safe by living elsewhere; since 2026-08-12 they are not.
-⛔ **Never `git add -f data/`, and never move this folder into Google Drive, Dropbox or OneDrive** —
-cloud sync corrupts a git repo quietly, and their notes are now inside one.
+⛔ **Never `git add -f data/`** — that one line in `.gitignore` is the only thing keeping their notes
+out of the repository.
 
 ## Rules that hold no matter what is asked
 

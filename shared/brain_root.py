@@ -2,8 +2,7 @@
 """brain_root.py — THE one root variable. Every data path in this system resolves through here.
 
 THE RESIDENCY RULE: the brain is the git repo. The data is OUTSIDE it, one directory level above,
-wherever the person says. The repo is never inside a cloud-sync folder; the data may be, at their
-choice. This module is the only thing that knows where that data root is.
+wherever the person says. This module is the only thing that knows where that data root is.
 
 LIFTED, NOT INVENTED (migration T0.1, 2026-08-11): this is the resolver that has been running inside
 `system/tools/cowork-ingest/pipeline.py` since 2026-08-08 — moved out verbatim so that every tool,

@@ -33,20 +33,14 @@ tracked, never committed, never uploaded. **The one rule that follows from this:
 `git pull` — never by deleting this folder and downloading a fresh copy.** A pull leaves `data`
 completely alone. Deleting the folder takes your writing with it. See the end of this file.
 
-**⛔ It can't live inside Google Drive, Dropbox or OneDrive.** The tool half is a git repository, and
-cloud sync services damage those — quietly, not with an error. Setup checks for you and won't let it
-happen.
-
-**Your writing still gets backed up.** Setup points your cloud service at the `data` folder and nothing
-else — that's the part that's yours and can't be re-downloaded.
+**Back up `data` however you already back things up.** It's the part that's yours and can't be
+re-downloaded — everything else here is one `git clone` away.
 
 ## What you do — about ten minutes
 
 **1. Make a folder and open it in Claude.** Call it whatever you like — "AI Brain" is the usual. Put it
 somewhere ordinary like your Documents folder. Then: Claude desktop app, the **Code** tab, open that
 folder.
-
-**⛔ Not inside Google Drive, Dropbox or OneDrive.** Setup checks, and will send you back if it is.
 
 **2. Drag this file into the chat and say: "Set up my brain."**
 
@@ -271,13 +265,9 @@ pwd
 python3 - "$PWD" <<'PY'
 import os, re, sys
 p = os.path.abspath(sys.argv[1]); low = p.replace("\\", "/").lower() + "/"
-cloud = ["library/cloudstorage", "google drive", "googledrive", "/my drive/", "/shared drives/",
-         "/shared drive/", "onedrive", "dropbox", "icloud", "mobile documents", "/box/", "pcloud"]
-prot  = ["/program files", "/programdata", "/windows/", "/system/", "/library/"]
+prot  = ["/program files", "/programdata", "/windows/", "/system/"]
 if re.fullmatch(r"[a-z]:/users/?", low) or low in ("/users/", "/home/"):
     print("PROTECTED - the bare users folder"); sys.exit(3)
-hit = next((t for t in cloud if t in low), None)
-if hit: print("IN A CLOUD FOLDER - matched: %s" % hit.strip("/")); sys.exit(2)
 hit = next((t for t in prot if t in low), None)
 if hit: print("PROTECTED SYSTEM FOLDER - matched: %s" % hit.strip("/")); sys.exit(3)
 print("GOOD"); sys.exit(0)
@@ -287,11 +277,10 @@ PY
 **`GOOD` → say nothing about it and carry straight on to STEP 5.**
 
 **Anything else → this is the one time you ask them something.** Say plainly why this spot won't work —
-*"this folder is inside your cloud storage, and the tool half can't live there; cloud syncing damages it
-quietly"* — then: *"Quit Claude, open it again on a folder that isn't inside Google Drive, Dropbox or
-OneDrive — your Documents folder is a good spot — and drag this file in again."* **Then STOP.** Do not
-try to create a folder elsewhere and carry on; they must reopen the session there, or nothing the tool
-does later will be able to reach it.
+*"this is a system folder and the tool can't be installed into it"* — then: *"Quit Claude, open it
+again on an ordinary folder — your Documents folder is a good spot — and drag this file in again."*
+**Then STOP.** Do not try to create a folder elsewhere and carry on; they must reopen the session
+there, or nothing the tool does later will be able to reach it.
 
 > ⛔ **Never test writability by asking for administrator rights.** If a write fails anywhere in this
 > install, the answer is a different folder, never elevation. **A real student lost their install to
@@ -405,33 +394,21 @@ per subject, built from their own material. **Do not pre-create them and do not 
 
 ### ⚠ Then mention backups — ONCE, as a recommendation. It is NOT a requirement and NOT a gate.
 
-> ⛔⛔ **DO NOT TELL THEM TO POINT DROPBOX OR GOOGLE DRIVE AT `data`. THAT ADVICE IS OBSOLETE AND IT NO
-> LONGER WORKS.** It was correct when `data` sat *beside* the repository and could simply live in a
-> synced folder. **It now sits inside a folder that must stay OUT of cloud sync**, and a cloud client
-> cannot sync a subfolder of a folder it is not syncing. Anyone following the old advice ends up either
-> failing quietly or dragging the whole repository into Dropbox — which is the one thing STEP 4 exists
-> to prevent.
+**Say this, and accept whatever they say back:**
 
-**Say this instead, and accept whatever they say back:**
+> *"One thing worth doing when you have a minute: make sure the `data` folder is somewhere that gets
+> backed up — however you already back things up. It's the part that's yours and can't be
+> re-downloaded. Everything else here I can fetch again in a second. Not required, and it can wait."*
 
-> *"One thing worth doing when you have a minute: every so often, copy the `data` folder somewhere
-> that's backed up — Dropbox, an external drive, wherever you keep things. It's the part that's yours
-> and can't be re-downloaded. Everything else here I can fetch again in a second. Not required, and it
-> can wait."*
-
-If they want it now, give them the one line and let them run it:
+If they want a copy right now, give them the one line and let them run it:
 
 ```bash
-cp -R "$PWD/data" ~/Dropbox/brain-backup-$(date +%F)
+cp -R "$PWD/data" ~/brain-backup-$(date +%F)
 ```
 
-⛔ **Do NOT set up a sync client for them, do NOT walk them through the menus now, and do NOT block the
-install on it.** They are ten minutes into a setup and this is the least urgent thing in the file.
-
-⛔⛔ **AND THE ONE SENTENCE THAT CAN ACTUALLY HURT THEM: NEVER MOVE THE AI BRAIN FOLDER INTO A CLOUD
-FOLDER.** It *is* the git repository now, and syncing it recreates the corruption problem STEP 4 exists
-to prevent. **Say that out loud when backups come up** — someone who wants their notes synced will reach
-for exactly that, because the notes are inside it.
+⛔ **Do NOT set up a backup or sync client for them, do NOT walk them through the menus now, and do NOT
+block the install on it.** They are ten minutes into a setup and this is the least urgent thing in the
+file.
 
 ## STEP 8 — Prove it can actually run, before you promise them anything
 
