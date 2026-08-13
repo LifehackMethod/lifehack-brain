@@ -36,7 +36,10 @@ _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _THIS_DIR)
 import safe_input  # reuse the EXACT same L0 + heuristic sanitizer as every other channel
 
-GWS = __import__("shutil").which("gws") or "/opt/homebrew/bin/gws"  # resolve via PATH; survives binary moves
+GWS = (__import__("shutil").which("gws")            # PATH first — the only portable answer
+       or next((_p for _p in ("/opt/homebrew/bin/gws",   # Apple Silicon
+                              "/usr/local/bin/gws")      # Intel Mac — was missing; Intel fell back to a path that does not exist
+                if os.path.exists(_p)), "gws"))          # last resort: bare name, so the error names the tool, not a wrong path
 
 # Fields a sender controls (free text) → must be sanitized.
 _FREETEXT_FIELDS = ("summary", "description", "location")
@@ -47,7 +50,25 @@ _NAME_HOLDERS = ("organizer", "creator")  # dicts with a displayName
 # ingest-reader may read it — enforced by ingest_gate_enforce.sh's scratch-dir lock); stdout keeps the
 # STRUCTURAL fields (id/start/end/status) + a `_reader_scratch` pointer. Closes the gap the 2026-07-04
 # E2E test found (calendar returned raw injection text straight to the tool-holding controller).
-_SCRATCH_DIR = "/tmp/rdr"
+# ── THE SCRATCH ROOT IS RESOLVED, NEVER A LITERAL (2026-08-13, S2.1). It used to be a
+# hardcoded Unix-only temp path, which is a guess: on Windows the temp dir is %TEMP%, and
+# os.path.join on a forward-slash literal yields a mixed-separator path the reader-actor
+# guard could not recognise — which did not open a hole so much as BREAK THE SANCTIONED
+# PATH: the sub-agent exemption lives inside the guard arm that stopped matching.
+# Walked up rather than counted — a counted `../..` is how run_tester.sh silently resolved
+# one directory short and returned a confident wrong verdict.
+_d = _THIS_DIR
+while _d != os.path.dirname(_d):
+    if os.path.isfile(os.path.join(_d, "shared", "paths.py")):
+        sys.path.insert(0, os.path.join(_d, "shared"))
+        break
+    _d = os.path.dirname(_d)
+import paths as _paths
+
+
+def _scratch_dir():
+    """Resolved per call, not at import — keeps import side-effect-free."""
+    return _paths.scratch_dir("rdr")
 _REDACT_MARKER = "⟦reader-scratch — spawn ingest-reader on _reader_scratch⟧"
 
 
@@ -78,9 +99,9 @@ def _isolate_freetext(data):
         if parts:
             blocks.append(f"EVENT {eid}\n" + "\n".join(parts))
     scratch_text = "\n\n---\n\n".join(blocks)
-    os.makedirs(_SCRATCH_DIR, exist_ok=True)
+    _sd = _scratch_dir()
     hh = hashlib.sha256((scratch_text or "empty").encode("utf-8")).hexdigest()[:12]
-    scratch_path = os.path.join(_SCRATCH_DIR, f"cal_{hh}.txt")
+    scratch_path = os.path.join(_sd, f"cal_{hh}.txt")
     with open(scratch_path, "w", encoding="utf-8") as fh:
         fh.write(scratch_text)
     out = data if isinstance(data, dict) else {"items": events}

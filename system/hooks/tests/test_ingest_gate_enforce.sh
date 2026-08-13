@@ -72,6 +72,29 @@ checka "sub-agent reads it"     0 Read '{"file_path":"/tmp/ingest_body/bundle-1.
 check  "main cats scratch"      2 Bash '{"command":"cat /tmp/ingest_body/bundle-1.md"}'
 checka "sub-agent cats it"      0 Bash '{"command":"cat /tmp/ingest_body/bundle-1.md"}' "agent-xyz"
 
+# -- THE SCRATCH LOCK MUST NOT DEPEND ON A LITERAL LEADING TEMP PATH (added 2026-08-13, S2.1).
+# shared/paths.py honours TMPDIR on Unix and TEMP/TMP on Windows, so the scratch dir is already
+# /var/folders/.../T/lifehack/... on a Mac and a drive-lettered backslash path on Windows. The
+# old patterns matched only a literal leading temp prefix.
+# THE FAILURE THAT MATTERS IS NOT A BYPASS -- IT IS THE SANCTIONED PATH BREAKING. The main
+# session stayed blocked either way (the external-file arm caught it), but the SUB-AGENT -- the
+# tool-less reader this whole split exists to route work to -- stopped being exempt, because the
+# exemption lives INSIDE the scratch-lock arm and that arm never matched. Measured 2026-08-13
+# against the pre-fix hook: a sub-agent read of a resolved scratch path returned exit 2.
+# The contract is now the DIRECTORY NAME, which is stable across platforms.
+check  "main reads resolved"      2 Read '{"file_path":"/var/folders/ab/T/lifehack/c/rdr/cal_1.txt"}'
+checka "sub-agent reads resolved" 0 Read '{"file_path":"/var/folders/ab/T/lifehack/c/rdr/cal_1.txt"}' "agent-xyz"
+checka "sub-agent resolved ibody" 0 Read '{"file_path":"/var/folders/ab/T/lifehack/c/ingest_body/b.md"}' "agent-xyz"
+check  "main greps resolved"      2 Bash '{"command":"head /var/folders/ab/T/lifehack/c/rdr/cal_1.txt"}'
+checka "sub-agent heads resolved" 0 Bash '{"command":"head /var/folders/ab/T/lifehack/c/rdr/cal_1.txt"}' "agent-xyz"
+check  "main heads windows shape" 2 Bash '{"command":"head C:\\Users\\s\\AppData\\Local\\Temp\\lifehack\\c\\rdr\\cal_1.txt"}'
+# NEGATIVE CONTROLS -- a dir-name match must not degrade into a keyword match. A dir called
+# "reader" and a file merely NAMED rdr-something are not the scratch dir; blocking those is the
+# false-positive disease this repo has logged four times.
+check  "notes dir named reader"   0 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/state/reader/notes.md'}))" "$NOTES")"
+check  "notes file rdr-log.md"    0 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/state/rdr-log.md'}))" "$NOTES")"
+
+
 echo "-- SHELL CHANNELS (expect 2) --"
 check "skip-variable set"       2 Bash "{\"command\":\"export ${SKV}=1\"}"
 check "gmail body read"         2 Bash '{"command":"gws gmail messages read 18abc"}'
