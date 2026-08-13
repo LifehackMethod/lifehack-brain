@@ -140,6 +140,18 @@ def baskets_of(m):
     return m.get("baskets", {})
 
 
+def _basket_has_chats(m, basket):
+    """True if any row in the map is currently assigned to this basket.
+
+    A basket can end up with ZERO member rows after a human 'Split' correction reassigns every chat
+    OUT of it (THE MOVE SET, 1-sort.md 1.2/1.2b) — typically UNCLUSTERED, emptied once every chat has
+    a named subject. `corpus_map.py migrate` only ever ADDS/refreshes basket entries; it deliberately
+    never prunes one (skipping a stale entry is safer than deleting something a later reader might
+    still expect to find). So the orphaned entry survives in `m['baskets']` with nothing left in it.
+    Callers that pick "the next basket to work" must skip these — there is nothing there to scan."""
+    return any(r.get("basket") == basket for r in rows_of(m).values())
+
+
 # ── assert_schema — the FITNESS FUNCTION (a mis-ordered / un-migrated map fails LOUD, not silent) ──
 def assert_schema(m):
     """Return a list of problems (empty = conformant v2). The skills exit non-zero if non-empty."""
@@ -168,9 +180,14 @@ def assert_schema(m):
 def next_basket(m):
     """The loop driver: the first basket NOT yet committed — interrupted baskets first (resume them),
     then queued, by sort_order. Returns the basket name or None (all committed = done).
-    Computed from the map so the handoff survives a session ending between skills."""
+    Computed from the map so the handoff survives a session ending between skills.
+
+    Skips a basket with zero member chats (an orphan left by a Split correction — see
+    `_basket_has_chats`) — it is never "next", and without this filter it also blocks reaching DONE,
+    since it can never itself progress to committed."""
     bs = baskets_of(m)
-    pending = [(name, b) for name, b in bs.items() if b.get("basket_status") != "committed"]
+    pending = [(name, b) for name, b in bs.items()
+               if b.get("basket_status") != "committed" and _basket_has_chats(m, name)]
     if not pending:
         return None
     pending.sort(key=lambda nb: (0 if nb[1].get("basket_status") in INTERRUPTED else 1,
@@ -222,9 +239,11 @@ def _scanned_unruled(r):
 
 def _pending_baskets_sorted(m):
     """Non-committed baskets, interrupted-first then by sort_order — the same order next_basket picks,
-    but the whole list (so the miner can sweep every pile before the filer runs)."""
+    but the whole list (so the miner can sweep every pile before the filer runs). Also skips a basket
+    with zero member chats — see `_basket_has_chats` — so current_phase() never hands one to the miner."""
     bs = baskets_of(m)
-    pending = [(name, b) for name, b in bs.items() if b.get("basket_status") != "committed"]
+    pending = [(name, b) for name, b in bs.items()
+               if b.get("basket_status") != "committed" and _basket_has_chats(m, name)]
     pending.sort(key=lambda nb: (0 if nb[1].get("basket_status") in INTERRUPTED else 1,
                                  nb[1].get("sort_order", 0), nb[0]))
     return pending
@@ -357,7 +376,16 @@ def suggest_next(m, skill, basket=None):
                 "folders you already agreed (nothing is written until you approve each one).")
     label = {"2": "SCAN", "3": "DEEP-READ"}.get(ph, ph)
     if skill == "ingest-1":
-        return f"Piles are set. Re-invoke **/ingest** → SCAN pile '{nb}'."
+        # ingest-1's handoff fires right after sort-confirm (1-sort.md 1.6) — BEFORE pad-init (1.10)
+        # has run, so `ph`/`nb` above are still ("BLOCKED-NO-PAD", None): current_phase() gates PHASE 2
+        # on the pad, which hasn't been written yet at this exact call site. That is what produced a
+        # raw "SCAN pile 'None'." on the human-facing close screen. sort-confirm having just succeeded
+        # already proves SORT is done, so preview the real next pile straight from the basket queue —
+        # pad-init is the very next automatic step, and next_basket() doesn't need the pad to answer.
+        preview = next_basket(m)
+        if preview is None:
+            return "Piles are set, but every pile is already committed — re-invoke **/ingest** to continue."
+        return f"Piles are set. Re-invoke **/ingest** → SCAN pile '{preview}'."
     if skill == "ingest-2":
         if ph == "3" and nb == basket:
             return f"SCAN done for '{basket}' — some chats to read deeper. Re-invoke **/ingest** → DEEP-READ pile '{basket}'."
@@ -404,6 +432,9 @@ def acquire_lock(m, basket, machine, skill, now_iso=None, ttl_s=1800):
     b = baskets_of(m).get(basket)
     if b is None:
         return False, f"no such basket '{basket}'"
+    if not _basket_has_chats(m, basket):
+        return False, (f"basket '{basket}' has zero member chats (likely emptied by a Split correction "
+                        f"that moved everything out of it) — nothing to scan, refusing to lock it")
     held = b.get("basket_lock")
     stole_own = False
     if held and not is_stale_lock(held, now_iso, ttl_s):
