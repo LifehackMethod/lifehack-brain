@@ -1732,6 +1732,107 @@ def set_folder_branch(m, basket, branch):
     return True, f"folder_branch = {b['folder_branch']!r}"
 
 
+def coalesce_scan_findings(work_dir, basket, m):
+    """Carry a SHORT keeper's finding into the coalesced file so PHASE 4 can see it (2026-08-12).
+
+    THE GAP THIS CLOSES. A keeper at or under WHOLE_READ_MAX is read whole at SCAN and never sent to a
+    deep reader, so `read --extraction scan-summary` stages its finding on the MAP ROW. But PHASE 4's
+    manifest reads `raw-conclusions-<basket>.json` and nothing else — so a pile made only of short
+    keepers produced a coalesced file that did not exist, and its findings were invisible to filing.
+    `fitrecomp` hit exactly that: one note, read, closed, and then silently absent from the manifest.
+
+    ⛔ This INVENTS NOTHING. The text it carries across is the gist the SCAN reader returned, which is
+    the same independent trace `scan_evidence()` checks — it is being moved into the shape PHASE 4
+    reads, not created. A chat with no reader gist is skipped rather than given an empty finding.
+
+    Merges rather than overwrites: a pile can hold both short and deep keepers (job-hunter does), and
+    the deep readers' output must survive. Returns (path, added_count)."""
+    work = work_dir or os.environ.get("COWORK_WORK")
+    if not work:
+        return (None, 0)
+    _, gists = scan_evidence(basket, work)
+    if not gists:
+        return (None, 0)
+    out = os.path.join(work, f"raw-conclusions-{basket}.json")
+    existing = []
+    if os.path.exists(out):
+        try:
+            existing = json.load(open(out, encoding="utf-8"))
+            if isinstance(existing, dict):
+                existing = existing.get("conclusions") or existing.get("items") or []
+        except Exception:
+            existing = []
+    have = {el.get("file") for el in existing if isinstance(el, dict)}
+
+    # the raw gist TEXT, re-read from the reader files (scan_evidence returns only has-content flags)
+    texts = {}
+    sdir = os.path.join(work, "scan-raw", basket)
+    for name in sorted(os.listdir(sdir)) if os.path.isdir(sdir) else []:
+        if not name.endswith(".json"):
+            continue
+        try:
+            data = json.load(open(os.path.join(sdir, name), encoding="utf-8"))
+        except Exception:
+            continue
+        if isinstance(data, dict):
+            data = data.get("items") or data.get("results") or []
+        for el in data if isinstance(data, list) else []:
+            if isinstance(el, dict):
+                k = el.get("file") or el.get("chat") or el.get("id")
+                t = str(el.get("gist") or el.get("summary") or "").strip()
+                if k and t:
+                    texts[k] = t
+
+    added = 0
+    for chat, row in _basket_chats(m, basket):
+        if chat in have:
+            continue                                   # a deep read already produced its finding
+        if str(row.get("extraction") or "").strip() != "scan-summary":
+            continue                                   # not the short path — not ours to carry
+        text = texts.get(chat)
+        if not text:
+            continue                                   # no reader gist = no finding, never a blank one
+        existing.append({"file": chat, "conclusions": [{"text": text}],
+                         "category": None, "freshness": None, "source": "scan-summary"})
+        added += 1
+    if added:
+        json.dump(existing, open(out, "w", encoding="utf-8"), indent=1, ensure_ascii=False)
+    return (out, added)
+
+
+def list_findings(work_dir, m, basket=None):
+    """Every finding across the corpus, with its human-set type or None. The READ side of
+    `set_finding_type` — which existed with no way to see what needed ruling (2026-08-12).
+
+    PHASE 4 refuses to file an untyped finding, and rightly: the type is the human's durability ruling
+    and code must never guess it. But nothing rendered the list, so the only way to answer the gate was
+    to already know what it was asking about. Returns a list of
+    {basket, file, index, text, finding_type}."""
+    work = work_dir or os.environ.get("COWORK_WORK")
+    out = []
+    for b in sorted(m.get("baskets", {})):
+        if basket and b != basket:
+            continue
+        path, _ = coalesced_evidence(b, work)
+        if not path or not os.path.exists(path):
+            continue
+        try:
+            data = json.load(open(path, encoding="utf-8"))
+        except Exception:
+            continue
+        if isinstance(data, dict):
+            data = data.get("conclusions") or data.get("items") or data.get("results") or []
+        for el in data if isinstance(data, list) else []:
+            if not isinstance(el, dict):
+                continue
+            chat = el.get("file") or el.get("chat") or el.get("id")
+            for i, c in enumerate(_conclusions_of(el)):
+                out.append({"basket": b, "file": chat, "index": i,
+                            "text": (c.get("text") or "").strip(),
+                            "finding_type": c.get("type")})
+    return out
+
+
 def set_finding_type(work_dir, basket, chat, index, ftype):
     """Record the HUMAN's ruling on ONE finding: canonical · dated · record (FINDING_TYPES).
 
@@ -2365,6 +2466,14 @@ def main():
                     help="one or more folder paths this pile earned — pass SEVERAL space-separated when "
                          "propose_folder_shape() legitimately returned more than one (e.g. a nested subject "
                          "AND a sibling); a single value still works exactly as before ([5.1.1], 2026-08-11)")
+    lf = sub.add_parser("findings", help="LIST every finding with its human-set type (or UNTYPED) — the read side of finding-type")
+    lf.add_argument("--map", required=True); lf.add_argument("--basket")
+    lf.add_argument("--work"); lf.add_argument("--untyped-only", action="store_true")
+    lf.set_defaults(cmd="findings")
+    cs = sub.add_parser("coalesce-scan", help="carry SHORT keepers' SCAN findings into raw-conclusions-<basket>.json so PHASE 4 can see them")
+    cs.add_argument("--map", required=True); cs.add_argument("--basket", required=True)
+    cs.add_argument("--work")
+    cs.set_defaults(cmd="coalesce-scan")
     ft = sub.add_parser("finding-type", help=f"PHASE 3: the human's ruling on ONE finding ({'/'.join(FINDING_TYPES)})")
     ft.add_argument("--basket", required=True); ft.add_argument("--file", required=True)
     ft.add_argument("--index", type=int, required=True); ft.add_argument("--type", required=True, choices=list(FINDING_TYPES))
@@ -2626,6 +2735,21 @@ def main():
             sys.exit(1)
         _save(m, a.map)
         print(f"OK folder-branch: {a.basket} — {msg}")
+    elif a.cmd == "findings":
+        rows = list_findings(getattr(a, "work", None), load(a.map), a.basket)
+        if a.untyped_only:
+            rows = [r for r in rows if r["finding_type"] not in FINDING_TYPES]
+        for r in rows:
+            print(json.dumps(r, ensure_ascii=False))
+        n_un = sum(1 for r in rows if r["finding_type"] not in FINDING_TYPES)
+        print(f"# {len(rows)} finding(s) · {n_un} UNTYPED", file=sys.stderr)
+    elif a.cmd == "coalesce-scan":
+        m = load(a.map)
+        path, added = coalesce_scan_findings(getattr(a, "work", None), a.basket, m)
+        if not path:
+            print(f"FAIL coalesce-scan: no SCAN reader output for basket {a.basket!r}")
+            sys.exit(1)
+        print(f"OK coalesce-scan: carried {added} short finding(s) into {path}")
     elif a.cmd == "finding-type":
         ok, msg = set_finding_type(getattr(a, "work", None), a.basket, a.file, a.index, a.type)
         if not ok:
