@@ -82,17 +82,32 @@ checka "sub-agent cats it"      0 Bash '{"command":"cat /tmp/ingest_body/bundle-
 # exemption lives INSIDE the scratch-lock arm and that arm never matched. Measured 2026-08-13
 # against the pre-fix hook: a sub-agent read of a resolved scratch path returned exit 2.
 # The contract is now the DIRECTORY NAME, which is stable across platforms.
-check  "main reads resolved"      2 Read '{"file_path":"/var/folders/ab/T/lifehack/c/rdr/cal_1.txt"}'
-checka "sub-agent reads resolved" 0 Read '{"file_path":"/var/folders/ab/T/lifehack/c/rdr/cal_1.txt"}' "agent-xyz"
-checka "sub-agent resolved ibody" 0 Read '{"file_path":"/var/folders/ab/T/lifehack/c/ingest_body/b.md"}' "agent-xyz"
-check  "main greps resolved"      2 Bash '{"command":"head /var/folders/ab/T/lifehack/c/rdr/cal_1.txt"}'
-checka "sub-agent heads resolved" 0 Bash '{"command":"head /var/folders/ab/T/lifehack/c/rdr/cal_1.txt"}' "agent-xyz"
+check  "main reads resolved"      2 Read '{"file_path":"/var/folders/ab/T/lifehack/rdr/cal_1.txt"}'
+checka "sub-agent reads resolved" 0 Read '{"file_path":"/var/folders/ab/T/lifehack/rdr/cal_1.txt"}' "agent-xyz"
+checka "sub-agent resolved ibody" 0 Read '{"file_path":"/var/folders/ab/T/lifehack/ingest_body/b.md"}' "agent-xyz"
+check  "main greps resolved"      2 Bash '{"command":"head /var/folders/ab/T/lifehack/rdr/cal_1.txt"}'
+checka "sub-agent heads resolved" 0 Bash '{"command":"head /var/folders/ab/T/lifehack/rdr/cal_1.txt"}' "agent-xyz"
 check  "main heads windows shape" 2 Bash '{"command":"head C:\\Users\\s\\AppData\\Local\\Temp\\lifehack\\c\\rdr\\cal_1.txt"}'
 # NEGATIVE CONTROLS -- a dir-name match must not degrade into a keyword match. A dir called
 # "reader" and a file merely NAMED rdr-something are not the scratch dir; blocking those is the
 # false-positive disease this repo has logged four times.
 check  "notes dir named reader"   0 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/state/reader/notes.md'}))" "$NOTES")"
 check  "notes file rdr-log.md"    0 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/state/rdr-log.md'}))" "$NOTES")"
+
+# ⛔ THE FALSE POSITIVE AN ADVERSARIAL AUDIT FOUND, 2026-08-13. The first cut of this fix matched a
+# bare */rdr/* -- so ANY trusted folder literally named rdr or ingest_body (a client abbreviated "RDR", a
+# renamed reader dir) was denied to the main session. The suite was 54/54 green and MISSED it,
+# because the two negative controls tested "reader" and a FILENAME, never a DIRECTORY SEGMENT.
+# paths.py always writes under a "lifehack" namespace, so the match is now qualified by it.
+check  "trusted dir named rdr"    0 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/clients/rdr/status.md'}))" "$NOTES")"
+check  "trusted dir ingest_body"  0 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/projects/ingest_body/plan.md'}))" "$NOTES")"
+check  "shell reads trusted rdr"  0 Bash "{\"command\":\"grep x $NOTES/clients/rdr/status.md\"}"
+# ⛔ AND THE CASE BYPASS, also the audit's: macOS APFS is case-INSENSITIVE, so an upper-cased
+# segment reached the real file while never matching a case-sensitive pattern. PRE-EXISTING, not a
+# regression -- open on the old literal pattern too. The shell arm is now -i.
+check  "main heads UPPER scratch" 2 Bash '{"command":"head /var/folders/ab/T/lifehack/RDR/cal_1.txt"}'
+check  "main heads MiXeD scratch" 2 Bash '{"command":"head /var/folders/ab/T/lifehack/Rdr/cal_1.txt"}'
+
 
 
 echo "-- SHELL CHANNELS (expect 2) --"
