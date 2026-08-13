@@ -10,7 +10,10 @@ keep are actually kept:
      substitution and not a silent relocation of everybody's data.
 """
 
+import contextlib
+import io
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -118,6 +121,116 @@ class TestPlatformCorrectness(unittest.TestCase):
         exe = paths.interpreter()
         self.assertTrue(os.path.isabs(exe))
         self.assertTrue(os.path.exists(exe))
+
+
+class TestLegacyCacheIsNeverStranded(unittest.TestCase):
+    """Moving where an answer comes from must never orphan the data the old answer pointed at.
+
+    A real flatten costs real time to rebuild, and the person whose machine already has one did not
+    ask for a migration. So an existing legacy directory WINS, and only a machine without one gets
+    the portable location."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="paths-legacy-test-")
+        self._saved_home = os.environ.get("HOME")
+        self._saved_legacy = paths.LEGACY_CACHE
+        os.environ["HOME"] = self.tmp
+        paths.LEGACY_CACHE = os.path.join(self.tmp, ".cache", "cowork-ingest")
+
+    def tearDown(self):
+        paths.LEGACY_CACHE = self._saved_legacy
+        if self._saved_home is None:
+            os.environ.pop("HOME", None)
+        else:
+            os.environ["HOME"] = self._saved_home
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _make_legacy(self, *parts):
+        d = os.path.join(paths.LEGACY_CACHE, *parts)
+        os.makedirs(d)
+        return d
+
+    def test_an_existing_legacy_flatten_wins(self):
+        want = self._make_legacy("some-corpus", "flatten")
+        self.assertEqual(paths.flatten_dir("some-corpus"), want)
+
+    def test_no_legacy_means_the_portable_location(self):
+        got = paths.flatten_dir("some-corpus")
+        self.assertNotIn(os.path.join(".cache", "cowork-ingest"), got)
+        self.assertIn("some-corpus", got)
+
+    def test_pre_slug_flatten_serves_only_the_original_corpus(self):
+        """⛔ The scoping is a SAFETY rule, not a convenience: unscoped, a brand-new corpus resolves
+        to the original's flatten and silently reads its chats."""
+        want = self._make_legacy("flatten")
+        self.assertEqual(paths.flatten_dir(paths.LEGACY_CORPUS), want)
+        self.assertNotEqual(paths.flatten_dir("a-brand-new-corpus"), want)
+
+    def test_a_slugged_legacy_beats_the_pre_slug_one(self):
+        self._make_legacy("flatten")
+        want = self._make_legacy(paths.LEGACY_CORPUS, "flatten")
+        self.assertEqual(paths.flatten_dir(paths.LEGACY_CORPUS), want)
+
+    def test_an_existing_legacy_anchor_wins(self):
+        os.makedirs(os.path.join(paths.LEGACY_CACHE, "c"))
+        want = os.path.join(paths.LEGACY_CACHE, "c", "ingest-anchor.txt")
+        open(want, "w").write("x")
+        self.assertEqual(paths.anchor_file("c"), want)
+
+    def test_no_legacy_anchor_means_the_portable_location(self):
+        got = paths.anchor_file("c")
+        self.assertTrue(got.endswith("ingest-anchor.txt"))
+        self.assertNotIn(os.path.join(".cache", "cowork-ingest"), got)
+
+
+class TestCli(unittest.TestCase):
+    """The CLI exists so a markdown command block can ASK for a path instead of building one. Its
+    contract is: exactly one path on stdout, or a non-zero exit and NOTHING on stdout."""
+
+    def _run(self, argv):
+        buf, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(err):
+            rc = paths.main(argv)
+        return rc, buf.getvalue().strip(), err.getvalue().strip()
+
+    def test_scratch_prints_one_absolute_path(self):
+        rc, out, _ = self._run(["scratch", "ingest_body", "scan-money"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(len(out.splitlines()), 1)
+        self.assertTrue(os.path.isabs(out))
+        self.assertTrue(out.endswith(os.path.join("ingest_body", "scan-money")))
+
+    def test_parts_are_joined_with_the_platform_separator(self):
+        _, out, _ = self._run(["scratch", "a", "b"])
+        self.assertTrue(out.endswith(os.path.join("a", "b")))
+
+    def test_no_arguments_is_still_the_diagnostic_dump(self):
+        rc, out, _ = self._run([])
+        self.assertEqual(rc, 0)
+        self.assertIn("repo_root", out)
+
+    def test_an_unknown_name_exits_2_with_nothing_on_stdout(self):
+        rc, out, err = self._run(["nonsense"])
+        self.assertEqual(rc, 2)
+        self.assertEqual(out, "", "a caller doing VAR=$(...) must not capture an error as a path")
+        self.assertIn("unknown path", err)
+
+    def test_not_set_exits_1_with_nothing_on_stdout(self):
+        """⛔ The fail-closed case. An empty capture plus a failed exit is recoverable; a plausible
+        wrong folder is not."""
+        saved = dict(os.environ)
+        try:
+            os.environ.pop(paths.brain_root.BRAIN_ROOT_ENV, None)
+            os.environ["HOME"] = os.path.join(tempfile.gettempdir(), "lifehack-no-such-home")
+            paths.brain_root.BRAIN_ROOT_CONFIG = os.path.join(os.environ["HOME"], "nope")
+            paths.brain_root.BRAIN_ROOT_LEGACY_GLOB = ""
+            rc, out, err = self._run(["map"])
+            self.assertEqual(rc, 1)
+            self.assertEqual(out, "")
+            self.assertIn("NOT-SET", err)
+        finally:
+            os.environ.clear()
+            os.environ.update(saved)
 
 
 if __name__ == "__main__":

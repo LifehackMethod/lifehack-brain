@@ -51,6 +51,15 @@ import brain_root  # noqa: E402  (path set immediately above, by design)
 CORPUS_ENV = "INGEST_CORPUS"
 DEFAULT_CORPUS = "my-corpus"
 
+# The corpus that predates slugging. The skills scoped their legacy fallback to exactly this one, so
+# that a BRAND-NEW corpus could never resolve to the original's flatten and silently read someone
+# else's chats. That scoping is preserved here verbatim — it is a safety rule, not a convenience.
+LEGACY_CORPUS = "cowork-bulk-ingestion"
+
+# Where the cache used to live, literally. Kept as a constant because two functions below have to
+# look for it, and because the string is the whole reason they exist.
+LEGACY_CACHE = os.path.join(os.path.expanduser("~"), ".cache", "cowork-ingest")
+
 
 def repo_root():
     """Absolute path to the cloned tool folder. Always answerable; never None."""
@@ -133,6 +142,44 @@ def scratch_dir(*parts):
     return p
 
 
+def flatten_dir(slug=None):
+    """The flattened corpus. Portable on a new machine, and NEVER strands an existing one.
+
+    ⚠ BACK-COMPAT IS THE ENTIRE POINT OF THIS FUNCTION. Before 2026-08-12 the skills wrote the
+    flatten to a literal `$HOME/.cache/cowork-ingest/<slug>/flatten`, with an unslugged
+    `$HOME/.cache/cowork-ingest/flatten` older still. Those hold a real flatten that costs real time
+    to rebuild, so **an existing legacy directory WINS** over the portable location. Moving where an
+    answer comes from must never orphan the data the old answer pointed at.
+
+    A machine with no legacy directory — every Windows install, where `$HOME/.cache` was never a real
+    place, and every fresh install anywhere — gets `cache_dir()` and is correct from the start.
+
+    ⛔ The pre-slug fallback stays SCOPED TO `LEGACY_CORPUS`, exactly as the shell scoped it. Without
+    that guard a brand-new corpus resolves to the original's flatten and silently reads its chats."""
+    slug = slug or corpus_slug()
+    slugged = os.path.join(LEGACY_CACHE, slug, "flatten")
+    if os.path.isdir(slugged):
+        return slugged
+    if slug == LEGACY_CORPUS:
+        pre_slug = os.path.join(LEGACY_CACHE, "flatten")
+        if os.path.isdir(pre_slug):
+            return pre_slug
+    return cache_dir("cowork-ingest", slug, "flatten")
+
+
+def anchor_file(slug=None):
+    """The ingest anchor — the resume marker a run reads to know where it left off.
+
+    Same legacy-wins rule as `flatten_dir()`, and for the same reason: an anchor stranded in the old
+    location reads as "never ran" and silently redoes work already done. Returns a FILE path; its
+    parent directory is created."""
+    slug = slug or corpus_slug()
+    legacy = os.path.join(LEGACY_CACHE, slug, "ingest-anchor.txt")
+    if os.path.isfile(legacy):
+        return legacy
+    return os.path.join(cache_dir("cowork-ingest", slug), "ingest-anchor.txt")
+
+
 def claude_run_dir(*parts):
     """`~/.claude/run/...` — where the per-session hook flags live. Created if missing.
 
@@ -154,12 +201,58 @@ def interpreter():
     return sys.executable
 
 
+# ── The CLI: one path per call, so a command block never has to build one ────────────────────────
+# A skill's command block cannot import this module, so it has to be able to ASK. Without this, the
+# only way to reach `scratch_dir()` from a markdown command block was to inline a `python3 -c` with
+# a sys.path fixup — which is exactly the unreadable shell this module exists to delete, and it is
+# how `/tmp/...` survived the first pass at issue #7.
+#
+# Each subcommand prints ONE absolute path and nothing else, so `VAR="$(python3 shared/paths.py
+# scratch ingest_body scan-money)"` is the whole idiom. Parts are joined by the platform's own
+# separator — never hand this a path with `/` already in it.
+#
+# ⛔ Exit 1 with NOT-SET on stderr when the path depends on a brain root that is not set. A caller
+# capturing stdout gets an empty string and a failed exit, never a plausible-looking wrong folder.
+_PATH_COMMANDS = {
+    "scratch": scratch_dir,          # regenerable working space   (was: /tmp/...)
+    "cache": cache_dir,              # per-user cache              (was: $HOME/.cache/...)
+    "run": claude_run_dir,           # per-session hook flags      (was: $HOME/.claude/run/...)
+    "repo": lambda *p: os.path.join(repo_root(), *p),
+    "tools": tool_dir,
+    "flatten": lambda *p: flatten_dir(p[0] if p else None),   # legacy-wins; see flatten_dir()
+    "anchor": lambda *p: anchor_file(p[0] if p else None),
+}
+
+
+def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if not argv:                     # no arguments -> the diagnostic dump, unchanged
+        src, root = brain()
+        print(f"repo_root    {repo_root()}")
+        print(f"corpus_slug  {corpus_slug()}")
+        print(f"brain_root   {root or 'NOT-SET'}  (source: {src or 'none'})")
+        print(f"corpus_map   {corpus_map() or 'NOT-SET (brain root unset)'}")
+        print(f"cache_dir    {cache_dir(corpus_slug())}")
+        print(f"scratch_dir  {scratch_dir(corpus_slug())}")
+        print(f"interpreter  {interpreter()}")
+        return 0
+
+    cmd, parts = argv[0], argv[1:]
+    if cmd in ("work", "map"):       # brain-root-derived: may legitimately be NOT-SET
+        value = corpus_work() if cmd == "work" else corpus_map()
+        if value is None:
+            print("NOT-SET — no brain root. Fix: python3 shared/brain_root.py --set <folder>",
+                  file=sys.stderr)
+            return 1
+        print(os.path.join(value, *parts) if parts else value)
+        return 0
+    if cmd not in _PATH_COMMANDS:
+        print(f"unknown path '{cmd}' — expected one of: "
+              f"{', '.join(sorted(list(_PATH_COMMANDS) + ['work', 'map']))}", file=sys.stderr)
+        return 2
+    print(_PATH_COMMANDS[cmd](*parts))
+    return 0
+
+
 if __name__ == "__main__":
-    src, root = brain()
-    print(f"repo_root    {repo_root()}")
-    print(f"corpus_slug  {corpus_slug()}")
-    print(f"brain_root   {root or 'NOT-SET'}  (source: {src or 'none'})")
-    print(f"corpus_map   {corpus_map() or 'NOT-SET (brain root unset)'}")
-    print(f"cache_dir    {cache_dir(corpus_slug())}")
-    print(f"scratch_dir  {scratch_dir(corpus_slug())}")
-    print(f"interpreter  {interpreter()}")
+    sys.exit(main())

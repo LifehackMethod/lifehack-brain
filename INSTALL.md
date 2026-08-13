@@ -370,6 +370,22 @@ python3 shared/brain_root.py --set "$PWD/data"
 python3 system/tools/bootstrap.py
 ```
 
+⛔ **Read what `--set` printed before moving on. If it says `⚠ REPLACED a brain root that was already
+set`, STOP and tell them.** That line means this machine already had a brain somewhere else — an
+earlier install, a second folder, another person's account — and it now points here instead. The
+value lives in `~/.config/lifehack/brain-root`, which is OUTSIDE the repo, so deleting a tool folder
+and re-cloning never resets it (issue #4, 2026-08-12).
+
+> **Say it plainly and let them choose:** *"Heads up — this machine already had an AI Brain pointed at
+> `<the old path>`. I've just pointed everything at the new one. If that old folder is still the one
+> you use, say so and I'll put it back."* The command to restore it is printed right there in the
+> warning. **No warning printed → say nothing; this is a first install and there is nothing to tell.**
+
+⚠ **This step is what settles the brain root, so `/ingest` will find it already answered.** The ingest
+skill's step 1.0 owns the question *only when nothing is recorded yet* — on a normal install it reads
+the value set here, says the path out loud, and does not ask (issue #6, 2026-08-12). **That is correct
+and not a bug to fix by making it ask again.**
+
 **Now prove git is ignoring it.** `data` lives *inside* the repository, so this is the line that keeps
 their writing out of version control — and a check you skip is a check that failed.
 

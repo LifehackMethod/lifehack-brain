@@ -2404,7 +2404,7 @@ if _SHARED_DIR not in sys.path:
     sys.path.insert(0, _SHARED_DIR)
 try:
     from brain_root import (BRAIN_ROOT_ENV, BRAIN_ROOT_CONFIG, BRAIN_ROOT_LEGACY_GLOB,
-                            resolve_brain_root, set_brain_root)
+                            read_persisted, resolve_brain_root, set_brain_root)
 except ImportError as _brain_root_err:   # fail LOUD, never degrade — without the resolver every write is a guess
     sys.exit("FATAL: cannot import brain_root from %s — the data-root resolver is missing. "
              "Fix: restore <repo>/shared/brain_root.py. (%s)" % (_SHARED_DIR, _brain_root_err))
@@ -2930,12 +2930,19 @@ def main():
         print(f"OK corpus-inherit-offered: recorded at {rec['at']} — /ingest will not re-ask this run.")
     elif a.cmd == "brain-root":
         if a.set_path:
+            # ⛔ Read BEFORE writing — the overwrite is silent otherwise, and the silence IS the bug
+            # (issue #4). Mirrors shared/brain_root.py's CLI; both doors onto one global value.
+            previous = read_persisted()
             ok, res = set_brain_root(a.set_path, create=a.create)
             if not ok:
                 print(res)
                 sys.exit(1)
             verb = "created + " if a.create else ""
             print(f"RESOLVED: {res}  (source: persisted — just {verb}set via --set)")
+            if previous and os.path.abspath(previous) != os.path.abspath(res):
+                print(f"⚠ REPLACED a brain root that was already set: {previous}")
+                print("  That value was global — anything else pointing there now resolves here instead.")
+                print(f"  To put it back: pipeline.py brain-root --set \"{previous}\"")
         else:
             source, path = resolve_brain_root()
             if path is None:

@@ -80,6 +80,28 @@ def resolve_brain_root():
     return None, None
 
 
+def read_persisted():
+    """The RAW value in BRAIN_ROOT_CONFIG, or None. Deliberately NOT `resolve_brain_root()`.
+
+    WHY THE DISTINCTION MATTERS (issue #4, 2026-08-12). `resolve_brain_root()` answers "where do I
+    write?" and consults $LIFEHACK_ROOT and the legacy glob to do it. This answers a narrower and
+    more dangerous question: "what is `--set` about to overwrite?" The config file is ONE global
+    value living outside the repo, so a second install — a re-clone, a second brain, a second person
+    on the same machine — silently repoints the first. Reproduced: after install two runs `--set`,
+    install one resolves to install two's data folder.
+
+    Returns the string even if it no longer exists on disk: a root pointing at a deleted folder is
+    exactly the case a caller most needs to report, and `resolve_brain_root()` hides it by returning
+    NOT-SET."""
+    if not os.path.isfile(BRAIN_ROOT_CONFIG):
+        return None
+    try:
+        value = open(BRAIN_ROOT_CONFIG, encoding="utf-8").read().strip()
+    except OSError:
+        return None
+    return value or None
+
+
 def set_brain_root(path, create=False):
     """`brain-root --set <path>`. REFUSES a nonexistent path unless create=True (then makes it, parents
     included). REFUSES a path that exists but is a FILE (never silently picks its parent dir). Persists
@@ -114,12 +136,20 @@ def main(argv=None):
     ap.add_argument("--quiet", action="store_true", help="print only the path; exit 1 if NOT-SET")
     a = ap.parse_args(argv)
     if a.set_path:
+        # ⛔ Read BEFORE writing. The overwrite is silent otherwise, and silence is the bug (issue #4).
+        previous = read_persisted()
         ok, res = set_brain_root(a.set_path, create=a.create)
         if not ok:
             print(res)
             return 1
         verb = "created + " if a.create else ""
         print(f"RESOLVED: {res}  (source: persisted — just {verb}set via --set)")
+        if previous and os.path.abspath(previous) != os.path.abspath(res):
+            # NOT a failure — the caller asked for this. But it is never allowed to happen quietly:
+            # one global config means the OTHER install that pointed here now resolves to `res` too.
+            print(f"⚠ REPLACED a brain root that was already set: {previous}")
+            print("  That value was global — anything else pointing there now resolves here instead.")
+            print(f"  To put it back: {os.path.basename(__file__)} --set \"{previous}\"")
         return 0
     source, path = resolve_brain_root()
     if path is None:
