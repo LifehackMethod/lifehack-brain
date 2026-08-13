@@ -7,7 +7,7 @@
 > `users.json` (their email address and phone number). *(The code now refuses to unpack into a tracked
 > folder — this line is so you never try.)*
 
-> ## 📖 REFERENCE — `PLAN-B.md`, in the top folder. Read it when in doubt.
+> ## 📖 REFERENCE — `PLAN-B.md`, in this skill's own folder (`.claude/skills/ingest/`). Read it when in doubt.
 >
 > It states this same method in four plain rounds that map 1:1 onto the four phases. **Your matching round is `ROUND 1 — Make the piles`.** Read it when you are unsure what should happen next, what a
 turn should look like, or how something should be said to the human.

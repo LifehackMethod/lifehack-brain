@@ -516,7 +516,8 @@ Python isn't installed, or isn't on the PATH. Go back to **STEP 3**. On Windows 
 un-ticked "Add python.exe to PATH" checkbox — the fix is to re-run the Python installer and tick it.
 
 **3. It's installed and running, but behaving oddly.**
-There is a complete manual backup: **`PLAN-B.md`**, sitting right next to this file in the top folder.
+There is a complete manual backup: **`.claude/skills/ingest/PLAN-B.md`**, inside the ingest skill's own
+folder — it belongs to that skill, not to the tool as a whole.
 Drag it into a **fresh** Claude conversation and say **"help me."** It walks your AI through the same
 process by hand, without needing any of the tools to work. You get the same result; it just takes longer.
 
@@ -530,18 +531,17 @@ AI Brain/                        <- YOU OPEN THIS ONE. always. every session. IT
 │   ── THE FOUR PAGES WRITTEN FOR YOU. Read in this order if you ever need them. ──
 ├── INSTALL.md                       this file. setup, start to finish.
 ├── README.md                        what this thing is, in a page.
-├── REPORT-A-BUG.md                  something broke → drag this into a chat and say "help me report it"
 ├── UPDATE.md                        getting a fix once it exists → the short answer is `git pull`
-├── PLAN-B.md                        the manual backup, if the tool itself ever misbehaves
 │
 │   ── THE MACHINERY. You never need to open any of it. ──
 ├── .claude/                         the commands — this is where Claude looks
 │   ├── agents/                      the specialist readers the tool uses
 │   ├── skills/                      the tools themselves
+│   │   └── ingest/PLAN-B.md         the manual fallback for /ingest — lives WITH the skill it rescues
 │   └── settings.json                wires it up the moment you clone
 ├── system/                          the programs that do the sorting
 ├── shared/                          the piece that knows where your writing lives
-├── docs/                            reference notes for anyone extending the tool
+├── docs/                            reference notes, and REPORT-A-BUG.md until the harness installer lands
 ├── .gitignore                       the line that keeps `data` out of git — do not edit
 ├── .gitattributes                   keeps line endings sane across Mac and Windows
 ├── CLAUDE.md                        the standing instructions every session opens with

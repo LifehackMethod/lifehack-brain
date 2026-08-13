@@ -92,7 +92,7 @@ make and nothing to answer.
     shared/          ← ours. the piece that knows where your writing lives.
 
     CLAUDE.md        ← ours. the standing instructions every session opens with.
-    PLAN-B.md        ← the manual backup, if the tool ever misbehaves
+    .claude/skills/ingest/PLAN-B.md   ← the manual backup for /ingest, if it ever misbehaves
     .gitignore       ← the line that keeps `data` out of git. do not edit it.
 
     data/            ← YOURS. made by setup. ignored by git, so it is never
@@ -106,7 +106,7 @@ update; `data` is not, and cannot be.
 
 ## If something goes wrong
 
-Open `PLAN-B.md` in the top folder, drag it into a fresh Claude conversation,
+Open `.claude/skills/ingest/PLAN-B.md`, drag it into a fresh Claude conversation,
 and say *"help me."*
 
 It is a complete backup. It walks your AI through the same process by hand,

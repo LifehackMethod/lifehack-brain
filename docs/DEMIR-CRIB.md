@@ -34,7 +34,7 @@ Fix: walk INSTALL.md's Step 2 (git) and Step 3 (Python) with them, one at a time
 **Room 3 — "I have it but it's behaving strangely."**
 First question, always: **did you quit and reopen Claude?** If yes and it's still off:
 Second question: does the folder contain a **`.claude`** folder? It's hidden by default — on a Mac, **Cmd+Shift+.** in Finder shows hidden files.
-Still stuck: fall back to **PLAN-B.md** in the top folder. Drag it into a **fresh** Claude chat and say **"help me."** It's a complete manual backup that walks through the same process by hand, with no tools required to work.
+Still stuck: fall back to **`.claude/skills/ingest/PLAN-B.md`**. Drag it into a **fresh** Claude chat and say **"help me."** It's a complete manual backup that walks through the same process by hand, with no tools required to work.
 
 ## 5. ⚠ Expect version drift
 

@@ -1,6 +1,6 @@
 # PHASE 4 — PLACE IT + THE ROOT CANON (the tree is already settled; this executes it)
 
-> ## 📖 REFERENCE — `PLAN-B.md`, in the top folder. Read it when in doubt.
+> ## 📖 REFERENCE — `PLAN-B.md`, in this skill's own folder (`.claude/skills/ingest/`). Read it when in doubt.
 >
 > It states this same method in four plain rounds that map 1:1 onto the four phases. **Your matching round is `ROUND 4 — Place it`.** Read it when you are unsure what should happen next, what a
 turn should look like, or how something should be said to the human.

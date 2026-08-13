@@ -16,7 +16,7 @@ created_at: 2026-07-10
 updated_at: 2026-08-05
 ---
 
-> ## 📖 REFERENCE — `PLAN-B.md`, in the top folder. Read it when in doubt.
+> ## 📖 REFERENCE — `PLAN-B.md`, in this skill's own folder (`.claude/skills/ingest/`). Read it when in doubt.
 >
 > It states this same method in four plain rounds that map 1:1 onto the four phases. **Each of the four phases has a matching ROUND in it.** Read the matching round whenever you are
 unsure what should happen next, what a turn should look like, or how something should be said to

@@ -1,6 +1,6 @@
 # PHASE 2 — SCREEN A PILE (one pile: thin-read every chat, then YOU rule it)
 
-> ## 📖 REFERENCE — `PLAN-B.md`, in the top folder. Read it when in doubt.
+> ## 📖 REFERENCE — `PLAN-B.md`, in this skill's own folder (`.claude/skills/ingest/`). Read it when in doubt.
 >
 > It states this same method in four plain rounds that map 1:1 onto the four phases. **Your matching round is `ROUND 2 — Screen one pile`.** Read it when you are unsure what should happen next, what a
 turn should look like, or how something should be said to the human.
