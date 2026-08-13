@@ -180,6 +180,19 @@ def anchor_file(slug=None):
     return os.path.join(cache_dir("cowork-ingest", slug), "ingest-anchor.txt")
 
 
+def scratch_file(*parts):
+    """A FILE inside the scratch space, with its parent directory created.
+
+    ⛔ THE TRAP THIS CLOSES. `scratch_dir()` creates EVERY part it is handed as a directory, so
+    `scratch_dir("filer-plan.json")` produces a *folder* named `filer-plan.json` and the very next
+    `open(..., "w")` dies with IsADirectoryError. The skills' `/tmp/filer-plan.json` was a file, and
+    a mechanical substitution to `scratch_dir` would have turned it into a directory — a rewrite that
+    looks right, passes review, and breaks at runtime. Ask for a file when you want a file."""
+    if not parts:
+        raise ValueError("scratch_file() needs at least a filename")
+    return os.path.join(scratch_dir(*parts[:-1]), parts[-1])
+
+
 def claude_run_dir(*parts):
     """`~/.claude/run/...` — where the per-session hook flags live. Created if missing.
 
@@ -215,6 +228,7 @@ def interpreter():
 # capturing stdout gets an empty string and a failed exit, never a plausible-looking wrong folder.
 _PATH_COMMANDS = {
     "scratch": scratch_dir,          # regenerable working space   (was: /tmp/...)
+    "scratchfile": scratch_file,     # ...when you want a FILE, not a directory of that name
     "cache": cache_dir,              # per-user cache              (was: $HOME/.cache/...)
     "run": claude_run_dir,           # per-session hook flags      (was: $HOME/.claude/run/...)
     "repo": lambda *p: os.path.join(repo_root(), *p),

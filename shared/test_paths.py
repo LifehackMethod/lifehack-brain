@@ -204,6 +204,22 @@ class TestCli(unittest.TestCase):
         _, out, _ = self._run(["scratch", "a", "b"])
         self.assertTrue(out.endswith(os.path.join("a", "b")))
 
+    def test_scratchfile_gives_a_file_whose_parent_exists(self):
+        """⛔ The trap: scratch_dir("x.json") would MAKE A DIRECTORY called x.json, and the next
+        open(...,'w') dies. The parent must exist; the file itself must not."""
+        rc, out, _ = self._run(["scratchfile", "filer", "filer-plan.json"])
+        self.assertEqual(rc, 0)
+        self.assertTrue(out.endswith("filer-plan.json"))
+        self.assertTrue(os.path.isdir(os.path.dirname(out)))
+        self.assertFalse(os.path.isdir(out))
+        with open(out, "w") as fh:          # the whole point: this must not raise
+            fh.write("{}")
+        os.remove(out)
+
+    def test_scratchfile_with_no_arguments_is_an_error_not_a_directory(self):
+        with self.assertRaises(ValueError):
+            paths.scratch_file()
+
     def test_no_arguments_is_still_the_diagnostic_dump(self):
         rc, out, _ = self._run([])
         self.assertEqual(rc, 0)
