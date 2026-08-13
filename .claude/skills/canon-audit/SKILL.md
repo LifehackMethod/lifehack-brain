@@ -1,11 +1,11 @@
 ---
 skill: canon-audit
-description: "Deep seven-dimension audit of one desk's full canon tree — grades staleness/altitude/misplacement into a proposal for /archivist-review. Use on \"/canon-audit desk=<name>\". Propose-only."
+description: "Deep seven-dimension audit of one desk's full canon tree — grades staleness/altitude/misplacement into a proposal a person rules on. Use on \"/canon-audit desk=<name>\". Propose-only."
 shape: interactive-workflow
 status: active
 topic: [archivist]
 version: 0.3
-summary: Propose-only deep audit of a desk's FULL canon tree — altitude, crowding, cohesion, missing-spine, source-integrity, purpose-fit, and temporal-home (durable vs live vs time-bound) — emitting a graded change-list into the /archivist-review queue.
+summary: Propose-only deep audit of a desk's FULL canon tree — altitude, crowding, cohesion, missing-spine, source-integrity, purpose-fit, and temporal-home (durable vs live vs time-bound) — emitting a graded change-list into the proposals queue.
 triggers:
   - "/canon-audit"
   - "audit the canon"
@@ -26,7 +26,7 @@ triggers:
 
 > **Where things resolve.** Every `desks/…`, `system/…`, `state/…` path below is under `<notes>` — the folder `shared/brain_root.py` returns — unless it starts with `$ROOT` (this repo). This skill READS content and WRITES exactly one proposal log; it never edits canon.
 
-The **deep, on-demand auditor of a single desk's entire canon tree** — `desks/{desk}/canon/current.md` + every sub-folder canon + `desks/{desk}/projects/**/canon.md`. It grades the tree on seven dimensions and emits a prioritized change-list **into the `/archivist-review` queue**. It is the reusable engine for the by-hand "canon-currency" cleanup (a subject, 2026-06-25), generalized to any desk.
+The **deep, on-demand auditor of a single desk's entire canon tree** — `desks/{desk}/canon/current.md` + every sub-folder canon + `desks/{desk}/projects/**/canon.md`. It grades the tree on seven dimensions and emits a prioritized change-list **into the proposals queue** (formerly fed `/archivist-review`, which is retired). It is the reusable engine for the by-hand "canon-currency" cleanup (a subject, 2026-06-25), generalized to any desk.
 
 **It fills a real gap, between two existing skills — do NOT duplicate them:**
 - `archivist-audit` (weekly, whole-filesystem) only trip-wires canon crowding lightly (check J = "one judgment while reading"). canon-audit does the *thorough* desk-canon pass that J defers.
@@ -49,7 +49,7 @@ The **deep, on-demand auditor of a single desk's entire canon tree** — `desks/
 
 ## Hard rules
 
-- **READ-ONLY / PROPOSE-ONLY.** Never edit, move, or delete a canon file. The ONLY write is the proposal log on Drive. Execution is `/archivist-review`'s job — this skill ends at the proposal.
+- **READ-ONLY / PROPOSE-ONLY.** Never edit, move, or delete a canon file. The ONLY write is the proposal log on Drive. Execution is a person's job — this skill ends at the proposal. (`/archivist-review` is retired; see the handoff note at the foot.)
 - **Subagents sonnet-only, waves of 2–3, never 6+** (the proven headless ceiling; per `archivist-deepmine`). Fan out via the **Agent tool**, not Workflow.
 - **Read the bars, never regenerate them.** Read `<notes>/system/archivist/home-intents.md` (the authored `intent:`/`not:` bar per home) + `<notes>/system/canon-purpose-map.md` (the Territory Map: `accepts:` + STATED|INFERRED). Regenerating the map is `archivist-audit`'s job — never this skill's.
 - **Stay in the fence.** No line-level always-loaded-layer audit (that's `archivist-declutter`). No whole-filesystem structural audit (that's `archivist-audit`). One desk's canon tree, at folder/file depth.

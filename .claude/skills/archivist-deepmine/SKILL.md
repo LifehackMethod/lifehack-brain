@@ -56,7 +56,8 @@ sheet; it NEVER writes canon and NEVER deletes. (Part of `archivist-rebuild` —
 1. **Resolve the target.** `desk=<name>` → records root `<notes>/desks/<name>/records/`. (Or `path=<root>`.)
    If neither is given, ask which desk — never guess.
 2. **Discover record bodies.** List the non-empty type-subfolders under the records root
-   (`context/ briefing/ decision/ summary/ log/ insight/ daily/ …`). **Skip `backups/`.** Each
+   (this system's current type names — see `docs/data-layout.md:212`; `briefing`, `summary`, `context` and `daily` are donor
+   names that were folded away and must not be recreated). **Skip `backups/`.** Each
    substantive body = one mining unit; group thin bodies together so every unit is worth an agent.
 3. **Fan out (batched 2–3).** For each unit, spawn ONE **read-only sonnet** Agent:
    - Task: "Read every record under «body paths». Return (a) **promotable insights** — durable,

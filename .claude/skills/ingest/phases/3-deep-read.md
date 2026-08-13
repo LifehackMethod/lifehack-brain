@@ -264,7 +264,7 @@ it survives her absence.
    python3 $T/pipeline.py folder-shape --basket "$BASKET" --subjects '[{"name":"<subject>","item_count":<n>,"relation":"core|diverse"}, …]'
    ```
    **Two different problems, two different fixes** *(ruled 2026-08-05, `authority: user` — restated in
-   full right here, not a pointer into `system/knowledge-altitude.md`, which this repo does not ship —
+   full right here, not a pointer into `system/knowledge-altitude.md`, which ships in this repo at `system/knowledge-altitude.md` —
    [5.2.1], 2026-08-11)*: too **BIG** → subdivide (**nest** — same territory, more shelves
    beneath it); too **DIVERSE** → separate (**siblings, NOT nested** — a body of knowledge that would
    actively confuse a session loaded next to unrelated material sits BESIDE the pile's folder, never
