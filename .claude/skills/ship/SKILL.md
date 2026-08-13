@@ -46,7 +46,7 @@ The lane blocks two different things, and only one of them ships with it.
 
 **Make it before your first run:**
 
-    python3 system/shipping-lane/identity_rules.py --write-example
+    cd "$(git rev-parse --show-toplevel)" && python3 system/shipping-lane/identity_rules.py --write-example
 
 Then open the file it names and replace the example names with your own.
 
@@ -162,10 +162,9 @@ directory for the whole run:
 Then compose the effective rule set **once**, into `$WORK`, and use it for every step
 below:
 
-    python3 system/shipping-lane/identity_rules.py \
+    cd "$REPO" && python3 system/shipping-lane/identity_rules.py \
       --out-refuse "$WORK/refuse-rules.effective.json" \
       --out-rewrite "$WORK/rewrite-rules.effective.json"
-    RULES="--refuse-rules $WORK/refuse-rules.effective.json --rewrite-rules $WORK/rewrite-rules.effective.json"
 
 > ⭐ **COMPOSE ONCE, PASS IT DOWN — do not let each script compose its own.** Two scripts
 > composing separately can disagree if the identity file is edited mid-run, and the gate
@@ -179,7 +178,8 @@ below:
 
 ### Step 1 — The mechanical pass
 
-    cd "$REPO" && python3 system/shipping-lane/scrub.py $RULES \
+    cd "$REPO" && python3 system/shipping-lane/scrub.py \
+      --refuse-rules "$WORK/refuse-rules.effective.json" --rewrite-rules "$WORK/rewrite-rules.effective.json" \
       --manifest "$MANIFEST" --staging "$WORK/staging" --report-json "$WORK/scrub-report.json"
 
 Two rounds per file, on the copy only: **round 1 REFUSE, round 2 REWRITE**, never
@@ -245,7 +245,8 @@ the tree hash**, so a stale or hand-authored one cannot be passed off as a fresh
 
 ### Step 5 — The gate
 
-    cd "$REPO" && python3 system/shipping-lane/push_gate.py $RULES \
+    cd "$REPO" && python3 system/shipping-lane/push_gate.py \
+      --refuse-rules "$WORK/refuse-rules.effective.json" --rewrite-rules "$WORK/rewrite-rules.effective.json" \
       --tree "$WORK/staging" --judge-receipt "$WORK/judge-receipt.json" \
       --receipt "$WORK/push-receipt.json"
 
