@@ -64,7 +64,15 @@ each says so in place rather than being quietly deleted.** The subagent performs
     mail plane they read through. The invariant itself still holds everywhere it applies — every
     external read goes through the sanitizers, enforced by `system/hooks/ingest_gate_enforce.sh` and
     its 46 cases — it simply has no mail-ingest skill here to audit.
-12. **Skill promise-consistency check (W)** — run `python3 $ROOT/system/tools/skill_promise_sweep.py`
+12. **Skill promise-consistency check (W)** — resolve the clone first, then run the sweep against it:
+    ```bash
+    ROOT="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && pwd)"
+    python3 "$ROOT/system/tools/skill_promise_sweep.py" --root "$ROOT"
+    ```
+    ⛔ `$ROOT` was previously used here without ever being assigned in this file, and the sweep used to
+    default `--root` to `$LIFEHACK_ROOT` — the person's NOTES folder, which contains no skills. Between
+    them, this check either died on a bad path or reported `0 skills scanned · 0 REFUSED` and exited 0.
+    Pass `--root` explicitly so a future default can never re-point it at the notes tree.
     (a thin caller over `skill_promise_check.py`'s own per-file checker — the sweep never reimplements its
     logic). Per skill it cross-checks a curated set of NEGATIVE/BOUNDARY self-promises (e.g. "never touches the
     Sheet," "propose-only, never executes fixes," "never deletes") against that same file's own fenced command
