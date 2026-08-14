@@ -173,6 +173,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_statusline_lock.sh\"",
             "statusMessage": "Guarding the status-line pointer..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_gws_logout.sh\"",
+            "statusMessage": "Checking for credential-destroying logout..."
           }
         ]
       }
