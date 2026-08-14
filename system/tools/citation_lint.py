@@ -146,7 +146,17 @@ SKIP_DIRS = {".git", "data", "memory", ".venv", "node_modules", "__pycache__"}
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 
 BACKTICK = re.compile(r"`([^`\n]+)`")
-LINE_ANCHOR = re.compile(r":\d+(?:-\d+)?$")
+# Strips a trailing line anchor so the PATH can be resolved on disk. It must accept every form a
+# human actually writes, not just the two we thought of.
+#
+# ⚠ WAS `:\d+(?:-\d+)?$`, which handled `f.py:31` and `f.py:31-35` and MISSED the comma list
+# `f.py:31,34-35`. The suffix then stayed glued to the path, the path did not resolve, and the lint
+# reported a file that IS on disk as missing. Measured 2026-08-14: of 27 reported failures, the
+# majority were files sitting right there -- `system/tools/safe_pdf.py:31,34-35`,
+# `docs/REPORT-A-BUG.md:122,182,191,202,274`, `.claude/skills/google-sheet/SKILL.md:46,375`.
+# A gate that cries wolf on real files is how a gate teaches people to ignore it, which is the same
+# dishonest-checker class the verification-layer work exists to close.
+LINE_ANCHOR = re.compile(r":\d+(?:[,-]\d+)*$")
 SKILL_REF = re.compile(r"^/([a-z][a-z0-9][a-z0-9-]*)$")
 # A span holding any of these is a template, a variable or a command line, not a literal path.
 PLACEHOLDER = re.compile(r"[$<>{}|()\\\[\]…]")
