@@ -61,6 +61,9 @@ _EXECWRAP = re.compile(r'\b(?:ba|z|da)?sh\s+-c\s+(?P<body>"[^"]*"|\'[^\']*\')'
 _NESTED = re.compile(r'[$`]\(?\s*((?:[\w./~-]*/)?gws\b[^)`]*)')
 
 
+_NONLIT = re.compile(r'[$`]')
+
+
 def _debinary(tok):
     """Strip the disguises a shell ignores: quotes and a leading backslash.
     A backslashed, single-quoted and double-quoted binary name all execute the same
@@ -100,6 +103,19 @@ def gws_segments(cmd):
         while toks and (_ASSIGN.match(toks[0]) or _debinary(toks[0]) in _WRAPPER):
             toks.pop(0)
         if toks and _BINARY.match(_debinary(toks[0])):
+            out.append(toks)
+        # ⭐ FIX 3 (2026-08-14): A BINARY HELD IN A VARIABLE IS STILL AN INVOCATION.
+        # `V=gws ; $V gmail users messages trash` runs exactly the destructive command, but
+        # `$V` is not the literal binary, so this segment was DROPPED — and a verdict computed
+        # over zero segments returns PASS. Measured across both repos with
+        # system/tools/firetest-binary-indirection.sh: the sheet, formula, calendar and gmail
+        # guards ALL allowed it, rc 0, while their literal-binary controls correctly denied.
+        # Three rounds of hardening that day tested the VERB and the TARGET and never the
+        # BINARY NAME, so this was orthogonal to every fix and invisible to every matrix.
+        # We cannot know whether $V is gws. That is precisely why it is returned: keeping the
+        # segment lets has_nonliteral() see it, the verdict becomes UNKNOWN, and every calling
+        # guard already fails closed on UNKNOWN. An unknown must never be read as permission.
+        elif toks and _NONLIT.search(toks[0]):
             out.append(toks)
         # ⭐ FIX 2: a gws inside $( ) or backticks is still a real invocation.
         for m in _NESTED.finditer(s):

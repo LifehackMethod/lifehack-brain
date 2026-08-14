@@ -68,7 +68,18 @@ except Exception:
 COMMAND=$(printf '%s' "$COMMAND" | perl -0pe 's/\\\n/ /g' 2>/dev/null || printf '%s' "$COMMAND")
 
 # Only act on gws sheets commands; everything else passes untouched.
-printf '%s' "$COMMAND" | grep -qE "(^|[^A-Za-z0-9_.-])gws[[:space:]]+sheets([[:space:]]|$)" 2>/dev/null || exit 0
+# ⛔ THE BINARY IS MATCHED AS A TOKEN ANYWHERE, NOT AS THE WORD BESIDE THE SERVICE.
+# Measured 2026-08-14 (system/tools/firetest-binary-indirection.sh): the previous line required a
+# literal `gws` adjacent to the service word, so
+#     V=gws ; $V <service> ... <destructive verb>
+# never matched, this gate exited 0, and the command reached NONE of the checks below it. A guard
+# that never sees a command has not allowed it on purpose — it has not seen it, which is worse,
+# because every presence-based audit still scores it green. Three rounds of hardening that day
+# tested VERB and TARGET indirection and never scoped the BINARY NAME.
+# Two gates now, both deliberately loose: is a gws binary NAMED anywhere, and is this service named.
+# A mere mention costs nothing — the real checks below decide, and they are what should decide.
+printf '%s' "$COMMAND" | grep -qE "(^|[^A-Za-z0-9_.-])gws([^A-Za-z0-9_-]|$)|bin/gws" 2>/dev/null || exit 0
+printf '%s' "$COMMAND" | grep -qE "(^|[[:space:]])sheets([[:space:]]|$)" 2>/dev/null || exit 0
 # Explicit human-approved bypass.
 printf '%s' "$COMMAND" | grep -qF "$CONFIRM_MARK" 2>/dev/null && exit 0
 

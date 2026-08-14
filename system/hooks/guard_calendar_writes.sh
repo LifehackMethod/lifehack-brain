@@ -62,7 +62,18 @@ except Exception: print('__ERR__')" 2>/dev/null)
 [ -n "$COMMAND" ] || exit 0
 
 # Not a calendar command at all — pass through. This hook only speaks calendar.
-printf '%s' "$COMMAND" | grep -qE "(^|[/[:space:]])gws([[:space:]]|$).*calendar" 2>/dev/null || exit 0
+# ⛔ THE BINARY IS MATCHED AS A TOKEN ANYWHERE, NOT AS THE WORD BESIDE THE SERVICE.
+# Measured 2026-08-14 (system/tools/firetest-binary-indirection.sh): the previous line required a
+# literal `gws` adjacent to the service word, so
+#     V=gws ; $V <service> ... <destructive verb>
+# never matched, this gate exited 0, and the command reached NONE of the checks below it. A guard
+# that never sees a command has not allowed it on purpose — it has not seen it, which is worse,
+# because every presence-based audit still scores it green. Three rounds of hardening that day
+# tested VERB and TARGET indirection and never scoped the BINARY NAME.
+# Two gates now, both deliberately loose: is a gws binary NAMED anywhere, and is this service named.
+# A mere mention costs nothing — the real checks below decide, and they are what should decide.
+printf '%s' "$COMMAND" | grep -qE "(^|[^A-Za-z0-9_.-])gws([^A-Za-z0-9_-]|$)|bin/gws" 2>/dev/null || exit 0
+printf '%s' "$COMMAND" | grep -qE "(^|[[:space:]])calendar([[:space:]]|$)" 2>/dev/null || exit 0
 
 # Match the verb on the command HEAD only. Everything from the first flag or quote onward is
 # PAYLOAD — a --params JSON body containing the words "events list" must never be able to talk this
