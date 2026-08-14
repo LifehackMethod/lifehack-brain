@@ -192,7 +192,7 @@ it survives her absence.
    advertises on its first page** — dies on the very same `FAIL: no batch file for vein` that Step 3's
    own `coalesce` was written to cure. Same disease, other branch:
    ```bash
-   python3 $T/pipeline.py coalesce-scan --map "$MAP" --basket "$BASKET"
+   python3 $T/pipeline.py coalesce-scan --map "$MAP" --basket "$BASKET" --work "$COWORK_WORK"
    ```
    It carries each SHORT keeper's SCAN finding into the file Step 5 reads. **Safe to run even when Step
    3 DID happen** — it only adds rows that are not already there, so when in doubt, run it.
@@ -201,7 +201,7 @@ it survives her absence.
    ("run the plumbing quietly, never read source") had no way to discover it. The ninth
    build-with-no-caller recorded in this system.
 
-5. **Dense confirm + STAGE the manifest.** `python3 $T/conclusions_review.py show --vein "$BASKET"` — relay the
+5. **Dense confirm + STAGE the manifest.** `python3 $T/conclusions_review.py show --vein "$BASKET" --work "$COWORK_WORK"` — relay the
    full dense list (every research chat, one NUMBERED row, incl. the giants marked *sampled*). Conclusions are
    GUESSES; the human confirms/corrects and may ADD net-new facts. Stage the confirmed findings to
    `$COWORK_WORK/extraction-$BASKET.json`, each read chat pointing at it (via the `read` calls above).
@@ -264,7 +264,7 @@ it survives her absence.
    python3 $T/pipeline.py folder-shape --basket "$BASKET" --subjects '[{"name":"<subject>","item_count":<n>,"relation":"core|diverse"}, …]'
    ```
    **Two different problems, two different fixes** *(ruled 2026-08-05, `authority: user` — restated in
-   full right here, not a pointer into `system/knowledge-altitude.md`, which this repo does not ship —
+   full right here, not a pointer into `system/knowledge-altitude.md`, which ships in this repo at `system/knowledge-altitude.md` —
    [5.2.1], 2026-08-11)*: too **BIG** → subdivide (**nest** — same territory, more shelves
    beneath it); too **DIVERSE** → separate (**siblings, NOT nested** — a body of knowledge that would
    actively confuse a session loaded next to unrelated material sits BESIDE the pile's folder, never

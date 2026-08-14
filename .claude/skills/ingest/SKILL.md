@@ -58,7 +58,8 @@ the human.
 > document · markdown files · plain text files. OUT OF SCOPE for now: email · complicated PDFs · other
 > complicated/structured formats. Not a general folder-walker, not chat-only — a TEXT-CORPUS ingester."*
 > ✅ **BUILT 2026-08-08 — the code now matches the ruling.** `system/tools/cowork-ingest/intake.py`'s
-> `FORMATS` table carries **four** rows: `chatgpt-export` · `markdown-dir` (`*.md`) · `plaintext-dir`
+> `FORMATS` table carries **five** rows: `chatgpt-export` · `claude-export` (conversation JSON with
+> `chat_messages`/`messages`, added 2026-08-09) · `markdown-dir` (`*.md`) · `plaintext-dir`
 > (`*.txt`) · `large-document` (one file passed as `--raw`, split at markdown headings where they exist,
 > else 4,000-char chunks snapped to the nearest newline — a mechanical rule, no LLM in that path).
 > ⛔ **What the ruling puts OUT of scope still REFUSES:** email, PDFs and anything structured with no real
@@ -206,7 +207,8 @@ their location from the repo root, so a different layout breaks them.
 | `.claude/agents/ingest-tagger.md` · `.claude/agents/ingest-conclusions.md` | the tool-less readers PHASE 1 and PHASE 3 **spawn** — the skill dies at the tagging step without them | ✅ here |
 | `system/githooks/pre-commit` | refuses a commit carrying the person's own material; needs `git config core.hooksPath system/githooks` | ✅ here |
 | `system/hooks/skill_anchor_inject.sh` | the injector `skill_anchor.sh` writes flags **for**. Without it the anchor is armed and never shown — silently. | ✅ here |
-| `settings.json` | nothing above is registered with the harness until this exists | ⏳ lands with the harness floor |
+| `.claude/settings.json` | nothing above is registered with the harness until this exists | ✅ here — present, registering 17 hook commands across `SessionStart`, `UserPromptSubmit`, `PreToolUse` |
+| `shared/paths.py` | resolves `FLAT`, `ANCHOR` and the scratch dir — used by the Paths block below and by every phase file | ✅ here |
 | `system/hooks/ingest_gate_enforce.sh` | the hook that stops the main session reading the locked scratch (`3-deep-read.md`) — the enforcement half of the reader/actor split | ✅ here, and registered |
 | `system/hooks/guard_canon_write.sh` | ⚖ **NOT the gate this row originally asked for.** It was to enforce "the machine must never write canon" — a rule that was REVERSED on 2026-08-11: canon is now written at its earned altitude, behind a human checkpoint inside the skill. The hook that landed guards the two things that survived that reversal — canon stays SMALL and canon carries no expiry date — and deliberately does NOT check `authority: user`, because a machine can type that line as easily as a person and the check broke `/save`'s own output. Reasoning in the hook's header. | ✅ here, and registered |
 | `system/knowledge-altitude.md` | the too-big/too-small subdivide rules PHASE 3 cites by line | ✅ here |

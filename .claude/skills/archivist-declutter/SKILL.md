@@ -9,7 +9,7 @@ summary: Line-level sink/split audit of the always-loaded layers against each ho
 
 ## Intent (§0.5)
 **User outcome:** Always-loaded files — the ones that load every single session — accrete weight silently: a desk-specific rule drifts into global, a specialty fact sits in a canon that loads even when irrelevant. Over time this bloats the summit and degrades compliance. archivist-declutter is the standing counter-pressure: it tests every line in those scarce layers against each home's admission bar and surfaces the ones that don't earn their altitude. **Bar:** "the always-loaded layers stay lean — every line there genuinely needs to be there for every session."
-**Role:** the precision line-auditor — high precision over recall (a false sink wastes the human's time; a missed line is cheap). Three failure modes only: SINKER (too specific for its altitude), SEAM-DUP (same rule in two layers), SPLIT-CANDIDATE (a home grown broad enough to split). No numeric scoring — the bar is the home's English intent. One extra gate: if a hook depends on prose being present at altitude, flag dep-gate:KEEP rather than sink it. The only write is the grouped queue for /archivist-review.
+**Role:** the precision line-auditor — high precision over recall (a false sink wastes the human's time; a missed line is cheap). Three failure modes only: SINKER (too specific for its altitude), SEAM-DUP (same rule in two layers), SPLIT-CANDIDATE (a home grown broad enough to split). No numeric scoring — the bar is the home's English intent. One extra gate: if a hook depends on prose being present at altitude, flag dep-gate:KEEP rather than sink it. The only write is the grouped queue a person then rules on (see the handoff note at the foot of this file; `/archivist-review` is retired and not shipped here).
 
 # archivist-declutter
 
@@ -32,7 +32,7 @@ here rather than left for a session to work out on its own initiative.
 The **line-level sink/split audit** — the archivist's harness-leanness immune system. Re-tests existing lines in
 the always-loaded layers (global + root + desk `CLAUDE.md` / canon) against each home's declared `intent`, and
 **proposes** the ones that no longer earn their altitude (sink them lower) plus the homes grown fat enough to
-split. READ-ONLY / PROPOSE-ONLY — it writes a review queue; a person rules on it (see the handoff note at the foot of this file); `/archivist-review`; nothing
+split. READ-ONLY / PROPOSE-ONLY — it writes a review queue; a person rules on it (see the handoff note at the foot of this file — `/archivist-review` is retired); nothing
 is edited here. (Part of `archivist-rebuild` — **P11**. Check **J** grown up, applied to LINES not whole desks.)
 
 ## Why this exists
@@ -52,7 +52,8 @@ counter-pressure: **pointers up high, content down low.** It does for LINES what
 ## The targets (the always-loaded layers — the scarce summit space)
 Only the layers that load EVERY session, where bloat is most expensive. In altitude order:
 1. **Global** `~/.claude/CLAUDE.md` (the summit — loads every session, every machine, cwd-independent).
-2. **Root shell** `_Lifehack/CLAUDE.md` (loads every Lifehack session).
+2. **Root shell** `$ROOT/CLAUDE.md` — the repo's own always-loaded brief, the one file every session opens with.
+   *(This read `_Lifehack/CLAUDE.md` until 2026-08-13: a folder name from the system this came from, which exists nowhere here. There is exactly one `CLAUDE.md` in this repo and it is at the top level.)*
 3. **Each desk** `$ROOT/desks/{desk}/CLAUDE.md` + `<notes>/desks/{desk}/canon/current.md` (loads every conversation in that desk).
 Do NOT walk deep sub-folder canon here — that's "sea level, thick air, cheap" (a fat low canon is fine by design).
 This pass is about the layers whose every line is paid for on every load.

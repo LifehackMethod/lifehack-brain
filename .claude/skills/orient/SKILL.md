@@ -22,6 +22,12 @@ Orient me in terms of the three altitudes and their desired outcomes.
 
 Then orient me chronologically: what have we done in the near past, what are we doing right now, and what are we doing in the near future.
 
+If a rung or a period genuinely has nothing behind it, **say so and move on — do not invent one to fill
+the space.** "Nothing was decided above ground level" and "nothing happened here yet" are real, common
+and correct answers. An orientation that manufactures a frame is worse than a short one, because I will
+act on it. (Same rule `/altitude` carries as `NO-FRAME`; `system/work-altitude-doctrine.md` §4 states the
+risk: a model handed no legal way to say nothing was decided will manufacture a decision.)
+
 I just need to get oriented so I can remember what was happening in this build.
 
 ## What this skill needs OUTSIDE its own folder

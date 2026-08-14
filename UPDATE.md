@@ -10,10 +10,15 @@ That is the whole thing you need to remember. Everything below is for Claude to 
 
 An update replaces **the tool folder** — this folder, the one with `.claude/` and `system/` in it.
 
-**It cannot reach your notes.** Not because it is careful, but because your notes are not in here. They
-live in a completely separate folder you chose at install, and nothing in this process looks at it. That
-separation is the whole reason the two folders exist. It is also why the one rule from install still
-holds: **this folder is never inside iCloud, Dropbox, Google Drive or OneDrive.** Your notes may be.
+**It cannot reach your notes.** Not because it is careful, but because `git pull` only touches files git
+tracks, and your notes are not tracked. Since 2026-08-12 they live at `data/` **inside this folder**, kept
+out of git by one line in `.gitignore` — folder distance used to do that job, and `.gitignore` does it now.
+A pull leaves `data/` completely alone.
+
+⛔ **The one rule that follows: update with `git pull`, never by deleting this folder and re-cloning.**
+Under the old layout that was survivable, because `data/` sat outside the repository. It does not any
+more, so deleting this folder takes your writing with it. If you ever genuinely need a fresh copy, move
+`data/` out first and move it back after.
 
 **It takes about two minutes** and ends with you quitting Claude and opening it again. That last part is
 not optional — see STEP 6.
@@ -51,12 +56,24 @@ import brain_root, os
 src, path = brain_root.resolve_brain_root()
 repo = os.path.realpath('.')
 print('notes:', path or 'NOT SET', '| source:', src)
-print('INSIDE THE REPO' if path and os.path.realpath(path).startswith(repo + os.sep) else 'outside the repo — good')"
+print('INSIDE THE REPO (correct since 2026-08-12)' if path and os.path.realpath(path).startswith(repo + os.sep) else 'outside the repo (pre-2026-08-12 install)')"
 ```
 
-If it says **INSIDE THE REPO**, stop and tell them. Their notes are somewhere an update is entitled to
-overwrite, and the update is not the emergency — the arrangement is. Move the notes out first, re-point
-the root with `python3 shared/brain_root.py --set <the new place>`, then come back.
+**`INSIDE THE REPO` is the CORRECT answer on a current install, and this step must not stop on it.**
+Since the 2026-08-12 layout change the notes live at `data/` inside this folder by design. What you are
+confirming is the line below, which is what actually keeps them safe:
+
+```bash
+git check-ignore -q data && echo "data/ is ignored — a pull cannot touch it" || echo "⛔ STOP — data/ is NOT ignored"
+```
+
+⛔ **Only `⛔ STOP` is a real stop.** If `data/` is not ignored, do not pull and do not `git add` anything
+— the clone is incomplete or something overwrote `.gitignore`. Re-clone the tool per INSTALL.md STEP 5,
+moving `data/` aside first.
+
+If the resolver says **outside the repo**, this is an install from before 2026-08-12. That still works
+and there is nothing to fix during an update; the notes are simply somewhere a pull was never going to
+reach either.
 
 If it says **NOT SET**, that is fine for an update. It only means nobody has told this installation
 where the notes live yet.
@@ -165,8 +182,12 @@ Skipping this does not fail loudly. It fails quietly: Claude reads a skill as a 
 running it, produces something that looks roughly right, and is not the tool at all. Say this:
 
 > **"The update is in. Now quit Claude completely and open it again — the whole app, not a new chat.
-> When it comes back, open the `lifehack-brain` folder, that exact folder. Until then it's still running
-> the old version. I'll wait."**
+> When it comes back, open this exact same folder — the one holding `.claude` and `data`. Until then
+> it's still running the old version. I'll wait."**
+
+⭐ **Give them the literal path** (`pwd`). Since 2026-08-12 the tool unpacks into the folder they opened,
+so there is **no inner `lifehack-brain` folder** to look for. Anyone who installed before that date will
+go hunting for one out of habit — say plainly that it is gone and this folder is the tool.
 
 **Say "that exact folder" and mean it.** Claude reads the wiring from a `.claude` folder in whatever
 folder is open, and it does not look upwards. One level off and nothing loads — no warning, no error.
@@ -180,16 +201,32 @@ Then **STOP.**
 This is not a failure and it costs about five minutes. It is the right answer whenever STEP 2 or STEP 4
 turns up a mess, or the folder was never a git clone.
 
-**Their notes are not involved.** They are in a different folder, this does not touch it, and after the
-reinstall the new copy is pointed back at them.
+⛔⛔ **THEIR NOTES ARE INVOLVED NOW, AND THIS IS THE STEP THAT CAN LOSE THEM.** This section used to say
+they were in a different folder and this could not touch them. That stopped being true on 2026-08-12:
+`data/` lives inside this folder. **Move it out first, and move it back afterwards.** Never delete this
+folder while `data/` is still in it.
 
 ```bash
-cd ..
-mv lifehack-brain lifehack-brain-old
-git clone https://github.com/LifehackMethod/lifehack-brain.git
-cd lifehack-brain
-python3 shared/brain_root.py --set "<their notes folder>"
+# 1 — get their writing out of the way FIRST, beside the folder, never inside it
+mv data ../data-keep
+
+# 2 — set the old tool aside (rename, never delete) and clone fresh INTO this same folder
+cd .. && mv "$(basename "$OLDPWD")" brain-old
+git clone https://github.com/LifehackMethod/lifehack-brain.git "$(basename "$OLDPWD")"
+cd "$(basename "$OLDPWD")"
+
+# 3 — put their writing back where the new copy expects it
+mv ../data-keep data
+
+# 4 — confirm the resolver already points here, and that git is ignoring it again
+python3 shared/brain_root.py
+git check-ignore -q data && echo "data/ is ignored — good" || echo "⛔ STOP — do not continue"
 ```
+
+⭐ **Note the trailing target on the clone.** The tool must land in the folder they open, not in a
+`lifehack-brain` subfolder inside it — same rule as INSTALL.md STEP 5's trailing dot. If a `--set` is
+needed at all it is `python3 shared/brain_root.py --set "$PWD/data"`, but on a normal reinstall the
+persisted value already points here and nothing needs re-answering.
 
 Then STEP 5 and STEP 6 above. **Rename the old folder, do not delete it** — leave it until they have used
 the new one and are happy. Deleting it is a separate decision on a separate day.

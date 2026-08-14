@@ -42,7 +42,16 @@ for my plan."* **The safety property is that standalone is CHOSEN, never default
 plans were created *by default*, by plan mode minting a file because nothing stopped it. So: still ask,
 always; **never fall through to standalone because resolution failed or the answer was vague.**
 
-On answer (3), create `standalone-<name>.plan.md` and stamp this header at creation:
+On answer (3), **look before you create — the same check branch (b) makes.** List `$DATA/plans/` and
+read the H1 of anything plausible, including existing `standalone-*.plan.md` files. Found one covering
+this effort → adopt and amend it. Found several → **STOP and surface them**; never merge or pick
+silently. Found none → create it.
+
+*(Branch (b) has always carried this and (c) never did. Deterministic naming has been covering the gap —
+a re-run lands on the same filename — but preventing forked duplicate plans is this skill's whole job,
+and it should not rest on a naming coincidence in one of its two paths.)*
+
+On creation, stamp this header:
 
 > **STANDALONE PLAN** — deliberately not attached to a project (`<date>`). This is NOT an orphan.
 
