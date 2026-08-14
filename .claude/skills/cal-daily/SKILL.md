@@ -91,10 +91,14 @@ The interrogation must never freeze while a write happens. So the work runs in t
   as a child of that parent — **never restructures the list, never touches your weekly, monthly or yearly
   goals or any other item, never deletes.** Propose in Pass 4; the person confirms; the clerk writes the
   subtasks in Pass 5.
-  ⛔ **The machine-side half of this is NOT in this repo.** The system this came from had a hook that
-  refused any task write which did not reference that parent id. It guards a task surface that is
-  personal plumbing and did not cross, so here the rule above is enforced by the skill and by the
-  confirmation gate, not by code. Said plainly rather than implied: this one is a rule, not a wall.
+  ✅ **The machine-side half of this IS in this repo, as of 2026-08-14.**
+  `system/hooks/guard_tasks_writes.sh` refuses any write to `goals_tasklist` that does not hang from
+  `daily_parent_task`, and refuses `delete`/`clear` there outright — carve-out or not, since those are
+  the two that cannot be undone. It reads both ids from your own `<notes>/config/cal.md`, and if you
+  have not set them it refuses the write rather than guessing. So this is a wall, not only a rule.
+  ⚠ It is still a **speed bump, not a boundary** — it reads the command as text, and a shell has
+  endless ways to spell the same thing; the file's own header says so at length. The confirmation
+  gate in Pass 5 is not redundant with it.
   Read the ids with `python3 "$ROOT/shared/cal_config.py"`.
 - **Task writes → Google Tasks.**
 - **NEVER write synchronously mid-pass.** Don't stop the conversation to save a file or write a task/event. **Queue

@@ -171,6 +171,11 @@
           },
           {
             "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_tasks_writes.sh\"",
+            "statusMessage": "Checking whether this would write to your goals list..."
+          },
+          {
+            "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_statusline_lock.sh\"",
             "statusMessage": "Guarding the status-line pointer..."
           },
