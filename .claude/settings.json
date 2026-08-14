@@ -49,6 +49,21 @@
           },
           {
             "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/inject_sop_before_build.sh\"",
+            "statusMessage": "SOP check (build-time)..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/scratch_sweep_nudge.sh\"",
+            "statusMessage": "Scratchpad sweep check..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/announce_plan_write.sh\"",
+            "statusMessage": "Checking for new plans..."
+          },
+          {
+            "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/save_routing_hint.sh\"",
             "statusMessage": "Checking where a save goes..."
           },
@@ -69,6 +84,11 @@
       {
         "matcher": "ExitPlanMode",
         "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_plan_structure.sh\"",
+            "statusMessage": "Checking plan structure (Phase/Feature/Task)..."
+          },
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/plan_flag.sh\" record",
@@ -103,6 +123,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_throughline_write_scope.sh\"",
             "statusMessage": "Checking a read-only investigation stays read-only..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_ledger_discipline.sh\"",
+            "statusMessage": "Checking debt-ledger discipline..."
           }
         ]
       },
@@ -143,6 +168,22 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_calendar_writes.sh\"",
             "statusMessage": "Checking which calendar this would write to..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_statusline_lock.sh\"",
+            "statusMessage": "Guarding the status-line pointer..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/scratch_capture_gate.sh\"",
+            "statusMessage": "Scratchpad capture gate..."
           }
         ]
       }
