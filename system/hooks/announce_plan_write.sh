@@ -31,9 +31,12 @@ if [ -n "$CLAUDE_CODE_SESSION_ID" ]; then KEY="sess-$CLAUDE_CODE_SESSION_ID"
 elif [ -n "$PWD" ]; then KEY="cwd-$(printf '%s' "$PWD" | shasum 2>/dev/null | cut -c1-12)"
 else exit 0; fi
 
-PLANSDIR="${PLAN_ANNOUNCE_PLANSDIR:-$HOME/.claude/plans}"
-STATEDIR="${PLAN_ANNOUNCE_STATEDIR:-$HOME/.claude/run/plan-announce}"
-LEDGER="${PLAN_ANNOUNCE_LEDGER:-$HOME/.claude/run/plan-ledger.md}"
+# CLAUDE_CONFIG_DIR moves the whole harness folder; a bare $HOME/.claude then points at an empty
+# place and new-plan announcements stop with no error. Same pattern as agent_output.py:59-60.
+CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+PLANSDIR="${PLAN_ANNOUNCE_PLANSDIR:-$CLAUDE_DIR/plans}"
+STATEDIR="${PLAN_ANNOUNCE_STATEDIR:-$CLAUDE_DIR/run/plan-announce}"
+LEDGER="${PLAN_ANNOUNCE_LEDGER:-$CLAUDE_DIR/run/plan-ledger.md}"
 mkdir -p "$STATEDIR" 2>/dev/null
 STATE="$STATEDIR/$KEY.state"
 

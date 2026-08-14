@@ -104,9 +104,12 @@ def main():
     if a.plan:
         plans = [os.path.expanduser(a.plan)]
     else:
-        plans = sorted(glob.glob(os.path.expanduser("~/.claude/plans/*.plan.md")))
+        # CLAUDE_CONFIG_DIR moves the whole harness folder. Same pattern as agent_output.py:59-60.
+        _cfg = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.expanduser("~/.claude")
+        _pattern = os.path.join(_cfg, "plans", "*.plan.md")
+        plans = sorted(glob.glob(_pattern))
         if not plans:
-            cannot_read("no plan files matched ~/.claude/plans/*.plan.md")
+            cannot_read("no plan files matched %s" % _pattern)
 
     commits = git_commits(a.days)
     ids_to_commits = {}

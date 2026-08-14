@@ -84,7 +84,11 @@ if target:
 # worse than none: it is indistinguishable from a right one. An object with no planFilePath still
 # reaches the glob exactly as before - only unreadable input is refused.
 if not target and HAVE_PAYLOAD:
-    files = sorted(glob.glob(os.path.expanduser("~/.claude/plans/*.md")), key=os.path.getmtime, reverse=True)
+    # CLAUDE_CONFIG_DIR moves the whole harness folder. A bare ~/.claude here finds nothing when it
+    # is set, and finding nothing is indistinguishable from having no plans -- so the flag is simply
+    # never written and nothing says why. Same pattern as agent_output.py:59-60.
+    _cfg = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.expanduser("~/.claude")
+    files = sorted(glob.glob(os.path.join(_cfg, "plans", "*.md")), key=os.path.getmtime, reverse=True)
     target = files[0] if files else ""
 if not name and target:
     try: name = h1(open(target, encoding="utf-8").read())
