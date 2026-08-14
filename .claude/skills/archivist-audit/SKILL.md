@@ -1,6 +1,6 @@
 ---
 skill: archivist-audit
-description: "Weekly structural filesystem audit — skeleton, symlinks, metadata, registry, drift, legacy, path/ingest/promise conformance (12 checks). Use on \"/archivist-audit\" (scope=desk/skills/metadata/legacy). Propose-only; writes only the territory map."
+description: "Weekly structural filesystem audit — skeleton, symlinks, metadata, registry, drift, legacy, path/ingest/promise conformance (9 checks). Use on \"/archivist-audit\" (scope=desk/skills/metadata/legacy). Propose-only; writes only the territory map."
 shape: interactive-workflow
 status: active
 topic: [archivist]
@@ -9,7 +9,7 @@ summary: Run the structural audit across your notes folder — 9 checks, propose
 
 ## Intent (§0.5)
 **User outcome:** The the notes folder drifts — dead numbered folders, orphaned files, desks missing skeleton pieces, skills out of sync, canon oversized, bare content paths breaking clone-launched sessions. archivist-audit runs the full structural sweep: 12 checks across structure, skill sync, metadata, registry, drift, legacy, stale-systems, territory-map, misplaced files, content-path drift, ingest-conformance, and skill promise-consistency. Output: a timestamped log + an actionable proposals file. **Bar:** "I know the exact structural health of the system — nothing's silently broken or drifting."
-**Role:** the faithful weekly inspector — breadth-first, report-only. The opposite of an executor: it reads everything and touches one thing (the territory map <notes>/system/canon-purpose-map.md, its one managed write). The scope parameter (desk:/skills/metadata/legacy/stale) makes it surgical. The archivist subagent runs at sonnet, fans out read-only checks; nothing executes without explicit user approval. Its job is to make invisible drift visible — not to fix it.
+**Role:** the faithful weekly inspector — breadth-first, report-only. The opposite of an executor: it reads everything and proposes; the ORCHESTRATING SESSION performs the single managed write (the territory map <notes>/system/canon-purpose-map.md). The archivist subagent itself is pinned to Read/Grep/Glob and cannot write at all. The scope parameter (desk:/skills/metadata/legacy/stale) makes it surgical. The archivist subagent runs at sonnet, fans out read-only checks; nothing executes without explicit user approval. Its job is to make invisible drift visible — not to fix it.
 
 # archivist-audit
 
@@ -48,7 +48,9 @@ each says so in place rather than being quietly deleted.** The subagent performs
    debt visible on every run.
 8. **Territory-map regenerate (P6)** — rebuild `<notes>/system/canon-purpose-map.md`: every home (canon · playbook ·
    records-type · state · system · desk-structure) with its purpose + `accepts`, marked STATED/INFERRED. The
-   ONE managed file the archivist writes.
+   ONE managed file this audit writes — and the ORCHESTRATOR writes it, not the subagent. `.claude/agents/archivist.md`
+   pins `tools: Read, Grep, Glob`; it has no Write tool and says so itself. That pinning is deliberate and should stay:
+   it is what makes the auditor structurally incapable of touching what it inspects.
 9. **Misplaced-file check Q (P6)** — using the map's `accepts`, flag (HIGH-confidence only, grouped,
    propose-only) any file whose content doesn't match its home, with the proposed correct home. Relocation is never automatic: the proposal goes in the queue and a person rules on it.
 10. ⛔ **REMOVED — content-path drift check.** It flagged a bare relative content path that should
@@ -86,7 +88,8 @@ each says so in place rather than being quietly deleted.** The subagent performs
 
 - (none) — full audit, all checks
 - `scope=desk:{name}` — restrict to one desk's structure + artifacts
-- `scope=skills` — skill sync check only
+- `scope=skills` — the skill promise-consistency check (12) only
+  *(this pointed at check 2 until 2026-08-13; check 2 is one of the three explicitly removed above, so the scope resolved to nothing.)*
 - `scope=metadata` — metadata compliance only
 - `scope=legacy` — legacy classification only
 - `scope=stale` — no-stale-systems (v2 backfill debt) check only

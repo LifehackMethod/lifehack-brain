@@ -356,7 +356,7 @@ a dead-end, a key number) hits the journal before/as the brief is overwritten.
 **Steps (strict order — the safety steps GATE the destructive ones):**
 
 1. **COPY-EVERYTHING-FIRST → the append-only archive (the mechanical net).** Call the deterministic safety core:
-   `python3 <this repo>/system/tools/pad_archive.py archive "<abs_brief_path>"`. It appends the ENTIRE
+   `python3 <this repo>/system/tools/save/pad_archive.py archive "<abs_brief_path>"`. It appends the ENTIRE
    current `## SCRATCHPAD` verbatim (everything — NO choreography carve-out) to `<brief>.pad-archive.md`
    (append-only, chained, self-describing: `compaction #N · ISO-ts · host · prev-hash · hash`), reads it back to
    prove it landed, and prints `RECEIPT <hash>` on **exit 0**. Idempotent (unchanged pad → no duplicate block).

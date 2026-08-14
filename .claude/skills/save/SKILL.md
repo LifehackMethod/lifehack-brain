@@ -120,7 +120,7 @@ deferred placement.
 
 Load the one phase file you need. Both are written to be run top to bottom.
 
-## Two scripts, and only two
+## The scripts it may call, and only these
 
 This skill is otherwise Bash-free. It may call exactly these, and nothing else:
 
@@ -128,6 +128,7 @@ This skill is otherwise Bash-free. It may call exactly these, and nothing else:
 python3 "$ROOT/system/tools/save/pad_archive.py"     archive|verify|state|clear "<abs brief>"
 python3 "$ROOT/system/tools/save/save_step_ledger.py" start|stamp|report ...
 python3 "$ROOT/system/tools/canon_conflict_scan.py"  --canon-root ... --terms ...
+python3 "$ROOT/system/tools/journal.py"               ...   # Step 7 requires this; it was missing from this list
 ```
 
 Plus the flag readers (`system/hooks/pm_flag.sh status`, `plan_flag.sh path`), which only read.
