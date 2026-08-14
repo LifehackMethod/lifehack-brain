@@ -197,6 +197,18 @@
         ]
       }
     ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/validate_on_write.sh\"",
+            "statusMessage": "Checking the note kept its labels..."
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
