@@ -20,6 +20,20 @@ student-facing dependency.
 `INSTALL.md` · **3 missed** (unchanged from baseline) · **1 borderline** extra finding reported outside
 the count (`tmux`/iTerm2).
 
+> ## ⚖ AMENDED 2026-08-14 AFTER TWO RULINGS BY ENVER — the live count is now **11 total · 9 covered · 2 missed.**
+> **① The browser relay is gone, not documented.** The overmyshoulder skill **does not ship** — *"that is
+> an experiment and that stays explicitly on my system."* Its skill folder, its over_my_shoulder.sh and
+> its oms_format.py were all removed from DEST (recoverable from git history; nothing is lost).
+> ⭐ **This was the one dependency that could NOT be fixed by writing it down** — the tool is not Enver's
+> to distribute, so a student could never obtain it. Removing the skill was the only honest close.
+> `system/tools/render_shot.sh` is **independent of it and stays** — `/design-lifehack` still needs it.
+> **② The `tmux` borderline finding is ruled the other way: `build-conductor-sop.md` SHIPS.**
+> *"I definitely want them to have the build conductor SOP, that is very important. But we can take out
+> the `brew install tmux`… Agent team waves are not as important but everything else is."* ⇒ the SOP
+> stays, its tmux/iTerm2 setup block is removed, gear-3 is compressed rather than deleted.
+> **⇒ THE REMAINING 2 MISSES ARE BOTH PURE DOCUMENTATION**, and both are `T8.12b`/`T8.12c` work:
+> **`gh`/GitHub** (the whole bug-reporting path) and **headless Chrome** (every `/design-lifehack` screenshot).
+
 ---
 
 ## Scope (b) — what a stranger cloning DEST must obtain
@@ -37,7 +51,7 @@ the count (`tmux`/iTerm2).
 | **`clasp`** (Google's Apps Script CLI) | `.claude/skills/google-sheet/SKILL.md:46,375` (`~/.clasprc.json`, machine-local) | `/google-sheet` falls back to formulas/`ARRAYFORMULA` only — "most sheets never need it" | YES — `INSTALL.md:711-715`, explicitly optional-of-optional | OPTIONAL |
 | **`gh` CLI + a GitHub account** | `docs/REPORT-A-BUG.md:122,182,191,202,274` | the entire bug-reporting path (`gh auth login`, `gh issue create`) has nothing to run against | **NO** — never referenced from `INSTALL.md`, only from `REPORT-A-BUG.md` | REQUIRED (for that one path) — **MISS** |
 | **Google Chrome (headless)** | `system/tools/render_shot.sh:44-62` (`find_chrome()`, hard-fails with an install message if none found) | every dashboard/design screenshot in `/design-lifehack` hard-fails | **NO** — only `.claude/skills/design-lifehack/SKILL.md:334,453` | REQUIRED (for that skill) — **MISS** |
-| **Unnamed browser-automation relay + Chrome extension** | `system/tools/over_my_shoulder.sh:38-56` (exits 2, "relay is not running on :9222"); `.claude/skills/overmyshoulder/SKILL.md:36-41,93-99` (explicitly: "a separate, third-party browser-automation tool... not ours to distribute") | `/overmyshoulder` hits a cold, undocumented exit 2 for a student who has never heard of this tool | **NO**, and by design likely never will be — SKILL.md itself says it will "never ship" | REQUIRED (for that skill), but **UNSHIPPABLE by policy** — **MISS** |
+| ~~Unnamed browser-automation relay + Chrome extension~~ | over_my_shoulder.sh · overmyshoulder/SKILL.md · oms_format.py — ⛔ **all three REMOVED FROM DEST 2026-08-14** | nothing — the skill that needed it no longer ships | **RESOLVED BY REMOVAL, not by documentation** | ⚖ **RULED OUT, Enver 2026-08-14:** *"that is an experiment and that stays explicitly on my system, it doesn't ship to the students."* |
 
 ### Borderline finding, reported separately (not counted above)
 
@@ -86,10 +100,10 @@ not separately counted here since they're already scope (b) rows above.
 - **DEST total: 12 dependencies** (11 baseline + `clasp`, which the baseline had implicitly folded
   into the Google bucket). **9 are covered by `INSTALL.md`, 3 are not** — same three as the baseline:
   `gh`/GitHub (bug-reporting path only), headless Google Chrome (`/design-lifehack` screenshots), and
-  the unnamed dev-browser relay + Chrome extension (`/overmyshoulder`) — the last one is explicitly
-  documented in its own SKILL.md as a tool that will never ship, so the fix isn't "document it in
-  INSTALL.md," it's "decide whether a cold exit-2 is acceptable UX for a skill INSTALL.md never warns
-  exists."
+  the unnamed dev-browser relay + Chrome extension — ⛔ **that third one is now CLOSED by removal, not
+  by documentation** (the skill needing it was ruled out 2026-08-14 and deleted from DEST), which drops
+  the live figures to **11 total · 9 covered · 2 missed**, both of the remaining two being pure
+  documentation work.
 - **Scope (a) surfaced 12 DONOR-only third-party items** Enver may be paying for or running standing
   infrastructure for: Supabase, TMDB, RocketMoney (+ its Chrome plugin), Emporia, Home Assistant,
   eCARe, and four LLM-provider API keys (OpenAI/codex, Moonshot/Kimi, Z.ai, OpenRouter) behind an

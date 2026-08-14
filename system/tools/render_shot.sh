@@ -6,10 +6,13 @@
 # then `Read`s the PNG and critiques its own work — no over-the-shoulder, no
 # live browser, no extension, no human screenshotting by hand.
 #
-# This is NOT over_my_shoulder.sh. That reads the user's REAL live Chrome (text
-# only, read-only, adversarial-web posture). THIS renders a file/URL in a fresh,
-# throwaway headless Chrome and produces pixels. Nothing from the page reaches
-# the model except the rendered image.
+# THIS renders a file/URL in a fresh, throwaway headless Chrome and produces
+# pixels. Nothing from the page reaches the model except the rendered image.
+#
+# (It used to distinguish itself here from over_my_shoulder.sh, which read the
+# operator's real live Chrome. That skill was an experiment and does NOT ship —
+# ruled 2026-08-14 — so the contrast is gone along with it. This tool is
+# independent of it and always was.)
 #
 # Security note: headless Chrome executes the page's JS (needed for charts).
 # Intended for HTML the skill itself authored (trusted, local). Pointing it at

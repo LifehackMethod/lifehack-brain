@@ -1231,7 +1231,7 @@ though none of these bind a future build.
 - **[A20]** Tried: an APPEND-style running transcript for ClaudeGate. Failed: rejected — "it overwrites, it
   doesn't accumulate" was the design intent. `2026-07-17` ·
   `records/decisions/2026-07-17-claudegate-two-way-overwrite.md` → overwrite-only slot.
-- **[A23]** Tried: running the dev-browser relay in STANDALONE mode for `/overmyshoulder`. Failed: standalone
+- **[A23]** Tried: running the dev-browser relay in STANDALONE mode for the overmyshoulder skill — ⛔ that skill does not ship (ruled 2026-08-14); this entry is kept as HISTORY, not as a live pointer. Failed: standalone
   has no extension endpoint — the skill silently presented a headless browser's own tabs as the user's
   real Chrome. `2026-06-07` · `records/log/2026-06-07-overmyshoulder-dev-browser-root-cause.md` → enforce
   extension mode always.
