@@ -1016,7 +1016,10 @@ def set_corpus_inherit_offered(m, now_iso=None):
 # ⛔ NEVER adds a slug to the vocab file. An unknown slug REFUSES — the archivist proposes new slugs and
 # the author approves (topic-vocab.md's own write-authority rule); code only enforces membership, it never
 # grows the set.
-_TOPIC_SLUG_RE = re.compile(r"^- `([a-z0-9][a-z0-9-]*)`", re.MULTILINE)
+# Accepts BOTH `- \`slug\`` and a plain `- slug`. The backtick-only form silently parsed a
+# visibly-populated vocab file as zero entries — and this file is written by the person, not
+# shipped, so plain markdown bullets are at least as likely as fenced ones.
+_TOPIC_SLUG_RE = re.compile(r"^- `?([a-z0-9][a-z0-9-]*)`?\s*$", re.MULTILINE)
 
 
 # ⚖⭐ ONE RESOLVER, IMPORTED — NOT A SECOND COPY (2026-08-11). This gate used to look ONLY in the repo

@@ -227,8 +227,9 @@ Audit reads structural properties via gws. State clearly what was and was not in
 1. Accept spreadsheet ID from the user
 2. Read workbook structure:
 ```bash
+command -v gws >/dev/null || { echo "gws is not installed — this skill cannot read your sheet. See INSTALL.md, 'THE GOOGLE-CONNECTED PARTS'."; exit 1; }
 gws sheets spreadsheets values get \
-  --params '{"spreadsheetId":"SPREADSHEET_ID","range":"A1:Z1"}' 2>/dev/null
+  --params '{"spreadsheetId":"SPREADSHEET_ID","range":"A1:Z1"}'
 ```
 Repeat per tab for headers. Use `gws sheets spreadsheets get --params '{"spreadsheetId":"SPREADSHEET_ID"}'` for the tab list + structural metadata. (Find the binary with `command -v gws` — never assume an install path; always `2>/dev/null` when parsing the JSON.)
 3. Evaluate observable structure against the universal principles that are structurally verifiable:

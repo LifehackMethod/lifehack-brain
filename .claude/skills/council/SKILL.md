@@ -52,7 +52,11 @@ subject it finds in their material, and writes what each folder is *for*:
 ```bash
 ROOT="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && pwd)"
 NOTES="$(python3 "$ROOT/shared/brain_root.py" --quiet)"
-ls -d "$NOTES"/desks/*/ 2>/dev/null
+# `ls -d "$NOTES"/desks/*/ 2>/dev/null` looks equivalent and is not: in zsh (the macOS
+# default) an unmatched glob is a SHELL error raised during argument expansion, before ls
+# runs, so ls's own 2>/dev/null never sees it. That fires on every brain with no subjects
+# yet — i.e. everyone's first /council. find is identical under both shells.
+find "$NOTES/desks" -mindepth 1 -maxdepth 1 -type d 2>/dev/null || true
 ```
 
 For each candidate, read its `canon/purpose.md` — one or two lines saying what that folder is for.
