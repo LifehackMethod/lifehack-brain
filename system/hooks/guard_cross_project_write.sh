@@ -22,11 +22,23 @@
 # SIGNPOST: the arming rule lives in `system/hooks/pm_flag.sh`'s header; this guard's matrix is
 #      `system/hooks/tests/test_write_custody_guards.sh`.
 # FAIL_POSTURE: closed — unparseable input denies.
-# SCOPE, STATED HONESTLY: this watches the Write and Edit TOOLS, which is how a session actually
-#      edits a brief. A determined session could still write one through the shell. That is
-#      deliberate and NOT a gap to close with a bigger pattern: the goal is noticing, and a session
-#      actively evading is a different problem from the obedient one that caused the incident.
-# UPDATED: 2026-08-11 (ported; project shapes re-derived for this repo, and see the loss below)
+# SCOPE, STATED HONESTLY: this watches Write, Edit AND Bash — all three doors into a file.
+# ⚖ CORRECTED 2026-08-13. This comment previously read: *"A determined session could still write one
+#      through the shell. That is deliberate and NOT a gap to close with a bigger pattern."* That was
+#      wrong, and it is corrected here rather than left for the next reader to re-litigate.
+#      ⛔ WHY IT WAS WRONG: it assumed the shell door is only reachable by a session that is EVADING.
+#      It is not. An ORDINARY, OBEDIENT session writes through the shell constantly — a heredoc, a
+#      `cat >`, a `python3 - <<PY` block are all normal, unremarkable ways to edit a file, and every
+#      one of them walked straight past this guard. So the gap was not an evasion hole; it was a hole
+#      in the common path, which is exactly the case this guard exists for.
+#      ⭐ THE REFRAME THAT SETTLED IT (owner, 2026-08-13): a hook is not a suggestion, it is the one
+#      hard thing. There are THREE DOORS into a file — Write, Edit and Bash. Standing at two of them
+#      is not a soft wall; it is a solid wall with a door beside it.
+#      ⚠ WHAT IS STILL TRUE FROM THE OLD COMMENT, kept because it matters: a session actively evading
+#      is a different problem with a different answer (an OS-level boundary), and this does not solve
+#      it. The Bash matcher reads TEXT — it does not resolve `$VARS`, follow a `cd`, or expand a glob.
+#      See `lib/bash_write_door.sh`'s own stated loss. The goal remains NOTICING, not preventing.
+# UPDATED: 2026-08-13 (Bash door closed via lib/bash_write_door.sh; scope comment corrected)
 #
 # ⚠ ONE THING THE DONOR GUARDED THAT THIS DOES NOT, named rather than quietly dropped: plan files.
 #   There, a plan lived at `<slug>.plan.md` and its filename WAS the project slug, so a cross-project
@@ -83,12 +95,12 @@ except Exception:
 ti = d.get('tool_input') or {}
 print((d.get('tool_name') or '').strip())
 print((ti.get('file_path') or '').strip())
+print((ti.get('command') or '').replace('\n', ';'))   # a newline IS a separator, never a space
 ") || { printf '%s\n' '{"decision":"block","reason":"BLOCKED: guard_cross_project_write could not read the hook input, so it is failing closed. Retry the write; if it keeps failing, the guard itself is broken."}' >&2; exit 2; }
 
 TOOL=$(printf '%s' "$PARSED" | sed -n '1p')
 FP=$(printf '%s' "$PARSED"   | sed -n '2p')
-case "$TOOL" in Write|Edit|NotebookEdit) : ;; *) exit 0 ;; esac
-[ -n "$FP" ] || exit 0
+COMMAND=$(printf '%s' "$PARSED" | sed -n '3p')
 
 # Which project does a path belong to? Prints the slug, or nothing if it is not a project artifact.
 # THE SHAPES ARE THIS REPO'S, taken from shared/registry.py (Project.brief / Project.canon):
@@ -109,6 +121,35 @@ _slug_of(){
     *) : ;;
   esac
 }
+# ── THE THREE DOORS ───────────────────────────────────────────────────────────────────────────────
+# Write/Edit hand us the path directly. Bash hands us a command, so we ask the shared library which
+# paths that command WRITES TO (never merely mentions), then run the same test on each. The library
+# owns "is this a write"; this guard owns "is this path a project artifact" — that is `_slug_of`,
+# directly above, and it is what filters the library's noise tokens down to real briefs.
+case "$TOOL" in
+  Write|Edit|NotebookEdit)
+    [ -n "$FP" ] || exit 0 ;;
+  Bash)
+    [ -n "$COMMAND" ] || exit 0
+    # shellcheck source=lib/bash_write_door.sh
+    . "$HOOKDIR/lib/bash_write_door.sh" 2>/dev/null || {
+      printf '%s\n' '{"decision":"block","reason":"BLOCKED: guard_cross_project_write could not load lib/bash_write_door.sh, so it is failing closed. The Bash door into another project'"'"'s brief is unguarded without it. REDIRECT: restore system/hooks/lib/bash_write_door.sh from git."}' >&2; exit 2; }
+    _HIT=""
+    while IFS= read -r _cand; do
+      [ -n "$_cand" ] || continue
+      if [ "$_cand" = "__BWD_PARSE_ERROR__" ]; then
+        printf '%s\n' '{"decision":"block","reason":"BLOCKED: guard_cross_project_write could not analyse this Bash command, so it is failing closed. An unreadable command and a harmless one must never look the same. REDIRECT: use the Write or Edit tool, which this guard can read reliably."}' >&2; exit 2
+      fi
+      # only a path that is a PROJECT ARTIFACT is this guard's business; everything else is noise
+      [ -n "$(_slug_of "$_cand")" ] && { _HIT="$_cand"; break; }
+    done <<EOF
+$(bwd_write_targets "$COMMAND")
+EOF
+    [ -n "$_HIT" ] || exit 0
+    FP="$_HIT" ;;
+  *) exit 0 ;;
+esac
+
 TARGET_SLUG="$(_slug_of "$FP")"
 [ -n "$TARGET_SLUG" ] || exit 0            # not a brief or a project canon — not this guard's business
 

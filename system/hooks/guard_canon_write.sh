@@ -58,9 +58,50 @@
 # block in the python below. Do not restore it without also fixing what /save writes, or the
 # product breaks again in exactly the way measured above.
 # ─────────────────────────────────────────────────────────────────────────────
-# guard_canon_write.sh — PreToolUse hook (matcher: Write|Edit)
+# guard_canon_write.sh — PreToolUse hook (matcher: Bash|Write|Edit)
 
 INPUT=$(cat)
+
+# ── THE THIRD DOOR, and this one is handled DIFFERENTLY from the other two guards — read why.
+# The rails below are about CONTENT: how big the write is, and whether it carries an expiry marker.
+# Through Write/Edit the content arrives as a field and can be measured. Through a shell command it
+# is embedded in a heredoc, an echo, a pipe or a generator, and any attempt to measure it there is a
+# guess. ⛔ A guess is exactly what must not happen in a size rail — a wrong measurement either blocks
+# correct work or waves through the thing the rail exists to stop.
+# ⇒ SO THIS DOOR IS CLOSED RATHER THAN INSPECTED: a Bash write aimed at canon is denied, and the deny
+# names the door that works. The cost is real and small — writing canon through the shell stops being
+# possible. The gain is that the content rails become unbypassable instead of decorative, which was
+# the entire argument for having them.
+_CANON_TOOL=$(printf '%s' "$INPUT" | python3 -c "
+import sys, json
+try: d = json.load(sys.stdin)
+except Exception: print('__PARSE_ERROR__'); raise SystemExit
+print((d.get('tool_name') or '').strip())
+print(((d.get('tool_input') or {}).get('command') or '').replace('\n',';'))
+")
+if [ "$(printf '%s' "$_CANON_TOOL" | sed -n '1p')" = "Bash" ]; then
+  _CANON_CMD=$(printf '%s' "$_CANON_TOOL" | sed -n '2p')
+  if [ -n "$_CANON_CMD" ]; then
+    _CW_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
+    # shellcheck source=lib/bash_write_door.sh
+    if . "$_CW_DIR/lib/bash_write_door.sh" 2>/dev/null; then
+      while IFS= read -r _cc; do
+        [ -n "$_cc" ] || continue
+        if [ "$_cc" = "__BWD_PARSE_ERROR__" ]; then
+          printf '%s\n' '{"decision":"block","reason":"BLOCKED: guard_canon_write could not analyse this Bash command, so it is failing closed. An unreadable command and a harmless one must never look the same. REDIRECT: use the Write or Edit tool for canon — the content rails only work there."}' >&2; exit 2
+        fi
+        case "$_cc" in
+          */canon/*|*/canon.md|canon.md)
+            printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: this Bash command writes to a canon file (${_cc}). WHY: canon carries two content rails — a size limit and an expiry-marker check — and both need to READ the content being written. Through the Write tool the content is a field this guard can measure; inside a shell command it is a heredoc or a pipe, and measuring it there would be a guess. A size rail that guesses is worse than none: it either blocks correct work or waves through the thing it exists to stop. So this door is closed rather than guessed at. REDIRECT: make this edit with the Write or Edit tool and the rails will run properly. If the content is generated, write it to a scratch file first, read it, then Write it. RULE: system/knowledge-altitude.md, and this hook's header.\"}" >&2
+            exit 2 ;;
+        esac
+      done <<EOF
+$(bwd_write_targets "$_CANON_CMD")
+EOF
+    fi
+  fi
+  exit 0
+fi
 
 PYCHECK=$(cat <<'PY'
 import sys, json, os

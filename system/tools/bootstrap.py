@@ -132,10 +132,30 @@ def bootstrap(root, dry_run=False):
     return created, existed
 
 
-def ensure_python3_shim(dry_run=False):
-    """Guarantee that the bare word `python3` resolves on this machine. Windows only.
+SHIM_BODY = (
+    '@echo off\r\n'
+    # PYTHONUTF8=1 is PEP 540 UTF-8 Mode. Every command in every skill is written `python3 …`, and a
+    # huge share of them call the bare `open(path)` with no `encoding=` — 216 of 472 call sites,
+    # measured by AST, not grep (T8.2a, 2026-08-13). Without this line, those calls fall back to
+    # `locale.getpreferredencoding()`, which on a stock Windows machine is cp1252, not UTF-8. The
+    # repo's own docs are full of ⭐ ⛔ — characters, and a student's own material routinely has
+    # curly quotes and accented names — so the failure mode is not a clean crash, it is
+    # `errors="replace"` in `system/tools/cowork-ingest/intake.py` silently mangling a student's own
+    # writing. Forcing UTF-8 Mode here, once, at the one place every `python3` invocation already has
+    # to pass through, is the fix — not 216 scattered `encoding=` edits, which is how a class stays
+    # broken forever.
+    'set PYTHONUTF8=1\r\n'
+    # `%~dp0` is the folder this .cmd sits in, so the shim keeps pointing at its own neighbour even
+    # if the folder is later moved or renamed. `%*` forwards every argument untouched.
+    '"%~dp0python.exe" %*\r\n'
+)
 
-    ⭐ WHY THIS EXISTS (2026-08-12). Every command in every skill is written `python3 …`, one
+
+def ensure_python3_shim(dry_run=False):
+    """Guarantee that the bare word `python3` resolves on this machine, AND that it runs in UTF-8
+    Mode. Windows only.
+
+    ⭐ WHY THE SHIM EXISTS (2026-08-12). Every command in every skill is written `python3 …`, one
     convention, literal and copy-pasteable. That word is true on macOS and Linux and FALSE on a
     standard Windows install: python.org ships `python.exe` and no `python3.exe`, and INSTALL.md's
     own Windows fix — disabling the Microsoft Store execution aliases in STEP 3, TRAP 2 — removes
@@ -143,41 +163,61 @@ def ensure_python3_shim(dry_run=False):
     breakage, and every one of the ~150 skill commands failed on the word.
 
     Rather than branch every command by platform, or make the model substitute a token 150 times,
-    the install restores what the Store alias used to provide: a two-line `python3.cmd` beside the
-    real interpreter. `sys.executable`'s own folder is the right home for it — it is per-user and
-    already on PATH, because the installer put it there.
+    the install restores what the Store alias used to provide: a `python3.cmd` beside the real
+    interpreter. `sys.executable`'s own folder is the right home for it — it is per-user and already
+    on PATH, because the installer put it there.
 
-    Returns (status, detail) with status in {"not-needed", "already", "created", "would-create",
-    "refused"}. ⛔ A refusal NEVER fails the install: it is reported with the manual fix, because a
-    person who cannot write one file still has a working tool everywhere except that word."""
+    ⭐ WHY THE SHIM ALSO SETS PYTHONUTF8 (T8.2a, 2026-08-13). This is the ONE place every `python3`
+    invocation on Windows already has to resolve through — every skill command, every internal
+    `subprocess.run(["python3", ...])`, all of it. Setting UTF-8 Mode here, instead of adding
+    `encoding="utf-8"` to 216 individual `open()` calls, means the fix actually fires for every call
+    site at once, including ones written after this file was. A machine that already has an OLDER
+    shim from before this fix is upgraded in place, not left alone — see the `upgraded` status below
+    — because `UPDATE.md` re-runs this script on every `git pull`, and an update that cannot reach an
+    already-installed machine is not a fix, it is a note to new installs only.
+
+    Returns (status, detail) with status in {"not-needed", "already", "created", "upgraded",
+    "would-create", "would-upgrade", "refused"}. ⛔ A refusal NEVER fails the install: it is reported
+    with the manual fix, because a person who cannot write one file still has a working tool
+    everywhere except that word."""
     if os.name != "nt":
-        return "not-needed", "not Windows — `python3` is the real name here"
+        return "not-needed", "not Windows — `python3` is the real name here, in UTF-8 by default"
 
     import shutil
-    if shutil.which("python3"):
-        return "already", "`python3` already resolves on PATH"
-
     target_dir = os.path.dirname(os.path.abspath(sys.executable))
     shim = os.path.join(target_dir, "python3.cmd")
-    if os.path.exists(shim):
-        return "already", shim
-    if dry_run:
-        return "would-create", shim
 
-    # `%~dp0` is the folder this .cmd sits in, so the shim keeps pointing at its own neighbour even
-    # if the folder is later moved or renamed. `%*` forwards every argument untouched.
-    body = '@echo off\r\n"%~dp0python.exe" %*\r\n'
+    found = shutil.which("python3")
+    if found and os.path.normcase(os.path.abspath(found)) != os.path.normcase(os.path.abspath(shim)):
+        # Something else already answers to `python3` — WSL, msys, a real python3.exe elsewhere on
+        # PATH. Not ours to rewrite; its encoding behaviour is that install's own business.
+        return "already", "`python3` already resolves on PATH (%s, not managed here)" % found
+
+    if os.path.exists(shim):
+        try:
+            current = open(shim, encoding="ascii").read()
+        except OSError:
+            current = ""
+        if "PYTHONUTF8" in current:
+            return "already", shim
+        verb, verb_dry = "upgraded", "would-upgrade"
+    else:
+        verb, verb_dry = "created", "would-create"
+
+    if dry_run:
+        return verb_dry, shim
     try:
         with open(shim, "w", encoding="ascii", newline="") as f:
-            f.write(body)
+            f.write(SHIM_BODY)
     except OSError as e:
         return "refused", (
             "could not write %s (%s).\n"
             "     Not fatal. Either re-run this step from a shell that can write there, or create\n"
-            "     that file by hand with these two lines:\n"
+            "     that file by hand with these three lines:\n"
             "         @echo off\n"
+            "         set PYTHONUTF8=1\n"
             '         "%%~dp0python.exe" %%*' % (shim, e))
-    return "created", shim
+    return verb, shim
 
 
 def main(argv=None):
@@ -203,12 +243,18 @@ def main(argv=None):
         print("Nothing to do — the shape is already in place.")
 
     # The one machine-shaped thing this step owns besides the folders: making `python3` a real word
-    # on Windows, so the skills' commands are literally runnable there. Silent on macOS and Linux.
+    # on Windows, AND making it read files as UTF-8 instead of the machine's default codepage.
+    # Silent on macOS and Linux — the word already resolves there, in UTF-8, without help.
     status, detail = ensure_python3_shim(dry_run=a.dry_run)
     if status == "created":
-        print("  made `python3` work on this machine: %s" % detail)
+        print("  made `python3` work on this machine (and read files as UTF-8): %s" % detail)
+    elif status == "upgraded":
+        print("  fixed `python3` to read files as UTF-8 — it was silently mangling special "
+              "characters before: %s" % detail)
     elif status == "would-create":
-        print("  would make `python3` work on this machine: %s" % detail)
+        print("  would make `python3` work on this machine (and read files as UTF-8): %s" % detail)
+    elif status == "would-upgrade":
+        print("  would fix `python3` to read files as UTF-8: %s" % detail)
     elif status == "refused":
         print("  ⚠ `python3` is not a working command here, and I could not fix it:\n     %s" % detail)
     return 0

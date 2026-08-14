@@ -139,6 +139,23 @@ ls .claude/skills/ | wc -l && ls .claude/agents/ && python3 -c "import sys; sys.
 If this repository has a self-test script, run it now and paste the last line. A green check they can see
 is worth more than your assurance.
 
+**Then re-run bootstrap**, even though this is an update, not a first install:
+
+```bash
+python3 system/tools/bootstrap.py
+```
+
+⭐ **Why an UPDATE runs an INSTALL script (T8.2a, 2026-08-13).** `bootstrap.py` never clobbers
+anything that already exists — it only fills in what is missing, which on an update is normally
+nothing. But on Windows it also owns one machine-level fix: a `python3.cmd` shim that makes the bare
+word `python3` resolve at all, and — as of this task — forces the interpreter into UTF-8 Mode, because
+a stock Windows machine otherwise reads files in cp1252 and silently mangles special characters
+instead of crashing. **A machine that installed before this fix already has that shim, and `git pull`
+does not touch it** — `git pull` only updates files it tracks, and the shim lives outside the repo,
+beside the interpreter. Re-running `bootstrap.py` is what reaches it: on Windows it reports
+`upgraded` if the shim predates the fix, `already` if it is current, and prints nothing new on
+macOS/Linux either way.
+
 ## STEP 6 — ⛔⛔ MAKE THEM RESTART CLAUDE
 
 **Claude loads skills and agents when a session opens. This session opened before the update, so it is

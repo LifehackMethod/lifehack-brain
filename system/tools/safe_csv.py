@@ -32,10 +32,23 @@ _MAX_FILE_BYTES = 5_000_000   # 5 MB cap
 _FORMULA_CHARS = frozenset("=+-@")
 _ENCODINGS = ("utf-8", "utf-8-sig", "latin-1", "cp1252")
 
+import re
+# A cell that is NOTHING BUT a signed/plain number (optionally with thousands commas and a
+# decimal point) is not a formula — Excel/Sheets never execute a bare number. Ledger values like
+# -18500 or -3.75 start with the same '-' that also starts a formula, so a blind "strip the first
+# char" flips their sign silently. This regex is the exemption: it must match the WHOLE cell (after
+# stripping surrounding whitespace) or it doesn't apply, so "-Rent", "-1+1" and "=1+1" (leading '='
+# is never numeric) all still fall through to the strip below.
+_PLAIN_SIGNED_NUMBER = re.compile(r"^[+-]?\d{1,3}(,\d{3})*(\.\d+)?$|^[+-]?\d+(\.\d+)?$")
+
 
 def _defuse_formula(value: str) -> str:
-    """Strip leading formula injection chars from a cell value."""
+    """Strip leading formula injection chars from a cell value — UNLESS the whole cell is a plain
+    signed number, in which case the leading +/- is a sign, not a formula trigger."""
     if value and value[0] in _FORMULA_CHARS:
+        stripped = value.strip()
+        if value[0] in "+-" and _PLAIN_SIGNED_NUMBER.match(stripped):
+            return stripped
         return value[1:].strip()
     return value
 

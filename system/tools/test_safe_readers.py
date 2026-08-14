@@ -217,6 +217,35 @@ class SafeCsvCase(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
         self.assertNotIn("Traceback", r.stderr)
 
+    def test_a_signed_number_keeps_its_sign(self):
+        """A negative ledger value is not a formula — Excel/Sheets never execute a bare number.
+        Found 2026-08-13: the blind strip-the-first-char defence flipped -18500 to 18500. In a
+        financial ledger a silently flipped sign is worse than a crash: nobody sees it happen."""
+        p = os.path.join(self.tmp, "signed.csv")
+        with open(p, "w", newline="") as f:
+            csv.writer(f).writerows([
+                ["label", "value"],
+                ["Rent (negative)", "-18500"],
+                ["Small negative", "-3.75"],
+                ["Category label", "-Rent"],
+                ["Injection 1", "=CMD|calc"],
+                ["Injection 2", "@SUM(A1)"],
+                ["Injection 3", "+1+1"],
+                ["Plain label", "Rent"],
+            ])
+        r = run("safe_csv.py", p)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        rows = dict(line.split("\t") for line in r.stdout.strip().split("\n")[1:])
+        self.assertEqual(rows["Rent (negative)"], "-18500", "a plain signed number must keep its sign")
+        self.assertEqual(rows["Small negative"], "-3.75", "a plain signed decimal must keep its sign")
+        # not a plain number — still falls through to the injection strip, unchanged from before
+        self.assertEqual(rows["Category label"], "Rent")
+        # the injection defence itself must not weaken
+        self.assertEqual(rows["Injection 1"], "CMD|calc", "=CMD|calc must still be defused")
+        self.assertEqual(rows["Injection 2"], "SUM(A1)", "@SUM(A1) must still be defused")
+        self.assertEqual(rows["Injection 3"], "1+1", "+1+1 must still be defused")
+        self.assertEqual(rows["Plain label"], "Rent")
+
 
 class DocumentReaderCase(unittest.TestCase):
     """.pdf, .docx and .xlsx each need one library. The gate REFUSES the raw Read and points here,

@@ -42,6 +42,8 @@ print('\t'.join([
     d.get('session_id','') or '',
     d.get('cwd','') or '',
     (ti.get('file_path','') or ti.get('path','') or '').replace('\t',' '),
+    (d.get('tool_name','') or '').strip(),
+    (ti.get('command','') or '').replace('\t',' ').replace('\n',';'),
 ]))" 2>/dev/null)
 
 deny() {
@@ -74,7 +76,11 @@ FLAG="$HOME/.claude/run/throughline/tl-$KEY.flag"
 [ "$PARSED" = "__PARSE_ERROR__" ] && deny "the tool input could not be read during an armed run, so there is no way to tell what this write is aiming at"
 
 FILE_PATH="$(printf '%s' "$PARSED" | cut -f3)"
-[ -z "$FILE_PATH" ] && exit 0        # a Write|Edit with no path is not a write we can judge
+TOOL_NAME="$(printf '%s' "$PARSED" | cut -f4)"
+COMMAND="$(printf '%s' "$PARSED"   | cut -f5)"
+
+# A Bash command carries no file_path, so the emptiness test below must not swallow it.
+[ -z "$FILE_PATH" ] && [ "$TOOL_NAME" != "Bash" ] && exit 0
 
 # ── THE DESTINATION. Resolved from the person's notes folder — never a path baked into this file.
 # ⛔ THE DONOR HARDCODED ONE MACHINE'S ABSOLUTE DRIVE PATH HERE, and that is not merely unportable:
@@ -122,6 +128,34 @@ canon() {
   _dp="$(cd "$_d" 2>/dev/null && pwd -P)"
   if [ -n "$_dp" ]; then printf '%s/%s' "$_dp" "$_rest"; else printf '%s' "$_p"; fi
 }
+# ── THE THIRD DOOR — placed HERE, below `canon()` and `DEST`, because it needs both.
+# An armed run that cannot use Write or Edit can still `cat >` its way out, and that is not an evader:
+# a heredoc is an ordinary way to write a file. A read-only contract with a shell door beside it is
+# not read-only. The shared library answers "which paths does this command WRITE to"; the DEST test
+# below is unchanged and does the judging.
+# ⚠ Reads stay untouched, which is the whole point — /throughline READS a project's entire history,
+# so a guard that denied reading would break the skill it exists to protect.
+if [ "$TOOL_NAME" = "Bash" ]; then
+  [ -z "$COMMAND" ] && exit 0
+  HOOKDIR_TL="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
+  # shellcheck source=lib/bash_write_door.sh
+  . "$HOOKDIR_TL/lib/bash_write_door.sh" 2>/dev/null \
+    || deny "lib/bash_write_door.sh could not be loaded during an armed run, so the shell door cannot be checked at all"
+  _TL_HIT=""
+  while IFS= read -r _c; do
+    [ -n "$_c" ] || continue
+    [ "$_c" = "__BWD_PARSE_ERROR__" ] && deny "this Bash command could not be analysed during an armed run, so there is no way to tell what it writes"
+    case "$(canon "$_c")" in
+      "$DEST"/*) : ;;                 # the one sanctioned destination — allowed
+      *) _TL_HIT="$_c"; break ;;
+    esac
+  done <<EOF
+$(bwd_write_targets "$COMMAND")
+EOF
+  [ -n "$_TL_HIT" ] || exit 0
+  deny "this run may not write $_TL_HIT (reached through a Bash command rather than the Write tool)"
+fi
+
 FP_C="$(canon "$FILE_PATH")"
 
 case "$FP_C" in

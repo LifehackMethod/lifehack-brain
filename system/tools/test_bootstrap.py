@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.normpath(os.path.join(HERE, "..", ".."))
@@ -190,6 +191,83 @@ class TestSitsBesideIngest(Case):
             self.assertIn(p, got, "the spine must survive a scaffold")
         self.assertIn("desks/money/canon/current.md", got)
         self.assertIn("desks/money/canon/purpose.md", got)
+
+
+class TestPython3ShimUTF8(unittest.TestCase):
+    """T8.2a, 2026-08-13. `ensure_python3_shim` is Windows-only (`os.name != "nt"` short-circuits),
+    so on macOS/Linux CI it has to be exercised by simulating Windows, not by actually being on it —
+    the same honesty bound the task's own verification carries. Mocks `os.name` and `sys.executable`
+    so the function believes it is Windows, pointed at a throwaway interpreter folder."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="shim-test-")
+        self.fake_python = os.path.join(self.tmp, "python.exe")
+        open(self.fake_python, "w").close()
+        self.shim = os.path.join(self.tmp, "python3.cmd")
+        self.patches = [
+            mock.patch.object(bootstrap.os, "name", "nt"),
+            mock.patch.object(bootstrap.sys, "executable", self.fake_python),
+        ]
+        for p in self.patches:
+            p.start()
+
+    def tearDown(self):
+        for p in self.patches:
+            p.stop()
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_not_windows_is_a_noop(self):
+        for p in self.patches:
+            p.stop()
+        self.patches = []
+        status, detail = bootstrap.ensure_python3_shim()
+        self.assertEqual(status, "not-needed")
+
+    def test_fresh_windows_machine_creates_a_shim_with_utf8(self):
+        with mock.patch.object(shutil, "which", return_value=None):
+            status, detail = bootstrap.ensure_python3_shim()
+        self.assertEqual(status, "created")
+        self.assertEqual(detail, self.shim)
+        body = open(self.shim, encoding="ascii").read()
+        self.assertIn("PYTHONUTF8=1", body)
+        self.assertIn("python.exe", body)
+
+    def test_second_run_reports_already_and_does_not_rewrite(self):
+        with mock.patch.object(shutil, "which", return_value=None):
+            bootstrap.ensure_python3_shim()
+            before = open(self.shim, "rb").read()
+            status, detail = bootstrap.ensure_python3_shim()
+        self.assertEqual(status, "already")
+        self.assertEqual(open(self.shim, "rb").read(), before)
+
+    def test_older_shim_without_utf8_is_upgraded_in_place(self):
+        # simulate a machine that installed before T8.2a: the pre-fix two-line shim, no PYTHONUTF8.
+        with open(self.shim, "w", encoding="ascii", newline="") as f:
+            f.write('@echo off\r\n"%~dp0python.exe" %*\r\n')
+        with mock.patch.object(shutil, "which", return_value=self.shim):
+            status, detail = bootstrap.ensure_python3_shim()
+        self.assertEqual(status, "upgraded")
+        body = open(self.shim, encoding="ascii").read()
+        self.assertIn("PYTHONUTF8=1", body)
+
+    def test_dry_run_upgrade_touches_nothing(self):
+        with open(self.shim, "w", encoding="ascii", newline="") as f:
+            f.write('@echo off\r\n"%~dp0python.exe" %*\r\n')
+        before = open(self.shim, "rb").read()
+        with mock.patch.object(shutil, "which", return_value=self.shim):
+            status, detail = bootstrap.ensure_python3_shim(dry_run=True)
+        self.assertEqual(status, "would-upgrade")
+        self.assertEqual(open(self.shim, "rb").read(), before, "--dry-run wrote to disk")
+
+    def test_a_foreign_python3_elsewhere_on_path_is_left_alone(self):
+        # e.g. WSL, msys, a real python3.exe from a different install — not ours to rewrite.
+        foreign = os.path.join(self.tmp, "elsewhere", "python3.exe")
+        os.makedirs(os.path.dirname(foreign))
+        open(foreign, "w").close()
+        with mock.patch.object(shutil, "which", return_value=foreign):
+            status, detail = bootstrap.ensure_python3_shim()
+        self.assertEqual(status, "already")
+        self.assertFalse(os.path.exists(self.shim), "wrote a shim over something not ours")
 
 
 if __name__ == "__main__":
