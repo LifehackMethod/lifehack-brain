@@ -123,6 +123,14 @@ HAY=$(printf '%s' "$COMMAND" | tr -d "\"'")
 # is denied. A `#` comment counts: a decoy hidden after one was a working bypass.
 MULTI=0
 printf '%s' "$COMMAND" | grep -qE '[;&|]|#' 2>/dev/null && MULTI=1
+# ⛔ A NEWLINE IS A STATEMENT SEPARATOR AND grep CANNOT SEE ONE. grep works a line at a time, so the
+# test above is blind to the most ordinary separator there is, and every check below that greps the
+# command is likewise per-line: `grep -q` succeeds if ANY line matches. Together that meant one
+# innocuous read line anywhere in a multi-line command handed exit 0 to every other line in it,
+# including `tasklists delete`. That is the decoy bug the semicolon fix closed, inverted to `\n`.
+# Found by the SECOND adversarial pass, after the first pass's three holes were closed. Counted with
+# wc -l because printf adds no trailing newline, so any count above zero is an embedded one.
+[ "$(printf '%s' "$COMMAND" | wc -l | tr -d ' ')" != "0" ] && MULTI=1
 
 # ── RECOGNISED READS PASS, ALWAYS ─────────────────────────────────────────────────────────────
 # Matched on the command HEAD — everything from the first flag or quote onward is PAYLOAD, and a
@@ -217,8 +225,14 @@ except Exception:
   # id, or a substitution that NAMES the config key. That indirection is self-describing — it says
   # in plain text which key it resolves — so it can be read without being resolved. A substitution
   # naming any other key does not match.
-  if printf '%s' "$COMMAND" | grep -qE "\"?parent\"?[[:space:]]*:[[:space:]]*\"?(${PARENT}|\\\$\([^)]*--get[[:space:]]+daily_parent_task[^)]*\))" 2>/dev/null \
-     || printf '%s' "$COMMAND" | grep -qE "(^|[[:space:]])--parent[[:space:]=]+\"?(${PARENT}|\\\$\([^)]*--get[[:space:]]+daily_parent_task[^)]*\))" 2>/dev/null; then
+  # ⛔ THE KEY'S QUOTES ARE REQUIRED, and leaving them optional was a live bypass. The first version
+  # accepted `"?parent"?[[:space:]]*:` — which matches the bare text `parent:` anywhere, including
+  # inside an unrelated field. Measured: `--json '{"notes":"parent:<id>"}'` on an `update` aimed at a
+  # real goal was ALLOWED, rc 0, as a single statement with no separator trick at all. A decorative
+  # sentence in a notes body is not a parent slot. Requiring `"parent"` as a properly closed JSON key
+  # rejects it, while the shipped command — `"parent":"$(… --get daily_parent_task)"` — still matches.
+  if printf '%s' "$COMMAND" | grep -qE "\"parent\"[[:space:]]*:[[:space:]]*\"(${PARENT}|\\\$\([^)]*--get[[:space:]]+daily_parent_task[^)]*\))\"" 2>/dev/null \
+     || printf '%s' "$COMMAND" | grep -qE "(^|[[:space:]])--parent[[:space:]=]+\"?(${PARENT}|\\\$\([^)]*--get[[:space:]]+daily_parent_task[^)]*\))\"?([[:space:]]|$)" 2>/dev/null; then
     exit 0   # the day's plan, hung from its parent — the one sanctioned write
   fi
 
