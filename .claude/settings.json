@@ -107,6 +107,16 @@
         ]
       },
       {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_write_paths.sh\"",
+            "statusMessage": "Checking this is not a guard editing itself..."
+          }
+        ]
+      },
+      {
         "matcher": "Bash|Write|Edit",
         "hooks": [
           {
