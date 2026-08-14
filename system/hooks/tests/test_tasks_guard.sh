@@ -111,6 +111,28 @@ run "substitution naming the wrong key" 2 \
 run "binary behind a variable" 2 "V=gws; \$V tasks tasks delete --tasklist $GOALS --id g1"
 run "binary via an absolute path" 2 "/opt/homebrew/bin/gws tasks tasks delete --tasklist $GOALS --id g1"
 
+echo "── ⭐⭐⭐ the third audit: reached WITHOUT naming the list, and a false deny ─"
+# Google resolves @default and an omitted list to the caller's default list — and this repo's own
+# code uses that alias. A guard keyed on the configured id never saw either, so delete and clear
+# reached the goals list without ever mentioning it. Unresolvable now means refused.
+run "delete via @default"        2 "$G tasks delete --id X --params '{\"tasklist\":\"@default\"}'"
+run "clear via @default"         2 "$G tasks clear --params '{\"tasklist\":\"@default\"}'"
+run "delete naming no list"      2 "$G tasks delete --id X"
+# A repeated JSON key resolves to the LAST value in every real parser, including the one Google
+# uses. The old guard searched the text, found the first, and approved a write that would land
+# somewhere else entirely.
+run "duplicate parent key"       2 \
+  "$G tasks insert --params '{\"tasklist\":\"$GOALS\"}' --json '{\"parent\":\"$PARENT\",\"parent\":\"AGOAL\"}'"
+# ...and the other direction, which matters just as much: a day's plan is free text, and a text
+# matcher read ordinary punctuation in a title as shell operators and refused the only sanctioned
+# write. These must ALLOW.
+run "title with an ampersand"    0 \
+  "$G tasks insert --params '{\"tasklist\":\"$GOALS\",\"parent\":\"$PARENT\"}' --json '{\"title\":\"Q3 R&D review\"}'"
+run "title with a hash"          0 \
+  "$G tasks insert --params '{\"tasklist\":\"$GOALS\",\"parent\":\"$PARENT\"}' --json '{\"title\":\"Call bank #urgent\"}'"
+run "title with semicolons"      0 \
+  "$G tasks insert --params '{\"tasklist\":\"$GOALS\",\"parent\":\"$PARENT\"}' --json '{\"title\":\"milk; eggs; bread\"}'"
+
 echo "── nothing configured: a write refuses and says how to fix it ───────────"
 EMPTY="$SANDBOX/empty-notes"; mkdir -p "$EMPTY"
 run "unconfigured write" 2 "$G tasks insert --tasklist anything --params '{}'" "$EMPTY"
