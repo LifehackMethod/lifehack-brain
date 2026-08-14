@@ -113,6 +113,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_write_paths.sh\"",
             "statusMessage": "Checking this is not a guard editing itself..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/enforce_skill_frontmatter.sh\"",
+            "statusMessage": "Checking the skill declares what it is for..."
           }
         ]
       },
