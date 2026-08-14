@@ -39,6 +39,13 @@ deny() {
   printf '%s\n' "RULE: system/sops/google-sheet-sop.md, and the 🔒 convention in the /google-sheet skill." >&2
   exit 2
 }
+deny_unknown() {
+  printf 'BLOCKED (sheet formula guard): %s\n' "this gws command hides its operation or its target behind a shell variable or a command substitution, so this guard cannot tell what it would do." >&2
+  printf '%s\n' "WHY: every check below matches LITERAL text; a \$VAR or \$(...) defeats all of them, and until this guard imported the shared parser such a command was allowed through unconditionally and silently. An unknown must never be read as permission." >&2
+  printf '%s\n' "REDIRECT: re-run the command with the operation and the target written out literally so the guard can see them — or, if this is a deliberate reviewed write, prefix LIFEHACK_SHEET_CONFIRM=1." >&2
+  printf '%s\n' "RULE: system/hooks/lib/gws_guard.py holds the parser this guard defers to for anything indirected; change the parser there, not by loosening this guard." >&2
+  exit 2
+}
 
 INPUT=$(cat 2>/dev/null)
 COMMAND=$(printf '%s' "$INPUT" | python3 -c '
@@ -54,10 +61,30 @@ except Exception:
 # entirely. Fail-CLOSED applies below, once we know a sheet write is actually in flight.
 [ -n "$COMMAND" ] || exit 0
 
+# CONTINUATION-NORMALISE: the shell removes a backslash-newline before running, so the wrapped and
+# joined forms execute identically — but every grep below matches on TEXT, so it must see the joined
+# form or it misses entirely. Falls back to the un-joined text if perl is unavailable (already a
+# dependency elsewhere in this repo's hooks).
+COMMAND=$(printf '%s' "$COMMAND" | perl -0pe 's/\\\n/ /g' 2>/dev/null || printf '%s' "$COMMAND")
+
 # Only act on gws sheets commands; everything else passes untouched.
 printf '%s' "$COMMAND" | grep -qE "(^|[^A-Za-z0-9_.-])gws[[:space:]]+sheets([[:space:]]|$)" 2>/dev/null || exit 0
 # Explicit human-approved bypass.
 printf '%s' "$COMMAND" | grep -qF "$CONFIRM_MARK" 2>/dev/null && exit 0
+
+# ── THE INDIRECTION CATCH ──────────────────────────────────────────────────────
+# Everything below this point (and everything below in the rest of this file) matches LITERAL
+# text. Measured by fire test: when the text is NOT literal — a $VAR, a $(substitution), a decoy
+# safe word, a wrapper word before the binary — every literal matcher misses and the command fell
+# through to allow, unconditionally and silently. An indirection we cannot resolve is UNKNOWN, and
+# UNKNOWN FAILS CLOSED. The parser is shared (one copy, every gws guard) so this cannot rot per file.
+LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib/gws_guard.py"
+[ -r "$LIB" ] || deny_unknown   # no parser, no permission
+printf '%s' "$COMMAND" | python3 "$LIB" --service sheets \
+  --destructive '' \
+  --write-verbs update,batchupdate 2>/dev/null
+[ $? -eq 7 ] && deny_unknown
+
 # Appends create a NEW row — inherently safe, they never touch a formula. Pass.
 printf '%s' "$COMMAND" | grep -qiE "values[[:space:]]+append" 2>/dev/null && exit 0
 # Only inspect value-WRITE ops. (Structural batchUpdate is gated by guard_sheet_writes.sh.)
