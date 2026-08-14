@@ -64,6 +64,10 @@ folder, wherever it already is. **`data` is the folder setup builds inside your 
 this tool produces belongs in there.** ⛔ Never move your raw material into it, and never move it into
 the tool folder either — just tell the tool where it already is.
 
+**Wondering what this needs from outside itself, or whether any of it costs money?**
+`docs/OUTSIDE-SERVICES.md` covers every one of them in one place — and only two, out of eleven, are
+actually required to install this at all.
+
 ---
 ---
 
@@ -728,3 +732,63 @@ before they surprise you:
   exact before and after and re-running with `LIFEHACK_SHEET_CONFIRM=1` in front of the command.
 
 Neither hook touches anything that is not a `gws sheets` command, and neither needs `jq`.
+
+---
+
+# FILING A BUG — `gh` and a free GitHub account, only if you use it
+
+Reporting a problem the fast way — saying **"file a bug"** and having the whole thing written up and
+sent for you — needs the `gh` command-line tool and a free GitHub account. Neither is required for
+anything else in this package; you can always just describe a problem in chat instead.
+
+**Setting it up is its own five-minute walkthrough, separate from this one:** drag
+`docs/REPORT-A-BUG.md` into the chat and say **"Set up bug reports."** It installs `gh` for you on a
+Mac; on Windows it fetches it with `winget`, or sends you to the one page that works if `winget` isn't
+there. You never type a command yourself.
+
+**Cost:** both free. `gh` is GitHub's own tool, and the free tier of a GitHub account is all this
+needs — no card.
+
+---
+
+# SCREENSHOTS FOR DESIGN WORK — Google Chrome, only if you use `/design-lifehack`
+
+`/design-lifehack` looks at its own work by rendering a page to an image first
+(`system/tools/render_shot.sh`), so Claude can actually see what it built instead of guessing from the
+markup. That needs **Google Chrome** installed — a normal, free browser install, nothing special about
+it. Nothing else in this package touches it; skip this if you never use that one skill.
+
+**Getting it:** the ordinary download at <https://www.google.com/chrome/>, installed like any other
+application. No account, no extension, nothing to configure afterwards.
+
+⚠ **Verified on macOS only.** The tool also checks the standard Linux and Windows install locations,
+but nobody has confirmed those work yet — if it can't find Chrome, it says so plainly rather than
+failing silently.
+
+Without it, that one skill's screenshots fail outright; every other skill in this package is
+unaffected.
+
+---
+
+# `/ship` NEEDS TO KNOW WHO YOU ARE — one file, before its first run
+
+If you ever use `/ship` to publish work to a public repository, its first run will refuse — on
+purpose. It has no idea yet what must never be published: your name, your handles, anything that
+would identify you. Nothing else in this package needs this file; skip this section entirely until
+you actually use `/ship`.
+
+**Make it once, before that first run:**
+
+```bash
+cd "$(git rev-parse --show-toplevel)" && python3 system/shipping-lane/identity_rules.py --write-example
+```
+
+**Say what that did, in one sentence:** it wrote a starter file at `<notes>/config/ship-identity.md`
+— inside their own `data` folder, never inside this repository. Then open that file and swap the
+example names in it for your own, one per line.
+
+⚠ **This is not a workaround you can skip past — the lane fails closed instead.** Running `/ship`
+with no identity file does not quietly proceed without your personal check; it refuses every single
+time, and says exactly why. That is correct behaviour, not a bug: the alternative is a "clean" result
+with your own name still sitting in a file. Full detail is in `.claude/skills/ship/SKILL.md`, under
+**"FIRST RUN."**
