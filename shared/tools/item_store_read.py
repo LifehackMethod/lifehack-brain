@@ -389,15 +389,16 @@ def _write_item_store_tile(status, summary, payload):
     _off = time.strftime("%z", _lt)
     _off = (_off[:3] + ":" + _off[3:]) if _off else "+00:00"
     last_run_iso = time.strftime("%Y-%m-%dT%H:%M:%S", _lt) + _off
-    # emit_status.py (the shared health-tile validator) has not landed in this repo yet — confirmed
-    # absent by `find` (no matches) and by docs/skill-conformance.md CF-1. Without a fallback, the
-    # ImportError below was being swallowed by a bare `except Exception`, freshness_check() returned
-    # as if it had succeeded, and state/status/item-store.json was NEVER created — a job that reports
-    # success and leaves no artifact (the exact "prints PASSED, writes no file" antipattern this repo
-    # has a measured history of). Mirrors shared/tools/email_summary_sync.py's write_status_tile():
-    # try the real validator first (preferred if it's ever ported — NOT removed), ImportError falls
-    # through to a hand-written tile in the SAME envelope shape emit_status would produce (matches
-    # system/tools/cal-health.py's local _write_tile convention too), any OTHER exception from a
+    # emit_status.py (the shared health-tile validator) is now present in this repo, at
+    # system/tools/emit_status.py, and the import below resolves — it is the preferred path.
+    # The ImportError branch stays as a fallback: without it, an emit_status failure would be
+    # swallowed by a bare `except Exception`, freshness_check() would return as if it had
+    # succeeded, and state/status/item-store.json would NEVER be created — a job that reports
+    # success and leaves no artifact (the exact "prints PASSED, writes no file" antipattern this
+    # repo has a measured history of). Mirrors shared/tools/email_summary_sync.py's
+    # write_status_tile(): try the real validator first, ImportError falls through to a
+    # hand-written tile in the SAME envelope shape emit_status would produce (matches
+    # system/tools/cal-health.py's local _write_tile convention too); any OTHER exception from a
     # present-but-erroring validator is surfaced and left un-papered-over (no silent fallback that
     # could mask a real validation bug).
     try:
@@ -407,14 +408,15 @@ def _write_item_store_tile(status, summary, payload):
                     payload=payload, required_payload=("counts",))
         return
     except ImportError:
-        pass  # emit_status.py hasn't landed in this repo yet — fall through to the raw writer below.
+        pass  # emit_status import failed here — fall through to the raw writer below.
     except Exception as e:
         sys.stderr.write(f"[item-store-freshness] tile emit FAILED: {e}\n")
         return
 
-    # FALLBACK — no emit_status.py available. Written atomically (tmp + os.replace) so a reader never
-    # sees a half-written tile. If even THIS fails, that must be visible — never silenced — so any
-    # error here goes to stderr rather than being swallowed.
+    # FALLBACK — used when the emit_status import is unavailable at this call site. Written
+    # atomically (tmp + os.replace) so a reader never sees a half-written tile. If even THIS
+    # fails, that must be visible — never silenced — so any error here goes to stderr rather
+    # than being swallowed.
     try:
         env = {"desk": "root", "schema_version": 2, "pulse_job": "item-store-freshness",
                "emit_mode": "pulse", "stale_after_s": 7200, "last_run": last_run_iso,

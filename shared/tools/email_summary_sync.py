@@ -219,11 +219,11 @@ def gate(raw_text, thread_id="", item=""):
                            message_id="", item=item or thread_id)
 
 
-# emit_status.py (the shared health-tile validator) has not landed in this repo yet (it lives
-# outside shared/tools/, out of scope for this port). write_status_tile() below degrades to a
-# hand-written raw JSON tile when the import is unavailable — still fully functional for every
-# caller (stamp_write_success, emit_degraded_tile, freshness_check), just without emit_status's
-# envelope validation / cross-process lock. Land system/tools/emit_status.py to upgrade this for real.
+# emit_status.py (the shared health-tile validator) is now present in this repo, at
+# system/tools/emit_status.py, and is the preferred path below. write_status_tile() still
+# degrades to a hand-written raw JSON tile when the import is unavailable — still fully
+# functional for every caller (stamp_write_success, emit_degraded_tile, freshness_check), just
+# without emit_status's envelope validation / cross-process lock.
 STATUS_STALE_AFTER_S = 14400  # 4h — matches the donor's slowest-writer + slack rationale
 _TILE_STATUS_MAP = {"UP": "OK", "DEGRADED": "ERROR",
                     "OK": "OK", "ERROR": "ERROR",
@@ -265,18 +265,19 @@ def write_status_tile(status, extra=None):
                     summary=reason, last_run=last_run, payload=payload)
         return
     except ImportError:
-        pass  # emit_status.py hasn't landed in this repo yet — fall through to the raw writer below.
+        pass  # emit_status import failed here — fall through to the raw writer below.
     except Exception as e:
         sys.stderr.write(f"[email-summary-sync] WARNING: could not write status tile via emit_status ({e})\n")
         return
 
-    # FALLBACK — no emit_status.py available (it lives outside shared/tools/, out of scope for this
-    # port; see the module-level note above STATUS_STALE_AFTER_S). Without this fallback the tile
-    # is silently NEVER written — a control that reads as present but is dead on every real run,
-    # exactly the failure shape this system exists to catch. This writes the envelope shape by
-    # hand so every caller (stamp_write_success, emit_degraded_tile, freshness_check, the self-tests)
-    # keeps working; it is a strict subset of what emit_status would do (no cross-process lock, no
-    # schema_version stamping) — land system/tools/emit_status.py to upgrade this for real.
+    # FALLBACK — used when the emit_status import is unavailable at this call site (see the
+    # module-level note above STATUS_STALE_AFTER_S). Without this fallback the tile is silently
+    # NEVER written — a control that reads as present but is dead on every real run, exactly the
+    # failure shape this system exists to catch. This writes the envelope shape by hand so every
+    # caller (stamp_write_success, emit_degraded_tile, freshness_check, the self-tests) keeps
+    # working; it is a strict subset of what emit_status does (no cross-process lock, no
+    # schema_version stamping) — the real validator at system/tools/emit_status.py is the
+    # preferred path whenever the import succeeds.
     try:
         payload["status"] = env_status
         payload["rc"] = rc
