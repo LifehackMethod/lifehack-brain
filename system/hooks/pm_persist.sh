@@ -12,8 +12,9 @@
 #         handed the human's RAW PROMPT, which is the only input a model cannot author
 #         — so it is the only place a genuine human gate can be built. It matches that
 #         prompt against a narrow closed list of explicit phrases and writes
-#         override-<key>.grant; pm_flag.sh burns it on first use. Nothing else writes
-#         that file, and this hook still never blocks anything.
+#         override-<key>.grant; pm_flag.sh (project) OR plan_flag.sh (plan) burns it on
+#         first use — ONE grant type covering BOTH locks, and ONE spend, not one each.
+#         Nothing else writes that file, and this hook still never blocks anything.
 # REDIRECT: N/A (non-blocking). Flag ~/.claude/run/pm/pm-sess-<id>.flag (or pm-cwd-<hash>.flag).
 #           Off-switch: pm_flag.sh clear, or TTL (PM_TTL_HOURS env override; default is READ
 #           FROM pm_flag.sh's `ttl` verb, not a literal here — see UPDATED 2026-08-14).
@@ -133,6 +134,12 @@ fi
 # which is judgement wearing a regex, and it would refuse correct work. The grant is PERMISSION
 # FOR ONE CHANGE; pm_flag.sh shouts the destination it actually took, on the terminal the person
 # is looking at, which is what makes a wrong destination visible in the same breath.
+# ⭐ AND IT DOES NOT READ WHICH LOCK THEY MEANT EITHER — same reason. The closed list below already
+# carries the plan forms ("switch the plan to …", "override the plan lock", "write to this other
+# plan") because the ruling always had two halves, project OR plan. So ONE grant file serves BOTH
+# locks: pm_flag.sh and plan_flag.sh read the same path and either one burns it. A second grant type
+# would be a second thing to keep honest and a second thing to forge. It stays ONE SPEND — the first
+# consumer wins — and the banner below has to say so, because that banner is what the session reads.
 # LIFETIME: exactly one turn. The next prompt that does not re-authorise deletes it (below), so
 # an authorisation cannot sit open behind the person for the rest of the session.
 # ⚠ STATED HOLE, NOT AN OVERSIGHT: a person who PASTES text containing one of these phrases
@@ -158,7 +165,13 @@ if [ -n "$PROMPT" ] && printf '%s' "$PROMPT" | grep -qiE "$_OVR_RE" 2>/dev/null;
   # LOUD, and on the turn it happens. This hook cannot block and does not want to; what it can do
   # is make sure the change is never the quiet part. The person's complaint was never that the
   # model wrote somewhere — it was that it changed destination without them seeing it.
-  echo "[⭐ PROJECT-LOCK OVERRIDE AUTHORISED BY THE HUMAN, ONE CHANGE ONLY] Their prompt says: \"${_PH}\". The lock on this window's armed project will allow exactly ONE change — the next \`pm_flag.sh arm <doc> <slug> <desk>\` (or \`clear\`) that would otherwise be refused. It expires when they send their next message. ⛔ CONFIRM THE DESTINATION WITH THEM FIRST IF THEY DID NOT NAME ONE, then state plainly in your reply which project you moved off and which you moved to. Do not spend this on a project they did not ask for."
+  # ⭐ THE BANNER MUST NAME BOTH LOCKS (2026-08-15). It used to say PROJECT only and name only
+  # pm_flag.sh — but this ONE grant file is also what plan_flag.sh consumes (deliberately one grant
+  # type, not two). This text is injected into the session's context, so under-describing it made a
+  # session believe it could not spend the grant on a plan, and refuse work the human had actually
+  # authorised. ⛔ It is still ONE spend: the first of the two locks to consume it burns it. Do not
+  # let this read as one change to each.
+  echo "[⭐ PROJECT/PLAN-LOCK OVERRIDE AUTHORISED BY THE HUMAN — ONE GRANT, ONE CHANGE, EITHER LOCK] Their prompt says: \"${_PH}\". This window holds TWO locks — the armed PROJECT (pm_flag.sh) and the armed PLAN (plan_flag.sh) — and this single grant covers BOTH, but buys exactly ONE change to ONE of them. Whichever consumes it first BURNS it: the next \`pm_flag.sh arm <doc> <slug> <desk>\` (or \`clear\`), OR the next \`plan_flag.sh record|set <plan>\` (or \`clear\`), that would otherwise be refused. ⛔ It is NOT one change each — spending it on the plan leaves the project lock still standing, and vice versa. It expires when they send their next message. ⛔ CONFIRM THE DESTINATION WITH THEM FIRST IF THEY DID NOT NAME ONE, and make sure you spend it on the lock they actually meant, then state plainly in your reply which project or plan you moved off and which you moved to. Do not spend this on a project or plan they did not ask for."
 elif [ -f "$GRANTF" ]; then
   # Their next message that does not re-authorise ENDS the authorisation. One turn, by construction.
   rm -f "$GRANTF" 2>/dev/null

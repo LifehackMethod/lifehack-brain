@@ -182,6 +182,51 @@ gt "running the issuer with a full path"  "{\"tool_name\":\"Bash\",\"tool_input\
 gt "merely mentioning it in prose"        "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"grep -rn pm_persist docs/\"}}" allow
 gt "the test suite that drives it"        "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"bash system/hooks/tests/test_pm_lock_override.sh\"}}" allow
 
+echo "── 12. the same guard covers the PLAN store, not just the pm one ───────"
+# ⭐ THE HOLE THIS CLOSES, 2026-08-15. The plan lock refuses through plan_flag.sh, and its store
+# (~/.claude/run/plan/) was UNGUARDED — so a direct write to plan-<key>.flag, or an rm of
+# lock-<key>.plan, skipped that refusal entirely. Identical to the bypass an audit executed against
+# the pm store before section 11's guard existed, left open on the other half of the same ruling.
+# ⚠ WATCHED, NOT ASSERTED: `gt` above captures the real exit code from the real hook — a guard
+# nobody drove is not a guard. The channel proof (a refusal must survive `2>/dev/null` AND
+# `2>&1 >/dev/null`) is the block below this one.
+# ⛔ STILL A SPEED BUMP. Covering one more path does not make this a wall; every evasion named in
+# the guard's own header (a `cd`, a variable, an alias, a relative path) works the same against
+# run/plan. The load-bearing control remains NOISE on the spend.
+DOTP=".claude/run/plan"
+gt "Write tool aimed at the plan flag"   "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/Users/x/$DOTP/plan-sess-1.flag\"}}" block
+gt "Edit tool aimed at the plan lock"    "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"/Users/x/$DOTP/lock-sess-1.plan\"}}" block
+gt "shell redirect into the plan flag"   "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo plan=b > /Users/x/$DOTP/plan-sess-1.flag\"}}" block
+gt "rm of the plan LOCK file"            "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"rm /Users/x/$DOTP/lock-sess-1.plan\"}}" block
+gt "python write into the plan store"    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"python3 -c \\\"open('/Users/x/$DOTP/plan-sess-1.flag','w').write('x')\\\"\"}}" block
+gt "reading the plan store"              "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat /Users/x/$DOTP/plan-sess-1.flag\"}}" allow
+gt "the sanctioned plan writer itself"   "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"bash system/hooks/plan_flag.sh set /tmp/p.md\"}}" allow
+# ⛔ THE BOUNDARY, which is why `plan` is an alternative inside the anchor and never a bare prefix.
+# Section 11's own note records the pm half of this: run/pm-ack was once swallowed as the store and
+# the guard blocked the build of its own successor. A sibling folder must stay writable.
+gt "a SIBLING folder, not the store"     "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"rm -rf /Users/x/.claude/run/plans-archive/old\"}}" allow
+gt "Write into a sibling folder"         "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/Users/x/.claude/run/planner/notes.md\"}}" allow
+
+# THE REDIRECT MUST MATCH THE STORE. A plan-store denial that sends the reader to pm_flag.sh is a
+# wrong instruction stated with total confidence — worse than none, because it teaches the reader
+# the guard does not know what it just blocked.
+_pr="$(printf '{"tool_name":"Bash","tool_input":{"command":"rm /Users/x/%s/lock-sess-1.plan"}}' "$DOTP" | bash "$GD" 2>&1 >/dev/null)"
+case "$_pr" in *plan_flag.sh*) ok "the plan denial redirects to plan_flag.sh, not pm_flag.sh";; *) bad "plan denial names the wrong writer" "$_pr";; esac
+case "$_pr" in *"ONE grant"*|*"one grant"*) ok "and says the one grant covers both locks";; *) bad "plan denial hides that the grant is shared" "$_pr";; esac
+
+echo "── 13. the new refusal survives BOTH redirection shapes ────────────────"
+# ⛔ A GUARD THAT PRINTS ITS REFUSAL ON THE WRONG CHANNEL SCORES PASS AND PROTECTS NOTHING — that
+# exact failure is on record in this repo. The refusal is on stderr and the exit code is 2, so:
+# under `2>/dev/null` the TEXT is gone but the BLOCK still stands (exit 2 is what stops the tool);
+# under `2>&1 >/dev/null` the text is what survives. Both are checked, on the real hook.
+PJ="{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo x > /Users/x/$DOTP/plan-sess-1.flag\"}}"
+printf '%s' "$PJ" | bash "$GD" >/dev/null 2>/dev/null; _c1=$?
+[ "$_c1" = 2 ] && ok "under 2>/dev/null the BLOCK still stands (exit=2)" || bad "silenced stderr lost the block" "exit=$_c1"
+_t2="$(printf '%s' "$PJ" | bash "$GD" 2>&1 >/dev/null)"; _c2=$?
+case "$_t2" in *"plan-arming store"*) ok "under 2>&1 >/dev/null the REASON still arrives";; *) bad "refusal text vanished on the wrong channel" "rc=$_c2 out=$_t2";; esac
+_t3="$(printf '%s' "$PJ" | bash "$GD" 2>/dev/null)"
+[ -z "$_t3" ] && ok "and nothing leaks onto stdout (a block speaks on stderr only)" || bad "refusal printed on stdout" "$_t3"
+
 echo
 echo "═════════  PASS=$PASS  FAIL=$FAIL  ═════════"
 rm -rf "$SB"
