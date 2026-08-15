@@ -123,7 +123,7 @@ doc is continuous, not session-stamped). See `<notes>/state/briefs/README.md`.
 
 ## Desk-Specific Write Rules
 
-### Cal
+### Planning
 
 Every session:
 - `records/daily/{YYYY-MM-DD}.md` — session wrap-up

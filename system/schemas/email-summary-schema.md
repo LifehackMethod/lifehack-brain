@@ -63,8 +63,13 @@ Required top-level fields (`REQUIRED_TOP_FIELDS`, `email_thread_schema.py`): `th
   "last_synced":     "2026-07-09T09:21:00-04:00",
   "provenance_tag":  "email-summary-janitor/email/<sha8>",   // from ingest_gate.gate(); IMMUTABLE after first write
   "flag":            "OK",                // OK | "REPLY-FLAGGED: <why>" (sticky — anti-laundering)
-  "writer_id":       "cal-daily-janitor", // single-writer tripwire (the adapter asserts this; name
-                                           // carried over unchanged from the donor's read-side tripwire)
+  "writer_id":       "planning-daily-janitor", // single-writer tripwire (the adapter asserts this).
+                                           // RENAMED 2026-08-15 with the cal→planning desk rename; was
+                                           // "cal-daily-janitor". Records written before the rename are
+                                           // STILL VALID on read — shared/tools/email_thread_schema.py
+                                           // keeps LEGACY_WRITER_IDS = ("cal-daily-janitor",) so the
+                                           // rename can't orphan synced records behind STORE-TAMPERED.
+                                           // New writes always stamp EXPECTED_WRITER_ID.
   "tier":            "snapshot",          // perishable-by-design mirror
   "confidence":      "INFERRED",          // adversarial-derived email — never CONFIRMED
   "schema_v":        2,
@@ -139,7 +144,8 @@ repo has no desks, so it is effectively a single fixed caller id, e.g. `"root"`.
 { "tracked_labels": ["INBOX", "SENT", "SNOOZED"],
   "last_sync_at": "2026-07-09T09:21:00-04:00",
   "generation": 42,           // bumped each completed sync; readers validate to avoid a half-synced read
-  "writer_id": "cal-daily-janitor",
+  "writer_id": "planning-daily-janitor",   // renamed 2026-08-15 (cal→planning); "cal-daily-janitor"
+                                           // still accepted on read via LEGACY_WRITER_IDS
   "enabled": false }          // per-caller opt-in via EMAIL_SERVICE_READ, see the blue-green gate above
 ```
 

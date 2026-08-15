@@ -24,7 +24,7 @@ YOU ARE THE **DETECTIVE**, doing a postmortem. Commit a read of yesterday; ask t
    - **It exists** (a cron, or an earlier run today, already pulled it) → create the scratchpad **seeded
      from the overnight ingest** (`dominoes-draft.md` + the vault picture), as below.
    - **It does not exist** — say so plainly ("no vault for today yet — pulling it now, this can take a
-     minute") and fire **one** live `python3 "$ROOT/system/tools/cal-vault-pull.py"` (the full pull, not
+     minute") and fire **one** live `python3 "$ROOT/system/tools/planning-vault-pull.py"` (the full pull, not
      `--tasks-only` — nothing has been pulled today at all) before seeding the scratchpad from what it
      wrote. If that pull fails or times out, say exactly what failed and which surfaces are therefore
      empty this run — never present an empty scratchpad as "nothing going on today."
@@ -34,7 +34,7 @@ YOU ARE THE **DETECTIVE**, doing a postmortem. Commit a read of yesterday; ask t
    you do NOT rewrite the file every turn). (It's deleted in Pass 5 by the clerk.)
    - **Freshness check (the only OTHER sanctioned re-pull).** The vault, once pulled (whenever that
      happened), is a snapshot. If the person says they reorganized tasks, or it's clearly stale against
-     their edits, fire **one** `python3 "$ROOT/system/tools/cal-vault-pull.py" --tasks-only` (seconds;
+     their edits, fire **one** `python3 "$ROOT/system/tools/planning-vault-pull.py" --tasks-only` (seconds;
      tasks only), then reseed from the refreshed `tasks.json`. One batched refill — never piecemeal live
      reads.
 
@@ -51,7 +51,7 @@ YOU ARE THE **DETECTIVE**, doing a postmortem. Commit a read of yesterday; ask t
 5. **Record + close — via the SCRIBE (background, don't block).** Fold the backfill into the in-context model, then
    **fire the gear-2 scribe** (sonnet, content embedded in its prompt) to (a) persist the scratchpad and (b) **stamp
    yesterday's DIARY entry** — `<notes>/desks/cal/diary/YYYY/MM/DD.md`, in the cron-protected `## Human Delta — verified
-   <date>` slot (the diary is the ONE home for the day; the rollup reads it; `cal-diary-capture.py` never overwrites that
+   <date>` slot (the diary is the ONE home for the day; the rollup reads it; `planning-diary-capture.py` never overwrites that
    block). NOT a separate `<notes>/desks/cal/records/logs` file. Keep talking while the scribe writes. If something is
    BIGGER than the day (strategic/career), route it UP (pointer + durable home in `<notes>/desks/cal/brief.md`; flag
    TELOS) — don't cram big context into one day. (Cross-desk diary design: `…/calendar-diary/scope-and-questions.md`.)

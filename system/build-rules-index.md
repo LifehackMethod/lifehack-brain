@@ -135,7 +135,7 @@ authority: user
 > **not** run its six per-source checks over an empty universe and report them clean — none of the six
 > could honestly claim `OK` over zero scanned items. It emits **one** honest `"not configured — no
 > debt ledger, desk backlogs, or legacy swamp file found yet"` finding instead, the same shape as
-> `cal-health.py`'s `"not configured — no calendar connected yet."` **Fresh-install absence and a
+> `planning-health.py`'s `"not configured — no calendar connected yet."` **Fresh-install absence and a
 > verified-clean state are different facts, and now render as different words.**
 >
 > ⛔ **THIS IS A DOC, NOT A NEW ENFORCEMENT LAYER.** It ratifies a shape already proven in this repo and

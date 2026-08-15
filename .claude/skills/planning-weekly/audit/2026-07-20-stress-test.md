@@ -13,7 +13,7 @@ real files.
 | 1 | **Calendar rail FAIL-OPEN on the MCP path** — `guard_calendar_writes.sh` only matches `gws` Bash; clerk write-method unpinned + MCP calendar tools bypass the guard (council #1; a watching human can't see the target calendar). | F0: pin clerk calendar writes to `gws` + Agent Ops id; corrected "hook-enforced" wording; **guard-deny test watched: gws-primary DENIED, gws-AgentOps PASSED, MCP passes-through (why the pin).** | ✅ |
 | 2 | Literal `<PAD>`/`<Mon>`/`<Sun>` placeholders never resolved → break at launch/Phase 0. | F1.2: SKILL FIRST-ACTION computes WEEK/PAD/dates; arms with resolved values. | ✅ |
 | 3 | Relative tool paths fail from a desk cwd. | F1.1: all driver tool-calls → absolute `$ROOT/...`. | ✅ |
-| 4 | `cal-lifemap-write.py --append` doesn't exist (real: `--file/--section/--body-file`, section-REPLACE → destructive). | F2/T2.1: correct flags + FULL body + `--check` dry-run guard. | ✅ |
+| 4 | `planning-lifemap-write.py --append` doesn't exist (real: `--file/--section/--body-file`, section-REPLACE → destructive). | F2/T2.1: correct flags + FULL body + `--check` dry-run guard. | ✅ |
 | 5 | ANCHOR.md 2376 chars > injector's 1200 ceiling → Rails line silently cut every turn. | F3: trimmed to 1112 chars (dropped the 7-phase arc enumeration); Rails now survive the ceiling. | ✅ |
 | 6 | HUD frozen at `[1/6]` — no driver repaints. | F4/T4.1: every driver paints its own `[N/6]` HUD on entry. | ✅ |
 | 7 | `06-triage.md` offered but unbuilt → dead-link read. | F6/T6.1: graceful offer (schedule a separate session; never read the missing file). | ✅ |

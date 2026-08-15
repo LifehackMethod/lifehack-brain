@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # WHY: The status-line HUD shows "scratch: on" when a session has an active scratchpad.
-#      Anything that opens a scratchpad arms it — `/cal-daily`, or a session told to "start a
+#      Anything that opens a scratchpad arms it — `/planning-daily`, or a session told to "start a
 #      scratchpad". env-var triggers do not survive across tool calls; a FILE does. Same proven
 #      pattern as pm_flag.sh and throughline_flag.sh.
 # GUARDS: None — a tiny state writer. Flag is SESSION-scoped + machine-local

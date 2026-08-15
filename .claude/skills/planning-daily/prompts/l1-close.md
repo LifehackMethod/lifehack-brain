@@ -11,7 +11,7 @@ benefit. Write directly.
 1. **If the person gave real backfill about yesterday** (Pass L1-lookback), and yesterday's diary does
    not already carry a `## Human Delta` block for today's date (check first — don't double-stamp):
    - If yesterday's diary file doesn't exist yet, create its scaffold first:
-     `python3 "$ROOT/system/tools/cal-diary-capture.py" --date {yesterday, YYYY-MM-DD}`. This is
+     `python3 "$ROOT/system/tools/planning-diary-capture.py" --date {yesterday, YYYY-MM-DD}`. This is
      mechanical and fail-soft — in Layer 1 every source section will read `source-unavailable`, which
      is correct and honest, not a bug.
    - Append, at the end of the file:
@@ -24,7 +24,7 @@ benefit. Write directly.
      stamp an empty Human Delta just to have stamped one.
 
 2. **Write today's diary scaffold:**
-   `python3 "$ROOT/system/tools/cal-diary-capture.py" --date {today, YYYY-MM-DD}`. Same fail-soft
+   `python3 "$ROOT/system/tools/planning-diary-capture.py" --date {today, YYYY-MM-DD}`. Same fail-soft
    behaviour — the machine sections read `source-unavailable`, honestly, because Layer 1 has no
    calendar/task/journal source to pull from. Do not treat that as an error to work around.
 

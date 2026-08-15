@@ -28,9 +28,19 @@ maturity: "UNDER CONSTRUCTION — ported 2026-08-14 (F8.11), renamed cal-weekly 
 >   generalised and identity-scrubbed this session (grep-verified: zero absolute paths, zero personal
 >   identifiers, zero literal calendar ids), but the SEVEN PHASES' own logic was not independently
 >   re-verified beat by beat — that is future work, not part of this port.
-> - Data paths this skill reads/writes (`<notes>/desks/cal/...`) and tool filenames it calls
->   (`cal-vault-pull.py`, `cal-lifemap-write.py`, `cal_config.py`, etc.) are unchanged — see
->   `planning-daily/SKILL.md`'s identical note for why.
+> - **Tool filenames ARE now renamed (2026-08-15)** — this skill calls `planning-vault-pull.py`,
+>   `planning-lifemap-write.py` and siblings, and every reference below points at the new names.
+>   *(An earlier version of this bullet said the tool filenames were deliberately left unrenamed;
+>   that is no longer true.)*
+> - **Still NOT renamed, on purpose:** the data paths this skill reads/writes
+>   (`<notes>/desks/cal/...`), because the renamed tools still construct them literally; and
+>   `cal_config.py` / `<notes>/config/cal.md`, which are the **calendar-identifier** config, not the
+>   planning desk — `cal` there means *calendar*. See `planning-daily/SKILL.md`'s fuller note.
+>   ⚠ **The data-path half is a KNOWN, INTENTIONAL split — do not "complete" it without the
+>   operator's word.** Moving his live records directory is his decision and has not been taken. A
+>   2026-08-15 over-rename pushed `desks/planning/` into the tools while these prompts still read
+>   `desks/cal/`; it was reverted the same day. Tools and skills now agree on `desks/cal/`, and that
+>   agreement is CORRECT, not lag.
 
 ## Intent (§0.5)
 **User outcome (Layer 1 + bar):** the person's weekly planning load drops to near zero — every lane leaves with its one

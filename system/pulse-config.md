@@ -17,7 +17,7 @@ and every job's own file for how each resolves ITS notes root through `shared/br
 > ⚠ **NEW FILE — did not exist anywhere in this repo before this session.** `pulse.sh` and
 > `install-schedulers.sh` cannot do anything without it; **this is the smallest version that makes
 > both scripts real**, not a full replay of every job the donor system ever scheduled. Other
-> categories' ported runners (ingest, cal's other jobs, archivist, etc.) get their own rows appended
+> categories' ported runners (ingest, planning's other jobs, archivist, etc.) get their own rows appended
 > here **as their own lane ports them** — this file is shared, additive territory, not owned end-to-
 > end by one lane. See the commented template row at the bottom of the `jobs` block.
 
@@ -114,7 +114,7 @@ means credentials exist and parse, so the person IS configured and a failing cal
 infra condition — this table's rc=2 ("held", never the breaker). Collapsing it would report a
 configured machine as unconfigured and hide genuinely dead auth forever. It also ends differently by
 design — FATAL in calendar-store-sync / tasks-store-sync / email-summary-write / `ingest_load_gws`,
-warn-only in cal-vault / cal-vault-weekly / cal-diary, which degrade and mark the source unavailable.
+warn-only in planning-vault / planning-vault-weekly / planning-diary, which degrade and mark the source unavailable.
 That severity difference is real, so the loop stays with its callers.
 
 ## Intervals reference
@@ -146,12 +146,14 @@ system-health    | yes | 300   | bash "$LIFEHACK_CODE_ROOT/system/tools/system-h
 # because nothing happened to get scanned for hours). READ-ONLY, local jsonl only. 30-min cadence.
 sentinel-health  | yes | 1800  | bash "$LIFEHACK_CODE_ROOT/system/tools/sentinel-health-run.sh"
 #
-# cal-health: READ-ONLY calendar check (conflicts + unconfirmed invites, 7-day forward window).
+# planning-health: READ-ONLY calendar check (conflicts + unconfirmed invites, 7-day forward window).
 # Degrades cleanly (rc=75, "stood down") when config/cal.md has no calendar id configured yet — see
-# shared/cal_config.py. No *-run.sh wrapper exists yet for this job (no single-instance lock / no
-# buzz-on-hard-failure) — a future lane can add system/tools/cal-health-run.sh matching
-# system-health-run.sh's pattern; until then this calls the checker directly. 6h cadence.
-cal-health       | yes | 21600 | python3 "$LIFEHACK_CODE_ROOT/system/tools/cal-health.py"
+# shared/cal_config.py. (Those two names stay `cal` on purpose: they are the CALENDAR-identifier
+# config, shared with the calendar write guards — not the renamed planning desk.) No *-run.sh
+# wrapper exists yet for this job (no single-instance lock / no buzz-on-hard-failure) — a future
+# lane can add system/tools/planning-health-run.sh matching system-health-run.sh's pattern; until
+# then this calls the checker directly. 6h cadence.
+planning-health  | yes | 21600 | python3 "$LIFEHACK_CODE_ROOT/system/tools/planning-health.py"
 #
 # backlog-health: emits state/status/backlog.json from the read-only backlog groom engine
 # (backlog_groom.py). CORRECTED 2026-08-14: that engine landed in the SAME commit as this file
@@ -161,7 +163,7 @@ cal-health       | yes | 21600 | python3 "$LIFEHACK_CODE_ROOT/system/tools/cal-h
 # "not present yet" NEEDS_REVIEW fallback) — on a fresh clone it currently reports "not configured
 # - no debt ledger, desk backlogs, or legacy swamp file found yet", which is a DATA-level gap
 # (nothing to scan yet), not an import failure. (backlog-health.py's own header docstring carries
-# the same stale claim; out of scope for this file to fix.) Same no-wrapper note as cal-health
+# the same stale claim; out of scope for this file to fix.) Same no-wrapper note as planning-health
 # above. 6h cadence.
 backlog-health   | yes | 21600 | python3 "$LIFEHACK_CODE_ROOT/system/tools/backlog-health.py"
 #
@@ -196,7 +198,7 @@ email-summary-freshness | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/e
 #    on day 1 before the one-time `gws auth export` step, and PERMANENTLY true for a student with
 #    no Google account at all — exactly the population this manifest must not fail loudly for)
 #    each runner's "no creds file" branch now does `RC=75; exit 75` — this file's own "stood down,
-#    not a fault" convention, matching cal-health/backlog-health above for the identical "config
+#    not a fault" convention, matching planning-health/backlog-health above for the identical "config
 #    not set up yet" case (was `RC=3; exit 3` before this session, which fell into the "anything
 #    else" bucket: 3 consecutive ticks would trip Pulse's circuit breaker and system-health.py's
 #    assess() — system/tools/system-health.py:255-257 — would render the job "DOWN, severity:
@@ -237,18 +239,18 @@ email-summary-write     | yes | 10800 | bash "$LIFEHACK_CODE_ROOT/system/tools/e
 #    OS-agnostic: they only ever run because THIS row exists, on either scheduler, since both
 #    invoke pulse.sh identically — see "How it works" above.
 #
-# cal-diary: cal-diary-capture.py (daily) + cal-diary-rollup.py (weekly/monthly/quarterly/
-# yearly, each period-idempotently self-gated — see cal-diary-run.sh's own header) were ported
-# without a row in this manifest, missed by the pass that wired seven other orphaned runners. ONE row
-# chains all five cadence checks — each periodic call is a cheap no-op except on its own due
-# date, so a single daily tick is sufficient to drive every cadence. && (not ;) so a real daily
-# failure is not masked by continuing to the periodic checks.
-cal-diary         | yes | 86400  | bash "$LIFEHACK_CODE_ROOT/system/tools/cal-diary-run.sh" && bash "$LIFEHACK_CODE_ROOT/system/tools/cal-diary-run.sh" --cadence weekly && bash "$LIFEHACK_CODE_ROOT/system/tools/cal-diary-run.sh" --cadence monthly && bash "$LIFEHACK_CODE_ROOT/system/tools/cal-diary-run.sh" --cadence quarterly && bash "$LIFEHACK_CODE_ROOT/system/tools/cal-diary-run.sh" --cadence yearly
+# planning-diary: planning-diary-capture.py (daily) + planning-diary-rollup.py (weekly/monthly/
+# quarterly/yearly, each period-idempotently self-gated — see planning-diary-run.sh's own header)
+# were ported without a row in this manifest, missed by the pass that wired seven other orphaned
+# runners. ONE row chains all five cadence checks — each periodic call is a cheap no-op except on
+# its own due date, so a single daily tick is sufficient to drive every cadence. && (not ;) so a
+# real daily failure is not masked by continuing to the periodic checks.
+planning-diary    | yes | 86400  | bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" && bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" --cadence weekly && bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" --cadence monthly && bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" --cadence quarterly && bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" --cadence yearly
 #
 # archivist-audit / archivist-deepmine: archivist-run.lib.sh (shared engine) + both wrappers
 # were entirely absent — no file, no row — so the weekly structural audit and the monthly
 # per-desk deep-mine were manual forever. Two rows, not one: they are genuinely different
-# cadences and different prompts, not one operation with a period flag (unlike cal-diary
+# cadences and different prompts, not one operation with a period flag (unlike planning-diary
 # above). archivist-deepmine's own STAGGER lives inside the wrapper (a notes-durable ledger
 # picks the single most-overdue desk each tick) — the row below just has to tick often enough
 # for that internal stagger to work; 4-day cadence matches the wrapper's own derivation.

@@ -3,7 +3,7 @@
 # WHY: your goals list is the one place in this system holding what YOU decided your life is for.
 #      An agent that reorganises it, rewrites a goal, or deletes an item is not making a recoverable
 #      mistake — Google Tasks keeps no version history, so a deleted task is simply gone. Until this
-#      hook existed the read-only rule lived only in prose, in cal-daily's own skill file, which
+#      hook existed the read-only rule lived only in prose, in planning-daily's own skill file, which
 #      said so plainly: "this one is a rule, not a wall." A rule an agent can reason past is a wish.
 # GUARDS: any `gws tasks` command that touches the list on file as `goals_tasklist` and is not a
 #      recognised read. ONE carve-out: the day's plan, as subtasks under `daily_parent_task`.

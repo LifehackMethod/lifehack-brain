@@ -383,7 +383,7 @@ def coverage_receipt(units, clauses, workdir):
     # source), and drove `ok=False`. The extraction was CORRECT; the manifest was polluting
     # its own checker.
     #
-    # WHY CAL-WEEKLY NEVER SHOWED THIS: its prose is interrogative and names almost nothing
+    # WHY PLANNING-WEEKLY NEVER SHOWED THIS: its prose is interrogative and names almost nothing
     # in backticks. The ingest skill is a mechanical pipeline that names tools constantly.
     # **This is the generalization finding S2.2 asks for — a class the first skill could not
     # have taught us.** The fix is in the manifest writer, NOT in the shipped part: alien

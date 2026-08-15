@@ -22,7 +22,7 @@ lock — the un-bypassable version is logged to tech-debt.)* That "go" is the la
 
 ## The bounded write-reach (clerk only, step 3)
 - **Calendar:** the Agent Ops calendar ONLY, **via `gws` Bash** (never `primary`, never an MCP calendar tool) — the `gws`+Agent-Ops-id path is what makes the `guard_calendar_writes.sh` guard fire.
-- **Records:** the Life Map (the Win) via `cal-lifemap-write.py --section weekly --body-file` (section-REPLACE → FULL body + `--check` dry-run FIRST) + the weekly review file (`$DATA/desks/cal/records/weekly-reviews/<YYYY-Www>.md`, a plain append).
+- **Records:** the Life Map (the Win) via `planning-lifemap-write.py --section weekly --body-file` (section-REPLACE → FULL body + `--check` dry-run FIRST) + the weekly review file (`$DATA/desks/cal/records/weekly-reviews/<YYYY-Www>.md`, a plain append).
 - **Tasks:** GOOGLE TASKS, bulk actions only (reschedule lo/lo · mark implied-complete · add shadow tasks) — never one-by-one.
 - **Email:** DRAFTS only, and only to support the bulk actions ("I'm pushing this to you") — never auto-sent, never inbox-zero.
 Every surface = one read-back-gated row in the WRITE-LEDGER (which MUST cover ALL these surfaces, not calendar-only), each gated on his prior confirmation. Full mechanics + on-disk row-checkpoint: `05-act-clerk.md`.

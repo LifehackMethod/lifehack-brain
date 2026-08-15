@@ -128,9 +128,11 @@ need three inputs; pick the **grain** (the caller's altitude) and the **scope** 
 
 **2 — `origin → now` (the dots): read the last 2–3 diary rollups at the chosen grain**, if a diary
 exists — `<notes>/desks/cal/diary/{YYYY}/{MM}/review-{week|month}-{period}.md` (quarter/year live one
-folder up). ⏳ **The diary is written by `cal-daily` / `cal-weekly`, which land later in phase 3.**
-Until they do, this branch finds nothing — which is not an error. Say the diary is absent and take the
-heavy-search fallback below, which reads what already exists.
+folder up). **The diary is written by `planning-daily` / `planning-weekly`** (renamed from `cal-daily` /
+`cal-weekly`, 2026-08-14) **and by the scheduled `planning-diary` job** — all three have now landed, so
+this branch can genuinely find something. *(Corrected 2026-08-15: this line used to say they "land later
+in phase 3.")* On a fresh install no diary has been WRITTEN yet — that is still not an error. Say the
+diary is absent and take the heavy-search fallback below, which reads what already exists.
 - whole-system scope → each rollup's `## What happened` + `## Activity by subject`.
 - single-project scope → each rollup's `## Activity by project` → the `### {slug}` block; a rollup
   that lists the slug under **"Quiet this period"** is a real `now = dormant` dot — record it.
@@ -343,5 +345,5 @@ A gate-pass output: (a)–(f) all at pass or weak, no fails.
 | the write-scope guard it arms | `system/hooks/guard_throughline_write_scope.sh` | ✅ here |
 | the notes-folder resolver | `shared/brain_root.py` | ✅ here |
 | where the findings land | `docs/data-layout.md` | ✅ here |
-| the diary the plot is assembled from | `cal-daily` / `cal-weekly` | ⏳ lands later in phase 3 — until then the heavy-search fallback is the path |
+| the diary the plot is assembled from | `planning-daily` / `planning-weekly` (+ the `planning-diary` cron) | ✅ here — but empty until a run has actually written one; the heavy-search fallback covers that |
 | a project's brief, canon and journal | under your own notes folder | ⛔ never ships — it is your material |

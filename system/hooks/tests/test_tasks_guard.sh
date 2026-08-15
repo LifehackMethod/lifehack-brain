@@ -2,7 +2,7 @@
 # test_tasks_guard.sh — the wall around the list holding your goals.
 #
 # ⭐ THE CASE THIS SUITE EXISTS FOR is that until this guard shipped, there was no wall at all.
-# `cal-daily`'s own skill file said so in as many words: "The machine-side half of this is NOT in
+# `planning-daily`'s own skill file said so in as many words: "The machine-side half of this is NOT in
 # this repo… this one is a rule, not a wall." The rule is that everything in `goals_tasklist` is
 # observe-only EXCEPT subtasks hung under `daily_parent_task`. These cases hold that line, and the
 # ones marked ⭐ are the shapes that were live bypasses in the system this came from: an id behind a
@@ -97,7 +97,7 @@ run "list behind a substitution" 2 "$G tasks delete --tasklist \$(cat /tmp/l) --
 run "verb behind a variable"     2 "$G tasks \$OP --tasklist $GOALS --id g1"
 
 echo "── ⭐⭐ the two cases the first draft got WRONG, both measured ────────────"
-# (1) The shipped skill (cal-daily prompts/05-act.md:30) resolves BOTH ids through cal_config at
+# (1) The shipped skill (planning-daily prompts/05-act.md:30) resolves BOTH ids through cal_config at
 # call time rather than spelling them out. The first draft denied it — 35 unit cases green, and the
 # one command the system actually issues was blocked. A guard that blocks the only sanctioned path
 # is broken, not strict. This indirection is self-describing: it names the key it resolves.

@@ -70,7 +70,7 @@ _RX_FENCE = re.compile(r"^[ \t]*(```|~~~)")
 # does not contain the disqualifying information.
 #
 # ⭐ THE SIGNATURES ARE DERIVED FROM REAL HEADINGS, NOT INVENTED. Every pattern below
-# was read off an actual spec in this repo (cal-weekly's combined phase doc and
+# was read off an actual spec in this repo (planning-weekly's combined phase doc and
 # an ingest skill's SKILL.md), and only TWO classes are included -- the two where the
 # heading itself states the section is not in force:
 #   (a) EXPLICITLY UNBUILT / DEFERRED -- "What Phase 0 Requires That Isn't Built Yet",

@@ -61,7 +61,7 @@ run "relative to the repo"      2 "system/hooks/guard_egress.sh"
 run "relative with a traversal" 2 "./system/tools/../hooks/guard_egress.sh"
 
 echo "── ordinary work is untouched ───────────────────────────────────────────"
-run "a skill file"              0 "$REPO/.claude/skills/cal-daily/SKILL.md"
+run "a skill file"              0 "$REPO/.claude/skills/planning-daily/SKILL.md"
 run "a tool"                    0 "$REPO/system/tools/smoke-check.sh"
 run "a test"                    0 "$REPO/system/hooks/tests/test_calendar_guard.sh"
 run "the README"                0 "$REPO/README.md"

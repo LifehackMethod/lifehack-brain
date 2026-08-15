@@ -105,7 +105,7 @@ integration is added later, apply the decision procedure below fresh rather than
 **Decision procedure for a NEW channel:** does anyone outside the operator write its free-text? **Yes → reader.**
 No (typed / structured / local-only) → sanitizer-only, and WRITE the exemption reason into this table.
 
-**Plumbing exception (NOT a controller):** a NO-LLM store / tile computer — `system/tools/cal-vault-pull.py`
+**Plumbing exception (NOT a controller):** a NO-LLM store / tile computer — `system/tools/planning-vault-pull.py`
 is this repo's example — can't be hijacked, because it writes bytes to disk and never feeds them to an
 LLM in this process. It uses `--redact` (keep the real text, neutralize injection spans) or `--no-isolate`
 (raw, no-LLM plumbing only), never the reader. The default for any LLM-holding caller is isolate-on.

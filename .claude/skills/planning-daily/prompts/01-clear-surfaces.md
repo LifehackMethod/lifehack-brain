@@ -26,8 +26,8 @@ for already-prioritized lists read only the top). Per round:
   calendar clutter (read-only — the person clears it) but Cal CAN write the Agent Ops calendar; surface + triage the task inbox.
 - **free/busy every calendar read.** `declined`/`cancelled` self-eliminate — don't surface them.
 - **"Anything new since 4am?" → the LIGHT sweep, never a re-pull.** If they ask whether something popped in since the
-  overnight pull, run `python3 "$ROOT/system/tools/cal-light-sweep.py"` (metadata-only — subjects/senders, no bodies, seconds).
-  Fold anything real into the scratchpad. Do NOT re-run `cal-vault-pull.py` (the full verbatim re-ingest) for a quick check.
+  overnight pull, run `python3 "$ROOT/system/tools/planning-light-sweep.py"` (metadata-only — subjects/senders, no bodies, seconds).
+  Fold anything real into the scratchpad. Do NOT re-run `planning-vault-pull.py` (the full verbatim re-ingest) for a quick check.
 - **Round up the world model in context** (prune/update/add) before the next round — don't rewrite the scratchpad
   file mid-round; the scribe persists it at the pass boundary.
 

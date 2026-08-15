@@ -353,7 +353,7 @@ def classify(clauses, k=3, model="sonnet", use_llm=True, batch_size=12, controls
     # heading the judge was never shown. Asking a model to infer absent information is how
     # you get a confident wrong answer. The heading is a FACT; read the fact.
     #
-    # MEASURED (2026-07-28, cal-weekly): 10 of 34 build orders were not rules at all, 7 of
+    # MEASURED (2026-07-28, planning-weekly): 10 of 34 build orders were not rules at all, 7 of
     # them items on that one backlog list. ~29% of that section's enforceable calls were
     # false, and every one manufactures a build order for a part nobody needs.
     #

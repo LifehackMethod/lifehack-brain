@@ -26,11 +26,11 @@ arrived here WITHOUT that "go", STOP and return to Report.
      Using **`gws` + the Agent Ops id** is what makes the `guard_calendar_writes.sh` guard actually fire — an MCP
      calendar call routes AROUND the guard (it only matches `gws … calendar` commands) and is forbidden here.
    - **Life Map** (the Win) →
-     `python3 "$ROOT/system/tools/cal-lifemap-write.py" --file "$DATA/desks/cal/life-map.md" --section weekly --body-file <tmp>`.
+     `python3 "$ROOT/system/tools/planning-lifemap-write.py" --file "$DATA/desks/cal/life-map.md" --section weekly --body-file <tmp>`.
      ★ This tool **REPLACES** the section — so the body MUST be the FULL weekly section, and run **`--check`**
      (dry-run diff) FIRST to confirm it isn't clobbering prior content. A partial body silently eats prior state.
    - **Weekly review file** → append to `$DATA/desks/cal/records/weekly-reviews/<YYYY-Www>.md` (a plain
-     write/append — NOT via cal-lifemap-write, which is Life-Map-only).
+     write/append — NOT via planning-lifemap-write, which is Life-Map-only).
    - **Google Tasks** → bulk actions only (never one-by-one).
    - **Email → DRAFTS only** (never auto-sent, never inbox-zero — that's Phase 6).
 4. **Delete the session scratchpad LAST**, and only if every row is ✅.

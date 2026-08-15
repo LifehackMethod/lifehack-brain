@@ -7,7 +7,7 @@ desk: root
 status: active
 authority: user
 created_at: 2026-07-12
-updated_at: 2026-07-25
+updated_at: 2026-08-15
 companion: system/sops/skill-building-field-notes.md
 living_intake: system/sops/skill-irl-findings.md
 sources:
@@ -34,6 +34,16 @@ reader_note: >
 >
 > - ⛔ `records/research/2026-07-25-code-vs-llm-enforcement-split.md` · `state/debt-ledger.md` · `state/projects/lifehack-cowork/brief.md` · `state/projects/cowork-bulk-ingestion/brief.md` · `state/projects/huddle/huddle-skill/brief.md` · `state/projects/infrastructure/lifehack-correct-architecture/brief.md` · `state/projects/ingest-skill/brief.md` · `state/projects/project-system/brief.md` · `state/projects/security/security-hardening/brief.md` · `state/projects/security/sentinel-gateway/records/2026-07-03-reader-actor-enforcement-proof.md` · `state/projects/skill-builder/brief.md` · `state/projects/skill-system/brief.md` · `state/projects/translator-voice/brief.md` — records in the author's own notes folder, cited as where a lesson was
 >   learned. Not in any repository, and not needed: the evidence is in the rule.
+
+> ## NOTE — THE `[M]` MEASUREMENTS WERE TAKEN UNDER A FORMER SKILL NAME
+>
+> Nearly all `[M]` evidence on this page was measured against the skill this repo now ships as
+> **`planning-weekly`**. At measurement time (2026-07) that skill was named **`cal-weekly`**, on the
+> `cal` desk. The desk was renamed `cal` → `planning` on 2026-08-14/15, and every citation below was
+> updated to the current name so the paths resolve — the *runs behind the numbers* are unchanged, and
+> nothing was re-measured. Read `planning-weekly` wherever an older copy of this page said
+> `cal-weekly`. **The persona in the HUD examples is still `Cal`** — that is a character name, and it
+> was deliberately not renamed.
 
 > ## NOTE — WHAT THIS PAGE POINTS AT THAT IS NOT IN THIS REPOSITORY
 >
@@ -503,7 +513,7 @@ security wall travels to the headless path**; a background LLM step is not runni
 
 ## LAW 2 — Intent leaks at four seams; diagnose WHICH one before you fix anything
 
-`[M: cal-weekly; links 1–2 and 2–3 measured, link 3–4 UNTESTED]` Between what you designed and what a run
+`[M: planning-weekly; links 1–2 and 2–3 measured, link 3–4 UNTESTED]` Between what you designed and what a run
 actually does, there are four distinct places intent dies. They have different causes, different fixes, and
 different detectors — and **fixing the wrong seam is the single biggest waste in skill work.**
 
@@ -514,7 +524,7 @@ different detectors — and **fixing the wrong seam is the single biggest waste 
 | **3** | **FIRED → HELD** | It held at turn 3 and stopped holding at turn 30 as context filled. A **decay** loss. | Same rule tested at increasing session depth. **We have ZERO measurements here — treat any claim about this link as untested.** |
 | **4** | **HELD → PROVABLE** | Obeyed, but left no trace anyone can check — indistinguishable from skipped. An **evidence** loss. | Evidence-surface audit (PART III). |
 
-**Worked example (ours).** cal-weekly's files turned out **~95% faithful** to their spec — so every prose rewrite
+**Worked example (ours).** planning-weekly's files turned out **~95% faithful** to their spec — so every prose rewrite
 would have been aimed at the wrong seam. The bad runs were links 2 and 3 (rules broken at runtime, worse as the
 window filled) plus one structural impossibility (completeness in prose — Law 4).
 
@@ -796,23 +806,23 @@ one actually needs.
 - **`system/parts/precondition_gate.py`** — a consequent marker (e.g. a locked Win) may not stand until its
   antecedent artifact, with declared substance, already exists in the same document. ⚠ **CORRECTED
   2026-08-07** — the brief this section was drafted from labelled this part "BUILT-BUT-UNCALLED." That is
-  wrong, verified directly: **`skills/cal-weekly/prompts/01a-lookback.md:161` invokes it as a real gate step**
+  wrong, verified directly: **`.claude/skills/planning-weekly/prompts/01a-lookback.md:161` invokes it as a real gate step**
   (`python3 .../precondition_gate.py --rules .../lookback-before-win.json --artifact
   .../session-scratchpad.md`) inside a shipped, running skill. CALLERS: 1 real shipped-skill caller
-  (cal-weekly), plus factory-only reachability via `emit_gate.py`'s clause-routing dispatch. INTERFACE:
+  (planning-weekly), plus factory-only reachability via `emit_gate.py`'s clause-routing dispatch. INTERFACE:
   `precondition_gate.py --rules R.json --artifact A.md [--json] [--selftest]`. Don't use for: proving
   sequence — its own docstring states the honest bound: it proves CO-PRESENCE only ("if X is present, Y must
   be too"), never which one came first; that's order_lint's question.
 - **`system/parts/fanout_completeness.py`** — native-id coverage set-diffed **at the fan-out return
   boundary**, never at phase exit; combines completeness_receipt's set-diff with fanout_gate's capture check.
-  CALLERS: 1 real shipped-skill caller — `skills/cal-weekly/prompts/00-system-layer.md:135`, invoked directly
+  CALLERS: 1 real shipped-skill caller — `.claude/skills/planning-weekly/prompts/00-system-layer.md:135`, invoked directly
   as a subprocess. INTERFACE: `fanout_completeness.py --captured C.json --source-ids IDS.json [--declared N]
   [--quiesced] [--require-substance] [--ledger-scope] [--json] [--selftest]`. Don't use for: checking
   coverage at any moment other than the fan-out's own return — its docstring says "never at phase exit"
   because the two moments prove different things.
 - **`system/parts/map_carry_receipt.py`** — proves every finding written into a Map either reached the
   scratchpad or was explicitly declared dropped. CALLERS: 1 real shipped-skill caller —
-  `skills/cal-weekly/prompts/00-system-layer.md:174`, invoked directly. INTERFACE: `map_carry_receipt.py --map
+  `.claude/skills/planning-weekly/prompts/00-system-layer.md:174`, invoked directly. INTERFACE: `map_carry_receipt.py --map
   M.md --scratchpad S.md [--json] [--selftest]`. Don't use for: proving a carried finding was acted on
   correctly — only that it wasn't silently lost in the hand-off.
 - **`system/parts/residue_scrub.py`** — L0 sanitization + an explicit DATA fence + a hard size cap whose
@@ -850,7 +860,7 @@ one actually needs.
 - **`system/parts/fanout_gate.py`** — compares what was CAPTURED at a fan-out boundary against what the spec
   EXPECTS (count, type); refuses to let "we saw nothing" silently mean "nothing ran." CALLERS: none shipped;
   reachable only via `emit_gate.py`'s dispatch table (`PART_TRACES["fanout_gate"]`) and `route_to_part.py`'s
-  classifier — cal-weekly's own prompt mentions its captured-record *shape* but the literal subprocess calls
+  classifier — planning-weekly's own prompt mentions its captured-record *shape* but the literal subprocess calls
   in that skill run `fanout_completeness.py` and `map_carry_receipt.py` instead. INTERFACE:
   `fanout_gate.py --captured C.json [--expect-count N] [--expect-types "a,b"] [--quiesced] [--json]
   [--selftest]`. Don't use for: judging whether each sub-agent did GOOD work — its own docstring is explicit
@@ -859,7 +869,7 @@ one actually needs.
   show what it promises); the mirror image of forbidden_content. ⚠ **CORRECTED 2026-08-07** — also mislabelled
   "no caller found anywhere" in the source brief; more precisely it has the **same profile as write_ledger
   above**: no shipped-skill caller, but a live dispatch entry in `emit_gate.py`
-  (`PART_TRACES["section_present"]`, exercised in the factory's own tests against two real routed cal-weekly
+  (`PART_TRACES["section_present"]`, exercised in the factory's own tests against two real routed planning-weekly
   clauses). INTERFACE: `section_present.py --rules R.json --artifact A.md [--section "..."] [--json]
   [--selftest]`. Don't use for: proving the content under a present section is correct — presence only.
 
@@ -1433,7 +1443,7 @@ also feeds the `description:` frontmatter below. Layer 3: the every-turn re-inje
 
 *Two worked examples, illustrative — write yours as prose, not a template:*
 
-> **`cal-weekly` (human-facing).** **1 · outcome:** the reader's weekly planning load drops to near zero — every lane
+> **`planning-weekly` (human-facing).** **1 · outcome:** the reader's weekly planning load drops to near zero — every lane
 > leaves with its one highest-leverage move, the week on his calendar, nothing left in his head. The machine
 > automates the rote, but the picture — threads, judgment, shadow info — lives only in his head, so
 > human-in-the-loop is deliberate: it mines him for that gold, made easy. Bar: *"it's all in one place I trust — I
@@ -1764,7 +1774,7 @@ positions attention actually reaches — burying either mid-turn is functionally
 ## §IV.6 — One step, one injection — never show the whole arc at once
 
 In a multi-step LEADING skill, each *distinctly different* step carries its **own** prompt, fired **at** that
-step — cal-weekly's per-beat `prompts/0N-*.md` files are the reference shape. Never hand the model the whole
+step — planning-weekly's per-beat `prompts/0N-*.md` files are the reference shape. Never hand the model the whole
 sequence in one prompt.
 
 Shown the finish line, an interrogative skill goes **barn sour**: like a horse bolting for the barn, it
@@ -1823,7 +1833,7 @@ made visible, drawn by the harness instead of the model.
   abandoned; **re-paint on resume** (the harness shows only the last-set line). Because the **harness** redraws
   it every turn, not the model, it can't be forgotten and it survives a `/compact` — it's session-scoped (keyed
   by `$CLAUDE_CODE_SESSION_ID`), so parallel windows never collide.
-- **Line format** (cal-weekly convention): `<emoji> <Skill> · <Mode>   <progress-dots>   N/M STAGE · <what> ·
+- **Line format** (planning-weekly convention): `<emoji> <Skill> · <Mode>   <progress-dots>   N/M STAGE · <what> ·
   next → <next>` — e.g. `🧭 Cal · Weekly Review   ◉○○○○   1/5 LOOK BACK · confirming last week · next → triage`.
   One lean line; it is not width-capped by the core, so keep it short enough to fit yourself.
 - **HARD RULE — never clobber the core.** Write ONLY via `skill_hud.sh` (it writes your own per-session HUD
@@ -1878,7 +1888,7 @@ violation to catch, it's a quality curve you avoid walking all the way down by n
 enough to hit it.
 
 **Mark this honestly: it is a bet, not a Law.** It did **not** surface in the 2026-07-25 crowd-convergence or
-code-dissection research [C] that grounds PARTS I–III — it rests entirely on our own evidence (cal-weekly, the
+code-dissection research [C] that grounds PARTS I–III — it rests entirely on our own evidence (planning-weekly, the
 conformance lab) and is **UNPROVEN** until a real multi-phase run is built this way and graded end to end. File
 it next to Part II §II.6's held hypotheses: consistent with everything we've measured, not yet doctrine.
 
@@ -1898,7 +1908,7 @@ tells you nothing about the seam you actually broke.
 | link | what it catches | the detector | where we stand |
 |---|---|---|---|
 | **1. SPEC → FILE** | a requirement that never made it into the skill | build-time diff of spec-requirements vs shipped file bodies — **no run needed** | direction confirmed (skills ship leaner than their specs); magnitude being re-measured with matched extraction |
-| **2. FILE → FIRED** | a written rule the session breaks anyway | grade a real run against the spec with a **VOTED** judge (K-sample, fail-closed fold — Law 4.3) | 2 confirmed real deltas on cal-weekly, after the instrument itself was fixed twice |
+| **2. FILE → FIRED** | a written rule the session breaks anyway | grade a real run against the spec with a **VOTED** judge (K-sample, fail-closed fold — Law 4.3) | 2 confirmed real deltas on planning-weekly, after the instrument itself was fixed twice |
 | **3. FIRED → HELD** | a rule that holds at turn 3 and dies by turn 30 | the same rule graded at increasing session depth (fork one phase at turn 1 / 5 / 12…, K runs each) | the machinery exists (design is E3 in the IRL ledger) — **it has NEVER BEEN RUN.** Treat any claim about decay as untested until it is. |
 | **4. HELD → PROVABLE** | a rule obeyed but left no trace | name each rule's evidence surface **before grading**, not after (§II below) | confirmed: purely-conversational rules graded as failures for no reason but the tester's own blind spot |
 
@@ -2296,7 +2306,7 @@ check happily passes a well-formed lie.
 - `[R]` — the 2026-07-12 12-agent blind convergence map.
 - `[R2]` — the 2026-07-19 step-prompt convergence map.
 - `[M]` — MEASURED in our own conformance lab; sample stated inline. Means **"this mechanism demonstrably
-  exists,"** never **"this is the rate."** Nearly all `[M]` evidence to date rests on **one skill, cal-weekly** —
+  exists,"** never **"this is the rate."** Nearly all `[M]` evidence to date rests on **one skill, planning-weekly** —
   read every `[M]` claim as n=1 until stated otherwise.
 - `[C]` — the 2026-07-25 crowd-convergence map plus the code-level dissection of six trust-gated public skill
   repos.

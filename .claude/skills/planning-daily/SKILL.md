@@ -17,13 +17,27 @@ summary: >
 ---
 
 > ⚠ **Renamed `cal-daily` → `planning-daily`, 2026-08-14 (F8.11).** The skill's own name, triggers and
-> heading are updated below. What is **not** renamed: the data paths this skill reads/writes
-> (`<notes>/desks/cal/...`) and the tool filenames it calls (`cal-vault-pull.py`, `cal-diary-capture.py`,
-> `cal-light-sweep.py`, `cal_config.py`, `<notes>/config/cal.md`) — those live outside `.claude/skills/`
-> and still hardcode `cal` on the code side (verified: `system/tools/cal-diary-capture.py:51` and
-> siblings construct `desks/cal/...` directly; `shared/cal_config.py:74` hardcodes
-> `<notes>/config/cal.md`). Renaming the references here without those files renaming too would point this
-> skill at a folder nothing writes to. Left as-is on purpose — not a missed rename.
+> heading are updated below.
+>
+> **The TOOL FILENAMES are now renamed too (2026-08-15)** — `planning-vault-pull.py`,
+> `planning-diary-capture.py`, `planning-light-sweep.py`, `planning-lifemap-write.py` and siblings in
+> `system/tools/`. Every call in this skill and its `prompts/` points at the new names. *(An earlier
+> version of this banner said the tool filenames were deliberately NOT renamed; that is no longer
+> true and the claim has been removed rather than left to mislead.)*
+>
+> **What is still NOT renamed, on purpose — two distinct reasons:**
+> - **The data paths** this skill reads/writes, `<notes>/desks/cal/...`. The renamed tools still
+>   construct them literally (verified: `system/tools/planning-diary-capture.py:54` sets
+>   `DIARY_ROOT = .../desks/cal/diary`, and `planning-vault-pull.py` / `planning-light-sweep.py` do
+>   the same for `desks/cal/state/raw-vault`). ⚠ **This is a KNOWN, INTENTIONAL split, not lag:**
+>   moving the operator's live records directory is *his* decision and has not been taken, so the
+>   desk is `planning` in code, jobs and tiles while the store stays `desks/cal/`. **Do not
+>   "complete" the rename without his word** — a session that renamed only the tools (2026-08-15,
+>   since reverted) pointed them at an empty `desks/planning/` while this skill kept reading
+>   `desks/cal/`, which is silent data divergence.
+> - **`cal_config.py` and `<notes>/config/cal.md`.** These are NOT the planning desk at all — they
+>   are the **calendar-identifier** config (calendar + task-list ids), shared with the calendar and
+>   tasks write guards. `cal` there means *calendar*, and it stays.
 
 ## Intent (§0.5)
 **User outcome:** By the time this ends, there is a plan for today written down — always, account or
@@ -80,7 +94,7 @@ The interrogation must never freeze while a write happens. So the work runs in t
 - **Gear 2 — the writes (background sonnet sub-agents):** decided, already-confirmed I/O is fanned out so the main
   thread stays free. Two named workers, each **handed its full content IN ITS PROMPT** (a sub-agent can't see this
   chat — embed, never "go read it"), **model: sonnet** set explicitly:
-  - **the SCRIBE** — persists the scratchpad at each pass boundary + stamps the diary (via `cal-diary-capture.py`,
+  - **the SCRIBE** — persists the scratchpad at each pass boundary + stamps the diary (via `planning-diary-capture.py`,
     which protects the `## Human Delta` block). Fire-and-forget.
   - **the CLERK** — at Pass 5, drains the whole confirmed WRITE-LEDGER (Google Tasks + Agent Ops events + log +
     diary), **reads each write back to confirm before marking it ✅**, deletes the scratchpad, returns the filled
@@ -91,15 +105,15 @@ The interrogation must never freeze while a write happens. So the work runs in t
 
 ## Hard rails (non-negotiable)
 - **ONE DATASET — never RE-PULL EVERYTHING; light sweeps are fine.** The ban is on the **heavy verbatim re-ingest**
-  (the full `cal-vault-pull.py` email/calendar rebuild — that's the 600-second freeze). Work from the vault at
+  (the full `planning-vault-pull.py` email/calendar rebuild — that's the 600-second freeze). Work from the vault at
   `<notes>/desks/cal/state/raw-vault/<today>/` + the scratchpad. But a **quick, targeted, metadata-only sweep is
   ALLOWED and encouraged on demand** — "check if anything popped in since the 4am pull." The distinction:
   - **Re-reading for something that was ALREADY there at 4am = the morning capture FAILED** (the scratchpad missed a
     fact it should have folded in Pass 1). Don't paper over it with a re-read — fix the scratchpad.
   - **A sweep for what's GENUINELY NEW since 4am = legitimate** — do it **light**: metadata only (subjects/senders/
     snippets/titles), filtered to new-since-the-pull, **never re-ingesting bodies**.
-- **The light-sweep tools (seconds, no bodies).** Email → `python3 "$ROOT/system/tools/cal-light-sweep.py"` (metadata-only
-  `gws gmail threads list` for new-since-pull). Tasks → `python3 "$ROOT/system/tools/cal-vault-pull.py" --tasks-only`
+- **The light-sweep tools (seconds, no bodies).** Email → `python3 "$ROOT/system/tools/planning-light-sweep.py"` (metadata-only
+  `gws gmail threads list` for new-since-pull). Tasks → `python3 "$ROOT/system/tools/planning-vault-pull.py" --tasks-only`
   (rewrites only `tasks.json`; use after a reorg or for a freshness refill, then reseed + re-render the board).
   Calendar's day-list is already cheap. One light call when the person asks — never the full rebuild.
 - **Calendar writes → your agent calendar ONLY**, never the calendar your life is in. The id is the
@@ -161,7 +175,7 @@ Layer 2's Pass 1 clears three surfaces: **email, calendar, tasks.** Calendar and
 mail through a converter that belongs to the mail-handling plane, and that plane did not cross.
 
 **What that means for a run:** the inbox slice is empty, always. Not "nothing came in" — *not looked
-at*. `system/tools/cal-vault-pull.py` says so out loud rather than returning an empty result, because
+at*. `system/tools/planning-vault-pull.py` says so out loud rather than returning an empty result, because
 a morning briefing that reports a clear inbox every single day is worse than one that admits it never
 opened the door.
 
@@ -175,7 +189,7 @@ inbox by eye until the mail plane lands, and do not let the run tell you it is c
 | what | where | status |
 |---|---|---|
 | the notes-root resolver | `shared/brain_root.py` | ✅ here — refuses rather than guessing if unset |
-| the diary writer (mechanical, fail-soft, works with zero credentials) | `system/tools/cal-diary-capture.py` | ✅ here — proven to complete with `gws` entirely absent from PATH, writing an honest `source-unavailable` scaffold |
+| the diary writer (mechanical, fail-soft, works with zero credentials) | `system/tools/planning-diary-capture.py` | ✅ here — proven to complete with `gws` entirely absent from PATH, writing an honest `source-unavailable` scaffold |
 | your diary | `<notes>/desks/cal/diary/{YYYY}/{MM}/{DD}.md` | ⛔ never ships — created the first time this runs |
 | your open loops | `<notes>/state/open-loops.md` | ⛔ never ships — created the first time something needs to go in it |
 
@@ -184,9 +198,9 @@ inbox by eye until the mail plane lands, and do not let the run tell you it is c
 | what | where | status |
 |---|---|---|
 | the account/config check | `prompts/00-preflight.md`, using `shared/cal_config.py` + `gws auth status` | ✅ here — read-only, never attempts a login |
-| the overnight pull (calendar + tasks), and the live fallback when nothing pulled it | `system/tools/cal-vault-pull.py` | ✅ here — `00-lookback.md` now pulls live if no vault exists for today rather than assuming a cron ran (a student has no cron) |
+| the overnight pull (calendar + tasks), and the live fallback when nothing pulled it | `system/tools/planning-vault-pull.py` | ✅ here — `00-lookback.md` now pulls live if no vault exists for today rather than assuming a cron ran (a student has no cron) |
 | the same tool's EMAIL surface | `shared/tools/email_convert.py` | ⚠ here since 2026-08-14, but never run against a real mailbox — do not trust an empty inbox from it yet |
-| the "anything new since the pull?" sweep | `system/tools/cal-light-sweep.py` | ✅ here — metadata only, never bodies |
+| the "anything new since the pull?" sweep | `system/tools/planning-light-sweep.py` | ✅ here — metadata only, never bodies |
 | your calendar and task-list identifiers | `<notes>/config/cal.md`, read by `shared/cal_config.py` | ✅ the reader is here; the ids are yours |
 | the wall around which calendar gets written | `system/hooks/guard_calendar_writes.sh` | ✅ here — refuses outright if you have configured none |
 | the scratchpad indicator on the status bar | `system/hooks/scratch_flag.sh` | ✅ here |
