@@ -323,8 +323,11 @@ session there, or nothing the tool does later will be able to reach it.
 ## STEP 5 — Fetch the tool INTO the folder you're already in — note the trailing dot
 
 ```bash
-git clone https://github.com/LifehackMethod/lifehack-brain.git .
+git clone -b migration-1 https://github.com/LifehackMethod/lifehack-brain.git .
 ```
+
+**`-b migration-1` is the version currently being tested** — it is ahead of the default one. Without it
+you get an older release with known bugs.
 
 **The `.` on the end is the whole point.** It unpacks the tool *into* the folder they already opened,
 rather than making a `lifehack-brain` subfolder inside it. ⛔ Do not `cd` anywhere first, and do not
@@ -813,25 +816,27 @@ from inside the same session, to talk their way around them.
 
 # WHAT DOES NOT WORK YET — read this once, honestly
 
-Three gaps, named so a reader who runs into one of them knows it is expected, not a broken install.
+Two gaps, named so a reader who runs into one of them knows it is expected, not a broken install.
+⚠ **CORRECTED 2026-08-15:** this section used to say nothing here runs on a schedule at all. That
+was true when it was written and stopped being true once `system/tools/pulse.sh` (the heartbeat
+daemon) and `system/tools/install-schedulers.sh` (which writes the cron/Task-Scheduler entry for
+you — see that script) landed. **This package does have a scheduler now.** `install-schedulers.sh`
+replays the job list in `system/pulse-config.md` onto your machine's own scheduler (cron on
+Mac/Linux, Task Scheduler on Windows); until you run it, nothing fires on its own — that one-time
+setup step is the real remaining gap, not an absent mechanism.
 
-**Nothing here runs on a schedule.** This package has no cron, no background job, no scheduler of any
-kind. Every skill — Google-connected or not — runs only when you type it or a session you are driving
-calls it. If a skill's own file talks about something happening "daily" or "on a cadence," read that as
-what it is FOR once a scheduler exists, not a promise of what happens on its own today.
-
-**A few ported tools have nothing that calls them yet.** Some pieces under `system/tools/` and
-`shared/tools/` were carried over complete in themselves, but the job that was meant to run them on a
-schedule did not come with them. The clearest case: the email-reading tools can read a thread once
-something has written it to the local store. The writer that would do that (`email_summary_sync.py`)
-does exist in `shared/tools/` — but no skill, hook, or scheduler in this package calls it, so the store
-it would fill stays empty regardless. That is not a bug to report; it is a piece that has landed without
-its caller yet.
+**A few ported tools still have nothing that calls them.** Most pieces under `system/tools/` and
+`shared/tools/` that were built to run on a cadence now have a `pulse-config.md` row — including
+the email-reading tools' writer (`email_summary_sync.py`, called by `email-summary-write-run.sh`
+every 3 hours). A handful genuinely do not yet: check `system/pulse-config.md` for the live list of
+what's wired rather than trusting a skill file's own claim about its schedule, which can drift out
+of date exactly the way this section just did. If a skill's own file talks about something happening
+"daily" or "on a cadence" and you're not sure it's real, that file is the one to check.
 
 **`PUSH-FORWARD.md`, at the root of this folder, is the fuller and more current list, if your clone has
 it.** ⚠ As of this writing it is untracked by git in the working copy this file was written from —
 nobody has yet ruled on whether it ships as part of what `git clone` actually gives you. If it is
-there, read it; it is the more current source. If it is not, the three points above are what we know of
+there, read it; it is the more current source. If it is not, the two points above are what we know of
 either way.
 
 ---

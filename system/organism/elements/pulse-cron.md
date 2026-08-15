@@ -57,6 +57,19 @@ authority: user
 > ⏳ unruled — `system/schemas/runner-standard.md`, the codified `*-run.sh` contract. The runners themselves shipped and no phase owes this document;
 > `system/tools/cal-health.py` line 23 still reasons against "the runner-standard rc=1", yet the contract itself is absent from `system/schemas/`. Cited by something shipped, on no ship list, awaiting a decision: a DEBT, not a pass.
 
+> ⚖ **NOTE 2026-08-15 — the `…_studio_…` gate names below are DONOR CODE IDENTIFIERS, and are
+> deliberately NOT renamed.** `require_studio_hardware` and `ingest_studio_gate` (the latter being
+> only a back-compat alias for `require_primary`) named one of the donor's own machines, from an era
+> before that gate was renamed to a role. **None of the three functions exists in this repo** —
+> verified by grep: they appear here only inside this document and inside port notes recording that
+> they were dropped, and the donor files that defined them (the standalone primary-gate script, the
+> lead-machine script) were never ported either. So the whole GATES section below is donor
+> description, not this system's behaviour — consistent with the CITATIONS note above.
+> Under the no-named-machines ruling the *prose* around them has been rewritten to roles ("the
+> primary machine" / "the second machine" / "the hardware host"); the identifiers themselves stay
+> verbatim because renaming a function that lives in another repo would falsify the record rather
+> than fix it. Nothing here names a machine this system runs on.
+
 ---
 
 ## AUTHORED   (human-only)

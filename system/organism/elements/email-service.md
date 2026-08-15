@@ -225,6 +225,11 @@ primary machine (2026-07-10). Hook registration is machine-local; the second mac
 fires (`pipe a faithful JSON payload to the hook, confirm exit 2`). ENF-C fully closes only after
 that. (Tracked: debt-ledger `[EMAIL-ENF-C-STUDIO-VERIFY]`.)
 
+> ⚖ **NOTE 2026-08-15:** that bracketed string is an **identifier** — a primary key into the donor
+> repo's debt-ledger, which is not present in this repo — not a machine name, and it is deliberately
+> left verbatim so the cross-reference survives. See the matching note in
+> `system/organism/elements/grand-central.md`. Renaming one end and not the other would break it.
+
 ---
 
 ### CONTRACT SELF-LOCK (`validate_contract`)

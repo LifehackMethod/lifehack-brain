@@ -422,7 +422,7 @@ useful is unknown.
 > - `elements/overmyshoulder.md` — ⛔ excluded from the migration: **browser-bound.** It reads a live Chrome
 >   tab, and the whole Chrome path was ruled out of this system (see the two corrections further down).
 > - `elements/two-machine-residency.md` · `elements/git-autopush.md` — ⛔ excluded from the migration:
->   **two-machine.** Both exist to keep one person's two Macs in step. Whether they migrate is formally
+>   **two-machine.** Both exist to keep one person's two machines in step. Whether they migrate is formally
 >   **unruled** on the donor's side (`OL-P8-4`); until that is answered they are not here.
 >
 > Every other numbered line below resolves. If a pointer in this index or a `## <slug>` entry further down
@@ -474,7 +474,7 @@ useful is unknown.
 43. **deryl-desk** *[DESK: deryl]* — PARTIAL [provisional] → `elements/deryl-desk.md`  · ↓ `#deryl-desk`
 44. **cal-pipeline** *[DESK: cal]* — PARTIAL → `elements/cal-pipeline.md`  · ↓ `#cal-pipeline`
 45. **dobby-desk** *[DESK: dobby]* — DORMANT → `elements/dobby-desk.md`  *(index only — dormant)*
-46. **world-model-ingestion** *[GLOBAL]* — DORMANT → `elements/world-model-ingestion.md`  *(index only — dormant)*
+46. **world-model-ingestion** *[GLOBAL]* — ~~DORMANT~~ **LIVE** → `elements/world-model-ingestion.md`  ~~*(index only — dormant)*~~ *(index line only — LIVE)*  ⚠ **CORRECTED 2026-08-15.** The element file carries `maturity_label: LIVE` plus its own note — *"no longer inactive as of 2026-08-06 (the skill is built and running on a live corpus)"* — so this manual line's DORMANT was stale. Both read this session; the element is authoritative on its own maturity. The struck text stays visible because this manual asserted it.
 47. **overmyshoulder** *[GLOBAL·optional]* — DORMANT → `elements/overmyshoulder.md`  *(index only — dormant)*
 48. **calculate** *[SHARED: deryl/clair/manual]* — DORMANT → `elements/calculate.md`  *(index only — dormant)*
 49. **google-sheet** *[GLOBAL·optional]* — DORMANT → `elements/google-sheet.md`  *(index only — dormant)*
@@ -515,7 +515,11 @@ INTEROP:
   GUARDED-BY   ingest_gate_enforce.sh   · PreToolUse on Bash/WebFetch/WebSearch/Read — the hook itself IS this element; fail-closed on unparseable input
 
 ## egress-allowlist-wall · always-on   [LIVE·gap]   → elements/egress-allowlist-wall.md
-Block every outbound network call to a host not on the allowlist — so a hijacked session cannot exfiltrate data. Three independent hook layers (L1 credential-exfil, L2 domain name-check, L3 raw-tool block) plus an OS-layer LuLu backstop; ·gap because dynamic-URL and env-var-credential paths are fail-open.
+Block every outbound network call to a host not on the allowlist — so a hijacked session cannot exfiltrate data. ~~Three independent hook layers (L1 credential-exfil, L2 domain name-check, L3 raw-tool block) plus an OS-layer LuLu backstop~~; ·gap because dynamic-URL and env-var-credential paths are fail-open.
+⚠ **CORRECTED 2026-08-15 — the in-process domain seal was ARMED. It still ships OFF.** There is now a FOURTH mechanism beside the three hook layers: the in-process seal inside `system/tools/safe_fetch.py`. Enver ruled it (`authority: user` — *"APPROVED — ARM IT"*). A persistent switch file `system/safe-fetch-allowlist.md` (same ALLOWLIST-START/END markers as `system/egress-allowlist.md`), a `l2_state()` resolving every read to **three named outcomes and no quiet fourth** — **OFF** (allowed, and it says so on stderr once per process) · **ON** (off-list host refused *before the socket opens*) · **AMBIGUOUS** (**refused**) — with the `SAFE_FETCH_ALLOWLIST` env var as the **per-run** seal outranking the file, which is the **persistent** switch a human sets by hand. `--l2-status` reports the switch position without fetching. `system/tools/test_egress_level2.py` holds 12 tests, passing inside `system/tools/run-all-tests.sh`.
+⛔ **DO NOT READ THIS AS "THE EGRESS WALL IS NOW ENFORCED."** It ships `off` with an empty domain block and no caller arms it, so **by default it seals nothing.** The honest claim — do not exceed it — is **armed and switchable, ships OFF, refuses loudly when half-configured.** Never "enforced," never "protected." What changed is that the level you are actually at is now knowable and stated out loud; not that a wall went up.
+⚠ **Two things did NOT change.** (1) The Bash-command domain hook still **fails OPEN, deliberately** — it sits in front of *every* Bash command, where a false positive stops ordinary work and somebody unregisters the guard; the in-process seal sits in front of web reads only and is off unless deliberately armed. (2) The OS firewall (LuLu) remains the only HARD wall of the three, and is still not carried here.
+⚠⚠ **A NUMBERING COLLISION — carry it or you will state something false.** This map and `system/organism/elements/egress-allowlist-wall.md` number the layers **L1 = `guard_egress.sh`** (credential-exfil) · **L2 = `enforce_egress_allowlist.sh`** (the Bash-command domain hook) · **L3 = `ingest_gate_enforce.sh`** (raw WebFetch/WebSearch deny). The shipped code and `docs/OUTSIDE-SERVICES.md` number a *different* ladder: **Level 1 = the Bash-command domain hook** (this map's L2) · **Level 2 = the in-process `safe_fetch.py` seal** · **Level 3 = the OS firewall**. So *"Level 2 is now armed"* means **the in-process seal, NOT the Bash hook.** Neither numbering is wrong; they count different things. Full statement: `system/organism/elements/egress-allowlist-wall.md`.
 
 INTEROP:
   COMPLEMENTS  security-ingest-gate   · ingest-gate redirects inbound raw WebFetch/WebSearch to safe tools; this wall gates those tools' outbound Bash calls — together they close the adversarial loop
@@ -753,7 +757,8 @@ INTEROP:
   SHARES     security-ingest-gate   · email_convert.py, ingest_gate.py, safe_input.py (in-degree 17), and intake_reader.py are shared library components used by grand-central's Python writers AND by security-ingest-gate's redirect targets
 
 ## safe-reader-plane · safe_*/email_convert cluster   [LIVE·gap]   → elements/safe-reader-plane.md
-Every byte of external content — web, email, calendar, tasks, documents, search results — passes through a two-layer filter (L0 deterministic scrub + heuristic injection scan) before the model reads it, and a hook plane blocks every raw-read bypass. Egress allowlist is structurally present but functionally unarmed [EGRESS-WALL-FAILOPEN].
+Every byte of external content — web, email, calendar, tasks, documents, search results — passes through a two-layer filter (L0 deterministic scrub + heuristic injection scan) before the model reads it, and a hook plane blocks every raw-read bypass. ~~Egress allowlist is structurally present but functionally unarmed [EGRESS-WALL-FAILOPEN].~~
+⚠ **CORRECTED 2026-08-15.** "Functionally unarmed" is no longer true of the in-process seal in `system/tools/safe_fetch.py` — it was built out and made switchable (Enver, `authority: user`). The honest claim, and do not exceed it: **armed and switchable, ships OFF, refuses loudly when half-configured** — never "enforced," never "protected," because it ships `off` with an empty domain block and no caller arms it. ⚠ *"Level 2 is armed"* means **that in-process seal**, NOT the Bash-command hook this map calls L2 — the two ladders are numbered oppositely; see the collision note under `## egress-allowlist-wall` above. The `[EGRESS-WALL-FAILOPEN]` gap itself is UNCHANGED and still stands: the Bash-command domain hook still fails OPEN, deliberately.
 
 INTEROP:
   GUARDED-BY   ingest_gate_enforce.sh   · PreToolUse hook plane on Bash/WebFetch/WebSearch/Read that forces all external reads through the safe-reader cluster
@@ -917,7 +922,7 @@ INTEROP:
   TRIGGERS     check-content-paths.py · git commit in ~/lifehack-brain/ triggers gitleaks + content-gate pre-commit check
   TRIGGERS     pulse-cron           · Pulse tick (every 15 min) fires git-autopush.sh or git-autopull.sh
   TRIGGERS     mirror_plans.sh      · session end (Stop hook) triggers rsync of ~/.claude/plans/ → $DRIVE/plans/<hostname>/
-  TRIGGERS     lifehack-lead.sh    · human command lifehack-lead.sh mba|studio flips the primary-machine marker
+  TRIGGERS     lifehack-lead.sh    · a human command flips the primary-machine marker between the primary and the second machine
   TRIGGERS     bootstrap-machine.sh · human runs bootstrap-machine.sh to wire all symlinks on a new machine
   READS        pulse-cron           · git-autopush/pull are registered Pulse slots (pulse-config.md); two-machine-residency owns their purpose in the sync model
   WRITES->     pulse-cron           · git-autopush/pull keep pulse-config.md in sync across machines; NOTE: git-autopull does not call install-schedulers.sh — manual install required
@@ -997,7 +1002,7 @@ INTEROP:
   WRITES→     announce_plan_write.sh   · writes NEW-plan pointer lines into project-manager's owned ## SCRATCHPAD when pm_flag is armed; falls back to plan-ledger.md when not
   READS       plan_flag.sh             · /advisory-council reads plan_flag.sh path subcommand to load the active plan as advisory context before its council run
   READS       plan_flag.sh             · /save Step 8 (Wake Routine handoff) reads plan_flag.sh status to surface the active plan name in the continuation handoff
-  SYNCS       mirror_plans.sh          · must stay in lockstep with recover_studio_plans.sh (the pull side); both assume per-machine hostname namespacing under $DRIVE/plans/
+  SYNCS       mirror_plans.sh          · must stay in lockstep with the plan-recovery script on the pull side; both assume per-machine hostname namespacing under $DRIVE/plans/
   TRIGGERS    inject_sop_before_build.sh · fires before any build of a hook, skill, desk, sheet, dashboard, cron, or ingest pipeline — six domains whose SOPs live in system/sops/; NOT triggered before plan-content work
   KEYS-OFF    pm_persist.sh            · pm_persist.sh (project-manager element) refreshes plan_flag.sh's armed_at every turn so the plan flag never TTL-expires mid-session
 
@@ -1015,7 +1020,7 @@ INTEROP:
   READS        CLAUDE.md            · global "Subagent Model Selection" rule mandates model:sonnet for all spawned agents; /research SKILL.md Hard rule 3 echoes this; CLAUDE.md is authoritative, SKILL.md is the runtime implementation
 
 ## git-autopush · Pulse every 900s (both machines)   [LIVE·gap]   → elements/git-autopush.md
-Backstop auto-sync of ~/lifehack-brain between the two Macs — push side sends new commits to GitHub; pull side fast-forwards the other machine — so a git commit propagates without ever asking the user to push. Conservative: handles clean fast-forward only; bails on anything requiring human judgment.
+Backstop auto-sync of ~/lifehack-brain between the two machines — push side sends new commits to GitHub; pull side fast-forwards the other machine — so a git commit propagates without ever asking the user to push. Conservative: handles clean fast-forward only; bails on anything requiring human judgment.
 
 INTEROP:
   TRIGGERS   pulse-cron             · pulse.sh dispatches both jobs every 900s via cron
@@ -1139,7 +1144,7 @@ INTEROP:
 The personal-finance operator — ingests email, transactions, and utility data; maintains the live ledger (Deryl Financial Master); runs a nightly health check that feeds the Helm dashboard; and provides a human-gated reconcile session for periodic tax bookkeeping. Multiple documented honor-system failure modes (stale-number recitation, mental arithmetic, email-scope breach).
 
 INTEROP:
-  CHAINS      ingest-run.lib.sh  · deryl-ingest-run.sh is built on the shared ingest-run.lib.sh scaffold (studio gate, new-mail gate, bounded work-list, single-instance lock, watchdog, marker-advance); a change to the lib propagates to all ingest runners
+  CHAINS      ingest-run.lib.sh  · deryl-ingest-run.sh is built on the shared ingest-run.lib.sh scaffold (primary-machine gate, new-mail gate, bounded work-list, single-instance lock, watchdog, marker-advance); a change to the lib propagates to all ingest runners
   FEEDS       helm               · deryl-ingest writes state/status/deryl-ingest.json (LOCKED schema decision #38) — Helm d.ingest card; deryl-books-health.py emits state/status/deryl.json — Helm finances/property/tax tiles
   WRITES→     Gmail Deryl-Archive   · deryl-ingest routes True Submeter emails to Deryl-Archive (Label_32) as pipeline hand-off to true_submeter_ingest.py; all other processed threads move to Deryl-Processed
   FEEDS       deryl open-loops   · deryl-ingest appends HIGH items with gmail links to desks/deryl/state/open-loops.md; Deryl session reads on launch; /save can relocate resolved loops
@@ -1198,7 +1203,7 @@ INTEROP:
   TRIGGERS-BY  pulse-cron          · ONLY fault-proposer is scheduled (daily, 86400s); the ground reasoner is NOT — that is GAP-1, not an oversight (CUT-E)
   KEYS-OFF     two-machine-residency · machine token in the PATH, never only the payload; one writer per path per machine
   COMPLEMENTS  backlog             · ⚖ RULED 2026-08-05 by the operator — the debt ledger is Efficiency's INPUT, not its exile; it may DEMOTE and ARCHIVE ledger items on POSITIVE EVIDENCE ONLY (§18.5a carve-out). NOT YET BUILT
-  GUARDED-BY   guard_findings_write.sh · blocks any Bash/Write/Edit into the store that bypasses emit_recommendation.py; resolves shell variables before matching (the T15.32 bypass). Watched firing on the AIR only — the Studio is dark since 2026-07-04
+  GUARDED-BY   guard_findings_write.sh · blocks any Bash/Write/Edit into the store that bypasses emit_recommendation.py; resolves shell variables before matching (the T15.32 bypass). Watched firing on the PRIMARY machine only — the second machine is dark since 2026-07-04
 
 ## Delivery (Feature 1.6 — after the elements are authored)
 One pointer line in global `CLAUDE.md` + one line per desk naming the elements that touch it. A PreToolUse

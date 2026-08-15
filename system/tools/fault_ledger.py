@@ -14,9 +14,12 @@ Edge-triggering is only safe if something remembers. Nothing did on the donor sy
 this file: the sweep's memory was the previous tile, which by definition already contained
 the fault. So this ledger holds the ONE fact a sweep could never carry across runs — **how
 long a fault has been true** — and it lives in `~/.config/lifehack/`, NOT `/tmp`, because a
-reboot must not amnesty a three-week outage. (This repo has no scheduler/cron wired in yet —
-see the module docstrings this ships alongside — so nothing calls `record_faults()` on a
-cadence today; the store and its API are ported correct-and-callable for whenever one does.)
+reboot must not amnesty a three-week outage. (⚠ CORRECTED 2026-08-15, T9.7d stale-claim sweep:
+this used to deny that any scheduler or cron wiring existed in the repo. That is false —
+`system/tools/pulse.sh` is the live daemon, `system/tools/install-schedulers.sh` installs its
+entry on cron or Windows Task Scheduler, and `system/pulse-config.md` is the row manifest.
+What's still true is narrower: no `pulse-config.md` row calls `record_faults()` specifically on
+a cadence today; the store and its API are ported correct-and-callable for whenever one does.)
 
 DESIGN BOUNDS (the KISS floor's ruling, deliberately narrow)
 ------------------------------------------------------------

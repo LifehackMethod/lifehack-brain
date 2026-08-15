@@ -37,11 +37,16 @@ sheet; it NEVER writes canon and NEVER deletes. (Part of `archivist-rebuild` —
 ## When it runs
 
 - **Manually:** `/archivist-deepmine desk=<name>` (one-off / to prove it).
-- **Standing:** monthly is the cadence it was built for, fired by whatever schedules things on
-  your machine. ⛔ **Nothing here schedules it** — no scheduler ships, so today it is a skill you
-  run. The procedure is
-  identical — only the invocation differs. The structural audit (checks A–O) is weekly and
-  separate; this deep pass is monthly because it's heavier and the back-catalog moves slowly.
+- **Standing:** monthly is the cadence it was built for. ⚠ **CORRECTED 2026-08-15 (T9.7d
+  stale-claim sweep):** this line used to claim nothing here scheduled it, and that the package
+  shipped without any scheduler at all.
+  That's no longer true — `system/tools/archivist-deepmine-run.sh` has a real row in
+  `system/pulse-config.md` (4-day tick, internally staggered to the single most-overdue desk each
+  fire — see the wrapper's own header and `system/pulse-config.md`'s comment beside that row,
+  which flagged this exact page as stale). Once `install-schedulers.sh` has been run on a machine,
+  the standing pass fires on its own; running `/archivist-deepmine` by hand is still fine and
+  identical in procedure, just no longer the ONLY way it runs. The structural audit (checks A–O)
+  is weekly and separate, same story — its own runner is scheduled too.
 
 ## Architecture (LOCKED — archivist-rebuild huddle 2026-06-09)
 

@@ -514,6 +514,14 @@ What remains PARTIAL:
 - **ENF-B not called on live write path (gap-6):** `validate_contract()` fires in `sync()` (v1 legacy)
   only; `write_v2()` (the live Pulse path) skips it entirely — model-pin, worker-cap, and the
   unauthorized-caller grep are all silently bypassed on every real Pulse write run.
+> ⚖ **NOTE 2026-08-15 — the two `…-STUDIO-VERIFY` strings below are IDENTIFIERS, not machine names,
+> and are deliberately NOT renamed.** They are primary keys into the donor repo's debt-ledger, and
+> that ledger is **not in this repo** (`grep` finds these IDs in exactly two files, both here) — so
+> renaming them at this end would silently break the only reference they have. Per the
+> no-named-machines ruling, every *description* around them now uses roles ("the primary machine" /
+> "the second machine"); the bracketed keys stay verbatim so the cross-reference survives. If the
+> donor ledger is ever ported here, rename BOTH ends in one change or neither.
+
 - **[EMAIL-ENF-C-STUDIO-VERIFY] debt item `state:waiting-external`:** ingest_gate_enforce.sh verified
   on the primary machine but NOT yet fire-tested on the second machine — the session-side enforcement is PARTIAL until
   both machines register the hook.

@@ -7,10 +7,21 @@ backlog (`<brain>/state/debt-ledger.md`), every desk's `open-loops.md` (enumerat
 desk registry, NOT a hardcoded list — see `load_registry()`), and the legacy root swamp
 (`<brain>/state/open-loops.md`), and returns ONE report dict with the **honest decomposed
 counts** + grooming PROPOSALS. It NEVER writes — propose-never-execute: the destructive
-grooming (archive a done item, delete a dupe, stamp a tag, drain the swamp) is a SUPERVISED
-pass that consumes these proposals. `backlog-health.py` (already shipped in this repo, and
-already wired to lazily `import backlog_groom` — see that file's own docstring) imports this
-to emit the tile; the drain runs `--propose` to get the per-item disposition list.
+grooming (archive a done item, delete a dupe, stamp a tag, drain the swamp) is described here
+as a SUPERVISED pass that consumes these proposals, and `--propose` (see `_print_propose()`
+below) emits exactly that per-item disposition list. `backlog-health.py` (already shipped in
+this repo, and already wired to lazily `import backlog_groom` — see that file's own docstring)
+imports this to emit the tile.
+
+⛔ **SHIP-WITH-DEBT-NOTE (T9.7c, 2026-08-15): the supervised drain itself is NOT BUILT in this
+repo.** `--propose` produces the disposition list; nothing here or elsewhere in this repo is the
+human-in-the-loop skill/SOP that CONSUMES it — reviews each proposal and actually executes the
+archive/delete/stamp/drain. This mirrors the donor's own tracked gap (`GAP-1` in its
+`backlog-authority` organism element: *"the supervised drain path is unbuilt... the groomer
+proposes; there is no built consumer"*) — the port did not close it, and this note exists so the
+next reader finds a stated gap instead of an implied one, the same disclosure shape as
+`[SKILL-CONFORMANCE-PRODUCER-HALF]` in `docs/skill-conformance.md`. Until a drain skill/SOP is
+written, running `--propose` and acting on it by hand is the only path.
 
 THE TWO-AXIS MODEL (`system/schemas/backlog-entry-schema.md`, frozen v1.0 — unchanged by
 this port, verified against the live schema file in this repo):
@@ -21,9 +32,13 @@ this port, verified against the live schema file in this repo):
   explicitly NOT counted as broken. This is the antidote to an undifferentiated total.
 
 Stdlib + PyYAML only. Graceful: any parse/registry failure degrades that source to empty, never
-crashes — including a MISSING desk registry, which this repo does not currently have (see
-`load_registry()`'s own docstring: this product has no multi-desk model yet, so the registry
-source degrades to `[]` by construction, not by a special case).
+crashes. ⚠ CORRECTED 2026-08-15 (F9.7d stale-claim sweep): this paragraph used to say the desk
+registry did not exist in this repo. `system/desk-registry.yaml` landed via F9.6 "THE DESK PLANE"
+and `load_registry()` reads it correctly. It currently ships with `desks: []` — empty by design
+for a fresh install (see the registry file's own header) — so the registry source degrades to
+`[]` today for the ordinary reason (no desks registered yet), not because the file or the
+multi-desk model is absent. Once a desk is appended via `system/sops/desk-building-sop.md`, this
+source populates with no code change here.
 
 WHAT CHANGED IN THIS PORT (generalisation, not a redesign):
   · `LEDGER`/`SWAMP` moved from a hardcoded personal Drive path to the resolved brain root
@@ -31,11 +46,13 @@ WHAT CHANGED IN THIS PORT (generalisation, not a redesign):
     ported store in this repo already uses. With no root configured, both paths are `None`
     and every parser degrades to an empty result exactly as it already does for a missing
     file — no new failure mode, no crash.
-  · `REGISTRY` still names `system/desk-registry.yaml` (code-resident, like the donor). This
-    repo does not have that file (confirmed absent — no multi-desk model), so
-    `load_registry()` degrades to `[]` on every run today. That is not a defect in this
-    port; it is the same graceful-degrade path the donor's own registry-missing case
-    already used, just permanently taken here until (if ever) a registry concept exists.
+  · `REGISTRY` still names `system/desk-registry.yaml` (code-resident, like the donor). ⚠
+    CORRECTED 2026-08-15: this bullet used to say the file was absent and the degrade was
+    permanent. F9.6 "THE DESK PLANE" landed the registry; `load_registry()` reads it. It ships
+    with `desks: []` (empty by design for a fresh install), so `load_registry()` returns `[]`
+    today because there are zero registered desks, not because the file or the concept is
+    missing — the same graceful-degrade path, now taken for the ordinary reason instead of a
+    permanent one.
 
 Every finding this emits goes through `emit_finding.py` (imported by reference, exactly like
 every other Hospital detector in this repo) — the general finding contract proven to
@@ -110,11 +127,14 @@ def load_registry():
     """[desk-entry dicts] from desk-registry.yaml (CODE_ROOT). Graceful: [] on ANY failure — a
     missing/broken registry (or absent PyYAML) degrades the sweep to ledger-only, never crashes.
 
-    This repo has no `system/desk-registry.yaml` at all (confirmed absent — no multi-desk model
-    ships here), so this returns `[]` on every run today via the same `except Exception` path a
-    corrupt registry would take on the donor system. That is the intended degrade, not a bug to
-    fix: `build_report()` below is fully correct with zero desk sources, it just has fewer of
-    them than the donor did."""
+    ⚠ CORRECTED 2026-08-15 (F9.7d): this docstring used to say `system/desk-registry.yaml` did
+    not exist in this repo. It landed via F9.6 "THE DESK PLANE" and is read correctly — verified
+    live this session (`load_registry()` parses it via PyYAML, `desks:` key present). It ships
+    with `desks: []` on a fresh install, so this still returns `[]` today, but for the ordinary
+    reason (zero desks registered) rather than an absent file — the same `except Exception` path
+    a corrupt registry would take, just not the path actually taken right now. `build_report()`
+    below is fully correct either way: with zero desk sources today, or with real ones once a
+    desk is appended per `system/sops/desk-building-sop.md`."""
     try:
         import yaml
         with open(REGISTRY) as f:

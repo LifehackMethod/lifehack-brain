@@ -11,8 +11,10 @@
 # REDIRECT: Buffer is /tmp/lifehack-observability-buffer.jsonl. `session_flight_recorder.sh`
 #      (a Stop hook) flushes it to `<notes root>/system/observability/YYYY-MM-DD.jsonl` at
 #      session end, resolved through `shared/brain_root.py` — see that hook for the exact
-#      path. This repo has no scheduler, so nothing prunes old observability logs
-#      automatically; trim `<notes root>/system/observability/` by hand if it grows large.
+#      path. ⚠ CORRECTED 2026-08-15 (T9.7d): this used to deny the repo had any scheduler at all —
+#      that's false (`system/tools/pulse.sh` is the live daemon), but no pruning job is registered for these logs in
+#      `system/pulse-config.md`, so nothing prunes them automatically today; trim
+#      `<notes root>/system/observability/` by hand if it grows large.
 #      If lines are missing, check this hook is registered under PostToolUse with
 #      command: bash "${CLAUDE_PROJECT_DIR}/system/hooks/observability_logger.sh".
 # UPDATED: 2026-05-30 (ported; buffer/flush paths adapted — see REDIRECT above)
