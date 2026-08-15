@@ -249,10 +249,12 @@ restrict write access at the directory/user level instead of removing the execut
 > still set the env var, but it now only LABELS the read-audit log and gates nothing. The note
 > blocks below are kept for history only.
 >
-> **This-repo note:** `email_convert.py` (named throughout the blocks below) does not exist in this
-> repo either — its sanitize+scan logic now lives inside `shared/gate/ingest_gate.py`, with
-> `shared/tools/email_service_read.py` as the read path. Read the blocks below for the REASONING, not
-> as a map of this repo's files.
+> **This-repo note:** `shared/tools/email_convert.py` (named throughout the blocks below) **landed
+> 2026-08-14** — this note previously said it did not exist here, which was true when written and is
+> not now. It routes through `shared/gate/ingest_gate.py` for the sanitize+scan step, with
+> `shared/tools/email_service_read.py` as the read path. ⚠ Present is not proven: it passes its own
+> 9-case self-test and a hostile fixture flagged correctly, but it has never been run against a real
+> mailbox here. Read the blocks below for the REASONING, not as a map of this repo's files.
 
 **File:** `~/.claude/hooks/ingest_gate_enforce.sh` (PreToolUse; Bash/WebFetch/WebSearch/Read) — the unified gate; its email branch SUBSUMED the retired `enforce_email_sanitize.sh` (2026-07-03).
 

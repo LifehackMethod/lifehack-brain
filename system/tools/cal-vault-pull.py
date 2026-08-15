@@ -57,13 +57,21 @@ if not DRIVE:
     sys.exit(2)
 CODE_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 GWS = __import__("shutil").which("gws") or "gws"  # resolve via PATH; survives binary moves
-# ⛔ THE EMAIL SURFACE DOES NOT WORK IN THIS REPO, AND IT SAYS SO RATHER THAN RETURNING EMPTY.
-# This tool reads three surfaces — email, calendar, tasks. The email one routes through
-# `email_convert.py`, which belongs to the mail-handling plane that did not cross and is not
-# scheduled to. Calendar and tasks work fully. A pull that silently produced an empty inbox slice
-# would be far worse than one that refuses: the morning run would report a clear inbox every day,
-# for ever, and the first sign of trouble would be a missed message nobody knew to look for.
-EMAIL_CONVERT = os.path.join(CODE_ROOT, "shared/tools/email_convert.py")  # NOT PRESENT — see above
+# ⚠ THE EMAIL SURFACE IS NOW WIRED, BUT HAS NOT BEEN PROVEN END TO END.
+# This tool reads three surfaces — email, calendar, tasks. Calendar and tasks work fully.
+# The email one routes through `email_convert.py`, which UNTIL 2026-08-14 was not in this repo at
+# all; this block used to say the surface "does not work" and that was correct at the time. The
+# converter has now landed (ported + generalised, self-test 9/9), so this path no longer fails for
+# the reason it used to.
+# ⛔ THAT IS NOT THE SAME AS WORKING. Note there is no existence check below — the call at the
+# bottom of this file simply invokes the converter and reads its return code. So the day the file
+# appeared, this surface silently changed from "fails loudly every run" to "actually attempts,"
+# with nobody deciding that. It has not been exercised against a real mailbox here.
+# The original reasoning still governs and is worth keeping: a pull that silently produced an empty
+# inbox slice would be far worse than one that refuses — the morning run would report a clear inbox
+# every day, for ever, and the first sign of trouble would be a missed message nobody knew to look
+# for. Verify this path against a connected account before trusting an empty result from it.
+EMAIL_CONVERT = os.path.join(CODE_ROOT, "shared/tools/email_convert.py")  # present since 2026-08-14
 SAFE_CALENDAR = os.path.join(CODE_ROOT, "system/tools/safe_calendar.py")  # CODE
 SAFE_TASKS    = os.path.join(CODE_ROOT, "system/tools/safe_tasks.py")      # CODE
 VAULT_ROOT = os.path.join(DRIVE, "desks/cal/state/raw-vault")            # CONTENT (on Drive)

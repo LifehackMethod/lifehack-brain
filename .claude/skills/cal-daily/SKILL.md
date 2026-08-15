@@ -132,7 +132,7 @@ inbox by eye until the mail plane lands, and do not let the run tell you it is c
 | what | where | status |
 |---|---|---|
 | the overnight pull (calendar + tasks) | `system/tools/cal-vault-pull.py` | ✅ here |
-| the same tool's EMAIL surface | `shared/tools/email_convert.py` | ⛔ not in this repo — see the notice above |
+| the same tool's EMAIL surface | `shared/tools/email_convert.py` | ⚠ here since 2026-08-14, but never run against a real mailbox — do not trust an empty inbox from it yet |
 | the "anything new since the pull?" sweep | `system/tools/cal-light-sweep.py` | ✅ here — metadata only, never bodies |
 | your calendar and task-list identifiers | `<notes>/config/cal.md`, read by `shared/cal_config.py` | ✅ the reader is here; the ids are yours |
 | the wall around which calendar gets written | `system/hooks/guard_calendar_writes.sh` | ✅ here — refuses outright if you have configured none |
