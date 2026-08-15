@@ -12,7 +12,7 @@ authority: user
 
 # Build SOP
 
-> ## ⓘ WHAT THIS PAGE CITES THAT IS NOT IN THIS REPOSITORY
+> ## NOTE — WHAT THIS PAGE CITES THAT IS NOT IN THIS REPOSITORY
 >
 > This page earns its length by naming the exact record where each lesson was learned. Those records
 > live in the author's own notes folder, not in any repository, and they are named here rather than
@@ -41,11 +41,15 @@ authority: user
 - **Back up a crown-jewel file BEFORE editing it, even in `/build`.** The memory-system skills (`/save`, `/read`,
   `project-manager`) + always-loaded `CLAUDE.md` files aren't unit-tested, so a `*.pre-<change>.bak` next to the
   original is the only fast revert. (2026-06-13: backed up `skills/save/SKILL.md` before the P13 rewrite.)
-- **Renaming a folder/file referenced in IMMUTABLE history — do NOT rewrite those refs.** Journal, diary, records,
-  old briefs are history; a blanket sed across the tree falsifies them. Either DEFER the rename, or rename + leave a
-  compatibility symlink/redirect at the old path and update only the LIVE operational refs (skills, READMEs, the
-  active plan / canon-map). (2026-06-13: the `insight-inbox`→`inbox` rename touched 75 files incl. journal/diary/
-  records — deferred rather than rewrite history.)
+- **Renaming a folder/file referenced in past records — do NOT blanket-sed those refs.** Journal, diary, records,
+  old briefs are history, not canon — **only `canon/` folders are immutable** (see `CLAUDE.md`; a genuinely wrong
+  reference in one of them CAN be fixed), so the caution here is narrower than it used to be: a mechanical sed
+  across the whole tree is a SILENT mass-edit, and silent is the part that's still wrong — a correction has to be
+  visible (strike-through or a dated note beside the original), not a blind find-replace. Either DEFER the rename,
+  or rename + leave a compatibility symlink/redirect at the old path and update only the LIVE operational refs
+  (skills, READMEs, the active plan / canon-map); fix an individual wrong ref by hand, visibly, rather than sed the
+  tree. (2026-06-13: the `insight-inbox`→`inbox` rename touched 75 files incl. journal/diary/records — deferred
+  rather than blanket-rewrite.)
 - **Renaming a skill/module — repoint its OWN internal self-references too, not just external pointers.** After a
   rename, a file's "this is NOT the `<old-name>` skill" line can end up pointing at *itself*. Grep the renamed file
   for its old name as part of the rename, not only the rest of the tree. (2026-06-12: renaming a skill left a
@@ -631,23 +635,24 @@ to any build, a **domain** section otherwise. This is the one file `/build` read
   each owning a SEPARATE output file, so one connection death costs one section, not the artifact.
 
 - **A status-string guard must test a POSITIVE marker, never a substring — the negative state often CONTAINS the
-  positive token.** The CP tenant-billing script gated its tenant send with
+  positive token.** The FC tenant-billing script gated its tenant send with
   `nrGet_('billing_ready').indexOf('READY') === -1`. The not-ready value is the literal `"🔴 NOT READY"`, which
   **contains** `"READY"` — so the abort never fired and green and red both sent. The gate was **decorative from the
-  day it shipped** (2026-06-27) until 2026-07-26, and the sheet's own `billing_ready` formula had been correctly
+  day it shipped** (2026-05-11) until 2026-06-09, and the sheet's own `billing_ready` formula had been correctly
   showing 🔴 the whole time; the script just never asked it properly. Cost: a tenant statement went out with a
-  blank submeter reading, overbilling by $55.07. The old test was ALSO case-sensitive, so it would have wrongly
+  blank submeter reading, overbilling by $41.85. The old test was ALSO case-sensitive, so it would have wrongly
   BLOCKED a legitimately green light — broken in both directions. **FIX PATTERN:** test a positive marker AND
   require the negative token absent (two independent signals, so neither changing alone silently opens the gate),
   and **fail CLOSED** on anything unexpected — blank, error, renamed label. Applies to ANY status guard anywhere
-  (sheet cells, JSON status fields, CLI output parsing), not just Apps Script. (2026-07-26, CP tenant billing.)
+  (sheet cells, JSON status fields, CLI output parsing), not just Apps Script. (2026-06-09, FC tenant billing —
+  property/tenant/figures in this example are invented for anonymity, not the real incident; do not "restore" them.)
 
 - **A check that has never been SEEN to fail is not a check — prove it by making it fail on purpose.** After adding
   a validation, don't stop at "it says PASS." Point the same formula/predicate at known-bad input in a scratch
-  location, confirm it emits the failure, then clear the scratch. The CP completeness check was proven by aiming
+  location, confirm it emits the failure, then clear the scratch. The FC completeness check was proven by aiming
   row 24's formula at a period whose reading was genuinely blank (→ `✗ FAIL`), not by observing it pass on good
   data. A PASS on good data proves nothing about the failure path — which is the only path that matters.
-  (2026-07-26; pairs with the fail-loud principle in `google-sheet-sop.md` Principle #2.)
+  (2026-06-09; pairs with the fail-loud principle in `google-sheet-sop.md` Principle #2.)
 
 - **Verify a deploy by pulling the remote copy BACK and diffing it — never by trusting the push message.**
   `clasp push` printing "Pushed 2 files" is the tool reporting its own intent, not the deployed state. Pull the
@@ -656,9 +661,9 @@ to any build, a **domain** section otherwise. This is the one file `/build` read
   Generalises to any deploy/upload where a read-back is cheap. (2026-07-26.)
 
 - **A duplicated machine/environment gate is how a migration silently misses a file.** Ten runners were moved onto
-  ⛔ a shared gate script that does not ship, on 2026-07-14; one runner kept its own hard-coded
+  ⛔ a shared gate script that does not ship, on 2026-05-28; one runner kept its own hard-coded
   `case ComputerName in *Studio*)` and was skipped. When the Studio powered off it stopped feeding the tenant
   statement — and because the skip branch `exit 0`s (a SUCCESS code), no circuit breaker tripped and nothing
   alerted. **Rule: a gate/guard used by more than one runner lives in ONE sourced helper; a private copy is debt,
-  not independence.** When you find one inline copy, grep for the others in the same pass. (2026-07-26; same bug
+  not independence.** When you find one inline copy, grep for the others in the same pass. (2026-06-09; same bug
   class as `[ARCHIVIST-AUDIT-DEAD]`.)

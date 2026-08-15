@@ -238,10 +238,10 @@ in a browser tab.
 ### Principle #2a — a check must test PRESENCE, not only agreement (completeness ≠ consistency)
 
 **Principle #2 says the sheet proves its own math. This says: a missing input passes every math proof.** The
-College Park `Checks` tab scored a statement that had overbilled the tenant by $55.07 as **"15 PASS / 1 WARNING /
+Fernwood Commons `Checks` tab scored a statement that had overbilled the tenant by $41.85 as **"15 PASS / 1 WARNING /
 0 FAIL"** — because the carriage submeter cell was BLANK, and:
-- `TS: Electricity — Whole = Carriage + Front` → `283.94 = 0 + 283.94` is arithmetically TRUE.
-- `SM: carriage ELECTRIC ≤ CP total — ALL periods` → `0 ≤ 2559` is TRUE.
+- `TS: Electricity — Whole = Carriage + Front` → `198.42 = 0 + 198.42` is arithmetically TRUE.
+- `SM: carriage ELECTRIC ≤ FC total — ALL periods` → `0 ≤ 2071` is TRUE.
 
 **A missing input is perfectly consistent with itself**, so every consistency check certifies it. Sheets also
 coerce a blank to `0` inside arithmetic, which is exactly what turned "no data" into "the tenant owes everything."
@@ -254,5 +254,7 @@ row that SHOULD have an input, assert the input is non-blank. Two shapes, and yo
    explained (a meter installed mid-period, a month with no invoice); a hard fail there blocks the sheet forever.
 
 Use **open-ended ranges** (`A4:A`, `4:50`) not a hardcoded ceiling — an all-periods check that stops at row 13
-silently ignores rows 14+ (the exact trap in the same tab). *(2026-07-26, CP tenant-billing misbill. The
-generalised guard-testing lesson — "never test a status string by substring" — is in `build-sop.md`.)*
+silently ignores rows 14+ (the exact trap in the same tab). *(2026-06-09, FC tenant-billing misbill — property,
+tenant detail, and dollar figures in this example are invented for anonymity, not the real incident's actual
+specifics; do not "restore" them. The generalised guard-testing lesson — "never test a status string by
+substring" — is in `build-sop.md`.)*

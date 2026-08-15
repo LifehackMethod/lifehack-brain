@@ -86,7 +86,7 @@ for path, label in hits:
 # skill-building-sop.md is 2,315 lines, so a session about to rebuild a known dead end is
 # handed a haystack containing the one line that would stop it. The 80+ DO NOT BUILD entries
 # had ZERO code readers (`grep -rn "DO NOT BUILD" *.py *.sh` -> 0) until deadend_check.py.
-# THE FENCE (Enver, 2026-08-07): a POINTER and a SEARCH COMMAND, never the content. Injecting
+# THE FENCE (the operator, 2026-08-07): a POINTER and a SEARCH COMMAND, never the content. Injecting
 # 80 entries is the over-injection this fence exists to prevent. Pull, never push.
 DEADEND = os.environ.get("DEADEND_CHECK_PATH") or "deadend_check.py"
 out.append(

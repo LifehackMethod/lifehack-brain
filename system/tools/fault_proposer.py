@@ -41,7 +41,7 @@ Reads: `~/.config/lifehack/faults.json` (live) + `incidents.jsonl` (history) via
 task list): this module CANNOT TELL A FAULT FROM A DECISION on its own — the DECISION gate
 below only catches a park that was written to `PARK_FILE` by a human tool
 (`pulse-park.sh` on the donor system, not ported here — this repo has no scheduler yet, see
-`④ AUTOMATION`). On a fresh install with nobody ever having parked anything, that gate is
+`4 AUTOMATION`). On a fresh install with nobody ever having parked anything, that gate is
 simply never exercised — not broken, just unfed. This module is ported CORRECT AND CALLABLE,
 exactly like `fault_ledger.py` — nothing here defaults it to a live cron slot, because
 nothing in this repo has a cron slot yet. Treat it as shipped, disabled by absence of a
@@ -88,7 +88,7 @@ ORGANISM_DISTINCT_KEYS = 2
 #
 # ⚖ WHY A WINDOW AND NOT A RE-ORDER. Checking the widest claim first is CORRECT and is the
 # whole point: if five unrelated things are failing for one shared reason, "go fix
-# clair-ingest" is the wrong answer even though it is accurate. Re-ordering would throw that
+# ingest" is the wrong answer even though it is accurate. Re-ordering would throw that
 # insight away to dodge a data bug. The bug was never the ORDER — it was that the cohort
 # described the ledger's ENTIRE LIFE STORY rather than the present. Windowing keeps ORGANISM
 # meaning exactly what it was built to mean, and lets it switch OFF when the pattern

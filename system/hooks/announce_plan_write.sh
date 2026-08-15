@@ -22,7 +22,7 @@
 # PORTED: 2026-08-13 from claudeops-config — the pm_flag.sh call below was a literal
 #      `~/claudeops-config/...` path; it now resolves from this hook's own location. Everything
 #      else ($HOME/.claude/plans etc.) is the harness's own per-user global state, not
-#      Enver-specific, so it is left as $HOME-derived, matching plan_flag.sh's existing baseline.
+#      operator-specific, so it is left as $HOME-derived, matching plan_flag.sh's existing baseline.
 # ─────────────────────────────────────────────────────────────────────────────
 set +e
 INPUT="$(cat 2>/dev/null)"

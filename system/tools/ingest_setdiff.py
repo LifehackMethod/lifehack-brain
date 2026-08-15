@@ -21,7 +21,7 @@ This is the production mechanism a skill calls at its loss-point:
 
 Library use (the skill calls this at its fan-out return boundary):
     from ingest_setdiff import verify_completeness
-    result = verify_completeness(source_ids, captured_ids, skill="clair-ingest",
+    result = verify_completeness(source_ids, captured_ids, skill="ingest",
                                  declared_count=len(source_ids))
     if not result.ok:
         raise SystemExit(result.report())   # fail loud — never silently drop

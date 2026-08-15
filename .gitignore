@@ -30,7 +30,7 @@ users.json
 #    See "Taking an update later" in INSTALL.md.
 data/
 
-# ── YOUR KEYS. NEVER COMMITTED. ⚖ Enver's ruling, 2026-08-14 ─────────────────
+# ── YOUR KEYS. NEVER COMMITTED. ⚖ the operator's ruling, 2026-08-14 ─────────
 # The credential path is a local settings file, chosen deliberately over an OS-native
 # keystore for this release (see the plan, F8.8). THESE LINES ARE THE WHOLE PROTECTION,
 # so they go in BEFORE the file exists rather than after someone creates one.

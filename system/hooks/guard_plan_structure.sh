@@ -1,6 +1,6 @@
 #!/bin/bash
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
-# WHY: Enver's standing rule — every plan must be hierarchical (Phase → Feature →
+# WHY: the operator's standing rule — every plan must be hierarchical (Phase → Feature →
 #      Task) with each task gated Execute → Verify & test → mark ✅ (not "done" until
 #      its verify passes). It lived only as prose in a SOP, so it kept getting missed;
 #      nothing enforced it. There is NO EnterPlanMode hook (verified vs Claude Code
