@@ -41,7 +41,7 @@ as a clean pass -- LAW 1, the same reason NO_OUTCOME exists. It is exit 3 rather
 caller must be able to tell "re-ask the human" (2) from "do not re-ask; the answer was good, the DISK
 failed" (3). Collapsing them would make a storage fault look like an undecided human.
 
-Python 3.9-compatible on purpose: /usr/bin/python3 on these Macs is 3.9, and that is the interpreter
+Python 3.9-compatible on purpose: /usr/bin/python3 on macOS is 3.9, and that is the interpreter
 cron and the harness actually invoke. No `X | None` annotations.
 """
 from __future__ import annotations

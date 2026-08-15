@@ -77,7 +77,7 @@ SLUG="$(basename "$SKILL_DIR" | tr '[:upper:]' '[:lower:]')"
 ran_count=0
 fail_count=0
 
-# a portable soft timeout (this Mac has neither `timeout` nor `gtimeout`) -- never let one
+# a portable soft timeout (macOS has neither `timeout` nor `gtimeout`) -- never let one
 # script hang the whole tester run forever; an unreachable/hung tool maps to NO-TESTER-RAN /
 # FAILED, never to a silently-still-running PASS.
 run_with_timeout() {

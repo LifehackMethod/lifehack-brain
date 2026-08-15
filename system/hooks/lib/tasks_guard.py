@@ -34,7 +34,7 @@ VERDICTS (a closed set, returned as an exit code by __main__):
   0  ALLOW    nothing here touches the goals list, or it is the one sanctioned write
   2  DENY     with a reason on stderr
 """
-from __future__ import annotations   # /usr/bin/python3 on these Macs is 3.9
+from __future__ import annotations   # /usr/bin/python3 on macOS is 3.9
 
 import json
 import os
