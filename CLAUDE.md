@@ -28,6 +28,7 @@ elements/<slug>.md, the exhaustive source. If this map is your only source, you 
              subject's own desks/<subject>/ store, never here. ask "whose records are these?"
 @ /read    pull the right memory in, no blind search | read.md
 @ /read    what did I decide months ago, and why | journal.md canon.md
+@ /ingest  turn a pile of my own material into a folder structure I can work from | world-model-ingestion.md
 @ /project-manager   re-open a project I left | project-manager.md pm-flag.md
 @ /autoplan          re-sharpen the plan as reality drifts from it | build-plan-plane.md
 @ /build             execute the plan, our way | build-plan-plane.md

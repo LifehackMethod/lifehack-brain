@@ -113,7 +113,7 @@ Steps (in order):
 1. HTML entity unescape (`html.unescape`) — surfaces entity-encoded payloads as plain text before matching.
 2. Inline HTML tag removal (`re.sub(r"<[^>]{0,200}>", " ", s)`) — strips markup without a full DOM parse.
 3. Unsafe Unicode removal — strips zero-width chars (`\U0000200B–\U0000200F`), bidi overrides (`\U0000202A–\U0000202E`),
-   invisible operators, deprecated format chars, BOM (`﻿`), C0/C1 controls, and the Unicode Tags
+   invisible operators, deprecated format chars, BOM (`\U0000FEFF`), C0/C1 controls, and the Unicode Tags
    block (`\U000E0000–\U000E007F`). These are stego/injection carriers invisible to humans.
 4. Whitespace collapse (`re.sub(r"\s+", " ", s).strip()`).
 5. Optional length cap (default 200 chars for fields, 800 for bodies, `NO_CAP=0` to disable — email
