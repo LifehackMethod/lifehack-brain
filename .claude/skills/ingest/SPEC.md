@@ -6,7 +6,7 @@ slug: ingest-skill
 topic: [skill-design, ingestion-pipeline]
 status: draft
 authority: user
-confidence: DRAFT — sections marked ❓ are UNRESOLVED and await the human-in-the-loop Q&A. **2026-08-08: the four PHASES and all four phases' STEP LISTS are ratified (see §0 AMENDMENT LOG); the ❓ that remain are narrower than they were.**
+confidence: "DRAFT — sections marked ❓ are UNRESOLVED and await the human-in-the-loop Q&A. **2026-08-08: the four PHASES and all four phases' STEP LISTS are ratified (see §0 AMENDMENT LOG); the ❓ that remain are narrower than they were.**"
 created_at: 2026-08-04
 updated_at: 2026-08-08
 template: system/templates/producer-spec-template.md
