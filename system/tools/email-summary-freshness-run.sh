@@ -9,10 +9,12 @@
 #      down/disabled — the whole point of a dead-man.
 # GUARDS: a producer — writes ONLY its status tile + a machine-local proof artifact; no Gmail, no state.
 # REDIRECT: tile state/status/email-summary.json (written by the python); machine-local proof below.
-# ⚖ PORT NOTE: donor's marker-driven single-writer machine gate (state/primary-machine, two-Mac
-#      election) is DELETED, not translated — a student has one computer. This runner has no caller
-#      yet — DEST has no scheduler/cron scaffold (that lands separately); ported so it is correct and
-#      callable the moment one exists.
+# ⚖ PORT NOTE: donor's marker-driven single-writer machine gate (state/primary-machine, two-machine
+#      election) is DELETED, not translated — a student has one computer. ⚠ CORRECTED 2026-08-15
+#      (T9.7d): this used to deny that DEST had any scheduler or cron scaffold, and to say this
+#      runner had no caller. Both are
+#      false — `system/pulse-config.md` carries a real `email-summary-freshness` row (3600s)
+#      invoking this file.
 # ─────────────────────────────────────────────────────────────────────────────
 set -eo pipefail
 

@@ -7,9 +7,27 @@
 #         pm_flag.sh exactly: CLAUDE_CODE_SESSION_ID, cwd-hash fallback). The doc
 #         excerpt it injects is FENCED as untrusted data + control/zero-width/bidi
 #         stripped (anti prompt-injection); markdown is NOT cleaned.
+#         ⭐ ONE EXCEPTION TO "read-only observer" (2026-08-15): this hook is the sole
+#         issuer of the human-word override grant. It is the only code in the system
+#         handed the human's RAW PROMPT, which is the only input a model cannot author
+#         — so it is the only place a genuine human gate can be built. It matches that
+#         prompt against a narrow closed list of explicit phrases and writes
+#         override-<key>.grant; pm_flag.sh burns it on first use. Nothing else writes
+#         that file, and this hook still never blocks anything.
 # REDIRECT: N/A (non-blocking). Flag ~/.claude/run/pm/pm-sess-<id>.flag (or pm-cwd-<hash>.flag).
 #           Off-switch: pm_flag.sh clear, or TTL (PM_TTL_HOURS env override; default is READ
 #           FROM pm_flag.sh's `ttl` verb, not a literal here — see UPDATED 2026-08-14).
+# UPDATED: 2026-08-15 (a) ISSUES THE HUMAN-WORD OVERRIDE GRANT — see the exception in GUARDS.
+#           (b) THE TTL WAS STILL INERT AFTER THE 2026-08-14 FIX BELOW. That fix made 36h the one
+#           definition, and the number was still never applied: _refresh_armed_at ran BEFORE the
+#           expiry check and rewrote armed_at to now on every turn whenever the flag's session=
+#           matched this session — which is the normal case and the only case that reaches the
+#           check. Measured: a flag stamped 40h ago survived; the same flag with a foreign
+#           session= was deleted. So the flag could not expire at 12h, 36h or any other number,
+#           including across a --resume of a session left for weeks, which is the one moment the
+#           TTL is actually FOR. Fixed by deciding expiry against the value ON DISK first and
+#           refreshing only a flag that survived that. Both original intents are kept intact:
+#           alive while you are working (every turn refreshes), aged out after a real gap.
 # UPDATED: 2026-06-02 (symmetric key; relative-path resolve; fenced+normalized anchor)
 # UPDATED: 2026-08-14 (TTL default sourced from pm_flag.sh instead of a second hardcoded copy.
 #           FOUND: this file's own copy of the default silently stayed at 12h after pm_flag.sh
@@ -60,6 +78,32 @@ _pm_default_ttl() {
 TTL_HOURS="${PM_TTL_HOURS:-$(_pm_default_ttl)}"
 
 INPUT="$(cat 2>/dev/null)"
+# THE HUMAN'S RAW WORDS. This is the whole reason the override lives in THIS file: the `prompt`
+# field is written by the person and by nothing else. A session cannot fire a UserPromptSubmit
+# event, cannot choose this text, and cannot reach it — so a token derived from it is a token the
+# model cannot mint for itself. Everything else a session could touch (a flag, an env var, an
+# argument, a file) is the model authorising the model.
+# Newlines collapse to spaces so a multi-line prompt still matches, and so the recorded phrase can
+# never break the key=value grant file. Degrade-safe: any failure leaves it empty -> no grant.
+# ⚠ THE HOLE THIS DOES NOT CLOSE, SAID PLAINLY. A session has a shell, so it can run this file
+# itself and feed it any JSON it likes — including a prompt the person never typed.
+# ⛔ THERE IS NO CHECK IN HERE FOR THAT, DELIBERATELY. A validator inside the thing being forged is
+# checked by the forger; it reads as protection and is not, which is worse than the honest hole.
+# What actually stands in the way is OUTSIDE this file: `guard_pm_flag_store.sh` denies a Bash
+# command that runs this hook, and denies a hand-written grant (the grant lives inside the store it
+# already guards). Both are text-matching speed bumps by that guard's own admission. The real
+# backstop is NOISE: every spend prints a banner naming both projects on the terminal the person is
+# watching, and writes previous_slug + override_phrase into the lock file and an arm-override line
+# into the logbook. That is the owner's stated bar — "I don't mind being able to write into a
+# different brief; what I want is for it not to change without me seeing it." A forged grant is
+# loud, traced and attributable. The real fix is an OS boundary (a store the agent cannot write
+# as), deliberately deferred in this repo. Do not paper over it with more pattern-matching.
+PROMPT="$(printf '%s' "$INPUT" | python3 -c 'import sys,json
+try:
+    p = (json.load(sys.stdin).get("prompt") or "")
+except Exception:
+    p = ""
+sys.stdout.write(" ".join(p.split())[:4000])' 2>/dev/null)"
 CWD="$PWD"
 if [ -z "$CWD" ] || [ "$CWD" = "/" ]; then
   CWD="$(printf '%s' "$INPUT" | python3 -c 'import sys,json
@@ -75,43 +119,93 @@ elif [ -n "$CWD" ]; then
 else
   exit 0
 fi
+# ── THE HUMAN-WORD OVERRIDE GRANT ────────────────────────────────────────────────────────────
+# WHAT IT IS FOR: the owner's ruling has TWO legal ways to change the project a window is armed
+# to — a new window, or "the human explicitly says write to this other project or this other
+# plan, in which case I'm okay with the hook firing once and then the human can override it."
+# pm_flag.sh built the first and refused the second outright. This is the second.
+# WHY IT IS A CLOSED PHRASE LIST AND NOT A JUDGEMENT: code gets membership tests, artifacts and
+# timing; anything that needs the word "meant" defined before it can be checked is the model's
+# half, not the hook's. So this asks one mechanical question — does the person's own sentence
+# contain one of these explicit forms — and never "did they seem to want a project change".
+# WHAT IT DELIBERATELY DOES NOT DO: it does not read WHICH project they named and does not check
+# the arm against it. That comparison would need "the ingest project" to equal `ingest-skill`,
+# which is judgement wearing a regex, and it would refuse correct work. The grant is PERMISSION
+# FOR ONE CHANGE; pm_flag.sh shouts the destination it actually took, on the terminal the person
+# is looking at, which is what makes a wrong destination visible in the same breath.
+# LIFETIME: exactly one turn. The next prompt that does not re-authorise deletes it (below), so
+# an authorisation cannot sit open behind the person for the rest of the session.
+# ⚠ STATED HOLE, NOT AN OVERSIGHT: a person who PASTES text containing one of these phrases
+# issues a grant they did not mean. It is narrow (it still takes a mismatched arm to spend it,
+# and the spend is announced), and the alternative — judging intent — is the thing this must not
+# do. The tighter fix, if it ever earns one, is asking the harness for a confirmation, not more regex.
+GRANTF="$HOME/.claude/run/pm/override-$KEY.grant"
+_OVR_RE='(override|unlock)[[:space:]]+(the[[:space:]]+)?((project|pm|brief|plan)[[:space:]]+)?(lock|arming)|(switch|change|re-?point|point|move|re-?arm)[[:space:]]+(the[[:space:]]+)?(armed[[:space:]]+)?(project|brief|plan)[[:space:]]+to[[:space:]]|(switch|change|move|re-?point|re-?arm)[[:space:]]+to[[:space:]]+(the[[:space:]]+)?(project|brief|plan)[[:space:]]|write[[:space:]]+(to|into)[[:space:]]+(this|that|the)[[:space:]]+other[[:space:]]+(project|plan|brief)|arm[[:space:]]+[^[:space:]]{1,60}[[:space:]]+instead'
+if [ -n "$PROMPT" ] && printf '%s' "$PROMPT" | grep -qiE "$_OVR_RE" 2>/dev/null; then
+  # Quote the match PLUS the word that follows it. Several of the forms above end on "to ", so the
+  # bare match reads "switch the project to " — and the one thing a person needs to see quoted back
+  # is the name they said. This is for the human's eyes only; pm_flag.sh never parses it.
+  # `head -1` is LOAD-BEARING, not tidiness: -m1 caps matched LINES, and the prompt has been
+  # flattened to ONE line, so -o happily prints every match on it. A person who says "write to
+  # this other project, switch the project to beta" produced two matches, which tr then welded
+  # into the nonsense "write to this other projectswitch the project to beta" — quoted back to
+  # them verbatim as the words that unlocked their window. Worse, without tr eating the newline
+  # it would have written a SECOND phrase= line into a key=value file. First match only.
+  _PH="$(printf '%s' "$PROMPT" | grep -oiE "($_OVR_RE)[^[:space:]]*" 2>/dev/null | head -1 | LC_ALL=C tr -d '\000-\037\177' 2>/dev/null | cut -c1-160)"
+  [ -n "$_PH" ] || _PH="$(printf '%s' "$PROMPT" | cut -c1-160)"
+  mkdir -p "$HOME/.claude/run/pm" 2>/dev/null
+  { echo "granted_at=$(date +%s 2>/dev/null)"; echo "session=$CLAUDE_CODE_SESSION_ID"; echo "phrase=$_PH"; echo "cwd=$CWD"; } > "$GRANTF" 2>/dev/null
+  # LOUD, and on the turn it happens. This hook cannot block and does not want to; what it can do
+  # is make sure the change is never the quiet part. The person's complaint was never that the
+  # model wrote somewhere — it was that it changed destination without them seeing it.
+  echo "[⭐ PROJECT-LOCK OVERRIDE AUTHORISED BY THE HUMAN, ONE CHANGE ONLY] Their prompt says: \"${_PH}\". The lock on this window's armed project will allow exactly ONE change — the next \`pm_flag.sh arm <doc> <slug> <desk>\` (or \`clear\`) that would otherwise be refused. It expires when they send their next message. ⛔ CONFIRM THE DESTINATION WITH THEM FIRST IF THEY DID NOT NAME ONE, then state plainly in your reply which project you moved off and which you moved to. Do not spend this on a project they did not ask for."
+elif [ -f "$GRANTF" ]; then
+  # Their next message that does not re-authorise ENDS the authorisation. One turn, by construction.
+  rm -f "$GRANTF" 2>/dev/null
+fi
+
 # ── keep THIS active session's flags fresh so they NEVER expire mid-session ──
 # (the author, 2026-07-14: project/plan/scratch shouldn't time out while you're still in the session;
 #  refresh armed_at every turn -> alive while active, ages out normally only after you stop.)
-_refresh_armed_at(){
+_refresh_armed_at(){   # $1 = flag file · $2 = OPTIONAL ttl hours (see below)
   [ -f "$1" ] || return
   _now="$(date +%s 2>/dev/null)"; [ -n "$_now" ] || return
   _s="$(grep '^session=' "$1" 2>/dev/null | cut -d= -f2-)"
   if [ -z "$CLAUDE_CODE_SESSION_ID" ] || [ "$_s" = "$CLAUDE_CODE_SESSION_ID" ]; then
+    # ⛔ EXPIRE FIRST, THEN REFRESH — the order is the whole fix (2026-08-15).
+    # This function used to refresh unconditionally, and it runs BEFORE the expiry check further
+    # down the file. On the only path that ever reaches that check — a flag whose session= is this
+    # session, i.e. every flag in its own window — armed_at had already been rewritten to now, so
+    # the age it tested was always zero. The TTL could not fire at 12h, at 36h, or at any value:
+    # measured 2026-08-15, a flag stamped 40h earlier survived, while the same flag carrying a
+    # foreign session= was correctly deleted. The number was single-source after 2026-08-14 and
+    # still inert. It matters most on `--resume` of a window abandoned for weeks, which comes back
+    # armed to a project nobody has thought about since.
+    # Reading the value ON DISK first keeps both of the original intents whole: a flag stays alive
+    # for as long as you keep working (every turn re-stamps it), and ages out only after a real gap.
+    # Only the caller that PASSES a TTL is expired — plan/ and scratch/ flags own their own numbers
+    # in their own scripts, and this hook must not impose the project TTL on them.
+    if [ -n "$2" ]; then
+      _at="$(grep '^armed_at=' "$1" 2>/dev/null | cut -d= -f2-)"
+      case "$_at" in (''|*[!0-9]*) _at="" ;; esac
+      if [ -n "$_at" ] && [ $(( _now - _at )) -ge $(( $2 * 3600 )) ]; then rm -f "$1" 2>/dev/null; return; fi
+    fi
     if grep -q '^armed_at=' "$1" 2>/dev/null; then
       _tmp="$1.tmp.$$"
       sed "s/^armed_at=.*/armed_at=$_now/" "$1" > "$_tmp" 2>/dev/null && mv "$_tmp" "$1" 2>/dev/null
     fi
   fi
 }
-_refresh_armed_at "$HOME/.claude/run/pm/pm-$KEY.flag"
+_refresh_armed_at "$HOME/.claude/run/pm/pm-$KEY.flag" "$TTL_HOURS"
 _refresh_armed_at "$HOME/.claude/run/plan/plan-$KEY.flag"
 _refresh_armed_at "$HOME/.claude/run/scratch/scratch-$KEY.flag"
 
-# ── huddle close-out reminder (gated; independent of the PM flag) ───────────
-# Re-inject the BUILD CLOSE-OUT nudge every turn ONLY for a session that armed
-# the huddle flag (via huddle_flag.sh on join). A session NOT in a huddle has
-# no flag -> this block is a pure NO-OP. The session-match guard ensures one
-# session's huddle flag can never leak into another (non-huddle) session.
-HFLAG="$HOME/.claude/run/huddle/huddle-$KEY.flag"
-if [ -f "$HFLAG" ]; then
-  HROOM="$(grep '^room=' "$HFLAG" 2>/dev/null | cut -d= -f2-)"
-  HSESS="$(grep '^session=' "$HFLAG" 2>/dev/null | cut -d= -f2-)"
-  HAT="$(grep '^armed_at=' "$HFLAG" 2>/dev/null | cut -d= -f2-)"
-  HNOW="$(date +%s 2>/dev/null)"
-  if [ -n "$CLAUDE_CODE_SESSION_ID" ] && [ "$HSESS" != "$CLAUDE_CODE_SESSION_ID" ]; then
-    :
-  elif [ -n "$HAT" ] && [ -n "$HNOW" ] && [ $(( HNOW - HAT )) -ge $(( TTL_HOURS * 3600 )) ]; then
-    rm -f "$HFLAG" 2>/dev/null
-  elif [ -n "$HROOM" ]; then
-    echo "[huddle ACTIVE: ${HROOM}] In an active huddle build — when you FINISH a major chunk, read the board to catch up, then post a close-out (DID / DUE-for-another-lane / STILL-OPEN) and leave. Automatically, without being asked."
-  fi
-fi
+# ⛔ REMOVED (T9.7d, 2026-08-15, stale-claim sweep): a donor multi-window build-coordination
+# close-out reminder block used to sit here, reading a per-session flag file every single turn.
+# Nothing in this repo ever writes that flag — the donor tool that would have (out of scope for
+# this port; multi-window build coordination is not part of this product, and the migration plan
+# explicitly says not to port it) — so the block was a permanent dead read, silently doing
+# nothing on every turn forever. Deleted rather than left as inert weight.
 
 FLAG="$HOME/.claude/run/pm/pm-$KEY.flag"
 [ -f "$FLAG" ] || exit 0

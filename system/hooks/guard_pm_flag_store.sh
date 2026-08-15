@@ -16,8 +16,12 @@
 #      pattern, never the bare keyword — an `ls`, `cat` or `grep` of the store stays allowed, and so
 #      does an ordinary `pm_flag.sh arm|status|locked`, which is the sanctioned writer.
 # REDIRECT: the only sanctioned writer is `bash <repo>/system/hooks/pm_flag.sh arm|clear|status|locked`.
-#      You cannot change which project this window is on. Open a NEW window and run
-#      `/checkin <project>` there. READING another project's brief or plan needs no arming at all.
+#      YOU cannot change which project this window is on. Two things can: a NEW window
+#      (`/checkin <project>` there), or the PERSON saying so in their own next prompt — e.g.
+#      "switch the project to <slug>" — which makes pm_persist.sh issue a single-use grant that
+#      pm_flag.sh burns on one change. You cannot produce that yourself, and writing the grant
+#      file by hand is a write to this store like any other: denied here. READING another
+#      project's brief or plan needs no arming at all.
 # SIGNPOST: the rule and its reasoning live in `system/hooks/pm_flag.sh`'s own header; this guard's
 #      matrix is `system/hooks/tests/test_write_custody_guards.sh`. Change those first.
 # FAIL_POSTURE: closed — unparseable input denies.
@@ -62,7 +66,7 @@ TOOL=$(printf '%s' "$PARSED"  | sed -n '1p')
 COMMAND=$(printf '%s' "$PARSED" | sed -n '2p')
 FILEPATH=$(printf '%s' "$PARSED" | sed -n '3p')
 
-DENY="{\"decision\":\"block\",\"reason\":\"BLOCKED: direct write to the project-arming store (~/.claude/run/pm/). WHY: which project a window is working on is fixed for the life of that window — pm_flag.sh refuses to re-point a window or un-point it, and writing these files by hand is exactly how that refusal gets skipped. An audit proved a one-line direct write silently re-points a window with no refusal and no trace. The incident behind the rule: a session re-pointed itself mid-work and then wrote two handoff notes aimed at the wrong project. REDIRECT: the only sanctioned writer is \`bash ${_REPO}/system/hooks/pm_flag.sh arm|clear|status|locked\`. You cannot change which project THIS window is on — open a new window and run \`/checkin <project>\` there. READING another project's brief or plan needs no arming: just open the file. Reads of this store (ls/cat/grep) are allowed. RULE: the header of system/hooks/pm_flag.sh.\"}"
+DENY="{\"decision\":\"block\",\"reason\":\"BLOCKED: direct write to the project-arming store (~/.claude/run/pm/). WHY: which project a window is working on is fixed for the life of that window — pm_flag.sh refuses to re-point a window or un-point it, and writing these files by hand is exactly how that refusal gets skipped. An audit proved a one-line direct write silently re-points a window with no refusal and no trace. The incident behind the rule: a session re-pointed itself mid-work and then wrote two handoff notes aimed at the wrong project. REDIRECT: the only sanctioned writer is \`bash ${_REPO}/system/hooks/pm_flag.sh arm|clear|status|locked\`. YOU cannot change which project THIS window is on. Two things can, and neither is available to you alone: (1) a NEW window — run \`/checkin <project>\` there; (2) the PERSON saying so in their own next prompt, e.g. \\\"switch the project to <slug>\\\", which issues a single-use grant that pm_flag.sh burns on exactly one change. ⛔ Do not hand them that sentence as a password to recite — ASK whether they actually want the project changed, and let them answer in their own words. Writing the grant file yourself is a direct write to this store and lands right back here. READING another project's brief or plan needs no arming: just open the file. Reads of this store (ls/cat/grep) are allowed. RULE: the header of system/hooks/pm_flag.sh.\"}"
 
 # --- Write/Edit: the tool IS a write. Any target inside the store is denied outright.
 case "$TOOL" in
@@ -72,6 +76,22 @@ case "$TOOL" in
     esac
     exit 0 ;;
 esac
+
+# --- RUNNING THE GRANT ISSUER IS A WRITE TO THE STORE BY ANOTHER NAME (2026-08-15).
+# pm_persist.sh is the only thing that mints the human-word override grant, and it mints it from
+# the prompt handed to it on stdin. Only the harness has any business handing it that — a session
+# with a shell can pipe it a sentence the person never said and manufacture its own authorisation,
+# which is precisely the thing the lock exists to make impossible. There is no legitimate reason
+# for a session to execute a UserPromptSubmit hook by hand.
+# ⚠ THIS IS ONE FILENAME, NOT A NEW VERB LIST — the header's warning above ("do NOT add regex rules
+# believing they close the gap") is about chasing evasive writes with more patterns, and it still
+# stands. This adds no pattern to that chase: no verb pairing, no path resolution, nothing that can
+# fire on ordinary work. The whole false-positive surface is someone debugging the hook by hand,
+# and the redirect below names the supported way to do exactly that.
+if printf '%s' "$COMMAND" | grep -qE '(^|[[:space:]/;&|(])pm_persist\.sh([[:space:]]|$|["'"'"'])'; then
+  printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: running pm_persist.sh by hand. WHY: that hook is the sole issuer of the project-lock override grant, and it issues it from whatever prompt text it is handed on stdin. Only the harness should hand it that. A session that pipes it a sentence the person never typed manufactures its own permission to change which project this window writes to — which is the exact failure the lock exists to prevent, and it would carry the person's name on it. REDIRECT: you cannot authorise this yourself. If the project really should change, ASK — and let them answer in their own words, in their own next message; the hook will see it. To exercise or debug the hook, run its suite: \`bash ${_REPO}/system/hooks/tests/test_pm_lock_override.sh\`, which drives it inside a sandbox HOME. RULE: the header of system/hooks/pm_flag.sh.\"}" >&2
+  exit 2
+fi
 
 # --- Bash: only deny when the command NAMES the store AND carries a write/destroy token.
 # Path-BOUNDARY anchored: `.claude/run/pm` must be followed by a `/`, a quote, whitespace, or the end

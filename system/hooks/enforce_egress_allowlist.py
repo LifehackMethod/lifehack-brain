@@ -152,8 +152,9 @@ if bad:
         "WHY: reading a poisoned page is survivable; reading one and then sending something out is "
         "not, and a hand-rolled curl is how that would happen. This is the second half of the wall. "
         "REDIRECT: to READ a web page, use python3 <repo>/system/tools/safe_fetch.py '<url>' — it "
-        "sanitizes on the way in and does its own allowlisting, and it does not go through this "
-        "check. If this host genuinely belongs here, add its base domain to "
+        "sanitizes on the way in and has a domain seal of its own (system/safe-fetch-allowlist.md, "
+        "which ships OFF), and it does not go through this check. "
+        "If this host genuinely belongs here, add its base domain to "
         "system/egress-allowlist.md between the ALLOWLIST markers.\n")
     _log_block(bad)
     sys.exit(2)

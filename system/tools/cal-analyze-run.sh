@@ -10,17 +10,30 @@
 # data-never-commands. SAFETY: read-only against the world; the only writes are analysis/*.md +
 # dominoes-draft.md INSIDE the vault dir. Watchdog-bounded + single-instance locked. Headless (claude OAuth token).
 #
-# ⚖ PORT NOTE: donor's LEAD-MACHINE gate (state/primary-machine marker election between two Macs)
+# ⚖ PORT NOTE: donor's LEAD-MACHINE gate (state/primary-machine marker election between two machines)
 # is DELETED, not translated — a student has one computer. The Opus model pin below (MODEL=) is a
-# COST DECISION, not a personal identifier — a student can change it. This runner has no caller
-# yet on a fresh install beyond being chained from cal-vault-run.sh; DEST has no scheduler/cron
-# scaffold (that lands separately). A student with no `claude setup-token` run yet gets a clear
-# FATAL line below, never a stack trace.
+# COST DECISION, not a personal identifier — a student can change it. ⚠ CORRECTED 2026-08-15
+# (T9.7d): this used to deny that DEST had any scheduler or cron scaffold. That's false —
+# `system/tools/pulse.sh` is the live daemon, `system/tools/install-schedulers.sh` installs its
+# entry, and `system/pulse-config.md` has rows for several sibling runners. What's still true:
+# THIS specific runner has no direct pulse-config.md row of its own — it only runs chained from
+# cal-vault-run.sh (which itself also has no row yet — see that file). A student with no
+# `claude setup-token` run yet gets a clear FATAL line below, never a stack trace.
 # ─────────────────────────────────────────────────────────────────────────────
 set -u
 # Execution-residency: DRIVE = CONTENT root (vault + analysis output WRITTEN here); CODE_ROOT =
 # where this script + the lens prompts live ($0 → the git clone when cron calls the clone).
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# The ONE headless-claude credential preflight (require_claude_token) — shared with the four other
+# runners that fire `claude -p`, so the rc=75 stand-down contract cannot drift between copies again.
+# A missing library is a REAL defect (exit 1), never a stand-down.
+. "$CODE_ROOT/system/tools/claude-auth.lib.sh" || {
+  echo "[cal-analyze] FATAL: cannot source $CODE_ROOT/system/tools/claude-auth.lib.sh"; exit 1; }
+# Its gws sibling — the ONE headless-Google credential preflight, shared with the ten other runners
+# that reach Google. Same rule: a missing library is a REAL defect (exit 1), never a stand-down.
+. "$CODE_ROOT/system/tools/gws-auth.lib.sh" || {
+  echo "[cal-analyze] FATAL: cannot source $CODE_ROOT/system/tools/gws-auth.lib.sh"; exit 1; }
 
 # The data root, through the ONE resolver — never a hardcoded personal Drive path.
 DRIVE="$(python3 "$CODE_ROOT/shared/brain_root.py" --quiet 2>/dev/null)"
@@ -61,16 +74,27 @@ if [ ! -d "$LENS_DIR" ]; then echo "[cal-analyze] no lens prompts at $LENS_DIR �
 mkdir -p "$VAULT/analysis"
 
 # ── headless claude auth (subscription token; NEVER written into the tracked repo or notes root) ──
-TOKEN_FILE="$HOME/.config/lifehack/claude-oauth-token"
-if [ -s "$TOKEN_FILE" ]; then export CLAUDE_CODE_OAUTH_TOKEN="$(tr -d '[:space:]' < "$TOKEN_FILE")"
-else echo "[cal-analyze] FATAL: no claude token at $TOKEN_FILE — run 'claude setup-token' and save it there."; exit 3; fi
-# gws headless env (keychain-free), in case an agent reaches Google
-GWS_CREDS="$HOME/.config/lifehack/gws-credentials.json"
-if [ -s "$GWS_CREDS" ]; then
-  export GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$HOME/.config/lifehack/gws-cron"
-  export GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE="$GWS_CREDS"
-  export GOOGLE_WORKSPACE_CLI_KEYRING_BACKEND=file
-fi
+# ⚖ FIXED 2026-08-15: this used to hand-roll the check and `exit 3` on a missing token file, which
+# system/pulse-config.md's exit-code contract classes as a REAL FAILURE ("anything else"). On a
+# fresh install there IS no token file until the person runs the one-time `claude setup-token`, so
+# the day this runner gets a scheduler row, three ticks would trip Pulse's 3-strike breaker and
+# system-health.py would render it DOWN/severity:error permanently — auto-disabling a runner the
+# student never got to configure. rc=75 = "this job's OWN preflight declined to run this tick"
+# -> counted `skipped`, never a fault. It stays LOUD: the helper always names the missing
+# credential and how to supply it. This runner has no pulse-config.md row TODAY (it only runs
+# chained from cal-vault-run.sh), so the fix is pre-emptive — it becomes the live bug the day a
+# row is wired, which is precisely when nobody would be looking.
+# This was one of five identical hand-rolled copies; two had already been fixed without the fix
+# reaching here, so the check now lives in ONE place (system/tools/claude-auth.lib.sh, sourced
+# above). ⛔ Do not re-inline it.
+require_claude_token cal-analyze || exit 75
+# gws headless env (keychain-free), in case an agent reaches Google. OPTIONAL by design — the
+# analysis reads the already-pulled vault, so no Google means a still-useful result, not a failure.
+# ⚖ 2026-08-15: was a hand-rolled `[ -s "$GWS_CREDS" ]` block, one of eleven identical copies —
+# now the shared helper (gws-auth.lib.sh, sourced at the top). Two things change: `[ -s ]` passed a
+# whitespace-only or corrupt file and exported it anyway, and the absence was SILENT. The helper
+# validates, and names the absence in one non-fatal line. ⛔ Do not re-inline it.
+load_gws_credentials_optional cal-analyze
 
 # ── single-instance lock ──
 LOCKDIR="/tmp/lifehack-cal-analyze.lock"

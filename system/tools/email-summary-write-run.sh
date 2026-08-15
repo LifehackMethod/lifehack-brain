@@ -15,12 +15,14 @@
 #      A write ERROR (e.g. dead auth) buzzes the phone IMMEDIATELY.
 # REDIRECT: v2 store threads-v2/ + tile state/status/email-summary.json (both written by the python);
 #      machine-local proof $OUT_DIR/last-run.json (trap) + $OUT_DIR/last-write.log (the run's output).
-# ⚖ PORT NOTE: donor's PRIMARY-machine gate (state/primary-machine marker election between two Macs)
+# ⚖ PORT NOTE: donor's PRIMARY-machine gate (state/primary-machine marker election between two machines)
 #      is DELETED, not translated — a student has one computer, so there is nothing to elect between.
 #      The single-instance LOCK below is unrelated and is kept (it guards against two overlapping
-#      ticks on the SAME machine, which is still possible with one computer). This runner has no
-#      caller yet — DEST has no scheduler/cron scaffold (that lands separately); it is ported so it
-#      is correct and callable the moment one exists. A student with no `gws` binary / no Google
+#      ticks on the SAME machine, which is still possible with one computer). ⚠ CORRECTED
+#      2026-08-15 (T9.7d): this used to deny that DEST had any scheduler or cron scaffold, and to
+#      say this runner had no
+#      caller. Both are false — `system/pulse-config.md` carries a real `email-summary-write`
+#      row (10800s) invoking this file. A student with no `gws` binary / no Google
 #      account gets a clear FATAL line below, never a stack trace or a silent no-op success.
 # ─────────────────────────────────────────────────────────────────────────────
 set -eo pipefail
@@ -31,6 +33,12 @@ STALE_AFTER_HOURS="4"                              # own absence horizon — jus
                                                    #   missed run surfaces on the next tick (not after 4 misses)
 WATCHDOG_SECS="900"                                # a full --write-v2 touches Gmail per label; budget generously
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"  # residency: code from clone
+
+# The ONE headless-gws credential preflight (require_gws_credentials) — shared with the ten other
+# runners that reach Google, so the rc=75 stand-down contract cannot drift between copies again.
+# A missing library is a REAL defect (exit 1), never a stand-down.
+. "$CODE_ROOT/system/tools/gws-auth.lib.sh" || {
+  echo "[$SUBSYSTEM_NAME] FATAL: cannot source $CODE_ROOT/system/tools/gws-auth.lib.sh"; exit 1; }
 
 # The data root, through the ONE resolver — never a hardcoded personal Drive path. A student with
 # no data root set gets a clear, explicit message and a clean non-zero exit, never a stack trace.
@@ -86,20 +94,19 @@ trap _on_exit EXIT INT TERM
 #      mkdir -p ~/.config/lifehack/gws-cron
 #    A student with no Google account / no gws binary at all fails here with a clear FATAL line,
 #    never a stack trace or a silent success.
-GWS_CREDS="$HOME/.config/lifehack/gws-credentials.json"
-if [ -s "$GWS_CREDS" ]; then
-  export GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$HOME/.config/lifehack/gws-cron"
-  export GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE="$GWS_CREDS"
-  export GOOGLE_WORKSPACE_CLI_KEYRING_BACKEND=file
-else
-  # No creds file is true on day one of every install, and PERMANENTLY true for a student with no
-  # Google account — not a runner fault. rc=75 = "this job's own preflight declined to run this
-  # tick" (system/pulse-config.md's exit-code contract; matches cal-health.py / backlog-health.py's
-  # identical "not configured yet" convention) — Pulse counts it as `skipped`, never toward the
-  # 3-strike circuit breaker, so a permanently-unconfigured install never renders DOWN/error forever.
-  echo "[$SUBSYSTEM_NAME] STOOD DOWN: no gws creds at $GWS_CREDS — this needs Google Workspace CLI (gws) set up first. Run 'gws auth export --unmasked > $GWS_CREDS' (chmod 600) from an interactive session, then 'mkdir -p ~/.config/lifehack/gws-cron' to enable this job. See INSTALL.md."
-  RC=75; exit 75
-fi
+# No creds file is true on day one of every install, and PERMANENTLY true for a student with no
+# Google account — not a runner fault. rc=75 = "this job's own preflight declined to run this
+# tick" (system/pulse-config.md's exit-code contract; matches cal-health.py / backlog-health.py's
+# identical "not configured yet" convention) — Pulse counts it as `skipped`, never toward the
+# 3-strike circuit breaker, so a permanently-unconfigured install never renders DOWN/error forever.
+# ⚖ 2026-08-15: the check itself now lives in ONE place (gws-auth.lib.sh, sourced at the top) —
+# eleven runners hand-rolled it, and the `exit 3` version of this same branch survived in three
+# copies after being "fixed." The helper also catches what every hand-rolled copy missed: `[ -s ]`
+# passes a whitespace-only or corrupt file, which exported garbage and failed downstream instead of
+# standing down. `RC=75` FIRST so the EXIT trap records the stand-down, THEN exit — the helper
+# deliberately does not terminate on our behalf, for exactly this reason. ⛔ Do not re-inline it.
+require_gws_credentials "$SUBSYSTEM_NAME" || { RC=75; exit 75; }
+GWS_CREDS="$GWS_CREDS_FILE"   # path the helper actually looked at — quoted in the pre-flight FATAL below
 
 # ── PRE-FLIGHT: confirm gws auth is HEALTHY via the isolated creds before pulling. RETRY 3×4s so a
 #    transient token-refresh blip becomes a brief wait, not a hard failure. A real dead-auth still buzzes

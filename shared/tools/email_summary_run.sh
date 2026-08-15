@@ -15,11 +15,17 @@
 # Cron-safe: resolves all binaries by absolute path where possible. Minimal PATH assumption.
 # Pass-through: all args forwarded to the janitor so a supervised run can pass --force etc.
 #
-# ⚖ PORT NOTE: donor's single-writer machine gate (a two-Mac "Studio only" arbitration via
-# machine-token.sh) is DELETED, not translated — a student has one computer, so the concept this
-# gate arbitrated between does not exist here. The rest of this runner (timeout handling, tile
-# stamping) is unchanged. This runner has no caller yet — DEST has no scheduler/cron scaffold
-# (that lands separately); it is ported so it is correct and callable the moment one exists.
+# ⚖ PORT NOTE: donor's single-writer machine gate (a two-machine "designated writer only"
+# arbitration via machine-token.sh) is DELETED, not translated — a student has one computer, so the
+# concept this gate arbitrated between does not exist here. (The donor labelled this gate after one
+# of its own machines by name; that is the same primary-machine election the other runners' port
+# notes describe, stated here by ROLE because no machine is named in this repo.) The rest of this runner (timeout handling, tile
+# stamping) is unchanged. ⚠ CORRECTED 2026-08-15 (T9.7d): this used to deny that DEST had any
+# scheduler or cron scaffold — that's false, `system/tools/pulse.sh` is the live daemon and
+# `system/tools/install-schedulers.sh` installs its entry. What's still true, and now for a
+# different reason: this specific runner (the older v1-shaped watchdog wrapper) has no caller and
+# is DELIBERATELY not in `system/pulse-config.md` — see that file's own "NOT ADDED" note beside
+# `email-summary-write-run.sh`, which supersedes this file. Not an oversight; not wired on purpose.
 #
 # Usage (cron-safe, no args):
 #   /path/to/email_summary_run.sh

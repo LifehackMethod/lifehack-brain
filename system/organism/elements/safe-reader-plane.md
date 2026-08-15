@@ -6,7 +6,7 @@ altitude: base
 record_type: organism-element
 maturity_label: LIVE·gap
 gap_disposition: defect
-gap_disposition_note: "ruled 2026-07-28 at class level — C2 exception — the egress seal is never armed; runtime-constructed URLs bypass the L2 domain gate"
+gap_disposition_note: "ruled 2026-07-28 at class level — C2 exception — the egress seal is never armed; runtime-constructed URLs bypass the L2 domain gate. ⚠ CORRECTED 2026-08-15 — the first clause is out of date. The egress seal was BUILT OUT into a switchable Level-2 wall: a persistent switch file, three named states (OFF / ON / AMBIGUOUS, no quiet fourth), a --l2-status flag, and 12 tests. It SHIPS OFF and no caller arms it, so by default it still seals nothing — but a half-configured list now REFUSES rather than passing, and an unsealed read says so out loud. Read the clause as 'the seal ships off and is unwired', not 'the seal does not exist'. The runtime-constructed-URL clause is unchanged and still true. See the CORRECTION banner in the body."
 generated_from:
   - system/tools/safe_fetch.py
   - system/tools/safe_calendar.py
@@ -55,6 +55,38 @@ authority: user
 > element as the hook-registration source because that is where the donor repository keeps its
 > reference copy. It is on no ship list here and no ruling has placed it — a DEBT, not a pass.
 > The registrations themselves live in this repository at `.claude/settings.json`.
+
+> **⚠ CORRECTION — 2026-08-15 — the `safe_fetch.py` egress seal was ARMED. It still ships OFF.**
+> Every statement below that this element's per-run domain seal is *never armed*, *unarmed*, *exists in code
+> but is never set*, or *structurally present but functionally unarmed* — chiefly the GAPS entry and the
+> CURRENT/TARGET block — **was true when this element was authored on 2026-07-24 and is false as of today.**
+> Each site is struck and dated in place; this banner is the one full statement. Enver ruled it
+> (`authority: user`: *"APPROVED — ARM IT"*), to a shape already ruled: three honest levels, default off,
+> activatable.
+>
+> **What shipped, verified this session.** A persistent switch file `system/safe-fetch-allowlist.md` — a
+> one-word `on`/`off` switch plus a domain block, using the same marker convention as
+> `system/egress-allowlist.md` — and a new `l2_state()` in `system/tools/safe_fetch.py` that resolves every
+> read to **three named outcomes and no quiet fourth**: **OFF** — allowed, and it *announces on stderr, once
+> per process,* that the seal is not in force; **ON** — enforced, an off-list host refused **before the socket
+> opens**; **AMBIGUOUS** — **refused**. Precedence: the `SAFE_FETCH_ALLOWLIST` env var is the **per-run** seal
+> and **outranks** the file; the file is the **persistent** switch. A `--l2-status` flag reads the position
+> without fetching. `system/tools/test_egress_level2.py` holds 12 tests, passing inside
+> `system/tools/run-all-tests.sh`.
+>
+> ⚠ **THIS IS NOT "THE EGRESS WALL IS NOW ENFORCED," AND THE `LIVE·gap` LABEL WAS NOT CHANGED.** It ships
+> `off` with an empty domain block, and `--l2-status` printed, this session: *"L2 egress allowlist: OFF — web
+> reads are not sealed to a domain list."* **By default it seals nothing, and no reader in this plane arms
+> it.** The honest claim is **armed and switchable, ships OFF, and refuses loudly when half-configured** —
+> five ambiguous states now REFUSE rather than pass, including *domains listed while the switch still reads
+> `off`*, the believable human error. What improved is that the level you are actually at is knowable and
+> stated; a wall did not go up.
+>
+> ⚠ **Unchanged:** runtime-constructed URLs still bypass the Bash-command domain hook, that hook still **fails
+> OPEN deliberately** (it fronts every Bash call, where a false positive gets the guard unregistered — this
+> seal fronts web reads only), and the **OS firewall (LuLu) remains the only HARD wall and is still not
+> included**. The reader-actor structural wall — the tool-less reader — is untouched by any of this and
+> remains this plane's real guarantee.
 
 ---
 
@@ -119,8 +151,16 @@ plaintext.
 1. **Egress allowlist check** — `_enforce_egress_allowlist(url)` (added 2026-07-02, reader-actor build):
    - Blocks non-http(s) schemes (SSRF hygiene) — raises immediately before any socket opens.
    - If `SAFE_FETCH_ALLOWLIST` env var is set (comma-separated domains), rejects any URL whose host is
-     not in that list or a subdomain of it. Unset = no allowlist enforcement (backward-compatible).
-   - This is the per-run domain seal; see GAPS for its current unarmed state.
+     not in that list or a subdomain of it. ~~Unset = no allowlist enforcement (backward-compatible).~~
+   - ~~This is the per-run domain seal; see GAPS for its current unarmed state.~~
+   - ⚠ **CORRECTED 2026-08-15** — the unset case is no longer a silent no-op. `l2_state()` falls through to
+     the persistent switch file `system/safe-fetch-allowlist.md` and returns one of three named outcomes:
+     **OFF** (the shipped state — the read proceeds, *and one stderr line says the seal is not in force*, so
+     the caller is never left assuming a wall), **ON** (an off-list host raises before the socket opens), or
+     **AMBIGUOUS** (**the read is REFUSED**, naming the file and the line to fix). The env var remains the
+     **per-run** seal and outranks the file; an empty value counts as unset. `--l2-status` reports the
+     position without fetching. It **ships OFF**, so by default this step still enforces only the scheme
+     check.
 2. **HTTP fetch** — `urllib.request.urlopen` with a 10-second timeout, 2 MB body cap, custom User-Agent.
    Raises `RuntimeError` on network error.
 3. **Charset detection** — from `Content-Type` header or HTML meta tag; falls back to UTF-8.
@@ -418,7 +458,7 @@ All triggers are mediated by the hook plane (blocking) or by skill/CLAUDE.md con
 |---|---|---|
 | `ingest_gate_enforce.sh` PreToolUse | `[hook]` HARD — exit 2 blocks the tool call | All raw reads of external content via WebFetch, WebSearch, Read, Bash gws commands |
 | `AGENT_ID` scratch-dir lock | `[hook]` HARD — derived from PreToolUse hook input | Main session reading sanitized scratch; sub-agents allowed |
-| Egress allowlist (`safe_fetch.py:_enforce_egress_allowlist`) | `[skill]` — raises before socket opens | Non-http(s) schemes (SSRF hygiene); out-of-allowlist domains when SAFE_FETCH_ALLOWLIST is armed |
+| Egress allowlist (`safe_fetch.py:_enforce_egress_allowlist`) | `[skill]` — raises before socket opens | Non-http(s) schemes (SSRF hygiene); out-of-allowlist domains when SAFE_FETCH_ALLOWLIST is armed. ⚠ CORRECTED 2026-08-15 — also refuses EVERY web read when the Level-2 switch is AMBIGUOUS (half-configured), and announces on stderr when it is OFF. Default is OFF, so by default this row stops only the scheme check |
 | JSON params validation | `[skill]` — python `json.loads` pre-flight | Arbitrary string injection into gws CLI args |
 | Receipt-gate (Bash`·(a)` bypass block) | `[hook]` HARD — blocks `LIFEHACK_SKIP_SAFE_*=` assignment by agent | Disabling the sanitization layer via env var |
 | `ingest_gate.gate()` FLAG-floor for email | `[skill]` — coded into `email_convert._flag_injection` | Auto-DANGER on email (would false-positive security newsletters); floors any verdict at FLAG |
@@ -446,11 +486,27 @@ COMPLEMENTS  /websearch skill   · skill wraps safe_search_api.sh (primary) + sa
 
 ### GAPS
 
-1. **`SAFE_FETCH_ALLOWLIST` per-run domain seal is NEVER ARMED by any caller** (`[EGRESS-WALL-FAILOPEN]`,
+1. ~~**`SAFE_FETCH_ALLOWLIST` per-run domain seal is NEVER ARMED by any caller** (`[EGRESS-WALL-FAILOPEN]`,
    debt-ledger 2026-07-23). `safe_fetch.py` has `_enforce_egress_allowlist` which does nothing unless the
    env var is set. No caller sets it. A research sweep that follows a redirected URL could reach an
    off-list domain; the L2 domain gate is structurally present but functionally unarmed.
-   `state:actionable` — needs a scoping pass before build.
+   `state:actionable` — needs a scoping pass before build.~~
+   **⚠ RESTATED 2026-08-15 — the seal was BUILT. The gap narrowed; it did not close.** The text above is the
+   2026-07-24 record, kept because it is what was true then. What is true now, verified this session: the seal
+   is **armed and switchable** — a persistent switch file `system/safe-fetch-allowlist.md` beside the env var,
+   `l2_state()` returning **OFF / ON / AMBIGUOUS** with no quiet fourth state, a half-configured setting
+   **refusing every web read** instead of passing it, `--l2-status` to check the position without fetching,
+   and 12 tests in `system/tools/test_egress_level2.py` inside `system/tools/run-all-tests.sh`. The scoping
+   pass this gap asked for was ruled and executed by Enver (`authority: user`, *"APPROVED — ARM IT"*).
+   **What is STILL a gap, and why this entry stays open:** it **ships `off`** with an empty domain block and
+   **no caller in this plane sets the env var** — so the third sentence above holds unchanged, and a sweep
+   following a redirect can still reach an off-list domain. The one real change to the risk is that such a
+   read now *announces* it is unsealed rather than passing silently. Honest one-line form: **the seal exists,
+   is tested and is switchable — and it is off, so it seals nothing today.** `state:actionable`, scope
+   narrowed from *build it* to *arm it and wire the callers*. ⚠ Note also that this entry's "L2 domain gate"
+   means the **in-process `safe_fetch.py` seal**, which the shipped code and `docs/OUTSIDE-SERVICES.md` call
+   **Level 2**; that is a different layer from the Bash-command hook `enforce_egress_allowlist.sh`, which
+   other elements number L2 and which is untouched by this change.
 
 2. **Runtime-constructed URLs bypass the egress check** (`[EGRESS-WALL-FAILOPEN]`). The hook-plane
    `ingest_gate_enforce.sh` case `Bash`·(j) and the egress allowlist both operate on statically visible
@@ -490,13 +546,25 @@ filter structurally impossible, not just discouraged.
 
 **Current state → LIVE·gap:** the shared core and every per-channel tool are real, in daily use, and
 the unified `ingest_gate_enforce.sh` hook is registered on all four matchers
-(Bash/WebFetch/WebSearch/Read) with a fail-closed posture. The `·gap` is earned on two fronts: the
+(Bash/WebFetch/WebSearch/Read) with a fail-closed posture. The `·gap` is earned on two fronts: ~~the
 per-run egress domain seal (`SAFE_FETCH_ALLOWLIST`) exists in `safe_fetch.py`'s code but is never
-armed by any caller, so it provides zero actual restriction today; and a runtime-constructed URL
+armed by any caller, so it provides zero actual restriction today~~; and a runtime-constructed URL
 (built from a variable or an IP literal) slips past the static-string domain gate entirely. Both are
 documented, known, and not silently glossed.
 
-**TARGET:** arm `SAFE_FETCH_ALLOWLIST` with a scoping pass before relying on it
+⚠ **CORRECTED 2026-08-15 — the first front, restated. `LIVE·gap` still holds and was NOT raised.** The seal
+no longer merely "exists in code": it is switchable from a persistent file, resolves to three named states
+with no quiet fourth, refuses outright when half-configured, is checkable via `--l2-status`, and carries 12
+tests inside the aggregate gate. **But it ships OFF and no caller arms it — so the struck clause's
+conclusion, "zero actual restriction today", is STILL TRUE by default.** The honest replacement wording:
+*the per-run egress domain seal is now built, tested and switchable, ships OFF, and refuses loudly when
+half-configured — so it restricts nothing until someone turns it on, and it says so on every unsealed read.*
+The second front (runtime-constructed URLs) is entirely unchanged.
+
+**TARGET:** ~~arm `SAFE_FETCH_ALLOWLIST` with a scoping pass before relying on it~~
+**✔ DONE IN PART — 2026-08-15:** the scoping pass was ruled and the mechanism built, switchable and tested;
+**what remains is wiring the callers and deciding whether to flip the switch on** — both still open, so this
+target is not closed —
 (`[EGRESS-WALL-FAILOPEN]`); close the reader-actor rollout gaps still open across desks — supervised
 live deryl-ingest, wiring emily-1-ingest + clair-ingest, a research fetch-only searcher hook, an
 egress tool-layer allowlist hook, the pf network firewall, Supabase host-lock, and a conformance hook

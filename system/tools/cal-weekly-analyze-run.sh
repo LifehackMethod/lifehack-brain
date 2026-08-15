@@ -22,11 +22,14 @@
 # REDIRECT: vault → desks/cal/state/weekly-vault/<YYYY-Www>/weekly-mine-draft.md
 #           status → $OUT_DIR/last-run.json.
 #
-# ⚖ PORT NOTE: donor's LEAD-MACHINE gate (state/primary-machine marker election between two Macs)
+# ⚖ PORT NOTE: donor's LEAD-MACHINE gate (state/primary-machine marker election between two machines)
 # is DELETED, not translated — a student has one computer. The "life lanes" list below is generic
 # structure (not personal data) carried over as-is; a student edits it to fit their own life if
-# they use this tool. This runner has no caller yet beyond being chained from
-# cal-vault-weekly-run.sh — DEST has no scheduler/cron scaffold (that lands separately).
+# they use this tool. ⚠ CORRECTED 2026-08-15 (T9.7d): this used to deny that DEST had any
+# scheduler or cron scaffold. That's false — `system/tools/pulse.sh` is the live daemon,
+# `system/tools/install-schedulers.sh` installs its entry, and several sibling runners have rows
+# in `system/pulse-config.md`. What's still true: this runner has no direct row of its own — it
+# only runs chained from cal-vault-weekly-run.sh (which also has no row yet).
 # ─────────────────────────────────────────────────────────────────────────────
 set -eo pipefail
 
@@ -34,6 +37,18 @@ set -eo pipefail
 SUBSYSTEM_NAME="cal-weekly-analyze"
 STALE_AFTER_HOURS="192"                            # weekly cadence → ~8 days before the freshness check alarms
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# The ONE headless-claude credential preflight (require_claude_token) — shared with the four other
+# runners that fire `claude -p`, so the rc=75 stand-down contract cannot drift between copies again.
+# A missing library is a REAL defect (exit 1), never a stand-down. (The lib sets no shell options,
+# so this file's `set -eo pipefail` above is unaffected.)
+. "$CODE_ROOT/system/tools/claude-auth.lib.sh" || {
+  echo "[$SUBSYSTEM_NAME] FATAL: cannot source $CODE_ROOT/system/tools/claude-auth.lib.sh"; exit 1; }
+# Its gws sibling — the ONE headless-Google credential preflight, shared with the ten other runners
+# that reach Google. Same rule: a missing library is a REAL defect (exit 1), never a stand-down.
+# (It sets no shell options either, so `set -eo pipefail` above is unaffected.)
+. "$CODE_ROOT/system/tools/gws-auth.lib.sh" || {
+  echo "[$SUBSYSTEM_NAME] FATAL: cannot source $CODE_ROOT/system/tools/gws-auth.lib.sh"; exit 1; }
 
 DRIVE="$(python3 "$CODE_ROOT/shared/brain_root.py" --quiet 2>/dev/null)"
 if [ -z "$DRIVE" ]; then
@@ -81,16 +96,30 @@ VAULT="$VAULT_ROOT/$ISO_WEEK"
 if [ ! -d "$VAULT" ]; then echo "[$SUBSYSTEM_NAME] no weekly vault at $VAULT — did Stage 1 run? abort."; exit 2; fi
 
 # ── headless claude auth (subscription token; NEVER written into the tracked repo or notes root) ──
-TOKEN_FILE="$HOME/.config/lifehack/claude-oauth-token"
-if [ -s "$TOKEN_FILE" ]; then export CLAUDE_CODE_OAUTH_TOKEN="$(tr -d '[:space:]' < "$TOKEN_FILE")"
-else echo "[$SUBSYSTEM_NAME] FATAL: no claude token at $TOKEN_FILE — run 'claude setup-token' and save it there."; exit 3; fi
-# gws headless env (keychain-free), in case an agent reaches Google
-GWS_CREDS="$HOME/.config/lifehack/gws-credentials.json"
-if [ -s "$GWS_CREDS" ]; then
-  export GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$HOME/.config/lifehack/gws-cron"
-  export GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE="$GWS_CREDS"
-  export GOOGLE_WORKSPACE_CLI_KEYRING_BACKEND=file
-fi
+# ⚖ FIXED 2026-08-15: this used to hand-roll the check and `exit 3` on a missing token file, which
+# system/pulse-config.md's exit-code contract classes as a REAL FAILURE ("anything else"). On a
+# fresh install there IS no token file until the person runs the one-time `claude setup-token`, so
+# the day this runner gets a scheduler row, three ticks would trip Pulse's 3-strike breaker and
+# system-health.py would render it DOWN/severity:error permanently — auto-disabling a runner the
+# student never got to configure. rc=75 = "this job's OWN preflight declined to run this tick"
+# -> counted `skipped`, never a fault. It stays LOUD: the helper always names the missing
+# credential and how to supply it. This runner has no pulse-config.md row TODAY (it only runs
+# chained from cal-vault-weekly-run.sh), so the fix is pre-emptive — it becomes the live bug the
+# day a row is wired, which is precisely when nobody would be looking.
+# This was one of five identical hand-rolled copies; two had already been fixed without the fix
+# reaching here, so the check now lives in ONE place (system/tools/claude-auth.lib.sh, sourced
+# above). ⛔ Do not re-inline it.
+# NOTE ON RC: this runs BEFORE the lock and before `trap _on_exit` is installed below, so — exactly
+# as with the pre-existing `exit 3` — no status artifact is written on this path. Nothing to set
+# `RC` to here; $STATUS_ARTIFACT simply keeps its previous run's contents, unchanged behaviour.
+require_claude_token "$SUBSYSTEM_NAME" || exit 75
+# gws headless env (keychain-free), in case an agent reaches Google. OPTIONAL by design — the
+# analysis reads the already-pulled vault, so no Google means a still-useful result, not a failure.
+# ⚖ 2026-08-15: was a hand-rolled `[ -s "$GWS_CREDS" ]` block, one of eleven identical copies —
+# now the shared helper (gws-auth.lib.sh, sourced at the top). Two things change: `[ -s ]` passed a
+# whitespace-only or corrupt file and exported it anyway, and the absence was SILENT. The helper
+# validates, and names the absence in one non-fatal line. ⛔ Do not re-inline it.
+load_gws_credentials_optional "$SUBSYSTEM_NAME"
 
 # ── Single-instance lock ──
 LOCKDIR="/tmp/lifehack-${SUBSYSTEM_NAME}.lock"

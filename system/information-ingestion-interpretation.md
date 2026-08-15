@@ -50,15 +50,19 @@ interpretation yet. It runs in **two modes**, and many source types plug into ea
 calendar event. Swallowed whole by the machine, **no human**, on whatever cadence the item-store writers
 are run.
 - Done by the item-store writers `shared/tools/tasks_store_sync.py` and `shared/tools/calendar_store_sync.py`
-  — both ship here and are real, runnable janitors (`--sync`, `--dry-run`, `--self-test`). ⛔ **The
-  email-side writer does not ship in this repo.** `shared/tools/email_service_read.py` is the READ adapter
-  for a faithful email store that a *separate* Gmail-pulling process populates (its own header calls that
-  process "the janitor" and, in code comments only, carries the donor's internal ticket name for it,
-  "Grand Central" — neither name marks a shipped file here). On a fresh install, or before an account is
-  connected, every email read returns `MISS-NEW` ("no record for this thread") — that is the correct,
-  by-design state of an unconnected store, never a broken adapter. **There is also no scheduler in this
-  repo** — whatever populates a store (a janitor a team wires up, a manual sync run) fires on whatever
-  cadence its operator gives it, not a fixed interval this repo assumes for you.
+  — both ship here and are real, runnable janitors (`--sync`, `--dry-run`, `--self-test`). ⚠
+  **CORRECTED 2026-08-15 (T9.7d stale-claim sweep) — the two sentences this replaces were wrong
+  in two separate, compounding ways.** First: **the email-side writer DOES ship in this repo** —
+  `shared/tools/email_summary_sync.py` is the janitor `shared/tools/email_service_read.py` (the
+  READ adapter) reads from; see `system/schemas/email-summary-schema.md` for the full store
+  contract. Second: **this repo does have a scheduler** — `system/tools/pulse.sh` (the heartbeat
+  daemon) and `system/tools/install-schedulers.sh` (the OS-scheduler installer) both ship, and
+  `system/pulse-config.md` carries a real `email-summary-write` row (10800s) that calls the
+  janitor. On a fresh install, before `install-schedulers.sh` has been run on a machine, or
+  before a Google account is connected, every email read still returns `MISS-NEW` ("no record
+  for this thread") — that remains the correct, by-design state of an unpopulated store, never a
+  broken adapter; it is just no longer because "nothing populates it," it is because nothing has
+  populated it YET on that particular install.
 - Stores a **faithful de-duplicated copy — never a summary**: every message/event/task, chronological,
   attachments as pointers, with a completeness guard so nothing is silently dropped, under
   `<notes>/state/email-summary/threads-v2/` + `<notes>/state/item-store/`.

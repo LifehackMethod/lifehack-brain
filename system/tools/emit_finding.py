@@ -150,7 +150,7 @@ class FindingContractError(ValueError):
 
 class _Alarm:
     """Signal-based timeout so a wedged mount fails LOUD and fast instead of hanging
-    the caller forever. Only armed on platforms with SIGALRM (this Mac has it); a no-op
+    the caller forever. Only armed on platforms with SIGALRM (macOS has it); a no-op
     elsewhere rather than a crash. PEP 475: the raised exception interrupts a blocking
     syscall in progress instead of the syscall silently retrying."""
 

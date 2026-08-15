@@ -6,7 +6,7 @@ altitude: base
 record_type: organism-element
 maturity_label: LIVE·gap
 gap_disposition: defect
-gap_disposition_note: "ruled 2026-07-28 at class level — C2 exception — SAFE_FETCH_ALLOWLIST per-run seal is armed by NO caller; scoping pass required before arming (premortem)"
+gap_disposition_note: "ruled 2026-07-28 at class level — C2 exception — SAFE_FETCH_ALLOWLIST per-run seal is armed by NO caller; scoping pass required before arming (premortem). ⚠ CORRECTED 2026-08-15 — the premise of that ruling no longer holds. The seal was BUILT OUT into a switchable Level-2 wall with a persistent switch file, three named states, and a test suite. It still SHIPS OFF, so by default nothing is sealed; what changed is that the state is now knowable and a half-configured list REFUSES instead of passing. The residual gap is that no caller arms it, not that it cannot be armed. See the CORRECTION banner below."
 generated_from:
   - system/hooks/guard_egress.sh
   - system/hooks/enforce_egress_allowlist.sh
@@ -41,11 +41,50 @@ authority: user
 > **CITATIONS — what the paths below resolve to here.** The body describes the donor system truthfully, including its honest UNBUILT admissions; the three lines below record what happened to each named file at THIS destination, and they cover every mention of them in the body.
 >
 > ⏳ unruled — `system/egress-allowlist.hosts`, the OS-firewall companion list. It did not come over, and the canonical
-> allowlist that DID come over (`system/egress-allowlist.md`) makes no mention of a hosts file. Nothing automated ever read it — the body says so at the OS-layer-backstop section: *"The OS firewall does NOT literally read `egress-allowlist.hosts`."* Whether an OS-layer backstop gets armed here at all is an OPEN human decision, and no phase owes this file. A DEBT, not a pass — the same class as the `SAFE_FETCH_ALLOWLIST` per-run seal the body correctly labels HONOR-SYSTEM / UNBUILT.
+> allowlist that DID come over (`system/egress-allowlist.md`) makes no mention of a hosts file. Nothing automated ever read it — the body says so at the OS-layer-backstop section: *"The OS firewall does NOT literally read `egress-allowlist.hosts`."* Whether an OS-layer backstop gets armed here at all is an OPEN human decision, and no phase owes this file. A DEBT, not a pass — ~~the same class as the `SAFE_FETCH_ALLOWLIST` per-run seal the body correctly labels HONOR-SYSTEM / UNBUILT~~ ⚠ CORRECTED 2026-08-15: that comparison no longer holds. The per-run seal was built out and made switchable today (see the CORRECTION banner immediately below); this hosts-file debt now stands on its own. The disposition on this line is unchanged by that — the OS-layer backstop is still an open human decision.
 >
 > ⛔ `system/reference/settings.json` — does not ship: the donor kept a git-tracked reference COPY there because its real settings lived outside the repo. Here the real, git-tracked settings file is `.claude/settings.json`, which is where this wall's PreToolUse registrations actually live. Recorded independently in `system/tools/organism/label_checker.py` lines 28-36.
 >
 > ⛔ `state/status/sentinel.json` — runtime-generated, created on first run, never committed. It is a status tile the reader's own run writes under their notes/data root (`shared/gate/sentinel_response.py` line 53 resolves it as `{DATA}/state/status/sentinel.json`); the writers `system/tools/sentinel-health.py` and `system/tools/sentinel-health-run.sh` DO ship. Absent from a fresh checkout is CORRECT.
+
+> **⚠ CORRECTION — 2026-08-15 — the in-process domain seal was ARMED. It still ships OFF.**
+> Everything below that calls the `SAFE_FETCH_ALLOWLIST` per-run seal UNBUILT, HONOR-SYSTEM, "not armed",
+> "never armed by any caller", or "task #17 — a planned feature, not a live one" **was true when this element
+> was authored on 2026-07-23 and is false as of today.** Each site is struck and dated in place; this banner is
+> the one full statement. Enver ruled it (`authority: user`: *"APPROVED — ARM IT"*), against a shape that had
+> already been ruled — three honest levels, default off, activatable.
+>
+> **What actually shipped, verified this session.** A persistent switch file, `system/safe-fetch-allowlist.md`,
+> using the same ALLOWLIST-START / ALLOWLIST-END marker convention as `system/egress-allowlist.md` so the two
+> lists parse alike. Inside `system/tools/safe_fetch.py`, a new `l2_state()` resolves every read to exactly
+> **three named outcomes and no quiet fourth**: **OFF** — allowed, and it *announces on stderr, once per
+> process,* that the seal is not in force; **ON** — enforced, an off-list host refused **before the socket
+> opens**; **AMBIGUOUS** — **refused**. Precedence is explicit: the `SAFE_FETCH_ALLOWLIST` env var is the
+> **per-run** seal and outranks the file, while the file is the **persistent** switch a human sets by hand. A
+> new `--l2-status` flag reports the switch position without fetching anything.
+> `system/tools/test_egress_level2.py` holds 12 tests and is picked up and passing inside the aggregate gate
+> `system/tools/run-all-tests.sh`.
+>
+> ⛔ **DO NOT READ THIS AS "THE EGRESS WALL IS NOW ENFORCED."** It ships `off` with an empty domain block, and
+> `--l2-status` printed, this session: *"L2 egress allowlist: OFF — web reads are not sealed to a domain
+> list."* **By default it seals nothing.** The honest claim is **armed and switchable, ships OFF, and refuses
+> loudly when half-configured** — five ambiguous states now REFUSE rather than pass, including the believable
+> human error of *domains listed while the switch still reads `off`*. What changed is that the level you are
+> actually at is now knowable and stated out loud; not that a wall went up.
+>
+> ⚠ **Two things did NOT change.** (1) The Bash-command domain hook still **fails OPEN, deliberately**, and the
+> asymmetry now has a stated reason: that hook sits in front of *every* Bash command, where a false positive
+> stops ordinary work and somebody unregisters the guard; the new in-process seal sits in front of web reads
+> only and is off unless deliberately armed. (2) **The OS firewall (LuLu) remains the only HARD wall of the
+> three, and it is still not included here.**
+>
+> ⚠ **A NUMBERING COLLISION — read the body below with this in hand.** This element numbers its layers
+> **L1 = `guard_egress.sh`** (credential-exfil) · **L2 = `enforce_egress_allowlist.sh`** (the Bash-command
+> domain hook) · **L3 = `ingest_gate_enforce.sh`** (raw WebFetch/WebSearch deny). The newly shipped code and
+> `docs/OUTSIDE-SERVICES.md` number a *different* ladder: **Level 1 = the Bash-command domain hook** (this
+> element's L2) · **Level 2 = the in-process `safe_fetch.py` seal** (what this element calls its "in-process
+> fourth mechanism") · **Level 3 = the OS firewall**. Wherever a correction below says **"Level 2"** it means
+> **the in-process `safe_fetch.py` seal**. Neither numbering is wrong; they count different things.
 
 ---
 
@@ -64,7 +103,13 @@ pass all layers that apply to it. No single mechanism is the sole line of defenc
 | OS — host firewall | `egress-allowlist.hosts` (reference; manual per-app/domain rules in the firewall — does NOT read the file directly) | OS-layer — primary machine: VERIFIED; second machine: EXPECTED·UNVERIFIED | REAL when configured; HONOR-SYSTEM for sync; primary machine currently INTERACTIVE mode (not silent-deny Passive) — see [LULU-SILENT] |
 
 An in-process fourth mechanism — per-run domain sealing via `SAFE_FETCH_ALLOWLIST` env var in
-`safe_fetch.py` — exists in code but is not armed (see "HONOR-SYSTEM / GAPS" below).
+`safe_fetch.py` — ~~exists in code but is not armed (see "HONOR-SYSTEM / GAPS" below).~~
+⚠ **CORRECTED 2026-08-15** — it is now armed and switchable, and it ships **OFF**. The env var survives as the
+**per-run** seal; a persistent switch file, `system/safe-fetch-allowlist.md`, was added beside it, and
+`l2_state()` resolves the mechanism to OFF / ON / AMBIGUOUS with no quiet fourth state. Its fail posture is
+the inverse of L1 and L2 above: **CLOSED when ambiguous** — half-configured refuses. Shipped `off` with an
+empty domain block, so **it seals nothing until a human turns it on**; when off it says so on every read.
+`--l2-status` reports which way it is set. See the CORRECTION banner at the top of this file.
 
 ---
 
@@ -243,17 +288,44 @@ and `safe_search_api.sh` — both invoked via Bash, both gated by L1 + L2.
 
    **4b. Per-run allowlist seal (conditional):** checks the `SAFE_FETCH_ALLOWLIST` env var: if set
    (comma-separated domain list), it rejects any host not in that per-run list (a task-scoped seal).
-   If unset → no per-run restriction; falls through to the outer hook check from step 3.
+   ~~If unset → no per-run restriction; falls through to the outer hook check from step 3.~~
+   ⚠ **CORRECTED 2026-08-15** — the unset branch is no longer a silent fall-through. `l2_state()` now
+   consults the persistent switch file `system/safe-fetch-allowlist.md` and returns one of three named
+   outcomes. **OFF** (the shipped state, and what the file says today) → the read is allowed *and* one line on
+   stderr says the seal is not in force, so the caller is never left assuming a wall. **ON** → an off-list host
+   raises before the socket opens. **AMBIGUOUS** → the read is **REFUSED**, naming the file and the fix. The
+   env var still wins when set — it is the per-run seal, the file is the persistent one.
 5. `safe_fetch.py` fetches the URL using `urllib.request` (Python stdlib), not `requests` or `httpx` — the
    stdlib call is already in L1's mechanism list and gets correctly gated.
 6. HTML is stripped (`_TextExtractor` skips `<script>`, `<style>`, `<nav>`, hidden elements). `sanitize()`
    applies L0 injection-scan pass — **always called, not optional** (safe_fetch.py line ~180: `clean = sanitize(visible_text, max_len=NO_CAP)` is unconditional). Post-sanitize optional steps: `scan_for_injection()` heuristic (guarded by `if scan_for_injection is not None`); `provenance_route()` tagging — both optional.
 
-**`SAFE_FETCH_ALLOWLIST` status (HONOR-SYSTEM / UNBUILT):** The per-run sealing env var exists in the code
+~~**`SAFE_FETCH_ALLOWLIST` status (HONOR-SYSTEM / UNBUILT):** The per-run sealing env var exists in the code
 (checked at `safe_fetch.py` line ~134). However, NO caller in the codebase sets or exports `SAFE_FETCH_ALLOWLIST`.
 It is documented in `egress-allowlist.md` as "task #17" — a planned feature, not a live one. Per-run domain
 sealing via this mechanism is NOT active; any URL whose domain is in `egress-allowlist.md` is reachable by
-any `safe_fetch.py` call regardless of calling context. The L2 hook (step 3) is the only active domain gate.
+any `safe_fetch.py` call regardless of calling context. The L2 hook (step 3) is the only active domain gate.~~
+
+⚠ **CORRECTED 2026-08-15 — `SAFE_FETCH_ALLOWLIST` status: BUILT, SWITCHABLE, SHIPS OFF (no longer
+HONOR-SYSTEM / UNBUILT).** The paragraph above is the 2026-07-23 record and is kept because it is what was
+true then. What is true now, verified this session:
+
+- **It is no longer env-var-only.** A persistent switch file, `system/safe-fetch-allowlist.md`, carries a
+  one-word `on`/`off` switch plus a domain block, using the same marker convention as `system/egress-allowlist.md`.
+- **Three named outcomes, no quiet fourth.** `l2_state()` in `system/tools/safe_fetch.py` returns **OFF**
+  (allowed, and announced on stderr once per process), **ON** (enforced — an off-list host is refused before
+  the socket opens), or raises **AMBIGUOUS** (**refused**). Five distinct half-configured states refuse,
+  including *domains listed while the switch still reads `off`* — the believable human error.
+- **Precedence is stated.** The `SAFE_FETCH_ALLOWLIST` env var is a **per-run** seal and **outranks** the
+  file; an empty value counts as unset and falls through. The file is the **persistent** switch.
+- **It is checkable without fetching:** `python3 system/tools/safe_fetch.py --l2-status`.
+- **12 tests** in `system/tools/test_egress_level2.py`, picked up and passing inside `system/tools/run-all-tests.sh`.
+
+⛔ **What is still TRUE from the struck paragraph, and must not be lost:** it **ships OFF** with an empty
+domain block, and **no caller in the codebase sets `SAFE_FETCH_ALLOWLIST`.** So in the default checkout this
+mechanism seals nothing, and the Bash-command hook at step 3 remains the only *active* domain gate. The gap
+moved from *"cannot be armed"* to *"is not armed by default, and says so out loud on every read."* That is a
+real improvement in honesty and in reach, and it is **not** the same thing as the wall being enforced.
 
 #### `safe_search_api.sh`
 
@@ -341,9 +413,15 @@ explicitly added to `egress-allowlist.md` (and the firewall synced) before any t
 
 **HONOR-SYSTEM / GAPS (documented, not silently glossed):**
 
-1. **`SAFE_FETCH_ALLOWLIST` per-run sealing** `[honor]` — the in-process per-run domain seal inside
+1. ~~**`SAFE_FETCH_ALLOWLIST` per-run sealing** `[honor]` — the in-process per-run domain seal inside
    `safe_fetch.py` exists in code but is never armed by any caller. Documented as "task #17" in
-   `egress-allowlist.md`. A call to `safe_fetch.py` with any allowlisted domain is unrestricted by context.
+   `egress-allowlist.md`. A call to `safe_fetch.py` with any allowlisted domain is unrestricted by context.~~
+   ⚠ **CORRECTED 2026-08-15 — this is no longer `[honor]`.** The seal became a real, switchable mechanism
+   with a persistent switch file and a test suite; when armed it is `[skill]`-grade enforcement that refuses
+   before the socket opens, and when half-configured it refuses outright. **The residual gap is narrower but
+   real:** it **ships OFF** and no caller sets the env var, so by default a `safe_fetch.py` call is still
+   unrestricted by context — the difference is that it now *announces* that on every unsealed read instead of
+   passing silently. Restated honestly: **armed and switchable, ships OFF, refuses loudly when half-configured.**
 
 2. **Firewall rules are manually maintained** `[honor]` — the OS firewall does NOT read `egress-allowlist.hosts` directly;
    it enforces its own manually configured per-app/domain rule store. `egress-allowlist.hosts` is a human
@@ -388,8 +466,15 @@ prescribes the label should be PARTIAL ("the map only DOCUMENTS the gap"). Resol
 instead of PARTIAL. Rationale: the primary named-URL enforcement vector (L2 allowlist check on explicit `curl`/`wget`
 calls + L3 WebFetch/WebSearch unconditional deny) is mechanically enforced and fire-tested — the LIVE tier is
 not overclaiming on that vector. The ·gap suffix captures the documented fail-open conditions (L2 dynamic-URL
-bypass, L1 env-var credential bypass, unarmed `SAFE_FETCH_ALLOWLIST`, manual firewall sync) without demoting
+bypass, L1 env-var credential bypass, ~~unarmed `SAFE_FETCH_ALLOWLIST`~~, manual firewall sync) without demoting
 the entire label. PARTIAL would imply the hooks are honor-system; they are not.
+
+⚠ **CORRECTED 2026-08-15** — one of the four fail-open conditions in that list changed character.
+`SAFE_FETCH_ALLOWLIST` is no longer *unarmed* in the sense meant above (unbuildable, honor-only): it is now a
+built, switchable, tested mechanism that **ships OFF**. It belongs in the ·gap list as **"the in-process seal
+ships OFF and no caller arms it"** — a default-off gap, not an absent-mechanism gap. The other three
+conditions are unchanged and still stand. The `LIVE·gap` label itself is unaffected, and the `[EGRESS-WALL-FAILOPEN]`
+debt entry stays `state:actionable` — its scope narrows to *arming*, not *building*.
 
 **Remaining TARGET items:**
 
@@ -397,6 +482,13 @@ the entire label. PARTIAL would imply the hooks are honor-system; they are not.
    env var with a task-scoped domain list before invoking `safe_fetch.py`. This closes the gap where any
    research task can reach any allowlisted domain regardless of its declared purpose. Tracked as task #17
    in `egress-allowlist.md`.
+   **✔ DONE IN PART — 2026-08-15.** The *mechanism* half of this item shipped: the seal is built, switchable
+   from a persistent file, three-state, `--l2-status`-checkable, and covered by 12 tests. The env var was kept
+   as the per-run seal and given documented precedence over the file, which is exactly the hook this item
+   wanted for a task-scoped fan-out. **The caller-instrumentation half named in this line is NOT done** — no
+   skill, agent or research fan-out sets the variable yet, and the switch ships `off`. So the sentence "any
+   research task can reach any allowlisted domain regardless of its declared purpose" is **still true today**;
+   it is now a default-off setting rather than a missing capability. Keep this item open for the arming pass.
 
 2. **Automate firewall rule updates** — a git post-commit hook or a scheduler watcher that prompts or scripts
    updating the firewall's per-app/domain rules on both machines whenever `egress-allowlist.hosts` changes. Until

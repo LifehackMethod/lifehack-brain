@@ -2,7 +2,7 @@
 # system-health-run.sh — Pulse runner for the missed-run sweeper (state/status/_system-health.json).
 #
 # PORTED (2026-08-14) from claudeops-config's system/tools/system-health-run.sh. The donor version
-# was machine-gated (only one of two Macs should write the single shared feed) and set
+# was machine-gated (only one of two machines should write the single shared feed) and set
 # INGEST_COVERAGE_FLAG=on for a desk-registry-driven coverage check — neither applies here: this is
 # a single-machine install (nothing to gate between), and system-health.py in this repo does not
 # carry that desk-registry coverage check at all (see that file's own header for what was cut and

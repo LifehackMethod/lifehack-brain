@@ -4,8 +4,17 @@
 # PORTED (2026-08-14) from claudeops-config's system/tools/sentinel-health-run.sh. Two things in the
 # donor version were dropped, both for the same reason ingest-run.lib.sh's header explains at length:
 #   - `ingest_studio_gate` — the donor called this before the lock to stand down on the non-lead of
-#     two Macs. That function does not exist in this repo's ported ingest-run.lib.sh (no two-machine
-#     model here — see docs/data-layout.md:214), so calling it would just be an error, not a no-op.
+#     two machines. That function does not exist in this repo's ported ingest-run.lib.sh (no
+#     two-machine model here — see docs/data-layout.md:214), so calling it would just be an error,
+#     not a no-op.
+#     ⚖ NOTE 2026-08-15 — that `…_studio_…` name is a DONOR CODE IDENTIFIER and is deliberately NOT
+#     renamed. It named one of the donor's own machines, from an era before that gate was renamed to
+#     a role. **The function does not exist in this repo** — verified by grep: no definition and no
+#     call site anywhere, in any language; it survives only inside port notes like this one recording
+#     that it was dropped. The surrounding sentence is DONOR DESCRIPTION, not a description of this
+#     system. Renaming an identifier that points at nothing would only invent a new false name; the
+#     machine it was named after is deliberately not named here. Same handling, same wording, as
+#     system/organism/elements/pulse-cron.md's note on the identical name.
 #   - the Pulse-specific framing ("gives the tile its OWN named Pulse slot", "Organism Window 2") —
 #     there is no Pulse/scheduler here to slot into. See below.
 #

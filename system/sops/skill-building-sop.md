@@ -457,6 +457,16 @@ very row depends on is exactly that bet. Policy moves faster than architecture. 
 - ⛔ **AUTH.** With the absolute path but a stripped env, `claude -p` returns
   **`Not logged in · Please run /login`** — measured. ✅ **FIX, also already the house pattern:** the
   `TOKEN_FILE="$HOME/.config/lifehack/claude-oauth-token"` those same three runners use.
+  ⛔ **DO NOT HAND-ROLL THAT CHECK — it now lives in exactly one place:** `require_claude_token`
+  in **`system/tools/claude-auth.lib.sh`** (`source` it, then `require_claude_token "<job>" || exit 75`).
+  **Why the prohibition is this blunt:** the check *was* hand-rolled five times, every copy carrying
+  its own literal `exit 3`, which `system/pulse-config.md`'s exit-code table classes as a REAL
+  FAILURE — so on a fresh install, where the token file legitimately does not exist yet, three ticks
+  tripped Pulse's 3-strike breaker and permanently auto-disabled the runner. It was fixed **twice**,
+  in two of the five, and stayed broken in the other three, because **a fix applied to a copy does
+  not reach the other copies.** The correct code is **75** (stood down, counted `skipped`), and the
+  stand-down is always NAMED out loud — per this repo's ABSENT-SUBJECT rule, "I could not look" must
+  never be spelled the same way as "I looked and it was fine."
 - ⛔ **SCHEMA — PATH+AUTH fixed still doesn't buy you a valid shape.** `claude -p --json-schema` does
   **NOT** guarantee schema-valid output — Anthropic states this outright in GitHub issue
   `anthropics/claude-code#9058` (open). Issue `#23265` adds a reproducible cold-start bug (first call
@@ -1193,11 +1203,11 @@ though none of these bind a future build.
   number the model **computed** from one it **read** — provenance is invisible in text, so it would
   false-fire constantly. `2026-06-27` · `records/decision/2026-06-27-numbers-integrity-enforcement.md` → no
   blocking gate.
-- **[A6]** Tried: relying on `~/.claude/plans/` with no backup lane. Failed: a plan built on the Studio was
-  unreachable from the Air in NYC — the dir had been a Drive symlink until 2026-06-16, then reverted to
+- **[A6]** Tried: relying on `~/.claude/plans/` with no backup lane. Failed: a plan built on the second machine was
+  unreachable from the primary machine while travelling — the dir had been a Drive symlink until 2026-06-16, then reverted to
   native-local with no replacement. `2026-07-02` ·
   `records/decision/2026-07-02-plans-backup-hole-postmortem.md` → `system/hooks/mirror_plans.sh` +
-  `recover_studio_plans.sh`.
+  its plan-recovery counterpart on the pull side.
 - **[A8]** Tried: merging plan file + scratchpad + brief into ONE file. Failed: "sync hell" — machine-local vs
   Drive copies must agree, silent drift; pre-mortem returned four D grades. `2026-07-13` ·
   `records/decision/2026-07-13-scratchpad-in-brief.md` → scratchpad as a section in the brief.

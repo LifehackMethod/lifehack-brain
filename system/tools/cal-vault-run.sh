@@ -8,10 +8,14 @@
 # Cron (Stage 1): 0 4 * * *  bash cal-vault-run.sh   (today's material, ready by morning)
 # Test by hand:   bash cal-vault-run.sh [--date YYYY-MM-DD]
 #
-# ⚖ PORT NOTE: donor's LEAD-MACHINE gate (state/primary-machine marker election between two Macs)
+# ⚖ PORT NOTE: donor's LEAD-MACHINE gate (state/primary-machine marker election between two machines)
 # is DELETED, not translated — a student has one computer, so there is nothing to elect between.
-# This runner has no caller yet — DEST has no scheduler/cron scaffold (that lands separately);
-# ported so it is correct and callable the moment one exists. A student with no `gws` binary / no
+# ⚠ CORRECTED 2026-08-15 (T9.7d): this used to deny that DEST had any scheduler or cron scaffold.
+# That's false — `system/tools/pulse.sh` is the live daemon, `system/tools/install-schedulers.sh`
+# installs its entry (cron or Windows Task Scheduler), and several sibling runners have rows in
+# `system/pulse-config.md`. What's still true: this runner specifically has no row there yet
+# (the cron comment above is the intended shape, not yet wired into pulse-config.md) — ported so
+# it is correct and callable the moment one is added. A student with no `gws` binary / no
 # Google account is fine here: this runner is fail-soft by design (a source failure marks it in
 # the manifest and still exits 0), matching cal-vault-pull.py's own already-ported honest-degrade
 # behavior (it explicitly refuses to fake the email surface when email_convert.py isn't present).
@@ -20,6 +24,11 @@ set -u
 # Execution-residency: DRIVE = CONTENT root (vault/state WRITTEN here); CODE_ROOT = where this
 # script + its .py tools live (derived from $0 → the git clone when cron calls the clone).
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# The ONE headless-gws credential preflight — shared with the ten other runners that reach Google.
+# A missing library is a REAL defect (exit 1), never a stand-down.
+. "$CODE_ROOT/system/tools/gws-auth.lib.sh" || {
+  echo "[cal-vault] FATAL: cannot source $CODE_ROOT/system/tools/gws-auth.lib.sh"; exit 1; }
 
 # The data root, through the ONE resolver — never a hardcoded personal Drive path.
 DRIVE="$(python3 "$CODE_ROOT/shared/brain_root.py" --quiet 2>/dev/null)"
@@ -31,15 +40,15 @@ fi
 GWS_BIN="$(command -v gws 2>/dev/null || echo /opt/homebrew/bin/gws)"
 
 # ── GWS HEADLESS AUTH (keychain-free isolated config) ──
-GWS_CREDS="$HOME/.config/lifehack/gws-credentials.json"
-if [ -s "$GWS_CREDS" ]; then
-  export GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$HOME/.config/lifehack/gws-cron"
-  export GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE="$GWS_CREDS"
-  export GOOGLE_WORKSPACE_CLI_KEYRING_BACKEND=file
-fi
 # (No abort if creds absent — interactive runs use the normal gws login; the pull is fail-soft
 #  regardless, and a student with no gws/Google account at all still gets a completed, if empty,
 #  vault rather than a crash — cal-vault-pull.py marks each unavailable source in its manifest.)
+#  That is why this calls the _optional entry point and not require_gws_credentials.
+# ⚖ 2026-08-15: was a hand-rolled `[ -s "$GWS_CREDS" ]` block, one of eleven identical copies —
+# now the shared helper (gws-auth.lib.sh, sourced at the top). Two things change: `[ -s ]` passed a
+# whitespace-only or corrupt file and exported it anyway, and the absence was SILENT. The helper
+# validates, and names the absence in one non-fatal line. ⛔ Do not re-inline it.
+load_gws_credentials_optional cal-vault
 
 # ── PRE-FLIGHT (warn-only; the pull degrades gracefully + marks sources failed) ──
 # RETRY the gws pre-flight (3x/4s) before declaring failure — a single getProfile can fail on a

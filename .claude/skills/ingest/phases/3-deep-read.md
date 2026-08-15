@@ -55,7 +55,7 @@ until you have ruled each one** (`pipeline.py`'s giant-ruling done-gate).
   locked scratch (`paths.py scratch ingest_body …`, which `ingest_gate_enforce.sh` blocks the main session
   from reading).
 
-**Paths + pile:** `BASKET` = `$BASKET`. `MACHINE="$(hostname | grep -qi studio && echo studio || echo mba)"`.
+**Paths + pile:** `BASKET` = `$BASKET`. `MACHINE="$(uname -n 2>/dev/null || echo local)"`   # any machine, any OS — only needs to be stable per machine (same form as phase 2).
 `FLAT` resolves per-corpus, with a legacy fallback so an already-flattened corpus is never orphaned
 or re-flattened:
 ```bash

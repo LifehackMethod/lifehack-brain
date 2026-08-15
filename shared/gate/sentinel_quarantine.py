@@ -17,7 +17,7 @@ Usage:
 Exit 0 = labeled (or already labeled). Non-zero = could not label (caller continues anyway).
 
 Needs gws creds (unlike the stdlib-only gate) — that's WHY it's a separate tool the gate
-shells out to, keeping the gate itself creds-free + Studio-safe. Always parses gws JSON off
+shells out to, keeping the gate itself creds-free + safe to run on any machine. Always parses gws JSON off
 stdout; gws chatter goes to stderr.
 """
 import sys, json, argparse, subprocess

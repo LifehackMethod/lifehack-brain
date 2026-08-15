@@ -12,11 +12,12 @@
 # PORTED (2026-08-14) from claudeops-config's system/tools/pulse.sh, generalized under a 2026-08-13
 # product ruling ("automation ships with its scheduler"). Two structural things were CUT, not
 # translated, because they answer a question this product doesn't have:
-#   - the "which of my two Macs is in charge" lead-machine preflight + nag (donor pulse.sh:159-172).
+#   - the "which of two machines is in charge" lead-machine preflight + nag (donor pulse.sh:159-172).
 #     This product is single-machine by design (shared/brain_root.py; docs/data-layout.md:214,
 #     "there is one machine"), so a lead election has nothing to elect.
-#   - the machine-namespaced heartbeat mirror (donor wrote _pulse-mba.json / _pulse-studio.json so
-#     two Macs' ticks wouldn't clobber one shared file). One machine writes one file: _pulse.json.
+#   - the machine-namespaced heartbeat mirror (the donor suffixed the heartbeat file with a per-machine
+#     token — _pulse-<machine>.json — so the primary and the second machine's ticks wouldn't clobber
+#     one shared file). One machine writes one file: _pulse.json.
 # Everything else below — the breaker, the doubling backoff, the durable park file, the rc=75/rc=2
 # exit-code contract — is the proven, tested part and ships close to verbatim, because a scheduler
 # that can wedge a broken job into running forever, or that can't tell "ran and failed" from "chose
@@ -311,7 +312,7 @@ done < "$CONFIG"
 
 # ── Durable heartbeat mirror (the dead-man's-switch feed; system-health.py reads this) ──────────
 # Single machine, single file — no namespacing needed (the donor split this into _pulse-<machine>.json
-# because two Macs could clobber one shared file; here there is exactly one writer). Atomic; never
+# because two machines could clobber one shared file; here there is exactly one writer). Atomic; never
 # fails the daemon; skipped entirely if no notes root is configured (fresh install, nothing to watch
 # yet — system-health.py degrades the same way on the read side).
 if [ "$MODE" != "--status" ] && [ -n "$NOTES_ROOT" ]; then

@@ -13,7 +13,7 @@
 #    never called the bespoke pull script even in the donor.
 #
 # ⚖ PORT NOTE, three changes from donor:
-#   1. LEAD-MACHINE gate (state/primary-machine marker election between two Macs) is DELETED, not
+#   1. LEAD-MACHINE gate (state/primary-machine marker election between two machines) is DELETED, not
 #      translated — a student has one computer, so there is nothing to elect between.
 #   2. The Drive status-tile write used donor's `emit_status.py` (system/tools/emit_status.py),
 #      which has not been ported to this repo yet (out of this port's scope — a different
@@ -48,6 +48,12 @@ STALE_AFTER_HOURS="168"                            # weekly cadence → 7 days b
 STALE_AFTER_S=$((STALE_AFTER_HOURS * 3600))        # single source for both the local proof AND the status tile
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
+# The ONE headless-gws credential preflight — shared with the ten other runners that reach Google.
+# A missing library is a REAL defect (exit 1), never a stand-down. (It sets no shell options, so
+# this file's `set -eo pipefail` above is unaffected.)
+. "$CODE_ROOT/system/tools/gws-auth.lib.sh" || {
+  echo "[$SUBSYSTEM_NAME] FATAL: cannot source $CODE_ROOT/system/tools/gws-auth.lib.sh"; exit 1; }
+
 DRIVE="$(python3 "$CODE_ROOT/shared/brain_root.py" --quiet 2>/dev/null)"
 if [ -z "$DRIVE" ]; then
   echo "[$SUBSYSTEM_NAME] no data root set — nothing to pull into. Set one: python3 shared/brain_root.py --set <folder>"
@@ -60,12 +66,13 @@ mkdir -p "$OUT_DIR" 2>/dev/null || true
 GWS_BIN="$(command -v gws 2>/dev/null || echo /opt/homebrew/bin/gws)"
 
 # ── Headless gws auth (keychain-free isolated config) ──
-GWS_CREDS="$HOME/.config/lifehack/gws-credentials.json"
-if [ -s "$GWS_CREDS" ]; then
-  export GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$HOME/.config/lifehack/gws-cron"
-  export GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE="$GWS_CREDS"
-  export GOOGLE_WORKSPACE_CLI_KEYRING_BACKEND=file
-fi
+# OPTIONAL by design: the weekly pull degrades gracefully and marks each unreachable source in its
+# own manifest, so a person with no Google account still gets a completed vault rather than a crash.
+# ⚖ 2026-08-15: was a hand-rolled `[ -s "$GWS_CREDS" ]` block, one of eleven identical copies —
+# now the shared helper (gws-auth.lib.sh, sourced at the top). Two things change: `[ -s ]` passed a
+# whitespace-only or corrupt file and exported it anyway, and the absence was SILENT. The helper
+# validates, and names the absence in one non-fatal line. ⛔ Do not re-inline it.
+load_gws_credentials_optional "$SUBSYSTEM_NAME"
 
 # ── Single-instance lock (weekly pull takes minutes; 30-min stale reclaim) ──
 LOCKDIR="/tmp/lifehack-${SUBSYSTEM_NAME}.lock"

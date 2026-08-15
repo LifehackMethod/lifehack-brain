@@ -11,12 +11,21 @@
 # CLAUDE_BIN under a specific person's home directory, not even $HOME-relative, plus a Drive path
 # under that same account. Both are fixed below. Three pieces were DROPPED rather than ported,
 # each for a reason that already exists elsewhere in this repo, not invented here:
-#   - the primary-machine / studio gate (`require_primary`, `ingest_studio_gate`,
+#   - the primary-machine / hardware gate (`require_primary`, `ingest_studio_gate`,
 #     `require_studio_hardware`) — depended on `machine-token.sh`, which is excluded from this port
-#     by ruling, and on a Drive-synced `state/primary-machine` marker electing one of two Macs as
-#     lead. This repo has no such model: "there is one machine. The two-machine plane is not part of
-#     this system." (docs/data-layout.md:214). A gate for a concept that does not exist here is not a
-#     gate, it is a function nothing can safely reach.
+#     by ruling, and on a Drive-synced `state/primary-machine` marker electing one of two machines
+#     as lead. This repo has no such model: "there is one machine. The two-machine plane is not part
+#     of this system." (docs/data-layout.md:214). A gate for a concept that does not exist here is
+#     not a gate, it is a function nothing can safely reach.
+#     ⚖ NOTE 2026-08-15 — the two `…_studio_…` names on the line above are DONOR CODE IDENTIFIERS
+#     and are deliberately NOT renamed. They named one of the donor's own machines, from an era
+#     before that gate was renamed to a role. **None of the three functions exists in this repo** —
+#     verified by grep: no definition and no call site anywhere, in any language; they survive only
+#     inside port notes like this one recording that they were dropped, and the donor files that
+#     defined them were never ported either. The surrounding sentence is DONOR DESCRIPTION, not a
+#     description of this system. Renaming an identifier that points at nothing would only invent a
+#     new false name; the machine it was named after is deliberately not named here. Same handling,
+#     same wording, as system/organism/elements/pulse-cron.md's note on the identical names.
 #   - the trusted-email-lane flag (`ingest_set_lane`, `_INGEST_LANE_FILE`) — already retired
 #     repo-wide; see system/hooks/session_flight_recorder.sh's note on why it isn't here.
 #   - the v1 per-item Sentinel check (`ingest_sentinel_check`) — the donor's OWN comments mark it
@@ -25,9 +34,19 @@
 #     shared/gate/sentinel_response.py already writes internally would corrupt the exact counts
 #     sentinel-health.py (this repo's ported twin) reports — not worth reviving.
 #
-# ⚠ THIS REPO HAS NO SCHEDULER AND NO CRON YET. Nothing invokes this library on any cadence. It is
-# ported so it is CORRECT AND CALLABLE — a future runner script sources it and it will do its job —
-# but wiring a schedule (cron, launchd, anything) is a separate, not-yet-done step. Do not infer one.
+# ⚠ CORRECTED 2026-08-15 (T9.7d stale-claim sweep). This block used to assert, in full caps, that
+# the repo had neither a scheduler nor any cron wiring, that nothing invoked this library on any
+# cadence, and that installing a schedule remained a separate not-yet-done step the reader must
+# not assume. BOTH halves of that are FALSE, and it was the loudest stale claim in the tree:
+#   - A scheduler ships. `system/tools/pulse.sh` is the daemon, `system/tools/install-schedulers.sh`
+#     installs the single entry that drives it (cron on macOS/Linux, Task Scheduler on Windows), and
+#     `system/pulse-config.md` is the row manifest.
+#   - This library IS invoked on a cadence, by two live rows: `system-health` (300s) via
+#     system-health-run.sh, and `sentinel-health` (1800s) via sentinel-health-run.sh. Both `source`
+#     this file. A change here reaches them on their next tick — edit it as LIVE plumbing, not as
+#     dormant ported code.
+# Still true, and the reason the original note existed: this file is a LIBRARY, so it has no
+# pulse-config.md row of its own and never will — it runs only through a caller that has one.
 #
 # LANE: this is plumbing only. What to flag, what to score, what a run should actually DO belongs in
 # the calling skill/runner's own prompt — never in here.
@@ -49,6 +68,18 @@ set -uo pipefail
 
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 _INGEST_CFG="$HOME/.config/lifehack"
+
+# The ONE headless-claude credential preflight (require_claude_token) — shared with the four other
+# runners that fire `claude -p`, so the rc=75 stand-down contract cannot drift between copies again.
+# A missing library is a REAL defect (exit 1), never a stand-down.
+. "$CODE_ROOT/system/tools/claude-auth.lib.sh" || {
+  echo "FATAL: cannot source $CODE_ROOT/system/tools/claude-auth.lib.sh"; exit 1; }
+
+# The ONE headless-gws credential preflight (require_gws_credentials) — shared with the ten other
+# runners that reach Google, for the same reason and on the same rc=75 contract. Same rule: a
+# missing library is a REAL defect (exit 1), never a stand-down.
+. "$CODE_ROOT/system/tools/gws-auth.lib.sh" || {
+  echo "FATAL: cannot source $CODE_ROOT/system/tools/gws-auth.lib.sh"; exit 1; }
 
 # ── REACHING THE MODEL — runtime-resolved, no hardcoded user directory ──────────────────────────
 # House standard, already live in this repo (shared/tools/intake_reader.py's CLAUDE_BIN block;
@@ -113,20 +144,50 @@ ingest_check_paused() {                      # $1 = source key (job name, matchi
 # local health emitter, ingest_load_auth (= claude + gws) for anything that fires `claude -p` and
 # also needs Google.
 ingest_load_claude() {   # claude OAuth subscription token — for any runner that fires `claude -p`
-  local job="$1"
-  local tok="$_INGEST_CFG/claude-oauth-token"
-  if [ -s "$tok" ]; then export CLAUDE_CODE_OAUTH_TOKEN="$(tr -d '[:space:]' < "$tok")"
-  else echo "[$job] FATAL: no claude token at $tok — run 'claude setup-token' and save it there."; exit 3; fi
+  # ⚖ FIXED 2026-08-15: this used to hand-roll the check and `exit 3` on a missing token file. That
+  # is a REAL FAILURE under system/pulse-config.md's exit-code contract ("anything else"), so on a
+  # fresh install — where no token file exists until the person runs the one-time `claude
+  # setup-token` — three ticks would trip Pulse's 3-strike breaker and system-health.py would
+  # render the job DOWN/severity:error permanently, auto-disabling a runner the student never got
+  # to configure. The correct code is 75 = "this job's OWN preflight declined to run this tick"
+  # -> counted `skipped`, never a fault.
+  # This was the THIRD of five identical hand-rolled copies; the same bug had already been fixed
+  # twice (archivist-run.lib.sh, planning-weekly-prime-run.sh) without reaching this one — which is
+  # exactly why the check now lives in ONE place, system/tools/claude-auth.lib.sh, sourced at the
+  # top of this file. ⛔ Do not re-inline it.
+  # Still an `exit`, not a `return`: every caller of this lib treats auth as a hard precondition
+  # before the run proper, and its own USAGE block above documents the call as terminal.
+  require_claude_token "${1:-ingest}" || exit 75
 }
 
 ingest_load_gws() {      # gws keychain-free isolated creds + pre-flight
   local job="$1"
-  local gcreds="$_INGEST_CFG/gws-credentials.json"
-  if [ -s "$gcreds" ]; then
-    export GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$_INGEST_CFG/gws-cron"
-    export GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE="$gcreds"
-    export GOOGLE_WORKSPACE_CLI_KEYRING_BACKEND=file
-  else echo "[$job] FATAL: no gws creds at $gcreds — run 'gws auth export --unmasked > $gcreds' (chmod 600) from an interactive session."; exit 3; fi
+  # ⚖ FIXED 2026-08-15: this used to hand-roll the check and `exit 3` on a missing creds file. That
+  # is a REAL FAILURE under system/pulse-config.md's exit-code contract ("anything else"), so three
+  # ticks trip Pulse's 3-strike breaker and system-health.py renders the job DOWN/severity:error
+  # PERMANENTLY. ⭐ And unlike the claude-token twin above, this branch is not a day-one-only
+  # condition: it is PERMANENTLY true for anyone who never connects a Google account, which on a
+  # fresh install is nearly everyone — so rc=3 here auto-disabled a runner for the majority case.
+  # The correct code is 75 = "this job's OWN preflight declined to run this tick" -> `skipped`.
+  # This was the SIXTH copy of that same hand-rolled branch and the first REACHABLE one (the three
+  # fixed an hour earlier — calendar-store-sync, tasks-store-sync, email-summary-write — were
+  # latent, with no scheduler row pointing at them yet). Eleven copies existed in all, which is
+  # exactly why the check now lives in ONE place, system/tools/gws-auth.lib.sh, sourced at the top
+  # of this file. ⛔ Do not re-inline it.
+  # Still an `exit`, not a `return`: every caller of this lib treats auth as a hard precondition
+  # before the run proper, and this lib's USAGE block documents the call as terminal — identical to
+  # ingest_load_claude directly above.
+  # REQUIRED, not optional: every caller of ingest_load_gws reads Gmail, and the new-mail gate and
+  # the run proper are both meaningless without it.
+  require_gws_credentials "$job" || exit 75
+  # ── SEPARATE CHECK, SEPARATE CODE — deliberately NOT folded into the stand-down above. ──
+  # Reaching this line means credentials EXIST and parse, i.e. this person HAS configured Google. A
+  # failing live call is therefore a transient/infra condition, not "not set up yet": rc=2 = "held,
+  # never trips the breaker" in pulse-config.md's table, which is the correct bucket and is what
+  # the three sibling runners do verbatim. Collapsing it into 75 would report a CONFIGURED machine
+  # as unconfigured and hide genuinely dead auth forever. Left inline (not in gws-auth.lib.sh) for
+  # the same reason: it ends FATAL here and warn-only in cal-vault/cal-diary, and that difference
+  # in severity is real, not noise.
   # RETRY the gws pre-flight (3x/4s) before declaring failure — a single getProfile call can fail on
   # a transient blip (token mid-refresh, momentary API hiccup); converting that into a brief wait
   # instead of an immediate hard failure avoids flapping a runner whose auth is actually fine.

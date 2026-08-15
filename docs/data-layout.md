@@ -1,9 +1,10 @@
 # Where things go in your notes folder
 
 > The map of the **second** folder — the one that is yours. Every tool in this repo that writes
-> something writes it at one of the paths on this page, and gets the folder itself from one place:
-> `shared/brain_root.py`. If you are adding a tool and the path you want is not here, the path is
-> wrong or this page is incomplete — resolve that before writing code.
+> something DURABLE writes it at one of the paths on this page, and gets the folder itself from one
+> place: `shared/brain_root.py`. (Throwaway scratch is the stated exception — see the last section.)
+> If you are adding a tool and the path you want is not here, the path is wrong or this page is
+> incomplete — resolve that before writing code.
 
 ## The one rule this all rests on
 
@@ -252,6 +253,10 @@ The diagram above is the shape; this is the list, so nothing has to be inferred 
 ## When you add something that writes
 
 1. The path comes from `shared/brain_root.py`. There is no second way to find the notes folder.
+   **The one exception is scratch** — `shared/paths.py`'s `scratch_dir()` answers from the machine's
+   temp folder instead, on purpose: a regenerable working file does not belong in someone's notes,
+   and the hardcoded `/tmp/...` it replaced does not exist on Windows. Durable state still comes from
+   the resolver; if what you are writing survives the run, it is not scratch.
 2. If your path is not on this page, add it here first — in the same change, not afterwards.
 3. Never create a folder to be helpful. Everything above is created when something is actually put in
    it, except the three day-one files, which exist because nothing else would ever make them.

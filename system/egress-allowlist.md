@@ -10,8 +10,9 @@ plus an unrestricted `curl` can do quite a lot. This closes the second half.
 
 **What it governs, and what it does not.** It applies to RAW outbound calls — `curl`, `wget`, `nc`,
 and inline Python HTTP. It does NOT apply to `safe_fetch.py`, which is how ordinary web reading
-happens and which does its own per-run allowlisting. So researching a topic does not touch this
-list; only a hand-rolled network call does. Package managers, `git` and `gws` do not match the
+happens and which has an allowlist of its own — a separate list, and one that ships OFF until you
+arm it (`system/safe-fetch-allowlist.md`). So researching a topic does not touch this list; only a
+hand-rolled network call does. Package managers, `git` and `gws` do not match the
 pattern either, so normal work is untouched.
 
 **Name-based, not IP-based** — cloud addresses rotate, names do not.

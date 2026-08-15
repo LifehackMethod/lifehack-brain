@@ -14,9 +14,13 @@ Usage (from Claude via Bash):
 
 Exits non-zero on network error. Output is clean plaintext on stdout.
 
+Outbound: the Level 2 domain seal lives here (`_enforce_egress_allowlist`). It is OFF unless someone
+arms it — the switch is `system/safe-fetch-allowlist.md`, and `--l2-status` says which way it is set.
+
 Testing commands:
     python3 safe_fetch.py 'https://example.com'
     python3 safe_fetch.py 'https://httpbin.org/html'
+    python3 safe_fetch.py --l2-status
 """
 import sys
 import os
@@ -120,27 +124,160 @@ def _detect_charset(headers, body_bytes: bytes) -> str:
     return "utf-8"
 
 
+# ── LEVEL 2 — sealing web reads to a list of domains ─────────────────────────────────────────────
+# The three levels are written out for a person in docs/OUTSIDE-SERVICES.md. This is the middle one:
+# Level 1 is the raw-command hook (enforce_egress_allowlist.sh, on by default, fails OPEN), Level 3
+# is the operating system's own firewall (not shipped, the only hard wall). This layer seals the
+# ORDINARY web read — what /websearch and every content-reading skill actually go through.
+#
+# ⛔ IT IS OFF UNTIL SOMEONE TURNS IT ON, AND IT SAYS SO OUT LOUD EVERY TIME. A wall that looks armed
+# but is not is worse than no wall: it buys confidence that is not backed by anything. So there is no
+# quiet third state here. Every fetch resolves to exactly one of three NAMED outcomes:
+#
+#   OFF        — nothing armed it. Allowed, and one line on stderr says the seal is not in force.
+#   ON         — a list is in force. An off-list host is refused BEFORE the socket opens.
+#   AMBIGUOUS  — armed but unusable (switch on with no domains · domains listed with the switch off ·
+#                a switch value nobody can read). REFUSED, loudly, naming the line to fix.
+#
+# The ambiguous case fails CLOSED on purpose, and it is the opposite choice from Level 1, which fails
+# OPEN. Level 1 sits in front of every Bash command, so a false positive there stops `git push` and
+# somebody unregisters the hook. This sits in front of web reads only, is off unless a person
+# deliberately armed it, and the only way to reach the ambiguous state is to have half-configured it
+# yourself — where a refusal that names the file and the line is a five-second fix, and a silent
+# pass-through is a lie about being protected.
+_L2_ENV = "SAFE_FETCH_ALLOWLIST"
+_L2_SWITCH_DEFAULT = os.path.join(os.path.dirname(_THIS_DIR), "safe-fetch-allowlist.md")
+_L2_ANNOUNCED = False   # the OFF line is printed once per process, not once per fetch
+
+
+def _l2_switch_path():
+    return os.environ.get("SAFE_FETCH_ALLOWLIST_FILE") or _L2_SWITCH_DEFAULT
+
+
+def _l2_domains(raw):
+    """Base domains out of a comma- or newline-separated blob. `#` comments and blanks dropped."""
+    out = []
+    for d in raw.replace("\n", ",").split(","):
+        d = d.strip().lower().strip(".")
+        if not d or d.startswith("#"):
+            continue
+        out.append(d)
+    return out
+
+
+def _l2_read_switch(path):
+    """The switch file, read between its markers. Returns (mode, domains, file_present).
+
+    Same marker convention as system/egress-allowlist.md, so the two lists look and parse alike.
+    `mode` is whatever text sits between the mode markers, lowercased — NOT normalised to a boolean,
+    because a value nobody recognises has to stay distinguishable from a value that says 'off'."""
+    mode, doms, block = "", [], None
+    try:
+        with open(path) as f:
+            for line in f:
+                s = line.strip()
+                if s == "<!-- L2-MODE-START -->":   block = "mode"; continue
+                if s == "<!-- L2-MODE-END -->":     block = None;   continue
+                if s == "<!-- ALLOWLIST-START -->": block = "list"; continue
+                if s == "<!-- ALLOWLIST-END -->":   block = None;   continue
+                if not s or s.startswith("#"):
+                    continue
+                if block == "mode" and not mode:
+                    mode = s.lower()
+                elif block == "list":
+                    doms.extend(_l2_domains(s))
+    except OSError:
+        return "", [], False
+    return mode, doms, True
+
+
+def l2_state():
+    """Resolve Level 2 to one of the three named outcomes. Returns (state, domains, why) where
+    state is 'off' or 'on'; the AMBIGUOUS outcome raises RuntimeError rather than returning, because
+    there is no answer to give and pretending otherwise is the failure this whole layer is about.
+
+    Precedence: the environment variable is the PER-RUN seal (an orchestrator sealing one run to the
+    domains it just searched) and wins; the switch file is the PERSISTENT one a person sets by hand.
+    An empty environment variable is treated as 'not set' and falls through to the file."""
+    env = os.environ.get(_L2_ENV, "").strip()
+    if env:
+        doms = _l2_domains(env)
+        if not doms:
+            raise RuntimeError(
+                f"L2-ALLOWLIST AMBIGUOUS: {_L2_ENV} is set to {env!r} but names no usable domain, so "
+                "this run is sealed to nothing. REFUSED rather than allowed — an allowlist that "
+                f"matches nothing must not read as protection. FIX: set {_L2_ENV} to comma-separated "
+                f"base domains (example.com,example.org), or unset it to leave Level 2 off.")
+        return "on", doms, f"{_L2_ENV} (this run)"
+
+    path = _l2_switch_path()
+    mode, doms, present = _l2_read_switch(path)
+    if not present:
+        return "off", [], f"no switch file at {path}"
+    if not mode:
+        raise RuntimeError(
+            f"L2-ALLOWLIST AMBIGUOUS: {path} exists but its switch block is missing or unreadable, so "
+            "whether web reads are sealed cannot be answered. REFUSED rather than guessed. FIX: the "
+            "file needs a line reading `on` or `off` between <!-- L2-MODE-START --> and "
+            "<!-- L2-MODE-END -->, or delete the file to leave Level 2 off.")
+    if mode == "on":
+        if not doms:
+            raise RuntimeError(
+                f"L2-ALLOWLIST AMBIGUOUS: the switch in {path} says `on` but no domain is listed "
+                "between the ALLOWLIST markers, so every web read would be sealed to nothing. "
+                "REFUSED rather than allowed. FIX: list the base domains you want reachable, or set "
+                "the switch back to `off`.")
+        return "on", doms, path
+    if mode == "off":
+        if doms:
+            raise RuntimeError(
+                f"L2-ALLOWLIST AMBIGUOUS: {path} lists {len(doms)} domain(s) but its switch still "
+                "says `off` — half-configured, which is the one state that looks like protection and "
+                "is not. REFUSED rather than allowed. FIX: change the switch line to `on` to arm the "
+                "list, or comment the domains out to leave Level 2 genuinely off.")
+        return "off", [], f"the switch in {path} says `off`"
+    raise RuntimeError(
+        f"L2-ALLOWLIST AMBIGUOUS: the switch in {path} reads {mode!r}, which is neither `on` nor "
+        "`off`. REFUSED rather than interpreted. FIX: make that line read exactly `on` or `off`.")
+
+
+def _l2_announce_off(why):
+    """Say, once per process, that the seal is not in force. This is the honesty half of the design:
+    the person is told the level they are actually at, rather than assuming a wall is there."""
+    global _L2_ANNOUNCED
+    if _L2_ANNOUNCED:
+        return
+    _L2_ANNOUNCED = True
+    sys.stderr.write(
+        "[safe_fetch] L2-ALLOWLIST OFF — this read is NOT sealed to a domain list (" + why + "). "
+        "Level 1 (the raw-command hook) and any OS firewall you run still apply; this middle level "
+        "does not. To turn it on, see docs/OUTSIDE-SERVICES.md and system/safe-fetch-allowlist.md.\n")
+
+
 def _enforce_egress_allowlist(url):
-    """Egress wall (reader-actor build 2026-07-02). If SAFE_FETCH_ALLOWLIST is set
-    (comma-separated domains the orchestrator sealed from search results), reject any
-    URL whose host is not that domain or a subdomain of it — BEFORE the socket opens.
-    Also hard-block non-http(s) schemes (SSRF hygiene). Unset allowlist == unchanged
-    behavior (backward-compatible for the existing callers)."""
-    import os as _os
+    """The egress wall in front of a fetch (reader-actor build 2026-07-02; Level 2 armed 2026-08-15).
+
+    Two checks, in order. The scheme check is UNCONDITIONAL — a non-http(s) URL (file:, gopher:,
+    data:) is SSRF hygiene and has nothing to do with the allowlist. The domain seal then applies
+    only when Level 2 is armed; when it is not, the caller is told so rather than left to assume."""
     from urllib.parse import urlparse as _urlparse
     parsed = _urlparse(url)
     scheme = (parsed.scheme or "").lower()
     if scheme not in ("http", "https"):
         raise RuntimeError(f"egress blocked: scheme '{scheme}' not allowed (http/https only): {url}")
-    allow = _os.environ.get("SAFE_FETCH_ALLOWLIST", "").strip()
-    if not allow:
+
+    state, domains, why = l2_state()
+    if state == "off":
+        _l2_announce_off(why)
         return
     host = (parsed.hostname or "").lower()
-    domains = [d.strip().lower().lstrip(".") for d in allow.split(",") if d.strip()]
     for d in domains:
         if host == d or host.endswith("." + d):
             return
-    raise RuntimeError(f"egress blocked: host '{host}' not in sealed allowlist ({', '.join(domains)}): {url}")
+    raise RuntimeError(
+        f"L2-ALLOWLIST REFUSED: host '{host}' is not on the sealed list ({', '.join(domains)}) — "
+        f"source: {why}. Nothing was fetched; the socket never opened. FIX: if this host genuinely "
+        "belongs, add its base domain to the list; if it does not, that is the seal doing its job.")
 
 
 def fetch_and_sanitize(url: str, desk: str = "root") -> str:
@@ -196,8 +333,24 @@ def fetch_and_sanitize(url: str, desk: str = "root") -> str:
 
 if __name__ == "__main__":
     desk, rest = resolve_desk() if resolve_desk else ("root", sys.argv[1:])
+
+    # `--l2-status` answers "is the middle level actually on right now?" without fetching anything.
+    # A switch nobody can check the position of is how the half-configured state survives.
+    if rest and rest[0] == "--l2-status":
+        try:
+            state, domains, why = l2_state()
+        except RuntimeError as e:
+            print(f"AMBIGUOUS — every web read is refused until this is fixed.\n{e}", file=sys.stderr)
+            sys.exit(2)
+        if state == "off":
+            print(f"L2 egress allowlist: OFF — web reads are not sealed to a domain list ({why}).")
+        else:
+            print(f"L2 egress allowlist: ON — sealed to {', '.join(domains)} (source: {why}).")
+        sys.exit(0)
+
     if not rest:
-        print("Usage: python3 safe_fetch.py [--desk <id>] '<URL>'", file=sys.stderr)
+        print("Usage: python3 safe_fetch.py [--desk <id>] '<URL>'   |   safe_fetch.py --l2-status",
+              file=sys.stderr)
         sys.exit(1)
 
     url = rest[0]

@@ -15,7 +15,7 @@
 #
 # PORTED (2026-08-14) from claudeops-config's system/tools/health-deadman-check.sh, radically
 # simplified. The donor spent roughly two-thirds of this file (its own ~70 lines, plus a fault-ledger
-# read) answering "which of my two Macs is the lead, and can I even trust reading that marker off a
+# read) answering "which of two machines is the lead, and can I even trust reading that marker off a
 # flaky cloud-drive mount" — a whole class of failure (a FUSE mount returning a false-empty read,
 # EDEADLK) that a plain local `data/` folder does not have, because there is exactly one machine and
 # no marker to race on. That machinery is CUT, not translated — dropping it removes the very failure

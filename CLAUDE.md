@@ -73,7 +73,9 @@ NOT BUILT — admissions, not omissions. knowing now beats inferring a connectio
 **The repo is the brain, and their notes sit inside it — untracked.** This folder holds skills, tools
 and hooks — the machinery — and everything *they* write lives in `data/` beneath it, kept out of git by
 one line in `.gitignore`: never tracked, never committed, never uploaded. That folder is resolved by
-`shared/brain_root.py` and by nothing else; every path any tool writes to comes from there.
+`shared/brain_root.py` and by nothing else; every path any tool writes to comes from there — with one
+stated exception: throwaway scratch, which `shared/paths.py` deliberately puts in the machine's own
+temp folder, because regenerable files do not belong in someone's notes.
 
 If it is not set, the honest answer is "not set" — **never guess a folder, never fall back to the
 current directory.** Putting someone's notes somewhere they did not choose is the failure this rule

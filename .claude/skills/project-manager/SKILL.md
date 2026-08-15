@@ -109,9 +109,19 @@ bash "$ROOT/system/hooks/pm_flag.sh" arm "<abs_doc_path>" "<slug>" "<desk>"
 bash "$ROOT/system/hooks/plan_flag.sh" set "<abs_plan_path>"    # only if the doc's `plan:` names one
 ```
 
-Re-running `arm` moves the pointer when the active project changes. The path must be absolute. The flag
-is session-scoped and expires after 12h, so a crashed session leaves no zombie. **Off-switch** —
-`bash "$ROOT/system/hooks/pm_flag.sh" clear` when the person says the project is done.
+Re-running `arm` **with the same slug** refreshes the pointer; the path must be absolute. The flag is
+session-scoped and expires 36h after the last turn, so a crashed session leaves no zombie.
+
+⛔ **Re-running `arm` with a DIFFERENT slug does not move anything — it is REFUSED, exit 3.** The first
+arm locks this window to that project for the life of the window. The refusal message says the rest;
+**do not work around it**, and do not treat `clear` as a way around it either — `clear` is refused the
+same way, and even when allowed it frees the flag while the lock stands. Two things change the project,
+**and you cannot do either on your own:** a new window, or the person saying so in their own next prompt
+(e.g. *"switch the project to `<slug>`"*), which buys exactly one change. If they seem to want a
+different project, **ask them** — don't recite the sentence at them and don't decide it yourself.
+
+**Off-switch** — `bash "$ROOT/system/hooks/pm_flag.sh" clear` when the person says the project is done
+(a locked window will refuse it; closing the window is the ordinary answer).
 
 If the brief has no `plan:` value, say so in one line and move on — an honest blank beats a wrong
 pointer. Do **not** invent plan-resolution logic here (candidate search, fork detection, offering to

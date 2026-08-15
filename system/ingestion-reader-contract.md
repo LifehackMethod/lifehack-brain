@@ -114,9 +114,12 @@ LLM in this process. It uses `--redact` (keep the real text, neutralize injectio
 - **W1 — powerless reader:** enforced `tools: Read` (proven). A hijacked reader can only return a wrong
   wrapper; it cannot send, write, fetch, or label. **The reader judges WHAT-TO-REDACT only — it never
   decides whether to ACT.** No hands + egress allowlist = the real wall.
-- **W2 — egress allowlist:** even a fooled CONTROLLER can't exfiltrate — outbound is allowlisted
-  (`SAFE_FETCH_ALLOWLIST` in `safe_fetch.py`; a network-layer OS-firewall backstop — Little Snitch /
-  LuLu / `ufw` — pointed at the same list, per `system/egress-allowlist.md`).
+- **W2 — egress allowlist:** a fooled CONTROLLER is narrowed on the way out — raw outbound calls hit
+  the always-on Level 1 hook (`system/egress-allowlist.md`), and ordinary web reads can be sealed to
+  a domain list by the Level 2 switch (`system/safe-fetch-allowlist.md`, **OFF unless armed** — it
+  announces itself when it is not in force). ⚠ Neither is a hard wall: L1 fails open and L2 ships
+  off, so the honest backstop is a network-layer OS firewall — Little Snitch / LuLu / `ufw` — pointed
+  at the same list. The three levels are written out in `docs/OUTSIDE-SERVICES.md`.
 - **DANGER-class hard-quarantines** before the reader is even spawned (Step 1/4 above) — the most
   dangerous payloads never reach LLM context.
 - The mechanical scrub + regex scan are a silent SPEED-BUMP ("metal detector"), never the wall.

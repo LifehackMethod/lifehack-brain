@@ -12,10 +12,12 @@
 #      IMMEDIATELY (critical).
 # REDIRECT: item store state/item-store/tasks/ (written by the python, behind the CT-1 HARD guard);
 #      machine-local proof $OUT_DIR/last-run.json (trap) + $OUT_DIR/last-write.log (the run's output).
-# ⚖ PORT NOTE: donor's PRIMARY-machine gate (state/primary-machine marker election between two Macs)
-#      is DELETED, not translated — a student has one computer. This runner has no caller yet — DEST
-#      has no scheduler/cron scaffold (that lands separately); ported so it is correct and callable
-#      the moment one exists.
+# ⚖ PORT NOTE: donor's PRIMARY-machine gate (state/primary-machine marker election between two machines)
+#      is DELETED, not translated — a student has one computer. ⚠ CORRECTED 2026-08-15 (T9.7d):
+#      this used to deny that DEST had any scheduler or cron scaffold, and to say this runner had
+#      no caller. Both are
+#      false — `system/pulse-config.md` carries a real `tasks-store-sync` row (86400s) invoking
+#      this file.
 # ─────────────────────────────────────────────────────────────────────────────
 set -eo pipefail
 
@@ -23,6 +25,12 @@ SUBSYSTEM_NAME="tasks-store-sync"
 STALE_AFTER_HOURS="30"                             # own absence horizon (writers run ~daily)
 WATCHDOG_SECS="600"                                # a --sync pulls Google Tasks + writes records; budget generously
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# The ONE headless-gws credential preflight (require_gws_credentials) — shared with the ten other
+# runners that reach Google, so the rc=75 stand-down contract cannot drift between copies again.
+# A missing library is a REAL defect (exit 1), never a stand-down.
+. "$CODE_ROOT/system/tools/gws-auth.lib.sh" || {
+  echo "[$SUBSYSTEM_NAME] FATAL: cannot source $CODE_ROOT/system/tools/gws-auth.lib.sh"; exit 1; }
 
 DRIVE="$(python3 "$CODE_ROOT/shared/brain_root.py" --quiet 2>/dev/null)"
 if [ -z "$DRIVE" ]; then
@@ -70,20 +78,18 @@ trap _on_exit EXIT INT TERM
 #      gws auth export --unmasked > ~/.config/lifehack/gws-credentials.json && chmod 600 "$_"
 #      mkdir -p ~/.config/lifehack/gws-cron
 #    A student with no Google account / no gws binary fails here with a clear FATAL line.
-GWS_CREDS="$HOME/.config/lifehack/gws-credentials.json"
-if [ -s "$GWS_CREDS" ]; then
-  export GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$HOME/.config/lifehack/gws-cron"
-  export GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE="$GWS_CREDS"
-  export GOOGLE_WORKSPACE_CLI_KEYRING_BACKEND=file
-else
-  # No creds file is true on day one of every install, and PERMANENTLY true for a student with no
-  # Google account — not a runner fault. rc=75 = "this job's own preflight declined to run this
-  # tick" (system/pulse-config.md's exit-code contract; matches cal-health.py / backlog-health.py's
-  # identical "not configured yet" convention) — Pulse counts it as `skipped`, never toward the
-  # 3-strike circuit breaker, so a permanently-unconfigured install never renders DOWN/error forever.
-  echo "[$SUBSYSTEM_NAME] STOOD DOWN: no gws creds at $GWS_CREDS — export them (chmod 600) from an interactive session to enable this job. See INSTALL.md."
-  RC=75; exit 75
-fi
+# No creds file is true on day one of every install, and PERMANENTLY true for a student with no
+# Google account — not a runner fault. rc=75 = "this job's own preflight declined to run this
+# tick" (system/pulse-config.md's exit-code contract; matches cal-health.py / backlog-health.py's
+# identical "not configured yet" convention) — Pulse counts it as `skipped`, never toward the
+# 3-strike circuit breaker, so a permanently-unconfigured install never renders DOWN/error forever.
+# ⚖ 2026-08-15: the check itself now lives in ONE place (gws-auth.lib.sh, sourced at the top) —
+# eleven runners hand-rolled it, and the `exit 3` version of this same branch survived in three
+# copies after being "fixed." The helper also catches what every hand-rolled copy missed: `[ -s ]`
+# passes a whitespace-only or corrupt file, which exported garbage and failed downstream instead of
+# standing down. `RC=75` FIRST so the EXIT trap records the stand-down, THEN exit — the helper
+# deliberately does not terminate on our behalf, for exactly this reason. ⛔ Do not re-inline it.
+require_gws_credentials "$SUBSYSTEM_NAME" || { RC=75; exit 75; }
 
 # ── PRE-FLIGHT: confirm gws auth is healthy via the isolated creds (RETRY 3×4s for a transient blip). ──
 GWS_BIN="$(command -v gws 2>/dev/null || echo /opt/homebrew/bin/gws)"

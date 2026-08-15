@@ -360,8 +360,9 @@ ITEM_FRESHNESS_MAX_STALE_HOURS = 30   # writers run ~daily; DEGRADED if the newe
 ITEM_STATUS_TILE_PATH = os.path.join(DRIVE, "state", "status", "item-store.json")
 
 # ── "never configured" signal — the SAME gate the two writers themselves preflight on
-# (calendar-store-sync-run.sh / tasks-store-sync-run.sh: `[ -s "$GWS_CREDS" ]`, rc=75 STOOD DOWN when
-# absent — system/pulse-config.md's "stood down, not a fault" convention). Neither writer has any
+# (calendar-store-sync-run.sh / tasks-store-sync-run.sh, which as of 2026-08-15 both call
+# `require_gws_credentials` from system/tools/gws-auth.lib.sh, rc=75 STOOD DOWN when absent —
+# system/pulse-config.md's "stood down, not a fault" convention). Neither writer has any
 # OTHER hard gate: calendar_store_sync.py reads cal_config with a tolerant `.load().get(...)`, never
 # `.require()`, so a missing <notes>/config/cal.md does not stop it; tasks_store_sync.py has no
 # cal_config dependency at all. gws-credentials.json is therefore the one real "has this person ever
@@ -372,11 +373,21 @@ GWS_CREDS_PATH = os.path.expanduser("~/.config/lifehack/gws-credentials.json")
 
 
 def _google_configured():
-    """True iff gws-credentials.json exists and is non-empty — mirrors the writers' own `[ -s ... ]`
-    preflight bit for bit."""
+    """True iff gws-credentials.json exists AND holds parseable JSON — mirrors the writers' own
+    preflight (require_gws_credentials in system/tools/gws-auth.lib.sh) bit for bit.
+
+    ⚖ TIGHTENED 2026-08-15 alongside that helper. This used to be `getsize(...) > 0`, matching the
+    writers' then-current `[ -s "$GWS_CREDS" ]`. Both were wrong the same way: a file holding only a
+    newline, or a truncated/corrupt export, passed as "configured." Keeping the old test here after
+    the writers tightened would have DIVERGED this dead-man from them — it would call a machine
+    configured, expect a fresh store, and render ERROR, while the writer standing down at rc=75 was
+    never going to produce one. The two must agree on what "turned Google on" means or the tile
+    lies. (system/build-rules-index.md, ABSENT-SUBJECT-RULE-v1.)"""
     try:
-        return os.path.getsize(GWS_CREDS_PATH) > 0
-    except OSError:
+        with open(GWS_CREDS_PATH) as fh:
+            json.load(fh)
+        return True
+    except (OSError, ValueError):
         return False
 
 

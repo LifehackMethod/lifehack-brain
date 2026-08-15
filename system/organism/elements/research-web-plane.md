@@ -52,6 +52,36 @@ authority: user
 > either, and `system/egress-allowlist.md` is the single allowlist the egress hook reads here.
 > `state/debt-ledger.md` is the reader's own file under their gitignored notes root, never committed.
 
+> **⚠ CORRECTION — 2026-08-15 — the `SAFE_FETCH_ALLOWLIST` per-run seal was ARMED. It still ships OFF.**
+> Every statement below calling that seal *unarmed*, *not armed by any current caller*, or a *known gap* —
+> chiefly **G2** and the `[EGRESS-WALL-FAILOPEN]` entries — **was true when this element was authored on
+> 2026-07-24 and is false as of today.** Each site is struck and dated in place; this is the one full
+> statement. Enver ruled it (`authority: user`: *"APPROVED — ARM IT"*).
+>
+> **What shipped, verified this session.** A persistent switch file, `system/safe-fetch-allowlist.md`
+> (one-word `on`/`off` switch plus a domain block, same marker convention as `system/egress-allowlist.md`), and
+> a new `l2_state()` in `system/tools/safe_fetch.py` that resolves every read to **three named outcomes and no
+> quiet fourth**: **OFF** — allowed, and it *announces on stderr* that the seal is not in force; **ON** —
+> enforced, an off-list host refused **before the socket opens**; **AMBIGUOUS** — **refused**. The
+> `SAFE_FETCH_ALLOWLIST` env var survives as the **per-run** seal and **outranks** the file; the file is the
+> **persistent** switch. `--l2-status` reports the position without fetching.
+> `system/tools/test_egress_level2.py` holds 12 tests, passing inside `system/tools/run-all-tests.sh`.
+>
+> ⚠ **DO NOT UPGRADE THIS ELEMENT'S `PARTIAL` LABEL ON THE STRENGTH OF IT.** The switch ships `off` with an
+> empty domain block; `--l2-status` printed, this session: *"L2 egress allowlist: OFF — web reads are not
+> sealed to a domain list."* **By default it seals nothing, and `/research` still does not arm it per
+> session.** The honest claim is **armed and switchable, ships OFF, and refuses loudly when half-configured** —
+> five ambiguous states now refuse, including *domains listed while the switch still reads `off`*. G2's gap
+> moved from *"the mechanism is unbuilt"* to *"the mechanism is off by default and says so out loud."*
+>
+> ⚠ **Unchanged:** **G1, G3, G4 and G5 all still stand**, the Bash-command allowlist hook still **fails OPEN
+> deliberately** (it fronts every Bash call, where a false positive gets the guard unregistered — the new seal
+> fronts web reads only), and the **OS firewall remains the only HARD wall and is still not included**.
+>
+> ⚠ **NUMBERING:** the shipped code and `docs/OUTSIDE-SERVICES.md` call the in-process `safe_fetch.py` seal
+> **"Level 2"**, while this element's `L2` is the Bash-command hook `enforce_egress_allowlist.sh`. In the
+> corrections below, **"Level 2" always means the in-process `safe_fetch.py` seal.**
+
 ---
 
 ## AUTHORED   (human-only)
@@ -224,7 +254,7 @@ path, because there is none.
 #### `safe_fetch.py` (`system/tools/safe_fetch.py`)
 
 **Flow** (called as `python3 safe_fetch.py '<url>'`):
-1. `_enforce_egress_allowlist(url)` — hard-blocks non-http(s) schemes (SSRF hygiene) BEFORE the socket opens. If `SAFE_FETCH_ALLOWLIST` env var is set (comma-separated domains), blocks any host not in that list or its subdomains. **The env var is NOT armed by any current caller** — this is a known gap (see GAPS below).
+1. `_enforce_egress_allowlist(url)` — hard-blocks non-http(s) schemes (SSRF hygiene) BEFORE the socket opens. If `SAFE_FETCH_ALLOWLIST` env var is set (comma-separated domains), blocks any host not in that list or its subdomains. ~~**The env var is NOT armed by any current caller** — this is a known gap (see GAPS below).~~ ⚠ **CORRECTED 2026-08-15** — the env var is no longer the whole mechanism. It is now the **per-run** seal and it **outranks** a new **persistent** switch file, `system/safe-fetch-allowlist.md`; `l2_state()` resolves the pair to **OFF** (allowed, and announced on stderr as not-in-force), **ON** (enforced), or **AMBIGUOUS** (**refused**). It **ships OFF**, and no caller in this repo arms it yet — so the *effect* described in the struck clause still holds by default, but the mechanism is built, tested and switchable rather than absent. `--l2-status` reports which way it is set.
 2. `urllib.request.urlopen(url, timeout=10)` — stdlib only, no pip. `_MAX_BYTES = 2_000_000` (2 MB cap, prevents memory bombs). `User-Agent: Mozilla/5.0 (compatible; Lifehack/1.0; safe-fetch)`.
 3. `_detect_charset` — from `Content-Type` header or HTML meta tag; fallback utf-8.
 4. `_TextExtractor` (HTMLParser subclass) — extracts visible text, skips `_SKIP_TAGS` (`script, style, nav, footer, head, noscript, template, svg, math`) and CSS-hidden elements (`display:none`, `visibility:hidden`, `opacity:0`, `font-size:0`, `color:transparent`). Falls back to raw text if nothing extracted.
@@ -387,12 +417,26 @@ session is by-convention (`[honor]`). A raw `python3 -c "import urllib.request; 
 bypasses `safe_input.py` entirely. No hook prevents this. The barrier is skill prose only. `[honor·gap]`
 (Documented: `skills/websearch/SKILL.md` lines 68–70, "Hard rules" note; 2026-06-03 security audit finding B3.)
 
-**G2: `SAFE_FETCH_ALLOWLIST` per-run domain sealing unarmed** — `safe_fetch.py` has the
+~~**G2: `SAFE_FETCH_ALLOWLIST` per-run domain sealing unarmed** — `safe_fetch.py` has the
 `_enforce_egress_allowlist` function (line 122) that checks `SAFE_FETCH_ALLOWLIST` env var against the
 fetched URL before the socket opens. NO caller currently sets this env var (confirmed: `safe_search_api.sh`
 and the `web-searcher` agent prompt both invoke `safe_fetch.py` without setting it).
 The per-run seal is therefore unarmed; any allowlisted domain is reachable by any caller.
-(From `[EGRESS-WALL-FAILOPEN]` task #17, debt-ledger line ~198, `state:actionable`.)
+(From `[EGRESS-WALL-FAILOPEN]` task #17, debt-ledger line ~198, `state:actionable`.)~~
+
+**⚠ G2 — RESTATED 2026-08-15. The mechanism was built; the gap narrowed, it did not close.** The paragraph
+above is the 2026-07-24 record, kept because it is what was true then. What is true now, verified this
+session: the seal is **armed and switchable** — a persistent switch file `system/safe-fetch-allowlist.md`
+sits beside the env var, `l2_state()` returns **OFF / ON / AMBIGUOUS** with no quiet fourth state, an
+AMBIGUOUS (half-configured) setting **refuses every web read** rather than passing it, `--l2-status` reports
+the position without fetching, and 12 tests in `system/tools/test_egress_level2.py` run inside
+`system/tools/run-all-tests.sh`. **What is STILL a gap, and is why G2 stays open:** it **ships `off`** with an
+empty domain block, and the second sentence of the struck paragraph is unchanged — `safe_search_api.sh` and
+the `web-searcher` agent prompt still invoke `safe_fetch.py` without setting the variable, so **`/research`
+does not seal a session to the domains it just searched.** By default any host is reachable; the difference is
+that each such read now *prints* that it is not sealed. G2's honest one-line form is now: **the per-run seal
+exists, is tested and is switchable — and no caller arms it, so it is off.** `[EGRESS-WALL-FAILOPEN]` stays
+`state:actionable`, scope narrowed from *build it* to *arm it*.
 
 **G3: `web-searcher` Bash-write residual** — the agent has `Bash` and can write or modify local files.
 Off-machine exfiltration is blocked by the egress hooks; local tampering is not. Accepted risk, monitoring-state.
@@ -424,9 +468,13 @@ From `state/debt-ledger.md`:
   desks; items (3)–(4) are direct research-web-plane hardening. (Debt-ledger line ~118, 2026-07-03.)
 
 - **`[EGRESS-WALL-FAILOPEN]`** (`state:actionable`) — runtime-constructed URLs + IP-literals are not
-  gated; per-run `SAFE_FETCH_ALLOWLIST` seal is unarmed; env-var cred refs not covered. These span both
-  this element and `egress-allowlist-wall`. The research-web-plane's share: the unarmed seal (G2) and
+  gated; ~~per-run `SAFE_FETCH_ALLOWLIST` seal is unarmed~~; env-var cred refs not covered. These span both
+  this element and `egress-allowlist-wall`. The research-web-plane's share: the ~~unarmed~~ seal (G2) and
   the runtime-URL gap (G4). (Debt-ledger line ~198, `last_touched:2026-07-23`.)
+  **⚠ CORRECTED 2026-08-15** — the seal clause is out of date. The seal was **built and made switchable**
+  (three named states, tested, `--l2-status`-checkable) and it **ships OFF**; no caller arms it. The entry
+  stays `state:actionable` and G2 stays open, but its scope narrows from *build the seal* to *arm the seal*.
+  The runtime-URL and env-var-credential clauses are untouched and still true.
 
 - **`[WEB-SEARCHER-BASH-WRITE]`** (`state:monitoring`) — accepted residual local-tampering risk from
   the `web-searcher` agent's Bash tool. `done_when:` tighten via command-scoped Bash permissions or a
@@ -472,6 +520,11 @@ From `state/debt-ledger.md`:
 1. **Arm `SAFE_FETCH_ALLOWLIST`** per research session — each time `/research` dispatches a `web-searcher`
    agent, the orchestrator should set `SAFE_FETCH_ALLOWLIST` to the domains found in search results before
    dispatching fetch calls. Tracked: `[EGRESS-WALL-FAILOPEN]` task #17.
+   **✔ DONE IN PART — 2026-08-15 — the mechanism, not the wiring.** The seal is now built, switchable and
+   tested, and the env var was deliberately kept as the **per-run** seal with documented precedence over the
+   persistent switch file — which is precisely the hook this item asks for. **The `/research` orchestrator
+   still does not set it**, and the switch ships `off`, so this target stays OPEN for the wiring pass. What no
+   longer applies is any reading of it as *"the capability does not exist yet."*
 2. **`/research` fetch-only searcher hook** (task 3 from `[SECURITY-READER-ACTOR]`) — a hook that
    prevents a web-searcher agent from doing arbitrary Bash operations beyond the safe scripts.
 3. **Egress tool-layer allowlist hook** (task 4 from `[SECURITY-READER-ACTOR]`).
@@ -534,4 +587,5 @@ CLAUDE.md is the authoritative source, SKILL.md is the runtime implementation.
 ## AUTO-COMPUTED   (machine-only — hand-set at authoring; the F1.5 checker will own this once built)
 
 - **maturity_label:** PARTIAL [provisional]
-- **check_detail:** LIVE enforcement: `ingest_gate_enforce.sh` PreToolUse Bash · WebFetch · WebSearch · Read — unconditional CLOSED deny, registered in `system/reference/settings.json` lines 212–249; `web-searcher` tool restriction (`tools: Bash, Read`, `agents/web-searcher.md`) — structural, cannot be bypassed; `guard_egress.sh` + `enforce_egress_allowlist.sh` PreToolUse Bash — L1 + L2 egress guards, registered in settings.json lines 117–121. HONOR-SYSTEM surface (no hook): `/websearch` main-session routing to safe tools (SKILL.md hard rules, 2026-06-03 security audit B3); searcher blindness + parallel isolation + distilled-verdict-only discipline (`/research` SKILL.md Steps 1–4); orchestrator untrusted-data treatment (Hard rule 7); question neutralization (Step 1); auto-capture Step 7 write trigger; confidence labeling. GAPS: G1 (main-session raw-Bash bypass on websearch, honor-only), G2 (SAFE_FETCH_ALLOWLIST unarmed, `[EGRESS-WALL-FAILOPEN]` task #17), G3 (web-searcher Bash-write residual, monitoring-state), G4 (L2 runtime-URL fail-open, `[EGRESS-WALL-FAILOPEN]`), G5 (parallel-dispatch honor). Significant honor-system surface alongside real hook + structural enforcement → PARTIAL. [provisional]: first authoring, no independent F1.5 check yet.
+- **check_detail:** LIVE enforcement: `ingest_gate_enforce.sh` PreToolUse Bash · WebFetch · WebSearch · Read — unconditional CLOSED deny, registered in `system/reference/settings.json` lines 212–249; `web-searcher` tool restriction (`tools: Bash, Read`, `agents/web-searcher.md`) — structural, cannot be bypassed; `guard_egress.sh` + `enforce_egress_allowlist.sh` PreToolUse Bash — L1 + L2 egress guards, registered in settings.json lines 117–121. HONOR-SYSTEM surface (no hook): `/websearch` main-session routing to safe tools (SKILL.md hard rules, 2026-06-03 security audit B3); searcher blindness + parallel isolation + distilled-verdict-only discipline (`/research` SKILL.md Steps 1–4); orchestrator untrusted-data treatment (Hard rule 7); question neutralization (Step 1); auto-capture Step 7 write trigger; confidence labeling. GAPS: G1 (main-session raw-Bash bypass on websearch, honor-only), G2 (~~SAFE_FETCH_ALLOWLIST unarmed~~ ⚠ CORRECTED 2026-08-15 → SAFE_FETCH_ALLOWLIST **built, switchable and tested, but ships OFF and no caller arms it**, `[EGRESS-WALL-FAILOPEN]` task #17), G3 (web-searcher Bash-write residual, monitoring-state), G4 (L2 runtime-URL fail-open, `[EGRESS-WALL-FAILOPEN]`), G5 (parallel-dispatch honor). Significant honor-system surface alongside real hook + structural enforcement → PARTIAL. [provisional]: first authoring, no independent F1.5 check yet.
+  ⚠ **PARTIAL still holds after the 2026-08-15 change, and the label was NOT raised.** The new seal adds a real, tested mechanism, but it is off by default and unwired to `/research`, so the honor-system surface this rating rests on is unchanged. G1, G3, G4 and G5 are untouched.

@@ -93,9 +93,10 @@ authority: user
   (2026-08-01, Phase 9's two-machine check: the pasted block died on its fence; `verify-agent-guard.sh` replaced it.)
 
 - **★ VERIFY WHICH MACHINE YOU ARE ON BEFORE WRITING TWO-MACHINE INSTRUCTIONS — `scutil --get ComputerName`.**
-  A whole build was completed, verified, and written up as "done on the Studio, now go check the Air" — while
-  actually running **on the Air**. The session never checked, and nothing in the environment volunteers it
-  (`hostname` is useless here: the Air's is literally `Mac`). The result was an instruction file telling the
+  A whole build was completed, verified, and written up as "done on the second machine, now go check the
+  primary" — while actually running **on the primary machine**. The session never checked, and nothing in the
+  environment volunteers it (`hostname` is useless here: on that machine it was literally `Mac`, a default that
+  identifies nothing). The result was an instruction file telling the
   user to go and re-verify the one machine that was already proven, and to skip the one that was not. **How to
   apply:** the moment a task becomes machine-specific — a hook deploy, a symlink check, a cron gate, any
   "do this on the other one" — run `scutil --get ComputerName` and put the answer *in the artifact*. Same
@@ -275,7 +276,9 @@ authority: user
   job after 3 consecutive non-zero exits, so "found drift / found work" MUST be a success exit.
 - **Seed the scheduler's last-run = now when enabling a just-proven job**, in whatever state file it keeps, so it
   doesn't immediately re-fire on the next 5-min tick.
-- **Machine-gate on `scutil --get ComputerName`, never `hostname`** (the Air's hostname is literally "Mac").
+- **Machine-gate on `scutil --get ComputerName`, never `hostname`** (on macOS a machine's `hostname` can be a
+  default that identifies nothing — one of ours was literally "Mac"; on other platforms use that OS's
+  equivalent stable machine-name lookup).
 - **Don't run the same Drive-stateful cron on two machines at once** — no cross-machine lock; gate to one.
 - **An INTERVAL scheduler cannot pin a job to a clock or calendar time.** It fires when `now − last_run ≥
   interval_seconds`, nothing more. A job that must hit a wall-clock moment (4am daily · Friday-EOB · 1st-of-month ·
@@ -338,7 +341,7 @@ authority: user
   do NOT rewrite history — record the split in the later commit message + the plan so the attribution is
   self-documenting. (2026-07-27, F2.2.)
 
-- **`/usr/bin/python3` on these Macs is 3.9 — a `X | None` annotation is a RUNTIME crash, not a lint nit.** Cron and
+- **`/usr/bin/python3` on macOS is 3.9 — a `X | None` annotation is a RUNTIME crash, not a lint nit.** Cron and
   those runners invoke the system python, so a 3.10+ union annotation in a tool's signature raises
   `TypeError: unsupported operand type(s) for |` at IMPORT time and the job dies before doing anything. Add
   `from __future__ import annotations` (3.7+) or use `Optional[...]`. Verify a new tool with the same interpreter the
@@ -662,7 +665,7 @@ to any build, a **domain** section otherwise. This is the one file `/build` read
 
 - **A duplicated machine/environment gate is how a migration silently misses a file.** Ten runners were moved onto
   ⛔ a shared gate script that does not ship, on 2026-05-28; one runner kept its own hard-coded
-  `case ComputerName in *Studio*)` and was skipped. When the Studio powered off it stopped feeding the tenant
+  `case ComputerName in *<that one machine's name>*)` and was skipped. When that machine powered off it stopped feeding the tenant
   statement — and because the skip branch `exit 0`s (a SUCCESS code), no circuit breaker tripped and nothing
   alerted. **Rule: a gate/guard used by more than one runner lives in ONE sourced helper; a private copy is debt,
   not independence.** When you find one inline copy, grep for the others in the same pass. (2026-06-09; same bug

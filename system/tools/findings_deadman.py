@@ -453,18 +453,18 @@ def _selftest():
         real_roster_fn = load_producer_roster
         load_producer_roster = lambda: {"fake-fresh": 300, "fake-stale": 300, "fake-never": 300}
         try:
-            with open(os.path.join(d, "fake-fresh.mba.jsonl"), "w") as f:
-                f.write(json.dumps({"producer": "fake-fresh", "machine": "mba", "ts": _iso(now - 60),
+            with open(os.path.join(d, "fake-fresh.primary.jsonl"), "w") as f:
+                f.write(json.dumps({"producer": "fake-fresh", "machine": "primary", "ts": _iso(now - 60),
                                      "status": "OK", "scanned_n": 1, "summary": "", "rc": 0,
                                      "labels": {"job": "x"}, "fingerprint": "abc"}) + "\n")
-            with open(os.path.join(d, "fake-stale.mba.jsonl"), "w") as f:
-                f.write(json.dumps({"producer": "fake-stale", "machine": "mba", "ts": _iso(now - 5000),
+            with open(os.path.join(d, "fake-stale.primary.jsonl"), "w") as f:
+                f.write(json.dumps({"producer": "fake-stale", "machine": "primary", "ts": _iso(now - 5000),
                                      "status": "OK", "scanned_n": 1, "summary": "", "rc": 0,
                                      "labels": {"job": "x"}, "fingerprint": "def"}) + "\n")
             # Cross-check case: a producer that IS emitting but is NOT in the roster — proves
             # `unrostered_producers` actually fires rather than silently agreeing.
-            with open(os.path.join(d, "fake-unrostered.mba.jsonl"), "w") as f:
-                f.write(json.dumps({"producer": "fake-unrostered", "machine": "mba", "ts": _iso(now - 60),
+            with open(os.path.join(d, "fake-unrostered.primary.jsonl"), "w") as f:
+                f.write(json.dumps({"producer": "fake-unrostered", "machine": "primary", "ts": _iso(now - 60),
                                      "status": "OK", "scanned_n": 1, "summary": "", "rc": 0,
                                      "labels": {"job": "x"}, "fingerprint": "ghi"}) + "\n")
             report = findings_report_with_deadman(now=now)

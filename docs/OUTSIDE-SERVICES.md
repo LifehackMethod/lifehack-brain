@@ -23,6 +23,7 @@ and nothing about the core tool notices.
 | `clasp` | No | `/google-sheet` falls back to formulas only — almost never needed |
 | `gh` + a GitHub account | No | you can't use the one-sentence "file a bug" flow yet |
 | Google Chrome | No | `/design-lifehack` screenshots fail; nothing else touched |
+| LuLu (outbound firewall) | No | the two built-in egress speed bumps still run; you skip the one HARD wall of the three (see below) |
 
 **If you only ever get the required two, this tool works, completely, forever.** Everything below the
 line is a "come back to this later, if ever" decision — never a "now" decision.
@@ -172,7 +173,55 @@ Skip it, and that one thing simply doesn't happen yet — nothing else notices, 
   ⚠ Verified on macOS only — the tool also checks the standard Linux and Windows install locations,
   but nobody has confirmed those work yet.
 
+### Outbound protection — LuLu, and the three honest levels (T9.5g, 2026-08-15)
+
+Everything else on this page protects the INCOMING side — a page, a PDF, an email body gets sanitized
+before the model ever reads it. This package does not promise the same strength on the OUTGOING side,
+and this section says so plainly rather than letting you assume it's covered. **Read this, decide for
+yourself, and if you want the hard floor, it's a five-minute install — not a switch this package flips
+for you.**
+
+**Level 1 — the raw-command allowlist (`system/egress-allowlist.md`). ON by default, no setup.** Blocks
+a `curl`/`wget`/raw Python HTTP call from reaching anywhere outside a short approved domain list.
+It is a speed bump, not a wall: if it can't parse a command or read its own list, it **fails OPEN** —
+allows the call rather than freezing your shell on an edge case — and it only reads the text of a shell
+command, so a compiled program opening its own connection is invisible to it.
+
+**Level 2 — the domain seal on ordinary web reads (`system/safe-fetch-allowlist.md`). OFF by
+default, and it is a real switch.** Ordinary web reading — what `/websearch` and most
+content-reading skills actually use — can be sealed to a set of domains you choose. Everything
+outside that set is refused before the connection opens.
+
+- **Turning it on.** Open `system/safe-fetch-allowlist.md`, list your base domains, change the
+  switch line from `off` to `on`. That is the whole procedure; nothing else has to be installed.
+- **Checking where it stands.** `python3 system/tools/safe_fetch.py --l2-status` prints ON or OFF
+  and, if on, what it is sealed to.
+- **While it is off, it tells you so** — every unsealed web read prints one line saying the seal is
+  not in force. You are never left assuming a wall that is not there.
+- **Half-configured refuses rather than pretends.** Domains listed with the switch still off, or the
+  switch on with nothing listed, stops web reads with a message naming the line to fix. That state
+  is the one that would otherwise look like protection and provide none.
+- ⚠ **What it is not.** It governs `safe_fetch.py` only. A raw `curl` is Level 1's business, and a
+  compiled program opening its own connection is invisible to both — that is Level 3.
+
+**Level 3 — your own operating-system firewall. Not included. The only HARD wall of the three.**
+Levels 1 and 2 both work by reading the text of a command or a URL before deciding, and Level 1 fails
+open by design — neither can see a compiled binary phoning home on its own. An OS-level firewall sits
+underneath both, and asks you, by name, the first time anything tries to leave your machine at all.
+**LuLu** (by Objective-See, macOS) is the free, open-source option this page recommends; **Little
+Snitch** (paid, macOS) and `ufw` (Linux) do the same job if you already have one.
+
+- **Do you need it?** Only if you want that hard floor. Nothing here stops working without it — same
+  "genuinely optional" bar as everything else on this page.
+- **Without it.** Levels 1 and 2 still run and still catch the ordinary case. What you lose is the one
+  layer that would notice a compiled tool doing something neither of them can see.
+- **Getting it.** Free, at <https://objective-see.org/products/lulu.html> — download, install like any
+  other Mac app, and the first time anything tries to reach the network it asks you, by name, allow or
+  deny. Point it at the same base-domain list in `system/egress-allowlist.md` if you want your two
+  walls to agree.
+- **Cost.** Free, open-source, no account.
+
 ---
 
-**That's all eleven.** If something outside this package ever gets added later, this page is where it
+**That's all twelve.** If something outside this package ever gets added later, this page is where it
 belongs — not buried inside the one skill that happens to need it.

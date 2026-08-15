@@ -24,16 +24,23 @@
 # breaker never trips on a content gap); notify suppression by the governor is NOT a failure.
 # Test without buzzing: NOTIFY_DRY_RUN=1 bash cal-diary-run.sh --cadence weekly
 #
-# ⚖ PORT NOTE: donor's LEAD-MACHINE gate (state/primary-machine marker election between two Macs)
-# is DELETED, not translated — a student has one computer. This runner has no caller yet — DEST
-# has no scheduler/cron scaffold (that lands separately); ported so it is correct and callable
-# the moment one exists.
+# ⚖ PORT NOTE: donor's LEAD-MACHINE gate (state/primary-machine marker election between two machines)
+# is DELETED, not translated — a student has one computer. ⚠ CORRECTED 2026-08-15 (T9.7d): this
+# used to deny that DEST had any scheduler or cron scaffold, and to say this runner had no
+# caller. Both are false —
+# `system/pulse-config.md` carries a real `cal-diary` row (86400s, chaining all five cadences)
+# invoking this file.
 # ─────────────────────────────────────────────────────────────────────────────
 set -u
 # Execution-residency: DRIVE = CONTENT root (where diary/state/journal are WRITTEN). CODE_ROOT =
 # where THIS script + its .py tools live (derived from $0 → the git clone when cron calls the
 # clone copy). Code is invoked from CODE_ROOT; content is written under DRIVE.
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# The ONE headless-gws credential preflight — shared with the ten other runners that reach Google.
+# A missing library is a REAL defect (exit 1), never a stand-down.
+. "$CODE_ROOT/system/tools/gws-auth.lib.sh" || {
+  echo "[cal-diary] FATAL: cannot source $CODE_ROOT/system/tools/gws-auth.lib.sh"; exit 1; }
 
 # The data root, through the ONE resolver — never a hardcoded personal Drive path.
 DRIVE="$(python3 "$CODE_ROOT/shared/brain_root.py" --quiet 2>/dev/null)"
@@ -56,15 +63,15 @@ while [ $# -gt 0 ]; do
 done
 
 # ── GWS HEADLESS AUTH (keychain-free isolated config) ──
-GWS_CREDS="$HOME/.config/lifehack/gws-credentials.json"
-if [ -s "$GWS_CREDS" ]; then
-  export GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$HOME/.config/lifehack/gws-cron"
-  export GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE="$GWS_CREDS"
-  export GOOGLE_WORKSPACE_CLI_KEYRING_BACKEND=file
-fi
 # (No abort if creds absent — interactive sessions use the normal gws login; capture/rollup are
 #  fail-soft, so a student with no gws/Google account still gets a diary entry from journal.md +
 #  status tiles alone, with the Google sections marked source-unavailable.)
+#  That is why this calls the _optional entry point and not require_gws_credentials.
+# ⚖ 2026-08-15: was a hand-rolled `[ -s "$GWS_CREDS" ]` block, one of eleven identical copies —
+# now the shared helper (gws-auth.lib.sh, sourced at the top). Two things change: `[ -s ]` passed a
+# whitespace-only or corrupt file and exported it anyway, and the absence was SILENT. The helper
+# validates, and names the absence in one non-fatal line. ⛔ Do not re-inline it.
+load_gws_credentials_optional cal-diary
 
 # Default the anchor to today when no --date was passed. This keeps the array non-empty so
 # "${DATE_OPT[@]}" is safe under `set -u` on macOS bash 3.2 (empty-array expansion throws

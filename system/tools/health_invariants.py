@@ -14,7 +14,7 @@ never scheduled on its own.
 ONE. Do not grow this list unboundedly.
 
 PORTED (2026-08-14) from claudeops-config's system/tools/health_invariants.py. ONE invariant was CUT
-rather than translated: the donor's Invariant 4 asked "are BOTH of my two Macs reporting a fresh
+rather than translated: the donor's Invariant 4 asked "are BOTH of my two machines reporting a fresh
 heartbeat" — the exact masking-by-omission bug it existed to catch (a second machine silently going
 dark while the dashboard stayed all-green) cannot happen here, because there is exactly one machine
 (docs/data-layout.md: "the two-machine plane is not part of this system"). Per this module's own

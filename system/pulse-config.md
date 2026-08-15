@@ -66,6 +66,57 @@ already live in `system/tools/ingest-run.lib.sh` (`CLAUDE_BIN` resolution + the
 `~/.config/lifehack/claude-oauth-token` file) rather than inventing a new one — and treat rc=127 as a
 FAILURE, never as "found nothing."
 
+⛔ **The credential half of that pattern is NOT yours to hand-roll — call
+`require_claude_token` from `system/tools/claude-auth.lib.sh`.** It is the single shared
+implementation of the missing-token preflight, and it returns **75** (this table's "stood down") —
+never 3. History, and the reason the rule is written this strongly: five runners each hand-rolled
+that same check with the same wrong `exit 3`, and the bug was fixed TWICE (archivist-run.lib.sh,
+planning-weekly-prime-run.sh) before anyone noticed three more copies still carried it — a fix to a
+copy reaches only that copy. Usage:
+`source "$CODE_ROOT/system/tools/claude-auth.lib.sh"` then `require_claude_token "<job>" || exit 75`
+(the helper emits the named stand-down line itself; the caller decides how to terminate and whether
+to write a tile first). A stand-down is loud and named — it is never a silent success.
+
+⛔ **Same rule, second credential — gws/Google: call `require_gws_credentials` (or
+`load_gws_credentials_optional`) from `system/tools/gws-auth.lib.sh`.** Sibling of the above, same
+contract, same reason. It went ELEVEN copies deep before being consolidated, and the `exit 3` bug
+was in six of them; three were fixed (calendar-store-sync, tasks-store-sync, email-summary-write)
+while `ingest_load_gws()` in `ingest-run.lib.sh` kept `exit 3` — and unlike those three (latent, no
+scheduler row) that one was REACHABLE. ⭐ It is also the WORSE branch of the two: a missing claude
+token is fixed by one `claude setup-token`, but "no Google account connected" is **permanent** for a
+large share of installs, so `exit 3` there auto-disabled a runner forever for the majority case.
+Usage:
+`source "$CODE_ROOT/system/tools/gws-auth.lib.sh"` then, picking by what the job does WITHOUT Google:
+
+| your job without Google | call | on absent/unusable creds |
+|---|---|---|
+| cannot do its work at all | `require_gws_credentials "<job>" \|\| exit 75` | rc **75**, named line, job does not run |
+| still produces a real, degraded result | `load_gws_credentials_optional "<job>"` | always rc **0**, one named NOTE, job continues |
+
+Both take an optional 2nd arg — the name of your own logger function — so a caller with its own
+timestamped log format keeps it (`... "<job>" _my_logger`). On success both export
+`GOOGLE_WORKSPACE_CLI_{CONFIG_DIR,CREDENTIALS_FILE,KEYRING_BACKEND}`; both publish `$GWS_CREDS_FILE`
+and `$GWS_AUTH_STANDDOWN_REASON`. Neither exits on your behalf — several callers must set their own
+`RC` global first so their EXIT trap records the stand-down, and one must `return` from inside a
+function rather than kill its wrapper.
+
+**A present-but-unusable credential file is a stand-down too, with its OWN reason.** Every one of
+the eleven hand-rolled copies gated on `[ -s "$GWS_CREDS" ]`, which passes a file holding only a
+newline and passes a truncated/corrupt export — so they exported garbage and failed downstream with
+empty output, i.e. "I could not look" spelled as "I looked and it was fine." The helper reads and
+JSON-parses it, and reports `empty-gws-credentials` / `unparseable-gws-credentials` distinctly from
+`no-gws-credentials`. (`system/build-rules-index.md`, ABSENT-SUBJECT-RULE-v1.) A **missing library**,
+by contrast, is `exit 1` — a real defect, never a stand-down.
+
+⚠ **NOT in that lib, deliberately — the live `gws … getProfile` pre-flight that follows it.** Seven
+runners retry that call 3×/4s and exit **2** on failure. Do not fold it into the 75: reaching it
+means credentials exist and parse, so the person IS configured and a failing call is a transient/
+infra condition — this table's rc=2 ("held", never the breaker). Collapsing it would report a
+configured machine as unconfigured and hide genuinely dead auth forever. It also ends differently by
+design — FATAL in calendar-store-sync / tasks-store-sync / email-summary-write / `ingest_load_gws`,
+warn-only in cal-vault / cal-vault-weekly / cal-diary, which degrade and mark the source unavailable.
+That severity difference is real, so the loop stays with its callers.
+
 ## Intervals reference
 
 | Interval | Seconds |
@@ -177,6 +228,52 @@ tasks-store-sync        | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/t
 # which is explicit: STALE_AFTER_HOURS=4, "just over one 3h cadence, so a SINGLE missed run
 # surfaces on the next tick." 3h cadence.
 email-summary-write     | yes | 10800 | bash "$LIFEHACK_CODE_ROOT/system/tools/email-summary-write-run.sh"
+#
+# ── T9.8b, 2026-08-15 — five rows closing four previously-missing wiring gaps. Each runner was
+#    ported/built THIS session and syntax/dry-path verified (skip branches exercised with real
+#    exit codes); none has been LIVE-fired end-to-end against a real headless claude call as
+#    part of this port (that would spend real tokens against real notes content to "test" a
+#    schedule row — the skip-path verification is the honest substitute). All five are
+#    OS-agnostic: they only ever run because THIS row exists, on either scheduler, since both
+#    invoke pulse.sh identically — see "How it works" above.
+#
+# cal-diary: cal-diary-capture.py (daily) + cal-diary-rollup.py (weekly/monthly/quarterly/
+# yearly, each period-idempotently self-gated — see cal-diary-run.sh's own header) were ported
+# without a row in this manifest, missed by the pass that wired seven other orphaned runners. ONE row
+# chains all five cadence checks — each periodic call is a cheap no-op except on its own due
+# date, so a single daily tick is sufficient to drive every cadence. && (not ;) so a real daily
+# failure is not masked by continuing to the periodic checks.
+cal-diary         | yes | 86400  | bash "$LIFEHACK_CODE_ROOT/system/tools/cal-diary-run.sh" && bash "$LIFEHACK_CODE_ROOT/system/tools/cal-diary-run.sh" --cadence weekly && bash "$LIFEHACK_CODE_ROOT/system/tools/cal-diary-run.sh" --cadence monthly && bash "$LIFEHACK_CODE_ROOT/system/tools/cal-diary-run.sh" --cadence quarterly && bash "$LIFEHACK_CODE_ROOT/system/tools/cal-diary-run.sh" --cadence yearly
+#
+# archivist-audit / archivist-deepmine: archivist-run.lib.sh (shared engine) + both wrappers
+# were entirely absent — no file, no row — so the weekly structural audit and the monthly
+# per-desk deep-mine were manual forever. Two rows, not one: they are genuinely different
+# cadences and different prompts, not one operation with a period flag (unlike cal-diary
+# above). archivist-deepmine's own STAGGER lives inside the wrapper (a notes-durable ledger
+# picks the single most-overdue desk each tick) — the row below just has to tick often enough
+# for that internal stagger to work; 4-day cadence matches the wrapper's own derivation.
+# ⚠ TENSION, flagged not silently resolved: .claude/skills/archivist-deepmine/SKILL.md still
+# says "its scheduled runner does NOT ship... the skill IS the interactive path" — that line
+# predates this port and is now stale; this task's own plan named the missing scheduled leg as
+# the gap to close. The skill file is outside this row's ownership to correct.
+archivist-audit    | yes | 604800 | bash "$LIFEHACK_CODE_ROOT/system/tools/archivist-audit-run.sh"
+archivist-deepmine | yes | 345600 | bash "$LIFEHACK_CODE_ROOT/system/tools/archivist-deepmine-run.sh"
+#
+# planning-weekly-prime: the mid-week map-warming cron for the planning-weekly skill's Phase 0,
+# cited by name (with a line number) at .claude/skills/planning-weekly/prompts/
+# 00-system-layer.md:68 — a dangling promise until this row + its runner landed. Ticked daily
+# (not weekly) because its OWN cadence guard (Thu/Fri/Sat window, ISO-week idempotent via
+# map.md's own existence) needs a daily check to catch the window at all — see the runner's
+# header for why the "real" Phase 0 fan-out (Agent-tool-based) cannot be invoked from cron and
+# what this ships instead.
+planning-weekly-prime | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/planning-weekly-prime-run.sh"
+#
+# guard-fire-test: the engine (organism/label_checker.py + label_manifest.yaml, run through
+# verify-hooks.sh) already exists and is correct (confirmed GREEN this session — 20/20 guards
+# LIVE) but nothing fired it on a schedule and nothing read its result — a downgrade from LIVE
+# to PARTIAL would sit invisible until a human happened to run it by hand. Weekly cadence
+# matches the runner's own STALE_AFTER_HOURS=192 (168h weekly + 24h slack) header.
+guard-fire-test    | yes | 604800 | bash "$LIFEHACK_CODE_ROOT/system/tools/guard-fire-test-run.sh"
 #
 # NOT ADDED: shared/tools/email_summary_run.sh (the older v1-shaped watchdog wrapper). Not parked,
 # not given a row at all — two independent reasons, both verified this session. (1) It passes its

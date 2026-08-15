@@ -10,8 +10,9 @@
 #      not in system/egress-allowlist.md. Package managers, git, gws and safe_fetch.py do not match
 #      the mechanism pattern, so ordinary work never touches this.
 # REDIRECT: to read a web page use `python3 <repo>/system/tools/safe_fetch.py '<url>'` — it sanitizes
-#      on the way in and allowlists per run. If a host genuinely belongs, add its base domain to
-#      system/egress-allowlist.md between the ALLOWLIST markers.
+#      on the way in and has a domain seal of its own, which ships OFF (system/safe-fetch-allowlist.md).
+#      If a host genuinely belongs, add its base domain to system/egress-allowlist.md between the
+#      ALLOWLIST markers.
 # SIGNPOST: the list, the match rule and the honest limits are all in system/egress-allowlist.md.
 # FAIL_POSTURE: OPEN, deliberately, and it says so out loud when it happens. No readable host, or an
 #      unreadable list, means the call goes through with a printed reason. The tool layer is a speed
