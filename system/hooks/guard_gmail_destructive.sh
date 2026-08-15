@@ -58,9 +58,12 @@
 # FAIL_POSTURE: closed — unparseable stdin DENIES (hook-sop.md §3.2). A guard that cannot read
 #      its input must never allow: the cost of a false block is one retry with a label move, and
 #      the cost of a false allow is mail that does not come back.
-# UPDATED: 2026-08-14 (ported; the deryl-ingest desk and _ClaudeOps rule pointers it carried do
-#      not exist here, so the rule was restated in this header rather than left dangling — a
-#      redirect to a file the reader does not have is worse than no redirect at all)
+# UPDATED: 2026-08-14 (ported; the upstream personal-desk skill and internal doctrine pointers it
+#      carried do not exist here, so the rule was restated in this header rather than left dangling
+#      — a redirect to a file the reader does not have is worse than no redirect at all. ⚠ The
+#      first draft of this very line NAMED that upstream desk, which put a personal desk name into
+#      a public repository inside the sentence explaining that the personal reference was removed.
+#      Caught by an identifier sweep before push. Do not reintroduce the name here.)
 # ─────────────────────────────────────────────────────────────────────────────
 # guard_gmail_destructive.sh — PreToolUse hook (matcher: Bash)
 
