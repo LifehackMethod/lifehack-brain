@@ -90,6 +90,18 @@
         ]
       }
     ],
+    "UserPromptExpansion": [
+      {
+        "matcher": "checkin",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_checkin_needs_project.sh\"",
+            "statusMessage": "Checking a project is armed before /checkin..."
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "ExitPlanMode",
@@ -233,6 +245,17 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_agent_return_channel.sh\"",
             "statusMessage": "Checking this helper can hand its work back..."
+          }
+        ]
+      },
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Skill(checkin)",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_checkin_needs_project.sh\"",
+            "statusMessage": "Checking a project is armed before /checkin..."
           }
         ]
       },
