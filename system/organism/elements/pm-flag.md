@@ -295,6 +295,94 @@ The logbook is append-only and survives flag TTL; only genuinely-executed arms l
 | `~/.claude/run/scratch-capture/cap-sess-<SID>.state` | `scratch_capture_gate.sh` | same | bucket watermark for Stop-gate capture |
 | `~/.claude/run/scratch-capture/cap-sess-<SID>.pad` | `scratch_capture_gate.sh` | same | sidecar of last-checkpointed scratchpad section |
 | Active project brief (doc_path) | downstream skills/hooks (not pm_flag.sh itself) | `pm_persist.sh` (read for excerpt), `announce_plan_write.sh` (write plan pointer to ## SCRATCHPAD) | pm_flag.sh only stores the PATH; the brief content is the payload |
+| `~/.claude/run/pm/lock-<KEY>.project` | `pm_flag.sh arm` (write-once; rewritten ONLY by a human-word override) | `pm_flag.sh` `_locked_id`, `pm_persist.sh` (TAMPER cross-check) | ⚠ ADDED 2026-08-15 — the window's project IDENTITY. Fields: lock_slug, lock_doc, lock_desk, locked_at, origin (`first-arm`/`logbook`/`human-override`), session; on an override also previous_slug + override_phrase. Pruned after 30 days. **NEVER deleted by `clear`** — that is what stops the clear-then-arm-elsewhere bypass |
+| `~/.claude/run/pm/arm-denied.log` | `pm_flag.sh` (refusals AND authorised overrides) | humans | ⚠ ADDED 2026-08-15 — deliberately NOT `arm-events.log`: `pm_flag_recover.py` reads the LAST event there and would report a DENIED project as recoverable |
+| `~/.claude/run/pm/override-<KEY>.grant` | `pm_persist.sh` ONLY (from the human's raw prompt) | `pm_flag.sh` `_consume_grant` **and `plan_flag.sh` `_consume_grant`** | ⚠ ADDED 2026-08-15 — the human-word grant. Fields: granted_at, session, phrase, cwd. **GENERIC ON PURPOSE — ONE grant type serves BOTH the project lock and the plan lock.** Single-use, burned on spend; dies on the next prompt that does not re-authorise |
+| `~/.claude/run/plan/lock-<KEY>.plan` | `plan_flag.sh record`/`set` | `plan_flag.sh` `_locked_id` + its `locked` verb | ⚠ ADDED 2026-08-15 — the PLAN half's lock. Same shape, same grant, DIFFERENT store — and that store has **no custodian guard** (see wall 2b) |
+
+---
+
+### ⭐ THE LOCK — ADDED 2026-08-15 (the element described a world without it)
+
+> ⚠ **CORRECTED 2026-08-15.** Everything below this heading is new to this element. The element as
+> written described `pm_flag.sh` as a plain state writer whose "arm integrity" was honor-system
+> (*"wrong path succeeds silently"*). **That has not been true since 2026-08-06.** The elements are
+> DESCRIPTIVE — the code moved ahead of the description, so the description is what changes here.
+> Nothing below asks the code to move backward.
+
+**The ruling** (the owner, `authority: user`, verbatim): *"When you fire a plan in a project inside
+of a session window, it should be LOCKED. If you want to change it, you need to go to a new session
+window — unless the human explicitly says write to this other project or this other plan, in which
+case I'm okay with the hook firing once and then the human can override the hook."*
+
+**1. The project lock (2026-08-06).** The FIRST well-formed `arm` in a session writes
+`lock-<KEY>.project`. After that, `arm` with a DIFFERENT slug is REFUSED (**exit 3**, nothing
+written, logged to `arm-denied.log`) and `clear` is REFUSED (exit 3). A SAME-slug `arm` still
+refreshes normally — `/checkin` Step 0 re-arms on every run and `/save`'s recovery path depends on
+it. Keyed by session; the cwd-hash fallback is deliberately **not** lockable, because two windows in
+one folder share that key and a lock there would refuse a legitimate window.
+*Why it exists:* on 2026-08-06 a session re-armed its own window from `ingest-skill` to
+`skill-builder` on its own judgment, mid-conversation. Two `/save` handoffs went to the wrong
+project and a human-authored FRAME block in the wrong brief was edited. It recurred the same evening
+in a second window. Prose could not stop it.
+
+**2. The human-word override (2026-08-15) — the second half of the ruling.** Until this date only
+the *new window* exit existed, so a human who said *"write to this other project"* was told to open
+one. The override is built on the **one channel a model cannot write to: the raw
+`UserPromptSubmit` prompt.** `pm_persist.sh` is the only code in the system handed that text; it
+matches it against a **narrow closed list of explicit phrases** and writes
+`override-<KEY>.grant`. `pm_flag.sh` `_consume_grant` burns it on **exactly one** change and shouts
+on **stdout AND stderr**.
+- ⛔ **THE CRUX: the override is the HUMAN'S WORD, not a flag the model can set for itself.** Every
+  flag, env var, argument or file a session can set fails that test — it would be the model
+  authorising itself. If the model can produce the thing that unlocks it, there is no lock.
+- **What it deliberately does NOT do:** it does not read *which* project they named and does not
+  check the arm against it. That comparison needs *"the ingest project"* to equal `ingest-skill`
+  before it can run — judgement wearing a regex, and it would refuse correct work. The grant is
+  permission for ONE change; the banner shouts the destination actually taken.
+- **Lifetime:** one turn. The next prompt that does not re-authorise deletes it.
+- **Session-bound:** a grant minted in one window is not consumable in another.
+- **`clear` never deletes the LOCK**, authorised or not — that is what closes the two-step
+  clear-then-arm-elsewhere bypass.
+- **Stated hole, not an oversight:** a person who PASTES text containing one of the phrases issues a
+  grant they did not mean; and a session with a shell can run `pm_persist.sh` itself (which is why
+  `guard_pm_flag_store.sh` denies exactly that). There is deliberately **no validator inside the
+  thing being forged** — a check the forger runs reads as protection while being none. The real
+  backstop is NOISE: every spend prints a banner naming both projects, and writes `previous_slug` +
+  `override_phrase` into the lock plus an `arm-override` line into the logbook. The owner's bar:
+  *"I don't mind being able to write into a different brief; what I want is for it not to change
+  without me seeing it."*
+
+**3. The PLAN half (2026-08-15).** `plan_flag.sh` now carries the same lock for plans —
+`lock-<KEY>.plan`, first-arm-wins, a different plan REFUSED (**exit 2** on the `record` /
+ExitPlanMode hook path, which is the harness's block code so the second plan is genuinely not fired;
+**exit 3** on the `set`/`clear` CLI verbs, matching `pm_flag.sh`, whose callers are skills). It
+**consumes the SAME `override-<KEY>.grant`** — the 2026-08-15 lane made the grant generic and put it
+in the pm store precisely so the plan lane could reuse it, and **no second grant type exists.**
+Same-plan re-arms refresh normally (plan mode re-fires on every amendment); "same plan" is
+`plan_file` OR H1 `name` string equality and nothing looser. One declared fail-open: if `record`
+cannot work out which plan it was handed, it writes nothing **and refuses nothing** — refusing on no
+evidence would wall off plan mode on a payload glitch.
+Fire-tests: `system/hooks/tests/test_pm_lock_override.sh` (61 cases) ·
+`system/hooks/tests/test_plan_lock_override.sh` (53 cases). Both counted by `verify-hooks.sh`.
+
+**4. ⚠ THE TTL WAS INERT UNTIL 2026-08-15 — and two prior passes missed it.** Worth recording
+because the failure hid behind two separate "fixes" that both looked complete:
+- **2026-07-11** bumped the TTL 12h → 36h **in `pm_flag.sh` only.** `pm_persist.sh` carried its own
+  independent copy of the default, still at 12h, and its expiry check runs every turn while
+  `pm_flag.sh` runs only when invoked — so the stale copy always won. The 36h extension had never
+  once taken effect.
+- **2026-08-14** fixed *that* by deleting the duplicate literal: `pm_persist.sh` now reads the number
+  from `pm_flag.sh`'s read-only `ttl` verb, which is the sole definition. **The TTL was still inert.**
+- **2026-08-15 — the actual bug.** `_refresh_armed_at` ran **before** the expiry check and rewrote
+  `armed_at` to *now* for any flag whose `session=` matched — **every flag in its own window**, which
+  is the only case that ever reaches the check. The age it tested was always zero, so the value could
+  never take effect **at any setting**. Measured: a **40-hour-old flag survived**; the same flag
+  carrying a foreign `session=` was correctly deleted.
+- **Fixed by deciding expiry against the value ON DISK first**, and refreshing only a flag that
+  survived it. Both original intents stay whole: alive while you are working (every turn re-stamps
+  it), aged out after a real gap. Now measured: **20h survives, 40h expires.** It matters most on
+  `--resume` of a window abandoned for weeks — the one moment the TTL is actually *for*.
 
 ---
 
@@ -310,8 +398,30 @@ delimiter-agnostic detection for `sed -i` attacks that used non-standard `s///` 
 
 **2. `guard_write_paths.sh`** (PreToolUse Write|Edit) `[hook]` — **BLOCKING.** The residency wall
 does NOT cover `~/.claude/run/pm/` — the flag store is machine-local and NOT in a protected Drive
-path, so no hook blocks a direct Write/Edit to the flag files themselves. It DOES protect
+path, so ~~no hook blocks a direct Write/Edit to the flag files themselves~~. It DOES protect
 `settings.json` from direct Write/Edit.
+
+> ⚠ **CORRECTED 2026-08-15** — the struck clause was true of `guard_write_paths.sh` and false of the
+> system. **`guard_pm_flag_store.sh` IS registered** (PreToolUse `Bash|Write|Edit`,
+> `.claude/settings.json:181`) and it *does* block a direct Write/Edit anywhere under
+> `~/.claude/run/pm/`, plus a Bash command that names the store and carries a write/destroy token,
+> plus running `pm_persist.sh` by hand (the grant-forgery route). It is listed as **wall 2b** below.
+> ⛔ It is a **speed bump, not a wall, by its own header's admission** — it matches text, does not
+> resolve variables, `cd`s or symlinks, and an audit walked past it several ways. Do not read this
+> correction as "the store is now safe"; read it as "the claim that nothing guards it is false."
+
+**2b. `guard_pm_flag_store.sh`** (PreToolUse `Bash|Write|Edit`, `.claude/settings.json:181`) `[hook]`
+— **BLOCKING.** The custodian of the arming store. Denies (a) any `Write`/`Edit`/`NotebookEdit`
+whose target is under `~/.claude/run/pm/`; (b) any Bash command that names that path **and** carries
+a write/destroy token in the same command segment (redirect · `rm`/`mv`/`cp`/`tee`/`truncate`/`ln`/
+`dd`/`chmod`/`touch`/`shred` · `sed -i`/`perl -i` · an interpreter shown doing a write); (c) running
+`pm_persist.sh` by hand — the sole issuer of the human-word grant, which would otherwise let a
+session pipe itself a sentence the person never typed. Reads of the store (`ls`/`cat`/`grep`) and
+ordinary `pm_flag.sh arm|clear|status|locked` stay allowed. **FAIL_POSTURE: closed** — unparseable
+input denies. Fire-test: `system/hooks/tests/test_pm_lock_override.sh` §11.
+**⛔ The store it guards is `~/.claude/run/pm/` ONLY. `~/.claude/run/plan/` — which now holds the
+plan lock (below) — is NOT covered**, so a direct write to `plan-<key>.flag`, or a delete of
+`lock-<key>.plan`, skips the plan refusal entirely. Stated, not overlooked.
 
 #### UserPromptSubmit hooks (ambient — fire every turn, advisory only)
 
@@ -476,12 +586,15 @@ INTEROP:
   READS       scratch-capture-gate  · scratch_capture_gate.sh calls pm_flag.sh status as fallback pad resolver when no scratch_flag is armed; pm brief becomes Stop-gate scratchpad target [hook]
   READS       hook-plane        · announce_plan_write.sh calls pm_flag.sh status on every UserPromptSubmit turn (unconditional); save_routing_hint.sh calls pm_flag.sh status ONLY when prompt matches a save-request phrase (early-exit otherwise); scratch_sweep_nudge.sh calls pm_flag.sh status ONLY when scratch_flag is not armed (skipped when scratch is armed) [hook]
   SYNCS       plan-flag         · pm_persist.sh refreshes plan-<KEY>.flag armed_at on every turn via _refresh_armed_at; /advisory-council also reads plan_flag.sh path (plan file path) alongside pm_flag.sh status to build the settled-ground card [honor]
+  SHARES      plan-flag         · ⚠ ADDED 2026-08-15 — plan_flag.sh consumes THE SAME ~/.claude/run/pm/override-<KEY>.grant that pm_flag.sh does, minted by the same pm_persist.sh against the same closed phrase list (which already covers the plan wording). ONE grant type serves both locks; there is no plan-only grant [hook]
   SYNCS       scratch-flag      · pm_persist.sh refreshes scratch-<KEY>.flag armed_at on every turn via _refresh_armed_at [hook]
   READS       huddle-flag       · pm_persist.sh reads huddle-<KEY>.flag each turn to inject BUILD CLOSE-OUT nudge for active huddle sessions; huddle TTL applied is PM_TTL_HOURS (see Edge Cases) [hook]
   READS       huddle            · /huddle and /huddle-board call pm_flag.sh status to locate the active project brief before posting or cross-referencing [honor]
   READS       advisory-council  · /advisory-council calls pm_flag.sh status AND plan_flag.sh path before convening advisors to build the settled-ground card from the active brief and plan [honor]
   READS       helm              · statusline.sh reads the pm flag to compose the proj: HUD tile (slug + freshness color) and desk: bottom-bar field (desk=, not slug — TRUTH CONTRACT) [honor for read]
-  GUARDED-BY  guard_statusline_lock.sh  · PreToolUse Bash hook blocks Bash commands that destroy or repoint the statusline script that reads the pm flag; the flag store itself (~/.claude/run/pm/) has no PreToolUse write guard [hook]
+  GUARDED-BY  guard_statusline_lock.sh  · PreToolUse Bash hook blocks Bash commands that destroy or repoint the statusline script that reads the pm flag; ~~the flag store itself (~/.claude/run/pm/) has no PreToolUse write guard~~ [hook]
+              ⚠ CORRECTED 2026-08-15 — FALSE. `guard_pm_flag_store.sh` IS registered (PreToolUse Bash|Write|Edit, .claude/settings.json:181) and guards exactly that store. See GATES wall 2b. A speed bump, not a wall.
+  GUARDED-BY  guard_pm_flag_store.sh    · PreToolUse Bash|Write|Edit; denies direct writes to ~/.claude/run/pm/ (flag · lock · grant) and denies running pm_persist.sh by hand (the grant-forgery route) [hook]
 
 ---
 
@@ -494,10 +607,24 @@ INTEROP:
   Stop at settings.json:448; `statusLine` command at settings.json:457). `_refresh_armed_at`
   prevents mid-session TTL expiry in the normal case. `arm-events.log` + `pm_flag_recover.py`
   provide a real logbook-grounded recovery path. `guard_statusline_lock.sh` BLOCKS Bash attacks
-  on the statusline. What is honor-system: arm integrity (wrong path succeeds silently), save
-  routing advisory-only, `pm_flag_recover.py` call skill-prose only (no hook), TTL drift bug
-  (pm_persist.sh 12h vs pm_flag.sh 36h — pm_persist.sh is the operative value). Mixed (real hook
-  surface alongside material honor-system gaps) ⇒ **PARTIAL·gap** (three documented fail-open
-  [honor] bypasses: arm integrity, save routing, pm_flag_recover.py call — each with named
-  blast-radius). Cannot be LIVE without fire-testing the per-turn inject + TTL-refresh contract;
-  TTL drift bug should be resolved before LIVE claim.
+  on the statusline. What is honor-system: ~~arm integrity (wrong path succeeds silently)~~, save
+  routing advisory-only, `pm_flag_recover.py` call skill-prose only (no hook), ~~TTL drift bug
+  (pm_persist.sh 12h vs pm_flag.sh 36h — pm_persist.sh is the operative value)~~. Mixed (real hook
+  surface alongside material honor-system gaps) ⇒ **PARTIAL·gap** (~~three~~ documented fail-open
+  [honor] bypasses: ~~arm integrity,~~ save routing, pm_flag_recover.py call — each with named
+  blast-radius). ~~Cannot be LIVE without fire-testing the per-turn inject + TTL-refresh contract;
+  TTL drift bug should be resolved before LIVE claim.~~
+
+  > ⚠ **CORRECTED 2026-08-15.** Two of the three struck claims are stale, and they were the two the
+  > label rested on. **(a) Arm integrity is no longer honor-system** — the project lock
+  > (2026-08-06) refuses a re-arm onto a different slug outright, `guard_pm_flag_store.sh`
+  > (`.claude/settings.json:181`) is the store's custodian, and the only thing that moves a locked
+  > window is the human's own words via a single-use grant. **(b) The TTL drift bug is resolved** —
+  > single-sourced 2026-08-14 (`pm_flag.sh ttl`), and the deeper inertness fixed 2026-08-15
+  > (`_refresh_armed_at` ran before the expiry check, so the age tested was always zero; measured
+  > now: 20h survives, 40h expires). **(c) The fire-testing this said was missing now exists** —
+  > `system/hooks/tests/test_pm_lock_override.sh` (61 cases) and
+  > `system/hooks/tests/test_plan_lock_override.sh` (53 cases), both counted by `verify-hooks.sh`.
+  > **Save routing and the `pm_flag_recover.py` call remain honor-system**, and the store guard is a
+  > speed bump by its own admission — so the label is NOT being raised here. This corrects the
+  > *basis*; re-grading the label is `label_checker.py`'s job, not this note's.
