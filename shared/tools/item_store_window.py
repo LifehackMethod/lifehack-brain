@@ -5,7 +5,7 @@ The per-record adapters (item_store_read.read_item / email_service_read.read_thr
 ONE item by id." The cadence check-ins (weekly → yearly) need the opposite: "give me EVERYTHING that
 happened in period P" — every task, calendar event, and email thread whose activity falls inside a
 [since, until) window. This module is that sweep. It is the query layer the cadence deep-mine reads
-through, replacing the retiring bespoke `cal-vault-*-pull.py` scrapers.
+through, replacing the retiring bespoke `planning-vault-*-pull.py` scrapers.
 
 DESIGN (grounded in system/information-ingestion-interpretation.md + the two adapters):
   • This module is NO-LLM PLUMBING. It does date-windowing + assembles a sanitized bundle. It never
@@ -36,7 +36,7 @@ PER-TYPE WINDOWING:
 
 CLI:
   python3 item_store_window.py --since 2026-07-06 --until 2026-07-13 [--types task,calendar,email]
-                               [--mode index|bundle] [--task-mode touched-due-open] [--desk cal]
+                               [--mode index|bundle] [--task-mode touched-due-open] [--desk planning]
   python3 item_store_window.py --last-days 7 --mode bundle
   python3 item_store_window.py --self-test
 """
@@ -384,7 +384,7 @@ def read_window(since, until, item_types=("task", "calendar", "email"),
                 counts["email"] += 1
 
     # ---- HYDRATION (S8.16, 2026-08-03) — selection is free; THIS is where the wall-clock went ----
-    # MEASURED LIVE on a real cal-weekly run, not estimated: the sidecar index (S8.4) returns all 3,337
+    # MEASURED LIVE on a real planning-weekly run, not estimated: the sidecar index (S8.4) returns all 3,337
     # items' DATES in 0.066s, but reading each SELECTED record's payload ran at 0.492 files/sec
     # (~2.03 s/file) on the Drive mount — putting a real 7-day window at ~59 min against a FRAME that
     # asks for "a time a person will sit through."
@@ -555,7 +555,7 @@ def _run_self_tests():
                              for i, d in enumerate(msg_dates)],
                 "attachments": [], "first_seen": msg_dates[0], "last_message_id": f"m{len(msg_dates)-1}",
                 "message_count": len(msg_dates), "last_synced": msg_dates[-1],
-                "provenance_tag": "email-summary/email/x", "flag": "OK", "writer_id": "cal-daily-janitor",
+                "provenance_tag": "email-summary/email/x", "flag": "OK", "writer_id": "planning-daily-janitor",
                 "tier": "snapshot", "confidence": "INFERRED", "schema_v": 2, "tracked_scope": ["Consulting"],
             }
             with open(os.path.join(esr.THREADS_V2_DIR, f"{tid}.json"), "w") as f:

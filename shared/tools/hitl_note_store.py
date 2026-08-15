@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""hitl_note_store.py — the compounding per-item HITL-note store (Phase D of cal-weekly).
+"""hitl_note_store.py — the compounding per-item HITL-note store (Phase D of planning-weekly).
 
 THE FLYWHEEL. Grand Central (email threads + tasks + calendar) is re-mined cold every weekly run.
 This store lets the human's confirmed judgment COMPOUND: when the human, in the loop, confirms
@@ -331,7 +331,7 @@ def read_note(source, native_id):
 # ---------------------------------------------------------------------------
 
 def write_note(source, native_id, provisional, *, raw_record=None, content_hash_val=None,
-               constituents=None, writer_id="cal-weekly", orphaned=False):
+               constituents=None, writer_id="planning-weekly", orphaned=False):
     """Write/overwrite a note's HEADER + PROVISIONAL part. Deterministic; NO LLM; atomic.
 
     STRUCTURALLY CANNOT set human_confirmed — that is set only by set_human_confirmed(). If a note
@@ -361,7 +361,7 @@ def write_note(source, native_id, provisional, *, raw_record=None, content_hash_
             # append-frozen: carry an existing human_confirmed forward; NEVER settable here
             "human_confirmed": existing.get("human_confirmed") if existing else None,
             "orphaned": bool(orphaned),
-            "writer_id": writer_id or "cal-weekly",
+            "writer_id": writer_id or "planning-weekly",
         }
         # cross-MACHINE best-effort: re-read the freshest stamp just before the write (a different machine's
         # confirm could have landed via Drive sync after our read).
@@ -611,7 +611,7 @@ def snapshot(today=None):
 # TWO DISTINCT SUBCOMMANDS, ON PURPOSE — this is the important part, read it before wiring a caller:
 #
 #   write-provisional  — the machine-derived path. A thin wrapper over write_note(). Exactly the same
-#                         trust level as any other write_note() caller (cal-weekly, a sweep, a skill
+#                         trust level as any other write_note() caller (planning-weekly, a sweep, a skill
 #                         driver) — STRUCTURALLY cannot set human_confirmed (write_note() carries it
 #                         forward unchanged; see the D5 gate note above write_note()). Safe to call from
 #                         an autonomous subagent.

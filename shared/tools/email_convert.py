@@ -34,7 +34,7 @@ import shutil
 from html.parser import HTMLParser
 
 # Resolve gws via PATH — the only portable answer across machines/installs (mirrors
-# system/tools/cal-vault-pull.py, cal-light-sweep.py, and the other gws-calling tools in this repo).
+# system/tools/planning-vault-pull.py, planning-light-sweep.py, and the other gws-calling tools in this repo).
 GWS = shutil.which("gws") or "gws"
 
 # L0 sanitization — strips hidden Unicode, HTML entities, control chars from email bodies

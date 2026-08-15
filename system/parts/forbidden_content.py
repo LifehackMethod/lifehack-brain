@@ -3,7 +3,7 @@
 
 WHEN: a phase must WITHHOLD something (a conclusion, a ranking, an answer) until later.
 WHAT: checks a block of text for a forbidden artifact; nonzero refuses.
-WHY:  cal-weekly named the Win in Phase 2 against an explicit do-NOT, on real data [M].
+WHY:  planning-weekly named the Win in Phase 2 against an explicit do-NOT, on real data [M].
       Withholding is the demand-class prose holds worst (SOP §II.7).
 
 THE CORE DISTINCTION THIS PART EXISTS TO DRAW — declaration vs mention.

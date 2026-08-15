@@ -86,10 +86,15 @@ CONVERTER_SANCTIONED = "email_convert.py"
 # the right thing (metadata-only) and will NOT be migrated to the Email Service.
 #
 # Current members:
-#   cal-light-sweep.py — reads Gmail thread/message metadata (Subject/From/Date) to populate the
-#                        cal-daily inbox-at-a-glance tile; invoked interactively from cal-daily,
-#                        never from a cron.  Body content never touches this script.
+#   planning-light-sweep.py — reads Gmail thread/message metadata (Subject/From/Date) to populate the
+#                        planning-daily inbox-at-a-glance tile; invoked interactively from
+#                        planning-daily, never from a cron.  Body content never touches this script.
+#
+# ⚠ THIS TUPLE IS KEYED ON A FILENAME. Renaming the file on disk without renaming it here silently
+# un-sanctions it: validate_contract()'s ENF-B.3 grep then reports the (unchanged, still-correct)
+# script as a Gmail-access violation. Renamed 2026-08-15 with the cal desk → planning desk rename;
+# the old basename is kept below so a not-yet-pulled machine still validates.
 #
 # TO CHANGE: edit this tuple + get the operator's explicit sign-off (match the change-control posture
 # above for all ENF-A constants).
-GMAIL_METADATA_ALLOWED = ("cal-light-sweep.py",)
+GMAIL_METADATA_ALLOWED = ("planning-light-sweep.py", "cal-light-sweep.py")

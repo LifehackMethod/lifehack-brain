@@ -12,7 +12,7 @@ WHY:  Law 3 -- "hallucinated success" (the agent reports the write landed when i
       deterministic gate: the completion check [C].  A schema check happily passes a
       well-formed lie; only a read-back proves the world changed.
 
-WHAT THIS REPLACES.  cal-weekly's clerk already describes this protocol -- in PROSE, and
+WHAT THIS REPLACES.  planning-weekly's clerk already describes this protocol -- in PROSE, and
 its own driver says so out loud: "the confirmation gate and this DATA-fence are
 INSTRUCTION-grade, not a structural lock."  That is COMMITTED != ENFORCED: a correct
 procedure nothing enforces.  This part is the same protocol as code.
@@ -38,7 +38,7 @@ EXIT CODES (the part contract)
 
 LEDGER FILE
   {
-    "skill": "cal-weekly",
+    "skill": "planning-weekly",
     "readbacks": {
       "calendar": {"cmd": "gws calendar events get --id {event_id}", "expect": "{event_id}"}
     },

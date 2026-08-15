@@ -2,7 +2,7 @@
 """tasks_store_sync.py — mechanical writer for the durable Tasks item store (Phase G-2).
 
 Mirrors the email writer pattern (email_summary_sync.py) for Google Tasks:
-  - Pulls via safe_tasks.py --desk cal --redact (sanitized, injection spans neutralized)
+  - Pulls via safe_tasks.py --desk planning --redact (sanitized, injection spans neutralized)
   - One durable item record per task written atomically (.tmp→rename) to a BLUE-GREEN
     store at $DRIVE/state/item-store/tasks/{task_id}.json
   - Lifecycle (mirrors email):
@@ -167,7 +167,7 @@ def _list_stored_ids():
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _pull_tasks(tasklist_id, show_completed=True, timeout=60, max_pages=50):
-    """Pull ALL tasks in a list (PAGINATED) via safe_tasks.py --desk cal --redact. Returns (items_list, rc).
+    """Pull ALL tasks in a list (PAGINATED) via safe_tasks.py --desk planning --redact. Returns (items_list, rc).
 
     CT-3.5: follows nextPageToken until the list is drained (bounded by max_pages × 100 = 5000/list) so a
     list with >100 tasks is COMPLETE — otherwise the overflow silently false-colds. --redact neutralizes
@@ -202,7 +202,7 @@ def _pull_tasks_page(params, timeout=60):
     or (None, 2) on error."""
     cmd = [
         sys.executable, SAFE_TASKS,
-        "--desk", "cal",
+        "--desk", "planning",
         "--redact",
         params,
     ]
@@ -475,12 +475,12 @@ def _cold_sweep(active_ids, dry_run=False, verbose=False):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Default tasklist resolver — uses the "cal" desk default
+# Default tasklist resolver — uses the "planning" desk default
 # ─────────────────────────────────────────────────────────────────────────────
 
-# The cal desk uses a hardcoded default tasklist id; the user can override via --tasklist.
+# The planning desk uses a hardcoded default tasklist id; the user can override via --tasklist.
 # We don't autodiscover all tasklists here — that's a future extension.
-# This matches the safe_tasks.py usage in cal-vault-pull.py.
+# This matches the safe_tasks.py usage in planning-vault-pull.py.
 DEFAULT_TASKLIST_ID = "@default"
 
 

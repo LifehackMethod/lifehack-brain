@@ -496,7 +496,7 @@ def load_meta():
         "tracked_labels": DEFAULT_TRACKED_LABELS,
         "last_sync_at": "",
         "generation": 0,
-        "writer_id": "cal-daily-janitor",   # matches email_thread_schema.EXPECTED_WRITER_ID
+        "writer_id": "planning-daily-janitor",   # matches email_thread_schema.EXPECTED_WRITER_ID
         "enabled": False,
     }
 

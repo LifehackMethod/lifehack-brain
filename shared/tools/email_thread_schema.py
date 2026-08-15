@@ -37,7 +37,16 @@ SCHEMA_V = 2
 
 # Single-writer identity. The janitor stamps this; readers assert it (single-writer tripwire).
 # Kept identical to the v1 writer_id so the read-side tripwire in load_digest() still matches.
-EXPECTED_WRITER_ID = "cal-daily-janitor"
+# RENAMED 2026-08-15 (cal desk → planning desk): was "cal-daily-janitor". Any record written BEFORE
+# this rename still carries the old id and will fail validate_thread_record() → served as
+# STORE-TAMPERED. See LEGACY_WRITER_IDS below — old ids are accepted so existing records survive.
+EXPECTED_WRITER_ID = "planning-daily-janitor"
+
+# Writer ids this store accepted in the past. A record stamped with one of these is STILL VALID on
+# read (it was written by the same single writer under its former name) — without this, the desk
+# rename would orphan every already-synced record behind a STORE-TAMPERED flag. New writes always
+# stamp EXPECTED_WRITER_ID; this list is read-side only and shrinks as records are re-synced.
+LEGACY_WRITER_IDS = ("cal-daily-janitor",)
 
 # A v2 record is perishable-by-design (a mirror of live mail) AND holds adversarial-derived text,
 # so it is tier=snapshot / confidence=INFERRED — never CONFIRMED, even though the de-dup is lossless.
@@ -200,7 +209,12 @@ def validate_thread_record(record, override_writer_id=None):
             violations.append(f"empty_field: '{key}' must be a non-empty string (got {val!r})")
 
     # 3 — pinned metadata (the single-writer / tier / confidence / schema tripwires)
-    if "writer_id" in record and record.get("writer_id") != expected_writer:
+    # A record stamped with a FORMER name of the same single writer (LEGACY_WRITER_IDS) is still
+    # valid on read — the desk rename must not orphan already-synced records. An explicit
+    # override_writer_id (tests) pins the accepted set exactly, with no legacy widening.
+    _accepted = ({expected_writer} if override_writer_id is not None
+                 else {expected_writer} | set(LEGACY_WRITER_IDS))
+    if "writer_id" in record and record.get("writer_id") not in _accepted:
         violations.append(
             f"writer_mismatch: writer_id={record.get('writer_id')!r} != expected {expected_writer!r} "
             "(only the janitor may write the store)")
@@ -386,6 +400,19 @@ def _run_self_tests():
             else fail("writer-tripwire", f"not caught: {v}")
     except Exception as e:
         fail("writer-tripwire", f"exception: {e}")
+
+    # 4b — a LEGACY writer_id (the janitor's former name, pre cal→planning rename) still VALIDATES.
+    # This is the guard that stops the desk rename orphaning every already-synced record behind a
+    # STORE-TAMPERED flag on read. Regression-locks LEGACY_WRITER_IDS.
+    try:
+        rec = _good_record()
+        rec["writer_id"] = "cal-daily-janitor"
+        v = validate_thread_record(rec)
+        ok("writer-legacy — pre-rename writer_id still accepted (no orphaned records)") \
+            if not any("writer_mismatch" in x for x in v) \
+            else fail("writer-legacy", f"legacy record rejected: {v}")
+    except Exception as e:
+        fail("writer-legacy", f"exception: {e}")
 
     # 5 — confidence CONFIRMED is rejected (must stay INFERRED)
     try:

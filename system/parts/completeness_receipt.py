@@ -460,9 +460,20 @@ def selftest():
     # Faithful extraction is a claim; this is the check that proves it. We rebuild the
     # exact citation set the lost P0.3 Map must have had (source minus the preserved
     # residue) and require a byte-identical residue back.
+    # ⚠ DEAD REFERENCE — PRE-EXISTING, NOT INTRODUCED BY THE cal→planning RENAME (verified 2026-08-15).
+    # `system/tools/conformance-lab/` EXISTS in this repo but holds only driver.py / probes/ /
+    # rule-registry.md — there is NO `fixtures/` subtree at all, under either the old `cal-weekly`
+    # name or the new one. The w30-* fixtures were never ported here, so the DIFFERENTIAL check below
+    # has ALWAYS taken its else-branch and reported [FAIL], meaning this part has never passed
+    # `run_selftests.sh` in this repo. The path was renamed cal-weekly → planning-weekly for
+    # consistency only; renaming a dead path does not make it live.
+    # ▶ THE REAL FIX IS A DECISION, NOT A RENAME: either port the w30-* fixtures, or retire this
+    #   DIFFERENTIAL check (the same call `run_selftests.sh` documents making for its reachability
+    #   check — "a check that can only ever report failure gets deleted"). Left failing, and loud,
+    #   rather than quietly downgraded to a skip: the faithful-extraction claim is genuinely unproven.
     _repo = os.environ.get("CLAUDE_PROJECT_DIR") or os.path.abspath(
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
-    lab = os.path.join(_repo, "system/tools/conformance-lab/fixtures/cal-weekly")
+    lab = os.path.join(_repo, "system/tools/conformance-lab/fixtures/planning-weekly")
     gpath = os.path.join(lab, "w30-state-grade-p03map.json")
     spath = os.path.join(lab, "w30-source-ids.json")
     if os.path.isfile(gpath) and os.path.isfile(spath):

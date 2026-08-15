@@ -409,7 +409,7 @@ def _write_item_store_tile(status, summary, payload):
     # repo has a measured history of). Mirrors shared/tools/email_summary_sync.py's
     # write_status_tile(): try the real validator first, ImportError falls through to a
     # hand-written tile in the SAME envelope shape emit_status would produce (matches
-    # system/tools/cal-health.py's local _write_tile convention too); any OTHER exception from a
+    # system/tools/planning-health.py's local _write_tile convention too); any OTHER exception from a
     # present-but-erroring validator is surfaced and left un-papered-over (no silent fallback that
     # could mask a real validation bug).
     try:
@@ -465,7 +465,7 @@ def freshness_check(max_stale_hours=ITEM_FRESHNESS_MAX_STALE_HOURS, write_tile=T
     AND no gws credentials on file is the fresh-install / no-Google-account day-one state — every
     install starts here, and a student who never connects Google stays here forever. That is not a
     fault, so it is reported OK/rc0 with a "not configured" summary — the SAME house pattern
-    cal-health.py already uses ("not configured — no calendar connected yet", status OK) and
+    planning-health.py already uses ("not configured — no calendar connected yet", status OK) and
     backlog_groom.py already uses ("not configured — no debt ledger, desk backlogs, or legacy swamp
     file found yet", status OK). No new status value is introduced — VALID_STATUS in emit_status.py
     has no NOT_CONFIGURED, and neither precedent invents one; both reuse OK. Once gws credentials
@@ -555,7 +555,7 @@ def _run_self_tests():
             else fail("plumbing:inline", f"{r}")
 
         # 2 — DEFAULT (isolate-on) tooled caller → free-text ISOLATED to scratch, NOT inline; structured still inline
-        r = read_item("task", "t1", desk="cal")
+        r = read_item("task", "t1", desk="planning")
         good = (r["flag"] == "OK" and r["reader_required"] and r["content"] == ""
                 and r["scratch_path"] and os.path.exists(r["scratch_path"])
                 and r["structured"].get("status") == "needsAction")
@@ -600,7 +600,7 @@ def _run_self_tests():
                 description="bring the logbook", location="DZ HQ"),
             writer_id="calendar-store-sync", source="google-calendar", provenance_tag="item-store/calendar/e1/x")
         _write(CAL_DIR, "e1", cal)
-        r = read_item("calendar", "e1", desk="cal")
+        r = read_item("calendar", "e1", desk="planning")
         good = (r["flag"] == "OK" and r["reader_required"] and r["structured"].get("start")
                 and os.path.exists(r["scratch_path"]))
         ok("calendar:isolate — calendar free-text isolated, start/end structured inline") if good \
