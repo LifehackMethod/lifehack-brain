@@ -8,8 +8,16 @@
 #         excerpt it injects is FENCED as untrusted data + control/zero-width/bidi
 #         stripped (anti prompt-injection); markdown is NOT cleaned.
 # REDIRECT: N/A (non-blocking). Flag ~/.claude/run/pm/pm-sess-<id>.flag (or pm-cwd-<hash>.flag).
-#           Off-switch: pm_flag.sh clear, or TTL (PM_TTL_HOURS, default 12h).
+#           Off-switch: pm_flag.sh clear, or TTL (PM_TTL_HOURS env override; default is READ
+#           FROM pm_flag.sh's `ttl` verb, not a literal here — see UPDATED 2026-08-14).
 # UPDATED: 2026-06-02 (symmetric key; relative-path resolve; fenced+normalized anchor)
+# UPDATED: 2026-08-14 (TTL default sourced from pm_flag.sh instead of a second hardcoded copy.
+#           FOUND: this file's own copy of the default silently stayed at 12h after pm_flag.sh
+#           was bumped 12h->36h on 2026-07-11 — that commit touched pm_flag.sh only. Because
+#           this hook's expiry check (below) runs on EVERY turn while pm_flag.sh only runs when
+#           explicitly invoked, THIS file's stale value always won: the 36h extension had never
+#           once taken effect. Two files carrying the same literal is exactly how that happened,
+#           so this no longer carries one — it asks pm_flag.sh, which is the sole definition.)
 # ─────────────────────────────────────────────────────────────────────────────
 # DEGRADE-SAFE: any error -> exit 0 silently -> behaves as if no flag.
 # ── hash_key: the fallback session key, and it MUST match everywhere ──────────────────────────────
@@ -33,7 +41,23 @@ hash_key() {
 }
 
 set +e
-TTL_HOURS="${PM_TTL_HOURS:-12}"
+# TTL_HOURS: single definition lives in pm_flag.sh — read it via its read-only `ttl` verb
+# instead of carrying an independent literal here (that duplication is exactly what let the
+# 2026-07-11 12h->36h bump land in pm_flag.sh and never reach this file). PM_TTL_HOURS still
+# short-circuits first when set, so no subprocess runs in the common (env-override) case —
+# bash only evaluates the `$(...)` default when the env var is unset/empty. The literal 36
+# inside _pm_default_ttl is a last-resort fallback for when pm_flag.sh cannot be found or run
+# at all (moved, deleted, unreadable) — it exists to fail toward the CURRENT correct value, not
+# as a second copy to remember to update; if pm_flag.sh's own default ever changes, update it
+# there ONLY.
+_pm_hookdir="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
+_pm_flag_sh="$_pm_hookdir/pm_flag.sh"
+_pm_default_ttl() {
+  _t="$(bash "$_pm_flag_sh" ttl 2>/dev/null)"
+  case "$_t" in (*[!0-9]*|'') _t=36 ;; esac
+  printf '%s' "$_t"
+}
+TTL_HOURS="${PM_TTL_HOURS:-$(_pm_default_ttl)}"
 
 INPUT="$(cat 2>/dev/null)"
 CWD="$PWD"

@@ -29,11 +29,20 @@
 #           to arm-denied.log, deliberately NOT arm-events.log — pm_flag_recover.py reads
 #           the LAST event there and would otherwise report a DENIED project as recoverable)
 # UPDATED: 2026-07-11 (TTL 12h->36h; arm-events.log breadcrumb on arm/clear; prune-on-write caps it at PM_EVENTLOG_MAX=500)
+# UPDATED: 2026-08-14 (added the read-only `ttl` verb below. FOUND: the 2026-07-11 bump above
+#           only ever landed HERE — pm_persist.sh's UserPromptSubmit hook carried its own
+#           independent copy of the same default, still at 12h, and its every-turn expiry
+#           check runs far more often than anything that would have read this file's value, so
+#           it always won: the 36h extension had never once taken effect. Fix: pm_persist.sh no
+#           longer carries its own literal — it calls this verb for the default, so this file's
+#           TTL_HOURS is the ONLY place that number is defined.)
 # ─────────────────────────────────────────────────────────────────────────────
 #   pm_flag.sh arm  <abs_doc_path> <slug> <desk>   # first arm LOCKS the window to <slug>
 #   pm_flag.sh clear                               # REFUSED once locked (open a new window)
 #   pm_flag.sh status                              # print active doc or "none"
 #   pm_flag.sh locked                              # print the locked slug, or "none"
+#   pm_flag.sh ttl                                 # print TTL_HOURS (read-only; the single
+#                                                   # source pm_persist.sh reads its default from)
 # exit 0 = ok · 1 = usage/arg error · 2 = unknown verb · 3 = REFUSED BY THE LOCK
 # ── hash_key: the fallback session key, and it MUST match everywhere ──────────────────────────────
 # When the harness gives us no session id we key on the working directory instead. `shasum` does that
@@ -279,6 +288,11 @@ _PADSHA_EOF
     # Read-only: what is this window locked to? For skills that must CHECK before they arm.
     LK="$(_locked_id)"
     if [ -n "$LK" ]; then echo "${LK%%$'\t'*}"; else echo "none"; fi;;
+  ttl)
+    # Read-only: the TTL (hours) this file resolved above (env PM_TTL_HOURS if set, else the
+    # default literal a few lines up). pm_persist.sh calls this instead of carrying its own
+    # copy of the default — see the 2026-08-14 UPDATED note at the top of this file for why.
+    echo "$TTL_HOURS";;
   status)
     if [ -f "$FLAG" ]; then
       DP="$(grep '^doc_path=' "$FLAG" 2>/dev/null | cut -d= -f2-)"
@@ -288,6 +302,6 @@ _PADSHA_EOF
       elif [ -z "$DP" ]; then echo "none"
       else echo "$DP"; fi
     else echo "none"; fi;;
-  *) echo "usage: pm_flag.sh arm <doc> <slug> <desk> | clear | status | locked" >&2; exit 2;;
+  *) echo "usage: pm_flag.sh arm <doc> <slug> <desk> | clear | status | locked | ttl" >&2; exit 2;;
 esac
 exit 0
