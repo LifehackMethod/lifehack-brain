@@ -4,6 +4,70 @@
 > talk to the person, the rules that hold whatever they ask for, and where things live. Keep it short
 > — everything here is paid for on every single turn.
 
+## System at a glance — the organism map
+
+> **Chosen by measurement, not argument** (2026-08-03). Two nights of sealed-agent scoring — **58 probes
+> on 2026-08-03** (counted from returned payloads) on top of the prior night's variant bake-off. This page
+> won; **every structural alternative scored worse.** Do not "improve" it from taste — the losing ideas
+> were: signposting down to the manual, deleting the manual, splitting the manual, tagging the element
+> files, putting search-strings here, and carrying no map at all.
+> ⚠ **Cost deltas from that run are DIRECTIONAL, not precise** — a replicate measured 2.2× within-cell
+> variance at n=1. The categorical results (deleting the manual loses two answers; every arm was worse)
+> are the solid part.
+>
+> **Deeper layers:** `system/organism/manual.md` (how the parts work together — LOAD-BEARING, holds rules
+> that exist in no element file) + `system/organism/elements/` (42 files, source-traced from code).
+
+<!-- ORGANISM v1 --> files = system/organism/elements/<name> · @ you start it · ~ scheduled, unattended · ! fires unasked
+⚠ CRUDE SIMPLIFICATIONS — a DOOR, not a DEFINITION. Each line names the COMMONEST reason only; every
+part does considerably more than its line says. NEVER answer "what can X do?" from this page — open
+elements/<slug>.md, the exhaustive source. If this map is your only source, you are under-informed by design.
+@ /save    keep it so a later session finds it | save.md — canon only on YOUR act, never automatic
+           ! records a DECISION or a fact. to change what a skill DOES, that is /build below.
+           ! SYSTEM knowledge only. subject records (clients, money, contacts) live in the OWNING
+             subject's own desks/<subject>/ store, never here. ask "whose records are these?"
+@ /read    pull the right memory in, no blind search | read.md
+@ /read    what did I decide months ago, and why | journal.md canon.md
+@ /project-manager   re-open a project I left | project-manager.md pm-flag.md
+@ /autoplan          re-sharpen the plan as reality drifts from it | build-plan-plane.md
+@ /build             execute the plan, our way | build-plan-plane.md
+@ /checkin           catch a delta between plan and brief | project-manager.md — near the END, not an opener
+@ /build             CHANGE WHAT A SKILL DOES | skill-system.md — to merely record the decision, /save above
+@ /advisory-council  think a hard call through with experts | council-engine.md — the DECISION, including a
+                     money decision. the money RECORDS live in the owning subject's own store, never here.
+@ /research /websearch   find something out, sanitized | research-web-plane.md
+@ /explain /simplify     have it said plainer | translator-cluster.md
+@ /professor       send someone to LEARN this whole system | `.claude/skills/professor/` — NOT an element;
+                   the taught tour. this page ROUTES; that one EXPLAINS.
+@ (open the file)  which of the three layers answers THIS question | brain.md — the map ROUTES, the manual
+                   EXPLAINS how the parts combine, elements/<slug>.md exhausts one part. wrong layer,
+                   confidently wrong answer.
+! (automatic)   a web page or email body is read safely | safe-reader-plane.md ingest-gate.md
+! (automatic)   a suspicious email is classified | sentinel.md — writes a status tile on EVERY verdict,
+                pushes a CRITICAL alert ONLY on DANGER. a DANGER pause has NO auto-resume: YOU clear it.
+! (no command)  something blocked me and I never asked | hook-plane.md — a registered guard fired. its
+                deny message names WHICH guard and why; the guards are listed in `.claude/settings.json`.
+! (no command)  make the system actually STOP me | hook-plane.md — you name the rule, a session writes+registers
+                the hook, then it fires alone forever. a doctrine line only asks nicely.
+! (automatic)   stop something leaving the system | egress-allowlist-wall.md
+! (automatic)   the system files a ticket on ITSELF, ranked | hospital.md — detectors write ONE comparable
+                finding; the session-start line speaks it unasked. DETECTS+RANKS, never fixes.
+~ (automatic)   mail/calendar/tasks arrive in the inbox | grand-central.md gws-plane.md — gws-plane fetches
+                outside the wall > sentinel clears > grand-central holds > the skills read. fills while you sleep.
+~ (automatic)   a scheduled job died | health-invariants.md pulse-cron.md — alerts via notify-plane.
+                health-deadman watches the watcher.
+@ (config) push alerts, rate limits, quiet hours | notify-plane.md — quiet hours 22:00-07:00 silences NORMAL
+           pushes only; a CRITICAL page (sentinel DANGER, dead monitor) BYPASSES it and WILL wake you.
+~ pulse fires the scheduled jobs {health+guards, store sync, email, diary, archivist, planning}; each EMITS a
+  status tile on finish — that is how you learn it happened. manifest: `system/pulse-config.md`
+NOT BUILT — admissions, not omissions. knowing now beats inferring a connection that isn't there:
+- one subject's records agreeing with another's (a billing row becoming taxable income). no general
+  primitive; calculate + compute-mechanically-gate are DORMANT, name-only. you carry it by hand.
+- a weekly/monday cross-subject digest. no weekday cadence exists.
+- a rolled-up count of security events over a week. sentinel logs each one; nothing tallies them.
+- any rule that auto-decides on inbound business content. BY DESIGN: a human decides.
+<!-- END ORGANISM -->
+
 ## The shape of the thing
 
 **The repo is the brain, and their notes sit inside it — untracked.** This folder holds skills, tools
@@ -89,6 +153,13 @@ permission. If you are unsure, say how unsure rather than turning it into a ques
 **Flex to the size.** A quick answer is one or two lines with no scaffolding at all. A brainstorm
 ranks ideas but stays loose. A long build gets the full structure. The ranking is the rule; the shape
 is not a form to fill in.
+
+## Planning Output (always)
+
+Any plan you produce — plan mode or not — returns as **Phase → Feature → Task**; every task runs
+**Execute → Verify & test → mark done**, and is not done until its verify actually passes. Show the
+plan before executing it. Features are optional for a small plan; Phase, Task and Verify are not.
+Detail: `system/sops/architecture-planning-sop.md`.
 
 ## Breadcrumbs during long work
 
