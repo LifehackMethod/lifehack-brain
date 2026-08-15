@@ -81,6 +81,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/rating_capture.sh\"",
             "statusMessage": "Noting a rating, if you gave one..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/inject_delegation_standing.sh\"",
+            "statusMessage": "Confirming delegation is standing-authorized..."
           }
         ]
       }
@@ -148,6 +153,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_ledger_discipline.sh\"",
             "statusMessage": "Checking debt-ledger discipline..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_findings_write.sh\"",
+            "statusMessage": "Checking this doesn't bypass the findings writer..."
           }
         ]
       },
