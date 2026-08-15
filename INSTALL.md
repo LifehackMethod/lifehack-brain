@@ -2,9 +2,17 @@
 
 You are about to give yourself an AI that remembers you.
 
-Right now it does one thing and does it well: it takes a pile of your own material — an old ChatGPT
+**This file sets up one thing: `/ingest`.** It takes a pile of your own material — an old ChatGPT
 export, a folder of notes, a stack of documents — and turns it into a folder structure that you and your
-AI can both work from. More will arrive later, and you'll get it with one update.
+AI can both work from. That is the only skill this file walks you through, and the only one you need to
+know about today.
+
+⚠ **It is not the only thing that arrives.** The same download brings a working set of other skills too
+— for keeping a project's memory straight, thinking a decision through, and (once you connect your own
+Google account) working your calendar, tasks and spreadsheets. None of that needs setup beyond what this
+file already does, and teaching it is not this file's job — see `README.md` for what else is here, and
+this file's own "THE GOOGLE-CONNECTED PARTS" section below if you're wondering what a Google connection
+would actually let it do. You meet the rest later, the way you're meeting `/ingest` today.
 
 **This file is the whole setup.** You don't need to know anything technical. You don't need a terminal.
 You hand this file to Claude and answer its questions.
@@ -265,8 +273,16 @@ pwd
 
 ⛔ **Now check that folder is usable. This is the only thing that can send you back to them.**
 
+> ⚠ **Why this resolves the interpreter instead of just typing `python3`.** On Windows, the word
+> `python3` does not reliably exist yet at this point in the install — STEP 3's own TRAP 2 fix removes
+> the Microsoft Store's decoy `python3.exe`, and the real one that STEP 7 creates in its place
+> (`system/tools/bootstrap.py`'s shim) has not run yet. `python`, or `python3`, whichever answered in
+> STEP 3, is what is actually there. This same pattern is used again at the start of STEP 7, for the
+> same reason.
+
 ```bash
-python3 - "$PWD" <<'PY'
+PYBIN="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
+"$PYBIN" - "$PWD" <<'PY'
 import os, re, sys
 p = os.path.abspath(sys.argv[1]); low = p.replace("\\", "/").lower() + "/"
 prot  = ["/program files", "/programdata", "/windows/", "/system/"]
@@ -370,9 +386,15 @@ Delete what's there and run **STEP 5** again.
 
 ```bash
 mkdir -p data
-python3 shared/brain_root.py --set "$PWD/data"
-python3 system/tools/bootstrap.py
+PYBIN="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
+"$PYBIN" shared/brain_root.py --set "$PWD/data"
+"$PYBIN" system/tools/bootstrap.py
 ```
+
+⚠ **Same `PYBIN` resolution as STEP 4, and it matters most right here:** the second of these two
+commands is what CREATES the `python3` shim on Windows, so it cannot itself assume `python3` already
+works. Everything from here on — STEP 8 onward, and every skill afterwards — can go back to plain
+`python3`, because this step is what makes that word actually resolve.
 
 ⛔ **Read what `--set` printed before moving on. If it says `⚠ REPLACED a brain root that was already
 set`, STOP and tell them.** That line means this machine already had a brain somewhere else — an
@@ -540,10 +562,11 @@ AI Brain/                        <- YOU OPEN THIS ONE. always. every session. IT
 │   ── THE MACHINERY. You never need to open any of it. ──
 ├── .claude/                         the commands — this is where Claude looks
 │   ├── agents/                      the specialist readers the tool uses
-│   ├── skills/                      the tools themselves
+│   ├── skills/                      the tools themselves — `/ingest` plus a working set of others;
+│   │   │                            README.md names what's here, or just type `/` to browse them
 │   │   └── ingest/PLAN-B.md         the manual fallback for /ingest — lives WITH the skill it rescues
-│   └── settings.json                wires it up the moment you clone
-├── system/                          the programs that do the sorting
+│   └── settings.json                wires it up, and its safety hooks, the moment you clone
+├── system/                          the programs that do the sorting, plus the safety guards
 ├── shared/                          the piece that knows where your writing lives
 ├── docs/                            reference notes, and REPORT-A-BUG.md until the harness installer lands
 ├── .gitignore                       the line that keeps `data` out of git — do not edit
@@ -687,8 +710,12 @@ your account details to anything.** Nothing here needs them yet.
 Do these in order, together, once. None of it is needed to use everything else in this package.
 
 **1 — Install `gws` and log in.** It is the command-line tool that talks to Google. Install it however
-your machine installs things, then run its login and grant only the scopes you actually intend to use.
-Check it landed and that the login took:
+your machine installs things, then run its login. **`gws` will ask which scopes to grant — Calendar,
+Tasks, Sheets, Gmail, and others.** Grant only the ones you actually intend to use. Whatever you do not
+grant, nothing in this package can reach at all — that is the strongest protection there is, and it
+costs nothing to leave a scope off until you actually need it. **"What each scope reaches, and what
+refuses it," right below, spells out exactly what saying yes to each one turns on** — read it before you
+answer `gws`'s prompt, not after. Check the install landed and the login took:
 
 ```bash
 command -v gws          # a path means it is installed
@@ -699,14 +726,25 @@ gws auth status         # says which account is connected
 login for every window on this machine, and there is no undo — you would redo this sit-down. If
 something looks broken, run `gws auth status` and read what it says before touching anything.
 
-**2 — Put your own identifiers in your AI Brain folder, not in this repo.** Which calendar, which
-spreadsheet, which task list — those are yours, and they are the kind of thing a public repository
-must never carry. They live at `<notes>/config/`, one small file per thing, named so a stranger
-could tell what it is:
+**2 — Put your own identifiers in your AI Brain folder, not in this repo.** Which calendar, which task
+list, which spreadsheet — those are yours, and they are the kind of thing a public repository must
+never carry. They live at `<notes>/config/`, one small file per thing, named so a stranger could tell
+what it is:
 
 ```
 <notes>/config/sheets.md     # "billing tracker → 1AbC...", one line per sheet you use
-<notes>/config/cal.md        # which calendar things get written to
+<notes>/config/cal.md        # up to four identifiers — see below
+```
+
+`cal.md` holds up to four `key: value` lines, and each one is what a guard below checks a write
+against — an id that is not on file means the write it protects has nowhere safe to go, and is refused
+rather than guessed at:
+
+```
+personal_calendar: you@example.com     # the calendar your life is already in — read only, never written to
+agent_calendar:    abc123...@group.calendar.google.com   # the ONE calendar this system may write to
+goals_tasklist:    <id>                # your goals list — protected, see the Tasks row below
+daily_parent_task: <id>                # the one task your day's plan may hang subtasks from
 ```
 
 A skill that needs an id reads it from there. If the file is not there, the skill says so rather than
@@ -718,20 +756,63 @@ formulas, `ARRAYFORMULA` and the self-check layer all work with no clasp install
 sheets never need it. If you do install it, its credential (`~/.clasprc.json`) is machine-local and
 must never be committed, exactly like the `gws` login.
 
-## What is guarded once you are connected
+## What each scope reaches, and what refuses it
 
-Two hooks watch spreadsheet writes from the moment you register them, and they are worth knowing about
-before they surprise you:
+**Saying yes to a scope in `gws auth login` turns on everything in its row below — read AND write
+both.** `gws` itself has no separate "read-only" grant; the right-hand column is what a guard in this
+package refuses once you have said yes, not something Google withholds on its own. Say no to a scope
+and none of this applies — nothing here can reach that service at all, guarded or not, which is why
+"only the scopes you actually intend to use" in STEP 1 above is the real first line of defense.
 
-- **You must read a sheet's `_LLM_GUIDE` tab before writing to it.** Every sheet this system builds
-  carries one, holding its structure and its rules. The first write to a sheet in a session is refused
-  with an instruction to read that tab; after that, writes go through for twelve hours.
-- **A write that would land on a formula is refused outright.** Google's own cell protection does not
-  stop a write authenticated as the file's owner — which is you — so this is the only place it can be
-  stopped. Appending rows is never blocked. Changing a formula on purpose means showing yourself the
-  exact before and after and re-running with `LIFEHACK_SHEET_CONFIRM=1` in front of the command.
+| Scope | What connecting it lets the agent do | What is refused, always |
+|---|---|---|
+| **Calendar** | Read any calendar you can see (events, free/busy). Write ONLY to the one calendar named `agent_calendar` in `<notes>/config/cal.md`. | Every other write — to `primary`, to any other calendar, or anywhere at all if `agent_calendar` is not set. `guard_calendar_writes.sh` is default-deny: it recognises a fixed list of READ verbs and refuses every write, including one it has never seen spelled that way before. |
+| **Tasks** | Read any task list. Write anywhere EXCEPT the list named `goals_tasklist`. Inside that one list, only subtasks under `daily_parent_task` — the day's plan — may be written. | Deleting or clearing anything on `goals_tasklist`, ever — no confirm path exists for that one, because Google Tasks keeps no version history and a deleted task is simply gone. `guard_tasks_writes.sh` decides with a real parser (`shlex` tokenizing, `json.loads` on the body), not a text match — the text-match version it replaced had seventeen working bypasses found across two rounds of adversarial testing on this exact guard. |
+| **Sheets** | Read any spreadsheet. Write to one, but only after this session has read that sheet's own `_LLM_GUIDE` tab (once per sheet, good for twelve hours) — every sheet this system builds carries one. | A destructive op — clear, delete, mass-overwrite — or a structural one — adding/removing tabs, columns, formatting — without an in-the-moment human "yes" typed as `LIFEHACK_SHEET_CONFIRM=1` in front of the command; the agent is expected to ask first, never to add that itself. Separately, **any** write that would land on a cell holding a formula or a 🔒 mark is refused outright, confirm-flag or not, on any sheet the account can reach at all — appending a new row is always fine, since it never overwrites an existing cell. |
+| **Gmail** | Read subjects, senders and dates freely. Read a message BODY only through the sanitizer (a raw body pull is blocked the same way a raw web page is). Move a label — file, archive, mark. **Nothing here composes or sends mail; that capability does not exist anywhere in this package.** | Deleting, batch-deleting, or trashing a message or thread — outright, unconditionally, no confirm path at all. `guard_gmail_destructive.sh` blocks the verb regardless of anything else true about the command. If mail genuinely needs to go, that happens in the Gmail UI, by you, where you can see what is about to disappear. |
+| **`gws auth logout`** | *(not a scope — a command)* | Blocked outright, unconditionally, no confirm path. It clears every window's Google credentials at once with no undo; only you, at a terminal, ever run it — see the safety rule at the top of this section. |
 
-Neither hook touches anything that is not a `gws sheets` command, and neither needs `jq`.
+⚠ **Read every row above as a strong speed bump, never as a lock — the guards say this about
+themselves, in their own comments.** Each one reads a shell command as TEXT before deciding, and a
+shell has effectively unlimited equivalent ways to spell the same command — a text check is always one
+phrasing behind someone determined to get past it. This is not hypothetical: in the system these guards
+were ported from, two independent adversarial passes attacked this same design — the first found 20
+bypasses in about 20 minutes, a rewrite closed those and a second pass found 13 more, and after three
+rounds of hardening only 1 of 27 tested attack forms still got through. The hardening that survived that
+shipped here with the guards themselves, dated in each file's own header — a real parser (not a text
+match) behind Tasks; on Calendar, Sheets and Gmail, matching the `gws` binary as a token anywhere in the
+command, rather than requiring it sit directly beside the service word, which is what closed a
+variable-substitution bypass found on 2026-08-14. The adversarial re-test of this exact copy has not
+been repeated here.
+
+**What these guards are good for:** stopping an ordinary mistake, an unreviewed script, or a model that
+simply did not think to check. **What they are not:** a defense against someone deliberately trying,
+from inside the same session, to talk their way around them.
+
+---
+
+# WHAT DOES NOT WORK YET — read this once, honestly
+
+Three gaps, named so a reader who runs into one of them knows it is expected, not a broken install.
+
+**Nothing here runs on a schedule.** This package has no cron, no background job, no scheduler of any
+kind. Every skill — Google-connected or not — runs only when you type it or a session you are driving
+calls it. If a skill's own file talks about something happening "daily" or "on a cadence," read that as
+what it is FOR once a scheduler exists, not a promise of what happens on its own today.
+
+**A few ported tools have nothing that calls them yet.** Some pieces under `system/tools/` and
+`shared/tools/` were carried over complete in themselves, but the job that was meant to run them on a
+schedule did not come with them. The clearest case: the email-reading tools can read a thread once
+something has written it to the local store. The writer that would do that (`email_summary_sync.py`)
+does exist in `shared/tools/` — but no skill, hook, or scheduler in this package calls it, so the store
+it would fill stays empty regardless. That is not a bug to report; it is a piece that has landed without
+its caller yet.
+
+**`PUSH-FORWARD.md`, at the root of this folder, is the fuller and more current list, if your clone has
+it.** ⚠ As of this writing it is untracked by git in the working copy this file was written from —
+nobody has yet ruled on whether it ships as part of what `git clone` actually gives you. If it is
+there, read it; it is the more current source. If it is not, the three points above are what we know of
+either way.
 
 ---
 

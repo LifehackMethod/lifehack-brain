@@ -17,9 +17,19 @@
 
 A starting point for an AI that remembers you.
 
-Right now it does one thing, and does it well: it takes a pile of your own
+The one thing you set up first is `/ingest`: it takes a pile of your own
 material — an old chat export, a stack of documents, notes you've been keeping —
 and turns it into a folder structure you and your AI can both work from.
+`INSTALL.md` walks you through that one skill, on purpose, and nothing else.
+
+**It is not the only thing that arrives with it, though.** The same clone brings
+a working set of other skills — for keeping a project's memory straight
+(`/save`, `/read`, `/checkin`), thinking a decision through (`/first-principles`,
+`/red-team`, `/research`), and — once you connect your own Google account —
+reading and writing your calendar, tasks and spreadsheets under the guards
+`INSTALL.md`'s Google section describes. Once you're set up, type `/` in the
+chat to see the full current list; that is the one place this can never go
+stale, because it is reading the same folder you are.
 
 More will land here over time. When it does, you'll get it with one update.
 
@@ -82,11 +92,12 @@ make and nothing to answer.
 
 ## What is in here
 
-    .claude/         ← ours. the command itself — this is where Claude looks.
-      agents/        ← the specialist readers the skill uses
+    .claude/         ← ours. the commands — this is where Claude looks.
+      agents/        ← the specialist readers the skills use
       skills/
-        ingest/      ← the one thing it does today
-      settings.json  ← wires it all up the moment you clone
+        ingest/      ← the one you're walked through in INSTALL.md
+        ...          ← plus a working set of others — type `/` once set up to see them
+      settings.json  ← wires it all up, and its safety hooks, the moment you clone
 
     system/          ← ours. the programs that do the sorting.
     shared/          ← ours. the piece that knows where your writing lives.

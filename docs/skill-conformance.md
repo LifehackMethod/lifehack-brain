@@ -6,8 +6,9 @@
 
 ## The one required field: `shape:`
 
-Every `SKILL.md` declares what KIND of thing it is. There are three, and all 31 skills shipped here
-already use them:
+Every `SKILL.md` declares what KIND of thing it is. There are three, and all 32 skills shipped here
+already use them (counted 2026-08-14; `ls .claude/skills/ | wc -l` is the live source, since this
+number moves):
 
 | `shape:` | what it means | how it starts |
 |---|---|---|

@@ -19,7 +19,7 @@ and nothing about the core tool notices.
 | python-docx | No | opening a `.docx` fails the same way |
 | openpyxl | No | opening a `.xlsx` fails the same way |
 | ntfy (phone notifications) | No | no pushes to your phone; nothing else changes |
-| `gws` + your Google account | No | no calendar/task reads, no spreadsheet writes |
+| `gws` + your Google account | No | no calendar/task/mail reads, no spreadsheet writes |
 | `clasp` | No | `/google-sheet` falls back to formulas only — almost never needed |
 | `gh` + a GitHub account | No | you can't use the one-sentence "file a bug" flow yet |
 | Google Chrome | No | `/design-lifehack` screenshots fail; nothing else touched |
@@ -110,18 +110,23 @@ Skip it, and that one thing simply doesn't happen yet — nothing else notices, 
 - **Cost.** Free app. It uses the public `ntfy.sh` service by default, so treat your topic string
   like a password — anyone who knows it can read what you send.
 
-### Calendar, tasks and spreadsheets — the `gws` CLI plus your own Google account
+### Calendar, tasks, spreadsheets and Gmail — the `gws` CLI plus your own Google account
 
 - **What it is.** A command-line tool that talks to Google on your behalf, so this package can read
-  your calendar and tasks, and read or write a Google Sheet.
+  your calendar and tasks, read or write a Google Sheet, and — if you grant that scope too — read your
+  Gmail (subjects/senders/dates freely, bodies only through the sanitizer) and move labels. **There is
+  no send or compose capability anywhere in this package**, connected or not.
 - **Do you need it?** Only if you want any of that. Most people setting this up for the first time
-  don't need it right away.
-- **Without it.** No calendar or task reads, no spreadsheet writes. Every other part of the package —
-  including all of `/ingest` — is completely unaffected.
+  don't need it right away, and each scope is independent — grant Calendar without Gmail, or none of
+  it at all.
+- **Without it.** No calendar or task reads, no spreadsheet writes, no mail reads. Every other part of
+  the package — including all of `/ingest` — is completely unaffected.
 - **Getting it.** This is a sit-down, not a click — expect to do it with someone the first time.
-  Full walkthrough in `INSTALL.md`, under **"THE GOOGLE-CONNECTED PARTS."** (That section is honest
-  that it doesn't pin down one install command for `gws` itself — how you install command-line tools
-  varies by machine — but it walks the login and the safety rule around it in full.)
+  Full walkthrough in `INSTALL.md`, under **"THE GOOGLE-CONNECTED PARTS"** — including a table, under
+  **"What each scope reaches, and what refuses it,"** naming exactly what each scope turns on and what
+  the guards in this package refuse regardless. (That section is honest that it doesn't pin down one
+  install command for `gws` itself — how you install command-line tools varies by machine — but it
+  walks the login and the safety rules around it in full.)
 - **Cost.** `gws` itself is free. You connect your own Google account — nothing here requires buying
   anything from Google.
 
