@@ -17,6 +17,9 @@
 # SIGNPOST: what canon is for lives in `system/knowledge-altitude.md` and `docs/data-layout.md`.
 #      Change the rule there first; do not weaken this guard to get one write through.
 # FAIL_POSTURE: closed — unparseable input denies.
+# UPDATED: 2026-08-15 (T9.5d — added the ALLOW-path speed bump: an allowed canon write now emits
+#      hookSpecificOutput.additionalContext, a loud non-blocking notice at the moment of write. See
+#      the block comment at the ALLOW_CANON case below for why that field and not plain stdout.)
 # UPDATED: 2026-08-11 (ported; the authority rail dropped, the size rail re-derived, the top-level
 #      canon file brought into scope)
 #
@@ -123,7 +126,7 @@ content = ti.get("content", ti.get("new_string", "")) or ""
 in_canon_dir = "/canon/" in path
 is_root_canon = os.path.basename(path) == "canon.md"
 if not (in_canon_dir or is_root_canon):
-    print("ALLOW"); sys.exit()
+    print("ALLOW_NONE"); sys.exit()
 
 MAX_CHARS = 3200
 if len(content) > MAX_CHARS:
@@ -135,7 +138,7 @@ stale = ["shelf-life:", "shelf_life:", "expires:", "tier: snapshot",
 hit = next((s for s in stale if s in low), None)
 if hit:
     print("BLOCK_STALE|" + hit); sys.exit()
-print("ALLOW")
+print("ALLOW_CANON|" + path + "|" + str(len(content)))
 PY
 )
 
@@ -144,7 +147,42 @@ RESULT=$(printf '%s' "$INPUT" | python3 -c "$PYCHECK")
 R="WHAT CANON IS: the few things that stay true, small enough that every session can afford to carry them. Two tests, and a line has to pass both. (1) Will this still be true in six months, with no expiry date attached? If it has a date on it, it is a record, not canon. (2) Can a completely fresh session read this line ALONE, with no other context, and act on it correctly? If it needs the conversation around it, it is not finished. Everything else goes in records/, dated — nothing is lost, it is just pulled when it is relevant instead of carried always. SOURCE: system/knowledge-altitude.md + docs/data-layout.md."
 
 case "$RESULT" in
-  ALLOW) exit 0 ;;
+  ALLOW_NONE) exit 0 ;;
+  ALLOW_CANON*)
+    # ── T9.5d — THE ALLOW-PATH SPEED BUMP (2026-08-15). ────────────────────────────────────
+    # A write that PASSED both content rails still deserves a loud, non-blocking notice, at
+    # the moment it happens — canon is the layer nothing re-checks later, so the write itself
+    # is the only moment anyone is looking. Plain stdout/stderr on exit 0 is a DEAD channel for
+    # PreToolUse (confirmed against the current Claude Code hooks reference, 2026-08-15: it
+    # reaches the debug log only, never the model) — the exact failure this repo's own
+    # hook-sop.md already has on record for `guard_web_search.sh` ("a WARNING-ONLY PreToolUse
+    # hook that printed a caution then exit 0'd... the warning was security theater the model
+    # never saw"). The ONE channel confirmed to reach the model on an ALLOW decision is
+    # `hookSpecificOutput.permissionDecision:"allow"` + `additionalContext`. This is a narrower
+    # claim than the house style's blanket "do NOT use hookSpecificOutput" (hook-contract.md,
+    # written for the competing BLOCK formats) — that line never covered ALLOW+additionalContext,
+    # which did not exist when it was written. Verified live this port: fired through the real
+    # harness, not a bash pipe (hook-sop.md §4 — "a hook you haven't watched fire in a live
+    # attempt is not a control").
+    _T="${RESULT#ALLOW_CANON|}"; CPATH="${_T%%|*}"; CLEN="${_T##*|}"
+    CANON_PATH="$CPATH" CANON_LEN="$CLEN" python3 -c "
+import json, os
+path = os.environ.get('CANON_PATH', '')
+clen = os.environ.get('CANON_LEN', '')
+msg = (f'CANON WRITE ALLOWED -- {path} ({clen} chars) is about to be loaded into EVERY future '
+       f'session start, forever, whether or not that session has anything to do with this '
+       f'subject. This is a speed bump, not a block (T9.5d, 2026-08-15) -- the authority:user '
+       f'rail was dropped 2026-08-11 because it was self-attestation a machine types as easily '
+       f'as a person, and it blocked /save writing its own approved canon. Before this settles '
+       f'in: (1) will this still be true in six months with no expiry attached? (2) can a fresh '
+       f'session with zero other context read this line ALONE and act on it correctly? If '
+       f'either answer is no, this belongs in records/, dated, not here. '
+       f'RULE: system/knowledge-altitude.md.')
+print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse',
+                                          'permissionDecision': 'allow',
+                                          'additionalContext': msg}}))
+"
+    exit 0 ;;
   PARSE_ERROR)
     printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: guard_canon_write could not read the tool input, so it is failing closed. ${R}\"}" >&2
     exit 2 ;;

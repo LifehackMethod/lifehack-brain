@@ -155,6 +155,22 @@ except Exception: print('')" 2>/dev/null)
         exit 0
         ;;
     esac
+    # ── THE STORE READ-WALL (T9.5a, ported 2026-08-15). item-store and the v2 email-thread
+    # store hold attacker-writable third-party free-text (task notes, calendar invite
+    # descriptions, verbatim email bodies). BOTH stores live under the notes root, which is
+    # INSIDE the trusted zone above — so without this case, a raw Read would sail straight
+    # through as an ordinary internal file. This block runs BEFORE the trusted-zone allow gets
+    # a chance to fire, and it fires regardless of AGENT_ID: there is no sanctioned direct-Read
+    # path here, only the adapter. REDIRECT to the field-branch allowlist that isolates the
+    # free-text — never a second raw path into the same content the adapter already guards.
+    case "$FP" in
+      */state/email-summary/threads-v2/*|*/state/email-summary/threads-v2-cold/*)
+        deny '{"decision":"block","reason":"BLOCKED: direct Read of the v2 faithful-thread store (state/email-summary/threads-v2/) bypasses the read adapter. WHY: the store holds verbatim adversarial email text; the adapter wraps it (DATA-not-instructions), refuses flagged records, and — for a record NOT cleared at intake — re-scans and isolates the free-text. A record carrying reader_applied=true is served inline under the one-gate rule: it was judged by the tool-less reader at the door, so there is no second reader. This BLOCK still stands either way — the adapter is the only sanctioned door to the store. REDIRECT: python3 <repo>/shared/tools/email_service_read.py — or call email_service_read.read_thread(thread_id, desk)."}'
+        ;;
+      */state/item-store/*)
+        deny '{"decision":"block","reason":"BLOCKED: direct Read of the item store (state/item-store/) bypasses the read adapter. WHY: task/calendar records hold third-party free-text (task notes, a calendar invite description/summary) that is attacker-writable; the adapter returns structured fields inline, and for FREE-TEXT it refuses flagged records and — unless the record was cleared at intake (reader_applied) — re-scans and isolates it. One gate at the door, not one per read. REDIRECT: python3 <repo>/shared/tools/item_store_read.py --type task|calendar --id <id> --desk <desk> — or import item_store_read.read_item."}'
+        ;;
+    esac
     EXT=$(printf '%s' "${FP##*.}" | tr '[:upper:]' '[:lower:]')
     case "$EXT" in
       pdf)      deny '{"decision":"block","reason":"BLOCKED: Read on a .pdf hands over the raw text layer — which is where white-on-white and sub-4-point instructions live, along with the document metadata nobody looks at. REDIRECT: python3 <repo>/system/tools/safe_pdf.py <path>."}' ;;
