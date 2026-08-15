@@ -1,0 +1,225 @@
+#!/bin/bash
+#
+# ══════════════════════════════════════════════════════════════════════════════
+# ⚠  SPEED BUMP, NOT A BOUNDARY.  Read this before you trust this file.
+#
+#  This guard inspects a command as TEXT. A shell has infinite equivalent ways to
+#  spell the same command, so a text matcher is always one phrasing behind. Treat
+#  what follows as a speed bump that raises the cost of a mistake — never as a wall
+#  that makes one impossible.
+#
+#  MEASURED HERE, 2026-08-14, not cited from elsewhere. Four of these guards were
+#  fire-tested and then attacked by two independent auditors charged to break them:
+#    · the first found 20 bypasses in ~20 minutes; 11 of 13 headline claims reproduced
+#    · after a rewrite, the second found 13 more, all reproduced
+#    · after three rounds of hardening, 1 of 27 tested attack forms still passes
+#  Every one of those holes was in a guard reading a command STRING. This system's
+#  own journal states the pattern: 17 of 52 registered hooks guard Bash, and every
+#  guard that failed was one of them — every guard that fired correctly was on a
+#  typed tool.
+#
+#  PRIOR ART, same conclusion: CVE-2025-66032 — eight independent bypasses of Claude
+#  Code's own regex blocklist (`man --html`, `sort --compress-program`, sed's `e`
+#  flag, `$IFS`, `${var@P}`), plus an independently reproduced `$(...)` bypass of an
+#  allowlist.
+#
+#  ⇒ IF YOU ARE ADDING A CONTROL THAT MUST NOT BE BYPASSED, DO NOT ADD IT HERE.
+#    Put it on a typed tool, or make the dangerous act structurally impossible.
+#    Adding a ninth pattern to this file buys less than it appears to.
+# ══════════════════════════════════════════════════════════════════════════════
+# ── LLM CONTEXT ──────────────────────────────────────────────────────────────
+# WHY: On 2026-07-28 (organism-audit S2.3) a session edited enforce_skill_frontmatter.sh WITHOUT
+#      reading system/sops/hook-sop.md first. Enver caught it; the system did not. The post-mortem
+#      found TWO controls that both existed and NEITHER could have worked: (1)
+#      inject_sop_before_build.sh is UserPromptSubmit and keys on BUILD-INTENT LANGUAGE IN THE
+#      USER'S PROMPT — it watches what the human TYPES, not what the agent DOES, so it fired once
+#      at session start and was silent when a hook was actually edited hours later; (2)
+#      guard_write_paths.sh:121 fires at exactly the right moment on exactly the right file, but
+#      knows nothing about the SOP and its redirect hands out the bypass verbatim ("chmod 644 the
+#      hook, edit, chmod 555"). The control that knew the rule watched the wrong signal; the
+#      control that watched the right signal did not know the rule. Nothing connected them.
+#      inject_sop_before_build.sh's own header PRE-AUTHORISED this: "No teeth by design: a pointer,
+#      not a gate (escalate to a block only if this proves skippable in practice)."
+# GUARDS: a WRITE-SHAPED Bash command targeting system/hooks/ or ~/.claude/hooks/ (chmod with a
+#      numeric mode · sed -i · tee · cp/mv/install into · rm · a > / >> redirect into · truncate ·
+#      dd of=) when NO receipt proves system/sops/hook-sop.md + system/hook-contract.md were read
+#      THIS session. READ-SHAPED commands are deliberately untouched — grep/cat/ls/head/tail/wc,
+#      `bash <hook>` (running a hook is how the fire-test fleet works and must never be blocked),
+#      and `git checkout/restore` of a hook (the emergency repair path back to a known-good state).
+# REDIRECT: run `bash system/tools/read_sop.sh hook` (repo-relative; see PORTED note below) — it
+#      PRINTS both docs to stdout and stamps the receipt as a side effect, then retry the exact
+#      same command. The receipt cannot be forged into existence without the SOP text passing
+#      through context.
+# SIGNPOST: the RULE lives in system/sops/hook-sop.md (WHEN + WHICH kind) and system/hook-contract.md
+#      (mechanics + the two-machine Deploy & Verify checklist). To change what is gated, edit those
+#      + get Enver's sign-off, then update this guard and its settings.json registration.
+# FAIL_POSTURE: closed — an unparseable payload DENIES (hook-sop.md §3.2).
+# KNOWN LIMITS (stated, not hidden — an honest gap beats a false guarantee):
+#   1. RECEIPT SCOPE. The receipt is session-keyed, with a cwd-keyed fallback retained ONLY to
+#      prevent a BRICK (if read_sop.sh ran without CLAUDE_CODE_SESSION_ID set, the keys would
+#      never match and hook repair would be impossible). Consequence: a cwd-keyed receipt
+#      unlocks every window in that directory for its 12h TTL. For a single operator running
+#      ~7 parallel windows that is a convenience, not a hole — the threat model here is an
+#      INATTENTIVE agent, not a hostile one. A brick is the worse failure.
+#   2. ATTENTION CANNOT BE FORCED. The receipt proves the SOP text was PRINTED INTO CONTEXT,
+#      not that it was attended to. Nothing in a text interface can prove reading. What this
+#      guarantees is presence rather than absence — the difference between a rule and a wish.
+#   3. BASH ONLY. Write/Edit tool calls to system/hooks/ are already blocked upstream by
+#      guard_write_paths.sh:121, which is why this gate matches Bash: that is the only path
+#      left open, and it is the one its redirect prescribes.
+# UPDATED: 2026-08-03
+# PORTED (T9.7b, 2026-08-15) from claudeops-config: the REDIRECT message and read_sop.sh call
+# below carried a hardcoded `~/claudeops-config/...` path; both now resolve from this hook's
+# own location (repo-relative), matching the pattern already used by this repo's other ported
+# hooks (announce_plan_write.sh etc.) — never a hardcoded home directory.
+# ─────────────────────────────────────────────────────────────────────────────
+# guard_hook_sop_read.sh — PreToolUse hook (matcher: Bash)
+# Blocks editing the enforcement layer until its rulebook is demonstrably in context.
+set -uo pipefail
+
+_HOOKDIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
+_REPO="$(cd "$_HOOKDIR" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null)"
+[ -n "$_REPO" ] || _REPO="${_HOOKDIR%/system/hooks}"
+
+INPUT=$(cat 2>/dev/null) || INPUT=""
+
+RAW=$(printf '%s' "$INPUT" | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    print(((d.get('tool_input', {}) or {}).get('command', '') or '').replace(chr(10),' '))
+except Exception:
+    print('__ERR__')
+" 2>/dev/null)
+SID=$(printf '%s' "$INPUT" | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    print(d.get('session_id','') or '')
+except Exception:
+    print('')
+" 2>/dev/null)
+
+deny() {
+  printf '%s\n' "$1" >&2
+  exit 2
+}
+
+# FAIL-CLOSED on an unparseable payload — but ONLY when it looks like it could be a hook write.
+# A blanket deny on every unparseable Bash call would wall the whole session, which is worse than
+# the risk being guarded; an unparseable payload we cannot inspect is treated as suspicious only
+# for this narrow surface.
+if [ "$RAW" = "__ERR__" ]; then
+  deny 'BLOCKED: guard_hook_sop_read could not parse its input — failing CLOSED. WHY: this guard protects the enforcement layer (system/hooks/), so an uninspectable payload must not pass. REDIRECT: retry the command; if it persists, inspect the tool call. RULE: system/sops/hook-sop.md + system/hook-contract.md.'
+fi
+
+# ── does this command touch the hook plane at all? ───────────────────────────────────────
+printf '%s' "$RAW" | grep -qE '(system/hooks/|\.claude/hooks/)' || exit 0
+
+# ── READ-SHAPED / SAFE — never block these ───────────────────────────────────────────────
+# `bash <hook>` is how label_checker.py and fire_test_probe.py fire every guard; blocking it would
+# brick the entire fire-test system. `git checkout|restore` is the emergency path back to a
+# committed-good hook and must stay open, or a broken guard becomes unfixable.
+if printf '%s' "$RAW" | grep -qE '(^|[|;&[:space:]])(git[[:space:]]+(checkout|restore|stash|diff|log|show|status|blame))([[:space:]]|$)'; then
+  exit 0
+fi
+
+# ── WRITE-SHAPED detection (TOKENIZED — 2026-08-03) ──────────────────────────────────────
+# The 2026-07-13 build-sop lesson ("a guard that greps a command STRING for a keyword
+# false-positives on mere MENTIONS") was applied here on 2026-07-28 as REGEXES. That fixed the
+# verb half and left the REDIRECT half broken, because a regex cannot tell a QUOTED '>' from a
+# real one. The old REDIR_RE was:
+#     >>?[[:space:]]*[^|;&]*(system/hooks/|\.claude/hooks/)
+# which asks "is there a '>' somewhere AND a hooks path somewhere later" — it never bound the
+# hooks path to the redirect's TARGET. Measured 2026-08-03 (13-case two-sided suite): 5/5 real
+# hook writes blocked correctly, 3 benign commands blocked wrongly, all three from that one gap:
+#   - a heredoc writing notes.md whose BODY merely names a hook
+#   - grep -rn ">> system/hooks/" docs/        (a search PATTERN, not a redirect)
+#   - grep -rn "cat > system/hooks/" docs/     (likewise)
+# FIX: tokenize with shlex instead of pattern-matching. A real redirect survives tokenization as
+# its OWN bare token ('>>'); a quoted one stays glued inside a token that contains SPACES, and a
+# shell redirect operator can never contain a space. That single property is the discriminator.
+# A write VERB now only counts in COMMAND POSITION within its own segment (split on ; && || |),
+# and only when a hooks path appears among THAT segment's arguments — so `mv plan.md new.md &&
+# bash system/hooks/plan_flag.sh set x` no longer blocks. `bash -c "..."` recurses so the
+# tokenizer cannot be used as a bypass. On a tokenizer error we FALL BACK to the old regexes,
+# which are strictly more blocking — fail-closed, per FAIL_POSTURE.
+IS_WRITE=$(printf '%s' "$RAW" | python3 -c "
+import sys, re, shlex
+HOOK = re.compile(r'(system/hooks/|\.claude/hooks/)')
+WRITE_VERBS = {'chmod','chown','cp','mv','rm','install','truncate','dd','tee','ln','touch','patch','ed','shred'}
+WRAPPERS = {'sudo','doas','env','command','nohup','time','stdbuf'}
+SEPS = {';','&&','||','|','&'}
+ASSIGN = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*=')
+
+def check(cmd, depth=0):
+    if depth > 3:
+        return True                      # pathological nesting -> fail closed
+    toks = shlex.split(cmd, posix=True)  # ValueError propagates -> caller falls back
+    segs = [[]]
+    for t in toks:
+        if t in SEPS: segs.append([])
+        else: segs[-1].append(t)
+    for s in segs:
+        if not s: continue
+        # -- redirect: a bare operator token. Quoted text keeps its spaces; an operator cannot.
+        for i, t in enumerate(s):
+            if ' ' in t: continue
+            m = re.match(r'^[0-9]*>>?\|?(.*)$', t)
+            if not m or '>' not in t: continue
+            tgt = m.group(1) or (s[i+1] if i+1 < len(s) else '')
+            if HOOK.search(tgt): return True
+        # -- write verb, but only in COMMAND POSITION for this segment
+        j = 0
+        while j < len(s) and (s[j] in WRAPPERS or ASSIGN.match(s[j])): j += 1
+        if j >= len(s): continue
+        head = s[j].rsplit('/', 1)[-1]
+        args = s[j+1:]
+        if head in ('bash','sh','zsh','dash','ksh'):
+            for k, a in enumerate(args):
+                if a == '-c' and k+1 < len(args):
+                    if check(args[k+1], depth+1): return True
+            continue                     # 'bash <hook>' = RUNNING a hook; the fire-test fleet needs this
+        if head == 'sed':
+            if any(a.startswith('-i') or a == '--in-place' for a in args) and any(HOOK.search(a) for a in args):
+                return True
+            continue
+        if head in WRITE_VERBS and any(HOOK.search(a) for a in args):
+            return True
+    return False
+
+raw = sys.stdin.read()
+try:
+    print('1' if check(raw) else '0')
+except Exception:
+    print('__FALLBACK__')
+" 2>/dev/null)
+
+if [ "$IS_WRITE" = "__FALLBACK__" ] || [ -z "$IS_WRITE" ]; then
+  # Tokenizer could not parse (unbalanced quotes, etc.) -> the old, more-blocking regexes.
+  WRITE_RE='(^|[|;&[:space:]])(chmod[[:space:]]+[0-7]{3,4}[[:space:]]|sed[[:space:]]+-i([[:space:]]|$)|tee([[:space:]]|$)|cp([[:space:]]|$)|mv([[:space:]]|$)|rm([[:space:]]|$)|install([[:space:]]|$)|truncate([[:space:]]|$)|dd[[:space:]]+.*of=)'
+  REDIR_RE='>>?[[:space:]]*[^|;&]*(system/hooks/|\.claude/hooks/)'
+  IS_WRITE=0
+  printf '%s' "$RAW" | grep -qE "$WRITE_RE" && IS_WRITE=1
+  printf '%s' "$RAW" | grep -qE "$REDIR_RE" && IS_WRITE=1
+fi
+
+[ "$IS_WRITE" -eq 1 ] || exit 0
+
+# ── receipt check ────────────────────────────────────────────────────────────────────────
+KEY="${SID:-${CLAUDE_CODE_SESSION_ID:-cwd-$(printf '%s' "$PWD" | shasum | cut -c1-12)}}"
+RUN_DIR="$HOME/.claude/run/sop"
+RECEIPT="$RUN_DIR/hook.$KEY.receipt"
+
+# Accept ANY receipt for this session key, or a cwd-keyed one (the tool may have been run before
+# the session id was known). TTL 12h so a stale receipt cannot certify a read from yesterday.
+FOUND=0
+for cand in "$RECEIPT" "$RUN_DIR/hook.cwd-$(printf '%s' "$PWD" | shasum | cut -c1-12).receipt"; do
+  [ -f "$cand" ] || continue
+  AGE=$(( $(date +%s) - $(stat -f %m "$cand" 2>/dev/null || echo 0) ))
+  [ "$AGE" -lt 43200 ] && FOUND=1 && break
+done
+
+[ "$FOUND" -eq 1 ] && exit 0
+
+deny "BLOCKED: this command WRITES to the hook plane (system/hooks/) but the hook SOP has not been read this session. WHY: on 2026-07-28 a hook was edited with its rulebook unread — the existing reminder (inject_sop_before_build.sh) keys on the USER prompt, so it fires at session start and is silent at the moment the agent actually edits a hook. Hooks are the enforcement layer: a wrong edit here silently disables a control, and a silently-dark guard is worse than no guard because the map still reports it green. REDIRECT: run \`bash $_REPO/system/tools/read_sop.sh hook\` (it PRINTS hook-sop.md + hook-contract.md and stamps a 12h session receipt as a side effect), then retry this exact command. Reading is the only way to earn the receipt. RULE: system/sops/hook-sop.md (WHEN + which kind) + system/hook-contract.md (mechanics + the two-machine Deploy & Verify checklist) — edit those + get Enver sign-off to change what is gated, then update this guard."

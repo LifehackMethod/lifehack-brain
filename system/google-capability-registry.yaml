@@ -1,0 +1,693 @@
+# google-capability-registry.yaml
+# Authoritative machine-readable registry for all Google Workspace capabilities in this system.
+# This is the policy source. The .md companion (system/google-policy.md) is a human-readable
+# rendering of it — do not treat the two as independent; edit here first.
+#
+# PORTED (T9.7c, 2026-08-15) from claudeops-config, where this file existed but never shipped to
+# this repo. Generalized: no multi-desk registry (this product has one operator, not several
+# named desks each with their own access model — see the note where that section used to be,
+# below), no hardcoded personal calendar/label ids. Not machine-parsed anywhere in this repo
+# (checked: no .py/.sh reads this file) — it is reference documentation, same status as the
+# donor's own "policy source" framing, just not literally consumed by code either place.
+#
+# Enforcement posture: convention-based (test suite + agent context) for most rows below.
+# There is no runtime block for most capabilities. Agents follow policy because it is in their
+# loaded context — EXCEPT calendar writes and gws auth/logout, which ARE hook-enforced in this
+# repo (system/hooks/guard_calendar_writes.sh, system/hooks/guard_gws_logout.sh).
+
+meta:
+  version: "1.0"
+  gws_version: "0.22.3"
+  binary: "resolved via PATH (shutil.which), falling back to /opt/homebrew/bin/gws or /usr/local/bin/gws — see system/gws-contract.md#binary"
+  created_at: "2026-03-27"
+  contract_file: "system/gws-contract.md"
+
+risk_classes:
+  READ: "Fetches data, no side effects. No confirmation required."
+  WRITE_SAFE: "Creates or modifies data, reversible. Show before execute."
+  WRITE_DESTRUCTIVE: "Deletes, archives, bulk overwrites. Explicit per-operation confirm."
+  ADMIN: "Changes structure, permissions, or sharing. Explicit confirm required."
+  AUTOMATION: "Apps Script execution or triggers. Side effects unknown. Explicit confirm + function review."
+
+tiers:
+  STABLE: "Live-validated gws Bash support. Contract examples verified. Safe to use."
+  VERIFY-BEFORE-USE: "Schema accessible but requires individual live verification before wiring to any skill. Do not treat as available until global_reachability is populated."
+
+# Full policy document: system/google-policy.md
+# That document is the authoritative source for prohibitions, guards, and access model.
+# This section summarizes the hard-blocked capability IDs for test-suite reference.
+
+global_deny:
+  # Email
+  - gmail.batch_ops           # Bulk ops — no scope filter exists
+  - gmail.send                # No agent sends email (not in registry; hard-blocked at policy level)
+  - gmail.draft               # No draft creation
+  - gmail.reply               # No reply/forward
+  - gmail.label_manage        # No restructuring inbox routing
+  - gmail.filter_manage       # No filter creation/modification
+  - gmail.delete              # No deleting/trashing messages (not in registry; hard-blocked)
+
+  # Calendar
+  - calendar.update_event     # No modifying any event on any calendar
+  # calendar.delete_event is restricted to the ONE configured agent calendar only — see
+  # google-policy.md prohibition #9. It is NOT globally denied, but is hook-restricted
+  # (system/hooks/guard_calendar_writes.sh) to whatever calendar id <notes>/config/cal.md names.
+
+  # Drive
+  - drive.delete_file         # Not in capability registry; hard-blocked
+  - drive.share_file          # No permission changes without explicit instruction
+  - drive.manage_permissions  # No permission changes without explicit instruction
+  - drive.public_link         # No "anyone with link" share creation (not in registry; hard-blocked)
+
+  # Sheets
+  - sheets.row_delete         # No row/column/tab deletion (not in registry; hard-blocked)
+  - sheets.formula_injection  # No = @ + - prefixed values in writes (enforced at write guard)
+
+  # Apps Script
+  - apps_script.edit_code     # No code creation or editing
+  - apps_script.manage_triggers  # No trigger creation or management
+
+  # People / Contacts
+  - people.all                # Google Contacts — nothing here has access
+
+  # System self-modification
+  - self.expand_powers        # No agent may write new skills, policies, or capability grants
+  - self.change_toolplane     # No agent may modify the gws connection layer, auth, or binary
+
+# ─── Access model (was: Desk Registry) ────────────────────────────────────────
+# The donor tracked one access-model row per named workflow persona, each with its own
+# email_ingest_scope. This product has no multi-desk model — one operator, one session
+# identity — so there is nothing to enumerate here. The single access model for this whole
+# repo is stated once, in CLAUDE.md and in the rows below: BROAD read access, WRITE_SAFE with
+# confirmation guards, guarded rows require explicit show-before-execute. Email ingest scope
+# (which labels get pulled) is whatever the person's own ingest tooling is configured to read
+# — not a permission boundary either place, donor or here (see google-policy.md item 4: the
+# sanitizer is the wall, not which caller is asking).
+
+capabilities:
+
+  # ─── Gmail (Tier A — STABLE) ─────────────────────────────────────────────────
+
+  gmail.read_threads:
+    service: gmail
+    tier: STABLE
+    gws_command: "gws gmail users threads list"
+    risk_class: READ
+    confirm: false
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-gmail"
+    schema_ref: "gmail.users.threads.list"
+
+  gmail.read_by_label:
+    service: gmail
+    tier: STABLE
+    gws_command: "gws gmail users threads list (with labelIds param)"
+    risk_class: READ
+    confirm: false
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-gmail"
+    schema_ref: "gmail.users.threads.list"
+
+  gmail.read_sent:
+    service: gmail
+    tier: STABLE
+    gws_command: "gws gmail users threads list (q: in:sent)"
+    risk_class: READ
+    confirm: false
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-gmail"
+    schema_ref: "gmail.users.threads.list"
+
+  gmail.read_snoozed:
+    service: gmail
+    tier: STABLE
+    gws_command: "gws gmail users threads list (q: is:snoozed)"
+    risk_class: READ
+    confirm: false
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-gmail"
+    schema_ref: "gmail.users.threads.list"
+
+  gmail.attachment_download:
+    service: gmail
+    tier: STABLE
+    gws_command: "gws gmail users messages attachments get"
+    risk_class: READ
+    confirm: false
+    explicit_approval_required: false
+    global_reachability: null
+    schema_ref: "gmail.users.messages.attachments.get"
+    notes: "Size limit guard required. No contract example yet — add before wiring to any skill."
+
+  gmail.label_modify:
+    service: gmail
+    tier: STABLE
+    gws_command: "gws gmail users messages modify"
+    risk_class: WRITE_SAFE
+    confirm: "Show target messages + label change before execute"
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-gmail"
+    schema_ref: "gmail.users.messages.modify"
+
+  gmail.label_manage:
+    service: gmail
+    tier: STABLE
+    gws_command: "gws gmail users labels create/update/delete"
+    risk_class: ADMIN
+    confirm: "Show create/update/delete operation"
+    explicit_approval_required: true
+    global_reachability: null
+    schema_ref: "gmail.users.labels.create"
+
+  gmail.filter_manage:
+    service: gmail
+    tier: STABLE
+    gws_command: "gws gmail users settings filters create/delete"
+    risk_class: ADMIN
+    confirm: "Show filter definition before create"
+    explicit_approval_required: true
+    global_reachability: null
+    schema_ref: "gmail.users.settings.filters.create"
+
+  gmail.batch_ops:
+    service: gmail
+    tier: STABLE
+    gws_command: "gws gmail users messages batchModify"
+    risk_class: WRITE_DESTRUCTIVE
+    confirm: "Show scope + count before any bulk action"
+    explicit_approval_required: true
+    global_reachability: null
+    global_deny: true
+    notes: "GLOBAL DENY — never enabled without a human-authored scope filter"
+
+  # ─── Calendar (Tier A — STABLE) ──────────────────────────────────────────────
+
+  calendar.read_events:
+    service: calendar
+    tier: STABLE
+    gws_command: "gws calendar events list"
+    risk_class: READ
+    confirm: false
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-calendar"
+    schema_ref: "calendar.events.list"
+
+  calendar.list_calendars:
+    service: calendar
+    tier: STABLE
+    gws_command: "gws calendar calendarList list"
+    risk_class: READ
+    confirm: false
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-calendar"
+    schema_ref: "calendar.calendarList.list"
+
+  calendar.free_busy:
+    service: calendar
+    tier: STABLE
+    gws_command: "gws calendar freebusy query"
+    risk_class: READ
+    confirm: false
+    explicit_approval_required: false
+    global_reachability: null
+    schema_ref: "calendar.freebusy.query"
+
+  calendar.create_event:
+    service: calendar
+    tier: STABLE
+    gws_command: "gws calendar events insert"
+    risk_class: WRITE_SAFE
+    confirm: "Show full event JSON before insert"
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-calendar"
+    schema_ref: "calendar.events.insert"
+
+  calendar.update_event:
+    service: calendar
+    tier: STABLE
+    gws_command: "gws calendar events patch"
+    risk_class: WRITE_SAFE
+    confirm: "Show diff before update"
+    explicit_approval_required: false
+    global_reachability: null
+    schema_ref: "calendar.events.patch"
+
+  calendar.delete_event:
+    service: calendar
+    tier: STABLE
+    gws_command: "gws calendar events delete"
+    risk_class: WRITE_DESTRUCTIVE
+    confirm: "Show event + confirm delete"
+    explicit_approval_required: true
+    global_reachability: null
+    schema_ref: "calendar.events.delete"
+
+  calendar.manage_attendees:
+    service: calendar
+    tier: STABLE
+    gws_command: "gws calendar events patch (attendees field)"
+    risk_class: WRITE_SAFE
+    confirm: "Part of update confirm"
+    explicit_approval_required: false
+    global_reachability: null
+    schema_ref: "calendar.events.patch"
+    notes: "Handled via calendar.update_event. No separate contract example needed."
+
+  calendar.meet_link:
+    service: calendar
+    tier: STABLE
+    gws_command: "gws calendar events insert/patch (conferenceData field)"
+    risk_class: WRITE_SAFE
+    confirm: "Part of create/update confirm"
+    explicit_approval_required: false
+    global_reachability: null
+    schema_ref: "calendar.events.insert"
+    notes: "Set conferenceData.createRequest in event body alongside other event fields."
+
+  # ─── Drive (Tier A — STABLE) ─────────────────────────────────────────────────
+
+  drive.list_files:
+    service: drive
+    tier: STABLE
+    gws_command: "gws drive files list"
+    risk_class: READ
+    confirm: false
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-drive"
+    schema_ref: "drive.files.list"
+
+  drive.read_metadata:
+    service: drive
+    tier: STABLE
+    gws_command: "gws drive files get"
+    risk_class: READ
+    confirm: false
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-drive"
+    schema_ref: "drive.files.get"
+
+  drive.export_doc:
+    service: drive
+    tier: STABLE
+    gws_command: "gws drive files export"
+    risk_class: READ
+    confirm: false
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-drive"
+    schema_ref: "drive.files.export"
+
+  drive.create_file:
+    service: drive
+    tier: STABLE
+    gws_command: "gws drive files create"
+    risk_class: WRITE_SAFE
+    confirm: "Show filename + destination folder"
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-drive"
+    schema_ref: "drive.files.create"
+
+  drive.create_folder:
+    service: drive
+    tier: STABLE
+    gws_command: "gws drive files create (mimeType: application/vnd.google-apps.folder)"
+    risk_class: WRITE_SAFE
+    confirm: "Show folder name + parent location"
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-drive"
+    schema_ref: "drive.files.create"
+
+  drive.copy_file:
+    service: drive
+    tier: STABLE
+    gws_command: "gws drive files copy"
+    risk_class: WRITE_SAFE
+    confirm: "Show source + destination"
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-drive"
+    schema_ref: "drive.files.copy"
+
+  drive.move_file:
+    service: drive
+    tier: STABLE
+    gws_command: "gws drive files update (addParents/removeParents params)"
+    risk_class: WRITE_SAFE
+    confirm: "Show source + destination. Requires both old and new parent folder IDs."
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-drive"
+    schema_ref: "drive.files.update"
+
+  drive.share_file:
+    service: drive
+    tier: STABLE
+    gws_command: "gws drive permissions create"
+    risk_class: ADMIN
+    confirm: "Show share target + permission level"
+    explicit_approval_required: true
+    global_reachability: null
+    schema_ref: "drive.permissions.create"
+
+  drive.manage_permissions:
+    service: drive
+    tier: STABLE
+    gws_command: "gws drive permissions update/delete"
+    risk_class: ADMIN
+    confirm: "Show permission change"
+    explicit_approval_required: true
+    global_reachability: null
+    schema_ref: "drive.permissions.update"
+
+  # ─── Docs (Tier A — STABLE) ──────────────────────────────────────────────────
+
+  docs.read:
+    service: docs
+    tier: STABLE
+    gws_command: "gws docs documents get"
+    risk_class: READ
+    confirm: false
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-docs"
+    schema_ref: "docs.documents.get"
+
+  docs.create:
+    service: docs
+    tier: STABLE
+    gws_command: "gws docs documents create"
+    risk_class: WRITE_SAFE
+    confirm: "Show title + destination"
+    explicit_approval_required: false
+    global_reachability: null
+    schema_ref: "docs.documents.create"
+
+  docs.append:
+    service: docs
+    tier: STABLE
+    gws_command: "gws docs documents batchUpdate"
+    risk_class: WRITE_SAFE
+    confirm: "Show content before insert"
+    explicit_approval_required: false
+    global_reachability: null
+    schema_ref: "docs.documents.batchUpdate"
+
+  docs.export:
+    service: docs
+    tier: STABLE
+    gws_command: "gws drive files export"
+    risk_class: READ
+    confirm: false
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-drive"
+    schema_ref: "drive.files.export"
+    notes: "Same command as drive.export_doc. Use mimeType text/plain for Google Docs."
+
+  # ─── Sheets (Tier A — STABLE) ────────────────────────────────────────────────
+
+  sheets.read:
+    service: sheets
+    tier: STABLE
+    gws_command: "gws sheets spreadsheets values get"
+    risk_class: READ
+    confirm: false
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-sheets"
+    schema_ref: "sheets.spreadsheets.values.get"
+    notes: "Use bare ranges (A1:Z100) not tab-qualified ranges (Sheet1!A1:Z100). The ! character in range params causes inconsistent gws parser behavior. See contract quoting rule #3."
+
+  sheets.append:
+    service: sheets
+    tier: STABLE
+    gws_command: "gws sheets spreadsheets values append"
+    risk_class: WRITE_SAFE
+    confirm: "Show rows + target range before insert"
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-sheets"
+    schema_ref: "sheets.spreadsheets.values.append"
+    notes: "Same ! range risk as sheets.read. Use bare ranges for default sheet. Named-tab ranges are unreliable."
+
+  sheets.update:
+    service: sheets
+    tier: STABLE
+    gws_command: "gws sheets spreadsheets values update"
+    risk_class: WRITE_SAFE
+    confirm: "Show range + values before update. Show before/after scope."
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-sheets"
+    schema_ref: "sheets.spreadsheets.values.update"
+    notes: "Same ! range risk. Use bare ranges."
+
+  sheets.batch_update:
+    service: sheets
+    tier: STABLE
+    gws_command: "gws sheets spreadsheets values batchUpdate"
+    risk_class: WRITE_SAFE
+    confirm: "Show all ranges + values. Show before/after scope."
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-sheets"
+    schema_ref: "sheets.spreadsheets.values.batchUpdate"
+    notes: "Same ! range risk. Use bare ranges."
+
+  sheets.create:
+    service: sheets
+    tier: STABLE
+    gws_command: "gws sheets spreadsheets create"
+    risk_class: WRITE_SAFE
+    confirm: "Show spreadsheet name"
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-sheets"
+    schema_ref: "sheets.spreadsheets.create"
+
+  # ─── Slides (Tier A — STABLE) ────────────────────────────────────────────────
+
+  slides.read:
+    service: slides
+    tier: STABLE
+    gws_command: "gws slides presentations get"
+    risk_class: READ
+    confirm: false
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-slides"
+    schema_ref: "slides.presentations.get"
+
+  # ─── Tasks (Tier B — READ paths verified 2026-03-27) ─────────────────────────
+  # tasks.read and tasks.list_lists: live-verified. global_reachability populated.
+  # Write paths: schema exists, no live write test yet.
+
+  tasks.read:
+    service: tasks
+    tier: VERIFY-BEFORE-USE
+    gws_command: "gws tasks tasks list"
+    risk_class: READ
+    confirm: false
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-tasks"
+    schema_ref: "tasks.tasks.list"
+    verify_note: "READ path live-verified 2026-03-27. Write paths pending before full promotion."
+
+  tasks.list_lists:
+    service: tasks
+    tier: VERIFY-BEFORE-USE
+    gws_command: "gws tasks tasklists list"
+    risk_class: READ
+    confirm: false
+    explicit_approval_required: false
+    global_reachability: "gws-contract.md#canonical-patterns-tasks"
+    schema_ref: "tasks.tasklists.list"
+    verify_note: "READ path live-verified 2026-03-27."
+
+  tasks.create:
+    service: tasks
+    tier: VERIFY-BEFORE-USE
+    gws_command: "gws tasks tasks insert"
+    risk_class: WRITE_SAFE
+    confirm: "Show task details"
+    explicit_approval_required: false
+    global_reachability: null
+    schema_ref: "tasks.tasks.insert"
+    verify_note: "Schema exists. Live write test required before wiring to any skill."
+
+  tasks.update:
+    service: tasks
+    tier: VERIFY-BEFORE-USE
+    gws_command: "gws tasks tasks patch"
+    risk_class: WRITE_SAFE
+    confirm: "Show changes"
+    explicit_approval_required: false
+    global_reachability: null
+    schema_ref: "tasks.tasks.patch"
+    verify_note: "Schema exists. Live write test required before wiring."
+
+  tasks.complete:
+    service: tasks
+    tier: VERIFY-BEFORE-USE
+    gws_command: "gws tasks tasks patch (status: completed)"
+    risk_class: WRITE_SAFE
+    confirm: "Show task"
+    explicit_approval_required: false
+    global_reachability: null
+    schema_ref: "tasks.tasks.patch"
+    verify_note: "Schema exists. Live write test required before wiring."
+
+  tasks.delete:
+    service: tasks
+    tier: VERIFY-BEFORE-USE
+    gws_command: "gws tasks tasks delete"
+    risk_class: WRITE_DESTRUCTIVE
+    confirm: "Confirm per task"
+    explicit_approval_required: true
+    global_reachability: null
+    schema_ref: "tasks.tasks.delete"
+    verify_note: "Schema exists. Live write test required before wiring."
+
+  tasks.manage_lists:
+    service: tasks
+    tier: VERIFY-BEFORE-USE
+    gws_command: "gws tasks tasklists insert/update/delete"
+    risk_class: ADMIN
+    confirm: "Show list operation"
+    explicit_approval_required: true
+    global_reachability: null
+    schema_ref: "tasks.tasklists.insert"
+    verify_note: "Schema exists. Live test required before wiring."
+
+  # ─── Keep (Tier B — SCOPE-BLOCKED) ───────────────────────────────────────────
+  # Current auth token lacks Keep scope. All Keep calls return 403.
+  # Recovery: user must run gws auth login --full and include Keep scope.
+  # No keep.* capability is usable until scope is restored and live-verified.
+
+  keep.read:
+    service: keep
+    tier: VERIFY-BEFORE-USE
+    gws_command: "gws keep notes list"
+    risk_class: READ
+    confirm: false
+    explicit_approval_required: false
+    global_reachability: null
+    schema_ref: "keep.notes.list"
+    verify_note: "SCOPE-BLOCKED: token returns 403. Run gws auth login --full with Keep scope, then live-verify."
+
+  keep.create:
+    service: keep
+    tier: VERIFY-BEFORE-USE
+    gws_command: "gws keep notes create"
+    risk_class: WRITE_SAFE
+    confirm: "Show note content"
+    explicit_approval_required: false
+    global_reachability: null
+    schema_ref: "keep.notes.create"
+    verify_note: "SCOPE-BLOCKED. Same as keep.read."
+
+  keep.update:
+    service: keep
+    tier: VERIFY-BEFORE-USE
+    gws_command: "gws keep notes patch"
+    risk_class: WRITE_SAFE
+    confirm: "Show changes"
+    explicit_approval_required: false
+    global_reachability: null
+    schema_ref: "keep.notes.patch"
+    verify_note: "SCOPE-BLOCKED. Note: Keep API v1 has limited update support — verify field coverage after unblocking."
+
+  keep.delete:
+    service: keep
+    tier: VERIFY-BEFORE-USE
+    gws_command: "gws keep notes delete"
+    risk_class: WRITE_DESTRUCTIVE
+    confirm: "Confirm per note"
+    explicit_approval_required: true
+    global_reachability: null
+    schema_ref: "keep.notes.delete"
+    verify_note: "SCOPE-BLOCKED. Same as keep.read."
+
+  # ─── Forms (Tier B — VERIFY-BEFORE-USE) ──────────────────────────────────────
+  # Schema accessible. No live test yet. Requires a real formId.
+
+  forms.read_responses:
+    service: forms
+    tier: VERIFY-BEFORE-USE
+    gws_command: "gws forms forms responses list"
+    risk_class: READ
+    confirm: false
+    explicit_approval_required: false
+    global_reachability: null
+    schema_ref: "forms.forms.responses.list"
+    verify_note: "Schema exists. Live test requires a real formId. Verify and add contract example before wiring."
+
+  forms.create:
+    service: forms
+    tier: VERIFY-BEFORE-USE
+    gws_command: "gws forms forms create"
+    risk_class: WRITE_SAFE
+    confirm: "Show form structure"
+    explicit_approval_required: false
+    global_reachability: null
+    schema_ref: "forms.forms.create"
+    verify_note: "Schema exists. Live write test required before wiring."
+
+  forms.manage_settings:
+    service: forms
+    tier: VERIFY-BEFORE-USE
+    gws_command: "gws forms forms setPublishSettings"
+    risk_class: ADMIN
+    confirm: "Show publish/share settings"
+    explicit_approval_required: true
+    global_reachability: null
+    schema_ref: "forms.forms.setPublishSettings"
+    verify_note: "Schema exists. Live test required before wiring."
+
+  # ─── Apps Script (Tier B — VERIFY-BEFORE-USE) ────────────────────────────────
+  # Schema accessible. No live execution test. AUTOMATION caps require function-level
+  # explicit declaration — "Apps Script: allowed" is insufficient.
+
+  apps_script.read_project:
+    service: script
+    tier: VERIFY-BEFORE-USE
+    gws_command: "gws script projects get"
+    risk_class: READ
+    confirm: false
+    explicit_approval_required: false
+    global_reachability: null
+    schema_ref: "script.projects.get"
+    verify_note: "Schema confirmed. Live test requires a real scriptId."
+
+  apps_script.list_deployments:
+    service: script
+    tier: VERIFY-BEFORE-USE
+    gws_command: "gws script projects deployments list"
+    risk_class: READ
+    confirm: false
+    explicit_approval_required: false
+    global_reachability: null
+    schema_ref: "script.projects.deployments.list"
+    verify_note: "Schema exists. Live test requires a real scriptId."
+
+  apps_script.run_function:
+    service: script
+    tier: VERIFY-BEFORE-USE
+    gws_command: "gws script scripts run"
+    risk_class: AUTOMATION
+    confirm: "Show function name + args. Must be declared explicitly by name."
+    explicit_approval_required: true
+    global_reachability: null
+    schema_ref: "script.scripts.run"
+    verify_note: "AUTOMATION — always confirm. Exact function names must be listed explicitly, not just the capability class. 'Apps Script: allowed' is insufficient."
+
+  apps_script.edit_code:
+    service: script
+    tier: VERIFY-BEFORE-USE
+    gws_command: "gws script projects updateContent"
+    risk_class: ADMIN
+    confirm: "Show diff before write"
+    explicit_approval_required: true
+    global_reachability: null
+    schema_ref: "script.projects.updateContent"
+    verify_note: "Schema exists. Live write test required before wiring."
+
+  apps_script.manage_triggers:
+    service: script
+    tier: VERIFY-BEFORE-USE
+    gws_command: "gws script projects triggers create/delete"
+    risk_class: AUTOMATION
+    confirm: "Show trigger definition. Never auto-create."
+    explicit_approval_required: true
+    global_reachability: null
+    schema_ref: "script.projects.triggers.create"
+    verify_note: "AUTOMATION — always confirm. Trigger definitions must be listed explicitly."

@@ -35,6 +35,9 @@
 #      remembered-root-vanished) were changed to `exit 0` — they were already fail-CLOSED-ISH in
 #      spirit (non-zero on real failure) but that reasoning didn't hold for SessionStart specifically:
 #      see FAIL_POSTURE above.
+#      2026-08-15: the TELOS / strategic-brief block RESTORED, but GATED on `-s` (exists AND non-empty)
+#      so a fresh install pays exactly zero bytes for it. See the struck exclusion note below and the
+#      block's own comment. ⛔ No exit code changed — every path in this file is still `exit 0`.
 # ─────────────────────────────────────────────────────────────────────────────
 #
 # ⭐ THE BUG THIS FILE IS BUILT AGAINST — it was in the original, and it is the whole point:
@@ -49,10 +52,16 @@
 # NON-zero exit doesn't make the failure any louder, it makes the message that was going to report it
 # disappear.
 #
-# Deliberately NOT ported from the original: its strategic-brief block, its overnight-jobs brief, and
-# its DONOR background-health line (a Pulse-tile reader). All three read files produced by machinery
+# Deliberately NOT ported from the original: ~~its strategic-brief block,~~ its overnight-jobs brief, and
+# its DONOR background-health line (a Pulse-tile reader). ~~All three~~ BOTH read files produced by machinery
 # that is not part of this system. A loader that prints headings for things nothing writes teaches a
 # shape that does not exist.
+#   ✎ CORRECTED 2026-08-15 (T9.7 wiring pass): the strategic-brief exclusion was struck, not deleted, so
+#   the reasoning stays readable. It was wrong on its own stated test — the test is "does the producing
+#   machinery live in this system," and for the strategic brief it DOES: `.claude/skills/telos/` is the
+#   documented sole writer of `<notes>/state/telos.md`. The other two exclusions were and remain correct
+#   (nothing here writes an overnight-jobs brief or a Pulse tile). The block is restored below, GATED on
+#   `-s` — see its own comment for why the gate is the answer to both halves of the argument.
 #
 # ⚠ THAT EXCLUSION IS NOT THE SAME THING AS THE _findings_banner() CALL BELOW, and the two must not
 # be read as contradicting each other. The donor's background-health line read Pulse-cron tiles this
@@ -183,6 +192,36 @@ if [ -s "$ROOT_CANON" ]; then
   else
     echo ""
     echo "!! COULD NOT READ $ROOT_CANON — it exists and is non-empty, but the read returned nothing (check permissions). Root canon NOT loaded this session."
+  fi
+fi
+
+# ── TELOS: the year-long strategic brief — ONLY if this person actually has one ──────────────────
+# ⭐ THE GATE IS THE WHOLE ARGUMENT, and it is the answer to BOTH sides of a real tension.
+# This block was cut when this loader was ported, and the reason was good AT THE TIME: the same week,
+# this repo's root canon was reduced 87.7% precisely to shrink what every single session pays for, and
+# an UNCONDITIONAL strategic-brief block is exactly the always-on cost that reduction was buying back.
+# But the opposite failure is the one this entire file exists against: `.claude/skills/telos/` writes
+# `<notes>/state/telos.md` and calls it the standing answer to "what am I optimizing for this year" —
+# and a standing answer that nothing ever opens is the library-nobody-opens bug, one more time.
+# `-s` settles both without compromise, because the two populations are disjoint:
+#   · fresh install / never ran /telos -> no state/telos.md -> ZERO bytes, ZERO lines, nothing printed
+#   · someone who wrote one            -> gets their own strategic frame back at every session start
+# An EMPTY telos.md (the starter at system/templates/telos-starter.md copied and never filled) is
+# treated as ABSENT — which is the truth about it, not a fudge.
+# It counts against TOTAL/CEIL like everything else, so the ceiling's accounting stays honest.
+# Same LOUD-READ posture as the root canon above: `-s` has already proved the file non-empty, so an
+# empty read is a READ FAILURE, not "nothing to say" — it says so instead of silently falling through.
+TELOS_FILE="$ROOT/state/telos.md"
+if [ -s "$TELOS_FILE" ]; then
+  TL_BODY="$(cat "$TELOS_FILE" 2>/dev/null)"
+  if [ -n "$TL_BODY" ]; then
+    TOTAL=$(( TOTAL + ${#TL_BODY} ))
+    echo ""
+    echo "--- what you are optimizing for this year (state/telos.md — read-only here; /telos is the one writer) ---"
+    printf '%s\n' "$TL_BODY"
+  else
+    echo ""
+    echo "!! COULD NOT READ $TELOS_FILE — it exists and is non-empty, but the read returned nothing (check permissions). TELOS NOT loaded this session."
   fi
 fi
 
