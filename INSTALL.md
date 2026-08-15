@@ -561,6 +561,12 @@ folder — it belongs to that skill, not to the tool as a whole.
 Drag it into a **fresh** Claude conversation and say **"help me."** It walks your AI through the same
 process by hand, without needing any of the tools to work. You get the same result; it just takes longer.
 
+**4. Your own material — an export, notes, anything of yours — ended up tracked by git.**
+This is the mistake the block above (**"NEVER PUT THEIR MATERIAL INSIDE THE AI BRAIN FOLDER"**) exists to
+prevent, but if it already happened — an old install, a copy-paste, anything — there is a safe recovery:
+run `sh system/tools/untrack-my-stuff.sh` from the top of this folder. It only ever runs `git rm --cached`,
+so it stops git from tracking your files and **never deletes anything from disk.**
+
 ---
 
 # WHAT'S IN HERE, AND WHY IT'S SPLIT THIS WAY

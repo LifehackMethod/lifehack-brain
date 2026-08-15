@@ -124,6 +124,12 @@ It is a complete backup. It walks your AI through the same process by hand,
 without needing the tool to work. You get the same result, it just takes a bit
 longer.
 
+**If you suspect some of your own material got tracked by git instead of staying
+in `data`** — an export unzipped in the wrong place, notes copied in by hand —
+run `sh system/tools/untrack-my-stuff.sh` from this folder. It only stops git
+from tracking those files; it never deletes anything from your disk. Full detail
+is in `INSTALL.md` under **"IF SOMETHING GOES WRONG."**
+
 ---
 
 ## Getting updates
