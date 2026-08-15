@@ -65,6 +65,22 @@ check "notes memory/"           2 Read "$(python3 -c "import json,sys;print(json
 check "repo memory/"            2 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/memory/export.md'}))" "$REPO")"
 check "_unpacked/ anywhere"     2 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/corpus/_unpacked/chat.json'}))" "$NOTES")"
 
+echo "-- ⭐ ISSUE #18: Grep/Glob read the same content Read does, and must hit the same gate --"
+# The matcher fix that routes these tool calls here at all lives in .claude/settings.json
+# (outside this hook's own file, ported/registered by whoever owns that file); these cases
+# prove the SCRIPT'S side of the fix: once dispatched here as tool_name Grep/Glob, the gate
+# must reason about their 'path' field exactly as it reasons about Read's 'file_path'.
+# ⚠ dict(...) here, never a literal {'a':1,'b':2} — a two-key brace literal with a top-level
+# comma is exactly the shape bash brace-expansion fires on even inside nested double quotes,
+# and it silently split this into two separate one-arg python invocations the first time.
+check "Grep on external .pdf"   2 Grep "$(python3 -c "import json;print(json.dumps(dict(pattern='secret',path='/tmp/quarantine-fixture.pdf')))")"
+check "Grep on notes memory/"   2 Grep "$(python3 -c "import json,sys;print(json.dumps(dict(pattern='x',path=sys.argv[1]+'/memory/topic-vocab.md')))" "$NOTES")"
+check "Glob path in memory/"    2 Glob "$(python3 -c "import json,sys;print(json.dumps(dict(pattern='*',path=sys.argv[1]+'/memory/topic-vocab.md')))" "$NOTES")"
+check "Glob path in _unpacked/" 2 Glob "$(python3 -c "import json,sys;print(json.dumps(dict(pattern='*',path=sys.argv[1]+'/corpus/_unpacked/chat.json')))" "$NOTES")"
+check "Grep, path in repo"      0 Grep "$(python3 -c "import json,sys;print(json.dumps(dict(pattern='def ',path=sys.argv[1]+'/shared')))" "$REPO")"
+check "Glob, path in repo"      0 Glob "$(python3 -c "import json,sys;print(json.dumps(dict(pattern='*.py',path=sys.argv[1]+'/shared')))" "$REPO")"
+check "Grep, path in notes"     0 Grep "$(python3 -c "import json,sys;print(json.dumps(dict(pattern='x',path=sys.argv[1]+'/state')))" "$NOTES")"
+
 echo "-- THE SCRATCH LOCK: main session out, sub-agent in --"
 check  "main reads scratch"     2 Read '{"file_path":"/tmp/ingest_body/bundle-1.md"}'
 check  "main reads /tmp/rdr"    2 Read '{"file_path":"/tmp/rdr/note.txt"}'
@@ -135,7 +151,8 @@ check "gmail LIST is fine"      0 Bash '{"command":"gws gmail messages list --ma
 check "calendar via safe"       0 Bash '{"command":"python3 system/tools/safe_calendar.py {}"}'
 check "tasks via safe"          0 Bash '{"command":"python3 system/tools/safe_tasks.py {}"}'
 check "drive export via safe"   0 Bash '{"command":"gws drive files export --params {} > /tmp/d.txt && python3 system/tools/safe_read.py /tmp/d.txt"}'
-check "unmatched tool"          0 Glob '{"pattern":"**/*.md"}'
+check "Glob, no path (cwd)"     0 Glob '{"pattern":"**/*.md"}'
+check "Grep, no path (cwd)"     0 Grep '{"pattern":"TODO"}'
 
 echo "-- ⭐ THE SHAPE OF THE ROOT MUST NOT DECIDE WHETHER YOU CAN READ YOUR OWN NOTES --"
 # THE BUG THIS BLOCK EXISTS FOR, found on 2026-08-11 by running a real session rather than a

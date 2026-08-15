@@ -807,6 +807,54 @@ def validate_and_load_judge_receipt(path, tree_dir):
         raise CannotEvaluate(
             "judge receipt {!r} reviewed ZERO files across all its bundles -- an empty "
             "judgment must never be accepted as a clean one".format(path))
+    if total_reviewed != len(files_sorted):
+        raise CannotEvaluate(
+            "judge receipt {!r}: bundle_coverage says {} file(s) were reviewed but the "
+            "tree being gated right now has {} -- a COUNT mismatch alone (before any "
+            "identity check below) means this receipt cannot certify the tree as "
+            "reviewed".format(path, total_reviewed, len(files_sorted)))
+
+    # IDENTITY, NOT JUST COUNT [issue #17 fix]: everything above this line -- the
+    # tree_sha256 comparison, and now the count above -- can only prove the tree HAS
+    # NOT MOVED since judge.py --consume hashed it, or that two counts happen to
+    # agree. Neither can prove the SAME COUNT is the SAME FILES. `bundle_coverage`
+    # itself cannot help either: judge.build_judge_receipt collapses each bundle's
+    # actual reviewed-file list down to a bare `file_count` int (judge.py ~:1063-66)
+    # before it is ever written to the receipt, so the identity of what was reviewed
+    # is not even PRESENT in bundle_coverage to check. A file swapped in (same path,
+    # different content) or swapped out for a same-named-different-file between
+    # `judge.py --prepare` (when the manifest's per-bundle file lists were captured)
+    # and `judge.py --consume` (when tree_sha256 was hashed fresh off disk, AFTER the
+    # swap) would leave every count above identical while the judge never actually
+    # saw the swapped content. The fix: re-read the manifest's own bundle file lists
+    # -- already hash-pinned to `manifest_sha256` and verified above -- and diff them
+    # BY PATH against the live tree just walked (`files_sorted`). Same
+    # added/removed-by-path diff check_receipt() already runs against push_gate's OWN
+    # receipt (see ~:1066 below); this is that same check, extended to the INCOMING
+    # judge receipt, which never had it.
+    try:
+        manifest_for_identity = judge.load_json_file(manifest_path, "manifest")
+    except judge.CannotEvaluate as e:
+        raise CannotEvaluate(
+            "judge receipt {!r}: cannot re-read its own hash-verified manifest {!r} "
+            "to check reviewed-file identity: {}".format(path, manifest_path, e))
+    reviewed_paths = set()
+    for b in manifest_for_identity.get("bundles", []):
+        if isinstance(b, dict):
+            reviewed_paths.update(b.get("files") or [])
+    live_paths = {f["path"] for f in files_sorted}
+    unreviewed_in_tree = sorted(live_paths - reviewed_paths)
+    reviewed_but_missing = sorted(reviewed_paths - live_paths)
+    if unreviewed_in_tree or reviewed_but_missing:
+        raise CannotEvaluate(
+            "judge receipt {!r}: the tree being gated does not match, BY FILE "
+            "IDENTITY, what the judge's bundles actually reviewed (per the "
+            "manifest) -- present in the tree but never reviewed by any bundle: {}; "
+            "reviewed by a bundle but no longer present in the tree: {}. A matching "
+            "COUNT is not enough -- a file swapped in after judge.py --prepare "
+            "captured the bundle lists, or removed after being reviewed, must never "
+            "be silently blessed as judged.".format(
+                path, unreviewed_in_tree or "(none)", reviewed_but_missing or "(none)"))
 
     try:
         fresh_report = judge.run_consume(verdicts_path, manifest_path, scrub_report_path)
@@ -1627,6 +1675,75 @@ def selftest():
                p.returncode == CANNOT_EVALUATE and "stale" in p.stderr.lower(),
                "got exit {}, stderr {}".format(p.returncode, p.stderr.strip()[:300]))
         os.remove(added_after_path)
+
+        # ------------------------------------------------------------- IDENTITY SWAP --
+        # [issue #17] DIFFERENT from STALENESS above, on purpose: staleness catches a
+        # change made AFTER judge.py --consume hashed the tree. This catches a swap made
+        # BETWEEN judge.py --prepare (when the manifest's bundle file lists were
+        # captured) and --consume (when tree_sha256 is hashed FRESH off whatever is on
+        # disk at that moment) -- a window tree_sha256 alone cannot see into, because
+        # both the receipt's tree_sha256 AND the live tree reflect the POST-swap state
+        # equally, so a bare hash comparison finds nothing wrong. Same for the COUNT:
+        # one file out, one file in, total unchanged. Only a BY-PATH identity diff
+        # against the manifest's own bundle lists catches it -- this is the fire-test
+        # for that fix, using a REAL judge.py --prepare/--consume run and a REAL HMAC
+        # signature throughout, never a hand-forged receipt.
+        swap_tree = new_dir("push-gate-selftest-swap-")
+        with open(os.path.join(swap_tree, "reviewed-a.md"), "w", encoding="utf-8") as fh:
+            fh.write("Plain content, reviewed and left alone.\n")
+        with open(os.path.join(swap_tree, "reviewed-b.md"), "w", encoding="utf-8") as fh:
+            fh.write("Plain content, about to be swapped out.\n")
+        swap_out = new_dir("push-gate-selftest-swap-out-")
+        p = subprocess.run(
+            [sys.executable, JUDGE_PY, "--prepare", "--staging", swap_tree,
+             "--out", swap_out, "--json"], capture_output=True, text=True)
+        report("IDENTITY SWAP setup: judge.py --prepare on the pre-swap tree succeeds",
+               p.returncode == 0, "stderr: {}".format(p.stderr.strip()[:200]))
+        swap_manifest = json.loads(p.stdout)
+        swap_manifest_path = os.path.join(swap_out, "manifest.json")
+        swap_verdicts = {"bundles": [
+            {"bundle_id": b["bundle_id"], "reviewed_files": list(b["files"]),
+             "outcome": "CLEAN", "findings": [], "disputes": []}
+            for b in swap_manifest["bundles"]
+        ]}
+        swap_verdicts_path = os.path.join(swap_out, "verdicts.json")
+        with open(swap_verdicts_path, "w", encoding="utf-8") as fh:
+            json.dump(swap_verdicts, fh)
+        swap_scrub_report = {
+            "staging_root": swap_manifest["staging_root"],
+            "files": [{"source": n, "status": "CLEAN", "refuse": {"unresolved": []}}
+                      for n in swap_manifest["all_files"]],
+        }
+        swap_scrub_report_path = os.path.join(swap_out, "scrub-report.json")
+        with open(swap_scrub_report_path, "w", encoding="utf-8") as fh:
+            json.dump(swap_scrub_report, fh)
+        # THE SWAP ITSELF, before --consume ever runs: reviewed-b.md (reviewed, CLEAN)
+        # is removed; unreviewed-c.md (never in any bundle) takes its place. File COUNT
+        # is unchanged (still 2).
+        os.remove(os.path.join(swap_tree, "reviewed-b.md"))
+        with open(os.path.join(swap_tree, "unreviewed-c.md"), "w", encoding="utf-8") as fh:
+            fh.write("Never reviewed by anyone -- swapped in after --prepare ran.\n")
+        swap_receipt_path = os.path.join(swap_out, "judge-receipt.json")
+        p = subprocess.run(
+            [sys.executable, JUDGE_PY, "--consume", swap_verdicts_path,
+             "--manifest", swap_manifest_path, "--scrub-report", swap_scrub_report_path,
+             "--receipt", swap_receipt_path], capture_output=True, text=True)
+        report("IDENTITY SWAP setup: judge.py --consume signs a receipt for the "
+               "POST-swap tree (this is real and correct -- --consume only ever sees "
+               "what is on disk right now; the swap is invisible to it too)",
+               p.returncode == 0 and os.path.isfile(swap_receipt_path),
+               "stderr: {}".format(p.stderr.strip()[:200]))
+        p = subprocess.run(
+            [sys.executable, me, "--refuse-rules", DEFAULT_REFUSE_RULES,
+             "--rewrite-rules", DEFAULT_REWRITE_RULES, "--tree", swap_tree,
+             "--judge-receipt", swap_receipt_path], capture_output=True, text=True)
+        report("IDENTITY SWAP: a file swapped in AFTER --prepare (same total file "
+               "count, different identity) with a GENUINE, validly-HMAC-signed "
+               "consume-time receipt -> push_gate CANNOT EVALUATE (exit 2) -- a "
+               "count match alone must never be read as an identity match",
+               p.returncode == CANNOT_EVALUATE
+               and "unreviewed-c.md" in p.stderr and "reviewed-b.md" in p.stderr,
+               "got exit {}, stderr {}".format(p.returncode, p.stderr.strip()[:400]))
 
         # ------------------------------------------------------------ JUDGE FINDINGS --
         # a bio with ZERO hunted strings, caught ONLY by the judge -- this file's own

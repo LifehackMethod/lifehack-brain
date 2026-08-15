@@ -32,11 +32,11 @@
 #      opportunity, never a wrong action).
 # UPDATED: 2026-08-14 (ported from claudeops-config's inject_delegation_standing.sh, verbatim
 #      logic — nothing to fix path-wise, this hook writes no paths at all). ONE change from the
-#      donor: the runtime-injected text below dropped the "Enver, <date>" attribution the donor
-#      carried inline. This repo's other already-ported UserPromptSubmit injects (see
-#      inject_work_altitude.sh, inject_compute_mechanically.sh) already made that same call — the
-#      text a model reads every turn stays anonymous even where this file's own comments, above,
-#      keep the citation for anyone auditing WHY the hook exists.
+#      donor: the runtime-injected text below dropped the donor's per-line "<name>, <date>"
+#      attribution that named the operator inline. This repo's other already-ported
+#      UserPromptSubmit injects (see inject_work_altitude.sh, inject_compute_mechanically.sh)
+#      already made that same call — the text a model reads every turn stays anonymous even
+#      where this file's own comments, above, describe WHY the hook exists.
 # ─────────────────────────────────────────────────────────────────────────────
 set +e
 

@@ -8,10 +8,18 @@
 # GUARDS: Nothing — this is a context loader, not a blocker. It never stops a session.
 # REDIRECT: N/A (non-blocking). Reads <data root>/canon.md and <data root>/desks/*/canon/current.md,
 #      resolved through shared/brain_root.py. Set the data root with: python3 shared/brain_root.py --set <path>
+#      Also invokes `system/tools/health_line.py <ledger>` (see _findings_banner() below) once ROOT is
+#      resolved, to render the Hospital/Efficiency findings banner nothing else was calling.
 # SIGNPOST: the data-root contract lives in shared/brain_root.py; the folder shape it reads is what
-#      /ingest PHASE 4 builds (.claude/skills/ingest/phases/4-place.md).
-# FAIL_POSTURE: LOUD. Never silently succeeds — see the note below.
-# UPDATED: 2026-08-11 (ported; the silent-success bug fixed, and the exit path made real)
+#      /ingest PHASE 4 builds (.claude/skills/ingest/phases/4-place.md). The findings-banner contract
+#      lives in system/tools/health_line.py's own module docstring ("never raises, never exits nonzero").
+# FAIL_POSTURE: LOUD for the canon/root path — never silently succeeds, see the note below.
+#      _findings_banner() is FAIL-SOFT by design (a broken health_line.py must not break a session)
+#      but not SILENT: a nonzero rc from the tool itself prints one short "did not run" line rather
+#      than nothing, so this file does not grow a second copy of its own named bug in a new spot.
+# UPDATED: 2026-08-11 (ported; the silent-success bug fixed, and the exit path made real).
+#      2026-08-14: wired in system/tools/health_line.py (_findings_banner()) — see the note below the
+#      "Deliberately NOT ported" paragraph for why this is not a reversal of that exclusion.
 # ─────────────────────────────────────────────────────────────────────────────
 #
 # ⭐ THE BUG THIS FILE IS BUILT AGAINST — it was in the original, and it is the whole point:
@@ -22,8 +30,18 @@
 # is, and a genuine internal failure exits NON-ZERO instead of pretending.
 #
 # Deliberately NOT ported from the original: its strategic-brief block, its overnight-jobs brief, and
-# its background-health line. All three read files produced by machinery that is not part of this
-# system. A loader that prints headings for things nothing writes teaches a shape that does not exist.
+# its DONOR background-health line (a Pulse-tile reader). All three read files produced by machinery
+# that is not part of this system. A loader that prints headings for things nothing writes teaches a
+# shape that does not exist.
+#
+# ⚠ THAT EXCLUSION IS NOT THE SAME THING AS THE _findings_banner() CALL BELOW, and the two must not
+# be read as contradicting each other. The donor's background-health line read Pulse-cron tiles this
+# product never had. `system/tools/health_line.py` is a DIFFERENT, separately-ported mechanism whose
+# producer machinery genuinely IS in this repo — `emit_finding.py`/`findings_reader.py` (Hospital) and
+# `fault_ledger.py` (the machine-local fault ledger) all exist and run here. It had a writer, a store,
+# and a renderer that worked standalone, but nothing called it from a real session — the same
+# "detection works, consumption does not" shape as the bug above, one layer down. Wiring it in is
+# closing that gap, not reintroducing the excluded donor block.
 
 CEIL="${SESSION_CONTEXT_CHAR_CEIL:-20000}"
 
@@ -80,6 +98,32 @@ fi
 echo "=== Session context (loaded automatically) ==="
 echo "Your notes: $ROOT"
 
+# ── THE FINDINGS/HEALTH BANNER — the other half of a promise this file already fixed once. ────
+# Detection was never the missing piece: emit_finding.py -> findings_reader.py -> health_line.py
+# already form a complete chain, and health_line.py renders real content when run directly
+# (confirmed: a guard-fire-test ERROR row renders correctly standalone). But nothing called
+# health_line.py from a real session — the exact "detection works, consumption does not"
+# failure this system keeps re-finding, and the fix is almost always this small: one call from a
+# surface that ALREADY fires every session, not new machinery. This is that call.
+# FAIL-SOFT, ON PURPOSE: health_line.py's own contract is "never raises, never exits nonzero" —
+# so a nonzero rc here means the TOOL ITSELF could not even start (missing file, broken
+# interpreter), a different failure than "nothing to report." That case gets ONE short line
+# saying so, rather than being swallowed — silence there would grow a second copy of the exact
+# bug this file's own header describes fixing for the canon path above. A working health_line.py
+# that finds nothing still prints nothing, same as always; this loader adds no new command.
+_findings_banner() {
+  local ledger out rc
+  ledger="$HOME/.config/lifehack/faults.json"     # fault_ledger.py's own LEDGER path — read-only
+  out="$(python3 "$REPO/system/tools/health_line.py" "$ledger" 2>/dev/null)"
+  rc=$?
+  if [ "$rc" -ne 0 ]; then
+    echo ""
+    echo "note: health_line.py did not run this session (rc=$rc) — findings/health banner unavailable"
+    return 0
+  fi
+  [ -n "$out" ] && { echo ""; printf '%s\n' "$out"; }
+}
+
 TOTAL=0
 
 # ── THE ROOT CANON: the few things true for every conversation, on any subject ───────────────────
@@ -119,6 +163,7 @@ if [ "${#CANON[@]}" -eq 0 ]; then
   echo ""
   echo "No subject folders yet — nothing standing to load beyond the above. Run /ingest to build them,"
   echo "or just start working and /save will make them as it goes."
+  _findings_banner
   echo "=== end session context ==="
   exit 0
 fi
@@ -151,6 +196,8 @@ for f in "${CANON[@]}"; do
   echo "--- $SUBJECT ---"
   printf '%s\n' "$BODY"
 done
+
+_findings_banner
 
 echo ""
 echo "=== end session context ==="

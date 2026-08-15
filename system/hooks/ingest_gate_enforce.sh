@@ -8,8 +8,9 @@
 #      that strips the invisible tricks (zero-width characters, bidi overrides, control codes),
 #      scans for the injection patterns, and hands back clean text. This hook is the thing that
 #      makes that non-optional: it sits in front of the read tools and refuses the raw path.
-# GUARDS: WebFetch · WebSearch · Read of a document type (.pdf .docx .xlsx .csv) · Read of ANY
-#      file outside the trusted zone (see below), whatever its extension · a shell command that
+# GUARDS: WebFetch · WebSearch · Read/Grep/Glob of a document type (.pdf .docx .xlsx .csv) ·
+#      Read/Grep/Glob of ANY file outside the trusted zone (see below), whatever its extension ·
+#      a shell command that
 #      pulls a Google Doc / Gmail body / calendar / tasks straight into context · a main-session
 #      read of the sanitized ingest scratch (that belongs to the tool-less reader sub-agent) · a
 #      command that tries to set a *_SKIP_* variable to switch the sanitizer off.
@@ -53,7 +54,7 @@
 # UPDATED: 2026-08-11 (ported for this repo — trusted zone re-derived, the author's personal
 #      channels removed: the two Google-Workspace stores and the Desktop paste-in file)
 # ─────────────────────────────────────────────────────────────────────────────
-# ingest_gate_enforce.sh — PreToolUse hook (matchers: Bash, WebFetch, WebSearch, Read).
+# ingest_gate_enforce.sh — PreToolUse hook (matchers: Bash, WebFetch, WebSearch, Read, Grep, Glob).
 # Deny = JSON on stderr + exit 2. Allow = exit 0, silent.
 
 # ── WHERE THIS REPO IS. From this script's own path, never $PWD (a hook runs with the caller's
@@ -121,14 +122,21 @@ case "$TOOL" in
   WebSearch)
     deny '{"decision":"block","reason":"BLOCKED: the built-in WebSearch puts result titles and snippets into context with nothing in between. There is no filter that runs after they arrive, so a poisoned snippet is simply read. REDIRECT: bash <repo>/system/tools/safe_search_api.sh '"'"'<query>'"'"' — the same search, sanitized and scanned on the way in. The /websearch skill wraps it; a sub-agent cannot run a skill, so it calls the script directly."}'
     ;;
-  Read)
+  Read|Grep|Glob)
     # realpath here rather than a second subshell: this python call is already running, and the
     # comparison below is only sound if BOTH sides are canonical. A path that does not exist yet
     # still normalises lexically, which is the right answer for it.
+    # Grep and Glob carry their target under 'path', not 'file_path' — Read's own field is tried
+    # first (the common case), 'path' second (Grep/Glob). Same rest of the pipeline either way:
+    # they read the same file content Read would, so they get the same scratch-lock, carve-out
+    # and trusted-zone checks below. Neither tool requires a path (both default to the caller's
+    # cwd when it is omitted); an omitted path falls through to the same `exit 0` an empty Read
+    # file_path already does — nothing external is named, so there is nothing to compare.
     FP=$(printf '%s' "$INPUT" | python3 -c "
 import sys, json, os
 try:
-    p = json.load(sys.stdin).get('tool_input',{}).get('file_path','') or ''
+    ti = json.load(sys.stdin).get('tool_input',{}) or {}
+    p = ti.get('file_path') or ti.get('path') or ''
     print(os.path.realpath(p) if p else '')
 except Exception: print('')" 2>/dev/null)
     [ -z "$FP" ] && exit 0
