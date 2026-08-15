@@ -84,8 +84,13 @@ if [ -s "$GWS_CREDS" ]; then
   export GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE="$GWS_CREDS"
   export GOOGLE_WORKSPACE_CLI_KEYRING_BACKEND=file
 else
-  echo "[$SUBSYSTEM_NAME] FATAL: no gws creds at $GWS_CREDS — this needs Google Workspace CLI (gws) set up first. Run 'gws auth export --unmasked > $GWS_CREDS' (chmod 600) from an interactive session, then 'mkdir -p ~/.config/lifehack/gws-cron'. See INSTALL.md."
-  RC=3; exit 3
+  # No creds file is true on day one of every install, and PERMANENTLY true for a student with no
+  # Google account — not a runner fault. rc=75 = "this job's own preflight declined to run this
+  # tick" (system/pulse-config.md's exit-code contract; matches cal-health.py / backlog-health.py's
+  # identical "not configured yet" convention) — Pulse counts it as `skipped`, never toward the
+  # 3-strike circuit breaker, so a permanently-unconfigured install never renders DOWN/error forever.
+  echo "[$SUBSYSTEM_NAME] STOOD DOWN: no gws creds at $GWS_CREDS — this needs Google Workspace CLI (gws) set up first. Run 'gws auth export --unmasked > $GWS_CREDS' (chmod 600) from an interactive session, then 'mkdir -p ~/.config/lifehack/gws-cron' to enable this job. See INSTALL.md."
+  RC=75; exit 75
 fi
 
 # ── PRE-FLIGHT: confirm gws auth is HEALTHY via the isolated creds before pulling. RETRY 3×4s so a
