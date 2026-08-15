@@ -76,6 +76,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/inject_work_altitude.sh\"",
             "statusMessage": "Re-asking what this work is for..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/rating_capture.sh\"",
+            "statusMessage": "Noting a rating, if you gave one..."
           }
         ]
       }
@@ -198,6 +203,31 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_gws_logout.sh\"",
             "statusMessage": "Checking for credential-destroying logout..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_git_add_class.sh\"",
+            "statusMessage": "Checking this stages only what you changed..."
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_agent_return_channel.sh\"",
+            "statusMessage": "Checking this helper can hand its work back..."
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/enforce_multiphase_contract.sh\"",
+            "statusMessage": "Checking this phase declares what it must produce..."
           }
         ]
       }
@@ -212,6 +242,16 @@
             "statusMessage": "Checking the note kept its labels..."
           }
         ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/observability_logger.sh\"",
+            "statusMessage": "Recording what ran..."
+          }
+        ]
       }
     ],
     "Stop": [
@@ -221,6 +261,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/scratch_capture_gate.sh\"",
             "statusMessage": "Scratchpad capture gate..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/session_flight_recorder.sh\"",
+            "statusMessage": "Closing the session log..."
           }
         ]
       }
