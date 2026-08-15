@@ -5,19 +5,38 @@
 > `<notes>/`, never the
 > code clone. When launched from the clone, read/write content at that absolute Drive root.
 
+> ⚠ **THIS PASS NO LONGER ASSUMES A CRON RAN.** It is reached only after `00-preflight.md` confirmed
+> Google is connected — but "connected" says nothing about whether anything has ever *pulled* the
+> vault. **A student has no cron and this repo installs none**, so the "overnight ingest" this pass was
+> originally written against may simply not exist, on the first run and on every run after — not just
+> the first. Step 1 below checks for that and pulls live instead of assuming; the language further down
+> that still says "seeded from the overnight cron ingest" describes the case where a pull already ran
+> (by cron, if the person set one up themselves, or by this same check on an earlier run today).
+
 TRIPWIRE: if yesterday already has a stamped Human Delta in its log, this ran already — verify, don't double-stamp.
 
 YOU ARE THE **DETECTIVE**, doing a postmortem. Commit a read of yesterday; ask the person to correct/fill — never "what happened?"
 
 ## Do this (read silently first)
 
-1. **Open the session scratchpad.** Create `<notes>/desks/cal/state/raw-vault/<today>/session-scratchpad.md`, **seeded from
-   the overnight cron ingest** (`dominoes-draft.md` + the vault picture). This is your living world model for the run —
+1. **Open the session scratchpad.** First, **check whether today's vault actually exists**:
+   `<notes>/desks/cal/state/raw-vault/<today>/_manifest.json`.
+   - **It exists** (a cron, or an earlier run today, already pulled it) → create the scratchpad **seeded
+     from the overnight ingest** (`dominoes-draft.md` + the vault picture), as below.
+   - **It does not exist** — say so plainly ("no vault for today yet — pulling it now, this can take a
+     minute") and fire **one** live `python3 "$ROOT/system/tools/cal-vault-pull.py"` (the full pull, not
+     `--tasks-only` — nothing has been pulled today at all) before seeding the scratchpad from what it
+     wrote. If that pull fails or times out, say exactly what failed and which surfaces are therefore
+     empty this run — never present an empty scratchpad as "nothing going on today."
+
+   Once seeded (either way): this is your living world model for the run —
    from here on, EVERY turn you prune stale / update / add **in context** (the scribe persists it at each pass boundary;
    you do NOT rewrite the file every turn). (It's deleted in Pass 5 by the clerk.)
-   - **Freshness check (the only sanctioned re-pull).** The vault is a 4:10am snapshot. If the person says he reorganized
-     tasks, or it's clearly stale against his edits, fire **one** `python3 "$ROOT/system/tools/cal-vault-pull.py" --tasks-only`
-     (seconds; tasks only), then reseed from the refreshed `tasks.json`. One batched refill — never piecemeal live reads.
+   - **Freshness check (the only OTHER sanctioned re-pull).** The vault, once pulled (whenever that
+     happened), is a snapshot. If the person says they reorganized tasks, or it's clearly stale against
+     their edits, fire **one** `python3 "$ROOT/system/tools/cal-vault-pull.py" --tasks-only` (seconds;
+     tasks only), then reseed from the refreshed `tasks.json`. One batched refill — never piecemeal live
+     reads.
 
 2. **Roam yesterday** (Cal reads freely): yesterday's calendar (vault `calendar.json` holds the prior 7d), the unified
    journal slice for yesterday (`<notes>/system/journal.md`), any desk `<notes>/desks/cal/records/logs/<yesterday>.md`, and what the cron ingested.
