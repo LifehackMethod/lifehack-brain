@@ -35,12 +35,19 @@ crontab line (substring match), with one small, explicit, hand-justified excepti
 (`_CHILD_JOB`) for producers that are genuine children of another job's sweep and cannot be
 derived from string-matching alone.
 
-⚠ ON A FRESH INSTALL WITH NO SCHEDULER CONFIGURED YET (no `pulse-config.md`, no crontab
-entries), `load_producer_roster()` legitimately returns an EMPTY roster — every discovered
-producer is dropped for want of a resolvable cadence (see that function's own docstring: "a
-producer with no resolvable cadence is DROPPED from the roster, never defaulted"). That is not
-a bug in this module; it is the honest answer to "what should I be watching" before there is
-anything scheduled to watch. `assess_producers()`/`findings_report_with_deadman()` additionally
+⚠ WHEN THE ROSTER COMES BACK EMPTY, THAT IS AN ANSWER, NOT A BUG. `load_producer_roster()`
+drops every producer whose cadence it cannot resolve (see that function's own docstring: "a
+producer with no resolvable cadence is DROPPED from the roster, never defaulted"), so a run
+with nothing resolvable yields an empty roster rather than a guess.
+    ⚠ CORRECTED 2026-08-15 (T9.7d stale-claim sweep): this paragraph used to frame that as the
+    normal fresh-install state, on the premise that a new checkout had neither a scheduler nor a
+    `pulse-config.md`. That premise is now FALSE — `system/pulse-config.md` SHIPS in the repo
+    with its `jobs` block populated, so on a fresh clone most producers resolve a cadence from
+    that manifest alone, before `install-schedulers.sh` has ever been run and with an empty
+    crontab. An empty roster is therefore no longer the expected fresh-install result; it now
+    means `pulse-config.md` is missing or unparseable, which is worth investigating rather than
+    shrugging at. A PARTIAL roster remains normal and correct: a producer with no row in the
+    manifest and no crontab match is still legitimately dropped. `assess_producers()`/`findings_report_with_deadman()` additionally
 cross-check the derived roster against producers actually SEEN emitting in the real
 (non-synthetic) shard union — belt-and-suspenders: if a producer is emitting but the
 code-derivation still missed it, that is flagged rather than silently dropped.
@@ -268,9 +275,13 @@ def load_producer_roster():
     producer with NO resolvable cadence is DROPPED from the roster, never defaulted — an
     unknown cadence must never manufacture a false STALE or a false OK.
 
-    ⚠ On a fresh install with no scheduler wired up yet (no pulse-config.md, no crontab), this
-    legitimately returns an EMPTY dict — every discovered producer is dropped for want of a
-    cadence. That is the honest answer, not a bug; see module docstring."""
+    ⚠ CORRECTED 2026-08-15 (T9.7d): this used to say an EMPTY dict was the normal result on a
+    fresh install, because a new checkout supposedly had neither scheduling nor a
+    pulse-config.md. That premise is false — pulse-config.md SHIPS with its `jobs` block
+    populated, so most producers resolve a cadence from the manifest on a fresh clone even with
+    an empty crontab. An empty dict now points at a missing/unparseable pulse-config.md and is
+    worth investigating. A PARTIAL roster is still normal and correct: a producer with no
+    manifest row and no crontab match is legitimately dropped. See module docstring."""
     jobs = _cadences_from_jobs_block(PULSE_CONFIG)
     producers = discover_producers_from_code()
 

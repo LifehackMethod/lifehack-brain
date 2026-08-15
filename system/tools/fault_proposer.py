@@ -39,13 +39,20 @@ Reads: `~/.config/lifehack/faults.json` (live) + `incidents.jsonl` (history) via
 
 ⚠ SHIP-DISABLED RECOMMENDATION (see the "FAULT vs DECISION" block below, and this port's own
 task list): this module CANNOT TELL A FAULT FROM A DECISION on its own — the DECISION gate
-below only catches a park that was written to `PARK_FILE` by a human tool
-(`pulse-park.sh` on the donor system, not ported here — this repo has no scheduler yet, see
-`4 AUTOMATION`). On a fresh install with nobody ever having parked anything, that gate is
-simply never exercised — not broken, just unfed. This module is ported CORRECT AND CALLABLE,
-exactly like `fault_ledger.py` — nothing here defaults it to a live cron slot, because
-nothing in this repo has a cron slot yet. Treat it as shipped, disabled by absence of a
-scheduler, not specially gated by a config flag (there is no separate on/off switch to flip).
+below only catches a park that was written to `PARK_FILE` by a human tool (`pulse-park.sh` on
+the donor system, not ported here). ⚠ CORRECTED 2026-08-15 (T9.7d stale-claim sweep): this
+paragraph used to assert twice over that the repo had nothing scheduling anything — once up
+here, and again in a closing line that called this module "shipped, disabled by absence of a
+scheduler... nothing in this repo has a cron slot yet." Every part of that is FALSE and the two
+halves contradicted each other after a partial earlier fix. What is actually true:
+`system/tools/pulse.sh` is the live daemon, `system/tools/install-schedulers.sh` installs its
+entry (cron and Windows Task Scheduler), and `fault-proposer-run.sh` — which calls THIS module —
+has a real `fault-proposer` row (86400s) in `system/pulse-config.md`. So this module DOES run on
+a cadence.
+What was never ported is specifically `pulse-park.sh`, the human tool that writes `PARK_FILE`.
+That is the real and narrower limitation: with nobody able to park anything, the DECISION gate
+below is never fed, so this module cannot distinguish a deliberate pause from a genuine fault.
+Its recommendation output should be read with that caveat — it is unfed, not unscheduled.
 
 Compatible with `/usr/bin/python3` (3.9) — no `X | None` union annotations, stdlib only.
 """
@@ -184,10 +191,11 @@ PARK_HORIZON_S = 7 * 86400
 # A human's deliberate park is not ephemeral — it must survive a reboot. `PARK_FILE` is
 # resolved through the same ONE brain-root resolver every other durable store in this
 # pipeline uses (`shared/brain_root.py`), never a hardcoded personal path and never `/tmp`.
-# ⚠ THIS REPO HAS NO `pulse-park.sh` (or any scheduler) YET — nothing writes PARK_FILE on a
-# live install today. Reading it is still correct and safe: a missing file degrades to "no
-# jobs parked" (see `parked_jobs()`), never a crash, so this module is fully callable ahead
-# of the tool that would populate it.
+# ⚠ THIS REPO HAS NO `pulse-park.sh` YET — even though a scheduler (`pulse.sh`) now exists and
+# runs this module via `fault-proposer-run.sh`, nothing writes PARK_FILE on a live install
+# today, because the human-facing park tool itself was never ported. Reading it is still
+# correct and safe: a missing file degrades to "no jobs parked" (see `parked_jobs()`), never a
+# crash, so this module is fully callable ahead of the tool that would populate it.
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _CODE_ROOT = os.path.dirname(os.path.dirname(_HERE))          # system/tools/../.. -> repo root
 _SHARED = os.path.join(_CODE_ROOT, "shared")

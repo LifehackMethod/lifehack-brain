@@ -193,6 +193,8 @@ stored** — a pot of gold with no map. This is the standing answer to the *reca
 what *loads*; it does nothing for how a cold session *finds* the right slice — retrieval is the hard part). The
 pointer is **part of the placement, not optional cleanup** — see the archivist's findability gate in
 `agents/archivist.md`.
+⛔ `agents/archivist.md` is the donor's path and is not here. The charter itself DID land — it ships as
+`.claude/agents/archivist.md`; only the top-level `agents/` location did not come across (migration note, 2026-08-15).
 
 ## 4. How a home declares its bar — the INTENT (every type, every home)
 Every home — of **any** type (a canon, a skill folder, a project, a records area, a playbook) — carries an

@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 # ── PULSE — the heartbeat daemon ─────────────────────────────────────────────
-# WHY: this repo ships with no scheduler at all — no cron/launchd/Task-Scheduler wiring, no daemon,
-#      nothing that ever calls a health check or a sync job on its own. Pulse is the fix: ONE
-#      scheduled entry (installed by install-schedulers.sh) invokes THIS script, and this script
-#      reads a plain-text manifest (system/pulse-config.md) and runs whichever job is due.
+# WHY (the gap this CLOSED — past tense on purpose): until this file landed on 2026-08-14, the repo
+#      shipped without any scheduler — no cron/launchd/Task-Scheduler wiring, no daemon, nothing
+#      that ever called a health check or a sync job on its own. Pulse is the fix, and it is now the
+#      live answer: ONE scheduled entry (installed by install-schedulers.sh, which covers cron AND
+#      Windows Task Scheduler) invokes THIS script, and this script reads a plain-text manifest
+#      (system/pulse-config.md) and runs whichever job is due.
+#      ⚠ Do not re-read this paragraph as a present-tense claim that scheduling is missing — that
+#      reading was the single most-copied stale fact in the tree (T9.7d sweep, 2026-08-15).
 #
 # PORTED (2026-08-14) from claudeops-config's system/tools/pulse.sh, generalized under a 2026-08-13
 # product ruling ("automation ships with its scheduler"). Two structural things were CUT, not
@@ -16,7 +20,7 @@
 # Everything else below — the breaker, the doubling backoff, the durable park file, the rc=75/rc=2
 # exit-code contract — is the proven, tested part and ships close to verbatim, because a scheduler
 # that can wedge a broken job into running forever, or that can't tell "ran and failed" from "chose
-# not to run", is worse than no scheduler.
+# not to run", is worse than having none at all.
 #
 # RUN:  cron/Task-Scheduler → every 5 min → bash "<repo>/system/tools/pulse.sh" >> <tmp>/pulse.log 2>&1
 #       (install-schedulers.sh writes this entry for you; see that script.)

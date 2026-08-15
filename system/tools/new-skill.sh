@@ -178,12 +178,21 @@ else
   echo "$GATE_OUT" >&2
 fi
 
-# ── BORN-WITH-CONTRACT (F5.1): scaffold N per-phase drivers, each carrying a GRADEABLE contract ──
-# A multi-phase skill is graded by the conformance-lab against its own driver contract: each phase
-# driver declares a `## Output contract` + a `## do NOT` block, and stamps a `✅ phase N complete`
-# boundary marker the lab slices on. Born this way, conformance.py grades the skill with ZERO new
-# code (extract_clauses + slice_phases already read exactly this shape). The birth-guard hook
-# (enforce_multiphase_contract.sh) blocks a multi-phase driver written WITHOUT these blocks.
+# ── BORN-WITH-CONTRACT (F5.1): scaffold N per-phase drivers, each carrying a GRADEABLE-SHAPED contract ──
+# ⚠ CORRECTED 2026-08-15. This block used to promise: "A multi-phase skill IS GRADED by the
+# conformance-lab against its own driver contract... conformance.py grades the skill with ZERO new
+# code (extract_clauses + slice_phases already read exactly this shape)." THAT WAS FALSE HERE, and
+# it is the same promise line ~282 below already caveats honestly. Verified this date:
+#   · the conformance-lab in this repo is driver.py + probes/guard.py + rule-registry.md ONLY;
+#   · per its own rule-registry.md, the built probe is category C (guard-provoke-assert-blocked).
+#     Grading a phase-driver contract is category B (static-parse-bundle) — marked "⛔ not built";
+#   · conformance.py does not exist in this repo, and neither does a slice_phases.
+# So: what the scaffold gives you is the SHAPE a future grader would read, not an actual grade.
+# Each phase driver declares a `## Output contract` + a `## do NOT` block and stamps a
+# `✅ phase N complete` boundary marker, so that when category-B grading IS built (T9.8c) it reads
+# these with zero retrofitting. UNTIL THEN NOTHING GRADES A PHASE DRIVER — review it by hand.
+# What IS enforced today: the birth-guard hook system/hooks/enforce_multiphase_contract.sh blocks a
+# multi-phase driver written WITHOUT these blocks. That is a birth check, not a grade.
 if [ "$MULTIPHASE" -gt 0 ] 2>/dev/null && [ "$MULTIPHASE" -ge 1 ]; then
   PROMPTS="$DIR/prompts"
   mkdir -p "$PROMPTS"
@@ -279,11 +288,10 @@ echo "✅ Created $FILE"
 echo "   Next:"
 echo "   1. Fill every REPLACE in the body (description is already stamped) + delete the guide comments."
 if [ "$MULTIPHASE" -gt 0 ] 2>/dev/null; then
-  echo "   1b. Fill each prompts/NN-phaseN.md driver's contract (keep the '✅ phase N complete' marker) — it's how the conformance-lab grades this skill."
+  echo "   1b. Fill each prompts/NN-phaseN.md driver's contract (keep the '✅ phase N complete' marker) — this is the shape conformance-lab grades once it's rebuilt in this repo (T9.8c; not shipped yet — until then, nothing grades it, so review it by hand)."
   echo "   1c. Add real 'forbids' rules to scripts/phase-contract.json as the spec is written — scripts/phase_gate.py + scripts/forbidden_content.py are already wired and passing."
 fi
-echo "   2. Register it on the menu:  bash system/tools/bootstrap-machine.sh"
-echo "   3. Read the doctrine as you build:  system/sops/skill-building-sop.md"
+echo "   2. Read the doctrine as you build:  system/sops/skill-building-sop.md"
 echo "   Gates already wired from the parts library (system/parts/):"
 echo "     - scripts/order_lint.py    -- Purpose precedes Rails. Re-check: python3 scripts/order_lint.py --rules scripts/order-rules.json --artifact SKILL.md"
 if [ "$MULTIPHASE" -gt 0 ] 2>/dev/null; then

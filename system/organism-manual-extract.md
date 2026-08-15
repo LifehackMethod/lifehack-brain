@@ -1,11 +1,20 @@
 # The session is what's running. Code is a guest it may or may not pick up.
 
 > **This is an extract, and it says so.** It comes from a roughly 1,200-line manual describing a
-> particular running system, with 49 companion files. None of that ships here. **Two skills cite it for
+> particular running system, with 49 companion files. ~~None of that ships here.~~ **Two skills cite it for
 > one idea**, and the idea is below.
 >
-> Source: ⛔ `system/organism/manual.md` → *THE CODE/LLM SEAM*. **That file is not shipped** — it and its
+> Source: `system/organism/manual.md` → *THE CODE/LLM SEAM*. ~~**That file is not shipped**~~ — it and its
 > 49 element files describe the author's own running system. This page is the whole of what crossed.
+>
+> ⚠ **CORRECTED 2026-08-15 — BOTH STRUCK CLAIMS ABOVE ARE NOW FALSE.** They were true when this page
+> was written (pre-Phase-9), and they are the reason this extract exists at all. Phase 9 shipped the
+> source: `system/organism/manual.md` is here, 1206 lines, alongside `system/organism/map-format-specs.md`
+> and 42 files under `system/organism/elements/` (verified this date by listing the directory — 42, not
+> the 49 the sentence above still claims). **So this page is no longer "the whole of what crossed."**
+> ⭐ **Read the manual itself for anything load-bearing; this extract is now a pointer, not a substitute.**
+> The one thing that has NOT changed is the caveat below: the idea here was provisional in the source
+> and stays provisional here.
 >
 > ⚠ **Provisional, and it was provisional there too.** It is best current thinking, not doctrine, and
 > it sits in open tension with the rule that code owns the perimeter and the model works inside it.

@@ -908,6 +908,8 @@ reaching for a primitive should know exist before writing a new one:
 - **`system/tools/skill_promise_check.py`** — cross-checks a SKILL.md's own stated promises against its own
   instructed commands, catching a file that contradicts itself. CALLERS: `system/tools/skill_promise_sweep.py`,
   `agents/archivist.md`, `skills/archivist-audit/SKILL.md`.
+  ⛔ `agents/archivist.md` is the donor's path and is not here. The charter itself DID land — it ships as
+  `.claude/agents/archivist.md`; only the top-level `agents/` location did not come across (migration note, 2026-08-15).
 
 **Stolen patterns worth building alongside them** `[C]` — none of these resolve to a built artifact; verified
 there is no `.github/` CI config in this repo and `.gitignore` is a single root file, not per-plan. They stay
@@ -1594,6 +1596,8 @@ measurement settles the tempting wrong fix: a **haiku** reader matched **sonnet*
 injection the regex scan had already cleared (`~/.claude/CLAUDE.md` → Subagent Model Selection §2a). **Upgrading
 the model buys nothing, because the model was never what was holding the line.** (Same shape:
 `shared/tools/intake_reader.py`.)
+⛔ `agents/ingest-reader.md` is the donor's path and is not here. The reader itself DID land — it ships as
+`.claude/agents/ingest-reader.md`; only the top-level `agents/` location did not come across (migration note, 2026-08-15).
 
 **⇒ THE FULL MODEL IS THREE MOVES, NOT TWO:**
 

@@ -87,6 +87,8 @@ archivist-rebuild brief):
    "home-has-no-purpose" to "any object with no declared intent").
 3. **ANCHOR** — the archivist charter (`agents/archivist.md`), this project's FRAME, and its plan all cite this
    doctrine, so every archivist action inherits it.
+   ⛔ `agents/archivist.md` is the donor's path and is not here. The charter itself DID land — it ships as
+   `.claude/agents/archivist.md`; only the top-level `agents/` location did not come across (migration note, 2026-08-15).
 
 ## 7. Self-application
 This doctrine governs how we *design and maintain* the OS — not every conversation — so it lives LOW (here), not

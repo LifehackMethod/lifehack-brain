@@ -23,11 +23,34 @@ Prefer one. If you cannot pick, the skill is probably two skills.
 
 ```yaml
 ---
-name: the-skill-name          # matches the folder name
+skill: the-skill-name         # matches the folder name
 description: Use when …       # REQUIRED — this is what makes the skill discoverable
 shape: command                # one of the three above
 ---
 ```
+
+⚠ **The identity field is `skill:`, not `name:` — and NOTHING IN CODE ENFORCES THAT.** Say the
+second half out loud whenever you cite this rule; an earlier version of this page attributed it to
+`enforce_skill_frontmatter.sh`, which was checked in full on 2026-08-15 (T9.7d stale-claim sweep)
+and does not enforce, or even mention, an identity field. That hook validates exactly three things:
+a non-empty `description:`, frontmatter that parses as YAML, and a 1500-line pathological cap. No
+other tool in the repo checks the identity field either. So a stray `name:` is blocked by nothing
+and will ship silently.
+
+What the convention IS settled by, verified live on 2026-08-15 against all 34 shipped `SKILL.md`
+files, plus the scaffolder:
+- **33 of 34 declare `skill:`.** The lone exception is `telos`, which declares `name:` only.
+- **3 files declare BOTH `skill:` and `name:`** — `design-lifehack`, `ship`, `skill-builder`. They
+  are conformant on `skill:`; the extra `name:` is redundant, not a competing convention. *(Counting
+  those three under "declares `name:`" is what produced the earlier and misleading "4 still declare
+  `name:`" figure — it reads as four skills using `name:` instead of `skill:`, when only one does.)*
+- **`system/tools/new-skill.sh` stamps `skill:`** into every SKILL.md it scaffolds. That is the
+  closest thing to a code-level authority: it governs BIRTH, but it is a generator, not a guard —
+  it cannot stop a hand-written or hand-edited file from using `name:`.
+
+So: `skill:` is settled by near-unanimous shipped practice and by the scaffolder's template, not by
+any check. Write new skills with `skill:`. Real drift left standing: `telos` (and the three
+double-declarers) — not fixed here, since editing skill files is outside this page's job.
 
 ⚠ **`description:` is not decoration.** The harness auto-triggers a skill by matching intent against
 this line — a skill with no readable description is invisible, no matter how good it is. Write it as
@@ -49,7 +72,7 @@ cannot ask a clarifying question.
 
 ## Checklist
 
-- [ ] `name:` matches the folder
+- [ ] `skill:` matches the folder
 - [ ] `description:` starts *"Use when…"* and reads like a person's problem, not a feature name
 - [ ] `shape:` present and one of the three
 - [ ] The outcome is stated in the first few lines, not buried
@@ -111,7 +134,7 @@ history and hit a `CF-` number, you have somewhere to look instead of guessing.
 | CF-11 | flip `validate_on_write.sh` from advisory to blocking once its violations clear | The hook exists and runs (`system/hooks/validate_on_write.sh`) | The rule as written doesn't apply: this repo's own copy of the hook documents a deliberate, **permanent** decision to stay advisory-only — *"hard blocking is reserved for guards that stop irreversible acts... frontmatter completeness is hygiene, not safety"* (its own LLM-CONTEXT block). Not an oversight waiting to be flipped; a ruled-out design choice. |
 | CF-12 | a display-only dashboard (`app.js`) never computes, only renders | No — no dashboard, no `app.js`, no `helm/` anywhere in this repo | Not applicable — nothing to check |
 | CF-13 | one contract serves every caller | Deferred even in the donor system (status: "deferred," recorded there as known debt too) | Not applicable — the underlying serving layer this rule was about doesn't exist here either |
-| CF-14 | every `SKILL.md` carries `shape:` | Yes | **Enforceable here** — already this page's own live, first-class requirement (see "The one required field" above), write-time-blocked by `system/hooks/enforce_skill_frontmatter.sh`. The one CF rule that fully survived the port, just not under the `CF-14` name. |
+| CF-14 | every `SKILL.md` carries `shape:` | Yes | **Enforceable here, but NOT ACTUALLY ENFORCED** — it is this page's own live, first-class requirement (see "The one required field" above) and `system/tools/new-skill.sh` stamps `shape:` at birth, but nothing blocks a file without it. ⚠ CORRECTED 2026-08-15 (T9.7d): this cell used to say `shape:` was write-time-blocked by `system/hooks/enforce_skill_frontmatter.sh`. That hook was read in full and checks only three things — a non-empty `description:`, YAML parseability, and a 1500-line cap. It never looks at `shape:`. Same false-citation pattern as the identity field above. |
 | CF-15 | a DANGER/critical alert is never silently swallowed by quiet hours or dedup | Yes — `shared/notify/notify-governor.py` carries the same critical-bypasses-quiet-hours + short-critical-dedup-floor logic the donor built this rule around, and `system/tools/system-health.py` actually calls it with `--priority critical` (line 418) on a DOWN verdict | **Enforceable here**, for anything a script sends at `--priority critical`. The donor's upstream classifier that DECIDES something is DANGER in the first place (email-content triage) has no equivalent here yet — a separate, larger gap, not this rule's. |
 | CF-16 | no MCP tool can write to the vault (deny-listed in `settings.json`) | No MCP surface exists at all — no `.mcp.json`, no MCP entries anywhere in `.claude/settings.json`'s `deny` list (checked: that list is 18 filesystem-path entries only) | Not applicable — there is nothing to protect, because there is no MCP write path in the first place |
 | CF-17 | a diary writer preserves a human-authored `## Human Delta` section byte-for-byte, through a shared `emit_diary` helper | Partially — `system/tools/cal-diary-capture.py` implements the exact preservation behavior (`HUMAN_DELTA_MARKER`, extract-before-rebuild, re-attach byte-for-byte) | The BEHAVIOR is real and live; the "shared helper for N callers" framing doesn't apply because there is exactly one caller here, not several desks each needing the same contract. |

@@ -1,5 +1,6 @@
 ---
 name: telos
+skill: telos
 description: "Use when you want to re-anchor what you are optimizing for this year, or you catch yourself asking \"what am I actually working toward?\" — reviews your TELOS, proposes an update, and writes only if you say yes."
 shape: interactive-workflow
 title: TELOS Review & Update
