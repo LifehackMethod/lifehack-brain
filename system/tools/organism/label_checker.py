@@ -41,12 +41,18 @@ WHAT CHANGED IN THIS PORT (generalisation, not a redesign):
      live anywhere, named anything). `expand()` already ran every payload through
      `os.path.expandvars`, so this is additive: any payload written before this change
      that used a literal `$HOME`/`~` still works exactly as before.
-  3. `DEFAULT_ELEMENTS_DIR`/`DEFAULT_INDEX` still point at `system/organism/elements` /
-     `system/organism/manual.md` — the donor's own self-documentation apparatus, which
-     does not exist in this repo (confirmed absent). `cmd_write_labels` degrades honestly
-     (prints "ERROR: manifest or elements dir not found" and returns 3) rather than
-     crashing; `check`/`selftest` never touch that path at all, so the fire-test engine
-     itself is fully functional with no elements/ directory present.
+  3. `DEFAULT_ELEMENTS_DIR`/`DEFAULT_INDEX` point at `system/organism/elements` /
+     `system/organism/manual.md`. ✅ CORRECTED 2026-08-15: ~~the donor's own self-documentation
+     apparatus, which does not exist in this repo (confirmed absent)~~ — Phase 9 landed that
+     tree HERE. `system/organism/` now holds `manual.md`, `map-format-specs.md` and 42
+     `elements/*.md`, so both defaults resolve and `cmd_write_labels` has a real target.
+     ⚠ This correction matters beyond tidiness: `system/hooks/guard_organism_map.sh` (shipped
+     2026-08-15) REDIRECTS a blocked writer to `label_checker.py write-labels` as the sanctioned
+     way to set a maturity label. Anyone following that redirect lands on this docstring, and it
+     was telling them the directory did not exist. The degrade path below still stands as a
+     genuine fallback; it is no longer the expected case.
+     `check`/`selftest` never touch that path at all, so the fire-test engine is fully
+     functional with or without an elements/ directory present.
 
 Usage:
   label_checker.py check [--manifest PATH] [--json] [--guard ID]

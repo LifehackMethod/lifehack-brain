@@ -28,14 +28,38 @@
 # WHAT CHANGED IN THIS PORT — READ BEFORE ADDING OR TRUSTING A ROW
 # ══════════════════════════════════════════════════════════════════════════════════════════
 #
-# ⛔ THREE DONOR GUARDS DO NOT EXIST HERE AND STRUCTURALLY CANNOT — their rows are DROPPED,
+# ⛔ ~~THREE~~ TWO DONOR GUARDS DO NOT EXIST HERE AND STRUCTURALLY CANNOT — their rows are DROPPED,
 #    not carried over as a permanently-red TARGET (a TARGET label means "declared intent, not
 #    built yet"; these were never going to be built here, which is a different claim and
 #    deserves a different word — an absence, framed):
-#      · `guard_organism_map.sh` (donor: "organism-map-write-guard") — protects
+#      · ✅ RESOLVED 2026-08-15 — `guard_organism_map.sh` IS NOW PORTED, REGISTERED AND FIRE-TESTED.
+#        Its row is LIVE below (`organism-map-write-guard`); it is no longer a dropped guard, and
+#        the count on the line above went from three to two. The history is kept rather than
+#        overwritten, because the SHAPE of this mistake is the reusable part:
+#        ~~`guard_organism_map.sh` (donor: "organism-map-write-guard") — protects
 #        `system/organism/manual.md` / `system/organism/map-format-specs.md`, which are part of
 #        the donor's own self-documentation apparatus. `system/organism/` does not exist in
-#        this repo at all (confirmed absent) — same exclusion class as `organism-health.py`.
+#        this repo at all (confirmed absent) — same exclusion class as `organism-health.py`.~~
+#        ⚠ CORRECTED 2026-08-15 (an earlier lane) — THE STRUCK SENTENCE WAS FALSE, AND IT WAS THIS
+#        ROW'S ONLY STATED JUSTIFICATION. Phase 9 ported the organism tree into this repo:
+#        `system/organism/` now holds `manual.md` (1206 lines), `map-format-specs.md`, and 42 files
+#        under `system/organism/elements/`. It was true when written (pre-Phase-9); it is not now.
+#        ⚖ That correction deliberately left the ruling unreversed and asked for a human decision.
+#        ⭐ THE DECISION CAME BACK, and it is the standing ruling that already covered this case:
+#        *"Unbuilt work still ships. Belongs-but-broken MIGRATES with a debt note. EXCLUDE only if
+#        it genuinely doesn't belong."* It belongs — its SUBJECT is now here. The surviving
+#        independent argument ("it is the donor's own self-documentation apparatus") did not hold
+#        once the apparatus itself shipped: the map is this repo's now, and so is guarding it.
+#        ⛔ THE STATE THIS RESOLVED WAS THE WORST OF THE THREE AVAILABLE ONES. Between the port and
+#        this fix, SIX shipped files described the organism tree as write-guarded while NOTHING
+#        guarded it: `manual.md` (4 occurrences) and 5 `elements/*.md` — archivist,
+#        claude-md-pyramid, hook-plane, label-checker, pulse-cron. (Counted with grep, not by
+#        hand; a hand-typed denominator is one of the six failures `T9.11b` was ratified over.)
+#        `map-format-specs.md` §6.4 is NOT in that six: it described the guarantee and then said
+#        plainly it was unenforced here, which is the reason the gap was findable at all.
+#        A protection that is documented but absent is worse than an admitted gap, because the map
+#        reports it green — that is the defect class house rule `T9.11b`
+#        (`system/build-rules-index.md`) is named for, and this row is now one of its instances.
 #      · `guard_router_writes.sh` (donor: "router-write-guard") — protects a home-mesh-router
 #        write surface reachable only through `desks/dobby/tools/asus_mesh_read.py`. Dobby is
 #        an excluded personal desk (the Desk Ruling, 2026-08-14); its tool tree does not ship.
@@ -170,9 +194,58 @@ guards:
       - desc: a benign Read of a code file inside the trusted zone
         payload: {tool_name: Read, tool_input: {file_path: "$REPO/.claude/settings.json"}}
 
-  # ══ organism-map-write-guard: DROPPED — see "WHAT CHANGED" above. system/organism/ (elements,
-  # manual.md, map-format-specs.md) does not exist in this repo; the guard that protects it
-  # (guard_organism_map.sh) was never built here and there is nothing to fire-test. ══
+  # ── ELEMENT: archivist / hook-plane (the self-schematic map) ──────────────
+  # ══ ~~organism-map-write-guard: DROPPED — the guard was never built here and there is nothing
+  # to fire-test.~~ ⇒ ✅ PORTED, REGISTERED AND FIRE-TESTED 2026-08-15. The row is LIVE below.
+  # The struck text is kept, not deleted, because it is the record of how the gap happened: the
+  # drop rested solely on "system/organism/ does not exist in this repo", Phase 9 landed that tree
+  # the same day, and the dead premise then held a guard out of a repo whose own shipped docs said
+  # it was guarded. Full history in the "WHAT CHANGED" block above.
+  #
+  # ⚠ EXPECT `PARTIAL`, NOT `LIVE`, UNTIL THIS LANE'S COMMIT LANDS — and that is CORRECT, not a
+  # defect. `check` requires the script to be git-tracked (a guard that cannot travel to another
+  # machine is not enforced there), and this lane is not permitted to run `git add`. The single
+  # reason printed will be "script is NOT git-tracked". It flips to LIVE on the first commit that
+  # includes system/hooks/guard_organism_map.sh — nothing else is outstanding. Everything else was
+  # verified this date: registered under PreToolUse/matcher:"Write", fired through a REAL session
+  # launched from this repo (deny text reached the model in full), surgical Edit ALLOWED in the
+  # same run, unrelated Write untouched, and all 25 cases in
+  # system/hooks/tests/test_organism_map_guard.sh green.
+  - id: organism-map-write-guard
+    label_claim: LIVE
+    script: system/hooks/guard_organism_map.sh
+    registered:
+      - {event: PreToolUse, matcher: Write}
+    violations:
+      - desc: wholesale Write of the reference index (manual.md)
+        payload: {tool_name: Write, tool_input: {file_path: "$REPO/system/organism/manual.md", content: "clobbered"}}
+      - desc: wholesale Write of the label-criteria file (map-format-specs.md)
+        payload: {tool_name: Write, tool_input: {file_path: "$REPO/system/organism/map-format-specs.md", content: "clobbered"}}
+      - desc: wholesale Write of an elements/ encyclopedia file — the unguarded 96% in the
+          donor's original scope, in scope here from the first line
+        payload: {tool_name: Write, tool_input: {file_path: "$REPO/system/organism/elements/hook-plane.md", content: "clobbered"}}
+      - desc: THE SPELLING THE DONOR MISSED — a plain RELATIVE path. The donor matched a raw glob
+          ("*/system/organism/manual.md") against file_path, which a relative path walks straight
+          past; this port resolves realpath against the repo root first.
+        payload: {tool_name: Write, tool_input: {file_path: "system/organism/manual.md", content: "clobbered"}}
+      - desc: the same file named through a .. traversal
+        payload: {tool_name: Write, tool_input: {file_path: "$REPO/system/tools/../organism/manual.md", content: "clobbered"}}
+      - desc: unparseable stdin must fail CLOSED (never allow-on-parse-error)
+        raw_stdin: "not json at all"
+    allow:
+      - desc: ⭐ THE REDIRECT ITSELF — a surgical Edit of the manual is the normal authoring path
+          and must never be blocked. A guard that blocks ordinary work gets unregistered.
+        payload: {tool_name: Edit, tool_input: {file_path: "$REPO/system/organism/manual.md", old_string: "a", new_string: "b"}}
+      - desc: a surgical Edit of an element file (the element-backfill path)
+        payload: {tool_name: Edit, tool_input: {file_path: "$REPO/system/organism/elements/canon.md", old_string: "a", new_string: "b"}}
+      - desc: an ordinary Write elsewhere in the repo (proves it discriminates by subject rather
+          than blanket-denying the Write tool)
+        payload: {tool_name: Write, tool_input: {file_path: "$REPO/README.md", content: "x"}}
+      - desc: a non-.md file inside elements/ — the scope is the encyclopedia, not the directory
+        payload: {tool_name: Write, tool_input: {file_path: "$REPO/system/organism/elements/notes.txt", content: "x"}}
+      - desc: another checkout's organism tree — this guard is anchored to THIS repo root and must
+          not reach across into a different clone (the donor's unanchored glob did)
+        payload: {tool_name: Write, tool_input: {file_path: "/tmp/some-other-repo/system/organism/manual.md", content: "x"}}
 
   # ── ELEMENT: gws-plane (auth half) ────────────────────────────────────────
   # The single most destructive command in the system: a logout destroys credentials for

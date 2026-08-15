@@ -415,12 +415,20 @@ reference docs predate it. That is a parked decision, not a missing tool.
    normal authoring path. The reason is narrow and worth stating: the map is the system's own
    attack-surface description **and** the label checker's ground truth, so a single injected
    instruction must not be able to replace it, or flip every label to `LIVE`, in one shot.
-   ⚠ **Status in this repo: the guard is NOT present here** (verified this session:
-   ⏳ unruled — `system/hooks/guard_organism_map.sh` → absent). The guarantee described in this clause is
-   currently **unenforced locally**. Recorded as an admission, not a claim. The donor's own port note refused
-   this hook because it protected a manual and a spec that did not exist at this destination — both exist
-   now, so that reason has expired and nothing has replaced it. On no ship list, awaiting a decision: a
-   debt, not a pass.
+   ✅ **Status in this repo, 2026-08-15: ENFORCED.** `system/hooks/guard_organism_map.sh` is present,
+   registered in `.claude/settings.json` under `PreToolUse` / `matcher: "Write"`, and was fired through a
+   real session launched from this repo — it refused a `Write` to `system/organism/elements/` and the deny
+   text reached the model in full. A surgical `Edit` to the same path was ALLOWED in the same run, and an
+   unrelated `Write` passed untouched. Suite: `system/hooks/tests/test_organism_map_guard.sh` (25 cases,
+   ALLOW first). ⚠ Two limits are stated rather than hidden: a Bash write (`>`, `tee`, heredoc) is NOT
+   intercepted — that is the deliberate human escape hatch — and `label_checker.py write-labels` writes
+   through Python, so it is not intercepted either, which is correct because it is the sanctioned writer.
+   ~~⚠ **Status in this repo: the guard is NOT present here** (verified this session: unruled — absent).
+   The guarantee described in this clause is currently **unenforced locally**. On no ship list, awaiting a
+   decision: a debt, not a pass.~~ ← struck 2026-08-15. It was true when written. The guard had been
+   dropped on the sole ground that `system/organism/` did not exist here; Phase 9 landed the tree the same
+   day, which killed the premise and left a guarantee documented in six shipped files and enforced in none
+   — the defect class house rule `T9.11b` (`system/build-rules-index.md`) is named for. The port closed it.
 
 ## §7 — [HISTORICAL] The sign-off gate
 

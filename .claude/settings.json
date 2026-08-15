@@ -235,6 +235,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_gmail_destructive.sh\"",
             "statusMessage": "Checking nothing would destroy mail you cannot get back..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_hook_sop_read.sh\"",
+            "statusMessage": "Checking the hook SOP was read first..."
           }
         ]
       },
@@ -266,6 +271,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/enforce_multiphase_contract.sh\"",
             "statusMessage": "Checking this phase declares what it must produce..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_organism_map.sh\"",
+            "statusMessage": "Checking this would not overwrite the map of itself..."
           }
         ]
       }
