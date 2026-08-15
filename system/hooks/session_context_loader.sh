@@ -17,17 +17,37 @@
 #      _findings_banner() is FAIL-SOFT by design (a broken health_line.py must not break a session)
 #      but not SILENT: a nonzero rc from the tool itself prints one short "did not run" line rather
 #      than nothing, so this file does not grow a second copy of its own named bug in a new spot.
+#      ⚠ EVERY EXIT PATH IN THIS FILE IS `exit 0`, ON PURPOSE, INCLUDING THE REAL FAILURES —
+#      this is not the same posture as "exit 0 = silently succeeded." Verified against the real
+#      SessionStart contract: this event is structurally non-blocking regardless of exit code
+#      (no exit-2-blocks behavior here, unlike PreToolUse), and on a NON-zero exit Claude Code
+#      does NOT inject this hook's stdout into the model's context — only stderr renders, as a
+#      UI-only notice the model itself never sees. So a real failure exiting non-zero would not
+#      "fail safely," it would make its own loud message invisible to the one reader this whole
+#      file exists for — the exact bug this header describes, one exit code later. `exit 0` +
+#      stdout is the ONLY channel that reaches the model here, so every branch uses it.
 # UPDATED: 2026-08-11 (ported; the silent-success bug fixed, and the exit path made real).
 #      2026-08-14: wired in system/tools/health_line.py (_findings_banner()) — see the note below the
 #      "Deliberately NOT ported" paragraph for why this is not a reversal of that exclusion.
+#      2026-08-14: two more suppressed reads fixed (an existing-but-unreadable canon.md or subject
+#      current.md used to fall through `[ -n "$BODY" ] || continue` silently — indistinguishable
+#      from a legitimately empty file). AND the two remaining `exit 1` branches (repo-not-found,
+#      remembered-root-vanished) were changed to `exit 0` — they were already fail-CLOSED-ISH in
+#      spirit (non-zero on real failure) but that reasoning didn't hold for SessionStart specifically:
+#      see FAIL_POSTURE above.
 # ─────────────────────────────────────────────────────────────────────────────
 #
 # ⭐ THE BUG THIS FILE IS BUILT AGAINST — it was in the original, and it is the whole point:
-# the version this came from suppressed stderr and ended on an unconditional `exit 0`. So on a machine
-# where the data was not where it expected, it opened, REPORTED SUCCESS, and delivered NO MEMORY —
-# silently, every session, for as long as nobody happened to notice. A system that cannot see its own
-# memory looks exactly like a system that has none yet. Every branch below therefore SAYS which one it
-# is, and a genuine internal failure exits NON-ZERO instead of pretending.
+# the version this came from suppressed stderr and ended on an unconditional `exit 0` WHILE PRINTING
+# NOTHING. So on a machine where the data was not where it expected, it opened, REPORTED SUCCESS, and
+# delivered NO MEMORY — silently, every session, for as long as nobody happened to notice. A system
+# that cannot see its own memory looks exactly like a system that has none yet. Every branch below
+# therefore SAYS which state it is in, loudly, on stdout — and every branch, including the genuine
+# internal failures, exits 0, because for THIS hook exit 0 is what makes that message reach the model
+# (see FAIL_POSTURE above). The fix for "reported success while doing nothing" was never the exit
+# code — it was printing the truth. The exit code point is a distinct, later-discovered trap: a
+# NON-zero exit doesn't make the failure any louder, it makes the message that was going to report it
+# disappear.
 #
 # Deliberately NOT ported from the original: its strategic-brief block, its overnight-jobs brief, and
 # its DONOR background-health line (a Pulse-tile reader). All three read files produced by machinery
@@ -51,7 +71,14 @@ if [ -z "$REPO" ] || [ ! -f "$REPO/shared/brain_root.py" ]; then
   echo "!! CANNOT START: this hook could not find its own repository from $0."
   echo "!! Expected shared/brain_root.py two directories up. Nothing was loaded."
   echo "=== end session context ==="
-  exit 1                      # a real failure exits non-zero — it does not pretend to have worked
+  # ⚠ exit 0, DELIBERATELY, even for this real failure — verified against the SessionStart
+  # exit-code contract: this event is structurally non-blocking regardless of exit code (there is
+  # no exit-2-blocks behavior here, unlike PreToolUse), and on a NON-zero exit, Claude Code does
+  # NOT inject this hook's stdout into the model's context at all — only stderr renders, as a
+  # UI-only notice the model itself never sees. So `exit 1` here would not make the session
+  # "fail safely"; it would silently throw away the very message above, reproducing this file's
+  # own named bug one exit code later. exit 0 is the ONLY way this line reaches the model.
+  exit 0
 fi
 
 # The one resolver. NOT-SET is a real answer and is reported as one; it is never guessed around.
@@ -85,7 +112,8 @@ _REMEMBERED_EOF
     echo "!! link to everything already there. Get the folder back, or:"
     echo "    python3 \"$REPO/shared/brain_root.py\" --set \"<where they actually are now>\""
     echo "=== end session context ==="
-    exit 1
+    exit 0                    # same reasoning as the REPO-not-found branch above: exit 0 is what
+                               # gets this message into the model's context; exit 1 would hide it
   fi
   echo "=== Session context ==="
   echo "No data root set yet — nothing was loaded, and that is correct, not broken."
@@ -142,12 +170,19 @@ TOTAL=0
 # session that has the subjects but not the root has the details without the frame.
 ROOT_CANON="$ROOT/canon.md"
 if [ -s "$ROOT_CANON" ]; then
+  # `-s` already proved this file is non-empty. So if the read below still comes back empty, the
+  # READ failed (permissions, a race with a delete) — that is NOT the same state as "nothing to
+  # show," and silently falling through here was the exact bug this file is built against, one
+  # file down from the root-resolution case above. Say so; don't just skip it.
   RC_BODY="$(cat "$ROOT_CANON" 2>/dev/null)"
   if [ -n "$RC_BODY" ]; then
     TOTAL=${#RC_BODY}
     echo ""
     echo "--- true for everything ---"
     printf '%s\n' "$RC_BODY"
+  else
+    echo ""
+    echo "!! COULD NOT READ $ROOT_CANON — it exists and is non-empty, but the read returned nothing (check permissions). Root canon NOT loaded this session."
   fi
 fi
 
@@ -173,8 +208,19 @@ echo "Standing notes from ${#CANON[@]} subject folder(s):"
 SHOWN=0
 for f in "${CANON[@]}"; do
   SUBJECT="$(basename "$(dirname "$(dirname "$f")")")"
+  if [ ! -s "$f" ]; then
+    continue   # genuinely empty — a legitimate, quiet state, not an error
+  fi
+  # Same reasoning as the root canon above: `-s` already proved non-empty, so an empty read here
+  # means the file could not be read (permissions), not that it had nothing to say. One unreadable
+  # subject must not silently drop out of a list that still names the OTHER subjects it loaded —
+  # say which one failed and keep going.
   BODY="$(cat "$f" 2>/dev/null)"
-  [ -n "$BODY" ] || continue
+  if [ -z "$BODY" ]; then
+    echo ""
+    echo "!! COULD NOT READ $f ($SUBJECT) — it exists and is non-empty, but the read returned nothing (check permissions). Skipped."
+    continue
+  fi
   LEN=${#BODY}
   # ⚠ CEILING, and it announces itself. Measured on the system this came from: an unbounded canon
   # emit reached 62 KB in ONE session start. Silently dropping the tail would be worse than the
