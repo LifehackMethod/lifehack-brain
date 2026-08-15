@@ -1,4 +1,4 @@
-# Purpose — cal-daily (read to anchor intent; never recite)
+# Purpose — planning-daily (read to anchor intent; never recite)
 
 > The skill READS this to anchor what the run is FOR. It does NOT recite it, does NOT let it set pace, and
 > does NOT chase "complete" as a literal instruction. Outcome-level only — high-level on purpose: the

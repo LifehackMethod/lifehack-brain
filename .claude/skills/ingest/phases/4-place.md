@@ -105,9 +105,9 @@ it survives her absence.
 ROOT="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && pwd)"   # the folder you cloned; everything below is relative to it
 T="$ROOT/system/tools/cowork-ingest"
 # Same brain root PHASE 1 recorded — resolved, never guessed. ⛔ STOPS rather than picking a folder for them.
-DRIVE="$(python3 "$T/pipeline.py" brain-root --quiet)" || { echo "STOP: no brain root set yet — run PHASE 1's step 1.0, or: python3 $T/pipeline.py brain-root --set \"<that folder>\" [--create]"; exit 1; }
+DATA="$(python3 "$ROOT/shared/brain_root.py" --quiet)" || { echo "STOP: no brain root set yet — run PHASE 1's step 1.0, or: python3 $ROOT/shared/brain_root.py --set \"<that folder>\" [--create]"; exit 1; }
 export INGEST_CORPUS="${INGEST_CORPUS:-my-corpus}"   # the corpus slug; one per corpus you ingest
-export COWORK_WORK="$DRIVE/state/projects/$INGEST_CORPUS/work"
+export COWORK_WORK="$DATA/state/projects/$INGEST_CORPUS/work"
 MAP="$COWORK_WORK/corpus-map.json"
 # ⛔ ASK, never build — same anchor PHASE 1 wrote; legacy file wins if one exists (anchor_file()).
 ANCHOR="$(python3 "$ROOT/shared/paths.py" anchor "$INGEST_CORPUS")"
@@ -244,7 +244,7 @@ PY
 ```
 
 Render the screen from that output, in this shape:
-1. **The root, named plainly** — *"Here's your AI brain."* One line: everything lives under `$DRIVE`, and its
+1. **The root, named plainly** — *"Here's your AI brain."* One line: everything lives under `$DATA`, and its
    top file (`canon.md`) is the one thing loaded into EVERY conversation you ever have here.
 2. **The derived desks, each with its EVIDENCE, never an opinion** — *"Based on your piles, I'd make
    {N} folders:"* one numbered line per desk, and ⭐ **every desk states WHY, with the real count the script
@@ -287,7 +287,7 @@ the human names that the piles didn't suggest. Then scaffold.
    ONE flat `records/` folder unless it has **enough material that a single folder would be crowded** (rule of
    thumb: a desk with 3+ clearly-distinct sub-themes AND enough notes to fill them). A light desk stays flat.
    Propose splits as a best-guess, by number; a small desk → *"this one stays a single folder for now."*
-3. **Scaffold each confirmed desk**: `python3 $T/folder_scaffold.py --drive-root "$DRIVE" --path "desks/<slug>"
+3. **Scaffold each confirmed desk**: `python3 $T/folder_scaffold.py --drive-root "$DATA" --path "desks/<slug>"
    --purpose "<one line>" --topic "<slug, from THEIR memory/topic-vocab.md>" --desk "<slug>"`. *(2026-08-08: this
    used to call the older whole-desk scaffolding tool and print a ⛔ `system/desk-registry.yaml` block (neither is shipped) for the
    human to paste — that tool is NOT deleted, it stays for a deliberate later promotion, but a Phase 4
@@ -296,7 +296,7 @@ the human names that the piles didn't suggest. Then scaffold.
 
 </details>
 
-**Scaffold each confirmed folder**: `python3 $T/folder_scaffold.py --drive-root "$DRIVE" --path "desks/<folder_branch>"
+**Scaffold each confirmed folder**: `python3 $T/folder_scaffold.py --drive-root "$DATA" --path "desks/<folder_branch>"
 --purpose "<one line>" --topic "<slug, from THEIR memory/topic-vocab.md>" --desk "<owning-desk-slug>"`. *(2026-08-08:
 points at `folder_scaffold.py` now — it makes exactly what a Phase 4 folder needs, `canon/current.md` +
 `canon/purpose.md` + `records/`, and prints nothing to paste — there is no registry step at this level; the
@@ -367,7 +367,7 @@ signed off on and write the file somewhere they never saw — the file written m
 **C. DEDUP-FIRST, canon-bound only (inbox DEDUP-FIRST + canon-audit, inlined).** Before writing a
 canon-candidate, scan existing canon for a duplicate/conflict:
 ```bash
-python3 $ROOT/system/tools/canon_conflict_scan.py --canon-root "$DRIVE/desks/<desk>/canon" --terms "<key,terms>" --title "<title>" --json
+python3 $ROOT/system/tools/canon_conflict_scan.py --canon-root "$DATA/desks/<desk>/canon" --terms "<key,terms>" --title "<title>" --json
 ```
 **Read the exit code before you read the output** — the four outcomes are not interchangeable:
 
@@ -412,7 +412,7 @@ exactly ONE member of this closed set:
 
 | member | means | writes to |
 |---|---|---|
-| `root` | true for EVERY conversation, any subject | `$DRIVE/canon.md` — via `4.5`, never written from here directly |
+| `root` | true for EVERY conversation, any subject | `$DATA/canon.md` — via `4.5`, never written from here directly |
 | `desk` | true everywhere under this item's top-level desk | that desk's `canon/current.md` |
 | `sub-folder` | true for an intermediate branch of `home`, not the whole desk | that branch's `canon/current.md` — only offered when `home` actually has an intermediate segment |
 | `deep` | true only within `home` itself, no higher | `home`'s own `canon/current.md` |
@@ -491,7 +491,7 @@ cross-run ledger, the per-run auto-place cap.
 > and it belongs to the end of placing.
 > ⚖ **REVERSED 2026-08-11 (`authority: user`) — `/ingest` now writes this file DIRECTLY, the same way
 > `/save` writes canon: behind a human go, never behind a holding room.** `bootstrap.py` (task 2.1.1) already
-> created `$DRIVE/canon.md`, seeded with its own purpose line and zero canon lines — this step is what puts
+> created `$DATA/canon.md`, seeded with its own purpose line and zero canon lines — this step is what puts
 > the first real lines into it. This does not conflict with "the author writes the high-tier bars, not the
 > machine" (`SPEC.md:744-747`): that doctrine is honored by the human's explicit go on EACH line below, not
 > by a second key that was never actually gating anything.
@@ -507,7 +507,7 @@ COST rule.)*
   every future conversation, on any subject. Get the human's plain go on THAT line before you write it — the
   same anti-rush gate `4.3` already states (*"you may not place an item until you can state what it is +
   which home it earns + why"*), applied at the one altitude where the cost is highest.
-- On a plain go, append the line under `$DRIVE/canon.md`'s `# Canon` heading, below its existing intent
+- On a plain go, append the line under `$DATA/canon.md`'s `# Canon` heading, below its existing intent
   block. No `vetted:` field, no `records/proposals/` detour — the write here IS the record.
 - ⛔ **Still never silent, never batched.** A root line is the single most expensive thing this phase can
   write. If you are unsure whether one earns it, it doesn't — route it to `records` or a lower altitude
@@ -529,7 +529,7 @@ A "no" goes straight to `STOP-CHECK`.
 
 On a "yes," **your attention follows the altitude curve — this is what makes the pass fast, not merely
 thorough:**
-- **Read every line of root canon (`$DRIVE/canon.md`) out loud, one at a time.** It loads into EVERY future
+- **Read every line of root canon (`$DATA/canon.md`) out loud, one at a time.** It loads into EVERY future
   conversation, forever — that is exactly what earns it the closest look.
 - **Skim desk-level canon** (`canon/current.md` under each folder) — a quick pass, not line-by-line.
 - **Do not review deep canon at all.** It only loads when that specific branch is actually in play — *"it
@@ -556,7 +556,7 @@ and where — a clean end-count.
 ⚠ **Use these words, and only these, for what each count means — this close-out is composed freehand, and
 freehand is exactly where a run mis-describes itself:**
 - **"written as canon"** — ONLY for a line that is, at this moment, actually sitting in a `canon/current.md`
-  or `$DRIVE/canon.md` on disk. ⛔ **Never say "permanent" for anything that is not on disk in a canon file.**
+  or `$DATA/canon.md` on disk. ⛔ **Never say "permanent" for anything that is not on disk in a canon file.**
   A student was told 54 items were "permanent" while every one of them sat unwritten in a proposals folder —
   this is the exact mis-description that cannot repeat.
 - **"filed as a record"** — for a stub or authored dated item under `records/`.
@@ -570,7 +570,7 @@ Close by saying their whole history is now organized. STOP.
 
 ## Failure modes (do not)
 - Writing canon anywhere the closed-set test (`4.4.D.1`) didn't resolve to, or off a member not in
-  `{root, desk, sub-folder, deep, records, drop}` · writing to `$DRIVE/canon.md` from anywhere but `4.5` ·
+  `{root, desk, sub-folder, deep, records, drop}` · writing to `$DATA/canon.md` from anywhere but `4.5` ·
   spelling "I could not judge" (`drop`) the same as "it belongs at root" · claiming a canon-candidate is
   "permanent"/"written as canon" when it is not actually on disk in a canon file · auto-resolving a canon
   conflict (surface it) · placing an item the human didn't confirm this turn · assigning `canon`/`rule` as a

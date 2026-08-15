@@ -405,7 +405,7 @@ separate lane's work; this is the contract that build must honour, and the table
 
 - **`INGEST_CORPUS`** — the corpus slug. Unset defaults to **`cowork-bulk-ingestion`** — back-compat, not a
   new default: every path this document names elsewhere for the live corpus stays byte-identical.
-- **`COWORK_WORK="$DRIVE/state/projects/$INGEST_CORPUS/work"`** — the run's project-scoped scratch; same
+- **`COWORK_WORK="$DATA/state/projects/$INGEST_CORPUS/work"`** — the run's project-scoped scratch; same
   shape for every corpus, just a different slug in the path.
 - **`FLAT="$(python3 "$ROOT/shared/paths.py" flatten "$INGEST_CORPUS")"`** — the rules are unchanged and
   now live in ONE place, `shared/paths.py::flatten_dir()`, instead of being restated in four command

@@ -197,7 +197,7 @@ their location from the repo root, so a different layout breaks them.
 | Needed | Why | Status |
 |---|---|---|
 | `system/tools/cowork-ingest/*` | the pipeline itself, plus `corpus-map-schema.md` (the map's schema + column ownership) | ✅ here |
-| `shared/brain_root.py` | the one resolver that answers "where does this person's data live" — `pipeline.py` imports it, and every path below `$DRIVE` comes from it | ✅ here |
+| `shared/brain_root.py` | the one resolver that answers "where does this person's data live" — `pipeline.py` imports it too, and every path below `$DATA` comes from it | ✅ here |
 | `shared/gate/ingest_gate.py` | the security gate every read passes through | ✅ here |
 | `shared/gate/sentinel_response.py` | what the gate calls to decide whether a finding is noise or an attempt on the session | ✅ here |
 | `system/tools/sanitize.py` · `system/tools/safe_input.py` | what `ingest_gate` itself imports | ✅ here |
@@ -237,9 +237,9 @@ ROOT="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && pwd)"   # th
 T="$ROOT/system/tools/cowork-ingest"
 # WHERE THIS SKILL WRITES — asked once, remembered forever. ⛔ Never guessed: if nothing is remembered this
 # STOPS rather than picking a folder for them (step 1.0 asks, then records it).
-DRIVE="$(python3 "$T/pipeline.py" brain-root --quiet)" || { echo "STOP: no brain root set yet — ask them where their AI brain lives (or make one), then: python3 $T/pipeline.py brain-root --set \"<that folder>\" [--create]"; exit 1; }
+DATA="$(python3 "$ROOT/shared/brain_root.py" --quiet)" || { echo "STOP: no brain root set yet — ask them where their AI brain lives (or make one), then: python3 $ROOT/shared/brain_root.py --set \"<that folder>\" [--create]"; exit 1; }
 export INGEST_CORPUS="${INGEST_CORPUS:-my-corpus}"   # the corpus slug; one per corpus you ingest
-export COWORK_WORK="$DRIVE/state/projects/$INGEST_CORPUS/work"
+export COWORK_WORK="$DATA/state/projects/$INGEST_CORPUS/work"
 MAP="$COWORK_WORK/corpus-map.json"
 # ⛔ ASK for the path, never build it. `$HOME/.cache` is not a real place on Windows, and an
 # anchor stranded in the old location reads as "never ran" — the run then silently redoes work

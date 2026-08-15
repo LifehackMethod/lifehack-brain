@@ -1,4 +1,4 @@
-# Question style — how cal-daily asks (proven 2026-06-13, the person: "fucking perfect")
+# Question style — how planning-daily asks (proven 2026-06-13, the person: "fucking perfect")
 
 The shape of every interrogation turn (Pass 1 & 2):
 
@@ -11,8 +11,8 @@ Mirror the global `~/.claude/CLAUDE.md` "How to Respond" format: **bold lead-in 
 ## 3. Every question carries a REAL refresher + a best-guess
 Assume they **haven't looked at this in ~2 days.** Give the who/what/when from the actual vault data — but do NOT dumb down basics (he knows what Calendly is; he doesn't know *which* link). Embed a best-guess so he just confirms/corrects ("recon found X — fix today, or handled?"). No best-guess = it's a knowledge gap, not a question — state the gap.
 
-Example (the one that landed):
-> 3. **Markus / dead Calendly** — Demir's referral (asking about Claude Code CLI) tried to book you and got "Calendly URL not valid." He's waiting. Fix it and send him times today?
+Example (the shape that landed, names replaced with a stand-in — the original was a real referral from a real session):
+> 3. **A dead Calendly link** — a referral trying to book you got "Calendly URL not valid." They're waiting. Fix it and send them times today?
 
 ## 4. Close with the gate + a suggestion
 Every round ends: **"Another round, or move on? — I suggest [X] because [Y]."** The suggestion is the skill's own read on whether it has the whole picture. Only their word advances.

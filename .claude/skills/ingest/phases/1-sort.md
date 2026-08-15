@@ -122,7 +122,7 @@ the location of my AI brain', or they make it — but that needs to be recorded,
 future. So it's not throwing all the files that come out of it in some random place."*
 
 ```bash
-python3 $T/pipeline.py brain-root
+python3 "$ROOT/shared/brain_root.py"
 ```
 - **Exit 0 → it is already remembered. DO NOT ASK.** Say the path out loud in one line — *"Everything lands
   in `<path>`."* — and move on. ⭐ **Say it EVERY run, not just the first.** A wrong destination is cheap to
@@ -131,7 +131,7 @@ python3 $T/pipeline.py brain-root
   the folder you already use, or tell me where to make a new one."* Then record their answer — this is the
   line that makes it permanent:
 ```bash
-python3 $T/pipeline.py brain-root --set "<the folder they named>"     # add --create if it does not exist yet
+python3 "$ROOT/shared/brain_root.py" --set "<the folder they named>"     # add --create if it does not exist yet
 ```
 ⛔ **Never pick a folder for them, and never fall back to the current directory.** `NOT-SET` is a genuine
 stop, not a prompt to be clever — putting someone's brain somewhere they did not choose is the failure this
@@ -379,8 +379,8 @@ corpus:
 # simply the folder the human already named". This line used to pass `git rev-parse --show-toplevel`,
 # which is the folder the TOOL was cloned into — so every pad landed inside the tool folder and would
 # have been wiped by the next update. Resolve it the same way every other phase does.
-DRIVE="$(python3 "$T/pipeline.py" brain-root --quiet)" || { echo "STOP: no brain root set yet — go back to step 1.0"; exit 1; }
-python3 $T/pipeline.py pad-init --map "$MAP" --root "$DRIVE"   # one pad PER PILE, plus a corpus pad
+DATA="$(python3 "$ROOT/shared/brain_root.py" --quiet)" || { echo "STOP: no brain root set yet — go back to step 1.0"; exit 1; }
+python3 $T/pipeline.py pad-init --map "$MAP" --root "$DATA"   # one pad PER PILE, plus a corpus pad
 ```
 **Reproduce whatever path it reports in your OWN reply** — never leave it in the collapsed command block;
 that path is what you tell the human next.

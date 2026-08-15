@@ -301,8 +301,8 @@ Append to the corpus scratchpad (`2.0b`): confirmed subject-arcs, corrections th
 about how this person works — anything that would otherwise have to be rediscovered.
 ```bash
 # ⛔ --root is THEIR notes folder, not this repo — same as PHASE 1's `1.10`. Resolve it, never assume it.
-DRIVE="$(python3 "$T/pipeline.py" brain-root --quiet)" || { echo "STOP: no brain root set — see PHASE 1 step 1.0"; exit 1; }
-python3 $T/pipeline.py pad-init --map "$MAP" --root "$DRIVE" --basket "$BASKET" --entry "<what you learned, in plain prose>"
+DATA="$(python3 "$ROOT/shared/brain_root.py" --quiet)" || { echo "STOP: no brain root set — see PHASE 1 step 1.0"; exit 1; }
+python3 $T/pipeline.py pad-init --map "$MAP" --root "$DATA" --basket "$BASKET" --entry "<what you learned, in plain prose>"
 ```
 *Why:* the pile spans sittings and windows. **Context is RAM; the scratchpad is storage.** And this is the
 step that makes the world model real — a file that only gets read is a document; a file that gets written
