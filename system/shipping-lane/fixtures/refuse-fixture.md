@@ -44,6 +44,19 @@ shipped generic rules would leave the half that actually protects them unproven.
 - key-bearer: Authorization: Bearer FAKEFAKEFAKEFAKEFAKE1234
 - key-assignment: api_key = "FAKEFAKEFAKEFAKE1234"
 
+## non-name identifiers — an address is not a name, and a name-scrub never sees it
+⚠ ALL SYNTHETIC. None of the five below names a real resource: every ID is the literal word
+"fake" padded to length, the ntfy topic says it is not real, and the address is from a
+private range that means nothing outside whatever LAN it is on. They are here because these
+are the shapes that survive a scrub aimed at names — a Drive link, a config key holding a
+resource ID, a calendar's domain suffix, a push-notification inbox, and a router address all
+identify an install without ever spelling a person.
+- id-google-drive-url: opened via https://docs.google.com/spreadsheets/d/1FAKEsheetIDfakeIDfakeID12345/edit
+- id-google-resource-assignment: CALENDAR_ID = "fake0calendar0id0fake0calendar0id0fake"
+- id-google-calendar-domain: notify fake0000000000000000000000000000000000fake@group.calendar.google.com
+- id-ntfy-topic: push updates land at ntfy.sh/fake-topic-not-real
+- ip-private-range: the router answers at 192.168.50.1 on the LAN
+
 ## presence-detectors in canon.py, NOT JSON rules
 ⚠ The three entries below are **not** rule-file entries, and `verify_rules.py` never sees
 them. A literal-text regex against raw bytes cannot express "this Unicode codepoint is
