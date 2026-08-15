@@ -161,6 +161,54 @@ THIRD HARDENING PASS (2026-08-05, same day, third red-team) — two confirmed by
     astronomically unlikely on ordinary short identifiers ("variable", "iterator") the
     same way the original 16-char rationale already argued for longer ones.
 
+FOURTH PASS (2026-08-15) — SHAPE heuristics, WARNING-tier, NEVER BLOCKING. Everything
+above this point hunts a STRING (a name, a key format, a path) or a PRESENCE (a banned
+codepoint). Both need somebody to have written the string down first, and on the donor
+lane nine separate hand sweeps still missed a real third-party name because they grepped
+one spelling and the file used another — a name list can never enumerate a family member,
+a named client, a collaborator, or a business contact nobody wrote a rule for.
+`scan_third_party_name_shape` and `scan_disclosing_fact_patterns` hunt a SHAPE instead: a
+capitalised, name-shaped token adjacent to a relationship/business trigger word (wife,
+husband, client, coach, student, partner, tenant, invoice, collaborator), and a small set
+of FACT patterns (property ownership, a joint account, an exact pay split, a medical
+detail, a dated personal life event) that identify even with every name stripped out —
+*"he owns two homes and holds joint bank accounts"* identifies without a single hunted
+string in it.
+
+⚠ CALIBRATION, MEASURED NOT ASSUMED (donor figures, 2026-08-15). An early proximity-window
+version of the name-shape heuristic returned 353 raw hits over a ~230-file real-content
+corpus — a check that drowns a reviewer gets switched off, which is worse than not having
+one. Replacing the wide character-window proximity test with two TIGHT, high-precision
+grammatical shapes ("NAME's <trigger>" and "<trigger> NAME") plus a small stopword table
+cut that to 27 hits, EVERY one a genuine third-party name confirmed by hand — 100%
+precision, including the exact name the nine hand sweeps had missed. A full-repo sweep
+returned 32 hits, all genuine. `scan_disclosing_fact_patterns` was calibrated the same
+way: an unconstrained "dated personal event" pattern matched ordinary changelog prose
+("moved 2026-08-06") and was tightened to specific life-event verbs with a non-ISO-date
+lookahead; a bare `owns?` matched the idiom "his own home" and was tightened to the verb
+form `owns`/`co-owns` only. See `--selftest` for the planted-fixture proof; the
+calibration sweep itself is not re-run by `--selftest` because it depends on live repo
+content that changes, not a fixed fixture.
+
+BOTH scans are WARNING-tier by design and are NEVER added to `refuse-rules.json` — a
+literal-rule hit there is authoritative and blocking (verified by `verify_rules.py`'s own
+"no dead rule" check, which would force every hit here to also be a hard block). A SHAPE
+match can be a false positive in a way a literal secret or the operator's own listed name
+can not, so a hit here is reported for a human to glance at and clear, and NEVER sets a
+file's mechanical status to NOT-CLEAN, NEVER changes an exit code, and NEVER blocks a push.
+
+⭐ AND THE STOPWORD TABLE CARRIES NO PERSON IN IT. The donor's table hard-coded its own
+author's first name, family name and the names of his six desk personas, so the heuristic
+would not double-report what his literal rules already caught. That is a personal literal
+in a committed file, which is the one thing this repo does not do (see `identity_rules.py`).
+`NAME_SHAPE_STOPWORDS` below therefore holds ONLY generic English/doctrine words, and the
+"never double-report what a literal rule already catches" property is obtained the exact
+way it should have been in the first place: the CALLER passes `extra_stopwords`, and
+`scrub.py` fills it from the LIVE effective refuse rules — every token the personal tier
+would already block is dropped from the warning list at run time. Strictly better than the
+donor: it needs no maintenance, it adapts to whoever is running the lane, and it stays
+correct when somebody edits their identity file.
+
 Pure stdlib. Python 3.9 target — no bare `X | None` annotations.
 """
 
@@ -478,6 +526,133 @@ def scan_tag_chars(text):
         if TAG_BLOCK_LO <= cp <= TAG_BLOCK_HI:
             line_no, ev = _line_and_evidence(text, lines, i)
             out.append({"line": line_no, "evidence": ev, "codepoint": "U+{:05X}".format(cp)})
+    return out
+
+
+# ------------------------------------------------------ SHAPE heuristics (fourth pass)
+#
+# WARNING-tier, never blocking -- see the module docstring's FOURTH PASS section for the
+# calibration story (353 raw hits -> 27 genuine, on real content) and the honest reason
+# these are never refuse-rules.json entries. Both scans return the SAME hit shape as
+# scan_bidi_controls / scan_tag_chars ({"line", "evidence", ...}) so callers can render
+# them with the same code path, just routed to a "warnings" bucket instead of
+# "unresolved".
+
+# The relationship/business trigger words a SHAPE match must sit next to. Deliberately
+# small and literal rather than an attempt to enumerate every possible relationship word
+# -- a longer list widens recall at the cost of the precision this was tuned for; see the
+# docstring's calibration numbers.
+THIRD_PARTY_TRIGGER_WORDS = (
+    "wife", "husband", "client", "coach", "student", "partner", "tenant", "invoice",
+    "collaborator",
+)
+_TRIG_ALT = "|".join(THIRD_PARTY_TRIGGER_WORDS)
+
+# Pattern A: possessive BEFORE the trigger -- "Marlowe's husband", "Ashford's invoice".
+_NAME_POSSESSIVE_TRIGGER_RE = re.compile(
+    r"\b([A-Z][a-z]{2,})(?:'s|’s)\s+(?:" + _TRIG_ALT + r")\b")
+# Pattern B: the trigger word (case-insensitive, SCOPED to just the alternation -- NOT a
+# blanket (?i) prefix, which would also make the captured name's [A-Z] case-insensitive
+# and defeat the whole point of requiring a literally-capitalised token) followed by a
+# capitalised name (1-2 tokens) -- "husband Eric", "client Sheila", "coach Dana".
+_TRIGGER_NAME_RE = re.compile(
+    r"\b(?i:" + _TRIG_ALT + r")\b[:,]?\s+(?:for\s+|is\s+|was\s+)?"
+    r"([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,})?)\b")
+
+# Capitalised tokens that are common English/doctrine words, not names -- earned on real
+# false positives measured against a real corpus (see docstring), not imagined.
+#
+# ⛔ NOBODY'S NAME GOES IN THIS TABLE. It ships in a public repo, and a name here would be
+# a personal literal in a committed file -- exactly what `identity_rules.py` exists to
+# prevent. The operator's OWN terms are excluded via `extra_stopwords`, which `scrub.py`
+# fills from the live effective refuse rules at run time. See the docstring's FOURTH PASS
+# section.
+NAME_SHAPE_STOPWORDS = frozenset("""
+Handbook Guide Portal Dashboard Onboarding Success Services Service Report Reports
+System Systems Notes Note Overview Program Session Sessions Call Calls Meeting
+Meetings Form Forms Agreement Agreements Sheet Sheets List Lists Docs Doc Update
+Updates Plan Plans Review Reviews Summary Data Info Details Interaction Conversation
+Email Emails Signal Window Deadline Context Name Nudge Statement Records Status
+Billing Firm History Registration Workspace Invoice Client Coach Student
+Confirmed Booked Pending Overdue Active Also Only Just Still Already Never Always
+Google Drive Calendar API JSON Python Bash Git GitHub
+Monday Tuesday Wednesday Thursday Friday Saturday Sunday
+January February March April May June July August September October November December
+""".split())
+
+
+def scan_third_party_name_shape(text, extra_stopwords=None):
+    """A capitalised, name-shaped token adjacent to a relationship/business trigger word
+    -- catches a family member, named client, collaborator, or business contact no fixed
+    name list can enumerate (see module docstring). One hit per (line, token) pair;
+    `token` is included so a human reviewer sees exactly what was flagged.
+
+    `extra_stopwords` is the seam that keeps a person's name out of this file: the caller
+    passes the tokens its own LIVE rules already block (scrub.py derives them from the
+    effective refuse rules), and they are dropped here so a literal rule and this
+    heuristic never both report the same token. Matched case-INSENSITIVELY, because a
+    caller deriving terms from a case-insensitive rule cannot know the file's casing."""
+    extra = frozenset(s.lower() for s in (extra_stopwords or ()))
+    lines = text.splitlines()
+    out = []
+    for line_no, line in enumerate(lines, start=1):
+        found = set()
+        for m in _NAME_POSSESSIVE_TRIGGER_RE.finditer(line):
+            tok = m.group(1)
+            if tok not in NAME_SHAPE_STOPWORDS and tok.lower() not in extra:
+                found.add(tok)
+        for m in _TRIGGER_NAME_RE.finditer(line):
+            tok = m.group(1).split()[0]
+            if (tok not in NAME_SHAPE_STOPWORDS and tok.lower() not in extra
+                    and tok.lower() not in THIRD_PARTY_TRIGGER_WORDS):
+                found.add(tok)
+        for tok in sorted(found):
+            out.append({"line": line_no, "evidence": line.strip()[:200], "token": tok})
+    return out
+
+
+# Disclosing FACT patterns -- a fact can identify by SHAPE even with every name removed
+# ("he owns two homes and holds joint bank accounts"). Each entry is
+# (category, compiled regex); a hit records which category fired so a human reviewer
+# knows what kind of disclosure to look for, not just that something matched.
+_DISCLOSING_FACT_PATTERNS = (
+    ("property-ownership", re.compile(
+        r"\b(?:owns|co-owns|holds?\s+(?:the\s+)?(?:deed|title)\s+(?:to|on))\b"
+        r"[^.\n]{0,40}\b(?:homes?|houses?|properties|condos?|condominiums?|apartments?)\b",
+        re.I)),
+    ("joint-accounts", re.compile(
+        r"\bjoint(?:ly)?\s+(?:held\s+)?(?:bank\s+)?accounts?\b", re.I)),
+    ("exact-pay-split", re.compile(
+        r"\b\d{1,3}\s*/\s*\d{1,3}\s+split\b"
+        r"|\b\d{1,3}\s*%\s+(?:cut|split|share|commission)\b"
+        r"|\$\d[\d,]*(?:\.\d{2})?\s*(?:/|per)\s*(?:hour|hr|session|month|client)\b", re.I)),
+    ("medical-detail", re.compile(
+        r"\bdiagnosed\s+with\b|\bmedical\s+(?:condition|diagnosis)\b"
+        r"|\bprescribed\s+(?:medication|a\s+\w+)\b|\bundergoing\s+treatment\b", re.I)),
+    # "moved"/"born" alone are ordinary changelog/system verbs in a codebase ("moved
+    # 2026-08-06", a component "born 2026-08-08") -- measured as the dominant noise
+    # source, so this is scoped to specific life-event verbs, and a trailing ISO
+    # timestamp (-MM-DD) is excluded via lookahead so a build/commit date never counts
+    # as a birth/marriage year.
+    ("dated-personal-event", re.compile(
+        r"\b(?:born|married|divorced|diagnosed|passed away)\b[^.\n]{0,40}"
+        r"\b(?:19|20)\d{2}(?!-\d{2}-\d{2})\b", re.I)),
+)
+
+
+def scan_disclosing_fact_patterns(text):
+    """A FACT that identifies by shape alone -- property ownership, a joint account, an
+    exact pay split, a medical detail, or a dated personal life event. One hit per
+    (line, category); `category` names which pattern fired."""
+    lines = text.splitlines()
+    out = []
+    for line_no, line in enumerate(lines, start=1):
+        cats = set()
+        for category, rx in _DISCLOSING_FACT_PATTERNS:
+            if rx.search(line):
+                cats.add(category)
+        for category in sorted(cats):
+            out.append({"line": line_no, "evidence": line.strip()[:200], "category": category})
     return out
 
 
@@ -1000,6 +1175,70 @@ def selftest():
     report("ordinary prose with no TAG characters trips nothing",
            not scan_tag_chars("Wren reviews this himself, nothing hidden here."))
 
+    print("\nSHAPE heuristics (fourth pass, WARNING-tier -- 2026-08-15)")
+    tp_hits = scan_third_party_name_shape("His wife Sarah handles the scheduling.\n")
+    report("'wife Sarah' is caught by the trigger-then-name shape",
+           any(h["token"] == "Sarah" for h in tp_hits), "hits: {}".format(tp_hits))
+    tp_hits2 = scan_third_party_name_shape("Marlowe's husband had an ER visit.\n")
+    report("'Marlowe's husband' is caught by the possessive-before-trigger shape",
+           any(h["token"] == "Marlowe" for h in tp_hits2), "hits: {}".format(tp_hits2))
+    partner_hits = scan_third_party_name_shape(
+        "He and his partner Rosalind live across two homes.\n")
+    report("the donor's real 2026-08-15 miss-shape ('partner NAME') is caught",
+           any(h["token"] == "Rosalind" for h in partner_hits))
+    report("a bare capitalised word with NO trigger word nearby trips nothing",
+           not scan_third_party_name_shape("The Client Handbook explains billing.\n"))
+    report("a lowercase trigger word with no adjacent capitalised name trips nothing",
+           not scan_third_party_name_shape(
+               "The client call and the coach session both moved to Friday.\n"))
+    # ⭐ THE SEAM THAT REPLACES THE DONOR'S HARD-CODED NAMES. The donor listed its author's
+    # own name and personas in NAME_SHAPE_STOPWORDS so this heuristic would not re-report
+    # what a literal rule already blocked. Here the CALLER supplies them from the live
+    # rules, so the same property holds with nobody's name committed to this file.
+    _own_name_line = "The invoice Wren sent covers the retainer.\n"
+    covered = scan_third_party_name_shape(_own_name_line,
+                                          extra_stopwords=["wren", "oakley"])
+    report("a token the caller's OWN rules already block is dropped via extra_stopwords "
+           "(never double-reported alongside its literal rule)",
+           not covered, "hits: {}".format(covered))
+    report("...and the SAME line without that exclusion DOES warn (proves the exclusion "
+           "is what silenced it, not a pattern that never fired)",
+           any(h["token"] == "Wren"
+               for h in scan_third_party_name_shape(_own_name_line)),
+           "hits: {}".format(scan_third_party_name_shape(_own_name_line)))
+    report("extra_stopwords matches case-INSENSITIVELY (a caller deriving terms from a "
+           "case-insensitive rule cannot know the file's casing)",
+           not scan_third_party_name_shape("His wife Sarah called.\n",
+                                           extra_stopwords=["SARAH"]))
+
+    fact_hits = scan_disclosing_fact_patterns(
+        "He owns two homes and holds joint bank accounts.\n")
+    report("'owns two homes' is caught as property-ownership",
+           any(h["category"] == "property-ownership" for h in fact_hits),
+           "hits: {}".format(fact_hits))
+    report("'joint bank accounts' is caught as joint-accounts (same sentence, both fire)",
+           any(h["category"] == "joint-accounts" for h in fact_hits))
+    report("an exact hourly rate is caught as exact-pay-split",
+           any(h["category"] == "exact-pay-split"
+               for h in scan_disclosing_fact_patterns("Admin work: $30/hr.\n")))
+    report("a medical detail is caught as medical-detail",
+           any(h["category"] == "medical-detail"
+               for h in scan_disclosing_fact_patterns("She was diagnosed with a condition.\n")))
+    report("a dated personal life event is caught as dated-personal-event",
+           any(h["category"] == "dated-personal-event"
+               for h in scan_disclosing_fact_patterns("They married in 1998 upstate.\n")))
+    report("'his own home' (the idiom, no verb 'owns') trips nothing -- the false "
+           "positive this pattern was tightened to avoid",
+           not scan_disclosing_fact_patterns(
+               "He works from his own home office most days.\n"))
+    report("an ordinary changelog line ('moved 2026-08-06') trips nothing -- the "
+           "dated-personal-event false positive this pattern was tightened to avoid",
+           not scan_disclosing_fact_patterns(
+               "This step was moved out of /save entirely (2026-08-06).\n"))
+    report("a component 'born' on an ISO build date trips nothing (excludes -MM-DD)",
+           not scan_disclosing_fact_patterns(
+               "Fresh-but-unwired (born 2026-08-08): plan_git_check.py.\n"))
+
     print("\nencoded payloads (Fix 2)")
     refuse_rules = [
         {"id": "name-wren", "mode": "regex", "pattern": r"(?i)\bwren\b", "why": "name"},
@@ -1123,6 +1362,12 @@ def selftest():
                not scan_bidi_controls(clean_text))
         report("clean-fixture.md trips NO TAG-block finding",
                not scan_tag_chars(clean_text))
+        report("clean-fixture.md trips NO third-party name-shape WARNING",
+               not scan_third_party_name_shape(clean_text),
+               "hits: {}".format(scan_third_party_name_shape(clean_text)))
+        report("clean-fixture.md trips NO disclosing-fact-pattern WARNING",
+               not scan_disclosing_fact_patterns(clean_text),
+               "hits: {}".format(scan_disclosing_fact_patterns(clean_text)))
 
         for extra_clean in ("draw.rendered", "new.renewal", "oak.leyland"):
             report("{!r} (the documented false-positive traps) trips no bidi/tag "
