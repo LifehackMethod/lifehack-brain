@@ -1,0 +1,78 @@
+name: No Internal Leakage
+
+# WHY THIS EXISTS: migration-audit/08-THIRD-PARTY-INVENTORY.md was authored straight into
+# this repo and pushed to the shared remote -- the operator's macOS username in absolute
+# paths, a live third-party project hostname, and a map of every credential's storage
+# location. Nothing caught it: the project's scrubbing lane is a MANUAL, human-routed
+# pipeline that never sees a file authored directly here, and there was no git hook and no
+# .github/workflows/ at all. This check fires server-side, for every contributor, on every
+# pull_request and push, with nothing to install. See .github/scripts/check_no_internal_leakage.py
+# for the full rule set and reasoning -- this file only wires it up.
+
+on:
+  pull_request:
+    branches:
+      - main
+      - migration-1
+  push:
+    branches:
+      - main
+      - migration-1
+  # Manual trigger for verifying the check itself -- never fires on its own, zero risk of
+  # a surprise run; useful for the dev team to sanity-check the gate without waiting on a
+  # real push.
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: Scan changed files for internal leakage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history, needed to diff base...head)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Determine the diff range for this event
+        id: range
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # base.sha / head.sha are the actual PR endpoints, independent of the
+            # temporary merge commit GitHub Actions checks out for pull_request events.
+            echo "base=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_OUTPUT"
+            echo "head=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
+            echo "mode=merge-base" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            BEFORE="${{ github.event.before }}"
+            if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+              # First push of a new branch -- there is no real "before". Diff against
+              # git's canonical empty-tree SHA so every file at HEAD counts as added.
+              BEFORE="$(git hash-object -t tree /dev/null)"
+            fi
+            echo "base=$BEFORE" >> "$GITHUB_OUTPUT"
+            echo "head=${{ github.event.after }}" >> "$GITHUB_OUTPUT"
+            echo "mode=linear" >> "$GITHUB_OUTPUT"
+          else
+            # workflow_dispatch or anything else with no natural range -- scan nothing
+            # rather than guess; this trigger exists for manual smoke-testing, not gating.
+            echo "base=" >> "$GITHUB_OUTPUT"
+            echo "head=" >> "$GITHUB_OUTPUT"
+            echo "mode=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check for internal leakage
+        if: steps.range.outputs.mode != ''
+        run: |
+          python3 .github/scripts/check_no_internal_leakage.py \
+            --base "${{ steps.range.outputs.base }}" \
+            --head "${{ steps.range.outputs.head }}" \
+            --mode "${{ steps.range.outputs.mode }}"
