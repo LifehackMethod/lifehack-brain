@@ -52,8 +52,8 @@ RUN_DIR = Path.home() / ".claude" / "run" / "save-ledger"
 MANDATORY = [
     ("0.4", "pm_flag_recover called", "always"),
     ("0.5", "slug resolved (no silent guess)", "always"),
-    ("SC-1", "items extracted with reasoning", "always"),
-    ("tier", "each item tiered by durability", "always"),
+    ("SC-1", "items extracted with reasoning", "only-if-session-close"),
+    ("tier", "each item tiered by durability", "only-if-session-close"),
     ("canon-gate", "canon confirm-gate awaited", "only-if-canon-candidate"),
     ("7c.5", "debt-ledger swept for new/discovered debt", "always"),
     ("7d", "journal written BEFORE the brief (journal-first)", "only-if-findings"),
@@ -601,6 +601,8 @@ def cmd_report(a) -> int:
     # what changed is that SILENCE now yields UNKNOWN (a loud `?` that withholds the all-clear)
     # instead of N/A. Absence of a claim is no longer evidence of absence.
     cond = {
+        "SC-1": APPLIES if a.session_close else UNKNOWN,
+        "tier": APPLIES if a.session_close else UNKNOWN,
         "canon-gate": APPLIES if a.canon else UNKNOWN,
         "7d": APPLIES if a.findings else UNKNOWN,
         "8": APPLIES if a.session_close else UNKNOWN,
@@ -668,11 +670,19 @@ def cmd_selftest(_a) -> int:
         fails.append("non-applicable step must not be MISSED, got %s" % missed)
     print("  [3] no findings, journal n/a  -> missed=%s  (no false alarm)" % missed)
 
-    # a run that stamped nothing must not read as clean
+    # a run that stamped nothing must not read as clean — DERIVED, not hand-typed: with an empty
+    # conditions dict every conditional row renders `? UNKNOWN` (not MISSED), so `missed` is exactly
+    # the rows MANDATORY marks "always". A hardcoded expectation here is the identical defect this
+    # project keeps re-fixing — "a safety check whose coverage is a hand-typed list can only ever
+    # report 'everything on the list was fine'" — so if an unconditional row is ever added or
+    # removed, this count must move with it automatically, never require a matching hand-edit.
     _t, missed = render({"started": 1, "stamps": {}}, {})
-    if len(missed) < 5:
-        fails.append("empty run should flag most steps, got %s" % missed)
-    print("  [4] nothing stamped           -> missed=%d step(s)" % len(missed))
+    expected_always = sum(1 for _, _, when in MANDATORY if when == "always")
+    if len(missed) != expected_always:
+        fails.append("empty run should flag exactly the %d 'always' step(s), got %s"
+                      % (expected_always, missed))
+    print("  [4] nothing stamped           -> missed=%d step(s) (== %d 'always' rows in MANDATORY)"
+          % (len(missed), expected_always))
 
     # ── W11.1b: the four applicability markers must be REACHABLE and DISTINCT ──────────────────
     # ⛔ "A check never seen to fail is not a check." Each case below asserts the RENDERED marker,

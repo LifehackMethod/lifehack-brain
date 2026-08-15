@@ -89,6 +89,12 @@ entirely. Say plainly that nothing warrants persisting, and skip the rest of thi
 **Output:** a flat list of `{question, why, conclusion}`, one per finding, each anchored. Internal
 working material — the person sees it at SC-4.
 
+Then stamp it:
+
+```bash
+python3 "$ROOT/system/tools/save/save_step_ledger.py" stamp SC-1
+```
+
 ---
 
 ## SC-2 — Tier by durability

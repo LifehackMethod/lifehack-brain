@@ -448,8 +448,13 @@ Print this verbatim, every time, no shortening. At session close it sits at the 
 That is a **disclaimer**. This is the **evidence**:
 
 ```bash
-python3 "$ROOT/system/tools/save/save_step_ledger.py" report --findings --session-close
+python3 "$ROOT/system/tools/save/save_step_ledger.py" report --findings [--session-close]
 ```
+
+**`--session-close` is conditional, never automatic.** Include it only when this `/save` actually ran
+the session-close flow (`phases/session-close.md`, SC-0 → SC-5) — never on a mid-session save. `SC-1`,
+`tier`, `8` and `graduate` only exist in that flow; hardcoding the flag on every run made a mid-session
+save's report claim those steps were owed and then MISSED, for a mode that never touches them.
 
 **The table is whatever the ledger prints — never a list you recall or compose.** A step that did not
 run cannot stamp itself, so it renders `✗ MISSED`. No ledger for the session → `UNKNOWN`, **never
