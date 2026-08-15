@@ -21,8 +21,43 @@
 #
 # Violations are INERT — the gate blocks before anything runs, so firing is side-effect-free.
 #
-# This file is the checker's ground-truth; it is itself an attack-surface guarded by
-# `guard_write_paths.sh` (see that guard's own entry below). Grow it one proven element at a time.
+# This file is the checker's ground-truth; it is itself an attack surface ~~guarded by
+# `guard_write_paths.sh` (see that guard's own entry below)~~. Grow it one proven element at a time.
+#
+# ⚠ CORRECTED 2026-08-15 — THE STRUCK CLAIM WAS FALSE, AND IT IS AN INSTANCE OF THE VERY DEFECT
+#   CLASS THIS FILE EXISTS TO CATCH (house rule `T9.11b`: a documented protection that does not
+#   exist is worse than an admitted gap, because the map then reports it green).
+#   `guard_write_paths.sh` guards exactly three things — read its own `case` block, and its
+#   closing line, which is explicit: "Everything else is allowed. That is deliberate."
+#     (a) `$REPO/system/hooks/*`  — with `$REPO/system/hooks/tests/*` deliberately exempted first
+#     (b) `$REPO/.claude/settings.json` and `$REPO/.claude/settings.local.json`
+#     (c) `$REPO/.git/*`
+#   `system/tools/organism/` is not on that list. NOTHING at the hook layer guards this manifest.
+#   ⭐ THE PROOF IS IN THIS FILE. The `write-paths-hooks-guard` row below carries an allow-case
+#   that writes to `$REPO/system/tools/organism/scratch-probe.md` and asserts it MUST PASS
+#   (exit 0). The fire-test that grades that guard LIVE is the same test that demonstrates this
+#   directory is wide open — the claim above was refuted 300 lines below it, in this file.
+#   ⚠ `guard_organism_map.sh` does not cover it either: it fires on `system/organism/manual.md`,
+#   `map-format-specs.md` and `system/organism/elements/*.md` — a different directory, Write only.
+#
+#   WHAT ACTUALLY PROTECTS THIS FILE, stated in full:
+#     · it is git-tracked, so a change shows up in `git diff` and in review. Review is a human,
+#       not a control, and that is the whole of the deterrent.
+#     · `label_checker.py` FIRES every row against the real script, so this manifest cannot be
+#       edited to INVENT a protection: a row claiming LIVE for a script that does not block is
+#       computed lower and reported as a DOWNGRADE, and the checker exits non-zero.
+#     · what nothing catches — the live, unmitigated exposure: DELETING a row (the guard silently
+#       stops being checked, and no count anywhere notices it went missing), or weakening a
+#       `violations:` payload so a real guard's blind spot is never fired at.
+#   ⚖ This gap is recorded CORRECTLY elsewhere in the shipped tree — `system/organism/manual.md`
+#     (label-checker entry: "gap because label_manifest.yaml is unguarded (Feature 1.6 not yet
+#     built)") and `system/organism/elements/label-checker.md` (`gap_disposition_note`: "C5
+#     unguarded ground truth"). This header was the ONE place in the repo claiming otherwise. It
+#     was the outlier; those were right.
+#   ⛔ NO GUARD WAS BUILT BY THE SESSION THAT WROTE THIS NOTE, deliberately. Whether the ground
+#     truth of the honesty checker deserves its own hook is an OWNER decision — it is already
+#     tracked as Feature 1.6 — and a session does not get to add a third part that watches the
+#     other two on its own judgment. This edit makes the file TRUE; it does not close the gap.
 #
 # ══════════════════════════════════════════════════════════════════════════════════════════
 # WHAT CHANGED IN THIS PORT — READ BEFORE ADDING OR TRUSTING A ROW
@@ -79,12 +114,18 @@
 #    `modify`/`untrash`/every read — a DIFFERENT irreversible act (destroying mail, not sending
 #    it). Read that guard's own header before assuming otherwise. ⇒ this manifest carries BOTH
 #    concepts under their own honest ids: `gmail-destructive-guard` (real, tests the guard that
-#    actually ships) and NO `gmail-send-guard` row at all — inventing one against a script that
+#    actually ships) and ~~NO `gmail-send-guard` row at all — inventing one against a script that
 #    is not here would silently compute TARGET and imply "not built yet" for something that was
 #    never even attempted in this port. **FLAG FOR THE LEAD, not fixed here (system/hooks/ is
 #    out of this task's file list): a fresh install currently has NO guard preventing an agent
 #    from sending mail** — only from deleting it. If "DRAFT yes, SEND no" is meant to hold here
-#    too, that is a new hook to write, not a manifest row to add.
+#    too, that is a new hook to write, not a manifest row to add.~~
+#    ⇒ ✅ RESOLVED 2026-08-15. THE FLAG WAS ACTED ON: `system/hooks/guard_gmail_send.sh` is now
+#    WRITTEN, REGISTERED (PreToolUse/Bash) and FIRE-TESTED here, so the `gmail-send-guard` row
+#    below is a real row against a real script, not an invented one. The struck text is kept
+#    rather than deleted because it is the record of how the gap was found and how long it stood.
+#    The two gmail guards remain SEPARATE and neither is a rename of the other: one refuses to
+#    DESTROY mail, the other refuses to post it outward, and each owns exactly one irreversible act.
 #
 # ⚖ `write-path-residency-guard` WAS RE-SCOPED, NOT JUST RE-PATHED. The donor guard fired on
 #    "did this write land in an approved zone" (Drive spine or git clone — the two-machine
@@ -318,6 +359,42 @@ guards:
         payload: {tool_name: Bash, tool_input: {command: 'gws gmail users threads modify --user-id me --id 18abc --add-label-ids X'}}
       - desc: a plain read
         payload: {tool_name: Bash, tool_input: {command: 'gws gmail users messages list --params x'}}
+
+  # ── ELEMENT: gws-plane (gmail outbound half — the other irreversible act) ─
+  # Ported 2026-08-15 to close the gap this file's own header flagged. DRAFT yes, outbound no:
+  # it refuses the messages/drafts outbound verb and the +helper form, DEFAULT-DENIES an
+  # unrecognised gmail operation, and leaves every read and the whole drafting path alone.
+  # Mail DELETION is the sibling row above and is deliberately not duplicated here.
+  - id: gmail-send-guard
+    label_claim: LIVE
+    script: system/hooks/guard_gmail_send.sh
+    expect_block_exit: 2
+    registered:
+      - {event: PreToolUse, matcher: Bash}
+    violations:
+      - desc: messages outbound — leaves in the operator's name, with no undo
+        payload: {tool_name: Bash, tool_input: {command: 'gws gmail users messages send --params x'}}
+      - desc: drafts outbound (posting an existing draft is still posting it)
+        payload: {tool_name: Bash, tool_input: {command: 'gws gmail users drafts send --id r123'}}
+      - desc: the plus-form helper — the shape that walked through a sibling rail's allowlist
+        payload: {tool_name: Bash, tool_input: {command: 'gws gmail +send --to nobody@example.com --subject hi'}}
+      - desc: an unrecognised gmail operation (DEFAULT-DENY — unknown is never permission)
+        payload: {tool_name: Bash, tool_input: {command: 'gws gmail users messages purge --id x'}}
+      - desc: unparseable stdin must fail CLOSED
+        raw_stdin: "not json at all"
+    allow:
+      - desc: drafts create — the sanctioned redirect this guard's own deny text points at
+        payload: {tool_name: Bash, tool_input: {command: 'gws gmail users drafts create --params x'}}
+      - desc: drafts update (revising a draft is still drafting)
+        payload: {tool_name: Bash, tool_input: {command: 'gws gmail users drafts update --id r1 --params x'}}
+      - desc: a plain read (must not be double-walled)
+        payload: {tool_name: Bash, tool_input: {command: 'gws gmail users messages list --params x'}}
+      - desc: labels list — the live label-map read this repo actually performs
+        payload: {tool_name: Bash, tool_input: {command: 'gws gmail users labels list --params x'}}
+      - desc: trash — owned by gmail-destructive-guard above, not double-owned here
+        payload: {tool_name: Bash, tool_input: {command: 'gws gmail users threads trash --user-id me --id 18abc'}}
+      - desc: another gws service entirely
+        payload: {tool_name: Bash, tool_input: {command: 'gws calendar events list --params x'}}
 
   # ── ELEMENT: egress-allowlist-wall (exact 1:1 — this id drives that label) ─
   # The exfiltration wall: outbound requests carrying credential-shaped strings are the

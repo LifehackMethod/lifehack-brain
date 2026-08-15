@@ -238,6 +238,11 @@
           },
           {
             "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_gmail_send.sh\"",
+            "statusMessage": "Checking this would not send mail in your name..."
+          },
+          {
+            "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_hook_sop_read.sh\"",
             "statusMessage": "Checking the hook SOP was read first..."
           }
