@@ -10,8 +10,8 @@ generated_from:
   - skills/save/SKILL.md (v3.3) Steps 7 · 7d · SC-4(iv-journal-first) · SC-5 · Step 9 coverage-note
   - skills/checkin/SKILL.md (v1.3) Step 3.6b journal-first rule
   - skills/project-manager/SKILL.md "Ongoing update rule" + "JOURNAL-FIRST" block (~lines 278–390)
-  - system/tools/cal-diary-capture.py (read_journal() · JOURNAL constant · build())
-  - system/tools/cal-diary-rollup.py (journal_range() · JOURNAL constant)
+  - system/tools/planning-diary-capture.py (read_journal() · JOURNAL constant · build())
+  - system/tools/planning-diary-rollup.py (journal_range() · JOURNAL constant)
   - system/tools/marc-sensor.py (TRIP journal-append block lines 113–130)
   - system/tools/marc-pulse-journal.py (full file — slot-level daily append)
   - system/hooks/guard_write_paths.sh (line 130 — journal.md in clone block-list)
@@ -83,7 +83,7 @@ Three formats. No others are valid (per the file's own header).
   required), `[renamed]`, or two comma-separated paths (merge). NEVER a concept.
 - `slug` — must exist in `system/project-registry.md` before use; `{desk}-general` is valid without
   a registry entry.
-- The pipe characters are the parse delimiter cal-diary-capture.py keys off (`| {date} |` prefix).
+- The pipe characters are the parse delimiter planning-diary-capture.py keys off (`| {date} |` prefix).
   Malformed rows that don't start with the date-pipe token are silently skipped by the parser.
 
 **2. Decision (ledger row variant)**
@@ -108,7 +108,7 @@ decision was made, a multi-hour session where ledger rows alone won't tell the s
 occurred mid-session. Not for routine saves — the ledger row is sufficient for those.
 
 The header `--- SESSION CONTEXT | {date} | {desk} | {slug} ---` is the parse token
-cal-diary-capture.py uses to identify blocks: it reads the `session:` field as a one-line
+planning-diary-capture.py uses to identify blocks: it reads the `session:` field as a one-line
 description and groups the block by desk, the same way it groups ledger rows.
 
 **Machine-appended rows (not authored by skill prose):**
@@ -177,13 +177,13 @@ an explicit human yes before SC-5 runs.
 findings / End state / Missteps`. But `journal.md`'s own canonical format (the source of truth and
 the parse target) uses `--- SESSION CONTEXT | YYYY-MM-DD | {desk} | {slug} ---` (a pipe-delimited
 fence) with fields `session / follows / failed / changed / why / state`. These are two distinct
-formats. `cal-diary-capture.py` keys its block parser off the `--- SESSION CONTEXT |` token — a
+formats. `planning-diary-capture.py` keys its block parser off the `--- SESSION CONTEXT |` token — a
 `## SESSION CONTEXT —` heading would be silently invisible to the Cal pipeline (the parser's
 `startswith("--- SESSION CONTEXT |")` check fails on the markdown heading form). Any SC-5 entry
 written in the WRITE-FORMATS.md style is a pipeline miss: it lands in the journal file but
 contributes nothing to the diary's Machine Recap. The field names also differ (`why` and `state`
 exist in the journal's canonical format; they have no equivalents in WRITE-FORMATS.md's template).
-**✅ THIS DISCREPANCY IS RESOLVED — 2026-08-02, commit `f414643`; the ledger entry `[CAL-DIARY-FORMAT-DRIFT]` is CLEARED.** The fix was made in the CONSUMER, deliberately: `cal-diary-capture.py` now accepts the `## SESSION CONTEXT — {date}` heading form alongside the original `--- SESSION CONTEXT |` delimiter, plus dashed `- {date} |` entry rows and the bold `**DECISION|BUILD**` lines. **The journal was NOT changed** — it is append-only history and the reader adapts to the data, never the reverse; and only the reader could repair the ~2 months of entries already written. Measured old-vs-new across all 108 journal dates: reach **385 → 1,263 records**, zero regressions; the existing diary was then backfilled (Jul 1 → Aug 2, 28 days, 72 → 352 records). Locked by `system/tools/test_cal_diary_capture.py` (25 cases, watched failing before trusted green). *(The field-name divergence noted above — `why` / `state` having no WRITE-FORMATS.md equivalent — is a SEPARATE and still-open point; the format-drift fix did not address it.)* If the SC-4 debt-clear was skipped, the entry
+**✅ THIS DISCREPANCY IS RESOLVED — 2026-08-02, commit `f414643`; the ledger entry `[CAL-DIARY-FORMAT-DRIFT]` is CLEARED.** The fix was made in the CONSUMER, deliberately: `planning-diary-capture.py` now accepts the `## SESSION CONTEXT — {date}` heading form alongside the original `--- SESSION CONTEXT |` delimiter, plus dashed `- {date} |` entry rows and the bold `**DECISION|BUILD**` lines. **The journal was NOT changed** — it is append-only history and the reader adapts to the data, never the reverse; and only the reader could repair the ~2 months of entries already written. Measured old-vs-new across all 108 journal dates: reach **385 → 1,263 records**, zero regressions; the existing diary was then backfilled (Jul 1 → Aug 2, 28 days, 72 → 352 records). Locked by `system/tools/test_planning_diary_capture.py` (25 cases, watched failing before trusted green). *(The field-name divergence noted above — `why` / `state` having no WRITE-FORMATS.md equivalent — is a SEPARATE and still-open point; the format-drift fix did not address it.)* If the SC-4 debt-clear was skipped, the entry
 appends: `**Debt-check:** skipped at close — debt items from this session may be uncaptured.`
 
 **Ordering note (no double-write):** if the session-close flow ran (SC-1..SC-5), the journal SESSION
@@ -267,11 +267,11 @@ must not break the health run."
 
 Four elements read journal.md directly. None of them write to it.
 
-#### READ 1 — cal-diary-capture.py (primary Cal pipeline consumer)
+#### READ 1 — planning-diary-capture.py (primary Cal pipeline consumer)
 
-`cal-diary-run.sh (Pulse interval ~86400s, any machine) → python3 cal-diary-capture.py → open($DRIVE/system/journal.md, "r") → parse pipe rows + SESSION CONTEXT blocks matching the target date → compose → atomic write (tmp + os.replace) → $DRIVE/desks/cal/diary/YYYY/MM/DD.md [tool · outside Claude tool plane]`
+`planning-diary-run.sh (Pulse interval ~86400s, any machine) → python3 planning-diary-capture.py → open($DRIVE/system/journal.md, "r") → parse pipe rows + SESSION CONTEXT blocks matching the target date → compose → atomic write (tmp + os.replace) → $DRIVE/desks/cal/diary/YYYY/MM/DD.md [tool · outside Claude tool plane]`
 
-**Parsing logic (from `read_journal()` in cal-diary-capture.py):**
+**Parsing logic (from `read_journal()` in planning-diary-capture.py):**
 - Ledger rows: match lines where `line.startswith(f"| {date_str} |")`. Split on `|`, extract
   desk (parts[2]), slug (parts[3]), event (parts[4], truncated at 200 chars). Group by desk.
 - SESSION CONTEXT blocks: match lines starting with `--- SESSION CONTEXT |`. Extract date from
@@ -292,20 +292,24 @@ directly to a Cal diary file. The journal is the ONLY transit point for the Cal 
 writing directly to Cal would bypass the append-only backstop and violate the single-writer
 invariant. `[honor]` — no hook blocks a rogue direct-Cal write.
 
-#### READ 2 — cal-diary-rollup.py (periodic roll-up)
+#### READ 2 — planning-diary-rollup.py (periodic roll-up)
 
-`cal-diary-run.sh (Pulse cron, at period boundaries) → python3 cal-diary-rollup.py → open($DRIVE/system/journal.md, "r") → journal_range(start, end) → aggregate by desk + by slug → write period review draft [tool · outside Claude tool plane]`
+`planning-diary-run.sh (Pulse cron, at period boundaries) → python3 planning-diary-rollup.py → open($DRIVE/system/journal.md, "r") → journal_range(start, end) → aggregate by desk + by slug → write period review draft [tool · outside Claude tool plane]`
 
-**Parsing logic (from `journal_range()` in cal-diary-rollup.py):** similar to cal-diary-capture.py
+**Parsing logic (from `journal_range()` in planning-diary-rollup.py):** similar to planning-diary-capture.py
 but spans a date range (weekly / monthly / quarterly / yearly). Aggregates `{desk: [events]}` AND
 `{slug: [events]}` — the second dict powers the per-project activity summary in rollup reports.
 
-**Fail-soft:** same as cal-diary-capture.py — source failure marks the section unavailable, exits 0.
+**Fail-soft:** same as planning-diary-capture.py — source failure marks the section unavailable, exits 0.
 
 **Output:** period review draft — path varies by cadence: weekly/monthly use
 `desks/cal/diary/YYYY/MM/review-{cadence}-{label}.md`; quarterly/yearly omit the `MM` subdirectory
 and write to `desks/cal/diary/YYYY/review-{cadence}-{label}.md`. The
 `## Human Delta — verified` section is preserved across re-runs.
+
+⚠ **`desks/cal/` is deliberate, not stale.** The desk was renamed `cal` → `planning` on 2026-08-15 in
+code, jobs and tiles; **the records directory was NOT** — moving the operator's live records is his
+decision and has not been taken. Known, intentional split — do not "complete" it without his word.
 
 #### READ 3 — /read skill (Step 0 journal slice + gap signal)
 
@@ -364,11 +368,11 @@ This is the same signal the archivist uses during drift detection. Read-only.
 | Store | Path | Access | By |
 |---|---|---|---|
 | Journal (the store itself) | `$DRIVE/system/journal.md` | APPEND (## Log only) | /save, /checkin, project-manager, marc-sensor.py, marc-pulse-journal.py |
-| Journal (read) | `$DRIVE/system/journal.md` | READ | cal-diary-capture.py, cal-diary-rollup.py, /read, /distill, /throughline, /marc-checkin, archivist-audit |
-| Cal daily diary | `$DRIVE/desks/cal/diary/YYYY/MM/DD.md` | WRITE (atomic, machine sections only) | cal-diary-capture.py |
-| Cal period review draft | `$DRIVE/desks/cal/diary/YYYY/[MM/]review-{cadence}-{label}.md` (MM present for weekly/monthly; absent for quarterly/yearly) | WRITE | cal-diary-rollup.py |
+| Journal (read) | `$DRIVE/system/journal.md` | READ | planning-diary-capture.py, planning-diary-rollup.py, /read, /distill, /throughline, /marc-checkin, archivist-audit |
+| Cal daily diary | `$DRIVE/desks/cal/diary/YYYY/MM/DD.md` | WRITE (atomic, machine sections only) | planning-diary-capture.py |
+| Cal period review draft | `$DRIVE/desks/cal/diary/YYYY/[MM/]review-{cadence}-{label}.md` (MM present for weekly/monthly; absent for quarterly/yearly) | WRITE | planning-diary-rollup.py |
 | Session transcript | `~/.claude/projects/*/$CLAUDE_CODE_SESSION_ID.jsonl` | READ | /save SC-1 (resolves the session to extract) |
-| Cal diary status tile | `$DRIVE/state/status/cal-diary.json` | WRITE | cal-diary-run.sh (inline Python after capture) |
+| Cal diary status tile | `$DRIVE/state/status/planning-diary.json` | WRITE | planning-diary-run.sh (inline Python after capture) |
 
 ---
 
@@ -422,7 +426,7 @@ This is the same signal the archivist uses during drift detection. Read-only.
   Any conforming or non-conforming text can be appended.
 
 - **No-routing-directly-to-Cal** — the prohibition against agents writing diary files directly (they
-  must route through the journal so cal-diary-capture.py picks it up). No hook blocks a direct Cal
+  must route through the journal so planning-diary-capture.py picks it up). No hook blocks a direct Cal
   diary write from a non-/save path. `[honor]`.
 
 - **Coverage disclaimer** — the mandatory print after any journal-derived synthesis (Step 9 of /save;
@@ -431,7 +435,7 @@ This is the same signal the archivist uses during drift detection. Read-only.
 
 - **marc-sensor.py / marc-pulse-journal.py dedup** — the write-once-per-slot dedup in
   marc-pulse-journal.py is code logic (not a hook). If the code fails or is bypassed, double rows
-  can accumulate. The cal-diary-capture.py parser tolerates duplicates (it groups by desk, so two
+  can accumulate. The planning-diary-capture.py parser tolerates duplicates (it groups by desk, so two
   rows for the same slot just mean two bullets in the diary section).
 
 ---
@@ -439,12 +443,12 @@ This is the same signal the archivist uses during drift detection. Read-only.
 ### EDGE CASES
 
 1. **Ledger row missing the date-pipe prefix** (e.g., written via Bash heredoc with wrong format)
-   → cal-diary-capture.py's `read_journal()` silently skips it (the `startswith(f"| {date_str} |")`
+   → planning-diary-capture.py's `read_journal()` silently skips it (the `startswith(f"| {date_str} |")`
    check fails). The row is in the journal file but invisible to the Cal pipeline. No hook catches
    malformed rows.
 
 2. **SESSION CONTEXT block with malformed header** (fewer than 4 pipe-separated parts) → the
-   cal-diary-capture.py parser skips the block silently (`if len(hdr) >= 4 and hdr[1] == date_str:`
+   planning-diary-capture.py parser skips the block silently (`if len(hdr) >= 4 and hdr[1] == date_str:`
    fails). Again invisible to the Cal pipeline.
 
 3. **Transcript not found** (empty `$CLAUDE_CODE_SESSION_ID` or no matching `.jsonl`) → /save SC-1
@@ -464,7 +468,7 @@ This is the same signal the archivist uses during drift detection. Read-only.
    slot in the diary, which is cosmetically redundant but not incorrect.
 
 6. **Journal grows unbounded** — the file had no rotation, archival, or truncation mechanism and
-   grew indefinitely, while the cal-diary-capture.py and cal-diary-rollup.py parsers scanned the
+   grew indefinitely, while the planning-diary-capture.py and planning-diary-rollup.py parsers scanned the
    whole file on every run (`lines = f.readlines()`) with no hard cap or warning.
    **✅ THIS IS RESOLVED — `system/tools/journal.py` carries a `rotate` subcommand
    (`journal.py rotate [--dry-run]`).** It moves every entry from a *completed* month out of
@@ -517,7 +521,7 @@ record update. The journal-first rule exists because of this property — the br
 working surface, the journal is the indestructible ledger.
 
 **Second role:** the journal is the Cal pipeline's only cross-desk narrative source. It is
-deliberately the ONLY input to cal-diary-capture.py's "Machine Recap" section. This means the
+deliberately the ONLY input to planning-diary-capture.py's "Machine Recap" section. This means the
 agent's work becomes visible to the Cal pipeline if and only if it routes through the journal — an
 intentional bottleneck that keeps the Cal pipeline from being wired to every individual store.
 
@@ -546,7 +550,7 @@ intentional bottleneck that keeps the Cal pipeline from being wired to every ind
    pipeline.
 3. **File-size monitoring** — ✅ the rotation half of this is DONE (see Edge Case 6):
    `journal.py rotate` segments completed months into `system/journal/YYYY-MM.md`, so the full-file
-   scan on each cal-diary-capture.py run is bounded to the current month. What remains open is the
+   scan on each planning-diary-capture.py run is bounded to the current month. What remains open is the
    indexed-format question and any automatic scheduling of `rotate` — today it is a CLI subcommand
    a human or a job invokes, not a cadence.
 
@@ -574,15 +578,15 @@ All interop seams typed with the closed vocabulary from §8.3.
   `[tool]`
 
 - `WRITES->   marc-pulse-journal` · (tool, not a ranked element) appends one market-pulse line per
-  slot/day (open/close); consumed by cal-diary-capture via the same pipe-row format `[tool]`
+  slot/day (open/close); consumed by planning-diary-capture via the same pipe-row format `[tool]`
 
 **Consumers that READ from journal.md:**
 
-- `FEEDS      cal-diary-capture` · cal-diary-capture.py reads journal.md as the primary input for
+- `FEEDS      planning-diary-capture` · planning-diary-capture.py reads journal.md as the primary input for
   each day's Machine Recap — the only cross-desk narrative source the Cal pipeline ingests; ONLY
   transit point, by design `[tool · pulse-cron]`
 
-- `FEEDS      cal-diary-rollup` · cal-diary-rollup.py reads journal.md for period-range
+- `FEEDS      planning-diary-rollup` · planning-diary-rollup.py reads journal.md for period-range
   aggregations (weekly/monthly/quarterly/yearly) by desk + by slug `[tool · pulse-cron]`
 
 - `READS      read` · /read Step 0 loads a journal slice filtered by desk or slug; surfaces the

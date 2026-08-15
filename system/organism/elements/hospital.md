@@ -18,7 +18,7 @@ generated_from:
   - system/tools/guard_fire_test_record.py
   - system/tools/health-deadman-check.sh
   - system/tools/fault_proposer.py
-  - system/tools/cal-health.py
+  - system/tools/planning-health.py
   - system/tools/clair-health.py
   - system/tools/sentinel-health.py
   - system/tools/dobby-health.py
@@ -48,7 +48,7 @@ authority: user
 > - ⛔ `state/health.jsonl` and `state/status/backlog.json` — runtime-generated, created on first run, never committed. These are an append log and a status tile that a run writes into the operator's own data area; there is no committed copy of either in any repository, donor or destination.
 > - ⛔ `system/reference/settings.json` — not shipped. The donor's hook registry was never ported: this repository's `.claude/settings.json` was authored from scratch against its own, smaller hook inventory, so the donor's line numbers cited below index a file that does not exist here. Read the registrations from `.claude/settings.json` instead.
 > - ⛔ `system/tools/machine_token.py` — excluded from the migration: two-machine. This product is one machine by design, and the shared derivation collapses to a local constant — see the note in `system/tools/fault_ledger.py` and `system/tools/emit_recommendation.py`, which both say so at the point of use.
-> - ⛔ `system/tools/clair-health.py`, `system/tools/deryl-books-health.py`, `system/tools/dobby-health.py` and `system/tools/marc-health.py` — excluded from the migration: personal-desk. These four are the per-desk detectors for desks on the closed exclusion list. Their four non-desk siblings named in the same sentences DID land and resolve here — `system/tools/system-health.py`, `system/tools/cal-health.py`, `system/tools/security-health.py`, `system/tools/sentinel-health.py` — so the "8 of roughly 12 producers" count below is a donor-side count, not a destination one.
+> - ⛔ `system/tools/clair-health.py`, `system/tools/deryl-books-health.py`, `system/tools/dobby-health.py` and `system/tools/marc-health.py` — excluded from the migration: personal-desk. These four are the per-desk detectors for desks on the closed exclusion list. Their four non-desk siblings named in the same sentences DID land and resolve here — `system/tools/system-health.py`, `system/tools/planning-health.py`, `system/tools/security-health.py`, `system/tools/sentinel-health.py` — so the "8 of roughly 12 producers" count below is a donor-side count, not a destination one.
 
 > ⚖ **BOUNDARY CORRECTED 2026-08-05 (T18.8) — `fault_proposer.py` IS NO LONGER HOSPITAL'S. READ THIS
 > BEFORE THE COMPONENT TABLE BELOW.** The operator ruled that the grading/proposing layer belongs to the
@@ -116,7 +116,7 @@ ONE store, ONE union reader, ONE dead-man's switch, ONE grading layer, ONE sessi
 | **The session-start consumer** | `health_line.py` | THE only wired reader today — ranks, caps, prints a line at every session start via `session_context_loader.sh` |
 | **The grading/proposing layer** ⚖ **— EFFICIENCY'S, NOT HOSPITAL'S (T18.8, 2026-08-05)** | `fault_proposer.py` + `fault-proposer-run.sh` | Reads `fault_ledger`'s recurrence data, grades INSTANCE/SUBSYSTEM/ORGANISM/DECISION, refuses to emit without citable evidence. **Listed here as the SEAM Hospital hands off to — it is documented by the Efficiency element (`§18.11`), not by this one.** Grading + proposing is recommending, and Hospital never remediates. |
 | **The lifecycle store** | `fault_ledger.py` | `~/.local/state/lifehack/faults.json` — first_seen/last_seen/escalation, now keyed by BOTH legacy `job\|state` AND `fp:<fingerprint>` |
-| **Converted detectors** | `health_invariants.py` · `backlog_groom.py` · `guard-fire-test-run.sh` · `health-deadman-check.sh` · **+ the nine `*-health` detectors** (`cal` · `clair` · `sentinel` · `dobby` · `security` · `marc` · `deryl-books` · `system` · `organism/organism`) | **THIRTEEN** producers now emit through `emit_finding()`, all resolving a cadence in `findings_deadman.PRODUCER_JOB`. *(Was FOUR until T15.30, 2026-08-04.)* The one `*-health.py` that does NOT emit is `backlog-health.py` — an approved CUT, because `backlog_groom.py:290` already emits off the identical `build_report()` and the health script is only its tile renderer. ⚠ **Every conversion is ADDITIVE: each detector's existing `emit_status` tile is written exactly as before** — Helm reads `state/status/` only and has no `state/findings/` reader, so the two surfaces never met. |
+| **Converted detectors** | `health_invariants.py` · `backlog_groom.py` · `guard-fire-test-run.sh` · `health-deadman-check.sh` · **+ the nine `*-health` detectors** (`planning` · `clair` · `sentinel` · `dobby` · `security` · `marc` · `deryl-books` · `system` · `organism/organism`) | **THIRTEEN** producers now emit through `emit_finding()`, all resolving a cadence in `findings_deadman.PRODUCER_JOB`. *(Was FOUR until T15.30, 2026-08-04.)* The one `*-health.py` that does NOT emit is `backlog-health.py` — an approved CUT, because `backlog_groom.py:290` already emits off the identical `build_report()` and the health script is only its tile renderer. ⚠ **Every conversion is ADDITIVE: each detector's existing `emit_status` tile is written exactly as before** — Helm reads `state/status/` only and has no `state/findings/` reader, so the two surfaces never met. |
 
 ---
 
@@ -357,7 +357,7 @@ Hospital-core modules above, plus the four converted detectors. The following kn
 producers do **NOT** yet emit through Hospital — confirmed by their absence from that grep and their
 continued presence as standalone `*-health.py` files:
 
-`system/tools/system-health.py` (the sweeper itself) · `system/tools/cal-health.py` ·
+`system/tools/system-health.py` (the sweeper itself) · `system/tools/planning-health.py` ·
 `system/tools/clair-health.py` · `system/tools/deryl-books-health.py` ·
 `system/tools/dobby-health.py` · `system/tools/marc-health.py` ·
 `system/tools/security-health.py` · `system/tools/sentinel-health.py`
@@ -411,7 +411,7 @@ real seam anywhere below — see INTEROP SEAMS and GAP-3.**
 
 **GAP-1 — 8 of ~12 known failure producers do not emit Hospital findings.**
 `system-health.py` (the sweeper itself) and 7 of the 8 per-desk `*-health.py` producers
-(`cal-health.py`, `clair-health.py`, `deryl-books-health.py`, `dobby-health.py`, `marc-health.py`,
+(`planning-health.py`, `clair-health.py`, `deryl-books-health.py`, `dobby-health.py`, `marc-health.py`,
 `security-health.py`, `sentinel-health.py`) report only through their own status tile, never into
 `state/findings/`. A problem detected by any of these 8 is invisible to `fault_proposer.py`'s grading,
 to `findings_reader.py`'s union, and to `health_line.py`'s session-start line — it can only be seen by

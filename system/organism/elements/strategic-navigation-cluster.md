@@ -200,7 +200,8 @@ have evidence this is working" — name the degradation when it occurs. (SKILL.m
 - `intended` by scope: project slug → brief `## DESIRED OUTCOME`; desk → `desks/{desk}/canon/purpose.md`;
   whole-system → `records/canon/purpose.md` + `state/telos.md`.
 - `origin → now` (the dots): last 2–3 diary rollups at the chosen grain
-  (`desks/cal/diary/{YYYY}/{MM}/review-{week|month}-{period}.md`).
+  (`desks/cal/diary/{YYYY}/{MM}/review-{week|month}-{period}.md` — ⚠ `desks/cal/` is DELIBERATE:
+  the planning desk's code/jobs/tiles were renamed, its records directory was NOT).
   Whole-system → each rollup's `## What happened` + `## Activity by desk`.
   Single-project → each rollup's `## Activity by project → ### {slug}` block.
   Oldest rollup seeds `origin`; newest is `now` (fed last).
@@ -280,8 +281,10 @@ outcome" when scope is root-level. `/telos` updates it; the memory-read element 
 scope). It reads; it never writes the brief.
 
 **`/throughline` → Cal diary (READS):** `desks/cal/diary/…` rollups are the primary `origin→now` data
-source for diary-assembled plots. The diary is written by the `cal-weekly` / pulse-cron pipeline;
-`/throughline` reads it read-only.
+source for diary-assembled plots. The diary is written by the `planning-weekly` / pulse-cron pipeline;
+`/throughline` reads it read-only. ⚠ **`desks/cal/` is DELIBERATE** — the planning desk's code, jobs
+and tiles were renamed from `cal`; its records directory was NOT, because moving the operator's live
+records is his decision and has not been taken.
 
 **`/first-principles` → (any execution skill) (FEEDS):** `/first-principles` produces a sharpened
 question / "build this first" / advisory structure that the user then carries into the execution layer.

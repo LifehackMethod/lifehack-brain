@@ -44,7 +44,7 @@ authority: user
 > **Altitude = BASE (ground / street view).** The in-the-weeds detail of the email/calendar/tasks
 > intake firehose — the WRITE side: `email_summary_sync.py` (single verbatim Gmail writer),
 > `tasks_store_sync.py`, and `calendar_store_sync.py`, all on Pulse cadence, writing the
-> per-thread and per-item stores that the read side (email-service, cal-pipeline) consumes.
+> per-thread and per-item stores that the read side (email-service, planning) consumes.
 > Distinct from the **email-service** element, which is the read/interpret side.
 >
 > **One-line:** Pulse-dispatched headless runners pull Gmail threads, Google Tasks, and Calendar
@@ -208,7 +208,7 @@ Pulse
           if scan_for_injection or intake_reader import fails → write continues with
           uncleaned raw task free-text [tasks_store_sync.py:85-101]
       → _list_tasklists() [gws tasks tasklists list subprocess → [(list_id, list_title)]]
-      → for each list: _pull_tasks() paginated [safe_tasks.py --desk cal --redact --params JSON
+      → for each list: _pull_tasks() paginated [safe_tasks.py --desk planning --redact --params JSON
           subprocess; up to 50 pages × 100 = 5,000 tasks/list; rc 0=clean / 1=flagged-valid / 2=err;
           tasks_store_sync.py:155]
       → for each task: _process_task()
@@ -400,7 +400,7 @@ Live record counts (verified 2026-07-23 audit): email threads-v2 ≈ 1,015 · ta
 
 Three Drive-backed stores are kept continuously fresh: verbatim Gmail threads (threads-v2/), durable
 task records (item-store/tasks/), and calendar event records (item-store/calendar/). These stores are
-the sole Pulse-written input to the email-service read adapter and the cal-pipeline item-window reader.
+the sole Pulse-written input to the email-service read adapter and the planning item-window reader.
 Cold/departed records are retained with `state=cold` — never deleted. Health tiles emit to Helm; errors
 buzz the phone immediately. Schema validation + injection scanning + atomic writes are on every write
 path; no partial records are possible. Supervised-session co-writers (intake_backfill.py,
@@ -492,7 +492,7 @@ intake_backfill_batch.py) can also write all three stores but only under direct 
 
 **Intent:** a single, continuous, machine-maintained mirror of the three Google data channels
 (Gmail threads, Tasks, Calendar events) — verbatim, faithful, schema-validated, injection-scanned
-— so that every downstream consumer (email-service, cal-pipeline, Helm health) reads from a
+— so that every downstream consumer (email-service, planning, Helm health) reads from a
 Drive-local store rather than pulling raw gws data on demand.
 
 **Current → PARTIAL, for a precise reason:**
@@ -548,10 +548,10 @@ FEEDS      email-service    · state/email-summary/threads-v2/ is the exclusive 
                               email_service_read.py (read_thread) serves to the 4 ingest desks;
                               grand-central is the sole Pulse writer, email-service is the sole
                               sanctioned reader
-FEEDS      cal-pipeline     · item_store_read.read_item("calendar") reads state/item-store/calendar/
+FEEDS      planning         · item_store_read.read_item("calendar") reads state/item-store/calendar/
                               for event payloads; grand-central (calendar_store_sync.py) is sole
                               Pulse writer
-FEEDS      cal-pipeline     · item_store_read.read_item("task") reads state/item-store/tasks/ for
+FEEDS      planning         · item_store_read.read_item("task") reads state/item-store/tasks/ for
                               task payloads; grand-central (tasks_store_sync.py) is sole Pulse writer
 WRITES->   helm             · state/status/email-summary.json — written by email_summary_sync.py
                               via stamp_write_success() → --stamp-write-ok runner invocation after

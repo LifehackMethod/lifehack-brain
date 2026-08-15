@@ -97,7 +97,7 @@ Each field is colored by its flag's `armed_at` epoch via `age_color()` (L77–85
 
 **Step 8 — Context HUD assembly** (L101–107): the three fields are concatenated with ` · ` separators; only non-empty fields appear. Printed via `printf '%b\n'` to expand ANSI escapes.
 
-**Step 9 — Desk field (TRUTH CONTRACT)** (L117–119): the bottom bar's `desk:` field is `${FLAG_DESK:-$DESK}` — the `desk=` field from the pm flag if present, otherwise the cwd-based `$DESK`. This field MUST equal the REAL desk (cal, root, emily, etc.); the project slug MUST NEVER appear here. The truth contract exists because the user steers across many windows by this field. A 2026-07-13 regression (commit `d54133c`) set it to `${SLUG:-$DESK}`, which caused project-slug bleed; fixed in the same session. Regression-guarded by `system/tools/statusline-truth-test.sh`, wired into `system/tools/verify-hooks.sh`.
+**Step 9 — Desk field (TRUTH CONTRACT)** (L117–119): the bottom bar's `desk:` field is `${FLAG_DESK:-$DESK}` — the `desk=` field from the pm flag if present, otherwise the cwd-based `$DESK`. This field MUST equal the REAL desk (planning, root, emily, etc.); the project slug MUST NEVER appear here. The truth contract exists because the user steers across many windows by this field. A 2026-07-13 regression (commit `d54133c`) set it to `${SLUG:-$DESK}`, which caused project-slug bleed; fixed in the same session. Regression-guarded by `system/tools/statusline-truth-test.sh`, wired into `system/tools/verify-hooks.sh`.
 
 **Step 10 — Bottom bar print** (L119–120): `printf "${COLOR}[%s]  ctx %s %d%%  \$%s  desk: %s${RESET}"`.
 
@@ -155,7 +155,7 @@ armed_at=<unix epoch>
 session=<CLAUDE_CODE_SESSION_ID>
 ```
 
-Operations: `arm <path> <skill>`, `clear`, `status` (30-minute TTL — ephemeral by design). Producers: `cal-weekly`, `cal-daily`, `clair-ingest`, or the agent when the user says "start a scratchpad."
+Operations: `arm <path> <skill>`, `clear`, `status` (30-minute TTL — ephemeral by design). Producers: `planning-weekly`, `planning-daily`, `clair-ingest`, or the agent when the user says "start a scratchpad."
 
 `statusline.sh` reads only the PRESENCE of this flag (on/off); the `scratch_path` and `skill` fields are not rendered.
 

@@ -458,7 +458,7 @@ breaking the isolation model. `[honor only]`
 
 From `state/debt-ledger.md`:
 
-- **`[CAL-WEEKLY-DIGS-SCOPE]`** (`state:actionable`) — cal-weekly spawns research subagents beyond its
+- **`[CAL-WEEKLY-DIGS-SCOPE]`** (`state:actionable`) — planning-weekly spawns research subagents beyond its
   spec'd light-sweep. The "digs" behavior must be formalized (sonnet-pinned + scoped) or reined back
   before it clones into monthly/quarterly/yearly. The /research skill's subagent model selection is the
   relevant constraint here (all searchers must run on `model: sonnet`). (Debt-ledger line ~117.)
@@ -481,10 +481,10 @@ From `state/debt-ledger.md`:
   searcher hook only if warranted. (Debt-ledger line ~195, 2026-07-03.)
 
 - **`[CAL-EMAIL-FALLBACK-REMOVE]`** (`state:waiting-date`) — NOT directly related to research-web-plane.
-  This is the Cal Phase 5b task to remove the redundant email_convert fallback in `cal-vault-pull.py`.
+  This is the Cal Phase 5b task to remove the redundant email_convert fallback in `planning-vault-pull.py`.
   The `/research` skill was invoked to produce the email-thread compaction research map that informed
   the email service redesign (`records/2026-07-10-email-thread-compaction-research.md`) — but the
-  fallback removal itself is a cal-desk concern, not a research-plane debt. Cross-referenced here
+  fallback removal itself is a planning-desk concern, not a research-plane debt. Cross-referenced here
   because the task brief named it; it does not belong in this element's GAPS. (Debt-ledger line ~97.)
 
 - **`[RESEARCH-RECONCILE-COWORK]`** — merge the 2026-06-11 + 2026-06-17 CLI/cowork research maps into
@@ -528,7 +528,7 @@ From `state/debt-ledger.md`:
 2. **`/research` fetch-only searcher hook** (task 3 from `[SECURITY-READER-ACTOR]`) — a hook that
    prevents a web-searcher agent from doing arbitrary Bash operations beyond the safe scripts.
 3. **Egress tool-layer allowlist hook** (task 4 from `[SECURITY-READER-ACTOR]`).
-4. **Formalize the `cal-weekly` digs behavior** (`[CAL-WEEKLY-DIGS-SCOPE]`) — pin subagent model +
+4. **Formalize the `planning-weekly` digs behavior** (`[CAL-WEEKLY-DIGS-SCOPE]`) — pin subagent model +
    scope boundary before the mechanic clones into monthly/quarterly/yearly crons.
 
 ---

@@ -808,7 +808,7 @@ This element READS the canon store (`$DRIVE/{desk}/canon/**/*.md`, `$DRIVE/recor
 
 **4. READS `journal` — WRITES-> it (`/checkin` + `project-manager`).**
 
-`/read` Step 2b READS `$DRIVE/system/journal.md` (the last-20 slice for the desk/slug). `/checkin` Step 3.6 and `project-manager` WRITE-> the same journal (journal-first rule). The journal is the append-only chronological backstop shared by every write element — the FEEDS link: `cal-diary-capture.py` reads the journal to populate the Cal pipeline. If this element skips its journal write (honor-system failure), the Cal pipeline also silently loses the event.
+`/read` Step 2b READS `$DRIVE/system/journal.md` (the last-20 slice for the desk/slug). `/checkin` Step 3.6 and `project-manager` WRITE-> the same journal (journal-first rule). The journal is the append-only chronological backstop shared by every write element — the FEEDS link: `planning-diary-capture.py` reads the journal to populate the Cal pipeline. If this element skips its journal write (honor-system failure), the Cal pipeline also silently loses the event.
 
 **5. SHARES brief — with `save` + `project-manager`.**
 
@@ -830,9 +830,9 @@ The archivist (archivist-autoplace, archivist-route, archivist-deepmine) WRITES-
 
 `/checkin` Step 1.5 reads the huddle channel via `huddle.py mine --session $CLAUDE_CODE_SESSION_ID`. Two separate locations: flag files at `~/.claude/run/huddle/huddle-{KEY}.flag`; message data (HS_DIR) at `$DRIVE/state/huddle/`. The huddle and huddle-board elements WRITE-> these channels; `/checkin` READS them. This is a read-only one-way seam for this element.
 
-**10. FEEDS `cal-pipeline` (via journal).**
+**10. FEEDS `planning` (via journal).**
 
-`/checkin`'s journal-first writes (Step 3.6) are the upstream feed that `cal-diary-capture.py` reads to build the Cal pipeline. The pipeline keys off `$DRIVE/system/journal.md` — `/checkin` writes there; the cal pipeline reads it. Indirect but same store — a `/checkin` that skips the journal write also silently starves the cal pipeline.
+`/checkin`'s journal-first writes (Step 3.6) are the upstream feed that `planning-diary-capture.py` reads to build the Cal pipeline. The pipeline keys off `$DRIVE/system/journal.md` — `/checkin` writes there; the planning pipeline reads it. Indirect but same store — a `/checkin` that skips the journal write also silently starves the planning pipeline.
 
 **11. READS `telos` — pre-loaded by `session-context-loader`.**
 

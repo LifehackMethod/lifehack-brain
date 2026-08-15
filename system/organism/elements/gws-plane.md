@@ -101,7 +101,7 @@ Five risk classes govern every capability (`google-capability-registry.yaml` §"
 
 **Desk capability model:**
 Each desk declares `access_model` (BROAD / BROAD_READ) and `max_risk_class` in its CLAUDE.md and in `google-capability-registry.yaml §"desks"`. Read-only from the registry:
-- cal, emily, deryl, clair, dobby: `access_model: BROAD`, `max_risk_class: WRITE_SAFE`
+- planning, emily, deryl, clair, dobby: `access_model: BROAD`, `max_risk_class: WRITE_SAFE`
 - marc: `access_model: BROAD_READ`, `max_risk_class: READ`
 Finding a capability in the registry does NOT mean a desk has it — the desk CLAUDE.md `write_capabilities` list is the actual grant.
 
@@ -148,7 +148,7 @@ Already covered in §1. The root backstop: blocks `gws auth logout` from any ses
 
 #### 3e. `guard_tasks_writes.sh` — Life Map read-only guard
 **Trigger:** any `gws tasks` write verb (`insert`/`update`/`patch`/`delete`/`move`/`clear`) targeting the Life Map tasklist (`<google-resource-id>`), EXCEPT an `insert`/`update`/`patch`/`move` referencing the Daily Win parent task (`<google-resource-id>`). `[hook]`
-**Why it exists:** the Life Map is human-maintained, read-only for all agents (CLAUDE.md "Life Map" rule). Clair cadence-nudge opened write access to Tasks generally (2026-06-04); this guard walls off the Life Map specifically (2026-06-25). One narrow carve-out: cal-daily may write the day's confirmed dominoes as Daily-Win subtasks.
+**Why it exists:** the Life Map is human-maintained, read-only for all agents (CLAUDE.md "Life Map" rule). Clair cadence-nudge opened write access to Tasks generally (2026-06-04); this guard walls off the Life Map specifically (2026-06-25). One narrow carve-out: planning-daily may write the day's confirmed dominoes as Daily-Win subtasks.
 
 ---
 
@@ -276,14 +276,14 @@ GUARDED-BY  guard_tasks_writes.sh                 · protects Life Map (read-onl
 READS       google-capability-registry.yaml       · tiers + risk classes + per-desk access model
 READS       gws-contract.md                       · canonical invocation patterns, auth, quoting rules
 READS       google-policy.md                      · prohibitions, admin exception, guarded capability list
-WRITES→     cal-pipeline (cal, cal-daily, cal-weekly)   · calendar events read/write through this plane
-WRITES→     email-ingest (cal-daily cal-recon, emily, deryl, clair)  · Gmail reads through this plane via email_convert.py / email_service_read.py
+WRITES→     planning (planning-daily, planning-weekly)   · calendar events read/write through this plane
+WRITES→     email-ingest (planning-daily + the donor's cal-recon, emily, deryl, clair)  · Gmail reads through this plane via email_convert.py / email_service_read.py
 WRITES→     sheets-desks (deryl DFM, clair billing, reconcile)        · Sheets reads/writes through this plane
 FEEDS       safe_calendar.py                      · gws-plane invokes; the wrapper sanitizes calendar event free-text
 FEEDS       safe_tasks.py                         · gws-plane invokes; the wrapper sanitizes task title/notes
 FEEDS       email_convert.py / email_service_read.py  · gws Gmail body goes through before reaching model context
 KEYS-OFF    settings.json permissions.deny list   · `gws auth logout`, auth login, ~/.config/gws/ all deny-listed
-SYNCS       grand-central (skill routing)          · Google-touching skills (cal, emily, deryl, marc, clair) route through desks that invoke this plane
+SYNCS       grand-central (skill routing)          · Google-touching skills (planning, emily, deryl, marc, clair) route through desks that invoke this plane
 COMPLEMENTS security-ingest-gate                   · ingest_gate_enforce.sh overlaps — the ingest gate IS the on-path enforcement arm of this plane for read channels
 ```
 
@@ -291,7 +291,7 @@ COMPLEMENTS security-ingest-gate                   · ingest_gate_enforce.sh ove
 
 ### GAPS
 
-1. **`block_primary_calendar.sh` MCP bypass** — the hook matches only Bash/gws. A write via the Claude.ai MCP Google Calendar connector would bypass this guard entirely, landing on `primary`. Known, tracked: `[CAL-WEEKLY] MCP-matcher calendar guard hook` (`debt-ledger.md`). Real blast-radius: an MCP-path cal write could corrupt personal events. `→ ·gap`
+1. **`block_primary_calendar.sh` MCP bypass** — the hook matches only Bash/gws. A write via the Claude.ai MCP Google Calendar connector would bypass this guard entirely, landing on `primary`. Known, tracked: `[CAL-WEEKLY] MCP-matcher calendar guard hook` (`debt-ledger.md`). Real blast-radius: an MCP-path calendar write could corrupt personal events. `→ ·gap`
 
 2. **Belt-and-suspenders hook redundancy** — six per-channel hooks (enforce_email_sanitize · sanitize_calendar_reads · guard_file_reads · guard_web_fetch · guard_web_search · guard_skip_safe_backdoor) were subsumed by `ingest_gate_enforce.sh` (Window-5, 2026-07-03), but some may still be registered in `settings.json`, firing redundantly. Verified: `enforce_email_sanitize.sh` is still present in hooks/ directory (unregistered or redundant). Tracked: `[SECURITY-MINOR-2026-07-04]`. Blast-radius: performance only (double-fire); no safety gap.
 
@@ -303,7 +303,7 @@ COMPLEMENTS security-ingest-gate                   · ingest_gate_enforce.sh ove
 
 6. **Non-email gws channel sweep incomplete** — Tasks and Drive channels were hardened (2026-07-04 CT-1), but the `[GWS-CHANNEL-SWEEP]` debt item (`debt-ledger.md`) notes Sheets cell text and Gmail metadata (subjects) haven't been confirmed sanitized-or-explicitly-cleared for injection risk. Monitoring state.
 
-7. **cal-health unsanitized Gmail headers** — `cal-health.py::read_snoozed()` returns subject/from without the L0 `sanitize()` that `cal-light-sweep.py` applies. Low-risk metadata gap, tracked: `[CAL-HEALTH-SANITIZE]`.
+7. **planning-health unsanitized Gmail headers — DONOR-ONLY, the function did not migrate.** The donor's `cal-health.py::read_snoozed()` returned subject/from without the L0 `sanitize()` that `planning-light-sweep.py` applies. ⚠ Verified this session: `system/tools/planning-health.py` has **no `read_snoozed`** — the snoozed-mail read was trimmed in the port, so the gap it describes cannot fire here. Kept as donor description, still tracked upstream as `[CAL-HEALTH-SANITIZE]`.
 
 ---
 

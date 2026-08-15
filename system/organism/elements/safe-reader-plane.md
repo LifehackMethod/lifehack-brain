@@ -225,7 +225,7 @@ description, location, and attendee/organizer/creator displayName are **attacker
   only (id, start, end, status) + a `_reader_scratch` pointer. A spawned tool-less `ingest-reader`
   sub-agent must consume the scratch. This is the reader-actor split (2026-07-04).
 - **`--redact`:** free-text left in-place (on stdout) but with flagged injection spans neutralized —
-  for the `cal-vault` store path where the text must persist.
+  for the `planning-vault` store path where the text must persist.
 - **`--no-isolate`:** plumbing/no-LLM path — sanitized text left visible; no scratch isolation.
 
 **Steps (all modes):**
@@ -530,7 +530,7 @@ COMPLEMENTS  /websearch skill   · skill wraps safe_search_api.sh (primary) + sa
    `safe_search_api.sh` which became the primary 2026-07-03). The deny message is wrong but
    harmless — the hook still blocks the tool; only the human-facing redirect text is inaccurate.
 
-6. **Cal email-convert fallback** (`[CAL-EMAIL-FALLBACK-REMOVE]`, debt-ledger): `cal-vault-pull.py`
+6. **Cal email-convert fallback** (`[CAL-EMAIL-FALLBACK-REMOVE]`, debt-ledger): `planning-vault-pull.py`
    still has a direct-Gmail fallback path that bypasses the store-first path. Load-bearing graceful
    degradation; blocked for removal until store-sourced read rate is validated. UNVERIFIED whether the
    hook covers this fallback path (it would, since it matches `gws gmail` body reads).

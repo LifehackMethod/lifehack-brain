@@ -838,7 +838,7 @@ What `/save` never does, under any circumstances (from SKILL.md "What never happ
 - No system self-assessment entries that just duplicate what was saved — it must be about system performance.
 - No silently dropping deferred work — technical debt created or discovered this session must land in `$DRIVE/state/debt-ledger.md`.
 - No autonomously authored FRAME on a NEW brief — brief CREATE runs the Frame-intake gate; FRAME slots are written `CONFIRMED`/`INFERRED`/`WAIVED`, never as settled fact on a guess.
-- No routing directly to Cal — `/save` feeds the journal; `cal-diary-capture.py` reads the journal.
+- No routing directly to Cal — `/save` feeds the journal; `planning-diary-capture.py` reads the journal.
 - No register collapse — a `possibility` stays a possibility, a `suggestion` stays a suggestion, a `pros-cons` is preserved as the full weighing (never collapsed to the winning side); registers are never promoted by the machine.
 - No auto-assigning `type: rule` — only the human elevates to rule; the machine NEVER assigns this register; even after human elevation it writes as a canon-PROPOSAL (`vetted: false`), never `vetted: true`; `decision` ≠ `rule`.
 - No writing an item without a transcript anchor — items from SC-1 that cannot be anchored to something said or done in the transcript are not written (Step SC-1c).
@@ -887,7 +887,7 @@ All three read/write the active brief's `## SCRATCHPAD` / `## STORY LOG` / `## C
 Canon candidates `/save` writes here (`vetted:false`) are the Archivist's inbound queue for later human-gated promotion. The Archivist reads and acts on them; `/save` only writes them.
 
 **4. `system/journal.md` ⇄ every write element.**
-The append-only journal is the shared backstop; journal-first is a precondition across `/save`, `/checkin`, and `project-manager`. Additionally: `cal-diary-capture.py` reads `system/journal.md` to populate the Cal pipeline — this is WHY `/save` must never write to Cal directly (no direct-Cal prohibition). The journal is the ONLY transit point for the Cal pipeline.
+The append-only journal is the shared backstop; journal-first is a precondition across `/save`, `/checkin`, and `project-manager`. Additionally: `planning-diary-capture.py` reads `system/journal.md` to populate the Cal pipeline — this is WHY `/save` must never write to Cal directly (no direct-Cal prohibition). The journal is the ONLY transit point for the Cal pipeline.
 
 **5. `scratch_capture_gate.sh` ⇄ SC-4 F5.6 (complementary capture pipeline).**
 `scratch_capture_gate.sh` fires autonomously on the Stop hook (once per ~100k-token bucket) and pushes interim captures to the active pad. SC-4 F5.6 then runs the FINAL DELTA-CAPTURE at session-close, picking up anything the gate missed since its last fire. They are complementary, not redundant: the gate is continuous; F5.6 is the closing sweep.

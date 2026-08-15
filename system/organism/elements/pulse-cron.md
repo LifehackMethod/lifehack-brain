@@ -55,7 +55,7 @@ authority: user
 > ⛔ `state/status/sentinel.json` — runtime-generated, created on first run, never committed. A status tile the reader's own run writes under their notes/data root (`shared/gate/sentinel_response.py` line 53 resolves it as `{DATA}/state/status/sentinel.json`); its writers `system/tools/sentinel-health.py` and `system/tools/sentinel-health-run.sh` DO ship. Every other `state/status/*.json` tile named below is the same class.
 >
 > ⏳ unruled — `system/schemas/runner-standard.md`, the codified `*-run.sh` contract. The runners themselves shipped and no phase owes this document;
-> `system/tools/cal-health.py` line 23 still reasons against "the runner-standard rc=1", yet the contract itself is absent from `system/schemas/`. Cited by something shipped, on no ship list, awaiting a decision: a DEBT, not a pass.
+> `system/tools/planning-health.py` line 23 still reasons against "the runner-standard rc=1", yet the contract itself is absent from `system/schemas/`. Cited by something shipped, on no ship list, awaiting a decision: a DEBT, not a pass.
 
 > ⚖ **NOTE 2026-08-15 — the `…_studio_…` gate names below are DONOR CODE IDENTIFIERS, and are
 > deliberately NOT renamed.** `require_studio_hardware` and `ingest_studio_gate` (the latter being
@@ -102,7 +102,7 @@ deliberately covers MSYS/MINGW/CYGWIN Git Bash *and* a bare `uname` failure), th
   `schtasks` translator that understands exactly the two shapes this manifest actually uses —
   `*/N * * * *` (every N minutes) and `M * * * *` (hourly at minute M) — and **REFUSES anything else
   rather than guessing a wrong schedule**, printing a SKIP naming the job and telling the human to add
-  that one by hand. ⚠ Consequence for Mode 3 below: the three wall-clock `cal-diary` shapes
+  that one by hand. ⚠ Consequence for Mode 3 below: the three wall-clock `planning-diary` shapes
   (`0 17 * * 5` · `0 8 1 * *` · `0 8 1 1,4,7,10 *`) are NOT among the two translatable shapes, so on
   Windows they are skipped with a warning, not silently mis-scheduled.
 
@@ -127,11 +127,11 @@ No jobs are executed; no state is written; the Drive heartbeat mirror is skipped
 Used for diagnostics without triggering actual runs.
 
 **Mode 3 — Clock-pinned crontab entries (NOT Pulse-dispatched; bypass `pulse.sh` entirely):**
-Three `cal-diary-run.sh` variants are installed by `install-schedulers.sh` from the `crontab` fenced
+Three `planning-diary-run.sh` variants are installed by `install-schedulers.sh` from the `crontab` fenced
 block in `system/pulse-config.md`:
-- `0 17 * * 5` → `cal-diary-run.sh --cadence weekly` (every Friday 17:00)
-- `0 8 1 * *` → `cal-diary-run.sh --cadence monthly` (1st of month 08:00)
-- `0 8 1 1,4,7,10 *` → `cal-diary-run.sh --cadence quarterly` (1st Jan/Apr/Jul/Oct 08:00)
+- `0 17 * * 5` → `planning-diary-run.sh --cadence weekly` (every Friday 17:00)
+- `0 8 1 * *` → `planning-diary-run.sh --cadence monthly` (1st of month 08:00)
+- `0 8 1 1,4,7,10 *` → `planning-diary-run.sh --cadence quarterly` (1st Jan/Apr/Jul/Oct 08:00)
 
 These are wall-clock-pinned (Pulse is interval-only and cannot pin a wall-clock time). They silently
 miss when the primary machine is asleep at the scheduled time — see GAPS §4.
@@ -227,8 +227,8 @@ pulse.sh → bash {job}-run.sh </dev/null   [CODE: system/tools/{job}-run.sh]
       OR source ingest-run.lib.sh; require_primary "$JOB"
         (NOTE: callers of ingest-run.lib.sh:require_primary do NOT add `|| exit 0` —
          the function calls exit 0 internally; adding it is the primary-gate.sh calling convention only)
-      OR inline copy (archivist-run.lib.sh → return 0; cal-diary/vault/weekly-analyze/
-                       cal-vault-weekly/email-summary-write/item-store-freshness → exit 0)
+      OR inline copy (archivist-run.lib.sh → return 0; planning-diary/vault/weekly-analyze/
+                       planning-vault-weekly/email-summary-write/item-store-freshness → exit 0)
       OR _lead_gate in marc-research-lib.sh:41 (same logic, different function name)
       Mechanism in ALL cases:
         /usr/sbin/scutil --get ComputerName → mapped to THIS machine's short token
@@ -372,7 +372,7 @@ marc-deadman-run.sh → python3 marc-deadman.py
 
 ```
 {system-health|email-summary-freshness|item-store-freshness|sentinel-health|
- backlog-health|cal-health|clair-health|marc-health|deryl-books-health}-run.sh
+ backlog-health|planning-health|clair-health|marc-health|deryl-books-health}-run.sh
   → require_primary OR ingest_studio_gate   [same gate as B above]
   → python3 *.py OR emit_status.py
   → writes $DRIVE/state/status/{name}.json (atomic .tmp → os.replace)
@@ -401,7 +401,7 @@ These have NO machine gate and write only machine-local paths or the shared clon
 | `$DRIVE/state/primary-machine` | Drive-synced content | `lifehack-lead.sh` (human-run) | `pulse.sh` preflight · `require_primary` in EVERY writer runner | Text marker: the short machine token of the designated primary. Absence → fail-CLOSED for writers; pulse loop continues. |
 | `$DRIVE/state/status/_pulse-{machine}.json` | Drive-synced content | `pulse.sh` python3 inline (after every run cycle) | `system-health.py` (reads glob `_pulse-*.json`) · Helm dashboard | Machine-namespaced. schema_version:1. Fields: per-job `last_tick · consecutive_fails · disabled`. |
 | `$DRIVE/state/status/_pulse.json` | Drive-synced content | `pulse.sh` python3 inline (same cycle, last-writer-clobber) | Helm dashboard (transition back-compat) | Un-namespaced legacy. Both machines write to this file. Known collision; safe in transition. |
-| `$DRIVE/state/status/{desk}.json` | Drive-synced content | each `*-run.sh` via `emit_status.py` | `system-health.py` · Helm dashboard | Per-desk health tiles (emily · archivist · clair · deryl · dobby · marc · sentinel · backlog · cal · item-store · email-summary · security-posture · cal-vault-weekly · marc-weekly · marc-wednesday · _system-health). |
+| `$DRIVE/state/status/{desk}.json` | Drive-synced content | each `*-run.sh` via `emit_status.py` | `system-health.py` · Helm dashboard | Per-desk health tiles (emily · archivist · clair · deryl · dobby · marc · sentinel · backlog · planning · item-store · email-summary · security-posture · planning-vault-weekly · marc-weekly · marc-wednesday · _system-health). |
 | `/tmp/lifehack-{job}.lock` | ephemeral (machine-local) | `ingest_acquire_lock` (`mkdir` atomic) | `ingest_acquire_lock` (existence check; stale-steal after 1500s fixed for ingest runners, ARCH_WATCHDOG+300 for archivist runners) | PID-less lock dir. |
 | `~/.config/lifehack/claude-oauth-token` | machine-local (0600) | human setup / auth refresh | `ingest_load_auth` → `CLAUDE_CODE_OAUTH_TOKEN` | Headless Claude subscription token. |
 | `~/.config/lifehack/gws-credentials.json` | machine-local (0600) | human setup | `ingest_load_auth` → `GOOGLE_WORKSPACE_CLI_*` | gws keychain-free exported creds. |
@@ -418,7 +418,7 @@ These have NO machine gate and write only machine-local paths or the shared clon
 | `$DRIVE/system/learnings.md` | Drive-synced content | `@trim_md_days` builtin (learnings-trim job) TRIMS; `/save` skill APPENDS | sessions reading learnings | Trimmed to 90d-old sections. The `/save` skill writes; Pulse only trims. |
 | `$DRIVE/system/observability/` | Drive-synced content | observability pipeline | `@find_delete` builtin (observability-trim job) DELETES | `*.jsonl` files older than 30 days deleted. |
 | `$DRIVE/state/status/_system-health.json` | Drive-synced content | `system-health.py` (via system-health-run.sh, every 5 min) | `health-deadman-check.sh` (launchd, pinned to one designated machine) · Helm | The health sweeper's own output. |
-| `$DRIVE/state/item-store/tasks/` + `.../calendar/` | Drive-synced content | `tasks-store-sync-run.sh` + `calendar-store-sync-run.sh` (Pulse jobs, sole writers) | `item_store_read.py` · cal-pipeline · ingest desks | Tasks + calendar stores. |
+| `$DRIVE/state/item-store/tasks/` + `.../calendar/` | Drive-synced content | `tasks-store-sync-run.sh` + `calendar-store-sync-run.sh` (Pulse jobs, sole writers) | `item_store_read.py` · planning · ingest desks | Tasks + calendar stores. |
 | `$DRIVE/state/email-summary/threads-v2/` | Drive-synced content | `email-summary-write-run.sh` → `email_summary_sync.py --write-v2` (sole writer) | `email_service_read.py` | Faithful thread store. Pulse drives the write; reads go through the adapter. |
 
 ---
@@ -430,9 +430,9 @@ These have NO machine gate and write only machine-local paths or the shared clon
 Three named implementations plus multiple inline copies — all functionally identical in result:
 - `primary-gate.sh:require_primary()` — standalone; sourced by emily-breakdown, clair-billing
 - `ingest-run.lib.sh:require_primary()` — library function; sourced by clair-ingest, system-health, backlog-health and others
-- `ingest-run.lib.sh:ingest_studio_gate()` — name alias for `require_primary`; back-compat for pre-rename runners (cal-health, clair-health, sentinel-health, deryl-ingest, deryl-books-health, marc-health) (`ingest-run.lib.sh:83`)
+- `ingest-run.lib.sh:ingest_studio_gate()` — name alias for `require_primary`; back-compat for pre-rename runners (planning-health, clair-health, sentinel-health, deryl-ingest, deryl-books-health, marc-health) (`ingest-run.lib.sh:83`)
 - Inline copy in `archivist-run.lib.sh` `run_archivist()` step 1 — uses `return 0` (not `exit 0`; correct inside a function, but semantically different if the lib function is ever called from a subshell — see GAPS §1)
-- Inline copies in `cal-vault-run.sh`, `cal-diary-run.sh`, `cal-vault-weekly-run.sh`, `cp-utilities-run.sh`, `email-summary-write-run.sh`, `item-store-freshness-run.sh`
+- Inline copies in `planning-vault-run.sh`, `planning-diary-run.sh`, `planning-vault-weekly-run.sh`, `cp-utilities-run.sh`, `email-summary-write-run.sh`, `item-store-freshness-run.sh`
 - `_lead_gate()` in `marc-research-lib.sh:41` — same logic, different function name
 
 Mechanism in all cases: `/usr/sbin/scutil --get ComputerName` (absolute path — cron's $PATH omits `/usr/sbin`) → mapped to this machine's short token. Compare to `tr -d '[:space:]' < $DRIVE/state/primary-machine`. Non-lead → clean `exit 0` or `return 0`. Pulse's circuit breaker does NOT count deliberate stand-downs as failures.
@@ -511,7 +511,7 @@ versioned installer; `runner-standard.md` codifies the runner contract.
 - `machine-log-trim` registered `no` permanently: `@trim_md_days` cannot parse its pipe-delimited format (no `## YYYY-MM-DD` date headers). Re-enable only after adding a matching trim builtin. This is a dead entry in pulse-config.
 - `supabase-keepalive` / `supabase-backup` registered `no` in Pulse but still ACTIVE via launchd plists in the `launchd` block. Two schedulers for the same jobs until launchd plists are removed. Migration is pending; the Pulse version is the target.
 - `marc-wednesday` field reads `enabled: yes` but the comment above the job line says "DISABLED (no) until one live-proof run passes." The live code field wins — it WILL fire. Comment is stale; verify intent.
-- `cal-rollup-catchup` is NOT yet built: the three clock-pinned weekly/monthly/quarterly `cal-diary` jobs silently miss when the primary machine is asleep at scheduled wall-clock times. A Pulse interval job that checks for a missed period and builds if absent is the planned fix; not yet registered.
+- `planning-rollup-catchup` is NOT yet built: the three clock-pinned weekly/monthly/quarterly `planning-diary` jobs silently miss when the primary machine is asleep at scheduled wall-clock times. A Pulse interval job that checks for a missed period and builds if absent is the planned fix; not yet registered.
 - `runner-standard.md` claims "All 38 runners" comply but the migration table lists only 10 with confirmed status — 28 runners' compliance is opaque (audit gap; the doc is stale).
 - `system-health.py`'s `JOB_LABELS`, `JOB_DOWNSTREAM`, and `FRESH_TILES` are hardcoded dicts — new Pulse jobs silently get no label in health output and no staleness overlay.
 - `archivist-audit` silencing (debt-ledger `[ARCHIVIST-AUDIT-DEAD]`): the debt item flagged the runner as silent. NOTE: the 2026-07-13 inline annotation on that debt entry reads "LIKELY FALSE-ALARM — pulse.log shows the 2026-07-06 run fired, ran ~78min, hit a transient API drop (rc=1), NOT circuit-broken; next run due ~21:05 tonight. Clear this once tonight's run writes a fresh audit log." The silence may have been a transient failure, not a structural halt. The underlying architectural concern remains valid regardless: single-machine gating is the wrong posture for Drive-stateful cron. TARGET is: Drive-stateful cron jobs should run on BOTH machines (either a cross-machine lock OR idempotent+dedup-safe runs). Current single-machine-gated runners are PARTIAL vs target.
@@ -541,7 +541,7 @@ WRITES->    system/logs/maintenance-due.md · hook-doc-lint job is the sole writ
 FEEDS       helm                        · _pulse-*.json glob drives dashboard freshness + per-job heartbeat tiles
 FEEDS       helm                        · state/status/*.json tiles drive per-desk health cards
 FEEDS       marc-pipeline               · marc_research_run + marc_material_change_scan stamp desks/marc/organism/heartbeat/last-run.json; marc-deadman reads it
-FEEDS       cal-pipeline                · cal-vault-weekly-run.sh writes desks/cal/state/weekly-vault/ → cal-weekly-analyze-run.sh consumes
+FEEDS       planning                    · planning-vault-weekly-run.sh writes desks/cal/state/weekly-vault/ → planning-weekly-analyze-run.sh consumes (⚠ `desks/cal/` is DELIBERATE: the desk's code/jobs/tiles renamed to `planning`, the records directory did NOT — the operator's call, untaken)
 FEEDS       email-service               · email-summary-write-run.sh → state/email-summary/threads-v2/ (faithful thread store)
 FEEDS       grand-central               · item-store jobs → state/item-store/tasks/ + state/item-store/calendar/ (sole writers)
 SYNCS       two-machine-residency       · git-autopush/pull keep pulse-config.md in sync; NOTE: git-autopull.sh does NOT call install-schedulers.sh — it only does a git fetch + ff-only merge; install-schedulers.sh must be run manually after a pull to rebuild the crontab (bootstrap-machine.sh prints this as an echo instruction, not an automated call)
@@ -570,7 +570,7 @@ A trip on one machine does not propagate to the other. A `/tmp` wipe (reboot) re
 When `state/primary-machine` is unset, `pulse.sh` preflight logs a nag and CONTINUES the loop. Writer runners individually `exit 0` via `require_primary` — but non-writer infra jobs (`git-autopush/pull`, `bootstrap-sync`, `obsidian-reindex`, `hook-doc-lint`, `security-posture-scan`, `helm-keepalive`, `marc-deadman`, `learnings-trim`, `observability-trim`) all run on both machines with no gate. By design for resilience; means unattended infra writes can occur from both machines simultaneously without a designated lead.
 
 **§4 — Clock-pinned crons silently miss on a sleeping laptop-primary (FAIL-OPEN condition)**
-`cal-diary-weekly`, `cal-diary-monthly`, `cal-diary-quarterly` are direct crontab entries (not Pulse interval jobs). If the primary machine is asleep at the scheduled wall-clock time, the run is permanently missed — cron does not catch up. These are "best-effort + regenerable on demand." A `cal-rollup-catchup` Pulse job is the planned fix (debt-ledger `[CAL-ROLLUP-CATCHUP]`, `state:actionable`); not yet built.
+`planning-diary-weekly`, `planning-diary-monthly`, `planning-diary-quarterly` are direct crontab entries (not Pulse interval jobs). If the primary machine is asleep at the scheduled wall-clock time, the run is permanently missed — cron does not catch up. These are "best-effort + regenerable on demand." A `planning-rollup-catchup` Pulse job is the planned fix (debt-ledger `[CAL-ROLLUP-CATCHUP]`, `state:actionable`); not yet built.
 
 **§5 — rc=2 never trips the circuit breaker (FAIL-OPEN condition)**
 `pulse.sh:191–199` explicitly excludes rc=2 from the failure streak. A runner permanently stuck in transient-pre-flight (e.g. gws auth consistently failing, returning rc=2 on every tick) will log `WARN` on every tick forever without auto-disabling. The system-health sweeper's tile-staleness detection is the only backstop for a permanently-rc-2-stuck runner.

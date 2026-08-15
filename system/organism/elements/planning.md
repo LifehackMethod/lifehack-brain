@@ -9,9 +9,9 @@ generated_from:
   - .claude/skills/planning-daily/SKILL.md (the daily cadence — read whole, 2026-08-15)
   - .claude/skills/planning-weekly/SKILL.md (the weekly cadence — read whole, 2026-08-15)
   - .claude/skills/planning-weekly/prompts/00-system-layer.md (Phase 0, the priming contract)
-  - system/tools/planning-weekly-prime-run.sh (the one scheduled leg that carries the new name)
-  - system/tools/cal-vault-run.sh · system/tools/cal-vault-pull.py (the overnight pull, unscheduled)
-  - system/tools/cal-diary-run.sh · system/tools/cal-diary-capture.py (the diary, scheduled)
+  - system/tools/planning-weekly-prime-run.sh (the scheduled priming leg)
+  - system/tools/planning-vault-run.sh · system/tools/planning-vault-pull.py (the overnight pull, unscheduled)
+  - system/tools/planning-diary-run.sh · system/tools/planning-diary-capture.py (the diary, scheduled)
   - system/hooks/guard_calendar_writes.sh · system/hooks/guard_tasks_writes.sh · system/hooks/lib/tasks_guard.py
   - shared/cal_config.py (the four identifiers, and why none of them has a default)
   - system/pulse-config.md (the scheduler manifest — the jobs block read row by row)
@@ -25,7 +25,7 @@ authority: agent
 
 # planning — element detail
 
-> **LADDER: ELEMENT (full mechanics). up → manual (no `## planning` entry yet — see GAPS) ; ground truth → the live artifacts (generated_from)**
+> **LADDER: ELEMENT (full mechanics). up → manual#planning ; ground truth → the live artifacts (generated_from)**
 >
 > **Altitude = BASE (ground / street view).** The in-the-weeds detail of PLANNING — the cadence
 > layer that answers *"what do I do today"* and *"what does this week look like."*
@@ -38,11 +38,13 @@ authority: agent
 > Enforcement tags: `[hook]` (a real guard fires) · `[skill]` (skill logic / mandatory script) ·
 > `[honor]` (prose instruction only, no mechanical enforcement) · `[human]` (deliberate HITL pause).
 
-> ⛔ **CITATION BANNER — two names below are deliberately not files in this repository.**
+> ⛔ **CITATION BANNER — three names below are deliberately not files in this repository.**
 > `system/organism/elements/cal-pipeline.md` — ⛔ excluded from the migration: **personal.** It is
 > the donor's own calendar desk element, and this file is its generic replacement, not its copy.
 > `state/status/planning-weekly-prime.json` — ⛔ runtime-generated, created on first run, never
-> committed. Both are named here so a reader is redirected rather than sent hunting.
+> committed. `state/status/planning-diary.json` — ⛔ runtime-generated, same class, written by the
+> diary runner on its first tick. All three are named here so a reader is redirected rather than
+> sent hunting.
 
 ---
 
@@ -79,24 +81,39 @@ this explicitly).
 | the daily cadence | `.claude/skills/planning-daily/SKILL.md` (+ 11 prompt beats + 3 references) | ships · Layer 1 verified end to end · Layer 2 unproven here |
 | the weekly cadence | `.claude/skills/planning-weekly/SKILL.md` (+ ANCHOR + 17 prompt beats + 4 map-agents + 9 leverage angles + 6 council members) | ships · **UNDER CONSTRUCTION, never run end to end here** |
 | the mid-week map priming cron | `system/tools/planning-weekly-prime-run.sh` + its row in `system/pulse-config.md` | ships · scheduled · never LIVE-fired end to end |
-| the diary (capture + rollups) | `system/tools/cal-diary-capture.py` · `system/tools/cal-diary-rollup.py` · `system/tools/cal-diary-run.sh` | ships · scheduled (one row drives five cadences) |
-| the read-only calendar health check | `system/tools/cal-health.py` | ships · scheduled · no `*-run.sh` wrapper (no lock, no buzz) |
-| the overnight raw-vault pull | `system/tools/cal-vault-run.sh` → `system/tools/cal-vault-pull.py` | ships · **NO scheduler row** — see GAPS |
-| the weekly deep pull + its analysis | `system/tools/cal-vault-weekly-run.sh` → `system/tools/cal-window-to-vault.py` → `system/tools/cal-weekly-analyze-run.sh` | ships · **NO scheduler row** — see GAPS |
-| the overnight analysis panel | `system/tools/cal-analyze-run.sh` | ships · **NO scheduler row** — see GAPS |
-| the light metadata sweep | `system/tools/cal-light-sweep.py` | ships · called on demand by the daily |
-| the goals-list writer | `system/tools/cal-lifemap-write.py` | ships · called by the weekly's clerk |
+| the diary (capture + rollups) | `system/tools/planning-diary-capture.py` · `system/tools/planning-diary-rollup.py` · `system/tools/planning-diary-run.sh` | ships · scheduled (one row drives five cadences) |
+| the read-only calendar health check | `system/tools/planning-health.py` | ships · scheduled · no `*-run.sh` wrapper (no lock, no buzz) |
+| the overnight raw-vault pull | `system/tools/planning-vault-run.sh` → `system/tools/planning-vault-pull.py` | ships · **NO scheduler row** — see GAPS |
+| the weekly deep pull + its analysis | `system/tools/planning-vault-weekly-run.sh` → `system/tools/planning-window-to-vault.py` → `system/tools/planning-weekly-analyze-run.sh` | ships · **NO scheduler row** — see GAPS |
+| the overnight analysis panel | `system/tools/planning-analyze-run.sh` (+ its four lens briefs in `system/tools/planning-analysis/`) | ships · **NO scheduler row** — see GAPS |
+| the light metadata sweep | `system/tools/planning-light-sweep.py` | ships · called on demand by the daily |
+| the goals-list writer | `system/tools/planning-lifemap-write.py` | ships · called by the weekly's clerk |
 | the identifier reader | `shared/cal_config.py` | ships · **nothing here has a default** |
 | the two write walls | `system/hooks/guard_calendar_writes.sh` · `system/hooks/guard_tasks_writes.sh` (+ `system/hooks/lib/tasks_guard.py`) | ships · registered · **fire-tested LIVE this session** |
 
-⚠ **THE FILENAMES STILL SAY `cal`, AND THAT IS DELIBERATE.** The skills were renamed
-`cal-daily` → `planning-daily` and `cal-weekly` → `planning-weekly`; the **tools and the data paths
-were not.** `.claude/skills/planning-daily/SKILL.md` states why at length: the tools construct
-`<notes>/desks/cal/...` directly and `shared/cal_config.py` hardcodes `<notes>/config/cal.md`, so
-renaming the references inside the skills alone would point them at a folder nothing writes to.
-**This is a half-finished rename left visible on purpose — not a missed one.**
+⚠ **THE `cal` → `planning` RENAME LANDED ON 2026-08-15 — and it deliberately stops short of the
+data.** The skills went first (`cal-daily` → `planning-daily`, `cal-weekly` → `planning-weekly`);
+the twelve tool files, their test, and the four-file `cal-analysis/` lens directory followed and are
+`planning-*` on disk; the scheduler rows read `planning-diary` / `planning-health` /
+`planning-weekly-prime`; and the diary status tile is `state/status/planning-diary.json` — ⛔
+runtime-generated, never committed (see the citation banner above). **What still says `cal`, and
+correctly so:**
 
-⛔ **THERE IS NO `desks/planning/` TREE IN THIS REPOSITORY, AND THERE IS NOT MEANT TO BE.**
+- ⚠ **THE DATA PATH — `<notes>/desks/cal/…` — IS DELIBERATELY NOT RENAMED.** The desk's code, tools,
+  jobs and tiles are `planning`; **the records directory is NOT**, because moving the operator's live
+  records is *his* decision and **has not been taken**. Every tool in `system/tools/planning-*`
+  constructs `desks/cal/…` and every `.claude/skills/planning-*` prompt reads `desks/cal/…` — they
+  **agree**. This is a **KNOWN, INTENTIONAL SPLIT — do not "complete" it without his word.** A
+  session that "finishes the rename" in the tools silently forks the store: the tools would create a
+  fresh empty `desks/planning/` and write there while every skill kept reading `desks/cal/` and saw
+  nothing new. That exact over-rename happened once and was reverted on 2026-08-15.
+- **`shared/cal_config.py` and `<notes>/config/cal.md`** — these are NOT the desk. They are the
+  **CALENDAR-identifier** config, and `cal` there is short for *calendar*. They stay whatever the
+  desk is called, and a sweep that renames them is a bug, not a tidy-up.
+- **The `[CAL-*]` debt-ledger tags** (e.g. `[CAL-DIARY-FORMAT-DRIFT]`) — historical identifiers,
+  carried forward verbatim inside `planning-diary-capture.py` itself.
+
+⛔ **THERE IS NO `desks/` TREE IN THIS REPOSITORY, AND THERE IS NOT MEANT TO BE.**
 `system/desk-registry.yaml` ships **empty** (`desks: []`) by design — a fresh install has no desks,
 and a full desk is promoted by hand through `system/sops/desk-building-sop.md`. All planning
 **content** lives under the reader's own notes root, resolved through `shared/brain_root.py`, and is
@@ -134,9 +151,9 @@ it done. The skill argues its own case for this: *"human-in-the-loop execution s
 session"* governs the interrogation and the gates, **not** the flush of writes the reader already
 confirmed — already-decided I/O has no human left in its loop. `[skill]`
 
-**The one-dataset rail.** The heavy verbatim re-ingest (a full `system/tools/cal-vault-pull.py`
+**The one-dataset rail.** The heavy verbatim re-ingest (a full `system/tools/planning-vault-pull.py`
 rebuild) is banned mid-session — that is the freeze the skill exists to kill. A **light,
-metadata-only sweep** (`system/tools/cal-light-sweep.py`) is explicitly allowed and encouraged. The
+metadata-only sweep** (`system/tools/planning-light-sweep.py`) is explicitly allowed and encouraged. The
 distinction is diagnostic: re-reading for something that was already there means the morning capture
 **failed**, and papering over it with a re-read hides the real defect. `[honor]`
 
@@ -223,9 +240,9 @@ breaker. Credentials come from the two shared preflights, `system/tools/claude-a
 (required) and `system/tools/gws-auth.lib.sh` (optional here — the lenses read local files, so no
 Google means a still-useful result, not a failure).
 
-⚠ **The other three runners have no row at all** — `system/tools/cal-vault-run.sh` (the overnight
-pull the daily's Layer 2 is written around), `system/tools/cal-vault-weekly-run.sh`, and
-`system/tools/cal-analyze-run.sh`. `cal-vault-run.sh` says so in its own header. **The daily
+⚠ **The other three runners have no row at all** — `system/tools/planning-vault-run.sh` (the overnight
+pull the daily's Layer 2 is written around), `system/tools/planning-vault-weekly-run.sh`, and
+`system/tools/planning-analyze-run.sh`. `planning-vault-run.sh` says so in its own header. **The daily
 compensates:** its lookback beat now pulls live if no vault exists for today, *rather than assuming a
 cron ran* — because a fresh reader has no cron. So the absence degrades the experience without
 breaking it. See GAPS.
@@ -257,15 +274,19 @@ and task write refused, with a redirect naming the file to fill in.
 | Store | Path | Access | By |
 |---|---|---|---|
 | the reader's identifiers | `<notes>/config/cal.md` | READ only, via `shared/cal_config.py` | both skills; both guards, at fire time |
-| the daily raw vault | `<notes>/desks/cal/state/raw-vault/<today>/` | WRITE by the pull · READ by the daily | `system/tools/cal-vault-pull.py`; the daily |
+| the daily raw vault | `<notes>/desks/cal/state/raw-vault/<today>/` | WRITE by the pull · READ by the daily | `system/tools/planning-vault-pull.py`; the daily |
 | the daily scratchpad | `<notes>/desks/cal/state/raw-vault/<today>/session-scratchpad.md` | living world model — pruned/updated every turn, persisted at pass boundaries, **deleted in Pass 5** | the scribe; the clerk |
 | the weekly scratch dir | `<notes>/desks/cal/state/checkin-scratch/weekly-<YYYY-Www>/` | `map.md` written by priming or P0 · `window.json` the corpus · `session-scratchpad.md` the run | `system/tools/planning-weekly-prime-run.sh`; the weekly |
-| the diary | `<notes>/desks/cal/diary/{YYYY}/{MM}/{DD}.md` | WRITE (mechanical, fail-soft, zero credentials) | `system/tools/cal-diary-capture.py` |
+| the diary | `<notes>/desks/cal/diary/{YYYY}/{MM}/{DD}.md` | WRITE (mechanical, fail-soft, zero credentials) | `system/tools/planning-diary-capture.py` |
 | the weekly review record | `<notes>/desks/cal/records/weekly-reviews/<YYYY-Www>.md` | plain append | the P5 clerk |
-| the goals list / life map | Google Tasks + `<notes>/desks/cal/life-map.md` | READ-ONLY with **one** sanctioned write | `system/tools/cal-lifemap-write.py`; the clerk |
+| the goals list / life map | Google Tasks + `<notes>/desks/cal/life-map.md` | READ-ONLY with **one** sanctioned write | `system/tools/planning-lifemap-write.py`; the clerk |
 | the reader's lanes, rails, voice | `<notes>/desks/cal/skill-refs/user-canon.md` | READ | both skills |
 | the corpus window | the item store, via `shared/tools/item_store_window.py` | READ | P0; the priming cron |
 | the status tile | `state/status/planning-weekly-prime.json` | WRITE on every branch | the priming cron, via `system/tools/emit_status.py` |
+
+⚠ **Every path in this table says `desks/cal/` ON PURPOSE** — the desk is named `planning`
+everywhere in code, jobs and tiles; **the records directory is not, and moving it is the operator's
+decision, untaken.** See the rename note near the top of this file before "fixing" any row.
 
 ⚠ **`<notes>/desks/cal/skill-refs/user-canon.md` never ships, and the reason is stated in the skill
 rather than left to inference:** those are the reader's own life lanes, *"and ten of someone else's
@@ -364,14 +385,15 @@ GUARDED-BY   hook-plane            · guard_calendar_writes.sh (agent calendar o
                                      both fire-tested LIVE [hook]
 
 TRIGGERS     pulse-cron            · system/pulse-config.md carries planning-weekly-prime (daily tick, weekly
-                                     work), cal-diary (one row driving five cadences) and cal-health;
-                                     cal-vault / cal-vault-weekly / cal-analyze have NO row — see GAPS [skill]
+                                     work), planning-diary (one row driving five cadences) and
+                                     planning-health; planning-vault / planning-vault-weekly /
+                                     planning-analyze have NO row — see GAPS [skill]
 
 WRITES->     journal               · the diary under the reader's notes root is written by
-                                     cal-diary-capture.py, which protects the Human Delta block and
+                                     planning-diary-capture.py, which protects the Human Delta block and
                                      completes with gws entirely absent from PATH [skill]
 
-SHARES-STORE checkin               · /checkin's journal-first writes feed cal-diary-capture.py; a skipped
+SHARES-STORE checkin               · /checkin's journal-first writes feed planning-diary-capture.py; a skipped
                                      checkin starves the diary silently — the failure is invisible at the
                                      planning end [honor]
 
@@ -401,9 +423,9 @@ PROPOSES     backlog-authority     · the weekly's ranked output and the daily's
 
 ### GAPS
 
-1. ⛔ **THREE RUNNERS HAVE NO SCHEDULER ROW** — `system/tools/cal-vault-run.sh`,
-   `system/tools/cal-vault-weekly-run.sh`, `system/tools/cal-analyze-run.sh`. Verified this session
-   by reading the whole jobs block in `system/pulse-config.md`. `cal-vault-run.sh` names its own
+1. ⛔ **THREE RUNNERS HAVE NO SCHEDULER ROW** — `system/tools/planning-vault-run.sh`,
+   `system/tools/planning-vault-weekly-run.sh`, `system/tools/planning-analyze-run.sh`. Verified this
+   session by reading the whole jobs block in `system/pulse-config.md`. `planning-vault-run.sh` names its own
    absence in its header (*"this runner specifically has no row there yet"*). **Blast radius:** the
    "overnight vault" the daily's Layer 2 is written around never gets built unattended. Mitigated,
    not closed — the daily pulls live when no vault exists. **Disposition: unruled.**
@@ -427,11 +449,17 @@ PROPOSES     backlog-authority     · the weekly's ranked output and the daily's
    via `shared/cal_config.py`. `.claude/skills/planning-weekly/SKILL.md` still tells its run the id is
    in `<notes>/desks/cal/skill-refs/user-canon.md`. Both files ship; they disagree. This is a
    **finding** — do not quietly edit one to match the other, and do not stack a new rule on top of it.
-6. ⚠ **THIS ELEMENT HAS NO `## planning` ENTRY IN `system/organism/manual.md`.** The manual's ranked
-   index is deliberately frozen as the donor's list of 51, with a banner naming the ten that did not
-   migrate; a newly-authored element with no donor counterpart has no number to take, which is why
-   `system/organism/elements/brain.md` is not in it either. The middle-altitude entry is therefore
-   **owed**, not present. Naming it beats leaving a reader to discover the silence.
+6. ✅ **RESOLVED 2026-08-15 — the manual now carries a `## planning` entry, and it takes NO number.**
+   ~~This element has no `## planning` entry in `system/organism/manual.md`.~~ The manual's ranked index
+   is deliberately frozen as the donor's list of 51, with a banner naming the ten that did not migrate,
+   so a newly-authored element with no donor counterpart **has no number to take** — extending the list
+   to 52 would quietly turn a preserved artifact into a living one. The fix therefore sits OUTSIDE the
+   numbering: an ADDENDUM under the ranked index names the two elements authored here (`planning` and
+   `brain`), and a full `## planning` narrative entry was added at the end of the ELEMENT ENTRIES
+   section, which is unnumbered and so conflicts with nothing. ⏳ **Still owed: a `## brain` entry** —
+   `elements/brain.md` points `up → manual#brain` and that anchor does not exist yet.
+   *(While counting for this: the migration banner's "42 elements ship here" was stale — mechanically
+   it is 41 donor elements + 2 authored here = 43 files. Corrected in place.)*
 7. ⚠ **NO DOOR ON THE MAP.** The always-loaded map block in `CLAUDE.md` mentions planning only as one
    word inside the scheduled-jobs line; there is no goal-phrased routing line pointing at this file. A
    reader whose only source is the map cannot find the planning capability at all.
@@ -476,10 +504,17 @@ runners have no scheduler row. `·gap` for the MCP bypass in GAPS #3. `(honor)` 
    checklist (`.claude/skills/planning-weekly/BUILD-CHECKLIST.md`); neither substitutes for a real run.
 3. **Prove the email surface** against a real mailbox, or say plainly that the surface is two of
    three and stop describing a third.
-4. **Resolve the rename honestly** — either finish `cal` to `planning` across the tools and the data
-   paths in one move, or write down the decision that they stay. A half-rename left visible is correct
-   today and rots into confusion if nobody rules on it.
-5. **Owe the manual its entry and the map its door** (GAPS #6, #7).
+4. ⛔ **DO NOT "close out the rename" on the data path — there is nothing left to close.** Skills,
+   tools, scheduler rows and the status tile all carry `planning` as of 2026-08-15; **the store path
+   is `desks/cal/` on BOTH sides — the tools construct it and the `.claude/skills/planning-*` prompts
+   read it — and that agreement is CORRECT, not lag.** ⚠ *An earlier version of this entry called it
+   "a live mismatch" and asked for a sweep. That was written during an over-rename that had pushed
+   `desks/planning/` into the tools while the skills still read `desks/cal/`; the tools were reverted
+   on 2026-08-15 and the claim is now false.* **Renaming the records directory is the operator's
+   decision and has not been taken** — a session that does it anyway forks the store in silence.
+   ⚠ **`shared/cal_config.py` and `<notes>/config/cal.md` are separate again — they mean CALENDAR,
+   not the desk, and no rename touches them either way.**
+5. **Give the map its door** (GAP #7 — the manual entry, GAP #6, is now paid).
 
 ---
 
@@ -496,7 +531,7 @@ runners have no scheduler row. `·gap` for the MCP bypass in GAPS #3. `(honor)` 
   hand-set: the element label is not an entry in `system/tools/organism/label_manifest.yaml`, and no
   fixture exists for a skill's conversational discipline. What is REAL, verified by reading the
   artifacts this session: both skill trees ship whole; twelve tools ship under `system/tools/`; three
-  rows exist in `system/pulse-config.md` (`planning-weekly-prime`, `cal-diary`, `cal-health`);
+  rows exist in `system/pulse-config.md` (`planning-weekly-prime`, `planning-diary`, `planning-health`);
   `system/desk-registry.yaml` ships empty by design. What is HONOR-ONLY: the interrogative law, the
   blind chain, the one-dataset rail, the rolling roundup, mark-inference, and
   never-write-synchronously. What is UNPROVEN: any end-to-end run of either skill in this repository.

@@ -88,7 +88,7 @@ The email-service is the READ side of the faithful-thread store. Its job:
 ### TRIGGERS
 
 The email-service has no autonomous trigger — it is invoked by a caller (a desk skill, a sweep
-reader, the cal-daily runner) that needs to read a thread. Three invocation paths:
+reader, the planning-daily runner) that needs to read a thread. Three invocation paths:
 
 **1. Direct Python call — `read_thread(thread_id, desk, …)` (primary API)**
 The only sanctioned body-read path. Every desk that processes email calls this. Returns a named-port
@@ -253,7 +253,7 @@ Greps `shared/tools/`, `system/tools/`, and `desks/` for five Gmail-access patte
 (`gws gmail`, `gws mail`, `mcp__claude_ai_Gmail`, `users/me/messages`, `threads/get`). Any `.py`
 file outside the sanctioned set that matches → violation → janitor HARD-STOPS before a live run.
 Sanctioned set: `email_summary_sync.py`, `email_convert.py`, `email_service_contract.py`, and the
-`GMAIL_METADATA_ALLOWED` tuple (`cal-light-sweep.py`, metadata-only, permanent exception).
+`GMAIL_METADATA_ALLOWED` tuple (`planning-light-sweep.py`, with the pre-rename `cal-light-sweep.py` kept beside it; metadata-only, permanent exception).
 `email_service_contract.py:95 (file:line)`, `email_summary_sync.py:396-460 (file:line)`
 
 On any violation: janitor tiles DEGRADED, hard-stops. This is a CODE-level self-lock (no harness

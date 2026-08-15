@@ -131,7 +131,7 @@ All behavioral contracts are prose-only:
 
 3. **Invoked by advisory-council's Argue stage** — when `advisory-council` runs its Stage 2 (Argue / red-team), the adversarial charge is structurally different: it is advisor-against-advisor over an anonymized snapshot, with an explicit "refute mandate." This is `advisory-council`'s internal mechanism — it does NOT invoke `/red-team` as a skill. The two are conceptually related but structurally separate.
 
-4. **`cal-weekly` council: "red-team" label banned** — `cal-weekly/prompts/04-council.md` (line 16) explicitly bans the "red team" label in council dispatch framing ("the label makes members perform adversarialism instead of thinking"). When chairing a weekly council, `/red-team` is NOT invoked; advisors receive a neutral "challenge it" charge instead. This is a deliberate design choice, not a gap.
+4. **`planning-weekly` council: "red-team" label banned** — `planning-weekly/prompts/04-council.md` (line 16) explicitly bans the "red team" label in council dispatch framing ("the label makes members perform adversarialism instead of thinking"). When chairing a weekly council, `/red-team` is NOT invoked; advisors receive a neutral "challenge it" charge instead. This is a deliberate design choice, not a gap.
 
 5. **`/research` distinction** — `/research` explicitly states it is "not a red-team / refutation run" (`skills/research/SKILL.md` line 21); convergence-mapping measures the distribution of expert practice and does not argue a side. They are complementary: `/research` finds what experts converge on; `/red-team` challenges whether the plan survives.
 
@@ -184,7 +184,7 @@ COMPLEMENTS   council            · /council (convergence) and /red-team (critiq
 ```
 
 **Exclusions (documented by source):**
-- `cal-weekly` council (Phase 4): explicitly bans the `/red-team` label and framing in dispatch; advisors receive a neutral "challenge" charge instead (`04-council.md` line 16, `_member-format.md` line 5). This is a deliberate design decision, not a gap.
+- `planning-weekly` council (Phase 4): explicitly bans the `/red-team` label and framing in dispatch; advisors receive a neutral "challenge" charge instead (`04-council.md` line 16, `_member-format.md` line 5). This is a deliberate design decision, not a gap.
 
 ---
 

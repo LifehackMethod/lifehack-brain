@@ -14,7 +14,7 @@ generated_from:
   - system/tools/health-deadman-check.sh
   - system/tools/marc-deadman.py
   - system/pulse-config.md (system-health Pulse slot; launchd manifest)
-  - system/tools/cal-health.py
+  - system/tools/planning-health.py
   - system/tools/marc-health.py
   - system/tools/clair-health.py
   - system/tools/deryl-books-health.py
@@ -50,14 +50,14 @@ authority: user
 >
 > ⛔ **Every status tile named here is runtime-generated, created on first run, never committed** —
 > `state/status/*.json`, `state/status/_pulse-*.json`, `state/status/_system-health.json`,
-> `state/status/cal.json`, `state/status/marc.json`, `state/status/clair.json`,
+> `state/status/planning.json`, `state/status/marc.json`, `state/status/clair.json`,
 > `state/status/deryl.json`, `state/status/dobby.json`, `state/status/backlog.json`,
 > `state/status/sentinel.json`. These are outputs of a run, written into the reader's own notes
 > folder; a fresh checkout correctly has none of them. Two further destination facts: this system runs
 > on ONE machine, so `system/tools/pulse.sh` writes a single un-namespaced `_pulse.json` rather than
 > the donor's per-machine `_pulse-*.json` set; and the marc / clair / deryl / dobby producers are not
 > in this repository at all (those desks are excluded from the migration), so their tiles never appear
-> here even at runtime. The cal, backlog and sentinel producers do ship, so those three tiles appear
+> here even at runtime. The planning, backlog and sentinel producers do ship, so those three tiles appear
 > once their job has run.
 >
 > ⛔ `state/health.jsonl` — never a committed file, and not written here at all. This repository's
@@ -137,7 +137,7 @@ a single shared Drive file, so exactly one host writes it. The sweeper READS the
 output. Two overlays survive even a fresh heartbeat tick: tile staleness and unexpected-zero. If a
 job updates its heartbeat every 5 minutes but its tile stops refreshing, it shows STALE, not UP.
 
-**Cron-only tile-watch:** `cal-vault`, `cal-analyze`, `cal-diary` are OS-crontab scheduled (not Pulse
+**Cron-only tile-watch:** `planning-vault`, `planning-analyze`, `planning-diary` are OS-crontab scheduled (not Pulse
 slots). The sweeper watches their status tiles directly via `assess_tile_only()` at `system-health.py:267`.
 This is runner-standard §3 compliance: crontab-scheduled runners emit tiles; aliveness watches tiles,
 not heartbeats.
@@ -315,7 +315,7 @@ sweeper consumes these tiles for STALE detection and unexpected-zero overlay.
 
 | Producer | Pulse slot | Cadence | Tile path | FRESH_TILES entry |
 |---|---|---|---|---|
-| `cal-health.py` / `cal-health-run.sh` | `cal-health` | UNVERIFIED (not in pulse-config.md excerpt read) | `state/status/cal.json` | yes |
+| `planning-health.py` (⚠ no `-run.sh` wrapper here — the Pulse row calls the checker directly) | `planning-health` | 21600s (6h) | `state/status/planning.json` | yes |
 | `marc-health.py` / `marc-health-run.sh` | `marc-health` | UNVERIFIED | `state/status/marc.json` | yes |
 | `clair-health.py` / `clair-health-run.sh` | `clair-health` | UNVERIFIED | `state/status/clair.json` | yes |
 | `deryl-books-health.py` / `deryl-books-health-run.sh` | `deryl-books-health` | 86400s (24h) | `state/status/deryl.json` | yes (`deryl-books-health`) |

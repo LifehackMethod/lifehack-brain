@@ -411,8 +411,10 @@ useful is unknown.
 
 > **⛔ TEN OF THE 51 DID NOT MIGRATE — read this before following a pointer** (migration note, 2026-08-15).
 > This index, and the element entries below it, are the donor's list of 51 and are kept whole on purpose: a
-> list that quietly drops what was left behind teaches you the system is smaller than it is. **42 elements
-> ship here. These ten do not, and their `elements/<slug>.md` files are absent by decision, not by accident:**
+> list that quietly drops what was left behind teaches you the system is smaller than it is. **41 of the 51
+> ship here** *(counted mechanically 2026-08-15 against `elements/` — the earlier figure of 42 was a
+> file-count taken before a second authored-here element existed; see the ADDENDUM below)*. **These ten do
+> not, and their `elements/<slug>.md` files are absent by decision, not by accident:**
 >
 > - `elements/emily-desk.md` · `elements/marc-desk.md` · `elements/clair-desk.md` · `elements/deryl-desk.md` ·
 >   `elements/dobby-desk.md` · `elements/cal-pipeline.md` — ⛔ excluded from the migration: **personal.** They
@@ -428,6 +430,20 @@ useful is unknown.
 > Every other numbered line below resolves. If a pointer in this index or a `## <slug>` entry further down
 > names one of the ten, that is this banner's subject — the entry describes a part of the donor system that
 > stayed there.
+
+> ⭐ **ADDENDUM — TWO ELEMENTS WERE AUTHORED HERE AND TAKE NO NUMBER.** The numbered list above is the
+> **donor's** list of 51 and is frozen at 51 on purpose; a 52nd line would quietly turn a preserved
+> artifact into a living one, and then nobody could tell which entries were inherited and which were
+> written here. So these two sit outside the numbering rather than extending it. **Both files exist on
+> disk and both ship** *(43 files in `elements/` = 41 donor + these 2, counted mechanically 2026-08-15)*:
+>
+> - **planning** *[GLOBAL]* — PARTIAL·gap [provisional] (honor) → `elements/planning.md` · ↓ `#planning`
+>   The daily + weekly cadence layer. It is **not** a rename of the donor's `cal-pipeline` (#44, which
+>   stayed) — that file described one person's own calendar desk; this one describes the generic
+>   capability that shipped. Do not reconcile the two.
+> - **brain** *[GLOBAL]* — PARTIAL [provisional] (honor) → `elements/brain.md` · ⏳ no `## brain` entry
+>   below yet. The system's self-description layer — this manual, the map above it, and the element
+>   corpus below it. Its middle-altitude entry is **owed, not present**; the base file is complete.
 
 1. **ingest-gate** *[GLOBAL]* — LIVE·gap → `elements/ingest-gate.md`  · ↓ `#ingest-gate`
 2. **security-ingest-gate** *[GLOBAL]* — LIVE → `elements/security-ingest-gate.md`  · ↓ `#security-ingest-gate`
@@ -624,7 +640,7 @@ INTEROP:
   SYNCS      session-context-loader · session_context_loader.sh pre-loads desk canon at SessionStart; /read Step 0.6 must skip same-desk canon already loaded (honor-system dedup)
   COMPLEMENTS archivist             · archivist WRITES-> and PROPOSES to records + canon; /read surfaces what archivist filed — full curation cycle
   READS      huddle-board           · /checkin Step 1.5 reads huddle channel via huddle.py mine; flag files + message data at $DRIVE/state/huddle/
-  FEEDS      cal-pipeline           · /checkin journal-first writes (Step 3.6) feed cal-diary-capture.py; skip = starves cal pipeline silently
+  FEEDS      planning               · /checkin journal-first writes (Step 3.6) feed planning-diary-capture.py; skip = starves the planning pipeline silently
   READS      telos                  · $DRIVE/state/telos.md pre-loaded by session_context_loader; /read deduplicates (honor-system)
   GUARDED-BY ingest_gate_enforce    · PreToolUse Read/Bash — BLOCKS external reads; passes all internal trusted-zone .md reads freely (correct by design)
   GUARDED-BY guard_write_paths      · PreToolUse Write|Edit — /checkin brief + journal writes stay in approved Drive paths
@@ -638,8 +654,8 @@ INTEROP:
   WRITES→  checkin           · Step 3.6b append-only journal-first write before/as the brief Story Log is updated
   WRITES→  project-manager   · journal-first hard rule: dead-end, decision, or key number written to brief must hit journal first (same Edit, never deferred)
   WRITES→  marc-desk         · marc-sensor appends one TRIP row per VIX regime escalation; marc-pulse-journal appends one market-pulse line per slot/day — both via Python file I/O outside the hook plane
-  FEEDS    cal-diary-capture  · cal-diary-capture.py reads journal.md as the only cross-desk narrative source for each day's Machine Recap (ONLY transit point, by design)
-  FEEDS    cal-diary-rollup   · cal-diary-rollup.py reads journal.md for period-range aggregations (weekly/monthly/quarterly/yearly) by desk + by slug
+  FEEDS    planning-diary-capture  · planning-diary-capture.py reads journal.md as the only cross-desk narrative source for each day's Machine Recap (ONLY transit point, by design)
+  FEEDS    planning-diary-rollup   · planning-diary-rollup.py reads journal.md for period-range aggregations (weekly/monthly/quarterly/yearly) by desk + by slug
   READS    read               · /read Step 0 loads a journal slice filtered by desk or slug; surfaces gap-since-last-entry staleness signal; mandates coverage disclaimer
   READS    distill            · pulls last 30 journal rows for the target desk as one of its named source streams
   READS    throughline        · reads last ~10 journal rows for a slug tagged failed:/DEAD END/PIVOT as the storyline-and-failure source for its sub-agent
@@ -694,7 +710,7 @@ INTEROP:
   READS       google-capability-registry.yaml · tiers + risk classes + per-desk access model
   READS       gws-contract.md                 · canonical invocation patterns, auth rules, zsh quoting rules
   READS       google-policy.md                · prohibitions, admin exception, guarded capability list
-  WRITES→     cal-pipeline                    · calendar events read/write through this plane
+  WRITES→     planning                        · calendar events read/write through this plane
   WRITES→     email-ingest                    · Gmail reads through this plane via email_convert.py / email_service_read.py
   WRITES→     sheets-desks                    · Sheets reads/writes (deryl DFM, clair billing, reconcile) through this plane
   FEEDS       safe_calendar.py                · gws-plane invokes; wrapper sanitizes calendar event free-text before it enters context
@@ -728,7 +744,7 @@ INTEROP:
   FEEDS        helm                 · _pulse-*.json glob drives dashboard freshness + per-job heartbeat tiles
   FEEDS        helm                 · state/status/*.json tiles drive per-desk health cards
   FEEDS        marc-pipeline        · marc_research_run + marc_material_change_scan stamp desks/marc/organism/heartbeat/last-run.json; marc-deadman reads it
-  FEEDS        cal-pipeline         · cal-vault-weekly-run.sh writes desks/cal/state/weekly-vault/ → cal-weekly-analyze-run.sh consumes
+  FEEDS        planning             · planning-vault-weekly-run.sh writes desks/cal/state/weekly-vault/ → planning-weekly-analyze-run.sh consumes (⚠ desks/cal/ is DELIBERATE — code/jobs/tiles renamed to planning, the records directory was NOT)
   FEEDS        email-service        · email-summary-write-run.sh → state/email-summary/threads-v2/ (faithful thread store)
   FEEDS        grand-central        · item-store jobs → state/item-store/tasks/ + state/item-store/calendar/ (sole writers)
   SYNCS        two-machine-residency · git-autopush/pull keep pulse-config.md in sync; NOTE: git-autopull does not call install-schedulers.sh — manual install required after pull
@@ -747,8 +763,8 @@ Pulse-dispatched headless runners pull Gmail threads, Google Tasks, and Calendar
 
 INTEROP:
   FEEDS      email-service          · state/email-summary/threads-v2/ is the exclusive store email_service_read.py serves to the 4 ingest desks; grand-central is sole Pulse writer
-  FEEDS      cal-pipeline           · item_store_read.read_item("calendar") reads state/item-store/calendar/ for event payloads; grand-central (calendar_store_sync.py) is sole Pulse writer
-  FEEDS      cal-pipeline           · item_store_read.read_item("task") reads state/item-store/tasks/ for task payloads; grand-central (tasks_store_sync.py) is sole Pulse writer
+  FEEDS      planning               · item_store_read.read_item("calendar") reads state/item-store/calendar/ for event payloads; grand-central (calendar_store_sync.py) is sole Pulse writer
+  FEEDS      planning               · item_store_read.read_item("task") reads state/item-store/tasks/ for task payloads; grand-central (tasks_store_sync.py) is sole Pulse writer
   WRITES→    helm                   · state/status/email-summary.json written by email_summary_sync.py via stamp_write_success() after RC=0; read by freshness runner for local DEGRADED notification
   FEEDS      item-store-freshness-runner  · grand-central's output stores (item-store/tasks/, item-store/calendar/) are the input item_store_read.py --freshness-check reads; that runner writes state/status/item-store.json
   TRIGGERS   notify-plane           · write-runners and freshness-runners call notify-send.sh on ERROR/DEGRADED; grand-central is a direct trigger source on every write failure
@@ -794,7 +810,7 @@ INTEROP:
   FEEDS       deryl-desk         · deryl-ingest uses read_thread() as store-first read path; body-via-scratch for tooled sessions, body-inline for read-only; live wiring per-desk status UNVERIFIED
   FEEDS       emily-desk         · Emily ingest uses read_thread() as store-first read path; Cal and Emily are tooled (isolate=True by default) — body lands in /tmp/rdr, must spawn ingest-reader
   FEEDS       clair-desk         · Clair ingest uses read_thread() as store-first read path
-  FEEDS       cal-desk           · Cal ingest uses read_thread() as store-first read path; Cal is tooled, body isolation applies
+  FEEDS       planning           · Cal ingest uses read_thread() as store-first read path; the planning desk is tooled, body isolation applies
   CHAINS      ingest-reader      · for any tooled desk or flagged thread, read_thread() writes body to /tmp/rdr/ and sets reader_required=True; controller MUST spawn tool-less ingest-reader on scratch_path
   GUARDED-BY  ingest_gate_enforce.sh · Ra-2 scratch-dir lock blocks main/controller session Read of /tmp/rdr/*; sub-agent (has agent_id) is allowed — the sanctioned reader-actor path; HOOK UNVERIFIED on the second machine
   READS       email_service_contract.py · janitor imports SUMMARY_MODEL · MAX_WORKERS · entrypoint pins at startup; validate_contract() greps tree for single-writer invariant; import fail → hard-stop
@@ -814,7 +830,7 @@ INTEROP:
   WRITES→     /tmp/rdr/               · read adapter writes isolated free-text scratch for the tool-less ingest-reader on every isolate=True read
   FEEDS       item_store_window.py    · time-window sweep calls iter_item_dates() + read_item(); composes tasks + calendar + email into one read_window() call
   FEEDS       email-service           · item_store_window.py composes both adapters — email-service is the sibling adapter for the email store
-  FEEDS       cal-pipeline            · cal-daily + cal-weekly call item_store_window.py instead of hitting Google live; the store is the query layer
+  FEEDS       planning                · planning-daily + planning-weekly call item_store_window.py instead of hitting Google live; the store is the query layer
   FEEDS       hitl_note_store.py      · bundle mode checks HITL note store per item; a matching note may replace the raw item body before bundling
   KEYS-OFF    ingest-gate             · ingest_gate_enforce.sh hook wall (PreToolUse Bash + Read) makes the adapter the only read path in; without it the security model is advisory
   GUARDED-BY  ingest_gate_enforce.sh  · direct Read of state/item-store/ BLOCKED; un-wrapped Bash reads BLOCKED; non-writer Bash writes BLOCKED — all three rules live inside this hook
@@ -1038,7 +1054,7 @@ Three orienting skills — diagnose → year-anchor → tension-surface — none
 INTEROP:
   FEEDS        memory-read      · /telos updates state/telos.md; the memory-read element (/checkin) reads it as the whole-system desired-outcome anchor at root scope
   READS        project-manager  · /throughline reads the brief's ## DESIRED OUTCOME + ## DEAD ENDS when assembling the plot from the Cal diary (single-project scope) — reads only, never writes the brief
-  READS        cal-diary        · /throughline reads desks/cal/diary/… rollups as the primary origin→now data source for diary-assembled plots
+  READS        planning-diary   · /throughline reads desks/cal/diary/… rollups as the primary origin→now data source for diary-assembled plots (⚠ desks/cal/ is DELIBERATE — code/jobs/tiles renamed to planning, the records directory was NOT)
   FEEDS        execution-layer  · /first-principles produces a sharpened question / "build this first" / advisory structure the user carries into any execution skill; no runtime handoff — the artifact is verbal
   CHAINS       safe-reader-plane · /telos Life Map free-text is reader-actor isolated; /telos chains through safe_tasks.py (structured fields) → ingest-reader subagent (free-text) before consuming task notes
   GUARDED-BY   guard_throughline_write_scope   · PreToolUse Write|Edit: fires only while throughline_flag.sh is armed; hard-blocks any write outside the scratchpad dir during a /throughline run
@@ -1064,7 +1080,7 @@ Two skills sharing one blind-diverge → argue → converge protocol — /adviso
 
 INTEROP:
   TRIGGERS    architecture-planning-sop · SOP calls /advisory-council at Stages 1, 4, and 6 using the same roster cartridge; SOP's own subagents stay sonnet, only the advisors run opus
-  TRIGGERS    cal-weekly         · cal-weekly Phase 4 IS the advisory-council engine — dispatches 6 member files as the advisor roster, running blind-diverge → argue → converge; members run opus
+  TRIGGERS    planning-weekly    · planning-weekly Phase 4 IS the advisory-council engine — dispatches 6 member files as the advisor roster, running blind-diverge → argue → converge; members run opus
   TRIGGERS    marc-checkin       · marc-checkin Stage 2 optionally invokes /advisory-council on the market-analysis council (sonnet-locked, cost exception); never auto-summoned
   READS       pm-flag            · /advisory-council reads pm_flag.sh status + plan_flag.sh path at Stage 0 to build the settled-ground card from active brief and plan
   READS       pm-flag   · plan_flag.sh path sub-command (added 2026-07-21 for /advisory-council) returns plan file path for the settled-ground card
@@ -1204,6 +1220,30 @@ INTEROP:
   KEYS-OFF     two-machine-residency · machine token in the PATH, never only the payload; one writer per path per machine
   COMPLEMENTS  backlog             · ⚖ RULED 2026-08-05 by the operator — the debt ledger is Efficiency's INPUT, not its exile; it may DEMOTE and ARCHIVE ledger items on POSITIVE EVIDENCE ONLY (§18.5a carve-out). NOT YET BUILT
   GUARDED-BY   guard_findings_write.sh · blocks any Bash/Write/Edit into the store that bypasses emit_recommendation.py; resolves shell variables before matching (the T15.32 bypass). Watched firing on the PRIMARY machine only — the second machine is dark since 2026-07-04
+
+---
+
+> ⭐ **AUTHORED HERE — the entries below take no donor number** (see the ADDENDUM under the ranked index).
+> They are `## <slug>` narratives in the same format as every entry above; they are simply not part of the
+> donor's frozen list of 51.
+
+## planning · planning daily · planning weekly   [PARTIAL·gap [provisional] (honor)]   → elements/planning.md
+Two interrogative cadence skills — a daily trust-fall and a weekly helmsman — that mine the reader for the judgment a machine cannot pull from data, batch every write to a ledger, and flush it only behind a gate the reader confirms by hand. It is the ONE place this system asks instead of reasoning over material that already exists: a day does not exist yet. **Not the donor's `cal-pipeline` (#44)** — that described one person's calendar desk; this describes the generic capability that shipped. Two real hook guards wall the write path; the interrogative discipline itself is prose.
+
+INTEROP:
+  CHAINS       council-engine        · planning-weekly Phase 4 IS the advisory-council engine — six member briefs dispatched as the advisor roster (blind-diverge → argue → converge); the ONLY opus subagents in this element
+  FEEDS        item-store            · both skills read the faithful de-duplicated library via shared/tools/item_store_window.py (--mode bundle); metadata-only and index-only reads are REJECTED — the store is the query layer, not Google
+  KEYS-OFF     gws-plane             · every calendar and task read/write exits through the gws CLI; the four identifiers come from the reader's own `<notes>/config/cal.md` via shared/cal_config.py, never a constant in a tool (`cal` there means CALENDAR, not the renamed desk)
+  GUARDED-BY   hook-plane            · guard_calendar_writes.sh (agent calendar only, default-deny) + guard_tasks_writes.sh with lib/tasks_guard.py (goals list read-only, one carve-out, delete/clear never); both registered PreToolUse/Bash and both fire-tested LIVE
+  TRIGGERS-BY  pulse-cron            · planning-weekly-prime (daily tick, weekly work), planning-diary (one row driving five cadences), planning-health; planning-vault / planning-vault-weekly / planning-analyze have NO row — the daily compensates by pulling live
+  WRITES→      journal               · the diary under the reader's notes root is written by planning-diary-capture.py, which preserves the Human Delta block and completes with gws entirely absent from PATH
+  SHARES-STORE memory-read           · /checkin's journal-first writes feed planning-diary-capture.py; a skipped checkin starves the diary silently and the failure is invisible at the planning end
+  SHARES       statusline-hud        · skill_hud.sh paints the per-phase HUD, scratch_flag.sh the scratchpad indicator — rendering, never enforcement
+  SHARES       scratch-capture-gate  · scratch_flag.sh arms the gate on the resolved scratchpad path; the weekly raises SCRATCH_TTL_MIN to 180 because its run is long
+  READS        safe-reader-plane     · email bodies, invites and task text from anyone are ADVERSARIAL DATA — facts extracted, embedded instructions never obeyed; the priming cron restates this verbatim in every lens prompt
+  COMPLEMENTS  email-service         · the daily's email surface routes through shared/tools/email_convert.py, which ships but has never run against a real mailbox — the inbox slice is EMPTY BY BREAKAGE and says so
+  COMPLEMENTS  build-plan-plane      · a different sense of "plan": that element structures and executes PROJECT plans (Phase/Feature/Task); this one plans a DAY and a WEEK. No shared code, no shared store — named so nobody merges them
+  PROPOSES     backlog-authority     · the weekly's ranked output and the daily's open-loop pass surface work the reader then decides on; neither writes a backlog itself
 
 ## Delivery (Feature 1.6 — after the elements are authored)
 One pointer line in global `CLAUDE.md` + one line per desk naming the elements that touch it. A PreToolUse

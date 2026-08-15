@@ -11,8 +11,8 @@ generated_from:
   - skills/advisory-council/SKILL.md
   - skills/advisory-council/SCOPE.md
   - skills/council/SKILL.md
-  - skills/cal-weekly/prompts/04-council.md
-  - skills/cal-weekly/prompts/council/_member-format.md
+  - skills/planning-weekly/prompts/04-council.md
+  - skills/planning-weekly/prompts/council/_member-format.md
   - skills/marc-checkin/SKILL.md (lines 79–87)
   - system/sops/architecture-planning-sop.md (lines 59–104, 139)
   - system/hooks/plan_flag.sh (lines 94–96)
@@ -84,7 +84,7 @@ Use `/council` for the known five desks; use `/advisory-council` for everything 
 - "convene my X council" / "advisory board" / "what would my advisors say"
 - Any invocation from `architecture-planning-sop.md` Stages 1, 4, and 6
 - `marc-checkin` Stage 2 when the operator says yes (SKILL.md line 83)
-- `cal-weekly` Phase 4 (`04-council.md` — built ON the advisory-council engine)
+- `planning-weekly` Phase 4 (`04-council.md` — built ON the advisory-council engine)
 
 **`/council`** fires on:
 - Explicit `/council [question]`
@@ -419,10 +419,10 @@ each condition?"). The SOP's own exploration/drafting subagents stay **sonnet** 
 `/advisory-council` engine's advisors run **opus** (the SOP explicitly states this exception at
 line 139). Loop exit: READY verdict from the council AND stakeholder confirms no overrides outstanding.
 
-**2. `cal-weekly` Phase 4 IS the advisory-council engine.**
-(skills/cal-weekly/prompts/04-council.md)
+**2. `planning-weekly` Phase 4 IS the advisory-council engine.**
+(skills/planning-weekly/prompts/04-council.md)
 The weekly planning skill's pressure-testing phase dispatches 6 fresh-context member files from
-`skills/cal-weekly/prompts/council/*.md` as the advisory-council's advisor roster, running the
+`skills/planning-weekly/prompts/council/*.md` as the advisory-council's advisor roster, running the
 blind-diverge → argue → converge protocol. Members run **opus** (the designed exception, as stated in
 `04-council.md` and `_member-format.md`). Cost note in `04-council.md`: "6 opus advisors/run is heavier
 than the rule's 'small roster 2–4' — the operator can down-scope to sonnet if cost bites." The Phase 4 output
@@ -487,7 +487,7 @@ but deferred (parked / monitoring) — not blocking daily use.
 - **check_detail:** No hooks registered for either skill (settings.json grep returned zero council entries
   — confirmed 2026-07-24). All behavioral contracts are honor-system (`[honor]`) or structural (isolated
   subagent context). LIVE: both skills fire and the core protocols run in production (advisory-council
-  engine in cal-weekly Phase 4 and architecture-planning-sop Stages 1/4/6; /council in cross-desk
+  engine in planning-weekly Phase 4 and architecture-planning-sop Stages 1/4/6; /council in cross-desk
   sessions). `·gap`: (1) opus/sonnet pins are prose-only with documented drift risk (debt-ledger
   `[COUNCIL-MODEL-DRIFT-GUARD]`, parked); (2) settled-ground card unvalidated in production (monitoring);
   (3) advisor isolation structural but not hook-verified; (4) no cartridge write-guard. A tip-only

@@ -543,7 +543,7 @@ consequence is invisible floor-absence.
 
 - `READS` `telos` · `session_context_loader.sh` reads `state/telos.md` at every SessionStart;
   `/telos` is the sole documented writer of that file under human approval (exhaustive grep across
-  cal-weekly files found zero telos write references — the cal-weekly council phase does NOT write
+  planning-weekly files found zero telos write references — the planning-weekly council phase does NOT write
   to `state/telos.md`). The pyramid is the always-on injection path; `/telos` is the update path.
   They share the single file.
 

@@ -126,7 +126,7 @@ cadence (`21600 s` in `system/pulse-config.md`):
 
 1. Enumerate ALL Google Task lists via `gws tasks tasklists list` → list of `(list_id, list_title)`.
    [line 240-263]
-2. For each list: call `safe_tasks.py --desk cal --redact` (paginated, up to 5000 tasks/list via
+2. For each list: call `safe_tasks.py --desk planning --redact` (paginated, up to 5000 tasks/list via
    `nextPageToken`). `--redact` neutralizes injection spans IN-PLACE before any field is stored.
    [line 155-222]
 3. Security gate per task: scan free-text (`title` + `notes`) via `safe_input.scan_for_injection`,
@@ -445,7 +445,7 @@ fields only, no free-text) for windowing, then `read_item()` for the secure payl
 **FEEDS** `email_service_read.py` — sibling adapter; `item_store_window.py` composes BOTH adapters
 into one sweep (tasks + calendar + email in a single `read_window()` call).
 
-**FEEDS** `cal-weekly`, `cal-daily` and other cadence skills — they call `item_store_window.py`
+**FEEDS** `planning-weekly`, `planning-daily` and other cadence skills — they call `item_store_window.py`
 instead of hitting Google live; the store is the query layer.
 
 **FEEDS** `hitl_note_store.py` — in bundle mode the sweep checks the HITL note store per item;

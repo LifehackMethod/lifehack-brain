@@ -100,7 +100,7 @@ Every step below is derived from `shared/tools/ingest_gate.py` (`gate()`, lines 
 `gate() → _provenance_tag() → sha256(raw_content)[:8] → "{desk_id}/{source_type}/{sha256_8}"`
 
 Computed on the RAW (pre-sanitize) bytes so the tag witnesses exactly what was screened. Not a secret;
-tamper-evident. Format: `{desk_id}/{source_type}/{sha256_8}` (e.g. `cal/calendar/a3f1c2b9`).
+tamper-evident. Format: `{desk_id}/{source_type}/{sha256_8}` (e.g. `planning/calendar/a3f1c2b9`).
 
 `[skill]` — runs unconditionally before any sanitize/scan step.
 
@@ -217,7 +217,7 @@ Overridable: `INGEST_PROVENANCE_LOG` env var (used in tests).
 
 **Record format (`ingest_gate.py:70–71`):**
 ```json
-{"ts":"2026-07-24T10:00:00+10:00","desk":"cal","source_type":"calendar","provenance_tag":"cal/calendar/a3f1c2b9","verdict":"clean"}
+{"ts":"2026-07-24T10:00:00+10:00","desk":"planning","source_type":"calendar","provenance_tag":"planning/calendar/a3f1c2b9","verdict":"clean"}
 ```
 
 **`_breadcrumb` is NEVER-RAISES** (`ingest_gate.py:75–76`): any write failure is swallowed to stderr;

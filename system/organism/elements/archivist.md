@@ -77,7 +77,9 @@ Pulse fires `archivist-deepmine-run.sh` every 345 600 s (~4 days). Registered li
 `archivist-deepmine | yes | 345600`. A dispatcher (`arch_prerun`, lines 39–100 of
 `archivist-deepmine-run.sh`) picks the single most-overdue desk from the Drive-durable
 `state/archivist/deepmine-ledger.json`, skipping desks on a static blocklist:
-`ARCH_DEEPMINE_SKIP_DESKS="cal marc dobby emily"` (line 27 of the runner). Eligible
+`ARCH_DEEPMINE_SKIP_DESKS="cal marc dobby emily"` (the DONOR's default — ⚠ verified this
+session, `system/tools/archivist-deepmine-run.sh` line 41 ships it **EMPTY** here and says so at
+line 20, so nothing is skipped by default at this destination). Eligible
 rotation as of 2026-07-23: `clair · deryl · root`. Effective per-desk cadence: ~30 days;
 `PER_DESK_MIN_AGE_DAYS=25`. If no desk is due, exits 0 clean.
 
@@ -475,8 +477,9 @@ informative. No active data path feeds these metrics anymore.
 
 **GAP-7 — deepmine skip-list is static in runner code, not Drive-durable config**
 Source: `system/tools/archivist-deepmine-run.sh` line 27.
-`ARCH_DEEPMINE_SKIP_DESKS="${ARCH_DEEPMINE_SKIP_DESKS:-cal marc dobby emily}"` is baked into
-the wrapper. Adding a new desk to the rotation requires a code edit + git push, not a Drive
+`ARCH_DEEPMINE_SKIP_DESKS="${ARCH_DEEPMINE_SKIP_DESKS:-cal marc dobby emily}"` was baked into
+the donor's wrapper. ⚠ **Here the default is EMPTY** (`…:-}`, line 41) — the gap is the mechanism
+(static in code, not Drive-durable config), not the donor's specific desk list. Adding a new desk to the rotation requires a code edit + git push, not a Drive
 config change. The `emily` desk has a code comment: "READY but BIG — add back once the
 per-run BODY-CAP exists (logged as tech-debt)." That body-cap does not exist in current code.
 
