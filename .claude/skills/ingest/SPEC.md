@@ -472,9 +472,9 @@ Verified in-file 2026-08-04. **The enforcement column is the load-bearing one.**
 | R4 | The MAIN session may not read the reader scratch (`paths.py scratch rdr` / `ingest_body` — platform temp, NOT a literal `/tmp`); sub-agents may | `ingest_gate_enforce.sh:135-143` (Read tool) + `:206-209` (shell, case-insensitive) | **HOOK**, fail-closed |
 | R5 | The gate runs on the FULL body BEFORE any slice; samples are cut from sanitized text | `3-deep-read.md:29-32` | CODE |
 | R6 | The main session never reads a chat body | `3-deep-read.md:33-34` | HOOK + STRUCTURE |
-| R7 | DANGER → auto-quarantine + skip; never re-open to inspect | `ingestion-reader-contract.md:47-50` | CODE (skip) + PROSE (never re-open) |
-| R8 | Outbound is allowlisted — a fooled controller still cannot exfiltrate | `ingestion-reader-contract.md:107` | HOOK + CODE + pf |
-| R9 | The reader REDACTS, never summarizes — fidelity survives the security step | `information-ingestion-interpretation.md:109` | **PROSE ONLY** |
+| R7 | DANGER → auto-quarantine + skip; never re-open to inspect | `ingestion-reader-contract.md:51-53` | CODE (skip) + PROSE (never re-open) |
+| R8 | Outbound is allowlisted — a fooled controller still cannot exfiltrate | `ingestion-reader-contract.md:116-118` | HOOK + CODE + an OS firewall |
+| R9 | The reader REDACTS, never summarizes — fidelity survives the security step | `information-ingestion-interpretation.md:132` | **PROSE ONLY** |
 
 > **The design is sounder than the two PROSE-ONLY entries suggest.** R3 and R9 failing costs little
 > because **R2 caps the blast radius structurally** — a hijacked reader has no hands. State this as a
@@ -675,7 +675,7 @@ the record of what the machine got wrong about the person, which no output file 
 **Same order as the world-map screen — permanent first —** so the pad and the screen can never disagree about
 what matters most. Every row keeps its provenance: *ruled* or *corrected*, and when.
 ⛔ **Nothing is summarized.** Rows are dropped, merged verbatim, or graduated to a pointer. The word "summary" is
-banned in this pipeline by the ONE-GATE doctrine (`information-ingestion-interpretation.md:107-110`) — the reader
+banned in this pipeline by the ONE-GATE doctrine (`information-ingestion-interpretation.md:132`) — the reader
 redacts and extracts, it never reshapes.
 
 **4 · THE SIZE CEILING / TRIGGER — bytes, not runs.**
