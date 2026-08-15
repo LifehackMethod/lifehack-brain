@@ -49,7 +49,15 @@ RC=1
 _on_exit() {
   printf '{"subsystem":"%s","rc":%s,"ts":"%s","stale_after_h":%s}\n' \
     "$SUBSYSTEM_NAME" "$RC" "$(date -u +%FT%TZ)" "$STALE_AFTER_HOURS" > "$STATUS_ARTIFACT" 2>/dev/null || true
-  if [ "$RC" -ne 0 ]; then
+  # rc=75 = STOOD DOWN (no gws creds configured yet) — the job's own preflight declined to run,
+  # not a failure; PERMANENT-BY-DESIGN for a student with no Google account, so it fires on every
+  # future dispatch until credentials are configured. Paging on it — even once — would just move
+  # the noise from "every tick" to "every day forever," which is worse than the red tile this fix
+  # replaces. DEFAULT TO SILENCE, matching the established convention: cal-health.py /
+  # backlog-health.py's own "not configured" branch pages nobody, and pulse.sh's own rc=75 handling
+  # counts it `skipped` with no notify-send call of its own. Genuine failures (anything else
+  # non-zero) still page below, unchanged.
+  if [ "$RC" -ne 0 ] && [ "$RC" -ne 75 ]; then
     bash "$CODE_ROOT/shared/notify/notify-send.sh" --source "$SUBSYSTEM_NAME" --tags warning --priority critical \
       --title "⚠️ calendar-store sync failed" \
       --message "calendar_store_sync --sync errored (rc=$RC) — calendar store not refreshing. See $STATUS_ARTIFACT." 2>/dev/null || true

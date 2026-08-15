@@ -139,44 +139,44 @@ item-store-freshness    | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/i
 # row honors that literally. 1h cadence.
 email-summary-freshness | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/email-summary-freshness-run.sh"
 #
-# ── The next three are PARKED, not live (enabled != yes) — added so the row exists and the
-#    interval is pre-justified, but deliberately NOT dispatched. All three share ONE verified
-#    defect: on a MISSING $HOME/.config/lifehack/gws-credentials.json (true for every machine on
-#    day 1 before the one-time `gws auth export` step, and PERMANENTLY true for a student with no
-#    Google account at all — exactly the population this manifest must not fail loudly for) each
-#    runner's "no creds file" branch does `RC=3; exit 3` — NOT this file's own rc=75 "stood down,
-#    not a fault" convention that cal-health/backlog-health above already use for the identical
-#    "config not set up yet" case. rc=3 is not 0/75/2, so it falls into this file's own "anything
-#    else" bucket: 3 consecutive ticks trip Pulse's circuit breaker, and system-health.py's
-#    assess() (system/tools/system-health.py:255-257) then renders the job "DOWN, severity: error,
-#    attention: True" PERMANENTLY — a red Helm tile for a feature that, for a no-Google student,
-#    will never become configured. Verified by reading the three runners directly, plus
-#    system-health.py's assess(), this session. The fix (out of scope here — this file is manifest
-#    only) is one line per runner: change the GWS_CREDS else-branch's `RC=3; exit 3` to `RC=75;
-#    exit 75`. Flip `enabled` to `yes` once that lands; the intervals below are already the
-#    runner's own intended cadence, sourced from each one's header.
+# ── The next three refresh Google-backed stores (calendar item-store, tasks item-store, v2 email
+#    thread-store) — LIVE as of 2026-08-14, having just cleared the ONE verified defect that kept
+#    them parked. On a MISSING $HOME/.config/lifehack/gws-credentials.json (true for every machine
+#    on day 1 before the one-time `gws auth export` step, and PERMANENTLY true for a student with
+#    no Google account at all — exactly the population this manifest must not fail loudly for)
+#    each runner's "no creds file" branch now does `RC=75; exit 75` — this file's own "stood down,
+#    not a fault" convention, matching cal-health/backlog-health above for the identical "config
+#    not set up yet" case (was `RC=3; exit 3` before this session, which fell into the "anything
+#    else" bucket: 3 consecutive ticks would trip Pulse's circuit breaker and system-health.py's
+#    assess() — system/tools/system-health.py:255-257 — would render the job "DOWN, severity:
+#    error, attention: True" PERMANENTLY, a red Helm tile for a feature a no-Google student will
+#    never configure). SAME SESSION, second half of the fix: each runner's own EXIT trap no longer
+#    fires a `--priority critical` phone push on rc=75 either — a stood-down job silently paging
+#    the phone on every future dispatch would have been WORSE than the red tile this replaces
+#    (critical bypasses quiet hours). Genuine failures (any other non-zero) still page, unchanged.
+#    Flipped `enabled` to `yes` now both halves have landed; intervals are unchanged, sourced from
+#    each runner's own header.
 #
-# calendar-store-sync: WOULD refresh state/item-store/calendar/ via calendar_store_sync.py --sync
-# (mechanical, no claude -p — confirmed). PARKED — see the note above. Interval matches the
-# runner's own header ("own absence horizon... writers run ~daily", STALE_AFTER_HOURS=30). 1-day
-# cadence once fixed.
-calendar-store-sync     | waiting-on-rc75-fix | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/calendar-store-sync-run.sh"
+# calendar-store-sync: refreshes state/item-store/calendar/ via calendar_store_sync.py --sync
+# (mechanical, no claude -p — confirmed). LIVE — see the note above. Interval matches the runner's
+# own header ("own absence horizon... writers run ~daily", STALE_AFTER_HOURS=30). 1-day cadence.
+calendar-store-sync     | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/calendar-store-sync-run.sh"
 #
-# tasks-store-sync: WOULD refresh state/item-store/tasks/ via tasks_store_sync.py --sync
-# (mechanical, no claude -p — confirmed). PARKED for the SAME reason as calendar-store-sync
-# immediately above — tasks-store-sync-run.sh shares the identical GWS_CREDS-missing branch and
-# consequence. Interval matches the runner's own header ("writers run ~daily",
-# STALE_AFTER_HOURS=30). 1-day cadence once fixed.
-tasks-store-sync        | waiting-on-rc75-fix | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/tasks-store-sync-run.sh"
+# tasks-store-sync: refreshes state/item-store/tasks/ via tasks_store_sync.py --sync (mechanical,
+# no claude -p — confirmed). LIVE for the SAME reason as calendar-store-sync immediately above —
+# tasks-store-sync-run.sh shared the identical GWS_CREDS-missing branch and got the identical fix.
+# Interval matches the runner's own header ("writers run ~daily", STALE_AFTER_HOURS=30). 1-day
+# cadence.
+tasks-store-sync        | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/tasks-store-sync-run.sh"
 #
-# email-summary-write: WOULD refresh the v2 faithful-thread store (threads-v2/) via
+# email-summary-write: refreshes the v2 faithful-thread store (threads-v2/) via
 # email_summary_sync.py --write-v2 (mechanical, no claude -p — confirmed: CLAUDE_BIN is kept but
-# never invoked by the v2 write path; see shared/tools/email_summary_sync.py:114-120). PARKED for
-# the SAME rc=3-vs-rc=75 defect as the two rows above (identical GWS_CREDS-missing branch in
-# email-summary-write-run.sh) — same consequence, same fix. Interval matches the runner's OWN
-# header, which is explicit: STALE_AFTER_HOURS=4, "just over one 3h cadence, so a SINGLE missed
-# run surfaces on the next tick." 3h cadence once fixed.
-email-summary-write     | waiting-on-rc75-fix | 10800 | bash "$LIFEHACK_CODE_ROOT/system/tools/email-summary-write-run.sh"
+# never invoked by the v2 write path; see shared/tools/email_summary_sync.py:114-120). LIVE for
+# the SAME rc=3-vs-rc=75 fix as the two rows above (identical GWS_CREDS-missing branch in
+# email-summary-write-run.sh) — same fix, same session. Interval matches the runner's OWN header,
+# which is explicit: STALE_AFTER_HOURS=4, "just over one 3h cadence, so a SINGLE missed run
+# surfaces on the next tick." 3h cadence.
+email-summary-write     | yes | 10800 | bash "$LIFEHACK_CODE_ROOT/system/tools/email-summary-write-run.sh"
 #
 # NOT ADDED: shared/tools/email_summary_run.sh (the older v1-shaped watchdog wrapper). Not parked,
 # not given a row at all — two independent reasons, both verified this session. (1) It passes its
