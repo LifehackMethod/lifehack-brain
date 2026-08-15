@@ -50,7 +50,7 @@ REACHABILITY -- an id counts as covered iff, resolved MECHANICALLY:
   (b) COVERING   the artifact cites a recurring/series BASE this id is an instance of, or
   (c) TRUNCATION the artifact wrote a prefix of the id AND that prefix can only mean ONE
                  source id -- an AMBIGUOUS prefix credits nothing (see ambiguous_bases).
-Anything else is RESIDUE.  A shorthand label the artifact invented ("Riya-flight") is
+Anything else is RESIDUE.  A shorthand label the artifact invented ("Fern-flight") is
 not a native id, so the item behind it lands in residue BY DESIGN -- the set-diff
 refuses to credit an unprovable cover.  That refusal is the entire value: a generous
 matcher would reproduce exactly the false "omits nothing" this part replaces.
@@ -313,12 +313,14 @@ def load_source_ids(path):
 
 # ---------------------------------------------------------------- self-test
 
+# ⚠ NOBODY REAL IS IN THIS FIXTURE. "Fern" is an invented name, in the style of
+# system/shipping-lane/fixtures/identity-fixture.md.
 _MAP = (
     "pointer email `19f7f2846afd73e5`\n"
     "cal `rf67mu8kt57dv5hloi2jgot74d` (recurring base covers its instances)\n"
     "cal `06t29asgutja0nobegaobf0hlm...` (truncated)\n"
     "task `MG0tQ25UVHJpTE50RlFibQ`\n"
-    "shorthand `Riya-flight` (a LABEL, not a native id)\n"
+    "shorthand `Fern-flight` (a LABEL, not a native id)\n"
 )
 _SOURCE = [
     "19f7f2846afd73e5",                             # (a) direct
@@ -327,7 +329,7 @@ _SOURCE = [
     "MG0tQ25UVHJpTE50RlFibQ",                       # (a) direct
     "aaaaDROPPEDtask0001",                          # residue
     "bbbbDROPPEDemail0002",                         # residue
-    "riya_flight_native_id_99",                     # residue: label is not a citation
+    "fern_flight_native_id_99",                     # residue: label is not a citation
 ]
 _ALL_CITED = _MAP + "".join(f"also `{s}`\n" for s in _SOURCE)
 
@@ -391,7 +393,7 @@ def selftest():
            off["require_substance"] is False and real["require_substance"] is True)
 
     report("refuses to credit an invented LABEL (the whole point)",
-           "riya_flight_native_id_99" in g["missing"])
+           "fern_flight_native_id_99" in g["missing"])
     report("partition is exhaustive (covered + residue == source)", g["partition_exhaustive"])
 
     g2 = grade(_ALL_CITED, _SOURCE, declared_count=len(_SOURCE))

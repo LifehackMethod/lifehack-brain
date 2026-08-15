@@ -24,8 +24,11 @@ Modes:
 
 Usage:
   python3 corpus_map.py init  --tags <world-tags.json> --out <corpus-map.json>
-  python3 corpus_map.py set   --map <corpus-map.json> --file <name> [--status filed] [--verdict "..."] [--note "..."] [--desk peter]
+  python3 corpus_map.py set   --map <corpus-map.json> --file <name> [--status filed] [--verdict "..."] [--note "..."] [--desk sage]
   python3 corpus_map.py stats --map <corpus-map.json>
+
+⚠ NOBODY REAL IS IN THIS FILE. "sage" above is an invented, illustrative --desk value,
+in the style of system/shipping-lane/fixtures/identity-fixture.md — not a real desk.
 """
 import argparse, json, os, sys
 

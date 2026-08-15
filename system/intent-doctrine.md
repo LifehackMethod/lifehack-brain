@@ -65,7 +65,8 @@ This doctrine names the one law they're all instances of — and makes its **abs
   forced "done-when." Whether the relationship ever "completes" is irrelevant: you label the CONTAINER, not the
   relationship. This dissolves the standing-vs-bounded agonizing for
   every client and every domain folder.
-- **KISS for containers:** when the folder's name already says it (a client folder named `meena`), the purpose is
+- **KISS for containers:** when the folder's name already says it (a client folder named `juniper` — an invented
+  example, ⚠ nobody real, in the style of `system/shipping-lane/fixtures/identity-fixture.md`), the purpose is
   near-self-evident and a one-liner is plenty — don't bureaucratize. A container's purpose earns extra words ONLY
   when it adds what the name doesn't: the admission bar / what does NOT belong here (the one near-miss).
 

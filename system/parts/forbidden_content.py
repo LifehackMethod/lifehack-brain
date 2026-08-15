@@ -159,11 +159,13 @@ def _load(path, what):
 
 # Two-sided, and deliberately built from the REAL W30 shapes so the known-good is the
 # exact false-positive that would make this part untrustworthy.
+# ⚠ NOBODY REAL IS IN THIS FIXTURE — every name in it ("Wren", "Fern") is invented,
+# in the style of system/shipping-lane/fixtures/identity-fixture.md.
 _BAD = """## Phase 2 - Connect the Dots
 
 ### Connected picture:
 - Win (Wren-authored): Fully Day-1 ready - paperwork confirmed, pay-split confirmed
-- Bonus aim: Heat-pump fix through Riya
+- Bonus aim: Heat-pump fix through Fern
 """
 
 _GOOD = """## Phase 2 - Connect the Dots
