@@ -1176,9 +1176,9 @@ def selftest():
            not scan_tag_chars("Wren reviews this himself, nothing hidden here."))
 
     print("\nSHAPE heuristics (fourth pass, WARNING-tier -- 2026-08-15)")
-    tp_hits = scan_third_party_name_shape("His wife Sarah handles the scheduling.\n")
-    report("'wife Sarah' is caught by the trigger-then-name shape",
-           any(h["token"] == "Sarah" for h in tp_hits), "hits: {}".format(tp_hits))
+    tp_hits = scan_third_party_name_shape("His wife Fern handles the scheduling.\n")
+    report("'wife Fern' is caught by the trigger-then-name shape",
+           any(h["token"] == "Fern" for h in tp_hits), "hits: {}".format(tp_hits))
     tp_hits2 = scan_third_party_name_shape("Marlowe's husband had an ER visit.\n")
     report("'Marlowe's husband' is caught by the possessive-before-trigger shape",
            any(h["token"] == "Marlowe" for h in tp_hits2), "hits: {}".format(tp_hits2))
@@ -1208,8 +1208,8 @@ def selftest():
            "hits: {}".format(scan_third_party_name_shape(_own_name_line)))
     report("extra_stopwords matches case-INSENSITIVELY (a caller deriving terms from a "
            "case-insensitive rule cannot know the file's casing)",
-           not scan_third_party_name_shape("His wife Sarah called.\n",
-                                           extra_stopwords=["SARAH"]))
+           not scan_third_party_name_shape("His wife Fern called.\n",
+                                           extra_stopwords=["FERN"]))
 
     fact_hits = scan_disclosing_fact_patterns(
         "He owns two homes and holds joint bank accounts.\n")

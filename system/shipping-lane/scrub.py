@@ -1283,7 +1283,7 @@ def selftest():
         # lane would start refusing on a heuristic that is allowed to be wrong.
         thirdparty_manifest = os.path.join(fixture_root, "manifest-thirdparty.txt")
         f_thirdparty = write("thirdparty.md",
-                             b"His wife Sarah handles the scheduling for him.\n")
+                             b"His wife Fern handles the scheduling for him.\n")
         f_factpattern = write("factpattern.md",
                               b"He owns two homes and holds joint bank accounts.\n")
         with open(thirdparty_manifest, "w") as fh:
@@ -1336,11 +1336,11 @@ def selftest():
         # A file that warns AND carries a real refuse hit is NOT-CLEAN for the REFUSE
         # hit alone -- the warning neither causes that nor is swallowed by it.
         both_manifest = os.path.join(fixture_root, "manifest-both.txt")
-        # "client Wren" is the SAME shape as "wife Sarah" -- both would warn. Only Sarah
+        # "client Wren" is the SAME shape as "wife Fern" -- both would warn. Only Fern
         # survives, because Wren is a term in the live identity file and its literal rule
         # already blocks the file outright.
         f_both = write("both.md",
-                       b"His wife Sarah met client Wren about the retainer.\n")
+                       b"His wife Fern met client Wren about the retainer.\n")
         with open(both_manifest, "w") as fh:
             fh.write(rel(f_both) + "\n")
         both_report = run_scrub(both_manifest, new_staging())
