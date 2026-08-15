@@ -640,7 +640,7 @@ to any build, a **domain** section otherwise. This is the one file `/build` read
   **contains** `"READY"` — so the abort never fired and green and red both sent. The gate was **decorative from the
   day it shipped** (2026-05-11) until 2026-06-09, and the sheet's own `billing_ready` formula had been correctly
   showing 🔴 the whole time; the script just never asked it properly. Cost: a tenant statement went out with a
-  blank submeter reading, overbilling by $41.85. The old test was ALSO case-sensitive, so it would have wrongly
+  blank submeter reading, overbilling by $50. The old test was ALSO case-sensitive, so it would have wrongly
   BLOCKED a legitimately green light — broken in both directions. **FIX PATTERN:** test a positive marker AND
   require the negative token absent (two independent signals, so neither changing alone silently opens the gate),
   and **fail CLOSED** on anything unexpected — blank, error, renamed label. Applies to ANY status guard anywhere

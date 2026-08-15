@@ -238,7 +238,7 @@ in a browser tab.
 ### Principle #2a — a check must test PRESENCE, not only agreement (completeness ≠ consistency)
 
 **Principle #2 says the sheet proves its own math. This says: a missing input passes every math proof.** The
-Fernwood Commons `Checks` tab scored a statement that had overbilled the tenant by $41.85 as **"15 PASS / 1 WARNING /
+Fernwood Commons `Checks` tab scored a statement that had overbilled the tenant by $50 as **"15 PASS / 1 WARNING /
 0 FAIL"** — because the carriage submeter cell was BLANK, and:
 - `TS: Electricity — Whole = Carriage + Front` → `198.42 = 0 + 198.42` is arithmetically TRUE.
 - `SM: carriage ELECTRIC ≤ FC total — ALL periods` → `0 ≤ 2071` is TRUE.
