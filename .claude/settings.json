@@ -208,6 +208,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_git_add_class.sh\"",
             "statusMessage": "Checking this stages only what you changed..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_gmail_destructive.sh\"",
+            "statusMessage": "Checking nothing would destroy mail you cannot get back..."
           }
         ]
       },
