@@ -27,8 +27,9 @@
 #      (bucket) + .pad sidecar (last-checkpoint section). Off: scratch_flag.sh clear /
 #      pm_flag.sh clear. Resolvers: scratch_flag.sh, pm_flag.sh.
 # SIGNPOST: Rule + design = plan good-let-s-plan-this-bright-parnas.md + project-system
-#      brief. Receipt = ONE line, printed by the main window after the sub-agent
-#      returns (a hook cannot write the reply pane); the ADDED lines are computed
+#      brief. Receipt = ONE line, printed by the main window confirming the sub-agent
+#      LAUNCHED in the background (a hook cannot write the reply pane) — its verdict
+#      returns later via task notification, not this turn. The ADDED lines are computed
 #      MECHANICALLY here (proof-not-ask). Token signal reuses scratch_sweep_nudge.sh.
 #      Change the RULE in the plan/brief first.
 # FAIL_POSTURE: degrade-safe -- any error -> exit 0 (allow stop, never wedge a turn).
@@ -169,23 +170,30 @@ rm -f "$CURSEC_FILE"
 #  - THE THREE VERDICTS ARE A BOUNDED SET. FAILED is the no-outcome member. A dead
 #    sub-agent and an empty session are DIFFERENT FACTS; conflating them loses a session's
 #    decisions silently, which is the failure this gate exists to stop.
+#  - BACKGROUND, NOT BLOCKING (2026-08-15): the spawn no longer holds the turn — the
+#    caller confirms only that it LAUNCHED; the verdict arrives later via task
+#    notification. Safe because a failed or never-run background write leaves ADDED
+#    empty at the NEXT checkpoint, so this same bounce fires again and retries — nothing
+#    is silently lost by going async.
 #  - NO REPRINT: the pad is already on disk; echoing it back is a second copy of saved text
 #    in the very window the gate is trying to protect.
 #  - THE PAD IS CLEARED only at the approval-gated compaction in /save or /checkin, never here.
 # ─────────────────────────────────────────────────────────────────────────────
 if [ -n "$ADDED" ]; then
-  REASON="SCRATCHPAD CHECKPOINT (~${K}k tokens). Already captured since the last checkpoint — verify it covers the recent work; anything missing, spawn ONE sonnet sub-agent to append it. Reply ONE line: '📝 Scratchpad: N lines captured, verified'. ⛔ Do not reprint the lines.
+  REASON="SCRATCHPAD CHECKPOINT (~${K}k tokens). Already captured since the last checkpoint — verify it covers the recent work; anything missing, spawn ONE sonnet sub-agent IN THE BACKGROUND (run_in_background: true) to append it — do not wait on it. Reply ONE line: '📝 Scratchpad: N lines captured, verified' — or, if you just launched a background spawn to fill a gap, '📝 Scratchpad: capture launched in background'. ⛔ Do not reprint the lines.
 
 CAPTURED SINCE LAST CHECKPOINT:
 ${ADDED}"
 else
   REASON="SCRATCHPAD CHECKPOINT (~${K}k tokens) — nothing captured since the last checkpoint.
 
-⛔ Do NOT write the pad from this window. Spawn ONE sub-agent, model: sonnet: read this session and append the decisions / observations / loose-threads worth keeping to the '## SCRATCHPAD' section of ${PAD}. Nothing new ⇒ it appends a dated '— (no new decisions) —' line.
+⛔ Do NOT write the pad from this window. Spawn ONE sub-agent, model: sonnet, IN THE BACKGROUND (run_in_background: true) — do not wait on it: it reads this session and appends the decisions / observations / loose-threads worth keeping to the '## SCRATCHPAD' section of ${PAD}. Nothing new ⇒ it appends a dated '— (no new decisions) —' line.
 
-It returns EXACTLY ONE of: 'WROTE <n> lines' · 'NOTHING-TO-CAPTURE' · 'FAILED <why>' — never the content, and never FAILED reported as NOTHING-TO-CAPTURE.
+It still returns EXACTLY ONE of: 'WROTE <n> lines' · 'NOTHING-TO-CAPTURE' · 'FAILED <why>' — never the content, and never FAILED reported as NOTHING-TO-CAPTURE — but that verdict now arrives later, via its own task notification, not this turn.
 
-Then print ONE line: '📝 Scratchpad: <that verdict>'."
+Safe by design: if the background write fails or never runs, this checkpoint's own diff finds nothing new next time and this gate fires again — nothing is silently lost.
+
+Then print ONE line confirming the launch: '📝 Scratchpad: capture launched in background'."
 fi
 printf '{"decision":"block","reason":%s}\n' "$(printf '%s' "$REASON" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')"
 exit 0
