@@ -284,23 +284,37 @@ pwd
 PYBIN="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
 "$PYBIN" - "$PWD" <<'PY'
 import os, re, sys
-p = os.path.abspath(sys.argv[1]); low = p.replace("\\", "/").lower() + "/"
+p = os.path.realpath(sys.argv[1]); low = p.replace("\\", "/").lower() + "/"
 prot  = ["/program files", "/programdata", "/windows/", "/system/"]
 if re.fullmatch(r"[a-z]:/users/?", low) or low in ("/users/", "/home/"):
     print("PROTECTED - the bare users folder"); sys.exit(3)
 hit = next((t for t in prot if t in low), None)
 if hit: print("PROTECTED SYSTEM FOLDER - matched: %s" % hit.strip("/")); sys.exit(3)
+comps = [c for c in low.split("/") if c]
+cloud = ["dropbox", "google drive", "onedrive", "icloud", "mobile documents"]
+chit = next((t for t in cloud if t in comps), None)
+if not chit and any(c == "googledrive" or c.startswith("googledrive-") for c in comps):
+    chit = "googledrive"
+if chit: print("CLOUD-SYNC FOLDER - matched: %s" % chit); sys.exit(4)
 print("GOOD"); sys.exit(0)
 PY
 ```
 
 **`GOOD` → say nothing about it and carry straight on to STEP 5.**
 
-**Anything else → this is the one time you ask them something.** Say plainly why this spot won't work —
-*"this is a system folder and the tool can't be installed into it"* — then: *"Quit Claude, open it
-again on an ordinary folder — your Documents folder is a good spot — and drag this file in again."*
-**Then STOP.** Do not try to create a folder elsewhere and carry on; they must reopen the session
-there, or nothing the tool does later will be able to reach it.
+**`CLOUD-SYNC FOLDER` → this is a safety gate, not a preference, and the reason is different from the
+system-folder case below — say so.** A folder synced by Google Drive, Dropbox, OneDrive or iCloud Drive
+rewrites files out from under git while the tool is mid-clone or mid-write, and that can corrupt the
+repository — measured, not a guess. Say plainly: *"This folder syncs through <service>, and that can
+corrupt the tool while it's installing — let's use a folder that doesn't sync, like your Documents
+folder or a plain folder in your home directory."* Then: *"Quit Claude, open it again on that folder,
+and drag this file in again."* **Then STOP**, same as the next case.
+
+**Anything else (`PROTECTED...`) → this is the other time you ask them something.** Say plainly why this
+spot won't work — *"this is a system folder and the tool can't be installed into it"* — then: *"Quit
+Claude, open it again on an ordinary folder — your Documents folder is a good spot — and drag this file
+in again."* **Then STOP.** Do not try to create a folder elsewhere and carry on; they must reopen the
+session there, or nothing the tool does later will be able to reach it.
 
 > ⛔ **Never test writability by asking for administrator rights.** If a write fails anywhere in this
 > install, the answer is a different folder, never elevation. **A real student lost their install to

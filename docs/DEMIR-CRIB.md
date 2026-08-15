@@ -24,7 +24,10 @@ If they skip this: Claude was already running before the new files existed, so i
 **Room 1 — "I don't have a folder for my brain yet."**
 Symptom: they haven't made the folder, or don't know where to put it.
 Cause: step 1 was skipped or unclear.
-Fix: have them make any real folder on their own computer — ideally inside a cloud folder they already use (Google Drive, Dropbox, OneDrive), otherwise plain Documents. It must be a real folder on the machine, not a website they log into.
+Fix: have them make any real folder on their own computer — plain Documents is the easy answer. ⛔ **Not
+inside Google Drive, Dropbox, OneDrive or iCloud Drive** — a folder that syncs can corrupt the tool while
+it installs, and Step 4 of `INSTALL.md` now refuses and sends them elsewhere if they pick one anyway. It
+must be a real folder on the machine, not a website they log into.
 
 **Room 2 — "I can't install git or Python, or the download failed."**
 Symptom: an install step errors out, or files never arrive.

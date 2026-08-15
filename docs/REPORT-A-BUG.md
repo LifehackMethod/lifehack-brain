@@ -234,13 +234,48 @@ instead of a fix.**
 - **Their machine:** `uname -s`
 - **Whether it happens every time**, if they know.
 
+## The profile — a separate, small addition, offered not forced
+
+Before you show them the report, build a four-line technical profile and ask about it **separately from**
+the report body — it is optional, and saying no to it is not saying no to filing the bug:
+
+```bash
+PLATFORM="$(uname -s 2>/dev/null || echo Windows)"
+VERSION="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+PYBIN="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
+DRIVE="$("$PYBIN" - "$PWD" <<'PY'
+import os, sys
+low = os.path.abspath(sys.argv[1]).replace("\\", "/").lower() + "/"
+cloud = ["dropbox", "google drive", "googledrive", "onedrive", "icloud", "mobile documents"]
+hit = next((t for t in cloud if t in low), None)
+print(hit if hit else "none")
+PY
+)"
+printf 'platform: %s\nharness: Claude Desktop (Code tab)\ndrive-sync: %s\nversion: %s\n' "$PLATFORM" "$DRIVE" "$VERSION"
+```
+
+**It never phones home** — this is not a separate channel, git is pull-only and that IS the privacy
+guarantee. It only ever travels as a labeled block inside the same report, the one channel that exists.
+
+Show them exactly those four lines, plainly — this carries no personal data by construction, only the
+kind of thing that tells us which install to picture: which OS, whether their folder syncs through a
+cloud drive (a real source of confusing failures — see `INSTALL.md` Step 4), and which version they're
+on. Ask: *"I can add this small technical profile to the report — your OS, whether your folder syncs
+through a cloud drive, and which version you're on. Nothing of yours is in it. Want it added?"*
+
+**If they say no, leave it out and carry on** — the report is complete and useful without it, and nothing
+else about filing it changes. If yes, append it to the body you write next as its own labeled section,
+titled exactly `Technical profile` so a maintainer reading the issue knows it is machine-generated, not
+something the student wrote.
+
 ## What must NOT go in it — this is the part that matters
 
 **This becomes a public page, it is permanent, and search engines index it.** Before you show them
 anything, take out:
 
-- **Their home folder path.** Replace `/Users/theirname/...` with `~/...`. **Their real name is usually
-  in that path and they will not notice it.**
+- **Their home folder path.** A path starting `/Users/` (macOS) or `/home/` (Linux) is followed by their
+  account name — replace the whole thing with `~/...`. **Their real name is usually baked into that
+  account-name segment and they will not notice it.**
 - **Anything they have written.** Note content, journal lines, project names, filenames from their notes
   folder. **The error is the evidence — not what they happened to be writing when it appeared.**
 - **Anything from their `config/` folder:** sheet ids, calendar ids, email addresses.
