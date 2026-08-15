@@ -728,7 +728,7 @@ def _basket_order(m):
 
 
 def compose_basket_hud(m, cols=2, active=None):
-    """The multi-line basket grid for a SCREEN HEADER (mockup ②'s top block). One cell per basket:
+    """The multi-line basket grid for a SCREEN HEADER (mockup 2's top block). One cell per basket:
     emoji + pretty name + a ▓▓░ bar + mined count, laid out in `cols` columns. `active` (a basket name)
     gets a ◀ marker. ≤~5 lines for ~8 baskets."""
     order = _basket_order(m)
@@ -748,7 +748,7 @@ def compose_basket_hud(m, cols=2, active=None):
 
 
 def compose_statusline_hud(m):
-    """The COMPACT one-line HUD for the status bar (mockup ①): `🧠 3/8 · 210 mined │ 💰47 ✍82 … │ ▓▓▓░░`.
+    """The COMPACT one-line HUD for the status bar (mockup 1): `🧠 3/8 · 210 mined │ 💰47 ✍82 … │ ▓▓▓░░`.
     baskets-done/total · total mined · a per-basket emoji+count chip strip · a baskets-progress bar.
     This is the exact string statusline.sh prepends above the standard line when an ingest session is active."""
     bs = baskets_of(m)
@@ -801,7 +801,7 @@ def _clip(text, n=100):
 
 
 def compose_reflection(m, basket, conclusions, since_iso=None, brain_before=None, next_basket_name=None):
-    """THE REWARD (F2.1) — renders mockup ③. After a basket is mined, reflect a sharper model of the
+    """THE REWARD (F2.1) — renders mockup 3. After a basket is mined, reflect a sharper model of the
     person: the durable ADOPTED facts, what's NEW this round (🆕, rows whose commit_ts/read_ts ≥ since_iso),
     and the explored-not-adopted catch (🤔, phrased ONLY as a question). HARD GUARD: an `exploration` item
     NEVER appears as an asserted fact — it is routed exclusively to the question. Ends with the ONE action.

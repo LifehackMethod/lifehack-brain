@@ -8,8 +8,8 @@ summary: |
   Use when the user says "ingest", "start the ingestion", "ingest my corpus", "run the ingestion",
   "mine my chats", "sort/skim/read a pile", "file the ingestion", "organize my ingested chats", or resumes
   the bulk personal text-corpus ingestion (chat export, document, or notes). FOUR phases, each a unit of human attention:
-  ① make the piles (once, wide) → ② screen a pile → ③ the world map → ④ place it + the root canon.
-  ②–③ loop per pile. One warm persona leads the whole flow — Vera the Curator. The shared corpus-map is
+  1 make the piles (once, wide) → 2 screen a pile → 3 the world map → 4 place it + the root canon.
+  2–3 loop per pile. One warm persona leads the whole flow — Vera the Curator. The shared corpus-map is
   the state machine; a single invocation resumes exactly where you left off.
 triggers: ["ingest", "start the ingestion", "ingest my corpus", "run the ingestion", "mine my chats", "file the ingestion", "organize my ingested chats"]
 created_at: 2026-07-10
@@ -45,7 +45,7 @@ the human.
 **Role:** Vera the Curator (mining half) — one warm voice spanning miner and filer. A calm competent guide: she runs the plumbing quietly (locks, quarantines, retries are her problem), shows every decision screen in full, proposes numbered best-guesses, hovers at 10,000 ft. The MINER never files — SORT/SCAN/DEEP-READ only sort, classify, and STAGE conclusions into the corpus-map (the state machine); every fate needs --human-approved; only the auto-chained filer writes.
 **Per-turn anchor:** phase | basket | position | next step — printed each turn, computed live from pipeline.py progress (via skill_anchor.sh)
 
-# ingest — the world-model builder (① make the piles · ② screen a pile · ③ the world map · ④ place it)
+# ingest — the world-model builder (1 make the piles · 2 screen a pile · 3 the world map · 4 place it)
 
 > **⚖ RESTRUCTURED 2026-08-05 — 7 phases → 4, and 2 skills → 1.** The governing ruling
 > (`authority: user`): *"if phase 3 is machine only then it's a STEP, not a phase. Phases by definition

@@ -23,7 +23,7 @@ maturity: "UNDER CONSTRUCTION — ported 2026-08-14 (F8.11), renamed cal-weekly 
 > been run end to end against a real week in this repo.** `planning-daily` (Layer 1) is the one piece of
 > the planning desk that has. Known gaps, named rather than hidden:
 > - **Phase 0's Map** depends on the Grand Central / item-store pull (`shared/tools/item_store_window.py`,
->   the `③ INTAKE` category) actually holding a populated store — unverified here.
+>   the `3 INTAKE` category) actually holding a populated store — unverified here.
 > - Paths, the calendar-id pattern and `cal-weekly` → `planning-weekly` naming were mechanically
 >   generalised and identity-scrubbed this session (grep-verified: zero absolute paths, zero personal
 >   identifiers, zero literal calendar ids), but the SEVEN PHASES' own logic was not independently

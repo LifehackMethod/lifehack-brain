@@ -162,10 +162,10 @@ Interpret is a *judgment* problem, not a security one.
 
 ### The reference implementation
 The `/ingest` skill is the worked example of the shared HOW — one skill led by **VERA THE CURATOR**, run as
-FOUR phases (a phase is a unit of human attention, not a machine step): **① SORT** (make the piles) →
-**② SCAN** (screen a pile) → **③ DEEP-READ** (the world map) → **④ PLACE** (file it + the root canon —
-folding in what used to be a separate filer's load/schema/confirm steps). The MINER (phases ①–③) never
-files; only phase ④ writes, and only with approval. This is the concrete instance of the canonical producer
+FOUR phases (a phase is a unit of human attention, not a machine step): **1. SORT** (make the piles) →
+**2. SCAN** (screen a pile) → **3. DEEP-READ** (the world map) → **4. PLACE** (file it + the root canon —
+folding in what used to be a separate filer's load/schema/confirm steps). The MINER (phases 1–3) never
+files; only phase 4 writes, and only with approval. This is the concrete instance of the canonical producer
 split `ingest → process → emit`. A desk's Stage 2 should follow this shape and swap in its private WHAT.
 **Not yet wired into every desk — the named next build.** *(DEEP-READ reads each keeper WHOLE in one
 cache-backed pass — below a size ceiling — rather than slicing; a rare giant is sampled head+tail +

@@ -114,7 +114,7 @@ deferred placement.
 | mode | when | what runs |
 |---|---|---|
 | **mid-session** | `/save` with something to save | `phases/standard-steps.md`, steps 0 → 9 |
-| **session close** | `/save` bare, or with "session" / "close" / "end" / "wrap" | `phases/session-close.md` (SC-1 → SC-5) **first**, then standard steps 7 → 9 |
+| **session close** | `/save` bare, or with "session" / "close" / "end" / "wrap" | `phases/session-close.md` (SC-0 invokes `/checkin`, then SC-1 → SC-5) **first**, then standard steps 7 → 9. ⛔ SC-0 is session-close ONLY — a mid-session `/save` never invokes `/checkin` (its skill file loads whole on invocation, spent on an audit with nothing to audit). |
 | **review** | the argument contains "review" | the same, showing everything and waiting at each step |
 | **deep** | the argument contains "deep" / "ingestion" | the same, plus a full plain-language outline of every record before **any** of them is written |
 

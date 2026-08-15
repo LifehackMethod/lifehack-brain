@@ -117,6 +117,29 @@ task's actual shape (coupled? decided? one-surface? self-verifiable?). The tag g
 - **sonnet, never opus** (haiku for pure read-only). Per this system subagent rule.
 - Returns a summary / writes an artifact to a file. The lead reviews; the human approves.
 
+## ⭐ The return budget — the half of delegation nobody prices
+
+**A spawn costs several thousand tokens fixed just to launch. Its RETURN lands in the lead's window IN
+FULL, and nothing bounds it by default.** A real fan-out can produce verifier returns that are larger
+than the spawn cost that bought them. Everyone budgets the send and ignores the reply.
+
+⛔ **This is not a word cap, and a word cap is the wrong fix.** Cap the findings and you lose findings —
+an arbitrary length limit throws away precious information along with the noise. **So budget the
+CEREMONY, never the CONTENT.**
+
+**Put these in every sub-agent prompt:**
+- **No preamble, no restated method, no "I will now…".** Its final text IS the deliverable, not a
+  message announcing one.
+- ⛔ **Never paste a file body — cite `file:line` and quote only the decisive fragment.** The lead can
+  open the file itself; it cannot un-read 400 lines that arrived unasked.
+- **Unlimited findings.** The count is never the thing being budgeted.
+- **A named shape** ("one block per finding, these five fields") — structure compresses without loss.
+
+⭐ **Big outputs split by *kind*, not by length: evidence → a file · verdicts + counts → the reply.** The
+lead acts on verdicts and only opens the evidence file when it doubts one. The risk this answers is the
+lead getting lazy and never reading the file — the split prevents that because the reply is not a
+summary of the evidence, it is the *decisions*, which is all the lead needs unless it disagrees.
+
 ## Running a gear-3 Agent-Team wave (the special case)
 
 A gear-3 wave spawns fresh teammates into a shared, dependency-aware task list so several

@@ -16,7 +16,7 @@ authority: user
 > handoff; execution then follows **`build-sop.md`**. Scale the rigor to the stakes. Distilled from
 > a real architecture project (2026-06-15), reviewed by its own council.
 
-> ⓘ **WHAT THIS SOP CALLS FOR THAT IS NOT HERE YET.** Every stage below is runnable by hand; three of
+> NOTE — **WHAT THIS SOP CALLS FOR THAT IS NOT HERE YET.** Every stage below is runnable by hand; three of
 > them name a command that has not landed, and two pointers name files that never will. Stated up front
 > so a reader meets the gap here rather than at stage 4.
 >

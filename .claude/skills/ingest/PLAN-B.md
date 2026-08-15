@@ -51,8 +51,8 @@ question** — *"Ready to scan?"* means nothing to them.
 
 **Open every round by placing them, in five short lines:**
 1. **Where they are** — *"Step 2 of 4."*
-2. **The whole map, current step marked** — *① make the piles → **② screen each pile ← you are here** →
-   ③ the picture of you → ④ file it.*
+2. **The whole map, current step marked** — *1 make the piles → **2 screen each pile ← you are here** →
+   3 the picture of you → 4 file it.*
 3. **What the last step settled** — *"You made five piles."*
 4. **What this step is for** — and why it has to come before the next one.
 5. **What you are about to ask them to do** — say it before you do it.

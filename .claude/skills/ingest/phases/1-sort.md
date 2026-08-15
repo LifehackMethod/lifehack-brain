@@ -79,8 +79,8 @@ what is expected of me."* It is now in every phase because being lost is not a p
 
 **Print this before anything else — five short lines, plain words (see the dictionary in `SKILL.md`):**
 1. **Where they are, literally** — *"Step {N} of 4."* ⛔ Never the codename alone.
-2. **The whole map**, current step arrowed — *① make the piles → ② screen each pile → ③ the picture of you
-   → ④ file it.*
+2. **The whole map**, current step arrowed — *1 make the piles → 2 screen each pile → 3 the picture of you
+   → 4 file it.*
 3. **What the last step settled** — one line. *"You set 5 piles."*
 4. **What this step is for**, and why it comes before the next one.
 5. **What you are about to ask them to do** — narrate the move BEFORE you make it.
@@ -334,8 +334,8 @@ correct for the corpus? And then it should ask, are you ready to go to the next 
 than that — it shouldn't be that complicated."*
 
 ⇒ **THE CLOSING SCREEN ASKS EXACTLY TWO THINGS, IN THIS ORDER, AND NOTHING ELSE:**
-> **①** *"Do these piles look right for your material?"*
-> **②** *"Ready to move to phase 2 — screening the first pile?"*
+> **1.** *"Do these piles look right for your material?"*
+> **2.** *"Ready to move to phase 2 — screening the first pile?"*
 
 **A correction is something they VOLUNTEER, never a menu you hand them.** If they want a pile merged,
 renamed or dropped they will say so; the action bar already tells them how (`"toss <pile>"`). ⛔ **Do not

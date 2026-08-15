@@ -73,8 +73,8 @@ what is expected of me."* It is now in every phase because being lost is not a p
 
 **Print this before anything else — five short lines, plain words (see the dictionary in `SKILL.md`):**
 1. **Where they are, literally** — *"Step {N} of 4."* ⛔ Never the codename alone.
-2. **The whole map**, current step arrowed — *① make the piles → ② screen each pile → ③ the picture of you
-   → ④ file it.*
+2. **The whole map**, current step arrowed — *1 make the piles → 2 screen each pile → 3 the picture of you
+   → 4 file it.*
 3. **What the last step settled** — one line. *"You set 5 piles."*
 4. **What this step is for**, and why it comes before the next one.
 5. **What you are about to ask them to do** — narrate the move BEFORE you make it.

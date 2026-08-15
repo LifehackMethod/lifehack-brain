@@ -11,7 +11,7 @@ updated_at: 2026-08-05
 supersedes: nothing — this is the FIRST spec the skill-builder has ever had
 ---
 
-> ## ⓘ WHAT THIS SPEC POINTS AT THAT IS NOT IN THIS REPOSITORY
+> ## NOTE — WHAT THIS SPEC POINTS AT THAT IS NOT IN THIS REPOSITORY
 >
 > This is 2,000 lines of behavioural contract, and it earns its length by naming the exact record
 > where each ruling was made. Most of those records belong to the system it came from and **do not
@@ -1961,7 +1961,7 @@ pre-existing skill. **The build is done; only his own run remains.**
 > put the load on the human anyway — the exact failure mode `/skill-builder` exists to prevent, committed by
 > `/skill-builder`."*
 
-**① PERFECTION LOOPING — THE OWNER'S OWN WORDS.**
+**1. PERFECTION LOOPING — THE OWNER'S OWN WORDS.**
 > *"You're perfection looping. But we've run out of context window."*
 
 **Measured:** the same decision screen re-rendered **five times**; rulings requested that the session could
@@ -1969,7 +1969,7 @@ have derived itself; **nothing built in ~700k tokens.** ⛔ **The A/B fork curre
 cheapest move and nothing pushes back.** **OWED: a build-forward bias** — once a screen has been corrected,
 the next turn ADVANCES; it does not re-render for re-approval.
 
-> ## ⭐⭐ RAIL ① IS NOW PROVEN, NOT OBSERVED — a controlled comparison, 2026-08-09
+> ## ⭐⭐ RAIL 1 IS NOW PROVEN, NOT OBSERVED — a controlled comparison, 2026-08-09
 > **The plan that shipped 25 of 26 tasks was IDENTICAL to the plan that shipped nothing the day before.**
 > **The only variable was the MODE: entering `/build` instead of re-rendering a screen.**
 >
@@ -1993,21 +1993,21 @@ the next turn ADVANCES; it does not re-render for re-approval.
 > already flagged that it belonged here:** *"that is a `/skill-builder` finding, not a session mood, and it
 > belongs in its SPEC."*
 
-**② MANUFACTURING QUESTIONS — THE OWNER'S OWN WORDS, twice in three turns.**
+**2. MANUFACTURING QUESTIONS — THE OWNER'S OWN WORDS, twice in three turns.**
 > *"There's no fucking questions here dude, come on man."* · *"Don't make shit up for me. Don't make up busy work."*
 
 **OWED: a rail that requires PROVING a question is undecidable by the machine before it reaches the human.**
 The test, drafted at the time: *"can I settle this by reading one more file, or by choosing the cheaper path
 and recording it? If yes — do that instead, and tell him what you did."*
 
-**③ A QUESTION WITHOUT ITS CONTEXT — THE OWNER'S OWN WORDS.**
+**3. A QUESTION WITHOUT ITS CONTEXT — THE OWNER'S OWN WORDS.**
 > *"It's just too abbreviated with no context and too short for me to understand and possibly make a decision on."*
 
 **OWED: every question put to the human carries the situation, both options, and what each costs.**
 ⚠ **This is the same defect the swarm's PRESENTATION reader exists to catch — committed by the session while
 it was reporting that swarm's results.**
 
-**④ THE LOCKED VISUAL GRAMMAR GETS DROPPED BY REWRITES — THE OWNER'S OWN WORDS, TWICE.**
+**4. THE LOCKED VISUAL GRAMMAR GETS DROPPED BY REWRITES — THE OWNER'S OWN WORDS, TWICE.**
 > *"You lost the presentation layer elements that we had locked in."* · *"We lost the thing where we're showing
 > the emoji for the presentation, the data layer, the business logic layer… That's locked in our output style
 > and it's not showing up."*
@@ -2018,7 +2018,7 @@ TEMPLATE, NOT THE INSTANCE.**
 💾 data · ⚙️ business logic · 🖥 presentation. **The human turn is an ACTOR (🙋), not a layer.** A session had
 added it as a fourth; the owner corrected it.
 
-> ⛔ **THE PROOF THAT THESE MUST BE RAILS AND NOT NOTES: ① and ② were committed AGAIN on the night of
+> ⛔ **THE PROOF THAT THESE MUST BE RAILS AND NOT NOTES: 1 and 2 were committed AGAIN on the night of
 > 2026-08-08, in a session that had already read them.** Third occurrence. A rule that is only written down
 > is a rule that gets broken by the next window.
 

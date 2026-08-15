@@ -347,13 +347,18 @@ on** — never block the save on a reply. Nothing deferred → skip silently, an
 **Fill in this form. Emit it. Nothing else.**
 
 ```
-/checkin <slug> <plan-path> new-session
+COLD PICKUP — arm both flags, then read. Do NOT run /checkin.
+
+bash system/hooks/pm_flag.sh arm "<brief path>" "<slug>" "<desk>"
+bash system/hooks/plan_flag.sh set "<plan path>"
+
+Then read the brief's §2 (the three rungs + the decision board) and the plan's current
+Phase ▸ Feature. That is the whole orientation.
 
 ⛔ The brief and plan are hard-won — start from the assumption they're right. ORIENT,
 THEN STOP — do NOT start the next step, re-plan, re-scope, or enter plan mode. ⛔ Change
 no CONTENT this turn — not the plan's tasks, not the brief's sections. ✅ DO arm the
-flags — /checkin arms the project and the plan; that is SETUP, not work. Believe a step
-is wrong? Say it in ONE line and wait.
+flags — that is SETUP, not work. Believe a step is wrong? Say it in ONE line and wait.
 
 Re-anchor first: DERIVE the three rungs from the work, then compare against the brief's
 §2 block, and state where we stand at 10,000 / 5,000 / ground.
@@ -390,12 +395,28 @@ python3 -c "import sys;t=sys.stdin.read();w=len(t.split());print(w,'PASS' if w<=
   not a theme) · the **live thinking** not yet written to any file — the working theory, the hunch, the
   thing you were mid-way through weighing, **the single most valuable item here and the one thing a
   brief structurally cannot hold** · **what is waiting on them**.
-- **`new-session` is load-bearing — never strip it as noise.** It declares pickup mode to the next
-  window, so that window is *handed* its mode instead of inferring one.
-- **Genuinely over 200 words of load-bearing handoff?** Write a file and point at it in one line. Legal
-  and rare. If you reach for it twice in a week, the cap is wrong, not the session.
+- **The COLD PICKUP declaration is load-bearing — never strip it as noise.** It tells the next window
+  it is opening cold, so that window is *handed* its mode instead of inferring one. This used to be a
+  literal `new-session` token on a `/checkin` line; the line is gone but the declaration is not — if a
+  session does later run `/checkin` by hand, that skill still reads a `new-session` argument the same
+  way.
+- ⛔ **Do not put `/checkin` back in this handoff.** Arming two flags and reading §2 is all a cold
+  pickup needs, and it costs a fraction of what invoking `/checkin` does — that skill's whole file
+  loads on invocation (see `system/hooks/guard_checkin_needs_project.sh`), and it is an END-of-session
+  auditor, not an opener. Do not build a separate "resume" skill for this either; the handoff IS the
+  mechanism.
+- **Over 200 words of load-bearing handoff? Write a FILE and point at it in one line.** Put it in the
+  project folder, then emit: `Read this handoff in full before doing anything, then execute it: <abs
+  path>`. **The escape hatch is the FILE, never a longer inline handoff.** A working session's handoff
+  is expected to reach for the file when it genuinely needs to; a quiet one still fits inline at forty
+  words and that is still correct.
+  ⛔ **Do not raise the 200-word cap to accommodate this.** It has been tightened before on evidence,
+  and each loosening got gamed by a longer handoff sneaking through. ⭐ **The cap protects what is
+  printed at the person at session close; the file carries what the next session needs.** Two
+  different readers, two different budgets — that is why raising the cap is the wrong fix and the
+  file is the right one.
 - **No project armed?** There is no brief to point at, so **do carry a compact receipt** — what
-  changed, where, and the commit if there is one. Skip the `/checkin` line, the rail and the re-anchor.
+  changed, where, and the commit if there is one. Skip the arming block, the rail and the re-anchor.
   Pointing at nothing is not economy, it is a lost handoff.
 
 > **Why a form and not prose.** This spec was once 2,000 words of rationale asking for a short handoff,

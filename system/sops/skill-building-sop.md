@@ -28,14 +28,14 @@ reader_note: >
 
 # Skill-Building Playbook v2
 
-> ## ⓘ WHAT THIS PAGE CITES THAT IS NOT IN THIS REPOSITORY
+> ## NOTE — WHAT THIS PAGE CITES THAT IS NOT IN THIS REPOSITORY
 >
 > Named here rather than discovered one dead link at a time.
 >
 > - ⛔ `records/research/2026-07-25-code-vs-llm-enforcement-split.md` · `state/debt-ledger.md` · `state/projects/lifehack-cowork/brief.md` · `state/projects/cowork-bulk-ingestion/brief.md` · `state/projects/huddle/huddle-skill/brief.md` · `state/projects/infrastructure/lifehack-correct-architecture/brief.md` · `state/projects/ingest-skill/brief.md` · `state/projects/project-system/brief.md` · `state/projects/security/security-hardening/brief.md` · `state/projects/security/sentinel-gateway/records/2026-07-03-reader-actor-enforcement-proof.md` · `state/projects/skill-builder/brief.md` · `state/projects/skill-system/brief.md` · `state/projects/translator-voice/brief.md` — records in the author's own notes folder, cited as where a lesson was
 >   learned. Not in any repository, and not needed: the evidence is in the rule.
 
-> ## ⓘ WHAT THIS PAGE POINTS AT THAT IS NOT IN THIS REPOSITORY
+> ## NOTE — WHAT THIS PAGE POINTS AT THAT IS NOT IN THIS REPOSITORY
 >
 > This is 2,300 lines of hard-won skill-building doctrine, and it earns its length by citing the
 > exact file where each lesson was learned. Most of those files belong to the system it came from and

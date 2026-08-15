@@ -15,7 +15,7 @@ supersedes: nothing — this is the FIRST spec this skill has ever had
 
 # `/ingest` — PRODUCER SPEC
 
-> ⓘ **WHAT THIS FILE IS — read this before the 2,000 lines below.** This is the ingest skill's
+> NOTE — **WHAT THIS FILE IS — read this before the 2,000 lines below.** This is the ingest skill's
 > **normative specification and its build record**, kept together on purpose: `SKILL.md` and the four
 > phase files cite it (§7, §8, §9) for the rules they implement, and the reasoning for each rule sits
 > beside it so a later change can see what it would be overturning.
@@ -133,7 +133,7 @@ The chain reached BUILDER PHASE 3 (steps). Ratified, with the author in the chai
 
 | # | Ratified | Where it now lives |
 |---|---|---|
-| 1 | **The four phases stand** — ① MAKE THE PILES ② SCREEN A PILE ③ THE WORLD MAP ④ PLACE IT + THE ROOT CANON | §5a (unchanged) |
+| 1 | **The four phases stand** — 1 MAKE THE PILES 2 SCREEN A PILE 3 THE WORLD MAP 4 PLACE IT + THE ROOT CANON | §5a (unchanged) |
 | 2 | **PHASE 1's step list** + 6 additions a conformance check found missing | §7 + §0a below |
 | 3 | **PHASE 2's step list** + the slicing method made explicit | §8 + §0a below |
 | 4 | **PHASE 3 RESTRUCTURED into FIVE TURNS** | §9's restructure block |
@@ -167,11 +167,11 @@ The chain reached BUILDER PHASE 3 (steps). Ratified, with the author in the chai
    same ruling; see the correction in-place at §9's type step.
 
 4. **PHASE 1 — SIX STEPS A CONFORMANCE CHECK FOUND MISSING from the drafted list, now owed to §7:**
-   ① the map **BUILD/MIGRATE action** (§7's `1.1` captured only the assert half; the driver runs
-   `corpus_map.py init` then `migrate` first) · ② **bookmark every chat by content hash** so a re-export with
-   churned filenames re-links instead of duplicating (`1-sort.md:53-59`) · ③ **cluster the leftover
-   UNCLUSTERED pile** (`1-sort.md:101-105`) · ④ the **FINAL TURN's paste-verbatim closing screen** + *"type
-   `/ingest` to continue"* · ⑤ **speak the WELCOME** before the heads-up · ⑥ **paste the screen into your own
+   1 the map **BUILD/MIGRATE action** (§7's `1.1` captured only the assert half; the driver runs
+   `corpus_map.py init` then `migrate` first) · 2 **bookmark every chat by content hash** so a re-export with
+   churned filenames re-links instead of duplicating (`1-sort.md:53-59`) · 3 **cluster the leftover
+   UNCLUSTERED pile** (`1-sort.md:101-105`) · 4 the **FINAL TURN's paste-verbatim closing screen** + *"type
+   `/ingest` to continue"* · 5 **speak the WELCOME** before the heads-up · 6 **paste the screen into your own
    reply, never leave it in the collapsed command block.**
    ⚠ **AND A TERM THE SESSION INVENTED, killed on sight:** a draft said the security posture must be set to
    *"block."* **No source uses that word.** The two real values are **`enforce`** and **`warn`**.
@@ -278,7 +278,7 @@ text as it then stood. The block was this document lagging behind the human, not
    Create/Frame-intake path at all**, so no gate is triggered, nothing is bypassed, and no exemption is needed.
    ⚠ **The session had manufactured the dilemma** by assuming *"reuse `project-manager`"* meant its Create
    procedure; it means the **file shape and the `pm_flag.sh` conventions.** ⇒ **`1.10` is a plain write step with
-   no sub-loop**, and critical-path item ① shrinks accordingly.
+   no sub-loop**, and critical-path item 1 shrinks accordingly.
    ✅ **RESOLVED 2026-08-08 (Phase 9, task 9.1.4) — MEASURED, and the claim below overcounted.** A grep of
    every driver call-site (`skills/ingest/phases/*.md`, `SKILL.md`) found the phrase *"via the existing
    `project-manager` skill"* live in only **ONE** file: `2-scan.md`'s `2.0b`, now reworded to *"Read it
@@ -299,13 +299,13 @@ text as it then stood. The block was this document lagging behind the human, not
    **second brief format**. Write the same shape `project-manager` reads, or the warning applies.
 
 **THE CRITICAL PATH — three fixes, ordered by DEPENDENCY, not severity** *(CHRONOLOGY second look)*:
-**① `1.10`** — sequence it correctly and BOUND its Frame-intake sub-loop. Most upstream: it gates all of PHASE
+**1. `1.10`** — sequence it correctly and BOUND its Frame-intake sub-loop. Most upstream: it gates all of PHASE
 2 onward, and §5c C1's compaction engine reaches every phase through this same gate. **Nothing downstream can
 be trusted to have a valid grounding project until this is right.**
-**② `4.1`'s LOAD reads the finding TYPE** (§5d). PHASE 4's first step; `4.2`, `4.3`'s plan-build and `4.4`'s
+**2. `4.1`'s LOAD reads the finding TYPE** (§5d). PHASE 4's first step; `4.2`, `4.3`'s plan-build and `4.4`'s
 triage all consume what it loads. Requires no change to PHASE 3, which already writes the data.
-**③ Move the `archivist-route` ranking BEFORE `4.3`'s CONFIRM** (§5d). Last-mile write correctness, and
-downstream of both — fixing it first would be wasted while ② still feeds it stale kinds.
+**3. Move the `archivist-route` ranking BEFORE `4.3`'s CONFIRM** (§5d). Last-mile write correctness, and
+downstream of both — fixing it first would be wasted while 2 still feeds it stale kinds.
 
 **WHAT THE READERS THEMSELVES REJECTED, and it is not padding — record it so it is not re-proposed:** the SORT
 row format (the shorter shape is ratified at that phase) · `2-scan.md`'s step-id lag (internal ids, never shown
@@ -369,7 +369,7 @@ reaction to that failure. A spec clause that would let any of those three recur 
   > screen on the way to filing.** *(Stated to the author 2026-08-08 and not contradicted; he chose to move on
   > rather than rule it, so it stands as the working reconciliation, not as his words.)*
   > ⭐ **AND WHY THE OUTPUT IS A TREE RATHER THAN ONE DOCUMENT** — from the author's own ratified `intended-map.md`,
-  > phase ① of the system's lifecycle (AT REST → CALLED IN → DURING → AFTER): *"the save doesn't just save
+  > phase 1 of the system's lifecycle (AT REST → CALLED IN → DURING → AFTER): *"the save doesn't just save
   > everything in one blob. It saves things into the correct category, and the read doesn't just say read
   > things in one blob. **It reads the correct categories.**"* The folder schema exists so that retrieval can
   > be directed. **A single README would be unreadable by the thing that has to read it.**
@@ -793,12 +793,12 @@ logic step, not one.** This is a standing requirement on every phase, not a fix 
 | 22 | ✅ **RESOLVED 2026-08-08 (this session, task 9.8.2) — a table of contents was added at the top of the document, mechanically verified against every heading (see the verify output in this session's report).** *Original finding, kept as the record:* NO TABLE OF CONTENTS on a 1,850-line reference document. SOP: *"A reference file over ~300 lines gets a table of contents at its own top."* A session opening this to check one item has no way to jump to it. | tiny | **FIX** |
 | 23 | ✅ **DECISION RECORDED 2026-08-08 (this session, task 9.8.3) — see §5e row 1.** ⭐ *Original finding, kept as the record:* `system/tools/topic-vocab-lint.py` EXISTS, HAS ZERO CALLERS, AND IS THE WRONG SHAPE for the `topic:` gate. Its own docstring: *"Read-only reporter… run by hand or wire into the archivist coherence sweep."* It walks the whole Drive tree **after the fact**; item 15 needs a **write-time** check. ⇒ **Do NOT mistake it for the fix** — write the enum check inline, reusing `pipeline.py:1183`'s pattern. **Decision taken: RETIRE from the write-time gate role, KEEP for the archivist coherence-sweep job its own docstring already names** — wiring it there is OWED, not owned by this lane (§5e row 1). | small | **FIX + BUILD** |
 | 24 | ⭐ **THE COMPACTION ENGINE (§5c C1) HAS A REUSABLE MECHANISM ALREADY — `system/tools/save/pad_archive.py`.** LIVE and heavily called (`skills/checkin`, `skills/project-manager`, `skills/save`, `system/hooks/pm_flag.sh`), implementing exactly the shape C1 needs: **archive → verify → graduate → clear, in that order, and "NO RECEIPT, NO CLEAR."** ⇒ **REUSE THE MECHANISM, NEVER THE SCHEMA** — `/checkin`'s where-we-are/next-scope target shape is the wrong target, which C1 already says. ⚠ **And do NOT copy its wiring by imitation:** `/checkin` itself never calls `save_step_ledger.py start`, so its own stamp is currently broken. | medium | **BUILD (on the existing part)** |
-| 12 | ✅ **RESOLVED 2026-08-08 (Phase 9, tasks 9.2.1 + 9.2.2) — `4.1`'s LOAD now reads the human-ruled type PER-FINDING from the coalesced reader output (`set_finding_type()` / `world_map_state()`, `pipeline.py:1174`/`:1208`) instead of the old `canon_flag`/`pointer_candidate` map-row booleans, which are gone; and `filer_review.py` now has a real fourth `dated` kind (`_KIND_RANK` includes it, rendered on its own row with a required `date` field) so a dated finding is authored, not silently stubbed.** ⭐ *Original finding, kept as the record:* PHASE 4 NEVER READS THE FINDING TYPE PHASE 3 MAKES THE HUMAN RULE. PHASE 3 writes a human-ruled `canonical\|dated\|record` per finding and **gates pile-close on it** — but `4.1`'s LOAD pulls only `canon_flag`/`pointer_candidate` from the map rows (`4-place.md:80`), and `4-place.md:154` maps only `canon_flag→"canon"`, `pointer_candidate→"pointer"`. **There is no `dated` path anywhere**, and `filer_review.py:33` special-cases only `kind=="canon"`. ⇒ a `dated` finding silently falls through to STUB treatment instead of being authored with its date — **the human's ruling is discarded at the moment of filing.** ⭐ Critical-path item ②. | real work | **FIX** |
+| 12 | ✅ **RESOLVED 2026-08-08 (Phase 9, tasks 9.2.1 + 9.2.2) — `4.1`'s LOAD now reads the human-ruled type PER-FINDING from the coalesced reader output (`set_finding_type()` / `world_map_state()`, `pipeline.py:1174`/`:1208`) instead of the old `canon_flag`/`pointer_candidate` map-row booleans, which are gone; and `filer_review.py` now has a real fourth `dated` kind (`_KIND_RANK` includes it, rendered on its own row with a required `date` field) so a dated finding is authored, not silently stubbed.** ⭐ *Original finding, kept as the record:* PHASE 4 NEVER READS THE FINDING TYPE PHASE 3 MAKES THE HUMAN RULE. PHASE 3 writes a human-ruled `canonical\|dated\|record` per finding and **gates pile-close on it** — but `4.1`'s LOAD pulls only `canon_flag`/`pointer_candidate` from the map rows (`4-place.md:80`), and `4-place.md:154` maps only `canon_flag→"canon"`, `pointer_candidate→"pointer"`. **There is no `dated` path anywhere**, and `filer_review.py:33` special-cases only `kind=="canon"`. ⇒ a `dated` finding silently falls through to STUB treatment instead of being authored with its date — **the human's ruling is discarded at the moment of filing.** ⭐ Critical-path item 2. | real work | **FIX** |
 | 13 | ✅ **RESOLVED 2026-08-08 (Phase 9, task 9.5.2) — `compose_anchor()` now looks up a per-phase verb line via `_ANCHOR_VERBS`; phase 2 gets "verbs = KEEP/TOSS/EXPLORE," the other phases keep MINE/TOSS/SAVE. `_VERB` now carries an `"explore": "EXPLORE"` key, so `verb_label()` can render it.** ⭐ *Original finding, kept as the record:* THE PER-TURN ANCHOR FORBADE THE WORD THE RATIFIED SCREEN REQUIRES. `pipeline.py:466-467` injected *"verbs = MINE/TOSS/SAVE … never 'keep'"* into **every turn of every phase**, and `:474-476` asserted *"a human NEVER sees a verb outside {MINE, TOSS, SAVE}"* — false at the time. PHASE 2's ratified set is KEEP/TOSS/EXPLORE, and **`_VERB` had no `explore` key at all**, so the model had no word for the one non-terminal verdict that is PHASE 2's spine. `scan_review.py:141-147` patched it display-only and said *"pipeline.py itself is untouched."* | small | **FIX** |
-| 14 | ✅ **RESOLVED 2026-08-08 (Phase 9, task 9.3.1) — the rank now happens ONCE at `4.3`, before CONFIRM (`archivist-route` inlined there, its ranked candidate written into `/tmp/filer-plan.json`'s `home` field); `4.4`'s step A is now titled "Reuse the approved home — NEVER re-rank it here" and takes `{desk, folder}` straight from the approved plan.** ⭐ *Original finding, kept as the record:* `4.4` RE-RANKED THE HOME AFTER THE HUMAN APPROVED IT. `4-place.md:178-180` ran `archivist-route` at WRITE time, after `4.3` had the human approve a specific home (`:167-168` — *"PLACE acts ONLY on the items the human confirmed this turn"*). **The file written could differ from the file approved.** ⭐ And it was an ORDER defect against the routing tool's own contract — *"Return the ranked candidates. Do NOT write. The caller surfaces them for the human's one-tap pick, then writes"* — which was being run backwards. Critical-path item ③. | small | **FIX** |
+| 14 | ✅ **RESOLVED 2026-08-08 (Phase 9, task 9.3.1) — the rank now happens ONCE at `4.3`, before CONFIRM (`archivist-route` inlined there, its ranked candidate written into `/tmp/filer-plan.json`'s `home` field); `4.4`'s step A is now titled "Reuse the approved home — NEVER re-rank it here" and takes `{desk, folder}` straight from the approved plan.** ⭐ *Original finding, kept as the record:* `4.4` RE-RANKED THE HOME AFTER THE HUMAN APPROVED IT. `4-place.md:178-180` ran `archivist-route` at WRITE time, after `4.3` had the human approve a specific home (`:167-168` — *"PLACE acts ONLY on the items the human confirmed this turn"*). **The file written could differ from the file approved.** ⭐ And it was an ORDER defect against the routing tool's own contract — *"Return the ranked candidates. Do NOT write. The caller surfaces them for the human's one-tap pick, then writes"* — which was being run backwards. Critical-path item 3. | small | **FIX** |
 | 15 | ✅ **RESOLVED 2026-08-08 (Phase 9, task 9.5.4) — `pipeline.py topic-check` now exists: a fail-closed membership check against the CLOSED vocabulary parsed live from `system/topic-vocab.md`, refusing (`REFUSED topic-check: … not in the closed vocabulary`) on an unknown slug, reusing the `FINDING_TYPES` enforcement pattern this row named.** ⭐ *Original finding, kept as the record:* `topic:` WAS A DECLARED CLOSED VOCABULARY WITH ZERO CODE ENFORCEMENT. Verified: no tool in the ingest chain checked a `topic` value against `topic-vocab.md`. Meanwhile two sibling vocabularies in the same codebase were fail-closed — `pipeline.py:1183` (`if ftype not in FINDING_TYPES: return False`) and `tag.py`'s `CATEGORIES` validate. Per LAW 1 this seam owed a code check. | small | **BUILD** |
 | 16 | ✅ **RESOLVED 2026-08-08 (Phase 9, task 9.5.3) — `m["corpus_inherit_offered"]` now exists as a run-level (map-level, not per-pile) flag, set once by `set_corpus_inherit_offered()` and checked first by `corpus_inherit_offered()` before the offer fires again.** ⭐ *Original finding, kept as the record:* `2.0c` WAS RATIFIED ONCE-PER-RUN AND NOTHING COULD MAKE IT FIRE ONCE. No inheritance flag existed in `CHAT_V2_DEFAULTS` or `BASKET_DEFAULTS`. PHASE 2 re-opens per pile, so as written the inheritance offer was made on **all 23 piles**. | small | **BUILD** (a map-level flag) |
-| 17 | ✅ **RESOLVED 2026-08-08 (Phase 9, tasks 9.1.1–9.1.3) — `pipeline.py brief-write` now exists and writes the run's project brief from the canonical schema; `mark_brief_written()` sets `m["brief_written"]`, which `current_phase()` checks before ever returning phase 2 (returning `"BLOCKED-NO-BRIEF"` instead if it hasn't run); and step `1.10` now exists in `1-sort.md`, sequenced after `1.6`'s gate, calling `pipeline.py brief-write --map "$MAP"`.** ⭐ *Original finding, kept as the record:* `1.10` WAS NOT BUILT, SO PHASE 2 LOADED A PROJECT PHASE 1 NEVER CREATED — used-before-produced. `1-sort.md`'s FINAL TURN had zero project-creation call; `2-scan.md`'s `2.0b` opened by asserting the brief already existed. ⭐ Critical-path item ①. | real work | **BUILD** |
+| 17 | ✅ **RESOLVED 2026-08-08 (Phase 9, tasks 9.1.1–9.1.3) — `pipeline.py brief-write` now exists and writes the run's project brief from the canonical schema; `mark_brief_written()` sets `m["brief_written"]`, which `current_phase()` checks before ever returning phase 2 (returning `"BLOCKED-NO-BRIEF"` instead if it hasn't run); and step `1.10` now exists in `1-sort.md`, sequenced after `1.6`'s gate, calling `pipeline.py brief-write --map "$MAP"`.** ⭐ *Original finding, kept as the record:* `1.10` WAS NOT BUILT, SO PHASE 2 LOADED A PROJECT PHASE 1 NEVER CREATED — used-before-produced. `1-sort.md`'s FINAL TURN had zero project-creation call; `2-scan.md`'s `2.0b` opened by asserting the brief already existed. ⭐ Critical-path item 1. | real work | **BUILD** |
 | 18 | **`4.3`'s FILING ROW IS A TRUNCATED ONE-LINER** where the step outcome demands the record at full detail. `filer_review.py:36-48` renders `SAVE "{title}" → {home}` and then clips it to the display width; the plan schema `{title, home, kind, why}` has **no field that could carry a body**. ⛔ Fix by DEEPENING THE ROW, **not** by looping per item — see the ITEM-LOOP correction at `4.3`. | real work | **BUILD** |
 | 19 | ✅ **RESOLVED 2026-08-08 (Phase 9, task 9.5.1) — `phases/1-sort.md:86` now reads "We get there in four passes," matching `SKILL.md:10`'s "FOUR phases" and `compose_progress()`'s "of 4."** ⭐ *Original finding, kept as the record:* `phases/1-sort.md:86` still said "six passes." The `SPEC.md` twin was corrected; the driver that ran was not. | tiny | **FIX** |
 | 20 | ⚠ **A PROJECT-IDENTITY TRAP FOR WHOEVER BUILDS `1.10`/`2.0c`.** `state/projects/cowork-bulk-ingestion/brief.md` exists — but it is **the SKILL'S OWN engineering project** (the SOP mining, the two-skill split, plan links), not any corpus's world model. A naive "find a project near this corpus" lookup would offer to **inherit the skill's own build history as if it were personal facts about the author.** Match on an explicit corpus id, never on proximity. | tiny (design note) | **BUILD** |
@@ -895,7 +895,7 @@ of the four may be deleted. "Retire" below means *marked retired and recorded*, 
 |---|---|---|---|
 | 1 | `system/tools/topic-vocab-lint.py` | **RETIRE from the write-time `topic:` gate; KEEP for its own different job** | Already ruled at §5d item 23: it is a **post-hoc whole-tree scanner** (its own docstring: *"Read-only reporter… run by hand or wire into the archivist coherence sweep"*), the wrong SHAPE for a write-time check. The write-time gate itself is a separate, small build (§5d item 15 — an inline enum check at `4.4`, reusing `pipeline.py:1183`'s `if ftype not in FINDING_TYPES` pattern), **not this file.** The scanner's OWN docstring already names its legitimate job. **OWED:** wire it into the archivist coherence-sweep lane — `system/tools/archivist*` / the `archivist-audit` skill, neither owned by this lane. |
 | 2 | `system/tools/cowork-ingest/check_screens.py` | **WIRE** | ⚠ Checked first, per instruction: **is it the gate task 9.5.5 arms? No — confirmed distinct.** 9.5.5 arms `require_world_map` (`pipeline.py:1233,1339` — the world-map close-gate, a PHASE 3 loss-prevention check on typed findings / folder branch, grepped: no driver passes `--require-world-map`). `check_screens.py` guards a **different** thing entirely: the SCREEN-CONSISTENCY fitness check (F4.2) — action-bar-last + no-machine-jargon on the four decision screens — and its own `JARGON` list still needs a pass against PHASE 2's ratified KEEP/TOSS/EXPLORE verbs (§8), since the anchor itself has no `explore` key yet (§5d item 13). **Zero callers**, independently confirmed by `system/sops/skill-building-sop.md:283` (*"the fourth logged instance of §V.9"*). A jargon/format regression on a human-facing decision screen is a real, already-measured risk class in this file (the truncation defect, the stale six-passes count), and this tool catches it cheaply on a self-built fixture — no live corpus needed. **OWED:** wire it as a pre-flight check — a `test_*` runner, a pre-commit hook, or folded into `test_chain_e2e.sh` — none of which is a file this lane owns. |
-| 3 | `explore_char_slice` (`system/tools/cowork-ingest/tag.py:138-160`) | **WIRE** | Already established at §0a ruling 6 and §8 amendment ④: the slicer is **built**, with its own stated rationale for `EXPLORE_WIN=9,000` / `EXPLORE_TOTAL_CAP=28,000`, and **zero callers** while its siblings (`adaptive_char_slice`, `giant_sample`) are wired at `gate_and_pack.py:137,139`. It is not dead code by accident — it is the **exact mechanism `2.9`'s ratified EXPLORE re-read step needs** (§8 step `2.9`: a larger slice, an 8-12 sentence ask), and no other tool in the file does that job. Retiring it would mean re-deriving the same cap from scratch later. **OWED:** wire it into the `2.9` driver path (`2-scan.md` / `pipeline.py`'s EXPLORE handling) — not owned by this lane. |
+| 3 | `explore_char_slice` (`system/tools/cowork-ingest/tag.py:138-160`) | **WIRE** | Already established at §0a ruling 6 and §8 amendment 4: the slicer is **built**, with its own stated rationale for `EXPLORE_WIN=9,000` / `EXPLORE_TOTAL_CAP=28,000`, and **zero callers** while its siblings (`adaptive_char_slice`, `giant_sample`) are wired at `gate_and_pack.py:137,139`. It is not dead code by accident — it is the **exact mechanism `2.9`'s ratified EXPLORE re-read step needs** (§8 step `2.9`: a larger slice, an 8-12 sentence ask), and no other tool in the file does that job. Retiring it would mean re-deriving the same cap from scratch later. **OWED:** wire it into the `2.9` driver path (`2-scan.md` / `pipeline.py`'s EXPLORE handling) — not owned by this lane. |
 | 4 | The four uncalled test files: `test_chain_e2e.sh` · `test_pipeline.py` · `test_status_gate.py` · `test_ux.py` (`system/tools/cowork-ingest/`) | **WIRE (at least one)** | Confirmed this session: no cron, no CI config, no hook, no `Makefile` / `package.json` runner, and no workflow file anywhere in the repo references any of the four — grepped whole tree; only self-references and this document's own §5d item 6 turn up. This is the §V.9 shape one level up: an entire **test suite** nobody runs is worse than one missing validator, because it is the exact mechanism that would have caught regressions this file already logs by hand (the stale six-passes count, the reversed RECORDS instruction, the mis-cited `wmb_commit`). **Decision is WIRE, not retire** — these test the phase-close gates §6 calls this spec's teeth. **OWED:** register at least `test_pipeline.py` (the broadest) in a CI-equivalent runner or pre-commit hook — no such runner exists today for `cowork-ingest/`, and creating one is outside this lane's file ownership (SPEC.md only). |
 
 **None of the four is deleted, per the hard safe-halt.** Recording each decision here — instead of leaving
@@ -1426,8 +1426,8 @@ session. Run it only once the human has ruled every basket.
 > **This marking is not decoration — it is the grant of permission.** *(the author, 2026-08-05: "the skill tester is
 > going to iterate and test the skill against the spec, but it needs to be able to go in and recursively edit
 > the spec as it finds things that are wrong — and I can't do that if things are marked as prescriptive.")*
-> **The three exceptions that stay hard regardless:** ① security invariants · ② human-elimination gates (only
-> the human rules a chat) · ③ loss-prevention gates (the coverage refusal). Test: *if this is violated, can the
+> **The three exceptions that stay hard regardless:** 1 security invariants · 2 human-elimination gates (only
+> the human rules a chat) · 3 loss-prevention gates (the coverage refusal). Test: *if this is violated, can the
 > damage be SEEN and UNDONE?* Yes → guidance. No → invariant.
 
 **SKILL OUTCOME:** someone hands over a huge corpus and walks away with a personal folder schema ready to drop
@@ -1444,11 +1444,11 @@ noise, or lose material that never gets a second chance. **It is a targeting pha
 
 > ## ⚖ AMENDED 2026-08-08 — THREE CHANGES, ratified with the author (fork = B)
 >
-> **① `2.0b` IS NOW A PLAIN *LOAD*, NOT A CREATE.** The project is created at the END OF PHASE 1 (`1.10`) and
+> **1. `2.0b` IS NOW A PLAIN *LOAD*, NOT A CREATE.** The project is created at the END OF PHASE 1 (`1.10`) and
 > gates this phase. This section previously read *"the world model IS the project brief"* and loaded an
 > existing one; **the run now creates and owns its own project.** See §0a ruling 1.
 >
-> **② `2.0c`'s FREQUENCY IS SETTLED: ONCE PER RUN.** It was unstated, and the step sits inside a phase §5b
+> **2. `2.0c`'s FREQUENCY IS SETTLED: ONCE PER RUN.** It was unstated, and the step sits inside a phase §5b
 > scopes *"per pile"* — so as written the human would be asked to inherit their earlier history **every single
 > pile**. Because the project is created once, the offer fires once. *(the author, 2026-08-08, on whether to keep
 > it at all: "It shouldn't ask 2.0c. You should just — well, yeah sure, why not, we can add 2.0c." Net: KEPT.)*
@@ -1456,7 +1456,7 @@ noise, or lose material that never gets a second chance. **It is a targeting pha
 > zero human turns while containing `2.0c`, which is tagged `human's turn 🧑`.** And `2-scan.md:74-81` renders
 > `2.0c` with **no turn-type tag at all** — the marking exists only in the document that does not run.
 >
-> **③ ⚖ `2.4` MUST STATE THE SLICING METHOD.** *(the author: "I don't see anything here about the slicing… we have a
+> **3. ⚖ `2.4` MUST STATE THE SLICING METHOD.** *(the author: "I don't see anything here about the slicing… we have a
 > whole methodology, like slicing, so that we can actually pull a very accurate assessment or guess at what the
 > whole chat is about. **That's not what we said in the spec.**")* He is right: this section said "hands the
 > cleaned text to tool-less reader agents" and left the method in `tag.py`. **State it here** — verified
@@ -1466,7 +1466,7 @@ noise, or lose material that never gets a second chance. **It is a targeting pha
 > - **> 8,000 chars → first 3,000 + a MIDDLE 3,000 + last 3,000**, both gaps marked.
 > - **hard ceiling `SCAN_TOTAL_CAP = 10,000`** — a safety backstop, *not* the thing shaping the slice.
 >
-> **④ `2.9`'s "NOT BUILT" NARROWS.** `explore_char_slice` **exists** (`tag.py:138-160`) at **`EXPLORE_WIN =
+> **4. `2.9`'s "NOT BUILT" NARROWS.** `explore_char_slice` **exists** (`tag.py:138-160`) at **`EXPLORE_WIN =
 > 9,000`** and **`EXPLORE_TOTAL_CAP = 28,000`**, with its own written rationale for why the window must move
 > with the cap. **It has ZERO callers.** ⇒ **the slicer is BUILT; the WIRING is not.** ⛔ Do not invent a
 > different number — an earlier draft of this run guessed *"start at double the cap"* and was wrong.
@@ -1772,8 +1772,8 @@ was `2.4` — see `2.3`'s note)*
 > OUTCOME. **Everything else — every number, threshold, ordering, phrasing and method — is GUIDANCE
 > CARRYING ITS REASON** and may be rewritten by a later session or by the skill-tester without asking,
 > provided the outcome it serves still lands.
-> **The three exceptions that stay hard:** ① security invariants · ② human-elimination gates (only the
-> human rules what is true about them) · ③ loss-prevention gates. Test: *if this is violated, can the
+> **The three exceptions that stay hard:** 1 security invariants · 2 human-elimination gates (only the
+> human rules what is true about them) · 3 loss-prevention gates. Test: *if this is violated, can the
 > damage be SEEN and UNDONE?* Yes → guidance. No → invariant.
 
 **SKILL OUTCOME:** someone hands over a huge corpus and walks away with a personal folder schema ready to
@@ -2151,8 +2151,8 @@ fans out" has to run from here, not from the far side of Turn 1.
 
 > ## ⛔ WHAT IS PRESCRIPTIVE IN THIS SECTION
 > Same rule as §8/§9: **only the OUTCOMES are nailed down.** Every number, ordering, phrasing and method below
-> is **guidance carrying its reason.** The three that stay hard regardless: ① security invariants ② human-
-> elimination gates ③ loss-prevention gates.
+> is **guidance carrying its reason.** The three that stay hard regardless: 1 security invariants 2 human-
+> elimination gates 3 loss-prevention gates.
 
 **SKILL OUTCOME:** see §0b — the person owns a folder tree that behaves like a knowledge system, thin at the
 top and heavy at the leaves, with nothing canon without their own yes.

@@ -31,14 +31,14 @@ turn should look like, or how something should be said to the human.
 > time**, and it is not deleted.
 >
 > **Why the July reasoning stopped holding — three reasons, all load-bearing:**
-> ① **The filer's job SHRANK** from a second act (design the whole desk schema from the manifest, at the
+> 1. **The filer's job SHRANK** from a second act (design the whole desk schema from the manifest, at the
 > end, in one sitting) to a single phase — because **the folder schema is now the SPINE, not the output**:
 > it forms in Phase 1 and is corrected and committed per-pile in Phase 3. By the time this file runs, the
 > tree is already agreed.
-> ② ⭐ **THE HANDOFF ITSELF WAS WHERE INFORMATION WAS BEING LOST.** The manifest is a serialization
+> 2. ⭐ **THE HANDOFF ITSELF WAS WHERE INFORMATION WAS BEING LOST.** The manifest is a serialization
 > boundary, and the eleven conclusion categories collapsing to two chat-row booleans exists *because* of
 > it. Merging removes the wall those categories had to survive.
-> ③ `skill-building-sop.md` §0 trait 1 defaults to one skill: *"split the machinery only when earned."*
+> 3. `skill-building-sop.md` §0 trait 1 defaults to one skill: *"split the machinery only when earned."*
 > The split was earned in July on a shape that no longer exists.
 >
 > ⚠ **This phase is now SMALLER than the skill it came from.** Step `4.2` below used to be a full
@@ -69,8 +69,8 @@ what is expected of me."* It is now in every phase because being lost is not a p
 
 **Print this before anything else — five short lines, plain words (see the dictionary in `SKILL.md`):**
 1. **Where they are, literally** — *"Step {N} of 4."* ⛔ Never the codename alone.
-2. **The whole map**, current step arrowed — *① make the piles → ② screen each pile → ③ the picture of you
-   → ④ file it.*
+2. **The whole map**, current step arrowed — *1 make the piles → 2 screen each pile → 3 the picture of you
+   → 4 file it.*
 3. **What the last step settled** — one line. *"You set 5 piles."*
 4. **What this step is for**, and why it comes before the next one.
 5. **What you are about to ask them to do** — narrate the move BEFORE you make it.
@@ -399,9 +399,9 @@ taxonomy of someone's life, authored by a machine, is worse than no taxonomy at 
 2026-08-11** — a canon-candidate no longer parks in `records/proposals/`; it is authored straight into
 `canon/`, at whichever altitude it earns. Use the SAME two tests already inlined in `propose_folder_shape()`
 (`pipeline.py:1959-1998`) — do not re-derive or re-word them, cite them:
-① **too BIG → subdivide (nest, same territory, more shelves beneath it); too DIVERSE → separate (siblings,
+1. **too BIG → subdivide (nest, same territory, more shelves beneath it); too DIVERSE → separate (siblings,
 NOT nested — mutually irrelevant bodies of knowledge degrade each other if loaded together).**
-② **the cost test — place a fact at the highest folder where it is still always-true, and no higher; a line
+2. **the cost test — place a fact at the highest folder where it is still always-true, and no higher; a line
 placed high is charged to every descendant that walks past it** — which resolves, in the SPEC's own words
 (`SPEC.md:730-734`), as *"the question is not 'what is this about' but 'who has to bear the cost of it.'"*
 
