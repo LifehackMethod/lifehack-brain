@@ -102,12 +102,93 @@ sentinel-health  | yes | 1800  | bash "$LIFEHACK_CODE_ROOT/system/tools/sentinel
 # system-health-run.sh's pattern; until then this calls the checker directly. 6h cadence.
 cal-health       | yes | 21600 | python3 "$LIFEHACK_CODE_ROOT/system/tools/cal-health.py"
 #
-# backlog-health: emits state/status/backlog.json from the read-only backlog groom engine. That
-# engine (backlog_groom.py) belongs to a DIFFERENT category (PLANNING & BUILD, backlog-authority) and
-# has not landed in this repo yet — this job degrades honestly (a clear NEEDS_REVIEW tile saying so,
-# never a crash) until it does; see backlog-health.py's own header. Same no-wrapper note as cal-health
+# backlog-health: emits state/status/backlog.json from the read-only backlog groom engine
+# (backlog_groom.py). CORRECTED 2026-08-14: that engine landed in the SAME commit as this file
+# (8aeda8f) — the line here previously claiming it "has not landed in this repo yet" was stale on
+# arrival, never true even at the moment it was written. Verified this session: `python3
+# system/tools/backlog-health.py` imports backlog_groom cleanly and runs the real report (not the
+# "not present yet" NEEDS_REVIEW fallback) — on a fresh clone it currently reports "not configured
+# - no debt ledger, desk backlogs, or legacy swamp file found yet", which is a DATA-level gap
+# (nothing to scan yet), not an import failure. (backlog-health.py's own header docstring carries
+# the same stale claim; out of scope for this file to fix.) Same no-wrapper note as cal-health
 # above. 6h cadence.
 backlog-health   | yes | 21600 | python3 "$LIFEHACK_CODE_ROOT/system/tools/backlog-health.py"
+#
+# fault-proposer: the FIRST machine reader of this repo's failure signals — grades open faults
+# INSTANCE/SUBSYSTEM/ORGANISM, cites the evidence that chose the altitude, and REFUSES to emit
+# anything it cannot cite (a refusal is exit 0 — a correct outcome, not a failure; see
+# fault-proposer-run.sh's own exit-code contract). READ-ONLY: writes only its own proposal text +
+# a machine-local status artifact (+ a best-effort tile if a notes root is configured); no gws, no
+# notes-root requirement to RUN, no claude -p (confirmed absent from fault_proposer.py). Its own
+# header sizes itself as "daily cadence + 6h slack before it alarms" (STALE_AFTER_HOURS=30) — this
+# row honors that literally. 1-day cadence.
+fault-proposer          | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/fault-proposer-run.sh"
+#
+# item-store-freshness: dead-man for state/item-store/{tasks,calendar}/ — LOCAL files only, no
+# gws, no auth, independent of the tasks/calendar writers so it still fires and pages even if a
+# writer silently stops producing. Exit 0 on BOTH ok and ERROR (the tile carries the signal, never
+# the exit code) — ERROR routes to a governor-gated phone push. Its own header sizes itself at
+# STALE_AFTER_HOURS=4, "Pulse cadence ~ hourly" — this row honors that literally. 1h cadence.
+item-store-freshness    | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/item-store-freshness-run.sh"
+#
+# email-summary-freshness: dead-man for the v2 faithful-thread store (state/email-summary/
+# threads-v2/) — LOCAL files only, no gws, no auth, independent of the write-cadence job below so
+# it still fires even if writing is down/disabled/unwired. Exit 0 on both UP and DEGRADED (tile
+# carries the signal); DEGRADED routes to a governor-gated phone push (normal priority — quiet
+# hours hold). Its own header sizes itself at STALE_AFTER_HOURS=6, "Pulse cadence ~ hourly" — this
+# row honors that literally. 1h cadence.
+email-summary-freshness | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/email-summary-freshness-run.sh"
+#
+# ── The next three are PARKED, not live (enabled != yes) — added so the row exists and the
+#    interval is pre-justified, but deliberately NOT dispatched. All three share ONE verified
+#    defect: on a MISSING $HOME/.config/lifehack/gws-credentials.json (true for every machine on
+#    day 1 before the one-time `gws auth export` step, and PERMANENTLY true for a student with no
+#    Google account at all — exactly the population this manifest must not fail loudly for) each
+#    runner's "no creds file" branch does `RC=3; exit 3` — NOT this file's own rc=75 "stood down,
+#    not a fault" convention that cal-health/backlog-health above already use for the identical
+#    "config not set up yet" case. rc=3 is not 0/75/2, so it falls into this file's own "anything
+#    else" bucket: 3 consecutive ticks trip Pulse's circuit breaker, and system-health.py's
+#    assess() (system/tools/system-health.py:255-257) then renders the job "DOWN, severity: error,
+#    attention: True" PERMANENTLY — a red Helm tile for a feature that, for a no-Google student,
+#    will never become configured. Verified by reading the three runners directly, plus
+#    system-health.py's assess(), this session. The fix (out of scope here — this file is manifest
+#    only) is one line per runner: change the GWS_CREDS else-branch's `RC=3; exit 3` to `RC=75;
+#    exit 75`. Flip `enabled` to `yes` once that lands; the intervals below are already the
+#    runner's own intended cadence, sourced from each one's header.
+#
+# calendar-store-sync: WOULD refresh state/item-store/calendar/ via calendar_store_sync.py --sync
+# (mechanical, no claude -p — confirmed). PARKED — see the note above. Interval matches the
+# runner's own header ("own absence horizon... writers run ~daily", STALE_AFTER_HOURS=30). 1-day
+# cadence once fixed.
+calendar-store-sync     | waiting-on-rc75-fix | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/calendar-store-sync-run.sh"
+#
+# tasks-store-sync: WOULD refresh state/item-store/tasks/ via tasks_store_sync.py --sync
+# (mechanical, no claude -p — confirmed). PARKED for the SAME reason as calendar-store-sync
+# immediately above — tasks-store-sync-run.sh shares the identical GWS_CREDS-missing branch and
+# consequence. Interval matches the runner's own header ("writers run ~daily",
+# STALE_AFTER_HOURS=30). 1-day cadence once fixed.
+tasks-store-sync        | waiting-on-rc75-fix | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/tasks-store-sync-run.sh"
+#
+# email-summary-write: WOULD refresh the v2 faithful-thread store (threads-v2/) via
+# email_summary_sync.py --write-v2 (mechanical, no claude -p — confirmed: CLAUDE_BIN is kept but
+# never invoked by the v2 write path; see shared/tools/email_summary_sync.py:114-120). PARKED for
+# the SAME rc=3-vs-rc=75 defect as the two rows above (identical GWS_CREDS-missing branch in
+# email-summary-write-run.sh) — same consequence, same fix. Interval matches the runner's OWN
+# header, which is explicit: STALE_AFTER_HOURS=4, "just over one 3h cadence, so a SINGLE missed
+# run surfaces on the next tick." 3h cadence once fixed.
+email-summary-write     | waiting-on-rc75-fix | 10800 | bash "$LIFEHACK_CODE_ROOT/system/tools/email-summary-write-run.sh"
+#
+# NOT ADDED: shared/tools/email_summary_run.sh (the older v1-shaped watchdog wrapper). Not parked,
+# not given a row at all — two independent reasons, both verified this session. (1) It passes its
+# args straight through to email_summary_sync.py with NO action flag added; that janitor is
+# v2-only and has "no legacy default run mode" (its own main(), read directly: no flag set -> 
+# ap.print_help() + return 1) — a bare/scheduled call ALWAYS returns rc=1 on EVERY machine,
+# Google-configured or not, 100% of the time, which is worse than the three parked rows above (at
+# least those succeed once configured). (2) Even patched with --write-v2 in its command string, it
+# would duplicate email-summary-write-run.sh above while lacking that wrapper's isolated
+# gws-credentials handling and single-instance lock — a bare `gws` call from this script would hit
+# the interactive keychain a headless/cron context cannot unlock (per the sibling runners' own
+# comments), risking a hang rather than a clean failure. Superseded, not summoned.
 #
 # ── TEMPLATE — copy this row when a new lane wires up a job, then delete the comment. ──────────
 # your-job-name  | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/your-runner.sh"
