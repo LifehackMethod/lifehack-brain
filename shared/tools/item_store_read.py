@@ -23,6 +23,7 @@ calendar_store_sync.py. Schema/contract: item_schema.py.
 import json
 import os
 import sys
+import time
 
 CODE_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
@@ -358,6 +359,75 @@ def active_counts_by_type():
 ITEM_FRESHNESS_MAX_STALE_HOURS = 30   # writers run ~daily; DEGRADED if the newest record is older than this
 ITEM_STATUS_TILE_PATH = os.path.join(DRIVE, "state", "status", "item-store.json")
 
+# ── "never configured" signal — the SAME gate the two writers themselves preflight on
+# (calendar-store-sync-run.sh / tasks-store-sync-run.sh: `[ -s "$GWS_CREDS" ]`, rc=75 STOOD DOWN when
+# absent — system/pulse-config.md's "stood down, not a fault" convention). Neither writer has any
+# OTHER hard gate: calendar_store_sync.py reads cal_config with a tolerant `.load().get(...)`, never
+# `.require()`, so a missing <notes>/config/cal.md does not stop it; tasks_store_sync.py has no
+# cal_config dependency at all. gws-credentials.json is therefore the one real "has this person ever
+# turned Google on" fact available to this dead-man — a fixed, machine-local path (NOT under
+# DRIVE/brain_root, exactly like the writers' own check), overridable at module scope for --self-test
+# the same way TASKS_DIR/CAL_DIR/RDR_SCRATCH_DIR already are.
+GWS_CREDS_PATH = os.path.expanduser("~/.config/lifehack/gws-credentials.json")
+
+
+def _google_configured():
+    """True iff gws-credentials.json exists and is non-empty — mirrors the writers' own `[ -s ... ]`
+    preflight bit for bit."""
+    try:
+        return os.path.getsize(GWS_CREDS_PATH) > 0
+    except OSError:
+        return False
+
+
+def _write_item_store_tile(status, summary, payload):
+    """The ONE tile writer for state/status/item-store.json — factored out of freshness_check() so
+    both its branches (the never-configured carve-out and the normal OK/ERROR path) share one write
+    path instead of two. Behavior unchanged from before the carve-out existed."""
+    payload = dict(payload)
+    _lt = time.localtime()
+    _off = time.strftime("%z", _lt)
+    _off = (_off[:3] + ":" + _off[3:]) if _off else "+00:00"
+    last_run_iso = time.strftime("%Y-%m-%dT%H:%M:%S", _lt) + _off
+    # emit_status.py (the shared health-tile validator) has not landed in this repo yet — confirmed
+    # absent by `find` (no matches) and by docs/skill-conformance.md CF-1. Without a fallback, the
+    # ImportError below was being swallowed by a bare `except Exception`, freshness_check() returned
+    # as if it had succeeded, and state/status/item-store.json was NEVER created — a job that reports
+    # success and leaves no artifact (the exact "prints PASSED, writes no file" antipattern this repo
+    # has a measured history of). Mirrors shared/tools/email_summary_sync.py's write_status_tile():
+    # try the real validator first (preferred if it's ever ported — NOT removed), ImportError falls
+    # through to a hand-written tile in the SAME envelope shape emit_status would produce (matches
+    # system/tools/cal-health.py's local _write_tile convention too), any OTHER exception from a
+    # present-but-erroring validator is surfaced and left un-papered-over (no silent fallback that
+    # could mask a real validation bug).
+    try:
+        from emit_status import emit_status
+        emit_status(ITEM_STATUS_TILE_PATH, desk="root", pulse_job="item-store-freshness",
+                    stale_after_s=7200, status=status, summary=summary,
+                    payload=payload, required_payload=("counts",))
+        return
+    except ImportError:
+        pass  # emit_status.py hasn't landed in this repo yet — fall through to the raw writer below.
+    except Exception as e:
+        sys.stderr.write(f"[item-store-freshness] tile emit FAILED: {e}\n")
+        return
+
+    # FALLBACK — no emit_status.py available. Written atomically (tmp + os.replace) so a reader never
+    # sees a half-written tile. If even THIS fails, that must be visible — never silenced — so any
+    # error here goes to stderr rather than being swallowed.
+    try:
+        env = {"desk": "root", "schema_version": 2, "pulse_job": "item-store-freshness",
+               "emit_mode": "pulse", "stale_after_s": 7200, "last_run": last_run_iso,
+               "rc": 0, "status": status, "summary": summary}
+        env.update(payload)
+        os.makedirs(os.path.dirname(ITEM_STATUS_TILE_PATH), exist_ok=True)
+        tmp = ITEM_STATUS_TILE_PATH + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(env, f, indent=2)
+        os.replace(tmp, ITEM_STATUS_TILE_PATH)
+    except Exception as e:
+        sys.stderr.write(f"[item-store-freshness] FALLBACK tile write FAILED: {e}\n")
+
 
 def _newest_item_mtime():
     newest = None
@@ -376,14 +446,37 @@ def _newest_item_mtime():
 def freshness_check(max_stale_hours=ITEM_FRESHNESS_MAX_STALE_HOURS, write_tile=True, verbose=False):
     """Item-store dead-man. Returns (status, reasons, counts). status ∈ {OK, ERROR}. Writes the tile via
     emit_status.py (the ONE validator — no hand-rolled json). ERROR when a tracked type has 0 ACTIVE
-    records OR the store is stale/empty; OK otherwise."""
-    import time
+    records OR the store is stale/empty; OK otherwise.
+
+    NEVER-CONFIGURED CARVE-OUT: a wholly empty store (no item record of any age, from either writer)
+    AND no gws credentials on file is the fresh-install / no-Google-account day-one state — every
+    install starts here, and a student who never connects Google stays here forever. That is not a
+    fault, so it is reported OK/rc0 with a "not configured" summary — the SAME house pattern
+    cal-health.py already uses ("not configured — no calendar connected yet", status OK) and
+    backlog_groom.py already uses ("not configured — no debt ledger, desk backlogs, or legacy swamp
+    file found yet", status OK). No new status value is introduced — VALID_STATUS in emit_status.py
+    has no NOT_CONFIGURED, and neither precedent invents one; both reuse OK. Once gws credentials
+    ARE on file, or once the store holds ANY record of any age, this carve-out no longer applies and
+    the normal zeroed/stale ERROR logic below decides — a real coverage gap (one type synced, the
+    other never wired up; or a writer that ran once and then stopped) still reports ERROR, unchanged."""
     counts = active_counts_by_type()          # {task: N, calendar: M} — ACTIVE only (cold/completed held)
+    newest = _newest_item_mtime()
+
+    if newest is None and not _google_configured():
+        status, reasons = "OK", []
+        summary = "not configured — no gws credentials found; task/calendar sync never set up"
+        if write_tile:
+            _write_item_store_tile(status, summary,
+                                   {"counts": counts, "zeroed_types": ["task", "calendar"],
+                                    "staleness_hours": None, "configured": False})
+        if verbose:
+            print(f"[item-store-freshness] {status}: {summary}")
+        return status, reasons, counts
+
     reasons = []
     zeroed = [t for t, n in counts.items() if n == 0]
     if zeroed:
         reasons.append("zeroed ACTIVE type(s): " + ", ".join(zeroed))
-    newest = _newest_item_mtime()
     if newest is None:
         staleness_hours = None
         reasons.append("store EMPTY (no item records)")
@@ -394,49 +487,9 @@ def freshness_check(max_stale_hours=ITEM_FRESHNESS_MAX_STALE_HOURS, write_tile=T
     status = "ERROR" if reasons else "OK"
     summary = "; ".join(reasons) if reasons else f"fresh + all types covered ({counts})"
     if write_tile:
-        payload = {"counts": counts, "zeroed_types": zeroed, "staleness_hours": staleness_hours}
-        # emit_status.py (the shared health-tile validator) has not landed in this repo yet — confirmed
-        # absent by `find` (no matches) and by docs/skill-conformance.md CF-1. Without a fallback, the
-        # ImportError below was being swallowed by a bare `except Exception`, freshness_check() returned
-        # as if it had succeeded, and state/status/item-store.json was NEVER created — a job that reports
-        # success and leaves no artifact (the exact "prints PASSED, writes no file" antipattern this repo
-        # has a measured history of). Mirrors shared/tools/email_summary_sync.py's write_status_tile():
-        # try the real validator first (preferred if it's ever ported — NOT removed), ImportError falls
-        # through to a hand-written tile in the SAME envelope shape emit_status would produce (matches
-        # system/tools/cal-health.py's local _write_tile convention too), any OTHER exception from a
-        # present-but-erroring validator is surfaced and left un-papered-over (no silent fallback that
-        # could mask a real validation bug).
-        _lt = time.localtime()
-        _off = time.strftime("%z", _lt)
-        _off = (_off[:3] + ":" + _off[3:]) if _off else "+00:00"
-        last_run_iso = time.strftime("%Y-%m-%dT%H:%M:%S", _lt) + _off
-        try:
-            from emit_status import emit_status
-            emit_status(ITEM_STATUS_TILE_PATH, desk="root", pulse_job="item-store-freshness",
-                        stale_after_s=7200, status=status, summary=summary,
-                        payload=payload, required_payload=("counts",))
-            return status, reasons, counts
-        except ImportError:
-            pass  # emit_status.py hasn't landed in this repo yet — fall through to the raw writer below.
-        except Exception as e:
-            sys.stderr.write(f"[item-store-freshness] tile emit FAILED: {e}\n")
-            return status, reasons, counts
-
-        # FALLBACK — no emit_status.py available. Written atomically (tmp + os.replace) so a reader never
-        # sees a half-written tile. If even THIS fails, that must be visible — never silenced — so any
-        # error here goes to stderr rather than being swallowed.
-        try:
-            env = {"desk": "root", "schema_version": 2, "pulse_job": "item-store-freshness",
-                   "emit_mode": "pulse", "stale_after_s": 7200, "last_run": last_run_iso,
-                   "rc": 0, "status": status, "summary": summary}
-            env.update(payload)
-            os.makedirs(os.path.dirname(ITEM_STATUS_TILE_PATH), exist_ok=True)
-            tmp = ITEM_STATUS_TILE_PATH + ".tmp"
-            with open(tmp, "w") as f:
-                json.dump(env, f, indent=2)
-            os.replace(tmp, ITEM_STATUS_TILE_PATH)
-        except Exception as e:
-            sys.stderr.write(f"[item-store-freshness] FALLBACK tile write FAILED: {e}\n")
+        _write_item_store_tile(status, summary,
+                               {"counts": counts, "zeroed_types": zeroed,
+                                "staleness_hours": staleness_hours, "configured": True})
     if verbose:
         print(f"[item-store-freshness] {status}: {summary}")
     return status, reasons, counts
@@ -457,10 +510,11 @@ def _run_self_tests():
         nonlocal failed; failed += 1; print(f"  FAIL  {n}: {r}")
 
     root = tempfile.mkdtemp(prefix="isr_")
-    _save = (globals()["TASKS_DIR"], globals()["CAL_DIR"], globals()["RDR_SCRATCH_DIR"])
+    _save = (globals()["TASKS_DIR"], globals()["CAL_DIR"], globals()["RDR_SCRATCH_DIR"], globals()["GWS_CREDS_PATH"])
     globals()["TASKS_DIR"] = os.path.join(root, "tasks")
     globals()["CAL_DIR"] = os.path.join(root, "calendar")
     globals()["RDR_SCRATCH_DIR"] = os.path.join(root, "rdr")
+    globals()["GWS_CREDS_PATH"] = os.path.join(root, "no-such-gws-credentials.json")   # guaranteed absent
     os.makedirs(TASKS_DIR, exist_ok=True); os.makedirs(CAL_DIR, exist_ok=True)
 
     sys.path.insert(0, os.path.join(CODE_ROOT, "shared", "tools"))
@@ -578,10 +632,27 @@ def _run_self_tests():
             if (st_ok == "OK" and st_err == "ERROR" and any("calendar" in r for r in rs_err)) \
             else fail("freshness:zeroed-type", f"ok={st_ok} err={st_err} {rs_err}")
 
+        # 12 — CT-3.6 never-configured carve-out: a WHOLLY empty store (both types, no record of any
+        # age) with no gws credentials on file → OK "not configured", not ERROR. The identical empty
+        # store WITH credentials on file → falls through unchanged to ERROR (a real coverage gap once
+        # someone has actually turned Google on — the carve-out must not swallow that case).
+        shutil.rmtree(TASKS_DIR, ignore_errors=True); os.makedirs(TASKS_DIR, exist_ok=True)  # CAL_DIR already emptied by #11
+        st_new, rs_new, _ = freshness_check(write_tile=False)          # no creds (GWS_CREDS_PATH swapped absent above)
+        creds_path = os.path.join(root, "gws-credentials.json")
+        with open(creds_path, "w") as f:
+            f.write('{"stub": true}')
+        globals()["GWS_CREDS_PATH"] = creds_path
+        st_cfg, rs_cfg, _ = freshness_check(write_tile=False)          # same empty store, now "configured"
+        globals()["GWS_CREDS_PATH"] = os.path.join(root, "no-such-gws-credentials.json")
+        ok("freshness:never-configured — empty store + no gws creds → OK not-configured; "
+           "same empty store WITH creds → ERROR (real gap, unchanged)") \
+            if (st_new == "OK" and not rs_new and st_cfg == "ERROR") \
+            else fail("freshness:never-configured", f"new={st_new}/{rs_new} cfg={st_cfg}/{rs_cfg}")
+
     except Exception as e:
         fail("item-read:*", f"exception: {e}\n{traceback.format_exc()}")
     finally:
-        (globals()["TASKS_DIR"], globals()["CAL_DIR"], globals()["RDR_SCRATCH_DIR"]) = _save
+        (globals()["TASKS_DIR"], globals()["CAL_DIR"], globals()["RDR_SCRATCH_DIR"], globals()["GWS_CREDS_PATH"]) = _save
         shutil.rmtree(root, ignore_errors=True)
 
     print(f"\nitem_store_read self-test results: {passed} passed, {failed} failed")
