@@ -50,3 +50,15 @@ local.settings.json
 # whole-tree add does not stop a scoped one.
 *.bak
 *.pre-*.bak
+
+# ── INTERNAL MIGRATION WORKING NOTES. NEVER SHIPPED. ──────────────────────────
+# migration-audit/ is the donor-side project's own scratch: dependency inventories,
+# guard-fire test matrices, phase logs — written by and for the person doing the
+# port, never for a reader of the product. 08-THIRD-PARTY-INVENTORY.md got tracked
+# here by 2026-08-14 (commit ab4cc2a) because it was authored and committed
+# directly inside this checkout instead of going through the shipping lane, so
+# nothing scrubbed it. It named the operator's own machine paths, a live
+# third-party hostname, a locality hint, and a service-by-service map of where
+# every credential is stored -- zero value to a student, real value to nobody but
+# an attacker. Untracked 2026-08-14; kept on disk, never committed again.
+migration-audit/
