@@ -51,7 +51,7 @@ authority: user
 > Everything below that calls the `SAFE_FETCH_ALLOWLIST` per-run seal UNBUILT, HONOR-SYSTEM, "not armed",
 > "never armed by any caller", or "task #17 — a planned feature, not a live one" **was true when this element
 > was authored on 2026-07-23 and is false as of today.** Each site is struck and dated in place; this banner is
-> the one full statement. Enver ruled it (`authority: user`: *"APPROVED — ARM IT"*), against a shape that had
+> the one full statement. The operator ruled it (`authority: user`: *"APPROVED — ARM IT"*), against a shape that had
 > already been ruled — three honest levels, default off, activatable.
 >
 > **What actually shipped, verified this session.** A persistent switch file, `system/safe-fetch-allowlist.md`,

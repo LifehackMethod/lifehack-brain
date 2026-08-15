@@ -84,8 +84,9 @@ def normalize(text: str) -> str:
 # without over-fitting to the exact markdown formatting around them.
 #
 # Source files read to derive these (2026-08-03, donor cal-weekly; repointed T9.7a to the
-# migrated planning-weekly location. The scrub also changed "Enver" -> "the person" in two
-# signature literals below (audit-biological:one-body, delta-vs-monthly:mark-phase1) —
+# migrated planning-weekly location. The scrub also replaced a personal first name with the
+# generic placeholder "the person" in two signature literals below
+# (audit-biological:one-body, delta-vs-monthly:mark-phase1) —
 # updated to match, and re-verified against the live scrubbed briefs by
 # verify_signature_provenance() below, not just asserted):
 #   .claude/skills/planning-weekly/prompts/map-agents/_map-format.md   (shared — every dispatch)

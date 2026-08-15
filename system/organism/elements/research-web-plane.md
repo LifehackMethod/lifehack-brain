@@ -56,7 +56,7 @@ authority: user
 > Every statement below calling that seal *unarmed*, *not armed by any current caller*, or a *known gap* —
 > chiefly **G2** and the `[EGRESS-WALL-FAILOPEN]` entries — **was true when this element was authored on
 > 2026-07-24 and is false as of today.** Each site is struck and dated in place; this is the one full
-> statement. Enver ruled it (`authority: user`: *"APPROVED — ARM IT"*).
+> statement. The operator ruled it (`authority: user`: *"APPROVED — ARM IT"*).
 >
 > **What shipped, verified this session.** A persistent switch file, `system/safe-fetch-allowlist.md`
 > (one-word `on`/`off` switch plus a domain block, same marker convention as `system/egress-allowlist.md`), and

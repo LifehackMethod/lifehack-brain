@@ -143,7 +143,7 @@ check("T6 '| desk / slug' variant attributes to the desk",
 #      unattributed is honest, silent loss is not.
 by, st = parse(
     f"## SESSION CONTEXT — {D} — Helm whole-dashboard re-scope kickoff\n"
-    "Enver dumped a full walkthrough.\n", D)
+    "The person dumped a full walkthrough.\n", D)
 check("T7 desk-less H2 block is captured (not silently dropped)",
       any("Helm whole-dashboard re-scope" in b for bs in by.values() for b in bs),
       flat(by))
@@ -160,8 +160,8 @@ check("T9 '**BUILD DATE | desk | slug |**' parses",
       flat(by))
 
 # T10 — NEGATIVE: a dateless bold line must not be mistaken for a dated one.
-by, st = parse("**DECISION (Enver):** FB.4 backfill = STAGED\n", D)
-check("T10 dateless '**DECISION (Enver):**' is ignored",
+by, st = parse("**DECISION (the person):** FB.4 backfill = STAGED\n", D)
+check("T10 dateless '**DECISION (the person):**' is ignored",
       not any("FB.4 backfill" in b for bs in by.values() for b in bs),
       flat(by))
 

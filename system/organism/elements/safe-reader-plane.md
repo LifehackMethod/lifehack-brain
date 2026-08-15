@@ -60,7 +60,7 @@ authority: user
 > Every statement below that this element's per-run domain seal is *never armed*, *unarmed*, *exists in code
 > but is never set*, or *structurally present but functionally unarmed* — chiefly the GAPS entry and the
 > CURRENT/TARGET block — **was true when this element was authored on 2026-07-24 and is false as of today.**
-> Each site is struck and dated in place; this banner is the one full statement. Enver ruled it
+> Each site is struck and dated in place; this banner is the one full statement. The operator ruled it
 > (`authority: user`: *"APPROVED — ARM IT"*), to a shape already ruled: three honest levels, default off,
 > activatable.
 >
@@ -497,7 +497,7 @@ COMPLEMENTS  /websearch skill   · skill wraps safe_search_api.sh (primary) + sa
    `l2_state()` returning **OFF / ON / AMBIGUOUS** with no quiet fourth state, a half-configured setting
    **refusing every web read** instead of passing it, `--l2-status` to check the position without fetching,
    and 12 tests in `system/tools/test_egress_level2.py` inside `system/tools/run-all-tests.sh`. The scoping
-   pass this gap asked for was ruled and executed by Enver (`authority: user`, *"APPROVED — ARM IT"*).
+   pass this gap asked for was ruled and executed by the operator (`authority: user`, *"APPROVED — ARM IT"*).
    **What is STILL a gap, and why this entry stays open:** it **ships `off`** with an empty domain block and
    **no caller in this plane sets the env var** — so the third sentence above holds unchanged, and a sweep
    following a redirect can still reach an off-list domain. The one real change to the risk is that such a

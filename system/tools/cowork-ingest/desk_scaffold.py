@@ -3,7 +3,7 @@
 desk_scaffold.py — one-punch FULL DESK scaffold (PORTED from claudeops-config's
 `system/tools/cowork-ingest/desk_scaffold.py`, migration F9.6 "THE DESK PLANE", "born like a deer").
 
-⚖ Enver, `authority: user`, verbatim: *"the new system should have a template and a way of creating
+⚖ The person, `authority: user`, verbatim: *"the new system should have a template and a way of creating
 new desks, so that a new desk comes pre-filled with all of the folders that it needs and all of the
 knowledge that it needs… It should be born like a deer or a cow — it comes out of the womb and it can
 already start walking."*

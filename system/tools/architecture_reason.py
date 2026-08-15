@@ -29,9 +29,10 @@ nothing. ⇒ **the system cannot tell "nobody needed to act" from "nobody looked
 genuine architectural hole and the evidence for it is a file path, not a hunch.
 
 ── WHAT IT NEVER DOES ───────────────────────────────────────────────────────
-  · Never APPLIES. ⚖ RULED 2026-08-04 by Enver (§18.5). No repair path exists here; --selftest
-    greps for one (with the probe tokens assembled from fragments, because spelling them
-    literally makes the check match its own source — learned on seam_reason.py's first run).
+  · Never APPLIES. ⚖ RULED 2026-08-04 by the person, `authority: user` (§18.5). No repair path
+    exists here; --selftest greps for one (with the probe tokens assembled from fragments, because
+    spelling them literally makes the check match its own source — learned on seam_reason.py's
+    first run).
   · Never invents a store or an altitude — writes through `emit_recommendation.py` at ORGANISM,
     a value already in `VALID_ALTITUDE`.
   · Never writes a second ledger parser — reuses `backlog_groom.parse_ledger()` (430 entries
@@ -61,9 +62,9 @@ fails the same bar `backlog_groom.py` now passes.
 than a count everybody knows is inflated — that is this project's founding lesson.
 
 ⛔ T20.6, 2026-08-05 — `NOTHING-REACHES-IT` WENT 3-FOR-3 FALSE on the first board. `vault-related.py`
-+ `vault-theme-map.py` (parked, Enver floor-vetoed the swap that would break them — `[OBSIDIAN-BRAIN-
-SWAP]` in `state/debt-ledger.md`) and `translator-mine-pairs.py` (retired-in-place, per its own
-project's brief) are all refutable from a human decision this file already had open in the same
++ `vault-theme-map.py` (parked, the person floor-vetoed the swap that would break them —
+`[OBSIDIAN-BRAIN-SWAP]` in `state/debt-ledger.md`) and `translator-mine-pairs.py` (retired-in-place,
+per its own project's brief) are all refutable from a human decision this file already had open in the same
 process — `build()` reads `state/debt-ledger.md` for `LEDGER-NAMED-OVERBUILD` and `detect_introduce`
 never consulted it. `human_ruling_for()` now cross-checks the ledger + every project brief +
 `state/open-loops.md` + `system/journal.md` before a `NOTHING-REACHES-IT` fires; see its docstring for
@@ -424,14 +425,14 @@ def _strip_agent_authored(text: str) -> str:
 
     Verified after the cut: `vault-related.py` / `vault-theme-map.py` still suppress on the genuine
     `state/debt-ledger.md` `[OBSIDIAN-BRAIN-SWAP]` entry (`type:decision state:parked`, council-ruled,
-    Enver floor-vetoed), so the two conclusions were independently supported and only the CITATION
-    was contaminated.
+    the person floor-vetoed), so the two conclusions were independently supported and only the
+    CITATION was contaminated.
 
     ⚠ RESIDUAL, NOT CLOSED — `## STORY LOG` is also agent-authored and is deliberately full of
     rejected ideas ("everything we tried and rejected"), so citing it as a ruling is unsound for the
     same reason. It is NOT cut here because real rulings are also recorded there and cutting it
-    blind would trade a false-suppression risk for a false-proposal one. Flagged for Enver's T20.5
-    round rather than decided unilaterally.
+    blind would trade a false-suppression risk for a false-proposal one. Flagged for the person's
+    T20.5 round rather than decided unilaterally.
     """
     out, skipping = [], False
     for line in text.splitlines(keepends=True):
@@ -457,7 +458,7 @@ def _paragraphs(text: str) -> list:
 RULING_WORDS = re.compile(
     r"\bRULED\b|\bRULING\b|floor[- ]vetoed|\bPARKED\b|\bRETIRED\b|\bVETOED\b|"
     r"\bDEPRECATED\b|\bDELETED\b|kept only|RETIRED-in-place", re.I)
-# A ruling word near an UNDECIDED marker is not a ruling — "OPEN QUESTION ... Enver leaning KEEP"
+# A ruling word near an UNDECIDED marker is not a ruling — "OPEN QUESTION ... the person leaning KEEP"
 # (found live, `emily-2-interrogate`, 2026-08-05) is an open question, not a decision, even though
 # "KEEP"-shaped language sits inches away. Caught by hand-checking every false candidate below.
 UNDECIDED = re.compile(r"OPEN QUESTION|\bleaning\b|UNSETTLED|\bTBD\b|not decided|\bconsider\b", re.I)
@@ -674,10 +675,10 @@ def detect_introduce(roots: str, decision_units: dict) -> list:
         if any(q.name in roots for q in others):
             continue
 
-        # T20.6 — THE FIX. Before Enver caught it, this branch emitted unconditionally, even though
-        # `build()` already opens `state/debt-ledger.md` in the SAME process for `LEDGER-NAMED-
-        # OVERBUILD`. `vault-related.py`/`vault-theme-map.py` are named in `[OBSIDIAN-BRAIN-SWAP]`
-        # (`type:decision` `state:parked`, Enver floor-vetoed the swap they'd break) and
+        # T20.6 — THE FIX. Before the person caught it, this branch emitted unconditionally, even
+        # though `build()` already opens `state/debt-ledger.md` in the SAME process for `LEDGER-
+        # NAMED-OVERBUILD`. `vault-related.py`/`vault-theme-map.py` are named in `[OBSIDIAN-BRAIN-
+        # SWAP]` (`type:decision` `state:parked`, the person floor-vetoed the swap they'd break) and
         # `translator-mine-pairs.py` is recorded RETIRED-in-place in its own project's brief — both
         # are a human ruling this lane had the receipt for and never read. See `human_ruling_for`'s
         # docstring for exactly what counts as a ruling and why it can't over-suppress.
@@ -824,13 +825,13 @@ def selftest() -> int:
         print("  ✓ BAR 3 — no applier in this file (propose-only holds)")
 
     # BAR 4 — T20.6 REGRESSION GUARD. On the first board `NOTHING-REACHES-IT` went 3-for-3 FALSE:
-    # `vault-related.py`/`vault-theme-map.py` (parked, Enver floor-vetoed the swap that would break
-    # them) and `translator-mine-pairs.py` (retired-in-place, its brief's own words). All three are
-    # human rulings this file already had the receipt for (the ledger it opens for BAR 1) and never
-    # read before proposing. This bar proves the fix holds: the three stay OFF the live board and
-    # ON the suppressed list, not silently dropped either way (constraint: "never suppress a row a
-    # human has NOT ruled on" cuts both directions — a suppression with no visible reason is just
-    # as dishonest as an unruled proposal).
+    # `vault-related.py`/`vault-theme-map.py` (parked, the person floor-vetoed the swap that would
+    # break them) and `translator-mine-pairs.py` (retired-in-place, its brief's own words). All
+    # three are human rulings this file already had the receipt for (the ledger it opens for BAR 1)
+    # and never read before proposing. This bar proves the fix holds: the three stay OFF the live
+    # board and ON the suppressed list, not silently dropped either way (constraint: "never
+    # suppress a row a human has NOT ruled on" cuts both directions — a suppression with no
+    # visible reason is just as dishonest as an unruled proposal).
     specimens = {"vault-related.py", "vault-theme-map.py", "translator-mine-pairs.py"}
     still_present = {s for s in specimens if (TOOLS / s).exists()}
     proposed_names = {p["targets"][0].rsplit("/", 1)[-1] for p in r["introduce"]

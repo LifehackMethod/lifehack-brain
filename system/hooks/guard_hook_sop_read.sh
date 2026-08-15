@@ -29,7 +29,7 @@
 # ══════════════════════════════════════════════════════════════════════════════
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # WHY: On 2026-07-28 (organism-audit S2.3) a session edited enforce_skill_frontmatter.sh WITHOUT
-#      reading system/sops/hook-sop.md first. Enver caught it; the system did not. The post-mortem
+#      reading system/sops/hook-sop.md first. The operator caught it; the system did not. The post-mortem
 #      found TWO controls that both existed and NEITHER could have worked: (1)
 #      inject_sop_before_build.sh is UserPromptSubmit and keys on BUILD-INTENT LANGUAGE IN THE
 #      USER'S PROMPT — it watches what the human TYPES, not what the agent DOES, so it fired once
@@ -52,7 +52,8 @@
 #      through context.
 # SIGNPOST: the RULE lives in system/sops/hook-sop.md (WHEN + WHICH kind) and system/hook-contract.md
 #      (mechanics + the two-machine Deploy & Verify checklist). To change what is gated, edit those
-#      + get Enver's sign-off, then update this guard and its settings.json registration.
+#      + get the operator's sign-off (a HUMAN ruling, `authority: user` — not a session's own
+#      judgement), then update this guard and its settings.json registration.
 # FAIL_POSTURE: closed — an unparseable payload DENIES (hook-sop.md §3.2).
 # KNOWN LIMITS (stated, not hidden — an honest gap beats a false guarantee):
 #   1. RECEIPT SCOPE. The receipt is session-keyed, with a cwd-keyed fallback retained ONLY to
@@ -222,4 +223,4 @@ done
 
 [ "$FOUND" -eq 1 ] && exit 0
 
-deny "BLOCKED: this command WRITES to the hook plane (system/hooks/) but the hook SOP has not been read this session. WHY: on 2026-07-28 a hook was edited with its rulebook unread — the existing reminder (inject_sop_before_build.sh) keys on the USER prompt, so it fires at session start and is silent at the moment the agent actually edits a hook. Hooks are the enforcement layer: a wrong edit here silently disables a control, and a silently-dark guard is worse than no guard because the map still reports it green. REDIRECT: run \`bash $_REPO/system/tools/read_sop.sh hook\` (it PRINTS hook-sop.md + hook-contract.md and stamps a 12h session receipt as a side effect), then retry this exact command. Reading is the only way to earn the receipt. RULE: system/sops/hook-sop.md (WHEN + which kind) + system/hook-contract.md (mechanics + the two-machine Deploy & Verify checklist) — edit those + get Enver sign-off to change what is gated, then update this guard."
+deny "BLOCKED: this command WRITES to the hook plane (system/hooks/) but the hook SOP has not been read this session. WHY: on 2026-07-28 a hook was edited with its rulebook unread — the existing reminder (inject_sop_before_build.sh) keys on the USER prompt, so it fires at session start and is silent at the moment the agent actually edits a hook. Hooks are the enforcement layer: a wrong edit here silently disables a control, and a silently-dark guard is worse than no guard because the map still reports it green. REDIRECT: run \`bash $_REPO/system/tools/read_sop.sh hook\` (it PRINTS hook-sop.md + hook-contract.md and stamps a 12h session receipt as a side effect), then retry this exact command. Reading is the only way to earn the receipt. RULE: system/sops/hook-sop.md (WHEN + which kind) + system/hook-contract.md (mechanics + the two-machine Deploy & Verify checklist) — edit those + get the operator's sign-off (a HUMAN ruling, \`authority: user\`) to change what is gated, then update this guard."

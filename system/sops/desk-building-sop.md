@@ -13,7 +13,7 @@ authority: user
 # Desk-Building SOP
 
 > PORTED from `claudeops-config`'s `system/sops/desk-building-sop.md` (migration F9.6, "THE DESK
-> PLANE"). ⚖ Enver, `authority: user`, verbatim: *"the new system should have a template and a way of
+> PLANE"). ⚖ The operator, `authority: user`, verbatim: *"the new system should have a template and a way of
 > creating new desks, so that a new desk comes pre-filled with all of the folders that it needs and all
 > of the knowledge that it needs… It should be born like a deer or a cow — it comes out of the womb and
 > it can already start walking."*
