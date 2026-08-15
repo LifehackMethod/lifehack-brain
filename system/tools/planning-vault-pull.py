@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""cal-vault-pull.py — Cal overnight VERBATIM raw-vault pull (Stage 1, daily trust-fall system).
+"""planning-vault-pull.py — Cal overnight VERBATIM raw-vault pull (Stage 1, daily trust-fall system).
 
 Mechanical, NO-LLM. Pulls the day's raw material VERBATIM into a dated vault folder so the morning
 session reads complete, sanitized data off disk — never re-pulling, never letting an LLM condense at
@@ -20,7 +20,7 @@ calendar +/-7d, tasks light. Attachments are NOT downloaded.
 
 SAFETY: fail-soft — any source failure -> that source marked failed in _manifest, exit 0 (cron-breaker
 safe). The vault is built in a .tmp dir then os.replace'd into place (atomic swap). READ-ONLY against
-Google. Usage: cal-vault-pull.py [--date YYYY-MM-DD]  (default today). Runner exports the headless gws env.
+Google. Usage: planning-vault-pull.py [--date YYYY-MM-DD]  (default today). Runner exports the headless gws env.
 """
 import argparse, json, os, shutil, subprocess, sys, time
 from datetime import datetime, timedelta, time as dtime, timezone
@@ -74,7 +74,10 @@ GWS = __import__("shutil").which("gws") or "gws"  # resolve via PATH; survives b
 EMAIL_CONVERT = os.path.join(CODE_ROOT, "shared/tools/email_convert.py")  # present since 2026-08-14
 SAFE_CALENDAR = os.path.join(CODE_ROOT, "system/tools/safe_calendar.py")  # CODE
 SAFE_TASKS    = os.path.join(CODE_ROOT, "system/tools/safe_tasks.py")      # CODE
-VAULT_ROOT = os.path.join(DRIVE, "desks/cal/state/raw-vault")            # CONTENT (on Drive)
+# ⚠ The DATA PATH is deliberately still `desks/cal/`. This desk's code, tools, jobs and tiles are
+# renamed to `planning`; the records directory is NOT, because moving the operator's live records is
+# his decision and has not been taken. KNOWN, INTENTIONAL split — do not "complete" it without his word.
+VAULT_ROOT = os.path.join(DRIVE, "desks/cal/state/raw-vault")                 # CONTENT (on Drive)
 
 # ⛔ THESE WERE HARDCODED, AND THAT IS THE WORST KIND OF HARDCODING. A calendar id baked into a
 # tool means an agent reads — or writes — SOMEBODY ELSE'S CALENDAR, and the person running it sees
@@ -109,7 +112,7 @@ def gws_json(args, timeout=60):
 def pull_email(name, query, out_dir, cap=None):
     """Run email_convert for one Gmail query into out_dir. Returns a status dict.
 
-    Blue-green store path (when EMAIL_SERVICE_READ includes "cal"):
+    Blue-green store path (when EMAIL_SERVICE_READ includes "planning"):
       Attempts to satisfy the vault from the Email Service v2 faithful-thread store FIRST.
       ALL-OR-NOTHING: every thread in the query must return flag "OK" from the store;
       if ANY thread is a miss / flagged / tampered / uncertain, OR any error occurs,
@@ -143,7 +146,7 @@ def pull_email(name, query, out_dir, cap=None):
     # ── blue-green store path ─────────────────────────────────────────────────
     # Attempt only when the flag is on AND we have a thread-ID list to work from.
     _enabled_for, read_thread = _import_store_helpers()
-    if _enabled_for is not None and _enabled_for("cal"):
+    if _enabled_for is not None and _enabled_for("planning"):
         # For uncapped queries (sent/snoozed) the overflow probe above doesn't run, so we fetch
         # the thread IDs now with a dedicated metadata-only call (no bodies).
         if probe_thread_ids is None:
@@ -153,7 +156,7 @@ def pull_email(name, query, out_dir, cap=None):
                 probe_thread_ids = [t["id"] for t in lst.get("threads", [])]
             except Exception as e:
                 # Can't get thread IDs → can't try the store → will fall through to email_convert
-                sys.stderr.write(f"[cal-vault] store-path: thread-list probe failed for {name!r}: {e}; "
+                sys.stderr.write(f"[planning-vault] store-path: thread-list probe failed for {name!r}: {e}; "
                                  "falling back to email_convert\n")
                 probe_thread_ids = None
 
@@ -164,7 +167,7 @@ def pull_email(name, query, out_dir, cap=None):
                 return status   # vault written from store — done
 
         # Any uncertainty / partial miss / error → fall through to email_convert below
-        sys.stderr.write(f"[cal-vault] store-path: not all-OK for {name!r}; "
+        sys.stderr.write(f"[planning-vault] store-path: not all-OK for {name!r}; "
                          "falling back to email_convert (all-or-nothing rule)\n")
 
     # ── existing email_convert path (flag-off OR store fallback) ─────────────
@@ -179,23 +182,23 @@ def _try_pull_from_store(name, query, out_dir, cap, thread_ids, read_thread, sta
     flag "OK". Returns False on the FIRST non-OK thread or ANY error — no partial writes.
     The caller falls back to email_convert for the whole query.
 
-    isolate=False is the plumbing exception (ingestion-reader-contract.md): cal-vault-pull is
+    isolate=False is the plumbing exception (ingestion-reader-contract.md): planning-vault-pull is
     a NO-LLM consumer — it writes bytes to disk and never feeds them to an LLM in this process.
     A prompt-injection in the content cannot hijack a no-LLM plumbing script.
     """
     results = []
     try:
         for tid in thread_ids:
-            r = read_thread(tid, desk="cal", isolate=False)
+            r = read_thread(tid, desk="planning", isolate=False)
             if r.get("flag") != "OK":
                 # Any miss, refusal, tamper, or inactive-skip → abort immediately
                 sys.stderr.write(
-                    f"[cal-vault] store-path: thread {tid} flag={r.get('flag')!r} "
+                    f"[planning-vault] store-path: thread {tid} flag={r.get('flag')!r} "
                     f"(envelope: {r.get('envelope','')[:120]})\n")
                 return False
             results.append(r)
     except Exception as e:
-        sys.stderr.write(f"[cal-vault] store-path: read_thread error for {name!r}: {e}\n")
+        sys.stderr.write(f"[planning-vault] store-path: read_thread error for {name!r}: {e}\n")
         return False
 
     # All threads OK — write the vault.  Structure mirrors email_convert --messages all exactly:
@@ -245,7 +248,7 @@ def _try_pull_from_store(name, query, out_dir, cap, thread_ids, read_thread, sta
         return True
 
     except Exception as e:
-        sys.stderr.write(f"[cal-vault] store-path: write error for {name!r}: {e}\n")
+        sys.stderr.write(f"[planning-vault] store-path: write error for {name!r}: {e}\n")
         # Remove any partial writes so a retry gets a clean dir
         try:
             for f in os.listdir(out_dir):
@@ -359,7 +362,7 @@ def _safe_tasks_list(tid, timeout=60):
     r = subprocess.run(
         # --redact: plumbing (stores task free-text into the vault) keeps the real text but neutralizes any
         # injection span, so a later reader of the vault can't be hijacked (2026-07-04).
-        ["python3", SAFE_TASKS, "--desk", "cal", "--redact", params],
+        ["python3", SAFE_TASKS, "--desk", "planning", "--redact", params],
         capture_output=True, text=True, timeout=timeout,
     )
     if r.returncode == 2 or not r.stdout.strip():
@@ -371,7 +374,7 @@ def _safe_tasks_list(tid, timeout=60):
     if flagged and r.stderr.strip():
         flag_lines = [ln for ln in r.stderr.splitlines() if "FLAGGED" in ln or "[" in ln]
         if flag_lines:
-            sys.stderr.write(f"[cal-vault] safe_tasks FLAGGED in list {tid}: "
+            sys.stderr.write(f"[planning-vault] safe_tasks FLAGGED in list {tid}: "
                              + " | ".join(flag_lines[:5]) + "\n")
     return items, flagged
 
@@ -448,7 +451,7 @@ def tasks_only_refresh(date_str, final_dir):
     else:
         try: os.remove(tmp_path)
         except OSError: pass
-        sys.stderr.write(f"[cal-vault] tasks-only: pull failed ({status.get('error')}); "
+        sys.stderr.write(f"[planning-vault] tasks-only: pull failed ({status.get('error')}); "
                          f"kept existing tasks.json\n")
         return 0                                # fail-soft — never clobber good data on a blip
     # patch the manifest's tasks source + scope so the receipt stays honest
@@ -462,8 +465,8 @@ def tasks_only_refresh(date_str, final_dir):
             with open(man_path + ".tmp", "w") as f: json.dump(man, f, indent=2)
             os.replace(man_path + ".tmp", man_path)
         except Exception as e:
-            sys.stderr.write(f"[cal-vault] tasks-only: manifest patch skipped ({e})\n")
-    print(f"[cal-vault] tasks-only refresh → {tasks_path} — "
+            sys.stderr.write(f"[planning-vault] tasks-only: manifest patch skipped ({e})\n")
+    print(f"[planning-vault] tasks-only refresh → {tasks_path} — "
           f"{status.get('tasks_kept','?')} tasks across {status.get('lists','?')} lists")
     return 0
 
@@ -479,7 +482,7 @@ def main():
     try:
         datetime.strptime(date_str, "%Y-%m-%d")
     except ValueError:
-        sys.stderr.write("cal-vault: --date must be YYYY-MM-DD\n")
+        sys.stderr.write("planning-vault: --date must be YYYY-MM-DD\n")
         return 2
 
     final_dir = os.path.join(VAULT_ROOT, date_str)
@@ -516,7 +519,7 @@ def main():
 
     failed = [k for k, v in sources.items() if v.get("status") != "ok"]
     em = sources
-    print(f"[cal-vault] wrote {final_dir} — "
+    print(f"[planning-vault] wrote {final_dir} — "
           f"inbox {em['inbox'].get('pulled','?')}"
           + (f"(+{em['inbox'].get('total_available','?')} avail, OVERFLOW)" if em['inbox'].get('overflow') else "")
           + f" / sent {em['sent'].get('pulled','?')} / snoozed {em['snoozed'].get('pulled','?')}"

@@ -203,7 +203,7 @@ def process(text: str) -> tuple:
 def redact_findings(text: str, findings: list) -> str:
     """Replace each flagged span in `text` with a neutral marker — the DETERMINISTIC twin of the
     ingest-reader's span redaction. Used by the safe_* `--redact` mode so a downstream store (e.g. the
-    cal-vault) keeps the real content but never the obeyable injection payload. Longest matches first so
+    planning-vault) keeps the real content but never the obeyable injection payload. Longest matches first so
     overlapping spans don't leave fragments. `findings` = the (match_text, label) list from process()."""
     out = text
     for match, label in sorted(findings, key=lambda mf: -len(mf[0] or "")):

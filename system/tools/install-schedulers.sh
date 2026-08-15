@@ -53,7 +53,7 @@
 #
 # THE DECISION, AND WHY: pulse.sh itself stays a Bash script rather than being rewritten in Python.
 # Two things made that the smaller, safer move, not a bigger one:
-#   1. Every job pulse.sh dispatches is ALSO a Bash script (system-health-run.sh, cal-health.py
+#   1. Every job pulse.sh dispatches is ALSO a Bash script (system-health-run.sh, planning-health.py
 #      launched via python3, etc.) — a Windows install already needs a working `bash` to run those,
 #      independent of what runs the dispatcher itself. INSTALL.md's own Step 2 GUARANTEES Git Bash
 #      is present on Windows (it installs Git for Windows via winget specifically so `bash` exists),

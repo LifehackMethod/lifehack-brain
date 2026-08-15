@@ -37,7 +37,7 @@
 #     STALE, indistinguishable from broken.
 # DROPPED, not translated: the donor's LEAD-MACHINE gate (`require_primary`,
 # `primary-gate.sh`) — this product is one machine by design (same drop as
-# cal-diary-run.sh / cal-analyze-run.sh's own port notes).
+# planning-diary-run.sh / planning-analyze-run.sh's own port notes).
 #
 # CONTRACT WITH THE REST OF THE SKILL: priming writes ONLY map.md, NEVER
 # session-scratchpad.md — 00-system-layer.md:74 depends on that distinction to tell "primed
@@ -102,7 +102,9 @@ else
   DOW="$(date -j -f '%Y-%m-%d' "$DATE" +%u 2>/dev/null || date +%u)"
 fi
 
-SCRATCH="$DATA/desks/cal/state/checkin-scratch/weekly-$WEEK"     # <- the citation at
+# ⚠ The DATA PATH is deliberately still `desks/cal/` — code/jobs/tiles are renamed to `planning`,
+# the records directory is NOT (the operator's call, untaken). Do not "complete" it without his word.
+SCRATCH="$DATA/desks/cal/state/checkin-scratch/weekly-$WEEK"       # <- the citation at
 mkdir -p "$SCRATCH" 2>/dev/null || true                            #    00-system-layer.md:68
 
 _emit_tile() {  # $1=status $2=summary $3=skip_reason(optional)
@@ -110,7 +112,7 @@ _emit_tile() {  # $1=status $2=summary $3=skip_reason(optional)
   if [ -n "$skip_reason" ]; then payload="{\"skip_reason\": \"$skip_reason\"}"; else payload="{}"; fi
   printf '%s' "$payload" | python3 "$CODE_ROOT/system/tools/emit_status.py" \
     --out "$DATA/state/status/planning-weekly-prime.json" \
-    --desk cal --pulse-job planning-weekly-prime --stale-after-s "$STALE_AFTER_S" \
+    --desk planning --pulse-job planning-weekly-prime --stale-after-s "$STALE_AFTER_S" \
     --status "$status" --rc 0 --summary "$summary" --json - 2>/dev/null || \
     echo "[planning-weekly-prime] WARN: tile write failed (non-fatal)"
 }

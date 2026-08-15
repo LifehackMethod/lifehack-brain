@@ -107,7 +107,7 @@ GWS_BIN="${GWS_BIN:-/opt/homebrew/bin/gws}"
 # A future headless runner sourcing this lib inherits this exported var (the `claude -p` subprocess
 # gets it via the environment). DEFAULT OFF (empty) → a desk's own raw read path is unaffected. To
 # enable, write a comma-list of desk ids (or 'all') into the machine-local file below — e.g.
-# `printf cal > ~/.config/lifehack/email-service-read`. shared/tools/email_service_read.py reads
+# `printf planning > ~/.config/lifehack/email-service-read`. shared/tools/email_service_read.py reads
 # $EMAIL_SERVICE_READ and returns DISABLED when a desk isn't listed — this is that switch's one path
 # in. Per-machine, never in the tracked repo or the notes root.
 _ESR_FILE="$_INGEST_CFG/email-service-read"
@@ -186,7 +186,7 @@ ingest_load_gws() {      # gws keychain-free isolated creds + pre-flight
   # never trips the breaker" in pulse-config.md's table, which is the correct bucket and is what
   # the three sibling runners do verbatim. Collapsing it into 75 would report a CONFIGURED machine
   # as unconfigured and hide genuinely dead auth forever. Left inline (not in gws-auth.lib.sh) for
-  # the same reason: it ends FATAL here and warn-only in cal-vault/cal-diary, and that difference
+  # the same reason: it ends FATAL here and warn-only in planning-vault/planning-diary, and that difference
   # in severity is real, not noise.
   # RETRY the gws pre-flight (3x/4s) before declaring failure — a single getProfile call can fail on
   # a transient blip (token mid-refresh, momentary API hiccup); converting that into a brief wait

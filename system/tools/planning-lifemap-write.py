@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""cal-lifemap-write.py — deterministic section-replace tool for the canonical Life Map.
+"""planning-lifemap-write.py — deterministic section-replace tool for the canonical Life Map.
 
 ⚠ NOTHING IN THIS REPOSITORY CALLS THIS FILE, AND THAT IS RECORDED RATHER THAN FIXED.
 Measured 2026-08-11 by a reachability pass over every capability file here: no skill, hook,
@@ -19,7 +19,7 @@ Structure assumed: YAML frontmatter block, then H2 sections (`## …`), each ter
 by a `---` horizontal rule on its own line.
 
 Usage:
-    cal-lifemap-write.py --file <path> --section <name> --body-file <path> [--check] [--date YYYY-MM-DD]
+    planning-lifemap-write.py --file <path> --section <name> --body-file <path> [--check] [--date YYYY-MM-DD]
 
     --file      : path to the life-map.md (required)
     --section   : horizon key (case-insensitive): yearly | quarterly | monthly | weekly | daily | critical-path
@@ -45,7 +45,7 @@ SECTION_PREFIXES = {
 
 
 def die(msg):
-    sys.stderr.write(f"cal-lifemap-write: ERROR: {msg}\n")
+    sys.stderr.write(f"planning-lifemap-write: ERROR: {msg}\n")
     sys.exit(1)
 
 
@@ -193,7 +193,7 @@ def main():
             pass
         die(f"Atomic write failed: {e}")
 
-    print(f"[cal-lifemap-write] wrote '{prefix}…' section → {target}")
+    print(f"[planning-lifemap-write] wrote '{prefix}…' section → {target}")
     return 0
 
 

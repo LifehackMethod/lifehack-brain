@@ -7,7 +7,7 @@ NO LLM (mechanical + ported only):
                           (this is "what got built/debugged/decided", cross-desk incl. Lifehack)
                           FORMAT-TOLERANT by contract — the journal writes six shapes and all
                           six are read; see "JOURNAL FORMAT TOLERANCE" below before touching it.
-                          Locked by system/tools/test_cal_diary_capture.py — run it after any edit.
+                          Locked by system/tools/test_planning_diary_capture.py — run it after any edit.
   - state/status/*.json : each desk's current-state snapshot (labelled "as of last_run")
   - Google Tasks        : tasks completed on the date (Life Map list), via gws
   - Calendar            : timed events that occurred on the date (personal + Agent Ops), via gws
@@ -24,13 +24,13 @@ SAFETY / CONTRACT:
   - Atomic write (tmp + os.replace).
   - READ-ONLY against Google (lists only). Only write is the local diary .md.
 
-Usage: cal-diary-capture.py [--date YYYY-MM-DD]   (default: today, local)
-The headless runner (cal-diary-run.sh) exports the keychain-free gws-cron env before calling this.
+Usage: planning-diary-capture.py [--date YYYY-MM-DD]   (default: today, local)
+The headless runner (planning-diary-run.sh) exports the keychain-free gws-cron env before calling this.
 """
 import argparse, json, os, re, subprocess, sys, time
 from datetime import datetime, timedelta, time as dtime, timezone
 
-GWS = __import__("shutil").which("gws") or "gws"  # PATH first, like cal-light-sweep.py/cal-vault-pull.py —
+GWS = __import__("shutil").which("gws") or "gws"  # PATH first, like planning-light-sweep.py/planning-vault-pull.py —
 # was hardcoded Homebrew-only, so it broke Windows AND Intel Macs (Intel Homebrew installs to /usr/local)
 # The notes folder, through the one resolver. ⛔ NOT a default and NOT a guess: the tool this came
 # from hardcoded one person's Drive path, so on any other machine it wrote its vault into a
@@ -48,6 +48,9 @@ if not DRIVE:
     sys.exit(2)
 JOURNAL = os.path.join(DRIVE, "system/journal.md")
 STATUS_DIR = os.path.join(DRIVE, "state/status")
+# ⚠ The DATA PATH is deliberately still `desks/cal/`. This desk's code, tools, jobs and tiles are
+# renamed to `planning`; the records directory is NOT, because moving the operator's live records is
+# his decision and has not been taken. KNOWN, INTENTIONAL split — do not "complete" it without his word.
 DIARY_ROOT = os.path.join(DRIVE, "desks/cal/diary")
 
 # ⛔ THESE WERE HARDCODED, AND THAT IS THE WORST KIND OF HARDCODING. A calendar id baked into a
@@ -74,7 +77,7 @@ DESK_OWNS_OWN_DIARY = set()
 # The journal is the PRODUCER and this file is the CONSUMER, and they drifted: the parser
 # accepted exactly two shapes while the journal writes six. 125 of 466 entry rows and 196 of
 # 288 session blocks were being silently dropped — nothing errored, the diary just came out
-# thin, which is why the cal-weekly lookback kept reading an empty week.
+# thin, which is why the planning-weekly lookback kept reading an empty week.
 #
 # FIX THE READER, NOT THE WRITERS: the writers are every skill, cron and session that appends
 # to the journal, and re-training them cannot repair the two months already written. The
@@ -327,7 +330,7 @@ def read_completed_tasks(cmin, cmax):
                  for t in data.get("items", []) if t.get("status") == "completed"]
         return items, "ok"
     except Exception as e:
-        sys.stderr.write(f"cal-diary: tasks read failed: {e}\n")
+        sys.stderr.write(f"planning-diary: tasks read failed: {e}\n")
         return [], "source-unavailable"
 
 
@@ -339,7 +342,7 @@ def read_calendar(time_min, time_max):
     try:
         evs = one(PERSONAL_CAL) + one(AGENTOPS_CAL)
     except Exception as e:
-        sys.stderr.write(f"cal-diary: calendar read failed: {e}\n")
+        sys.stderr.write(f"planning-diary: calendar read failed: {e}\n")
         return [], "source-unavailable"
     seen, merged = set(), []
     for e in evs:
@@ -383,7 +386,7 @@ def build(date_str, journal, status, tasks, cal, src):
     desks = sorted(journal.keys())
 
     fm = {
-        "type": "cal-diary-daily", "date": date_str,
+        "type": "planning-diary-daily", "date": date_str,
         "scope": desks,
         "generated_at": iso_now(), "sources": src,
     }
@@ -482,7 +485,7 @@ def main():
         try:
             datetime.strptime(args.date, "%Y-%m-%d")
         except ValueError:
-            sys.stderr.write("cal-diary: --date must be YYYY-MM-DD\n")
+            sys.stderr.write("planning-diary: --date must be YYYY-MM-DD\n")
             return 2
         date_str = args.date
     else:
@@ -516,11 +519,11 @@ def main():
             f.write(body)
         os.replace(tmp, out_path)
     except Exception as e:
-        sys.stderr.write(f"cal-diary: FATAL could not write {out_path}: {e}\n")
+        sys.stderr.write(f"planning-diary: FATAL could not write {out_path}: {e}\n")
         return 1
 
     bad = [k for k, v in src.items() if v != "ok"]
-    print(f"[cal-diary] wrote {out_path} — "
+    print(f"[planning-diary] wrote {out_path} — "
           f"{sum(len(v) for v in journal.values())} journal / {len(tasks)} tasks / "
           f"{len(cal)} cal / {len(status)} status"
           + (f" · ⚠ source-unavailable: {', '.join(bad)}" if bad else ""))

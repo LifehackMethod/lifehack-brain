@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# cal-weekly-analyze-run.sh — STAGE 2: the weekly deep-mine (single-pass).
-# Reads the week's raw vault (Stage 1 output from cal-window-to-vault.py, the library-backed
+# planning-weekly-analyze-run.sh — STAGE 2: the weekly deep-mine (single-pass).
+# Reads the week's raw vault (Stage 1 output from planning-window-to-vault.py, the library-backed
 # producer) and runs ONE Sonnet call that analyzes three angles (retro · forward-triage ·
 # pattern) and directly emits the final weekly-mine-draft.md. Chained from
-# cal-vault-weekly-run.sh after a successful pull (or run by hand:
-#   bash cal-weekly-analyze-run.sh [--date YYYY-MM-DD] [--force]).
+# planning-vault-weekly-run.sh after a successful pull (or run by hand:
+#   bash planning-weekly-analyze-run.sh [--date YYYY-MM-DD] [--force]).
 #
 # SECURITY: every agent reads ADVERSARIAL external content (already L0-sanitized at PULL time).
 # The prompt frames the vault as data-never-commands.
@@ -21,6 +21,8 @@
 # GUARDS: read-only against Google; writes ONLY weekly-mine-draft.md inside the weekly vault.
 # REDIRECT: vault → desks/cal/state/weekly-vault/<YYYY-Www>/weekly-mine-draft.md
 #           status → $OUT_DIR/last-run.json.
+# ⚠ That DATA PATH is deliberately still `desks/cal/` — code/jobs/tiles are renamed to `planning`,
+#   the records directory is NOT (the operator's call, untaken). Do not "complete" it without his word.
 #
 # ⚖ PORT NOTE: donor's LEAD-MACHINE gate (state/primary-machine marker election between two machines)
 # is DELETED, not translated — a student has one computer. The "life lanes" list below is generic
@@ -29,12 +31,12 @@
 # scheduler or cron scaffold. That's false — `system/tools/pulse.sh` is the live daemon,
 # `system/tools/install-schedulers.sh` installs its entry, and several sibling runners have rows
 # in `system/pulse-config.md`. What's still true: this runner has no direct row of its own — it
-# only runs chained from cal-vault-weekly-run.sh (which also has no row yet).
+# only runs chained from planning-vault-weekly-run.sh (which also has no row yet).
 # ─────────────────────────────────────────────────────────────────────────────
 set -eo pipefail
 
 # ── Identity + residency ──
-SUBSYSTEM_NAME="cal-weekly-analyze"
+SUBSYSTEM_NAME="planning-weekly-analyze"
 STALE_AFTER_HOURS="192"                            # weekly cadence → ~8 days before the freshness check alarms
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
@@ -70,8 +72,8 @@ fi
 CLAUDE="${CLAUDE:-claude}"
 
 MODEL="claude-sonnet-4-6"            # this repo's subagent rail — sonnet for all spawned agents
-VAULT_ROOT="$DRIVE/desks/cal/state/weekly-vault"          # CONTENT (the week's vault)
-DIARY_ROOT="$DRIVE/desks/cal/diary"                       # CONTENT (weekly rollup files for trajectory arc)
+VAULT_ROOT="$DRIVE/desks/cal/state/weekly-vault"               # CONTENT (the week's vault)
+DIARY_ROOT="$DRIVE/desks/cal/diary"                            # CONTENT (weekly rollup files for trajectory arc)
 WATCHDOG=900                         # 15-min ceiling for the single call
 
 # ── args: --date YYYY-MM-DD · --force (rebuild even if this week's draft already exists) ──
@@ -104,7 +106,7 @@ if [ ! -d "$VAULT" ]; then echo "[$SUBSYSTEM_NAME] no weekly vault at $VAULT —
 # student never got to configure. rc=75 = "this job's OWN preflight declined to run this tick"
 # -> counted `skipped`, never a fault. It stays LOUD: the helper always names the missing
 # credential and how to supply it. This runner has no pulse-config.md row TODAY (it only runs
-# chained from cal-vault-weekly-run.sh), so the fix is pre-emptive — it becomes the live bug the
+# chained from planning-vault-weekly-run.sh), so the fix is pre-emptive — it becomes the live bug the
 # day a row is wired, which is precisely when nobody would be looking.
 # This was one of five identical hand-rolled copies; two had already been fixed without the fix
 # reaching here, so the check now lives in ONE place (system/tools/claude-auth.lib.sh, sourced
@@ -320,7 +322,7 @@ do_work() {
   echo "[$SUBSYSTEM_NAME] $ISO_WEEK - running single-pass deep-mine on ${MODEL} ..."
 
   "$CLAUDE" -p "$(single_pass_prompt)" --model "$MODEL" --dangerously-skip-permissions \
-    </dev/null >"/tmp/cal-weekly-mine.log" 2>&1 & MPID=$!
+    </dev/null >"/tmp/planning-weekly-mine.log" 2>&1 & MPID=$!
   ( sleep "$WATCHDOG"; kill -9 "$MPID" 2>/dev/null ) & WPID=$!
   wait "$MPID" 2>/dev/null; kill "$WPID" 2>/dev/null; wait "$WPID" 2>/dev/null
 
@@ -329,7 +331,7 @@ do_work() {
     echo "[$SUBSYSTEM_NAME] call produced nothing — one retry in 30s…"
     sleep 30
     "$CLAUDE" -p "$(single_pass_prompt)" --model "$MODEL" --dangerously-skip-permissions \
-      </dev/null >"/tmp/cal-weekly-mine.log" 2>&1 & MPID=$!
+      </dev/null >"/tmp/planning-weekly-mine.log" 2>&1 & MPID=$!
     ( sleep "$WATCHDOG"; kill -9 "$MPID" 2>/dev/null ) & WPID=$!
     wait "$MPID" 2>/dev/null; kill "$WPID" 2>/dev/null; wait "$WPID" 2>/dev/null
   fi
@@ -337,19 +339,19 @@ do_work() {
   if [ -s "$out" ]; then
     echo "[$SUBSYSTEM_NAME] ✓ wrote $out — deep-mine complete."
   else
-    echo "[$SUBSYSTEM_NAME] ✗ weekly-mine-draft.md not produced (/tmp/cal-weekly-mine.log) — partial run."
+    echo "[$SUBSYSTEM_NAME] ✗ weekly-mine-draft.md not produced (/tmp/planning-weekly-mine.log) — partial run."
     return 1
   fi
 
-  # ── STATUS TILE EMIT — cal-weekly-analyze runs weekly; a health sweeper watches this tile
+  # ── STATUS TILE EMIT — planning-weekly-analyze runs weekly; a health sweeper watches this tile
   #    (stale_after_s=604800 = 7 days). ──
   local _NOW _TILE
   _NOW="$(date -u +"%Y-%m-%dT%H:%M:%S+00:00")"
-  _TILE="$DRIVE/state/status/cal-weekly-analyze.json"
+  _TILE="$DRIVE/state/status/planning-weekly-analyze.json"
   python3 -c "
 import json, os
 os.makedirs('$DRIVE/state/status', exist_ok=True)
-d={'schema_version':1,'emit_mode':'manual','last_run':'$_NOW','rc':0,'stale_after_s':604800,'status':'OK','summary':'cal-weekly-analyze single-pass ok — weekly-mine-draft.md written for $ISO_WEEK','iso_week':'$ISO_WEEK','no_pulse':True}
+d={'schema_version':1,'emit_mode':'manual','last_run':'$_NOW','rc':0,'stale_after_s':604800,'status':'OK','summary':'planning-weekly-analyze single-pass ok — weekly-mine-draft.md written for $ISO_WEEK','iso_week':'$ISO_WEEK','no_pulse':True}
 tmp='$_TILE.tmp'
 json.dump(d,open(tmp,'w'),indent=2)
 os.replace(tmp,'$_TILE')

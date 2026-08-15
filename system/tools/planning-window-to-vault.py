@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""cal-window-to-vault.py — fill the weekly deep-mine's VAULT from the CENTRAL LIBRARY (F.2.p).
+"""planning-window-to-vault.py — fill the weekly deep-mine's VAULT from the CENTRAL LIBRARY (F.2.p).
 
-The weekly deep-mine (`cal-weekly-analyze-run.sh`) reads a vault directory
+The weekly deep-mine (`planning-weekly-analyze-run.sh`) reads a vault directory
 `desks/cal/state/weekly-vault/YYYY-Www/` (calendar.json, tasks.json, _manifest.json, per-thread
 inbox|sent/{tid}_first.txt/_last.txt). This producer fills that vault contract from the library —
 `item_store_window.read_window` (windowing), `item_store_read.read_item` (task/calendar secure
 payload), `email_service_read.thread_messages` (first/last email bodies) — never a bespoke
-Gmail/gws scrape. Stage-2 (cal-weekly-analyze-run.sh) and the vault SHAPE are unaffected by which
+Gmail/gws scrape. Stage-2 (planning-weekly-analyze-run.sh) and the vault SHAPE are unaffected by which
 producer fills it; only the source is the library.
 
 ⚖ PORT NOTE: donor's history here (a retired bespoke `cal-vault-weekly-pull.py` this replaced) is
@@ -31,9 +31,9 @@ Per-file adversarial banner (pre-mortem FM8): every produced email/free-text fil
 adapters' MARKER banner so the deep-mine treats it as DATA, not instructions.
 
 CLI:
-  python3 cal-window-to-vault.py --week 2026-W28 [--out-suffix -lib] [--out-dir PATH]
-  python3 cal-window-to-vault.py            (defaults to the current ISO week)
-  python3 cal-window-to-vault.py --self-test
+  python3 planning-window-to-vault.py --week 2026-W28 [--out-suffix -lib] [--out-dir PATH]
+  python3 planning-window-to-vault.py            (defaults to the current ISO week)
+  python3 planning-window-to-vault.py --self-test
 """
 
 import argparse
@@ -59,6 +59,9 @@ import brain_root                        # noqa: E402
 # real answer (None, None); every caller below treats a missing root as "nothing to build", not a
 # guess at where to write.
 _ROOT_SOURCE, DRIVE = brain_root.resolve_brain_root()
+# ⚠ The DATA PATH is deliberately still `desks/cal/`. This desk's code, tools, jobs and tiles are
+# renamed to `planning`; the records directory is NOT, because moving the operator's live records is
+# his decision and has not been taken. KNOWN, INTENTIONAL split — do not "complete" it without his word.
 VAULT_ROOT = os.path.join(DRIVE, "desks", "cal", "state", "weekly-vault") if DRIVE else None
 
 # Known free-text keys the adapters render into read_item's `content` blob (as "key: value" lines).
@@ -433,7 +436,7 @@ def _run_self_tests(week="2026-W28"):
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
-    print(f"\ncal-window-to-vault self-test results: {passed} passed, {failed} failed")
+    print(f"\nplanning-window-to-vault self-test results: {passed} passed, {failed} failed")
     return passed, failed
 
 

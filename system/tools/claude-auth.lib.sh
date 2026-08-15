@@ -6,7 +6,7 @@
 # Every runner that fires `claude -p` from a scheduled/headless context needs the same three
 # lines — find the subscription token, export CLAUDE_CODE_OAUTH_TOKEN, stand down if it isn't
 # there. That preflight was hand-rolled FIVE times (archivist-run.lib.sh · ingest-run.lib.sh ·
-# cal-analyze-run.sh · cal-weekly-analyze-run.sh · planning-weekly-prime-run.sh), each copy
+# planning-analyze-run.sh · planning-weekly-analyze-run.sh · planning-weekly-prime-run.sh), each copy
 # carrying its own literal exit code. All five had the SAME wrong one (`3`), and the bug was
 # fixed TWICE — in archivist-run.lib.sh and planning-weekly-prime-run.sh, 2026-08-15 — without
 # the other three changing, because a fix applied to a copy does not reach the other copies.
@@ -47,7 +47,7 @@
 # one of the three, which is how you end up with copies again.
 #
 # ARGS
-#   $1  label      — job name for the message, e.g. "cal-analyze". Optional; defaults to "claude".
+#   $1  label      — job name for the message, e.g. "planning-analyze". Optional; defaults to "claude".
 #   $2  logger     — OPTIONAL name of a caller function taking one string. If given (and it is a
 #                    real function) the message goes through it, so a caller with its own
 #                    timestamped/prefixed log format keeps that format byte-for-byte. Otherwise

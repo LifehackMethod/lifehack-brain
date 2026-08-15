@@ -188,7 +188,7 @@ def main():
             isolate = False
             i += 1
             continue
-        if rest[i] == "--redact":        # STORE opt-out: real text with injection spans neutralized (cal-vault)
+        if rest[i] == "--redact":        # STORE opt-out: real text with injection spans neutralized (planning-vault)
             redact = True
             isolate = False
             i += 1

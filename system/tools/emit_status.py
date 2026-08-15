@@ -11,7 +11,7 @@ already fully generic on arrival: no hardcoded paths (the caller passes `out_pat
 Drive/Google assumptions, stdlib only, and it never touches `brain_root` itself (every consumer resolves
 its own tile path first and hands this module the finished path). Nothing needed loosening for F8.6.
 Thirteen consumers in this repo (`shared/tools/email_summary_sync.py`, `shared/tools/item_store_read.py`,
-`system/tools/health_line.py`, `system/tools/emit_finding.py`, `system/tools/cal-health.py`, and others)
+`system/tools/health_line.py`, `system/tools/emit_finding.py`, `system/tools/planning-health.py`, and others)
 already carry a `try: from emit_status import emit_status / except ImportError: <hand-rolled tile write>`
 fallback shaped to match THIS envelope exactly — confirmed by reading their fallbacks before this port:
 `desk`, `schema_version`, `pulse_job`, `emit_mode`, `stale_after_s`, `last_run`, `rc`, `status`, `summary`

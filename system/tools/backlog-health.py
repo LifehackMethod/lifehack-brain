@@ -39,7 +39,7 @@ def iso(epoch):
 
 
 def _write_tile(out_path, *, status, summary, rc, payload):
-    """Same minimal local writer cal-health.py uses — see that file's comment for why (no shared
+    """Same minimal local writer planning-health.py uses — see that file's comment for why (no shared
     `emit_status.py` in this repo yet)."""
     env = {"desk": "backlog", "schema_version": 2, "pulse_job": "backlog-health", "emit_mode": "pulse",
            "stale_after_s": 43200, "last_run": iso(int(time.time())), "rc": rc, "status": status,
@@ -85,7 +85,7 @@ def main():
     p = rep.get("proposals", {})
 
     if not rep.get("configured", True):
-        # ── NOTHING TO SCAN YET — mirrors cal-health.py's "not configured — no calendar
+        # ── NOTHING TO SCAN YET — mirrors planning-health.py's "not configured — no calendar
         # connected yet": a fresh install with no debt ledger, no desk backlogs, and no legacy
         # swamp file has verified NOTHING, and "0 actionable debt - 0 projects - ..." would read
         # exactly like a real clean scan (the false-OK shape this whole design exists to catch).

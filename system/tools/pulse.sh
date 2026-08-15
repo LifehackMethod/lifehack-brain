@@ -268,7 +268,7 @@ while IFS= read -r line || [ -n "$line" ]; do
     # a failure. On the donor system this code meant "not the lead machine"; that condition doesn't
     # exist here, but the CONTRACT is still useful and kept: any job whose own preflight decides not
     # to proceed this tick (e.g. a job that needs credentials nobody has configured yet — see
-    # cal-health.py / backlog-health.py, which map a missing config to this exact convention) should
+    # planning-health.py / backlog-health.py, which map a missing config to this exact convention) should
     # use it, so "chose not to run" is never confused with "ran and failed" OR with "ran and
     # succeeded". It maps to `skipped`, never `ran` and never `failed`:
     #   ran    — it did no work; counting it hides a standing-down job behind a healthy number.

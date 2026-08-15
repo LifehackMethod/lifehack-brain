@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# cal-vault-weekly-run.sh — WEEKLY deep-pull runner.
+# planning-vault-weekly-run.sh — WEEKLY deep-pull runner.
 # WHY: the weekly check-in is the DEEP dive; this pre-builds the week-scoped deep vault
 #      (every open task + the week's email + the full calendar behind/ahead) before the
 #      human sits down. Stage 1 of the weekly cadence system (the analog of the daily
-#      cal-vault-run.sh — never edit that file). Chains Stage 2 (the weekly deep-mine).
+#      planning-vault-run.sh — never edit that file). Chains Stage 2 (the weekly deep-mine).
 # GUARDS: READ-ONLY against Google (safe-ingest primitives only); vault writes to the notes root.
 # REDIRECT: vault → desks/cal/state/weekly-vault/<YYYY-Www>/ ; status → $OUT_DIR/last-run.json.
+# ⚠ That DATA PATH is deliberately still `desks/cal/` — code/jobs/tiles are renamed to `planning`,
+#   the records directory is NOT (the operator's call, untaken). Do not "complete" it without his word.
 #
 # ⛔ DO NOT PORT `cal-vault-weekly-pull.py` — it is dead code, superseded by
-#    `cal-window-to-vault.py` (the library-backed producer this script calls below). This file
+#    `planning-window-to-vault.py` (the library-backed producer this script calls below). This file
 #    never called the bespoke pull script even in the donor.
 #
 # ⚖ PORT NOTE, three changes from donor:
@@ -18,7 +20,7 @@
 #   2. The Drive status-tile write used donor's `emit_status.py` (system/tools/emit_status.py),
 #      which has not been ported to this repo yet (out of this port's scope — a different
 #      subsystem). Rather than ship an import that fails on every run, this uses the same plain
-#      json.dump the sibling daily runner (cal-vault-run.sh) already uses for the identical job —
+#      json.dump the sibling daily runner (planning-vault-run.sh) already uses for the identical job —
 #      same tile shape, no new dependency. If/when emit_status.py lands, this can switch to it.
 #   3. `${CODE_ROOT}/desks/cal` (a donor multi-desk CODE directory for CLAUDE.md context) does not
 #      exist in this repo's layout and is dropped — nothing here depends on it.
@@ -27,7 +29,7 @@ set -eo pipefail
 export PATH="/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"   # cron PATH may omit /usr/sbin
 
 # ── LIBRARY-ONLY source: the weekly vault is filled ONLY from the central library
-#    (cal-window-to-vault.py). There is NO bespoke Gmail-scrape fallback and NO on/off switch — a
+#    (planning-window-to-vault.py). There is NO bespoke Gmail-scrape fallback and NO on/off switch — a
 #    single mandatory path is the whole point (a fresh session cannot route around the library). A
 #    broken/stale library is made LOUD (the producer stamps a STALE_WARNING into _manifest.json),
 #    NEVER silently rerouted to a live scrape. Extract --week for the producer; leave all args for
@@ -43,7 +45,7 @@ done
 set -- "${_ARGS[@]:-}"
 
 # ── Identity + residency ──
-SUBSYSTEM_NAME="cal-vault-weekly"
+SUBSYSTEM_NAME="planning-vault-weekly"
 STALE_AFTER_HOURS="168"                            # weekly cadence → 7 days before the freshness check alarms
 STALE_AFTER_S=$((STALE_AFTER_HOURS * 3600))        # single source for both the local proof AND the status tile
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -95,15 +97,15 @@ _on_exit() {
   rm -rf "$LOCKDIR" 2>/dev/null || true
 
   local _status="OK"; [ "${RC:-1}" -ne 0 ] && _status="ERROR"
-  local _summary="cal-vault-weekly pull ok"
-  [ "${RC:-1}" -ne 0 ] && _summary="cal-vault-weekly run failed (rc=${RC:-1})"
+  local _summary="planning-vault-weekly pull ok"
+  [ "${RC:-1}" -ne 0 ] && _summary="planning-vault-weekly run failed (rc=${RC:-1})"
   python3 -c "
 import json, os
 os.makedirs('$DRIVE/state/status', exist_ok=True)
 d={'schema_version':1,'emit_mode':'manual','last_run':'$(date -u +%FT%TZ)','rc':${RC:-1},'stale_after_s':$STALE_AFTER_S,'status':'$_status','summary':'$_summary','no_pulse':True}
-tmp='$DRIVE/state/status/cal-vault-weekly.json.tmp'
+tmp='$DRIVE/state/status/planning-vault-weekly.json.tmp'
 json.dump(d,open(tmp,'w'),indent=2)
-os.replace(tmp,'$DRIVE/state/status/cal-vault-weekly.json')
+os.replace(tmp,'$DRIVE/state/status/planning-vault-weekly.json')
 " 2>/dev/null || true
 }
 trap _on_exit EXIT INT TERM
@@ -127,15 +129,15 @@ do_work() {
   # NOTE: use "${_wk[@]}" NOT "${_wk[@]:-}" — the :- default operator on an EMPTY array expands
   # to a single empty-string arg (argparse then errors "unrecognized arguments: "). Bare "${_wk[@]}"
   # expands to nothing when empty (script has no `set -u`), so a no-args run defaults to current week.
-  python3 "$CODE_ROOT/system/tools/cal-window-to-vault.py" "${_wk[@]}" || return $?
+  python3 "$CODE_ROOT/system/tools/planning-window-to-vault.py" "${_wk[@]}" || return $?
 
   # Status tile: written in the exit trap (above), not here — do_work() only ever reaches this
   # line on the SUCCESS path, which would otherwise be a blind spot on failure/kill.
 
   # Stage 2: chain the weekly deep-mine (bounded by its own lock + 15-min watchdog).
-  if [ -x "$CODE_ROOT/system/tools/cal-weekly-analyze-run.sh" ]; then
+  if [ -x "$CODE_ROOT/system/tools/planning-weekly-analyze-run.sh" ]; then
     echo "[$SUBSYSTEM_NAME] pull ok — chaining Stage 2 (weekly deep-mine) …"
-    bash "$CODE_ROOT/system/tools/cal-weekly-analyze-run.sh" "$@" \
+    bash "$CODE_ROOT/system/tools/planning-weekly-analyze-run.sh" "$@" \
       || echo "[$SUBSYSTEM_NAME] analyze stage rc=$? (non-fatal to the pull)"
   fi
   return 0

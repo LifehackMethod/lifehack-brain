@@ -136,7 +136,7 @@ def _events_of(data):
 
 def main():
     desk, rest = safe_input.resolve_desk()
-    redact = "--redact" in rest            # STORE path (cal-vault): real text, flagged spans neutralized
+    redact = "--redact" in rest            # STORE path (planning-vault): real text, flagged spans neutralized
     isolate = ("--no-isolate" not in rest) and not redact   # SECURE BY DEFAULT (2026-07-04)
     rest = [a for a in rest if a not in ("--isolate", "--no-isolate", "--redact")]
     if not rest:

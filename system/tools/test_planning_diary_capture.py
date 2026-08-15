@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Format-tolerance harness for cal-diary-capture.py — read_journal() + build().
+"""Format-tolerance harness for planning-diary-capture.py — read_journal() + build().
 
 WHY THIS EXISTS
   The journal (producer) and this parser (consumer) drifted apart for two months and
@@ -35,7 +35,7 @@ WHAT IT LOCKS
    real-shaped file, survival through build(), a negative control that bites — is proved by the
    day fixture below, plus a reach COUNT the live case never had.
 
-Run:  python3 system/tools/test_cal_diary_capture.py
+Run:  python3 system/tools/test_planning_diary_capture.py
 Exit: 0 = all green · 1 = any failure (prints a per-case report).
 """
 import atexit
@@ -46,21 +46,21 @@ import sys
 import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SCRIPT = os.path.join(HERE, "cal-diary-capture.py")
+SCRIPT = os.path.join(HERE, "planning-diary-capture.py")
 
 # ⛔ SANDBOX THE DATA ROOT BEFORE THE IMPORT, NOT AFTER — the import is the leak.
-# cal-diary-capture.py resolves the notes root at MODULE level (brain_root.resolve_brain_root()
+# planning-diary-capture.py resolves the notes root at MODULE level (brain_root.resolve_brain_root()
 # -> JOURNAL / STATUS_DIR / DIARY_ROOT) and sys.exit(2)s when there is none. So by the time this
 # file could reassign cdc.JOURNAL, the damage is already done in both directions: with a root
 # persisted, the module is bound to somebody's real journal; with no root set at all — a fresh
 # clone, CI, a student's first hour — the import KILLS THE PROCESS before case T1 runs.
 # Pointing LIFEHACK_ROOT at a throwaway directory first makes this file depend on nothing outside
 # its own tempdir, and behave identically on every machine, installed or not.
-_SANDBOX_ROOT = tempfile.mkdtemp(prefix="cal-diary-test-root.")
+_SANDBOX_ROOT = tempfile.mkdtemp(prefix="planning-diary-test-root.")
 os.environ["LIFEHACK_ROOT"] = _SANDBOX_ROOT
 atexit.register(shutil.rmtree, _SANDBOX_ROOT, ignore_errors=True)
 
-_spec = importlib.util.spec_from_file_location("cal_diary_capture", SCRIPT)
+_spec = importlib.util.spec_from_file_location("planning_diary_capture", SCRIPT)
 cdc = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(cdc)
 
@@ -107,9 +107,9 @@ check("T2 dashed '- DATE |' entry row parses",
       flat(by))
 
 # T3 — indentation must not defeat it.
-by, st = parse(f"   - {D} | cal | cadence-skills | indented dashed row\n", D)
+by, st = parse(f"   - {D} | planning | cadence-skills | indented dashed row\n", D)
 check("T3 indented dashed entry row parses",
-      "cal" in by and any("indented dashed row" in b for b in by.get("cal", [])),
+      "planning" in by and any("indented dashed row" in b for b in by.get("planning", [])),
       flat(by))
 
 # T4 — the legacy block form, terminator included. Uses a generic desk name (not a real personal
@@ -218,7 +218,7 @@ check("T15 H2 block stops at the next heading",
 #       only desk signal is the slug's conventional desk- prefix. Uses 'root' rather than a named
 #       desk: KNOWN_DESKS is read from system/desk-registry.yaml with an EMPTY fallback (the donor's
 #       fallback hardcoded that operator's seven personal desk names, which is exactly the residency
-#       leak this migration removed — see cal-diary-capture.py's _FALLBACK_DESKS comment) plus a
+#       leak this migration removed — see planning-diary-capture.py's _FALLBACK_DESKS comment) plus a
 #       hardcoded 'root'. 'root' is therefore the only desk id guaranteed present on any install,
 #       registry populated or not, so it is the only portable fixture for this prefix-match path.
 by, st = parse(
@@ -230,10 +230,10 @@ check("T21 '### SESSION CONTEXT — DATE — desk-prefixed-slug' attributes to t
 
 # T22 — an EXACT desk segment always beats a prefix guess elsewhere in the heading.
 by, st = parse(
-    f"### SESSION CONTEXT — {D} — root/handshake-skill — cal-weekly rework\n"
+    f"### SESSION CONTEXT — {D} — root/handshake-skill — planning-weekly rework\n"
     "session: re-synced the huddle\n", D)
 check("T22 exact desk segment wins over a prefix match later in the heading",
-      "root" in by and "cal" not in by,
+      "root" in by and "planning" not in by,
       flat(by))
 
 # T23 — NEGATIVE: a prefix match needs the hyphen boundary. 'calendar-diary' is not the cal desk
@@ -305,7 +305,7 @@ session: opened the audit and re-read the handoff
 
 - {FD} | root | skill-system | PHASE 6 CLOSED — the reader now sees every shape
 - {FD} | root | skill-system | PHASE 7 CLOSED — the diary stopped coming out thin
-- {FD} | cal | cadence-skills | SKILL-FACTORY DETOUR — built the emitter before the cadence
+- {FD} | planning | cadence-skills | SKILL-FACTORY DETOUR — built the emitter before the cadence
 | {FD} | marc | market-regime | OLD PIPE ROW — regime read held, no position change |
 **DECISION {FD} | root | project-system |** Grand Central scope LOCKED
 **BUILD {FD} | root | project-system |** Built PHASE 5 capture
@@ -333,7 +333,7 @@ unrelated tail content
 # below names which desk lost items, which is the first question anyone asks.
 # root 7 = legacy block + H2 block + 2 dashed rows + DECISION + BUILD + H3 prefix-attributed block
 EXPECTED_BY_DESK = {
-    "root": 7, "cal": 1, "marc": 1, "helm": 1,
+    "root": 7, "planning": 1, "marc": 1, "helm": 1,
     cdc.UNATTRIBUTED: 1, "lamps": 1, "money": 1,
 }
 EXPECTED_REACH = sum(EXPECTED_BY_DESK.values())      # 13
@@ -344,8 +344,8 @@ check("T16 whole day: both root/skill-system dashed phase-closes are found",
       sum(1 for b in day.get("root", []) if "PHASE 7 CLOSED" in b or "PHASE 6 CLOSED" in b) == 2,
       flat(day)[:400])
 
-check("T17 whole day: the cal dashed entry is found alongside them",
-      any("SKILL-FACTORY DETOUR" in b for b in day.get("cal", [])),
+check("T17 whole day: the planning dashed entry is found alongside them",
+      any("SKILL-FACTORY DETOUR" in b for b in day.get("planning", [])),
       flat(day)[:400])
 
 # T18 — THE COEXISTENCE PROPERTY. Old pipe rows and new dashed rows share the same day in the

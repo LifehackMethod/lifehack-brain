@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""cal-health.py — READ-ONLY calendar health check (7-day forward window): flags timed-event
+"""planning-health.py — READ-ONLY calendar health check (7-day forward window): flags timed-event
 CONFLICTS (overlaps) and UNCONFIRMED invites (RSVP needsAction / tentative) across the two calendars
 a person has told this system about.
 
@@ -65,7 +65,7 @@ def read_events(cal_id, time_min, time_max):
     on any read failure (missing gws, bad auth, network) — the caller maps that to rc=1."""
     params = {"calendarId": cal_id, "maxResults": 100, "singleEvents": True,
               "orderBy": "startTime", "timeMin": time_min, "timeMax": time_max}
-    r = subprocess.run(["python3", SAFE_CAL, "--desk", "cal", "--no-isolate", json.dumps(params)],
+    r = subprocess.run(["python3", SAFE_CAL, "--desk", "planning", "--no-isolate", json.dumps(params)],
                        capture_output=True, text=True)
     if r.returncode == 2:
         tail = (r.stderr.strip().splitlines() or ["(no stderr)"])[-1]
@@ -99,7 +99,7 @@ def _write_tile(out_path, *, status, summary, rc, payload):
     `emit_status.py` would produce (desk / schema_version / pulse_job / stale_after_s / last_run / rc
     / status / summary + payload merged in), written atomically. Replace this with a real import if
     `emit_status.py` lands later — the shape is deliberately compatible."""
-    env = {"desk": "cal", "schema_version": 2, "pulse_job": "cal-health", "emit_mode": "pulse",
+    env = {"desk": "planning", "schema_version": 2, "pulse_job": "planning-health", "emit_mode": "pulse",
            "stale_after_s": 43200, "last_run": iso(int(time.time())), "rc": rc, "status": status,
            "summary": summary}
     env.update(payload)
@@ -112,9 +112,9 @@ def _write_tile(out_path, *, status, summary, rc, payload):
 def main():
     _src, notes_root = resolve_brain_root()
     if notes_root is None:
-        sys.stderr.write("[cal-health] no notes root configured (shared/brain_root.py) — nothing to check or write yet.\n")
+        sys.stderr.write("[planning-health] no notes root configured (shared/brain_root.py) — nothing to check or write yet.\n")
         return 0
-    out_path = os.path.join(notes_root, "state", "status", "cal.json")
+    out_path = os.path.join(notes_root, "state", "status", "planning.json")
 
     # ── 1) Are the two calendar ids even configured? ────────────────────────────────────────────
     try:
@@ -125,12 +125,12 @@ def main():
                     payload={"work_count": 0, "work_noun": "flags", "kpis": [], "items": [],
                              "configured": False, "link": CAL_URL})
         try:
-            emit_finding(producer="cal-health", status="OK", scanned_n=1,
-                        labels={"job": "cal-health", "check": "calendar"},
+            emit_finding(producer="planning-health", status="OK", scanned_n=1,
+                        labels={"job": "planning-health", "check": "calendar"},
                         summary=summary, payload={"detail": str(e)}, rc=0)
         except (FindingContractError, Exception) as fe:
-            sys.stderr.write(f"[cal-health] emit_finding failed: {fe}\n")
-        print(f"[cal-health] {summary}")
+            sys.stderr.write(f"[planning-health] emit_finding failed: {fe}\n")
+        print(f"[planning-health] {summary}")
         return 0
 
     personal_cal, agent_cal = ids["personal_calendar"], ids["agent_calendar"]
@@ -144,7 +144,7 @@ def main():
     try:
         evs = read_events(personal_cal, t_min, t_max) + read_events(agent_cal, t_min, t_max)
     except Exception as e:
-        sys.stderr.write(f"[cal-health] {e}\n")
+        sys.stderr.write(f"[planning-health] {e}\n")
         _write_tile(out_path, status="ERROR", summary=f"calendar read failed: {e}", rc=1,
                     payload={"work_count": 0, "work_noun": "flags", "kpis": [], "items": [],
                              "configured": True, "link": CAL_URL})
@@ -223,16 +223,16 @@ def main():
 
     try:
         emit_finding(
-            producer="cal-health", status=status, scanned_n=calendars_scanned,
-            labels={"job": "cal-health", "check": "calendar"}, summary=summary,
+            producer="planning-health", status=status, scanned_n=calendars_scanned,
+            labels={"job": "planning-health", "check": "calendar"}, summary=summary,
             payload={"conflicts": conflicts, "unconfirmed": unconfirmed,
                      "events_72h": events_72h, "events_7d": events_7d},
             rc=0 if status == "OK" else 1,
         )
     except (FindingContractError, Exception) as e:
-        sys.stderr.write(f"[cal-health] emit_finding failed: {e}\n")
+        sys.stderr.write(f"[planning-health] emit_finding failed: {e}\n")
 
-    print(f"[cal-health] {summary} -> {status}")
+    print(f"[planning-health] {summary} -> {status}")
     for it in items[:8]:
         print(f"  ! {it['title']}: {it['detail']}")
     return 0

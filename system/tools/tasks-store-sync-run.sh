@@ -60,7 +60,7 @@ _on_exit() {
   # not a failure; PERMANENT-BY-DESIGN for a student with no Google account, so it fires on every
   # future dispatch until credentials are configured. Paging on it — even once — would just move
   # the noise from "every tick" to "every day forever," which is worse than the red tile this fix
-  # replaces. DEFAULT TO SILENCE, matching the established convention: cal-health.py /
+  # replaces. DEFAULT TO SILENCE, matching the established convention: planning-health.py /
   # backlog-health.py's own "not configured" branch pages nobody, and pulse.sh's own rc=75 handling
   # counts it `skipped` with no notify-send call of its own. Genuine failures (anything else
   # non-zero) still page below, unchanged.
@@ -80,7 +80,7 @@ trap _on_exit EXIT INT TERM
 #    A student with no Google account / no gws binary fails here with a clear FATAL line.
 # No creds file is true on day one of every install, and PERMANENTLY true for a student with no
 # Google account — not a runner fault. rc=75 = "this job's own preflight declined to run this
-# tick" (system/pulse-config.md's exit-code contract; matches cal-health.py / backlog-health.py's
+# tick" (system/pulse-config.md's exit-code contract; matches planning-health.py / backlog-health.py's
 # identical "not configured yet" convention) — Pulse counts it as `skipped`, never toward the
 # 3-strike circuit breaker, so a permanently-unconfigured install never renders DOWN/error forever.
 # ⚖ 2026-08-15: the check itself now lives in ONE place (gws-auth.lib.sh, sourced at the top) —

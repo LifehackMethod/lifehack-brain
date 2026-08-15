@@ -74,7 +74,7 @@ SENTINEL_PAUSE_FILE = os.path.expanduser("~/.config/lifehack/sentinel-paused-sou
 # system/pulse-config.md). Kept as an explicit small map, matching the donor's own convention, so a
 # future job that writes its own eponymous tile (state/status/{job}.json) needs ZERO entry here.
 TILE_ALIAS = {
-    "cal-health": "cal",
+    "planning-health": "planning",
     "backlog-health": "backlog",
     "sentinel-health": "sentinel",
     "system-health": "_system-health",     # this sweeper's own feed
@@ -167,7 +167,7 @@ def group_of(job):
     """A coarse grouping for the dashboard's groups{} — this repo has no desk registry, so this is
     the smallest honest thing that works: strip a job's own '-health'/'-...' suffix pattern for the
     handful of prefixes this repo actually ships, else 'platform'."""
-    for prefix in ("cal", "sentinel", "backlog"):
+    for prefix in ("planning", "sentinel", "backlog"):
         if job == prefix or job.startswith(prefix + "-"):
             return prefix
     return "platform"
@@ -176,7 +176,7 @@ def group_of(job):
 JOB_LABELS = {
     "system-health": "Watches every scheduled job for missed runs (the dead-man's switch)",
     "sentinel-health": "Rolls the security event log into a status tile",
-    "cal-health": "Checks the calendar for conflicts and unconfirmed invites",
+    "planning-health": "Checks the calendar for conflicts and unconfirmed invites",
     "backlog-health": "Checks that the system is tracking its own backlog honestly",
     "health-deadman": "Watches system-health itself for silence",
 }

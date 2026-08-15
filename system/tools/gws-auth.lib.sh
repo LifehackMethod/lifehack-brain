@@ -81,8 +81,8 @@
 #                                    returns 0. Still emits ONE named line when the credential is
 #                                    absent or unusable — silence there would be the same
 #                                    "nothing to check" == "checked, clean" collapse; it just is
-#                                    not fatal. (cal-analyze, cal-vault, cal-vault-weekly,
-#                                    cal-diary, cal-weekly-analyze, planning-weekly-prime,
+#                                    not fatal. (planning-analyze, planning-vault, planning-vault-weekly,
+#                                    planning-diary, planning-weekly-analyze, planning-weekly-prime,
 #                                    archivist-run.lib.sh)
 #
 # ARGS (both functions)

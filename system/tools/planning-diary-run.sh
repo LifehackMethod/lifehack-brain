@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# cal-diary-run.sh — headless runner for the Cal diary tee-ups. READ-ONLY against
+# planning-diary-run.sh — headless runner for the Cal diary tee-ups. READ-ONLY against
 # Google; the only writes are the local diary .md files (+ a "ready" ntfy buzz on
 # weekly+). Dispatches by cadence:
-#   daily (default) → cal-diary-capture.py  (writes diary/YYYY/MM/DD.md) — SILENT (no buzz)
-#   weekly|monthly|quarterly|yearly → cal-diary-rollup.py (writes the period review draft)
+#   daily (default) → planning-diary-capture.py  (writes diary/YYYY/MM/DD.md) — SILENT (no buzz)
+#   weekly|monthly|quarterly|yearly → planning-diary-rollup.py (writes the period review draft)
 #       → then fires ONE "your <cadence> check-in is ready" buzz via notify-send.sh
 #
 # SCHEDULING (period-idempotent catch-up conversion):
@@ -15,20 +15,20 @@
 #               the target date has passed and this period is not yet done.
 #
 # PERIOD IDEMPOTENCY (weekly|monthly|quarterly|yearly):
-#   State: machine-local period stamp files at ~/.local/share/lifehack/cal-diary-periods/{cadence}
+#   State: machine-local period stamp files at ~/.local/share/lifehack/planning-diary-periods/{cadence}
 #   On each tick: if today >= target_date AND last_completed_period < current_period → run + stamp.
 #   Safe to call daily; runs each period exactly once. --force bypasses the gate for manual/backfill.
 #   --dry-run prints the gate decision and exits without doing any diary work.
 #
 # SAFETY: fail-soft (a source read failure → that section source-unavailable + exit 0, so a
 # breaker never trips on a content gap); notify suppression by the governor is NOT a failure.
-# Test without buzzing: NOTIFY_DRY_RUN=1 bash cal-diary-run.sh --cadence weekly
+# Test without buzzing: NOTIFY_DRY_RUN=1 bash planning-diary-run.sh --cadence weekly
 #
 # ⚖ PORT NOTE: donor's LEAD-MACHINE gate (state/primary-machine marker election between two machines)
 # is DELETED, not translated — a student has one computer. ⚠ CORRECTED 2026-08-15 (T9.7d): this
 # used to deny that DEST had any scheduler or cron scaffold, and to say this runner had no
 # caller. Both are false —
-# `system/pulse-config.md` carries a real `cal-diary` row (86400s, chaining all five cadences)
+# `system/pulse-config.md` carries a real `planning-diary` row (86400s, chaining all five cadences)
 # invoking this file.
 # ─────────────────────────────────────────────────────────────────────────────
 set -u
@@ -40,12 +40,12 @@ CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # The ONE headless-gws credential preflight — shared with the ten other runners that reach Google.
 # A missing library is a REAL defect (exit 1), never a stand-down.
 . "$CODE_ROOT/system/tools/gws-auth.lib.sh" || {
-  echo "[cal-diary] FATAL: cannot source $CODE_ROOT/system/tools/gws-auth.lib.sh"; exit 1; }
+  echo "[planning-diary] FATAL: cannot source $CODE_ROOT/system/tools/gws-auth.lib.sh"; exit 1; }
 
 # The data root, through the ONE resolver — never a hardcoded personal Drive path.
 DRIVE="$(python3 "$CODE_ROOT/shared/brain_root.py" --quiet 2>/dev/null)"
 if [ -z "$DRIVE" ]; then
-  echo "[cal-diary] no data root set — nothing to write into. Set one: python3 shared/brain_root.py --set <folder>"
+  echo "[planning-diary] no data root set — nothing to write into. Set one: python3 shared/brain_root.py --set <folder>"
   exit 2
 fi
 
@@ -58,7 +58,7 @@ while [ $# -gt 0 ]; do
     --date)     DATE_ARG="${2:-}";     shift 2 ;;
     --force)    FORCE=1;               shift   ;;
     --dry-run)  DRY_RUN=1;             shift   ;;
-    *) echo "cal-diary-run: unknown arg '$1'" >&2; exit 2 ;;
+    *) echo "planning-diary-run: unknown arg '$1'" >&2; exit 2 ;;
   esac
 done
 
@@ -71,7 +71,7 @@ done
 # now the shared helper (gws-auth.lib.sh, sourced at the top). Two things change: `[ -s ]` passed a
 # whitespace-only or corrupt file and exported it anyway, and the absence was SILENT. The helper
 # validates, and names the absence in one non-fatal line. ⛔ Do not re-inline it.
-load_gws_credentials_optional cal-diary
+load_gws_credentials_optional planning-diary
 
 # Default the anchor to today when no --date was passed. This keeps the array non-empty so
 # "${DATE_OPT[@]}" is safe under `set -u` on macOS bash 3.2 (empty-array expansion throws
@@ -84,7 +84,7 @@ DATE_OPT=(--date "$DATE_ARG")
 # PERIOD-IDEMPOTENT GATE — weekly|monthly|quarterly|yearly only.
 # Called AFTER DATE_ARG is resolved (so --date backfill still works correctly).
 #
-# State files: ~/.local/share/lifehack/cal-diary-periods/{cadence}
+# State files: ~/.local/share/lifehack/planning-diary-periods/{cadence}
 #   Contents: the last COMPLETED period key (e.g. "2026-W30", "2026-07", "2026-Q3", "2026")
 #
 # Logic:
@@ -94,7 +94,7 @@ DATE_OPT=(--date "$DATE_ARG")
 #   GATE PASSES if: today >= target_date AND last_done < current_period (or --force)
 #   On success: stamp current_period into the state file.
 # ─────────────────────────────────────────────────────────────────────────────
-PERIOD_STATE_DIR="$HOME/.local/share/lifehack/cal-diary-periods"
+PERIOD_STATE_DIR="$HOME/.local/share/lifehack/planning-diary-periods"
 mkdir -p "$PERIOD_STATE_DIR" 2>/dev/null || true
 
 # period_key_and_target CADENCE TODAY_DATE
@@ -161,14 +161,14 @@ _run_period_gate() {
   local state_file="$PERIOD_STATE_DIR/$cadence"
 
   local period_info; period_info="$(_period_key_and_target "$cadence" "$today")" || {
-    echo "[cal-diary] ERROR: could not compute period for cadence=$cadence — aborting." >&2; exit 1
+    echo "[planning-diary] ERROR: could not compute period for cadence=$cadence — aborting." >&2; exit 1
   }
   local current_period; current_period="$(echo "$period_info" | head -1)"
   local target_date;    target_date="$(echo "$period_info" | tail -1)"
   local last_done="";   [ -f "$state_file" ] && last_done="$(cat "$state_file" 2>/dev/null | tr -d '[:space:]')"
 
   if [ "$DRY_RUN" -eq 1 ]; then
-    echo "[cal-diary/$cadence] --dry-run report:"
+    echo "[planning-diary/$cadence] --dry-run report:"
     echo "  today          = $today"
     echo "  current_period = $current_period"
     echo "  target_date    = $target_date"
@@ -187,22 +187,22 @@ _run_period_gate() {
   fi
 
   if [ "$FORCE" -eq 1 ]; then
-    echo "[cal-diary/$cadence] --force: bypassing period gate (period=$current_period, last_done=${last_done:-(never)})."
+    echo "[planning-diary/$cadence] --force: bypassing period gate (period=$current_period, last_done=${last_done:-(never)})."
     return 0  # proceed to actual work; caller stamps on success
   fi
 
   # Normal gate: run if today >= target AND this period not yet done
   # (bash [[ ]] has no >=; we negate < instead)
   if [[ "$today" < "$target_date" ]]; then
-    echo "[cal-diary/$cadence] not yet due (target=$target_date, today=$today, period=$current_period) — skip."
+    echo "[planning-diary/$cadence] not yet due (target=$target_date, today=$today, period=$current_period) — skip."
     exit 0
   fi
   if [ -n "$last_done" ] && { [[ "$last_done" > "$current_period" ]] || [[ "$last_done" == "$current_period" ]]; }; then
-    echo "[cal-diary/$cadence] already completed period $current_period (last_done=$last_done) — skip."
+    echo "[planning-diary/$cadence] already completed period $current_period (last_done=$last_done) — skip."
     exit 0
   fi
 
-  echo "[cal-diary/$cadence] gate PASS: period=$current_period, target=$target_date, last_done=${last_done:-(never)} → running."
+  echo "[planning-diary/$cadence] gate PASS: period=$current_period, target=$target_date, last_done=${last_done:-(never)} → running."
   return 0  # proceed; stamp happens after successful run below
 }
 
@@ -213,7 +213,7 @@ _stamp_period() {
   local current_period; current_period="$(echo "$period_info" | head -1)"
   local state_file="$PERIOD_STATE_DIR/$cadence"
   echo "$current_period" > "$state_file"
-  echo "[cal-diary/$cadence] stamped period $current_period → $state_file"
+  echo "[planning-diary/$cadence] stamped period $current_period → $state_file"
 }
 
 # ── DAILY PATH — no period gate (an interval-based caller handles idempotency) ──
@@ -227,27 +227,27 @@ if [ "$CADENCE" = "daily" ]; then
     if [ "$_gws_try" -lt 3 ]; then echo "[gws] pre-flight attempt $_gws_try failed — retry in 4s…"; sleep 4; fi
   done
   if [ "$_GWS_PREFLIGHT_OK" -ne 1 ]; then
-    echo "[cal-diary] WARN: gws pre-flight failed (or gws is not installed) — calendar/tasks/win will be source-unavailable this run."
+    echo "[planning-diary] WARN: gws pre-flight failed (or gws is not installed) — calendar/tasks/win will be source-unavailable this run."
   fi
 
   if [ "$DRY_RUN" -eq 1 ]; then
-    echo "[cal-diary/daily] --dry-run: daily cadence has no period gate; would run cal-diary-capture.py --date $DATE_ARG."
+    echo "[planning-diary/daily] --dry-run: daily cadence has no period gate; would run planning-diary-capture.py --date $DATE_ARG."
     exit 0
   fi
 
-  python3 "$CODE_ROOT/system/tools/cal-diary-capture.py" "${DATE_OPT[@]}"; RC=$?
+  python3 "$CODE_ROOT/system/tools/planning-diary-capture.py" "${DATE_OPT[@]}"; RC=$?
   # ── STATUS TILE EMIT — a health sweeper watches this tile for the daily capture going stale/silent. ──
   _DIARY_NOW="$(date -u +"%Y-%m-%dT%H:%M:%S+00:00")"
   _DIARY_STATUS="$( [ "$RC" -eq 0 ] && echo "OK" || echo "ERROR" )"
-  _DIARY_SUMMARY="$( [ "$RC" -eq 0 ] && echo "daily diary capture ok" || echo "daily diary capture failed (cal-diary-capture.py)" )"
+  _DIARY_SUMMARY="$( [ "$RC" -eq 0 ] && echo "daily diary capture ok" || echo "daily diary capture failed (planning-diary-capture.py)" )"
   python3 -c "
 import json, os
 os.makedirs('$DRIVE/state/status', exist_ok=True)
 d={'schema_version':1,'emit_mode':'manual','last_run':'$_DIARY_NOW','rc':$RC,'stale_after_s':93600,'status':'$_DIARY_STATUS','summary':'$_DIARY_SUMMARY','no_pulse':True}
-tmp='$DRIVE/state/status/cal-diary.json.tmp'
+tmp='$DRIVE/state/status/planning-diary.json.tmp'
 json.dump(d,open(tmp,'w'),indent=2)
-os.replace(tmp,'$DRIVE/state/status/cal-diary.json')
-" 2>/dev/null || echo "[cal-diary] WARN: status tile write failed (non-fatal)"
+os.replace(tmp,'$DRIVE/state/status/planning-diary.json')
+" 2>/dev/null || echo "[planning-diary] WARN: status tile write failed (non-fatal)"
   exit "$RC"   # daily is SILENT — no buzz
 fi
 
@@ -261,10 +261,10 @@ for _gws_try in 1 2 3; do
   if [ "$_gws_try" -lt 3 ]; then echo "[gws] pre-flight attempt $_gws_try failed — retry in 4s…"; sleep 4; fi
 done
 if [ "$_GWS_PREFLIGHT_OK" -ne 1 ]; then
-  echo "[cal-diary] WARN: gws pre-flight failed (or gws is not installed) — calendar/tasks/win will be source-unavailable this run."
+  echo "[planning-diary] WARN: gws pre-flight failed (or gws is not installed) — calendar/tasks/win will be source-unavailable this run."
 fi
 
-python3 "$CODE_ROOT/system/tools/cal-diary-rollup.py" --cadence "$CADENCE" "${DATE_OPT[@]}"; RC=$?
+python3 "$CODE_ROOT/system/tools/planning-diary-rollup.py" --cadence "$CADENCE" "${DATE_OPT[@]}"; RC=$?
 
 # Stamp the completed period on success (so the next tick skips it).
 if [ "$RC" -eq 0 ]; then
@@ -275,7 +275,7 @@ fi
 if [ "$RC" -eq 0 ]; then
   CAP="$(printf '%s' "${CADENCE:0:1}" | tr '[:lower:]' '[:upper:]')${CADENCE:1}"
   bash "$CODE_ROOT/shared/notify/notify-send.sh" \
-    --source "cal-checkin" --tags "calendar,spiral_calendar" \
+    --source "planning-checkin" --tags "calendar,spiral_calendar" \
     --title "📋 ${CAP} check-in ready" \
     --message "Your ${CADENCE} review is teed up — open Cal to do the check-in." \
     2>/dev/null || true

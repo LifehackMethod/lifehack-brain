@@ -431,7 +431,7 @@ def build_report():
         # any of the six checks below — none of them can honestly claim OK over a scanned_n=0
         # universe (this is the exact refusal `emit_finding.py` is designed to raise, and did,
         # six times, before this branch existed). Emit ONE honest "not configured" finding
-        # instead of the six-check machinery, same spirit as `cal-health.py`'s
+        # instead of the six-check machinery, same spirit as `planning-health.py`'s
         # "not configured — no calendar connected yet" (status OK, scanned_n=1: the one real
         # thing this run checked was WHETHER a source exists, and it does that check for real). ──
         summary = "not configured — no debt ledger, desk backlogs, or legacy swamp file found yet"

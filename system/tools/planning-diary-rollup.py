@@ -17,16 +17,16 @@ Review-draft paths (the diary tree — cadence + period are READABLE FROM THE NA
 
 SAFETY: fail-soft (source failure → section marked source-unavailable, exit 0); atomic write;
 PRESERVES any "## Human Delta — verified" section; READ-ONLY against Google. The "ready" buzz is
-fired by the runner (cal-diary-run.sh), not here.
+fired by the runner (planning-diary-run.sh), not here.
 
-Usage: cal-diary-rollup.py --cadence weekly|monthly|quarterly|yearly [--date YYYY-MM-DD]
+Usage: planning-diary-rollup.py --cadence weekly|monthly|quarterly|yearly [--date YYYY-MM-DD]
 The period is the {week|month|quarter|year} CONTAINING --date (default today). The cron runner passes
 --date = the just-ended day (e.g. yesterday) so a 1st-of-month run wraps the PRIOR month.
 """
 import argparse, calendar as calmod, json, os, re, subprocess, sys, time
 from datetime import datetime, timedelta, time as dtime, timezone, date as datecls
 
-GWS = __import__("shutil").which("gws") or "gws"  # PATH first, like the rest of the cal tools —
+GWS = __import__("shutil").which("gws") or "gws"  # PATH first, like the rest of the planning tools —
 # a hardcoded Homebrew path breaks Windows AND Intel Macs (Intel Homebrew installs to /usr/local).
 # The notes folder, through the one resolver. ⛔ NOT a default and NOT a guess: the tool this came
 # from hardcoded one person's Drive path, so on any other machine it wrote its diary into a
@@ -43,6 +43,9 @@ if not DRIVE:
         "Set it once:  python3 shared/brain_root.py --set \"<the folder your notes live in>\"\n")
     sys.exit(2)
 JOURNAL = os.path.join(DRIVE, "system/journal.md")
+# ⚠ The DATA PATH is deliberately still `desks/cal/`. This desk's code, tools, jobs and tiles are
+# renamed to `planning`; the records directory is NOT, because moving the operator's live records is
+# his decision and has not been taken. KNOWN, INTENTIONAL split — do not "complete" it without his word.
 DIARY_ROOT = os.path.join(DRIVE, "desks/cal/diary")
 PROJECT_REGISTRY = os.path.join(DRIVE, "system/project-registry.md")  # the watchlist (active/paused slugs)
 
@@ -194,7 +197,7 @@ def calendar_range(start, end):
     try:
         evs = one(PERSONAL_CAL) + one(AGENTOPS_CAL)
     except Exception as e:
-        sys.stderr.write(f"cal-rollup: calendar read failed: {e}\n")
+        sys.stderr.write(f"planning-rollup: calendar read failed: {e}\n")
         return {}, "source-unavailable"
 
     seen, by_date = set(), {}
@@ -407,7 +410,7 @@ def completed_tasks_range(start, end):
         return [t.get("title", "(untitled)").strip() for t in data.get("items", [])
                 if t.get("status") == "completed"], "ok"
     except Exception as e:
-        sys.stderr.write(f"cal-rollup: tasks read failed: {e}\n")
+        sys.stderr.write(f"planning-rollup: tasks read failed: {e}\n")
         return [], "source-unavailable"
 
 
@@ -428,7 +431,7 @@ def pull_win(cadence):
         kids = [t.get("title", "").strip() for t in items if t.get("parent") == parent.get("id")]
         return kids, "ok"
     except Exception as e:
-        sys.stderr.write(f"cal-rollup: win pull failed: {e}\n")
+        sys.stderr.write(f"planning-rollup: win pull failed: {e}\n")
         return None, "source-unavailable"
 
 
@@ -455,7 +458,7 @@ def build(cadence, label, start, end, pointers, journal, by_slug, tracked, tasks
     desks = sorted(journal.keys())
     n_events = sum(len(v) for v in journal.values())
     out = ["---"]
-    out.append(f"type: cal-diary-review")
+    out.append(f"type: planning-diary-review")
     out.append(f"cadence: {cadence}")
     out.append(f"period: {label}")
     out.append(f"range: {start.isoformat()}..{end.isoformat()}")
@@ -621,7 +624,7 @@ def main():
         try:
             anchor = datetime.strptime(args.date, "%Y-%m-%d").date()
         except ValueError:
-            sys.stderr.write("cal-rollup: --date must be YYYY-MM-DD\n"); return 2
+            sys.stderr.write("planning-rollup: --date must be YYYY-MM-DD\n"); return 2
     else:
         anchor = datetime.now().date()
 
@@ -648,10 +651,10 @@ def main():
             f.write(body)
         os.replace(tmp, out_path)
     except Exception as e:
-        sys.stderr.write(f"cal-rollup: FATAL could not write {out_path}: {e}\n"); return 1
+        sys.stderr.write(f"planning-rollup: FATAL could not write {out_path}: {e}\n"); return 1
 
     bad = [k for k, v in src.items() if v not in ("ok", "n/a")]
-    print(f"[cal-rollup] {args.cadence} {label} → {os.path.relpath(out_path, DRIVE)} — "
+    print(f"[planning-rollup] {args.cadence} {label} → {os.path.relpath(out_path, DRIVE)} — "
           f"{sum(len(v) for v in journal.values())} journal / {len(tasks)} tasks / {len(pointers)} dailies"
           + (f" · ⚠ source-unavailable: {', '.join(bad)}" if bad else ""))
     return 0

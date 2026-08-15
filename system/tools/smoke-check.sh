@@ -15,7 +15,7 @@
 # ⛔ IT IS SUPPOSED TO FAIL ON ITS FIRST RUN. A green first run means it is not looking.
 #
 # ── SAFETY: WHY RUNNING 38 UNKNOWN TOOLS HERE IS NOT RECKLESS ────────────────────
-# Some tools in this folder reach the real world — cal-*.py and safe_tasks.py shell out
+# Some tools in this folder reach the real world — planning-*.py and safe_tasks.py shell out
 # to `gws`; safe_fetch.py and render_shot.sh open sockets. A previous helper running
 # repo tooling with no data root pinned made LIVE Gmail and Google Tasks API calls and
 # wrote into the operator's real Drive. The resolver was not broken; nothing had told it
