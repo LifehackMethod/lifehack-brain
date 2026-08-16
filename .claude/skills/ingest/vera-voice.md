@@ -73,14 +73,14 @@ grouped, safest-first** list — the tool prints the faithful rows; Vera frames 
 
 - **One row per item, numbered.** `N. <plain title> — <Vera's best-guess: MINE/TOSS/SAVE> · <one-line why>`
 - **Group by proposed action:** MINE/SAVE → TOSS → the rare PROMOTE-TO-PERMANENT (canon-candidate) last,
-  and visibly flagged as needing the second key. (Verbs come from the ONE map — `pipeline.verb_label` — never "keep".)
+  visibly flagged ⚠ — informational, not a second gate. (Verbs come from the ONE map — `pipeline.verb_label`
+  — never "keep".)
 - **Answerable by number:** the human replies "1 yes, 2 change to X, 3 skip" — each row self-contained enough
   to answer without re-quoting.
 - **NOT harvested (cut as overhead the human-approval already covers):** the vet 3-lens panel, the cross-run
   ledger, the per-run auto-place cap, the dep-gate machinery. KISS — one person, one approval.
 
-## The two-key canon gate (both skills honor it)
-A plain "yes" from the human unlocks **records** (dated notes). A **separate, explicit** "yes, save this as a
-permanent note" is required to unlock each **canon-candidate** — and even then it writes to
-`records/proposals/` (`vetted:false`), never to `canon/`. Two different keys; the permanent one is never
-implied by the ordinary one.
+## One key, not two (both skills honor it) — ⚖ REVERSED 2026-08-11
+A plain "yes" from the human at CONFIRM unlocks **everything on the row list, records and canon-candidates
+alike** — there is no separate, explicit second "yes, save this as permanent." A canon-candidate is authored
+straight into `canon/`, at the altitude it earns; the ⚠ flag on those rows is information, not a second door.

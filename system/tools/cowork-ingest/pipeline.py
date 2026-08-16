@@ -440,8 +440,9 @@ PHASE_FRAMES = {
           "findings, save NOTHING to a desk; no slicing, no side quests; the human is the 2nd pass."),
     "4": ("FILE", "the corpus is fully mined — now organize EVERYTHING into desks/folders and file it, "
           "human-approved. Propose desks, then sub-folders only when a desk earns them; records → "
-          "records/{type}/, canon-CANDIDATES → records/proposals/ (never canon/). MAIN SESSION ONLY. "
-          "Nothing writes without the human's yes; a permanent note needs the second key."),
+          "records/{type}/, canon-CANDIDATES are authored DIRECTLY into canon/ at the altitude they earn "
+          "(REVERSED 2026-08-11 — no more records/proposals/ holding room, no separate second key). MAIN "
+          "SESSION ONLY. Nothing writes without the human's ordinary yes at CONFIRM."),
 }
 
 

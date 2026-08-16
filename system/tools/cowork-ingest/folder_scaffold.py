@@ -77,7 +77,10 @@ VOCAB_PATH = os.path.join(_DR, "memory", "topic-vocab.md") if _DR else None
 REPO_VOCAB_PATH = os.path.join(_REPO, "memory", "topic-vocab.md")
 LEGACY_VOCAB_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                   "..", "..", "topic-vocab.md"))
-SLUG_RE = re.compile(r"^- `([a-z0-9-]+)`")
+# Accepts both the backtick-wrapped form (`- \`health\``) and the plain form (`- health`) — a user's own
+# vocab file is at least as likely to be written plain markdown as backticked (#25). Anchored to the whole
+# line so an unrelated prose bullet ("- see the note below") is never mistaken for a slug.
+SLUG_RE = re.compile(r"^- `?([a-z0-9][a-z0-9-]*)`?$")
 
 
 def resolve_vocab(explicit=None):

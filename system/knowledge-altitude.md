@@ -89,7 +89,8 @@ AND every bookkeeping conversation, permanently. So the placement question is no
 that child; nobody needs it *loaded*, but it must stay findable → records (the findability invariant
 above). Worked example (`financial/`): shared-for-everything facts — *"he is married, rents an apartment
 with his wife Marisol, and they keep separate bank accounts"* (invented example, ⚠ nobody real, in the
-style of `system/shipping-lane/fixtures/identity-fixture.md`) — belong at the parent; tax-only detail
+style of `system/shipping-lane/fixtures/identity-fixture.md` — ⛔ not on this branch: the shipping-lane
+fixtures live on `migration-1`, which does not merge into `main`) — belong at the parent; tax-only detail
 (filing deadlines, deduction history) sinks to `tax/`, because bookkeeping shouldn't be charged for it. **The
 pyramid is a cost curve, not an aesthetic** — *"anything toward the top of the folder schema is THINNER in
 canon than anything at the bottom … push all of our heavy canonical information to the bottom"*: the top is

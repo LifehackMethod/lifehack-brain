@@ -85,11 +85,24 @@ def cmd_summary(a):
     for i, (subj, files) in enumerate(ordered, 1):
         emoji = pipeline._basket_emoji(subj)
         pretty = subj.replace("-", " ").title()
-        samples = ", ".join(title_of(f) for f in files[:3])
-        row = f"  {i:>2}  {emoji} {pretty:<12} ({len(files):>3})  — {samples}"
-        if len(row) > pipeline._DW - 2:
-            row = row[:pipeline._DW - 3].rstrip() + "…"
-        screen_rows.append(row)
+        header = f"  {i:>2}  {emoji} {pretty:<12} ({len(files):>3})"
+        titles = [title_of(f) for f in files[:3]]
+        samples = ", ".join(titles)
+        row = f"{header}  — {samples}"
+        if len(row) <= pipeline._DW - 2:
+            # fits on one line as before — short piles stay compact (#23).
+            screen_rows.append(row)
+        else:
+            # #23: the joined row doesn't fit _DW (a shared render-width constant used elsewhere —
+            # rules, headers, the action bar — so it is not widened just for this screen). Wrapping
+            # onto its own indented lines keeps ALL three titles legible instead of clipping the row
+            # and silently discarding titles #2 and #3.
+            screen_rows.append(header)
+            for t in titles:
+                line = f"        — {t}"
+                if len(line) > pipeline._DW - 2:
+                    line = line[:pipeline._DW - 3].rstrip() + "…"
+                screen_rows.append(line)
 
     print(pipeline.compose_screen(screen_rows, pipeline.compose_action_bar("sort"),
                                   header_lines=[pipeline.compose_topbar(m)],
