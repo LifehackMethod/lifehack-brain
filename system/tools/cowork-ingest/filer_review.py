@@ -48,7 +48,7 @@ def cmd_show(a):
         kind = it.get("kind") or "record"
         why = (it.get("why") or "").strip()
         if kind == "canon":
-            row = f'  {i:>2}  SAVE ⚠ "{title}" → a permanent note (needs your 2nd yes)'
+            row = f'  {i:>2}  SAVE ⚠ "{title}" → a permanent note (written directly to canon/)'
         elif kind == "dated":
             date = (it.get("date") or "?").strip()
             tail = f" — {why}" if why else ""
@@ -60,7 +60,7 @@ def cmd_show(a):
             row = row[:pipeline._DW - 3].rstrip() + "…"
         rows.append(row)
 
-    hint = 'the ⚠ ones need a separate "yes, save as permanent"' if n_canon else None
+    hint = 'the ⚠ ones are written straight to canon/ — permanent; the ⚠ is information, not a second yes' if n_canon else None
     bar = pipeline.compose_action_bar("file", change_hint=hint)
     print(pipeline.compose_screen(rows, bar, header_lines=header,
                                   title="📁  FILE — where your notes will live",
