@@ -47,8 +47,13 @@ re-downloaded — everything else here is one `git clone` away.
 ## What you do — about ten minutes
 
 **1. Make a folder and open it in Claude.** Call it whatever you like — "AI Brain" is the usual. Put it
-somewhere ordinary like your Documents folder. Then: Claude desktop app, the **Code** tab, open that
-folder.
+somewhere ordinary on your own computer — straight in your home folder is the simplest. Then: Claude
+desktop app, the **Code** tab, open that folder.
+
+> ⚠ **One folder to avoid: anything inside Google Drive, OneDrive, Dropbox or iCloud Drive.** Those keep
+> your files in sync with a website, and that quietly damages this kind of tool while it installs. **You
+> don't have to work this out yourself** — setup checks before it does anything, and if you have picked
+> one of those it moves you somewhere that works and brings everything with you. Nothing is lost.
 
 **2. Drag this file into the chat and say: "Set up my brain."**
 
@@ -162,7 +167,7 @@ Then ask: **"Ready to start?"** Wait for them.
 
 ---
 
-## STEP 1 — Find out what kind of computer this is
+## STEP 1 — Find out what kind of computer this is, and whether this folder can be used at all
 
 ```bash
 uname -s 2>/dev/null || echo "Windows"
@@ -172,6 +177,40 @@ uname -s 2>/dev/null || echo "Windows"
 
 **Say which one you found, in a sentence.** Everything below has a Mac path and a Windows path; pick the
 right one and never show them the other.
+
+**Now, before anything gets installed, find out whether the folder they opened is one that can hold
+this at all.** This costs a second and needs nothing installed — it reads the folder's own name.
+
+```bash
+pwd -P
+LOW="$(pwd -P | tr 'A-Z' 'a-z')/"
+case "$LOW" in
+  */library/cloudstorage/*|*/google\ drive/*|*/my\ drive/*|*/shared\ drives/*|*/dropbox*|*/onedrive*|*/icloud*|*/mobile\ documents/*|*/box-*|*/pcloud*)
+    echo "CLOUD-SYNC FOLDER" ;;
+  *) echo "NO SYNC SERVICE IN THE PATH" ;;
+esac
+case "$LOW" in */shared\ drives/*) echo "AND IT IS A SHARED DRIVE" ;; esac
+```
+
+**`NO SYNC SERVICE IN THE PATH` → say nothing about it at all and carry straight on to STEP 2.**
+
+**`CLOUD-SYNC FOLDER` → stop here and go to STEP 4A.** ⛔ **Do NOT install Git, do not install Python,
+do not run STEP 2 or STEP 3.** STEP 4A moves them to a folder that works; when they come back, this
+install starts again from the top and everything after this point happens once, in the right place.
+
+> ⭐ **WHY THIS CHECK IS AT STEP 1 AND NOT ONLY AT STEP 4 — issue #68, a real student, 2026-08-15.**
+> This is the same refusal STEP 4 makes, run as early as it can possibly run. It used to exist ONLY at
+> STEP 4, which is *after* Git and Python have been installed — so she did twenty minutes of installing
+> and was then told the folder was unusable. **Nothing about a folder's name needs Git or Python to
+> read**, so there was no reason for her to find out last.
+>
+> ⚠ **STEP 4's check is still the authority and still runs.** This one is a plain shell test on the
+> folder's name; STEP 4's is the full version and also catches protected system folders. **The two
+> service lists are the same list — if you ever change one, change the other**, or the early check
+> starts waving through folders the real gate refuses, which is worse than not having it.
+>
+> ⛔ **This is not a warning and there is no "continue anyway".** A folder that syncs rewrites files out
+> from under git mid-write, and it corrupts quietly rather than failing loudly.
 
 ---
 
@@ -291,24 +330,50 @@ if re.fullmatch(r"[a-z]:/users/?", low) or low in ("/users/", "/home/"):
 hit = next((t for t in prot if t in low), None)
 if hit: print("PROTECTED SYSTEM FOLDER - matched: %s" % hit.strip("/")); sys.exit(3)
 comps = [c for c in low.split("/") if c]
-cloud = ["dropbox", "google drive", "onedrive", "icloud", "mobile documents"]
-chit = next((t for t in cloud if t in comps), None)
-if not chit and any(c == "googledrive" or c.startswith("googledrive-") for c in comps):
-    chit = "googledrive"
-if chit: print("CLOUD-SYNC FOLDER - matched: %s" % chit); sys.exit(4)
+named = ["google drive", "my drive", "shared drives", "dropbox", "onedrive",
+         "icloud", "icloud drive", "mobile documents", "cloudstorage"]
+chit = next((t for t in named if t in comps), None)
+if not chit:
+    chit = next((c for c in comps
+                 if c.startswith(("googledrive", "onedrive", "dropbox", "icloud", "box-",
+                                  "pcloud", "sync-", "proton drive", "creative cloud"))), None)
+if chit:
+    tail = " + SHARED DRIVE (stream-only)" if "shared drives" in comps else ""
+    print("CLOUD-SYNC FOLDER - matched: %s%s" % (chit, tail)); sys.exit(4)
 print("GOOD"); sys.exit(0)
 PY
 ```
+
+> ⭐ **WHAT THE SERVICE LIST GAINED, AND WHY — measured 2026-08-15, all of it against real path shapes.**
+> The earlier list matched only whole folder names out of five words, and it let four real cases straight
+> through:
+> - **`G:\My Drive\...` and `G:\Shared drives\...`** — how Google Drive appears on **Windows**. ⛔ **There
+>   is no occurrence of the word "Google" anywhere in that path.** Both now match on `my drive` and
+>   `shared drives`, which are the two folders Drive always puts at the top of its lettered drive.
+> - **`~/Library/CloudStorage/OneDrive-Personal/...`** and every corporate variant
+>   (`OneDrive - Acme Ltd`) — the old exact-match on `onedrive` never fired, because the real folder
+>   name always has a suffix. The prefix test now catches them, and `cloudstorage` catches the whole
+>   folder besides: on a Mac, **nothing lives under `Library/CloudStorage` except a sync client.**
+>
+> ⚠ **It does not refuse a lettered drive on its own.** `D:\Brain` on a real second hard disk is fine
+> and must stay fine; it is `My Drive` and `Shared drives` *inside* it that mean Google.
+>
+> ⭐ **`+ SHARED DRIVE (stream-only)` is not decoration** — a Shared drive cannot hold real files, only
+> streamed ones, and the branch below has to say so out loud. Do not drop it.
 
 **`GOOD` → say nothing about it and carry straight on to STEP 5.**
 
 **`CLOUD-SYNC FOLDER` → this is a safety gate, not a preference, and the reason is different from the
 system-folder case below — say so.** A folder synced by Google Drive, Dropbox, OneDrive or iCloud Drive
 rewrites files out from under git while the tool is mid-clone or mid-write, and that can corrupt the
-repository — measured, not a guess. Say plainly: *"This folder syncs through <service>, and that can
-corrupt the tool while it's installing — let's use a folder that doesn't sync, like your Documents
-folder or a plain folder in your home directory."* Then: *"Quit Claude, open it again on that folder,
-and drag this file in again."* **Then STOP**, same as the next case.
+repository — measured, not a guess. **The folder is refused. That does not change.**
+
+Say plainly: *"This folder is kept in sync by <service>, and that quietly damages the tool while it's
+installing — so I can't put it here. I'm going to set you up in a folder on your own computer instead,
+and bring everything that's already here across with you."* **Then go to STEP 4A and do the move
+yourself.** ⛔ **Do not simply tell them to quit and start over somewhere else** — that is what this
+file used to do, and a real student (issue #68, 2026-08-15) was left holding a Shared drive full of her
+own work with no way forward.
 
 **Anything else (`PROTECTED...`) → this is the other time you ask them something.** Say plainly why this
 spot won't work — *"this is a system folder and the tool can't be installed into it"* — then: *"Quit
@@ -319,6 +384,285 @@ session there, or nothing the tool does later will be able to reach it.
 > ⛔ **Never test writability by asking for administrator rights.** If a write fails anywhere in this
 > install, the answer is a different folder, never elevation. **A real student lost their install to
 > exactly that detour on 2026-08-12.**
+
+## STEP 4A — ⛔ THE FOLDER SYNCS. MOVE THEM SOMEWHERE IT WORKS — DO NOT ABANDON THEM.
+
+**You are here because STEP 1 or STEP 4 found a sync service in the path. Read this whole step before
+you run any of it.**
+
+> ## ⭐⭐ THE SHAPE OF THIS STEP, AND WHY IT IS THIS SHAPE
+>
+> **A Claude session is tied to the folder it was opened on.** It cannot reach across to another folder
+> and keep working there. The moment they quit, you are gone — so anything that needs doing, needs
+> doing **now**, while you still have a shell in this folder.
+>
+> **So the order is: you do all of it first, they restart last.** By the time they reopen on the new
+> folder, that folder already exists, already holds everything of theirs, and has already been checked.
+> ⛔ **Never write an ending that assumes you can carry on helping after they quit. You cannot.**
+>
+> ## ⛔⛔ THE TWO RULES THAT OVERRIDE EVERY LINE BELOW
+>
+> - ⛔ **Nothing of theirs is deleted. Ever.** This step **copies**; the folder they started in is left
+>   exactly as it is, as a spare. The only thing this step deletes is an empty folder it created itself
+>   thirty seconds earlier and then rejected.
+> - ⛔ **If any step here fails, STOP.** Do not improvise a recovery and do not try a second approach.
+>   Tell them plainly which thing failed and that nothing else will be touched. **A half-moved folder
+>   somebody then improvises on is far worse than one that stopped cleanly.**
+>
+> ⛔ **And the standing rule still stands: never ask for administrator rights.** If a write fails here,
+> the answer is a different folder. Never elevation.
+
+### 4A.1 — Tell them what is happening, and get a go
+
+In about four sentences: the folder they opened is kept in sync by a cloud service; that quietly damages
+this kind of tool while it installs, so it can't go there; you're going to set up a folder on their own
+computer and copy everything already here across to it; nothing gets deleted and the folder they're in
+now stays exactly as it is. **Then ask if they're ready and wait.**
+
+### 4A.2 — Find out what is actually in this folder. Assume nothing.
+
+```bash
+ls -A
+find . -type f 2>/dev/null | wc -l
+```
+
+**Tell them what you found, in plain sentences** — whether there is a `data` folder (their own writing),
+whether the tool is already partly here, and roughly how many files there are. ⛔ **Do not open, read or
+list the contents of their own files.** You are counting, not reading.
+
+### 4A.3 — ⛔ IF IT IS A GOOGLE **SHARED** DRIVE, SAY THIS OUT LOUD. NOT OPTIONAL.
+
+STEP 1 prints `AND IT IS A SHARED DRIVE`; STEP 4's check appends `+ SHARED DRIVE (stream-only)`. Either
+one means this, and they have to hear it:
+
+> *"One thing you should know: this is a Google **Shared** drive. Google can only stream files from
+> those — it never keeps a real copy on your computer. Some of what looks like your files here may be
+> placeholders that only work while you're online, and they fail the moment something needs the real
+> thing. That's a second reason to get your work off it, and I'm going to do that now."*
+
+⚠ **Say it plainly, once, and then get on with the move.** Do not dress it up and do not repeat it.
+**If a copy below fails on a particular file, this is why** — say which file, and stop.
+
+### 4A.4 — Build a destination that cannot sync, and prove it before using it
+
+⚠ **"Your Documents folder" is NOT a safe answer and this file used to give it.** On a Mac, Documents is
+one of the folders Google Drive and OneDrive most often mirror upward — the path looks perfectly
+ordinary and the folder syncs anyway. **A path check alone cannot see that.** So ask the sync clients
+themselves which local folders they are mirroring:
+
+```bash
+DB="$HOME/Library/Application Support/Google/DriveFS/root_preference_sqlite.db"
+if [ -f "$DB" ] && command -v sqlite3 >/dev/null 2>&1; then
+  echo "Google Drive mirrors these local folders:"; sqlite3 "$DB" "SELECT last_seen_absolute_path FROM roots;" 2>/dev/null
+elif [ -f "$DB" ]; then echo "GOOGLE DRIVE IS INSTALLED BUT ITS MIRROR LIST COULD NOT BE READ"
+else echo "Google Drive is not mirroring any local folder on this machine."; fi
+if [ -f "$HOME/.dropbox/info.json" ]; then
+  echo "Dropbox folder:"; grep -o '"path": *"[^"]*"' "$HOME/.dropbox/info.json" | cut -d'"' -f4
+else echo "Dropbox is not installed."; fi
+```
+
+**This is a read and nothing else.** ⛔ If it says the mirror list could not be read, **say so** — do not
+assume the list is empty. On Windows this check does not exist; say that too rather than implying the
+destination was cleared when it only passed the name test.
+
+**Now test a destination. Try them in this order, and take the first that passes:**
+
+1. **`$HOME/<the same folder name they are using now>`** — the home folder itself is essentially never a
+   mirror root, and it never needs special permission.
+2. **`$HOME/Documents/<same name>`** — only if it is not on the mirror list above.
+3. **If both fail, ask them for somewhere else** — and run this same test on whatever they name. ⚠ **A
+   folder they choose themselves is exactly the one most likely to be inside Drive.**
+
+⚠ **To try the second or third candidate, change only the first line** — `DEST="$HOME/Documents/$(basename "$(pwd -P)")"`, or the folder they named — and run the same block again. **Everything below it is the test, and the test never changes.**
+
+```bash
+DEST="$HOME/$(basename "$(pwd -P)")"
+printf 'destination: %s\n' "$DEST"
+case "$(printf '%s/' "$DEST" | tr 'A-Z' 'a-z')" in
+  */library/cloudstorage/*|*/google\ drive/*|*/my\ drive/*|*/shared\ drives/*|*/dropbox*|*/onedrive*|*/icloud*|*/mobile\ documents/*|*/box-*|*/pcloud*)
+    echo "REJECTED - that destination is itself inside a sync service"; exit 1 ;;
+esac
+if [ -e "$DEST" ] && [ -n "$(ls -A "$DEST" 2>/dev/null)" ]; then
+  echo "STOP - that folder already exists and is not empty"; ls -A "$DEST"; exit 1
+fi
+mkdir -p "$DEST" && printf 'write test\n' > "$DEST/.writetest" \
+  && [ "$(cat "$DEST/.writetest")" = "write test" ] && rm -f "$DEST/.writetest" \
+  && echo "THE DESTINATION IS LOCAL AND WRITABLE" || echo "THE DESTINATION COULD NOT BE WRITTEN TO"
+```
+
+⛔ **`STOP - that folder already exists and is not empty` → do not merge into it.** Tell them what is in
+it, in plain words, and ask the one closed question: *"There's already a folder there with things in it
+— shall I use a different name, or is that one yours?"* **Wait for the answer.**
+
+⛔ **`THE DESTINATION COULD NOT BE WRITTEN TO` → remove the empty folder you just made
+(`rmdir "$DEST"` — it will refuse if anything is in it, which is the safety) and try the next
+destination.** Never ask for administrator rights to make a write succeed.
+
+### 4A.5 — Copy their writing first, then everything else
+
+⛔ **The order is load-bearing.** `data` is the only thing here that cannot be downloaded again — the
+tool can always be re-fetched. **If the copy dies partway** — a Shared-drive placeholder that won't
+download, a full disk, anything — **the irreplaceable half is already across.**
+
+> ⚠⚠ **EVERY BLOCK FROM HERE ON STARTS BY SETTING `SRC` AND `DEST` AGAIN, AND THAT IS NOT A TYPO.**
+> **Each command you run is a brand-new shell** — nothing you set in the last one is still there. Drop
+> those two lines and `$DEST` is empty, and a copy into an empty destination is a copy into the root of
+> their disk. **Put the destination 4A.4 settled on into every one of these blocks, literally.**
+
+```bash
+SRC="$(pwd -P)"; DEST="<the destination 4A.4 settled on>"
+if [ -d "$SRC/data" ]; then
+  cp -R "$SRC/data" "$DEST/data" && echo "copied data" || echo "COULD NOT COPY data - STOP"
+  diff -r "$SRC/data" "$DEST/data" && echo "THEIR WRITING IS ACROSS, BYTE FOR BYTE" || echo "THE COPY OF data DOES NOT MATCH - STOP"
+else
+  echo "there is no data folder here yet - nothing of theirs to carry"
+fi
+```
+
+⛔ **Anything but `THEIR WRITING IS ACROSS, BYTE FOR BYTE` stops this step dead.** Say which file failed
+and that nothing further will be touched. On a Shared drive the likely cause is 4A.3's placeholders.
+
+Then everything else — the tool, its git history, and anything of theirs that got filed into the wrong
+place:
+
+```bash
+SRC="$(pwd -P)"; DEST="<the destination 4A.4 settled on>"
+cd "$SRC"
+ls -A | grep -v '^data$' | while IFS= read -r n; do
+  cp -R "./$n" "$DEST/" || echo "COULD NOT COPY: $n"
+done
+echo "copy finished"
+```
+
+⭐ **Copying a git repository is safe — verified.** Same history, same connection to GitHub, no
+re-login. Nothing about a repository depends on where it sits. **Say that if they look worried.**
+
+### 4A.6 — Prove the two folders are identical, file for file
+
+**A check you skipped is not a check that passed**, and this is the one that stands between them and a
+half-copied folder they will trust.
+
+```bash
+SRC="$(pwd -P)"; DEST="<the destination 4A.4 settled on>"
+diff -r "$SRC" "$DEST" && echo "EVERY FILE IS ACROSS AND IDENTICAL" || echo "SOMETHING DIFFERS - STOP AND READ IT OUT"
+```
+
+⛔ **Anything other than `EVERY FILE IS ACROSS AND IDENTICAL` and you stop.** Read out what differs. Do
+not re-run the copy on top of itself and do not delete anything to "clean up".
+
+### 4A.7 — Leave a signpost in the old folder. Leave everything else in it untouched.
+
+⛔ **Do not delete the old folder and do not offer to.** It is a proven-identical spare, it costs them
+nothing, and on a Shared drive deleting it could remove files for everyone who shares it. **If they
+reopen it out of habit, STEP 1's check fires again and catches them** — that is the safety net, not
+tidiness.
+
+```bash
+SRC="$(pwd -P)"; DEST="<the destination 4A.4 settled on>"
+printf '%s\n' \
+  "This folder is no longer your AI Brain." \
+  "" \
+  "Everything in it was copied to:" \
+  "    $DEST" \
+  "" \
+  "Open THAT folder in Claude from now on. This copy is left here untouched, as a spare." \
+  > "$SRC/THIS-FOLDER-HAS-MOVED.txt"
+cat "$SRC/THIS-FOLDER-HAS-MOVED.txt"
+```
+
+### 4A.8 — Run the real check on the new folder before you send them to it
+
+⛔ **Never tell them to reopen somewhere you have not checked.** If Python is already on this machine,
+run STEP 4's own check against the new folder — the full one, not the name test:
+
+```bash
+DEST="<the destination 4A.4 settled on>"
+cd "$DEST"
+PYBIN="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
+if [ -n "$PYBIN" ]; then "$PYBIN" - "$PWD" <<'PY'
+import os, re, sys
+p = os.path.realpath(sys.argv[1]); low = p.replace("\\", "/").lower() + "/"
+comps = [c for c in low.split("/") if c]
+named = ["google drive", "my drive", "shared drives", "dropbox", "onedrive",
+         "icloud", "icloud drive", "mobile documents", "cloudstorage"]
+chit = next((t for t in named if t in comps), None)
+if not chit:
+    chit = next((c for c in comps
+                 if c.startswith(("googledrive", "onedrive", "dropbox", "icloud", "box-",
+                                  "pcloud", "sync-", "proton drive", "creative cloud"))), None)
+print("CLOUD-SYNC FOLDER - matched: %s" % chit if chit else "GOOD")
+PY
+else echo "PYTHON IS NOT INSTALLED YET - THE NAME TEST IS ALL THAT HAS RUN"; fi
+```
+
+**`GOOD` → good, and STEP 4 will run the complete version again anyway when they come back, before a
+single file is downloaded.**
+
+⛔ **`PYTHON IS NOT INSTALLED YET` is a normal and expected answer here** — you were sent from STEP 1,
+which is before Python exists. **Do not install Python just to run this**, and ⛔ **do not tell them the
+folder was fully checked when only the name test ran.** Say what actually happened: *"I've checked the
+new folder's location and it's a plain folder on your computer. When you reopen, the setup runs its full
+check on it before it downloads anything."*
+
+### 4A.9 — Hand it over, and stop
+
+Tell them, in these words or very close:
+
+> **"All done — everything you had is now in a folder on your own computer, and the old one is still
+> sitting there untouched in case you want to look. Now quit Claude completely and open it again — the
+> whole app, not just a new chat — on this folder: `<the new path>`. Then drag this same file back in
+> and say 'set up my brain' again. It'll pick up from the top, and this time it'll go through."**
+
+⭐ **Give them the literal path.** ⚠ **And tell them it will start again from the beginning** — otherwise
+the repeated questions will read as the whole thing having failed.
+
+> **What happens when they come back, so you are not surprised by it later:** STEP 1's check passes,
+> STEP 2 and STEP 3 install Git and Python, STEP 4 passes. **At STEP 5 the folder will not be empty —
+> that is expected, not a fault.** STEP 5's own "if `git clone` refuses because the folder is not empty"
+> note is the branch to follow, and it already knows that a `data` folder is their writing and must not
+> be deleted. **If the tool is already fully there** — `.claude`, `system` and `shared` all present —
+> there is nothing to clone: go straight to STEP 6 and carry on from there.
+
+Then **STOP. Do not continue this file. Do not run STEP 5.**
+
+### 4A.10 — OPTIONAL, AND ONLY IF THEY ASK: point Google Drive's backup at the new folder
+
+⛔ **Do not run this as part of the move.** ⛔ **Do not offer it.** It is written down here so that it
+exists, not so that it happens.
+
+**What it is for:** if they were relying on the old folder being in Drive, their writing is no longer
+being backed up anywhere. **The honest, four-click answer is the one to give them**, and it is the same
+one STEP 7 already gives: *"Click the Drive icon in your menu bar, then the gear, then Preferences. On
+the left choose 'Folders from your computer'. Click Add folder, pick the `data` folder inside your new
+AI Brain, and tick 'Sync with Google Drive'."* ⛔ **Back up `data` and nothing else — never the folder
+above it.** That one holds the git repository, and syncing it recreates the exact problem just fixed.
+
+**Only if they had a Drive backup already, only on a Mac, and only if they explicitly ask you to do it
+for them**, the entry can be repointed directly — the same row 4A.4 read, rewritten:
+
+```bash
+cp "$HOME/Library/Application Support/Google/DriveFS/root_preference_sqlite.db" "$HOME/drivefs-backup-$(date +%s).db"
+osascript -e 'quit app "Google Drive"'
+sleep 6
+sqlite3 "$HOME/Library/Application Support/Google/DriveFS/root_preference_sqlite.db" \
+  "UPDATE roots SET root_path='<new path minus its leading slash>/data', last_seen_absolute_path='<new path>/data', title='data' WHERE root_id=<the id from 4A.4>;"
+open -a "Google Drive"
+```
+
+> ⛔⛔ **FOUR THINGS, AND GETTING ANY OF THEM WRONG BREAKS THEIR BACKUP SILENTLY.**
+> 1. **Copy that database first**, exactly as the first line does. It is Google's file, not ours.
+> 2. **Quit Drive before touching it and wait for it to actually exit.** Writing under a running Drive
+>    is how the file gets corrupted.
+> 3. **Update only the one row** whose path matches their old folder. Never every row.
+> 4. ⭐ **The format quirk, and it is real** — verified against a live database on 2026-08-15:
+>    **`root_path` has NO leading slash (`Users/x/AI Brain/data`) while `last_seen_absolute_path` DOES
+>    (`/Users/x/AI Brain/data`).** Get that wrong and Drive cannot find the folder.
+>
+> ⚠ **AND THE HONEST WARNING, WHICH THEY SHOULD HEAR BEFORE YOU RUN IT.** This writes into another
+> application's private database. **Google can change its shape in any update, and when they do this
+> will not error — it will quietly stop being their backup**, which is the worst way for a backup to
+> fail. The four clicks above do the same job, visibly, and Drive itself offers a **Locate** button if
+> it loses the folder. **Prefer the clicks.**
 
 ## STEP 5 — Fetch the tool INTO the folder you're already in — note the trailing dot
 
@@ -569,6 +913,13 @@ This is the mistake the block above (**"NEVER PUT THEIR MATERIAL INSIDE THE AI B
 prevent, but if it already happened — an old install, a copy-paste, anything — there is a safe recovery:
 run `sh system/tools/untrack-my-stuff.sh` from the top of this folder. It only ever runs `git rm --cached`,
 so it stops git from tracking your files and **never deletes anything from disk.**
+
+**5. You were told your folder syncs, and everything moved.**
+That is **STEP 4A** doing its job, and nothing was deleted — the folder you started in is still there,
+untouched, with a file in it called `THIS-FOLDER-HAS-MOVED.txt` naming where everything went. **Open the
+new folder from now on.** If you reopen the old one, setup will simply refuse again and offer to move you
+again. ⚠ **If your writing used to be backed up because it lived in Google Drive, it is not any more** —
+the last part of STEP 4A says how to point Drive at the new `data` folder, and it takes four clicks.
 
 ---
 
