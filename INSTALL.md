@@ -385,6 +385,20 @@ session there, or nothing the tool does later will be able to reach it.
 > install, the answer is a different folder, never elevation. **A real student lost their install to
 > exactly that detour on 2026-08-12.**
 
+> ⭐ **A STOP IS REPORTABLE, AND THIS IS THE MOMENT TO SAY SO.** The `PROTECTED` branch above ends the
+> session, and so does every failure inside STEP 4A below — a destination that cannot be written to, a
+> copy that does not verify. Someone sent away to find another folder, or left standing in a move that
+> stopped halfway, has no obvious way to tell anyone it happened.
+> **Before you stop, say it once:** *"If you'd rather report this than work around it, say 'set up bug
+> reports' in your next session and I'll walk you through it — about five minutes, and it works fine
+> even though this install didn't finish."*
+> **Then stop as instructed.** ⛔ Do not set it up now and do not offer to file anything yourself — the
+> setup is its own walkthrough with its own audience, and starting it here turns a halted install into
+> a second unfinished thing. See **FILING A BUG** near the end of this file.
+>
+> ⭐ **This is NOT the cloud branch's exit.** That one goes to STEP 4A and gets moved, and a completed
+> move is a repair, not something to report. **Offer this only where the file actually stops.**
+
 ## STEP 4A — ⛔ THE FOLDER SYNCS. MOVE THEM SOMEWHERE IT WORKS — DO NOT ABANDON THEM.
 
 **You are here because STEP 1 or STEP 4 found a sync service in the path. Read this whole step before
@@ -1202,6 +1216,25 @@ anything else in this package; you can always just describe a problem in chat in
 `docs/REPORT-A-BUG.md` into the chat and say **"Set up bug reports."** It installs `gh` for you on a
 Mac; on Windows it fetches it with `winget`, or sends you to the one page that works if `winget` isn't
 there. You never type a command yourself.
+
+⭐ **It does NOT need a finished install, and this is the case that matters most.** The person most
+likely to need a bug report is the person whose install just stopped — at STEP 4's folder check, at
+STEP 6's missing files, at STEP 8's tools check. **Bug reporting installs one command-line tool and
+signs you in; it touches nothing this file builds and depends on none of it.** So if the install above
+halted, this still works, and it is the right next move. *(`REPORT-A-BUG.md` was corrected to say the
+same on 2026-08-16 — it used to send a half-installed reader back here, to the one thing already
+failing them.)*
+
+**There are exactly two moments it needs you**, because nobody can do them for you: creating the free
+account, and clicking **Authorize** in your own browser. Your password is never typed into the chat and
+never seen by the assistant — GitHub shows a short code, you enter it at
+<https://github.com/login/device>, and GitHub hands the tool its own key. You can revoke it whenever
+you like from your GitHub settings.
+
+⚠ **A bug report is a public page and it stays there.** The tool takes your name and your folder paths
+out before showing it to you, but you are the last check — **read it before you say yes**, and if you
+spot a line of your own writing in it, say no. It'll take it out and show you again. **Nothing is sent
+until you agree**, and there's no limit on asking for changes.
 
 **Cost:** both free. `gh` is GitHub's own tool, and the free tier of a GitHub account is all this
 needs — no card.
