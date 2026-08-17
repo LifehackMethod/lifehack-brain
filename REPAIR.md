@@ -140,6 +140,20 @@ nothing mourned.
 Both roads end at the same place: all eight TARGET-STATE facts true — one engine, one brain,
 unambiguous names, everything else archived or explained.
 
+## THE CLOSING REPORT — mandatory, after the scorecard
+The repair is not finished when the checks pass. End with a short plain-language report the person
+can act on without you — written for someone who did not watch the work:
+1. WHAT CHANGED — where things were, where they are now, in three sentences or fewer.
+2. THE MAP — every remaining brain-shaped thing on the machine, one line each: what it is, whether
+   it can be deleted, archived, or must be kept, and why.
+3. THE FINISH LINE — the short numbered list of optional steps that would leave the LEANEST possible
+   structure (renames not yet taken, archives that can move to cold storage, empty scaffolds safe to
+   delete), each with its cost and its reversibility stated.
+4. WHAT TO LEAVE ALONE — anything deferred (ancestor brains awaiting a merge, secrets needing proper
+   storage), with one line on why it waits and what project picks it up.
+A person should be able to read it in two minutes and either act or file it. (Operator requirement,
+2026-08-17: "a lean and clean folder schema without nubs of AI brains all over the place.")
+
 ## REFERENCE PATTERNS — situations that have come up before, and what worked
 
 **These are not instructions to follow in order.** They are notes from real repairs, kept because the
