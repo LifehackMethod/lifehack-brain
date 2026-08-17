@@ -225,8 +225,11 @@ git check-ignore -q data && echo "data/ is ignored — good" || echo "⛔ STOP �
 
 ⭐ **Note the trailing target on the clone.** The tool must land in the folder they open, not in a
 `lifehack-brain` subfolder inside it — same rule as INSTALL.md STEP 5's trailing dot. If a `--set` is
-needed at all it is `python3 shared/brain_root.py --set "$PWD/data"`, but on a normal reinstall the
-persisted value already points here and nothing needs re-answering.
+needed at all it is `python3 shared/brain_root.py --set "<your AI Brain folder in Google Drive>"` —
+the same folder the old install pointed at; `--set` writes the repo's own `.brain-root` pointer. On a
+normal reinstall nothing needs re-answering, but ⚠ **a fresh clone has NO `.brain-root` yet** — run the
+`--set` above (or re-drag INSTALL.md, which does it for you) and confirm the resolver answers with
+`source: repo-pointer` before trusting the install.
 
 Then STEP 5 and STEP 6 above. **Rename the old folder, do not delete it** — leave it until they have used
 the new one and are happy. Deleting it is a separate decision on a separate day.

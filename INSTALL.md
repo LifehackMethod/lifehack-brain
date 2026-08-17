@@ -19,36 +19,44 @@ You hand this file to Claude and answer its questions.
 
 ---
 
-## What it builds — one folder, and everything lives inside it
+## What it builds — two folders, linked by one pointer
 
-    AI Brain/                 <- the ONE folder you open. every time. THIS folder IS the tool.
+    Lifehack Harness/         <- the ONE folder you open in Claude. every time. THIS folder IS the tool.
     ├── .claude/                 the commands — this is where Claude looks
     ├── system/                  the programs that do the sorting
     ├── shared/                  the piece that knows where your writing lives
-    └── data/                    everything you write. yours. never uploaded, never tracked.
-        └── desks/               a folder per subject, once you've run an ingest
+    └── .brain-root              one line: the path to your AI Brain, below. gitignored, never uploaded.
 
-**You open that folder. That's the only thing to remember.**
+    AI Brain/                 <- YOUR notes. lives in your own Google Drive folder, never in the Harness.
+    └── desks/                   a folder per subject, once you've run an ingest
 
-Setup builds all of it for you. **You are asked exactly one question: where to put the top folder.**
+**You open the Harness folder. That's the only thing to remember about starting a session.** Your
+writing lives somewhere else entirely — your own AI Brain folder, in Google Drive — and one line
+inside the Harness (`.brain-root`, gitignored) points at it.
+
+Setup builds the Harness for you, and asks exactly one question along the way: **which Google Drive
+folder is — or should become — your AI Brain.**
 
 ⭐ **The tool unpacks directly into the folder you open — there is no inner `lifehack-brain` folder.**
 That is deliberate, and it is what makes the `/ingest` command appear at all. Claude only looks for
 commands in the folder you actually opened; when they sat one level down, it could not see them.
 
-⚠ **Your writing lives in `data`, INSIDE that folder, and git is told to ignore it.** It is never
-tracked, never committed, never uploaded. **The one rule that follows from this: take updates with
-`git pull` — never by deleting this folder and downloading a fresh copy.** A pull leaves `data`
-completely alone. Deleting the folder takes your writing with it. See the end of this file.
+⚠ **Your writing lives in your AI Brain — a separate folder, in your own Google Drive, never inside
+the Harness.** Nothing you write is ever tracked by git, committed, or pushed anywhere, because it
+never sits inside the git repository at all. **The rule that follows: take Harness updates with
+`git pull` — never by deleting this folder and downloading a fresh copy.** A pull only ever touches
+the Harness; it cannot reach your AI Brain, because your AI Brain was never inside it. See the end of
+this file.
 
-**Back up `data` however you already back things up.** It's the part that's yours and can't be
-re-downloaded — everything else here is one `git clone` away.
+**Your AI Brain is already backed up — it's a Google Drive folder, and Drive keeps its own version
+history.** There is nothing extra to set up.
 
 ## What you do — about ten minutes
 
-**1. Make a folder and open it in Claude.** Call it whatever you like — "AI Brain" is the usual. Put it
-somewhere ordinary on your own computer — straight in your home folder is the simplest. Then: Claude
-desktop app, the **Code** tab, open that folder.
+**1. Make a folder and open it in Claude.** Call it whatever you like — "Lifehack Harness" is the
+usual; this one is the ENGINE, not your notes. Put it somewhere ordinary on your own computer —
+straight in your home folder is the simplest. Then: Claude desktop app, the **Code** tab, open that
+folder.
 
 > ⚠ **One folder to avoid: anything inside Google Drive, OneDrive, Dropbox or iCloud Drive.** Those keep
 > your files in sync with a website, and that quietly damages this kind of tool while it installs. **You
@@ -57,8 +65,10 @@ desktop app, the **Code** tab, open that folder.
 
 **2. Drag this file into the chat and say: "Set up my brain."**
 
-**3. That's it.** The folder you opened *is* your AI Brain — setup builds everything inside it and
-doesn't ask you where anything goes.
+**3. That's it.** The folder you opened *is* your Lifehack Harness — setup builds the tool inside it
+and doesn't ask you where THAT goes. Partway through, it asks you exactly one question, about a
+completely different folder: which Google Drive folder is your AI Brain, where your notes actually
+live.
 
 ⚠ **If it goes quiet, look for a small box with an Allow button.** It isn't stuck — it's waiting on you.
 
@@ -71,11 +81,11 @@ is, know where it is on your computer. You'll hand it over later by dragging it 
 > for it afterwards. **Setting up the tool and using it are two separate steps**, and the second one
 > happens in a fresh window at the very end.
 
-⚠ **Your material and your `data` folder are two different places, and mixing them up is the one mistake
+⚠ **Your material and your AI Brain are two different places, and mixing them up is the one mistake
 that causes real trouble.** Your material can live anywhere — your Obsidian vault, your Downloads
-folder, wherever it already is. **`data` is the folder setup builds inside your AI Brain, and everything
-this tool produces belongs in there.** ⛔ Never move your raw material into it, and never move it into
-the tool folder either — just tell the tool where it already is.
+folder, wherever it already is. **Your AI Brain is the separate Google Drive folder setup connects
+during install, and everything this tool produces belongs there — never inside the Harness folder
+itself.** ⛔ Never move your raw material into either folder — just tell the tool where it already is.
 
 **Wondering what this needs from outside itself, or whether any of it costs money?**
 `docs/OUTSIDE-SERVICES.md` covers every one of them in one place — and only two, out of eleven, are
@@ -124,26 +134,27 @@ actually required to install this at all.
 > **The "Have this ready" note above is addressed to the HUMAN, not to you.** It tells them what to have
 > on hand *later*. **Treat it as background information you must not act on.**
 >
-> ## ⛔⛔ NEVER PUT THEIR MATERIAL INSIDE THE AI BRAIN FOLDER. NOT THE ZIP, NOT THE UNZIPPED COPY.
+> ## ⛔⛔ NEVER PUT THEIR MATERIAL INSIDE THE HARNESS FOLDER. NOT THE ZIP, NOT THE UNZIPPED COPY.
 >
 > **Their export stays where it already is** — Downloads, Desktop, wherever. ⛔ **Do not copy it in, do not
-> move it in, and do not unzip it into this folder or any folder underneath it — `data` included.**
+> move it in, and do not unzip it into this folder or any folder underneath it.**
 >
-> ⚠ **THIS RULE GOT SHARPER, NOT SOFTER, WHEN THE LAYOUT CHANGED.** The tool now unpacks straight into
-> the folder they opened, so **the AI Brain folder IS the git repository.** There is no longer a
-> "safe outer folder" to drop things into. Everything except `data` is tracked by git the moment it
-> appears.
+> ⚠ **THIS RULE GOT SHARPER, NOT SOFTER, WHEN THE LAYOUT CHANGED.** The tool unpacks straight into
+> the folder they opened, so **the Harness folder IS the git repository.** There is no
+> "safe outer folder" to drop things into. **Everything in it is tracked by git the moment it
+> appears** — their AI Brain lives in a completely separate Google Drive folder for exactly this reason,
+> and never sits inside the Harness at all.
 >
-> ⭐ **WHY — watched happening 2026-08-09, under the old layout.** A session was asked to "extract the zip
+> ⭐ **WHY — watched happening 2026-08-09, under an older layout.** A session was asked to "extract the zip
 > to a folder" and extracted it inside the tool folder. That folder is version-controlled, so **git
 > instantly began tracking 6,228 changes** — including the export's own `users.json`, which carries the
 > person's **email address and phone number.** It could not actually reach the public repository (they
 > hold no upload credentials), but the folder was polluted and their private history was staged for
 > upload.
 >
-> **The rule, restated for this layout:** *nothing of the person's may ever be tracked by git.* `data` is
-> the single exception, and only because `.gitignore` explicitly excludes it. **Their raw material has no
-> exception — it stays outside the AI Brain folder entirely.**
+> **The rule, restated for this layout:** *nothing of the person's may ever be tracked by git.* Their AI
+> Brain is outside the Harness by construction — a separate Google Drive folder, never touched by git.
+> **Their raw material has no exception either — it stays outside the Harness folder entirely.**
 >
 > ⭐ **You do not need to unzip anything anyway.** The tool opens the zip itself, and unpacks it somewhere
 > outside this folder on purpose. **Just tell it where the zip is.**
@@ -175,8 +186,22 @@ uname -s 2>/dev/null || echo "Windows"
 
 `Darwin` means a Mac. `Linux` means Linux. Anything else, treat it as Windows.
 
-**Say which one you found, in a sentence.** Everything below has a Mac path and a Windows path; pick the
-right one and never show them the other.
+**Say which one you found, in a sentence.**
+
+> ⛔⛔ **WINDOWS STOP-SIGN — if what you found is Windows, stop here and go no further.**
+> **Do not install Git, do not install Python, do not run anything below in this file.** This build
+> isn't ready for a Windows install yet — the new AI Brain connection in **STEP 7** depends on Drive
+> paths (`~/Library/CloudStorage/GoogleDrive-*`) that only exist on a Mac, and no Windows equivalent
+> ships in this version. Say so plainly, early, before they invest any time: *"This installer isn't
+> ready for Windows yet — I don't want to walk you twenty minutes in and leave you stuck. One-on-one
+> help is available to get you set up by hand in the meantime."* **Then stop this file entirely** — do
+> not attempt STEP 2 onward, even informally, and do not offer a partial install.
+>
+> ⭐ **Why this fires here and not later, at STEP 7 itself:** stopping now costs them nothing; stopping
+> six steps in, after Git and Python are already installed, costs real time for no working result. The
+> same lesson STEP 1's early cloud-folder check already teaches (below) applies here too.
+
+**On a Mac or Linux, everything below applies as written.**
 
 **Now, before anything gets installed, find out whether the folder they opened is one that can hold
 this at all.** This costs a second and needs nothing installed — it reads the folder's own name.
@@ -195,8 +220,8 @@ case "$LOW" in */shared\ drives/*) echo "AND IT IS A SHARED DRIVE" ;; esac
 **`NO SYNC SERVICE IN THE PATH` → say nothing about it at all and carry straight on to STEP 2.**
 
 **`CLOUD-SYNC FOLDER` → stop here and go to STEP 4A.** ⛔ **Do NOT install Git, do not install Python,
-do not run STEP 2 or STEP 3.** STEP 4A moves them to a folder that works; when they come back, this
-install starts again from the top and everything after this point happens once, in the right place.
+do not run STEP 2 or STEP 3.** STEP 4A hands this to REPAIR.md, which does the actual move; follow what
+it tells them to do when they come back — usually straight to STEP 7, not the top of this file.
 
 > ⭐ **WHY THIS CHECK IS AT STEP 1 AND NOT ONLY AT STEP 4 — issue #68, a real student, 2026-08-15.**
 > This is the same refusal STEP 4 makes, run as early as it can possibly run. It used to exist ONLY at
@@ -293,7 +318,7 @@ works later, invisibly.
 
 ---
 
-## STEP 4 — ⛔ THE FOLDER THEY ALREADY OPENED **IS** THE AI BRAIN. DO NOT CREATE ANOTHER ONE.
+## STEP 4 — ⛔ THE FOLDER THEY ALREADY OPENED **IS** THE LIFEHACK HARNESS. DO NOT CREATE ANOTHER ONE.
 
 > ⛔⛔ **DO NOT ASK THEM WHERE TO PUT IT. DO NOT OFFER A DEFAULT. DO NOT CREATE A NEW FOLDER.**
 > **They already chose it — it is the folder this session is running in.** Every question here is a
@@ -308,7 +333,8 @@ works later, invisibly.
 pwd
 ```
 
-*"You're set up in `<path>` — that's your AI Brain folder. Everything goes inside it."*
+*"You're set up in `<path>` — that's your Lifehack Harness folder. The tool itself goes inside it.
+Your notes are a separate folder, in your Google Drive — we'll connect that in a few steps."*
 
 ⛔ **Now check that folder is usable. This is the only thing that can send you back to them.**
 
@@ -370,8 +396,8 @@ repository — measured, not a guess. **The folder is refused. That does not cha
 
 Say plainly: *"This folder is kept in sync by <service>, and that quietly damages the tool while it's
 installing — so I can't put it here. I'm going to set you up in a folder on your own computer instead,
-and bring everything that's already here across with you."* **Then go to STEP 4A and do the move
-yourself.** ⛔ **Do not simply tell them to quit and start over somewhere else** — that is what this
+and bring everything that's already here across with you."* **Then go to STEP 4A, which hands this to
+REPAIR.md to do the move.** ⛔ **Do not simply tell them to quit and start over somewhere else** — that is what this
 file used to do, and a real student (issue #68, 2026-08-15) was left holding a Shared drive full of her
 own work with no way forward.
 
@@ -385,284 +411,24 @@ session there, or nothing the tool does later will be able to reach it.
 > install, the answer is a different folder, never elevation. **A real student lost their install to
 > exactly that detour on 2026-08-12.**
 
-## STEP 4A — ⛔ THE FOLDER SYNCS. MOVE THEM SOMEWHERE IT WORKS — DO NOT ABANDON THEM.
+## STEP 4A — ⛔ THE HARNESS FOLDER SYNCS. THIS IS A REPAIR, NOT AN INSTALL.
 
-**You are here because STEP 1 or STEP 4 found a sync service in the path. Read this whole step before
-you run any of it.**
+**You are here because STEP 1 or STEP 4 found a sync service in the path of the folder they opened for
+the Harness.** The tool itself still cannot live in a synced folder — that has not changed. But
+untangling a folder that syncs AND may already hold real writing of theirs is a repair job, not
+something a fresh-install file should improvise, and it now lives in its own file, built for exactly
+this.
 
-> ## ⭐⭐ THE SHAPE OF THIS STEP, AND WHY IT IS THIS SHAPE
->
-> **A Claude session is tied to the folder it was opened on.** It cannot reach across to another folder
-> and keep working there. The moment they quit, you are gone — so anything that needs doing, needs
-> doing **now**, while you still have a shell in this folder.
->
-> **So the order is: you do all of it first, they restart last.** By the time they reopen on the new
-> folder, that folder already exists, already holds everything of theirs, and has already been checked.
-> ⛔ **Never write an ending that assumes you can carry on helping after they quit. You cannot.**
->
-> ## ⛔⛔ THE TWO RULES THAT OVERRIDE EVERY LINE BELOW
->
-> - ⛔ **Nothing of theirs is deleted. Ever.** This step **copies**; the folder they started in is left
->   exactly as it is, as a spare. The only thing this step deletes is an empty folder it created itself
->   thirty seconds earlier and then rejected.
-> - ⛔ **If any step here fails, STOP.** Do not improvise a recovery and do not try a second approach.
->   Tell them plainly which thing failed and that nothing else will be touched. **A half-moved folder
->   somebody then improvises on is far worse than one that stopped cleanly.**
->
-> ⛔ **And the standing rule still stands: never ask for administrator rights.** If a write fails here,
-> the answer is a different folder. Never elevation.
+**Do this:** open `REPAIR.md` — same folder as this one; drag it into the chat exactly like you dragged
+this file in, and say *"reconcile my install."* It diagnoses what's actually here, moves only what
+needs moving, and hands them back to **STEP 7** of this file to connect their AI Brain when it's done.
 
-### 4A.1 — Tell them what is happening, and get a go
+Two rules hold no matter what REPAIR.md does next, because they hold everywhere in this whole system:
+- ⛔ **Back up before moving anything.**
+- ⛔ **Never delete anything of theirs.**
 
-In about four sentences: the folder they opened is kept in sync by a cloud service; that quietly damages
-this kind of tool while it installs, so it can't go there; you're going to set up a folder on their own
-computer and copy everything already here across to it; nothing gets deleted and the folder they're in
-now stays exactly as it is. **Then ask if they're ready and wait.**
-
-### 4A.2 — Find out what is actually in this folder. Assume nothing.
-
-```bash
-ls -A
-find . -type f 2>/dev/null | wc -l
-```
-
-**Tell them what you found, in plain sentences** — whether there is a `data` folder (their own writing),
-whether the tool is already partly here, and roughly how many files there are. ⛔ **Do not open, read or
-list the contents of their own files.** You are counting, not reading.
-
-### 4A.3 — ⛔ IF IT IS A GOOGLE **SHARED** DRIVE, SAY THIS OUT LOUD. NOT OPTIONAL.
-
-STEP 1 prints `AND IT IS A SHARED DRIVE`; STEP 4's check appends `+ SHARED DRIVE (stream-only)`. Either
-one means this, and they have to hear it:
-
-> *"One thing you should know: this is a Google **Shared** drive. Google can only stream files from
-> those — it never keeps a real copy on your computer. Some of what looks like your files here may be
-> placeholders that only work while you're online, and they fail the moment something needs the real
-> thing. That's a second reason to get your work off it, and I'm going to do that now."*
-
-⚠ **Say it plainly, once, and then get on with the move.** Do not dress it up and do not repeat it.
-**If a copy below fails on a particular file, this is why** — say which file, and stop.
-
-### 4A.4 — Build a destination that cannot sync, and prove it before using it
-
-⚠ **"Your Documents folder" is NOT a safe answer and this file used to give it.** On a Mac, Documents is
-one of the folders Google Drive and OneDrive most often mirror upward — the path looks perfectly
-ordinary and the folder syncs anyway. **A path check alone cannot see that.** So ask the sync clients
-themselves which local folders they are mirroring:
-
-```bash
-DB="$HOME/Library/Application Support/Google/DriveFS/root_preference_sqlite.db"
-if [ -f "$DB" ] && command -v sqlite3 >/dev/null 2>&1; then
-  echo "Google Drive mirrors these local folders:"; sqlite3 "$DB" "SELECT last_seen_absolute_path FROM roots;" 2>/dev/null
-elif [ -f "$DB" ]; then echo "GOOGLE DRIVE IS INSTALLED BUT ITS MIRROR LIST COULD NOT BE READ"
-else echo "Google Drive is not mirroring any local folder on this machine."; fi
-if [ -f "$HOME/.dropbox/info.json" ]; then
-  echo "Dropbox folder:"; grep -o '"path": *"[^"]*"' "$HOME/.dropbox/info.json" | cut -d'"' -f4
-else echo "Dropbox is not installed."; fi
-```
-
-**This is a read and nothing else.** ⛔ If it says the mirror list could not be read, **say so** — do not
-assume the list is empty. On Windows this check does not exist; say that too rather than implying the
-destination was cleared when it only passed the name test.
-
-**Now test a destination. Try them in this order, and take the first that passes:**
-
-1. **`$HOME/<the same folder name they are using now>`** — the home folder itself is essentially never a
-   mirror root, and it never needs special permission.
-2. **`$HOME/Documents/<same name>`** — only if it is not on the mirror list above.
-3. **If both fail, ask them for somewhere else** — and run this same test on whatever they name. ⚠ **A
-   folder they choose themselves is exactly the one most likely to be inside Drive.**
-
-⚠ **To try the second or third candidate, change only the first line** — `DEST="$HOME/Documents/$(basename "$(pwd -P)")"`, or the folder they named — and run the same block again. **Everything below it is the test, and the test never changes.**
-
-```bash
-DEST="$HOME/$(basename "$(pwd -P)")"
-printf 'destination: %s\n' "$DEST"
-case "$(printf '%s/' "$DEST" | tr 'A-Z' 'a-z')" in
-  */library/cloudstorage/*|*/google\ drive/*|*/my\ drive/*|*/shared\ drives/*|*/dropbox*|*/onedrive*|*/icloud*|*/mobile\ documents/*|*/box-*|*/pcloud*)
-    echo "REJECTED - that destination is itself inside a sync service"; exit 1 ;;
-esac
-if [ -e "$DEST" ] && [ -n "$(ls -A "$DEST" 2>/dev/null)" ]; then
-  echo "STOP - that folder already exists and is not empty"; ls -A "$DEST"; exit 1
-fi
-mkdir -p "$DEST" && printf 'write test\n' > "$DEST/.writetest" \
-  && [ "$(cat "$DEST/.writetest")" = "write test" ] && rm -f "$DEST/.writetest" \
-  && echo "THE DESTINATION IS LOCAL AND WRITABLE" || echo "THE DESTINATION COULD NOT BE WRITTEN TO"
-```
-
-⛔ **`STOP - that folder already exists and is not empty` → do not merge into it.** Tell them what is in
-it, in plain words, and ask the one closed question: *"There's already a folder there with things in it
-— shall I use a different name, or is that one yours?"* **Wait for the answer.**
-
-⛔ **`THE DESTINATION COULD NOT BE WRITTEN TO` → remove the empty folder you just made
-(`rmdir "$DEST"` — it will refuse if anything is in it, which is the safety) and try the next
-destination.** Never ask for administrator rights to make a write succeed.
-
-### 4A.5 — Copy their writing first, then everything else
-
-⛔ **The order is load-bearing.** `data` is the only thing here that cannot be downloaded again — the
-tool can always be re-fetched. **If the copy dies partway** — a Shared-drive placeholder that won't
-download, a full disk, anything — **the irreplaceable half is already across.**
-
-> ⚠⚠ **EVERY BLOCK FROM HERE ON STARTS BY SETTING `SRC` AND `DEST` AGAIN, AND THAT IS NOT A TYPO.**
-> **Each command you run is a brand-new shell** — nothing you set in the last one is still there. Drop
-> those two lines and `$DEST` is empty, and a copy into an empty destination is a copy into the root of
-> their disk. **Put the destination 4A.4 settled on into every one of these blocks, literally.**
-
-```bash
-SRC="$(pwd -P)"; DEST="<the destination 4A.4 settled on>"
-if [ -d "$SRC/data" ]; then
-  cp -R "$SRC/data" "$DEST/data" && echo "copied data" || echo "COULD NOT COPY data - STOP"
-  diff -r "$SRC/data" "$DEST/data" && echo "THEIR WRITING IS ACROSS, BYTE FOR BYTE" || echo "THE COPY OF data DOES NOT MATCH - STOP"
-else
-  echo "there is no data folder here yet - nothing of theirs to carry"
-fi
-```
-
-⛔ **Anything but `THEIR WRITING IS ACROSS, BYTE FOR BYTE` stops this step dead.** Say which file failed
-and that nothing further will be touched. On a Shared drive the likely cause is 4A.3's placeholders.
-
-Then everything else — the tool, its git history, and anything of theirs that got filed into the wrong
-place:
-
-```bash
-SRC="$(pwd -P)"; DEST="<the destination 4A.4 settled on>"
-cd "$SRC"
-ls -A | grep -v '^data$' | while IFS= read -r n; do
-  cp -R "./$n" "$DEST/" || echo "COULD NOT COPY: $n"
-done
-echo "copy finished"
-```
-
-⭐ **Copying a git repository is safe — verified.** Same history, same connection to GitHub, no
-re-login. Nothing about a repository depends on where it sits. **Say that if they look worried.**
-
-### 4A.6 — Prove the two folders are identical, file for file
-
-**A check you skipped is not a check that passed**, and this is the one that stands between them and a
-half-copied folder they will trust.
-
-```bash
-SRC="$(pwd -P)"; DEST="<the destination 4A.4 settled on>"
-diff -r "$SRC" "$DEST" && echo "EVERY FILE IS ACROSS AND IDENTICAL" || echo "SOMETHING DIFFERS - STOP AND READ IT OUT"
-```
-
-⛔ **Anything other than `EVERY FILE IS ACROSS AND IDENTICAL` and you stop.** Read out what differs. Do
-not re-run the copy on top of itself and do not delete anything to "clean up".
-
-### 4A.7 — Leave a signpost in the old folder. Leave everything else in it untouched.
-
-⛔ **Do not delete the old folder and do not offer to.** It is a proven-identical spare, it costs them
-nothing, and on a Shared drive deleting it could remove files for everyone who shares it. **If they
-reopen it out of habit, STEP 1's check fires again and catches them** — that is the safety net, not
-tidiness.
-
-```bash
-SRC="$(pwd -P)"; DEST="<the destination 4A.4 settled on>"
-printf '%s\n' \
-  "This folder is no longer your AI Brain." \
-  "" \
-  "Everything in it was copied to:" \
-  "    $DEST" \
-  "" \
-  "Open THAT folder in Claude from now on. This copy is left here untouched, as a spare." \
-  > "$SRC/THIS-FOLDER-HAS-MOVED.txt"
-cat "$SRC/THIS-FOLDER-HAS-MOVED.txt"
-```
-
-### 4A.8 — Run the real check on the new folder before you send them to it
-
-⛔ **Never tell them to reopen somewhere you have not checked.** If Python is already on this machine,
-run STEP 4's own check against the new folder — the full one, not the name test:
-
-```bash
-DEST="<the destination 4A.4 settled on>"
-cd "$DEST"
-PYBIN="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
-if [ -n "$PYBIN" ]; then "$PYBIN" - "$PWD" <<'PY'
-import os, re, sys
-p = os.path.realpath(sys.argv[1]); low = p.replace("\\", "/").lower() + "/"
-comps = [c for c in low.split("/") if c]
-named = ["google drive", "my drive", "shared drives", "dropbox", "onedrive",
-         "icloud", "icloud drive", "mobile documents", "cloudstorage"]
-chit = next((t for t in named if t in comps), None)
-if not chit:
-    chit = next((c for c in comps
-                 if c.startswith(("googledrive", "onedrive", "dropbox", "icloud", "box-",
-                                  "pcloud", "sync-", "proton drive", "creative cloud"))), None)
-print("CLOUD-SYNC FOLDER - matched: %s" % chit if chit else "GOOD")
-PY
-else echo "PYTHON IS NOT INSTALLED YET - THE NAME TEST IS ALL THAT HAS RUN"; fi
-```
-
-**`GOOD` → good, and STEP 4 will run the complete version again anyway when they come back, before a
-single file is downloaded.**
-
-⛔ **`PYTHON IS NOT INSTALLED YET` is a normal and expected answer here** — you were sent from STEP 1,
-which is before Python exists. **Do not install Python just to run this**, and ⛔ **do not tell them the
-folder was fully checked when only the name test ran.** Say what actually happened: *"I've checked the
-new folder's location and it's a plain folder on your computer. When you reopen, the setup runs its full
-check on it before it downloads anything."*
-
-### 4A.9 — Hand it over, and stop
-
-Tell them, in these words or very close:
-
-> **"All done — everything you had is now in a folder on your own computer, and the old one is still
-> sitting there untouched in case you want to look. Now quit Claude completely and open it again — the
-> whole app, not just a new chat — on this folder: `<the new path>`. Then drag this same file back in
-> and say 'set up my brain' again. It'll pick up from the top, and this time it'll go through."**
-
-⭐ **Give them the literal path.** ⚠ **And tell them it will start again from the beginning** — otherwise
-the repeated questions will read as the whole thing having failed.
-
-> **What happens when they come back, so you are not surprised by it later:** STEP 1's check passes,
-> STEP 2 and STEP 3 install Git and Python, STEP 4 passes. **At STEP 5 the folder will not be empty —
-> that is expected, not a fault.** STEP 5's own "if `git clone` refuses because the folder is not empty"
-> note is the branch to follow, and it already knows that a `data` folder is their writing and must not
-> be deleted. **If the tool is already fully there** — `.claude`, `system` and `shared` all present —
-> there is nothing to clone: go straight to STEP 6 and carry on from there.
-
-Then **STOP. Do not continue this file. Do not run STEP 5.**
-
-### 4A.10 — OPTIONAL, AND ONLY IF THEY ASK: point Google Drive's backup at the new folder
-
-⛔ **Do not run this as part of the move.** ⛔ **Do not offer it.** It is written down here so that it
-exists, not so that it happens.
-
-**What it is for:** if they were relying on the old folder being in Drive, their writing is no longer
-being backed up anywhere. **The honest, four-click answer is the one to give them**, and it is the same
-one STEP 7 already gives: *"Click the Drive icon in your menu bar, then the gear, then Preferences. On
-the left choose 'Folders from your computer'. Click Add folder, pick the `data` folder inside your new
-AI Brain, and tick 'Sync with Google Drive'."* ⛔ **Back up `data` and nothing else — never the folder
-above it.** That one holds the git repository, and syncing it recreates the exact problem just fixed.
-
-**Only if they had a Drive backup already, only on a Mac, and only if they explicitly ask you to do it
-for them**, the entry can be repointed directly — the same row 4A.4 read, rewritten:
-
-```bash
-cp "$HOME/Library/Application Support/Google/DriveFS/root_preference_sqlite.db" "$HOME/drivefs-backup-$(date +%s).db"
-osascript -e 'quit app "Google Drive"'
-sleep 6
-sqlite3 "$HOME/Library/Application Support/Google/DriveFS/root_preference_sqlite.db" \
-  "UPDATE roots SET root_path='<new path minus its leading slash>/data', last_seen_absolute_path='<new path>/data', title='data' WHERE root_id=<the id from 4A.4>;"
-open -a "Google Drive"
-```
-
-> ⛔⛔ **FOUR THINGS, AND GETTING ANY OF THEM WRONG BREAKS THEIR BACKUP SILENTLY.**
-> 1. **Copy that database first**, exactly as the first line does. It is Google's file, not ours.
-> 2. **Quit Drive before touching it and wait for it to actually exit.** Writing under a running Drive
->    is how the file gets corrupted.
-> 3. **Update only the one row** whose path matches their old folder. Never every row.
-> 4. ⭐ **The format quirk, and it is real** — verified against a live database on 2026-08-15:
->    **`root_path` has NO leading slash (`Users/x/AI Brain/data`) while `last_seen_absolute_path` DOES
->    (`/Users/x/AI Brain/data`).** Get that wrong and Drive cannot find the folder.
->
-> ⚠ **AND THE HONEST WARNING, WHICH THEY SHOULD HEAR BEFORE YOU RUN IT.** This writes into another
-> application's private database. **Google can change its shape in any update, and when they do this
-> will not error — it will quietly stop being their backup**, which is the worst way for a backup to
-> fail. The four clicks above do the same job, visibly, and Drive itself offers a **Locate** button if
-> it loses the folder. **Prefer the clicks.**
+Then **STOP this file.** Do not attempt the move yourself here, and do not continue to STEP 5 until
+they've come back through REPAIR.md and reopened on a folder that passes STEP 4 cleanly.
 
 ## STEP 5 — Fetch the tool INTO the folder you're already in — note the trailing dot
 
@@ -707,12 +473,19 @@ Windows too.
 > ```
 >
 > **If it is an older copy of the tool**, ask whether they can rename or delete it, then clone again.
-> **If it is a `data` folder from a previous install, that is their writing — do not delete it.** Move
-> it aside, clone, then move it back:
+> **If it is a `data` folder, that is a sign this folder was set up under an older, one-folder layout —
+> it is someone's writing, so do not delete it.** Migrating that kind of install onto the two-folder
+> design (Harness here, AI Brain in its own Drive folder) isn't automated yet — this is a stop-and-ask-
+> for-help moment, not something to improvise. Move it aside so the clone can proceed, then say plainly
+> that their old writing is safe but needs a person to fold it into a proper AI Brain:
 >
 > ```bash
-> mv data ../data-keep && git clone https://github.com/LifehackMethod/lifehack-brain.git . && mv ../data-keep data
+> mv data ../data-from-old-install && git clone https://github.com/LifehackMethod/lifehack-brain.git .
 > ```
+>
+> ⚠ **Do not move it back into `data` inside the fresh clone.** That recreates the very layout this
+> install is moving away from. Leave it sitting beside the new Harness folder as `data-from-old-install`
+> and ask for help migrating it.
 
 ## STEP 6 — Confirm the pieces arrived, and turn on the safety catch
 
@@ -735,20 +508,76 @@ points at it. Without it, the file is decoration.
 **If `FILES MISSING`**, the download didn't complete. ⛔ **Do not assemble or copy files yourself.**
 Delete what's there and run **STEP 5** again.
 
-## STEP 7 — Build `data`. ⛔ ASK THEM NOTHING.
+## STEP 7 — Connect your AI Brain. ⛔ ONE QUESTION, AND ONLY THIS ONE: WHICH DRIVE FOLDER.
 
-> ⛔⛔ **THIS STEP USED TO ASK *"Where should everything you write end up?"* AND IT WAS THE SINGLE
-> BIGGEST CAUSE OF FAILED INSTALLS. DO NOT REINTRODUCE IT IN ANY FORM.**
+> ⛔⛔ **THIS STEP USED TO ASK *"Where should everything you write end up?"* AS OPEN TEXT, AND IT WAS THE
+> SINGLE BIGGEST CAUSE OF FAILED INSTALLS. DO NOT REINTRODUCE AN OPEN-ENDED VERSION OF THAT QUESTION.**
 > It defaulted to a folder called "My Notes", which made people think it was a scratch folder for
 > jottings — it is their entire memory. **Measured 2026-08-12: several students answered it with a bare
-> "ok" and silently got a folder in the wrong place; others stalled on it and never restarted. It even
-> confused a student whose install was otherwise working perfectly.**
-> ⭐ **There is no decision here. `data` sits inside the AI Brain folder. That is the design.**
+> "ok" and silently got a folder in the wrong place; others stalled on it and never restarted.**
+> ⭐ **There is still no open-ended decision here — the shape hasn't changed, only where the answer
+> lives.** You never ask "where should this go" as free text. You run 7.1, it enumerates the real
+> candidates already sitting in their Google Drive, you read the list back to them, and they pick a
+> number or say "make a new one." **Enumerate and confirm — never invent, never guess, never silently
+> adopt the first hit.**
+
+### 7.1 — Find every Google Drive account on this machine, and every folder that looks like an AI Brain
 
 ```bash
-mkdir -p data
 PYBIN="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
-"$PYBIN" shared/brain_root.py --set "$PWD/data"
+"$PYBIN" - <<'PY'
+import os, glob
+home = os.path.expanduser("~")
+accounts = sorted(glob.glob(os.path.join(home, "Library/CloudStorage/GoogleDrive-*")))
+if not accounts:
+    print("NO-DRIVE-ACCOUNTS")
+    raise SystemExit(0)
+candidates = []
+print("ACCOUNTS: %d" % len(accounts))
+for acct_path in accounts:
+    acct = os.path.basename(acct_path).replace("GoogleDrive-", "", 1)
+    print("  " + acct)
+    for kind, sub in (("My Drive", "My Drive"), ("Shared drive", "Shared drives")):
+        d = os.path.join(acct_path, sub)
+        if not os.path.isdir(d):
+            continue
+        try:
+            entries = sorted(e for e in os.listdir(d) if not e.startswith("."))
+        except OSError:
+            continue
+        for e in entries:
+            if "brain" in e.lower():
+                candidates.append((kind, acct, e, os.path.join(d, e)))
+print("CANDIDATES: %d" % len(candidates))
+for i, (kind, acct, name, full) in enumerate(candidates, 1):
+    print("  %d. [%s] %s :: %s" % (i, kind, acct, full))
+PY
+```
+
+⛔ **This command only PRINTS. It never chooses, and neither do you.** Read the output and act on
+exactly what it says:
+
+- **`NO-DRIVE-ACCOUNTS`** → an honest stop, not a workaround: *"Google Drive for desktop isn't set up
+  on this computer yet, so I don't have anywhere to put your AI Brain. Get Google Drive installed and
+  signed in first — or ask for help doing that — and we'll pick this back up from here."* **Do not
+  invent a local folder as a substitute.** Your AI Brain belongs in Drive; that is the whole point of
+  this layout.
+- **One or more `CANDIDATES`** → read the numbered list back to them in plain sentences (which account,
+  which folder), and ask the one closed question: *"Is one of these your AI Brain already, or should I
+  make a new one?"* **Adopting an existing "AI Brain" folder is the preferred answer** — most students
+  in a cohort already made one; reusing it is the point. **Never pick for them, even when there is
+  exactly one candidate.**
+- **Zero candidates, but accounts exist** → tell them no existing AI Brain folder was found, list the
+  account(s) found, and ask which one should hold a brand-new one: *"I didn't find an AI Brain folder
+  yet. You have Google Drive signed in as `<accounts>` — should I make one in `<account>`'s My Drive?"*
+
+**Wait for their answer before running anything below.**
+
+### 7.2 — Point the Harness at the folder they chose
+
+```bash
+PYBIN="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
+"$PYBIN" shared/brain_root.py --set "<the path they chose>"   # add --create at the end if it is a brand-new folder
 "$PYBIN" system/tools/bootstrap.py
 ```
 
@@ -757,65 +586,97 @@ commands is what CREATES the `python3` shim on Windows, so it cannot itself assu
 works. Everything from here on — STEP 8 onward, and every skill afterwards — can go back to plain
 `python3`, because this step is what makes that word actually resolve.
 
-⛔ **Read what `--set` printed before moving on. If it says `⚠ REPLACED a brain root that was already
-set`, STOP and tell them.** That line means this machine already had a brain somewhere else — an
-earlier install, a second folder, another person's account — and it now points here instead. The
-value lives in `~/.config/lifehack/brain-root`, which is OUTSIDE the repo, so deleting a tool folder
-and re-cloning never resets it (issue #4, 2026-08-12).
+⛔ **Read what `--set` printed before moving on.** It always writes THIS repo's own pointer
+(`.brain-root`, gitignored, at the top of the Harness folder) — that part cannot silently fail to
+apply. **If it also says `GLOBAL UNCHANGED`, that is normal and not a problem**: it means this machine
+already has a different machine-wide brain root recorded, and this repo's own pointer now simply
+overrides it for THIS Harness, exactly as designed — no need to mention it. **If it says `⚠ REPLACED
+the machine-global brain root`, STOP and tell them**, because that only happens if you passed
+`--replace-global`, which you should not do here: *"Heads up — this pointed a DIFFERENT install's
+brain root at your new folder. If you didn't mean to do that, say so and we'll put it back."*
 
-> **Say it plainly and let them choose:** *"Heads up — this machine already had an AI Brain pointed at
-> `<the old path>`. I've just pointed everything at the new one. If that old folder is still the one
-> you use, say so and I'll put it back."* The command to restore it is printed right there in the
-> warning. **No warning printed → say nothing; this is a first install and there is nothing to tell.**
+### 7.3 — Prove it resolves through THIS repo's own pointer, not "from somewhere"
 
-⚠ **This step is what settles the brain root, so `/ingest` will find it already answered.** The ingest
-skill's step 1.0 owns the question *only when nothing is recorded yet* — on a normal install it reads
-the value set here, says the path out loud, and does not ask (issue #6, 2026-08-12). **That is correct
-and not a bug to fix by making it ask again.**
-
-**Now prove git is ignoring it.** `data` lives *inside* the repository, so this is the line that keeps
-their writing out of version control — and a check you skip is a check that failed.
+A brain root that resolves at all is not the same as one that resolves the way this install expects —
+a stale global config or a leftover environment variable can both "work" while pointing at the wrong
+thing (ledger P-4j). Check the source, not just the outcome:
 
 ```bash
-git check-ignore -q data && echo "DATA IS IGNORED — good" || echo "⛔ DATA IS NOT IGNORED — STOP"
+PYBIN="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
+"$PYBIN" shared/brain_root.py
 ```
 
-⛔ **If it says `NOT IGNORED`, stop and fix it before going further.** The `.gitignore` that ships with
-the tool already lists `data/`; if the check fails, the clone is incomplete or something overwrote it.
-Re-run **STEP 5**. **Do not carry on and do not `git add` anything** — an ingest run into an untracked-
-but-not-ignored `data` is exactly how someone's private history gets staged for upload.
+⛔ **It must say `(source: repo-pointer)`.** Anything else — `env`, `persisted`, `legacy-glob` —
+means something outside this repo is winning the resolution, and `/ingest` and every skill afterward
+will follow THAT, not the folder you just connected. Stop and work out what is overriding it (check
+`$LIFEHACK_ROOT` first — an env var wins over everything) before moving on.
 
-**Then say what you made, in one plain sentence, and move on:** *"Your writing goes in a folder called
-`data`, inside your AI Brain. I've put a journal, a project list and somewhere for project notes in
-there — they fill themselves in as you work. Git is set to ignore it completely, so none of it can ever
-be uploaded."*
+⭐ **This is `TARGET-STATE.md`'s fact 3.** That file is the single source of truth for what "correctly
+connected" means — this step is just where the check happens first.
 
-⛔ **`desks/` is NOT created here.** Those appear inside `data` the first time they run an ingest, one
-per subject, built from their own material. **Do not pre-create them and do not invent subject names.**
+### 7.4 — Prove the folder really is a synced one — the mirror image of STEP 1's refusal
 
----
-
-### ⚠ Then mention backups — ONCE, as a recommendation. It is NOT a requirement and NOT a gate.
-
-**Say this, and accept whatever they say back:**
-
-> *"One thing worth doing when you have a minute: make sure the `data` folder is somewhere that gets
-> backed up — however you already back things up. It's the part that's yours and can't be
-> re-downloaded. Everything else here I can fetch again in a second. Not required, and it can wait."*
-
-If they want a copy right now, give them the one line and let them run it:
+STEP 1 and STEP 4 refuse the Harness for living in a synced folder. Here the check runs the other way:
+your AI Brain SHOULD be cloud-synced, and it is a problem, quietly, if it turns out not to be.
 
 ```bash
-cp -R "$PWD/data" ~/brain-backup-$(date +%F)
+PYBIN="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
+"$PYBIN" shared/brain_root.py --quiet | "$PYBIN" -c "
+import sys
+p = sys.stdin.read().strip().lower()
+named = ('google drive', 'my drive', 'shared drives', 'cloudstorage', 'dropbox', 'onedrive', 'icloud')
+print('SYNCED' if any(n in p for n in named) else 'NOT SYNCED')
+"
 ```
 
-⛔ **Do NOT set up a backup or sync client for them, do NOT walk them through the menus now, and do NOT
-block the install on it.** They are ten minutes into a setup and this is the least urgent thing in the
-file.
+⛔ **`NOT SYNCED` → warn loudly, do not fail silently.** *"Your AI Brain is set, but the folder it's
+pointing at doesn't look like a Google Drive (or similar) folder — so it may not actually be backed up
+anywhere. Worth checking before you rely on it."* This is a warning, not a gate: say it plainly and
+move on: STEP 7.1 only ever offers Drive paths, so this should normally never fire; if it does, it is
+worth a second look rather than a silent pass.
+
+⭐ **This is `TARGET-STATE.md`'s fact 4.**
+
+### 7.5 — Prove a write actually reaches it
+
+```bash
+test -f "$("$PYBIN" shared/brain_root.py --quiet)/canon.md" && echo "REACHED THE AI BRAIN — good" || echo "⛔ NOTHING LANDED THERE — STOP"
+```
+
+⛔ **Anything but `REACHED THE AI BRAIN` stops this step.** `bootstrap.py` in 7.2 should have created
+`canon.md` at the root of the folder you just connected; if it isn't there, the pointer and the write
+disagree about where your AI Brain is, and that has to be resolved before continuing.
+
+⭐ **This is `TARGET-STATE.md`'s fact 5.**
+
+**Then say what you connected, in one plain sentence:** *"Your AI Brain is connected — it's the
+`<name>` folder in your Google Drive. I've put a journal, a project list and somewhere for project
+notes in there — they fill themselves in as you work. Nothing here is ever tracked by git, because it
+was never inside the Harness folder to begin with."*
+
+⛔ **`desks/` is NOT created here.** Those appear inside your AI Brain the first time they run an
+ingest, one per subject, built from their own material. **Do not pre-create them and do not invent
+subject names.**
+
+⭐ **Backups: nothing to do here.** Your AI Brain is already a Google Drive folder, and Drive keeps its
+own version history the moment a file exists in it. There is no separate backup step, no folder to
+copy, and nothing to recommend — it's already covered by the same thing that makes it your AI Brain.
+
+⚠ **Sharing it, if they ever ask.** Because it's an ordinary Drive folder, sharing it with someone else
+is an ordinary Drive share — right-click, **Share**, add them. **Only worth one caveat, and only if it
+comes up:** two people should not edit the same note at the same moment. Nothing is lost when that
+happens — Drive saves both versions as a "conflicted copy" rather than overwriting one — but it is a
+confusing thing to stumble on unwarned. **Say it that plainly if asked, and no more precisely than
+that:** write access to a shared AI Brain has been proven to work; exactly what Drive does under a
+genuine simultaneous edit is documented by Google, not something this install has independently tested.
 
 ## STEP 8 — Prove it can actually run, before you promise them anything
 
 **A check you skipped is not a check that passed.**
+
+⭐ **The shape and pointer checks below mirror `TARGET-STATE.md`'s facts 1, 2 and 6** — that file is the
+single source of truth for what "installed correctly" means; if the install's shape ever changes, that
+file is the one that gets edited first, not this one.
 
 ```bash
 python3 -c "import sys; sys.path.insert(0,'system/tools/cowork-ingest'); import pipeline; print('TOOLS OK')"
@@ -824,21 +685,32 @@ python3 -c "import sys; sys.path.insert(0,'system/tools/cowork-ingest'); import 
 **If it does not print `TOOLS OK`, stop.** Tell them plainly the install is incomplete and read them the
 last line of the error. **Do not tell them to try `/ingest` anyway.**
 
-Then confirm the shape — **the tool at the top level, `data` beneath it:**
+Then confirm the shape — **the tool at the top level, nothing of theirs mixed into it:**
 ```bash
-test -d .claude && test -d system && test -d shared && test -d data && echo "SHAPE OK" || echo "SHAPE WRONG"
+test -d .claude && test -d system && test -d shared && echo "SHAPE OK" || echo "SHAPE WRONG"
 ```
 ⛔ **If it says `SHAPE WRONG`, something went wrong** — say so rather than continuing. The most likely
 cause is a clone without the trailing dot in **STEP 5**, which buries everything in a `lifehack-brain`
-subfolder. Check with `ls -A`; if you see one, that is the fault.
+subfolder. Check with `ls -A`; if you see one, that is the fault. **A `data` folder here, on its own,
+is not `SHAPE WRONG`** — that is STEP 5's leftover-migration case, already handled there; do not
+re-diagnose it here.
+
+Now confirm the OTHER half of the shape — the pointer, not a folder:
+```bash
+PYBIN="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
+"$PYBIN" shared/brain_root.py --quiet >/dev/null 2>&1 && echo "AI BRAIN CONNECTED" || echo "⛔ AI BRAIN NOT CONNECTED — STOP"
+```
+⛔ **If it says `NOT CONNECTED`, STEP 7 did not finish.** Go back and complete it before promising them
+anything works — nothing downstream has anywhere to write.
 
 **Last, prove nothing of theirs is staged for upload.** This is the check that matters most:
 ```bash
 git status --porcelain
 ```
-⛔ **It must print NOTHING AT ALL.** Empty output means `data` is properly ignored and no stray file has
-crept into the repository. **If anything is listed, stop and read it out** — do not commit it, do not
-`git add` it, and do not continue until you understand what it is.
+⛔ **It must print NOTHING AT ALL.** Empty output means nothing of theirs has crept into the
+repository — and under this layout there is no `data` folder inside it for anything to hide in; their
+AI Brain lives entirely outside the Harness. **If anything is listed, stop and read it out** — do not
+commit it, do not `git add` it, and do not continue until you understand what it is.
 
 > **One thing missing ON PURPOSE.** The last step of an ingest asks which subject each thing belongs to
 > and checks it against a list of subjects. **That list is theirs and is not in this package.** The tool
@@ -859,9 +731,10 @@ Tell them, in these words or very close:
 > **"Everything's installed. Now quit Claude completely and open it again — the whole app, not just a
 > new chat. When it comes back, open this exact same folder: `<pwd>`. I'll wait."**
 
-⭐ **Give them the literal path. They reopen the SAME folder they're in now** — the AI Brain folder
-itself, the one holding `.claude` and `data`. **Not `data`, and not any folder inside it.** This is the
-folder the commands live in; open anything below it and `/ingest` will not exist.
+⭐ **Give them the literal path. They reopen the SAME folder they're in now** — the Lifehack Harness
+folder itself, the one holding `.claude` and `.brain-root`. **Not their AI Brain, and not any folder
+inside it.** This is the folder the commands live in; open anything below it, or open the Drive folder
+instead, and `/ingest` will not exist.
 
 ⚠ **If they installed before the 2026-08-12 layout change, they will go hunting for an inner
 `lifehack-brain` folder, because the old instructions told them to open the folder above it. There
@@ -878,8 +751,9 @@ Confirm the command exists before they type anything:
 ls .claude/skills/ingest/SKILL.md
 ```
 
-⭐ **You are in the AI Brain folder and the tool is right here in it, not one level down. That is
-correct and is how it should look.**
+⭐ **You are in the Lifehack Harness folder and the tool is right here in it, not one level down. That
+is correct and is how it should look.** Your AI Brain is somewhere else entirely — connected in
+STEP 7 — and you never need to open it directly for any of this to work.
 
 Then tell them:
 
@@ -909,24 +783,24 @@ Drag it into a **fresh** Claude conversation and say **"help me."** It walks you
 process by hand, without needing any of the tools to work. You get the same result; it just takes longer.
 
 **4. Your own material — an export, notes, anything of yours — ended up tracked by git.**
-This is the mistake the block above (**"NEVER PUT THEIR MATERIAL INSIDE THE AI BRAIN FOLDER"**) exists to
+This is the mistake the block above (**"NEVER PUT THEIR MATERIAL INSIDE THE HARNESS FOLDER"**) exists to
 prevent, but if it already happened — an old install, a copy-paste, anything — there is a safe recovery:
 run `sh system/tools/untrack-my-stuff.sh` from the top of this folder. It only ever runs `git rm --cached`,
 so it stops git from tracking your files and **never deletes anything from disk.**
 
-**5. You were told your folder syncs, and everything moved.**
-That is **STEP 4A** doing its job, and nothing was deleted — the folder you started in is still there,
+**5. You were told your Harness folder syncs, and it got moved.**
+That is **REPAIR.md** doing its job (STEP 4A hands you there), and nothing was deleted — the folder you started in is still there,
 untouched, with a file in it called `THIS-FOLDER-HAS-MOVED.txt` naming where everything went. **Open the
 new folder from now on.** If you reopen the old one, setup will simply refuse again and offer to move you
-again. ⚠ **If your writing used to be backed up because it lived in Google Drive, it is not any more** —
-the last part of STEP 4A says how to point Drive at the new `data` folder, and it takes four clicks.
+again. ⭐ **Your AI Brain isn't affected by any of this** — it's a separate Google Drive folder, connected
+in STEP 7, and it was never inside the folder that moved.
 
 ---
 
 # WHAT'S IN HERE, AND WHY IT'S SPLIT THIS WAY
 
 ```
-AI Brain/                        <- YOU OPEN THIS ONE. always. every session. IT IS the tool.
+Lifehack Harness/                <- YOU OPEN THIS ONE. always. every session. IT IS the tool.
 │
 │   ── THE FOUR PAGES WRITTEN FOR YOU. Read in this order if you ever need them. ──
 ├── INSTALL.md                       this file. setup, start to finish.
@@ -943,29 +817,30 @@ AI Brain/                        <- YOU OPEN THIS ONE. always. every session. IT
 ├── system/                          the programs that do the sorting, plus the safety guards
 ├── shared/                          the piece that knows where your writing lives
 ├── docs/                            reference notes, and REPORT-A-BUG.md until the harness installer lands
-├── .gitignore                       the line that keeps `data` out of git — do not edit
+├── .gitignore                       keeps `.brain-root` (and, on an older install, `data`) out of git
 ├── .gitattributes                   keeps line endings sane across Mac and Windows
 ├── CLAUDE.md                        the standing instructions every session opens with
-├── memory/                          LEGACY, and empty. Your writing is NOT here — see its README.
-│
-└── data/                        <- YOURS. ignored by git. the only thing worth backing up.
-    ├── canon.md                     the things about you that stay true
-    ├── system/journal.md            what happened, as it happens
-    ├── system/project-registry.md   so a cold session can find an old project
-    ├── state/projects/              project notes
-    └── desks/                       a folder per subject — built by your first ingest
-        ├── <subject>/               one per pile the ingest finds in your own material
-        └── <subject>/
+├── memory/                          LEGACY, and empty. Nothing of yours belongs here — see its README.
+└── .brain-root                  <- one line: the absolute path to the AI Brain tree below. gitignored.
+
+AI Brain/                        <- YOUR notes. a separate Google Drive folder, never inside the Harness.
+├── canon.md                         the things about you that stay true
+├── system/journal.md                what happened, as it happens
+├── system/project-registry.md       so a cold session can find an old project
+├── state/projects/                  project notes
+└── desks/                           a folder per subject — built by your first ingest
+    ├── <subject>/                   one per pile the ingest finds in your own material
+    └── <subject>/
 ```
 
-**The split is still the whole design — but it is now enforced by `.gitignore`, not by folder
-distance.** Everything sent to you is tracked by git. Everything *you* write lives in `data`, including
-the desks your ingest builds, and git is told to ignore it completely: never tracked, never committed,
-never uploaded.
+**The split used to be enforced by `.gitignore`; folder distance is back doing that job now, and it's
+the cleaner of the two.** Everything in the Harness tree above is tracked by git. Your AI Brain isn't
+merely *ignored* by git — it was never inside the git repository to be tracked in the first place, so
+there is nothing for a stray `git add` to reach.
 
-⭐ **And you open the top folder — the one the tool itself is in.** That is what lets Claude find the
-`/ingest` command at all. Opening a folder above it or below it is the single most common way this goes
-wrong.
+⭐ **And you open the Harness — the top folder the tool itself is in.** That is what lets Claude find
+the `/ingest` command at all. Opening a folder above it or below it is the single most common way this
+goes wrong.
 
 ## Taking an update later
 
@@ -978,21 +853,18 @@ FRESH COPY.**
 git pull
 ```
 
-**A pull replaces the tool files and leaves `data` completely alone**, because git ignores it and
-therefore never touches it. That is the safe path, and it is the only one anybody should use.
+**A pull replaces the tool files and never comes near your AI Brain**, because your AI Brain was never
+inside this folder to begin with. That is the safe path, and it is the only one anybody should use.
 
-⚠ **Deleting the folder and re-cloning would take your writing with it.** Under the layout used before
-2026-08-12 that was survivable — `data` sat outside the repository, so wiping the tool folder could not
-reach it. **It sits inside now, so that safety net is gone.** If you ever genuinely need a fresh copy of
-the tool, move `data` out first and move it back afterwards:
+⭐ **Deleting the Harness folder and re-cloning is survivable again, on purpose.** Under the layout used
+before this one, that was dangerous — `data` sat inside the repository, so wiping the folder took your
+writing with it. It doesn't any more: your AI Brain lives in its own Drive folder, untouched by
+whatever happens to the Harness. If you genuinely need a fresh copy of the tool, delete the Harness
+folder, re-clone it (**STEP 5**), re-run the safety catch (**STEP 6**), then reconnect the SAME AI
+Brain folder in **STEP 7** — nothing in it moved, so pointing back at it is the whole job.
 
-```bash
-mv data ~/Desktop/data-keep      # then delete + re-clone, then:
-mv ~/Desktop/data-keep data
-```
-
-⭐ **Before any update, the honest check is one command.** If it prints nothing at all, `data` is
-properly ignored and a pull cannot touch it:
+⭐ **Before any update, the honest check is still one command** — it now confirms there is nothing here
+FOR a pull to disturb, rather than that one folder is properly ignored:
 
 ```bash
 git status --porcelain
@@ -1241,7 +1113,7 @@ cd "$(git rev-parse --show-toplevel)" && python3 system/shipping-lane/identity_r
 ```
 
 **Say what that did, in one sentence:** it wrote a starter file at `<notes>/config/ship-identity.md`
-— inside their own `data` folder, never inside this repository. Then open that file and swap the
+— inside their own AI Brain, never inside this repository. Then open that file and swap the
 example names in it for your own, one per line.
 
 ⚠ **This is not a workaround you can skip past — the lane fails closed instead.** Running `/ship`

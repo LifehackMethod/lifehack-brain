@@ -62,3 +62,6 @@ local.settings.json
 # every credential is stored -- zero value to a student, real value to nobody but
 # an attacker. Untracked 2026-08-14; kept on disk, never committed again.
 migration-audit/
+
+# the per-install pointer to this brain's notes folder — personal path, NEVER committed
+.brain-root

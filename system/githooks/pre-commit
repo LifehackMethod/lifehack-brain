@@ -41,7 +41,7 @@ staged=$(git diff --cached --name-only --diff-filter=ACMR)
 # needs no rule, and an ignore line would quietly teach the opposite -- that state/ belongs here and is
 # merely hidden. Absence is the real control; this is the cheap second one.
 offenders=$(printf '%s\n' "$staged" \
-	| grep -E '^data/|^memory/|(^|/)state/|(^|/)_unpacked/|\.zip$|(^|/)conversations\.json$|(^|/)users\.json$' \
+	| grep -E '^data/|^memory/|(^|/)state/|(^|/)_unpacked/|\.zip$|(^|/)conversations\.json$|(^|/)users\.json$|(^|/)\.brain-root$' \
 	| grep -v -x 'memory/README.md')
 
 if [ -n "$offenders" ]; then

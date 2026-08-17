@@ -36,8 +36,13 @@ class BrainRootCase(unittest.TestCase):
         brain_root.BRAIN_ROOT_CONFIG = os.path.join(self.tmp, "config", "brain-root")
         brain_root.BRAIN_ROOT_LEGACY_GLOB = ""
         os.environ.pop(brain_root.BRAIN_ROOT_ENV, None)
+        # 2026-08-17: the resolver now also reads a repo pointer file — redirect it into the temp
+        # dir the same way, so the suite never sees (or writes) the real repo's .brain-root.
+        self._saved_pointer_fn = brain_root.repo_pointer_path
+        brain_root.repo_pointer_path = lambda: os.path.join(self.tmp, ".brain-root")
 
     def tearDown(self):
+        brain_root.repo_pointer_path = self._saved_pointer_fn
         brain_root.BRAIN_ROOT_CONFIG, brain_root.BRAIN_ROOT_LEGACY_GLOB, env = self._saved
         os.environ.pop(brain_root.BRAIN_ROOT_ENV, None)
         if env is not None:
@@ -57,8 +62,11 @@ class TestResolve(BrainRootCase):
         self.assertEqual(brain_root.resolve_brain_root(), (None, None))
 
     def test_persisted(self):
-        ok, res = brain_root.set_brain_root(self.data)
+        """The persisted-global route, in isolation: --set now ALSO writes the repo pointer
+        (2026-08-17), so exercise route (3) by removing the pointer it wrote."""
+        ok, res, _note = brain_root.set_brain_root(self.data)
         self.assertTrue(ok, res)
+        os.remove(brain_root.repo_pointer_path())
         self.assertEqual(brain_root.resolve_brain_root(), ("persisted", self.data))
 
     def test_env_beats_persisted(self):
@@ -98,27 +106,28 @@ class TestSet(BrainRootCase):
         f = os.path.join(self.tmp, "not-a-folder.md")
         with open(f, "w") as fh:
             fh.write("x")
-        ok, msg = brain_root.set_brain_root(f)
+        ok, msg, _note = brain_root.set_brain_root(f)
         self.assertFalse(ok)
         self.assertIn("is a FILE", msg)
         self.assertFalse(os.path.exists(brain_root.BRAIN_ROOT_CONFIG),
                          "a refused --set must not persist anything")
 
     def test_refuses_a_missing_path_without_create(self):
-        ok, msg = brain_root.set_brain_root(os.path.join(self.tmp, "nope"))
+        ok, msg, _note = brain_root.set_brain_root(os.path.join(self.tmp, "nope"))
         self.assertFalse(ok)
         self.assertIn("--create", msg)
 
     def test_create_makes_it_parents_included(self):
         deep = os.path.join(self.tmp, "a", "b", "c")
-        ok, res = brain_root.set_brain_root(deep, create=True)
+        ok, res, _note = brain_root.set_brain_root(deep, create=True)
         self.assertTrue(ok, res)
         self.assertTrue(os.path.isdir(deep))
-        self.assertEqual(brain_root.resolve_brain_root(), ("persisted", deep))
+        # --set writes the repo pointer first since 2026-08-17, so that is the resolving source
+        self.assertEqual(brain_root.resolve_brain_root(), ("repo-pointer", deep))
 
     def test_persists_an_absolute_path(self):
         rel = os.path.relpath(self.data, os.getcwd())
-        ok, res = brain_root.set_brain_root(rel)
+        ok, res, _note = brain_root.set_brain_root(rel)
         self.assertTrue(ok, res)
         self.assertTrue(os.path.isabs(res))
         with open(brain_root.BRAIN_ROOT_CONFIG) as fh:
@@ -152,10 +161,10 @@ class TestReplacementIsNeverSilent(BrainRootCase):
         self.other = os.path.join(self.tmp, "other-brain")
         os.makedirs(self.other)
 
-    def _set(self, path):
+    def _set(self, path, *extra):
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            rc = brain_root.main(["--set", path])
+            rc = brain_root.main(["--set", path, *extra])
         return rc, buf.getvalue()
 
     def test_read_persisted_is_none_before_anything_is_set(self):
@@ -178,12 +187,38 @@ class TestReplacementIsNeverSilent(BrainRootCase):
         self.assertEqual(rc, 0)
         self.assertNotIn("REPLACED", out)
 
-    def test_overwriting_a_different_root_warns_and_names_the_old_one(self):
+    def test_overwriting_a_different_root_is_now_GUARDED(self):
+        """CONTRACT CHANGE 2026-08-17 (after a logged near-miss): --set no longer silently repoints
+        a different existing global. It writes the repo pointer, leaves the global alone, and says
+        so, naming the old value. --replace-global is the deliberate path."""
         self._set(self.data)
         rc, out = self._set(self.other)
-        self.assertEqual(rc, 0, "the overwrite still SUCCEEDS — this is a warning, not a refusal")
+        self.assertEqual(rc, 0, "still succeeds — the repo pointer is written")
+        self.assertIn("GLOBAL UNCHANGED", out)
+        self.assertIn(self.data, out, "must name the global it declined to touch")
+        self.assertEqual(brain_root.read_persisted(), self.data, "global really untouched")
+        self.assertEqual(brain_root.read_repo_pointer(), self.other, "pointer really written")
+
+    def test_replace_global_flag_does_replace_and_warns(self):
+        self._set(self.data)
+        rc, out = self._set(self.other, "--replace-global")
+        self.assertEqual(rc, 0)
         self.assertIn("REPLACED", out)
         self.assertIn(self.data, out, "the warning must name the path it replaced, or it is useless")
+        self.assertEqual(brain_root.read_persisted(), self.other)
+
+    def test_repo_pointer_beats_persisted_global(self):
+        """The shared-computer case: global points at brain A, this repo's pointer at brain B —
+        a session in this repo must resolve B."""
+        ok, _res, _n = brain_root.set_brain_root(self.data)   # writes pointer=data, global=data
+        with open(brain_root.repo_pointer_path(), "w", encoding="utf-8") as f:
+            f.write(self.other + "\n")
+        self.assertEqual(brain_root.resolve_brain_root(), ("repo-pointer", self.other))
+
+    def test_missing_pointer_falls_back_to_persisted(self):
+        brain_root.set_brain_root(self.data)
+        os.remove(brain_root.repo_pointer_path())
+        self.assertEqual(brain_root.resolve_brain_root(), ("persisted", self.data))
 
     def test_setting_the_same_root_twice_is_not_a_warning(self):
         """A re-run of a normal install must stay quiet, or the warning becomes noise and is ignored
