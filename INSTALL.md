@@ -760,6 +760,25 @@ STEP 7 — and you never need to open it directly for any of this to work.
 
 Then tell them:
 
+**First, leave them the one-screen picture of what they now own — say it in exactly this shape,
+with the real paths filled in:**
+
+> **"Here's your setup, worth a screenshot:**
+> **The engine:** `<harness folder>` — this is the folder you OPEN, every session, always. It holds
+> the tool, and everything in it can be re-downloaded — you never back this up.
+> **Your AI Brain:** `<notes folder>` in Google Drive — every note you ever make lands here
+> automatically. You never need to open it; the engine finds it by itself. Drive backs it up and
+> keeps versions. This folder is the only thing that's truly yours.
+> **How you work from now on: open the engine folder in Claude, and just talk.** That's the whole
+> routine — one folder to open, zero folders to manage."**
+
+⭐ **If the machine carries older attempts, follow this with the cleanup inventory:** each old
+brain-shaped folder on one line — what it is, and the one specific recommendation (archive it, run
+the repair sentence, or leave it). A person should end the install knowing exactly what a fully
+tidy machine would look like and the one next step toward it. No nubs left unexplained.
+
+Then:
+
 > **"You're set up. Type `/ingest` and press enter. It already knows where your writing goes. It'll ask
 > for your material: drag the file or folder into the chat and it'll fill in the location. From there it
 > asks you questions and shows you its work before it writes anything."**

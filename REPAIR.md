@@ -149,7 +149,10 @@ can act on without you — written for someone who did not watch the work:
 3. THE FINISH LINE — the short numbered list of optional steps that would leave the LEANEST possible
    structure (renames not yet taken, archives that can move to cold storage, empty scaffolds safe to
    delete), each with its cost and its reversibility stated.
-4. WHAT TO LEAVE ALONE — anything deferred (ancestor brains awaiting a merge, secrets needing proper
+4. HOW TO WORK FROM NOW ON — one paragraph: which folder they open (the engine, always), where
+   their notes land (the brain, automatically), what needs backing up (nothing — GitHub covers the
+   engine, Drive covers the brain), and the one-line repair sentence if things ever tangle again.
+5. WHAT TO LEAVE ALONE — anything deferred (ancestor brains awaiting a merge, secrets needing proper
    storage), with one line on why it waits and what project picks it up.
 A person should be able to read it in two minutes and either act or file it. (Operator requirement,
 2026-08-17: "a lean and clean folder schema without nubs of AI brains all over the place.")
