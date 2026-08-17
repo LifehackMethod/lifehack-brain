@@ -113,6 +113,26 @@ Say plainly what you actually found rather than forcing it into the nearest cate
 
 ---
 
+## THE FORK — ask this before planning (the answer picks the road)
+
+**"Of everything on this machine, does any folder hold real work you'd be upset to lose?"**
+Only the human can answer (that's FACT 7 in TARGET-STATE.md). Their answer forks the plan:
+
+**Road 1 — ADOPT (they have a real brain).** One folder holds their actual work. Plan: back it up,
+evict any old machinery inside it into a zz-archive- folder (ARCHIVE, never delete — this is the one
+folder where a deletion mistake is unrecoverable), connect the new harness to it, rename it so it is
+unmistakably the live one, archive-prefix every other lookalike. Their notes never move.
+If value is scattered across SEVERAL folders: adopt the richest, archive the rest, and NOTE the
+others for a later, separate merge — never attempt a merge during repair.
+
+**Road 2 — FRESH START (nothing worth keeping).** The old attempts are empty scaffolds or abandoned
+experiments. Plan: rename them all with a zz-archive- prefix (or one line saying what each was),
+create or choose ONE cleanly-named notes folder, connect the harness, move forward. Nothing merged,
+nothing mourned.
+
+Both roads end at the same place: all eight TARGET-STATE facts true — one engine, one brain,
+unambiguous names, everything else archived or explained.
+
 ## REFERENCE PATTERNS — situations that have come up before, and what worked
 
 **These are not instructions to follow in order.** They are notes from real repairs, kept because the

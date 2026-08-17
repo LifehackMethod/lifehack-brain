@@ -67,3 +67,16 @@ person's own material appearing here, which is what this check exists to catch.
 **Verified on this rig, 2026-08-17:** facts 1–5 print OK against a real repo-pointer and a real Drive
 test folder (`AI Brain 2 TEST DATA/rig-data`). Fact 6 correctly reports NOT CLEAN while this repo has
 editorial changes in flight — expected here, and exactly the signal a real install should never show.
+
+## FACT 7 — the brain is the RIGHT house, says its human
+The notes folder this harness points at is the person's real brain — confirmed by them, not
+inferred from green plumbing. Check: ask. A connected empty scaffold passes facts 1-6; only the
+human can pass fact 7. (Added after a live repair connected everything perfectly to a folder
+created twenty minutes earlier.)
+
+## FACT 8 — one engine, unambiguous names, no live lookalikes
+Exactly one harness on this machine points at this brain, the harness and brain carry names a
+person cannot mistake, and every other brain-shaped folder is archived (e.g. zz-archive- prefix)
+or has a one-line explanation. A machine that passes 1-7 with two live engines or five lookalike
+folders is not repaired — it is confusion on a delay timer. (The operator's standard, 2026-08-17:
+"buttoned up, radically clear." Repair is not done until this is true.)
