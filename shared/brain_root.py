@@ -171,7 +171,9 @@ def main(argv=None):
     because the data root is the whole system's variable, not the ingest chain's."""
     ap = argparse.ArgumentParser(description="resolve / persist the one data root everything writes under")
     ap.add_argument("--set", dest="set_path", metavar="PATH",
-                    help="record this path as the brain root (persists to " + BRAIN_ROOT_CONFIG + ")")
+                    help="record this path as the brain root: writes this repo's .brain-root pointer, and "
+                         "touches the machine-global config (" + BRAIN_ROOT_CONFIG + ") only when it is "
+                         "absent or already agrees — a differing global needs --replace-global")
     ap.add_argument("--create", action="store_true", help="with --set: create the folder if missing")
     ap.add_argument("--replace-global", action="store_true",
                     help="with --set: allow overwriting a DIFFERENT machine-global root (guarded since 2026-08-17)")
