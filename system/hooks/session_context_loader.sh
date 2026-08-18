@@ -7,7 +7,7 @@
 #      anyone having to think to search for it.
 # GUARDS: Nothing — this is a context loader, not a blocker. It never stops a session.
 # REDIRECT: N/A (non-blocking). Reads <data root>/canon.md and <data root>/desks/*/canon/current.md,
-#      resolved through shared/brain_root.py. Set the data root with: python3 shared/brain_root.py --set <path>
+#      resolved through shared/brain_root.py. Set the data root with: python3 (or python) shared/brain_root.py --set <path>
 #      Also invokes `system/tools/health_line.py <ledger>` (see _findings_banner() below) once ROOT is
 #      resolved, to render the Hospital/Efficiency findings banner nothing else was calling.
 # SIGNPOST: the data-root contract lives in shared/brain_root.py; the folder shape it reads is what
@@ -38,6 +38,14 @@
 #      2026-08-15: the TELOS / strategic-brief block RESTORED, but GATED on `-s` (exists AND non-empty)
 #      so a fresh install pays exactly zero bytes for it. See the struck exclusion note below and the
 #      block's own comment. ⛔ No exit code changed — every path in this file is still `exit 0`.
+#      2026-08-16 (Issue #55): `python3` was hardcoded, and the official Windows Python installer does
+#      not create that name — only `python`/`python.exe`. On such a machine every `python3` call below
+#      failed (command not found), which the old code could not distinguish from brain_root.py honestly
+#      reporting NOT-SET — a Windows user with a data root set for days was told "nothing was loaded,
+#      and that is correct, not broken," the exact false-reassurance this file exists to prevent, one
+#      layer down in its own interpreter call. Fixed by resolving `PY` once (`python3`, falling back to
+#      `python`) right after the REPO check, and treating "no interpreter on PATH at all" as its own
+#      loud, distinct branch — reported before the NOT-SET branch can ever be reached, still `exit 0`.
 # ─────────────────────────────────────────────────────────────────────────────
 #
 # ⭐ THE BUG THIS FILE IS BUILT AGAINST — it was in the original, and it is the whole point:
@@ -90,8 +98,31 @@ if [ -z "$REPO" ] || [ ! -f "$REPO/shared/brain_root.py" ]; then
   exit 0
 fi
 
+# ── PYTHON INTERPRETER — resolved, never hardcoded (Issue #55) ───────────────────────────────────
+# ⭐ THE BUG THIS BLOCK FIXES: the official Windows Python installer does NOT create a `python3`
+# executable — only `python.exe` + the `py` launcher. A hardcoded `python3` call below therefore
+# fails on a stock Windows install with "command not found" (RC 127), which the old code could not
+# tell apart from "brain_root.py ran fine and honestly reports NOT-SET" — both look like "RC != 0,
+# empty ROOT." The result: a Windows user whose data root WAS set for days got told "nothing was
+# loaded, and that is correct, not broken" — the exact false-reassurance this file's header exists
+# to prevent, one layer down, in its own interpreter call. Resolving PY explicitly, and treating
+# "no interpreter at all" as its own loud, distinct case BEFORE the NOT-SET branch is ever reached,
+# is the fix — not a Windows-only patch, since `python3` genuinely does not exist on some machines.
+PY="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
+if [ -z "$PY" ]; then
+  echo "=== Session context ==="
+  echo "!! CANNOT START: no Python interpreter found on PATH (tried: python3, python)."
+  echo "!! Nothing was loaded. This is NOT the same as an empty or fresh system — the loader itself"
+  echo "!! could not run, so it has no way to know whether a data root is set or not."
+  echo "!! Install Python 3 and make sure it is on PATH (on Windows: the python.org installer adds"
+  echo "!! 'python', not 'python3' — either works here), then start a new session."
+  echo "=== end session context ==="
+  exit 0                      # same reasoning as every other branch in this file: exit 0 is what
+                               # gets this message into the model's context; exit 1 would hide it
+fi
+
 # The one resolver. NOT-SET is a real answer and is reported as one; it is never guessed around.
-ROOT="$(python3 "$REPO/shared/brain_root.py" --quiet 2>/dev/null)"
+ROOT="$("$PY" "$REPO/shared/brain_root.py" --quiet 2>/dev/null)"
 RC=$?
 if [ "$RC" -ne 0 ] || [ -z "$ROOT" ]; then
   # ⭐ NOT-SET has TWO causes and they are not the same problem. "You have not chosen a folder yet" is
@@ -100,7 +131,7 @@ if [ "$RC" -ne 0 ] || [ -z "$ROOT" ]; then
   # point the system at an empty folder and lose the association with their real notes.
   # The resolver deliberately collapses the two (a remembered path that is not a directory falls
   # through rather than resolving), so ask what was remembered, directly.
-  REMEMBERED="$(python3 - "$REPO" <<'_REMEMBERED_EOF' 2>/dev/null
+  REMEMBERED="$("$PY" - "$REPO" <<'_REMEMBERED_EOF' 2>/dev/null
 import sys, os
 sys.path.insert(0, os.path.join(sys.argv[1], "shared"))
 try:
@@ -119,7 +150,7 @@ _REMEMBERED_EOF
     echo "!! memory. If that folder lives in a cloud drive, it may simply not be mounted yet."
     echo "!! Do NOT start writing, and do NOT point this at a new empty folder — you would lose the"
     echo "!! link to everything already there. Get the folder back, or:"
-    echo "    python3 \"$REPO/shared/brain_root.py\" --set \"<where they actually are now>\""
+    echo "    $PY \"$REPO/shared/brain_root.py\" --set \"<where they actually are now>\""
     echo "=== end session context ==="
     exit 0                    # same reasoning as the REPO-not-found branch above: exit 0 is what
                                # gets this message into the model's context; exit 1 would hide it
@@ -127,7 +158,7 @@ _REMEMBERED_EOF
   echo "=== Session context ==="
   echo "No data root set yet — nothing was loaded, and that is correct, not broken."
   echo "This is where everything you write will live. Set it once:"
-  echo "    python3 \"$REPO/shared/brain_root.py\" --set \"<the folder your notes live in>\" [--create]"
+  echo "    $PY \"$REPO/shared/brain_root.py\" --set \"<the folder your notes live in>\" [--create]"
   echo "=== end session context ==="
   exit 0                      # a legitimate state (a fresh install), not a failure
 fi
@@ -151,7 +182,7 @@ echo "Your notes: $ROOT"
 _findings_banner() {
   local ledger out rc
   ledger="$HOME/.config/lifehack/faults.json"     # fault_ledger.py's own LEDGER path — read-only
-  out="$(python3 "$REPO/system/tools/health_line.py" "$ledger" 2>/dev/null)"
+  out="$("$PY" "$REPO/system/tools/health_line.py" "$ledger" 2>/dev/null)"
   rc=$?
   if [ "$rc" -ne 0 ]; then
     echo ""
