@@ -27,7 +27,7 @@ You hand this file to Claude and answer its questions.
     ├── shared/                  the piece that knows where your writing lives
     └── .brain-root              one line: the path to your AI Brain, below. gitignored, never uploaded.
 
-    AI Brain/                 <- YOUR notes. lives in your own Google Drive folder, never in the Harness.
+    AI Brain/                 <- EVERYTHING OF YOURS. your own Google Drive folder, never in the Harness.
     └── desks/                   a folder per subject, once you've run an ingest
 
 **You open the Harness folder. That's the only thing to remember about starting a session.** Your
@@ -51,24 +51,82 @@ this file.
 **Your AI Brain is already backed up — it's a Google Drive folder, and Drive keeps its own version
 history.** There is nothing extra to set up.
 
+> ## ⭐ ONE FOLDER, SEVERAL NAMES — read this once and you can stop wondering about it
+>
+> **Your AI Brain is the folder with all your personal information in it.** Everything you write,
+> everything this tool ever learns about you, everything that is actually yours. It lives in your own
+> Google Drive. **It is the one irreplaceable thing here.**
+>
+> **You will meet it under other names.** Older material, other tools, and the occasional line further
+> down this file call it *your notes*, *the notes folder*, or *the data folder*. ⭐ **Every one of those
+> means this same single folder.** There is no second place your writing goes, there is nothing extra
+> to create, and **nothing in this setup ever asks you to choose one.** If a page ever seems to be
+> describing two folders, it is one folder wearing two names.
+>
+> ⛔ **The Harness is the other folder, and it is not yours in that sense.** It is the tool itself:
+> code, downloaded, replaceable — losable and re-fetchable in a minute. **Nothing personal ever belongs
+> inside it.**
+>
+> ⭐ **The whole design in one line: the Harness is the engine, your AI Brain is everything you own.**
+
 ## What you do — about ten minutes
 
-**1. Make a folder and open it in Claude.** Call it whatever you like — "Lifehack Harness" is the
-usual; this one is the ENGINE, not your notes. Put it somewhere ordinary on your own computer —
-straight in your home folder is the simplest. Then: Claude desktop app, the **Code** tab, open that
-folder.
+**1. Make a folder and open it in Claude.** This folder is for the TOOL — the Harness, the engine.
+**It is not your AI Brain and nothing of yours goes in it.** ⭐ **This is the fiddliest minute of the
+whole setup, and the one moment nobody is standing beside you** — so it is written out click by click.
+Nothing below needs anything typed at a terminal.
 
-> ⚠ **One folder to avoid: anything inside Google Drive, OneDrive, Dropbox or iCloud Drive.** Those keep
-> your files in sync with a website, and that quietly damages this kind of tool while it installs. **You
-> don't have to work this out yourself** — setup checks before it does anything, and if you have picked
-> one of those it moves you somewhere that works and brings everything with you. Nothing is lost.
+**On a Mac, do exactly this:**
+
+1. **Click the desktop**, or the smiling blue face at the left of your Dock, so that **Finder** is the
+   app in front. Finder is the thing that shows you your files.
+2. In the menu bar along the very top of the screen, click **Go**, then **Home**. *(The keyboard way is
+   holding **⇧⌘H**.)* A window opens with a little house at the top of it and your own name beside it.
+   ⭐ **That window is your home folder** — the thing this file means every time it says those words.
+   It's the folder that holds Desktop, Documents, Downloads and the rest of them. **Stay in this
+   window; everything below happens here.**
+3. **Right-click on any empty white space** inside that window — somewhere with no icon under the
+   pointer — and choose **New Folder** from the little menu that appears. *(On a trackpad, a two-finger
+   click; or hold **Control** and click normally.)*
+4. A new folder appears with its name highlighted and waiting. **Type `Lifehack Harness` and press
+   Return.** The name itself doesn't matter; being able to find it again does.
+5. **Now open the Claude app and go to the `Code` tab.** Ask it to open a folder — the button or menu
+   item for that is the one that says *Open* or *Open Folder*. An ordinary Mac file window appears.
+6. **Find `Lifehack Harness` in that window and open it.** ⭐ **If you can't see it, don't go hunting:**
+   with that file window in front, press **⇧⌘G**, type `~/Lifehack Harness`, and press Return — that
+   jumps straight to it. Then confirm.
+
+*(On Linux, same idea: make a folder directly inside your home folder — the one at `/home/<your
+name>` — and open that folder in Claude.)*
+
+> ## ⛔ WHY THE HOME FOLDER AND NOT THE DESKTOP — the trap that catches the most people
+>
+> **Desktop and Documents look like the obvious places to put it, and on a great many Macs they are the
+> two worst.** If iCloud's **"Desktop & Documents Folders"** option is switched on — it very often is,
+> and it can be on without you ever choosing it — then both of those are really cloud folders wearing
+> ordinary clothes. **Nothing in Finder tells you which is which.** A folder that syncs with a website
+> quietly damages this kind of tool while it installs, so setup refuses one. Google Drive, OneDrive and
+> Dropbox folders are refused for exactly the same reason.
+>
+> ⭐ **Your home folder itself is never one of those**, and that is the entire reason step 2 sends you
+> straight there. **Put the folder in Home and none of this can catch you** — you don't have to work
+> out what syncs and what doesn't, which is not something anybody should be expected to know.
+>
+> ## ⭐ AND IF SETUP TELLS YOU YOUR FOLDER SYNCS ANYWAY — THAT IS NORMAL, AND IT IS NOT YOUR FAULT
+>
+> Setup checks the folder before it touches anything. If it finds a cloud folder it says so, and then
+> **it moves the tool somewhere that works and brings everything with it.** **Nothing is deleted and
+> nothing is lost** — the folder you started in is left exactly as it was, with everything of yours
+> still in it. **A move at that point is the tool doing its job, not you having got something wrong.**
+> It checks precisely *because* this is invisible from the outside. You'll be asked to reopen Claude on
+> the new folder, and setup starts again from the top — that repetition is expected too.
 
 **2. Drag this file into the chat and say: "Set up my brain."**
 
 **3. That's it.** The folder you opened *is* your Lifehack Harness — setup builds the tool inside it
 and doesn't ask you where THAT goes. Partway through, it asks you exactly one question, about a
-completely different folder: which Google Drive folder is your AI Brain, where your notes actually
-live.
+completely different folder: which Google Drive folder is your AI Brain, where everything you write
+actually lives.
 
 ⚠ **If it goes quiet, look for a small box with an Allow button.** It isn't stuck — it's waiting on you.
 
@@ -121,6 +179,13 @@ actually required to install this at all.
 > **So, for the whole of this file:**
 > - ⛔ **Do NOT go looking for their material.** Do not search their computer for a ChatGPT export, an
 >   Obsidian vault, an AI Brain folder, or anything else. Do not offer to find it.
+>   ⚖ **ONE NAMED EXCEPTION, AND ONLY THIS ONE: the bounded lookalike count at the end of STEP 1.**
+>   That is not hunting for material to sort — it reads the top level of their Drive and home folder,
+>   nothing deeper, to find out whether they already have SEVERAL brain-shaped folders, and it hands
+>   the answer straight back to them as a question. **It never opens a file, never reads one, never
+>   moves or deletes anything, and it never begins any sorting.** STEP 7.1 already runs the same kind
+>   of look, later; this exception exists because later is the wrong time to learn it. **Nothing else
+>   here is licensed by it.**
 > - ⛔ **Do NOT ask them where their material is, what format it is in, or how big it is.** None of that is
 >   your business here and asking it makes them think the sorting has begun.
 > - ⛔ **Do NOT read, open, convert, copy or move a single one of their files.**
@@ -166,15 +231,66 @@ actually required to install this at all.
 
 ---
 
-## STEP 0 — Say hello and get a go
+## STEP 0 — Pick up your place, say hello, and get a go
 
-Tell them, in your own words and in about four sentences:
+**Before you say a word to them, find out where this install already is.** It costs nothing on a fresh
+machine, and it is the difference between carrying on and starting again on top of yourself.
+
+```bash
+mkdir -p ~/.config/lifehack
+cat > ~/.config/lifehack/mark-step.sh <<'MARK'
+P="$HOME/.config/lifehack/install-progress.tsv"
+W="${CLAUDE_PID:-0}"
+W="$W started $(ps -o lstart= -p "$W" 2>/dev/null | tr -s ' ' | sed 's/^ *//;s/ *$//')"
+printf '%s\t%s\t%s\t%s\n' "$(date +%Y-%m-%dT%H:%M:%S)" "$1" "$(pwd -P)" "$W" >> "$P" 2>/dev/null
+exit 0
+MARK
+tail -n 15 ~/.config/lifehack/install-progress.tsv 2>/dev/null || echo "NOTHING RUN BEFORE — this is a first run on this machine"
+```
+
+> ## ⭐⭐ THE STEP LOG — WHAT IT IS FOR, AND THE RULES ABOUT IT
+>
+> The first block installs a one-line pen. The second reads back what earlier steps wrote with it —
+> one line per finished step: when, which step, **which folder it ran in**, and which Claude window ran
+> it. **`NOTHING RUN BEFORE` means a clean machine; carry on normally.** Anything else is your own
+> position, in fact rather than in memory — read it before you decide where to start.
+>
+> **Every step in this file ends by marking itself done**, in exactly this form, with its own name:
+>
+> ```bash
+> sh ~/.config/lifehack/mark-step.sh "STEP 0"
+> ```
+>
+> ⭐ **WHY THIS EXISTS — it is the commonest failure in this whole file, and it is YOURS, not theirs.**
+> Across real installs with real students, the thing that went wrong most often was not the person
+> getting lost. It was the ASSISTANT losing the thread inside a long document — running a step twice,
+> skipping one, or answering *"where are we"* out of memory. **This file is longer than the attention
+> it takes to hold it all.** The log makes your own position something you can look up, and it is the
+> only thing that survives **STEP 9's restart**, where your memory of this session is guaranteed gone.
+>
+> ⛔ **You mark a step AFTER its own checks pass — never before, and never for a step you skipped.**
+> A mark means *"this really ran, here."* A log marked ahead is a lie, and a lying log is worse than no
+> log at all, because the session after the restart has nothing else to go on and will believe it.
+>
+> ⚠ **IT IS WRITTEN FOR YOU AND THE PERSON NEVER SEES IT.** Never read a line of it out, never quote
+> it, never mention the log, the file, or the marking. It is not a receipt for them. **If it ever
+> surfaces in something you say to them, it is being used wrong.**
+>
+> ⭐ **It records the folder each step ran in, and that is what makes STEP 4A's move survivable.** After
+> a move, the marks written in the old folder are still there and still say so — which is exactly the
+> question a session coming back from 4A has to answer and currently answers by guessing.
+
+Now tell them, in your own words and in about four sentences:
 - what you are about to install (a folder of files that adds one new command, `/ingest`, to Claude),
 - that it takes about ten minutes,
 - that you'll check with them at each step,
 - that nothing on their computer gets changed outside the folder you're working in.
 
-Then ask: **"Ready to start?"** Wait for them.
+Then ask: **"Ready to start?"** Wait for them. Once they say yes:
+
+```bash
+sh ~/.config/lifehack/mark-step.sh "STEP 0"
+```
 
 ---
 
@@ -224,6 +340,10 @@ case "$LOW" in */shared\ drives/*) echo "AND IT IS A SHARED DRIVE" ;; esac
 
 **`NO SYNC SERVICE IN THE PATH` → say nothing about it at all and carry straight on to STEP 2.**
 
+```bash
+sh ~/.config/lifehack/mark-step.sh "STEP 1"
+```
+
 **`CLOUD-SYNC FOLDER` → stop here and go to STEP 4A.** ⛔ **Do NOT install Git, do not install Python,
 do not run STEP 2 or STEP 3.** STEP 4A does the whole move itself, in this file, and says exactly where
 to pick up when they come back — from the top when nothing was installed yet, which is the usual case
@@ -242,6 +362,71 @@ here.
 >
 > ⛔ **This is not a warning and there is no "continue anyway".** A folder that syncs rewrites files out
 > from under git mid-write, and it corrupts quietly rather than failing loudly.
+
+**Last thing in STEP 1: find out whether this machine already has more than one brain-shaped folder on
+it.** This costs about a fiftieth of a second and needs nothing installed. ⛔ **It only counts and
+names. It opens nothing, moves nothing, and deletes nothing.**
+
+```bash
+PYBIN="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
+"$PYBIN" - <<'PY'
+import os, glob
+home = os.path.expanduser("~")
+places = []
+for acct in sorted(glob.glob(os.path.join(home, "Library/CloudStorage/GoogleDrive-*"))):
+    for sub in ("My Drive", "Shared drives"):
+        d = os.path.join(acct, sub)
+        if os.path.isdir(d):
+            places.append(d)
+places.append(home)
+hits = []
+for d in places:
+    try:
+        entries = sorted(e for e in os.listdir(d) if not e.startswith("."))
+    except OSError:
+        continue
+    for e in entries:
+        low = e.lower()
+        if ("brain" in low or "lifehack" in low) and os.path.isdir(os.path.join(d, e)):
+            hits.append(os.path.join(d, e))
+print("BRAIN-SHAPED FOLDERS: %d" % len(hits))
+for h in hits:
+    print("  " + h)
+PY
+```
+
+**`0` or `1` → say nothing at all about it and carry straight on to STEP 2.** One is the ordinary,
+healthy answer and mentioning it only invites worry.
+
+**`2` or more → say it plainly now, and ask.** This is the commonest real condition of a real machine,
+and it is the physical thing behind every "which folder was mine again?" later on. Read the paths back
+in plain sentences and ask the one closed question: *"I can see more than one brain-shaped folder on
+this machine already. Which of these is the real one — the one your writing is actually in? The others
+can be tidied up later; I just don't want to connect you to the wrong one."* **Write the answer down
+and carry it to STEP 7** — 7.1 will offer the same list again, and this is how you already know.
+
+> ## ⛔⛔ DETECT, NAME, ASK. THAT IS ALL. THIS STEP CONSOLIDATES NOTHING.
+>
+> ⛔ **NEVER delete a folder, never merge two, never rename one, and never move anything.** Not here,
+> not later in this file, not if they ask you to in passing. **Consolidating somebody's several
+> half-brains into one is a human decision made with a human looking at it**, and an install is the
+> worst possible moment to attempt it — you are mid-way through building something else.
+>
+> ⭐ **The tool for it already exists and it is NOT this file: `REPAIR.md`.** It owns this job, it has
+> the convention for it — archive every lookalike with a **`zz-archive-`** prefix, **never delete** —
+> and `TARGET-STATE.md`'s **FACT 8** is the standard it works to: *one engine, unambiguous names, no
+> live lookalikes.* ⛔ **Do not invent a second scheme here.** If they want it sorted, the hand-off is
+> STEP 10's sentence, word for word, and it happens in its own session afterwards.
+>
+> ⚠ **The count is deliberately blunt and will over-report.** It matches any top-level folder whose
+> name contains "brain" or "lifehack", so it will also name Harness folders and old clones. **That is
+> correct, not noise** — FACT 8 counts stray ENGINES as lookalikes too. Say what each one looks like
+> if you can tell from the path, and let them decide.
+>
+> ⚠ **It is deliberately shallow — the top level of each Drive and of the home folder, and no deeper.**
+> A recursive walk of a synced drive hangs or takes minutes, and a person watching a frozen screen is
+> its own failure. **A brain-shaped folder buried three levels down will be missed, and that is an
+> accepted limit, not an oversight** — `REPAIR.md` is what looks properly.
 
 ---
 
@@ -272,6 +457,10 @@ If `winget` isn't available, send them to <https://git-scm.com/download/win>, te
 installer and click Next through all of it, and wait for them to say it's done.
 
 ⛔ **Do not continue until `git --version` prints a version.** Every later step depends on it.
+
+```bash
+sh ~/.config/lifehack/mark-step.sh "STEP 2"
+```
 
 ---
 
@@ -322,6 +511,10 @@ works later, invisibly.
 
 ⛔ **Do not continue until Python answers with 3.9 or higher.**
 
+```bash
+sh ~/.config/lifehack/mark-step.sh "STEP 3"
+```
+
 ---
 
 ## STEP 4 — ⛔ THE FOLDER THEY ALREADY OPENED **IS** THE LIFEHACK HARNESS. DO NOT CREATE ANOTHER ONE.
@@ -340,7 +533,7 @@ pwd
 ```
 
 *"You're set up in `<path>` — that's your Lifehack Harness folder. The tool itself goes inside it.
-Your notes are a separate folder, in your Google Drive — we'll connect that in a few steps."*
+Your AI Brain is a separate folder, in your Google Drive — we'll connect that in a few steps."*
 
 ⛔ **Now check that folder is usable. This is the only thing that can send you back to them.**
 
@@ -394,6 +587,10 @@ PY
 > streamed ones, and the branch below has to say so out loud. Do not drop it.
 
 **`GOOD` → say nothing about it and carry straight on to STEP 5.**
+
+```bash
+sh ~/.config/lifehack/mark-step.sh "STEP 4"
+```
 
 **`CLOUD-SYNC FOLDER` → this is a safety gate, not a preference, and the reason is different from the
 system-folder case below — say so.** A folder synced by Google Drive, Dropbox, OneDrive or iCloud Drive
@@ -541,13 +738,41 @@ else echo "Dropbox is not installed."; fi
 **This is a read and nothing else.** ⛔ If it says the mirror list could not be read, **say so** — do not
 assume the list is empty.
 
-**Now test a destination. Try them in this order, and take the first that passes:**
+**Now test a destination. The order depends on the machine, and that is not cosmetic. Take the first
+that passes:**
 
-1. **`$HOME/Lifehack Harness`** — the home folder itself is essentially never a mirror root, and it
-   never needs special permission.
+**On a Mac or Linux:**
+1. **`$HOME/Lifehack Harness`** — **on these two systems** the home folder itself is essentially never
+   a mirror root, and it never needs special permission.
 2. **`$HOME/Documents/Lifehack Harness`** — only if Documents is not on the mirror list above.
 3. **If both fail, ask them for somewhere else** — and run this same test on whatever they name. ⚠ **A
    folder they choose themselves is exactly the one most likely to be inside Drive.**
+
+**On Windows the order INVERTS — go above the user profile, not into it:**
+1. **`C:\Lifehack Harness`** — a folder at the top of the drive, **above** `C:\Users\<name>`.
+2. **`C:\Users\<name>\Lifehack Harness`** — only if the drive root refused the write test below.
+3. **If both fail, ask them for somewhere else**, and test whatever they name — same caution as above.
+
+> ## ⛔ WHY WINDOWS INVERTS IT — THE OLD FIRST CHOICE WAS SIMPLY WRONG THERE
+>
+> This step used to make one claim for every machine: that the home folder is *"essentially never a
+> mirror root."* ⛔ **On Windows that is false, and it is false in the most common configuration there
+> is.** OneDrive's ordinary setup makes `C:\Users\<name>` the mirror root and pulls Desktop, Documents
+> and Pictures underneath it — so this file's own first-choice destination sat **inside the exact sync
+> zone the whole gate exists to keep out of.** Going above the user profile is what a maintainer
+> running real Windows installs arrived at, after real failures.
+>
+> ⛔ **This licenses nothing about administrator rights, and you still never ask for them.** The test
+> below proves a destination is writable *before* anything is put in it. If the drive root refuses,
+> that is an ordinary `THE DESTINATION COULD NOT BE WRITTEN TO` and the answer is candidate 2 — **never
+> elevation.** The ordering is only a better first guess; **the test is what actually decides.**
+>
+> ⚠ **UNVERIFIED ON WINDOWS, and said plainly so nobody mistakes it for tested.** Nobody has run this
+> branch on a Windows machine. It reasons from how OneDrive's default setup lays out a user profile,
+> plus one maintainer's field practice — not from a run. ⚠ **And today it is unreachable anyway:**
+> STEP 1's WINDOWS STOP-SIGN ends the install before this step. It is written now so that whenever
+> that stop-sign lifts, the first thing a Windows student meets is not a claim that is wrong about
+> their machine.
 
 ⚠ **To try the second or third candidate, change only the first line and run the same block again.**
 Everything below it is the test, and the test never changes.
@@ -644,11 +869,20 @@ Tell them, in these words or very close:
 ⭐ **Give them the literal path.** ⚠ **And tell them it starts again from the beginning** — otherwise the
 repeated questions read as the whole thing having failed.
 
+⭐ **Then have them PIN the new folder before they quit, and wait while they do it.** *"One last thing
+that will save you every time from now on: find that folder once in Finder, and drag it into the
+Favourites list down the left-hand side. On Windows, right-click it and choose Pin to Quick access.
+Then it's one click, forever, and you never have to remember the path."* **This is not a nicety** —
+after they quit, the only thing standing between them and the right folder is their ability to
+navigate to a path they were shown once, in a window that is now closed.
+
 ⭐ **If 4A.2 found writing of theirs, add this, with the real path in it:** *"One more thing worth a
 screenshot: your writing is still in `<the old path>`, and that's the right place for it — it's backed
 up there. When setup asks which folder is your AI Brain, that's the answer."*
 
-> **Where they pick up when they come back, so you are not surprised by it later:**
+> **Where they pick up when they come back, so you are not surprised by it later.** ⭐ **You do not have
+> to work it out from the folder — STEP 0 reads it back to you**, in the label the mark below carries and
+> in the folder that mark records. Read it there rather than inferring it:
 > - **Nothing was installed** (the ordinary STEP 1 case) — they start at the top and go straight
 >   through. STEP 1 and STEP 4 both pass now.
 > - **The tool came across in 4A.5** — there is nothing to clone. STEP 5's own "if `git clone` refuses
@@ -658,6 +892,17 @@ up there. When setup asks which folder is your AI Brain, that's the answer."*
 > ⚠ **Either way, STEP 7 is where their old folder comes back into the story** — as the AI Brain, by the
 > path you handed them above. STEP 7.1's search only finds Drive folders with "brain" in the name, so if
 > theirs is called something else, **do not make them hunt: name the path and set it directly.**
+
+**Before they quit, mark it — and say in the label which of 4A.2's two shapes this was**, because
+that is the exact question the session that comes back has to answer:
+
+```bash
+sh ~/.config/lifehack/mark-step.sh "STEP 4A — moved, tool copied across"     # 4A.5 ran
+sh ~/.config/lifehack/mark-step.sh "STEP 4A — moved, nothing to copy"        # 4A.5 was skipped
+```
+
+⭐ **Run exactly one of those, not both.** It records the OLD folder as the folder it ran in — which is
+their AI Brain path, the one STEP 7 will need — and it is readable from the new folder afterwards.
 
 Then **STOP. Do not continue this file. Do not run STEP 5.**
 
@@ -700,6 +945,10 @@ ls .claude/skills/ingest/SKILL.md && echo "the skill is here"
 
 **Tell them what arrived**, in a sentence: the tool itself, and the specialist readers it uses.
 
+```bash
+sh ~/.config/lifehack/mark-step.sh "STEP 5"
+```
+
 ⛔ **Do NOT symlink anything into `~/.claude/`.** Symlinks are Mac-coupled and this has to work on
 Windows too.
 
@@ -710,20 +959,106 @@ Windows too.
 > ls -A
 > ```
 >
-> **If it is an older copy of the tool**, ask whether they can rename or delete it, then clone again.
-> **If it is a `data` folder, that is a sign this folder was set up under an older, one-folder layout —
-> it is someone's writing, so do not delete it.** Migrating that kind of install onto the two-folder
-> design (Harness here, AI Brain in its own Drive folder) isn't automated yet — this is a stop-and-ask-
-> for-help moment, not something to improvise. Move it aside so the clone can proceed, then say plainly
-> that their old writing is safe but needs a person to fold it into a proper AI Brain:
+> **Then run the block below, and do not assemble your own version of it.** It handles every shape this
+> folder can be in: it moves everything out of the way into ONE holding folder next door, clones into
+> the folder it has just emptied, and — **if the clone fails for any reason — puts every single thing
+> back exactly where it was.**
 >
 > ```bash
-> mv data ../data-from-old-install && git clone https://github.com/LifehackMethod/lifehack-brain.git .
+> PYBIN="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
+> "$PYBIN" - <<'PY'
+> import os, shutil, subprocess, datetime
+> here = os.getcwd()
+> names = sorted(os.listdir(here))
+> if all(os.path.isdir(os.path.join(here, d)) for d in (".claude", "system", "shared")):
+>     print("THE TOOL IS ALREADY HERE - NOTHING MOVED, NOTHING CLONED. GO TO STEP 6.")
+>     raise SystemExit(0)
+> if not names:
+>     print("THE FOLDER IS EMPTY - run the STEP 5 clone above exactly as written.")
+>     raise SystemExit(0)
+> hold = os.path.join(os.path.dirname(here),
+>                     "lifehack-set-aside-" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+> try:
+>     os.makedirs(hold)
+> except OSError as e:
+>     print("STOP - COULD NOT MAKE THE HOLDING FOLDER NEXT DOOR: %s" % e)
+>     print("NOTHING WAS MOVED. The folder is exactly as you found it.")
+>     raise SystemExit(1)
+> def put_back(moved):
+>     stuck = []
+>     for n in reversed(moved):
+>         dst = os.path.join(here, n)
+>         if os.path.exists(dst):
+>             stuck.append(n + " (something with that name is in the way)"); continue
+>         try:
+>             shutil.move(os.path.join(hold, n), dst)
+>         except Exception as e:
+>             stuck.append("%s (%s)" % (n, e))
+>     if stuck:
+>         print("STOP - COULD NOT PUT THESE BACK. NOTHING IS LOST - THEY ARE IN: %s" % hold)
+>         for s in stuck:
+>             print("   " + s)
+>         return False
+>     try:
+>         os.rmdir(hold)
+>     except OSError:
+>         pass
+>     return True
+> moved = []
+> for n in names:
+>     try:
+>         shutil.move(os.path.join(here, n), os.path.join(hold, n))
+>         moved.append(n)
+>     except Exception as e:
+>         print("COULD NOT MOVE OUT OF THE WAY: %s (%s)" % (n, e))
+>         if put_back(moved):
+>             print("STOP - EVERYTHING IS BACK. The folder is exactly as you found it.")
+>         raise SystemExit(1)
+> rc = subprocess.call(["git", "clone", "-b", "migration-1",
+>                       "https://github.com/LifehackMethod/lifehack-brain.git", "."], cwd=here)
+> if rc != 0:
+>     if put_back(moved):
+>         print("CLONE FAILED (rc=%d) - EVERYTHING IS BACK. The folder is exactly as you found it." % rc)
+>     raise SystemExit(1)
+> print("CLONED, AND NOTHING OF THEIRS IS INSIDE IT.")
+> print("SET ASIDE NEXT DOOR, IN: %s" % hold)
+> for n in moved:
+>     print("   " + n)
+> PY
 > ```
 >
-> ⚠ **Do not move it back into `data` inside the fresh clone.** That recreates the very layout this
-> install is moving away from. Leave it sitting beside the new Harness folder as `data-from-old-install`
-> and ask for help migrating it.
+> **`THE TOOL IS ALREADY HERE` → nothing was moved and nothing was cloned.** This is the STEP 4A.5
+> case: the tool travelled across with them. Go straight to **STEP 6**.
+>
+> **`CLONED, AND NOTHING OF THEIRS IS INSIDE IT` → carry on to STEP 6.** It names the holding folder
+> next door and lists what went into it. ⭐ **Say that back to them plainly, with the real path** —
+> *"anything that was already in here is safe, in a folder right next to this one, and nothing was
+> deleted."*
+>
+> ⚠ **If a `data` folder was among the things set aside, that is an older one-folder install, and it is
+> their writing.** ⛔ **Do not move it back into `data` inside the fresh clone** — that recreates the
+> very layout this install is moving away from. Leave it next door, and say plainly that their old
+> writing is safe but needs a person to fold it into a proper AI Brain: migrating that shape isn't
+> automated yet, so it is a stop-and-ask-for-help moment, not something to improvise.
+>
+> ⛔ **Anything beginning `STOP` or `CLONE FAILED` → stop there and read out what it said.** Every one
+> of those endings means the folder was put back exactly as it was found and nothing was lost. **Do not
+> retry it, do not improvise a second approach, and do not delete anything to "clean up".**
+>
+> > ⛔⛔ **WHY A SCRIPT AND NOT TWO COMMANDS — THIS STRANDED SOMEBODY'S WRITING, AND IT WAS REPRODUCED.**
+> > The line this replaces was `mv data ../data-from-old-install && git clone …`. Run against a folder
+> > holding BOTH a `data` folder and one ordinary file of the person's own, it did this, exactly:
+> > `data` moved out; the clone then refused **a second time**, because that other file was still there
+> > and the folder still was not empty; the `&&` short-circuited — and there was no restore step in the
+> > line to run anyway. **Her writing ended up outside the folder, with no `data` folder at all.** That
+> > is precisely the half-moved state STEP 4A's own rules forbid: *"A half-moved folder somebody then
+> > improvises on is far worse than one that stopped cleanly."*
+> >
+> > **Three faults, all closed above.** The chain that could skip the restore. **No branch at all for
+> > "a file of their own is in the way"** — which is exactly what STEP 4A.5 leaves behind when it copies
+> > their loose writing across, and 4A.7 sends those people straight here. And a clone carrying **no
+> > `-b migration-1`**, which would have quietly fetched the older release with known bugs into the
+> > folder of the one person most likely to be standing here.
 
 ## STEP 6 — Confirm the pieces arrived, and turn on the safety catch
 
@@ -742,6 +1077,10 @@ upload your own notes to the internet, it will stop and refuse."*
 
 ⚠ **This line IS the install.** The check ships inside the folder, but git ignores it until this command
 points at it. Without it, the file is decoration.
+
+```bash
+sh ~/.config/lifehack/mark-step.sh "STEP 6"
+```
 
 **If `FILES MISSING`**, the download didn't complete. ⛔ **Do not assemble or copy files yourself.**
 Delete what's there and run **STEP 5** again.
@@ -811,6 +1150,11 @@ exactly what it says:
 - **Zero candidates, but accounts exist** → tell them no existing AI Brain folder was found, list the
   account(s) found, and ask which one should hold a brand-new one: *"I didn't find an AI Brain folder
   yet. You have Google Drive signed in as `<accounts>` — should I make one in `<account>`'s My Drive?"*
+
+⚠ **If this list has MORE THAN ONE entry, that is the thing STEP 1's count already found, and it is a
+condition rather than a menu.** Say so before you ask: *"These are the ones I mentioned at the start —
+you told me `<the one they named>` is the real one, so that's the one I'll connect."* ⛔ **Still never
+merge, rename, archive or delete any of the others here**; `REPAIR.md` owns that, in its own session.
 
 ⭐ **If they came through STEP 4A, they already know the answer and this list may not contain it.**
 STEP 4A left their writing in the synced folder it found and handed them the literal path; that folder
@@ -897,6 +1241,10 @@ disagree about where your AI Brain is, and that has to be resolved before contin
 
 ⭐ **This is `TARGET-STATE.md`'s fact 5.**
 
+```bash
+sh ~/.config/lifehack/mark-step.sh "STEP 7"
+```
+
 **Then say what you connected, in one plain sentence:** *"Your AI Brain is connected — it's the
 `<name>` folder in your Google Drive. I've put a journal, a project list and somewhere for project
 notes in there — they fill themselves in as you work. Nothing here is ever tracked by git, because it
@@ -960,6 +1308,13 @@ repository — and under this layout there is no `data` folder inside it for any
 AI Brain lives entirely outside the Harness. **If anything is listed, stop and read it out** — do not
 commit it, do not `git add` it, and do not continue until you understand what it is.
 
+```bash
+sh ~/.config/lifehack/mark-step.sh "STEP 8"
+```
+
+⭐ **Nothing that mark writes goes anywhere near the repository** — it lives in your own
+`~/.config/lifehack/`, outside both folders, which is why the check above still prints nothing.
+
 > **One thing missing ON PURPOSE.** The last step of an ingest asks which subject each thing belongs to
 > and checks it against a list of subjects. **That list is theirs and is not in this package.** The tool
 > prints exactly what to do when they reach it. ⛔ **Do not pre-empt it, do not write the file for them,
@@ -981,7 +1336,10 @@ Tell them, in these words or very close:
 
 ⭐ **Give them the literal path. They reopen the SAME folder they're in now** — the Lifehack Harness
 folder itself, the one holding `.claude` and `.brain-root`. **Not their AI Brain, and not any folder
-inside it.** This is the folder the commands live in; open anything below it, or open the Drive folder
+inside it.** ⭐ **If it is not pinned yet, have them pin it now, before they quit** — drag it into
+Finder's Favourites on a Mac, or right-click → Pin to Quick access on Windows. **This is the folder
+they will open every session for the rest of the time they use this**, and this restart is the moment
+it stops being findable by scrolling back through the chat. This is the folder the commands live in; open anything below it, or open the Drive folder
 instead, and `/ingest` will not exist.
 
 ⚠ **If they installed before the 2026-08-12 layout change, they will go hunting for an inner
@@ -989,19 +1347,92 @@ instead, and `/ingest` will not exist.
 isn't one any more — the tool IS this folder. Say so explicitly**, or they will open the parent
 directory out of habit and land somewhere with no tool in it at all.
 
+**Mark the step before they quit — this is the last thing this session does, and it is the pivot the
+next one reads:**
+
+```bash
+sh ~/.config/lifehack/mark-step.sh "STEP 9"
+```
+
+⭐ **That line is what makes STEP 10 able to PROVE the restart happened** rather than take anyone's
+word for it. It stamps which Claude window ran STEP 9; the window that comes back cannot be the same
+one. ⛔ **Write it now, in this session, before they quit** — after they quit you are gone, and STEP 10
+has nothing to compare against.
+
 Then **STOP. Do not continue this file. Do not offer to run `/ingest` yourself.**
 
 ## STEP 10 — After they restart (the first thing to do in the NEW session)
 
-Confirm the command exists before they type anything:
+> ## ⛔⛔ FIRST PROVE THE RESTART HAPPENED. NOT THAT A FILE EXISTS — THAT CLAUDE ACTUALLY RELOADED.
+>
+> **This check used to be `ls .claude/skills/ingest/SKILL.md`, and that check cannot fail.** It passes
+> exactly the same in the session that never restarted, because the file it looks for landed at STEP 5
+> and has been sitting there ever since. **A file on disk proves a download. It proves nothing about
+> whether Claude reloaded** — and STEP 9 says, in its own words, that the session which skipped it did
+> *"twenty minutes of plausible work that wasn't the tool"* with **nothing errored**. A check that is
+> equally happy in both worlds is not a check.
+
+```bash
+sh ~/.config/lifehack/mark-step.sh "STEP 10 restart check"
+python3 - <<'PY'
+import os, sys
+p = os.path.expanduser("~/.config/lifehack/install-progress.tsv")
+try:
+    rows = [l.rstrip("\n").split("\t") for l in open(p) if l.strip()]
+except OSError:
+    print("CANNOT PROVE IT - there is no step log on this machine."); sys.exit(2)
+rows = [r for r in rows if len(r) >= 4 and r[3].strip() and not r[3].startswith("0 started")]
+now    = [r for r in rows if r[1] == "STEP 10 restart check"]
+before = [r for r in rows if r[1] != "STEP 10 restart check"]
+if not now or not before:
+    print("CANNOT PROVE IT - this machine does not report which Claude window is running."); sys.exit(2)
+if now[-1][3] == before[-1][3]:
+    print("NOT RESTARTED - this is the SAME Claude window that ran %s." % before[-1][1]); sys.exit(1)
+print("RESTARTED - a different Claude window from the one that ran %s." % before[-1][1]); sys.exit(0)
+PY
+```
+
+**`RESTARTED` → good. Say nothing about it and carry on below.**
+
+⛔ **`NOT RESTARTED` → the restart did not happen, whoever believes otherwise.** You are still in the
+session that installed the tool, and `/ingest` will be read as a document rather than run. **Go back to
+STEP 9 and do it properly** — quit the whole app, not just the chat, then reopen this same folder.
+⛔ **Do not carry on, and do not let them type `/ingest`.** Say it plainly and without blame: *"Claude
+is still the same window as before, so it hasn't picked up the new commands yet — it needs a full quit
+and reopen, not just a new chat."*
+
+⚠ **`CANNOT PROVE IT` → say so honestly. It is NOT a pass.** It means this machine does not tell the
+tool which window is running, or STEP 9's mark was never written. **Never report a restart you could
+not prove.** Fall back to the two things you can still do: confirm out loud that they quit the entire
+application and reopened it, and watch what `/ingest` does on its first line — if it starts describing
+the file instead of asking them for their material, that is the stale session, and STEP 9 is the fix.
+
+> ⭐ **HOW IT KNOWS, AND EXACTLY HOW FAR IT GOES — read the limits, they matter.**
+> Every step in this file stamps the log with the identity of the Claude window that ran it: the
+> window's own process number, and the moment the operating system started it. **Neither is something
+> this file writes or can invent** — the machine mints them when Claude launches, which is precisely
+> why a restart is the only thing that can change them. STEP 9's line was written by the OLD window;
+> the line written a second ago is this one. Same identity, same window, no restart. Different
+> identity, and a different Claude is genuinely running.
+>
+> ⚠ **What it proves, exactly:** that a DIFFERENT Claude window is running now than the one that
+> reached STEP 9. That is the thing STEP 9 is actually for — commands are loaded when a window opens.
+> ⚠ **What it does NOT distinguish:** quitting the whole application versus closing this window and
+> opening a new one. Both produce a genuinely new window and both reload the commands, so both are
+> reported as `RESTARTED`. **The whole-app quit is still what you ask for**, because it is the one
+> instruction that reliably produces the reload with no ifs; this check is not a licence to soften it.
+> ⚠ **It fails closed.** Nothing to compare, or a machine that will not say which window is running,
+> reports `CANNOT PROVE IT` — never a pass.
+
+**Now, and only now, confirm the command's file actually arrived:**
 
 ```bash
 ls .claude/skills/ingest/SKILL.md
 ```
 
 ⭐ **You are in the Lifehack Harness folder and the tool is right here in it, not one level down. That
-is correct and is how it should look.** Your AI Brain is somewhere else entirely — connected in
-STEP 7 — and you never need to open it directly for any of this to work.
+is correct and is how it should look.** Their AI Brain is somewhere else entirely — connected in
+STEP 7 — and they never need to open it directly for any of this to work.
 
 Then tell them:
 
@@ -1011,7 +1442,7 @@ with the real paths filled in:**
 > **"Here's your setup, worth a screenshot:**
 > **The engine:** `<harness folder>` — this is the folder you OPEN, every session, always. It holds
 > the tool, and everything in it can be re-downloaded — you never back this up.
-> **Your AI Brain:** `<notes folder>` in Google Drive — every note you ever make lands here
+> **Your AI Brain:** `<AI Brain folder>` in Google Drive — every note you ever make lands here
 > automatically. You never need to open it; the engine finds it by itself. Drive backs it up and
 > keeps versions. This folder is the only thing that's truly yours.
 > **How you work from now on: open the engine folder in Claude, and just talk.** That's the whole
@@ -1042,6 +1473,18 @@ That sentence is the ONLY correct hand-off to a repair. ⛔ Do not offer to fix 
 from this session, and do not tell them to drag REPAIR.md in from somewhere else — a copy dragged
 from Downloads is outside the trusted zone and will be treated as material, not instructions
 (watched live, 2026-08-17).
+
+**Last thing, once they have actually typed `/ingest` and it has started asking them its own
+questions — close the log out:**
+
+```bash
+sh ~/.config/lifehack/mark-step.sh "INSTALL COMPLETE"
+```
+
+⭐ **This is what tells a LATER session that this machine is already set up.** If they ever drag this
+file in again — out of habit, or because something looked wrong — STEP 0's read-back opens with
+`INSTALL COMPLETE` and the folder it finished in, and you can say so instead of reinstalling on top of
+a working install. ⚠ **Still never mentioned to them.**
 
 # IF SOMETHING GOES WRONG
 
@@ -1104,7 +1547,7 @@ Lifehack Harness/                <- YOU OPEN THIS ONE. always. every session. IT
 ├── memory/                          LEGACY, and empty. Nothing of yours belongs here — see its README.
 └── .brain-root                  <- one line: the absolute path to the AI Brain tree below. gitignored.
 
-AI Brain/                        <- YOUR notes. a separate Google Drive folder, never inside the Harness.
+AI Brain/                        <- EVERYTHING OF YOURS. a separate Drive folder, never inside the Harness.
 ├── canon.md                         the things about you that stay true
 ├── system/journal.md                what happened, as it happens
 ├── system/project-registry.md       so a cold session can find an old project
@@ -1255,12 +1698,12 @@ something looks broken, run `gws auth status` and read what it says before touch
 
 **2 — Put your own identifiers in your AI Brain folder, not in this repo.** Which calendar, which task
 list, which spreadsheet — those are yours, and they are the kind of thing a public repository must
-never carry. They live at `<notes>/config/`, one small file per thing, named so a stranger could tell
+never carry. They live at `<AI Brain>/config/`, one small file per thing, named so a stranger could tell
 what it is:
 
 ```
-<notes>/config/sheets.md     # "billing tracker → 1AbC...", one line per sheet you use
-<notes>/config/cal.md        # up to four identifiers — see below
+<AI Brain>/config/sheets.md     # "billing tracker → 1AbC...", one line per sheet you use
+<AI Brain>/config/cal.md        # up to four identifiers — see below
 ```
 
 `cal.md` holds up to four `key: value` lines, and each one is what a guard below checks a write
@@ -1293,7 +1736,7 @@ and none of this applies — nothing here can reach that service at all, guarded
 
 | Scope | What connecting it lets the agent do | What is refused, always |
 |---|---|---|
-| **Calendar** | Read any calendar you can see (events, free/busy). Write ONLY to the one calendar named `agent_calendar` in `<notes>/config/cal.md`. | Every other write — to `primary`, to any other calendar, or anywhere at all if `agent_calendar` is not set. `guard_calendar_writes.sh` is default-deny: it recognises a fixed list of READ verbs and refuses every write, including one it has never seen spelled that way before. |
+| **Calendar** | Read any calendar you can see (events, free/busy). Write ONLY to the one calendar named `agent_calendar` in `<AI Brain>/config/cal.md`. | Every other write — to `primary`, to any other calendar, or anywhere at all if `agent_calendar` is not set. `guard_calendar_writes.sh` is default-deny: it recognises a fixed list of READ verbs and refuses every write, including one it has never seen spelled that way before. |
 | **Tasks** | Read any task list. Write anywhere EXCEPT the list named `goals_tasklist`. Inside that one list, only subtasks under `daily_parent_task` — the day's plan — may be written. | Deleting or clearing anything on `goals_tasklist`, ever — no confirm path exists for that one, because Google Tasks keeps no version history and a deleted task is simply gone. `guard_tasks_writes.sh` decides with a real parser (`shlex` tokenizing, `json.loads` on the body), not a text match — the text-match version it replaced had seventeen working bypasses found across two rounds of adversarial testing on this exact guard. |
 | **Sheets** | Read any spreadsheet. Write to one, but only after this session has read that sheet's own `_LLM_GUIDE` tab (once per sheet, good for twelve hours) — every sheet this system builds carries one. | A destructive op — clear, delete, mass-overwrite — or a structural one — adding/removing tabs, columns, formatting — without an in-the-moment human "yes" typed as `LIFEHACK_SHEET_CONFIRM=1` in front of the command; the agent is expected to ask first, never to add that itself. Separately, **any** write that would land on a cell holding a formula or a 🔒 mark is refused outright, confirm-flag or not, on any sheet the account can reach at all — appending a new row is always fine, since it never overwrites an existing cell. |
 | **Gmail** | Read subjects, senders and dates freely. Read a message BODY only through the sanitizer (a raw body pull is blocked the same way a raw web page is). Move a label — file, archive, mark. **Nothing here composes or sends mail; that capability does not exist anywhere in this package.** | Deleting, batch-deleting, or trashing a message or thread — outright, unconditionally, no confirm path at all. `guard_gmail_destructive.sh` blocks the verb regardless of anything else true about the command. If mail genuinely needs to go, that happens in the Gmail UI, by you, where you can see what is about to disappear. |
@@ -1412,7 +1855,7 @@ you actually use `/ship`.
 cd "$(git rev-parse --show-toplevel)" && python3 system/shipping-lane/identity_rules.py --write-example
 ```
 
-**Say what that did, in one sentence:** it wrote a starter file at `<notes>/config/ship-identity.md`
+**Say what that did, in one sentence:** it wrote a starter file at `<AI Brain>/config/ship-identity.md`
 — inside their own AI Brain, never inside this repository. Then open that file and swap the
 example names in it for your own, one per line.
 
