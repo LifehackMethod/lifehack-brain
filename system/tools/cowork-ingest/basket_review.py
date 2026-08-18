@@ -25,7 +25,7 @@ Subcommands:
               [--wmb <wmb_commit.py>] [--ledger L]            # batch-apply D to the whole basket
               D ∈ {declined, pointer-only, deferred, deep-dive}
 """
-import argparse, json, os, subprocess, sys
+import argparse, json, os, subprocess, sys, textwrap
 from collections import defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -86,10 +86,20 @@ def cmd_summary(a):
         emoji = pipeline._basket_emoji(subj)
         pretty = subj.replace("-", " ").title()
         samples = ", ".join(title_of(f) for f in files[:3])
-        row = f"  {i:>2}  {emoji} {pretty:<12} ({len(files):>3})  — {samples}"
-        if len(row) > pipeline._DW - 2:
-            row = row[:pipeline._DW - 3].rstrip() + "…"
-        screen_rows.append(row)
+        # ⛔ THE SAMPLES ARE REFLOWED ACROSS LINES, NEVER TRUNCATED. (Fixed 2026-08-16, issue #23,
+        # mirroring scan_review.py's 2026-08-05 fix and conclusions_review.py's 2026-08-06 one — same
+        # helper, same style.) This used to join all 3 sample titles and THEN hard-clip the whole row to
+        # `_DW - 2` with `row[:_DW-3] + "…"` — titles #2 and #3 never rendered even though the code
+        # deliberately built all three. That is exactly the rubber-stamp defect the sibling screens were
+        # fixed for: the human rules on a pile having seen a name-and-a-count plus one fragment, not the
+        # three examples the tool went to the trouble of assembling. Reflowing keeps every title; it only
+        # changes where the line breaks.
+        prefix = f"  {i:>2}  {emoji} {pretty:<12} ({len(files):>3})  — "
+        body_w = max(24, pipeline._DW - len(prefix) - 2)
+        wrapped = textwrap.wrap(samples, width=body_w) or [""]
+        screen_rows.append(f"{prefix}{wrapped[0]}")
+        for cont in wrapped[1:]:
+            screen_rows.append(f"{' ' * len(prefix)}{cont}")
 
     print(pipeline.compose_screen(screen_rows, pipeline.compose_action_bar("sort"),
                                   header_lines=[pipeline.compose_topbar(m)],

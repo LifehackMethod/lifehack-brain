@@ -73,14 +73,21 @@ grouped, safest-first** list — the tool prints the faithful rows; Vera frames 
 
 - **One row per item, numbered.** `N. <plain title> — <Vera's best-guess: MINE/TOSS/SAVE> · <one-line why>`
 - **Group by proposed action:** MINE/SAVE → TOSS → the rare PROMOTE-TO-PERMANENT (canon-candidate) last,
-  and visibly flagged as needing the second key. (Verbs come from the ONE map — `pipeline.verb_label` — never "keep".)
+  and visibly flagged ⚠ as writing DIRECTLY into `canon/` — the ordinary SAVE is the only yes it needs, no
+  second key (⚖ REVERSED 2026-08-11, see below). (Verbs come from the ONE map — `pipeline.verb_label` —
+  never "keep".)
 - **Answerable by number:** the human replies "1 yes, 2 change to X, 3 skip" — each row self-contained enough
   to answer without re-quoting.
 - **NOT harvested (cut as overhead the human-approval already covers):** the vet 3-lens panel, the cross-run
   ledger, the per-run auto-place cap, the dep-gate machinery. KISS — one person, one approval.
 
-## The two-key canon gate (both skills honor it)
-A plain "yes" from the human unlocks **records** (dated notes). A **separate, explicit** "yes, save this as a
-permanent note" is required to unlock each **canon-candidate** — and even then it writes to
-`records/proposals/` (`vetted:false`), never to `canon/`. Two different keys; the permanent one is never
-implied by the ordinary one.
+## Canon is written directly (both skills honor it)
+⚖ REVERSED 2026-08-11 (`authority: user`, full ruling in `phases/4-place.md`) — this section used to
+describe a two-key gate: a plain "yes" unlocked records, and a **separate, explicit** "yes, save this as a
+permanent note" was required to unlock each canon-candidate, which even then only wrote to
+`records/proposals/` (`vetted:false`), never to `canon/`. That gate is retired: a student ran the whole
+skill, approved 54 items one at a time, and got five empty canon files — "the pipeline walks you to a door
+and the door has no handle on either side." **There is now ONE key.** The human's ordinary yes at CONFIRM
+authorizes everything on the screen, records and canon-candidates alike; PLACE then writes each
+canon-candidate straight into `canon/`, at whichever altitude the closed-set test decides. The ⚠ flag on a
+canon row is informational — it says "this one becomes permanent" — it does not gate a second approval.

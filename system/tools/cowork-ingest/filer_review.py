@@ -6,8 +6,9 @@ The filer's CONFIRM step used to be hand-assembled prose (`N. title — desk/fol
 CANON-CANDIDATE · why`), the exact drift the design kills. This renders that filing plan through the ONE
 shared renderer (pipeline.compose_screen) so it matches every other screen: title + overall %-bar → one
 SAVE line per item → the ONE action last. FILE is the one screen where SAVE is the honest verb (SAVE / TOSS).
-Records + pointers + dated items first; canon-CANDIDATES last, each flagged ⚠ as needing the SEPARATE
-permanent key. A `dated` item is a real fourth kind (F9.2.2, 2026-08-08) — a dated-but-valuable finding
+Records + pointers + dated items first; canon-CANDIDATES last, each flagged ⚠ as writing DIRECTLY into
+canon/ (⚖ REVERSED 2026-08-11 — no more separate "yes, save as permanent"; the ordinary SAVE covers it).
+A `dated` item is a real fourth kind (F9.2.2, 2026-08-08) — a dated-but-valuable finding
 that gets AUTHORED with its date, never silently stubbed like a plain `record` (a record gets a STUB FILE;
 its original is never moved, never rewritten).
 
@@ -34,8 +35,9 @@ def cmd_show(a):
     if not plan:
         print("Nothing to file — the plan is empty.")
         return 0
-    # records/pointers/dated first, canon-candidates LAST (they need the separate permanent key) — an
-    # explicit rank map (not a canon-only boolean) so a future kind has one place to slot in, not a guess.
+    # records/pointers/dated first, canon-candidates LAST (they write directly into canon/, so they're
+    # flagged distinctly even though one ordinary SAVE covers them too) — an explicit rank map (not a
+    # canon-only boolean) so a future kind has one place to slot in, not a guess.
     _KIND_RANK = {"record": 0, "pointer": 0, "dated": 0, "canon": 1}
     ordered = sorted(enumerate(plan), key=lambda ix: _KIND_RANK.get(ix[1].get("kind"), 0))
     header = [pipeline.compose_topbar(pipeline.load(a.map))] if a.map else None
@@ -48,7 +50,7 @@ def cmd_show(a):
         kind = it.get("kind") or "record"
         why = (it.get("why") or "").strip()
         if kind == "canon":
-            row = f'  {i:>2}  SAVE ⚠ "{title}" → a permanent note (needs your 2nd yes)'
+            row = f'  {i:>2}  SAVE ⚠ "{title}" → canon/ (permanent, written directly)'
         elif kind == "dated":
             date = (it.get("date") or "?").strip()
             tail = f" — {why}" if why else ""
@@ -60,7 +62,7 @@ def cmd_show(a):
             row = row[:pipeline._DW - 3].rstrip() + "…"
         rows.append(row)
 
-    hint = 'the ⚠ ones need a separate "yes, save as permanent"' if n_canon else None
+    hint = 'the ⚠ ones write straight into canon/ — your SAVE above is the only yes needed' if n_canon else None
     bar = pipeline.compose_action_bar("file", change_hint=hint)
     print(pipeline.compose_screen(rows, bar, header_lines=header,
                                   title="📁  FILE — where your notes will live",

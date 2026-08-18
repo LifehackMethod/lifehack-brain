@@ -471,8 +471,9 @@ PHASE_FRAMES = {
           "findings, save NOTHING to a desk; no slicing, no side quests; the human is the 2nd pass."),
     "4": ("FILE", "the corpus is fully mined — now organize EVERYTHING into desks/folders and file it, "
           "human-approved. Propose desks, then sub-folders only when a desk earns them; records → "
-          "records/{type}/, canon-CANDIDATES → records/proposals/ (never canon/). MAIN SESSION ONLY. "
-          "Nothing writes without the human's yes; a permanent note needs the second key."),
+          "records/{type}/, canon-CANDIDATES → canon/ DIRECTLY, at the altitude the closed-set test "
+          "decides. MAIN SESSION ONLY. Nothing writes without the human's ordinary yes at CONFIRM — "
+          "there is no separate second key."),
 }
 
 
@@ -1016,10 +1017,15 @@ def set_corpus_inherit_offered(m, now_iso=None):
 # ⛔ NEVER adds a slug to the vocab file. An unknown slug REFUSES — the archivist proposes new slugs and
 # the author approves (topic-vocab.md's own write-authority rule); code only enforces membership, it never
 # grows the set.
-# Accepts BOTH `- \`slug\`` and a plain `- slug`. The backtick-only form silently parsed a
-# visibly-populated vocab file as zero entries — and this file is written by the person, not
-# shipped, so plain markdown bullets are at least as likely as fenced ones.
-_TOPIC_SLUG_RE = re.compile(r"^- `?([a-z0-9][a-z0-9-]*)`?\s*$", re.MULTILINE)
+# ⛔ NO PARSING REGEX HERE — this module never parsed a vocab file itself; `load_topic_vocab()` below
+# delegates the read to `folder_scaffold.load_vocab()` (see the "ONE RESOLVER, IMPORTED" note just
+# below). An earlier revision defined a second, unreferenced `_TOPIC_SLUG_RE` constant at this exact
+# spot, corrected to accept a plain `- slug` bullet in ADDITION to the backtick-fenced form — but
+# nothing ever called it, so `folder_scaffold.SLUG_RE` stayed backtick-only and a visibly-populated
+# plain-bullet vocab file still parsed as zero entries (issue #25). Deleted rather than wired: this
+# file already has a resolver contract that says parsing belongs to `folder_scaffold` alone, and a
+# second copy — live or dead — is exactly the drift that contract exists to prevent. The fix lives at
+# `folder_scaffold.py`'s `SLUG_RE`, the one that actually runs.
 
 
 # ⚖⭐ ONE RESOLVER, IMPORTED — NOT A SECOND COPY (2026-08-11). This gate used to look ONLY in the repo
@@ -2970,9 +2976,29 @@ def main():
             sys.exit(1)
         if not ok:
             resolved, _tried = resolve_topic_vocab(a.vocab_path)
-            print(f"REFUSED topic-check: topic slug(s) not in the closed vocabulary ({resolved}): {bad}. "
-                  f"{len(vocab)} slug(s) known. Use an existing slug, or add it there FIRST — this tool "
-                  f"never invents one.")
+            if len(vocab) == 0:
+                # ⛔ "0 known" is ambiguous on its own — it reads the same whether the file is genuinely
+                # empty or has content this parser couldn't recognise. Distinguish them (issue #25):
+                # a file with no `- ` bullet lines at all is empty; one that has SOME non-blank,
+                # non-heading content but still parsed to zero slugs is a format problem, not an empty file.
+                try:
+                    with open(resolved) as f:
+                        has_content = any(
+                            ln.strip() and not ln.strip().startswith("#") for ln in f
+                        )
+                except OSError:
+                    has_content = False
+                if has_content:
+                    print(f"REFUSED topic-check: {resolved} has content but 0 slug(s) parsed from it — "
+                          f"this looks like a FORMAT problem, not an empty file. Expected one bullet per "
+                          f"line, either backtick-fenced (- `slug`) or plain (- slug). Requested: {bad}.")
+                else:
+                    print(f"REFUSED topic-check: {resolved} is empty — 0 slug(s) known. Requested: {bad}. "
+                          f"Add one bullet per subject, e.g. `- health`.")
+            else:
+                print(f"REFUSED topic-check: topic slug(s) not in the closed vocabulary ({resolved}): {bad}. "
+                      f"{len(vocab)} slug(s) known. Use an existing slug, or add it there FIRST — this tool "
+                      f"never invents one.")
             sys.exit(1)
         print(f"OK topic-check: {a.topics} — all in the closed vocabulary.")
     elif a.cmd == "corpus-inherit-offered":

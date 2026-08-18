@@ -77,7 +77,10 @@ VOCAB_PATH = os.path.join(_DR, "memory", "topic-vocab.md") if _DR else None
 REPO_VOCAB_PATH = os.path.join(_REPO, "memory", "topic-vocab.md")
 LEGACY_VOCAB_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                   "..", "..", "topic-vocab.md"))
-SLUG_RE = re.compile(r"^- `([a-z0-9-]+)`")
+# Accepts BOTH `- \`slug\`` and a plain `- slug`. The backtick-only form silently parsed a
+# visibly-populated vocab file as zero entries — and this file is written by the person, not
+# shipped, so plain markdown bullets are at least as likely as fenced ones (issue #25).
+SLUG_RE = re.compile(r"^- `?([a-z0-9][a-z0-9-]*)`?\s*$")
 
 
 def resolve_vocab(explicit=None):
