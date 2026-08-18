@@ -97,7 +97,9 @@ WHOLE-TREE BASELINE MODE -- WHY IT EXISTS, SEPARATE FROM THE PER-PR GATE ABOVE
     - a third-party NAME heuristic (a capitalised name-shaped token sharing a line with a
       personal/relationship word -- "wife", "client", "tenant", etc.) -- see NAME_SHAPE_RE.
     - a DOLLAR-AMOUNT-NEAR-BILLING-WORD heuristic -- a specific-decimal dollar figure
-      sharing a line with "tenant"/"billing"/"client"/"invoice" -- see DOLLAR_AMOUNT_RE.
+      sharing a line with a money-owed/money-settled word (billed, unbilled, receivable,
+      arrears, retainer, payment, balance, ...) -- see BILLING_TRIGGER_STEMS, which also
+      records which candidate words were REJECTED and on what measurement.
   WARNING findings are reported and written to the JSON report but NEVER change the exit
   code -- a hardcoded regex cannot enumerate every third party's name or every dollar
   figure that matters, so these are heuristics for a HUMAN to triage, not a gate. Flagging
@@ -190,6 +192,22 @@ GENERIC_CONTENT_PATTERNS = [
     {
         "id": "home-path-generic",
         "source": None,
+        # ⚠ AUDITED 2026-08-18 for the bare-prefix weakness that was found in
+        # operator-drive-cloudstorage below. IT DOES NOT HAVE IT, and the reason is the
+        # trailing `+`: it demands at least one account-name character, so the bare prefix,
+        # an angle placeholder, a shell variable and a glob all fail to match. Verified
+        # against all four shapes plus a positive control that still fires.
+        #
+        # ⭐ WHAT IT DOES HAVE, REPORTED AND DELIBERATELY NOT "FIXED": it fires on a WORD
+        # placeholder ("username", "you", "theirname"), because those are indistinguishable
+        # from a real short account name by shape alone. That is arguably correct -- the
+        # remedy is "write ~/ instead", which is the right advice for a placeholder too --
+        # but note the asymmetry it creates: FICTIONAL_FIXTURE_USERNAMES suppresses a known
+        # set of them in whole-tree mode ONLY. check_added_lines() (the per-PR gate) does not
+        # consult that allowlist, so a PR that ADDS one of those fixture paths is BLOCKED
+        # while the identical line already in the tree is not. Left alone on purpose: closing
+        # it means LOOSENING a blocking rule, which is the opposite of the change this pass
+        # was making, and the per-PR strictness has never actually bitten anyone.
         "pattern": r"(?:/Users/|/home/)[A-Za-z0-9._-]+",
         "remedy": (
             "an absolute home-folder path -- the segment right after /Users/ or /home/ "
@@ -202,18 +220,44 @@ GENERIC_CONTENT_PATTERNS = [
     {
         "id": "operator-drive-cloudstorage",
         "source": "path-drive-cloudstorage",
-        # ⚠ THE `[-]` IS DELIBERATE AND LOAD-BEARING -- DO NOT "TIDY" IT TO A BARE `-`.
-        # It is the same regex (a one-member character class), but it means this line does
-        # not match ITSELF. That is what lets .github/ be scanned like every other
-        # directory instead of exempted (see the removed CONTENT_SCAN_EXCLUDE_PREFIX note
-        # further down). test_check_no_internal_leakage.py asserts this file scans clean,
-        # so un-tidying it fails a test rather than mysteriously reddening CI.
-        "pattern": r"CloudStorage/GoogleDrive[-]",
-        "remedy": "a macOS Google Drive mount path -- the segment that follows is a personal account address. Remove it.",
+        # ⭐ TIGHTENED 2026-08-18 -- IT NOW REQUIRES AN ACCOUNT, NOT JUST THE PREFIX.
+        # It used to be the bare prefix `CloudStorage/GoogleDrive` + a dash, and it fired on
+        # two lines of INSTALL.md that contain no account name at all: one sentence of prose
+        # describing what a Drive path looks like, and one line of FUNCTIONAL INSTALLER CODE
+        # that globs `GoogleDrive-*` to find the user's Drive folders. The second cannot be
+        # fixed in the file -- the installer's job IS to match that shape, so it has to
+        # contain it. Both were pure false positives, and a BLOCKING rule that red-lights an
+        # installer for doing its job is a rule that gets deleted.
+        #
+        # ⚠ THE FIX IS STRICTER, NOT LOOSER, AND THAT DISTINCTION IS THE WHOLE POINT. The
+        # rule exists to catch a real Drive account path, so it now demands the thing that
+        # makes it one: an account-shaped token after the dash -- `GoogleDrive-<local>@<domain>`
+        # with a real TLD. A glob (`GoogleDrive-*`), a placeholder (`GoogleDrive-<account>`)
+        # and a bare prefix all stop matching; a genuine mount path still matches. "Contains
+        # this shape" became "contains a real account". Pinned both ways in
+        # test_check_no_internal_leakage.py: a positive control asserts a real-shaped account
+        # path is still caught, and negative controls assert the two INSTALL.md shapes are not.
+        #
+        # The `[-]` character class is kept as belt-and-braces so this line cannot match
+        # itself. It is no longer the thing doing that work -- the `[` opening the account
+        # class already stops a self-match -- but it costs nothing and the self-scan-clean
+        # test below depends on the property, not on which mechanism provides it.
+        "pattern": r"CloudStorage/GoogleDrive[-][A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",
+        "remedy": ("a macOS Google Drive mount path with a real account address in it "
+                   "(~/Library/CloudStorage/...). Replace the account segment with a "
+                   "placeholder, or glob for it at runtime instead of hardcoding it."),
     },
     {
         "id": "operator-drive-account",
         "source": "path-drive-account",
+        # ⚠ AUDITED 2026-08-18 alongside the rule above and DELIBERATELY LEFT ALONE: it never
+        # had the bare-prefix weakness. It has always required an "@" after the dash, so a
+        # glob or a placeholder cannot satisfy it. Left wider than its neighbour on purpose
+        # (no CloudStorage anchor, no TLD required) so it still catches a mount name quoted
+        # anywhere -- in a shell snippet, a log line, a doc -- not only under Library/.
+        # CONSEQUENCE, ACCEPTED: a real macOS mount path now matches BOTH rules and reports
+        # twice. On a BLOCKING rule that is louder, not weaker, and the module already states
+        # that multiple independent findings on one file are all worth surfacing at once.
         "pattern": r"GoogleDrive-[A-Za-z0-9._%+-]+@",
         "remedy": "a Google Drive mount path with a full email address embedded in it. Remove it.",
     },
@@ -233,9 +277,11 @@ GENERIC_CONTENT_PATTERNS = [
 # Fixing the CAUSE (rule 3 is now compiled from an out-of-repo file) left exactly two
 # self-flagging lines in the entire .github/ tree, both on the generic, impersonal
 # `operator-drive-cloudstorage` shape: its own "pattern" field, and a comment that quoted
-# it. The `[-]` character class above kills the first; the comment was reworded. Measured,
-# not assumed -- with the prefix gone, this directory scans with zero findings in both
-# modes. So the exemption bought nothing and cost everything, and it is gone.
+# it. Both are handled above -- that rule now requires a real account address after the
+# dash, so neither a quoted prefix nor a pattern string can satisfy it (the `[-]` class is
+# kept on top of that as belt-and-braces). The comment was reworded. Measured, not assumed
+# -- with the prefix gone, this directory scans with zero findings in both modes. So the
+# exemption bought nothing and cost everything, and it is gone.
 
 
 # ------------------------------------------------------- rule 3: OPERATOR IDENTITY (runtime)
@@ -403,22 +449,26 @@ FICTIONAL_FIXTURE_PHRASES = ("whitfield contracting",)
 FICTIONAL_FIXTURE_USERNAMES = frozenset({"wren", "x", "theirname", "woakley"})
 
 # --------------------------------------------------------- self-reference exclusions
-# ⭐ RE-EXAMINED 2026-08-18 (issue #59) ALONGSIDE THE .github/ EXEMPTION, WITH THE SAME
-# TEST, AND KEPT -- because unlike that one, these two still have something to exclude.
+# ⭐ RE-EXAMINED 2026-08-18 (issue #59) ALONGSIDE THE .github/ EXEMPTION, AND KEPT.
 # Measured with rule 3 compiled from the real out-of-repo identity file: ZERO identity-term
-# hits in either path. Neither is hiding a person. What each still trips is the generic,
-# impersonal cloud-drive shape, on lines whose declared job is to carry it:
-#   - system/shipping-lane/refuse-rules.json -- 1 line, `operator-drive-cloudstorage`. It is
-#     the rule-file this check's generic tier documents itself against (see each rule's
-#     "source"), so it necessarily contains the same pattern text as DOCUMENTATION of the
-#     rule, not an occurrence of the thing the rule catches. Unlike this file, it is
-#     consumed by four other tools (scrub.py, push_gate.py, verify_rules.py, canon.py) with
-#     their own tests pinned to it, so the `[-]` trick used above is not free here.
-#   - system/shipping-lane/fixtures/ -- 4 lines. refuse-fixture.md's own header: "THIS FILE
-#     EXISTS TO BE CAUGHT. It is deliberately full of the exact shapes the shipping lane
-#     refuses ... it is never in a shipping manifest." A directory whose declared job is to
-#     be a positive test fixture FOR A DIFFERENT SCANNER (verify_rules.py) is not a leak
-#     when THIS scanner rediscovers it; it is that scanner working.
+# hits in either path. Neither is hiding a person. What they trip is the generic, impersonal
+# cloud-drive shape, on lines whose declared job is to carry it:
+#   - system/shipping-lane/fixtures/ -- 1 line, `operator-drive-account`. refuse-fixture.md's
+#     own header: "THIS FILE EXISTS TO BE CAUGHT. It is deliberately full of the exact shapes
+#     the shipping lane refuses ... it is never in a shipping manifest." A directory whose
+#     declared job is to be a positive test fixture FOR A DIFFERENT SCANNER (verify_rules.py)
+#     is not a leak when THIS scanner rediscovers it; it is that scanner working.
+#   - system/shipping-lane/refuse-rules.json -- ⚠ RE-MEASURED AFTER THE 2026-08-18 TIGHTENING
+#     OF operator-drive-cloudstorage: it now produces ZERO findings, so this entry is no
+#     longer load-bearing. (Before the tightening it tripped 1 line; the count of "4 lines"
+#     this comment used to claim for the fixtures directory was measured under the old,
+#     looser rule and is likewise superseded.) KEPT ANYWAY, and this is a judgement call
+#     stated plainly rather than a fact: that file's whole job is to hold leak SHAPES as
+#     data, so the next rule anyone adds to it may legitimately carry an account-shaped
+#     example, and CI reddening on the shipping lane documenting itself is a false positive
+#     waiting to happen. It is also consumed by four other tools (scrub.py, push_gate.py,
+#     verify_rules.py, canon.py) with their own tests pinned to it, so it is not this
+#     check's to reshape. Delete this entry if you would rather find out.
 # ⚠ Deliberately two named paths, not a directory-wide exclusion of system/shipping-lane/ --
 # scrub.py, canon.py, identity_rules.py etc. in that same directory are real code where a
 # genuine leak would be exactly as serious as anywhere else in the tree, and stay scanned.
@@ -560,9 +610,76 @@ _LETTER_WORD_RE = re.compile(r"[A-Za-z]+")
 # "$4,250.00", never a round "$500" that is far more likely to be an example/estimate)
 # sharing a line with a billing-context word.
 DOLLAR_AMOUNT_RE = re.compile(r"\$[0-9][0-9,]*\.[0-9]{2}\b")
-BILLING_TRIGGER_WORDS = ("tenant", "billing", "client", "invoice")
+
+# ⭐ WHY THESE ARE STEMS AND NOT WORDS -- THE 2026-08-18 MISS, AND ITS ACTUAL CAUSE.
+# The list here was ("tenant", "billing", "client", "invoice"). system/tools/emit_status.py
+# carried a real desk's real receivables total in a shipped docstring, on a line whose
+# billing word was "unbilled" -- which contains "billed", not "billing". The rule read that
+# line and reported the file clean. Adding "unbilled" fixes that one line and nothing else.
+#
+# The CAUSE was not a missing word, it was MORPHOLOGY: "bill", "billed", "billing",
+# "billable" and "unbilled" are one concept, and a flat word list has to enumerate every
+# inflection of every concept or lose to the one it forgot. (It is also the second
+# list-shaped rule in this file to miss for a near-miss reason -- see PERSONAL_TRIGGER_WORDS.)
+# So each entry below is a STEM PLUS ITS BOUNDED SUFFIXES, which kills the whole class
+# instead of one instance. The suffixes are explicit, never ".*" -- an open suffix would make
+# "bill" match "billion"/"billionaire", and the outer lookarounds cannot save it.
+#
+# ⚠ HOW FAR TO WIDEN IS A MEASURED QUESTION, NOT A TASTE ONE, AND IT WAS MEASURED.
+# The whole tracked tree contains SIX lines carrying a specific-decimal figure at all (the
+# DOLLAR_AMOUNT_RE half is already the narrow half). Five of the six are teaching examples
+# about MODEL SPEND -- their vocabulary is "cost", "ratio", "projected", "realized",
+# "estimate". That is the shape of this product's honest dollar traffic, and it is a
+# different vocabulary from a receivables line. Hence the split below:
+#   ADDED -- money OWED or SETTLED between two parties. Near a specific-decimal figure this
+#            is a ledger line, not prose. Marginal false positives on the current tree: 0.
+#   REJECTED -- "rate", "fee(s)", "price", "cost", "spend", "budget", "estimate", "quote",
+#            "statement", "account", "credit", "debit", "paid", "due", "receipt". These are
+#            either (a) the measured vocabulary of this repo's own model-spend examples
+#            ("cost" and "estimate" each collide with a REAL line in the tree today -- adding
+#            "estimate" flags this file's own comment two lines below), or (b) ordinary
+#            technical English ("error rate", "if statement", "API client account",
+#            "paid tier", "due to"). A gate that flags every priced example gets ignored, and
+#            an ignored gate is worse than the miss it was widened to prevent.
+#   NOT ADDED, LOW YIELD -- "salary", "wage", "payroll", "revenue", "income", "expense",
+#            "subtotal", "reimbursement". Clean words, but a real line carrying any of them
+#            almost always also says payment/balance/deposit/owed, which are already here.
+BILLING_TRIGGER_STEMS = (
+    # --- money OWED: what an unpaid ledger line says ---
+    r"bill(?:ed|ing|able|s)?",          # bill / billed / billing / billable / bills
+    r"unbill(?:ed|able)",               # ⭐ the miss that prompted this -- needs its own
+                                        # entry, because the "un" prefix is alphanumeric and
+                                        # the left-hand lookaround refuses to fire inside it
+    r"invoic(?:e|ed|es|ing)",
+    r"receivable(?:s)?",
+    r"payable(?:s)?",
+    r"retainer(?:s)?",
+    r"arrears",
+    r"overdue",
+    r"past[ -]due",
+    r"outstanding",
+    r"unpaid",
+    r"owe(?:d|s)?",                     # owe / owed / owes -- NOT "owner" (suffix is bounded)
+    r"owing",
+    r"balance(?:s)?",                   # NOT "balanced"/"balancing" -- ordinary prose
+    # --- money SETTLED: what a paid ledger line says ---
+    r"remittance",
+    r"payment(?:s)?",
+    r"payout(?:s)?",
+    r"refund(?:ed|s)?",
+    r"deposit(?:ed|s)?",
+    r"ledger(?:s)?",
+    # --- income side ---
+    r"earnings",
+    r"commission(?:s|ed)?",
+    # --- who the money is with (both carried over from the original list) ---
+    r"client(?:s)?",
+    r"tenant(?:s)?",
+)
+# Kept under the old name so nothing downstream breaks; it is now stems, not plain words.
+BILLING_TRIGGER_WORDS = BILLING_TRIGGER_STEMS
 BILLING_TRIGGER_RE = re.compile(
-    r"(?i)(?<![A-Za-z0-9])(" + "|".join(BILLING_TRIGGER_WORDS) + r")(?![A-Za-z0-9])")
+    r"(?i)(?<![A-Za-z0-9])(" + "|".join(BILLING_TRIGGER_STEMS) + r")(?![A-Za-z0-9])")
 
 # Common capitalised English words / doc vocabulary / product terms that are NAME-shaped by
 # the regex above but are not names. Kept short and reviewable on purpose (see the module's
@@ -736,8 +853,8 @@ def scan_whole_tree(scan_root_paths=None):
                     "severity": WARNING, "path": path, "line": lineno,
                     "rule_id": "dollar-amount-near-billing-word",
                     "remedy": (
-                        "a specific-decimal dollar figure shares this line with a billing-"
-                        "context word (tenant/billing/client/invoice). If this is a real "
+                        "a specific-decimal dollar figure shares this line with a "
+                        "billing-context word (see BILLING_TRIGGER_STEMS). If this is a real "
                         "figure from a real dispute/invoice/ledger, remove it or round it "
                         "into a non-identifying example; if it is a worked example, say so "
                         "explicitly in the surrounding text."),

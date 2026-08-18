@@ -214,6 +214,128 @@ def main():
             if os.path.exists(planted_abs):
                 os.remove(planted_abs)
 
+        # ---------------------------------- 3b. the cloud-drive rule: strict, and still armed
+        #
+        # ⚠ THE POSITIVE CONTROL IS THE POINT OF THIS BLOCK. The rule was tightened from the
+        # bare prefix to "requires a real account address", to stop it red-lighting two
+        # INSTALL.md lines that contain no account at all -- one of them functional installer
+        # code that globs for Drive folders and therefore CANNOT not contain the shape. A
+        # tightened rule that quietly stopped catching real mount paths would be far worse
+        # than the false positives it removed, so the catch is asserted before the misses are.
+        #
+        # ⭐ EVERY FIXTURE HERE IS ASSEMBLED FROM PIECES, never written as one literal --
+        # same reason as leak3 above. A positive fixture for a cloud-drive rule, written
+        # whole, makes THIS FILE trip that rule the moment it is committed.
+        print("\nCLOUD-DRIVE RULE -- tightened to an account, not a prefix")
+        DRIVE = "GoogleDrive-"
+        ACCOUNT = "a.person" + "@" + "example.com"
+
+        def scan_line(text, label):
+            p = os.path.join(td, "drive_probe.md")
+            with open(p, "w", encoding="utf-8") as fh:
+                fh.write(text + "\n")
+            return run_scanner(["--identity", idf, "--scan-file", p,
+                                "--as-path", "docs/{}.md".format(label)])
+
+        rc, out = scan_line('cd "$HOME/Library/CloudStorage/' + DRIVE + ACCOUNT + '/My Drive"',
+                            "pos_mount")
+        report("POSITIVE CONTROL: a real-shaped Drive account path is STILL caught",
+               rc == 1 and "operator-drive-cloudstorage" in out, "exit {}".format(rc))
+
+        rc, out = scan_line("cd " + DRIVE + ACCOUNT, "pos_bare_mount")
+        report("POSITIVE CONTROL: a mount name outside Library/ is caught by the sibling rule",
+               rc == 1 and "operator-drive-account" in out, "exit {}".format(rc))
+
+        # The two shapes that were false-positiving, reproduced structurally.
+        rc, out = scan_line("paths (`~/Library/CloudStorage/" + DRIVE + "*`) that only exist "
+                            "on a Mac, and no Windows equivalent", "neg_prose")
+        report("the INSTALL.md PROSE shape (a glob, no account) no longer fires", rc == 0,
+               "exit {}: {}".format(rc, out.strip()[:300]))
+
+        rc, out = scan_line('accounts = sorted(glob.glob(os.path.join(home, "Library/'
+                            'CloudStorage/' + DRIVE + '*")))', "neg_globcode")
+        report("the INSTALL.md INSTALLER-CODE shape (glob.glob) no longer fires", rc == 0,
+               "exit {}: {}".format(rc, out.strip()[:300]))
+
+        rc, out = scan_line("acct = os.path.basename(p).replace(" + repr(DRIVE) + ", '', 1)",
+                            "neg_replace")
+        report("a bare prefix in a .replace() call no longer fires", rc == 0,
+               "exit {}: {}".format(rc, out.strip()[:300]))
+
+        rc, out = scan_line("mount folders are named " + DRIVE + "<account>", "neg_placeholder")
+        report("an angle-bracket placeholder no longer fires", rc == 0, "exit {}".format(rc))
+
+        # the sibling rules, audited in the same pass -- neither may regress into a prefix rule
+        rc, out = scan_line("cd $HOME/Library/CloudStorage/OneDrive-Personal/x", "neg_onedrive")
+        report("a non-Google CloudStorage mount does not fire", rc == 0, "exit {}".format(rc))
+
+        for shape, label in (("/Users/", "prefix"), ("/Users/" + "<name>/x", "placeholder"),
+                             ("/Users/" + "$USER/x", "shellvar"), ("/Users/" + "*/Library", "glob")):
+            rc, out = scan_line("cd " + shape, "neg_home_" + label)
+            report("home-path-generic does not fire on a {} alone".format(label), rc == 0,
+                   "exit {}".format(rc))
+
+        # ---------------------------------- 3c. the billing-word heuristic: stems, not words
+        #
+        # WHY: system/tools/emit_status.py shipped a real desk's real receivables total in a
+        # docstring, on a line whose billing word was "unbilled". The trigger list held
+        # "billing", the word-boundary match never fired on "unbilled", and the file scanned
+        # CLEAN with the figure in it. The list is now stems + bounded suffixes, so the whole
+        # inflection class is covered rather than the one word that was missed.
+        #
+        # This is a WARNING-tier heuristic: it must never change the exit code, so these
+        # assertions read the finding list in-process rather than the process's return code.
+        print("\nBILLING HEURISTIC -- the near-miss that made a real figure read as clean")
+        probe_rel = "__billing_probe_test__.md"
+        probe_abs = os.path.join(REPO_ROOT, probe_rel)
+        AMOUNT = "$" + "9,876.54"     # assembled: a literal here would flag this file
+
+        def billing_hits(line):
+            with open(probe_abs, "w", encoding="utf-8") as fh:
+                fh.write(line + "\n")
+            cwd = os.getcwd()
+            os.chdir(REPO_ROOT)
+            try:
+                chk.install_identity_patterns(idf)
+                res = chk.scan_whole_tree(scan_root_paths=[probe_rel])
+            finally:
+                os.chdir(cwd)
+            return [w for w in res["warnings"]
+                    if w["rule_id"] == "dollar-amount-near-billing-word"], res
+
+        try:
+            hits, _ = billing_hits("summary=12 unbilled (" + AMOUNT + ")")
+            report("THE REGRESSION CASE: 'unbilled' + a decimal figure is now FLAGGED",
+                   len(hits) == 1, "{} hit(s)".format(len(hits)))
+
+            for word in ("billed", "billable", "receivable", "payable", "retainer", "arrears",
+                         "overdue", "outstanding", "unpaid", "owed", "owing", "remittance",
+                         "payment", "payout", "refund", "deposit", "ledger", "earnings",
+                         "commission", "invoiced", "balance", "client", "tenant"):
+                hits, _ = billing_hits("the {} came to {}".format(word, AMOUNT))
+                report("trigger stem covers {!r}".format(word), len(hits) == 1)
+
+            # ⚠ THE OTHER HALF OF THE TRADEOFF. Widening a trigger list is only safe if it
+            # still refuses ordinary prose -- a rule that flags every priced example gets
+            # ignored, and an ignored rule is worse than the miss it was widened to prevent.
+            # These are the words that were REJECTED, each with a real sentence this repo
+            # could plausibly ship. If one of these ever starts flagging, the list went too far.
+            for word in ("rate", "fee", "price", "cost", "spend", "budget", "estimate",
+                         "quote", "statement", "account", "credit", "paid", "billion",
+                         "billionaire", "owner", "balanced"):
+                hits, _ = billing_hits("the projected {} was {} per run".format(word, AMOUNT))
+                report("REJECTED/near-miss word {!r} does NOT flag".format(word),
+                       len(hits) == 0, "{} hit(s)".format(len(hits)))
+
+            # the dollar half is the narrow half and must stay narrow: no cents, no finding.
+            hits, _ = billing_hits("summary=12 unbilled ($3,600)")
+            report("a ROUND figure near a billing word still does NOT flag "
+                   "(the fix applied to emit_status.py's example)", len(hits) == 0,
+                   "{} hit(s)".format(len(hits)))
+        finally:
+            if os.path.exists(probe_abs):
+                os.remove(probe_abs)
+
         # ------------------------------------------------- 4. the scanner self-scans clean
         print("\nSELF-SCAN -- what makes deleting the .github/ exemption safe")
         rc, out = run_scanner(["--identity", idf, "--scan-file", SCANNER,

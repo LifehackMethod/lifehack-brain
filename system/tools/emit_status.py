@@ -25,11 +25,23 @@ cost." Stdlib only.
 USAGE (from a desk's *-health.py emitter — replace the hand-rolled json.dump):
     from emit_status import emit_status   # or: sys.path-insert system/tools
     emit_status(
-        f"{STATUS}/clair.json", desk="clair", pulse_job="clair-health", stale_after_s=21600,
-        status="NEEDS_REVIEW", summary="18 unbilled ($1,042.50)",
-        payload={"work_count": 18, "work_noun": "sessions", "kpis": [...], "items": [...]},
+        f"{STATUS}/example.json", desk="example", pulse_job="example-health", stale_after_s=21600,
+        status="NEEDS_REVIEW", summary="12 unbilled ($3,600)",
+        payload={"work_count": 12, "work_noun": "sessions", "kpis": [...], "items": [...]},
         required_payload=("work_count", "work_noun"),   # the fields THIS tile promises its renderer
     )
+
+⛔ EVERY NUMBER AND NAME IN THAT EXAMPLE IS INVENTED — "example", 12, $3,600. It is not
+captured output, and nothing here should ever be. Until 2026-08-18 it WAS: this block was
+pasted from one real run of a real desk, and it shipped that desk's name, its real count of
+unbilled work and its real receivables total into a public repo. The example teaches exactly
+the same thing with made-up values, because what it demonstrates is the CALL SHAPE — which
+argument goes where — and the call shape is unchanged. If you update this example, invent the
+numbers; do not paste a run. (Round on purpose, too: a specific-decimal figure is the shape a
+real ledger line takes, so the repo's leak scanner flags one near a billing word — see
+`.github/scripts/check_no_internal_leakage.py`, rule `dollar-amount-near-billing-word`, which
+was widened in the same change because "unbilled" does not contain "billing" and the original
+trigger list read this very line as clean.)
 
 The `required_payload` tuple is the tile's CONTRACT with its renderer: list the fields the dashboard
 card binds. If the emitter ever stops producing one, this raises at emit time instead of the card
