@@ -147,7 +147,12 @@ def extract_and_sanitize(path: str, desk: str = "root") -> str:
                         body_parts.append(cell_text)
 
     body_raw = "\n".join(body_parts)
-    body_clean = sanitize(body_raw, max_len=NO_CAP)
+    # DOCUMENT mode (issue #77 / D4). body_parts is one entry per paragraph and per table
+    # cell, joined on "\n" — that newline IS the paragraph/row boundary, and FIELD mode
+    # deleted every one of them, fusing the whole document into a single line. python-docx
+    # returns run text, never markup, so a `<…>` here is document content.
+    # Metadata above stays FIELD mode — those are one-line core properties.
+    body_clean = sanitize(body_raw, max_len=NO_CAP, preserve_structure=True)
 
     sections = []
     if meta_text:

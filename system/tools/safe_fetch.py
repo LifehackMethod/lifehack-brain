@@ -311,11 +311,20 @@ def fetch_and_sanitize(url: str, desk: str = "root") -> str:
     visible_text = parser.get_text()
     # Fall back to raw text if parser extracted nothing (e.g. pure plain text with
     # no recognized text nodes)
-    if not visible_text.strip():
+    parsed_ok = bool(visible_text.strip())
+    if not parsed_ok:
         visible_text = raw_text
 
-    # L0 sanitization — no length cap on full page content
-    clean = sanitize(visible_text, max_len=NO_CAP)
+    # L0 sanitization — no length cap on full page content.
+    # DOCUMENT mode, but ONLY on the parsed path (issue #77 / D4). get_text() joins the
+    # page's text nodes on "\n" — real structure that FIELD mode then deleted, flattening
+    # every fetched page to one line. On that path the HTMLParser has ALREADY removed all
+    # markup structurally (handle_data only ever sees text nodes), so a surviving `<…>` is
+    # page content — a code sample showing List<int>, a literal &lt;name&gt; — not a tag.
+    # ⛔ The FALLBACK path keeps FIELD mode deliberately: when the parser found nothing,
+    # visible_text is the UNPARSED response body, which may be raw HTML, and FIELD mode's
+    # tag strip is the only thing that has looked at it. Do not merge these two branches.
+    clean = sanitize(visible_text, max_len=NO_CAP, preserve_structure=parsed_ok)
 
     # Heuristic injection scan — flags to stderr
     if scan_for_injection is not None:

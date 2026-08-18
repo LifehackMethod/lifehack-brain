@@ -102,15 +102,25 @@ def _provenance_tag(desk_id, source_type, raw_content):
     return f"{desk_id}/{source_type}/{h}"
 
 
-def gate(desk_id, source_type, raw_content, message_id="", item=""):
+def gate(desk_id, source_type, raw_content, message_id="", item="", preserve_structure=False):
     """The frozen on-path gate. See module docstring for the contract. Never RAISES — but the verdict on an
     internal error is POSTURE-dependent: under ENFORCE (the default since the W5 cutover) a non-email read
     that can't be gated returns passed=False (fail-CLOSED); email always returns passed=True (fail-open,
     FLAG-floored, can't DANGER); under WARN all channels fail-open. The DANGER verdict path (returncode 2,
-    non-email) returns passed=False independent of posture."""
+    non-email) returns passed=False independent of posture.
+
+    preserve_structure (added 2026-08-18, issue #77 / D4) — OPT-IN, default False. False keeps the frozen
+    behaviour byte-for-byte: sanitize() FIELD mode, which flattens the returned "content" to a single line.
+    True runs sanitize() in DOCUMENT mode so line breaks survive, for a caller whose raw_content is a WHOLE
+    DOCUMENT rather than a field. Set it ONLY when you consume res["content"] as a document — most callers
+    (every safe_* wrapper, email_convert) discard the content entirely and use this gate purely for the
+    provenance tag + Sentinel verdict, so the flag is irrelevant to them and they must not pass it.
+    ⛔ The verdict is unaffected either way: findings come from safe_input.scan_for_injection(), whose
+    patterns join words with `\\s+` (which matches `\\n`) and use no `^`/`$`/`.`-across-lines — so the same
+    text flags identically flat or structured. Locked by test_sanitize.py."""
     tag = _provenance_tag(desk_id, source_type, raw_content)
     try:
-        clean = sanitize(raw_content or "", max_len=NO_CAP)
+        clean = sanitize(raw_content or "", max_len=NO_CAP, preserve_structure=preserve_structure)
         findings = scan_for_injection(clean)
 
         # No findings → CLEAN: do NOT call the verdict tool (no event, no subprocess) so clean reads
@@ -149,7 +159,8 @@ def gate(desk_id, source_type, raw_content, message_id="", item=""):
         sys.stderr.write(f"[ingest-gate] non-fatal ({e}) — read continues (fail-open), verdict undetermined\n")
         _breadcrumb(tag, source_type, desk_id, "error-open")
         try:
-            content = sanitize(raw_content or "", max_len=NO_CAP) if raw_content else ""
+            content = sanitize(raw_content or "", max_len=NO_CAP,
+                               preserve_structure=preserve_structure) if raw_content else ""
         except Exception:
             content = ""
         return {"content": content, "provenance_tag": tag, "passed": True}

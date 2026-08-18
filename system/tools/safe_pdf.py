@@ -137,8 +137,11 @@ def extract_and_sanitize(path: str, desk: str = "root") -> str:
             raise RuntimeError(f"Encrypted PDF — cannot extract without password: {e}") from e
         raise RuntimeError(f"Failed to process PDF: {e}") from e
 
-    # L0 sanitization on body — no length cap
-    body_clean = sanitize(body_raw, max_len=NO_CAP)
+    # L0 sanitization on body — no length cap, DOCUMENT mode (issue #77 / D4).
+    # body_raw is a whole PDF, pages joined on "\n\n"; FIELD mode collapsed all of that
+    # to one line. pdfplumber yields plain text characters, never markup, so a `<…>` here
+    # is document content. Metadata above stays FIELD mode — those are one-line values.
+    body_clean = sanitize(body_raw, max_len=NO_CAP, preserve_structure=True)
 
     # Assemble output
     sections = []
