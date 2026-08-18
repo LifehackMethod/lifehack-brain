@@ -61,8 +61,10 @@ sheet; it NEVER writes canon and NEVER deletes. (Part of `archivist-rebuild` —
 1. **Resolve the target.** `desk=<name>` → records root `<notes>/desks/<name>/records/`. (Or `path=<root>`.)
    If neither is given, ask which desk — never guess.
 2. **Discover record bodies.** List the non-empty type-subfolders under the records root
-   (this system's current type names — see `docs/data-layout.md:212`; `briefing`, `summary`, `context` and `daily` are donor
-   names that were folded away and must not be recreated). **Skip `backups/`.** Each
+   (this system's current type names — see `docs/data-layout.md:112-121`; the donor names that were folded away and
+   must not be recreated are `decision`, `log`, `reference`, `snapshot`, `briefing`, and `summary` — `reference`/
+   `snapshot` fold into `context`, `briefing` folds into `insights`, `summary` folds into `logs`, per
+   `docs/data-layout.md:213`. `context` is a CURRENT type here, not a donor). **Skip `backups/`.** Each
    substantive body = one mining unit; group thin bodies together so every unit is worth an agent.
 3. **Fan out (batched 2–3).** For each unit, spawn ONE **read-only sonnet** Agent:
    - Task: "Read every record under «body paths». Return (a) **promotable insights** — durable,
@@ -77,7 +79,9 @@ sheet; it NEVER writes canon and NEVER deletes. (Part of `archivist-rebuild` —
    conflicts. Group by destination:
    - **A. Promote → DESK canon** (always-on) — the rule, not the data.
    - **B. Promote → PROJECT canon** (scoped) — name the slug.
-   - **C. Other destinations** — another project's records, or route-to-`{desk}/CLAUDE.md`.
+   - **C. Other destinations** — another project's records. *(This used to also offer route-to-`{desk}/CLAUDE.md`
+     until 2026-08-16: the light desk shape here has no per-desk `CLAUDE.md` — `canon/current.md`, `canon/purpose.md`,
+     and `records/` are the only desk-level homes, per `docs/data-layout.md:217`.)*
    - **D. STALE-BULK delete candidates** — snapshot-first; needs approval. Note count + caveats.
    - **E. Reconciliations** the mine confirmed (superseded projects, misplacements).
 5. **Write the synthesis proposal** to `<notes>/system/logs/archivist_{YYYY-MM-DD}_deepmine-<desk>.md`

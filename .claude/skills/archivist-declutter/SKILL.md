@@ -54,7 +54,10 @@ Only the layers that load EVERY session, where bloat is most expensive. In altit
 1. **Global** `~/.claude/CLAUDE.md` (the summit — loads every session, every machine, cwd-independent).
 2. **Root shell** `$ROOT/CLAUDE.md` — the repo's own always-loaded brief, the one file every session opens with.
    *(This read `_Lifehack/CLAUDE.md` until 2026-08-13: a folder name from the system this came from, which exists nowhere here. There is exactly one `CLAUDE.md` in this repo and it is at the top level.)*
-3. **Each desk** `$ROOT/desks/{desk}/CLAUDE.md` + `<notes>/desks/{desk}/canon/current.md` (loads every conversation in that desk).
+3. **Each desk** `<notes>/desks/{desk}/canon/current.md` (loads every conversation in that desk). *(This used to also
+   target `$ROOT/desks/{desk}/CLAUDE.md` until 2026-08-16: the light desk shape here — `canon/current.md`,
+   `canon/purpose.md`, `records/` only, per `docs/data-layout.md:217` — has no per-desk `CLAUDE.md`; `canon/current.md`
+   is the correct, and only, always-loaded desk target.)*
 Do NOT walk deep sub-folder canon here — that's "sea level, thick air, cheap" (a fat low canon is fine by design).
 This pass is about the layers whose every line is paid for on every load.
 

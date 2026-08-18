@@ -26,7 +26,7 @@ triggers:
 
 > **Where things resolve.** Every `desks/…`, `system/…`, `state/…` path below is under `<notes>` — the folder `shared/brain_root.py` returns — unless it starts with `$ROOT` (this repo). This skill READS content and WRITES exactly one proposal log; it never edits canon.
 
-The **deep, on-demand auditor of a single desk's entire canon tree** — `desks/{desk}/canon/current.md` + every sub-folder canon + `desks/{desk}/projects/**/canon.md`. It grades the tree on seven dimensions and emits a prioritized change-list **into the proposals queue** (formerly fed `/archivist-review`, which is retired). It is the reusable engine for the by-hand "canon-currency" cleanup (a subject, 2026-06-25), generalized to any desk.
+The **deep, on-demand auditor of a single desk's entire canon tree** — `desks/{desk}/canon/current.md` + every sub-folder canon + `state/projects/*/canon/current.md` (project canon is top-level per `docs/data-layout.md:58-67`, never desk-nested). It grades the tree on seven dimensions and emits a prioritized change-list **into the proposals queue** (formerly fed `/archivist-review`, which is retired). It is the reusable engine for the by-hand "canon-currency" cleanup (a subject, 2026-06-25), generalized to any desk. ⛔ created at runtime by the student's own work, so it is absent in a fresh clone by design
 
 **It fills a real gap, between two existing skills — do NOT duplicate them:**
 - `archivist-audit` (weekly, whole-filesystem) only trip-wires canon crowding lightly (check J = "one judgment while reading"). canon-audit does the *thorough* desk-canon pass that J defers.
@@ -62,7 +62,7 @@ The **deep, on-demand auditor of a single desk's entire canon tree** — `desks/
 For the target desk, the audit covers:
 - `desks/{desk}/canon/current.md` — the always-loaded floor.
 - `desks/{desk}/canon/**/` — every sub-area canon (e.g. `income/`, `assets/`, `tax/`) + its `README.md` intent bar.
-- `desks/{desk}/projects/**/canon.md` — every scoped project canon.
+- `state/projects/*/canon/current.md` — every scoped project canon (top-level under `<notes>`, never nested under `desks/` — per `docs/data-layout.md:58-67`). ⛔ created at runtime by the student's own work, so it is absent in a fresh clone by design
 
 ---
 
@@ -102,7 +102,7 @@ through the human-vetting gate (`vetted: true`), not corroboration count (confid
 **3. Slice + fan out (sonnet, waves of 2–3).** Spawn ONE read-only **sonnet** Agent per canon sub-area:
    - one auditor for the floor (`canon/current.md`),
    - one per sub-folder canon (`canon/income/`, `canon/assets/`, …),
-   - one for the project canons (`projects/**/canon.md`).
+   - one for the project canons (`state/projects/*/canon/current.md`). ⛔ created at runtime by the student's own work, so it is absent in a fresh clone by design
    Launch in waves of 2–3; never 6+ concurrent. Each auditor is READ-ONLY (no Edit/Write/Bash-mutation).
 
    Each auditor's task: *"Audit «these canon paths» against «the home's intent bar». Return findings across the seven dimensions. For every load-bearing fact, classify temporal-home (durable|live|time-bound); for time-bound, propose its dated diary period home + confidence. READ-ONLY — propose only, touch nothing."*

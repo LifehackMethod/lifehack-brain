@@ -73,22 +73,17 @@ home candidates; the human picks; the caller writes. (Part of `archivist-rebuild
 
 ---
 
-## Where the queue goes, and who acts on it
+## What this skill writes — nothing
 
-This skill **proposes and never executes.** Its output is a queue, and the queue lands at:
-
-```
-<notes>/records/proposals/archivist-{YYYY-MM-DD}-{what}.md
-```
-
-`records/proposals/` is one of the six record types, and it means exactly this: *something proposed,
-waiting on a person to rule on it.*
-
-⛔ **There is no `/archivist-review`.** The system this came from had one, and retired it on
-2026-07-11 as a dead approve-then-file model — its own scheduled runner records the replacement in
-one line: **the scanner just FLAGS, and the next `/save` picks it up.** So nothing here waits for a
-review command that does not exist. Write the queue, say where it is, and stop. When you next run
-`/save`, the open proposals are there to be dealt with.
+⛔ **Correction, 2026-08-16:** this section used to carry the same "queue lands at
+`<notes>/records/proposals/...`" boilerplate as its three siblings (`archivist-audit`,
+`archivist-declutter`, `archivist-deepmine`) — copied in by mistake. It contradicted this file's own
+**Intent**, **Input/Output**, **Procedure step 7**, and **Rails** sections, all four of which say the
+same thing: archivist-route writes **nothing at all** — no queue file, no proposals entry, not even
+the map. It returns 1–3 ranked home candidates **in-session, to whichever caller invoked it** (`/save`
+Step 7e, `/archivist-deepmine`'s synthesis, or a supervised review session), and that caller is the one
+who writes — to the chosen canon home, plus a pointer if the insight is cross-cutting. See **Rails**
+above for the authoritative statement.
 
 ## What this skill needs OUTSIDE its own folder
 
