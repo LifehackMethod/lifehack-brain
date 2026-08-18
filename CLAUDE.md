@@ -71,9 +71,12 @@ NOT BUILT — admissions, not omissions. knowing now beats inferring a connectio
 
 ## The shape of the thing
 
-**The repo is the brain, and their notes sit inside it — untracked.** This folder holds skills, tools
-and hooks — the machinery — and everything *they* write lives in `data/` beneath it, kept out of git by
-one line in `.gitignore`: never tracked, never committed, never uploaded. That folder is resolved by
+**The repo is the machinery (the Lifehack Harness); their notes (the AI Brain) live in their own
+Google Drive folder, OUTSIDE it.** This folder holds skills, tools and hooks; everything *they* write
+lives at the folder named by `.brain-root` (one line, at this repo's root, gitignored) — never
+tracked, never committed, never uploaded. An older layout kept notes at `data/` inside the repo; the
+`.gitignore` line and pre-commit guard for it remain as belt-and-braces for installs still shaped
+that way. That folder is resolved by
 `shared/brain_root.py` and by nothing else; every path any tool writes to comes from there — with one
 stated exception: throwaway scratch, which `shared/paths.py` deliberately puts in the machine's own
 temp folder, because regenerable files do not belong in someone's notes.

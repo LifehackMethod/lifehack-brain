@@ -43,7 +43,7 @@ This is the only idea you need to hold, and it takes about a minute:
 them.**
 
     ~/AI Brain/           ← the folder you open. every session. this IS the tool.
-      data/               ← everything you write. yours. git ignores it entirely.
+      .brain-root         ← one line naming your notes folder (your AI Brain, in Google Drive)
 
 **It used to be two separate folders, and it changed on 2026-08-12.** Claude only
 finds a tool's commands in the folder you actually open. With the tool sitting one
@@ -51,7 +51,8 @@ level down, `/ingest` simply never appeared — and nothing reported an error, w
 is what made it expensive to work out. Putting the tool at the top level is the fix.
 
 What keeps your writing out of the repository is therefore no longer *distance* —
-it is a single line in `.gitignore` that excludes `data`. Nothing in there is ever
+your notes live in their own Google Drive folder, outside this one entirely (a leftover in-repo
+`data/` from an older layout stays gitignored). Nothing of yours is ever
 tracked, committed, or uploaded. **Do not remove that line, and do not let anything
 talk you into `git add -f data`.**
 
@@ -62,7 +63,8 @@ cannot be downloaded again. The tool half is always one `git clone` away. Keep i
 somewhere that gets backed up however you already back things up, or copy it out
 as often as suits you:
 
-    cp -R ~/"AI Brain/data" ~/brain-backup-$(date +%F)
+    # your notes live in Google Drive, which keeps versions — Drive IS the backup;
+    # for an extra local copy:  cp -R "<your AI Brain folder>" ~/brain-backup-$(date +%F)
 
 ---
 
@@ -84,7 +86,8 @@ read. The short version:
 opened instead of burying it in a subfolder. Leave it off and `/ingest` will not
 exist — with no error, which is the annoying part.
 
-**You are not asked where your notes should go.** Setup makes `data` for you,
+**Setup asks exactly one thing about your notes: which Google Drive folder is yours.** It finds
+the candidates and you confirm —
 inside that same folder, and remembers it permanently. There is no decision to
 make and nothing to answer.
 
@@ -104,12 +107,12 @@ make and nothing to answer.
 
     CLAUDE.md        ← ours. the standing instructions every session opens with.
     .claude/skills/ingest/PLAN-B.md   ← the manual backup for /ingest, if it ever misbehaves
-    .gitignore       ← the line that keeps `data` out of git. do not edit it.
+    .gitignore       ← keeps `.brain-root` (and any old `data/`) out of git. do not edit it.
 
-    data/            ← YOURS. made by setup. ignored by git, so it is never
-                       tracked, committed or uploaded.
+    .brain-root      ← one line, written by setup: the path of YOUR notes folder
+                       (your AI Brain, in Google Drive). never committed.
 
-**Your own notes are in that last one**, and it is the only entry in this list
+**Your own notes live at the folder that last file names — outside this one entirely** — and they are the only thing
 that is yours. Everything above it arrived with the tool and is replaced when you
 update; `data` is not, and cannot be.
 

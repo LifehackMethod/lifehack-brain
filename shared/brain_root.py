@@ -56,15 +56,40 @@ BRAIN_ROOT_CONFIG = os.path.expanduser("~/.config/lifehack/brain-root")
 # every other machine, which makes step (3) a no-op rather than a stranger's path. Empty is
 # skipped entirely in resolve_brain_root below.
 BRAIN_ROOT_LEGACY_GLOB = os.path.expanduser(os.environ.get("INGEST_LEGACY_ROOT_GLOB", ""))
+# Step (2), NEW 2026-08-17 (Option B ruling): the repo carries its OWN pointer. One line, absolute
+# path, at the repo root, gitignored. Located via THIS FILE's position (repo root = parent of
+# shared/), NEVER via cwd — so two clones on one machine each resolve their own brain, and the
+# pointer travels with the folder into environments that cannot see the machine's HOME (Cowork).
+REPO_POINTER_NAME = ".brain-root"
+
+def repo_pointer_path():
+    """Absolute path of this repo's pointer file, derived from this module's own location."""
+    return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), REPO_POINTER_NAME)
+
+def read_repo_pointer():
+    """The raw value in the repo pointer file, or None. Like read_persisted, returns the string
+    even if the folder no longer exists — callers deciding what --set is about to change need the
+    stale value, and resolve_brain_root hides it."""
+    fp = repo_pointer_path()
+    if not os.path.isfile(fp):
+        return None
+    try:
+        value = open(fp, encoding="utf-8").read().strip()
+    except OSError:
+        return None
+    return value or None
 
 
 def resolve_brain_root():
     """The one resolver every caller (skill drivers, tests, this CLI) goes through. Returns
-    (source, path) with source in {"env", "persisted", "legacy-glob"} and path a real directory, OR
+    (source, path) with source in {"env", "repo-pointer", "persisted", "legacy-glob"} and path a real directory, OR
     (None, None) for NOT-SET. Never guesses, never defaults to cwd, never invents a path."""
     env = os.environ.get(BRAIN_ROOT_ENV)
     if env and os.path.isdir(env):
         return "env", env
+    pointer = read_repo_pointer()
+    if pointer and os.path.isdir(pointer):
+        return "repo-pointer", pointer
     if os.path.isfile(BRAIN_ROOT_CONFIG):
         try:
             persisted = open(BRAIN_ROOT_CONFIG, encoding="utf-8").read().strip()
@@ -102,23 +127,38 @@ def read_persisted():
     return value or None
 
 
-def set_brain_root(path, create=False):
+def set_brain_root(path, create=False, replace_global=False):
     """`brain-root --set <path>`. REFUSES a nonexistent path unless create=True (then makes it, parents
-    included). REFUSES a path that exists but is a FILE (never silently picks its parent dir). Persists
-    the resolved absolute path to BRAIN_ROOT_CONFIG, creating ~/.config/lifehack/ if needed. Returns
-    (ok, message-or-path)."""
+    included). REFUSES a path that exists but is a FILE (never silently picks its parent dir).
+
+    WRITE SEMANTICS (changed 2026-08-17, after a logged near-miss): --set always writes THIS repo's
+    pointer file. It writes the machine-global BRAIN_ROOT_CONFIG only when that file is absent or
+    already agrees. A DIFFERENT existing global value is left untouched unless replace_global=True —
+    so a confused session running --set can no longer silently repoint another install's brain.
+    Returns (ok, message-or-path, global_note) where global_note says what happened to the global."""
     resolved = os.path.abspath(os.path.expanduser(path))
     if os.path.exists(resolved):
         if not os.path.isdir(resolved):
-            return False, f"REFUSED: '{resolved}' exists and is a FILE, not a directory"
+            return False, f"REFUSED: '{resolved}' exists and is a FILE, not a directory", ""
     else:
         if not create:
-            return False, f"REFUSED: '{resolved}' does not exist — pass --create to make it"
+            return False, f"REFUSED: '{resolved}' does not exist — pass --create to make it", ""
         os.makedirs(resolved, exist_ok=True)
+    # 1) the repo pointer — always
+    with open(repo_pointer_path(), "w", encoding="utf-8") as f:
+        f.write(resolved + "\n")
+    # 2) the global — guarded
+    previous = read_persisted()
+    if previous and os.path.abspath(previous) != resolved and not replace_global:
+        note = (f"GLOBAL UNCHANGED: {BRAIN_ROOT_CONFIG} already points at\n  {previous}\n"
+                f"  This repo's own pointer now overrides it HERE, but other installs still use it.\n"
+                f"  To repoint the whole machine on purpose: --set \"{resolved}\" --replace-global")
+        return True, resolved, note
     os.makedirs(os.path.dirname(BRAIN_ROOT_CONFIG), exist_ok=True)
     with open(BRAIN_ROOT_CONFIG, "w", encoding="utf-8") as f:
         f.write(resolved + "\n")
-    return True, resolved
+    note = "global config " + ("replaced (--replace-global)" if previous and os.path.abspath(previous) != resolved else "written")
+    return True, resolved, note
 
 
 NOT_SET_MESSAGE = ("NOT-SET — no $" + BRAIN_ROOT_ENV + ", no persisted " + BRAIN_ROOT_CONFIG +
@@ -131,25 +171,28 @@ def main(argv=None):
     because the data root is the whole system's variable, not the ingest chain's."""
     ap = argparse.ArgumentParser(description="resolve / persist the one data root everything writes under")
     ap.add_argument("--set", dest="set_path", metavar="PATH",
-                    help="record this path as the brain root (persists to " + BRAIN_ROOT_CONFIG + ")")
+                    help="record this path as the brain root: writes this repo's .brain-root pointer, and "
+                         "touches the machine-global config (" + BRAIN_ROOT_CONFIG + ") only when it is "
+                         "absent or already agrees — a differing global needs --replace-global")
     ap.add_argument("--create", action="store_true", help="with --set: create the folder if missing")
+    ap.add_argument("--replace-global", action="store_true",
+                    help="with --set: allow overwriting a DIFFERENT machine-global root (guarded since 2026-08-17)")
     ap.add_argument("--quiet", action="store_true", help="print only the path; exit 1 if NOT-SET")
     a = ap.parse_args(argv)
     if a.set_path:
         # ⛔ Read BEFORE writing. The overwrite is silent otherwise, and silence is the bug (issue #4).
         previous = read_persisted()
-        ok, res = set_brain_root(a.set_path, create=a.create)
+        ok, res, note = set_brain_root(a.set_path, create=a.create, replace_global=a.replace_global)
         if not ok:
             print(res)
             return 1
         verb = "created + " if a.create else ""
-        print(f"RESOLVED: {res}  (source: persisted — just {verb}set via --set)")
-        if previous and os.path.abspath(previous) != os.path.abspath(res):
-            # NOT a failure — the caller asked for this. But it is never allowed to happen quietly:
-            # one global config means the OTHER install that pointed here now resolves to `res` too.
-            print(f"⚠ REPLACED a brain root that was already set: {previous}")
-            print("  That value was global — anything else pointing there now resolves here instead.")
-            print(f"  To put it back: {os.path.basename(__file__)} --set \"{previous}\"")
+        print(f"RESOLVED: {res}  (source: repo-pointer — just {verb}set via --set)")
+        print(note)
+        if a.replace_global and previous and os.path.abspath(previous) != os.path.abspath(res):
+            print(f"⚠ REPLACED the machine-global brain root that was already set: {previous}")
+            print("  Anything resolving through the global config now lands here instead.")
+            print(f"  To put it back: {os.path.basename(__file__)} --set \"{previous}\" --replace-global")
         return 0
     source, path = resolve_brain_root()
     if path is None:

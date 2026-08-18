@@ -66,12 +66,20 @@ REPO="${_HOOKDIR%/system/hooks}"
 [ "$REPO" = "$_HOOKDIR" ] && REPO="$(cd "$_HOOKDIR" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null)"
 : "${REPO:=/dev/null/no-repo-resolved}"
 
-# ── THE NOTES ROOT. $LIFEHACK_ROOT first, then the persisted ~/.config/lifehack/brain-root.
-# Nothing else — no guessing, no cwd, no glob. Mirrors shared/brain_root.py's first two steps
-# (its third, the legacy glob, is a back-compat path for one existing corpus and has no business
-# widening a security boundary).
+# ── THE NOTES ROOT. $LIFEHACK_ROOT first, then THIS REPO'S .brain-root pointer, then the
+# persisted ~/.config/lifehack/brain-root. Mirrors shared/brain_root.py's resolution order
+# (2026-08-17, two-folder design) — before this, the gate read ONLY the machine-global value, so on
+# any install whose repo pointer disagreed with the global, the gate blocked the session's own notes
+# as "external" (observed live, patient-zero repair). One deliberate DIVERGENCE from the resolver:
+# a PRESENT but broken repo pointer fails CLOSED here — no fall-through to the machine-global value.
+# The repo has declared its brain; a broken declaration is a fault to surface, never a redirect that
+# would trust some OTHER brain's tree. (The resolver may fall through for usability; a security
+# boundary may not.) The legacy glob stays excluded — back-compat has no business widening a boundary.
 notes_root() {
   _nr="${LIFEHACK_ROOT:-}"
+  if [ -z "$_nr" ] && [ -f "$REPO/.brain-root" ]; then
+    _nr="$(cat "$REPO/.brain-root" 2>/dev/null)"
+  fi
   [ -n "$_nr" ] || _nr="$(cat "$HOME/.config/lifehack/brain-root" 2>/dev/null)"
   while [ "${_nr%/}" != "$_nr" ]; do _nr="${_nr%/}"; done      # any number of trailing slashes
   case "$_nr" in
