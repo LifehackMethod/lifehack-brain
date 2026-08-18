@@ -161,6 +161,7 @@ Plus the flag readers (`system/hooks/pm_flag.sh status`, `plan_flag.sh path`), w
 | `system/tools/save/pad_archive.py` | archives a section and proves it landed before anything is cleared | ✅ here |
 | `system/tools/save/save_step_ledger.py` | records which mandatory steps actually ran | ✅ here |
 | `system/tools/canon_conflict_scan.py` | reads canon content before a canon write | ✅ here |
+| `system/tools/journal.py` | the append-only backstop Step 7 writes to | ✅ here |
 | `system/hooks/pm_flag.sh` · `plan_flag.sh` | which project and plan are live | ✅ here |
 | `system/hooks/save_routing_hint.sh` | tells a session where a bare "save this" goes | ✅ here |
 | `system/tools/save/pm_flag_recover.py` | recovers a project flag that expired mid-session | ✅ here |
