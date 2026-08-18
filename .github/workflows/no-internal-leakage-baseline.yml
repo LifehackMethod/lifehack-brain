@@ -46,6 +46,20 @@ jobs:
         with:
           python-version: "3.11"
 
+      # Same contract as the per-PR gate -- see no-internal-leakage.yml's own comment block
+      # for the full reasoning. Rule 3's terms are never in this repo; they arrive as a
+      # repository secret and land in $RUNNER_TEMP, outside the checkout. No secret ->
+      # exit 2 -> red, because a whole-tree audit that skipped the identity tier and
+      # printed CLEAN is precisely the 2026-08-15 false-clean this fix exists to end.
+      - name: Materialize the identity term list (never committed)
+        env:
+          SHIP_IDENTITY_TERMS: ${{ secrets.SHIP_IDENTITY_TERMS }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$SHIP_IDENTITY_TERMS" > "$RUNNER_TEMP/ship-identity.md"
+          chmod 600 "$RUNNER_TEMP/ship-identity.md"
+          echo "SHIP_IDENTITY=$RUNNER_TEMP/ship-identity.md" >> "$GITHUB_ENV"
+
       - name: Run the whole-tree baseline scan
         id: scan
         run: |
