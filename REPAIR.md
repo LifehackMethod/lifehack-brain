@@ -167,62 +167,36 @@ combine, reorder, or skip pieces that don't apply.
 
 ### Pattern: Harness in a synced folder, possibly with real writing already in it
 
-Under the current two-folder design, this is the cleanest version of an old, messier problem: the tool
-cannot live in a synced folder, but if the folder already holds a `data/` subfolder from the older
-one-folder design, **that writing does not need to move at all — it can become the AI Brain right where
-it is.** Only the machinery (`.claude`, `system`, `shared`, `.git`, everything except `data/`) needs a
-plain local home. This is different from the original STEP 4A of `INSTALL.md`, which used to move
-everything because splitting the two apart wasn't built yet — it is now.
+⭐ **THE PROCEDURE FOR THIS ONE LIVES IN `INSTALL.md` STEP 4A, AND THAT IS THE ONLY COPY OF IT.** It was
+moved there on 2026-08-18 (the operator, `authority: user`: *"there should be one canonical file, it's the
+install.md file"*) because a student meets this exact situation from inside an install, and an install
+must never hand them a second file. **Read STEP 4A and run it from there** — the sync-client
+interrogation, the prove-the-destination test, the `data`-excluded machinery copy with its `diff -r`,
+and the signpost are all written out in full, in one place. ⛔ **Do not restate any of it here.** Two
+copies of a move procedure is exactly the drift this split exists to prevent.
 
-**Finding a destination that genuinely won't sync** is the part most likely to go wrong. "Their
-Documents folder" is not a safe default — on a Mac it's a common mirror target and looks perfectly
-ordinary while syncing anyway. Ask the sync clients what they're actually mirroring before trusting a
-path name:
-```bash
-DB="$HOME/Library/Application Support/Google/DriveFS/root_preference_sqlite.db"
-if [ -f "$DB" ] && command -v sqlite3 >/dev/null 2>&1; then
-  echo "Google Drive mirrors these local folders:"; sqlite3 "$DB" "SELECT last_seen_absolute_path FROM roots;" 2>/dev/null
-elif [ -f "$DB" ]; then echo "GOOGLE DRIVE IS INSTALLED BUT ITS MIRROR LIST COULD NOT BE READ"
-else echo "Google Drive is not mirroring any local folder on this machine."; fi
-if [ -f "$HOME/.dropbox/info.json" ]; then
-  echo "Dropbox folder:"; grep -o '"path": *"[^"]*"' "$HOME/.dropbox/info.json" | cut -d'"' -f4
-else echo "Dropbox is not installed."; fi
-```
-Then prove a candidate destination is both outside any sync path AND actually writable, before copying
-anything to it:
-```bash
-DEST="<candidate>"
-case "$(printf '%s/' "$DEST" | tr 'A-Z' 'a-z')" in
-  */library/cloudstorage/*|*/google\ drive/*|*/my\ drive/*|*/shared\ drives/*|*/dropbox*|*/onedrive*|*/icloud*|*/mobile\ documents/*|*/box-*|*/pcloud*)
-    echo "REJECTED - itself inside a sync service"; exit 1 ;;
-esac
-[ -e "$DEST" ] && [ -n "$(ls -A "$DEST" 2>/dev/null)" ] && { echo "STOP - not empty"; ls -A "$DEST"; exit 1; }
-mkdir -p "$DEST" && printf 'write test\n' > "$DEST/.writetest" \
-  && [ "$(cat "$DEST/.writetest")" = "write test" ] && rm -f "$DEST/.writetest" \
-  && echo "DESTINATION IS LOCAL AND WRITABLE" || echo "COULD NOT WRITE"
-```
-**Copying the machinery** — a git repository copies safely; same history, same GitHub connection, no
-re-login, and `core.hooksPath` travels with it because it lives inside `.git`:
-```bash
-SRC="$(pwd -P)"; DEST="<destination>"
-ls -A "$SRC" | grep -v '^data$' | while IFS= read -r n; do cp -R "$SRC/$n" "$DEST/" || echo "FAILED: $n"; done
-diff -r --exclude=data "$SRC" "$DEST" && echo "MACHINERY COPY IDENTICAL" || echo "STOP - READ WHAT DIFFERS"
-```
-**Leave a signpost, do not delete the old folder,** and be explicit that a `data/` folder left behind
-is staying on purpose, not by accident — a `THIS-FOLDER-HAS-MOVED.txt` naming the new machinery
-location, plus a line saying the `data/` folder next to it is becoming the AI Brain in place, has
-worked well.
+**The shape, in one paragraph, so you can recognise it without leaving this file:** the tool cannot live
+in a synced folder, but if that folder already holds a `data/` subfolder from the older one-folder
+design, **that writing does not need to move at all — it can become the AI Brain right where it is.**
+Only the machinery (`.claude`, `system`, `shared`, `.git`, everything except `data/`) needs a plain
+local home. A git repository copies safely — same history, same GitHub connection, no re-login, and
+`core.hooksPath` travels with it because it lives inside `.git`.
 
-**Connecting the leftover `data/` as the AI Brain** doesn't need `INSTALL.md` STEP 7.1's enumeration —
-you already know exactly where it is. Point `shared/brain_root.py --set` straight at it, then run
-STEP 7.3–7.5 to confirm the resolver, the sync check, and a live write all agree. If a Shared Drive is
-involved, mention once that Shared Drives only stream files and never keep a real local copy — some
-entries can be online-only placeholders that fail a copy for reasons that have nothing to do with your
-script.
+**Three things a REPAIR does differently from STEP 4A, and they are the reason you are in this file:**
+- **STEP 4A assumes one folder — the one they opened.** A repair has already enumerated the whole
+  machine (section 2), so you may be moving machinery out of a folder that is not the session's own.
+  Everything in STEP 4A still applies; only `SRC` changes, and you set it explicitly rather than from
+  `pwd`.
+- **Connecting the leftover `data/` as the AI Brain doesn't need `INSTALL.md` STEP 7.1's
+  enumeration** — you already know exactly where it is. Point `shared/brain_root.py --set` straight at
+  it, then run STEP 7.3–7.5 to confirm the resolver, the sync check and a live write all agree.
+- **Send them back to `INSTALL.md` STEP 7, not the top.** In a repair the tool is already fully
+  installed; only the AI Brain connection is left. (STEP 4A's own hand-off is written for the install
+  case, where usually nothing is installed yet — do not copy its wording across.)
 
-Whichever local folder ends up holding the machinery, send the person back to reopen Claude there and
-pick up at **STEP 7 of `INSTALL.md`**, not the top — the tool itself is already fully installed; only
-the AI Brain connection is left.
+⚠ **If a Shared Drive is involved,** mention once that Shared Drives only stream files and never keep a
+real local copy — some entries can be online-only placeholders that fail a copy for reasons that have
+nothing to do with your script.
 
 ### Pattern: writing that's local-only and needs a cloud home
 
