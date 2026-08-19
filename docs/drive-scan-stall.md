@@ -1,18 +1,35 @@
 # The AI Brain cannot be searched by walking it
 
 **Status:** open — reported with measurements, remedy proposed, one design decision needs a call
-**Affects:** every install on macOS, which is every install (INSTALL.md ships no Windows path)
 **First reported:** a working install where `/read` and ad-hoc greps hang; reproduced on a second
 brain on the same machine
 
 ---
 
+## Scope — read this before generalising
+
+**Measured on exactly one combination: macOS + Google Drive for Desktop.** That is the setup
+INSTALL.md walks a student into, so it is the common case, but it is not the only one this system
+supports and everything below should be read as scoped to it.
+
+| setup | status |
+|---|---|
+| **macOS + Google Drive** | **measured, reproduced, fixed here** |
+| macOS + OneDrive / Dropbox / iCloud | **untested.** `TARGET-STATE.md` accepts any of these as a brain host. All use on-demand/placeholder file APIs, so the same mechanism is *plausible* — nobody has measured it |
+| SharePoint (via OneDrive sync) | **untested.** Same reasoning, one more layer |
+| Windows, any provider | **out of scope, and already stop-signed.** `INSTALL.md:360` halts a Windows student before the brain step because it depends on Mac-only Drive paths. Whatever Windows does here is unknown |
+| Linux | **untested**, and `mdfind` does not exist there — the remedy falls back to a bounded walk |
+| a different agent runtime (Codex, etc.) | **the mechanism is in the filesystem, not the tool.** Anything that recursively walks the folder should hit it; anything that doesn't, won't. Unmeasured |
+
+The fix degrades rather than breaks off the measured path: no Spotlight means a bounded walk that
+reports its own truncation instead of pretending to be complete.
+
 ## The short version
 
-We require the AI Brain to live in a Google Drive folder. On macOS that folder is mounted through
-the FileProvider framework, where **listing a directory is a network round-trip, not a local read**.
-Any recursive scan of it — `grep -r`, `find`, `Glob` with `**`, `os.walk` — does not run slow. Past a
-certain depth it **blocks inside the `readdir` syscall** and never comes back.
+INSTALL.md's guided path puts the AI Brain in a Google Drive folder. On macOS that folder is mounted
+through the FileProvider framework, where **listing a directory is a network round-trip, not a local
+read**. Any recursive scan of it — `grep -r`, `find`, `Glob` with `**`, `os.walk` — does not run slow.
+Past a certain depth it **blocks inside the `readdir` syscall** and never comes back.
 
 Three things make this worse than it sounds:
 
@@ -110,8 +127,10 @@ their own and the bug report is still on the record.
 
 ## Not fixed here
 
-- **Windows and Linux.** `mdfind` is macOS-only. The fallback is a bounded walk that will truncate on
-  a large tree and say so — honest, not equivalent.
+- **Every setup except macOS + Google Drive.** See the scope table at the top. The other cloud
+  providers are permitted brain hosts and plausibly affected, but plausible is not measured, and this
+  PR does not pretend otherwise. `brain_scan_probe.py` is the cheap way for someone on OneDrive,
+  Dropbox or SharePoint to find out in seconds and report back.
 - **`rg` is not adopted.** The 18× is real and free, but swapping the search engine everywhere is a
   bigger change than this bug needs.
 - **The other recursive-scan sites** — `system/tools/architecture_reason.py` (its `BRIEF_GLOB` sweep
