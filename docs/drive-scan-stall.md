@@ -101,8 +101,8 @@ healthy brain it prints `WALKABLE`; on an affected one it names the depth that s
 `.claude/skills/read/SKILL.md` says, deliberately and in bold: **"There is one tier, and it is this
 one … Do not add an adapter for it. Live files, every time."** That line was written against a
 semantic-index tier, and it gave two reasons. Both are addressed above — `mdfind` fetches no external
-package, and live files are still what get read — but **the line is Enver's and the call to relax it
-should be too.**
+package, and live files are still what get read — but **the line is the maintainer's, and so is the
+call to relax it.**
 
 The tools in this PR are additive and change no existing behaviour. The one behavioural change is the
 `/read` §3.1 edit. If that edit is wrong, drop that commit: the probe and the search tool stand on
