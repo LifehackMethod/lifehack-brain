@@ -1,4 +1,4 @@
-# START HERE — setting up your Lifehack Brain
+# START HERE — setting up your Lifehack Harness
 
 You are about to give yourself an AI that remembers you.
 
@@ -37,6 +37,25 @@ tab, and start again from this line.
 > note spells out, and tell them to go back to whoever sent them this link, who can get them set up by
 > hand. ⛔ **Never offer help without saying how to reach it** — a promise with no route is where someone
 > quietly gives up. Then stop.
+
+## ⭐ THEN — THREE QUESTIONS, BEFORE ANY FOLDER IS MADE
+
+**Answer these three now.** Each one costs ten seconds here, and about twenty minutes each if it
+surfaces halfway through instead:
+
+1. **Where is your AI Brain folder — do you already know?** The one folder in your own Google Drive
+   that your writing lives in. Knowing where it is before you begin makes everything after it easier.
+2. **Do you already have an older AI Brain, from a previous version of this tool?** Say so now, even if
+   you think it doesn't matter. It changes what setup does later.
+3. **Is your permission mode set to auto?** In Claude Code, `Shift`+`Tab` cycles it — **auto at
+   minimum.** Left on the default, you will be clicking *Allow* on every single command, and this takes
+   an hour instead of ten minutes.
+
+> **TO CLAUDE:** ⭐ **Ask these three plainly, right after the which-app question — then WAIT for the
+> answers.** ⛔ **Do not create a folder, fetch anything, or run a check until all three are answered.**
+> Hold what they say and use it: answer 1 is the folder STEP 7 connects, answer 2 decides STEP 7.1's
+> older-version branch, and answer 3 is the difference between a ten-minute install and an hour of
+> clicking. ⛔ **Do not quietly re-decide any of them later.**
 
 ---
 
@@ -118,6 +137,12 @@ Nothing below needs anything typed at a terminal.
 6. **Find `Lifehack Harness` in that window and open it.** ⭐ **If you can't see it, don't go hunting:**
    with that file window in front, press **⇧⌘G**, type `~/Lifehack Harness`, and press Return — that
    jumps straight to it. Then confirm.
+7. ⭐ **Now make sure the chat is actually CONNECTED to that folder — making the folder is not enough.**
+   A folder can exist perfectly while the session is still attached to somewhere else, and then nothing
+   works. Use the **`+`** control beside the message box to add the folder, or start a **new session**
+   on it.
+8. **Check that before you go any further.** Ask: *"which folder are you in?"* — the answer has to be
+   the folder you just made. **If it isn't, nothing has failed; the folder simply isn't attached yet.**
 
 *(On Linux, same idea: make a folder directly inside your home folder — the one at `/home/<your
 name>` — and open that folder in Claude.)*
@@ -144,7 +169,10 @@ name>` — and open that folder in Claude.)*
 > It checks precisely *because* this is invisible from the outside. You'll be asked to reopen Claude on
 > the new folder, and setup starts again from the top — that repetition is expected too.
 
-**2. Drag this file into the chat and say: "Set up my brain."**
+**2. Drag this file into the chat and say: "Set up my brain."** ⭐ **If what you were sent is a LINK to
+this file rather than the file itself: right-click the link and choose *Copy Link* — do not click it,
+only copy it — then paste it into the chat.** Clicking opens it in a browser and leaves you nowhere;
+the chat needs the link's text, not the page.
 
 **3. That's it.** The folder you opened *is* your Lifehack Harness — setup builds the tool inside it
 and doesn't ask you where THAT goes. Partway through, it asks you exactly one question, about a
@@ -152,6 +180,12 @@ completely different folder: which Google Drive folder is your AI Brain, where e
 actually lives.
 
 ⚠ **If it goes quiet, look for a small box with an Allow button.** It isn't stuck — it's waiting on you.
+⭐ **And if a permission window appears that you don't understand: take a screenshot, drop it into this
+same chat, and ask "is this safe, and what does enabling it actually do?"** That works for any
+permission box you ever meet, here or anywhere else.
+
+⭐ **If anything it tells you is overwhelming, say "simplify that."** It will say the same thing again in
+plainer words, as many times as you need.
 
 ## Have this ready
 
@@ -193,6 +227,23 @@ actually required to install this at all.
 - **Never invent a result.** If you could not check something, say you could not check it. A guess that
   sounds confident is worse here than an honest "I don't know," because they cannot tell the difference
   and they will act on it.
+- ⭐ **OPEN EVERY TURN WITH ONE LINE OF PROGRESS** — the step you are on, what is done, what is next.
+  ⛔ **Base it on the scratchpad STEP 0 reads back, never on memory** — report a fact, not a
+  recollection. ⭐ **Why: an install stopped partway through and neither side noticed**, until the person
+  thought to ask whether it had finished at all. That one line is what makes a stall visible, to them
+  and to you.
+- ⛔⛔ **ONCE THEY NAME THEIR AI BRAIN FOLDER, THAT ANSWER IS FINAL.** Never silently substitute a
+  different folder, never fall back to one you found earlier, and never re-decide it at a later step.
+  ⭐ **Watched live: after a person had said which folder she wanted, the session kept redirecting her
+  install back to the older AI Brain it had found first, and she had to stop it by hand.** If a later
+  step turns up something that looks like a conflict, **say so and ask. Do not switch.**
+- ⭐⭐ **BEFORE YOU EVER SAY "quit Claude", WRITE THE HANDOFF FIRST.** The restart wipes your memory of
+  this session, and the person is the only thing that crosses it. So the last thing you print before
+  *"now quit"* is a short block for them to copy and paste into the new window: **where they are in this
+  file, what is already done, what the new session should do first, and the real paths of the Harness
+  folder and their AI Brain.** Then tell them to quit. ⛔ **This holds at every place this file ends a
+  session** — STEP 9's restart, STEP 4A.7's hand-over, and every stop in between. ⭐ **Proven live:
+  pasted into the fresh window, it picked straight up.**
 - ⛔⛔ **EVERY COMMAND BLOCK IN THIS FILE RUNS IN A BRAND-NEW SHELL. NOTHING CARRIES OVER.** A variable
   set in one block — `PYBIN`, `SRC`, `DEST`, `ROOT`, anything — **is empty in the next one**, and an
   empty variable does not announce itself: `"$PYBIN" foo` simply runs `foo` as if you had typed nothing,
@@ -738,6 +789,13 @@ pwd
 *"You're set up in `<path>` — that's your Lifehack Harness folder. The tool itself goes inside it.
 Your AI Brain is a separate folder, in your Google Drive — we'll connect that in a few steps."*
 
+> ⛔⛔ **IF `pwd` IS NOT THE FOLDER THEY SAY THEY MADE, THE SESSION IS NOT ATTACHED TO IT — and that was
+> the single biggest blocker on a live run.** A folder can exist perfectly while this chat is connected
+> somewhere else entirely; on their own, a person reads that as the install having failed. ⛔ **Do not
+> work around it, and do not carry on in whatever folder you happen to be in.** Say it plainly, have
+> them add the folder with the **`+`** control beside the message box or open a new session on it, then
+> **re-run `pwd` and only go on when it names their folder.**
+
 ⛔ **Now check that folder is usable. This is the only thing that can send you back to them.**
 
 > ⚠ **Why this resolves the interpreter instead of just typing `python3`.** On Windows, the word
@@ -1067,7 +1125,8 @@ cat "$SRC/THIS-FOLDER-HAS-MOVED.txt"
 STEP 4 runs its full check again on the new folder when they come back, before a single file is
 downloaded. ⛔ **Do not claim it was fully checked when only 4A.4 ran** — say what actually happened.
 
-Tell them, in these words or very close:
+⭐ **Print the handoff block FIRST — see *How to behave*** — with both paths in it, the new folder and
+the old one. **Then** tell them, in these words or very close:
 
 > **"All done — there's a folder on your own computer ready for the tool now, and the folder you started
 > in is untouched, with everything of yours still in it. Now quit Claude completely and open it again —
@@ -1387,9 +1446,27 @@ exactly what it says:
   2026-08-17 — the operator himself asked "was that a mistake?" after a choice that cost nothing). **Adopting an existing "AI Brain" folder is the preferred answer** — most students
   in a cohort already made one; reusing it is the point. **Never pick for them, even when there is
   exactly one candidate.**
+  ⚠ **ONE EXCEPTION, AND IT IS THE ANSWER THEY GAVE AT THE TOP: an AI Brain built by an OLDER VERSION
+  of this tool is NOT adopted.** Point at a **new, empty** folder in their Drive instead, and **leave
+  the old one completely intact** — nothing merged, moved or deleted. It stays as their fallback, and
+  its contents get folded across later, deliberately, by a person. ⭐ **Say the reason out loud, because
+  it is technical rather than a preference:** the old folder still holds the previous version's own
+  instructions, so the new tool reads those alongside its own and works from two conflicting sets of
+  instructions — duplicated, and wrong. **A new, empty folder cannot do that**, and a person who
+  understands why will not argue with it.
 - **Zero candidates, but accounts exist** → tell them no existing AI Brain folder was found, list the
   account(s) found, and ask which one should hold a brand-new one: *"I didn't find an AI Brain folder
   yet. You have Google Drive signed in as `<accounts>` — should I make one in `<account>`'s My Drive?"*
+
+> ## ⛔⛔ NEVER PUT THEIR AI BRAIN IN A DRIVE THEY DO NOT OWN. NOT A COMPANY, TEAM OR CLIENT DRIVE.
+>
+> **Any candidate listed as a Shared drive, or sitting in an account belonging to a company, a team or
+> anyone but them, is forbidden as an AI Brain.** Say so plainly and offer their own personal Drive
+> instead. ⭐ **State the consequence too, because that is the part that lands: material put into a
+> drive you do not control may not be removable later.** Watched live — someone had already done it,
+> the shared drive's permissions refused to let the folder move back out, and the only way clear was to
+> zip the contents and start over. **Their AI Brain is the one irreplaceable thing here, and it belongs
+> in a Drive they personally own.**
 
 ⚠ **If this list has MORE THAN ONE entry, that is the thing STEP 1's count already found, and it is a
 condition rather than a menu.** Say so before you ask: *"These are the ones I mentioned at the start —
@@ -1664,7 +1741,8 @@ cannot see them yet.**
 a *document* instead of *running* it — twenty minutes of plausible work that wasn't the tool. **Nothing
 errored.** That is what makes it dangerous.
 
-Tell them, in these words or very close:
+⭐ **Print the handoff block FIRST — see *How to behave*.** They copy it into the new window, and it is
+the only thing that crosses the restart. **Then** tell them, in these words or very close:
 
 > **"Everything's installed. Now quit Claude completely and open it again — the whole app, not just a
 > new chat. When it comes back, open this exact same folder: `<pwd>`. I'll wait."**
@@ -1926,11 +2004,14 @@ nothing.** ⭐ **Refusing to claim success IS the fix here** — nothing else ab
 settle. They can still type `/ingest` afterwards; they simply must not be told everything is confirmed
 when the one thing a machine cannot check has not been checked.
 
-**`NOTHING UNRESOLVED` → then, and only then:**
+**`NOTHING UNRESOLVED` → then, and only then, write the report in 10.1 — that is the last required act
+of this install.** Once it is written, and not before, offer the next step — **offer it, never push it:**
 
-> **"You're set up. Type `/ingest` and press enter. It already knows where your writing goes. It'll ask
-> for your material: drag the file or folder into the chat and it'll fill in the location. From there it
-> asks you questions and shows you its work before it writes anything."**
+> **"You're set up. When you've got the time — it doesn't have to be today — type `/ingest` and press
+> enter. It already knows where your writing goes. It'll ask for your material: drag the file or folder
+> into the chat and it'll fill in the location. From there it asks you questions and shows you its work
+> before it writes anything. Fair warning: sorting a whole corpus is its own job and can run over days,
+> so start it when you have room for it."**
 
 ⚠ **And once:** *"If it ever goes quiet, look for a small box with an Allow button. It's waiting on you,
 not stuck."*
@@ -1950,7 +2031,10 @@ from Downloads is outside the trusted zone and will be treated as material, not 
 ### 10.1 — ⭐ THE END-OF-INSTALL REPORT — the last thing you write, and they read it
 
 **Now write them a short plain-English report of the state this install actually ended in.** ⛔ **Not a
-victory lap, and not a checklist of ticks.** It is the honest account of what happened, and **it is the
+victory lap, and not a checklist of ticks.** ⛔⛔ **It is the LAST REQUIRED ACT of this install, and it is
+gated behind NOTHING** — never make them run `/ingest`, or anything else, before you write it. *(Watched
+live: a person had to demand this report, because the session was holding it back until an ingest that
+takes days had been started.)* It is the honest account of what happened, and **it is the
 only way either of you finds out what really went on** — they were not watching the commands, and
 whoever supports them later was not in the room at all.
 
@@ -1968,7 +2052,9 @@ whoever supports them later was not in the room at all.
 5. ⛔ **What is still unresolved** — more than one brain-shaped folder with no answer about which is
    theirs; older attempts left on the machine; a stop this file hit; anything you had to leave for a
    person. **Name each one and what would settle it.**
-6. **What happens next** — the one thing they do now.
+6. **What happens next** — the one thing they do next, **offered, not pushed.** ⭐ **Say plainly that
+   sorting a corpus with `/ingest` is a long, separate job that can run over days, and is not part of
+   finishing this install.** The install finishes with this report.
 
 > ## ⛔ THE FIVE RULES FOR THE REPORT
 >
@@ -1988,24 +2074,28 @@ whoever supports them later was not in the room at all.
 > 5. ⭐ **SHORT ENOUGH THAT A PERSON READS IT.** A screenful. If it is longer than what you have already
 >    said out loud during the install, it is too long.
 
-**Last thing, once they have actually typed `/ingest` and it has started asking them its own
-questions — close the log out:**
+**Last thing, once the report is written — close the log out.** ⛔ **Do not wait for them to type
+`/ingest`;** that may be days away, and the install is finished either way:
 
 ```bash
-sh ~/.config/lifehack/install-note.sh step "STEP 10 — finished, /ingest started"
+sh ~/.config/lifehack/install-note.sh step "STEP 10 — finished, report given"
 ```
 
 ⛔ **Note that it is written as a STEP, not as a verdict** — *"STEP 10 finished"*, never *"install
 complete"* or *"install healthy."* **Whether this install is actually correct is `TARGET-STATE.md`'s
 question and only its question.** ⭐ **What this line does is tell a LATER session that this machine
 has already been through the file.** If they ever drag this
-file in again — out of habit, or because something looked wrong — STEP 0's read-back opens with
-`INSTALL COMPLETE` and the folder it finished in, and you can say so instead of reinstalling on top of
-a working install. ⚠ **Still never mentioned to them.**
+file in again — out of habit, or because something looked wrong — STEP 0's read-back lists
+`STEP 10 — finished, report given` under `STEPS ALREADY DONE`, with the Harness folder on the `harness`
+line above it, and you can say so instead of reinstalling on top of a working install. ⚠ **Still never mentioned to them.**
 
 # IF SOMETHING GOES WRONG
 
-**Read the symptom, not the error message.** These are the three things that actually happen.
+⭐ **THE FIRST MOVE, BEFORE ANY OF THESE: re-read this file from the top and confirm every step really
+is complete.** Most stuck-and-confused is a step that was skipped or half-run, and reading back finds it
+in a minute. ⛔ **Do not improvise a troubleshoot before you have done that.**
+
+**Read the symptom, not the error message.** These are the five things that actually happen.
 
 **1. You type `/ingest` and nothing happens, or Claude starts improvising.**
 Almost always the session wasn't restarted. Go back to **STEP 9** and do it properly — quit the whole

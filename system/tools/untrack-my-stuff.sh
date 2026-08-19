@@ -27,7 +27,25 @@ if [ ! -d .git ]; then
 	exit 1
 fi
 
-PATTERN='^memory/|(^|/)_unpacked/|\.zip$|(^|/)conversations\.json$|(^|/)users\.json$|(^|/)design_chats/|(^|/)projects/[0-9a-f-]{8,}\.json$|(^|/)memories\.json$|(^|/)login_history\.json$'
+# ⭐ THIS PATTERN MUST COVER EVERYTHING system/githooks/pre-commit REFUSES. That hook is the guard;
+# this script is the stated recovery from it, so a folder the guard blocks but this misses is a folder
+# a student is told to clean up and cannot. It was exactly that for a while: the hook's own header
+# records that .gitignore gained data/ on 2026-08-12 and the guard did not, so "the two halves of one
+# change disagreed for a day." The guard was fixed; this, its sibling, was not -- with two personal
+# files tracked under data/ it printed "You're good" and exited 0. Measured and fixed 2026-08-18.
+#
+# data/ is where the person's writing actually lives since the 2026-08-12 layout change; memory/ is the
+# pre-2026-08-12 name for the same thing, kept so an older install is still covered. state/ is the
+# ingest's working notes ABOUT their material -- half-sorted piles, extracted conclusions, a map of
+# what is in their export -- which is just as personal as the material. .brain-root is the per-install
+# pointer to their notes folder, a personal path. The rest are raw-corpus fingerprints from an export
+# unpacked into the repo by hand (measured 2026-08-09: 6,228 files staged, including a users.json
+# holding an email address and a phone number).
+#
+# The last four alternatives -- design_chats/, projects/<hex>.json, memories.json, login_history.json --
+# are additional export fingerprints this script has always carried and the hook does not. Keeping them
+# is deliberate: this side may clean up MORE than the hook refuses, never less.
+PATTERN='^data/|^memory/|(^|/)state/|(^|/)_unpacked/|\.zip$|(^|/)conversations\.json$|(^|/)users\.json$|(^|/)\.brain-root$|(^|/)design_chats/|(^|/)projects/[0-9a-f-]{8,}\.json$|(^|/)memories\.json$|(^|/)login_history\.json$'
 
 tracked=$(git ls-files | grep -E "$PATTERN" | grep -v -x 'memory/README.md')
 

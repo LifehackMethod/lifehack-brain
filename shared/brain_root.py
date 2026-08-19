@@ -133,16 +133,45 @@ def read_persisted():
 
 
 def looks_like_a_windows_path(raw):
-    """True for `G:\\My Drive\\AI Brain`, a `C:` drive letter with forward slashes, or any
-    path carrying a backslash.
+    """PURE SHAPE TEST, no platform opinion: True for `G:\\My Drive\\AI Brain`, a `C:` drive letter
+    with forward slashes, or any path carrying a backslash.
 
-    On Windows those are real locations. On macOS and Linux — where this tool runs — they are not
-    locations at all, just a long filename, and that is the whole failure: os.path.abspath happily
-    turns one into a folder INSIDE this repo (reproduced with a real student, 2026-08-18)."""
+    Whether that shape is USABLE depends entirely on where this is running, and this function does
+    not decide that — reject_unusable_target does, and only consults this when os.name is not "nt".
+    Where the shape is not native it is not a location at all, just a long filename, and that is the
+    whole failure: os.path.abspath happily turns one into a folder INSIDE this repo (reproduced with
+    a real student, 2026-08-18). Where it IS native it is perfectly correct and must be left alone
+    (field report #84, 2026-08-19)."""
     s = raw.strip()
     if "\\" in s:
         return True
     return len(s) >= 2 and s[1] == ":" and s[0].isalpha()
+
+
+def how_a_complete_path_is_written_here():
+    """How a COMPLETE path is written on the machine this is actually running on, as
+    (starts_with, example, how_to_find_it) — three pieces the refusals below drop into their own
+    sentences.
+
+    WHY THIS IS A FUNCTION (2026-08-19, the sibling of field report #84). Every "that is not a
+    complete path" message used to say the path must start with a slash. On Windows that is simply
+    false — a complete path there starts with a drive letter — and INSTALL.md tells the assistant
+    to STOP when --set refuses. So a Windows student was sent to a dead end by an explanation that
+    was wrong about their own machine, in exactly the way the drive-letter refusal was. Fixing the
+    drive-letter rule alone just moved the dead end one rule down.
+
+    It branches on os.name, the same question the shape rule above asks, so the two can never
+    disagree about which machine they are on. Nothing here changes what is REFUSED — only the
+    words used to explain it."""
+    if os.name == "nt":
+        return ("a drive letter, like C:\\",
+                "C:\\AI Brain",
+                "If you can already see the folder in your file manager, click its address bar and "
+                "copy the whole line.")
+    return ("a slash, /",
+            "$HOME/AI Brain",
+            "If you can already see the folder in a terminal, type `pwd` inside it and use exactly "
+            "what that prints.")
 
 
 def reject_unusable_target(path):
@@ -161,30 +190,34 @@ def reject_unusable_target(path):
     safe in Google Drive. It was inside the code folder, which the instructions say is safe to
     delete. One honest check here and none of that can start."""
     raw = (path or "").strip()
+    starts_with, example, how_to_find = how_a_complete_path_is_written_here()
     if not raw:
-        return ("REFUSED: no folder was given. Say where the AI Brain should live, as a full path "
-                "starting with a / — for example: --set \"$HOME/AI Brain\"")
+        return (f"REFUSED: no folder was given. Say where the AI Brain should live, as a complete "
+                f"path — one that starts with {starts_with} . For example: --set \"{example}\"")
 
-    if looks_like_a_windows_path(raw):
-        return (f"REFUSED: '{raw}' looks like a Windows folder (a drive letter like G:, or "
-                f"backslashes).\n"
-                f"  This computer is running macOS or Linux, where a place like that does not "
-                f"exist — so instead of finding your Google Drive, it would quietly make a NEW "
-                f"folder whose name is the words you just typed, in the wrong place.\n"
-                f"  On this computer every real folder starts with a / . Open the folder you want "
-                f"in Finder or your file manager, copy its real path, and pass that. A Google "
-                f"Drive folder here usually looks like:\n"
+    # PLATFORM-GATED (field report #84, 2026-08-19). This shape is only a problem where it is not
+    # native. On Windows `G:\\My Drive\\AI Brain` is a REAL location — a student is using exactly
+    # that — and os.path.isabs() below judges it correctly there, so the shape rule must not fire.
+    # Everywhere else the shape rule stays, because there the path is not a location at all.
+    if os.name != "nt" and looks_like_a_windows_path(raw):
+        return (f"REFUSED: '{raw}' is written in the Windows style — a drive letter like G:, or "
+                f"backslashes.\n"
+                f"  On this system that is not a real place; it is just a long filename. So instead "
+                f"of finding your Google Drive, it would quietly make a NEW folder whose name is "
+                f"the words you just typed, in the wrong place.\n"
+                f"  Here, every real folder starts with a / . Open the folder you want in your file "
+                f"manager, copy its real path, and pass that. If this is a Mac, a Google Drive "
+                f"folder usually looks like:\n"
                 f"  $HOME/Library/CloudStorage/GoogleDrive-<your-account>/My Drive/AI Brain")
 
     expanded = os.path.expanduser(raw)
     if not os.path.isabs(expanded):
-        return (f"REFUSED: '{raw}' is not a complete path — it does not start with a / .\n"
+        return (f"REFUSED: '{raw}' is not a complete path — here, a complete one starts with "
+                f"{starts_with} .\n"
                 f"  A short name like that means \"inside whatever folder I happen to be in right "
                 f"now\", which is almost never where your AI Brain lives, and your notes would end "
                 f"up somewhere neither of us meant.\n"
-                f"  Give the whole path, from the top. If you can already see the folder in a "
-                f"terminal, type `pwd` inside it and use exactly what that prints. For example: "
-                f"$HOME/AI Brain")
+                f"  Give the whole path, from the top. {how_to_find} For example: {example}")
 
     # realpath BOTH sides: /tmp is a symlink to /private/tmp on macOS, and a student's Drive folder
     # is very often reached through a symlink too. Comparing the paths as typed misses both.
@@ -217,7 +250,8 @@ def set_brain_root(path, create=False, replace_global=False):
     so a confused session running --set can no longer silently repoint another install's brain.
     Returns (ok, message-or-path, global_note) where global_note says what happened to the global.
 
-    REFUSES FIRST, before it creates or writes anything: a Windows-shaped path, a path that is not
+    REFUSES FIRST, before it creates or writes anything: a Windows-shaped path when this is NOT
+    running on Windows (field report #84 — on Windows that shape is correct), a path that is not
     absolute, and any path inside this Harness folder — see reject_unusable_target for the incident
     that put that gate here. --create makes a missing folder, but only once those have passed."""
     refusal = reject_unusable_target(path)
@@ -254,9 +288,31 @@ NOT_SET_MESSAGE = ("NOT-SET — no $" + BRAIN_ROOT_ENV + ", no " + REPO_POINTER_
                    "(add --create for a new folder).")
 
 
+def make_console_output_safe():
+    """Force THIS program's own stdout/stderr to UTF-8 with errors="replace", if they will take it.
+
+    WHY (field report #72, 2026-08-19). This module prints characters — the warning sign below,
+    the arrows and dashes in the refusals — that do not exist in a narrow console codepage such as
+    Windows cp1252. Printing one there raises UnicodeEncodeError and the process DIES at the exact
+    moment it was trying to warn somebody that their AI Brain just moved. Reproduced by running
+    this file under PYTHONIOENCODING=cp1252.
+
+    It can never itself throw. `reconfigure` exists only on a TextIOWrapper (Python 3.7+), and
+    stdout may have been swapped for something else entirely — the test suite redirects it into a
+    StringIO — so anything raised here is swallowed. Making output legible must not become a new
+    way to fail. Scope is deliberately this one module's entry point; a repo-wide helper is a
+    separate job."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:                        # noqa: BLE001 - see docstring: never throw here
+            pass
+
+
 def main(argv=None):
     """The same contract as `pipeline.py brain-root`, reachable without the ingest pipeline —
     because the data root is the whole system's variable, not the ingest chain's."""
+    make_console_output_safe()   # before ANY print, including argparse's own errors (#72)
     ap = argparse.ArgumentParser(description="resolve / persist the one data root everything writes under")
     ap.add_argument("--set", dest="set_path", metavar="PATH",
                     help="record this path as the brain root: writes this repo's .brain-root pointer, and "

@@ -14,6 +14,7 @@ import contextlib
 import io
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -356,6 +357,240 @@ class TestReplacementIsNeverSilent(BrainRootCase):
         self.assertEqual(rc, 1)
         self.assertNotIn("REPLACED", out)
         self.assertEqual(brain_root.read_persisted(), self.data)
+
+
+class TestTheWindowsShapeRuleIsPlatformGated(BrainRootCase):
+    """2026-08-19, field report #84. A student ON WINDOWS is really keeping their AI Brain at
+    `G:\\My Drive\\AI Brain`, and there that is a perfectly real, correct place — Google Drive
+    genuinely mounts as a drive letter. The shape rule fired on every platform and refused them,
+    while telling them their own computer was macOS or Linux. Since INSTALL.md instructs the
+    assistant to STOP when --set refuses, that dead-ended a correct install on a falsehood.
+
+    So: the shape rule is now asked only when os.name is not "nt". The other three refusals —
+    not-absolute, inside-the-Harness, and the Harness itself — are untouched on every platform."""
+
+    def _refusal_on(self, os_name, path):
+        """reject_unusable_target() as it behaves under a given os.name. Only the gate is
+        simulated: os.path stays posix here, which is why the Windows cases below assert what
+        must NOT be in the message rather than asserting outright acceptance."""
+        saved = os.name
+        os.name = os_name
+        try:
+            return brain_root.reject_unusable_target(path)
+        finally:
+            os.name = saved
+
+    def test_the_shape_rule_still_fires_when_not_on_windows(self):
+        """The 2026-08-18 catastrophe case, unchanged where it was right."""
+        msg = self._refusal_on("posix", r"G:\My Drive\AI Brain")
+        self.assertIsNotNone(msg)
+        self.assertIn("Windows", msg)
+
+    def test_the_shape_rule_does_not_fire_on_windows(self):
+        """THE new acceptance case. It may still be refused by a LATER rule under this simulation
+        (os.path is posix here, so isabs is posix), but never by the shape rule."""
+        msg = self._refusal_on("nt", r"G:\My Drive\AI Brain")
+        if msg is not None:
+            # NB the sentinel is the shape refusal's own phrase, not the words "drive letter" —
+            # since 2026-08-19 the not-absolute message says "drive letter" quite legitimately
+            # when it is speaking to a Windows user.
+            self.assertNotIn("Windows", msg)
+            self.assertNotIn("written in the Windows style", msg)
+
+    def test_a_forward_slash_drive_letter_is_not_shape_refused_on_windows(self):
+        msg = self._refusal_on("nt", "C:/ProgramData/AI Brain")
+        if msg is not None:
+            self.assertNotIn("Windows", msg)
+
+    def test_a_native_windows_path_passes_the_gate_when_os_path_is_windows_too(self):
+        """The honest end of the simulation: with BOTH os.name and os.path switched to Windows —
+        which is what a real Windows interpreter has — the drive-letter path passes cleanly."""
+        import ntpath
+        saved_name, saved_path = os.name, os.path
+        os.name, os.path = "nt", ntpath
+        try:
+            self.assertIsNone(brain_root.reject_unusable_target(r"G:\My Drive\AI Brain"))
+            self.assertIsNone(brain_root.reject_unusable_target(r"C:\Users\somebody\AI Brain"))
+        finally:
+            os.name, os.path = saved_name, saved_path
+
+    def test_the_other_three_refusals_are_unchanged_on_windows(self):
+        """Gating the shape rule must not open any of the other doors."""
+        self.assertIn("not a complete path", self._refusal_on("nt", "AI Brain"))
+        self.assertIn("no folder was given", self._refusal_on("nt", ""))
+        self.assertIn("inside the Harness",
+                      self._refusal_on("nt", os.path.join(self.harness, "data", "foo")))
+        self.assertIn("Harness folder itself", self._refusal_on("nt", self.harness))
+
+    def test_the_catastrophe_is_still_caught_if_the_shape_rule_is_taken_away(self):
+        """DEFENCE IN DEPTH. On macOS/Linux `G:\\My Drive\\AI Brain` is a RELATIVE path, so the
+        not-absolute rule refuses it on its own. The shape rule supplies the CLEAR message; it was
+        never the only wall, and gating it does not leave the original hole open."""
+        saved = brain_root.looks_like_a_windows_path
+        brain_root.looks_like_a_windows_path = lambda raw: False
+        try:
+            msg = brain_root.reject_unusable_target(r"G:\My Drive\AI Brain")
+            ok, setmsg, _n = brain_root.set_brain_root(r"G:\My Drive\AI Brain", create=True)
+        finally:
+            brain_root.looks_like_a_windows_path = saved
+        self.assertIsNotNone(msg)
+        self.assertIn("not a complete path", msg)
+        self.assertFalse(ok)
+        self.assertIn("not a complete path", setmsg)
+        self.assertFalse(os.path.isdir(os.path.join(os.getcwd(), r"G:\My Drive\AI Brain")))
+
+    def test_no_refusal_ever_asserts_what_os_the_machine_is(self):
+        """The message told a Windows student their computer was macOS or Linux. A refusal may
+        describe the PATH all it likes; it may not make a claim about the machine."""
+        bad = (r"G:\My Drive\AI Brain", "C:/ProgramData/AI Brain", "AI Brain", "../foo", "",
+               os.path.join(self.harness, "data", "foo"), self.harness)
+        for path in bad:
+            for os_name in ("posix", "nt"):
+                msg = self._refusal_on(os_name, path)
+                if msg is None:
+                    continue
+                for claim in ("running macOS", "running Linux", "This computer is running",
+                              "macOS or Linux", "you are on Windows", "your computer is"):
+                    self.assertNotIn(claim, msg, f"{path!r} under os.name={os_name!r}")
+                if os_name == "nt":
+                    # the sibling bug, 2026-08-19: on Windows a complete path starts with a drive
+                    # letter, so no refusal may tell a Windows user it must start with a slash
+                    for slash_claim in ("does not start with a / ", "starts with a slash",
+                                        "starting with a / ", "starts with a, /", "with a slash, /"):
+                        self.assertNotIn(slash_claim, msg, f"{path!r} under os.name={os_name!r}")
+
+
+class TestOutputSurvivesANarrowConsole(BrainRootCase):
+    """2026-08-19, field report #72. This module prints a warning sign and other characters that do
+    not exist in a narrow console codepage such as Windows cp1252. Printing one there raised
+    UnicodeEncodeError and killed the process AT THE MOMENT IT WAS WARNING SOMEBODY that their AI
+    Brain had just been repointed — the single worst message to lose."""
+
+    def test_it_is_a_silent_no_op_on_a_stream_that_cannot_reconfigure(self):
+        """StringIO has no .reconfigure — and this whole suite redirects stdout into one. The
+        guard must swallow that, because a crash while making output readable is a new bug."""
+        saved = (sys.stdout, sys.stderr)
+        sys.stdout, sys.stderr = io.StringIO(), io.StringIO()
+        try:
+            brain_root.make_console_output_safe()
+        finally:
+            sys.stdout, sys.stderr = saved
+
+    def test_it_is_called_before_anything_is_printed(self):
+        """It has to run inside main(), not at import, or a library caller changes the host
+        program's streams as a side effect of importing."""
+        import inspect
+        body = inspect.getsource(brain_root.main)
+        self.assertIn("make_console_output_safe()", body)
+
+    def test_the_warning_sign_prints_on_a_cp1252_console_without_dying(self):
+        """End to end in a real subprocess with the console forced narrow. Before the fix this
+        exits non-zero on UnicodeEncodeError. Imports the module only — reads no config, writes
+        nothing, touches no brain root."""
+        shared_dir = os.path.dirname(os.path.abspath(brain_root.__file__))
+        code = ("import sys; sys.path.insert(0, %r); import brain_root;"
+                " brain_root.make_console_output_safe();"
+                " print('\\u26a0 REPLACED the machine-global brain root that was already set')"
+                % shared_dir)
+        env = dict(os.environ, PYTHONIOENCODING="cp1252")
+        proc = subprocess.run([sys.executable, "-c", code], env=env,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.assertEqual(proc.returncode, 0, proc.stderr.decode("utf-8", "replace"))
+        self.assertIn(b"REPLACED", proc.stdout)
+
+    def test_without_the_guard_that_same_print_really_does_die(self):
+        """POSITIVE CONTROL. Same subprocess, same console, only make_console_output_safe() is not
+        called — so the test proves the fix, not the environment."""
+        code = ("print('\\u26a0 REPLACED the machine-global brain root that was already set')")
+        env = dict(os.environ, PYTHONIOENCODING="cp1252")
+        proc = subprocess.run([sys.executable, "-c", code], env=env,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.assertNotEqual(proc.returncode, 0, "the control must fail, or it controls nothing")
+        self.assertIn(b"UnicodeEncodeError", proc.stderr)
+
+
+class TestTheCompletePathAdviceIsTrueOnTheMachineItRunsOn(BrainRootCase):
+    """2026-08-19, the sibling of field report #84. Gating the drive-letter rule on os.name let
+    Windows users through it — straight into the NEXT rule, whose message told them a complete
+    path "does not start with a / ". On Windows a complete path starts with a drive letter, so the
+    dead end had simply moved one rule down. Behaviour is frozen here: every path refused before is
+    still refused, for the same reason. Only the words changed."""
+
+    def _refusal_on(self, os_name, path):
+        saved = os.name
+        os.name = os_name
+        try:
+            return brain_root.reject_unusable_target(path)
+        finally:
+            os.name = saved
+
+    def test_the_helper_answers_for_the_machine_it_is_asked_about(self):
+        saved = os.name
+        try:
+            os.name = "nt"
+            starts, example, _how = brain_root.how_a_complete_path_is_written_here()
+            self.assertIn("drive letter", starts)
+            self.assertIn("C:", example)
+            os.name = "posix"
+            starts, example, _how = brain_root.how_a_complete_path_is_written_here()
+            self.assertIn("/", starts)
+            self.assertNotIn("drive letter", starts)
+        finally:
+            os.name = saved
+
+    def test_not_a_complete_path_says_drive_letter_on_windows(self):
+        msg = self._refusal_on("nt", "AI Brain")
+        self.assertIn("not a complete path", msg, "the REFUSAL itself is unchanged")
+        self.assertIn("drive letter", msg)
+        self.assertNotIn("does not start with a / ", msg)
+
+    def test_not_a_complete_path_still_says_slash_off_windows(self):
+        msg = self._refusal_on("posix", "AI Brain")
+        self.assertIn("not a complete path", msg)
+        self.assertIn("starts with a slash, /", msg)
+        self.assertNotIn("drive letter", msg)
+
+    def test_the_empty_path_refusal_is_true_on_both(self):
+        nt = self._refusal_on("nt", "")
+        posix = self._refusal_on("posix", "")
+        self.assertIn("no folder was given", nt, "the REFUSAL itself is unchanged")
+        self.assertIn("no folder was given", posix)
+        self.assertIn("drive letter", nt)
+        self.assertNotIn("starting with a / ", nt)
+        self.assertIn("/", posix)
+
+    def test_the_terminal_hint_is_not_given_where_it_would_be_wrong(self):
+        """`pwd` is a POSIX shell builtin. Telling a cmd.exe user to type it is the same category
+        of small falsehood that started all of this."""
+        self.assertNotIn("pwd", self._refusal_on("nt", "AI Brain"))
+        self.assertIn("pwd", self._refusal_on("posix", "AI Brain"))
+
+    def test_behaviour_is_frozen_only_the_words_moved(self):
+        """The whole point of the amendment: same paths refused, same rules firing, both platforms.
+        Compares WHICH rule answered, never the prose."""
+        cases = (("", "no folder was given"),
+                 ("AI Brain", "not a complete path"),
+                 ("../foo", "not a complete path"),
+                 (os.path.join(self.harness, "data", "foo"), "inside the Harness"),
+                 (self.harness, "Harness folder itself"))
+        for path, rule in cases:
+            for os_name in ("posix", "nt"):
+                msg = self._refusal_on(os_name, path)
+                self.assertIsNotNone(msg, f"{path!r} must still be refused under {os_name}")
+                self.assertTrue(msg.startswith("REFUSED"), path)
+                self.assertIn(rule, msg, f"{path!r} under {os_name} must still hit the SAME rule")
+
+    def test_every_refusal_still_names_the_next_move_on_windows_too(self):
+        """The original acceptance property, re-checked on the other platform: a refusal that does
+        not say what to do instead just gets worked around."""
+        for bad in (r"G:\My Drive\AI Brain", "AI Brain", "../foo", "",
+                    os.path.join(self.harness, "data", "foo"), self.harness):
+            for os_name in ("posix", "nt"):
+                msg = self._refusal_on(os_name, bad)
+                if msg is None:
+                    continue
+                self.assertTrue(msg.startswith("REFUSED"), bad)
+                self.assertIn("AI Brain", msg, f"{bad!r} under {os_name} names no example")
 
 
 if __name__ == "__main__":

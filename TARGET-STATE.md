@@ -24,12 +24,10 @@ these cannot, because they gate the very checks that would otherwise go green on
 
 ### 1. The Harness repo is at the top of the opened folder, on the right branch, hooks wired, not damaged
 ```bash
-# The migration-1 arm is TRANSITIONAL. It comes out the day migration-1 merges into main, in the
-# same edit that drops "-b migration-1" from INSTALL.md STEP 5. The two move together or not at all.
 BR="$(git branch --show-current)"; BR="${BR:-(none - detached, not on any branch)}"
 test -d .claude && test -d system && test -d shared \
   && { case "$BR" in
-         main|migration-1) : ;;
+         main) : ;;
          *) echo "FACT 1: NO - the release branch is $BR, expected main"; false ;;
        esac; } \
   && [ "$(git config core.hooksPath)" = "system/githooks" ] \
@@ -39,11 +37,16 @@ test -d .claude && test -d system && test -d shared \
 **Meaning:** this folder — not one above it, not one below it — IS the Lifehack Harness: the right
 code, the right branch, the safety catch turned on, and nothing broken inside the repository itself.
 
-⚠ **Why a branch is checked at all, and why two names pass.** The clause is load-bearing: `INSTALL.md`
-STEP 5 clones a *named* branch precisely because the default one is *"an older release with known
-bugs"*, so this is the check that catches an install which quietly fetched the wrong code. **`main` is
-the name this check is built around** — after the merge that is simply what a correct fresh install is
-sitting on. The second name is scaffolding, and the comment in the block says when to remove it.
+⚠ **Why a branch is checked at all, and why only `main` passes.** `INSTALL.md` STEP 5 clones
+`-b main`, and says of it: *"`-b main` names the released version explicitly. It is also the default,
+so a clone without it lands in the same place — naming it means you still get the release if that
+default ever changes."* So naming the branch at clone time is insurance against a future default, not
+a rescue from a bad one today — which is exactly why this check still earns its place: the clone is not
+the only way a machine ends up somewhere else. A hand-typed branch name, a `git checkout` during a
+repair that was never undone, or a copied-across folder can all leave an install running code that is
+not the release, and this is what notices. **`main` is the only name that passes**, and it is the only
+one that should: a transitional second name used to pass here, and came out when `INSTALL.md` stopped
+cloning it.
 
 ⚠ **A detached checkout is named, not swallowed.** `git branch --show-current` prints *nothing* on a
 detached HEAD, so the old single-name test compared an empty string and failed with no output at all —
