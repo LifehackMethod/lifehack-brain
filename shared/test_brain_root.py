@@ -40,8 +40,16 @@ class BrainRootCase(unittest.TestCase):
         # dir the same way, so the suite never sees (or writes) the real repo's .brain-root.
         self._saved_pointer_fn = brain_root.repo_pointer_path
         brain_root.repo_pointer_path = lambda: os.path.join(self.tmp, ".brain-root")
+        # 2026-08-18: --set now REFUSES any target inside the Harness folder, and it finds that
+        # folder via harness_root(). Point it at a fake harness inside the temp dir, so the
+        # containment cases are exercised without depending on where the real clone happens to be.
+        self.harness = os.path.join(self.tmp, "harness")
+        os.makedirs(self.harness)
+        self._saved_harness_fn = brain_root.harness_root
+        brain_root.harness_root = lambda: self.harness
 
     def tearDown(self):
+        brain_root.harness_root = self._saved_harness_fn
         brain_root.repo_pointer_path = self._saved_pointer_fn
         brain_root.BRAIN_ROOT_CONFIG, brain_root.BRAIN_ROOT_LEGACY_GLOB, env = self._saved
         os.environ.pop(brain_root.BRAIN_ROOT_ENV, None)
@@ -126,12 +134,126 @@ class TestSet(BrainRootCase):
         self.assertEqual(brain_root.resolve_brain_root(), ("repo-pointer", deep))
 
     def test_persists_an_absolute_path(self):
-        rel = os.path.relpath(self.data, os.getcwd())
-        ok, res, _note = brain_root.set_brain_root(rel)
+        """A path given with a ~ still lands absolute in the config file. (Until 2026-08-18 this
+        case used a RELATIVE path and asserted it was accepted — that acceptance is precisely the
+        bug that put a student's AI Brain inside the repo, so the relative case is now a REFUSAL
+        and lives in TestRefusesUnusableTargets below.)"""
+        home = os.path.join(self.tmp, "fake-home")
+        os.makedirs(os.path.join(home, "AI Brain"))
+        saved = os.environ.get("HOME")
+        os.environ["HOME"] = home
+        try:
+            ok, res, _note = brain_root.set_brain_root("~/AI Brain")
+        finally:
+            if saved is None:
+                os.environ.pop("HOME", None)
+            else:
+                os.environ["HOME"] = saved
         self.assertTrue(ok, res)
         self.assertTrue(os.path.isabs(res))
         with open(brain_root.BRAIN_ROOT_CONFIG) as fh:
-            self.assertEqual(fh.read().strip(), self.data)
+            self.assertEqual(fh.read().strip(), os.path.join(home, "AI Brain"))
+
+
+class TestRefusesUnusableTargets(BrainRootCase):
+    """2026-08-18, from a real student run on Windows/Codex. The installer could not find their
+    Google Drive, so `--set "G:\\My Drive\\AI Brain" --create` was tried on a machine that was not
+    Windows. It was taken as a RELATIVE path: a folder with that literal name was created INSIDE
+    the repo, the student's canon, journal and registry were written into it, and four checks
+    afterwards all passed — including the cloud-backup one, which was matching the words "my drive"
+    in the folder's own name. Each test here is one link of that chain, cut."""
+
+    def _assert_nothing_persisted(self):
+        self.assertFalse(os.path.exists(brain_root.BRAIN_ROOT_CONFIG),
+                         "a refused --set must not persist anything")
+        self.assertFalse(os.path.exists(brain_root.repo_pointer_path()),
+                         "a refused --set must not write the repo pointer either")
+
+    def test_the_exact_tester_input_is_refused_and_creates_nothing(self):
+        """THE acceptance case."""
+        before = sorted(os.listdir(self.harness))
+        ok, msg, _note = brain_root.set_brain_root(r"G:\My Drive\AI Brain", create=True)
+        self.assertFalse(ok)
+        self.assertIn("Windows", msg)
+        self.assertEqual(sorted(os.listdir(self.harness)), before,
+                         "nothing may be created inside the Harness folder")
+        self.assertFalse(os.path.isdir(os.path.join(os.getcwd(), r"G:\My Drive\AI Brain")))
+        self._assert_nothing_persisted()
+
+    def test_refuses_a_windows_drive_letter_with_forward_slashes(self):
+        ok, msg, _note = brain_root.set_brain_root("C:/ProgramData/AI Brain", create=True)
+        self.assertFalse(ok)
+        self.assertIn("Windows", msg)
+
+    def test_refuses_a_bare_relative_name(self):
+        ok, msg, _note = brain_root.set_brain_root("AI Brain", create=True)
+        self.assertFalse(ok)
+        self.assertIn("not a complete path", msg)
+        self._assert_nothing_persisted()
+
+    def test_refuses_a_dotted_relative_path(self):
+        ok, msg, _note = brain_root.set_brain_root("../foo", create=True)
+        self.assertFalse(ok)
+        self.assertIn("not a complete path", msg)
+
+    def test_refuses_a_target_inside_the_harness(self):
+        """The one that matters most: the student's material never lives inside the clone."""
+        inside = os.path.join(self.harness, "data", "foo")
+        ok, msg, _note = brain_root.set_brain_root(inside, create=True)
+        self.assertFalse(ok)
+        self.assertIn("inside the Harness", msg)
+        self.assertFalse(os.path.exists(inside), "and it was not created on the way to refusing")
+        self._assert_nothing_persisted()
+
+    def test_refuses_the_harness_root_itself(self):
+        ok, msg, _note = brain_root.set_brain_root(self.harness)
+        self.assertFalse(ok)
+        self.assertIn("Harness folder itself", msg)
+
+    def test_refuses_a_target_inside_the_harness_reached_through_a_symlink(self):
+        """/tmp is a symlink to /private/tmp on macOS, and Drive folders are often symlinked too —
+        so containment is decided on realpath, never on the path as typed."""
+        link = os.path.join(self.tmp, "link-to-harness")
+        os.symlink(self.harness, link)
+        ok, msg, _note = brain_root.set_brain_root(os.path.join(link, "data", "foo"), create=True)
+        self.assertFalse(ok)
+        self.assertIn("inside the Harness", msg)
+        self.assertFalse(os.path.exists(os.path.join(self.harness, "data")))
+
+    def test_refuses_an_empty_path(self):
+        ok, msg, _note = brain_root.set_brain_root("")
+        self.assertFalse(ok)
+        self.assertIn("no folder was given", msg)
+
+    def test_every_refusal_says_what_to_do_instead(self):
+        """These are read aloud to someone non-technical. A refusal that does not name the next
+        move just gets worked around — which is how the original improvisation happened."""
+        for bad in (r"G:\My Drive\AI Brain", "AI Brain", "../foo",
+                    os.path.join(self.harness, "data", "foo"), self.harness, ""):
+            msg = brain_root.reject_unusable_target(bad)
+            self.assertIsNotNone(msg, bad)
+            self.assertTrue(msg.startswith("REFUSED"), bad)
+            self.assertIn("/", msg.split("REFUSED", 1)[1], bad)
+
+    def test_the_good_paths_still_pass_the_gate(self):
+        """The gate must be invisible to every legitimate install."""
+        drive = os.path.join(self.tmp, "CloudStorage", "GoogleDrive-account", "My Drive", "AI Brain")
+        os.makedirs(drive)
+        for good in (self.data, drive, os.path.join(self.tmp, "not-yet-made")):
+            self.assertIsNone(brain_root.reject_unusable_target(good), good)
+        ok, res, _note = brain_root.set_brain_root(drive)
+        self.assertTrue(ok, res)
+        self.assertEqual(res, drive)
+        ok, res, _note = brain_root.set_brain_root(os.path.join(self.tmp, "not-yet-made"), create=True)
+        self.assertTrue(ok, res)
+        self.assertTrue(os.path.isdir(res))
+
+    def test_the_cli_exits_nonzero_on_the_tester_input(self):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = brain_root.main(["--set", r"G:\My Drive\AI Brain", "--create"])
+        self.assertEqual(rc, 1)
+        self.assertIn("REFUSED", buf.getvalue())
 
 
 class TestCli(BrainRootCase):

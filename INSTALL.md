@@ -17,6 +17,25 @@ would actually let it do. You meet the rest later, the way you're meeting `/inge
 **This file is the whole setup.** You don't need to know anything technical. You don't need a terminal.
 You hand this file to Claude and answer its questions.
 
+## ⛔ FIRST — WHICH APP ARE YOU IN? ANSWER BEFORE YOU MAKE ANY FOLDER.
+
+**This setup only works in Claude Code — the `Code` tab of the Claude app.** It installs a command
+called `/ingest`, and that command is a Claude Code command: no other app can load it, so in any other
+app this install cannot work at all, no matter how well the rest of it goes.
+
+⭐ **So, before anything else: say which app you are reading this in.** If the answer is anything other
+than Claude Code — Codex, ChatGPT, Gemini, Cursor, a plain terminal, anything — **stop here.** Nothing
+is broken and nothing is your fault; this simply needs Claude Code. Get the Claude app, open its `Code`
+tab, and start again from this line.
+
+> **TO CLAUDE, OR WHOEVER IS READING THIS FILE:** ⛔ **Ask this question first, before you create a
+> folder, install anything, or run a single command.** Ask them plainly which app they are in — and if
+> you are not Claude Code yourself, say so and stop. ⭐ **This has to be the FIRST thing, because the
+> folder gets chosen before anything inspects the machine** — a Codex tester read this entire file and
+> only found out at the very end. ⛔ **Do not offer a partial install, and do not improvise an
+> equivalent.** ⭐ **A stop here is reportable** — make the same offer of one-on-one help that STEP 4's
+> **A STOP IS REPORTABLE** note spells out, then stop.
+
 ---
 
 ## What it builds — two folders, linked by one pointer
@@ -46,8 +65,9 @@ the Harness.** Nothing you write is ever tracked by git, committed, or pushed an
 never sits inside the git repository at all. **The rule that follows: take Harness updates with
 `git pull` — that is the default, and the right move for every ordinary update.** A pull only ever
 touches the Harness; it cannot reach your AI Brain, because your AI Brain was never inside it.
-Deleting the folder and re-cloning is a bigger hammer, and under this layout it is survivable — the
-end of this file says when that is the right call and how to do it.
+Deleting the folder and re-cloning is a bigger hammer, and under this layout it is usually survivable —
+but only after a check that nothing of yours is sitting inside the Harness. The end of this file says
+when that is the right call, the check to run first, and how to do it.
 
 **Your AI Brain is already backed up — it's a Google Drive folder, and Drive keeps its own version
 history.** There is nothing extra to set up.
@@ -181,6 +201,36 @@ actually required to install this at all.
   ⭐ **This is the single most expensive defect this file has had.** STEP 7.5 used `$PYBIN` twenty lines
   after the last block that set it, and told healthy installs their AI Brain had failed to connect. **It
   was found only because someone ran the file literally.** *(Stated once more, in situ, at STEP 4A.5.)*
+
+> ## ⛔⛔ WINDOWS SUPPORT IS KNOWN-INCOMPLETE. READ THIS BEFORE YOU RUN ANYTHING.
+>
+> **This is addressed to you, the assistant, not to the student.** Every line below was measured on a
+> real run, not guessed. **This file's Windows handling has holes, and they fail SILENTLY** — the
+> install reports success while being wrong.
+>
+> 1. ⛔ **THE WINDOWS STOP-SIGN CAN BE MISSED.** STEP 1 decides from `uname -s`. **Codex on Windows runs
+>    under WSL, and WSL answers `Linux`** — so a Windows machine can walk straight past the stop-sign
+>    and through the entire install. **If ANYTHING suggests you are on Windows — a `C:\` path, any
+>    drive letter, `/mnt/c`, OneDrive, or the person simply saying so — treat it as Windows regardless
+>    of what `uname` answered, and stop at STEP 1's stop-sign.**
+> 2. ⚠ **GOOGLE DRIVE DISCOVERY IS MAC-ONLY.** It looks under `~/Library/CloudStorage/GoogleDrive-*`,
+>    a path that cannot exist on Windows, where Drive is a drive letter such as `G:\`. So
+>    **`NO-DRIVE-ACCOUNTS` on a Windows machine does not mean Drive is missing — it means this check
+>    cannot see it**, and re-running it will never change the answer. ⛔ **Do not send them off to
+>    install Google Drive again. It is already there.**
+> 3. ⛔⛔ **NEVER IMPROVISE A WINDOWS PATH INTO `--set`. THIS HAPPENED, AND FOUR CHECKS THEN LIED.**
+>    A real run passed `--set "G:\My Drive\AI Brain"`. It was taken as a RELATIVE path, so a folder
+>    with that literal name was created **inside the Harness**; the student's material was written into
+>    it; and **four verification checks then passed and told them their AI Brain was connected and
+>    backed up by Google Drive.** It was inside the git repository and backed up by nothing.
+>    ⛔ **`--set` now refuses that input. If it refuses a path, STOP and say so — do not look for
+>    another way around it, and do not invent one.**
+> 4. ⚠ **THE SYNC CHECKS READ THE PATH AS TEXT.** On Windows, `C:\Users\<name>` is commonly the
+>    OneDrive mirror root and **contains no matchable word**, so STEP 1's and STEP 4's checks both
+>    report clean on a folder OneDrive is actively syncing.
+> 5. ⛔ **`/ingest` IS A CLAUDE CODE SKILL, AND CODEX NEVER LOADS IT.** A Codex install cannot work even
+>    if every single step above appears to pass. **The which-app question at the very top of this file
+>    is the only thing that catches this — ask it first, every time.**
 
 > ## ⛔⛔ YOUR JOB IS THE INSTALL. IT IS NOT THE INGEST. DO NOT START THE INGEST.
 >
@@ -375,6 +425,27 @@ uname -s 2>/dev/null || echo "Windows"
 > Windows student is the likeliest person in this whole file to have something worth reporting and, until
 > this line existed, the least likely to be told they could.
 
+> ## ⛔⛔ AND THE STOP-SIGN ABOVE CAN BE MISSED — `Linux` IS NOT PROOF OF LINUX.
+>
+> **Measured, not guessed. `uname -s` answers `Linux` on a Windows machine**, because Codex and most
+> other tools on Windows run under WSL, which is a real Linux living inside Windows. **A Windows
+> student can therefore read `Linux` here and walk the whole file to the end.** One did, and it ended
+> badly.
+>
+> ⛔ **So do not treat `Linux` as settled.** If anything at all suggests Windows — a `C:\` path, any
+> drive letter, `/mnt/c`, OneDrive, or the person just telling you they are on Windows — **it IS
+> Windows: fire the stop-sign above and stop, whatever `uname` said.**
+>
+> ⚠ **Three more Windows holes that fail SILENTLY** — the full statement of each is in
+> **⛔⛔ WINDOWS SUPPORT IS KNOWN-INCOMPLETE**, in the behaviour rules near the top of this file:
+> Drive discovery is Mac-only and reports `NO-DRIVE-ACCOUNTS` on a machine that HAS Drive; the sync
+> checks read the path as text and wave OneDrive's `C:\Users\<name>` straight through; and a Windows
+> path improvised into `--set` once created a folder **inside the Harness** while four checks reported
+> the AI Brain connected and backed up. ⛔ **`--set` refuses that now — if it refuses, stop and say so.**
+>
+> ⚠ **This is a warning for whoever reads it, not a detector.** Nothing in this build tests for WSL.
+> Windows support is a bridge this file crosses when it gets to it.
+
 **On a Mac or Linux, everything below applies as written.**
 
 **Now, before anything gets installed, find out whether the folder they opened is one that can hold
@@ -427,11 +498,20 @@ here.
 it.** This costs about a fiftieth of a second and needs nothing installed. ⛔ **It only counts and
 names. It opens nothing, moves nothing, and deletes nothing.**
 
+> ⛔⛔ **RUN THIS EVEN ON A RESUME — EVEN WHEN STEP 0 SAID `STEP 1` WAS ALREADY DONE.** ⭐ **It is the
+> one part of STEP 1 that is NOT skippable.** Everything else here reports a fact about the machine
+> that a mark in the log can stand in for; this one produces the `strays` count, and **STEP 8 and
+> STEP 10 both refuse to declare success without it.** A tester picked up a half-finished install, saw
+> `STEP 1` in the read-back, skipped straight to STEP 2 — and the count was never taken at all, so
+> every downstream thing that depends on it silently never fired. **Take the count, write it down
+> again, and carry on from wherever the read-back actually put you.**
+
 ```bash
 PYBIN="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
 "$PYBIN" - <<'PY'
 import os, glob
 home = os.path.expanduser("~")
+harness = os.path.realpath(os.getcwd())   # the folder being installed INTO - never a rival
 places = []
 for acct in sorted(glob.glob(os.path.join(home, "Library/CloudStorage/GoogleDrive-*"))):
     for sub in ("My Drive", "Shared drives"):
@@ -439,7 +519,15 @@ for acct in sorted(glob.glob(os.path.join(home, "Library/CloudStorage/GoogleDriv
         if os.path.isdir(d):
             places.append(d)
 places.append(home)
+# ONE level deeper into the home folder, and only these three. A tester's second brain sat on the
+# Desktop and was invisible to the old top-level-only look. This is NOT a recursive walk: walking a
+# synced drive hangs for minutes, and a person watching a frozen screen is its own failure.
+for sub in ("Desktop", "Documents", "Downloads"):
+    d = os.path.join(home, sub)
+    if os.path.isdir(d):
+        places.append(d)
 hits = []
+seen = set()
 for d in places:
     try:
         entries = sorted(e for e in os.listdir(d) if not e.startswith("."))
@@ -447,11 +535,22 @@ for d in places:
         continue
     for e in entries:
         low = e.lower()
-        if ("brain" in low or "lifehack" in low) and os.path.isdir(os.path.join(d, e)):
-            hits.append(os.path.join(d, e))
+        if not ("brain" in low or "lifehack" in low):
+            continue
+        full = os.path.join(d, e)
+        if not os.path.isdir(full):
+            continue
+        real = os.path.realpath(full)
+        if real == harness:      # this IS the Harness. it was created minutes ago, on instruction.
+            continue
+        if real in seen:         # the same folder reached by two routes is one folder
+            continue
+        seen.add(real)
+        hits.append(full)
 print("BRAIN-SHAPED FOLDERS: %d" % len(hits))
 for h in hits:
     print("  " + h)
+print("NOT COUNTED, BECAUSE IT IS THE HARNESS ITSELF: " + harness)
 PY
 ```
 
@@ -473,6 +572,19 @@ this machine already. Which of these is the real one — the one your writing is
 can be tidied up later; I just don't want to connect you to the wrong one."* **Write the answer down
 and carry it to STEP 7** — 7.1 will offer the same list again, and this is how you already know.
 
+**The moment they answer, record WHICH ONE they said — this is a decision, and it is the only proof
+later steps have that the question was ever asked:**
+
+```bash
+sh ~/.config/lifehack/install-note.sh brain-confirmed "/the/folder/they/said/is/theirs"
+```
+
+⛔ **Write it only after they have actually answered in words.** ⭐ **STEP 8 reads this line back**, and
+with two or more folders live and no answer recorded, **STEP 8 refuses to report success** — which is
+correct, because *which folder is mine* is one of exactly two questions a machine cannot answer for
+itself. **A note written on their behalf turns that refusal off and is therefore a lie**, in the same
+way scratchpad rule 3 means it.
+
 > ## ⛔⛔ DETECT, NAME, ASK. THAT IS ALL. THIS STEP CONSOLIDATES NOTHING.
 >
 > ⛔ **NEVER delete a folder, never merge two, never rename one, and never move anything.** Not here,
@@ -486,15 +598,28 @@ and carry it to STEP 7** — 7.1 will offer the same list again, and this is how
 > live lookalikes.* ⛔ **Do not invent a second scheme here.** If they want it sorted, the hand-off is
 > STEP 10's sentence, word for word, and it happens in its own session afterwards.
 >
-> ⚠ **The count is deliberately blunt and will over-report.** It matches any top-level folder whose
-> name contains "brain" or "lifehack", so it will also name Harness folders and old clones. **That is
-> correct, not noise** — FACT 8 counts stray ENGINES as lookalikes too. Say what each one looks like
-> if you can tell from the path, and let them decide.
+> ⚠ **The count is deliberately blunt and will over-report.** It matches any folder whose name contains
+> "brain" or "lifehack", so it will also name OTHER Harness folders and old clones. **That is correct,
+> not noise** — FACT 8 counts stray ENGINES as lookalikes too. Say what each one looks like if you can
+> tell from the path, and let them decide.
 >
-> ⚠ **It is deliberately shallow — the top level of each Drive and of the home folder, and no deeper.**
-> A recursive walk of a synced drive hangs or takes minutes, and a person watching a frozen screen is
-> its own failure. **A brain-shaped folder buried three levels down will be missed, and that is an
-> accepted limit, not an oversight** — `REPAIR.md` is what looks properly.
+> ⭐ **ONE THING IT WILL NEVER NAME: the Harness you are installing into.** The folder they made
+> minutes ago, on this file's own instruction, is excluded by path — it prints on its own line as
+> `NOT COUNTED, BECAUSE IT IS THE HARNESS ITSELF`, and it is not in the number. ⛔ **This matters and
+> it is not cosmetic.** Before the exclusion existed, a tester was shown her brand-new `Lifehack
+> Harness` as a rival brain and asked which of her two brains was real — **five minutes after being
+> told to create it** — and was offered to have the loser tidied up. **That fired for very nearly
+> everyone.** The same exclusion is what stops STEP 10's cleanup inventory recommending they archive
+> their own working install.
+>
+> ⚠ **It is shallow ON PURPOSE, but no longer top-level-only.** It reads each Drive's top level, the
+> home folder's top level, and **one level further into `Desktop`, `Documents` and `Downloads`** — the
+> three places people actually put things. ⭐ **That last part was added because a tester's second
+> `AI Brain` sat on her Desktop, one level down, and was therefore invisible**: she finished with two
+> rival brains, one was connected on a coin flip, and the install reported success. **It is still not a
+> recursive walk** — walking a synced drive hangs for minutes, and a person watching a frozen screen is
+> its own failure. **A brain-shaped folder buried deeper than that will still be missed, and that
+> remains an accepted limit, not an oversight** — `REPAIR.md` is what looks properly.
 
 ---
 
@@ -1292,12 +1417,27 @@ works. Everything from here on — STEP 8 onward, and every skill afterwards —
 
 ⛔ **Read what `--set` printed before moving on.** It always writes THIS repo's own pointer
 (`.brain-root`, gitignored, at the top of the Harness folder) — that part cannot silently fail to
-apply. **If it also says `GLOBAL UNCHANGED`, that is normal and not a problem**: it means this machine
+apply. **There are exactly three things the second line can say, and all three are written out here.**
+
+**1. `global config written` — THE NORMAL RESULT ON A FRESH MACHINE, AND THE COMMONEST ONE OF THE
+THREE. Carry straight on to 7.3.** It means this machine had no machine-wide brain root recorded
+before, so one was written now, pointing at the folder they just chose. **Nothing is wrong, nothing
+needs saying to them, and nothing needs doing about it.** ⭐ **This line used to be the one outcome
+this file did not list**, so two testers hit the ordinary fresh-machine case, found it described
+nowhere, and had to guess. **A first install is supposed to print this.**
+
+**2. `GLOBAL UNCHANGED` — also normal, also carry on**: it means this machine
 already has a different machine-wide brain root recorded, and this repo's own pointer now simply
-overrides it for THIS Harness, exactly as designed — no need to mention it. **If it says `⚠ REPLACED
-the machine-global brain root`, STOP and tell them**, because that only happens if you passed
+overrides it for THIS Harness, exactly as designed — no need to mention it.
+
+**3. `⚠ REPLACED the machine-global brain root` — STOP and tell them.** That only happens if you passed
 `--replace-global`, which you should not do here: *"Heads up — this pointed a DIFFERENT install's
 brain root at your new folder. If you didn't mean to do that, say so and we'll put it back."*
+
+⚠ **Anything else — most of all a `REFUSED:` line — is not one of the three, and it is not a pass.**
+⛔ **If `--set` refuses the path, STOP and read the refusal out.** Do not retry it with a rewritten
+path, do not look for another way to record it, and do not invent one. The refusal is the check doing
+its job.
 
 ### 7.3 — Prove it resolves through THIS repo's own pointer, not "from somewhere"
 
@@ -1438,13 +1578,71 @@ anything works — nothing downstream has anywhere to write.
 git status --porcelain
 ```
 ⛔ **It must print NOTHING AT ALL.** Empty output means nothing of theirs has crept into the
-repository — and under this layout there is no `data` folder inside it for anything to hide in; their
-AI Brain lives entirely outside the Harness. **If anything is listed, stop and read it out** — do not
-commit it, do not `git add` it, and do not continue until you understand what it is.
+repository. Their AI Brain lives entirely outside the Harness, so on a clean first install there is
+nothing of theirs in here to find. **If anything is listed, stop and read it out** — do not commit it,
+do not `git add` it, and do not continue until you understand what it is.
+
+⚠ **What this file used to claim here was FALSE, and the correction matters: it said there is no
+`data` folder inside the Harness "for anything to hide in."** ⛔ **On a resumed machine there can be
+one.** A person who began under the older one-folder layout, or who is reinstalling on top of an
+earlier attempt, can easily have a `data` folder — or loose writing of their own — sitting inside this
+folder right now. **STEP 5's leftover-migration branch exists precisely because that happens.** So do
+not reason from "there cannot be anything of theirs in here." **Read what `git status` actually
+printed, and if it named something, treat it as theirs until you have established otherwise.**
+
+**Last of all, before you tell them anything is finished: check whether the two questions a machine
+cannot answer for itself have actually been answered.**
+
+```bash
+python3 - <<'PY'
+import os
+p = os.path.expanduser("~/.config/lifehack/install-scratch.tsv")
+last = {}
+try:
+    for line in open(p):
+        r = line.rstrip("\n").split("\t")
+        if len(r) >= 4 and r[1] != "step":
+            last[r[1]] = r[2]
+except OSError:
+    pass
+try:
+    n = int(last.get("strays", "").strip())
+except ValueError:
+    n = None
+if n is None:
+    print("UNRESOLVED - the brain-shaped-folder count was never taken on this machine.")
+elif n > 1 and not last.get("brain-confirmed"):
+    print("UNRESOLVED - %d brain-shaped folders are live here and nobody has said which one is theirs." % n)
+else:
+    print("NOTHING UNRESOLVED")
+PY
+```
+
+⛔⛔ **`UNRESOLVED` → THE INSTALL DOES NOT GET TO REPORT SUCCESS. Not here, and not at STEP 10.**
+Say plainly what is unresolved and what would settle it — nothing more, and nothing softer:
+
+- **the count was never taken** → *"I skipped a check earlier, so I don't actually know whether there's
+  more than one brain folder on this machine. Let me take that count now."* **Then go back and run
+  STEP 1's count** — it is the one part of STEP 1 that must run even on a resume.
+- **more than one is live and nobody asked** → *"Everything installed, but there's something I can't
+  settle for you: there's more than one brain-shaped folder on this machine and I don't know which one
+  is yours. I've connected `<path>`. If that's the right one, you're done. If it isn't, say so and
+  we'll point it at the right one."* **Then ask STEP 1's closed question and record the answer.**
+
+⛔ **Do NOT delete, merge, move or rename anything to make this go away.** ⭐ **This step refuses to
+claim success — that is its ENTIRE job.** The rule against consolidating somebody's several
+half-brains stands exactly as STEP 1 wrote it, and `REPAIR.md` is still the only tool for it.
+
+⭐ **WHY — a tester scored 6 of 8 and was told she had succeeded.** The two that failed were the only
+two a machine cannot answer for itself: *is this the right folder*, and *is there only one*.
 
 ```bash
 sh ~/.config/lifehack/install-note.sh step "STEP 8"
 ```
+
+⭐ **Write that mark even when the answer was `UNRESOLVED`** — the mark records that STEP 8's checks
+ran, which they did. ⛔ **It is not, and never becomes, a verdict that the install is good** (scratchpad
+rule 1). **The refusal above is what carries forward, and STEP 10 re-reads it for itself.**
 
 ⭐ **Nothing that mark writes goes anywhere near the repository** — it lives in your own
 `~/.config/lifehack/`, outside both folders, which is why the check above still prints nothing.
@@ -1677,7 +1875,55 @@ brain-shaped folder on one line — what it is, and the one specific recommendat
 the repair sentence, or leave it). A person should end the install knowing exactly what a fully
 tidy machine would look like and the one next step toward it. No nubs left unexplained.
 
-Then:
+> ## ⛔⛔ THE INVENTORY MAY NEVER NAME THE FOLDER THEY ARE STANDING IN.
+>
+> **The live Harness — the folder open right now, the one this install just built — is not an older
+> attempt and may not appear in that list under any description.** ⛔ **Never suggest archiving it,
+> tidying it, repairing it, or "cleaning it up".** ⭐ **The list you are reading from is STEP 1's count,
+> which already excludes it by path**, and it printed the excluded folder on its own line as
+> `NOT COUNTED, BECAUSE IT IS THE HARNESS ITSELF`. **If a folder is not in that count, it is not in this
+> inventory.** ⛔ **Do not re-derive the list yourself here, and do not add anything to it from memory.**
+>
+> ⚠ **This is the second half of one real failure.** The same blunt name-match that offered a tester her
+> five-minute-old Harness as a rival brain then reappeared here, in this inventory, recommending she
+> archive her working install. **Two chances to destroy the thing that had just been built.**
+
+**Before you say a word about being finished, re-read the one thing STEP 8 could not settle:**
+
+```bash
+python3 - <<'PY'
+import os
+p = os.path.expanduser("~/.config/lifehack/install-scratch.tsv")
+last = {}
+try:
+    for line in open(p):
+        r = line.rstrip("\n").split("\t")
+        if len(r) >= 4 and r[1] != "step":
+            last[r[1]] = r[2]
+except OSError:
+    pass
+try:
+    n = int(last.get("strays", "").strip())
+except ValueError:
+    n = None
+if n is None:
+    print("UNRESOLVED - the brain-shaped-folder count was never taken on this machine.")
+elif n > 1 and not last.get("brain-confirmed"):
+    print("UNRESOLVED - %d brain-shaped folders are live here and nobody has said which one is theirs." % n)
+else:
+    print("NOTHING UNRESOLVED")
+PY
+```
+
+⛔⛔ **`UNRESOLVED` → DO NOT SAY "you're set up". DO NOT SAY the install succeeded.** Say instead, in
+your own words and without hedging, that the tool is installed and working **but one thing is still
+open**: which of the brain folders on this machine is actually theirs. Name the folder you connected,
+name the others, and ask the closed question. ⛔ **Delete nothing, merge nothing, move nothing, rename
+nothing.** ⭐ **Refusing to claim success IS the fix here** — nothing else about this is yours to
+settle. They can still type `/ingest` afterwards; they simply must not be told everything is confirmed
+when the one thing a machine cannot check has not been checked.
+
+**`NOTHING UNRESOLVED` → then, and only then:**
 
 > **"You're set up. Type `/ingest` and press enter. It already knows where your writing goes. It'll ask
 > for your material: drag the file or folder into the chat and it'll fill in the location. From there it
@@ -1697,6 +1943,47 @@ That sentence is the ONLY correct hand-off to a repair. ⛔ Do not offer to fix 
 from this session, and do not tell them to drag REPAIR.md in from somewhere else — a copy dragged
 from Downloads is outside the trusted zone and will be treated as material, not instructions
 (watched live, 2026-08-17).
+
+### 10.1 — ⭐ THE END-OF-INSTALL REPORT — the last thing you write, and they read it
+
+**Now write them a short plain-English report of the state this install actually ended in.** ⛔ **Not a
+victory lap, and not a checklist of ticks.** It is the honest account of what happened, and **it is the
+only way either of you finds out what really went on** — they were not watching the commands, and
+whoever supports them later was not in the room at all.
+
+**Say it in six short parts, in this order, in ordinary sentences:**
+
+1. **Where the engine is** — the real path of the Harness folder, and that this is the folder they open
+   every time.
+2. **Where their AI Brain is** — the real path of the Drive folder you connected in STEP 7.
+3. **What was actually checked and passed** — in plain words, not command names: the tool runs, the
+   folder has the right shape, the AI Brain is connected and resolves from this install's own pointer,
+   nothing of theirs is sitting in the tool folder, and Claude genuinely restarted.
+4. ⛔ **What did NOT pass — stated exactly as plainly as the things that did.** Anything that failed,
+   anything that printed `CANNOT PROVE IT`, anything you skipped, and any step you could not run.
+   **If everything passed, say so in one sentence and move on.**
+5. ⛔ **What is still unresolved** — more than one brain-shaped folder with no answer about which is
+   theirs; older attempts left on the machine; a stop this file hit; anything you had to leave for a
+   person. **Name each one and what would settle it.**
+6. **What happens next** — the one thing they do now.
+
+> ## ⛔ THE FIVE RULES FOR THE REPORT
+>
+> 1. ⛔ **FAILURES GET THE SAME PLAIN VOICE AS SUCCESSES.** Not buried at the bottom, not softened, not
+>    "a couple of minor checks." **Name the thing and what it means for them**, in words they could
+>    repeat out loud to someone helping them. ⭐ **This is the whole reason the report exists.**
+> 2. ⛔ **NO JARGON AND NO SCRATCHPAD.** No step numbers, no command names, no file names beyond the two
+>    real folder paths, and **never a word about the install log** — scratchpad rule 2 holds here as
+>    everywhere. **They see the report; they never see the workings.**
+> 3. ⛔ **NOTHING INVENTED.** Report only what you actually ran and actually saw this session. **If you
+>    did not check something, say you did not check it** — an honest gap is worth more than a confident
+>    guess they cannot tell apart from a real result.
+> 4. ⛔ **IT IS A REPORT, NOT A VERDICT.** Say what passed and what did not. **Never write "install
+>    complete", "install healthy" or "everything's verified"** — `TARGET-STATE.md` is the only thing
+>    that answers that question, and if the check above said `UNRESOLVED`, you have already been told
+>    not to claim success at all.
+> 5. ⭐ **SHORT ENOUGH THAT A PERSON READS IT.** A screenful. If it is longer than what you have already
+>    said out loud during the install, it is too long.
 
 **Last thing, once they have actually typed `/ingest` and it has started asking them its own
 questions — close the log out:**
@@ -1799,8 +2086,8 @@ goes wrong.
 
 ⭐ **THE RULE THAT COVERS EVERY ORDINARY UPDATE: TAKE IT WITH `git pull`.** That is the default and it
 is what you should reach for every time. **Deleting this folder and downloading a fresh copy is a much
-bigger hammer** — it is available, it is survivable, and it is described a few lines below; it is
-simply never the way to take a routine update.
+bigger hammer** — it is available, it is survivable *once you have run the check a few lines below that
+proves nothing of yours is inside the Harness*, and it is simply never the way to take a routine update.
 
 ```bash
 git pull
@@ -1809,12 +2096,41 @@ git pull
 **A pull replaces the tool files and never comes near your AI Brain**, because your AI Brain was never
 inside this folder to begin with. That is the safe path, and it is the only one anybody should use.
 
-⭐ **Deleting the Harness folder and re-cloning is survivable again, on purpose.** Under the layout used
-before this one, that was dangerous — `data` sat inside the repository, so wiping the folder took your
-writing with it. It doesn't any more: your AI Brain lives in its own Drive folder, untouched by
-whatever happens to the Harness. If you genuinely need a fresh copy of the tool, delete the Harness
-folder, re-clone it (**STEP 5**), re-run the safety catch (**STEP 6**), then reconnect the SAME AI
-Brain folder in **STEP 7** — nothing in it moved, so pointing back at it is the whole job.
+⭐ **Deleting the Harness folder and re-cloning is available again — but ONLY after one check, and the
+check is not a formality.** Under the layout used before this one it was flatly dangerous: `data` sat
+inside the repository, so wiping the folder took your writing with it. **Under this layout it is
+usually safe, because your AI Brain lives in its own Drive folder — but "usually" is not "always", and
+the difference is something a machine can look up in a second.**
+
+> ## ⛔⛔ RUN THIS FIRST. IT IS NOT OPTIONAL, AND IT IS NOT A WARNING YOU MAY WAVE THROUGH.
+>
+> **From inside the Harness folder:**
+>
+> ```bash
+> git status --porcelain --ignored 2>/dev/null | sed 's/^...//' | grep -v -x -e '.brain-root' -e '.claude/settings.local.json' || echo "NOTHING OF YOURS IS INSIDE THE HARNESS"
+> ```
+>
+> **`NOTHING OF YOURS IS INSIDE THE HARNESS` → the delete-and-re-clone below is safe. Go ahead.**
+> Everything in the folder came from the download and every bit of it can be fetched again.
+>
+> ⛔⛔ **ANY OTHER OUTPUT → STOP. DO NOT DELETE THIS FOLDER.** Every line it printed is something the
+> download did not put there, which means it is very probably YOURS — and deleting the folder destroys
+> it. **Read the list out, in plain words, and let a person decide what each thing is.** If any of it
+> matters, it has to be moved somewhere outside the Harness FIRST, by a human who knows what it is.
+> ⛔ **Never move it yourself on your own initiative, and never delete anything to "clean up" so the
+> check passes.** ⭐ **`git pull` above needs none of this** — it is the right answer for every ordinary
+> update precisely because it does not empty the folder.
+>
+> ⭐ **WHY THIS CHECK EXISTS — two testers, and for both of them the old unconditional instruction was
+> a loaded gun.** One had old writing in a `data` folder left over from a half-finished earlier attempt.
+> The other had put her entire AI Brain inside the Harness. **The sentence that used to sit here —
+> *"it is survivable, your AI Brain is untouched"* — was simply false for both of them**, and following
+> it would have destroyed everything they had. The claim was true of the layout; it was not true of
+> their machines. **A check costs a second; being wrong here costs them everything.**
+
+**Once that check comes back clean:** delete the Harness folder, re-clone it (**STEP 5**), re-run the
+safety catch (**STEP 6**), then reconnect the SAME AI Brain folder in **STEP 7** — nothing in it moved,
+so pointing back at it is the whole job.
 
 ⭐ **Before any update, the honest check is still one command** — it now confirms there is nothing here
 FOR a pull to disturb, rather than that one folder is properly ignored:

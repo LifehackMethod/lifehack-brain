@@ -5,15 +5,16 @@ find out about one by hitting a wall.
 
 ## The split, first, because it's the whole point of this page
 
-**Two things are required. The other nine are optional — genuinely optional, not "optional" in the
-way that quietly means "you'll need it eventually."** Get the two required things, install this tool,
-and use it completely. The other nine each unlock exactly one extra feature; skip every one of them
-and nothing about the core tool notices.
+**Three things are required. The other ten are optional — genuinely optional, not "optional" in the
+way that quietly means "you'll need it eventually."** Get the three required things, install this
+tool, and use it completely. The other ten each unlock exactly one extra feature; skip every one of
+them and nothing about the core tool notices.
 
 | | Need it to install? | Skip it, and… |
 |---|---|---|
 | **git** | **Yes — always** | you can't get the tool onto your computer at all |
 | **python3, version 3.9+** | **Yes — always** | nothing in the package runs |
+| **Google Drive for desktop, signed in** | **Yes — always** | the install stops partway through, at STEP 7, and cannot finish |
 | Serper (web search) | No | `/websearch` refuses and says so; everything else is fine |
 | pdfplumber | No | opening a `.pdf` fails with a plain "install this" message |
 | python-docx | No | opening a `.docx` fails the same way |
@@ -25,12 +26,12 @@ and nothing about the core tool notices.
 | Google Chrome | No | `/design-lifehack` screenshots fail; nothing else touched |
 | LuLu (outbound firewall) | No | the two built-in egress speed bumps still run; you skip the one HARD wall of the three (see below) |
 
-**If you only ever get the required two, this tool works, completely, forever.** Everything below the
-line is a "come back to this later, if ever" decision — never a "now" decision.
+**If you only ever get the required three, this tool works, completely, forever.** Everything below
+the line is a "come back to this later, if ever" decision — never a "now" decision.
 
 ---
 
-## REQUIRED — both of these, no way around it
+## REQUIRED — all three of these, no way around it
 
 ### git
 
@@ -39,7 +40,7 @@ line is a "come back to this later, if ever" decision — never a "now" decision
 - **Do you need it?** Yes, always — there is no version of this tool that works without it.
 - **Without it.** You can't clone the repository in the first place. Nothing else here is reachable.
 - **Getting it.** You don't do anything yourself — `INSTALL.md` checks for it and installs it for you
-  (Step 2), on both Mac and Windows.
+  (Step 2).
 - **Cost.** Free.
 
 ### python3, version 3.9 or higher
@@ -48,8 +49,21 @@ line is a "come back to this later, if ever" decision — never a "now" decision
   checks, every skill. Nothing here runs without it.
 - **Do you need it?** Yes, always.
 - **Without it.** Nothing runs. Not "some things are limited" — nothing.
-- **Getting it.** Same as git — `INSTALL.md` checks and installs it for you (Step 3), including two
-  known Windows traps it walks you around.
+- **Getting it.** Same as git — `INSTALL.md` checks and installs it for you (Step 3).
+- **Cost.** Free.
+
+### Google Drive for desktop, signed in
+
+- **What it is.** Google's desktop app that mounts your Drive as a regular folder on your computer —
+  this is where your AI Brain lives.
+- **Do you need it?** Yes, always. STEP 7 connects your AI Brain by finding a signed-in Google Drive
+  account on the machine; there's no way past that step without one.
+- **Without it.** The install gets seven steps in — Git installed, Python checked, the Harness cloned,
+  the safety catch on — and then stops there. STEP 7.1 looks for a signed-in Google Drive account,
+  finds none, and the install pauses until you have one. Nothing is broken or lost; it picks back up
+  exactly where it stopped once Drive is installed and signed in.
+- **Getting it.** The free download and sign-in at <https://www.google.com/drive/download/>. Install
+  it like any other application and sign in with the Google account you want your AI Brain to live in.
 - **Cost.** Free.
 
 ---
@@ -223,5 +237,5 @@ Snitch** (paid, macOS) and `ufw` (Linux) do the same job if you already have one
 
 ---
 
-**That's all twelve.** If something outside this package ever gets added later, this page is where it
+**That's all thirteen.** If something outside this package ever gets added later, this page is where it
 belongs — not buried inside the one skill that happens to need it.

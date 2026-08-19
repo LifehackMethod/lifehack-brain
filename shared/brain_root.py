@@ -58,9 +58,18 @@ BRAIN_ROOT_LEGACY_GLOB = os.path.expanduser(os.environ.get("INGEST_LEGACY_ROOT_G
 # pointer travels with the folder into environments that cannot see the machine's HOME (Cowork).
 REPO_POINTER_NAME = ".brain-root"
 
+def harness_root():
+    """Absolute path of the Harness / repo folder this file lives in (the parent of shared/).
+
+    Derived from THIS FILE's position, never from cwd — same reason as repo_pointer_path below.
+    It is its own function because two callers need it: the pointer file lives here, and --set
+    must REFUSE any brain root that lands inside here (see reject_unusable_target)."""
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
 def repo_pointer_path():
     """Absolute path of this repo's pointer file, derived from this module's own location."""
-    return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), REPO_POINTER_NAME)
+    return os.path.join(harness_root(), REPO_POINTER_NAME)
 
 def read_repo_pointer():
     """The raw value in the repo pointer file, or None. Like read_persisted, returns the string
@@ -123,6 +132,81 @@ def read_persisted():
     return value or None
 
 
+def looks_like_a_windows_path(raw):
+    """True for `G:\\My Drive\\AI Brain`, a `C:` drive letter with forward slashes, or any
+    path carrying a backslash.
+
+    On Windows those are real locations. On macOS and Linux — where this tool runs — they are not
+    locations at all, just a long filename, and that is the whole failure: os.path.abspath happily
+    turns one into a folder INSIDE this repo (reproduced with a real student, 2026-08-18)."""
+    s = raw.strip()
+    if "\\" in s:
+        return True
+    return len(s) >= 2 and s[1] == ":" and s[0].isalpha()
+
+
+def reject_unusable_target(path):
+    """The gate --set passes through before it creates, writes, or remembers ANYTHING.
+
+    Returns a plain-English refusal string, or None when the path is a usable target. Every message
+    is written to be read out loud to someone who is not technical, and every one of them says what
+    to do instead — a refusal that leaves you stuck just gets worked around.
+
+    WHY THIS EXISTS (2026-08-18). A student on Windows could not find their Google Drive, and a
+    path of the shape `G:\\My Drive\\AI Brain` was passed to --set on a machine that was not
+    Windows. It was accepted as a RELATIVE path, so a folder with that literal name was created
+    inside this repo, the whole AI Brain was written into it, and four separate checks afterwards
+    all reported success — including the "is it backed up to the cloud?" one, which was matching
+    the words "my drive" in the folder's NAME. The install told the student their AI Brain was
+    safe in Google Drive. It was inside the code folder, which the instructions say is safe to
+    delete. One honest check here and none of that can start."""
+    raw = (path or "").strip()
+    if not raw:
+        return ("REFUSED: no folder was given. Say where the AI Brain should live, as a full path "
+                "starting with a / — for example: --set \"$HOME/AI Brain\"")
+
+    if looks_like_a_windows_path(raw):
+        return (f"REFUSED: '{raw}' looks like a Windows folder (a drive letter like G:, or "
+                f"backslashes).\n"
+                f"  This computer is running macOS or Linux, where a place like that does not "
+                f"exist — so instead of finding your Google Drive, it would quietly make a NEW "
+                f"folder whose name is the words you just typed, in the wrong place.\n"
+                f"  On this computer every real folder starts with a / . Open the folder you want "
+                f"in Finder or your file manager, copy its real path, and pass that. A Google "
+                f"Drive folder here usually looks like:\n"
+                f"  $HOME/Library/CloudStorage/GoogleDrive-<your-account>/My Drive/AI Brain")
+
+    expanded = os.path.expanduser(raw)
+    if not os.path.isabs(expanded):
+        return (f"REFUSED: '{raw}' is not a complete path — it does not start with a / .\n"
+                f"  A short name like that means \"inside whatever folder I happen to be in right "
+                f"now\", which is almost never where your AI Brain lives, and your notes would end "
+                f"up somewhere neither of us meant.\n"
+                f"  Give the whole path, from the top. If you can already see the folder in a "
+                f"terminal, type `pwd` inside it and use exactly what that prints. For example: "
+                f"$HOME/AI Brain")
+
+    # realpath BOTH sides: /tmp is a symlink to /private/tmp on macOS, and a student's Drive folder
+    # is very often reached through a symlink too. Comparing the paths as typed misses both.
+    target = os.path.realpath(expanded)
+    harness = os.path.realpath(harness_root())
+    if target == harness:
+        return (f"REFUSED: that is the Harness folder itself ({harness}).\n"
+                f"  The Harness is the program. Your AI Brain is your writing, and the two have to "
+                f"be kept apart — updating or deleting the program must never touch your notes.\n"
+                f"  Pick a folder somewhere else and point at that: your Google Drive folder, or a "
+                f"plain folder in your home directory such as ~/AI Brain")
+    if target.startswith(harness + os.sep):
+        return (f"REFUSED: '{target}' is inside the Harness folder ({harness}).\n"
+                f"  Your AI Brain must live OUTSIDE it. The Harness is program code that gets "
+                f"replaced when you update, and the instructions tell you it is safe to delete — "
+                f"so anything kept in there can be wiped without warning, including everything you "
+                f"have written.\n"
+                f"  Pick a folder somewhere else and point at that: your Google Drive folder, or a "
+                f"plain folder in your home directory such as ~/AI Brain")
+    return None
+
+
 def set_brain_root(path, create=False, replace_global=False):
     """`brain-root --set <path>`. REFUSES a nonexistent path unless create=True (then makes it, parents
     included). REFUSES a path that exists but is a FILE (never silently picks its parent dir).
@@ -131,7 +215,14 @@ def set_brain_root(path, create=False, replace_global=False):
     pointer file. It writes the machine-global BRAIN_ROOT_CONFIG only when that file is absent or
     already agrees. A DIFFERENT existing global value is left untouched unless replace_global=True —
     so a confused session running --set can no longer silently repoint another install's brain.
-    Returns (ok, message-or-path, global_note) where global_note says what happened to the global."""
+    Returns (ok, message-or-path, global_note) where global_note says what happened to the global.
+
+    REFUSES FIRST, before it creates or writes anything: a Windows-shaped path, a path that is not
+    absolute, and any path inside this Harness folder — see reject_unusable_target for the incident
+    that put that gate here. --create makes a missing folder, but only once those have passed."""
+    refusal = reject_unusable_target(path)
+    if refusal:
+        return False, refusal, ""
     resolved = os.path.abspath(os.path.expanduser(path))
     if os.path.exists(resolved):
         if not os.path.isdir(resolved):

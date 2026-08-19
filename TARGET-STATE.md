@@ -9,6 +9,17 @@ here. **If the install's shape ever changes, this file is the one that gets edit
 Run each check from the top of the Harness folder (`git rev-parse --show-toplevel` gets you there).
 A healthy install prints the marker for all six; anything else names exactly which fact is false.
 
+⚠ **No fact below may pass on a path inside the Harness repo itself.** A tester's entire AI Brain once
+lived inside the repo, in a folder literally named `My Drive`, and five of eight facts went green —
+"cloud-synced" matched the folder's NAME, and "a write lands and reads back" wrote into git. Facts 2,
+3, 4 and 5 each independently resolve the AI Brain path and independently refuse it if it IS the
+Harness repo or is INSIDE it — real path resolution (`os.path.realpath`, so a `/tmp` vs `/private/tmp`
+symlink cannot hide it), never a string-prefix comparison on the raw input. Each uses the same
+`harness_root()` that `shared/brain_root.py --set` itself refuses against, so there is one definition
+of "inside," not four drifting copies of the idea. Folded into the facts that already resolve a path,
+not a ninth standalone fact — a standalone fact is one a partial copy-paste run of this file can skip;
+these cannot, because they gate the very checks that would otherwise go green on the bad path.
+
 ---
 
 ### 1. The Harness repo is at the top of the opened folder, on the right branch, hooks wired, not damaged
@@ -39,36 +50,133 @@ detached HEAD, so the old single-name test compared an empty string and failed w
 indistinguishable from a hooks or `fsck` failure. It now says which branch it found. A detached install
 is genuinely wrong: it cannot take the `git pull --ff-only` that `UPDATE.md` depends on.
 
-### 2. `.brain-root` exists at the repo root, is gitignored, and points at a real folder
+### 2. `.brain-root` exists at the repo root, is gitignored, and points at a real folder OUTSIDE the Harness
 ```bash
-test -f .brain-root && git check-ignore -q .brain-root && test -d "$(cat .brain-root)" && echo "FACT 2: OK"
+BRAIN="$(cat .brain-root 2>/dev/null)"
+if ! test -f .brain-root; then
+  echo "FACT 2: NO - .brain-root does not exist at the repo root"
+elif ! git check-ignore -q .brain-root; then
+  echo "FACT 2: NO - .brain-root exists but is not gitignored -- it could get committed"
+elif ! test -d "$BRAIN"; then
+  echo "FACT 2: NO - .brain-root points at '$BRAIN', which is not a real folder"
+elif python3 -c "
+import sys, os
+sys.path.insert(0, 'shared')
+import brain_root
+h = os.path.realpath(brain_root.harness_root())
+t = os.path.realpath(sys.argv[1])
+sys.exit(0 if (t == h or t.startswith(h + os.sep)) else 1)
+" "$BRAIN"; then
+  echo "FACT 2: NO - '$BRAIN' is INSIDE the Harness repo (or is the repo root itself) -- the AI Brain must live outside it, or it gets wiped the day the repo is updated or deleted"
+else
+  echo "FACT 2: OK"
+fi
 ```
-**Meaning:** there is a one-line pointer to your AI Brain, it will never be uploaded to git, and the
-folder it names actually exists.
+**Meaning:** there is a one-line pointer to your AI Brain, it will never be uploaded to git, the
+folder it names actually exists, and — the part a name-only install used to miss — that folder is not
+secretly sitting inside the program folder itself.
 
-### 3. The resolver answers through THIS repo's own pointer, not a stale global or an env var
+### 3. The resolver answers through THIS repo's own pointer, not a stale global, an env var, or a path inside the Harness
 ```bash
-python3 shared/brain_root.py | grep -q "(source: repo-pointer)" && echo "FACT 3: OK"
+SRC_LINE="$(python3 shared/brain_root.py)"
+BRAIN="$(python3 shared/brain_root.py --quiet)"
+if ! printf '%s' "$SRC_LINE" | grep -q "(source: repo-pointer)"; then
+  echo "FACT 3: NO - resolver answered from somewhere other than this repo's own pointer: $SRC_LINE"
+elif [ -z "$BRAIN" ]; then
+  echo "FACT 3: NO - resolver reported repo-pointer as the source but returned no usable path"
+elif python3 -c "
+import sys, os
+sys.path.insert(0, 'shared')
+import brain_root
+h = os.path.realpath(brain_root.harness_root())
+t = os.path.realpath(sys.argv[1])
+sys.exit(0 if (t == h or t.startswith(h + os.sep)) else 1)
+" "$BRAIN"; then
+  echo "FACT 3: NO - resolved path '$BRAIN' is inside the Harness repo -- not a valid AI Brain location"
+else
+  echo "FACT 3: OK"
+fi
 ```
 **Meaning:** when a skill asks "where is the AI Brain," it is answering from this install's own
-pointer file — not a leftover machine-wide setting or a `$LIFEHACK_ROOT` left set by something else.
+pointer file — not a leftover machine-wide setting, not a `$LIFEHACK_ROOT` left set by something
+else, and not a path that happens to live inside the program folder.
 
-### 4. The AI Brain is cloud-synced — any service counts
+### 4. The AI Brain is cloud-synced — checked against a real mount on this machine, never a name
 ```bash
-python3 shared/brain_root.py --quiet | tr '[:upper:]' '[:lower:]' \
-  | grep -Eq 'google drive|my drive|shared drives|cloudstorage|dropbox|onedrive|icloud' \
-  && echo "FACT 4: OK"
+BRAIN="$(python3 shared/brain_root.py --quiet)"
+if [ -z "$BRAIN" ]; then
+  echo "FACT 4: NO - brain_root.py could not resolve a path"
+else
+  python3 -c "
+import sys, os, glob
+brain = sys.argv[1]
+sys.path.insert(0, 'shared')
+import brain_root
+h = os.path.realpath(brain_root.harness_root())
+t = os.path.realpath(brain)
+if t == h or t.startswith(h + os.sep):
+    print('FACT 4: NO - ' + repr(brain) + ' is inside the Harness repo, so it cannot be a real cloud-sync target')
+    sys.exit(1)
+home = os.path.expanduser('~')
+candidates = sorted(glob.glob(os.path.join(home, 'Library/CloudStorage/*')))
+candidates.append(os.path.join(home, 'Library/Mobile Documents/com~apple~CloudDocs'))
+candidates.append(os.path.join(home, 'Dropbox'))
+candidates.append(os.path.join(home, 'OneDrive'))
+matched = None
+for c in candidates:
+    if not os.path.isdir(c):
+        continue
+    rc = os.path.realpath(c)
+    if t == rc or t.startswith(rc + os.sep):
+        matched = c
+        break
+if matched:
+    print('FACT 4: OK - under real sync mount ' + matched)
+    sys.exit(0)
+print('FACT 4: NO - ' + repr(brain) + ' does not sit under any real cloud-sync mount found on this machine (checked ~/Library/CloudStorage/*, iCloud Drive, ~/Dropbox, ~/OneDrive) -- a folder merely NAMED My Drive no longer counts')
+sys.exit(1)
+" "$BRAIN"
+fi
 ```
-**Meaning:** the AI Brain sits somewhere a sync service is actively backing up — Drive, OneDrive,
-Dropbox or iCloud, whichever the person already uses. Losing the laptop does not lose the AI Brain.
+**Meaning:** the AI Brain sits somewhere a real, currently-mounted sync service on THIS machine is
+backing it up — checked by walking to the actual provider folder on disk, never by reading words out
+of the path's name. Losing the laptop does not lose the AI Brain.
 
-### 5. A write to the AI Brain lands, and reads back
+⚠ **What this still cannot catch, honestly.** It only knows macOS's own sync-provider mount points
+(`~/Library/CloudStorage/*` — Google Drive, and modern Dropbox/OneDrive when they use the File
+Provider framework — plus legacy `~/Dropbox`, `~/OneDrive`, and iCloud Drive). It cannot tell whether
+that provider is actually online and syncing right now versus paused or signed out — sitting *under*
+the mount is necessary but not sufficient for "backed up this second." It knows nothing about Linux or
+Windows sync-client conventions. And a cloud service this list has never heard of, mounted somewhere
+else, will still read NOT SYNCED even if it genuinely is synced. It is real-mount-membership, not a
+live sync-health check.
+
+### 5. A write to the AI Brain lands, and reads back — never inside the Harness
 ```bash
-N="$(python3 shared/brain_root.py --quiet)" && F="$N/.target-state-writetest" \
-  && printf 'ok\n' > "$F" && [ "$(cat "$F")" = "ok" ] && rm -f "$F" && echo "FACT 5: OK"
+N="$(python3 shared/brain_root.py --quiet)"
+if [ -z "$N" ]; then
+  echo "FACT 5: NO - brain_root.py could not resolve a path"
+elif python3 -c "
+import sys, os
+sys.path.insert(0, 'shared')
+import brain_root
+h = os.path.realpath(brain_root.harness_root())
+t = os.path.realpath(sys.argv[1])
+sys.exit(0 if (t == h or t.startswith(h + os.sep)) else 1)
+" "$N"; then
+  echo "FACT 5: NO - resolved path '$N' is inside the Harness repo -- refusing to write a test file into the repository itself"
+else
+  F="$N/.target-state-writetest"
+  if printf 'ok\n' > "$F" 2>/dev/null && [ "$(cat "$F" 2>/dev/null)" = "ok" ]; then
+    rm -f "$F"
+    echo "FACT 5: OK"
+  else
+    echo "FACT 5: NO - could not write to and read back from $F"
+  fi
+fi
 ```
-**Meaning:** the connection is not just a path string that looks right — a real file can be written into
-the AI Brain and read back out again.
+**Meaning:** the connection is not just a path string that looks right — a real file can be written
+into the AI Brain (first confirmed to be a folder outside the program itself) and read back out again.
 
 ### 6. Nothing personal is staged in git
 ```bash
