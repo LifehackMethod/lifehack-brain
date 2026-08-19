@@ -68,6 +68,10 @@ python3 "$ROOT/system/tools/checkin/checkin_open.py" hint "<abs brief>"
 python3 "$ROOT/system/tools/checkin/checkin_open.py" print "<abs brief>" --start N --end M --paste
 ```
 
+> ⚠ **`--end` is EXCLUSIVE, not inclusive.** It names the first line *after* the block you want, not
+> the last line itself — a rung block on real lines N..M needs `--end M+1`, or the last rung silently
+> drops (`RUNGS 2` instead of `RUNGS 3`, exit 0, no warning that anything is missing).
+
 ⛔ **Always `--paste` for anything going into the reply.** Plain `print` renders as a hard-wrapped,
 unreadable mess once it lands in chat. `--paste` prints the same verdict token off the same mechanical
 read, formatted to survive the trip: bolded label, one rung per line, a blank line between rungs.

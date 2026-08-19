@@ -1,18 +1,19 @@
-# Where things go in your notes folder
+# Where things go inside your AI Brain
 
-> The map of the **second** folder — the one that is yours. Every tool in this repo that writes
-> something writes it at one of the paths on this page, and gets the folder itself from one place:
-> `shared/brain_root.py`. If you are adding a tool and the path you want is not here, the path is
-> wrong or this page is incomplete — resolve that before writing code.
+> The map of what goes INSIDE your AI Brain. Every tool in this repo that writes something DURABLE
+> writes it at one of the paths on this page, and gets the AI Brain itself from one place:
+> `shared/brain_root.py`. (Throwaway scratch is the stated exception — see the last section.)
+> If you are adding a tool and the path you want is not here, the path is wrong or this page is
+> incomplete — resolve that before writing code.
 
-## The one rule this all rests on
+## Where the AI Brain itself lives
 
-**Your notes live in `data`, and one line in `.gitignore` keeps them out of git** — never tracked,
-never committed, never uploaded. Put the folder itself wherever suits you.
+**Where your AI Brain lives and how it gets set up is covered in `INSTALL.md`, which is the
+authority.** This page does not repeat it. This page is only the shape of what goes inside.
 
-Everywhere below, `<notes>/` means the folder that rule is about — whatever
-`shared/brain_root.py` resolves. Not the current directory, not the repo, not a guess. When it is not
-set, the honest answer is "not set" and the tool refuses.
+Everywhere below, `<notes>/` is the path placeholder for your AI Brain — whatever
+`shared/brain_root.py` resolves, and not the current directory, not the repo, not a guess. When it
+is not set, the honest answer is "not set" and the tool refuses.
 
 ## The shape
 
@@ -64,6 +65,19 @@ A project is a **folder**, and the folder's name is the project's slug:
 ├── records/          this project's own findings — kept here, where the project can see them
 └── canon/current.md  what this project has settled
 ```
+
+**Three more files appear beside the brief, written by the tool and never by hand.** They are named
+here because otherwise the first person to see one has to guess whether something went wrong:
+
+| beside the brief | what it is |
+|---|---|
+| `<slug>/brief.md.pad-archive.md` | the append-only archive of every scratchpad, written before any pad is cleared. Nothing is ever deleted from it. It is the reason a compaction is safe: the clear will not run without a fresh receipt proving this file already holds the text. |
+| `<slug>/brief.md.<section>-archive.md` | the same, for a named section — `## 2. CURRENT STATE` graduating at a check-in produces `brief.md.2-current-state-...-archive.md`. |
+| `<slug>/brief.md.pre-section-archive-<date>.bak` | a whole-file backup taken before a *named-section* archive only, because the caller then deletes by hand. The pad's own clear is code-owned and hash-gated, so it needs no backup and takes none. |
+
+You may delete an old `.bak`. Do not hand-edit the two archives, and never hand-clear a section that
+has one: `pad_archive.py` matches a hash to prove what it is deleting, and an edit by hand breaks
+that match — which is a refusal, not a loss, but it costs you the session's compaction.
 
 **The folder's last path segment must equal the slug.** A category above it is fine
 (`state/projects/infrastructure/<slug>/`); the leaf is not. This stops the drift where a project
@@ -198,8 +212,8 @@ the author's live notes on 2026-08-11.
 |---|---|---|
 | `records/` types drifted into pairs — `decision/` **and** `decisions/`, `log/` **and** `logs/`, plus `reference/`, `snapshot/`, `briefing`, `summary` | six types, fixed above | the singular/plural fork happened because two documents disagreed and neither was binding. `reference` and `snapshot` fold into `context`; `briefing` folds into `insights`; `summary` folds into `logs`. |
 | `records/canon/` held the root desk's canon (38 files) | no such folder | canon is either the one top-level file or a folder's own `canon/`. A third home was a desk-era artifact. |
-| `plans/` split into a folder per machine (`Mac`, `Envers-Air`, …, five of them, 359 files) | one flat `plans/` | there is one machine. The two-machine plane is not part of this system. |
-| `state/machine-log.md` recorded which machine changed what | gone | same reason. |
+| `plans/` split into a folder per machine (five of them, named after their hosts, 359 files) | one flat `plans/` | there is one machine. The two-machine plane is not part of this system. |
+| `<notes>/state/machine-log.md` recorded which machine changed what | gone | same reason. |
 | a desk was a heavy thing — `state/`, `views/`, `sources/inbox/`, its own `CLAUDE.md`, a registry entry, a health producer | `desks/<subject>/` here is the light subset only: `canon/current.md`, `canon/purpose.md`, `records/` | `/ingest` builds the subset and nothing more, on purpose. Promotion to the heavy shape is a deliberate human act, later, if a folder earns it — and that machinery is not in this release. |
 | the topic vocabulary shipped in the repo | never ships | see the note under Types. It is yours; the tools refuse and teach rather than invent one. |
 | four record types existed for one desk each (`clients`, `billing`, `source-ingests`, `source-summaries`) | not here | they describe one person's work, not a general category. |
@@ -224,8 +238,12 @@ The diagram above is the shape; this is the list, so nothing has to be inferred 
 | `<notes>/state/current.md` | `/save` | where things stand changes |
 | `<notes>/records/<type>/` | `/save` | a finding belongs to no one project |
 | `<notes>/records/research/` | `/research` | every run |
+| `<notes>/records/insights/throughline/` | `/throughline` | once per run — and it is the ONLY thing that run may write |
 | `<notes>/plans/<name>.md` | `/autoplan` | a plan is written or sharpened |
 | `<notes>/config/` | a person, by hand | account IDs and the like, kept out of the repo |
+| `<notes>/config/numbers-auto-arm` | a person, by hand | optional — subject folders that turn on `/calculate` by themselves |
+| `<notes>/config/ship-identity.md` | a person, by hand | **required before `/ship` runs at all** — the terms that identify you, one per line. The lane refuses rather than scan for nobody |
+| `<notes>/config/ship-rewrites.json` | a person, by hand | optional — `/ship`'s cosmetic substitutions, which get fixed and reported rather than blocking |
 | `<notes>/councils/` | a person, by hand | if advisor rosters are used |
 | `<notes>/memory/topic-vocab.md` | a person, by hand | your subjects, in your words |
 | `<notes>/desks/<subject>/canon/` | `/ingest` | once per subject it finds |
@@ -234,7 +252,11 @@ The diagram above is the shape; this is the list, so nothing has to be inferred 
 
 ## When you add something that writes
 
-1. The path comes from `shared/brain_root.py`. There is no second way to find the notes folder.
+1. The path comes from `shared/brain_root.py`. There is no second way to find the AI Brain.
+   **The one exception is scratch** — `shared/paths.py`'s `scratch_dir()` answers from the machine's
+   temp folder instead, on purpose: a regenerable working file does not belong in an AI Brain,
+   and the hardcoded `/tmp/...` it replaced does not exist on Windows. Durable state still comes from
+   the resolver; if what you are writing survives the run, it is not scratch.
 2. If your path is not on this page, add it here first — in the same change, not afterwards.
 3. Never create a folder to be helpful. Everything above is created when something is actually put in
    it, except the three day-one files, which exist because nothing else would ever make them.

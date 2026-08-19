@@ -1,0 +1,74 @@
+name: Exercise Loop
+
+# WHY THIS EXISTS: system/tools/run-all-tests.sh (T8.13a) and system/tools/smoke-check.sh
+# (T8.13b) are the aggregate test runner and the "does it still start" smoke check for this
+# repo -- 40 test_*.py/test_*.sh files, every tool under system/tools/, every hook under
+# system/hooks/. Both existed as runnable scripts before this workflow did, but nothing
+# server-side ever invoked either of them: `.github/workflows/no-internal-leakage.yml`
+# checks for a DIFFERENT thing (operator-identity leaks), and running either script was
+# otherwise a manual, easy-to-forget step. That is the exact failure mode F8.13 documents --
+# "the port carried the machinery and not the switch that turns it on" -- one level further
+# out: the machinery existed locally and still had no switch in CI. This is that switch.
+#
+# Both scripts are already self-sandboxing; this workflow adds nothing new on that front --
+# see each script's own header for the full reasoning:
+#   - run-all-tests.sh pins LIFEHACK_ROOT to a fresh tempdir for the whole run, and skips
+#     the one test file (test_safe_readers.py) known to make a real outbound network call --
+#     sandboxing a data root does not sandbox a socket.
+#   - smoke-check.sh pins LIFEHACK_ROOT inline per-invocation, puts a stub `gws` first on
+#     PATH so a tool that ignores --help still cannot reach Google, and wraps every
+#     invocation in a hard per-tool timeout.
+# Neither script, and nothing added here, depends on a Google account, a local `gws`
+# binary, a Drive mount, or any credential -- this workflow runs unmodified on a fresh
+# GitHub-hosted runner with no secrets configured.
+#
+# Two independent jobs, matching the scripts' own independence (T8.13a and T8.13b are
+# unrelated files -- see the plan's own "INDEPENDENT of each other" note): a failure in one
+# never hides a failure in the other, and each shows up as its own status check.
+
+on:
+  pull_request:
+    branches:
+      - main
+      - migration-1
+  push:
+    branches:
+      - main
+      - migration-1
+  # Manual trigger for sanity-checking either script's CI wiring without waiting on a real
+  # push or PR -- never fires on its own, same rationale as no-internal-leakage.yml's.
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Aggregate test runner (run-all-tests.sh)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run every test_*.py / test_*.sh in the repo
+        run: bash system/tools/run-all-tests.sh
+
+  smoke:
+    name: Smoke check (smoke-check.sh)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Every tool answers --help, every hook is executable
+        run: bash system/tools/smoke-check.sh

@@ -2,8 +2,8 @@
 """
 flatten.py — Deterministic, zero-LLM ChatGPT-export → clean-text converter.
 
-The mechanical PULL of the bulk world-model ingestion (project `cowork-bulk-ingestion`) —
-the ChatGPT twin of `shared/tools/email_convert.py`. Turns the raw OpenAI account-export
+The mechanical PULL of the bulk world-model ingestion (project `cowork-bulk-ingestion`).
+Turns the raw OpenAI account-export
 (a list of conversations, each a message TREE) into one clean, linear, role-labeled text
 file per conversation. Deterministic, no LLM, no network, no third-party deps.
 
@@ -13,7 +13,7 @@ we own beats a dependency we'd have to trust on a personal data export. convoviz
 referenced READ-ONLY for the gotchas below; nothing was installed.
 
 WHAT IT DOES NOT DO (by design): no sanitization, no injection scan. This is the pure
-STRUCTURAL pull. The controller sanitizes each file's text through `shared/tools/ingest_gate.py
+STRUCTURAL pull. The controller sanitizes each file's text through `shared/gate/ingest_gate.py
 gate()` AFTER this runs, before the reader ever sees it (see the project's SENTINEL WIRING).
 Keeping this tool dependency-free keeps it trivially auditable.
 

@@ -19,8 +19,9 @@ authority: user
 > **This is the INTENT DOCTRINE applied to knowledge:** every object declares its intent — a purpose for a
 > standing thing, a desired outcome for a bounded one — and altitude is that same law applied to one case,
 > *where a piece of knowledge sits.*
-> ⏳ **UNRULED** — the parent law itself, `system/intent-doctrine.md`, is on no ship list; the sentence
-> above is the whole of it that this page needs.
+> ✅ The parent law itself is `system/intent-doctrine.md`, which is here. The sentence above is the
+> whole of it that this page needs; read the doctrine when you are deciding what KIND of intent a
+> thing carries.
 >
 > ⛔ **`/archivist-review` · `system/archivist/placement-trial-log.md` ·
 > `system/research/2026-06-13-preload-vs-pointer-consensus.md` — not shipped.** The archivist's review
@@ -89,8 +90,7 @@ AND every bookkeeping conversation, permanently. So the placement question is no
 that child; nobody needs it *loaded*, but it must stay findable → records (the findability invariant
 above). Worked example (`financial/`): shared-for-everything facts — *"he is married, rents an apartment
 with his wife Marisol, and they keep separate bank accounts"* (invented example, ⚠ nobody real, in the
-style of `system/shipping-lane/fixtures/identity-fixture.md` — ⛔ not on this branch: the shipping-lane
-fixtures live on `migration-1`, which does not merge into `main`) — belong at the parent; tax-only detail
+style of `system/shipping-lane/fixtures/identity-fixture.md`) — belong at the parent; tax-only detail
 (filing deadlines, deduction history) sinks to `tax/`, because bookkeeping shouldn't be charged for it. **The
 pyramid is a cost curve, not an aesthetic** — *"anything toward the top of the folder schema is THINNER in
 canon than anything at the bottom … push all of our heavy canonical information to the bottom"*: the top is
@@ -193,6 +193,8 @@ stored** — a pot of gold with no map. This is the standing answer to the *reca
 what *loads*; it does nothing for how a cold session *finds* the right slice — retrieval is the hard part). The
 pointer is **part of the placement, not optional cleanup** — see the archivist's findability gate in
 `agents/archivist.md`.
+⛔ `agents/archivist.md` is the donor's path and is not here. The charter itself DID land — it ships as
+`.claude/agents/archivist.md`; only the top-level `agents/` location did not come across (migration note, 2026-08-15).
 
 ## 4. How a home declares its bar — the INTENT (every type, every home)
 Every home — of **any** type (a canon, a skill folder, a project, a records area, a playbook) — carries an

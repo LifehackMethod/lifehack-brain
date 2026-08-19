@@ -1,6 +1,6 @@
 # PHASE 2 — SCREEN A PILE (one pile: thin-read every chat, then YOU rule it)
 
-> ## 📖 REFERENCE — `PLAN-B.md`, in the top folder. Read it when in doubt.
+> ## 📖 REFERENCE — `PLAN-B.md`, in this skill's own folder (`.claude/skills/ingest/`). Read it when in doubt.
 >
 > It states this same method in four plain rounds that map 1:1 onto the four phases. **Your matching round is `ROUND 2 — Screen one pile`.** Read it when you are unsure what should happen next, what a
 turn should look like, or how something should be said to the human.
@@ -27,7 +27,7 @@ turn should look like, or how something should be said to the human.
 pointer at the bottom. Do not read ahead. Do not produce outputs this file doesn't ask for.
 
 > **⚖ REWRITTEN 2026-08-05 against `SPEC.md` §8.** Two things changed and both are structural:
-> **① a THIRD verdict, `EXPLORE`, which is NOT terminal** — and **② a real ROUND LOOP**, which this phase
+> **1 a THIRD verdict, `EXPLORE`, which is NOT terminal** — and **2 a real ROUND LOOP**, which this phase
 > never had. Before today SCAN offered two verbs, both terminal, and pagination only ever moved *forward*.
 > **The measured consequence, in the operator's words:** dictating *"1 yes, 2 yes, 3 yes"* was taken as blanket
 > approval — *"it not only approves that round, it basically just goes straight to the end and skips the
@@ -143,7 +143,7 @@ Print, before any list appears:
    ⛔ **Lead with the literal position — NEVER the codename alone.** *"You gave it a name called scan, the
    user has no fucking idea what the name means. So let's be literal."*
 2. **The whole map**, plain language, current one arrowed:
-   *① make the piles ✅ → **② screen this pile ◀ you are here** → ③ the world map → ④ file it.*
+   *1 make the piles ✅ → **2 screen this pile ◀ you are here** → 3 the world map → 4 file it.*
 3. **What the last phase settled** — one line. *"You set 13 piles; this is the third."*
 4. **What this phase is for, and why it must come before the next thing** — *"I'm aiming the expensive
    reading. Whatever you keep here is what I read properly in the next step, so this decides where the
@@ -301,8 +301,8 @@ Append to the corpus scratchpad (`2.0b`): confirmed subject-arcs, corrections th
 about how this person works — anything that would otherwise have to be rediscovered.
 ```bash
 # ⛔ --root is THEIR notes folder, not this repo — same as PHASE 1's `1.10`. Resolve it, never assume it.
-DRIVE="$(python3 "$T/pipeline.py" brain-root --quiet)" || { echo "STOP: no brain root set — see PHASE 1 step 1.0"; exit 1; }
-python3 $T/pipeline.py pad-init --map "$MAP" --root "$DRIVE" --basket "$BASKET" --entry "<what you learned, in plain prose>"
+DATA="$(python3 "$ROOT/shared/brain_root.py" --quiet)" || { echo "STOP: no brain root set — see PHASE 1 step 1.0"; exit 1; }
+python3 $T/pipeline.py pad-init --map "$MAP" --root "$DATA" --basket "$BASKET" --entry "<what you learned, in plain prose>"
 ```
 *Why:* the pile spans sittings and windows. **Context is RAM; the scratchpad is storage.** And this is the
 step that makes the world model real — a file that only gets read is a document; a file that gets written

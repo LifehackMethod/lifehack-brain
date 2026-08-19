@@ -98,6 +98,55 @@ authority: user
 > the house standard in any headless runner in this repo.
 <!-- MODEL-REACH-RULE-v1 END -->
 
+<!-- ABSENT-SUBJECT-RULE-v1 BEGIN -->
+> ⛔ **HOUSE RULE — RATIFIED `T9.11b`, 2026-08-15: A CHECKER FAILS LOUD WHEN ITS SUBJECT IS ABSENT OR
+> AMBIGUOUS.** "I checked and it's clean" and "there was nothing here I could check" are different
+> claims. A checker that cannot reach, find, or disambiguate what it is supposed to inspect **must say
+> so as its own distinct outcome — never fold into a passing result, and never silently return the
+> pass a healthy run would have produced.**
+>
+> **Not a new theory — measured at least SIX times in one session, independently, in six different
+> tools:**
+> 1. the whole-tree leak scanner's `git ls-files` blind spot — files outside git's index were never
+>    walked, so a leak sitting in one was invisible to a scan that reported clean.
+> 2. `item_store_read.py`'s missing-module silent pass — an import that could not resolve was absorbed
+>    rather than surfaced, so "the module isn't here" read the same as "nothing was found."
+> 3. the plan's hand-typed `"5"` denominator — a count asserted from memory instead of derived from
+>    the thing being counted, so it could not go wrong out loud when the real count changed.
+> 4. `board_check`'s stale-but-plan-present pass — a plan file existing was enough to pass, whether or
+>    not its content was actually current.
+> 5. the label manifest's 20-of-45 hook coverage reported as **coverage** — a partial result rendered
+>    with no marker distinguishing it from a complete one.
+> 6. `assert_dispatch_fidelity.py`'s absence-with-a-wrong-diagnosis — when its subject was missing, it
+>    reported a specific, confident, and incorrect reason rather than "I could not find what I was
+>    sent to check."
+>
+> **Six instances in one session is a missing standard, not bad luck.**
+>
+> **The correct shape already exists — copy it, don't invent a new one.**
+> `system/hooks/tests/verify-pm-guard.sh` is the worked pattern: it checks its subject (the guard
+> file) exists **before** running a single case, exits a distinct code (`2`, not `0` or `1`) with a
+> named reason if the subject is missing, and — inside each case — maps an unreachable-guard exit
+> (`127`) to `NOT-RUN`, never to `DENY` or `ALLOW`. **"Absent" and "wrong" get different exit codes on
+> purpose**, because a caller that cannot tell them apart cannot fix the right thing.
+>
+> **`backlog_groom.py` is the already-fixed worked example of the same rule at the reporting layer.**
+> When `sources_scanned == 0` (no ledger, no desk backlog, no legacy swamp file exists yet), it does
+> **not** run its six per-source checks over an empty universe and report them clean — none of the six
+> could honestly claim `OK` over zero scanned items. It emits **one** honest `"not configured — no
+> debt ledger, desk backlogs, or legacy swamp file found yet"` finding instead, the same shape as
+> `planning-health.py`'s `"not configured — no calendar connected yet."` **Fresh-install absence and a
+> verified-clean state are different facts, and now render as different words.**
+>
+> ⛔ **THIS IS A DOC, NOT A NEW ENFORCEMENT LAYER.** It ratifies a shape already proven in this repo and
+> tells future checkers to build to it from day one — it does not add a watcher over existing
+> checkers. Per the standing rule at the top of this file: **if your fix has three parts and one of
+> them checks the other two, delete that one.** Applied here: do not build a meta-checker that scans
+> other checkers for silent-pass behavior — that third part would itself need a subject, and would
+> fail exactly the same way if that subject went missing. **Write new checkers to this shape; audit
+> old ones by reading them, not by adding a layer above them.**
+<!-- ABSENT-SUBJECT-RULE-v1 END -->
+
 # Build Rules-of-Engagement Index
 
 > Read by the `/build` skill's **Step 0** gate. Maps **what you're building** → the **binding docs**
@@ -116,10 +165,10 @@ authority: user
 - `[PARTIAL §x]` — only section x confirmed current.
 
 ## ALWAYS — every build, regardless of type
-- ⏳ **UNRULED** — `system/sops/build-sop.md`, hard-won build do's, general plus a domain section when one
-  applies. **This page's first ALWAYS rule points at a document that is on no ship list.** 637 lines of
-  build doctrine that is not personal and not here; until that is ruled on, the rules below are what
-  `/build` actually has. `[VERIFIED 2026-06-20]`
+- ✅ `system/sops/build-sop.md` — hard-won build do's: a general section that applies to everything, and
+  a domain section for scheduled/background work. It carries the `DO NOT BUILD` register that
+  `system/tools/deadend_check.py` searches, which is the part worth reading before you build anything.
+  `[VERIFIED 2026-06-20]`
 - `system/sops/architecture-planning-sop.md` — the **Phase → Feature → Task** discipline every plan/build follows. `[VERIFIED 2026-06-20]`
 - `system/sops/build-conductor-sop.md` — the **four gears**: when to run the work yourself and when to fan it out to sub-agents, and how to run each. `[VERIFIED 2026-06-22]`
 
@@ -177,9 +226,9 @@ A build can also be multiple types below. This question, though, has exactly one
 | building… | read first (binding) | status |
 |---|---|---|
 | **a hook** | `system/sops/hook-sop.md` | ✅ here |
-| **a hook — the mechanics half** | `system/hook-contract.md` | ⏳ UNRULED — on no ship list; hook-sop's own banner says what to do meanwhile |
+| **a hook — the mechanics half** | `system/hook-contract.md` | ✅ here |
 | **a skill** | `system/sops/skill-building-sop-extract.md` | ✅ here — LAW 4.2, the one rule the core skills cite |
-| **a skill — the whole SOP** | `system/sops/skill-building-sop.md` | ⏳ lands in Phase 3, with `skill-builder` |
+| **a skill — the whole SOP** | `system/sops/skill-building-sop.md` | ✅ here — all 2,300 lines, with a banner naming what it cites that is not |
 | **memory, a doc, or a where-does-this-live decision** | `docs/data-layout.md` · `system/knowledge-altitude.md` | data-layout ✅ here; knowledge-altitude lands in T1.14 |
 | **a design, dashboard or interface** | `system/sops/design-process-sop.md` | ✅ here |
 | **anything security-touching** | the security wall docs | land in Phase 2 |
@@ -194,7 +243,12 @@ A build can also be multiple types below. This question, though, has exactly one
 >
 > - **a desk (new)** — a "desk" here is the light subject folder `/ingest` builds, and nothing in this
 >   release promotes one to the heavy shape. The SOP and scaffold for that are not part of it.
-> - **a cron or scheduled job** — there is no scheduler in this release.
+> - **a cron or scheduled job** — ⚠ CORRECTED 2026-08-15: this row used to say there is no
+>   scheduler in this release. That's no longer true — `system/tools/pulse.sh` (the heartbeat
+>   daemon) and `system/tools/install-schedulers.sh` (the OS-scheduler installer) both ship.
+>   There is no standalone job-authoring SOP, though: `system/pulse-config.md` — the manifest
+>   both scripts read — is itself the binding reference; add a row there in the same shape as
+>   its existing rows.
 > - **a spreadsheet** — the sheet-building skill is not in this release.
 > - **an architecture change** — the architecture docs it named describe a system this repo is not.
 >   `docs/data-layout.md` is the equivalent that does ship, and it is in the memory row above.

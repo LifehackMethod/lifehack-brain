@@ -73,7 +73,7 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("show", help="render the filing plan via the shared screen template")
     s.add_argument("--plan", required=True, help="filing-plan JSON (list of {title, home, kind, why})")
-    s.add_argument("--map", help="corpus-map.json — renders the overall %-progress bar as the header")
+    s.add_argument("--map", help="corpus-map.json — renders the overall %%-progress bar as the header")
     s.set_defaults(func=cmd_show)
     a = ap.parse_args()
     sys.exit(a.func(a))

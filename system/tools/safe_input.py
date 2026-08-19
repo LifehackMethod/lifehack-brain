@@ -203,7 +203,7 @@ def process(text: str) -> tuple:
 def redact_findings(text: str, findings: list) -> str:
     """Replace each flagged span in `text` with a neutral marker — the DETERMINISTIC twin of the
     ingest-reader's span redaction. Used by the safe_* `--redact` mode so a downstream store (e.g. the
-    cal-vault) keeps the real content but never the obeyable injection payload. Longest matches first so
+    planning-vault) keeps the real content but never the obeyable injection payload. Longest matches first so
     overlapping spans don't leave fragments. `findings` = the (match_text, label) list from process()."""
     out = text
     for match, label in sorted(findings, key=lambda mf: -len(mf[0] or "")):
@@ -219,7 +219,7 @@ def redact_findings(text: str, findings: list) -> str:
 # scan result so a security tool can never break a normal read.
 import json as _json
 import subprocess as _sp
-_SENTINEL_GATE = os.path.normpath(os.path.join(_THIS_DIR, "..", "..", "shared", "tools", "sentinel_response.py"))
+_SENTINEL_GATE = os.path.normpath(os.path.join(_THIS_DIR, "..", "..", "shared", "gate", "sentinel_response.py"))
 
 
 def route_findings(findings: list, source: str, item: str = "") -> str:
@@ -273,7 +273,7 @@ def provenance_route(desk_id: str, source_type: str, raw_text: str, item: str = 
     route_findings call in the safe_* wrappers. Returns the gate dict, or None on failure. DEFENSIVE:
     never raises, never blocks the read (a security tool can never break a normal read)."""
     try:
-        _shared = os.path.normpath(os.path.join(_THIS_DIR, "..", "..", "shared", "tools"))
+        _shared = os.path.normpath(os.path.join(_THIS_DIR, "..", "..", "shared", "gate"))
         if _shared not in sys.path:
             sys.path.insert(0, _shared)
         import ingest_gate

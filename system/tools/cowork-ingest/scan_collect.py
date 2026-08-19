@@ -28,9 +28,11 @@ if HERE not in sys.path:
 import pipeline
 from tag import extract_json_array   # robust JSON-array pull (handles prose preamble / fences)
 
-# the frozen on-path gate (shared/tools/ingest_gate.py) — CODE_ROOT is 4 dirs up from here
+# the frozen on-path gate (shared/gate/ingest_gate.py) — CODE_ROOT is 3 dirs up from HERE
+# ⚠ THIS ARITHMETIC IS THE FRAGILE PART. Moving EITHER file changes it, and a wrong count fails at
+# import time with a bare ModuleNotFoundError that says nothing about which side moved.
 CODE_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
-_SHARED = os.path.join(CODE_ROOT, "shared", "tools")
+_SHARED = os.path.join(CODE_ROOT, "shared", "gate")
 if _SHARED not in sys.path:
     sys.path.insert(0, _SHARED)
 from ingest_gate import gate  # noqa: E402

@@ -1,0 +1,10 @@
+[
+  {
+    "id": "s1-plan-cites-sop",
+    "section": {
+      "id": "sop-citation",
+      "term": "skill-building-sop.md"
+    },
+    "why": "SPEC.md sec 8h, seam S1 (builder -> /autoplan, steps 5.5/5.6): the plan is invoked with an explicit path pointer to system/sops/skill-building-sop.md, and step 5.6 requires confirming the returned plan ACTUALLY CITES the SOP -- 'a plan that cites nothing did not check anything'. SPEC.md:1665-1672 names the existing check for this a false one: phase-contract.json's own 'sop-cited' row matches SOP-CITED:\\s*(yes|true), a token the MODEL TYPES ABOUT ITSELF, which phase_gate.py's own docstring classes as DECLARED UNCHECKABLE (self-report, no independent trace). This rule replaces that with a real mechanical check: section_present.py reads the plan artifact ITSELF (not a self-report about the plan) for a literal, word-bounded citation of skill-building-sop.md. SPEC.md:1669-1672 names this exact fix: 'The fix needs no new primitive: system/parts/section_present.py takes a rules file and checks a required section/marker is present in an artifact -- a bare presence rule on the literal skill-building-sop.md, run against the returned plan file, closes S1.' No 'requires' sub-elements are declared -- this is deliberately the bare presence check section_present.py's own docstring describes ('requires is optional -- omit it for a bare presence check with no sub-element obligation'), sized to exactly what step 5.6 asks: that the SOP is cited at all, not that any particular sub-claim about it is present."
+  }
+]

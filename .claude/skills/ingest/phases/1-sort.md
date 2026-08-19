@@ -7,7 +7,7 @@
 > `users.json` (their email address and phone number). *(The code now refuses to unpack into a tracked
 > folder — this line is so you never try.)*
 
-> ## 📖 REFERENCE — `PLAN-B.md`, in the top folder. Read it when in doubt.
+> ## 📖 REFERENCE — `PLAN-B.md`, in this skill's own folder (`.claude/skills/ingest/`). Read it when in doubt.
 >
 > It states this same method in four plain rounds that map 1:1 onto the four phases. **Your matching round is `ROUND 1 — Make the piles`.** Read it when you are unsure what should happen next, what a
 turn should look like, or how something should be said to the human.
@@ -79,8 +79,8 @@ what is expected of me."* It is now in every phase because being lost is not a p
 
 **Print this before anything else — five short lines, plain words (see the dictionary in `SKILL.md`):**
 1. **Where they are, literally** — *"Step {N} of 4."* ⛔ Never the codename alone.
-2. **The whole map**, current step arrowed — *① make the piles → ② screen each pile → ③ the picture of you
-   → ④ file it.*
+2. **The whole map**, current step arrowed — *1 make the piles → 2 screen each pile → 3 the picture of you
+   → 4 file it.*
 3. **What the last step settled** — one line. *"You set 5 piles."*
 4. **What this step is for**, and why it comes before the next one.
 5. **What you are about to ask them to do** — narrate the move BEFORE you make it.
@@ -122,7 +122,7 @@ the location of my AI brain', or they make it — but that needs to be recorded,
 future. So it's not throwing all the files that come out of it in some random place."*
 
 ```bash
-python3 $T/pipeline.py brain-root
+python3 "$ROOT/shared/brain_root.py"
 ```
 - **Exit 0 → it is already remembered. DO NOT ASK.** Say the path out loud in one line — *"Everything lands
   in `<path>`."* — and move on. ⭐ **Say it EVERY run, not just the first.** A wrong destination is cheap to
@@ -131,7 +131,7 @@ python3 $T/pipeline.py brain-root
   the folder you already use, or tell me where to make a new one."* Then record their answer — this is the
   line that makes it permanent:
 ```bash
-python3 $T/pipeline.py brain-root --set "<the folder they named>"     # add --create if it does not exist yet
+python3 "$ROOT/shared/brain_root.py" --set "<the folder they named>"     # add --create if it does not exist yet
 ```
 ⛔ **Never pick a folder for them, and never fall back to the current directory.** `NOT-SET` is a genuine
 stop, not a prompt to be clever — putting someone's brain somewhere they did not choose is the failure this
@@ -334,8 +334,8 @@ correct for the corpus? And then it should ask, are you ready to go to the next 
 than that — it shouldn't be that complicated."*
 
 ⇒ **THE CLOSING SCREEN ASKS EXACTLY TWO THINGS, IN THIS ORDER, AND NOTHING ELSE:**
-> **①** *"Do these piles look right for your material?"*
-> **②** *"Ready to move to phase 2 — screening the first pile?"*
+> **1.** *"Do these piles look right for your material?"*
+> **2.** *"Ready to move to phase 2 — screening the first pile?"*
 
 **A correction is something they VOLUNTEER, never a menu you hand them.** If they want a pile merged,
 renamed or dropped they will say so; the action bar already tells them how (`"toss <pile>"`). ⛔ **Do not
@@ -379,8 +379,8 @@ corpus:
 # simply the folder the human already named". This line used to pass `git rev-parse --show-toplevel`,
 # which is the folder the TOOL was cloned into — so every pad landed inside the tool folder and would
 # have been wiped by the next update. Resolve it the same way every other phase does.
-DRIVE="$(python3 "$T/pipeline.py" brain-root --quiet)" || { echo "STOP: no brain root set yet — go back to step 1.0"; exit 1; }
-python3 $T/pipeline.py pad-init --map "$MAP" --root "$DRIVE"   # one pad PER PILE, plus a corpus pad
+DATA="$(python3 "$ROOT/shared/brain_root.py" --quiet)" || { echo "STOP: no brain root set yet — go back to step 1.0"; exit 1; }
+python3 $T/pipeline.py pad-init --map "$MAP" --root "$DATA"   # one pad PER PILE, plus a corpus pad
 ```
 **Reproduce whatever path it reports in your OWN reply** — never leave it in the collapsed command block;
 that path is what you tell the human next.

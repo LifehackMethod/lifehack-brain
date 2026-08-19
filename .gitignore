@@ -1,6 +1,7 @@
-# Everything the person writes lives in memory/ and is theirs alone.
-# Ignore all of it; keep only the signpost README so the folder ships empty
-# and an update has nothing of theirs to overwrite.
+# LEGACY. Until 2026-08-12 the person's writing lived in memory/; it now lives in
+# data/ (see the block further down). This rule stays so that anyone who installed
+# before that date, or who puts something here by mistake, is still protected --
+# and memory/README.md now says plainly that this folder is not the place.
 memory/*
 !memory/README.md
 
@@ -28,3 +29,39 @@ users.json
 #    deleting this folder and re-cloning; that takes your writing with it.
 #    See "Taking an update later" in INSTALL.md.
 data/
+
+# ── YOUR KEYS. NEVER COMMITTED. ⚖ the operator's ruling, 2026-08-14 ─────────
+# The credential path is a local settings file, chosen deliberately over an OS-native
+# keystore for this release (see the plan, F8.8). THESE LINES ARE THE WHOLE PROTECTION,
+# so they go in BEFORE the file exists rather than after someone creates one.
+#
+# ⛔ DO NOT REMOVE, and never `git add -f` one of these. A key in git history is not
+#    removed by deleting the file later -- it stays in every clone that ever pulled it,
+#    and the only real fix is to rotate the key at the provider.
+# ⚠ `git clean -fdX` DELETES ignored files, so this is also the file a cleanup wipes.
+#    The tracked template beside it is what makes that recoverable -- keep them in sync.
+local.settings.json
+.claude/settings.local.json
+
+# Editing debris. A session that is about to rewrite a long file often copies it aside
+# first; five of those were sitting untracked in this repo, and a scoped `git add` of a
+# directory picked two of them up on 2026-08-11 before the commit was checked. A .bak is
+# a safety copy for one session, never a thing to publish — and the guard that stops a
+# whole-tree add does not stop a scoped one.
+*.bak
+*.pre-*.bak
+
+# ── INTERNAL MIGRATION WORKING NOTES. NEVER SHIPPED. ──────────────────────────
+# migration-audit/ is the donor-side project's own scratch: dependency inventories,
+# guard-fire test matrices, phase logs — written by and for the person doing the
+# port, never for a reader of the product. 08-THIRD-PARTY-INVENTORY.md got tracked
+# here by 2026-08-14 (commit ab4cc2a) because it was authored and committed
+# directly inside this checkout instead of going through the shipping lane, so
+# nothing scrubbed it. It named the operator's own machine paths, a live
+# third-party hostname, a locality hint, and a service-by-service map of where
+# every credential is stored -- zero value to a student, real value to nobody but
+# an attacker. Untracked 2026-08-14; kept on disk, never committed again.
+migration-audit/
+
+# the per-install pointer to this brain's notes folder — personal path, NEVER committed
+.brain-root

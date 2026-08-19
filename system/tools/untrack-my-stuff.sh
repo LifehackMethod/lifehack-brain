@@ -10,7 +10,7 @@
 # where it is on disk. Nothing you wrote is touched. This is the whole reason it uses that command and not
 # anything else.
 #
-# WHY THIS IS A SCRIPT AND NOT A COMMAND TO PASTE: a multi-line block pasted into a Mac terminal gets
+# WHY THIS IS A SCRIPT AND NOT A COMMAND TO PASTE: a multi-line block pasted into a terminal gets
 # mangled — backticks command-substitute, the shell hangs on a continuation prompt, and you cannot tell a
 # broken paste from a real failure. One line that runs a file in the repo cannot fail that way.
 #

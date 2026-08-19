@@ -32,14 +32,14 @@ exhaustive: lean + always-current beats comprehensive + stale.
 Design work splits into two phases. Don't skip the first to reach the second faster — false economy.
 
 **(A) BUILD the system** — discovery → vocabulary + grammar + examples. Front-loads ~75% of the
-effort; pays off every subsequent iteration. Sections ①, ④, ⑤ live here.
+effort; pays off every subsequent iteration. Sections 1, 4, 5 live here.
 
-**(B) ITERATE against it** — look-vs-function loop + reference-diff. The last 25%. Sections ②, ③
-live here. Section ⑥ spans both.
+**(B) ITERATE against it** — look-vs-function loop + reference-diff. The last 25%. Sections 2, 3
+live here. Section 6 spans both.
 
 ---
 
-## ① The complete design system — vocabulary + grammar + examples ⭐⭐
+## 1 The complete design system — vocabulary + grammar + examples ⭐⭐
 
 *The ground floor. Missing any one layer is what causes the dashboard swamp.*
 
@@ -57,7 +57,7 @@ closes the gap:
 - **Closed-value sets** — the agent picks from an enumerated list; it never infers a value.
 
 **Examples — canonical composed views.** Pattern-match at the view level, not the atom level.
-These double as the golden templates for the reference-diff in ③ (one artifact, two jobs).
+These double as the golden templates for the reference-diff in §3 (one artifact, two jobs).
 
 **The 6-point "tight" test** — tight when ALL six pass: (1) semantic token names; (2) closed-value
 sets on every dimension that can vary; (3) always-on foundations re-injected every turn; (4) explicit
@@ -73,7 +73,7 @@ lean — past ~200 lines it starts being ignored.
 
 ---
 
-## ② Look vs. function — and the wobble check ⭐
+## 2 Look vs. function — and the wobble check ⭐
 
 **Every change is a LOOK tweak or a FUNCTION/DATA change. Misclassifying is the #1 source of
 wasted iteration.**
@@ -86,17 +86,17 @@ spec, then re-run. Burning pipeline cycles on a grammar gap IS the swamp.
 
 ---
 
-## ③ Reference-template diff — concrete diagnosis ⭐
+## 3 Reference-template diff — concrete diagnosis ⭐
 
 **Golden image per view → render current → diff → name the divergence.** Not a vibe, a named delta:
-*"card padding 24px, spec says 16px."* The ① canonical examples ARE the golden templates (one
+*"card padding 24px, spec says 16px."* The §1 canonical examples ARE the golden templates (one
 artifact, two jobs). Run the diff before reporting a problem and before starting a fix; a diff that
 can't name what diverged isn't actionable. Update the baseline when the spec changes, not when the
 render drifts.
 
 ---
 
-## ④ Generation vs. implementation — tool selection ⭐
+## 4 Generation vs. implementation — tool selection ⭐
 
 **External tool first (Stitch / Figma / v0)** when: greenfield · brand-heavy · non-coder / client
 mockup · pure exploration / teaching.
@@ -110,7 +110,7 @@ durable artifact — when it's right, any new session converges fast.
 
 ---
 
-## ⑤ Iteration discipline
+## 5 Iteration discipline
 
 **Iteration is the nature of design, not failure. Optimize for fast loops, not fewer loops.**
 - **Look at the render every time.** The agent can't verify visual output by reading its own code. LOOK is the verification step.
@@ -120,7 +120,7 @@ durable artifact — when it's right, any new session converges fast.
 
 ---
 
-## ⑥ Always-on lean delivery — the anchor
+## 6 Always-on lean delivery — the anchor
 
 **The system is only effective if present every turn.** A compact always-on foundations block
 re-injects each turn via the skill anchor; component contracts load on demand. **Keep it lean** —

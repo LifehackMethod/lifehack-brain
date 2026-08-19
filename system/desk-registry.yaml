@@ -1,0 +1,30 @@
+# system/desk-registry.yaml — the keystone of the multi-desk model (PORTED from claudeops-config,
+# migration F9.6 "THE DESK PLANE"). One entry per full DESK (see system/sops/desk-building-sop.md for
+# the shape); read by every organ that needs to discover desks by enumeration rather than a hardcoded
+# list — e.g. `backlog_groom.py`'s `load_registry()`. Code-resident (repo) — travels with the clone,
+# unlike the desk CONTENT itself, which lives under your notes root and is never committed.
+#
+# HAND-MAINTAINED: append one entry per new desk BY HAND. The folder scaffold is one-punch
+# (`system/tools/cowork-ingest/desk_scaffold.py`) — it PRINTS the block to paste here (still
+# hand-appended by design: the registry is a conscious act, read by every organ that touches it).
+# Procedure: system/sops/desk-building-sop.md.
+#
+# ⛔ This file ships EMPTY (`desks: []`) — a fresh install has no desks. A knowledge FOLDER
+# (`canon/` + `records/` only, built by `/ingest` via `folder_scaffold.py`) never appears here; only a
+# full DESK (promoted via `desk_scaffold.py`, see the SOP) gets an entry.
+#
+# Field guide:
+#   desk_id          : stable slug — the identity other tools match a desk by
+#   health_producer  : filename in system/tools/ that emits this desk's status tile; null = none yet
+#   pulse_slot       : the job name in a scheduler config, if this desk is wired to one; null = not wired
+#   open_loops_path  : path (relative to the notes root) to the desk's state/open-loops.md
+#   purpose_path     : path (relative to the notes root) to the desk's canon/purpose.md; null = none yet
+#   status_tile_path : path (relative to the notes root) to the emitted status tile JSON; null = none yet
+#   backlog_mode     : queue = staleness is a defect (flag it) | register = staleness is normal (don't nag)
+#   conformant       : true = producer validates via the shared status-emit helper | false = not wired yet
+#   reads_external   : yes = desk ingests external content (email/web/file) | no = no external reads
+#   notes            : known issues, naming mismatches, anything the next reader needs
+
+schema_version: 2
+
+desks: []

@@ -1,14 +1,42 @@
-# Session close — the curation flow (SC-1 → SC-5)
+# Session close — the curation flow (SC-0 → SC-5)
 
 Runs when `/save` is called bare, or with "session" / "close" / "end" / "wrap", or when a session has
-produced a noticeable number of findings. It produces the items; `phases/standard-steps.md` steps 7–9
-then write the journal, the ledgers and the handoff.
+produced a noticeable number of findings. **SC-0 below runs first.** It produces the items;
+`phases/standard-steps.md` steps 7–9 then write the journal, the ledgers and the handoff.
 
 Set the paths from `SKILL.md` first. Start the coverage ledger before anything else:
 
 ```bash
 python3 "$ROOT/system/tools/save/save_step_ledger.py" start
 ```
+
+---
+
+## SC-0 — Invoke `/checkin` first. Session-close only. Not in any other mode.
+
+**Before SC-1, invoke the `checkin` skill.** Let it run to completion, then continue into SC-1 below.
+
+**Why.** `/checkin` is the audit that reconciles plan vs brief vs what actually happened this session —
+and it is easy to forget on its own, because it is a *second* act of memory on top of remembering
+`/save` itself. Chaining it here removes that memory step: session-close save now carries the audit
+with it instead of depending on someone separately remembering to run it.
+
+**Three rules, and each is load-bearing:**
+
+1. ⛔ **Session-close mode only.** A mid-session single-artifact `/save` must never invoke it. `/checkin`
+   loads its whole skill file on invocation — dragging that into a one-item save pays the full load for
+   an audit that has nothing to audit.
+2. ⛔ **A refusal is not an error — continue.** `system/hooks/guard_checkin_needs_project.sh` refuses
+   `/checkin` when no project is armed (there is no plan and no brief, so there is nothing to
+   reconcile). On that refusal, note it in one line and proceed straight to SC-1. Do not retry, do not
+   arm a project just to get past it, and do not treat it as a failure — the refusal is the feature.
+3. ⛔ **Do not merge the two skills.** `/checkin` and `/save` share real overlap (each reads the
+   scratchpad, each can touch the brief's Current-State), but `/save`'s Story-Log sweep is the only
+   backstop for a session where `/checkin` never ran — which is exactly the failure SC-0 exists to
+   close, so it has to survive alongside it. Two files, one sequence, not one file.
+
+**Verify:** a session-close `/save` shows `/checkin` running before SC-1. A mid-session `/save` does not
+invoke it at all. With no project armed, the refusal appears and `/save` completes normally.
 
 ---
 
@@ -60,6 +88,12 @@ entirely. Say plainly that nothing warrants persisting, and skip the rest of thi
 
 **Output:** a flat list of `{question, why, conclusion}`, one per finding, each anchored. Internal
 working material — the person sees it at SC-4.
+
+Then stamp it:
+
+```bash
+python3 "$ROOT/system/tools/save/save_step_ledger.py" stamp SC-1
+```
 
 ---
 

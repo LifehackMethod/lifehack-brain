@@ -51,20 +51,20 @@ headless handoff, name the reach and confirm both of its fixes are in place.
 
 A plan that ends in *"then run it and see"* is an experiment.
 
-**① ONE VARIABLE, or the run resolves nothing.** Every additional thing that changes between control
+**1. ONE VARIABLE, or the run resolves nothing.** Every additional thing that changes between control
 and treatment is a confound you cannot subtract afterwards. **If a plan wants to change two things, it
 either runs two comparisons that each isolate one, or it cuts one to a follow-on phase.** *(Live
 precedent: an arm measuring `44% cheaper · 1.79× findings` was formally refused because it ran one turn
 where its control ran two — the best-looking result in that plan, killed by one uncontrolled
 difference.)*
 
-**② FIND THE CONTROL BEFORE DESIGNING THE TREATMENT.** A plan that generates its own baseline pays
+**2. FIND THE CONTROL BEFORE DESIGNING THE TREATMENT.** A plan that generates its own baseline pays
 twice and gets a baseline carrying the same unknowns as the run. **Look on disk first** — a preserved
 prior run, gates green and artifacts intact, is worth more than a fresh one *because it predates every
 change under test.* Name it with its real numbers. If no control exists, **say so and price generating
 one as its own task** — never let *"we'll compare it to something"* stand in for a named file.
 
-**③ ⭐⭐ PUT THE PARALLELISM AT THE RIGHT LAYER.** Ask: **what is shared between the arms, and what
+**3. ⭐⭐ PUT THE PARALLELISM AT THE RIGHT LAYER.** Ask: **what is shared between the arms, and what
 actually differs?** If the difference is *downstream* of the expensive shared step, the arms do not each
 need their own run of it — **do the expensive step once and fork after it.**
 

@@ -117,35 +117,36 @@ task's actual shape (coupled? decided? one-surface? self-verifiable?). The tag g
 - **sonnet, never opus** (haiku for pure read-only). Per this system subagent rule.
 - Returns a summary / writes an artifact to a file. The lead reviews; the human approves.
 
+## ⭐ The return budget — the half of delegation nobody prices
+
+**A spawn costs several thousand tokens fixed just to launch. Its RETURN lands in the lead's window IN
+FULL, and nothing bounds it by default.** A real fan-out can produce verifier returns that are larger
+than the spawn cost that bought them. Everyone budgets the send and ignores the reply.
+
+⛔ **This is not a word cap, and a word cap is the wrong fix.** Cap the findings and you lose findings —
+an arbitrary length limit throws away precious information along with the noise. **So budget the
+CEREMONY, never the CONTENT.**
+
+**Put these in every sub-agent prompt:**
+- **No preamble, no restated method, no "I will now…".** Its final text IS the deliverable, not a
+  message announcing one.
+- ⛔ **Never paste a file body — cite `file:line` and quote only the decisive fragment.** The lead can
+  open the file itself; it cannot un-read 400 lines that arrived unasked.
+- **Unlimited findings.** The count is never the thing being budgeted.
+- **A named shape** ("one block per finding, these five fields") — structure compresses without loss.
+
+⭐ **Big outputs split by *kind*, not by length: evidence → a file · verdicts + counts → the reply.** The
+lead acts on verdicts and only opens the evidence file when it doubts one. The risk this answers is the
+lead getting lazy and never reading the file — the split prevents that because the reply is not a
+summary of the evidence, it is the *decisions*, which is all the lead needs unless it disagrees.
+
 ## Running a gear-3 Agent-Team wave (the special case)
 
-**Proven 2026-06-22:** Agent Teams works and **this system PreToolUse guards FIRE inside teammates**
-(both in-process and separate-process panes — calendar + write-path guards verified live). Real
-financial/client data is safe through a team.
-
-**Display modes (`teammateMode` in `settings.json`):**
-- `"in-process"` — all teammates in the one window; `Shift+Up/Down` to switch. **Default since
-  v2.1.179.** ⚠️ In-process teammates **cannot compact → they DIE when context fills.** Use only
-  for **bounded** teammate work.
-- `"tmux"` / `"auto"` — split panes, each teammate its own pane. Requires **tmux or iTerm2**, and
-  **Claude must already be running inside the tmux session** (it won't create one). These teammates
-  are full sessions: they **compact and survive long work.** Machine setting is `"auto"`.
-
-**⇒ Rule: a real wave with substantial teammate work runs SEPARATE-PROCESS (tmux/iTerm2).** A
-quick bounded wave can be in-process. Never give an in-process teammate a long sprawling job — it
-will die mid-run.
-
-**Cockpit setup (when you want to watch the wave):** **iTerm2 ≥ tmux** (native scrolling; less
-pain). For tmux: `brew install tmux`; `~/.tmux.conf` needs `set -g allow-passthrough on`,
-`set -s extended-keys on`, `set -as terminal-features 'xterm*:extkeys'`, `set -g mouse on`;
-launch `tmux new-session -s build` then `claude` inside it; switch panes `Ctrl+b` + arrow or
-click; clean up `tmux kill-session -t build`.
-
-**Team operating rules:** sweet-spot **3 teammates**; **plan-first** (cheap plan → review → spawn);
-**one-agent-one-file** + a don't-touch list; **embed context in each task** (teammates don't see
-the lead's chat); model in the task description (config-ignore bug); **`/clear` between waves**;
-**never trust a "done" mark — verify the real output**; shutdown via the lead (`shutdown_request`)
-then `TeamDelete`. ~7× tokens vs chat — only spend it for genuine coordinated breadth.
+A gear-3 wave spawns fresh teammates into a shared, dependency-aware task list so several
+independent surfaces that must coordinate can run together. **Opt-in only** — fires on "use agent
+teams" / "team build" — and costs roughly **~7× the tokens** of a chat pass, so the sweet spot is
+**~3 teammates**. **Embed context in each task** — teammates don't see the lead's chat — and **the
+lead owns the merge**.
 
 ## Running a gear-4 dynamic workflow (the fleet)
 

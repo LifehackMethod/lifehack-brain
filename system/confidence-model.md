@@ -213,24 +213,27 @@ the Archivist emits CONFLICT, not a dedup merge.
 
 ---
 
-### SEAM 2 — JOURNAL-FUNNEL
+### SEAM 2 — THE JOURNAL IS THE ONE FUNNEL
 
-**Definition:** The journal is the SINGLE funnel session-learnings pass through before reaching Cal.
+**Definition:** everything a session learned passes through the journal. Not *also* through it — *through*
+it. It is the append-only backstop, and the one place a later reader can go when they do not yet know what
+they are looking for or where it would have been filed.
 
-The Cal daily diary is built mechanically FROM the journal by `cal-diary-capture.py`, which reads:
-`system/journal.md` + `state/status/*.json` (per-desk current-state snapshots) + Google Tasks + Calendar events.
+**Consequence:** if a session's gold — a decision, a dead end, a number that mattered, the shape of what
+happened — lands only in a record or only in a state file and never in the journal, then finding it later
+depends on already knowing it exists. The journal is what makes it findable without that.
 
-**It does NOT read canon or records directly.**
+**What belongs in a journal entry:** the date · what was worked on · what it followed from · what failed or
+changed · why · where things stood at the close, missteps included.
 
-**Consequence:** if a session's gold (decisions, dead-ends, key numbers, narrative arc) lands only in a record
-or in `state/current.md` but NOT in the journal, the Cal diary for that date is blind to it. The journal is
-the mandatory transit point.
+**Binary check:** write an entry, then in a cold session ask a question it answers without naming the
+entry — `/read` should surface it.
 
-**What belongs in a journal SESSION CONTEXT entry:** session date · what was worked · what was followed-from ·
-what failed or changed · why · state at close (including missteps).
-
-**Binary check:** Write a fresh journal SESSION CONTEXT entry → the `cal-diary-capture.py` output for that
-date includes content drawn from that entry.
+> ⚖ **CORRECTED 2026-08-11.** This section used to describe the journal as a feed into a daily-diary tool,
+> named a script that builds it, and specified what that script reads. **None of that machinery is in this
+> repository** — it is part of the author's own setup. The rule about the journal is real and general; the
+> pipeline it was described in terms of was not, and a doctrine page that points at tooling a reader does
+> not have teaches them to go looking for something that was never sent.
 
 ---
 
@@ -251,6 +254,38 @@ emits CONFLICT for both, neither is silently dropped.
 
 ---
 
+### SEAM 4 — THE DENOMINATOR IS AUTHORED BY THE RUNNER, NEVER BY THE RUN
+
+**Definition:** when a job is handed a bounded set of work, the count of what it was supposed to do comes
+from whoever handed it out — and the job reports **what** it touched, never **how many**.
+
+**Why this is a seam and not a style preference.** "I processed 12 items" is an assertion made by the thing
+under examination. It cannot be checked, it cannot be wrong in any visible way, and it is the same sentence
+whether the run was faithful, forgetful, or did nothing at all. A LIST can be diffed against the handoff. A
+NUMBER can only be believed.
+
+**The direction nobody watches.** Every completeness check ever written asks *did we get everything?* Almost
+none asks *did we get only that?* — and an over-reaching job is silent by construction: it does not error,
+it does not slow down, and its output is indistinguishable from a correct job that happened to be handed
+more work. The only thing that reveals it is the diff against its own handoff. `shared/bounded_input.py`
+is that diff.
+
+**The rule, in three lines:**
+- the caller writes down what it handed out, before the work starts
+- the run writes down what it touched, as a list of identifiers
+- something else diffs the two — and refuses to evaluate at all if either side is missing, empty or a shape
+  it does not recognise, because a check with no denominator passes everything while appearing to work
+
+**Binary check:** hand `bounded_input.py` a processed file containing a count rather than a list → exit 2,
+CANNOT EVALUATE. Hand it an empty handed list → exit 2. Neither may ever be exit 0.
+
+**What it cannot do, stated so nobody assumes otherwise:** it cannot detect a run that did *less* than it
+was handed and copied its work-list to look busy. That is undecidable from these two inputs — the forged
+file is byte-identical to the honest one — and closing it needs a third witness that records work as it
+happens. The tool's own header carries the measurement.
+
+---
+
 ## 5. Reuse — Do Not Reinvent
 
 These existing sources define the vocabulary this model relies on. Cite them; do not copy inline.
@@ -262,3 +297,4 @@ These existing sources define the vocabulary this model relies on. Cite them; do
 | Canon admission test (the plain-question level ladder) | `system/knowledge-altitude.md` §3 |
 | Temperature model (always-on vs scoped vs on-demand) | ⛔ `system/memory-system.md` §1 — **not shipped.** `docs/data-layout.md` is the map here |
 | Frontmatter schema (required fields, record_type canonical list) | `system/schemas/managed-file-frontmatter.md` |
+| The runner-authored denominator (SEAM 4) | `shared/bounded_input.py` — the check, and the measured limits on it |

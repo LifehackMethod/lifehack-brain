@@ -1,0 +1,109 @@
+name: No Internal Leakage
+
+# WHY THIS EXISTS: migration-audit/08-THIRD-PARTY-INVENTORY.md was authored straight into
+# this repo and pushed to the shared remote -- the operator's macOS username in absolute
+# paths, a live third-party project hostname, and a map of every credential's storage
+# location. Nothing caught it: the project's scrubbing lane is a MANUAL, human-routed
+# pipeline that never sees a file authored directly here, and there was no git hook and no
+# .github/workflows/ at all. This check fires server-side, for every contributor, on every
+# pull_request and push, with nothing to install. See .github/scripts/check_no_internal_leakage.py
+# for the full rule set and reasoning -- this file only wires it up.
+
+on:
+  pull_request:
+    branches:
+      - main
+      - migration-1
+  push:
+    branches:
+      - main
+      - migration-1
+  # Manual trigger for verifying the check itself -- never fires on its own, zero risk of
+  # a surprise run; useful for the dev team to sanity-check the gate without waiting on a
+  # real push.
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: Scan changed files for internal leakage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history, needed to diff base...head)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Determine the diff range for this event
+        id: range
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # base.sha / head.sha are the actual PR endpoints, independent of the
+            # temporary merge commit GitHub Actions checks out for pull_request events.
+            echo "base=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_OUTPUT"
+            echo "head=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
+            echo "mode=merge-base" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            BEFORE="${{ github.event.before }}"
+            if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+              # First push of a new branch -- there is no real "before". Diff against
+              # git's canonical empty-tree SHA so every file at HEAD counts as added.
+              BEFORE="$(git hash-object -t tree /dev/null)"
+            fi
+            echo "base=$BEFORE" >> "$GITHUB_OUTPUT"
+            echo "head=${{ github.event.after }}" >> "$GITHUB_OUTPUT"
+            echo "mode=linear" >> "$GITHUB_OUTPUT"
+          else
+            # workflow_dispatch or anything else with no natural range -- scan nothing
+            # rather than guess; this trigger exists for manual smoke-testing, not gating.
+            echo "base=" >> "$GITHUB_OUTPUT"
+            echo "head=" >> "$GITHUB_OUTPUT"
+            echo "mode=" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ⭐ RULE 3'S TERM LIST IS NOT IN THIS REPO, AND MUST NEVER BE (issue #59). The
+      # scanner compiles the operator-identity tier at runtime from a one-term-per-line
+      # file -- the same file system/shipping-lane/identity_rules.py reads. A GitHub runner
+      # has no notes folder, so the list arrives as a repository secret and is written to a
+      # runner-local file that never enters the checkout.
+      #
+      # ⛔ IF SHIP_IDENTITY_TERMS IS NOT SET, THIS JOB GOES RED WITH EXIT 2, ON PURPOSE.
+      # That is CANNOT EVALUATE, not failure: rule 3 could not run, so the scan proved
+      # nothing, and the one thing it must never do is print "clean". The same rule
+      # push_gate.py already enforces -- "no identity file, so the lane has nothing
+      # personal to look for and would report your own name CLEAN".
+      #
+      # ⚠ KNOWN CONSEQUENCE, ACCEPTED: a pull_request from a FORK gets no secrets, so this
+      # job will be CANNOT EVALUATE (red) on fork PRs. An honest red beats a green that
+      # skipped a third of the rules. Setting the secret is a one-time repo-settings step:
+      # Settings -> Secrets and variables -> Actions -> New repository secret,
+      # name SHIP_IDENTITY_TERMS, value = one term per line ('#' starts a comment).
+      - name: Materialize the identity term list (never committed)
+        if: steps.range.outputs.mode != ''
+        env:
+          SHIP_IDENTITY_TERMS: ${{ secrets.SHIP_IDENTITY_TERMS }}
+        run: |
+          set -euo pipefail
+          # $RUNNER_TEMP is outside the checkout, so this file can never be picked up by
+          # git ls-files, a diff, or an artifact upload.
+          printf '%s\n' "$SHIP_IDENTITY_TERMS" > "$RUNNER_TEMP/ship-identity.md"
+          chmod 600 "$RUNNER_TEMP/ship-identity.md"
+          echo "SHIP_IDENTITY=$RUNNER_TEMP/ship-identity.md" >> "$GITHUB_ENV"
+          # Deliberately no echo of the contents, and no line count either -- a count is a
+          # small fact about a private list, and this log is public.
+
+      - name: Check for internal leakage
+        if: steps.range.outputs.mode != ''
+        run: |
+          python3 .github/scripts/check_no_internal_leakage.py \
+            --base "${{ steps.range.outputs.base }}" \
+            --head "${{ steps.range.outputs.head }}" \
+            --mode "${{ steps.range.outputs.mode }}"

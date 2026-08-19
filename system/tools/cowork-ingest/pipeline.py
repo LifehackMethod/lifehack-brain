@@ -140,6 +140,18 @@ def baskets_of(m):
     return m.get("baskets", {})
 
 
+def _basket_has_chats(m, basket):
+    """True if any row in the map is currently assigned to this basket.
+
+    A basket can end up with ZERO member rows after a human 'Split' correction reassigns every chat
+    OUT of it (THE MOVE SET, 1-sort.md 1.2/1.2b) — typically UNCLUSTERED, emptied once every chat has
+    a named subject. `corpus_map.py migrate` only ever ADDS/refreshes basket entries; it deliberately
+    never prunes one (skipping a stale entry is safer than deleting something a later reader might
+    still expect to find). So the orphaned entry survives in `m['baskets']` with nothing left in it.
+    Callers that pick "the next basket to work" must skip these — there is nothing there to scan."""
+    return any(r.get("basket") == basket for r in rows_of(m).values())
+
+
 # ── assert_schema — the FITNESS FUNCTION (a mis-ordered / un-migrated map fails LOUD, not silent) ──
 def assert_schema(m):
     """Return a list of problems (empty = conformant v2). The skills exit non-zero if non-empty."""
@@ -168,9 +180,14 @@ def assert_schema(m):
 def next_basket(m):
     """The loop driver: the first basket NOT yet committed — interrupted baskets first (resume them),
     then queued, by sort_order. Returns the basket name or None (all committed = done).
-    Computed from the map so the handoff survives a session ending between skills."""
+    Computed from the map so the handoff survives a session ending between skills.
+
+    Skips a basket with zero member chats (an orphan left by a Split correction — see
+    `_basket_has_chats`) — it is never "next", and without this filter it also blocks reaching DONE,
+    since it can never itself progress to committed."""
     bs = baskets_of(m)
-    pending = [(name, b) for name, b in bs.items() if b.get("basket_status") != "committed"]
+    pending = [(name, b) for name, b in bs.items()
+               if b.get("basket_status") != "committed" and _basket_has_chats(m, name)]
     if not pending:
         return None
     pending.sort(key=lambda nb: (0 if nb[1].get("basket_status") in INTERRUPTED else 1,
@@ -222,9 +239,11 @@ def _scanned_unruled(r):
 
 def _pending_baskets_sorted(m):
     """Non-committed baskets, interrupted-first then by sort_order — the same order next_basket picks,
-    but the whole list (so the miner can sweep every pile before the filer runs)."""
+    but the whole list (so the miner can sweep every pile before the filer runs). Also skips a basket
+    with zero member chats — see `_basket_has_chats` — so current_phase() never hands one to the miner."""
     bs = baskets_of(m)
-    pending = [(name, b) for name, b in bs.items() if b.get("basket_status") != "committed"]
+    pending = [(name, b) for name, b in bs.items()
+               if b.get("basket_status") != "committed" and _basket_has_chats(m, name)]
     pending.sort(key=lambda nb: (0 if nb[1].get("basket_status") in INTERRUPTED else 1,
                                  nb[1].get("sort_order", 0), nb[0]))
     return pending
@@ -357,7 +376,16 @@ def suggest_next(m, skill, basket=None):
                 "folders you already agreed (nothing is written until you approve each one).")
     label = {"2": "SCAN", "3": "DEEP-READ"}.get(ph, ph)
     if skill == "ingest-1":
-        return f"Piles are set. Re-invoke **/ingest** → SCAN pile '{nb}'."
+        # ingest-1's handoff fires right after sort-confirm (1-sort.md 1.6) — BEFORE pad-init (1.10)
+        # has run, so `ph`/`nb` above are still ("BLOCKED-NO-PAD", None): current_phase() gates PHASE 2
+        # on the pad, which hasn't been written yet at this exact call site. That is what produced a
+        # raw "SCAN pile 'None'." on the human-facing close screen. sort-confirm having just succeeded
+        # already proves SORT is done, so preview the real next pile straight from the basket queue —
+        # pad-init is the very next automatic step, and next_basket() doesn't need the pad to answer.
+        preview = next_basket(m)
+        if preview is None:
+            return "Piles are set, but every pile is already committed — re-invoke **/ingest** to continue."
+        return f"Piles are set. Re-invoke **/ingest** → SCAN pile '{preview}'."
     if skill == "ingest-2":
         if ph == "3" and nb == basket:
             return f"SCAN done for '{basket}' — some chats to read deeper. Re-invoke **/ingest** → DEEP-READ pile '{basket}'."
@@ -404,6 +432,9 @@ def acquire_lock(m, basket, machine, skill, now_iso=None, ttl_s=1800):
     b = baskets_of(m).get(basket)
     if b is None:
         return False, f"no such basket '{basket}'"
+    if not _basket_has_chats(m, basket):
+        return False, (f"basket '{basket}' has zero member chats (likely emptied by a Split correction "
+                        f"that moved everything out of it) — nothing to scan, refusing to lock it")
     held = b.get("basket_lock")
     stole_own = False
     if held and not is_stale_lock(held, now_iso, ttl_s):
@@ -698,7 +729,7 @@ def _basket_order(m):
 
 
 def compose_basket_hud(m, cols=2, active=None):
-    """The multi-line basket grid for a SCREEN HEADER (mockup ②'s top block). One cell per basket:
+    """The multi-line basket grid for a SCREEN HEADER (mockup 2's top block). One cell per basket:
     emoji + pretty name + a ▓▓░ bar + mined count, laid out in `cols` columns. `active` (a basket name)
     gets a ◀ marker. ≤~5 lines for ~8 baskets."""
     order = _basket_order(m)
@@ -718,7 +749,7 @@ def compose_basket_hud(m, cols=2, active=None):
 
 
 def compose_statusline_hud(m):
-    """The COMPACT one-line HUD for the status bar (mockup ①): `🧠 3/8 · 210 mined │ 💰47 ✍82 … │ ▓▓▓░░`.
+    """The COMPACT one-line HUD for the status bar (mockup 1): `🧠 3/8 · 210 mined │ 💰47 ✍82 … │ ▓▓▓░░`.
     baskets-done/total · total mined · a per-basket emoji+count chip strip · a baskets-progress bar.
     This is the exact string statusline.sh prepends above the standard line when an ingest session is active."""
     bs = baskets_of(m)
@@ -771,7 +802,7 @@ def _clip(text, n=100):
 
 
 def compose_reflection(m, basket, conclusions, since_iso=None, brain_before=None, next_basket_name=None):
-    """THE REWARD (F2.1) — renders mockup ③. After a basket is mined, reflect a sharper model of the
+    """THE REWARD (F2.1) — renders mockup 3. After a basket is mined, reflect a sharper model of the
     person: the durable ADOPTED facts, what's NEW this round (🆕, rows whose commit_ts/read_ts ≥ since_iso),
     and the explored-not-adopted catch (🤔, phrased ONLY as a question). HARD GUARD: an `exploration` item
     NEVER appears as an asserted fact — it is routed exclusively to the question. Ends with the ONE action.
@@ -986,7 +1017,10 @@ def set_corpus_inherit_offered(m, now_iso=None):
 # ⛔ NEVER adds a slug to the vocab file. An unknown slug REFUSES — the archivist proposes new slugs and
 # the author approves (topic-vocab.md's own write-authority rule); code only enforces membership, it never
 # grows the set.
-_TOPIC_SLUG_RE = re.compile(r"^- `([a-z0-9][a-z0-9-]*)`", re.MULTILINE)
+# Accepts BOTH `- \`slug\`` and a plain `- slug`. The backtick-only form silently parsed a
+# visibly-populated vocab file as zero entries — and this file is written by the person, not
+# shipped, so plain markdown bullets are at least as likely as fenced ones.
+_TOPIC_SLUG_RE = re.compile(r"^- `?([a-z0-9][a-z0-9-]*)`?\s*$", re.MULTILINE)
 
 
 # ⚖⭐ ONE RESOLVER, IMPORTED — NOT A SECOND COPY (2026-08-11). This gate used to look ONLY in the repo
@@ -1585,13 +1619,30 @@ def mark_committed(m, f, now_iso=None):
     return True, "ok"
 
 
+def scan_raw_dir(work, basket):
+    """THE ONE SPELLING of the SCAN reader's output directory. Do not inline it again.
+
+    ⛔ WHY THIS FUNCTION EXISTS (2026-08-13). It was written in two places as
+    `os.path.join(work, "scan-raw", basket)` and 2-scan.md:51 writes
+    `$COWORK_WORK/raw-scan-$BASKET`. Different name AND different shape -- a `scan-raw/<basket>`
+    subdirectory versus a `raw-scan-<basket>` sibling. **Nothing in the shipped pipeline has ever
+    written `scan-raw/`**; only this reader and its own unit test, which hand-built the directory it
+    expected and therefore passed while the real SCAN -> DEEP-READ handoff could not work at all.
+    The consequence: a pile whose keepers are all SHORT -- an ordinary notes vault, the exact case
+    b275bb7 was written to rescue -- refused to close, with a message naming "vein" and "batch file"
+    to a person who has never opened a terminal.
+    ⭐ The fix is the shape, not the string: two call sites spelling one path is the defect. One
+    function, both callers, and the writer's own name (`raw-scan-<basket>`) is the truth."""
+    return os.path.join(work, "raw-scan-" + basket)
+
+
 def scan_evidence(basket, work_dir=None):
     """THE INDEPENDENT TRACE behind a SHORT keeper's finding (2026-08-12). Returns
     (path, {chat_key: has_content}), or (path, None) when no SCAN reader output exists for this pile.
 
     The twin of `coalesced_evidence`, for the one case that function cannot answer. A chat at or under
     WHOLE_READ_MAX is read WHOLE by the SCAN reader, so DEEP-READ deliberately skips it and reuses that
-    summary as the finding. Its proof therefore lives in `scan-raw/<basket>/agent-*.json` — the raw files
+    summary as the finding. Its proof therefore lives in `raw-scan-<basket>/agent-*.json` — the raw files
     `agent_output.py` harvested from the readers — not in `raw-conclusions-<basket>.json`.
 
     Same posture as its twin: unreadable evidence is NO evidence, and a missing directory fails closed. The
@@ -1600,7 +1651,7 @@ def scan_evidence(basket, work_dir=None):
     work = work_dir or os.environ.get("COWORK_WORK")
     if not work:
         return (None, None)
-    path = os.path.join(work, "scan-raw", basket)
+    path = scan_raw_dir(work, basket)
     if not os.path.isdir(path):
         return (path, None)
     found = {}
@@ -1767,7 +1818,7 @@ def coalesce_scan_findings(work_dir, basket, m):
 
     # the raw gist TEXT, re-read from the reader files (scan_evidence returns only has-content flags)
     texts = {}
-    sdir = os.path.join(work, "scan-raw", basket)
+    sdir = scan_raw_dir(work, basket)
     for name in sorted(os.listdir(sdir)) if os.path.isdir(sdir) else []:
         if not name.endswith(".json"):
             continue
@@ -1945,7 +1996,12 @@ def worldmap_material(basket, work_dir=None):
     return (path, out)
 
 
-_BULLET_RE = re.compile(r'^\s*([-*•◦▪‣·]|\d+[.)])\s+')
+# ⚠ `+` WAS MISSING UNTIL 2026-08-11, found by this check's first test rather than in use.
+# It is one of markdown's three standard bullet characters (`-`, `*`, `+`), so a paragraph
+# written with it sailed through the one rule in this phase that is not negotiable on taste.
+# A hole in a prose-only check is silent by construction: the output still looks like a list
+# to the human reading it, and nothing said so.
+_BULLET_RE = re.compile(r'^\s*([-*+•◦▪‣·]|\d+[.)])\s+')
 
 
 _WM_STOP = set("""about above after again against all also and any are because been before being below between
@@ -2185,7 +2241,7 @@ def validate_turn_outcome(value):
 
 def propose_folder_shape(basket, subjects, page_size=10):
     """9.6.5 — TURN 5's LAYOUT MECHANICS. the author's ruling, 2026-08-05, `authority: user`
-    (restated in full right here, not a pointer into `system/knowledge-altitude.md` — a ClaudeOps-internal
+    (restated in full right here, not a pointer into `system/knowledge-altitude.md` — a Lifehack-internal
     doctrine file this repo does not ship; [5.2.1], 2026-08-11): too BIG -> subdivide (nest, same territory, more shelves
     beneath it); too DIVERSE -> separate (siblings, NOT nested — mutually irrelevant bodies of knowledge
     degrade each other if loaded together). WHICH subjects are diverse vs. which are just a big single
@@ -2390,12 +2446,16 @@ def set_basket_status(m, basket, status, work_dir=None, require_world_map=False)
 # globbing a cloud-drive path — fine for its original author, wrong for
 # anyone on Dropbox, OneDrive, or a plain local folder. This is a REMEMBERED DECISION, not a parameter.
 #
-# Resolution order, exactly: (1) $LIFEHACK_ROOT, if set and a real directory. (2) the persisted file
+# Resolution order, exactly — resolve_brain_root() returns the FIRST route below that names a real
+# directory, and the source string it returns is in parentheses: (1) $LIFEHACK_ROOT, if set and a real
+# directory ("env"). (2) the repo's own `.brain-root` pointer file, located from brain_root.py's own
+# position, never from the cwd ("repo-pointer", added 2026-08-17). (3) the persisted file
 # ~/.config/lifehack/brain-root — this system's EXISTING config home (sentinel-paused-sources and
-# claude-oauth-token already live there; this is not a second location). (3) the legacy Drive glob —
-# BACK-COMPAT ONLY, set via INGEST_LEGACY_ROOT_GLOB, so an existing corpus keeps resolving. (4) otherwise
-# NOT-SET. Closed outcome set {RESOLVED, NOT-SET}; NOT-SET is the no-outcome member and must NEVER fall
-# through to a guess, a default, or the cwd — every caller checks for it and stops, naming the fix.
+# claude-oauth-token already live there; this is not a second location) ("persisted"). (4) the legacy
+# Drive glob — BACK-COMPAT ONLY, set via INGEST_LEGACY_ROOT_GLOB, so an existing corpus keeps resolving
+# ("legacy-glob"). (5) otherwise NOT-SET. Closed outcome set {RESOLVED, NOT-SET}; NOT-SET is the
+# no-outcome member and must NEVER fall through to a guess, a default, or the cwd — every caller checks
+# for it and stops, naming the fix.
 # ⬇ THE IMPLEMENTATION MOVED (migration T0.1, 2026-08-11) to <repo>/shared/brain_root.py — the one
 # root variable the WHOLE system resolves through, not just this pipeline. The contract above is
 # unchanged; the code is imported so there is exactly one copy of it, and every other tool gets the
@@ -2907,7 +2967,7 @@ def main():
             print("REFUSED topic-check: no topic vocabulary found. Looked for, in order:\n"
                   + "\n".join(f"    {p}" for p in tried)
                   + "\n\n  The topic vocabulary is a list of the subject areas YOUR OWN material divides"
-                    " into,\n  so it is yours to write and it lives with your notes, not in the tool.\n"
+                    " into,\n  so it is yours to write and it lives in your AI Brain, not in the tool.\n"
                     "  Create memory/topic-vocab.md with one line per subject:\n\n"
                     "      - `financial`\n      - `health`\n      - `writing`\n\n"
                     "  ⛔ This tool will not invent one for you — an invented taxonomy of your life is"

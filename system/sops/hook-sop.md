@@ -15,18 +15,30 @@ reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live i
 
 # Hook SOP — when & how to reach for a hook
 
+> ## NOTE — WHAT THIS PAGE CITES THAT IS NOT IN THIS REPOSITORY
+>
+> This page earns its length by naming the exact record where each lesson was learned. Those records
+> live in the author's own notes folder, not in any repository, and they are named here rather than
+> discovered one dead link at a time.
+>
+> **⛔ None of it is coming**, and none of it is needed: where a rule cites one, the evidence is IN
+> the rule. The path was only ever the filing location of the original write-up.
+>
+> - ⛔ `records/2026-07-13-translator-voice-debug-history.md` · `records/decision/2026-06-27-numbers-integrity-enforcement.md` · `records/log/2026-05-30-datagate-websearch-automation.md` · `state/debt-ledger.md` · `state/projects/project-system/brief.md` · `state/projects/security/security-hardening/brief.md` · `state/projects/skill-builder/records/2026-08-07-dead-end-harvest.md` · `state/projects/translator-voice/brief.md`
+
 > **This doc owns WHEN to build a hook and WHICH kind. It does NOT repeat the mechanics — `system/hook-contract.md` owns those.** It is the single **front door** for hooks: it POINTS at the canonical homes, never copies them. Keep it short — if it grows into a second mechanics manual, it has failed. (Council-ratified 2026-06-17; diverge→argue→converge.)
 
-> ⓘ **WHAT THIS PAGE POINTS AT THAT IS NOT IN THIS REPOSITORY.** A front door is only as good as the
+> NOTE — **WHAT THIS PAGE POINTS AT THAT IS NOT IN THIS REPOSITORY.** A front door is only as good as the
 > rooms behind it, so the missing rooms are named here rather than discovered by a reader who goes
 > looking. This block is the whole list.
 >
-> - ⏳ **UNRULED — `system/hook-contract.md`.** The mechanics half of this page: exit codes, stdin
->   parsing, the deny format, registration, `chmod`. **It is on no ship list, and this page is the
->   decision half of a pair.** Until it crosses, §5's first pointer leads nowhere and the mechanics you
->   need are in the shipped hooks themselves — `system/hooks/pm_flag.sh` is the fullest worked example.
-> - ⏳ **`/websearch` and `/calculate` are skills that land in Phase 3.** The §3 stories that mention
->   them are still true about hooks; the commands are simply not here yet.
+> - ✅ **`system/hook-contract.md` has landed** — the mechanics half of this page: exit codes, stdin
+>   parsing, the deny format, registration, the deploy checklist. The pair is complete.
+>   ⚠ It was rewritten on the way in: the version it came from described hook scripts symlinked out of
+>   a clone across two machines, and every one of those sentences was wrong here.
+> - ✅ **`/calculate` has arrived**, with the two scripts the §3 story is about:
+>   `system/hooks/numbers_flag.sh` (the switch) and `system/hooks/inject_compute_mechanically.sh`
+>   (the per-turn half). (`/websearch` arrived before it.)
 > **Not shipped — where a §3 story cites one of these, the story's evidence is in the story; the
 > pointer was only ever the filing location of the original write-up:**
 >
@@ -34,7 +46,9 @@ reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live i
 > - ⛔ `docs/skill-conformance.md` — their conformance checker's rulebook.
 > - ⛔ `system/reference/settings.json` — one machine's symlink source, which the single-machine
 >   model here made meaningless. Registration lives in `.claude/settings.json` and travels by `git pull`.
-> - ⛔ `system/sops/build-sop.md` — see the same entry under `system/build-rules-index.md`.
+> - ✅ `system/sops/build-sop.md` has landed, carrying the `DO NOT BUILD` register that
+>   `system/tools/deadend_check.py` searches. Its section on scheduled runners names a scheduler and
+>   a dashboard that are NOT here, and says so where it does.
 
 ## §1 — When to reach for a hook at all
 - A hook is for a **hard invariant that must survive model drift + compaction** — justified by EITHER **(a)** a real past incident, OR **(b)** a catastrophic-**silent** failure on an unrecoverable surface (auth/credentials · the wrong calendar · a destructive write · the wrong machine). *"It would be nice to enforce"* is **not** justification.
@@ -78,7 +92,7 @@ reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live i
 > 2026-07-13 status-bar guard that blocked its own build's commit (`build-sop.md`). Workaround when
 > authoring: assemble the trigger tokens from fragments so no literal appears in the command.
 - A hook you haven't **watched block/inject in a live attempt is not a control** — an echo-pipe test proves only that the script didn't crash, not that the harness honored it.
-- **Two machines:** the script travels via `git pull` — AND so does the `settings.json` REGISTRATION, because `~/.claude/settings.json` is symlinked from the clone (`system/reference/settings.json`). You do NOT re-add the entry by hand. What's machine-local is the *symlink itself* (+ `~/.claude/skills/*`, `~/.claude/output-styles/*`), so on both Studio and Air: confirm the symlink exists and **watch it fire** — a broken/missing symlink leaves the hook silently dark. (→ `hook-contract.md` Deploy & Verify checklist.)
+- **Deploying it:** both halves are files in this repo — the script at `system/hooks/`, the registration in `.claude/settings.json` using `${CLAUDE_PROJECT_DIR}` — so both travel by `git pull` and neither is re-done by hand. ⛔ **Then RESTART.** The harness reads `settings.json` at session start, so a newly registered hook does nothing at all in the window that registered it, and the only symptom is silence. That is the single commonest reason a correct hook appears not to work. (→ `system/hook-contract.md`, Deploy & Verify.)
 
 ## DO NOT BUILD — what was tried and failed
 
@@ -186,7 +200,8 @@ dated INCIDENTS — evidence, not a restatement.**
   `system/build-rules-index.md`. **UNIVERSAL**
 
 ## §5 — The front door (pointers — one home each, zero duplication)
-- **Mechanics** (exit codes · stdin parsing · deny format · registration · chmod · the two-machine **Deploy & Verify checklist**) → `system/hook-contract.md`
+- **Mechanics** (exit codes · stdin parsing · deny format · registration · the **Deploy & Verify
+  checklist**) → ✅ `system/hook-contract.md`
 - **Injector arm/clear/TTL lifecycle + WHEN a skill arms its anchor** → the skill-building SOP §4
 - **Is-this-hook-well-built conformance check** (the LLM-CONTEXT block audit) → `docs/skill-conformance.md`
 - **The catalog of enforced rules / fitness functions** → `docs/architecture.md`

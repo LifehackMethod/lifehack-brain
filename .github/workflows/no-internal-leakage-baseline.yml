@@ -1,0 +1,98 @@
+name: No Internal Leakage - Whole-Tree Baseline
+
+# WHY THIS EXISTS, AND WHY IT IS A SEPARATE WORKFLOW FROM no-internal-leakage.yml
+#
+# no-internal-leakage.yml (the per-PR gate) only ever scans lines a diff ADDS -- by its own
+# module docstring's admission, that makes it PERMANENTLY BLIND to anything committed before
+# the gate existed. Seven real-person leaks were found by hand in already-tracked code on
+# 2026-08-14 -- every one of them invisible to that gate, because none of them was in a diff
+# the gate ever saw. This workflow runs the SAME script's second mode,
+# `--whole-tree`, which rescans every git-tracked file in full on every run.
+#
+# ⛔ NOT wired to pull_request or push, on purpose -- that is what keeps it from changing the
+# per-PR gate's behavior or cost (a whole-tree rescan on every push would be redundant with
+# the gate above AND would surface WARNING-tier findings as routine CI noise on unrelated
+# PRs). Instead: a WEEKLY SCHEDULE, so drift gets caught periodically without being tied to
+# any one contributor's PR, plus `workflow_dispatch` for an on-demand run (e.g. right after a
+# hand audit like the one that motivated this file, to confirm the fix landed).
+#
+# WHAT PROVES A GIVEN RUN ACTUALLY EXECUTED (not "printed PASSED and did nothing" --
+# see check_no_internal_leakage.py's own module docstring, WHOLE-TREE BASELINE MODE, and the
+# task report this workflow was built against): the JSON report this workflow's scan step
+# writes is uploaded as a build artifact on every run, success or failure, and carries a real
+# HEAD SHA, a real UTC timestamp, and a real scanned-file count -- none of which a script that
+# didn't actually run could produce. The job summary carries the same evidence in
+# human-readable form.
+
+on:
+  schedule:
+    # Every Monday 13:00 UTC. Not tied to any push/PR -- see "WHY A SEPARATE WORKFLOW" above.
+    - cron: "0 13 * * 1"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  whole-tree-baseline:
+    name: Whole-tree baseline audit (check_no_internal_leakage.py --whole-tree)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Same contract as the per-PR gate -- see no-internal-leakage.yml's own comment block
+      # for the full reasoning. Rule 3's terms are never in this repo; they arrive as a
+      # repository secret and land in $RUNNER_TEMP, outside the checkout. No secret ->
+      # exit 2 -> red, because a whole-tree audit that skipped the identity tier and
+      # printed CLEAN is precisely the 2026-08-15 false-clean this fix exists to end.
+      - name: Materialize the identity term list (never committed)
+        env:
+          SHIP_IDENTITY_TERMS: ${{ secrets.SHIP_IDENTITY_TERMS }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$SHIP_IDENTITY_TERMS" > "$RUNNER_TEMP/ship-identity.md"
+          chmod 600 "$RUNNER_TEMP/ship-identity.md"
+          echo "SHIP_IDENTITY=$RUNNER_TEMP/ship-identity.md" >> "$GITHUB_ENV"
+
+      - name: Run the whole-tree baseline scan
+        id: scan
+        run: |
+          set -o pipefail
+          python3 .github/scripts/check_no_internal_leakage.py \
+            --whole-tree \
+            --report-out whole-tree-report.json \
+            | tee whole-tree-output.txt
+        # NOTE: deliberately no `continue-on-error` and no `set +e` -- a BLOCKING finding
+        # (exit 1) or a CANNOT-EVALUATE failure (exit 2) must fail this job and show red,
+        # same "fail loudly, never silently" rule the per-PR gate follows. `pipefail` is
+        # what makes `tee`'s own exit code not silently override the scanner's.
+
+      - name: Write job summary (always, even on failure -- this IS the evidence a human sees)
+        if: always()
+        run: |
+          if [ -f whole-tree-output.txt ]; then
+            {
+              echo '```'
+              cat whole-tree-output.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Scan produced no output file -- the script likely failed before writing anything. Check the 'Run the whole-tree baseline scan' step's own log." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload report artifact (always, even on failure)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whole-tree-leakage-report
+          path: |
+            whole-tree-report.json
+            whole-tree-output.txt
+          if-no-files-found: warn
+          retention-days: 90

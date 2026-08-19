@@ -8,15 +8,15 @@ summary: |
   Use when the user says "ingest", "start the ingestion", "ingest my corpus", "run the ingestion",
   "mine my chats", "sort/skim/read a pile", "file the ingestion", "organize my ingested chats", or resumes
   the bulk personal text-corpus ingestion (chat export, document, or notes). FOUR phases, each a unit of human attention:
-  ① make the piles (once, wide) → ② screen a pile → ③ the world map → ④ place it + the root canon.
-  ②–③ loop per pile. One warm persona leads the whole flow — Vera the Curator. The shared corpus-map is
+  1 make the piles (once, wide) → 2 screen a pile → 3 the world map → 4 place it + the root canon.
+  2–3 loop per pile. One warm persona leads the whole flow — Vera the Curator. The shared corpus-map is
   the state machine; a single invocation resumes exactly where you left off.
 triggers: ["ingest", "start the ingestion", "ingest my corpus", "run the ingestion", "mine my chats", "file the ingestion", "organize my ingested chats"]
 created_at: 2026-07-10
 updated_at: 2026-08-05
 ---
 
-> ## 📖 REFERENCE — `PLAN-B.md`, in the top folder. Read it when in doubt.
+> ## 📖 REFERENCE — `PLAN-B.md`, in this skill's own folder (`.claude/skills/ingest/`). Read it when in doubt.
 >
 > It states this same method in four plain rounds that map 1:1 onto the four phases. **Each of the four phases has a matching ROUND in it.** Read the matching round whenever you are
 unsure what should happen next, what a turn should look like, or how something should be said to
@@ -45,7 +45,7 @@ the human.
 **Role:** Vera the Curator (mining half) — one warm voice spanning miner and filer. A calm competent guide: she runs the plumbing quietly (locks, quarantines, retries are her problem), shows every decision screen in full, proposes numbered best-guesses, hovers at 10,000 ft. The MINER never files — SORT/SCAN/DEEP-READ only sort, classify, and STAGE conclusions into the corpus-map (the state machine); every fate needs --human-approved; only the auto-chained filer writes.
 **Per-turn anchor:** phase | basket | position | next step — printed each turn, computed live from pipeline.py progress (via skill_anchor.sh)
 
-# ingest — the world-model builder (① make the piles · ② screen a pile · ③ the world map · ④ place it)
+# ingest — the world-model builder (1 make the piles · 2 screen a pile · 3 the world map · 4 place it)
 
 > **⚖ RESTRUCTURED 2026-08-05 — 7 phases → 4, and 2 skills → 1.** The governing ruling
 > (`authority: user`): *"if phase 3 is machine only then it's a STEP, not a phase. Phases by definition
@@ -58,7 +58,8 @@ the human.
 > document · markdown files · plain text files. OUT OF SCOPE for now: email · complicated PDFs · other
 > complicated/structured formats. Not a general folder-walker, not chat-only — a TEXT-CORPUS ingester."*
 > ✅ **BUILT 2026-08-08 — the code now matches the ruling.** `system/tools/cowork-ingest/intake.py`'s
-> `FORMATS` table carries **four** rows: `chatgpt-export` · `markdown-dir` (`*.md`) · `plaintext-dir`
+> `FORMATS` table carries **five** rows: `chatgpt-export` · `claude-export` (conversation JSON with
+> `chat_messages`/`messages`, added 2026-08-09) · `markdown-dir` (`*.md`) · `plaintext-dir`
 > (`*.txt`) · `large-document` (one file passed as `--raw`, split at markdown headings where they exist,
 > else 4,000-char chunks snapped to the nearest newline — a mechanical rule, no LLM in that path).
 > ⛔ **What the ruling puts OUT of scope still REFUSES:** email, PDFs and anything structured with no real
@@ -196,8 +197,9 @@ their location from the repo root, so a different layout breaks them.
 | Needed | Why | Status |
 |---|---|---|
 | `system/tools/cowork-ingest/*` | the pipeline itself, plus `corpus-map-schema.md` (the map's schema + column ownership) | ✅ here |
-| `shared/brain_root.py` | the one resolver that answers "where does this person's data live" — `pipeline.py` imports it, and every path below `$DRIVE` comes from it | ✅ here |
-| `shared/tools/ingest_gate.py` | the security gate every read passes through | ✅ here |
+| `shared/brain_root.py` | the one resolver that answers "where does this person's data live" — `pipeline.py` imports it too, and every path below `$DATA` comes from it | ✅ here |
+| `shared/gate/ingest_gate.py` | the security gate every read passes through | ✅ here |
+| `shared/gate/sentinel_response.py` | what the gate calls to decide whether a finding is noise or an attempt on the session | ✅ here |
 | `system/tools/sanitize.py` · `system/tools/safe_input.py` | what `ingest_gate` itself imports | ✅ here |
 | `system/tools/canon_conflict_scan.py` | PHASE 4's duplicate/contradiction scan before anything reaches canon | ✅ here |
 | `system/tools/skill_hud.sh` | the pinned counts bar | ✅ here |
@@ -205,12 +207,13 @@ their location from the repo root, so a different layout breaks them.
 | `.claude/agents/ingest-tagger.md` · `.claude/agents/ingest-conclusions.md` | the tool-less readers PHASE 1 and PHASE 3 **spawn** — the skill dies at the tagging step without them | ✅ here |
 | `system/githooks/pre-commit` | refuses a commit carrying the person's own material; needs `git config core.hooksPath system/githooks` | ✅ here |
 | `system/hooks/skill_anchor_inject.sh` | the injector `skill_anchor.sh` writes flags **for**. Without it the anchor is armed and never shown — silently. | ✅ here |
-| `settings.json` | nothing above is registered with the harness until this exists | ⏳ lands with the harness floor |
-| `system/hooks/ingest_gate_enforce.sh` | the hook that stops the main session reading the locked scratch (`3-deep-read.md`) — the enforcement half of the reader/actor split | ⏳ lands with the security wall (Phase 2) |
-| `system/hooks/guard_canon_write.sh` | ⚖ **STALE 2026-08-11 — the rule it was to enforce was REVERSED.** It was to gate "the machine must never write canon"; canon is now written directly at its earned altitude, human-reviewed at the end. **The hook does not exist on disk and is no longer owed for that purpose.** Any future canon gate is a NEW decision, not this one. | ⛔ not owed |
+| `.claude/settings.json` | nothing above is registered with the harness until this exists | ✅ here — present, registering 17 hook commands across `SessionStart`, `UserPromptSubmit`, `PreToolUse` |
+| `shared/paths.py` | resolves `FLAT`, `ANCHOR` and the scratch dir — used by the Paths block below and by every phase file | ✅ here |
+| `system/hooks/ingest_gate_enforce.sh` | the hook that stops the main session reading the locked scratch (`3-deep-read.md`) — the enforcement half of the reader/actor split | ✅ here, and registered |
+| `system/hooks/guard_canon_write.sh` | ⚖ **NOT the gate this row originally asked for.** It was to enforce "the machine must never write canon" — a rule that was REVERSED on 2026-08-11: canon is now written at its earned altitude, behind a human checkpoint inside the skill. The hook that landed guards the two things that survived that reversal — canon stays SMALL and canon carries no expiry date — and deliberately does NOT check `authority: user`, because a machine can type that line as easily as a person and the check broke `/save`'s own output. Reasoning in the hook's header. | ✅ here, and registered |
 | `system/knowledge-altitude.md` | the too-big/too-small subdivide rules PHASE 3 cites by line | ✅ here |
 | `.claude/skills/read/` | PHASE 4 hands off to it | ✅ here |
-| `.claude/skills/archivist-route/` | PHASE 4 reuses its ranking contract inline rather than rebuilding it | ⏳ lands with the archivist family (Phase 3) |
+| `.claude/skills/archivist-route/` | PHASE 4 reuses its ranking contract inline rather than rebuilding it | ✅ here |
 
 **Named here so nobody hunts for them — these are NOT missing:**
 
@@ -234,9 +237,9 @@ ROOT="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && pwd)"   # th
 T="$ROOT/system/tools/cowork-ingest"
 # WHERE THIS SKILL WRITES — asked once, remembered forever. ⛔ Never guessed: if nothing is remembered this
 # STOPS rather than picking a folder for them (step 1.0 asks, then records it).
-DRIVE="$(python3 "$T/pipeline.py" brain-root --quiet)" || { echo "STOP: no brain root set yet — ask them where their AI brain lives (or make one), then: python3 $T/pipeline.py brain-root --set \"<that folder>\" [--create]"; exit 1; }
+DATA="$(python3 "$ROOT/shared/brain_root.py" --quiet)" || { echo "STOP: no brain root set yet — ask them where their AI brain lives (or make one), then: python3 $ROOT/shared/brain_root.py --set \"<that folder>\" [--create]"; exit 1; }
 export INGEST_CORPUS="${INGEST_CORPUS:-my-corpus}"   # the corpus slug; one per corpus you ingest
-export COWORK_WORK="$DRIVE/state/projects/$INGEST_CORPUS/work"
+export COWORK_WORK="$DATA/state/projects/$INGEST_CORPUS/work"
 MAP="$COWORK_WORK/corpus-map.json"
 # ⛔ ASK for the path, never build it. `$HOME/.cache` is not a real place on Windows, and an
 # anchor stranded in the old location reads as "never ran" — the run then silently redoes work

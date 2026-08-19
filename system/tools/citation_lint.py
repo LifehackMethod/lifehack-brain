@@ -81,7 +81,6 @@ from verdicts import CANNOT_READ, print_cannot_read           # noqa: E402
 # every row still waiting on it -- which is precisely the set of promises that phase was supposed to
 # keep and did not. Leaving a closed label in place converts the lint into a rubber stamp.
 OPEN_LANDINGS = {
-    "phase 2": "the security wall and the web plane",
     "phase 3": "the remaining skills",
     "phase 4": "the author's own cutover",
     "phase 5": "cleanup and the final gate",
@@ -111,12 +110,23 @@ EXEMPT_FILES = {
 UNREGISTERED_OK = {
     "pm_flag.sh": "a command-line tool the skills call directly (arm/status/clear), not a hook",
     "skill_anchor.sh": "same — the arming half; `skill_anchor_inject.sh` is the registered hook",
+    "numbers_flag.sh": "same — `/calculate` calls it directly; `inject_compute_mechanically.sh` is "
+                       "the registered hook that reads what it writes",
+    "altitude_flag.sh": "same — `/altitude` calls it directly; `inject_work_altitude.sh` is the "
+                        "registered hook that reads what it writes",
+    "throughline_flag.sh": "same — `/throughline` arms and clears it directly; "
+                           "`guard_throughline_write_scope.sh` is the registered hook it switches",
+    "scratch_flag.sh": "same — a skill arms it when it opens a scratchpad; `system/statusline.sh` "
+                       "is what reads it, and a status bar is not a hook",
 }
 
 # A backticked `/word` is usually a skill here — but not always, and neither of these is ours to
 # ship: the harness's own commands, and the top of a filesystem path.
 HARNESS_COMMANDS = {"clear", "config", "workflows", "compact", "help", "model", "resume"}
-FILESYSTEM_ROOTS = {"tmp", "dev", "etc", "var", "usr", "bin", "opt", "home", "mnt", "proc", "srv", "run"}
+# `sbin` is here for the same reason as `bin`: a document discussing cron's minimal PATH writes
+# `/sbin` and `/usr/sbin`, and without this the lint reads those as citations of skills nobody has.
+FILESYSTEM_ROOTS = {"tmp", "dev", "etc", "var", "usr", "bin", "sbin", "opt", "home", "mnt", "proc",
+                    "srv", "run", "lib", "sys"}
 
 # Directories never scanned. `memory/` is the person's own material and is not ours to lint.
 # ⛔ `data` AND `memory` ARE THE PERSON'S OWN MATERIAL — NEVER LINT THEM (data added 2026-08-12).
@@ -136,7 +146,17 @@ SKIP_DIRS = {".git", "data", "memory", ".venv", "node_modules", "__pycache__"}
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 
 BACKTICK = re.compile(r"`([^`\n]+)`")
-LINE_ANCHOR = re.compile(r":\d+(?:-\d+)?$")
+# Strips a trailing line anchor so the PATH can be resolved on disk. It must accept every form a
+# human actually writes, not just the two we thought of.
+#
+# ⚠ WAS `:\d+(?:-\d+)?$`, which handled `f.py:31` and `f.py:31-35` and MISSED the comma list
+# `f.py:31,34-35`. The suffix then stayed glued to the path, the path did not resolve, and the lint
+# reported a file that IS on disk as missing. Measured 2026-08-14: of 27 reported failures, the
+# majority were files sitting right there -- `system/tools/safe_pdf.py:31,34-35`,
+# `docs/REPORT-A-BUG.md:122,182,191,202,274`, `.claude/skills/google-sheet/SKILL.md:46,375`.
+# A gate that cries wolf on real files is how a gate teaches people to ignore it, which is the same
+# dishonest-checker class the verification-layer work exists to close.
+LINE_ANCHOR = re.compile(r":\d+(?:[,-]\d+)*$")
 SKILL_REF = re.compile(r"^/([a-z][a-z0-9][a-z0-9-]*)$")
 # A span holding any of these is a template, a variable or a command line, not a literal path.
 PLACEHOLDER = re.compile(r"[$<>{}|()\\\[\]…]")
@@ -227,6 +247,58 @@ def repo_tops(root):
 def is_repo_path(span, tops):
     head = span.split("/")[0]
     return "/" in span and head in tops
+
+
+# ⭐ THE BLIND SPOT THIS CLOSES, found 2026-08-11. `is_repo_path` only recognises a citation whose
+# FIRST SEGMENT is a real top-level directory OF THIS REPO. A path under the person's notes folder
+# usually is not: this repo has no `state/`, no `records/`, no `canon/`, no `plans/`. So every
+# citation written as a bare `state/telos.md` or `records/research/x.md` fell through BOTH branches
+# and was never checked at all -- neither as a repo path (wrong head) nor as anything else.
+#
+# That is not a small gap here. Those are precisely the paths this migration MOVED, so they are the
+# ones most likely to be stale, and a citation of a file that ships in neither migration read as
+# perfectly fine. `state/telos.md` sailed through exactly that way.
+#
+# The fix is not to resolve them -- they live on a machine this lint cannot see, and demanding that
+# a person's journal be committed to a public repository is the opposite of what everything else
+# here enforces. The fix is to demand they be WRITTEN so a reader can tell: `<notes>/state/...`.
+# A path with that prefix is data, and is counted and skipped. A path without it, whose head is one
+# of the data roots below, is a citation nobody can classify -- which is the finding.
+# ⚠ `canon/` AND `records/` ARE DELIBERATELY NOT HERE, and leaving them in was a mistake worth
+# recording. Both are commonly written RELATIVE to a folder already established in the sentence —
+# "read its `canon/purpose.md`", "this project's own `records/`" — where the leading segment is not
+# a root at all. Treating them as roots produced a banner on `docs/data-layout.md` asserting that
+# `canon/purpose.md` was a record in somebody's private notes, which is the opposite of true: it is
+# the layout this repo builds. A check that makes a document lie to satisfy it is worse than the gap
+# it closed. The four below only ever appear anchored.
+DATA_ROOTS = {
+    "state": "projects, briefs, open loops",
+    "plans": "plans are data, not repo files",
+    "councils": "advisor rosters",
+    "config": "your own identifiers",
+}
+NOTES_PREFIXES = ("<notes>/", "<data>/", "$NOTES/", "{notes}/")
+
+
+# Only a specific FILE counts. `records/insights/` inside a paragraph about the six record types is
+# a type NAME, not a claim that a file is somewhere -- and flagging those produced 150-odd findings
+# that mean nothing, which is how a check gets switched off. A path ending in a real extension is
+# claiming a file exists; a bare directory shape is describing a layout. Measured on 2026-08-11: the
+# narrow rule keeps the finding that started this (`state/telos.md`, a file in neither migration)
+# and drops every one of the shape-only hits.
+_FILEY = (".md", ".py", ".sh", ".json", ".yaml", ".yml", ".txt", ".jsonl")
+
+
+def data_root_shape(span):
+    """UNPREFIXED if it names a specific file under a data root without saying so, PREFIXED if the
+    prefix is there, else None."""
+    for pre in NOTES_PREFIXES:
+        if span.startswith(pre):
+            return "PREFIXED"
+    head = span.split("/")[0]
+    if "/" in span and head in DATA_ROOTS and span.endswith(_FILEY):
+        return "UNPREFIXED"
+    return None
 
 
 def resolves(root, path):
@@ -328,6 +400,13 @@ def lint_paths_and_skills(root, findings, counts):
                     counts["skill_citations"] += 1
                     exists = name in have_skills
                     target = ".claude/skills/%s/" % name
+                elif data_root_shape(key) == "PREFIXED":
+                    counts["data_paths"] += 1
+                    continue
+                elif data_root_shape(key) == "UNPREFIXED":
+                    counts["path_citations"] += 1
+                    exists = False
+                    target = key
                 elif is_repo_path(key, tops):
                     if key.rstrip("/") in DATA_PATHS:
                         counts["data_paths"] += 1

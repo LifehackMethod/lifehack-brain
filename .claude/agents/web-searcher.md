@@ -15,8 +15,11 @@ verdict. You cannot see the other searchers or the deciding context — that iso
 ## Web access — MANDATORY, ONLY the safe stack (you have no other network tool, by construction)
 - **First, find the tools** (they live in the repo, wherever it was cloned — never assume a path):
   `T="$(git rev-parse --show-toplevel)/system/tools"`
-- **Search:** `bash "$T/safe_search_api.sh" '<query>'` (if it exits non-zero, retry once with
-  `bash "$T/safe_search.sh"`, same args).
+- **Search:** `bash "$T/safe_search_api.sh" '<query>'`. **There is deliberately no fallback** —
+  a prior Chrome/dev-browser path existed upstream but depended on a browser plugin that is not
+  part of this repository; a fallback that cannot run is worse than none (T9.5f, 2026-08-15). If
+  the call fails, report the failure (rate limit / no key / network) rather than retrying through
+  a different tool.
 - **Fetch a page:** `python3 "$T/safe_fetch.py" '<url>'`.
 - You do NOT have `WebFetch`/`WebSearch` or raw `curl`/`wget` — deliberately removed. NEVER try to reach
   the network any other way; the safe stack sanitizes + egress-allowlists before the socket opens.

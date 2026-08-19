@@ -1,0 +1,8 @@
+[
+  {
+    "id": "door-two-posture-before-the-ladder",
+    "before": {"id": "door-two", "term": "DOOR TWO"},
+    "after": {"id": "ladder", "pattern": "^## THE (LOCKED )?STEPS\\b"},
+    "why": "the owner's ruling, 2026-08-08 (SPEC.md §1b, `authority: user`): 'DOOR TWO IS A REMEDIAL PIPELINE, NOT A REVIEWER ... the chain runs in full, but at every stage what the skill ALREADY HAS is the draft.' The posture block is what turns the ladder from DOOR ONE's blank-page mode into DOOR TWO's remedial mode -- a driver that reaches the locked step ladder before establishing that posture would run every human-facing step in the wrong mode, exactly the fork the owner's ruling closed after it sat open 2026-08-06 to 2026-08-08 (commit 0a36a0a). Pattern covers both real heading spellings across the six drivers: '## THE LOCKED STEPS' (1-outcome, 2-phases, 4-swarm, 5-build, 6-live-run) and '## THE STEPS' (3-steps, which iterates once per target-skill phase and is named differently by long-standing convention, not by this edit)."
+  }
+]

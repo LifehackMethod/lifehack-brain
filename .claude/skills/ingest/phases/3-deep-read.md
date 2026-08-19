@@ -1,6 +1,6 @@
 # PHASE 3 — DEEP-READ (read each keeper WHOLE, in one pass; sample + FLAG only the rare giant)
 
-> ## 📖 REFERENCE — `PLAN-B.md`, in the top folder. Read it when in doubt.
+> ## 📖 REFERENCE — `PLAN-B.md`, in this skill's own folder (`.claude/skills/ingest/`). Read it when in doubt.
 >
 > It states this same method in four plain rounds that map 1:1 onto the four phases. **Your matching round is `ROUND 3 — The world map`.** Read it when you are unsure what should happen next, what a
 turn should look like, or how something should be said to the human.
@@ -55,7 +55,7 @@ until you have ruled each one** (`pipeline.py`'s giant-ruling done-gate).
   locked scratch (`paths.py scratch ingest_body …`, which `ingest_gate_enforce.sh` blocks the main session
   from reading).
 
-**Paths + pile:** `BASKET` = `$BASKET`. `MACHINE="$(hostname | grep -qi studio && echo studio || echo mba)"`.
+**Paths + pile:** `BASKET` = `$BASKET`. `MACHINE="$(uname -n 2>/dev/null || echo local)"`   # any machine, any OS — only needs to be stable per machine (same form as phase 2).
 `FLAT` resolves per-corpus, with a legacy fallback so an already-flattened corpus is never orphaned
 or re-flattened:
 ```bash
@@ -73,8 +73,8 @@ what is expected of me."* It is now in every phase because being lost is not a p
 
 **Print this before anything else — five short lines, plain words (see the dictionary in `SKILL.md`):**
 1. **Where they are, literally** — *"Step {N} of 4."* ⛔ Never the codename alone.
-2. **The whole map**, current step arrowed — *① make the piles → ② screen each pile → ③ the picture of you
-   → ④ file it.*
+2. **The whole map**, current step arrowed — *1 make the piles → 2 screen each pile → 3 the picture of you
+   → 4 file it.*
 3. **What the last step settled** — one line. *"You set 5 piles."*
 4. **What this step is for**, and why it comes before the next one.
 5. **What you are about to ask them to do** — narrate the move BEFORE you make it.
@@ -111,7 +111,7 @@ it survives her absence.
    SHORT=(); WHOLE=(); GIANT=()
    for f in "${RESEARCH[@]}"; do
      n=$(wc -c < "$FLAT/$f" 2>/dev/null || echo 0)
-     mode=$(python3 -c "import sys,pipeline as p; n=int(sys.argv[1]); print('short' if p.read_whole_at_scan(n) else p.read_mode(n))" "$n")
+     mode=$(cd "$T" && python3 -c "import sys,pipeline as p; n=int(sys.argv[1]); print('short' if p.read_whole_at_scan(n) else p.read_mode(n))" "$n")
      case "$mode" in short) SHORT+=("$f");; whole) WHOLE+=("$f");; sample) GIANT+=("$f");; esac
    done
    for f in "${SHORT[@]}"; do python3 $T/pipeline.py read --map "$MAP" --file "$f" --extraction "scan-summary"; done
@@ -156,7 +156,7 @@ it survives her absence.
    - stage the durable conclusion → `python3 $T/pipeline.py read --map "$MAP" --file "<f>" --extraction "$COWORK_WORK/extraction-$BASKET.json"`
    - a conclusion whose `suggested_category` is **canon** (an always-true principle the person ADOPTED — the
      2-year test) → `python3 $T/pipeline.py flag --map "$MAP" --file "<f>" --canon true`.
-     ⚖ **REVERSED 2026-08-11 (Enver, `authority: user`) — this line used to say the filer *"proposes it to
+     ⚖ **REVERSED 2026-08-11 (`authority: user`) — this line used to say the filer *"proposes it to
      `records/proposals/`, **never** `canon/`."* That holding room is GONE.** PHASE 4 now writes canon
      **directly**, at the altitude the fact earns, and one optional human pass at the end reviews it.
      ⛔ **Flagging it here still does NOT place it** — this flag only marks the finding as canon-SHAPED. The
@@ -185,7 +185,23 @@ it survives her absence.
    **Never auto-proceed; never stage a giant the human hasn't ruled.** (Its staged conclusion must carry a
    `sampled: not read whole` note so the filer + the human always see it was partial.)
 
-5. **Dense confirm + STAGE the manifest.** `python3 $T/conclusions_review.py show --vein "$BASKET"` — relay the
+   ⛔ **IF STEP 3 DID NOT RUN — every keeper was SHORT — DO THIS FIRST, OR STEP 5 CANNOT OPEN.**
+   A chat at or under `WHOLE_READ_MAX` was already read WHOLE at SCAN, so Step 3 deliberately spawns no
+   reader and therefore writes no `raw-conclusions-$BASKET.json`. `conclusions_review.py` REQUIRES that
+   file. So a pile whose keepers are all short — **an ordinary folder of notes, which `INSTALL.md`
+   advertises on its first page** — dies on the very same `FAIL: no batch file for vein` that Step 3's
+   own `coalesce` was written to cure. Same disease, other branch:
+   ```bash
+   python3 $T/pipeline.py coalesce-scan --map "$MAP" --basket "$BASKET" --work "$COWORK_WORK"
+   ```
+   It carries each SHORT keeper's SCAN finding into the file Step 5 reads. **Safe to run even when Step
+   3 DID happen** — it only adds rows that are not already there, so when in doubt, run it.
+   ⚠ **Why this line did not exist until 2026-08-13:** `coalesce-scan` shipped on 2026-08-12 with **no
+   caller anywhere** — not here, not in any skill file. A model following this document as instructed
+   ("run the plumbing quietly, never read source") had no way to discover it. The ninth
+   build-with-no-caller recorded in this system.
+
+5. **Dense confirm + STAGE the manifest.** `python3 $T/conclusions_review.py show --vein "$BASKET" --work "$COWORK_WORK"` — relay the
    full dense list (every research chat, one NUMBERED row, incl. the giants marked *sampled*). Conclusions are
    GUESSES; the human confirms/corrects and may ADD net-new facts. Stage the confirmed findings to
    `$COWORK_WORK/extraction-$BASKET.json`, each read chat pointing at it (via the `read` calls above).
@@ -248,7 +264,7 @@ it survives her absence.
    python3 $T/pipeline.py folder-shape --basket "$BASKET" --subjects '[{"name":"<subject>","item_count":<n>,"relation":"core|diverse"}, …]'
    ```
    **Two different problems, two different fixes** *(ruled 2026-08-05, `authority: user` — restated in
-   full right here, not a pointer into `system/knowledge-altitude.md`, which this repo does not ship —
+   full right here, not a pointer into `system/knowledge-altitude.md`, which ships in this repo at `system/knowledge-altitude.md` —
    [5.2.1], 2026-08-11)*: too **BIG** → subdivide (**nest** — same territory, more shelves
    beneath it); too **DIVERSE** → separate (**siblings, NOT nested** — a body of knowledge that would
    actively confuse a session loaded next to unrelated material sits BESIDE the pile's folder, never

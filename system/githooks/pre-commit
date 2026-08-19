@@ -17,27 +17,38 @@
 
 staged=$(git diff --cached --name-only --diff-filter=ACMR)
 
-# memory/ is theirs. state/ is the ingest's working notes about their material -- half-sorted piles,
-# extracted conclusions, a map of what is in their export -- which is just as personal as the material
-# itself. It lives outside the repo by design (under the data root they chose), so nothing should ever
-# stage from here; this pattern is the backstop for the day something does. The rest are raw-corpus
-# fingerprints: an export unpacked into the repo by hand is the measured failure (2026-08-09, 6,228
-# files staged, including a users.json holding an email address and a phone number). .gitignore does not
-# catch a file that is force-added or was tracked before it was ignored, which is exactly why this check
-# exists as well.
+# data/ is theirs, and since the 2026-08-12 layout change it sits INSIDE this repository -- one
+# .gitignore line is all that keeps it out of git, where folder distance used to do the job. memory/ is
+# the pre-2026-08-12 name for the same thing and is kept here so an older install is still covered.
+# state/ is the ingest's working notes about their material -- half-sorted piles, extracted conclusions,
+# a map of what is in their export -- which is just as personal as the material itself. The rest are
+# raw-corpus fingerprints: an export unpacked into the repo by hand is the measured failure (2026-08-09,
+# 6,228 files staged, including a users.json holding an email address and a phone number). .gitignore
+# does not catch a file that is force-added or was tracked before it was ignored, which is exactly why
+# this check exists as well.
+#
+# ⛔ WHY data/ IS NAMED FIRST, AND THE MEASURED REASON THIS LINE EXISTS (2026-08-13, S5.2 smoke test).
+# This pattern said `memory/` and nothing else for the whole of the one-folder layout's life. .gitignore
+# was updated on 2026-08-12 and even carries the warning "do not let anything add data/ with git add -f"
+# -- but the guard that is the ONLY thing able to stop a force-add was not updated with it, so the two
+# halves of one change disagreed for a day. A fresh-clone test force-added data/canon.md and the commit
+# was ACCEPTED. INSTALL.md STEP 6 promises the student in plain words that this catch "will stop and
+# refuse"; for the folder their notes actually live in, it did not. The stale comment that used to sit
+# here -- "it lives outside the repo by design" -- was true before the layout changed and is why nobody
+# looked. A path-shaped guard has to be re-read every time the paths move.
 #
 # state/ deliberately has NO .gitignore entry to match. A folder that is never created inside the repo
 # needs no rule, and an ignore line would quietly teach the opposite -- that state/ belongs here and is
 # merely hidden. Absence is the real control; this is the cheap second one.
 offenders=$(printf '%s\n' "$staged" \
-	| grep -E '^memory/|(^|/)state/|(^|/)_unpacked/|\.zip$|(^|/)conversations\.json$|(^|/)users\.json$' \
+	| grep -E '^data/|^memory/|(^|/)state/|(^|/)_unpacked/|\.zip$|(^|/)conversations\.json$|(^|/)users\.json$|(^|/)\.brain-root$' \
 	| grep -v -x 'memory/README.md')
 
 if [ -n "$offenders" ]; then
 	echo ""
 	echo "  ⛔ COMMIT REFUSED — this would put personal notes into a public repository."
 	echo ""
-	echo "  These staged files are YOUR material -- memory/ is what you write, state/ is what the ingest"
+	echo "  These staged files are YOUR material -- data/ is what you write, state/ is what the ingest"
 	echo "  worked out about it -- and neither may be committed:"
 	printf '%s\n' "$offenders" | sed 's/^/      /'
 	echo ""
@@ -45,7 +56,8 @@ if [ -n "$offenders" ]; then
 	echo ""
 	printf '%s\n' "$offenders" | sed 's|^|      git restore --staged "|; s|$|"|'
 	echo ""
-	echo "  (Only memory/README.md may be committed. If you genuinely need to override this, you know how"
+	echo "  (Nothing under data/ may be committed; on an older install, only memory/README.md may. If you"
+	echo "   genuinely need to override this, you know how"
 	echo "   — but read the line above twice first: a push to a public repo cannot be taken back.)"
 	echo ""
 	exit 1

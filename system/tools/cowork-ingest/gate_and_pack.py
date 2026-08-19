@@ -5,7 +5,7 @@ gate_and_pack.py — the CONTROLLER stage of the bulk world-model ingestion.
 Sits between `flatten.py` (raw ChatGPT JSON → clean per-chat text) and the tool-less
 `ingest-reader` subagent. For every flattened conversation it:
 
-  1. runs `shared/tools/ingest_gate.py gate(desk, "file", text)` — the ONE on-path
+  1. runs `shared/gate/ingest_gate.py gate(desk, "file", text)` — the ONE on-path
      sanitize → injection-scan → Sentinel-route entry point. (source_type="file".)
   2. DANGER (`passed=False`) → the item is ALREADY contained by Sentinel; we log it to
      the quarantine manifest and SKIP — never spawn a reader on it.
@@ -33,10 +33,12 @@ Usage:
 """
 import argparse, glob, json, os, sys
 
-# Import the frozen on-path gate (shared/tools/ingest_gate.py).
+# Import the frozen on-path gate (shared/gate/ingest_gate.py).
 # This file lives at ROOT/system/tools/cowork-ingest/ — 4 dirnames up reaches the clone root.
+# ⚠ THIS ARITHMETIC IS THE FRAGILE PART. Moving EITHER file changes it, and a wrong count fails at
+# import time with a bare ModuleNotFoundError that says nothing about which side moved.
 CODE_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-_SHARED = os.path.join(CODE_ROOT, "shared", "tools")
+_SHARED = os.path.join(CODE_ROOT, "shared", "gate")
 if _SHARED not in sys.path:
     sys.path.insert(0, _SHARED)
 from ingest_gate import gate   # noqa: E402
@@ -67,9 +69,12 @@ def split_turns(text):
     if cur:
         turns.append("".join(cur))
     if not turns:
-        # The sanitizer in gate() collapses newlines, so "## " turn markers are no
-        # longer at line-start on CLEANED text → zero turns found. Never drop the chat:
-        # hand the whole body back as one turn so chunk_large hard-slices it at MAX_CHARS.
+        # WAS (until 2026-08-18): "The sanitizer in gate() collapses newlines, so '## ' turn
+        # markers are no longer at line-start on CLEANED text → zero turns found." That was
+        # the D4 bug (issue #77), and it is FIXED — main() now gates with preserve_structure=True,
+        # so the markers are at line-start and turns are found. This branch stays as the safety
+        # net it should always have been: a chat that genuinely has no "## " turns must never be
+        # dropped — hand the whole body back as one turn so chunk_large hard-slices it at MAX_CHARS.
         return "", ["".join(header)]
     return "".join(header), turns
 
@@ -128,7 +133,12 @@ def main():
         name = os.path.basename(p)
         with open(p) as fh:
             text = fh.read()
-        res = gate(args.desk, "file", text, item=name)
+        # preserve_structure=True (issue #77 / D4): `text` is a WHOLE flattened chat and we
+        # consume res["content"] as a document. The gate's FIELD-mode default deleted every
+        # newline in it — see split_turns() below, which grew a "never drop the chat" fallback
+        # precisely because the "## " turn markers were no longer at line-start afterwards.
+        # Verdict behaviour is unchanged; only the returned content keeps its lines.
+        res = gate(args.desk, "file", text, item=name, preserve_structure=True)
         if not res["passed"]:                        # DANGER — already contained by Sentinel
             quarantined.append({"file": name, "provenance_tag": res["provenance_tag"]})
             continue

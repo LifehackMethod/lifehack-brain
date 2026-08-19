@@ -234,7 +234,7 @@ both:
 1. *"What is confusing in the brief right now?"* — **diagnostic.** Wants to run early.
 2. *"Can a stranger pick up the FIXED brief?"* — **proof.** Can only run after the edits land.
 
-The goal is ②. ① measured **redundant** — on one run all four of its findings were roots the foreground
+The goal is (2). (1) measured **redundant** — on one run all four of its findings were roots the foreground
 had already found independently. ⇒ **Run it once, after.** Same agent, same cost, better placement.
 
 **The agent: background, cheapest model, read-only, zero session context, TWO files, ONE job.** Spawn

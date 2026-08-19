@@ -83,7 +83,7 @@ authority: user
 | §7 | SCRATCHPAD | **GAUGE-with-lifecycle** | dumb capture → graduate → CLEAR. The only section with a clearing mechanism (`pad_archive.py`) — and the only one that has never bloated |
 | §8 | ARTIFACTS | **LOG** | a record of what was produced; append |
 
-**Why this table exists, measured 2026-08-06.** `state/projects/skill-system/brief.md` was found holding
+**Why this table exists, measured 2026-08-06.** `<notes>/state/projects/<slug>/brief.md` was found holding
 **NINE competing status surfaces** inside §2 — eight hand-written `WHERE WE ARE` blocks plus the three-rung
 altitude block — **FOUR of them each declaring "SUPERSEDES EVERY BLOCK ABOVE. READ THIS ONE,"** in
 scrambled date order. §2 had reached **762 lines: 45.3% the size of the append-only STORY LOG and 23.4% of
@@ -191,7 +191,7 @@ not intent — §1 states the destination once; this states where we ARE, zoomed
 > heading, anywhere in §2** — not `WHERE WE ARE`, not `STATUS`, not "the previous one might still be
 > useful." If the block is stale, FIX IT. If you cannot tell whether it's stale, say so IN the block.
 >
-> **Measured 2026-08-06 in `state/projects/skill-system/brief.md`:** §2 had grown to **741 lines of a
+> **Measured 2026-08-06 in `<notes>/state/projects/<slug>/brief.md`:** §2 had grown to **741 lines of a
 > 3,177-line brief (23%)** holding **NINE competing status surfaces** — eight hand-written `WHERE WE ARE`
 > blocks plus this one. **FOUR of them each declared "SUPERSEDES EVERY BLOCK ABOVE. READ THIS ONE,"** and
 > they sat in scrambled date order (08-05, 08-04, 08-04, 07-29, 08-01, 08-01, 08-02, 08-03). **The
@@ -220,11 +220,11 @@ not intent — §1 states the destination once; this states where we ARE, zoomed
 > it.** Normalising to this shape took §2 from **55 → 25 lines** in one edit. **A bloated gauge is
 > the disease this schema exists to cure; writing one inside the fix is how it survives.**
 
-**Rules:** ⓐ **Position, never restated intent** — a 10k line that just re-quotes §1 is wrong; it must say
-how far along we are against it. ⓑ **Read, don't compose** — the 5,000 comes from the live plan, quoted; a
-rung written from memory is not a rung. ⓒ **A rung with no honest answer says so** (`no larger frame` /
+**Rules:** a. **Position, never restated intent** — a 10k line that just re-quotes §1 is wrong; it must say
+how far along we are against it. b. **Read, don't compose** — the 5,000 comes from the live plan, quoted; a
+rung written from memory is not a rung. c. **A rung with no honest answer says so** (`no larger frame` /
 `no plan armed`) — never invent one to fill the space; the doctrine's `NO-FRAME` is a correct answer, and a
-fabricated rung reads exactly like a real one, which trains the reader to skim the block. ⓓ This block is
+fabricated rung reads exactly like a real one, which trains the reader to skim the block. d. This block is
 **machine-maintained** — unlike §1 it is rewritten every compaction, and it is the only part of the
 altitude frame a session may write without asking.
 
@@ -356,7 +356,7 @@ a dead-end, a key number) hits the journal before/as the brief is overwritten.
 **Steps (strict order — the safety steps GATE the destructive ones):**
 
 1. **COPY-EVERYTHING-FIRST → the append-only archive (the mechanical net).** Call the deterministic safety core:
-   `python3 <this repo>/system/tools/pad_archive.py archive "<abs_brief_path>"`. It appends the ENTIRE
+   `python3 <this repo>/system/tools/save/pad_archive.py archive "<abs_brief_path>"`. It appends the ENTIRE
    current `## SCRATCHPAD` verbatim (everything — NO choreography carve-out) to `<brief>.pad-archive.md`
    (append-only, chained, self-describing: `compaction #N · ISO-ts · host · prev-hash · hash`), reads it back to
    prove it landed, and prints `RECEIPT <hash>` on **exit 0**. Idempotent (unchanged pad → no duplicate block).

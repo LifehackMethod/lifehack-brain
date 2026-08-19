@@ -361,8 +361,15 @@ def _artifacts():
     below so a stale one is visible rather than assumed fresh.
     """
     if not CENSUS.exists():
-        return [], None, ("capability-census.md — NOT GENERATED YET "
-                          "(run `python3 system/tools/architecture_reason.py --census`)")
+        # ⛔ DO NOT restore a "run X to generate it" line here without checking X ships in THIS
+        # repo. The census and its generator (architecture_reason.py) belong to the private system
+        # this tool was lifted from and were never migrated; the old text named that generator, so
+        # the one piece of self-repair advice this tool offered was a command that does not exist.
+        # Telling someone to run a missing command is worse than telling them nothing: they cannot
+        # tell "I typed it wrong" from "it was never here." Found by a path-literal sweep, 2026-08-13.
+        return [], None, ("capability-census.md — NOT PART OF THIS REPO. The dead-end search above "
+                          "is complete on its own; only the capability half is missing, and there "
+                          "is nothing for you to run to produce it.")
     try:
         txt = CENSUS.read_text(encoding="utf-8", errors="replace")
     except OSError as ex:
