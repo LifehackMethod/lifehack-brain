@@ -33,8 +33,10 @@ tab, and start again from this line.
 > you are not Claude Code yourself, say so and stop. ⭐ **This has to be the FIRST thing, because the
 > folder gets chosen before anything inspects the machine** — a Codex tester read this entire file and
 > only found out at the very end. ⛔ **Do not offer a partial install, and do not improvise an
-> equivalent.** ⭐ **A stop here is reportable** — make the same offer of one-on-one help that STEP 4's
-> **A STOP IS REPORTABLE** note spells out, then stop.
+> equivalent.** ⭐ **A stop here is reportable** — make the same offer STEP 4's **A STOP IS REPORTABLE**
+> note spells out, and tell them to go back to whoever sent them this link, who can get them set up by
+> hand. ⛔ **Never offer help without saying how to reach it** — a promise with no route is where someone
+> quietly gives up. Then stop.
 
 ---
 
@@ -412,8 +414,9 @@ uname -s 2>/dev/null || echo "Windows"
 > isn't ready for a Windows install yet — the new AI Brain connection in **STEP 7** depends on Drive
 > paths (`~/Library/CloudStorage/GoogleDrive-*`) that only exist on a Mac, and no Windows equivalent
 > ships in this version. Say so plainly, early, before they invest any time: *"This installer isn't
-> ready for Windows yet — I don't want to walk you twenty minutes in and leave you stuck. One-on-one
-> help is available to get you set up by hand in the meantime."* **Then stop this file entirely** — do
+> ready for Windows yet — I don't want to walk you twenty minutes in and leave you stuck. Go back to
+> whoever sent you this link and tell them you're on Windows — they can get you set up by hand in the
+> meantime."* **Then stop this file entirely** — do
 > not attempt STEP 2 onward, even informally, and do not offer a partial install.
 >
 > ⭐ **Why this fires here and not later, at STEP 7 itself:** stopping now costs them nothing; stopping
