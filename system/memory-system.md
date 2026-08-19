@@ -19,10 +19,11 @@ authority: user
 
 Nothing said in a session survives past it unless it lands in a file. The chat window is scratch space,
 not memory. A fact worth having next week gets **written down**, to the one place every tool already
-knows to look: `data/`, inside this repo, kept out of git by one `.gitignore` line, resolved once by
-`shared/brain_root.py` and never guessed at. Set once (`brain_root.py --set <folder>`), it never has to
-be told again — `/read`, `/save`, `/checkin`, the archivist and `/ingest` all resolve that same root the
-same way, so nothing you save can go missing because two tools disagreed about where "your notes" are.
+knows to look: the AI Brain, resolved once by `shared/brain_root.py` and never guessed at. (Where the
+AI Brain lives and how it is set up is `INSTALL.md`'s subject; this page does not repeat it.) Set once
+(`brain_root.py --set <folder>`), it never has to be told again — `/read`, `/save`, `/checkin`, the
+archivist and `/ingest` all resolve that same root the same way, so nothing you save can go missing
+because two tools disagreed about where the AI Brain is.
 
 ## 2. Two questions, answered by where a fact lives
 

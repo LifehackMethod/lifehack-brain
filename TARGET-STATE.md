@@ -13,14 +13,31 @@ A healthy install prints the marker for all six; anything else names exactly whi
 
 ### 1. The Harness repo is at the top of the opened folder, on the right branch, hooks wired, not damaged
 ```bash
+# The migration-1 arm is TRANSITIONAL. It comes out the day migration-1 merges into main, in the
+# same edit that drops "-b migration-1" from INSTALL.md STEP 5. The two move together or not at all.
+BR="$(git branch --show-current)"; BR="${BR:-(none - detached, not on any branch)}"
 test -d .claude && test -d system && test -d shared \
-  && [ "$(git branch --show-current)" = "migration-1" ] \
+  && { case "$BR" in
+         main|migration-1) : ;;
+         *) echo "FACT 1: NO - the release branch is $BR, expected main"; false ;;
+       esac; } \
   && [ "$(git config core.hooksPath)" = "system/githooks" ] \
   && ! git fsck --full 2>&1 | grep -Eqi 'error|missing|corrupt' \
   && echo "FACT 1: OK"
 ```
 **Meaning:** this folder — not one above it, not one below it — IS the Lifehack Harness: the right
 code, the right branch, the safety catch turned on, and nothing broken inside the repository itself.
+
+⚠ **Why a branch is checked at all, and why two names pass.** The clause is load-bearing: `INSTALL.md`
+STEP 5 clones a *named* branch precisely because the default one is *"an older release with known
+bugs"*, so this is the check that catches an install which quietly fetched the wrong code. **`main` is
+the name this check is built around** — after the merge that is simply what a correct fresh install is
+sitting on. The second name is scaffolding, and the comment in the block says when to remove it.
+
+⚠ **A detached checkout is named, not swallowed.** `git branch --show-current` prints *nothing* on a
+detached HEAD, so the old single-name test compared an empty string and failed with no output at all —
+indistinguishable from a hooks or `fsck` failure. It now says which branch it found. A detached install
+is genuinely wrong: it cannot take the `git pull --ff-only` that `UPDATE.md` depends on.
 
 ### 2. `.brain-root` exists at the repo root, is gitignored, and points at a real folder
 ```bash
@@ -33,25 +50,25 @@ folder it names actually exists.
 ```bash
 python3 shared/brain_root.py | grep -q "(source: repo-pointer)" && echo "FACT 3: OK"
 ```
-**Meaning:** when a skill asks "where do my notes live," it is answering from this install's own
+**Meaning:** when a skill asks "where is the AI Brain," it is answering from this install's own
 pointer file — not a leftover machine-wide setting or a `$LIFEHACK_ROOT` left set by something else.
 
-### 4. The notes folder is cloud-synced — any service counts
+### 4. The AI Brain is cloud-synced — any service counts
 ```bash
 python3 shared/brain_root.py --quiet | tr '[:upper:]' '[:lower:]' \
   | grep -Eq 'google drive|my drive|shared drives|cloudstorage|dropbox|onedrive|icloud' \
   && echo "FACT 4: OK"
 ```
-**Meaning:** your notes live somewhere a sync service is actively backing up — Drive, OneDrive, Dropbox
-or iCloud, whichever the person already uses. Losing the laptop does not mean losing the notes.
+**Meaning:** the AI Brain sits somewhere a sync service is actively backing up — Drive, OneDrive,
+Dropbox or iCloud, whichever the person already uses. Losing the laptop does not lose the AI Brain.
 
-### 5. A write to the notes folder lands, and reads back
+### 5. A write to the AI Brain lands, and reads back
 ```bash
 N="$(python3 shared/brain_root.py --quiet)" && F="$N/.target-state-writetest" \
   && printf 'ok\n' > "$F" && [ "$(cat "$F")" = "ok" ] && rm -f "$F" && echo "FACT 5: OK"
 ```
 **Meaning:** the connection is not just a path string that looks right — a real file can be written into
-the notes folder and read back out again.
+the AI Brain and read back out again.
 
 ### 6. Nothing personal is staged in git
 ```bash
@@ -69,7 +86,7 @@ test folder (`AI Brain 2 TEST DATA/rig-data`). Fact 6 correctly reports NOT CLEA
 editorial changes in flight — expected here, and exactly the signal a real install should never show.
 
 ## FACT 7 — the brain is the RIGHT house, says its human
-The notes folder this harness points at is the person's real brain — confirmed by them, not
+The AI Brain this harness points at is the person's real one — confirmed by them, not
 inferred from green plumbing. Check: ask. A connected empty scaffold passes facts 1-6; only the
 human can pass fact 7. (Added after a live repair connected everything perfectly to a folder
 created twenty minutes earlier.)

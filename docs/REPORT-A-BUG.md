@@ -14,7 +14,7 @@ downloads on your end.
 
 ## What you do
 
-**Open your `lifehack-brain` folder the way you always do, drag this file into the chat, and say:**
+**Open your `Lifehack Harness` folder the way you always do, drag this file into the chat, and say:**
 
 > **"Set up bug reports."**
 
@@ -72,7 +72,7 @@ broken — **it does not matter here, and it is never a reason to refuse.** See 
 
 > ## ⛔ THE INSTALL IS NOT YOUR JOB HERE — AND AN UNFINISHED ONE IS NOT A BLOCKER
 >
-> Do not check for git or Python, do not clone anything, do not touch their notes folder, do not run
+> Do not check for git or Python, do not clone anything, do not touch their AI Brain, do not run
 > `bootstrap.py`, do not offer to run `/ingest`. **Do not finish a half-install from inside this file** —
 > setting up bug reports must never quietly turn into an installer.
 >
@@ -107,7 +107,7 @@ test -f .claude/skills/ingest/SKILL.md && git rev-parse --show-toplevel
 **Say nothing about this if it works** — just continue. It's a sanity check, not a milestone, and
 narrating it makes the setup feel longer than it is.
 
-**If it fails**, say: *"I need to be in your lifehack-brain folder for this — could you open that folder
+**If it fails**, say: *"I need to be in your Lifehack Harness folder for this — could you open that folder
 and drag this file in again?"* Then stop.
 
 ⚠ **This is a WHERE-AM-I check, not an install check.** Both halves pass the moment the folder itself
@@ -294,8 +294,8 @@ anything, take out:
 - **Their home folder path.** A path starting `/Users/` (macOS) or `/home/` (Linux) is followed by their
   account name — replace the whole thing with `~/...`. **Their real name is usually baked into that
   account-name segment and they will not notice it.**
-- **Anything they have written.** Note content, journal lines, project names, filenames from their notes
-  folder. **The error is the evidence — not what they happened to be writing when it appeared.**
+- **Anything they have written.** Note content, journal lines, project names, filenames from their AI
+  Brain. **The error is the evidence — not what they happened to be writing when it appeared.**
 - **Anything from their `config/` folder:** sheet ids, calendar ids, email addresses.
 - **Keys and tokens**, in any form.
 

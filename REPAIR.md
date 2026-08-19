@@ -103,7 +103,7 @@ Say plainly what you actually found rather than forcing it into the nearest cate
    FACT 1 (Harness repo, right branch, hooks on, not damaged): <OK / not yet>
    FACT 2 (.brain-root present, gitignored, points somewhere real): <OK / not yet>
    FACT 3 (resolves through THIS repo's own pointer): <OK / not yet>
-   FACT 4 (notes folder is cloud-synced): <OK / not yet>
+   FACT 4 (AI Brain is cloud-synced): <OK / not yet>
    FACT 5 (a write lands and reads back): <OK / not yet>
    FACT 6 (nothing personal staged in git): <OK / not yet>
    ```
@@ -128,13 +128,13 @@ Only the human can answer (that's FACT 7 in TARGET-STATE.md). Their answer forks
 **Road 1 — ADOPT (they have a real brain).** One folder holds their actual work. Plan: back it up,
 evict any old machinery inside it into a zz-archive- folder (ARCHIVE, never delete — this is the one
 folder where a deletion mistake is unrecoverable), connect the new harness to it, rename it so it is
-unmistakably the live one, archive-prefix every other lookalike. Their notes never move.
+unmistakably the live one, archive-prefix every other lookalike. Their AI Brain never moves.
 If value is scattered across SEVERAL folders: adopt the richest, archive the rest, and NOTE the
 others for a later, separate merge — never attempt a merge during repair.
 
 **Road 2 — FRESH START (nothing worth keeping).** The old attempts are empty scaffolds or abandoned
 experiments. Plan: rename them all with a zz-archive- prefix (or one line saying what each was),
-create or choose ONE cleanly-named notes folder, connect the harness, move forward. Nothing merged,
+create or choose ONE cleanly-named AI Brain, connect the harness, move forward. Nothing merged,
 nothing mourned.
 
 Both roads end at the same place: all eight TARGET-STATE facts true — one engine, one brain,
@@ -150,8 +150,8 @@ can act on without you — written for someone who did not watch the work:
    structure (renames not yet taken, archives that can move to cold storage, empty scaffolds safe to
    delete), each with its cost and its reversibility stated.
 4. HOW TO WORK FROM NOW ON — one paragraph: which folder they open (the engine, always), where
-   their notes land (the brain, automatically), what needs backing up (nothing — GitHub covers the
-   engine, Drive covers the brain), and the one-line repair sentence if things ever tangle again.
+   their writing lands (their AI Brain, automatically), what needs backing up (nothing — GitHub covers
+   the engine, Drive covers the AI Brain), and the one-line repair sentence if things ever tangle again.
 5. WHAT TO LEAVE ALONE — anything deferred (ancestor brains awaiting a merge, secrets needing proper
    storage), with one line on why it waits and what project picks it up.
 A person should be able to read it in two minutes and either act or file it. (Operator requirement,

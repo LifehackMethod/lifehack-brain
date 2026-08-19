@@ -2445,12 +2445,16 @@ def set_basket_status(m, basket, status, work_dir=None, require_world_map=False)
 # globbing a cloud-drive path — fine for its original author, wrong for
 # anyone on Dropbox, OneDrive, or a plain local folder. This is a REMEMBERED DECISION, not a parameter.
 #
-# Resolution order, exactly: (1) $LIFEHACK_ROOT, if set and a real directory. (2) the persisted file
+# Resolution order, exactly — resolve_brain_root() returns the FIRST route below that names a real
+# directory, and the source string it returns is in parentheses: (1) $LIFEHACK_ROOT, if set and a real
+# directory ("env"). (2) the repo's own `.brain-root` pointer file, located from brain_root.py's own
+# position, never from the cwd ("repo-pointer", added 2026-08-17). (3) the persisted file
 # ~/.config/lifehack/brain-root — this system's EXISTING config home (sentinel-paused-sources and
-# claude-oauth-token already live there; this is not a second location). (3) the legacy Drive glob —
-# BACK-COMPAT ONLY, set via INGEST_LEGACY_ROOT_GLOB, so an existing corpus keeps resolving. (4) otherwise
-# NOT-SET. Closed outcome set {RESOLVED, NOT-SET}; NOT-SET is the no-outcome member and must NEVER fall
-# through to a guess, a default, or the cwd — every caller checks for it and stops, naming the fix.
+# claude-oauth-token already live there; this is not a second location) ("persisted"). (4) the legacy
+# Drive glob — BACK-COMPAT ONLY, set via INGEST_LEGACY_ROOT_GLOB, so an existing corpus keeps resolving
+# ("legacy-glob"). (5) otherwise NOT-SET. Closed outcome set {RESOLVED, NOT-SET}; NOT-SET is the
+# no-outcome member and must NEVER fall through to a guess, a default, or the cwd — every caller checks
+# for it and stops, naming the fix.
 # ⬇ THE IMPLEMENTATION MOVED (migration T0.1, 2026-08-11) to <repo>/shared/brain_root.py — the one
 # root variable the WHOLE system resolves through, not just this pipeline. The contract above is
 # unchanged; the code is imported so there is exactly one copy of it, and every other tool gets the
@@ -2962,7 +2966,7 @@ def main():
             print("REFUSED topic-check: no topic vocabulary found. Looked for, in order:\n"
                   + "\n".join(f"    {p}" for p in tried)
                   + "\n\n  The topic vocabulary is a list of the subject areas YOUR OWN material divides"
-                    " into,\n  so it is yours to write and it lives with your notes, not in the tool.\n"
+                    " into,\n  so it is yours to write and it lives in your AI Brain, not in the tool.\n"
                     "  Create memory/topic-vocab.md with one line per subject:\n\n"
                     "      - `financial`\n      - `health`\n      - `writing`\n\n"
                     "  ⛔ This tool will not invent one for you — an invented taxonomy of your life is"

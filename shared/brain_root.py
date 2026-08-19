@@ -1,17 +1,10 @@
 #!/usr/bin/env python3
 """brain_root.py — THE one root variable. Every data path in this system resolves through here.
 
-THE RESIDENCY RULE (rewritten 2026-08-12, when the layout changed — see INSTALL.md): the brain is
-the git repo, and it IS the folder the person opens. Their data lives at `data/` INSIDE it, kept out
-of version control by one line in `.gitignore` rather than by sitting in a different folder.
-
-⚠ The old rule said the data lived OUTSIDE the repo, one level above. That stopped being true when
-the tool started cloning into the folder you open; the wording is corrected here because this module
-is what every other tool asks, and a stale answer here misleads all of them at once.
-
-⭐ None of that changes this module's contract. The root is still asked once, remembered forever, and
-resolved through the same ordered routes below. `data/` inside the repo is merely the value a normal
-install now persists — it is not a default, not a fallback, and never a guess.
+WHERE THE AI BRAIN LIVES, and how it gets set up, is `INSTALL.md`'s subject and INSTALL.md is the
+authority on it. This module does not restate it. What this module owns is the mechanical question —
+on this machine, which folder is the AI Brain? — and it is asked once, remembered forever, and
+resolved through the ordered routes below. Never a default, never a fallback, never a guess.
 
 LIFTED, NOT INVENTED (migration T0.1, 2026-08-11): this is the resolver that has been running inside
 `system/tools/cowork-ingest/pipeline.py` since 2026-08-08 — moved out verbatim so that every tool,
@@ -43,17 +36,20 @@ import sys
 # globbing a cloud-drive path — fine for its original author, wrong for
 # anyone on Dropbox, OneDrive, or a plain local folder. This is a REMEMBERED DECISION, not a parameter.
 #
-# Resolution order, exactly: (1) $LIFEHACK_ROOT, if set and a real directory. (2) the persisted file
-# ~/.config/lifehack/brain-root — this system's EXISTING config home (sentinel-paused-sources and
-# claude-oauth-token already live there; this is not a second location). (3) the legacy Drive glob —
-# BACK-COMPAT ONLY, set via INGEST_LEGACY_ROOT_GLOB, so an existing corpus keeps resolving. (4) otherwise
-# NOT-SET. Closed outcome set {RESOLVED, NOT-SET}; NOT-SET is the no-outcome member and must NEVER fall
-# through to a guess, a default, or the cwd — every caller checks for it and stops, naming the fix.
+# Resolution order, exactly — resolve_brain_root() returns the FIRST route below that names a real
+# directory, and the source string it returns is in parentheses: (1) $LIFEHACK_ROOT, if set and a real
+# directory ("env"). (2) this repo's own `.brain-root` pointer file, located from THIS FILE's position
+# ("repo-pointer"). (3) the persisted file ~/.config/lifehack/brain-root — this system's EXISTING config
+# home (sentinel-paused-sources and claude-oauth-token already live there; this is not a second
+# location) ("persisted"). (4) the legacy Drive glob — BACK-COMPAT ONLY, set via INGEST_LEGACY_ROOT_GLOB,
+# so an existing corpus keeps resolving ("legacy-glob"). (5) otherwise NOT-SET. Closed outcome set
+# {RESOLVED, NOT-SET}; NOT-SET is the no-outcome member and must NEVER fall through to a guess, a
+# default, or the cwd — every caller checks for it and stops, naming the fix.
 BRAIN_ROOT_ENV = "LIFEHACK_ROOT"
 BRAIN_ROOT_CONFIG = os.path.expanduser("~/.config/lifehack/brain-root")
-# Step (3), back-compat only, and DELIBERATELY not hardcoded: the original owner exports
+# Step (4), back-compat only, and DELIBERATELY not hardcoded: the original owner exports
 # INGEST_LEGACY_ROOT_GLOB so an existing corpus keeps resolving where it always did. Unset on
-# every other machine, which makes step (3) a no-op rather than a stranger's path. Empty is
+# every other machine, which makes step (4) a no-op rather than a stranger's path. Empty is
 # skipped entirely in resolve_brain_root below.
 BRAIN_ROOT_LEGACY_GLOB = os.path.expanduser(os.environ.get("INGEST_LEGACY_ROOT_GLOB", ""))
 # Step (2), NEW 2026-08-17 (Option B ruling): the repo carries its OWN pointer. One line, absolute
@@ -97,7 +93,7 @@ def resolve_brain_root():
             persisted = ""
         if persisted and os.path.isdir(persisted):
             return "persisted", persisted
-    if BRAIN_ROOT_LEGACY_GLOB:          # unset on a fresh install -> step (3) is a no-op, never a guess
+    if BRAIN_ROOT_LEGACY_GLOB:          # unset on a fresh install -> step (4) is a no-op, never a guess
         import glob as _glob
         for hit in sorted(_glob.glob(BRAIN_ROOT_LEGACY_GLOB)):
             if os.path.isdir(hit):
@@ -113,7 +109,7 @@ def read_persisted():
     more dangerous question: "what is `--set` about to overwrite?" The config file is ONE global
     value living outside the repo, so a second install — a re-clone, a second brain, a second person
     on the same machine — silently repoints the first. Reproduced: after install two runs `--set`,
-    install one resolves to install two's data folder.
+    install one resolves to install two's AI Brain.
 
     Returns the string even if it no longer exists on disk: a root pointing at a deleted folder is
     exactly the case a caller most needs to report, and `resolve_brain_root()` hides it by returning
@@ -161,7 +157,8 @@ def set_brain_root(path, create=False, replace_global=False):
     return True, resolved, note
 
 
-NOT_SET_MESSAGE = ("NOT-SET — no $" + BRAIN_ROOT_ENV + ", no persisted " + BRAIN_ROOT_CONFIG +
+NOT_SET_MESSAGE = ("NOT-SET — no $" + BRAIN_ROOT_ENV + ", no " + REPO_POINTER_NAME +
+                   " pointer in this repo, no persisted " + BRAIN_ROOT_CONFIG +
                    ", and no legacy Drive folder found. Fix: brain_root.py --set <path> "
                    "(add --create for a new folder).")
 

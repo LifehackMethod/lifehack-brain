@@ -17,8 +17,8 @@ through filing one for you, including gathering the details we need.
 were closed by a collaborator** — someone who was not the author, reading the code cold. The loop
 works.
 
-**To get a fix, run `git pull`.** ⛔ Do NOT delete the folder and re-clone — your writing lives inside
-it now, and re-cloning takes your notes with it.
+**To get a fix, run `git pull`.** ⛔ Do NOT delete the folder and re-clone — that throws away the
+`.brain-root` line, which is the only thing connecting this folder to your AI Brain.
 
 ## Known unfixed, ranked by how likely you are to hit it
 
@@ -98,7 +98,7 @@ proven by repeating the same attack and watching it get refused.
    anything. We believe that is true and have not independently verified it. Stated here rather than
    left as an assumption you would have no way to check.
 
-8. **A few tools do not yet say where they keep their notes.** Most of them declare it plainly. A handful
+8. **A few tools do not yet say where they put what they write.** Most of them declare it plainly. A handful
    are still vague about it, so if one writes something and you cannot find it, that is us, not you —
    ask, and we will tell you exactly where it went.
 

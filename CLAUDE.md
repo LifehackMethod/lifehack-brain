@@ -71,24 +71,22 @@ NOT BUILT — admissions, not omissions. knowing now beats inferring a connectio
 
 ## The shape of the thing
 
-**The repo is the machinery (the Lifehack Harness); their notes (the AI Brain) live in their own
-Google Drive folder, OUTSIDE it.** This folder holds skills, tools and hooks; everything *they* write
-lives at the folder named by `.brain-root` (one line, at this repo's root, gitignored) — never
-tracked, never committed, never uploaded. An older layout kept notes at `data/` inside the repo; the
-`.gitignore` line and pre-commit guard for it remain as belt-and-braces for installs still shaped
-that way. That folder is resolved by
+**The repo is the machinery (the Lifehack Harness); the AI Brain is a separate folder in their own
+Google Drive, OUTSIDE it.** `INSTALL.md` is the authority on where the AI Brain lives and how it is
+set up — never re-derive that here. This folder holds skills, tools and hooks; everything *they* write
+lives in the AI Brain, at the path named by `.brain-root` (one line, at this repo's root) — never
+tracked, never committed, never uploaded. That path is resolved by
 `shared/brain_root.py` and by nothing else; every path any tool writes to comes from there — with one
 stated exception: throwaway scratch, which `shared/paths.py` deliberately puts in the machine's own
-temp folder, because regenerable files do not belong in someone's notes.
+temp folder, because regenerable files do not belong in an AI Brain.
 
 If it is not set, the honest answer is "not set" — **never guess a folder, never fall back to the
-current directory.** Putting someone's notes somewhere they did not choose is the failure this rule
+current directory.** Putting someone's AI Brain somewhere they did not choose is the failure this rule
 exists to prevent. Set it with `python3 shared/brain_root.py --set "<folder>"`.
 
-⛔ **Updates are `git pull` — never delete-and-re-clone.** A pull leaves `data/` untouched; deleting
-this folder destroys it. Their notes used to be safe by living elsewhere; since 2026-08-12 they are not.
-⛔ **Never `git add -f data/`** — that one line in `.gitignore` is the only thing keeping their notes
-out of the repository.
+⛔ **Updates are `git pull` — never delete-and-re-clone.** `UPDATE.md` is the authority on updating.
+⛔ **Never `git add -f` anything `.gitignore` covers** — `.brain-root`, and a legacy `data/` on an
+older install. Those lines are the last guard on a person's own material.
 
 ## Rules that hold no matter what is asked
 

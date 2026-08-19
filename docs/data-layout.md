@@ -1,19 +1,19 @@
-# Where things go in your notes folder
+# Where things go inside your AI Brain
 
-> The map of the **second** folder — the one that is yours. Every tool in this repo that writes
-> something DURABLE writes it at one of the paths on this page, and gets the folder itself from one
-> place: `shared/brain_root.py`. (Throwaway scratch is the stated exception — see the last section.)
+> The map of what goes INSIDE your AI Brain. Every tool in this repo that writes something DURABLE
+> writes it at one of the paths on this page, and gets the AI Brain itself from one place:
+> `shared/brain_root.py`. (Throwaway scratch is the stated exception — see the last section.)
 > If you are adding a tool and the path you want is not here, the path is wrong or this page is
 > incomplete — resolve that before writing code.
 
-## The one rule this all rests on
+## Where the AI Brain itself lives
 
-**Your notes live in `data`, and one line in `.gitignore` keeps them out of git** — never tracked,
-never committed, never uploaded. Put the folder itself wherever suits you.
+**Where your AI Brain lives and how it gets set up is covered in `INSTALL.md`, which is the
+authority.** This page does not repeat it. This page is only the shape of what goes inside.
 
-Everywhere below, `<notes>/` means the folder that rule is about — whatever
-`shared/brain_root.py` resolves. Not the current directory, not the repo, not a guess. When it is not
-set, the honest answer is "not set" and the tool refuses.
+Everywhere below, `<notes>/` is the path placeholder for your AI Brain — whatever
+`shared/brain_root.py` resolves, and not the current directory, not the repo, not a guess. When it
+is not set, the honest answer is "not set" and the tool refuses.
 
 ## The shape
 
@@ -252,9 +252,9 @@ The diagram above is the shape; this is the list, so nothing has to be inferred 
 
 ## When you add something that writes
 
-1. The path comes from `shared/brain_root.py`. There is no second way to find the notes folder.
+1. The path comes from `shared/brain_root.py`. There is no second way to find the AI Brain.
    **The one exception is scratch** — `shared/paths.py`'s `scratch_dir()` answers from the machine's
-   temp folder instead, on purpose: a regenerable working file does not belong in someone's notes,
+   temp folder instead, on purpose: a regenerable working file does not belong in an AI Brain,
    and the hardcoded `/tmp/...` it replaced does not exist on Windows. Durable state still comes from
    the resolver; if what you are writing survives the run, it is not scratch.
 2. If your path is not on this page, add it here first — in the same change, not afterwards.

@@ -10,15 +10,13 @@ That is the whole thing you need to remember. Everything below is for Claude to 
 
 An update replaces **the tool folder** — this folder, the one with `.claude/` and `system/` in it.
 
-**It cannot reach your notes.** Not because it is careful, but because `git pull` only touches files git
-tracks, and your notes are not tracked. Since 2026-08-12 they live at `data/` **inside this folder**, kept
-out of git by one line in `.gitignore` — folder distance used to do that job, and `.gitignore` does it now.
-A pull leaves `data/` completely alone.
+**It cannot reach your AI Brain.** Your AI Brain is a separate folder in your cloud drive; `git pull`
+only touches files git tracks, in this folder, and nothing you write is in this folder at all.
+`INSTALL.md` is the authority on that split and this file does not restate it.
 
 ⛔ **The one rule that follows: update with `git pull`, never by deleting this folder and re-cloning.**
-Under the old layout that was survivable, because `data/` sat outside the repository. It does not any
-more, so deleting this folder takes your writing with it. If you ever genuinely need a fresh copy, move
-`data/` out first and move it back after.
+A re-clone throws away the `.brain-root` line — the one thing connecting this folder to your AI Brain —
+along with anything else you have added here.
 
 **It takes about two minutes** and ends with you quitting Claude and opening it again. That last part is
 not optional — see STEP 6.
@@ -47,7 +45,7 @@ there is nothing to pull — go to **THE CLEAN REINSTALL** at the bottom of this
 ⛔ **Do not `git init` a folder that is not already a clone.** It produces something that looks like a
 repository, has no history and no remote, and cannot be updated ever again.
 
-## STEP 1 — ⛔ THE CHECK THAT COMES FIRST: are their notes inside this folder?
+## STEP 1 — ⛔ THE CHECK THAT COMES FIRST: where is their AI Brain?
 
 ```bash
 python3 -c "
@@ -55,28 +53,28 @@ import sys; sys.path.insert(0,'shared')
 import brain_root, os
 src, path = brain_root.resolve_brain_root()
 repo = os.path.realpath('.')
-print('notes:', path or 'NOT SET', '| source:', src)
-print('INSIDE THE REPO (correct since 2026-08-12)' if path and os.path.realpath(path).startswith(repo + os.sep) else 'outside the repo (pre-2026-08-12 install)')"
+print('AI Brain:', path or 'NOT SET', '| source:', src)
+print('⛔ INSIDE THIS FOLDER (older install)' if path and os.path.realpath(path).startswith(repo + os.sep) else 'outside this folder — correct')"
 ```
 
-**`INSIDE THE REPO` is the CORRECT answer on a current install, and this step must not stop on it.**
-Since the 2026-08-12 layout change the notes live at `data/` inside this folder by design. What you are
-confirming is the line below, which is what actually keeps them safe:
+**`outside this folder — correct` is what a current install prints, and this step must not stop on it.**
+The AI Brain is its own folder in their cloud drive; `INSTALL.md` is the authority on that shape, and an
+update is not the moment to re-derive it or move anything.
+
+⛔ **`INSIDE THIS FOLDER` means an older install** that kept their writing here. The update itself is
+still safe — `git pull` cannot touch what git does not track — but confirm that with:
 
 ```bash
 git check-ignore -q data && echo "data/ is ignored — a pull cannot touch it" || echo "⛔ STOP — data/ is NOT ignored"
 ```
 
 ⛔ **Only `⛔ STOP` is a real stop.** If `data/` is not ignored, do not pull and do not `git add` anything
-— the clone is incomplete or something overwrote `.gitignore`. Re-clone the tool per INSTALL.md STEP 5,
-moving `data/` aside first.
-
-If the resolver says **outside the repo**, this is an install from before 2026-08-12. That still works
-and there is nothing to fix during an update; the notes are simply somewhere a pull was never going to
-reach either.
+— the clone is incomplete or something overwrote `.gitignore`. Say so and stop; `REPAIR.md` owns fixing
+it, not this file. On an older install, also say plainly that moving their writing out to its own folder
+is a repair worth doing later — never during an update.
 
 If it says **NOT SET**, that is fine for an update. It only means nobody has told this installation
-where the notes live yet.
+where their AI Brain is yet.
 
 ## STEP 2 — Look before you pull
 
@@ -182,7 +180,7 @@ Skipping this does not fail loudly. It fails quietly: Claude reads a skill as a 
 running it, produces something that looks roughly right, and is not the tool at all. Say this:
 
 > **"The update is in. Now quit Claude completely and open it again — the whole app, not a new chat.
-> When it comes back, open this exact same folder — the one holding `.claude` and `data`. Until then
+> When it comes back, open this exact same folder — the one holding `.claude` and `system`. Until then
 > it's still running the old version. I'll wait."**
 
 ⭐ **Give them the literal path** (`pwd`). Since 2026-08-12 the tool unpacks into the folder they opened,
@@ -201,38 +199,61 @@ Then **STOP.**
 This is not a failure and it costs about five minutes. It is the right answer whenever STEP 2 or STEP 4
 turns up a mess, or the folder was never a git clone.
 
-⛔⛔ **THEIR NOTES ARE INVOLVED NOW, AND THIS IS THE STEP THAT CAN LOSE THEM.** This section used to say
-they were in a different folder and this could not touch them. That stopped being true on 2026-08-12:
-`data/` lives inside this folder. **Move it out first, and move it back afterwards.** Never delete this
-folder while `data/` is still in it.
+⛔⛔ **A fresh clone throws away `.brain-root`, which is the only thing connecting this folder to their
+AI Brain.** Their writing itself is not in this folder and a re-clone does not reach it — but the
+connection has to be remade afterwards, in step 3 below. **If STEP 1 said `INSIDE THIS FOLDER`, this is
+an older install and their writing IS at risk** — step 1 below is the only thing allowed to move it,
+and it never deletes.
+
+> ⛔⛔ **DO NOT HAND-ROLL THE MOVE-AND-CLONE, AND DO NOT LET THIS FILE KEEP ITS OWN COPY OF ONE.**
+> `INSTALL.md` STEP 5 owns that operation. The two-command shape that used to sit here —
+> `mv data ../data-keep`, then `git clone` — **stranded a real person's writing.** Run against a folder
+> holding both a `data` folder and one ordinary file of their own: `data` moved out, the clone then
+> refused a *second* time because that other file was still in the way, the `&&` short-circuited, and
+> **there was no restore step in the line to run anyway.** Her writing ended up outside the folder with
+> no `data` folder at all. `INSTALL.md` STEP 5 replaced it with a block that moves everything into ONE
+> holding folder next door, clones into the folder it has just emptied, and **puts every single thing
+> back if anything at all fails.** ⭐ **One authority, not two.** A second copy here is exactly how the
+> two drift apart until one of them is quietly the old, dangerous version again — which is what this
+> block was.
+
+⚠⚠ **`INSTALL.md` STEP 5 is a DIFFERENT step from this file's own STEP 5 above.** Every reference below
+names the file. Do not substitute one for the other.
+
+**1 — Set the old contents aside and clone fresh, using `INSTALL.md` STEP 5.** Open `INSTALL.md`, find
+STEP 5, and run the block under *"If `git clone` refuses because the folder is not empty"* — from
+inside this folder, exactly as written, without assembling your own version of it. Read its ending back
+to them: anything beginning `STOP` or `CLONE FAILED` means the folder was put back as it was found and
+**nothing was lost — stop there, do not retry, do not improvise, do not delete anything to "clean up".**
+⭐ **The branch to clone lives in that block too, and this file deliberately does not name one** — so
+there is exactly one place in the whole repo that has to change when the release branch changes.
+
+**2 — Turn the safety catch back on, using `INSTALL.md` STEP 6.** A fresh clone does not have it: the
+check ships inside the folder but git ignores it until `core.hooksPath` points at it. Skipping this
+leaves them with an install that looks finished and has no guard on their writing.
+
+**3 — Point the fresh clone back at their AI Brain.** A fresh clone has NO `.brain-root` yet.
 
 ```bash
-# 1 — get their writing out of the way FIRST, beside the folder, never inside it
-mv data ../data-keep
-
-# 2 — set the old tool aside (rename, never delete) and clone fresh INTO this same folder
-cd .. && mv "$(basename "$OLDPWD")" brain-old
-git clone https://github.com/LifehackMethod/lifehack-brain.git "$(basename "$OLDPWD")"
-cd "$(basename "$OLDPWD")"
-
-# 3 — put their writing back where the new copy expects it
-mv ../data-keep data
-
-# 4 — confirm the resolver already points here, and that git is ignoring it again
+python3 shared/brain_root.py --set "<their AI Brain folder — the same one the old install pointed at>"
 python3 shared/brain_root.py
-git check-ignore -q data && echo "data/ is ignored — good" || echo "⛔ STOP — do not continue"
 ```
 
-⭐ **Note the trailing target on the clone.** The tool must land in the folder they open, not in a
-`lifehack-brain` subfolder inside it — same rule as INSTALL.md STEP 5's trailing dot. If a `--set` is
-needed at all it is `python3 shared/brain_root.py --set "<your AI Brain folder in Google Drive>"` —
-the same folder the old install pointed at; `--set` writes the repo's own `.brain-root` pointer. On a
-normal reinstall nothing needs re-answering, but ⚠ **a fresh clone has NO `.brain-root` yet** — run the
-`--set` above (or re-drag INSTALL.md, which does it for you) and confirm the resolver answers with
-`source: repo-pointer` before trusting the install.
+⚠ **The second command must answer with `source: repo-pointer` before you trust the install.** If you
+would rather not do this by hand, re-drag `INSTALL.md` into the chat and let it do the whole connection
+step. Then verify against `TARGET-STATE.md` — all six facts, not just this one.
 
-Then STEP 5 and STEP 6 above. **Rename the old folder, do not delete it** — leave it until they have used
-the new one and are happy. Deleting it is a separate decision on a separate day.
+⚠ **If a `data` folder was among the things set aside, that is an older one-folder install and it is
+their writing.** ⛔ **Do not move it back into a `data` folder inside the fresh clone** — that rebuilds
+the exact layout this install is moving away from. Leave it where STEP 5 put it, say plainly that it is
+safe and nothing was deleted, and treat folding it into a proper AI Brain as a stop-and-ask-for-help
+moment. Migrating that shape is not automated, and improvising it is how it gets lost. *(Same rule, and
+deliberately the same words, as `INSTALL.md` STEP 5.)*
+
+Then this file's **STEP 5** and **STEP 6** above — prove the new copy runs, then make them restart
+Claude. **Leave the set-aside folder next door alone; do not delete it** — it holds everything that was
+in here before. Deleting it is a separate decision on a separate day, after they have used the new
+install and are happy.
 
 ---
 
