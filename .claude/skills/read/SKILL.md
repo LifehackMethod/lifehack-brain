@@ -222,6 +222,26 @@ and never use vague query terms.
 > which is the most common reason to run this at all. **Do not add an adapter for it.** Live files,
 > every time.
 
+⚠ **On a cloud-mounted brain, the glob and the grep above will hang, not run slow.** The notes folder
+is a Drive mount; past a certain depth a recursive scan blocks inside the syscall and does not return,
+does not warm up on a second try, and cannot be timed out from inside the process doing it. Measured:
+a full walk of one brain finished in 1s while the same command on another timed out at 60s, three runs
+running. See `docs/drive-scan-stall.md`.
+
+**So build the candidate list with this, then read the live files as normal:**
+
+```bash
+python3 system/tools/brain_search.py --text "<phrase>"     # content
+python3 system/tools/brain_search.py --name "<filename>"   # by name
+```
+
+This is not the removed index tier and does not reopen that decision. It fetches no external package
+(`mdfind` ships with macOS), and it is a *candidate filter only* — every hit is read back off the live
+file before you report it, and anything saved in the last few minutes is swept in by mtime regardless
+of the index. **Live files, every time still holds**; what changes is only how the candidate list is
+built. Fall back to the globs above when the tool reports it could not use the index — and if it says
+its walk was truncated, say so rather than reporting a clean “found nothing”.
+
 **State currency check.** If you load a state file, compare its `updated_at` against the newest
 relevant record. Records newer → flag it inline: *"state may be behind — the most recent record is from
 `<date>`."*
