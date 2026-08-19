@@ -44,9 +44,10 @@ commands in the folder you actually opened; when they sat one level down, it cou
 ⚠ **Your writing lives in your AI Brain — a separate folder, in your own Google Drive, never inside
 the Harness.** Nothing you write is ever tracked by git, committed, or pushed anywhere, because it
 never sits inside the git repository at all. **The rule that follows: take Harness updates with
-`git pull` — never by deleting this folder and downloading a fresh copy.** A pull only ever touches
-the Harness; it cannot reach your AI Brain, because your AI Brain was never inside it. See the end of
-this file.
+`git pull` — that is the default, and the right move for every ordinary update.** A pull only ever
+touches the Harness; it cannot reach your AI Brain, because your AI Brain was never inside it.
+Deleting the folder and re-cloning is a bigger hammer, and under this layout it is survivable — the
+end of this file says when that is the right call and how to do it.
 
 **Your AI Brain is already backed up — it's a Google Drive folder, and Drive keeps its own version
 history.** There is nothing extra to set up.
@@ -170,6 +171,16 @@ actually required to install this at all.
 - **Never invent a result.** If you could not check something, say you could not check it. A guess that
   sounds confident is worse here than an honest "I don't know," because they cannot tell the difference
   and they will act on it.
+- ⛔⛔ **EVERY COMMAND BLOCK IN THIS FILE RUNS IN A BRAND-NEW SHELL. NOTHING CARRIES OVER.** A variable
+  set in one block — `PYBIN`, `SRC`, `DEST`, `ROOT`, anything — **is empty in the next one**, and an
+  empty variable does not announce itself: `"$PYBIN" foo` simply runs `foo` as if you had typed nothing,
+  or expands to a command that isn't there. **Before you run any block, check that every `$NAME` in it
+  is set by that same block.** If one isn't, that is a bug in the file — **say so and set it on the
+  first line**, exactly as the neighbouring blocks do. ⛔ **Never "remember" a value across blocks, and
+  never assume one is still there because you set it a moment ago.**
+  ⭐ **This is the single most expensive defect this file has had.** STEP 7.5 used `$PYBIN` twenty lines
+  after the last block that set it, and told healthy installs their AI Brain had failed to connect. **It
+  was found only because someone ran the file literally.** *(Stated once more, in situ, at STEP 4A.5.)*
 
 > ## ⛔⛔ YOUR JOB IS THE INSTALL. IT IS NOT THE INGEST. DO NOT START THE INGEST.
 >
@@ -189,7 +200,12 @@ actually required to install this at all.
 > - ⛔ **Do NOT ask them where their material is, what format it is in, or how big it is.** None of that is
 >   your business here and asking it makes them think the sorting has begun.
 > - ⛔ **Do NOT read, open, convert, copy or move a single one of their files.**
-> - ⛔ **Do NOT run any script in `system/tools/`.** Nothing in there belongs to the install.
+> - ⛔ **Do NOT run any INGEST script in `system/tools/`** — anything that reads, sorts, converts or
+>   otherwise touches their material. ⚖ **This does not cover the install's own tools.**
+>   `system/tools/bootstrap.py` (**STEP 7.2**), the `cowork-ingest` pipeline import in **STEP 8**'s
+>   tools check, and any other command this file explicitly writes out for you — at a numbered step,
+>   or in **IF SOMETHING GOES WRONG** near the end — ARE part of the install. Run those exactly when
+>   the file tells you to. **Nothing else out of that folder, ever, on your own initiative.**
 > - ⛔ **Do NOT type `/ingest` yourself, and do not suggest they type it, until STEP 10.**
 >
 > ⭐ **WHY THIS BLOCK EXISTS — it was watched happening.** A session read this file, saw the "Have this
@@ -238,47 +254,84 @@ machine, and it is the difference between carrying on and starting again on top 
 
 ```bash
 mkdir -p ~/.config/lifehack
-cat > ~/.config/lifehack/mark-step.sh <<'MARK'
-P="$HOME/.config/lifehack/install-progress.tsv"
+cat > ~/.config/lifehack/install-note.sh <<'NOTE'
+P="$HOME/.config/lifehack/install-scratch.tsv"
 W="${CLAUDE_PID:-0}"
-W="$W started $(ps -o lstart= -p "$W" 2>/dev/null | tr -s ' ' | sed 's/^ *//;s/ *$//')"
-printf '%s\t%s\t%s\t%s\n' "$(date +%Y-%m-%dT%H:%M:%S)" "$1" "$(pwd -P)" "$W" >> "$P" 2>/dev/null
+W="$W started $(LC_ALL=C ps -o lstart= -p "$W" 2>/dev/null | tr -s ' ' | sed 's/^ *//;s/ *$//')"
+printf '%s\t%s\t%s\t%s\t%s\n' "$(date +%Y-%m-%dT%H:%M:%S)" "$1" "$2" "$(pwd -P)" "$W" >> "$P" 2>/dev/null
 exit 0
-MARK
-tail -n 15 ~/.config/lifehack/install-progress.tsv 2>/dev/null || echo "NOTHING RUN BEFORE — this is a first run on this machine"
+NOTE
+python3 - <<'PY'
+import os
+p = os.path.expanduser("~/.config/lifehack/install-scratch.tsv")
+if not os.path.exists(p):
+    print("NOTHING RUN BEFORE — this is a first run on this machine"); raise SystemExit(0)
+rows = [l.rstrip("\n").split("\t") for l in open(p) if l.strip()]
+last = {}
+steps = []
+for r in rows:
+    if len(r) < 4: continue
+    if r[1] == "step": steps.append(r[2])
+    else: last[r[1]] = (r[2], r[3])
+print("DECISIONS ALREADY MADE:")
+for k in ("harness", "brain", "pybin", "sync", "strays"):
+    if k in last: print("  %-8s %s" % (k, last[k][0]))
+print("STEPS ALREADY DONE: " + (", ".join(steps) if steps else "none"))
+PY
 ```
 
-> ## ⭐⭐ THE STEP LOG — WHAT IT IS FOR, AND THE RULES ABOUT IT
+> ## ⭐⭐ THE INSTALL SCRATCHPAD — WHAT IT IS, AND THE FOUR RULES
 >
-> The first block installs a one-line pen. The second reads back what earlier steps wrote with it —
-> one line per finished step: when, which step, **which folder it ran in**, and which Claude window ran
-> it. **`NOTHING RUN BEFORE` means a clean machine; carry on normally.** Anything else is your own
-> position, in fact rather than in memory — read it before you decide where to start.
+> The first block installs a one-line pen. The second reads back what earlier steps wrote with it.
+> **`NOTHING RUN BEFORE` means a clean machine; carry on normally.** Anything else is your own position
+> and the decisions already taken — **in fact rather than in memory.** Read it before you decide where
+> to start.
 >
-> **Every step in this file ends by marking itself done**, in exactly this form, with its own name:
+> **You write a decision the moment you make it, and later steps READ it instead of recalling it:**
 >
 > ```bash
-> sh ~/.config/lifehack/mark-step.sh "STEP 0"
+> sh ~/.config/lifehack/install-note.sh step    "STEP 0"
+> sh ~/.config/lifehack/install-note.sh harness "/the/folder/the/Harness/is/in"
+> sh ~/.config/lifehack/install-note.sh brain   "/the/folder/their/AI/Brain/is/in"
+> sh ~/.config/lifehack/install-note.sh pybin   "python3"
+> sh ~/.config/lifehack/install-note.sh sync    "NO SYNC SERVICE IN THE PATH"
+> sh ~/.config/lifehack/install-note.sh strays  "2"
 > ```
 >
-> ⭐ **WHY THIS EXISTS — it is the commonest failure in this whole file, and it is YOURS, not theirs.**
-> Across real installs with real students, the thing that went wrong most often was not the person
-> getting lost. It was the ASSISTANT losing the thread inside a long document — running a step twice,
-> skipping one, or answering *"where are we"* out of memory. **This file is longer than the attention
-> it takes to hold it all.** The log makes your own position something you can look up, and it is the
-> only thing that survives **STEP 9's restart**, where your memory of this session is guaranteed gone.
+> ⭐ **WHY IT EXISTS — the commonest failure in this whole file is YOURS, not theirs.** Across real
+> installs, the thing that went wrong most often was not the person getting lost; it was the ASSISTANT
+> losing the thread inside a long document — running a step twice, skipping one, or answering *"where
+> are we"* out of memory. **This file is longer than the attention it takes to hold it all.** The
+> scratchpad makes your own position and your own past decisions something you look up. **And it is the
+> only thing that survives STEP 9's restart**, where your memory of this session is guaranteed gone.
 >
-> ⛔ **You mark a step AFTER its own checks pass — never before, and never for a step you skipped.**
-> A mark means *"this really ran, here."* A log marked ahead is a lie, and a lying log is worse than no
-> log at all, because the session after the restart has nothing else to go on and will believe it.
+> ## ⛔ THE FOUR RULES
 >
-> ⚠ **IT IS WRITTEN FOR YOU AND THE PERSON NEVER SEES IT.** Never read a line of it out, never quote
-> it, never mention the log, the file, or the marking. It is not a receipt for them. **If it ever
-> surfaces in something you say to them, it is being used wrong.**
+> 1. ⛔ **DECISIONS ONLY — NEVER A VERDICT ON THE INSTALL.** Write *what was chosen* and *what ran*:
+>    a path, an interpreter name, a step that finished. **Never write, and never read back, anything
+>    claiming the install is correct, healthy, working or done properly.** `TARGET-STATE.md` is the ONE
+>    thing that answers that question. **A second thing claiming to answer it is exactly the drift this
+>    is meant to end.**
+> 2. ⛔ **THE STUDENT NEVER SEES IT.** Never read a line of it out, never quote it, never mention the
+>    scratchpad, the file, or the writing of it. It is not a receipt for them. **If it ever surfaces in
+>    something you say to them, it is being used wrong.**
+> 3. ⛔ **WRITE A STEP AFTER ITS OWN CHECKS PASS — never before, never for a step you skipped.** A note
+>    means *"this really happened, here."* A scratchpad written ahead is a lie, and the session after
+>    the restart has nothing else to go on and will believe it.
+> 4. ⛔ **`pybin` IS A RECORD, NOT A SHORTCUT.** ⛔ **Never read it and use it in place of resolving the
+>    interpreter in the block you are running.** Every block still resolves `PYBIN` on its own first
+>    line — see the fresh-shell rule in *How to behave*. The note exists so a later session knows which
+>    word answered on this machine, not so a block can skip its own setup. **Reading a path out of the
+>    scratchpad instead of re-deriving it is how the twenty-line bug got written in the first place.**
 >
-> ⭐ **It records the folder each step ran in, and that is what makes STEP 4A's move survivable.** After
-> a move, the marks written in the old folder are still there and still say so — which is exactly the
-> question a session coming back from 4A has to answer and currently answers by guessing.
+> ⚠ **WHERE IT LIVES, AND ONE THING THE OPERATOR SHOULD KNOW.** It sits at
+> `~/.config/lifehack/install-scratch.tsv` — the same folder this file already uses for the search key
+> and the notification topic — **outside both the Harness and the AI Brain.** ⛔ **It cannot live inside
+> the Harness, and that is mechanical, not a preference:** the first decisions are made at STEP 1, and
+> **the Harness folder must be EMPTY until STEP 5 clones into it** — a file placed there earlier is one
+> STEP 5 has to move out of its own way. Being outside the repo entirely also means `git status` stays
+> clean at STEP 8 without needing a `.gitignore` line. **Nothing personal goes in it** — paths and step
+> names only, on their own machine, never uploaded.
 
 Now tell them, in your own words and in about four sentences:
 - what you are about to install (a folder of files that adds one new command, `/ingest`, to Claude),
@@ -289,7 +342,7 @@ Now tell them, in your own words and in about four sentences:
 Then ask: **"Ready to start?"** Wait for them. Once they say yes:
 
 ```bash
-sh ~/.config/lifehack/mark-step.sh "STEP 0"
+sh ~/.config/lifehack/install-note.sh step "STEP 0"
 ```
 
 ---
@@ -331,7 +384,7 @@ this at all.** This costs a second and needs nothing installed — it reads the 
 pwd -P
 LOW="$(pwd -P | tr 'A-Z' 'a-z')/"
 case "$LOW" in
-  */library/cloudstorage/*|*/google\ drive/*|*/my\ drive/*|*/shared\ drives/*|*/dropbox*|*/onedrive*|*/icloud*|*/mobile\ documents/*|*/box-*|*/pcloud*)
+  */cloudstorage/*|*/google\ drive/*|*/my\ drive/*|*/shared\ drives/*|*/dropbox*|*/onedrive*|*/googledrive*|*/icloud*|*/mobile\ documents/*|*/box-*|*/pcloud*|*/sync-*|*/proton\ drive*|*/creative\ cloud*)
     echo "CLOUD-SYNC FOLDER" ;;
   *) echo "NO SYNC SERVICE IN THE PATH" ;;
 esac
@@ -340,8 +393,11 @@ case "$LOW" in */shared\ drives/*) echo "AND IT IS A SHARED DRIVE" ;; esac
 
 **`NO SYNC SERVICE IN THE PATH` → say nothing about it at all and carry straight on to STEP 2.**
 
+**Write the verdict down before you move on — this is the value that travels furthest in the whole
+file, and today it travels in your memory:**
+
 ```bash
-sh ~/.config/lifehack/mark-step.sh "STEP 1"
+sh ~/.config/lifehack/install-note.sh sync "NO SYNC SERVICE IN THE PATH"
 ```
 
 **`CLOUD-SYNC FOLDER` → stop here and go to STEP 4A.** ⛔ **Do NOT install Git, do not install Python,
@@ -356,9 +412,13 @@ here.
 > read**, so there was no reason for her to find out last.
 >
 > ⚠ **STEP 4's check is still the authority and still runs.** This one is a plain shell test on the
-> folder's name; STEP 4's is the full version and also catches protected system folders. **The two
-> service lists are the same list — if you ever change one, change the other**, or the early check
-> starts waving through folders the real gate refuses, which is worse than not having it.
+> folder's name; STEP 4's is the full version and also catches protected system folders. **There are
+> THREE copies of the service list — this one, STEP 4's, and STEP 4A.4's — and they are one list. If
+> you ever change one, change all three**, or the early check starts waving through folders the real
+> gate refuses, which is worse than not having it. *(They genuinely diverged once: the shell copies
+> were missing `sync-`, `proton drive`, `creative cloud` and the bare `googledrive` prefix, so a
+> `Sync-Resilio` or `Proton Drive` folder passed here and was then refused at STEP 4 — fixed
+> 2026-08-18, and the check above now matches STEP 4's exactly.)*
 >
 > ⛔ **This is not a warning and there is no "continue anyway".** A folder that syncs rewrites files out
 > from under git mid-write, and it corrupts quietly rather than failing loudly.
@@ -393,6 +453,14 @@ print("BRAIN-SHAPED FOLDERS: %d" % len(hits))
 for h in hits:
     print("  " + h)
 PY
+```
+
+**Either way, write the count down** — replace `<n>` with the number it printed — **and then mark the
+step:**
+
+```bash
+sh ~/.config/lifehack/install-note.sh strays "<n>"
+sh ~/.config/lifehack/install-note.sh step   "STEP 1"
 ```
 
 **`0` or `1` → say nothing at all about it and carry straight on to STEP 2.** One is the ordinary,
@@ -459,7 +527,7 @@ installer and click Next through all of it, and wait for them to say it's done.
 ⛔ **Do not continue until `git --version` prints a version.** Every later step depends on it.
 
 ```bash
-sh ~/.config/lifehack/mark-step.sh "STEP 2"
+sh ~/.config/lifehack/install-note.sh step "STEP 2"
 ```
 
 ---
@@ -511,9 +579,16 @@ works later, invisibly.
 
 ⛔ **Do not continue until Python answers with 3.9 or higher.**
 
+**Write down WHICH word answered — `python3` or `python` — and then mark the step:**
+
 ```bash
-sh ~/.config/lifehack/mark-step.sh "STEP 3"
+sh ~/.config/lifehack/install-note.sh pybin "<python3 or python, whichever answered>"
+sh ~/.config/lifehack/install-note.sh step  "STEP 3"
 ```
+
+⛔ **That note is a RECORD, not a shortcut.** Every later block still resolves the interpreter on its
+own first line, exactly as written there. **Never substitute this note for that line** — the file's
+worst bug came from a block that used an interpreter it had not resolved itself.
 
 ---
 
@@ -586,10 +661,12 @@ PY
 > ⭐ **`+ SHARED DRIVE (stream-only)` is not decoration** — a Shared drive cannot hold real files, only
 > streamed ones, and the branch below has to say so out loud. Do not drop it.
 
-**`GOOD` → say nothing about it and carry straight on to STEP 5.**
+**`GOOD` → say nothing about it and carry straight on to STEP 5.** **Write the Harness path down
+first** — it is needed again at STEP 9 and STEP 10, on the far side of the restart:
 
 ```bash
-sh ~/.config/lifehack/mark-step.sh "STEP 4"
+sh ~/.config/lifehack/install-note.sh harness "$(pwd -P)"
+sh ~/.config/lifehack/install-note.sh step    "STEP 4"
 ```
 
 **`CLOUD-SYNC FOLDER` → this is a safety gate, not a preference, and the reason is different from the
@@ -628,11 +705,14 @@ session there, or nothing the tool does later will be able to reach it.
 > ⭐ **This is NOT the cloud branch's exit.** That one goes to STEP 4A and gets moved, and a completed
 > move is a repair, not something to report. **Offer this only where the file actually stops.**
 >
-> ⭐ **The WINDOWS STOP-SIGN at STEP 1 is the other place the file actually stops** — earlier than this,
-> and harder. The same offer belongs there, in the same words. It is written out once, here, so it
-> cannot drift into two versions; when you stop at STEP 1, come back and say this one.
+> ⭐ **TWO other places in this file actually stop, and the same offer belongs at both, in these same
+> words.** The **WINDOWS STOP-SIGN at STEP 1** — earlier than this, and harder. And **STEP 7.1's
+> `NO-DRIVE-ACCOUNTS`** — a machine with no Google Drive signed in, which is the state every brand-new
+> machine starts in, so expect it rather than treating it as exotic. The offer is written out once,
+> here, so it cannot drift into three versions; when you stop at either of those, come back and say
+> this one.
 
-## STEP 4A — ⛔ THE HARNESS FOLDER SYNCS. MOVE THEM SOMEWHERE IT WORKS — DO NOT ABANDON THEM.
+## STEP 4A — ⛔ THE HARNESS FOLDER SYNCS. MOVE THE HARNESS TO LOCAL DISK — THEIR AI BRAIN STAYS PUT.
 
 **You are here because STEP 1 or STEP 4 found a sync service in the path of the folder they opened for
 the Harness. Read this whole step before you run any of it.** The tool itself cannot live in a synced
@@ -785,7 +865,7 @@ above would have refused.
 DEST="$HOME/Lifehack Harness"
 printf 'destination: %s\n' "$DEST"
 case "$(printf '%s/' "$DEST" | tr 'A-Z' 'a-z')" in
-  */library/cloudstorage/*|*/google\ drive/*|*/my\ drive/*|*/shared\ drives/*|*/dropbox*|*/onedrive*|*/icloud*|*/mobile\ documents/*|*/box-*|*/pcloud*)
+  */cloudstorage/*|*/google\ drive/*|*/my\ drive/*|*/shared\ drives/*|*/dropbox*|*/onedrive*|*/googledrive*|*/icloud*|*/mobile\ documents/*|*/box-*|*/pcloud*|*/sync-*|*/proton\ drive*|*/creative\ cloud*)
     echo "REJECTED - that destination is itself inside a sync service"; exit 1 ;;
 esac
 if [ -e "$DEST" ] && [ -n "$(ls -A "$DEST" 2>/dev/null)" ]; then
@@ -897,8 +977,8 @@ up there. When setup asks which folder is your AI Brain, that's the answer."*
 that is the exact question the session that comes back has to answer:
 
 ```bash
-sh ~/.config/lifehack/mark-step.sh "STEP 4A — moved, tool copied across"     # 4A.5 ran
-sh ~/.config/lifehack/mark-step.sh "STEP 4A — moved, nothing to copy"        # 4A.5 was skipped
+sh ~/.config/lifehack/install-note.sh step "STEP 4A — moved, tool copied across"     # 4A.5 ran
+sh ~/.config/lifehack/install-note.sh step "STEP 4A — moved, nothing to copy"        # 4A.5 was skipped
 ```
 
 ⭐ **Run exactly one of those, not both.** It records the OLD folder as the folder it ran in — which is
@@ -946,7 +1026,7 @@ ls .claude/skills/ingest/SKILL.md && echo "the skill is here"
 **Tell them what arrived**, in a sentence: the tool itself, and the specialist readers it uses.
 
 ```bash
-sh ~/.config/lifehack/mark-step.sh "STEP 5"
+sh ~/.config/lifehack/install-note.sh step "STEP 5"
 ```
 
 ⛔ **Do NOT symlink anything into `~/.claude/`.** Symlinks are Mac-coupled and this has to work on
@@ -1072,14 +1152,23 @@ test -f .claude/skills/ingest/SKILL.md && test -d .claude/agents && echo "FILES 
 git config core.hooksPath system/githooks && echo "SAFETY CATCH ON"
 ```
 
-**Say what that did, in one plain sentence:** *"I've turned on a safety catch — if anything ever tries to
-upload your own notes to the internet, it will stop and refuse."*
+**Say what that did, in one plain sentence:** *"I've turned on a safety catch — before anything gets
+saved into this tool's history, it checks the specific places your AI Brain normally lives, and refuses
+to save it if it finds anything from there."*
+
+⛔ **Say it in those words, and do not upgrade the promise.** The catch is a fixed list of file paths
+(`system/githooks/pre-commit`), not something that reads a file and understands it. It stops the places
+their material actually sits; it cannot recognise a personal file saved somewhere it was never told to
+watch. **The older wording here — *"if anything ever tries to upload your own notes to the internet, it
+will stop and refuse"* — promised a judgement the check does not make**, and on 2026-08-13 a personal
+file was force-added and the commit was accepted while that sentence was on the page. The paths were
+fixed the same day; the sentence is now honest about what kind of thing it is.
 
 ⚠ **This line IS the install.** The check ships inside the folder, but git ignores it until this command
 points at it. Without it, the file is decoration.
 
 ```bash
-sh ~/.config/lifehack/mark-step.sh "STEP 6"
+sh ~/.config/lifehack/install-note.sh step "STEP 6"
 ```
 
 **If `FILES MISSING`**, the download didn't complete. ⛔ **Do not assemble or copy files yourself.**
@@ -1139,6 +1228,29 @@ exactly what it says:
   signed in first — or ask for help doing that — and we'll pick this back up from here."* **Do not
   invent a local folder as a substitute.** Your AI Brain belongs in Drive; that is the whole point of
   this layout.
+
+  ⭐ **Say how they resume, because nothing here needs undoing — this is a pause, not a failure.** The
+  Harness is downloaded and STEP 6's safety catch is on, and both of those are correct and both stay.
+  The only thing missing is the pointer STEP 7.2 would have written, and nothing before STEP 7.2
+  creates it — so there is no half-made thing to clean up and nothing to reverse. Tell them in these
+  words or very close: *"Nothing here needs to be undone or redone. Once Google Drive is installed and
+  signed in, open Claude on this exact same folder again, drag this file back in, and say 'set up my
+  brain.' It'll see that everything up to STEP 6 is already done and pick up where we left off — you
+  won't redo the download or the safety catch."*
+  ⭐ **That promise is checkable, which is why you are allowed to make it:** STEP 6 records itself with
+  `install-note.sh step "STEP 6"`, and STEP 0 reads every one of those marks back as `STEPS ALREADY
+  DONE` before the returning session says a word. **This is exactly what the scratchpad is for.**
+  ⚠ **Do not tell them to reopen anywhere else.** The marks name this folder; a session opened
+  somewhere else is a different install.
+
+  ⭐ **AND THIS IS A STOP, SO IT IS REPORTABLE — make the offer before you stop.** This is the third
+  place the file genuinely ends a session, and a brand-new machine with no Google Drive on it is the
+  ordinary state, not an exotic one. The words are written out once, in **STEP 4**'s **A STOP IS
+  REPORTABLE** note; say them here too: *"If you'd rather report this than work around it, say 'set up
+  bug reports' in your next session and I'll walk you through it — about five minutes, and it works
+  fine even though this install didn't finish."* ⛔ **Do not set it up now and do not offer to file
+  anything yourself**, for the same reason STEP 4 gives — it turns a halted install into a second
+  unfinished thing.
 - **One or more `CANDIDATES`** → read the numbered list back to them in plain sentences (which account,
   which folder), and ask the one closed question: *"Is one of these your AI Brain already, or should I
   make a new one? Either way, this choice is easy to change later — nothing gets locked in."*
@@ -1206,6 +1318,17 @@ will follow THAT, not the folder you just connected. Stop and work out what is o
 ⭐ **This is `TARGET-STATE.md`'s fact 3.** That file is the single source of truth for what "correctly
 connected" means — this step is just where the check happens first.
 
+**Now write down which folder they chose** — a decision only they could make, and the one a session
+after the restart has no other way to recover:
+
+```bash
+PYBIN="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
+sh ~/.config/lifehack/install-note.sh brain "$("$PYBIN" shared/brain_root.py --quiet)"
+```
+
+⛔ **This records WHICH FOLDER, and nothing about whether the install is right.** Facts 3, 4 and 5
+above are what judge that, and `TARGET-STATE.md` is where they live.
+
 ### 7.4 — Prove the folder really is a synced one — the mirror image of STEP 1's refusal
 
 STEP 1 and STEP 4 refuse the Harness for living in a synced folder. Here the check runs the other way:
@@ -1232,8 +1355,19 @@ worth a second look rather than a silent pass.
 ### 7.5 — Prove a write actually reaches it
 
 ```bash
+PYBIN="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
 test -f "$("$PYBIN" shared/brain_root.py --quiet)/canon.md" && echo "REACHED THE AI BRAIN — good" || echo "⛔ NOTHING LANDED THERE — STOP"
 ```
+
+> ⛔⛔ **THAT FIRST LINE WAS MISSING, AND IT HALTED HEALTHY INSTALLS. Measured 2026-08-18.**
+> Every other block in STEP 7 opens by resolving `PYBIN`; **this one alone did not, and used it anyway.**
+> Run as written it printed `bash: : command not found` and then **`⛔ NOTHING LANDED THERE — STOP`** —
+> on a perfectly connected AI Brain. Since the line above says *anything* but `REACHED THE AI BRAIN`
+> stops the step, and no recovery branch exists, **a compliant assistant told the student their AI Brain
+> had not connected when it had.** ⚠ **This is the field report's "needed help getting back on track,"
+> located:** the only two ways past it were to halt wrongly, or to silently patch the file and carry on.
+> ⭐ **The gap between setting `PYBIN` and using it here was TWENTY LINES — the shortest in the file.**
+> Distance was never the danger. **The fresh shell is.** See the standing rule in *How to behave*.
 
 ⛔ **Anything but `REACHED THE AI BRAIN` stops this step.** `bootstrap.py` in 7.2 should have created
 `canon.md` at the root of the folder you just connected; if it isn't there, the pointer and the write
@@ -1242,7 +1376,7 @@ disagree about where your AI Brain is, and that has to be resolved before contin
 ⭐ **This is `TARGET-STATE.md`'s fact 5.**
 
 ```bash
-sh ~/.config/lifehack/mark-step.sh "STEP 7"
+sh ~/.config/lifehack/install-note.sh step "STEP 7"
 ```
 
 **Then say what you connected, in one plain sentence:** *"Your AI Brain is connected — it's the
@@ -1309,7 +1443,7 @@ AI Brain lives entirely outside the Harness. **If anything is listed, stop and r
 commit it, do not `git add` it, and do not continue until you understand what it is.
 
 ```bash
-sh ~/.config/lifehack/mark-step.sh "STEP 8"
+sh ~/.config/lifehack/install-note.sh step "STEP 8"
 ```
 
 ⭐ **Nothing that mark writes goes anywhere near the repository** — it lives in your own
@@ -1351,7 +1485,7 @@ directory out of habit and land somewhere with no tool in it at all.
 next one reads:**
 
 ```bash
-sh ~/.config/lifehack/mark-step.sh "STEP 9"
+sh ~/.config/lifehack/install-note.sh step "STEP 9"
 ```
 
 ⭐ **That line is what makes STEP 10 able to PROVE the restart happened** rather than take anyone's
@@ -1373,22 +1507,110 @@ Then **STOP. Do not continue this file. Do not offer to run `/ingest` yourself.*
 > equally happy in both worlds is not a check.
 
 ```bash
-sh ~/.config/lifehack/mark-step.sh "STEP 10 restart check"
+sh ~/.config/lifehack/install-note.sh step "STEP 10 restart check"
 python3 - <<'PY'
-import os, sys
-p = os.path.expanduser("~/.config/lifehack/install-progress.tsv")
+import os, sys, datetime
+
+MARK = "STEP 10 restart check"
+p = os.path.expanduser("~/.config/lifehack/install-scratch.tsv")
+
+def give_up(why):
+    print("CANNOT PROVE IT - " + why)
+    sys.exit(2)
+
 try:
     rows = [l.rstrip("\n").split("\t") for l in open(p) if l.strip()]
 except OSError:
-    print("CANNOT PROVE IT - there is no step log on this machine."); sys.exit(2)
-rows = [r for r in rows if len(r) >= 4 and r[3].strip() and not r[3].startswith("0 started")]
-now    = [r for r in rows if r[1] == "STEP 10 restart check"]
-before = [r for r in rows if r[1] != "STEP 10 restart check"]
-if not now or not before:
-    print("CANNOT PROVE IT - this machine does not report which Claude window is running."); sys.exit(2)
-if now[-1][3] == before[-1][3]:
-    print("NOT RESTARTED - this is the SAME Claude window that ran %s." % before[-1][1]); sys.exit(1)
-print("RESTARTED - a different Claude window from the one that ran %s." % before[-1][1]); sys.exit(0)
+    give_up("there is no step log on this machine.")
+
+def when(r):
+    try:
+        return datetime.datetime.strptime(r[0], "%Y-%m-%dT%H:%M:%S")
+    except ValueError:
+        return None
+
+MONTHS = {"Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6,
+          "Jul": 7, "Aug": 8, "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12}
+
+def launched(r):
+    # The window id is "<pid> started <the machine's own words for when it launched>".
+    # Those words are only readable when the machine speaks English; on any other
+    # machine this returns None and the check refuses rather than guessing.
+    bits = r[4].split(" started ", 1)
+    if len(bits) != 2:
+        return None
+    t = bits[1].split()                       # Tue Aug 18 16:30:57 2026
+    if len(t) != 5 or t[1] not in MONTHS:
+        return None
+    hms = t[3].split(":")
+    if len(hms) != 3:
+        return None
+    try:
+        return datetime.datetime(int(t[4]), MONTHS[t[1]], int(t[2]),
+                                 int(hms[0]), int(hms[1]), int(hms[2]))
+    except ValueError:
+        return None
+
+# Only step marks that carry a real Claude-window id and a readable time can be used.
+steps = [r for r in rows
+         if len(r) >= 5 and r[1] == "step"
+         and r[4].strip() and not r[4].strip().startswith("0 started")
+         and when(r) is not None]
+if not steps:
+    give_up("this machine does not report which Claude window is running.")
+
+# The mark this step just wrote has to be the newest one in the log.
+if steps[-1][2] != MARK:
+    give_up("the step log does not end with this step, so it is not describing this session.")
+now = steps[-1]
+age = (datetime.datetime.now() - when(now)).total_seconds()
+if age < -60 or age > 300:
+    give_up("this step's own mark did not get written, so the log cannot describe this session.")
+
+# It is measured against STEP 9 - the last thing the session before the restart did.
+before = None
+for r in reversed(steps[:-1]):
+    if r[2] != MARK:
+        before = r
+        break
+if before is None or not before[2].startswith("STEP 9"):
+    give_up("STEP 9 was never marked, so there is nothing to compare this session against.")
+if before[3] != now[3]:
+    give_up("STEP 9 was marked in a different folder, so it belongs to another install.")
+gap = (when(now) - when(before)).total_seconds()
+if gap < 0:
+    give_up("STEP 9 is marked as happening later than right now, so this machine's clock has moved and these times cannot be compared.")
+if gap > 72 * 60 * 60:
+    give_up("the STEP 9 mark is too old to be from the session they just quit.")
+
+if now[4] == before[4]:
+    print("NOT RESTARTED - this is the SAME Claude window that ran %s." % before[2]); sys.exit(1)
+
+# A DIFFERENT window is still not enough. It also has to have STARTED AFTER the moment the
+# commands landed on this disk - a window already open before then cannot have loaded them.
+# Usually that moment is STEP 5. On the STEP 4A.5 branch the tool was COPIED across instead and
+# STEP 5 never runs, so that mark counts too - and it alone is exempt from the same-folder test,
+# because by definition it was written in the OLD folder just before the move. The "nothing to
+# copy" 4A mark does NOT count: nothing landed. If both exist, the LATER one wins.
+landing = None
+for r in rows:
+    if len(r) < 4 or r[1] != "step" or when(r) is None:
+        continue
+    cloned = r[2].startswith("STEP 5") and r[3] == now[3]
+    copied = r[2].startswith("STEP 4A") and r[2].endswith("tool copied across")
+    if not (cloned or copied):
+        continue
+    if landing is None or when(r) > when(landing):
+        landing = r
+if landing is None:
+    give_up("nothing in the log says when the commands landed on this disk, so there is no moment to check this window started after.")
+up = launched(now)
+if up is None:
+    give_up("this machine did not say, in a form this check can read, when the current Claude window started.")
+if up <= when(landing):
+    give_up("this Claude window was already open before the commands landed on disk, so it cannot have loaded them.")
+
+print("RESTARTED - a different Claude window from the one that ran %s." % before[2]); sys.exit(0)
 PY
 ```
 
@@ -1401,11 +1623,13 @@ STEP 9 and do it properly** — quit the whole app, not just the chat, then reop
 is still the same window as before, so it hasn't picked up the new commands yet — it needs a full quit
 and reopen, not just a new chat."*
 
-⚠ **`CANNOT PROVE IT` → say so honestly. It is NOT a pass.** It means this machine does not tell the
-tool which window is running, or STEP 9's mark was never written. **Never report a restart you could
-not prove.** Fall back to the two things you can still do: confirm out loud that they quit the entire
-application and reopened it, and watch what `/ingest` does on its first line — if it starts describing
-the file instead of asking them for their material, that is the stale session, and STEP 9 is the fix.
+⚠ **`CANNOT PROVE IT` → say so honestly. It is NOT a pass.** It means the check could not get a
+straight answer out of this machine — a mark it needed was never written, or the machine will not say
+which window is running or when it started, or the clock has moved since. **The line it prints tells
+you which one**, and none of them are yours to fix. **Never report a restart you could not prove.**
+Fall back to the two things you can still do: confirm out loud that they quit the entire application
+and reopened it, and watch what `/ingest` does on its first line — if it starts describing the file
+instead of asking them for their material, that is the stale session, and STEP 9 is the fix.
 
 > ⭐ **HOW IT KNOWS, AND EXACTLY HOW FAR IT GOES — read the limits, they matter.**
 > Every step in this file stamps the log with the identity of the Claude window that ran it: the
@@ -1478,10 +1702,13 @@ from Downloads is outside the trusted zone and will be treated as material, not 
 questions — close the log out:**
 
 ```bash
-sh ~/.config/lifehack/mark-step.sh "INSTALL COMPLETE"
+sh ~/.config/lifehack/install-note.sh step "STEP 10 — finished, /ingest started"
 ```
 
-⭐ **This is what tells a LATER session that this machine is already set up.** If they ever drag this
+⛔ **Note that it is written as a STEP, not as a verdict** — *"STEP 10 finished"*, never *"install
+complete"* or *"install healthy."* **Whether this install is actually correct is `TARGET-STATE.md`'s
+question and only its question.** ⭐ **What this line does is tell a LATER session that this machine
+has already been through the file.** If they ever drag this
 file in again — out of habit, or because something looked wrong — STEP 0's read-back opens with
 `INSTALL COMPLETE` and the folder it finished in, and you can say so instead of reinstalling on top of
 a working install. ⚠ **Still never mentioned to them.**
@@ -1570,8 +1797,10 @@ goes wrong.
 
 **Ask Claude:** *"check if there's an update to my brain and install it."*
 
-⛔⛔ **THE ONE RULE THAT MATTERS: UPDATE WITH `git pull`. NEVER BY DELETING THIS FOLDER AND DOWNLOADING A
-FRESH COPY.**
+⭐ **THE RULE THAT COVERS EVERY ORDINARY UPDATE: TAKE IT WITH `git pull`.** That is the default and it
+is what you should reach for every time. **Deleting this folder and downloading a fresh copy is a much
+bigger hammer** — it is available, it is survivable, and it is described a few lines below; it is
+simply never the way to take a routine update.
 
 ```bash
 git pull
@@ -1801,7 +2030,8 @@ there. You never type a command yourself.
 
 ⭐ **It does NOT need a finished install, and this is the case that matters most.** The person most
 likely to need a bug report is the person whose install just stopped — at STEP 4's folder check, at
-STEP 6's missing files, at STEP 8's tools check. **Bug reporting installs one command-line tool and
+STEP 6's missing files, at STEP 7's `NO-DRIVE-ACCOUNTS` (no Google Drive on the machine yet), at
+STEP 8's tools check. **Bug reporting installs one command-line tool and
 signs you in; it touches nothing this file builds and depends on none of it.** So if the install above
 halted, this still works, and it is the right next move. *(`docs/REPORT-A-BUG.md` was corrected to say
 the same on 2026-08-16 — it used to send a half-installed reader back here, to the one thing already
