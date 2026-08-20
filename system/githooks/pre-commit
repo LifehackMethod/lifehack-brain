@@ -71,16 +71,41 @@ fi
 # Nobody edits a document to make its citation dangle -- they move or rename the file it points at,
 # and the document that goes stale is one they never opened.
 #
+# WHY SCOPED TO $staged (computed at the top of this file) AND NOT THE WHOLE TREE. Before this, a
+# stale citation ANYWHERE in the repository blocked EVERY commit, including one that touched
+# neither the stale document nor anything it names -- a fresh clone with a single pre-existing
+# citation could not commit at all (issues #81, #90, #74.3). $staged is already the set this commit
+# is actually about; scoping to it makes the gate block what this commit broke, not what someone
+# else left broken. `citation_lint.py --files` still runs the HOOKS check (settings.json <->
+# system/hooks/) when the staged set touches either side of it, so a commit that really does
+# register a hook wrong is still caught -- and a bare `python3 citation_lint.py`, with no --files at
+# all, still walks the whole tree: that is what CI runs, and what the line below tells you to run by
+# hand. Scoping what BLOCKS A COMMIT is not the same as checking less overall.
+#
 # WHY IT FAILS OPEN WITHOUT python3 AND THE CHECK ABOVE DOES NOT: that one protects a person's
 # private notes from an irreversible push, so it must never be skippable. This one protects the
 # documentation's accuracy, and blocking a commit because an interpreter is missing would cost more
 # than the drift it caught. It says so rather than passing quietly.
 repo=$(git rev-parse --show-toplevel)
 if command -v python3 >/dev/null 2>&1; then
-	if ! python3 "$repo/system/tools/citation_lint.py" --quiet; then
+	# $staged is newline-separated (one path per line, from --name-only above); split on newline
+	# ONLY (not space) and turn glob expansion off, so a staged filename holding a space or a `*`
+	# becomes one correct argument instead of several wrong ones.
+	old_ifs=$IFS
+	IFS='
+'
+	set -f
+	set -- $staged
+	set +f
+	IFS=$old_ifs
+
+	if ! python3 "$repo/system/tools/citation_lint.py" --quiet --files "$@"; then
 		echo "  Commit refused. Fix the lines above, or run the lint yourself to see them again:"
 		echo ""
-		echo "      python3 system/tools/citation_lint.py"
+		echo "      python3 system/tools/citation_lint.py --files $staged"
+		echo ""
+		echo "  (That checks only what you staged. For the whole tree, drop --files entirely --"
+		echo "   that is also what CI runs.)"
 		echo ""
 		exit 1
 	fi
