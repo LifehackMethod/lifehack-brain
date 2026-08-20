@@ -48,6 +48,10 @@
 
 _HOOKDIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd -P)"
 REPO="${CLAUDE_PROJECT_DIR:-${_HOOKDIR%/system/hooks}}"
+# See system/hooks/lib/winpath_fold.sh: on Windows, `pwd -P` and Python's os.path.realpath spell
+# the same directory two different ways, so REPO_REAL and FILE_PATH below (built through one or
+# the other) would never compare equal without this. Sourced here (not deny()'d yet -- deny() is
+# defined below this point) so a missing lib is caught the first time it is actually needed.
 
 deny() {
   printf 'BLOCKED (write-paths guard): %s\n' "$1" >&2
@@ -97,6 +101,11 @@ import os,sys
 try: print(os.path.realpath(sys.argv[1]))
 except Exception: print('')" "$REPO" 2>/dev/null)
 [ -n "$REPO_REAL" ] || exit 0     # cannot locate the repo; this guard has nothing to say
+. "$_HOOKDIR/lib/winpath_fold.sh" 2>/dev/null || \
+  deny "the path-form normaliser (lib/winpath_fold.sh) could not be loaded, so REPO_REAL and FILE_PATH cannot be safely compared." \
+"REDIRECT: confirm system/hooks/lib/winpath_fold.sh exists and is readable, then retry."
+REPO_REAL="$(_winfold "$REPO_REAL")"
+FILE_PATH="$(_winfold "$FILE_PATH")"
 
 case "$FILE_PATH" in
   # Tests are NOT enforcement. A guard's test suite proves the guard works; it does not do the

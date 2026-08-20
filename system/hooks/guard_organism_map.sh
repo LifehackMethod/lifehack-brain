@@ -84,6 +84,11 @@ deny() {
 }
 
 _HOOKDIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd -P)"
+# See system/hooks/lib/winpath_fold.sh: on Windows, `pwd -P` and Python's os.path.realpath spell
+# the same directory two different ways, so REPO_REAL and FP below (both built through one or the
+# other) would never compare equal without this. Fails CLOSED if the lib cannot be loaded, same as
+# every other unreadable-input case in this guard.
+. "$_HOOKDIR/lib/winpath_fold.sh" 2>/dev/null || deny '{"decision":"block","reason":"BLOCKED: guard_organism_map could not load lib/winpath_fold.sh, the path-form normaliser its repo-root comparison depends on -- failing CLOSED. REDIRECT: confirm system/hooks/lib/winpath_fold.sh exists and is readable, then retry."}'
 REPO="${CLAUDE_PROJECT_DIR:-${_HOOKDIR%/system/hooks}}"
 
 INPUT=$(cat 2>/dev/null) || deny '{"decision":"block","reason":"BLOCKED: guard_organism_map could not read its input, so it is failing closed. WHY: this guard stands over system/organism/ — the description this repository keeps of its own attack surface, and the ground truth the honesty-label checker grades against. An unreadable payload and a harmless one must never look the same. REDIRECT: retry the write; author the map with surgical Edits (old_string -> new_string), which are allowed and are the normal authoring path. RULE: system/organism/map-format-specs.md section 6.4 + the maintenance contract atop system/organism/manual.md."}'
@@ -126,6 +131,8 @@ import os, sys
 try: print(os.path.realpath(sys.argv[1]))
 except Exception: print('')" "$REPO" 2>/dev/null)
 [ -n "$REPO_REAL" ] || exit 0     # cannot locate the repo; this guard has nothing to say
+REPO_REAL="$(_winfold "$REPO_REAL")"
+FP="$(_winfold "$FP")"
 
 case "$FP" in
   "$REPO_REAL"/system/organism/manual.md \
