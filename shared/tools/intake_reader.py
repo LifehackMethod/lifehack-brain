@@ -203,6 +203,10 @@ def run_intake_judge(raw_text: str, findings: list) -> dict:
 # Self-test (run with:  python3 shared/tools/intake_reader.py)
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
+    import os, sys
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "system", "tools")))
+    from utf8_stdio import force_utf8_stdio
+    force_utf8_stdio()
     import base64
 
     PASS = "\033[32mPASS\033[0m"

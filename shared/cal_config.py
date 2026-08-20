@@ -137,6 +137,10 @@ def require(*keys, **kw):
 
 
 if __name__ == "__main__":
+    import os, sys
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "system", "tools")))
+    from utf8_stdio import force_utf8_stdio
+    force_utf8_stdio()
     # `--get <key>` prints ONE value and nothing else, so a skill can substitute it into a command.
     # A missing key exits non-zero with the instructions on stderr, which means the surrounding
     # command fails loudly instead of running with an empty id — the whole point of having no
