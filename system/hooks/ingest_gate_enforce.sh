@@ -62,9 +62,24 @@
 # the normal path and costs nothing; `git` is only consulted if the layout is unexpected.
 # `pwd -P` gives the PHYSICAL path — symlinks resolved — because that is the form the tool reports.
 _HOOKDIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd -P)"
+
+# ── WINDOWS PATH-FORM BRIDGE (2026-08-20, GitHub #73 / #77 D1 / #92 item 3). $REPO/$NOTES_ROOT/
+# $HOME_P below are canonicalised with `pwd -P`; $FP further down is canonicalised with Windows-
+# native Python's `os.path.realpath`. Both are fully correct — this is NOT about resolving less —
+# but on Windows they spell the identical directory two different ways (/c/Repo vs C:\Repo), so
+# the bash string/glob comparisons this whole gate rests on never match and everything falls to
+# the deny arm. `_winfold` (sourced below) folds both spellings into one AFTER each side is
+# already fully resolved; it is a no-op, byte for byte, everywhere except Windows. Missing the lib
+# fails CLOSED, same as every other unreadable-input case in this file.
+. "$_HOOKDIR/lib/winpath_fold.sh" 2>/dev/null || {
+  printf '%s\n' '{"decision":"block","reason":"BLOCKED: ingest_gate_enforce could not load lib/winpath_fold.sh, the path-form normaliser its trusted-zone comparison depends on -- failing CLOSED. WHY: a gate that cannot canonicalise both sides of its own allowlist consistently must not guess which paths are trusted. REDIRECT: confirm system/hooks/lib/winpath_fold.sh exists and is readable, then retry."}' >&2
+  exit 2
+}
+
 REPO="${_HOOKDIR%/system/hooks}"
 [ "$REPO" = "$_HOOKDIR" ] && REPO="$(cd "$_HOOKDIR" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null)"
 : "${REPO:=/dev/null/no-repo-resolved}"
+REPO="$(_winfold "$REPO")"
 
 # ── THE NOTES ROOT. $LIFEHACK_ROOT first, then THIS REPO'S .brain-root pointer, then the
 # persisted ~/.config/lifehack/brain-root. Mirrors shared/brain_root.py's resolution order
@@ -92,9 +107,15 @@ notes_root() {
   printf '%s' "${_nrp:-$_nr}"
 }
 NOTES_ROOT="$(notes_root || true)"
+NOTES_ROOT="$(_winfold "$NOTES_ROOT")"
 # $HOME can itself be reached through a symlink; keep both forms so neither shape misses.
 HOME_P="$(cd "$HOME" 2>/dev/null && pwd -P)"
 : "${HOME_P:=$HOME}"
+HOME_P="$(_winfold "$HOME_P")"
+# A folded copy of $HOME for the trusted-zone comparisons ONLY -- $HOME itself stays untouched
+# everywhere else in this file (e.g. the notes_root() file reads above), because those need the
+# real path bash's own builtins resolve on this host, not a cosmetically-refolded one.
+HOME_FOLDED="$(_winfold "$HOME")"
 # ⛔ NEVER let this be empty: an empty value turns the pattern "$NOTES_ROOT"/* into /*, which
 # matches every absolute path on the machine and silently opens the gate.
 : "${NOTES_ROOT:=/dev/null/no-notes-root-is-set}"
@@ -147,6 +168,7 @@ try:
     p = ti.get('file_path') or ti.get('path') or ''
     print(os.path.realpath(p) if p else '')
 except Exception: print('')" 2>/dev/null)
+    FP="$(_winfold "$FP")"
     [ -z "$FP" ] && exit 0
     # ── THE SCRATCH LOCK. The main session may NOT read the sanitized ingest scratch; it
     # delegates to a spawned tool-less ingest-reader. This is the reader-actor split made
@@ -194,7 +216,7 @@ except Exception: print('')" 2>/dev/null)
           # The carve-outs, FIRST because `case` takes the first match.
           "$NOTES_ROOT"/memory/*|"$REPO"/memory/*|*/_unpacked/*)
             deny '{"decision":"block","reason":"BLOCKED: raw Read of a file under memory/ or _unpacked/. WHY: the rest of these folders is trusted, but this is where raw material lands — an exported chat archive, someone else'"'"'s documents, pasted text — so it is external content sitting inside a trusted folder. That is the whole reason it is gitignored. REDIRECT: python3 <repo>/system/tools/safe_read.py <path> — sanitize, scan, then clean text. RULE: the trusted-zone allowlist lives in system/hooks/ingest_gate_enforce.sh; to change it, edit the allowlist there."}' ;;
-          "$REPO"/*|"$HOME"/.claude/*|"$HOME_P"/.claude/*|"$NOTES_ROOT"/*)
+          "$REPO"/*|"$HOME_FOLDED"/.claude/*|"$HOME_P"/.claude/*|"$NOTES_ROOT"/*)
             exit 0 ;;
           *)
             deny '{"decision":"block","reason":"BLOCKED: raw Read of an EXTERNAL .txt/.md file. WHY: text from outside this repo and your own notes can carry what a human cannot see — zero-width characters, right-to-left overrides, control codes, and an instruction written to the model rather than to you. Plain text is not safe text. REDIRECT: python3 <repo>/system/tools/safe_read.py <path> — sanitize, scan, then clean text. RULE: the trusted zone is this repo, ~/.claude, and your notes root; the allowlist lives in system/hooks/ingest_gate_enforce.sh."}' ;;
@@ -212,7 +234,7 @@ except Exception: print('')" 2>/dev/null)
         case "$FP" in
           "$NOTES_ROOT"/memory/*|"$REPO"/memory/*|*/_unpacked/*)
             deny '{"decision":"block","reason":"BLOCKED: raw Read of a file under memory/ or _unpacked/. WHY: the rest of these folders is trusted, but this is where raw material lands — an exported chat archive, someone else'"'"'s documents, pasted text — so it is external content sitting inside a trusted folder. REDIRECT: python3 <repo>/system/tools/safe_read.py <path>. RULE: the trusted-zone allowlist lives in system/hooks/ingest_gate_enforce.sh."}' ;;
-          "$REPO"/*|"$HOME"/.claude/*|"$HOME_P"/.claude/*|"$NOTES_ROOT"/*)
+          "$REPO"/*|"$HOME_FOLDED"/.claude/*|"$HOME_P"/.claude/*|"$NOTES_ROOT"/*)
             exit 0 ;;
           *)
             deny '{"decision":"block","reason":"BLOCKED: raw Read of an EXTERNAL file whose type this gate does not recognise (.eml .html .ics .vcf .json .xml .log, or no extension at all). WHY: fail-safe defaults — an unrecognised type outside the trusted zone is UNKNOWN, not safe. A .eml or a .html carries exactly the payloads the .pdf and .docx branches above already block. REDIRECT: python3 <repo>/system/tools/safe_read.py <path>. RULE: the trusted zone is this repo, ~/.claude, and your notes root; widen the allowlist in system/hooks/ingest_gate_enforce.sh — do not restore a bare allow here."}' ;;
