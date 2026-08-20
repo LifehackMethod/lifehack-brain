@@ -48,6 +48,12 @@ WHAT IT LOCKS
 Run:  python3 system/tools/test_sanitize.py
 Exit: 0 = all green · 1 = any failure (prints a per-case report).
 """
+
+import os, sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "system", "tools")))
+from utf8_stdio import force_utf8_stdio
+force_utf8_stdio()
+
 import html as _html_mod
 import os
 import re
