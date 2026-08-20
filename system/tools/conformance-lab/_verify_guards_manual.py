@@ -15,6 +15,12 @@ data root degrades to a placeholder string rather than aborting.
 Run:  python3 _verify_guards_manual.py     (payloads live IN this file — never pass
 them on a Bash command line, or the live PreToolUse guards block the harness itself.)
 """
+
+import os, sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "system", "tools")))
+from utf8_stdio import force_utf8_stdio
+force_utf8_stdio()
+
 import json, subprocess, os, sys
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

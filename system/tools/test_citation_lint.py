@@ -64,6 +64,18 @@ class Fixture(unittest.TestCase):
         finally:
             sys.stdout = held
 
+    def lint_scoped(self, *files):
+        """Same as `lint()`, but with `--files <files...>` -- what pre-commit calls with the staged
+        set. `lint_scoped()` with no paths is `--files` given and empty (nothing staged), never the
+        same thing as a bare `lint()` (no `--files` flag at all -> unscoped)."""
+        from io import StringIO
+        held, sys.stdout = sys.stdout, StringIO()
+        try:
+            rc = lint.main(["--root", self.root, "--files"] + list(files))
+            return rc, sys.stdout.getvalue()
+        finally:
+            sys.stdout = held
+
 
 class PathsMustResolve(Fixture):
     def test_a_dangling_path_fails_and_the_output_names_it(self):
@@ -310,6 +322,53 @@ class HooksBothWays(Fixture):
         rc, out = self.lint()
         self.assertEqual(rc, lint.CANNOT_READ)
         self.assertIn("CANNOT-READ", out)
+
+
+class ScopedToStagedFiles(Fixture):
+    """`--files` is what `system/githooks/pre-commit` passes on the staged set, so that
+    pre-existing drift in a file nobody is touching cannot block an unrelated commit -- issues
+    #81/#90/#74.3. The gate must still bite on the file that IS in scope."""
+
+    def test_a_dangling_citation_outside_scope_does_not_block(self):
+        self.write("docs/untouched.md", "Run `system/tools/nope.py` first.\n")
+        # Same tree, unscoped, still fails -- this is the pre-existing-debt case the bug reports
+        # describe. The dangling file is real; it is just not part of what is being committed.
+        self.assertEqual(self.lint()[0], 1)
+        rc, out = self.lint_scoped("docs/other.md")
+        self.assertEqual(rc, 0)
+        self.assertNotIn("system/tools/nope.py", out)
+
+    def test_the_same_dangling_citation_inside_scope_still_blocks(self):
+        self.write("docs/untouched.md", "Run `system/tools/nope.py` first.\n")
+        rc, out = self.lint_scoped("docs/untouched.md")
+        self.assertEqual(rc, 1)
+        self.assertIn("system/tools/nope.py", out)
+
+    def test_an_empty_scope_is_zero_files_not_the_whole_tree(self):
+        # `--files` with nothing after it (an empty staged set, e.g. a deletion-only commit) must
+        # scope to nothing -- never fall back to the unscoped whole-tree sweep.
+        self.write("docs/untouched.md", "Run `system/tools/nope.py` first.\n")
+        rc, out = self.lint_scoped()
+        self.assertEqual(rc, 0)
+        self.assertNotIn("system/tools/nope.py", out)
+
+    def test_a_hook_registration_gap_outside_scope_does_not_block(self):
+        os.remove(os.path.join(self.root, "system/hooks/live.sh"))
+        rc, out = self.lint_scoped("docs/other.md")
+        self.assertEqual(rc, 0)
+        self.assertNotIn("registered and is not on disk", out)
+
+    def test_the_same_hook_registration_gap_still_blocks_when_settings_is_staged(self):
+        os.remove(os.path.join(self.root, "system/hooks/live.sh"))
+        rc, out = self.lint_scoped(".claude/settings.json")
+        self.assertEqual(rc, 1)
+        self.assertIn("registered and is not on disk", out)
+
+    def test_the_same_hook_registration_gap_still_blocks_when_a_hook_file_is_staged(self):
+        os.remove(os.path.join(self.root, "system/hooks/live.sh"))
+        rc, out = self.lint_scoped("system/hooks/live.sh")
+        self.assertEqual(rc, 1)
+        self.assertIn("registered and is not on disk", out)
 
 
 class NeverAFalseClean(Fixture):
