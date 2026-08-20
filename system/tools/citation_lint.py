@@ -58,6 +58,13 @@ WHAT THIS DELIBERATELY DOES NOT CHECK -- stated because a silent limit reads as 
   * WHETHER THE CITATION IS TRUE. That `system/tools/journal.py` exists is checkable; that it does
     what the sentence claims is not.
 
+SCOPE. A bare run checks the whole tree -- what CI does, and what a person gets running this by
+hand. `--files <path> [<path> ...]` restricts PATHS/SKILLS to citations living in the given files,
+and runs HOOKS only when the given set actually touches `.claude/settings.json` or `system/hooks/`.
+`system/githooks/pre-commit` calls it this way, on the staged set, so pre-existing drift in a file
+nobody is touching this commit cannot block it -- while `--files` with a citation-bearing file IN it
+still catches a real break in that file, and a bare run (CI) still sees everything.
+
 Exit: 0 clean * 1 drift (the failures are named) * 2 bad arguments * 4 could not read the tree.
 """
 import argparse
@@ -308,13 +315,19 @@ def resolves(root, path):
     return os.path.exists(full)
 
 
-def markdown_files(root):
+def markdown_files(root, scope=None):
+    """Every .md file under root, or — when `scope` is a set of repo-relative paths (the staged
+    set, from pre-commit) — only the ones IN it. `scope=None` means unscoped: the whole tree, which
+    is what a bare CI run still gets."""
     out = []
     for base, dirs, files in os.walk(root):
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
         for f in files:
             if f.endswith(".md") and not f.endswith(".bak"):
-                out.append(os.path.relpath(os.path.join(base, f), root))
+                rel = os.path.relpath(os.path.join(base, f), root)
+                if scope is not None and rel not in scope:
+                    continue
+                out.append(rel)
     return sorted(out)
 
 
@@ -334,13 +347,13 @@ def open_landing_named(text):
     return None
 
 
-def lint_paths_and_skills(root, findings, counts):
+def lint_paths_and_skills(root, findings, counts, scope=None):
     tops = repo_tops(root)
     skills_dir = os.path.join(root, ".claude", "skills")
     have_skills = set(os.listdir(skills_dir)) if os.path.isdir(skills_dir) else set()
 
     seen_stale = set()
-    for rel in markdown_files(root):
+    for rel in markdown_files(root, scope):
         if rel in EXEMPT_FILES:
             counts["exempt_files"] += 1
             continue
@@ -462,8 +475,16 @@ def lint_paths_and_skills(root, findings, counts):
                     counts["declined"] += 1
 
 
-def lint_hooks(root, findings, counts):
+def lint_hooks(root, findings, counts, scope=None):
     settings_rel = ".claude/settings.json"
+    # This check is not per-file the way PATHS/SKILLS are -- it is one whole-repo comparison of
+    # settings.json against system/hooks/. Scoped to a staged set, it only has something new to say
+    # when the staged set actually touches one side of that comparison; otherwise every commit would
+    # keep re-litigating pre-existing hook-registration drift nobody staged, which is the exact bug
+    # this scoping exists to close.
+    if scope is not None and not any(
+            p == settings_rel or p == "system/hooks" or p.startswith("system/hooks/") for p in scope):
+        return 0
     settings = os.path.join(root, settings_rel)
     if not os.path.exists(settings):
         print_cannot_read("%s does not exist — nothing to check registration against" % settings_rel)
@@ -515,6 +536,19 @@ def main(argv=None):
     ap.add_argument("--root", default=default_root,
                     help="repository root (default: this script's own repo, never the cwd)")
     ap.add_argument("--quiet", action="store_true", help="print nothing when clean")
+    # SCOPE, for a caller that already knows which files are under review (pre-commit, on its
+    # staged set) rather than the whole tree (a bare run -- CI, or a person at the prompt -- which
+    # is what every caller got before this flag existed, and still gets by default).
+    #
+    # ⛔ NOT nargs='*' with no flag at all: that cannot tell "omitted" (full tree) apart from
+    # "given, and empty" (nothing staged -- diff-filter=ACMR can legitimately yield zero paths, e.g.
+    # a commit that only deletes files). `--files` absent -> None -> unscoped. `--files` present with
+    # zero values after it -> [] -> scoped to nothing. Different questions; argparse tells them apart.
+    ap.add_argument("--files", nargs="*", default=None, metavar="PATH",
+                    help="restrict PATHS/SKILLS checks to these repo-relative paths, and the HOOKS "
+                         "check to running at all only when one of them is settings.json or under "
+                         "system/hooks/ -- e.g. the staged set from pre-commit. Omit for the "
+                         "whole-repo sweep (CI, and a person running this by hand).")
     args = ap.parse_args(argv)
 
     root = os.path.abspath(args.root)
@@ -522,13 +556,15 @@ def main(argv=None):
         print_cannot_read("no such directory: %s" % root)
         return CANNOT_READ
 
+    scope = None if args.files is None else {os.path.normpath(f) for f in args.files}
+
     findings = []
     counts = {"path_citations": 0, "skill_citations": 0, "registrations": 0, "hook_files": 0,
               "resolved": 0, "deferred": 0, "declined": 0, "data_paths": 0, "exempt_files": 0}
     # A check that could not RUN never reports clean: rc 4 is the no-outcome member, distinct from
     # every failure below, which means the check ran and found something.
     for check in (lint_paths_and_skills, lint_hooks):
-        rc = check(root, findings, counts)
+        rc = check(root, findings, counts, scope)
         if rc:
             return rc
 
