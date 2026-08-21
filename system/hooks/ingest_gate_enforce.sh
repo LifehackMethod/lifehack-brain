@@ -97,10 +97,28 @@ notes_root() {
   fi
   [ -n "$_nr" ] || _nr="$(cat "$HOME/.config/lifehack/brain-root" 2>/dev/null)"
   while [ "${_nr%/}" != "$_nr" ]; do _nr="${_nr%/}"; done      # any number of trailing slashes
+  # A Windows notes root is stored in NATIVE form (G:\Shared drives\AI BRAIN) - absolute, but it does
+  # not begin with "/", so it matched no arm below and fell through to `*) return 1`. NOTES_ROOT then
+  # became the no-root sentinel and the person's ENTIRE AI Brain was classified as EXTERNAL: every
+  # Read of their own notes denied, and canon promotion IMPOSSIBLE - canon can only be written with
+  # Write/Edit (guard_canon_write.sh closes the Bash door) and Write requires a prior Read. Found on
+  # Windows 2026-08-21, one function upstream of 6bb308f's path-folding fix.
+  # Normalised into a SEPARATE variable so $_nr itself is untouched: `cd` and `-d` below need the
+  # real spelling this host resolves, exactly as the header warns. Same `tr` form winpath_fold.sh
+  # uses. Verified on 8 cases: G:\..., C:/..., g:\... match; /g/..., relative/path, G:no-sep,
+  # http://..., and "" all correctly do not.
+  _nr_fwd="$(printf '%s' "$_nr" | tr '\\' '/')"
   case "$_nr" in
     ""|"/"|"$HOME") return 1 ;;
     /*) [ -d "$_nr" ] || return 1 ;;
-    *) return 1 ;;
+    *)
+      # TRUSTED-ZONE PROPERTY UNCHANGED: the directory must still exist, and "" / "/" / $HOME are
+      # still refused above. `cd` + `pwd -P` below still canonicalises to the MSYS spelling that
+      # _winfold folds both sides of the comparison into.
+      case "$_nr_fwd" in
+        [A-Za-z]:/*) [ -d "$_nr" ] || return 1 ;;
+        *) return 1 ;;
+      esac ;;
   esac
   # Canonical form: doubled slashes collapsed, symlinks resolved — see the note above.
   _nrp="$(cd "$_nr" 2>/dev/null && pwd -P)"
