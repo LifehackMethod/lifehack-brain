@@ -132,6 +132,16 @@ one has all three — they just do not look like the textbook.
   a database would add migrations, a daemon, and a second source of truth, to solve a scale
   problem that does not exist.
 
+**The lifecycle that follows from the git/Drive split:** `git pull` replaces the git side wholesale —
+every tracked file, this manual and the map in `CLAUDE.md` included — and never comes near the Drive
+side, because the AI Brain was never inside the folder a pull writes into. **A person's own machinery
+(a skill, agent, hook, script) never sits in either of those two paths at all** — it lives outside the
+repo, in `~/.claude/` or the AI Brain, precisely so a pull has nothing of theirs to touch. `~/.claude/`
+itself is the one home that rides neither side cleanly: required there so the harness can FIND a
+skill/agent/command/hook, it survives a pull because nothing there is git-tracked — but it is not on
+the Drive side either, so it is backed up nowhere. Full account, including the discovery test and the
+`~/.claude/` gap: `system/organism/elements/where-things-live.md`.
+
 ### 2. The compensating rule: ASSERT the output, never report success
 
 The cost of the choices above is that nothing is type-checked and nothing fails loudly on its
@@ -1244,6 +1254,16 @@ INTEROP:
   COMPLEMENTS  email-service         · the daily's email surface routes through shared/tools/email_convert.py, which ships but has never run against a real mailbox — the inbox slice is EMPTY BY BREAKAGE and says so
   COMPLEMENTS  build-plan-plane      · a different sense of "plan": that element structures and executes PROJECT plans (Phase/Feature/Task); this one plans a DAY and a WEEK. No shared code, no shared store — named so nobody merges them
   PROPOSES     backlog-authority     · the weekly's ranked output and the daily's open-loop pass surface work the reader then decides on; neither writes a backlog itself
+
+## where-things-live · a new skill/agent/hook/file needs a home   [PARTIAL·gap (honor)]   → elements/where-things-live.md
+Answers "where does this go" for anything a person builds or writes themselves — sorted by ONE question they already know the answer to, who is this for. For me: outside this repo entirely, in `~/.claude/<kind>/<name>/` if the harness must DISCOVER it, or the AI Brain if something merely CALLS it by path. For everyone: inside this repo, on a branch, offered back as a PR — ordinary open source. For a whole separate system: copy it out and run it as a fork, which will not receive Harness updates. States plainly that `~/.claude/` itself is backed up nowhere.
+
+INTEROP:
+  READS        brain                 · shares brain.md's git/Drive vocabulary (repo = machinery, AI Brain = content) and extends it with the third surface, `~/.claude/`, that brain.md does not cover
+  READS        skill-system          · the discovery mechanism this element generalizes is skill-system's own registration chain (`~/.claude/skills/` symlink discovery); this element states the rule skill-system only demonstrates for one kind
+  READS        hook-plane            · hook registration is the one kind this element found to have NO confirmed personal home — the tracked `.claude/settings.json` is the only documented registration surface, and it travels by wholesale `git pull` replacement like every other tracked file
+  COMPLEMENTS  two-machine-residency · that element's parity model is for THIS repo's own tracked files across two machines; this element is about material that is deliberately NOT tracked at all — adjacent problem, opposite mechanism
+  GUARDED-BY   guard_write_paths.sh  · PreToolUse Write|Edit blocks a *new* file written directly under `~/.claude/skills/` or `~/.claude/commands/` with a redirect message that names a different repo's clone path — a real, live inconsistency with the no-symlink rule this element documents rather than resolves
 
 ## Delivery (Feature 1.6 — after the elements are authored)
 One pointer line in global `CLAUDE.md` + one line per desk naming the elements that touch it. A PreToolUse
