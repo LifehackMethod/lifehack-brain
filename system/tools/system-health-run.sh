@@ -24,3 +24,15 @@ ingest_acquire_lock "$JOB"
 # one (observed 2026-08-21: sweeps at 16:00, 16:30, 17:00, 17:25, 17:55). A plain call lets bash
 # wait, clean the lock, and still exit with python's status (it is the last command).
 python3 "$CODE_ROOT/system/tools/system-health.py"
+rc=$?
+
+# doctrine-sync (added 2026-08-22): are this machine's per-machine doctrine files
+# (CLAUDE.local.md, .claude/settings.local.json) in step with the shared mirror in the notes folder?
+# Writes ONE Hospital finding per file through emit_finding.py (producer doctrine-sync-<machine>,
+# so two machines never share a shard). Its findings ARE its output — a DRIFT is a finding, not a
+# job failure — so its exit code never becomes this job's verdict; a non-zero here is said out loud
+# and otherwise ignored. Rides this job rather than a new manifest row so it shares the lock + cadence.
+python3 "$CODE_ROOT/system/tools/doctrine_sync.py" check >/dev/null \
+  || echo "system-health: doctrine_sync check returned rc=$? (its findings are its output; sweep verdict unchanged)" >&2
+
+exit $rc
