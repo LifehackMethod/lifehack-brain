@@ -65,3 +65,10 @@ migration-audit/
 
 # the per-install pointer to this brain's notes folder — personal path, NEVER committed
 .brain-root
+
+# the per-install personal instruction file — Claude Code auto-loads it alongside
+# CLAUDE.md, and it is where an operator's own standing rules belong. Same reasoning
+# as .brain-root above: personal content, per-machine, NEVER committed. Ignoring it
+# also keeps a tracked copy from colliding with the untracked one every install
+# already has. See docs/LOCAL-INSTRUCTIONS.md.
+CLAUDE.local.md
