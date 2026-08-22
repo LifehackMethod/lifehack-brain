@@ -370,7 +370,7 @@ partial feed.
 | `WRITES→` | (ground-truth log) | `state/health.jsonl` — append-only invariant record; survives tile lies; not consumed by any UI today |
 | `READS` | egress-allowlist-wall | `guard_egress.sh` presence is one of the four critical hooks asserted by Invariant 1; tampering detected by Invariant 2 |
 | `READS` | hook-plane | All guard hook files in `system/hooks/guard_*.sh` — Invariant 1 checks presence; Invariant 2 checks git-committed state |
-| `READS` | sentinel | `state/status/sentinel.json` tile consumed by `sentinel_fold()` in the sweeper; Sentinel DANGER escalated to `need_attention[]` |
+| `READS` | sentinel | `state/status/sentinel.json` tile consumed by `sentinel_fold()` in the sweeper; Sentinel DANGER escalated to `need_attention[]`; a `CLEAR` tile yields an `UP` row so the Hospital gets an `OK` finding that supersedes the prior DANGER (since 2026-08-21 — before that, CLEAR produced nothing and the DANGER finding lingered until SILENT) |
 | `READS` | security-ingest-gate | `desk-registry.yaml` `reads_external` field — Invariant 5 / drift-cop coverage check (when `INGEST_COVERAGE_FLAG=on`) |
 | `COMPLEMENTS` | sentinel | Sentinel detects INBOUND injection; health-invariants detects SUBSTRATE failure — parallel, non-redundant |
 | `CHAINS` | archivist | sweeper spawns `archivist-placements.py` + `archivist-lean.py` as side-effects post-sweep (decoupled + graceful) |
