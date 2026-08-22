@@ -293,6 +293,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/validate_on_write.sh\"",
             "statusMessage": "Checking the note kept its labels..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/doctrine_mirror_push.sh\"",
+            "statusMessage": "Mirroring the doctrine file..."
           }
         ]
       },

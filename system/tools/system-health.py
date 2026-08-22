@@ -301,6 +301,18 @@ def sentinel_fold(now):
     if sec == "FLAGS":
         return {**base, "state": "FLAGS", "severity": "info", "attention": True,
                 "why": f"{flags} security flag(s) in 24h — glance, not urgent"}
+    if sec == "CLEAR":
+        # A CLEAR tile is a RESULT, not an absence — it must reach _emit_findings() like every
+        # other assessed job, so the OK row it produces supersedes the prior DANGER/FLAGS row
+        # (same fingerprint: labels target=sentinel) and the alarm visibly CLOSES on the next
+        # sweep. Before 2026-08-21 this branch returned None: a sentinel DANGER finding then
+        # stayed "latest" on the session-start line until it aged out as SILENT — the one job
+        # in the sweep whose recovery was never written down (observed that day: acks synced
+        # from the laptop at 17:48, the 17:25 DANGER row still led the banner at 17:53).
+        reviewed = t.get("reviewed_count_24h", 0) or 0
+        return {**base, "state": "UP", "severity": "ok", "attention": False,
+                "why": t.get("summary") or f"all clear — {reviewed} reviewed, 0 active (24h)"}
+    # Anything else (missing/unknown status) stays None: absence must never read as OK.
     return None
 
 
