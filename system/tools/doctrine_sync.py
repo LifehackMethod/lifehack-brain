@@ -97,7 +97,11 @@ def machine_token():
         return slug(env)
     if sys.platform == "darwin":
         try:
-            out = subprocess.run(["scutil", "--get", "ComputerName"], capture_output=True,
+            # Absolute path on purpose: scutil lives in /usr/sbin, which the pulse crontab's PATH omits.
+            # A bare "scutil" there fell through to `hostname -s` and registered this same Mac as a
+            # second machine (the About-name slug vs the hostname slug, found 2026-08-22).
+            scutil = "/usr/sbin/scutil" if os.path.exists("/usr/sbin/scutil") else "scutil"
+            out = subprocess.run([scutil, "--get", "ComputerName"], capture_output=True,
                                  text=True, timeout=5).stdout.strip()
             if out:
                 return slug(out)
