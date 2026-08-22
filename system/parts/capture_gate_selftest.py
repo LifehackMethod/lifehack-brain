@@ -153,7 +153,15 @@ def selftest():
                f"out={out[:60]!r}")
         report("hands back the ADDED line mechanically, not a vague nag",
                "a NEW decision made since the last checkpoint" in reason)
-        report("demands a VISIBLE receipt in the reply", "SCRATCHPAD CAPTURED" in reason)
+        # ⚠ CORRECTED 2026-08-22: this used to assert the literal "SCRATCHPAD CAPTURED",
+        # a phrase the hook stopped emitting when its message was rewritten on 2026-08-14/15 (9a5b022:
+        # the pad write moved to a background sub-agent and the receipt became the reply line
+        # '📝 Scratchpad: …'). The hook never stopped demanding a visible receipt — the TEST's string
+        # drifted, and the part read FAIL for a week on a passing hook. Assert the demand as it is
+        # actually worded now: a "Reply ONE line" instruction naming the '📝 Scratchpad:' receipt.
+        report("demands a VISIBLE receipt in the reply",
+               "Reply ONE line" in reason and "📝 Scratchpad:" in reason,
+               f"reason={reason[:90]!r}")
 
         # 5. after bouncing, the watermark advanced -> the same turn is not re-bounced
         rc, out = run_hook(base)

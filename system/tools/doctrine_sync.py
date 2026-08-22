@@ -14,9 +14,22 @@ WHAT IT DOES. Two mirrored files, one shared mirror in the notes folder (which D
 speaks drift unasked.
 
     push    local → mirror            (the edit-time act; also run by the PostToolUse hook)
-    check   3-way compare, emit ONE finding per file; AHEAD auto-pushes   (rides the 5-min sweep)
+    check   3-way compare, emit ONE finding per file; AHEAD auto-pushes   (see WHERE check RUNS)
     pull    mirror → local, diff shown, old local ARCHIVED first          (the visible repair act)
     status  print the table, no writes
+
+WHERE check RUNS — one runner per machine, and which one depends on the machine. ⚠ CORRECTED
+2026-08-22 (operator ruling, desktop session): this docstring and the plan used to say `check` "rides the
+5-min sweep", which reads as if BOTH machines sweep. They do not. PULSE ON THE MACHINE THAT RUNS
+THE PULSE; A CHECK-ONLY LAUNCHAGENT ON ANY OTHER. On the pulse machine (the desktop today),
+`system-health-run.sh` calls `check` after the sweeper, every 5 min. On every other machine there
+is NO pulse and must be none — two pulses write the same un-namespaced `state/status/_pulse.json`
+/ `_system-health.json`, and the 2026-08-21 Drive forks are what that looks like. There, `check`
+runs from `~/Library/LaunchAgents/com.lifehack.doctrine-check.plist` (template + installer in
+`system/launchd/`; the installer refuses on a pulse machine). `check` is safe to duplicate across
+machines because its ONLY output is this machine's own shard; nothing else in pulse-config.md is.
+The second machine in the first deployment has never had a pulse crontab; its agent first ticked
+unattended 2026-08-22 14:21.
 
 THE 3-WAY COMPARE — local sha · mirror sha · this machine's last-synced sha:
     OK        local == mirror

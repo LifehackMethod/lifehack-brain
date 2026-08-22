@@ -68,3 +68,7 @@ at nobody's network.
 Skills use plain verbs — read, save, checkin. A skill does one job and says so in its first
 line. Tools take their paths as arguments rather than baking them in, which is why none of
 them has to know whose machine it is running on.
+
+<!-- 2026-08-22: the two documented FORMS the narrowed rules must let through (see refuse-rules.json) -->
+- discovery looks under `~/Library/CloudStorage/GoogleDrive-*` — a glob, not an account
+- agent_calendar: abc123...@group.calendar.google.com — the placeholder, not a calendar

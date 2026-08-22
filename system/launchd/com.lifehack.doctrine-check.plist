@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.lifehack.doctrine-check — TEMPLATE. Do not load this file as-is: the two __PLACEHOLDERS__
+  are filled in by system/launchd/install-doctrine-check.sh, which is the only supported way to
+  install it. Rendered copy lands at ~/Library/LaunchAgents/com.lifehack.doctrine-check.plist.
+
+  WHAT IT IS. The doctrine-sync CHECK side for a machine that does NOT run the pulse. It runs
+  `doctrine_sync.py check` every 300 s while the machine is awake (launchd skips sleep and runs
+  promptly on wake; it never piles up), writing ONLY this machine's own findings shard
+  (state/findings/doctrine-sync-<machine>.local.jsonl). The push side needs nothing: it is the
+  PostToolUse hook in .claude/settings.json, which arrives with git pull.
+
+  WHY A LAUNCHAGENT AND NOT A SECOND PULSE. system/tools/install-schedulers.sh chose cron over
+  launchd for the pulse, and that decision stands — this is not a reversal of it. The pulse
+  itself must run on ONE machine only: two pulses write the same un-namespaced
+  state/status/_pulse.json / _system-health.json, and the 2026-08-21 Drive forks
+  (health-deadman (1).json, …) are what that looks like. `check` is the ONE job whose only
+  output is per-machine by construction, so duplicating it is safe; nothing else in
+  pulse-config.md is. Doctrine, in one line: PULSE ON THE MACHINE THAT RUNS THE PULSE; A
+  CHECK-ONLY LAUNCHAGENT ON ANY OTHER. The installer refuses on a machine whose crontab already
+  carries pulse.sh, so the rule is enforced, not merely written down.
+
+  FIRST PROVEN 2026-08-22 on a second Mac (hand-built there; this template is the
+  repeatable form of it): kick-start exit 0, two OK rows; first unattended tick 14:21, exit 0.
+
+  IF THE LOG SHOWS "Operation not permitted" on the notes path: that is macOS TCC / Full Disk
+  Access refusing /usr/bin/python3 a cloud-synced folder (the A38 failure install-schedulers.sh
+  records). It did NOT occur on the first machine; if it occurs on yours, grant Full Disk Access
+  to the python3 binary in System Settings → Privacy & Security. INFERRED remedy, not yet needed.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.lifehack.doctrine-check</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>__REPO__/system/tools/doctrine_sync.py</string>
+    <string>check</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__REPO__</string>
+  <key>StartInterval</key>
+  <integer>300</integer>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>__HOME__/.local/state/lifehack/doctrine-check.log</string>
+  <key>StandardErrorPath</key>
+  <string>__HOME__/.local/state/lifehack/doctrine-check.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+</dict>
+</plist>
