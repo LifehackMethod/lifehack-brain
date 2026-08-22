@@ -72,7 +72,7 @@ launchctl kickstart -k "gui/$(id -u)/$LABEL"
 MARK="$(date +%s)"
 sleep 4
 MACHINE="$(python3 "$REPO/system/tools/doctrine_sync.py" status 2>/dev/null | sed -n 's/^machine: \([^ ]*\).*/\1/p')"
-BRAIN="$(python3 "$REPO/shared/brain_root.py" 2>/dev/null || true)"
+BRAIN="$(python3 "$REPO/shared/brain_root.py" --quiet 2>/dev/null || true)"
 SHARD="$BRAIN/state/findings/doctrine-sync-$MACHINE.local.jsonl"
 if [ -n "$BRAIN" ] && [ -f "$SHARD" ] && [ "$(stat -f %m "$SHARD")" -ge "$((MARK - 5))" ]; then
   echo "installed: $DEST"
