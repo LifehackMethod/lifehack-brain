@@ -969,8 +969,15 @@ def check_added_lines(added_lines):
     hits = []
     for lineno, text in added_lines:
         for rule in content_patterns():
-            if re.search(rule["pattern"], text):
-                hits.append((lineno, text, rule))
+            if not re.search(rule["pattern"], text):
+                continue
+            # Same fixture carve-out scan_whole_tree() already applies (RULED 2026-08-23).
+            if rule["id"] == "home-path-generic":
+                seg_match = re.search(r"(?:/Users/|/home/)([A-Za-z0-9._-]+)", text)
+                seg = seg_match.group(1) if seg_match else ""
+                if seg.lower() in FICTIONAL_FIXTURE_USERNAMES:
+                    continue
+            hits.append((lineno, text, rule))
     return hits
 
 
