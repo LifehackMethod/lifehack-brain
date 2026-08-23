@@ -22,6 +22,24 @@ trap 'rm -rf "$SANDBOX"' EXIT
 NOTES="$SANDBOX/notes"
 mkdir -p "$NOTES/desks/lamps/canon" "$NOTES/desks/money/canon"
 
+# A MINIMAL COPY of the loader + brain_root.py, sitting in its own tree with nothing configured —
+# not the real repo. A real subprocess reaches routes no env-var scrub can close: the real repo
+# carries its OWN `.brain-root` pointer file (route 2, 2026-08-17) and, on a linked worktree, the
+# main worktree's (route 2b, 2026-08-21) — plus a machine-global persisted config under
+# $HOME/.config/lifehack/brain-root, which is this operator's REAL, currently-set config on this
+# machine. Running $LOADER in place against the real repo would resolve through one of those and
+# never reach NOT-SET at all. Mirrors shared/test_registry.py's
+# test_resolve_refuses_rather_than_guessing_when_no_notes_folder_is_set and shared/test_paths.py's
+# setUp — same approach, not a third one.
+CLONE="$SANDBOX/clone"
+mkdir -p "$CLONE/shared" "$CLONE/system/hooks"
+cp "$REPO/shared/brain_root.py" "$CLONE/shared/brain_root.py"
+cp "$LOADER" "$CLONE/system/hooks/session_context_loader.sh"
+CLONE_LOADER="$CLONE/system/hooks/session_context_loader.sh"
+if [ -e "$CLONE/.brain-root" ]; then
+  bad "clone setup" "the copy must start with nothing configured, or it tests nothing"
+fi
+
 pass=0; fail=0
 ok()   { pass=$((pass+1)); }
 bad()  { fail=$((fail+1)); echo "  FAIL [$1]: $2"; }
@@ -71,7 +89,7 @@ echo "── it never reports success while delivering nothing ─────�
 # A remembered folder that is not there. This is a cloud drive that did not mount, and it must NOT
 # read as an empty system — telling this person to "set it once" invites them to point at an empty
 # folder and lose the link to everything they have written.
-OUT="$(env HOME="$SANDBOX" LIFEHACK_ROOT="$SANDBOX/vanished" bash "$LOADER" 2>&1)"; RC=$?
+OUT="$(env HOME="$SANDBOX" LIFEHACK_ROOT="$SANDBOX/vanished" bash "$CLONE_LOADER" 2>&1)"; RC=$?
 says "NOT WHERE THIS SYSTEM REMEMBERS THEM\|No data root set yet" && ok || bad "missing root" "said neither of the two honest things"
 saysnot "one L" && ok || bad "missing root" "claimed to load canon from a folder that is not there"
 # ⚠ exit 0, DELIBERATELY, even though this IS a real failure. Confirmed against the official
@@ -84,7 +102,7 @@ saysnot "one L" && ok || bad "missing root" "claimed to load canon from a folder
 [ "$RC" = 0 ] && ok || bad "missing root: exit code" "expected 0 (SessionStart can't block, and non-zero hides stdout from the model) — got $RC"
 
 # A genuinely fresh install: no root at all. A legitimate state, so exit 0 — but it must SAY it.
-OUT="$(env HOME="$SANDBOX" bash -c "unset LIFEHACK_ROOT; HOME='$SANDBOX' bash '$LOADER'" 2>&1)"; RC=$?
+OUT="$(env HOME="$SANDBOX" bash -c "unset LIFEHACK_ROOT; HOME='$SANDBOX' bash '$CLONE_LOADER'" 2>&1)"; RC=$?
 says "No data root set yet" && ok || bad "fresh install" "did not name the state"
 [ "$RC" = 0 ] && ok || bad "fresh install: exit code" "a fresh install is not a failure (got $RC)"
 

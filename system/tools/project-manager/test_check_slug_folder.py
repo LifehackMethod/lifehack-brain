@@ -9,6 +9,7 @@ Run: python3 system/tools/project-manager/test_check_slug_folder.py
 """
 
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -116,10 +117,37 @@ class Cli(unittest.TestCase):
         self.assertIn("cannot read the registry", out)
 
     def test_with_no_notes_folder_chosen_it_refuses_rather_than_guessing(self):
-        # The whole point of the resolver: no root set means STOP, never the current directory.
+        """Runs against a MINIMAL COPY of the tool, not the real clone.
+
+        This is a real subprocess, so no monkeypatch reaches it, and scrubbing $LIFEHACK_ROOT and
+        $HOME never did close every route: the resolver also reads a `.brain-root` pointer FILE next
+        to the repo root — this repo's own (route 2, 2026-08-17) and, in a linked git worktree, the
+        main worktree's (route 2b, 2026-08-21) — plus the machine-global persisted config under
+        $HOME/.config/lifehack/brain-root. All of those are located from the TOOL's own position or
+        the subprocess's $HOME, so the only honest way to test "nothing is configured" in a
+        subprocess is to run a copy that sits somewhere with nothing configured — which is also the
+        case being claimed: a fresh clone, on a machine with no notes folder chosen yet. (Mirrors
+        shared/test_registry.py::test_resolve_refuses_rather_than_guessing_when_no_notes_folder_is_set
+        and shared/test_paths.py's setUp — same approach, not a third one.)
+        """
         with tempfile.TemporaryDirectory() as fake_home:
-            rc, out, _ = self._run(env={"HOME": fake_home})
-            self.assertEqual(rc, 1)
+            clone_shared = os.path.join(fake_home, "clone", "shared")
+            clone_pm = os.path.join(fake_home, "clone", "system", "tools", "project-manager")
+            clone_tools = os.path.join(fake_home, "clone", "system", "tools")
+            os.makedirs(clone_shared)
+            os.makedirs(clone_pm)
+            shutil.copy(os.path.join(HERE, "..", "..", "..", "shared", "brain_root.py"), clone_shared)
+            shutil.copy(os.path.join(HERE, "..", "utf8_stdio.py"), clone_tools)
+            shutil.copy(TOOL, clone_pm)
+            clone_tool = os.path.join(clone_pm, "check_slug_folder.py")
+            self.assertFalse(os.path.exists(os.path.join(fake_home, "clone", ".brain-root")),
+                             "the copy must start with nothing configured, or it tests nothing")
+            e = dict(os.environ)
+            e.pop("LIFEHACK_ROOT", None)
+            e["HOME"] = fake_home
+            p = subprocess.run([sys.executable, clone_tool], capture_output=True, text=True, env=e)
+            rc, out = p.returncode, p.stdout.strip()
+            self.assertEqual(rc, 1, p.stdout + p.stderr)
             self.assertIn("REFUSED", out)
             self.assertNotIn("mismatch", out)
 
