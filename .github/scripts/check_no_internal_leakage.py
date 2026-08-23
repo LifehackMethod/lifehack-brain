@@ -446,7 +446,14 @@ FICTIONAL_FIXTURE_PHRASES = ("whitfield contracting",)
 # Fixture home-path usernames -- the segment right after /Users/ or /home/ that this repo's
 # own examples already use for an invented account, so home-path-generic (rule 2) does not
 # fire on them in whole-tree mode. Matches the task's own named set exactly.
-FICTIONAL_FIXTURE_USERNAMES = frozenset({"wren", "x", "theirname", "woakley"})
+# "name"/"Name" added 2026-08-23: system/hooks/lib/winpath_fold.sh and its test use
+# `/Users/name/Repo` and `/Users/Name/Repo` as the canonical generic example of the SAME
+# directory spelled two ways -- that is the entire subject of that file, and the example
+# cannot be written as `~/` without destroying it (the whole point is the absolute prefix
+# a `case` string-match compares against). Matching by shape alone cannot tell a word
+# placeholder from a short real account name, which the rule's own header already
+# concedes; this is the sanctioned escape for exactly that case.
+FICTIONAL_FIXTURE_USERNAMES = frozenset({"wren", "x", "theirname", "woakley", "name"})
 
 # --------------------------------------------------------- self-reference exclusions
 # ⭐ RE-EXAMINED 2026-08-18 (issue #59) ALONGSIDE THE .github/ EXEMPTION, AND KEPT.
