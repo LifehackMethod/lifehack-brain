@@ -70,11 +70,23 @@ def read_and_sanitize(path: str) -> str:
         with open(path, "r", encoding="utf-8", errors="replace") as f:
             raw = f.read()
 
-    return sanitize(raw, max_len=NO_CAP)
+    # DOCUMENT mode (issue #77 / D4). This reader hands back a WHOLE FILE, and the
+    # FIELD-mode default flattened every one to a single line — headings, list
+    # boundaries and table rows gone, silently, on every read. The security floor is
+    # unchanged: unsafe-Unicode + control stripping run identically in both modes, and
+    # the Sentinel gate below still scans this text.
+    # ⚠ Known, accepted: `<…>` spans now survive, so pointing this at a .html file
+    # leaves its tags in the output as literal text. Correct tool for HTML is
+    # safe_fetch.py, which removes markup structurally with an HTMLParser.
+    return sanitize(raw, max_len=NO_CAP, preserve_structure=True)
 
 
 if __name__ == "__main__":
     # Parse a lean CLI: an optional --clear-after flag (anywhere) + exactly one path.
+    import os, sys
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "system", "tools")))
+    from utf8_stdio import force_utf8_stdio
+    force_utf8_stdio()
     args = sys.argv[1:]
     clear_after = "--clear-after" in args
     positionals = [a for a in args if not a.startswith("--")]

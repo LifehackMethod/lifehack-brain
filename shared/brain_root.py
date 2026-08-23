@@ -58,13 +58,118 @@ BRAIN_ROOT_LEGACY_GLOB = os.path.expanduser(os.environ.get("INGEST_LEGACY_ROOT_G
 # pointer travels with the folder into environments that cannot see the machine's HOME (Cowork).
 REPO_POINTER_NAME = ".brain-root"
 
-def harness_root():
-    """Absolute path of the Harness / repo folder this file lives in (the parent of shared/).
+class HarnessRootError(RuntimeError):
+    """Raised by harness_root() when git IS present and this IS a git repo, but the harness root
+    still cannot be pinned down honestly (a malformed/unexpected git answer). This is the loud
+    failure mode: NEVER caught internally and silently downgraded to a guess. The two cases that
+    are NOT errors — no git binary, or not a git repo at all (a student's plain zip download) —
+    fall through to the file-position method below instead, because that method is exactly
+    correct in both of those cases."""
 
-    Derived from THIS FILE's position, never from cwd — same reason as repo_pointer_path below.
-    It is its own function because two callers need it: the pointer file lives here, and --set
-    must REFUSE any brain root that lands inside here (see reject_unusable_target)."""
+
+_HARNESS_ROOT_CACHE = None   # memoized (source, path) — see harness_root() for why
+
+
+def _harness_root_file_position():
+    """The ORIGINAL method: parent of the folder this file lives in. Correct whenever there is no
+    git worktree indirection to worry about — no git installed, or not a git repo at all (a plain
+    zip download) — because in both of those cases this file's own folder IS the repo root."""
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _harness_root_uncached():
+    """Do the actual resolution once; harness_root() below caches the result so a hot path that
+    calls it repeatedly pays the git subprocess cost at most once per process.
+
+    Returns (source, path). source is "file-position" (no git / not a repo — both correct uses of
+    the old method) or "git-common-dir" (resolved through git, worktree-safe). Never returns a
+    guess: an unexpected git answer raises HarnessRootError instead of falling back, because a
+    silent fallback here is precisely how issue #95 stayed invisible — a linked worktree resolving
+    ITS OWN root (via file position) instead of the main clone's."""
+    file_dir = os.path.dirname(os.path.abspath(__file__))
+
+    import shutil
+    git_exe = shutil.which("git")
+    if git_exe is None:
+        return "file-position (git not installed)", _harness_root_file_position()
+
+    import subprocess
+    try:
+        proc = subprocess.run(
+            [git_exe, "-C", file_dir, "rev-parse", "--git-common-dir"],
+            capture_output=True, text=True, timeout=5,
+        )
+    except OSError as exc:
+        # git is on PATH but could not actually be run — same honest fallback as "not installed".
+        return f"file-position (git invocation failed: {exc})", _harness_root_file_position()
+
+    if proc.returncode != 0:
+        stderr = (proc.stderr or "").strip()
+        if "not a git repository" in stderr.lower():
+            # A plain zip download, or this file copied out of any repo — file-position is exactly
+            # right here, it IS the folder this file lives in.
+            return "file-position (not a git repository)", _harness_root_file_position()
+        # git IS present and this is neither a clean "not a repo" nor a clean success — an
+        # ambiguous state a guess must never paper over. Fail loud, name the reason.
+        raise HarnessRootError(
+            "git rev-parse --git-common-dir failed unexpectedly "
+            f"(exit {proc.returncode}): {stderr!r}. Refusing to guess the harness root."
+        )
+
+    common_dir = proc.stdout.strip()
+    if not common_dir:
+        raise HarnessRootError(
+            "git rev-parse --git-common-dir returned nothing. Refusing to guess the harness root."
+        )
+    # Older git can print a path relative to the -C directory rather than absolute; normalize
+    # either shape the same way.
+    if not os.path.isabs(common_dir):
+        common_dir = os.path.join(file_dir, common_dir)
+    common_dir = os.path.abspath(common_dir)
+
+    if os.path.basename(common_dir) != ".git":
+        # A bare repo, a submodule, or some other layout this resolver was not written for.
+        # Falling back to file-position here would silently reintroduce issue #95 in a new shape,
+        # so this is the other loud-failure case, not a guess.
+        raise HarnessRootError(
+            f"git-common-dir did not end in '.git' ({common_dir!r}) — unexpected repo layout; "
+            "refusing to guess the harness root."
+        )
+    main_root = os.path.dirname(common_dir)
+    if not os.path.isdir(main_root):
+        raise HarnessRootError(
+            f"git-common-dir points at a root that does not exist on disk: {main_root!r}."
+        )
+    return "git-common-dir", main_root
+
+
+def harness_root():
+    """Absolute path of the MAIN Harness / repo folder — the parent of shared/ in the clone git
+    itself considers primary, NOT wherever this file happens to be sitting.
+
+    WHY THIS IS NOT JUST "THIS FILE'S OWN FOLDER" (issue #95, 2026-08-21). In a linked `git
+    worktree`, this file is physically checked out a second time under the WORKTREE's own path —
+    deriving the root from `__file__`'s position there returns the worktree root, not the main
+    clone. `.brain-root` is gitignored, so `git worktree add` never materializes it in the
+    worktree either: the repo-pointer lookup in resolve_brain_root() then finds nothing and falls
+    through to whatever the machine-global persisted value happens to be — silently. That produced
+    a session that started genuinely blind: reading a brain root that was not the user's, with no
+    error and no signal. Reproduced 2026-08-21.
+
+    FIX: resolve the MAIN worktree's root via `git rev-parse --git-common-dir`, which always names
+    the ONE real `.git` directory shared by every worktree of a repo — the main clone's — no matter
+    which worktree asks. Falls back to the original file-position method exactly when that method
+    is still correct: no git installed, or this is not a git repo at all (a student's zip
+    download). Never falls back silently when git IS present and IS a repo but the answer is
+    otherwise unreadable — see HarnessRootError.
+
+    Memoized: the git subprocess runs at most once per process, so a hot path calling this
+    repeatedly is not slowed by it."""
+    global _HARNESS_ROOT_CACHE
+    if _HARNESS_ROOT_CACHE is None:
+        _HARNESS_ROOT_CACHE = _harness_root_uncached()
+    _source, path = _HARNESS_ROOT_CACHE
+    return path
 
 
 def repo_pointer_path():

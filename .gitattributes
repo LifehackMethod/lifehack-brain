@@ -27,6 +27,13 @@
 # no error, just an unprotected repository.
 system/githooks/*  text eol=lf
 
+# system/pulse-config.md is not just read, it is PARSED — install-schedulers.sh and pulse.sh
+# fence-match its ```crontab```/```jobs``` blocks with an EXACT string test. A CRLF-mangled checkout
+# (Git for Windows' core.autocrlf=true default) defeats that match silently: the loop finds 0 rows
+# and both scripts exit 0 reporting "nothing to install" — a Windows student's whole scheduled layer
+# goes missing with no error. Needs the same LF pin as the scripts that read it, not just plain `text`.
+system/pulse-config.md  text eol=lf
+
 # ── Data and documents — normalise, but harmless either way ───────────────────
 *.md              text
 *.json            text

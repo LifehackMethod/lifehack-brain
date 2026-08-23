@@ -69,9 +69,12 @@ def split_turns(text):
     if cur:
         turns.append("".join(cur))
     if not turns:
-        # The sanitizer in gate() collapses newlines, so "## " turn markers are no
-        # longer at line-start on CLEANED text → zero turns found. Never drop the chat:
-        # hand the whole body back as one turn so chunk_large hard-slices it at MAX_CHARS.
+        # WAS (until 2026-08-18): "The sanitizer in gate() collapses newlines, so '## ' turn
+        # markers are no longer at line-start on CLEANED text → zero turns found." That was
+        # the D4 bug (issue #77), and it is FIXED — main() now gates with preserve_structure=True,
+        # so the markers are at line-start and turns are found. This branch stays as the safety
+        # net it should always have been: a chat that genuinely has no "## " turns must never be
+        # dropped — hand the whole body back as one turn so chunk_large hard-slices it at MAX_CHARS.
         return "", ["".join(header)]
     return "".join(header), turns
 
@@ -130,7 +133,12 @@ def main():
         name = os.path.basename(p)
         with open(p) as fh:
             text = fh.read()
-        res = gate(args.desk, "file", text, item=name)
+        # preserve_structure=True (issue #77 / D4): `text` is a WHOLE flattened chat and we
+        # consume res["content"] as a document. The gate's FIELD-mode default deleted every
+        # newline in it — see split_turns() below, which grew a "never drop the chat" fallback
+        # precisely because the "## " turn markers were no longer at line-start afterwards.
+        # Verdict behaviour is unchanged; only the returned content keeps its lines.
+        res = gate(args.desk, "file", text, item=name, preserve_structure=True)
         if not res["passed"]:                        # DANGER — already contained by Sentinel
             quarantined.append({"file": name, "provenance_tag": res["provenance_tag"]})
             continue
@@ -184,4 +192,8 @@ def main():
 
 
 if __name__ == "__main__":
+    import os, sys
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "system", "tools")))
+    from utf8_stdio import force_utf8_stdio
+    force_utf8_stdio()
     main()

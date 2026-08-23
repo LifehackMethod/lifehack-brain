@@ -486,6 +486,10 @@ def _print_propose(rep):
 
 
 if __name__ == "__main__":
+    import os, sys
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "system", "tools")))
+    from utf8_stdio import force_utf8_stdio
+    force_utf8_stdio()
     rep = build_report()
     if "--json" in sys.argv:
         print(json.dumps(rep, indent=2))

@@ -64,6 +64,33 @@
 _HOOKDIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd -P)"
 REPO="${_HOOKDIR%/system/hooks}"
 [ "$REPO" = "$_HOOKDIR" ] && REPO="$(cd "$_HOOKDIR" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null)"
+
+# ── ISSUE #95 GUARD: a LINKED `git worktree` checks this file out a second time under the
+# worktree's OWN path, so the trim above (and the show-toplevel fallback) both resolve REPO to the
+# worktree root, not the main clone. In a linked worktree, "$REPO/.git" is a FILE (not a
+# directory) whose one line points at the main clone's real .git — parse that ourselves. This is a
+# stat + a one-line read, so it costs nothing on the normal (non-worktree) hot path where
+# "$REPO/.git" is already a directory and this whole block is skipped.
+if [ -n "${REPO:-}" ] && [ -f "$REPO/.git" ]; then
+  _gitdir_line="$(head -n1 "$REPO/.git" 2>/dev/null)"
+  _maingit=""
+  case "$_gitdir_line" in
+    "gitdir: "*) _maingit="${_gitdir_line#gitdir: }" ;;
+  esac
+  # a linked worktree's gitdir is always .../<main>/.git/worktrees/<name>
+  case "$_maingit" in
+    */worktrees/*) _maingit="${_maingit%/worktrees/*}" ;;
+  esac
+  if [ -n "$_maingit" ] && [ -d "$_maingit" ]; then
+    REPO="$(cd "$_maingit/.." 2>/dev/null && pwd -P)"
+  else
+    # Fail LOUD, not a guess: silently keeping the worktree-root REPO here is exactly how issue
+    # #95 stayed invisible (a session reading the wrong brain root with no error at all).
+    printf '%s\n' '{"decision":"block","reason":"BLOCKED (fail-closed, issue #95 guard): this hook is running from what looks like a linked git worktree, but its .git pointer file did not parse as expected, so the MAIN clone'"'"'s root cannot be resolved honestly. Refusing to guess the trusted zone. Run this from the main clone, or fix the worktree'"'"'s .git pointer."}' >&2
+    exit 2
+  fi
+fi
+
 : "${REPO:=/dev/null/no-repo-resolved}"
 
 # ── THE NOTES ROOT. $LIFEHACK_ROOT first, then the persisted ~/.config/lifehack/brain-root.
@@ -73,6 +100,20 @@ REPO="${_HOOKDIR%/system/hooks}"
 notes_root() {
   _nr="${LIFEHACK_ROOT:-}"
   [ -n "$_nr" ] || _nr="$(cat "$HOME/.config/lifehack/brain-root" 2>/dev/null)"
+  # Fold a native Windows drive-letter spelling (D:\Foo\Bar or D:/Foo/Bar) into the MSYS/Git-Bash
+  # POSIX form (/d/Foo/Bar) BEFORE the trailing-slash trim and the case tests below (GitHub
+  # #94/#96) -- left as-is, a drive-letter value falls straight to the final `*) return 1` arm,
+  # NOTES_ROOT then falls back to the /dev/null sentinel, and every file under the student's real
+  # brain reads as EXTERNAL. Placement matters: a value ending in a backslash only trims its
+  # trailing separator correctly once it has already been folded to a forward slash.
+  # This repo has no shared winfold library (unlike the sibling install that carries
+  # system/hooks/lib/winpath_fold.sh) -- this is the minimal, self-contained equivalent, scoped to
+  # values that already look like a Windows path so a normal POSIX value passes through unchanged.
+  case "$_nr" in
+    [A-Za-z]:\\*|[A-Za-z]:/*)
+      _nr="/$(printf '%s' "$_nr" | cut -c1 | tr 'A-Z' 'a-z')/$(printf '%s' "$_nr" | cut -c3- | tr '\\' '/')"
+      ;;
+  esac
   while [ "${_nr%/}" != "$_nr" ]; do _nr="${_nr%/}"; done      # any number of trailing slashes
   case "$_nr" in
     ""|"/"|"$HOME") return 1 ;;

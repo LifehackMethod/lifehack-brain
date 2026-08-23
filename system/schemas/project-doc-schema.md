@@ -122,17 +122,22 @@ The scoreboard a fresh session reads to know where each decision stands RIGHT NO
 something already settled or killed.
 
 **OPENS WITH THE THREE-ALTITUDE READ (REQUIRED, 2026-08-05 — replaces the old "1–3 lines of live status +
-the very next action").** Same three rungs as `system/work-altitude-doctrine.md`, but pointed at POSITION,
-not intent — §1 states the destination once; this states where we ARE, zoomed three ways:
+the very next action").** Same three rungs as `system/work-altitude-doctrine.md`, but ⭐ **▲10,000 is not
+re-derived here — it is a faithful restatement of §1's desired outcome, human-authored and human-only. A
+session may print it or flag it stale against §1; it may never rewrite it, append to it, or dress it in
+position/status language.** Position, status and measurement live at the two rungs beneath it, zoomed two
+ways:
 
-    ▲ 10,000 — where the whole project stands against the §1 desired outcome
+    ▲ 10,000 — §1's desired outcome, restated (human-authored; a session prints or flags-stale, never rewrites)
     ▲  5,000 — the Phase ▸ Feature / seam / learning we are inside right now
-    ▲ ground — the exact next action
+    ▲ ground — what was last worked on, dated, with an explicit "re-verify before acting on this" note — never phrased as an instruction, since the next reader may arrive after it has gone stale
 
 > ## ⭐⭐ §2 HAS TWO VERBS AND THEY MUST NEVER BE CONFUSED (the operator, 2026-08-06)
 >
-> ### VERB A — THE THREE ALTITUDES ARE **OVERWRITTEN**. THE OLD READING IS **DELETED**.
-> The session re-derives the three rungs at pickup and **replaces** the previous text outright.
+> ### VERB A — ▲5,000 AND ▲GROUND ARE **OVERWRITTEN**. THE OLD READING IS **DELETED**.
+> The session re-derives ▲5,000 and ▲ground at pickup and **replaces** the previous text outright.
+> ⛔ **▲10,000 is exempt from Verb A.** It is human-authored, not derived — a session prints it as-is and
+> may flag it stale against §1, but never re-derives, rewrites or replaces it.
 > **NOT archived. NOT graduated to the STORY LOG. NOT compacted. NOT an input to compaction.**
 > ⛔ **NEVER WIRE COMPACTION TO THIS BLOCK.**
 >
@@ -167,7 +172,8 @@ not intent — §1 states the destination once; this states where we ARE, zoomed
 > ## ⛔ §2 HOLDS ONLY NAMED SLOTS. FREE PROSE IS OVERFLOW, BY DEFINITION. (2026-08-06)
 >
 > **The complete legal contents of §2 — nothing else belongs:**
-> 1. **The three-rung altitude block** (`▲ 10,000` · `▲ 5,000` · `▲ ground`) — verb A, overwritten.
+> 1. **The three-rung altitude block** (`▲ 10,000` · `▲ 5,000` · `▲ ground`) — ▲5,000/▲ground overwritten
+>    by verb A; ▲10,000 printed or flagged stale only, never overwritten.
 > 2. **The three decision-board buckets** — `✅ LOCKED` · `⛔ RULED-OUT` · `❓ OPEN` — verb B.
 >
 > **Anything else in §2 is OVERFLOW and routes out** per verb B's compaction — to the STORY LOG, OPEN
@@ -207,9 +213,11 @@ not intent — §1 states the destination once; this states where we ARE, zoomed
 > ## ⭐ RUNG SHAPE — ONE TO TWO SENTENCES EACH. HARD CAP. (the operator, 2026-08-06)
 >
 > **A rung is a READING, not a paragraph.** One to two sentences, per rung, always.
-> - **▲ 10,000** — where the project stands against §1's desired outcome.
+> - **▲ 10,000** — §1's desired outcome, restated. Human-authored; a session prints it or flags it stale,
+>   never composes it.
 > - **▲ 5,000** — which part of the plan this sits inside.
-> - **▲ ground** — the one specific thing being worked on, plus anything NOT built.
+> - **▲ ground** — what was last worked on and when, plus anything NOT built — dated, carrying its own
+>   re-verify instruction, never phrased as a next action.
 >
 > **Still blind-reader legible** — every proper noun gets a clause explaining what it is, full
 > sentences, no fragments. **Short is not terse.**
@@ -220,13 +228,16 @@ not intent — §1 states the destination once; this states where we ARE, zoomed
 > it.** Normalising to this shape took §2 from **55 → 25 lines** in one edit. **A bloated gauge is
 > the disease this schema exists to cure; writing one inside the fix is how it survives.**
 
-**Rules:** a. **Position, never restated intent** — a 10k line that just re-quotes §1 is wrong; it must say
-how far along we are against it. b. **Read, don't compose** — the 5,000 comes from the live plan, quoted; a
-rung written from memory is not a rung. c. **A rung with no honest answer says so** (`no larger frame` /
-`no plan armed`) — never invent one to fill the space; the doctrine's `NO-FRAME` is a correct answer, and a
-fabricated rung reads exactly like a real one, which trains the reader to skim the block. d. This block is
-**machine-maintained** — unlike §1 it is rewritten every compaction, and it is the only part of the
-altitude frame a session may write without asking.
+**Rules:** a. **▲10,000 is a restatement, never a position** — it is a faithful copy of §1's desired
+outcome, human-authored and human-only. A session may PRINT it and may FLAG it as looking stale against
+§1; it may never rewrite it, append to it, or dress it in position/status/measurement language. Position,
+status and measurement belong at ▲5,000 and ▲ground only. b. **Read, don't compose** — the 5,000 comes
+from the live plan, quoted; a rung written from memory is not a rung. c. **A rung with no honest answer
+says so** (`no larger frame` / `no plan armed`) — never invent one to fill the space; the doctrine's
+`NO-FRAME` is a correct answer, and a fabricated rung reads exactly like a real one, which trains the
+reader to skim the block. d. **▲5,000 and ▲ground are machine-maintained** — rewritten every compaction,
+the only two rungs a session may write without asking. ▲10,000 is not machine-maintained: it is human
+territory, present in this block only to be printed or flagged, exactly like §1.
 
 Then three buckets, **maintained by compaction off the STORY LOG (§4)**:
 - **✅ LOCKED** — decided + in force now (the current approach).

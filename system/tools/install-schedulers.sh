@@ -112,6 +112,10 @@ OS="${LIFEHACK_TEST_OS_OVERRIDE:-$OS}"
 declare -a JOB_NAMES=() JOB_SCHEDS=() JOB_CMDS=()
 in=0
 while IFS= read -r line || [ -n "$line" ]; do
+  # Strip a trailing CR: a CRLF-checked-out manifest (Git for Windows' core.autocrlf=true default,
+  # or an existing student's checkout predating the .gitattributes pin below) defeats the exact
+  # string match on the fence lines otherwise, silently parsing 0 rows. See .gitattributes.
+  line="${line%$'\r'}"
   if [ "$line" = '```crontab' ]; then in=1; continue; fi
   if [ "$in" -eq 1 ] && [ "$line" = '```' ]; then in=0; continue; fi
   [ "$in" -eq 1 ] || continue

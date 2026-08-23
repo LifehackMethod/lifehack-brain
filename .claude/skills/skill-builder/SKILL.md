@@ -101,7 +101,7 @@ Defers entirely to `system/sops/skill-building-sop.md` for the laws, the enforce
 | the forbidden-content engine | `system/parts/forbidden_content.py` | shipped |
 | a worked example of the shape it builds | `.claude/skills/ingest/` + its `SPEC.md` | shipped |
 | **a second tester** | `system/tools/conformance-lab/` | ⛔ **does NOT ship.** Measured 2026-08-08: every subject in that lab's rule registry is a throwaway skill it generates itself or an adversarial scenario — never an existing skill's slug — so it has no door for "test skill X". It also resolved its registry to a path in the author's cloud folder and would spawn paid model calls. `scripts/run_tester.sh` says so and carries on. |
-| ⛔ `.claude/skills/skill-tester/` | a second tester | **ruled CUT** before this migration. `TESTER: NO-TESTER-RAN` is the live value today, not a placeholder awaiting a better tool. |
+| ⛔ `.claude/skills/skill-tester/` | a second tester | ⛔ **ruled CUT** before this migration. `TESTER: NO-TESTER-RAN` is the live value today, not a placeholder awaiting a better tool. |
 | parts it cites that did not cross | `system/parts/capture_gate_selftest.py` · `completeness_receipt.py` · `precondition_gate.py` · `system/hooks/scratch_capture_gate.sh` · `shared/tools/` | ⛔ named in `SPEC.md`'s own citation block; nothing is coming |
 
 ⚠ **Its three vendored scripts were dropped, not ported.** `order_lint.py`, `phase_gate.py`

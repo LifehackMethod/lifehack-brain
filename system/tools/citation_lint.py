@@ -170,24 +170,37 @@ def claim_kind(line):
     """Which of the three claims, if any, this line makes. ✅ wins over the others when a line
     somehow carries two, because presence is the one claim that is checkable against disk.
 
-    THE WORDED FORMS ONLY COUNT IN A TABLE'S LAST CELL. Ordinary prose says "lands in" about all
-    sorts of things -- the measured false positive was a planning rule reading "nothing vanishes...
-    or lands in this block", which would have quietly excused every path named on that line. A
-    status column is a declaration; a sentence is not. In prose, use the marker."""
-    if "✅" in line:
-        return PRESENT
-    if "⏳" in line:
-        return DEFERRED
-    if "⛔" in line:
-        return DECLINED
-    status = ""
-    if line.lstrip().startswith("|"):
+    IN A TABLE ROW, a marker only counts when it is in the LAST cell -- same restriction the worded
+    forms below already had. A table row has other cells too (a "notes"/"why" column, an earlier
+    subject column), and prose there can happen to use a marker glyph WITHOUT that being the row's
+    actual status -- e.g. a "why" column reading "marked done ✅ previously, now re-opened" while the
+    real status cell says ⏳. Scanning the whole row for "✅ in line" let that non-status cell's glyph
+    silently outvote the real status cell. Outside a table (a bullet, a blockquote, a plain paragraph)
+    there is only ONE cell -- the whole line is the claim -- so the marker is checked line-wide there,
+    same as before; that is deliberate and covers real usage (`- ⛔ ...`, `> ⏳ ...`).
+
+    THE WORDED FORMS ONLY COUNT IN A TABLE'S LAST CELL, unconditionally (never line-wide, even outside
+    a table). Ordinary prose says "lands in" about all sorts of things -- the measured false positive
+    was a planning rule reading "nothing vanishes... or lands in this block", which would have quietly
+    excused every path named on that line. A status column is a declaration; a sentence is not. In
+    prose, use the marker."""
+    is_table = line.lstrip().startswith("|")
+    status = line
+    if is_table:
         cells = line.strip().strip("|").split("|")
-        status = cells[-1].lower() if len(cells) > 1 else ""
-    if any(p in status for p in DEFER_PHRASES):
+        status = cells[-1] if len(cells) > 1 else ""
+    if "✅" in status:
+        return PRESENT
+    if "⏳" in status:
         return DEFERRED
-    if any(p in status for p in DECLINE_PHRASES):
+    if "⛔" in status:
         return DECLINED
+    if is_table:
+        status_lower = status.lower()
+        if any(p in status_lower for p in DEFER_PHRASES):
+            return DEFERRED
+        if any(p in status_lower for p in DECLINE_PHRASES):
+            return DECLINED
     return None
 
 
@@ -384,7 +397,11 @@ def lint_paths_and_skills(root, findings, counts):
             for span in targets_on(line):
                 key = normalise(span)
                 if key:
-                    own_line.setdefault(key, (kind, first, line.strip()))
+                    # A list, not setdefault-once: a second occurrence of the same path on its OWN
+                    # status line (e.g. deferred once, then later marked ✅ landed elsewhere in the
+                    # same file) used to be silently dropped, so the stale check only ever saw -- and
+                    # only ever reported against -- the FIRST line. Track every occurrence.
+                    own_line.setdefault(key, []).append((kind, first, line.strip()))
 
         # Pass 2 — every citation, held to its claim.
         for n, line in enumerate(lines, 1):
@@ -421,17 +438,21 @@ def lint_paths_and_skills(root, findings, counts):
                 where = "%s:%d" % (rel, n)
 
                 if exists:
-                    claim = own_line.get(key)
-                    if claim and claim[0] == DEFERRED:
-                        # Keyed on the CLAIM, not on the citation: one stale row is one finding,
-                        # however many times the file goes on to mention what it defers.
-                        stale = (rel, claim[1], key)
-                        if stale not in seen_stale:
-                            seen_stale.add(stale)
-                            findings.append(Finding(
-                                "%s:%d" % (rel, claim[1]), "`%s` HAS LANDED, the line still defers it" % key,
-                                "a manifest that describes the past is one nobody checks against the present",
-                                "change that line's status to ✅"))
+                    # every occurrence of this path on its OWN status line, not just the first -- a
+                    # path can be deferred on one line and re-affirmed (or re-deferred) on another.
+                    occurrences = own_line.get(key) or []
+                    deferred_hits = [c for c in occurrences if c[0] == DEFERRED]
+                    if deferred_hits:
+                        for claim in deferred_hits:
+                            # Keyed on the CLAIM, not on the citation: one stale row is one finding,
+                            # however many times the file goes on to mention what it defers.
+                            stale = (rel, claim[1], key)
+                            if stale not in seen_stale:
+                                seen_stale.add(stale)
+                                findings.append(Finding(
+                                    "%s:%d" % (rel, claim[1]), "`%s` HAS LANDED, the line still defers it" % key,
+                                    "a manifest that describes the past is one nobody checks against the present",
+                                    "change that line's status to ✅"))
                     else:
                         counts["resolved"] += 1
                     continue
@@ -556,4 +577,8 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
+    import os, sys
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "system", "tools")))
+    from utf8_stdio import force_utf8_stdio
+    force_utf8_stdio()
     sys.exit(main())

@@ -137,8 +137,55 @@ class TestCliRefusalTeaches(VocabCase):
         return subprocess.run([sys.executable, os.path.join(HERE, "pipeline.py"), "topic-check", *args],
                               capture_output=True, text=True, env=env)
 
+    def _run_probe(self, env_extra=None):
+        """A fresh subprocess (never touched by VocabCase.setUp's in-process monkeypatch) that
+        imports folder_scaffold for real and prints whatever `resolve_vocab(None)` resolves to,
+        or nothing. Used only by the issue #79 fix in test_missing_vocabulary_exits_1_and_teaches
+        to ask what the real CLI subprocess would see, under the identical env, before asserting
+        anything about it."""
+        env = dict(os.environ)
+        env["HOME"] = os.path.join(self.tmp, "home")
+        env.update(env_extra or {})
+        code = ("import sys; sys.path.insert(0, %r); import folder_scaffold; "
+                "p, _tried = folder_scaffold.resolve_vocab(None); print(p or '')") % HERE
+        return subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env)
+
     def test_missing_vocabulary_exits_1_and_teaches(self):
-        r = self._run("--topics", "financial", "--vocab", os.path.join(self.tmp, "nope.md"))
+        # issue #79: this ran `pipeline.py topic-check` as a SEPARATE subprocess with only $HOME
+        # overridden. `resolve_vocab()` treats an explicit --vocab as the FIRST candidate, not the
+        # ONLY one (by design — see folder_scaffold.resolve_vocab's docstring) — on a miss it falls
+        # through to <brain root>/memory/topic-vocab.md, then the in-repo copy. $HOME being
+        # overridden only neutralises the PERSISTED-config route to the brain root; it does nothing
+        # about $LIFEHACK_ROOT (if exported in the real shell), this repo's own gitignored
+        # `.brain-root` pointer, or a real `memory/topic-vocab.md` a developer happens to have
+        # locally (also gitignored — see TestNoVocabularyShips, which only guards the in-repo
+        # LEGACY path, not this one). Whichever of those resolves on the machine running this
+        # suite, the subprocess would silently check against THAT vocabulary instead of refusing —
+        # this test asserted a REFUSAL either way, so it could pass or fail purely on machine state.
+        #
+        # Fix (smaller than changing resolve_vocab()'s shipped fallthrough — see the note in
+        # folder_scaffold.py:resolve_vocab about why that fallthrough is deliberate, not a bug):
+        # neutralise $LIFEHACK_ROOT explicitly (cheap, always safe) and, for the one route that
+        # can't be neutralised via env at all — a real vocabulary genuinely present at the brain
+        # root or in-repo — verify first that none exists rather than mutate or hide anyone's real
+        # file. If one does, the REFUSAL path this test exists to lock in cannot be exercised
+        # honestly here, so it SKIPS with a stated reason instead of asserting past it.
+        env_extra = {"LIFEHACK_ROOT": os.path.join(self.tmp, "definitely-does-not-exist")}
+        # Probe with the EXACT env the real CLI subprocess below will run under (same HOME
+        # override, same neutralised LIFEHACK_ROOT) — a fresh process, never touched by setUp()'s
+        # in-process monkeypatch, so this asks precisely what the CLI subprocess would resolve
+        # with no explicit --vocab: the brain-root route, then the two in-repo fallbacks.
+        probe = self._run_probe(env_extra=env_extra)
+        real_vocab_path = probe.stdout.strip() or None
+        if real_vocab_path:
+            self.skipTest(
+                f"a real topic vocabulary already resolves on this machine ({real_vocab_path}) — "
+                "the CLI would legitimately fall through to it, so the REFUSED-with-no-vocabulary "
+                "path this test checks cannot be exercised here without touching a real file "
+                "(issue #79)."
+            )
+        r = self._run("--topics", "financial", "--vocab", os.path.join(self.tmp, "nope.md"),
+                      env_extra=env_extra)
         self.assertEqual(r.returncode, 1)
         out = r.stdout + r.stderr
         self.assertIn("no topic vocabulary found", out)

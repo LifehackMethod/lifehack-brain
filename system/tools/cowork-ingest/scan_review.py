@@ -147,6 +147,24 @@ def cmd_show(a):
     header = [pipeline.compose_topbar(m)]
 
     if total == 0:
+        # ★ THE EXPLORE-AWARE BRANCH (#57). `_scanned_unruled` deliberately EXCLUDES a chat already
+        # ruled 'explore' (its skim_verdict IS set — see pipeline._scanned_unruled / _in_explore), so
+        # a basket that is entirely stuck in EXPLORE with nothing else outstanding used to fall straight
+        # through to the "fully sorted" banner below. That is an affirmatively WRONG screen: the pile is
+        # genuinely blocked (it needs a wider re-scan before it can be re-ruled), not done. No data is
+        # lost either way — the basket-status gate in pipeline.set_basket_status still refuses to close
+        # the basket — but the human reads a false all-clear instead of the true blocker.
+        exploring = pipeline.basket_chats(m, a.basket, pipeline._in_explore)
+        if exploring:
+            msg = (f'  ⏳  "{pretty}" is NOT fully sorted — {len(exploring)} chat(s) are parked in '
+                   f'EXPLORE (sent back for a wider second look, not yet re-ruled). Nothing else is '
+                   f'outstanding, but this basket cannot close until those are re-scanned wider and '
+                   f're-ruled.')
+            print(pipeline.compose_screen([msg],
+                                          pipeline.compose_action_bar(
+                                              f"Re-scan wider: basket-list --basket {basket} --explore →"),
+                                          header_lines=header, title=title, title_right=title_right))
+            return 0
         print(pipeline.compose_screen([f'  ✓  "{pretty}" is fully sorted — nothing left to rule here.'],
                                       pipeline.compose_action_bar("Say 'continue' for the next pile →"),
                                       header_lines=header, title=title, title_right=title_right))
@@ -229,4 +247,8 @@ def main():
 
 
 if __name__ == "__main__":
+    import os, sys
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "system", "tools")))
+    from utf8_stdio import force_utf8_stdio
+    force_utf8_stdio()
     main()

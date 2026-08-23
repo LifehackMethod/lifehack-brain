@@ -208,14 +208,28 @@ fi
 [ "$IS_WRITE" -eq 1 ] || exit 0
 
 # ── receipt check ────────────────────────────────────────────────────────────────────────
-KEY="${SID:-${CLAUDE_CODE_SESSION_ID:-cwd-$(printf '%s' "$PWD" | shasum | cut -c1-12)}}"
+# shasum is not guaranteed on PATH (confirmed Windows symptom, GitHub #82) -- unconditionally
+# calling it here emitted "command not found" noise on EVERY invocation of this guard, and if no
+# session id was set the receipt key could never match, producing a permanent deny with no way
+# out. Gate it behind command -v with a pure-shell fallback (cksum), mirroring this repo's
+# established fix for the identical jq-availability class (see guard_sheet_writes.sh /
+# guard_sheet_formula_writes.sh headers).
+_hashcwd() {
+  if command -v shasum >/dev/null 2>&1; then
+    printf '%s' "$PWD" | shasum | cut -c1-12
+  else
+    printf '%s' "$PWD" | cksum | tr -s ' ' '-' | cut -c1-12
+  fi
+}
+
+KEY="${SID:-${CLAUDE_CODE_SESSION_ID:-cwd-$(_hashcwd)}}"
 RUN_DIR="$HOME/.claude/run/sop"
 RECEIPT="$RUN_DIR/hook.$KEY.receipt"
 
 # Accept ANY receipt for this session key, or a cwd-keyed one (the tool may have been run before
 # the session id was known). TTL 12h so a stale receipt cannot certify a read from yesterday.
 FOUND=0
-for cand in "$RECEIPT" "$RUN_DIR/hook.cwd-$(printf '%s' "$PWD" | shasum | cut -c1-12).receipt"; do
+for cand in "$RECEIPT" "$RUN_DIR/hook.cwd-$(_hashcwd).receipt"; do
   [ -f "$cand" ] || continue
   AGE=$(( $(date +%s) - $(stat -f %m "$cand" 2>/dev/null || echo 0) ))
   [ "$AGE" -lt 43200 ] && FOUND=1 && break

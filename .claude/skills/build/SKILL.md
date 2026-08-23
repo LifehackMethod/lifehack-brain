@@ -235,7 +235,7 @@ plan time; the close stops it being hidden at finish time.
 | `system/sops/architecture-planning-sop.md` | the Phase → Feature → Task discipline | ✅ here |
 | `system/sops/build-conductor-sop.md` | the gear doctrine | ✅ here |
 | `system/sops/skill-building-sop-extract.md` | LAW 4.2 — a model cannot report on its own compliance | ✅ here |
-| ✅ `system/sops/skill-building-sop.md` | the whole SOP, which binds a hybrid build | ⏳ lands in Phase 3, with `skill-builder` |
+| ✅ `system/sops/skill-building-sop.md` | the whole SOP, which binds a hybrid build | ✅ here |
 
 ⭐ **This skill calls no tools of its own.** It is pure prose and a mandate — everything it runs belongs
 to the plan it is executing. **Keep it that way.**

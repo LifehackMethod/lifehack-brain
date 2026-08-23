@@ -183,6 +183,10 @@ ran=0; skipped=0; failed=0
 in_block=0
 
 while IFS= read -r line || [ -n "$line" ]; do
+  # Strip a trailing CR: a CRLF-checked-out manifest (Git for Windows' core.autocrlf=true default,
+  # or an existing student's checkout predating the .gitattributes pin) defeats the exact string
+  # match on the fence lines otherwise, silently parsing 0 rows and exiting 0. See .gitattributes.
+  line="${line%$'\r'}"
   if [ "$line" = '```jobs' ]; then in_block=1; continue; fi
   if [ "$in_block" -eq 1 ] && [ "$line" = '```' ]; then in_block=0; continue; fi
   [ "$in_block" -eq 1 ] || continue

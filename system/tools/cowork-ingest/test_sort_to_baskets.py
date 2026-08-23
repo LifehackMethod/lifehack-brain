@@ -130,9 +130,13 @@ class TestOnePadPerPile(Case):
                     pads.add(os.path.relpath(os.path.join(dirpath, f), root))
         self.assertGreaterEqual(len(pads), len(set(PILES.values())),
                                 "expected one pad per pile plus the corpus pad, got: %s" % sorted(pads))
+        # issue #79: `p` comes from os.path.relpath, which on Windows joins with `\`, so
+        # "/%s/" % subject never matches "\subject\" there — normalize separators to `/` before
+        # comparing rather than assuming POSIX-style paths.
         for subject in set(PILES.values()):
-            self.assertTrue(any(("/%s/" % subject) in ("/" + p) for p in pads),
-                            "no pad for pile %r among %s" % (subject, sorted(pads)))
+            self.assertTrue(
+                any(("/%s/" % subject) in ("/" + p.replace(os.sep, "/")) for p in pads),
+                "no pad for pile %r among %s" % (subject, sorted(pads)))
 
 
 if __name__ == "__main__":

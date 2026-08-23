@@ -673,6 +673,10 @@ def _run_self_tests():
 
 
 if __name__ == "__main__":
+    import os, sys
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "system", "tools")))
+    from utf8_stdio import force_utf8_stdio
+    force_utf8_stdio()
     if "--self-test" in sys.argv:
         p, f = _run_self_tests()
         sys.exit(0 if f == 0 else 1)

@@ -16,34 +16,52 @@ WHAT IT CATCHES (three kinds, deliberately no more):
   2. GENERIC HOME PATH -- a line a change ADDS contains an absolute macOS/Linux home
      path, "/Users/<anyone>" or "/home/<anyone>" -- NOT hardcoded to one username, because
      the next leak may belong to a different contributor.
-  3. OPERATOR IDENTITY -- a line a change ADDS contains one of the operator-identifying
-     strings that claudeops-config's own shipping lane already refuses on. These patterns
-     are copied VERBATIM from claudeops-config/system/shipping-lane/refuse-rules.json (see
-     CONTENT_PATTERNS below for the source id of each) -- one rule set, not two that drift
-     apart. Only the IDENTITY-tier patterns (email / name / GitHub handle / Drive-account
-     path) are reused here, not that file's "2-private" desk-persona rules (cal / marc /
-     emily / clair / deryl / dobby): those name ClaudeOps-internal personas, not the
-     operator, and this product ships its OWN generically-named skills with the same
-     one-word slugs (.claude/skills/cal-daily/ is real, shipped, unrelated product content)
-     -- reusing those rules here would cry wolf on this repo's own normal traffic. Secrets
+  3. OPERATOR IDENTITY -- a line a change ADDS contains one of the terms that identify
+     whoever runs this repo. ⛔ THOSE TERMS ARE NOT IN THIS FILE, AND MUST NEVER BE.
+     They are COMPILED AT RUNTIME from the same out-of-repo identity file the shipping
+     lane already uses -- system/shipping-lane/identity_rules.py, reading
+     `<notes>/config/ship-identity.md` (or $SHIP_IDENTITY / --identity). See
+     load_identity_patterns() below. One identity source for the whole product, not two
+     that drift apart -- and, because the source is never committed, this check has no
+     personal data to leak and no longer has to exempt its own directory to hide any.
+     ⛔ FAIL CLOSED: no identity file, or one with no usable terms, is CANNOT EVALUATE
+     (exit 2) -- never a run with the personal tier quietly missing. A scanner that
+     reports CLEAN because it had nothing to look for is the exact disaster
+     identity_rules.py was written to prevent ("no identity file, so the lane has
+     nothing personal to look for and would report your own name CLEAN").
+     What is NOT reused: refuse-rules.json's "2-private" desk-persona rules (cal / marc /
+     emily / clair / deryl / dobby) name ClaudeOps-internal personas, not the operator,
+     and this product ships its OWN generically-named skills with the same one-word slugs
+     (.claude/skills/cal-daily/ is real, shipped, unrelated product content) -- reusing
+     those rules here would cry wolf on this repo's own normal traffic. Secrets
      (refuse-rules.json's "1-secret" tier) are a related but separate concern and are out
      of scope for this check -- see "WHAT THIS DOES NOT CATCH" in the workflow's own
      comments / the task report.
 
+⛔ NEVER PRINT A MATCHED IDENTITY TERM. A finding from rule 3 reports path, line and an
+OPAQUE rule id (operator-identity-NN), and its evidence line has the matched span replaced
+with [REDACTED] -- see redact_spans(). This job's logs, its JSON artifact and its step
+summary are PUBLIC on a public repo; a gate that finds the operator's name and then prints
+it into a world-readable build log has moved the leak, not closed it.
+
 WHY "ADDED LINES", NOT WHOLE-FILE CONTENT: this repo already carries a few lines that
 would trip these patterns if the WHOLE file were rescanned on every touch -- e.g.
-system/shipping-lane/scrub.py's own selftest fixtures literally contain the string
-"/Users/wren/Desktop", and a few system/hooks/*.sh files carry "Enver" in attribution
-comments. Scanning the whole file on any unrelated edit would false-positive on lines
-nobody touched. Scanning only the lines a diff ADDS matches the task's own framing --
-"fail the check when a change INTRODUCES" -- and survives contact with this repo's real
-history. See parse_unified_diff() below.
+system/shipping-lane/scrub.py's own selftest fixtures literally contain an absolute
+/Users/<fixture-name>/Desktop path. Scanning the whole file on any unrelated edit would
+false-positive on lines nobody touched. Scanning only the lines a diff ADDS matches the
+task's own framing -- "fail the check when a change INTRODUCES" -- and survives contact
+with this repo's real history. See parse_unified_diff() below.
 
 USAGE
   CI (production path): parses `git diff` between two refs/SHAs in the current repo.
       check_no_internal_leakage.py --base <sha_or_ref> --head <sha_or_ref> [--mode merge-base|linear]
       --mode merge-base -> `git diff --unified=0 --no-color --no-renames BASE...HEAD` (pull_request)
       --mode linear      -> `git diff --unified=0 --no-color --no-renames BASE HEAD`   (push)
+
+  Every mode takes an optional --identity PATH (default: $SHIP_IDENTITY, then
+  <notes>/config/ship-identity.md). On a GitHub runner there is no notes folder, so the
+  workflows write a repo secret to a runner-local file and export $SHIP_IDENTITY -- see
+  .github/workflows/no-internal-leakage.yml. Unset secret -> exit 2, red, loud.
 
   Manual / fixture testing (no git needed -- treats the whole file as "added", which is
   the exact real-world shape of a wholly NEW file, e.g. the incident file itself):
@@ -56,16 +74,18 @@ EXIT CODES
   0  CLEAN    -- nothing flagged (whole-tree: no BLOCKING finding; WARNING-tier findings,
                  if any, do not change this -- see below)
   1  FLAGGED  -- at least one BLOCKING violation (path or identity content)
-  2  CANNOT EVALUATE -- git diff/ls-files itself failed, a file could not be read, or bad
-                        arguments. NEVER exit 0 on an error -- an unevaluated run must not
-                        read as a clean one.
+  2  CANNOT EVALUATE -- git diff/ls-files itself failed, a file could not be read, bad
+                        arguments, OR no usable identity file (see rule 3). NEVER exit 0
+                        on an error -- an unevaluated run must not read as a clean one,
+                        and a run with no personal tier is an unevaluated run.
 
 WHOLE-TREE BASELINE MODE -- WHY IT EXISTS, SEPARATE FROM THE PER-PR GATE ABOVE
   The per-PR gate above only ever sees lines a diff ADDS (see "WHY ADDED LINES" above) --
   by construction it is permanently blind to anything committed before this check existed.
   --whole-tree is a second, independent mode that rescans every file `git ls-files` tracks
   in the current checkout, in full, on the SAME two BLOCKING rule families the per-PR gate
-  already enforces (PATH_DENYLIST, CONTENT_PATTERNS) -- so it can find a leak that shipped
+  already enforces (PATH_DENYLIST, and content_patterns() = generic + identity) -- so it
+  can find a leak that shipped
   before this script did, which the per-PR gate structurally never will. It is invoked by
   `.github/workflows/no-internal-leakage-baseline.yml` on a weekly schedule and on manual
   `workflow_dispatch` -- NEVER on pull_request/push, and it changes nothing about how the
@@ -77,7 +97,9 @@ WHOLE-TREE BASELINE MODE -- WHY IT EXISTS, SEPARATE FROM THE PER-PR GATE ABOVE
     - a third-party NAME heuristic (a capitalised name-shaped token sharing a line with a
       personal/relationship word -- "wife", "client", "tenant", etc.) -- see NAME_SHAPE_RE.
     - a DOLLAR-AMOUNT-NEAR-BILLING-WORD heuristic -- a specific-decimal dollar figure
-      sharing a line with "tenant"/"billing"/"client"/"invoice" -- see DOLLAR_AMOUNT_RE.
+      sharing a line with a money-owed/money-settled word (billed, unbilled, receivable,
+      arrears, retainer, payment, balance, ...) -- see BILLING_TRIGGER_STEMS, which also
+      records which candidate words were REJECTED and on what measurement.
   WARNING findings are reported and written to the JSON report but NEVER change the exit
   code -- a hardcoded regex cannot enumerate every third party's name or every dollar
   figure that matters, so these are heuristics for a HUMAN to triage, not a gate. Flagging
@@ -99,6 +121,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import json
+import os
 import re
 import subprocess
 import sys
@@ -153,76 +176,243 @@ PATH_DENYLIST = [
     },
 ]
 
-# ------------------------------------------------------------------- rule 2 + 3: CONTENT
+# ------------------------------------------------------------------------- rule 2: CONTENT
 # Checked against every line a diff ADDS (never unchanged context, never a whole-file
-# rescan -- see module docstring for why). Rule 2 (home path) is hand-written here,
-# deliberately generic across usernames per the task. Rule 3 entries are copied VERBATIM
-# from claudeops-config/system/shipping-lane/refuse-rules.json -- "source" names the
-# exact rule id there, so a drift check just diffs the two pattern strings.
-CONTENT_PATTERNS = [
+# rescan -- see module docstring for why).
+#
+# ⭐ EVERY RULE IN THIS LIST IS TRUE FOR EVERYBODY AND NAMES NOBODY. That is the whole
+# point of the split: this is the same line system/shipping-lane/refuse-rules.json draws
+# ("credential shapes, home-directory paths, cloud-drive mounts... There is not one person
+# in it"). The terms that identify a specific human are rule 3, and they are compiled at
+# runtime from a file that is not in this repo -- see load_identity_patterns().
+#
+# The "source" field names the equivalent rule id in refuse-rules.json where one exists, so
+# a drift check just diffs the two pattern strings.
+GENERIC_CONTENT_PATTERNS = [
     {
         "id": "home-path-generic",
         "source": None,
+        # ⚠ AUDITED 2026-08-18 for the bare-prefix weakness that was found in
+        # operator-drive-cloudstorage below. IT DOES NOT HAVE IT, and the reason is the
+        # trailing `+`: it demands at least one account-name character, so the bare prefix,
+        # an angle placeholder, a shell variable and a glob all fail to match. Verified
+        # against all four shapes plus a positive control that still fires.
+        #
+        # ⭐ WHAT IT DOES HAVE, REPORTED AND DELIBERATELY NOT "FIXED": it fires on a WORD
+        # placeholder ("username", "you", "theirname"), because those are indistinguishable
+        # from a real short account name by shape alone. That is arguably correct -- the
+        # remedy is "write ~/ instead", which is the right advice for a placeholder too --
+        # but note the asymmetry it creates: FICTIONAL_FIXTURE_USERNAMES suppresses a known
+        # set of them in whole-tree mode ONLY. check_added_lines() (the per-PR gate) does not
+        # consult that allowlist, so a PR that ADDS one of those fixture paths is BLOCKED
+        # while the identical line already in the tree is not. Left alone on purpose: closing
+        # it means LOOSENING a blocking rule, which is the opposite of the change this pass
+        # was making, and the per-PR strictness has never actually bitten anyone.
         "pattern": r"(?:/Users/|/home/)[A-Za-z0-9._-]+",
         "remedy": (
             "an absolute home-folder path -- the segment right after /Users/ or /home/ "
             "IS someone's account name, and the path does not exist on any other "
             "machine. Replace it with ~/... or $HOME/... (this repo's own "
-            "docs/REPORT-A-BUG.md gives the identical instruction: 'Replace "
-            "`/Users/theirname/...` with `~/...`')."
+            "docs/REPORT-A-BUG.md gives the identical instruction: replace an absolute "
+            "`/Users/<name>/...` path with `~/...`)."
         ),
-    },
-    {
-        "id": "operator-email-primary",
-        "source": "email-primary",
-        "pattern": r"(?i)enver\.gjokaj@gmail\.com",
-        "remedy": "the operator's primary email address. Remove it or genericize it.",
-    },
-    {
-        "id": "operator-email-any",
-        "source": "email-any-personal",
-        "pattern": r"(?i)\b[A-Za-z0-9._%+-]*gjokaj[A-Za-z0-9._%+-]*@[A-Za-z0-9.-]+",
-        "remedy": "an email address built on the operator's family name. Remove it or genericize it.",
-    },
-    {
-        "id": "operator-name-enver",
-        "source": "name-enver",
-        "pattern": r"(?i)(?<![A-Za-z0-9])enver(?![A-Za-z0-9])",
-        "remedy": "the operator's first name. Remove it, or use a generic placeholder ('the operator', 'you').",
-    },
-    {
-        "id": "operator-name-gjokaj",
-        "source": "name-gjokaj",
-        "pattern": r"(?i)(?<![A-Za-z0-9])gjokaj(?![A-Za-z0-9])",
-        "remedy": "the operator's family name. Remove it, or use a generic placeholder.",
-    },
-    {
-        "id": "operator-github-handle",
-        "source": "handle-github",
-        "pattern": r"(?i)(?<![A-Za-z0-9])egjokaj(?![A-Za-z0-9])",
-        "remedy": "the operator's personal GitHub handle -- links this repo to a specific person. Remove it.",
     },
     {
         "id": "operator-drive-cloudstorage",
         "source": "path-drive-cloudstorage",
-        "pattern": r"CloudStorage/GoogleDrive-",
-        "remedy": "a macOS Google Drive mount path -- the segment that follows is a personal account address. Remove it.",
+        # ⭐ TIGHTENED 2026-08-18 -- IT NOW REQUIRES AN ACCOUNT, NOT JUST THE PREFIX.
+        # It used to be the bare prefix `CloudStorage/GoogleDrive` + a dash, and it fired on
+        # two lines of INSTALL.md that contain no account name at all: one sentence of prose
+        # describing what a Drive path looks like, and one line of FUNCTIONAL INSTALLER CODE
+        # that globs `GoogleDrive-*` to find the user's Drive folders. The second cannot be
+        # fixed in the file -- the installer's job IS to match that shape, so it has to
+        # contain it. Both were pure false positives, and a BLOCKING rule that red-lights an
+        # installer for doing its job is a rule that gets deleted.
+        #
+        # ⚠ THE FIX IS STRICTER, NOT LOOSER, AND THAT DISTINCTION IS THE WHOLE POINT. The
+        # rule exists to catch a real Drive account path, so it now demands the thing that
+        # makes it one: an account-shaped token after the dash -- `GoogleDrive-<local>@<domain>`
+        # with a real TLD. A glob (`GoogleDrive-*`), a placeholder (`GoogleDrive-<account>`)
+        # and a bare prefix all stop matching; a genuine mount path still matches. "Contains
+        # this shape" became "contains a real account". Pinned both ways in
+        # test_check_no_internal_leakage.py: a positive control asserts a real-shaped account
+        # path is still caught, and negative controls assert the two INSTALL.md shapes are not.
+        #
+        # The `[-]` character class is kept as belt-and-braces so this line cannot match
+        # itself. It is no longer the thing doing that work -- the `[` opening the account
+        # class already stops a self-match -- but it costs nothing and the self-scan-clean
+        # test below depends on the property, not on which mechanism provides it.
+        "pattern": r"CloudStorage/GoogleDrive[-][A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",
+        "remedy": ("a macOS Google Drive mount path with a real account address in it "
+                   "(~/Library/CloudStorage/...). Replace the account segment with a "
+                   "placeholder, or glob for it at runtime instead of hardcoding it."),
     },
     {
         "id": "operator-drive-account",
         "source": "path-drive-account",
+        # ⚠ AUDITED 2026-08-18 alongside the rule above and DELIBERATELY LEFT ALONE: it never
+        # had the bare-prefix weakness. It has always required an "@" after the dash, so a
+        # glob or a placeholder cannot satisfy it. Left wider than its neighbour on purpose
+        # (no CloudStorage anchor, no TLD required) so it still catches a mount name quoted
+        # anywhere -- in a shell snippet, a log line, a doc -- not only under Library/.
+        # CONSEQUENCE, ACCEPTED: a real macOS mount path now matches BOTH rules and reports
+        # twice. On a BLOCKING rule that is louder, not weaker, and the module already states
+        # that multiple independent findings on one file are all worth surfacing at once.
         "pattern": r"GoogleDrive-[A-Za-z0-9._%+-]+@",
         "remedy": "a Google Drive mount path with a full email address embedded in it. Remove it.",
     },
 ]
 
-# Files under .github/ are never content-scanned. Two reasons, both load-bearing:
-#  (a) the task requires it explicitly, so the workflow's own pattern strings in this very
-#      file don't trip the check on the PR that adds them;
-#  (b) it is not cosmetic -- CONTENT_PATTERNS' own source lines literally contain bounded
-#      occurrences of "enver", "gjokaj" etc. as regex text (e.g. this file's
-#      operator-name-enver pattern string), so a self-scan would self-flag on introduction.
-CONTENT_SCAN_EXCLUDE_PREFIX = ".github/"
+# ⛔ THERE IS NO .github/ CONTENT-SCAN EXEMPTION ANY MORE, AND THAT IS THE POINT OF THIS
+# FILE'S 2026-08-18 REWRITE (issue #59).
+#
+# BE FAIR TO WHAT WAS HERE BEFORE: a pattern-matcher must contain its patterns, so a
+# self-scan self-flagging is a real problem and `CONTENT_SCAN_EXCLUDE_PREFIX = ".github/"`
+# was a defensible answer to it. The defect was never the exemption. It was that rule 3 was
+# written as SIX LITERAL PERSONAL STRINGS, which made the exemption mandatory -- and so the
+# one file in a PUBLIC repo guaranteed to contain the operator's identity became the one
+# file the scanner structurally could not read. A whole-tree scan reported CLEAN on
+# 2026-08-15 for exactly that reason.
+#
+# Fixing the CAUSE (rule 3 is now compiled from an out-of-repo file) left exactly two
+# self-flagging lines in the entire .github/ tree, both on the generic, impersonal
+# `operator-drive-cloudstorage` shape: its own "pattern" field, and a comment that quoted
+# it. Both are handled above -- that rule now requires a real account address after the
+# dash, so neither a quoted prefix nor a pattern string can satisfy it (the `[-]` class is
+# kept on top of that as belt-and-braces). The comment was reworded. Measured, not assumed
+# -- with the prefix gone, this directory scans with zero findings in both modes. So the
+# exemption bought nothing and cost everything, and it is gone.
+
+
+# ------------------------------------------------------- rule 3: OPERATOR IDENTITY (runtime)
+# WIRED, NOT INVENTED. system/shipping-lane/identity_rules.py already owns this exact
+# problem for the shipping lane: it reads one term-per-line file that lives outside the
+# repo, DETECTS each term's shape (address / path fragment / word), re-escapes it as a
+# literal, and compiles a bounded regex -- including the two scars that file documents (the
+# lookaround boundaries that fire at "_" where \b does not, and the trailing-"s" widening
+# that catches "<Name>s-MacBook-Air"). Re-deriving any of that here would be a second
+# implementation to drift; this imports the first one.
+#
+# WHAT THIS ADDS ON TOP: for each WORD-shaped term, a second rule matching that term
+# EMBEDDED IN AN EMAIL LOCAL-PART (`something<term>something@domain`). The literal rule set
+# this replaced carried exactly one such pattern, hardcoded to the family name; a bounded
+# word rule alone cannot see it, because the character to the term's left is alphanumeric.
+# Generalising it to every word term is strictly MORE detection than before, not less.
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+SHIPPING_LANE_DIR = os.path.join(REPO_ROOT, "system", "shipping-lane")
+
+IDENTITY_RULE_PREFIX = "operator-identity"
+
+# The remedy text a rule-3 finding prints. It says what KIND of thing matched and never
+# WHICH -- see the module docstring's "NEVER PRINT A MATCHED IDENTITY TERM".
+_IDENTITY_REMEDY = {
+    "word": ("a term from your own identity file appears here -- your name, a handle, or "
+             "a client/project name you listed as never-publishable. Remove it, or use a "
+             "generic placeholder ('the operator', 'you'). The term itself is deliberately "
+             "not printed: this log is public."),
+    "address": ("an email address listed in your own identity file. Remove it or "
+                "genericize it. The address itself is deliberately not printed."),
+    "path fragment": ("a path fragment listed in your own identity file. Replace it with "
+                      "a relative or placeholder path. Not printed: this log is public."),
+    "email-embedded": ("an email address built out of one of your identity terms "
+                       "(`...<term>...@domain`). Remove it or genericize it. Not printed: "
+                       "this log is public."),
+}
+
+
+class IdentityUnavailable(Exception):
+    """No usable identity source. ALWAYS maps to exit 2 -- never a quiet exit 0. Its
+    message is meant to be read by a person and to name the fix."""
+
+
+def load_identity_patterns(identity_file=None):
+    """Compile rule 3 from the out-of-repo identity file. Raises IdentityUnavailable on
+    anything that would leave the personal tier empty -- there is deliberately no path
+    through this function that returns a short list and no error."""
+    if SHIPPING_LANE_DIR not in sys.path:
+        sys.path.insert(0, SHIPPING_LANE_DIR)
+    try:
+        import identity_rules                                  # noqa: E402
+    except ImportError as e:
+        raise IdentityUnavailable(
+            "system/shipping-lane/identity_rules.py is not importable ({}), so the "
+            "operator-identity tier cannot be compiled. Refusing to scan with rule 3 "
+            "missing -- that is a scanner that reports CLEAN because it has nothing to "
+            "look for.".format(e))
+
+    path = identity_file or identity_rules.identity_path()
+    try:
+        terms = identity_rules.read_identity(path)
+    except identity_rules.IdentityMissing as e:
+        raise IdentityUnavailable(str(e))
+
+    rules = []
+    for n, term in enumerate(terms, 1):
+        compiled = identity_rules.compile_term(term, n)
+        # ⛔ compile_term's own id is a SLUG OF THE TERM ("identity-03-<the-term>"). That id
+        # is printed in every finding and written into the JSON artifact, so using it would
+        # publish the exact string this whole change exists to remove. Opaque id, always.
+        kind = "address" if "@" in term else (
+            "path fragment" if ("/" in term or term.startswith("~")) else "word")
+        rules.append({
+            "id": "{}-{:02d}".format(IDENTITY_RULE_PREFIX, n),
+            "source": "ship-identity.md (not in this repo)",
+            "pattern": compiled["pattern"],
+            "remedy": _IDENTITY_REMEDY[kind],
+        })
+        if kind == "word":
+            rules.append({
+                "id": "{}-{:02d}-email".format(IDENTITY_RULE_PREFIX, n),
+                "source": "ship-identity.md (not in this repo)",
+                "pattern": (r"(?i)[A-Za-z0-9._%+-]*" + re.escape(term)
+                            + r"[A-Za-z0-9._%+-]*@[A-Za-z0-9.-]+"),
+                "remedy": _IDENTITY_REMEDY["email-embedded"],
+            })
+    return rules
+
+
+def is_identity_rule(rule_id) -> bool:
+    return bool(rule_id) and rule_id.startswith(IDENTITY_RULE_PREFIX)
+
+
+def redact_spans(line, rule=None):
+    """The evidence string for a rule-3 finding: the real line with every span ANY identity
+    rule matched replaced by [REDACTED]. Enough context to find it, none of the terms.
+
+    ⚠ EVERY IDENTITY RULE, NOT JUST THE ONE THAT FIRED -- and that is not fussiness, it is
+    the bug this function shipped with for about ten minutes on 2026-08-18. A line reading
+    "signed off by <first> <last>" produces TWO findings; redacting each against only its
+    own rule printed "[REDACTED] <last>" from one and "<first> [REDACTED]" from the other,
+    so the pair of findings reassembled the whole name in the log. Partial redaction of a
+    line that is printed more than once is not redaction. The `rule` argument is kept for
+    call-site readability and is deliberately unused."""
+    out = line
+    for r in (_CONTENT_PATTERNS or []):
+        if is_identity_rule(r["id"]):
+            out = re.sub(r["pattern"], "[REDACTED]", out)
+    return out
+
+
+# The EFFECTIVE rule set = generic + identity. Deliberately None until install_identity_
+# patterns() succeeds, so that every code path that scans content without a personal tier
+# raises instead of quietly scanning with two thirds of the rules. Fail-closed by
+# CONSTRUCTION, not by remembering to check.
+_CONTENT_PATTERNS = None
+
+
+def install_identity_patterns(identity_file=None):
+    global _CONTENT_PATTERNS
+    _CONTENT_PATTERNS = list(GENERIC_CONTENT_PATTERNS) + load_identity_patterns(identity_file)
+    return _CONTENT_PATTERNS
+
+
+def content_patterns():
+    if _CONTENT_PATTERNS is None:
+        raise IdentityUnavailable(
+            "the operator-identity tier was never installed (install_identity_patterns() "
+            "was not called), so this scan would run on the generic rules alone and could "
+            "report a file carrying the operator's own name as CLEAN. Refusing.")
+    return _CONTENT_PATTERNS
 
 
 # ============================================================================ WHOLE-TREE
@@ -259,18 +449,26 @@ FICTIONAL_FIXTURE_PHRASES = ("whitfield contracting",)
 FICTIONAL_FIXTURE_USERNAMES = frozenset({"wren", "x", "theirname", "woakley"})
 
 # --------------------------------------------------------- self-reference exclusions
-# Same rationale as CONTENT_SCAN_EXCLUDE_PREFIX (.github/) above, applied to the two other
-# places in THIS repo that, by their own stated purpose, contain the exact leak SHAPES on
-# purpose rather than by accident:
-#   - system/shipping-lane/fixtures/ -- refuse-fixture.md's own header: "THIS FILE EXISTS
-#     TO BE CAUGHT. It is deliberately full of the exact shapes the shipping lane refuses
-#     ... it is never in a shipping manifest." A directory whose declared job is to be a
-#     positive test fixture FOR A DIFFERENT SCANNER (verify_rules.py) is not a leak when
-#     THIS scanner rediscovers it; it is that scanner working.
-#   - system/shipping-lane/refuse-rules.json -- the exact file CONTENT_PATTERNS above
-#     documents it copied several rules VERBATIM from (see each rule's "source" field);
-#     naturally it contains the same literal pattern text (e.g. "CloudStorage/GoogleDrive-")
-#     as documentation of the rule, not an occurrence of the thing the rule catches.
+# ⭐ RE-EXAMINED 2026-08-18 (issue #59) ALONGSIDE THE .github/ EXEMPTION, AND KEPT.
+# Measured with rule 3 compiled from the real out-of-repo identity file: ZERO identity-term
+# hits in either path. Neither is hiding a person. What they trip is the generic, impersonal
+# cloud-drive shape, on lines whose declared job is to carry it:
+#   - system/shipping-lane/fixtures/ -- 1 line, `operator-drive-account`. refuse-fixture.md's
+#     own header: "THIS FILE EXISTS TO BE CAUGHT. It is deliberately full of the exact shapes
+#     the shipping lane refuses ... it is never in a shipping manifest." A directory whose
+#     declared job is to be a positive test fixture FOR A DIFFERENT SCANNER (verify_rules.py)
+#     is not a leak when THIS scanner rediscovers it; it is that scanner working.
+#   - system/shipping-lane/refuse-rules.json -- ⚠ RE-MEASURED AFTER THE 2026-08-18 TIGHTENING
+#     OF operator-drive-cloudstorage: it now produces ZERO findings, so this entry is no
+#     longer load-bearing. (Before the tightening it tripped 1 line; the count of "4 lines"
+#     this comment used to claim for the fixtures directory was measured under the old,
+#     looser rule and is likewise superseded.) KEPT ANYWAY, and this is a judgement call
+#     stated plainly rather than a fact: that file's whole job is to hold leak SHAPES as
+#     data, so the next rule anyone adds to it may legitimately carry an account-shaped
+#     example, and CI reddening on the shipping lane documenting itself is a false positive
+#     waiting to happen. It is also consumed by four other tools (scrub.py, push_gate.py,
+#     verify_rules.py, canon.py) with their own tests pinned to it, so it is not this
+#     check's to reshape. Delete this entry if you would rather find out.
 # ⚠ Deliberately two named paths, not a directory-wide exclusion of system/shipping-lane/ --
 # scrub.py, canon.py, identity_rules.py etc. in that same directory are real code where a
 # genuine leak would be exactly as serious as anywhere else in the tree, and stay scanned.
@@ -412,9 +610,76 @@ _LETTER_WORD_RE = re.compile(r"[A-Za-z]+")
 # "$4,250.00", never a round "$500" that is far more likely to be an example/estimate)
 # sharing a line with a billing-context word.
 DOLLAR_AMOUNT_RE = re.compile(r"\$[0-9][0-9,]*\.[0-9]{2}\b")
-BILLING_TRIGGER_WORDS = ("tenant", "billing", "client", "invoice")
+
+# ⭐ WHY THESE ARE STEMS AND NOT WORDS -- THE 2026-08-18 MISS, AND ITS ACTUAL CAUSE.
+# The list here was ("tenant", "billing", "client", "invoice"). system/tools/emit_status.py
+# carried a real desk's real receivables total in a shipped docstring, on a line whose
+# billing word was "unbilled" -- which contains "billed", not "billing". The rule read that
+# line and reported the file clean. Adding "unbilled" fixes that one line and nothing else.
+#
+# The CAUSE was not a missing word, it was MORPHOLOGY: "bill", "billed", "billing",
+# "billable" and "unbilled" are one concept, and a flat word list has to enumerate every
+# inflection of every concept or lose to the one it forgot. (It is also the second
+# list-shaped rule in this file to miss for a near-miss reason -- see PERSONAL_TRIGGER_WORDS.)
+# So each entry below is a STEM PLUS ITS BOUNDED SUFFIXES, which kills the whole class
+# instead of one instance. The suffixes are explicit, never ".*" -- an open suffix would make
+# "bill" match "billion"/"billionaire", and the outer lookarounds cannot save it.
+#
+# ⚠ HOW FAR TO WIDEN IS A MEASURED QUESTION, NOT A TASTE ONE, AND IT WAS MEASURED.
+# The whole tracked tree contains SIX lines carrying a specific-decimal figure at all (the
+# DOLLAR_AMOUNT_RE half is already the narrow half). Five of the six are teaching examples
+# about MODEL SPEND -- their vocabulary is "cost", "ratio", "projected", "realized",
+# "estimate". That is the shape of this product's honest dollar traffic, and it is a
+# different vocabulary from a receivables line. Hence the split below:
+#   ADDED -- money OWED or SETTLED between two parties. Near a specific-decimal figure this
+#            is a ledger line, not prose. Marginal false positives on the current tree: 0.
+#   REJECTED -- "rate", "fee(s)", "price", "cost", "spend", "budget", "estimate", "quote",
+#            "statement", "account", "credit", "debit", "paid", "due", "receipt". These are
+#            either (a) the measured vocabulary of this repo's own model-spend examples
+#            ("cost" and "estimate" each collide with a REAL line in the tree today -- adding
+#            "estimate" flags this file's own comment two lines below), or (b) ordinary
+#            technical English ("error rate", "if statement", "API client account",
+#            "paid tier", "due to"). A gate that flags every priced example gets ignored, and
+#            an ignored gate is worse than the miss it was widened to prevent.
+#   NOT ADDED, LOW YIELD -- "salary", "wage", "payroll", "revenue", "income", "expense",
+#            "subtotal", "reimbursement". Clean words, but a real line carrying any of them
+#            almost always also says payment/balance/deposit/owed, which are already here.
+BILLING_TRIGGER_STEMS = (
+    # --- money OWED: what an unpaid ledger line says ---
+    r"bill(?:ed|ing|able|s)?",          # bill / billed / billing / billable / bills
+    r"unbill(?:ed|able)",               # ⭐ the miss that prompted this -- needs its own
+                                        # entry, because the "un" prefix is alphanumeric and
+                                        # the left-hand lookaround refuses to fire inside it
+    r"invoic(?:e|ed|es|ing)",
+    r"receivable(?:s)?",
+    r"payable(?:s)?",
+    r"retainer(?:s)?",
+    r"arrears",
+    r"overdue",
+    r"past[ -]due",
+    r"outstanding",
+    r"unpaid",
+    r"owe(?:d|s)?",                     # owe / owed / owes -- NOT "owner" (suffix is bounded)
+    r"owing",
+    r"balance(?:s)?",                   # NOT "balanced"/"balancing" -- ordinary prose
+    # --- money SETTLED: what a paid ledger line says ---
+    r"remittance",
+    r"payment(?:s)?",
+    r"payout(?:s)?",
+    r"refund(?:ed|s)?",
+    r"deposit(?:ed|s)?",
+    r"ledger(?:s)?",
+    # --- income side ---
+    r"earnings",
+    r"commission(?:s|ed)?",
+    # --- who the money is with (both carried over from the original list) ---
+    r"client(?:s)?",
+    r"tenant(?:s)?",
+)
+# Kept under the old name so nothing downstream breaks; it is now stems, not plain words.
+BILLING_TRIGGER_WORDS = BILLING_TRIGGER_STEMS
 BILLING_TRIGGER_RE = re.compile(
-    r"(?i)(?<![A-Za-z0-9])(" + "|".join(BILLING_TRIGGER_WORDS) + r")(?![A-Za-z0-9])")
+    r"(?i)(?<![A-Za-z0-9])(" + "|".join(BILLING_TRIGGER_STEMS) + r")(?![A-Za-z0-9])")
 
 # Common capitalised English words / doc vocabulary / product terms that are NAME-shaped by
 # the regex above but are not names. Kept short and reviewable on purpose (see the module's
@@ -531,10 +796,6 @@ def scan_whole_tree(scan_root_paths=None):
                 "severity": BLOCKING, "path": path, "line": None,
                 "rule_id": path_rule["id"], "remedy": path_rule["remedy"], "evidence": None,
             })
-        if path.startswith(CONTENT_SCAN_EXCLUDE_PREFIX):
-            # same reasoning as the per-PR mode's exclusion -- this file's own pattern
-            # strings would self-flag on introduction. See CONTENT_SCAN_EXCLUDE_PREFIX.
-            continue
         if is_self_referential_fixture_path(path):
             # see WHOLE_TREE_SELF_REFERENCE_EXCLUDE_PATHS/PREFIXES for the two named,
             # documented reasons this is not a general suppression mechanism.
@@ -548,7 +809,7 @@ def scan_whole_tree(scan_root_paths=None):
 
         for lineno, line in enumerate(text.splitlines(), start=1):
             # ---- BLOCKING: the same identity/home-path patterns the per-PR gate uses ----
-            for rule in CONTENT_PATTERNS:
+            for rule in content_patterns():
                 m = re.search(rule["pattern"], line)
                 if not m:
                     continue
@@ -558,9 +819,13 @@ def scan_whole_tree(scan_root_paths=None):
                     seg = seg_match.group(1) if seg_match else ""
                     if seg.lower() in FICTIONAL_FIXTURE_USERNAMES:
                         continue  # allowlisted fixture path -- see FICTIONAL_FIXTURE_USERNAMES
+                # ⛔ a rule-3 hit NEVER puts the matched term in the report -- this dict is
+                # serialized straight into a PUBLIC build artifact. See redact_spans().
+                evidence = redact_spans(line, rule) if is_identity_rule(rule["id"]) else line
                 blocking.append({
                     "severity": BLOCKING, "path": path, "line": lineno,
-                    "rule_id": rule["id"], "remedy": rule["remedy"], "evidence": line.strip()[:200],
+                    "rule_id": rule["id"], "remedy": rule["remedy"],
+                    "evidence": evidence.strip()[:200],
                 })
 
             # ---- WARNING gap 2: third-party name heuristic ----
@@ -588,8 +853,8 @@ def scan_whole_tree(scan_root_paths=None):
                     "severity": WARNING, "path": path, "line": lineno,
                     "rule_id": "dollar-amount-near-billing-word",
                     "remedy": (
-                        "a specific-decimal dollar figure shares this line with a billing-"
-                        "context word (tenant/billing/client/invoice). If this is a real "
+                        "a specific-decimal dollar figure shares this line with a "
+                        "billing-context word (see BILLING_TRIGGER_STEMS). If this is a real "
                         "figure from a real dispute/invoice/ledger, remove it or round it "
                         "into a non-identifying example; if it is a worked example, say so "
                         "explicitly in the surrounding text."),
@@ -703,7 +968,7 @@ def check_path(path: str):
 def check_added_lines(added_lines):
     hits = []
     for lineno, text in added_lines:
-        for rule in CONTENT_PATTERNS:
+        for rule in content_patterns():
             if re.search(rule["pattern"], text):
                 hits.append((lineno, text, rule))
     return hits
@@ -714,13 +979,17 @@ def format_violation(path, rule, lineno=None, evidence=None):
     if lineno is not None:
         where += ",line={}".format(lineno)
     source_note = ""
-    if rule.get("source"):
-        source_note = " [reused from claudeops-config/system/shipping-lane/refuse-rules.json id={}]".format(
+    if is_identity_rule(rule["id"]):
+        source_note = " [rule 3, compiled at runtime from your identity file -- not in this repo]"
+    elif rule.get("source"):
+        source_note = " [same shape as system/shipping-lane/refuse-rules.json id={}]".format(
             rule["source"])
     header = "::error {}::[{}] {}{}".format(where, rule["id"], rule["remedy"], source_note)
     lines = [header]
     if evidence is not None:
-        lines.append("    {}:{}: {}".format(path, lineno, evidence.strip()[:200]))
+        # ⛔ never echo a matched identity term into a public CI log -- see redact_spans().
+        shown = redact_spans(evidence, rule) if is_identity_rule(rule["id"]) else evidence
+        lines.append("    {}:{}: {}".format(path, lineno, shown.strip()[:200]))
     return "\n".join(lines)
 
 
@@ -733,8 +1002,6 @@ def scan_files(file_diffs):
             violations.append(format_violation(path, path_rule))
             # a denylisted path still gets its content checked below too -- multiple
             # independent findings on one file are all worth surfacing at once.
-        if path.startswith(CONTENT_SCAN_EXCLUDE_PREFIX):
-            continue
         for lineno, text, rule in check_added_lines(added_lines):
             violations.append(format_violation(path, rule, lineno, text))
     return violations
@@ -842,7 +1109,28 @@ def main():
                      help="--whole-tree only: write the full JSON report to this path "
                           "(machine-readable evidence the run actually executed -- see "
                           "the workflow that calls this mode).")
+    ap.add_argument("--identity",
+                     help="rule 3's term list: one term per line, '#' comments. Default: "
+                          "$SHIP_IDENTITY, then <notes>/config/ship-identity.md. NEVER a "
+                          "file inside this repo. Absent/empty -> exit 2, never exit 0.")
     args = ap.parse_args()
+
+    # ⛔ BEFORE ANY SCAN, IN EVERY MODE. A missing identity file is CANNOT EVALUATE (2),
+    # loudly, with the fix named -- never a scan on the generic tier alone that prints
+    # "clean" over a file carrying the operator's own name. This is the same fail-closed
+    # contract push_gate.py already refuses on, and the reason this file exists at all.
+    try:
+        install_identity_patterns(args.identity)
+    except IdentityUnavailable as e:
+        print("CANNOT EVALUATE: {}\n"
+              "\n"
+              "  The operator-identity tier (rule 3) could not be compiled, so this run "
+              "was NOT a clean scan -- it was no scan at all, and is reported as such "
+              "rather than as a pass.\n"
+              "  ON A GITHUB RUNNER: set the SHIP_IDENTITY_TERMS repository secret; the "
+              "workflow writes it to a runner-local file and exports $SHIP_IDENTITY. See "
+              ".github/workflows/no-internal-leakage.yml.".format(e), file=sys.stderr)
+        return CANNOT_EVALUATE
 
     if args.whole_tree:
         return run_whole_tree_mode(args)

@@ -145,14 +145,18 @@ Then pull, in order — **whatever you read first becomes the lens everything el
 
 ### The five checks on the rung block
 
-- **CHECK 1 — DRIFT.** ⛔ **Never inherit the written rungs as true.** Independently derive what the
-  three altitudes actually are **from what this session did** — the action taken, the seam it sits
-  inside, the position against the desired outcome — **then** compare that against what the block says.
-  Deriving from the written block just launders it back to you unchanged; that is not a check.
-  **Worked case:** a brief's 5,000 rung named a whole skill as the thing being worked on. But the
-  session had spent its day making the *measuring instrument* trustworthy and had only mapped that
-  skill as a by-product. **The 5,000 was the instrument, not the patient, and the rung said otherwise.**
-  A rung can look entirely reasonable and still be drifted.
+- **CHECK 1 — DRIFT.** ⛔ **Never inherit the written rungs as true — but this check does not apply
+  the same way to all three.** For ▲5,000 and ▲ground: independently derive what they actually are
+  **from what this session did** — the action taken, the seam it sits inside — **then** compare that
+  against what the block says. Deriving from the written block just launders it back to you unchanged;
+  that is not a check. **Worked case:** a brief's 5,000 rung named a whole skill as the thing being
+  worked on. But the session had spent its day making the *measuring instrument* trustworthy and had
+  only mapped that skill as a by-product. **The 5,000 was the instrument, not the patient, and the rung
+  said otherwise.** A rung can look entirely reasonable and still be drifted.
+  ⛔ **For ▲10,000, this check is NOT a re-derivation.** ▲10,000 is human-authored, human-only — a
+  session never composes a replacement for it, drifted or not. The only legal question is **"is ▲10,000
+  still faithful to §1?"** — a staleness check: read §1, read ▲10,000, and flag a mismatch. If it has
+  drifted, that is a finding to raise, never a line to rewrite yourself.
 - **CHECK 2 — WRITTEN FOR THE WRONG READER.** It can be accurate and still fail its audience. **The
   intended reader is a completely fresh session with zero context.** So: every proper noun carries a
   clause saying what it is — not *"the tester"* bare, but *"the tester, the thing that measures whether

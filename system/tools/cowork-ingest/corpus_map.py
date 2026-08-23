@@ -145,7 +145,16 @@ def do_set(a):
     if a.note:    row["learned_note"] = a.note
     if a.desk:    row["desk"] = a.desk
     if a.vein:    row["vein"] = a.vein
-    if getattr(a, "subject", None):  row["subject"] = a.subject   # ad-hoc cluster label (Pass-1 clustering)
+    if getattr(a, "subject", None):
+        # ad-hoc cluster label (Pass-1 clustering). `basket` is the field pipeline.py/`migrate` actually
+        # route on (basket_review.py matches on `subject`, pipeline.py matches on `basket`) — writing
+        # only `subject` here left the two fields able to disagree the moment a chat was re-clustered
+        # (a real re-cluster never re-derives `basket` — `migrate` only seeds it from `subject` when
+        # `basket` is still falsy or the placeholder "UNCLUSTERED", never on top of a real value; see
+        # do_migrate above). Writing BOTH here, at the one place `subject` is actually set, keeps them
+        # in lockstep without touching `migrate`'s narrower seed-only rule or any other call site.
+        row["subject"] = a.subject
+        row["basket"] = a.subject
     save(m, a.map)
     print(f"OK: {a.file} → status={row.get('filing_status')} desk={row.get('desk')} vein={row.get('vein')} "
           f"subject={row.get('subject')} note={(row.get('learned_note') or '')[:50]!r}")
@@ -253,10 +262,20 @@ def do_migrate(a):
         b = m["baskets"].setdefault(name, dict(pipeline.BASKET_DEFAULTS))
         b.setdefault("sort_order", i)
         b.setdefault("basket_lock", None)
-        # a basket whose every chat is already human-ruled is 'committed'; else leave/seed 'queued'
-        if b.get("basket_status", "queued") != "committed":
+        # a basket whose every chat is already human-ruled is 'committed'; else leave/seed 'queued'.
+        # ⚠ MUST NOT overwrite an EXISTING real status (skim-complete, skim-interrupted, read-complete,
+        # read-interrupted — see BASKET_STATUSES in pipeline.py). Those are a human/machine's recorded
+        # PROGRESS through the basket, not a queued/committed binary. The only time this block may SEED
+        # a value is when basket_status was never set at all (a brand-new basket from `setdefault`
+        # above, which seeds "queued" as the default) — never re-derive over a status already in play.
+        if "basket_status" not in b or b["basket_status"] is None:
             all_terminal = all(x.get("filing_status") in HUMAN_TERMINAL for x in members[name])
             b["basket_status"] = "committed" if all_terminal else "queued"
+        elif b["basket_status"] == "queued":
+            # still the untouched default — safe to promote to committed once every chat is ruled.
+            all_terminal = all(x.get("filing_status") in HUMAN_TERMINAL for x in members[name])
+            if all_terminal:
+                b["basket_status"] = "committed"
     # ★ THE BASKET-COMFORT ADVISORY — says it, never blocks it. migrate is the only place the `baskets`
     # section is built/grown, so it is where a fragmented clustering pass becomes visible. It PROCEEDS
     # either way: the count belongs to the material and the human, not to a threshold.
@@ -300,4 +319,8 @@ def main():
 
 
 if __name__ == "__main__":
+    import os, sys
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "system", "tools")))
+    from utf8_stdio import force_utf8_stdio
+    force_utf8_stdio()
     main()
