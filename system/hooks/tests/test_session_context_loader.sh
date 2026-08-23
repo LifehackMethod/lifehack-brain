@@ -108,8 +108,20 @@ echo "── a file that EXISTS and is non-empty but cannot be READ is not the s
 # the output, no different from a folder that was never ingested. Root canon first, then a subject
 # canon file, with a HEALTHY sibling subject alongside it to prove one unreadable file cannot also
 # take down everything that DID read fine.
+# issue #79: chmod does not restrict access on Windows/NTFS the way it does on POSIX, so a
+# chmod-000 assertion is VACUOUS there — it would pass whether or not the hook actually handles an
+# unreadable file. Skip with a STATED reason rather than let a vacuous pass and a real pass share
+# the same "ok" spelling. Same OS rule INSTALL.md and install-schedulers.sh already use: Darwin is
+# a Mac, Linux is Linux, anything else (including MSYS/MINGW/CYGWIN Git-Bash) is Windows.
+_UNAME="$(uname -s 2>/dev/null || true)"
+case "$_UNAME" in
+  Darwin|Linux) _IS_POSIX_CHMOD=1 ;;
+  *)            _IS_POSIX_CHMOD=0 ;;
+esac
 if [ "$(id -u)" = "0" ]; then
   echo "  (skipped: running as root — chmod 000 does not block root's own reads)"
+elif [ "$_IS_POSIX_CHMOD" = 0 ]; then
+  echo "  (skipped: uname reports '$_UNAME' — chmod does not restrict access on Windows/NTFS, so this assertion would be vacuous there; issue #79)"
 else
   printf '# Canon\nshould not leak\n' > "$NOTES/canon.md"
   chmod 000 "$NOTES/canon.md"
