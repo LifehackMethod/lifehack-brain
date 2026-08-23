@@ -232,6 +232,35 @@ class TestPython3ShimUTF8(unittest.TestCase):
         self.assertIn("PYTHONUTF8=1", body)
         self.assertIn("python.exe", body)
 
+    def test_a_posix_companion_is_written_for_git_bash(self):
+        """The .cmd alone is invisible to Git Bash, which is the shell every INSTALL.md block
+        uses: MSYS does not apply PATHEXT to a bare word, so `python3` stayed "command not found"
+        there even with python3.cmd on PATH. The extensionless companion is what makes the word
+        resolve; the shebang is what makes MSYS treat it as executable, and LF endings are
+        load-bearing because a CR-mangled shebang does not run."""
+        posix_shim = os.path.join(self.tmp, "python3")
+        with mock.patch.object(shutil, "which", return_value=None):
+            bootstrap.ensure_python3_shim()
+        self.assertTrue(os.path.exists(posix_shim), "Git Bash has nothing to resolve")
+        raw = open(posix_shim, "rb").read()
+        self.assertTrue(raw.startswith(b"#!"), "no shebang: MSYS will not treat it executable")
+        self.assertIn(b"PYTHONUTF8=1", raw)
+        self.assertNotIn(bytes([13]), raw, "a CR byte in an sh shim breaks the shebang")
+
+    def test_the_cmd_governs_the_reported_verb_when_both_are_written(self):
+        """A pre-UTF8 .cmd plus a missing companion must still report `upgraded`, not
+        `created`. The .cmd state is the one worth reporting: a stale one silently mangles the
+        person own accented names and curly quotes, and burying that under the companion
+        `created` would hide it."""
+        crlf = chr(13) + chr(10)
+        with open(self.shim, "w", encoding="ascii", newline="") as f:
+            f.write("@echo off" + crlf + "'%~dp0python.exe' %*" + crlf)
+        with mock.patch.object(shutil, "which", return_value=self.shim):
+            status, detail = bootstrap.ensure_python3_shim()
+        self.assertEqual(status, "upgraded")
+        self.assertEqual(detail, self.shim)
+        self.assertTrue(os.path.exists(os.path.join(self.tmp, "python3")))
+
     def test_second_run_reports_already_and_does_not_rewrite(self):
         with mock.patch.object(shutil, "which", return_value=None):
             bootstrap.ensure_python3_shim()
