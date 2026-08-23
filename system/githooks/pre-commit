@@ -64,6 +64,36 @@ if [ -n "$offenders" ]; then
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
+# REFUSE any commit that would track a symlink. WHY: .claude/ as it ships today holds ZERO
+# symlinks -- every skill is a real directory -- and INSTALL.md states the rule in plain words: "Do
+# NOT symlink anything into ~/.claude/. Symlinks are Mac-coupled and this has to work on Windows
+# too." Git tracks a symlink as its own mode (120000) no matter how it looks in the working tree, so
+# one can be staged by accident and would then ship to every student who clones this repo -- and on
+# Windows, a checked-out symlink can silently become a plain text file holding a path, which fails
+# confusingly rather than loudly.
+#
+# `git ls-files -s` reads the INDEX, not the working tree, so this catches a symlink the moment it
+# is staged -- before `ls` would even show it as one. That is also why this is cheap: it is one
+# index read, never a tree walk.
+symlinks=$(git ls-files -s | grep '^120000 ' | cut -f2-)
+
+if [ -n "$symlinks" ]; then
+	echo ""
+	echo "  ⛔ COMMIT REFUSED — this would make the repo track a symlink."
+	echo ""
+	echo "  These paths are symlinks (git mode 120000), and none may be committed:"
+	printf '%s\n' "$symlinks" | sed 's/^/      /'
+	echo ""
+	echo "  WHY: symlinks are Mac-coupled and this repo has to work on Windows too (INSTALL.md). A"
+	echo "  checked-out symlink can silently become a plain text file holding a path on Windows --"
+	echo "  a confusing, silent failure for every student who clones this repo."
+	echo ""
+	echo "  Commit a real file or a real directory instead of the symlink above."
+	echo ""
+	exit 1
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
 # Every file, skill and hook these documents NAME must be here, or its line must say what happened
 # to it. See system/tools/citation_lint.py for the rule and the three markers.
 #
