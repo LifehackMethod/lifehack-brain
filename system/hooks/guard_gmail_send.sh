@@ -112,10 +112,19 @@
 
 DENY='{"decision":"block","reason":"BLOCKED: this Gmail command SENDS mail, or uses a gmail operation this guard does not recognise. WHY: a send is irreversible and outward-facing — it leaves in your name, to a real person, and nothing anywhere undoes it. This system may DRAFT mail; the human presses send. Every other irreversible Google surface reachable with one gws login is already guarded here (which calendar a write lands on, destructive sheet ops, credential logout, mail deletion) and the send path was the one hole. This guard is DEFAULT-DENY on purpose: a sibling rail once listed the known write verbs and ended with an allow, and an unlisted helper verb walked straight through it for months. REDIRECT: compose it as a DRAFT with the same --params body — run gws gmail users drafts create (or drafts update to revise one) — then open Gmail and send it yourself. The draft is the deliverable. Reads are untouched: messages and threads get / list / read, labels, settings, history, getProfile and attachments get all pass, and mail deletion belongs to guard_gmail_destructive.sh, not to this guard. RULE: the GUARDS line in system/hooks/guard_gmail_send.sh — an agent in this system drafts mail and never sends it. Change that rule deliberately and amend this hook, then update its row in system/tools/organism/label_manifest.yaml. If a legitimate READ was refused, add its verb to SAFE_VERBS in that file on purpose; never append an allow-on-fallthrough to make one command fit."}'
 
-deny() { printf '%s\n' "$DENY" >&2; exit 2; }
+# ⭐ A SEPARATE MESSAGE FOR "I COULD NOT READ THIS". Measured 2026-08-23 (ported from ClaudeOps,
+# same guard): this guard used to fail closed on an unreadable payload, a missing parser, or its
+# own decision script crashing by reusing $DENY above -- so a failure that had nothing to do with
+# sending mail came back "this Gmail command SENDS mail, or uses a gmail operation this guard does
+# not recognise". Failing closed here is still correct; blaming a send that never happened is not.
+PARSE_DENY='{"decision":"block","reason":"BLOCKED: guard_gmail_send could not read, parse, or evaluate this command, so it is refusing rather than guessing. This is NOT a report that the command sends mail or uses an unrecognised gmail operation -- it is a report that the guard itself could not get far enough to make that call (unreadable input, a missing parser file, or the decision script failing to run). WHY: an unevaluable command aimed at Gmail is refused rather than assumed safe. REDIRECT: re-run the tool call so its JSON payload is well-formed; if this keeps happening, check that system/hooks/lib/gws_guard.py is present and readable. If what you actually wanted was to send mail, note this guard never allows that regardless: compose it as a draft instead -- gws gmail users drafts create (or drafts update) -- then send it yourself from Gmail. RULE: system/hooks/guard_gmail_send.sh, FAIL_POSTURE."}'
 
-# Fail-closed: a guard that cannot read its own input must DENY, never pass.
-INPUT=$(cat 2>/dev/null) || deny
+deny() { printf '%s\n' "$DENY" >&2; exit 2; }
+deny_parse() { printf '%s\n' "$PARSE_DENY" >&2; exit 2; }
+
+# Fail-closed: a guard that cannot read its own input must DENY, never pass. This is a "could not
+# read the input" failure, not a rule match -- say so honestly rather than naming a send.
+INPUT=$(cat 2>/dev/null) || deny_parse
 
 # House __ERR__ sentinel rather than jq: jq exits 0 on EMPTY stdin, which fail-OPENED a sibling
 # calendar guard in the donor system.
@@ -125,7 +134,7 @@ try:
     print(json.load(sys.stdin).get('tool_input', {}).get('command', ''))
 except Exception:
     print('__ERR__')" 2>/dev/null)
-[ "$COMMAND" = "__ERR__" ] && deny
+[ "$COMMAND" = "__ERR__" ] && deny_parse
 [ -z "$COMMAND" ] && exit 0
 
 # ── SCOPE GATES — deliberately WIDER than the check they guard ────────────────────────────
@@ -147,7 +156,7 @@ printf '%s' "$SCOPE" | grep -qi "gmail" 2>/dev/null || exit 0
 # QUOTED inside a heredoc, an echo, a commit message or a python string is never in command
 # position, so it is data and it passes — that distinction is the whole point.
 LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib/gws_guard.py"
-[ -r "$LIB" ] || deny   # fail-closed: no parser, no permission
+[ -r "$LIB" ] || deny_parse   # fail-closed: no parser, no permission -- not a rule match, say so
 
 # The DECISION. Exit 0 = allow, 7 = block, anything else = the guard itself broke -> also block.
 GUARD_CMD="$COMMAND" GUARD_LIB="$LIB" python3 -c '
@@ -255,8 +264,13 @@ sys.exit(7 if blocked(os.environ["GUARD_CMD"]) else 0)
 ' 2>/dev/null
 RC=$?
 
-# 7 = block. Any other non-zero = the decision program itself failed -> FAIL CLOSED, per
-# FAIL_POSTURE above. Never append an allow here.
-[ "$RC" -eq 0 ] || deny
+# 7 = block, a real decision -- use the rule message. Any OTHER non-zero means the decision
+# program itself failed to run to completion (not a rule match) -> FAIL CLOSED, per FAIL_POSTURE
+# above, with the honest "could not evaluate" message. Never append an allow here.
+if [ "$RC" -eq 7 ]; then
+  deny
+elif [ "$RC" -ne 0 ]; then
+  deny_parse
+fi
 
 exit 0

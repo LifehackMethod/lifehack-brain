@@ -192,6 +192,49 @@ def verdict(cmd, service, destructive, safe, require_any=None, write_verbs=None)
     return 'PASS'
 
 
+def verdict_reason(cmd, service, destructive, safe, require_any=None, write_verbs=None):
+    """ADDITIVE, MESSAGE-ONLY HELPER -- does not decide anything by itself, and nothing in this
+    file's real gating path (verdict(), main()'s sys.exit) calls it. It exists because several
+    callers were reusing ONE rule's deny message for every reason verdict() can return BLOCK,
+    including the fail-closed we-could-not-resolve-this case -- so an unparseable drafts-create
+    command came back denied with a Gmail-deletion-specific message that named a rule the command
+    never touched. Measured 2026-08-23 (ClaudeOps); ported here because the same shared parser and
+    the same three callers exist in this repo too.
+
+    Mirrors verdict()'s conditions and their ORDER exactly, so the reason it reports can never
+    disagree with the decision verdict() already made. A caller uses this ONLY after verdict()
+    (via the unchanged --service/--destructive/... invocation) has already returned BLOCK, purely
+    to pick which honest message to print.
+
+    Returns (verdict, reason) where reason is one of:
+      None                   -- PASS, or no gws segment for this service was found
+      'unresolved_operation' -- the operation itself could not be read (a $VAR, a substitution, or
+                                 an xargs-style placeholder sits where the verb should be)
+      'destructive'          -- a literal, in-scope destructive verb was matched
+      'unresolved_target'    -- a literal write verb, but its TARGET could not be read
+    """
+    write_verbs = write_verbs or []
+    for toks in gws_segments(cmd):
+        seg = ' '.join(toks)
+        if not re.search(r'\b%s\b' % re.escape(service), seg, re.I):
+            continue
+        chain = op_chain(toks, service)
+        if not chain:
+            if has_nonliteral(toks):
+                return 'BLOCK', 'unresolved_operation'
+            continue
+        if has_nonliteral(chain):
+            return 'BLOCK', 'unresolved_operation'
+        low = [c.lower() for c in chain]
+        in_scope = (not require_any) or any(w.lower() in low for w in require_any)
+        if in_scope and any(v.lower() in low for v in destructive):
+            return 'BLOCK', 'destructive'
+        if any(v.lower() in low for v in write_verbs):
+            if has_nonliteral(toks[len(chain) + 1:]):
+                return 'BLOCK', 'unresolved_target'
+    return 'PASS', None
+
+
 def _selftest():
     ID = 'TESTFAKESHEETID0000000000000000000000000000'
     D = ['clear', 'batchclear', 'delete']
@@ -240,6 +283,15 @@ def main():
     ap.add_argument('--require-any', default='', help='comma-separated scope words; at least one must be present')
     ap.add_argument('--write-verbs', default='', help='comma-separated write verbs whose TARGET must be literal')
     ap.add_argument('--selftest', action='store_true')
+    # ADDITIVE, MESSAGE-ONLY. Does not touch the decision path above or below it: the ORIGINAL
+    # invocation a caller already made (no --reason-only) still runs verdict() and exits 7/0
+    # exactly as before, byte-for-byte. This flag is for a SECOND, separate invocation a caller
+    # makes only after that original call already returned BLOCK, purely to learn which of
+    # verdict()'s three conditions fired so it can print an honest reason instead of reusing one
+    # rule's message for all of them. Always exits 0 -- it is a query, never a gate.
+    ap.add_argument('--reason-only', action='store_true',
+                     help='print WHY verdict() would say BLOCK (unresolved_operation / destructive '
+                          '/ unresolved_target / none), then exit 0. Never gates anything itself.')
     a = ap.parse_args()
     if a.selftest:
         sys.exit(_selftest())
@@ -249,6 +301,10 @@ def main():
     s = [x for x in a.safe.split(',') if x]
     r = [x for x in getattr(a, 'require_any').split(',') if x]
     w = [x for x in getattr(a, 'write_verbs').split(',') if x]
+    if a.reason_only:
+        _, reason = verdict_reason(sys.stdin.read(), a.service, d, s, r, w)
+        print(reason or 'none')
+        sys.exit(0)
     sys.exit(7 if verdict(sys.stdin.read(), a.service, d, s, r, w) == 'BLOCK' else 0)
 
 
