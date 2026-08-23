@@ -147,6 +147,23 @@ def cmd_show(a):
     header = [pipeline.compose_topbar(m)]
 
     if total == 0:
+        # ⚠ EXPLORE-AWARE BRANCH (#57). _scanned_unruled() deliberately EXCLUDES a chat already ruled
+        # 'explore' (its skim_verdict is set), so a basket whose every remaining chat is parked in the
+        # EXPLORE stack yields total == 0 and used to print the "fully sorted" all-clear. Meanwhile
+        # pipeline.set_basket_status's skim-complete gate independently REFUSES to close that basket
+        # while any chat sits in EXPLORE. The human was told the pile was done while the machine still
+        # blocked it -- a false all-clear masking a real blocker. Ask the same question the gate asks.
+        exploring = pipeline.basket_chats(m, a.basket, pipeline._in_explore)
+        if exploring:
+            msg = (f'  ⏳  "{pretty}" is NOT fully sorted — {len(exploring)} chat(s) are parked in '
+                   f'EXPLORE (sent back for a wider second look, not yet re-ruled). Nothing else is '
+                   f'outstanding, but this basket cannot close until those are re-scanned wider and '
+                   f're-ruled.')
+            print(pipeline.compose_screen(
+                [msg],
+                pipeline.compose_action_bar(f"Re-scan wider: basket-list --basket {basket} --explore →"),
+                header_lines=header, title=title, title_right=title_right))
+            return 0
         print(pipeline.compose_screen([f'  ✓  "{pretty}" is fully sorted — nothing left to rule here.'],
                                       pipeline.compose_action_bar("Say 'continue' for the next pile →"),
                                       header_lines=header, title=title, title_right=title_right))
