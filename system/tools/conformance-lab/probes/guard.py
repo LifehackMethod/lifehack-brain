@@ -148,6 +148,27 @@ def _agent_calendar():
 
 AGENT_CALENDAR = _agent_calendar()
 
+
+# The one Google Tasks list `guard_tasks_writes.sh` protects. ⛔ NOT A CONSTANT, and never again
+# a literal — the first cut of this entry carried the operator's REAL Google Tasks list id
+# hardcoded as a "fixture", and it shipped public on the ref students clone before anyone caught
+# it. It is not merely a personal identifier to scrub: `judge()` in `system/hooks/lib/tasks_guard.py`
+# does exact string-equality against a `goals_id` it loads AT HOOK RUNTIME from the reader's own
+# `<notes>/config/cal.md` via `shared/cal_config.py` — never from this file. A hardcoded FAKE id
+# would not fix that: the forbidden payload would then name a list that legitimately ISN'T the
+# configured goals list, the guard would correctly ALLOW it, and the probe would report a green
+# "fires" while asserting nothing at all. Mirrors `_agent_calendar()` above for the identical reason.
+def _goals_tasklist():
+    """The reader's configured goals-tasklist id, or None if they have not set one up yet."""
+    try:
+        import cal_config
+        return cal_config.get("goals_tasklist")
+    except Exception:
+        return None
+
+
+GOALS_TASKLIST = _goals_tasklist()
+
 # Drive spine root (for Write|Edit guard payloads — canon / write-path probes). Resolved, not
 # typed — see _drive_root() above for why the literal cannot live here.
 DRIVE_ROOT = _drive_root()
@@ -368,18 +389,45 @@ RULE_HOOK_MAP = {
     # router config/reboot guard) is deliberately NOT ported — see this file's module
     # docstring, port note 3.
 
-    # ── guard_tasks_writes.sh — write to the READ-ONLY Life Map tasklist ───────
-    # forbidden names the denylisted Life Map ID + a write verb; allowed is a read.
-    "GUARD-tasks-lifemap": {
-        "hook": "guard_tasks_writes.sh",
-        "forbidden": {"tool_input": {"command": (
-            "gws tasks tasks insert --params "
-            "'{\"tasklist\": \"cDJFQjd4dF94UjNiRzFRSg\", \"title\": \"injected task\"}'"
-        )}},
-        "allowed": {"tool_input": {"command": (
-            "gws tasks tasks list --params '{\"tasklist\": \"cDJFQjd4dF94UjNiRzFRSg\"}'"
-        )}},
-    },
+    # ── guard_tasks_writes.sh — write to the goals tasklist (carve-out verbs excepted) ─────────
+    # forbidden names the configured goals tasklist id + a bare insert (no sanctioned parent);
+    # allowed is a read of the same list.
+    #
+    # ⚖ CONDITIONALLY PARKED — same shape as GUARD-calendar-primary above, and for the same
+    # reason a real id leaked here once already: this entry used to carry the operator's ACTUAL
+    # Google Tasks list id hardcoded as a "fixture". `judge()` in `system/hooks/lib/tasks_guard.py`
+    # does exact string-equality against a `goals_id` it loads AT HOOK RUNTIME from the reader's
+    # own `<notes>/config/cal.md` (via `shared/cal_config.py`) — never from this file — so a
+    # hardcoded id here does not need to be REAL, it needs to MATCH whatever is actually
+    # configured. A hardcoded FAKE id would make the forbidden payload target a list that
+    # legitimately isn't the goals list; the guard would correctly ALLOW it; and the probe would
+    # report a green "fires" while asserting nothing. So: resolve `GOALS_TASKLIST` at import time
+    # (see `_goals_tasklist()` above) and, with none configured, park honestly instead of forcing
+    # a green or filing a false red. Unparks itself the moment the reader configures one.
+    "GUARD-tasks-lifemap": (
+        {
+            "hook": "guard_tasks_writes.sh",
+            "forbidden": {"tool_input": {"command": (
+                f"gws tasks tasks insert --params "
+                f"'{{\"tasklist\": \"{GOALS_TASKLIST}\", \"title\": \"injected task\"}}'"
+            )}},
+            "allowed": {"tool_input": {"command": (
+                f"gws tasks tasks list --params '{{\"tasklist\": \"{GOALS_TASKLIST}\"}}'"
+            )}},
+        }
+        if GOALS_TASKLIST
+        else {
+            "hook": "guard_tasks_writes.sh",
+            "parked": (
+                "no `goals_tasklist` configured on this install, so there is no real goals list "
+                "id to build a faithful forbidden payload against — a fake one would make the "
+                "guard correctly ALLOW it (a different list is a legitimate write) and the paired "
+                "probe would assert nothing while looking green. Set `goals_tasklist` in "
+                "<notes>/config/cal.md (INSTALL.md -> the Google sit-down) and this rule becomes "
+                "a real paired test with no code change."
+            ),
+        }
+    ),
 
     # ── guard_canon_write.sh — oversized canon write (this repo's actual rail) ──
     # ⚖ PORT NOTE: the donor's forbidden/allowed pair here tested the "authority: user"
