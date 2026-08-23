@@ -2585,11 +2585,12 @@ emergency ignores all three, which is the only reason the other three can be tru
 Two computers can share one AI Brain through Drive, **one at a time** — never both running Claude
 against the notes folder at once (that is how files fork). Two files are deliberately outside both
 git and Drive, and both are set once and never edited again: `.brain-root` (the notes path) and
-`.claude/settings.local.json` (the loader ceiling, if you raised it). Personal standing instructions
-do not need a third per-machine file: keep them in the notes folder and make `CLAUDE.local.md` a
-single `@` import of that file. Drive carries the rules, the import line is identical on every
-machine, and there is nothing to keep in step. A space in the path is written `\ `, and the first
-session on each machine shows a one-click approval for an import that resolves outside the repo.
+`.claude/settings.local.json` (the loader ceiling, if you changed it — ⚠ never above ~9,500: Claude Code caps a hook's output at 10,000 characters, and past that a session receives a 2KB preview instead of its notes). Personal standing instructions
+need no per-machine file at all: keep them in the notes folder as `doctrine.md`, and the session-start
+hook carries them into every session on every machine, beside the root canon. ⛔ Do **not** reach for
+a `@` import in `CLAUDE.local.md` for this — an import that resolves outside the repo is silently
+dropped until an approval dialog is accepted, and the desktop app never shows that dialog (found
+2026-08-22: the file was absent from every session while this page said it was carried).
 **The scheduler is the part that must not be copied:** run `install-schedulers.sh` on ONE machine
 only — two pulses write the same status files and Drive forks them. The second machine runs no
 scheduled jobs at all.

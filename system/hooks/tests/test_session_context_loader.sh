@@ -49,6 +49,30 @@ says "one L" && ok || bad "root canon with no subjects yet" "the day-one case dr
 saysnot "^No subject folders yet — nothing standing to load\." && ok || bad "day-one wording" "still claims nothing to load"
 mv "$SANDBOX/desks-parked" "$NOTES/desks"
 
+echo "── doctrine.md: the person's standing rules, loaded beside the root canon when present ──"
+# 2026-08-22: this file reached sessions as a `@` import from CLAUDE.local.md — which the desktop app
+# silently drops (the external-import approval dialog is never shown there). The loader now carries
+# it. Three states: absent → nothing printed (no header either); present → body under its header;
+# exists-but-unreadable → loud failure, no leak, session still comes up.
+runit
+saysnot "how to work with me" && ok || bad "no doctrine file" "printed a doctrine header with no doctrine.md present"
+printf '# Doctrine\n\nHARD-11. Do, do not instruct.\n' > "$NOTES/doctrine.md"
+runit
+says "HARD-11" && ok || bad "doctrine loaded" "doctrine.md body not in the output"
+says "how to work with me" && ok || bad "doctrine header" "body present but its header line missing"
+says "one L" && ok || bad "root canon still loaded beside doctrine" "root canon dropped"
+[ "$RC" = 0 ] && ok || bad "doctrine: exit code" "expected 0, got $RC"
+if [ "$(id -u)" != "0" ]; then
+  printf 'doctrine should not leak\n' > "$NOTES/doctrine.md"
+  chmod 000 "$NOTES/doctrine.md"
+  runit
+  says "COULD NOT READ" && says "doctrine.md" && ok || bad "unreadable doctrine" "no visible failure message naming doctrine.md"
+  saysnot "doctrine should not leak" && ok || bad "unreadable doctrine" "leaked content despite chmod 000"
+  [ "$RC" = 0 ] && ok || bad "unreadable doctrine: exit code" "expected 0, got $RC"
+  chmod 644 "$NOTES/doctrine.md"
+fi
+rm -f "$NOTES/doctrine.md"
+
 echo "── the subject folders ────────────────────────────────────────────────────"
 printf 'Prefer warm bulbs, 2700K.\n' > "$NOTES/desks/lamps/canon/current.md"
 printf 'The tax year ends in April.\n' > "$NOTES/desks/money/canon/current.md"
@@ -71,7 +95,30 @@ echo "── it never reports success while delivering nothing ─────�
 # A remembered folder that is not there. This is a cloud drive that did not mount, and it must NOT
 # read as an empty system — telling this person to "set it once" invites them to point at an empty
 # folder and lose the link to everything they have written.
-OUT="$(env HOME="$SANDBOX" LIFEHACK_ROOT="$SANDBOX/vanished" bash "$LOADER" 2>&1)"; RC=$?
+# ⚠ These not-set cases run a SANDBOX COPY of the repo, not the real loader in place. Resolution
+# step (2) reads the repo's own `.brain-root` from brain_root.py's file position — a sandboxed HOME
+# and an unset LIFEHACK_ROOT cannot hide it — so on any machine with a real pointer set, the real
+# loader found the real notes here and both cases failed for a reason that had nothing to do with
+# the loader (found 2026-08-22). The copy has exactly the `.brain-root` each case writes, or none.
+SREPO="$SANDBOX/repo"
+mkdir -p "$SREPO/shared" "$SREPO/system/hooks"
+cp "$REPO/shared/brain_root.py" "$SREPO/shared/"
+cp "$LOADER" "$SREPO/system/hooks/"
+SLOADER="$SREPO/system/hooks/session_context_loader.sh"
+notset() {   # run the sandbox loader with NO env root and NO persisted config; $1 = extra env
+  OUT="$(env -i HOME="$SANDBOX" PATH="$PATH" $1 bash "$SLOADER" 2>&1)"; RC=$?
+}
+# (a) the remembered folder is the repo's own .brain-root pointer, and it is gone — the primary
+#     mechanism now, and the case the real loader used to misreport as a fresh install.
+printf '%s\n' "$SANDBOX/vanished" > "$SREPO/.brain-root"
+notset
+says "NOT WHERE THIS SYSTEM REMEMBERS THEM" && ok || bad "missing root (stale .brain-root)" "a stale pointer must read as 'not where I remember', never 'fresh install'"
+says "$SANDBOX/vanished" && ok || bad "missing root (stale .brain-root)" "did not name the remembered folder"
+saysnot "one L" && ok || bad "missing root (stale .brain-root)" "claimed to load canon from a folder that is not there"
+[ "$RC" = 0 ] && ok || bad "missing root (stale .brain-root): exit code" "expected 0, got $RC"
+rm -f "$SREPO/.brain-root"
+# (b) the remembered folder came from $LIFEHACK_ROOT and it is gone.
+notset "LIFEHACK_ROOT=$SANDBOX/vanished"
 says "NOT WHERE THIS SYSTEM REMEMBERS THEM\|No data root set yet" && ok || bad "missing root" "said neither of the two honest things"
 saysnot "one L" && ok || bad "missing root" "claimed to load canon from a folder that is not there"
 # ⚠ exit 0, DELIBERATELY, even though this IS a real failure. Confirmed against the official
@@ -84,8 +131,9 @@ saysnot "one L" && ok || bad "missing root" "claimed to load canon from a folder
 [ "$RC" = 0 ] && ok || bad "missing root: exit code" "expected 0 (SessionStart can't block, and non-zero hides stdout from the model) — got $RC"
 
 # A genuinely fresh install: no root at all. A legitimate state, so exit 0 — but it must SAY it.
-OUT="$(env HOME="$SANDBOX" bash -c "unset LIFEHACK_ROOT; HOME='$SANDBOX' bash '$LOADER'" 2>&1)"; RC=$?
+notset
 says "No data root set yet" && ok || bad "fresh install" "did not name the state"
+saysnot "NOT WHERE" && ok || bad "fresh install" "called a fresh install a missing folder"
 [ "$RC" = 0 ] && ok || bad "fresh install: exit code" "a fresh install is not a failure (got $RC)"
 
 # A real internal failure — the hook cannot find its own repository. Historically this suite
