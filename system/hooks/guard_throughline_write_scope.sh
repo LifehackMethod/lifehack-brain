@@ -14,6 +14,11 @@
 #      folder is resolved the way shared/brain_root.py resolves it, and the layout is
 #      docs/data-layout.md. Change the destination in all three or in none.
 # FAIL_POSTURE: CLOSED while armed, open otherwise. Un-armed sessions are never affected at all.
+# UPDATED: 2026-08-23 (GitHub #95: notes_root() now also tries the repo's own .brain-root pointer
+#      and, when this checkout is a linked git worktree with no pointer of its own, the MAIN
+#      worktree's pointer, before falling back to the machine-global brain-root. Ported from
+#      system/hooks/ingest_gate_enforce.sh's notes_root()/main_worktree_pointer_file(); this file
+#      applies no Windows path fold, so there was no fold-ordering concern to resolve.)
 # UPDATED: 2026-08-11 (ported; the destination stopped being one machine's absolute Drive path, the
 #      comparison is now made on resolved paths, and the deny moved to the house channel)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -87,8 +92,62 @@ COMMAND="$(printf '%s' "$PARSED"   | cut -f5)"
 # on any other machine the comparison below matches NOTHING, so an armed run would have been blocked
 # from writing its own findings file. The guard would have made the skill unable to finish, and the
 # only symptom would be a refusal naming a folder that does not exist.
+# ── THIS REPO, resolved from this script's own location — never $PWD or $HOME. Needed only so
+# main_worktree_pointer_file() below has something to test: is THIS checkout a linked worktree of
+# some other, main, checkout?
+_HOOKDIR_TL="$(cd "$(dirname "$0")" 2>/dev/null && pwd -P)"
+REPO="${_HOOKDIR_TL%/system/hooks}"
+[ "$REPO" = "$_HOOKDIR_TL" ] && REPO="$(cd "$_HOOKDIR_TL" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null)"
+: "${REPO:=/dev/null/no-repo-resolved}"
+
+# ── THE WORKTREE ROUTE (ported from system/hooks/ingest_gate_enforce.sh, GitHub #95). `git
+# worktree add` materialises only TRACKED files, and .brain-root is deliberately gitignored -- so a
+# LINKED WORKTREE never has a pointer of its own and git will never give it one. Without this, a
+# session running inside a linked worktree would silently fall through to the machine-global
+# ~/.config/lifehack/brain-root, which belongs to no repo in particular and can be stale -- the
+# IDENTICAL blind spot #95 found in ingest_gate_enforce.sh, here in the guard that resolves the one
+# folder /throughline is allowed to write into.
+# A linked worktree is a second checkout of ONE repo, so the brain it belongs to is the MAIN
+# worktree's brain; borrowing that pointer is the repo's own declaration, not a guess. Detection
+# reads GIT'S OWN FILES -- a `.git` FILE holding `gitdir:`, then `commondir` inside that git dir --
+# and never `git rev-parse`, for the same reasons as the donor: no PATH dependency, no subprocess
+# on every tool call. A SUBMODULE also has a `.git` file and is excluded here (no `commondir`).
+# Anything unexpected returns 1 and the next route is tried -- this function never improvises.
+main_worktree_pointer_file() {
+  [ -f "$REPO/.git" ] || return 1          # an ordinary clone has a .git DIRECTORY, not a file
+  _mw_line="$(head -n 1 "$REPO/.git" 2>/dev/null)"
+  case "$_mw_line" in gitdir:*) ;; *) return 1 ;; esac
+  _mw_gd="$(printf '%s' "${_mw_line#gitdir:}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+  [ -n "$_mw_gd" ] || return 1
+  case "$_mw_gd" in /*) ;; *) _mw_gd="$REPO/$_mw_gd" ;; esac
+  [ -f "$_mw_gd/commondir" ] || return 1   # no commondir => a submodule, not a linked worktree
+  _mw_cd="$(head -n 1 "$_mw_gd/commondir" 2>/dev/null)"
+  [ -n "$_mw_cd" ] || return 1
+  case "$_mw_cd" in /*) ;; *) _mw_cd="$_mw_gd/$_mw_cd" ;; esac
+  _mw_cdp="$(cd "$_mw_cd" 2>/dev/null && pwd -P)"
+  [ -n "$_mw_cdp" ] || return 1
+  # ONLY the ordinary `<main worktree>/.git` layout. A bare repo, or one made with
+  # --separate-git-dir, has no main worktree at the parent of the common dir, and inventing one
+  # there is exactly the guess a security boundary must not make.
+  case "$_mw_cdp" in */.git) ;; *) return 1 ;; esac
+  _mw_root="${_mw_cdp%/.git}"
+  [ -d "$_mw_root" ] || return 1
+  printf '%s' "$_mw_root/.brain-root"
+}
+
 notes_root() {
   _nr="${LIFEHACK_ROOT:-}"
+  if [ -z "$_nr" ] && [ -f "$REPO/.brain-root" ]; then
+    _nr="$(cat "$REPO/.brain-root" 2>/dev/null)"
+  fi
+  # Only when this repo has no pointer of its own -- which in practice means a linked worktree,
+  # since git cannot put one there. A repo that HAS declared, however badly, keeps its declaration.
+  if [ -z "$_nr" ] && [ ! -f "$REPO/.brain-root" ]; then
+    _mwp="$(main_worktree_pointer_file || true)"
+    if [ -n "$_mwp" ] && [ -f "$_mwp" ]; then
+      _nr="$(cat "$_mwp" 2>/dev/null)"
+    fi
+  fi
   [ -n "$_nr" ] || _nr="$(cat "$HOME/.config/lifehack/brain-root" 2>/dev/null)"
   while [ "${_nr%/}" != "$_nr" ]; do _nr="${_nr%/}"; done
   case "$_nr" in
