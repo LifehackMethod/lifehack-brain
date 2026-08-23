@@ -27,6 +27,15 @@
 # no error, just an unprotected repository.
 system/githooks/*  text eol=lf
 
+# system/pulse-config.md is CODE by another name: system/tools/pulse.sh and
+# install-schedulers.sh both parse its ```jobs```/```crontab``` fences with exact-string
+# `[ "$line" = '```jobs' ]` bash comparisons, not a tolerant parser -- a CRLF from the *.md
+# rule below (issue #75) breaks that match silently: both scripts find zero rows and BOTH
+# report success, so the entire scheduled-automation layer goes silently absent on a Windows
+# install. Same class of failure as the shell scripts above; same fix, scoped to this one
+# file rather than every *.md.
+system/pulse-config.md  text eol=lf
+
 # ── Data and documents — normalise, but harmless either way ───────────────────
 *.md              text
 *.json            text
