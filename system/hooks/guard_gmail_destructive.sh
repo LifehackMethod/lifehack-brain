@@ -69,17 +69,29 @@
 
 DENY='{"decision":"block","reason":"BLOCKED: destructive Gmail verb (delete / batchDelete / trash). WHY: Gmail deletion is IRREVERSIBLE and no agent path here is authorised to perform it — mail is moved by LABEL ONLY, which is reversible by design. Every other Google service reachable with one gws login is guarded; mail is the one where the mistake cannot be taken back. REDIRECT: use a label move instead — gws gmail users threads modify --user-id me --id <THREAD_ID> --add-label-ids <LABEL_TO_ADD> --remove-label-ids <LABEL_TO_REMOVE>. If mail truly must be destroyed, YOU do it in the Gmail UI, where you can see what is about to go. RULE: the GUARDS line in system/hooks/guard_gmail_destructive.sh — an agent never irreversibly destroys your mail. Change that rule deliberately and amend the hook; never loosen the hook to fit a refused command."}'
 
-deny() { printf '%s\n' "$DENY" >&2; exit 2; }
+# ⭐ SEPARATE MESSAGES FOR "I COULD NOT READ THIS", so a parse failure is never reported as a
+# destructive-verb match it never made. Measured 2026-08-23 (ported from ClaudeOps, same guard):
+# this guard used to fail closed on an unparseable payload (or an operation it could not resolve)
+# by reusing $DENY above, so a drafts-create whose text this guard could not fully read came back
+# "destructive Gmail verb (delete / batchDelete / trash)" and sent the reader hunting a delete
+# that never happened. Failing closed here is still correct; naming the wrong rule is not.
+PARSE_DENY='{"decision":"block","reason":"BLOCKED: guard_gmail_destructive could not read or parse this command at all, so it is refusing rather than guessing. This is NOT a report that the command contained delete, batchDelete or trash — it is a report that the guard never got far enough to see what the command was. WHY: an unreadable payload aimed at Gmail is refused rather than assumed safe. REDIRECT: re-run the tool call so its JSON payload is well-formed, and keep the gws invocation itself literal — written-out text this guard can read, not a variable or command substitution standing in for it. RULE: system/hooks/guard_gmail_destructive.sh, FAIL_POSTURE."}'
+UNRESOLVED_DENY='{"decision":"block","reason":"BLOCKED: guard_gmail_destructive could not resolve this command'"'"'s gmail operation — it is hidden behind a shell variable, a command substitution, or an xargs-style placeholder — so it is refusing rather than guessing. This is NOT a report that the command contained delete, batchDelete or trash; it is a report that the guard cannot see what the operation actually is. REDIRECT: write the gmail operation out literally (for example gws gmail users drafts create ...) so this guard can read it, then retry. RULE: system/hooks/guard_gmail_destructive.sh, FAIL_POSTURE; the shared parser is system/hooks/lib/gws_guard.py."}'
 
-# Fail-closed: a guard that cannot read its own input must DENY, never pass.
-INPUT=$(cat 2>/dev/null) || deny
+deny() { printf '%s\n' "$DENY" >&2; exit 2; }
+deny_parse() { printf '%s\n' "$PARSE_DENY" >&2; exit 2; }
+deny_unresolved() { printf '%s\n' "$UNRESOLVED_DENY" >&2; exit 2; }
+
+# Fail-closed: a guard that cannot read its own input must DENY, never pass. This is a "could not
+# read the input" failure, not a rule match — say so honestly rather than naming delete/trash.
+INPUT=$(cat 2>/dev/null) || deny_parse
 COMMAND=$(printf '%s' "$INPUT" | python3 -c "
 import sys, json
 try:
     print(json.load(sys.stdin).get('tool_input', {}).get('command', ''))
 except Exception:
     sys.exit(3)
-" 2>/dev/null) || deny
+" 2>/dev/null) || deny_parse
 
 # Not a gws gmail command — pass through.
 # ⛔ THIS PRE-FILTER USED TO DECIDE THE CASE. It grepped the RAW command for the
@@ -125,10 +137,23 @@ printf '%s' "$COMMAND" | grep -qE "\buntrash\b" 2>/dev/null && exit 0
 # indirection can still be detected, and treats an unresolvable command as UNKNOWN ->
 # it fails CLOSED. `messages|threads` is passed as the SCOPE, so deleting a LABEL still passes.
 LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib/gws_guard.py"
-[ -r "$LIB" ] || deny   # fail-closed: no parser, no permission
+[ -r "$LIB" ] || deny_parse   # fail-closed: no parser, no permission -- not a rule match, say so
 printf '%s' "$COMMAND" | python3 "$LIB" --service gmail \
   --require-any messages,threads \
   --destructive delete,batchDelete,trash 2>/dev/null
-[ $? -eq 7 ] && deny
+if [ $? -eq 7 ]; then
+  # MESSAGE SELECTION ONLY -- the decision above already fixed this exact command as BLOCK; this
+  # second, side call to the same shared library (see gws_guard.py's --reason-only) never changes
+  # that, it only asks WHICH of the library's BLOCK conditions fired, so the right one of the two
+  # pre-written messages above is shown instead of always naming delete/batchDelete/trash.
+  REASON=$(printf '%s' "$COMMAND" | python3 "$LIB" --service gmail \
+    --require-any messages,threads \
+    --destructive delete,batchDelete,trash --reason-only 2>/dev/null)
+  if [ "$REASON" = "destructive" ]; then
+    deny
+  else
+    deny_unresolved
+  fi
+fi
 
 exit 0
