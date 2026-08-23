@@ -74,11 +74,17 @@ NOT BUILT — admissions, not omissions. knowing now beats inferring a connectio
 **The repo is the machinery (the Lifehack Harness); the AI Brain is a separate folder in their own
 Google Drive, OUTSIDE it.** `INSTALL.md` is the authority on where the AI Brain lives and how it is
 set up — never re-derive that here. This folder holds skills, tools and hooks; everything *they* write
-lives in the AI Brain, at the path named by `.brain-root` (one line, at this repo's root) — never
-tracked, never committed, never uploaded. That path is resolved by
-`shared/brain_root.py` and by nothing else; every path any tool writes to comes from there — with one
-stated exception: throwaway scratch, which `shared/paths.py` deliberately puts in the machine's own
-temp folder, because regenerable files do not belong in an AI Brain.
+that nothing has to FIND — records, notes, project state — lives in the AI Brain, at the path named by
+`.brain-root` (one line, at this repo's root) — never tracked, never committed, never uploaded. That
+path is resolved by `shared/brain_root.py` and by nothing else; every path any tool writes to comes
+from there — with one stated exception: throwaway scratch, which `shared/paths.py` deliberately puts
+in the machine's own temp folder, because regenerable files do not belong in an AI Brain.
+
+**Four homes, and the question that sorts them is WHO IS THIS FOR.** For me → outside this repo:
+`~/.claude/<kind>/<name>/` (a real folder, never a symlink) if the harness must FIND it, the AI Brain
+if something only CALLS it. For everyone → this repo, on a branch, offered back as a PR. Shared
+content is the exception — next to nothing lives there, a real gap, not an oversight. Full picture:
+`system/organism/elements/where-things-live.md`.
 
 If it is not set, the honest answer is "not set" — **never guess a folder, never fall back to the
 current directory.** Putting someone's AI Brain somewhere they did not choose is the failure this rule
