@@ -35,7 +35,23 @@ RUN_DIR="$HOME/.claude/run/sop"
 
 # Session key — payload session_id is not available here, so env first, then a cwd hash.
 # Matches the convention in scratch_flag.sh / skill_anchor.sh so keys line up across the fleet.
-KEY="${CLAUDE_CODE_SESSION_ID:-cwd-$(printf '%s' "$PWD" | shasum | cut -c1-12)}"
+# shasum is NOT guaranteed on PATH (Git Bash on Windows ships without it -- GitHub #82).
+# Called bare, it emits "command not found" on every invocation AND `cut` returns an EMPTY
+# string, so the receipt key collapses to a constant. The guard then never matches the receipt
+# read_sop.sh wrote, and the result is a PERMANENT DENY with no way out.
+# ⚠ THIS SNIPPET IS IDENTICAL IN system/tools/read_sop.sh AND system/hooks/guard_hook_sop_read.sh
+# AND MUST STAY THAT WAY -- one writes the receipt, the other reads it. If the two ever compute
+# the key differently, they disagree on EVERY machine that lacks shasum and the permanent deny
+# comes straight back. Same rule as hash_key() elsewhere in this folder.
+_hashcwd() {
+  if command -v shasum >/dev/null 2>&1; then
+    printf '%s' "$PWD" | shasum | cut -c1-12
+  else
+    printf '%s' "$PWD" | cksum | tr -s ' ' '-' | cut -c1-12
+  fi
+}
+
+KEY="${CLAUDE_CODE_SESSION_ID:-cwd-$(_hashcwd)}"
 
 # ── the registry: SOP key -> the docs that must be in context ────────────────────────────
 # To add a rung: add a case. The gate (guard_hook_sop_read.sh) reads the SAME key names.

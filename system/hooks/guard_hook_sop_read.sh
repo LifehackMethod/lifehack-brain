@@ -208,14 +208,30 @@ fi
 [ "$IS_WRITE" -eq 1 ] || exit 0
 
 # ── receipt check ────────────────────────────────────────────────────────────────────────
-KEY="${SID:-${CLAUDE_CODE_SESSION_ID:-cwd-$(printf '%s' "$PWD" | shasum | cut -c1-12)}}"
+# shasum is NOT guaranteed on PATH (Git Bash on Windows ships without it -- GitHub #82).
+# Called bare, it emits "command not found" on every invocation AND `cut` returns an EMPTY
+# string, so the receipt key collapses to a constant. The guard then never matches the receipt
+# read_sop.sh wrote, and the result is a PERMANENT DENY with no way out.
+# ⚠ THIS SNIPPET IS IDENTICAL IN system/tools/read_sop.sh AND system/hooks/guard_hook_sop_read.sh
+# AND MUST STAY THAT WAY -- one writes the receipt, the other reads it. If the two ever compute
+# the key differently, they disagree on EVERY machine that lacks shasum and the permanent deny
+# comes straight back. Same rule as hash_key() elsewhere in this folder.
+_hashcwd() {
+  if command -v shasum >/dev/null 2>&1; then
+    printf '%s' "$PWD" | shasum | cut -c1-12
+  else
+    printf '%s' "$PWD" | cksum | tr -s ' ' '-' | cut -c1-12
+  fi
+}
+
+KEY="${SID:-${CLAUDE_CODE_SESSION_ID:-cwd-$(_hashcwd)}}"
 RUN_DIR="$HOME/.claude/run/sop"
 RECEIPT="$RUN_DIR/hook.$KEY.receipt"
 
 # Accept ANY receipt for this session key, or a cwd-keyed one (the tool may have been run before
 # the session id was known). TTL 12h so a stale receipt cannot certify a read from yesterday.
 FOUND=0
-for cand in "$RECEIPT" "$RUN_DIR/hook.cwd-$(printf '%s' "$PWD" | shasum | cut -c1-12).receipt"; do
+for cand in "$RECEIPT" "$RUN_DIR/hook.cwd-$(_hashcwd).receipt"; do
   [ -f "$cand" ] || continue
   AGE=$(( $(date +%s) - $(stat -f %m "$cand" 2>/dev/null || echo 0) ))
   [ "$AGE" -lt 43200 ] && FOUND=1 && break
