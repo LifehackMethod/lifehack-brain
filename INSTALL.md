@@ -2583,20 +2583,16 @@ emergency ignores all three, which is the only reason the other three can be tru
 # A SECOND MAC — optional, and only after the first one is fully set up
 
 Two computers can share one AI Brain through Drive, **one at a time** — never both running Claude
-against the notes folder at once (that is how files fork). Three files are deliberately outside both
-git and Drive — `CLAUDE.local.md`, `.claude/settings.local.json`, `.brain-root` — so a second machine
-needs `system/tools/doctrine_sync.py` to keep the first two in step (run `status` to see where you stand;
-`pull` is the visible repair). **The scheduler is the part that must not be copied:** run
-`install-schedulers.sh` on ONE machine only — two pulses write the same status files and Drive forks
-them. On the other machine, the 5-minute sync check runs alone from a launchd agent instead:
-
-```bash
-bash system/launchd/install-doctrine-check.sh
-```
-
-It refuses on the machine that already runs the pulse, proves the first tick landed before it says
-"installed", and `--uninstall` archives rather than deletes. Doctrine in one line: *pulse on the
-machine that runs the pulse; a check-only LaunchAgent on any other.*
+against the notes folder at once (that is how files fork). Two files are deliberately outside both
+git and Drive, and both are set once and never edited again: `.brain-root` (the notes path) and
+`.claude/settings.local.json` (the loader ceiling, if you raised it). Personal standing instructions
+do not need a third per-machine file: keep them in the notes folder and make `CLAUDE.local.md` a
+single `@` import of that file. Drive carries the rules, the import line is identical on every
+machine, and there is nothing to keep in step. A space in the path is written `\ `, and the first
+session on each machine shows a one-click approval for an import that resolves outside the repo.
+**The scheduler is the part that must not be copied:** run `install-schedulers.sh` on ONE machine
+only — two pulses write the same status files and Drive forks them. The second machine runs no
+scheduled jobs at all.
 
 ---
 
