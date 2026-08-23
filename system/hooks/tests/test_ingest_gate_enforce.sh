@@ -240,6 +240,45 @@ printf '%s' "$WIN_PAYLOAD" | env PATH="$WINFAKEBIN:$PATH" LIFEHACK_ROOT="$WINRAW
 if [ $? = 0 ]; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL [Windows-spelled notes root]: own notes under a Windows-form root read as EXTERNAL"; fi
 rm -rf "$WINDIR" "$WINFAKEBIN"
 
+echo "-- ⭐ GITHUB #95: a LINKED WORKTREE with no .brain-root of its own borrows the MAIN worktree's --"
+# THE BUG (fixed in commit 23b1797, which added main_worktree_pointer_file() below). `git worktree
+# add` materialises only TRACKED files, and .brain-root is deliberately gitignored, so a LINKED
+# WORKTREE never gets a pointer of its own -- git will never give it one. Before the fix,
+# notes_root() then fell straight through past the repo-pointer route (it simply found nothing at
+# $REPO/.brain-root) to the machine-global ~/.config/lifehack/brain-root, which belongs to no repo
+# in particular and had gone stale. Reproduced live on 2026-08-21: a session running inside
+# .claude/worktrees/<name>/ was DENIED its own brief as somebody else's content. The fix reads
+# GIT'S OWN FILES to find the MAIN worktree and borrow ITS .brain-root: this worktree's `.git`
+# FILE (a `gitdir:` line), then that gitdir's `commondir` file, which names the shared `.git`
+# directory one level below the main worktree's root.
+#
+# ⚠ WHY THIS IS FABRICATED RATHER THAN A REAL `git worktree add` OF THIS REPO. This repo's own
+# .brain-root already exists at the repo root and holds the operator's REAL AI Brain path -- exactly
+# the file the task this test was written under says never to touch or read from. A real worktree of
+# THIS repo would either (a) borrow that real pointer, so proving ALLOW would mean reading a live
+# file out of the operator's actual brain, or (b) require overwriting the real .brain-root for the
+# duration of the run, which risks leaving it clobbered if the test aborts partway. Neither is
+# acceptable here. So this case builds the identical ON-DISK SHAPE main_worktree_pointer_file()
+# actually reads -- and nothing more: a directory holding a `.git` FILE whose `gitdir:` line names a
+# directory holding a `commondir` file whose first line names a directory that is literally called
+# `.git`, one level above which sits a `.brain-root` this test owns end to end. That function never
+# shells out to git (by design -- a gate must not depend on git being on PATH, or pay a subprocess on
+# every tool call); it is two `head -n1`s, a suffix check and a `cd`. Faking the shape exercises the
+# exact same lines a real linked worktree would drive, with no git porcelain involved on either side.
+WTROOT="$(mktemp -d "${TMPDIR:-/tmp}/gatetest-wt.XXXXXX")"
+MAINWT="$WTROOT/main"; LINKWT="$WTROOT/linked"; GITDIR="$WTROOT/linked-gitdir"; WTNOTES="$WTROOT/notes"
+mkdir -p "$MAINWT/.git" "$LINKWT/system/hooks/lib" "$GITDIR" "$WTNOTES/state"
+printf 'hi\n' > "$WTNOTES/state/brief.md"
+printf '%s' "$WTNOTES" > "$MAINWT/.brain-root"           # the MAIN worktree's own declared brain
+printf 'gitdir: %s\n' "$GITDIR" > "$LINKWT/.git"          # the linked worktree's pointer to its gitdir
+printf '%s\n' "$MAINWT/.git" > "$GITDIR/commondir"        # that gitdir's pointer back to the shared .git
+cp "$HOOK" "$LINKWT/system/hooks/ingest_gate_enforce.sh"
+cp "$HOOKDIR/lib/winpath_fold.sh" "$LINKWT/system/hooks/lib/winpath_fold.sh"
+WT_PAYLOAD="$(j Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]}))" "$WTNOTES/state/brief.md")")"
+printf '%s' "$WT_PAYLOAD" | env -u LIFEHACK_ROOT bash "$LINKWT/system/hooks/ingest_gate_enforce.sh" >/dev/null 2>&1
+if [ $? = 0 ]; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL [linked worktree borrows main's brain]: own notes read as EXTERNAL from inside a linked worktree"; fi
+rm -rf "$WTROOT"
+
 echo ""
 echo "RESULT: $pass passed, $fail failed."
 [ "$fail" = 0 ] && echo "INGEST GATE GREEN" || exit 1
