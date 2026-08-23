@@ -200,6 +200,46 @@ echo "-- SANITY: NO notes root set at all — no widening, and no crash --"
 printf '%s' "$(j Read '{"file_path":"/tmp/a.md"}')" | env -u LIFEHACK_ROOT HOME="$NOTES" bash "$HOOK" >/dev/null 2>&1
 if [ $? = 2 ]; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL [no notes root]: expected deny"; fi
 
+echo "-- ⭐ GITHUB #94/#96: notes_root() must fold a Windows path spelling BEFORE testing it --"
+# THE BUG (found 2026-08-23): notes_root()'s case guard tested the RAW, UNFOLDED pointer. _winfold
+# was only ever applied to NOTES_ROOT one line OUTSIDE the function, on the value the function had
+# already returned. A native Windows-spelled pointer (backslash separators, e.g. a drive-letter root
+# like D:\Google Drive\AI Brain) never starts with "/", so it fell straight into the `*) return 1`
+# catch-all -- BEFORE any fold, and before the "-d" directory check ever ran. Every file under the
+# user's own AI Brain then read as EXTERNAL.
+#
+# ⚠ Reproducing a literal drive-letter root (D:\...) end-to-end needs a real top-level single-letter
+# directory, which this sandbox genuinely cannot create -- macOS's sealed system volume refuses new
+# entries at "/" even as root (verified live: `mkdir /d` -> "Read-only file system", and
+# `sudo -n true` -> a password is required, so root is not available either). This case proves the
+# IDENTICAL mechanism -- the fold-before-test ordering inside notes_root() -- with a backslash-
+# separated pointer anchored at a REAL directory instead of a synthetic drive letter. The
+# drive-letter substring-folding itself is _winfold's own job and is already covered, correctly, by
+# test_winpath_fold.sh; what was untested -- and what actually shipped the bug -- is THIS call site.
+#
+# `uname` is shadowed on PATH to report a Windows kernel, so `_winfold` autodetects real Windows
+# behaviour exactly as it would on an actual Windows host, rather than being told to force it.
+WINFAKEBIN="$(mktemp -d "${TMPDIR:-/tmp}/winfakebin.XXXXXX")"
+trap 'rm -rf "$WINFAKEBIN"' RETURN 2>/dev/null
+cat > "$WINFAKEBIN/uname" <<'UNAMEEOF'
+#!/bin/sh
+echo "MINGW64_NT-10.0"
+UNAMEEOF
+chmod +x "$WINFAKEBIN/uname"
+
+WINDIR="$(mktemp -d "${TMPDIR:-/tmp}/winroot.XXXXXX")"
+mkdir -p "$WINDIR/state"
+printf 'hi\n' > "$WINDIR/state/brief.md"
+WINDIR_REAL="$(cd "$WINDIR" && pwd -P)"
+# Backslash-separated, exactly the shape a native Windows path arrives in -- no drive letter (see
+# the note above for why a real one can't be filesystem-proven here), which is the part of the
+# spelling that actually decided which branch of the old case statement fired.
+WINRAW="$(python3 -c "import sys; print(sys.argv[1].replace('/', chr(92)))" "$WINDIR_REAL")"
+WIN_PAYLOAD="$(j Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]}))" "$WINDIR_REAL/state/brief.md")")"
+printf '%s' "$WIN_PAYLOAD" | env PATH="$WINFAKEBIN:$PATH" LIFEHACK_ROOT="$WINRAW" bash "$HOOK" >/dev/null 2>&1
+if [ $? = 0 ]; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL [Windows-spelled notes root]: own notes under a Windows-form root read as EXTERNAL"; fi
+rm -rf "$WINDIR" "$WINFAKEBIN"
+
 echo ""
 echo "RESULT: $pass passed, $fail failed."
 [ "$fail" = 0 ] && echo "INGEST GATE GREEN" || exit 1

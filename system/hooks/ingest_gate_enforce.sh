@@ -96,6 +96,10 @@ notes_root() {
     _nr="$(cat "$REPO/.brain-root" 2>/dev/null)"
   fi
   [ -n "$_nr" ] || _nr="$(cat "$HOME/.config/lifehack/brain-root" 2>/dev/null)"
+  # Fold a Windows path spelling BEFORE the tests below (GitHub #94/#96, 2026-08-23).
+  # Must precede the trailing-slash trim: a native path ending in a backslash only loses
+  # its separator correctly once it is already a forward slash.
+  _nr="$(_winfold "$_nr")"
   while [ "${_nr%/}" != "$_nr" ]; do _nr="${_nr%/}"; done      # any number of trailing slashes
   case "$_nr" in
     ""|"/"|"$HOME") return 1 ;;
