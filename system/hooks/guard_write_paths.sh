@@ -47,7 +47,18 @@
 #   first. Do not grow this file into the wall by accident, one path at a time.
 
 _HOOKDIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd -P)"
-REPO="${CLAUDE_PROJECT_DIR:-${_HOOKDIR%/system/hooks}}"
+# PRECEDENCE INVERTED 2026-08-23 -- $0-RELATIVE FIRST, CLAUDE_PROJECT_DIR ONLY AS FALLBACK.
+# MEASURED, not theorised: CLAUDE_PROJECT_DIR is the SESSION'S LAUNCH CWD, not the repo that
+# declares this hook. With the old precedence this guard returned exit 0 -- FAILING OPEN -- for
+# any session launched outside this repo, i.e. a wrong CLAUDE_PROJECT_DIR switched OFF the guard
+# whose whole job is stopping an agent editing the guards. Same payload, only the env differing:
+#     CLAUDE_PROJECT_DIR=<this repo> -> exit 2 (blocked)
+#     CLAUDE_PROJECT_DIR=/tmp        -> exit 0 (DISARMED)   <-- the bug
+#     CLAUDE_PROJECT_DIR unset       -> exit 2 (blocked)    <-- the fallback was always right
+# $0 is where the SCRIPT lives, which is the only thing that actually identifies its repo.
+_SELF_REPO="${_HOOKDIR%/system/hooks}"
+[ -n "$_SELF_REPO" ] && [ -d "$_SELF_REPO/system/hooks" ] || _SELF_REPO="${CLAUDE_PROJECT_DIR:-}"
+REPO="$_SELF_REPO"
 # See system/hooks/lib/winpath_fold.sh: on Windows, `pwd -P` and Python's os.path.realpath spell
 # the same directory two different ways, so REPO_REAL and FILE_PATH below (built through one or
 # the other) would never compare equal without this. Sourced here (not deny()'d yet -- deny() is
