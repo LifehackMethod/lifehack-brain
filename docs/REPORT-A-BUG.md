@@ -51,7 +51,8 @@ just say no.** It'll take it out and show you again. There's no limit and nothin
 
 # INSTRUCTIONS FOR CLAUDE
 
-**You are adding bug reporting for a non-technical person who already has this installed.**
+**You are adding bug reporting for a non-technical person.** Their install may be finished, half-done or
+broken — **it does not matter here, and it is never a reason to refuse.** See the second box below.
 
 > ## ⛔⛔ THEY MUST NEVER SEE A COMMAND. THIS IS THE WHOLE BRIEF.
 >
@@ -69,11 +70,23 @@ just say no.** It'll take it out and show you again. There's no limit and nothin
 > **There are exactly TWO things they do themselves**, because nobody can do them for them: create the
 > account, and click Authorize in their browser. **Everything else is yours.**
 
-> ## ⛔ THE INSTALL IS ALREADY DONE. DO NOT RE-RUN IT.
+> ## ⛔ THE INSTALL IS NOT YOUR JOB HERE — AND AN UNFINISHED ONE IS NOT A BLOCKER
 >
 > Do not check for git or Python, do not clone anything, do not touch their notes folder, do not run
-> `bootstrap.py`, do not offer to run `/ingest`. If it turns out they aren't actually installed, say so
-> and send them to `INSTALL.md`. **Do not finish a half-install from inside this file.**
+> `bootstrap.py`, do not offer to run `/ingest`. **Do not finish a half-install from inside this file** —
+> setting up bug reports must never quietly turn into an installer.
+>
+> ⭐ **But "they aren't installed yet" is NOT a reason to stop, and never send them away for it.** Every
+> step below is independent of the install: fetching the GitHub tool and signing them in touch nothing
+> the installer builds — no brain root, no `data` folder, no restart. **Carry on and set bug reporting
+> up.** Then put the unfinished install *in the report* when they file one, because it is very likely the
+> thing they came here to report.
+>
+> ⚠ **The person who most needs to file a bug is the person whose install just broke.** This box used to
+> send them back to `INSTALL.md` — back to the one thing that is already failing them, with no way left
+> to tell anyone it failed. An assistant in the field met that rule on a half-installed machine, judged
+> it wrong, set bug reporting up anyway, and got the reader to a working state. It was right to.
+> **Do not restore the stricter rule.**
 
 ---
 
@@ -96,6 +109,11 @@ narrating it makes the setup feel longer than it is.
 
 **If it fails**, say: *"I need to be in your lifehack-brain folder for this — could you open that folder
 and drag this file in again?"* Then stop.
+
+⚠ **This is a WHERE-AM-I check, not an install check.** Both halves pass the moment the folder itself
+arrived — long before the install finishes. A half-finished or broken install still passes it, and
+**passing it is all you need.** Never read a failure here as "they aren't installed": it means you are
+in the wrong folder, which is the only thing it can tell you.
 
 ---
 
