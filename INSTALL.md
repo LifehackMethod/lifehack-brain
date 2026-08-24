@@ -42,46 +42,56 @@ tab, and start again from this line.
 > hand. ⛔ **Never offer help without saying how to reach it** — a promise with no route is where someone
 > quietly gives up. Then stop.
 
-## ⭐ NEXT — HOW YOU GET THIS: PLUGIN (the default) OR MANUAL CLONE (a fallback, kept working)
+## ⭐ NEXT — HOW YOU GET THIS: PLUGIN (fastest way in) OR MANUAL CLONE (currently the only way to get the guards too)
 
-**As of 2026-08-23 this harness is a Claude Code marketplace plugin, and that is the way most people
-should install it.** One command adds the marketplace, one installs the plugin, and Claude Code keeps
-it updated from then on — no folder to create, no `git`, no `git pull` to remember later.
+**As of 2026-08-23 this harness is also a Claude Code marketplace plugin.** One command adds the
+marketplace, one installs the plugin, and Claude Code keeps it updated from then on — no folder to
+create, no `git`, no `git pull` to remember later.
 
 ```bash
 claude plugin marketplace add LifehackMethod/lifehack-brain
 claude plugin install lifehack-brain@lifehack-brain
 ```
 
-**What that actually does, plainly:** it fetches this project's skills, agents, hooks and tools —
+**What that actually does, plainly:** it fetches this project's skills, agents, tools and docs —
 `/ingest` and everything else this file talks about — into Claude Code's own plugin store, and makes
 them available in every session, in any folder you happen to have open. Taking an update later is
 `claude plugin update lifehack-brain` (or the plugin menu inside Claude Code) instead of `git pull`.
 That auto-update is the entire point of publishing it this way.
 
-**What it does NOT do:** it does not touch your AI Brain, and it does not make the "which Drive folder
-is my AI Brain" question go away — that question is this file's **STEP 7**, and it is exactly the same
-question either way, because your AI Brain was never part of the harness in the first place. The one
-wrinkle: STEP 7's commands are written assuming you are sitting inside a cloned Harness folder. Running
-the plugin install instead means there is no such folder to `cd` into — so before STEP 7, ask Claude to
-find where the plugin actually landed (`claude plugin list`, or look under
-`~/.claude/plugins/cache/lifehack-brain/lifehack-brain/<version>/` — the whole repo layout, including
-`shared/brain_root.py`, is really there) and run STEP 7's commands from inside *that* folder instead.
-The commands themselves don't care which install method put the files on disk, only that you are
-standing in the right one when you run them. **Skip STEPs 0 through 6 below entirely if you installed
-this way** — those steps are about creating a folder and cloning into it, and a plugin install already
-did the equivalent of both.
+⛔⛔ **WHAT IT DOES NOT DO, AND THIS MATTERS: IT DOES NOT INSTALL THE GUARD HOOKS.** This harness leans
+on a set of Claude Code hooks — the ones that, on the manual clone path, get wired the moment you open
+the cloned folder, because they are declared in that folder's OWN tracked `.claude/settings.json`
+(dozens of guard commands: the ones that stop a destructive Gmail action, block an ingest that skips
+its gate, and the rest of what this project calls its hook plane). **A plugin's own manifest
+(`.claude-plugin/plugin.json`) carries no `hooks` key, and the plugin cache folder is never opened as
+your project** — so none of that project-level `settings.json`, guard hooks included, ever loads for a
+plugin-only install. Checked directly: the installed plugin's `plugin.json` is 266 bytes and declares
+only name, version, description and author; the user's own `~/.claude/settings.json` has zero
+references to the plugin cache. **A plugin install today gets you the skills and the tools. It does
+not get you the guards.** That is a real gap, not a documentation nuance — say so plainly if asked, and
+do not describe the plugin as a complete or equivalent substitute for the clone path until it is fixed.
+
+**So, which one to use:** if you only want to look at the skills, try `/ingest` once, or you're not
+yet doing real work that a guard would need to catch, the plugin above is the fast way in. **If you
+want the guard hooks from day one — which is the safer default for anyone actually using this on their
+own material — use the manual clone path below instead; right now it is the only path that wires them.**
+The clone path is not being retired — it stays fully documented, starting at the next heading — it
+simply also does something the plugin does not do yet.
+
+⭐ **If you do use the plugin and later want to connect your AI Brain (STEP 7 below) anyway:** its commands are written assuming you're sitting inside a cloned Harness folder. A plugin install has no such folder — ask Claude to find where the plugin actually landed (`claude plugin list`, or look under `~/.claude/plugins/cache/lifehack-brain/lifehack-brain/<version>/` — the full repo layout, including `shared/brain_root.py`, is really there) and run STEP 7's commands from inside *that* folder instead. The commands don't care which install method put the files on disk, only that you're standing in the right one.
 
 ⭐ **Say what you did, and to which account:** if `gh auth status` or Claude Code shows more than one
 GitHub account signed in, name the one the plugin commands actually used, since a marketplace add can
 silently pick the wrong one.
 
-⛔ **Use the manual clone path below instead if:** you intend to develop the harness itself (read its
-source, change a skill, send back a PR), or your environment cannot install Claude Code plugins at all.
-**The clone path is not being retired — it stays fully documented, starting at STEP 0 below — it is
-now the fallback, not the default.** Nothing about it changed; only its place in this file did.
+⛔ **Use the manual clone path if:** you intend to develop the harness itself (read its source, change
+a skill, send back a PR), your environment cannot install Claude Code plugins at all, or — per the gap
+just above — you want the guard hooks active. **If you already installed the plugin and later decide
+you want the guards too, the manual clone below is additive, not a do-over:** it lands in its own
+folder and does not touch the plugin install.
 
-## ⭐ MANUAL CLONE PATH (fallback) — FOUR QUESTIONS, BEFORE ANY FOLDER IS MADE
+## ⭐ MANUAL CLONE PATH — FOUR QUESTIONS, BEFORE ANY FOLDER IS MADE
 
 **Answer these four now.** Each one costs ten seconds here, and about twenty minutes each if it
 surfaces halfway through instead:
