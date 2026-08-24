@@ -24,6 +24,14 @@ import journal as j  # noqa: E402
 class Base(unittest.TestCase):
     def setUp(self):
         self.root = tempfile.mkdtemp()
+        # journal.append() now refuses an unregistered slug (system/tools/journal.py,
+        # commit 64ed912) — every fixture here writes through slug "widget", so give it a
+        # row the same way a real caller would per standard-steps.md Step 0.5, rather than
+        # threading allow_unregistered=True through every call site.
+        reg_dir = os.path.join(self.root, "system")
+        os.makedirs(reg_dir, exist_ok=True)
+        with open(os.path.join(reg_dir, "project-registry.md"), "w") as f:
+            f.write("root | widget | Widget | active | state/projects/widget\n")
 
     def tearDown(self):
         shutil.rmtree(self.root, ignore_errors=True)

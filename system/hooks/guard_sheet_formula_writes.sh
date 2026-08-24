@@ -79,7 +79,7 @@ COMMAND=$(printf '%s' "$COMMAND" | perl -0pe 's/\\\n/ /g' 2>/dev/null || printf 
 # Two gates now, both deliberately loose: is a gws binary NAMED anywhere, and is this service named.
 # A mere mention costs nothing — the real checks below decide, and they are what should decide.
 printf '%s' "$COMMAND" | grep -qE "(^|[^A-Za-z0-9_.-])gws([^A-Za-z0-9_-]|$)|bin/gws" 2>/dev/null || exit 0
-printf '%s' "$COMMAND" | grep -qE "(^|[[:space:]])sheets([[:space:]]|$)" 2>/dev/null || exit 0
+printf '%s' "$COMMAND" | grep -qE "(^|[[:space:],'\"\\\\])sheets([[:space:],'\"\\\\]|$)" 2>/dev/null || exit 0
 # Explicit human-approved bypass.
 printf '%s' "$COMMAND" | grep -qF "$CONFIRM_MARK" 2>/dev/null && exit 0
 
@@ -97,9 +97,9 @@ printf '%s' "$COMMAND" | python3 "$LIB" --service sheets \
 [ $? -eq 7 ] && deny_unknown
 
 # Appends create a NEW row — inherently safe, they never touch a formula. Pass.
-printf '%s' "$COMMAND" | grep -qiE "values[[:space:]]+append" 2>/dev/null && exit 0
+printf '%s' "$COMMAND" | grep -qiE "values[[:space:],'\"\\\\]+append" 2>/dev/null && exit 0
 # Only inspect value-WRITE ops. (Structural batchUpdate is gated by guard_sheet_writes.sh.)
-printf '%s' "$COMMAND" | grep -qiE "values[[:space:]]+(update|batchupdate)" 2>/dev/null || exit 0
+printf '%s' "$COMMAND" | grep -qiE "values[[:space:],'\"\\\\]+(update|batchupdate)" 2>/dev/null || exit 0
 
 # ── From here down a sheet write IS in flight, and every exit is fail-CLOSED.
 [ -n "$GWS" ] || deny "gws is not on PATH, so this write cannot be checked against what it would overwrite. A write that cannot be verified is not allowed through."

@@ -103,7 +103,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 REPO = Path(__file__).resolve().parents[2]
 TOOLS = REPO / "system" / "tools"
-SKILLS = REPO / "skills"
 HOOKS = REPO / "system" / "hooks"
 PARTS = REPO / "system" / "parts"
 SHARED_TOOLS = REPO / "shared" / "tools"
@@ -114,7 +113,56 @@ SHARED_TOOLS = REPO / "shared" / "tools"
 # named as mandatory context in `shared/skills/hollywood-db/`, which nothing ever read.
 # ⭐ THE SHAPE OF THE BUG IS THE SAME ONE THE WIDENING ITSELF FIXED, one directory over: widen
 # what you judge without widening what vouches, and you manufacture false accusations.
-SHARED_SKILLS = REPO / "shared" / "skills"
+#
+# ⛔⛔ T18.10-PORT-FIX, 2026-08-22 — `REPO / "skills"` AND `REPO / "shared" / "skills"` WERE BOTH
+# DONOR PATHS AND NEITHER EXISTS IN THIS REPO. This repo's skills live at `.claude/skills/`
+# (verified present this session) plus, on an operator's own machine, personal skills at
+# `~/.claude/skills/` — a real second location this repo did not have before the migration, not
+# a stand-in for the donor's `shared/skills/`. `SKILLS.iterdir()` in `detect_eliminate()` crashed
+# every run with `FileNotFoundError` (dead since the migration; caught by the runner-port lane and
+# confirmed first-hand 2026-08-22). Resolved through `_skill_roots()` below rather than a second
+# hardcoded literal — each candidate is checked for existence on its own and a missing one is
+# skipped WITH A REASON, never silently, and never a crash. See `_skill_dirs()` for the
+# zero-examined guard: an install where every candidate is missing must not look like a clean walk.
+def _skill_roots() -> list:
+    """Every real place a skill can live on THIS install, labeled by name.
+
+    Two locations, deliberately not one: `.claude/skills/` ships WITH this repo (present on every
+    checkout — this is where `SKILLS` used to point before the migration, at the wrong literal
+    `skills/`), and `~/.claude/skills/` is the operator's own personal skill folder (present only
+    for an operator who has one; absent on a bare checkout, and that absence is normal, not a
+    fault). Both are real "things that can VOUCH" per the T27.1b argument above — a personal skill
+    can call a repo tool exactly as a repo skill can.
+    """
+    return [
+        ("repo (.claude/skills)", REPO / ".claude" / "skills"),
+        ("personal (~/.claude/skills)", Path.home() / ".claude" / "skills"),
+    ]
+
+
+def _skill_dirs():
+    """Every skill folder across every real skill location, plus a per-location status report.
+
+    Returns `(dirs, status)` — `dirs` is the flat, name-sorted list of skill folders found across
+    every EXISTING location; `status` is `{label: {"path", "status", "count"}}` for every candidate,
+    existing or not, so a missing location is visible in the evidence rather than silently absent.
+
+    ⚠⚠ THE ZERO-EXAMINED GUARD LIVES ONE LEVEL UP, IN `build()` — NOT HERE. This function's job is
+    only to report what it found, honestly, including "nothing" when every candidate is missing;
+    `build()` is what refuses to let a zero-directory walk masquerade as a clean SKILL-FAMILY pass
+    (the measured failure this fix exists to close: "a script printed PASSED daily... and wrote no
+    file"). A single missing candidate here is NOT an error — a bare checkout with no personal
+    skill folder is the common case, not a fault.
+    """
+    dirs, status = [], {}
+    for label, root in _skill_roots():
+        if not root.exists():
+            status[label] = {"path": str(root), "status": "missing (skipped)", "count": 0}
+            continue
+        members = sorted((p for p in root.iterdir() if p.is_dir()), key=lambda p: p.name)
+        status[label] = {"path": str(root), "status": "ok", "count": len(members)}
+        dirs.extend(members)
+    return sorted(dirs, key=lambda p: p.name), status
 
 # ⭐⭐ T27.1, 2026-08-08 — THE TERRITORY. Everything this lane considers a capability that could
 # be over-built or unreachable. Until today this was `TOOLS` alone, so the walk saw 279 files and
@@ -175,7 +223,8 @@ def _roots() -> str:
               REPO / "system" / "reference" / "settings.json"]:
         if p.exists():
             blobs.append(p.read_text(encoding="utf-8", errors="replace"))
-    for d in (SKILLS, SHARED_SKILLS, HOOKS):
+    skill_roots = [root for _, root in _skill_roots() if root.exists()]
+    for d in (*skill_roots, HOOKS):
         for p in d.rglob("*"):
             if p.is_file() and p.suffix in (".md", ".sh"):
                 try:
@@ -324,17 +373,37 @@ def _self_description(p: Path, txt: str) -> str:
     return ""
 
 
-def detect_eliminate(ledger: list) -> list:
-    """Over-build: same-prefix families, and ledger rows that name a consolidation."""
+def _skill_target(p: Path) -> str:
+    """Format a skill folder as a target string, WITHOUT leaking the operator's home directory.
+
+    A repo skill renders as its repo-relative path (`.claude/skills/name/`). A personal skill sits
+    under `Path.home()`, which resolves to the operator's actual account path — never emitted
+    literally here (that would be an operator-identifier leak in a publicly-shippable repo); it is
+    rendered with the portable `~/` notation instead, exactly as a human would type it.
+    """
+    try:
+        rel = p.relative_to(REPO)
+        return f"{rel}/"
+    except ValueError:
+        return f"~/.claude/skills/{p.name}/"
+
+
+def detect_eliminate(ledger: list, skill_dirs: list, skill_status: dict) -> list:
+    """Over-build: same-prefix families, and ledger rows that name a consolidation.
+
+    `skill_dirs`/`skill_status` come from `_skill_dirs()` (T18.10-PORT-FIX, 2026-08-22) — every
+    skill folder found across every REAL skill location on this install, plus a per-location
+    status so a location this install genuinely lacks (e.g. no personal `~/.claude/skills/`) is
+    visible as "skipped", never silently absent from the evidence.
+    """
     props = []
 
     # (1) SAME-PREFIX FAMILIES. Four skills all starting `archivist-` is not a coincidence; it is
     # a capability that got answered four times. This is the shape [SYSTEM-RENEWAL-AUDIT] names.
     fams = collections.Counter()
     members = collections.defaultdict(list)
-    all_skill_dirs = [p for p in sorted(SKILLS.iterdir()) if p.is_dir()]
     archived_skipped = 0
-    for p in all_skill_dirs:
+    for p in skill_dirs:
         # T20.4: `_archived-*` siblings are already RETIRED — that is a human decision recorded
         # by the prefix itself, not over-build the system independently discovered. Flagging them
         # as "one capability answered N times" is backwards: they are one capability answered
@@ -347,23 +416,28 @@ def detect_eliminate(ledger: list) -> list:
         if len(p.name.split("-")) < 2:
             continue
         fams[pre] += 1
-        members[pre].append(p.name)
+        members[pre].append(p)
+    locations_line = "; ".join(
+        f"{label}: {info['status']} ({info['count']} folders)"
+        for label, info in sorted(skill_status.items()))
     for pre, n in sorted(fams.items()):
         if n < FAMILY_MIN:
             continue
+        member_paths = sorted(members[pre], key=lambda p: p.name)
+        member_names = [p.name for p in member_paths]
         props.append({
             "verb": "ELIMINATE",
             "klass": "SKILL-FAMILY",
             "proposal": (f"{n} skills share the `{pre}-` prefix — one capability answered {n} times. "
-                         f"Consider consolidating: {', '.join(sorted(members[pre]))}"),
+                         f"Consider consolidating: {', '.join(member_names)}"),
             "evidence": [
-                f"skills/ directory scanned: {len(all_skill_dirs)} skill folders examined "
+                f"skill locations scanned: {len(skill_dirs)} skill folders examined — {locations_line} "
                 f"({archived_skipped} `_archived-` excluded from family detection — already retired)",
-                f"`{pre}-` family members ({n}): {', '.join(sorted(members[pre]))}",
+                f"`{pre}-` family members ({n}): {', '.join(member_names)}",
                 "a same-prefix family is a capability that got answered more than once; each sibling "
                 "is a surface that can drift out of agreement with the others",
             ],
-            "targets": [f"skills/{m}/" for m in sorted(members[pre])[:4]],
+            "targets": [_skill_target(p) for p in member_paths[:4]],
             "slug": f"family:{pre}",
         })
 
@@ -702,7 +776,7 @@ def detect_introduce(roots: str, decision_units: dict) -> list:
                 f"{p.relative_to(REPO)} carries a {len(doc)}-char docstring describing a capability",
                 f"no Pulse row, hook registration, skill, or reachable tool references {name}",
                 f"{len(all_tools)} tool files examined; roots = pulse-config.md + settings.json "
-                f"+ skills/ + hooks/",
+                f"+ .claude/skills/ + ~/.claude/skills/ + hooks/",
                 f"checked for a prior human ruling in state/debt-ledger.md, every "
                 f"state/projects/**/brief.md, state/open-loops.md and system/journal.md — none found",
             ],
@@ -721,13 +795,32 @@ def build() -> dict:
     roots = _roots()
     decision_units = _human_decision_units()
     decision_counts = _human_decision_counts(decision_units)
-    elim = detect_eliminate(ledger)
+
+    skill_dirs, skill_status = _skill_dirs()
+    # ⛔⛔ THE ZERO-EXAMINED GUARD, T18.10-PORT-FIX 2026-08-22 — HARD CONSTRAINT: "a detector that
+    # examines zero files must NOT report success." Every candidate skill location missing (or
+    # every one present but empty) means the walk found NOTHING to judge — that is a BROKEN
+    # DETECTOR, not evidence the system has zero skill families. This is exactly the measured
+    # failure this project already carries a name for: "a script printed PASSED daily for two
+    # months and wrote no file." Raising here (same pattern as `_human_decision_units()`'s missing-
+    # source checks above) is what stops a silent, confident, empty SKILL-FAMILY pass.
+    if not skill_dirs:
+        raise RuntimeError(
+            "0 skill directories found across every skill location examined "
+            f"({skill_status}) — the SKILL-FAMILY walk found nothing to judge, which is a broken "
+            "detector, not a clean system. Fix: confirm .claude/skills/ exists in this repo "
+            "checkout, or ~/.claude/skills/ for this operator."
+        )
+
+    elim = detect_eliminate(ledger, skill_dirs, skill_status)
     intro_raw = detect_introduce(roots, decision_units)
     suppressed = [p for p in intro_raw if p["klass"] == "NOTHING-REACHES-IT-SUPPRESSED"]
     intro = [p for p in intro_raw if p["klass"] != "NOTHING-REACHES-IT-SUPPRESSED"]
     return {
         "ledger_entries_examined": len(ledger),
         "tool_files_examined": len(_tool_files()),
+        "skill_dirs_examined": len(skill_dirs),
+        "skill_locations_examined": skill_status,
         "human_decision_sources_examined": decision_counts,
         "eliminate": elim,
         "introduce": intro,

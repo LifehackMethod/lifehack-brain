@@ -69,7 +69,11 @@ import os
 import sys
 import time
 
-STATE_DIR = os.path.expanduser("~/.config/lifehack")
+# Overridable (T10.A3 OL-N1 ② testing need): every other durable state file in this repo
+# (PULSE_STATE, NOTIFY_STATE_FILE, PULSE_PARK_FILE, ...) is env-overridable so a test run can
+# sandbox itself instead of mutating the real machine-local store; this one was the one exception.
+# Unset behaviour is BYTE-IDENTICAL to before (same literal default path).
+STATE_DIR = os.environ.get("LIFEHACK_FAULT_STATE_DIR", os.path.expanduser("~/.config/lifehack"))
 LEDGER = os.path.join(STATE_DIR, "faults.json")
 
 # ── incident history mirrored to the resolved brain root ──────────────────────────────────

@@ -176,6 +176,10 @@ def extract_and_sanitize(path: str, desk: str = "root") -> str:
 
 
 if __name__ == "__main__":
+    import os, sys
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "system", "tools")))
+    from utf8_stdio import force_utf8_stdio
+    force_utf8_stdio()
     desk, rest = resolve_desk() if resolve_desk else ("root", sys.argv[1:])
     if not rest:
         print("Usage: python3 safe_docx.py [--desk <id>] '/path/to/file.docx'", file=sys.stderr)

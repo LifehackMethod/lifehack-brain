@@ -59,7 +59,12 @@ import re
 import sys
 
 # A plan task id as this system writes them: 15.3 · 15.B · P3 · W3 · 14.4a · X2 · S8.12
-TASK_ID = re.compile(r'`([A-Z]{0,2}\d{1,2}(?:\.\d{1,2}[a-z]?)?|[A-Z]\d{1,2})`')
+# 2026-08-23: the second segment may be LANE-LETTERED (`T1.C7`, `T10.B1`, `T1.A2`) --
+# this plan's actual convention. The old pattern required \d after the dot, so it matched
+# `T1.7` and MISSED every real id in the live plan, reporting RUNG-ORPHANED on a correct
+# rung. Same defect class as T10.F2 (OPEN_HDR/GROUND_HDR omitting `-`): a regex that
+# cannot see the thing it audits reports a problem that is not there.
+TASK_ID = re.compile(r'`([A-Z]{0,2}\d{1,2}(?:\.[A-Z]?\d{1,2}[a-z]?)?|[A-Z]\d{1,2})`')
 
 # How far into a bullet an id still counts as QUEUED rather than CITED. A queue item
 # leads with its id ("- **`15.3` → `15.B`** — the run"); prose that cites a finished
@@ -69,11 +74,11 @@ TASK_ID = re.compile(r'`([A-Z]{0,2}\d{1,2}(?:\.\d{1,2}[a-z]?)?|[A-Z]\d{1,2})`')
 LEAD_CHARS = 40
 
 # The ❓ OPEN bucket, however it is punctuated. Ends at the next bold bucket or H2.
-OPEN_HDR = re.compile(r'^\s*[*_>\s]*❓\s*\**\s*OPEN\b', re.I)
-BUCKET_END = re.compile(r'^\s*[*_>\s]*(?:✅|⛔|📋)|^##\s', re.U)
+OPEN_HDR = re.compile(r'^\s*[-*_>\s]*❓\s*\**\s*OPEN\b', re.I)
+BUCKET_END = re.compile(r'^\s*[-*_>\s]*(?:✅|⛔|📋)|^##\s', re.U)
 
 # The ▲ ground rung's headline, however it is punctuated (mirrors OPEN_HDR).
-GROUND_HDR = re.compile(r'^\s*[*_>\s]*▲\s*ground\b', re.I)
+GROUND_HDR = re.compile(r'^\s*[-*_>\s]*▲\s*ground\b', re.I)
 
 # The rung's LEGAL way to say "nothing is planned" (⭐ Feature 17.A) — a rung
 # reading this must resolve BOARD-CLEAN, never RUNG-ORPHANED.
