@@ -35,7 +35,29 @@ set -u
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 GOVERNOR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/notify-governor.py"
 
-SOURCE="" MESSAGE="" PRIORITY="normal" URL="" TITLE="" TAGS="" MARKDOWN=0
+GOVERNOR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ── --flush-deferred: replay quiet-hours-queued sends (T10.A3 OL-N1 ⑥) ────────────────────────
+# A separate mode, no --source/--message required. Meant to be called on every Pulse tick (pulse.sh
+# does this — see that file) so a normal-priority digest queued at 23:50 for quiet hours actually
+# reaches the phone once quiet hours lift, instead of being silently lost forever.
+if [ "${1:-}" = "--flush-deferred" ]; then
+  export NOTIFY_QUIET_START NOTIFY_QUIET_END NOTIFY_DAILY_CAP NOTIFY_DEDUP_HOURS NOTIFY_DEFERRED_MAX_AGE_HOURS
+  out="$(python3 "$GOVERNOR_DIR/notify-governor.py" --flush-deferred 2>/dev/null)" || true
+  [ -z "$out" ] && exit 0
+  rc_all=0
+  while IFS=$'\t' read -r d_source d_message d_title d_tags d_url; do
+    [ -n "$d_source" ] || continue
+    args=(--source "$d_source" --message "$d_message")
+    [ -n "$d_title" ] && args+=(--title "$d_title")
+    [ -n "$d_tags" ]  && args+=(--tags "$d_tags")
+    [ -n "$d_url" ]   && args+=(--url "$d_url")
+    bash "${BASH_SOURCE[0]}" "${args[@]}" || rc_all=1
+  done <<< "$out"
+  exit "$rc_all"
+fi
+
+SOURCE="" MESSAGE="" PRIORITY="normal" URL="" TITLE="" TAGS="" MARKDOWN=0 IDENTITY=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --source)   SOURCE="${2:-}";   shift 2 ;;
@@ -44,6 +66,7 @@ while [ $# -gt 0 ]; do
     --url)      URL="${2:-}";      shift 2 ;;
     --title)    TITLE="${2:-}";    shift 2 ;;
     --tags)     TAGS="${2:-}";     shift 2 ;;
+    --identity) IDENTITY="${2:-}"; shift 2 ;;   # OL-N1 ④: dedup on THIS, not on --message text
     --markdown) MARKDOWN=1;        shift 1 ;;   # render body as markdown in the ntfy app/web view
     *) echo "notify-send: unknown arg '$1'" >&2; exit 2 ;;
   esac
@@ -72,11 +95,19 @@ if [ -z "$TOPIC" ]; then
 fi
 
 # ── Governor gate (anti-spam) — pass tuning through as env ────────────────────
-export NOTIFY_QUIET_START NOTIFY_QUIET_END NOTIFY_DAILY_CAP NOTIFY_DEDUP_HOURS
+export NOTIFY_QUIET_START NOTIFY_QUIET_END NOTIFY_DAILY_CAP NOTIFY_DEDUP_HOURS NOTIFY_MISCONFIG_DEDUP_HOURS
 _TMP="${TMPDIR:-/tmp}"
-if ! python3 "$GOVERNOR" "$SOURCE" "$MESSAGE" "$PRIORITY" >/dev/null 2>"$_TMP/notify-gov.$$"; then
+if ! python3 "$GOVERNOR" "$SOURCE" "$MESSAGE" "$PRIORITY" "$IDENTITY" >/dev/null 2>"$_TMP/notify-gov.$$"; then
   reason="$(cat "$_TMP/notify-gov.$$" 2>/dev/null)"; rm -f "$_TMP/notify-gov.$$"
   echo "notify-send: ${reason:-suppressed by the gate}" >&2
+  # OL-N1 ⑥: a normal-priority send dropped for QUIET HOURS SPECIFICALLY (never dedup, never the
+  # cap — both of those are correct, permanent drops) gets queued so it can still reach the phone
+  # once quiet hours lift, instead of being lost for good. See --flush-deferred above.
+  case "$reason" in
+    "SUPPRESS: quiet hours"*)
+      python3 "$GOVERNOR" --queue-deferred "$SOURCE" "$MESSAGE" "$TITLE" "$TAGS" "$URL" >/dev/null 2>&1 || true
+      ;;
+  esac
   exit 0   # being suppressed is the system working — never report it as a failure
 fi
 rm -f "$_TMP/notify-gov.$$"

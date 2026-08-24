@@ -82,6 +82,10 @@ def read_and_sanitize(path: str) -> str:
 
 
 if __name__ == "__main__":
+    import os, sys
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "system", "tools")))
+    from utf8_stdio import force_utf8_stdio
+    force_utf8_stdio()
     # Parse a lean CLI: an optional --clear-after flag (anywhere) + exactly one path.
     args = sys.argv[1:]
     clear_after = "--clear-after" in args

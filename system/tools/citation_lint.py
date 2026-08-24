@@ -324,7 +324,19 @@ def markdown_files(root, scope=None):
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
         for f in files:
             if f.endswith(".md") and not f.endswith(".bak"):
-                rel = os.path.relpath(os.path.join(base, f), root)
+                # NORMALISE THE SEPARATOR AT THE POINT PATHS ARE PRODUCED (GitHub #90,
+                # dnewcomb3949, 2026-08-20). os.path.relpath returns the PLATFORM separator --
+                # a backslash on Windows -- while every literal this module compares against is
+                # written with forward slashes: EXEMPT_FILES, DATA_PATHS, settings_rel, the
+                # system/hooks/ keys. On Windows every one of those lookups silently MISSES.
+                # Nothing raises; a miss just looks like an ordinary negative. Measured by the
+                # reporter: same commit, 0 FAILED on macOS, 12 on Windows, because SPEC.md's
+                # full-file exemption never fired.
+                # Fixed HERE rather than at each lookup, deliberately -- there are four tables
+                # and patching the one that got noticed leaves the same miss waiting in the
+                # other three. os.path.join and open() both accept forward slashes on Windows,
+                # so the report also reads identically on every platform.
+                rel = os.path.relpath(os.path.join(base, f), root).replace(os.sep, "/")
                 if scope is not None and rel not in scope:
                     continue
                 out.append(rel)

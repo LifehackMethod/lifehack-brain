@@ -193,9 +193,9 @@ def do_slice(args):
     n, total_chars = 0, 0
     for p in paths:
         name = os.path.basename(p)
-        with open(p) as fh:
+        with open(p, encoding="utf-8") as fh:
             sl = thin_slice(fh.read(), args.cap, args.first, args.last)
-        with open(os.path.join(args.out, name), "w") as fh:
+        with open(os.path.join(args.out, name), "w", encoding="utf-8") as fh:
             fh.write(sl)
         n += 1; total_chars += len(sl)
     print(f"OK: sliced {n} chats → {args.out} (avg {total_chars // max(n,1)} chars/slice, "
@@ -203,7 +203,7 @@ def do_slice(args):
 
 
 def do_validate(args):
-    raw = json.load(open(args.tags))
+    raw = json.load(open(args.tags, encoding="utf-8"))
     rows = raw if isinstance(raw, list) else raw.get("rows", [])
     clean, dropped = [], 0
     for r in rows:
@@ -213,7 +213,7 @@ def do_validate(args):
         clean.append({"conversation_id": r.get("conversation_id"), "file": r.get("file"),
                       "categories": cats, "freshness": fresh})
     json.dump({"count": len(clean), "dropped_out_of_vocab": dropped, "rows": clean},
-              open(args.out, "w"), indent=2)
+              open(args.out, "w", encoding="utf-8"), indent=2)
     print(f"OK: validated {len(clean)} tag rows; dropped {dropped} out-of-vocab tags → {args.out}")
 
 
@@ -240,7 +240,7 @@ def do_collect(args):
     for f in files:
         if not os.path.isfile(f):
             continue
-        arr = extract_json_array(open(f).read())
+        arr = extract_json_array(open(f, encoding="utf-8").read())
         if not arr:
             unparseable += 1
             continue
@@ -255,7 +255,7 @@ def do_collect(args):
                          "categories": cats, "freshness": fresh, "why": (r.get("why") or "")[:160]})
     json.dump({"count": len(rows), "raw_files": len(files), "parsed_files": parsed,
                "unparseable_files": unparseable, "dropped_out_of_vocab": dropped, "rows": rows},
-              open(args.out, "w"), indent=2)
+              open(args.out, "w", encoding="utf-8"), indent=2)
     print(f"OK: collected {len(rows)} tag rows from {parsed} files "
           f"({unparseable} unparseable, {dropped} out-of-vocab dropped) → {args.out}")
 

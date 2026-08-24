@@ -341,6 +341,10 @@ def fetch_and_sanitize(url: str, desk: str = "root") -> str:
 
 
 if __name__ == "__main__":
+    import os, sys
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "system", "tools")))
+    from utf8_stdio import force_utf8_stdio
+    force_utf8_stdio()
     desk, rest = resolve_desk() if resolve_desk else ("root", sys.argv[1:])
 
     # `--l2-status` answers "is the middle level actually on right now?" without fetching anything.
