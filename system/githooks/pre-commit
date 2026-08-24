@@ -162,7 +162,23 @@ fi
 # a security fix to guard_hook_sop_read.sh could not be committed to this repo at all, and PR
 # #104's commit message could not be corrected to name 6 of its 10 files.
 # The absent subject is still SPOKEN (exit 2 prints its reason) -- it is just not fatal.
+#
+# A THIRD STATE, DISTINCT FROM BOTH ABOVE: THE SCRIPT ITSELF IS MISSING (found 2026-08-24). "no
+# python3 on PATH" and "no .py staged" are both ordinary, environment- or commit-shaped absences --
+# the CONTROL is present and simply has nothing to check, or nothing to check it with. A missing
+# encoding_lint.py is not that: the control itself has been removed from this checkout, and python3
+# would happily exit 2 ("[Errno 2] No such file or directory") -- indistinguishable, to the case
+# above, from "nothing to check." Measured: a fresh clone of origin/main with this hook wired ran
+# `python3 <missing path> --staged --quiet`, got exit 2, and committed a bare unencoded open() clean.
+# That is fail-open on the control disappearing, not on its input being empty, so it does not get
+# the same pass this hook gives an absent python3 or an absent .py file: it REFUSES.
 if command -v python3 >/dev/null 2>&1; then
+	if [ ! -f "$repo/system/tools/encoding_lint.py" ]; then
+		echo "  ⛔ encoding lint tool MISSING — system/tools/encoding_lint.py is not present in this checkout."
+		echo "     Commit refused. This is not 'nothing to check' -- the security control itself is absent."
+		echo "     Restore it (git checkout origin/main -- system/tools/encoding_lint.py) or pull latest."
+		exit 1
+	fi
 	encoding_out=$(python3 "$repo/system/tools/encoding_lint.py" --staged --quiet 2>&1)
 	encoding_status=$?
 	if [ "$encoding_status" -eq 1 ]; then
