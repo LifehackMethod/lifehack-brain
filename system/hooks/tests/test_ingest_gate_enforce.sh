@@ -200,6 +200,85 @@ echo "-- SANITY: NO notes root set at all — no widening, and no crash --"
 printf '%s' "$(j Read '{"file_path":"/tmp/a.md"}')" | env -u LIFEHACK_ROOT HOME="$NOTES" bash "$HOOK" >/dev/null 2>&1
 if [ $? = 2 ]; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL [no notes root]: expected deny"; fi
 
+echo "-- ⭐ GITHUB #94/#96: notes_root() must fold a Windows path spelling BEFORE testing it --"
+# THE BUG (found 2026-08-23): notes_root()'s case guard tested the RAW, UNFOLDED pointer. _winfold
+# was only ever applied to NOTES_ROOT one line OUTSIDE the function, on the value the function had
+# already returned. A native Windows-spelled pointer (backslash separators, e.g. a drive-letter root
+# like D:\Google Drive\AI Brain) never starts with "/", so it fell straight into the `*) return 1`
+# catch-all -- BEFORE any fold, and before the "-d" directory check ever ran. Every file under the
+# user's own AI Brain then read as EXTERNAL.
+#
+# ⚠ Reproducing a literal drive-letter root (D:\...) end-to-end needs a real top-level single-letter
+# directory, which this sandbox genuinely cannot create -- macOS's sealed system volume refuses new
+# entries at "/" even as root (verified live: `mkdir /d` -> "Read-only file system", and
+# `sudo -n true` -> a password is required, so root is not available either). This case proves the
+# IDENTICAL mechanism -- the fold-before-test ordering inside notes_root() -- with a backslash-
+# separated pointer anchored at a REAL directory instead of a synthetic drive letter. The
+# drive-letter substring-folding itself is _winfold's own job and is already covered, correctly, by
+# test_winpath_fold.sh; what was untested -- and what actually shipped the bug -- is THIS call site.
+#
+# `uname` is shadowed on PATH to report a Windows kernel, so `_winfold` autodetects real Windows
+# behaviour exactly as it would on an actual Windows host, rather than being told to force it.
+WINFAKEBIN="$(mktemp -d "${TMPDIR:-/tmp}/winfakebin.XXXXXX")"
+trap 'rm -rf "$WINFAKEBIN"' RETURN 2>/dev/null
+cat > "$WINFAKEBIN/uname" <<'UNAMEEOF'
+#!/bin/sh
+echo "MINGW64_NT-10.0"
+UNAMEEOF
+chmod +x "$WINFAKEBIN/uname"
+
+WINDIR="$(mktemp -d "${TMPDIR:-/tmp}/winroot.XXXXXX")"
+mkdir -p "$WINDIR/state"
+printf 'hi\n' > "$WINDIR/state/brief.md"
+WINDIR_REAL="$(cd "$WINDIR" && pwd -P)"
+# Backslash-separated, exactly the shape a native Windows path arrives in -- no drive letter (see
+# the note above for why a real one can't be filesystem-proven here), which is the part of the
+# spelling that actually decided which branch of the old case statement fired.
+WINRAW="$(python3 -c "import sys; print(sys.argv[1].replace('/', chr(92)))" "$WINDIR_REAL")"
+WIN_PAYLOAD="$(j Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]}))" "$WINDIR_REAL/state/brief.md")")"
+printf '%s' "$WIN_PAYLOAD" | env PATH="$WINFAKEBIN:$PATH" LIFEHACK_ROOT="$WINRAW" bash "$HOOK" >/dev/null 2>&1
+if [ $? = 0 ]; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL [Windows-spelled notes root]: own notes under a Windows-form root read as EXTERNAL"; fi
+rm -rf "$WINDIR" "$WINFAKEBIN"
+
+echo "-- ⭐ GITHUB #95: a LINKED WORKTREE with no .brain-root of its own borrows the MAIN worktree's --"
+# THE BUG (fixed in commit 23b1797, which added main_worktree_pointer_file() below). `git worktree
+# add` materialises only TRACKED files, and .brain-root is deliberately gitignored, so a LINKED
+# WORKTREE never gets a pointer of its own -- git will never give it one. Before the fix,
+# notes_root() then fell straight through past the repo-pointer route (it simply found nothing at
+# $REPO/.brain-root) to the machine-global ~/.config/lifehack/brain-root, which belongs to no repo
+# in particular and had gone stale. Reproduced live on 2026-08-21: a session running inside
+# .claude/worktrees/<name>/ was DENIED its own brief as somebody else's content. The fix reads
+# GIT'S OWN FILES to find the MAIN worktree and borrow ITS .brain-root: this worktree's `.git`
+# FILE (a `gitdir:` line), then that gitdir's `commondir` file, which names the shared `.git`
+# directory one level below the main worktree's root.
+#
+# ⚠ WHY THIS IS FABRICATED RATHER THAN A REAL `git worktree add` OF THIS REPO. This repo's own
+# .brain-root already exists at the repo root and holds the operator's REAL AI Brain path -- exactly
+# the file the task this test was written under says never to touch or read from. A real worktree of
+# THIS repo would either (a) borrow that real pointer, so proving ALLOW would mean reading a live
+# file out of the operator's actual brain, or (b) require overwriting the real .brain-root for the
+# duration of the run, which risks leaving it clobbered if the test aborts partway. Neither is
+# acceptable here. So this case builds the identical ON-DISK SHAPE main_worktree_pointer_file()
+# actually reads -- and nothing more: a directory holding a `.git` FILE whose `gitdir:` line names a
+# directory holding a `commondir` file whose first line names a directory that is literally called
+# `.git`, one level above which sits a `.brain-root` this test owns end to end. That function never
+# shells out to git (by design -- a gate must not depend on git being on PATH, or pay a subprocess on
+# every tool call); it is two `head -n1`s, a suffix check and a `cd`. Faking the shape exercises the
+# exact same lines a real linked worktree would drive, with no git porcelain involved on either side.
+WTROOT="$(mktemp -d "${TMPDIR:-/tmp}/gatetest-wt.XXXXXX")"
+MAINWT="$WTROOT/main"; LINKWT="$WTROOT/linked"; GITDIR="$WTROOT/linked-gitdir"; WTNOTES="$WTROOT/notes"
+mkdir -p "$MAINWT/.git" "$LINKWT/system/hooks/lib" "$GITDIR" "$WTNOTES/state"
+printf 'hi\n' > "$WTNOTES/state/brief.md"
+printf '%s' "$WTNOTES" > "$MAINWT/.brain-root"           # the MAIN worktree's own declared brain
+printf 'gitdir: %s\n' "$GITDIR" > "$LINKWT/.git"          # the linked worktree's pointer to its gitdir
+printf '%s\n' "$MAINWT/.git" > "$GITDIR/commondir"        # that gitdir's pointer back to the shared .git
+cp "$HOOK" "$LINKWT/system/hooks/ingest_gate_enforce.sh"
+cp "$HOOKDIR/lib/winpath_fold.sh" "$LINKWT/system/hooks/lib/winpath_fold.sh"
+WT_PAYLOAD="$(j Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]}))" "$WTNOTES/state/brief.md")")"
+printf '%s' "$WT_PAYLOAD" | env -u LIFEHACK_ROOT bash "$LINKWT/system/hooks/ingest_gate_enforce.sh" >/dev/null 2>&1
+if [ $? = 0 ]; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL [linked worktree borrows main's brain]: own notes read as EXTERNAL from inside a linked worktree"; fi
+rm -rf "$WTROOT"
+
 echo ""
 echo "RESULT: $pass passed, $fail failed."
 [ "$fail" = 0 ] && echo "INGEST GATE GREEN" || exit 1

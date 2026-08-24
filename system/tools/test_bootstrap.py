@@ -154,12 +154,37 @@ class TestRefuses(Case):
         self.assertIn("not a directory", reason)
 
     def test_cli_refuses_with_no_root_set_and_teaches(self):
+        """Runs against a MINIMAL COPY of the tool, not the real clone.
+
+        This is a real subprocess, so no monkeypatch reaches it, and scrubbing $LIFEHACK_ROOT and
+        $HOME never did close every route: the resolver also reads a `.brain-root` pointer FILE next
+        to the repo root — this repo's own (route 2, 2026-08-17) and, in a linked git worktree, the
+        main worktree's (route 2b, 2026-08-21) — plus the machine-global persisted config under
+        $HOME/.config/lifehack/brain-root. Both are located from the TOOL's own position or the
+        subprocess's $HOME, so the only honest way to test "nothing is configured" in a subprocess
+        is to run a copy that sits somewhere with nothing configured — which is also the case being
+        claimed: a fresh clone, on a machine with no notes folder chosen yet. (Mirrors
+        shared/test_registry.py::test_resolve_refuses_rather_than_guessing_when_no_notes_folder_is_set
+        — same approach, not a third one.)
+        """
         env = dict(os.environ)
-        env["HOME"] = os.path.join(self.tmp, "home")
+        home = os.path.join(self.tmp, "home")
+        os.makedirs(home, exist_ok=True)
+        env["HOME"] = home
         env.pop("LIFEHACK_ROOT", None)
-        r = subprocess.run([sys.executable, os.path.join(HERE, "bootstrap.py")],
+        clone_shared = os.path.join(home, "clone", "shared")
+        clone_tools = os.path.join(home, "clone", "system", "tools")
+        os.makedirs(clone_shared)
+        os.makedirs(clone_tools)
+        shutil.copy(os.path.join(REPO, "shared", "brain_root.py"), clone_shared)
+        shutil.copy(os.path.join(HERE, "bootstrap.py"), clone_tools)
+        shutil.copy(os.path.join(HERE, "utf8_stdio.py"), clone_tools)
+        clone_tool = os.path.join(clone_tools, "bootstrap.py")
+        self.assertFalse(os.path.exists(os.path.join(home, "clone", ".brain-root")),
+                         "the copy must start with nothing configured, or it tests nothing")
+        r = subprocess.run([sys.executable, clone_tool],
                            capture_output=True, text=True, env=env)
-        self.assertEqual(r.returncode, 1)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
         self.assertIn("no data root set", r.stdout + r.stderr)
         self.assertIn("--set", r.stdout + r.stderr, "a refusal has to say how to fix it")
 

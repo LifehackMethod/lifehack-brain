@@ -1747,10 +1747,21 @@ PYBIN="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
 "$PYBIN" shared/brain_root.py
 ```
 
-⛔ **It must say `(source: repo-pointer)`.** Anything else — `env`, `persisted`, `legacy-glob` —
-means something outside this repo is winning the resolution, and `/ingest` and every skill afterward
-will follow THAT, not the folder you just connected. Stop and work out what is overriding it (check
-`$LIFEHACK_ROOT` first — an env var wins over everything) before moving on.
+⛔ **It must say `(source: repo-pointer)`.** Anything else — `env`, `main-worktree-pointer`,
+`persisted`, `legacy-glob` — means something outside this repo is winning the resolution, and
+`/ingest` and every skill afterward will follow THAT, not the folder you just connected. Stop and
+work out what is overriding it (check `$LIFEHACK_ROOT` first — an env var wins over everything)
+before moving on.
+
+⚠ **`main-worktree-pointer` here means one specific thing, and it is worth spelling out because it is
+easy to miss:** it means you are running this install from inside a *linked git worktree* — a second
+working copy of this repo, checked out alongside the main one — rather than from the main checkout
+itself. A linked worktree has no `.brain-root` file of its own, so the resolver reaches past it and
+borrows the main worktree's pointer instead. That borrowing is exactly right once your install is
+already done and you are just working day to day from that worktree — but it is wrong to see **during
+an install**, because it means the folder you are about to connect belongs to the main checkout, not
+to the one you are sitting in right now. Stop, `cd` to the main checkout (not a linked worktree), and
+run the install from there instead.
 
 ⭐ **This is the cheap half of `TARGET-STATE.md`'s FACT 3, and saying which half matters.** It proves
 the resolver is answering through this repo's own pointer rather than something outside it. ⚠ **What it

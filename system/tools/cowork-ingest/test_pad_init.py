@@ -210,6 +210,11 @@ class TestCorpusIdResolution(PadWriteCase):
 class TestReadBackGuard(PadWriteCase):
     """`pad_write` must not report success on trust alone."""
 
+    @unittest.skipUnless(
+        os.name == "posix",
+        "chmod does not restrict write access on Windows/NTFS, so this assertion would be "
+        "vacuous there (issue #79) — skipped, not silently passed.",
+    )
     def test_refuses_when_directory_is_unwritable(self):
         m = _map_dict()
         memory_dir = os.path.join(self.tmp, "memory")
@@ -293,6 +298,11 @@ class TestGateStaysShut(PadWriteCase):
             saved = json.load(f)
         self.assertIsNone(saved.get("pad_written"))
 
+    @unittest.skipUnless(
+        os.name == "posix",
+        "chmod does not restrict write access on Windows/NTFS, so this assertion would be "
+        "vacuous there (issue #79) — skipped, not silently passed.",
+    )
     def test_refused_write_exits_nonzero_and_leaves_gate_shut(self):
         p = self._map_path()
         memory_dir = os.path.join(self.tmp, "memory")
