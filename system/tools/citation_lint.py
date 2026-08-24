@@ -489,13 +489,15 @@ def lint_paths_and_skills(root, findings, counts, scope=None):
 
 def lint_hooks(root, findings, counts, scope=None):
     settings_rel = ".claude/settings.json"
+    hooks_manifest_rel = "hooks/hooks.json"
     # This check is not per-file the way PATHS/SKILLS are -- it is one whole-repo comparison of
-    # settings.json against system/hooks/. Scoped to a staged set, it only has something new to say
-    # when the staged set actually touches one side of that comparison; otherwise every commit would
-    # keep re-litigating pre-existing hook-registration drift nobody staged, which is the exact bug
-    # this scoping exists to close.
+    # settings.json and hooks/hooks.json against system/hooks/. Scoped to a staged set, it only has
+    # something new to say when the staged set actually touches one side of that comparison;
+    # otherwise every commit would keep re-litigating pre-existing hook-registration drift nobody
+    # staged, which is the exact bug this scoping exists to close.
     if scope is not None and not any(
-            p == settings_rel or p == "system/hooks" or p.startswith("system/hooks/") for p in scope):
+            p == settings_rel or p == hooks_manifest_rel
+            or p == "system/hooks" or p.startswith("system/hooks/") for p in scope):
         return 0
     settings = os.path.join(root, settings_rel)
     if not os.path.exists(settings):
@@ -509,14 +511,44 @@ def lint_hooks(root, findings, counts, scope=None):
         print_cannot_read("%s is not readable JSON (%s)" % (settings_rel, e))
         return CANNOT_READ
 
-    registered = set(re.findall(r"\$\{CLAUDE_PROJECT_DIR\}/([^\\\"\s]+)", raw))
+    registered_settings = set(re.findall(r"\$\{CLAUDE_PROJECT_DIR\}/([^\\\"\s]+)", raw))
+
+    # The public plugin ships its OWN registration manifest, hooks/hooks.json, which wires the
+    # same scripts for anyone who installs via `claude plugin install` rather than cloning the
+    # repo as a project (settings.json only ever runs for the clone path). A script registered
+    # there and nowhere in settings.json is not unregistered -- it fires for plugin installs.
+    # Merge its paths into the same disk-vs-registration comparison BEFORE that comparison runs
+    # -- not after -- so a path missing from disk but registered only in hooks.json is caught by
+    # the loop below rather than silently passing it. Origin is tracked per path (not just
+    # unioned into one set) so a finding names the manifest that actually registered it, never
+    # the wrong file.
+    registered_plugin = set()
+    hooks_manifest = os.path.join(root, hooks_manifest_rel)
+    if os.path.isfile(hooks_manifest):
+        try:
+            with open(hooks_manifest, encoding="utf-8") as fh:
+                manifest_raw = fh.read()
+            json.loads(manifest_raw)                # parse for validity; scan the text for paths
+        except Exception as e:
+            print_cannot_read("%s is not readable JSON (%s)" % (hooks_manifest_rel, e))
+            return CANNOT_READ
+        registered_plugin = set(re.findall(r"\$\{CLAUDE_PLUGIN_ROOT\}/([^\\\"\s]+)", manifest_raw))
+
+    origins = {}
+    for path in registered_settings:
+        origins.setdefault(path, set()).add(settings_rel)
+    for path in registered_plugin:
+        origins.setdefault(path, set()).add(hooks_manifest_rel)
+    registered = set(origins)
+
     for path in sorted(registered):
         counts["registrations"] += 1
         if os.path.exists(os.path.join(root, path)):
             counts["resolved"] += 1
         else:
+            cite = " and ".join(sorted(origins[path]))
             findings.append(Finding(
-                settings_rel, "`%s` is registered and is not on disk" % path,
+                cite, "`%s` is registered and is not on disk" % path,
                 "the harness will try to run it every session and fail quietly",
                 "add the file, or remove the registration"))
 
