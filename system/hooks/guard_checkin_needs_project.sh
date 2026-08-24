@@ -27,6 +27,12 @@
 #      (the arm/status verbs this guard reads) · `system/hook-contract.md` (house deny format: stderr
 #      text + exit 2, deliberately NOT hookSpecificOutput/permissionDecision — see DENY SHAPE below for
 #      why that still matches the current docs on both events this hook now covers).
+# RELOCATION RISK (T4.2, 2026-08-23): the literal 'checkin' here (CMD_NAME check below) and in
+#      system/hooks/registrations.json's two matchers is EXACT-STRING-ONLY -- the harness matcher
+#      syntax has no wildcard/regex form for a skill name (system/hook-contract.md), so a rename or
+#      relocation of the checkin skill CANNOT be made structurally impossible to silently break this
+#      guard. Run `system/hooks/tests/verify_checkin_matcher_resolves.sh` to catch that drift LOUD
+#      instead of the guard just quietly never firing again.
 # UPDATED: 2026-08-14 — added the UserPromptExpansion leg; narrowed the PreToolUse leg via the
 #      documented `if` field instead of hand-parsing an undocumented tool_input field name (there is no
 #      published tool_input schema for the Skill tool — see FIRE-LOG below).

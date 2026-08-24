@@ -284,6 +284,25 @@ done
 
 _findings_banner
 
+# ── SKILL CAPABILITY CHECK — T3.7(c) wiring ───────────────────────────────────────────────────
+# WHY THIS LIVES HERE, NOT A NEW DETECTOR: system/build-rules-index.md's code-spiral rule says
+# put the fact where the session ALREADY looks, not stand up a fourth part to watch a third part
+# watching a second part. This hook already fires every session -- that is the call site, on
+# purpose: ONE part, ONE call site, and deliberately no separate component watching this one.
+# SILENCE IS THE HEALTHY STATE: measured 2026-08-23, 9 skills declare tools via `allowed-tools:`
+# in YAML frontmatter; only 1 (first-principles, declaring AskUserQuestion) is bare-denied; the
+# other 8 are merely scope-restricted and must print nothing. Quiet here is the expected, common
+# outcome, not "it didn't run" -- see skill_capability_check.py's own --self-test for proof its
+# negative control (a scope-restricted tool) stays silent while a bare-denied one still fires.
+# FAIL-SOFT, ALWAYS: this must never block or fail the hook. A session that cannot start because
+# a skill's metadata is wrong is a worse failure than the one this check exists to catch, so the
+# call is guarded by `-r` first and `|| true` besides -- no nonzero exit from here ever escapes.
+CAP_CHECK="$REPO/system/tools/skill_capability_check.py"
+if [ -r "$CAP_CHECK" ]; then
+  CAP_OUT="$(python3 "$CAP_CHECK" 2>/dev/null || true)"
+  [ -n "$CAP_OUT" ] && { echo ""; printf '%s\n' "$CAP_OUT"; }
+fi
+
 echo ""
 echo "=== end session context ==="
 exit 0
