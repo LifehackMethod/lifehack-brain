@@ -94,7 +94,6 @@ def run_git(args: list[str]) -> str:
 
 
 def changed_files(base: str, head: str, mode: str) -> list[str]:
-    op = "..." if mode == "merge-base" else " "
     range_arg = f"{base}...{head}" if mode == "merge-base" else f"{base} {head}"
     out = run_git(["diff", "--name-only", "--no-renames", *range_arg.split()])
     return [line.strip() for line in out.splitlines() if line.strip()]
