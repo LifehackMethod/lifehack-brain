@@ -76,7 +76,25 @@ BACKOFF_MAX="${PULSE_BACKOFF_MAX:-86400}"     # never wait longer than a day to 
 
 NOW=$(date +%s)
 TS=$(date '+%Y-%m-%d %H:%M:%S')
-MODE="${1:-run}"   # run | --status
+MODE="${1:-run}"   # run | --status | --help
+
+# ── --help: a REAL no-op, checked before anything else touches config/state/jobs ──────────────
+# ⛔ Without this, --help fell through MODE's default "run" branch below and dispatched every due
+# job for real — measured 2026-08-23 by smoke-check.sh, which probes every tool in system/tools/
+# with --help and, for this file, got back "TIMED OUT after 15s" because the 15s alarm kills only
+# the parent process; the due jobs it had already backgrounded (bash -c "$cmd" </dev/null) survive
+# as orphans and keep running. Handled here, first, before the config file is even read.
+case "$MODE" in
+  --help|-h)
+    echo "pulse.sh — the heartbeat daemon: reads system/pulse-config.md and runs whichever job is due."
+    echo
+    echo "Usage:  bash pulse.sh [run|--status|--help]"
+    echo "  run       (default) dispatch every due job for real"
+    echo "  --status  show due/not-due for every job, no exec"
+    echo "  --help    print this and exit 0; touches no config, no state, no job"
+    exit 0
+    ;;
+esac
 
 log() { echo "[$TS] pulse: $*"; }
 

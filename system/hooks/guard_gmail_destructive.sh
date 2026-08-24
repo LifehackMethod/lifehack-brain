@@ -111,7 +111,14 @@ SCOPE="$(printf '%s' "$COMMAND" | tr -d "\\'\"" )"
 # Two gates now, both deliberately loose: is a gws binary NAMED anywhere, and is this service named.
 # A mere mention costs nothing — the real checks below decide, and they are what should decide.
 printf '%s' "$COMMAND" | grep -qE "(^|[^A-Za-z0-9_])gws([^A-Za-z0-9_]|$)|bin/gws" 2>/dev/null || exit 0
-printf '%s' "$COMMAND" | grep -qiE "(^|[[:space:]])gmail([[:space:]]|$)" 2>/dev/null || exit 0
+# ⛔ WHITESPACE-ONLY WAS TOO NARROW A BOUNDARY. Fire test, 2026-08-23: a comma/quote-delimited argv
+# built by another interpreter -- python3 -c "...subprocess.run(['gws','gmail','users','threads',
+# 'trash','--id','18abc'])" -- puts "gmail" beside a quote and a comma, never whitespace, so this
+# gate exited 0 here and the destructive parser below was NEVER REACHED -- the exact same shape of
+# hole the binary check above this line was already widened to close. SCOPE strips the quoting and
+# backslashes first so the boundary class only has to reason about what is left: a comma, a
+# bracket, or real whitespace are all valid word boundaries once the quoting itself is gone.
+printf '%s' "$SCOPE" | grep -qiE "(^|[^A-Za-z0-9_])gmail([^A-Za-z0-9_]|$)" 2>/dev/null || exit 0
 
 # `untrash` is RECOVERY (it undoes a trash) and must never be blocked. Check it BEFORE the
 # destructive match, because "untrash" contains "trash" as a substring — the classic
