@@ -1178,7 +1178,8 @@ def check_receipt(receipt_path, tree_override=None):
 
 def _git_status():
     proc = subprocess.run(["git", "-C", os.path.realpath(os.path.join(HERE, "..", "..")),
-                            "status", "--porcelain"], capture_output=True, text=True)
+                            "status", "--porcelain"], capture_output=True, text=True,
+                           env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"})
     return proc.stdout
 
 

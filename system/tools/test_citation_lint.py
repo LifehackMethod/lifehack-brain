@@ -323,6 +323,55 @@ class HooksBothWays(Fixture):
         self.assertEqual(rc, lint.CANNOT_READ)
         self.assertIn("CANNOT-READ", out)
 
+    def test_a_repo_with_no_plugin_manifest_still_lints_cleanly(self):
+        # The private repo has no hooks/hooks.json at all -- os.path.isfile must guard this, not
+        # treat "absent" as "unreadable".
+        self.assertEqual(self.lint()[0], 0)
+
+    def test_a_plugin_manifest_registration_with_no_file_behind_it_fails(self):
+        # This is the bug: hooks.json's paths used to be merged into `registered` AFTER the
+        # registered-but-missing loop already ran, so a dangling entry registered ONLY there was
+        # never caught. Assert both that it fails, and that the finding names hooks/hooks.json --
+        # not .claude/settings.json, which never mentioned this path at all.
+        self.write("hooks/hooks.json",
+                    '{"hooks": {"UserPromptSubmit": [{"hooks": [{"type": "command", '
+                    '"command": "bash \\"${CLAUDE_PLUGIN_ROOT}/system/hooks/ghost.sh\\""}]}]}}')
+        rc, out = self.lint()
+        self.assertEqual(rc, 1)
+        self.assertIn("ghost.sh", out)
+        self.assertIn("registered and is not on disk", out)
+        self.assertIn("hooks/hooks.json", out)
+        # The wrong-file citation this canonically causes: `.claude/settings.json` never named
+        # ghost.sh, so it must not be blamed for it.
+        for line in out.splitlines():
+            if "ghost.sh" in line:
+                self.assertNotIn(".claude/settings.json", line)
+
+    def test_a_hook_registered_only_in_the_plugin_manifest_and_present_on_disk_passes(self):
+        self.write("system/hooks/plugin_only.sh", "#!/bin/sh\nexit 0\n")
+        self.write("hooks/hooks.json",
+                    '{"hooks": {"UserPromptSubmit": [{"hooks": [{"type": "command", '
+                    '"command": "bash \\"${CLAUDE_PLUGIN_ROOT}/system/hooks/plugin_only.sh\\""}]}]}}')
+        self.assertEqual(self.lint()[0], 0)
+
+    def test_a_hook_registered_in_both_manifests_is_reported_once_not_twice(self):
+        os.remove(os.path.join(self.root, "system/hooks/live.sh"))
+        self.write("hooks/hooks.json",
+                    '{"hooks": {"UserPromptSubmit": [{"hooks": [{"type": "command", '
+                    '"command": "bash \\"${CLAUDE_PLUGIN_ROOT}/system/hooks/live.sh\\""}]}]}}')
+        rc, out = self.lint()
+        self.assertEqual(rc, 1)
+        self.assertEqual(out.count("live.sh` is registered and is not on disk"), 1)
+        # Named against both manifests that actually registered it -- not silently against just one.
+        self.assertIn(".claude/settings.json", out)
+        self.assertIn("hooks/hooks.json", out)
+
+    def test_unreadable_plugin_manifest_is_CANNOT_READ_never_clean(self):
+        self.write("hooks/hooks.json", "{ not json")
+        rc, out = self.lint()
+        self.assertEqual(rc, lint.CANNOT_READ)
+        self.assertIn("CANNOT-READ", out)
+
 
 class ScopedToStagedFiles(Fixture):
     """`--files` is what `system/githooks/pre-commit` passes on the staged set, so that

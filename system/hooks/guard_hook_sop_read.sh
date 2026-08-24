@@ -208,17 +208,17 @@ fi
 [ "$IS_WRITE" -eq 1 ] || exit 0
 
 # ── receipt check ────────────────────────────────────────────────────────────────────────
-# shasum is NOT guaranteed on PATH (Git Bash on Windows ships without it -- GitHub #82).
-# Called bare, it emits "command not found" on every invocation AND `cut` returns an EMPTY
-# string, so the receipt key collapses to a constant. The guard then never matches the receipt
-# read_sop.sh wrote, and the result is a PERMANENT DENY with no way out.
-# ⚠ THIS SNIPPET IS IDENTICAL IN system/tools/read_sop.sh AND system/hooks/guard_hook_sop_read.sh
+# shasum is NOT guaranteed on PATH (Git Bash on Windows ships without it). Called bare, it emits
+# "command not found" and `cut` returns an EMPTY string, collapsing the key to a constant -- the
+# guard then never matches the receipt read_sop.sh wrote, and the result is a PERMANENT DENY.
+# ⚠ THIS HELPER IS IDENTICAL IN system/tools/read_sop.sh AND system/hooks/guard_hook_sop_read.sh
 # (BOTH repos: private ClaudeOps AND public lifehack-brain -- all four copies) AND MUST STAY THAT
-# WAY -- one writes the receipt, the other reads it. If the two ever compute the key differently,
-# they disagree on EVERY machine that lacks shasum and the permanent deny comes straight back.
-# Same rule as hash_key() elsewhere in this folder.
+# WAY -- one writes the receipt, the other reads it. If they ever compute the key differently,
+# they disagree on every machine lacking shasum. Same rule as hash_key() in
+# guard_cross_project_write.sh (sha1 not sha256, deliberately, so a machine with shasum and one
+# without still key the same).
 # FIXED 2026-08-23: the two repos had DRIFTED -- private fell back to `python3 hashlib.sha1`
-# (agrees with `shasum`'s SHA-1), THIS repo fell back to `cksum` (a DIFFERENT algorithm entirely).
+# (agrees with `shasum`'s SHA-1), public fell back to `cksum` (a DIFFERENT algorithm entirely).
 # With shasum present (this Mac) the fallback never ran, so both agreed by accident; on a PATH
 # without shasum (Git Bash on Windows, minimal containers) they computed DIFFERENT keys from the
 # IDENTICAL receipt, so one repo's guard allowed and the other denied for the same real state.
@@ -252,10 +252,9 @@ RECEIPT="$RUN_DIR/hook.$KEY.receipt"
 
 # Accept ANY receipt for this session key, or a cwd-keyed one (the tool may have been run before
 # the session id was known). TTL 12h so a stale receipt cannot certify a read from yesterday.
-# stat -f is BSD/macOS-only; -c is GNU. Without the GNU fallback, `stat -f %m` fails on any non-BSD
-# stat, falls to `echo 0`, and AGE becomes ~= now (billions of seconds) -- the TTL check can then
-# NEVER be true and the receipt path is permanently dead. Same pattern already used elsewhere in
-# this file's family (guard_brief_truncation.sh's stat -f ... || stat -c ... || echo 0).
+# stat -f is BSD/macOS-only; -c is GNU. Try both so the TTL check works on either platform instead
+# of silently falling to `echo 0` (which makes AGE ~= now, permanently failing the TTL and dead-ing
+# the whole receipt path on any non-BSD stat). Matches guard_brief_truncation.sh's pattern.
 FOUND=0
 for cand in "$RECEIPT" "$RUN_DIR/hook.cwd-$HASHCWD.receipt"; do
   [ -f "$cand" ] || continue

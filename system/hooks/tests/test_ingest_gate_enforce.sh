@@ -227,7 +227,22 @@ echo "MINGW64_NT-10.0"
 UNAMEEOF
 chmod +x "$WINFAKEBIN/uname"
 
+# ⚠ FIXTURE CASE-SENSITIVITY NOTE. mktemp's XXXXXX draws from a mixed-case alphabet, so the
+# directory this test creates can itself land on a MIXED-CASE suffix (e.g. "winroot.Ab3xY9").
+# _winfold, once the fake Windows uname above is in effect, lowercases the WHOLE path -- not just
+# a drive letter -- so the folded pointer this test feeds to the hook can differ in case from the
+# real directory on disk. On a case-INSENSITIVE filesystem (default macOS) that mismatch is
+# invisible: the OS resolves "winroot.ab3xy9" and "winroot.Ab3xY9" as the same entry, so
+# `[ -d "$_nr" ]` still finds it. On a case-SENSITIVE filesystem (Linux, this project's CI) it is
+# a different, nonexistent path, and the case fails for a reason that has nothing to do with the
+# fold-ordering bug under test -- this is a fixture defect, not a product defect, and it is what
+# made CI red while the same run stayed green on every macOS box (reproduced locally 2026-08-24 by
+# running this exact fixture against a real case-sensitive APFS volume). FIX: force the
+# directory's own name to be all-lowercase before anything is written under it, so the folded and
+# unfolded spellings can never disagree on case regardless of filesystem.
 WINDIR="$(mktemp -d "${TMPDIR:-/tmp}/winroot.XXXXXX")"
+WINDIR_LOWER="$(dirname "$WINDIR")/$(basename "$WINDIR" | tr 'A-Z' 'a-z')"
+if [ "$WINDIR_LOWER" != "$WINDIR" ]; then mv "$WINDIR" "$WINDIR_LOWER"; WINDIR="$WINDIR_LOWER"; fi
 mkdir -p "$WINDIR/state"
 printf 'hi\n' > "$WINDIR/state/brief.md"
 WINDIR_REAL="$(cd "$WINDIR" && pwd -P)"
