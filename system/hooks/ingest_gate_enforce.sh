@@ -81,8 +81,9 @@ REPO="${_HOOKDIR%/system/hooks}"
 : "${REPO:=/dev/null/no-repo-resolved}"
 REPO="$(_winfold "$REPO")"
 
-# ── THE NOTES ROOT. $LIFEHACK_ROOT first, then THIS REPO'S .brain-root pointer, then the
-# persisted ~/.config/lifehack/brain-root. Mirrors shared/brain_root.py's resolution order
+# ── THE NOTES ROOT. $LIFEHACK_ROOT first, then THIS REPO'S .brain-root pointer, then — when this
+# folder is a LINKED GIT WORKTREE — the MAIN worktree's pointer, then the persisted
+# ~/.config/lifehack/brain-root. Mirrors shared/brain_root.py's resolution order
 # (2026-08-17, two-folder design) — before this, the gate read ONLY the machine-global value, so on
 # any install whose repo pointer disagreed with the global, the gate blocked the session's own notes
 # as "external" (observed live, patient-zero repair). One deliberate DIVERGENCE from the resolver:
@@ -90,12 +91,73 @@ REPO="$(_winfold "$REPO")"
 # The repo has declared its brain; a broken declaration is a fault to surface, never a redirect that
 # would trust some OTHER brain's tree. (The resolver may fall through for usability; a security
 # boundary may not.) The legacy glob stays excluded — back-compat has no business widening a boundary.
+#
+# ── THE WORKTREE ROUTE (2026-08-21). `git worktree add` materialises only TRACKED files, and
+# .brain-root is deliberately gitignored — so a LINKED WORKTREE never has a pointer of its own and
+# git will never give it one. $REPO is the worktree root here, so the repo-pointer route above
+# simply misses and the gate fell through to the machine-global value, which belongs to no repo in
+# particular and had gone stale after the 2026-08-17 restructure. Reproduced against this exact
+# file on 2026-08-21: a session running in .claude/worktrees/<name>/ was DENIED its own brief as
+# somebody else's content. That is patient-zero coming back through a different door, and the
+# header above already records what it costs — a control that forces a routine workaround is
+# teaching the bypass.
+# A linked worktree is a second checkout of ONE repo, so the brain it belongs to is the MAIN
+# worktree's brain; borrowing that pointer is the repo's own declaration, not a guess. It also
+# INHERITS the fail-closed divergence for free: a borrowed pointer that names a folder which is not
+# there leaves $_nr non-empty, so there is no fall-through to the machine-global, and the notes
+# root simply goes unset — no widening. The repo declared its brain; a broken declaration is a
+# fault to surface, never a redirect onto some other tree.
+# Detection reads GIT'S OWN FILES — a `.git` FILE holding `gitdir:`, then `commondir` inside that
+# git dir — and never `git rev-parse`: a gate must not depend on git being on PATH, and must not
+# pay a subprocess on every tool call. A SUBMODULE also has a `.git` file and is excluded here,
+# because its git dir carries no `commondir` and its parent is another project's folder entirely.
+# Anything unexpected returns 1 and the next route is tried — this function never improvises.
+main_worktree_pointer_file() {
+  [ -f "$REPO/.git" ] || return 1          # an ordinary clone has a .git DIRECTORY, not a file
+  _mw_line="$(head -n 1 "$REPO/.git" 2>/dev/null)"
+  case "$_mw_line" in gitdir:*) ;; *) return 1 ;; esac
+  _mw_gd="$(printf '%s' "${_mw_line#gitdir:}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+  [ -n "$_mw_gd" ] || return 1
+  # Fold FIRST, then ask whether it is absolute: on Windows git writes `C:/...`, which only reads
+  # as absolute once _winfold has turned it into the `/c/...` spelling this shell can open.
+  _mw_gd="$(_winfold "$_mw_gd")"
+  case "$_mw_gd" in /*) ;; *) _mw_gd="$REPO/$_mw_gd" ;; esac
+  [ -f "$_mw_gd/commondir" ] || return 1   # no commondir => a submodule, not a linked worktree
+  _mw_cd="$(head -n 1 "$_mw_gd/commondir" 2>/dev/null)"
+  [ -n "$_mw_cd" ] || return 1
+  _mw_cd="$(_winfold "$_mw_cd")"
+  case "$_mw_cd" in /*) ;; *) _mw_cd="$_mw_gd/$_mw_cd" ;; esac
+  # Canonical form before the shape test, same reason as everywhere else in this file.
+  _mw_cdp="$(cd "$_mw_cd" 2>/dev/null && pwd -P)"
+  [ -n "$_mw_cdp" ] || return 1
+  _mw_cdp="$(_winfold "$_mw_cdp")"
+  # ONLY the ordinary `<main worktree>/.git` layout. A bare repo, or one made with
+  # --separate-git-dir, has no main worktree at the parent of the common dir, and inventing one
+  # there is exactly the guess a security boundary must not make.
+  case "$_mw_cdp" in */.git) ;; *) return 1 ;; esac
+  _mw_root="${_mw_cdp%/.git}"
+  [ -d "$_mw_root" ] || return 1
+  printf '%s' "$_mw_root/.brain-root"
+}
+
 notes_root() {
   _nr="${LIFEHACK_ROOT:-}"
   if [ -z "$_nr" ] && [ -f "$REPO/.brain-root" ]; then
     _nr="$(cat "$REPO/.brain-root" 2>/dev/null)"
   fi
+  # (2b) Only when this repo has no pointer of its own — which in practice means a linked worktree,
+  # since git cannot put one there. A repo that HAS declared, however badly, keeps its declaration.
+  if [ -z "$_nr" ] && [ ! -f "$REPO/.brain-root" ]; then
+    _mwp="$(main_worktree_pointer_file || true)"
+    if [ -n "$_mwp" ] && [ -f "$_mwp" ]; then
+      _nr="$(cat "$_mwp" 2>/dev/null)"
+    fi
+  fi
   [ -n "$_nr" ] || _nr="$(cat "$HOME/.config/lifehack/brain-root" 2>/dev/null)"
+  # Fold a Windows path spelling BEFORE the tests below (GitHub #94/#96, 2026-08-23).
+  # Must precede the trailing-slash trim: a native path ending in a backslash only loses
+  # its separator correctly once it is already a forward slash.
+  _nr="$(_winfold "$_nr")"
   while [ "${_nr%/}" != "$_nr" ]; do _nr="${_nr%/}"; done      # any number of trailing slashes
   # A Windows notes root is stored in NATIVE form (G:\Shared drives\AI BRAIN) - absolute, but it does
   # not begin with "/", so it matched no arm below and fell through to `*) return 1`. NOTES_ROOT then

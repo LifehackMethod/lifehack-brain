@@ -1179,6 +1179,19 @@ def selftest():
     tp_hits = scan_third_party_name_shape("His wife Fern handles the scheduling.\n")
     report("'wife Fern' is caught by the trigger-then-name shape",
            any(h["token"] == "Fern" for h in tp_hits), "hits: {}".format(tp_hits))
+    # ⛔ DO NOT "FIX" the WARNING-tier leak-scan noise these two names produce by adding
+    # them to FICTIONAL_FIXTURE_WORDS (.github/scripts/check_no_internal_leakage.py).
+    # "Marlowe" and "Rosalind" show up as third-party-name-shape WARNINGs when the whole-tree
+    # scanner walks this file -- but they are POSITIVE test cases here, not leaked names:
+    # FICTIONAL_FIXTURE_WORDS is read INSIDE scan_third_party_name_shape() itself, so any
+    # token in that set is silently excluded from detection before the assertions below ever
+    # run. Allowlisting "marlowe"/"rosalind" would make the production heuristic stop flagging
+    # them -- and would defang these exact assertions, which exist to prove the heuristic
+    # still catches the possessive-before-trigger and partner-NAME shapes. If this noise ever
+    # becomes intolerable, the correct fix is a SELF-REFERENCE path exclusion for this test
+    # block in the whole-tree scanner (WHOLE_TREE_SELF_REFERENCE_EXCLUDE_PREFIXES/PATHS in
+    # check_no_internal_leakage.py), mirroring the existing entry for
+    # system/shipping-lane/fixtures/ -- NOT a token-level allowlist entry.
     tp_hits2 = scan_third_party_name_shape("Marlowe's husband had an ER visit.\n")
     report("'Marlowe's husband' is caught by the possessive-before-trigger shape",
            any(h["token"] == "Marlowe" for h in tp_hits2), "hits: {}".format(tp_hits2))

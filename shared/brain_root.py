@@ -39,12 +39,14 @@ import sys
 # Resolution order, exactly — resolve_brain_root() returns the FIRST route below that names a real
 # directory, and the source string it returns is in parentheses: (1) $LIFEHACK_ROOT, if set and a real
 # directory ("env"). (2) this repo's own `.brain-root` pointer file, located from THIS FILE's position
-# ("repo-pointer"). (3) the persisted file ~/.config/lifehack/brain-root — this system's EXISTING config
-# home (sentinel-paused-sources and claude-oauth-token already live there; this is not a second
-# location) ("persisted"). (4) the legacy Drive glob — BACK-COMPAT ONLY, set via INGEST_LEGACY_ROOT_GLOB,
-# so an existing corpus keeps resolving ("legacy-glob"). (5) otherwise NOT-SET. Closed outcome set
-# {RESOLVED, NOT-SET}; NOT-SET is the no-outcome member and must NEVER fall through to a guess, a
-# default, or the cwd — every caller checks for it and stops, naming the fix.
+# ("repo-pointer"). (2b) when this folder is a LINKED GIT WORKTREE of the repo, the MAIN worktree's
+# `.brain-root` pointer ("main-worktree-pointer") — see main_worktree_root() for why a worktree can
+# never have one of its own. (3) the persisted file ~/.config/lifehack/brain-root — this system's
+# EXISTING config home (sentinel-paused-sources and claude-oauth-token already live there; this is not
+# a second location) ("persisted"). (4) the legacy Drive glob — BACK-COMPAT ONLY, set via
+# INGEST_LEGACY_ROOT_GLOB, so an existing corpus keeps resolving ("legacy-glob"). (5) otherwise
+# NOT-SET. Closed outcome set {RESOLVED, NOT-SET}; NOT-SET is the no-outcome member and must NEVER
+# fall through to a guess, a default, or the cwd — every caller checks for it and stops, naming the fix.
 BRAIN_ROOT_ENV = "LIFEHACK_ROOT"
 BRAIN_ROOT_CONFIG = os.path.expanduser("~/.config/lifehack/brain-root")
 # Step (4), back-compat only, and DELIBERATELY not hardcoded: the original owner exports
@@ -57,6 +59,9 @@ BRAIN_ROOT_LEGACY_GLOB = os.path.expanduser(os.environ.get("INGEST_LEGACY_ROOT_G
 # shared/), NEVER via cwd — so two clones on one machine each resolve their own brain, and the
 # pointer travels with the folder into environments that cannot see the machine's HOME (Cowork).
 REPO_POINTER_NAME = ".brain-root"
+# Step (2b), NEW 2026-08-21. Git's own name for the file that a linked worktree's git dir carries,
+# holding the path back to the ONE shared git dir. See main_worktree_root() for the incident.
+WORKTREE_COMMONDIR_NAME = "commondir"
 
 def harness_root():
     """Absolute path of the Harness / repo folder this file lives in (the parent of shared/).
@@ -85,16 +90,98 @@ def read_repo_pointer():
     return value or None
 
 
+def main_worktree_root():
+    """The MAIN worktree's folder when this Harness folder is a LINKED GIT WORKTREE, else None.
+
+    WHY THIS EXISTS (2026-08-21). A session running in `.claude/worktrees/<name>/` started BLIND.
+    Route (2) looks for `.brain-root` at the Harness root — but `git worktree add` materialises only
+    TRACKED files, and `.brain-root` is deliberately gitignored, so git will NEVER put one there.
+    Resolution fell silently through to the machine-global config, which had gone stale after the
+    2026-08-17 restructure (it still named a folder that no longer existed). No error was raised,
+    because NOT-SET was never reached — it resolved, to the wrong place, and then to nothing.
+
+    The design model in this module's header — "two clones on one machine each resolve their own
+    brain" — is right about CLONES and about a Cowork copy: each of those is a whole folder that
+    carries its own pointer. A linked worktree is neither. It is a second checkout of ONE repo, so
+    the brain it belongs to is simply the main worktree's brain, and borrowing that pointer is the
+    honest answer rather than a guess.
+
+    READ FROM GIT'S OWN FILES, never by shelling out to `git rev-parse --git-common-dir`: this has
+    to work with no git on PATH, and it must not cost a subprocess on every path resolution in the
+    system. The two files read below are git's documented worktree layout — a `.git` FILE holding
+    `gitdir: <path>`, and a `commondir` inside that git dir. A SUBMODULE also has a `.git` file, and
+    is excluded here because its git dir has no `commondir`. Returns None on anything unexpected;
+    a route that cannot answer must fall through to the next one, never improvise."""
+    dotgit = os.path.join(harness_root(), ".git")
+    if not os.path.isfile(dotgit):    # an ordinary clone has a .git DIRECTORY — not a worktree
+        return None
+    try:
+        # FIRST LINE only. git writes exactly one, but a path is being taken from a file here and
+        # a trailing line would otherwise be glued onto the end of it.
+        gitdir_line = (open(dotgit, encoding="utf-8").read().splitlines() or [""])[0].strip()
+    except OSError:
+        return None
+    if not gitdir_line.startswith("gitdir:"):
+        return None
+    gitdir = gitdir_line.split(":", 1)[1].strip()
+    if not gitdir:
+        return None
+    if not os.path.isabs(gitdir):     # git may write it relative — to the worktree folder itself
+        gitdir = os.path.join(harness_root(), gitdir)
+    commondir_file = os.path.join(os.path.normpath(gitdir), WORKTREE_COMMONDIR_NAME)
+    if not os.path.isfile(commondir_file):   # no commondir => a submodule, not a linked worktree
+        return None
+    try:
+        common = open(commondir_file, encoding="utf-8").read().strip()
+    except OSError:
+        return None
+    if not common:
+        return None
+    if not os.path.isabs(common):     # normally the relative "../.." back up to the shared .git
+        common = os.path.join(os.path.normpath(gitdir), common)
+    common = os.path.normpath(common)
+    # ONLY the ordinary layout, `<main worktree>/.git`. A bare repo or one made with
+    # --separate-git-dir has no main worktree at the parent of the common dir, and inventing one
+    # there is exactly the guess this module refuses to make.
+    if os.path.basename(common) != ".git":
+        return None
+    root = os.path.dirname(common)
+    return root if os.path.isdir(root) else None
+
+
+def read_main_worktree_pointer():
+    """The raw value in the MAIN worktree's pointer file, when this folder is a linked worktree of
+    it — otherwise None. The worktree sibling of read_repo_pointer(), and like it, returns the
+    string even when the folder it names is gone, so a caller reporting on a stale root can see it."""
+    root = main_worktree_root()
+    if root is None:
+        return None
+    fp = os.path.join(root, REPO_POINTER_NAME)
+    if not os.path.isfile(fp):
+        return None
+    try:
+        value = open(fp, encoding="utf-8").read().strip()
+    except OSError:
+        return None
+    return value or None
+
+
 def resolve_brain_root():
     """The one resolver every caller (skill drivers, tests, this CLI) goes through. Returns
-    (source, path) with source in {"env", "repo-pointer", "persisted", "legacy-glob"} and path a real directory, OR
-    (None, None) for NOT-SET. Never guesses, never defaults to cwd, never invents a path."""
+    (source, path) with source in {"env", "repo-pointer", "main-worktree-pointer", "persisted",
+    "legacy-glob"} and path a real directory, OR (None, None) for NOT-SET. Never guesses, never
+    defaults to cwd, never invents a path."""
     env = os.environ.get(BRAIN_ROOT_ENV)
     if env and os.path.isdir(env):
         return "env", env
     pointer = read_repo_pointer()
     if pointer and os.path.isdir(pointer):
         return "repo-pointer", pointer
+    # (2b) A linked worktree has no pointer of its own and cannot be given one by git — borrow the
+    # main worktree's, ahead of the machine-global, which belongs to no repo in particular.
+    borrowed = read_main_worktree_pointer()
+    if borrowed and os.path.isdir(borrowed):
+        return "main-worktree-pointer", borrowed
     if os.path.isfile(BRAIN_ROOT_CONFIG):
         try:
             persisted = open(BRAIN_ROOT_CONFIG, encoding="utf-8").read().strip()

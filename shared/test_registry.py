@@ -133,12 +133,31 @@ class DualResolution(Base):
         self.assertFalse(reg.resolve("widget", root=self.root).leaf_matches_slug)
 
     def test_resolve_refuses_rather_than_guessing_when_no_notes_folder_is_set(self):
+        """Runs against a MINIMAL COPY of the tool, not the real clone.
+
+        This is a real subprocess, so no monkeypatch reaches it, and scrubbing $LIFEHACK_ROOT and
+        $HOME never did close every route: the resolver also reads a `.brain-root` pointer FILE next
+        to the tool — this repo's own (route 2, 2026-08-17) and, in a linked git worktree, the main
+        worktree's (route 2b, 2026-08-21). Both are located from the tool's OWN position, so the
+        only honest way to test "nothing is configured" in a subprocess is to run a copy that sits
+        somewhere with nothing configured. Which is also the case being claimed: a fresh clone."""
         env = dict(os.environ)
         env.pop("LIFEHACK_ROOT", None)
         with tempfile.TemporaryDirectory() as fake_home:
             env["HOME"] = fake_home
-            p = subprocess.run([sys.executable, TOOL, "widget"], capture_output=True, text=True, env=env)
-            self.assertEqual(p.returncode, 1)
+            # the three files the tool needs, in the layout it expects to find them in
+            clone_shared = os.path.join(fake_home, "clone", "shared")
+            clone_utf8 = os.path.join(fake_home, "clone", "system", "tools")
+            os.makedirs(clone_shared)
+            os.makedirs(clone_utf8)
+            for name in ("registry.py", "brain_root.py"):
+                shutil.copy(os.path.join(HERE, name), clone_shared)
+            shutil.copy(os.path.join(HERE, "..", "system", "tools", "utf8_stdio.py"), clone_utf8)
+            tool = os.path.join(clone_shared, "registry.py")
+            self.assertFalse(os.path.exists(os.path.join(fake_home, "clone", ".brain-root")),
+                             "the copy must start with nothing configured, or it tests nothing")
+            p = subprocess.run([sys.executable, tool, "widget"], capture_output=True, text=True, env=env)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertIn("REFUSED", p.stderr)
 
 

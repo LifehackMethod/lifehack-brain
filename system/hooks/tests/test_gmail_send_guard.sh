@@ -19,7 +19,14 @@
 
 HERE="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
 GUARD="$(cd "$HERE/.." 2>/dev/null && pwd)/guard_gmail_send.sh"
-ERRF="$(mktemp -t gmailsendguard)"
+# Portable across BSD mktemp (macOS: `-t PREFIX` takes a bare prefix and appends its own
+# suffix) and GNU mktemp (Linux/CI: `-t TEMPLATE` requires the template to literally END in
+# XXXXXX, and errors with no output otherwise). `-t gmailsendguard` satisfied the former and
+# silently failed the latter -- ERRF then resolved to an EMPTY string, `2>"$ERRF"` became an
+# ambiguous redirect, and every single case in this suite (allow and deny alike) failed with
+# rc=1 on the GitHub Actions Linux runner while staying green on a macOS laptop. Spelling the
+# template explicitly works identically on both.
+ERRF="$(mktemp "${TMPDIR:-/tmp}/gmailsendguard.XXXXXX")"
 PASSED=0
 FAILED=0
 

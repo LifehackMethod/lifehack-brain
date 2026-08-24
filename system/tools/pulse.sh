@@ -76,7 +76,25 @@ BACKOFF_MAX="${PULSE_BACKOFF_MAX:-86400}"     # never wait longer than a day to 
 
 NOW=$(date +%s)
 TS=$(date '+%Y-%m-%d %H:%M:%S')
-MODE="${1:-run}"   # run | --status
+MODE="${1:-run}"   # run | --status | --help
+
+# ── --help: a REAL no-op, checked before anything else touches config/state/jobs ──────────────
+# ⛔ Without this, --help fell through MODE's default "run" branch below and dispatched every due
+# job for real — measured 2026-08-23 by smoke-check.sh, which probes every tool in system/tools/
+# with --help and, for this file, got back "TIMED OUT after 15s" because the 15s alarm kills only
+# the parent process; the due jobs it had already backgrounded (bash -c "$cmd" </dev/null) survive
+# as orphans and keep running. Handled here, first, before the config file is even read.
+case "$MODE" in
+  --help|-h)
+    echo "pulse.sh — the heartbeat daemon: reads system/pulse-config.md and runs whichever job is due."
+    echo
+    echo "Usage:  bash pulse.sh [run|--status|--help]"
+    echo "  run       (default) dispatch every due job for real"
+    echo "  --status  show due/not-due for every job, no exec"
+    echo "  --help    print this and exit 0; touches no config, no state, no job"
+    exit 0
+    ;;
+esac
 
 log() { echo "[$TS] pulse: $*"; }
 
@@ -181,9 +199,15 @@ log "heartbeat (config=$CONFIG state=$STATE root=${NOTES_ROOT:-NOT-SET})"
 
 ran=0; skipped=0; failed=0
 in_block=0
+jobs_fence_seen=0   # did the ```jobs``` fence EVER match this run? (ABSENT-SUBJECT-RULE, below)
 
 while IFS= read -r line || [ -n "$line" ]; do
-  if [ "$line" = '```jobs' ]; then in_block=1; continue; fi
+  # Strip a trailing \r on EVERY line, not just the fence line: Git for Windows' default
+  # core.autocrlf=true checks pulse-config.md out with CRLF endings, and everything below the fence
+  # check is ALSO exact-string matching (the blank/comment `case`, the `IFS='|' read` row fields) --
+  # a strip on only the fence line would still leave every data row's last field carrying a \r.
+  line="${line%$'\r'}"
+  if [ "$line" = '```jobs' ]; then in_block=1; jobs_fence_seen=1; continue; fi
   if [ "$in_block" -eq 1 ] && [ "$line" = '```' ]; then in_block=0; continue; fi
   [ "$in_block" -eq 1 ] || continue
   case "$line" in ''|\#*) continue;; esac
@@ -309,6 +333,17 @@ while IFS= read -r line || [ -n "$line" ]; do
     fi
   fi
 done < "$CONFIG"
+
+# ABSENT-SUBJECT-RULE: "the block parsed and is genuinely empty" and "the block was never found at
+# all" are DIFFERENT claims and must never share an exit code. A CRLF checkout breaks the fence's
+# exact-string match, so in_block never goes to 1, no job is ever dispatched, and pulse used to
+# report a clean tick for a manifest it never actually read.
+if [ "$jobs_fence_seen" -eq 0 ]; then
+  log "FATAL: the \`\`\`jobs\`\`\` fence was never found in $CONFIG."
+  log "  This is NOT an empty block -- the manifest could not be evaluated at all, so NOTHING ran."
+  log "  Likely cause: CRLF line endings (check: file \"$CONFIG\"). Fix: git add --renormalize ."
+  exit 1
+fi
 
 # ── Durable heartbeat mirror (the dead-man's-switch feed; system-health.py reads this) ──────────
 # Single machine, single file — no namespacing needed (the donor split this into _pulse-<machine>.json

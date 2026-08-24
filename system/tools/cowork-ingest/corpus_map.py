@@ -145,7 +145,17 @@ def do_set(a):
     if a.note:    row["learned_note"] = a.note
     if a.desk:    row["desk"] = a.desk
     if a.vein:    row["vein"] = a.vein
-    if getattr(a, "subject", None):  row["subject"] = a.subject   # ad-hoc cluster label (Pass-1 clustering)
+    if getattr(a, "subject", None):
+        # ad-hoc cluster label (Pass-1 clustering). ⚠ WRITE BOTH FIELDS (#56). `basket` is what
+        # pipeline.py routes on; `subject` is what basket_review.py matches on. Writing only
+        # `subject` here let the two disagree the instant a chat was RE-clustered: do_migrate()
+        # seeds `basket` from `subject` ONLY while `basket` is still falsy or the placeholder
+        # "UNCLUSTERED", never on top of a real value -- so a second `set --subject` moved one
+        # field and left the other, and two tools then believed the row was in two different
+        # piles. This is the one place `subject` is set, so keeping them in lockstep here needs
+        # no change to migrate's narrower seed-only rule or any other call site.
+        row["subject"] = a.subject
+        row["basket"] = a.subject
     save(m, a.map)
     print(f"OK: {a.file} → status={row.get('filing_status')} desk={row.get('desk')} vein={row.get('vein')} "
           f"subject={row.get('subject')} note={(row.get('learned_note') or '')[:50]!r}")
@@ -245,16 +255,32 @@ def do_migrate(a):
             r["resolution_rung"] = "committed"
             r["status"] = "done"
     # build/refresh the baskets section from the chats' basket keys (idempotent; preserves existing)
+    # ⚠ LOAD-BEARING (#21 / #70): snapshot which baskets existed BEFORE this call, taken before
+    # anything below can add a new one. migrate's ONLY job is to SEED a basket the first time it is
+    # ever seen — never to re-derive an in-progress status on a later run.
+    existing_baskets = set(m["baskets"].keys())
     from collections import defaultdict
     members = defaultdict(list)
     for r in rows.values():
         members[r["basket"]].append(r)
     for i, name in enumerate(sorted(members)):
+        is_new_basket = name not in existing_baskets
         b = m["baskets"].setdefault(name, dict(pipeline.BASKET_DEFAULTS))
         b.setdefault("sort_order", i)
         b.setdefault("basket_lock", None)
-        # a basket whose every chat is already human-ruled is 'committed'; else leave/seed 'queued'
-        if b.get("basket_status", "queued") != "committed":
+        # Derive basket_status ONLY the first time this basket is ever seen (#21 / #70): 'committed'
+        # if every member chat is already human-ruled (e.g. migrating a v1 map whose chats were filed
+        # before baskets existed), else seed 'queued'. A basket that ALREADY EXISTED before this call
+        # is NEVER touched here, in either direction.
+        # ⛔ WHY THIS IS LOAD-BEARING: the old code re-derived on EVERY run for any basket not already
+        # 'committed', which silently demoted skim-complete / read-complete / skim-interrupted back to
+        # 'queued' the instant one member chat was not yet human-terminal — the common case. That
+        # DESTROYED REAL HUMAN REVIEW PROGRESS while exiting 0. It also made "run migrate twice"
+        # non-idempotent, contradicting this function's own docstring.
+        # Promotion (queued → …-complete → committed) belongs to set_basket_status, which runs the
+        # real gates (done, giant-ruling, scan-coverage, world-map, evidence) that a naive
+        # filing_status check here would bypass.
+        if is_new_basket:
             all_terminal = all(x.get("filing_status") in HUMAN_TERMINAL for x in members[name])
             b["basket_status"] = "committed" if all_terminal else "queued"
     # ★ THE BASKET-COMFORT ADVISORY — says it, never blocks it. migrate is the only place the `baskets`

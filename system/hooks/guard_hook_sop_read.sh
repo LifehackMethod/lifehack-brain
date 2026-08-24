@@ -208,16 +208,66 @@ fi
 [ "$IS_WRITE" -eq 1 ] || exit 0
 
 # ── receipt check ────────────────────────────────────────────────────────────────────────
-KEY="${SID:-${CLAUDE_CODE_SESSION_ID:-cwd-$(printf '%s' "$PWD" | shasum | cut -c1-12)}}"
+# shasum is NOT guaranteed on PATH (Git Bash on Windows ships without it -- GitHub #82).
+# Called bare, it emits "command not found" on every invocation AND `cut` returns an EMPTY
+# string, so the receipt key collapses to a constant. The guard then never matches the receipt
+# read_sop.sh wrote, and the result is a PERMANENT DENY with no way out.
+# ⚠ THIS SNIPPET IS IDENTICAL IN system/tools/read_sop.sh AND system/hooks/guard_hook_sop_read.sh
+# (BOTH repos: private ClaudeOps AND public lifehack-brain -- all four copies) AND MUST STAY THAT
+# WAY -- one writes the receipt, the other reads it. If the two ever compute the key differently,
+# they disagree on EVERY machine that lacks shasum and the permanent deny comes straight back.
+# Same rule as hash_key() elsewhere in this folder.
+# FIXED 2026-08-23: the two repos had DRIFTED -- private fell back to `python3 hashlib.sha1`
+# (agrees with `shasum`'s SHA-1), THIS repo fell back to `cksum` (a DIFFERENT algorithm entirely).
+# With shasum present (this Mac) the fallback never ran, so both agreed by accident; on a PATH
+# without shasum (Git Bash on Windows, minimal containers) they computed DIFFERENT keys from the
+# IDENTICAL receipt, so one repo's guard allowed and the other denied for the same real state.
+# The fix is a shared degrade order that only ever uses ONE algorithm family (SHA-1): shasum ->
+# python3 hashlib.sha1 -> openssl sha1. If NONE of those three exist, _hashcwd prints nothing --
+# callers below MUST treat that as CANNOT-DETERMINE, never silently build a key from an empty
+# string (which would collapse every cwd to the same constant key).
+_hashcwd() {
+  if command -v shasum >/dev/null 2>&1; then
+    printf '%s' "$PWD" | shasum | cut -c1-12
+  elif command -v python3 >/dev/null 2>&1; then
+    printf '%s' "$PWD" | python3 -c 'import hashlib,sys; sys.stdout.write(hashlib.sha1(sys.stdin.buffer.read()).hexdigest())' 2>/dev/null | cut -c1-12
+  elif command -v openssl >/dev/null 2>&1; then
+    printf '%s' "$PWD" | openssl dgst -sha1 -r 2>/dev/null | awk '{print $1}' | cut -c1-12
+  fi
+}
+
+HASHCWD="$(_hashcwd)"
+# CANNOT-DETERMINE, not a silent ALLOW or DENY: with no session id available AND no hashing tool
+# on PATH, the cwd-fallback key would collapse to the constant "cwd-" -- indistinguishable from a
+# real (but wrong) match. Report the distinct outcome instead of guessing. Exit 3 matches this
+# repo's ABSENT-SUBJECT convention (system/hooks/tests/verify-pm-guard.sh, guard_harness_writeback.sh).
+if [ -z "$SID" ] && [ -z "${CLAUDE_CODE_SESSION_ID:-}" ] && [ -z "$HASHCWD" ]; then
+  printf '%s\n' "CANNOT-DETERMINE: guard_hook_sop_read has no session_id in the payload, no CLAUDE_CODE_SESSION_ID, and no hashing tool (shasum/python3/openssl) on PATH to derive a cwd-based fallback key. WHY: building a key from an empty hash would collapse every working directory to the same constant key -- an unverified guess, not a real match. REDIRECT: install shasum, python3, or openssl on PATH, or retry once CLAUDE_CODE_SESSION_ID is set. RULE: system/hooks/guard_hook_sop_read.sh header." >&2
+  exit 3
+fi
+
+KEY="${SID:-${CLAUDE_CODE_SESSION_ID:-cwd-$HASHCWD}}"
 RUN_DIR="$HOME/.claude/run/sop"
 RECEIPT="$RUN_DIR/hook.$KEY.receipt"
 
 # Accept ANY receipt for this session key, or a cwd-keyed one (the tool may have been run before
 # the session id was known). TTL 12h so a stale receipt cannot certify a read from yesterday.
+# stat -f is BSD/macOS-only; -c is GNU. Without the GNU fallback, `stat -f %m` fails on any non-BSD
+# stat, falls to `echo 0`, and AGE becomes ~= now (billions of seconds) -- the TTL check can then
+# NEVER be true and the receipt path is permanently dead. Same pattern already used elsewhere in
+# this file's family (guard_brief_truncation.sh's stat -f ... || stat -c ... || echo 0).
 FOUND=0
-for cand in "$RECEIPT" "$RUN_DIR/hook.cwd-$(printf '%s' "$PWD" | shasum | cut -c1-12).receipt"; do
+for cand in "$RECEIPT" "$RUN_DIR/hook.cwd-$HASHCWD.receipt"; do
   [ -f "$cand" ] || continue
-  AGE=$(( $(date +%s) - $(stat -f %m "$cand" 2>/dev/null || echo 0) ))
+  MTIME=$(stat -f %m "$cand" 2>/dev/null || stat -c %Y "$cand" 2>/dev/null)
+  if [ -z "$MTIME" ]; then
+    # Neither BSD nor GNU stat could read the mtime of a receipt that DOES exist -- CANNOT-DETERMINE,
+    # never `echo 0` (which would make AGE ~= now, permanently and silently failing the TTL as if
+    # the receipt were stale). See FIXED 2026-08-23 note above.
+    printf '%s\n' "CANNOT-DETERMINE: guard_hook_sop_read found a receipt at $cand but could not read its modification time with either BSD (stat -f %m) or GNU (stat -c %Y) stat. WHY: treating an unreadable mtime as 0 would silently and permanently fail the TTL check; treating it as ALLOW would be an unverified guess. REDIRECT: this platform's stat is neither BSD- nor GNU-shaped -- report this so the guard can be extended. RULE: system/hooks/guard_hook_sop_read.sh header." >&2
+    exit 3
+  fi
+  AGE=$(( $(date +%s) - MTIME ))
   [ "$AGE" -lt 43200 ] && FOUND=1 && break
 done
 

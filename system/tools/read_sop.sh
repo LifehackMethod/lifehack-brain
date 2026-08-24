@@ -35,7 +35,36 @@ RUN_DIR="$HOME/.claude/run/sop"
 
 # Session key — payload session_id is not available here, so env first, then a cwd hash.
 # Matches the convention in scratch_flag.sh / skill_anchor.sh so keys line up across the fleet.
-KEY="${CLAUDE_CODE_SESSION_ID:-cwd-$(printf '%s' "$PWD" | shasum | cut -c1-12)}"
+# shasum is NOT guaranteed on PATH (Git Bash on Windows ships without it -- GitHub #82).
+# Called bare, it emits "command not found" on every invocation AND `cut` returns an EMPTY
+# string, so the receipt key collapses to a constant. The guard then never matches the receipt
+# read_sop.sh wrote, and the result is a PERMANENT DENY with no way out.
+# ⚠ THIS SNIPPET IS IDENTICAL IN system/tools/read_sop.sh AND system/hooks/guard_hook_sop_read.sh
+# AND MUST STAY THAT WAY -- one writes the receipt, the other reads it. If the two ever compute
+# the key differently, they disagree on EVERY machine that lacks shasum and the permanent deny
+# comes straight back. Same rule as hash_key() elsewhere in this folder.
+_hashcwd() {
+  if command -v shasum >/dev/null 2>&1; then
+    printf '%s' "$PWD" | shasum | cut -c1-12
+  elif command -v python3 >/dev/null 2>&1; then
+    printf '%s' "$PWD" | python3 -c 'import hashlib,sys; sys.stdout.write(hashlib.sha1(sys.stdin.buffer.read()).hexdigest())' 2>/dev/null | cut -c1-12
+  elif command -v openssl >/dev/null 2>&1; then
+    printf '%s' "$PWD" | openssl dgst -sha1 -r 2>/dev/null | awk '{print $1}' | cut -c1-12
+  fi
+}
+
+# FIXED 2026-08-23: matches guard_hook_sop_read.sh's canonical degrade order (shasum -> python3
+# hashlib.sha1 -> openssl sha1, one algorithm family only) so this writer and that reader always
+# agree. If none of the three exist AND there is no CLAUDE_CODE_SESSION_ID, refuse to write a
+# receipt keyed on an empty hash (which would collapse every cwd to the constant "cwd-") --
+# that receipt would be worse than none, since it would falsely certify unrelated directories.
+HASHCWD="$(_hashcwd)"
+if [ -z "${CLAUDE_CODE_SESSION_ID:-}" ] && [ -z "$HASHCWD" ]; then
+  echo "CANNOT-DETERMINE: read_sop.sh has no CLAUDE_CODE_SESSION_ID and no hashing tool (shasum/python3/openssl) on PATH to derive a cwd-based fallback key -- refusing to stamp a receipt keyed on an empty hash. Install shasum, python3, or openssl, or set CLAUDE_CODE_SESSION_ID." >&2
+  exit 1
+fi
+
+KEY="${CLAUDE_CODE_SESSION_ID:-cwd-$HASHCWD}"
 
 # ── the registry: SOP key -> the docs that must be in context ────────────────────────────
 # To add a rung: add a case. The gate (guard_hook_sop_read.sh) reads the SAME key names.

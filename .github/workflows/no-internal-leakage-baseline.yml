@@ -7,6 +7,13 @@ name: No Internal Leakage - Whole-Tree Baseline
 # the gate existed. Seven real-person leaks were found by hand in already-tracked code on
 # 2026-08-14 -- every one of them invisible to that gate, because none of them was in a diff
 # the gate ever saw. This workflow runs the SAME script's second mode,
+# ⚠ THE ANNOTATION VIEW UNDERREPORTS. GitHub caps ::warning workflow-commands at 10 per
+# type per step, at the log-processing layer -- confirmed 2026-08-23 against the check-run
+# annotations API on run 32664081031: the scanner printed 12 WARNING findings, exactly 10
+# were stored. The two dropped were simply the last two emitted. THE SCAN IS NOT LOSSY;
+# THE DISPLAY IS. The authoritative count is the step summary and the uploaded JSON report
+# below, both uncapped -- never the Checks tab. If findings keep growing past 10, batch
+# them one-per-file rather than one-per-hit so the cap stops biting.
 # `--whole-tree`, which rescans every git-tracked file in full on every run.
 #
 # ⛔ NOT wired to pull_request or push, on purpose -- that is what keeps it from changing the
