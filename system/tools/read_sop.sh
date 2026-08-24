@@ -46,12 +46,25 @@ RUN_DIR="$HOME/.claude/run/sop"
 _hashcwd() {
   if command -v shasum >/dev/null 2>&1; then
     printf '%s' "$PWD" | shasum | cut -c1-12
-  else
-    printf '%s' "$PWD" | cksum | tr -s ' ' '-' | cut -c1-12
+  elif command -v python3 >/dev/null 2>&1; then
+    printf '%s' "$PWD" | python3 -c 'import hashlib,sys; sys.stdout.write(hashlib.sha1(sys.stdin.buffer.read()).hexdigest())' 2>/dev/null | cut -c1-12
+  elif command -v openssl >/dev/null 2>&1; then
+    printf '%s' "$PWD" | openssl dgst -sha1 -r 2>/dev/null | awk '{print $1}' | cut -c1-12
   fi
 }
 
-KEY="${CLAUDE_CODE_SESSION_ID:-cwd-$(_hashcwd)}"
+# FIXED 2026-08-23: matches guard_hook_sop_read.sh's canonical degrade order (shasum -> python3
+# hashlib.sha1 -> openssl sha1, one algorithm family only) so this writer and that reader always
+# agree. If none of the three exist AND there is no CLAUDE_CODE_SESSION_ID, refuse to write a
+# receipt keyed on an empty hash (which would collapse every cwd to the constant "cwd-") --
+# that receipt would be worse than none, since it would falsely certify unrelated directories.
+HASHCWD="$(_hashcwd)"
+if [ -z "${CLAUDE_CODE_SESSION_ID:-}" ] && [ -z "$HASHCWD" ]; then
+  echo "CANNOT-DETERMINE: read_sop.sh has no CLAUDE_CODE_SESSION_ID and no hashing tool (shasum/python3/openssl) on PATH to derive a cwd-based fallback key -- refusing to stamp a receipt keyed on an empty hash. Install shasum, python3, or openssl, or set CLAUDE_CODE_SESSION_ID." >&2
+  exit 1
+fi
+
+KEY="${CLAUDE_CODE_SESSION_ID:-cwd-$HASHCWD}"
 
 # ── the registry: SOP key -> the docs that must be in context ────────────────────────────
 # To add a rung: add a case. The gate (guard_hook_sop_read.sh) reads the SAME key names.
