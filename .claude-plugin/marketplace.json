@@ -2,7 +2,7 @@
   "name": "lifehack-brain",
   "description": "Marketplace for the lifehack-brain plugin — the public Lifehack Harness engine.",
   "owner": {
-    "name": "Enver Gjokaj"
+    "name": "LifehackMethod"
   },
   "plugins": [
     {
