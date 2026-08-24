@@ -1144,7 +1144,8 @@ def write_judge_receipt(path, receipt):
 
 def _git_status():
     proc = subprocess.run(["git", "-C", REPO_ROOT, "status", "--porcelain"],
-                          capture_output=True, text=True)
+                          capture_output=True, text=True,
+                          env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"})
     return proc.stdout
 
 

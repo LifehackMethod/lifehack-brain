@@ -14,15 +14,26 @@
 #           and persisting it would mean a stale counter silencing something that matters.
 # UPDATED: 2026-08-11 (ported)
 # ─────────────────────────────────────────────────────────────────────────────
-# notify-governor.py <source> <message> [priority]
+# notify-governor.py <source> <message> [priority] [identity]
 #   priority: normal (default) | critical (bypasses quiet hours + daily cap; still dedups)
+#           | misconfig (T10.A3 OL-N1 ⑤: a PERMANENT-until-fixed condition — e.g. a required env
+#             var nobody has set — is not news twice. Dedups like normal but over a ~1-year
+#             floor instead of 24h, so the SAME misconfig alerts once and then stands down. Still
+#             respects quiet hours + the daily cap like normal, since it is not urgent.)
+#   identity: OPTIONAL. When given, DEDUP KEYS ON THIS INSTEAD OF <message> (T10.A3 OL-N1 ④).
+#             Use it whenever a message embeds a value that changes every call (an age, a
+#             percentage, a byte count) — hashing the raw message defeats dedup because every
+#             call produces a "new" (source,message) pair. Pass a STABLE string that names the
+#             identity of the alert ("stale-store", "budget-exceeded:job-x") separately from the
+#             human-readable <message>, which keeps carrying the live number for the reader.
 # Exit 0 + "ALLOW" on stdout  -> caller should send (the send is now recorded).
 # Exit 1 + "SUPPRESS: <reason>" on stderr -> caller must NOT send.
 #
 # Config via env (all optional):
 #   NOTIFY_QUIET_START (22)  NOTIFY_QUIET_END (7)  -> quiet window [start,end) local hours
 #   NOTIFY_DAILY_CAP   (3)   per-source allowed sends per rolling 24h
-#   NOTIFY_DEDUP_HOURS (24)  identical (source,message) suppressed within this window
+#   NOTIFY_DEDUP_HOURS (24)  identical (source,identity-or-message) suppressed within this window
+#   NOTIFY_MISCONFIG_DEDUP_HOURS (8760)  same, for priority=misconfig — ~1 year, i.e. "once"
 #   NOTIFY_STATE_FILE  (<tmp>/lifehack-notify-state.json)
 #
 # NOTE: auto-mute-after-false-alerts is intentionally NOT in v1 — it needs a
@@ -48,6 +59,14 @@ CRITICAL_DEDUP_HOURS = int(os.environ.get("NOTIFY_CRITICAL_DEDUP_HOURS", "1"))
 # in the ledger/tile. A genuinely separate incident AFTER the window still rings.
 # Set to 0 to disable.
 CRITICAL_BURST_MINUTES = int(os.environ.get("NOTIFY_CRITICAL_BURST_MINUTES", "10"))
+# T10.A3 OL-N1 ⑤: a PERMANENT misconfiguration (missing required config, etc.) is not news
+# twice. ~365 days is "effectively once, until someone fixes it and the identity changes" without
+# inventing a second never-expire code path next to the existing time-windowed one.
+MISCONFIG_DEDUP_HOURS = int(os.environ.get("NOTIFY_MISCONFIG_DEDUP_HOURS", str(365 * 24)))
+# T10.A3 OL-N1 ⑥: normal-priority sends dropped ONLY for quiet hours (not dedup, not cap) are
+# queued here instead of silently lost, so a once-a-day digest that happens to land at 23:50
+# still reaches the phone once quiet hours lift — see flush_deferred() and --flush-deferred below.
+DEFERRED_MAX_AGE_HOURS = int(os.environ.get("NOTIFY_DEFERRED_MAX_AGE_HOURS", "18"))
 
 
 def in_quiet_hours(hour):
@@ -74,17 +93,93 @@ def save_state(state):
     os.replace(tmp, STATE)
 
 
+def flush_deferred():
+    """--flush-deferred: replay any normal-priority sends that were queued because quiet hours
+    (and ONLY quiet hours — never dedup, never cap) blocked them, now that it may no longer be
+    quiet. Prints one line per item to REPLAY on stdout as `source\tmessage`, TAB-separated (the
+    caller — notify-send.sh — actually performs the send); this function only decides which
+    queued items are still worth sending and clears them from the queue either way (a deferred
+    item beyond DEFERRED_MAX_AGE_HOURS is dropped, not sent — a stale digest arriving at noon
+    about something from two nights ago is noise, not news)."""
+    now = time.time()
+    lock = open(STATE + ".lock", "w")
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        state = load_state()
+        deferred = state.get("deferred", [])
+        hour = time.localtime(now).tm_hour
+        still_quiet = in_quiet_hours(hour)
+        keep = []
+        to_send = []
+        for item in deferred:
+            age_h = (now - item.get("ts", 0)) / 3600.0
+            if age_h > DEFERRED_MAX_AGE_HOURS:
+                continue   # too stale — dropped, not replayed
+            if still_quiet:
+                keep.append(item)   # still quiet hours right now — leave it queued
+                continue
+            to_send.append(item)
+        state["deferred"] = keep
+        save_state(state)
+    finally:
+        fcntl.flock(lock, fcntl.LOCK_UN)
+        lock.close()
+    for item in to_send:
+        print(f"{item.get('source', '')}\t{item.get('message', '')}\t{item.get('title', '')}\t{item.get('tags', '')}\t{item.get('url', '')}")
+    return 0
+
+
+def queue_deferred(args):
+    """--queue-deferred <source> <message> [title] [tags] [url] — called by notify-send.sh ONLY
+    when the gate just SUPPRESSED a normal-priority send for quiet hours specifically (never for
+    dedup or the daily cap — those are correct to drop, not defer). Persists it so
+    --flush-deferred can replay it once quiet hours lift. Best-effort: a failure here must never
+    fail the caller's suppressed-is-not-an-error exit path."""
+    if len(args) < 2:
+        return 2
+    source, message = args[0], args[1]
+    title = args[2] if len(args) > 2 else ""
+    tags = args[3] if len(args) > 3 else ""
+    url = args[4] if len(args) > 4 else ""
+    now = time.time()
+    lock = open(STATE + ".lock", "w")
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        state = load_state()
+        deferred = state.get("deferred", [])
+        deferred.append({"ts": now, "source": source, "message": message, "title": title,
+                          "tags": tags, "url": url})
+        state["deferred"] = deferred
+        save_state(state)
+    finally:
+        fcntl.flock(lock, fcntl.LOCK_UN)
+        lock.close()
+    return 0
+
+
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "--flush-deferred":
+        return flush_deferred()
+    if len(sys.argv) > 1 and sys.argv[1] == "--queue-deferred":
+        return queue_deferred(sys.argv[2:])
     if len(sys.argv) < 3:
-        sys.stderr.write("usage: notify-governor.py <source> <message> [priority]\n")
+        sys.stderr.write("usage: notify-governor.py <source> <message> [priority] [identity]\n"
+                          "       notify-governor.py --flush-deferred\n")
         return 2
     source = sys.argv[1].strip().lower()
     message = sys.argv[2]
     priority = (sys.argv[3].strip().lower() if len(sys.argv) > 3 else "normal")
+    identity = (sys.argv[4] if len(sys.argv) > 4 and sys.argv[4] != "" else None)
     critical = priority == "critical"
+    misconfig = priority == "misconfig"
 
     now = time.time()
-    msg_hash = hashlib.sha256(f"{source}\x00{message}".encode()).hexdigest()
+    # OL-N1 ④: hash on <identity> when the caller supplied one — a STABLE string naming what
+    # this alert IS, independent of a changing number embedded in <message>. Falls back to
+    # hashing <message> itself (the pre-existing behaviour) when no identity was given, so every
+    # caller that hasn't been updated keeps working exactly as before.
+    dedup_basis = identity if identity is not None else message
+    msg_hash = hashlib.sha256(f"{source}\x00{dedup_basis}".encode()).hexdigest()
 
     # Serialize the read-modify-write so concurrent jobs can't both slip past the cap.
     lock = open(STATE + ".lock", "w")
@@ -93,20 +188,29 @@ def main():
         state = load_state()
         sent = state.get("sent", [])
 
-        # Prune anything older than the longest window we care about.
-        horizon = now - max(DEDUP_HOURS, 24) * 3600
+        # Prune anything older than the longest window we care about (including the ~1yr
+        # misconfig floor, so that store doesn't grow forever on its account).
+        horizon = now - max(DEDUP_HOURS, 24, MISCONFIG_DEDUP_HOURS) * 3600
         sent = [s for s in sent if s.get("ts", 0) >= horizon]
 
-        # 1. Dedup. Critical uses a SHORT window (so a same-day repeat DANGER still
-        #    buzzes); normal uses the full window. A short critical floor still
-        #    prevents a stuck source from flooding every tick.
-        dedup_window = CRITICAL_DEDUP_HOURS if critical else DEDUP_HOURS
+        # 1. Dedup. Critical uses a SHORT window (so a same-day repeat DANGER still buzzes);
+        #    misconfig uses a ~1-YEAR floor (OL-N1 ⑤: alert once, then stand down until the
+        #    identity itself changes — i.e. the misconfig is fixed or a new one appears); normal
+        #    uses the full window. A short critical floor still prevents a stuck source from
+        #    flooding every tick.
+        if critical:
+            dedup_window = CRITICAL_DEDUP_HOURS
+        elif misconfig:
+            dedup_window = MISCONFIG_DEDUP_HOURS
+        else:
+            dedup_window = DEDUP_HOURS
         if dedup_window > 0:
             dedup_floor = now - dedup_window * 3600
             if any(s.get("hash") == msg_hash and s.get("ts", 0) >= dedup_floor for s in sent):
                 state["sent"] = sent
                 save_state(state)
-                sys.stderr.write(f"SUPPRESS: duplicate within {dedup_window}h\n")
+                reason = "standing down (already alerted once)" if misconfig else f"duplicate within {dedup_window}h"
+                sys.stderr.write(f"SUPPRESS: {reason}\n")
                 return 1
 
         # 1b. Critical BURST-COALESCE (source-keyed, ignores message). Collapses a
@@ -120,7 +224,8 @@ def main():
                 return 1
 
         if not critical:
-            # 2. Quiet hours.
+            # 2. Quiet hours. (misconfig is NOT critical — it respects quiet hours too, since a
+            #    standing misconfiguration is never an emergency worth a 3am buzz.)
             hour = time.localtime(now).tm_hour
             if in_quiet_hours(hour):
                 state["sent"] = sent

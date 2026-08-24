@@ -61,7 +61,8 @@ def _entry(job, ok, why, severity=None):
 
 
 def _git(code_root, *args):
-    return subprocess.run(["git", "-C", code_root, *args], capture_output=True, text=True, timeout=10)
+    return subprocess.run(["git", "-C", code_root, *args], capture_output=True, text=True, timeout=10,
+                          env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"})
 
 
 # ── INVARIANT 1 — hooks present + non-empty ─────────────────────────────────────────────────────

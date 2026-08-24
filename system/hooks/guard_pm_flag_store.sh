@@ -162,7 +162,20 @@ fi
 # ⛔ Do NOT "fix" a future false positive by adding more nouns above — that direction buys a silent
 # false negative. Narrow by evidence of a WRITE instead, the way this does.
 if printf '%s' "$COMMAND" | grep -qE '(^|[[:space:]!;&|(])(python3?|perl|ruby|node|php)([[:space:]]|$)'; then
-  if printf '%s' "$COMMAND" | grep -qE "(open\([^)]*['\"](w|a|x|r\+|w\+|a\+)|\.write\(|\.writelines\(|\.writeText|writeFileSync|write_text|os\.replace|os\.rename|os\.remove|os\.unlink|shutil\.(copy|move)|Path\([^)]*\)\.(write|unlink|rename)|mkstemp|NamedTemporaryFile)"; then
+  # STREAM WRITES ARE NOT FILE WRITES (regression repaired 2026-08-23; first recorded 2026-08-13).
+  # The verb list below contains a bare `.write(` token, which also matches the Python idioms for
+  # printing to stdout and stderr. So a READ-ONLY harness that merely PRINTED json while naming the
+  # guarded store was DENIED -- while the deny text it printed said reads of the store are allowed.
+  # The guard contradicted itself out loud.
+  # THE PREVIOUS "FIX" WAS TO DELETE THE TWO FAILING TEST CASES from system/hooks/tests/, which is
+  # why that suite reported green while the defect stayed live. The cases are restored in
+  # system/tools/verify-pm-guard.sh; this is the actual repair.
+  # THIS NARROWS THE GUARD, so state precisely why it opens no hole: a stream write can only reach
+  # the guarded store through a shell REDIRECT, and Tier 1 above already denies every `>` and `>>`
+  # aimed at it, independently of this test. Neutralising the stream tokens here therefore removes a
+  # false positive and no true positive. Verified by the full 18-case suite before landing.
+  _CMD_NOSTREAM=$(printf '%s' "$COMMAND" | sed -E 's/sys\.(stdout|stderr)\.(buffer\.)?(write|writelines)/__stream_out__/g')
+  if printf '%s' "$_CMD_NOSTREAM" | grep -qE "(open\([^)]*['\"](w|a|x|r\+|w\+|a\+)|\.write\(|\.writelines\(|\.writeText|writeFileSync|write_text|os\.replace|os\.rename|os\.remove|os\.unlink|shutil\.(copy|move)|Path\([^)]*\)\.(write|unlink|rename)|mkstemp|NamedTemporaryFile)"; then
     printf '%s\n' "$STORE_DENY" >&2
     exit 2
   fi
