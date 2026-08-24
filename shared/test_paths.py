@@ -37,8 +37,18 @@ class TestNeverGuesses(unittest.TestCase):
         brain_root.BRAIN_ROOT_CONFIG = os.path.join(os.environ["HOME"], ".config", "lifehack", "brain-root")
         self._glob = brain_root.BRAIN_ROOT_LEGACY_GLOB
         brain_root.BRAIN_ROOT_LEGACY_GLOB = ""
+        # ...and the two routes that read a POINTER FILE off disk, which no env var or module
+        # constant above can reach: this repo's own `.brain-root` (route 2, added 2026-08-17) and,
+        # when this folder is a linked git worktree, the main worktree's (route 2b, added
+        # 2026-08-21). Both were live through the scrubbing, so this suite has been red in the main
+        # clone — which HAS a pointer — since 2026-08-17, and green in a worktree only because git
+        # never materialises a gitignored file there. Both hang off harness_root(), so redirecting
+        # that single seam closes both, and any later route derived from it.
+        self._harness = brain_root.harness_root
+        brain_root.harness_root = lambda: os.path.join(os.environ["HOME"], "no-such-harness")
 
     def tearDown(self):
+        brain_root.harness_root = self._harness
         brain_root.BRAIN_ROOT_CONFIG = self._cfg
         brain_root.BRAIN_ROOT_LEGACY_GLOB = self._glob
         os.environ.clear()
@@ -235,16 +245,21 @@ class TestCli(unittest.TestCase):
         """⛔ The fail-closed case. An empty capture plus a failed exit is recoverable; a plausible
         wrong folder is not."""
         saved = dict(os.environ)
+        saved_harness = paths.brain_root.harness_root
         try:
             os.environ.pop(paths.brain_root.BRAIN_ROOT_ENV, None)
             os.environ["HOME"] = os.path.join(tempfile.gettempdir(), "lifehack-no-such-home")
             paths.brain_root.BRAIN_ROOT_CONFIG = os.path.join(os.environ["HOME"], "nope")
             paths.brain_root.BRAIN_ROOT_LEGACY_GLOB = ""
+            # the pointer routes too — see TestNeverGuesses.setUp for why the env scrubbing above
+            # never reached them
+            paths.brain_root.harness_root = lambda: os.path.join(os.environ["HOME"], "no-such-harness")
             rc, out, err = self._run(["map"])
             self.assertEqual(rc, 1)
             self.assertEqual(out, "")
             self.assertIn("NOT-SET", err)
         finally:
+            paths.brain_root.harness_root = saved_harness
             os.environ.clear()
             os.environ.update(saved)
 

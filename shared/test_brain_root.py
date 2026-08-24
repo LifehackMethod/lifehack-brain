@@ -460,6 +460,166 @@ class TestTheWindowsShapeRuleIsPlatformGated(BrainRootCase):
                         self.assertNotIn(slash_claim, msg, f"{path!r} under os.name={os_name!r}")
 
 
+class TestALinkedWorktreeBorrowsTheMainWorktreesPointer(BrainRootCase):
+    """2026-08-21. A session running in `.claude/worktrees/<name>/` started BLIND.
+
+    `git worktree add` materialises only TRACKED files, and `.brain-root` is deliberately gitignored
+    — so route (2) was looking at the worktree root for a pointer git will never put there.
+    Resolution fell silently through to the machine-global config, which had gone stale after the
+    2026-08-17 restructure (it still named a folder that no longer existed). Nothing raised: the
+    session simply read nothing. Each test here is one link of that chain, cut — and the ones at the
+    bottom are the fences, because a route that borrows a path from elsewhere is exactly the kind
+    that starts guessing."""
+
+    def _make_worktree(self, brain=None, relative_gitdir=False, name="wt"):
+        """Build git's real linked-worktree layout in the temp dir and point harness_root() at the
+        worktree. Returns (worktree_dir, main_dir). `brain` writes the MAIN worktree's pointer."""
+        main = os.path.join(self.tmp, "main")
+        common = os.path.join(main, ".git")
+        gitdir = os.path.join(common, "worktrees", name)
+        worktree = os.path.join(self.tmp, name)
+        os.makedirs(gitdir)
+        os.makedirs(worktree)
+        with open(os.path.join(gitdir, "commondir"), "w", encoding="utf-8") as f:
+            f.write("../..\n")                      # exactly what git writes
+        pointer = gitdir if not relative_gitdir else os.path.relpath(gitdir, worktree)
+        with open(os.path.join(worktree, ".git"), "w", encoding="utf-8") as f:
+            f.write(f"gitdir: {pointer}\n")
+        if brain is not None:
+            with open(os.path.join(main, brain_root.REPO_POINTER_NAME), "w", encoding="utf-8") as f:
+                f.write(brain + "\n")
+        brain_root.harness_root = lambda: worktree
+        return worktree, main
+
+    def test_a_linked_worktree_resolves_the_main_worktrees_brain(self):
+        """THE acceptance case: no pointer of its own, nothing else configured, and it still finds
+        the brain instead of going blind."""
+        self._make_worktree(brain=self.data)
+        self.assertEqual(brain_root.resolve_brain_root(), ("main-worktree-pointer", self.data))
+
+    def test_the_incident_a_stale_global_no_longer_decides(self):
+        """2026-08-21 exactly: the global named a folder deleted in the 2026-08-17 restructure, so
+        route (3) could not answer either and the session got NOT-SET — silently, mid-work."""
+        gone = os.path.join(self.tmp, "old-brain", "data")
+        os.makedirs(gone)
+        brain_root.set_brain_root(gone)
+        os.remove(brain_root.repo_pointer_path())    # a worktree never had one to begin with
+        shutil.rmtree(gone)                          # ...and then the restructure removed it
+        self._make_worktree(brain=self.data)
+        self.assertEqual(brain_root.read_persisted(), gone, "the stale global is still there")
+        self.assertEqual(brain_root.resolve_brain_root(), ("main-worktree-pointer", self.data))
+
+    def test_it_also_beats_a_global_that_merely_disagrees(self):
+        """Order, not just rescue: (2b) sits ABOVE the machine-global, which belongs to no repo in
+        particular, so a worktree of THIS repo resolves THIS repo's brain."""
+        other = os.path.join(self.tmp, "someone-elses-brain")
+        os.makedirs(other)
+        brain_root.set_brain_root(other)
+        os.remove(brain_root.repo_pointer_path())
+        self._make_worktree(brain=self.data)
+        self.assertEqual(brain_root.resolve_brain_root(), ("main-worktree-pointer", self.data))
+
+    def test_the_worktrees_own_pointer_still_wins(self):
+        """Route (2) is untouched. A worktree that HAS been given a pointer by hand — as
+        intelligent-wu-7374b1 was on 2026-08-21 — keeps using it."""
+        own = os.path.join(self.tmp, "this-worktrees-own-brain")
+        os.makedirs(own)
+        self._make_worktree(brain=self.data)
+        with open(brain_root.repo_pointer_path(), "w", encoding="utf-8") as f:
+            f.write(own + "\n")
+        self.assertEqual(brain_root.resolve_brain_root(), ("repo-pointer", own))
+
+    def test_env_still_beats_everything(self):
+        other = os.path.join(self.tmp, "env-brain")
+        os.makedirs(other)
+        self._make_worktree(brain=self.data)
+        os.environ[brain_root.BRAIN_ROOT_ENV] = other
+        self.assertEqual(brain_root.resolve_brain_root(), ("env", other))
+
+    def test_a_relative_gitdir_line_is_resolved_against_the_worktree(self):
+        """git is free to write `gitdir:` relative. Resolved against the WORKTREE folder — never
+        against the cwd, which is the whole family of bugs this module exists to refuse."""
+        self._make_worktree(brain=self.data, relative_gitdir=True)
+        saved = os.getcwd()
+        os.chdir(self.tmp)          # a cwd that would resolve it wrong, if cwd were consulted
+        try:
+            self.assertEqual(brain_root.resolve_brain_root(), ("main-worktree-pointer", self.data))
+        finally:
+            os.chdir(saved)
+
+    # ── the fences ────────────────────────────────────────────────────────────────────────────────
+
+    def test_an_ordinary_clone_is_not_a_worktree(self):
+        """A normal clone has a .git DIRECTORY. The new route must be invisible to it."""
+        os.makedirs(os.path.join(self.harness, ".git"))
+        self.assertIsNone(brain_root.main_worktree_root())
+        self.assertIsNone(brain_root.read_main_worktree_pointer())
+
+    def test_a_folder_with_no_git_at_all_is_not_a_worktree(self):
+        self.assertIsNone(brain_root.main_worktree_root())
+
+    def test_a_submodule_is_not_mistaken_for_a_worktree(self):
+        """A submodule ALSO has a `.git` file holding a `gitdir:` line — but its git dir carries no
+        `commondir`, and its parent is another project's folder entirely. Borrowing a pointer from
+        there would be a guess."""
+        parent = os.path.join(self.tmp, "parent")
+        modules = os.path.join(parent, ".git", "modules", "sub")
+        sub = os.path.join(parent, "sub")
+        os.makedirs(modules)
+        os.makedirs(sub)
+        with open(os.path.join(sub, ".git"), "w", encoding="utf-8") as f:
+            f.write(f"gitdir: {modules}\n")
+        with open(os.path.join(parent, ".brain-root"), "w", encoding="utf-8") as f:
+            f.write(self.data + "\n")
+        brain_root.harness_root = lambda: sub
+        self.assertIsNone(brain_root.main_worktree_root())
+        self.assertEqual(brain_root.resolve_brain_root(), (None, None))
+
+    def test_a_common_dir_that_is_not_dot_git_is_not_guessed_at(self):
+        """A bare repo, or one made with --separate-git-dir, has no main worktree at the parent of
+        the common dir. NOT-SET is the correct answer there; a plausible-looking parent is not."""
+        worktree, main = self._make_worktree(brain=self.data)
+        gitdir = os.path.join(main, ".git", "worktrees", "wt")
+        elsewhere = os.path.join(self.tmp, "repo.git")
+        os.makedirs(elsewhere)
+        with open(os.path.join(gitdir, "commondir"), "w", encoding="utf-8") as f:
+            f.write(elsewhere + "\n")
+        self.assertIsNone(brain_root.main_worktree_root())
+
+    def test_a_borrowed_pointer_at_a_deleted_folder_falls_through_to_not_set(self):
+        """NOT-SET semantics are unchanged: a route may only answer with a REAL directory."""
+        self._make_worktree(brain=os.path.join(self.tmp, "never-existed"))
+        self.assertEqual(brain_root.resolve_brain_root(), (None, None))
+
+    def test_a_main_worktree_with_no_pointer_falls_through_quietly(self):
+        """The ordinary pre-fix state of a fresh clone: nothing to borrow, and no invention."""
+        self._make_worktree(brain=None)
+        self.assertIsNone(brain_root.read_main_worktree_pointer())
+        self.assertEqual(brain_root.resolve_brain_root(), (None, None))
+
+    def test_an_empty_or_malformed_git_file_is_survived_not_crashed(self):
+        """A resolver that raises is worse than one that declines — it is consulted on every path
+        in the system, including from hooks nobody is watching."""
+        worktree = os.path.join(self.tmp, "broken")
+        os.makedirs(worktree)
+        brain_root.harness_root = lambda: worktree
+        for junk in ("", "   ", "not a gitdir line", "gitdir:", "gitdir:    ",
+                     "gitdir: /nowhere/at/all", "\n\n", "gitdir: /nowhere\nand a second line"):
+            with open(os.path.join(worktree, ".git"), "w", encoding="utf-8") as f:
+                f.write(junk)
+            self.assertIsNone(brain_root.main_worktree_root(), repr(junk))
+            self.assertEqual(brain_root.resolve_brain_root(), (None, None), repr(junk))
+
+    def test_resolution_never_writes_anything(self):
+        """Reading where the brain is must not create a pointer, in the worktree or the main
+        worktree — a resolver with side effects would make the stale-global bug unrepeatable."""
+        worktree, main = self._make_worktree(brain=self.data)
+        before = (sorted(os.listdir(worktree)), sorted(os.listdir(main)))
+        brain_root.resolve_brain_root()
+        self.assertEqual((sorted(os.listdir(worktree)), sorted(os.listdir(main))), before)
+        self.assertFalse(os.path.exists(brain_root.BRAIN_ROOT_CONFIG))
+
+
 class TestOutputSurvivesANarrowConsole(BrainRootCase):
     """2026-08-19, field report #72. This module prints a warning sign and other characters that do
     not exist in a narrow console codepage such as Windows cp1252. Printing one there raised

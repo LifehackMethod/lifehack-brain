@@ -111,8 +111,14 @@ OS="${LIFEHACK_TEST_OS_OVERRIDE:-$OS}"
 # ── 2) Parse the ```crontab``` block → [(name, schedule, command)] ─────────────────────────────
 declare -a JOB_NAMES=() JOB_SCHEDS=() JOB_CMDS=()
 in=0
+fence_seen=0   # did the ```crontab``` fence EVER match this run? (ABSENT-SUBJECT-RULE, below)
 while IFS= read -r line || [ -n "$line" ]; do
-  if [ "$line" = '```crontab' ]; then in=1; continue; fi
+  # Strip a trailing \r on EVERY line, not just the fence line: Git for Windows' default
+  # core.autocrlf=true checks this .md file out with CRLF endings, and everything below the fence
+  # check is ALSO exact-string matching (the blank/comment `case`, the `IFS='|' read` row fields) --
+  # a strip on only the fence line would still leave every data row's last field carrying a \r.
+  line="${line%$'\r'}"
+  if [ "$line" = '```crontab' ]; then in=1; fence_seen=1; continue; fi
   if [ "$in" -eq 1 ] && [ "$line" = '```' ]; then in=0; continue; fi
   [ "$in" -eq 1 ] || continue
   case "$line" in ''|\#*) continue;; esac
@@ -131,6 +137,17 @@ while IFS= read -r line || [ -n "$line" ]; do
   cmd="${cmd//\$LIFEHACK_CODE_ROOT/$CODE_ROOT}"
   JOB_NAMES+=("$name"); JOB_SCHEDS+=("$sched"); JOB_CMDS+=("$cmd")
 done < "$MANIFEST"
+
+# ABSENT-SUBJECT-RULE: a fence that never matched is NOT an empty block. Before this check a CRLF
+# manifest produced 0 rows and this script printed "0 scheduled entries" and exited 0 -- reporting
+# success for a manifest it never read, so the whole scheduled layer went silently absent.
+if [ "$fence_seen" -eq 0 ]; then
+  echo "[install-schedulers] FATAL: the \`\`\`crontab\`\`\` fence was never found in $MANIFEST." >&2
+  echo "  This is NOT the same as an empty block -- the manifest could not be evaluated at all," >&2
+  echo "  so NOTHING was installed. Likely cause: CRLF line endings (check: file \"$MANIFEST\")." >&2
+  echo "  Fix: git add --renormalize . && git checkout -- $MANIFEST" >&2
+  exit 1
+fi
 
 if [ "${#JOB_NAMES[@]}" -eq 0 ]; then
   echo "[install-schedulers] no rows in the \`\`\`crontab\`\`\` block of $MANIFEST — nothing to install." >&2

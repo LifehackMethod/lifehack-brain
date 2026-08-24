@@ -64,6 +64,36 @@ if [ -n "$offenders" ]; then
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
+# REFUSE any commit that would track a symlink. WHY: .claude/ as it ships today holds ZERO
+# symlinks -- every skill is a real directory -- and INSTALL.md states the rule in plain words: "Do
+# NOT symlink anything into ~/.claude/. Symlinks are Mac-coupled and this has to work on Windows
+# too." Git tracks a symlink as its own mode (120000) no matter how it looks in the working tree, so
+# one can be staged by accident and would then ship to every student who clones this repo -- and on
+# Windows, a checked-out symlink can silently become a plain text file holding a path, which fails
+# confusingly rather than loudly.
+#
+# `git ls-files -s` reads the INDEX, not the working tree, so this catches a symlink the moment it
+# is staged -- before `ls` would even show it as one. That is also why this is cheap: it is one
+# index read, never a tree walk.
+symlinks=$(git ls-files -s | grep '^120000 ' | cut -f2-)
+
+if [ -n "$symlinks" ]; then
+	echo ""
+	echo "  ⛔ COMMIT REFUSED — this would make the repo track a symlink."
+	echo ""
+	echo "  These paths are symlinks (git mode 120000), and none may be committed:"
+	printf '%s\n' "$symlinks" | sed 's/^/      /'
+	echo ""
+	echo "  WHY: symlinks are Mac-coupled and this repo has to work on Windows too (INSTALL.md). A"
+	echo "  checked-out symlink can silently become a plain text file holding a path on Windows --"
+	echo "  a confusing, silent failure for every student who clones this repo."
+	echo ""
+	echo "  Commit a real file or a real directory instead of the symlink above."
+	echo ""
+	exit 1
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
 # Every file, skill and hook these documents NAME must be here, or its line must say what happened
 # to it. See system/tools/citation_lint.py for the rule and the three markers.
 #
@@ -111,6 +141,42 @@ if command -v python3 >/dev/null 2>&1; then
 	fi
 else
 	echo "  ⚠ citation lint SKIPPED — no python3 on PATH. Documentation citations were NOT checked."
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# Every NEW unencoded open() call in staged Python is refused. See system/tools/encoding_lint.py --
+# the AST-based check for the cp1252-on-Windows silent-wrong-bytes defect this closes. It is a
+# per-file defect-COUNT ratchet against the HEAD pre-image, so a file that already had unencoded
+# calls before this hook existed is not retroactively blocked -- only a RISE in the count is.
+#
+# WHY --staged, NEVER --scan-file, FROM THIS HOOK: --scan-file is whole-file mode, for manual and
+# mutation testing only. Wiring it into a hook would flag every pre-existing call in the tree on
+# every commit, not just what this commit adds -- the same "one stale spot blocks every unrelated
+# commit" failure citation_lint's own history (issues #81, #90, #74.3) already paid for once. This
+# hook must NEVER pass --scan-file to encoding_lint.py.
+# EXIT 1 vs EXIT 2 ARE DIFFERENT ANSWERS AND MUST NOT SHARE A BRANCH (ported from ClaudeOps
+# 2026-08-23). `if ! ...` refuses on ANY non-zero, which folds "I found a real violation" (1)
+# together with "there was no Python staged to look at" (2). "No .py staged" is the ORDINARY case
+# for a markdown-only, shell-only or config-only commit -- and treating it as a refusal BRICKS
+# every such commit, including `git commit --amend` on a message. Measured cost before this fix:
+# a security fix to guard_hook_sop_read.sh could not be committed to this repo at all, and PR
+# #104's commit message could not be corrected to name 6 of its 10 files.
+# The absent subject is still SPOKEN (exit 2 prints its reason) -- it is just not fatal.
+if command -v python3 >/dev/null 2>&1; then
+	encoding_out=$(python3 "$repo/system/tools/encoding_lint.py" --staged --quiet 2>&1)
+	encoding_status=$?
+	if [ "$encoding_status" -eq 1 ]; then
+		printf '%s\n' "$encoding_out"
+		echo "  Commit refused. Fix the encoding_lint.py findings above, or run it yourself to see them again:"
+		echo ""
+		echo "      python3 system/tools/encoding_lint.py --staged"
+		echo ""
+		exit 1
+	elif [ "$encoding_status" -eq 2 ]; then
+		echo "  ⚠ encoding lint: $(printf '%s\n' "$encoding_out" | head -1)"
+	fi
+else
+	echo "  ⚠ encoding lint SKIPPED — no python3 on PATH. New unencoded open() calls were NOT checked."
 fi
 
 exit 0

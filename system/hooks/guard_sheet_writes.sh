@@ -110,7 +110,23 @@ LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib/gws_guard.py"
 printf '%s' "$COMMAND" | python3 "$LIB" --service sheets \
   --destructive clear,batchclear,delete \
   --write-verbs update,batchupdate,append,clear,batchclear,delete 2>/dev/null
-[ $? -eq 7 ] && deny_unknown
+if [ $? -eq 7 ]; then
+  # MESSAGE SELECTION ONLY -- the decision above already fixed this command as BLOCK; this second,
+  # side call to the same shared library (gws_guard.py's --reason-only) never changes that. It
+  # only asks WHICH condition fired. Measured 2026-08-23 (ClaudeOps, same guard): a fully literal
+  # `values clear` -- no $VAR, no $(...) anywhere -- was reaching deny_unknown() and being told
+  # "this guard cannot tell what it would do", which is false; the guard could tell perfectly
+  # well, and deny_destr() below already has the honest message for exactly this case. Route a
+  # literal destructive match there instead of to the "I cannot tell" message.
+  REASON=$(printf '%s' "$COMMAND" | python3 "$LIB" --service sheets \
+    --destructive clear,batchclear,delete \
+    --write-verbs update,batchupdate,append,clear,batchclear,delete --reason-only 2>/dev/null)
+  if [ "$REASON" = "destructive" ]; then
+    deny_destr
+  else
+    deny_unknown
+  fi
+fi
 
 SHEET_ID=$(printf '%s' "$COMMAND" | grep -oE '[A-Za-z0-9_-]{40,}' | head -1)
 MARK="$MARKDIR/$SHEET_ID"

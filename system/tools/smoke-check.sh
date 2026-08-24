@@ -64,8 +64,30 @@ run_bounded() {
     perl -e 'alarm shift; exec @ARGV or exit 127' "$TIMEOUT_S" "$@" 2>&1 < /dev/null
 }
 
-PASS=0; FAIL=0; NOHELP=0
+PASS=0; FAIL=0; NOHELP=0; UNSAFE=0
 FAILED=""
+
+# ⛔ TOOLS THAT DO NOT MERELY MISREAD --help AS A FILENAME (the NOHELP case below) BUT
+# ACTUALLY RUN THEIR REAL WORK ON IT — never probe these with a live invocation.
+#   pulse.sh: `MODE="${1:-run}"` treats ANY unrecognized first arg (including "--help")
+#     as *not* "--status", so every guard below reads "not in status mode" and the RUN
+#     path dispatches real scheduled jobs. Measured: this silently bumped the operator's
+#     real _pulse-state.json timestamps before the sandbox root was pinned everywhere
+#     it needed to be, and even sandboxed it walks the full job manifest until the
+#     15s cap kills it mid-job — the TIMEOUT this loop would otherwise report is real,
+#     not idle, work being cut off, and safe only because LIFEHACK_ROOT + the gws stub
+#     are already pinned above.
+#   system/tools/*-run.sh (the whole family): these are pulse-config.md's scheduled-job
+#     wrappers — bash "$LIFEHACK_CODE_ROOT/system/tools/<name>-run.sh" is the ONLY call
+#     shape pulse.sh ever makes, so none of them was ever given argument parsing, let
+#     alone a --help convention. Every one checked runs its real body unconditionally on
+#     ANY invocation. Measured while building this sandboxing: `archivist-audit-run.sh
+#     --help`, run through this very probe, launched a real `claude -p ... --dangerously-
+#     skip-permissions` subprocess — safe here only because it inherited the pinned
+#     LIFEHACK_ROOT sandbox above, not because the tool itself checked anything. Treat
+#     the whole *-run.sh family as job wrappers, never as probeable CLIs, until each one
+#     is given its own --help/--status guard (a separate, larger fix, not done here).
+UNSAFE_TO_PROBE="pulse.sh"
 
 echo "═══ smoke check — can this repo still start? ═══"
 echo "    sandbox root: $SANDBOX   (stub gws first on PATH; ${TIMEOUT_S}s cap per tool)"
@@ -81,6 +103,22 @@ while IFS= read -r f <&3; do
   TOOLS_SEEN=$((TOOLS_SEEN + 1))
   name="${f#"$REPO"/system/tools/}"
   [ "$name" = "smoke-check.sh" ] && continue   # do not recurse into ourselves
+
+  unsafe_hit=0
+  case " $UNSAFE_TO_PROBE " in
+    *" $name "*) unsafe_hit=1 ;;
+  esac
+  # *-run.sh, at any depth: pulse-config.md's scheduled-job wrappers, never given a
+  # --help/--status guard (see UNSAFE_TO_PROBE comment above) — glob-matched, not
+  # hand-listed, so a newly ported wrapper is unsafe by default until proven otherwise.
+  case "$name" in
+    *-run.sh) unsafe_hit=1 ;;
+  esac
+  if [ "$unsafe_hit" -eq 1 ]; then
+    UNSAFE=$((UNSAFE + 1))
+    echo "  · $name — SKIPPED: --help is not safe to probe (runs real work instead of answering it; see UNSAFE_TO_PROBE above)"
+    continue
+  fi
 
   case "$f" in
     *.py) out="$(run_bounded python3 "$f" --help)"; rc=$? ;;
@@ -166,7 +204,7 @@ done
 
 echo
 echo "─────────────────────────────────────"
-echo "SMOKE: $PASS ok · $FAIL broken · $NOHELP without a --help convention (not counted as broken)"
+echo "SMOKE: $PASS ok · $FAIL broken · $NOHELP without a --help convention (not counted as broken) · $UNSAFE skipped as unsafe to probe (not counted as broken)"
 if [ "$FAIL" -eq 0 ]; then
   echo "SMOKE: PASS — every tool starts and every hook can execute."
   exit 0

@@ -63,6 +63,73 @@ _NESTED = re.compile(r'[$`]\(?\s*((?:[\w./~-]*/)?gws\b[^)`]*)')
 
 _NONLIT = re.compile(r'[$`]')
 
+# FIX 5 (2026-08-23, fire test): AN ARGV LIST BUILT BY ANOTHER INTERPRETER -- for example, the gws
+# binary and its arguments handed to subprocess.run() as a Python list literal of quoted strings,
+# joined by commas, instead of written out as one shell command. Nothing above this point ever
+# runs for a call shaped that way, because there is no shell STATEMENT separator anywhere in it,
+# and the first word of the one statement there is the interpreter (e.g. python3), not gws -- so
+# the assignment/wrapper-stripping loop, the variable-held-binary branch and the $()/backtick
+# branch all have nothing to look at. gws_segments() returned [], and verdict() over zero segments
+# returns PASS -- silently, exactly the failure this whole file exists to prevent. Confirmed by
+# fire test: the same command as a plain shell string is correctly blocked; wrapped as a Python
+# list literal handed to subprocess.run(), it passed every guard sharing this parser.
+#
+# The shape that survives ACROSS interpreters is not the call syntax -- how you spawn a subprocess
+# in Python, Ruby, Node, Perl all look different -- it is the ARGUMENT LIST ITSELF: a run of two or
+# more quoted string literals separated by commas, because that is what an argv array looks like
+# once it is written out as source text, whatever bracket wraps it ([], (), {}) and whatever quote
+# style is used. So: find that run, decode each item the way the interpreter would (strip the
+# quotes, resolve the handful of backslash escapes that survive re-quoting), and hand the
+# resulting token list to the SAME verdict()/op_chain() logic every other segment already goes
+# through. No new keyword, no broadened verb list -- this changes only what counts as a segment.
+_QUOTED = r"'(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\""
+# ⭐ 2026-08-23 hardening, MEASURED against a fire test this file's own selftest failed before this
+# change: a Node-style call -- execFileSync('gws', ['gmail','users','threads','trash','--id','x'])
+# -- puts the binary name and its argument LIST on either side of a bracket boundary. The prior
+# separator (`\s*,\s*`) allowed only whitespace between one quoted item and the next, so it could
+# never bridge the `, [` between 'gws' and the array literal that follows it: the two were read as
+# two SEPARATE runs ('gws' alone -- too short to be a run at all -- and ['gmail',...] starting with
+# 'gmail', not 'gws'), and a run not starting with the literal binary name is never appended as a
+# segment. Brackets/parens/braces around a comma are punctuation for the call or the list, not part
+# of an argument's VALUE, so they belong with the whitespace already being skipped.
+_ARGV_JUNK = r'[\s\[\]\(\)\{\}]*'
+_ARGV_RUN = re.compile(r'(?:%s)(?:%s,%s(?:%s))+' % (_QUOTED, _ARGV_JUNK, _ARGV_JUNK, _QUOTED))
+_QUOTED_ITEM = re.compile(_QUOTED)
+
+
+def _decode_literal(tok):
+    """Decode one quoted string literal the way an interpreter would at parse time: strip the
+    surrounding quote and resolve the escapes that commonly survive being embedded in a shell
+    -c/eval argument (backslash-backslash, the matching quote, backslash-n, backslash-t). Not a
+    full interpreter -- just enough to read the argv values a fire test actually produced."""
+    if len(tok) < 2:
+        return tok
+    q = tok[0]
+    body = tok[1:-1]
+    body = body.replace('\\\\', '\x00')
+    body = body.replace('\\' + q, q)
+    body = body.replace('\\n', '\n').replace('\\t', '\t')
+    body = body.replace('\x00', '\\')
+    return body
+
+
+# FIX 6 (2026-08-23): A FULLY OPAQUE INVOCATION -- the binary named as a literal but its argument
+# list built from a call this parser cannot evaluate. That is not a comma-quoted run at all, so
+# FIX 5 above has nothing to extract, and there is no argv text anywhere to inspect. We cannot know
+# the service or the verb. We CAN recognise the shape: a known process-spawn function whose first
+# argument is the literal string naming the binary, followed by something that is not itself a
+# literal. That shape is a real invocation with a wholly unreadable payload -- the definition of
+# UNKNOWN -- so it is turned into a segment carrying a nonliteral marker token, which the existing
+# has_nonliteral()/op_chain() machinery already fails closed on.
+_OPAQUE_CALL = re.compile(
+    r"\b(?:os\.execvp?e?|os\.spawn\w*|subprocess\.(?:run|call|check_call|check_output|Popen)"
+    r"|Popen|execvp?e?)\s*\(\s*(?P<bin>'[^']*'|\"[^\"]*\")\s*,"
+)
+# Deliberately CONTAINS '$' so the existing _NONLITERAL / _NONLIT scans (which look for exactly
+# that) treat it as an unresolved token with zero extra special-casing anywhere else in this file.
+_OPAQUE_TOKEN = '$__OPAQUE_GWS_CALL__$'
+
+
 
 def _debinary(tok):
     """Strip the disguises a shell ignores: quotes and a leading backslash.
@@ -120,6 +187,32 @@ def gws_segments(cmd):
         # ⭐ FIX 2: a gws inside $( ) or backticks is still a real invocation.
         for m in _NESTED.finditer(s):
             out.append(m.group(1).split())
+    # ⭐ FIX 5: an argv list built by another interpreter -- see the comment above _ARGV_RUN.
+    # Scanned over the WHOLE command, not per-statement, because the run of quoted literals is not
+    # bounded by a shell statement separator at all -- it lives inside one opaque -c/eval argument
+    # or one python -c string, which the statement split above treats as a single unit.
+    for m in _ARGV_RUN.finditer(cmd):
+        items = [_decode_literal(t) for t in _QUOTED_ITEM.findall(m.group(0))]
+        if items and _BINARY.match(_debinary(items[0])):
+            # ⭐ 2026-08-23 hardening: the matched run of quoted literals can be a TRUNCATED
+            # prefix of a longer, real argv -- imagine a service word and a scope word read fine,
+            # then the list keeps going into a bare, unquoted variable standing in for the verb,
+            # then more quoted items after that. Silently treating the short quoted prefix as the
+            # WHOLE argv reads as a clean, harmless operation when the real, unreadable verb might
+            # be destructive. Look at what immediately follows the match: if it is (optional
+            # bracket/paren/brace/whitespace junk then) a comma, the list continues beyond what we
+            # could read, and that remainder is UNKNOWN -- append the opaque sentinel so
+            # has_nonliteral()/op_chain() fail closed on it exactly as they already do for a $VAR.
+            tail = cmd[m.end():m.end() + 4]
+            if re.match(r'^%s,' % _ARGV_JUNK, tail):
+                items = items + [_OPAQUE_TOKEN]
+            out.append(items)
+    # ⭐ FIX 6: a fully opaque invocation -- see the comment above _OPAQUE_CALL. The segment
+    # carries only the binary name and the nonliteral sentinel: enough for has_nonliteral() to see
+    # it and nothing else, because nothing else is known.
+    for m in _OPAQUE_CALL.finditer(cmd):
+        if _BINARY.match(_debinary(_decode_literal(m.group('bin')))):
+            out.append(['gws', _OPAQUE_TOKEN])
     return out
 
 
@@ -173,7 +266,9 @@ def verdict(cmd, service, destructive, safe, require_any=None, write_verbs=None)
     write_verbs = write_verbs or []
     for toks in gws_segments(cmd):
         seg = ' '.join(toks)
-        if not re.search(r'\b%s\b' % re.escape(service), seg, re.I):
+        # An opaque-invocation segment (FIX 6) names no service at all -- we could not read
+        # its arguments, so it is judged against EVERY service that asks, not just one.
+        if _OPAQUE_TOKEN not in seg and not re.search(r'\b%s\b' % re.escape(service), seg, re.I):
             continue
         chain = op_chain(toks, service)
         if not chain:
@@ -190,6 +285,51 @@ def verdict(cmd, service, destructive, safe, require_any=None, write_verbs=None)
             if has_nonliteral(toks[len(chain) + 1:]):
                 return 'BLOCK'                  # 3. write, unresolvable target
     return 'PASS'
+
+
+def verdict_reason(cmd, service, destructive, safe, require_any=None, write_verbs=None):
+    """ADDITIVE, MESSAGE-ONLY HELPER -- does not decide anything by itself, and nothing in this
+    file's real gating path (verdict(), main()'s sys.exit) calls it. It exists because several
+    callers were reusing ONE rule's deny message for every reason verdict() can return BLOCK,
+    including the fail-closed we-could-not-resolve-this case -- so an unparseable drafts-create
+    command came back denied with a Gmail-deletion-specific message that named a rule the command
+    never touched. Measured 2026-08-23 (ClaudeOps); ported here because the same shared parser and
+    the same three callers exist in this repo too.
+
+    Mirrors verdict()'s conditions and their ORDER exactly, so the reason it reports can never
+    disagree with the decision verdict() already made. A caller uses this ONLY after verdict()
+    (via the unchanged --service/--destructive/... invocation) has already returned BLOCK, purely
+    to pick which honest message to print.
+
+    Returns (verdict, reason) where reason is one of:
+      None                   -- PASS, or no gws segment for this service was found
+      'unresolved_operation' -- the operation itself could not be read (a $VAR, a substitution, or
+                                 an xargs-style placeholder sits where the verb should be)
+      'destructive'          -- a literal, in-scope destructive verb was matched
+      'unresolved_target'    -- a literal write verb, but its TARGET could not be read
+    """
+    write_verbs = write_verbs or []
+    for toks in gws_segments(cmd):
+        seg = ' '.join(toks)
+        # An opaque-invocation segment (FIX 6) names no service at all -- we could not read
+        # its arguments, so it is judged against EVERY service that asks, not just one.
+        if _OPAQUE_TOKEN not in seg and not re.search(r'\b%s\b' % re.escape(service), seg, re.I):
+            continue
+        chain = op_chain(toks, service)
+        if not chain:
+            if has_nonliteral(toks):
+                return 'BLOCK', 'unresolved_operation'
+            continue
+        if has_nonliteral(chain):
+            return 'BLOCK', 'unresolved_operation'
+        low = [c.lower() for c in chain]
+        in_scope = (not require_any) or any(w.lower() in low for w in require_any)
+        if in_scope and any(v.lower() in low for v in destructive):
+            return 'BLOCK', 'destructive'
+        if any(v.lower() in low for v in write_verbs):
+            if has_nonliteral(toks[len(chain) + 1:]):
+                return 'BLOCK', 'unresolved_target'
+    return 'PASS', None
 
 
 def _selftest():
@@ -217,6 +357,34 @@ def _selftest():
         ("gws gmail users labels delete --id L1", 'gmail', 'PASS'),
         # but a hidden scope word is UNKNOWN and must fail closed
         ("gws gmail users $THING delete --id L1", 'gmail', 'BLOCK'),
+
+        # -- REGRESSION, 2026-08-23: the CONFIRMED LIVE bypass, argv built by ANOTHER
+        # INTERPRETER (comma/quote-delimited, never whitespace-delimited). Every one of these
+        # returned exit 0 / PASS before the fix; see this file's module docstring / FIX 5.
+        ("python3 -c \"import subprocess; subprocess.run(['gws','gmail','users','threads','trash','--id','18abc'])\"", 'gmail', 'BLOCK'),
+        # Node-style: the binary as its own quoted argument, the rest as a separate array literal.
+        ("execFileSync('gws', ['gmail','users','threads','trash','--id','18abc'])", 'gmail', 'BLOCK'),
+        # A tuple, not a list -- the comma/quote shape is what matters, not the bracket character.
+        ("subprocess.run(('gws','gmail','users','threads','trash','--id','18abc'))", 'gmail', 'BLOCK'),
+        # Mixed quote styles within one argv must not defeat the extraction.
+        ("subprocess.run(['gws',\"gmail\",'users','threads',\"trash\",'--id','18abc'])", 'gmail', 'BLOCK'),
+        # The same shape with a SAFE verb must still PASS -- proof this is not "block every list".
+        ("subprocess.run(['gws','gmail','users','threads','untrash','--id','18abc'])", 'gmail', 'PASS'),
+        # A list that trails off into a bare (unquoted) placeholder partway through must not be
+        # silently truncated and read as a clean, short, harmless argv -- it is UNKNOWN and
+        # fails closed, same as a $VAR would in the whitespace path.
+        ("subprocess.run(['gws','gmail','users','threads', op, '--id', tid])", 'gmail', 'BLOCK'),
+        # Fully opaque construction: gws named, the rest of the argv is a function call, not a
+        # literal. We cannot know which service this targets, so it fails closed for EVERY
+        # service a guard might be checking, not just the one that happens to guess right.
+        ("os.execvp('gws', build_argv())", 'gmail', 'BLOCK'),
+        ("os.execvp('gws', build_argv())", 'sheets', 'BLOCK'),
+        # ABSENT, not unparseable: an ordinary comma-bearing sentence that merely MENTIONS gws is
+        # never a list-literal shape and must keep passing exactly as before the fix.
+        ("echo 'gws, gmail, and sheets are all guarded now, for what it is worth'", 'gmail', 'PASS'),
+        # ABSENT: a real, unrelated two-item list near an unrelated mention of gws elsewhere in
+        # the same line must not be swept in by proximity alone.
+        ("echo 'gws was mentioned here'; run(['a','b'])", 'gmail', 'PASS'),
     ]
     gmail_d = ['delete', 'batchDelete', 'trash']
     gmail_s = ['modify', 'untrash', 'list', 'get']
@@ -240,6 +408,15 @@ def main():
     ap.add_argument('--require-any', default='', help='comma-separated scope words; at least one must be present')
     ap.add_argument('--write-verbs', default='', help='comma-separated write verbs whose TARGET must be literal')
     ap.add_argument('--selftest', action='store_true')
+    # ADDITIVE, MESSAGE-ONLY. Does not touch the decision path above or below it: the ORIGINAL
+    # invocation a caller already made (no --reason-only) still runs verdict() and exits 7/0
+    # exactly as before, byte-for-byte. This flag is for a SECOND, separate invocation a caller
+    # makes only after that original call already returned BLOCK, purely to learn which of
+    # verdict()'s three conditions fired so it can print an honest reason instead of reusing one
+    # rule's message for all of them. Always exits 0 -- it is a query, never a gate.
+    ap.add_argument('--reason-only', action='store_true',
+                     help='print WHY verdict() would say BLOCK (unresolved_operation / destructive '
+                          '/ unresolved_target / none), then exit 0. Never gates anything itself.')
     a = ap.parse_args()
     if a.selftest:
         sys.exit(_selftest())
@@ -249,6 +426,10 @@ def main():
     s = [x for x in a.safe.split(',') if x]
     r = [x for x in getattr(a, 'require_any').split(',') if x]
     w = [x for x in getattr(a, 'write_verbs').split(',') if x]
+    if a.reason_only:
+        _, reason = verdict_reason(sys.stdin.read(), a.service, d, s, r, w)
+        print(reason or 'none')
+        sys.exit(0)
     sys.exit(7 if verdict(sys.stdin.read(), a.service, d, s, r, w) == 'BLOCK' else 0)
 
 
