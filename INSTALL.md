@@ -45,8 +45,12 @@ tab, and start again from this line.
 ## ⭐ NEXT — HOW YOU GET THIS: PLUGIN (fastest way in) OR MANUAL CLONE (currently the only way to get the guards too)
 
 **As of 2026-08-23 this harness is also a Claude Code marketplace plugin.** One command adds the
-marketplace, one installs the plugin, and Claude Code keeps it updated from then on — no folder to
-create, no `git`, no `git pull` to remember later.
+marketplace, one installs the plugin — no folder to create, no `git` to run by hand. ⛔ **It does NOT
+keep itself updated from then on.** `lifehack-brain` is a third-party marketplace, and Claude Code ships
+those with auto-update **off by default** — verified on this install: the `autoUpdate` key is absent
+from this marketplace's registration at every settings level (managed, user, user-local, project); the
+live entry carries only its source, nothing else. Updating is something you run, or explicitly turn on
+— see "Taking an update later" below.
 
 ```bash
 claude plugin marketplace add LifehackMethod/lifehack-brain
@@ -56,8 +60,17 @@ claude plugin install lifehack-brain@lifehack-brain
 **What that actually does, plainly:** it fetches this project's skills, agents, tools and docs —
 `/ingest` and everything else this file talks about — into Claude Code's own plugin store, and makes
 them available in every session, in any folder you happen to have open. Taking an update later is
-`claude plugin update lifehack-brain` (or the plugin menu inside Claude Code) instead of `git pull`.
-That auto-update is the entire point of publishing it this way.
+`claude plugin marketplace update lifehack-brain` followed by `claude plugin update lifehack-brain` —
+instead of `git pull` — and you run those yourself unless you turn auto-update on. ⛔ **Either way, an
+update only lands if the maintainer bumped the plugin's version number since your last one** — an
+unbumped version reports "already at the latest version" and installs nothing, even when the
+marketplace itself has moved. ⭐ **To make Claude Code run the update for you unasked, turn on
+auto-update explicitly:** `/plugin` → Manage marketplaces → select `lifehack-brain` → "Enable
+auto-update" (verified: this exact toggle exists in the installed Claude Code build), or set
+`"autoUpdate": true` on this marketplace's entry under `extraKnownMarketplaces` in a `.claude/settings.json`
+(verified: that key's own description reads "Whether to automatically update this marketplace and its
+installed plugins on startup"). Turning it on does not change the version-bump condition above — it
+only removes the step of running the command yourself.
 
 ⛔⛔ **WHAT IT DOES NOT DO, AND THIS MATTERS: IT DOES NOT INSTALL THE GUARD HOOKS.** This harness leans
 on a set of Claude Code hooks — the ones that, on the manual clone path, get wired the moment you open
@@ -2520,9 +2533,21 @@ goes wrong.
 
 ## Taking an update later
 
-⭐ **If you installed via the plugin (this file's default, near the top), you don't do this section at
-all — `claude plugin update lifehack-brain` is your whole update story, and Claude Code can run it for
-you unasked.** Everything below is for the manual clone fallback.
+⭐ **If you installed via the plugin (this file's default, near the top): these `git` commands are
+not your path, but you still have to act.** Auto-update is off by default for this marketplace and was
+not turned on for you at install. Your update story is:
+
+```bash
+claude plugin marketplace update lifehack-brain
+claude plugin update lifehack-brain
+```
+
+⛔ **That only lands something if the maintainer bumped `lifehack-brain`'s version since your last
+update** — an unbumped version reports "already at the latest version" and installs nothing, even if
+the marketplace itself has newer commits behind it. If you turned on auto-update in the `/plugin` menu
+(see the top of this file for exactly how), the same version-bump condition still applies — auto-update
+removes the step of running the command yourself, not the maintainer's part of the job. Everything below
+is for the manual clone fallback.
 
 **Ask Claude:** *"check if there's an update to my brain and install it."*
 
