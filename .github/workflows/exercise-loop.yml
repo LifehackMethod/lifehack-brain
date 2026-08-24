@@ -44,6 +44,15 @@ permissions:
 
 jobs:
   tests:
+    # ⛔ FORK GUARD — added 2026-08-24. A fork runs this workflow automatically on every push,
+    # and on a fork it CANNOT pass: GitHub withholds repository secrets from forks by design,
+    # so the scan has no identity terms to check against and fails every time. GitHub then
+    # emails the fork owner a failure they did not cause and cannot fix. Students were getting
+    # spammed by a check that could never go green for them.
+    # This makes the job SKIP on a fork (grey, no email) while still running here, and still
+    # running on a pull_request FROM a fork — because that executes in THIS repo's context.
+    # ⇒ Zero protection lost.
+    if: github.repository == 'LifehackMethod/lifehack-brain'
     name: Aggregate test runner (run-all-tests.sh)
     runs-on: ubuntu-latest
     steps:
@@ -59,6 +68,15 @@ jobs:
         run: bash system/tools/run-all-tests.sh
 
   smoke:
+    # ⛔ FORK GUARD — added 2026-08-24. A fork runs this workflow automatically on every push,
+    # and on a fork it CANNOT pass: GitHub withholds repository secrets from forks by design,
+    # so the scan has no identity terms to check against and fails every time. GitHub then
+    # emails the fork owner a failure they did not cause and cannot fix. Students were getting
+    # spammed by a check that could never go green for them.
+    # This makes the job SKIP on a fork (grey, no email) while still running here, and still
+    # running on a pull_request FROM a fork — because that executes in THIS repo's context.
+    # ⇒ Zero protection lost.
+    if: github.repository == 'LifehackMethod/lifehack-brain'
     name: Smoke check (smoke-check.sh)
     runs-on: ubuntu-latest
     steps:
