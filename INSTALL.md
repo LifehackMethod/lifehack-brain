@@ -42,7 +42,46 @@ tab, and start again from this line.
 > hand. ⛔ **Never offer help without saying how to reach it** — a promise with no route is where someone
 > quietly gives up. Then stop.
 
-## ⭐ THEN — FOUR QUESTIONS, BEFORE ANY FOLDER IS MADE
+## ⭐ NEXT — HOW YOU GET THIS: PLUGIN (the default) OR MANUAL CLONE (a fallback, kept working)
+
+**As of 2026-08-23 this harness is a Claude Code marketplace plugin, and that is the way most people
+should install it.** One command adds the marketplace, one installs the plugin, and Claude Code keeps
+it updated from then on — no folder to create, no `git`, no `git pull` to remember later.
+
+```bash
+claude plugin marketplace add LifehackMethod/lifehack-brain
+claude plugin install lifehack-brain@lifehack-brain
+```
+
+**What that actually does, plainly:** it fetches this project's skills, agents, hooks and tools —
+`/ingest` and everything else this file talks about — into Claude Code's own plugin store, and makes
+them available in every session, in any folder you happen to have open. Taking an update later is
+`claude plugin update lifehack-brain` (or the plugin menu inside Claude Code) instead of `git pull`.
+That auto-update is the entire point of publishing it this way.
+
+**What it does NOT do:** it does not touch your AI Brain, and it does not make the "which Drive folder
+is my AI Brain" question go away — that question is this file's **STEP 7**, and it is exactly the same
+question either way, because your AI Brain was never part of the harness in the first place. The one
+wrinkle: STEP 7's commands are written assuming you are sitting inside a cloned Harness folder. Running
+the plugin install instead means there is no such folder to `cd` into — so before STEP 7, ask Claude to
+find where the plugin actually landed (`claude plugin list`, or look under
+`~/.claude/plugins/cache/lifehack-brain/lifehack-brain/<version>/` — the whole repo layout, including
+`shared/brain_root.py`, is really there) and run STEP 7's commands from inside *that* folder instead.
+The commands themselves don't care which install method put the files on disk, only that you are
+standing in the right one when you run them. **Skip STEPs 0 through 6 below entirely if you installed
+this way** — those steps are about creating a folder and cloning into it, and a plugin install already
+did the equivalent of both.
+
+⭐ **Say what you did, and to which account:** if `gh auth status` or Claude Code shows more than one
+GitHub account signed in, name the one the plugin commands actually used, since a marketplace add can
+silently pick the wrong one.
+
+⛔ **Use the manual clone path below instead if:** you intend to develop the harness itself (read its
+source, change a skill, send back a PR), or your environment cannot install Claude Code plugins at all.
+**The clone path is not being retired — it stays fully documented, starting at STEP 0 below — it is
+now the fallback, not the default.** Nothing about it changed; only its place in this file did.
+
+## ⭐ MANUAL CLONE PATH (fallback) — FOUR QUESTIONS, BEFORE ANY FOLDER IS MADE
 
 **Answer these four now.** Each one costs ten seconds here, and about twenty minutes each if it
 surfaces halfway through instead:
@@ -2471,9 +2510,13 @@ goes wrong.
 
 ## Taking an update later
 
+⭐ **If you installed via the plugin (this file's default, near the top), you don't do this section at
+all — `claude plugin update lifehack-brain` is your whole update story, and Claude Code can run it for
+you unasked.** Everything below is for the manual clone fallback.
+
 **Ask Claude:** *"check if there's an update to my brain and install it."*
 
-⭐ **THE RULE THAT COVERS EVERY ORDINARY UPDATE: TAKE IT WITH `git pull`.** That is the default and it
+⭐ **THE RULE THAT COVERS EVERY ORDINARY UPDATE, ON THE MANUAL CLONE PATH: TAKE IT WITH `git pull`.** That is the default and it
 is what you should reach for every time. **Deleting this folder and downloading a fresh copy is a much
 bigger hammer** — it is available, it is survivable *once you have run the check a few lines below that
 proves nothing of yours is inside the Harness*, and it is simply never the way to take a routine update.
