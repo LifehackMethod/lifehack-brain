@@ -189,7 +189,23 @@ if command -v python3 >/dev/null 2>&1; then
 		echo ""
 		exit 1
 	elif [ "$encoding_status" -eq 2 ]; then
-		echo "  ⚠ encoding lint: $(printf '%s\n' "$encoding_out" | head -1)"
+		# encoding_lint.py's CANNOT-EVALUATE (exit 2) covers THREE distinct causes -- see its
+		# own --help: no-python-staged (ordinary: nothing for this commit to check), and
+		# unparseable <path> / no-git (NOT ordinary: the check itself did not complete). The
+		# first is the commit-shaped absence this hook has always waved through. The other two
+		# are the control failing to run, same category as the missing-script case above -- and
+		# folding them into one warn-and-pass branch was itself a fail-open: an unparseable
+		# staged .py file, or a broken git, produced the identical single-line warning as
+		# "nothing to check" and the commit went through either way. Split them.
+		if printf '%s\n' "$encoding_out" | head -1 | grep -q 'CANNOT-EVALUATE: no-python-staged'; then
+			echo "  ⚠ encoding lint: $(printf '%s\n' "$encoding_out" | head -1)"
+		else
+			printf '%s\n' "$encoding_out"
+			echo "  ⛔ COMMIT REFUSED — encoding lint could not evaluate your staged changes (see above)."
+			echo "     This is not 'nothing to check' -- the check itself did not complete. Fix the"
+			echo "     underlying problem (an unparseable staged file, or git) and commit again."
+			exit 1
+		fi
 	fi
 else
 	echo "  ⚠ encoding lint SKIPPED — no python3 on PATH. New unencoded open() calls were NOT checked."
