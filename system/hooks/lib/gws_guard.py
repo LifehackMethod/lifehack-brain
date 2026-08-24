@@ -83,7 +83,17 @@ _NONLIT = re.compile(r'[$`]')
 # resulting token list to the SAME verdict()/op_chain() logic every other segment already goes
 # through. No new keyword, no broadened verb list -- this changes only what counts as a segment.
 _QUOTED = r"'(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\""
-_ARGV_RUN = re.compile(r'(?:%s)(?:\s*,\s*(?:%s))+' % (_QUOTED, _QUOTED))
+# ⭐ 2026-08-23 hardening, MEASURED against a fire test this file's own selftest failed before this
+# change: a Node-style call -- execFileSync('gws', ['gmail','users','threads','trash','--id','x'])
+# -- puts the binary name and its argument LIST on either side of a bracket boundary. The prior
+# separator (`\s*,\s*`) allowed only whitespace between one quoted item and the next, so it could
+# never bridge the `, [` between 'gws' and the array literal that follows it: the two were read as
+# two SEPARATE runs ('gws' alone -- too short to be a run at all -- and ['gmail',...] starting with
+# 'gmail', not 'gws'), and a run not starting with the literal binary name is never appended as a
+# segment. Brackets/parens/braces around a comma are punctuation for the call or the list, not part
+# of an argument's VALUE, so they belong with the whitespace already being skipped.
+_ARGV_JUNK = r'[\s\[\]\(\)\{\}]*'
+_ARGV_RUN = re.compile(r'(?:%s)(?:%s,%s(?:%s))+' % (_QUOTED, _ARGV_JUNK, _ARGV_JUNK, _QUOTED))
 _QUOTED_ITEM = re.compile(_QUOTED)
 
 
@@ -184,6 +194,18 @@ def gws_segments(cmd):
     for m in _ARGV_RUN.finditer(cmd):
         items = [_decode_literal(t) for t in _QUOTED_ITEM.findall(m.group(0))]
         if items and _BINARY.match(_debinary(items[0])):
+            # ⭐ 2026-08-23 hardening: the matched run of quoted literals can be a TRUNCATED
+            # prefix of a longer, real argv -- imagine a service word and a scope word read fine,
+            # then the list keeps going into a bare, unquoted variable standing in for the verb,
+            # then more quoted items after that. Silently treating the short quoted prefix as the
+            # WHOLE argv reads as a clean, harmless operation when the real, unreadable verb might
+            # be destructive. Look at what immediately follows the match: if it is (optional
+            # bracket/paren/brace/whitespace junk then) a comma, the list continues beyond what we
+            # could read, and that remainder is UNKNOWN -- append the opaque sentinel so
+            # has_nonliteral()/op_chain() fail closed on it exactly as they already do for a $VAR.
+            tail = cmd[m.end():m.end() + 4]
+            if re.match(r'^%s,' % _ARGV_JUNK, tail):
+                items = items + [_OPAQUE_TOKEN]
             out.append(items)
     # ⭐ FIX 6: a fully opaque invocation -- see the comment above _OPAQUE_CALL. The segment
     # carries only the binary name and the nonliteral sentinel: enough for has_nonliteral() to see
@@ -335,6 +357,34 @@ def _selftest():
         ("gws gmail users labels delete --id L1", 'gmail', 'PASS'),
         # but a hidden scope word is UNKNOWN and must fail closed
         ("gws gmail users $THING delete --id L1", 'gmail', 'BLOCK'),
+
+        # -- REGRESSION, 2026-08-23: the CONFIRMED LIVE bypass, argv built by ANOTHER
+        # INTERPRETER (comma/quote-delimited, never whitespace-delimited). Every one of these
+        # returned exit 0 / PASS before the fix; see this file's module docstring / FIX 5.
+        ("python3 -c \"import subprocess; subprocess.run(['gws','gmail','users','threads','trash','--id','18abc'])\"", 'gmail', 'BLOCK'),
+        # Node-style: the binary as its own quoted argument, the rest as a separate array literal.
+        ("execFileSync('gws', ['gmail','users','threads','trash','--id','18abc'])", 'gmail', 'BLOCK'),
+        # A tuple, not a list -- the comma/quote shape is what matters, not the bracket character.
+        ("subprocess.run(('gws','gmail','users','threads','trash','--id','18abc'))", 'gmail', 'BLOCK'),
+        # Mixed quote styles within one argv must not defeat the extraction.
+        ("subprocess.run(['gws',\"gmail\",'users','threads',\"trash\",'--id','18abc'])", 'gmail', 'BLOCK'),
+        # The same shape with a SAFE verb must still PASS -- proof this is not "block every list".
+        ("subprocess.run(['gws','gmail','users','threads','untrash','--id','18abc'])", 'gmail', 'PASS'),
+        # A list that trails off into a bare (unquoted) placeholder partway through must not be
+        # silently truncated and read as a clean, short, harmless argv -- it is UNKNOWN and
+        # fails closed, same as a $VAR would in the whitespace path.
+        ("subprocess.run(['gws','gmail','users','threads', op, '--id', tid])", 'gmail', 'BLOCK'),
+        # Fully opaque construction: gws named, the rest of the argv is a function call, not a
+        # literal. We cannot know which service this targets, so it fails closed for EVERY
+        # service a guard might be checking, not just the one that happens to guess right.
+        ("os.execvp('gws', build_argv())", 'gmail', 'BLOCK'),
+        ("os.execvp('gws', build_argv())", 'sheets', 'BLOCK'),
+        # ABSENT, not unparseable: an ordinary comma-bearing sentence that merely MENTIONS gws is
+        # never a list-literal shape and must keep passing exactly as before the fix.
+        ("echo 'gws, gmail, and sheets are all guarded now, for what it is worth'", 'gmail', 'PASS'),
+        # ABSENT: a real, unrelated two-item list near an unrelated mention of gws elsewhere in
+        # the same line must not be swept in by proximity alone.
+        ("echo 'gws was mentioned here'; run(['a','b'])", 'gmail', 'PASS'),
     ]
     gmail_d = ['delete', 'batchDelete', 'trash']
     gmail_s = ['modify', 'untrash', 'list', 'get']
