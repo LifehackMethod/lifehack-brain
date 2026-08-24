@@ -20,7 +20,7 @@
 # description of what this hook currently does or currently fires on.
 # ──────────────────────────────────────────────────────────────────────────
 # STATUS (2026-08-23): PORTED + REGISTERED (plan task T3.5) into ClaudeOps and
-#      lifehack-brain from the retired claudeops-config donor clone. Enver retired disable-model-invocation
+#      lifehack-brain from the retired claudeops-config donor clone. The operator retired disable-model-invocation
 #      FLEET-WIDE on 2026-08-06 (authority: user, system/sops/skill-building-sop.md:605-622:
 #      "I want all of my skills to be able to invoke each other. It's a guard that I don't
 #      feel that I need."). ZERO skills carry the flag today (verified 2026-08-06) — so this
@@ -28,7 +28,7 @@
 #      from settings.json's UserPromptSubmit array the same day rather than running a
 #      no-op glob-scan on every prompt forever. The script is INTENTIONALLY left in place
 #      (not deleted) so the mechanism is not lost. It is not a live "self-activating backstop"
-#      in practice: the flag can only return via a fresh Enver ruling reversing 2026-08-06
+#      in practice: the flag can only return via a fresh ruling from the operator reversing 2026-08-06
 #      PLUS a deliberate edit to system/hooks/guard_disable_model_invocation.sh (the new
 #      PreToolUse hook that hard-blocks any write reinstating the frontmatter key) — whoever
 #      does that maintenance is already touching hook code and should re-register this hook
@@ -37,7 +37,7 @@
 # WHY (historical, still true if ever reactivated): a disable-model-invocation skill removes
 #      the model-fallback path a normal skill has — the ONLY way it fires is the harness's
 #      literal /name parser, which requires the command to be the message's own leading
-#      token. 2026-08-03/04: Enver buried "/autoplan" at the end of a longer paragraph FOUR
+#      token. 2026-08-03/04: the operator buried "/autoplan" at the end of a longer paragraph FOUR
 #      times in one session — the parser never saw it, the model was forbidden from rescuing
 #      it (by the flag), and the request evaporated with no error at all. skills/autoplan,
 #      skills/onboard-probe, and skills/world-model-builder ALL CARRIED THE FLAG AT THE TIME
@@ -120,7 +120,7 @@ try:
         if not m:
             continue
         frontmatter = m.group(1)
-        # EVERY skill, not a flag-gated subset (2026-08-21, Enver: "make it so all my
+        # EVERY skill, not a flag-gated subset (2026-08-21, the operator: "make it so all my
         # system skills will fire even if it's buried in a line"). The old gate keyed on
         # disable-model-invocation, retired fleet-wide 2026-08-06, so the set was empty and
         # this hook was a permanent no-op. Frontmatter must still PARSE (that is what makes
@@ -159,12 +159,12 @@ for name in names:
 
     # Buried case: fire ONLY when a match sits at the very END of the message (nothing
     # after it but whitespace/trailing punctuation). This is the literal "buried at the
-    # end of a longer paragraph" shape Enver hit four times, and it deliberately does NOT
+    # end of a longer paragraph" shape the operator hit four times, and it deliberately does NOT
     # fire on a mid-sentence mention like "I tried /autoplan earlier and it didn't work"
     # (real words trail the match there) -- narrower recall, zero false-positive risk.
     # ANY non-leading position counts (2026-08-21). The old rule fired only when the
     # command sat at the very END of the message -- deliberately narrow, "zero false
-    # positive risk", but it misses the mid-sentence shape Enver actually hits.
+    # positive risk", but it misses the mid-sentence shape the operator actually hits.
     # WHY WIDENING IS SAFE HERE: code decides only MEMBERSHIP (is this token present,
     # outside code spans?) -- a thing it cannot be wrong about. Whether it was an
     # INVOCATION or a MENTION is judgment, and the injected text below hands that call to
