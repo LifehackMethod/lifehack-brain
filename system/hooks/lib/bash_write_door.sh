@@ -69,9 +69,15 @@ ARG_WRITERS   = {"rm","rmdir","shred","unlink","truncate","tee","touch","chmod",
 BOTH_SIDES    = {"mv","cp","rsync","ln"}
 INPLACE       = {"sed","perl"}
 INTERPRETERS  = {"python","python3","perl","ruby","node","php","bash","sh","zsh"}
+# ⛔ ">" and ">>" do NOT belong in this tuple, and must never come back. This checks for SUBSTRING
+# evidence anywhere in the segment — including inside a stderr redirect (`2>&1`, `2>/dev/null`,
+# `>&2`), which contains ">" but writes nothing. That false "write" evidence both denied ordinary
+# reads AND let a real write slip past unnoticed once the redirect was removed (the guard fired on
+# the wrong token, not on the write). A genuine `> file` / `>> file` redirect is ALREADY caught by
+# the positional redirect scanner above, which correctly ignores `2>&1` and correctly finds the
+# real target in `cmd > file`. Do not re-add these tokens here.
 WRITE_CALLS   = ("open(", ".write(", ".writelines(", "write_text", "writeFileSync", ".writeText",
-                 "os.replace", "os.rename", "os.remove", "os.unlink", "shutil.copy", "shutil.move",
-                 ">", ">>")
+                 "os.replace", "os.rename", "os.remove", "os.unlink", "shutil.copy", "shutil.move")
 
 def looks_like_path(tok):
     if not tok or tok.startswith("-"):

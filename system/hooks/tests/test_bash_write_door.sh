@@ -52,6 +52,10 @@ want no  "echo 'do not edit $GUARDED'"             "a mere mention in a string"
 want no  "git commit -m 'fix $GUARDED wording'"    "a mention in a commit message"
 want no  "python3 -c 'print(open(\"$GUARDED\").read())'" "interpreter with NO write call — a pure read"
 want no  "diff $GUARDED /tmp/other"                "diff"
+want no  "python3 read.py $GUARDED 2>&1"           "interpreter+path+stderr-merge, no write"
+want no  "python3 read.py $GUARDED 2>/dev/null"    "interpreter+path+stderr-to-null, no write"
+want no  "python3 read.py $GUARDED >&2"            "interpreter+path+fd-dup, no write"
+want no  "node script.js $GUARDED 1>&2"            "node + fd-dup, no write"
 
 echo
 echo "── fail-closed ───────────────────────────────────────────────────────────"

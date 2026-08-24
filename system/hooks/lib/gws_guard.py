@@ -63,6 +63,63 @@ _NESTED = re.compile(r'[$`]\(?\s*((?:[\w./~-]*/)?gws\b[^)`]*)')
 
 _NONLIT = re.compile(r'[$`]')
 
+# FIX 5 (2026-08-23, fire test): AN ARGV LIST BUILT BY ANOTHER INTERPRETER -- for example, the gws
+# binary and its arguments handed to subprocess.run() as a Python list literal of quoted strings,
+# joined by commas, instead of written out as one shell command. Nothing above this point ever
+# runs for a call shaped that way, because there is no shell STATEMENT separator anywhere in it,
+# and the first word of the one statement there is the interpreter (e.g. python3), not gws -- so
+# the assignment/wrapper-stripping loop, the variable-held-binary branch and the $()/backtick
+# branch all have nothing to look at. gws_segments() returned [], and verdict() over zero segments
+# returns PASS -- silently, exactly the failure this whole file exists to prevent. Confirmed by
+# fire test: the same command as a plain shell string is correctly blocked; wrapped as a Python
+# list literal handed to subprocess.run(), it passed every guard sharing this parser.
+#
+# The shape that survives ACROSS interpreters is not the call syntax -- how you spawn a subprocess
+# in Python, Ruby, Node, Perl all look different -- it is the ARGUMENT LIST ITSELF: a run of two or
+# more quoted string literals separated by commas, because that is what an argv array looks like
+# once it is written out as source text, whatever bracket wraps it ([], (), {}) and whatever quote
+# style is used. So: find that run, decode each item the way the interpreter would (strip the
+# quotes, resolve the handful of backslash escapes that survive re-quoting), and hand the
+# resulting token list to the SAME verdict()/op_chain() logic every other segment already goes
+# through. No new keyword, no broadened verb list -- this changes only what counts as a segment.
+_QUOTED = r"'(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\""
+_ARGV_RUN = re.compile(r'(?:%s)(?:\s*,\s*(?:%s))+' % (_QUOTED, _QUOTED))
+_QUOTED_ITEM = re.compile(_QUOTED)
+
+
+def _decode_literal(tok):
+    """Decode one quoted string literal the way an interpreter would at parse time: strip the
+    surrounding quote and resolve the escapes that commonly survive being embedded in a shell
+    -c/eval argument (backslash-backslash, the matching quote, backslash-n, backslash-t). Not a
+    full interpreter -- just enough to read the argv values a fire test actually produced."""
+    if len(tok) < 2:
+        return tok
+    q = tok[0]
+    body = tok[1:-1]
+    body = body.replace('\\\\', '\x00')
+    body = body.replace('\\' + q, q)
+    body = body.replace('\\n', '\n').replace('\\t', '\t')
+    body = body.replace('\x00', '\\')
+    return body
+
+
+# FIX 6 (2026-08-23): A FULLY OPAQUE INVOCATION -- the binary named as a literal but its argument
+# list built from a call this parser cannot evaluate. That is not a comma-quoted run at all, so
+# FIX 5 above has nothing to extract, and there is no argv text anywhere to inspect. We cannot know
+# the service or the verb. We CAN recognise the shape: a known process-spawn function whose first
+# argument is the literal string naming the binary, followed by something that is not itself a
+# literal. That shape is a real invocation with a wholly unreadable payload -- the definition of
+# UNKNOWN -- so it is turned into a segment carrying a nonliteral marker token, which the existing
+# has_nonliteral()/op_chain() machinery already fails closed on.
+_OPAQUE_CALL = re.compile(
+    r"\b(?:os\.execvp?e?|os\.spawn\w*|subprocess\.(?:run|call|check_call|check_output|Popen)"
+    r"|Popen|execvp?e?)\s*\(\s*(?P<bin>'[^']*'|\"[^\"]*\")\s*,"
+)
+# Deliberately CONTAINS '$' so the existing _NONLITERAL / _NONLIT scans (which look for exactly
+# that) treat it as an unresolved token with zero extra special-casing anywhere else in this file.
+_OPAQUE_TOKEN = '$__OPAQUE_GWS_CALL__$'
+
+
 
 def _debinary(tok):
     """Strip the disguises a shell ignores: quotes and a leading backslash.
@@ -120,6 +177,20 @@ def gws_segments(cmd):
         # ⭐ FIX 2: a gws inside $( ) or backticks is still a real invocation.
         for m in _NESTED.finditer(s):
             out.append(m.group(1).split())
+    # ⭐ FIX 5: an argv list built by another interpreter -- see the comment above _ARGV_RUN.
+    # Scanned over the WHOLE command, not per-statement, because the run of quoted literals is not
+    # bounded by a shell statement separator at all -- it lives inside one opaque -c/eval argument
+    # or one python -c string, which the statement split above treats as a single unit.
+    for m in _ARGV_RUN.finditer(cmd):
+        items = [_decode_literal(t) for t in _QUOTED_ITEM.findall(m.group(0))]
+        if items and _BINARY.match(_debinary(items[0])):
+            out.append(items)
+    # ⭐ FIX 6: a fully opaque invocation -- see the comment above _OPAQUE_CALL. The segment
+    # carries only the binary name and the nonliteral sentinel: enough for has_nonliteral() to see
+    # it and nothing else, because nothing else is known.
+    for m in _OPAQUE_CALL.finditer(cmd):
+        if _BINARY.match(_debinary(_decode_literal(m.group('bin')))):
+            out.append(['gws', _OPAQUE_TOKEN])
     return out
 
 
@@ -173,7 +244,9 @@ def verdict(cmd, service, destructive, safe, require_any=None, write_verbs=None)
     write_verbs = write_verbs or []
     for toks in gws_segments(cmd):
         seg = ' '.join(toks)
-        if not re.search(r'\b%s\b' % re.escape(service), seg, re.I):
+        # An opaque-invocation segment (FIX 6) names no service at all -- we could not read
+        # its arguments, so it is judged against EVERY service that asks, not just one.
+        if _OPAQUE_TOKEN not in seg and not re.search(r'\b%s\b' % re.escape(service), seg, re.I):
             continue
         chain = op_chain(toks, service)
         if not chain:
@@ -216,7 +289,9 @@ def verdict_reason(cmd, service, destructive, safe, require_any=None, write_verb
     write_verbs = write_verbs or []
     for toks in gws_segments(cmd):
         seg = ' '.join(toks)
-        if not re.search(r'\b%s\b' % re.escape(service), seg, re.I):
+        # An opaque-invocation segment (FIX 6) names no service at all -- we could not read
+        # its arguments, so it is judged against EVERY service that asks, not just one.
+        if _OPAQUE_TOKEN not in seg and not re.search(r'\b%s\b' % re.escape(service), seg, re.I):
             continue
         chain = op_chain(toks, service)
         if not chain:
