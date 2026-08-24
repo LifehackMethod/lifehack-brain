@@ -520,6 +520,24 @@ def lint_hooks(root, findings, counts, scope=None):
                 "the harness will try to run it every session and fail quietly",
                 "add the file, or remove the registration"))
 
+    # The public plugin ships its OWN registration manifest, hooks/hooks.json, which wires the
+    # same scripts for anyone who installs via `claude plugin install` rather than cloning the
+    # repo as a project (settings.json only ever runs for the clone path). A script registered
+    # there and nowhere in settings.json is not unregistered -- it fires for plugin installs. Fold
+    # its paths into the same `registered` set so the disk-vs-registration comparison below sees
+    # both install paths, not just one of them.
+    hooks_manifest_rel = "hooks/hooks.json"
+    hooks_manifest = os.path.join(root, hooks_manifest_rel)
+    if os.path.isfile(hooks_manifest):
+        try:
+            with open(hooks_manifest, encoding="utf-8") as fh:
+                manifest_raw = fh.read()
+            json.loads(manifest_raw)                # parse for validity; scan the text for paths
+        except Exception as e:
+            print_cannot_read("%s is not readable JSON (%s)" % (hooks_manifest_rel, e))
+            return CANNOT_READ
+        registered |= set(re.findall(r"\$\{CLAUDE_PLUGIN_ROOT\}/([^\\\"\s]+)", manifest_raw))
+
     hooks_dir = os.path.join(root, "system", "hooks")
     if not os.path.isdir(hooks_dir):
         return 0
