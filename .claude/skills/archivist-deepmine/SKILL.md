@@ -124,6 +124,6 @@ review command that does not exist. Write the queue, say where it is, and stop. 
 It reads your notes and writes a proposal queue into them
 (`<notes>/records/proposals/`), which the next `/save` picks up.
 
-⛔ **Its scheduled runner does NOT ship** — it needed a scheduler, a cloud folder id and a
-notification topic that do not exist here. The skill IS the interactive path; nothing is
-missing from it.
+Its scheduled runner **does ship** — see "When it runs" above: `system/tools/archivist-deepmine-run.sh`
+is a real, executable file with an enabled row in `system/pulse-config.md` (4-day tick). The skill is
+also fully usable by hand (`/archivist-deepmine desk=<name>`) — the scheduler is additive, not required.

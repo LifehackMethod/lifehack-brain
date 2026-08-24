@@ -124,13 +124,15 @@ rather than resting on the token.
 
 ## The steps
 
-Load one phase file at a time and run it top to bottom.
+⛔ **These files ARE the skill. This page is a router, not a summary — it deliberately does not say what
+is in them, because a session that reads a summary runs the summary.**
 
-| phase | steps | what it does |
-|---|---|---|
-| `phases/1-orient.md` | 0 · 0b · 0.8 · 1 · 1.6 · 1.6b · 1.8 | resolve and arm, open the ledger, **print the rungs by code**, load the brief in order, arm the plan, and **compact the pad before anything is compared** |
-| `phases/2-reconcile.md` | 2 · 2.5 · 3 | reconcile the three horizons, mine the session for what contradicts nothing, and output the orientation block |
-| `phases/3-propose.md` | 3.5 · 3.55 · 3.57 · 3.58 · 3.6 · 4 | draft every change, **ask once**, prove the handoff with a blind reader, harvest, and hand the deep pass to `/save` |
+1. `phases/1-orient.md`
+2. `phases/2-reconcile.md`
+3. `phases/3-propose.md`
+
+**Open each one and run it top to bottom, in order.** Do not proceed to the next until the current one
+is finished. If you have not opened a phase file, you have not run that phase.
 
 ## The rules that hold across all of them
 
@@ -151,61 +153,13 @@ Load one phase file at a time and run it top to bottom.
 
 ## The closed verdict sets
 
-Each comes from a tool's exit code. **Quote the token in the receipt** — its absence is then provable.
-
-| tool | verdicts |
-|---|---|
-| `checkin_open.py print` | `RUNGS <n>` 0 · `BAD-RANGE <why>` 2 · `CANNOT-READ` 4 |
-| `pad_archive.py state` | `PAD-EMPTY` 0 · `PAD-DIRTY <chars>` 2 · `PAD-ARCHIVED-UNCLEARED` 3 · `CANNOT-READ` 4 |
-| `gauge_check.py check` | `ONE-GAUGE` 0 · `COMPETING-GAUGES` / `OVERSIZED` / `STALE` 2 · `NO-GAUGE` 3 · `CANNOT-READ` 4 |
-| `board_check.py` | `BOARD-CLEAN` 0 · `STALE-OPEN <ids>` / `RUNG-ORPHANED <id>` 2 · `NO-BOARD` 3 · `CANNOT-READ` 4 |
-| the blind reader | `CAN PROCEED` · `BLOCKED — <n>` · `CONTRADICTION — <n>` · `NOT RUN` |
-| `save_step_ledger.py report --ns checkin` | rc 0 clean · rc 1 a mandatory step **MISSED** · rc 2 applicability **UNKNOWN** |
+Every verdict comes from a tool's exit code, never from your reading — **quote the token in the receipt.** Each phase names the tools it runs. Full table: `references/verdict-sets.md`.
 
 ⛔ **rc 2 is not a softer rc 0.** *"I could not tell"* must never be machine-readable as *"fine"*.
 
-## Skip paths — enumerated, and this is the whole list
+## Skip paths
 
-⚖ **The operator, verbatim: *"it is non-optional — to skip anything you would need human-in-the-loop
-approval."*** This skill went from "do this" to "do this UNLESS" as four legitimate mechanisms landed
-one at a time — the `new-session` token, `--ns checkin`, the reader's move to Step 3.58, and Step 1.8's
-two gates — and *unless* is the escape hatch a session can hide a silent skip inside. **The fix is not a
-hook** (ruled out, `authority: user`) — it is making every escape hatch small, counted, and loud.
-
-**Exactly three steps can be skipped. `MANDATORY_CHECKIN` in `save_step_ledger.py` tracks only these
-three, on purpose — its own comment rules out growing that list.** A step that skips without stamping
-`NOT_OWED` renders `✗ MISSED` on the coverage table and exits non-zero; a step that skips *with* the
-stamp renders `⊘ ... (NOT_OWED — not required this run)`. **The two can never look the same** — proven
-mechanically: `save_step_ledger.py --selftest` cases [12]/[13] show an unstamped `reader` rendering
-`missed=['reader']`, and case [14] shows an all-`NOT_OWED` run rendering clean.
-
-| step | lives at | skips when | what it announces |
-|---|---|---|---|
-| `compact` | Step 1.8, GATE 1 | `pad_archive.py state` returns `PAD-EMPTY` (nothing to compact), `PAD-ARCHIVED-UNCLEARED` (clear without re-archiving), or `CANNOT-READ` (unevaluated) | one line naming which gate failed, then `stamp compact --ns checkin --verdict NOT_OWED` |
-| `compact` | Step 1.8, GATE 2 | the pad-hash check returns `GATE2-NO-WRITE` (this window never touched the pad) or `GATE2-NO-BASELINE` (fingerprint missing — self-heals next arm) | same stamp, same one-line reason |
-| `graduate` | Step 3.55, Verb B | PICKUP mode only (`new-session` token present) — a blind window cannot judge settled vs. dead vs. open | `stamp graduate --ns checkin --verdict NOT_OWED` |
-| `reader` | Step 3.58 | (a) no edits landed this run, or (b) PICKUP mode (`new-session` token) | states which of (a)/(b) applied, then `stamp reader --ns checkin --verdict NOT_OWED` |
-
-**Everything else that reads like a skip is not one — checked, and none belong in the table above:**
-
-- **Step 1.6b (no linked plan)** *used to* skip wholesale; that was the hole. It now **resolves** — lists
-  candidates, checks for forks, offers to link one — so there is no silent no-op left here to announce.
-- **Step 1's story-log depth** narrows mid-session (open items + last few) rather than skipping the log.
-  The orientation receipt names precisely what was read — *"open forks + last 3"* — never a bare
-  `SKIPPED`, so a narrowed read can never be mistaken for an unread log.
-- **Step 3.5 (plan amendments)** and **Step 3.55 (content deltas)** always run their drafting logic; they
-  may legitimately produce nothing to propose, which the panel/receipt states in one line (*"plan
-  current, no changes"* / *"current state and success criteria current, no proposed deltas"*). There is
-  no on/off switch here for a step to silently not-run — only an always-run pass that can find nothing.
-- **Step 2 / 2.5 / 3** (reconcile, mine the session, orient) and **Step 3.57** (the one approval round)
-  run unconditionally, every time, in full.
-- **Arming's exit-3 refusal (a project switch)** is not a mid-run skip — it stops the run before step 0
-  finishes, reports itself, and is the correct behavior, not an escape hatch.
-
-**Why only three rows and not more.** `save_step_ledger.py` states the rule directly: *"DO NOT GROW IT
-into a mirror of the /save spine. Every row here must be a step whose absence is a real failure; a long
-table trains the reader to skim it, which is the disease, not the cure."* Three is the count this file
-states and justifies — one per genuinely load-bearing gate, nothing decorative.
+⚖ **The operator, verbatim: *"it is non-optional — to skip anything you would need human-in-the-loop approval."*** **Exactly three steps may skip**, each declaring its own condition where it lives, each stamping `NOT_OWED` so a skip and a miss can never render the same. Full list and the reasoning: `references/skip-paths.md`.
 
 ## What this skill needs outside its own folder
 

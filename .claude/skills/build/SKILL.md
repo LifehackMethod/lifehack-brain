@@ -99,6 +99,24 @@ the "silence reads as completion" failure the honest close exists to prevent.
 - **A ✗ task stays in the queue, unchecked.** ⛔ **Never delete a task to make the board look finished.**
 - Fewer than about three tasks → skip it; dispatch costs more than it returns.
 
+⛔ **AND IF THERE IS NO TASK-QUEUE CAPABILITY IN THIS HARNESS — SAY SO IN ONE LINE, THEN KEEP BUILDING.**
+**Write the queue into the plan file or the project's own queue file instead, and name which you used.**
+
+*Why this is here, because a rule without its reason calcifies into the thing it was meant to prevent
+(`skill-building-sop.md` §5 [B13]):* **this step names a capability and never names what provides it.**
+A session cannot look it up, cannot `test -x` it, and cannot tell "there was nothing to queue" from
+"I had no way to queue anything" — **and neither can you, reading the close.** ⭐ **Measured 2026-08-23:
+two separate sessions hit this on the same day, each burned real time on it, and each reached a
+DIFFERENT wrong diagnosis** — one concluded the harness has no task tools, the other that they exist but
+are off by default for this model. Neither could check, because there was nothing to check.
+
+⚖ **This is the no-outcome member the code/LLM seam requires** (`build-rules-index.md`): the set of
+outcomes a session may hand back **must contain one meaning NO OUTCOME WAS REACHED.** Without it, a
+session that cannot comply has no legal way to say so, so it goes quiet — and **silence here reads
+exactly like a completed step.** That is this skill's own "silence is not completion" failure, occurring
+inside the skill that preaches it.
+⛔ **Going quiet is the one answer that is always wrong. Not queueing is survivable; not SAYING so is not.**
+
 > **Why this is written here rather than left to the person.** The behaviour existed elsewhere as an
 > **on-command** trigger, so it fired only when somebody remembered to ask — **and they kept having to
 > ask, which is the tell that a rule is at the wrong rung.** Inside a build it is now unconditional.
