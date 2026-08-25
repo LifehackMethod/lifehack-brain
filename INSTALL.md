@@ -1558,6 +1558,48 @@ sh ~/.config/lifehack/install-note.sh step "STEP 6"
 > clones into the folder it just emptied, and puts every single thing back if the clone fails. **It
 > never deletes anything.** Prefer it to a delete whenever the check above did not come back clean.
 
+## STEP 6A — Check for gitleaks, and install it if it's missing
+
+The safety catch you just turned on also scans every commit for secrets, using a tool called
+gitleaks. ⛔ **That scan is FAIL-CLOSED: if gitleaks is not installed, `git commit` refuses to run at
+all** — not a warning, a hard stop, on purpose (`system/githooks/pre-commit`). Get it installed now,
+before the first real commit hits that wall.
+
+```bash
+gitleaks version
+```
+
+**If that printed a version number:** tell them gitleaks is already installed and there's nothing to
+do. Move on.
+
+**If it did not — Mac (with Homebrew):**
+```bash
+brew install gitleaks
+```
+If `brew` itself is missing, send them to <https://brew.sh> first, then run the line above.
+
+**If it did not — Linux:**
+There is no single command that works everywhere, so pick whichever fits: a distro package
+(`apt install gitleaks`, `dnf install gitleaks`, `pacman -S gitleaks` — whichever exists on their
+distro), or `go install github.com/gitleaks/gitleaks/v8@latest` if they have Go, or download a
+prebuilt binary from <https://github.com/gitleaks/gitleaks/releases> and put it somewhere on PATH
+(`/usr/local/bin` is the common choice).
+
+**If it did not — Windows:**
+```powershell
+winget install --id Gitleaks.Gitleaks -e --source winget
+```
+If `winget` isn't available, send them to <https://github.com/gitleaks/gitleaks/releases>.
+
+⛔ **Do not continue until `gitleaks version` prints a version.** Every commit after STEP 6 depends on
+it being reachable.
+
+```bash
+sh ~/.config/lifehack/install-note.sh step "STEP 6A"
+```
+
+---
+
 ## STEP 7 — Connect your AI Brain. ⛔ ONE QUESTION, AND ONLY THIS ONE: WHICH DRIVE FOLDER.
 
 > ⛔⛔ **THIS STEP USED TO ASK *"Where should everything you write end up?"* AS OPEN TEXT, AND IT WAS THE

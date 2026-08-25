@@ -74,12 +74,26 @@ fi
 # T10.D4) rather than by weakening the guard.
 #
 # ⛔ FAIL CLOSED, ON PURPOSE. A scanner that passes a commit because it could not check is theatre.
-# If gitleaks is not on PATH (or at the Homebrew default), THE COMMIT IS REFUSED — not silently
-# allowed through. Install: brew install gitleaks (see INSTALL.md). Genuine false positive on an
-# installed run: git commit --no-verify.
-GITLEAKS="$(command -v gitleaks || echo /opt/homebrew/bin/gitleaks)"
+# If gitleaks is not on PATH (or at any of the common install locations below), THE COMMIT IS
+# REFUSED — not silently allowed through. Install: brew install gitleaks (see INSTALL.md). Genuine
+# false positive on an installed run: git commit --no-verify.
+#
+# PORTABLE LOOKUP (fixed 2026-08-25, closes the Apple-Silicon-only gap recorded in PR #122): PATH
+# first, then every common per-platform default -- Apple Silicon Homebrew (/opt/homebrew/bin), Intel
+# Mac Homebrew / most Linux package managers (/usr/local/bin), and Linux distro packages (/usr/bin).
+# The very first candidate that is an executable file wins; none of this changes the fail-closed
+# branch below -- if nothing on this list is executable, GITLEAKS stays unset and the commit refuses.
+GITLEAKS="$(command -v gitleaks 2>/dev/null)"
+if [ -z "$GITLEAKS" ]; then
+	for candidate in /opt/homebrew/bin/gitleaks /usr/local/bin/gitleaks /usr/bin/gitleaks; do
+		if [ -x "$candidate" ]; then
+			GITLEAKS="$candidate"
+			break
+		fi
+	done
+fi
 
-if [ ! -x "$GITLEAKS" ]; then
+if [ -z "$GITLEAKS" ] || [ ! -x "$GITLEAKS" ]; then
 	echo ""
 	echo "  ⛔ COMMIT REFUSED — gitleaks (secret scanner) not found. This hook FAILS CLOSED: it will"
 	echo "  not let a commit through with secret-scanning silently skipped."
