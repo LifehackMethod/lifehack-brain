@@ -50,7 +50,11 @@ RUN_DIR = Path.home() / ".claude" / "run" / "save-ledger"
 # The mandatory spine of a /save run. `applies` marks steps that are conditional — they are reported
 # as N/A rather than MISSED when their condition did not arise, so the table never cries wolf.
 MANDATORY = [
-    ("0.4", "pm_flag_recover called", "always"),
+    # ⚖ CONDITIONAL, not "always" (GH #15). standard-steps.md Step 0.4 header:
+    # "*(only when step 0 said `none`)*" — when Step 0 finds the flag already armed (the
+    # common path), 0.4 correctly never runs. "always" rendered that correct skip as ✗ MISSED
+    # on every such run.
+    ("0.4", "pm_flag_recover called", "only-if-flag-was-not-armed"),
     ("0.5", "slug resolved (no silent guess)", "always"),
     ("SC-1", "items extracted with reasoning", "only-if-session-close"),
     ("tier", "each item tiered by durability", "only-if-session-close"),
@@ -601,6 +605,12 @@ def cmd_report(a) -> int:
     # what changed is that SILENCE now yields UNKNOWN (a loud `?` that withholds the all-clear)
     # instead of N/A. Absence of a claim is no longer evidence of absence.
     cond = {
+        # ⚖ NOT_APPLICABLE, not UNKNOWN, when armed (GH #15) — unlike session-close/canon/
+        # findings (subjective classifications of the whole run), "did step 0 return a path or
+        # `none`" is a mechanical fact this SAME save already observed verbatim near the top of
+        # its own transcript — knowable, not unknown. An explicit --flag-was-armed is taken as
+        # PROVEN (→ –), while silence still falls to UNKNOWN like every other conditional here.
+        "0.4": NOT_APPLICABLE if a.flag_was_armed else UNKNOWN,
         "SC-1": APPLIES if a.session_close else UNKNOWN,
         "tier": APPLIES if a.session_close else UNKNOWN,
         "canon-gate": APPLIES if a.canon else UNKNOWN,
@@ -846,6 +856,10 @@ def main() -> int:
     r.add_argument("--canon", action="store_true", help="a canon candidate was in the batch")
     r.add_argument("--findings", action="store_true", help="the session had real findings")
     r.add_argument("--session-close", action="store_true", help="session-close mode")
+    r.add_argument("--flag-was-armed", action="store_true",
+                   help="Step 0 (`pm_flag.sh status`) returned a path, not `none` — so Step 0.4 "
+                        "correctly never ran this save. Omit when Step 0 said `none` (0.4 was owed) "
+                        "or when unsure; omitting reports 0.4 as ? UNKNOWN, never a false n/a.")
     r.add_argument("--brief", default=None,
                    help="path to the active project brief. REPLACES the removed --pad-had-content "
                         "flag: `compact` applicability is now READ off the pad via pad_archive.py "
