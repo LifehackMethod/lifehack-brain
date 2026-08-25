@@ -277,6 +277,17 @@ planning-weekly-prime | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/pla
 # matches the runner's own STALE_AFTER_HOURS=192 (168h weekly + 24h slack) header.
 guard-fire-test    | yes | 604800 | bash "$LIFEHACK_CODE_ROOT/system/tools/guard-fire-test-run.sh"
 #
+# handbook-audit: QUARTERLY drift audit of the Owner's Handbook (harness-handbook project)
+# against the live system — pulse schedule (this file), guard registry (.claude/settings.json),
+# desks+projects tree, skill roster. Added 2026-08-25. Ticks DAILY;
+# the runner self-gates period-idempotently once per quarter (planning-diary-run.sh's stamp-file
+# gate — sleep-proof, catches up on wake, never clock-pinned). Invokes a headless `claude -p`
+# (sonnet) through claude-auth.lib.sh per this file's own HARD RULE above — stands down rc=75
+# until `claude setup-token` has been run once on this machine. PROPOSE-ONLY: files a drift
+# report (explicit "no drift" when clean) into the project's records/ + a handbook-audit.json
+# tile + ONE normal buzz; it NEVER edits chapters — a human reviews the report and rules.
+handbook-audit   | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/handbook-audit-run.sh"
+#
 # NOT ADDED: shared/tools/email_summary_run.sh (the older v1-shaped watchdog wrapper). Not parked,
 # not given a row at all — two independent reasons, both verified this session. (1) It passes its
 # args straight through to email_summary_sync.py with NO action flag added; that janitor is
