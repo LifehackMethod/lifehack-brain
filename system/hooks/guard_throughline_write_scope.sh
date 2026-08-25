@@ -100,6 +100,15 @@ REPO="${_HOOKDIR_TL%/system/hooks}"
 [ "$REPO" = "$_HOOKDIR_TL" ] && REPO="$(cd "$_HOOKDIR_TL" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null)"
 : "${REPO:=/dev/null/no-repo-resolved}"
 
+# See system/hooks/lib/winpath_fold.sh -- FILE_PATH (below) and every Bash-door candidate arrive
+# backslash-native on Windows (tool_input.file_path), and canon()'s dirname/basename/cd all need
+# forward slashes just to split the string at all, let alone resolve it. Sourced once, here, ahead
+# of every fold this file does. This run is ARMED once we reach here in spirit (the FLAG check is
+# further down) -- but a missing lib means every write's destination becomes unverifiable, so this
+# fails CLOSED like the rest of the armed path, not silently open.
+. "$_HOOKDIR_TL/lib/winpath_fold.sh" 2>/dev/null \
+  || deny "the path-form normaliser (lib/winpath_fold.sh) could not be loaded, so a Windows-native write target cannot be safely checked against this run's one allowed destination"
+
 # ── THE WORKTREE ROUTE (ported from system/hooks/ingest_gate_enforce.sh, GitHub #95). `git
 # worktree add` materialises only TRACKED files, and .brain-root is deliberately gitignored -- so a
 # LINKED WORKTREE never has a pointer of its own and git will never give it one. Without this, a
@@ -152,7 +161,10 @@ notes_root() {
   while [ "${_nr%/}" != "$_nr" ]; do _nr="${_nr%/}"; done
   case "$_nr" in
     ""|"/"|"$HOME") return 1 ;;
-    /*) [ -d "$_nr" ] || return 1 ;;
+    # WINDOWS PATH FOLD: `/*` alone is POSIX-only -- a Windows absolute path (`D:\Notes\Brain` or
+    # `D:/Notes/Brain`) does not start with `/`, so it fell through this case with no match and no
+    # validation at all (a bare `case` has no default arm). `[A-Za-z]:*` catches both spellings.
+    /*|[A-Za-z]:*) [ -d "$_nr" ] || return 1 ;;
     *) return 1 ;;
   esac
   # PHYSICAL path — symlinks resolved. See the comparison note below.

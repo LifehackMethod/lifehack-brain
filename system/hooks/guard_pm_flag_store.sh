@@ -66,6 +66,15 @@ _HOOKDIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
 _REPO="${_HOOKDIR%/system/hooks}"
 [ "$_REPO" = "$_HOOKDIR" ] && _REPO="$(cd "$_HOOKDIR" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null)"
 
+# See system/hooks/lib/winpath_fold.sh: FILEPATH below comes straight from tool_input.file_path,
+# which is backslash-native on Windows, while the *"/.claude/run/pm/"* / *"/.claude/run/plan/"*
+# case patterns further down are forward-slash literals -- so without folding a comparison copy
+# first, neither arm would ever fire there and this guard would enforce nothing on Windows.
+. "$_HOOKDIR/lib/winpath_fold.sh" 2>/dev/null || {
+  printf '%s\n' '{"decision":"block","reason":"BLOCKED: guard_pm_flag_store could not load lib/winpath_fold.sh, so a Windows-native path cannot be safely compared against the guarded store. REDIRECT: restore system/hooks/lib/winpath_fold.sh from git."}' >&2
+  exit 2
+}
+
 INPUT=$(cat)
 PARSED=$(printf '%s' "$INPUT" | python3 -c "
 import sys, json
@@ -95,7 +104,10 @@ DENY_PLAN="{\"decision\":\"block\",\"reason\":\"BLOCKED: direct write to the pla
 # --- Write/Edit: the tool IS a write. Any target inside either store is denied outright.
 case "$TOOL" in
   Write|Edit|NotebookEdit)
-    case "$FILEPATH" in
+    # Fold ONLY the comparison copy -- FILEPATH is never displayed by this guard (the DENY/
+    # DENY_PLAN messages are static), so there is no name here to preserve the original case of.
+    FILEPATH_C="$(_winfold "$FILEPATH")"
+    case "$FILEPATH_C" in
       *"/.claude/run/pm/"*)   printf '%s\n' "$DENY"      >&2; exit 2 ;;
       *"/.claude/run/plan/"*) printf '%s\n' "$DENY_PLAN" >&2; exit 2 ;;
     esac

@@ -88,12 +88,22 @@ if [ "$(printf '%s' "$_CANON_TOOL" | sed -n '1p')" = "Bash" ]; then
     _CW_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
     # shellcheck source=lib/bash_write_door.sh
     if . "$_CW_DIR/lib/bash_write_door.sh" 2>/dev/null; then
+      # WINDOWS FOLD: _cc is whatever bwd_write_targets resolved, which on Windows can be
+      # backslash-native (D:\Notes\Brain\canon.md) -- the glob below is forward-slash only, so
+      # it would silently never match there without this. Fold a COMPARISON copy only; ${_cc} in
+      # the deny message stays the original spelling so the path shown to the person is not
+      # lowercased. Fail closed (not silently unguarded) if the helper cannot be loaded.
+      . "$_CW_DIR/lib/winpath_fold.sh" 2>/dev/null || {
+        printf '%s\n' '{"decision":"block","reason":"BLOCKED: guard_canon_write could not load lib/winpath_fold.sh, the path-form normaliser this Bash-side canon check depends on -- failing closed rather than guessing whether this command targets canon. REDIRECT: confirm system/hooks/lib/winpath_fold.sh exists and is readable, then retry."}' >&2
+        exit 2
+      }
       while IFS= read -r _cc; do
         [ -n "$_cc" ] || continue
         if [ "$_cc" = "__BWD_PARSE_ERROR__" ]; then
           printf '%s\n' '{"decision":"block","reason":"BLOCKED: guard_canon_write could not analyse this Bash command, so it is failing closed. An unreadable command and a harmless one must never look the same. REDIRECT: use the Write or Edit tool for canon — the content rails only work there."}' >&2; exit 2
         fi
-        case "$_cc" in
+        _cc_cmp="$(_winfold "$_cc")"
+        case "$_cc_cmp" in
           */canon/*|*/canon.md|canon.md)
             printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: this Bash command writes to a canon file (${_cc}). WHY: canon carries two content rails — a size limit and an expiry-marker check — and both need to READ the content being written. Through the Write tool the content is a field this guard can measure; inside a shell command it is a heredoc or a pipe, and measuring it there would be a guess. A size rail that guesses is worse than none: it either blocks correct work or waves through the thing it exists to stop. So this door is closed rather than guessed at. REDIRECT: make this edit with the Write or Edit tool and the rails will run properly. If the content is generated, write it to a scratch file first, read it, then Write it. RULE: system/knowledge-altitude.md, and this hook's header.\"}" >&2
             exit 2 ;;
@@ -116,6 +126,21 @@ ti = d.get("tool_input", {}) or {}
 path = ti.get("file_path") or ti.get("path") or ""
 content = ti.get("content", ti.get("new_string", "")) or ""
 
+# WINDOWS FOLD: path arrives backslash-native on Windows, so a bare "/canon/" (or a basename split
+# on "/") never matches it there and this guard would silently enforce nothing. Load the shared
+# fold helper (GUARD_LIB, set by the bash below) and fold a COMPARISON copy only -- `path` itself
+# stays the original spelling because it is echoed back verbatim in the ALLOW_CANON message below.
+# Fail closed if the helper cannot be loaded: canon classification must not silently degrade to
+# "not canon" just because a library file went missing.
+_lib = os.environ.get("GUARD_LIB", "")
+if not _lib or not os.path.isfile(_lib):
+    print("BLOCK_NOLIB|" + _lib); sys.exit()
+import importlib.util
+_spec = importlib.util.spec_from_file_location("winpath_fold", _lib)
+_wf = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_wf)
+path_cmp = _wf.winfold(path)
+
 # IN SCOPE: anything inside a canon/ directory, and the top-level canon.md.
 # THE SECOND HALF IS NOT IN THE DONOR. It was added here because this repository has a canon file
 # that the donor's path test could not see: `<notes>/canon.md`, the root canon — the one file whose
@@ -123,8 +148,11 @@ content = ti.get("content", ti.get("new_string", "")) or ""
 # has no folder of its own (shared/registry.py, Project.canon). Leaving the single most
 # always-loaded file out of a guard whose entire argument is "always-loaded costs are paid forever"
 # would have shipped the guard with its main target missing.
-in_canon_dir = "/canon/" in path
-is_root_canon = os.path.basename(path) == "canon.md"
+in_canon_dir = "/canon/" in path_cmp
+# basename via the folded copy, not os.path.basename(path): on Windows this python3 may be the
+# MSYS build, whose posixpath.basename does not recognise "\\" at all and would return the whole
+# path unchanged, so is_root_canon would never fire on a backslash-native path either.
+is_root_canon = path_cmp.rsplit("/", 1)[-1] == "canon.md"
 if not (in_canon_dir or is_root_canon):
     print("ALLOW_NONE"); sys.exit()
 
@@ -142,12 +170,19 @@ print("ALLOW_CANON|" + path + "|" + str(len(content)))
 PY
 )
 
-RESULT=$(printf '%s' "$INPUT" | python3 -c "$PYCHECK")
+# GUARD_LIB: same convention as guard_gmail_send.sh's use of lib/gws_guard.py -- resolved once
+# here, by $0's own directory, and handed into the python block above via the environment.
+_CANON_LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib/winpath_fold.py"
+RESULT=$(printf '%s' "$INPUT" | GUARD_LIB="$_CANON_LIB" python3 -c "$PYCHECK")
 
 R="WHAT CANON IS: the few things that stay true, small enough that every session can afford to carry them. Two tests, and a line has to pass both. (1) Will this still be true in six months, with no expiry date attached? If it has a date on it, it is a record, not canon. (2) Can a completely fresh session read this line ALONE, with no other context, and act on it correctly? If it needs the conversation around it, it is not finished. Everything else goes in records/, dated — nothing is lost, it is just pulled when it is relevant instead of carried always. SOURCE: system/knowledge-altitude.md + docs/data-layout.md."
 
 case "$RESULT" in
   ALLOW_NONE) exit 0 ;;
+  BLOCK_NOLIB*)
+    _LIBPATH="${RESULT#BLOCK_NOLIB|}"
+    printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: guard_canon_write could not load lib/winpath_fold.py (looked for it at '${_LIBPATH}'), the path-form normaliser this guard's canon classification depends on -- failing closed rather than guessing whether this write targets canon. REDIRECT: confirm system/hooks/lib/winpath_fold.py exists and is readable, then retry.\"}" >&2
+    exit 2 ;;
   ALLOW_CANON*)
     # ── T9.5d — THE ALLOW-PATH SPEED BUMP (2026-08-15). ────────────────────────────────────
     # A write that PASSED both content rails still deserves a loud, non-blocking notice, at

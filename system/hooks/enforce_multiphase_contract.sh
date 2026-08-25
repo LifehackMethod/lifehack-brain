@@ -25,7 +25,9 @@
 
 INPUT=$(cat)
 export INPUT
-python3 <<'PY'
+# GUARD_LIB: same convention as guard_gmail_send.sh's use of lib/gws_guard.py -- resolved once
+# here, by $0's own directory, and handed to the python block below via the environment.
+GUARD_LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib/winpath_fold.py" python3 <<'PY'
 import os, json, sys, re
 
 raw = os.environ.get("INPUT", "")
@@ -37,9 +39,33 @@ try:
 except Exception:
     sys.exit(0)
 
-if "/skills/" not in path or "/prompts/" not in path or not path.endswith(".md"):
+# WINDOWS FOLD: path arrives backslash-native on Windows, so every "/skills/" / "/prompts/"
+# substring test below would silently never match there and a phase driver written on Windows
+# would never be checked for its Output contract. Fold a COMPARISON copy; `path` stays original
+# for the basename check. Fail closed if the helper cannot be loaded.
+def _deny_nolib(lib):
+    sys.stderr.write("BLOCKED: enforce_multiphase_contract could not load lib/winpath_fold.py "
+                      "(looked for it at '%s'), the path-form normaliser this guard's "
+                      "skills/prompts-tree classification depends on -- failing closed rather "
+                      "than guessing whether this write is a phase driver. REDIRECT: confirm "
+                      "system/hooks/lib/winpath_fold.py exists and is readable, then retry.\n" % lib)
+    sys.exit(2)
+
+_lib = os.environ.get("GUARD_LIB", "")
+if not _lib or not os.path.isfile(_lib):
+    _deny_nolib(_lib)
+import importlib.util
+_spec = importlib.util.spec_from_file_location("winpath_fold", _lib)
+_wf = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_wf)
+path_cmp = _wf.winfold(path)
+
+if "/skills/" not in path_cmp or "/prompts/" not in path_cmp or not path_cmp.endswith(".md"):
     sys.exit(0)
-if "/skills/_" in path or "/templates/" in path or "/_archive" in path or os.path.basename(path).startswith("_"):
+# basename via a separator-robust split of the ORIGINAL path -- os.path.basename would miss a
+# backslash-native path under an MSYS python3 (posixpath does not recognise "\\").
+_base = re.split(r"[\\/]+", path)[-1] if path else ""
+if "/skills/_" in path_cmp or "/templates/" in path_cmp or "/_archive" in path_cmp or _base.startswith("_"):
     sys.exit(0)
 
 if content is None:
