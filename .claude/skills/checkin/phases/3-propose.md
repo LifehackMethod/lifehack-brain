@@ -74,9 +74,10 @@ needing different fixes — but they converge on **one** panel item:
 - ⛔ **A rung with no honest answer says so** — *"no larger frame"*, *"no plan armed"*. Never invent one
   to fill the space. **A fabricated rung reads exactly like a real one**, and that is what trains a
   reader to skim the whole block.
-- ⛔ **Position, not restated intent.** The 10,000 states how far the project has come **against** the
-  desired outcome. A line that re-quotes the frame is wrong: it duplicates it, rots independently of
-  it, and produces a block readers skim.
+- ⛔ **▲10,000 is a restatement, not a position.** It is a faithful copy of §1's desired outcome,
+  human-authored and human-only — a session PRINTS it or FLAGS it as looking stale, but never composes,
+  rewrites, or appends position language to it. Position, status and measurement belong at ▲5,000 and
+  ▲ground, never at ▲10,000.
 - ⛔ **Write for a blind reader** — every proper noun gets a clause, every sentence a subject and a
   verb, every ambiguous word disambiguated in place.
 - ⭐ **The ceiling, stated plainly.** This makes the block far more likely to exist, stay current and
