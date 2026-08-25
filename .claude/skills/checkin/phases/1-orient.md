@@ -145,14 +145,18 @@ Then pull, in order — **whatever you read first becomes the lens everything el
 
 ### The five checks on the rung block
 
-- **CHECK 1 — DRIFT.** ⛔ **Never inherit the written rungs as true.** Independently derive what the
-  three altitudes actually are **from what this session did** — the action taken, the seam it sits
-  inside, the position against the desired outcome — **then** compare that against what the block says.
-  Deriving from the written block just launders it back to you unchanged; that is not a check.
-  **Worked case:** a brief's 5,000 rung named a whole skill as the thing being worked on. But the
-  session had spent its day making the *measuring instrument* trustworthy and had only mapped that
-  skill as a by-product. **The 5,000 was the instrument, not the patient, and the rung said otherwise.**
-  A rung can look entirely reasonable and still be drifted.
+- **CHECK 1 — DRIFT.** ⛔ **Never inherit the written rungs as true — but this check does not apply
+  the same way to all three.** For ▲5,000 and ▲ground: independently derive what they actually are
+  **from what this session did** — the action taken, the seam it sits inside — **then** compare that
+  against what the block says. Deriving from the written block just launders it back to you unchanged;
+  that is not a check. **Worked case:** a brief's 5,000 rung named a whole skill as the thing being
+  worked on. But the session had spent its day making the *measuring instrument* trustworthy and had
+  only mapped that skill as a by-product. **The 5,000 was the instrument, not the patient, and the rung
+  said otherwise.** A rung can look entirely reasonable and still be drifted.
+  ⛔ **For ▲10,000, this check is NOT a re-derivation.** ▲10,000 is human-authored, human-only — a
+  session never composes a replacement for it, drifted or not. The only legal question is **"is ▲10,000
+  still faithful to §1?"** — a staleness check: read §1, read ▲10,000, and flag a mismatch. If it has
+  drifted, that is a finding to raise, never a line to rewrite yourself.
 - **CHECK 2 — WRITTEN FOR THE WRONG READER.** It can be accurate and still fail its audience. **The
   intended reader is a completely fresh session with zero context.** So: every proper noun carries a
   clause saying what it is — not *"the tester"* bare, but *"the tester, the thing that measures whether
@@ -290,17 +294,39 @@ for f in glob.glob(os.path.expanduser("~/.claude/run/pm/pm-*.flag")):
     matched, baseline = f, kv.get("pad_sha_at_arm") or None
     break
 
+# sha256("") -- the pad's empty fingerprint. A baseline equal to this was captured while the
+# pad was genuinely empty, so a later match against it PROVES no write happened. A baseline
+# that is anything else was captured with content ALREADY in the pad -- and because the first
+# arm can land after the window has already been writing all session (arm fires from
+# /project-manager, /checkin, /read, /save -- never at SessionStart), that content may be
+# THIS window's own early writes, absorbed into what was supposed to be its "before" picture.
+# Matching it back tells you nothing about whether this window wrote -- it is not evidence of
+# either answer, so it must not be reported as "wrote nothing."
+EMPTY_SHA = pa.sha("")
+
 if matched is None or baseline is None:
     print("GATE2-NO-BASELINE (%s -- self-heals on the next run)" % (matched or "no matching flag"))
 elif baseline == current:
-    print("GATE2-NO-WRITE (this window has not touched the pad -- DO NOT COMPACT)")
+    if baseline == EMPTY_SHA:
+        print("GATE2-NO-WRITE (baseline was captured on an EMPTY pad -- this window has not touched it -- DO NOT COMPACT)")
+    else:
+        print("GATE2-AMBIGUOUS-BASELINE-DIRTY (baseline was captured with content ALREADY in the pad -- "
+              "cannot tell whether this window wrote it before arming or it was already there -- DO NOT COMPACT, "
+              "but do not tell the person 'you wrote nothing': say the check cannot determine it)")
 else:
     print("GATE2-WROTE (this window wrote to the pad -- compaction is safe)")
 PY
 ```
 
 - **`GATE2-WROTE`** → compaction is safe.
-- **`GATE2-NO-WRITE`** → this window has written nothing into the pad. ⛔ **Do not compact.**
+- **`GATE2-NO-WRITE`** → the baseline was a genuinely empty pad, and it still is. This window has
+  written nothing into the pad. ⛔ **Do not compact.**
+- **`GATE2-AMBIGUOUS-BASELINE-DIRTY`** → the baseline was stamped with content ALREADY in the pad —
+  which can happen because the first `arm` in a window often fires only near the end of a session
+  (doctrine has `/checkin` run late), by which point the window may already have written the pad.
+  The baseline then absorbs those writes and looks identical to "always empty." ⛔ **Do not compact**
+  — same fail-closed action as NO-WRITE — **but say so honestly**: this check cannot determine
+  whether the window wrote anything, so never report it as "you wrote nothing."
 - **`GATE2-NO-BASELINE`** → the baseline is missing or unreadable. ⛔ **Do not compact this run** — but
   this is temporary. `pm_flag.sh` backfills the fingerprint on the next arm, so it self-heals on this
   window's next run, or immediately via `/save`, which has no gate 2 at all. **Fail-closed either way:
