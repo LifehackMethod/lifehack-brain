@@ -252,11 +252,19 @@ or a supervised session) is required to act on any proposal.
 
 **G2 — `guard_canon_write.sh` [blocking hook — PreToolUse Write|Edit]**
 - Registered in `system/reference/settings.json` line 251.
-- For any write to a path containing `/canon/`, blocks unless content carries `authority: user`
+- ~~For any write to a path containing `/canon/`, blocks unless content carries `authority: user`
   (new files) or does not carry `authority: archivist|skill` (edits). Also blocks stale markers
-  (`shelf-life:`, `expires:`, `tier: snapshot`, etc.).
-- Enforces the propose-only constraint for `/canon/` paths mechanically. The archivist cannot
-  write canon by any means the Write/Edit tool covers.
+  (`shelf-life:`, `expires:`, `tier: snapshot`, etc.).~~ **CORRECTED 2026-08-24:** for any write to a
+  path containing `/canon/` (or the top-level `canon.md`), blocks only on two content rails —
+  oversized content (>3,200 chars) and a stale/expiry marker. The `authority:` rail described above
+  was DELIBERATELY DROPPED 2026-08-11 per the guard's own header — self-attestation a machine types as
+  easily as a human, and it broke `/save`'s own approved canon writes. Re-verified live this session: a
+  synthetic Write to a canon path with no `authority` field → `permissionDecision:allow`, exit 0.
+- ~~Enforces the propose-only constraint for `/canon/` paths mechanically.~~ **CORRECTED 2026-08-24:**
+  it enforces size + staleness mechanically, not WHO is writing. A Write/Edit under 3,200 chars with no
+  stale marker now passes regardless of author — the archivist's propose-only boundary rests on its own
+  code path never issuing that Write (`[honor]`), not on this guard refusing it (`[hook]`). See the
+  corrected INTENT / CURRENT-VS-TARGET section below and GAP-2.
 - Fail-CLOSED: parse errors → exit 2 (block).
 - **Does NOT cover Bash file-writes** (same GAP-1 bypass).
 
@@ -338,8 +346,14 @@ itself owns and must regenerate on every full walk.
 
 **Current state → PARTIAL (with documented gaps):** cron jobs were LIVE (pulse-config.md
 lines 254 + 262: "✅ LIVE 2026-06-10") but status tile now shows audit=ERROR (2026-07-21)
-and deepmine=ERROR (2026-07-20). Interactive skills work. Propose-only boundary is enforced
-by `guard_canon_write.sh` + `guard_write_paths.sh` on Write/Edit tool calls, with the known
+and deepmine=ERROR (2026-07-20). Interactive skills work. ~~Propose-only boundary is enforced
+by `guard_canon_write.sh` + `guard_write_paths.sh` on Write/Edit tool calls~~ **CORRECTED 2026-08-24:**
+`guard_write_paths.sh` still mechanically fences canon paths into the Drive spine, but
+`guard_canon_write.sh` no longer distinguishes a human-authored write from an archivist-authored one —
+its `authority:user` rail was removed 2026-08-11, so a Write to `/canon/` under 3,200 chars with no
+stale marker now passes regardless of who wrote it. The archivist's propose-only boundary today rests
+on the archivist's own code path never issuing that Write, not on the guard refusing it — `[honor]`,
+not `[hook]`, for the who-authored-it half of this constraint. with the known
 Bash-write bypass (GAP-1). Per Claude Code docs (hooks-guide.md), PreToolUse hooks fire in
 every mode including `--dangerously-skip-permissions` — guards hold in cron (confirmed, not
 inferred). The `·gap` label reflects three documented fail-open conditions (GAP-1, GAP-2,
@@ -416,7 +430,7 @@ TRIGGERS    pulse-cron        · pulse-cron (*/5) fires archivist-audit-run.sh +
 CHAINS      archivist-route   · deepmine synthesis chains into archivist-route to rank homes for each promotable insight before writing the proposal; route reads the territory map (canon-purpose-map.md) only — it does NOT read home-intents.md
 COMPLEMENTS save              · archivist is the scanner (DETECT + PROPOSE); /save is the writer (EXECUTE + GATE); they are the two halves of the knowledge-health loop
 GUARDED-BY  guard-write-paths · guard_write_paths.sh PreToolUse Write|Edit blocks out-of-bounds writes (with Bash bypass — see GAPS)
-GUARDED-BY  guard-canon-write · guard_canon_write.sh PreToolUse Write|Edit blocks any /canon/ write missing authority:user; enforces the propose-only boundary on canon paths
+GUARDED-BY  guard-canon-write · guard_canon_write.sh PreToolUse Write|Edit blocks any /canon/ write over 3,200 chars or carrying a stale marker (~~formerly also blocked writes missing authority:user; that rail was DELIBERATELY DROPPED 2026-08-11, CORRECTED 2026-08-24~~); enforces size/staleness only — the propose-only boundary on WHO writes canon is [honor], not this guard
 SYNCS       ingest-filer      · ingest-filer calls archivist-route inline (Step A of its routing procedure), which reads system/canon-purpose-map.md; territory map freshness gates ingest-filer's routing quality
 READS       notify-plane      · archivist-run.lib.sh _ping() calls notify-send.sh → ntfy on each NEEDS_REVIEW result; notify-plane handles rate/dedup/quiet-hours gating
 ```
@@ -440,7 +454,13 @@ in the agent definition.
 **GAP-2 — `guard_canon_write.sh` does not cover Bash file-writes [inherited from GAP-1]**
 Same bypass mechanism. Canon is protected from Write/Edit tool calls to `/canon/` paths; not
 from a Bash `cp` or heredoc writing directly into a canon path. Any headless session with
-Bash access could write into canon via shell, bypassing the `authority: user` check.
+Bash access could write into canon via shell, ~~bypassing the `authority: user` check.~~
+**CORRECTED 2026-08-24: bypassing the size and stale-marker checks — there is no `authority: user`
+check left to bypass; it was DELIBERATELY DROPPED 2026-08-11 (guard's own header). Even through the
+Write/Edit tool, an archivist session could now write straight to canon/ under 3,200 chars with no
+stale marker and the guard would ALLOW it — this gap is larger than previously documented, not
+smaller: the Bash bypass used to be the only hole in an otherwise-authored-by-a-human wall; now the
+wall itself does not check who authored the write, Bash or not.**
 
 **GAP-3 — `--dangerously-skip-permissions` in headless cron sessions [accepted by design]**
 Source: `system/tools/archivist-run.lib.sh` line 178.
@@ -489,9 +509,12 @@ per-run BODY-CAP exists (logged as tech-debt)." That body-cap does not exist in 
 
 - **maturity_label:** PARTIAL·gap
 - **check_detail:** LIVE: both cron jobs registered in pulse-config.md (✅ 2026-06-10) and
-  proven running; interactive skills work; propose-only boundary enforced by
+  proven running; interactive skills work; ~~propose-only boundary enforced by
   `guard_canon_write.sh` (PreToolUse Write|Edit → blocks non-`authority:user` /canon/ writes,
-  BLOCKING exit 2) + `guard_write_paths.sh` (PreToolUse Write|Edit → residency wall,
+  BLOCKING exit 2)~~ **CORRECTED 2026-08-24: `guard_canon_write.sh` blocks only oversized (>3,200
+  char) or stale-marked /canon/ writes — the authority:user rail was removed 2026-08-11 (guard's own
+  header). The propose-only boundary now rests on the archivist's own honor-system write discipline,
+  not on this guard.** + `guard_write_paths.sh` (PreToolUse Write|Edit → residency wall,
   BLOCKING exit 1/2). Advisory hooks: `validate_on_write.sh` (PostToolUse, non-blocking) ·
   `nudge_flow_drift.sh` (PostToolUse, non-blocking) · `observability_logger.sh` (PostToolUse *).
   `guard_organism_map.sh` (PreToolUse Write, BLOCKING) protects map files but not
