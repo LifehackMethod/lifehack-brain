@@ -24,14 +24,18 @@ and after that you read it.
 
 It **opens with the three-altitude read**:
 
-- `▲ 10,000` — where the project stands against the §1 desired outcome.
+- `▲ 10,000` — §1's desired outcome, restated.
 - `▲ 5,000` — the phase, feature or seam you are currently inside.
-- `▲ ground` — the exact next action.
+- `▲ ground` — what was last worked on, dated, with a re-verify-before-acting note.
 
-**Position, not restated intent.** A 10,000 line that re-quotes §1 is wrong — §1 says where you are
-going, this says where you have got to. Read the 5,000 line **off the live plan**; do not compose it
-from memory. A rung with no honest answer says so — `no larger frame`, `no plan armed` — and never
-invents one.
+⭐ **▲10,000 is a restatement, never a position — human-authored, human-only.** A 10,000 line that
+re-quotes §1 is *correct*: it is a faithful copy of §1's desired outcome. A session may PRINT it, and
+may FLAG it as looking stale against §1, but never rewrites it, appends to it, or dresses it in
+position/status language. Position, status and measurement belong at ▲5,000 and ▲ground only. Read the
+5,000 line **off the live plan**; do not compose it from memory. ▲ground records what was last worked on
+and when — never phrased as an instruction, since the next reader may arrive after it has gone stale, so
+it always carries its own date and an explicit re-verify note. A rung with no honest answer says so —
+`no larger frame`, `no plan armed` — and never invents one.
 
 Under that, the live status of every granular decision, in three buckets:
 
@@ -40,7 +44,8 @@ Under that, the live status of every granular decision, in three buckets:
   This bucket is the fast scan that stops a settled question being re-proposed six weeks later.
 - **❓ OPEN** — still under discussion.
 
-This block is machine-maintained, unlike §1. It is kept current by compaction off the story log.
+▲5,000 and ▲ground are machine-maintained, unlike §1 — kept current by compaction off the story log.
+▲10,000 is not machine-maintained: it is human territory, present here only to be printed or flagged.
 
 ## §4 — the story log
 

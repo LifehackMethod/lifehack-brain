@@ -1,0 +1,75 @@
+name: Plugin Version Bump Required
+
+# WHY THIS EXISTS: this repo ships as a Claude Code marketplace plugin
+# (.claude-plugin/marketplace.json -> plugin.json). Claude Code resolves whether an
+# update exists from plugin.json's "version" field FIRST, before any git-SHA fallback.
+# Measured 2026-08-24 on every ref that then existed (origin/main and three open build
+# branches): plugin.json carried "0.1.0" and not one of them bumped it. An unbumped
+# version makes BOTH update paths -- background auto-update and a manual update command --
+# report "already at the latest version" and install nothing, no matter how much real
+# hardening has merged. Six PRs of security work landing on an inert version string would
+# still never reach a student who already installed. This is the check that ends that,
+# on every PR, with nothing for a maintainer to remember.
+#
+# WHY A PR GATE, NOT AN AUTO-BUMP ON MERGE: an auto-bump workflow needs write access to
+# push a commit onto (presumably branch-protected) main, has to guess patch/minor/major on
+# the maintainer's behalf, and risks re-triggering itself off its own commit. This repo's
+# existing CI convention (no-internal-leakage.yml) is already "fail the PR red until a
+# human fixes it, never silently act for them" -- this gate follows that same convention
+# rather than introducing a second, different one. The human still picks the number; the
+# gate only makes it structurally impossible to merge without picking one.
+#
+# WHY IT DOES NOT FIRE ON EVERY COMMIT: it is a pull_request gate, not a push-per-commit
+# job -- it evaluates the WHOLE PR diff (base...head) exactly once per check run, the same
+# unit no-internal-leakage.yml already gates on, so a PR with ten commits gets ten
+# incremental status updates on the SAME check, not ten separate bump demands.
+#
+# WHY IT DOES NOT FIRE ON A DOCS-ONLY OR CI-ONLY PR: check_plugin_version_bumped.py first
+# asks whether the diff touches any SHIPPED path (see that script's own module docstring
+# for the denylist) -- a PR that only touches .github/, docs/, or a root-level *.md file
+# passes immediately with nothing to bump, because nothing a student's installed copy runs
+# differently changed.
+#
+# FAIL-CLOSED: no third state. A shipped-content PR that leaves the version untouched, or
+# "bumps" it to the same or a lower value, is FLAGGED (exit 1, red). If the manifest can't
+# be read or parsed as {"version": "X.Y.Z"} at either end of the diff, that is CANNOT
+# EVALUATE (exit 2, red) -- never a silent pass. See check_plugin_version_bumped.py's own
+# exit-code table.
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    # ⛔ FORK GUARD -- same rationale as no-internal-leakage.yml and exercise-loop.yml: a
+    # pull_request FROM a fork still runs in THIS repo's context (the base repo), so the
+    # gate still evaluates the real PR. Only a fork's own PUSH to its own main-equivalent
+    # would run this workflow in the fork's context and could go red for no fixable
+    # reason -- this workflow has no push trigger at all, so that case cannot occur; the
+    # `if:` guard is kept anyway for consistency with this repo's other two gates and as a
+    # backstop if a push trigger is ever added later.
+    if: github.repository == 'LifehackMethod/lifehack-brain'
+    name: Shipped content requires a plugin.json version bump
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history, needed to diff base...head)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check plugin.json version against shipped-path changes
+        run: |
+          python3 .github/scripts/check_plugin_version_bumped.py \
+            --base "${{ github.event.pull_request.base.sha }}" \
+            --head "${{ github.event.pull_request.head.sha }}" \
+            --mode merge-base
