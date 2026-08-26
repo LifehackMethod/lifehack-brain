@@ -42,7 +42,70 @@ tab, and start again from this line.
 > hand. ⛔ **Never offer help without saying how to reach it** — a promise with no route is where someone
 > quietly gives up. Then stop.
 
-## ⭐ THEN — FOUR QUESTIONS, BEFORE ANY FOLDER IS MADE
+## ⭐ NEXT — HOW YOU GET THIS: PLUGIN (fastest way in, and it DOES ship the guards) OR MANUAL CLONE (if you want to develop the harness itself)
+
+**As of 2026-08-23 this harness is also a Claude Code marketplace plugin.** One command adds the
+marketplace, one installs the plugin — no folder to create, no `git` to run by hand. ⛔ **It does NOT
+keep itself updated from then on.** `lifehack-brain` is a third-party marketplace, and Claude Code ships
+those with auto-update **off by default** — verified on this install: the `autoUpdate` key is absent
+from this marketplace's registration at every settings level (managed, user, user-local, project); the
+live entry carries only its source, nothing else. Updating is something you run, or explicitly turn on
+— see "Taking an update later" below.
+
+```bash
+claude plugin marketplace add LifehackMethod/lifehack-brain
+claude plugin install lifehack-brain@lifehack-brain
+```
+
+**What that actually does, plainly:** it fetches this project's skills, agents, tools and docs —
+`/ingest` and everything else this file talks about — into Claude Code's own plugin store, and makes
+them available in every session, in any folder you happen to have open. Taking an update later is
+`claude plugin marketplace update lifehack-brain` followed by `claude plugin update lifehack-brain` —
+instead of `git pull` — and you run those yourself unless you turn auto-update on. ⛔ **Either way, an
+update only lands if the maintainer bumped the plugin's version number since your last one** — an
+unbumped version reports "already at the latest version" and installs nothing, even when the
+marketplace itself has moved. ⭐ **To make Claude Code run the update for you unasked, turn on
+auto-update explicitly:** `/plugin` → Manage marketplaces → select `lifehack-brain` → "Enable
+auto-update" (verified: this exact toggle exists in the installed Claude Code build), or set
+`"autoUpdate": true` on this marketplace's entry under `extraKnownMarketplaces` in a `.claude/settings.json`
+(verified: that key's own description reads "Whether to automatically update this marketplace and its
+installed plugins on startup"). Turning it on does not change the version-bump condition above — it
+only removes the step of running the command yourself.
+
+⭐ **The plugin DOES install the guard hooks — it does not need a `hooks` key in `plugin.json` to
+do it.** Claude Code auto-discovers a plugin's own `hooks/hooks.json` by convention; the plugin's
+manifest (`.claude-plugin/plugin.json`) carrying no `hooks` key proves nothing either way. Checked
+directly: the installed plugin ships `hooks/hooks.json` at its top level, registering **45 hook
+commands** — the guard plane that stops a destructive Gmail action, blocks an ingest that skips its
+gate, and the rest of what this project calls its hook plane. Those hooks load and fire the moment the
+plugin is installed, in every session, no matter which folder you have open — watched directly, denying
+a command, with the deny message naming the plugin's own cache path.
+
+⛔ **The one real gap, and it's smaller than it sounds:** the maintainer's own machine also carries a
+second, private set of hook commands wired through their personal `~/.claude/settings.json`, pointed at
+a repo that never ships in the plugin or the public clone. A plugin install (and a manual clone, for
+that matter) gets you the plugin's 45 guards — not that private maintainer-only set on top. That's a
+maintainer-only arrangement, not something this project promises anyone else; it is not a reason to
+prefer one install path over the other.
+
+**So, which one to use:** the plugin above is the fast way in, and — guard hooks included — it is a
+complete install for anyone just using this on their own material. **Use the manual clone path below
+if you intend to develop the harness itself:** read its source, change a skill, send a PR back. That is
+the one thing a plugin-only install cannot do.
+
+⭐ **If you do use the plugin and later want to connect your AI Brain (STEP 7 below) anyway:** its commands are written assuming you're sitting inside a cloned Harness folder. A plugin install has no such folder — ask Claude to find where the plugin actually landed (`claude plugin list`, or look under `~/.claude/plugins/cache/lifehack-brain/lifehack-brain/<version>/` — the full repo layout, including `shared/brain_root.py`, is really there) and run STEP 7's commands from inside *that* folder instead. The commands don't care which install method put the files on disk, only that you're standing in the right one.
+
+⭐ **Say what you did, and to which account:** if `gh auth status` or Claude Code shows more than one
+GitHub account signed in, name the one the plugin commands actually used, since a marketplace add can
+silently pick the wrong one.
+
+⛔ **Use the manual clone path if:** you intend to develop the harness itself (read its source, change
+a skill, send back a PR), or your environment cannot install Claude Code plugins at all. **Both paths
+give you the guard hooks** — that is not a reason to pick one over the other. **If you already
+installed the plugin and later decide you want the clone too, the manual clone below is additive, not
+a do-over:** it lands in its own folder and does not touch the plugin install.
+
+## ⭐ MANUAL CLONE PATH — FOUR QUESTIONS, BEFORE ANY FOLDER IS MADE
 
 **Answer these four now.** Each one costs ten seconds here, and about twenty minutes each if it
 surfaces halfway through instead:
@@ -2548,9 +2611,25 @@ goes wrong.
 
 ## Taking an update later
 
+⭐ **If you installed via the plugin (this file's default, near the top): these `git` commands are
+not your path, but you still have to act.** Auto-update is off by default for this marketplace and was
+not turned on for you at install. Your update story is:
+
+```bash
+claude plugin marketplace update lifehack-brain
+claude plugin update lifehack-brain
+```
+
+⛔ **That only lands something if the maintainer bumped `lifehack-brain`'s version since your last
+update** — an unbumped version reports "already at the latest version" and installs nothing, even if
+the marketplace itself has newer commits behind it. If you turned on auto-update in the `/plugin` menu
+(see the top of this file for exactly how), the same version-bump condition still applies — auto-update
+removes the step of running the command yourself, not the maintainer's part of the job. Everything below
+is for the manual clone fallback.
+
 **Ask Claude:** *"check if there's an update to my brain and install it."*
 
-⭐ **THE RULE THAT COVERS EVERY ORDINARY UPDATE: TAKE IT WITH `git pull`.** That is the default and it
+⭐ **THE RULE THAT COVERS EVERY ORDINARY UPDATE, ON THE MANUAL CLONE PATH: TAKE IT WITH `git pull`.** That is the default and it
 is what you should reach for every time. **Deleting this folder and downloading a fresh copy is a much
 bigger hammer** — it is available, it is survivable *once you have run the check a few lines below that
 proves nothing of yours is inside the Harness*, and it is simply never the way to take a routine update.
