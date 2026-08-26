@@ -803,6 +803,20 @@ def scan_whole_tree(scan_root_paths=None):
                 "severity": BLOCKING, "path": path, "line": None,
                 "rule_id": path_rule["id"], "remedy": path_rule["remedy"], "evidence": None,
             })
+        # GAP FIX (2026-08-26): the path STRING itself against content_patterns() (generic
+        # + identity) -- see check_path_content(). A name-shaped filename with a clean body
+        # (docs/DEMIR-CRIB.md's actual shape) was previously invisible to whole-tree mode
+        # too, since this loop only ever ran check_path() (PATH_DENYLIST) against the path
+        # and then scanned the file's LINE content below, never the path string against the
+        # richer rule set.
+        if not is_self_referential_fixture_path(path):
+            for hit_path, rule in check_path_content(path):
+                evidence = redact_spans(hit_path, rule) if is_identity_rule(rule["id"]) else hit_path
+                blocking.append({
+                    "severity": BLOCKING, "path": path, "line": None,
+                    "rule_id": rule["id"], "remedy": rule["remedy"],
+                    "evidence": evidence.strip()[:200],
+                })
         if is_self_referential_fixture_path(path):
             # see WHOLE_TREE_SELF_REFERENCE_EXCLUDE_PATHS/PREFIXES for the two named,
             # documented reasons this is not a general suppression mechanism.
@@ -972,6 +986,39 @@ def check_path(path: str):
     return None
 
 
+def check_path_content(path: str):
+    """GAP FIX (2026-08-26): a changed file's PATH ITSELF -- not just its added line
+    content -- can carry an identity term or a generic leak shape, and nothing scanned it.
+    migration-audit/08-THIRD-PARTY-INVENTORY.md's successor incident (docs/DEMIR-CRIB.md,
+    a real third party's first name in the FILENAME) reached origin/main and a shipped
+    plugin because check_added_lines() only ever looks at diff-added LINE TEXT and
+    check_path() only matches the small, hand-written PATH_DENYLIST (migration-audit/,
+    HANDOFF*, KIMI-*, *-log.md) -- neither one runs content_patterns() (generic + operator
+    identity, rule 3) against the path STRING. A name-shaped filename with a perfectly
+    clean file body sailed through both gates as CLEAN.
+
+    Reuses the exact same content_patterns() rule set added-line content is checked
+    against, applied to `path` as if it were a single line of text -- same identity terms,
+    same generic home-path/drive shapes, same fixture carve-out for home-path-generic (a
+    path itself is never expected to look like a fixture username, but the carve-out is
+    applied for symmetry with check_added_lines() rather than as a special case here).
+    Returns a list of (path, rule) tuples -- deliberately the same shape family as
+    check_added_lines()'s (lineno, text, rule) so scan_files()/scan_whole_tree() can render
+    both through format_violation()/render_finding() unchanged, with line=None (a path
+    match has no line number -- the finding IS the path)."""
+    hits = []
+    for rule in content_patterns():
+        if not re.search(rule["pattern"], path):
+            continue
+        if rule["id"] == "home-path-generic":
+            seg_match = re.search(r"(?:/Users/|/home/)([A-Za-z0-9._-]+)", path)
+            seg = seg_match.group(1) if seg_match else ""
+            if seg.lower() in FICTIONAL_FIXTURE_USERNAMES:
+                continue
+        hits.append((path, rule))
+    return hits
+
+
 def check_added_lines(added_lines):
     hits = []
     for lineno, text in added_lines:
@@ -989,7 +1036,15 @@ def check_added_lines(added_lines):
 
 
 def format_violation(path, rule, lineno=None, evidence=None):
-    where = "file={}".format(path)
+    # GAP FIX (2026-08-26): when the MATCH ITSELF is the path (check_path_content(), a
+    # name-shaped filename), `path` carries the matched identity term. The header line
+    # below used to interpolate `path` raw -- so a scan of docs/<name>-CRIB.md printed
+    # "file=docs/<name>-CRIB.md" straight into the public CI log/artifact, undoing the
+    # exact redaction this function already does for the evidence line beneath it. Route
+    # `path` through the same redact_spans() used for evidence, for every identity-rule
+    # finding, not only ones whose match happened to land in line content.
+    shown_path = redact_spans(path, rule) if is_identity_rule(rule["id"]) else path
+    where = "file={}".format(shown_path)
     if lineno is not None:
         where += ",line={}".format(lineno)
     source_note = ""
@@ -1003,7 +1058,7 @@ def format_violation(path, rule, lineno=None, evidence=None):
     if evidence is not None:
         # ⛔ never echo a matched identity term into a public CI log -- see redact_spans().
         shown = redact_spans(evidence, rule) if is_identity_rule(rule["id"]) else evidence
-        lines.append("    {}:{}: {}".format(path, lineno, shown.strip()[:200]))
+        lines.append("    {}:{}: {}".format(shown_path, lineno, shown.strip()[:200]))
     return "\n".join(lines)
 
 
@@ -1016,6 +1071,10 @@ def scan_files(file_diffs):
             violations.append(format_violation(path, path_rule))
             # a denylisted path still gets its content checked below too -- multiple
             # independent findings on one file are all worth surfacing at once.
+        # GAP FIX (2026-08-26): the path STRING itself against the same content rules
+        # (generic + identity) added-line text is checked against -- see check_path_content().
+        for hit_path, rule in check_path_content(path):
+            violations.append(format_violation(hit_path, rule, None, hit_path))
         for lineno, text, rule in check_added_lines(added_lines):
             violations.append(format_violation(path, rule, lineno, text))
     return violations
@@ -1024,14 +1083,20 @@ def scan_files(file_diffs):
 # --------------------------------------------------------------------------------- CLI
 
 def render_finding(f):
+    # GAP FIX (2026-08-26): same reasoning as format_violation() above -- f["path"] can
+    # itself carry the matched identity term when the finding came from a path-content
+    # match (see scan_whole_tree()'s check_path_content() branch). f["evidence"] is already
+    # redacted at the point scan_whole_tree() builds this dict; f["path"] never was.
     tag = "::error" if f["severity"] == BLOCKING else "::warning"
-    where = "file={}".format(f["path"])
+    shown_path = (redact_spans(f["path"], {"id": f["rule_id"]})
+                  if is_identity_rule(f["rule_id"]) else f["path"])
+    where = "file={}".format(shown_path)
     if f["line"] is not None:
         where += ",line={}".format(f["line"])
     header = "{} {}::[{}] {}".format(tag, where, f["rule_id"], f["remedy"])
     lines = [header]
     if f["evidence"] is not None:
-        lines.append("    {}:{}: {}".format(f["path"], f["line"], f["evidence"]))
+        lines.append("    {}:{}: {}".format(shown_path, f["line"], f["evidence"]))
     return "\n".join(lines)
 
 
