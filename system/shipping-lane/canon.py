@@ -747,6 +747,24 @@ _MAX_DECODE_DEPTH = 3  # second hardening pass, 2026-08-05 -- see _decode_chain 
 _B64_RE = re.compile(
     r'(?<![A-Za-z0-9+/_\-])[A-Za-z0-9+/_\-]{%d,}={0,2}(?![A-Za-z0-9+/_\-])'
     % _CANDIDATE_LEN)
+
+# The base64 candidate charset above deliberately includes '/', '_' and '-' (URL-safe
+# base64), which means a long shell path -- "LIFEHACK_CODE_ROOT/system/tools/foo-run" --
+# is also a syntactically valid candidate, and a name-heavy path clears the entropy
+# threshold on character diversity alone. That was the lane's one recurring false
+# positive (a pulse/cron manifest full of command rows refused with ~20 hits, none a
+# secret). A candidate is exempted from the HIGH-ENTROPY finding only when it is
+# unmistakably path-shaped: three or more '/'-separated segments, each starting with a
+# letter, and not a single digit anywhere. Real >=32-char base64/hex key material is
+# digit-free in well under 1% of cases and slash-segmented into word shapes almost
+# never, so the conjunction is safe; the DECODE-and-rescan pass above is unaffected
+# either way, so a rule-matching secret hiding in a path-shaped span is still caught.
+_PATH_SHAPE_RE = re.compile(r'[A-Za-z][A-Za-z0-9_+.\-]*(?:/[A-Za-z][A-Za-z0-9_+.\-]*){2,}\Z')
+
+
+def _looks_like_path(blob):
+    return ('/' in blob and not any(c.isdigit() for c in blob)
+            and _PATH_SHAPE_RE.match(blob) is not None)
 _HEX_RE = re.compile(r'(?<![0-9A-Fa-f])(?:0x)?[0-9A-Fa-f]{%d,}(?![0-9A-Fa-f])'
                       % _CANDIDATE_LEN)
 _URL_RE = re.compile(r'(?:%[0-9A-Fa-f]{2}){3,}')
@@ -904,7 +922,8 @@ def scan_encoded_payloads(text, refuse_rules):
                                       "decoded_evidence": decoded[:200]}],
                         })
 
-            if kind in ("base64", "hex") and len(blob) >= _ENTROPY_LEN:
+            if (kind in ("base64", "hex") and len(blob) >= _ENTROPY_LEN
+                    and not _looks_like_path(blob)):
                 ent = shannon_entropy(blob)
                 if ent >= _ENTROPY_THRESHOLD:
                     findings.append({
@@ -1157,7 +1176,9 @@ def selftest():
            rot13(rotated) == "Wren Oakley")
 
     print("\nbidi control ban (second hardening pass, 2026-08-05 -- Trojan Source class)")
-    reversed_name = "‮" + "nerW" + "‬"  # RLO + "Wren" stored reversed + PDF
+    reversed_name = chr(0x202E) + "nerW" + chr(0x202C)  # RLO + "Wren" stored reversed + PDF
+    # chr(), not literals: this module ships through its own scrub, and a raw bidi
+    # control in source would (correctly) refuse the file on presence alone.
     report("a bidi-reversed name is caught as PRESENCE, not decoded",
            bool(scan_bidi_controls(reversed_name)))
     for cp in (0x202A, 0x202B, 0x202C, 0x202D, 0x202E, 0x2066, 0x2067, 0x2068, 0x2069):
@@ -1281,7 +1302,10 @@ def selftest():
            any(f["id"] == "encoded-name-oakley" for f in findings),
            "found: {}".format([f["id"] for f in findings]))
 
-    b64_key = _b64.b64encode(b"sk-ant-FAKEFAKEFAKEFAKEFAKE12345678").decode()
+    # Assembled at runtime, never a contiguous literal: this module ships through its
+    # own scrub, and a literal that LOOKS like a key would (correctly) refuse the file.
+    fake_key = b"sk-" + b"ant-" + b"FAKE" * 5 + b"12345678"
+    b64_key = _b64.b64encode(fake_key).decode()
     findings = scan_encoded_payloads("key: " + b64_key + " end", refuse_rules)
     report("a base64'd sk-ant-... key is decoded and caught",
            any(f["id"] == "encoded-key-anthropic" for f in findings))
@@ -1292,7 +1316,7 @@ def selftest():
            any(f["id"] == "encoded-name-wren" for f in findings))
 
     print("\nbase32 + quoted-printable (second hardening pass, 2026-08-05)")
-    b32_key = _b64.b32encode(b"sk-ant-FAKEFAKEFAKEFAKEFAKE12345678").decode()
+    b32_key = _b64.b32encode(fake_key).decode()
     findings = scan_encoded_payloads("cfg: " + b32_key + " end", refuse_rules)
     report("a base32'd sk-ant-... key is decoded and caught",
            any(f["id"] == "encoded-key-anthropic" for f in findings),
@@ -1348,6 +1372,23 @@ def selftest():
            not any(f["id"] == "high-entropy-blob" for f in findings))
     findings = scan_encoded_payloads("secret=" + random_secret, refuse_rules)
     report("the random secret DOES trigger a high-entropy finding",
+           any(f["id"] == "high-entropy-blob" for f in findings))
+    cron_row = ('system-health | yes | 300 | bash '
+                '"$LIFEHACK_CODE_ROOT/system/tools/system-health-run.sh"')
+    findings = scan_encoded_payloads(cron_row, refuse_rules)
+    report("a path-shaped command row (the cron-manifest false-positive class) "
+           "triggers NO high-entropy finding",
+           not any(f["id"] == "high-entropy-blob" for f in findings))
+    # Derived, not a literal, for the same ship-through-its-own-scrub reason as
+    # fake_key above. This seed's digest deterministically base64s to a 43-char
+    # value containing '/' twice and several digits -- exactly the shape the
+    # path exemption must NOT swallow.
+    slashed_secret = _b64.b64encode(_hashlib.sha256(
+        b"slashed-secret-fixture-0").digest()).decode().rstrip("=")
+    assert "/" in slashed_secret and any(c.isdigit() for c in slashed_secret)
+    findings = scan_encoded_payloads("key=" + slashed_secret, refuse_rules)
+    report("a digit-bearing secret containing slashes is NOT exempted by the "
+           "path shape and still triggers",
            any(f["id"] == "high-entropy-blob" for f in findings))
 
     print("\nfixtures -- no false positives introduced")
