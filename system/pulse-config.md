@@ -289,6 +289,142 @@ guard-fire-test    | yes | 604800 | bash "$LIFEHACK_CODE_ROOT/system/tools/guard
 # the interactive keychain a headless/cron context cannot unlock (per the sibling runners' own
 # comments), risking a hang rather than a clean failure. Superseded, not summoned.
 #
+#
+# ── Cowork-desk rows, ported from ClaudeOps' divergent copy of this file (commit 6079d32,
+#    "Expand pulse-config crontab coverage"), 2026-08-26 — CORRECTED on arrival. That copy's
+#    comments claimed every runner below was "NOT PORTED" / had a "Missing runner"; this session
+#    verified each one against the actual Brain-resident and repo-resident tree and found 16 of 16
+#    of those claims WRONG — every runner listed below already exists and was executed this
+#    session (exit codes recorded per row). Left at `waiting-on-port` (never `yes`): flipping
+#    `enabled` is not this lane's call (Enver's ruling, recorded at the hook-doc-lint row above).
+#
+# helm-keepalive: keeps the Helm dashboard server up. CORRECTED 2026-08-26 (verified this session):
+# the prior comment was WRONG on both counts — it claimed the runner AND the whole `helm/` app
+# directory were absent from this clone. Neither is true: `helm/app/healthcheck.sh` exists in the
+# Brain (not the repo) at $NOTES_ROOT/helm/app/healthcheck.sh — idempotent (:8080 alive-check,
+# launches server.py only if down), local-only, no external side effects. RUN THIS SESSION: exit 0
+# (already alive or started clean).
+helm-keepalive           | waiting-on-port | 300     | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/helm/app/healthcheck.sh"
+#
+# marc-health: mechanical market-data health chain (no LLM). CORRECTED 2026-08-26 (verified this
+# session): "Missing runner" was wrong — the runner exists in the Brain (not the repo) at
+# desks/marc/tools/marc-health/marc-health-run.sh. RUN THIS SESSION: exit 0 (17 equities fetched, 4
+# FRED series errored non-fatally, health tile + diary written; the once/day Sonnet voice push
+# self-gated out because today's ping marker was already stamped).
+marc-health              | waiting-on-port | 7200    | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/marc/tools/marc-health/marc-health-run.sh"
+#
+# marc-weekly: eight-researcher weekly deep-read fan-out. CORRECTED 2026-08-26 (verified this
+# session): "Missing runner" was wrong — runner exists in the Brain at
+# desks/marc/tools/marc-weekly/marc-weekly-run.sh. It self-gates to Sat/Sun only (DOW guard); a
+# by-hand run today (Wed) hit a pre-existing single-instance lock and exited 0 clean before
+# reaching the DOW check — a real, safe stand-down, not a fabricated pass.
+marc-weekly              | waiting-on-port | 86400   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/marc/tools/marc-weekly/marc-weekly-run.sh"
+#
+# marc-wednesday: mid-week light scan (donor notes a live false-all-clear defect carried forward,
+# not fixed by this port). CORRECTED 2026-08-26 (verified this session): "Missing runner" was
+# wrong — runner exists in the Brain at desks/marc/tools/marc-wednesday/marc-wednesday-run.sh.
+# ⛔ NOT RUN THIS SESSION: this job is genuinely due today (its own due-window includes today, and
+# its marker is behind the current ISO week) — invoking it would fire a real multi-source LLM
+# research fan-out (real token spend), not a dry no-op. UNVERIFIED-BY-DESIGN, not confirmed working.
+marc-wednesday           | waiting-on-port | 86400   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/marc/tools/marc-wednesday/marc-wednesday-run.sh"
+#
+# marc-deadman: organism dead-man's-switch for Marc's heartbeat. CORRECTED 2026-08-26 (verified
+# this session): "Missing runner" was wrong — runner exists in the Brain at
+# desks/marc/tools/marc-deadman/marc-deadman.py. RUN THIS SESSION: exit 0, heartbeat well within
+# its own staleness window.
+marc-deadman             | waiting-on-port | 10800   | python3 "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/marc/tools/marc-deadman/marc-deadman.py"
+#
+# clair-health: read-only daily consulting billing-tracker check. CORRECTED 2026-08-26 (verified
+# this session): "Missing runner" was wrong — runner exists in the Brain at
+# desks/clair/tools/clair-health/clair-health-run.sh. RUN THIS SESSION: exit 0 (NEEDS_REVIEW tile
+# surfaced unbilled sessions — read-only, zero writes to the billing sheet).
+clair-health             | waiting-on-port | 21600   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/clair/tools/clair-health/clair-health-run.sh"
+#
+# clair-billing: billing/client detail emit + cadence-nudge push. CORRECTED 2026-08-26 (verified
+# this session): "Missing runner" was wrong — runner exists in the Brain at
+# desks/clair/tools/clair-billing/clair-billing-run.sh. RUN THIS SESSION: exit 0 — wrote its two
+# signal files (read-only on Google + local writes only); the push-due branch correctly
+# self-deduped, so no new phone notification fired.
+clair-billing            | waiting-on-port | 21600   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/clair/tools/clair-billing/clair-billing-run.sh"
+#
+# deryl-books-health: read-only nightly books-integrity check. CORRECTED 2026-08-26 (verified this
+# session): "Missing runner" was wrong — runner exists in the Brain at
+# desks/deryl/tools/deryl-books-health/deryl-books-health-run.sh. RUN THIS SESSION: exit 0
+# (NEEDS_REVIEW, warnings only, zero errors — zero writes to the books).
+deryl-books-health       | waiting-on-port | 86400   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/deryl/tools/deryl-books-health/deryl-books-health-run.sh"
+#
+# deryl-ingest: Deryl desk light daily email doorman. CORRECTED 2026-08-26 (verified this
+# session): "Missing runner" was wrong — runner exists in the Brain at
+# desks/deryl/tools/deryl-ingest/deryl-ingest-run.sh. RUN THIS SESSION (supervised, as its own
+# header prescribes): `MAX_EMAILS=2 DRY_RUN=1` — exit 0, no new mail, cheap exit (no claude, no
+# tokens). The command below is the sanctioned live shape; its own header still says this row is
+# registered disabled until the Huddle-2 staged live test proves the reader/actor split — that
+# prerequisite is separate from "does the runner exist."
+deryl-ingest             | waiting-on-port | 86400   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/deryl/tools/deryl-ingest/deryl-ingest-run.sh"
+#
+# cp-utilities: College Park utilities ingest chain (eCARe + submeter). CORRECTED 2026-08-26
+# (verified this session): "Missing runner" was wrong — runner exists in the Brain at
+# desks/deryl/tools/cp-utilities/cp-utilities-run.sh. RUN THIS SESSION: `CP_DRYRUN=1` — exit 0,
+# both ingest scripts ran --dry-run cleanly, reconcile=OK, ZERO writes. Its own header still lists
+# two unmet prerequisites (keychain env-fallback code, Enver's one-time eCARe keychain export)
+# before a live run is safe.
+cp-utilities             | waiting-on-port | 86400   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/deryl/tools/cp-utilities/cp-utilities-run.sh"
+#
+# emporia: carriage-house electric submeter ingest. CORRECTED 2026-08-26 (verified this session):
+# "Missing runner" was wrong — runner exists in the Brain at desks/deryl/tools/emporia/
+# emporia-run.sh. RUN THIS SESSION: `EMPORIA_DRYRUN=1` — exit 0, ran --dry-run cleanly, plausible
+# reading, ZERO writes. Its own header still lists the same two open prerequisites as cp-utilities.
+emporia                  | waiting-on-port | 86400   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/deryl/tools/emporia/emporia-run.sh"
+#
+# dobby-health: home-systems tile emit (HA REST reads, mechanical). CORRECTED 2026-08-26 (verified
+# this session): "Missing runner" was wrong — runner exists in the Brain at
+# desks/dobby/tools/dobby-health/dobby-health-run.sh. RUN THIS SESSION: exit 0 — "not Studio — skip"
+# (this job is Studio-hardware-pinned by design; ran clean on this non-Studio machine as the
+# documented no-op, never a failure).
+dobby-health             | waiting-on-port | 21600   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/dobby/tools/dobby-health/dobby-health-run.sh"
+#
+# emily-breakdown: Emily desk audition-ingest cron slot. CORRECTED 2026-08-26 (verified this
+# session): "Missing runner" was wrong — runner exists in the Brain at
+# desks/emily/tools/emily-breakdown/emily-breakdown-run.sh. RUN THIS SESSION: `DRY_RUN=1` — exit 0,
+# BUT surfaced a separate real defect: this runner hardcodes a stale `CODE_ROOT` path from a
+# superseded clone location that does not match any actual live clone — the dry-run diagnostic
+# confirmed both the skill file and notify-send.sh resolved to [exists: NO] under that hardcoded
+# path. Genuine wiring defect in the Brain-resident runner itself, out of this row's scope to fix.
+# ⚠ enable-recommend NO until that path is corrected.
+emily-breakdown          | waiting-on-port | 300     | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/emily/tools/emily-breakdown/emily-breakdown-run.sh"
+#
+# recommend: ground-altitude reasoner between Hospital and a human. CORRECTED 2026-08-26 (verified
+# this session): the prior comment ("only its -run.sh wrapper is missing") was wrong in detail —
+# the wrapper DOES exist, just sitting unwired in
+# system/parked/2026-08-23-donor-spillover/system/tools/recommend-run.sh, not in system/tools/. RUN
+# THIS SESSION at its actual current location: FAILED, exit 1 — its sibling `ingest-run.lib.sh`
+# could not be found. Root cause: the wrapper derives its own code root as two levels up from its
+# own location, correct only if it sits at system/tools/recommend-run.sh — from its current parked
+# nesting that arithmetic lands one level short of the real system/tools/, so every sibling
+# source/python3 call resolves to a directory that does not exist. It cannot be run correctly from
+# where it sits today; moving it into system/tools/ would fix it, but that move is out of scope for
+# this row (another lane owns it). The command below is the CORRECT shape for once it is properly
+# wired — not runnable at its current parked path. ⚠ enable-recommend NO until wired.
+recommend                | waiting-on-port | 86400   | bash "$LIFEHACK_CODE_ROOT/system/tools/recommend-run.sh"
+#
+# token-burn-mine: cost-trend Hospital finding mined from the existing transcript corpus.
+# CORRECTED 2026-08-26 (verified this session): "Missing runner" was wrong — it exists, parked at
+# system/parked/2026-08-23-donor-spillover/system/tools/token_burn_mine.py (underscore, not
+# hyphen — confirmed this IS why a naive hyphen-only search missed it earlier). RUN THIS SESSION AT
+# ITS PARKED LOCATION (bare): FAILED, exit 1 — missing its `emit_finding` sibling module, which
+# only exists in system/tools/, not in its current parked directory. RE-RUN with
+# `PYTHONPATH="$LIFEHACK_CODE_ROOT/system/tools"` prefixed: exit 0 — mined the transcript corpus
+# cleanly, correct aggregate table, no transcript content leaked. The PYTHONPATH prefix below is a
+# workaround for the parked location, not a fix — once properly wired into system/tools/ (out of
+# this row's scope today) the prefix becomes unnecessary.
+token-burn-mine          | waiting-on-port | 86400   | PYTHONPATH="$LIFEHACK_CODE_ROOT/system/tools" python3 "$LIFEHACK_CODE_ROOT/system/parked/2026-08-23-donor-spillover/system/tools/token_burn_mine.py"
+#
+# obsidian-reindex: machine-local vault index rebuild (single-instance lock + watchdog in donor).
+# CORRECTED 2026-08-26 (verified this session): "Missing runner" was wrong — the runner exists in
+# this repo at system/tools/obsidian-reindex.sh with the lock + watchdog intact. RUN THIS SESSION:
+# exit 0 (ran to completion, no scandir/timeout errors).
+obsidian-reindex         | waiting-on-port | 21600   | bash "$LIFEHACK_CODE_ROOT/system/tools/obsidian-reindex.sh"
+#
 # ── TEMPLATE — copy this row when a new lane wires up a job, then delete the comment. ──────────
 # your-job-name  | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/your-runner.sh"
 ```
