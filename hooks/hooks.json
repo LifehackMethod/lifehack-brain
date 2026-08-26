@@ -1,5 +1,5 @@
 {
- "description": "Lifehack Harness guard plane \u2014 the enforcement hooks, carried by the plugin.",
+ "description": "Lifehack Harness guard plane — the enforcement hooks, carried by the plugin.",
  "hooks": {
   "SessionStart": [
    {
@@ -278,6 +278,56 @@
       "type": "command",
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_hook_sop_read.sh\"",
       "statusMessage": "Checking the hook SOP was read first..."
+     }
+    ]
+   },
+   {
+    "matcher": "Write|Edit|MultiEdit|Bash",
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_brief_truncation.sh\"",
+      "statusMessage": "Checking this doesn't silently shrink a project brief..."
+     }
+    ]
+   },
+   {
+    "matcher": "Write|Edit|MultiEdit",
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_disable_model_invocation.sh\"",
+      "statusMessage": "Checking for the retired disable-model-invocation flag..."
+     }
+    ]
+   },
+   {
+    "matcher": "Bash",
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_gh_account_switch.sh\"",
+      "statusMessage": "Checking this doesn't mutate global gh auth state..."
+     }
+    ]
+   },
+   {
+    "matcher": "Write|Edit",
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_harness_writeback.sh\"",
+      "statusMessage": "Checking this isn't writing a harness file back into the private repo..."
+     }
+    ]
+   },
+   {
+    "matcher": "Bash|Write|Edit",
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_no_repoint_into_claudeops.sh\"",
+      "statusMessage": "Checking this doesn't re-point a symlink into the private repo..."
      }
     ]
    }
