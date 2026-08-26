@@ -41,7 +41,20 @@ CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"   # this script'
 # Task-Scheduler entries, which run outside this process entirely and can't inherit an export).
 export LIFEHACK_CODE_ROOT="$CODE_ROOT"
 CONFIG="${PULSE_CONFIG:-$CODE_ROOT/system/pulse-config.md}"        # the manifest — always CODE-resident
-STATE="${PULSE_STATE:-${TMPDIR:-/tmp}/lifehack-pulse-state.json}"  # machine-local; lost state just means jobs re-run next cycle (safe)
+# STATE is machine-local — losing it just means every job looks "never run" and re-fires next cycle
+# (safe, see the breaker comment above). It must NOT be keyed off the calling shell's $TMPDIR: on
+# macOS, cron's environment has no TMPDIR (falls back to /tmp), while an interactive Terminal gets a
+# per-user launchd-assigned /var/folders/.../T path — two DIFFERENT directories on the SAME machine.
+# `--status` run by hand was reading the interactive path while cron kept writing /tmp, so it saw a
+# stale-or-missing file and reported every job as days overdue when the schedule was healthy (found
+# 2026-08-26 during a completion audit). shared/paths.py's cache_dir() is the house per-user,
+# platform-correct location that answers the SAME regardless of which shell/cron/launchd context
+# calls it (macOS: ~/Library/Caches; Windows: %LOCALAPPDATA%; else: XDG_CACHE_HOME/~/.cache) — the
+# exact property this needs, and the tier that already exists for exactly this ("machine-local
+# scratch and cache" — see shared/paths.py's own section header). Fails open to the old TMPDIR-based
+# guess only if python3 itself is unavailable, matching NOTES_ROOT's fail-open pattern above.
+_STATE_DIR="$(python3 "$CODE_ROOT/shared/paths.py" cache pulse 2>/dev/null)"
+STATE="${PULSE_STATE:-${_STATE_DIR:-${TMPDIR:-/tmp}}/lifehack-pulse-state.json}"
 
 # ── The notes root — resolved once, the same way every other tool in this repo resolves it.
 # NOT-SET is a legitimate state on a fresh install (nobody has pointed this at a folder yet): Pulse
