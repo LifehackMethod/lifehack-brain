@@ -1,0 +1,19 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "lifehack-brain",
+  "version": "0.3.13",
+  "description": "lifehack-brain — the public Lifehack Harness engine (skills, tools, hooks).",
+  "author": {
+    "name": "Enver Gjokaj"
+  },
+  "skills": "./.claude/skills",
+  "agents": [
+    "./.claude/agents/archivist.md",
+    "./.claude/agents/ingest-conclusions.md",
+    "./.claude/agents/ingest-reader.md",
+    "./.claude/agents/ingest-tagger.md",
+    "./.claude/agents/sentinel.md",
+    "./.claude/agents/web-searcher.md",
+    "./.claude/agents/worker.md"
+  ]
+}

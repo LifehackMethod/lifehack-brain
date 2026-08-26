@@ -6,7 +6,7 @@ altitude: base
 record_type: organism-element
 maturity_label: PARTIAL·gap
 gap_disposition: defect
-gap_disposition_note: "ruled 2026-07-28 at class level — C6 known-fix-unapplied — guard_canon_write Edit path checks new_string only, so an Edit STRIPPING `authority: user` passes (wrong=False -> ALLOW)"
+gap_disposition_note: "~~ruled 2026-07-28 at class level — C6 known-fix-unapplied — guard_canon_write Edit path checks new_string only, so an Edit STRIPPING `authority: user` passes (wrong=False -> ALLOW)~~ ⚠ CORRECTED 2026-08-24: this whole framing is moot. The guard's own header (system/hooks/guard_canon_write.sh) records that the ENTIRE authority:user rail — write-side and edit-side both — was DELIBERATELY DROPPED 2026-08-11 ('IT DOES NOT DO WHAT IT LOOKS LIKE IT DOES... IT BREAKS THIS PRODUCT ON DAY ONE'). There is no BLOCK_AUTH_WRITE/BLOCK_AUTH_EDIT logic left to have a strip-loophole in. Re-verified live this session: a synthetic Write to records/canon/test.md with no authority field returns permissionDecision:allow, exit 0. See the corrected KNOWN GAPS section below."
 topic: [system-architecture]
 generated_from:
   - system/hooks/guard_canon_write.sh
@@ -42,8 +42,16 @@ authority: user
 > here; the TIP (`CLAUDE.md` schematic) shows only its box + arrows.
 >
 > **One-line:** canon is the human-vetted top trust tier — the always-loaded floor of durable memory that
-> every session reads from; `guard_canon_write.sh` is the OS-level wall that makes "human-only promotion"
-> mechanically enforced rather than a prose instruction.
+> every session reads from; ~~`guard_canon_write.sh` is the OS-level wall that makes "human-only promotion"
+> mechanically enforced rather than a prose instruction.~~ ⚠ **CORRECTED 2026-08-24:** `guard_canon_write.sh`
+> enforces two content rails only — a 3,200-char size limit and a stale/expiry-marker check. It carries NO
+> authority check of any kind. The guard's own header states the `authority:user` rail was DELIBERATELY
+> DROPPED 2026-08-11 ("IT DOES NOT DO WHAT IT LOOKS LIKE IT DOES... IT BREAKS THIS PRODUCT ON DAY ONE") —
+> self-attestation a machine types as easily as a person, and it blocked `/save` writing its own approved
+> canon. Re-verified live this session: a synthetic Write to `records/canon/test.md` with no `authority:`
+> field returns `permissionDecision:allow`, exit 0. "Human-only promotion" here is `[honor]` — `/save`'s
+> interactive pause before writing — not `[hook]`. Every "authority:user is the mechanical gate" claim
+> below this point is stale; struck in place rather than silently rewritten.
 >
 > **Step grammar:** `actor → port/tool → store → gate`
 > Enforcement tags: `[hook]` (a real guard fires) · `[skill]` (skill logic / mandatory script) ·
@@ -66,6 +74,10 @@ authority: user
 
 ### WHAT CANON IS
 
+⚠ **CORRECTED 2026-08-24** (see the top-of-doc banner): every mention of `authority: user` as something
+`guard_canon_write.sh` checks, below, describes a rail that was removed 2026-08-11. Struck in place at
+each occurrence rather than silently rewritten.
+
 Canon is not a feature or a tool — it is the **trust tier** at the top of a four-tier knowledge hierarchy:
 
 ```
@@ -76,8 +88,11 @@ journal.md     ← append-only session log, never edited
 ```
 
 The invariant: a fact in canon is **human-blessed and structurally durable**. The machine NEVER
-auto-promotes anything to canon. It proposes; a human reviews; the human's act of writing the file with
-`authority: user` is the promotion gate.
+auto-promotes anything to canon. It proposes; a human reviews; ~~the human's act of writing the file with
+`authority: user` is the promotion gate.~~ **CORRECTED 2026-08-24:** the promotion gate is `/save`'s
+interactive human pause before the write happens — `[honor]`/`[human]`, not a mechanical check. The
+`authority: user` field itself is no longer read by `guard_canon_write.sh` at all (rail dropped
+2026-08-11); a human can still write it by convention, but nothing enforces its presence.
 
 **Physical stores (confirmed live on 2026-07-23):**
 
@@ -89,11 +104,13 @@ auto-promotes anything to canon. It proposes; a human reviews; the human's act o
 
 `$DRIVE` = `$LIFEHACK_ROOT`
 
-**One live corpus gap (code-confirmed):** `$DRIVE/records/canon/2026-06-21-api-key-theft-threat-map.md`
-carries `authority: research`, not `authority: user`. This file predates or was written outside
-`guard_canon_write.sh`'s current check. It sits in canon/ but does NOT carry the canonical trust signal.
-The guard would block a NEW write to this slot without `authority: user`, but the existing file is
-already in place and unblocked.
+**One live corpus fact:** `$DRIVE/records/canon/2026-06-21-api-key-theft-threat-map.md`
+carries `authority: research`, not `authority: user`. It sits in canon/ and does not carry the
+conventional trust signal. ~~This file predates or was written outside `guard_canon_write.sh`'s
+current check. The guard would block a NEW write to this slot without `authority: user`, but the
+existing file is already in place and unblocked.~~ **CORRECTED 2026-08-24:** the guard would NOT
+block a new write here either — the `authority:user` check was removed 2026-08-11. Only the size
+rail (3,200 chars) and stale-marker check apply now, to this file same as any other.
 
 ---
 
@@ -163,13 +180,19 @@ backed by the wall at the tool level.
 
 #### Step 3 — Human reviews and promotes (the HITL promotion gate)
 
-`human → Write/Edit tool → $DRIVE/records/canon/<file>.md → authority:user in content → guard_canon_write.sh ALLOW [human]`
+~~`human → Write/Edit tool → $DRIVE/records/canon/<file>.md → authority:user in content → guard_canon_write.sh ALLOW [human]`~~
 
-Human reads the proposal, judges it canon-worthy, writes it to the right canon store with `authority: user`
+~~Human reads the proposal, judges it canon-worthy, writes it to the right canon store with `authority: user`
 in frontmatter. No hook verifies the human actually reviewed content — the guard checks ONLY that the
-`authority: user` field is present. The review judgment itself is `[honor]` / `[human]`.
+`authority: user` field is present. The review judgment itself is `[honor]` / `[human]`.~~
 
-`[human, honor for review judgment; the guard fires on the Write tool but passes on authority:user presence]`
+**CORRECTED 2026-08-24:** `human → Write/Edit tool → $DRIVE/records/canon/<file>.md → guard_canon_write.sh
+checks size + stale-marker only → ALLOW [human]`. Human reads the proposal, judges it canon-worthy, writes
+it to the right canon store — `authority: user` in frontmatter is convention, not a checked field; the guard
+does not read it at all (rail dropped 2026-08-11). The review judgment is entirely `[honor]`/`[human]`; no
+hook verifies review happened OR that any authority field is present.
+
+`[human, honor for review judgment AND for the authority field's presence; the guard fires on the Write tool but no longer inspects authority at all]`
 
 ---
 
@@ -180,7 +203,7 @@ in frontmatter. No hook verifies the human actually reviewed content — the gua
 **Registered:** `settings.json` lines 246–255, `PreToolUse`, matcher `Write|Edit`.
 **Script:** `system/hooks/guard_canon_write.sh` (Python inline embedded in bash).
 
-Full logic (confirmed from live source, guard_canon_write.sh lines 23–71):
+~~Full logic (confirmed from live source, guard_canon_write.sh lines 23–71):
 
 ```
 1. path = tool_input.file_path
@@ -190,23 +213,51 @@ Full logic (confirmed from live source, guard_canon_write.sh lines 23–71):
 3. content = tool_input.content (Write) | tool_input.new_string (Edit)
    is_edit = "new_string" in tool_input
 
-4. stale check: scan content for any of:
-       "shelf-life:", "shelf_life:", "expires:", "tier: snapshot",
-       "record_type: snapshot", "type: snapshot"
-   if any hit → BLOCK_STALE, exit 2
+4. stale check: scan content for expiry-marker substrings
 
 5. authority check (new Write, is_edit=False):
-   regex: r'(?m)^\s*authority:\s*user\b' found in content?
+   regex checks for authority:user in content
        YES → ALLOW, exit 0
        NO  → BLOCK_AUTH_WRITE, exit 2
 
 6. authority check (Edit, is_edit=True):
-   regex: r'(?m)^\s*authority:\s*(skill|archivist)\b' found in new_string?
+   regex checks for authority:skill or authority:archivist in new_string
        YES → BLOCK_AUTH_EDIT, exit 2
        NO  → ALLOW, exit 0
 
 7. parse failure → BLOCK (fail-closed), exit 2
+```~~
+
+**CORRECTED 2026-08-24 — steps 5 and 6 above describe a guard that has not existed since 2026-08-11.**
+Re-read of the live 200-line `system/hooks/guard_canon_write.sh` this session, plus its own header
+(section "(b) WHAT WAS DELIBERATELY LEFT OUT: the `authority: user` rail"): the authority rail was
+ported from a donor system and then explicitly NOT carried over, because (1) it was self-attestation a
+machine can type as easily as a human, and (2) it blocked `/save`'s own approved canon writes on day one
+(measured by the guard's author 2026-08-11: exit 2, "missing authority: user", against a real `/save`
+canon write that carries no frontmatter at all). The actual current logic:
+
 ```
+1. path = tool_input.file_path
+2. if not ("/canon/" in path or basename(path) == "canon.md"):
+       → ALLOW, exit 0  (all non-canon writes skip instantly)
+
+3. content = tool_input.content (Write) | tool_input.new_string (Edit)
+
+4. size check: content over 3,200 characters → BLOCK_SIZE, exit 2
+
+5. stale check: content contains an expiry-marker substring (a shelf-life
+   field, an expiry-date field, or a snapshot-tier/record-type marker) →
+   BLOCK_STALE, exit 2
+
+6. otherwise → ALLOW_CANON, exit 0 (also emits a non-blocking additionalContext notice)
+
+7. parse failure → BLOCK (fail-closed), exit 2
+```
+
+There is no authority check at any step, for either Write or Edit. Re-verified live this session: a
+synthetic Write to a canon path with no `authority` field at all → `permissionDecision:allow`, exit 0.
+The guard's own header carries a `⚖ PENDING` note that restoring the rail is a live open decision,
+not yet actioned.
 
 **Failure mode:** fail-CLOSED — an unparseable JSON input blocks the write rather than allowing it.
 
@@ -293,8 +344,11 @@ Bash-matcher hooks (`guard_sheet_writes.sh`, `ingest_gate_enforce.sh`, etc.) do 
 1. **`guard_canon_write.sh`** (PreToolUse Write|Edit) `[hook, BLOCKING]`
    The primary canon guard. Blocks any write to a `/canon/` path that:
    - Contains a stale/snapshot/expiry marker (BLOCK_STALE)
-   - Is a new Write lacking `authority: user` (BLOCK_AUTH_WRITE)
-   - Is an Edit containing `authority: skill` or `authority: archivist` in the new string (BLOCK_AUTH_EDIT)
+   - ~~Is a new Write lacking `authority: user` (BLOCK_AUTH_WRITE)~~
+   - ~~Is an Edit containing `authority: skill` or `authority: archivist` in the new string (BLOCK_AUTH_EDIT)~~
+   **CORRECTED 2026-08-24: neither BLOCK_AUTH_WRITE nor BLOCK_AUTH_EDIT exist in the live guard — the
+   authority rail was removed 2026-08-11. The two live content rails are size (>3,200 chars) and the
+   stale/expiry-marker check.**
    Fail-closed on parse error. Registration confirmed in settings.json lines 246–255.
 
 2. **`guard_write_paths.sh`** (PreToolUse Write|Edit) `[hook, BLOCKING, residency]`
@@ -329,8 +383,10 @@ Bash-matcher hooks (`guard_sheet_writes.sh`, `ingest_gate_enforce.sh`, etc.) do 
 
 7. **Human review + promotion** `[human]`
    The human reads the proposal, judges it durable + standalone-test-passing, and writes it to canon with
-   `authority: user`. No hook verifies the review quality or that proposals/ was used first. The guard
-   checks only that `authority: user` is present in the final write. The review itself is purely `[honor]`.
+   `authority: user` by convention. No hook verifies the review quality, that proposals/ was used first,
+   ~~or that `authority: user` is present in the final write — the guard checks only that field.~~
+   **CORRECTED 2026-08-24: the guard does not check the `authority:` field at all (removed 2026-08-11).**
+   The review itself is purely `[honor]`, and now so is the field's presence.
 
 **Honor-system invariants (prose instruction only; no hook enforces the choice):**
 
@@ -341,7 +397,9 @@ Bash-matcher hooks (`guard_sheet_writes.sh`, `ingest_gate_enforce.sh`, etc.) do 
 - **Standalone-test discipline** `[honor]` — every canon line must pass: "a completely fresh,
   zero-context session can read it alone and fully understand and act on it." No hook enforces this.
 - **`type: rule` suppression** `[honor]` — the confidence-model rule "machine NEVER assigns type:rule"
-  is convention-only; no hook checks the `type:` field of a canon write. Only the authority field is checked.
+  is convention-only; no hook checks the `type:` field of a canon write. ~~Only the authority field is
+  checked.~~ **CORRECTED 2026-08-24: no field is checked — the authority rail was removed 2026-08-11.
+  Only size and stale-marker content are checked.**
 - **`topic:` frontmatter** `[honor]` — doctrine requires a controlled-vocab topic: slug on every canon
   file; `validate_frontmatter.py` does NOT check this field (not in REQUIRED_FIELDS). Gap confirmed live.
 
@@ -349,19 +407,30 @@ Bash-matcher hooks (`guard_sheet_writes.sh`, `ingest_gate_enforce.sh`, etc.) do 
 
 ### KNOWN GAPS AND EDGE CASES
 
-**Gap 1 — Edit strip-authority loophole (code-verified)**
-For `is_edit=True`, the guard only blocks if the `new_string` CONTAINS `authority: skill` or
+**Gap 1 — ~~Edit strip-authority loophole (code-verified)~~ NOT A GAP HERE — the underlying logic does
+not exist. Corrected 2026-08-24.**
+~~For `is_edit=True`, the guard only blocks if the `new_string` CONTAINS `authority: skill` or
 `authority: archivist`. It does NOT check whether the edit removes the existing `authority: user` line.
 An Edit that strips the `authority: user` line entirely (without adding a wrong-authority line) would
 pass `BLOCK_AUTH_EDIT`'s condition (`wrong = False`) and exit ALLOW. The existing `authority: user` in the
 file is already there; the guard checks only the NEW_STRING, not the resulting file state. This is a real,
-code-verified gap in Edit coverage.
+code-verified gap in Edit coverage.~~
+This describes a bug in `BLOCK_AUTH_EDIT` logic. That logic does not exist in the live guard — the
+authority rail (write-side and edit-side both) was DELIBERATELY DROPPED 2026-08-11, per the guard's own
+header. There is no `wrong=False` branch to have a strip-loophole in, because there is no authority check
+at all. This whole finding was authored against pseudocode this doc invented, not against the file on
+disk at the time — the live guard's edit path has never done an authority check of any kind. The
+REAL current gap, if one is wanted here, is simpler and larger: an Edit (or a Write) can freely add,
+change, or remove an `authority:` line in any direction, and nothing downstream of the guard notices.
 
-**Gap 2 — `authority: research` in corpus (corpus violation, live)**
-`$DRIVE/records/canon/2026-06-21-api-key-theft-threat-map.md` carries `authority: research`, violating
-the canonical invariant. This file predates or escaped the guard. It is loaded by `session_context_loader.sh`
-alongside authority:user files, with no visual distinction. The guard would block a NEW Write to any canon
-path without authority:user — but this file is already in place and the guard cannot retroactively remove it.
+**Gap 2 — `authority: research` in corpus (corpus fact, not a violation of anything the guard enforces)**
+`$DRIVE/records/canon/2026-06-21-api-key-theft-threat-map.md` carries `authority: research`, not
+`authority: user`. It is loaded by `session_context_loader.sh` alongside `authority:user` files, with no
+visual distinction. ~~The guard would block a NEW Write to any canon path without authority:user — but
+this file is already in place and the guard cannot retroactively remove it.~~ **CORRECTED 2026-08-24:**
+the guard would NOT block a new write like this either — there is no authority check to violate. This is
+not "grandfathered past a rail that would otherwise catch it"; the rail doesn't exist for anything
+written today, either.
 
 **Gap 3 — Bash write bypass (accepted gap, documented)**
 Any `cp`, `echo >`, `tee`, or heredoc writing to a canon path bypasses `guard_canon_write.sh` entirely.
@@ -375,9 +444,11 @@ write-time. A canon file missing `topic:` passes the guard and gets no validator
 no fix in place.
 
 **Gap 5 — Proposal redirect has no mechanical enforcement**
-When the guard blocks a write (BLOCK_AUTH_WRITE), the redirect message says "write to records/proposals/".
-No hook verifies the blocked write was actually re-routed to proposals/ vs. simply abandoned. The redirect
-is a message, not a mechanical hand-off.
+~~When the guard blocks a write (BLOCK_AUTH_WRITE), the redirect message says "write to records/proposals/".~~
+**CORRECTED 2026-08-24: BLOCK_AUTH_WRITE does not exist (rail removed 2026-08-11); this gap is retired
+with it.** The guard's two live blocking cases (BLOCK_SIZE, BLOCK_STALE) do each carry a redirect message
+pointing to `records/`, and the same underlying point still holds there: no hook verifies a blocked write
+was actually re-routed vs. simply abandoned. The redirect is a message, not a mechanical hand-off.
 
 **Gap 6 — `canon-purpose-map.md` can diverge from live canon**
 The Archivist regenerates `system/canon-purpose-map.md` on a weekly headless run. Between runs, a desk
@@ -388,15 +459,17 @@ that adds a new canon home is invisible to `archivist-route` until the map is re
 
 ### THE STANDALONE TEST (the canon admission bar)
 
-The guard enforces `authority: user` mechanically. But `authority: user` alone is not sufficient for good
-canon — the quality criterion is the **standalone test** from `guard_canon_write.sh` line 51's embedded
-rationale:
+~~The guard enforces `authority: user` mechanically.~~ **CORRECTED 2026-08-24: the guard does not enforce
+`authority: user` — that rail was removed 2026-08-11; the guard now enforces only size and staleness.**
+`authority: user` alone was never sufficient for good canon in any case — the quality criterion is the
+**standalone test** from `guard_canon_write.sh`'s embedded rationale:
 
 > "Every canon line must pass the STANDALONE TEST — a completely fresh, zero-context session can read it
 > alone and fully understand and act on it (precise + self-sufficient; this matters more than length)."
 
 This is the bar a human applies at promotion time. The guard cannot check it. It is the difference between
-"authority: user is present" (what the guard checks) and "this actually belongs in canon" (what the human
+~~"authority: user is present" (what the guard checks)~~ **CORRECTED 2026-08-24: the guard checks nothing
+about authority; the field is unread.** and "this actually belongs in canon" (what the human
 certifies). The field is the signal; the human's judgment is the substance.
 
 ---
@@ -407,8 +480,8 @@ certifies). The field is the signal; the human's judgment is the substance.
 |---|---|---|---|
 | `$DRIVE/records/canon/*.md` | READ | session_context_loader.sh line 63 (root sessions) | The root canon floor; 27 files; top-level only (emit_dir non-recursive) |
 | `$DRIVE/desks/{desk}/canon/*.md` | READ | session_context_loader.sh line 60 (desk sessions) | Per-desk canon; 37 files across 9 desks total, but only top-level *.md are loaded — subdirectory files (e.g. deryl: 9 of 17 in income/, tax/, assets/) are silently excluded |
-| `$DRIVE/records/canon/*.md` | WRITE | Human + guard_canon_write.sh | Blocked unless authority:user; the live canonical store |
-| `$DRIVE/desks/{desk}/canon/*.md` | WRITE | Human + guard_canon_write.sh | Same guard; desk-specific durable observations |
+| `$DRIVE/records/canon/*.md` | WRITE | Human + guard_canon_write.sh | ~~Blocked unless authority:user~~; **CORRECTED 2026-08-24: blocked only on size >3,200 chars or a stale marker; authority is not checked (rail removed 2026-08-11)**; the live canonical store |
+| `$DRIVE/desks/{desk}/canon/*.md` | WRITE | Human + guard_canon_write.sh | Same guard, same correction; desk-specific durable observations |
 | `$DRIVE/records/proposals/` | WRITE | /save Step 6b, ingest-filer | Canon-candidates staging; guard does NOT fire here (no /canon/ in path); NOTE: `vetted: false` convention is named in doctrine but not confirmed live — the one corpus file carries `authority: user` with no `vetted:` field |
 | `$DRIVE/doctrine.md` | READ | session_context_loader.sh (co-loaded, 2026-08-22) | The person's standing rules; not canon but shares the load slot — replaces the CLAUDE.local.md `@` import, which the desktop app never loads |
 | `$DRIVE/state/telos.md` | READ | session_context_loader.sh (co-loaded) | Strategic brief; not canon but shares the load slot |
@@ -426,22 +499,31 @@ certifies). The field is the signal; the human's judgment is the substance.
 
 Canon's manual gate is NOT a gap or missing automation. The audit's Gate #2 correction (identity.md) is
 load-bearing: "the manual /save IS the feature, not a gap." The human-review step at promotion is the
-entire point — the `authority: user` field is not a technicality, it is the proof of human judgment.
+entire point — ~~the `authority: user` field is not a technicality, it is the proof of human judgment.
 The guard enforces the SIGNAL of that judgment (the field); it cannot and should not enforce the
-QUALITY of it (that's the standalone test, which only a human can assess).
+QUALITY of it (that's the standalone test, which only a human can assess).~~ **CORRECTED 2026-08-24:**
+the `authority: user` field, when a human still writes it by convention, remains a proof of human
+judgment — but the guard no longer enforces even the SIGNAL (the field's presence); that rail was
+removed 2026-08-11 as self-attestation that blocked the product's own legitimate writes. What actually
+enforces the human-review step today is `/save`'s interactive pause, `[honor]`/`[human]`, not a
+mechanical field check.
 
 **Current state → PARTIAL**
 
 The WRITE guard (`guard_canon_write.sh`) is live and blocking:
 - Stale-marker check: fully enforced
-- New Write without authority:user: fully blocked (BLOCK_AUTH_WRITE, exit 2)
-- Edit setting wrong authority: blocked (BLOCK_AUTH_EDIT, exit 2)
+- ~~New Write without authority:user: fully blocked (BLOCK_AUTH_WRITE, exit 2)~~
+- ~~Edit setting wrong authority: blocked (BLOCK_AUTH_EDIT, exit 2)~~
+- **CORRECTED 2026-08-24: neither exists. The rail was removed 2026-08-11. A Write or Edit with no
+  `authority:` field at all, or any authority value, passes through untouched.**
 - Parse error: fail-closed (exit 2)
 
 What remains honor-system:
-- **Edit strip-authority loophole** — an Edit that REMOVES authority:user without adding authority:skill|archivist passes the guard (code-verified gap — this is the real gap, distinct from fire-test case 2 which correctly BLOCKs an Edit adding authority:archivist)
+- ~~**Edit strip-authority loophole** — an Edit that REMOVES authority:user without adding authority:skill|archivist passes the guard (code-verified gap — this is the real gap, distinct from fire-test case 2 which correctly BLOCKs an Edit adding authority:archivist)~~ **CORRECTED 2026-08-24: retired — the whole
+  authority check this "loophole" was found in does not exist in the live guard (removed 2026-08-11).**
 - **Bash bypass** — cp/echo/tee to canon/ bypasses the Write|Edit hook stack entirely (accepted gap)
-- **Human review quality** — the guard checks the field, not the judgment
+- **Human review quality** — ~~the guard checks the field, not the judgment~~ **CORRECTED 2026-08-24:
+  the guard checks neither any more; it checks only size and staleness.**
 - **proposals-first routing** — the guard blocks the destination; it doesn't enforce the route
 - **`topic:` field** — required by doctrine, not checked by the validator
 - **`type: rule` suppression** — convention-only, no hook enforces
@@ -449,16 +531,22 @@ What remains honor-system:
 Mixed (live blocking guard + several honor-system edges) → **PARTIAL**.
 
 **TARGET:**
-1. **Edit strip-authority fix** — the Edit check should verify that `authority: user` is present in the
+1. ~~**Edit strip-authority fix** — the Edit check should verify that `authority: user` is present in the
    RESULTING file state, not merely absent from wrong-authority strings in the new_string patch. Requires
    reading the file before-state + the patch to simulate the result, or requiring the full file content on
-   Edit calls. This is a genuine guard hardening target.
+   Edit calls. This is a genuine guard hardening target.~~ **CORRECTED 2026-08-24: moot — there is no
+   authority check to harden.** The real open target, per the guard's own header (`⚖ PENDING`), is the
+   larger decision of whether to RESTORE an authority rail at all — and if so, one that doesn't break
+   `/save`'s own approved-canon writes the way the donor's did on 2026-08-11.
 2. **`topic:` in REQUIRED_FIELDS** — add `topic` to `validate_frontmatter.py`'s `REQUIRED_FIELDS` set
    and constrain it to `system/topic-vocab.md` slugs. The validator would then catch missing/invalid topics
    at write-time (still advisory, but visible).
-3. **`authority: research` corpus file** — promote to `authority: user` if it is human-vetted, or move to
+3. ~~**`authority: research` corpus file** — promote to `authority: user` if it is human-vetted, or move to
    `records/` if it is a research finding. The current state (authority:research in canon/) is a doctrine
-   violation that the guard would prevent today but can't retroactively fix.
+   violation that the guard would prevent today but can't retroactively fix.~~ **CORRECTED 2026-08-24: the
+   guard would not prevent a NEW instance of this today either — no rail exists to prevent it. Promoting
+   this file's authority field remains a fine idea on its own merits; it just is not something the guard
+   is currently defending against.**
 
 ---
 
@@ -467,9 +555,12 @@ Mixed (live blocking guard + several honor-system edges) → **PARTIAL**.
 **The seam-verb closed vocabulary applies throughout this section.**
 
 1. **GUARDED-BY `guard_canon_write.sh` · the primary canon write wall**
-   Every Write|Edit tool call targeting a `/canon/` path is intercepted by this hook. It is the mechanical
-   enforcement of the `authority: user` invariant. The guard fires on ALL sessions (no desk-gating) and is
-   the reason the propose-then-promote flow is not merely a convention.
+   Every Write|Edit tool call targeting a `/canon/` path is intercepted by this hook. ~~It is the mechanical
+   enforcement of the `authority: user` invariant.~~ **CORRECTED 2026-08-24: it enforces a size rail and a
+   stale-marker rail — the `authority: user` rail was removed 2026-08-11 and this guard no longer touches
+   it.** The guard fires on ALL sessions (no desk-gating), and the propose-then-promote flow it backs is
+   now closer to a convention than the "mechanical enforcement" framing this doc originally claimed —
+   what remains mechanical is size and staleness, not who authored the write.
    `[hook, PreToolUse, BLOCKING, settings.json:246–255]`
 
 2. **READS canon/ · `session-context-loader` (always-on load path)**
@@ -577,4 +668,20 @@ Mixed (live blocking guard + several honor-system edges) → **PARTIAL**.
 ## AUTO-COMPUTED   (machine-only — hand-set at authoring; the F1.5 checker will own this once built)
 
 - **maturity_label:** PARTIAL·gap
-- **check_detail:** "pending label_checker.py" — PROPOSED LABEL: PARTIAL. Rationale: `guard_canon_write.sh` is a live, registered, blocking PreToolUse hook (settings.json lines 246–255; Python logic is deterministic; fail-closed on parse error; exit 2 on BLOCK_STALE / BLOCK_AUTH_WRITE / BLOCK_AUTH_EDIT). `session_context_loader.sh` is a live, registered, non-blocking SessionStart hook. What is honor-system: Edit strip-authority loophole (code-verified gap — an Edit removing authority:user without adding wrong-authority passes); Bash write bypass (accepted 2026-07-14, documented in guard_write_paths.sh); human review quality at promotion time; proposals-first routing; topic: field enforcement; type:rule suppression. Mixed (live blocking guard + documented honor-system surface) → PARTIAL. A pure-LIVE label would require closing the Edit strip-authority loophole and Bash bypass. The fire-test that would prove LIVE: (1) Write to canon/ without authority:user → BLOCK; (2) Edit of canon/ file setting authority:archivist → BLOCK; (3) Write to canon/ with stale marker → BLOCK; (4) Write to canon/ with authority:user, no stale marker → ALLOW; (5) Write to proposals/ (no /canon/ in path) → ALLOW. Currently: all five fire-tests pass, including test 2 (Edit with new_string containing `authority: archivist` → BLOCK — confirmed by live fire-test). The real gap is the UNSTATED strip-only variant: an Edit that REMOVES `authority: user` without adding a wrong-authority string exits ALLOW (exit 0) because `wrong = False` passes the BLOCK_AUTH_EDIT condition. Fire-test case 2 as stated blocks correctly; the gap is a different Edit path not covered by the stated test.
+- **check_detail:** "pending label_checker.py" — PROPOSED LABEL: PARTIAL. ~~Rationale (original,
+  pre-2026-08-24): guard_canon_write.sh exit 2 on BLOCK_STALE / BLOCK_AUTH_WRITE / BLOCK_AUTH_EDIT; gap =
+  Edit strip-authority loophole (code-verified); fire-tests (1) Write without authority:user → BLOCK,
+  (2) Edit setting authority:archivist → BLOCK, both asserted passing.~~ CORRECTED 2026-08-24: see the
+  full note two lines below (`check_detail_correction`) — BLOCK_AUTH_WRITE/BLOCK_AUTH_EDIT do not exist;
+  the authority rail was removed 2026-08-11; fire-tests (1) and (2) above now return ALLOW, not BLOCK.
+- **check_detail_correction (2026-08-24):** re-read of the live 200-line `system/hooks/guard_canon_write.sh`
+  this session, plus its own header: the entire `authority:user` rail — write-side and edit-side both —
+  was DELIBERATELY DROPPED 2026-08-11 ("IT DOES NOT DO WHAT IT LOOKS LIKE IT DOES... IT BREAKS THIS
+  PRODUCT ON DAY ONE"), because it was self-attestation a machine types as easily as a person, and it
+  blocked `/save`'s own approved canon writes. The live guard's only two blocking outcomes are BLOCK_SIZE
+  (>3,200 chars) and BLOCK_STALE (an expiry/snapshot marker); everything else falls through to
+  ALLOW_CANON. Re-verified live this session: a synthetic Write to a canon path with no `authority` field
+  → `permissionDecision:allow`, exit 0. Honest PARTIAL rationale now: live blocking size + staleness rails,
+  against honor-system review quality, proposals-first routing, `topic:` enforcement, `type:rule`
+  suppression, and the unchanged Bash-write bypass — none involving `authority:` any longer. The guard's
+  header carries a `⚖ PENDING` note that restoring an authority rail is a live open decision, not a bug.

@@ -27,8 +27,19 @@
 set +e
 INPUT="$(cat 2>/dev/null)"
 
+# shasum is NOT guaranteed on PATH (Git Bash on Windows ships without it). Called bare (with
+# 2>/dev/null swallowing the error) it silently produces an empty key, collapsing every window's
+# state file onto one path. python3 fallback matches hash_key() in guard_cross_project_write.sh.
+_hashcwd() {
+  if command -v shasum >/dev/null 2>&1; then
+    printf '%s' "$PWD" | shasum | cut -c1-12
+  else
+    printf '%s' "$PWD" | python3 -c 'import hashlib,sys; sys.stdout.write(hashlib.sha1(sys.stdin.buffer.read()).hexdigest())' 2>/dev/null | cut -c1-12
+  fi
+}
+
 if [ -n "$CLAUDE_CODE_SESSION_ID" ]; then KEY="sess-$CLAUDE_CODE_SESSION_ID"
-elif [ -n "$PWD" ]; then KEY="cwd-$(printf '%s' "$PWD" | shasum 2>/dev/null | cut -c1-12)"
+elif [ -n "$PWD" ]; then KEY="cwd-$(_hashcwd)"
 else exit 0; fi
 
 # CLAUDE_CONFIG_DIR moves the whole harness folder; a bare $HOME/.claude then points at an empty

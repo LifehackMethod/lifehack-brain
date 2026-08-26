@@ -209,7 +209,7 @@ results in settings.json hooks section).
 | Port | Direction | What |
 |---|---|---|
 | `system/tools/notify-governor.py` | INTERNAL | Governor subprocess — called every send |
-| `system/notify-config.sh` | READ | Topic, server, quiet-hours, cap config |
+| ~~`system/notify-config.sh`~~ `shared/notify/notify-governor.py` | READ | ⚠ CORRECTED 2026-08-24: `system/notify-config.sh` does not exist on disk (`ls system/notify-config.sh` → No such file or directory, confirmed this session) — matches this doc's own banner above (L44), which already says the file "is not shipped at all." Quiet-hours and cap config actually live as env-var defaults inside `shared/notify/notify-governor.py` (`QUIET_START`/`QUIET_END`, ~L46–47; `DAILY_CAP`, ~L48); topic/server resolve from the reader's own `$HOME/.config/lifehack/ntfy-topic`, per the same banner. Values stated elsewhere in this doc (22:00–07:00 default window) are unchanged by this correction. |
 | `/tmp/lifehack-notify-state.json` | READ + WRITE | Governor rate/dedup state (volatile) |
 | `/tmp/lifehack-notify-state.json.lock` | WRITE | Exclusive lock for concurrent-safe R-M-W |
 | `/tmp/notify-gov.$$` | WRITE (ephemeral) | Capture governor stderr reason |

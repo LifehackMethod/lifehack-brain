@@ -26,8 +26,50 @@ THE TWO DEFECTS THIS FIXES, both measured, not theorised:
 FAILS CLOSED. An unknown must never be read as permission. That is the same trade
 already made deliberately for guard_gws_logout on an irreversible action.
 
-⚠ STILL A SPEED BUMP, NOT A BOUNDARY. A shell has infinite equivalent phrasings;
-this handles the ones we measured. Treat it accordingly.
+⛔⭐ THIRD DEFECT, fire-tested and CONFIRMED LIVE 2026-08-23 in both repos: an argv built
+by ANOTHER INTERPRETER -- a command built with subprocess.run() passed a Python LIST of
+words instead of one shell string. That list is not shell text at all; it is exec'd
+directly, with no shell in between. gws_segments() still tokenized on WHITESPACE ONLY, so
+the whole call was one opaque token (its delimiters are commas and quotes, not spaces),
+no segment was ever produced, and verdict() over zero segments defaulted to PASS.
+Measured: the fire-test command in system/hooks/tests/firetest-gws-argv-bypass.sh
+returned exit 0 -- NOT BLOCKED -- from three sibling guards, while the byte-identical
+command written as plain shell returned exit 2.
+
+⛔ WHY THE 2026-08-21 FIX DID NOT ALREADY COVER THIS: that fire test (see
+system/hooks/tests/firetest-sheet-sep.sh) found the identical comma/quote shape and
+patched it -- but only inside one guard's own BASH regexes (a SEP character class). This
+shared Python parser, used by three OTHER guards, was never touched, so the hole
+remained open everywhere else. THE FIX HERE, PER THE REPO'S OWN "no more nouns" RULE:
+this is not a new keyword or a broadened verb list -- it is recognising that a
+comma/quote-delimited run of string literals IS an argv, exactly the way a real
+interpreter reads one, regardless of what language or brackets surround it (a list, a
+tuple, a JS array, a bare comma-separated call). gws_segments() now runs a second,
+structural pass alongside the whitespace one: find every maximal run of two or more
+comma-separated quoted literals, decode each item the way an interpreter would, and feed
+the resulting token list through the EXACT SAME classifier (assignment/wrapper stripping,
+the binary-name match, nonliteral fallback) already used for real shell segments.
+Nothing about WHAT is being matched changed; only HOW the argv is read.
+
+⭐ ABSENT vs UNPARSEABLE. Before this fix, "no gws segment found" always meant PASS,
+whether that was because the command genuinely never touched gws OR because a shape like
+the one above defeated the tokenizer. Those are different findings and must not share an
+outcome: an unparseable command is refused rather than guessed at, the same posture
+already used for a $VAR or $(...) operation. Two backstops enforce this:
+  - a comma-list run whose tail keeps going past what we could read as quoted items (a
+    bare variable, an f-string, a spread) gets an explicit UNPARSEABLE sentinel appended
+    to its tokens, so the existing "operation word we cannot resolve" rule fires instead
+    of silently truncating the argv and reasoning over a partial one;
+  - a lone quoted binary-name token immediately followed by a comma -- the shape of a
+    list continuing -- that the comma-run pass above did not already resolve into a full
+    segment (because the rest of the call is opaque, e.g. a variable built elsewhere) is
+    flagged the same way. This is a SHAPE test, not a keyword search: ordinary prose that
+    merely mentions the binary name (a commit message, a heredoc body written, never
+    executed) is never followed directly by a comma this way, so it keeps passing exactly
+    as before -- see the self-test cases marked ABSENT below.
+
+⚠ STILL A SPEED BUMP, NOT A BOUNDARY. A shell (or another interpreter) has infinite
+equivalent phrasings; this handles the ones we measured. Treat it accordingly.
 
 Usage from a guard:
     python3 "$LIB/gws_guard.py" --service sheets --destructive clear,delete,batchclear \
@@ -63,6 +105,63 @@ _NESTED = re.compile(r'[$`]\(?\s*((?:[\w./~-]*/)?gws\b[^)`]*)')
 
 _NONLIT = re.compile(r'[$`]')
 
+# THIRD DEFECT'S CONSTANTS -- an argv assembled by ANOTHER INTERPRETER (Python, Node, ...)
+# is comma/quote-delimited, not whitespace-delimited. These read that shape directly, the way
+# the interpreter that built it would, rather than trying to re-derive shell tokenisation rules
+# that were never in play. A quoted literal in any of the three quote styles a language
+# actually uses for a string/array literal.
+_QUOTED = r"(?:'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\"|`(?:[^`\\]|\\.)*`)"
+# Bracket/paren/brace/whitespace characters are not delimiters themselves here -- they merely
+# decorate a list, tuple, set or bare call-argument list, and are skipped so the SAME regex
+# recognises ['a','b'], ('a','b'), {'a','b'} and a bare f('a','b') alike.
+_ARGV_JUNK = r"[\s\[\]\(\)\{\}]*"
+# A maximal run of two or more comma-separated quoted literals -- the shape of an argv built
+# as a list/tuple/array literal, regardless of the language or the brackets around it.
+_COMMA_LIST = re.compile(r"%s(?:%s,%s%s)+" % (_QUOTED, _ARGV_JUNK, _ARGV_JUNK, _QUOTED))
+_LIST_ITEM = re.compile(r"'((?:[^'\\]|\\.)*)'|\"((?:[^\"\\]|\\.)*)\"|`((?:[^`\\]|\\.)*)`")
+# BACKSTOP shape: a lone quoted 'gws' immediately followed by a comma -- a list continuing --
+# that the comma-run above did not already resolve into a full segment (its neighbour was not
+# a quoted literal at all: a bare variable, a function call, a spread). Deliberately NOT a
+# keyword search: ordinary prose that merely mentions "gws" is a single quoted string with no
+# comma directly after its own closing quote, so it is never matched by this and keeps
+# passing.
+_SOLO_GWS_QUOTE = re.compile(r"(['\"`])((?:[^'\"`\\]|\\.)*?)\1\s*,")
+# Sentinel appended to a token list when part of an argv could not be read as a quoted
+# literal. It contains characters no real shell word or quoted string can produce, so it can
+# never collide with a legitimate token, and has_nonliteral() below treats it exactly like a
+# "$VAR" it cannot resolve -- the same fail-closed rule, not a new one.
+UNPARSEABLE = '\x00UNPARSEABLE\x00'
+
+
+def _list_items(span_text):
+    """Decode every quoted literal in a comma-run match, in order, the way an interpreter
+    would: strip the surrounding quote characters and keep the content. No further
+    unescaping is attempted -- this only needs to recognise the LITERAL VALUE well enough to
+    compare it against a service word or a destructive verb, not to reproduce the string
+    byte-for-byte."""
+    items = []
+    for m in _LIST_ITEM.finditer(span_text):
+        items.append(next(g for g in m.groups() if g is not None))
+    return items
+
+
+def _classify(toks, out):
+    """Shared classifier: strip assignment/wrapper prefixes, then decide whether this token
+    list is a recognised gws invocation, an unresolved (nonliteral) one, or neither. Used
+    identically for real shell-split segments and for tokens read out of an interpreter-built
+    argv -- the SAME rule regardless of how the tokens were assembled, which is the whole
+    point: the difference between this repo's two prior fixes and this one is that earlier
+    fixes taught the parser a new SHAPE to read; this keeps the decision itself in exactly
+    one place."""
+    while toks and (_ASSIGN.match(toks[0]) or _debinary(toks[0]) in _WRAPPER):
+        toks.pop(0)
+    if not toks:
+        return
+    if _BINARY.match(_debinary(toks[0])):
+        out.append(toks)
+    elif _NONLIT.search(toks[0]) or toks[0] == UNPARSEABLE:
+        out.append(toks)
+
 
 def _debinary(tok):
     """Strip the disguises a shell ignores: quotes and a leading backslash.
@@ -96,36 +195,82 @@ def gws_segments(cmd):
         # A subshell or brace group is still a command being run.
         s = s.lstrip('({ ').rstrip(') };')
         toks = s.split()
-        # ⭐ FIX 1: strip leading NAME=value assignment prefixes before taking the
-        # first word. `ID=x gws ...` runs gws; the old parser could not see it.
-        # Strip BOTH assignment prefixes and wrapper words, repeatedly and in any
-        # order -- `env FOO=bar command <bin> ...` is all of them at once.
-        while toks and (_ASSIGN.match(toks[0]) or _debinary(toks[0]) in _WRAPPER):
-            toks.pop(0)
-        if toks and _BINARY.match(_debinary(toks[0])):
-            out.append(toks)
-        # ⭐ FIX 3 (2026-08-14): A BINARY HELD IN A VARIABLE IS STILL AN INVOCATION.
-        # `V=gws ; $V gmail users messages trash` runs exactly the destructive command, but
-        # `$V` is not the literal binary, so this segment was DROPPED — and a verdict computed
-        # over zero segments returns PASS. Measured across both repos with
-        # system/tools/firetest-binary-indirection.sh: the sheet, formula, calendar and gmail
-        # guards ALL allowed it, rc 0, while their literal-binary controls correctly denied.
-        # Three rounds of hardening that day tested the VERB and the TARGET and never the
-        # BINARY NAME, so this was orthogonal to every fix and invisible to every matrix.
-        # We cannot know whether $V is gws. That is precisely why it is returned: keeping the
-        # segment lets has_nonliteral() see it, the verdict becomes UNKNOWN, and every calling
-        # guard already fails closed on UNKNOWN. An unknown must never be read as permission.
-        elif toks and _NONLIT.search(toks[0]):
-            out.append(toks)
-        # ⭐ FIX 2: a gws inside $( ) or backticks is still a real invocation.
+        # FIX 1 + FIX 3, both 2026-08-14, NOW SHARED via _classify(): strip leading NAME=value
+        # assignment prefixes and wrapper words before taking the first word (`ID=x gws ...` runs
+        # gws; the old parser could not see it), then accept either a literal `gws` binary or a
+        # binary name we cannot resolve (`$V`) -- an unresolved binary is kept so has_nonliteral()
+        # can still see it and the verdict becomes UNKNOWN, which every calling guard already
+        # fails closed on. See _classify()'s own docstring for why this is now one function
+        # instead of duplicated inline logic split across this branch and the argv-list branch
+        # added below.
+        _classify(toks, out)
+        # FIX 2: a gws inside $( ) or backticks is still a real invocation.
         for m in _NESTED.finditer(s):
             out.append(m.group(1).split())
+
+    # FIX 4 (2026-08-23, the CONFIRMED LIVE bypass): an argv assembled by ANOTHER INTERPRETER --
+    # comma/quote-delimited, never whitespace-delimited, so nothing above ever saw it. Find every
+    # maximal run of two or more comma-separated quoted literals ANYWHERE in the command (not
+    # just inside one already-split statement, since the statement itself may be a single opaque
+    # token to the whitespace splitter above -- see gws_segments()'s module-docstring addendum),
+    # decode it the way the interpreter that wrote it would, and classify it through the exact
+    # same rule as a real shell segment.
+    #
+    # NORMALISE ONE MORE SHELL DISGUISE FIRST: this whole command is itself very often the BODY
+    # of an outer shell double-quoted argument (`python3 -c "...."`), and inside a shell double
+    # quote a backslash immediately before a quote character is stripped by the shell before the
+    # inner program ever runs -- `\"gws\"` and `"gws"` execute identically. Scanning the raw text
+    # for quote characters without accounting for that disguise missed every list literal written
+    # with double-quoted items this way (`subprocess.run(["gws","gmail",...])`), because the
+    # first REAL unescaped quote the naive scan could find was the very last one in the whole
+    # command, so the entire payload looked like one opaque quoted blob. This mirrors _debinary()
+    # above, which strips the same disguise for the binary name; used ONLY for finding argv-list
+    # shape, never for anything the whitespace-tokenised path above already relies on.
+    argv_cmd = cmd.replace('\\"', '"').replace("\\'", "'")
+    covered = []
+    for m in _COMMA_LIST.finditer(argv_cmd):
+        covered.append((m.start(), m.end()))
+        items = _list_items(m.group(0))
+        if not items:
+            continue
+        toks = items
+        # The list may continue past what we could read as a quoted literal -- a bare variable,
+        # an f-string, a spread operator. That is NOT the same finding as "the list ends here",
+        # and must not be reasoned over as if it were a complete, literal argv: append the
+        # UNPARSEABLE sentinel so has_nonliteral() (and therefore every existing UNKNOWN-fails-
+        # closed rule downstream) treats the unread remainder as exactly that -- unknown.
+        tail = argv_cmd[m.end():m.end() + 2].lstrip()
+        if tail.startswith(','):
+            toks = toks + [UNPARSEABLE]
+        _classify(toks, out)
+
+    # BACKSTOP: a lone quoted 'gws' immediately followed by a comma that the comma-run pass above
+    # did not already turn into a resolved segment (its neighbour in the list was not itself a
+    # quoted literal -- e.g. a bare variable or a function call standing in for the rest of the
+    # argv). ABSENT (no such shape at all -- an ordinary command, a commit message, a heredoc
+    # body) and UNPARSEABLE (the shape exists but the rest of it could not be read) are kept
+    # distinct here on purpose: this returns a segment, not a silent skip, so verdict() below
+    # can no longer default to PASS over it.
+    for m in _SOLO_GWS_QUOTE.finditer(argv_cmd):
+        if any(start <= m.start() < end for start, end in covered):
+            continue
+        # Reuse the SAME binary-recognition rule as every other path (_BINARY / _debinary):
+        # a path-qualified binary ('/usr/local/bin/gws',) is the identical invocation as a
+        # bare literal ('gws',) and must be caught the same way -- restored 2026-08-26 after
+        # the private rewrite narrowed this to the bare literal only, which a path-qualified
+        # call defeated.
+        if not _BINARY.match(_debinary(m.group(2))):
+            continue
+        out.append(['gws', UNPARSEABLE])
     return out
 
 
 def has_nonliteral(toks):
-    """Does any token hide its value behind a variable or a substitution?"""
-    return any(_NONLITERAL.search(t) for t in toks)
+    """Does any token hide its value behind a variable, a substitution, or an argv this parser
+    could read only PART of (the UNPARSEABLE sentinel -- see gws_segments())? All three are the
+    same finding from a caller's point of view: this token's real value cannot be read, so it
+    must not be reasoned about as if it were literal text."""
+    return any(t == UNPARSEABLE or _NONLITERAL.search(t) for t in toks)
 
 
 def op_chain(toks, service):
@@ -172,6 +317,15 @@ def verdict(cmd, service, destructive, safe, require_any=None, write_verbs=None)
     """
     write_verbs = write_verbs or []
     for toks in gws_segments(cmd):
+        # A fully-opaque argv (the SOLO_GWS_QUOTE backstop, `['gws', UNPARSEABLE]`) never
+        # literally names a service -- there was nothing left to read once the rest of the call
+        # turned out to be a variable or a function result, not a quoted literal. We cannot know
+        # which service it targets, so it is not this guard's business to decide it is SOME OTHER
+        # guard's problem: every guard checking any service must treat it as BLOCK. Skipping the
+        # service-name filter below only for this exact shape is what makes that possible; every
+        # other segment still has to literally name the service being checked, same as before.
+        if len(toks) == 2 and toks[0] == 'gws' and toks[1] == UNPARSEABLE:
+            return 'BLOCK'
         seg = ' '.join(toks)
         if not re.search(r'\b%s\b' % re.escape(service), seg, re.I):
             continue
@@ -194,45 +348,52 @@ def verdict(cmd, service, destructive, safe, require_any=None, write_verbs=None)
 
 def verdict_reason(cmd, service, destructive, safe, require_any=None, write_verbs=None):
     """ADDITIVE, MESSAGE-ONLY HELPER -- does not decide anything by itself, and nothing in this
-    file's real gating path (verdict(), main()'s sys.exit) calls it. It exists because several
-    callers were reusing ONE rule's deny message for every reason verdict() can return BLOCK,
+    file real gating path (verdict(), main() sys.exit) calls it. It exists because several
+    callers were reusing ONE rule deny message for every reason verdict() can return BLOCK,
     including the fail-closed we-could-not-resolve-this case -- so an unparseable drafts-create
     command came back denied with a Gmail-deletion-specific message that named a rule the command
-    never touched. Measured 2026-08-23 (ClaudeOps); ported here because the same shared parser and
-    the same three callers exist in this repo too.
+    never touched. Measured 2026-08-23.
 
-    Mirrors verdict()'s conditions and their ORDER exactly, so the reason it reports can never
+    Mirrors verdict() conditions and their ORDER exactly, so the reason it reports can never
     disagree with the decision verdict() already made. A caller uses this ONLY after verdict()
     (via the unchanged --service/--destructive/... invocation) has already returned BLOCK, purely
     to pick which honest message to print.
 
     Returns (verdict, reason) where reason is one of:
       None                   -- PASS, or no gws segment for this service was found
-      'unresolved_operation' -- the operation itself could not be read (a $VAR, a substitution, or
+      unresolved_operation   -- the operation itself could not be read (a $VAR, a substitution, or
                                  an xargs-style placeholder sits where the verb should be)
-      'destructive'          -- a literal, in-scope destructive verb was matched
-      'unresolved_target'    -- a literal write verb, but its TARGET could not be read
+      unparseable_argv       -- an argv assembled by another interpreter (Python, Node, ...) that
+                                 this parser could recognise as naming the gws binary but could
+                                 not read far enough to know which service it targets at all
+      destructive             -- a literal, in-scope destructive verb was matched
+      unresolved_target      -- a literal write verb, but its TARGET could not be read
     """
     write_verbs = write_verbs or []
     for toks in gws_segments(cmd):
-        seg = ' '.join(toks)
-        if not re.search(r'\b%s\b' % re.escape(service), seg, re.I):
+        # Mirrors verdict()'s own special case above, in the same order, for the same reason:
+        # a fully-opaque argv never names a service literally, so every service check must
+        # treat it as BLOCK rather than silently skipping past it.
+        if len(toks) == 2 and toks[0] == 'gws' and toks[1] == UNPARSEABLE:
+            return "BLOCK", "unparseable_argv"
+        seg = " ".join(toks)
+        if not re.search(r"\b%s\b" % re.escape(service), seg, re.I):
             continue
         chain = op_chain(toks, service)
         if not chain:
             if has_nonliteral(toks):
-                return 'BLOCK', 'unresolved_operation'
+                return "BLOCK", "unresolved_operation"
             continue
         if has_nonliteral(chain):
-            return 'BLOCK', 'unresolved_operation'
+            return "BLOCK", "unresolved_operation"
         low = [c.lower() for c in chain]
         in_scope = (not require_any) or any(w.lower() in low for w in require_any)
         if in_scope and any(v.lower() in low for v in destructive):
-            return 'BLOCK', 'destructive'
+            return "BLOCK", "destructive"
         if any(v.lower() in low for v in write_verbs):
             if has_nonliteral(toks[len(chain) + 1:]):
-                return 'BLOCK', 'unresolved_target'
-    return 'PASS', None
+                return "BLOCK", "unresolved_target"
+    return "PASS", None
 
 
 def _selftest():
@@ -260,6 +421,39 @@ def _selftest():
         ("gws gmail users labels delete --id L1", 'gmail', 'PASS'),
         # but a hidden scope word is UNKNOWN and must fail closed
         ("gws gmail users $THING delete --id L1", 'gmail', 'BLOCK'),
+
+        # -- REGRESSION, 2026-08-23: the CONFIRMED LIVE bypass, argv built by ANOTHER
+        # INTERPRETER (comma/quote-delimited, never whitespace-delimited). Every one of these
+        # returned exit 0 / PASS before the fix; see this file's module docstring.
+        ("python3 -c \"import subprocess; subprocess.run(['gws','gmail','users','threads','trash','--id','18abc'])\"", 'gmail', 'BLOCK'),
+        # Node-style: the binary as its own quoted argument, the rest as a separate array literal.
+        ("execFileSync('gws', ['gmail','users','threads','trash','--id','18abc'])", 'gmail', 'BLOCK'),
+        # A tuple, not a list -- the comma/quote shape is what matters, not the bracket character.
+        ("subprocess.run(('gws','gmail','users','threads','trash','--id','18abc'))", 'gmail', 'BLOCK'),
+        # Mixed quote styles within one argv must not defeat the extraction.
+        ("subprocess.run(['gws',\"gmail\",'users','threads',\"trash\",'--id','18abc'])", 'gmail', 'BLOCK'),
+        # The same shape with a SAFE verb must still PASS -- proof this is not "block every list".
+        ("subprocess.run(['gws','gmail','users','threads','untrash','--id','18abc'])", 'gmail', 'PASS'),
+        # A list that trails off into a bare (unquoted) variable partway through must not be
+        # silently truncated and read as a clean, short, harmless argv -- it is UNKNOWN and
+        # fails closed, same as a $VAR would in the whitespace path.
+        ("subprocess.run(['gws','gmail','users','threads', op, '--id', tid])", 'gmail', 'BLOCK'),
+        # Fully opaque construction: gws named, the rest of the argv is a function call, not a
+        # literal. We cannot know which service this targets, so it fails closed for EVERY
+        # service a guard might be checking, not just the one that happens to guess right.
+        ("os.execvp('gws', build_argv())", 'gmail', 'BLOCK'),
+        ("os.execvp('gws', build_argv())", 'sheets', 'BLOCK'),
+        # REGRESSION, 2026-08-26: a PATH-QUALIFIED binary defeated the narrowed
+        # _SOLO_GWS_QUOTE backstop (it only matched the bare literal). Restored by
+        # routing the backstop's matched content through the same _BINARY/_debinary
+        # check every other path already uses.
+        ("os.execvp('/usr/local/bin/gws', build_argv())", 'sheets', 'BLOCK'),
+        # ABSENT, not unparseable: an ordinary comma-bearing sentence that merely MENTIONS gws is
+        # never a list-literal shape and must keep passing exactly as before the fix.
+        ("echo 'gws, gmail, and sheets are all guarded now, for what it is worth'", 'gmail', 'PASS'),
+        # ABSENT: a real, unrelated two-item list near an unrelated mention of gws elsewhere in
+        # the same line must not be swept in by proximity alone.
+        ("echo 'gws was mentioned here'; run(['a','b'])", 'gmail', 'PASS'),
     ]
     gmail_d = ['delete', 'batchDelete', 'trash']
     gmail_s = ['modify', 'untrash', 'list', 'get']

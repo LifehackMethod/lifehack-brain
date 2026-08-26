@@ -167,7 +167,7 @@ agent (Read-only, model **haiku**, `run_in_background: true`) per bundle — the
 if [ -s "$COWORK_WORK/world-tags.json" ]; then
   echo "ALREADY-DONE: $COWORK_WORK/world-tags.json already exists — skipping tag"
 else
-  SLICES="$COWORK_WORK/tag-slices"; TAGSCRATCH="$COWORK_WORK/tag-bundles"; RAWTAGS="$COWORK_WORK/raw-tags"
+  SLICES="$COWORK_WORK/tag-slices"; TAGSCRATCH="$(python3 "$ROOT/shared/paths.py" scratch ingest_body "tag-bundles")"; RAWTAGS="$COWORK_WORK/raw-tags"
   python3 $T/tag.py slice --in "$FLAT" --out "$SLICES"
   python3 $T/gate_and_pack.py --in "$SLICES" --out "$TAGSCRATCH" --desk cowork-ingest --max-files 25 --slice none
   mkdir -p "$RAWTAGS"

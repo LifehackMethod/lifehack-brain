@@ -54,6 +54,9 @@ JOURNAL_REL = os.path.join("system", "journal.md")
 SEGMENT_DIR_REL = os.path.join("system", "journal")
 
 ROW_RE = re.compile(r"^(\d{4})-(\d{2})-\d{2}\s*\|")
+# Rows written before the pipe format existed: a bullet, an ISO date, a colon, then free prose with
+# the slug somewhere inside it. Kept readable rather than dropped on the floor.
+LEGACY_RE = re.compile(r"^-\s+(\d{4}-\d{2}-\d{2}):\s")
 DASH = "—"
 
 JOURNAL_HEADER = """# Journal
@@ -72,6 +75,49 @@ def notes_root(explicit=None):
     except ImportError:
         return None
     return brain_root.resolve_brain_root()[1]
+
+
+# ⛔ FIELD REPORT #77, DEFECT D6 (2026-08-23). `append()` used to write the row with ZERO lookup
+# against the project registry, so a typo'd or invented slug landed silently — unfindable later by
+# the slug anyone would actually search for. `shared/registry.py` is the one place that already knows
+# how to resolve a slug (`resolve()`), so this reuses it rather than re-deriving the same rule a
+# second time.
+#
+# THE DECISION (refuse vs. mark, argued once, here): an unregistered slug REFUSES the write by
+# default. `phases/standard-steps.md` Step 0.5 already requires a brand-new project to be registered
+# ("add the row to `$DATA/system/project-registry.md` **before** the first save") before Step 7 ever
+# calls `journal.py append` — so by the time this function runs, an unregistered slug is either a typo
+# or a session that skipped its own precondition, and catching that at write time, before anything
+# lands, is the cheapest possible moment to fix it. Nothing is lost by refusing: unlike a partial
+# write, `validate()` already raises before touching disk, and this raises the same way — register the
+# slug (or fix the typo) and re-run the identical `append` call.
+#
+# THE ESCAPE HATCH for a genuine legitimate first-write (a real project whose registration is
+# deliberately deferred, or a caller that cannot register mid-flow): `allow_unregistered=True` /
+# `--allow-unregistered` on the CLI. It does NOT silently accept — it still writes, but the `event`
+# field carries a loud, unmissable `[UNREGISTERED SLUG]` marker so nobody downstream mistakes an
+# unvetted slug for a filed project. This is deliberate, opt-in, and never the default.
+def _check_registered(root, slug):
+    """(ok, why-refused). `ok=True` for a registered slug OR when the registry itself could not be
+    consulted for a repo-shape reason distinct from 'this slug is unknown' (fails CLOSED — see below,
+    it never returns ok=True for a genuinely absent row)."""
+    sys.path.insert(0, os.path.join(_REPO, "shared"))
+    try:
+        import registry as _registry
+    except ImportError as e:
+        # Fail CLOSED, not open: "the resolver is missing" must not read as "the slug is fine."
+        return False, ("could not load shared/registry.py to check slug %r (%s) — refusing rather "
+                        "than silently accepting an unverifiable slug" % (slug, e))
+    try:
+        p = _registry.resolve(slug, root=root)
+    except Exception as e:
+        return False, "registry.resolve(%r) raised %s — refusing rather than guessing" % (slug, e)
+    if p.layout is None:
+        return False, ("%r has no row in system/project-registry.md — register it first "
+                        "(standard-steps.md Step 0.5: 'add the row ... before the first save'), or "
+                        "pass allow_unregistered=True / --allow-unregistered for a deliberate "
+                        "first-write ahead of registration." % slug)
+    return True, None
 
 
 def journal_path(root):
@@ -111,10 +157,18 @@ def format_row(slug, event, artifact=None, supersedes=None, desk="root", date=No
         d, desk, slug, event.strip(), (supersedes or DASH).strip(), tail)
 
 
-def append(root, slug, event, artifact=None, supersedes=None, desk="root", date=None):
+def append(root, slug, event, artifact=None, supersedes=None, desk="root", date=None,
+           allow_unregistered=False):
     ok, why = validate(event, supersedes)
     if not ok:
         raise ValueError(why)
+    reg_ok, reg_why = _check_registered(root, slug)
+    if not reg_ok:
+        if not allow_unregistered:
+            raise ValueError("unregistered slug — %s" % reg_why)
+        # Deliberate first-write ahead of registration: write, but never quietly. The marker rides in
+        # `event` so it survives `slice`, grep, and every other reader unchanged in format.
+        event = "[UNREGISTERED SLUG] %s" % event.strip()
     p = journal_path(root)
     os.makedirs(os.path.dirname(p), exist_ok=True)
     if not os.path.exists(p):
@@ -134,7 +188,11 @@ def slice_(root, slug=None, limit=20):
     """Every matching row across the segments AND the current file, oldest first.
 
     ⛔ The segments come first and the current file last, so the arc reads forwards. A reader that
-    opens only the current file loses everything before the last rotation, quietly."""
+    opens only the current file loses everything before the last rotation, quietly.
+
+    Rows written before the pipe format — dated bullets like "- 2026-06-21: PROJECT CREATED
+    widget. …" — are included verbatim alongside canonical rows, in encounter order, rather than
+    silently dropped."""
     rows = []
     for p in segment_paths(root) + [journal_path(root)]:
         if not os.path.isfile(p):
@@ -142,11 +200,15 @@ def slice_(root, slug=None, limit=20):
         try:
             with open(p, encoding="utf-8") as f:
                 for line in f:
-                    if not ROW_RE.match(line):
-                        continue
-                    if slug and ("| %s |" % slug) not in line:
-                        continue
-                    rows.append(line.rstrip("\n"))
+                    if ROW_RE.match(line):
+                        if slug and ("| %s |" % slug) not in line:
+                            continue
+                        rows.append(line.rstrip("\n"))
+                    elif LEGACY_RE.match(line):
+                        if slug and not re.search(
+                                r"(?<![\w-])" + re.escape(slug) + r"(?![\w-])", line):
+                            continue
+                        rows.append(line.rstrip("\n"))
         except Exception:
             continue
     return rows[-limit:] if limit else rows
@@ -213,6 +275,10 @@ def main(argv=None):
     a.add_argument("--to", dest="artifact")
     a.add_argument("--supersedes")
     a.add_argument("--desk", default="root")
+    a.add_argument("--allow-unregistered", action="store_true",
+                   help="write even though --slug has no row in project-registry.md — for a "
+                        "deliberate first-write ahead of registration. Marks the event loudly; "
+                        "never the default. Omit this and an unregistered slug REFUSES the write.")
 
     s = sub.add_parser("slice")
     s.add_argument("--slug")
@@ -233,7 +299,8 @@ def main(argv=None):
 
     if args.cmd == "append":
         try:
-            print(append(root, args.slug, args.event, args.artifact, args.supersedes, args.desk))
+            print(append(root, args.slug, args.event, args.artifact, args.supersedes, args.desk,
+                          allow_unregistered=args.allow_unregistered))
         except ValueError as e:
             print("REFUSED: %s" % e, file=sys.stderr)
             return 2
@@ -247,6 +314,10 @@ def main(argv=None):
             return 0
         for row in rows:
             print(row)
+        n_legacy = sum(1 for row in rows if LEGACY_RE.match(row))
+        if n_legacy:
+            print("⚠ %d pre-format row(s) shown verbatim — written before the current journal "
+                  "format; fields may be incomplete." % n_legacy)
         print("\nJournal reflects saves via /save and explicitly logged decisions only. In-session "
               "pivots, verbal agreements, and file changes outside /save are not captured. A "
               "clean-looking journal is not a complete journal.")

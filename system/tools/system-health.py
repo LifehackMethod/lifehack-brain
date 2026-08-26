@@ -384,14 +384,28 @@ def main():
     for r in results:
         r["label"] = label_for(r["job"])
 
+    # A job's `state` is per-CATEGORY vocabulary (per-job liveness uses "UP", the substrate
+    # invariants in health_invariants.py use "OK") — both mean the same thing for the tally:
+    # ran clean, nothing to look at. Counting only "UP" silently dropped every "OK" (the four
+    # integrity:* checks) out of BOTH the healthy and the attention bucket, so they still
+    # counted toward `total` but toward nothing else — a tally that could never reconcile
+    # (found 2026-08-22: healthy 42 + attention 11 = 53 against total 65, five missing OK jobs).
+    # Three states are a DELIBERATE non-fault, non-health exclusion (paused by Sentinel, disabled
+    # BY DESIGN in pulse-config.md, or simply disabled) — these are the "legitimately excluded"
+    # bucket and must stay out of `healthy` (they didn't run) while still being visible and
+    # counted, so healthy/attention/excluded reconciles exactly against `total`.
+    HEALTHY_STATES = {"UP", "OK"}
+    EXCLUDED_STATES = {"PAUSED-BY-SENTINEL", "BY DESIGN", "PAUSED"}
     need = [r for r in results if r["attention"]]
-    healthy = [r for r in results if r["state"] == "UP"]
+    healthy = [r for r in results if r["state"] in HEALTHY_STATES]
+    excluded = [r for r in results if r["state"] in EXCLUDED_STATES]
     groups = {}
     for r in results:
-        groups.setdefault(r["group"], {"items": [], "healthy": 0, "attention": 0})
+        groups.setdefault(r["group"], {"items": [], "healthy": 0, "attention": 0, "excluded": 0})
         groups[r["group"]]["items"].append(r)
-        if r["state"] == "UP": groups[r["group"]]["healthy"] += 1
+        if r["state"] in HEALTHY_STATES: groups[r["group"]]["healthy"] += 1
         if r["attention"]: groups[r["group"]]["attention"] += 1
+        if r["state"] in EXCLUDED_STATES: groups[r["group"]]["excluded"] += 1
 
     sev = {"error": 0, "warning": 1, "info": 2, "ok": 3}
     need.sort(key=lambda r: sev.get(r["severity"], 9))
@@ -401,6 +415,7 @@ def main():
         "stale_after_s": 1800, "last_run": iso(now), "rc": 0,
         "status": "NEEDS_REVIEW" if need else "OK",
         "summary": {"healthy_count": len(healthy), "attention_count": len(need),
+                    "excluded_count": len(excluded),
                     "total": len(results), "updated_at": iso(now)},
         "need_attention": need,
         "groups": groups,

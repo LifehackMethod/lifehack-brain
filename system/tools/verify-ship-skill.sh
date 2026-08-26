@@ -44,7 +44,7 @@ printf '\nverify-ship-skill -- proving the /ship front door runs, not just reads
 printf -- '------------------------------------------------------------\n'
 
 # ---------------------------------------------------------------- 0. the snapshot
-BEFORE=$(cd "$REPO" && git status --porcelain | sort)
+BEFORE=$(cd "$REPO" && GIT_OPTIONAL_LOCKS=0 git status --porcelain | sort)
 
 # ---------------------------------------------------------------- 1. the file itself
 if [ -f "$SKILL" ]; then
@@ -193,7 +193,7 @@ else
 fi
 
 # ---------------------------------------------------------------- 4. the originals
-AFTER=$(cd "$REPO" && git status --porcelain | sort)
+AFTER=$(cd "$REPO" && GIT_OPTIONAL_LOCKS=0 git status --porcelain | sort)
 if [ "$BEFORE" = "$AFTER" ]; then
   ok "git status --porcelain in the repo is BYTE-IDENTICAL before and after -- originals untouched"
 else

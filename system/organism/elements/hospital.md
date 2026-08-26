@@ -6,7 +6,7 @@ altitude: base
 record_type: organism-element
 maturity_label: LIVE·gap
 gap_disposition: by-design
-gap_disposition_note: "authored 2026-08-04, AFTER the 2026-07-28 class-level ruling batch — Hospital did not exist then, so this is NOT one of that day's rulings. ★ RAISED PARTIAL→LIVE 2026-08-04 (T15.30), EARNED FROM CODE not hand-typed: the two gaps this note previously cited are both closed — the deny-hook exists and is registered (system/hooks/guard_findings_write.sh, settings.json:293), and detector coverage is complete. Machine check: every system/tools/*-health.py plus organism/organism-health.py now calls emit_finding; the ONLY file that does not is backlog-health.py, a CUT approved by the operator because backlog_groom.py:290 already emits findings off the identical build_report() and the health script is merely its tile renderer. All 13 producers resolve a cadence in findings_deadman.load_producer_roster(). ✅ CORRECTED 2026-08-05 — THE VARIABLE-PATH BYPASS IS CLOSED AND THIS NOTE WAS STILL CLAIMING IT OPEN. This note used to read: 'THE ·gap IS NOT COSMETIC — guard_findings_write.sh matches the LITERAL string state/findings/, so a path held in a shell VARIABLE evades every one of its seven patterns... still open behind one line of indirection. Unfixed deliberately: a hook edit needs the SOP receipt and the operator's sign-off.' That was true when written (T15.32, found at the T15.30 review) and was FIXED later the same day: guard_findings_write.sh:88-96 now imports system/tools/hook_path_resolve.py and matches the RESOLVED command, exactly as the ruling demanded ('a path-matching guard cannot be completed by adding an eighth regex'). VERIFIED LIVE 2026-08-05 by firing the REGISTERED guard with a variable-path payload: rc=2, blocked. The resolver degrades loudly rather than denying if it is ever missing, so a resolver outage cannot black out every tool call. ★ THE LESSON IS THIS PROJECT'S OWN SIGNATURE ONE, AGAIN: a defect note left standing after the defect was fixed sends the next session to re-fix working code — the exact inverse of T15.26/T15.27, and caught here only because T18.6b re-read the guard before extending it. STILL GENUINELY OPEN: the guard is watched firing on the primary machine ONLY (the second machine dark since 2026-07-04) — T15.31."
+gap_disposition_note: "authored 2026-08-04, AFTER the 2026-07-28 class-level ruling batch — Hospital did not exist then, so this is NOT one of that day's rulings. ★ RAISED PARTIAL→LIVE 2026-08-04 (T15.30), EARNED FROM CODE not hand-typed: the two gaps this note previously cited are both closed — the deny-hook exists and is registered (system/hooks/guard_findings_write.sh, settings.json:293), and detector coverage is complete. Machine check: every system/tools/*-health.py plus organism/organism-health.py now calls emit_finding; the ONLY file that does not is backlog-health.py, a CUT approved by the operator because backlog_groom.py:290 already emits findings off the identical build_report() and the health script is merely its tile renderer. All 13 producers resolve a cadence in findings_deadman.load_producer_roster(). ✅ CORRECTED 2026-08-05 — THE VARIABLE-PATH BYPASS IS CLOSED AND THIS NOTE WAS STILL CLAIMING IT OPEN. This note used to read: 'THE ·gap IS NOT COSMETIC — guard_findings_write.sh matches the LITERAL string state/findings/, so a path held in a shell VARIABLE evades every one of its seven patterns... still open behind one line of indirection. Unfixed deliberately: a hook edit needs the SOP receipt and the operator's sign-off.' That was true when written (T15.32, found at the T15.30 review) and was FIXED later the same day: guard_findings_write.sh:88-96 now imports system/tools/hook_path_resolve.py and matches the RESOLVED command, exactly as the ruling demanded ('a path-matching guard cannot be completed by adding an eighth regex'). VERIFIED LIVE 2026-08-05 by firing the REGISTERED guard with a variable-path payload: rc=2, blocked. 🔴 CORRECTED 2026-08-23 — THAT VERIFICATION DID NOT HAPPEN IN THIS REPO, AND THE BYPASS WAS OPEN HERE UNTIL TODAY. The struck claim above is kept, not deleted, because the record keeps its wrong turns. It was carried over verbatim from the DONOR clone (`~/claudeops-config`) and describes an event in a DIFFERENT repository: `guard_findings_write.sh` was first ported here on 2026-08-14 (`50847d3`/`8d1dd53`) and this organism layer on 2026-08-15 (`688caf3`) — both AFTER the 2026-08-05 date it asserts, so no such verification could have been run here. ⚠ The resolver it depends on, `system/tools/hook_path_resolve.py`, was NEVER COMMITTED: absent from HEAD, from `upstream/main`, and from every branch's history. It sat untracked on the operator's disk, so the guard held on HIS machine alone while every clone had the bypass OPEN and this note said CLOSED. ⭐ MEASURED 2026-08-23 on a clean worktree of `upstream/main`, same guard, same store path: literal-path → exit 2 (blocked) · variable-path → **exit 0 (ALLOWED)**. Closed for real by commit `cfc80cc`, which committed the resolver; re-measured after: variable-path → exit 2. ⭐ THE CLASS, not the instance: a sweep found **16** dated verification claims across the organism layer and sops that predate their own file's port date, plus 4 undated and 3 SOP files never committed here at all. The honest pattern already exists in this repo — see `system/security-canon.md:466`'s `⛔ Migration note, 2026-08-15` banner. Copy it. The resolver degrades loudly rather than denying if it is ever missing, so a resolver outage cannot black out every tool call. ★ THE LESSON IS THIS PROJECT'S OWN SIGNATURE ONE, AGAIN: a defect note left standing after the defect was fixed sends the next session to re-fix working code — the exact inverse of T15.26/T15.27, and caught here only because T18.6b re-read the guard before extending it. STILL GENUINELY OPEN: the guard is watched firing on the primary machine ONLY (the second machine dark since 2026-07-04) — T15.31."
 generated_from:
   - system/tools/emit_finding.py
   - system/tools/findings_reader.py
@@ -75,7 +75,7 @@ authority: user
 > + `health_line.py` + `fault_proposer.py` + `fault_ledger.py`) are the fourth level — the executable
 > runtime ground truth. This entry is the UNDERSTANDING layer.
 >
-> **LADDER: ELEMENT (full mechanics). up → manual#hospital [NOT YET WRITTEN] ; ground truth →
+> **LADDER: ELEMENT (full mechanics). up → ~~manual#hospital [NOT YET WRITTEN]~~ manual#hospital ⚠ CORRECTED 2026-08-24: the section exists and is substantive (`system/organism/manual.md` ~L1214–1224, confirmed this session) ; ground truth →
 > system/tools/emit_finding.py + findings_reader.py + findings_deadman.py + health_line.py +
 > fault_proposer.py + fault_ledger.py**
 >
@@ -370,14 +370,34 @@ is real for the 4 converted producers and NOT YET real for these 8. See GAPS.
 
 ### GATES AND ENFORCEMENT (the honest map)
 
-**No hard hook-enforced wall exists for Hospital, as of this write.** A grep of `system/hooks/` for
+~~**No hard hook-enforced wall exists for Hospital, as of this write.** A grep of `system/hooks/` for
 "emit_finding\|state/findings\|hospital" and a scan of the `PreToolUse` block in
 `system/reference/settings.json` (which registers exactly two guards — `guard_write_paths.sh` line
 183, `guard_ledger_discipline.sh` line 188) both return nothing Hospital-related. Nothing structurally
 prevents a hand-rolled `Bash echo >> state/findings/x.jsonl` write that bypasses `emit_finding()`'s
 entire contract — the same class of gap `guard_write_paths.sh`'s own header already admits
 system-wide (Bash bypasses the Write|Edit hook plane by construction). **This is not asserted as a
-real seam anywhere below — see INTEROP SEAMS and GAP-3.**
+real seam anywhere below — see INTEROP SEAMS and GAP-3.**~~
+
+> **⚠ CORRECTED 2026-08-24:** This was wrong on both the search and the conclusion, re-verified
+> directly this session. `system/reference/settings.json` does not exist on disk at all (`find`
+> confirms 0 matches) — hook registration moved; the real source of truth is
+> `system/hooks/registrations.json`, and the live per-machine file is `.claude/settings.local.json` — ⛔ genuinely absent on this machine, not merely undocumented (install-guard-registrations.py would write a hook registration there, and none exists here)
+> (installed from it by `system/tools/install-guard-registrations.py`; `.claude/settings.json`
+> itself carries an explicit `_hooks_moved` note saying so). The claimed grep is also simply wrong:
+> `grep -rl "emit_finding\|state/findings\|hospital" system/hooks/` finds
+> `system/hooks/guard_findings_write.sh` directly (plus its own test file,
+> `system/hooks/tests/test_findings_and_delegation.sh`). That guard is registered in
+> `system/hooks/registrations.json:278-284` on matcher `Bash|Write|Edit`, and it is NOT theatre:
+> fire-tested this session with a synthetic payload —
+> `{"tool_name":"Bash","tool_input":{"command":"echo synthetic_test_line >> state/findings/synthetic-probe.jsonl"}}`
+> piped to it — and it returned a genuine `{"decision":"block", ...}` refusing the write, exit 2. So
+> a hand-rolled Bash write IS mechanically blocked when this guard is installed. The one caveat that
+> remains genuinely open, not resolved by this correction: whether `guard_findings_write.sh` is
+> actually *installed* (present in `.claude/settings.local.json` — ⛔ absent on this machine) on any given machine is a separate,
+> per-machine question from whether the guard script itself works — on this machine this session,
+> `.claude/settings.local.json` does not exist — ⛔ genuinely absent here, so live-install status here is COULD-NOT-EVALUATE,
+> not confirmed active. See item 7 below, corrected to match.
 
 **Script-level (not hook-level) enforcement that IS real:**
 
@@ -390,10 +410,18 @@ real seam anywhere below — see INTEROP SEAMS and GAP-3.**
 3. **Namespace-disjointness in `fault_ledger.py`** `[script]` — `record_faults()`/`record_findings()`
    each filter strictly to their own key prefix on the reap pass; the disjointness is proven by string
    construction (see THE LIFECYCLE STORE above), not merely tested.
-4. **`require_primary` machine gate** `[script]` — `backlog-health-run.sh`, `fault-proposer-run.sh`
+4. ~~**`require_primary` machine gate** `[script]` — `backlog-health-run.sh`, `fault-proposer-run.sh`
    (implicitly via its own machine-token derivation), and `guard-fire-test-run.sh` all gate on
    `state/primary-machine` so only the lead machine writes its tile; this is a residency discipline,
-   not a security wall.
+   not a security wall.~~ **⚠ CORRECTED 2026-08-24: none of this exists.** Re-checked this session:
+   `require_primary` has zero definitions anywhere in the repo; `backlog-health-run.sh` does not
+   exist (per `elements/backlog-authority.md:199-205`, Pulse invokes the tile producer directly, "no
+   machine gate, no `require_primary`, and no `state/primary-machine` marker"); `grep -n
+   "require_primary\|primary-machine" system/tools/fault-proposer-run.sh` returns nothing;
+   `guard-fire-test-run.sh` only *mentions* `require_primary` in a comment describing it as the
+   donor's dropped gate. This system has one machine
+   (`docs/data-layout.md:215`), so there is no lead machine to gate on. Same fabrication, same
+   pattern, as `elements/pulse-cron.md`'s corrected GATES section.
 
 **Honor-system (prose instruction only; no hook or script enforces these):**
 
@@ -498,10 +526,28 @@ Every store in this subsystem follows the machine-in-the-PATH rule, never machin
 stated directly in `emit_finding.py`'s own docstring as the fix for the measured 9-way fork /
 1,169-stranded-rows failure, and `fault-proposer-run.sh` restates it as "the residency law."
 
-**7. `hospital` GUARDED-BY — NOTHING, as of this write.**
+~~**7. `hospital` GUARDED-BY — NOTHING, as of this write.**
 No deny-hook or any other hook is registered for Hospital's writer or store (verified directly — see
 GAPS GAP-3). This seam is deliberately NOT asserted as real; recorded here only to make the absence
-explicit rather than silently omitted.
+explicit rather than silently omitted.~~
+
+**7. ⚠ CORRECTED 2026-08-24: `hospital` GUARDED-BY `guard_findings_write.sh` — real, fire-tested this
+session.** This is the twin correction to the GATES AND ENFORCEMENT banner above. `system/hooks/
+guard_findings_write.sh` exists, is registered on matcher `Bash|Write|Edit` in
+`system/hooks/registrations.json:278-284` (the actual source of truth — `system/reference/
+settings.json`, which GAP-3 below cites, does not exist on disk), and blocks exactly the class of
+write this section is about: a hand-rolled line into `state/findings/` or `state/recommendations/`
+that bypasses `emit_finding.py`/`emit_recommendation.py`. Fire-tested directly this session with a
+synthetic stdin payload targeting `state/findings/synthetic-probe.jsonl` — ⛔ an example path used only for this fire-test, never a real file — no destructive write
+attempted, the guard intercepted it and returned `{"decision":"block", "reason":"BLOCKED: a direct
+write into a VALIDATED STORE - state/findings/ (Hospital)...` }`, exit 2. The manual's twin claim
+(`system/organism/manual.md` ~L1231-1236) was corrected earlier today to match. **One caveat left
+open, not resolved by this correction:** the guard script working when invoked directly is a
+different fact from whether it is *installed* on a given machine — that requires
+`.claude/settings.local.json` — ⛔ genuinely absent here — to carry the entry (written by `system/tools/
+install-guard-registrations.py`). On this machine this session that file does not exist, so live-
+install status here is COULD-NOT-EVALUATE. What IS confirmed: the guard is source-of-truth
+registered and functionally real, which is a different world from "GUARDED-BY — NOTHING."
 
 ---
 

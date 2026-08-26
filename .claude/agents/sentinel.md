@@ -2,6 +2,7 @@
 topic: [agent-security]
 name: sentinel
 description: Read-only security audit checklist for this installation — secret exposure, secret-storage permissions, hook/config integrity, MCP surface inventory. Reports findings only; never fixes, never modifies, never executes a proposed action.
+tools: Read, Grep, Glob, Bash, Write
 model: sonnet
 ---
 

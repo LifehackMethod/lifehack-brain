@@ -70,11 +70,11 @@
 DENY='{"decision":"block","reason":"BLOCKED: destructive Gmail verb (delete / batchDelete / trash). WHY: Gmail deletion is IRREVERSIBLE and no agent path here is authorised to perform it — mail is moved by LABEL ONLY, which is reversible by design. Every other Google service reachable with one gws login is guarded; mail is the one where the mistake cannot be taken back. REDIRECT: use a label move instead — gws gmail users threads modify --user-id me --id <THREAD_ID> --add-label-ids <LABEL_TO_ADD> --remove-label-ids <LABEL_TO_REMOVE>. If mail truly must be destroyed, YOU do it in the Gmail UI, where you can see what is about to go. RULE: the GUARDS line in system/hooks/guard_gmail_destructive.sh — an agent never irreversibly destroys your mail. Change that rule deliberately and amend the hook; never loosen the hook to fit a refused command."}'
 
 # ⭐ SEPARATE MESSAGES FOR "I COULD NOT READ THIS", so a parse failure is never reported as a
-# destructive-verb match it never made. Measured 2026-08-23 (ported from ClaudeOps, same guard):
-# this guard used to fail closed on an unparseable payload (or an operation it could not resolve)
-# by reusing $DENY above, so a drafts-create whose text this guard could not fully read came back
-# "destructive Gmail verb (delete / batchDelete / trash)" and sent the reader hunting a delete
-# that never happened. Failing closed here is still correct; naming the wrong rule is not.
+# destructive-verb match it never made. Measured 2026-08-23: this guard used to fail closed on an
+# unparseable payload (or an operation it could not resolve) by reusing $DENY above, so a
+# drafts-create whose text this guard could not fully read came back "destructive Gmail verb
+# (delete / batchDelete / trash)" and sent the reader hunting a delete that never happened. Failing
+# closed here is still correct; naming the wrong rule is not.
 PARSE_DENY='{"decision":"block","reason":"BLOCKED: guard_gmail_destructive could not read or parse this command at all, so it is refusing rather than guessing. This is NOT a report that the command contained delete, batchDelete or trash — it is a report that the guard never got far enough to see what the command was. WHY: an unreadable payload aimed at Gmail is refused rather than assumed safe. REDIRECT: re-run the tool call so its JSON payload is well-formed, and keep the gws invocation itself literal — written-out text this guard can read, not a variable or command substitution standing in for it. RULE: system/hooks/guard_gmail_destructive.sh, FAIL_POSTURE."}'
 UNRESOLVED_DENY='{"decision":"block","reason":"BLOCKED: guard_gmail_destructive could not resolve this command'"'"'s gmail operation — it is hidden behind a shell variable, a command substitution, or an xargs-style placeholder — so it is refusing rather than guessing. This is NOT a report that the command contained delete, batchDelete or trash; it is a report that the guard cannot see what the operation actually is. REDIRECT: write the gmail operation out literally (for example gws gmail users drafts create ...) so this guard can read it, then retry. RULE: system/hooks/guard_gmail_destructive.sh, FAIL_POSTURE; the shared parser is system/hooks/lib/gws_guard.py."}'
 
@@ -111,7 +111,7 @@ SCOPE="$(printf '%s' "$COMMAND" | tr -d "\\'\"" )"
 # Two gates now, both deliberately loose: is a gws binary NAMED anywhere, and is this service named.
 # A mere mention costs nothing — the real checks below decide, and they are what should decide.
 printf '%s' "$COMMAND" | grep -qE "(^|[^A-Za-z0-9_])gws([^A-Za-z0-9_]|$)|bin/gws" 2>/dev/null || exit 0
-printf '%s' "$COMMAND" | grep -qiE "(^|[[:space:]])gmail([[:space:]]|$)" 2>/dev/null || exit 0
+printf '%s' "$COMMAND" | grep -qiE "(^|[[:space:],'\"\\\\])gmail([[:space:],'\"\\\\]|$)" 2>/dev/null || exit 0
 
 # `untrash` is RECOVERY (it undoes a trash) and must never be blocked. Check it BEFORE the
 # destructive match, because "untrash" contains "trash" as a substring — the classic

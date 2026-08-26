@@ -273,9 +273,15 @@ nested subdirectory CLAUDE.md files, not the main pyramid layers.
 - Fires on any path containing `/canon/`. CLAUDE.md files do NOT contain `/canon/` in their path —
   this gate does NOT guard CLAUDE.md writes directly.
 - Applies to the Drive-side canon files (`desks/{desk}/canon/*.md`, `records/canon/*.md`) that
-  `session_context_loader.sh` injects as the session floor. Blocks writes lacking `authority:user`
-  or a fast-stale marker — protects the canon store from unauthorized writes, which would silently
-  corrupt every future session's floor.
+  `session_context_loader.sh` injects as the session floor. Blocks ~~writes lacking `authority:user`
+  or a fast-stale marker~~ **CORRECTED 2026-08-24: writes that are oversized (>3,200 chars) or carry
+  a fast-stale marker.** The `authority:user` half of this claim is no longer true — that rail was
+  DELIBERATELY DROPPED 2026-08-11 per the guard's own header (self-attestation a machine types as
+  easily as a human; it broke `/save`'s own approved canon writes). Re-verified live this session: a
+  synthetic Write to a canon path with no `authority` field → `permissionDecision:allow`, exit 0. The
+  fast-stale-marker half of this claim is unchanged and still live. Together these still protect the
+  canon store from oversized/stale writes, which would silently corrupt every future session's floor
+  — but not from an unauthorized WRITER, which this guard no longer distinguishes.
 - **Enforcement: [hook] BLOCKING (exit 2) — guards the stores the pyramid LOADS, not the
   pyramid files themselves.**
 
@@ -575,8 +581,15 @@ What the pyramid must never allow under any circumstances:
 
 - No write to the Drive copy of system/hooks/ or Lifehack/system/hooks/ — guards are
   enforcement-layer code; agent self-modification is blocked by `guard_write_paths.sh`.
-- No direct write to `desks/{desk}/canon/*.md` or `records/canon/*.md` without `authority:user`
-  — `guard_canon_write.sh` enforces this; a silently-written canon would corrupt the floor.
+- ~~No direct write to `desks/{desk}/canon/*.md` or `records/canon/*.md` without `authority:user`
+  — `guard_canon_write.sh` enforces this; a silently-written canon would corrupt the floor.~~
+  **CORRECTED 2026-08-24: this prohibition is no longer mechanically enforced.** The `authority:user`
+  rail was DELIBERATELY DROPPED 2026-08-11 (guard's own header) — self-attestation a machine types as
+  easily as a human, and it broke `/save`'s own approved canon writes. Re-verified live this session:
+  a synthetic Write to a canon path with no `authority` field → `permissionDecision:allow`, exit 0.
+  `guard_canon_write.sh` today enforces only size (>3,200 chars) and stale markers; a silently-written
+  canon under that size with no stale marker passes. The prohibition on unauthorized canon writes now
+  holds only as `[honor]` — agent discipline — not `[hook]`.
 - No re-routing the SessionStart hook via settings.json edits — `Write(~/.claude/settings.json)`
   and `Edit(~/.claude/settings.json)` are harness-level permission-denied.
 - No treating the desk CLAUDE.md's prose read-order list as a mechanical guarantee — it is

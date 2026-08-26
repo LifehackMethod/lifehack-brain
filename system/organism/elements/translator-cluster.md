@@ -6,7 +6,7 @@ altitude: base
 record_type: organism-element
 maturity_label: PARTIAL [provisional]
 generated_from:
-  - skills/simplify/SKILL.md (v2.1)
+  - skills/condense/SKILL.md (v2.1)
   - skills/explain/SKILL.md (v4.4)
   - skills/summarize/SKILL.md (v1.0)
   - system/hooks/simplify_anchor_inject.sh ⛔ DELETED 2026-08-05 — see the banner below
@@ -55,7 +55,7 @@ authority: user
 The translator cluster is an always-on voice system — not a formatting rule, not a style guide,
 but a live enforcement stack. It exists because response voice decays over long sessions: the
 model pattern-matches back to heavy structured-report output as the context grows. The operator re-ran
-`/simplify` or `/explain` on roughly every reply (~10×/session or more) before this cluster was
+`/condense` or `/explain` on roughly every reply (~10×/session or more) before this cluster was
 built — a "~2x hand tax" (translator_gate.sh header). The cluster was built to eliminate that
 tax by maintaining voice mechanically: one per-turn injection hook re-anchors the register
 before every response; one Stop hook grades finished replies.
@@ -79,7 +79,7 @@ before every response; one Stop hook grades finished replies.
 > file stops lying tonight, rewrite when it is the actual job.
 
 The **shared voice contract** lives in `system/translator-rubric.md` — the single source of
-truth. The three skills (`/simplify`, `/explain`, `/summarize`) each implement one re-render
+truth. The three skills (`/condense`, `/explain`, `/summarize`) each implement one re-render
 mode against that contract. The two hooks (`simplify_anchor_inject.sh` and
 `translator_gate.sh`) enforce or reinforce the contract mechanically. The
 `output-styles/simplify.md` file shapes the baseline voice at session start. ALL of these point
@@ -140,7 +140,7 @@ holistic model question.
 
 ### THE THREE SKILLS
 
-#### `/simplify` (skills/simplify/SKILL.md — v2.1, updated 2026-07-14)
+#### `/condense` (skills/condense/SKILL.md — v2.1, updated 2026-07-14)
 
 **Mandate:** CONDENSE. Re-render everything since the user's last message shorter, plainer,
 conversational — keeping every fact a decision rests on. Does NOT unpack or expand.
@@ -150,7 +150,7 @@ not just the last response, not the whole thread. That span can be several assis
 (including background/cron turns) since they last spoke.
 
 **Mandate distinction:**
-- `/simplify` = CONDENSER. Shortens. Keeps decision-bearing facts. Translates jargon. Drops
+- `/condense` = CONDENSER. Shortens. Keeps decision-bearing facts. Translates jargon. Drops
   what isn't load-bearing.
 - `/explain` = UNPACKER. Keeps ALL technical detail; drops nothing. Reorders freely.
 - `/summarize` = GIST-REPORTER. Last response only. ≤3 sentences. Thinnest of the three.
@@ -163,7 +163,7 @@ not just the last response, not the whole thread. That span can be several assis
 - Close label rule (shared with `/explain`): gate the question (drop settled re-asks, bare
   permission, manufactured questions); label plainly: NEED / PERMISSION ONLY / NOTHING.
 
-**Shape:** utility. Trigger: `/simplify`. Fully autonomous one-shot.
+**Shape:** utility. Trigger: `/condense`. Fully autonomous one-shot.
 
 ---
 
@@ -174,10 +174,10 @@ clearest human translation — ALL technical detail kept, none dropped, reordere
 readability. Invoking `/explain` is itself proof the last output was too technical or moved
 too fast.
 
-**Span rule:** same as `/simplify` — since the user's last message.
+**Span rule:** same as `/condense` — since the user's last message.
 
-**Mandate distinction from `/simplify`:** `/explain` keeps EVERY technical element; dropping
-detail is `/simplify`'s job, never `/explain`'s. Reorders freely (the original order isn't
+**Mandate distinction from `/condense`:** `/explain` keeps EVERY technical element; dropping
+detail is `/condense`'s job, never `/explain`'s. Reorders freely (the original order isn't
 sacred). Adds the missing context, makes reasoning visible — a hint of context, never a flood.
 
 **Key behaviors (beyond shared rubric):**
@@ -186,11 +186,11 @@ sacred). Adds the missing context, makes reasoning visible — a hint of context
 - Size to the comprehension gap: a bit more than the original gave, then STOP. Over-unpacking
   into a wall is its own failure.
 - Lead with the answer, not with the method.
-- Close label rule: same ask-gate as `/simplify` — gate, self-contain, label.
+- Close label rule: same ask-gate as `/condense` — gate, self-contain, label.
 
 **Note:** the Step 8 handoff of `/save` specifies the two-pass voice-seed DRAFT → re-render
-uses `/explain` voice (not `/simplify`), because a handoff's whole job is completeness and
-`/simplify` condenses. This is the cluster's most-cited typed interop seam. (See INTEROP.)
+uses `/explain` voice (not `/condense`), because a handoff's whole job is completeness and
+`/condense` condenses. This is the cluster's most-cited typed interop seam. (See INTEROP.)
 
 **Shape:** utility. Triggers: `/explain`, "explain that", "what did that mean". Autonomous
 one-shot.
@@ -261,7 +261,7 @@ FIRST, then propagate here + `output-styles/simplify.md`."
 
 **What it does:** grades each finished reply against the translator rubric and, in enforce mode,
 bounces bad ones for a rewrite (decision:block). Experiment vs. hook-sop §1 "don't hook
-style/tone" — justified in the header by the 2x-cost economics of re-running `/simplify`
+style/tone" — justified in the header by the 2x-cost economics of re-running `/condense`
 manually.
 
 **DORMANT BY DEFAULT.** The gate does NOTHING unless armed:
@@ -336,7 +336,7 @@ on the primary machine).
 
 ### TRIGGERS — what causes the cluster to fire
 
-1. **`/simplify`** — explicit skill invocation. Re-renders since user's last message,
+1. **`/condense`** — explicit skill invocation. Re-renders since user's last message,
    condensed.
 2. **`/explain`**, `"explain that"`, `"what did that mean"` — explicit skill invocation.
    Re-renders since user's last message, full-detail unpacked.
@@ -348,7 +348,7 @@ on the primary machine).
    exits 0 immediately. When armed in observe mode: grades and logs, never blocks. When armed
    in enforce mode: grades and may bounce for a rewrite.
 
-**Usage frequency (ALWAYS-ON):** `/simplify` runs ~10× per session (UNVERIFIED — sourced from
+**Usage frequency (ALWAYS-ON):** `/condense` runs ~10× per session (UNVERIFIED — sourced from
 task description as an estimate; no telemetry logged). `/explain` and `/summarize` invoked
 on demand. `simplify_anchor_inject.sh` fires on literally every turn — the highest-frequency
 component in the cluster.
@@ -386,7 +386,7 @@ the Stop-grade layer is dormant-unless-armed and carries a known RETIRED-grader 
   operational when armed, but not the default; parked 2026-07-14).**
 
 **What is honor-system (`[honor]`):**
-- The three skills' actual re-render quality — no hook verifies that `/simplify` actually
+- The three skills' actual re-render quality — no hook verifies that `/condense` actually
   condensed, `/explain` actually kept all detail, or `/summarize` actually stayed to ≤3
   sentences.
 - Voice contract compliance in EVERY non-skill response — `simplify_anchor_inject.sh` injects
@@ -434,7 +434,7 @@ A tip-only reader would misjudge enforcement posture. `·gap` label is warranted
 ### INTENT / CURRENT-VS-TARGET
 
 **BY DESIGN:**
-- `/simplify`, `/explain`, and `/summarize` are explicit on-demand re-render skills — always
+- `/condense`, `/explain`, and `/summarize` are explicit on-demand re-render skills — always
   available regardless of the hook state. This is correct and intentional: the human can
   always request a re-render.
 - `simplify_anchor_inject.sh` being always-on (no arm flag needed) is by design — the
@@ -448,7 +448,7 @@ A tip-only reader would misjudge enforcement posture. `·gap` label is warranted
   fork: rip the gate, or replace its holistic grader with a better model / local model
   (header note: "Layer-3 local model is the real fix").
 - The `VOICE v2 — DRIFT COUNTER` design (debt-ledger line 215, state:monitoring) would
-  add a PostToolUse-on-Skill hook counting `/simplify`+`/explain` invocations per session and
+  add a PostToolUse-on-Skill hook counting `/condense`+`/explain` invocations per session and
   escalating the re-injection as the count climbs. Deferred 2026-07-12 (Pareto: 60% surface
   for 20% value; prove v1 nudges first).
 - The output-style second-machine gap is a known open item (state:waiting-external).
@@ -460,8 +460,8 @@ A tip-only reader would misjudge enforcement posture. `·gap` label is warranted
 What the cluster never does:
 
 - No blocking in `simplify_anchor_inject.sh` — ever. It is a pure inject; degrade-safe.
-- No `/simplify` voice in Step 8 of `/save` — the handoff uses `/explain` (completeness
-  mandate; `/simplify` condenses and would cut load-bearing items).
+- No `/condense` voice in Step 8 of `/save` — the handoff uses `/explain` (completeness
+  mandate; `/condense` condenses and would cut load-bearing items).
 - No manufacturing a delta that isn't observable from the prior state.
 - No manufacturing a question to fill the close — the ask-gate rule is HARD in all three
   skills.
@@ -528,7 +528,7 @@ elements' voice. No other hook guards the cluster's own execution.
   (TRANSLATOR-GATE-RIP, debt-ledger line 94, state:parked). `output-styles/simplify.md` —
   present on the primary machine (`~/.claude/output-styles/simplify.md`); second machine status UNVERIFIED
   (TRANSLATOR-OUTPUTSTYLE-SECOND-MACHINE, debt-ledger line 93, state:waiting-external). Three skills
-  (`/simplify` v2.1, `/explain` v4.4, `/summarize` v1.0) — all active, skill-prose only,
+  (`/condense` v2.1, `/explain` v4.4, `/summarize` v1.0) — all active, skill-prose only,
   no hook verifies re-render quality. Voice contract compliance on non-skill responses is
   honor-system (prompt injection, not blocking). Mixed: one always-on inject hook LIVE +
   dormant grader + honor-system skill quality → PARTIAL. `[provisional]` because the

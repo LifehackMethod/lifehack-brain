@@ -320,8 +320,12 @@ would be worse than none."*
   all refused with a redirect. Reads always pass, on any list.
 - ⭐ **FIRE-TESTED, THIS SESSION.** `python3 system/tools/organism/label_checker.py check` returned
   exit 0 and *"every claimed label verified against live behavior"*, with
-  `calendar-primary-write-guard` and `tasks-readonly-list-guard` both **LIVE** — *git-tracked +
-  registered + blocks every violation + passes every allow*. Their fixtures live in
+  `calendar-primary-write-guard` **LIVE** — *git-tracked + registered + blocks every violation +
+  passes every allow* — and `tasks-readonly-list-guard` **PARTIAL** (relabelled honestly in commit
+  `ec41d62`): the guard logic itself is not weak, but its fixture uses a synthetic placeholder
+  tasklist id, which cannot prove the "aimed at the real goals list" path on an install that already
+  has a real id configured — and that real id is private config, never a repo literal, so it cannot
+  be hardcoded into a manifest that ships publicly. Their fixtures live in
   `system/tools/organism/label_manifest.yaml`, and `system/tools/guard-fire-test-run.sh` re-runs the
   whole set weekly.
 - **The Pass-5 / Phase-5 confirmation gate** `[human]` — every write is batched to a ledger and
@@ -525,9 +529,13 @@ runners have no scheduler row. `·gap` for the MCP bypass in GAPS #3. `(honor)` 
   fire-tested.
 - **check_detail:** The guard half of this element **was** fire-tested this session:
   `python3 system/tools/organism/label_checker.py check` returned exit 0 and *"every claimed label
-  verified against live behavior"*, with `calendar-primary-write-guard` **LIVE** and
-  `tasks-readonly-list-guard` **LIVE** (git-tracked + registered + blocks every violation + passes
-  every allow). That is the strongest claim on this page and it is machine-backed. Everything else is
+  verified against live behavior"*, with `calendar-primary-write-guard` **LIVE** (git-tracked +
+  registered + blocks every violation + passes every allow) and `tasks-readonly-list-guard`
+  **PARTIAL** — the guard itself passes its own 20/20 selftest and blocks correctly against this
+  machine's real configured goals-tasklist id, but the fixture can only use a synthetic placeholder
+  id (the real one is private config that cannot be committed to a publicly-shipped manifest), so the
+  fire test cannot prove that one path and honestly reports PARTIAL rather than LIVE. That is the
+  strongest claim on this page and it is machine-backed. Everything else is
   hand-set: the element label is not an entry in `system/tools/organism/label_manifest.yaml`, and no
   fixture exists for a skill's conversational discipline. What is REAL, verified by reading the
   artifacts this session: both skill trees ship whole; twelve tools ship under `system/tools/`; three

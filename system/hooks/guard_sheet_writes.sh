@@ -31,6 +31,12 @@
 # which is this project's documented Windows floor. python3 is already required by every other hook
 # here, so there is now one interpreter dependency instead of two.
 CONFIRM_MARK="LIFEHACK_SHEET_CONFIRM=1"
+# SEPARATOR CLASS — restored 2026-08-21 after a measured fail-open. A gws call does not always arrive
+# whitespace-delimited: a command built in python/JSON arrives as `['gws','sheets',...]`, so the token
+# boundary is a comma or a quote, not a space. Matching only [[:space:]] let a destructive batchUpdate
+# through with exit 0 (proven by fire test, both repos, 2026-08-21). Every service/verb matcher below
+# uses this class, never a bare [[:space:]].
+SEP="[[:space:],'\"]+"
 MARKDIR="${SHEET_LLM_MARKDIR:-$HOME/.claude/run/sheet-llm}"
 TTL=$(( 12 * 3600 ))
 
@@ -96,7 +102,7 @@ COMMAND=$(printf '%s' "$COMMAND" | perl -0pe 's/\\\n/ /g' 2>/dev/null || printf 
 # Two gates now, both deliberately loose: is a gws binary NAMED anywhere, and is this service named.
 # A mere mention costs nothing — the real checks below decide, and they are what should decide.
 printf '%s' "$COMMAND" | grep -qE "(^|[^A-Za-z0-9_.-])gws([^A-Za-z0-9_-]|$)|bin/gws" 2>/dev/null || exit 0
-printf '%s' "$COMMAND" | grep -qE "(^|[[:space:]])sheets([[:space:]]|$)" 2>/dev/null || exit 0
+printf '%s' "$COMMAND" | grep -qE "(^|[[:space:],'\"])sheets([[:space:],'\"]|$)" 2>/dev/null || exit 0
 printf '%s' "$COMMAND" | grep -qF "$CONFIRM_MARK" 2>/dev/null && exit 0
 
 # ── THE INDIRECTION CATCH ──────────────────────────────────────────────────────
@@ -113,11 +119,11 @@ printf '%s' "$COMMAND" | python3 "$LIB" --service sheets \
 if [ $? -eq 7 ]; then
   # MESSAGE SELECTION ONLY -- the decision above already fixed this command as BLOCK; this second,
   # side call to the same shared library (gws_guard.py's --reason-only) never changes that. It
-  # only asks WHICH condition fired. Measured 2026-08-23 (ClaudeOps, same guard): a fully literal
-  # `values clear` -- no $VAR, no $(...) anywhere -- was reaching deny_unknown() and being told
-  # "this guard cannot tell what it would do", which is false; the guard could tell perfectly
-  # well, and deny_destr() below already has the honest message for exactly this case. Route a
-  # literal destructive match there instead of to the "I cannot tell" message.
+  # only asks WHICH condition fired. Measured 2026-08-23: a fully literal `values clear` -- no
+  # $VAR, no $(...) anywhere -- was reaching deny_unknown() and being told "this guard cannot tell
+  # what it would do", which is false; the guard could tell perfectly well, and deny_destr() below
+  # already has the honest message for exactly this case. Route a literal destructive match there
+  # instead of to the "I cannot tell" message.
   REASON=$(printf '%s' "$COMMAND" | python3 "$LIB" --service sheets \
     --destructive clear,batchclear,delete \
     --write-verbs update,batchupdate,append,clear,batchclear,delete --reason-only 2>/dev/null)
@@ -132,7 +138,7 @@ SHEET_ID=$(printf '%s' "$COMMAND" | grep -oE '[A-Za-z0-9_-]{40,}' | head -1)
 MARK="$MARKDIR/$SHEET_ID"
 
 # READ branch — matches `sheets spreadsheets values get` and its metadata siblings.
-if printf '%s' "$COMMAND" | grep -qiE "sheets[[:space:]]+(spreadsheets[[:space:]]+)?(values[[:space:]]+)?(get|batchget|metadata)" 2>/dev/null; then
+if printf '%s' "$COMMAND" | grep -qiE "sheets${SEP}(spreadsheets${SEP})?(values${SEP})?(get|batchget|metadata)" 2>/dev/null; then
   # Record the per-sheet marker when the read names the instruction tab.
   if [ -n "$SHEET_ID" ] && printf '%s' "$COMMAND" | grep -qiE "_LLM_GUIDE|LLM|README|instructions" 2>/dev/null; then
     mkdir -p "$MARKDIR" 2>/dev/null; date +%s > "$MARK" 2>/dev/null
@@ -141,7 +147,7 @@ if printf '%s' "$COMMAND" | grep -qiE "sheets[[:space:]]+(spreadsheets[[:space:]
 fi
 
 # Creating a NEW spreadsheet has no existing guide to read and nothing to destroy.
-printf '%s' "$COMMAND" | grep -qiE "sheets[[:space:]]+(spreadsheets[[:space:]]+)?create" 2>/dev/null && exit 0
+printf '%s' "$COMMAND" | grep -qiE "sheets${SEP}(spreadsheets${SEP})?create" 2>/dev/null && exit 0
 
 NOW=$(date +%s 2>/dev/null); fresh=0
 if [ -n "$SHEET_ID" ] && [ -f "$MARK" ]; then
@@ -151,11 +157,11 @@ fi
 [ "$fresh" = 1 ] || deny_llm
 
 # STRUCTURAL edit — spreadsheets.batchUpdate restructures tabs/columns/formatting/protection.
-printf '%s' "$COMMAND" | grep -qiE "sheets[[:space:]]+spreadsheets[[:space:]]+batchupdate" 2>/dev/null && deny_struct
+printf '%s' "$COMMAND" | grep -qiE "sheets${SEP}spreadsheets${SEP}batchupdate" 2>/dev/null && deny_struct
 # DESTRUCTIVE — irreversible data loss.
-printf '%s' "$COMMAND" | grep -qiE "sheets[[:space:]]+(spreadsheets[[:space:]]+)?(values[[:space:]]+)?(clear|batchclear|delete)" 2>/dev/null && deny_destr
-printf '%s' "$COMMAND" | grep -qiE "sheets[[:space:]]+spreadsheets[[:space:]]+values[[:space:]]+batchupdate" 2>/dev/null && deny_destr
-if printf '%s' "$COMMAND" | grep -qiE "sheets[[:space:]]+(spreadsheets[[:space:]]+)?values[[:space:]]+update" 2>/dev/null; then
+printf '%s' "$COMMAND" | grep -qiE "sheets${SEP}(spreadsheets${SEP})?(values${SEP})?(clear|batchclear|delete)" 2>/dev/null && deny_destr
+printf '%s' "$COMMAND" | grep -qiE "sheets${SEP}spreadsheets${SEP}values${SEP}batchupdate" 2>/dev/null && deny_destr
+if printf '%s' "$COMMAND" | grep -qiE "sheets${SEP}(spreadsheets${SEP})?values${SEP}update" 2>/dev/null; then
   printf '%s' "$COMMAND" | grep -qE "[A-Z]+:[A-Z]+" 2>/dev/null && deny_destr
 fi
 exit 0

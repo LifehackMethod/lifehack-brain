@@ -25,10 +25,17 @@ say "fine."
 WHY `machine` IS DERIVED, NEVER PASSED. The donor system this module was ported from ran on two
 physical machines that could each call themselves something different for the same detector,
 forking one status tile into two — the fix there was routing every consumer through ONE shared
-derivation instead of each reinventing it. This product runs on ONE machine by design (see
-`shared/brain_root.py`'s residency rule), so the derivation collapses to a fixed local constant
-rather than a subprocess call to a machine-naming script — but the CONTRACT that fix protected
-is preserved exactly: no `machine=` parameter exists on `emit_finding()`, full stop. The value
+derivation instead of each reinventing it. **Fixed 2026-08-23 (issue #87): this product is NOT
+one machine by design** — `shared/brain_root.py`'s own resolution order includes a shared/mounted
+folder (Google Drive), so two machines pointed at the same brain root is a real, confirmed
+install shape, not a hypothetical. A hardcoded `MACHINE = "local"` constant reintroduced the
+EXACT donor bug it claimed to have fixed: two machines both write findings for the same producer
+into the identical `<producer>.local.jsonl` shard, and the records collide/interleave with no
+prune or retention route to recover. `get_machine_token()` below now derives a REAL per-machine
+identity from the OS hostname (`socket.gethostname()` — the same primitive `section_archive.py`
+and `pad_archive.py` already use in this repo to tag a machine, so this borrows an established
+identity source rather than inventing one), sanitized to the filename-safe token alphabet. The
+CONTRACT is unchanged: no `machine=` parameter exists on `emit_finding()`, full stop — the value
 always comes from `get_machine_token()` below, never from a caller.
 
 WHY `fingerprint` HAS NO PARAMETER, NOT EVEN A DEFAULTED ONE. Borrowed from Prometheus
@@ -45,10 +52,18 @@ writes "machine" INTO every line still forks when more than one machine reads it
 a field inside the file does not stop the file itself from forking. One writer per PATH is what
 holds, so the machine token goes in the FILENAME:
 `<brain>/state/findings/<producer>.<machine>.jsonl`, append-only, where `<brain>` is resolved
-through `shared/brain_root.py` — never a hardcoded folder belonging to one person. On a
-single-machine install `<machine>` is always the same constant (see `get_machine_token()`
-below), so this collapses to one shard per producer in practice; the sharding SHAPE survives
-unchanged in case that ever needs to differentiate again.
+through `shared/brain_root.py` — never a hardcoded folder belonging to one person. `<machine>` is
+a real per-host token derived by `get_machine_token()` below (see issue #87 fix, above), so a
+shared brain root (e.g. Google Drive) mounted from two machines now shards into two distinct
+files instead of one forked/interleaved one.
+
+WHAT HAPPENS TO FINDINGS ALREADY WRITTEN UNDER THE OLD `"local"` CONSTANT. They are left exactly
+where they are — `<producer>.local.jsonl` is not renamed, merged, or deleted by this fix. Renaming
+it to either machine's new real token would be a GUESS (which machine actually wrote which of the
+interleaved lines is not recoverable from the file itself — that is the data loss this issue
+reports), and deleting it would destroy whatever pre-fix history is still readable. Those files
+simply become a frozen pre-#87 shard; every new finding from this fix forward lands in the
+correctly-sharded `<producer>.<realhost>.jsonl` files going forward.
 
 WHAT HAPPENS WITH NO BRAIN ROOT CONFIGURED. Unlike a read (which can honestly say "nothing found
 yet"), a WRITE with no configured destination has no honest place to land — guessing one is
@@ -73,6 +88,7 @@ import json
 import os
 import re
 import signal
+import socket
 import sys
 import threading
 import time
@@ -80,16 +96,54 @@ import time
 # ── MACHINE TOKEN — re-derived locally, NOT imported. ───────────────────────────────────────
 # `machine_token.py` is part of the two-machine plane this product doesn't have (excluded
 # 2026-08-13 — see that module's own DOES-NOT-MIGRATE banner in the donor repo) and is never
-# imported, copied, or shelled out to from here. This product is one machine by design (see
-# `shared/brain_root.py`), so the derivation collapses to a fixed constant. The function name
-# is kept so every call site below reads identically to the donor's — only the body changed.
-MACHINE = "local"
+# imported, copied, or shelled out to from here.
+#
+# issue #87 — FIXED 2026-08-23: this repo's own `shared/brain_root.py` resolves to a Google-Drive
+# folder as a normal, supported route, so "two machines, one brain root" is a real install shape,
+# not a hypothetical. A fixed `MACHINE = "local"` constant made every such install collide: both
+# machines wrote the same producer's findings into the identical `<producer>.local.jsonl` shard,
+# interleaving records with no prune or retention route to recover. `get_machine_token()` now
+# derives a REAL per-machine identity from `socket.gethostname()` — the same primitive
+# `section_archive.py`/`pad_archive.py` already use elsewhere in this repo to tag a machine, so
+# this reuses an established identity source rather than inventing a new one.
+_MACHINE_TOKEN_SAFE = re.compile(r"[^A-Za-z0-9_-]+")
+
+
+class MachineIdentityError(RuntimeError):
+    """Raised when this machine's identity cannot be determined at all — see get_machine_token().
+    Deliberately its OWN exception type, distinct from FindingContractError: a malformed finding
+    and a homeless one are different facts, and (per this repo's ABSENT-SUBJECT-RULE-v1,
+    `system/build-rules-index.md`) an absent/undeterminable subject must report as its own
+    distinct outcome, never fold silently into a passing value — which is exactly what the old
+    `MACHINE = "local"` constant did for every caller, valid hostname or not."""
 
 
 def get_machine_token():
-    """Always `MACHINE`. Never raises — kept as a function (not a bare constant reference at
-    each call site) so a future multi-install need has exactly one place to change."""
-    return MACHINE
+    """Derive this machine's identity for the findings-shard filename.
+
+    Sanitizes `socket.gethostname()` down to the filename-safe alphabet the finding filename
+    requires (see `emit_finding()`'s own `_SAFE_TOKEN` check on `producer`): any run of
+    characters outside `[A-Za-z0-9_-]` (dots, spaces — e.g. "host-name.local") collapses
+    to a single "-", and leading/trailing "-" are trimmed.
+
+    ⛔ Raises `MachineIdentityError` — never returns a shared/fallback value — if the hostname
+    cannot be obtained (`socket.gethostname()` raising `OSError`) or sanitizes down to nothing.
+    This is deliberately NOT caught here: it propagates out of `emit_finding()` so a finding that
+    cannot be safely attributed to a specific machine is REFUSED (same posture as the no-brain-
+    root refusal below), never silently mis-attributed to a shared constant."""
+    try:
+        raw = socket.gethostname()
+    except OSError as e:
+        raise MachineIdentityError(
+            f"could not determine machine identity: socket.gethostname() failed: {e}")
+    if not raw or not raw.strip():
+        raise MachineIdentityError(
+            "could not determine machine identity: socket.gethostname() returned empty")
+    token = _MACHINE_TOKEN_SAFE.sub("-", raw.strip()).strip("-")
+    if not token:
+        raise MachineIdentityError(
+            f"could not determine machine identity: hostname {raw!r} sanitizes to empty")
+    return token
 
 
 # ── ONE status vocabulary — inlined here, not imported. ─────────────────────────────────────
@@ -544,6 +598,9 @@ def _main(argv):
         )
     except FindingContractError as e:
         print(f"emit_finding.py: FindingContractError: {e}", file=sys.stderr)
+        return 1
+    except MachineIdentityError as e:
+        print(f"emit_finding.py: MachineIdentityError: {e}", file=sys.stderr)
         return 1
     except (OSError, TimeoutError, json.JSONDecodeError) as e:
         print(f"emit_finding.py: error: {e}", file=sys.stderr)

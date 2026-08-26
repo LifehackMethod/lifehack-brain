@@ -176,6 +176,36 @@ below:
 > **Exit 2 here means you have no identity file.** Read the message; it says how to make
 > one. Do not work around it.
 
+**Also check the identity file against the CI secret it should mirror** —
+`SHIP_IDENTITY_TERMS` on `LifehackMethod/lifehack-brain` gates every public CI run, and
+it can silently drift out of sync with the local file this step just used, because
+GitHub secrets are write-only (nothing can ever read or diff their CONTENTS):
+
+    cd "$REPO" && python3 system/tools/identity_secret_drift_check.py; DRIFT_RC=$?
+
+This produces exactly one of four outcomes, by exit code. Branch on `$DRIFT_RC`:
+
+- **`0` — OK.** No evidence of drift. Print its one-line summary and continue to Step 1.
+- **`1` — DRIFT.** The local identity file was edited more recently than the CI secret
+  was last touched. **This does NOT block the run** — unlike a Step 1 REFUSE hit, it is
+  advisory, because the lane cannot read the secret's contents and so cannot know
+  whether the drift is meaningful. Show the script's output (both timestamps) to the
+  human and ask them to confirm before continuing: either they update the
+  `SHIP_IDENTITY_TERMS` secret first, or they explicitly accept shipping with the drift
+  noted. Do not silently continue past a DRIFT outcome without surfacing it — the whole
+  reason PR #111 failed CI twice was this drift going unnoticed until the push.
+- **`2` — ABSENT-SUBJECT.** The identity file itself could not be found — this should
+  not happen here, since Step 0 already required it to exist moments earlier, but if it
+  fires, treat it exactly like the existing "Exit 2 here means you have no identity
+  file" case above: **STOP**, do not proceed to Step 1.
+- **`3` — CANNOT-CHECK.** `gh` is missing, unauthenticated, unreachable, or the secret
+  was renamed/deleted — the script could not fetch what it needed to compare against.
+  **This is not a pass and must never be treated as one.** Do not silently continue as
+  if the check succeeded. Tell the human plainly: "the drift check could not run (reason:
+  <script's stated reason>), so there is no signal either way on identity-secret sync" —
+  then ask whether to proceed anyway or fix `gh` access first. Never print or imply "OK"
+  or "no drift" language for this outcome.
+
 ### Step 1 — The mechanical pass
 
     cd "$REPO" && python3 system/shipping-lane/scrub.py \
