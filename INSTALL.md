@@ -72,6 +72,13 @@ auto-update" (verified: this exact toggle exists in the installed Claude Code bu
 installed plugins on startup"). Turning it on does not change the version-bump condition above — it
 only removes the step of running the command yourself.
 
+⛔ **Shipped ≠ installed ≠ loaded — `claude plugin update` only gets you to "installed."** The new
+version is on disk but this running session is still executing the old one, and stays that way until
+you quit Claude entirely and reopen it. Proven live: `claude plugin update lifehack-brain` reported
+*"Plugin 'lifehack-brain' updated from 0.3.2 to 0.3.6 for scope user. **Restart to apply changes.**"* —
+and for the rest of that session, guard denials kept naming the old `.../lifehack-brain/0.3.2/...`
+path. **Restart before you trust the update, especially a security fix.**
+
 ⭐ **The plugin DOES install the guard hooks — it does not need a `hooks` key in `plugin.json` to
 do it.** Claude Code auto-discovers a plugin's own `hooks/hooks.json` by convention; the plugin's
 manifest (`.claude-plugin/plugin.json`) carrying no `hooks` key proves nothing either way. Checked
@@ -2624,8 +2631,11 @@ claude plugin update lifehack-brain
 update** — an unbumped version reports "already at the latest version" and installs nothing, even if
 the marketplace itself has newer commits behind it. If you turned on auto-update in the `/plugin` menu
 (see the top of this file for exactly how), the same version-bump condition still applies — auto-update
-removes the step of running the command yourself, not the maintainer's part of the job. Everything below
-is for the manual clone fallback.
+removes the step of running the command yourself, not the maintainer's part of the job. ⛔ **And once it
+lands, quit Claude and reopen it — the update is only *installed* until a new session *loads* it.**
+This session keeps running the old code until you do. That gap is exactly why the security fix in PR
+#130 kept getting bypassed after the fix was already on disk. Everything below is for the manual clone
+fallback.
 
 **Ask Claude:** *"check if there's an update to my brain and install it."*
 
