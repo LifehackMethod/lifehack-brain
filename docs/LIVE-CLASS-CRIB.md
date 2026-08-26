@@ -1,4 +1,4 @@
-# Demir's Crib Sheet — Lifehack Brain Live Class
+# Instructor Crib Sheet — Lifehack Brain Live Class
 
 ## 1. What this is (say this out loud to open)
 
