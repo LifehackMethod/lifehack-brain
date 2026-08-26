@@ -53,8 +53,64 @@ CONFIG="${PULSE_CONFIG:-$CODE_ROOT/system/pulse-config.md}"        # the manifes
 # exact property this needs, and the tier that already exists for exactly this ("machine-local
 # scratch and cache" — see shared/paths.py's own section header). Fails open to the old TMPDIR-based
 # guess only if python3 itself is unavailable, matching NOTES_ROOT's fail-open pattern above.
+_PULSE_STATE_EXPLICIT="${PULSE_STATE:-}"   # non-empty iff the CALLER pinned a path (sandbox/test)
 _STATE_DIR="$(python3 "$CODE_ROOT/shared/paths.py" cache pulse 2>/dev/null)"
 STATE="${PULSE_STATE:-${_STATE_DIR:-${TMPDIR:-/tmp}}/lifehack-pulse-state.json}"
+
+# ── One-time migration: old TMPDIR-keyed state -> the new cache_dir() home ──────────────────────
+# The state file carries more than last-run timestamps: `fails:<job>`, `disabled:<job>`,
+# `trips:<job>` and `retry_at:<job>` are the circuit breaker's own memory (verified against the live
+# file, 2026-08-26 — 20 rows, breaker keys present on most jobs). Moving where STATE defaults to
+# WITHOUT migrating it would present a brand-new empty file on the next run: every interval job
+# reads as "never run" and fires at once (email writes, calendar/tasks syncs included), AND any job
+# the breaker had disabled after repeated failures — or backed off with a live `retry_at` — silently
+# comes back to life with its backoff forgotten. That is worse than the false-alarm bug this whole
+# fix exists for, so this runs BEFORE anything else touches STATE.
+#
+# Two old locations may both exist, and they are NOT the same file: cron's own environment has no
+# TMPDIR (falls back to /tmp), so /tmp/lifehack-pulse-state.json is the real, continuously-updated
+# schedule history. ${TMPDIR}/lifehack-pulse-state.json is whatever an interactive shell happened to
+# write the last time someone ran `pulse.sh run` by hand — real, but not the authoritative one — so
+# /tmp wins when both are present. Overridable (test fixtures only; production relies on the
+# defaults) so a test can point this at throwaway files instead of the machine's real ones.
+#
+# Only runs on the DEFAULT resolution, never when a caller pins PULSE_STATE explicitly — an explicit
+# path is a sandbox/test signal, and auto-pulling real production breaker state into a test fixture
+# would be its own silent-clobber bug.
+#
+# COPY, never move: a rollback to the pre-fix script must still find /tmp's file untouched.
+# `ln` (hardlink) after the copy is the atomic "create iff absent" idiom on a POSIX filesystem — it
+# fails with EEXIST if $STATE already showed up between our `[ ! -e ]` check and now (idempotent:
+# a second run sees $STATE already exists and this whole block is a no-op, so re-running pulse can
+# never re-migrate over fresh state).
+if [ -z "$_PULSE_STATE_EXPLICIT" ] && [ ! -e "$STATE" ]; then
+  _OLD_CRON="${_PULSE_OLD_CRON_STATE:-/tmp/lifehack-pulse-state.json}"
+  _OLD_INTERACTIVE="${_PULSE_OLD_INTERACTIVE_STATE:-${TMPDIR:-/tmp}/lifehack-pulse-state.json}"
+  _MIGRATE_SRC=""
+  if [ -e "$_OLD_CRON" ]; then
+    _MIGRATE_SRC="$_OLD_CRON"
+  elif [ -e "$_OLD_INTERACTIVE" ]; then
+    _MIGRATE_SRC="$_OLD_INTERACTIVE"
+  fi
+  if [ -n "$_MIGRATE_SRC" ]; then
+    mkdir -p "$(dirname "$STATE")" 2>/dev/null
+    _TMP_MIGRATE="$STATE.migrate.$$"
+    if cp "$_MIGRATE_SRC" "$_TMP_MIGRATE" 2>/dev/null && ln "$_TMP_MIGRATE" "$STATE" 2>/dev/null; then
+      echo "$(date '+%Y-%m-%d %H:%M:%S') pulse: migrated state $_MIGRATE_SRC -> $STATE (one-time)" >&2
+    else
+      # FAIL SAFE, not fail open: a partial/failed copy must NEVER be read as "clean" state — that
+      # is precisely the "absent read as clean" shape that bit this project before, and here it
+      # would silently revive a deliberately-disabled job and forget its backoff timer. Refuse the
+      # WHOLE cycle instead of dispatching anything against empty state; the source file is left
+      # untouched (we only ever wrote to a throwaway $_TMP_MIGRATE), so the next tick gets another
+      # chance to migrate cleanly.
+      echo "$(date '+%Y-%m-%d %H:%M:%S') pulse: CRITICAL — state migration from $_MIGRATE_SRC to $STATE FAILED; refusing to run this cycle against empty state (source left untouched, will retry next tick)" >&2
+      rm -f "$_TMP_MIGRATE" 2>/dev/null
+      exit 1
+    fi
+    rm -f "$_TMP_MIGRATE" 2>/dev/null
+  fi
+fi
 
 # ── The notes root — resolved once, the same way every other tool in this repo resolves it.
 # NOT-SET is a legitimate state on a fresh install (nobody has pointed this at a folder yet): Pulse
