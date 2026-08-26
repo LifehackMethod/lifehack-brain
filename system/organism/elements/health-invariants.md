@@ -83,7 +83,7 @@ The Health Authority is two collaborating components that together answer the qu
 
 | Component | File | Scheduler | Writer | Role |
 |---|---|---|---|---|
-| **Sweeper** | `system-health.py` via `system-health-run.sh` | Pulse slot `system-health`, every 300s | Lead machine only (reads `state/primary-machine`) | Dead-man's switch: job ABSENCE past interval+grace = BROKEN |
+| **Sweeper** | `system-health.py` via `system-health-run.sh` | Pulse slot `system-health`, every 300s | ~~Lead machine only (reads `state/primary-machine`)~~ **⚠ CORRECTED 2026-08-24: no lead-machine gate — `system-health-run.sh` reads no such marker, verified this session; see the correction under COMPONENT A below.** | Dead-man's switch: job ABSENCE past interval+grace = BROKEN |
 | **Integrity layer** | `health_invariants.py` | Called by sweeper at end of each sweep | Same as sweeper | Deterministic substrate checks: hooks present · guards untampered · clone fresh · both machines heartbeating · coverage complete |
 | **Dead-man's-switch for the sweeper** | `health-deadman-check.sh` | launchd `ai.lifehack.health-deadman`, every 900s, second-machine-only | Notification-only (no shared write) | Watches whether `_system-health.json` itself has gone stale |
 | **Per-desk producers** | `{desk}-health.py` / `{desk}-health-run.sh` | Pulse, desk-specific intervals | Lead machine | Desk-scoped health tiles (`state/status/{desk}.json`) consumed by the sweeper |
@@ -100,10 +100,19 @@ ever-growing check list IS the maintenance-tax-as-product failure this loop exis
 
 ### COMPONENT A — THE MISSED-RUN SWEEPER (`system-health.py`)
 
-**Trigger:** Pulse dispatches `system-health-run.sh` every 300s. `system-health-run.sh` gates on the
+**Trigger:** Pulse dispatches `system-health-run.sh` every 300s. ~~`system-health-run.sh` gates on the
 lead machine (`require_primary "system-health"` from `ingest-run.lib.sh`) — `_system-health.json` is
-a single shared Drive file, so exactly one host writes it. The sweeper READS the machine-namespaced
-`_pulse-*.json` glob, so it sees both machines' heartbeats.
+a single shared Drive file, so exactly one host writes it.~~ **⚠ CORRECTED 2026-08-24:**
+`system-health-run.sh` has no lead-machine gate — `grep -n "require_primary\|primary" system/tools/
+system-health-run.sh` returns zero matches, checked directly this session. `require_primary()` has no
+definition anywhere in the repo (grep repo-wide, this session); this system has one machine
+(`docs/data-layout.md:215`: "there is one machine. The two-machine plane is not part of this
+system."), so there is nothing to elect a lead among. `_system-health.json` has a single writer
+because there is only ever one machine running Pulse, not because of a gate — same pattern as
+`elements/backlog-authority.md:199-205`'s correctly-stated equivalent. The sweeper READS the
+machine-namespaced `_pulse-*.json` glob, so it sees both machines' heartbeats if more than one clone
+happens to write there — see the corrected point below on `state/primary-machine` for the rest of
+this fabrication.
 
 **Input sources (read by the sweeper each run):**
 - `system/pulse-config.md` — authoritative job list (enabled flag, interval, command); parsed from
@@ -113,8 +122,14 @@ a single shared Drive file, so exactly one host writes it. The sweeper READS the
   across machines per job (`system-health.py:198–213`).
 - `state/status/*.json` — per-job or per-desk status tiles; consulted for tile-staleness and
   unexpected-zero overlays (the green-illusion hardening).
-- `state/primary-machine` — the current lead machine identifier (read by `system-health-run.sh` via
-  `require_primary`; also used by `_current_lead()` at `system-health.py:54`).
+- ~~`state/primary-machine` — the current lead machine identifier (read by `system-health-run.sh` via
+  `require_primary`; also used by `_current_lead()` at `system-health.py:54`).~~ **⚠ CORRECTED
+  2026-08-24:** `system-health-run.sh` does not read `state/primary-machine`, and `system-health.py`
+  has no `_current_lead()` function — `grep -n "_current_lead\|primary-machine\|require_primary"
+  system/tools/system-health.py` returns zero matches, checked directly this session. Same
+  fabrication as the Trigger line above; there is no lead-machine concept in this repo
+  (`docs/data-layout.md:215`). The `READS grand-central` row further down this document (INTEROP
+  table) repeats this same false claim and needs the identical correction.
 - `system/desk-registry.yaml` — desk fleet definition; the drift cop reads it every sweep
   (`system-health.py:381`). Code-resident (clone).
 - `~/.config/lifehack/sentinel-paused-sources` — machine-local Sentinel containment list; read
@@ -374,7 +389,7 @@ partial feed.
 | `READS` | security-ingest-gate | `desk-registry.yaml` `reads_external` field — Invariant 5 / drift-cop coverage check (when `INGEST_COVERAGE_FLAG=on`) |
 | `COMPLEMENTS` | sentinel | Sentinel detects INBOUND injection; health-invariants detects SUBSTRATE failure — parallel, non-redundant |
 | `CHAINS` | archivist | sweeper spawns `archivist-placements.py` + `archivist-lean.py` as side-effects post-sweep (decoupled + graceful) |
-| `READS` | grand-central | `state/primary-machine` — lead-machine detection in `system-health-run.sh` and `_current_lead()` |
+| `READS` | grand-central | ~~`state/primary-machine` — lead-machine detection in `system-health-run.sh` and `_current_lead()`~~ **⚠ CORRECTED 2026-08-24: neither exists — `system-health-run.sh` reads no such marker and `system-health.py` has no `_current_lead()`, verified this session (see COMPONENT A above).** |
 | `SYNCS` | (desk-health producers) | `FRESH_TILES` and `assess_registry()` must stay in sync with the desk registry when new desks are added |
 
 ---
