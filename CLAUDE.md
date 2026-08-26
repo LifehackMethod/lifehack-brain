@@ -37,7 +37,7 @@ elements/<slug>.md, the exhaustive source. If this map is your only source, you 
 @ /advisory-council  think a hard call through with experts | council-engine.md — the DECISION, including a
                      money decision. the money RECORDS live in the owning subject's own store, never here.
 @ /research /websearch   find something out, sanitized | research-web-plane.md
-@ /explain /simplify     have it said plainer | translator-cluster.md
+@ /explain /condense     have it said plainer | translator-cluster.md
 @ /professor       send someone to LEARN this whole system | `.claude/skills/professor/` — NOT an element;
                    the taught tour. this page ROUTES; that one EXPLAINS.
 @ (open the file)  which of the three layers answers THIS question | brain.md — the map ROUTES, the manual

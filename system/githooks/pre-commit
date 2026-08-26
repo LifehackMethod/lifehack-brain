@@ -64,6 +64,56 @@ if [ -n "$offenders" ]; then
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
+# SECRET SCANNING (gitleaks) — MERGED IN 2026-08-22, T10.D1.
+#
+# WHY THIS EXISTS HERE NOW: the pre-migration clone's `system/githooks/pre-commit` ran gitleaks;
+# this file, at the same path in the new repo, did not — the migration replaced one hook with the
+# other instead of merging them, so `~/ClaudeOps` briefly had a personal-notes guard and NO secret
+# scanning at all. Ruled 2026-08-22 (`authority: user`, closes Q21/G14 part 2): merge both
+# behaviours, keep FAIL-CLOSED, and pay the cost by shipping gitleaks in the installer (INSTALL.md,
+# T10.D4) rather than by weakening the guard.
+#
+# ⛔ FAIL CLOSED, ON PURPOSE. A scanner that passes a commit because it could not check is theatre.
+# If gitleaks is not on PATH (or at any of the common install locations below), THE COMMIT IS
+# REFUSED — not silently allowed through. Install: brew install gitleaks (see INSTALL.md). Genuine
+# false positive on an installed run: git commit --no-verify.
+#
+# PORTABLE LOOKUP (fixed 2026-08-25, closes the Apple-Silicon-only gap recorded in PR #122): PATH
+# first, then every common per-platform default -- Apple Silicon Homebrew (/opt/homebrew/bin), Intel
+# Mac Homebrew / most Linux package managers (/usr/local/bin), and Linux distro packages (/usr/bin).
+# The very first candidate that is an executable file wins; none of this changes the fail-closed
+# branch below -- if nothing on this list is executable, GITLEAKS stays unset and the commit refuses.
+GITLEAKS="$(command -v gitleaks 2>/dev/null)"
+if [ -z "$GITLEAKS" ]; then
+	for candidate in /opt/homebrew/bin/gitleaks /usr/local/bin/gitleaks /usr/bin/gitleaks; do
+		if [ -x "$candidate" ]; then
+			GITLEAKS="$candidate"
+			break
+		fi
+	done
+fi
+
+if [ -z "$GITLEAKS" ] || [ ! -x "$GITLEAKS" ]; then
+	echo ""
+	echo "  ⛔ COMMIT REFUSED — gitleaks (secret scanner) not found. This hook FAILS CLOSED: it will"
+	echo "  not let a commit through with secret-scanning silently skipped."
+	echo ""
+	echo "  Install:  brew install gitleaks   (see INSTALL.md)"
+	echo "  Bypass only if you are certain there is nothing to catch: git commit --no-verify"
+	echo ""
+	exit 1
+fi
+
+if ! "$GITLEAKS" git --staged --redact --no-banner; then
+	echo ""
+	echo "  ⛔ COMMIT REFUSED — gitleaks detected a possible secret in staged changes." >&2
+	echo "  Remove the secret (move it to a secrets manager or the keychain)." >&2
+	echo "  False positive? git commit --no-verify" >&2
+	echo ""
+	exit 1
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
 # REFUSE any commit that would track a symlink. WHY: .claude/ as it ships today holds ZERO
 # symlinks -- every skill is a real directory -- and INSTALL.md states the rule in plain words: "Do
 # NOT symlink anything into ~/.claude/. Symlinks are Mac-coupled and this has to work on Windows
@@ -162,7 +212,23 @@ fi
 # a security fix to guard_hook_sop_read.sh could not be committed to this repo at all, and PR
 # #104's commit message could not be corrected to name 6 of its 10 files.
 # The absent subject is still SPOKEN (exit 2 prints its reason) -- it is just not fatal.
+#
+# A THIRD STATE, DISTINCT FROM BOTH ABOVE: THE SCRIPT ITSELF IS MISSING (found 2026-08-24). "no
+# python3 on PATH" and "no .py staged" are both ordinary, environment- or commit-shaped absences --
+# the CONTROL is present and simply has nothing to check, or nothing to check it with. A missing
+# encoding_lint.py is not that: the control itself has been removed from this checkout, and python3
+# would happily exit 2 ("[Errno 2] No such file or directory") -- indistinguishable, to the case
+# above, from "nothing to check." Measured: a fresh clone of origin/main with this hook wired ran
+# `python3 <missing path> --staged --quiet`, got exit 2, and committed a bare unencoded open() clean.
+# That is fail-open on the control disappearing, not on its input being empty, so it does not get
+# the same pass this hook gives an absent python3 or an absent .py file: it REFUSES.
 if command -v python3 >/dev/null 2>&1; then
+	if [ ! -f "$repo/system/tools/encoding_lint.py" ]; then
+		echo "  ⛔ encoding lint tool MISSING — system/tools/encoding_lint.py is not present in this checkout."
+		echo "     Commit refused. This is not 'nothing to check' -- the security control itself is absent."
+		echo "     Restore it (git checkout origin/main -- system/tools/encoding_lint.py) or pull latest."
+		exit 1
+	fi
 	encoding_out=$(python3 "$repo/system/tools/encoding_lint.py" --staged --quiet 2>&1)
 	encoding_status=$?
 	if [ "$encoding_status" -eq 1 ]; then
@@ -173,7 +239,23 @@ if command -v python3 >/dev/null 2>&1; then
 		echo ""
 		exit 1
 	elif [ "$encoding_status" -eq 2 ]; then
-		echo "  ⚠ encoding lint: $(printf '%s\n' "$encoding_out" | head -1)"
+		# encoding_lint.py's CANNOT-EVALUATE (exit 2) covers THREE distinct causes -- see its
+		# own --help: no-python-staged (ordinary: nothing for this commit to check), and
+		# unparseable <path> / no-git (NOT ordinary: the check itself did not complete). The
+		# first is the commit-shaped absence this hook has always waved through. The other two
+		# are the control failing to run, same category as the missing-script case above -- and
+		# folding them into one warn-and-pass branch was itself a fail-open: an unparseable
+		# staged .py file, or a broken git, produced the identical single-line warning as
+		# "nothing to check" and the commit went through either way. Split them.
+		if printf '%s\n' "$encoding_out" | head -1 | grep -q 'CANNOT-EVALUATE: no-python-staged'; then
+			echo "  ⚠ encoding lint: $(printf '%s\n' "$encoding_out" | head -1)"
+		else
+			printf '%s\n' "$encoding_out"
+			echo "  ⛔ COMMIT REFUSED — encoding lint could not evaluate your staged changes (see above)."
+			echo "     This is not 'nothing to check' -- the check itself did not complete. Fix the"
+			echo "     underlying problem (an unparseable staged file, or git) and commit again."
+			exit 1
+		fi
 	fi
 else
 	echo "  ⚠ encoding lint SKIPPED — no python3 on PATH. New unencoded open() calls were NOT checked."

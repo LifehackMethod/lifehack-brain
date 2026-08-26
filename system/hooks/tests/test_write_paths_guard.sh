@@ -47,6 +47,11 @@ echo "── settings decides WHICH hooks run, so it is protected too ───�
 run "Edit settings.json"        2 "$REPO/.claude/settings.json"
 run "Edit settings.local.json"  2 "$REPO/.claude/settings.local.json"
 
+echo "── AND the GLOBAL settings, since a project-clone install routes hook ────"
+echo "   registration through ~/.claude/, not the repo-local copy ─────────────"
+run "Edit global settings.json"        2 "$HOME/.claude/settings.json"
+run "Edit global settings.local.json"  2 "$HOME/.claude/settings.local.json"
+
 echo "── git internals are not hand-editable ──────────────────────────────────"
 run "Edit .git/config"          2 "$REPO/.git/config"
 run "Edit a git hook"           2 "$REPO/.git/hooks/pre-commit"
@@ -71,6 +76,18 @@ echo "── what this guard deliberately does NOT do (see the scope note) ─�
 # These are ASSERTIONS, not gaps. Changing them is the product decision named at the top.
 run "a file on the Desktop"     0 "$HOME/Desktop/notes.md"
 run "a file in /tmp"            0 "/tmp/scratch.txt"
+
+echo "── mentioning a protected path is not writing to it (2026-07-13 incident) ─"
+# This guard matches Write|Edit only -- a Bash read of the global settings, or a Write whose
+# CONTENT/heredoc merely quotes the protected path while targeting somewhere else, must not deny.
+python3 -c "
+import json;print(json.dumps({'tool_name':'Bash','tool_input':{'command':'grep -n hooks '+__import__('os').environ['HOME']+'/.claude/settings.json'}}))" \
+  | env CLAUDE_PROJECT_DIR="$REPO" bash "$GUARD" >/dev/null 2>&1
+[ "$?" = 0 ] && ok || bad "Bash read of global settings" "a Bash grep/cat is not a Write/Edit and must not be judged by this guard"
+python3 -c "
+import json;print(json.dumps({'tool_name':'Write','tool_input':{'file_path':'/tmp/scratch_mentions_settings.txt','content':'See ~/.claude/settings.json for hook registration.'}}))" \
+  | env CLAUDE_PROJECT_DIR="$REPO" bash "$GUARD" >/dev/null 2>&1
+[ "$?" = 0 ] && ok || bad "content mentions global settings" "the deny is keyed on file_path only, never on command/content text"
 
 echo "── malformed input fails CLOSED; an absent path is not ours to judge ────"
 printf 'not json' | env CLAUDE_PROJECT_DIR="$REPO" bash "$GUARD" >/dev/null 2>&1

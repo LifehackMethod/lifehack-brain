@@ -1098,7 +1098,7 @@ INTEROP:
   READS       (desk canon)       · each /council subagent loads ONLY its own desks/{desk}/canon/*.md + state/current.md; independence is structural, signal quality depends on canon maintenance
   READS       councils/registry.md · front-door registry lookup on every /advisory-council invoke; Builder writes registry entries on create/edit
 
-## translator-cluster · /simplify · /explain · /summarize   [PARTIAL [provisional]]   → elements/translator-cluster.md
+## translator-cluster · /condense · /explain · /summarize   [PARTIAL [provisional]]   → elements/translator-cluster.md
 Three-skill cluster + two hooks that continuously re-assert a shared voice contract, keeping every reply readable on first pass for a low-recall reader juggling windows. The Stop-grade layer (translator_gate.sh) is dormant by default — grader parked 2026-07-14; inject hook is always-on.
 
 INTEROP:

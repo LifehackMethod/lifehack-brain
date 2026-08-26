@@ -42,14 +42,97 @@ if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 from emit_finding import emit_finding, FindingContractError   # noqa: E402
 
-GUARD_GLOB = "system/hooks/guard_*.sh"
-# The critical-hook allowlist, matched against THIS repo's real files (verified this session —
-# `guard_calendar_writes.sh` is this repo's Google-write guard; the donor's equivalent file was named
-# `block_primary_calendar.sh` and does not exist under that name here).
-CRITICAL_HOOKS = ("guard_calendar_writes.sh", "ingest_gate_enforce.sh",
-                  "guard_write_paths.sh", "guard_egress.sh")
 CLONE_AHEAD_WARN = 8              # > this many unpushed commits -> worth a nudge to push
 FETCH_STALE_S = 3 * 86400         # origin not fetched in 3 days -> can't know if we're behind
+
+
+# ── COVERAGE SET — replaces the old GUARD_GLOB + hand-named CRITICAL_HOOKS allowlist ─────────────
+# ⚠ MEASURED 2026-08-23: the allowlist (`guard_calendar_writes.sh`, `ingest_gate_enforce.sh`,
+# `guard_write_paths.sh`, `guard_egress.sh`) added exactly ONE file the `guard_*.sh` glob didn't
+# already have (`ingest_gate_enforce.sh` — the other three all match `guard_*.sh`), while 54 tracked,
+# non-test, non-lib hook files existed and only 27 had liveness coverage. The 27 uncovered included
+# `enforce_egress_allowlist.py/.sh`, `enforce_multiphase_contract.sh`, `enforce_skill_frontmatter.sh`
+# — security- and contract-relevant by name — plus 16 `inject_*`/`session_*`/`validate_*`/etc. hooks
+# that ARE wired into the harness (confirmed via registrations) but match no naming convention at
+# all. A hand-kept list is exactly the thing that goes stale; this is the incident that going-stale
+# produces.
+# RULING: coverage is now DERIVED, never hand-kept, from two sources ORed together:
+#   1. filename convention (`guard_*.sh`, `enforce_*.sh`, `enforce_*.py`) — covers a gate by its
+#      self-describing name even BEFORE it's wired in (e.g. a guard mid-build, deliberately staged
+#      unregistered — checked this session: `guard_mcp_connector_shape.sh`'s own test file says so
+#      in as many words). Filename alone is not enough: `session_context_loader.sh`,
+#      `inject_work_altitude.sh`, `pm_persist.sh`, `validate_on_write.sh` and 12 others are real,
+#      harness-invoked controls with names that match no gate-ish prefix.
+#   2. what is ACTUALLY REGISTERED — read straight from the wiring, not inferred from a name. A
+#      registered hook is a live control BY DEFINITION regardless of its filename, so this closes
+#      exactly the gap (1) cannot: `inject_*`, `enforce_*.py` siblings a `.sh` wrapper `exec`s into,
+#      `session_*`, `validate_*`, `plan_flag.sh`, `pm_persist.sh`, `rating_capture.sh`, etc. A hook
+#      on disk that NOTHING registers is not a live control — reporting its silence as broken would
+#      be a false positive, so filename-only conventions stay in the union as the pre-registration
+#      floor, not as a substitute for reading the wiring.
+# CONSIDERED AND REJECTED: registration-only (drop the filename convention entirely). Rejected
+# because it would silently stop watching a guard the moment someone stages it unregistered for
+# review — exactly the `guard_mcp_connector_shape.sh` case — which is backwards: a soon-to-be-live
+# gate is when you most want eyes on whether it shipped executable.
+# TWO REGISTRATION SHAPES EXIST across real installs (both checked this session, both repos this
+# invariant runs in): this repo's `system/hooks/registrations.json` (untracked/private — the current
+# source of truth here), and a `hooks` block living directly inside `.claude/settings.json` (the
+# shape an older/differently-bootstrapped clone carries — confirmed live in the second repo this
+# invariant runs against, which has no `registrations.json` at all). `_registered_hook_basenames`
+# tries both, in that order, and returns None (not an empty set) if neither is present or parses —
+# an ABSENT registration source degrades to the filename-convention floor, it never reports a false
+# "uncovered" for every hook in the repo.
+# NOT hand-maintained: nothing here lists a hook by name. Adding a `guard_*`/`enforce_*` file, or
+# wiring anything at all into the harness, is by itself enough to be covered — nothing else to update.
+def _registered_hook_basenames(code_root):
+    """Read the ACTUAL wiring, not a naming guess. Tries `system/hooks/registrations.json` first,
+    then a `hooks` block inside `.claude/settings.json`; both list hook commands as
+    `bash ".../some_hook.sh"` strings, so the same regex pulls the basename out of either shape.
+    Returns a set (possibly empty, if the file parses but names nothing) on success, or None if
+    neither file exists or parses — callers must treat None as "could not determine" and fall back
+    to the filename-convention floor, never as "zero hooks registered"."""
+    import json
+    import re
+    for rel in ("system/hooks/registrations.json", ".claude/settings.json"):
+        path = os.path.join(code_root, rel)
+        if not os.path.isfile(path):
+            continue
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            continue
+        hooks = data.get("hooks") if isinstance(data, dict) else None
+        if not isinstance(hooks, dict) or not hooks:
+            continue
+        found = set()
+
+        def _walk(o):
+            if isinstance(o, dict):
+                for v in o.values():
+                    _walk(v)
+            elif isinstance(o, list):
+                for i in o:
+                    _walk(i)
+            elif isinstance(o, str):
+                found.update(re.findall(r"([A-Za-z0-9_]+\.(?:sh|py))", o))
+
+        _walk(hooks)
+        if found:
+            return found
+    return None
+
+
+def _coverage_basenames(code_root):
+    """Union of the filename-convention floor and whatever is actually registered (see module
+    header for the full reasoning). Used by BOTH Invariant 1 (present + live) and Invariant 2
+    (untampered) so the two never drift apart on what counts as a control worth watching."""
+    convention = set()
+    for pattern in ("guard_*.sh", "enforce_*.sh", "enforce_*.py"):
+        for p in glob.glob(os.path.join(code_root, "system/hooks", pattern)):
+            convention.add(os.path.basename(p))
+    registered = _registered_hook_basenames(code_root)
+    return convention | (registered or set())
 
 
 def _entry(job, ok, why, severity=None):
@@ -65,21 +148,79 @@ def _git(code_root, *args):
                           env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"})
 
 
-# ── INVARIANT 1 — hooks present + non-empty ─────────────────────────────────────────────────────
+# ── INVARIANT 1 — hooks present AND LIVE (executable) ───────────────────────────────────────────
+# ⚠ CORRECTED (2026-08-23): this used to test existence + size>0 ONLY, on the premise that hooks
+# ship chmod 444 and are bash-invoked, so an executable bit was never the liveness signal. That
+# premise is FALSE for this repo — system/hook-contract.md is explicit that hook scripts here are
+# "ordinary tracked files, mode 755" and warns AGAINST chmod 444 ("friction with no guarantee behind
+# it"). Under the old test, a hook shipped git-mode 100644 (non-executable, therefore dead — this is
+# exactly how a hook can ship broken to a fresh student clone even though it ran fine on the
+# author's own machine, where a locally-chmod'd copy can sit on top of a 100644 commit) still passed
+# clean: the file exists and has bytes. Measured 2026-08-23: nine hook files were found at git mode
+# 100644, including a registered security guard, and every one of them would have passed this
+# invariant. The check now tests the actual liveness signal on BOTH axes a hook can go dead on:
+#   1. the ON-DISK executable bit (os.access X_OK) — what actually runs THIS machine, right now.
+#   2. the GIT-TRACKED mode (`git ls-files -s`), when available — what a FRESH clone gets, which is
+#      the axis the 100644 defect actually shipped on. A file can be locally chmod +x while
+#      committed 100644, which passes (1) and hides (2); checking only the on-disk bit would still
+#      miss that shipped-broken failure mode.
+# ABSENT-SUBJECT RULE: "missing", "present but not executable", and "could not determine" are kept
+# as three DISTINCT outcomes below (separate buckets in `why`), never folded into one "broken" blob —
+# a reader has to be able to tell "the file isn't there" from "it's there but dead" from "the checker
+# itself couldn't tell" (e.g. no git, git command failed/timed out, or the file isn't git-tracked).
 def inv_hooks_present(code_root):
     try:
-        paths = glob.glob(os.path.join(code_root, GUARD_GLOB))
-        for h in CRITICAL_HOOKS:
-            paths.append(os.path.join(code_root, "system/hooks", h))
-        missing = [os.path.basename(p) for p in paths
-                   if not (os.path.isfile(p) and os.path.getsize(p) > 0)]
+        paths = {base: os.path.join(code_root, "system/hooks", base)
+                 for base in _coverage_basenames(code_root)}
+
+        missing, empty, not_executable, undetermined = [], [], [], []
+
+        # Git-tracked mode, when determinable — the axis a fresh clone actually inherits.
+        git_modes = None  # None = could not determine at all; {} = determined, nothing tracked
+        if os.path.isdir(os.path.join(code_root, ".git")):
+            r = _git(code_root, "ls-files", "-s", "--", "system/hooks/")
+            if r.returncode == 0:
+                git_modes = {}
+                for line in r.stdout.splitlines():
+                    meta, sep, relpath = line.partition("\t")
+                    if sep and meta.split():
+                        git_modes[os.path.basename(relpath)] = meta.split()[0]
+
+        for base in sorted(paths):
+            p = paths[base]
+            if not os.path.isfile(p):
+                missing.append(base)
+                continue
+            if os.path.getsize(p) == 0:
+                empty.append(base)
+                continue
+            if not os.access(p, os.X_OK):
+                not_executable.append(f"{base} (on-disk, not chmod +x)")
+                continue
+            if git_modes is not None:
+                mode = git_modes.get(base)
+                if mode is None:
+                    undetermined.append(f"{base} (not found via git ls-files — untracked?)")
+                elif mode != "100755":
+                    not_executable.append(f"{base} (committed git mode {mode}, not 100755 — dead on a fresh clone)")
+            else:
+                undetermined.append(f"{base} (no .git or git ls-files failed — could not check committed mode)")
+
+        problems = []
         if missing:
-            return _entry("integrity:hooks", False,
-                          f"{len(missing)} guard hook(s) missing/empty: {', '.join(sorted(set(missing)))}",
-                          severity="error")
+            problems.append(f"{len(missing)} missing: {', '.join(missing)}")
+        if empty:
+            problems.append(f"{len(empty)} empty: {', '.join(empty)}")
+        if not_executable:
+            problems.append(f"{len(not_executable)} present but NOT executable/dead: {', '.join(not_executable)}")
+        if undetermined:
+            problems.append(f"{len(undetermined)} could not determine liveness: {', '.join(undetermined)}")
+
+        if problems:
+            return _entry("integrity:hooks", False, "; ".join(problems), severity="error")
         return _entry("integrity:hooks", True, "")
     except Exception as e:
-        return _entry("integrity:hooks", False, f"hook check errored: {e}", severity="error")
+        return _entry("integrity:hooks", False, f"hook check errored (could not determine): {e}", severity="error")
 
 
 # ── INVARIANT 2 — guards untampered: every guard hook matches its git-HEAD committed version ─────
@@ -92,7 +233,8 @@ def inv_guard_integrity(code_root):
                           severity="error")
         r = _git(code_root, "status", "--porcelain", "--", "system/hooks/")
         dirty = [ln[3:] for ln in r.stdout.splitlines() if ln.strip()]
-        guard_dirty = [p for p in dirty if "/guard_" in p or any(c in p for c in CRITICAL_HOOKS)]
+        covered = _coverage_basenames(code_root)
+        guard_dirty = [p for p in dirty if os.path.basename(p) in covered]
         if guard_dirty:
             return _entry("integrity:guards", False,
                           f"{len(guard_dirty)} guard hook(s) modified but NOT committed — verify intentional: "
@@ -139,7 +281,7 @@ def inv_coverage(code_root, assessed_jobs):
             return _entry("integrity:coverage", True, "")  # standalone run — sweeper didn't pass its set
         config = os.path.join(code_root, "system", "pulse-config.md")
         enabled, in_block = set(), False
-        for line in open(config):
+        for line in open(config, encoding="utf-8"):
             s = line.strip()
             if s == "```jobs":
                 in_block = True; continue

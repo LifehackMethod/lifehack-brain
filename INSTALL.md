@@ -196,7 +196,7 @@ actually lives.
 same chat, and ask "is this safe, and what does enabling it actually do?"** That works for any
 permission box you ever meet, here or anywhere else.
 
-⭐ **If anything it tells you is overwhelming, say "simplify that."** It will say the same thing again in
+⭐ **If anything it tells you is overwhelming, say "condense that."** It will say the same thing again in
 plainer words, as many times as you need.
 
 ## Have this ready
@@ -647,7 +647,7 @@ if [ -z "$PYBIN" ] || ! "$PYBIN" -c "" >/dev/null 2>&1; then
 echo "NO WORKING PYTHON YET — TAKE THIS COUNT AT THE END OF STEP 3"
 else
 "$PYBIN" - <<'PY'
-import os, glob
+import os, glob, string
 home = os.path.expanduser("~")
 harness = os.path.realpath(os.getcwd())   # the folder being installed INTO - never a rival
 places = []
@@ -656,6 +656,17 @@ for acct in sorted(glob.glob(os.path.join(home, "Library/CloudStorage/GoogleDriv
         d = os.path.join(acct, sub)
         if os.path.isdir(d):
             places.append(d)
+# Windows: Drive is a MOUNTED DRIVE LETTER, not a folder under $HOME. Without this the loop
+# above contributes nothing there, the scan never looks at the drive the brain actually lives
+# on, and the count comes back 0 - which STEP 8 and STEP 10 then read as a clean all-clear
+# rather than as "this check could not look". isdir on an unmounted letter is cheap and false.
+drive_roots = []
+for letter in string.ascii_uppercase:
+    for sub in ("My Drive", "Shared drives"):
+        d = "%s:\\%s" % (letter, sub)
+        if os.path.isdir(d):
+            drive_roots.append(d)
+places.extend(drive_roots)
 places.append(home)
 # ONE level deeper into the home folder, and only these three. A tester's second brain sat on the
 # Desktop and was invisible to the old top-level-only look. This is NOT a recursive walk: walking a
@@ -689,6 +700,11 @@ print("BRAIN-SHAPED FOLDERS: %d" % len(hits))
 for h in hits:
     print("  " + h)
 print("NOT COUNTED, BECAUSE IT IS THE HARNESS ITSELF: " + harness)
+# A zero from a scan that never reached any Drive is NOT the same fact as a zero from one that
+# looked and found nothing, and only the second one is an all-clear. Say which this was, so the
+# count written to the scratchpad can be left UNSET rather than 0 when nothing could be checked.
+if os.name == "nt" and not drive_roots:
+    print("COULD-NOT-LOOK: no Google Drive letter is mounted, so no Drive folder was scanned")
 PY
 fi
 ```
@@ -707,6 +723,12 @@ step it was finally taken in — only that it was. ⚠ **Do not mark STEP 1 as d
 sh ~/.config/lifehack/install-note.sh strays "<n>"
 sh ~/.config/lifehack/install-note.sh step   "STEP 1"
 ```
+
+⛔ **UNLESS it also printed `COULD-NOT-LOOK`. Then do NOT write the count at all** — skip the
+`strays` line and write only the `step` line. **A `0` there is a lie**: STEP 8 and STEP 10 both read
+`strays`, and `0` takes the "nothing unresolved" arm, so a scan that never reached the person's Drive
+would be laundered into a positive all-clear two steps later. **Leaving it unset makes those steps
+say `UNRESOLVED` and ask them, which is the honest answer when the check was blind.**
 
 **`0` or `1` → say nothing at all about it and carry straight on to STEP 2.** One is the ordinary,
 healthy answer and mentioning it only invites worry.
@@ -1558,6 +1580,48 @@ sh ~/.config/lifehack/install-note.sh step "STEP 6"
 > clones into the folder it just emptied, and puts every single thing back if the clone fails. **It
 > never deletes anything.** Prefer it to a delete whenever the check above did not come back clean.
 
+## STEP 6A — Check for gitleaks, and install it if it's missing
+
+The safety catch you just turned on also scans every commit for secrets, using a tool called
+gitleaks. ⛔ **That scan is FAIL-CLOSED: if gitleaks is not installed, `git commit` refuses to run at
+all** — not a warning, a hard stop, on purpose (`system/githooks/pre-commit`). Get it installed now,
+before the first real commit hits that wall.
+
+```bash
+gitleaks version
+```
+
+**If that printed a version number:** tell them gitleaks is already installed and there's nothing to
+do. Move on.
+
+**If it did not — Mac (with Homebrew):**
+```bash
+brew install gitleaks
+```
+If `brew` itself is missing, send them to <https://brew.sh> first, then run the line above.
+
+**If it did not — Linux:**
+There is no single command that works everywhere, so pick whichever fits: a distro package
+(`apt install gitleaks`, `dnf install gitleaks`, `pacman -S gitleaks` — whichever exists on their
+distro), or `go install github.com/gitleaks/gitleaks/v8@latest` if they have Go, or download a
+prebuilt binary from <https://github.com/gitleaks/gitleaks/releases> and put it somewhere on PATH
+(`/usr/local/bin` is the common choice).
+
+**If it did not — Windows:**
+```powershell
+winget install --id Gitleaks.Gitleaks -e --source winget
+```
+If `winget` isn't available, send them to <https://github.com/gitleaks/gitleaks/releases>.
+
+⛔ **Do not continue until `gitleaks version` prints a version.** Every commit after STEP 6 depends on
+it being reachable.
+
+```bash
+sh ~/.config/lifehack/install-note.sh step "STEP 6A"
+```
+
+---
+
 ## STEP 7 — Connect your AI Brain. ⛔ ONE QUESTION, AND ONLY THIS ONE: WHICH DRIVE FOLDER.
 
 > ⛔⛔ **THIS STEP USED TO ASK *"Where should everything you write end up?"* AS OPEN TEXT, AND IT WAS THE
@@ -1576,28 +1640,41 @@ sh ~/.config/lifehack/install-note.sh step "STEP 6"
 ```bash
 PYBIN="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
 "$PYBIN" - <<'PY'
-import os, glob
+import os, glob, string
 home = os.path.expanduser("~")
-accounts = sorted(glob.glob(os.path.join(home, "Library/CloudStorage/GoogleDrive-*")))
-if not accounts:
-    print("NO-DRIVE-ACCOUNTS")
-    raise SystemExit(0)
-candidates = []
-print("ACCOUNTS: %d" % len(accounts))
-for acct_path in accounts:
+# (kind, account-label, folder) for every Drive location this machine exposes.
+roots = []
+for acct_path in sorted(glob.glob(os.path.join(home, "Library/CloudStorage/GoogleDrive-*"))):
     acct = os.path.basename(acct_path).replace("GoogleDrive-", "", 1)
-    print("  " + acct)
     for kind, sub in (("My Drive", "My Drive"), ("Shared drive", "Shared drives")):
         d = os.path.join(acct_path, sub)
-        if not os.path.isdir(d):
-            continue
-        try:
-            entries = sorted(e for e in os.listdir(d) if not e.startswith("."))
-        except OSError:
-            continue
-        for e in entries:
-            if "brain" in e.lower():
-                candidates.append((kind, acct, e, os.path.join(d, e)))
+        if os.path.isdir(d):
+            roots.append((kind, acct, d))
+# Windows: Drive is a MOUNTED LETTER and there is no per-account folder in the path at all, so
+# the letter is the only account label there is. Without this the glob above finds nothing on
+# every Windows machine, NO-DRIVE-ACCOUNTS is printed, and the student is sent off to install
+# Google Drive that is already running - the failure this whole block exists to avoid.
+for letter in string.ascii_uppercase:
+    for kind, sub in (("My Drive", "My Drive"), ("Shared drive", "Shared drives")):
+        d = "%s:\\%s" % (letter, sub)
+        if os.path.isdir(d):
+            roots.append((kind, "%s:" % letter, d))
+if not roots:
+    print("NO-DRIVE-ACCOUNTS")
+    raise SystemExit(0)
+accounts = sorted({acct for _kind, acct, _d in roots})
+print("ACCOUNTS: %d" % len(accounts))
+for a in accounts:
+    print("  " + a)
+candidates = []
+for kind, acct, d in roots:
+    try:
+        entries = sorted(e for e in os.listdir(d) if not e.startswith("."))
+    except OSError:
+        continue
+    for e in entries:
+        if "brain" in e.lower():
+            candidates.append((kind, acct, e, os.path.join(d, e)))
 print("CANDIDATES: %d" % len(candidates))
 for i, (kind, acct, name, full) in enumerate(candidates, 1):
     print("  %d. [%s] %s :: %s" % (i, kind, acct, full))
