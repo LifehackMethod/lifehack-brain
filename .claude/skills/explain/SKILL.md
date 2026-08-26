@@ -9,7 +9,7 @@ updated_at: 2026-07-29
 status: active
 triggers:
   - "/explain"
-note: "Boils the span down to find the spine, then hands it to the best teacher in the world to rehydrate. Connects the dots into a picture of the way forward. Unpacks, never shortens — the opposite of /simplify."
+note: "Boils the span down to find the spine, then hands it to the best teacher in the world to rehydrate. Connects the dots into a picture of the way forward. Unpacks, never shortens — the opposite of /condense."
 ---
 
 Read everything since the user's last message — that span is what you're re-rendering. Draw freely on anything else in the session that makes it truer or clearer: go back to the underlying facts rather than paraphrasing a paraphrase. Re-render the span, not the thread.
