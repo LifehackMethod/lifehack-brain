@@ -472,7 +472,7 @@ PHASE_FRAMES = {
     "4": ("FILE", "the corpus is fully mined — now organize EVERYTHING into desks/folders and file it, "
           "human-approved. Propose desks, then sub-folders only when a desk earns them; records → "
           "records/{type}/, canon-CANDIDATES are authored DIRECTLY into canon/ at the altitude they earn "
-          "(REVERSED 2026-08-11 — no more records/proposals/ holding room, no separate second key). MAIN "
+          "(no records/proposals/ holding room, no separate key). MAIN "
           "SESSION ONLY. Nothing writes without the human's ordinary yes at CONFIRM."),
 }
 
@@ -550,10 +550,10 @@ def compose_anchor(phase, basket):
     (who you are) and (b) the PATH BEAT (a one-line Stage X/N · doing… · next… orientation). Kept < the
     injector's 1200-char ceiling. Restate-first framing = active recall, not wallpaper."""
     name, job = PHASE_FRAMES.get(str(phase), ("?", "?"))
-    b = basket or "(the whole corpus — no single pile)"
+    b = basket or "(whole corpus)"
     nxt = _NEXT_HINT.get(str(phase), "the next step")
     verbs = _ANCHOR_VERBS.get(str(phase), _ANCHOR_VERBS["1"])
-    return (f"PATH BEAT — Stage {phase} of 4 · {name} · pile '{b}' · doing: {name.lower()} · next: {nxt}.\n"
+    return (f"PATH BEAT — Stage {phase} of 4 · {name} · pile '{b}' · next: {nxt}.\n"
             f"ANCHOR (restate in your own words before you act):\n"
             f"You are VERA — a CALM, COMPETENT GUIDE (not a hand-holder). The reward is the REFLECTION: the "
             f"human watches their model of themselves sharpen each round.\n"
@@ -855,7 +855,7 @@ def do_salvage(m, basket, raw, out_path):
     if b is None:
         return False, f"no such basket '{basket}'"
     try:
-        data = json.load(open(raw))
+        data = json.load(open(raw, encoding="utf-8"))
     except Exception as e:
         return False, f"cannot read raw file: {e}"
     arr = data if isinstance(data, list) else (data.get("conclusions") or data.get("chats_read") or [])
@@ -938,7 +938,7 @@ def coalesce_conclusions(raw_dir, out_path):
     unreadable, split_merges = [], []
     for p in files:
         try:
-            d = json.load(open(p))
+            d = json.load(open(p, encoding="utf-8"))
         except Exception as e:
             unreadable.append(f"{os.path.basename(p)} ({e})")
             continue
@@ -969,7 +969,7 @@ def coalesce_conclusions(raw_dir, out_path):
             order.append(key)
     rows = [merged[k] for k in order]
     empty = [k for k in order if not _conclusions_of(merged[k])]
-    with open(out_path, "w") as f:
+    with open(out_path, "w", encoding="utf-8") as f:
         json.dump(rows, f, indent=1)
     stats = {"readers": len(files), "chats": len(rows), "empty": empty,
              "split_merged": sorted(set(split_merges)), "unreadable": unreadable}
@@ -1699,7 +1699,7 @@ def coalesced_evidence(basket, work_dir=None):
     if not os.path.exists(path):
         return (path, None)
     try:
-        data = json.load(open(path))
+        data = json.load(open(path, encoding="utf-8"))
     except Exception:
         return (path, None)          # unreadable evidence is NO evidence — fail closed, same as missing
     if isinstance(data, dict):
@@ -1900,7 +1900,7 @@ def set_finding_type(work_dir, basket, chat, index, ftype):
     if not path or not os.path.exists(path):
         return False, (f"REFUSED: no coalesced findings for basket '{basket}' "
                        f"(expected {path or 'raw-conclusions-<basket>.json'}) — run 'pipeline.py coalesce' first.")
-    data = json.load(open(path))
+    data = json.load(open(path, encoding="utf-8"))
     if isinstance(data, dict):
         data = data.get("conclusions") or data.get("items") or data.get("results") or []
     for el in data:
@@ -1913,7 +1913,7 @@ def set_finding_type(work_dir, basket, chat, index, ftype):
             return False, f"REFUSED: chat '{chat}' has {len(cons)} finding(s); no index {index}."
         cons[index]["type"] = ftype
         el["conclusions"] = cons
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=1)
         return True, f"{chat}[{index}] = {ftype}"
     return False, f"REFUSED: chat '{chat}' is not in the coalesced findings for '{basket}'."
@@ -1926,7 +1926,7 @@ def world_map_state(basket, work_dir=None):
     if not path or not os.path.exists(path):
         return (0, None)
     try:
-        data = json.load(open(path))
+        data = json.load(open(path, encoding="utf-8"))
     except Exception:
         return (0, None)
     if isinstance(data, dict):
@@ -1976,7 +1976,7 @@ def worldmap_material(basket, work_dir=None):
     if not path or not os.path.exists(path):
         return (path, [])
     try:
-        data = json.load(open(path))
+        data = json.load(open(path, encoding="utf-8"))
     except Exception:
         return (path, [])
     if isinstance(data, dict):
@@ -2167,13 +2167,13 @@ def worldmap_save_paragraph(basket, text, work_dir=None, note=None, now_iso=None
     hist = {"basket": basket, "versions": []}
     if os.path.exists(path):
         try:
-            hist = json.load(open(path))
+            hist = json.load(open(path, encoding="utf-8"))
         except Exception:
             hist = {"basket": basket, "versions": []}
     hist.setdefault("versions", []).append(
         {"text": text or "", "note": note or "", "at": now_iso or _now_iso()})
     hist["versions"] = hist["versions"][-5:]
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(hist, f, indent=1)
     return True, f"OK: version {len(hist['versions'])} saved for '{basket}'"
 
@@ -2189,7 +2189,7 @@ def worldmap_diff_paragraph(basket, new_text, work_dir=None):
     if not path or not os.path.exists(path):
         return True, "OK: no prior version to diff against — this is the first render", None
     try:
-        hist = json.load(open(path))
+        hist = json.load(open(path, encoding="utf-8"))
     except Exception:
         return True, "OK: no readable prior version — treating as the first render", None
     versions = hist.get("versions") or []
@@ -2729,7 +2729,7 @@ def main():
             print("\n".join(lines) if lines else "(no chats left to process in this basket)")
     elif a.cmd == "anchor":
         frame = compose_anchor(a.phase, a.basket)
-        with open(a.out, "w") as f:
+        with open(a.out, "w", encoding="utf-8") as f:
             f.write(frame)
         print(f"OK anchor: phase {a.phase} basket {a.basket!r} → {a.out} ({len(frame)} chars)")
     elif a.cmd == "progress":
@@ -2745,7 +2745,7 @@ def main():
         # reuse conclusions_review's tolerant loader shape: each file = an array OR a per-chat obj
         conclusions = []
         for pth in a.infiles:
-            d = json.load(open(pth))
+            d = json.load(open(pth, encoding="utf-8"))
             if isinstance(d, dict):
                 d = [d] if ("file" in d and "conclusions" in d) else (d.get("conclusions") or d.get("items") or [])
             for el in d:
@@ -2842,7 +2842,7 @@ def main():
             sys.exit(1)
         print(json.dumps({"basket": a.basket, "title": world_map_title(a.basket), "findings": findings}, indent=1))
     elif a.cmd == "worldmap-check":
-        text = open(a.file).read()
+        text = open(a.file, encoding="utf-8").read()
         material = None
         if not getattr(a, "no_containment", False):
             try:
@@ -2867,13 +2867,13 @@ def main():
             counts[_finding_group(f)] += 1
         print(json.dumps({"basket": a.basket, "counts": counts, "total": len(findings), "turns": turns}, indent=1))
     elif a.cmd == "worldmap-save":
-        text = open(a.file).read()
+        text = open(a.file, encoding="utf-8").read()
         ok, msg = worldmap_save_paragraph(a.basket, text, getattr(a, "work", None), a.note, a.now)
         print(msg)
         if not ok:
             sys.exit(1)
     elif a.cmd == "worldmap-diff":
-        new_text = open(a.file).read()
+        new_text = open(a.file, encoding="utf-8").read()
         ok, msg, diff = worldmap_diff_paragraph(a.basket, new_text, getattr(a, "work", None))
         print(msg)
         if diff:
@@ -2919,10 +2919,10 @@ def main():
             sys.exit(1)
         notes = a.notes
         if notes and notes.startswith("@"):
-            notes = open(notes[1:]).read()
+            notes = open(notes[1:], encoding="utf-8").read()
         entry = a.entry
         if entry and entry.startswith("@"):
-            entry = open(entry[1:]).read()
+            entry = open(entry[1:], encoding="utf-8").read()
         # No --basket and no --entry => PHASE 1 close: one pad per pile, in one call.
         if not a.basket and not entry:
             results, refused = pad_init_all(m, corpus_id, a.root, now_iso=a.now, notes=notes,
