@@ -139,6 +139,41 @@ class ReadingAcrossSegments(Base):
     def test_an_empty_slice_is_empty_not_an_error(self):
         self.assertEqual(j.slice_(self.root, "nothing-here"), [])
 
+    def test_a_mixed_format_journal_returns_both_canonical_and_legacy_rows_for_a_slug(self):
+        self.cur("2026-08-10 | root | widget | The widget thing, and why. | supersedes: — | → x.md",
+                 "- 2026-06-21: PROJECT CREATED widget. Chose the layout.",
+                 "Just some prose about widget in the middle of the file.",
+                 "- just a note about widget")
+        rows = j.slice_(self.root, "widget")
+        self.assertEqual(len(rows), 2, "expected exactly the canonical and legacy rows")
+        self.assertTrue(any("| widget |" in r for r in rows), "canonical row missing")
+        self.assertTrue(any(r.startswith("- 2026-06-21: PROJECT CREATED widget") for r in rows),
+                        "legacy row missing")
+        self.assertFalse(any("Just some prose" in r for r in rows), "prose is not a row")
+        self.assertFalse(any(r == "- just a note about widget" for r in rows),
+                         "an undated bullet is not a legacy row")
+
+    def test_legacy_rows_are_filtered_by_slug_token_boundaries(self):
+        self.cur("- 2026-06-21: PROJECT CREATED widget. Chose the layout.",
+                 "- 2026-06-22: PROJECT CREATED gadget. Chose the color.",
+                 "- 2026-06-23: PROJECT CREATED widget-v2. A different project entirely.")
+        rows = j.slice_(self.root, "widget")
+        self.assertEqual(len(rows), 1, "slug filter must not pick up widget-v2 for widget")
+        self.assertIn("PROJECT CREATED widget.", rows[0])
+
+    def test_legacy_rows_are_included_with_no_slug_argument(self):
+        self.cur("- 2026-06-21: PROJECT CREATED widget. Chose the layout.")
+        rows = j.slice_(self.root)
+        self.assertEqual(len(rows), 1)
+        self.assertTrue(rows[0].startswith("- 2026-06-21:"))
+
+    def test_a_legacy_row_in_a_rotated_segment_is_found_too(self):
+        self.seg("2026-06", "- 2026-06-21: PROJECT CREATED widget. Chose the layout.")
+        self.cur("2026-08-10 | root | widget | The newest thing, and why. | supersedes: — | → x.md")
+        rows = j.slice_(self.root, "widget")
+        self.assertEqual(len(rows), 2)
+        self.assertTrue(rows[0].startswith("- 2026-06-21:"), "segments must still come first")
+
 
 class Rotating(Base):
 
@@ -212,6 +247,21 @@ class Cli(Base):
 
     def test_an_empty_slice_says_so_rather_than_printing_nothing(self):
         rc, out, _ = self._run("slice", "--slug", "nothing")
+        self.assertEqual(rc, 0)
+        self.assertIn("No journal entries", out)
+
+    def test_a_slice_whose_only_match_is_a_legacy_row_prints_it_with_the_pre_format_notice(self):
+        self.cur("- 2026-06-21: PROJECT CREATED bootcamp-install-recovery. Chose the layout.")
+        rc, out, _ = self._run("slice", "--slug", "bootcamp-install-recovery")
+        self.assertEqual(rc, 0)
+        self.assertIn("- 2026-06-21: PROJECT CREATED bootcamp-install-recovery.", out)
+        self.assertIn("⚠ 1 pre-format row(s) shown verbatim", out)
+        self.assertNotIn("No journal entries", out)
+
+    def test_a_slug_that_appears_nowhere_still_prints_no_journal_entries(self):
+        self.cur("- 2026-06-21: PROJECT CREATED widget. Chose the layout.",
+                 "2026-08-10 | root | widget | The widget thing, and why. | supersedes: — | → x.md")
+        rc, out, _ = self._run("slice", "--slug", "nowhere-to-be-found")
         self.assertEqual(rc, 0)
         self.assertIn("No journal entries", out)
 

@@ -13,6 +13,10 @@
 #      `.claude/settings.local.json` — the file that decides which hooks run at all, so editing it
 #      disables guards without touching one, and (c) `.git/` internals. Paths are resolved to their
 #      real location first, so `a/../b` and a symlink cannot walk around the comparison.
+#      (b) covers BOTH the repo-local settings AND the GLOBAL ~/.claude/settings.json /
+#      ~/.claude/settings.local.json — a project-clone install (every student's install shape)
+#      routes hook registration through the GLOBAL file, not the repo-local copy, so guarding only
+#      the repo-local one leaves the file that actually matters unprotected.
 # REDIRECT: hooks and settings are edited through Bash, deliberately and visibly — `chmod 644` the
 #      file, edit it, `chmod 755` it back (755, not 444: a hook in this repo must stay executable,
 #      and stripping that bit is how three guards were silently disarmed on 2026-08-14). This hook
@@ -118,6 +122,17 @@ except Exception: print('')" "$REPO" 2>/dev/null)
 REPO_REAL="$(_winfold "$REPO_REAL")"
 FILE_PATH="$(_winfold "$FILE_PATH")"
 
+# Resolve $HOME the same way, so a symlinked home directory (or a differently-spelled mount)
+# cannot walk around the global-settings match below the way an unresolved string would. Unlike
+# REPO_REAL, a failure to resolve HOME does not disable the guard -- it falls back to the raw
+# $HOME env var, which is what this comparison used before this block existed.
+HOME_REAL=$(python3 -c "
+import os,sys
+try: print(os.path.realpath(sys.argv[1]))
+except Exception: print('')" "$HOME" 2>/dev/null)
+[ -n "$HOME_REAL" ] || HOME_REAL="$HOME"
+HOME_REAL="$(_winfold "$HOME_REAL")"
+
 case "$FILE_PATH" in
   # Tests are NOT enforcement. A guard's test suite proves the guard works; it does not do the
   # work, and weakening one cannot disable a control — the guard beside it still refuses. Blocking
@@ -135,9 +150,9 @@ case "$FILE_PATH" in
 ⚠ 755, not 444 — a hook here must stay executable. Stripping that bit is how three guards went
 silently dark on 2026-08-14; they were present, registered, and could not run."
     ;;
-  "$REPO_REAL"/.claude/settings.json|"$REPO_REAL"/.claude/settings.local.json)
+  "$REPO_REAL"/.claude/settings.json|"$REPO_REAL"/.claude/settings.local.json|"$HOME_REAL"/.claude/settings.json|"$HOME_REAL"/.claude/settings.local.json)
     deny "a Write or Edit aimed at ${FILE_PATH#$REPO_REAL/}" \
-"REDIRECT: this file decides which hooks run at all, so editing it can disable every guard here without touching one of them. Change it through Bash if you mean to, and re-read it afterwards to confirm it still parses — a settings file that no longer parses takes the whole hook set down with it."
+"REDIRECT: this file decides which hooks run at all, so editing it can disable every guard here without touching one of them. Change it through Bash if you mean to, and re-read it afterwards to confirm it still parses — a settings file that no longer parses takes the whole hook set down with it. NOTE: for a project-clone install, hook registrations route through the GLOBAL ~/.claude/settings.json, not only the repo-local copy — both are protected here."
     ;;
   "$REPO_REAL"/.git/*)
     deny "a Write or Edit aimed at git's own internal files." \

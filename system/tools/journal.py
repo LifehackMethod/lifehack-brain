@@ -54,6 +54,9 @@ JOURNAL_REL = os.path.join("system", "journal.md")
 SEGMENT_DIR_REL = os.path.join("system", "journal")
 
 ROW_RE = re.compile(r"^(\d{4})-(\d{2})-\d{2}\s*\|")
+# Rows written before the pipe format existed: a bullet, an ISO date, a colon, then free prose with
+# the slug somewhere inside it. Kept readable rather than dropped on the floor.
+LEGACY_RE = re.compile(r"^-\s+(\d{4}-\d{2}-\d{2}):\s")
 DASH = "—"
 
 JOURNAL_HEADER = """# Journal
@@ -185,7 +188,11 @@ def slice_(root, slug=None, limit=20):
     """Every matching row across the segments AND the current file, oldest first.
 
     ⛔ The segments come first and the current file last, so the arc reads forwards. A reader that
-    opens only the current file loses everything before the last rotation, quietly."""
+    opens only the current file loses everything before the last rotation, quietly.
+
+    Rows written before the pipe format — dated bullets like "- 2026-06-21: PROJECT CREATED
+    widget. …" — are included verbatim alongside canonical rows, in encounter order, rather than
+    silently dropped."""
     rows = []
     for p in segment_paths(root) + [journal_path(root)]:
         if not os.path.isfile(p):
@@ -193,11 +200,15 @@ def slice_(root, slug=None, limit=20):
         try:
             with open(p, encoding="utf-8") as f:
                 for line in f:
-                    if not ROW_RE.match(line):
-                        continue
-                    if slug and ("| %s |" % slug) not in line:
-                        continue
-                    rows.append(line.rstrip("\n"))
+                    if ROW_RE.match(line):
+                        if slug and ("| %s |" % slug) not in line:
+                            continue
+                        rows.append(line.rstrip("\n"))
+                    elif LEGACY_RE.match(line):
+                        if slug and not re.search(
+                                r"(?<![\w-])" + re.escape(slug) + r"(?![\w-])", line):
+                            continue
+                        rows.append(line.rstrip("\n"))
         except Exception:
             continue
     return rows[-limit:] if limit else rows
@@ -303,6 +314,10 @@ def main(argv=None):
             return 0
         for row in rows:
             print(row)
+        n_legacy = sum(1 for row in rows if LEGACY_RE.match(row))
+        if n_legacy:
+            print("⚠ %d pre-format row(s) shown verbatim — written before the current journal "
+                  "format; fields may be incomplete." % n_legacy)
         print("\nJournal reflects saves via /save and explicitly logged decisions only. In-session "
               "pivots, verbal agreements, and file changes outside /save are not captured. A "
               "clean-looking journal is not a complete journal.")
