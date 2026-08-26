@@ -80,7 +80,19 @@ mkdir -p "$HOME"
 # hand-rolled version here rather than living beside it as a special case.
 #   to_native "/tmp/x/y.md"        -> C:\Users\name\AppData\Local\Temp\x\y.md
 #   to_fwd_drive "/tmp/x/y.md"     -> C:/Users/name/AppData/Local/Temp/x/y.md
-[ -x "$(command -v cygpath 2>/dev/null)" ] || { echo "CANNOT RUN: cygpath not found -- this suite depends on it to convert POSIX fixture paths to real Windows spellings, mount aliases included"; exit 1; }
+# ⛔ DO NOT turn this back into a hard `exit 1`. This suite has TWO TIERS and only the second
+# needs cygpath:
+#   TIER 1, the completeness check -- reads .claude/settings.json only. Runs EVERYWHERE, and it
+#           is the tier that stops this whole class of bug returning, because it fails the build
+#           when a newly registered Write/Edit guard has no row in the table below.
+#   TIER 2, the spelling comparisons -- needs a REAL native Windows path for each fixture, which
+#           means cygpath, which means Windows. It cannot be faked: a hand-rolled converter
+#           silently no-ops on mount aliases like /tmp, so both "spellings" come out identical
+#           and every comparison passes against itself. That false pass is worse than no test.
+# Off Windows, tier 2 SKIPS LOUDLY and the run exits 0. A CI that goes red on every commit gets
+# added to a skip list and then ignored, which costs more than the coverage it was protecting.
+HAVE_CYGPATH=1
+[ -x "$(command -v cygpath 2>/dev/null)" ] || HAVE_CYGPATH=0
 to_native()    { cygpath -w "$1"; }
 to_fwd_drive() { cygpath -m "$1"; }
 
@@ -195,6 +207,28 @@ PY
 # rely on Python-side newline settings that vary by version.
 LIVE_GUARDS="$(printf '%s' "$LIVE_GUARDS" | tr -d '\r')"
 
+# ⛔ AN EMPTY PARSE IS A BROKEN TEST, NOT A CLEAN REPO. Found while exercising this suite under a
+# stripped PATH where python3 was present but non-functional: it wrote nothing, LIVE_GUARDS came
+# back empty, and the two directions below then disagreed in the most misleading way available --
+# "settings->table" passed VACUOUSLY (an empty list satisfies "every registered guard has a row"),
+# while "table->settings" failed and blamed settings.json for having dropped all ten guards. A
+# reader would go and look at settings.json, which is fine, and never suspect the parser. Refuse
+# outright instead: if the repo genuinely registered zero Write/Edit guards, that is itself a thing
+# this suite must shout about, so there is no case where continuing is correct.
+if [ -z "$LIVE_GUARDS" ]; then
+  fail=$((fail+1))
+  echo "  FAIL [completeness]: parsed ZERO Write/Edit guards out of .claude/settings.json."
+  echo "                  This is almost certainly a broken python3 or an unreadable settings file,"
+  echo "                  NOT a repo with no guards. Both completeness directions are meaningless"
+  echo "                  against an empty list -- one of them would pass vacuously -- so this"
+  echo "                  refuses rather than reporting either."
+  echo "                  CHECK: python3 -c 'import json' and that .claude/settings.json parses."
+  echo
+  echo "RESULT: $pass passed, $fail failed, $skip skipped."
+  echo "GUARD PATH-SPELLING RED"
+  exit 1
+fi
+
 MISSING_FROM_TABLE=""
 while IFS= read -r g; do
   [ -n "$g" ] || continue
@@ -230,6 +264,34 @@ if [ -n "$MISSING_FROM_SETTINGS" ]; then
 else
   pass=$((pass+1))
   echo "  PASS [completeness, table->settings]: every guard this file expects is still registered."
+fi
+
+# ── TIER 2 GATE ────────────────────────────────────────────────────────────────────────────────
+# Everything below needs a real native Windows path per fixture. Where cygpath is absent we cannot
+# build one honestly, so we say so and stop -- exit 0, because the completeness check above DID run
+# and DID assert something real. The skip count is reported in the RESULT line like any other, so
+# "skipped" can never be mistaken for "passed" by a human or by a log scraper.
+if [ "$HAVE_CYGPATH" -eq 0 ]; then
+  skip=$(( skip + ${#REQUIRED_GUARDS[@]} ))
+  echo
+  echo "══════════════════════════════════════════════════════════════════════"
+  echo "SKIPPED — the path-spelling comparisons need cygpath, which is not on this host."
+  echo "══════════════════════════════════════════════════════════════════════"
+  echo "  WHAT RAN:     the completeness check above. Every Write/Edit guard registered in"
+  echo "                .claude/settings.json has a fixture row here, and vice versa. That is the"
+  echo "                assertion that keeps a newly added guard from shipping unprotected."
+  echo "  WHAT SKIPPED: ${#REQUIRED_GUARDS[@]} per-guard spelling comparisons."
+  echo "  WHY:          each fixture needs the SAME file spelled two ways, one of them a real native"
+  echo "                Windows path. cygpath is the only thing here that produces one correctly for"
+  echo "                any mount, alias included. A hand-rolled converter no-ops on /tmp, so both"
+  echo "                spellings come out identical and every comparison passes against itself --"
+  echo "                a false pass, and worse than skipping."
+  echo "  TO RUN THEM:  run this suite on Windows with Git Bash."
+  echo
+  echo "RESULT: $pass passed, $fail failed, $skip skipped."
+  [ "$fail" -eq 0 ] && echo "GUARD PATH-SPELLING GREEN (spelling tier skipped, completeness tier ran)" \
+                    || echo "GUARD PATH-SPELLING RED"
+  exit $([ "$fail" -eq 0 ] && echo 0 || echo 1)
 fi
 
 echo
