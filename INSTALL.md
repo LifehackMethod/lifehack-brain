@@ -42,7 +42,7 @@ tab, and start again from this line.
 > hand. ⛔ **Never offer help without saying how to reach it** — a promise with no route is where someone
 > quietly gives up. Then stop.
 
-## ⭐ NEXT — HOW YOU GET THIS: PLUGIN (fastest way in) OR MANUAL CLONE (currently the only way to get the guards too)
+## ⭐ NEXT — HOW YOU GET THIS: PLUGIN (fastest way in, and it DOES ship the guards) OR MANUAL CLONE (if you want to develop the harness itself)
 
 **As of 2026-08-23 this harness is also a Claude Code marketplace plugin.** One command adds the
 marketplace, one installs the plugin — no folder to create, no `git` to run by hand. ⛔ **It does NOT
@@ -72,25 +72,26 @@ auto-update" (verified: this exact toggle exists in the installed Claude Code bu
 installed plugins on startup"). Turning it on does not change the version-bump condition above — it
 only removes the step of running the command yourself.
 
-⛔⛔ **WHAT IT DOES NOT DO, AND THIS MATTERS: IT DOES NOT INSTALL THE GUARD HOOKS.** This harness leans
-on a set of Claude Code hooks — the ones that, on the manual clone path, get wired the moment you open
-the cloned folder, because they are declared in that folder's OWN tracked `.claude/settings.json`
-(dozens of guard commands: the ones that stop a destructive Gmail action, block an ingest that skips
-its gate, and the rest of what this project calls its hook plane). **A plugin's own manifest
-(`.claude-plugin/plugin.json`) carries no `hooks` key, and the plugin cache folder is never opened as
-your project** — so none of that project-level `settings.json`, guard hooks included, ever loads for a
-plugin-only install. Checked directly: the installed plugin's `plugin.json` is 266 bytes and declares
-only name, version, description and author; the user's own `~/.claude/settings.json` has zero
-references to the plugin cache. **A plugin install today gets you the skills and the tools. It does
-not get you the guards.** That is a real gap, not a documentation nuance — say so plainly if asked, and
-do not describe the plugin as a complete or equivalent substitute for the clone path until it is fixed.
+⭐ **The plugin DOES install the guard hooks — it does not need a `hooks` key in `plugin.json` to
+do it.** Claude Code auto-discovers a plugin's own `hooks/hooks.json` by convention; the plugin's
+manifest (`.claude-plugin/plugin.json`) carrying no `hooks` key proves nothing either way. Checked
+directly: the installed plugin ships `hooks/hooks.json` at its top level, registering **45 hook
+commands** — the guard plane that stops a destructive Gmail action, blocks an ingest that skips its
+gate, and the rest of what this project calls its hook plane. Those hooks load and fire the moment the
+plugin is installed, in every session, no matter which folder you have open — watched directly, denying
+a command, with the deny message naming the plugin's own cache path.
 
-**So, which one to use:** if you only want to look at the skills, try `/ingest` once, or you're not
-yet doing real work that a guard would need to catch, the plugin above is the fast way in. **If you
-want the guard hooks from day one — which is the safer default for anyone actually using this on their
-own material — use the manual clone path below instead; right now it is the only path that wires them.**
-The clone path is not being retired — it stays fully documented, starting at the next heading — it
-simply also does something the plugin does not do yet.
+⛔ **The one real gap, and it's smaller than it sounds:** the maintainer's own machine also carries a
+second, private set of hook commands wired through their personal `~/.claude/settings.json`, pointed at
+a repo that never ships in the plugin or the public clone. A plugin install (and a manual clone, for
+that matter) gets you the plugin's 45 guards — not that private maintainer-only set on top. That's a
+maintainer-only arrangement, not something this project promises anyone else; it is not a reason to
+prefer one install path over the other.
+
+**So, which one to use:** the plugin above is the fast way in, and — guard hooks included — it is a
+complete install for anyone just using this on their own material. **Use the manual clone path below
+if you intend to develop the harness itself:** read its source, change a skill, send a PR back. That is
+the one thing a plugin-only install cannot do.
 
 ⭐ **If you do use the plugin and later want to connect your AI Brain (STEP 7 below) anyway:** its commands are written assuming you're sitting inside a cloned Harness folder. A plugin install has no such folder — ask Claude to find where the plugin actually landed (`claude plugin list`, or look under `~/.claude/plugins/cache/lifehack-brain/lifehack-brain/<version>/` — the full repo layout, including `shared/brain_root.py`, is really there) and run STEP 7's commands from inside *that* folder instead. The commands don't care which install method put the files on disk, only that you're standing in the right one.
 
@@ -99,10 +100,10 @@ GitHub account signed in, name the one the plugin commands actually used, since 
 silently pick the wrong one.
 
 ⛔ **Use the manual clone path if:** you intend to develop the harness itself (read its source, change
-a skill, send back a PR), your environment cannot install Claude Code plugins at all, or — per the gap
-just above — you want the guard hooks active. **If you already installed the plugin and later decide
-you want the guards too, the manual clone below is additive, not a do-over:** it lands in its own
-folder and does not touch the plugin install.
+a skill, send back a PR), or your environment cannot install Claude Code plugins at all. **Both paths
+give you the guard hooks** — that is not a reason to pick one over the other. **If you already
+installed the plugin and later decide you want the clone too, the manual clone below is additive, not
+a do-over:** it lands in its own folder and does not touch the plugin install.
 
 ## ⭐ MANUAL CLONE PATH — FOUR QUESTIONS, BEFORE ANY FOLDER IS MADE
 
