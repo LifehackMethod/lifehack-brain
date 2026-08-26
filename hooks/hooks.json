@@ -127,6 +127,11 @@
       "type": "command",
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/enforce_skill_frontmatter.sh\"",
       "statusMessage": "Checking the skill declares what it is for..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/guard_harness_write.sh\"",
+      "statusMessage": "Checking this write isn't landing inside the harness itself..."
      }
     ]
    },
