@@ -66,6 +66,52 @@ _NONLITERAL = re.compile(r"[$`]")
 # this system is supposed to make.
 _GET_KEY = re.compile(r"--get\s+([A-Za-z_][A-Za-z0-9_]*)")
 
+# CONFIRMED LIVE, 2026-08-23: the SAME argv-built-by-another-interpreter shape that bypassed
+# system/hooks/lib/gws_guard.py bypasses this parser too, for an analogous reason. shlex is
+# quote-aware, so a command built as `python3 -c "import subprocess; subprocess.run([...])"`
+# becomes ONE statement -- ['python3', '-c', "import subprocess; subprocess.run([...])"] --
+# because shlex correctly refuses to split inside the outer quoted -c argument. is_gws_tasks()
+# then checks toks[1] == 'tasks', finds '-c' instead, and the whole call is invisible to this
+# guard. The fix mirrors gws_guard.py's: read a comma/quote-delimited run of string literals as
+# its own argv, the way the interpreter that built it would, and hand the result through the
+# EXACT SAME judge()/is_gws_tasks()/find_verb() pipeline as a real shlex statement -- nothing
+# about what counts as a write changes, only how the argv is found.
+_QUOTED = r"(?:'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\"|`(?:[^`\\]|\\.)*`)"
+_ARGV_JUNK = r"[\s\[\]\(\)\{\}]*"
+_COMMA_LIST = re.compile(r"%s(?:%s,%s%s)+" % (_QUOTED, _ARGV_JUNK, _ARGV_JUNK, _QUOTED))
+_LIST_ITEM = re.compile(r"'((?:[^'\\]|\\.)*)'|\"((?:[^\"\\]|\\.)*)\"|`((?:[^`\\]|\\.)*)`")
+# Sentinel for a list that trailed off into a bare variable/expression partway through: kept as
+# its own token so a caller reasoning about the argv sees UNKNOWN, never a silently truncated
+# (and therefore falsely short and harmless-looking) argument list.
+_ARGV_UNPARSEABLE = '\x00UNPARSEABLE\x00'
+
+
+def _argv_list_statements(command):
+    """Find every maximal run of two or more comma-separated quoted literals ANYWHERE in the raw
+    command text and return each as its own token list, decoded the way the interpreter that
+    built it would read it. This is a SHAPE test (quote, comma, quote, ...), not a keyword
+    search, so it does not fire on ordinary prose that merely mentions gws or tasks.
+
+    Also undoes the one shell disguise that defeats a naive quote scan: this command is very
+    often itself the BODY of an outer shell double-quoted argument (`python3 -c "...."`), and
+    inside a shell double quote a backslash immediately before a quote is stripped by the shell
+    before the inner program ever runs -- a backslash-quote and a bare quote execute identically.
+    Used ONLY here, never for the shlex-based statements above, which already see the real thing.
+    """
+    argv_cmd = command.replace('\\"', '"').replace("\\'", "'")
+    out = []
+    for m in _COMMA_LIST.finditer(argv_cmd):
+        items = []
+        for im in _LIST_ITEM.finditer(m.group(0)):
+            items.append(next(g for g in im.groups() if g is not None))
+        if not items:
+            continue
+        tail = argv_cmd[m.end():m.end() + 2].lstrip()
+        if tail.startswith(','):
+            items = items + [_ARGV_UNPARSEABLE]
+        out.append(items)
+    return out
+
 
 class Verdict:
     """A decision plus the sentence a human will read. The reason is not decoration: a guard that
@@ -110,6 +156,12 @@ def split_statements(command: str):
             current.append(tok)
     if current:
         statements.append(current)
+
+    # CONFIRMED LIVE, 2026-08-23: an argv assembled by ANOTHER INTERPRETER (see
+    # _argv_list_statements()'s own docstring) is invisible to the shlex-based split above --
+    # its delimiters are commas and quotes, not the whitespace/punctuation shlex tokenises on.
+    # Add each one it finds as its own extra statement, judged by the exact same pipeline.
+    statements.extend(_argv_list_statements(command))
     return statements
 
 
@@ -404,6 +456,23 @@ def _selftest():
          'gws tasks tasks delete --tasklist $LIST --id g1'),
         (False, "opaque substitution target",
          'gws tasks tasks delete --params \'{"tasklist":"$(cat /tmp/x)"}\''),
+
+        # -- REGRESSION, 2026-08-23: the CONFIRMED LIVE bypass shared with gws_guard.py -- an
+        # argv built by ANOTHER INTERPRETER (comma/quote-delimited, invisible to shlex because
+        # the whole thing sits inside one outer quoted -c argument). Returned ALLOW before the
+        # fix; see _argv_list_statements()'s own docstring.
+        (False, "python argv-list delete on goals",
+         ('python3 -c "import subprocess; subprocess.run([\'gws\',\'tasks\',\'tasks\','
+          '\'delete\',\'--params\',\'{\\"tasklist\\":\\"%s\\",\\"id\\":\\"g1\\"}\'])"') % G),
+        # The same shape but a SAFE verb -- proof this is not "block every argv list".
+        (True, "python argv-list list (read) on goals",
+         ('python3 -c "import subprocess; subprocess.run([\'gws\',\'tasks\',\'tasks\','
+          '\'list\',\'--params\',\'{\\"tasklist\\":\\"%s\\"}\'])"') % G),
+        # The same shape targeting a DIFFERENT list must still pass -- any other list is the
+        # caller's to write.
+        (True, "python argv-list delete on another list",
+         ('python3 -c "import subprocess; subprocess.run([\'gws\',\'tasks\',\'tasks\','
+          '\'delete\',\'--params\',\'{\\"tasklist\\":\\"OTHERLIST\\",\\"id\\":\\"g1\\"}\'])"')),
     ]
     failed = 0
     for expect_allow, label, cmd in cases:
