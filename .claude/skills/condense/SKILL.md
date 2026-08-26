@@ -1,14 +1,14 @@
 ---
-skill: simplify
-description: "Re-render everything since your last message for someone who just said 'I still don't understand.' Use on \"/simplify\" — condenses (vs /explain unpacks)."
+skill: condense
+description: "Re-render everything since your last message for someone who just said 'I still don't understand.' Use on \"/condense\" — condenses (vs /explain unpacks)."
 shape: utility
-title: Simplify
-version: 6.5
+title: Condense
+version: 6.6
 created_at: 2026-06-21
-updated_at: 2026-08-01
+updated_at: 2026-08-26
 status: active
 triggers:
-  - "/simplify"
+  - "/condense"
 note: "A teacher who breaks it down: nucleus first, straight to the point, and names the next move."
 ---
 

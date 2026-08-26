@@ -196,7 +196,7 @@ actually lives.
 same chat, and ask "is this safe, and what does enabling it actually do?"** That works for any
 permission box you ever meet, here or anywhere else.
 
-⭐ **If anything it tells you is overwhelming, say "simplify that."** It will say the same thing again in
+⭐ **If anything it tells you is overwhelming, say "condense that."** It will say the same thing again in
 plainer words, as many times as you need.
 
 ## Have this ready
