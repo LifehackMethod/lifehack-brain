@@ -50,10 +50,9 @@ RUN_DIR = Path.home() / ".claude" / "run" / "save-ledger"
 # The mandatory spine of a /save run. `applies` marks steps that are conditional — they are reported
 # as N/A rather than MISSED when their condition did not arise, so the table never cries wolf.
 MANDATORY = [
-    # ⚖ CONDITIONAL, not "always" (GH #15). standard-steps.md Step 0.4 header:
-    # "*(only when step 0 said `none`)*" — when Step 0 finds the flag already armed (the
-    # common path), 0.4 correctly never runs. "always" rendered that correct skip as ✗ MISSED
-    # on every such run.
+    # ⚖ CONDITIONAL, not "always" (GH #15 remainder, 2026-08-23). standard-steps.md Step 0.4 header:
+    # "*(only when step 0 said `none`)*" — when step 0 finds the flag already armed (the common path),
+    # 0.4 correctly never runs. "always" rendered that correct skip as ✗ MISSED on every such run.
     ("0.4", "pm_flag_recover called", "only-if-flag-was-not-armed"),
     ("0.5", "slug resolved (no silent guess)", "always"),
     ("SC-1", "items extracted with reasoning", "only-if-session-close"),
@@ -68,6 +67,23 @@ MANDATORY = [
     ("9", "coverage note printed", "always"),
 ]
 IDS = [m[0] for m in MANDATORY]
+
+# ⛔ FIELD REPORT #77, DEFECT D5 (2026-08-23). `phases/standard-steps.md` documents a full numbered
+# spine — "# The standard steps (0 → 9)" — including Steps 1, 2, 3 and 4 (and 4.5, 4.6, 5, 5b, 6, 6b,
+# 7, 7b, 7c, 7c.6, 7e), none of which were in `IDS`. `cmd_stamp` refused every one of them as "unknown
+# step", so a session following the doc literally — or a future doc revision that adds a `Then: stamp
+# X` line for one of these, the way 0.4/0.5/7d/etc already have — could not record having run it.
+# THE FIX IS NOT "make them mandatory": the current workflow files (standard-steps.md,
+# session-close.md) never instruct a `stamp` call for any of these, and MANDATORY's whole contract is
+# "absence here is a real failure" — folding a step nobody is told to stamp into MANDATORY would
+# render every correctly-executed save as ✗ MISSED on rows that were never supposed to fire. Instead:
+# `cmd_stamp` ACCEPTS these ids (they stop being "unknown"), and `render()` below surfaces any stamp
+# for one of them as its own informational row — visible, never silently dropped, never counted
+# toward "every mandatory step stamped" either way. This is the ABSENT-SUBJECT-RULE: a step id outside
+# the mandatory spine is its own distinct outcome, not a silent no-op and not a free pass.
+OPTIONAL_STEP_IDS = {
+    "1", "2", "3", "4", "4.5", "4.6", "5", "5b", "6", "6b", "7", "7b", "7c", "7c.6", "7e",
+}
 
 # Steps that CANNOT have a mechanical artifact — a bare stamp is the only possible evidence, so the
 # report must show that plainly instead of the same ✓ a mechanically-verified step earns. `7d` and
@@ -406,8 +422,20 @@ def cmd_stamp(a) -> int:
     ns = getattr(a, "ns", None)
     spine, _ = _spine(ns)
     ids = [m[0] for m in spine]
+    # ⛔ D5: a step documented in standard-steps.md's 0-9 numbering but not in the mandatory spine is
+    # ACCEPTED, not refused — it is its own distinct, visible outcome (see render()), never mandatory
+    # and never silently dropped. Only the /save spine carries this doc-numbered set; /checkin's spine
+    # is deliberately closed (see its own comments) and gets no such allowance.
+    if a.step not in ids and (ns or "save") == "save" and a.step in OPTIONAL_STEP_IDS:
+        d = _load(ns=ns)
+        d.setdefault("stamps", {})[a.step] = int(time.time())
+        _save(d, ns=ns)
+        print("stamped %s (documented step, not part of the mandatory ledger spine — "
+              "recorded for the record, not required for a clean report)" % a.step)
+        return 0
     if a.step not in ids:
-        print("unknown step %r for ns=%s — known: %s" % (a.step, ns or "save", ", ".join(ids)),
+        print("unknown step %r for ns=%s — known mandatory: %s; known optional (/save only): %s"
+              % (a.step, ns or "save", ", ".join(ids), ", ".join(sorted(OPTIONAL_STEP_IDS))),
               file=sys.stderr)
         return 2
     if ns == "checkin":
@@ -571,6 +599,22 @@ def render(d: dict, conditions=None, ns=None) -> tuple:
         else:
             rows.append("  ? %-11s %s  ← APPLICABILITY UNKNOWN (not proven n/a)" % (sid, label))
             unknown.append(sid)
+    # ⛔ D5, ABSENT-SUBJECT-RULE: a stamp for an id OUTSIDE this ns's spine must never just vanish from
+    # the report the way it did before this fix (the loop above only ever looks AT the spine, so any
+    # extra key in `stamps` was invisible). Every such id gets its own row — never folded into the
+    # all-clear, never counted as a mandatory miss either, because it isn't a mandatory row to miss.
+    spine_ids = {sid for sid, _, _ in spine}
+    extra_rows, foreign = [], []
+    for sid in stamps:
+        if sid in spine_ids:
+            continue
+        if (ns or "save") == "save" and sid in OPTIONAL_STEP_IDS:
+            extra_rows.append("  · %-11s (documented step, stamped — informational only, not "
+                               "part of the mandatory ledger spine)" % sid)
+        else:
+            extra_rows.append("  ⚠ %-11s UNRECOGNIZED stamp id for ns=%s — not a known step "
+                               "(stale or incompatible ledger file?)" % (sid, ns or "save"))
+            foreign.append(sid)
     head = "STEP COVERAGE — what this run actually executed (from the ledger, not from memory)"
     if missed:
         tail = ("  ⚠ %d mandatory step(s) MISSED. This is the logged skipped-step failure that "
@@ -585,7 +629,17 @@ def render(d: dict, conditions=None, ns=None) -> tuple:
                 % len(unknown))
     else:
         tail = "  ✓ every mandatory step stamped."
-    return ("\n".join([head, "-" * 72] + rows + ["-" * 72, tail]), missed)
+    if foreign:
+        # ⛔ Never folded into a pass: even an otherwise-clean mandatory table gets this appended, so
+        # "✓ every mandatory step stamped" can never be read as "the ledger is fully accounted for"
+        # while a stamp of unknown provenance sits in the same file.
+        tail += ("\n  ⚠ %d stamp(s) with an UNRECOGNIZED step id (see rows above) — not counted "
+                 "toward pass or fail, but not silently dropped either." % len(foreign))
+    body = [head, "-" * 72] + rows
+    if extra_rows:
+        body += ["-" * 72, "  EXTRA STAMPS (outside the mandatory spine — never dropped):"] + extra_rows
+    body += ["-" * 72, tail]
+    return ("\n".join(body), missed)
 
 
 def cmd_report(a) -> int:
@@ -605,11 +659,13 @@ def cmd_report(a) -> int:
     # what changed is that SILENCE now yields UNKNOWN (a loud `?` that withholds the all-clear)
     # instead of N/A. Absence of a claim is no longer evidence of absence.
     cond = {
-        # ⚖ NOT_APPLICABLE, not UNKNOWN, when armed (GH #15) — unlike session-close/canon/
-        # findings (subjective classifications of the whole run), "did step 0 return a path or
-        # `none`" is a mechanical fact this SAME save already observed verbatim near the top of
-        # its own transcript — knowable, not unknown. An explicit --flag-was-armed is taken as
-        # PROVEN (→ –), while silence still falls to UNKNOWN like every other conditional here.
+        # ⚖ NOT_APPLICABLE, not UNKNOWN, when armed (GH #15 remainder) — unlike session-close/canon/
+        # findings (subjective classifications of the whole run, easy to forget to restate), "did
+        # step 0 return a path or `none`" is a mechanical fact this SAME save already observed
+        # verbatim near the top of its own transcript — knowable, not unknown. So an explicit
+        # --flag-was-armed is taken as PROVEN (→ –, same standing as compact's pad-derived n/a),
+        # while silence (the caller didn't say) still falls to UNKNOWN like every other conditional
+        # here — never assumed either way.
         "0.4": NOT_APPLICABLE if a.flag_was_armed else UNKNOWN,
         "SC-1": APPLIES if a.session_close else UNKNOWN,
         "tier": APPLIES if a.session_close else UNKNOWN,
@@ -621,7 +677,8 @@ def cmd_report(a) -> int:
     }
     text, missed = render(d, cond)
     print(text)
-    # CLOSED EXIT SET — 0 clean · 1 a mandatory step MISSED · 2 applicability UNKNOWN.
+    # CLOSED EXIT SET — 0 clean · 1 a mandatory step MISSED · 2 applicability UNKNOWN (also covers a
+    # stamp with an UNRECOGNIZED step id — D5: "never folded into a pass" means it cannot buy rc 0).
     # ⛔ 2 is NOT a softer 0. "I could not tell" must not be machine-readable as "fine" — that
     # equivalence IS the bug this whole change removes, and leaving it in the exit code would
     # reintroduce it one layer down where no human is reading the table.
@@ -633,6 +690,12 @@ def cmd_report(a) -> int:
     # ignore the code. (Caught on this change's own first run, 2026-08-08.)
     stamped = d.get("stamps", {})
     if any(v == UNKNOWN for k, v in cond.items() if k not in stamped):
+        return 2
+    spine, _ = _spine(ns)
+    spine_ids = {sid for sid, _, _ in spine}
+    foreign = [sid for sid in stamped
+               if sid not in spine_ids and not ((ns or "save") == "save" and sid in OPTIONAL_STEP_IDS)]
+    if foreign:
         return 2
     return 0
 

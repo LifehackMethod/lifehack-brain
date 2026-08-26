@@ -142,15 +142,64 @@ def slugify(section_name):
 
 # --------------------------------------------------------------------------- extents
 
+def _extent_from(text, pos):
+    """(start, end) for a candidate heading whose match ends at `pos` — reuses the pad's own
+    lossless extent rule (stop at ARTIFACTS/CHRONICLE, else EOF) so a candidate is measured
+    the exact same way it would actually be archived."""
+    nxt = END_SECTION_RE.search(text[pos:])
+    end = pos + nxt.start() if nxt else len(text)
+    return pos, end
+
+
+def _is_empty_scratch_body(text, start, end):
+    """EMPTY when blank after stripping, or when it is exactly the module's own clear
+    sentinel — a deliberately cleared pad still counts as empty, not as content."""
+    body = text[start:end].strip("\n").strip()
+    return body == "" or body == _CLEAR_SENTINEL.strip()
+
+
+def _select_scratch_match(text):
+    """The ONE place that decides which heading is 'the scratchpad'. Both call sites below
+    used to each carry their own copy of `SCRATCH_CANON_RE.search(text) or
+    SCRATCH_ANY_RE.search(text)` — identical, duplicated, and that duplication is exactly
+    what let them drift: the canonical heading won whenever it EXISTED, even when EMPTY,
+    silently orphaning a populated `## SCRATCHPAD` section elsewhere in the brief.
+
+    Now: the canonical heading (`## 7. SCRATCHPAD`) still wins whenever it has real content.
+    Only when it exists but is EMPTY do we look for another `## ... SCRATCHPAD` heading that
+    has content, and prefer that one instead. If nothing better exists, the canonical heading
+    is kept (current, pre-fix behaviour) — an empty pad is still legitimately "the pad" when
+    there is nothing else to prefer over it.
+
+    Returns the regex Match for the winning heading, or None if nothing matches at all."""
+    canon = SCRATCH_CANON_RE.search(text)
+    if canon is None:
+        return SCRATCH_ANY_RE.search(text)
+
+    start, end = _extent_from(text, canon.end())
+    if not _is_empty_scratch_body(text, start, end):
+        return canon
+
+    # Canonical exists but is empty — look for another SCRATCHPAD heading with real content.
+    # ⚠ SCRATCH_ANY_RE.search would just return the canonical heading again (it matches ANY
+    # too); finditer + an offset comparison is required to see the OTHER candidates.
+    for m in SCRATCH_ANY_RE.finditer(text):
+        if m.start() == canon.start():
+            continue
+        c_start, c_end = _extent_from(text, m.end())
+        if not _is_empty_scratch_body(text, c_start, c_end):
+            return m
+
+    return canon  # nothing better found — keep the (empty) canonical heading
+
+
 def _scratchpad_extent(text):
     """(found, start, end) — text[start:end] is the RAW body of the scratchpad, from just
     after the header line to the next ARTIFACTS/CHRONICLE section or EOF."""
-    m = SCRATCH_CANON_RE.search(text) or SCRATCH_ANY_RE.search(text)
+    m = _select_scratch_match(text)
     if not m:
         return False, 0, 0
-    start = m.end()
-    nxt = END_SECTION_RE.search(text[start:])
-    end = start + nxt.start() if nxt else len(text)
+    start, end = _extent_from(text, m.end())
     return True, start, end
 
 
@@ -221,7 +270,7 @@ def select(text, heading=None, start=None, end=None):
         found, s, e = _scratchpad_extent(text)
         if not found:
             raise ValueError("no ## SCRATCHPAD section found in brief")
-        m = SCRATCH_CANON_RE.search(text) or SCRATCH_ANY_RE.search(text)
+        m = _select_scratch_match(text)
         nl = text.find("\n", m.start())
         name = text[m.start():nl if nl != -1 else len(text)].strip()
         heading_end = nl + 1 if nl != -1 else len(text)

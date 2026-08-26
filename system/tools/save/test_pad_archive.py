@@ -244,6 +244,79 @@ class Scratchpad(Base):
         self.assertNotEqual(run("verify", b)[0], 0)
 
 
+# --------------------------------------------------------------- empty-canonical fallback
+#
+# Regression coverage for the defect where `## 7. SCRATCHPAD` and `## SCRATCHPAD` were each
+# selected by an independently-duplicated `SCRATCH_CANON_RE.search(text) or
+# SCRATCH_ANY_RE.search(text)` line: the canonical heading won whenever it EXISTED, even when
+# EMPTY, silently orphaning a populated `## SCRATCHPAD` heading elsewhere in the brief. Fixed
+# by routing both call sites through one shared `_select_scratch_match`.
+
+class ScratchpadEmptyCanonicalFallback(Base):
+
+    def brief(self, text):
+        d = tempfile.mkdtemp(); self._dirs.append(d)
+        b = os.path.join(d, "brief.md")
+        open(b, "w", encoding="utf-8").write(text)
+        return b
+
+    def test_empty_canonical_stub_falls_through_to_a_populated_scratchpad_heading(self):
+        # THE RED CASE: an empty `## 7. SCRATCHPAD` stub, terminated early by `## CHRONICLE`,
+        # sits above a genuinely populated `## SCRATCHPAD` section further down. Unpatched,
+        # `select()` picked the canonical stub and reported body length 0 — the 1214-line
+        # analogue of this fixture's real content was silently never archived.
+        b = self.brief(
+            "# BRIEF\n\n## 6. SOMETHING\n\ncontent here\n\n"
+            "## 7. SCRATCHPAD\n\n## CHRONICLE\n\nmid-file chronicle notes, irrelevant\n\n"
+            "## SCRATCHPAD\n\nreal live notes that must not be lost\n"
+            "1214 lines worth, in spirit\n\n"
+            "## 8. ARTIFACTS\n\nnothing yet\n")
+        text = open(b, encoding="utf-8").read()
+        name, body, _s, _e, _h = pa.select(text)
+        self.assertEqual(name, "## SCRATCHPAD")
+        self.assertIn("real live notes that must not be lost", body)
+
+    def test_canonical_with_content_and_no_other_heading_still_wins(self):
+        b = self.brief(
+            "## 7. SCRATCHPAD\n\nonly the canonical section, with real content here\n\n"
+            "## 8. ARTIFACTS\nnothing\n")
+        text = open(b, encoding="utf-8").read()
+        name, body, _s, _e, _h = pa.select(text)
+        self.assertEqual(name, "## 7. SCRATCHPAD")
+        self.assertIn("only the canonical section", body)
+
+    def test_canonical_with_content_beats_a_second_populated_heading(self):
+        # The canonical heading keeps priority when it is REAL — a second populated
+        # `## SCRATCHPAD` never overrides a canonical section that actually has content.
+        b = self.brief(
+            "## 7. SCRATCHPAD\n\ncanonical content wins\n\n"
+            "## CHRONICLE\n\nirrelevant\n\n"
+            "## SCRATCHPAD\n\nother populated section\n\n"
+            "## 8. ARTIFACTS\nnothing\n")
+        text = open(b, encoding="utf-8").read()
+        name, body, _s, _e, _h = pa.select(text)
+        self.assertEqual(name, "## 7. SCRATCHPAD")
+        self.assertIn("canonical content wins", body)
+
+    def test_bare_scratchpad_heading_alone_still_selected_as_before(self):
+        b = self.brief("## SCRATCHPAD\n\nbare heading content\n\n## 8. ARTIFACTS\nnothing\n")
+        text = open(b, encoding="utf-8").read()
+        name, body, _s, _e, _h = pa.select(text)
+        self.assertEqual(name, "## SCRATCHPAD")
+        self.assertIn("bare heading content", body)
+
+    def test_canonical_holding_only_the_clear_sentinel_falls_through(self):
+        b = self.brief(
+            f"## 7. SCRATCHPAD\n\n{pa._CLEAR_SENTINEL}\n\n"
+            "## CHRONICLE\n\nirrelevant\n\n"
+            "## SCRATCHPAD\n\npopulated content here\n\n"
+            "## 8. ARTIFACTS\nnothing\n")
+        text = open(b, encoding="utf-8").read()
+        name, body, _s, _e, _h = pa.select(text)
+        self.assertEqual(name, "## SCRATCHPAD")
+        self.assertIn("populated content here", body)
+
+
 # --------------------------------------------------------------- state + clear (the frozen contract)
 
 class StateAndClear(Base):
