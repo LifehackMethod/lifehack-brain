@@ -401,7 +401,7 @@ durable material lost.
 | Context-sweep state | `~/.claude/run/sweep/sweep-<key>.state` | scratch_sweep_nudge.sh |
 | Journal backstop | `$DRIVE/system/journal.md` | skill / /save (journal-first rule) |
 | Project registry | `$DRIVE/system/project-registry.md` | skill (on first project write) |
-| Plan pointer | `~/.claude/plans/` (machine-local; mirrored to Drive by mirror_plans.sh Stop hook) | announce_plan_write.sh / Claude plan mode |
+| Plan pointer | `~/.claude/plans/` (machine-local; ⛔ NOT mirrored to Drive — `mirror_plans.sh` does not exist in this repo, verified 2026-08-25; the only copy lives on the machine that wrote it) | announce_plan_write.sh / Claude plan mode |
 
 ---
 
