@@ -324,14 +324,22 @@ handbook-audit   | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/handbook
 # `/opt/homebrew/bin` (Apple Silicon Homebrew) and `/usr/local/bin` (Intel Homebrew / most Linux
 # user installs) — without it, a job command that shells out to a Homebrew-installed tool by bare
 # name would silently fail to find it under cron even though it works fine in an interactive shell.
-pulse             | */5 * * * *      | PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin LIFEHACK_CODE_ROOT="$LIFEHACK_CODE_ROOT" bash "$LIFEHACK_CODE_ROOT/system/tools/pulse.sh" >> "${TMPDIR:-/tmp}/lifehack-pulse.log" 2>&1
+# `$HOME/.local/bin` LEADS THE LIST, and it is not hypothetical: on a Mac with no Homebrew and no
+# sudo, that is where a standalone binary goes, and it is where the Google Workspace CLI (`gws`)
+# actually lives on this system. Without it every scheduled job that touches Google reported "not
+# installed" while the same command worked perfectly in an interactive shell — the failure is
+# silent, and it is invisible from the shell you would test in. Found 2026-08-23 (open loop #34a),
+# fixed 2026-08-24. It stays UNEXPANDED here on purpose: install-schedulers.sh substitutes only
+# `$LIFEHACK_CODE_ROOT`, so `$HOME` is written literally into the crontab and expanded by /bin/sh
+# at fire time — which makes the same manifest correct on every machine and every user account.
+pulse             | */5 * * * *      | PATH=$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin LIFEHACK_CODE_ROOT="$LIFEHACK_CODE_ROOT" bash "$LIFEHACK_CODE_ROOT/system/tools/pulse.sh" >> "${TMPDIR:-/tmp}/lifehack-pulse.log" 2>&1
 #
 # health-deadman: the OUT-OF-BAND watcher for system-health ITSELF. DELIBERATELY its own dedicated
 # scheduled entry, NEVER a Pulse job — dispatching it FROM Pulse would make the sweep the sole
 # witness to its own death; if Pulse wedges, a Pulse-dispatched watchdog wedges with it and the
 # silence would read exactly like health. Hourly: system-health runs every 5 min, so an hour of
 # silence from it is unambiguous without being twitchy.
-health-deadman    | 17 * * * *       | PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin LIFEHACK_CODE_ROOT="$LIFEHACK_CODE_ROOT" bash "$LIFEHACK_CODE_ROOT/system/tools/health-deadman-check.sh" >> "${TMPDIR:-/tmp}/lifehack-health-deadman.log" 2>&1
+health-deadman    | 17 * * * *       | PATH=$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin LIFEHACK_CODE_ROOT="$LIFEHACK_CODE_ROOT" bash "$LIFEHACK_CODE_ROOT/system/tools/health-deadman-check.sh" >> "${TMPDIR:-/tmp}/lifehack-health-deadman.log" 2>&1
 ```
 
 ## Why `$LIFEHACK_CODE_ROOT` and not a literal path

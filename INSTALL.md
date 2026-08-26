@@ -2539,12 +2539,29 @@ There is deliberately no second path. The system this came from had a fallback t
 Chrome window, and it is not here: it depended on a separate browser plugin, and a fallback that
 cannot work is worse than none, because you find out at the moment you needed it.
 
-Put the key in a file — this is the version that also works for anything running on a schedule:
+**Sign up at serper.dev, copy the key, then run one command.** The script takes the key from your
+clipboard — never from a chat message, never as a command argument where your shell history would
+keep it — writes it `0600` to the one file the search path reads, and then proves it by running a
+real search:
+
+```bash
+bash system/tools/install-serper-key.sh
+```
+
+It never prints the key, only a masked fingerprint (first four … last four) you can compare against
+the serper.dev dashboard. If an old key is already there it is moved aside, not overwritten. No
+clipboard, or you would rather type it: add `--prompt` and nothing is echoed to the screen.
+
+The file it writes is the same one you would write by hand, and by hand still works — this is the
+version that also works for anything running on a schedule:
 
 ```bash
 mkdir -p ~/.config/lifehack
 umask 077 && printf %s 'your-key-here' > ~/.config/lifehack/serper-key
 ```
+
+⚠ **The key is per-machine.** `~/.config/lifehack/` is local and is not in your notes folder, so it
+does not sync. On a second computer, pull this repo and run the same one command there.
 
 It is also read from `$SERPER_API_KEY`, and on a Mac from the keychain (service `serper-api-key`,
 account `lifehack`) — in that order, keychain last. The keychain belongs to your logged-in desktop
