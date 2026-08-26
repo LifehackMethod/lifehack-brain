@@ -14,6 +14,29 @@ on:
     branches:
       - main
       - migration-1
+  # ⛔ FORK-PR FIX (this trigger) -- GitHub NEVER hands `secrets.*` to a `pull_request` event
+  # whose head is a fork, by design. That made every fork PR's scan exit 2 (CANNOT EVALUATE,
+  # see the comment on SHIP_IDENTITY_TERMS below) and paint an honest-but-misleading red X on
+  # every outside contributor's good PR. `pull_request_target` runs in the BASE repo's Actions
+  # context instead, so repo secrets ARE available even when head is a fork -- that is the one
+  # and only thing this trigger is here to fix.
+  #
+  # ⛔⛔ THE INVARIANT THIS TRIGGER MUST NEVER BREAK: `pull_request_target` runs WITH SECRETS
+  # IN SCOPE, in the base repo's context. If ANY step in this job ever checks out, installs
+  # from, or executes ANYTHING from the fork's own commit -- a dependency install, a Makefile
+  # target the PR ships, a test harness the PR modifies, literally anything that RUNS code the
+  # fork authored -- that is the textbook `pull_request_target` secret-exfiltration hole: a
+  # malicious PR body IS a script with `SHIP_IDENTITY_TERMS` handed to it. The checkout below
+  # stays pinned to the BASE ref (this job's own `actions/checkout@v4` default for this event,
+  # unchanged, no `ref:` override), and the fork's head commit is only ever `git fetch`-ed as a
+  # loose object -- never checked out, never sourced, never run -- then read as TEXT via
+  # `git diff`/`git show` inside check_no_internal_leakage.py, which has never needed the fork's
+  # tree to be the checked-out HEAD. Reading a diff as text is not executing it. Any future edit
+  # that adds a step running fork-authored content under this trigger reopens the hole -- don't.
+  pull_request_target:
+    branches:
+      - main
+      - migration-1
   push:
     branches:
       - main
@@ -36,7 +59,24 @@ jobs:
     # This makes the job SKIP on a fork (grey, no email) while still running here, and still
     # running on a pull_request FROM a fork — because that executes in THIS repo's context.
     # ⇒ Zero protection lost.
-    if: github.repository == 'LifehackMethod/lifehack-brain'
+    #
+    # ⛔ SAME-PR-TWICE GUARD — added with pull_request_target above. A same-repo PR fires BOTH
+    # `pull_request` and `pull_request_target`; a fork PR fires BOTH too, but only one of them
+    # has secrets. Route each PR through exactly one event so it is never scanned twice and
+    # never scanned zero times:
+    #   - push (same repo only, via github.repository check below): always runs.
+    #   - pull_request: runs ONLY when head is this same repo (secrets already available here;
+    #     leave same-repo PRs on the event that's always run and needs no new mechanism).
+    #   - pull_request_target: runs ONLY when head is a FORK (the one case that actually needed
+    #     this trigger for its secrets). A same-repo PR's pull_request_target firing is
+    #     deliberately skipped here so it isn't double-counted against the pull_request run above.
+    if: >-
+      github.repository == 'LifehackMethod/lifehack-brain' &&
+      (
+        github.event_name == 'push' ||
+        (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) ||
+        (github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name != github.repository)
+      )
     name: Scan changed files for internal leakage
     runs-on: ubuntu-latest
     steps:
@@ -44,6 +84,23 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # ⛔ NO `ref:` OVERRIDE HERE, ON PURPOSE. Leaving this unset means: for `pull_request`
+          # it's the safe default merge ref, and for `pull_request_target` it is the BASE
+          # branch (this event's default checkout ref is the target branch, never the fork's
+          # ref). That is what keeps the workflow file, this checkout script, and
+          # check_no_internal_leakage.py itself running exactly as committed to main --
+          # never as edited by the PR under scan. Do not add a `ref: ${{ github.event.pull_request.head.sha }}`
+          # here; that would check the fork's tree out as HEAD, which is the thing this whole
+          # design exists to avoid. See the pull_request_target invariant comment above.
+
+      - name: Fetch the PR head commit as an object only (fork PRs; never checked out as HEAD)
+        if: github.event_name == 'pull_request_target'
+        run: |
+          set -euo pipefail
+          # This makes the head commit available to `git diff`/`git show` below WITHOUT ever
+          # making it the checked-out working tree -- it is fetched as a loose object and
+          # referenced only by SHA. Nothing here executes anything the fork authored.
+          git fetch origin "${{ github.event.pull_request.head.sha }}"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -54,7 +111,7 @@ jobs:
         id: range
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
+          if [ "${{ github.event_name }}" = "pull_request" ] || [ "${{ github.event_name }}" = "pull_request_target" ]; then
             # base.sha / head.sha are the actual PR endpoints, independent of the
             # temporary merge commit GitHub Actions checks out for pull_request events.
             echo "base=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_OUTPUT"
@@ -90,11 +147,10 @@ jobs:
       # push_gate.py already enforces -- "no identity file, so the lane has nothing
       # personal to look for and would report your own name CLEAN".
       #
-      # ⚠ KNOWN CONSEQUENCE, ACCEPTED: a pull_request from a FORK gets no secrets, so this
-      # job will be CANNOT EVALUATE (red) on fork PRs. An honest red beats a green that
-      # skipped a third of the rules. Setting the secret is a one-time repo-settings step:
-      # Settings -> Secrets and variables -> Actions -> New repository secret,
-      # name SHIP_IDENTITY_TERMS, value = one term per line ('#' starts a comment).
+      # Fork PRs now run under pull_request_target (see trigger comment above), which DOES
+      # get repository secrets, so this should no longer CANNOT-EVALUATE on a fork PR. It
+      # stays as a genuine safety net: if the secret is ever unset or misconfigured, this is
+      # still an honest red, never a false green.
       - name: Materialize the identity term list (never committed)
         if: steps.range.outputs.mode != ''
         env:
