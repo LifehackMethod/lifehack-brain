@@ -288,6 +288,19 @@ guard-fire-test    | yes | 604800 | bash "$LIFEHACK_CODE_ROOT/system/tools/guard
 # tile + ONE normal buzz; it NEVER edits chapters — a human reviews the report and rules.
 handbook-audit   | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/handbook-audit-run.sh"
 #
+# stale-sweep: WEEKLY stale-record sweep — re-verifies every open claim in the notes root's
+# state/debt-ledger.md (## Open) and state/open-loops.md (unstruck items) against live sources and
+# files a closure-PROPOSAL report + tile before the Sunday sitting. Born 2026-08-26 (14 dead
+# entries closed by hand; three had just been presented as live deadlines). Ticks DAILY; the runner
+# self-gates once per ISO week with target = that week's FRIDAY (handbook-audit's stamp-gate
+# pattern, weekly semantics — sleep-proof, catches up after wake). Invokes headless `claude -p`
+# (sonnet) through claude-auth.lib.sh per this file's HARD RULE — stands down rc=75 until
+# `claude setup-token` has run on this machine. PROPOSE-ONLY: writes ONLY its report +
+# system/logs sidecars + stale-sweep.json tile + ONE normal buzz; it NEVER edits the ledger or
+# open-loops — a human rules at the Sunday sitting and the interactive session applies. Spec:
+# <notes>/state/projects/harness-ops/records/stale-sweep-spec_2026.08.27.md
+stale-sweep      | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/stale-sweep-run.sh"
+#
 # NOT ADDED: shared/tools/email_summary_run.sh (the older v1-shaped watchdog wrapper). Not parked,
 # not given a row at all — two independent reasons, both verified this session. (1) It passes its
 # args straight through to email_summary_sync.py with NO action flag added; that janitor is
