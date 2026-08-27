@@ -789,15 +789,18 @@ guards:
     - event: PreToolUse
       matcher: Bash
     violations:
-    # ⚠ Config-driven (see "WHAT CHANGED" above): the ids below are SYNTHETIC placeholders, not
-    # a real Google Tasks list. On a fresh, unconfigured install nothing matches the configured
-    # `goals_tasklist`, so this violation legitimately does NOT block yet — that is the honest
-    # limit of a fixture-testable-without-a-real-account guard, not a defect in the guard.
-    - desc: delete on what would be the configured goals tasklist, once one is configured
+    # ⚠ Config-driven: `$GOALS_TASKLIST` is exported by label_checker.py from the reader's own
+    # <notes>/config/cal.md, so this fires against the REAL protected list id on a configured
+    # install. Unconfigured, it expands to "" — an empty/omitted list id, which the guard must
+    # refuse anyway (Google resolves an omitted list to a default that may BE the protected one),
+    # so the case blocks honestly on every install. Fixed 2026-08-27: the old SYNTHETIC placeholder
+    # id could never equal anyone's configured id, so this case could never block anywhere and a
+    # healthy, configured guard rendered as a permanent RED downgrade.
+    - desc: delete on the configured goals tasklist (or an empty id, unconfigured — fail-closed)
       payload:
         tool_name: Bash
         tool_input:
-          command: gws tasks tasks delete --params '{"tasklist":"SYNTHETIC_GOALS_TASKLIST_ID","task":"abc"}'
+          command: gws tasks tasks delete --params '{"tasklist":"$GOALS_TASKLIST","task":"abc"}'
     allow:
     - desc: a plain Tasks read (must pass on any list, configured or not)
       payload:
