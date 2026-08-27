@@ -32,6 +32,8 @@ CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # A missing library is a REAL defect (exit 1), never a stand-down.
 . "$CODE_ROOT/system/tools/gws-auth.lib.sh" || {
   echo "[$SUBSYSTEM_NAME] FATAL: cannot source $CODE_ROOT/system/tools/gws-auth.lib.sh"; exit 1; }
+. "$CODE_ROOT/system/tools/status-tile.lib.sh" || {
+  echo "[$SUBSYSTEM_NAME] FATAL: cannot source $CODE_ROOT/system/tools/status-tile.lib.sh"; exit 1; }
 
 DRIVE="$(python3 "$CODE_ROOT/shared/brain_root.py" --quiet 2>/dev/null)"
 if [ -z "$DRIVE" ]; then
@@ -70,6 +72,11 @@ _on_exit() {
       --title "⚠️ calendar-store sync failed" \
       --message "calendar_store_sync --sync errored (rc=$RC) — calendar store not refreshing. See $STATUS_ARTIFACT." 2>/dev/null || true
   fi
+  # Drive-visible status tile (state/status/calendar-store-sync.json) — emitted on EVERY outcome so
+  # system-health never renders this job NO-TILE while it is silently dying (the 2026-08-27 failure).
+  write_status_tile "$SUBSYSTEM_NAME" "$RC" $(( STALE_AFTER_HOURS * 3600 )) \
+    "calendar store sync ok" "calendar store sync failed — store not refreshing" \
+    "gws (Google) credentials not configured"
   rm -rf "$LOCKDIR" 2>/dev/null || true
 }
 trap _on_exit EXIT INT TERM
@@ -92,11 +99,15 @@ trap _on_exit EXIT INT TERM
 # deliberately does not terminate on our behalf, for exactly this reason. ⛔ Do not re-inline it.
 require_gws_credentials "$SUBSYSTEM_NAME" || { RC=75; exit 75; }
 
-# ── PRE-FLIGHT: confirm gws auth is healthy via the isolated creds (RETRY 3×4s for a transient blip). ──
+# ── PRE-FLIGHT: confirm gws auth is healthy via the isolated creds (RETRY 3×4s for a transient blip).
+#    Probes the CALENDAR API — the one this job actually uses (calendarList list, a read verb on the
+#    calendar guard's list). It used to probe gmail getProfile; on 2026-08-27 the Gmail API was
+#    disabled in the creds' GCP project and that probe 403'd, standing down THIS runner (which never
+#    touches Gmail) for a whole night. Probe what you use. ──
 GWS_BIN="$(command -v gws 2>/dev/null || echo /opt/homebrew/bin/gws)"
 PREFLIGHT_OK=0
 for _attempt in 1 2 3; do
-  if "$GWS_BIN" gmail users getProfile --params '{"userId":"me"}' >/dev/null 2>&1; then PREFLIGHT_OK=1; break; fi
+  if "$GWS_BIN" calendar calendarList list >/dev/null 2>&1; then PREFLIGHT_OK=1; break; fi
   [ "$_attempt" -lt 3 ] && { echo "[$SUBSYSTEM_NAME] gws pre-flight attempt $_attempt failed — retry in 4s…"; sleep 4; }
 done
 if [ "$PREFLIGHT_OK" -ne 1 ]; then

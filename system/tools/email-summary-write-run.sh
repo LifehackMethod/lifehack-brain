@@ -39,6 +39,8 @@ CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"  # residency: co
 # A missing library is a REAL defect (exit 1), never a stand-down.
 . "$CODE_ROOT/system/tools/gws-auth.lib.sh" || {
   echo "[$SUBSYSTEM_NAME] FATAL: cannot source $CODE_ROOT/system/tools/gws-auth.lib.sh"; exit 1; }
+. "$CODE_ROOT/system/tools/status-tile.lib.sh" || {
+  echo "[$SUBSYSTEM_NAME] FATAL: cannot source $CODE_ROOT/system/tools/status-tile.lib.sh"; exit 1; }
 
 # The data root, through the ONE resolver — never a hardcoded personal Drive path. A student with
 # no data root set gets a clear, explicit message and a clean non-zero exit, never a stack trace.
@@ -82,6 +84,11 @@ _on_exit() {
       --title "⚠️ email write-cadence failed" \
       --message "email_summary_sync --write-v2 errored (rc=$RC) — v2 store not refreshing. See $STATUS_ARTIFACT." 2>/dev/null || true
   fi
+  # Drive-visible status tile (state/status/email-summary-write.json) — emitted on EVERY outcome so
+  # system-health never renders this job NO-TILE while it is silently dying (the 2026-08-27 failure).
+  write_status_tile "$SUBSYSTEM_NAME" "$RC" $(( STALE_AFTER_HOURS * 3600 )) \
+    "email v2 store write ok" "email v2 store write failed — store not refreshing" \
+    "gws (Google) credentials not configured"
   rm -rf "$LOCKDIR" 2>/dev/null || true
 }
 trap _on_exit EXIT INT TERM
