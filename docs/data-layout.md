@@ -20,6 +20,11 @@ is not set, the honest answer is "not set" and the tool refuses.
 ```
 <notes>/
 ├── canon.md                        the few things that stay true. small on purpose.
+├── doctrine.md                     the person's ranked hard rules — always-on, carried into every
+│                                   session by the session-start hook (kept beside canon.md by the
+│                                   owner's 2026-08-22 ruling; ELEVEN rules maximum)
+├── doctrine-notes.md               the reasoning behind those rules — split out so the rules alone
+│                                   fit the always-on pipe; opened when a rule is questioned or flexed
 ├── system/
 │   ├── journal.md                  append-only. what happened, when, why.
 │   ├── journal/YYYY-MM.md          older months, rotated out of the above
@@ -121,6 +126,11 @@ lookup — that is the whole point of carrying two.
 | `research/` | what `/research` writes |
 
 Closed means closed: a seventh type is a change to this page, not a judgment call at write time.
+
+A type folder may hold a named subdirectory when a multi-file body of work needs to travel
+together — the naming makes the depth intentional rather than drift. Named so far:
+`context/handbook/` (the owner's handbook chapters, with `context/handbook/class-edition/` for the
+class variant). A new subdirectory is, like a new type, a change to this page.
 
 > **Why a closed set here, when the topic vocabulary is deliberately open?** They are not the same
 > kind of list. A record type is the system's own filing category — the difference between a decision
