@@ -419,6 +419,44 @@ def _isolated_single(chars, j):
     return not left_word and not right_word
 
 
+def _fold_crlf(chars):
+    """Drop the CR of a CRLF pair, so a Windows line break is ONE separator, not two.
+
+    WHY THIS EXISTS (found 2026-08-28 on Windows). _collapse_separators below drops a
+    SINGLE separator sitting between two word characters -- that is what turns a name
+    split by a newline back into one word, and its docstring says "a single newline" on
+    purpose. A CRLF is ONE line break spelled with TWO characters, so neither half ever
+    qualified: the CR sees a LF on its right (not a word char) and the LF sees a CR on
+    its left. The pair survived and the name stayed split.
+
+    MEASURED, and it is a REAL BYPASS OF THE LAST GATE, not a cosmetic difference. With
+    a name split across a line break, the LF spelling canonicalised back to the joined
+    name and was caught; the CRLF spelling came back unchanged and was MISSED. Every
+    file an editor writes on Windows uses CRLF, so on that platform a personal name
+    split across a line break walked straight through push_gate. Invisible on
+    macOS/Linux, live on Windows -- the same platform asymmetry that hid the pm-hook
+    absolute-path and stat bugs found the same day.
+
+    ONLY a CR immediately followed by LF is dropped. A lone CR (classic-Mac line ending)
+    is left where it is and still collapses on its own merits under the single-separator
+    rule; widening this to "drop every CR" would change what counts as a separator, which
+    is not what the bug needs.
+
+    Runs BEFORE _collapse_separators, not inside it: that function decides every drop in
+    one pass over the ORIGINAL neighbours, so a CR marked dropped there would still be
+    seen as the LF left-hand neighbour and the LF would not collapse. Two passes is what
+    makes the pair behave as the single separator it already is. Offsets are untouched --
+    each surviving char keeps its own source index, as everywhere else in this pipeline.
+    """
+    n = len(chars)
+    keep = []
+    for i in range(n):
+        if chars[i][0] == "\r" and i + 1 < n and chars[i + 1][0] == "\n":
+            continue
+        keep.append(chars[i])
+    return keep
+
+
 def _collapse_separators(chars):
     """Drop a SINGLE separator character sitting between two word characters.
 
@@ -465,6 +503,7 @@ def canonicalize_with_offsets(text):
     chars = _fold_homoglyphs(chars)
     chars = _fold_small_caps(chars)
     chars = _fold_leet(chars)
+    chars = _fold_crlf(chars)
     chars = _collapse_separators(chars)
     if not chars:
         return "", []
@@ -1418,21 +1457,42 @@ def selftest():
 
         sub = _os.path.join(tmp, "real-sub")
         _os.makedirs(sub)
-        _os.symlink(sub, _os.path.join(tmp, "linked"))
-        _, _, sym2, _ = compute_tree_state(tmp)
-        report("a symlinked directory is reported, never silently descended into",
-               "linked" in sym2)
+        # A symlink needs Administrator or Developer Mode on Windows (WinError 1314).
+        # SKIPPED IS NOT PASSED, and it must never read like one -- the whole design of
+        # this lane is that "could not look" and "looked and it was fine" are spelled
+        # differently (see NOT-EVALUATED in the ship skill). So this prints its own line
+        # and deliberately does NOT touch ok_all in either direction.
+        try:
+            _os.symlink(sub, _os.path.join(tmp, "linked"))
+        except OSError as _e:
+            print("  [SKIP] a symlinked directory is reported, never silently descended "
+                  "into -- COULD NOT CREATE A SYMLINK ON THIS HOST ({}: {}). THIS IS NOT A "
+                  "PASS; the assertion did not run. On Windows os.symlink requires "
+                  "Administrator or Developer Mode -- enable it and re-run to actually "
+                  "exercise this path.".format(type(_e).__name__, _e))
+        else:
+            _, _, sym2, _ = compute_tree_state(tmp)
+            report("a symlinked directory is reported, never silently descended into",
+                   "linked" in sym2)
 
         import stat as _stat
         fifo_tree = tempfile.mkdtemp(prefix="canon-treehash-fifo-")
         try:
             with open(_os.path.join(fifo_tree, "clean.md"), "w", encoding="utf-8") as fh:
                 fh.write("fine\n")
-            _os.mkfifo(_os.path.join(fifo_tree, "a.fifo"))
-            _, _, _, prob2 = compute_tree_state(fifo_tree)
-            report("a FIFO is reported as a problem file, never hashed",
-                   any(p["path"] == "a.fifo" and p["reason"] == "non-regular-file"
-                       for p in prob2), "problems: {}".format(prob2))
+            # os.mkfifo does not exist on Windows -- there are no FIFOs to make. SKIPPED
+            # IS NOT PASSED: this prints its own line and leaves ok_all alone, so a Windows
+            # run can never be mistaken for one that exercised this path.
+            if not hasattr(_os, "mkfifo"):
+                print("  [SKIP] a FIFO is reported as a problem file, never hashed -- "
+                      "os.mkfifo does not exist on this platform. THIS IS NOT A PASS; the "
+                      "assertion did not run. Exercise it on macOS/Linux.")
+            else:
+                _os.mkfifo(_os.path.join(fifo_tree, "a.fifo"))
+                _, _, _, prob2 = compute_tree_state(fifo_tree)
+                report("a FIFO is reported as a problem file, never hashed",
+                       any(p["path"] == "a.fifo" and p["reason"] == "non-regular-file"
+                           for p in prob2), "problems: {}".format(prob2))
         finally:
             import shutil as _shutil
             _shutil.rmtree(fifo_tree, ignore_errors=True)

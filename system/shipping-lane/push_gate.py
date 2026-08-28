@@ -1411,51 +1411,82 @@ def selftest():
         real_sub = new_dir("push-gate-selftest-symlink-target-")
         with open(os.path.join(real_sub, "hidden.md"), "w", encoding="utf-8") as fh:
             fh.write("Wren -- this would be invisible if the symlink were followed silently.\n")
-        os.symlink(real_sub, os.path.join(symlink_tree, "linked"))
+        # A symlink needs Administrator or Developer Mode on Windows (WinError 1314).
+        # SKIPPED IS NOT PASSED, and it must never read like one -- the whole design of
+        # this lane is that "could not look" and "looked and it was fine" are spelled
+        # differently (see NOT-EVALUATED in the ship skill). So this prints its own line
+        # and deliberately does NOT touch ok_all in either direction.
         try:
-            run_gate(symlink_tree, DEFAULT_REFUSE_RULES, DEFAULT_REWRITE_RULES, None,
-                     accept_unjudged=True)
-            report("a symlinked directory is refused, never silently skipped", False,
-                   "no exception raised")
-        except CannotEvaluate as e:
-            report("a symlinked directory is refused, never silently skipped",
-                   "linked" in str(e) or "symlinked" in str(e))
+            os.symlink(real_sub, os.path.join(symlink_tree, "linked"))
+        except OSError as _e:
+            print("  [SKIP] a symlinked directory is refused, never silently skipped -- "
+                  "COULD NOT CREATE A SYMLINK ON THIS HOST ({}: {}). THIS IS NOT A PASS; "
+                  "the assertion did not run. On Windows os.symlink requires Administrator "
+                  "or Developer Mode -- enable it and re-run to actually exercise this "
+                  "path.".format(type(_e).__name__, _e))
+        else:
+            try:
+                run_gate(symlink_tree, DEFAULT_REFUSE_RULES, DEFAULT_REWRITE_RULES, None,
+                         accept_unjudged=True)
+                report("a symlinked directory is refused, never silently skipped", False,
+                       "no exception raised")
+            except CannotEvaluate as e:
+                report("a symlinked directory is refused, never silently skipped",
+                       "linked" in str(e) or "symlinked" in str(e))
 
         # -------------------------------------------------- unreadable (dangling symlink)
         unreadable_tree = new_dir("push-gate-selftest-unreadable-")
         with open(os.path.join(unreadable_tree, "clean.md"), "w", encoding="utf-8") as fh:
             fh.write("nothing sensitive here.\n")
-        os.symlink(os.path.join(unreadable_tree, "does-not-exist.txt"),
-                   os.path.join(unreadable_tree, "dangling.txt"))
         try:
-            run_gate(unreadable_tree, DEFAULT_REFUSE_RULES, DEFAULT_REWRITE_RULES, None,
-                     accept_unjudged=True)
-            report("an unreadable file (dangling symlink) -> CANNOT EVALUATE", False,
-                   "no exception raised")
-        except CannotEvaluate as e:
-            report("an unreadable file (dangling symlink) -> CANNOT EVALUATE",
-                   "dangling.txt" in str(e))
+            os.symlink(os.path.join(unreadable_tree, "does-not-exist.txt"),
+                       os.path.join(unreadable_tree, "dangling.txt"))
+        except OSError as _e:
+            print("  [SKIP] an unreadable file (dangling symlink) -> CANNOT EVALUATE -- "
+                  "COULD NOT CREATE A SYMLINK ON THIS HOST ({}: {}). THIS IS NOT A PASS; "
+                  "the assertion did not run. Windows needs Administrator or Developer "
+                  "Mode.".format(type(_e).__name__, _e))
+        else:
+            try:
+                run_gate(unreadable_tree, DEFAULT_REFUSE_RULES, DEFAULT_REWRITE_RULES, None,
+                         accept_unjudged=True)
+                report("an unreadable file (dangling symlink) -> CANNOT EVALUATE", False,
+                       "no exception raised")
+            except CannotEvaluate as e:
+                report("an unreadable file (dangling symlink) -> CANNOT EVALUATE",
+                       "dangling.txt" in str(e))
 
         # -------------------------------------------------- FIX 4: a FIFO in the tree
         fifo_tree = new_dir("push-gate-selftest-fifo-")
         with open(os.path.join(fifo_tree, "clean.md"), "w", encoding="utf-8") as fh:
             fh.write("nothing sensitive here.\n")
         fifo_path = os.path.join(fifo_tree, "a.fifo")
-        os.mkfifo(fifo_path)
-        # run it as a subprocess with a hard wall-clock timeout: if the stat-before-open
-        # fix regresses, open() on the FIFO blocks forever (no reader on the other end),
-        # and this proves the "no hang" property rather than just the "right exit code"
-        # one -- a bare in-process call could look like a pass right up until it hangs.
-        try:
-            p = subprocess.run(
-                [sys.executable, me, "--refuse-rules", DEFAULT_REFUSE_RULES, "--rewrite-rules", DEFAULT_REWRITE_RULES, "--tree", fifo_tree, "--accept-unjudged"],
-                capture_output=True, text=True, timeout=10)
-            report("a FIFO in the tree -> exit 2 promptly, never a hang",
-                   p.returncode == CANNOT_EVALUATE and "fifo" in p.stderr.lower(),
-                   "got exit {}, stderr: {}".format(p.returncode, p.stderr.strip()[:200]))
-        except subprocess.TimeoutExpired:
-            report("a FIFO in the tree -> exit 2 promptly, never a hang", False,
-                   "HUNG past the 10s timeout -- open() was called on the FIFO")
+        # os.mkfifo does not exist on Windows. SKIPPED IS NOT PASSED -- see the note on the
+        # symlink skip above; this leaves ok_all untouched and says so out loud.
+        if not hasattr(os, "mkfifo"):
+            print("  [SKIP] a FIFO in the tree -> exit 2 promptly, never a hang -- "
+                  "os.mkfifo does not exist on this platform. THIS IS NOT A PASS; the "
+                  "assertion did not run. Exercise it on macOS/Linux.")
+            fifo_path = None
+        # THE WHOLE BLOCK IS GUARDED, not just the mkfifo: running the assertion against a
+        # tree with no FIFO in it tests nothing and reports exit 0 as a failure, which is
+        # noise that looks like a real regression.
+        if fifo_path is not None:
+            os.mkfifo(fifo_path)
+            # run it as a subprocess with a hard wall-clock timeout: if the stat-before-open
+            # fix regresses, open() on the FIFO blocks forever (no reader on the other end),
+            # and this proves the "no hang" property rather than just the "right exit code"
+            # one -- a bare in-process call could look like a pass right up until it hangs.
+            try:
+                p = subprocess.run(
+                    [sys.executable, me, "--refuse-rules", DEFAULT_REFUSE_RULES, "--rewrite-rules", DEFAULT_REWRITE_RULES, "--tree", fifo_tree, "--accept-unjudged"],
+                    capture_output=True, text=True, timeout=10)
+                report("a FIFO in the tree -> exit 2 promptly, never a hang",
+                       p.returncode == CANNOT_EVALUATE and "fifo" in p.stderr.lower(),
+                       "got exit {}, stderr: {}".format(p.returncode, p.stderr.strip()[:200]))
+            except subprocess.TimeoutExpired:
+                report("a FIFO in the tree -> exit 2 promptly, never a hang", False,
+                       "HUNG past the 10s timeout -- open() was called on the FIFO")
 
         # -------------------------------------------------- missing rules file
         try:

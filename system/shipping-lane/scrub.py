@@ -1160,9 +1160,21 @@ def selftest():
         report("...and that git-invisible file is CAUGHT (identity term -> NOT-CLEAN), "
                "which is the whole point: the scanner sees what git hides",
                tree_by_source.get(rel(f_tree_ignored), {}).get("status") == "NOT-CLEAN")
+        # SEPARATOR MISMATCH, found on Windows 2026-08-28. This report carries the SAME
+        # file in two spellings: files[].source uses the OS-native separator (backslash on
+        # Windows, via os.path.relpath) while tree_scan.git_invisible is posix-style. The
+        # assertion above compares against the first and passes; this one compares against
+        # the second and failed on every Windows run while passing on macOS/Linux, where
+        # the two spellings happen to be identical. Normalise BOTH sides so the assertion
+        # tests what it means to test -- membership -- rather than path spelling.
+        # The report's own inconsistency is left as-is on purpose: changing either key's
+        # spelling is a change to published output with unknown consumers, and that is a
+        # separate decision from making this test correct.
+        _posix = lambda p: p.replace(os.sep, "/")
         report("...and the run REPORTS it as git-invisible, so the fixed bug stays "
                "measured on every run instead of being re-introduced quietly",
-               rel(f_tree_ignored) in tree_report["tree_scan"]["git_invisible"],
+               _posix(rel(f_tree_ignored)) in [_posix(x) for x
+                                               in tree_report["tree_scan"]["git_invisible"]],
                "git_invisible: {}".format(tree_report["tree_scan"]["git_invisible"]))
         report("...and an ordinary tracked-shaped file in the same walk stays CLEAN "
                "(the walk is not just flagging everything)",
