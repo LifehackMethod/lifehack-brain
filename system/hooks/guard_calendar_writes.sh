@@ -55,10 +55,11 @@ import sys, json
 try: print(json.load(sys.stdin).get('tool_input', {}).get('command', ''))
 except Exception: print('__ERR__')" 2>/dev/null)
 
-# An unreadable payload names no calendar. This hook sits in front of every Bash command, so
-# denying here would wall the session off from the shell over a malformed message — the failure the
-# sheet guards shipped with. Fail-CLOSED applies below, once a calendar command is actually in hand.
-[ "$COMMAND" = "__ERR__" ] && exit 0
+# An unreadable payload is refused, not waved through -- exit 0 here is exactly the "exit 0 on a
+# BLOCK hook is a silent ALLOW" defect hook-sop.md documents from three logged incidents. This is a
+# report that the guard could not read the input, never a claim that a write was actually seen.
+[ "$COMMAND" = "__ERR__" ] && deny "this guard could not read or parse the incoming command at all, so it is refusing rather than guessing." \
+"REDIRECT: re-run the tool call so its JSON payload is well-formed, and keep the underlying invocation itself literal -- written-out text this guard can read, not a variable or command substitution standing in for it."
 [ -n "$COMMAND" ] || exit 0
 
 # Not a calendar command at all — pass through. This hook only speaks calendar.

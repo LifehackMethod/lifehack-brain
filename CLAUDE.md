@@ -16,7 +16,7 @@
 > are the solid part.
 >
 > **Deeper layers:** `system/organism/manual.md` (how the parts work together — LOAD-BEARING, holds rules
-> that exist in no element file) + `system/organism/elements/` (42 files, source-traced from code).
+> that exist in no element file) + `system/organism/elements/` (44 files, source-traced from code).
 
 <!-- ORGANISM v1 --> files = system/organism/elements/<name> · @ you start it · ~ scheduled, unattended · ! fires unasked
 ⚠ CRUDE SIMPLIFICATIONS — a DOOR, not a DEFINITION. Each line names the COMMONEST reason only; every
@@ -37,8 +37,8 @@ elements/<slug>.md, the exhaustive source. If this map is your only source, you 
 @ /advisory-council  think a hard call through with experts | council-engine.md — the DECISION, including a
                      money decision. the money RECORDS live in the owning subject's own store, never here.
 @ /research /websearch   find something out, sanitized | research-web-plane.md
-@ /explain /condense     have it said plainer | translator-cluster.md
-@ /professor       send someone to LEARN this whole system | `.claude/skills/professor/` — NOT an element;
+@ /explain /simplify     have it said plainer | translator-cluster.md
+@ /professor       send someone to LEARN this whole system | `.claude/skills/professor/` ⛔ not in this repo, only in the installed plugin — NOT an element;
                    the taught tour. this page ROUTES; that one EXPLAINS.
 @ (open the file)  which of the three layers answers THIS question | brain.md — the map ROUTES, the manual
                    EXPLAINS how the parts combine, elements/<slug>.md exhausts one part. wrong layer,

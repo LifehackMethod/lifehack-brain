@@ -99,7 +99,11 @@ WEEK="$(python3 -c "import datetime;d=datetime.date.fromisoformat('$DATE');i=d.i
 if [ -n "${LIFEHACK_FAKE_DOW:-}" ]; then
   DOW="$LIFEHACK_FAKE_DOW"
 else
-  DOW="$(date -j -f '%Y-%m-%d' "$DATE" +%u 2>/dev/null || date +%u)"
+  # GNU first, BSD/macOS fallback (GitHub #127 B2): `date -j -f` is BSD-only and errors on GNU
+  # coreutils; the old bare `date +%u` fallback silently ignored $DATE and returned TODAY's
+  # weekday instead — reproduced: DATE=2020-01-06 (a Monday, correct answer 1) returned the
+  # current day's number. `date -d` is the GNU equivalent that actually parses $DATE.
+  DOW="$(date -d "$DATE" +%u 2>/dev/null || date -j -f '%Y-%m-%d' "$DATE" +%u 2>/dev/null)"
 fi
 
 # ⚠ The DATA PATH is deliberately still `desks/cal/` — code/jobs/tiles are renamed to `planning`,
@@ -172,7 +176,7 @@ load_gws_credentials_optional planning-weekly-prime
 # ── single-instance lock ──
 LOCKDIR="/tmp/lifehack-planning-weekly-prime.lock"
 if ! mkdir "$LOCKDIR" 2>/dev/null; then
-  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - $(stat -f %m "$LOCKDIR" 2>/dev/null || echo 0) ))" -gt "$((WATCHDOG + 300))" ]; then
+  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - $(stat -c %Y "$LOCKDIR" 2>/dev/null || stat -f %m "$LOCKDIR" 2>/dev/null || echo 0) ))" -gt "$((WATCHDOG + 300))" ]; then
     rm -rf "$LOCKDIR"; mkdir "$LOCKDIR" 2>/dev/null || { echo "[planning-weekly-prime] lock race — skip"; exit 0; }
   else
     echo "[planning-weekly-prime] another run in progress — skip"; exit 0

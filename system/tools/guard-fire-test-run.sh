@@ -17,7 +17,7 @@
 #      ~/.config/lifehack/guard-fire-test/last-run.json. Ledger row: producer
 #      `guard-fire-test`.
 #
-# ⛔⛔⛔ PORTED 2026-08-14 FROM claudeops-config's system/tools/guard-fire-test-run.sh, AND
+# ⛔⛔⛔ PORTED 2026-08-14 FROM lifehack-config's system/tools/guard-fire-test-run.sh, AND
 # SHIPPED UNDER CONSTRUCTION — READ THIS BEFORE TRUSTING A CLEAN RUN.
 #   1. `verify-hooks.sh` — the donor's own combined fire-test + 2 native regression-suite
 #      runner this script calls below — DOES NOT EXIST in this repo (confirmed absent; it is
@@ -53,7 +53,7 @@ mkdir -p "$OUT_DIR" 2>/dev/null || true
 
 LOCKDIR="/tmp/lifehack-${SUBSYSTEM_NAME}.lock"
 if ! mkdir "$LOCKDIR" 2>/dev/null; then
-  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - $(stat -f %m "$LOCKDIR" 2>/dev/null || echo 0) ))" -gt 900 ]; then
+  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - $(stat -c %Y "$LOCKDIR" 2>/dev/null || stat -f %m "$LOCKDIR" 2>/dev/null || echo 0) ))" -gt 900 ]; then
     rm -rf "$LOCKDIR"; mkdir "$LOCKDIR" 2>/dev/null || exit 0
   else
     echo "[$SUBSYSTEM_NAME] another run in progress — skip."; exit 0

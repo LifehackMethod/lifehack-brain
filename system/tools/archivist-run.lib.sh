@@ -127,7 +127,7 @@ run_archivist() {
   lockdir="/tmp/lifehack-${ARCH_LABEL}.lock"
   steal=$(( ARCH_WATCHDOG + 300 ))
   if ! mkdir "$lockdir" 2>/dev/null; then
-    if [ -d "$lockdir" ] && [ "$(( $(date +%s) - $(stat -f %m "$lockdir" 2>/dev/null || echo 0) ))" -gt "$steal" ]; then
+    if [ -d "$lockdir" ] && [ "$(( $(date +%s) - $(stat -c %Y "$lockdir" 2>/dev/null || stat -f %m "$lockdir" 2>/dev/null || echo 0) ))" -gt "$steal" ]; then
       _alog "stale lock (>${steal}s) — stealing."; rm -rf "$lockdir"
       mkdir "$lockdir" 2>/dev/null || { _alog "lock race — skip."; return 0; }
     else

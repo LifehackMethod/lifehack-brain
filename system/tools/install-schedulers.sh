@@ -111,12 +111,13 @@ OS="${LIFEHACK_TEST_OS_OVERRIDE:-$OS}"
 # ── 2) Parse the ```crontab``` block → [(name, schedule, command)] ─────────────────────────────
 declare -a JOB_NAMES=() JOB_SCHEDS=() JOB_CMDS=()
 in=0
-fence_seen=0   # did the ```crontab``` fence EVER match this run? (ABSENT-SUBJECT-RULE, below)
+fence_seen=0   # did the ```crontab``` fence EVER match, this run? (ABSENT-SUBJECT-RULE — see below)
 while IFS= read -r line || [ -n "$line" ]; do
   # Strip a trailing \r on EVERY line, not just the fence line: Git for Windows' default
-  # core.autocrlf=true checks this .md file out with CRLF endings, and everything below the fence
-  # check is ALSO exact-string matching (the blank/comment `case`, the `IFS='|' read` row fields) --
-  # a strip on only the fence line would still leave every data row's last field carrying a \r.
+  # core.autocrlf=true checks this .md file out with CRLF endings, and the row-parsing below
+  # (`[ "$line" = '```crontab' ]`, the `case` blank/comment test, the `IFS='|' read`) is exact-string
+  # matching throughout — a lone \r on the fence line alone would still leave every DATA row carrying
+  # one on its trailing field. Measured: before this strip, a CRLF manifest produced 0 rows here.
   line="${line%$'\r'}"
   if [ "$line" = '```crontab' ]; then in=1; fence_seen=1; continue; fi
   if [ "$in" -eq 1 ] && [ "$line" = '```' ]; then in=0; continue; fi
@@ -138,17 +139,21 @@ while IFS= read -r line || [ -n "$line" ]; do
   JOB_NAMES+=("$name"); JOB_SCHEDS+=("$sched"); JOB_CMDS+=("$cmd")
 done < "$MANIFEST"
 
-# ABSENT-SUBJECT-RULE: a fence that never matched is NOT an empty block. Before this check a CRLF
-# manifest produced 0 rows and this script printed "0 scheduled entries" and exited 0 -- reporting
-# success for a manifest it never read, so the whole scheduled layer went silently absent.
+# ⛔ ABSENT-SUBJECT-RULE (system/build-rules-index.md): "the block parsed and is genuinely empty"
+# and "the block was never found at all" are DIFFERENT claims and must never share an exit code.
+# The latter is exactly the CRLF failure mode this file exists to catch (a line-ending mismatch
+# breaks the fence's exact-string match, so `in` never goes to 1, JOB_NAMES stays empty, and the
+# code below used to report "nothing to install" — success — for a manifest that was never actually
+# read). fence_seen distinguishes them: it is set ONLY inside the fence-open branch above, so it is
+# 0 here iff the ```crontab``` fence line never matched a single line of $MANIFEST.
 if [ "$fence_seen" -eq 0 ]; then
   echo "[install-schedulers] FATAL: the \`\`\`crontab\`\`\` fence was never found in $MANIFEST." >&2
-  echo "  This is NOT the same as an empty block -- the manifest could not be evaluated at all," >&2
-  echo "  so NOTHING was installed. Likely cause: CRLF line endings (check: file \"$MANIFEST\")." >&2
-  echo "  Fix: git add --renormalize . && git checkout -- $MANIFEST" >&2
-  exit 1
+  echo "  This is NOT the same as an empty block — the manifest could not be evaluated at all," >&2
+  echo "  so nothing was installed. Likely causes: the file has CRLF line endings (check with" >&2
+  echo "  'file $MANIFEST'; .gitattributes should prevent this, but a stale checkout predating" >&2
+  echo "  that fix can still carry one), or the fence marker itself was edited/typo'd." >&2
+  exit 2
 fi
-
 if [ "${#JOB_NAMES[@]}" -eq 0 ]; then
   echo "[install-schedulers] no rows in the \`\`\`crontab\`\`\` block of $MANIFEST — nothing to install." >&2
   exit 0
@@ -237,6 +242,17 @@ _resolve_bash_exe() {
 # this manifest actually uses (`*/N * * * *` = every N minutes; `M * * * *` = once an hour, minute
 # M) and refuses anything else rather than guessing a wrong schedule. Prints schtasks /SC + /MO (+
 # /ST for the hourly form) args on stdout, or nothing + returns 1 if the shape is unrecognized.
+# Escapes a value for embedding inside a PowerShell SINGLE-quoted string literal.
+# PowerShell single-quoted strings are verbatim except for one rule: a literal `'` inside
+# one must be doubled (`''`) or it closes the string early -- exactly what happens, unescaped,
+# to a Windows path containing an apostrophe (e.g. `C:\Users\O'Brien\...`, a real username
+# shape) or a `cmd` string that happens to contain one. Every value interpolated into the
+# single-quoted ArgumentList/FilePath literals below MUST be passed through this first.
+_ps_squote() {
+  local sq="'"
+  printf '%s' "${1//$sq/$sq$sq}"
+}
+
 _cron_to_schtasks() {
   local sched="$1" minute hour
   minute="$(echo "$sched" | awk '{print $1}')"
@@ -267,6 +283,8 @@ install_windows() {
     echo "[install-schedulers] FATAL: could not resolve a Windows path for $PULSE_SH (cygpath failed)." >&2
     exit 1
   fi
+  local bash_win_ps
+  bash_win_ps="$(_ps_squote "$bash_win")"
 
   local i name sched cmd schtasks_args task_name log_win
   for i in "${!JOB_NAMES[@]}"; do
@@ -286,13 +304,54 @@ install_windows() {
     # thing the scheduler calls; pulse.sh is what parses the ```jobs``` block and runs each job's
     # own command in turn. This crontab-block row IS pulse.sh's own entry for the `pulse` name (and
     # health-deadman's dedicated entry) — see pulse-config.md.
-    local action="\"$bash_win\" \"$pulse_win\""
-    if [ "$name" != "pulse" ]; then
+    #
+    # ⚠ WINDOW HIDING: bash.exe is a console-subsystem binary, so if Task Scheduler ran it directly
+    # a visible console window would flash open on EVERY fire — every 5 minutes for the pulse job.
+    # We keep the task INTERACTIVE (no /RU — see the block comment above _resolve_bash_exe's callers
+    # for why: a non-interactive S4U task only sees local resources and risks not seeing a
+    # Google-Drive-synced folder) and instead route through powershell.exe, which ships on every
+    # Windows 10/11 machine and needs no admin:
+    #   powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command
+    #     "$p = Start-Process -FilePath '<bash.exe>' -ArgumentList <args> -WindowStyle Hidden -Wait -PassThru; exit $p.ExitCode"
+    # -WindowStyle Hidden is set on BOTH the outer powershell.exe and the inner Start-Process, since
+    # each is its own console-window-capable process. -Wait (+ -PassThru, + relaying $p.ExitCode) is
+    # deliberate, not default Start-Process behavior: without it, Start-Process would return
+    # immediately after LAUNCHING bash.exe, so the powershell.exe task instance would exit almost
+    # instantly while bash.exe kept running detached — defeating Task Scheduler's own
+    # already-running-instance overlap protection on the 5-minute pulse cadence (a job that overruns
+    # 5 minutes would get a second overlapping copy started on top of it), and silently discarding
+    # the job's real exit code (Task Scheduler would only ever see powershell.exe's own 0). -Wait
+    # keeps the task's process lifetime equal to bash.exe's, matching the pre-existing direct-invoke
+    # behavior on both counts.
+    # ⚠ KNOWN LIMITATION: `-WindowStyle Hidden` on the OUTER powershell.exe is documented by
+    # Microsoft to still flash a console briefly on some Windows builds before the window is hidden.
+    # This is a MITIGATION, not a guaranteed zero-flash fix — do not "fix" a residual flash by
+    # swapping this for a VBScript/wscript.exe shim: that path was deliberately rejected (VBScript is
+    # in Microsoft's own deprecation pipeline and matches Defender ASR rule
+    # d3e037e1-3eb8-44c8-a917-57927947596d).
+    #
+    # Quoting: the paths in ArgumentList/FilePath are wrapped in PowerShell SINGLE quotes
+    # deliberately, not double quotes — a Windows path can contain spaces (`C:\Users\John Smith\...`)
+    # and single-quoted PowerShell strings are verbatim (no backslash- or $-interpolation to worry
+    # about), and critically it means the whole -Command payload contains NO embedded double-quote
+    # characters, so it survives as a single Win32 argv token with no backslash-doubling needed when
+    # Task Scheduler re-parses the stored /TR command line at fire time.
+    # A single-quoted PowerShell string is verbatim EXCEPT for the closing quote character itself --
+    # a path or cmd string carrying a literal `'` (e.g. `C:\Users\O'Brien\...`) would otherwise
+    # terminate the literal early and corrupt the parsed command. _ps_squote() above doubles every
+    # embedded `'` before interpolation, which is PowerShell single-quote escaping's own rule.
+    local ps_body ps_cmd action
+    if [ "$name" = "pulse" ]; then
+      ps_body="-ArgumentList '$(_ps_squote "$pulse_win")'"
+    else
       # health-deadman (and any future non-Pulse crontab row) runs its OWN command directly, not
       # through pulse.sh — same distinction the manifest draws between the ```jobs``` block (Pulse-
-      # dispatched) and the ```crontab``` block (OS-dispatched).
-      action="\"$bash_win\" -c \"$cmd\""
+      # dispatched) and the ```crontab``` block (OS-dispatched). bash.exe needs two args here
+      # (`-c` and the command string), so ArgumentList takes a comma-separated PowerShell array.
+      ps_body="-ArgumentList '-c','$(_ps_squote "$cmd")'"
     fi
+    ps_cmd="\$p = Start-Process -FilePath '$bash_win_ps' $ps_body -WindowStyle Hidden -Wait -PassThru; exit \$p.ExitCode"
+    action="powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command \"$ps_cmd\""
     if [ "$MODE" = "--install" ]; then
       # shellcheck disable=SC2086
       schtasks /Create $schtasks_args /TN "$task_name" /TR "$action" /F

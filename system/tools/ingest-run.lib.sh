@@ -6,7 +6,7 @@
 # watchdog-bounded launch. This is that plumbing, factored out once so a future runner script is a
 # few lines of POLICY (what prompt, what model, what to check first) sourcing a few lines of PLUMBING.
 #
-# PORTED (2026-08-14) from claudeops-config's system/tools/ingest-run.lib.sh — that repo's donor
+# PORTED (2026-08-14) from lifehack-config's system/tools/ingest-run.lib.sh — that repo's donor
 # comment called this file "the worst hardcode in the tree": it carried a literal absolute-path
 # CLAUDE_BIN under a specific person's home directory, not even $HOME-relative, plus a Drive path
 # under that same account. Both are fixed below. Three pieces were DROPPED rather than ported,
@@ -214,7 +214,7 @@ _INGEST_LOCKDIR=""
 ingest_acquire_lock() {
   local job="$1"; _INGEST_LOCKDIR="/tmp/lifehack-${job}.lock"
   if ! mkdir "$_INGEST_LOCKDIR" 2>/dev/null; then
-    if [ -d "$_INGEST_LOCKDIR" ] && [ "$(( $(date +%s) - $(stat -f %m "$_INGEST_LOCKDIR" 2>/dev/null || echo 0) ))" -gt 1500 ]; then
+    if [ -d "$_INGEST_LOCKDIR" ] && [ "$(( $(date +%s) - $(stat -c %Y "$_INGEST_LOCKDIR" 2>/dev/null || stat -f %m "$_INGEST_LOCKDIR" 2>/dev/null || echo 0) ))" -gt 1500 ]; then
       echo "[$job] stale lock (>25m) — stealing."; rm -rf "$_INGEST_LOCKDIR"
       mkdir "$_INGEST_LOCKDIR" 2>/dev/null || { echo "[$job] lock race — skip."; exit 0; }
     else echo "[$job] another run in progress — skip this tick."; exit 0; fi

@@ -341,8 +341,29 @@ except Exception: print('__ERR__')" 2>/dev/null)
 
     # (b) The scratch lock, via the shell. The main session may not read the sanitized scratch
     # through cat/head/tail/less/xxd/od/nl or an inline python open(). Sub-agent is exempt.
-    if [ -z "$AGENT_ID" ] && printf '%s' "$CMD" | grep -qiE '(\b(cat|head|tail|less|more|xxd|od|nl)\b[^|;]*[/\\](lifehack[/\\])?(rdr|ingest_body)[/\\])|(open\(["'"'"'][^"'"'"']*[/\\](lifehack[/\\])?(rdr|ingest_body)[/\\])'; then
-      deny '{"decision":"block","reason":"BLOCKED: the main session may not read the sanitized ingest scratch (/tmp/rdr, /tmp/ingest_body) through the shell either. WHY: reader-actor split — the reader of someone else'"'"'s content is a sub-agent with no tools, so a hijack has no hands. REDIRECT: spawn subagent_type: ingest-reader with the file PATH and work from what it reports."}'
+    #
+    # ⛔ FIXED 2026-08-27 (indirection bypass, reproduced live). The prior single regex required
+    # the read verb (or `open(`) and the protected path to appear ADJACENT inside ONE matched
+    # expression — `P=/tmp/rdr/x; cat "$P"`, or an assignment on one line and `head "$F"` on the
+    # next, separates them with a variable, so the combined pattern never matched and the read
+    # sailed through at rc=0. That is the SAME failure class hook-sop.md:141 already names — a
+    # guard matching a keyword STRING rather than the real target — so the fix does not swing to
+    # the opposite failure of a bare keyword scan either: it still requires BOTH (1) a real read
+    # action and (2) the actual protected-path SHAPE (a slash- or backslash-bounded rdr/
+    # ingest_body segment, optionally under lifehack/ — never the bare word "rdr" on its own),
+    # just tested as two INDEPENDENT conditions over the whole command string instead of one
+    # adjacency-anchored pattern. That is what makes `P=<path>; cat "$P"`, a newline-split
+    # assignment, a path reached via `$(...)`, and an inline `open('<path>')` all resolve to
+    # DENY: the path text is present SOMEWHERE in the command and a read action is present
+    # SOMEWHERE in the command, regardless of the shell syntax sitting between them. `mkdir -p`/
+    # `rm -rf`/`ls` on the scratch dir, and a bare mention of the word "rdr" with no real path
+    # shape, still ALLOW: neither the verb list nor the path-shape regex fires for them alone.
+    _SCRATCH_PATH_RE='[/\\](lifehack[/\\])?(rdr|ingest_body)[/\\]'
+    _SCRATCH_ACTION_RE='\b(cat|head|tail|less|more|xxd|od|nl)\b|open\('
+    if [ -z "$AGENT_ID" ] \
+       && printf '%s' "$CMD" | grep -qiE "$_SCRATCH_PATH_RE" \
+       && printf '%s' "$CMD" | grep -qiE "$_SCRATCH_ACTION_RE"; then
+      deny '{"decision":"block","reason":"BLOCKED: the main session may not read the sanitized ingest scratch (/tmp/rdr, /tmp/ingest_body) through the shell either — including via a variable, a newline-split assignment, a $(...) substitution, or an inline python open(). WHY: reader-actor split — the reader of someone else'"'"'s content is a sub-agent with no tools, so a hijack has no hands. REDIRECT: spawn subagent_type: ingest-reader with the file PATH and work from what it reports."}'
     fi
 
     # (c) A Gmail body pulled straight into context. Email bodies are the single most common

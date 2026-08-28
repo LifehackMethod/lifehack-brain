@@ -50,6 +50,12 @@ local.settings.json
 # whole-tree add does not stop a scoped one.
 *.bak
 *.pre-*.bak
+# MISS FOUND 2026-08-24 (verified this session): a timestamp-suffixed backup — e.g.
+# `settings.json.bak-20260824-110900` — does not END in `.bak`, so it walks straight past the
+# two patterns above. This catches that shape (anything with `.bak-` before a suffix) without
+# widening to bare `.bak` mid-name; it does NOT match ordinary tracked files, which have no
+# `.bak-` substring at all.
+*.bak-*
 
 # ── INTERNAL MIGRATION WORKING NOTES. NEVER SHIPPED. ──────────────────────────
 # migration-audit/ is the donor-side project's own scratch: dependency inventories,
@@ -72,3 +78,10 @@ migration-audit/
 # also keeps a tracked copy from colliding with the untracked one every install
 # already has. See docs/LOCAL-INSTRUCTIONS.md.
 CLAUDE.local.md
+
+# system/organism/generated/ self-declares in its own file header ("DERIVED.
+# REGENERATED EVERY RUN. NEVER HAND-EDIT THIS FILE.") as the other machine's
+# regenerated output — it was never actually gitignored despite the claim.
+# Verified 2026-08-23: no prior rule covered it. Added so the claim matches reality.
+system/organism/generated/
+

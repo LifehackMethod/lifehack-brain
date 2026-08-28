@@ -126,7 +126,7 @@ load_gws_credentials_optional "$SUBSYSTEM_NAME"
 # ── Single-instance lock ──
 LOCKDIR="/tmp/lifehack-${SUBSYSTEM_NAME}.lock"
 if ! mkdir "$LOCKDIR" 2>/dev/null; then
-  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - $(stat -f %m "$LOCKDIR" 2>/dev/null || echo 0) ))" -gt 1800 ]; then
+  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - $(stat -c %Y "$LOCKDIR" 2>/dev/null || stat -f %m "$LOCKDIR" 2>/dev/null || echo 0) ))" -gt 1800 ]; then
     rm -rf "$LOCKDIR"; mkdir "$LOCKDIR" 2>/dev/null || { echo "[$SUBSYSTEM_NAME] lock race — skip"; exit 0; }
   else echo "[$SUBSYSTEM_NAME] another run in progress — skip"; exit 0; fi
 fi

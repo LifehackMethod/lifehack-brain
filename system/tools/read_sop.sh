@@ -35,14 +35,13 @@ RUN_DIR="$HOME/.claude/run/sop"
 
 # Session key — payload session_id is not available here, so env first, then a cwd hash.
 # Matches the convention in scratch_flag.sh / skill_anchor.sh so keys line up across the fleet.
-# shasum is NOT guaranteed on PATH (Git Bash on Windows ships without it -- GitHub #82).
-# Called bare, it emits "command not found" on every invocation AND `cut` returns an EMPTY
-# string, so the receipt key collapses to a constant. The guard then never matches the receipt
-# read_sop.sh wrote, and the result is a PERMANENT DENY with no way out.
-# ⚠ THIS SNIPPET IS IDENTICAL IN system/tools/read_sop.sh AND system/hooks/guard_hook_sop_read.sh
-# AND MUST STAY THAT WAY -- one writes the receipt, the other reads it. If the two ever compute
-# the key differently, they disagree on EVERY machine that lacks shasum and the permanent deny
-# comes straight back. Same rule as hash_key() elsewhere in this folder.
+# shasum is NOT guaranteed on PATH (Git Bash on Windows ships without it). Called bare, it emits
+# "command not found" and `cut` returns an EMPTY string, collapsing the key to a constant -- the
+# guard then never matches the receipt this script writes, and the result is a PERMANENT DENY.
+# ⚠ THIS HELPER IS IDENTICAL IN system/tools/read_sop.sh AND system/hooks/guard_hook_sop_read.sh
+# AND MUST STAY THAT WAY -- one writes the receipt, the other reads it. If they ever compute the
+# key differently, they disagree on every machine lacking shasum. Same rule as hash_key() in
+# guard_cross_project_write.sh.
 _hashcwd() {
   if command -v shasum >/dev/null 2>&1; then
     printf '%s' "$PWD" | shasum | cut -c1-12

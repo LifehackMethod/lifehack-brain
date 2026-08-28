@@ -261,7 +261,7 @@ esac
 
 WHEN="unknown"
 if [ -f "$DOC_PATH" ]; then
-  MT="$(stat -f %m "$DOC_PATH" 2>/dev/null)"
+  MT="$(stat -c %Y "$DOC_PATH" 2>/dev/null || stat -f %m "$DOC_PATH" 2>/dev/null)"
   if [ -n "$MT" ] && [ -n "$NOW" ]; then
     D=$(( NOW - MT ))
     if   [ "$D" -lt 60 ];   then WHEN="just now"

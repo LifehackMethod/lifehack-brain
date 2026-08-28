@@ -29,14 +29,20 @@ system/githooks/*  text eol=lf
 
 # system/pulse-config.md is CODE by another name: system/tools/pulse.sh and
 # install-schedulers.sh both parse its ```jobs```/```crontab``` fences with exact-string
-# `[ "$line" = '```jobs' ]` bash comparisons, not a tolerant parser -- a CRLF from the *.md
+# `[ "$line" = '```jobs' ]` bash comparisons, not a tolerant parser — a CRLF from the *.md
 # rule below (issue #75) breaks that match silently: both scripts find zero rows and BOTH
 # report success, so the entire scheduled-automation layer goes silently absent on a Windows
 # install. Same class of failure as the shell scripts above; same fix, scoped to this one
-# file rather than every *.md.
+# file rather than every *.md — see the note below on why this stays narrow.
 system/pulse-config.md  text eol=lf
 
 # ── Data and documents — normalise, but harmless either way ───────────────────
+# NOT widened to `*.md text eol=lf` project-wide: pulse-config.md is the one markdown file
+# in this repo that is byte-exact parsed by a shell script (see above); the other ~300 are
+# prose or are read by Python parsers that already normalize \r via `.strip()`/universal-
+# newlines, so a blanket pin would carry the same cost pattern this file's own header warns
+# against — a rule that "fixes" files that were never broken. Pin the next one individually
+# if the same failure shape (exact-string fence match, from a shell script) shows up again.
 *.md              text
 *.json            text
 *.yaml            text

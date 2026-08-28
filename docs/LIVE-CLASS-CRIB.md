@@ -1,8 +1,8 @@
-# Instructor Crib Sheet — Lifehack Brain Live Class
+# Live-Class Crib Sheet — Lifehack Brain Live Class
 
 ## 1. What this is (say this out loud to open)
 
-Lifehack Brain is a free tool that gives your Claude AI one new command, `/ingest`. It takes a pile of your own material — an old ChatGPT export, a folder of notes, a stack of documents — and sorts it into a folder structure you and your AI can both work from. Today we're just installing it and getting to the first questions it asks; you finish the sorting on your own time.
+Lifehack Brain is a free tool that gives your Claude AI one new command, `/ingest`. It takes a pile of your own material — an old ChatGPT export, a folder of notes, a stack of documents — and sorts it into a folder structure you and your AI can both work from. Today we're just installing it and getting to the first questions it asks; you finish the sorting on your own time. ⛔ (harness skill — served by the plugin since the source cutover, deliberately not in this repo)
 
 ## 2. The happy path (narrate it in this order)
 
@@ -11,7 +11,7 @@ Lifehack Brain is a free tool that gives your Claude AI one new command, `/inges
 3. Drag **INSTALL.md** into the chat.
 4. Say: **"Set up my brain."**
 5. When Claude says it's done, **quit Claude completely and reopen it** — not a new chat, the whole app.
-6. Type **`/ingest`**.
+6. Type **`/ingest`**. ⛔ (harness skill — served by the plugin since the source cutover, deliberately not in this repo)
 
 ## 3. ⛔ THE ONE RULE — repeat it all class
 
@@ -37,7 +37,7 @@ Fix: walk INSTALL.md's Step 2 (git) and Step 3 (Python) with them, one at a time
 **Room 3 — "I have it but it's behaving strangely."**
 First question, always: **did you quit and reopen Claude?** If yes and it's still off:
 Second question: does the folder contain a **`.claude`** folder? It's hidden by default — on a Mac, **Cmd+Shift+.** in Finder shows hidden files.
-Still stuck: fall back to **`.claude/skills/ingest/PLAN-B.md`**. Drag it into a **fresh** Claude chat and say **"help me."** It's a complete manual backup that walks through the same process by hand, with no tools required to work.
+Still stuck: fall back to **`.claude/skills/ingest/PLAN-B.md`**. Drag it into a **fresh** Claude chat and say **"help me."** It's a complete manual backup that walks through the same process by hand, with no tools required to work. ⛔ (harness skill — served by the plugin since the source cutover, deliberately not in this repo)
 
 ## 5. ⚠ Expect version drift
 
@@ -45,7 +45,7 @@ Fixes may get pushed live during class. If someone installed earlier and is now 
 
 ## 6. Don't do this in class
 
-Once running, `/ingest` asks a lot of human-in-the-loop questions (keep / toss / explore, one per item). **Do not spend class time answering them.** Get every student installed and to the point where those questions appear, show them the folder structure, then move on. They finish sorting on their own time.
+Once running, `/ingest` asks a lot of human-in-the-loop questions (keep / toss / explore, one per item). **Do not spend class time answering them.** Get every student installed and to the point where those questions appear, show them the folder structure, then move on. They finish sorting on their own time. ⛔ (harness skill — served by the plugin since the source cutover, deliberately not in this repo)
 
 ## 7. What good looks like (closing check)
 

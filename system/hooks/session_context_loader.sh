@@ -159,6 +159,21 @@ _findings_banner() {
     return 0
   fi
   [ -n "$out" ] && { echo ""; printf '%s\n' "$out"; }
+
+  # ⚠ THE BAND-AID (2026-08-27): a `/save` on 2026-08-26 skipped compaction and reported clean --
+  # `pad_archive.py state` already answers PAD-DIRTY <chars> for exactly this and nothing was
+  # reading it. One existing-tool call, fail-soft: any missing brief/tool/heading/parse prints
+  # nothing. Threshold 50000 chars, chosen well above normal working size.
+  local pad_brief pad_out pad_chars
+  pad_brief="$(bash "$REPO/system/hooks/pm_flag.sh" status 2>/dev/null)"
+  if [ -r "$REPO/system/tools/save/pad_archive.py" ] && [ -n "$pad_brief" ] && [ -f "$pad_brief" ]; then
+    pad_out="$(python3 "$REPO/system/tools/save/pad_archive.py" state "$pad_brief" --heading "## SCRATCHPAD" 2>/dev/null)"
+    pad_chars="$(printf '%s\n' "$pad_out" | sed -n 's/^PAD-DIRTY \([0-9][0-9]*\).*/\1/p')"
+    if [ -n "$pad_chars" ] 2>/dev/null && [ "$pad_chars" -gt 50000 ] 2>/dev/null; then
+      echo ""
+      echo "!! SCRATCHPAD LARGE + UNCOMPACTED: ${pad_chars} chars in $pad_brief -- a /save may have skipped compaction. Run pad_archive.py archive, then clear."
+    fi
+  fi
 }
 
 TOTAL=0

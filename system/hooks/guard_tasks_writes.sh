@@ -50,10 +50,16 @@ import sys, json
 try: sys.stdout.write(json.load(sys.stdin).get('tool_input', {}).get('command', ''))
 except Exception: sys.stdout.write('__ERR__')" 2>/dev/null)
 
-# An unreadable payload names no task list. This hook sits in front of EVERY Bash command, so
-# denying here would wall the session off from the shell over one malformed message. Fail-closed
-# applies below, once a command aimed at the goals list is actually in hand.
-[ "$COMMAND" = "__ERR__" ] && exit 0
+# An unreadable payload is refused, not waved through -- exit 0 here is exactly the "exit 0 on a
+# BLOCK hook is a silent ALLOW" defect hook-sop.md documents from three logged incidents. This is a
+# report that the guard could not read the input, never a claim that a write was actually seen.
+if [ "$COMMAND" = "__ERR__" ]; then
+  printf 'BLOCKED (tasks guard): this guard could not read or parse the incoming command at all, so it is refusing rather than guessing.\n' >&2
+  printf 'WHY: this is a report that the guard never got far enough to see what the command was, not a claim that a write to the goals list was seen.\n' >&2
+  printf 'REDIRECT: re-run the tool call so its JSON payload is well-formed, and keep the underlying invocation itself literal -- written-out text this guard can read, not a variable or command substitution standing in for it.\n' >&2
+  printf 'RULE: system/hooks/guard_tasks_writes.sh, FAIL_POSTURE.\n' >&2
+  exit 2
+fi
 [ -n "$COMMAND" ] || exit 0
 
 # Cheap pre-filter: if the line names no gws binary at all, there is nothing here to judge and no

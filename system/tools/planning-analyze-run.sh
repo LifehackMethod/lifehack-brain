@@ -103,7 +103,7 @@ load_gws_credentials_optional planning-analyze
 LOCKDIR="/tmp/lifehack-planning-analyze.lock"
 cleanup(){ rm -rf "$LOCKDIR" 2>/dev/null; }
 if ! mkdir "$LOCKDIR" 2>/dev/null; then
-  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - $(stat -f %m "$LOCKDIR" 2>/dev/null || echo 0) ))" -gt 1800 ]; then
+  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - $(stat -c %Y "$LOCKDIR" 2>/dev/null || stat -f %m "$LOCKDIR" 2>/dev/null || echo 0) ))" -gt 1800 ]; then
     rm -rf "$LOCKDIR"; mkdir "$LOCKDIR" 2>/dev/null || { echo "[planning-analyze] lock race — skip"; exit 0; }
   else echo "[planning-analyze] another run in progress — skip"; exit 0; fi
 fi

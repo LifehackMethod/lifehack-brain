@@ -751,6 +751,8 @@ def failed_producers(d: dict) -> list:
 
 if __name__ == "__main__":
     import sys as _sys
+    from utf8_stdio import force_utf8_stdio
+    force_utf8_stdio()
     d = load()
     if len(_sys.argv) > 1 and _sys.argv[1] == "show":
         print(json.dumps(d, indent=2, sort_keys=True))

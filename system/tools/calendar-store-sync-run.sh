@@ -46,7 +46,7 @@ mkdir -p "$OUT_DIR" 2>/dev/null || true
 
 LOCKDIR="/tmp/lifehack-${SUBSYSTEM_NAME}.lock"
 if ! mkdir "$LOCKDIR" 2>/dev/null; then
-  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - $(stat -f %m "$LOCKDIR" 2>/dev/null || echo 0) ))" -gt 1200 ]; then
+  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - $(stat -c %Y "$LOCKDIR" 2>/dev/null || stat -f %m "$LOCKDIR" 2>/dev/null || echo 0) ))" -gt 1200 ]; then
     echo "[$SUBSYSTEM_NAME] stale lock (>20m) — stealing."; rm -rf "$LOCKDIR"; mkdir "$LOCKDIR" 2>/dev/null || exit 0
   else
     echo "[$SUBSYSTEM_NAME] another run in progress — skip this tick."; exit 0

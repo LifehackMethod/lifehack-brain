@@ -34,7 +34,7 @@ mkdir -p "$OUT_DIR" 2>/dev/null || true
 
 LOCKDIR="/tmp/lifehack-${SUBSYSTEM_NAME}.lock"
 if ! mkdir "$LOCKDIR" 2>/dev/null; then
-  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - $(stat -f %m "$LOCKDIR" 2>/dev/null || echo 0) ))" -gt 900 ]; then
+  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - $(stat -c %Y "$LOCKDIR" 2>/dev/null || stat -f %m "$LOCKDIR" 2>/dev/null || echo 0) ))" -gt 900 ]; then
     rm -rf "$LOCKDIR"; mkdir "$LOCKDIR" 2>/dev/null || exit 0
   else
     echo "[$SUBSYSTEM_NAME] another run in progress — skip."; exit 0
