@@ -227,6 +227,117 @@ case "$_t2" in *"plan-arming store"*) ok "under 2>&1 >/dev/null the REASON still
 _t3="$(printf '%s' "$PJ" | bash "$GD" 2>/dev/null)"
 [ -z "$_t3" ] && ok "and nothing leaks onto stdout (a block speaks on stderr only)" || bad "refusal printed on stdout" "$_t3"
 
+echo "── 14. a WINDOWS drive-letter doc_path is ABSOLUTE (2026-08-28) ─────────"
+# REPRO for the bug this section was written against. `X:\...\brief.md` is absolute and does NOT
+# begin with "/", and every absolute-path test in this plane was a bare `${2#/}` compare or a `/*)`
+# case — so a native Windows path was classified RELATIVE. Three consequences, each asserted below,
+# and all of them SILENT on the day: the arm printed ARMED and exited 0 throughout.
+#   (a) NO LOCK WAS WRITTEN. The window stayed UNLOCKED, so everything section 1 verifies — the
+#       immutability that is the whole point of this file — did not exist on Windows at all.
+#   (b) THE MALFORMED-ARM NOTE FIRED ON A WELL-FORMED PATH. On a locked window that note deliberately
+#       pre-empts the grant (section 8), so an override the human HAD authorised could never be
+#       spelled in any way that spent it. Section 8's own guarantee inverted: not "a typo cannot burn
+#       the authorisation" but "the authorisation cannot be used".
+#   (c) THE PERSISTENCE HOOK JOINED IT ONTO THE ARMING CWD, so the live brief was announced as
+#       NOT YET CREATED every turn and the doc excerpt was never read.
+# ⭐ PORTABLE ON PURPOSE — nothing here stats the file or needs a G: drive to exist. (a) and (b) are
+# pure string decisions inside pm_flag.sh; (c) asserts the announced PATH and never the freshness
+# word, so a Linux or macOS run exercises the identical logic. Do not "fix" this by gating it on
+# uname: the predicate is deliberately not OS-gated, and a test that only runs on one platform is
+# how this bug survived in the first place.
+WSESS=win-test
+WKEY="sess-$WSESS"
+WIN='X:\Some Folder\Notes\projects\delta\brief.md'
+WIN2='X:\Some Folder\Notes\projects\epsilon\brief.md'
+warm(){ env HOME="$SB" CLAUDE_CODE_SESSION_ID="$WSESS" bash "$PMF" arm "$@"; }
+wpmf(){ env HOME="$SB" CLAUDE_CODE_SESSION_ID="$WSESS" bash "$PMF" "$@"; }
+wturn(){ printf '{"cwd":"%s","prompt":%s}' "$SB" "$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$1")" \
+         | env HOME="$SB" CLAUDE_CODE_SESSION_ID="$WSESS" bash "$PMP" 2>&1; }
+wlockslug(){ grep '^lock_slug=' "$STORE/lock-$WKEY.project" 2>/dev/null | cut -d= -f2-; }
+wlockdoc(){  grep '^lock_doc='  "$STORE/lock-$WKEY.project" 2>/dev/null | cut -d= -f2-; }
+
+# (a) the lock — the assertion that was FALSE before the fix
+OUT="$(warm "$WIN" delta business 2>&1)"; RC=$?
+[ "$RC" = 0 ] && ok "a drive-letter arm succeeds (exit 0)" || bad "windows arm exit" "exit=$RC $OUT"
+[ "$(wlockslug)" = delta ] && ok "⭐ AND IT WRITES A LOCK — the bug was that it did not" || bad "NO LOCK on a windows path: window left UNLOCKED" "lock_slug=$(wlockslug)"
+[ "$(wlockdoc)" = "$WIN" ] && ok "lock_doc keeps the native spelling verbatim" || bad "lock_doc mangled" "$(wlockdoc)"
+[ "$(wpmf locked 2>/dev/null)" = delta ] && ok "\`locked\` reports delta, not none" || bad "locked verb" "$(wpmf locked 2>&1)"
+
+# and the lock it now writes must actually REFUSE, or it is a file rather than a guard
+OUT="$(warm "$WIN2" epsilon business 2>&1)"; RC=$?
+[ "$RC" = 3 ] && ok "re-arm onto a different project REFUSED (exit 3)" || bad "windows lock does not refuse" "exit=$RC $OUT"
+[ "$(wlockslug)" = delta ] && ok "and nothing moved" || bad "lock moved" "$(wlockslug)"
+
+# (b) a WELL-FORMED native path must never be called malformed
+# ⚠ THIS TICK IS ONLY LOAD-BEARING ONCE (a) HOLDS, and a future reader will misread it otherwise.
+# Against the pre-fix code it passes for an empty reason: with no lock written, the re-arm above
+# was never refused at all, so there was no refusal text to carry a MALFORMED note. It becomes a
+# real assertion only when a lock exists to do the refusing. Measured 2026-08-28: pre-fix this
+# section ran 10 failures with this one green; post-fix, 0 (bar the persistence-hook pair).
+case "$OUT" in *MALFORMED*) bad "a well-formed windows path was called MALFORMED — the override can never be spent" "$OUT";; *) ok "⭐ refusal does NOT claim the windows path is malformed";; esac
+
+# ⛔ AND THE FIX MUST NOT BE TOO PERMISSIVE. A genuinely broken arm — the known arg-order slip, a
+# bare slug in the doc_path slot — is still malformed, still refused, and still leaves the grant
+# unburned. Without this, "accept more shapes" quietly becomes "accept anything".
+OUT="$(warm bare-slug-not-a-path epsilon business 2>&1)"; RC=$?
+[ "$RC" = 3 ] && ok "a REAL malformed arm is still refused (exit 3)" || bad "malformed arm allowed" "exit=$RC $OUT"
+case "$OUT" in *MALFORMED*) ok "and is still named as malformed";; *) bad "lost the malformed note" "$OUT";; esac
+case "$(warm 'X:no-separator' epsilon business 2>&1)" in *MALFORMED*) ok "a drive letter with NO separator is malformed too";; *) bad "X:no-separator accepted as absolute" "";; esac
+
+# (c) the persistence hook must not join an absolute windows path onto the arming cwd
+WOUT="$(wturn "an ordinary sentence that authorises nothing")"
+case "$WOUT" in *"doc at $WIN"*) ok "⭐ the injected line names the brief at its real path";; *) bad "doc_path was mangled by the hook" "$WOUT";; esac
+# ⛔ MATCH "/X:", NOT "$SB/G:". The hook resolves against $PWD (or the cwd in the event JSON), which
+# is the REAL working directory, not this sandbox — so an $SB-prefixed check passes without testing
+# anything. A "/" immediately before a drive letter can only be a join; that is the actual defect.
+case "$WOUT" in *"/X:"*) bad "the windows path was JOINED onto the arming cwd" "$WOUT";; *) ok "and was NOT joined onto a cwd";; esac
+
+# the POSIX spelling of the same thing must be untouched by all of this
+OUT="$(env HOME="$SB" CLAUDE_CODE_SESSION_ID=posix-test bash "$PMF" arm "$A" alpha root 2>&1)"; RC=$?
+[ "$RC" = 0 ] && ok "a POSIX absolute path still arms exactly as before" || bad "posix arm broke" "exit=$RC $OUT"
+[ "$(grep '^lock_slug=' "$STORE/lock-sess-posix-test.project" 2>/dev/null | cut -d= -f2-)" = alpha ] \
+  && ok "and still locks exactly as before" || bad "posix lock broke" ""
+
+echo "── 15. the freshness word is a REAL mtime, not a mount point (2026-08-28) ─"
+# `stat -f %m` is BSD-ONLY, and on GNU it does NOT fail — `-f` is --file-system and `%m` is the MOUNT
+# POINT, so it returned a 355-char filesystem blob on stdout with EXIT 0. `[ -n "$MT" ]` was therefore
+# true, and `D=$(( NOW - MT ))` died on an arithmetic SYNTAX error — which, inside that `if` block, is
+# fatal to the whole command list: it aborts before ANY branch runs, so WHEN kept its initial
+# "unknown". MEASURED 2026-08-28. The freshness word therefore never worked at all off macOS, for any
+# file of any age. ⛔ AN EXIT-CODE FALLBACK ALONE CANNOT CATCH THIS, and that is the lesson worth
+# keeping: the old call SUCCEEDED and answered a different question. The integer check is what closes
+# it, so anything non-numeric degrades to "unknown" rather than to a confident wrong number.
+# ⭐ PORTABLE: this drives the POSIX sandbox brief, so it runs everywhere. On macOS it passed BEFORE
+# the fix too — BSD stat is exactly what the old form wanted — and it is Linux and Git Bash that were
+# broken. That asymmetry is why the bug survived: the platform the author develops on was the one
+# platform where the line was telling the truth.
+FSESS=fresh-test
+farm(){  env HOME="$SB" CLAUDE_CODE_SESSION_ID="$FSESS" bash "$PMF" arm "$@"; }
+fturn(){ printf '{"cwd":"%s","prompt":%s}' "$SB" "$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$1")" \
+         | env HOME="$SB" CLAUDE_CODE_SESSION_ID="$FSESS" bash "$PMP" 2>&1; }
+
+farm "$A" alpha root >/dev/null 2>&1
+FOUT="$(fturn "an ordinary sentence that authorises nothing")"
+case "$FOUT" in *"last written unknown"*) bad "the mtime could not be read at all" "$FOUT";; *) ok "a readable brief never degrades to 'unknown'";; esac
+case "$FOUT" in *"last written just now"*) ok "a file written seconds ago reads 'just now'";; *) bad "fresh file misread" "$FOUT";; esac
+
+# ⭐ BOTH ASSERTIONS ABOVE ALREADY FAIL PRE-FIX (everything read "unknown"), so this one is not what
+# catches the ORIGINAL bug — it is what catches the one the original was mistaken for. A `stat` that
+# returns something numeric-but-wrong, or a future refactor that lets D default to 0, would sail past
+# "fresh file says fresh" and be caught only here. Kept deliberately: the first diagnosis of this bug
+# WAS "D collapses to 0, everything reads just now", and it took running it to find that is not what
+# happens. This asserts against the plausible-but-wrong story as well as the real one.
+# python3 sets the mtime because it is already a dependency of this suite and is the one portable
+# spelling: `touch -d '3 days ago'` is GNU-only and `touch -t` needs BSD `date -v`, so either choice
+# would re-create the platform split this whole section exists to close.
+OLDB="$SB/old-brief.md"
+printf '# Old\n## CURRENT STATE\nstale\n' > "$OLDB"
+python3 -c "import os,sys,time; os.utime(sys.argv[1], (time.time()-3*86400,)*2)" "$OLDB" 2>/dev/null
+farm "$OLDB" alpha root >/dev/null 2>&1
+OOUT="$(fturn "another ordinary sentence")"
+case "$OOUT" in *"last written 3d ago"*) ok "⭐ a 3-day-old brief reads '3d ago', NOT 'just now'";; *) bad "an old brief was reported as fresh — a numeric-but-WRONG mtime is reaching the arithmetic" "$OOUT";; esac
+case "$OOUT" in *"last written just now"*) bad "⛔ every file reads 'just now' — the mtime is not being read at all" "$OOUT";; *) ok "and 'just now' is no longer the universal answer";; esac
+
 echo
 echo "═════════  PASS=$PASS  FAIL=$FAIL  ═════════"
 rm -rf "$SB"

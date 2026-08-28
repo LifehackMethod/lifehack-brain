@@ -88,6 +88,37 @@ hash_key() {
   printf '%s' "$_hk"
 }
 
+# -- _pm_is_abs: is this an ABSOLUTE doc path? ----------------------------------------------------
+# A WINDOWS PATH IS ABSOLUTE AND DOES NOT BEGIN WITH "/". `X:\Some Folder\Notes\...\brief.md` is
+# exactly as absolute as `/x/Some Folder/...`, and the old test -- a bare `${2#/}` compare -- called
+# it RELATIVE. Three silent consequences, all Windows-only, found 2026-08-28 on a live arm:
+#   - THE FIRST-ARM LOCK WAS NEVER ESTABLISHED. `arm` printed ARMED and exited 0 having written no
+#     lock file, so the immutability this file's header promises was simply ABSENT: a re-arm onto any
+#     other project would have been allowed for the life of the window, and `locked` read `none` on an
+#     ARMED window. A guard that reports success while protecting nothing is the failure audit finding
+#     #6 was raised for -- that same shape, reached by a different route.
+#   - THE MALFORMED-ARM NOTE FIRED ON A WELL-FORMED PATH. On a locked window that note deliberately
+#     pre-empts the grant, so an override the human HAD authorised was refused, and no spelling of a
+#     native path could satisfy it. The one authorisation could not be spent -- worse than spending it.
+#   - THE PERSISTENCE HOOK JOINED IT ONTO THE ARMING CWD (`/c/Repo/X:\...\brief.md`), so the brief read
+#     as NOT YET CREATED every turn and its excerpt never reached the session.
+# Same class as 38c81cf (the ingest gate's notes_root), one plane over: that fix swept the ingest gate
+# only, and this predicate is where the hook plane kept the identical assumption.
+# THE OBVIOUS SPELLING IS SILENTLY WRONG. `[A-Za-z]:[\/]*` parses fine and matches NOTHING -- bash eats
+# the backslash inside a bracket expression, so the guard stays broken while LOOKING fixed. Fold `\` to
+# `/` FIRST, then match one forward slash. 38c81cf's header warns of this in the same words; this is the
+# second file to need the warning, so it is written out again rather than pointed at.
+# DELIBERATELY NOT OS-GATED, matching 38c81cf: `X:\x` as a RELATIVE filename on Linux is a name nobody
+# writes, and one predicate answering the same on every host beats two that can quietly disagree.
+# IDENTICAL COPY IN THE pm_persist HOOK -- same convention as hash_key above, and for the same reason:
+# a writer and a reader disagreeing about what "absolute" means is worse than either answer alone.
+# Keep the two in step; the next platform fix should land in one shape.
+_pm_is_abs() {
+  case "$1" in /*) return 0 ;; esac
+  case "$(printf '%s' "$1" | tr '\\' '/')" in [A-Za-z]:/*) return 0 ;; esac
+  return 1
+}
+
 set +e
 TTL_HOURS="${PM_TTL_HOURS:-36}"
 FLAGDIR="$HOME/.claude/run/pm"; mkdir -p "$FLAGDIR" 2>/dev/null
@@ -300,7 +331,7 @@ case "$1" in
         # authorisation would be spent on it. Refusing here leaves the grant unburned, so the
         # corrected command still works inside the same turn. Same well-formedness test the
         # first-arm lock uses below — deliberately, so the two can never disagree.
-        if [ -z "$3" ] || [ "${2#/}" = "$2" ]; then
+        if [ -z "$3" ] || ! _pm_is_abs "$2"; then
           _MALFORMED_NOTE="   ⚠ AND THIS COMMAND IS MALFORMED: arm needs <ABSOLUTE doc_path> <slug> <desk>.
       Even with the human's word this would be refused — an override may not install a
       broken identity. Fix the arguments first. (No authorisation was spent.)"
@@ -402,7 +433,7 @@ _PADSHA_EOF
         { echo "lock_slug=$3"; echo "lock_doc=$2"; echo "lock_desk=$4"; echo "locked_at=$NOW"; echo "origin=human-override"; echo "previous_slug=$LOCKED_ID"; echo "override_phrase=$GRANT_PHRASE"; echo "session=$CLAUDE_CODE_SESSION_ID"; } > "$LOCK"
       elif [ -n "$LOCKED_ID" ]; then
         { echo "lock_slug=$LOCKED_ID"; echo "lock_doc=$LOCKED_DOC"; echo "lock_desk=$4"; echo "locked_at=$NOW"; echo "origin=logbook"; echo "session=$CLAUDE_CODE_SESSION_ID"; } > "$LOCK"
-      elif [ -n "$3" ] && [ "${2#/}" != "$2" ]; then
+      elif [ -n "$3" ] && _pm_is_abs "$2"; then
         { echo "lock_slug=$3"; echo "lock_doc=$2"; echo "lock_desk=$4"; echo "locked_at=$NOW"; echo "origin=first-arm"; echo "session=$CLAUDE_CODE_SESSION_ID"; } > "$LOCK"
       fi
     fi
