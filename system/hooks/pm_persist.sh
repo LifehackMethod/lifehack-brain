@@ -59,6 +59,26 @@ hash_key() {
   printf '%s' "$_hk"
 }
 
+# -- _pm_is_abs: is this an ABSOLUTE doc path? ----------------------------------------------------
+# IDENTICAL COPY IN pm_flag.sh, WHICH CARRIES THE FULL INCIDENT NOTE. Same convention as hash_key
+# above, and for the same reason: this file is the READER of a value pm_flag.sh WRITES, and a writer
+# and a reader disagreeing about what "absolute" means is worse than either answer alone. Keep the
+# two in step; the next platform fix should land in one shape.
+# WHAT IT COST HERE (2026-08-28): a Windows doc_path is absolute and does not begin with "/", so the
+# bare `/*)` case below read `X:\Some Folder\Notes\...\brief.md` as RELATIVE and joined it onto
+# the arming cwd. Every turn then announced the live brief as NOT YET CREATED, and the doc excerpt --
+# the entire orientation payload this hook exists to deliver -- was silently never read. The person
+# saw a confident, well-formed status line that was wrong about the one fact it was reporting.
+# THE OBVIOUS SPELLING IS SILENTLY WRONG: `[A-Za-z]:[\\/]*` parses fine and matches NOTHING, because
+# bash eats the backslash inside a bracket expression. Fold `\\` to `/` FIRST, then match one forward
+# slash. Same warning 38c81cf's header gives for the ingest gate's notes_root, and the same form
+# lib/winpath_fold.sh already uses -- a SINGLE backslash there makes GNU tr warn and is not portable.
+_pm_is_abs() {
+  case "$1" in /*) return 0 ;; esac
+  case "$(printf '%s' "$1" | tr '\\' '/')" in [A-Za-z]:/*) return 0 ;; esac
+  return 1
+}
+
 set +e
 # TTL_HOURS: single definition lives in pm_flag.sh — read it via its read-only `ttl` verb
 # instead of carrying an independent literal here (that duplication is exactly what let the
@@ -254,14 +274,39 @@ if [ -f "$LOCKF" ]; then
 fi
 
 # resolve a relative doc_path against the arming cwd (not the hook's PWD)
-case "$DOC_PATH" in
-  /*) : ;;
-  *) [ -n "$CWD_STORED" ] && DOC_PATH="$CWD_STORED/$DOC_PATH" ;;
-esac
+# A WINDOWS PATH IS ABSOLUTE AND DOES NOT BEGIN WITH "/" -- the test here used to be a bare `/*)`
+# case, so a native path was read as RELATIVE and JOINED onto the arming cwd, producing something
+# like `/c/Repo/X:\Some Folder\...\brief.md`. That path can never exist, so every turn
+# announced the live brief as NOT YET CREATED and the doc excerpt below was silently never read.
+# (2026-08-28; third of three sites sharing the predicate, the other two in pm_flag.sh.)
+if ! _pm_is_abs "$DOC_PATH"; then
+  [ -n "$CWD_STORED" ] && DOC_PATH="$CWD_STORED/$DOC_PATH"
+fi
 
 WHEN="unknown"
 if [ -f "$DOC_PATH" ]; then
-  MT="$(stat -f %m "$DOC_PATH" 2>/dev/null)"
+  # `stat -f %m` IS BSD-ONLY, AND ON GNU IT DOES NOT FAIL -- IT ANSWERS A DIFFERENT QUESTION.
+  # GNU's `-f` is --file-system and `%m` is the MOUNT POINT, so on Linux and on Git Bash this
+  # returned a 355-char filesystem blob on stdout with EXIT 0. `[ -n "$MT" ]` was therefore true,
+  # and `D=$(( NOW - MT ))` then died on an arithmetic SYNTAX error.
+  # MEASURED 2026-08-28, AND THE DETAIL MATTERS BECAUSE THE OBVIOUS READING IS WRONG: that error
+  # does NOT leave D=0 and fall through to a wrong branch. Inside this `if` block it is fatal to
+  # the whole command list -- it aborts before ANY branch of the if/elif/else runs, so WHEN kept
+  # the "unknown" it was initialised to. (At top level the same failure merely leaves D unset and
+  # execution continues; the difference is the enclosing compound command, which is why reasoning
+  # about it instead of running it gave the wrong answer first time.)
+  # NET: the freshness word never worked at all off macOS, for any file of any age -- uninformative
+  # rather than confidently wrong, which is the better of the two failures, but it is the one fact
+  # this line exists to carry. (2026-08-28)
+  # GNU form FIRST, BSD as the fallback: on BSD `-c` is not a flag, so it exits non-zero and the
+  # `||` fires; on GNU the first form simply works.
+  # THE `||` IS NOT ENOUGH ON ITS OWN, and that is the whole lesson of this bug: the old failure
+  # was a SUCCESSFUL call returning the wrong kind of answer, which no exit-code fallback can
+  # catch. The integer check is what actually closes it -- same guard idiom this file already
+  # uses for armed_at and for the TTL. Anything non-numeric degrades to "unknown", never to a
+  # confident wrong number.
+  MT="$(stat -c %Y "$DOC_PATH" 2>/dev/null || stat -f %m "$DOC_PATH" 2>/dev/null)"
+  case "$MT" in (''|*[!0-9]*) MT="" ;; esac
   if [ -n "$MT" ] && [ -n "$NOW" ]; then
     D=$(( NOW - MT ))
     if   [ "$D" -lt 60 ];   then WHEN="just now"

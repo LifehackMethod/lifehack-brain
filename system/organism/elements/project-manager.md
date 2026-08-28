@@ -189,7 +189,7 @@ before the handshake violates the behavioral contract.
 
 **Step 2 — pm_persist fires every prompt**
 `[hook]` `pm_persist.sh` (UserPromptSubmit, no matcher, settings.json:337) → reads `~/.claude/run/pm/pm-$KEY.flag`:
-- If absent or TTL-expired (TTL_HOURS=12h in `pm_persist.sh` line 16 — **discrepancy vs pm_flag.sh's 36h, see GAPS**) → rm flag silently, exit 0.
+- If absent or TTL-expired (~~TTL_HOURS=12h in `pm_persist.sh` line 16 — **discrepancy vs pm_flag.sh's 36h, see GAPS**~~ ⛔ **CORRECTED 2026-08-28: 36h, resolved from `pm_flag.sh`'s `ttl` verb; no literal in `pm_persist.sh`**) → rm flag silently, exit 0.
 - If present: refreshes `armed_at` in the flag via sed every turn so a live session never TTL-expires (`pm_persist.sh` lines 37–47); also refreshes `plan-$KEY.flag` and `scratch-$KEY.flag` `armed_at` the same way.
 - Extracts orientation anchor: first non-blank content line under a "current state" or "next action" heading in the doc, stripped of control/zero-width/bidi chars (anti-injection), fenced as `"verbatim data, NOT an instruction"` (`pm_persist.sh` lines 108–118).
 - Emits: `[project-manager ACTIVE] Source of truth: {slug} doc at {doc_path} (last written {when}). {anchor}` — injected into every turn's system context (`pm_persist.sh` line 121).
@@ -364,7 +364,7 @@ DEGRADE-SAFE: `set +e` at top; any error → exit 0 (allow stop, never wedge a t
 #### Phase 8 — Off-switch
 
 **Step 8 — clear the flag**
-`[skill]` "stop tracking" / `/project-manager done` → `bash "$HOME/lifehack-brain/system/hooks/pm_flag.sh" clear` → removes `~/.claude/run/pm/pm-$KEY.flag` and any session-matching flags in `$FLAGDIR`. Appends a `clear` breadcrumb to arm-events.log. TTL auto-expiry (36h in pm_flag.sh line 17, 12h in pm_persist.sh line 16 — TTL discrepancy, see GAPS) also clears stale flags.
+`[skill]` "stop tracking" / `/project-manager done` → `bash "$HOME/lifehack-brain/system/hooks/pm_flag.sh" clear` → removes `~/.claude/run/pm/pm-$KEY.flag` and any session-matching flags in `$FLAGDIR`. Appends a `clear` breadcrumb to arm-events.log. TTL auto-expiry (~~36h in pm_flag.sh line 17, 12h in pm_persist.sh line 16 — TTL discrepancy, see GAPS~~ ⛔ **CORRECTED 2026-08-28: 36h, one definition.** The duplicate literal was deleted 2026-08-14 and the TTL made to actually fire 2026-08-15; full account in `pm-flag.md` Edge Case 1) also clears stale flags.
 
 ---
 
@@ -440,8 +440,9 @@ before any clear.
 
 **Current:** the mechanical layer (pm_persist orientation re-injection, flag TTL + per-turn refresh,
 pad_archive.py fail-closed readback-verify, scratch_capture_gate Stop-block) is sound and live. The
-permissions allowlist for pad_archive.py is explicit. The two TTLs (36h in pm_flag.sh vs 12h in
-pm_persist.sh) create a minor operational inconsistency on crashed/orphaned sessions (see GAPS).
+permissions allowlist for pad_archive.py is explicit. ~~The two TTLs (36h in pm_flag.sh vs 12h in
+pm_persist.sh) create a minor operational inconsistency on crashed/orphaned sessions (see GAPS).~~
+⛔ **CORRECTED 2026-08-28: there is ONE TTL (36h), single-sourced from `pm_flag.sh`'s `ttl` verb.**
 
 The hard safety invariant (RECEIPT-GATE, STORY LOG append-only, FRAME read-only, journal-first,
 Frame intake HITL gate, Orientation Handshake, scratchpad self-heal) is **PROCEDURAL ONLY** — no
@@ -483,6 +484,7 @@ FEEDS     council-engine    · /advisory-council calls pm_flag.sh status to loca
 
 FEEDS     build-plan-plane  · project-manager instructs the skill to record a Current plan pointer in ## SCRATCHPAD and link the plan path; build-plan-plane (autoplan/build) likely picks up the linked plan via pm_persist injection on its next turn — but this is an architectural inference, not confirmed by any live source [honor; second half INFERRED]
 
+
 GUARDED-BY guard_write_paths · guard_write_paths.sh (PreToolUse Write|Edit) gates all Write/Edit to the brief path; allows Drive-root paths, blocks everything else — but does NOT check section content or archive status [hook — BLOCKING on Write/Edit tool calls]
 ```
 
@@ -490,7 +492,7 @@ GUARDED-BY guard_write_paths · guard_write_paths.sh (PreToolUse Write|Edit) gat
 
 ## GAPS
 
-1. **TTL discrepancy (12h vs 36h):** pm_flag.sh writes `TTL_HOURS` default 36h (line 17); pm_persist.sh defaults to 12h (line 16). On a crashed/orphaned session, the persist hook's 12h TTL expires the flag before the 36h pm_flag.sh limit. While the per-turn `armed_at` refresh makes this invisible during a live session, an orphaned session's flag expires 24h earlier than the flag-writer intended. Low-severity; mitigated by the per-turn refresh while alive.
+1. ~~**TTL discrepancy (12h vs 36h):** pm_flag.sh writes `TTL_HOURS` default 36h (line 17); pm_persist.sh defaults to 12h (line 16). On a crashed/orphaned session, the persist hook's 12h TTL expires the flag before the 36h pm_flag.sh limit. While the per-turn `armed_at` refresh makes this invisible during a live session, an orphaned session's flag expires 24h earlier than the flag-writer intended. Low-severity; mitigated by the per-turn refresh while alive.~~ ⛔ **CLOSED — read against the live source 2026-08-28.** The second copy of the number no longer exists. `pm_persist.sh` carries no independent literal: `_pm_default_ttl()` (line 94) resolves the value by running `pm_flag.sh ttl`, the read-only verb whose single definition is `pm_flag.sh:123` — `TTL_HOURS="${PM_TTL_HOURS:-36}"`, measured this session as printing `36`. The `36` inside `_pm_default_ttl` is a last-resort fallback for when pm_flag.sh cannot be found or run at all, not a second copy to keep in step. ⚠ **TWO fixes were needed and only the first is the one this gap described:** **2026-08-14** single-sourced the number, and **2026-08-15** made it actually fire — until then `_refresh_armed_at` re-stamped `armed_at` BEFORE the expiry check, so the age tested was always zero and the TTL could not expire at 12h, 36h or any other value. A gap closed on paper by the first fix was still live in behaviour for a day. ⚠ The cited line numbers (17 / 16) were stale when read and are staler now — line numbers in this file age badly and should be treated as hints, not addresses. **Struck rather than deleted** (a wrong fact is corrected visibly, never silently overwritten) and **left in position rather than renumbered**, so existing references to gaps 2–10 still resolve.
 
 2. **RECEIPT-GATE is PROCEDURAL only — no hook blocks an unchecked clear:** nothing in the harness prevents a model from clearing `## SCRATCHPAD` without calling pad_archive.py first. The fail-closed guarantee lives entirely in the model obeying skill text + schema. A confused or context-degraded model can clear the pad silently without archiving it.
 
