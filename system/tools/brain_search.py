@@ -36,8 +36,9 @@ USAGE
   brain_search.py --text "x" --json
 
 EXIT CODES
-  0  searched successfully (hits may be zero -- that is a real answer)
-  1  no hits AND the search could not be trusted (fallback was truncated)
+  0  the search actually looked everywhere (zero hits is then a real answer)
+  1  the search could NOT look everywhere -- truncated fallback. Never 0, even if it
+     found something: "could not look" must not be spelled like "looked and found nothing"
   2  CANNOT EVALUATE -- brain root not set, or bad arguments
 
 Compatible with /usr/bin/python3 (3.9) -- no `X | None` unions, stdlib only.
@@ -199,6 +200,8 @@ def main():
     ap.add_argument("--root", default=None, help="override the brain root (testing)")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--limit", type=int, default=40)
+    ap.add_argument("--no-index", action="store_true",
+                    help="ignore Spotlight and use the fallback walk (what a non-Mac install gets)")
     args = ap.parse_args()
 
     root = args.root or _resolve_root()
@@ -217,11 +220,13 @@ def main():
     by_name = args.name is not None
     method = None
     trustworthy = True
+    used_index = False
 
-    if _have_mdfind():
+    if _have_mdfind() and not args.no_index:
         candidates, ok = _mdfind(root, query, by_name)
         if ok:
             method = "spotlight index (mdfind)"
+            used_index = True
         else:
             method = "bounded walk (Spotlight did not answer)"
             candidates, complete = _bounded_walk(root, FALLBACK_BUDGET_S)
@@ -251,7 +256,7 @@ def main():
             "total": len(hits), "hits": shown,
             "unverifiable": unverifiable,
         }, indent=2))
-        return 0 if (hits or trustworthy) else 1
+        return 0 if trustworthy else 1
 
     print("searched: %s" % root)
     print("query:    %r  (%s)" % (query, "filename" if by_name else "content"))
@@ -270,11 +275,12 @@ def main():
             print("  %s" % os.path.relpath(p, root))
     if unverifiable:
         print("")
-        print("%d further file(s) the index matched but this tool cannot read as text" % len(unverifiable))
+        seen_by = "the index matched" if used_index else "were found"
+        print("%d further file(s) %s but this tool cannot read as text" % (len(unverifiable), seen_by))
         print("(PDF/Office/etc). Listed, not dropped -- open them to confirm:")
         for p in unverifiable[:10]:
             print("  ? %s" % os.path.relpath(p, root))
-    return 0 if (hits or trustworthy) else 1
+    return 0 if trustworthy else 1
 
 
 if __name__ == "__main__":

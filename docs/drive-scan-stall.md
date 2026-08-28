@@ -21,8 +21,16 @@ supports and everything below should be read as scoped to it.
 | Linux | **untested**, and `mdfind` does not exist there — the remedy falls back to a bounded walk |
 | a different agent runtime (Codex, etc.) | **the mechanism is in the filesystem, not the tool.** Anything that recursively walks the folder should hit it; anything that doesn't, won't. Unmeasured |
 
-The fix degrades rather than breaks off the measured path: no Spotlight means a bounded walk that
-reports its own truncation instead of pretending to be complete.
+**And the remedy is as Mac-bound as the problem.** `mdfind` is Spotlight; there is no Spotlight on
+Windows or Linux. Off macOS this PR ships **diagnosis and honesty, not a fix**: the tool falls back to
+a bounded walk, exits non-zero and prints `⚠ INCOMPLETE`. Measured on the affected folder, that
+fallback returned **5 of 69 real hits in 23 seconds** — a truncated look, not a search. That is better
+than a silent hang and better than a false "nothing found", but nobody should read this PR as solving
+search for a non-Mac install. It does not.
+
+What a cross-platform remedy would need is a real index the system maintains itself, which is a much
+larger change and collides head-on with the `/read` decision discussed below. Worth a separate
+conversation, not a quiet expansion of this one.
 
 ## The short version
 
@@ -127,10 +135,13 @@ their own and the bug report is still on the record.
 
 ## Not fixed here
 
-- **Every setup except macOS + Google Drive.** See the scope table at the top. The other cloud
-  providers are permitted brain hosts and plausibly affected, but plausible is not measured, and this
-  PR does not pretend otherwise. `brain_scan_probe.py` is the cheap way for someone on OneDrive,
-  Dropbox or SharePoint to find out in seconds and report back.
+- **Search on Windows and Linux.** Not fixed, and not fixable this way — the remedy is Spotlight-shaped.
+  Those installs get an honest `⚠ INCOMPLETE` and a non-zero exit instead of a hang or a lie, and that
+  is the whole of what they get.
+- **Every cloud host except Google Drive.** OneDrive, Dropbox, iCloud and SharePoint are permitted
+  brain hosts and plausibly affected, but plausible is not measured and this PR does not pretend
+  otherwise. `brain_scan_probe.py` is the cheap way for someone on one of them to find out in seconds
+  and report back — that is how the untested rows above get filled in.
 - **`rg` is not adopted.** The 18× is real and free, but swapping the search engine everywhere is a
   bigger change than this bug needs.
 - **The other recursive-scan sites** — `system/tools/architecture_reason.py` (its `BRIEF_GLOB` sweep
