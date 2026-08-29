@@ -314,6 +314,17 @@ stale-sweep      | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/stale-sw
 # the interactive keychain a headless/cron context cannot unlock (per the sibling runners' own
 # comments), risking a hang rather than a clean failure. Superseded, not summoned.
 #
+# calendar-sweep: WEEKLY calendar duplicate/misroute sweep ahead of the Sunday Win-the-Week ritual
+# — ported 2026-08-29 from the Cowork scheduled task `calendar-weekly-sweep` (MZ ruling that day:
+# under Pulse a missed Sunday is CAUGHT by system-health; the Cowork copy missed 2026-08-23 and
+# nothing noticed). ALL CODE, no claude -p: roster (<notes>/config/calendar-sweep-roster.tsv) →
+# calendar_sweep_pull.py (sanitized reads via safe_calendar --redact) → calendar_sweep.py (verbatim
+# v1-detector port, REPORT ONLY — no calendar write path exists in the pipeline) → report in
+# <notes>/desks/cal/state/sweep-reports/ + tile + one normal buzz on HIGH findings. Ticks DAILY;
+# the runner self-gates once per week keyed to the MOST RECENT SUNDAY (sleep-proof catch-up).
+# Stands down rc=75 on missing gws creds or an unseeded roster. 1-day cadence.
+calendar-sweep   | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/calendar-sweep-run.sh"
+#
 # ── TEMPLATE — copy this row when a new lane wires up a job, then delete the comment. ──────────
 # your-job-name  | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/your-runner.sh"
 ```
