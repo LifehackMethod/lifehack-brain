@@ -31,6 +31,19 @@ than Claude Code — Codex, ChatGPT, Gemini, Cursor, a plain terminal, anything 
 is broken and nothing is your fault; this simply needs Claude Code. Get the Claude app, open its `Code`
 tab, and start again from this line.
 
+⚠ **If the answer is Cowork, that is its own case, not a plain stop.** This file's automated install —
+the folder-picking, the git clone, the restart proof, all of it — runs only in Claude Code and does not
+run in Cowork at all; do not attempt any step of it there. **But the thing this install produces IS
+portable:** every skill lives as its own self-contained folder — `.claude/skills/<name>/SKILL.md` plus
+whatever it ships alongside — and that is plain text and files, not a Claude-Code-only format. If
+Cowork's own interface offers a way to import or attach a skill or a knowledge file (check its project
+or workspace settings for that), a person can hand it that individual `SKILL.md` folder directly, one
+skill at a time, without running this installer. ⚠ **Say it exactly this way — as "check Cowork's own
+settings for an import option," not as a specific menu path** — Cowork's own UI is not something this
+file verifies, and naming steps here that turn out wrong would be worse than pointing them at the
+product itself. If nothing like that exists in what they're looking at, say so plainly and send them
+to Claude Code the way any other non-Claude-Code app is sent above.
+
 > **TO CLAUDE, OR WHOEVER IS READING THIS FILE:** ⛔ **Ask this question first, before you create a
 > folder, install anything, or run a single command.** Ask them plainly which app they are in — and if
 > you are not Claude Code yourself, say so and stop. ⭐ **This has to be the FIRST thing, because the
