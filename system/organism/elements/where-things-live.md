@@ -138,6 +138,13 @@ flip) rather than a private fork (a setting, one flip from public).
 | **Your content** | yours | not in git at all | the AI Brain, backed up by Drive |
 | **Shared content** | shared | — | **essentially empty. Say so.** A worked example, a shared reference doc, anything that is content but belongs to everyone rather than one person, currently has no real home in this system. That is a documented gap, not a place to file something because no better option was obvious. |
 
+⚠ **A fifth row, added 2026-08-25:** shared machinery can also reach a person through a **plugin
+cache** (`~/.claude/plugins/cache/<plugin-name>/...`) rather than a repo clone — whose, "shared"
+(the plugin's maintainer writes it, everyone who installs the plugin gets it); who can see it,
+whatever the plugin's own distribution channel is, not this repo's public git; survives what,
+whatever the plugin's install/update mechanism replaces on each update. This table predates the
+capability (see the correction in THE MECHANISM below) and was never extended to it until now.
+
 ---
 
 ### THE MECHANISM — why DISCOVERY, not preference, decides where "your machinery" goes
@@ -146,14 +153,32 @@ This is mechanical, not aesthetic, and it is the heart of the element:
 
 **FOUND BY THE TOOL** (skills, agents, commands — and hooks, with the caveat in GATES below): the
 harness looks in exactly two places for these, and only these — the repo, or `~/.claude/<kind>/<name>/`.
-**There is no third option.** Put a skill anywhere else and it does not exist as far as the harness is
+~~**There is no third option.**~~ ⚠ **CORRECTED 2026-08-25: there is now a third.** A **plugin cache**
+(`~/.claude/plugins/cache/<plugin-name>/...`) is a third place the harness discovers skills from —
+verified this session: the installed plugin `lifehack-brain@lifehack-brain`, cached at
+`~/.claude/plugins/cache/lifehack-brain/lifehack-brain/`, ~~0.3.1, now serves 34 skills~~ **CORRECTED
+2026-08-27** (L.B2 audit, live measurement): the cache is now at version **0.3.13** and serves
+**44 skills** under the `lifehack-brain:` prefix — both the version and the count have moved on
+since 0.3.1/34 was written, as of 2026-08-25 (it served zero through 0.1.0, 0.2.3 and 0.3.0). This page
+predates plugins existing as a Claude Code capability at all — see `intended-map.md`, 831 lines with
+zero mentions of "plugin," written before this capability shipped — so its absence here was never a
+verdict against plugins, only a documentation gap now closed. Put a skill anywhere else (not the repo,
+not `~/.claude/<kind>/<name>/`, not a plugin cache) and it still does not exist as far as the harness is
 concerned; it simply never loads. So Path-1 machinery of this kind goes in `~/.claude/<kind>/<name>/`
-as a **real folder** — not a preference, the only place discovery looks.
+as a **real folder** — not a preference, one of the places discovery looks — **or is served through the
+plugin cache**, which is populated by the plugin's own install/update mechanism, not by hand-placing
+files. ⛔ The plugin cache is a THIRD HOME, not a substitute resolution path for this repo's own
+skills — nothing here should be read as re-pointing ClaudeOps skills to resolve FROM the plugin cache;
+it names a third place the harness looks, full stop.
 
 ⭐ **Evidence this already works, verified this session:** `find ~/.claude/skills -maxdepth 1 -type d`
-returns **12 real (non-symlink) directories** living under `~/.claude/skills/` right now, tracked by
+~~returns **12 real (non-symlink) directories**~~ **CORRECTED 2026-08-27** (L.B2 audit, live
+`find -mindepth 1 -maxdepth 1 -type d` vs `-type l`): returns **18 real (non-symlink) directories**
+plus **12 symlinks** (30 entries total) — the "12" in the struck claim is actually the symlink
+count, not the real-directory count; it appears to have swapped the two. Both real dirs and
+symlinks live under `~/.claude/skills/` right now, tracked by
 neither this repo nor any other clone — proof the FOUND-BY-THE-TOOL / `~/.claude/` pairing is not
-theoretical, it is the live pattern for a dozen skills already.
+theoretical, it is the live pattern for many skills already.
 
 **CALLED BY PATH** (a script, a helper, a library — nothing scans for it, something invokes it
 directly by its path): free to live anywhere, and the AI Brain is the better home for one concrete,
@@ -189,6 +214,11 @@ exists to correct.
    as a PR.
 2. **Yours, and something has to FIND it?** → Path 1 — **`~/.claude/<kind>/<name>/`**, a real folder.
 3. **Yours, and something CALLS it — or it remembers rather than does?** → Path 1 — **the AI Brain**.
+4. ⚠ **Added 2026-08-25 — did someone else's plugin install it?** → the **plugin cache**
+   (`~/.claude/plugins/cache/<plugin-name>/...`), a third discovery home alongside 1 and 2 above, not
+   a fourth path of your own — you never hand-place a file there; the plugin's own install/update
+   mechanism does. "Whose is it" for anything served this way is the plugin maintainer's, not yours,
+   even though it now runs from a folder under your own `~/.claude/`.
 
 *(Wanting the whole system as your own, rather than adding to or building beside this one, is Path 3 —
 copy it out and run it separately, and it will not receive Harness updates.)*
@@ -246,10 +276,23 @@ copy it out and run it separately, and it will not receive Harness updates.)*
    — this repo's own canonical reference for hook creation — names exactly one registration surface:
    the tracked `.claude/settings.json`, using `${CLAUDE_PROJECT_DIR}` so the registration "travels
    with `git pull`," and states an absolute path baked into that file instead "works on exactly one
-   computer." On this machine, `~/.claude/settings.json` is itself a **symlink into this repo's**
+   computer." ~~On this machine, `~/.claude/settings.json` is itself a **symlink into this repo's**
    `.claude/settings.json` — confirmed this session (`ls -la ~/.claude/settings.json`) — so there is no
    independent user-level settings surface to fall back on either; editing "the user's hooks" and
-   editing this repo's tracked file are, on this machine, the same act. A second file,
+   editing this repo's tracked file are, on this machine, the same act.~~
+   > **⚠ CORRECTED 2026-08-24:** Wrong on both premise and conclusion, measured directly this session.
+   > `~/.claude/settings.json` is **not** a symlink into this repo's `.claude/settings.json` — it is a
+   > regular file, ~~15,516 bytes~~ **CORRECTED 2026-08-27 (L.B2 audit, live wc -c): now 4,999 bytes**, whose content DIFFERS from the repo's copy (it carries `env` and
+   > `hooks` blocks the repo copy lacks). `system/tools/gws-audit.sh` ⛔ private-repo runtime state, not shipped in this public tree documents that the symlink was
+   > *deliberately* converted to a real file precisely to stop edits there writing through to the
+   > tracked (public-upstream) copy. So the corrected conclusion is the opposite of what was written:
+   > **there IS an independent user-level settings surface** — `~/.claude/settings.json` itself — and
+   > editing "the user's hooks" there and editing this repo's tracked `.claude/settings.json` are **two
+   > separate acts on two separate files**, not the same act. A personal hook registered only in the
+   > live `~/.claude/settings.json` would in fact have a real, working (if uncommitted, unshared) home —
+   > this element's EDGE CASE 1 "no confirmed home" conclusion should be revisited in light of this, not
+   > just its premise.
+   A second file,
    `.claude/settings.local.json` (⛔ gitignored by design — absent from a fresh clone), is real and
    does survive a `git pull` — and this repo's own `INSTALL.md` already treats it as legitimately
    "yours" (it is one of the two named
@@ -270,6 +313,16 @@ copy it out and run it separately, and it will not receive Harness updates.)*
 4. **Something CALLED by path that a person puts in `~/.claude/` instead of the AI Brain.** Still
    works (nothing stops a script living there), but forfeits the one reason the AI Brain was the
    better choice — it is not backed up.
+5. ⚠ **ADDED 2026-08-27 (L.B2 audit) — THREE full copies of this system coexist, and this element
+   does not account for that.** Confirmed live this session: `~/.claude/skills/ClaudeOps` (this
+   repo, the working tree), `~/lifehack-brain` (a second full clone), and the plugin cache
+   (`~/.claude/plugins/cache/lifehack-brain/lifehack-brain/0.3.13`, 44 skills) are all present on
+   this one machine simultaneously. THE FOUR HOMES table above treats "shared machinery" as a
+   single row reached by one repo clone or one plugin cache — it does not describe what happens
+   when a person has more than one live copy of the shared machinery itself at once (which one is
+   "the" repo for git-pull/PR purposes, whether the two clones can drift from each other, whether a
+   fix landed in one automatically reaches the others). This is a real, live gap in the model this
+   element presents, not just an edge case of an individual home.
 
 ---
 
@@ -347,8 +400,12 @@ GUARDED-BY   guard_write_paths.sh  · PreToolUse Write|Edit blocks a NEW file wr
 
 - **maturity_label:** PARTIAL·gap (honor)
 - **check_detail:** No guard in this repo's fire-test manifest backs any rule specific to this
-  element. What is REAL and verified this session: `~/.claude/settings.json` is a symlink into this
-  repo's `.claude/settings.json` (`ls -la`); 12 real (non-symlink) directories exist under
+  element. What was claimed as "REAL and verified this session" here — ~~`~/.claude/settings.json` is
+  a symlink into this repo's `.claude/settings.json` (`ls -la`)~~ — is **⚠ CORRECTED 2026-08-24:**
+  false, per direct measurement this session: it is a regular file, ~~15,516 bytes~~ **CORRECTED 2026-08-27: 4,999 bytes, live-measured**, with content that
+  DIFFERS from the repo's copy (an `env` block and a `hooks` block the repo copy lacks). See EDGE CASE
+  1's correction above for the full account, including `system/tools/gws-audit.sh` ⛔ private-repo runtime state, not shipped in this public tree's documentation that
+  this was a deliberate symlink-to-real-file conversion. What remains verified: 12 real (non-symlink) directories exist under
   `~/.claude/skills/` (`find -maxdepth 1 -type d`); `~/.claude/settings.local.json` exists, is real
   (not a symlink), and holds only a `permissions` block in current use; `guard_write_paths.sh` blocks
   new writes under `~/.claude/skills/` and `/commands/` (read from source, lines 142–155) with a

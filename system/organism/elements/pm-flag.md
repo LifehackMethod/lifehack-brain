@@ -35,8 +35,9 @@ authority: user
 > The description below is the donor system as it was, and it is kept as written. The marker records what
 > happened AT THIS DESTINATION; it does not change the description.
 >
-> ⛔ `/huddle` and `/huddle-board` are not skills here, and there is nothing to bring: neither exists in the
-> donor's skill set either — only a huddle.py tool and a tombstoned huddle-plane element draft. The caller list
+> ⛔ `/huddle` is not a skill here, and there is nothing to bring: it doesn't exist in the
+> donor's skill set either — only a huddle.py tool and a tombstoned huddle-plane element draft.
+> ⛔ `/huddle-board` — same reason: not a skill here, and absent from the donor's skill set too. The caller list
 > below records what called `pm_flag.sh status` at the time it was written; two of those callers never shipped.
 
 > **LADDER: ELEMENT (full mechanics). up → manual#pm-flag ; ground truth → the live artifact (generated_from)**
@@ -363,8 +364,8 @@ Same-plan re-arms refresh normally (plan mode re-fires on every amendment); "sam
 `plan_file` OR H1 `name` string equality and nothing looser. One declared fail-open: if `record`
 cannot work out which plan it was handed, it writes nothing **and refuses nothing** — refusing on no
 evidence would wall off plan mode on a payload glitch.
-Fire-tests: `system/hooks/tests/test_pm_lock_override.sh` (61 cases) ·
-`system/hooks/tests/test_plan_lock_override.sh` (53 cases). Both counted by `verify-hooks.sh`.
+Fire-tests: `system/hooks/tests/test_pm_lock_override.sh` (~~61 cases~~ **CORRECTED 2026-08-27**, L.B2 audit, live run: `PASS=75, FAIL=0` — off by 14 from the citation) ·
+`system/hooks/tests/test_plan_lock_override.sh` (53 cases — live run confirms `PASS=53, FAIL=0`, matches exactly). Both counted by `verify-hooks.sh`.
 
 **4. ⚠ THE TTL WAS INERT UNTIL 2026-08-15 — and two prior passes missed it.** Worth recording
 because the failure hid behind two separate "fixes" that both looked complete:
@@ -419,9 +420,14 @@ a write/destroy token in the same command segment (redirect · `rm`/`mv`/`cp`/`t
 session pipe itself a sentence the person never typed. Reads of the store (`ls`/`cat`/`grep`) and
 ordinary `pm_flag.sh arm|clear|status|locked` stay allowed. **FAIL_POSTURE: closed** — unparseable
 input denies. Fire-test: `system/hooks/tests/test_pm_lock_override.sh` §11.
-**⛔ The store it guards is `~/.claude/run/pm/` ONLY. `~/.claude/run/plan/` — which now holds the
+~~**⛔ The store it guards is `~/.claude/run/pm/` ONLY. `~/.claude/run/plan/` — which now holds the
 plan lock (below) — is NOT covered**, so a direct write to `plan-<key>.flag`, or a delete of
-`lock-<key>.plan`, skips the plan refusal entirely. Stated, not overlooked.
+`lock-<key>.plan`, skips the plan refusal entirely. Stated, not overlooked.~~ **CORRECTED
+2026-08-27** (L.B2 audit, live test): this is now stale — piping a Write to
+`~/.claude/run/plan/plan-sess-test.flag` through the guard was BLOCKED (exit 2, "direct write to
+the plan-arming store"). Source confirms `guard_pm_flag_store.sh` explicitly covers both
+`.claude/run/pm` AND `.claude/run/plan` (a `DENY_PLAN` block, ~line 93–100). **The plan store IS
+now covered** — the gap this line described has since been fixed.
 
 #### UserPromptSubmit hooks (ambient — fire every turn, advisory only)
 
@@ -623,7 +629,7 @@ INTEROP:
   > single-sourced 2026-08-14 (`pm_flag.sh ttl`), and the deeper inertness fixed 2026-08-15
   > (`_refresh_armed_at` ran before the expiry check, so the age tested was always zero; measured
   > now: 20h survives, 40h expires). **(c) The fire-testing this said was missing now exists** —
-  > `system/hooks/tests/test_pm_lock_override.sh` (61 cases) and
+  > `system/hooks/tests/test_pm_lock_override.sh` (~~61 cases~~ — live run 2026-08-27: PASS=75, FAIL=0) and
   > `system/hooks/tests/test_plan_lock_override.sh` (53 cases), both counted by `verify-hooks.sh`.
   > **Save routing and the `pm_flag_recover.py` call remain honor-system**, and the store guard is a
   > speed bump by its own admission — so the label is NOT being raised here. This corrects the

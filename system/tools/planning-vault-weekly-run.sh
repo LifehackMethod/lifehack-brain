@@ -77,9 +77,11 @@ GWS_BIN="$(command -v gws 2>/dev/null || echo /opt/homebrew/bin/gws)"
 load_gws_credentials_optional "$SUBSYSTEM_NAME"
 
 # ── Single-instance lock (weekly pull takes minutes; 30-min stale reclaim) ──
-LOCKDIR="/tmp/lifehack-${SUBSYSTEM_NAME}.lock"
+LOCKDIR="/tmp/claudeops-${SUBSYSTEM_NAME}.lock"
 if ! mkdir "$LOCKDIR" 2>/dev/null; then
-  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - $(stat -f %m "$LOCKDIR" 2>/dev/null || echo 0) ))" -gt 1800 ]; then
+  _lock_mtime="$(stat -c %Y "$LOCKDIR" 2>/dev/null || stat -f %m "$LOCKDIR" 2>/dev/null || echo 0)"
+  case "$_lock_mtime" in ''|*[!0-9]*) _lock_mtime=0 ;; esac
+  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - _lock_mtime ))" -gt 1800 ]; then
     rm -rf "$LOCKDIR"; mkdir "$LOCKDIR" 2>/dev/null || exit 0
   else
     echo "[$SUBSYSTEM_NAME] another run in progress — skip."; exit 0

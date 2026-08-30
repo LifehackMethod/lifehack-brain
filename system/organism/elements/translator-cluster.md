@@ -6,7 +6,7 @@ altitude: base
 record_type: organism-element
 maturity_label: PARTIAL [provisional]
 generated_from:
-  - skills/condense/SKILL.md (v2.1)
+  - skills/simplify/SKILL.md (v2.1)
   - skills/explain/SKILL.md (v4.4)
   - skills/summarize/SKILL.md (v1.0)
   - system/hooks/simplify_anchor_inject.sh ⛔ DELETED 2026-08-05 — see the banner below
@@ -41,10 +41,11 @@ authority: user
 > to each named file AT THIS DESTINATION, and each one holds for every mention of that file anywhere
 > below — the description is not edited to match the destination, the destination's answer is added beside it.
 >
-> - ⛔ `system/translator-rubric.md` — the donor path is not coming. The rubric itself DID land here, under a different path: `system/sops/translator-rubric.md`. It ships deliberately dark, carrying a debt note that its enforcement mechanism was killed 2026-07-14 and never rebuilt. Every reference to the donor path below means that file.
-> - ⛔ `system/hooks/translator_gate.sh` — excluded from the migration by ruling; not coming, ever. The operator, `authority: user`: *"That old thing that was grading… that's dead. That is definitely dead. Do not migrate that."* Distinct from the rubric above, which does ship — the doc lives, the grader does not. Every sentence below about the gate is donor HISTORY, including the "STILL LIVE in this cluster" line in the next banner.
+> - ⛔ `system/translator-rubric.md` — the donor path is not coming. The rubric itself DID land here, under a different path: system/sops/translator-rubric.md. It ships deliberately dark, carrying a debt note that its enforcement mechanism was killed 2026-07-14 and never rebuilt. Every reference to the donor path below means that file.
+> - ⛔ `system/hooks/translator_gate.sh` — excluded from the migration by ruling; not coming, ever. The operator, authority: user: *"That old thing that was grading… that's dead. That is definitely dead. Do not migrate that."* Distinct from the rubric above, which does ship — the doc lives, the grader does not. Every sentence below about the gate is donor HISTORY, including the "STILL LIVE in this cluster" line in the next banner.
 > - ⛔ `system/hooks/simplify_anchor_inject.sh` — nothing to port: deleted in the DONOR itself on 2026-08-05 as a failed experiment, as the banner immediately below records. There is no per-turn voice re-injection here, and there is no plan for one.
-> - ⛔ `/distill` — never ships. It was deprecated in the donor on 2026-06-07 and retired to a tombstone there; it exists in neither tree. `/summarize`'s routing target below therefore has no destination here — the multi-turn distillation path is simply absent.
+> - ⛔ `/distill` — never ships. It was deprecated in the donor on 2026-06-07 and retired to a tombstone there; it exists in neither tree. /summarize's routing target below therefore has no destination here — the multi-turn distillation path is simply absent.
+> - ⛔ `.claude/skills/simplify/` — not coming. Verified 2026-08-27: the skill exists only in the operator's separate `~/lifehack-brain` checkout — it is neither in this repository nor in the installed plugin cache. Every mention of `/simplify` or its skill path below is donor description, not a promise of a local copy.
 
 ---
 
@@ -55,7 +56,7 @@ authority: user
 The translator cluster is an always-on voice system — not a formatting rule, not a style guide,
 but a live enforcement stack. It exists because response voice decays over long sessions: the
 model pattern-matches back to heavy structured-report output as the context grows. The operator re-ran
-`/condense` or `/explain` on roughly every reply (~10×/session or more) before this cluster was
+`/simplify` or `/explain` on roughly every reply (~10×/session or more) before this cluster was
 built — a "~2x hand tax" (translator_gate.sh header). The cluster was built to eliminate that
 tax by maintaining voice mechanically: one per-turn injection hook re-anchors the register
 before every response; one Stop hook grades finished replies.
@@ -79,7 +80,7 @@ before every response; one Stop hook grades finished replies.
 > file stops lying tonight, rewrite when it is the actual job.
 
 The **shared voice contract** lives in `system/translator-rubric.md` — the single source of
-truth. The three skills (`/condense`, `/explain`, `/summarize`) each implement one re-render
+truth. The three skills (`/simplify`, `/explain`, `/summarize`) each implement one re-render
 mode against that contract. The two hooks (`simplify_anchor_inject.sh` and
 `translator_gate.sh`) enforce or reinforce the contract mechanically. The
 `output-styles/simplify.md` file shapes the baseline voice at session start. ALL of these point
@@ -140,7 +141,7 @@ holistic model question.
 
 ### THE THREE SKILLS
 
-#### `/condense` (skills/condense/SKILL.md — v2.1, updated 2026-07-14)
+#### `/simplify` (skills/simplify/SKILL.md — v2.1, updated 2026-07-14)
 
 **Mandate:** CONDENSE. Re-render everything since the user's last message shorter, plainer,
 conversational — keeping every fact a decision rests on. Does NOT unpack or expand.
@@ -150,7 +151,7 @@ not just the last response, not the whole thread. That span can be several assis
 (including background/cron turns) since they last spoke.
 
 **Mandate distinction:**
-- `/condense` = CONDENSER. Shortens. Keeps decision-bearing facts. Translates jargon. Drops
+- `/simplify` = CONDENSER. Shortens. Keeps decision-bearing facts. Translates jargon. Drops
   what isn't load-bearing.
 - `/explain` = UNPACKER. Keeps ALL technical detail; drops nothing. Reorders freely.
 - `/summarize` = GIST-REPORTER. Last response only. ≤3 sentences. Thinnest of the three.
@@ -163,7 +164,7 @@ not just the last response, not the whole thread. That span can be several assis
 - Close label rule (shared with `/explain`): gate the question (drop settled re-asks, bare
   permission, manufactured questions); label plainly: NEED / PERMISSION ONLY / NOTHING.
 
-**Shape:** utility. Trigger: `/condense`. Fully autonomous one-shot.
+**Shape:** utility. Trigger: `/simplify`. Fully autonomous one-shot.
 
 ---
 
@@ -174,10 +175,10 @@ clearest human translation — ALL technical detail kept, none dropped, reordere
 readability. Invoking `/explain` is itself proof the last output was too technical or moved
 too fast.
 
-**Span rule:** same as `/condense` — since the user's last message.
+**Span rule:** same as `/simplify` — since the user's last message.
 
-**Mandate distinction from `/condense`:** `/explain` keeps EVERY technical element; dropping
-detail is `/condense`'s job, never `/explain`'s. Reorders freely (the original order isn't
+**Mandate distinction from `/simplify`:** `/explain` keeps EVERY technical element; dropping
+detail is `/simplify`'s job, never `/explain`'s. Reorders freely (the original order isn't
 sacred). Adds the missing context, makes reasoning visible — a hint of context, never a flood.
 
 **Key behaviors (beyond shared rubric):**
@@ -186,11 +187,11 @@ sacred). Adds the missing context, makes reasoning visible — a hint of context
 - Size to the comprehension gap: a bit more than the original gave, then STOP. Over-unpacking
   into a wall is its own failure.
 - Lead with the answer, not with the method.
-- Close label rule: same ask-gate as `/condense` — gate, self-contain, label.
+- Close label rule: same ask-gate as `/simplify` — gate, self-contain, label.
 
 **Note:** the Step 8 handoff of `/save` specifies the two-pass voice-seed DRAFT → re-render
-uses `/explain` voice (not `/condense`), because a handoff's whole job is completeness and
-`/condense` condenses. This is the cluster's most-cited typed interop seam. (See INTEROP.)
+uses `/explain` voice (not `/simplify`), because a handoff's whole job is completeness and
+`/simplify` condenses. This is the cluster's most-cited typed interop seam. (See INTEROP.)
 
 **Shape:** utility. Triggers: `/explain`, "explain that", "what did that mean". Autonomous
 one-shot.
@@ -254,14 +255,25 @@ FIRST, then propagate here + `output-styles/simplify.md`."
 
 #### `translator_gate.sh` — Stop grade-and-bounce
 
-**File:** `system/hooks/translator_gate.sh` (v7.1; 113 lines; updated 2026-07-13)
-**Registration:** settings.json line 443 — Stop event, empty matcher (fires on EVERY stop).
-`[hook]` — potentially blocking (decision:block in enforce mode).
-**Status message:** "Grading reply voice (translator gate)..."
+**File:** ~~`system/hooks/translator_gate.sh` (v7.1; 113 lines; updated 2026-07-13)~~
+**Registration:** ~~settings.json line 443 — Stop event, empty matcher (fires on EVERY stop).~~
+~~`[hook]` — potentially blocking (decision:block in enforce mode).~~
+> **⚠ CORRECTED 2026-08-24:** donor HISTORY only — see line ~45 above: `translator_gate.sh` is
+> "excluded from the migration by ruling; not coming, ever" (`authority: user`, quoting the
+> operator directly: *"That old thing that was grading… that's dead. That is definitely dead. Do
+> not migrate that."*). Re-verified this session: `find . -iname translator_gate.sh` → 0 results;
+> `grep -rn translator_gate .claude/settings.json system/hooks/registrations.json` → 0 hits in
+> either file; `.claude/settings.json` is 84 lines total and has carried no hook registrations at
+> all since T3.3 (2026-08-23) — those moved to `system/hooks/registrations.json` ⛔ private-repo runtime state, not shipped in this public tree — so "settings.json
+> line 443" cannot exist in this tree. `system/organism/elements/hook-plane.md` (~line 406, ~line
+> 481) independently confirms the same fact: script and registration were both deleted outright
+> here, not left dormant. The file/registration/enforcement-class lines above describe the DONOR
+> only; nothing below this note in this subsection is a claim about a live control here.
+**Status message (donor):** "Grading reply voice (translator gate)..."
 
 **What it does:** grades each finished reply against the translator rubric and, in enforce mode,
 bounces bad ones for a rewrite (decision:block). Experiment vs. hook-sop §1 "don't hook
-style/tone" — justified in the header by the 2x-cost economics of re-running `/condense`
+style/tone" — justified in the header by the 2x-cost economics of re-running `/simplify`
 manually.
 
 **DORMANT BY DEFAULT.** The gate does NOTHING unless armed:
@@ -296,15 +308,25 @@ Layer 2 — Haiku holistic grader (fires only when mechanical pre-check passes):
 **In enforce mode on fail:** emits decision:block with a bounce reason string pointing back to
 `system/translator-rubric.md`.
 
-**⚠ KNOWN ISSUE — TRANSLATOR-GATE-RIP (debt-ledger line 94):** the Haiku holistic grader
-is **parked/dormant by default (no arm flag), NOT removed — the code is fully present and
-operational when the gate is armed**. It was parked 2026-07-14 (rubber-stamps + ~60s/turn;
-the ask-gate now lives in the prompt layer). The gate is STILL REGISTERED as a dormant Stop
-hook in settings.json (line 443) + script at `system/hooks/translator_gate.sh`. **Currently
-dormant (OBSERVE mode only unless explicitly armed).** The debt item `TRANSLATOR-GATE-RIP`
-(state:parked) calls for unregistering and deleting it when the operator gives the go — the
-decision is: rip it, or replace its holistic grader with a better model. Until then: the gate
-fires on every Stop but exits 0 immediately unless armed — zero runtime cost in steady state.
+**⚠ KNOWN ISSUE — TRANSLATOR-GATE-RIP (debt-ledger line 94, donor history):** in the DONOR
+system, the Haiku holistic grader was ~~parked/dormant by default (no arm flag), NOT removed —
+the code is fully present and operational when the gate is armed~~. It was parked 2026-07-14
+(rubber-stamps + ~60s/turn; the ask-gate now lives in the prompt layer). ~~The gate is STILL
+REGISTERED as a dormant Stop hook in settings.json (line 443) + script at
+`system/hooks/translator_gate.sh`. **Currently dormant (OBSERVE mode only unless explicitly
+armed).**~~ In the donor, the debt item `TRANSLATOR-GATE-RIP` (state:parked) called for
+unregistering and deleting it when the operator gave the go. ~~Until then: the gate fires on
+every Stop but exits 0 immediately unless armed — zero runtime cost in steady state.~~
+> **⚠ CORRECTED 2026-08-24:** see line ~45 above — the operator's ruling was "excluded from the
+> migration... not coming, ever," and this destination went further than "dormant": there is no
+> gate here at all, in any state, armed or not. Re-verified this session: `find . -iname
+> translator_gate.sh` → 0 results; `grep -rn translator_gate .claude/settings.json
+> system/hooks/registrations.json` → 0 hits in either; `.claude/settings.json` is 84 lines total
+> with zero hook registrations since T3.3 (2026-08-23, moved to
+> `system/hooks/registrations.json` ⛔ private-repo runtime state, not shipped in this public tree) — "settings.json line 443" cannot exist. `hook-plane.md`
+> (~line 406) confirms this fleet's practice is the opposite of the donor's: a retired hook is
+> deleted outright — script and registration both removed, nothing left "awaiting removal." There
+> is no "fires on every Stop, exits 0" happening here; there is no script left to fire.
 
 ---
 
@@ -324,9 +346,15 @@ was built on the primary machine. The file was MISSING from `~/.claude/output-st
 the primary machine (the dir didn't exist) → likely a silent no-op before the fix. Fixed on the primary machine with
 a **real file copy** (not a symlink — the operator's call for a small stable file). The second machine
 has the same gap: `mkdir -p ~/.claude/output-styles && cp ~/lifehack-brain/output-styles/simplify.md ~/.claude/output-styles/simplify.md` — not yet verified as done (debt state:
-waiting-external). The `translator_gate.sh` Stop-hook registration does NOT need manual second-machine
+waiting-external). ~~The `translator_gate.sh` Stop-hook registration does NOT need manual second-machine
 setup — `~/.claude/settings.json` is clone-symlinked so it travels via `git pull` (verified
-on the primary machine).
+on the primary machine).~~
+> **⚠ CORRECTED 2026-08-24:** `~/.claude/settings.json` is not a symlink — measured directly this
+> session, it is a regular file, 15,516 bytes, whose content differs from the repo's tracked copy
+> (`system/tools/gws-audit.sh` ⛔ private-repo runtime state, not shipped in this public tree documents this was a deliberate symlink-to-real-file conversion, to stop
+> edits leaking to the public upstream). The conclusion flips too: the `translator_gate.sh` Stop-hook
+> registration DOES need manual second-machine setup — nothing propagates it via `git pull`, since the
+> two machines' `~/.claude/settings.json` files are independent, unlinked files.
 
 **Source truth propagation rule (from `translator-rubric.md` header):** edit criteria in
 `system/translator-rubric.md` FIRST, then propagate to `simplify_anchor_inject.sh` +
@@ -336,7 +364,7 @@ on the primary machine).
 
 ### TRIGGERS — what causes the cluster to fire
 
-1. **`/condense`** — explicit skill invocation. Re-renders since user's last message,
+1. **`/simplify`** — explicit skill invocation. Re-renders since user's last message,
    condensed.
 2. **`/explain`**, `"explain that"`, `"what did that mean"` — explicit skill invocation.
    Re-renders since user's last message, full-detail unpacked.
@@ -344,11 +372,14 @@ on the primary machine).
 4. **`simplify_anchor_inject.sh` (UserPromptSubmit)** — fires before EVERY user message.
    Silently injects a rotating register-reminder line to pre-anchor voice; no user-visible
    output.
-5. **`translator_gate.sh` (Stop)** — fires after EVERY stop. When dormant (no arm flag):
+5. ~~**`translator_gate.sh` (Stop)** — fires after EVERY stop. When dormant (no arm flag):
    exits 0 immediately. When armed in observe mode: grades and logs, never blocks. When armed
-   in enforce mode: grades and may bounce for a rewrite.
+   in enforce mode: grades and may bounce for a rewrite.~~
+   > **⚠ CORRECTED 2026-08-24:** donor HISTORY — see line ~45. This trigger does not exist here;
+   > `translator_gate.sh` was excluded from the migration by ruling, not merely dormant (full
+   > re-verification at line ~260 above). It fires nothing, because there is no script.
 
-**Usage frequency (ALWAYS-ON):** `/condense` runs ~10× per session (UNVERIFIED — sourced from
+**Usage frequency (ALWAYS-ON):** `/simplify` runs ~10× per session (UNVERIFIED — sourced from
 task description as an estimate; no telemetry logged). `/explain` and `/summarize` invoked
 on demand. `simplify_anchor_inject.sh` fires on literally every turn — the highest-frequency
 component in the cluster.
@@ -359,11 +390,15 @@ component in the cluster.
 
 | Store | Component | Access |
 |---|---|---|
-| `/tmp/translator-gate/<sid>.arm` | translator_gate.sh | READ (arm flag; gate dormant without it) |
-| `/tmp/translator-gate/OBSERVE-ALL` | translator_gate.sh | READ (global observe flag) |
-| `/tmp/translator-gate/<sid>.log` | translator_gate.sh | WRITE (verdict log; always appended) |
+| ~~`/tmp/translator-gate/<sid>.arm`~~ | ~~translator_gate.sh~~ | ~~READ (arm flag; gate dormant without it)~~ |
+| ~~`/tmp/translator-gate/OBSERVE-ALL`~~ | ~~translator_gate.sh~~ | ~~READ (global observe flag)~~ |
+| ~~`/tmp/translator-gate/<sid>.log`~~ | ~~translator_gate.sh~~ | ~~WRITE (verdict log; always appended)~~ |
 | `~/.claude/output-styles/simplify.md` | output style | READ (session start; machine-local, not git-synced) |
 | `stdout` (pre-turn context) | simplify_anchor_inject.sh | WRITE (inject variant; invisible to user) |
+
+> **⚠ CORRECTED 2026-08-24:** the three struck rows are donor HISTORY — see line ~45.
+> `translator_gate.sh` does not exist here (re-verified at line ~260 above), so it reads and
+> writes nothing under `/tmp/translator-gate/`. No such store is touched here.
 
 No Drive writes. No git writes. The cluster is a pure VOICE layer — it touches NO durable
 memory stores; it does not write records, canon, journal, or briefs.
@@ -379,14 +414,16 @@ the Stop-grade layer is dormant-unless-armed and carries a known RETIRED-grader 
 - `simplify_anchor_inject.sh` UserPromptSubmit `[hook inject]` — fires unconditionally,
   every turn. Degrade-safe (never blocks). Rotates among 10 variants. This is the primary
   continuous enforcement mechanism.
-- `translator_gate.sh` Stop `[hook — dormant by default]` — registered and fires on every
+- ~~`translator_gate.sh` Stop `[hook — dormant by default]` — registered and fires on every
   stop, but immediately exits 0 unless an arm flag exists. In observe mode: grades and logs,
   never blocks. In enforce mode: can emit decision:block. **Currently parked (DORMANT) due
   to TRANSLATOR-GATE-RIP — the Haiku grader is parked/dormant (code fully present and
-  operational when armed, but not the default; parked 2026-07-14).**
+  operational when armed, but not the default; parked 2026-07-14).**~~
+  > **⚠ CORRECTED 2026-08-24:** donor HISTORY — see line ~45. Not a `[hook]` here at all, dormant
+  > or otherwise: nothing is registered (full re-verification at line ~260 above).
 
 **What is honor-system (`[honor]`):**
-- The three skills' actual re-render quality — no hook verifies that `/condense` actually
+- The three skills' actual re-render quality — no hook verifies that `/simplify` actually
   condensed, `/explain` actually kept all detail, or `/summarize` actually stayed to ≤3
   sentences.
 - Voice contract compliance in EVERY non-skill response — `simplify_anchor_inject.sh` injects
@@ -397,7 +434,8 @@ the Stop-grade layer is dormant-unless-armed and carries a known RETIRED-grader 
 
 **The `(honor)` tip-tag applies:** the PRIMARY behavioral contract of this cluster (voice
 compliance on every response) is skill-prose + a per-turn prompt injection — no blocking hook
-enforces compliance in steady state. The gate is `[hook]` but dormant.
+enforces compliance in steady state. ~~The gate is `[hook]` but dormant.~~ **⚠ CORRECTED
+2026-08-24:** donor HISTORY — see line ~45; there is no gate here, dormant or otherwise.
 
 **Maturity:** `PARTIAL [provisional]` — the injection is live and functional; the grading
 layer is parked with a known debt item; the behavioral contract depends on prompt engineering.
@@ -406,15 +444,19 @@ layer is parked with a known debt item; the behavioral contract depends on promp
 
 ### GAPS (documented fail-open conditions)
 
-1. **`translator_gate.sh` grader DORMANT (TRANSLATOR-GATE-RIP):** the Haiku holistic grader
+1. ~~**`translator_gate.sh` grader DORMANT (TRANSLATOR-GATE-RIP):** the Haiku holistic grader
    component of the grade-and-bounce layer is parked/dormant by default — code fully present
    and operational when the gate is armed, but NOT the default (parked 2026-07-14 due to
    rubber-stamps + ~60s/turn latency). The gate script remains registered as a Stop hook and
-   fires on every stop, but exits 0 immediately unless explicitly armed. Effectively: the only
+   fires on every stop, but exits 0 immediately unless explicitly armed.~~ Effectively: the only
    active voice enforcement in steady state is the `simplify_anchor_inject.sh` injection (a
    prompt nudge, not a grade). A session with voice drift won't be blocked — it will only get
-   the per-turn reminder. The debt item is `state:parked` (waiting for the operator's go to rip it).
-   **Blast radius:** every session is ungraded unless manually armed.
+   the per-turn reminder.
+   > **⚠ CORRECTED 2026-08-24:** the struck sentences are donor HISTORY — see line ~45. The gate
+   > script is not merely dormant here, it does not exist (full re-verification at line ~260
+   > above); there is no debt item left to resolve at this destination — there is nothing
+   > registered to rip.
+   **Blast radius:** every session is ungraded — there is no grader, armed or otherwise.
 
 2. **`output-styles/simplify.md` machine-local gap (TRANSLATOR-OUTPUTSTYLE-SECOND-MACHINE):** the
    output style file is a real machine-local copy that does NOT travel via git. The second machine
@@ -426,7 +468,9 @@ layer is parked with a known debt item; the behavioral contract depends on promp
    model could re-render a shorter or longer span without triggering any hook.
 
 **`·gap` verdict:** YES — a session reading only the map gloss and taking "PARTIAL" at face
-value might assume a grader actively bounces bad replies. The grader is retired/dormant.
+value might assume a grader actively bounces bad replies. ~~The grader is retired/dormant.~~
+**⚠ CORRECTED 2026-08-24:** stronger than "retired/dormant" — see line ~45; the grader was
+excluded from the migration by ruling and does not exist here at all.
 A tip-only reader would misjudge enforcement posture. `·gap` label is warranted.
 
 ---
@@ -434,7 +478,7 @@ A tip-only reader would misjudge enforcement posture. `·gap` label is warranted
 ### INTENT / CURRENT-VS-TARGET
 
 **BY DESIGN:**
-- `/condense`, `/explain`, and `/summarize` are explicit on-demand re-render skills — always
+- `/simplify`, `/explain`, and `/summarize` are explicit on-demand re-render skills — always
   available regardless of the hook state. This is correct and intentional: the human can
   always request a re-render.
 - `simplify_anchor_inject.sh` being always-on (no arm flag needed) is by design — the
@@ -443,12 +487,14 @@ A tip-only reader would misjudge enforcement posture. `·gap` label is warranted
   by design — one truth beats three drifting copies (the operator, 2026-07-12).
 
 **Current-vs-target:**
-- The `translator_gate.sh` Haiku grader was the target mechanism for automated bouncing.
-  It was retired 2026-07-14 as rubber-stamping. The `state:parked` debt item is the tracked
-  fork: rip the gate, or replace its holistic grader with a better model / local model
-  (header note: "Layer-3 local model is the real fix").
+- In the donor, the `translator_gate.sh` Haiku grader was the target mechanism for automated
+  bouncing; it was retired 2026-07-14 as rubber-stamping. ~~The `state:parked` debt item is the
+  tracked fork: rip the gate, or replace its holistic grader with a better model / local model
+  (header note: "Layer-3 local model is the real fix").~~ **⚠ CORRECTED 2026-08-24:** that fork
+  is donor HISTORY, already resolved at this destination — see line ~45; the gate was excluded
+  by ruling rather than replaced, so there is no open "rip vs. replace" decision here.
 - The `VOICE v2 — DRIFT COUNTER` design (debt-ledger line 215, state:monitoring) would
-  add a PostToolUse-on-Skill hook counting `/condense`+`/explain` invocations per session and
+  add a PostToolUse-on-Skill hook counting `/simplify`+`/explain` invocations per session and
   escalating the re-injection as the count climbs. Deferred 2026-07-12 (Pareto: 60% surface
   for 20% value; prove v1 nudges first).
 - The output-style second-machine gap is a known open item (state:waiting-external).
@@ -460,15 +506,16 @@ A tip-only reader would misjudge enforcement posture. `·gap` label is warranted
 What the cluster never does:
 
 - No blocking in `simplify_anchor_inject.sh` — ever. It is a pure inject; degrade-safe.
-- No `/condense` voice in Step 8 of `/save` — the handoff uses `/explain` (completeness
-  mandate; `/condense` condenses and would cut load-bearing items).
+- No `/simplify` voice in Step 8 of `/save` — the handoff uses `/explain` (completeness
+  mandate; `/simplify` condenses and would cut load-bearing items).
 - No manufacturing a delta that isn't observable from the prior state.
 - No manufacturing a question to fill the close — the ask-gate rule is HARD in all three
   skills.
 - No re-rendering the whole thread — span is since the user's last message only (not the
   whole thread, not just the last response).
-- No treating `translator_gate.sh` as an active bouncer in steady state — it is dormant
-  unless armed.
+- ~~No treating `translator_gate.sh` as an active bouncer in steady state — it is dormant
+  unless armed.~~ **⚠ CORRECTED 2026-08-24:** donor HISTORY — see line ~45; `translator_gate.sh`
+  is not here to treat as anything, dormant or active.
 
 ---
 
@@ -520,16 +567,27 @@ elements' voice. No other hook guards the cluster's own execution.
 ## AUTO-COMPUTED   (machine-only — hand-set at authoring; the F1.5 checker will own this once built)
 
 - **maturity_label:** PARTIAL [provisional]
-- **check_detail:** `simplify_anchor_inject.sh` (UserPromptSubmit, always-on, settings.json
-  line 372) — LIVE, firing every turn, 10-variant rotation. `translator_gate.sh` (Stop,
-  settings.json line 443) — REGISTERED but DORMANT: exits 0 immediately unless `/tmp/
+- **check_detail:** ~~`simplify_anchor_inject.sh` (UserPromptSubmit, always-on, settings.json
+  line 372) — LIVE, firing every turn, 10-variant rotation.~~ `translator_gate.sh` (Stop,
+  ~~settings.json line 443) — REGISTERED but DORMANT: exits 0 immediately unless `/tmp/
   translator-gate/<sid>.arm` or `OBSERVE-ALL` exists. Haiku grader is parked/dormant by
-  default (code fully present, operational when armed; parked 2026-07-14 — not removed)
+  default (code fully present, operational when armed; parked 2026-07-14 — not removed)~~
   (TRANSLATOR-GATE-RIP, debt-ledger line 94, state:parked). `output-styles/simplify.md` —
   present on the primary machine (`~/.claude/output-styles/simplify.md`); second machine status UNVERIFIED
   (TRANSLATOR-OUTPUTSTYLE-SECOND-MACHINE, debt-ledger line 93, state:waiting-external). Three skills
-  (`/condense` v2.1, `/explain` v4.4, `/summarize` v1.0) — all active, skill-prose only,
+  (`/simplify` v2.1, `/explain` v4.4, `/summarize` v1.0) — all active, skill-prose only,
   no hook verifies re-render quality. Voice contract compliance on non-skill responses is
-  honor-system (prompt injection, not blocking). Mixed: one always-on inject hook LIVE +
+  honor-system (prompt injection, not blocking). ~~Mixed: one always-on inject hook LIVE +
   dormant grader + honor-system skill quality → PARTIAL. `[provisional]` because the
-  cluster's maturity assessment may sharpen once the TRANSLATOR-GATE-RIP decision resolves.
+  cluster's maturity assessment may sharpen once the TRANSLATOR-GATE-RIP decision resolves.~~
+  > **⚠ CORRECTED 2026-08-24:** two errors here, both donor HISTORY. (1) `simplify_anchor_inject.sh`
+  > was deleted in the donor 2026-08-05 (see the banner at line ~63 above) — not LIVE, gone. (2)
+  > `translator_gate.sh` was excluded from the migration by ruling — see line ~45 — not a
+  > registered-but-dormant hook; it does not exist here at all (full re-verification at line
+  > ~260 above). "Settings.json line 372 / line 443" cannot exist: `.claude/settings.json` is 84
+  > lines total and has carried no hook registrations since T3.3 (2026-08-23; moved to
+  > `system/hooks/registrations.json` ⛔ private-repo runtime state, not shipped in this public tree). Current live enforcement in this cluster is
+  > `skill_anchor_inject.sh` (a different hook, `system/hooks/skill_anchor_inject.sh`, registered
+  > in `system/hooks/registrations.json` ⛔ private-repo runtime state, not shipped in this public tree) plus the three on-demand skills — not the two donor
+  > hooks named above. `PARTIAL [provisional]` maturity is left as-is pending the owed rewrite
+  > (`[TRANSLATOR-ELEMENT-REWRITE]`, line ~78 above) rather than re-derived here.

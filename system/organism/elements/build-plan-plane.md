@@ -28,6 +28,17 @@ authority: user
 
 # build-plan-plane — element detail
 
+> ⚠ **CORRECTED 2026-08-27** (L.B2 audit, direct read of the installed `autoplan` skill, v0.3.13):
+> the entire "`/autoplan` enters native harness plan mode, which mints a new random file every
+> invocation" premise below describes a SUPERSEDED mechanism. The current, already-redesigned
+> `autoplan` skill text says plainly: "So this skill does not use plan mode to hold a living
+> plan. It owns the file itself" / "⛔ Never enter plan mode" — and it writes to one fixed
+> `$DATA/plans/<slug>.plan.md` per plan, not a fresh random path each time. The generic harness
+> fact ("native plan mode mints a new file") is still true of plan mode itself, but "/autoplan
+> mints a new random file on every invocation" is false of the skill as it exists today — the
+> redesign already fixed the exact proliferation problem this section documents at length below.
+> Kept intact, not rewritten, per house doctrine: strike/annotate, never silently overwrite.
+
 > **LADDER: ELEMENT (full mechanics). up → manual#build-plan-plane ; ground truth → the live artifacts (generated_from)**
 >
 > **One-line:** the planning + execution contract — `/autoplan` structures the plan and `/build` executes it

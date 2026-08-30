@@ -140,7 +140,12 @@ def load_registry():
         with open(REGISTRY) as f:
             data = yaml.safe_load(f) or {}
         return data.get("desks", []) or []
-    except Exception:
+    except Exception as _e:  # made VISIBLE 2026-08-28 -- was a silent degrade
+        __import__("sys").stderr.write(
+        "WARNING [backlog_groom]: PyYAML is missing under this interpreter (%s) -- "
+        "registry-derived results are DEGRADED and INCOMPLETE, not clean. "
+        "Pin to /usr/bin/python3 (see system/requirements.txt).\n" % __import__("sys").executable)
+        __import__("sys").stderr.write("  cause: %r\n" % (_e,))
         return []
 
 

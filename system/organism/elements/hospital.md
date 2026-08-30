@@ -45,10 +45,14 @@ authority: user
 > is faithful to the donor system and is left exactly as written. These lines record what happened to
 > each named file AT THIS DESTINATION, and each one holds for every mention of that file anywhere below.
 >
-> - ⛔ `state/health.jsonl` and `state/status/backlog.json` — runtime-generated, created on first run, never committed. These are an append log and a status tile that a run writes into the operator's own data area; there is no committed copy of either in any repository, donor or destination.
-> - ⛔ `system/reference/settings.json` — not shipped. The donor's hook registry was never ported: this repository's `.claude/settings.json` was authored from scratch against its own, smaller hook inventory, so the donor's line numbers cited below index a file that does not exist here. Read the registrations from `.claude/settings.json` instead.
-> - ⛔ `system/tools/machine_token.py` — excluded from the migration: two-machine. This product is one machine by design, and the shared derivation collapses to a local constant — see the note in `system/tools/fault_ledger.py` and `system/tools/emit_recommendation.py`, which both say so at the point of use.
-> - ⛔ `system/tools/clair-health.py`, `system/tools/deryl-books-health.py`, `system/tools/dobby-health.py` and `system/tools/marc-health.py` — excluded from the migration: personal-desk. These four are the per-desk detectors for desks on the closed exclusion list. Their four non-desk siblings named in the same sentences DID land and resolve here — `system/tools/system-health.py`, `system/tools/planning-health.py`, `system/tools/security-health.py`, `system/tools/sentinel-health.py` — so the "8 of roughly 12 producers" count below is a donor-side count, not a destination one.
+> - ⛔ `state/health.jsonl` — runtime-generated, created on first run, never committed. An append log that a run writes into the operator's own data area; there is no committed copy of it in any repository, donor or destination.
+> - ⛔ `state/status/backlog.json` — same: runtime-generated, created on first run, never committed. A status tile that a run writes into the operator's own data area; there is no committed copy of it in any repository, donor or destination.
+> - ⛔ `system/reference/settings.json` — not shipped. The donor's hook registry was never ported: this repository's .claude/settings.json was authored from scratch against its own, smaller hook inventory, so the donor's line numbers cited below index a file that does not exist here. Read the registrations from .claude/settings.json instead.
+> - ⛔ `system/tools/machine_token.py` — excluded from the migration: two-machine. This product is one machine by design, and the shared derivation collapses to a local constant — see the note in system/tools/fault_ledger.py and system/tools/emit_recommendation.py, which both say so at the point of use.
+> - ⛔ `system/tools/clair-health.py` — excluded from the migration: personal-desk. This is a per-desk detector for a desk on the closed exclusion list.
+> - ⛔ `system/tools/deryl-books-health.py` — same reason: excluded, personal-desk.
+> - ⛔ `system/tools/dobby-health.py` — same reason: excluded, personal-desk.
+> - ⛔ `system/tools/marc-health.py` — same reason: excluded, personal-desk. These four non-desk siblings DID land and resolve here — system/tools/system-health.py, system/tools/planning-health.py, system/tools/security-health.py, system/tools/sentinel-health.py — so the "8 of roughly 12 producers" count below is a donor-side count, not a destination one.
 
 > ⚖ **BOUNDARY CORRECTED 2026-08-05 (T18.8) — `fault_proposer.py` IS NO LONGER HOSPITAL'S. READ THIS
 > BEFORE THE COMPONENT TABLE BELOW.** The operator ruled that the grading/proposing layer belongs to the
@@ -221,8 +225,10 @@ ranks, so `health_line.py` needs no second code path — but the dead-man assess
 the UNFILTERED union first, then filters, so narrowing by fingerprint/producer never makes every
 OTHER producer look silent.
 
-WARNING: **`STALE` is deliberately NOT in `emit_finding.py`'s `VALID_STATUS`** (`{"OK", "NEEDS_REVIEW",
-"NEEDS_APPROVAL", "ERROR"}`, imported unchanged from `emit_status.py`) — no producer ever writes the
+WARNING: **`STALE` is deliberately NOT in `emit_finding.py`'s `VALID_STATUS`** (~~`{"OK", "NEEDS_REVIEW",
+"NEEDS_APPROVAL", "ERROR"}`~~ **`{"OK", "NEEDS_REVIEW", "NEEDS_APPROVAL", "DRIFT", "ERROR"}`** [set corrected
+2026-08-27, lb2-ops-comms.md claim 6 — live import showed 5 values, not 4; this line omitted `DRIFT`. The
+STALE-absence half of this claim is still TRUE — confirmed no producer writes it], imported unchanged from `emit_status.py`) — no producer ever writes the
 word `STALE` to disk. It is derived at READ time only, the same rule status tiles already follow
 ("desks never emit STALE — Helm derives it").
 
@@ -299,7 +305,7 @@ under repetition. `render_cohort()` collapses same-evidence `ORGANISM` proposals
 finding naming all N faults; the altitude derivation itself is untouched.
 
 **Writes NOTHING** — `main()` only prints. Registered as a Pulse `jobs` slot (`fault-proposer`, daily
-= 86400s, `pulse-config.md` line 325). Its runner's exit-code contract is explicitly documented against
+= 86400s, `pulse-config.md` line 325 [line corrected 2026-08-27, lb2-ops-comms.md claim 9: content (enabled yes, 86400s/daily) is TRUE, actual line is ~184]). Its runner's exit-code contract is explicitly documented against
 a real regression this same build hit (commit history: "the driver stopped at exit 2 while the gate
 started emitting 3"): exit 0 covers proposals-emitted, no-open-faults, AND a refusal-for-want-of-
 evidence — a refusal is a CORRECT outcome, not a failure, and Pulse's 3-strike breaker would otherwise
@@ -382,7 +388,7 @@ real seam anywhere below — see INTEROP SEAMS and GAP-3.**~~
 > **⚠ CORRECTED 2026-08-24:** This was wrong on both the search and the conclusion, re-verified
 > directly this session. `system/reference/settings.json` does not exist on disk at all (`find`
 > confirms 0 matches) — hook registration moved; the real source of truth is
-> `system/hooks/registrations.json`, and the live per-machine file is `.claude/settings.local.json` — ⛔ genuinely absent on this machine, not merely undocumented (install-guard-registrations.py would write a hook registration there, and none exists here)
+> system/hooks/registrations.json, and the live per-machine file is `.claude/settings.local.json` — ⛔ genuinely absent on this machine, not merely undocumented (install-guard-registrations.py would write a hook registration there, and none exists here)
 > (installed from it by `system/tools/install-guard-registrations.py`; `.claude/settings.json`
 > itself carries an explicit `_hooks_moved` note saying so). The claimed grep is also simply wrong:
 > `grep -rl "emit_finding\|state/findings\|hospital" system/hooks/` finds
@@ -498,7 +504,7 @@ inferred from the shared-store design, not independently traced end-to-end this 
 
 **4. `hospital` TRIGGERS-BY `pulse-cron`.**
 Three of Hospital's producers run as named Pulse `jobs` slots: `backlog-health` (21600s,
-`pulse-config.md` line 367), `fault-proposer` (86400s, line 325), `guard-fire-test` (604800s, line
+`pulse-config.md` line 367), `fault-proposer` (86400s, line 325 [line corrected 2026-08-27, lb2-ops-comms.md claim 9: content (enabled yes, 86400s/daily) is TRUE, actual line is ~184]), `guard-fire-test` (604800s, line
 342). `health-deadman` runs via crontab (line 425), deliberately NOT a Pulse slot — it watches whether
 Pulse itself is alive, so Pulse dispatching it would make the watched thing the sole witness to its
 own death. `health_invariants.py` is not independently scheduled; it runs as a child of
@@ -662,7 +668,7 @@ purpose — so it does not exist here, anywhere, by design.
   live crontab) · `health_line.py` (session-start consumer, wired via `session_context_loader.sh`
   line 110, registered SessionStart hook `settings.json` line 347) · `fault_proposer.py` +
   `fault-proposer-run.sh` (INSTANCE/SUBSYSTEM/ORGANISM grading, cited-evidence-or-refuse, DECISION
-  gate for parked jobs, cohort collapsing, Pulse slot `pulse-config.md` line 325) · `fault_ledger.py`
+  gate for parked jobs, cohort collapsing, Pulse slot `pulse-config.md` line 325 [line corrected 2026-08-27, lb2-ops-comms.md claim 9: content (enabled yes, 86400s/daily) is TRUE, actual line is ~184]) · `fault_ledger.py`
   (namespace-disjoint dual-key lifecycle store). Converted producers: `health_invariants.py`
   (Pulse slot line 298, as a child of system-health), `backlog_groom.py` (via `backlog-health.py`,
   Pulse slot line 367), `guard-fire-test-run.sh` (Pulse slot line 342), `health-deadman-check.sh`

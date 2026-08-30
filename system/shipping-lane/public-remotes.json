@@ -1,0 +1,7 @@
+{
+  "schema": "push-gate.public-remotes.v1",
+  "note": "Regex patterns (Python re.search, case-sensitive) matched against a git remote URL by system/githooks/pre-push (registered via `git config core.hooksPath system/githooks`). NOTE 2026-08-21: this field previously named `system/hooks/pre-push-public-gate.sh`, a path that exists in NEITHER repo -- corrected here because a wrong redirect misroutes the next reader worse than no redirect would. A MATCH means the remote is PUBLIC-SHAPED: a push to it is refused by push_gate.py unless it carries a valid, signed --judge-receipt from a completed /ship run (system/shipping-lane/judge.py --consume) AND the tree is mechanically clean of refuse-rules.json hits. Extend this list carefully and get sign-off before widening it -- it is the actual wall between the private donor clone and the public student repo. A remote that matches NOTHING here is treated as private-shaped and is not gated by this hook at all.",
+  "patterns": [
+    "github\\.com[:/]+LifehackMethod/"
+  ]
+}

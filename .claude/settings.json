@@ -86,6 +86,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/inject_delegation_standing.sh\"",
             "statusMessage": "Confirming delegation is standing-authorized..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/buried_command_hint.sh\"",
+            "statusMessage": "Checking for a buried slash command..."
           }
         ]
       }
@@ -144,6 +149,16 @@
         ]
       },
       {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_disable_model_invocation.sh\"",
+            "statusMessage": "Checking for the retired disable-model-invocation flag..."
+          }
+        ]
+      },
+      {
         "matcher": "Bash|Write|Edit",
         "hooks": [
           {
@@ -170,6 +185,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_findings_write.sh\"",
             "statusMessage": "Checking this doesn't bypass the findings writer..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_no_repoint_into_claudeops.sh\"",
+            "statusMessage": "Checking this doesn't re-point a symlink into the private repo..."
           }
         ]
       },
@@ -180,6 +200,16 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_pm_flag_store.sh\"",
             "statusMessage": "Checking nothing rewrites which project this window is on..."
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_brief_truncation.sh\"",
+            "statusMessage": "Checking this doesn't silently shrink a project brief..."
           }
         ]
       },
@@ -245,6 +275,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_hook_sop_read.sh\"",
             "statusMessage": "Checking the hook SOP was read first..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_gh_account_switch.sh\"",
+            "statusMessage": "Checking this doesn't mutate global gh auth state..."
           }
         ]
       },

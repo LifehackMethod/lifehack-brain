@@ -31,22 +31,20 @@ try:
 except Exception:
     _DATA = None
 
-# The goals-tasklist id used by the "tasks FORBID/ALLOW" cases below. ⛔ NOT A CONSTANT: this
-# entry used to carry the operator's REAL Google Tasks list id hardcoded as a "fixture", and it
-# shipped public before anyone caught it. `guard_tasks_writes.sh` loads the id it protects AT
-# HOOK RUNTIME from the reader's own `<notes>/config/cal.md` (via `shared/cal_config.py`) — never
-# from this file — so a hardcoded id here does not need to be REAL, it needs to MATCH whatever is
-# actually configured, or a mismatched fixture could quietly assert the wrong thing. Resolved the
-# same way as `_agent_calendar()` / `_goals_tasklist()` in probes/guard.py.
+H = os.path.join(_ROOT, "hooks")
+DRIVE = _DATA or os.path.expanduser("~/lifehack-notes")  # placeholder shape only — no real
+                                                          # content is read at this path.
+
+# The one tasklist guard_tasks_writes.sh protects. ⛔ NOT A LITERAL — resolved the same way
+# probes/guard.py resolves it (and the guard itself resolves it): the reader's own
+# `<notes>/config/cal.md`, via shared/cal_config.py. A hardcoded id here would be a real Google
+# Tasks list id belonging to a real person, shipped in source.
 try:
+    sys.path.insert(0, os.path.join(_ROOT, "..", "shared"))
     import cal_config
     GOALS_TASKLIST = cal_config.get("goals_tasklist")
 except Exception:
     GOALS_TASKLIST = None
-
-H = os.path.join(_ROOT, "hooks")
-DRIVE = _DATA or os.path.expanduser("~/lifehack-notes")  # placeholder shape only — no real
-                                                          # content is read at this path.
 
 
 def fire(hook, payload):
@@ -73,8 +71,10 @@ CASES = [
     ("egress-AL ALLOW (github)",       "enforce_egress_allowlist.sh",{"tool_input": {"command": "curl -s https://api.github.com/x"}}, "allow"),
     ("sheet FORBID (destructive)",     "guard_sheet_writes.sh",      {"tool_input": {"command": "gws sheets spreadsheets values clear --params '{\"spreadsheetId\":\"1Bxi\",\"range\":\"A1:Z9\"}'"}}, "block"),
     ("sheet ALLOW (read _LLM_GUIDE)",  "guard_sheet_writes.sh",      {"tool_input": {"command": "gws sheets spreadsheets values get --params '{\"spreadsheetId\":\"1Bxi\",\"range\":\"_LLM_GUIDE!A:Z\"}'"}}, "allow"),
+] + ([
     ("tasks FORBID (Life Map write)",  "guard_tasks_writes.sh",      {"tool_input": {"command": f"gws tasks tasks insert --params '{{\"tasklist\":\"{GOALS_TASKLIST}\",\"title\":\"x\"}}'"}}, "block"),
     ("tasks ALLOW (Life Map read)",    "guard_tasks_writes.sh",      {"tool_input": {"command": f"gws tasks tasks list --params '{{\"tasklist\":\"{GOALS_TASKLIST}\"}}'"}}, "allow"),
+] if GOALS_TASKLIST else []) + [
     # NOTE: the donor's write-paths guard is a general write-CONTAINMENT wall (denies anything
     # outside four approved zones). THIS repo's guard_write_paths.sh is a narrower, DIFFERENT
     # guard by ratified decision (its own header: "ports only the half that needs no [product]
@@ -85,6 +85,10 @@ CASES = [
     ("write-paths FORBID (settings)",  "guard_write_paths.sh",       {"tool_input": {"file_path": os.path.join(_CLONE, ".claude", "settings.json"), "content": "y"}}, "block"),
     ("write-paths ALLOW (ordinary file)", "guard_write_paths.sh",    {"tool_input": {"file_path": DRIVE + "/records/findings/_x.md", "content": "y"}}, "allow"),
 ]
+
+if not GOALS_TASKLIST:
+    print("SKIPPED  tasks FORBID/ALLOW (Life Map)     no `goals_tasklist` on file at "
+          "<notes>/config/cal.md -- nothing to fire the paired probe with.")
 
 ok = True
 for label, hook, payload, expect in CASES:

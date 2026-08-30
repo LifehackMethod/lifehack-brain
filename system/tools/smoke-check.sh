@@ -66,6 +66,7 @@
 #                          Also never counted as a pass.
 # If more than one non-PASS condition holds in the same run, FAIL > TIMED-OUT > NOCHECK
 # — the exit code always reports the most serious thing that happened.
+PY="${PY:-/usr/bin/python3}"   # PINNED 2026-08-28: bare python3 = Homebrew 3.14 (no third-party pkgs)
 set -u
 
 REPO="${1:-$(cd "$(dirname "$0")/../.." && pwd)}"
@@ -137,7 +138,7 @@ check_script_syntax() {
       ;;
     py)
       local out rc
-      out="$(python3 -c 'import ast,sys
+      out="$("$PY" -c 'import ast,sys
 try:
     with open(sys.argv[1], encoding="utf-8") as fh:
         ast.parse(fh.read(), filename=sys.argv[1])
@@ -236,7 +237,7 @@ while IFS= read -r f <&3; do
   fi
 
   case "$f" in
-    *.py) out="$(run_bounded python3 "$f" --help)"; rc=$? ;;
+    *.py) out="$(run_bounded "$PY" "$f" --help)"; rc=$? ;;
     *)    out="$(run_bounded bash    "$f" --help)"; rc=$? ;;
   esac
 
@@ -283,7 +284,7 @@ while IFS= read -r f <&3; do
     subs="$(printf '%s' "$out" | grep -oE '\{[a-z0-9_-]+(,[a-z0-9_-]+)*\}' | head -1 | tr -d '{}' | tr ',' ' ')"
     for sub in $subs; do
       case "$f" in
-        *.py) sout="$(run_bounded python3 "$f" "$sub" --help)" ;;
+        *.py) sout="$(run_bounded "$PY" "$f" "$sub" --help)" ;;
         *)    sout="$(run_bounded bash    "$f" "$sub" --help)" ;;
       esac
       if printf '%s' "$sout" | grep -qE "Traceback \(most recent call last\)|can't open file"; then

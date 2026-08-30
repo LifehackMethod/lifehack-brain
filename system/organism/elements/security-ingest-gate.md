@@ -70,7 +70,12 @@ authority: user
     - **fail-CLOSED:** unparseable hook input / top-level JSON error → DENY (an external-read gate that can't read its input must not allow the read).
 ### INTENT / CURRENT-VS-TARGET
     - **Intent — BY DESIGN, a unifier, not a wall.** This ONE hook SUBSUMED six scattered per-channel deny hooks (email-sanitize · web-fetch · web-search · file-reads · calendar-reads · skip-backdoor) into a single on-path control (organism Window-5 cutover) — six things to keep in sync on two machines became one. It's a **REDIRECT** (points at the safe tool), EXCEPT the reader-actor lock, which structurally FORCES the tool-less subagent.
-    - **Current → LIVE.** Fire-tested 2026-07-22: 6 synthetic violations all block (`exit 2`), 3 benign allow-cases pass (`exit 0`), git-tracked, registered on all six matchers (the fire test predates the Grep/Glob widening; the registration is six today). This is the reference "LIVE" element — the one that proved the checker pattern.
+    - **Current → LIVE.** Fire-tested 2026-07-22: 6 synthetic violations all block (`exit 2`), 3 benign allow-cases pass (`exit 0`), git-tracked, registered on all six matchers (the fire test predates the Grep/Glob widening; the registration is six today).
+      > **⚠ CORRECTED 2026-08-27, lb2-controls.md claim 47 — these counts are stale.** Live re-check via
+      > `label_checker.py check --guard security-ingest-gate --json` still returns the LIVE label
+      > (confirmed), but the manifest backing it (`system/tools/organism/label_manifest.yaml:180-227`) has
+      > grown to **16 violation cases and 6 allow cases** — the 6/3 figures above were never updated after
+      > the manifest expanded. The LIVE verdict itself is correct; only the supporting counts are stale. This is the reference "LIVE" element — the one that proved the checker pattern.
     - **★ INTEROP SEAMS (shared-state edges — the organism view):**
         - **⇄ the `safe_*` tool family** — the gate only BLOCKS + redirects; the safe tool it names does the actual L0-sanitize + injection-scan + Sentinel gate. The pair is the control: gate = the wall, safe tool = the clean door.
         - **⇄ the `ingest-reader` subagent (reader-actor split).** The gate denies the tool-HOLDING main session any read of sanitized scratch, but lets a tool-LESS subagent (identified by `agent_id`) through — so a hijacked reader has nothing to act with. Contract: `system/ingestion-reader-contract.md`.
@@ -80,4 +85,4 @@ authority: user
 
 ## AUTO-COMPUTED   (machine-only — written by the Feature 1.5 `label_checker.py`)
 - **maturity_label:** LIVE
-- **check_detail:** `label_checker.py check --guard security-ingest-gate` → LIVE: 6 violations blocked (`exit 2`: WebFetch · WebSearch · external .pdf · external .md · LIFEHACK_SKIP · main-session scratch read), 3 allow-cases passed (`exit 0`: internal .md · benign Bash · code-file Read); git-tracked; registered PreToolUse Bash/WebFetch/WebSearch/Read.
+- **check_detail:** `label_checker.py check --guard security-ingest-gate` → LIVE: ~~6 violations blocked (`exit 2`: WebFetch · WebSearch · external .pdf · external .md · LIFEHACK_SKIP · main-session scratch read), 3 allow-cases passed (`exit 0`: internal .md · benign Bash · code-file Read)~~ **16 violation cases, 6 allow cases** [corrected 2026-08-27, claim 47 — the manifest has grown since this was written; LIVE label itself still confirmed correct]; git-tracked; registered PreToolUse Bash/WebFetch/WebSearch/Read/Grep/Glob (six matchers, see the matcher-count correction elsewhere in this file).

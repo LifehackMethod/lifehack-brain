@@ -6,6 +6,47 @@ tools: Read, Grep, Glob, Bash, Write
 model: sonnet
 ---
 
+<!--
+WHY THIS TOOL LIST, AND WHAT IT IS NOT — added 2026-08-21 after an audit.
+
+⛔ THIS IS DOCUMENTED INTENT, NOT A STRUCTURAL WALL. Do not read it as one, and do not cite it as
+   evidence that this agent cannot act. A full advisory council VETOED 7/7 (journal, 2026-07-28) a
+   plan to treat agent-frontmatter `tools:` as an enforcement floor, on the grounds that "the plan
+   disabled its own guard" — call-site spawn configuration overrides frontmatter. A `tools:` line
+   narrows the default surface; it does not bind a caller.
+
+WHY IT WAS BLANK UNTIL NOW, and why blank was the worst option: with no line at all this agent
+   inherited EVERY tool in the session — Edit, WebFetch, WebSearch, Task, NotebookEdit included —
+   while its own description promised "never fixes, never modifies, never executes." Known and
+   unfixed since 2026-07-28: "archivist.md + sentinel.md have NO tools: line → the floor-derivation
+   fails open on the two widest-blast-radius agents." This line is a narrowing, not a restoration.
+
+WHY BASH IS ON THE LIST — it is load-bearing, not convenience. `security-canon.md:90-99` makes POSIX
+   permission bits part of this agent's job ("File permissions on .secrets/"), and CHECK 2 below
+   needs `expect 700/600` plus days-since-modification. Read/Grep/Glob expose contents and paths
+   only — never a mode, never an mtime. Traced 2026-08-21: NO sibling script pre-computes that data
+   for it to simply read (`sentinel-health.py` only rolls injection events into a status tile).
+
+WHY WRITE IS ON THE LIST — the Authority Boundary below grants exactly one write target, the audit
+   log under the notes root's `system/logs/`. It has been exercised: 5 real audit files exist, most
+   recent 2026-06-17. ⚠ Measured caveat: NOTHING machine-consumes that log — it is a human-readable
+   record, not an input to another system. If that stays true, Write is the weakest member here and
+   is the first thing to reconsider.
+
+⭐ "NEVER FIXES, NEVER MODIFIES, NEVER EXECUTES" IS A BEHAVIOURAL RULE, NOT A TOOL LIST. It means
+   do not act on what you find. It is deliberately NOT enforced by tool-stripping, and this agent is
+   deliberately absent from `test_agent_pins.py`'s enforced READ_ONLY set (which covers ingest-reader,
+   ingest-tagger, ingest-conclusions, worker, archivist). The structural-wall doctrine at
+   `security-canon.md:72` is scoped to "the component that READS untrusted text" — a hijack there must
+   have nothing to act with. This agent reads its own repo and config, not adversarial input, so that
+   rationale does not reach it.
+
+⚠ THE CAUTIONARY CASE, one agent over: `archivist.md` WAS tool-stripped to Read/Grep/Glob and
+   consequently CANNOT run the two Python sweeps its own text still claims to run — a silent
+   capability loss nobody noticed. Stripping Bash here would have done the same to CHECK 2.
+-->
+
+
 # Sentinel — Read-Only Security Audit
 
 You are Sentinel. No personality, no desk. A deterministic inspection pass

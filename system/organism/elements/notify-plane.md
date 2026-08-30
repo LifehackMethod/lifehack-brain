@@ -44,6 +44,17 @@ authority: user
 > `shared/gate/sentinel_response.py`. `system/notify-config.sh` is not shipped at all — topic and server
 > resolve from the reader's own `$HOME/.config/lifehack/ntfy-topic`, deliberately outside this repository.
 > `state/debt-ledger.md` is the reader's own file under their gitignored notes root, never committed.
+>
+> **⚠ ADDED 2026-08-27, lb2-ops-comms.md claims 21/24 — one more path this section should have caught:**
+> `system/tools/notify-send.sh` ⛔ moved — cited in generated_from above and throughout this file but
+> does not exist at that path — the live file is `shared/notify/notify-send.sh`, alongside
+> `shared/notify/notify-governor.py`. Confirmed live: `--max-time 10` and every other cited line-number
+> behavior below reproduced correctly once read from the real path; only the path itself was stale. AND: the
+> `NOTIFY_DAILY_CAP=0 (UNLIMITED, live config)` claim below (from the nonexistent `notify-config.sh`) is
+> FALSE as a live fact — with no such file to source, the actually-live `DAILY_CAP` is the governor's own
+> code default of **3** (`NOTIFY_DAILY_CAP` env var unset by default). The doc's own already-present
+> correction that `notify-config.sh` isn't shipped is the accurate half; the specific "overridden to 0" body
+> claim two sections down is not.
 
 ---
 
@@ -137,9 +148,13 @@ Atomic write via `.tmp` + `os.replace` (line 70–71) prevents torn reads.
    wrap midnight (e.g. 22→7). (`notify-governor.py:50–56`)
 
 3. **Per-source daily cap** (`notify-governor.py:130–138`): count sends from `source` within last 24h. If
-   `count >= DAILY_CAP` → SUPPRESS. `DAILY_CAP` defaults to `3` in governor code (`line 34`) but is
+   `count >= DAILY_CAP` → SUPPRESS. `DAILY_CAP` defaults to `3` in governor code (`line 34`) but ~~is
    **overridden to `0` (UNLIMITED) in `notify-config.sh:33`** — cap disabled as of 2026-06-02 per user
-   decision ("re-add if buzzes get annoying"). **Live behavior: daily cap is off.**
+   decision ("re-add if buzzes get annoying"). **Live behavior: daily cap is off.**~~
+   [CORRECTED 2026-08-27, lb2-ops-comms.md claim 24 — `notify-config.sh` does not exist anywhere in the
+   repo (`find`: 0 hits), so it cannot override anything. Live behavior with `NOTIFY_DAILY_CAP` unset: the
+   code default of **3 stands and is enforced** — a 2nd identical-source call within 24h was observed
+   SUPPRESSED live. The cap is NOT off.]
 
 **Decision order for a `priority: critical` push** — different path, fewer gates:
 
@@ -171,7 +186,7 @@ ignores message).
 |---|---|---|
 | `NOTIFY_QUIET_START` | `22` | Quiet window start hour (local) |
 | `NOTIFY_QUIET_END` | `7` | Quiet window end hour (local) |
-| `NOTIFY_DAILY_CAP` | `3` (governor code) / `0` (live config) | Max sends/source/24h; 0 = unlimited |
+| `NOTIFY_DAILY_CAP` | `3` (governor code default; live and enforced — `notify-config.sh` does not exist to override it [corrected 2026-08-27, claim 24]) | Max sends/source/24h; 0 = unlimited |
 | `NOTIFY_DEDUP_HOURS` | `24` | Normal-priority identical-msg suppression window |
 | `NOTIFY_CRITICAL_DEDUP_HOURS` | `1` | Critical-priority dedup floor |
 | `NOTIFY_CRITICAL_BURST_MINUTES` | `10` | Critical burst-coalesce window (source-keyed) |

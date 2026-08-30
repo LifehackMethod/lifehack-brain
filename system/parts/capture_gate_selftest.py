@@ -153,7 +153,8 @@ def selftest():
                f"out={out[:60]!r}")
         report("hands back the ADDED line mechanically, not a vague nag",
                "a NEW decision made since the last checkpoint" in reason)
-        report("demands a VISIBLE receipt in the reply", "SCRATCHPAD CAPTURED" in reason)
+        report("demands a VISIBLE receipt in the reply",
+               "Scratchpad: N lines captured, verified" in reason)
 
         # 5. after bouncing, the watermark advanced -> the same turn is not re-bounced
         rc, out = run_hook(base)

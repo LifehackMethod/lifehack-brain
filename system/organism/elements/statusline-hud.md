@@ -216,6 +216,15 @@ COMPLEMENTS save                         · /save reads pm_flag.sh status for pr
 
 **CROSSWIRE [STATUSLINE-PLAN-CROSSWIRE]** — `plan_flag.sh record` (the ExitPlanMode hook path) resolves the plan name using newest-mtime of `~/.claude/plans/*.md` when the H1 cannot be extracted from the in-flight plan JSON. In a session with multiple parallel plan-mode windows open, "newest mtime" is whichever window saved last — so the `plan:` HUD field can show the WRONG plan (the plan from the other window). `plan_flag.sh set <path>` (the RESUME path) is reliable because it takes an explicit path. Fix requires keying `record` off a session-specific signal or the plan's own content rather than mtime. Status: `actionable` (debt-ledger.md line 84, 2026-07-13). **Blast radius:** misleading `plan:` field in a multi-window session; no data loss.
 
+⚠ **CORRECTED 2026-08-27** (L.B2 audit, source read of `plan_flag.sh`'s `record` branch, lines
+~330–392): the mechanism is real but its trigger and priority are stale here. The code was
+"UPDATED 2026-07-28: `record` now uses `tool_input.planFilePath` — the harness-supplied path —
+instead of the newest-mtime glob, which cross-wired across parallel windows." The newest-mtime
+glob is now reached ONLY as a last-resort fallback, gated on the harness NOT supplying
+`planFilePath` in the payload — not on "H1 cannot be extracted," as this section frames it. The
+bug is still live and reproducible when that fallback fires, but it is demoted from the primary
+path to a rare edge case; this section presents it as the dominant behavior.
+
 **INTERP-GAP [STATUSLINE-GUARD-INTERP-GAP]** — `guard_statusline_lock.sh` operates on the COMMAND TEXT of the Bash tool input. It cannot distinguish between "a script that writes TO `statusline.sh`" and "a script that merely mentions `statusline.sh` as a reference." A broad pattern that tried to catch all writes false-positived on legitimate hook-writes and was reverted. Real protection for the execute-bit invariant is therefore procedural (Edit tool only, ⚠ header comment in the file itself) rather than mechanical for this bypass class. Status: `accepted-known-gap` (debt-ledger.md line 418). **Blast radius:** an adversarial or mistaken Bash write to `statusline.sh` would strip `+x` and blank the bar; caught on the next session; no data loss, recoverable with `chmod +x system/statusline.sh`.
 
 ---

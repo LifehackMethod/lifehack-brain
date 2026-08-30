@@ -35,9 +35,11 @@ STATUS_ARTIFACT="$OUT_DIR/last-run.json"                        # {rc, ts} proof
 mkdir -p "$OUT_DIR" 2>/dev/null || true
 
 # ── Single-instance lock ──
-LOCKDIR="/tmp/lifehack-${SUBSYSTEM_NAME}.lock"
+LOCKDIR="/tmp/claudeops-${SUBSYSTEM_NAME}.lock"
 if ! mkdir "$LOCKDIR" 2>/dev/null; then
-  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - $(stat -f %m "$LOCKDIR" 2>/dev/null || echo 0) ))" -gt 900 ]; then
+  _lock_mtime="$(stat -c %Y "$LOCKDIR" 2>/dev/null || stat -f %m "$LOCKDIR" 2>/dev/null || echo 0)"
+  case "$_lock_mtime" in ''|*[!0-9]*) _lock_mtime=0 ;; esac
+  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - _lock_mtime ))" -gt 900 ]; then
     rm -rf "$LOCKDIR"; mkdir "$LOCKDIR" 2>/dev/null || exit 0
   else
     echo "[$SUBSYSTEM_NAME] another run in progress — skip."; exit 0
@@ -71,7 +73,13 @@ if [ "$RC" -eq 0 ] && [ -f "$TILE" ]; then
   _ST="$(python3 -c "import json;print(json.load(open('$TILE')).get('status',''))" 2>/dev/null || echo)"
   if [ "$_ST" = "ERROR" ] || [ "$_ST" = "DEGRADED" ]; then   # CT-4: tile now stores ERROR (emit_status enum)
     _RSN="$(python3 -c "import json;print(json.load(open('$TILE')).get('reason','')[:180])" 2>/dev/null || echo)"
+    # T10.A3 OL-N1 ④: $_RSN embeds a changing figure ("stale 98.1h") that made every hourly repeat
+    # a DISTINCT (source,message) pair, defeating exact-text dedup — measured 37 sends in 7 days
+    # despite the comment above claiming this coalesces. --identity is the STABLE half (what kind
+    # of degradation, not how stale right now); the live number still reaches the reader via
+    # --message, it just no longer busts the dedup hash.
     bash "$CODE_ROOT/shared/notify/notify-send.sh" --source "$SUBSYSTEM_NAME" --tags mailbox,warning \
+      --identity "email-summary-degraded" \
       --title "📭 Email store DEGRADED" --message "${_RSN:-store is stale or a scope is empty}" 2>/dev/null || true
     echo "[$SUBSYSTEM_NAME] DEGRADED → phone push sent: ${_RSN}"
   fi

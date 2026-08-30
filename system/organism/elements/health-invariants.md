@@ -213,12 +213,19 @@ The five founding invariants:
 
 `health_invariants.py:71–84`
 
-Globs `system/hooks/guard_*.sh` (all guard scripts). Additionally asserts the four **critical hooks**
+Globs `system/hooks/guard_*.sh` (all guard scripts). ~~Additionally asserts the four **critical hooks**
 (`CRITICAL_HOOKS` at `health_invariants.py:39`):
 - `block_primary_calendar.sh`
 - `ingest_gate_enforce.sh` (subsumed `enforce_email_sanitize` 2026-07-03)
 - `guard_write_paths.sh`
-- `guard_egress.sh`
+- `guard_egress.sh`~~
+> **⚠ CORRECTED 2026-08-27, lb2-ops-comms.md claim 14 — this mechanism is superseded, not live.**
+> `CRITICAL_HOOKS` does not exist as a module attribute today (import + `getattr` on the live
+> `health_invariants.py` → NOT FOUND). The file's own comment says it "replaces the old GUARD_GLOB +
+> hand-named CRITICAL_HOOKS allowlist" with a pattern-coverage set matching `guard_*.sh` / `enforce_*.sh` /
+> `enforce_*.py` generally, rather than four hand-named files (one of which, `block_primary_calendar.sh`,
+> no longer exists under that name — see hook-plane.md A2). The size>0 liveness check below is unaffected
+> and confirmed still present.
 
 Checks: file exists AND `os.path.getsize > 0`. An empty file is treated as missing (hooks are
 `chmod 444`, bash-invoked, not executable — size > 0 is the liveness test).
@@ -265,7 +272,10 @@ For each expected machine: reads its `_pulse-{machine}.json`, takes `max(last_ti
 jobs. A machine is BROKEN if:
 - no heartbeat file at all (`<machine>: NO heartbeat file`)
 - file present but no job has ever ticked
-- most-recent tick > `HEARTBEAT_STALE_S` (1800s = 30 min, `health_invariants.py:37`)
+- most-recent tick > ~~`HEARTBEAT_STALE_S`~~ [name does not exist under this identifier as of 2026-08-27,
+  lb2-ops-comms.md claim 16 — `grep -n HEARTBEAT_STALE_S system/tools/health_invariants.py` returns zero
+  matches in the live file; the 30-min-stale threshold itself was not independently re-derived under
+  whatever name it now carries] (1800s = 30 min, `health_invariants.py:37`)
 
 Pulse cadence is 5 min → >30 min silent = a real problem (9 consecutive misses), not a blip.
 
@@ -300,6 +310,13 @@ cannot watch itself from inside Pulse.
 
 **Scheduler:** launchd `ai.lifehack.health-deadman` (second-machine-only, every 900s / 15 min). Registered
 in `system/pulse-config.md` launchd manifest (`pulse-config.md:347`). Script: `system/tools/health-deadman-check.sh`.
+> **⚠ CORRECTED 2026-08-27, lb2-ops-comms.md claim 17 — wrong FOR THIS MACHINE.** `crontab -l` on this
+> machine shows `health-deadman-check.sh` actually run via **cron, hourly** (`17 * * * *`), not launchd,
+> and not every 15 min. The `THRESHOLD=2700` (45 min) value itself is confirmed verbatim in the live
+> script and is unaffected by this — a 45-min wedge threshold checked once an hour by cron still catches a
+> wedge, just with coarser timing than the every-15-min launchd cadence this line describes. Whether the
+> launchd plist is additionally installed on a machine this pass did not check is UNVERIFIED; what this
+> machine actually runs is cron.
 
 **Template gap:** the plist template (`system/templates/launchd/ai.lifehack.health-deadman.plist`)
 does NOT exist in the clone (confirmed 2026-07-24 — UNVERIFIED whether a non-template version is

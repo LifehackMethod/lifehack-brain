@@ -123,6 +123,27 @@ WORD_BOUNDARY_R = r"(?![A-Za-z0-9])"
 # bare "Wren".
 POSSESSIVE = r"(?:'s|’s|s)?"
 
+# ⭐ THE LINE-BOUNDARY SCAR (2026-08-28), THE SAME SHAPE AS THE "s" ONE ABOVE.
+#
+# `re.escape(term)` on a multi-word term bakes in a LITERAL ASCII SPACE between the words.
+# scrub.py and push_gate.py both scan with `rx.finditer(text)` over the WHOLE staged file
+# (never per-line) -- so this was never a "scans one line at a time" bug for them, as it is
+# for check_no_internal_leakage.py's added-lines pass. It is a narrower, sharper one: the
+# LITERAL SPACE ITSELF doesn't match once a hard wrap, a paragraph break, or any of the
+# other code points Python's own `str.splitlines()` treats as a line boundary (LF, CR,
+# CRLF, VT, FF, FS/GS/RS, NEL, LINE SEPARATOR, PARAGRAPH SEPARATOR) sits between the two
+# words instead of a plain space. A name is exactly as likely to be hard-wrapped as any
+# other run of prose, so a term that survives untouched on one line and vanishes the moment
+# a line-wrapper reflows it is not a real detector.
+#
+# THE FIX: for a multi-word WORD-shaped term (never an address or path fragment -- those
+# are matched as an exact literal on purpose, see the docstring's "THREE SHAPES" section),
+# the space BETWEEN words compiles to this class instead of a literal space. It is a
+# character class, so it matches a real newline with no `re.DOTALL` needed and costs
+# nothing when the words really are separated by an ordinary space -- ' ' is still a member.
+LINE_BOUNDARY_CHARS = "\n\r\v\f\x1c\x1d\x1e\x85  "
+FLEX_WS = r"[ \t{}]+".format(re.escape(LINE_BOUNDARY_CHARS))
+
 EXAMPLE_FILE = """\
 # The terms that identify YOU. One per line. '#' starts a comment.
 #
@@ -204,7 +225,13 @@ def compile_term(term, n):
         kind, pattern = "path fragment", "(?i)" + esc
     else:
         kind = "word"
-        pattern = "(?i)" + WORD_BOUNDARY_L + esc + POSSESSIVE + WORD_BOUNDARY_R
+        parts = term.split()
+        # A multi-word term -- see the LINE-BOUNDARY SCAR comment above FLEX_WS -- gets a
+        # flexible separator between its words instead of the literal space `esc` carries,
+        # so a hard wrap or a paragraph break between the words still matches. A one-word
+        # term has nothing to widen and keeps using `esc` unchanged.
+        body = FLEX_WS.join(re.escape(p) for p in parts) if len(parts) > 1 else esc
+        pattern = "(?i)" + WORD_BOUNDARY_L + body + POSSESSIVE + WORD_BOUNDARY_R
     return {
         "id": _slug(term, n),
         "mode": "regex",

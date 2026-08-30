@@ -79,7 +79,13 @@ architecture are different kinds of answer and must not be collapsed into one.
 
 **Efficiency is fully deterministic code, end to end. No LLM runs at any altitude today.** Verified
 2026-08-05 by grepping every file in `generated_from:` for `claude` / `CLAUDE_BIN` / `anthropic` /
-`subprocess` / headless-invocation patterns — **zero hits.**
+`subprocess` / headless-invocation patterns. ⚠ **CORRECTED 2026-08-27** (L.B2 audit, re-run live):
+the "zero hits" half is false as literally stated — the grep DOES hit the substring "claude" inside
+naming like `claudeops-config`/`CLAUDEOPS_DRIVE` (not an invocation) in `fault_proposer.py`,
+`recommend.py`, `fault_ledger.py`, plus real `subprocess.run(...)` calls in `health_line.py`
+(inspected: both shell out to `pm_flag.sh` and `gauge_check.py`, deterministic local tools, not an
+LLM). So the substantive conclusion — **no LLM/Claude invocation exists in this subsystem** —
+still holds on inspection; only the "zero hits" grep-count claim itself was wrong.
 
 ⇒ **No code/LLM seam exists inside Efficiency**, so LAW 1 (the seam) and LAW 1b (model-reach) do not bind
 it as built. ⚠ **This sentence has an expiry date.** The purpose statement above explicitly anticipates
@@ -109,7 +115,16 @@ Dispositions live one level down at `state/recommendations/dispositions/disposit
 and the union reader is deliberately non-recursive so it does not swallow them.
 
 **⛔ AS OF 2026-08-05 THIS DIRECTORY DOES NOT EXIST.** It is created on first write; there has never been
-a first write. See GAP-1.
+a first write. See GAP-1. ⚠ **CORRECTED 2026-08-27** (L.B2 audit, live `ls -la`): the directory
+now EXISTS with substantial, current, real content — `ORGANISM.mba.jsonl` (962,097 bytes, last
+modified 2026-08-22), `SUBSYSTEM.mba.jsonl` (26,588 bytes, 2026-08-05), and a populated
+`dispositions/dispositions.mba.jsonl`. A live run of `health_line.py` against the real ledger path
+confirms it: a `RECOMMENDATIONS: 65 recommendation(s)` line, ranked and capped at 3 shown. The
+2026-08-05 measurement was accurate THEN; it is stale now. `recommend.py` genuinely still has no
+wired `-run.sh` caller (confirmed via `system/pulse-config.md:394-397`, "NOT PORTED"), so
+recommendations are most likely reaching the store via `fault_proposer.py` / other direct
+`emit_recommendation` callers, not via `recommend.py` — but the store is unambiguously live and
+loaded with real data today, the OPPOSITE of "zero recommendations in production."
 
 ### THE GRADING LAYER (`fault_proposer.py`) — and its ownership
 
@@ -146,7 +161,14 @@ owns the wiring description.)
 ### GATES AND ENFORCEMENT (the honest map)
 
 **Script-level (a hook or code actually stops you):**
-1. `guard_findings_write.sh` — mode `444`, registered — blocks any Bash/Write/Edit into
+1. `guard_findings_write.sh` — ~~mode `444`~~ **CORRECTED 2026-08-27** (L.B2 audit, live
+   `ls -la` + live test): actual file permissions are `-rwxr-xr-x` (755) — no "444" appears
+   anywhere in the script or its `registrations.json` entry. The mode-444 detail is wrong; the
+   enforcement mechanism itself is real and confirmed live — a synthetic Write into
+   `state/recommendations/ground.machine.jsonl` ⛔ (a synthetic test path used only for this live
+   probe, not a real store file) was blocked, exit 2, with the exact "VALIDATED
+   STORE" reasoning text, registered at `registrations.json:282` (matcher `Bash|Write|Edit`) —
+   registered, blocks any Bash/Write/Edit into
    `state/recommendations/` (including `dispositions/`) that does not go through
    `emit_recommendation.py`. It resolves shell variables before matching, closing the variable-path
    bypass found as `T15.32`.
@@ -161,8 +183,14 @@ owns the wiring description.)
 
 **GAP-1 · THE PIPELINE HAS NEVER CARRIED A LOAD — the honest reason this element is PARTIAL.**
 `recommend.py` has **no caller** (grepped repo-wide, including `pulse-config.md`: every hit is inside the
-file itself) and `state/recommendations/` **does not exist**. Zero recommendations in production.
-⇒ **The judgment is proven; the plumbing is not.** Deliberate (CUT-E), pending a supervised first run.
+file itself) — that half stands, re-confirmed 2026-08-27. ~~and `state/recommendations/` **does not
+exist**. Zero recommendations in production.~~ **CORRECTED 2026-08-27** (L.B2 audit): the store
+now exists and holds 962KB+ of real data and 65 live recommendations — see THE STORE section
+above. The gap that remains is narrower than originally scoped: `recommend.py` itself is still
+unwired, but the recommendations subsystem overall is NOT dark — something else (most likely
+`fault_proposer.py`) is already writing through `emit_recommendation.py`.
+⇒ **The judgment is proven; the plumbing is not fully wired, but data IS flowing.** Deliberate (CUT-E),
+pending a supervised first run of `recommend.py` specifically.
 ★ This is the same **writer-with-no-reader** disease that left `fault_proposer.py` dark for eleven days —
 recurring inside the subsystem built one rung above it.
 
@@ -227,8 +255,11 @@ rather than on triage, and the organism evolves deliberately instead of accretin
 ### EDGE CASES
 
 1. **An empty store is silent, and silence here is ambiguous** — an empty `RECOMMENDATIONS:` line means
-   either "nothing to recommend" or "the reasoner never ran." Today it is the second. Nothing in the
-   surface distinguishes them.
+   either "nothing to recommend" or "the reasoner never ran." ~~Today it is the second.~~ **CORRECTED
+   2026-08-27** (L.B2 audit): the store is no longer empty — see THE STORE / GAP-1 corrections above.
+   A live `health_line.py` run today prints a real `RECOMMENDATIONS: 65 recommendation(s)` line.
+   The ambiguity this edge case describes is still structurally real for a genuinely-empty store;
+   it just no longer describes the store's CURRENT state. Nothing in the surface distinguishes them.
 2. **A recommendation whose underlying fault has since closed** — the store is append-only, so a stale
    proposal can outlive its cause. Disposition is the intended answer; GAP-3 says it is not in use.
 3. **A cohort that collapses to one fingerprint** renders ORGANISM evidence as raw `fp:<sha>` for ~9 of 45
@@ -247,6 +278,10 @@ rather than on triage, and the organism evolves deliberately instead of accretin
   `python3 system/tools/organism/label_checker.py write-labels`, which has not yet been run against this
   element. `PARTIAL` is the honest floor regardless of what a fire test returns, because the pipeline has
   never carried a load. ⛔ **This value is stated IDENTICALLY in the frontmatter above — deliberately.**
-  `elements/hospital.md` currently disagrees with itself (frontmatter `LIVE·gap` vs this section's
-  `PARTIAL·gap`), which is a live false-green inside the false-green subsystem; that contradiction is NOT
-  replicated here.
+  ~~`elements/hospital.md` currently disagrees with itself (frontmatter `LIVE·gap` vs this section's
+  `PARTIAL·gap`), which is a live false-green inside the false-green subsystem~~ — **CORRECTED
+  2026-08-27** (L.B2 audit, live `grep -n "maturity_label" system/organism/elements/hospital.md`):
+  this premise is false. Both hospital.md's frontmatter (line 7) and its AUTO-COMPUTED body
+  section (line 655) say the SAME thing — `LIVE·gap` / `LIVE·gap [provisional]`. There is no
+  `LIVE·gap` vs `PARTIAL·gap` split in that file today; that contradiction is NOT
+  replicated here (this element's own self-consistency claim below stands).

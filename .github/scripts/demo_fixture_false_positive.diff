@@ -1,0 +1,7 @@
+diff --git a/docs/notes.md b/docs/notes.md
+index 1111111..2222222 100644
+--- a/docs/notes.md
++++ b/docs/notes.md
+@@ -5,0 +6,2 @@
++Fixed the formula-injection guard per google-policy.md prohibition #13, no
++GitHub issue involved here at all.

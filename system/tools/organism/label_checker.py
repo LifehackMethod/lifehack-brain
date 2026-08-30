@@ -25,11 +25,28 @@ label-integrity failure — the checker exits non-zero and names it.
 SAFETY: synthetic violations are inert payloads (a fake WebFetch URL, a non-existent
 external path). The gate blocks BEFORE anything runs, so firing it is side-effect-free.
 
-SOURCE OF TRUTH: reads the GIT-TRACKED settings.json — `.claude/settings.json` in THIS
-repo's layout (the donor kept it at `system/reference/settings.json`; this repo's actual
-hooks live at `.claude/settings.json`, confirmed against `citation_lint.py`'s own
-`settings_rel = ".claude/settings.json"` and every ported hook's own header) — never a
-machine-local copy. A guard registered only on one machine is PARTIAL by design.
+SOURCE OF TRUTH: reads a GIT-TRACKED registration source, resolved in a NAMED priority
+order — never a single hardcoded path — via `find_registration_source()`:
+  1. system/hooks/registrations.json   (this repo's real source as of T3.3, 2026-08-23)
+  2. .claude/settings.json             (fallback for repo shapes that still inline hooks
+                                         there, e.g. the public lifehack-brain repo)
+  3. .claude/settings.local.json
+  4. system/reference/settings.json    (donor path)
+The first candidate that exists, parses, and carries a non-empty "hooks" dict wins, and
+WHICH one won is always printed (`registration source=...` in `check`'s header) so a
+drifted repo is visible instead of silently wrong. Mirrors
+`registered-guard-fire-test.py`'s `CANDIDATE_SOURCES` / `find_registration_source()`
+exactly — same shape, not a second invention, so both tools agree on which source is
+live in a given clone. If NO candidate qualifies, that is its own outcome
+("NO REGISTRATION SOURCE FOUND"), never folded into "not registered" and never into a
+pass (see the ABSENT-SUBJECT-RULE note on `is_registered()`/`evaluate()`).
+⛔ HISTORICAL BUG (found 2026-08-23, fixed same day): this constant was hardcoded to
+`.claude/settings.json` alone through T3.3, which MOVED hook registration to
+`system/hooks/registrations.json` and left `.claude/settings.json` explicitly disclaiming
+it (see that file's `_hooks_moved` key). The hardcoded checker then read a file that
+said, in writing, "the registrations are not here" — and reported 21 of 22 manifest
+guards as false DOWNGRADEs, every one of them actually firing correctly. Never
+hardcode a single registration path again; always resolve.
 
 WHAT CHANGED IN THIS PORT (generalisation, not a redesign):
   1. SETTINGS moved from `system/reference/settings.json` (donor path, absent here) to
@@ -69,7 +86,11 @@ from pathlib import Path
 
 try:
     import yaml
-except ImportError:
+except ImportError:  # made VISIBLE 2026-08-28 -- was a silent degrade
+    __import__("sys").stderr.write(
+        "WARNING [label_checker]: PyYAML is missing under this interpreter (%s) -- "
+        "registry-derived results are DEGRADED and INCOMPLETE, not clean. "
+        "Pin to /usr/bin/python3 (see system/requirements.txt).\n" % __import__("sys").executable)
     yaml = None
 
 # ── locate the repo root (git-canonical clone) ──────────────────────────────
@@ -93,7 +114,20 @@ REPO = repo_root()
 # module docstring's "WHAT CHANGED" item 2.
 os.environ["REPO"] = str(REPO)
 
-SETTINGS = REPO / ".claude" / "settings.json"
+# Named, in-priority-order candidate sources for "what is actually registered" — never a
+# guess, never a single hardcoded path. Mirrors registered-guard-fire-test.py's
+# CANDIDATE_SOURCES / find_registration_source() exactly (same shape, not a second
+# invention) — see that file's module docstring, item 2, for why this moved:
+# system/hooks/registrations.json is this repo's real source as of T3.3 (2026-08-23);
+# .claude/settings.json now explicitly disclaims hook registrations (see its
+# "_hooks_moved" key) but is kept as a fallback for repo shapes that still inline hooks
+# there (e.g. the public lifehack-brain repo, which has no registrations.json at all).
+REGISTRATION_CANDIDATE_SOURCES = [
+    "system/hooks/registrations.json",
+    ".claude/settings.json",
+    ".claude/settings.local.json",
+    "system/reference/settings.json",
+]
 DEFAULT_MANIFEST = REPO / "system" / "tools" / "organism" / "label_manifest.yaml"
 DEFAULT_INDEX = REPO / "system" / "organism" / "manual.md"
 DEFAULT_ELEMENTS_DIR = REPO / "system" / "organism" / "elements"
@@ -130,13 +164,40 @@ def git_tracked(path: Path) -> bool:
     return out.returncode == 0
 
 
+def find_registration_source() -> tuple:
+    """Return (rel_path_str, data) for the first candidate in
+    REGISTRATION_CANDIDATE_SOURCES that parses AND carries a non-empty "hooks" dict —
+    same resolution order and same qualifying rule as
+    registered-guard-fire-test.py's find_registration_source(), so both tools agree on
+    which source is live in a given clone. Returns (None, None) if nothing qualifies —
+    an ABSENT SUBJECT, never silently treated as "not registered" or as a pass. That
+    distinction is load-bearing: see the ABSENT-SUBJECT-RULE note on is_registered()."""
+    for rel in REGISTRATION_CANDIDATE_SOURCES:
+        p = REPO / rel
+        if not p.exists():
+            continue
+        try:
+            data = json.loads(p.read_text())
+        except Exception:
+            continue
+        if data.get("hooks", {}):
+            return (rel, data)
+    return (None, None)
+
+
 def load_settings() -> dict:
-    if not SETTINGS.exists():
-        return {}
-    try:
-        return json.loads(SETTINGS.read_text())
-    except Exception:
-        return {}
+    """Resolve + load the registration source, printing WHICH source it used so a
+    drifted repo (a candidate present but stale, or the whole chain absent) is visible
+    rather than silently wrong. Returns {} with source=None on absent-subject — callers
+    must check REGISTRATION_SOURCE, not just an empty dict, to tell "found but empty"
+    apart from "nothing found"."""
+    global REGISTRATION_SOURCE
+    rel, data = find_registration_source()
+    REGISTRATION_SOURCE = rel
+    return data or {}
+
+
+REGISTRATION_SOURCE = None  # set by load_settings(); None means ABSENT SUBJECT
 
 
 def is_registered(settings: dict, script_name: str, wanted: list) -> tuple:
@@ -259,15 +320,25 @@ def evaluate(guard: dict) -> dict:
     if not tracked:
         result["reasons"].append("script is NOT git-tracked (won't travel to another machine)")
 
-    # registered in the git-tracked settings.json?
+    # registered — per the resolved registration source (see find_registration_source()).
     settings = load_settings()
     wanted = guard.get("registered", [])
     reg_ok, missing = (True, [])
     if wanted:
-        reg_ok, missing = is_registered(settings, script_abs.name, wanted)
-        checks["registered"] = reg_ok
-        if not reg_ok:
-            result["reasons"].append(f"not registered for: {', '.join(missing)}")
+        if REGISTRATION_SOURCE is None:
+            # ABSENT SUBJECT: no registration source could be resolved at all. This is a
+            # DIFFERENT fact from "resolved a source and this guard isn't in it" — folding
+            # the two together is exactly the false-DOWNGRADE class this fix exists to end.
+            reg_ok = False
+            checks["registered"] = None
+            result["reasons"].append(
+                "NO REGISTRATION SOURCE FOUND — tried: " +
+                ", ".join(REGISTRATION_CANDIDATE_SOURCES))
+        else:
+            reg_ok, missing = is_registered(settings, script_abs.name, wanted)
+            checks["registered"] = reg_ok
+            if not reg_ok:
+                result["reasons"].append(f"not registered for: {', '.join(missing)}")
     else:
         checks["registered"] = None  # nothing claimed
 
@@ -336,7 +407,10 @@ def cmd_check(args) -> int:
         print(json.dumps({"results": results,
                           "downgrades": [r["id"] for r in downgrades]}, indent=2))
     else:
-        print(f"honesty-label checker — {len(results)} guard(s) · settings={SETTINGS.relative_to(REPO)}")
+        load_settings()  # ensure REGISTRATION_SOURCE reflects this run before printing it
+        src_label = REGISTRATION_SOURCE if REGISTRATION_SOURCE else "NONE FOUND (tried: " + \
+            ", ".join(REGISTRATION_CANDIDATE_SOURCES) + ")"
+        print(f"honesty-label checker — {len(results)} guard(s) · registration source={src_label}")
         print("─" * 72)
         for r in results:
             flag = ""

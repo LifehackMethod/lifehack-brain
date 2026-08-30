@@ -1,0 +1,8 @@
+[
+  {"order": 1, "id": "brand-clone-repo", "mode": "regex", "pattern": "claudeops-config", "to": "lifehack-brain", "why": "the code repo's name. MUST run before brand-lower or that rule turns it into 'lifehack-config', which is not a real repo"},
+  {"order": 2, "id": "brand-config-dir", "mode": "regex", "pattern": "\\.config/claudeops", "to": ".config/lifehack", "why": "the machine-local config/secrets directory. MUST run before brand-lower for the same reason"},
+  {"order": 3, "id": "brand-drive-spine", "mode": "regex", "pattern": "_ClaudeOps", "to": "Lifehack", "why": "the content spine's folder name. MUST run before brand-mixed, or that rule yields '_Lifehack' — the ratified mapping is 'Lifehack' with no underscore"},
+  {"order": 4, "id": "brand-mixed", "mode": "regex", "pattern": "ClaudeOps", "to": "Lifehack", "why": "the canonical prose spelling — the single largest form by count"},
+  {"order": 5, "id": "brand-upper", "mode": "regex", "pattern": "CLAUDEOPS", "to": "LIFEHACK", "why": "shouted headings, banner text, and env-var-style identifiers"},
+  {"order": 6, "id": "brand-lower", "mode": "regex", "pattern": "claudeops", "to": "lifehack", "why": "slugs, paths and identifiers. LAST on purpose — it is the most general form and would otherwise swallow the four specific rules above"}
+]

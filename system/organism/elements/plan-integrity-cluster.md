@@ -223,7 +223,14 @@ then build something better for having read it.
 
 **File:** `system/hooks/plan_flag.sh`
 **Registration:** `settings.json` → `PreToolUse`, matcher `ExitPlanMode` (subcommand: `record`)
-**Enforcement:** State-writer, exit 0 always. NEVER blocks (plan_flag.sh line 7: "NEVER blocks").
+**Enforcement:** ~~State-writer, exit 0 always. NEVER blocks (plan_flag.sh line 7: "NEVER blocks").~~
+**CORRECTED 2026-08-27** (L.B2 audit, live test): `record` is NOT unconditionally exit-0. Reproduced
+live — armed a plan for a fresh test session ID, then submitted a genuinely DIFFERENT plan for the
+SAME session ID: the second `record` call printed a full "⛔ REFUSED — PLAN ARMING IS IMMUTABLE..."
+refusal and exited 2. `plan_flag.sh`'s own `_gate` function calls `exit "$4"` (2 for `record`, 3 for
+`set`/`clear`) on a locked-plan mismatch — it blocks by design whenever a session tries to re-arm to
+a different plan than its first one. State-writer for the common case, blocking on the immutability
+check.
 
 `plan_flag.sh` is a multi-subcommand state manager, not just a hook:
 
@@ -244,6 +251,17 @@ then build something better for having read it.
 #### Known gap — mtime cross-wire (ExitPlanMode / `record` path)
 
 `debt-ledger.md` line 84 (`[STATUSLINE-PLAN-CROSSWIRE]`): the `record` subcommand resolves the plan file as the NEWEST `~/.claude/plans/*.md` by mtime. With multiple plan-mode windows open, "newest" is whichever saved LAST → the marker cross-wires between windows. **The RESUME path (`set <path>`) is reliable** — it arms from an explicit path. **What REMAINS broken**: the `record`/ExitPlanMode path. State: `actionable` as of 2026-07-13.
+
+⚠ **CORRECTED 2026-08-27** (L.B2 audit, source read + live reproduction): the bug is real and
+reproducible TODAY, but it is now only a documented LAST-RESORT fallback, not the primary path.
+Current code in the `record` branch uses the harness-supplied `planFilePath` from `tool_input`
+FIRST; the newest-mtime `glob` is only reached "if not target" (i.e., `planFilePath` absent from
+the payload). Reproduced directly: with two plan files on disk (older = Window A content, newer =
+Window B) and a payload carrying Window A's plan TEXT but no `planFilePath`, the flag was written
+with `name="Plan Window A"` but `plan_file=".../bbb-window-b.md"` (the newest file) — the exact
+cross-wire this section describes. So the bug is literally true of the fallback code path, but this
+section presents it as the current dominant behavior when it has been demoted to a rare fallback
+(fires only if the harness omits `planFilePath`) — a staleness/framing issue, not a fabrication.
 
 #### Known gap — `/read` does not arm plan flag
 

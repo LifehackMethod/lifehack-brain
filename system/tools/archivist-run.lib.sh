@@ -124,10 +124,12 @@ run_archivist() {
 
   # 2) SINGLE-INSTANCE LOCK (mkdir atomic; stale-steal after watchdog+buffer).
   local lockdir steal
-  lockdir="/tmp/lifehack-${ARCH_LABEL}.lock"
+  lockdir="/tmp/claudeops-${ARCH_LABEL}.lock"
   steal=$(( ARCH_WATCHDOG + 300 ))
   if ! mkdir "$lockdir" 2>/dev/null; then
-    if [ -d "$lockdir" ] && [ "$(( $(date +%s) - $(stat -f %m "$lockdir" 2>/dev/null || echo 0) ))" -gt "$steal" ]; then
+    _lock_mtime="$(stat -c %Y "$lockdir" 2>/dev/null || stat -f %m "$lockdir" 2>/dev/null || echo 0)"
+    case "$_lock_mtime" in ''|*[!0-9]*) _lock_mtime=0 ;; esac
+    if [ -d "$lockdir" ] && [ "$(( $(date +%s) - _lock_mtime ))" -gt "$steal" ]; then
       _alog "stale lock (>${steal}s) — stealing."; rm -rf "$lockdir"
       mkdir "$lockdir" 2>/dev/null || { _alog "lock race — skip."; return 0; }
     else

@@ -73,14 +73,33 @@ fi
 # A guard that greps a command STRING for a keyword fires on mere MENTIONS: a
 # `git commit -m "stop using git add -A"`, a `grep "git add ."`, an `echo`. That
 # already happened once — the status-bar pointer guard blocked its own build's commit.
-# So quoted text and heredoc bodies are stripped BEFORE matching, and we only inspect
-# real `git add` / `git commit` invocations, never the raw string.
+# So heredoc bodies are stripped BEFORE matching, and we only inspect real `git add` /
+# `git commit` invocations, never the raw string — never a keyword found anywhere in it.
+#
+# ⛔ FIXED 2026-08-28 (Windows client, ACTIVE BLOCKER): this used to ALSO blank out every
+# quoted substring to a bare space before splitting into segments — `s = re.sub(r'"[^"]*"',
+# ' ', s)` and the single-quote twin. That does not merely neutralise a MENTION inside a
+# quoted string (the case the comment above is about); it deletes a REAL, QUOTED PATHSPEC
+# too, because the substitution runs on the raw text before shlex ever sees it. So
+# `git add "system/hooks/pm_flag.sh"` was rewritten to `git add ` before parsing, shlex
+# saw zero path tokens, and the verdict was "git add with no pathspec" — a whole-tree-add
+# false positive on the single most careful way to stage one file. Windows paths routinely
+# contain spaces (`C:\Program Files\...`), so a Windows session MUST quote — the correct,
+# careful command was exactly what got blocked, every time.
+# The stripping was never needed for the false-positive it cites: shlex.split() already
+# treats a quoted string as ONE token, so `grep "git add ."` tokenizes to ['grep', 'git
+# add .'] — that second token is not the exact string 'git', so the git-detection below
+# (which looks for a token that literally IS 'git') never fires on it, quotes or no quotes.
+# Same reasoning covers `git commit -m "stop using git add -A"`: shlex keeps the message
+# as one token, so it never reads as a -a/--all flag. Removing the blanking step closes the
+# false positive on a quoted pathspec (verified: git add "path with spaces/file.sh" now
+# passes) while every deny case above — git add ., -A, --all, bare git add, git commit -a,
+# and the quoted-mention false positives this comment names — is unchanged: see
+# system/hooks/tests/test_git_add_class.sh.
 VERDICT=$(printf '%s' "$COMMAND" | python3 -c "
 import re, sys, shlex
 s = sys.stdin.read()
 s = re.sub(r'<<-?\s*[\"\x27]?(\w+)[\"\x27]?.*', ' ', s, flags=re.S)   # heredoc body
-s = re.sub(r'\"[^\"]*\"', ' ', s)
-s = re.sub(r\"'[^']*'\", ' ', s)
 bad = []
 for seg in re.split(r'&&|\|\||;|\||\n', s):
     seg = seg.strip()

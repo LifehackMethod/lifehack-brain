@@ -27,10 +27,56 @@
 # (Hospital / SELF-AUDIT) and hasn't landed in this repo. This script's own job is narrower and does
 # not need it: "is the sweep itself alive." A future Hospital port can extend this without needing to
 # touch the watcher's core contract.
+#
+# ⚠ T10.A3 OL-N1 ②, CORRECTING THE ABOVE: this script WAS calling notify-send.sh unconditionally,
+# every single run, for as long as the ERROR condition held — measured live: 46 sends in 46 hours
+# (hourly cron, every run in-fault fired). `~/.local/state/claudeops/faults.json` (this repo's own
+# equivalent: `~/.config/lifehack/faults.json`, via `shared/fault_ledger.py` below) carried ZERO
+# `health-deadman` keys, because nothing here ever wrote to it — the "24h gate" the org map
+# describes was never wired to THIS caller. `system/tools/fault_ledger.py` was ported
+# correct-and-callable (its own docstring says so) but nothing called `record_faults()` on a
+# cadence — this is that missing call. From now on: an ERROR condition alerts on the EDGE (first
+# time it's newly true — a human should hear about a new outage immediately) and then only once
+# per `fault_ledger.ESCALATE_AFTER_S`/`RE_ALERT_EVERY_S` (24h/24h) after that, using
+# `fault_ledger.due_for_escalation()` — the exact mechanism the ledger was built for. Recovery
+# (condition clears) reaps the row via `record_faults(..., active=[])`, so a NEW outage after a
+# recovery is correctly treated as new, not as a stale escalation timer.
 set -uo pipefail
 
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 THRESHOLD=2700   # 45 min. system-health runs every 5 min -> 9 consecutive misses = genuinely dead, not a blip.
+
+# ── OL-N1 ② gate: should THIS run actually alert, given the ledger's edge+24h-escalation rule? ──
+# args: <state: "missing"|"silent"|""(=healthy, clears both)>
+# Prints "1" (alert now) or "0" (stay quiet — already alerted, not yet due to escalate), and
+# durably records the fault's presence/absence either way. Best-effort: any failure here degrades
+# to "1" (alert) — a ledger outage must never be the reason a genuine dead-man goes silent.
+_deadman_gate() {
+  local state="$1"
+  python3 - "$CODE_ROOT" "$state" <<'PYEOF' 2>/dev/null || echo 1
+import sys, time
+code_root, state = sys.argv[1], sys.argv[2]
+sys.path.insert(0, f"{code_root}/system/tools")
+import fault_ledger as FL
+
+JOB = "health-deadman"
+now = time.time()
+d = FL.load()
+active = [(JOB, state)] if state else []
+was_active = FL.key(JOB, state) in d["faults"] if state else False
+d = FL.record_faults(d, active, now)
+should_alert = False
+if state:
+    if not was_active:
+        should_alert = True                      # edge: newly in fault -> alert immediately
+    elif FL.due_for_escalation(d, JOB, state, now):
+        should_alert = True                      # >=24h old AND >=24h since last alert
+    if should_alert:
+        FL.mark_alerted(d, JOB, state, now)
+FL.save(d)
+print(1 if should_alert else 0)
+PYEOF
+}
 
 # ── The notes root ───────────────────────────────────────────────────────────
 # Resolved fresh every run, same as every other tool. NOT-SET is a legitimate state on a fresh
@@ -94,10 +140,13 @@ if [ ! -f "$HEALTH_JSON" ]; then
     # A real wedge — this install HAS reported before, and now the tile is simply gone (sweeper
     # wedged, or someone deleted it).
     DEADMAN_STATUS="ERROR"
-    bash "$CODE_ROOT/shared/notify/notify-send.sh" --source health-deadman --tags rotating_light --priority critical \
-      --title "Health monitor file MISSING" \
-      --message "_system-health.json is gone, and this install has reported before — the sweeper is wedged or the tile was deleted. Check the Pulse log + system-health-run.sh." \
-      2>/dev/null || true
+    if [ "$(_deadman_gate missing)" = "1" ]; then
+      bash "$CODE_ROOT/shared/notify/notify-send.sh" --source health-deadman --tags rotating_light --priority critical \
+        --identity "health-deadman-missing" \
+        --title "Health monitor file MISSING" \
+        --message "_system-health.json is gone, and this install has reported before — the sweeper is wedged or the tile was deleted. Check the Pulse log + system-health-run.sh." \
+        2>/dev/null || true
+    fi
   else
     # never-seen -> fresh install / system-health has simply never run yet -> silence, by design.
     DEADMAN_STATUS="OK"
@@ -127,9 +176,14 @@ DEADMAN_STATUS="OK"
 if [ "$AGE" -gt "$THRESHOLD" ]; then
   DEADMAN_STATUS="ERROR"
   DEADMAN_SUMMARY="ALARM: health monitor SILENT for $(( AGE / 60 ))min (limit $(( THRESHOLD / 60 ))min)"
-  bash "$CODE_ROOT/shared/notify/notify-send.sh" --source health-deadman --tags rotating_light --priority critical \
-    --title "Health monitor SILENT" \
-    --message "system-health has not emitted in $(( AGE / 60 ))min — Pulse or the sweeper may be wedged. Check the Pulse log + system-health-run.sh." \
-    2>/dev/null || true
+  if [ "$(_deadman_gate silent)" = "1" ]; then
+    bash "$CODE_ROOT/shared/notify/notify-send.sh" --source health-deadman --tags rotating_light --priority critical \
+      --identity "health-deadman-silent" \
+      --title "Health monitor SILENT" \
+      --message "system-health has not emitted in $(( AGE / 60 ))min — Pulse or the sweeper may be wedged. Check the Pulse log + system-health-run.sh." \
+      2>/dev/null || true
+  fi
+else
+  _deadman_gate "" >/dev/null   # healthy: reap any previously-active fault row (self-heal)
 fi
 exit 0

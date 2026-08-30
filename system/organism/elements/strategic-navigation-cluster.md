@@ -40,7 +40,7 @@ authority: user
 
 > **CITATIONS — what the paths below resolve to here.** This element describes the donor system; the line below records what happened to each named file at THIS destination, and it covers every mention of them in the body.
 >
-> ⛔ `state/telos.md` — runtime-generated, created on first run, never committed. It is the reader's OWN year-long brief and lives in their notes folder (`.claude/skills/telos/SKILL.md` line 23: *"inside your own notes folder — never in this repo"*); `system/templates/telos-starter.md` is the shipped seed the skill writes it from. Absent from a fresh checkout is CORRECT, not missing.
+> ⛔ `state/telos.md` — runtime-generated, created on first run, never committed. It is the reader's OWN year-long brief and lives in their notes folder (.claude/skills/telos/SKILL.md line 23: *"inside your own notes folder — never in this repo"*); system/templates/telos-starter.md is the shipped seed the skill writes it from. Absent from a fresh checkout is CORRECT, not missing.
 
 ---
 
@@ -171,13 +171,20 @@ bash ~/lifehack-brain/system/hooks/throughline_flag.sh arm    # at start
 bash ~/lifehack-brain/system/hooks/throughline_flag.sh clear  # at end or abort
 ```
 Flag location: `~/.claude/run/eval/eval-sess-<CLAUDE_CODE_SESSION_ID>.flag`. TTL: 30 minutes
-(configurable via `$EVAL_TTL_MIN`; self-expires so a forgotten `clear` is harmless). A cwd-hash
+(configurable via ~~`$EVAL_TTL_MIN`~~ **CORRECTED 2026-08-27** (L.B2 audit, `grep -n "TTL_MIN"
+system/hooks/throughline_flag.sh`): the live env var is `THROUGHLINE_TTL_MIN`
+(`TTL_MIN="${THROUGHLINE_TTL_MIN:-30}"`), not `$EVAL_TTL_MIN` — the 30-minute default and
+self-expiry behavior are both confirmed correct; self-expires so a forgotten `clear` is harmless). A cwd-hash
 fallback fires when `$CLAUDE_CODE_SESSION_ID` is empty. (throughline_flag.sh lines 17-36)
 
 `guard_throughline_write_scope.sh` (settings.json:175-179, PreToolUse Write|Edit matcher) — WHILE the
 flag is armed, any write/edit outside the scratchpad dir is hard-blocked. Fails CLOSED on
 unparseable input during an armed run. Pure NO-OP for all other sessions (flag not present → exit 0).
-Scratchpad dir: `$DRIVE/state/projects/infrastructure/evaluator/scratchpads/`.
+Scratchpad dir: ~~`$DRIVE/state/projects/infrastructure/evaluator/scratchpads/`~~ **CORRECTED
+2026-08-27** (L.B2 audit, source read of `guard_throughline_write_scope.sh`): the mechanism is real
+and registered — confirmed via live test that it hard-blocks outside-scope writes while armed —
+but the actual sanctioned destination in the live code is `DEST="$NOTES_ROOT/records/insights/throughline"`,
+i.e. `<notes>/records/insights/throughline/`, not this path.
 
 **Invocation:**
 ```
@@ -223,7 +230,7 @@ have evidence this is working" — name the degradation when it occurs. (SKILL.m
    a finding on a healthy target is a false positive. (SKILL.md lines 159-228)
 
 **Write target — scratchpad ONLY:**
-Path: `{DRIVE_ROOT}/state/projects/infrastructure/evaluator/scratchpads/{target-slug}-{YYYY-MM-DD}.md`.
+Path: `{DRIVE_ROOT}/state/projects/infrastructure/evaluator/scratchpads/{target-slug}-{YYYY-MM-DD}.md`. ⚠ **See 2026-08-27 correction above — live code's actual DEST is `<notes>/records/insights/throughline/`.**
 After writing, tells the human: findings written to `{full path}` · `status: draft` · next step: review
 and set `status: human-reviewed` before any downstream consumer (cal-review, etc.) can gate on it.
 
@@ -259,7 +266,7 @@ line 16, guard_throughline_write_scope.sh lines 28-30)
 **Stores touched:**
 - READ: plot file (or Cal diary rollups + brief + journal for assembly) · `state/telos.md`
   (whole-system scope) · `desks/cal/diary/…`.
-- WRITE: `$DRIVE/state/projects/infrastructure/evaluator/scratchpads/{slug}-{date}.md` ONLY.
+- WRITE: `$DRIVE/state/projects/infrastructure/evaluator/scratchpads/{slug}-{date}.md` ONLY. ⚠ **See 2026-08-27 correction above.**
 
 **Known debt:**
 - **[SKILL-SOP-FIXES]** `/throughline` needs a per-turn anchor added (wave-2 of the 2026-07-12
@@ -305,7 +312,7 @@ consuming task notes. (security-canon.md; ingestion-reader-contract.md)
 |-------|-------|--------|------|
 | `/first-principles` | user input only | nothing | nothing |
 | `/telos` | `$DRIVE/state/telos.md` · Google Tasks (Life Map) | `$DRIVE/state/telos.md` (on approval) | nothing |
-| `/throughline` | plot file or Cal diary rollups · brief (dead_ends/desired outcome) · `state/telos.md` | scratchpad ONLY (`…/evaluator/scratchpads/`) | `throughline_flag.sh` (self-clears) |
+| `/throughline` | plot file or Cal diary rollups · brief (dead_ends/desired outcome) · `state/telos.md` | scratchpad ONLY (`…/evaluator/scratchpads/` — ⚠ see 2026-08-27 correction: live DEST is `<notes>/records/insights/throughline/`) | `throughline_flag.sh` (self-clears) |
 | `/checkin` | → see memory-read element (`elements/read.md.draft`) | | |
 
 ---

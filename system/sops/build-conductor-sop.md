@@ -146,7 +146,8 @@ A gear-3 wave spawns fresh teammates into a shared, dependency-aware task list s
 independent surfaces that must coordinate can run together. **Opt-in only** — fires on "use agent
 teams" / "team build" — and costs roughly **~7× the tokens** of a chat pass, so the sweet spot is
 **~3 teammates**. **Embed context in each task** — teammates don't see the lead's chat — and **the
-lead owns the merge**.
+lead owns the merge**. *(Same ceiling family as the merge-gate cap below — cost/mergeable-output
+driven, not a parallel-vs-serial call; the parallel-by-default ruling doesn't raise it.)*
 
 ## Running a gear-4 dynamic workflow (the fleet)
 
@@ -213,6 +214,10 @@ separate check or the human confirms "done." **Fresh context per cycle** — con
   what can run in parallel. Keep the lead free at altitude.
 - But parallelism has a tax (coordination, tokens, review bandwidth). The real bottleneck is
   **human review**, so cap concurrent builders at **~3** and don't fan out past what you can merge.
+  ⭐ *This ~3 is a human-review-bandwidth / coordination-tax ceiling, not a dispatch-parallelism
+  throttle — it governs how much returning work gets merged well, not whether work is dispatched in
+  parallel. The 2026-08-24 default-to-parallel ruling is about the latter and does not touch this
+  number; don't let a future serial-language sweep read the digit and strike it.*
 
 ## Coordinator discipline — LEAD (read the case study below)
 
