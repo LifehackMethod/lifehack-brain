@@ -41,6 +41,9 @@ googleusercontent.com
 serper.dev
 # ntfy — push notifications, if you turn them on
 ntfy.sh
+# YouTube — transcript fetch for the lecture-builder skill (MZ approved 2026-08-30);
+# watch pages + the timedtext caption endpoint both live under youtube.com
+youtube.com
 <!-- ALLOWLIST-END -->
 
 ## Two things worth knowing
