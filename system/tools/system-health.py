@@ -78,11 +78,19 @@ TILE_ALIAS = {
     "backlog-health": "backlog",
     "sentinel-health": "sentinel",
     "system-health": "_system-health",     # this sweeper's own feed
+    # ── added 2026-08-27, closing the 9-job NO-TILE mismatch: these five jobs were already
+    #    emitting real tiles, just not under their pulse-job names ──
+    "fault-proposer": "fault-proposer-local",      # fault-proposer-run.sh suffixes MACHINE="local" (fixed constant)
+    "item-store-freshness": "item-store",          # the tile is named for the STORE it checks
+    "email-summary-freshness": "email-summary",    # ditto
+    "archivist-audit": "archivist",                # both archivist modes share ONE tile
+    "archivist-deepmine": "archivist",             # (archivist-run.lib.sh: per-mode sub-keys, shared last_run)
 }
-# NO_TILE_EXPECTED — jobs that legitimately never emit a state/status/*.json tile. Empty today: every
-# job in this repo's pulse-config.md does emit one. Left as a named, checked set (not removed) so the
-# convention this repo's job-authoring pattern expects stays visible for whoever adds the next job.
-NO_TILE_EXPECTED = set()
+# NO_TILE_EXPECTED — jobs that legitimately never emit a state/status/*.json tile.
+# guard-fire-test writes DELIBERATELY machine-local (~/.config/lifehack/guard-fire-test/ + a
+# faults.json finding — its runner header: never the notes root, no shared-file race); its RED/CLEAR
+# verdict reaches the board through the findings banner, not a tile.
+NO_TILE_EXPECTED = {"guard-fire-test"}
 _MISSING = object()   # sentinel: a tile was EXPECTED (not opted out) but the file doesn't exist
 
 
@@ -301,6 +309,18 @@ def sentinel_fold(now):
     if sec == "FLAGS":
         return {**base, "state": "FLAGS", "severity": "info", "attention": True,
                 "why": f"{flags} security flag(s) in 24h — glance, not urgent"}
+    if sec == "CLEAR":
+        # A CLEAR tile is a RESULT, not an absence — it must reach _emit_findings() like every
+        # other assessed job, so the OK row it produces supersedes the prior DANGER/FLAGS row
+        # (same fingerprint: labels target=sentinel) and the alarm visibly CLOSES on the next
+        # sweep. Before 2026-08-21 this branch returned None: a sentinel DANGER finding then
+        # stayed "latest" on the session-start line until it aged out as SILENT — the one job
+        # in the sweep whose recovery was never written down (observed that day: acks synced
+        # from the laptop at 17:48, the 17:25 DANGER row still led the banner at 17:53).
+        reviewed = t.get("reviewed_count_24h", 0) or 0
+        return {**base, "state": "UP", "severity": "ok", "attention": False,
+                "why": t.get("summary") or f"all clear — {reviewed} reviewed, 0 active (24h)"}
+    # Anything else (missing/unknown status) stays None: absence must never read as OK.
     return None
 
 

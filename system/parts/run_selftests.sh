@@ -27,7 +27,16 @@ for f in "$HERE"/*.py; do
   fi
   if out="$(python3 "$f" --selftest 2>&1)"; then
     n="$(printf '%s' "$out" | grep -c '\[PASS\]')"
-    echo "  ✔ $name — $n checks"
+    k="$(printf '%s' "$out" | grep -c '\[SKIP\]')"
+    if [ "$k" -gt 0 ]; then
+      # A SKIP is a passing part with an UNPROVEN claim — shown, never folded into the tick
+      # (2026-08-22: "could not run" must not be spelled like "ran and failed",
+      # and must not vanish into a green line either).
+      echo "  ✔ $name — $n checks · ⚠ $k SKIPPED"
+      printf '%s\n' "$out" | grep '\[SKIP\]' | sed 's/^/      /'
+    else
+      echo "  ✔ $name — $n checks"
+    fi
     PASS=$((PASS + 1))
   else
     echo "  ✘ $name — SELFTEST FAILED"

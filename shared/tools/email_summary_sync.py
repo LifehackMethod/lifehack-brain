@@ -979,15 +979,37 @@ def write_v2(thread_ids=None, filter_label=None, recency_days=RECENCY_FLOOR_DAYS
         ids = list(thread_ids)
     else:
         idset = set()
+        live_listed = {}   # lname → live thread count, ONLY for scopes that listed without error
         for (lname, lid) in resolved:
             lids, err = list_thread_ids_for_label(lid, label_name=lname, recency_days=recency_days)
             if err:
                 sys.stderr.write(f"[email-summary-sync] v2 label '{lname}' list error: {err}\n")
             else:
+                live_listed[lname] = len(lids)
                 idset.update(lids)
                 for t in lids:
                     thread_scopes.setdefault(t, set()).add(lname)
         ids = sorted(idset)
+        # ── TRUE-ZERO ATTESTATION (2026-08-27). The freshness dead-man reads LOCAL files only (by
+        # design — no auth), so it cannot tell "scope empty because the account genuinely has
+        # nothing there" (w4all2 has never SENT a message) from "scope empty because the writer is
+        # broken" — and rendered a faithful mirror of an unused scope as DEGRADED forever. THIS is
+        # the one place that just asked Gmail: a scope that listed 0 live with NO error is a
+        # VERIFIED zero — stamp it (timestamped) into meta.json for freshness_check() to consult.
+        # A scope that listed >0 loses any old stamp; a scope that ERRORED keeps whatever stamp it
+        # had (we could not look — never convert "could not look" into an attestation).
+        try:
+            _lz = dict(meta.get("live_zero_scopes") or {})
+            for _s, _n in live_listed.items():
+                if _n == 0:
+                    _lz[_s] = iso_now()
+                else:
+                    _lz.pop(_s, None)
+            if _lz != (meta.get("live_zero_scopes") or {}):
+                meta["live_zero_scopes"] = _lz
+                write_meta_atomic(meta)
+        except Exception as _e:
+            sys.stderr.write(f"[email-summary-sync] WARNING: live-zero attestation not written ({_e})\n")
 
     if limit is not None and limit >= 0:
         ids = ids[:limit]
@@ -1229,6 +1251,28 @@ def freshness_check(max_stale_hours=FRESHNESS_MAX_STALE_HOURS, tracked_scopes=No
             reasons.append(f"stale {staleness_hours}h > {max_stale_hours}h floor")
 
     zeroed = [s for s in scopes if counts.get(s, 0) == 0]
+    # TRUE-ZERO ATTESTATION (2026-08-27): write_v2 stamps meta.live_zero_scopes when a scope's
+    # LIVE Gmail listing returned 0 with no error — the writer looked at the source and the scope
+    # really is empty (an account that has never sent mail has a true-zero SENT). A zeroed scope
+    # with a fresh attestation is COVERED, not degraded; named in the detail, never silent. A
+    # stamp older than max_stale_hours no longer counts (the attestation itself has gone stale)
+    # and the scope degrades exactly as before. Still local-files-only: meta.json, no auth.
+    verified_zero = []
+    if zeroed:
+        try:
+            _attested = load_meta().get("live_zero_scopes") or {}
+        except Exception:
+            _attested = {}
+        _still = []
+        for s in zeroed:
+            _p = parse_iso(_attested.get(s, "") or "")
+            _age_h = (None if _p is None else
+                      (datetime.now(timezone.utc) - _p.astimezone(timezone.utc)).total_seconds() / 3600.0)
+            if _age_h is not None and _age_h <= max_stale_hours:
+                verified_zero.append(s)
+            else:
+                _still.append(s)
+        zeroed = _still
     if zeroed:
         reasons.append("zeroed ACTIVE scope(s): " + ", ".join(zeroed))
 
@@ -1250,9 +1294,12 @@ def freshness_check(max_stale_hours=FRESHNESS_MAX_STALE_HOURS, tracked_scopes=No
     detail = {
         "check": "freshness-dead-man", "checked_at": iso_now(),
         "counts": counts, "checked_scopes": scopes, "zeroed_scopes": zeroed,
+        "verified_zero_scopes": verified_zero,
         "staleness_hours": staleness_hours, "max_stale_hours": max_stale_hours,
         "write_age_hours": write_age_hours, "write_stale_hours": write_stale_hours,
-        "reason": "; ".join(reasons) if reasons else "fresh + all scopes covered",
+        "reason": ("; ".join(reasons) if reasons else
+                   "fresh + all scopes covered"
+                   + (f" ({', '.join(verified_zero)}: verified zero at source)" if verified_zero else "")),
     }
     if last_successful_run is not None:
         detail["last_successful_run"] = last_successful_run

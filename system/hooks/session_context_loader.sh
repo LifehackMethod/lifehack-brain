@@ -6,7 +6,7 @@
 #      memory. This SessionStart hook puts the standing-true floor in front of every session without
 #      anyone having to think to search for it.
 # GUARDS: Nothing — this is a context loader, not a blocker. It never stops a session.
-# REDIRECT: N/A (non-blocking). Reads <data root>/canon.md and <data root>/desks/*/canon/current.md,
+# REDIRECT: N/A (non-blocking). Reads <data root>/doctrine.md (if present), <data root>/canon.md and <data root>/desks/*/canon/current.md,
 #      resolved through shared/brain_root.py. Set the data root with: python3 shared/brain_root.py --set <path>
 #      Also invokes `system/tools/health_line.py <ledger>` (see _findings_banner() below) once ROOT is
 #      resolved, to render the Hospital/Efficiency findings banner nothing else was calling.
@@ -38,6 +38,11 @@
 #      2026-08-15: the TELOS / strategic-brief block RESTORED, but GATED on `-s` (exists AND non-empty)
 #      so a fresh install pays exactly zero bytes for it. See the struck exclusion note below and the
 #      block's own comment. ⛔ No exit code changed — every path in this file is still `exit 0`.
+#      2026-08-22: the NOT-SET branch now asks the repo's own `.brain-root` pointer what was
+#      remembered, before ~/.config — a stale pointer used to print "No data root set yet", the
+#      exact fresh-install misreport that branch warns against. The two not-set tests moved onto a
+#      sandbox copy of the repo, because a real `.brain-root` is read from brain_root.py's file
+#      position and no HOME/env sandbox can hide it. ⛔ No exit code changed.
 # ─────────────────────────────────────────────────────────────────────────────
 #
 # ⭐ THE BUG THIS FILE IS BUILT AGAINST — it was in the original, and it is the whole point:
@@ -72,7 +77,19 @@
 # "detection works, consumption does not" shape as the bug above, one layer down. Wiring it in is
 # closing that gap, not reintroducing the excluded donor block.
 
-CEIL="${SESSION_CONTEXT_CHAR_CEIL:-20000}"
+# ⚠ THE REAL CEILING IS NOT OURS TO SET. Claude Code caps every hook's stdout at 10,000 characters;
+# above that the model receives a ~2KB preview and a file path — the canon, the doctrine, and this
+# file's own STOPPED HERE line all vanish into a file nothing opens (found 2026-08-22: with the ceiling
+# at 30,000 every session start since the previous evening had been persisted, 35–47KB emitted, 2KB
+# seen). So the default sits UNDER that cap, with room for the section headers and the findings banner
+# this counter does not tally. Raising SESSION_CONTEXT_CHAR_CEIL past ~9,500 does not load more — it
+# loads NOTHING.
+CEIL="${SESSION_CONTEXT_CHAR_CEIL:-9500}"
+# Clamp, don't trust: a per-machine settings.local.json that still says 20000 or 30000 (both were
+# shipped defaults/advice before 2026-08-22) would silently reproduce the blank-session bug on that
+# machine. Lower is always honoured (the self-test uses 500); higher is capped.
+case "$CEIL" in ''|*[!0-9]*) CEIL=9500 ;; esac
+[ "$CEIL" -gt 9500 ] && CEIL=9500
 
 REPO="$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd)"
 if [ -z "$REPO" ] || [ ! -f "$REPO/shared/brain_root.py" ]; then
@@ -99,14 +116,20 @@ if [ "$RC" -ne 0 ] || [ -z "$ROOT" ]; then
   # an unplugged disk, or a renamed folder — and telling THAT person to "set it once" invites them to
   # point the system at an empty folder and lose the association with their real notes.
   # The resolver deliberately collapses the two (a remembered path that is not a directory falls
-  # through rather than resolving), so ask what was remembered, directly.
+  # through rather than resolving), so ask what was remembered, directly — the repo's own
+  # `.brain-root` pointer FIRST (2026-08-22: it is the primary way a root is set now; a stale one
+  # used to fall through to "No data root set yet", the exact misreport the lines below warn about),
+  # then the persisted ~/.config file, then $LIFEHACK_ROOT.
   REMEMBERED="$(python3 - "$REPO" <<'_REMEMBERED_EOF' 2>/dev/null
 import sys, os
 sys.path.insert(0, os.path.join(sys.argv[1], "shared"))
 try:
     import brain_root
-    p = brain_root.BRAIN_ROOT_CONFIG
-    print(open(p).read().strip() if os.path.isfile(p) else "")
+    remembered = brain_root.read_repo_pointer() or ""
+    if not remembered:
+        p = brain_root.BRAIN_ROOT_CONFIG
+        remembered = open(p).read().strip() if os.path.isfile(p) else ""
+    print(remembered)
 except Exception:
     print("")
 _REMEMBERED_EOF
@@ -132,8 +155,12 @@ _REMEMBERED_EOF
   exit 0                      # a legitimate state (a fresh install), not a failure
 fi
 
-echo "=== Session context (loaded automatically) ==="
-echo "Your notes: $ROOT"
+# Every line this file prints counts against the ceiling — headers, the banner, the stop notice —
+# because the 10,000-character harness cap (see CEIL above) counts them too. `hdr` prints and tallies.
+TOTAL=0
+hdr() { printf '%s\n' "$1"; TOTAL=$(( TOTAL + ${#1} + 1 )); }
+hdr "=== Session context (loaded automatically) ==="
+hdr "Your notes: $ROOT"
 
 # ── THE FINDINGS/HEALTH BANNER — the other half of a promise this file already fixed once. ────
 # Detection was never the missing piece: emit_finding.py -> findings_reader.py -> health_line.py
@@ -161,8 +188,6 @@ _findings_banner() {
   [ -n "$out" ] && { echo ""; printf '%s\n' "$out"; }
 }
 
-TOTAL=0
-
 # ── THE ROOT CANON: the few things true for every conversation, on any subject ───────────────────
 # ⭐ THIS BLOCK IS A BUG FIX (2026-08-11), and the bug was a promise nothing kept. This loader read
 # the subject folders and stopped there — while FOUR shipped places told the person the opposite:
@@ -185,13 +210,37 @@ if [ -s "$ROOT_CANON" ]; then
   # file down from the root-resolution case above. Say so; don't just skip it.
   RC_BODY="$(cat "$ROOT_CANON" 2>/dev/null)"
   if [ -n "$RC_BODY" ]; then
-    TOTAL=${#RC_BODY}
-    echo ""
-    echo "--- true for everything ---"
+    TOTAL=$(( TOTAL + ${#RC_BODY} ))
+    hdr ""
+    hdr "--- true for everything ---"
     printf '%s\n' "$RC_BODY"
   else
     echo ""
     echo "!! COULD NOT READ $ROOT_CANON — it exists and is non-empty, but the read returned nothing (check permissions). Root canon NOT loaded this session."
+  fi
+fi
+
+# ── DOCTRINE: the person's standing operating rules — ONLY if they wrote them ─────────────────
+# `<root>/doctrine.md` is how this person wants to be worked with (their hard rules, defaults, rulings).
+# It used to reach sessions as a `@` import from CLAUDE.local.md. That import never loaded in the
+# desktop app: an import that resolves OUTSIDE the repo is dropped until a one-time approval dialog
+# is accepted, and the desktop app runs non-interactively and never shows it — so the file was
+# silently absent from every session while INSTALL.md said it was carried (found 2026-08-22 by a
+# restart probe). Loading it HERE needs no dialog on any machine and is the same mechanism the root
+# canon already uses. It sits right after the root canon — frame first, then the rules for working
+# inside it. Same `-s` gate and LOUD-READ posture as the root canon and TELOS: no file, nothing
+# printed; a non-empty file that reads back empty is a READ FAILURE and says so.
+DOCTRINE_FILE="$ROOT/doctrine.md"
+if [ -s "$DOCTRINE_FILE" ]; then
+  DC_BODY="$(cat "$DOCTRINE_FILE" 2>/dev/null)"
+  if [ -n "$DC_BODY" ]; then
+    TOTAL=$(( TOTAL + ${#DC_BODY} ))
+    hdr ""
+    hdr "--- how to work with me (doctrine.md — standing rules; edit the file, not this line) ---"
+    printf '%s\n' "$DC_BODY"
+  else
+    echo ""
+    echo "!! COULD NOT READ $DOCTRINE_FILE — it exists and is non-empty, but the read returned nothing (check permissions). DOCTRINE NOT loaded this session."
   fi
 fi
 
@@ -216,8 +265,8 @@ if [ -s "$TELOS_FILE" ]; then
   TL_BODY="$(cat "$TELOS_FILE" 2>/dev/null)"
   if [ -n "$TL_BODY" ]; then
     TOTAL=$(( TOTAL + ${#TL_BODY} ))
-    echo ""
-    echo "--- what you are optimizing for this year (state/telos.md — read-only here; /telos is the one writer) ---"
+    hdr ""
+    hdr "--- what you are optimizing for this year (state/telos.md — read-only here; /telos is the one writer) ---"
     printf '%s\n' "$TL_BODY"
   else
     echo ""
@@ -242,8 +291,10 @@ if [ "${#CANON[@]}" -eq 0 ]; then
   exit 0
 fi
 
-echo ""
-echo "Standing notes from ${#CANON[@]} subject folder(s):"
+FB="$(_findings_banner)"
+TOTAL=$(( TOTAL + ${#FB} ))
+hdr ""
+hdr "Standing notes from ${#CANON[@]} subject folder(s):"
 SHOWN=0
 for f in "${CANON[@]}"; do
   SUBJECT="$(basename "$(dirname "$(dirname "$f")")")"
@@ -264,25 +315,32 @@ for f in "${CANON[@]}"; do
   # ⚠ CEILING, and it announces itself. Measured on the system this came from: an unbounded canon
   # emit reached 62 KB in ONE session start. Silently dropping the tail would be worse than the
   # flood — a session would believe it had the whole floor. So: stop, and say what was left out.
-  if [ $(( TOTAL + LEN )) -gt "$CEIL" ]; then
+  if [ $(( TOTAL + LEN + 220 )) -gt "$CEIL" ]; then     # 220 ≈ the stop notice itself
     REMAINING=$(( ${#CANON[@]} - SHOWN ))
+    NAMES=""
+    for g in "${CANON[@]:$SHOWN}"; do NAMES="$NAMES $(basename "$(dirname "$(dirname "$g")")")"; done
     echo ""
-    echo "!! STOPPED HERE — ${CEIL} characters is the ceiling and $REMAINING more subject folder(s) were"
-    echo "!! NOT loaded. You do NOT have the whole picture this session. Read them directly, or raise"
-    echo "!! SESSION_CONTEXT_CHAR_CEIL. Not loaded:"
-    for g in "${CANON[@]:$SHOWN}"; do
-      echo "!!   $(basename "$(dirname "$(dirname "$g")")")  ($g)"
-    done
+    echo "!! STOPPED HERE — ceiling ${CEIL} chars; $REMAINING subject floor(s) NOT loaded:${NAMES}. You do NOT have the whole picture — /read <subject>, or open desks/<subject>/canon/current.md under the root above."
     break
   fi
   TOTAL=$(( TOTAL + LEN ))
   SHOWN=$(( SHOWN + 1 ))
-  echo ""
-  echo "--- $SUBJECT ---"
+  hdr ""
+  hdr "--- $SUBJECT ---"
   printf '%s\n' "$BODY"
 done
 
-_findings_banner
+# Second net: the banner is the least load-bearing thing here. If the always-on floor (canon +
+# doctrine + telos) already fills the ceiling on its own, printing the banner would tip the WHOLE
+# output over the harness cap and lose everything — so withhold it and say so in one line.
+if [ -n "$FB" ]; then
+  if [ "$TOTAL" -gt "$CEIL" ]; then
+    echo ""
+    echo "note: findings banner withheld (${#FB} chars) — the always-on floor fills the ceiling; run: python3 system/tools/health_line.py ~/.config/lifehack/faults.json"
+  else
+    printf '%s\n' "$FB"
+  fi
+fi
 
 # ── SKILL CAPABILITY CHECK — T3.7(c) wiring ───────────────────────────────────────────────────
 # WHY THIS LIVES HERE, NOT A NEW DETECTOR: system/build-rules-index.md's code-spiral rule says

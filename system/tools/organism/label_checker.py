@@ -93,6 +93,21 @@ REPO = repo_root()
 # module docstring's "WHAT CHANGED" item 2.
 os.environ["REPO"] = str(REPO)
 
+# Exported for the SAME payload-expansion reason as REPO: the tasks-readonly-list-guard protects
+# whatever list <notes>/config/cal.md names as `goals_tasklist` — personal config no repo file may
+# hardcode. Its violation case writes `$GOALS_TASKLIST` and fires against the REAL protected id on
+# a configured install. On an UNCONFIGURED install this exports "" and the payload carries an empty
+# tasklist — which the guard must fail-closed on anyway (an omitted/empty list may resolve to the
+# protected default), so the case tests something true on every install. Added 2026-08-27: the old
+# fixture id (`SYNTHETIC_GOALS_TASKLIST_ID`) could never equal anyone's configured id, so the case
+# could never block anywhere and rendered a healthy guard as a permanent RED downgrade.
+try:
+    sys.path.insert(0, str(REPO / "shared"))
+    import cal_config as _cal_config
+    os.environ["GOALS_TASKLIST"] = str(_cal_config.load().get("goals_tasklist", "") or "")
+except Exception:
+    os.environ["GOALS_TASKLIST"] = ""
+
 SETTINGS = REPO / ".claude" / "settings.json"
 DEFAULT_MANIFEST = REPO / "system" / "tools" / "organism" / "label_manifest.yaml"
 DEFAULT_INDEX = REPO / "system" / "organism" / "manual.md"

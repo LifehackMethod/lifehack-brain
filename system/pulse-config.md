@@ -149,11 +149,12 @@ sentinel-health  | yes | 1800  | bash "$LIFEHACK_CODE_ROOT/system/tools/sentinel
 # planning-health: READ-ONLY calendar check (conflicts + unconfirmed invites, 7-day forward window).
 # Degrades cleanly (rc=75, "stood down") when config/cal.md has no calendar id configured yet — see
 # shared/cal_config.py. (Those two names stay `cal` on purpose: they are the CALENDAR-identifier
-# config, shared with the calendar write guards — not the renamed planning desk.) No *-run.sh
-# wrapper exists yet for this job (no single-instance lock / no buzz-on-hard-failure) — a future
-# lane can add system/tools/planning-health-run.sh matching system-health-run.sh's pattern; until
-# then this calls the checker directly. 6h cadence.
-planning-health  | yes | 21600 | python3 "$LIFEHACK_CODE_ROOT/system/tools/planning-health.py"
+# config, shared with the calendar write guards — not the renamed planning desk.) WRAPPED 2026-08-27:
+# planning-health-run.sh adds the shared gws credential preflight (require_gws_credentials → rc=75
+# when the keychain-free export is absent) + a single-instance lock — the bare checker under cron had
+# no credential env and every unattended run died "Access denied. No credentials provided"
+# (2026-08-27 00:05, filed by the stale-sweep's first live run). 6h cadence.
+planning-health  | yes | 21600 | bash "$LIFEHACK_CODE_ROOT/system/tools/planning-health-run.sh"
 #
 # backlog-health: emits state/status/backlog.json from the read-only backlog groom engine
 # (backlog_groom.py). CORRECTED 2026-08-14: that engine landed in the SAME commit as this file
@@ -277,6 +278,30 @@ planning-weekly-prime | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/pla
 # matches the runner's own STALE_AFTER_HOURS=192 (168h weekly + 24h slack) header.
 guard-fire-test    | yes | 604800 | bash "$LIFEHACK_CODE_ROOT/system/tools/guard-fire-test-run.sh"
 #
+# handbook-audit: QUARTERLY drift audit of the Owner's Handbook (harness-handbook project)
+# against the live system — pulse schedule (this file), guard registry (.claude/settings.json),
+# desks+projects tree, skill roster. Added 2026-08-25. Ticks DAILY;
+# the runner self-gates period-idempotently once per quarter (planning-diary-run.sh's stamp-file
+# gate — sleep-proof, catches up on wake, never clock-pinned). Invokes a headless `claude -p`
+# (sonnet) through claude-auth.lib.sh per this file's own HARD RULE above — stands down rc=75
+# until `claude setup-token` has been run once on this machine. PROPOSE-ONLY: files a drift
+# report (explicit "no drift" when clean) into the project's records/ + a handbook-audit.json
+# tile + ONE normal buzz; it NEVER edits chapters — a human reviews the report and rules.
+handbook-audit   | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/handbook-audit-run.sh"
+#
+# stale-sweep: WEEKLY stale-record sweep — re-verifies every open claim in the notes root's
+# state/debt-ledger.md (## Open) and state/open-loops.md (unstruck items) against live sources and
+# files a closure-PROPOSAL report + tile before the Sunday sitting. Born 2026-08-26 (14 dead
+# entries closed by hand; three had just been presented as live deadlines). Ticks DAILY; the runner
+# self-gates once per ISO week with target = that week's FRIDAY (handbook-audit's stamp-gate
+# pattern, weekly semantics — sleep-proof, catches up after wake). Invokes headless `claude -p`
+# (sonnet) through claude-auth.lib.sh per this file's HARD RULE — stands down rc=75 until
+# `claude setup-token` has run on this machine. PROPOSE-ONLY: writes ONLY its report +
+# system/logs sidecars + stale-sweep.json tile + ONE normal buzz; it NEVER edits the ledger or
+# open-loops — a human rules at the Sunday sitting and the interactive session applies. Spec:
+# <notes>/state/projects/harness-ops/records/stale-sweep-spec_2026.08.27.md
+stale-sweep      | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/stale-sweep-run.sh"
+#
 # NOT ADDED: shared/tools/email_summary_run.sh (the older v1-shaped watchdog wrapper). Not parked,
 # not given a row at all — two independent reasons, both verified this session. (1) It passes its
 # args straight through to email_summary_sync.py with NO action flag added; that janitor is
@@ -288,6 +313,17 @@ guard-fire-test    | yes | 604800 | bash "$LIFEHACK_CODE_ROOT/system/tools/guard
 # gws-credentials handling and single-instance lock — a bare `gws` call from this script would hit
 # the interactive keychain a headless/cron context cannot unlock (per the sibling runners' own
 # comments), risking a hang rather than a clean failure. Superseded, not summoned.
+#
+# calendar-sweep: WEEKLY calendar duplicate/misroute sweep ahead of the Sunday Win-the-Week ritual
+# — ported 2026-08-29 from the Cowork scheduled task `calendar-weekly-sweep` (MZ ruling that day:
+# under Pulse a missed Sunday is CAUGHT by system-health; the Cowork copy missed 2026-08-23 and
+# nothing noticed). ALL CODE, no claude -p: roster (<notes>/config/calendar-sweep-roster.tsv) →
+# calendar_sweep_pull.py (sanitized reads via safe_calendar --redact) → calendar_sweep.py (verbatim
+# v1-detector port, REPORT ONLY — no calendar write path exists in the pipeline) → report in
+# <notes>/desks/cal/state/sweep-reports/ + tile + one normal buzz on HIGH findings. Ticks DAILY;
+# the runner self-gates once per week keyed to the MOST RECENT SUNDAY (sleep-proof catch-up).
+# Stands down rc=75 on missing gws creds or an unseeded roster. 1-day cadence.
+calendar-sweep   | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/calendar-sweep-run.sh"
 #
 # ── TEMPLATE — copy this row when a new lane wires up a job, then delete the comment. ──────────
 # your-job-name  | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/your-runner.sh"
@@ -313,14 +349,22 @@ guard-fire-test    | yes | 604800 | bash "$LIFEHACK_CODE_ROOT/system/tools/guard
 # `/opt/homebrew/bin` (Apple Silicon Homebrew) and `/usr/local/bin` (Intel Homebrew / most Linux
 # user installs) — without it, a job command that shells out to a Homebrew-installed tool by bare
 # name would silently fail to find it under cron even though it works fine in an interactive shell.
-pulse             | */5 * * * *      | PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin LIFEHACK_CODE_ROOT="$LIFEHACK_CODE_ROOT" bash "$LIFEHACK_CODE_ROOT/system/tools/pulse.sh" >> "${TMPDIR:-/tmp}/lifehack-pulse.log" 2>&1
+# `$HOME/.local/bin` LEADS THE LIST, and it is not hypothetical: on a Mac with no Homebrew and no
+# sudo, that is where a standalone binary goes, and it is where the Google Workspace CLI (`gws`)
+# actually lives on this system. Without it every scheduled job that touches Google reported "not
+# installed" while the same command worked perfectly in an interactive shell — the failure is
+# silent, and it is invisible from the shell you would test in. Found 2026-08-23 (open loop #34a),
+# fixed 2026-08-24. It stays UNEXPANDED here on purpose: install-schedulers.sh substitutes only
+# `$LIFEHACK_CODE_ROOT`, so `$HOME` is written literally into the crontab and expanded by /bin/sh
+# at fire time — which makes the same manifest correct on every machine and every user account.
+pulse             | */5 * * * *      | PATH=$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin LIFEHACK_CODE_ROOT="$LIFEHACK_CODE_ROOT" bash "$LIFEHACK_CODE_ROOT/system/tools/pulse.sh" >> "${TMPDIR:-/tmp}/lifehack-pulse.log" 2>&1
 #
 # health-deadman: the OUT-OF-BAND watcher for system-health ITSELF. DELIBERATELY its own dedicated
 # scheduled entry, NEVER a Pulse job — dispatching it FROM Pulse would make the sweep the sole
 # witness to its own death; if Pulse wedges, a Pulse-dispatched watchdog wedges with it and the
 # silence would read exactly like health. Hourly: system-health runs every 5 min, so an hour of
 # silence from it is unambiguous without being twitchy.
-health-deadman    | 17 * * * *       | PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin LIFEHACK_CODE_ROOT="$LIFEHACK_CODE_ROOT" bash "$LIFEHACK_CODE_ROOT/system/tools/health-deadman-check.sh" >> "${TMPDIR:-/tmp}/lifehack-health-deadman.log" 2>&1
+health-deadman    | 17 * * * *       | PATH=$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin LIFEHACK_CODE_ROOT="$LIFEHACK_CODE_ROOT" bash "$LIFEHACK_CODE_ROOT/system/tools/health-deadman-check.sh" >> "${TMPDIR:-/tmp}/lifehack-health-deadman.log" 2>&1
 ```
 
 ## Why `$LIFEHACK_CODE_ROOT` and not a literal path

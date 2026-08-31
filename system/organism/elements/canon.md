@@ -307,7 +307,7 @@ including canon writes. Observability only; no canon-specific relationship.
 
 **MATERIAL GAP — emit_dir is non-recursive (session_context_loader.sh line 35: `local files=("$dir"/*.md)`):** The single-level glob means canon files in subdirectories are silently excluded from every session load. For the deryl desk this is a confirmed behavioral gap: 9 of 17 canon files (in `income/`, `tax/`, and `assets/` subdirs) are never injected by this hook. A deryl session opens without those files in context regardless of how many files exist on disk.
 
-The same hook also co-loads `state/telos.md` (the strategic brief) and `state/pulse-brief.md` (if non-empty).
+The same hook also co-loads `doctrine.md` (the person's standing operating rules — since 2026-08-22; the earlier `@` import from CLAUDE.local.md is silently dropped by the desktop app), `state/telos.md` (the strategic brief) and `state/pulse-brief.md` (if non-empty).
 
 **Desk-detection is cwd-based** — a root session launched from `Lifehack/` loads `records/canon/`, not any desk's canon. A session launched from `desks/emily/` loads `desks/emily/canon/`. This is correct and confirmed; the CLAUDE.md description ("always-on, auto-loaded every session") is accurate per session context; the cwd determines WHICH branch.
 
@@ -483,6 +483,7 @@ certifies). The field is the signal; the human's judgment is the substance.
 | `$DRIVE/records/canon/*.md` | WRITE | Human + guard_canon_write.sh | ~~Blocked unless authority:user~~; **CORRECTED 2026-08-24: blocked only on size >3,200 chars or a stale marker; authority is not checked (rail removed 2026-08-11)**; the live canonical store |
 | `$DRIVE/desks/{desk}/canon/*.md` | WRITE | Human + guard_canon_write.sh | Same guard, same correction; desk-specific durable observations |
 | `$DRIVE/records/proposals/` | WRITE | /save Step 6b, ingest-filer | Canon-candidates staging; guard does NOT fire here (no /canon/ in path); NOTE: `vetted: false` convention is named in doctrine but not confirmed live — the one corpus file carries `authority: user` with no `vetted:` field |
+| `$DRIVE/doctrine.md` | READ | session_context_loader.sh (co-loaded, 2026-08-22) | The person's standing rules; not canon but shares the load slot — replaces the CLAUDE.local.md `@` import, which the desktop app never loads |
 | `$DRIVE/state/telos.md` | READ | session_context_loader.sh (co-loaded) | Strategic brief; not canon but shares the load slot |
 | `system/canon-purpose-map.md` | WRITE | archivist-audit-run.sh (weekly regeneration) | Territory map cache; read by archivist-route |
 | `system/canon-purpose-map.md` | READ | archivist-route skill | Ranks the correct canon home for a proposal |

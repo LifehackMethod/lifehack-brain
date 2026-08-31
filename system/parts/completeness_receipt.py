@@ -336,6 +336,7 @@ _ALL_CITED = _MAP + "".join(f"also `{s}`\n" for s in _SOURCE)
 
 def selftest():
     ok = True
+    skipped = []
 
     def report(label, passed, detail=""):
         nonlocal ok
@@ -469,8 +470,16 @@ def selftest():
     # consistency only; renaming a dead path does not make it live.
     # ▶ THE REAL FIX IS A DECISION, NOT A RENAME: either port the w30-* fixtures, or retire this
     #   DIFFERENTIAL check (the same call `run_selftests.sh` documents making for its reachability
-    #   check — "a check that can only ever report failure gets deleted"). Left failing, and loud,
-    #   rather than quietly downgraded to a skip: the faithful-extraction claim is genuinely unproven.
+    #   check — "a check that can only ever report failure gets deleted"). Until 2026-08-22 this was
+    #   left failing, and loud, rather than downgraded to a skip, so the faithful-extraction claim
+    #   stayed visibly unproven.
+    # ✅ DECIDED 2026-08-22 (operator ruling, after /ship was blocked by this FAIL twice):
+    #   the check STAYS in code (it runs for real the day the fixtures land — a search of this
+    #   machine and the notes folder found none), but a missing fixture is reported as [SKIP], not
+    #   [FAIL]. A skip is still LOUD: the line names the unproven claim, and the SELFTEST verdict
+    #   carries the skip count, so `run_selftests.sh` can surface it under a passing part. What
+    #   changed is only that "could not run" is no longer spelled the same as "ran and failed" —
+    #   the same distinction /ship's judge enforces with NOT-EVALUATED vs FINDINGS.
     _repo = os.environ.get("CLAUDE_PROJECT_DIR") or os.path.abspath(
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
     lab = os.path.join(_repo, "system/tools/conformance-lab/fixtures/planning-weekly")
@@ -488,10 +497,14 @@ def selftest():
                f"{gg['covered_count']}/{gg['source_count']}, "
                f"residue {gg['missing_count']} vs preserved {len(preserved['missing'])}")
     else:
-        report("DIFFERENTIAL vs preserved lab grade", False,
-               "SKIPPED -- lab fixtures not found (cannot claim faithful extraction)")
+        skipped.append("DIFFERENTIAL vs preserved lab grade")
+        print("  [SKIP] DIFFERENTIAL vs preserved lab grade -- lab fixtures not found "
+              "(faithful-extraction claim UNPROVEN, not disproven; port the w30-* fixtures to run it)")
 
-    print("SELFTEST:", "PASS" if ok else "FAIL")
+    verdict = "PASS" if ok else "FAIL"
+    if ok and skipped:
+        verdict += f" ({len(skipped)} SKIP -- {'; '.join(skipped)})"
+    print("SELFTEST:", verdict)
     return 0 if ok else 1
 
 

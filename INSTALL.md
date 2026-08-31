@@ -2705,12 +2705,29 @@ There is deliberately no second path. The system this came from had a fallback t
 Chrome window, and it is not here: it depended on a separate browser plugin, and a fallback that
 cannot work is worse than none, because you find out at the moment you needed it.
 
-Put the key in a file — this is the version that also works for anything running on a schedule:
+**Sign up at serper.dev, copy the key, then run one command.** The script takes the key from your
+clipboard — never from a chat message, never as a command argument where your shell history would
+keep it — writes it `0600` to the one file the search path reads, and then proves it by running a
+real search:
+
+```bash
+bash system/tools/install-serper-key.sh
+```
+
+It never prints the key, only a masked fingerprint (first four … last four) you can compare against
+the serper.dev dashboard. If an old key is already there it is moved aside, not overwritten. No
+clipboard, or you would rather type it: add `--prompt` and nothing is echoed to the screen.
+
+The file it writes is the same one you would write by hand, and by hand still works — this is the
+version that also works for anything running on a schedule:
 
 ```bash
 mkdir -p ~/.config/lifehack
 umask 077 && printf %s 'your-key-here' > ~/.config/lifehack/serper-key
 ```
+
+⚠ **The key is per-machine.** `~/.config/lifehack/` is local and is not in your notes folder, so it
+does not sync. On a second computer, pull this repo and run the same one command there.
 
 It is also read from `$SERPER_API_KEY`, and on a Mac from the keychain (service `serper-api-key`,
 account `lifehack`) — in that order, keychain last. The keychain belongs to your logged-in desktop
@@ -2754,6 +2771,23 @@ something happened and where to look, and never carries names, amounts or conten
 lands on a lock screen. And **the volume is capped in code, not by good intentions**: no more than
 three per source per day, nothing during quiet hours, and the same message never twice. A genuine
 emergency ignores all three, which is the only reason the other three can be trusted.
+
+---
+
+# A SECOND MAC — optional, and only after the first one is fully set up
+
+Two computers can share one AI Brain through Drive, **one at a time** — never both running Claude
+against the notes folder at once (that is how files fork). Two files are deliberately outside both
+git and Drive, and both are set once and never edited again: `.brain-root` (the notes path) and
+`.claude/settings.local.json` (the loader ceiling, if you changed it — ⚠ never above ~9,500: Claude Code caps a hook's output at 10,000 characters, and past that a session receives a 2KB preview instead of its notes). Personal standing instructions
+need no per-machine file at all: keep them in the notes folder as `doctrine.md`, and the session-start
+hook carries them into every session on every machine, beside the root canon. ⛔ Do **not** reach for
+a `@` import in `CLAUDE.local.md` for this — an import that resolves outside the repo is silently
+dropped until an approval dialog is accepted, and the desktop app never shows that dialog (found
+2026-08-22: the file was absent from every session while this page said it was carried).
+**The scheduler is the part that must not be copied:** run `install-schedulers.sh` on ONE machine
+only — two pulses write the same status files and Drive forks them. The second machine runs no
+scheduled jobs at all.
 
 ---
 

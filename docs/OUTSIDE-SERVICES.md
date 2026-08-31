@@ -79,8 +79,10 @@ Skip it, and that one thing simply doesn't happen yet — nothing else notices, 
   web instead of only what it already knows.
 - **Do you need it?** Only if you want that lookup. Nothing else in the package uses it.
 - **Without it.** `/websearch` refuses and tells you why. Every other skill works normally.
-- **Getting it.** A free account at **serper.dev**, then the key goes in a file — the exact command
-  is in `INSTALL.md`, under **"WEB SEARCH."**
+- **Getting it.** A free account at **serper.dev**, then one command:
+  `bash system/tools/install-serper-key.sh` — it takes the key off your clipboard, files it `0600`,
+  and proves it with a live search. Detail, and the by-hand version, in `INSTALL.md` under
+  **"WEB SEARCH."** The key is per-machine and does not sync; run it once on each computer.
 - **Cost.** Free tier covers ordinary use. Paid tiers exist beyond that — check serper.dev's own
   pricing page for current numbers; they aren't reproduced here because they can change without this
   document knowing.

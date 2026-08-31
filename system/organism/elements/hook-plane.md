@@ -334,8 +334,8 @@ SessionStart hooks fire once when the session opens. They emit to stdout, inject
 
 #### C1. session_context_loader.sh
 **Matcher:** (empty — fires on all sessions)
-**Step chain:** `Session starts → resolves CWD from stdin JSON → detects desk from path (*/desks/<desk>/*) → emits desks/<desk>/canon/*.md OR records/canon/*.md → emits state/telos.md → emits state/pulse-brief.md (if present and not NO_ACTION) → all to stdout as injected context [hook, context-inject]`
-**Stores read:** `desks/{desk}/canon/*.md` OR `records/canon/*.md`, `state/telos.md`, `state/pulse-brief.md`.
+**Step chain:** `Session starts → resolves CWD from stdin JSON → detects desk from path (*/desks/<desk>/*) → emits desks/<desk>/canon/*.md OR records/canon/*.md → emits doctrine.md (the person's standing rules, if present; added 2026-08-22 — the `@` import route never loaded in the desktop app) → emits state/telos.md → emits state/pulse-brief.md (if present and not NO_ACTION) → all to stdout as injected context [hook, context-inject]`
+**Stores read:** `desks/{desk}/canon/*.md` OR `records/canon/*.md`, `doctrine.md`, `state/telos.md`, `state/pulse-brief.md`.
 **Purpose:** the CLAUDE.md pyramid's "always-loaded floor" — ensures every session starts with desk-appropriate canon and strategic context without manual `/read`. This hook IS the mechanical enforcement of the canon-loads-on-session-start invariant.
 **Always exits 0.**
 
