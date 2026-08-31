@@ -98,16 +98,30 @@ authority: user
 
 The hook-plane's ground truth is a TWO-LAYER artifact:
 
-1. **`system/reference/settings.json`** (git-tracked; `~/.claude/settings.json` is a symlink to it) — the REGISTRY. The harness only fires hooks it finds here. A hook script that exists on disk but is absent from `settings.json` is inert dead code — the harness never sees it.
-2. **`system/hooks/*.sh`** (git-tracked) — the FLEET. The scripts travel to both machines via `git push` / `git pull`. The `settings.json` symlink also travels, so registration and script bodies stay in lockstep. NOTE: `~/.claude/hooks/` is a regular directory (NOT a symlink to `system/hooks/`) — it contains a stale older set of 8 files. The live fleet is at `~/lifehack-brain/system/hooks/` (the clone); harness registration in `settings.json` points to absolute paths there.
+1. **`.claude/settings.json`** (git-tracked, in this repo) — the REGISTRY. The harness only fires hooks it finds here. A hook script that exists on disk but is absent from `settings.json` is inert dead code — the harness never sees it.
+   > ⚠ **CORRECTED: the CITATIONS block above already flags `system/reference/settings.json` as
+   > "donor layout only," but this REGISTRATION MECHANICS section previously kept describing a
+   > two-machine symlink model (`~/.claude/settings.json` symlinked to a tracked
+   > `system/reference/settings.json`, a separate fleet clone at `~/lifehack-brain/system/hooks/`)
+   > that contradicts its own citation and does not describe this repo. `system/reference/settings.json`
+   > does not exist anywhere in this tree (verified this session). What this repo actually ships is a
+   > single tracked file, `.claude/settings.json`, at the repo's own root — no symlink, no second
+   > machine, no separate clone. A student's `git clone` gets this file directly; there is nothing else
+   > to wire up. Verified live this session: it registers 48 hook commands across 6 event categories
+   > (SessionStart 1, UserPromptSubmit 11, UserPromptExpansion 1, PreToolUse 31, PostToolUse 2, Stop 2).
+2. **`system/hooks/*.sh`** (git-tracked) — the FLEET, 54 `.sh` files in this repo (counted live this session). Both the fleet and its registration travel together with the repo itself via `git clone`/`git pull` — there is no separate sync step and no symlink to keep "in lockstep," because there is only the one tracked copy of each.
 
-**Two-machine dark risk (the hook-contract.md "SKILL-ANCHOR-REG" failure class):** if the `~/.claude/settings.json` or `~/.claude/hooks/` symlinks are broken on one machine, ALL hooks on that machine are silently dark. No hook can self-verify this. Resolution: `[human]` to verify the symlinks on both machines after any settings push.
+**Two-machine dark risk:** this section previously described a risk from broken `~/.claude/settings.json`/`~/.claude/hooks/` symlinks on a second machine. That scenario is specific to a maintainer running the same clone across two machines with a home-directory symlink setup — it does not describe this public repo's single-clone student install, and no such symlink exists here to break. The general caution still worth keeping: whatever a student's actual, live `.claude/settings.json` contains is the only thing that matters — a stale note about it, or an out-of-sync second copy anywhere else, is not.
 
 **Deny-block protocol (house standard per `system/hook-contract.md`):** the canonical blocking signal is JSON on `stderr` + `exit 2`. Also accepted: `{"decision":"block",...}` JSON on `stdout` + `exit 0` (used in Stop hooks — `translator_gate.sh` and `scratch_capture_gate.sh` both use this form; `exit 0` is what the live code does and what works). NOTE: `hook-contract.md`'s exit-code table lists `exit 1` for this case — a possible stale-doc mismatch; the live-code form (`exit 0`) is authoritative. DARK TRAP: JSON on `stderr` + `exit 1` is silently swallowed by the harness — a guard accidentally using that pattern appears to run but never blocks.
 
 **`--dangerously-skip-permissions` bypass:** the `permissions.deny[]` block in `settings.json` is bypassed in headless/non-interactive sessions launched with that flag. PreToolUse hooks are NOT bypassed by it. Therefore the PreToolUse blocking guards — specifically `guard_gws_logout.sh` and `block_primary_calendar.sh` — are the REAL backstops for headless sessions; the `permissions.deny[]` entries for those same operations are a belt-and-suspenders convenience for interactive sessions only.
 
-**Fleet snapshot (2026-07-23):** 37 hooks registered in `settings.json` across 5 event categories (PreToolUse entries covering 17 blocking guards + 1 non-blocking recorder (`plan_flag.sh`) = 18 distinct PreToolUse scripts, 5 PostToolUse, 1 SessionStart, 9 UserPromptSubmit, 4 Stop). 50 `.sh` files exist in `system/hooks/`; 13 are UNREGISTERED (see "Dead Code" section below). The harness fires nothing unregistered.
+**Fleet snapshot (2026-07-23):** ~~37 hooks registered in `settings.json` across 5 event categories (PreToolUse entries covering 17 blocking guards + 1 non-blocking recorder (`plan_flag.sh`) = 18 distinct PreToolUse scripts, 5 PostToolUse, 1 SessionStart, 9 UserPromptSubmit, 4 Stop). 50 `.sh` files exist in `system/hooks/`; 13 are UNREGISTERED (see "Dead Code" section below).~~ **CORRECTED — computed live this session against this repo's own `.claude/settings.json` and `system/hooks/`:**
+48 hook commands registered across 6 event categories (SessionStart 1, UserPromptSubmit 11,
+UserPromptExpansion 1, PreToolUse 31, PostToolUse 2, Stop 2). 54 `.sh` files exist in `system/hooks/`.
+The 37/5 figure above is stale and does not match this tree; the UserPromptExpansion category and the
+exact per-category counts were not accounted for in the original. The harness fires nothing unregistered.
 
 ---
 
@@ -130,7 +144,14 @@ These fire BEFORE the tool executes. Exit 2 (or stdout block JSON) aborts the to
 **Stores protected:** Google Calendar write target — forces all writes to the Agent Ops calendar (`<agent-ops-calendar-id>`).
 **Why this is the real enforcer (not `permissions.deny[]`):** the `permissions.deny[]` entries for `mcp__claude_ai_Google_Calendar__create_event` etc. cover only the MCP path AND are bypassed by `--dangerously-skip-permissions`. This hook covers the gws CLI path and is NOT bypassed by that flag.
 **Fail posture:** CLOSED — unreadable stdin or unparseable JSON → deny. (`jq` was replaced by a python parse with an explicit `__ERR__` sentinel in the same 2026-08-01 pass: `jq -r '.x // ""'` exits 0 with empty output on EMPTY stdin, so the command fell through the not-a-calendar-command test and exited 0.)
-⚠ **The destination's equivalent guard is `guard_calendar_writes.sh`, and its fail posture is NOT this one.** It shares the default-deny core and the HEAD/READ_RE mechanics, but on unparseable or empty stdin it **exits 0** — deliberately, because this hook sits in front of every Bash command and denying there would wall the session off from the shell over one malformed message; fail-closed begins once a calendar command is actually in hand. It also resolves the target calendar id from `shared/cal_config.py` / `<notes>/config/cal.md` rather than hardcoding it, and denies outright when no calendar has been configured. Do not read "Fail posture: CLOSED" as describing the destination.
+⚠ **This repo's equivalent guard is `guard_calendar_writes.sh`, not `block_primary_calendar.sh`** (the
+latter does not exist here — verified this session). It shares the default-deny core and the HEAD/READ
+mechanics. Its fail posture on unparseable/empty stdin was previously `exit 0` (a silent ALLOW on the
+exact "exit 0 on a BLOCK hook" defect class `hook-sop.md` documents) — **corrected in this pass**: an
+unreadable payload now denies (`exit 2`) via the same `deny()` path as every other verdict in this
+guard, so "Fail posture: CLOSED" now DOES describe this repo's copy too, on this axis. It also resolves
+the target calendar id from `shared/cal_config.py` / `<notes>/config/cal.md` rather than hardcoding it,
+and denies outright when no calendar has been configured.
 
 #### A3. guard_gws_logout.sh
 **Matcher:** Bash
@@ -158,7 +179,9 @@ These fire BEFORE the tool executes. Exit 2 (or stdout block JSON) aborts the to
 **Stores protected:** Google Tasks Life Map list (read-only by doctrine; one carve-out for Daily Win subtasks).
 **Fail posture:** CLOSED — jq parse error → deny.
 
-#### A7. guard_router_writes.sh
+#### A7. guard_router_writes.sh — ⛔ DOES NOT EXIST HERE (verified: no file by this name anywhere in
+this repo, and zero registrations in `.claude/settings.json`). Entry kept as history per house rule;
+the ASUS-router write-guard this section describes is not part of the currently-shipped fleet.
 **Matcher:** Bash
 **Step chain:** `Claude → Bash → command touching <lan-ip> or router.asus.com WITH client verb (curl/wget/requests/urllib/http.client/aiohttp/nc/asusrouter) AND write CGI endpoint (appSet.cgi/apply.cgi/reboot.cgi/nvram set/async_set/set_settings) → DENY [hook]`
 **Stores protected:** ASUS router admin API write surfaces.
@@ -175,7 +198,7 @@ These fire BEFORE the tool executes. Exit 2 (or stdout block JSON) aborts the to
 #### A9. enforce_skill_frontmatter.sh
 **Matcher:** Write
 **Step chain:** `Claude → Write → skills/*/SKILL.md → Python3 checks: (a) YAML frontmatter block present, (b) description field non-empty and non-placeholder, (c) line count ≤ 500 → DENY exit 2 on any violation [hook]`
-**Stores protected:** `skills/*/SKILL.md` files — the skill registration surface.
+**Stores protected:** `skills/*/SKILL.md` files — the skill registration surface.  ⛔ not shipped to the public subset — private-clone only.
 **Scope note:** fires ONLY on full-content Write (content field present), not Edit. YAML parse via `yaml.safe_load`; regex fallback if yaml not installed. Non-SKILL.md targets exit 0 (correct scoping).
 **Fail posture:** OPEN on JSON parse failure — not a security gate; quality enforcement only.
 
@@ -272,9 +295,17 @@ The residency decision table (in resolution order):
 
 #### A18. guard_canon_write.sh
 **Matcher:** Write|Edit
-**Step chain:** `Claude → Write/Edit → **/canon/** file → Python3 checks: (a) stale markers (shelf-life, expires, tier:snapshot) → DENY; (b) for Write: authority:user absent → DENY; (c) for Edit: authority:skill or authority:archivist present → DENY; else → ALLOW exit 0 [hook]`
+**Step chain:** `Claude → Write/Edit → **/canon/** file → Python3 checks: (a) stale markers (shelf-life, expires, tier:snapshot) → DENY; (b) for Write: authority:user absent → DENY; ~~(c) for Edit: authority:skill or authority:archivist present → DENY~~; else → ALLOW exit 0 [hook]`
 **Stores protected:** any file under `**/canon/**` — the permanent ground-truth store.
 **Fail posture:** CLOSED — parse error → deny.
+> **⚠ CORRECTED:** step (c) above no longer denies. Verified live in the shipped hook: an Edit
+> carrying `authority: skill` or `authority: archivist` onto a canon file now ALLOWS (exit 0) with
+> only an advisory message. The script's own comment states it plainly: "This is a speed bump, not
+> a block (T9.5d, 2026-08-15) — the authority:user rail was dropped 2026-08-11 because it was
+> self-attestation a machine types as easily as a person." So this is a map fix, not a new defect:
+> the code made a deliberate, dated decision to downgrade this rail from a block to an advisory, and
+> this doc never caught up. Stale-marker blocking (a) and the Write-side `authority:user` check (b)
+> are unaffected and still deny live.
 
 #### A19. guard_gmail_destructive.sh
 **Matcher:** Bash
@@ -291,8 +322,14 @@ The residency decision table (in resolution order):
 ### CATEGORY B — PostToolUse ADVISORIES (never block; always exit 0)
 
 PostToolUse hooks fire AFTER the tool completes. The harness executes them after the call and uses their stderr output as advisory context. They CANNOT block. All correctly exit 0.
+> **⚠ CORRECTED: only 2 of the 5 hooks this category names actually exist and are registered** —
+> `validate_on_write.sh` (B2) and `observability_logger.sh` (B4). `nudge_flow_drift.sh` (B1),
+> `auto_register_skill.sh` (B3), and `guard_marc_narrative.sh` (B5) do not exist anywhere in this
+> repo and have zero registrations. The mechanism described for the 2 that exist (fires after the
+> tool, cannot block, exits 0) is confirmed true; the roster is overstated by 3 entries. Entries kept
+> below as history per house rule.
 
-#### B1. nudge_flow_drift.sh
+#### B1. nudge_flow_drift.sh — ⛔ DOES NOT EXIST HERE (verified: no file, no registration)
 **Matcher:** Write|Edit
 **Step chain:** `Write/Edit completes → nudge_flow_drift.sh reads file_path → searches system/organism/elements/*.md for any entry whose generated_from list contains the basename → if match: stderr advisory message citing affected element [honor]`
 **Purpose:** surface when an edit touches a file that is the source-of-truth for an organism element — prompting the author to check whether the element entry needs updating.
@@ -305,7 +342,7 @@ PostToolUse hooks fire AFTER the tool completes. The harness executes them after
 **Current vs TARGET:** advisory nudge in its current posture. The outstanding TARGET-state item (defect d in the gap-and-health audit) is to flip this to blocking PreToolUse enforcement AFTER cleaning ~526 existing frontmatter violations in the tree (the prerequisite rename of `type:` → `record_type:` on ~526 files). The operator's decision: MAKE IT REAL ENFORCEMENT (option A). This flip is OPEN — not yet executed. This is the most concrete reason for the PARTIAL label on this element.
 **Exit-code contract (the destination delta):** `validate_frontmatter.py` at the destination returns THREE answers, not two — `0` valid-or-skipped, `1` a real missing required field, `2` cannot evaluate (not markdown, file gone) — and `validate_on_write.sh` there tests `if [ "$?" = "1" ]`, so only a genuine violation speaks. The donor's wrapper uses `if MSG=$(…); then : else printf …`, which treats ANY non-zero as something to say and therefore conflates "cannot evaluate" with "violation": every `.py` write produces "cannot evaluate: not markdown → add the missing field(s)," which is both constant and nonsense advice, and constant nonsense is how a real reminder gets skimmed past. The destination also resolves the validator through `${CLAUDE_PROJECT_DIR}` where the donor hardcodes an absolute clone path.
 
-#### B3. auto_register_skill.sh
+#### B3. auto_register_skill.sh — ⛔ DOES NOT EXIST HERE (verified: no file, no registration)
 **Matcher:** Write|Edit
 **Step chain:** `Write/Edit completes on */skills/*/SKILL.md → if global skill (clone or Drive root): log + skip (already symlinked); if desk skill: create ~/.claude/commands/<name>.md stub [hook, automation]`
 **Note:** the hook's own script header says "matcher: Write" but the live `settings.json` registration is `Write|Edit` — the settings.json registration is ground truth for what actually fires.
@@ -319,7 +356,7 @@ PostToolUse hooks fire AFTER the tool completes. The harness executes them after
 **Purpose:** per-session tool-call log; the gws command capture enables after-the-fact capability-boundary audits.
 **Always exits 0.**
 
-#### B5. guard_marc_narrative.sh
+#### B5. guard_marc_narrative.sh — ⛔ DOES NOT EXIST HERE (verified: no file, no registration)
 **Matcher:** Write|Edit
 **Step chain:** `Write/Edit to desks/marc/organism/narratives/*.md or scenarios/*.md → Python3 marc-narrative-check.py validates C5 contract (frontmatter, closed vocab, axis wall) → if fail: stderr advisory message [honor]`
 **Scope:** narrowly scoped to the Marc desk's narrative/scenario registry.
@@ -383,14 +420,20 @@ These fire on every user prompt turn, before the model's response. They emit adv
 Stop hooks fire when the session ends. Most are recorders (always exit 0). Two are conditional gates that can emit `{"decision":"block",...}` to bounce the stop.
 
 #### E1. session_flight_recorder.sh
-**Step chain:** `session stops → reads transcript_path for tool_calls count + Write/Edit count + duration + /save presence → appends one JSON line to system/flight-log.jsonl → flushes /tmp/lifehack-observability-buffer.jsonl to system/observability/YYYY-MM-DD.jsonl → stubs system/learnings.md if missing → nudges if /save not called → clears ~/.claude/current_email_lane (security: prevents stale email lane from leaking to next session) [hook, recorder]`
-**Stores written:** `system/flight-log.jsonl`, `system/observability/YYYY-MM-DD.jsonl`, `system/learnings.md` (stub only), `~/.claude/current_email_lane` (cleared).
+**Step chain:** `session stops → reads transcript_path for tool_calls count + Write/Edit count + duration + /save presence → appends one JSON line to system/flight-log.jsonl → flushes /tmp/lifehack-observability-buffer.jsonl to system/observability/YYYY-MM-DD.jsonl → stubs system/learnings.md if missing → nudges if /save not called → ~~clears ~/.claude/current_email_lane (security: prevents stale email lane from leaking to next session)~~ [hook, recorder]`
+**Stores written:** `system/flight-log.jsonl`, `system/observability/YYYY-MM-DD.jsonl`, `system/learnings.md` (stub only), ~~`~/.claude/current_email_lane` (cleared)~~.
+> **⚠ CORRECTED:** the script does NOT clear `current_email_lane`. Its own comment states the
+> donor's clearing logic was never ported — that mechanism was already retired in the donor system
+> itself and does not exist in this repo at all. The claim that this prevents a stale email lane
+> from leaking to the next session is not true of the shipped hook.
 **Always exits 0.**
 
-#### E2. mirror_plans.sh
-**Step chain:** `session stops → rsync -a --delete ~/.claude/plans/ → Drive/plans/<hostname>/ [hook, sync]`
-**Stores written:** `Drive/Lifehack/plans/<hostname>/` (per-machine namespaced; `--delete` is scoped to THIS machine's subfolder — cannot touch the other machine's folder).
-**Always exits 0.**
+#### E2. mirror_plans.sh — ⛔ DOES NOT EXIST HERE (verified: no file anywhere in this repo). Entry
+kept as history; the hook never shipped in this repo, only in the donor system it describes.
+**Purpose (donor description, not this system):** would have rsynced `~/.claude/plans/` → a
+per-hostname Drive folder on session stop, so a plan built on one machine survived a handoff. No such
+hook runs here. The gap this would have covered is real and unaddressed: `~/.claude/plans/` has no
+backup lane on this system.
 
 #### E3. translator_gate.sh
 **Step chain:** `session stops → if stop_hook_active: exit 0 (loop-safe) → check per-session arm flag (~/.claude/run/translator-gate/<sid>.arm) OR global OBSERVE-ALL flag → if neither: exit 0 (DORMANT) → if armed: extract last_assistant_message → mechanical pre-check (≥5 bold sections OR ≥6 file-path coordinates → mech fail) → else: grade via claude -p with claude-haiku-4-5-20251001 (70s timeout) → parse JSON verdict from last {...} block → OBSERVE mode: log only → ENFORCE mode + verdict=fail: emit {"decision":"block","reason":...} [hook, conditional gate]`
@@ -442,18 +485,22 @@ The `permissions.deny[]` block in `settings.json` hard-denies operations BEFORE 
 - Write/Edit: `~/.claude/skills/`, `agents/`, `commands/`, `hooks/`, `settings.json`
 - MCP: all Obsidian write operations; all Google Calendar write MCP ops; Gmail `create_draft`; all Asana write ops; Google Drive create/copy; Gmail `get_thread`; Drive `read_file_content` / `download_file_content`; Calendar `list_events` / `get_event`
 
-**Critical limitation:** `permissions.deny[]` entries are bypassed by `--dangerously-skip-permissions`. The PreToolUse hooks (especially `guard_gws_logout.sh` and `block_primary_calendar.sh`) are the real backstops for non-interactive sessions because PreToolUse hooks are NOT bypassed by that flag.
+**Critical limitation:** `permissions.deny[]` entries are bypassed by `--dangerously-skip-permissions`. The PreToolUse hooks (especially `guard_gws_logout.sh` and ~~`block_primary_calendar.sh`~~ its live successor `guard_calendar_writes.sh` [renamed; `block_primary_calendar.sh` does not exist on disk — see A2 above]) are the real backstops for non-interactive sessions because PreToolUse hooks are NOT bypassed by that flag.
 
 ---
 
 ### ENFORCEMENT MATURITY MAP
 
 **LIVE + fire-testable (blocking PreToolUse guards):**
-- `block_primary_calendar`: fail-closed; regex+string match; house-standard deny channel
+- `block_primary_calendar` → ⛔ does not exist here; live successor is `guard_calendar_writes.sh`,
+  which now denies (exit 2) on unparseable/empty stdin too, since the fail-open bug in that path was
+  closed in this pass — see A2 above
 - `guard_gws_logout`: fail-closed; regex match; corrected exit channel (stderr+exit 2, post-2026-06-16); the ONLY real backstop for headless sessions
 - `guard_write_paths`: fail-CLOSED since 2026-06-18 (parse error → deny); realpath resolution for symlinks; broadest file-write control in the fleet
 - `guard_ledger_discipline`: full Python simulation of the edit before checking; fail-open only for non-ledger targets
-- `guard_canon_write`: fail-CLOSED; content-inspection inline
+- `guard_canon_write`: fail-CLOSED on parse error and on the stale-marker/authority:user checks;
+  ~~the authority:skill/authority:archivist Edit-deny is no longer live~~ — see A18 above (that
+  specific rail was downgraded to advisory-only 2026-08-15)
 - `guard_organism_map`: fail-CLOSED; correctly distinguishes Write vs Edit
 - `guard_tasks_writes`: fail-CLOSED; jq + grep; carve-out logic verified
 - `guard_sheet_writes`: fail-CLOSED; TTL marker system + three deny tiers; makes LIVE gws call at guard time (guard_sheet_formula_writes.sh)
@@ -462,7 +509,9 @@ The `permissions.deny[]` block in `settings.json` hard-denies operations BEFORE 
 - `ingest_gate_enforce`: fail-CLOSED; 6 registered matchers (Bash · WebFetch · WebSearch · Read · Grep · Glob); all sub-cases branch to deny or exit 0; agent_id routing verified live 2026-07-04
 
 **LIVE but with noted anomalies:**
-- `guard_router_writes`: uses exit 1 + stdout JSON (not house-standard); functions correctly; minor inconsistency
+- `guard_router_writes` → ⛔ does not exist here (verified: no file, no registration anywhere).
+  Entry kept as history; the description below is the donor's.
+  ~~uses exit 1 + stdout JSON (not house-standard); functions correctly; minor inconsistency~~
 - `guard_throughline_write_scope`: mixed exit signals within the same script (exit 2 on parse, exit 1 on deny); inconsistent but functional
 - `guard_egress`: fail-OPEN on parse error — intentional; LuLu is OS-layer backstop
 - `enforce_egress_allowlist`: fail-OPEN when host unextractable — intentional; LuLu backstop
@@ -594,7 +643,7 @@ ADVISES via stderr · `session_flight_recorder` emits a nudge to stderr (NOT to 
 
 FEEDS `save` · `session_flight_recorder` nudges `/save` when it was not called — the hook-plane's Stop gate is the anti-loss backstop for the save element. `[honor]`
 
-WRITES→ `two-machine-residency` · `mirror_plans.sh` rsyncs `~/.claude/plans/` → `Drive/plans/<hostname>/` at every stop; the plan store's cross-machine residency is provided by this hook.
+WRITES→ `two-machine-residency` · ⛔ CORRECTED: `mirror_plans.sh` does not exist in this repo (see E2 above) — there is no hook providing the plan store's cross-machine residency; `~/.claude/plans/` has no backup lane.
 
 READS `project-manager` · `scratch_capture_gate.sh` reads pm_flag status at Stop to resolve the active brief's `## SCRATCHPAD`; it bounces the turn to force a pad capture when the token bucket overflows; the brief store (project-manager element) is the shared target.
 
@@ -602,7 +651,10 @@ DEPRECATED → `claude-md-pyramid` (voice layer) · `translator_gate` was the gr
 
 **Cross-cutting (the hook-plane's own registration store):**
 
-KEYS-OFF `two-machine-residency` · `settings.json` IS the hook-plane's own registration store; it travels to both machines via git because it is symlinked from the clone; a broken symlink silently darkens every hook on that machine — the two-machine-residency element is the physical transport for the hook-plane's own existence.
+KEYS-OFF `two-machine-residency` · `settings.json` IS the hook-plane's own registration store; ~~it travels to both machines via git because it is symlinked from the clone; a broken symlink silently darkens every hook on that machine~~ — the two-machine-residency element is the physical transport for the hook-plane's own existence.
+> **⚠ CORRECTED:** `.claude/settings.json` is a real, tracked file in this repo, not a symlink (see
+> REGISTRATION MECHANICS above). It travels with the repo itself via `git clone`/`git pull` like any
+> other tracked file — there is no separate symlink to break.
 
 FEEDS `label-checker` · hook-plane's `settings.json` + guard scripts are the input source `label_checker.py` reads and fire-tests; the hook-plane's registration store and script bodies are what this element validates — flow runs FROM the hook-plane INTO label-checker.
 

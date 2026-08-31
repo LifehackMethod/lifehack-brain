@@ -22,6 +22,8 @@
 # network: a test that makes a live outbound call stays live no matter what this script sets.
 # That is why one file below is skipped BY NAME rather than run — see SKIP_RELPATHS — and why
 # adding a new skip entry always needs a reason that names the actual call, not a guess.
+PY="${PY:-/usr/bin/python3}"   # PINNED: bare `python3` can resolve to a Homebrew install with no
+                                # third-party packages, which would silently misreport results.
 set -u
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -123,7 +125,7 @@ for f in "${FILES[@]}"; do
   fi
 
   case "$f" in
-    *.py) cmd=(python3 "$f") ;;
+    *.py) cmd=("$PY" "$f") ;;
     *.sh) cmd=(bash "$f") ;;
     *) echo "  ⏭ SKIP  $rel (unrecognized extension)"; SKIP=$((SKIP + 1)); SKIPPED_NAMES="$SKIPPED_NAMES $rel"; continue ;;
   esac

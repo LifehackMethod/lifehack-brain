@@ -19,6 +19,10 @@ generated_from:
   - system/tools/conformance-lab/conformance.py
   - system/reference/settings.json (hook registration lines 147–291, 347–355)
   - skills/* (directory: 49 live skill folders + ~7 archived/retired)
+  # CORRECTED: this count does not match this repo's own tree. Computed live this session:
+  # this repo's own .claude/skills/ holds 36 skill folders, all 36 carrying `shape:`, 26 of them
+  # (72.2%) `interactive-workflow`. The tallest live SKILL.md here is 458 lines (design-lifehack),
+  # under both the 500-line ideal and the 1500-line hard cap.
   - ~/.claude/skills/* (50 symlinks to clone)
   - ~/.claude/commands/* (desk-scoped command stubs; not all from auto_register)
   # PARTS LIBRARY — reusable gate primitives a skill composes (added 2026-07-28, S2.0)
@@ -63,7 +67,17 @@ authority: user
 > ⏳ unruled — `system/tools/conformance-lab/conformance.py`, the grader itself. On no ship list and no phase owes it: a DEBT, not a pass.
 > The rest of the lab DID come over — `system/tools/conformance-lab/driver.py`, `system/tools/conformance-lab/probes/`, `system/tools/conformance-lab/rule-registry.md` and `system/tools/conformance-lab/_verify_guards_manual.py` are all here — while `system/tools/new-skill.sh` line 184 still promises that "conformance.py grades the skill with ZERO new code."
 >
-> ⏳ unruled — `system/templates/skill-template/SKILL.md`, the canonical template the scaffolder was designed from. It did not come over; no phase owes it. A DEBT, not a pass.
+> ⛔ **`auto_register_skill.sh` DOES NOT EXIST** — verified this session: a repo-wide search and a grep
+> of both `.claude/settings.json` and every hook registration return zero hits. Every mention of
+> `auto_register_skill.sh` in the body below (command-stub creation, title/note frontmatter
+> consumption, the global-skill skip rule) describes a mechanism that was never shipped here — the
+> donor-layout pattern this file's own CITATIONS block already applies elsewhere. Kept intact, not
+> rewritten.
+>
+> ✅ `system/templates/skill-template/SKILL.md` — the canonical template the scaffolder was designed
+> from. This line previously said "It did not come over; no phase owes it. A DEBT, not a pass." That
+> is now stale: verified present on disk in this tree at that exact path. The debt is discharged; the
+> line describing it was not.
 > The templates directory that DID come over holds only the telos starter, yet `system/tools/new-skill.sh` ships and `system/organism/manual.md` line 798 still names this template as what the scaffolder's stamp must stay in sync with.
 >
 > ⚠ Line 310 below reads to the linter as a `✅` presence claim only because that sentence quotes the literal `✅ phase N complete` boundary marker. It is not a claim about the grader; the two lines above are the authoritative ones.
@@ -75,9 +89,13 @@ authority: user
 ### WHAT A SKILL IS
 
 A Lifehack skill is a SKILL.md file the Claude Code harness auto-discovers and auto-triggers from its
-`description:` frontmatter field when the user's prompt matches. It is NOT a plugin, daemon, or
-compiled artifact — the LLM reads the SKILL.md body at runtime to act. This means the `description:`
-field IS the skill from the harness's point of view: the only field the harness reads for auto-trigger.
+`description:` frontmatter field when the user's prompt matches. ~~It is NOT a plugin, daemon, or
+compiled artifact~~ ⚠ **CORRECTED: false as a blanket claim now that Claude Code plugins exist as a
+platform capability.** This was true when written — plugins were not yet a Claude Code capability at
+the time. A skill CAN now be plugin-distributed; that packaging question is orthogonal to what makes
+this repo's own skills work. What stays true regardless of distribution channel: a skill is not a
+daemon or compiled artifact — the LLM still reads the SKILL.md body at runtime to act. This means the
+`description:` field IS the skill from the harness's point of view: the only field the harness reads for auto-trigger.
 
 **Skill vs Command:** a skill has an ordered multi-step flow, may hold state across turns, leads/leads
 the user, and carries invariants that must reliably fire. A command is a single large prompt behind a
@@ -122,14 +140,16 @@ path — makes it portable across git worktrees (verified in code, lines 33–35
 
 #### Step 2 — Frontmatter enforcement (birth guard)
 
-`enforce_skill_frontmatter.sh → PreToolUse Write → exit 2 blocks the write [hook]`
+`enforce_skill_frontmatter.sh → PreToolUse Write|Edit → exit 2 blocks the write [hook]`
 
-**settings.json line 147–154 (verified):** matcher `Write`, single hook.
+**settings.json (verified live this session):** matcher `Write|Edit`, single hook. ⚠ **CORRECTED:**
+the matcher previously read here as `Write` only — that gap (S2.3, 2026-07-28) has since been closed;
+the guard now also covers `Edit`.
 **What it checks (Python embedded, verified line-by-line):**
 
 1. **Path filter** — only fires on `*/skills/*/SKILL.md`; skips `*/skills/_*` (archived/retired holding areas) and `*/templates/*` (those legitimately need no description). `[hook: enforce_skill_frontmatter.sh line 38–42]`
-2. **Content-only guard** — fires only on a full-content `Write` (where `content:` field is present); an `Edit` (which carries old/new strings, not the whole file) is not covered by this hook. `[hook: line 57–59]`
-3. **Size cap (c)** — >500 lines → exit 2, BLOCKED. `[hook: line 61–63]`
+2. **Content-only guard** — ~~fires only on a full-content `Write` (where `content:` field is present); an `Edit` (which carries old/new strings, not the whole file) is not covered by this hook.~~ **CORRECTED:** this gap was closed 2026-07-28 — the guard now reconstructs the resulting content for an `Edit` too and covers it. `[hook: line 57–59, superseded]`
+3. **Size cap (c)** — ~~>500 lines → exit 2, BLOCKED.~~ **CORRECTED:** hard cap raised to 1500 lines (pathological-only) 2026-07-28, verified live (`HARD_CAP = 1500` in the shipped hook); 500 is now a non-enforced "ideal," not a wall. `[hook: line 61–63, superseded]`
 4. **YAML frontmatter block** — must open with `--- ... ---`; no block → exit 2. `[hook: line 66–69]`
 5. **`description:` non-empty** — frontmatter must parse as YAML with a non-empty `description:` key; YAML import failure → exit 2; `yaml` not installed → regex fallback (presence-check only, not parse-check). `[hook: lines 71–91]`
 6. **No scaffold placeholder** — `description:` starting with "REPLACE" → exit 2. `[hook: line 90–91]`
@@ -372,7 +392,7 @@ an element growing new code is a human/peer-window catch until a completeness ch
 **Live hook-enforced walls:**
 
 1. **`enforce_skill_frontmatter.sh`** (PreToolUse Write, matcher `Write`) `[hook]`
-   — BLOCKS the Write (exit 2) when a `skills/*/SKILL.md` lacks a non-empty `description:`, fails
+   — BLOCKS the Write (exit 2) when a `skills/*/SKILL.md` lacks a non-empty `description:`, fails  ⛔ not shipped to the public subset — private-clone only.
    YAML parse, or exceeds 500 lines. **Only fires on full-content Write** (not Edit). Does not fire
    on archived/retired skill paths or template dirs.
 
@@ -411,7 +431,7 @@ an element growing new code is a human/peer-window catch until a completeness ch
    path is real:** the SOP's own ceiling is **<500 lines** (`skill-building-sop.md`) and
    `skills/save/SKILL.md` currently stands at **871 lines** — it grew past the cap entirely through
    `Edit`, the path the guard cannot see. **This is the ONLY over-cap SKILL.md in the repo** (measured
-   this session across all `skills/*/SKILL.md`; the Step-2 note claiming *two* over-cap files is wrong
+   this session across all `skills/*/SKILL.md`; the Step-2 note claiming *two* over-cap files is wrong  ⛔ not shipped to the public subset — private-clone only.
    — the grandfather list needs one entry, not two).
    ⚠ **The FIX is deliberately NOT done here.** Flipping the matcher to `Write|Edit` needs a
    grandfather mechanism first or every subsequent edit to `/save` bricks. That is guard surgery →

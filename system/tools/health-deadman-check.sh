@@ -46,6 +46,53 @@ set -uo pipefail
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 THRESHOLD=2700   # 45 min. system-health runs every 5 min -> 9 consecutive misses = genuinely dead, not a blip.
 
+# ── Hook-plane regression guard (D1, found+fixed 2026-08-30) ─────────────────────────────────
+# WHY THIS LIVES HERE, NOT smoke-check.sh: smoke-check.sh is manual-only (grep of
+# system/pulse-config.md turns up no scheduled entry for it) — a defect it would catch sits
+# uncaught until a human happens to run it. This script is the one thing on this install that
+# genuinely runs UNATTENDED on its own crontab entry, independent of Pulse (see file header) —
+# the only home that actually re-checks this every hour with nobody watching.
+#
+# THE DEFECT THIS CATCHES: core.hooksPath is LOCAL git config (.git/config), never committed and
+# never shared. Set to a RELATIVE path ("system/githooks"), git resolves it against EACH
+# WORKTREE'S OWN toplevel — so a worktree checked out at a commit that predates a hook's
+# introduction has that hook simply MISSING on disk there, and git treats a missing hook as a
+# SILENT NO-OP: no error, no output, the push just goes through unguarded. A fresh clone or a new
+# machine that never runs the one-time absolute-path fix reopens this hole with zero symptoms.
+# Fix applied on this machine: `git config core.hooksPath <absolute path>/system/githooks`.
+_check_hooks_path() {
+  local hp
+  hp="$(git -C "$CODE_ROOT" config --get core.hooksPath 2>/dev/null || true)"
+  if [ -z "$hp" ]; then
+    echo "[health-deadman] core.hooksPath is UNSET — git falls back to .git/hooks, NOT this repo's tracked pre-push/pre-commit. Tracked hooks (including the public-push gate) will NOT run." >&2
+    return 1
+  fi
+  case "$hp" in
+    /*) ;;  # absolute — resolves the same regardless of which worktree/commit is checked out. Fine.
+    *)
+      echo "[health-deadman] core.hooksPath is RELATIVE ('$hp') — resolves against EACH WORKTREE'S OWN toplevel. A worktree checked out at a commit predating a hook's introduction will silently be missing it, and git fails OPEN (no error). Fix: git config core.hooksPath <absolute path to this repo>/system/githooks" >&2
+      return 1
+      ;;
+  esac
+  if [ ! -x "$hp/pre-push" ]; then
+    echo "[health-deadman] pre-push is not resolvable/executable at '$hp/pre-push' — the public-push gate cannot fire. FAIL." >&2
+    return 1
+  fi
+  return 0
+}
+
+if ! _check_hooks_path; then
+  bash "$CODE_ROOT/shared/notify/notify-send.sh" --source health-deadman --tags rotating_light --priority critical \
+    --identity "health-deadman-hookspath" \
+    --title "core.hooksPath regression — push gate may be fail-OPEN" \
+    --message "core.hooksPath is unset/relative, or pre-push is unresolvable from $CODE_ROOT. The public-push gate may not fire from every worktree. Fix: git config core.hooksPath <absolute path>/system/githooks, then re-run this check." \
+    2>/dev/null || true
+  echo "[health-deadman] HOOKSPATH CHECK FAILED — see message above. Not overriding the health-tile watch below; both conditions are reported independently." >&2
+  HOOKSPATH_BAD=1
+else
+  HOOKSPATH_BAD=0
+fi
+
 # ── OL-N1 ② gate: should THIS run actually alert, given the ledger's edge+24h-escalation rule? ──
 # args: <state: "missing"|"silent"|""(=healthy, clears both)>
 # Prints "1" (alert now) or "0" (stay quiet — already alerted, not yet due to escalate), and
@@ -104,6 +151,14 @@ DEADMAN_SUMMARY="ran; no verdict recorded"
 
 _deadman_on_exit() {
   local rc=$?
+  # Fold the hooksPath regression guard into this run's verdict: a broken push gate is at least
+  # as urgent as a stale health tile, and must not be silently overridden by an otherwise-healthy
+  # exit 0 from the tile-watching logic below.
+  if [ "${HOOKSPATH_BAD:-0}" = "1" ]; then
+    [ "$rc" -eq 0 ] && rc=1
+    DEADMAN_STATUS="ERROR"
+    DEADMAN_SUMMARY="$DEADMAN_SUMMARY | ALSO: core.hooksPath regression detected — see stderr above"
+  fi
   mkdir -p "$(dirname "$DEADMAN_TILE")" 2>/dev/null
   local tmp="${DEADMAN_TILE}.tmp"
   python3 - "$tmp" "$DEADMAN_TILE" "$DEADMAN_STATUS" "$rc" "$DEADMAN_SUMMARY" <<'PYEOF' 2>/dev/null

@@ -78,7 +78,12 @@ authority: user
 `Read(~/.config/gws/**)`, `Edit(~/.config/gws/**)`, `Write(~/.config/gws/**)` are all in the deny list. No agent reads or edits gws config files except under an explicit root-mode user instruction.
 
 **gws auth login `[honor]` `[human]`:**
-`gws auth login --full` and `gws auth setup` require explicit user approval (`!` prefix). Listed in `settings.json` `permissions.ask` (`settings.json` lines 83–86). Agents must NEVER call these; they suggest the user runs them.
+`gws auth login --full` and `gws auth setup` require explicit user approval (`!` prefix). ~~Listed in
+`settings.json` `permissions.ask` (`settings.json` lines 83–86).~~ **CORRECTED 2026-08-27,
+lb2-ops-comms.md claim 50 — live check: `.claude/settings.json`'s `permissions` object has ONLY a `deny`
+key; there is no `ask` key at all, and these two commands are not listed anywhere as `permissions.ask`.**
+This requirement is honor-only (prose doctrine + the `!` convention), not mechanically enforced by a
+permissions-layer entry. Agents must NEVER call these; they suggest the user runs them.
 
 ---
 
@@ -133,6 +138,12 @@ Already covered in §1. The root backstop: blocks `gws auth logout` from any ses
 **Agent Ops calendarId (canonical):** `<agent-ops-calendar-id>`
 **Why it exists:** Claude defaulted writes to `primary`, corrupting personal events (established 2026-05-31, `block_primary_calendar.sh` LLM CONTEXT header).
 **Gap:** does NOT block MCP Google Calendar writes to primary — the guard matches Bash/gws only. An MCP-path write bypasses this hook entirely. Known debt: `[CAL-WEEKLY] MCP-matcher calendar guard hook` in `debt-ledger.md`. `[hook]·gap`
+> **⚠ NARROWED 2026-08-27, lb2-ops-comms.md claim 53 — the hook-level gap is real, but the system is
+> safer than this line implies on its own.** `.claude/settings.json`'s `permissions.deny[]` separately,
+> and independently of this hook, hard-blocks
+> `mcp__claude_ai_Google_Calendar__create_event`/`update_event`/`delete_event`/`respond_to_event`. So the
+> MCP path is NOT actually wide open in practice today — it just isn't covered by THIS hook. Both layers
+> would need a hole for an MCP calendar write to land on primary.
 
 #### 3c. `guard_sheet_writes.sh` — Sheets write discipline guard
 **Trigger:** any `gws sheets` write command (`append`, `update`, `batchUpdate`, `clear`, `delete`, structural `spreadsheets batchUpdate`) unless `LIFEHACK_SHEET_CONFIRM=1` is set. `[hook]`
@@ -148,6 +159,11 @@ Already covered in §1. The root backstop: blocks `gws auth logout` from any ses
 
 #### 3e. `guard_tasks_writes.sh` — Life Map read-only guard
 **Trigger:** any `gws tasks` write verb (`insert`/`update`/`patch`/`delete`/`move`/`clear`) targeting the Life Map tasklist (`<google-resource-id>`), EXCEPT an `insert`/`update`/`patch`/`move` referencing the Daily Win parent task (`<google-resource-id>`). `[hook]`
+> **⚠ CORRECTED 2026-08-27, lb2-ops-comms.md claim 55 — the literal strings "Life Map" / "Daily Win" are
+> not present in the hook itself.** They are the human-facing names for the config values
+> `goals_tasklist` / `daily_parent_task`, read from a config file at runtime, not hardcoded in
+> `guard_tasks_writes.sh`. The mechanism this entry describes (a guard scoped to a configured tasklist +
+> a parent-task exemption) is otherwise confirmed consistent with the claim.
 **Why it exists:** the Life Map is human-maintained, read-only for all agents (CLAUDE.md "Life Map" rule). Clair cadence-nudge opened write access to Tasks generally (2026-06-04); this guard walls off the Life Map specifically (2026-06-25). One narrow carve-out: planning-daily may write the day's confirmed dominoes as Daily-Win subtasks.
 
 ---
@@ -292,6 +308,9 @@ COMPLEMENTS security-ingest-gate                   · ingest_gate_enforce.sh ove
 ### GAPS
 
 1. **`block_primary_calendar.sh` MCP bypass** — the hook matches only Bash/gws. A write via the Claude.ai MCP Google Calendar connector would bypass this guard entirely, landing on `primary`. Known, tracked: `[CAL-WEEKLY] MCP-matcher calendar guard hook` (`debt-ledger.md`). Real blast-radius: an MCP-path calendar write could corrupt personal events. `→ ·gap`
+   [NARROWED 2026-08-27, claim 53 — `.claude/settings.json permissions.deny[]` separately hard-blocks the
+   MCP create/update/delete/respond_to_event calls today, so this hook's gap alone does not leave the path
+   wide open in practice; see the note at §3b above.]
 
 2. **Belt-and-suspenders hook redundancy** — six per-channel hooks (enforce_email_sanitize · sanitize_calendar_reads · guard_file_reads · guard_web_fetch · guard_web_search · guard_skip_safe_backdoor) were subsumed by `ingest_gate_enforce.sh` (Window-5, 2026-07-03), but some may still be registered in `settings.json`, firing redundantly. Verified: `enforce_email_sanitize.sh` is still present in hooks/ directory (unregistered or redundant). Tracked: `[SECURITY-MINOR-2026-07-04]`. Blast-radius: performance only (double-fire); no safety gap.
 

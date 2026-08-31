@@ -37,9 +37,32 @@ authority: user
 > The description below is the donor system as it was, and it is kept as written. The marker records what
 > happened to the named file AT THIS DESTINATION; it does not change the description.
 >
-> ⛔ `state/status/item-store.json`, `state/status/email-summary.json` and `state/email-summary/meta.json` are
-> runtime-generated — a tile and a store-index written by a run, under your own notes root, created on first
-> run and never committed. There is no version of them to ship.
+> ⛔ `state/status/item-store.json` — runtime-generated, a status tile written by a run under your own notes root, created on first run and never committed. There is no version of it to ship.
+> ⛔ `state/status/email-summary.json` — same: runtime-generated, under your own notes root, created on first run and never committed.
+> ⛔ `state/email-summary/meta.json` — same: runtime-generated store-index, under your own notes root, created on first run and never committed.
+
+> **⚠ CORRECTED 2026-08-27, lb2-ops-comms.md claims 40/41/44/46 — this element documents the system as
+> LESS SAFE than it currently is on two of its own tracked gaps; both are STALE, already closed.** Live
+> code, checked directly this session:
+> - **gap-6 (ENF-B not called on `write_v2()`) is CLOSED.** `write_v2()` in `email_summary_sync.py` DOES call
+>   `_enforce_contract_once()` at ~line 959, which itself calls `validate_contract()` and `sys.exit(3)` on
+>   violation. Commit `922e96d` (2026-08-14) is where this contract check was actually built (it added
+>   `email_summary_sync.py` itself, 1701 lines). [CORRECTED 2026-08-27, same-day self-correction — the
+>   commit id above was first mis-cited as `b9065a4`/2026-08-20, which `git blame` on the call line
+>   returns because that later commit was an unrelated Windows console-encoding fix that happened to
+>   touch the same physical line; blame answers "who touched this line last", not "which commit
+>   introduced this behavior" — `git show --stat` on 922e96d is what actually confirms it.] The frontmatter's
+>   `gap_disposition_note` above and the body sections below describing ENF-B as "entirely skipped on every
+>   real Pulse write run" are pre-2026-08-20 and superseded — left unedited per house rule, corrected here.
+> - **gap-1 (tasks writer soft-fail-open) is CLOSED.** Reading `tasks_store_sync.py` directly (~lines
+>   378-387) shows a HARD `sys.exit(1)` on scan-unavailable, not a soft warn-and-continue — matching
+>   `item-store.md`'s account of the same mechanism, not this file's gap-1 description of it.
+> - **gap-3 (v1 `email-summary-sync` "still enabled: yes") is STALE the other direction.**
+>   `pulse-config.md` shows `email-summary-sync` commented `(RETIRED)` with no live `enabled: yes` row at
+>   all — it is not a scheduled Pulse slot today.
+> - **`tasks-store-sync` / `calendar-store-sync` cadence is 86400s (24h), not 21600s (6h)** as this file's
+>   table below states (same stale figure independently found in `item-store.md`).
+> These are map fixes, not defect reports against the code — the code moved on; this element didn't.
 
 > **Altitude = BASE (ground / street view).** The in-the-weeds detail of the email/calendar/tasks
 > intake firehose — the WRITE side: `email_summary_sync.py` (single verbatim Gmail writer),
@@ -69,8 +92,8 @@ three are `enabled: yes` in `system/pulse-config.md`; Pulse itself fires every 5
 | Pulse slot | Interval | Runner | Python entrypoint |
 |---|---|---|---|
 | `email-summary-write` | 10800 s (3 h) | `email-summary-write-run.sh` | `email_summary_sync.py --write-v2` |
-| `tasks-store-sync` | 21600 s (6 h) | `tasks-store-sync-run.sh` | `tasks_store_sync.py --sync` |
-| `calendar-store-sync` | 21600 s (6 h) | `calendar-store-sync-run.sh` | `calendar_store_sync.py --sync` |
+| `tasks-store-sync` | ~~21600 s (6 h)~~ **86400 s (24 h)** [corrected 2026-08-27, claim 40] | `tasks-store-sync-run.sh` | `tasks_store_sync.py --sync` |
+| `calendar-store-sync` | ~~21600 s (6 h)~~ **86400 s (24 h)** [corrected 2026-08-27, claim 40] | `calendar-store-sync-run.sh` | `calendar_store_sync.py --sync` |
 
 Two companion **read-side dead-men** (not writers; they check freshness and emit health tiles):
 
@@ -186,8 +209,13 @@ Pulse (*/5 cron)
   does not cause a hard-stop in `write_v2()` because `write_v2()` never uses that variable. ENF-A
   fires for `sync()` only.
 - ENF-B (`validate_contract()` runtime check — model-pin + worker-cap + fitness grep): fires ONLY
-  inside `sync()` (v1 legacy path, line 1959). `write_v2()` (line 1243) does NOT call
-  `validate_contract()` — ENF-B is entirely skipped on every real Pulse write run (see GAPS gap-6).
+  inside `sync()` (v1 legacy path, line 1959). ~~`write_v2()` (line 1243) does NOT call
+  `validate_contract()` — ENF-B is entirely skipped on every real Pulse write run (see GAPS gap-6).~~
+  **CORRECTED 2026-08-27 (claim 41) — this is stale; `write_v2()` now also calls it via
+  `_enforce_contract_once()` at ~line 959, closed by commit `922e96d` (2026-08-14, the commit that added
+> email_summary_sync.py itself — not `b9065a4`/2026-08-20, which is an unrelated Windows-encoding fix a
+> naive `git blame` on the call line points to; see the correction at the top of this file). See gap-6 in the GAPS
+  section and the top-of-file correction banner.**
 
 ---
 
@@ -204,9 +232,11 @@ Pulse
     → watchdog-bounded python3 tasks_store_sync.py --sync [600 s watchdog]
       → _SCHEMA_AVAILABLE check [HARD-STOP if item_schema import fails; honor;
           tasks_store_sync.py:62-75]
-      → _SCAN_AVAILABLE / _READER_AVAILABLE (WARNING only, NOT hard-stop — gap-1):
-          if scan_for_injection or intake_reader import fails → write continues with
-          uncleaned raw task free-text [tasks_store_sync.py:85-101]
+      → _SCAN_AVAILABLE / _READER_AVAILABLE (~~WARNING only, NOT hard-stop — gap-1~~ **HARD-STOP,
+          `sys.exit(1)`, confirmed live at ~lines 378-387** [CORRECTED 2026-08-27, claim 44 — gap-1 is
+          closed, not a soft warn-and-continue; see the GAPS section and top-of-file banner]):
+          if scan_for_injection or intake_reader import fails → the writer now stops rather than
+          continuing with uncleaned raw task free-text [tasks_store_sync.py:85-101, ~378-387]
       → _list_tasklists() [gws tasks tasklists list subprocess → [(list_id, list_title)]]
       → for each list: _pull_tasks() paginated [safe_tasks.py --desk planning --redact --params JSON
           subprocess; up to 50 pages × 100 = 5,000 tasks/list; rc 0=clean / 1=flagged-valid / 2=err;
@@ -447,11 +477,12 @@ intake_backfill_batch.py) can also write all three stores but only under direct 
    (email_summary_sync.py:73-96)
 
 5. **ENF-B (validate_contract runtime):** model-pin + worker-cap ≤5 + grep fitness check over the
-   codebase for unauthorized Gmail callers. **Fires inside `sync()` only (email_summary_sync.py:1959)
-   — the v1 legacy path.** `write_v2()` (line 1243) does NOT call `validate_contract()` — ENF-B is
-   entirely skipped on every real Pulse write run (see GAPS gap-6). Non-empty violations → tile
-   DEGRADED + HARD-STOP (v1 path only). **Gap:** the grep does NOT scan `skills/` or `agents/`
-   directories — an unauthorized Gmail caller in a skill would evade this check (see GAPS gap-5).
+   codebase for unauthorized Gmail callers. Fires inside `sync()` (email_summary_sync.py:1959, v1
+   legacy path) ~~only~~ **and also inside `write_v2()`, via `_enforce_contract_once()` at ~line 959**
+   [CORRECTED 2026-08-27, claim 41 — commit `922e96d` (2026-08-14) closed this; ENF-B fires on the live
+   Pulse write path too now]. Non-empty violations → tile DEGRADED + HARD-STOP on either path.
+   **Gap:** the grep does NOT scan `skills/` or `agents/` directories — an unauthorized Gmail caller in
+   a skill would evade this check (see GAPS gap-5, still open — not part of this correction).
    `[honor]`
 
 6. **ingest_gate 1.1b hard-stop:** `_GATE_AVAILABLE=False` → `write_v2()` returns zero counts without
@@ -592,15 +623,15 @@ SHARES     security-ingest-gate  · email_convert.py (universal sanitizer), inge
 These are the conditions that cause this element to `·gap` — real bypass paths where a tip-only
 reader would over-trust the stated PARTIAL label. Each is code-verified in the source audit.
 
-**gap-1 · tasks scanner soft fail-open (security-relevant, open)**
-`tasks_store_sync.py` lines 85-101: if `_SCAN_AVAILABLE` or `_READER_AVAILABLE` is False (import
+**gap-1 · tasks scanner soft fail-open (security-relevant, ~~open~~ CLOSED)**
+~~`tasks_store_sync.py` lines 85-101: if `_SCAN_AVAILABLE` or `_READER_AVAILABLE` is False (import
 failure at cron startup), the tasks writer continues and stores raw, unscanned task free-text
-(`cleared_title = raw_title`, no reader applied). The pull-level `safe_tasks.py --redact` scrub
-still runs, but the secondary encoded-injection catcher is silently skipped. `calendar_store_sync.py`
-closed this exact condition (lines 486-491, HARD-STOP added 2026-07-20 per organism-audit defect-c).
-The tasks writer received no parallel fix. Task title/notes are attacker-writable free text — the
-same threat model as calendar events. Accepted asymmetry; not a documented bypass but an open
-security gap relative to the calendar writer's posture. **FIX:** match calendar's sys.exit(1) pattern.
+(`cleared_title = raw_title`, no reader applied).~~ **⚠ CORRECTED 2026-08-27, lb2-ops-comms.md claim
+44 — this gap is closed, not open.** Reading `tasks_store_sync.py` directly (~lines 378-387) shows a
+HARD `sys.exit(1)` on scan-unavailable — the same posture as the calendar writer, not the soft
+warn-and-continue this entry describes. `item-store.md`'s account of this same mechanism (a hard stop
+in both writers) is the accurate one; this entry is stale. The pull-level `safe_tasks.py --redact`
+scrub still runs regardless. **No fix needed — already matches calendar's `sys.exit(1)` pattern.**
 
 **gap-2 · hook plane does not cover headless cron writes (structural, accepted)**
 `ingest_gate_enforce.sh` and all session-side single-writer-invariant hooks fire only inside a Claude
@@ -610,16 +641,13 @@ writers, but a rogue cron entry or manual Python call from the shell could write
 any hook gating. Documented in `ingest_gate_enforce.sh` header as a known structural gap. Accepted
 2026-07-14 (`guard_write_paths.sh` header notes the same limitation for Bash writes).
 
-**gap-3 · legacy v1 email-summary-sync Pulse slot still enabled (operational, documented-intentional)**
-`pulse-config.md` lines 89-94: `email-summary-sync` (7200 s, `email_summary_run.sh` → no `--write-v2`
-flag) is `enabled: yes` with comment "LIVE (enabled:yes since Phase-8 go-live 2026-07-09)". This runs
-the v1 `sync()` path and writes `state/email-summary/threads/` AND `meta.json`. The v2 write-cadence
-is the live path; v1 is documented as deprecated but its `enabled:yes` state is intentional — the
-slot is gated by `meta.json`'s `enabled` flag on the v1 `sync()` code path (email_summary_sync.py
-lines 1919-1924). Both slots writing to `meta.json` on overlapping cadences creates a concurrent
-writer on shared state, which is the operational gap. Note: a runner comment may refer to an earlier
-phase when the slot was disabled — `pulse-config.md` is authoritative: the slot is intentionally on.
-**FIX:** set `enabled: no` on the legacy slot once v1 is confirmed safe to retire.
+**gap-3 · legacy v1 email-summary-sync Pulse slot still enabled (operational, ~~documented-intentional~~ CLOSED)**
+~~`pulse-config.md` lines 89-94: `email-summary-sync` (7200 s, `email_summary_run.sh` → no `--write-v2`
+flag) is `enabled: yes`~~ **⚠ CORRECTED 2026-08-27, lb2-ops-comms.md claim 46 — this is stale.**
+`pulse-config.md` now shows `email-summary-sync` commented `(RETIRED)` with no live `enabled: yes` row
+at all — it is not a scheduled Pulse slot today, contradicting the claim that it is running as
+documented-intentional debt. The concurrent-writer risk this entry warns about no longer applies since
+the slot isn't dispatched. **No fix needed — already retired.**
 
 **gap-4 · write_v2() does not check meta.json enabled flag (advisory, accepted)**
 The `enabled: False` default in `meta.json` gates the legacy v1 `sync()` path only
@@ -636,16 +664,24 @@ scan `skills/` or `agents/` directories. A skill or agent calling `gws gmail` di
 the runtime fitness check. No verified fix commit in the audit corpus — treat as open. **FIX:**
 extend the grep paths to include `skills/` and `agents/`.
 
-**gap-6 · ENF-B (validate_contract) does NOT fire on the live --write-v2 Pulse path (security-relevant, open)**
-`validate_contract()` (defined at line 314) is called at line 1959 inside `sync()` — the v1 legacy
+**gap-6 · ENF-B (validate_contract) does NOT fire on the live --write-v2 Pulse path (security-relevant, ~~open~~ CLOSED 2026-08-20)**
+~~`validate_contract()` (defined at line 314) is called at line 1959 inside `sync()` — the v1 legacy
 path — only. `write_v2()` (line 1243), which is the entrypoint the live `email-summary-write-run.sh`
 runner invokes via `--write-v2`, does NOT call `validate_contract()`. This means on every real Pulse
 write run: the model-pin check (ENF-B.1), the worker-cap ≤5 check (ENF-B.2), and the fitness grep
 that catches unauthorized Gmail callers in `shared/tools/`, `system/tools/`, and `desks/` (ENF-B.3)
 are ALL silently skipped. An unauthorized Gmail caller added to any scanned directory — or a
 model-pin violation — would not be caught by ENF-B during normal operation; the check only fires on
-the now-deprecated `sync()` path. This is a fail-open on the primary write path. **FIX:** call
-`validate_contract()` at `write_v2()` entry, or refactor so ENF-B fires regardless of entry point.
+the now-deprecated `sync()` path. This is a fail-open on the primary write path.~~
+**⚠ CORRECTED 2026-08-27, lb2-ops-comms.md claim 41 — this gap is closed and this was the most
+consequential single correction in that pass.** `write_v2()` DOES call `_enforce_contract_once()` at
+~line 959 inside its own body, which itself calls `validate_contract()` and `sys.exit(3)` on
+violation. Commit `922e96d` (2026-08-14, the commit that added `email_summary_sync.py` itself) is what
+actually closed this — not `b9065a4`/2026-08-20, which `git blame` on that call line points to only
+because it was an unrelated Windows-encoding fix that happened to touch the same physical line last.
+this correction. ENF-B.1/.2/.3 fire on the live Pulse write path today; this element (and its
+frontmatter `gap_disposition_note`, ruled 2026-07-28) describe a state that predates the fix.
+**No fix needed — already called.**
 
 ---
 

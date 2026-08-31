@@ -251,7 +251,7 @@ to cover before the hook counts as a control.
 - [ ] Committed + pushed; `git pull` on the other machine, ~~confirm its settings.json symlink~~, then **watched it fire on both**
   > **⚠ CORRECTED 2026-08-24:** `~/.claude/settings.json` is not a symlink into the repo (measured
   > directly this session: regular file, 15,516 bytes, content differs from the repo's tracked copy —
-  > `system/tools/gws-audit.sh` documents this was a deliberate conversion away from a symlink). A  ⏳ unruled — arrives with the tooling batch of this same porting series
+  > `system/tools/gws-audit.sh` documents this was a deliberate conversion away from a symlink). A
   > `git pull` does not update it. The real checklist step is: confirm the new/changed registration was
   > separately installed into the other machine's own `~/.claude/settings.json` (e.g. via
-  > `system/tools/install-guard-registrations.py`), not "confirm its symlink."  ⛔ stays in the private clone by design — it installs THAT clone's own registrations, so it is not part of the public harness
+  > `system/tools/install-guard-registrations.py`), not "confirm its symlink."  ⛔ not shipped to the public subset — private-clone only.

@@ -338,7 +338,12 @@ real improvement in honesty and in reach, and it is **not** the same thing as th
    **NOT** in the command string. L1's credential regex matches literal key patterns in the command text; an
    env-var-passed key will NOT trigger L1. (This is correct behavior — the key is not being exfiltrated.)
 3. `serper.dev` is on the allowlist → L2 passes the call.
-4. Daily call cap: `/tmp/serper_calls_YYYYMMDD.log` tracks the count; default `MAX=500`; exit 2 on breach.
+4. Daily call cap: `${TMPDIR:-/tmp}/serper_calls_YYYYMMDD.log` tracks the count; default `MAX=500`; exit 2 on
+   breach. [CORRECTED — live test: `CALL_LOG="${TMPDIR:-/tmp}/..."` in
+   safe_search_api.sh; on a normal macOS session `TMPDIR` is always set to a per-session `/var/folders/.../T/`
+   path, so the counter lives there, NOT at the bare `/tmp/...` path this doc previously stated as the sole
+   location. Cap enforcement itself works correctly once the real file is seeded — only the documented path
+   was wrong; anyone checking `/tmp` directly would find nothing and could wrongly conclude the cap is unused.]
    The cap is overridable: if the `SERPER_MAX_DAILY` env var is set by the caller, `MAX` is read from it
    instead of the default 500 — a caller can raise or eliminate the cap entirely. No hook guards this
    override; it is an honor-system control (a runaway loop could set `SERPER_MAX_DAILY=99999`).
@@ -359,7 +364,8 @@ real improvement in honesty and in reach, and it is **not** the same thing as th
 
 **Read (operational):**
 - `system/egress-allowlist.hosts` — firewall companion file (read only by human when syncing firewall rules)
-- `/tmp/serper_calls_YYYYMMDD.log` — daily call counter (read + written by `safe_search_api.sh`)
+- `${TMPDIR:-/tmp}/serper_calls_YYYYMMDD.log` — daily call counter (read + written by `safe_search_api.sh`)
+  [CORRECTED — resolves through `$TMPDIR` on macOS, not the bare `/tmp` path this line previously named]
 
 **Written on block event:**
 - `$DRIVE/system/logs/sentinel-events.jsonl` — L2 appends a `{"source":"hook/egress","verdict":"blocked",...}`
@@ -539,7 +545,8 @@ The skills' SKILL.md enforces `safe_search_api.sh` as the sole search path; `saf
 URL-fetch path. This wall is what MAKES them the sole path — without L3's WebFetch/WebSearch block and L2's
 domain gating, the skills' enforcement would be honor-system only. `[skill]`
 
-**FEEDS research-web-plane** · `/tmp/serper_calls_YYYYMMDD.log` (written by `safe_search_api.sh`) is the
+**FEEDS research-web-plane** · `${TMPDIR:-/tmp}/serper_calls_YYYYMMDD.log` [path corrected]
+(written by `safe_search_api.sh`) is the
 shared daily call-cap counter. Every caller of the search gateway — across all sessions — draws from the
 same `/tmp` counter file. The wall's tool writes this file; the research plane reads it. `[honor]`
 
