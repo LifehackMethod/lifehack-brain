@@ -1,0 +1,97 @@
+name: Fix Citation In PR Body Required
+
+# WHY THIS EXISTS: K.E1's sweeper (a separate, read-only audit tool -- see
+# system/tools/sweeper.py in whatever branch ships it) proved mechanically that this repo's
+# fixes cite their issue number in a code comment, a docstring, or a commit message, but
+# almost never in the ONE string GitHub itself reads to auto-close a tracker item: "Fixes
+# #N" / "Closes #N" / "Resolves #N" in a PR BODY. The result, measured against the live
+# tracker: real fixes landed and their issues stayed open, so the same defect got re-filed
+# or re-investigated by someone who had no way to know it was already gone, and three
+# separate by-hand counts of "how many open issues are actually already fixed" disagreed
+# with each other in one day. This workflow is the at-the-source half of that fix: catch a
+# PR that is ABOUT to repeat the pattern, while the fix is still one sentence away from
+# being one GitHub can act on.
+#
+# WHY IT ALMOST NEVER FIRES, AND WHY THAT IS THE POINT: this is NOT "every PR must cite an
+# issue" -- most PRs (features, refactors, docs, anything not narrating a fix for a
+# specific open defect) never come near this gate at all. It activates on exactly one
+# shape: the diff's OWN added lines already contain a corrective-state phrase (fix/fixes/
+# closes/resolved/restored/"no longer trusting"/a load-bearing regression-guard marker --
+# see check_fix_needs_pr_body_citation.py's CORRECTIVE_RE for the full, versioned list)
+# sitting next to a real "#N" citation for an issue that is CURRENTLY OPEN on the tracker.
+# A false-positive shape (a version string, a percentage, a hex colour, a numbered-list
+# reference like "prohibition #13", a test-fixture string literal like "Invoice #42") is
+# filtered the same way sweeper.py filters it, so an ordinary PR that happens to touch one
+# of those shapes cannot trip this gate either. A gate that fires on ordinary work gets
+# disabled by the first annoyed contributor and then protects nothing -- this one only ever
+# speaks up at the exact moment a PR's own diff is already one sentence away from silently
+# repeating the defect it exists to prevent.
+#
+# WHY A PR GATE, NOT AN AUTO-COMMENT ON MERGE: this repo's existing CI convention
+# (no-internal-leakage.yml, plugin-version-bump-required.yml) is "fail the PR red until a
+# human fixes it, never silently act on their behalf" -- this gate follows the same
+# convention. It never edits the PR body, never comments on or closes the issue, and never
+# merges or blocks a merge on its own authority beyond reporting a failed check; branch
+# protection (a human's own repository setting) is what turns a FLAGGED check into an
+# actual blocked merge, exactly as with the other two gates, and a human can always
+# override it there.
+#
+# FAIL-CLOSED, THREE STATES, NO FOURTH: see check_fix_needs_pr_body_citation.py's own
+# module docstring and exit-code table. 0 = not triggered, or triggered and satisfied.
+# 1 = FLAGGED (diff cites a fix for a currently-open issue; PR body doesn't). 2 = CANNOT
+# EVALUATE (git diff failed, or the live open/closed lookup itself failed) -- never a
+# silent pass on an evaluation failure.
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  # `issues: read` -- this gate only ever READS an issue's open/closed state
+  # (`gh issue view --json state`). It never writes to an issue, a PR, or a comment.
+  issues: read
+
+jobs:
+  check:
+    # ⛔ FORK GUARD -- same rationale as this repo's other two gates: a pull_request FROM a
+    # fork still runs in THIS repo's context (the base repo), so the gate still evaluates
+    # the real PR and still has read access to the tracker via the job's own GITHUB_TOKEN.
+    if: github.repository == 'LifehackMethod/lifehack-brain'
+    name: Diff-cited fix for an open issue must be closeable from the PR body
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history, needed to diff base...head)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Materialize the PR body to a file
+        # The PR body is untrusted text (anyone can write anything into it) and this gate
+        # only ever READS it looking for a plain "closes/fixes/resolves #N" substring --
+        # it is never eval'd, sourced, or executed. Writing it to a runner-local file keeps
+        # the script's interface identical between this CI path and the manual/fixture
+        # path (both take --pr-body-file), rather than inventing a second calling
+        # convention for one caller.
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$PR_BODY" > "$RUNNER_TEMP/pr-body.txt"
+
+      - name: Check for an unclosed fix citation
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 .github/scripts/check_fix_needs_pr_body_citation.py \
+            --base "${{ github.event.pull_request.base.sha }}" \
+            --head "${{ github.event.pull_request.head.sha }}" \
+            --mode merge-base \
+            --repo "${{ github.repository }}" \
+            --pr-body-file "$RUNNER_TEMP/pr-body.txt"

@@ -13,7 +13,7 @@ test only the PHYSICAL feasibility of what's already on the board.
 2. **Walk the day's fixed points in time order** (busy calendar commitments + any candidate move that needs a
    place/time). For each transition: enough travel time? a buffer? **Apply free/busy** — a `free` block is movable,
    not a hard wall; a `busy` one is fixed.
-3. **Energy budget.** Flag depletion against canon (the 2-serious-self-tapes/day ceiling; the protected morning
+3. **Energy budget.** Flag depletion against canon (the 2-serious-mock-interviews/day ceiling; the protected morning
    block; back-to-back intensity). Can the body actually do this day?
 4. **Surface "what you're not seeing"** — the transition that doesn't work, the no-buffer crunch, the over-stuffed
    day, the leave-by-X you'd miss. Flags + only the questions you can't resolve ("driving to this, or remote?").

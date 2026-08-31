@@ -14,7 +14,7 @@ generated_from:
   - system/tools/planning-diary-rollup.py (journal_range() · JOURNAL constant)
   - system/tools/marc-sensor.py (TRIP journal-append block lines 113–130)
   - system/tools/marc-pulse-journal.py (full file — slot-level daily append)
-  - system/hooks/guard_write_paths.sh (line 130 — journal.md in clone block-list)
+  - system/hooks/guard_write_paths.sh (line ~270, not 130 [corrected 2026-08-27, claim 78] — journal.md in clone block-list; live effective behavior for this path did not match "blocked" when fire-tested, claim 77 — see STORE section)
   - system/reference/settings.json (hook registrations PreToolUse Write|Edit)
   - skills/read/SKILL.md Step 0 journal-slice + gap-signal + coverage-disclaimer
   - skills/throughline/SKILL.md (journal failure-rows subagent input)
@@ -64,7 +64,14 @@ authority: user
 
 - **Store:** `$DRIVE/system/journal.md` (the Drive spine copy — the only writable home).
 - **Clone copy:** `~/lifehack-brain/system/journal.md` — **does not exist as a real file**; any
-  Write/Edit tool call targeting that path is BLOCKED by `guard_write_paths.sh` (see GATES below).
+  Write/Edit tool call targeting that path is ~~BLOCKED~~ by `guard_write_paths.sh` (see GATES below).
+  > **⚠ CORRECTED 2026-08-27, lb2-ops-comms.md claims 77/78 — live-tested, not blocked.** An `Edit`
+  > targeting `~/lifehack-brain/system/journal.md` through `guard_write_paths.sh` returned rc=0
+  > (ALLOWED), contradicting this line. `system/journal.md` IS present in the guard's block-list
+  > case-statement, but at a different line than previously cited (~270, not ~130) — the pattern is in
+  > the source, but the live effective behavior for this exact clone-copy path did not match "blocked"
+  > when fire-tested. Treat the "does not exist as a real file" half as still true; the enforcement half
+  > needs re-verification against the guard's actual match logic before relying on it.
 - **The ## Log section** is the append-only event ledger. New entries are always appended below the
   last line; existing entries are NEVER edited or deleted.
 - **The file header** (above `## Log`) declares the three entry types and the field rules. It is
@@ -381,13 +388,18 @@ This is the same signal the archivist uses during drift detection. Read-only.
 **What IS enforced (hook-level):**
 
 1. **`guard_write_paths.sh`** (PreToolUse Write|Edit) `[hook]` — the residency wall. Fires on every
-   Edit/Write tool call. For the journal specifically: line 130 of the hook lists `system/journal.md`
-   inside the **clone-content block-list** case statement. Meaning: any Write/Edit to the CLONE path
-   (`~/lifehack-brain/system/journal.md`) is HARD-BLOCKED (exit 1, with a REDIRECT message).
+   Edit/Write tool call. For the journal specifically: ~~line 130~~ (actually ~line 270, corrected
+   2026-08-27, claim 78) of the hook lists `system/journal.md`
+   inside the **clone-content block-list** case statement. ~~Meaning: any Write/Edit to the CLONE path
+   (`~/lifehack-brain/system/journal.md`) is HARD-BLOCKED (exit 1, with a REDIRECT message).~~
+   **⚠ CORRECTED 2026-08-27, lb2-ops-comms.md claim 77 — live test contradicts this.** An `Edit`
+   targeting `~/lifehack-brain/system/journal.md` through `guard_write_paths.sh` returned rc=0
+   (ALLOWED), not blocked. The path is present in the block-list case statement (mechanism exists in
+   source) but the live effective behavior did not match "hard-blocked" when fire-tested — needs
+   re-verification against the guard's actual match/resolution logic before relying on this as an
+   active control.
    A Write/Edit to the DRIVE path (`$DRIVE/system/journal.md`) hits the "Allow within Drive spine"
-   branch (line 71-73) and exits 0 — ALLOWED. All legitimate /save and /checkin appends to the
-   Drive journal pass; any accidental clone-path journal write is hard-blocked. This is correct and
-   fire-testable.
+   branch (line 71-73) and exits 0 — ALLOWED. This half is unaffected by the correction above.
 
    Note: this hook covers the Claude tool plane (Write and Edit tools) only. Python `open(path, "a")`
    by marc-sensor.py and marc-pulse-journal.py is NOT a tool call — it bypasses this hook entirely.

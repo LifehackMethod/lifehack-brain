@@ -50,6 +50,11 @@ The **Harness** arrives by `git clone` and is replaced every time you update. Yo
 **AI Brain** is never tracked, never committed, never uploaded — it is not in the
 repository at all.
 
+⛔ **Always use `main`.** If you ever find yourself on another branch of this repository —
+including one named `DO-NOT-USE` — you are looking at maintenance work in progress, not a
+release. Switch back with `git checkout main`. Branches on a public repository cannot be
+hidden, so if you see one, that is what it means.
+
 **Where each one goes, and how they get connected, is `INSTALL.md`.** That file is the
 authority on it and this page deliberately does not repeat it.
 

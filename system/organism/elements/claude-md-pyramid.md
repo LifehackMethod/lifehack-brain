@@ -6,7 +6,7 @@ altitude: base
 record_type: organism-element
 maturity_label: PARTIAL·gap
 gap_disposition: defect
-gap_disposition_note: "ruled 2026-07-28 at class level — C3 carve-out — session_context_loader.sh exits 0 on failure, so a session silently starts with no canon/TELOS/pulse-brief and no signal"
+gap_disposition_note: "ruled 2026-07-28 at class level — C3 carve-out — session_context_loader.sh exits 0 on failure, so a session silently starts with no canon/TELOS/pulse-brief and no signal — ⚠ CORRECTED 2026-08-27 (L.B2 audit): the 'silently'/'no signal' half is false. The script deliberately prints a loud stdout failure message on the Drive-unmounted path and exits 0 precisely so that message reaches the model (a non-zero exit would suppress it instead). See the INTENT/CURRENT-VS-TARGET section below for the full correction."
 topic: [system-architecture]
 generated_from:
   - system/reference/global-CLAUDE.md
@@ -53,12 +53,16 @@ authority: user
 > description above and below is a faithful account of the donor system and is unchanged; these lines
 > record only the destination's answer, so a reader hunting for a named file knows what they will find.
 >
-> ⏳ `system/reference/settings.json` and `system/reference/global-CLAUDE.md` — **unruled.** The donor
-> keeps clone-side reference copies of the harness settings and of the machine-global cap; this
+> ⏳ `system/reference/settings.json` — **unruled.** The donor
+> keeps a clone-side reference copy of the harness settings; this
 > repository has no `system/reference/` directory at all. The registrations that actually fire here
-> live in `.claude/settings.json`, and the global cap is the reader's own machine-local
-> `~/.claude/CLAUDE.md`, which is never committed to any repository. Whether a mirror ever ships here
+> live in `.claude/settings.json`. Whether a mirror ever ships here
 > is on no ship list and nobody has decided it — a DEBT, not a pass.
+>
+> ⏳ `system/reference/global-CLAUDE.md` — **unruled**, same reason: the donor's clone-side reference
+> copy of the machine-global cap. This repository has no `system/reference/` directory; the global
+> cap is the reader's own machine-local `~/.claude/CLAUDE.md`, which is never committed to any repository.
+> Whether a mirror ever ships here is on no ship list and nobody has decided it — a DEBT, not a pass.
 >
 > ✅ `system/organism/map-format-specs.md` — **it is here** *(was `⏳ unruled` earlier on 2026-08-15; `T9.4c` landed it the same day, 579 lines)*. The map's format contract is cited by
 > several shipped files here and has not been written at this destination yet. No open landing names
@@ -76,6 +80,15 @@ authority: user
 >
 > ⛔ `/distill` — no such skill exists here, and none exists in the donor either. This element names
 > it as a NEW CANDIDATE, not as a shipped part (see its own note in the interop seams below).
+>
+> ⚠ **CORRECTED 2026-08-27** (L.B2 audit, live `ls -la ~/.claude/CLAUDE.md` + `find`): the
+> "`~/.claude/CLAUDE.md` is a symlink → `~/lifehack-brain/system/reference/global-CLAUDE.md`"
+> premise used throughout this element is false on BOTH halves. `ls -la` shows a **regular file**
+> (`-rw-r--r--`, 14,294 bytes), not a symlink; and `find ~/lifehack-brain -iname
+> "global-CLAUDE.md"` returns nothing at all — the claimed symlink target does not exist anywhere
+> live (only old deferred/backup snapshots carry a file by that name). Every mention of the
+> symlink relationship below is the donor's description, kept as written; this note is the single
+> place to check for the corrected, current fact.
 
 ---
 
@@ -258,8 +271,14 @@ nested subdirectory CLAUDE.md files, not the main pyramid layers.
 - **Fire-testable: YES** — git-tracked, registered PreToolUse `Write|Edit`.
 
 **Gate 2 — permissions.deny on settings.json / hooks/** [harness-level · BLOCKING · no bypass]**
-- `Write(~/.claude/settings.json)`, `Edit(~/.claude/settings.json)`, `Write(~/.claude/hooks/**)`,
-  `Edit(~/.claude/hooks/**)` are HARD-DENIED at the harness permission level in `settings.json`.
+- ~~`Write(~/.claude/settings.json)`, `Edit(~/.claude/settings.json)`, `Write(~/.claude/hooks/**)`,
+  `Edit(~/.claude/hooks/**)` are HARD-DENIED at the harness permission level in `settings.json`.~~
+  **CORRECTED 2026-08-27** (L.B2 audit, live read of `.claude/settings.json`'s `permissions.deny`
+  array): the four exact home-relative (`~/.claude/...`) entries above do not appear. What the
+  deny list actually contains is **repo-relative** — `Edit(.claude/settings.json)` and
+  `Edit(system/hooks/*)` — which protects this repo's own tracked settings/hooks, not the separate
+  home-level `~/.claude/settings.json` / `~/.claude/hooks/` paths this claim names. The claim
+  conflates the two.
 - These are permission-plane denials (enforced by the harness before any hook script runs).
 - CLAUDE.md itself is NOT in the deny list — writes to `~/.claude/CLAUDE.md` are not
   permission-denied; they pass to `guard_write_paths.sh` which explicitly allows them.
@@ -450,8 +469,19 @@ permanent truths are, without the user having to reinstate them each time.
     nested subdirectory CLAUDE.md files are not re-injected; if desk CLAUDE.md was loaded via a
     subdirectory read, it may be lost after compaction with no re-injection mechanism.
   - **Bash write bypass** — Bash can overwrite CLAUDE.md files without triggering `guard_write_paths.sh`.
-  - **`session_context_loader.sh` non-blocking** — if the hook fails, the canon floor, TELOS,
-    and pulse-brief are silently absent from the session. No error surfaces.
+  - **`session_context_loader.sh` non-blocking** — ~~if the hook fails, the canon floor, TELOS,
+    and pulse-brief are silently absent from the session. No error surfaces.~~ **CORRECTED
+    2026-08-27** (L.B2 audit, `grep -n "exit 0\|exit 1"` + source read of
+    `session_context_loader.sh`): the exit-0-always half is TRUE — the script's own header says so
+    on purpose ("EVERY EXIT PATH IN THIS FILE IS exit 0, ON PURPOSE, INCLUDING THE REAL
+    FAILURES"). But "silently absent... no error surfaces" is the OPPOSITE of what the code does:
+    for the Drive-unmounted case specifically, it prints a loud message to stdout — *"!! YOUR NOTES
+    ARE NOT WHERE THIS SYSTEM REMEMBERS THEM: $REMEMBERED ... Nothing was loaded. This is NOT an
+    empty system — it is a system that cannot see its own memory."* — and per the script's own
+    comments, exit 0 is chosen DELIBERATELY so that message reaches the model: stdout on
+    SessionStart is injected into context regardless of exit code, whereas a non-zero exit would
+    instead SUPPRESS the message entirely. The design's whole point is the opposite of "no error
+    surfaces" — exit 0 here means the failure IS surfaced, not hidden.
 - Mixed (significant live infrastructure + meaningful honor-system gaps) → **PARTIAL**.
 
 **TARGET:**
@@ -461,8 +491,11 @@ permanent truths are, without the user having to reinstate them each time.
    after compaction would close the remaining gap for those files.
 2. **Block Bash writes to CLAUDE.md** — closing the Bash bypass gap would make the write-guard
    complete. Currently accepted as a known gap (chasing every Bash write breaks more than it protects).
-3. **session_context_loader.sh fail-alerting** — a non-zero exit or a stderr emission when canon
-   injection fails would surface silent floor-absence to the user; currently silent.
+3. ~~**session_context_loader.sh fail-alerting** — a non-zero exit or a stderr emission when canon
+   injection fails would surface silent floor-absence to the user; currently silent.~~ **CORRECTED
+   2026-08-27: this TARGET item describes a problem that doesn't exist — the script already
+   surfaces the Drive-unmounted failure loudly via stdout at SessionStart, by design (see the
+   corrected bullet above). No further action item is owed here.
 4. **Desk read-order mechanization** — making the desk CLAUDE.md's declared read-order order
    actually load the referenced files (vs. just `canon/*.md` alphabetically) would close the
    prose-vs-code gap.
@@ -484,16 +517,27 @@ discipline + code review only.
 - **Enforcement tag: [honor] for Bash path (hook never fires for Bash writes); CLAUDE.md paths are
   explicitly allowed (exit 0) even when the hook fires for Write/Edit tool calls.**
 
-**Gap 2 — session_context_loader.sh is non-blocking; failure silently drops the full Drive-side context floor [element-specific fail-open]**
-The SessionStart hook always exits 0 regardless of success or error. If `session_context_loader.sh`
-fails (Drive unmounted, script error, python3 unavailable), the desk canon, TELOS, and pulse-brief
-are silently absent from the session context — no error surfaces, no user notification fires. The
-session starts with only the harness-native CLAUDE.md stack (Layer 1) and zero Drive-side knowledge
-floor. This is a designed non-blocking posture (the hook is a context loader, not a guard), but the
-consequence is invisible floor-absence.
-- **Blast radius:** session starts with no canon floor, no TELOS, no pulse-brief — behavioral rules
-  from the Drive-side memory system are absent for the full session with no signal.
-- **Enforcement tag: [honor] — context loader, never blocking; failure is silent.**
+**Gap 2 — ~~session_context_loader.sh is non-blocking; failure silently drops the full Drive-side context floor~~ [element-specific fail-open, corrected]**
+
+⚠ **CORRECTED 2026-08-27** (L.B2 audit, `grep -n "exit 0\|exit 1"` + source read of
+`system/hooks/session_context_loader.sh`): this entire gap entry inverts what the code does. The
+SessionStart hook always exits 0 regardless of success or error — that half is true, and is
+confirmed by the script's own header ("EVERY EXIT PATH IN THIS FILE IS exit 0, ON PURPOSE,
+INCLUDING THE REAL FAILURES"). But the rest of this entry — "silently absent... no error surfaces,
+no user notification fires" — is FALSE. For the Drive-unmounted case specifically, the script
+prints, to stdout: *"!! YOUR NOTES ARE NOT WHERE THIS SYSTEM REMEMBERS THEM: $REMEMBERED ...
+Nothing was loaded. This is NOT an empty system — it is a system that cannot see its own memory."*
+Per the script's own comments, exit 0 is chosen DELIBERATELY so this message reaches the model:
+stdout on SessionStart is injected into context regardless of exit code, while a non-zero exit
+would instead SUPPRESS the message. The design's entire point is the opposite of "no error
+surfaces" — this hook uses exit 0 specifically so failure messages reach the model, not to hide
+them. What remains true and un-corrected: the session does start with only the harness-native
+CLAUDE.md stack and zero Drive-side knowledge floor when the Drive is unmounted — the loss itself
+is real, only the "silent, no signal" framing was wrong.
+- **Blast radius:** session starts with no canon floor, no TELOS — behavioral rules from the
+  Drive-side memory system are absent for the full session, but a loud stdout message names this,
+  it is not silent.
+- **Enforcement tag: [honor] — context loader, never blocking; failure is loudly surfaced by design, not silent.**
 
 ---
 

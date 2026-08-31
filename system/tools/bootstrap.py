@@ -150,44 +150,55 @@ SHIM_BODY = (
     '"%~dp0python.exe" %*\r\n'
 )
 
-# The SAME contract as SHIM_BODY, for Git Bash / MSYS — which does NOT apply PATHEXT to a bare
-# word, so `python3.cmd` is invisible to it and `python3` alone is "command not found" even with
-# the .cmd sitting on $PATH. That matters because every command block in INSTALL.md is bash, and
-# STEP 7.2 promises in as many words that from STEP 8 onward plain `python3` resolves. It does
-# not, on the one shell the file actually uses. LF endings and the `#!` are both load-bearing:
-# MSYS treats a file starting with a shebang as executable, which is what lets a extensionless
-# file answer to a bare word at all.
-SHIM_POSIX_BODY = (
-    "#!/bin/sh\n"
-    "# Companion to python3.cmd, for Git Bash/MSYS. See SHIM_BODY for why PYTHONUTF8 is set here.\n"
-    "export PYTHONUTF8=1\n"
+# The POSIX-style companion. `python3.cmd` above is what `cmd.exe` (and, by extension,
+# `os.system`/`subprocess` with `shell=True` on Windows) resolves when it sees the bare word
+# `python3`. Git Bash does NOT go through that resolution — it is a real bash, it execs a file it
+# finds on PATH directly, and a `.cmd` file is not a valid Windows executable format bash can exec
+# (it is a batch script, which only `cmd.exe` knows how to interpret). Every install command in
+# INSTALL.md is typed into Git Bash, so without this file the `.cmd` shim above fixes `cmd.exe` and
+# nothing that actually runs the installer. This file has NO extension — bash matches the command
+# word exactly — and a `#!/bin/sh` line, which is how bash decides what interpreter runs it.
+POSIX_SHIM_BODY = (
+    '#!/bin/sh\n'
+    '# POSIX companion to python3.cmd (same folder) -- see that file for why this pair exists.\n'
+    '# Git Bash execs a PATH entry named exactly "python3" directly; it never resolves .cmd files,\n'
+    '# so without this file every skill command that types `python3 ...` fails in Git Bash even\n'
+    '# after the .cmd shim is installed for cmd.exe. Mirrors the .cmd shim: force UTF-8 Mode,\n'
+    '# forward every argument to the real interpreter sitting next to this file.\n'
+    'export PYTHONUTF8=1\n'
     'exec "$(dirname "$0")/python.exe" "$@"\n'
 )
 
+# A real interpreter -- python.org's python.exe, WSL's entrypoint, Anaconda's python3 -- is at
+# minimum hundreds of KB. The Microsoft Store's `python3.exe` execution-alias STUB, present at this
+# exact PATH shape even when no Store Python is installed, is a placeholder a few KB in size whose
+# only job is to pop open the Store. It is never anywhere but under `WindowsApps`, so path alone is
+# enough to say "not a stub"; only "is under WindowsApps" needs the size check, to tell an installed
+# Store Python (large, legitimate, not ours to touch) from the empty alias (small, not usable).
+_STORE_ALIAS_MAX_STUB_BYTES = 51200  # 50 KB -- real interpreters run several hundred KB minimum
 
-def _is_store_alias(path):
-    """True for the Microsoft Store App Execution Alias, which is NOT an interpreter.
 
-    ⭐ WHY (2026-08-21). A stock Windows 11 ships a zero-byte `python3.exe` reparse stub in
-    `%LOCALAPPDATA%\\Microsoft\\WindowsApps`, early on PATH. Run it and it prints "Python was not
-    found; run without arguments to install from the Microsoft Store" and exits. `shutil.which`
-    finds it, so the "something else already answers to python3" arm below fired and this function
-    created NO shim — on the exact machine that needs one most. Nothing errored: the install
-    reported success, and every one of the ~150 skill commands written as the word `python3` then
-    hit the Store stub. INSTALL.md STEP 3 TRAP 2 already tells the student to disable these
-    aliases; nothing verified they had, and the cost of not checking was silence.
-
-    ⛔ LOCATION ONLY — deliberately NOT "is it zero bytes?". The stub is zero bytes, but so is any
-    number of legitimate things, and this answer decides whether we OVERWRITE what we found. A size
-    test guesses; the WindowsApps path is what actually makes it a Store alias. Caught by
-    test_a_foreign_python3_elsewhere_on_path_is_left_alone, whose foreign interpreter is an empty
-    fixture file — a size test called it fake and wrote over it, which is exactly the real-world
-    failure that test exists to prevent."""
+def _classify_found_python3(path):
+    """True = this is the Microsoft Store's execution-alias stub, not a real interpreter (treat the
+    word `python3` as ABSENT). False = looks like a real interpreter someone else legitimately owns
+    (WSL, Anaconda, a real python3.exe elsewhere on PATH) -- decline, unchanged. None = found
+    something on PATH but could not determine which (e.g. could not stat it) -- this must surface as
+    its own distinct outcome, never silently folded into either answer."""
     try:
-        p = os.path.normcase(os.path.abspath(path))
+        # Explicit .lower() rather than os.path.normcase(): normcase only folds case on Windows
+        # (a no-op everywhere else), so relying on it here would make this check untestable off
+        # Windows and would silently stop matching a differently-cased WindowsApps segment even on
+        # Windows itself. The substring test only cares about case, never about separator style.
+        norm = os.path.abspath(path).lower()
     except (OSError, ValueError):
+        return None
+    if "windowsapps" not in norm:
         return False
-    return os.sep + "microsoft" + os.sep + "windowsapps" + os.sep in p
+    try:
+        size = os.path.getsize(path)
+    except OSError:
+        return None
+    return size < _STORE_ALIAS_MAX_STUB_BYTES
 
 
 def ensure_python3_shim(dry_run=False):
@@ -216,90 +227,103 @@ def ensure_python3_shim(dry_run=False):
     already-installed machine is not a fix, it is a note to new installs only.
 
     Returns (status, detail) with status in {"not-needed", "already", "created", "upgraded",
-    "would-create", "would-upgrade", "refused"}. ⛔ A refusal NEVER fails the install: it is reported
-    with the manual fix, because a person who cannot write one file still has a working tool
-    everywhere except that word."""
+    "would-create", "would-upgrade", "refused", "undetermined"}. ⛔ A refusal NEVER fails the
+    install: it is reported with the manual fix, because a person who cannot write one file still
+    has a working tool everywhere except that word. "undetermined" ALSO never fails the install, and
+    is DISTINCT from every other status — see the ABSENT-SUBJECT-RULE note on that branch in main()
+    below: a checker that cannot tell whether the fix is needed must say so as its own outcome,
+    never as quiet success and never folded into "already"."""
     if os.name != "nt":
         return "not-needed", "not Windows — `python3` is the real name here, in UTF-8 by default"
 
     import shutil
     target_dir = os.path.dirname(os.path.abspath(sys.executable))
     shim = os.path.join(target_dir, "python3.cmd")
-
-    # TWO files, because two shells have to answer to the same word: cmd/PowerShell resolve the
-    # .cmd via PATHEXT, Git Bash resolves only the extensionless one. INSTALL.md's command blocks
-    # are bash, so shipping just the .cmd left the file's own instructions broken on Windows.
-    posix_shim = os.path.join(target_dir, "python3")
-    wanted = ((shim, SHIM_BODY), (posix_shim, SHIM_POSIX_BODY))
-    ours = {os.path.normcase(os.path.abspath(p)) for p, _ in wanted}
+    shim_posix = os.path.join(target_dir, "python3")
 
     found = shutil.which("python3")
-    if found and _is_store_alias(found):
-        found = None        # a Store stub is not an interpreter — see _is_store_alias
-    if found and os.path.normcase(os.path.abspath(found)) not in ours:
-        # Something else already answers to `python3` — WSL, msys, a real python3.exe elsewhere on
-        # PATH. Not ours to rewrite; its encoding behaviour is that install's own business.
-        return "already", "`python3` already resolves on PATH (%s, not managed here)" % found
+    replaced_stub = None
+    if found and os.path.normcase(os.path.abspath(found)) != os.path.normcase(os.path.abspath(shim)):
+        classification = _classify_found_python3(found)
+        if classification is None:
+            # Something answers to `python3`, and we could not tell whether it is a real
+            # interpreter or the Store's alias stub (e.g. could not stat it). Do NOT call this
+            # "already" — that would silently skip installing the fix on a machine that needs it.
+            return "undetermined", (
+                "found `python3` on PATH at %s but could not tell whether it is a real "
+                "interpreter or the Microsoft Store's execution-alias stub. Not touching it, and "
+                "not assuming it works.\n"
+                "     CHECK BY HAND: open a NEW terminal and run `python3 -c \"print(1)\"`. If it "
+                "opens the Microsoft Store instead of printing 1, that word is the Store alias, "
+                "not Python: disable it (Settings > Apps > Advanced app settings > App execution "
+                "aliases > turn off App Installer for python3/python3.exe) and re-run this "
+                "script." % found)
+        if classification is False:
+            # Something else legitimately owns the word — WSL, Anaconda, a real python3.exe
+            # elsewhere on PATH. Not ours to rewrite; its encoding behaviour is that install's own
+            # business.
+            return "already", "`python3` already resolves on PATH (%s, not managed here)" % found
+        # classification is True: the Microsoft Store's execution-alias stub — not a usable
+        # interpreter. Treat the word as ABSENT and fall through to install our own shim pair.
+        replaced_stub = found
 
-    def _state(path):
-        """(needs_writing, is_an_upgrade). An upgrade is a file of ours predating PYTHONUTF8."""
-        if not os.path.exists(path):
-            return True, False
+    def _read(path):
         try:
-            current = open(path, encoding="ascii").read()
+            with open(path, encoding="ascii") as f:
+                return f.read()
         except OSError:
-            current = ""
-        return ("PYTHONUTF8" not in current), ("PYTHONUTF8" not in current)
+            return ""
 
-    cmd_write, cmd_upgrade = _state(shim)
-    posix_write, posix_upgrade = _state(posix_shim)
+    cmd_ok = "PYTHONUTF8" in _read(shim)
+    posix_ok = "PYTHONUTF8" in _read(shim_posix)
 
-    if not cmd_write and not posix_write:
+    if cmd_ok and posix_ok:
         return "already", shim
 
-    # ⛔ THE .cmd GOVERNS THE REPORTED VERB AND THE DETAIL, even though two files are written now.
-    # That is a CONTRACT, not a preference: test_bootstrap.py's TestPython3ShimUTF8 asserts
-    # `detail == python3.cmd` on a fresh machine and `upgraded` for a pre-UTF8 .cmd — and it is the
-    # right contract, because a stale .cmd is a machine whose `python3` silently mangles the
-    # person's own accented names and curly quotes. Adding a second file must not downgrade that
-    # report to "created" and bury the .cmd path in a concatenation; the companion is additive.
-    if cmd_write:
-        verb, verb_dry = ("upgraded", "would-upgrade") if cmd_upgrade else ("created", "would-create")
-        detail = shim
+    if not os.path.exists(shim) and not os.path.exists(shim_posix):
+        verb, verb_dry = "created", "would-create"
     else:
-        verb, verb_dry = ("upgraded", "would-upgrade") if posix_upgrade else ("created", "would-create")
-        detail = posix_shim
+        verb, verb_dry = "upgraded", "would-upgrade"
 
-    todo = [(p, b) for p, b, w in ((shim, SHIM_BODY, cmd_write),
-                                   (posix_shim, SHIM_POSIX_BODY, posix_write)) if w]
+    detail = "%s (+ POSIX companion for Git Bash: %s)" % (shim, shim_posix)
+    if replaced_stub:
+        detail = "replacing the Microsoft Store's execution-alias stub at %s -- %s" % (
+            replaced_stub, detail)
 
     if dry_run:
         return verb_dry, detail
 
-    written, failed = [], []
-    for path, body in todo:
-        try:
-            # newline="" keeps each body's own endings: CRLF for the .cmd, LF for the sh shim,
-            # which MSYS requires and which a CRLF-mangled shebang would break.
-            with open(path, "w", encoding="ascii", newline="") as f:
-                f.write(body)
-            written.append(path)
-        except OSError as e:
-            failed.append((path, e))
+    manual_fix = (
+        "     Not fatal. Either re-run this step from a shell that can write there, or create\n"
+        "     these two files by hand, next to your real python.exe:\n"
+        "       python3.cmd (for cmd.exe):\n"
+        "         @echo off\n"
+        "         set PYTHONUTF8=1\n"
+        '         "%~dp0python.exe" %*\n'
+        "       python3 (no extension, for Git Bash):\n"
+        "         #!/bin/sh\n"
+        "         export PYTHONUTF8=1\n"
+        '         exec "$(dirname "$0")/python.exe" "$@"'
+    )
 
-    if failed and not written:
-        path, e = failed[0]
-        return "refused", (
-            "could not write %s (%s).\n"
-            "     Not fatal. Either re-run this step from a shell that can write there, or create\n"
-            "     that file by hand with these three lines:\n"
-            "         @echo off\n"
-            "         set PYTHONUTF8=1\n"
-            '         "%%~dp0python.exe" %%*' % (path, e))
-    if failed:
-        # Partial success is still a working `python3` in at least one shell — say which failed
-        # rather than claiming the whole step succeeded.
-        return verb, "%s (could not write %s: %s)" % (detail, failed[0][0], failed[0][1])
+    if not cmd_ok:
+        try:
+            with open(shim, "w", encoding="ascii", newline="") as f:
+                f.write(SHIM_BODY)
+        except OSError as e:
+            return "refused", "could not write %s (%s).\n%s" % (shim, e, manual_fix)
+
+    if not posix_ok:
+        try:
+            with open(shim_posix, "w", encoding="ascii", newline="\n") as f:
+                f.write(POSIX_SHIM_BODY)
+            try:
+                os.chmod(shim_posix, 0o755)
+            except OSError:
+                pass  # best-effort; Git Bash on NTFS mostly ignores the bit anyway
+        except OSError as e:
+            return "refused", "could not write %s (%s).\n%s" % (shim_posix, e, manual_fix)
+
     return verb, detail
 
 
@@ -338,8 +362,32 @@ def main(argv=None):
         print("  would make `python3` work on this machine (and read files as UTF-8): %s" % detail)
     elif status == "would-upgrade":
         print("  would fix `python3` to read files as UTF-8: %s" % detail)
+    elif status == "already":
+        # ⛔ THIS BRANCH EXISTS BECAUSE ITS ABSENCE WAS THE BUG (2026-08-23).
+        # `already` is the one outcome where the UTF-8 half genuinely does NOT get installed:
+        # something else owns the word `python3` (WSL, Anaconda, another interpreter on PATH), and
+        # ensure_python3_shim deliberately refuses to hijack it -- correctly, that install's encoding
+        # behaviour is its own business. But the caller printed NOTHING for this status, so the one
+        # case where the fix does not arrive was also the one case that said nothing at all, which
+        # reads exactly like success. That is this repo's own ABSENT-SUBJECT-RULE
+        # (system/build-rules-index.md): "a checker that cannot reach what it is supposed to inspect
+        # must say so as its own distinct outcome -- never fold into a passing result."
+        print("  ⚠ `python3` here comes from somewhere else, so UTF-8 mode was NOT set: %s" % detail)
+        print("     WHAT THAT MEANS: on Windows, reading or writing a file containing a special")
+        print("     character (an em dash, an arrow, an accent) may crash or silently corrupt it.")
+        print("     TO FIX IT YOURSELF, set PYTHONUTF8=1 for your user account:")
+        print("       setx PYTHONUTF8 1")
+        print("     then open a NEW terminal. Verify with:  python3 -c \"import sys;print(sys.flags.utf8_mode)\"")
+        print("     It should print 1.")
     elif status == "refused":
         print("  ⚠ `python3` is not a working command here, and I could not fix it:\n     %s" % detail)
+    elif status == "undetermined":
+        # ⛔ ITS OWN OUTCOME, ON PURPOSE. Not "already" (that means "checked, and something real
+        # owns the word" — this means we could NOT check), not "refused" (that means "knew what to
+        # write and failed to write it"), and never silent. A checker that cannot tell whether the
+        # fix is needed must say so as its own distinct branch — folding this into any of the
+        # above is exactly the bug this repo got burned by four times in one day.
+        print("  ? could not determine whether `python3` needs fixing here: %s" % detail)
     return 0
 
 

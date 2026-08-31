@@ -110,8 +110,9 @@ to be:
 - **nothing** — drop it (an artifact that earns no home anywhere).
 
 **Records split by SHAPE, not just durability (the operator, 2026-08-05, authority: user).** A record is either a
-**discrete dated item** worth keeping on its own (his examples: *"quick research I did on my 2006 tax
-filing," "research about a house I built last year"*) or **a larger corpus** — the same non-canon material,
+**discrete dated item** worth keeping on its own (invented example, ⚠ nobody real, same convention as
+above: *"quick research done on a 2019 insurance claim," "notes kept while renovating a garage last
+year"*) or **a larger corpus** — the same non-canon material,
 but a body big enough that it's referenced/searched later rather than read whole. Both are records, not
 canon; the split is size/shape, not durability, and neither graduates to canon just by accumulating.
 

@@ -455,7 +455,7 @@ def describe_coverage(refuse_rules_path=None):
     """One block naming what the mechanical pass actually hunted, for the prompt.
 
     ⚠ THIS USED TO BE HARDCODED, AND IT WAS THE DONOR AUTHOR'S OWN LIFE. The template named
-    his six project folders and told every reader they were "a working actor with clients".
+    his six project folders and assumed every reader shared his specific professional identity.
     Shipped unchanged, it points the one pass that reads for MEANING at somebody else's
     subject matter, and rule 3 -- "do not re-report what the mechanical pass caught" --
     names strings that were never hunted on this machine. Both halves of that are worse than

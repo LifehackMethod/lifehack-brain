@@ -45,7 +45,7 @@ if not DRIVE:
 JOURNAL = os.path.join(DRIVE, "system/journal.md")
 # ⚠ The DATA PATH is deliberately still `desks/cal/`. This desk's code, tools, jobs and tiles are
 # renamed to `planning`; the records directory is NOT, because moving the operator's live records is
-# his decision and has not been taken. KNOWN, INTENTIONAL split — do not "complete" it without his word.
+# their decision and has not been taken. KNOWN, INTENTIONAL split — do not "complete" it without their word.
 DIARY_ROOT = os.path.join(DRIVE, "desks/cal/diary")
 PROJECT_REGISTRY = os.path.join(DRIVE, "system/project-registry.md")  # the watchlist (active/paused slugs)
 

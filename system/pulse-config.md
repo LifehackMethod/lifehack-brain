@@ -149,11 +149,18 @@ sentinel-health  | yes | 1800  | bash "$LIFEHACK_CODE_ROOT/system/tools/sentinel
 # planning-health: READ-ONLY calendar check (conflicts + unconfirmed invites, 7-day forward window).
 # Degrades cleanly (rc=75, "stood down") when config/cal.md has no calendar id configured yet — see
 # shared/cal_config.py. (Those two names stay `cal` on purpose: they are the CALENDAR-identifier
-# config, shared with the calendar write guards — not the renamed planning desk.) No *-run.sh
-# wrapper exists yet for this job (no single-instance lock / no buzz-on-hard-failure) — a future
-# lane can add system/tools/planning-health-run.sh matching system-health-run.sh's pattern; until
-# then this calls the checker directly. 6h cadence.
-planning-health  | yes | 21600 | python3 "$LIFEHACK_CODE_ROOT/system/tools/planning-health.py"
+# config, shared with the calendar write guards — not the renamed planning desk.)
+# CORRECTED: the line below used to call planning-health.py directly — the comment here previously
+# said "No *-run.sh wrapper exists yet for this job... calls the checker directly," which is the
+# root cause of a real recurring failure: invoked bare, the job inherits the scheduler's bare
+# environment with no GOOGLE_WORKSPACE_CLI_* vars exported, so every gws call fails with
+# `error[auth]: Access denied. No credentials provided.` even though the credential itself is
+# alive — calendar-store-sync and tasks-store-sync never hit this because they already source
+# gws-auth.lib.sh via their own *-run.sh wrappers. This repo already ships
+# system/tools/planning-health-run.sh (verified: it sources gws-auth.lib.sh at line 35 and exports
+# those vars before invoking the checker) — the manifest below just wasn't calling it. 6h cadence,
+# unchanged.
+planning-health  | yes | 21600 | bash "$LIFEHACK_CODE_ROOT/system/tools/planning-health-run.sh"
 #
 # backlog-health: emits state/status/backlog.json from the read-only backlog groom engine
 # (backlog_groom.py). CORRECTED 2026-08-14: that engine landed in the SAME commit as this file

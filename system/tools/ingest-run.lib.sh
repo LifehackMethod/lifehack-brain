@@ -212,9 +212,11 @@ ingest_load_auth() {     # FULL auth (claude + gws)
 # buffer) in case a prior run was hard-killed and never cleaned up after itself.
 _INGEST_LOCKDIR=""
 ingest_acquire_lock() {
-  local job="$1"; _INGEST_LOCKDIR="/tmp/lifehack-${job}.lock"
+  local job="$1"; _INGEST_LOCKDIR="/tmp/claudeops-${job}.lock"
   if ! mkdir "$_INGEST_LOCKDIR" 2>/dev/null; then
-    if [ -d "$_INGEST_LOCKDIR" ] && [ "$(( $(date +%s) - $(stat -f %m "$_INGEST_LOCKDIR" 2>/dev/null || echo 0) ))" -gt 1500 ]; then
+    _lock_mtime="$(stat -c %Y "$_INGEST_LOCKDIR" 2>/dev/null || stat -f %m "$_INGEST_LOCKDIR" 2>/dev/null || echo 0)"
+    case "$_lock_mtime" in ''|*[!0-9]*) _lock_mtime=0 ;; esac
+    if [ -d "$_INGEST_LOCKDIR" ] && [ "$(( $(date +%s) - _lock_mtime ))" -gt 1500 ]; then
       echo "[$job] stale lock (>25m) — stealing."; rm -rf "$_INGEST_LOCKDIR"
       mkdir "$_INGEST_LOCKDIR" 2>/dev/null || { echo "[$job] lock race — skip."; exit 0; }
     else echo "[$job] another run in progress — skip this tick."; exit 0; fi

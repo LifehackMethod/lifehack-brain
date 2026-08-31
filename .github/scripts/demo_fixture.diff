@@ -1,0 +1,8 @@
+diff --git a/system/hooks/guard_findings_write.sh b/system/hooks/guard_findings_write.sh
+index 1111111..2222222 100644
+--- a/system/hooks/guard_findings_write.sh
++++ b/system/hooks/guard_findings_write.sh
+@@ -40,0 +41,3 @@
++# Fixes #9999: the resolver now walks every variable-path spelling instead of
++# only the literal one, so the bypass this guard existed to close cannot
++# reopen the same way twice.

@@ -30,12 +30,25 @@ test -d .claude && test -d system && test -d shared \
          main) : ;;
          *) echo "FACT 1: NO - the release branch is $BR, expected main"; false ;;
        esac; } \
-  && [ "$(git config core.hooksPath)" = "system/githooks" ] \
+  && [ "$(git config core.hooksPath)" = "$(pwd)/system/githooks" ] \
   && ! git fsck --full 2>&1 | grep -Eqi 'error|missing|corrupt' \
   && echo "FACT 1: OK"
 ```
 **Meaning:** this folder — not one above it, not one below it — IS the Lifehack Harness: the right
 code, the right branch, the safety catch turned on, and nothing broken inside the repository itself.
+
+⚠ **`core.hooksPath` must be ABSOLUTE — the relative form used to be the target here, and that was
+the defect.** `core.*` config is LOCAL git config (`.git/config`), shared across every worktree of a
+clone, but a RELATIVE value is still resolved against WHICHEVER WORKTREE IS PUSHING. A worktree
+checked out at a commit that predates a hook's introduction has that hook simply ABSENT from its own
+tree, and git treats a missing hook as a silent no-op — no error, no output, the push goes through
+completely ungated. Measured, not theoretical: a 106-file push reached the public repo this way on
+2026-08-30, with the pre-push hook never firing, because the checked-out worktree's own tree lacked
+it. This file previously asserted the relative form (`= "system/githooks"`) as correct, and
+`bootstrap-machine.sh` actively set it back to relative on every run — between the two, a by-hand
+absolute-path fix could never hold; it was reverted on the very next bootstrap. Both now agree: the
+fact only goes green when `core.hooksPath` resolves to the same absolute, canonical path regardless of
+which worktree or commit is checked out.
 
 ⚠ **Why a branch is checked at all, and why only `main` passes.** `INSTALL.md` STEP 5 clones
 `-b main`, and says of it: *"`-b main` names the released version explicitly. It is also the default,

@@ -68,8 +68,8 @@ home candidates; the human picks; the caller writes. (Part of `archivist-rebuild
 ## Reference
 - The map: `<notes>/system/canon-purpose-map.md`. Plan: `<notes>/state/projects/archivist-rebuild/task_plan.md` (P2.5).
 - ⛔ Why it exists: a real mis-route, measured on a real deep-mine run in 2026. The evidence is a log in the author's own notes and does not ship — the RULE it produced is the whole of it, above.
-  where agents defaulted coaching-method + AI-framework insights to "desk canon" instead of `clarity-academy` /
-  `ai-consulting-concepts`.
+  where agents defaulted coaching-method + AI-framework insights to "desk canon" instead of `desk-alpha` /
+  `desk-beta`.
 
 ---
 

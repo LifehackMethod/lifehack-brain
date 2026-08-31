@@ -120,8 +120,8 @@ hands over. When you feel the urge to wrap up with a recommendation, ask another
 3. **DEFAULT LEANER — make him EXPAND, not TRIM.** the person: *"This seems way too long for a monthly win. Let's
    try to consolidate."* Ship the short version; let him ask for more. Over-writing the first draft costs him
    the one thing the skill exists to save.
-4. **SURFACE, DON'T STEER.** He explicitly told the run to stop imposing a protect-coaching / protect-recovery
-   narrative. ⚠ **And hold the tension honestly: dropping that bias may have UNDER-weighted real coaching
+4. **SURFACE, DON'T STEER.** The operator explicitly told the run to stop imposing a protect-sidebusiness / protect-wellness
+   narrative. ⚠ **And hold the tension honestly: dropping that bias may have UNDER-weighted real side-business
    signal in the same run.** Surfacing without steering is not the same as ignoring a lane — bring the signal,
    drop the agenda.
 5. **NO UNFALSIFIABLE REASSURANCE.** *"Everything else captured, waiting"* is a claim he cannot check in the

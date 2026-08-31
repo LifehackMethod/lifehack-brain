@@ -22,7 +22,7 @@
 # REDIRECT: vault → desks/cal/state/weekly-vault/<YYYY-Www>/weekly-mine-draft.md
 #           status → $OUT_DIR/last-run.json.
 # ⚠ That DATA PATH is deliberately still `desks/cal/` — code/jobs/tiles are renamed to `planning`,
-#   the records directory is NOT (the operator's call, untaken). Do not "complete" it without his word.
+#   the records directory is NOT (the operator's call, untaken). Do not "complete" it without their word.
 #
 # ⚖ PORT NOTE: donor's LEAD-MACHINE gate (state/primary-machine marker election between two machines)
 # is DELETED, not translated — a student has one computer. The "life lanes" list below is generic
@@ -124,9 +124,11 @@ require_claude_token "$SUBSYSTEM_NAME" || exit 75
 load_gws_credentials_optional "$SUBSYSTEM_NAME"
 
 # ── Single-instance lock ──
-LOCKDIR="/tmp/lifehack-${SUBSYSTEM_NAME}.lock"
+LOCKDIR="/tmp/claudeops-${SUBSYSTEM_NAME}.lock"
 if ! mkdir "$LOCKDIR" 2>/dev/null; then
-  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - $(stat -f %m "$LOCKDIR" 2>/dev/null || echo 0) ))" -gt 1800 ]; then
+  _lock_mtime="$(stat -c %Y "$LOCKDIR" 2>/dev/null || stat -f %m "$LOCKDIR" 2>/dev/null || echo 0)"
+  case "$_lock_mtime" in ''|*[!0-9]*) _lock_mtime=0 ;; esac
+  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - _lock_mtime ))" -gt 1800 ]; then
     rm -rf "$LOCKDIR"; mkdir "$LOCKDIR" 2>/dev/null || { echo "[$SUBSYSTEM_NAME] lock race — skip"; exit 0; }
   else echo "[$SUBSYSTEM_NAME] another run in progress — skip"; exit 0; fi
 fi

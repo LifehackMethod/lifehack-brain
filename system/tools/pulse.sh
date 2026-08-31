@@ -143,6 +143,75 @@ MAX_FAILURES="${PULSE_MAX_FAILURES:-3}"
 BACKOFF_BASE="${PULSE_BACKOFF_BASE:-3600}"    # first hold: 1h
 BACKOFF_MAX="${PULSE_BACKOFF_MAX:-86400}"     # never wait longer than a day to re-probe
 
+# ── PER-JOB TIME BUDGET (T10.A3 OL-N1 ①) ────────────────────────────────────
+# ROOT CAUSE THIS REPLACES: the donor (claudeops-config) pulse.sh carried ONE flat
+# LOCK_STALE_S=3600 covering every job — a single cross-job mkdir-lock whose staleness check, on
+# trip, logged "scheduler HALTED" and left EVERY later job in that cycle undispatched. Measured
+# on the live donor system: fired 6x in 7 days. That is a design bug, not a one-off: one slow job
+# should never be able to take the rest of the roster down with it.
+# THIS SCHEDULER HAS NO EQUIVALENT WHOLE-SCHEDULER LOCK AT ALL (by design — see the file header's
+# PORTED note), but it had an equivalent EXPOSURE: `bash -c "$cmd"` below blocks synchronously with
+# no timeout, so a single hung job still stalls every job after it in the same tick — functionally
+# the same halt, just via "the loop never gets there" instead of a named lock. `timeout` closes that.
+# PER-JOB mutual exclusion (a DIFFERENT thing from the whole-scheduler lock above, and never
+# reintroduced here) is deliberately NOT this file's job either: it is delegated to each job's own
+# *-run.sh, which already `mkdir`s a `/tmp/claudeops-<job-identity>.lock` before doing real work and
+# exits 0 with a logged "another run in progress — skip" when it can't get it (T10.A4, 2026-08-22).
+# That name is derived from JOB IDENTITY, not from which repo launched it, and matches the naming
+# claudeops-config's runners and ingest-run.lib.sh already use — so a job started by THIS scheduler
+# and the SAME job started by claudeops-config's pulse.sh (still cron-registered, unmodified) now
+# contend for the identical lock path and cannot run concurrently, without this file taking a
+# redundant lock of its own (which would self-deadlock against the runner's own mkdir on every
+# dispatch — see the runner files for the actual mechanism). Jobs dispatched WITHOUT a `*-run.sh`
+# wrapper (e.g. backlog-health.py, planning-health.py called directly from pulse-config.md) are NOT
+# covered by this — a known gap, out of this task's scope (it owns pulse.sh + `*-run.sh` lock lines,
+# not pulse-config.md or those scripts).
+# Budget is per-job (env override keyed by a sanitized job name), NOT a manifest field — this
+# repo's pulse-config.md is a 4-field format (name|enabled|interval|command) owned by many lanes;
+# adding a 5th column is a manifest change this task does not own. An env override reads the
+# same for every caller (a human export, a launchd/cron EnvironmentVariables block, or a test)
+# without touching that file.
+PULSE_DEFAULT_JOB_BUDGET_S="${PULSE_DEFAULT_JOB_BUDGET_S:-600}"   # 10 min: generous for a 5-min-tick job
+# Resolve one job's budget: PULSE_BUDGET_<SANITIZED_NAME> env var if set, else the default above.
+job_budget_s() {
+  local jn="$1" var
+  var="PULSE_BUDGET_$(printf '%s' "$jn" | tr -c 'A-Za-z0-9' '_' | tr '[:lower:]' '[:upper:]')"
+  local val="${!var:-}"
+  if [ -n "$val" ]; then echo "$val"; else echo "$PULSE_DEFAULT_JOB_BUDGET_S"; fi
+}
+# Portable `timeout`: macOS ships no `timeout(1)` by default (GNU coreutils only). Prefer a real
+# `timeout` binary if present (Linux, or `brew install coreutils`'s `gtimeout`); fall back to a
+# tiny background-kill wrapper so a budget still holds on a bare macOS install. Resolved ONCE.
+if command -v timeout >/dev/null 2>&1; then
+  TIMEOUT_BIN="timeout"
+elif command -v gtimeout >/dev/null 2>&1; then
+  TIMEOUT_BIN="gtimeout"
+else
+  TIMEOUT_BIN=""
+fi
+# run_with_budget <budget_s> <cmd...> — runs "$@" under the budget, returns its rc, or 124 on
+# timeout (matches GNU timeout's own convention so downstream rc handling is uniform either way).
+run_with_budget() {
+  local budget="$1"; shift
+  if [ -n "$TIMEOUT_BIN" ]; then
+    "$TIMEOUT_BIN" "${budget}s" "$@"
+    return $?
+  fi
+  # Fallback: background the command, race a killer against it. Best-effort; still bounded.
+  "$@" &
+  local cpid=$!
+  local killed_flag; killed_flag="$(mktemp 2>/dev/null || echo /tmp/pulse-budget-$$)"
+  rm -f "$killed_flag" 2>/dev/null
+  ( sleep "$budget" && kill -TERM "$cpid" 2>/dev/null && : > "$killed_flag" ) &
+  local kpid=$!
+  local rc=0
+  wait "$cpid" 2>/dev/null || rc=$?
+  kill "$kpid" 2>/dev/null; wait "$kpid" 2>/dev/null
+  if [ -f "$killed_flag" ]; then rc=124; fi   # WE killed it on budget — report like GNU timeout
+  rm -f "$killed_flag" 2>/dev/null
+  return "$rc"
+}
+
 NOW=$(date +%s)
 TS=$(date '+%Y-%m-%d %H:%M:%S')
 MODE="${1:-run}"   # run | --status | --help
@@ -268,13 +337,14 @@ log "heartbeat (config=$CONFIG state=$STATE root=${NOTES_ROOT:-NOT-SET})"
 
 ran=0; skipped=0; failed=0
 in_block=0
-jobs_fence_seen=0   # did the ```jobs``` fence EVER match this run? (ABSENT-SUBJECT-RULE, below)
+jobs_fence_seen=0   # did the ```jobs``` fence EVER match, this run? (ABSENT-SUBJECT-RULE — see below)
 
 while IFS= read -r line || [ -n "$line" ]; do
   # Strip a trailing \r on EVERY line, not just the fence line: Git for Windows' default
   # core.autocrlf=true checks pulse-config.md out with CRLF endings, and everything below the fence
-  # check is ALSO exact-string matching (the blank/comment `case`, the `IFS='|' read` row fields) --
+  # check is ALSO exact-string matching (the blank/comment `case`, the `IFS='|' read` row fields) —
   # a strip on only the fence line would still leave every data row's last field carrying a \r.
+  # Measured: before this strip, a CRLF manifest dispatched 0 jobs, silently, every tick.
   line="${line%$'\r'}"
   if [ "$line" = '```jobs' ]; then in_block=1; jobs_fence_seen=1; continue; fi
   if [ "$in_block" -eq 1 ] && [ "$line" = '```' ]; then in_block=0; continue; fi
@@ -333,7 +403,8 @@ while IFS= read -r line || [ -n "$line" ]; do
 
   if [ "$due" -eq 0 ]; then skipped=$((skipped+1)); continue; fi
 
-  log "running '$name': $cmd"
+  budget_s="$(job_budget_s "$name")"
+  log "running '$name' (budget=${budget_s}s): $cmd"
   # CRITICAL: each job runs with stdin from /dev/null. The job loop reads the config on stdin
   # (`done < "$CONFIG"`); a job that reads stdin would otherwise eat the remaining job lines and
   # silently abort the cycle (only the first jobs run).
@@ -343,13 +414,30 @@ while IFS= read -r line || [ -n "$line" ]; do
     # line — `eval set --` expands vars + respects quotes; safe here because the config is trusted
     # (same trust boundary as the bash -c branch below: this file is CODE, not untrusted input).
     eval "set -- $cmd"
-    run_builtin "$@" </dev/null
+    run_with_budget "$budget_s" run_builtin "$@" </dev/null
     rc=$?
   else
-    bash -c "$cmd" </dev/null
+    run_with_budget "$budget_s" bash -c "$cmd" </dev/null
     rc=$?
   fi
   set_last "$name"
+  if [ "$rc" -eq 124 ]; then
+    # OL-N1 ①: budget exceeded. FLAG the job, log it, and — the whole point — DO NOT let this
+    # halt the cycle: fall through the normal loop exactly like any other non-zero rc (counted
+    # toward the 3-strike breaker below, same as a real failure would be; a job that reliably
+    # hangs past its own budget deserves the same backoff a job that reliably crashes gets), and
+    # then `continue`'s absence here means control simply reaches the bottom of the while loop
+    # and the NEXT job line is read and dispatched on the very next iteration — no different from
+    # any other rc path. Governor-gated (normal priority: a slow job is a flag, not a 3am page).
+    ran_over_budget=$((${ran_over_budget:-0}+1))
+    log "  FLAG '$name' exceeded its ${budget_s}s budget — killed, counted as a failure, cycle continues"
+    bash "$CODE_ROOT/shared/notify/notify-send.sh" --source pulse-budget --tags hourglass \
+      --identity "budget-exceeded:$name" \
+      --title "Pulse: '$name' over budget" \
+      --message "'$name' exceeded its ${budget_s}s time budget and was killed — flagged, not halted; other jobs kept running." \
+      </dev/null 2>/dev/null || true
+    rc=1   # fold into the ordinary non-zero path below (breaker accounting), never a special case
+  fi
   if [ "$rc" -eq 0 ]; then
     ran=$((ran+1)); log "  ok '$name' (rc=0)"
     set_state "fails:$name" 0          # success resets the failure streak (and would clear a trip)
@@ -403,15 +491,34 @@ while IFS= read -r line || [ -n "$line" ]; do
   fi
 done < "$CONFIG"
 
-# ABSENT-SUBJECT-RULE: "the block parsed and is genuinely empty" and "the block was never found at
-# all" are DIFFERENT claims and must never share an exit code. A CRLF checkout breaks the fence's
-# exact-string match, so in_block never goes to 1, no job is ever dispatched, and pulse used to
-# report a clean tick for a manifest it never actually read.
+# ⛔ ABSENT-SUBJECT-RULE (system/build-rules-index.md): "the ```jobs``` block parsed and genuinely
+# has nothing due right now" and "the fence was never found in the file" are DIFFERENT claims — the
+# first is normal, expected, every-tick behavior; the second means this run evaluated NOTHING (a
+# CRLF-mangled manifest, a typo'd fence marker, ...) yet the loop below still falls through to its
+# ordinary "done — ran=0 skipped=0 failed=0" / exit 0, which reads identically to a healthy quiet
+# tick. jobs_fence_seen (set ONLY inside the fence-open branch above) is what tells them apart: it
+# is 0 here iff the ```jobs``` fence line never matched a single line of $CONFIG, which is exactly
+# the failure this repo's own watchdog (health-deadman) is built to catch and would otherwise never
+# see, because a scheduler that reports success while dispatching nothing leaves no trace to alert
+# on. NOTE: this is deliberately distinct from the "config not found" branch above (line ~245),
+# which stays exit 0 — a missing file on a fresh clone before any job is defined is an expected,
+# already-decided-on state, not an absent subject inside a file that DOES exist.
 if [ "$jobs_fence_seen" -eq 0 ]; then
   log "FATAL: the \`\`\`jobs\`\`\` fence was never found in $CONFIG."
-  log "  This is NOT an empty block -- the manifest could not be evaluated at all, so NOTHING ran."
-  log "  Likely cause: CRLF line endings (check: file \"$CONFIG\"). Fix: git add --renormalize ."
-  exit 1
+  log "  This is NOT the same as '0 jobs due right now' — the manifest could not be evaluated at"
+  log "  all, so NOTHING was dispatched this tick. Likely causes: the file has CRLF line endings"
+  log "  (check with 'file $CONFIG'; .gitattributes should prevent this, but a stale checkout"
+  log "  predating that fix can still carry one), or the fence marker itself was edited/typo'd."
+  exit 2
+fi
+
+# ── Flush quiet-hours-deferred notifications (OL-N1 ⑥) ─────────────────────────────────────────
+# A normal-priority send that notify-send.sh queued because it landed inside quiet hours is
+# replayed here — EVERY tick, whether or not quiet hours are still active right now (the governor
+# itself decides that; see --flush-deferred in notify-governor.py). This is what stops a once-a-
+# day digest from being silently lost forever just because its one shot happened to land at 23:50.
+if [ "$MODE" != "--status" ]; then
+  bash "$CODE_ROOT/shared/notify/notify-send.sh" --flush-deferred </dev/null || true
 fi
 
 # ── Durable heartbeat mirror (the dead-man's-switch feed; system-health.py reads this) ──────────

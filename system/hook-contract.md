@@ -248,4 +248,10 @@ to cover before the hook counts as a control.
 - [ ] A suite in `system/hooks/tests/`, whose ALLOW cases come first
 - [ ] Registered in `.claude/settings.json`, using `${CLAUDE_PROJECT_DIR}`, in the SAME commit
 - [ ] Restarted, then watched it fire for real and READ the message
-- [ ] Committed + pushed; `git pull` on the other machine, confirm its settings.json symlink, then **watched it fire on both**
+- [ ] Committed + pushed; `git pull` on the other machine, ~~confirm its settings.json symlink~~, then **watched it fire on both**
+  > **⚠ CORRECTED 2026-08-24:** `~/.claude/settings.json` is not a symlink into the repo (measured
+  > directly this session: regular file, 15,516 bytes, content differs from the repo's tracked copy —
+  > `system/tools/gws-audit.sh` documents this was a deliberate conversion away from a symlink). A
+  > `git pull` does not update it. The real checklist step is: confirm the new/changed registration was
+  > separately installed into the other machine's own `~/.claude/settings.json` (e.g. via
+  > `system/tools/install-guard-registrations.py`), not "confirm its symlink."  ⛔ not shipped to the public subset — private-clone only.

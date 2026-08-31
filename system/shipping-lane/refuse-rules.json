@@ -1,25 +1,150 @@
 [
-  {"id": "path-home-unix", "mode": "regex", "pattern": "(?:/Users/|/home/)[A-Za-z0-9._-]+", "to": "$HOME", "tier": "1-identity", "why": "a macOS or Linux home path. The segment after /Users/ or /home/ IS the account name, so the path identifies its owner and does not exist on anyone else's machine. AUTO-RESOLVABLE: $HOME is the correct portable form, so this one substitution is mechanical and unambiguous — it is a refuse-tier rule that carries a 'to', which is why it fixes rather than blocks"},
-  {"id": "path-home-windows", "mode": "regex", "pattern": "(?i)[A-Za-z]:\\\\Users\\\\[A-Za-z0-9._ -]+", "tier": "1-identity", "why": "the Windows form of the same leak (C:\\Users\\<account>). NO 'to' ON PURPOSE, unlike path-home-unix: there is no single portable spelling that is right in both a shell line and a prose sentence, and guessing one would quietly rewrite a path into something that does not work. Reported and blocked, so a human picks the replacement. Git Bash is this project's documented Windows floor, which is why the form is covered at all"},
-
-  {"id": "path-drive-cloudstorage", "mode": "regex", "pattern": "CloudStorage/GoogleDrive-", "tier": "1-identity", "why": "the Google Drive mount form on macOS; the segment that follows it is the account address the Drive belongs to"},
-  {"id": "path-drive-account", "mode": "regex", "pattern": "GoogleDrive-[A-Za-z0-9._%+-]+@", "tier": "1-identity", "why": "a Drive mount embeds a full email address in the path itself — the account name is part of the directory name, so the path leaks the address even when no address is written out"},
-
-  {"id": "key-openai", "mode": "regex", "pattern": "sk-[A-Za-z0-9]{20,}", "tier": "1-secret", "why": "OpenAI-style API key"},
-  {"id": "key-anthropic", "mode": "regex", "pattern": "sk-ant-[A-Za-z0-9_\\-]{20,}", "tier": "1-secret", "why": "Anthropic API key — the hyphen after 'ant' means key-openai cannot catch this form"},
-  {"id": "key-github-token", "mode": "regex", "pattern": "gh[pousr]_[A-Za-z0-9]{20,}", "tier": "1-secret", "why": "GitHub personal-access / OAuth / server / refresh token"},
-  {"id": "key-github-pat", "mode": "regex", "pattern": "github_pat_[A-Za-z0-9_]{20,}", "tier": "1-secret", "why": "GitHub fine-grained personal access token"},
-  {"id": "key-google-api", "mode": "regex", "pattern": "AIza[A-Za-z0-9_\\-]{30,}", "tier": "1-secret", "why": "Google API key"},
-  {"id": "key-google-oauth", "mode": "regex", "pattern": "ya29\\.[A-Za-z0-9_\\-]{20,}", "tier": "1-secret", "why": "Google OAuth access token — the Google auth path issues these"},
-  {"id": "key-slack", "mode": "regex", "pattern": "xox[baprs]-[A-Za-z0-9\\-]{10,}", "tier": "1-secret", "why": "Slack bot/app/user token"},
-  {"id": "key-aws", "mode": "regex", "pattern": "AKIA[0-9A-Z]{16}", "tier": "1-secret", "why": "AWS access key id"},
-  {"id": "key-private-block", "mode": "regex", "pattern": "-----BEGIN [A-Z ]*PRIVATE KEY-----", "tier": "1-secret", "why": "an embedded private key of any type"},
-  {"id": "key-bearer", "mode": "regex", "pattern": "Bearer [A-Za-z0-9._~+/\\-]{20,}", "tier": "1-secret", "why": "a bearer token pasted into a doc, script or example"},
-  {"id": "key-assignment", "mode": "regex", "pattern": "(?i)(api[_-]?key|secret|passwd|password|access[_-]?token)[\"'\\s]*[:=]\\s*[\"'][A-Za-z0-9_\\-]{16,}[\"']", "tier": "1-secret", "why": "a credential assigned to a named variable — catches key formats no shape-rule anticipates. PATTERN FIXED 2026-08-05 (ReDoS, red-team-found): the old form had two adjacent star-quantified groups sharing the space character (`[\"' ]*` then `\\s*`) — ambiguous over any run of spaces, O(n^2) backtracking on a failed match (a 60KB padded file took ~14-22s). Merged into a single `[\"'\\s]*` quantifier over the union charset before the `[:=]` — same matches, no ambiguity"},
-
-  {"id": "id-google-drive-url", "mode": "regex", "pattern": "(?:docs\\.google\\.com/(?:spreadsheets|document|presentation|forms)/d/|drive\\.google\\.com/(?:file/d/|open\\?id=)|drive\\.google\\.com/drive/folders/)[A-Za-z0-9_\\-]{15,}", "tier": "1-identity", "why": "a Google Sheet/Doc/Slides/Form/Drive-file/folder ID embedded in a URL. The ID names ONE specific resource in ONE specific account — it is an address, not a shape, and it does not exist on anyone else's install. Ported 2026-08-15 from the donor lane, where a live tree sweep found real Sheet, Tasks-list and Calendar IDs that no prior rule caught. Anchored to the URL prefix on purpose: a bare 15-char token is not distinctive enough to block on"},
-  {"id": "id-google-resource-assignment", "mode": "regex", "pattern": "(?i)(sheet[_-]?id|spreadsheet[_-]?id|doc(?:ument)?[_-]?id|folder[_-]?id|calendar[_-]?id|tasklist[_-]?id|list[_-]?id)[\"'\\s]*[:=]\\s*[\"'][A-Za-z0-9_\\-]{15,}[\"']", "tier": "1-identity", "why": "a Google resource ID (Sheet/Doc/Folder/Calendar/Tasks-list) assigned to a named variable or config key — catches the same identifier when it never appears inside a URL, which is the form a config file uses. Mirrors key-assignment's proven shape, including its single merged `[\"'\\s]*` quantifier so it carries no ReDoS ambiguity either. The closing quote is REQUIRED, so a documented placeholder (`sheet_id: <paste yours>`) does not match. Ported 2026-08-15 from the donor lane"},
-  {"id": "id-google-calendar-domain", "mode": "regex", "pattern": "(?i)@group\\.calendar\\.google\\.com", "tier": "1-identity", "why": "the domain suffix of a SECONDARY Google Calendar's private address. This string only ever appears attached to one specific long private hash, so its presence identifies that a particular calendar is being named even when the hash itself has been truncated or removed — which is exactly the residue a hash-only scrub leaves behind. Deliberately does NOT require the hash, for that reason. Ported 2026-08-15 from the donor lane. HONEST BOUND: documentation that shows the address FORM with a placeholder hash still matches, and that is intended — a human clears it in seconds, and the alternative is trusting that every future writer remembers to elide the suffix too"},
-  {"id": "id-ntfy-topic", "mode": "regex", "pattern": "(?i)ntfy\\.sh/[A-Za-z0-9_\\-]{5,}", "tier": "1-identity", "why": "an ntfy.sh push-notification topic in URL form. A topic is an UNAUTHENTICATED inbox address: anyone holding the string can read every message sent to it and publish to it, so it is closer to a credential than to a name. The trailing path segment is required, so naming the service itself in prose does not match. Ported 2026-08-15 from the donor lane"},
-  {"id": "ip-private-range", "mode": "regex", "pattern": "\\b(?:10(?:\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){3}|172\\.(?:1[6-9]|2[0-9]|3[01])(?:\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){2}|192\\.168(?:\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){2})\\b", "tier": "1-identity", "why": "a private-range (RFC 1918) IP address — typically a home router or a LAN device. Unroutable from the internet, but it still discloses the shape of the operator's home network, which is why it is an address leak and not a harmless constant. Ported 2026-08-15 from the donor lane, which added it after a live sweep found a real router address no prior rule caught. TIER DELIBERATELY CHANGED ON PORT: the donor filed this as '2-private'. In THIS repo '2-private' means 'compiled from the reader's own identity file' — identity_rules.py stamps it, judge.py labels it 'the terms this person listed as identifying them', and verify_rules.py uses the mere PRESENCE of a 2-private rule as its proof that the personal tier is not empty. A SHIPPED 2-private rule would satisfy that proof forever and silently retire the one check that catches a reader whose identity tier never compiled. Filed '1-identity' — the tier judge.py already calls 'path and account shapes' — so the check keeps its teeth. HONEST BOUND: a private IP is also a common GENERIC example in networking documentation and will occasionally be a false positive on one — accepted, because missing a real router address is worse than a block a human clears in seconds"}
+  {
+    "id": "path-home-unix",
+    "mode": "regex",
+    "pattern": "(?:/Users/|/home/)[A-Za-z0-9._-]+",
+    "to": "$HOME",
+    "tier": "1-identity",
+    "why": "a macOS or Linux home path. The segment after /Users/ or /home/ IS the account name, so the path identifies its owner and does not exist on anyone else's machine. AUTO-RESOLVABLE: $HOME is the correct portable form, so this one substitution is mechanical and unambiguous — it is a refuse-tier rule that carries a 'to', which is why it fixes rather than blocks"
+  },
+  {
+    "id": "path-home-windows",
+    "mode": "regex",
+    "pattern": "(?i)[A-Za-z]:\\\\Users\\\\(?!(?:Jane[ _]?Doe|John[ _]?Doe|Name|somebody|someone|username|user|account|placeholder|example|YourName|<[^>]+>)\\\\)[A-Za-z0-9._ -]+",
+    "tier": "1-identity",
+    "why": "the Windows form of the same leak (C:\\Users\\<account>). NO 'to' ON PURPOSE, unlike path-home-unix: there is no single portable spelling that is right in both a shell line and a prose sentence, and guessing one would quietly rewrite a path into something that does not work. Reported and blocked, so a human picks the replacement. Git Bash is this project's documented Windows floor, which is why the form is covered at all"
+  },
+  {
+    "id": "path-unc-share",
+    "mode": "regex",
+    "pattern": "(?i)(?<![A-Za-z0-9:\\\\])\\\\\\\\(?!(?:SERVER|placeholder|example)\\\\)[A-Za-z0-9._-]+\\\\[A-Za-z0-9._ -]+",
+    "tier": "1-identity",
+    "why": "a bare Windows UNC/network-share path (\\\\\\\\server\\\\share\\\\...), with no drive letter and no 'Users' segment for path-home-windows to key on -- so it needs its own rule. The share segment after the server name is very often a personal account or project folder. NO 'to', same reasoning as path-home-windows: no single portable spelling is right in both a shell line and a prose sentence."
+  },
+  {
+    "id": "path-drive-cloudstorage",
+    "mode": "regex",
+    "pattern": "CloudStorage/GoogleDrive-",
+    "tier": "1-identity",
+    "why": "the Google Drive mount form on macOS; the segment that follows it is the account address the Drive belongs to"
+  },
+  {
+    "id": "path-drive-account",
+    "mode": "regex",
+    "pattern": "GoogleDrive-[A-Za-z0-9._%+-]+@",
+    "tier": "1-identity",
+    "why": "a Drive mount embeds a full email address in the path itself — the account name is part of the directory name, so the path leaks the address even when no address is written out"
+  },
+  {
+    "id": "key-openai",
+    "mode": "regex",
+    "pattern": "sk-[A-Za-z0-9]{20,}",
+    "tier": "1-secret",
+    "why": "OpenAI-style API key"
+  },
+  {
+    "id": "key-anthropic",
+    "mode": "regex",
+    "pattern": "sk-ant-[A-Za-z0-9_\\-]{20,}",
+    "tier": "1-secret",
+    "why": "Anthropic API key — the hyphen after 'ant' means key-openai cannot catch this form"
+  },
+  {
+    "id": "key-github-token",
+    "mode": "regex",
+    "pattern": "gh[pousr]_[A-Za-z0-9]{20,}",
+    "tier": "1-secret",
+    "why": "GitHub personal-access / OAuth / server / refresh token"
+  },
+  {
+    "id": "key-github-pat",
+    "mode": "regex",
+    "pattern": "github_pat_[A-Za-z0-9_]{20,}",
+    "tier": "1-secret",
+    "why": "GitHub fine-grained personal access token"
+  },
+  {
+    "id": "key-google-api",
+    "mode": "regex",
+    "pattern": "AIza[A-Za-z0-9_\\-]{30,}",
+    "tier": "1-secret",
+    "why": "Google API key"
+  },
+  {
+    "id": "key-google-oauth",
+    "mode": "regex",
+    "pattern": "ya29\\.[A-Za-z0-9_\\-]{20,}",
+    "tier": "1-secret",
+    "why": "Google OAuth access token — the Google auth path issues these"
+  },
+  {
+    "id": "key-slack",
+    "mode": "regex",
+    "pattern": "xox[baprs]-[A-Za-z0-9\\-]{10,}",
+    "tier": "1-secret",
+    "why": "Slack bot/app/user token"
+  },
+  {
+    "id": "key-aws",
+    "mode": "regex",
+    "pattern": "AKIA[0-9A-Z]{16}",
+    "tier": "1-secret",
+    "why": "AWS access key id"
+  },
+  {
+    "id": "key-private-block",
+    "mode": "regex",
+    "pattern": "-----BEGIN [A-Z ]*PRIVATE KEY-----",
+    "tier": "1-secret",
+    "why": "an embedded private key of any type"
+  },
+  {
+    "id": "key-bearer",
+    "mode": "regex",
+    "pattern": "Bearer [A-Za-z0-9._~+/\\-]{20,}",
+    "tier": "1-secret",
+    "why": "a bearer token pasted into a doc, script or example"
+  },
+  {
+    "id": "key-assignment",
+    "mode": "regex",
+    "pattern": "(?i)(api[_-]?key|secret|passwd|password|access[_-]?token)[\"'\\s]*[:=]\\s*[\"'][A-Za-z0-9_\\-]{16,}[\"']",
+    "tier": "1-secret",
+    "why": "a credential assigned to a named variable — catches key formats no shape-rule anticipates. PATTERN FIXED 2026-08-05 (ReDoS, red-team-found): the old form had two adjacent star-quantified groups sharing the space character (`[\"' ]*` then `\\s*`) — ambiguous over any run of spaces, O(n^2) backtracking on a failed match (a 60KB padded file took ~14-22s). Merged into a single `[\"'\\s]*` quantifier over the union charset before the `[:=]` — same matches, no ambiguity"
+  },
+  {
+    "id": "id-google-drive-url",
+    "mode": "regex",
+    "pattern": "(?:docs\\.google\\.com/(?:spreadsheets|document|presentation|forms)/d/|drive\\.google\\.com/(?:file/d/|open\\?id=)|drive\\.google\\.com/drive/folders/)[A-Za-z0-9_\\-]{15,}",
+    "tier": "1-identity",
+    "why": "a Google Sheet/Doc/Slides/Form/Drive-file/folder ID embedded in a URL. The ID names ONE specific resource in ONE specific account — it is an address, not a shape, and it does not exist on anyone else's install. Ported 2026-08-15 from the donor lane, where a live tree sweep found real Sheet, Tasks-list and Calendar IDs that no prior rule caught. Anchored to the URL prefix on purpose: a bare 15-char token is not distinctive enough to block on"
+  },
+  {
+    "id": "id-google-resource-assignment",
+    "mode": "regex",
+    "pattern": "(?i)(sheet[_-]?id|spreadsheet[_-]?id|doc(?:ument)?[_-]?id|folder[_-]?id|calendar[_-]?id|tasklist[_-]?id|list[_-]?id)[\"'\\s]*[:=]\\s*[\"'][A-Za-z0-9_\\-]{15,}[\"']",
+    "tier": "1-identity",
+    "why": "a Google resource ID (Sheet/Doc/Folder/Calendar/Tasks-list) assigned to a named variable or config key — catches the same identifier when it never appears inside a URL, which is the form a config file uses. Mirrors key-assignment's proven shape, including its single merged `[\"'\\s]*` quantifier so it carries no ReDoS ambiguity either. The closing quote is REQUIRED, so a documented placeholder (`sheet_id: <paste yours>`) does not match. Ported 2026-08-15 from the donor lane"
+  },
+  {
+    "id": "id-google-calendar-domain",
+    "mode": "regex",
+    "pattern": "(?i)@group\\.calendar\\.google\\.com",
+    "tier": "1-identity",
+    "why": "the domain suffix of a SECONDARY Google Calendar's private address. This string only ever appears attached to one specific long private hash, so its presence identifies that a particular calendar is being named even when the hash itself has been truncated or removed — which is exactly the residue a hash-only scrub leaves behind. Deliberately does NOT require the hash, for that reason. Ported 2026-08-15 from the donor lane. HONEST BOUND: documentation that shows the address FORM with a placeholder hash still matches, and that is intended — a human clears it in seconds, and the alternative is trusting that every future writer remembers to elide the suffix too"
+  },
+  {
+    "id": "id-ntfy-topic",
+    "mode": "regex",
+    "pattern": "(?i)ntfy\\.sh/[A-Za-z0-9_\\-]{5,}",
+    "tier": "1-identity",
+    "why": "an ntfy.sh push-notification topic in URL form. A topic is an UNAUTHENTICATED inbox address: anyone holding the string can read every message sent to it and publish to it, so it is closer to a credential than to a name. The trailing path segment is required, so naming the service itself in prose does not match. Ported 2026-08-15 from the donor lane"
+  },
+  {
+    "id": "ip-private-range",
+    "mode": "regex",
+    "pattern": "\\b(?:10(?:\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){3}|172\\.(?:1[6-9]|2[0-9]|3[01])(?:\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){2}|192\\.168(?:\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){2})\\b",
+    "tier": "1-identity",
+    "why": "a private-range (RFC 1918) IP address — typically a home router or a LAN device. Unroutable from the internet, but it still discloses the shape of the operator's home network, which is why it is an address leak and not a harmless constant. Ported 2026-08-15 from the donor lane, which added it after a live sweep found a real router address no prior rule caught. TIER DELIBERATELY CHANGED ON PORT: the donor filed this as '2-private'. In THIS repo '2-private' means 'compiled from the reader's own identity file' — identity_rules.py stamps it, judge.py labels it 'the terms this person listed as identifying them', and verify_rules.py uses the mere PRESENCE of a 2-private rule as its proof that the personal tier is not empty. A SHIPPED 2-private rule would satisfy that proof forever and silently retire the one check that catches a reader whose identity tier never compiled. Filed '1-identity' — the tier judge.py already calls 'path and account shapes' — so the check keeps its teeth. HONEST BOUND: a private IP is also a common GENERIC example in networking documentation and will occasionally be a false positive on one — accepted, because missing a real router address is worse than a block a human clears in seconds"
+  }
 ]

@@ -428,14 +428,19 @@ useful is unknown.
 >
 > - `elements/emily-desk.md` · `elements/marc-desk.md` · `elements/clair-desk.md` · `elements/deryl-desk.md` ·
 >   `elements/dobby-desk.md` · `elements/cal-pipeline.md` — ⛔ excluded from the migration: **personal.** They
->   are one person's own desks (auditions, markets, consulting, money, calendar), not general-purpose parts.
+>   are one person's own desks — distinct personal and professional domains, each with its own subject
+>   matter — not general-purpose parts.
 > - `elements/helm.md` — ⛔ excluded from the migration: **named.** The operator ruled Helm out by name; it is
 >   the one thing on the closed exclusion list that is infrastructure rather than personal.
 > - `elements/overmyshoulder.md` — ⛔ excluded from the migration: **browser-bound.** It reads a live Chrome
 >   tab, and the whole Chrome path was ruled out of this system (see the two corrections further down).
 > - `elements/two-machine-residency.md` · `elements/git-autopush.md` — ⛔ excluded from the migration:
->   **two-machine.** Both exist to keep one person's two machines in step. Whether they migrate is formally
->   **unruled** on the donor's side (`OL-P8-4`); until that is answered they are not here.
+>   **two-machine.** Both exist to keep one person's two machines in step. `OL-P8-4` is **no longer
+>   unruled** — the operator ruled 2026-08-22 that two-machine functionality IS wanted, reversing a
+>   same-day "no second machine" retirement of bootstrap-sync/git-autopush/git-autopull in
+>   `pulse-config.md` (see that file's REINSTATED note). What is still open is only mechanical: these
+>   two element files have not been ported into this repo's `elements/` yet — restoring full
+>   two-machine capability needs that port; it is owed work, not done in this pass.
 >
 > Every other numbered line below resolves. If a pointer in this index or a `## <slug>` entry further down
 > names one of the ten, that is this banner's subject — the entry describes a part of the donor system that
@@ -493,7 +498,7 @@ useful is unknown.
 36. **translator-cluster** *[GLOBAL]* — PARTIAL [provisional] → `elements/translator-cluster.md`  · ↓ `#translator-cluster`
 37. **red-team** *[GLOBAL]* — LIVE [provisional] → `elements/red-team.md`  · ↓ `#red-team`
 38. **topic-vocab-lint** *[GLOBAL]* — DORMANT → `elements/topic-vocab-lint.md`  *(index only — dormant)*
-39. **compute-mechanically-gate** *[SHARED: deryl/clair/finance]* — DORMANT → `elements/compute-mechanically-gate.md`  *(index only — dormant)*
+39. **compute-mechanically-gate** *[SHARED: deryl/clair/finance]* — ~~DORMANT → `elements/compute-mechanically-gate.md`  *(index only — dormant)*~~ ⚠ CORRECTED 2026-08-25: NOT dormant — `inject_compute_mechanically.sh` is registered on UserPromptSubmit in both `system/hooks/registrations.json` and the live `~/.claude/settings.json` (confirmed this session by grep on both files), and fires on EVERY prompt (confirmed this session: piping a synthetic `{"prompt":"can we afford $500?","cwd":"/tmp"}` payload to the script on stdin printed the live "[NUMBERS CHECK (hard math token)...]" injection text, exit 0). It only prints nothing when no arm condition is met — that is normal honor-hook behavior, not dormancy. ⚠ PARTIALLY SUPERSEDED 2026-08-27 (hook-plane migration): the "live `~/.claude/settings.json`" half of that confirmation no longer holds — verified this session by reading `~/.claude/settings.json` with `json.load`, it now carries 7 hook entries (down from 49) and `inject_compute_mechanically.sh` is not one of them. The script is still live and still fires, but from `~/.claude/plugins/cache/lifehack-brain/lifehack-brain/0.3.13/hooks/hooks.json` (confirmed present there this session), not from `~/.claude/settings.json`. → `elements/compute-mechanically-gate.md`
 40. **emily-desk** *[DESK: emily]* — LIVE·gap [provisional] → `elements/emily-desk.md`  · ↓ `#emily-desk`
 41. **marc-desk** *[DESK: marc]* — PARTIAL [provisional] → `elements/marc-desk.md`  · ↓ `#marc-desk`
 42. **clair-desk** *[DESK: clair]* — PARTIAL·gap [provisional] → `elements/clair-desk.md`  · ↓ `#clair-desk`
@@ -586,9 +591,9 @@ INTEROP:
   FEEDS       helm               · plan_flag.sh (armed by ExitPlanMode hook) writes ~/.claude/run/plan/plan-<key>.flag; statusline.sh reads it for the HUD
   WRITES→     helm               · session_flight_recorder flushes observability buffer → system/observability/YYYY-MM-DD.jsonl + system/flight-log.jsonl
   FEEDS       save               · session_flight_recorder nudges /save at Stop when it was not called
-  WRITES→     two-machine-residency · mirror_plans.sh rsyncs ~/.claude/plans/ → Drive/plans/<hostname>/ at every Stop
+  WRITES→     two-machine-residency · ⛔ CORRECTED 2026-08-25: mirror_plans.sh does not exist — see line 964 below; there is no rsync of ~/.claude/plans/ to Drive
   READS       project-manager    · scratch_capture_gate.sh reads pm_flag status at Stop to resolve the active brief's SCRATCHPAD; bounces turn on token bucket overflow
-  KEYS-OFF    two-machine-residency · settings.json IS the hook-plane's own registration store; travels to both machines via git symlink; broken symlink silently darkens every hook
+  KEYS-OFF    two-machine-residency · ~~settings.json IS the hook-plane's own registration store~~ ⚠ FALSIFIED 2026-08-27 (hook-plane migration): no longer the single store. Verified this session with `json.load`: `~/.claude/settings.json` now carries only 7 hook entries (down from 49), the repo's tracked `.claude/settings.json` carries 0 (it now holds a `_hooks_moved` key instead), and the actual live registration surface — 50 entries — is `~/.claude/plugins/cache/lifehack-brain/lifehack-brain/0.3.13/hooks/hooks.json`. `system/hooks/registrations.json` still DECLARES 49, which matches neither live file; it is a source-of-truth document that the plugin plane is built from, not itself a registration store Claude reads at runtime. ~~travels to both machines via git symlink; broken symlink silently darkens every hook~~ ⚠ CORRECTED 2026-08-25: `~/.claude/settings.json` is NOT a symlink — measured directly this session (`test -L ~/.claude/settings.json` → not a symlink; `ls -la`/`wc -c` → regular file, 15,516 bytes) against the repo's tracked `.claude/settings.json` (regular file, 3,467 bytes, also confirmed not a symlink this session) — the two byte counts differ because they are two independent files, not one file reached two ways. It was deliberately converted from a symlink to a real file per `system/tools/gws-audit.sh:72-78`, to stop writes there from landing straight in the git-tracked repo copy (public-upstream leak risk). Registration does NOT travel to a second machine via `git pull` the way the hook fleet scripts do; each machine's copy is installed/maintained separately and can drift — see the same correction already made at `system/organism/elements/hook-plane.md:101-104`. ⚠ ADDENDUM 2026-08-27: nor does it travel via the plugin — the plugin cache copy is versioned/installed per machine, independent of this repo's git history, so "each machine can drift" now applies to THREE independent surfaces (repo `.claude/settings.json`, per-user `~/.claude/settings.json`, plugin cache `hooks.json`), not two.
   FEEDS       label-checker      · hook-plane's settings.json + guard scripts are the input source label_checker.py reads and fire-tests
   FEEDS       sentinel           · hook scripts + settings.json registration are artifacts sentinel's health checkers read for the Security tile
   GUARDED-BY  egress-allowlist-wall · guard_egress + enforce_egress_allowlist gate all raw outbound Bash calls; the egress-allowlist-wall element is the downstream policy store these hooks enforce
@@ -761,7 +766,7 @@ INTEROP:
   FEEDS        security-posture-scan · pulse-config.md is read by security-posture-scan.sh to verify supabase jobs stay disabled + emily stays enabled
   COMPLEMENTS  notify-plane         · pulse.sh calls notify-send.sh directly for circuit-breaker trips + no-lead nag; all *-run.sh runners channel alerts through notify-send.sh
   COMPLEMENTS  health-deadman-check · launchd watcher (BY DESIGN outside Pulse) watches system-health tile mtime; catches a dead Pulse+health chain that no Pulse job could detect
-  GUARDED-BY   require_primary      · single-writer safety on all Drive-writing jobs (ingest-run.lib.sh + primary-gate.sh + inline copies)
+  GUARDED-BY   ~~require_primary~~ · **⚠ CORRECTED 2026-08-24: not a real guard.** `require_primary()` has zero definitions anywhere in this repo and `primary-gate.sh` does not exist on disk (grep/find, verified this session). This system has one machine (`docs/data-layout.md:215`); Drive-writing jobs run with no machine gate. Correctly stated in `elements/backlog-authority.md:203-205` and `elements/archivist.md:71-72`; corrected in full in `elements/pulse-cron.md`'s GATES section.
   GUARDED-BY   ingest_acquire_lock  · prevents stacked runs per job; single-instance enforcement in every claude-invoking runner
   GUARDED-BY   circuit breaker (pulse.sh) · auto-disables a job after 3 consecutive non-transient failures; rc=2 never trips it
   GUARDED-BY   ingest_check_paused  · Sentinel danger verdict → human-gated source pause; no auto-resume
@@ -888,7 +893,7 @@ INTEROP:
   READS        pm-flag           · reads pm_flag.sh status → brief path (secondary pad resolver; fires when scratch_flag = none or empty PAD)
   READS        scratch-flag      · reads scratch_flag.sh status → armed state + scratch_path (primary pad override; armed externally, 30m TTL)
   SHARES       project-manager   · the active brief's ## SCRATCHPAD is this gate's target pad; pm_persist.sh injects the brief + flag every turn, refreshing pm_flag for this gate; pm_flag_recover.py repairs a dropped pm_flag this gate depends on
-  KEYS-OFF     hook-plane        · Stop-event registration in settings.json is what arms this gate at all; deregistering it silently disables all continuous capture for the session
+  KEYS-OFF     hook-plane        · ~~Stop-event registration in settings.json is what arms this gate at all~~ ⚠ CORRECTED 2026-08-27 (hook-plane migration): the live Stop-event registration for `scratch_capture_gate.sh` is not in `~/.claude/settings.json` — verified this session, that file's 7 remaining hook entries carry no Stop-event hooks at all. The registration now lives in `~/.claude/plugins/cache/lifehack-brain/lifehack-brain/0.3.13/hooks/hooks.json` (confirmed present there this session). Deregistering it there — not in settings.json — is what would silently disable continuous capture now.
 
 ## helm · localhost:8080   [LIVE·gap]   → elements/helm.md
 Local web dashboard that renders every desk's live status tile — the read-only face of the system, always showing what Pulse last emitted, never inventing data. ·gap because the server has five write-back POST endpoints that persist to Drive (dismiss overlays, location, emily re-emit) — a tip-only reader treating Helm as purely read-only misjudges the blast radius.
@@ -947,17 +952,19 @@ INTEROP:
   TRIGGERS     guard_write_paths.sh · any Write|Edit tool call triggers the residency path-check hook
   TRIGGERS     check-content-paths.py · git commit in ~/lifehack-brain/ triggers gitleaks + content-gate pre-commit check
   TRIGGERS     pulse-cron           · Pulse tick (every 15 min) fires git-autopush.sh or git-autopull.sh
-  TRIGGERS     mirror_plans.sh      · session end (Stop hook) triggers rsync of ~/.claude/plans/ → $DRIVE/plans/<hostname>/
+  TRIGGERS     ~~mirror_plans.sh~~  · ⛔ CORRECTED 2026-08-25: does not exist — see GUARDED-BY line below; no Stop hook triggers a plan rsync on this system
   TRIGGERS     lifehack-lead.sh    · a human command flips the primary-machine marker between the primary and the second machine
-  TRIGGERS     bootstrap-machine.sh · human runs bootstrap-machine.sh to wire all symlinks on a new machine
+  TRIGGERS     bootstrap-machine.sh · human runs bootstrap-machine.sh to wire all symlinks on a new machine — ⚠ CORRECTED 2026-08-23: elements/skill-system.md carried a stale "never ships" claim about this script (true 2026-07-24/28, false after the T1.C7 port reinstated it 2026-08-23); see that file's CITATIONS block for the struck text and the evidence this line rests on
   READS        pulse-cron           · git-autopush/pull are registered Pulse slots (pulse-config.md); two-machine-residency owns their purpose in the sync model
   WRITES->     pulse-cron           · git-autopush/pull keep pulse-config.md in sync across machines; NOTE: git-autopull does not call install-schedulers.sh — manual install required
   FEEDS        notify-plane         · autopush circuit breaker fires a critical ntfy on 3+ consecutive push failures (P10)
   SYNCS        skill-system         · bootstrap-machine.sh creates all skill/agent/command symlinks; ~/.claude/skills/<name> symlinks point INTO the clone (correct direction)
   GUARDED-BY   guard_write_paths.sh · PreToolUse Write|Edit — BLOCKS content writes to clone, wrong-zone paths, orphan ~/.claude/skills/ writes; fails CLOSED on unparseable input
-  GUARDED-BY   check-content-paths.py · pre-commit git hook — BLOCKS secrets (gitleaks) and content-class files in staging area; backstop for Bash-redirect writes that bypass guard_write_paths.sh
-  GUARDED-BY   primary-gate.sh      · require_primary sourced by headless Pulse runners; return 1/exit 0 if not lead; fail-closed for scheduler conflicts
-  GUARDED-BY   mirror_plans.sh      · Stop hook; rsyncs plans to Drive per-machine; always exits 0 (never blocks close)
+  GUARDED-BY   ~~check-content-paths.py~~ · **⚠ CORRECTED 2026-08-24: wrong filename, not a phantom.** No file named `check-content-paths.py` exists anywhere (0 matches, verified this session), but the control it describes is real, just differently named and split across two mechanisms in the actual pre-commit hook, `system/githooks/pre-commit` (read in full this session): (1) a personal-notes path guard (data/, memory/, state/, etc. — the top section of the file) plus (2) a SEPARATE gitleaks secret scan (`GITLEAKS="$(command -v gitleaks || echo /opt/homebrew/bin/gitleaks)"`; fails CLOSED if gitleaks is not installed) plus (3) `check_no_internal_leakage.py` for content-class/operator-identity leakage, also fail-closed. So the CONTROL is live — secrets and content-class files staged for commit genuinely get blocked — but under the path `system/githooks/pre-commit`, not a script called `check-content-paths.py`; that name matches nothing on disk.
+  GUARDED-BY   ~~primary-gate.sh~~ · **⚠ CORRECTED 2026-08-24: ⛔ `system/tools/primary-gate.sh` does not exist.**
+               (find . -iname '*primary-gate*' → 0 files, verified this session), and require_primary() has no definition anywhere in the repo. No headless Pulse runner is gated on machine lead-election; this system has one machine (`docs/data-layout.md:215`). See `elements/pulse-cron.md`'s corrected GATES section.
+  GUARDED-BY   ~~mirror_plans.sh~~ · **⚠ CORRECTED 2026-08-24: ⛔ `system/hooks/mirror_plans.sh` does not exist.**
+               (0 files, verified this session), and neither does the per-machine plan-sync it describes. Correctly stated in `elements/plan-integrity-cluster.md:160-168`: "There is no fourth hook — this heading is a leftover from the donor." Two-machine plan mirroring is not part of this system (`docs/data-layout.md:215`).
 
 ## notify-plane · any component calling notify-send.sh   [LIVE [provisional]]   → elements/notify-plane.md
 The single, governor-gated outbound push channel — every Lifehack alarm that reaches the user's phone passes through here and nowhere else. No hooks; structural enforcement by convention (all callers call the script; governor is called unconditionally inside it).
@@ -1011,7 +1018,7 @@ INTEROP:
   CHAINS      project-manager    · /autoplan re-anchors via pm_flag.sh; plan's FRAME feeds the project brief
   FEEDS       plan-integrity-cluster · guard_plan_structure + plan_flag are the plan-integrity seam hooks — full per-hook mechanics cross-referenced there
   READS       pm-flag            · /autoplan Step 0 reads pm_flag.sh status to re-anchor; announce_plan_write reads pm_flag.sh status for brief path to write NEW plan pointer to brief's SCRATCHPAD
-  WRITES→     durable memory (/save) · build lessons append to build-sop.md (skill's own living memory); plan mirrors to Drive via mirror_plans.sh
+  WRITES→     durable memory (/save) · build lessons append to build-sop.md (skill's own living memory); ⛔ CORRECTED 2026-08-25: plans do NOT mirror to Drive — mirror_plans.sh does not exist, see elements/hook-plane.md §E2
   GUARDED-BY  guard_plan_structure.sh · blocks ExitPlanMode if Phase/Task/Verify absent
   GUARDED-BY  inject_sop_before_build.sh · injects SOP pointer (advisory, non-blocking) at UserPromptSubmit on build-verb + tracked noun
   COMPLEMENTS advisory-council   · architecture-planning-sop.md Stages 1/4/6 invokes /advisory-council for blind review; /build does not invoke it directly
@@ -1028,7 +1035,7 @@ INTEROP:
   WRITES→     announce_plan_write.sh   · writes NEW-plan pointer lines into project-manager's owned ## SCRATCHPAD when pm_flag is armed; falls back to plan-ledger.md when not
   READS       plan_flag.sh             · /advisory-council reads plan_flag.sh path subcommand to load the active plan as advisory context before its council run
   READS       plan_flag.sh             · /save Step 8 (Wake Routine handoff) reads plan_flag.sh status to surface the active plan name in the continuation handoff
-  SYNCS       mirror_plans.sh          · must stay in lockstep with the plan-recovery script on the pull side; both assume per-machine hostname namespacing under $DRIVE/plans/
+  SYNCS       ~~mirror_plans.sh~~      · ⛔ CORRECTED 2026-08-25: neither this hook nor its pull-side counterpart exists in this repo — no plan-sync to keep in lockstep; see `elements/plan-integrity-cluster.md` HOOK 4
   TRIGGERS    inject_sop_before_build.sh · fires before any build of a hook, skill, desk, sheet, dashboard, cron, or ingest pipeline — six domains whose SOPs live in system/sops/; NOT triggered before plan-content work
   KEYS-OFF    pm_persist.sh            · pm_persist.sh (project-manager element) refreshes plan_flag.sh's armed_at every turn so the plan flag never TTL-expires mid-session
 
@@ -1053,7 +1060,7 @@ INTEROP:
   READS      two-machine-residency  · ADR-010 git topology + the code/content split determines what these scripts own
   WRITES→    GitHub origin/main     · autopush sends local commits to the shared origin
   READS      GitHub origin/main     · autopull fetches + merges from origin
-  FEEDS      hook-plane             · the git clone contains hooks registered in settings.json; a fast-forward lands updated hooks live on the receiving machine
+  FEEDS      hook-plane             · ~~the git clone contains hooks registered in settings.json; a fast-forward lands updated hooks live on the receiving machine~~ ⚠ CORRECTED 2026-08-27 (hook-plane migration): the tracked `.claude/settings.json` in this clone now carries 0 hook registrations (verified this session — it holds a `_hooks_moved` key instead). Hook registration lives in two places a `git pull` does NOT touch: the per-user `~/.claude/settings.json` (7 entries) and the plugin cache `~/.claude/plugins/cache/lifehack-brain/lifehack-brain/0.3.13/hooks/hooks.json` (50 entries, installed/updated separately from this repo). A fast-forward on this pair no longer lands updated hooks live on the receiving machine at all.
   FEEDS      pulse-cron             · pulse.sh is itself stored in the clone; a pull updates pulse's own code on the next tick
   COMPLEMENTS bootstrap-sync        · bootstrap-machine.sh handles a full machine setup; this pair handles the delta-continuous sync
   GUARDED-BY pulse.sh circuit-breaker · 3 consecutive exit 1 → auto-disable + notify-send.sh buzz
@@ -1098,7 +1105,7 @@ INTEROP:
   READS       (desk canon)       · each /council subagent loads ONLY its own desks/{desk}/canon/*.md + state/current.md; independence is structural, signal quality depends on canon maintenance
   READS       councils/registry.md · front-door registry lookup on every /advisory-council invoke; Builder writes registry entries on create/edit
 
-## translator-cluster · /condense · /explain · /summarize   [PARTIAL [provisional]]   → elements/translator-cluster.md
+## translator-cluster · /simplify · /explain · /summarize   [PARTIAL [provisional]]   → elements/translator-cluster.md
 Three-skill cluster + two hooks that continuously re-assert a shared voice contract, keeping every reply readable on first pass for a low-recall reader juggling windows. The Stop-grade layer (translator_gate.sh) is dormant by default — grader parked 2026-07-14; inject hook is always-on.
 
 INTEROP:
@@ -1118,7 +1125,7 @@ INTEROP:
   COMPLEMENTS  council              · /council (convergence) and /red-team (critique) are orthogonal; run council to generate options, /red-team to punch holes in the winning option — UNVERIFIED
 
 ## emily-desk · new Emily-Ingest mail | /emily-* skills   [LIVE·gap [provisional]]   → elements/emily-desk.md
-The audition/casting operating desk — ingest to breakdown to emit spine; the Relationship Ledger (Hollywood data layer); the cron/headless runner; and the Helm tile (HITL note store: planned/unverified). Contained subsystem with its own Google Sheets data layer, cron trigger, and Helm tile.
+A subject-tracking operating desk — ingest to breakdown to emit spine; the Relationship Ledger (its own domain data layer); the cron/headless runner; and the Helm tile (HITL note store: planned/unverified). Contained subsystem with its own Google Sheets data layer, cron trigger, and Helm tile.
 
 INTEROP:
   READS      email-service          · durable thread store (state/email-summary/threads-v2/) for Phase 0 body pull; store-first before raw gws
@@ -1127,7 +1134,7 @@ INTEROP:
   WRITES→    durable-memory         · breakdown Google Doc lands in "2026 Breakdowns" Drive folder; session.md + breakdowns markdown in desks/emily/state/; Relationship Ledger rows in the Sheet
   GUARDED-BY ingest-gate            · ingest_gate_enforce.sh blocks raw gws format:full body reads; forces email_convert.py path [hook]
   GUARDED-BY calendar-guard         · calendar write hook blocks any event write to primary or non-Agent-Ops calendar [hook]
-  GUARDED-BY primary-gate.sh        · Drive writes on lead machine only [script]
+  GUARDED-BY ~~primary-gate.sh~~ · **⚠ CORRECTED 2026-08-24: ⛔ `system/tools/primary-gate.sh` does not exist** (0 files, verified this session); `require_primary()` has no definition anywhere in the repo. Emily-desk Drive writes are NOT gated on machine lead-election — this system has one machine (`docs/data-layout.md:215`). See `elements/pulse-cron.md`'s corrected GATES section. [was: script]
   CHAINS     safe-reader-plane      · script-reader subagent uses safe_pdf.py; researcher uses safe_search_api.sh (Serper primary, Chrome fallback); calendar + email free-text isolated via safe_calendar.py / reader-actor subagent
   FEEDS      notify-plane           · buzz via notify-send.sh after successful breakdown (Phase 6)
   READS      pulse-cron             · emily-breakdown-run.sh is a Pulse-managed cron job; Pulse owns cadence + circuit-breaker (3 non-zero → auto-disable + buzz)
@@ -1136,7 +1143,7 @@ INTEROP:
   COMPLEMENTS hollywood-db          · shared/skills/hollywood-db is a distinct project (industry player database, Supabase-backed) sharing the Emily desk context; researcher reads the Relationship Ledger, not Hollywood DB directly during breakdown
 
 ## marc-desk · sensor→gather→narrative→checkin spine   [PARTIAL [provisional]]   → elements/marc-desk.md
-Marc is a self-running market-intelligence organism — a daily data + tripwire plane, two weekly LLM-research rhythms, a falsifiable-projection/grade loop, a narrative registry, and a human HITL check-in (/marc-checkin) that is the only path that writes HIGH-confidence output. Machine writes LOW; human check-in writes HIGH.
+Marc is a self-running monitoring-and-analysis organism — a daily data + tripwire plane, two weekly LLM-research rhythms, a falsifiable-projection/grade loop, a narrative registry, and a human HITL check-in (/marc-checkin) that is the only path that writes HIGH-confidence output. Machine writes LOW; human check-in writes HIGH.
 
 INTEROP:
   WRITES→  journal           · every deep read (weekly + Wednesday) appends ONE LOW-confidence row; marc-sensor appends ONE row on a TRIP (new threshold cross)
@@ -1151,7 +1158,7 @@ INTEROP:
   GUARDED-BY   guard_marc_narrative   · PostToolUse advisory lint on narrative/scenario file writes via marc-narrative-check.py (advisory, not blocking)
 
 ## clair-desk · /ingest + /clair-session-close   [PARTIAL·gap [provisional]]   → elements/clair-desk.md
-Consulting-ops desk — reads every Consulting Gmail thread through a safety-isolated reader agent, surfaces what needs the operator in needs-me.json, closes sessions with Drive-doc ingest + an append-only billing write to Tracker v3, and keeps a cadence-nudge cron that fires a phone push exactly once per new due-state. ·gap because Drive-side billing scripts are not git-tracked and the concern-bar classification is LLM-judgment with no deterministic enforcement.
+A client-services desk — reads every associated Gmail thread through a safety-isolated reader agent, surfaces what needs the operator in needs-me.json, closes sessions with Drive-doc ingest + an append-only billing write to Tracker v3, and keeps a cadence-nudge cron that fires a phone push exactly once per new due-state. ·gap because Drive-side billing scripts are not git-tracked and the concern-bar classification is LLM-judgment with no deterministic enforcement.
 
 INTEROP:
   READS        email-service          · store-first path (email_service_read.py --desk clair) is the primary body-read source
@@ -1167,15 +1174,15 @@ INTEROP:
   GUARDED-BY   guard_ledger_discipline.sh · guard_sheet_writes.sh · guard_sheet_formula_writes.sh · ingest_gate_enforce.sh   · the walls that fire here
 
 ## deryl-desk · /deryl-ingest + /reconcile + /deryl-rocketmoney   [PARTIAL [provisional]]   → elements/deryl-desk.md
-The personal-finance operator — ingests email, transactions, and utility data; maintains the live ledger (Deryl Financial Master); runs a nightly health check that feeds the Helm dashboard; and provides a human-gated reconcile session for periodic tax bookkeeping. Multiple documented honor-system failure modes (stale-number recitation, mental arithmetic, email-scope breach).
+A records-and-ledger operator — ingests email, transactions, and utility data; maintains the live ledger (Deryl Financial Master); runs a nightly health check that feeds the Helm dashboard; and provides a human-gated reconcile session for periodic bookkeeping. Multiple documented honor-system failure modes (stale-number recitation, mental arithmetic, email-scope breach).
 
 INTEROP:
   CHAINS      ingest-run.lib.sh  · deryl-ingest-run.sh is built on the shared ingest-run.lib.sh scaffold (primary-machine gate, new-mail gate, bounded work-list, single-instance lock, watchdog, marker-advance); a change to the lib propagates to all ingest runners
   FEEDS       helm               · deryl-ingest writes state/status/deryl-ingest.json (LOCKED schema decision #38) — Helm d.ingest card; deryl-books-health.py emits state/status/deryl.json — Helm finances/property/tax tiles
-  WRITES→     Gmail Deryl-Archive   · deryl-ingest routes True Submeter emails to Deryl-Archive (Label_32) as pipeline hand-off to true_submeter_ingest.py; all other processed threads move to Deryl-Processed
+  WRITES→     Gmail Deryl-Archive   · deryl-ingest routes emails from a utility submetering provider to Deryl-Archive (Label_32) as pipeline hand-off to submeter_ingest.py; all other processed threads move to Deryl-Processed
   FEEDS       deryl open-loops   · deryl-ingest appends HIGH items with gmail links to desks/deryl/state/open-loops.md; Deryl session reads on launch; /save can relocate resolved loops
   READS       email-service      · daily ingest tries read_thread() store-first before re-fetching from Gmail; falls back to raw sanitization on MISS-*/DISABLED; never writes the store
-  CHAINS      cp_utilities_ingest · cp_utilities_ingest → true_submeter_ingest are chained inside cp-utilities-run.sh; true_submeter must not run if cp_utilities fails
+  CHAINS      cp_utilities_ingest · cp_utilities_ingest → submeter_ingest are chained inside cp-utilities-run.sh; submeter_ingest must not run if cp_utilities fails
   SYNCS       reconcile marker   · /reconcile writes last-reconciled marker to Tax Workbook _REVIEW_STORE!H1; deryl-books-health.py reads and parses this same cell for dashboard signals — format must stay parseable
   GUARDED-BY  guard_sheet_writes.sh · DFM and CP sheets flagged BRITTLE; destructive ops confirm before executing
   GUARDED-BY  guard_ledger_discipline.sh · blocks adding ✅/RESOLVED/CLEARED/FIXED annotation to ## Open in state/debt-ledger.md; deletion-only discipline
@@ -1217,14 +1224,14 @@ INTEROP:
   FEEDS        health-line         · health_line.py at SESSION START is the CONSUMER — chosen because it speaks whether or not anyone chooses to look; "a human sees the dashboard" is the consumer that already failed twice (a forked tile unnoticed; 57 findings unread for 7 days)
   TRIGGERS-BY  pulse-cron          · fault-proposer runs daily (86400s); findings_deadman enumerates producers from pulse-config AND live `crontab -l`, which is what finally makes the crontab-only health-deadman visible at all
   KEYS-OFF     two-machine-residency · one writer per PATH, per machine; the union reader NAMES any shard it could not read rather than silently returning a shorter list
-  GUARDED-BY   — NOTHING, as of this write · no Hospital hook exists or is registered (GAP-3); emit_finding's contract is structural (no id= parameter, scanned_n required, zero-scan-OK refused) but a direct append into state/findings/ bypasses it entirely
+  GUARDED-BY   ~~NOTHING, as of this write · no Hospital hook exists or is registered (GAP-3)~~ ⚠ CORRECTED 2026-08-24: guard_findings_write.sh IS registered (confirmed present in `~/.claude/settings.json` PreToolUse Bash|Write|Edit hooks, and fired a live `{"decision":"block"}` on a synthetic `echo >> state/findings/*.jsonl` this session) — GAP-3 is CLOSED, not open. The Efficiency section three lines below already names this same hook correctly; this clause was the stale one. emit_finding's contract is ALSO structural (no id= parameter, scanned_n required, zero-scan-OK refused) — the hook and the contract are two independent layers, not one. ⚠ UPDATE 2026-08-27 (hook-plane migration): `guard_findings_write.sh` is no longer in `~/.claude/settings.json` — verified this session, that file's 7 remaining entries do not include it. GAP-3 stays CLOSED, not because the 2026-08-24 finding-location was wrong, but because the hook moved: it is now registered in `~/.claude/plugins/cache/lifehack-brain/lifehack-brain/0.3.13/hooks/hooks.json` (confirmed present there this session). It was not re-fire-tested from that location in this pass.
 
 ## efficiency · recommend.py + emit_recommendation.py + fault_proposer.py   [PARTIAL·gap [provisional — not fire-tested]]   → elements/efficiency.md
 Efficiency exists so the system gets SHARPER with use instead of duller. Entropy is the default — junk accumulates, parts rot, seams fray. Efficiency is the counter-force: it reads what is wrong, reasons ACROSS findings rather than one at a time, and proposes how the organism should evolve. Where Hospital DETECTS and RANKS one problem at a time, Efficiency reasons across them at three altitudes — the broken part, the broken chain, the wrong architecture. **It SUGGESTS and never APPLIES** (⚖ RULED 2026-08-04 by the operator; auto-fix CUT 7/7 by council), and there is no applier anywhere in it. ⚠ **Only the GROUND altitude is built, and it has never run in production** — `recommend.py` has no caller and `state/recommendations/` does not exist on disk (measured 2026-08-05), deliberately, pending one supervised live run. **There is no LLM in this subsystem today** — it is deterministic code end to end, so no code/LLM seam binds it as built.
 
 INTEROP:
   READS        hospital            · consumes the findings union via findings_reader.py — Hospital's contract change is Efficiency's outage; the tightest coupling in the pair
-  SHARES-STORE hospital            · ONE hook (guard_findings_write.sh, mode 444, settings.json) guards BOTH state/findings/ and state/recommendations/ incl. dispositions/ — hardening it helps both, breaking it blinds both
+  SHARES-STORE hospital            · ONE hook (guard_findings_write.sh, mode 444, ~~settings.json~~ ⚠ CORRECTED 2026-08-27, hook-plane migration: registered in `~/.claude/plugins/cache/lifehack-brain/lifehack-brain/0.3.13/hooks/hooks.json`, not `~/.claude/settings.json` — verified this session, the script is absent from settings.json's 7 remaining entries) guards BOTH state/findings/ and state/recommendations/ incl. dispositions/ — hardening it helps both, breaking it blinds both
   FEEDS        health-line         · the session-start RECOMMENDATIONS: line is the ONLY surface where Efficiency reaches a human — ranked DECISION > ORGANISM > SUBSYSTEM > INSTANCE, capped at 3, each with an 8-char fingerprint the disposition CLI accepts directly
   TRIGGERS-BY  pulse-cron          · ONLY fault-proposer is scheduled (daily, 86400s); the ground reasoner is NOT — that is GAP-1, not an oversight (CUT-E)
   KEYS-OFF     two-machine-residency · machine token in the PATH, never only the payload; one writer per path per machine
@@ -1261,7 +1268,7 @@ Answers "where does this go" for anything a person builds or writes themselves �
 INTEROP:
   READS        brain                 · shares brain.md's git/Drive vocabulary (repo = machinery, AI Brain = content) and extends it with the third surface, `~/.claude/`, that brain.md does not cover
   READS        skill-system          · the discovery mechanism this element generalizes is skill-system's own registration chain (`~/.claude/skills/` symlink discovery); this element states the rule skill-system only demonstrates for one kind
-  READS        hook-plane            · hook registration is the one kind this element found to have NO confirmed personal home — the tracked `.claude/settings.json` is the only documented registration surface, and it travels by wholesale `git pull` replacement like every other tracked file
+  READS        hook-plane            · ~~hook registration is the one kind this element found to have NO confirmed personal home — the tracked `.claude/settings.json` is the only documented registration surface, and it travels by wholesale `git pull` replacement like every other tracked file~~ ⚠ CORRECTED 2026-08-27 (hook-plane migration): this is now backwards. Verified this session: the tracked `.claude/settings.json` carries 0 hook registrations (holds a `_hooks_moved` key instead), so it no longer travels hooks by `git pull` at all. Registration instead lives in two personal, non-repo homes — `~/.claude/settings.json` (7 entries) and the plugin cache `~/.claude/plugins/cache/lifehack-brain/lifehack-brain/0.3.13/hooks/hooks.json` (50 entries) — neither git-tracked, both installed/maintained per machine. Hook registration DOES now have a confirmed personal home; it just has two, and they can drift from each other.
   COMPLEMENTS  two-machine-residency · that element's parity model is for THIS repo's own tracked files across two machines; this element is about material that is deliberately NOT tracked at all — adjacent problem, opposite mechanism
   GUARDED-BY   guard_write_paths.sh  · PreToolUse Write|Edit blocks a *new* file written directly under `~/.claude/skills/` or `~/.claude/commands/` with a redirect message that names a different repo's clone path — a real, live inconsistency with the no-symlink rule this element documents rather than resolves
 

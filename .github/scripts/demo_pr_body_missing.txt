@@ -1,0 +1,3 @@
+Widened the variable-path resolver in guard_findings_write.sh so it covers
+every spelling, not just the literal one. Tested locally against the
+original bypass repro and it now blocks (exit 2).

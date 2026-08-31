@@ -2,7 +2,7 @@
 """
 conclusions_review.py — the DENSE CONFIRM printer for the deep-read (720p) stage (P6 F6.8, 2026-07-10).
 
-The flaw this closes (found 2026-07-10, auditing a live cosmetic-medical vein drill):
+The flaw this closes (found 2026-07-10, auditing a live single-topic vein drill):
 the deep-read confirm view was hand-assembled by the controller, so it could — and did — COMPRESS a
 17-chat vein down to ~4 surfaced items, quietly bucketing the other ~13 into "already-filed / pointer /
 junk" WITHOUT the human seeing them. Two failures in one: (1) throughput (4 shown, not the whole batch),

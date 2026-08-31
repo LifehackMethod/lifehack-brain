@@ -154,35 +154,29 @@ class TestRefuses(Case):
         self.assertIn("not a directory", reason)
 
     def test_cli_refuses_with_no_root_set_and_teaches(self):
-        """Runs against a MINIMAL COPY of the tool, not the real clone.
-
-        This is a real subprocess, so no monkeypatch reaches it, and scrubbing $LIFEHACK_ROOT and
-        $HOME never did close every route: the resolver also reads a `.brain-root` pointer FILE next
-        to the repo root — this repo's own (route 2, 2026-08-17) and, in a linked git worktree, the
-        main worktree's (route 2b, 2026-08-21) — plus the machine-global persisted config under
-        $HOME/.config/lifehack/brain-root. Both are located from the TOOL's own position or the
-        subprocess's $HOME, so the only honest way to test "nothing is configured" in a subprocess
-        is to run a copy that sits somewhere with nothing configured — which is also the case being
-        claimed: a fresh clone, on a machine with no notes folder chosen yet. (Mirrors
-        shared/test_registry.py::test_resolve_refuses_rather_than_guessing_when_no_notes_folder_is_set
-        — same approach, not a third one.)
-        """
+        """Must sandbox against ALL FIVE resolution routes in brain_root.resolve_brain_root(), not
+        just the persisted-config route (3). Route (2), the repo pointer, is read from bootstrap.py's
+        OWN file location — independent of $HOME and every env var — so running this straight out of
+        HERE (the real checkout) leaks a developer's real `.brain-root` (gitignored, so it survives
+        untouched no matter what env is cleared) and the test can never observe NOT-SET on any machine
+        that has ever run --set. Fix (2026-08-28): `git archive` a clean, pointer-free checkout —
+        gitignored files are never tracked, so it has no `.brain-root`, and it has no `.git` at all,
+        so route (2b), the main-worktree-pointer, cannot fire either — and run bootstrap.py from
+        THERE instead of from the real repo. Verified as a test-isolation defect, not a product bug:
+        the CLI does refuse (exit 1) in a genuinely rootless environment (repo-issue reproduced by hand
+        against a `git archive` checkout before this fix, matching what this test now automates)."""
+        clean_repo = os.path.join(self.tmp, "clean-repo")
+        os.makedirs(clean_repo)
+        archive = subprocess.run(["git", "archive", "HEAD"], cwd=REPO, capture_output=True, check=True)
+        subprocess.run(["tar", "-x"], cwd=clean_repo, input=archive.stdout, check=True)
+        self.assertFalse(os.path.exists(os.path.join(clean_repo, ".brain-root")),
+                         "a clean checkout must not carry a pointer — if this fires, the isolation "
+                         "this test relies on is itself broken")
         env = dict(os.environ)
-        home = os.path.join(self.tmp, "home")
-        os.makedirs(home, exist_ok=True)
-        env["HOME"] = home
+        env["HOME"] = os.path.join(self.tmp, "home")
         env.pop("LIFEHACK_ROOT", None)
-        clone_shared = os.path.join(home, "clone", "shared")
-        clone_tools = os.path.join(home, "clone", "system", "tools")
-        os.makedirs(clone_shared)
-        os.makedirs(clone_tools)
-        shutil.copy(os.path.join(REPO, "shared", "brain_root.py"), clone_shared)
-        shutil.copy(os.path.join(HERE, "bootstrap.py"), clone_tools)
-        shutil.copy(os.path.join(HERE, "utf8_stdio.py"), clone_tools)
-        clone_tool = os.path.join(clone_tools, "bootstrap.py")
-        self.assertFalse(os.path.exists(os.path.join(home, "clone", ".brain-root")),
-                         "the copy must start with nothing configured, or it tests nothing")
-        r = subprocess.run([sys.executable, clone_tool],
+        env.pop("INGEST_LEGACY_ROOT_GLOB", None)
+        r = subprocess.run([sys.executable, os.path.join(clean_repo, "system", "tools", "bootstrap.py")],
                            capture_output=True, text=True, env=env)
         self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
         self.assertIn("no data root set", r.stdout + r.stderr)
@@ -229,6 +223,7 @@ class TestPython3ShimUTF8(unittest.TestCase):
         self.fake_python = os.path.join(self.tmp, "python.exe")
         open(self.fake_python, "w").close()
         self.shim = os.path.join(self.tmp, "python3.cmd")
+        self.shim_posix = os.path.join(self.tmp, "python3")
         self.patches = [
             mock.patch.object(bootstrap.os, "name", "nt"),
             mock.patch.object(bootstrap.sys, "executable", self.fake_python),
@@ -249,42 +244,33 @@ class TestPython3ShimUTF8(unittest.TestCase):
         self.assertEqual(status, "not-needed")
 
     def test_fresh_windows_machine_creates_a_shim_with_utf8(self):
+        """A fresh install now writes TWO files: python3.cmd (cmd.exe) and an extensionless
+        python3 (Git Bash, which execs a PATH entry by exact name and never resolves .cmd files).
+        The .cmd content/contract is unchanged from before this fix; the POSIX companion is new
+        and its own content is asserted directly -- not via a substring match loose enough to pass
+        if it silently stopped being written."""
         with mock.patch.object(shutil, "which", return_value=None):
             status, detail = bootstrap.ensure_python3_shim()
         self.assertEqual(status, "created")
-        self.assertEqual(detail, self.shim)
-        body = open(self.shim, encoding="ascii").read()
-        self.assertIn("PYTHONUTF8=1", body)
-        self.assertIn("python.exe", body)
 
-    def test_a_posix_companion_is_written_for_git_bash(self):
-        """The .cmd alone is invisible to Git Bash, which is the shell every INSTALL.md block
-        uses: MSYS does not apply PATHEXT to a bare word, so `python3` stayed "command not found"
-        there even with python3.cmd on PATH. The extensionless companion is what makes the word
-        resolve; the shebang is what makes MSYS treat it as executable, and LF endings are
-        load-bearing because a CR-mangled shebang does not run."""
-        posix_shim = os.path.join(self.tmp, "python3")
-        with mock.patch.object(shutil, "which", return_value=None):
-            bootstrap.ensure_python3_shim()
-        self.assertTrue(os.path.exists(posix_shim), "Git Bash has nothing to resolve")
-        raw = open(posix_shim, "rb").read()
-        self.assertTrue(raw.startswith(b"#!"), "no shebang: MSYS will not treat it executable")
-        self.assertIn(b"PYTHONUTF8=1", raw)
-        self.assertNotIn(bytes([13]), raw, "a CR byte in an sh shim breaks the shebang")
+        # the .cmd shim: unchanged contract
+        cmd_body = open(self.shim, encoding="ascii").read()
+        self.assertIn("PYTHONUTF8=1", cmd_body)
+        self.assertIn("python.exe", cmd_body)
 
-    def test_the_cmd_governs_the_reported_verb_when_both_are_written(self):
-        """A pre-UTF8 .cmd plus a missing companion must still report `upgraded`, not
-        `created`. The .cmd state is the one worth reporting: a stale one silently mangles the
-        person own accented names and curly quotes, and burying that under the companion
-        `created` would hide it."""
-        crlf = chr(13) + chr(10)
-        with open(self.shim, "w", encoding="ascii", newline="") as f:
-            f.write("@echo off" + crlf + "'%~dp0python.exe' %*" + crlf)
-        with mock.patch.object(shutil, "which", return_value=self.shim):
-            status, detail = bootstrap.ensure_python3_shim()
-        self.assertEqual(status, "upgraded")
-        self.assertEqual(detail, self.shim)
-        self.assertTrue(os.path.exists(os.path.join(self.tmp, "python3")))
+        # the POSIX companion: must exist, must be a real shebang script, must set UTF-8 mode and
+        # exec the real interpreter next to it
+        self.assertTrue(os.path.exists(self.shim_posix), "POSIX companion shim was not written")
+        posix_lines = open(self.shim_posix, encoding="ascii").read().splitlines()
+        self.assertEqual(posix_lines[0], "#!/bin/sh", "first line must be a POSIX shebang")
+        posix_body = "\n".join(posix_lines)
+        self.assertIn("PYTHONUTF8=1", posix_body)
+        self.assertIn('exec "$(dirname "$0")/python.exe" "$@"', posix_body)
+
+        # the returned detail must name BOTH paths -- this is the load-bearing assertion: it fails
+        # if either file silently stops being reported (or written)
+        self.assertIn(self.shim, detail)
+        self.assertIn(self.shim_posix, detail)
 
     def test_second_run_reports_already_and_does_not_rewrite(self):
         with mock.patch.object(shutil, "which", return_value=None):
@@ -322,6 +308,38 @@ class TestPython3ShimUTF8(unittest.TestCase):
             status, detail = bootstrap.ensure_python3_shim()
         self.assertEqual(status, "already")
         self.assertFalse(os.path.exists(self.shim), "wrote a shim over something not ours")
+
+    def test_store_alias_stub_is_not_usable_and_gets_replaced(self):
+        # The Microsoft Store execution-alias stub lives at a WindowsApps-shaped path and is a few
+        # KB, never a real interpreter. It must be treated as ABSENT -- not "already" -- and our
+        # shim pair must be installed in its place.
+        stub = os.path.join(self.tmp, "AppData", "Local", "Microsoft", "WindowsApps", "python3.exe")
+        os.makedirs(os.path.dirname(stub))
+        with open(stub, "wb") as f:
+            f.write(b"\x00" * 2048)  # well under the stub-size threshold
+        with mock.patch.object(shutil, "which", return_value=stub):
+            status, detail = bootstrap.ensure_python3_shim()
+        self.assertEqual(status, "created")
+        self.assertIn(stub, detail, "should name the stub it is replacing")
+        self.assertTrue(os.path.exists(self.shim))
+        self.assertTrue(os.path.exists(self.shim_posix))
+
+    def test_cannot_determine_is_its_own_status_never_folded_into_already(self):
+        # A WindowsApps-shaped path we cannot stat (dangling symlink here) must surface as its own
+        # distinct outcome -- never silently treated as "already" (which would skip the fix on a
+        # machine that needs it) and never treated as a plain pass.
+        broken_dir = os.path.join(self.tmp, "AppData", "Local", "Microsoft", "WindowsApps")
+        os.makedirs(broken_dir)
+        broken = os.path.join(broken_dir, "python3.exe")
+        os.symlink(os.path.join(broken_dir, "does_not_exist.exe"), broken)
+        with mock.patch.object(shutil, "which", return_value=broken):
+            status, detail = bootstrap.ensure_python3_shim()
+        self.assertEqual(status, "undetermined")
+        self.assertNotEqual(status, "already")
+        self.assertNotEqual(status, "refused")
+        self.assertIn(broken, detail)
+        self.assertFalse(os.path.exists(self.shim), "must not write over an undetermined case")
+        self.assertFalse(os.path.exists(self.shim_posix))
 
 
 if __name__ == "__main__":

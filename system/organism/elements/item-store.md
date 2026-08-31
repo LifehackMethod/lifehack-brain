@@ -28,7 +28,7 @@ authority: user
 > The description below is the donor system as it was, and it is kept as written. Each marker records what
 > happened to that file AT THIS DESTINATION; none of them changes the description.
 >
-> ⛔ `state/status/item-store.json` is runtime-generated — the freshness tile `item_store_read.py` writes under
+> ⛔ `state/status/item-store.json` is runtime-generated — the freshness tile item_store_read.py writes under
 > your own notes root on first run. Never committed, so there is nothing to ship.
 >
 > ⛔ `system/reference/settings.json` did not come across. It was the donor's read-only reference copy of the
@@ -114,8 +114,15 @@ factory functions that stamp the correct keys; the sync writers call these — n
 
 ### WRITERS: HOW THE STORE IS POPULATED
 
-Two independent Pulse-dispatched sync scripts, both primary-machine-gated, both running at 6-hour
-cadence (`21600 s` in `system/pulse-config.md`):
+Two independent Pulse-dispatched sync scripts, both ~~primary-machine-gated~~, both running at ~~6-hour
+cadence (`21600 s`~~ **24-hour cadence (`86400 s`)** in `system/pulse-config.md`.
+> **⚠ CORRECTED 2026-08-27, lb2-ops-comms.md claim 76 — two separate stale claims here.** The cadence is
+> 86400s (24h) for both `tasks-store-sync` and `calendar-store-sync`, not 21600s (6h) — the same stale
+> figure was independently found in `grand-central.md`. Separately, "primary-machine-gated" is also
+> unverified/likely false: a repo-wide grep for `require_primary` (claim 34, hospital.md/pulse-cron.md)
+> found zero function definitions anywhere in the repo — there is no live mechanism by that name to gate
+> anything on a primary machine. Every other 6-hour-cadence figure in this file below (§30h freshness
+> floor, "6-hour sync cadence" prose) inherits from this same stale number and should be read as 24h.
 
 | Script | Pulse slot | Runner shell | Live proven |
 |---|---|---|---|
@@ -352,8 +359,10 @@ closed: if the scanner is absent or errors, the raw item body is served, not the
 
 **Signals ERROR (Helm red + phone buzz) when:**
 - Any tracked `item_type` has **0 ACTIVE records** (a writer stopped producing or a coverage hole).
-- The store's newest record mtime is **older than 30 hours** (the 6-hour sync cadence is well under
-  this floor; 30h gives one missed cycle before alerting).
+- The store's newest record mtime is **older than 30 hours** (~~the 6-hour sync cadence is well under
+  this floor~~ [CORRECTED 2026-08-27, claim 76 — actual cadence is 24h, not 6h; a 30h freshness floor
+  against a 24h cadence gives much less slack than this line implies — closer to one missed cycle, not
+  comfortably under it]).
 
 **Does NOT signal on:** tampered records, partial cold-sweeps, flagged records. Those are per-record
 signals, not store-level health.
@@ -478,7 +487,7 @@ but are independent stores with independent adapters. `item_store_window.py` com
 Every desk that needs "what tasks are open?" or "what calendar events fall this week?" reads the
 local store rather than hitting Google with latency + keychain requirements + rate-limit exposure.
 
-**Current state:** the store populates on 6-hour Pulse cadence; the adapter and hook wall are live;
+**Current state:** the store populates on ~~6-hour~~ **24-hour** [corrected 2026-08-27, claim 76] Pulse cadence; the adapter and hook wall are live;
 the freshness dead-man fires hourly; self-tests pass for both sync writers and both adapters (11
 tests in `item_store_read`, 10 tests in `tasks_store_sync`, 12 tests in `calendar_store_sync`, 9
 in `item_store_window`). The HITL Note Flywheel (Phase D) is wired in `item_store_window.py` and

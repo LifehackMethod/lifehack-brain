@@ -17,7 +17,7 @@ A lane is one standing area of your life that the day can move. Write them there
 as one of two kinds — that distinction is what the board runs on:
 
 🟢 **ANCHOR** — always gets a daily move, whether or not anything happened. The things that decay
-   silently if a week goes by: health, a relationship, a programme you are in.
+   silently if a week goes by: health, a relationship, a standing commitment you are in.
 🟡 **TRIGGERED** — surfaces only when something live appeared in it. Work, money, property, admin.
 
 Most people land somewhere between six and twelve. Fewer than that and the board stops being your
@@ -28,7 +28,7 @@ Read the already-pulled vault (`tasks.json`, `calendar.json`, the inbox slices, 
 For each lane, by judgment, fold in the data that belongs to it. Reference map (a guide, not a rule —
 lists get renamed):
 ⛔ **THE LANES ARE NOT IN THIS FILE, AND THAT IS DELIBERATE.** A board is a picture of ONE person's
-life — their work, their family, the property they own, the recovery programme they are in. Ten of
+life — their work, their family, the property they own, the standing commitment they are in. Ten of
 somebody else's would be worse than none, because a lane you did not choose still gets asked about
 every morning. **Your lanes and the lists that feed each one live in
 `<notes>/desks/cal/skill-refs/user-canon.md`** — write them there once, in your own words, and this

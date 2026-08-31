@@ -24,7 +24,7 @@ never an infinite loop):** cap at the adaptive round count (below), AND the pers
 carry any still-open item forward to the scratchpad as a `⚠ gap: <question>` note (never erase it).
 
 **SMART filter** on anything surfaced as a task: Specific · Measurable · Actionable · Realistic · Time-bound —
-so milestones ("finish the Atlanta project") don't get confused with this-week tasks ("call Ambrose for the mail").
+so milestones ("finish the website redesign project") don't get confused with this-week tasks ("call the vendor about the shipment").
 
 **Adaptive rounds:** Phase 0's size/confidence readout sets the count — lightly-annotated week = 2–3 questions;
 two months un-reviewed = a heavy pass. Not prescriptive.

@@ -216,21 +216,120 @@ DOCSTRING_MIN = 200     # a real capability describes itself; a stub does not
 CENSUS_OUT = REPO / "system" / "organism" / "generated" / "capability-census.md"
 
 
+_PULSE_ROW = re.compile(
+    r"^([\w-]+)(\s*\|\s*)([\w][\w.-]*)(\s*\|\s*)(\d+)(\s*\|\s*)(.*)$")
+
+
+def _pulse_config_text() -> str:
+    """`system/pulse-config.md`'s text, with the COMMAND column of any non-`yes` job row
+    redacted before it joins the roots blob.
+
+    ⛔⛔ T-session 2026-08-24 — SECOND HALF OF THE SELF-POISONING FIX (see the comment in
+    `_roots()` for the first half). `## Job format` in that file is explicit: a row's `enabled`
+    field can be `no`/`parked`/`waiting-on-<thing>` and the row STILL carries a real command in
+    its 4th column — by design, "so a future health sweeper can render your own reason back to
+    you". That is correct for a human reading the manifest. It is wrong evidence for `_roots()`,
+    which is asking "does anything START execution" — a documented-but-`waiting-on-port` row
+    answers NO, Pulse will never run it. Left unredacted, that row's command text (e.g.
+    `bash ".../brokenlist-run.sh"`) satisfies `_invoked_by()` exactly like a live `yes` row would.
+    Measured 2026-08-24: this is precisely why `recommendation_disposition.py` (imported at
+    module top level by `brokenlist.py`, per T20.4's one-hop `.py` promotion) stopped reaching
+    BAR 2 — `brokenlist`'s `waiting-on-port` row (line ~405) still names its real runner path,
+    the `.sh` hop promotes `brokenlist-run.sh`, the `.py` hop then promotes `brokenlist.py`
+    itself (its command already in the blob), and `brokenlist.py`'s own top-level
+    `import recommendation_disposition` rides in with it — none of that chain requires the job
+    to ever actually run. Every OTHER `waiting-on-port` row in this file has the identical shape
+    and would misreport the same way once its runner script exists on disk (`hook-doc-lint.sh`,
+    `security-posture-scan.sh`, `architecture-reachability-run.sh` already do).
+
+    ⛔ THE ROW ALONE WAS NOT ENOUGH — measured on the SAME job. Redacting only the row's command
+    column left the leak open through the `#`-comment lines this file's own convention writes
+    directly above each row (every entry here is `# prose describing the job` then the row —
+    see `## Job format`'s own layout, unchanged since this file was created). `brokenlist`'s
+    comment block reads, in full prose, "its wrapper `system/tools/brokenlist-run.sh`" — a
+    `/`-prefixed real path, same as the row would have carried. So: the contiguous `#`-comment
+    block immediately ABOVE a non-`yes` row is redacted along with it. A comment block above a
+    `yes` row, or one not immediately followed by any row at all (file-level prose, the header,
+    `## Job format`'s own explanation), is untouched.
+    """
+    p = REPO / "system" / "pulse-config.md"
+    if not p.exists():
+        return ""
+    lines = p.read_text(encoding="utf-8", errors="replace").splitlines()
+    out = []
+    pending = []                                       # buffered contiguous "# ..." lines
+    for line in lines:
+        if line.lstrip().startswith("#"):
+            pending.append(line)
+            continue
+        m = _PULSE_ROW.match(line)
+        if m and m.group(3) != "yes":
+            for _ in pending:
+                out.append("# [NOT LIVE — redacted from roots-detection, see comment above]")
+            line = (f"{m.group(1)}{m.group(2)}{m.group(3)}{m.group(4)}{m.group(5)}{m.group(6)}"
+                    f"[NOT LIVE — {m.group(3)} row, command redacted from roots-detection]")
+        else:
+            out.extend(pending)
+        pending = []
+        out.append(line)
+    out.extend(pending)                                 # trailing comments, never redacted
+    return "\n".join(out)
+
+
 def _roots() -> str:
     """Everything that can START execution, as one searchable blob."""
     blobs = []
-    for p in [REPO / "system" / "pulse-config.md",
-              REPO / "system" / "reference" / "settings.json"]:
-        if p.exists():
-            blobs.append(p.read_text(encoding="utf-8", errors="replace"))
+    pc = _pulse_config_text()
+    if pc:
+        blobs.append(pc)
+    settings = REPO / "system" / "reference" / "settings.json"
+    if settings.exists():
+        blobs.append(settings.read_text(encoding="utf-8", errors="replace"))
     skill_roots = [root for _, root in _skill_roots() if root.exists()]
+    # ⛔⛔ T-session 2026-08-24 — SELF-POISONING FIX. On THIS install, ClaudeOps (REPO) lives
+    # *inside* `~/.claude/skills/` as a real directory, not a symlink — so `_skill_roots()`'s
+    # "personal (~/.claude/skills)" entry does not just find sibling personal skill packages, it
+    # rglobs the ENTIRE ClaudeOps tree A SECOND TIME: `system/organism/elements/*.md`,
+    # `migration-notes/*.md`, `system/organism/generated/capability-census.md` (this file's OWN
+    # `--census` output, `.gitignore`-derived, regenerated every run — see `CENSUS_OUT` below),
+    # everything. None of that is a place execution STARTS — it is documentation and prose ABOUT
+    # the tree, or (for the census specifically) a REPORT that prints the literal path of every
+    # tool it examines (an "UNCALLED  system/tools/…" line naming the BAR 2 specimen among many
+    # others) and `efficiency.md`'s own `generated_from:` frontmatter, which cites that same
+    # specimen's tool path as a documentation source, not a caller. Both satisfy `_invoked_by()`'s
+    # `/{name}\\b` pattern and falsely mark the file "invoked" — the census case is worse: it is
+    # the detector's own PAST OUTPUT feeding back in, a self-referential loop, not evidence.
+    # Measured: this exact mechanism is why the BAR 2 specimen silently stopped reaching BAR 2
+    # (`--selftest`) once these files existed/were regenerated with today's new tool names in
+    # them. ⚠ Deliberately worded here WITHOUT a `/`-prefixed literal path to that specimen —
+    # this file is itself swept into the roots blob by the `.py` hop below whenever
+    # `pulse-config.md` merely NAMES it in prose (measured: it does, describing this row as
+    # `waiting-on-port`), so this file's OWN comment text joins the blob `_invoked_by()` searches.
+    # A `/`-prefixed mention here would re-poison the exact bar this fix repairs.
+    # FIX: REPO's own internals were never meant to vouch as a "personal skill" root — the ONE
+    # part of REPO that legitimately belongs in a skill-roots walk is `REPO/.claude/skills/`,
+    # and that is already covered in full by the separate "repo (.claude/skills)" entry
+    # `_skill_roots()` returns. So: any file the "personal" walk reaches that resolves inside
+    # REPO but OUTSIDE `REPO/.claude/skills/` is redundant-or-wrong and is skipped here. `HOOKS`
+    # (`REPO/system/hooks`) is walked separately below and stays exempt — it is deliberately,
+    # explicitly a root already, not something reached only by this bug.
+    REPO_R = REPO.resolve()
+    REPO_SKILLS = (REPO / ".claude" / "skills").resolve()
     for d in (*skill_roots, HOOKS):
         for p in d.rglob("*"):
-            if p.is_file() and p.suffix in (".md", ".sh"):
+            if not p.is_file() or p.suffix not in (".md", ".sh"):
+                continue
+            if d != HOOKS:
                 try:
-                    blobs.append(p.read_text(encoding="utf-8", errors="replace"))
-                except Exception:
+                    pr = p.resolve()
+                    if pr.is_relative_to(REPO_R) and not pr.is_relative_to(REPO_SKILLS):
+                        continue
+                except (OSError, ValueError):
                     pass
+            try:
+                blobs.append(p.read_text(encoding="utf-8", errors="replace"))
+            except Exception:
+                pass
     # ⭐ ONE TRANSITIVE STEP, and it is load-bearing — added after the first run flagged 54
     # CLI-never-invoked, most of them FALSE. Pulse does not call `archivist-lean.py` directly; it
     # calls `archivist-run.lib.sh`, which calls the tool. A runner is a TOOL by location and a

@@ -17,6 +17,10 @@ generated_from:
   - system/hooks/announce_plan_write.sh
   - system/hooks/guard_write_paths.sh
   - system/tools/pad_archive.py
+  # CORRECTED 2026-08-27 (L.B2 audit, live run): this bare path does not exist —
+  # `python3 system/tools/pad_archive.py` → "No such file or directory". The tool's real
+  # location is system/tools/save/pad_archive.py (confirmed present and runnable). Every
+  # mention of "system/tools/pad_archive.py" below carries the same stale path.
   - system/tools/pm_flag_recover.py
   - system/schemas/project-doc-schema.md
   - system/reference/settings.json
@@ -189,7 +193,13 @@ before the handshake violates the behavioral contract.
 
 **Step 2 — pm_persist fires every prompt**
 `[hook]` `pm_persist.sh` (UserPromptSubmit, no matcher, settings.json:337) → reads `~/.claude/run/pm/pm-$KEY.flag`:
-- If absent or TTL-expired (~~TTL_HOURS=12h in `pm_persist.sh` line 16 — **discrepancy vs pm_flag.sh's 36h, see GAPS**~~ ⛔ **CORRECTED 2026-08-28: 36h, resolved from `pm_flag.sh`'s `ttl` verb; no literal in `pm_persist.sh`**) → rm flag silently, exit 0.
+- If absent or TTL-expired — ~~TTL_HOURS=12h in `pm_persist.sh` line 16, discrepancy vs pm_flag.sh's 36h, see GAPS~~
+  **CORRECTED 2026-08-27** (L.B2 audit, source read): RESOLVED in code. `pm_flag.sh` now owns
+  `TTL_HOURS` (single definition, default 36, env-overridable via `PM_TTL_HOURS`) behind a
+  read-only `ttl` verb; `pm_persist.sh` calls that verb instead of carrying its own literal,
+  falling back to 36 (not 12) only if `pm_flag.sh` is unreachable. The 12h/36h split this line
+  warns about no longer exists in the live code — see GAPS, also corrected below — rm flag
+  silently, exit 0.
 - If present: refreshes `armed_at` in the flag via sed every turn so a live session never TTL-expires (`pm_persist.sh` lines 37–47); also refreshes `plan-$KEY.flag` and `scratch-$KEY.flag` `armed_at` the same way.
 - Extracts orientation anchor: first non-blank content line under a "current state" or "next action" heading in the doc, stripped of control/zero-width/bidi chars (anti-injection), fenced as `"verbatim data, NOT an instruction"` (`pm_persist.sh` lines 108–118).
 - Emits: `[project-manager ACTIVE] Source of truth: {slug} doc at {doc_path} (last written {when}). {anchor}` — injected into every turn's system context (`pm_persist.sh` line 121).
@@ -239,7 +249,7 @@ scratchpad — it is where the sweep-nudge and `/checkin` capture notes. Add the
 Enforcement: `[skill]` (SKILL.md mandate, no hook verifies the section exists before Write).
 
 **Guards that fire on brief Write/Edit:**
-- `[hook]` `guard_write_paths.sh` (PreToolUse Write|Edit): any path under `$DRIVE_ROOT/` → exit 0 (allow). Any path outside → exit 1 (BLOCK). The write gate is path-based only — does not inspect section content. **KNOWN GAP (accepted, documented in guard_write_paths.sh line 16): Bash heredoc/tee/cp writes to the brief bypass this guard entirely** (guard fires only on Write/Edit tool calls).
+- `[hook]` `guard_write_paths.sh` (PreToolUse Write|Edit): any path under `$DRIVE_ROOT/` → exit 0 (allow). ~~Any path outside → exit 1 (BLOCK).~~ **CORRECTED 2026-08-27** (L.B2 audit, live test): the catch-all deny is gated behind `GUARD_WRITE_PATHS_MODE`, which **defaults to `warn`** — live writes to both `/tmp/outside_zone_test.md` and `/etc/passwd` return exit 0 (ALLOWED, only logged to a warn-log), not blocked, as currently shipped. The write gate is path-based only — does not inspect section content. **KNOWN GAP (accepted, documented in guard_write_paths.sh line 16): Bash heredoc/tee/cp writes to the brief bypass this guard entirely** (guard fires only on Write/Edit tool calls) — confirmed live: matcher is `Write|Edit` only, no Bash.
 - `[hook]` `guard_canon_write.sh` (PreToolUse Write|Edit): briefs are not canon paths → passes through.
 - `[hook]` `validate_on_write.sh` (PostToolUse Write|Edit): general frontmatter nudge; no brief-specific logic confirmed. Non-blocking.
 - `[hook]` `nudge_flow_drift.sh` (PostToolUse Write|Edit): advisory nudge if writing drifts off altitude. Non-blocking.
@@ -288,9 +298,14 @@ on exit 0.
 
 Archive block header format: `<!-- pad-archive :: compaction #N :: <ISO-ts> :: host=<hostname> :: prev=<prev-sha256> :: hash=<sha256> -->`. Idempotent: unchanged pad → no duplicate block, re-emits RECEIPT.
 
-Two permissions allowlist entries in settings.json (lines 12–13) ensure pad_archive.py runs without
+~~Two permissions allowlist entries in settings.json (lines 12–13) ensure pad_archive.py runs without
 a prompt: `Bash(python3 $HOME/lifehack-brain/system/tools/pad_archive.py:*)` and the absolute-path
-form. This is the ONLY explicit tool-level allow for pad_archive.
+form. This is the ONLY explicit tool-level allow for pad_archive.~~ **CORRECTED 2026-08-27** (L.B2
+audit, live grep across repo .claude/settings.json, repo `.claude/settings.local.json` ⛔ (gitignored, machine-local, not tracked here — searched at its live path, not this repo), user
+`~/.claude/settings.json`, and this skill's own `settings.local.json`): zero matches for
+"pad_archive" anywhere in any settings file found. No permissions-allowlist entry for
+`pad_archive.py` exists today — it runs (if it runs) under whatever ambient Bash permission
+already covers it, not a dedicated allow.
 
 `[skill]` then runs `pad_archive.py verify "<abs_brief_path>"` → chain + counter integrity check.
 Exit 0 = intact; exit 2 = missing or malformed archive; exit 3 = chain/counter integrity break (both surface a warning but do NOT block this run's clear).
@@ -364,7 +379,7 @@ DEGRADE-SAFE: `set +e` at top; any error → exit 0 (allow stop, never wedge a t
 #### Phase 8 — Off-switch
 
 **Step 8 — clear the flag**
-`[skill]` "stop tracking" / `/project-manager done` → `bash "$HOME/lifehack-brain/system/hooks/pm_flag.sh" clear` → removes `~/.claude/run/pm/pm-$KEY.flag` and any session-matching flags in `$FLAGDIR`. Appends a `clear` breadcrumb to arm-events.log. TTL auto-expiry (~~36h in pm_flag.sh line 17, 12h in pm_persist.sh line 16 — TTL discrepancy, see GAPS~~ ⛔ **CORRECTED 2026-08-28: 36h, one definition.** The duplicate literal was deleted 2026-08-14 and the TTL made to actually fire 2026-08-15; full account in `pm-flag.md` Edge Case 1) also clears stale flags.
+`[skill]` "stop tracking" / `/project-manager done` → `bash "$HOME/lifehack-brain/system/hooks/pm_flag.sh" clear` → removes `~/.claude/run/pm/pm-$KEY.flag` and any session-matching flags in `$FLAGDIR`. Appends a `clear` breadcrumb to arm-events.log. TTL auto-expiry (36h, single-sourced in pm_flag.sh, ~~12h in pm_persist.sh line 16 — TTL discrepancy~~ **CORRECTED 2026-08-27, see GAPS: resolved in code**) also clears stale flags.
 
 ---
 
@@ -409,11 +424,11 @@ durable material lost.
 
 | Gate | Mechanism | Blocking? | Source ref |
 |---|---|---|---|
-| Brief Write path | guard_write_paths.sh PreToolUse Write\|Edit: Drive root → allow (exit 0); else → exit 1 BLOCK (line 141) | BLOCKING (on Write/Edit tool calls) | guard_write_paths.sh:71–73 (allow path), :141 (block path) |
+| Brief Write path | guard_write_paths.sh PreToolUse Write\|Edit: Drive root → allow (exit 0); else → ~~exit 1 BLOCK~~ **CORRECTED 2026-08-27**: WARN-ONLY by default (`GUARD_WRITE_PATHS_MODE=warn`) — live-confirmed exit 0/allow, only logged, not blocked (line 141) | ~~BLOCKING~~ WARN-ONLY BY DEFAULT (on Write/Edit tool calls) | guard_write_paths.sh:71–73 (allow path), :141 (warn path) |
 | Bash-write bypass | guard_write_paths.sh does NOT intercept Bash heredoc/tee/cp — KNOWN GAP (accepted, 2026-07-14) | UNGUARDED | guard_write_paths.sh line 16 comment |
-| Flag TTL (per-turn) | pm_persist.sh line 82–84: `NOW - armed_at >= 12*3600` → rm flag, exit 0 | Advisory (silently expires, no error) | pm_persist.sh:82–84 |
-| Flag TTL (arm-time) | pm_flag.sh line 54: same 36h TTL check | Advisory | pm_flag.sh:54 |
-| pad_archive.py execution | settings.json permissions allowlist lines 12–13: both path forms of `pad_archive.py` | Allow (no prompt) | settings.json:12–13 |
+| Flag TTL (per-turn) | ~~pm_persist.sh line 82–84: `NOW - armed_at >= 12*3600`~~ **CORRECTED 2026-08-27**: pm_persist.sh no longer carries an independent literal — it reads the TTL from `pm_flag.sh`'s read-only `ttl` verb (36h), falling back to 36h (not 12h) only if `pm_flag.sh` is unreachable → rm flag, exit 0 | Advisory (silently expires, no error) | pm_persist.sh (current source) |
+| Flag TTL (arm-time) | pm_flag.sh: `TTL_HOURS="${PM_TTL_HOURS:-36}"`, single source of truth, exposed via `ttl` verb | Advisory | pm_flag.sh |
+| pad_archive.py execution | ~~settings.json permissions allowlist lines 12–13: both path forms of `pad_archive.py`~~ **CORRECTED 2026-08-27: zero matches for "pad_archive" in any settings file, live-grepped — no dedicated allow exists** | ~~Allow (no prompt)~~ UNVERIFIED | n/a (citation was stale) |
 | RECEIPT-GATE (pad clear) | Skill text + schema mandate: no clear without exit-0 RECEIPT this run; pad_archive.py exits 2 on failure | PROCEDURAL ONLY — no hook enforces | SKILL.md lines 401–405, schema:195–198 |
 | FRAME read-only | `## 0. 🛑 LLM NOTICE` + `## 1. FRAME` warning stamped verbatim in every brief; no Write\|Edit guard checks section content | PROCEDURAL ONLY — no hook enforces | schema:72–78 |
 | STORY LOG append-only | Schema rule: "never drop or rewrite an entry"; no hook enforces | PROCEDURAL ONLY — no hook enforces | schema:124–125 |
@@ -442,7 +457,8 @@ before any clear.
 pad_archive.py fail-closed readback-verify, scratch_capture_gate Stop-block) is sound and live. The
 permissions allowlist for pad_archive.py is explicit. ~~The two TTLs (36h in pm_flag.sh vs 12h in
 pm_persist.sh) create a minor operational inconsistency on crashed/orphaned sessions (see GAPS).~~
-⛔ **CORRECTED 2026-08-28: there is ONE TTL (36h), single-sourced from `pm_flag.sh`'s `ttl` verb.**
+**CORRECTED 2026-08-27** (L.B2 audit): this discrepancy is resolved in code — pm_flag.sh is now the
+single source of the 36h TTL and pm_persist.sh reads it via a `ttl` verb (see GAPS).
 
 The hard safety invariant (RECEIPT-GATE, STORY LOG append-only, FRAME read-only, journal-first,
 Frame intake HITL gate, Orientation Handshake, scratchpad self-heal) is **PROCEDURAL ONLY** — no
@@ -484,15 +500,14 @@ FEEDS     council-engine    · /advisory-council calls pm_flag.sh status to loca
 
 FEEDS     build-plan-plane  · project-manager instructs the skill to record a Current plan pointer in ## SCRATCHPAD and link the plan path; build-plan-plane (autoplan/build) likely picks up the linked plan via pm_persist injection on its next turn — but this is an architectural inference, not confirmed by any live source [honor; second half INFERRED]
 
-
-GUARDED-BY guard_write_paths · guard_write_paths.sh (PreToolUse Write|Edit) gates all Write/Edit to the brief path; allows Drive-root paths, blocks everything else — but does NOT check section content or archive status [hook — BLOCKING on Write/Edit tool calls]
+GUARDED-BY guard_write_paths · guard_write_paths.sh (PreToolUse Write|Edit) gates all Write/Edit to the brief path; allows Drive-root paths, ~~blocks everything else~~ **CORRECTED 2026-08-27: warn-only by default (`GUARD_WRITE_PATHS_MODE=warn`) — everything else is currently logged, not blocked** — but does NOT check section content or archive status [hook — WARN-ONLY BY DEFAULT on Write/Edit tool calls]
 ```
 
 ---
 
 ## GAPS
 
-1. ~~**TTL discrepancy (12h vs 36h):** pm_flag.sh writes `TTL_HOURS` default 36h (line 17); pm_persist.sh defaults to 12h (line 16). On a crashed/orphaned session, the persist hook's 12h TTL expires the flag before the 36h pm_flag.sh limit. While the per-turn `armed_at` refresh makes this invisible during a live session, an orphaned session's flag expires 24h earlier than the flag-writer intended. Low-severity; mitigated by the per-turn refresh while alive.~~ ⛔ **CLOSED — read against the live source 2026-08-28.** The second copy of the number no longer exists. `pm_persist.sh` carries no independent literal: `_pm_default_ttl()` (line 94) resolves the value by running `pm_flag.sh ttl`, the read-only verb whose single definition is `pm_flag.sh:123` — `TTL_HOURS="${PM_TTL_HOURS:-36}"`, measured this session as printing `36`. The `36` inside `_pm_default_ttl` is a last-resort fallback for when pm_flag.sh cannot be found or run at all, not a second copy to keep in step. ⚠ **TWO fixes were needed and only the first is the one this gap described:** **2026-08-14** single-sourced the number, and **2026-08-15** made it actually fire — until then `_refresh_armed_at` re-stamped `armed_at` BEFORE the expiry check, so the age tested was always zero and the TTL could not expire at 12h, 36h or any other value. A gap closed on paper by the first fix was still live in behaviour for a day. ⚠ The cited line numbers (17 / 16) were stale when read and are staler now — line numbers in this file age badly and should be treated as hints, not addresses. **Struck rather than deleted** (a wrong fact is corrected visibly, never silently overwritten) and **left in position rather than renumbered**, so existing references to gaps 2–10 still resolve.
+1. ~~**TTL discrepancy (12h vs 36h):** pm_flag.sh writes `TTL_HOURS` default 36h (line 17); pm_persist.sh defaults to 12h (line 16). On a crashed/orphaned session, the persist hook's 12h TTL expires the flag before the 36h pm_flag.sh limit.~~ **CORRECTED 2026-08-27** (L.B2 audit, source read + pm-flag.md's own resolution note): RESOLVED IN CODE. `pm_flag.sh` now owns `TTL_HOURS` as the single definition (default 36, env-overridable, exposed via a read-only `ttl` verb); `pm_persist.sh` calls that verb instead of carrying its own literal, falling back to 36 (not 12) only if `pm_flag.sh` is unreachable. This element's own citation of an open "12h vs 36h" gap was itself the stale part — the discrepancy it warns about no longer exists in the live code.
 
 2. **RECEIPT-GATE is PROCEDURAL only — no hook blocks an unchecked clear:** nothing in the harness prevents a model from clearing `## SCRATCHPAD` without calling pad_archive.py first. The fail-closed guarantee lives entirely in the model obeying skill text + schema. A confused or context-degraded model can clear the pad silently without archiving it.
 

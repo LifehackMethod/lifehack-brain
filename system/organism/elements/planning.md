@@ -444,6 +444,12 @@ PROPOSES     backlog-authority     · the weekly's ranked output and the daily's
    AROUND it."* This is the `·gap` on this element's label: a reader who stops at the gloss would
    believe calendar writes are walled, and on a non-`gws` path they are not. **Disposition: unruled
    here** — no class-level ruling covers this element.
+   ⚠ **ADDED CONTEXT:** confirmed live — `guard_calendar_writes.sh`'s matcher is `Bash` only, no MCP-tool
+   matcher exists for it, so the hook mechanically cannot fire on an MCP calendar tool call at all.
+   But in THIS installation the bypass is not left wide open: `.claude/settings.json`'s
+   `permissions.deny` list separately denies `mcp__claude_ai_Google_Calendar__create_event` /
+   `update_event` / `delete_event` / `respond_to_event` outright — a different control (permissions,
+   not this hook) closes the gap this note describes, at least for this install.
 4. ⛔ **NEITHER SKILL HAS BEEN RUN END TO END IN THIS REPOSITORY.** The weekly is marked UNDER
    CONSTRUCTION and has never completed a run; the daily's Layer 1 is verified end to end but Layer 2
    is wired-not-run. The priming cron is scheduled but, like the other four rows added the same day,

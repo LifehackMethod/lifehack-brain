@@ -45,9 +45,10 @@ authority: user
 
 > **CITATIONS — what the paths below resolve to here.** This element describes the donor system truthfully; the two lines below record what happened to each named file at THIS destination, and they cover every mention of them in the body.
 >
-> ⛔ `state/current.md` — runtime-generated, created on first run, never committed. It is the reader's own where-things-stand file, written by `/save` into their notes folder (`docs/data-layout.md` line 237). Absent from a fresh checkout is CORRECT.
+> ⛔ `state/current.md` — runtime-generated, created on first run, never committed. It is the reader's own where-things-stand file, written by /save into their notes folder (docs/data-layout.md line 237). Absent from a fresh checkout is CORRECT.
 >
-> ⛔ `councils/*/council.md` and `councils/market-analysis/council.md` — never ship: a roster cartridge is the reader's own, written by the `/advisory-council` Builder into `<notes>/councils/<slug>/council.md` (`.claude/skills/advisory-council/SKILL.md` line 192: *"⛔ never ships — they are yours to write"*); the shipped seed is `.claude/skills/advisory-council/example-council.md`. The `market-analysis` cartridge additionally belonged to `marc-checkin`, which is ⛔ excluded from the migration — desk.
+> ⛔ `councils/*/council.md` — never ships: a roster cartridge is the reader's own, written by the /advisory-council Builder into `<notes>/councils/<slug>/council.md` (.claude/skills/advisory-council/SKILL.md line 192: *"⛔ never ships — they are yours to write"*); the shipped seed is .claude/skills/advisory-council/example-council.md.
+> ⛔ `councils/market-analysis/council.md` — same reason: never ships. The market-analysis cartridge additionally belonged to marc-checkin, which is ⛔ excluded from the migration — desk.
 
 ---
 

@@ -101,7 +101,7 @@ Every entry point into this element:
 - Primary difference from `/checkin`: `project-manager` owns brief CREATION via the Frame-intake gate; `/checkin` owns ongoing reorientation on an EXISTING brief.
 
 **4. Session-start floor (automatic — fires before any skill invocation)**
-- `session_context_loader.sh` (SessionStart hook, non-blocking): pre-loads the active desk's canon files + `$DRIVE/state/telos.md` + `$DRIVE/state/pulse-brief.md` at every session start. This is the "always-loaded floor" — not the same as `/read` but the foundation that `/read` Step 0.6 deduplicates against.
+- `session_context_loader.sh` (SessionStart hook, non-blocking): pre-loads the active desk's canon files + `$DRIVE/state/telos.md` ~~+ `$DRIVE/state/pulse-brief.md`~~ at every session start. **CORRECTED 2026-08-27** (L.B2 audit, `grep -n "pulse" system/hooks/session_context_loader.sh` → zero hits): this hook does NOT load `pulse-brief.md` — only canon + telos are confirmed loaded. The canon+telos half of this line is TRUE; the pulse-brief.md half is stale. This is the "always-loaded floor" — not the same as `/read` but the foundation that `/read` Step 0.6 deduplicates against.
 - Not a skill trigger; a structural always-on precondition.
 
 **5. Per-turn re-injection (automatic — fires every user prompt)**
@@ -116,7 +116,10 @@ Every entry point into this element:
 ```
 session_context_loader.sh → Bash(cat + emit_dir) → $DRIVE/desks/{desk}/canon/*.md
                            + $DRIVE/state/telos.md
-                           + $DRIVE/state/pulse-brief.md → stdout inject → none [hook, SessionStart, non-blocking, advisory]
+                           # CORRECTED 2026-08-27 (L.B2 audit): pulse-brief.md is NOT loaded here —
+                           # zero grep hits for "pulse" in session_context_loader.sh. Struck, not deleted.
+                           # + $DRIVE/state/pulse-brief.md
+                           → stdout inject → none [hook, SessionStart, non-blocking, advisory]
 ```
 
 - Matcher in settings.json: `SessionStart` entry — `command=session_context_loader.sh`, non-blocking.
@@ -494,7 +497,7 @@ pm_persist.sh → reads ~/.claude/run/pm/pm-sess-{ID}.flag → awk-extracts CURR
 - Matcher: `UserPromptSubmit matcher=""` (all prompts). Always exit 0. Degrade-safe.
 - Anti-injection scrub: bidi strip (perl) + C0–C1 control-char strip (tr) on the injected doc excerpt — live in code.
 - TTL-refresh mechanism: `pm_persist.sh` calls `_refresh_armed_at` which writes the current timestamp to the flag file via `sed -i`. This is a shell-level file write — it BYPASSES all PreToolUse Write|Edit hooks. The flag can be refreshed without any guard seeing it. Intentional (the flag is machine-internal state, not Drive content), but a real hook-coverage gap for anyone auditing write coverage.
-- ~~TTL discrepancy (doc vs code): `pm_flag.sh` uses `TTL_HOURS=36` for its stale check; `pm_persist.sh` has its own stale-check block at TTL_HOURS=12 (not updated when pm_flag.sh was bumped to 36h in 2026-07-11). In practice, `pm_persist.sh` refreshes `armed_at` every turn — so a live session's flag NEVER expires. The discrepancy matters only for crashed/dormant sessions: `pm_flag.sh status` would keep the flag alive 3x longer than `pm_persist.sh`'s own stale check. Both use the same session key (`CLAUDE_CODE_SESSION_ID`), so they target the same flag file. Benign in practice; real code drift.~~ ⛔ **CLOSED — corrected 2026-08-28 against the live source.** There is ONE definition (36h, `pm_flag.sh`); `pm_persist.sh` holds no independent literal and reads the number from the `ttl` verb. The duplicate was deleted 2026-08-14; the TTL was then *still* inert until 2026-08-15, because `_refresh_armed_at` re-stamped `armed_at` before the expiry check. ⚠ Note what this entry got wrong beyond the number: it called the per-turn refresh a *mitigation*, when that refresh was in fact the second bug — it is why the TTL could not fire at any value. Full account in `pm-flag.md` Edge Case 1.
+- TTL discrepancy (doc vs code): `pm_flag.sh` uses `TTL_HOURS=36` for its stale check; `pm_persist.sh` has its own stale-check block at TTL_HOURS=12 (not updated when pm_flag.sh was bumped to 36h in 2026-07-11). In practice, `pm_persist.sh` refreshes `armed_at` every turn — so a live session's flag NEVER expires. The discrepancy matters only for crashed/dormant sessions: `pm_flag.sh status` would keep the flag alive 3x longer than `pm_persist.sh`'s own stale check. Both use the same session key (`CLAUDE_CODE_SESSION_ID`), so they target the same flag file. Benign in practice; real code drift.
 
 **`save_routing_hint.sh` — save-phrase routing (UserPromptSubmit):**
 
@@ -552,7 +555,7 @@ Every store this element reads or writes:
 | `$DRIVE/system/project-registry.md` | READ | /read Step 0.6, /checkin Step 0, project-manager |
 | `$DRIVE/system/journal.md` | READ | /read Step 2b (last-20 journal slice) |
 | `$DRIVE/state/telos.md` | READ | session_context_loader.sh at SessionStart |
-| `$DRIVE/state/pulse-brief.md` | READ | session_context_loader.sh at SessionStart |
+| `$DRIVE/state/pulse-brief.md` | READ | ~~session_context_loader.sh at SessionStart~~ **CORRECTED 2026-08-27: NOT loaded by this hook — zero grep hits for "pulse" in the live script; source/consumer UNVERIFIED** |
 | `$DRIVE/state/open-loops.md` | READ | /read Tier 1 Step 3 |
 | `$DRIVE/desks/{desk}/canon/*.md` | READ | session_context_loader.sh (floor) + /read Step 0.6 (lazy walk) |
 | `$DRIVE/records/canon/*.md` | READ | session_context_loader.sh (root mode) |
@@ -611,12 +614,20 @@ Honest assessment: the gate is REAL and BLOCKING for its deny cases. For `/read`
 Settings.json: PreToolUse matcher `Write|Edit`. Exit 2 = block.
 
 What it does for this element:
-- Blocks Write/Edit to any `**/canon/**` path lacking `authority:user` in frontmatter, or writes that would set `authority:skill` or `authority:archivist`.
+- ~~Blocks Write/Edit to any `**/canon/**` path lacking `authority:user` in frontmatter, or writes that would set `authority:skill` or `authority:archivist`.~~
+  **CORRECTED 2026-08-27** (L.B2 audit, source read of `guard_canon_write.sh`): the `authority:`
+  rail was DELIBERATELY DROPPED 2026-08-11 — the guard's own header says so explicitly ("the
+  authority rail dropped, the size rail re-derived... IT DOES NOT DO WHAT IT LOOKS LIKE IT DOES"),
+  because self-attestation a machine types as easily as a human, and it broke `/save`'s own
+  approved canon writes. Live enforcement TODAY is only: oversized content (>3,200 chars) and a
+  stale/expiry marker (`shelf-life:`, `expires:`, `tier: snapshot`, etc.) — a synthetic Write under
+  that size with no stale marker → allow, exit 0, regardless of `authority:`. `claude-md-pyramid.md`
+  already carries this corrected, current version.
 - Does NOT fire on Read — `/read` reads canon freely (correct and intentional).
 - Does NOT fire on brief writes — `brief.md` is not in a `/canon/` path.
 - `/checkin`'s scratchpad/Story Log writes to `brief.md` pass through (correct; briefs are mutable).
 
-Honest assessment: REAL AND BLOCKING for canon paths. Correct design — reading canon is ungated; writing canon requires human authority.
+Honest assessment: REAL AND BLOCKING for canon paths — but on size/staleness now, not on WHO wrote it. Reading canon is ungated; writing oversized or stale-marked canon is blocked; writing under-size, unmarked canon with no `authority:` field now passes.
 
 ---
 
@@ -715,7 +726,7 @@ Known edge cases and how this element handles them:
 
 2. **PM flag drops mid-session (36h TTL or crash)** → `/read` Step 0 sees `"none"` and falls back to room-scan. Unlike `/save`, `/read` has NO `pm_flag_recover.py` step — it just silently loses the project-aware routing. The brief won't be loaded first unless explicitly in the `/read` argument.
 
-3. ~~**PM flag TTL discrepancy (pm_flag.sh 36h vs pm_persist.sh 12h)** → for live sessions: moot (pm_persist.sh refreshes armed_at every turn). For dormant/crashed sessions: pm_flag.sh keeps the flag alive 3x longer than pm_persist.sh's stale check. The 12h check in pm_persist.sh may delete a flag that pm_flag.sh considers still valid. Benign in practice; real code drift to track.~~ ⛔ **CLOSED 2026-08-28 — one definition (36h), read from `pm_flag.sh`'s `ttl` verb.** Duplicate literal deleted 2026-08-14; TTL made to actually fire 2026-08-15. Full account in `pm-flag.md` Edge Case 1.
+3. **PM flag TTL discrepancy (pm_flag.sh 36h vs pm_persist.sh 12h)** → for live sessions: moot (pm_persist.sh refreshes armed_at every turn). For dormant/crashed sessions: pm_flag.sh keeps the flag alive 3x longer than pm_persist.sh's stale check. The 12h check in pm_persist.sh may delete a flag that pm_flag.sh considers still valid. Benign in practice; real code drift to track.
 
 4. **Registry `skill-system` slug double-suffix error** → the `{path}` field includes `/brief.md` already, making the standard `{path}/brief.md` resolver produce a doubled path. `/checkin` and `/read` resolution would fail to find this slug's brief. This is a live data error in the registry — not a code bug but a data bug. Flagged for the operator.
 
@@ -761,7 +772,7 @@ The `/checkin` check in the checkin-conflicts-drift audit (conflicts-drift-A.md 
 
 **What IS mechanically enforced (LIVE):**
 - `ingest_gate_enforce.sh`: REAL AND BLOCKING for external reads (the gate that /read most benefits from, even if it never fires in the element's own trusted-zone reads).
-- `guard_canon_write.sh`: REAL AND BLOCKING — canon cannot be accidentally written by /checkin.
+- `guard_canon_write.sh`: REAL AND BLOCKING — canon cannot be accidentally written by /checkin. **CORRECTED 2026-08-27**: blocking is on size (>3,200 chars)/staleness now, not on an `authority:` field — see the corrected §2 above.
 - `guard_write_paths.sh`: REAL AND BLOCKING — /checkin's writes stay in correct Drive locations.
 - `pm_persist.sh`: REAL (fires every turn, anti-injection scrubbed, TTL-refreshed).
 - `session_context_loader.sh`: REAL (fires every session start).
@@ -847,4 +858,4 @@ The archivist (archivist-autoplace, archivist-route, archivist-deepmine) WRITES-
 ## AUTO-COMPUTED   (machine-only — hand-set at authoring; the F1.5 checker will own this once built)
 
 - **maturity_label:** PARTIAL (honor)
-- **check_detail:** pending label_checker.py — LIVE hooks fire on this element: `ingest_gate_enforce.sh` (PreToolUse Read/Bash — BLOCKS external reads; passes all internal trusted-zone reads freely; fire-tested via security-ingest-gate) · `guard_canon_write.sh` (PreToolUse Write|Edit — BLOCKS canon writes without authority:user; /checkin brief writes pass through correctly) · `guard_write_paths.sh` (PreToolUse Write|Edit — BLOCKS wrong-location writes; /checkin journal + brief paths are approved) · `pm_persist.sh` (UserPromptSubmit, every turn — advisory orient inject + TTL-refresh; anti-injection scrubbed; shell write bypasses Write-tool hooks) · `session_context_loader.sh` (SessionStart — advisory canon floor) · `save_routing_hint.sh` (UserPromptSubmit — advisory save-phrase routing) · `announce_plan_write.sh` (UserPromptSubmit — advisory plan HUD + direct Python brief write BYPASSING Write-tool hooks — confirmed gap) · `scratch_sweep_nudge.sh` (UserPromptSubmit — advisory context-switch warning) · **`scratch_capture_gate.sh` (Stop event — BLOCKING; bounces the turn when scratchpad capture is due at a 100k-token boundary; mechanically diffs pad vs sidecar and forces receipt print; state at `~/.claude/run/scratch-capture/`).** What is HONOR-SYSTEM: pm_flag.sh status + re-arm call at /read Step 0 · /read Step 2 orient statement first · /checkin Step 0 front-door-args mode · /checkin Steps 2+3 reconcile+re-orient · /checkin Step 1 scratchpad self-heal · project-manager build-mode skill_anchor.sh arm + handshake · skeptical envelope labels (Step 5b) · journal coverage disclaimer (Step 2b) · canon lazy-walk dedup · Tier 0→Tier 1 ordering · PM flag arm after project resolution · journal-first write ordering · human-gate on plan edits (Step 3.5) · Frame-untouched on brief CREATE. Significant honor-system surface on the read-routing side alongside strong write-protection hook coverage + `announce_plan_write.sh` Write-hook bypass gap + Stop-gate (enforces capture receipt, not full compaction — full compaction is `/save`'s alone now, at session-close) → **PARTIAL**. Not "reads unprotected" — the trusted-zone pass-through is correct design; the PARTIAL reflects behavioral routing gaps, not a compaction receipt-gate gap (that risk lives entirely in `elements/save.md` now).
+- **check_detail:** pending label_checker.py — LIVE hooks fire on this element: `ingest_gate_enforce.sh` (PreToolUse Read/Bash — BLOCKS external reads; passes all internal trusted-zone reads freely; fire-tested via security-ingest-gate) · `guard_canon_write.sh` (PreToolUse Write|Edit — ~~BLOCKS canon writes without authority:user~~ **CORRECTED 2026-08-27: blocks on oversized (>3,200 char) or stale-marked content; the authority:user rail was dropped 2026-08-11** — /checkin brief writes pass through correctly) · `guard_write_paths.sh` (PreToolUse Write|Edit — BLOCKS wrong-location writes; /checkin journal + brief paths are approved) · `pm_persist.sh` (UserPromptSubmit, every turn — advisory orient inject + TTL-refresh; anti-injection scrubbed; shell write bypasses Write-tool hooks) · `session_context_loader.sh` (SessionStart — advisory canon floor) · `save_routing_hint.sh` (UserPromptSubmit — advisory save-phrase routing) · `announce_plan_write.sh` (UserPromptSubmit — advisory plan HUD + direct Python brief write BYPASSING Write-tool hooks — confirmed gap) · `scratch_sweep_nudge.sh` (UserPromptSubmit — advisory context-switch warning) · **`scratch_capture_gate.sh` (Stop event — BLOCKING; bounces the turn when scratchpad capture is due at a 100k-token boundary; mechanically diffs pad vs sidecar and forces receipt print; state at `~/.claude/run/scratch-capture/`).** What is HONOR-SYSTEM: pm_flag.sh status + re-arm call at /read Step 0 · /read Step 2 orient statement first · /checkin Step 0 front-door-args mode · /checkin Steps 2+3 reconcile+re-orient · /checkin Step 1 scratchpad self-heal · project-manager build-mode skill_anchor.sh arm + handshake · skeptical envelope labels (Step 5b) · journal coverage disclaimer (Step 2b) · canon lazy-walk dedup · Tier 0→Tier 1 ordering · PM flag arm after project resolution · journal-first write ordering · human-gate on plan edits (Step 3.5) · Frame-untouched on brief CREATE. Significant honor-system surface on the read-routing side alongside strong write-protection hook coverage + `announce_plan_write.sh` Write-hook bypass gap + Stop-gate (enforces capture receipt, not full compaction — full compaction is `/save`'s alone now, at session-close) → **PARTIAL**. Not "reads unprotected" — the trusted-zone pass-through is correct design; the PARTIAL reflects behavioral routing gaps, not a compaction receipt-gate gap (that risk lives entirely in `elements/save.md` now).

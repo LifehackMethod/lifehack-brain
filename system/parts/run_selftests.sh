@@ -12,8 +12,8 @@
 set -u
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-PASS=0; FAIL=0; MISSING=0
-FAILED_PARTS=""
+PASS=0; FAIL=0; MISSING=0; SKIPPED=0
+FAILED_PARTS=""; SKIPPED_PARTS=""
 
 echo "═══ parts library self-test gate ═══"
 echo
@@ -27,7 +27,18 @@ for f in "$HERE"/*.py; do
   fi
   if out="$(python3 "$f" --selftest 2>&1)"; then
     n="$(printf '%s' "$out" | grep -c '\[PASS\]')"
-    echo "  ✔ $name — $n checks"
+    # ⛔ A SKIPPED CHECK IS NOT A PASSED CHECK. The parts print a loud [SKIP] when a
+    # check cannot run (missing fixtures, a platform that lacks the syscall). This gate
+    # used to count only [PASS] and so reported a retired check as a clean pass — the
+    # "a partial nobody writes down becomes a pass by default" failure. Surface it.
+    sk="$(printf '%s' "$out" | grep -c '\[SKIP\]')"
+    if [ "$sk" -gt 0 ]; then
+      echo "  ✔ $name — $n checks, ⚠ $sk SKIPPED (not proven)"
+      printf '%s\n' "$out" | grep '\[SKIP\]' | sed 's/^/      /'
+      SKIPPED=$((SKIPPED + sk)); SKIPPED_PARTS="$SKIPPED_PARTS $name($sk)"
+    else
+      echo "  ✔ $name — $n checks"
+    fi
     PASS=$((PASS + 1))
   else
     echo "  ✘ $name — SELFTEST FAILED"
@@ -75,7 +86,7 @@ fi
 
 echo
 echo "─────────────────────────────────────"
-echo "parts passing: $PASS · failing: $FAIL · without a self-test: $MISSING"
+echo "parts passing: $PASS · failing: $FAIL · ⚠ checks SKIPPED: $SKIPPED · without a self-test: $MISSING"
 if [ "$FAIL" -eq 0 ] && [ "$MISSING" -eq 0 ] && [ "$ORPHAN_FAIL" -eq 0 ]; then
   echo "GATE: PASS — every part proved itself on both sides, and every part is reachable."
   exit 0

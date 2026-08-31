@@ -782,17 +782,37 @@ guards:
   # verified absent from this repo, deliberately, per this port's own instructions. ══
 
   - id: tasks-readonly-list-guard
-    label_claim: LIVE
+    label_claim: PARTIAL
     script: system/hooks/guard_tasks_writes.sh
     expect_block_exit: 2
     registered:
     - event: PreToolUse
       matcher: Bash
     violations:
-    # ⚠ Config-driven (see "WHAT CHANGED" above): the ids below are SYNTHETIC placeholders, not
-    # a real Google Tasks list. On a fresh, unconfigured install nothing matches the configured
-    # `goals_tasklist`, so this violation legitimately does NOT block yet — that is the honest
-    # limit of a fixture-testable-without-a-real-account guard, not a defect in the guard.
+    # ⚠ RE-VERIFIED 2026-08-21 (guard-fire-test-run.sh reported this LIVE claim as a DOWNGRADE to
+    # PARTIAL — investigated rather than silenced). The comment this replaces had the mechanism
+    # BACKWARDS. Traced through lib/tasks_guard.py's judge()/resolve_target() and confirmed by
+    # running both states directly against the guard:
+    #   · UNCONFIGURED (no goals_tasklist on file): judge() denies EVERY write outright, before
+    #     target resolution even runs ("a Google Tasks write, and no goals list is on file"). The
+    #     synthetic-id violation below WOULD block here — but for the blanket unconfigured-refuses-
+    #     everything rule, not because it recognised the goals list.
+    #   · CONFIGURED (a real goals_tasklist id on file — this machine's actual state): a literal
+    #     placeholder id can never equal the real configured id, so resolve_target() reads it as
+    #     "other" (some list that is not the protected one) and the write is correctly allowed —
+    #     for that literal id. This is the state the fixture below fails in, which is why the fire
+    #     test reports PARTIAL.
+    # The underlying guard logic is NOT weak: lib/tasks_guard.py's own embedded `--selftest` passes
+    # 20/20, and a manual fire against THIS machine's real configured goals_tasklist id (not
+    # committed anywhere — it is private config, never a repo literal) returned exit 2 with a full
+    # deny. What is actually PARTIAL is this FIXTURE — a synthetic placeholder id cannot, by
+    # construction, prove the "aimed at the real goals list" path on any install that already has
+    # one configured, and hardcoding a real id here would (a) leak private config into a repo that
+    # ships publicly and (b) still only work for the one install whose id happened to match. Until
+    # Feature-class tooling lets a fixture resolve the CURRENT install's real configured id at
+    # check-time (out of this manifest's own reach — label_checker.py / guard-fire-test-run.sh are
+    # a different file), PARTIAL is the honest, checker-provable label. Do not "fix" this by
+    # loosening the guard, and do not hand-restore LIVE without re-running the two checks above.
     - desc: delete on what would be the configured goals tasklist, once one is configured
       payload:
         tool_name: Bash

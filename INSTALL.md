@@ -31,6 +31,19 @@ than Claude Code — Codex, ChatGPT, Gemini, Cursor, a plain terminal, anything 
 is broken and nothing is your fault; this simply needs Claude Code. Get the Claude app, open its `Code`
 tab, and start again from this line.
 
+⚠ **If the answer is Cowork, that is its own case, not a plain stop.** This file's automated install —
+the folder-picking, the git clone, the restart proof, all of it — runs only in Claude Code and does not
+run in Cowork at all; do not attempt any step of it there. **But the thing this install produces IS
+portable:** every skill lives as its own self-contained folder — `.claude/skills/<name>/SKILL.md` plus
+whatever it ships alongside — and that is plain text and files, not a Claude-Code-only format. If
+Cowork's own interface offers a way to import or attach a skill or a knowledge file (check its project
+or workspace settings for that), a person can hand it that individual `SKILL.md` folder directly, one
+skill at a time, without running this installer. ⚠ **Say it exactly this way — as "check Cowork's own
+settings for an import option," not as a specific menu path** — Cowork's own UI is not something this
+file verifies, and naming steps here that turn out wrong would be worse than pointing them at the
+product itself. If nothing like that exists in what they're looking at, say so plainly and send them
+to Claude Code the way any other non-Claude-Code app is sent above.
+
 > **TO CLAUDE, OR WHOEVER IS READING THIS FILE:** ⛔ **Ask this question first, before you create a
 > folder, install anything, or run a single command.** Ask them plainly which app they are in — and if
 > you are not Claude Code yourself, say so and stop. ⭐ **This has to be the FIRST thing, because the
@@ -1603,10 +1616,18 @@ Windows too.
 test -f .claude/skills/ingest/SKILL.md && test -d .claude/agents && echo "FILES OK" || echo "FILES MISSING"
 ```
 
-**If `FILES OK`**, turn on the catch that keeps their own writing out of the repository:
+**If `FILES OK`**, turn on the catch that keeps their own writing out of the repository, and their
+secrets out of it too.
+
+⛔ **Set it ABSOLUTE, never the bare relative `system/githooks`.** `core.hooksPath` is local git config
+that a relative value resolves against WHICHEVER WORKTREE is pushing — a worktree checked out at a
+commit that predates a hook's introduction then has that hook simply absent from its own tree, and git
+treats a missing hook as a silent no-op. This is not theoretical: a 106-file push reached the public
+repo this way on 2026-08-30, with the pre-push hook never firing. Run this from inside the folder you
+just cloned, so `$(pwd)` resolves to it:
 
 ```bash
-git config core.hooksPath system/githooks && echo "SAFETY CATCH ON"
+git config core.hooksPath "$(pwd)/system/githooks" && echo "SAFETY CATCH ON"
 ```
 
 **Say what that did, in one plain sentence:** *"I've turned on a safety catch — before anything gets
@@ -2939,28 +2960,8 @@ failing silently.
 Without it, that one skill's screenshots fail outright; every other skill in this package is
 unaffected.
 
----
-
-# `/ship` NEEDS TO KNOW WHO YOU ARE — one file, before its first run
-
-If you ever use `/ship` to publish work to a public repository, its first run will refuse — on
-purpose. It has no idea yet what must never be published: your name, your handles, anything that
-would identify you. Nothing else in this package needs this file; skip this section entirely until
-you actually use `/ship`.
-
-**Make it once, before that first run:**
-
-```bash
-PYBIN="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
-cd "$(git rev-parse --show-toplevel)" && "$PYBIN" system/shipping-lane/identity_rules.py --write-example
-```
-
-**Say what that did, in one sentence:** it wrote a starter file at `<AI Brain>/config/ship-identity.md`
-— inside their own AI Brain, never inside this repository. Then open that file and swap the
-example names in it for your own, one per line.
-
-⚠ **This is not a workaround you can skip past — the lane fails closed instead.** Running `/ship`
-with no identity file does not quietly proceed without your personal check; it refuses every single
-time, and says exactly why. That is correct behaviour, not a bug: the alternative is a "clean" result
-with your own name still sitting in a file. Full detail is in `.claude/skills/ship/SKILL.md`, under
-**"FIRST RUN."**
+**That's the install.** `/ship` and the shipping lane behind it are not part of this section, and
+not something you need to set up: that machinery exists solely to keep the maintainer's own private
+terms out of the public copy of this repo when the maintainer publishes changes to it. It has no job
+in your install, your data, or your AI Brain — skip it, and if you ever see `/ship` mentioned
+elsewhere in this package, it isn't for you.

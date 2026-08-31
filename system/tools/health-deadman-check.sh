@@ -27,10 +27,103 @@
 # (Hospital / SELF-AUDIT) and hasn't landed in this repo. This script's own job is narrower and does
 # not need it: "is the sweep itself alive." A future Hospital port can extend this without needing to
 # touch the watcher's core contract.
+#
+# ⚠ T10.A3 OL-N1 ②, CORRECTING THE ABOVE: this script WAS calling notify-send.sh unconditionally,
+# every single run, for as long as the ERROR condition held — measured live: 46 sends in 46 hours
+# (hourly cron, every run in-fault fired). `~/.local/state/claudeops/faults.json` (this repo's own
+# equivalent: `~/.config/lifehack/faults.json`, via `shared/fault_ledger.py` below) carried ZERO
+# `health-deadman` keys, because nothing here ever wrote to it — the "24h gate" the org map
+# describes was never wired to THIS caller. `system/tools/fault_ledger.py` was ported
+# correct-and-callable (its own docstring says so) but nothing called `record_faults()` on a
+# cadence — this is that missing call. From now on: an ERROR condition alerts on the EDGE (first
+# time it's newly true — a human should hear about a new outage immediately) and then only once
+# per `fault_ledger.ESCALATE_AFTER_S`/`RE_ALERT_EVERY_S` (24h/24h) after that, using
+# `fault_ledger.due_for_escalation()` — the exact mechanism the ledger was built for. Recovery
+# (condition clears) reaps the row via `record_faults(..., active=[])`, so a NEW outage after a
+# recovery is correctly treated as new, not as a stale escalation timer.
 set -uo pipefail
 
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 THRESHOLD=2700   # 45 min. system-health runs every 5 min -> 9 consecutive misses = genuinely dead, not a blip.
+
+# ── Hook-plane regression guard (D1, found+fixed 2026-08-30) ─────────────────────────────────
+# WHY THIS LIVES HERE, NOT smoke-check.sh: smoke-check.sh is manual-only (grep of
+# system/pulse-config.md turns up no scheduled entry for it) — a defect it would catch sits
+# uncaught until a human happens to run it. This script is the one thing on this install that
+# genuinely runs UNATTENDED on its own crontab entry, independent of Pulse (see file header) —
+# the only home that actually re-checks this every hour with nobody watching.
+#
+# THE DEFECT THIS CATCHES: core.hooksPath is LOCAL git config (.git/config), never committed and
+# never shared. Set to a RELATIVE path ("system/githooks"), git resolves it against EACH
+# WORKTREE'S OWN toplevel — so a worktree checked out at a commit that predates a hook's
+# introduction has that hook simply MISSING on disk there, and git treats a missing hook as a
+# SILENT NO-OP: no error, no output, the push just goes through unguarded. A fresh clone or a new
+# machine that never runs the one-time absolute-path fix reopens this hole with zero symptoms.
+# Fix applied on this machine: `git config core.hooksPath <absolute path>/system/githooks`.
+_check_hooks_path() {
+  local hp
+  hp="$(git -C "$CODE_ROOT" config --get core.hooksPath 2>/dev/null || true)"
+  if [ -z "$hp" ]; then
+    echo "[health-deadman] core.hooksPath is UNSET — git falls back to .git/hooks, NOT this repo's tracked pre-push/pre-commit. Tracked hooks (including the public-push gate) will NOT run." >&2
+    return 1
+  fi
+  case "$hp" in
+    /*) ;;  # absolute — resolves the same regardless of which worktree/commit is checked out. Fine.
+    *)
+      echo "[health-deadman] core.hooksPath is RELATIVE ('$hp') — resolves against EACH WORKTREE'S OWN toplevel. A worktree checked out at a commit predating a hook's introduction will silently be missing it, and git fails OPEN (no error). Fix: git config core.hooksPath <absolute path to this repo>/system/githooks" >&2
+      return 1
+      ;;
+  esac
+  if [ ! -x "$hp/pre-push" ]; then
+    echo "[health-deadman] pre-push is not resolvable/executable at '$hp/pre-push' — the public-push gate cannot fire. FAIL." >&2
+    return 1
+  fi
+  return 0
+}
+
+if ! _check_hooks_path; then
+  bash "$CODE_ROOT/shared/notify/notify-send.sh" --source health-deadman --tags rotating_light --priority critical \
+    --identity "health-deadman-hookspath" \
+    --title "core.hooksPath regression — push gate may be fail-OPEN" \
+    --message "core.hooksPath is unset/relative, or pre-push is unresolvable from $CODE_ROOT. The public-push gate may not fire from every worktree. Fix: git config core.hooksPath <absolute path>/system/githooks, then re-run this check." \
+    2>/dev/null || true
+  echo "[health-deadman] HOOKSPATH CHECK FAILED — see message above. Not overriding the health-tile watch below; both conditions are reported independently." >&2
+  HOOKSPATH_BAD=1
+else
+  HOOKSPATH_BAD=0
+fi
+
+# ── OL-N1 ② gate: should THIS run actually alert, given the ledger's edge+24h-escalation rule? ──
+# args: <state: "missing"|"silent"|""(=healthy, clears both)>
+# Prints "1" (alert now) or "0" (stay quiet — already alerted, not yet due to escalate), and
+# durably records the fault's presence/absence either way. Best-effort: any failure here degrades
+# to "1" (alert) — a ledger outage must never be the reason a genuine dead-man goes silent.
+_deadman_gate() {
+  local state="$1"
+  python3 - "$CODE_ROOT" "$state" <<'PYEOF' 2>/dev/null || echo 1
+import sys, time
+code_root, state = sys.argv[1], sys.argv[2]
+sys.path.insert(0, f"{code_root}/system/tools")
+import fault_ledger as FL
+
+JOB = "health-deadman"
+now = time.time()
+d = FL.load()
+active = [(JOB, state)] if state else []
+was_active = FL.key(JOB, state) in d["faults"] if state else False
+d = FL.record_faults(d, active, now)
+should_alert = False
+if state:
+    if not was_active:
+        should_alert = True                      # edge: newly in fault -> alert immediately
+    elif FL.due_for_escalation(d, JOB, state, now):
+        should_alert = True                      # >=24h old AND >=24h since last alert
+    if should_alert:
+        FL.mark_alerted(d, JOB, state, now)
+FL.save(d)
+print(1 if should_alert else 0)
+PYEOF
+}
 
 # ── The notes root ───────────────────────────────────────────────────────────
 # Resolved fresh every run, same as every other tool. NOT-SET is a legitimate state on a fresh
@@ -58,6 +151,14 @@ DEADMAN_SUMMARY="ran; no verdict recorded"
 
 _deadman_on_exit() {
   local rc=$?
+  # Fold the hooksPath regression guard into this run's verdict: a broken push gate is at least
+  # as urgent as a stale health tile, and must not be silently overridden by an otherwise-healthy
+  # exit 0 from the tile-watching logic below.
+  if [ "${HOOKSPATH_BAD:-0}" = "1" ]; then
+    [ "$rc" -eq 0 ] && rc=1
+    DEADMAN_STATUS="ERROR"
+    DEADMAN_SUMMARY="$DEADMAN_SUMMARY | ALSO: core.hooksPath regression detected — see stderr above"
+  fi
   mkdir -p "$(dirname "$DEADMAN_TILE")" 2>/dev/null
   local tmp="${DEADMAN_TILE}.tmp"
   python3 - "$tmp" "$DEADMAN_TILE" "$DEADMAN_STATUS" "$rc" "$DEADMAN_SUMMARY" <<'PYEOF' 2>/dev/null
@@ -94,10 +195,13 @@ if [ ! -f "$HEALTH_JSON" ]; then
     # A real wedge — this install HAS reported before, and now the tile is simply gone (sweeper
     # wedged, or someone deleted it).
     DEADMAN_STATUS="ERROR"
-    bash "$CODE_ROOT/shared/notify/notify-send.sh" --source health-deadman --tags rotating_light --priority critical \
-      --title "Health monitor file MISSING" \
-      --message "_system-health.json is gone, and this install has reported before — the sweeper is wedged or the tile was deleted. Check the Pulse log + system-health-run.sh." \
-      2>/dev/null || true
+    if [ "$(_deadman_gate missing)" = "1" ]; then
+      bash "$CODE_ROOT/shared/notify/notify-send.sh" --source health-deadman --tags rotating_light --priority critical \
+        --identity "health-deadman-missing" \
+        --title "Health monitor file MISSING" \
+        --message "_system-health.json is gone, and this install has reported before — the sweeper is wedged or the tile was deleted. Check the Pulse log + system-health-run.sh." \
+        2>/dev/null || true
+    fi
   else
     # never-seen -> fresh install / system-health has simply never run yet -> silence, by design.
     DEADMAN_STATUS="OK"
@@ -127,9 +231,14 @@ DEADMAN_STATUS="OK"
 if [ "$AGE" -gt "$THRESHOLD" ]; then
   DEADMAN_STATUS="ERROR"
   DEADMAN_SUMMARY="ALARM: health monitor SILENT for $(( AGE / 60 ))min (limit $(( THRESHOLD / 60 ))min)"
-  bash "$CODE_ROOT/shared/notify/notify-send.sh" --source health-deadman --tags rotating_light --priority critical \
-    --title "Health monitor SILENT" \
-    --message "system-health has not emitted in $(( AGE / 60 ))min — Pulse or the sweeper may be wedged. Check the Pulse log + system-health-run.sh." \
-    2>/dev/null || true
+  if [ "$(_deadman_gate silent)" = "1" ]; then
+    bash "$CODE_ROOT/shared/notify/notify-send.sh" --source health-deadman --tags rotating_light --priority critical \
+      --identity "health-deadman-silent" \
+      --title "Health monitor SILENT" \
+      --message "system-health has not emitted in $(( AGE / 60 ))min — Pulse or the sweeper may be wedged. Check the Pulse log + system-health-run.sh." \
+      2>/dev/null || true
+  fi
+else
+  _deadman_gate "" >/dev/null   # healthy: reap any previously-active fault row (self-heal)
 fi
 exit 0

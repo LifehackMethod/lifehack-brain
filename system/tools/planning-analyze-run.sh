@@ -56,8 +56,8 @@ MODEL="claude-opus-4-8"          # external-content reader → OPUS (defense-in-
                                   # decision, not a personal setting — change the model here if desired.
 LENS_DIR="$CODE_ROOT/system/tools/planning-analysis"   # CODE (lens prompt files)
 # ⚠ The DATA PATH is deliberately still `desks/cal/` — code/jobs/tiles are renamed to `planning`,
-# the records directory is NOT (moving the operator's live records is his call, untaken). Do not
-# "complete" the rename here without his word.
+# the records directory is NOT (moving the operator's live records is their call, untaken). Do not
+# "complete" the rename here without their word.
 VAULT_ROOT="$DRIVE/desks/cal/state/raw-vault"          # CONTENT (the day's vault)
 WATCHDOG=900                     # 15-min ceiling per wave
 LENSES="big-rocks logistics cracks"
@@ -100,10 +100,12 @@ require_claude_token planning-analyze || exit 75
 load_gws_credentials_optional planning-analyze
 
 # ── single-instance lock ──
-LOCKDIR="/tmp/lifehack-planning-analyze.lock"
+LOCKDIR="/tmp/claudeops-planning-analyze.lock"
 cleanup(){ rm -rf "$LOCKDIR" 2>/dev/null; }
 if ! mkdir "$LOCKDIR" 2>/dev/null; then
-  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - $(stat -f %m "$LOCKDIR" 2>/dev/null || echo 0) ))" -gt 1800 ]; then
+  _lock_mtime="$(stat -c %Y "$LOCKDIR" 2>/dev/null || stat -f %m "$LOCKDIR" 2>/dev/null || echo 0)"
+  case "$_lock_mtime" in ''|*[!0-9]*) _lock_mtime=0 ;; esac
+  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - _lock_mtime ))" -gt 1800 ]; then
     rm -rf "$LOCKDIR"; mkdir "$LOCKDIR" 2>/dev/null || { echo "[planning-analyze] lock race — skip"; exit 0; }
   else echo "[planning-analyze] another run in progress — skip"; exit 0; fi
 fi

@@ -23,9 +23,10 @@ NOISE — ONE block, ids only, NO per-item prose (these carry nothing for YOUR a
 
 > ## ⛔ THE COVERAGE LEDGER — why it exists and why the id must be in backticks
 > **`OMIT NOTHING` was already this format's rule and had NO mechanism behind it.** On the real 2026-07-21
-> run, 28 email threads were read and **5 real signals were lost** — including a coaching client whose
-> husband was in the ER, on the exact lane the week's locked Win said to protect. Nobody could tell, because
-> a findings list orders what was *found* and is **silent about what was seen and dropped.**
+> run, 28 email threads were read and **5 real signals were lost** — including a lease-renewal deadline
+> buried in a thread of routine building-maintenance notices, on the exact lane the week's locked Win said
+> to protect. Nobody could tell, because a findings list orders what was *found* and is **silent about what
+> was seen and dropped.**
 > **The ledger is the fix: it makes your coverage a TRACE instead of a claim.** `fanout_completeness.py` runs
 > at the return boundary (Phase 0 step 3b) and set-diffs the union of all four agents' cited ids against the
 > exact id set the window handed you. **An uncited id reads as LOST and the run stops.**

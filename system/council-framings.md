@@ -17,7 +17,9 @@ updated_at: 2026-08-11
 > A roster is yours and changes; this is part of how the engine talks to an advisor, and it has to
 > exist on the day you install, because every skill that dispatches an advisor refuses to retype it.
 > ✅ `/advisory-council` is here now and reads this file.
-> ⏳ `/architect` is the second such caller and lands later in phase 3.
+> ✅ `/architect` is the second such caller and is here now too (SURVEY mode; COUNCIL mode — the mode
+> that actually reads this file — is separately blocked at this destination by a missing cartridge/
+> roster, not by this file; see the skill's own PORT NOTE).
 >
 > **WHAT A FRAMING IS.** It is the sentence that tells an advisor **what kind of thing they are being
 > handed** — a draft to improve, or a claim to defeat. It is not context and it is not a position; it
@@ -35,7 +37,9 @@ updated_at: 2026-08-11
 
 ### ARCHITECT — for the case where a professional's judgment is the deliverable
 
-⏳ Its caller, `/architect`, lands later in phase 3. Until then this block is here and unused, which
+✅ Its caller, `/architect`, is here now (SURVEY mode; COUNCIL mode is the caller of this block
+specifically, and it stays blocked at this destination by a missing cartridge/roster — see the
+skill's own PORT NOTE). Until COUNCIL mode is portable, this block stays here and unused, which
 is the correct state: the text is the ruling, and the skill is only one way of delivering it.
 
 > **This is our best thinking — and it is the best thinking of a NOVICE. We are asking for the best

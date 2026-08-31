@@ -229,6 +229,36 @@ import string
 import unicodedata
 from collections import Counter
 
+# ------------------------------------------------------------- personal-tier armed-ness
+#
+# ⛔ DEFECT (found 2026-08-28, an outside client's near-leak): `scrub.py --refuse-rules
+# PATH --rewrite-rules PATH` and push_gate.py's equivalent flags let a caller hand in an
+# ALREADY-COMPOSED refuse set and skip identity_rules.py entirely -- and a file carrying a
+# real name was reported CLEAN, because the refuse rules that run were never asked to
+# include anyone's identity. Armed-ness was a property of the CALL SITE (did this run
+# happen to go through identity_rules.effective_rule_files()?), not of the RULES
+# THEMSELVES -- so a report had no way to say "this run's personal tier was empty" and a
+# CLEAN verdict looked identical whether or not a single identity term was ever loaded.
+#
+# THE FIX: armed-ness is now read OFF THE RULES, every time, regardless of how they got
+# here -- composed by identity_rules.py just now, or handed in on the command line from a
+# file written yesterday. identity_rules.compile_term() is the ONLY place that mints a
+# "2-private" rule (see identity_rules.py's module docstring), so counting them is exact,
+# not a heuristic. Both scrub.py's run_scrub() and push_gate.py's run_gate() call
+# count_personal_tier() right after loading the refuse rules and REFUSE (CannotEvaluate)
+# at zero -- see each file's own comment at that call site for why zero can never become a
+# permissive default.
+PERSONAL_TIER = "2-private"
+
+
+def count_personal_tier(refuse_rules):
+    """How many of `refuse_rules` were compiled from someone's own identity file. Zero
+    means this run's REFUSE tier never saw a single identity term -- the exact shape of
+    the defect this constant's docstring describes, whether or not the caller SAID
+    --identity/--refuse-rules."""
+    return sum(1 for r in refuse_rules if r.get("tier") == PERSONAL_TIER)
+
+
 # --------------------------------------------------------------------- zero-width / BOM
 
 ZERO_WIDTH_CHARS = frozenset([
@@ -1179,19 +1209,6 @@ def selftest():
     tp_hits = scan_third_party_name_shape("His wife Fern handles the scheduling.\n")
     report("'wife Fern' is caught by the trigger-then-name shape",
            any(h["token"] == "Fern" for h in tp_hits), "hits: {}".format(tp_hits))
-    # ⛔ DO NOT "FIX" the WARNING-tier leak-scan noise these two names produce by adding
-    # them to FICTIONAL_FIXTURE_WORDS (.github/scripts/check_no_internal_leakage.py).
-    # "Marlowe" and "Rosalind" show up as third-party-name-shape WARNINGs when the whole-tree
-    # scanner walks this file -- but they are POSITIVE test cases here, not leaked names:
-    # FICTIONAL_FIXTURE_WORDS is read INSIDE scan_third_party_name_shape() itself, so any
-    # token in that set is silently excluded from detection before the assertions below ever
-    # run. Allowlisting "marlowe"/"rosalind" would make the production heuristic stop flagging
-    # them -- and would defang these exact assertions, which exist to prove the heuristic
-    # still catches the possessive-before-trigger and partner-NAME shapes. If this noise ever
-    # becomes intolerable, the correct fix is a SELF-REFERENCE path exclusion for this test
-    # block in the whole-tree scanner (WHOLE_TREE_SELF_REFERENCE_EXCLUDE_PREFIXES/PATHS in
-    # check_no_internal_leakage.py), mirroring the existing entry for
-    # system/shipping-lane/fixtures/ -- NOT a token-level allowlist entry.
     tp_hits2 = scan_third_party_name_shape("Marlowe's husband had an ER visit.\n")
     report("'Marlowe's husband' is caught by the possessive-before-trigger shape",
            any(h["token"] == "Marlowe" for h in tp_hits2), "hits: {}".format(tp_hits2))
@@ -1418,21 +1435,46 @@ def selftest():
 
         sub = _os.path.join(tmp, "real-sub")
         _os.makedirs(sub)
-        _os.symlink(sub, _os.path.join(tmp, "linked"))
-        _, _, sym2, _ = compute_tree_state(tmp)
-        report("a symlinked directory is reported, never silently descended into",
-               "linked" in sym2)
+        # ⛔ WINDOWS: os.symlink needs Administrator or Developer Mode there and raises
+        # OSError [WinError 1314] ("a required privilege is not held by the client")
+        # without it -- a hard crash of the whole selftest, not a report. This is a
+        # SKIP, never a silent pass: the check that a symlinked directory is reported
+        # rather than descended into never RAN, so it must not be counted as [PASS] --
+        # printed loudly as [SKIP], excluded from ok_all, and (per the mkfifo trap this
+        # mirrors) its own assertion is skipped WITH it, never left running against a
+        # tree that was never actually built.
+        try:
+            _os.symlink(sub, _os.path.join(tmp, "linked"))
+        except OSError as _symlink_exc:
+            print("  [SKIP] a symlinked directory is reported, never silently descended "
+                  "into -- THIS IS NOT A PASS ({})".format(_symlink_exc))
+        else:
+            _, _, sym2, _ = compute_tree_state(tmp)
+            report("a symlinked directory is reported, never silently descended into",
+                   "linked" in sym2)
 
         import stat as _stat
         fifo_tree = tempfile.mkdtemp(prefix="canon-treehash-fifo-")
         try:
             with open(_os.path.join(fifo_tree, "clean.md"), "w", encoding="utf-8") as fh:
                 fh.write("fine\n")
-            _os.mkfifo(_os.path.join(fifo_tree, "a.fifo"))
-            _, _, _, prob2 = compute_tree_state(fifo_tree)
-            report("a FIFO is reported as a problem file, never hashed",
-                   any(p["path"] == "a.fifo" and p["reason"] == "non-regular-file"
-                       for p in prob2), "problems: {}".format(prob2))
+            # ⛔ WINDOWS: os.mkfifo does not exist there at all (AttributeError: module
+            # 'os' has no attribute 'mkfifo') -- another hard crash, not a report. Same
+            # rule as the symlink case just above, and the SAME TRAP already found once:
+            # skipping the mkfifo call but leaving its assertion running reports the
+            # assertion's failure against a FIFO-less tree as exit 0 -- noise
+            # indistinguishable from a real regression. So the assertion lives INSIDE
+            # this try, never after it.
+            try:
+                _os.mkfifo(_os.path.join(fifo_tree, "a.fifo"))
+            except (AttributeError, OSError) as _fifo_exc:
+                print("  [SKIP] a FIFO is reported as a problem file, never hashed -- "
+                      "THIS IS NOT A PASS ({})".format(_fifo_exc))
+            else:
+                _, _, _, prob2 = compute_tree_state(fifo_tree)
+                report("a FIFO is reported as a problem file, never hashed",
+                       any(p["path"] == "a.fifo" and p["reason"] == "non-regular-file"
+                           for p in prob2), "problems: {}".format(prob2))
         finally:
             import shutil as _shutil
             _shutil.rmtree(fifo_tree, ignore_errors=True)

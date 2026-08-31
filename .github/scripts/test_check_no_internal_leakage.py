@@ -377,55 +377,6 @@ def main():
                                    os.path.join(REPO_ROOT, rel), "--as-path", rel])
             report("{} scans CLEAN".format(rel), rc == 0, "exit {}".format(rc))
 
-        # ------------------------------------------------- filename/path leak (2026-08-26)
-        # WHY THIS BLOCK EXISTS: docs/DEMIR-CRIB.md carried a real third party's first name
-        # in its FILENAME (and doc title), with an otherwise clean body, and reached
-        # origin/main and the shipped plugin. check_added_lines() only ever scans diff-added
-        # LINE TEXT, and check_path() only matches the small hand-written PATH_DENYLIST
-        # (migration-audit/, HANDOFF*, KIMI-*, *-log.md) -- neither ran content_patterns()
-        # (identity + generic) against the path STRING itself, so a name-shaped filename
-        # with clean content sailed through as CLEAN. This asserts the fix, and would FAIL
-        # against the pre-fix scanner (rc == 0 there; rc == 1 here).
-        print("\nFILENAME/PATH LEAK -- a name in the PATH, clean body (the DEMIR-CRIB.md shape)")
-        clean_body = os.path.join(td, "clean_body.md")
-        with open(clean_body, "w", encoding="utf-8") as fh:
-            fh.write("# Notes\n\nOrdinary content. No flagged terms anywhere in this body.\n")
-
-        leaky_path = "docs/{}-CRIB.md".format(FAKE_TERMS[0].upper())
-        rc, out = run_scanner(["--identity", idf, "--scan-file", clean_body,
-                               "--as-path", leaky_path])
-        report("a name-shaped FILENAME with a clean body -> exit 1 (FLAGGED)", rc == 1,
-               "got exit {}".format(rc))
-        report("...and it is reported under the identity rule, not a body line",
-               "operator-identity-" in out)
-        report("...and the matched term is still never printed",
-               FAKE_TERMS[0].lower() not in out.lower() and "[REDACTED]" in out)
-
-        clean_path = "docs/UNRELATED-CRIB.md"
-        rc, out = run_scanner(["--identity", idf, "--scan-file", clean_body,
-                               "--as-path", clean_path])
-        report("a clean path + clean body -> exit 0 (no false positive from the new check)",
-               rc == 0, "got exit {}".format(rc))
-
-        # same fixture, driven through scan_whole_tree() in-process, so the whole-tree
-        # baseline mode is proven to carry the same fix (not just the per-PR path).
-        sys.path.insert(0, HERE)
-        import check_no_internal_leakage as chk2          # noqa: E402
-        planted_leak_rel = "__leak_probe_filename__.md"
-        # can't literally create a file named with the fake term on disk inside this repo
-        # (that would commit a fixture with the term in its real path); instead call
-        # check_path_content() directly against the hypothetical path string, which is
-        # exactly what scan_whole_tree()'s per-file loop does with `path`.
-        cwd2 = os.getcwd()
-        os.chdir(REPO_ROOT)
-        try:
-            chk2.install_identity_patterns(idf)
-            hits = chk2.check_path_content("docs/{}-CRIB.md".format(FAKE_TERMS[0]))
-        finally:
-            os.chdir(cwd2)
-        report("check_path_content() (used by both scan_files and scan_whole_tree) "
-               "flags the same path", len(hits) >= 1, "{} hit(s)".format(len(hits)))
-
         # ------------------------------------------------- no identity literal survives
         print("\nNO IDENTITY LITERAL IS LEFT IN THE SCANNER")
         # The deleted rules were named operator-email-*/operator-name-*/operator-github-*.

@@ -31,28 +31,26 @@
 # WHY: 2026-08-04 — a ClaudeOps session ran `gh auth login` + `gh auth switch` to get
 #      admin on the NEW student-product repo (LifehackMethod/lifehack-brain). `gh` holds
 #      ONE active account per host, so that flipped the account for EVERY window on the
-#      machine. A parallel session's security check then asked "is <owner>/<private-config-repo>
+#      machine. A parallel session's security check then asked "is <owner>/claudeops-config
 #      private?" and got `Could not resolve to a Repository` — INDISTINGUISHABLE from
 #      "the repo does not exist." It could not tell contained from exposed, and had to
 #      route around gh entirely with an unauthenticated probe. A privacy check that fails
 #      OPEN and SILENT is the exact failure class this system exists to prevent.
 # GUARDS: any Bash command that MUTATES global `gh` auth state — `gh auth login`,
-#      `gh auth logout`, `gh auth refresh`, and `gh auth switch` to any account other than the
-#      operator's own (configured via CLAUDEOPS_GH_USER; unset means every switch is guarded,
-#      no exception). Read-only `gh auth status` is untouched. Blocks ONLY when the session
+#      `gh auth logout`, `gh auth refresh`, and `gh auth switch` to any account that is
+#      not `<the owner account>`. Read-only `gh auth status` is untouched. Blocks ONLY when the session
 #      is working inside the ClaudeOps zone (the clone or the Drive _ClaudeOps spine); a
 #      session launched from the student-product folder is NOT blocked.
-#      `gh auth switch --user <CLAUDEOPS_GH_USER>` is ALLOWED when that env var is set — that
-#      is the REPAIR direction, and a guard that blocks its own recovery path is a trap.
+#      `gh auth switch --user "$OWNER_GH_USER"` is ALLOWED — that is the REPAIR direction, and a
+#      guard that blocks its own recovery path is a trap.
 # REDIRECT: never change global state for a one-off. Pass the token for that single command:
 #      `GH_TOKEN=<lifehack-token> gh repo edit LifehackMethod/lifehack-brain --visibility private`
-#      To restore ClaudeOps state: `gh auth switch --user <CLAUDEOPS_GH_USER>` (allowed when
-#      that env var names your own account; not blocked).
+#      To restore ClaudeOps state: `gh auth switch --user "$OWNER_GH_USER"` (allowed, not blocked).
 #      If you genuinely need a persistent switch, the USER runs it themselves with `!`.
 # SIGNPOST: the rule lives in system/sops/hook-sop.md (WHEN) + system/hook-contract.md
 #      (mechanics) + CLAUDE.md → "Code vs Content" (identity separation). Incident recorded
 #      in state/projects/cowork-migration/brief.md → STORY LOG 2026-08-04. Change the RULE
-#      there with the operator's sign-off — never weaken this file to make one command fit.
+#      there with the owner's sign-off — never weaken this file to make one command fit.
 # FAIL_POSTURE: closed
 # UPDATED: 2026-08-04
 # ─────────────────────────────────────────────────────────────────────────────
@@ -90,6 +88,25 @@ _HOOKDIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd -P)"
 # $0 cannot be resolved.
 THIS_REPO_ROOT="${_HOOKDIR%/system/hooks}"
 [ -n "$THIS_REPO_ROOT" ] && [ -d "$THIS_REPO_ROOT/system/hooks" ] || THIS_REPO_ROOT="${CLAUDE_PROJECT_DIR:-}"
+# ⛔ FAIL-OPEN, found 2026-08-28: $0-relative resolution identifies where THIS SCRIPT FILE lives,
+# not where the session's project lives. Those are the same directory for the private/source copy
+# (registered by its own on-disk path), but they DIVERGE for the plugin-distributed copy: $0 there
+# is always the plugin's install dir (e.g. ~/.claude/plugins/cache/lifehack-brain/lifehack-brain/
+# 0.3.13/...), which is itself a real repo WITH a system/hooks dir -- so the validity check above
+# passes and THIS_REPO_ROOT silently locks onto the plugin cache instead of ever falling back to
+# CLAUDE_PROJECT_DIR. A session working from any real project then matches none of CLONE_ROOT,
+# DRIVE_ROOT or THIS_REPO_ROOT and falls through the case statement's `*) exit 0`, unguarded.
+# Fix: treat CLAUDE_PROJECT_DIR as an ADDITIONAL candidate zone root, not merely a fallback value
+# for THIS_REPO_ROOT -- it is the harness's own record of the session's actual project directory,
+# which is exactly the signal a plugin-distributed copy needs (the T2.2 note above is about a
+# DIFFERENT guard needing its OWN DECLARING repo; this guard needs to know the SESSION's repo, and
+# CLAUDE_PROJECT_DIR is that). Adding it only widens what matches -- it cannot un-match anything
+# $0-derived resolution already caught, so the private-copy behaviour proven correct 2026-08-23 is
+# unchanged.
+PROJECT_DIR_ROOT=""
+if [ -n "${CLAUDE_PROJECT_DIR:-}" ] && [ -d "${CLAUDE_PROJECT_DIR}/system/hooks" ]; then
+  PROJECT_DIR_ROOT="$CLAUDE_PROJECT_DIR"
+fi
 # --- Drive spine root: resolved, never typed -------------------------------------
 # The Google Drive mount directory is named `GoogleDrive-<account address>`, so a
 # literal Drive path here would write a real email address into the repo (shipping-lane
@@ -109,6 +126,7 @@ DRIVE_ROOT="$(_claudeops_drive_root)"
 
 case "$SESSION_CWD" in
   "$CLONE_ROOT"|"$CLONE_ROOT"/*|"$DRIVE_ROOT"|"$DRIVE_ROOT"/*|"$THIS_REPO_ROOT"|"$THIS_REPO_ROOT"/*) ;;
+  "$PROJECT_DIR_ROOT"|"$PROJECT_DIR_ROOT"/*) [ -n "$PROJECT_DIR_ROOT" ] || exit 0 ;;
   *) exit 0 ;;
 esac
 
@@ -118,13 +136,14 @@ if ! echo "$COMMAND" | grep -qE '(^|[[:space:]]|/|;|&&|\|\|)gh[[:space:]]+auth[[
   exit 0
 fi
 
-# --- ALLOW the repair direction: switching BACK to the operator's own identity -----
-# Configurable, never hardcoded -- CLAUDEOPS_GH_USER names the account this installation
-# treats as "home". Unset means there is no special-cased repair account: every switch
-# is guarded, no exception (still just a speed bump -- see the header banner above).
-if [ -n "${CLAUDEOPS_GH_USER:-}" ] && echo "$COMMAND" | grep -qE "gh[[:space:]]+auth[[:space:]]+switch[[:space:]]+.*--user[[:space:]]+${CLAUDEOPS_GH_USER}([[:space:]]|\$|;)"; then
+# --- ALLOW the repair direction: switching BACK to the ClaudeOps identity ------
+# The owner account is NOT baked in: it comes from the environment, so no real handle ships.
+# FAIL_POSTURE: closed -- if LIFEHACK_OWNER_GH_USER is unset this allow-case simply does not
+# fire, and the block below stands. Never allow-on-missing-config.
+OWNER_GH_USER="${LIFEHACK_OWNER_GH_USER:-}"
+if [ -n "$OWNER_GH_USER" ] && echo "$COMMAND" | grep -qE "gh[[:space:]]+auth[[:space:]]+switch[[:space:]]+.*--user[[:space:]]+${OWNER_GH_USER}([[:space:]]|$|;)"; then
   exit 0
 fi
 
-printf '%s\n' 'BLOCKED: this command MUTATES GLOBAL `gh` auth state from inside a ClaudeOps session. WHY: gh holds ONE active account per host, so switching here silently re-points EVERY open window. On 2026-08-04 exactly this made a parallel privacy check return "Could not resolve to a Repository" — indistinguishable from "does not exist" — so a session could not tell whether claudeops-config was private or public. A security check that fails open and silent is the failure class this system exists to prevent. REDIRECT: do NOT change global state for a one-off — pass the token for that single command instead: `GH_TOKEN=<lifehack-token> gh repo edit LifehackMethod/lifehack-brain --visibility private`. To restore ClaudeOps state, `gh auth switch --user <CLAUDEOPS_GH_USER>` is ALLOWED and not blocked when CLAUDEOPS_GH_USER names your own account. If you truly need a persistent switch, ask the USER to run it themselves with the `!` prefix. RULE: system/sops/hook-sop.md + system/hook-contract.md + CLAUDE.md "Code vs Content"; incident in state/projects/cowork-migration/brief.md STORY LOG 2026-08-04. Change the rule there with sign-off — never weaken the guard to fit one command.' >&2
+printf '%s\n' 'BLOCKED: this command MUTATES GLOBAL `gh` auth state from inside a ClaudeOps session. WHY: gh holds ONE active account per host, so switching here silently re-points EVERY open window. On 2026-08-04 exactly this made a parallel privacy check return "Could not resolve to a Repository" — indistinguishable from "does not exist" — so a session could not tell whether claudeops-config was private or public. A security check that fails open and silent is the failure class this system exists to prevent. REDIRECT: do NOT change global state for a one-off — pass the token for that single command instead: `GH_TOKEN=<lifehack-token> gh repo edit LifehackMethod/lifehack-brain --visibility private`. To restore ClaudeOps state, `gh auth switch --user "$OWNER_GH_USER"` is ALLOWED and not blocked. If you truly need a persistent switch, ask the USER to run it themselves with the `!` prefix. RULE: system/sops/hook-sop.md + system/hook-contract.md + CLAUDE.md "Code vs Content"; incident in state/projects/cowork-migration/brief.md STORY LOG 2026-08-04. Change the rule there with sign-off — never weaken the guard to fit one command.' >&2
 exit 2

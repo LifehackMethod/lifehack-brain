@@ -591,7 +591,7 @@ def _run_self_tests():
     SYNTHETIC_TASKS = [
         {
             "id": "test_task_001",
-            "title": "Review the $125k SOW",
+            "title": "Review the $40k SOW",
             "notes": "Due before the client call on Friday.",
             "status": "needsAction",
             "due": "2026-07-11T00:00:00.000Z",
@@ -608,7 +608,7 @@ def _run_self_tests():
         },
         {
             "id": "test_task_003",
-            "title": "Schedule the skydive coaching session",
+            "title": "Schedule the tutoring sessions",
             "status": "needsAction",
             "updated": "2026-07-08T15:00:00.000Z",
             "_list_id": "tasklist_xyz",
@@ -634,7 +634,7 @@ def _run_self_tests():
             assert rec is not None, "record not written"
             assert rec["state"] == "active", f"expected state=active, got {rec['state']}"
             assert rec["item_type"] == "task"
-            assert rec["payload"]["title"] == "Review the $125k SOW"
+            assert rec["payload"]["title"] == "Review the $40k SOW"
             ok("new-task — written as state=active")
         except Exception as e:
             fail("new-task", f"{e}\n{traceback.format_exc()}")
@@ -668,11 +668,11 @@ def _run_self_tests():
             import copy
             task_updated = copy.deepcopy(SYNTHETIC_TASKS[2])
             task_updated["updated"] = "2026-07-10T09:00:00.000Z"  # newer timestamp
-            task_updated["title"] = "Schedule the skydive coaching session (UPDATED)"
+            task_updated["title"] = "Schedule the tutoring sessions (UPDATED)"
             action, ok_flag = _mod._process_task(task_updated, verbose=False, dry_run=False)
             assert "WRITE" in action, f"expected WRITE, got: {action}"
             rec = _mod._load_record("tasklist_xyz__test_task_003")
-            assert rec["payload"]["title"] == "Schedule the skydive coaching session (UPDATED)"
+            assert rec["payload"]["title"] == "Schedule the tutoring sessions (UPDATED)"
             ok("delta-write — changed task re-written on updated timestamp change")
         except Exception as e:
             fail("delta-write", f"{e}\n{traceback.format_exc()}")
@@ -748,7 +748,7 @@ def _run_self_tests():
             _save_man = _mod.MANIFEST_ROOT
             _mod.STORE_ROOT = ml_store; _mod.MANIFEST_ROOT = ml_man
             _save_lt, _save_pt = _mod._list_tasklists, _mod._pull_tasks
-            _mod._list_tasklists = lambda: [("listA", "Work"), ("listB", "[ Consulting ]")]
+            _mod._list_tasklists = lambda: [("listA", "Work"), ("listB", "[ Vendor ]")]
             def _fake_pull(list_id, **kw):
                 if list_id == "listA":
                     return ([{"id": "shared_id", "title": "A task", "status": "needsAction",
@@ -764,7 +764,7 @@ def _run_self_tests():
                     and recA["state"] == "active" and recB["state"] == "active"
                     and c["cold"] == 0 and c["lists"] == 2 and c["manifests"] == 2 and man_ok
                     and recA["payload"]["list_title"] == "Work"
-                    and recB["payload"]["list_title"] == "[ Consulting ]"
+                    and recB["payload"]["list_title"] == "[ Vendor ]"
                     and recA["payload"].get("web_view_link") == "https://tasks.google.com/a")
             ok("ct35:multi-list-union — 2 lists w/ same task-id: no collision, no false-cold, manifests + list_title") \
                 if cond else fail("ct35:multi-list-union",

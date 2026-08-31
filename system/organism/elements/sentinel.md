@@ -80,7 +80,8 @@ describing the invariant, not enforcement code).
 
 **T3 — Pulse tile recompute (periodic twin, sentinel-health.py)**
 `system/tools/sentinel-health-run.sh` → `sentinel-health.py`. Pulse slot named `sentinel-health`,
-registered in `system/pulse-config.md:291` with a poll interval of ~1800s (how often Pulse runs the
+registered in `system/pulse-config.md:147` [line corrected 2026-08-27, lb2-ops-comms.md claim 89 — content
+(slot exists, interval 1800s) confirmed TRUE, the cited line was off by ~144 lines] with a poll interval of ~1800s (how often Pulse runs the
 slot). The tile itself carries `stale_after_s=86400` (24h freshness window, set by
 `sentinel-health.py:84` in the `emit_status()` call). Reads the
 full `sentinel-events.jsonl` ledger and rewrites `state/status/sentinel.json` (the same tile shape
@@ -172,6 +173,17 @@ ingest harness desk -run.sh  [actor]
                -> Bash: sentinel_quarantine.py --message-id <id>  [port: subprocess]
                   -> gws gmail users labels create + messages modify
                      [port: gws API → Gmail label, reversible]
+               > **⚠ CORRECTED 2026-08-27, lb2-controls.md claim 87/102 — this call never happens in this
+               > installation, Gmail or not.** `quarantine_message()` is ALSO gated on
+               > `QUARANTINE = os.environ.get("SENTINEL_QUARANTINE_TOOL", "")`, and that env var is set
+               > NOWHERE in the repo (grepped `SENTINEL_QUARANTINE_TOOL` across *.sh/*.py/*.json/*.md — only
+               > the one `os.environ.get` line itself matches). So even a real DANGER verdict WITH a valid
+               > Gmail `--message-id` never invokes `sentinel_quarantine.py` (which itself correctly
+               > implements the Gmail label call — verified separately) in the default configuration. Unlike
+               > the `SENTINEL_NOTIFY_DISABLE`/`SENTINEL_QUARANTINE_DISABLE` paths above, this default-off
+               > miss writes **no stderr message at all** — nothing signals the gap even to someone watching
+               > stderr. The note below ("--message-id absent (non-Gmail item) → no action") describes only
+               > half the gap: quarantine is a total no-op today, not a non-Gmail-only one.
              exit 2  → caller HALTS this item
 
      ingest_sentinel_check():  rc check  [ingest-run.lib.sh:234-249]

@@ -51,7 +51,7 @@ authority: user
 > or script logic — mandatory but no blocking hook) · `[honor]` (prose instruction only, no mechanical
 > enforcement) · `[human]` (deliberate HITL pause).
 >
-> ⏳ **Citation note — `unruled`.** `system/reference/settings.json` is named throughout this
+> ⏳ **Citation note — unruled.** `system/reference/settings.json` is named throughout this
 > element as the hook-registration source because that is where the donor repository keeps its
 > reference copy. It is on no ship list here and no ruling has placed it — a DEBT, not a pass.
 > The registrations themselves live in this repository at `.claude/settings.json`.
@@ -310,8 +310,13 @@ or `--query <gmail-query>` or `--label <label-id>`.
 8. **Attachment handling** — `extract_attachment_meta` walks MIME tree collecting
    `{filename, mimeType, size, attachmentId, message_id}` pointers ONLY. No attachment body downloads.
    Policy: metadata PERMITTED, bodies FORBIDDEN.
-9. **Sentinel audit** — `_audit_email_read(thread_id, lane, message_count)` appends a metadata-only row
-   to `~/.claude/logs/email-reads.jsonl` for every thread read. Content is NEVER logged.
+9. **Sentinel audit** — `_audit_email_read(thread_id, reader, message_count)` [param corrected 2026-08-27,
+   lb2-ops-comms.md claim 111: the second positional parameter is named `reader`, not `lane` — `lane`/
+   `LIFEHACK_DESK` is a separate, unrelated labeling concept, see item 10 below] appends a metadata-only row
+   to ~~`~/.claude/logs/email-reads.jsonl`~~ **`{resolved_brain_root}/state/status/email-reads.jsonl`**
+   (env-overridable via `EMAIL_READ_LOG`) [path corrected 2026-08-27, same claim — live-tested, the
+   `~/.claude/logs/...` path this line named is not where the file is written] for every thread read.
+   Content is NEVER logged (this half confirmed true by the same live test).
 10. **Lane label** — `_active_email_lane()` returns the active desk slug (env `TRUSTED_EMAIL_LANE` or
     `~/.claude/current_email_lane`) or None. The lane gate was RETIRED 2026-06-19 (the operator); lane now
     labels the audit row only. The universal sanitizer is the sole defense.
@@ -372,11 +377,18 @@ UNVERIFIED whether it still fires or is fully superseded by `ingest_gate_enforce
 
 ### THE HOOK PLANE — enforcement layer
 
-The unified enforcement gate is `ingest_gate_enforce.sh`, registered in `settings.json` as a
-`PreToolUse` hook on **four matchers**: `Bash`, `WebFetch`, `WebSearch`, `Read`.
+The unified enforcement gate is `ingest_gate_enforce.sh`, registered as a
+`PreToolUse` hook on ~~four matchers~~ **six matchers**: `Bash`, `WebFetch`, `WebSearch`, `Read`, `Grep`,
+`Glob`. [CORRECTED 2026-08-27, lb2-controls.md matcher-contradiction resolution — confirmed against BOTH
+the live installed plugin cache (`~/.claude/plugins/cache/lifehack-brain/lifehack-brain/0.3.13/hooks/hooks.json`)
+and the repo-tracked `system/hooks/registrations.json` ⛔ private-repo runtime state, not shipped in this public tree; both independently show `"Bash|WebFetch|WebSearch|Read|Grep|Glob"`.
+`ingest-gate.md` and `security-ingest-gate.md` already had this right — this file was the stale one.]
 
-**Registration confirmed** (`system/reference/settings.json` lines ~212–250): four separate PreToolUse
-blocks, each pointing to the same script with `statusMessage: "Unified ingest-gate enforcement..."`.
+**Registration confirmed**: ~~`system/reference/settings.json` lines ~212–250~~ — [CORRECTED 2026-08-27:
+`system/reference/settings.json` never existed in this repo, confirmed by `git log --all`; it is not a
+migration casualty, it is a path that was never real. The live registration lives in the plugin-cache
+`hooks/hooks.json` (six PreToolUse blocks, one per matcher token, all pointing at `ingest_gate_enforce.sh`)
+and is mirrored in the repo-tracked `system/hooks/registrations.json` ⛔ private-repo runtime state, not shipped in this public tree.]
 
 **What each case blocks (from the live script `system/hooks/ingest_gate_enforce.sh`):**
 
@@ -448,7 +460,7 @@ All triggers are mediated by the hook plane (blocking) or by skill/CLAUDE.md con
 | `/tmp/ingest_body/` (scratch) | Write + temp store | `email_convert.py` output dir | Same scratch-dir lock applies |
 | `state/email-summary/threads-v2/` | Write (janitor only) | `email_convert.py` via janitor | Single-writer invariant enforced by hook |
 | `state/item-store/` | Write (store writers only) | calendar/tasks store syncs | Single-writer invariant enforced by hook |
-| `~/.claude/logs/email-reads.jsonl` | Audit append | `email_convert.py` | Metadata-only rows; never content |
+| `{resolved_brain_root}/state/status/email-reads.jsonl` [path corrected 2026-08-27, claim 111 — was wrongly given as `~/.claude/logs/email-reads.jsonl`] | Audit append | `email_convert.py` | Metadata-only rows; never content |
 
 ---
 
@@ -545,11 +557,19 @@ heuristic injection scan) before the model ever reads it, and that a hook plane 
 filter structurally impossible, not just discouraged.
 
 **Current state → LIVE·gap:** the shared core and every per-channel tool are real, in daily use, and
-the unified `ingest_gate_enforce.sh` hook is registered on all four matchers
-(Bash/WebFetch/WebSearch/Read) with a fail-closed posture. The `·gap` is earned on two fronts: ~~the
+the unified `ingest_gate_enforce.sh` hook is registered on ~~all four matchers
+(Bash/WebFetch/WebSearch/Read)~~ **all six matchers (Bash/WebFetch/WebSearch/Read/Grep/Glob)** [CORRECTED
+2026-08-27, same matcher-count fix as above] with a fail-closed posture. The `·gap` is earned on
+several fronts: ~~the
 per-run egress domain seal (`SAFE_FETCH_ALLOWLIST`) exists in `safe_fetch.py`'s code but is never
-armed by any caller, so it provides zero actual restriction today~~; and a runtime-constructed URL
-(built from a variable or an IP literal) slips past the static-string domain gate entirely. Both are
+armed by any caller, so it provides zero actual restriction today~~; a runtime-constructed URL
+(built from a variable or an IP literal) slips past the static-string domain gate entirely; and — per
+lb2-controls.md claim 102, 2026-08-27 — a Bash command that indirects through a shell variable before the
+read (`P=/tmp/rdr/x; cat "$P"`) crosses the regex the hook uses to spot a raw scratch-path read, returning
+exit 0 where a literal `cat /tmp/rdr/x` would be blocked. This means "a hook plane blocks every raw-read
+bypass" (as this doc's summary line puts it) is not literally true — the per-channel machinery itself
+(sanitize.py, safe_fetch.py, safe_calendar.py, attachment-metadata stripping, etc.) is real and verified
+working; the gap is specifically in the Bash-matcher's ability to recognize an indirected path. Both are
 documented, known, and not silently glossed.
 
 ⚠ **CORRECTED 2026-08-15 — the first front, restated. `LIVE·gap` still holds and was NOT raised.** The seal

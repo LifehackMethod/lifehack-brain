@@ -1,0 +1,8 @@
+[
+  {
+    "id": "purpose-before-rails",
+    "before": {"id": "purpose", "pattern": "^## Purpose\\b"},
+    "after": {"id": "rails", "pattern": "^## Rails\\b"},
+    "why": "skill-building-sop.md III.5: a skill states what it IS (Purpose) before it states what it will NEVER do (Rails) -- the boundary can't be read before the thing it bounds is named. Stamped by new-skill.sh, checked by order_lint.py from birth (Law 1: ordering has a definite shape). Anchored to the real headings (not a bare word) because the template's own §0-traits comment says '...a clear voice + hard rails...' before the Rails heading ever appears -- a bare 'term' match on 'Rails' false-positives on that mention (caught live scaffolding zz-verify-throwaway, S6.1)."
+  }
+]

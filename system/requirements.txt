@@ -1,0 +1,43 @@
+# ClaudeOps Python requirements — the VERSIONED dependency manifest.
+#
+# Closes the "undeclared Python deps" hole (sibling of the scheduler manifest): the packages a
+# machine must have to run the scheduled Python tools headless were previously installed ad-hoc and
+# tracked nowhere, so a second machine could silently lack one (found 2026-07-02: the Air was missing
+# yfinance → the marc-health markets tile failed). Install on a machine with:
+#   /usr/bin/python3 -m pip install --user -r system/requirements.txt
+#
+# Pinned to the versions proven working on the Air (system Python 3.9). Expand as Part B enumerates
+# every tool import; keep it minimal + pinned.
+
+# marc-data-fetch.py — market data (SPY / ^VIX / rates via yfinance). Studio had it; Air was missing it.
+yfinance==1.2.0
+
+# safe_fetch.py, cp_utilities_ingest.py — HTML scraping (utility-portal session, safe fetch sanitizer)
+beautifulsoup4==4.15.0
+
+# safe_xlsx.py, safe_csv.py — Excel read/write via openpyxl
+openpyxl==3.1.5
+
+# safe_pdf.py — PDF text extraction
+pdfplumber==0.11.8
+
+# cp_utilities_ingest.py — HTTP requests for utility-portal scraping
+requests==2.32.5
+
+# vault-related.py, vault-theme-map.py — numeric clustering / cosine similarity
+numpy==2.0.2
+
+# backlog_groom.py, system-health.py — lazy YAML parse of desk-registry.yaml
+# (not yet installed on either machine; lazy import so tools run without it but registry
+# reads fall back gracefully — install to enable full desk-list resolution)
+PyYAML==6.0.2
+
+# safe_docx.py — Word .docx extraction (L0 sanitizer for uploaded Word files)
+python-docx==1.1.2
+
+# emporia_ingest.py — Emporia electric monitor (secondary meter, one machine ONLY)
+# STUDIO-ONLY / OPTIONAL: pyemvue talks to hardware installed only at the Studio.
+# Do NOT pip-install this under system Python on the Air — emporia_ingest.py runs under
+# the CP-tools venv ($HOME/.local/share/claudeops-venv/bin/python) and
+# pyemvue lives there. Listed here for inventory completeness.
+# pyemvue==0.18.9  # <- uncomment only in the claudeops-venv, not system Python

@@ -5,7 +5,14 @@ record_type: organism-element
 altitude: index-line
 ---
 
-Two hooks (`system/hooks/inject_compute_mechanically.sh` + `numbers_flag.sh`) that enforce the no-LLM-arithmetic rule introduced after a major finance error on 2026-06-26. Finance desks (Deryl/Clair-billing) auto-arm on session start; any session can arm manually via `/calculate`; a tight regex backstop catches obvious math tokens everywhere else. Both hooks are read-only inject observers — degrade-safe, never block. The `/calculate` skill is the interactive arm/disarm surface (see calculate element).
+~~Two hooks~~ **One hook** (`system/hooks/inject_compute_mechanically.sh`) plus one non-hook flag-CLI (`numbers_flag.sh`) that enforce the no-LLM-arithmetic rule introduced after a major finance error on 2026-06-26. Finance desks (Deryl/Clair-billing) auto-arm on session start; any session can arm manually via `/calculate`; a tight regex backstop catches obvious math tokens everywhere else. ~~Both hooks are read-only inject observers — degrade-safe, never block.~~
+> **CORRECTED: `numbers_flag.sh` is not itself a hook.** Fed with no subcommand argument, it
+> printed `usage: numbers_flag.sh arm | clear | status` and exited 2, not 0 — it does not degrade
+> the way a real PreToolUse/UserPromptSubmit hook would. Its own header confirms it is a
+> flag-arm/clear/status CLI invoked by the `/calculate` skill, not a per-turn inject observer;
+> this repo's own `.claude/settings.json` registers `inject_compute_mechanically.sh` as a hook —
+> `numbers_flag.sh` never appears there. It is the switch this gate reads, not a second injector.
+The `/calculate` skill is the interactive arm/disarm surface (see calculate element).
 
 ### INTENT: mechanically re-inject the no-LLM-arithmetic rule every turn so a session can't silently drift back to head-math after the 2026-06-26 finance error that motivated it.
 

@@ -20,6 +20,10 @@ generated_from:
   - system/tools/pm_flag_recover.py
   - system/tools/canon_conflict_scan.py
   - system/tools/pad_archive.py
+  # CORRECTED 2026-08-27 (L.B2 audit, live run): this bare path does not exist —
+  # `python3 system/tools/pad_archive.py archive ...` → "No such file or directory". The tool's
+  # real location is system/tools/save/pad_archive.py (confirmed present and runnable). Every
+  # "$HOME/lifehack-brain/system/tools/pad_archive.py" mention below carries the same stale path.
   - system/memory-system.md
   - system/organism/map-format-specs.md §0–§1
 created_at: 2026-07-22
@@ -74,7 +78,7 @@ Triggered when: `/save` is called with no argument; OR the argument contains "se
 Triggered when the argument contains "review". Same as v2.4 behavior: show everything before writing; wait for explicit approval at EVERY step (including normally-autonomous record writes). The CONFIRM-GATE becomes universal, not canon-gated.
 
 **4. Deep / ingestion mode**
-Triggered when the argument contains "deep" or "ingestion", OR when `/save` is invoked by the `world-model-builder` skill. Before writing ANY record (not just canon), render a detailed plain-language OUTLINE of every record about to be written and its exact destination, then WAIT for approval. The outline is EXPAND-not-compress: each record gets a full paragraph or several, not a one-liner. Render it via a BACKGROUND AGENT in the `/condense` voice — but here "condense" means plainer WORDS, never fewer: the outline is EXPAND-not-compress (SKILL.md lines 42/72 specify /condense, formerly /simplify, for the deep-mode outline; this is DISTINCT from Step 8's handoff, which correctly uses /explain). The style target is `skills/world-model-builder/PREVIEW-EXEMPLAR.md` exactly: (a) one-line origin, (b) full content point by point, (c) explicit KEEPER-vs-DATED split, (d) destination + do-no-harm action. The canon conflict/dedup scan (Step 4.6) still fires for every canon-bound item and its verdict appears in the same outline. The CANON-GATED PAUSE still applies; the "no abbreviated preview" hard rule means even the deep outline may not be reduced to one-liners. Batch all of a round's outlines in one panel; human approves/edits/kills per item; only then write.
+Triggered when the argument contains "deep" or "ingestion", OR when `/save` is invoked by the `world-model-builder` skill. Before writing ANY record (not just canon), render a detailed plain-language OUTLINE of every record about to be written and its exact destination, then WAIT for approval. The outline is EXPAND-not-compress: each record gets a full paragraph or several, not a one-liner. Render it via a BACKGROUND AGENT in the `/condense` voice — but here "condense" means plainer WORDS, never fewer: the outline is EXPAND-not-compress (SKILL.md lines 42/72 specify /condense, formerly /simplify, for the deep-mode outline; this is DISTINCT from Step 8's handoff, which correctly uses /explain). The style target is `skills/world-model-builder/PREVIEW-EXEMPLAR.md` exactly: (a) one-line origin, (b) full content point by point, (c) explicit KEEPER-vs-DATED split, (d) destination + do-no-harm action. The canon conflict/dedup scan (Step 4.6) still fires for every canon-bound item and its verdict appears in the same outline. The CANON-GATED PAUSE still applies; the "no abbreviated preview" hard rule means even the deep outline may not be reduced to one-liners. Batch all of a round's outlines in one panel; human approves/edits/kills per item; only then write.  ⛔ not shipped to the public subset — private-clone only.
 
 ---
 
@@ -266,7 +270,7 @@ The background capture-gate (`scratch_capture_gate.sh`) may not have caught the 
 
 ##### The panel style (WHERE-FIRST, two tiers — HARD)
 
-Imitate `skills/save/SAVE-PANEL-EXEMPLAR.md` exactly. Items are grouped by DESTINATION, not by type.
+Imitate `skills/save/SAVE-PANEL-EXEMPLAR.md` exactly. Items are grouped by DESTINATION, not by type.  ⛔ not shipped to the public subset — private-clone only.
 
 **TIER 1 — the placement glance (what SC-4 shows FIRST):**
 1. Group by destination bucket; the bucket is a HEADER, printed once.
@@ -364,11 +368,11 @@ Check the survivors for a `tier: canon-proposal` item:
 
 #### SC-5 — Write-only-survivors (session-close only)
 
-`skill → Write/Edit → records/ · state/ · records/proposals/ (canon candidates land here vetted:false — NOT a direct canon write) → write survivors [hook: validate_on_write nudges frontmatter · hook: guard_canon_write BLOCKS any direct canon write lacking authority:user]`
+`skill → Write/Edit → records/ · state/ · records/proposals/ (canon candidates land here vetted:false — NOT a direct canon write) → write survivors [hook: validate_on_write nudges frontmatter · hook: guard_canon_write ~~BLOCKS any direct canon write lacking authority:user~~ **CORRECTED 2026-08-27: blocks on oversized (>3,200 char) or stale-marked content — the authority:user rail was deliberately DROPPED 2026-08-11**]`
 
 **Job:** Write exactly the items the human confirmed in SC-4. Nothing more. Cut items are silently dropped — no stub, no placeholder.
 
-Write per tier, using the named section of `skills/save/WRITE-FORMATS.md`:
+Write per tier, using the named section of `skills/save/WRITE-FORMATS.md`:  ⛔ not shipped to the public subset — private-clone only.
 
 - **`tier: dated-record`** → write per **`WRITE-FORMATS.md` § "Dated record"** (frontmatter: `id`, `title`, `record_type: insight`, `desk`, `topic`, `created_at`, `updated_at`, `status: active`, `authority: skill`, `confidence`, `tier: dated-record`, `type`, `source_refs` REQUIRED).
 - **`tier: canon-proposal`** → write to `records/proposals/` with `vetted: false` per **`WRITE-FORMATS.md` § "Canon-proposal"** (frontmatter: `id`, `title`, `record_type: proposals`, `status: draft`, `authority: skill`, `vetted: false`, `confidence: INFERRED`). NEVER `vetted: true`.
@@ -571,7 +575,7 @@ Append a dated block to `$DRIVE/system/learnings.md`:
 
 #### Step 7c.5 — Technical-debt sweep IN
 
-`skill → Write → state/debt-ledger.md ## Open → sweep new debt IN [skill · hook: guard_ledger_discipline BLOCKS adding a RESOLVED/✅/DONE line to ## Open]`
+`skill → Write → state/debt-ledger.md ## Open → sweep new debt IN [skill · hook: guard_ledger_discipline BLOCKS adding a RESOLVED/✅/CLEARED/FIXED line to ## Open — **CORRECTED 2026-08-27: the live forbidden regex is \`✅|\\b(RESOLVED|CLEARED|FIXED)\\b\`; "DONE" is not matched, confirmed live**]`
 
 Scan this session for technical debt — anything left unfinished, deferred, or working-but-not-clean. What counts: deferred work, half-done migrations, workarounds and band-aids, stubbed/broken/untested pieces, stale references after a move, anything said "we should fix / clean up later."
 
@@ -739,9 +743,9 @@ Every gate `/save` operates, with its real enforcement strength.
 
 1. **`guard_write_paths.sh`** (PreToolUse Write|Edit) `[hook]` — the residency wall: blocks any write outside the Drive spine / approved `~/.claude/` paths; fails CLOSED on unparseable input. Fires on ALL of `/save`'s stores — the reason a `/save` write can't silently land in `/tmp` or the clone.
 
-2. **`guard_canon_write.sh`** (PreToolUse) `[hook]` — blocks any Write/Edit to `**/canon/**` lacking `authority:user` (or fast-stale). Canon can't be silently written. This is a live wall — the proposed-then-write flow exists because the WRITE is already walled.
+2. **`guard_canon_write.sh`** (PreToolUse) `[hook]` — ~~blocks any Write/Edit to `**/canon/**` lacking `authority:user` (or fast-stale)~~. **CORRECTED 2026-08-27** (L.B2 audit, source read): the `authority:user` rail was DELIBERATELY DROPPED 2026-08-11 (self-attestation a machine types as easily as a human; it broke `/save`'s own approved canon writes). Live enforcement today is only oversized content (>3,200 chars) and a stale/expiry marker. Canon can't be silently written past those two rails, but a synthetic Write under 3,200 chars with no stale marker and no `authority:` field passes, exit 0. This is a live wall on size/staleness — the proposed-then-write flow exists because the WRITE is already walled, just not on WHO wrote it.
 
-3. **`guard_ledger_discipline.sh`** (PreToolUse) `[hook]` — blocks adding a RESOLVED/✅/DONE line to a ledger's `## Open`. Forces deletion-not-annotation discipline on the debt ledger.
+3. **`guard_ledger_discipline.sh`** (PreToolUse) `[hook]` — blocks adding a RESOLVED/✅/CLEARED/FIXED line to a ledger's `## Open` (**CORRECTED 2026-08-27: "DONE" is not in the live forbidden regex**). Forces deletion-not-annotation discipline on the debt ledger.
 
 4. **`scratch_capture_gate.sh`** (Stop hook) `[hook]` — fires ONCE per ~100k-token bucket when an active pad exists, emitting a single `decision:block` with the captured-lines diff; forces the model to surface a receipt. The PROMPT is hook-enforced; the CAPTURE CONTENT itself is honor-system (the hook can't verify what was actually written to the pad).
 
@@ -825,7 +829,7 @@ Every known edge case and how `/save` handles it:
 
 What `/save` never does, under any circumstances (from SKILL.md "What never happens"):
 
-- No write to `~/.claude/projects/*/memory/` — never, under any circumstances.
+- ~~No write to `~/.claude/projects/*/memory/` — never, under any circumstances.~~ **CORRECTED 2026-08-27** (L.B2 audit, `grep -n "memory\|vetted" ~/lifehack-brain/.claude/skills/save/SKILL.md`): this hard-prohibition text no longer appears anywhere in the current (171-line, post-rewrite) `save/SKILL.md` — only `vetted:true` language remains. It is documented in `read/SKILL.md` instead. The rule may still be the intended behavior, but this specific prose is no longer where the map says it is; this is behavioral/honor-system either way, not hook-enforced.
 - No silent slug commit — never write under `{desk}-general` (or any guessed slug) unless Step 0.5 resolved it or the user explicitly chose it.
 - No `vetted: true` on any record — machine proposes, human approves only.
 - No overwriting a brief with new dead-ends/decisions before the journal entry is written (journal-first gate, Step 7d).
@@ -855,7 +859,7 @@ What `/save` never does, under any circumstances (from SKILL.md "What never happ
 **BY DESIGN (the audit's biggest correction — `identity.md` Divergence-1):** manual `/save` IS the human-judgment gate for memory (invoke → review → judge what enters). The canon pause is a deliberate HITL seam, NOT a gap. Non-canon saves are already fully autonomous.
 
 **Current state → PARTIAL, for a precise reason:**
-- The canon WRITE is already a live wall: `guard_canon_write.sh` PreToolUse BLOCKS any Write/Edit to `**/canon/**` lacking `authority:user` — canon can't be silently written.
+- The canon WRITE is already a live wall: `guard_canon_write.sh` PreToolUse blocks oversized (>3,200 char) or stale-marked `**/canon/**` writes (**CORRECTED 2026-08-27: not on `authority:user` — that rail was dropped 2026-08-11**) — canon can't be silently written past size/staleness.
 - The debt-ledger IS hook-disciplined (`guard_ledger_discipline.sh`).
 - What remains `[honor]` is: **journal-first** (Step 7) + the **propose-then-pause CHOICE** (the model routing a canon candidate to `records/proposals/` and waiting, rather than attempting a blocked write). Mixed → **PARTIAL** (not "canon unprotected" — the canon write is walled; the residual is behavioral).
 
@@ -912,4 +916,4 @@ Step 4.6 scans the canon ALONG THE BRANCH (target canon + siblings up the ladder
 ## AUTO-COMPUTED   (machine-only — hand-set at authoring; the F1.5 checker will own this once built)
 
 - **maturity_label:** PARTIAL
-- **check_detail:** LIVE hooks fire on this element — `guard_canon_write` (blocks non-`authority:user` canon writes, PreToolUse) · `guard_write_paths` (residency wall, PreToolUse, all stores) · `guard_ledger_discipline` (debt-ledger deletion discipline, PreToolUse) · `scratch_capture_gate` Stop (hard-bounce, ~100k-token bucket) · `pm_persist` + `save_routing_hint` (UserPromptSubmit, every turn) · `validate_on_write` (advisory, PostToolUse) · `nudge_flow_drift` (PostToolUse Write|Edit; fires only when the written file is in an element's generated_from — NOT on Bash) + `observability_logger` (PostToolUse *, logs every tool call; no /save-specific relationship) — plus mandatory scripts (`pm_flag_recover.py`, `canon_conflict_scan.py`, `pad_archive.py archive + verify`). What is honor-system: **journal-first** (Steps 7 / 7d / 13d) + the **propose-then-pause CHOICE** (model routing canon candidate to `records/proposals/` and waiting — the write is already walled, the choice is behavioral) + register-preservation + transcript-anchor + snapshot-shelf-life + Step 8 two-pass voice-seed + Step 13g independent 2nd-pass subagent. Mixed (significant honor-system surface alongside strong hook coverage) ⇒ **PARTIAL**. Not "canon unprotected" — the canon write is hook-walled; the residual is behavioral routing. Honest.
+- **check_detail:** LIVE hooks fire on this element — `guard_canon_write` (blocks oversized/stale-marked canon writes, PreToolUse — **CORRECTED 2026-08-27: not `authority:user`, dropped 2026-08-11**) · `guard_write_paths` (residency wall, PreToolUse, all stores) · `guard_ledger_discipline` (debt-ledger deletion discipline, PreToolUse) · `scratch_capture_gate` Stop (hard-bounce, ~100k-token bucket) · `pm_persist` + `save_routing_hint` (UserPromptSubmit, every turn) · `validate_on_write` (advisory, PostToolUse) · `nudge_flow_drift` (PostToolUse Write|Edit; fires only when the written file is in an element's generated_from — NOT on Bash) + `observability_logger` (PostToolUse *, logs every tool call; no /save-specific relationship) — plus mandatory scripts (`pm_flag_recover.py`, `canon_conflict_scan.py`, `pad_archive.py archive + verify`). What is honor-system: **journal-first** (Steps 7 / 7d / 13d) + the **propose-then-pause CHOICE** (model routing canon candidate to `records/proposals/` and waiting — the write is already walled, the choice is behavioral) + register-preservation + transcript-anchor + snapshot-shelf-life + Step 8 two-pass voice-seed + Step 13g independent 2nd-pass subagent. Mixed (significant honor-system surface alongside strong hook coverage) ⇒ **PARTIAL**. Not "canon unprotected" — the canon write is hook-walled; the residual is behavioral routing. Honest.

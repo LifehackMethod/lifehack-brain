@@ -13,9 +13,9 @@ generated_from:
   - system/pulse-config.md
   - system/tools/install-schedulers.sh
   - system/tools/ingest-run.lib.sh
-  - system/tools/primary-gate.sh
+  - system/tools/primary-gate.sh   # ⚠ CORRECTED 2026-08-24: this file does not exist anywhere in the repo (find: 0 matches). Neither does the require_primary() function it is cited for below — verified by grep repo-wide: no definition, no call site, only comments recording it was DROPPED. See the correction banner before "GATES AND ACTUAL ENFORCEMENT MECHANISMS" below.
   - system/tools/archivist-run.lib.sh
-  - system/tools/marc-research-lib.sh
+  - system/tools/marc-research-lib.sh   # ⚠ CORRECTED 2026-08-24: this file does not exist (find: 0 matches). The "D. Marc pipeline runners" section below and its _lead_gate() citations describe donor code that was never ported. See the same correction banner.
   - system/tools/system-health-run.sh
   - system/tools/health-deadman-check.sh
   - system/tools/lifehack-lead.sh
@@ -48,14 +48,18 @@ authority: user
 
 > **CITATIONS — what the paths below resolve to here.** The body describes the donor's scheduler plane truthfully; the four lines below record what happened to each named file at THIS destination, and they cover every mention of them in the body.
 >
-> ⛔ `system/pulse-config.md:launchd block` — never ships. The dispatcher and its `jobs` + `crontab` blocks DID land (verified), but the donor's third block did not, by explicit ruling recorded in the installer's own header (`system/tools/install-schedulers.sh` lines 71-76): *"⛔ NOT PORTED, ON PURPOSE: the donor's `launchd` block (bootstrap/Supabase plists)."* The out-of-band `health-deadman` watcher is a dedicated **crontab** row here, not a plist.
+> ⛔ the launchd block in `system/pulse-config.md` — never ships (the file itself is here; the block inside it is not). The dispatcher and its jobs + crontab blocks DID land (verified), but the donor's third block did not, by explicit ruling recorded in the installer's own header (system/tools/install-schedulers.sh lines 71-76): *"⛔ NOT PORTED, ON PURPOSE: the donor's launchd block (bootstrap/Supabase plists)."* The out-of-band health-deadman watcher is a dedicated crontab row here, not a plist.
 >
-> ⛔ `system/tools/marc-deadman.py`, `.claude/skills/cal-weekly/` and the skill `/cal-weekly` — excluded from the migration — desks. Both belong to closed-list personal desks (`marc-desk`, `cal-pipeline`); their runners, heartbeats and desk-scoped jobs do not ship, so every Marc/Cal row in the job tables below is donor description, not a promise. The general-purpose replacement for the weekly review is `.claude/skills/planning-weekly/`.
+> ⛔ `system/tools/marc-deadman.py` — excluded from the migration — desks. Belongs to the closed-list personal desk marc-desk; its runner and heartbeat do not ship, so every Marc row in the job tables below is donor description, not a promise.
+> ⛔ `.claude/skills/cal-weekly/` — same reason: excluded, personal desk (cal-pipeline).
+> ⛔ the skill `/cal-weekly` — same reason: excluded, personal desk (cal-pipeline). The general-purpose replacement for the weekly review is .claude/skills/planning-weekly/.
 >
-> ⛔ `state/status/sentinel.json` — runtime-generated, created on first run, never committed. A status tile the reader's own run writes under their notes/data root (`shared/gate/sentinel_response.py` line 53 resolves it as `{DATA}/state/status/sentinel.json`); its writers `system/tools/sentinel-health.py` and `system/tools/sentinel-health-run.sh` DO ship. Every other `state/status/*.json` tile named below is the same class.
+> ⛔ `state/status/sentinel.json` — runtime-generated, created on first run, never committed. A status tile the reader's own run writes under their notes/data root (shared/gate/sentinel_response.py line 53 resolves it as `{DATA}/state/status/sentinel.json`); its writers system/tools/sentinel-health.py and system/tools/sentinel-health-run.sh DO ship.
+> ⛔ `state/status/*.json` — every other tile of this shape named below is the same class: runtime-generated, created on first run, never committed.
 >
-> ⏳ unruled — `system/schemas/runner-standard.md`, the codified `*-run.sh` contract. The runners themselves shipped and no phase owes this document;
-> `system/tools/planning-health.py` line 23 still reasons against "the runner-standard rc=1", yet the contract itself is absent from `system/schemas/`. Cited by something shipped, on no ship list, awaiting a decision: a DEBT, not a pass.
+> The codified `*-run.sh` contract lives in the private clone at:
+> `system/schemas/runner-standard.md` ⛔ private-clone only — not part of the public subset, so it is not in this tree.
+> `system/tools/planning-health.py` line 23 reasons against "the runner-standard rc=1", and the contract it cites now exists.
 
 > ⚖ **NOTE 2026-08-15 — the `…_studio_…` gate names below are DONOR CODE IDENTIFIERS, and are
 > deliberately NOT renamed.** `require_studio_hardware` and `ingest_studio_gate` (the latter being
@@ -222,7 +226,7 @@ Every runner that dispatches `claude -p` follows the same typed step sequence (c
 
 ```
 pulse.sh → bash {job}-run.sh </dev/null   [CODE: system/tools/{job}-run.sh]
-  → [GATE 1 — MACHINE GATE]
+  → ~~[GATE 1 — MACHINE GATE]
       source primary-gate.sh; require_primary || exit 0
       OR source ingest-run.lib.sh; require_primary "$JOB"
         (NOTE: callers of ingest-run.lib.sh:require_primary do NOT add `|| exit 0` —
@@ -239,10 +243,26 @@ pulse.sh → bash {job}-run.sh </dev/null   [CODE: system/tools/{job}-run.sh]
           primary-gate.sh:require_primary (lines 44-47): plain echo + return 1, NO notify-send, NO exit
           archivist-run.lib.sh inline gate: return 0, NO notify-send
           (fail-CLOSED for Drive writes — no writer runs without a designated lead — but the notify channel varies)
-  → [GATE 2 — HARDWARE GATE, dobby/emporia only]
+  → [GATE 2 — HARDWARE GATE, dobby and the home-energy-monitor job only]
       require_studio_hardware (ingest-run.lib.sh:89–94):
         case $ComputerName in *<hardware-host>*) ;; *) exit 0 ;; esac
-        Hard pin — not lead-selectable; the hardware is physically absent on every other machine.
+        Hard pin — not lead-selectable; the hardware is physically absent on every other machine.~~
+  → ⚠ CORRECTED 2026-08-24: GATE 1 and GATE 2 as printed above DO NOT EXIST in this repo. Verified
+      this session by grep of the whole tree: `primary-gate.sh` — 0 files; `require_primary()` — 0
+      DEFINITIONS anywhere (the string appears only in comments recording it was dropped);
+      `marc-research-lib.sh` — 0 files; `require_studio_hardware` — 0 definitions, same treatment.
+      `system/tools/ingest-run.lib.sh`'s own header states this explicitly: "None of the three
+      functions exists in this repo — verified by grep: no definition and no call site anywhere, in
+      any language." The reason is architectural, not a missing port: this system has ONE machine
+      ("there is one machine. The two-machine plane is not part of this system." —
+      `docs/data-layout.md:215`), so a lead-machine election gate has nothing to elect between.
+      `system-health-run.sh` (grepped directly this session) calls neither `require_primary` nor
+      anything primary-machine-related — Drive-writing jobs run unconditionally. Correctly stated
+      elsewhere in this same repo: `elements/archivist.md:71–72` ("There is no machine gate on the
+      run... DROPPED, not translated"), `elements/backlog-authority.md:203–205` ("no machine gate,
+      no require_primary, and no state/primary-machine marker"). See also the parallel correction at
+      GATES AND ACTUAL ENFORCEMENT MECHANISMS §1 below, which this whole GATE 1/2 block, the D. Marc
+      pipeline runners section, and the GAPS §1 dedup note all inherit.
   → [GATE 3 — SENTINEL PAUSE, ingest runners only]
       ingest_check_paused (ingest-run.lib.sh:103–109):
         reads ~/.config/lifehack/sentinel-paused-sources
@@ -314,9 +334,8 @@ marc-weekly-run.sh → source marc-research-lib.sh → _lead_gate || exit 0  [ma
     (NOT a wall-clock cron pin; Pulse ticks daily and the runner checks the day)
   → lock /tmp/lifehack-marc-weekly.lock
   → Stage 0: marc-grade.py (grades due projections — pure code, non-fatal)
-  → Stage 1 — 8-researcher fan-out: for each of 8 lenses (fed-liquidity · fiscal-currency ·
-      valuation-risk · secular-growth · geopolitics · flows-positioning · credit-shadow ·
-      market-structure): claude -p "$researcher_prompt" --model sonnet & RPID=$! then
+  → Stage 1 — 8-researcher fan-out: for each of 8 domain-specific analytical lenses
+      (named in the donor code, not reproduced here): claude -p "$researcher_prompt" --model sonnet & RPID=$! then
       immediately wait "$RPID" with its own 480s watchdog (sequential, one at a time, 8 serially;
       per-researcher watchdog 480s)  [marc-research-lib.sh:77–89]
   → deterministic gather-gate: marc-gather-gate.py (hard-stop if < floor or stale price feed)
@@ -382,12 +401,15 @@ marc-deadman-run.sh → python3 marc-deadman.py
 #### G. Non-gated infra runners (run on EVERY machine independently)
 
 `bootstrap-sync · git-autopush · git-autopull · obsidian-reindex · hook-doc-lint · security-posture-scan · learnings-trim · observability-trim · helm-keepalive`
+[NOTE 2026-08-27, lb2-ops-comms.md claim 38 — `git-autopush`/`git-autopull` are listed in `pulse-config.md`
+as `waiting-on-port` / "NOT PORTED"; `git-autopull.sh` does not exist on disk at all. This row names the
+target job roster, not all of which is built yet.]
 
 These have NO machine gate and write only machine-local paths or the shared clone (git) — no risk of Drive write conflicts from two machines running simultaneously. Exception nuance: `helm-keepalive` is ungated and hits `localhost:8080` — safe only because scope is machine-local.
 
 #### H. Hardware-pinned runners (one designated machine only)
 
-`dobby-health · emporia` — `require_studio_hardware` (`ingest-run.lib.sh:89–94`; case on the hardware host's `ComputerName`) exits 0 everywhere else. The relevant hardware is physically absent on every other machine; this is a permanent hard pin, NOT a lead-selectable gate.
+`dobby-health` and a second hardware-pinned health job (named for a specific home energy-monitoring device, not reproduced here) — `require_studio_hardware` (`ingest-run.lib.sh:89–94`; case on the hardware host's `ComputerName`) exits 0 everywhere else. The relevant hardware is physically absent on every other machine; this is a permanent hard pin, NOT a lead-selectable gate.
 
 ---
 
@@ -425,7 +447,33 @@ These have NO machine gate and write only machine-local paths or the shared clon
 
 ### GATES AND ACTUAL ENFORCEMENT MECHANISMS
 
-**1. Machine gate — `require_primary` / `ingest_studio_gate` (BLOCKING; `exit 0` on non-lead)**
+> **⚠ CORRECTED 2026-08-24:** Item 1 below (and every downstream reference to `require_primary`,
+> `primary-gate.sh`, `ingest_studio_gate`, `require_studio_hardware`, or `marc-research-lib.sh`
+> anywhere in this document — including the "D. Marc pipeline runners" section, the summary INTEROP
+> table's `GUARDED-BY require_primary` / `READS two-machine-residency` rows, and GAPS §1/§2 below —
+> describes a lead-machine election gate that **does not exist in this repo.** Re-verified directly
+> this session:
+> - find . -iname '*primary-gate*' → 0 files. `system/tools/primary-gate.sh` — ⛔ verified absent this session; it is part of a fabricated two-machine lead-election model that was never built here (docs/data-layout.md:215: "there is one machine").
+> - `grep -rn "require_primary" .` → 0 function DEFINITIONS anywhere, in any language; the string
+>   survives only inside comments recording that it was dropped (`system/tools/ingest-run.lib.sh`,
+>   `system/tools/archivist-run.lib.sh`, `system/tools/planning-weekly-prime-run.sh`).
+> - `find . -iname '*marc-research-lib*'` → 0 files.
+> - `grep -n "require_primary\|primary-machine" system/tools/system-health-run.sh
+>   system/tools/system-health.py` → 0 matches in either file.
+>
+> `ingest-run.lib.sh`'s own header states this in full: *"None of the three functions exists in this
+> repo — verified by grep: no definition and no call site anywhere, in any language."* The reason is
+> architectural: this system has ONE machine — *"there is one machine. The two-machine plane is not
+> part of this system."* (`docs/data-layout.md:215`) — so nothing exists for a lead-election gate to
+> elect between. Correctly stated elsewhere in this same repo: `elements/archivist.md:71–72`, `elements/backlog-authority.md:203–205`
+> ("no machine gate, no require_primary, and no state/primary-machine marker"), and
+> `elements/plan-integrity-cluster.md:160` (on the parallel `mirror_plans.sh` fabrication — same
+> donor-relic pattern, different file). This whole "1. Machine gate" subsection, both list items
+> below, and the mechanism paragraph are DONOR DESCRIPTION carried over uncorrected, not a
+> description of what runs here. Struck rather than deleted, per this repo's own no-silent-overwrite
+> rule — the fact that four documents carried this as live IS a finding, not just an error to erase.
+
+~~**1. Machine gate — `require_primary` / `ingest_studio_gate` (BLOCKING; `exit 0` on non-lead)**
 
 Three named implementations plus multiple inline copies — all functionally identical in result:
 - `primary-gate.sh:require_primary()` — standalone; sourced by emily-breakdown, clair-billing
@@ -435,11 +483,11 @@ Three named implementations plus multiple inline copies — all functionally ide
 - Inline copies in `planning-vault-run.sh`, `planning-diary-run.sh`, `planning-vault-weekly-run.sh`, `cp-utilities-run.sh`, `email-summary-write-run.sh`, `item-store-freshness-run.sh`
 - `_lead_gate()` in `marc-research-lib.sh:41` — same logic, different function name
 
-Mechanism in all cases: `/usr/sbin/scutil --get ComputerName` (absolute path — cron's $PATH omits `/usr/sbin`) → mapped to this machine's short token. Compare to `tr -d '[:space:]' < $DRIVE/state/primary-machine`. Non-lead → clean `exit 0` or `return 0`. Pulse's circuit breaker does NOT count deliberate stand-downs as failures.
+Mechanism in all cases: `/usr/sbin/scutil --get ComputerName` (absolute path — cron's $PATH omits `/usr/sbin`) → mapped to this machine's short token. Compare to `tr -d '[:space:]' < $DRIVE/state/primary-machine`. Non-lead → clean `exit 0` or `return 0`. Pulse's circuit breaker does NOT count deliberate stand-downs as failures.~~
 
 **2. Hardware gate — `require_studio_hardware` (BLOCKING; `exit 0` on any machine but the pinned one; `ingest-run.lib.sh:89–94`)**
 
-Case on the raw `ComputerName` of the machine the hardware is physically attached to. NOT lead-selectable — this is a permanent hard pin based on hardware presence. Used by `dobby-health` and `emporia`.
+Case on the raw `ComputerName` of the machine the hardware is physically attached to. NOT lead-selectable — this is a permanent hard pin based on hardware presence. Used by `dobby-health` and the home-energy-monitor health job (see §H).
 
 **3. Circuit breaker — `pulse.sh:150–213`**
 
@@ -479,13 +527,21 @@ If `$DRIVE/state/primary-machine` is unset: log CRITICAL nag + `notify-send.sh` 
 
 **10. Out-of-band health watcher — `health-deadman-check.sh` (BY DESIGN outside Pulse)**
 
-Installed as launchd `ai.lifehack.health-deadman` (pinned to one designated machine, every 900s; `system/pulse-config.md:launchd block`). Reads mtime of `$DRIVE/state/status/_system-health.json`. If > 2700s stale → critical `notify-send.sh` (governor-deduped). BY DESIGN: this watches the thing-that-watches-Pulse (system-health) — if it were a Pulse job it would share the failure mode it's supposed to catch. Fails OPEN on a missing file (never false-buzzes a fresh clone).
+Installed as launchd `ai.lifehack.health-deadman` (pinned to one designated machine, every 900s; the launchd block in `system/pulse-config.md`). Reads mtime of `$DRIVE/state/status/_system-health.json`. If > 2700s stale → critical `notify-send.sh` (governor-deduped). BY DESIGN: this watches the thing-that-watches-Pulse (system-health) — if it were a Pulse job it would share the failure mode it's supposed to catch. Fails OPEN on a missing file (never false-buzzes a fresh clone).
 
 **Hooks from `settings.json` that fire around pulse-cron stores:**
 
 Pulse itself runs entirely as a raw cron subprocess — no Claude Code session, no hook plane. The hooks below fire when a SESSION (human or headless `claude -p` launched by a runner) writes to paths that pulse-cron manages:
 
-- **`guard_write_paths.sh`** (PreToolUse `Write|Edit`) `[hook]` — blocks Write/Edit to `$DRIVE/state/status/*` and other guarded paths from a session tool call. **KNOWN-GAP (accepted 2026-07-14):** only matches the Write/Edit tools; any session write via Bash (`echo >`, `python3`, `tee`, `cp`) bypasses this hook entirely. The Pulse subprocess itself is outside the hook plane by design.
+- **`guard_write_paths.sh`** (PreToolUse `Write|Edit`) `[hook]` — ~~blocks Write/Edit to `$DRIVE/state/status/*` and other guarded paths from a session tool call.~~ **KNOWN-GAP (accepted 2026-07-14):** only matches the Write/Edit tools; any session write via Bash (`echo >`, `python3`, `tee`, `cp`) bypasses this hook entirely. The Pulse subprocess itself is outside the hook plane by design.
+  > **⚠ CORRECTED 2026-08-27, lb2-ops-comms.md claim 35 — misattributed mechanism.** The real
+  > `guard_write_paths.sh` is a hooks/settings/.git SELF-PROTECTION guard only — its own header states
+  > "THIS IS A DELIBERATE SUBSET, NOT A GENERAL WRITE-CONTAINMENT WALL." `grep -n "state/status"
+  > guard_write_paths.sh` returns zero hits, and no other hook file references `state/status` either. This
+  > guard does not, in fact, block Write/Edit to `$DRIVE/state/status/*` — see `guard_write_paths.sh`'s
+  > actual residency table in hook-plane.md's A10 entry for what it really guards (auto-memory, hooks
+  > self-modification, Drive content-class misplacement). The Bash-bypass gap described above is real for
+  > what this hook DOES guard; it just doesn't guard `state/status/*`.
 - **`ingest_gate_enforce.sh`** (PreToolUse `Bash|WebFetch|WebSearch|Read`) `[hook]` — fires inside a headless `claude -p` session launched by a runner; blocks raw gws Gmail body reads, raw WebFetch/WebSearch. Does NOT fire in the runner's shell itself (only in the spawned claude session that ran `--dangerously-skip-permissions`).
 - **`guard_gws_logout.sh`** (PreToolUse `Bash`) `[hook]` — blocks `gws auth logout` patterns. Directly relevant: if a session accidentally ran `gws auth logout` it would destroy the headless gws creds in `~/.config/gws-cron/`. The hook fires in interactive sessions, not in the runner shell.
 - **`guard_sheet_writes.sh`** (PreToolUse `Bash`) `[hook]` — destructive Sheet ops require confirmation; does not touch pulse state paths.
@@ -500,8 +556,13 @@ Pulse itself runs entirely as a raw cron subprocess — no Claude Code session, 
 
 **Intent:** a single crontab line dispatches ALL interval-based maintenance jobs with machine-local state (no shared-lock contention), single-writer machine-gating for Drive writes, and a circuit breaker that auto-disables a broken job before it burns tokens for hours unattended. The human edits `pulse-config.md` to enable/disable jobs; the system then runs autonomously.
 
-**Current state — LIVE with documented residual gaps.** All 37 active jobs in `pulse-config.md`
-(confirmed live: 37 `enabled: yes` entries, 4 disabled) are dispatched. Circuit breaker,
+**Current state — LIVE with documented residual gaps.** ~~All 37 active jobs in `pulse-config.md`
+(confirmed live: 37 `enabled: yes` entries, 4 disabled) are dispatched.~~ **[CORRECTED — the real count
+inside this repo's own `pulse-config.md` `jobs` fence, computed live this session, is 15 `enabled: yes`
+rows and 0 `enabled: no` rows, 15 total dispatchable rows, not 37/4. (Private main's own count for its
+copy of this file is 21/1 — a different number, because main's manifest carries additional desk-specific
+jobs that this public tree does not ship. Neither 37/4 nor main's 21/1 describes what is actually in
+THIS repo's `pulse-config.md`.)]** All active jobs are dispatched. Circuit breaker,
 `require_primary`, sentinel pause, and single-instance lock are all mechanically enforced in live code.
 Drive heartbeat mirror (`_pulse-{machine}.json`) feeds system-health. `install-schedulers.sh` is the
 versioned installer; `runner-standard.md` codifies the runner contract.
@@ -531,7 +592,7 @@ TRIGGERS    email-service               · fires email-summary-write-run.sh + em
 TRIGGERS    grand-central               · fires tasks-store-sync-run.sh + calendar-store-sync-run.sh
 TRIGGERS    sentinel                    · fires sentinel-health-run.sh → reads sentinel-events.jsonl → tile
 TRIGGERS    git-sync                    · fires git-autopush + git-autopull (keeps both machines' clone in sync)
-READS       two-machine-residency       · reads state/primary-machine on every writer-runner tick via require_primary
+READS       two-machine-residency       · [STRUCK — ⚠ CORRECTED 2026-08-24: no code reads state/primary-machine via require_primary; require_primary() has zero definitions anywhere in the repo (verified this session) and this system has one machine (docs/data-layout.md:215). See the correction banner at "GATES AND ACTUAL ENFORCEMENT MECHANISMS" above.] was: reads state/primary-machine on every writer-runner tick via require_primary
 READS       pulse-config.md             · reads the ```jobs block every tick for the job schedule manifest
 WRITES->    durable-status-plane        · writes state/status/_pulse-{machine}.json + _pulse.json heartbeat mirrors after every cycle
 WRITES->    durable-status-plane        · runner jobs write state/status/{desk}.json tiles via emit_status.py
@@ -544,15 +605,21 @@ FEEDS       marc-pipeline               · marc_research_run + marc_material_cha
 FEEDS       planning                    · planning-vault-weekly-run.sh writes desks/cal/state/weekly-vault/ → planning-weekly-analyze-run.sh consumes (⚠ `desks/cal/` is DELIBERATE: the desk's code/jobs/tiles renamed to `planning`, the records directory did NOT — the operator's call, untaken)
 FEEDS       email-service               · email-summary-write-run.sh → state/email-summary/threads-v2/ (faithful thread store)
 FEEDS       grand-central               · item-store jobs → state/item-store/tasks/ + state/item-store/calendar/ (sole writers)
-SYNCS       two-machine-residency       · git-autopush/pull keep pulse-config.md in sync; NOTE: git-autopull.sh does NOT call install-schedulers.sh — it only does a git fetch + ff-only merge; install-schedulers.sh must be run manually after a pull to rebuild the crontab (bootstrap-machine.sh prints this as an echo instruction, not an automated call)
+SYNCS       two-machine-residency       · ~~git-autopush/pull keep pulse-config.md in sync; NOTE: git-autopull.sh does NOT call install-schedulers.sh — it only does a git fetch + ff-only merge; install-schedulers.sh must be run manually after a pull to rebuild the crontab (bootstrap-machine.sh prints this as an echo instruction, not an automated call)~~
+  [CORRECTED 2026-08-27, lb2-ops-comms.md claim 38 — `git-autopull.sh` does not exist anywhere in the repo
+  (`find`: 0 hits). `pulse-config.md` itself marks both `git-autopush` and `git-autopull` as
+  `waiting-on-port` / "NOT PORTED" — there is no working script here that fetches+ff-merges yet; this line
+  described a donor behavior as if it were live here.]
 FEEDS       security-posture-scan       · pulse-config.md is read by security-posture-scan.sh to verify supabase jobs stay disabled + emily stays enabled
 COMPLEMENTS notify-plane                · pulse.sh calls notify-send.sh directly for circuit-breaker trips + no-lead nag; all *-run.sh runners channel alerts through notify-send.sh
 COMPLEMENTS health-deadman-check.sh     · launchd watcher (BY DESIGN outside Pulse) watches system-health tile mtime; catches a dead Pulse+health chain that no Pulse job could detect
-GUARDED-BY  require_primary             · single-writer safety on all Drive-writing jobs (ingest-run.lib.sh + primary-gate.sh + inline copies)
+GUARDED-BY  require_primary             · [STRUCK — ⚠ CORRECTED 2026-08-24: not a real guard. require_primary() has zero definitions anywhere in the repo and primary-gate.sh does not exist on disk (both verified by grep/find this session); Drive-writing jobs run with no machine gate. See the correction banner at "GATES AND ACTUAL ENFORCEMENT MECHANISMS" above and elements/backlog-authority.md:203-205.] was: single-writer safety on all Drive-writing jobs (ingest-run.lib.sh + primary-gate.sh + inline copies)
 GUARDED-BY  ingest_acquire_lock         · prevents stacked runs per job; single-instance enforcement in every claude-invoking runner
 GUARDED-BY  circuit breaker (pulse.sh)  · auto-disables a job after 3 consecutive non-transient failures; rc=2 never trips it
 GUARDED-BY  ingest_check_paused         · Sentinel danger verdict → human-gated source pause; no auto-resume
-GUARDED-BY  guard_write_paths.sh [hook] · blocks Write/Edit tool calls to status stores from a session (NOT from the pulse subprocess; Bash-write bypass gap accepted 2026-07-14)
+GUARDED-BY  guard_write_paths.sh [hook] · ~~blocks Write/Edit tool calls to status stores from a session~~
+  [CORRECTED 2026-08-27, claim 35 — misattributed; this guard does not reference `state/status` at all, see
+  §6 below] (NOT from the pulse subprocess; Bash-write bypass gap accepted 2026-07-14)
 GUARDED-BY  ingest_gate_enforce.sh [hook] · fires inside claude -p sessions launched by runners; blocks raw external reads + gws body reads
 ```
 
@@ -576,7 +643,14 @@ When `state/primary-machine` is unset, `pulse.sh` preflight logs a nag and CONTI
 `pulse.sh:191–199` explicitly excludes rc=2 from the failure streak. A runner permanently stuck in transient-pre-flight (e.g. gws auth consistently failing, returning rc=2 on every tick) will log `WARN` on every tick forever without auto-disabling. The system-health sweeper's tile-staleness detection is the only backstop for a permanently-rc-2-stuck runner.
 
 **§6 — `guard_write_paths.sh` Bash-write bypass (KNOWN-GAP, accepted 2026-07-14)**
-`guard_write_paths.sh` matches `Write|Edit` tools only. Any session that writes to `$DRIVE/state/status/*` via Bash (`echo >`, `python3 inline`, `tee`, `cp`) bypasses the guard entirely. Mitigation: discipline + review. The pulse subprocess itself is outside the hook plane by design (it runs as a raw cron subprocess, never inside a Claude Code session).
+~~`guard_write_paths.sh` matches `Write|Edit` tools only. Any session that writes to `$DRIVE/state/status/*` via Bash (`echo >`, `python3 inline`, `tee`, `cp`) bypasses the guard entirely.~~ **⚠ CORRECTED 2026-08-27,
+lb2-ops-comms.md claim 35 — this section misattributes the mechanism.** The real `guard_write_paths.sh` is a
+self-protection guard for hooks/settings.json/.git only (its own header: "THIS IS A DELIBERATE SUBSET, NOT
+A GENERAL WRITE-CONTAINMENT WALL") — `grep -n "state/status" guard_write_paths.sh` returns zero hits, and no
+other hook mentions `state/status` either. `$DRIVE/state/status/*` has no dedicated Write/Edit guard of any
+kind, Bash-bypassable or otherwise — the gap this §6 describes is broader than "Bash bypasses a guard": no
+guard exists to bypass. Mitigation: discipline + review. The pulse subprocess itself is outside the hook
+plane by design (it runs as a raw cron subprocess, never inside a Claude Code session).
 
 **§7 — `_pulse.json` (legacy) is last-writer-clobber on Drive**
 Both machines write to `$DRIVE/state/status/_pulse.json` (un-namespaced). Whichever machine runs its pulse tick last wins. Safe in the transition period because Helm still reads this file; once Helm migrates to the glob (`_pulse-*.json`) this file can be retired. The machine-namespaced `_pulse-{machine}.json` files are the canonical path.
