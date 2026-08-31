@@ -428,7 +428,8 @@ useful is unknown.
 >
 > - `elements/emily-desk.md` · `elements/marc-desk.md` · `elements/clair-desk.md` · `elements/deryl-desk.md` ·
 >   `elements/dobby-desk.md` · `elements/cal-pipeline.md` — ⛔ excluded from the migration: **personal.** They
->   are one person's own desks (auditions, markets, consulting, money, calendar), not general-purpose parts.
+>   are one person's own desks — distinct personal and professional domains, each with its own subject
+>   matter — not general-purpose parts.
 > - `elements/helm.md` — ⛔ excluded from the migration: **named.** The operator ruled Helm out by name; it is
 >   the one thing on the closed exclusion list that is infrastructure rather than personal.
 > - `elements/overmyshoulder.md` — ⛔ excluded from the migration: **browser-bound.** It reads a live Chrome
@@ -1124,7 +1125,7 @@ INTEROP:
   COMPLEMENTS  council              · /council (convergence) and /red-team (critique) are orthogonal; run council to generate options, /red-team to punch holes in the winning option — UNVERIFIED
 
 ## emily-desk · new Emily-Ingest mail | /emily-* skills   [LIVE·gap [provisional]]   → elements/emily-desk.md
-The audition/casting operating desk — ingest to breakdown to emit spine; the Relationship Ledger (Hollywood data layer); the cron/headless runner; and the Helm tile (HITL note store: planned/unverified). Contained subsystem with its own Google Sheets data layer, cron trigger, and Helm tile.
+A subject-tracking operating desk — ingest to breakdown to emit spine; the Relationship Ledger (its own domain data layer); the cron/headless runner; and the Helm tile (HITL note store: planned/unverified). Contained subsystem with its own Google Sheets data layer, cron trigger, and Helm tile.
 
 INTEROP:
   READS      email-service          · durable thread store (state/email-summary/threads-v2/) for Phase 0 body pull; store-first before raw gws
@@ -1142,7 +1143,7 @@ INTEROP:
   COMPLEMENTS hollywood-db          · shared/skills/hollywood-db is a distinct project (industry player database, Supabase-backed) sharing the Emily desk context; researcher reads the Relationship Ledger, not Hollywood DB directly during breakdown
 
 ## marc-desk · sensor→gather→narrative→checkin spine   [PARTIAL [provisional]]   → elements/marc-desk.md
-Marc is a self-running market-intelligence organism — a daily data + tripwire plane, two weekly LLM-research rhythms, a falsifiable-projection/grade loop, a narrative registry, and a human HITL check-in (/marc-checkin) that is the only path that writes HIGH-confidence output. Machine writes LOW; human check-in writes HIGH.
+Marc is a self-running monitoring-and-analysis organism — a daily data + tripwire plane, two weekly LLM-research rhythms, a falsifiable-projection/grade loop, a narrative registry, and a human HITL check-in (/marc-checkin) that is the only path that writes HIGH-confidence output. Machine writes LOW; human check-in writes HIGH.
 
 INTEROP:
   WRITES→  journal           · every deep read (weekly + Wednesday) appends ONE LOW-confidence row; marc-sensor appends ONE row on a TRIP (new threshold cross)
@@ -1157,7 +1158,7 @@ INTEROP:
   GUARDED-BY   guard_marc_narrative   · PostToolUse advisory lint on narrative/scenario file writes via marc-narrative-check.py (advisory, not blocking)
 
 ## clair-desk · /ingest + /clair-session-close   [PARTIAL·gap [provisional]]   → elements/clair-desk.md
-Consulting-ops desk — reads every Consulting Gmail thread through a safety-isolated reader agent, surfaces what needs the operator in needs-me.json, closes sessions with Drive-doc ingest + an append-only billing write to Tracker v3, and keeps a cadence-nudge cron that fires a phone push exactly once per new due-state. ·gap because Drive-side billing scripts are not git-tracked and the concern-bar classification is LLM-judgment with no deterministic enforcement.
+A client-services desk — reads every associated Gmail thread through a safety-isolated reader agent, surfaces what needs the operator in needs-me.json, closes sessions with Drive-doc ingest + an append-only billing write to Tracker v3, and keeps a cadence-nudge cron that fires a phone push exactly once per new due-state. ·gap because Drive-side billing scripts are not git-tracked and the concern-bar classification is LLM-judgment with no deterministic enforcement.
 
 INTEROP:
   READS        email-service          · store-first path (email_service_read.py --desk clair) is the primary body-read source
@@ -1173,7 +1174,7 @@ INTEROP:
   GUARDED-BY   guard_ledger_discipline.sh · guard_sheet_writes.sh · guard_sheet_formula_writes.sh · ingest_gate_enforce.sh   · the walls that fire here
 
 ## deryl-desk · /deryl-ingest + /reconcile + /deryl-rocketmoney   [PARTIAL [provisional]]   → elements/deryl-desk.md
-The personal-finance operator — ingests email, transactions, and utility data; maintains the live ledger (Deryl Financial Master); runs a nightly health check that feeds the Helm dashboard; and provides a human-gated reconcile session for periodic tax bookkeeping. Multiple documented honor-system failure modes (stale-number recitation, mental arithmetic, email-scope breach).
+A records-and-ledger operator — ingests email, transactions, and utility data; maintains the live ledger (Deryl Financial Master); runs a nightly health check that feeds the Helm dashboard; and provides a human-gated reconcile session for periodic bookkeeping. Multiple documented honor-system failure modes (stale-number recitation, mental arithmetic, email-scope breach).
 
 INTEROP:
   CHAINS      ingest-run.lib.sh  · deryl-ingest-run.sh is built on the shared ingest-run.lib.sh scaffold (primary-machine gate, new-mail gate, bounded work-list, single-instance lock, watchdog, marker-advance); a change to the lib propagates to all ingest runners

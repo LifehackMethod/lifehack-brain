@@ -243,7 +243,7 @@ pulse.sh → bash {job}-run.sh </dev/null   [CODE: system/tools/{job}-run.sh]
           primary-gate.sh:require_primary (lines 44-47): plain echo + return 1, NO notify-send, NO exit
           archivist-run.lib.sh inline gate: return 0, NO notify-send
           (fail-CLOSED for Drive writes — no writer runs without a designated lead — but the notify channel varies)
-  → [GATE 2 — HARDWARE GATE, dobby/emporia only]
+  → [GATE 2 — HARDWARE GATE, dobby and the home-energy-monitor job only]
       require_studio_hardware (ingest-run.lib.sh:89–94):
         case $ComputerName in *<hardware-host>*) ;; *) exit 0 ;; esac
         Hard pin — not lead-selectable; the hardware is physically absent on every other machine.~~
@@ -334,9 +334,8 @@ marc-weekly-run.sh → source marc-research-lib.sh → _lead_gate || exit 0  [ma
     (NOT a wall-clock cron pin; Pulse ticks daily and the runner checks the day)
   → lock /tmp/lifehack-marc-weekly.lock
   → Stage 0: marc-grade.py (grades due projections — pure code, non-fatal)
-  → Stage 1 — 8-researcher fan-out: for each of 8 lenses (fed-liquidity · fiscal-currency ·
-      valuation-risk · secular-growth · geopolitics · flows-positioning · credit-shadow ·
-      market-structure): claude -p "$researcher_prompt" --model sonnet & RPID=$! then
+  → Stage 1 — 8-researcher fan-out: for each of 8 domain-specific analytical lenses
+      (named in the donor code, not reproduced here): claude -p "$researcher_prompt" --model sonnet & RPID=$! then
       immediately wait "$RPID" with its own 480s watchdog (sequential, one at a time, 8 serially;
       per-researcher watchdog 480s)  [marc-research-lib.sh:77–89]
   → deterministic gather-gate: marc-gather-gate.py (hard-stop if < floor or stale price feed)
@@ -410,7 +409,7 @@ These have NO machine gate and write only machine-local paths or the shared clon
 
 #### H. Hardware-pinned runners (one designated machine only)
 
-`dobby-health · emporia` — `require_studio_hardware` (`ingest-run.lib.sh:89–94`; case on the hardware host's `ComputerName`) exits 0 everywhere else. The relevant hardware is physically absent on every other machine; this is a permanent hard pin, NOT a lead-selectable gate.
+`dobby-health` and a second hardware-pinned health job (named for a specific home energy-monitoring device, not reproduced here) — `require_studio_hardware` (`ingest-run.lib.sh:89–94`; case on the hardware host's `ComputerName`) exits 0 everywhere else. The relevant hardware is physically absent on every other machine; this is a permanent hard pin, NOT a lead-selectable gate.
 
 ---
 
@@ -488,7 +487,7 @@ Mechanism in all cases: `/usr/sbin/scutil --get ComputerName` (absolute path —
 
 **2. Hardware gate — `require_studio_hardware` (BLOCKING; `exit 0` on any machine but the pinned one; `ingest-run.lib.sh:89–94`)**
 
-Case on the raw `ComputerName` of the machine the hardware is physically attached to. NOT lead-selectable — this is a permanent hard pin based on hardware presence. Used by `dobby-health` and `emporia`.
+Case on the raw `ComputerName` of the machine the hardware is physically attached to. NOT lead-selectable — this is a permanent hard pin based on hardware presence. Used by `dobby-health` and the home-energy-monitor health job (see §H).
 
 **3. Circuit breaker — `pulse.sh:150–213`**
 

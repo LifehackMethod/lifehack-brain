@@ -55,7 +55,7 @@ import shutil
 import subprocess
 import sys
 
-DEFAULT_REPO = "LifehackMethod/lifehack-brain"
+DEFAULT_REPO = "your-org/your-repo"
 DEFAULT_SECRET_NAME = "SHIP_IDENTITY_TERMS"
 
 OK = 0

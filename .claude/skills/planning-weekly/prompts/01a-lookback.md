@@ -14,10 +14,11 @@ this. If he has to ask "where's the look back?", this beat has already failed.**
 
 > ⛔ **THIS BEAT IS NOT OPTIONAL AND IT IS NOT A BYPRODUCT.** It was folded into orientation on 2026-07-20
 > and demoted to *"evidence for 'are you on track?', never the headline"* — and it then stopped firing.
-> the person, live, 2026-07-21: *"Dude, where was the confirmation for fucking last week? That's my look back.
-> Where's the fucking look back? I don't understand, dude. Aren't I supposed to go and confirm what
-> happened last week?"* — and *"I don't understand why you're not pulling in all of my journals… You should
-> see all the work that I did."* **Restored 2026-08-02 as a first-class beat that fires unprompted.**
+> On 2026-07-21 the person reacted sharply and immediately on finding no confirmed look-back had happened
+> that week — the beat's absence was obvious to him in the moment, not a subtle miss — and separately called
+> out that the machine's read wasn't drawing on the full body of journals he'd actually written, leaving him
+> unable to trust that "what happened" reflected his real week. **Restored 2026-08-02 as a first-class beat
+> that fires unprompted.**
 
 **TRIPWIRE:** if this week already carries a stamped Human Delta in the rollup, this beat already ran —
 verify, don't double-stamp.
@@ -100,7 +101,8 @@ correct or fill. **Never "what happened this week?"** — that makes him author 
 ## do NOT
 - do **NOT** ask *"what happened this week?"* — commit a read and invite the correction (THE LAW).
 - do **NOT** name, rank, or anticipate the **Win** — that is Phase 3, and it must not be locked before this
-  beat completes. *(the person, live: "lock it. but i haven't done the lookback yet right?")*
+  beat completes. *(real: a run once moved to lock the Win, then caught itself mid-step, realizing the
+  look-back hadn't actually been done yet — exactly the ordering mistake this rule exists to prevent.)*
 - do **NOT** proceed on a silent-zero rollup parse (step 2's guard).
 - do **NOT** let the deep-mine draft override the Human Delta — whatever he says wins.
 - do **NOT** conclude. Commit a correctable read; he keeps the pen.
@@ -126,13 +128,13 @@ correct or fill. **Never "what happened this week?"** — that makes him author 
 | *"This detail is obviously minor."* | "Quiet this period" was a SIGNAL. So was an urgent personal item that read as noise. **You are not the one who decides what's minor.** |
 | *"I'll flag the uncertainty at the end."* | The end is where they are tired and agreeing. Mark INFERRED **inline, at the claim**, or it isn't marked. |
 
-## Output contract — THE THREE ALTITUDES (the person's own words, 2026-08-02; in no other design doc)
+## Output contract — THE THREE ALTITUDES (defined by the person 2026-08-02; in no other design doc)
 
-> *"put it together into a cronologiplanning weekly read, wants to also see the forest through the trees. It's
-> good to have the details. I want you to keep all of that, but I also want different altitudes, right?
-> Like there's the ground level of what happened and then there's the medium altitude of like kind of how I
-> managed kind of my energy through time and then there's the 10,000 foot view of like how did this fit in
-> with my goals for what I wanted to do that week."*
+> When this contract was set, the ask was to keep the look-back chronological and detailed — not to
+> compress it into a summary — while also layering in altitude: a ground level of what actually happened, a
+> medium altitude of how energy was managed through time, and a 10,000-foot view of how the week fit the
+> goals he'd set for it. Both wants stand together: full detail, AND the altitude structure on top of it,
+> not one traded for the other.
 
 The rendered look-back carries **all three, in this order, chronological within each:**
 1. **GROUND — what happened.** The week's events project-by-project, in time order. **Keep the detail** —

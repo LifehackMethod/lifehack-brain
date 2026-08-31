@@ -239,7 +239,7 @@ Severity: `error` on failure.
 Runs `git status --porcelain -- system/hooks/` against the CODE_ROOT clone. Any guard script in
 `system/hooks/` that is **modified but NOT committed** fires a BROKEN with `error` severity.
 
-The rationale (Naomi's "sneaky disable"): a guard edited but not committed = the tamper signature.
+The rationale (the "sneaky disable" pattern): a guard edited but not committed = the tamper signature.
 Self-clears on a legitimate commit, so normal committed development does NOT trigger this.
 
 Requires `.git` directory present; if absent → BROKEN.

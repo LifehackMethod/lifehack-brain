@@ -597,7 +597,7 @@ def _run_self_tests():
         cal = make_item_record(item_id="e1", item_type="calendar",
             payload=make_calendar_payload(event_id="e1", summary="Debrief", start="2026-07-11T09:00:00-04:00",
                 end="2026-07-11T10:00:00-04:00", status="confirmed", calendar_id="c@x",
-                description="bring the logbook", location="DZ HQ"),
+                description="bring the logbook", location="Center HQ"),
             writer_id="calendar-store-sync", source="google-calendar", provenance_tag="item-store/calendar/e1/x")
         _write(CAL_DIR, "e1", cal)
         r = read_item("calendar", "e1", desk="planning")

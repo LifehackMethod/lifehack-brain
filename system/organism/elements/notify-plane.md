@@ -80,7 +80,7 @@ Callers as of 2026-07-24 (file:line, live code verified):
 | Marc deadman — marc-sensor gone silent | `system/tools/marc-deadman.py:45` | critical |
 | Sentinel — scan finds an issue | `shared/tools/sentinel_response.py:236` | critical |
 | Archivist runner — archivist completion buzz | `system/tools/archivist-run.lib.sh:114` | normal |
-| Clair coaching | `system/tools/clair-coaching.py:27` | (UNVERIFIED — ref confirmed, call context not read) |
+| Clair desk tool | `system/tools/clair-coaching.py:27` | (UNVERIFIED — ref confirmed, call context not read) |
 | Marc voice-read — push readable brief | `system/tools/marc-voice-read.py:41` | (UNVERIFIED — ref confirmed, call context not read) |
 | Cal diary runner — check-in ready | `system/tools/planning-diary-run.sh:8` | (UNVERIFIED — comment only, not call read) |
 | Email-summary freshness | `system/tools/email-summary-freshness-run.sh:63` | (UNVERIFIED — comment only, not call read) |
