@@ -157,6 +157,7 @@ EXIT CODES (the parts-library house contract)
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import re
@@ -168,6 +169,7 @@ import tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import canon  # noqa: E402 -- sibling module, same directory, imported after sys.path fix
+import exemptions  # noqa: E402 -- ditto; the PATH+RULE exemption loader/matcher
 
 
 def _ensure_writable(path: str) -> None:
@@ -175,7 +177,7 @@ def _ensure_writable(path: str) -> None:
 
     move_aside.py preserves the source file's mode, and this house ships hooks read-only
     (`pm_flag.sh` is 555). Without this the first hook in a manifest raises PermissionError
-    from open(...,"w") -- a TRACEBACK at exit 1, which the caller cannot tell apart from a
+    from open(..., "w", encoding="utf-8") -- a TRACEBACK at exit 1, which the caller cannot tell apart from a
     real REFUSAL. Only ever called on a path inside the staging tree; the original is never
     opened for writing anywhere in this module, so no source mode is touched.
     """
@@ -207,6 +209,13 @@ MOVE_ASIDE = os.path.join(PARTS, "move_aside.py")
 # now covers the personal tier too.
 REFUSE_RULES = os.path.join(HERE, "refuse-rules.json")     # rebound in main()/selftest()
 REWRITE_RULES = None                                       # bound in main()/selftest()
+# THE EXEMPTION MECHANISM (Y.I2, 2026-08-30) -- committed like refuse-rules.json itself,
+# because it holds no one's identity, just (path, rule_id, reason) triples a human wrote.
+# See exemptions.py's module docstring for the full case; short version: two shipped
+# refuse rules were written assuming a "a human clears it in seconds" channel that never
+# got built. Default is the shipped, empty [] file -- rebindable via --exemptions exactly
+# like --refuse-rules, and via bind_rule_files() so --selftest can point it at a fixture.
+EXEMPTIONS_FILE = os.path.join(HERE, "exemptions.json")    # rebound in main()/selftest()
 
 CLEAN, REFUSED, CANNOT_EVALUATE = 0, 1, 2
 
@@ -687,7 +696,7 @@ def apply_rewrite_round(text, rewrite_rules):
 # --------------------------------------------------------------------------- per-file
 
 def process_one_file(raw_entry, abs_source, staging_root, refuse_rules, rewrite_rules,
-                      warnings):
+                      warnings, exemption_index=None):
     rel = os.path.relpath(abs_source, REPO_ROOT)
     staged_path = os.path.join(staging_root, rel)
     os.makedirs(os.path.dirname(staged_path), exist_ok=True)
@@ -699,51 +708,92 @@ def process_one_file(raw_entry, abs_source, staging_root, refuse_rules, rewrite_
 
     file_report = {
         "source": rel, "staged": staged_path, "binary": False, "status": None,
-        "refuse": {"auto_resolved": [], "unresolved": [], "warnings": []},
+        "refuse": {"auto_resolved": [], "unresolved": [], "warnings": [],
+                   "exempted": []},
         "rewrite": {"applied": []}, "crosscheck": {},
     }
 
-    # constraint I -- binary / non-UTF-8, detected before any rule ever touches it
-    try:
-        with open(staged_path, "r", encoding="utf-8") as fh:
-            text = fh.read()
-    except UnicodeDecodeError as e:
-        file_report["binary"] = True
-        file_report["status"] = "NOT-CLEAN"
-        file_report["refuse"]["unresolved"].append({
-            "id": "binary-unreadable", "tier": "structural",
-            "why": "file is not valid UTF-8 -- cannot be scanned for identity strings "
-                   "and must not be auto-shipped; needs manual review",
-            "hits": [{"line": 0, "evidence": str(e)}],
-        })
-        return file_report
+    # EXEMPTIONS (Y.I2): which rule ids, if any, are exempted for THIS exact path.
+    # `forbidden_content.py` sees only a rules PATH, never a subset chosen per call, so
+    # a file that has an exemption on it gets its own throwaway FILTERED rules file
+    # (the same rules, minus the exempted id(s) -- no rule is ever edited, only left
+    # out of this one file's copy of the set) and every fc_verdict() call below for
+    # this file uses that instead of the full REFUSE_RULES path. A file with NO
+    # exemption never pays for this -- exempt_ids is empty and engine_rules_path is
+    # just REFUSE_RULES, unchanged from before this feature existed.
+    #
+    # `filtered_rules_file()` is a CONTEXT MANAGER (never a bare workdir=staging_root
+    # call, as this used to be): it writes the filtered rules -- which carry the
+    # operator's PLAINTEXT IDENTITY TERMS -- to `shared.paths.scratch_dir()`, never
+    # into `staging_root`, and its own try/finally deletes the file on the way out of
+    # this `with` block no matter how that exit happens (normal return, or the
+    # UnicodeDecodeError path below). A real run once left one of these sitting
+    # inside the staging tree, where `judge.py --prepare` picked it up as a stray
+    # file -- that is the leak this shape closes.
+    exempt_ids = (exemptions.rule_ids_for_path(exemption_index, rel)
+                  if exemption_index else frozenset())
+    with contextlib.ExitStack() as stack:
+        engine_rules_path = REFUSE_RULES
+        if exempt_ids:
+            engine_rules_path = stack.enter_context(exemptions.filtered_rules_file(
+                exemptions.filtered_rules(refuse_rules, exempt_ids)))
 
-    rc_pre = fc_verdict(REFUSE_RULES, staged_path)
+        # constraint I -- binary / non-UTF-8, detected before any rule ever touches it
+        try:
+            with open(staged_path, "r", encoding="utf-8") as fh:
+                text = fh.read()
+        except UnicodeDecodeError as e:
+            file_report["binary"] = True
+            file_report["status"] = "NOT-CLEAN"
+            file_report["refuse"]["unresolved"].append({
+                "id": "binary-unreadable", "tier": "structural",
+                "why": "file is not valid UTF-8 -- cannot be scanned for identity "
+                       "strings and must not be auto-shipped; needs manual review",
+                "hits": [{"line": 0, "evidence": str(e)}],
+            })
+            return file_report
 
-    # NOTE: this function's own `warnings` PARAMETER is the run-level cross-check-
-    # disagreement log (below) -- unrelated to `shape_warnings` here, the per-file
-    # WARNING-tier SHAPE findings (constraint: never rename the param, other call sites
-    # in this file already depend on its identity).
-    text, auto_resolved, unresolved, shape_warnings = apply_refuse_round(text, refuse_rules)
-    file_report["refuse"]["auto_resolved"] = auto_resolved
-    file_report["refuse"]["unresolved"] = unresolved
-    file_report["refuse"]["warnings"] = shape_warnings
-    # The STAGED copy, never the original. move_aside.py preserves the source mode, and this
-    # house ships hooks read-only (pm_flag.sh is 555), so the copy can arrive unwritable and
-    # open(...,"w") raises PermissionError -- which surfaced as a TRACEBACK at exit 1, i.e.
-    # indistinguishable from a legitimate REFUSAL. Found 2026-08-08 the first time a hook was
-    # put in a manifest. Restore the write bit on the COPY before writing; the original's mode
-    # is untouched because the original is never opened for writing anywhere in this file.
-    _ensure_writable(staged_path)
-    with open(staged_path, "w", encoding="utf-8") as fh:
-        fh.write(text)
+        rc_pre = fc_verdict(engine_rules_path, staged_path)
 
-    rc_post_refuse = fc_verdict(REFUSE_RULES, staged_path)
-    expect_post = REFUSED if unresolved else CLEAN
-    if rc_post_refuse != expect_post:
-        warnings.append(
-            "{}: forbidden_content.py verdict ({}) disagrees with scrub.py's own scan "
-            "(expected {}) after round 1".format(rel, rc_post_refuse, expect_post))
+        # NOTE: this function's own `warnings` PARAMETER is the run-level cross-check-
+        # disagreement log (below) -- unrelated to `shape_warnings` here, the per-file
+        # WARNING-tier SHAPE findings (constraint: never rename the param, other call
+        # sites in this file already depend on its identity).
+        text, auto_resolved, unresolved, shape_warnings = apply_refuse_round(
+            text, refuse_rules)
+
+        # EXEMPTIONS (Y.I2): split the raw unresolved list into what still blocks and
+        # what a written, path+rule-scoped exemption has cleared. `exempted` is NEVER
+        # dropped -- it is recorded on file_report so the report/receipt shows exactly
+        # how many hits were exempted, on which paths, under which rule ids, and why
+        # (HARD CONSTRAINT 2). `engine_rules_path` above already excludes these same
+        # rule ids for THIS file, so the independent forbidden_content.py cross-check
+        # below does not re-flag what this partition just cleared.
+        unresolved, exempted = exemptions.partition_hits(
+            unresolved, rel, exemption_index or {})
+        file_report["refuse"]["auto_resolved"] = auto_resolved
+        file_report["refuse"]["unresolved"] = unresolved
+        file_report["refuse"]["exempted"] = exempted
+        file_report["refuse"]["warnings"] = shape_warnings
+        # The STAGED copy, never the original. move_aside.py preserves the source mode, and this
+        # house ships hooks read-only (pm_flag.sh is 555), so the copy can arrive unwritable and
+        # open(..., "w", encoding="utf-8") raises PermissionError -- which surfaced as a TRACEBACK at exit 1, i.e.
+        # indistinguishable from a legitimate REFUSAL. Found 2026-08-08 the first time a hook was
+        # put in a manifest. Restore the write bit on the COPY before writing; the original's mode
+        # is untouched because the original is never opened for writing anywhere in this file.
+        _ensure_writable(staged_path)
+        with open(staged_path, "w", encoding="utf-8") as fh:
+            fh.write(text)
+
+        rc_post_refuse = fc_verdict(engine_rules_path, staged_path)
+        expect_post = REFUSED if unresolved else CLEAN
+        if rc_post_refuse != expect_post:
+            warnings.append(
+                "{}: forbidden_content.py verdict ({}) disagrees with scrub.py's own "
+                "scan (expected {}) after round 1".format(
+                    rel, rc_post_refuse, expect_post))
+    # `engine_rules_path` (and its throwaway file, now deleted) is not needed past
+    # this point -- the rewrite round below always uses the fixed REWRITE_RULES path.
 
     text, applied = apply_rewrite_round(text, rewrite_rules)
     file_report["rewrite"]["applied"] = applied
@@ -778,6 +828,43 @@ def run_scrub(manifest_path, staging_dir, tree_root=None):
     # decides whether anything is clean.
     rewrite_rules = load_rules(REWRITE_RULES, "the effective rewrite rules", allow_empty=True)
     validate_rule_shapes(refuse_rules, rewrite_rules)
+
+    # EXEMPTIONS (Y.I2) -- unlike the two loads above, a MISSING exemptions file is not
+    # an error: it means zero exemptions, the strict/safe default (see exemptions.py's
+    # FAIL-DIRECTION note). A file that exists but is malformed still fails this run
+    # closed, same as a bad refuse/rewrite rule shape would. This never touches
+    # `refuse_rules` itself -- the personal-tier check just below is computed from that
+    # SAME unfiltered `refuse_rules` object, so an exemption can never cause it to see a
+    # reduced rule set (see the DEFECT 1 block's own comment for why that distinction
+    # matters).
+    try:
+        exemption_list = exemptions.load_exemptions(EXEMPTIONS_FILE)
+    except exemptions.ExemptionError as e:
+        raise CannotEvaluate(str(e))
+    exemption_index = exemptions.build_index(exemption_list)
+
+    # ⛔ DEFECT 1 (found 2026-08-28): `--refuse-rules PATH` bypasses bind_rule_files()'s own
+    # call into identity_rules.py entirely -- that is the whole POINT of the flag, per its
+    # own --help text ("an already-composed effective refuse set"). But nothing downstream
+    # of that flag ever checked that the file it was handed actually HAD a personal tier in
+    # it, so `--refuse-rules refuse-rules.json --rewrite-rules rewrite-rules.json` (the
+    # shipped generic set, no identity composed at all) reported a file carrying a real name
+    # CLEAN. Checked HERE, unconditionally, on every path into this function -- composed
+    # moments ago by bind_rule_files() or handed in from a file written yesterday -- because
+    # armed-ness is a property of the RULES (canon.count_personal_tier()), never of which
+    # code path produced them. See canon.py's PERSONAL_TIER comment for the full story.
+    personal_tier_terms = canon.count_personal_tier(refuse_rules)
+    if personal_tier_terms == 0:
+        raise CannotEvaluate(
+            "the effective refuse rules at {!r} contain ZERO personal-tier (tier {!r}) "
+            "entries -- this run's REFUSE tier never saw a single identity term. A CLEAN "
+            "verdict from a run like this would publish a name nobody protected. This is "
+            "refused no matter how the rules got here -- composed from an identity file "
+            "moments ago, or handed in with --refuse-rules from a file that never went "
+            "through identity_rules.py. Compose the effective set with identity_rules.py "
+            "(the default here -- omit --refuse-rules) so the personal tier is "
+            "included, or pass --refuse-rules at a file that already has one.".format(
+                REFUSE_RULES, canon.PERSONAL_TIER))
 
     # THE BIG FIX (2026-08-15) -- coverage from the TREE (a real filesystem walk), not a
     # hand-typed document and not the git index. `tree_root is not None` means the caller
@@ -819,14 +906,28 @@ def run_scrub(manifest_path, staging_dir, tree_root=None):
     files_report = []
     for raw, abs_path in resolved:
         files_report.append(process_one_file(
-            raw, abs_path, staging_root, refuse_rules, rewrite_rules, warnings))
+            raw, abs_path, staging_root, refuse_rules, rewrite_rules, warnings,
+            exemption_index=exemption_index))
 
     not_clean = [f for f in files_report if f["status"] != "CLEAN"]
     warning_files = [f for f in files_report if f["refuse"].get("warnings")]
+    # EXEMPTIONS (Y.I2) -- counted and named SEPARATELY from clean/not_clean, same
+    # non-blocking-but-visible treatment the warning tier already gets below. An
+    # exempted hit never affects the exit code (it already stopped being "unresolved"
+    # inside process_one_file), but it MUST be countable and locatable here -- a
+    # receipt that hides a cleared hit is worse than no exemption at all.
+    exempted_files = [f for f in files_report if f["refuse"].get("exempted")]
     return {
         "manifest": os.path.abspath(manifest_path) if manifest_path else None,
         "tree_scan": tree_scan,
         "staging_root": staging_root,
+        "exemptions_file": os.path.abspath(EXEMPTIONS_FILE)
+                            if os.path.isfile(EXEMPTIONS_FILE) else None,
+        # Armed-ness, IN THE REPORT ITSELF (Defect 1 fix, 2026-08-28) -- a CLEAN verdict
+        # now always sits next to the count that proves the personal tier was not empty
+        # when it was produced. See the CannotEvaluate raised above this function's
+        # personal_tier_terms == 0 check.
+        "personal_tier_terms": personal_tier_terms,
         "files": files_report,
         "warnings": warnings,
         "summary": {
@@ -834,6 +935,11 @@ def run_scrub(manifest_path, staging_dir, tree_root=None):
             "clean": len(files_report) - len(not_clean),
             "not_clean": len(not_clean),
             "not_clean_files": [f["source"] for f in not_clean],
+            # Never counted in not_clean, never in clean's complement -- a purely
+            # informational tally so a human reading the summary line sees, at a
+            # glance, that N hits were cleared and on which files.
+            "exempted_count": sum(len(f["refuse"]["exempted"]) for f in exempted_files),
+            "exempted_files": [f["source"] for f in exempted_files],
             # WARNING-tier SHAPE findings (2026-08-15) -- informational only, NEVER
             # counted in not_clean and NEVER affect the exit code. See canon.py's
             # module docstring for why these are a separate, non-blocking tier.
@@ -848,8 +954,12 @@ def render_human_report(report):
     s = report["summary"]
     warn_note = "" if not s.get("warning_count") else ", {} WARNING (non-blocking)".format(
         s["warning_count"])
-    lines.append("shipping-lane scrub -- {} file(s), {} clean, {} NOT-CLEAN{}".format(
-        s["total"], s["clean"], s["not_clean"], warn_note))
+    exempt_note = "" if not s.get("exempted_count") else ", {} EXEMPTED (cleared, " \
+        "path+rule scoped)".format(s["exempted_count"])
+    lines.append("shipping-lane scrub -- {} file(s), {} clean, {} NOT-CLEAN{}{}".format(
+        s["total"], s["clean"], s["not_clean"], exempt_note, warn_note))
+    lines.append("personal tier: {} identity term(s) armed this run".format(
+        report.get("personal_tier_terms", "?")))
     if report.get("manifest"):
         lines.append("manifest: {}".format(report["manifest"]))
     ts = report.get("tree_scan")
@@ -889,6 +999,11 @@ def render_human_report(report):
         for u in f["refuse"]["unresolved"]:
             lines.append("  UNRESOLVED [{}] {}".format(u["id"], u["why"]))
             for h in u["hits"]:
+                lines.append("    line {}: {}".format(h["line"], h["evidence"]))
+        for e in f["refuse"].get("exempted", []):
+            lines.append("  EXEMPTED [{}] reason: {}".format(
+                e["id"], e.get("exempted_reason", "")))
+            for h in e.get("hits", []):
                 lines.append("    line {}: {}".format(h["line"], h["evidence"]))
         for w in f["refuse"].get("warnings", []):
             lines.append("  WARNING (non-blocking) [{}] {}".format(w["id"], w["why"]))
@@ -979,7 +1094,19 @@ def selftest():
             return p
 
         def rel(p):
-            return os.path.relpath(p, REPO_ROOT)
+            # ⛔ WINDOWS FIX (2026-08-28, selftest-only -- production's own relpath call
+            # sites are NOT touched here, another task owns that logic): os.path.relpath
+            # returns backslash-separated paths on Windows (os.sep == "\\"), but the
+            # tree-walk's OWN report data (derive_tree_entries -> scannable/excluded/
+            # git_invisible, scrub.py:391) is deliberately normalised to forward slashes
+            # BEFORE it is put in the report. Without matching that here, this helper's
+            # backslash-form output was compared against the report's posix-style
+            # strings and never matched -- not a crash, but a FALSE FAIL indistinguishable
+            # from a real regression on any Windows run. Normalising here, once, at the
+            # one place this selftest computes an "expected" relative path, makes every
+            # comparison below robust to the platform's separator without changing what
+            # any assertion actually proves.
+            return os.path.relpath(p, REPO_ROOT).replace(os.sep, "/")
 
         f_autoresolve = write("auto.md", b"home at /Users/wren/Desktop\n")
         f_unresolved = write("named.md", b"Wren wrote this file.\n")
@@ -994,7 +1121,7 @@ def selftest():
         }
 
         manifest_all = os.path.join(fixture_root, "manifest-all.txt")
-        with open(manifest_all, "w") as fh:
+        with open(manifest_all, "w", encoding="utf-8") as fh:
             fh.write("# selftest manifest\n")
             for p in (f_autoresolve, f_unresolved, f_secret, f_order, f_clean, f_binary):
                 fh.write(rel(p) + "\n")
@@ -1105,7 +1232,7 @@ def selftest():
                      f_b64key, f_urlemail, f_entropy, f_bidi, f_tagchars, f_smallcaps,
                      f_b64x2, f_base32key, f_qpemail]
         manifest_obf = os.path.join(fixture_root, "manifest-obfuscated.txt")
-        with open(manifest_obf, "w") as fh:
+        with open(manifest_obf, "w", encoding="utf-8") as fh:
             for p in obf_files:
                 fh.write(rel(p) + "\n")
         obf_report = run_scrub(manifest_obf, new_staging())
@@ -1152,7 +1279,12 @@ def selftest():
                gi.returncode == 0, "git check-ignore exit {}".format(gi.returncode))
 
         tree_report = run_scrub(None, new_staging(), tree_root=rel(tree_dir))
-        tree_by_source = {f["source"]: f for f in tree_report["files"]}
+        # Same Windows fix as rel() above, applied at the one place this selftest reads
+        # the "source" field back out of the report: process_one_file (production code,
+        # untouched here) computes it with a bare os.path.relpath -- backslash-separated
+        # on Windows -- so its keys are normalised to forward slashes HERE, in the test,
+        # to compare on equal footing with rel()'s now-normalised output above.
+        tree_by_source = {f["source"].replace(os.sep, "/"): f for f in tree_report["files"]}
         report("--tree derives its file set by WALKING THE FILESYSTEM: a .gitignore'd "
                "file present on disk IS scanned, not skipped",
                rel(f_tree_ignored) in tree_by_source,
@@ -1191,7 +1323,7 @@ def selftest():
 
         # -------- out-of-reach manifest entry (constraint B) --------
         outside_manifest = os.path.join(fixture_root, "manifest-outside.txt")
-        with open(outside_manifest, "w") as fh:
+        with open(outside_manifest, "w", encoding="utf-8") as fh:
             fh.write("/etc/hosts\n")
         probe = new_staging()
         try:
@@ -1204,7 +1336,7 @@ def selftest():
 
         # -------- empty manifest --------
         empty_manifest = os.path.join(fixture_root, "manifest-empty.txt")
-        with open(empty_manifest, "w") as fh:
+        with open(empty_manifest, "w", encoding="utf-8") as fh:
             fh.write("# only comments\n\n")
         try:
             run_scrub(empty_manifest, new_staging())
@@ -1230,15 +1362,40 @@ def selftest():
             capture_output=True, text=True)
         report("CLI: mixed manifest -> exit 1 (REFUSED)", p.returncode == REFUSED,
                "got exit {}".format(p.returncode))
+        if p.returncode == REFUSED:
+            report("...and the report NAMES how many personal-tier terms were armed",
+                   json.loads(p.stdout).get("personal_tier_terms", 0) > 0,
+                   "got {!r}".format(json.loads(p.stdout).get("personal_tier_terms")))
 
         clean_manifest = os.path.join(fixture_root, "manifest-clean-only.txt")
-        with open(clean_manifest, "w") as fh:
+        with open(clean_manifest, "w", encoding="utf-8") as fh:
             fh.write(rel(f_clean) + "\n" + rel(f_order) + "\n" + rel(f_autoresolve) + "\n")
         p = subprocess.run(
             [sys.executable, me, "--refuse-rules", rp, "--rewrite-rules", wp, "--manifest", clean_manifest, "--staging", new_staging()],
             capture_output=True, text=True)
         report("CLI: all-clean / all-auto-resolvable manifest -> exit 0",
                p.returncode == CLEAN, "got exit {}".format(p.returncode))
+
+        print("\nDEFECT 1 (found 2026-08-28) -- an explicit --refuse-rules with NO "
+              "personal tier must REFUSE, never report CLEAN")
+        bare_rewrite = os.path.join(fixture_root, "bare-empty-rewrite.json")
+        with open(bare_rewrite, "w", encoding="utf-8") as fh:
+            fh.write("[]")
+        # ⚠ NOT the module-global REFUSE_RULES -- bind_rule_files(refuse=rp, ...) already
+        # rebound that name to the COMPOSED effective set (rp, with a personal tier) at the
+        # top of this selftest. The whole point of this case is the SHIPPED GENERIC file,
+        # the literal one bind_rule_files() defaults to before anyone composes anything.
+        shipped_generic_rules = os.path.join(HERE, "refuse-rules.json")
+        p = subprocess.run(
+            [sys.executable, me, "--refuse-rules", shipped_generic_rules,
+             "--rewrite-rules", bare_rewrite,
+             "--manifest", clean_manifest, "--staging", new_staging()],
+            capture_output=True, text=True)
+        report("CLI: --refuse-rules pointed at the SHIPPED GENERIC set (no identity "
+               "composed at all) -> exit 2 (CANNOT EVALUATE), never exit 0",
+               p.returncode == CANNOT_EVALUATE, "got exit {}".format(p.returncode))
+        report("...and the refusal names WHY (zero personal-tier entries), not just THAT",
+               "personal-tier" in p.stderr and "ZERO" in p.stderr, p.stderr[:200])
 
         p = subprocess.run(
             [sys.executable, me, "--refuse-rules", rp, "--rewrite-rules", wp, "--manifest", outside_manifest, "--staging", new_staging()],
@@ -1287,7 +1444,7 @@ def selftest():
                              b"His wife Fern handles the scheduling for him.\n")
         f_factpattern = write("factpattern.md",
                               b"He owns two homes and holds joint bank accounts.\n")
-        with open(thirdparty_manifest, "w") as fh:
+        with open(thirdparty_manifest, "w", encoding="utf-8") as fh:
             fh.write(rel(f_thirdparty) + "\n" + rel(f_factpattern) + "\n")
         warn_report = run_scrub(thirdparty_manifest, new_staging())
         warn_by_source = {f["source"]: f for f in warn_report["files"]}
@@ -1342,7 +1499,7 @@ def selftest():
         # already blocks the file outright.
         f_both = write("both.md",
                        b"His wife Fern met client Wren about the retainer.\n")
-        with open(both_manifest, "w") as fh:
+        with open(both_manifest, "w", encoding="utf-8") as fh:
             fh.write(rel(f_both) + "\n")
         both_report = run_scrub(both_manifest, new_staging())
         b = both_report["files"][0]
@@ -1359,6 +1516,209 @@ def selftest():
                    for w in b["refuse"]["warnings"] if w["id"] == "third-party-name-shape"
                    for h in w["hits"]),
                "warnings={}".format(b["refuse"]["warnings"]))
+
+        # ------------------------------------------------------- EXEMPTIONS (Y.I2)
+        # End-to-end proof through the REAL staging pipeline: not just the loader
+        # (exemptions.py --selftest already proves that in isolation) but this exact
+        # file's own process_one_file()/run_scrub() wiring. Fixture content is the
+        # real shape `path-drive-cloudstorage` fires on -- the exact rule quoted in
+        # this feature's own justification -- with no real account in it.
+        global EXEMPTIONS_FILE
+        saved_exemptions_file = EXEMPTIONS_FILE
+        try:
+            # Kept SHORT and low-entropy on purpose: a longer/mixed-case run here also
+            # trips the (unrelated) high-entropy-blob heuristic, which would leave a
+            # SECOND, un-exempted rule id in `unresolved` and make this fixture prove
+            # the wrong thing. 26 contiguous chars, well under that heuristic's 32-char
+            # floor, still matches path-drive-cloudstorage's literal prefix.
+            f_exempt = write(
+                "drive-backup-note.md",
+                b"ref: CloudStorage/GoogleDrive-x\n")
+            exempt_manifest = os.path.join(fixture_root, "manifest-exempt.txt")
+            with open(exempt_manifest, "w", encoding="utf-8") as fh:
+                fh.write(rel(f_exempt) + "\n")
+
+            # Baseline: with NO exemptions file at all, this file is refused, exactly
+            # as it would be today without this feature.
+            EXEMPTIONS_FILE = os.path.join(rules_dir, "does-not-exist-exemptions.json")
+            baseline_report = run_scrub(exempt_manifest, new_staging())
+            base_f = baseline_report["files"][0]
+            report("BASELINE (no exemptions file): the drive-mount hit is NOT-CLEAN, "
+                   "same as before this feature existed",
+                   base_f["status"] == "NOT-CLEAN"
+                   and any(h["id"] == "path-drive-cloudstorage"
+                           for h in base_f["refuse"]["unresolved"]),
+                   "refuse={}".format(base_f["refuse"]))
+
+            # (a) a CORRECT (path, rule_id) exemption clears the hit.
+            good_exempt_path = os.path.join(rules_dir, "exemptions-good.json")
+            with open(good_exempt_path, "w", encoding="utf-8") as fh:
+                json.dump([{"path": rel(f_exempt), "rule_id": "path-drive-cloudstorage",
+                            "reason": "placeholder Drive mount in a docs example, no "
+                                     "real account -- cleared 2026-08-30, Y.I2 test"}],
+                          fh)
+            EXEMPTIONS_FILE = good_exempt_path
+            good_report = run_scrub(exempt_manifest, new_staging())
+            good_f = good_report["files"][0]
+            report("(a) a CORRECT path+rule_id exemption -> the file is CLEAN",
+                   good_f["status"] == "CLEAN"
+                   and not any(h["id"] == "path-drive-cloudstorage"
+                               for h in good_f["refuse"]["unresolved"]),
+                   "refuse={}".format(good_f["refuse"]))
+            report("(e) ...and the cleared hit still APPEARS in the report, under "
+                   "refuse.exempted, with its reason -- never silently dropped",
+                   any(e["id"] == "path-drive-cloudstorage"
+                       and "placeholder" in e.get("exempted_reason", "")
+                       for e in good_f["refuse"]["exempted"]),
+                   "exempted={}".format(good_f["refuse"]["exempted"]))
+            report("...and the run-level summary counts it too",
+                   good_report["summary"]["exempted_count"] >= 1
+                   and rel(f_exempt) in good_report["summary"]["exempted_files"],
+                   "summary={}".format(good_report["summary"]))
+            report("...and the human report SURFACES it (EXEMPTED line, non-blocking "
+                   "verdict)",
+                   "EXEMPTED [path-drive-cloudstorage]" in render_human_report(good_report)
+                   and "VERDICT: CLEAN" in render_human_report(good_report))
+
+            # -------------------------------------------- LEAK-PROOF TEST (Y.I2 fix)
+            # The real defect found in a live run: `write_rules_file()` used to take
+            # `workdir=staging_root`, so the per-file FILTERED rules file -- which
+            # carries the operator's PLAINTEXT IDENTITY TERMS -- was written INSIDE
+            # the staging tree and nothing ever deleted it. `judge.py --prepare`
+            # picked up a real stray `shipping-lane-filtered-rules-*.json` this way.
+            # Proves, through the REAL staging pipeline with a REAL exemption on
+            # file (`good_exempt_path`, still bound to EXEMPTIONS_FILE here):
+            #   a) no shipping-lane-filtered-rules-* file exists ANYWHERE under the
+            #      staging root after the run;
+            #   b) the staging tree holds EXACTLY the manifest's file(s), nothing else;
+            #   c) the temp file is gone from its real (scratch) location too, even
+            #      when the scan raises mid-file -- simulated by forcing fc_verdict()
+            #      itself to blow up.
+            leak_staging = new_staging()
+            run_scrub(exempt_manifest, leak_staging)
+            staged_files, stray_rules_files = [], []
+            for dirpath, _dirnames, filenames in os.walk(leak_staging):
+                for fn in filenames:
+                    staged_files.append(os.path.join(dirpath, fn))
+                    if fn.startswith("shipping-lane-filtered-rules-"):
+                        stray_rules_files.append(os.path.join(dirpath, fn))
+            report("(leak-fix a) no shipping-lane-filtered-rules-* file exists "
+                   "ANYWHERE under the staging root after a scrub run that USES a "
+                   "real exemption",
+                   stray_rules_files == [], "found: {}".format(stray_rules_files))
+            with open(exempt_manifest, "r", encoding="utf-8") as fh:
+                manifest_rels = [ln.strip() for ln in fh if ln.strip()]
+            report("(leak-fix b) the staging tree contains EXACTLY the manifest's "
+                   "file(s) and nothing else -- {} staged file(s) for {} manifest "
+                   "entr{}".format(len(staged_files), len(manifest_rels),
+                                    "y" if len(manifest_rels) == 1 else "ies"),
+                   len(staged_files) == len(manifest_rels),
+                   "staged={}".format(staged_files))
+
+            scratch_root = exemptions.scratch_dir("shipping-lane")
+            before_fail = (set(os.listdir(scratch_root))
+                           if os.path.isdir(scratch_root) else set())
+
+            def _raise_fc(*_a, **_kw):
+                raise RuntimeError("simulated scan failure (selftest, leak-fix c)")
+
+            real_fc_verdict = globals()["fc_verdict"]
+            globals()["fc_verdict"] = _raise_fc
+            try:
+                refuse_rules_fail = load_rules(REFUSE_RULES, "refuse-rules.json")
+                exemption_index_fail = exemptions.build_index(
+                    exemptions.load_exemptions(good_exempt_path))
+                try:
+                    process_one_file(
+                        None, f_exempt, new_staging(), refuse_rules_fail, [], [],
+                        exemption_index=exemption_index_fail)
+                    raised = False
+                except RuntimeError:
+                    raised = True
+            finally:
+                globals()["fc_verdict"] = real_fc_verdict
+            after_fail = (set(os.listdir(scratch_root))
+                          if os.path.isdir(scratch_root) else set())
+            report("(leak-fix c, sanity) the simulated failure actually raised -- "
+                   "proves this exercised the failure path, not a no-op", raised)
+            report("(leak-fix c) the filtered-rules temp file is gone from its REAL "
+                   "scratch location even though the scan raised mid-file -- "
+                   "try/finally inside the context manager, never caller discipline",
+                   after_fail == before_fail,
+                   "before={} after={}".format(before_fail, after_fail))
+
+            # (b) an exemption for the WRONG PATH does not clear it.
+            wrong_path_exempt = os.path.join(rules_dir, "exemptions-wrong-path.json")
+            with open(wrong_path_exempt, "w", encoding="utf-8") as fh:
+                json.dump([{"path": "docs/some-other-file.md",
+                            "rule_id": "path-drive-cloudstorage",
+                            "reason": "a real reason, just the wrong file"}], fh)
+            EXEMPTIONS_FILE = wrong_path_exempt
+            wrongpath_report = run_scrub(exempt_manifest, new_staging())
+            wp_f = wrongpath_report["files"][0]
+            report("(b) an exemption for the WRONG PATH does NOT clear the hit -- "
+                   "still NOT-CLEAN",
+                   wp_f["status"] == "NOT-CLEAN"
+                   and any(h["id"] == "path-drive-cloudstorage"
+                           for h in wp_f["refuse"]["unresolved"])
+                   and wp_f["refuse"]["exempted"] == [],
+                   "refuse={}".format(wp_f["refuse"]))
+
+            # (c) an exemption for the WRONG RULE-ID does not clear it.
+            wrong_rule_exempt = os.path.join(rules_dir, "exemptions-wrong-rule.json")
+            with open(wrong_rule_exempt, "w", encoding="utf-8") as fh:
+                json.dump([{"path": rel(f_exempt), "rule_id": "key-anthropic",
+                            "reason": "a real reason, just the wrong rule id"}], fh)
+            EXEMPTIONS_FILE = wrong_rule_exempt
+            wrongrule_report = run_scrub(exempt_manifest, new_staging())
+            wr_f = wrongrule_report["files"][0]
+            report("(c) an exemption for the WRONG RULE-ID does NOT clear the hit -- "
+                   "still NOT-CLEAN",
+                   wr_f["status"] == "NOT-CLEAN"
+                   and any(h["id"] == "path-drive-cloudstorage"
+                           for h in wr_f["refuse"]["unresolved"])
+                   and wr_f["refuse"]["exempted"] == [],
+                   "refuse={}".format(wr_f["refuse"]))
+
+            # (d) a missing/empty reason is rejected loudly -- CANNOT EVALUATE, never
+            # a silent "treat it as no exemption" and never a silent "treat it as
+            # exempt anyway".
+            bad_reason_exempt = os.path.join(rules_dir, "exemptions-bad-reason.json")
+            with open(bad_reason_exempt, "w", encoding="utf-8") as fh:
+                json.dump([{"path": rel(f_exempt), "rule_id": "path-drive-cloudstorage",
+                            "reason": "   "}], fh)
+            EXEMPTIONS_FILE = bad_reason_exempt
+            try:
+                run_scrub(exempt_manifest, new_staging())
+                report("(d) a MISSING/BLANK reason is rejected loudly -> "
+                       "CannotEvaluate", False, "run_scrub did not raise")
+            except CannotEvaluate as e:
+                report("(d) a MISSING/BLANK reason is rejected loudly -> "
+                       "CannotEvaluate", "reason" in str(e).lower(), str(e)[:200])
+
+            # Same, via the real CLI entry point -- proves --exemptions wiring and the
+            # exit code, not just the library call.
+            EXEMPTIONS_FILE = saved_exemptions_file
+            p = subprocess.run(
+                [sys.executable, me, "--refuse-rules", rp, "--rewrite-rules", wp,
+                 "--exemptions", good_exempt_path,
+                 "--manifest", exempt_manifest, "--staging", new_staging()],
+                capture_output=True, text=True)
+            report("CLI: --exemptions PATH clears the hit end to end -> exit 0 CLEAN",
+                   p.returncode == CLEAN, "got exit {}, stdout tail: {}".format(
+                       p.returncode, p.stdout.strip()[-300:]))
+            p_bad = subprocess.run(
+                [sys.executable, me, "--refuse-rules", rp, "--rewrite-rules", wp,
+                 "--exemptions", bad_reason_exempt,
+                 "--manifest", exempt_manifest, "--staging", new_staging()],
+                capture_output=True, text=True)
+            report("CLI: a malformed exemptions file -> exit 2 CANNOT EVALUATE, "
+                   "never a silent pass",
+                   p_bad.returncode == CANNOT_EVALUATE,
+                   "got exit {}, stderr tail: {}".format(
+                       p_bad.returncode, p_bad.stderr.strip()[-300:]))
+        finally:
+            EXEMPTIONS_FILE = saved_exemptions_file
 
     finally:
         shutil.rmtree(fixture_root, ignore_errors=True)
@@ -1401,11 +1761,19 @@ def main():
     ap.add_argument("--rewrite-rules", help="an already-composed effective rewrite set")
     ap.add_argument("--identity", help="compile the personal tier from this identity file "
                                        "instead of the one in your notes")
+    ap.add_argument("--exemptions", help="PATH+RULE exemptions file; default: "
+                                         "exemptions.json shipped beside this script. "
+                                         "Missing is fine (zero exemptions); malformed "
+                                         "fails the run closed.")
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
 
     if args.selftest:
         sys.exit(selftest())
+
+    global EXEMPTIONS_FILE
+    if args.exemptions:
+        EXEMPTIONS_FILE = args.exemptions
 
     try:
         if not args.manifest and args.tree is None:

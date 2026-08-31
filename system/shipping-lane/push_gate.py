@@ -193,6 +193,7 @@ from __future__ import annotations
 
 import argparse
 import codecs
+import contextlib
 import hashlib
 import hmac
 import json
@@ -208,6 +209,7 @@ from datetime import datetime, timezone
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import canon  # noqa: E402 -- sibling module, same directory, imported after sys.path fix
+import exemptions  # noqa: E402 -- ditto; the PATH+RULE exemption loader/matcher
 import judge  # noqa: E402 -- sibling module; [Build 2] used ONLY to re-derive a judge
 # receipt's findings_present from its own recorded evidence (judge.run_consume) -- see
 # validate_and_load_judge_receipt's HALF B. Never used to invoke an LLM from in here;
@@ -217,6 +219,13 @@ import judge  # noqa: E402 -- sibling module; [Build 2] used ONLY to re-derive a
 PARTS = os.path.realpath(os.path.join(HERE, "..", "parts"))
 FORBIDDEN_CONTENT = os.path.join(PARTS, "forbidden_content.py")
 MOVE_ASIDE = os.path.join(PARTS, "move_aside.py")
+# THE EXEMPTION MECHANISM (Y.I2, 2026-08-30) -- the SAME file scrub.py reads, on purpose:
+# this is the LAST gate, so a (path, rule_id) this module doesn't also honor would mean an
+# exemption "clears" a hit in scrub.py's report and then gets refused anyway right here,
+# which is worse than no exemption at all (a human trusts the mid-pipeline report, then
+# watches the actual push fail for a reason that report already said was handled). See
+# exemptions.py's module docstring for the full case. Default: --exemptions overrides.
+EXEMPTIONS_FILE = os.path.join(HERE, "exemptions.json")
 # ⭐ THE SHIPPED RULE FILE IS ONLY HALF THE SET, DELIBERATELY.
 #
 # `refuse-rules.json` in this repo holds what is true for everybody -- credential shapes,
@@ -232,7 +241,10 @@ MOVE_ASIDE = os.path.join(PARTS, "move_aside.py")
 BASE_REFUSE_RULES = os.path.join(HERE, "refuse-rules.json")
 
 CLEAN, REFUSED, CANNOT_EVALUATE = 0, 1, 2
-RECEIPT_SCHEMA = "push_gate.receipt.v3"
+# v4 (2026-08-28): added "personal_tier_terms" -- the receipt itself now proves the
+# personal tier was armed at CLEAN time, not only the report printed at the time. See
+# canon.py's PERSONAL_TIER comment and run_gate()'s personal_tier_terms == 0 check.
+RECEIPT_SCHEMA = "push_gate.receipt.v4"
 # v3 (Build 1, 2026-08-05): adds "judged" + "judge" fields to the receipt body; the
 # hashing primitives below moved to canon.py so push_gate.py and judge.py compute a
 # tree hash the exact same way (see canon.py's "tree hashing (Build 1)" section).
@@ -425,10 +437,19 @@ def _non_regular_reason(mode):
 walk_tree = canon.walk_tree_files
 
 
-def scan_tree(tree_root, refuse_rules, refuse_rules_path, rewrite_rules):
+def scan_tree(tree_root, refuse_rules, refuse_rules_path, rewrite_rules,
+              exemption_index=None):
     """Walk EVERY file. Never raises -- fail-closed conditions are aggregated into
-    problem_files for the caller to turn into CannotEvaluate."""
+    problem_files for the caller to turn into CannotEvaluate.
+
+    `exemption_index` (Y.I2) is the (path, rule_id) -> reason map built by
+    exemptions.build_index(); None/empty behaves exactly as if this parameter did not
+    exist. See the per-file EXEMPTIONS block below for how it is applied -- to BOTH this
+    function's own regex scan AND the external forbidden_content.py cross-check, because
+    this is the LAST gate and an exemption that only worked in one of the two checks
+    would refuse the file anyway via the other."""
     files, symlinked_dirs = walk_tree(tree_root)
+    exemption_index = exemption_index or {}
 
     result = {
         "file_count": len(files),
@@ -436,6 +457,7 @@ def scan_tree(tree_root, refuse_rules, refuse_rules_path, rewrite_rules):
         "refused_files": [],
         "rewrite_survivors": [],
         "gated_files": [],
+        "exempted_files": [],
     }
     for d in symlinked_dirs:
         result["problem_files"].append({
@@ -553,25 +575,61 @@ def scan_tree(tree_root, refuse_rules, refuse_rules_path, rewrite_rules):
                 "hits": tag_hits,
             })
 
-        fc_rc, fc_err = fc_exit_code(refuse_rules_path, abspath)
-        if fc_rc not in (CLEAN, REFUSED):
-            result["problem_files"].append({
-                "path": rel, "reason": "forbidden_content.py could not evaluate",
-                "detail": fc_err.strip()[:300]})
-            continue
+        # EXEMPTIONS (Y.I2): split `own_hits` into what still blocks and what an exact
+        # (path, rule_id) exemption on file has cleared -- BEFORE the engine calls
+        # below, so the exempted hit(s) never reach `result["refused_files"]`.
+        # `exempted` is never discarded (HARD CONSTRAINT 2): it is appended to
+        # `result["exempted_files"]` further down, unconditionally.
+        own_hits, own_exempted = exemptions.partition_hits(
+            own_hits, rel, exemption_index)
 
-        # FIX 1, engine half: run the UNMODIFIED forbidden_content.py a SECOND time
-        # against the canonicalised text (never modified in system/parts/ itself --
-        # see canon.py's docstring). Either exit code REFUSED is enough to refuse.
-        canon_text_for_engine = canon.canonicalize(text)
-        fc_rc_canon, fc_err_canon = fc_exit_code_on_text(
-            refuse_rules_path, canon_text_for_engine)
-        if fc_rc_canon not in (CLEAN, REFUSED):
-            result["problem_files"].append({
-                "path": rel,
-                "reason": "forbidden_content.py could not evaluate (canonical pass)",
-                "detail": fc_err_canon.strip()[:300]})
-            continue
+        # The external forbidden_content.py engine knows nothing about exemptions --
+        # it only ever sees a rules PATH. So when this file has an exemption on it,
+        # both engine calls below run against a THROWAWAY rules file that is the same
+        # rule set minus the exempted id(s) (never a rule with its pattern edited --
+        # see exemptions.filtered_rules) instead of the full `refuse_rules_path`. A
+        # file with no exemption pays nothing extra: `engine_rules_path` is just
+        # `refuse_rules_path`, unchanged.
+        #
+        # `filtered_rules_file()` is a CONTEXT MANAGER: it writes the filtered rules --
+        # which carry the operator's PLAINTEXT IDENTITY TERMS -- to
+        # `shared.paths.scratch_dir()` (never any tree this gate itself scans, staging
+        # or otherwise) and its own try/finally deletes the file on the way out of this
+        # `with` block, including on the `continue` paths below via CANNOT EVALUATE.
+        # There is no bare `write_rules_file()` left to forget to clean up.
+        exempt_ids = exemptions.rule_ids_for_path(exemption_index, rel)
+        with contextlib.ExitStack() as stack:
+            engine_rules_path = refuse_rules_path
+            if exempt_ids:
+                engine_rules_path = stack.enter_context(exemptions.filtered_rules_file(
+                    exemptions.filtered_rules(refuse_rules, exempt_ids)))
+
+            fc_rc, fc_err = fc_exit_code(engine_rules_path, abspath)
+            if fc_rc not in (CLEAN, REFUSED):
+                result["problem_files"].append({
+                    "path": rel, "reason": "forbidden_content.py could not evaluate",
+                    "detail": fc_err.strip()[:300]})
+                continue
+
+            # FIX 1, engine half: run the UNMODIFIED forbidden_content.py a SECOND
+            # time against the canonicalised text (never modified in system/parts/
+            # itself -- see canon.py's docstring). Either exit code REFUSED is enough
+            # to refuse.
+            canon_text_for_engine = canon.canonicalize(text)
+            fc_rc_canon, fc_err_canon = fc_exit_code_on_text(
+                engine_rules_path, canon_text_for_engine)
+            if fc_rc_canon not in (CLEAN, REFUSED):
+                result["problem_files"].append({
+                    "path": rel,
+                    "reason": "forbidden_content.py could not evaluate (canonical "
+                              "pass)",
+                    "detail": fc_err_canon.strip()[:300]})
+                continue
+        # `engine_rules_path` (and its throwaway file, now deleted) is not needed past
+        # this point.
+
+        if own_exempted:
+            result["exempted_files"].append({"path": rel, "hits": own_exempted})
 
         file_refused = bool(own_hits) or fc_rc == REFUSED or fc_rc_canon == REFUSED
         if file_refused:
@@ -888,7 +946,7 @@ def validate_and_load_judge_receipt(path, tree_dir):
 
 
 def build_receipt(tree_dir, refuse_rules_path, rewrite_rules_path, scan, judged,
-                  judge_info):
+                  judge_info, personal_tier_terms):
     files_sorted = sorted(scan["gated_files"], key=lambda f: f["path"])
     tree_hash = sha256_bytes(canonical_json(files_sorted))
     body = {
@@ -897,12 +955,24 @@ def build_receipt(tree_dir, refuse_rules_path, rewrite_rules_path, scan, judged,
         "tree_root": os.path.abspath(tree_dir),
         "refuse_rules_path": os.path.abspath(refuse_rules_path),
         "refuse_rules_sha256": sha256_file(refuse_rules_path),
+        # Armed-ness, PINNED INTO THE RECEIPT (v4, 2026-08-28, Defect 1 fix) -- the same
+        # count run_gate() already refused CannotEvaluate on at zero, carried into what a
+        # human or push_gate.py's own --check-receipt reads back later, so a receipt can
+        # never be read as proof of a clean run whose personal tier was actually empty.
+        "personal_tier_terms": personal_tier_terms,
         "rewrite_rules_path": os.path.abspath(rewrite_rules_path),
         "rewrite_rules_sha256": sha256_file(rewrite_rules_path),
         "file_count": len(files_sorted),
         "files": files_sorted,
         "tree_sha256": tree_hash,
         "rewrite_survivors": scan["rewrite_survivors"],
+        # EXEMPTIONS (Y.I2) -- pinned into the receipt itself, not just the run-time
+        # report: whoever reads a receipt later sees exactly which (path, rule_id)
+        # hits were cleared and why, on the record, same as everything else certified
+        # here. Never affects tree_sha256/verdict above (those are computed before this
+        # field exists).
+        "exempted_files": scan["exempted_files"],
+        "exempted_count": sum(len(f["hits"]) for f in scan["exempted_files"]),
         "judged": judged,
         "judge": _judge_report_block(judge_info),
         "verdict": VERDICT_LABEL if judged else VERDICT_LABEL_UNJUDGED,
@@ -936,7 +1006,7 @@ def write_receipt(path, receipt):
 # --------------------------------------------------------------------------- gate run
 
 def run_gate(tree_dir, refuse_rules_path, rewrite_rules_path, receipt_path=None,
-             judge_receipt_path=None, accept_unjudged=False):
+             judge_receipt_path=None, accept_unjudged=False, exemptions_path=None):
     if not os.path.isfile(FORBIDDEN_CONTENT):
         raise CannotEvaluate("sibling part missing: {!r}".format(FORBIDDEN_CONTENT))
     if not tree_dir or not os.path.isdir(tree_dir):
@@ -951,6 +1021,40 @@ def run_gate(tree_dir, refuse_rules_path, rewrite_rules_path, receipt_path=None,
                                allow_empty=True) if rewrite_rules_path else []
     validate_rule_shapes(refuse_rules, "refuse-rules.json")
     validate_rule_shapes(rewrite_rules, "rewrite-rules.json")
+
+    # EXEMPTIONS (Y.I2) -- a MISSING file means zero exemptions (the strict/safe
+    # default: this gate behaves exactly as before this feature existed). A file that
+    # EXISTS but is malformed fails this run closed, same as a bad rule shape would.
+    # This never touches `refuse_rules` itself -- the personal-tier check just below is
+    # computed from that SAME unfiltered `refuse_rules` object, so an exemption can
+    # never cause it to see a reduced rule set (see the DEFECT 1 block's own comment
+    # for why that distinction matters -- these are two different questions: "were
+    # identity terms even loaded" vs. "is this one known hit on this one path cleared").
+    exemptions_source = exemptions_path or EXEMPTIONS_FILE
+    try:
+        exemption_index = exemptions.build_index(
+            exemptions.load_exemptions(exemptions_source))
+    except exemptions.ExemptionError as e:
+        raise CannotEvaluate(str(e))
+
+    # ⛔ DEFECT 1 (found 2026-08-28): `--refuse-rules PATH` bypasses effective_rules()'s own
+    # call into identity_rules.py -- see that flag's own --help text ("an already-composed
+    # effective refuse set"). Nothing downstream ever checked that the file it names
+    # actually carries a personal tier, so a caller passing the shipped generic set
+    # directly could certify a tree carrying a real name CLEAN. Checked HERE, on every
+    # path into this function, because armed-ness is a property of the RULES
+    # (canon.count_personal_tier()) never of which code path produced them -- see
+    # canon.py's PERSONAL_TIER comment and scrub.py's identical check for the full story.
+    personal_tier_terms = canon.count_personal_tier(refuse_rules)
+    if personal_tier_terms == 0:
+        raise CannotEvaluate(
+            "the effective refuse rules at {!r} contain ZERO personal-tier (tier {!r}) "
+            "entries -- this run's REFUSE tier never saw a single identity term. A CLEAN "
+            "verdict (and a receipt certifying it) from a run like this would publish a "
+            "name nobody protected. Refused no matter how the rules got here -- compose "
+            "the effective set with identity_rules.py (the default here -- omit "
+            "--refuse-rules) so the personal tier is included, or pass --refuse-rules at "
+            "a file that already has one.".format(refuse_rules_path, canon.PERSONAL_TIER))
 
     # ---- BUILD 1 (2026-08-05): THE JUDGE GATE. -----------------------------------
     # This gate does not itself run an LLM (see module docstring) -- it structurally
@@ -979,7 +1083,8 @@ def run_gate(tree_dir, refuse_rules_path, rewrite_rules_path, receipt_path=None,
                 VERDICT_LABEL_UNJUDGED),
             file=sys.stderr)
 
-    scan = scan_tree(tree_dir, refuse_rules, refuse_rules_path, rewrite_rules)
+    scan = scan_tree(tree_dir, refuse_rules, refuse_rules_path, rewrite_rules,
+                     exemption_index=exemption_index)
 
     if scan["file_count"] == 0:
         raise CannotEvaluate(
@@ -1009,8 +1114,19 @@ def run_gate(tree_dir, refuse_rules_path, rewrite_rules_path, receipt_path=None,
         "file_count": scan["file_count"],
         "refused_files": scan["refused_files"],
         "rewrite_survivors": scan["rewrite_survivors"],
+        # EXEMPTIONS (Y.I2) -- NEVER folded into refused_files, NEVER affects
+        # `verdict` above (which is computed from scan["refused_files"] alone). Kept
+        # here, separate and unconditional, so a cleared hit stays visible on the
+        # report/receipt: recorded, counted, and locatable by path/rule id/reason.
+        "exempted_files": scan["exempted_files"],
+        "exempted_count": sum(len(f["hits"]) for f in scan["exempted_files"]),
         "judged": judged,
         "judge": _judge_report_block(judge_info),
+        # Armed-ness, IN THE REPORT ITSELF (Defect 1 fix, 2026-08-28) -- a CLEAN verdict
+        # now always sits next to the count that proves the personal tier was not empty
+        # when it was produced. See the CannotEvaluate raised above for
+        # personal_tier_terms == 0.
+        "personal_tier_terms": personal_tier_terms,
         "verdict": "REFUSED" if verdict == REFUSED else verdict_label,
     }
     if mechanical_refused or judge_refused:
@@ -1021,7 +1137,7 @@ def run_gate(tree_dir, refuse_rules_path, rewrite_rules_path, receipt_path=None,
     receipt = None
     if verdict == CLEAN:
         receipt = build_receipt(tree_dir, refuse_rules_path, rewrite_rules_path, scan,
-                                judged, judge_info)
+                                judged, judge_info, personal_tier_terms)
         if receipt_path:
             write_receipt(receipt_path, receipt)
             report["receipt_written_to"] = os.path.abspath(receipt_path)
@@ -1062,6 +1178,19 @@ def render_report(report, receipt_written):
                     "    (forbidden_content.py flagged this file; this scan's own "
                     "finditer pass found no hit -- refused anyway, the more paranoid "
                     "of the two wins)")
+    if report.get("exempted_files"):
+        lines.append("")
+        lines.append(
+            "EXEMPTED (cleared, path+rule scoped, NOT blocking -- {} hit(s)):".format(
+                report.get("exempted_count", 0)))
+        for f in report["exempted_files"]:
+            lines.append("  [EXEMPTED] {}".format(f["path"]))
+            for h in f["hits"]:
+                lines.append("    [{}] reason: {}".format(
+                    h["id"], h.get("exempted_reason", "")))
+                for hit in h["hits"]:
+                    lines.append("      line {}: {}".format(
+                        hit["line"], hit["evidence"]))
     if report["rewrite_survivors"]:
         lines.append("")
         lines.append(
@@ -1252,6 +1381,147 @@ def selftest():
                        for f in rep["refused_files"] for h in f["hits"]))
         report("...and NO receipt is written for a REFUSED tree",
                not os.path.exists(receipt_bad))
+
+        # -------------------------------------------------- DEFECT 1 (found 2026-08-28):
+        # `--refuse-rules PATH` bypassing identity_rules.py entirely and reporting a tree
+        # carrying a real name CLEAN. The shipped generic `refuse-rules.json` (literal
+        # path, NOT DEFAULT_REFUSE_RULES -- that name is bound to the COMPOSED effective
+        # set with the identity fixture folded in, see this selftest's own setup above)
+        # has zero personal-tier entries by construction -- exactly the unarmed shape.
+        shipped_generic_rules = os.path.join(HERE, "refuse-rules.json")
+        bare_rewrite = os.path.join(_rules_dir, "bare-empty-rewrite.json")
+        with open(bare_rewrite, "w", encoding="utf-8") as _fh:
+            json.dump([], _fh)
+        clean_tree_defect1 = new_dir("push-gate-selftest-defect1-clean-")
+        with open(os.path.join(clean_tree_defect1, "readme.md"), "w", encoding="utf-8") as fh:
+            fh.write("ordinary prose, nothing sensitive.\n")
+        try:
+            run_gate(clean_tree_defect1, shipped_generic_rules, bare_rewrite, None,
+                     accept_unjudged=True)
+            report("run_gate() with a personal-tier-empty --refuse-rules -> CannotEvaluate",
+                   False, "no exception raised -- reported a verdict with zero identity terms")
+        except CannotEvaluate as e:
+            report("run_gate() with a personal-tier-empty --refuse-rules -> CannotEvaluate",
+                   True)
+            report("...and names WHY (zero personal-tier entries), not just THAT",
+                   "personal-tier" in str(e) and "ZERO" in str(e), str(e)[:200])
+        p = subprocess.run(
+            [sys.executable, me, "--refuse-rules", shipped_generic_rules,
+             "--rewrite-rules", bare_rewrite, "--tree", clean_tree_defect1,
+             "--accept-unjudged"],
+            capture_output=True, text=True)
+        report("CLI: same case -> exit 2 (CANNOT EVALUATE), never exit 0 (CLEAN)",
+               p.returncode == CANNOT_EVALUATE, "got exit {}".format(p.returncode))
+
+        # -------------------------------------------------- EXEMPTIONS (Y.I2), LAST
+        # GATE. This is the gate that actually decides whether `git push` happens, so
+        # an exemption that only worked in scrub.py and not here would be a lie in the
+        # mid-pipeline report. Fixture: the SAME shape `path-drive-cloudstorage` fires
+        # on (the rule this feature's own justification quotes), kept short/low-entropy
+        # on purpose (see scrub.py's matching selftest comment for why length matters).
+        exempt_tree = new_dir("push-gate-selftest-exempt-")
+        with open(os.path.join(exempt_tree, "note.md"), "w", encoding="utf-8") as fh:
+            fh.write("ref: CloudStorage/GoogleDrive-x\n")
+        exempt_receipts_dir = new_dir("push-gate-selftest-exempt-receipts-")
+
+        # BASELINE -- no exemptions file at all -> refused, same as before this exists.
+        no_exempt_path = os.path.join(_rules_dir, "no-such-exemptions.json")
+        verdict_base, rep_base, _r = run_gate(
+            exempt_tree, DEFAULT_REFUSE_RULES, DEFAULT_REWRITE_RULES,
+            os.path.join(exempt_receipts_dir, "base.json"), accept_unjudged=True,
+            exemptions_path=no_exempt_path)
+        report("BASELINE (no exemptions file): the drive-mount hit REFUSES the tree, "
+               "same as before this feature existed",
+               verdict_base == REFUSED
+               and any(h["id"] == "path-drive-cloudstorage"
+                       for f in rep_base["refused_files"] for h in f["hits"]))
+
+        # (a) a CORRECT path+rule_id exemption clears it -> CLEAN, receipt written.
+        good_exempt_path = os.path.join(_rules_dir, "exemptions-good.json")
+        with open(good_exempt_path, "w", encoding="utf-8") as fh:
+            json.dump([{"path": "note.md", "rule_id": "path-drive-cloudstorage",
+                        "reason": "placeholder Drive mount, no real account -- "
+                                 "push_gate.py Y.I2 selftest"}], fh)
+        good_receipt_path = os.path.join(exempt_receipts_dir, "good.json")
+        verdict_good, rep_good, receipt_good = run_gate(
+            exempt_tree, DEFAULT_REFUSE_RULES, DEFAULT_REWRITE_RULES,
+            good_receipt_path, accept_unjudged=True, exemptions_path=good_exempt_path)
+        report("(a) a CORRECT path+rule_id exemption -> the LAST gate passes it too "
+               "(CLEAN, not just scrub.py's mid-pipeline report)",
+               verdict_good == CLEAN and rep_good["refused_files"] == []
+               and os.path.exists(good_receipt_path))
+        report("(e) ...and the cleared hit still APPEARS on the report AND the "
+               "written receipt -- never silently dropped",
+               any(h["id"] == "path-drive-cloudstorage"
+                   for f in rep_good["exempted_files"] for h in f["hits"])
+               and any(h["id"] == "path-drive-cloudstorage"
+                       for f in receipt_good["exempted_files"] for h in f["hits"])
+               and rep_good["exempted_count"] == 1,
+               "report exempted_files={}".format(rep_good["exempted_files"]))
+        report("...and the human report SURFACES it",
+               "[EXEMPTED] note.md" in render_report(rep_good, good_receipt_path))
+
+        # (b) an exemption for the WRONG PATH does not clear it.
+        wrongpath_exempt = os.path.join(_rules_dir, "exemptions-wrongpath.json")
+        with open(wrongpath_exempt, "w", encoding="utf-8") as fh:
+            json.dump([{"path": "some/other-file.md",
+                        "rule_id": "path-drive-cloudstorage",
+                        "reason": "a real reason, just the wrong file"}], fh)
+        verdict_wp, rep_wp, _r = run_gate(
+            exempt_tree, DEFAULT_REFUSE_RULES, DEFAULT_REWRITE_RULES,
+            os.path.join(exempt_receipts_dir, "wrongpath.json"), accept_unjudged=True,
+            exemptions_path=wrongpath_exempt)
+        report("(b) an exemption for the WRONG PATH does NOT clear the hit -- still "
+               "REFUSED",
+               verdict_wp == REFUSED and rep_wp["exempted_files"] == [])
+
+        # (c) an exemption for the WRONG RULE-ID does not clear it.
+        wrongrule_exempt = os.path.join(_rules_dir, "exemptions-wrongrule.json")
+        with open(wrongrule_exempt, "w", encoding="utf-8") as fh:
+            json.dump([{"path": "note.md", "rule_id": "key-anthropic",
+                        "reason": "a real reason, just the wrong rule id"}], fh)
+        verdict_wr, rep_wr, _r = run_gate(
+            exempt_tree, DEFAULT_REFUSE_RULES, DEFAULT_REWRITE_RULES,
+            os.path.join(exempt_receipts_dir, "wrongrule.json"), accept_unjudged=True,
+            exemptions_path=wrongrule_exempt)
+        report("(c) an exemption for the WRONG RULE-ID does NOT clear the hit -- "
+               "still REFUSED",
+               verdict_wr == REFUSED and rep_wr["exempted_files"] == [])
+
+        # (d) a missing/blank reason is rejected loudly -- CANNOT EVALUATE.
+        bad_reason_exempt = os.path.join(_rules_dir, "exemptions-badreason.json")
+        with open(bad_reason_exempt, "w", encoding="utf-8") as fh:
+            json.dump([{"path": "note.md", "rule_id": "path-drive-cloudstorage",
+                        "reason": ""}], fh)
+        try:
+            run_gate(exempt_tree, DEFAULT_REFUSE_RULES, DEFAULT_REWRITE_RULES,
+                     os.path.join(exempt_receipts_dir, "badreason.json"),
+                     accept_unjudged=True, exemptions_path=bad_reason_exempt)
+            report("(d) a MISSING/BLANK reason -> CannotEvaluate", False,
+                   "run_gate did not raise")
+        except CannotEvaluate as e:
+            report("(d) a MISSING/BLANK reason -> CannotEvaluate",
+                   "reason" in str(e).lower(), str(e)[:200])
+
+        # Same, via the real CLI -- proves --exemptions wiring end to end.
+        p_good = subprocess.run(
+            [sys.executable, me, "--refuse-rules", DEFAULT_REFUSE_RULES,
+             "--rewrite-rules", DEFAULT_REWRITE_RULES, "--tree", exempt_tree,
+             "--accept-unjudged", "--exemptions", good_exempt_path],
+            capture_output=True, text=True)
+        report("CLI: --exemptions PATH clears the hit end to end -> exit 0",
+               p_good.returncode == CLEAN,
+               "got exit {}, stdout tail {}".format(
+                   p_good.returncode, p_good.stdout.strip()[-300:]))
+        p_bad = subprocess.run(
+            [sys.executable, me, "--refuse-rules", DEFAULT_REFUSE_RULES,
+             "--rewrite-rules", DEFAULT_REWRITE_RULES, "--tree", exempt_tree,
+             "--accept-unjudged", "--exemptions", bad_reason_exempt],
+            capture_output=True, text=True)
+        report("CLI: a malformed exemptions file -> exit 2, never a silent pass",
+               p_bad.returncode == CANNOT_EVALUATE,
+               "got exit {}, stderr tail {}".format(
+                   p_bad.returncode, p_bad.stderr.strip()[-300:]))
 
         # -------------------------------------------------- FIX 1: the 2026-08-05
         # bypasses -- none of these are the literal byte sequence any rule names, and
@@ -1949,6 +2219,10 @@ def main():
     ap.add_argument("--check-receipt", metavar="RECEIPT_PATH",
                      help="re-validate a previously written receipt instead of gating "
                           "a tree")
+    ap.add_argument("--exemptions", help="PATH+RULE exemptions file; default: "
+                                         "exemptions.json shipped beside this script. "
+                                         "Missing is fine (zero exemptions); malformed "
+                                         "fails the run closed.")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
@@ -1980,7 +2254,7 @@ def main():
             args.refuse_rules, args.rewrite_rules, args.identity)
         verdict, report, receipt = run_gate(
             args.tree, refuse_path, rewrite_path, args.receipt,
-            args.judge_receipt, args.accept_unjudged)
+            args.judge_receipt, args.accept_unjudged, exemptions_path=args.exemptions)
     except CannotEvaluate as e:
         print("CANNOT EVALUATE: {}".format(e), file=sys.stderr)
         sys.exit(CANNOT_EVALUATE)

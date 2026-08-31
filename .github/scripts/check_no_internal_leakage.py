@@ -261,6 +261,38 @@ GENERIC_CONTENT_PATTERNS = [
         "pattern": r"GoogleDrive-[A-Za-z0-9._%+-]+@",
         "remedy": "a Google Drive mount path with a full email address embedded in it. Remove it.",
     },
+    {
+        "id": "home-path-windows",
+        "source": "path-home-windows",
+        # ⛔ ADDED (2026-08-28) -- system/shipping-lane/refuse-rules.json has carried
+        # path-home-windows since before this file existed; this scanner had no equivalent
+        # at all, found by test_line_boundary_bypass.py's WINDOWS-PATH SHAPES cases (not a
+        # line-boundary bug -- a plain missing rule). Same shape as the sibling scrub.py
+        # rule, on purpose: `C:\Users\<account>` identifies its owner the same way
+        # `/Users/<account>` does.
+        "pattern": r"(?i)[A-Za-z]:\\Users\\(?!(?:Jane[ _]?Doe|John[ _]?Doe|Name|somebody|someone|username|user|account|placeholder|example|YourName|<[^>]+>)\\)[A-Za-z0-9._ -]+",
+        "remedy": ("the Windows form of a home path (C:\\Users\\<account>). Replace the "
+                   "account segment with a placeholder, or reference it relatively."),
+    },
+    {
+        "id": "path-unc-share",
+        "source": "path-unc-share",
+        # ⛔ ADDED (2026-08-28), alongside home-path-windows -- a bare Windows network-share
+        # path has neither a drive letter nor a "Users" segment for home-path-windows to key
+        # on, so it needs its own rule -- exactly why scrub.py's refuse-rules.json carries
+        # path-unc-share as a separate entry rather than folding it into path-home-windows.
+        #
+        # ⚠ SELF-SCAN SAFETY, DELIBERATE: writing this rule's own shape out as a literal
+        # example anywhere near it (two backslashes, a server-shaped token, a backslash, a
+        # share-shaped token) makes this file flag itself -- caught by
+        # test_check_no_internal_leakage.py's self-scan assertion. Described in prose here
+        # instead, the same fix operator-drive-cloudstorage's comments already use.
+        "pattern": r"(?i)(?<![A-Za-z0-9:\\])\\\\(?!(?:SERVER|placeholder|example)\\)[A-Za-z0-9._-]+\\[A-Za-z0-9._ -]+",
+        "remedy": ("a bare Windows UNC/network-share path -- two leading backslashes, a "
+                   "server name, a backslash, then a share name. The share segment is "
+                   "very often a personal account or project folder -- replace it with a "
+                   "placeholder."),
+    },
 ]
 
 # ⛔ THERE IS NO .github/ CONTENT-SCAN EXEMPTION ANY MORE, AND THAT IS THE POINT OF THIS
@@ -406,6 +438,25 @@ def install_identity_patterns(identity_file=None):
     return _CONTENT_PATTERNS
 
 
+# --------------------------------------------------------- shared fixture allowlist (DATA ONLY)
+# ⚖ RULED 2026-08-23 by Enver, in session. Fixture home-path usernames: the segment right after
+# /Users/ or /home/ that this repo's OWN examples already use for an invented account.
+#
+# ⭐ WHY IT LIVES ABOVE THE WHOLE-TREE WALL. It used to sit below it, so ONLY whole-tree mode
+# honoured it. The per-PR paths (--base/--head/--scan-file) did not — and the pre-commit hook runs
+# --scan-file. Net effect: system/shipping-lane/scrub.py became PERMANENTLY UNCOMMITTABLE, because
+# its own self-test plants `/Users/wren/Desktop` precisely to prove the scrubber CATCHES home paths.
+# The scanner could not tell a line that USES the pattern from one that TESTS it (same shape as
+# issue #80). Measured 2026-08-23: a one-line, unrelated fix to scrub.py was refused.
+#
+# ⛔ THE WALL IS NOT BREACHED. Its stated invariant is about FUNCTIONS — "the per-PR functions are
+# never called from here, and nothing here is ever called from them." This is a frozenset of four
+# strings, not a call. No per-PR function invokes whole-tree code, or the reverse; both sides now
+# read the same DATA. The file's ⛔ NO PER-FILE SUPPRESSION rule also stands: this admits no new
+# string, it makes two modes agree about a list that was already curated and already trusted.
+FICTIONAL_FIXTURE_USERNAMES = frozenset({"wren", "x", "theirname", "woakley"})
+
+
 def content_patterns():
     if _CONTENT_PATTERNS is None:
         raise IdentityUnavailable(
@@ -435,25 +486,26 @@ def content_patterns():
 #   - the five other named advisors in .claude/skills/advisory-council/example-council.md's
 #     worked example (Wren Okonkwo, Ida Brennan, Sunil Varma, Marisol Ferreira, Theo
 #     Lindqvist) -- a fictional council roster shipped as product documentation.
+#   - "Marlowe" / "Rosalind" / "Handbook" -- system/shipping-lane/canon.py's own self-test
+#     block for scan_third_party_name_shape() (the "SHAPE heuristics" section, ~2026-08-15):
+#     "Marlowe's husband had an ER visit." and "He and his partner Rosalind live across two
+#     homes." are synthetic POSITIVE-match fixtures in the same function and same test
+#     block as the already-allowlisted "His wife Fern handles the scheduling." example;
+#     "Handbook" is the synthetic NEGATIVE-match fixture right after them ("The Client
+#     Handbook explains billing." -- asserts NO match fires).
 # Adding a new entry here means "this exact string is independently already established as
 # invented, elsewhere in this repo, for a documented reason" -- never "a real finding I
 # want gone."
 FICTIONAL_FIXTURE_WORDS = frozenset({
     "wren", "oakley", "woakley", "fern",
     "okonkwo", "ida", "brennan", "sunil", "varma", "marisol", "ferreira", "theo", "lindqvist",
+    "marlowe", "rosalind", "handbook",
 })
 FICTIONAL_FIXTURE_PHRASES = ("whitfield contracting",)
 # Fixture home-path usernames -- the segment right after /Users/ or /home/ that this repo's
 # own examples already use for an invented account, so home-path-generic (rule 2) does not
 # fire on them in whole-tree mode. Matches the task's own named set exactly.
-# "name"/"Name" added 2026-08-23: system/hooks/lib/winpath_fold.sh and its test use
-# `/Users/name/Repo` and `/Users/Name/Repo` as the canonical generic example of the SAME
-# directory spelled two ways -- that is the entire subject of that file, and the example
-# cannot be written as `~/` without destroying it (the whole point is the absolute prefix
-# a `case` string-match compares against). Matching by shape alone cannot tell a word
-# placeholder from a short real account name, which the rule's own header already
-# concedes; this is the sanctioned escape for exactly that case.
-FICTIONAL_FIXTURE_USERNAMES = frozenset({"wren", "x", "theirname", "woakley", "name"})
+# (moved above the WHOLE-TREE wall 2026-08-23 — see FICTIONAL_FIXTURE_USERNAMES there)
 
 # --------------------------------------------------------- self-reference exclusions
 # ⭐ RE-EXAMINED 2026-08-18 (issue #59) ALONGSIDE THE .github/ EXEMPTION, AND KEPT.
@@ -803,20 +855,6 @@ def scan_whole_tree(scan_root_paths=None):
                 "severity": BLOCKING, "path": path, "line": None,
                 "rule_id": path_rule["id"], "remedy": path_rule["remedy"], "evidence": None,
             })
-        # GAP FIX (2026-08-26): the path STRING itself against content_patterns() (generic
-        # + identity) -- see check_path_content(). A name-shaped filename with a clean body
-        # (docs/DEMIR-CRIB.md's actual shape) was previously invisible to whole-tree mode
-        # too, since this loop only ever ran check_path() (PATH_DENYLIST) against the path
-        # and then scanned the file's LINE content below, never the path string against the
-        # richer rule set.
-        if not is_self_referential_fixture_path(path):
-            for hit_path, rule in check_path_content(path):
-                evidence = redact_spans(hit_path, rule) if is_identity_rule(rule["id"]) else hit_path
-                blocking.append({
-                    "severity": BLOCKING, "path": path, "line": None,
-                    "rule_id": rule["id"], "remedy": rule["remedy"],
-                    "evidence": evidence.strip()[:200],
-                })
         if is_self_referential_fixture_path(path):
             # see WHOLE_TREE_SELF_REFERENCE_EXCLUDE_PATHS/PREFIXES for the two named,
             # documented reasons this is not a general suppression mechanism.
@@ -828,6 +866,7 @@ def scan_whole_tree(scan_root_paths=None):
             continue
         files_scanned += 1
 
+        already = set()
         for lineno, line in enumerate(text.splitlines(), start=1):
             # ---- BLOCKING: the same identity/home-path patterns the per-PR gate uses ----
             for rule in content_patterns():
@@ -848,7 +887,21 @@ def scan_whole_tree(scan_root_paths=None):
                     "rule_id": rule["id"], "remedy": rule["remedy"],
                     "evidence": evidence.strip()[:200],
                 })
+                already.add((lineno, rule["id"]))
 
+        # ---- BLOCKING, second pass: whole-text (Defect 2 -- see whole_text_hits()) ----
+        # Run over `text` RAW and UNSPLIT (never the per-line loop above's already-split
+        # copy), so a multi-word identity term whose space was replaced by a genuine line-
+        # boundary character is still whole in what this pass looks at.
+        for lineno, evidence, rule in whole_text_hits(text, already):
+            shown = redact_spans(evidence, rule) if is_identity_rule(rule["id"]) else evidence
+            blocking.append({
+                "severity": BLOCKING, "path": path, "line": lineno,
+                "rule_id": rule["id"], "remedy": rule["remedy"],
+                "evidence": shown.strip()[:200],
+            })
+
+        for lineno, line in enumerate(text.splitlines(), start=1):
             # ---- WARNING gap 2: third-party name heuristic ----
             if any(phrase in line.lower() for phrase in FICTIONAL_FIXTURE_PHRASES):
                 name_hits = []
@@ -938,7 +991,16 @@ def parse_unified_diff(diff_text: str):
         return None, []
 
     files = []
-    for raw_line in diff_text.splitlines():
+    # ⚠ `.split("\n")`, NEVER `.splitlines()` -- git's own diff format is LF-delimited
+    # ONLY, so splitting on bare "\n" reproduces exactly the records git wrote. Python's
+    # str.splitlines() additionally breaks on CR, VT, FF, NEL, LINE SEPARATOR, PARAGRAPH
+    # SEPARATOR and friends -- and git does NOT split a source line's own content on any
+    # of those, so a "+" line whose ORIGINAL file content contains one of them arrives here
+    # as ONE line with that byte embedded in the middle. Using .splitlines() here would
+    # silently fracture that single diff record into two, one of which loses its "+"
+    # prefix and is dropped -- destroying the exact evidence the whole-text pass (Defect 2,
+    # see whole_text_hits() in this file) needs to still be present in `added`'s text.
+    for raw_line in diff_text.split("\n"):
         if raw_line.startswith("diff --git "):
             if path is not None:
                 files.append((path, added))
@@ -986,39 +1048,6 @@ def check_path(path: str):
     return None
 
 
-def check_path_content(path: str):
-    """GAP FIX (2026-08-26): a changed file's PATH ITSELF -- not just its added line
-    content -- can carry an identity term or a generic leak shape, and nothing scanned it.
-    migration-audit/08-THIRD-PARTY-INVENTORY.md's successor incident (docs/DEMIR-CRIB.md,
-    a real third party's first name in the FILENAME) reached origin/main and a shipped
-    plugin because check_added_lines() only ever looks at diff-added LINE TEXT and
-    check_path() only matches the small, hand-written PATH_DENYLIST (migration-audit/,
-    HANDOFF*, KIMI-*, *-log.md) -- neither one runs content_patterns() (generic + operator
-    identity, rule 3) against the path STRING. A name-shaped filename with a perfectly
-    clean file body sailed through both gates as CLEAN.
-
-    Reuses the exact same content_patterns() rule set added-line content is checked
-    against, applied to `path` as if it were a single line of text -- same identity terms,
-    same generic home-path/drive shapes, same fixture carve-out for home-path-generic (a
-    path itself is never expected to look like a fixture username, but the carve-out is
-    applied for symmetry with check_added_lines() rather than as a special case here).
-    Returns a list of (path, rule) tuples -- deliberately the same shape family as
-    check_added_lines()'s (lineno, text, rule) so scan_files()/scan_whole_tree() can render
-    both through format_violation()/render_finding() unchanged, with line=None (a path
-    match has no line number -- the finding IS the path)."""
-    hits = []
-    for rule in content_patterns():
-        if not re.search(rule["pattern"], path):
-            continue
-        if rule["id"] == "home-path-generic":
-            seg_match = re.search(r"(?:/Users/|/home/)([A-Za-z0-9._-]+)", path)
-            seg = seg_match.group(1) if seg_match else ""
-            if seg.lower() in FICTIONAL_FIXTURE_USERNAMES:
-                continue
-        hits.append((path, rule))
-    return hits
-
-
 def check_added_lines(added_lines):
     hits = []
     for lineno, text in added_lines:
@@ -1035,16 +1064,44 @@ def check_added_lines(added_lines):
     return hits
 
 
+def whole_text_hits(text, already):
+    """The SECOND pass, over `text` WHOLE and UNSPLIT -- never `.splitlines()`'d first.
+
+    WHY THIS EXISTS (2026-08-28, Defect 2). `check_added_lines()` above can only ever see
+    what survives `str.splitlines()`, and that call is exactly what erases a term split by
+    a line-boundary character: by the time a "line" reaches the per-line pass, the boundary
+    byte that WAS the middle of a two-word identity term is gone, consumed as the split
+    point. `identity_rules.compile_term()` (this same date) now matches ANY run of
+    whitespace/line-boundary characters between a multi-word term's words -- including a
+    real LF, CRLF, VT, FF, NEL, LINE SEPARATOR or PARAGRAPH SEPARATOR -- so running the SAME
+    compiled patterns against the RAW text (which still has that byte in it) is enough. The
+    per-line pass is kept, not replaced (see module docstring) -- this is additive.
+
+    `already` is the set of (lineno, rule_id) the per-line pass already reported for this
+    file, so an intact term on one ordinary line is not reported twice.
+
+    ⚠ THIS IS WHERE THE FALSE-POSITIVE RISK LIVES. A whitespace-flexible multi-word pattern
+    run over WHOLE, UNSPLIT text can match across a paragraph break that has nothing to do
+    with the term -- see CLAUDE.md's "FALSE POSITIVES" note. That is the accepted, MEASURED
+    cost of closing a fail-open hole on a fail-closed gate; it is not fixed here."""
+    hits = []
+    for rule in content_patterns():
+        for m in re.finditer(rule["pattern"], text):
+            lineno = text.count("\n", 0, m.start()) + 1
+            if (lineno, rule["id"]) in already:
+                continue
+            evidence = text[m.start():m.end()]
+            if rule["id"] == "home-path-generic":
+                seg_match = re.search(r"(?:/Users/|/home/)([A-Za-z0-9._-]+)", evidence)
+                seg = seg_match.group(1) if seg_match else ""
+                if seg.lower() in FICTIONAL_FIXTURE_USERNAMES:
+                    continue
+            hits.append((lineno, evidence, rule))
+    return hits
+
+
 def format_violation(path, rule, lineno=None, evidence=None):
-    # GAP FIX (2026-08-26): when the MATCH ITSELF is the path (check_path_content(), a
-    # name-shaped filename), `path` carries the matched identity term. The header line
-    # below used to interpolate `path` raw -- so a scan of docs/<name>-CRIB.md printed
-    # "file=docs/<name>-CRIB.md" straight into the public CI log/artifact, undoing the
-    # exact redaction this function already does for the evidence line beneath it. Route
-    # `path` through the same redact_spans() used for evidence, for every identity-rule
-    # finding, not only ones whose match happened to land in line content.
-    shown_path = redact_spans(path, rule) if is_identity_rule(rule["id"]) else path
-    where = "file={}".format(shown_path)
+    where = "file={}".format(path)
     if lineno is not None:
         where += ",line={}".format(lineno)
     source_note = ""
@@ -1058,12 +1115,17 @@ def format_violation(path, rule, lineno=None, evidence=None):
     if evidence is not None:
         # ⛔ never echo a matched identity term into a public CI log -- see redact_spans().
         shown = redact_spans(evidence, rule) if is_identity_rule(rule["id"]) else evidence
-        lines.append("    {}:{}: {}".format(shown_path, lineno, shown.strip()[:200]))
+        lines.append("    {}:{}: {}".format(path, lineno, shown.strip()[:200]))
     return "\n".join(lines)
 
 
-def scan_files(file_diffs):
-    """file_diffs: list of (path, added_lines). Returns list of violation strings."""
+def scan_files(file_diffs, whole_texts=None):
+    """file_diffs: list of (path, added_lines). `whole_texts`, if given, maps path -> the
+    RAW, UNSPLIT text of everything this diff added for that path (--scan-file mode: the
+    whole file, since the whole file counts as added; git-diff mode: the added lines
+    rejoined with "\\n", in order -- see main()). Runs the whole-text pass (Defect 2, see
+    whole_text_hits()) alongside the per-line one whenever that text is available. Returns
+    list of violation strings."""
     violations = []
     for path, added_lines in file_diffs:
         path_rule = check_path(path)
@@ -1071,32 +1133,28 @@ def scan_files(file_diffs):
             violations.append(format_violation(path, path_rule))
             # a denylisted path still gets its content checked below too -- multiple
             # independent findings on one file are all worth surfacing at once.
-        # GAP FIX (2026-08-26): the path STRING itself against the same content rules
-        # (generic + identity) added-line text is checked against -- see check_path_content().
-        for hit_path, rule in check_path_content(path):
-            violations.append(format_violation(hit_path, rule, None, hit_path))
+        already = set()
         for lineno, text, rule in check_added_lines(added_lines):
             violations.append(format_violation(path, rule, lineno, text))
+            already.add((lineno, rule["id"]))
+        whole = (whole_texts or {}).get(path)
+        if whole is not None:
+            for lineno, evidence, rule in whole_text_hits(whole, already):
+                violations.append(format_violation(path, rule, lineno, evidence))
     return violations
 
 
 # --------------------------------------------------------------------------------- CLI
 
 def render_finding(f):
-    # GAP FIX (2026-08-26): same reasoning as format_violation() above -- f["path"] can
-    # itself carry the matched identity term when the finding came from a path-content
-    # match (see scan_whole_tree()'s check_path_content() branch). f["evidence"] is already
-    # redacted at the point scan_whole_tree() builds this dict; f["path"] never was.
     tag = "::error" if f["severity"] == BLOCKING else "::warning"
-    shown_path = (redact_spans(f["path"], {"id": f["rule_id"]})
-                  if is_identity_rule(f["rule_id"]) else f["path"])
-    where = "file={}".format(shown_path)
+    where = "file={}".format(f["path"])
     if f["line"] is not None:
         where += ",line={}".format(f["line"])
     header = "{} {}::[{}] {}".format(tag, where, f["rule_id"], f["remedy"])
     lines = [header]
     if f["evidence"] is not None:
-        lines.append("    {}:{}: {}".format(shown_path, f["line"], f["evidence"]))
+        lines.append("    {}:{}: {}".format(f["path"], f["line"], f["evidence"]))
     return "\n".join(lines)
 
 
@@ -1220,14 +1278,32 @@ def main():
         added_lines = list(enumerate(text.splitlines(), start=1))
         path = args.as_path or args.scan_file
         file_diffs = [(path, added_lines)]
+        # The RAW, UNSPLIT text -- see whole_text_hits(). A --scan-file run treats the
+        # whole file as added, so the whole file is exactly what the whole-text pass wants.
+        whole_texts = {path: text}
     elif args.base and args.head:
         diff_text = run_git_diff(args.base, args.head, args.mode)
         file_diffs = parse_unified_diff(diff_text)
+        # Best-effort whole-text reconstruction for the second pass: the added lines for
+        # each file, rejoined in order with "\n". This still catches a term split by an
+        # exotic line-boundary character WITHIN one diff line -- parse_unified_diff() now
+        # splits the diff document on bare "\n" (not str.splitlines()), so a "+" line's own
+        # text keeps any embedded CR/VT/FF/NEL/LS/PS byte instead of having Python's
+        # splitlines() silently break the diff record on it. What this reconstruction does
+        # NOT recover: a hard-wrap or paragraph break the *diff* itself represents as two
+        # separate "+" lines already had that boundary consumed by `git diff`'s own \n-based
+        # format before this script ever sees it -- rejoining with "\n" restores an LF at
+        # that seam, which is enough for identity_rules.py's whitespace-flexible pattern to
+        # still match across it.
+        whole_texts = {
+            path: "\n".join(text for _, text in added_lines)
+            for path, added_lines in file_diffs
+        }
     else:
         ap.error("either --scan-file, or both --base and --head, are required")
         return CANNOT_EVALUATE
 
-    violations = scan_files(file_diffs)
+    violations = scan_files(file_diffs, whole_texts)
 
     if violations:
         print("NO-INTERNAL-LEAKAGE: {} violation(s) found\n".format(len(violations)))
