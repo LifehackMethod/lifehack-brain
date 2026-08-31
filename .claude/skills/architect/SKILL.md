@@ -14,8 +14,8 @@ updated_at: 2026-08-06
 
 **User outcome.** the operator names one subject and gets back what a professional systems architect would build
 instead — **at this system's real size**, with every claim carrying a source fetched this session. Not a
-list of tidy improvements: the delta between his best thinking as a self-taught builder and what someone
-who does this for a living would do. **Bar:** *"I asked what I was missing, and I got an answer I couldn't
+list of tidy improvements: the delta between the operator's own best thinking, built without formal
+training in the craft, and what someone who does this for a living would do. **Bar:** *"I asked what I was missing, and I got an answer I couldn't
 have written myself — or an honest 'you're fine,' which I also believe."*
 
 **Role.** The third and highest rung of Efficiency's ladder — **FIXER** (one broken thing) · **ENGINEER**

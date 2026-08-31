@@ -1178,10 +1178,10 @@ The personal-finance operator — ingests email, transactions, and utility data;
 INTEROP:
   CHAINS      ingest-run.lib.sh  · deryl-ingest-run.sh is built on the shared ingest-run.lib.sh scaffold (primary-machine gate, new-mail gate, bounded work-list, single-instance lock, watchdog, marker-advance); a change to the lib propagates to all ingest runners
   FEEDS       helm               · deryl-ingest writes state/status/deryl-ingest.json (LOCKED schema decision #38) — Helm d.ingest card; deryl-books-health.py emits state/status/deryl.json — Helm finances/property/tax tiles
-  WRITES→     Gmail Deryl-Archive   · deryl-ingest routes True Submeter emails to Deryl-Archive (Label_32) as pipeline hand-off to true_submeter_ingest.py; all other processed threads move to Deryl-Processed
+  WRITES→     Gmail Deryl-Archive   · deryl-ingest routes emails from a utility submetering provider to Deryl-Archive (Label_32) as pipeline hand-off to submeter_ingest.py; all other processed threads move to Deryl-Processed
   FEEDS       deryl open-loops   · deryl-ingest appends HIGH items with gmail links to desks/deryl/state/open-loops.md; Deryl session reads on launch; /save can relocate resolved loops
   READS       email-service      · daily ingest tries read_thread() store-first before re-fetching from Gmail; falls back to raw sanitization on MISS-*/DISABLED; never writes the store
-  CHAINS      cp_utilities_ingest · cp_utilities_ingest → true_submeter_ingest are chained inside cp-utilities-run.sh; true_submeter must not run if cp_utilities fails
+  CHAINS      cp_utilities_ingest · cp_utilities_ingest → submeter_ingest are chained inside cp-utilities-run.sh; submeter_ingest must not run if cp_utilities fails
   SYNCS       reconcile marker   · /reconcile writes last-reconciled marker to Tax Workbook _REVIEW_STORE!H1; deryl-books-health.py reads and parses this same cell for dashboard signals — format must stay parseable
   GUARDED-BY  guard_sheet_writes.sh · DFM and CP sheets flagged BRITTLE; destructive ops confirm before executing
   GUARDED-BY  guard_ledger_discipline.sh · blocks adding ✅/RESOLVED/CLEARED/FIXED annotation to ## Open in state/debt-ledger.md; deletion-only discipline

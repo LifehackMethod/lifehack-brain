@@ -439,7 +439,7 @@ def install_identity_patterns(identity_file=None):
 
 
 # --------------------------------------------------------- shared fixture allowlist (DATA ONLY)
-# ⚖ RULED 2026-08-23 by Enver, in session. Fixture home-path usernames: the segment right after
+# ⚖ RULED 2026-08-23, in session. Fixture home-path usernames: the segment right after
 # /Users/ or /home/ that this repo's OWN examples already use for an invented account.
 #
 # ⭐ WHY IT LIVES ABOVE THE WHOLE-TREE WALL. It used to sit below it, so ONLY whole-tree mode

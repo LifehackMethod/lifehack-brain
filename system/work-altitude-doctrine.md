@@ -26,10 +26,10 @@ authority: user
 
 ## 1. Why this exists
 
-the operator's recurring report, 2026-08-05: *"a lot of times when I'm trying to work on something, it gets pulled
+a recurring, illustrative operator complaint: *"a lot of times when I'm trying to work on something, it gets pulled
 into the wrong altitude… constantly Claude is pulled into the lowest altitude and it loses its perspective."*
 
-He was invoking a three-altitude filter by hand and finding it worked. A rule that has to be re-typed is a
+That's a three-altitude filter being invoked by hand, and finding it worked. A rule that has to be re-typed is a
 missed system patch (`CLAUDE.md` → *"fix the system, not your notes"*), so it became a hook.
 
 **The failure this prevents** is not ignorance — a session at ground level usually knows the code fine. It is

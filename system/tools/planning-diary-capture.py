@@ -50,7 +50,7 @@ JOURNAL = os.path.join(DRIVE, "system/journal.md")
 STATUS_DIR = os.path.join(DRIVE, "state/status")
 # ⚠ The DATA PATH is deliberately still `desks/cal/`. This desk's code, tools, jobs and tiles are
 # renamed to `planning`; the records directory is NOT, because moving the operator's live records is
-# his decision and has not been taken. KNOWN, INTENTIONAL split — do not "complete" it without his word.
+# their decision and has not been taken. KNOWN, INTENTIONAL split — do not "complete" it without their word.
 DIARY_ROOT = os.path.join(DRIVE, "desks/cal/diary")
 
 # ⛔ THESE WERE HARDCODED, AND THAT IS THE WORST KIND OF HARDCODING. A calendar id baked into a

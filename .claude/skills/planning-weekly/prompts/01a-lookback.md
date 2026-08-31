@@ -122,9 +122,9 @@ correct or fill. **Never "what happened this week?"** — that makes him author 
 | *"I've read enough to just tell him what happened."* | You've read the machine's GUESS. The whole point of this beat is that the rollup is `confidence: low` until he corrects it. Telling him skips the only step that makes it true. |
 | *"A confident read is more useful than hedging."* | A confident read he can't correct is a conclusion. **Commit the read AND hand him the pen** — that's not hedging, it's the format. |
 | *"Naming the pattern is the valuable part."* | He names the lesson; you surface the material. *"What's the lesson?"* is banned in both directions — don't ask it, don't answer it for him. |
-| *"He's agreeing, so I'm right."* | He drifts toward you as the session fills, same as you drift toward him. Agreement late in a long run is weak evidence. **Give him a real correction point per round.** |
-| *"This detail is obviously minor."* | "Quiet this period" was a SIGNAL. So was a coaching client's emergency that read as noise. **You are not the one who decides what's minor.** |
-| *"I'll flag the uncertainty at the end."* | The end is where he's tired and agreeing. Mark INFERRED **inline, at the claim**, or it isn't marked. |
+| *"They're agreeing, so I'm right."* | They drift toward you as the session fills, same as you drift toward them. Agreement late in a long run is weak evidence. **Give him a real correction point per round.** |
+| *"This detail is obviously minor."* | "Quiet this period" was a SIGNAL. So was an urgent personal item that read as noise. **You are not the one who decides what's minor.** |
+| *"I'll flag the uncertainty at the end."* | The end is where they are tired and agreeing. Mark INFERRED **inline, at the claim**, or it isn't marked. |
 
 ## Output contract — THE THREE ALTITUDES (the person's own words, 2026-08-02; in no other design doc)
 

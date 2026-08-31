@@ -22,7 +22,7 @@
 # REDIRECT: vault → desks/cal/state/weekly-vault/<YYYY-Www>/weekly-mine-draft.md
 #           status → $OUT_DIR/last-run.json.
 # ⚠ That DATA PATH is deliberately still `desks/cal/` — code/jobs/tiles are renamed to `planning`,
-#   the records directory is NOT (the operator's call, untaken). Do not "complete" it without his word.
+#   the records directory is NOT (the operator's call, untaken). Do not "complete" it without their word.
 #
 # ⚖ PORT NOTE: donor's LEAD-MACHINE gate (state/primary-machine marker election between two machines)
 # is DELETED, not translated — a student has one computer. The "life lanes" list below is generic

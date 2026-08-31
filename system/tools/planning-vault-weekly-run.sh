@@ -8,7 +8,7 @@
 # GUARDS: READ-ONLY against Google (safe-ingest primitives only); vault writes to the notes root.
 # REDIRECT: vault → desks/cal/state/weekly-vault/<YYYY-Www>/ ; status → $OUT_DIR/last-run.json.
 # ⚠ That DATA PATH is deliberately still `desks/cal/` — code/jobs/tiles are renamed to `planning`,
-#   the records directory is NOT (the operator's call, untaken). Do not "complete" it without his word.
+#   the records directory is NOT (the operator's call, untaken). Do not "complete" it without their word.
 #
 # ⛔ DO NOT PORT `cal-vault-weekly-pull.py` — it is dead code, superseded by
 #    `planning-window-to-vault.py` (the library-backed producer this script calls below). This file

@@ -177,7 +177,7 @@ def render(results):
 _BAD = """## Phase 3 - Prioritization
 
 ### Ranked Win (owner-confirmed, no corrections)
-1. Confirm pay split with the venue - before Monday Day 1.
+1. Confirm delivery terms with the vendor - before Monday Day 1.
 2. Confirm paperwork returned - before Monday Day 1.
 
 ### Calendar plan-of-intent
@@ -190,16 +190,16 @@ _GOOD = """## Phase 3 - Prioritization
 This year you said: build the second lane into the compounding spine.
 This quarter: revenue in the door.
 This month: the second lane as the move-proof one.
-Which puts you HERE this week: the shoot is the container.
+Which puts you HERE this week: the launch is the container.
 
 ### Ranked Win (owner-confirmed)
-1. Confirm pay split with the venue - before Monday Day 1.
+1. Confirm delivery terms with the vendor - before Monday Day 1.
 """
 
 # both present, but reversed -- proves OUT_OF_ORDER is distinguished from BEFORE_MISSING
 _REVERSED = """## Phase 3
 ### Ranked Win
-1. Confirm pay split.
+1. Confirm delivery terms.
 ### Report 1
 This year X, this quarter Y, this month Z, this week W.
 """

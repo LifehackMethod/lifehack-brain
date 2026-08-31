@@ -56,8 +56,8 @@ MODEL="claude-opus-4-8"          # external-content reader → OPUS (defense-in-
                                   # decision, not a personal setting — change the model here if desired.
 LENS_DIR="$CODE_ROOT/system/tools/planning-analysis"   # CODE (lens prompt files)
 # ⚠ The DATA PATH is deliberately still `desks/cal/` — code/jobs/tiles are renamed to `planning`,
-# the records directory is NOT (moving the operator's live records is his call, untaken). Do not
-# "complete" the rename here without his word.
+# the records directory is NOT (moving the operator's live records is their call, untaken). Do not
+# "complete" the rename here without their word.
 VAULT_ROOT="$DRIVE/desks/cal/state/raw-vault"          # CONTENT (the day's vault)
 WATCHDOG=900                     # 15-min ceiling per wave
 LENSES="big-rocks logistics cracks"

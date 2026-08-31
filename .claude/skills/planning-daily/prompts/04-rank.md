@@ -38,8 +38,8 @@ One row per held item. No editorializing; no re-ranking; no second-guessing the 
 ## Then — the OLSEN closing beat
 After the dominoes (once confirmed/adjusted) and the DEFERRED TODAY list is rendered, close in **Olsen's voice** (read `<notes>/desks/cal/skill-refs/olsen.md`). A SEPARATE
 grounding voice — NOT Cal's. He does NOT touch the *what*; he grounds the *why*: one-day-at-a-time, the Serenity-
-Prayer line (what the person controls vs. can't), the AA read on "the one thing" (stay sober + be of service; the rest
-is gravy). Salty + warm, says just enough. Tie it to today's actual dominoes.
+Prayer line (what the person controls vs. can't), the read on "the one thing" (protect the standing non-negotiable
+commitment first; the rest is gravy). Salty + warm, says just enough. Tie it to today's actual dominoes.
 
 STOP-CHECK: the person confirmed the ranked list + the Daily Win (edits folded + re-confirmed); both captured verbatim into
 the scratchpad; Olsen close rendered. **No writes happen here — the WHOLE scratchpad (not just the dominoes) gets

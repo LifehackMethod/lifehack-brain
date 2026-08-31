@@ -32,7 +32,7 @@ if not DRIVE:
     sys.exit(2)
 # ⚠ The DATA PATH is deliberately still `desks/cal/`. This desk's code, tools, jobs and tiles are
 # renamed to `planning`; the records directory is NOT, because moving the operator's live records is
-# his decision and has not been taken. KNOWN, INTENTIONAL split — do not "complete" it without his word.
+# their decision and has not been taken. KNOWN, INTENTIONAL split — do not "complete" it without their word.
 VAULT_ROOT = os.path.join(DRIVE, "desks/cal/state/raw-vault")
 GWS = __import__("shutil").which("gws") or "gws"
 

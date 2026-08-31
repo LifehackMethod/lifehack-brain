@@ -17,10 +17,10 @@ authority: user
 
 ## Why this exists
 
-On 2026-07-02 a machine handoff to NYC was declared "NY-ready — all 6 criteria met." The criteria list
+On 2026-07-02 a handoff to the other location was declared "ready — all 6 criteria met." The criteria list
 never included `~/.claude/plans/` (plan-mode plan files). That class was machine-local with no backup
 lane — the Drive symlink had been retired 2026-06-16 and no replacement existed. A plan
-(`nifty-wandering-dusk.md`) was stranded on the Mac Studio and unreachable from NYC. A `mirror_plans.sh`
+(`nifty-wandering-dusk.md`) was stranded on the Mac Studio and unreachable from the other location. A `mirror_plans.sh`
 Stop hook was proposed as the immediate fix (2026-07-02), but the deeper failure was structural: a handoff
 checklist that did not enumerate every machine-local class allowed a whole class to be silently unbacked
 and still produce a "complete" result.

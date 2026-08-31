@@ -546,7 +546,7 @@ fill that column is a step, and belongs inside one of these four.
 
 | Phase | Desired outcome — what is TRUE at the end that wasn't at the start | THE HUMAN TURN — what only they can do here | Done when |
 |---|---|---|---|
-| 1 MAKE THE PILES | The real boundaries hiding in this corpus are discovered, and every chat sits in **its correct pile** *(⚠ wording ruled 2026-08-05: NOT "exactly one pile" — that reads as if all chats go into a single pile)* | **Rules the boundaries** — split / merge / close. The machine sees that forty chats mention screenwriting; it cannot know writing and acting are different jobs to this person | no chat left unplaced; every close carried `--human-approved` |
+| 1 MAKE THE PILES | The real boundaries hiding in this corpus are discovered, and every chat sits in **its correct pile** *(⚠ wording ruled 2026-08-05: NOT "exactly one pile" — that reads as if all chats go into a single pile)* | **Rules the boundaries** — split / merge / close. The machine sees that forty chats mention photography; it cannot know photography and graphic design are different jobs to this person | no chat left unplaced; every close carried `--human-approved` |
 | 2 SCREEN A PILE | Every chat in this pile carries a CERTAIN human ruling — in or out — and anything they could not judge got a second, richer look until they could | **RECOGNITION** — reads three sentences and remembers the actual conversation, what came of it, whether it went anywhere. No amount of better summarising reaches this | `basket-status skim-complete` accepted — refuses on unscanned · unruled · **or still in EXPLORE** |
 | 3 THE WORLD MAP | The human has read a paragraph about themselves, corrected what is wrong in it, and ruled which findings are canonical vs dated vs a record — and what folder shape this pile earns | **Says whether a sentence about them is TRUE.** The machine can synthesise a claim; only they know if it describes them | see §9 — a machine-checkable condition, not a vibe |
 | 4 PLACE IT + THE ROOT CANON | Every staged finding is placed where the human put it, in the tree already settled pile-by-pile; canon candidates await a separate explicit yes | **Approves the RECORD, not just the conclusion** — rendered at max detail before it is written | every pile `committed`; proposals exist with `vetted: false` |
@@ -1313,12 +1313,12 @@ produced the original "wall," so the tool holds the format and Vera frames it in
 **What they're deciding:** whether these are the right boundaries for their life.
 
 **What they contribute that the machine cannot:** the machine can see that forty chats mention
-screenwriting. It cannot know that writing and acting are *different jobs* to this person, or that
-"cosmetic-medical" and "trt-peptides" are one concern rather than two. **That is the entire reason this
+photography. It cannot know that photography and graphic design are *different jobs* to this person, or that
+"cycling-training" and "bike-maintenance" are one concern rather than two. **That is the entire reason this
 turn exists** — the boundaries are about a life the machine doesn't live.
 
 **What a valid response looks like — three moves:**
-- **Split** — *"writing and acting are separate, break that up"*
+- **Split** — *"photography and graphic design are separate, break that up"*
 - **Merge** — *"those two are both Health"*
 - **Close** — *"the whole 'random-tests' pile is junk, drop it"*
 

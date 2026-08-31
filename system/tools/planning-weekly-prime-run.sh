@@ -107,7 +107,7 @@ else
 fi
 
 # ⚠ The DATA PATH is deliberately still `desks/cal/` — code/jobs/tiles are renamed to `planning`,
-# the records directory is NOT (the operator's call, untaken). Do not "complete" it without his word.
+# the records directory is NOT (the operator's call, untaken). Do not "complete" it without their word.
 SCRATCH="$DATA/desks/cal/state/checkin-scratch/weekly-$WEEK"       # <- the citation at
 mkdir -p "$SCRATCH" 2>/dev/null || true                            #    00-system-layer.md:68
 

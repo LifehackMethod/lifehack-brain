@@ -61,7 +61,7 @@ every later phase files correctly into a wrong tree.
 
 | Move | What it means | What happens |
 |---|---|---|
-| **Split** | *"writing and acting are separate, break that up"* | `corpus_map.py set --subject` moves chats to a new pile |
+| **Split** | *"photography and graphic design are separate, break that up"* | `corpus_map.py set --subject` moves chats to a new pile |
 | **Merge** | *"those two are both Health"* | `corpus_map.py set --subject` moves chats into one pile |
 | **Close** | *"the whole 'random-tests' pile is junk, drop it"* | `basket_review.py rule --disposition declined --human-approved` |
 
@@ -274,7 +274,7 @@ a name-and-a-count row alone is known not to work: it produces a rubber stamp, n
 **What they're deciding:** whether these are the right boundaries for their life.
 
 **What they contribute that the machine cannot:** the machine can see that forty chats mention
-screenwriting. It cannot know that writing and acting are *different jobs* to this person, or that two
+photography. It cannot know that photography and graphic design are *different jobs* to this person, or that two
 tags are really one concern. **That recognition is the entire reason this turn exists.**
 
 Accept the three moves from THE MOVE SET above, in any order, dictated. **Coarse toss-or-queue only here**

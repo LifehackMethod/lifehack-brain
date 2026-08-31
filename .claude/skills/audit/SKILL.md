@@ -24,7 +24,7 @@ subagents (the map, the story, the journals), each trying to defeat the claim fr
 synthesizes their returns into one answer. **Propose-only and read-only throughout**: no lane can write,
 and the main session never applies anything — it hands the user a verdict and the evidence behind it.
 Human-in-the-loop by construction: the machine does all the reading and cross-checking; the user is reserved
-for the one thing only he can supply — deciding what to do with a contradiction once it's surfaced.
+for the one thing only they can supply — deciding what to do with a contradiction once it's surfaced.
 
 **Per-turn anchor:** `/audit · step N/4 · <subject> · next → <next>`
 

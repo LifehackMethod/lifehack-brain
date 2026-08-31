@@ -48,9 +48,9 @@ WHAT CHANGED IN THIS PORT (generalisation, not a redesign):
     found by listing `system/hooks/` rather than trusted from the donor: `block_primary_calendar`
     -> `guard_calendar_writes` (confirmed renamed during its own port).
   · The MCP-surface row's text hardcoded a specific approved integration tied to an excluded
-    personal desk ("1 approved (Supabase - Emily)"). Emily is an excluded desk here, so that
-    claim would be actively wrong on this install; the row is now derived purely from whether
-    a root `.mcp.json` exists, with no per-integration claim baked in.
+    personal desk, naming both the desk and the integration outright. That desk is excluded
+    here, so the claim would be actively wrong on this install; the row is now derived purely
+    from whether a root `.mcp.json` exists, with no per-integration claim baked in.
 """
 import json, os, sys, time, base64
 

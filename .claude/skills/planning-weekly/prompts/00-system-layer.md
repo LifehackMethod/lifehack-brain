@@ -173,8 +173,8 @@ under review — so the session that follows works from the Map, never from raw 
    read `242/242 · 0 lost`.** ⭐ **THE LAW: a completeness receipt belongs at EVERY compression seam, not the
    one that historically failed.**
    Step 4 below claims *"omitting nothing."* **Nothing checked that claim, and on the real 2026-07-21 run
-   five signals were lost here** — including a coaching client whose husband was in the ER, on the exact lane
-   the locked Win said to protect. ⚠ **A completeness check run AFTER assembly is worthless: it compares two
+   five signals were lost here** — including one high-signal personal item buried among a run of routine
+   ones, on the exact lane the locked Win said to protect. ⚠ **A completeness check run AFTER assembly is worthless: it compares two
    sets both built downstream of the drop, and would have passed that exact miss.** (Law 4.1 — *fire the check
    at the loss point*.)
    ```bash
@@ -247,7 +247,7 @@ under review — so the session that follows works from the Map, never from raw 
    but because the pad is written as free prose with **no tags, no reused pointer ids, and no `DROPPED`
    lines anywhere.** ⛔ **Without a citation convention this gate is a false-positive machine that fails
    every run** — the exact over-strict-detector failure this project has already reverted once.
-   **Write the tag inline where you carry it** — e.g. *"NYC→Atlanta flight still unbooked `F012`"*. A bare
+   **Write the tag inline where you carry it** — e.g. *"City A→City B flight still unbooked `F012`"*. A bare
    pointer id also counts. ⚠ **Compression stays FULLY allowed: you may rewrite a finding in one clause —
    you may not carry it anonymously.**
    ⚠ **KNOWN BOUND, stated not hidden:** this proves **TRACEABILITY, not FAITHFULNESS** — it cannot tell you
