@@ -36,10 +36,21 @@ CTX_PCT=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); p
 COST=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print('{:.2f}'.format(d.get('cost',{}).get('total_cost_usd',0) or d.get('session_cost_usd',0)))" 2>/dev/null)
 PROJECT_DIR=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('workspace',{}).get('project_dir','') or d.get('cwd',''))" 2>/dev/null)
 
+# See system/hooks/lib/winpath_fold.sh. Degrade-safe fallback (identity): this file is a pure
+# display, and the header above says so -- "it degrades field by field."
+_SL_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
+. "$_SL_DIR/hooks/lib/winpath_fold.sh" 2>/dev/null || _winfold() { printf '%s' "$1"; }
+
 # Desk detection from project dir
+# FOLD FOR DETECTION ONLY -- PROJECT_DIR arrives backslash-native on Windows (workspace.project_dir
+# / cwd from the harness's own JSON), so the forward-slash grep below would otherwise never match
+# there and the desk name would silently stay "root" on every Windows session. DESK is extracted
+# from the ORIGINAL PROJECT_DIR, below, with a slash-or-backslash-tolerant sed, so its on-disk case
+# is never lowercased -- this is what actually renders on the status bar.
 DESK="root"
-if echo "$PROJECT_DIR" | grep -q "/desks/"; then
-  DESK=$(echo "$PROJECT_DIR" | sed 's|.*/desks/\([^/]*\).*|\1|')
+PROJECT_DIR_C="$(_winfold "$PROJECT_DIR")"
+if echo "$PROJECT_DIR_C" | grep -q "/desks/"; then
+  DESK=$(echo "$PROJECT_DIR" | sed 's|.*[/\\]desks[/\\]\([^/\\]*\).*|\1|')
 fi
 
 # Shorten model name

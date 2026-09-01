@@ -34,6 +34,12 @@
 set -u
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DATA="$(python3 "$CODE_ROOT/shared/brain_root.py" --quiet 2>/dev/null)"
+# WINDOWS PATH FOLD: DATA is the unfolded output of brain_root.py --quiet, which on Windows is
+# backslash-native. Bash's glob (`for d in "$DATA"/desks/*/`, below) treats `\` as an escape
+# character, not a separator, so without this the glob would silently match zero desks on every
+# Windows run. See system/hooks/lib/winpath_fold.sh. Degrade-safe fallback (identity) -- a run
+# without a resolvable DATA already returns via arch_prerun's own `[ -n "$DATA" ] || return 1`.
+. "$CODE_ROOT/system/hooks/lib/winpath_fold.sh" 2>/dev/null || _winfold() { printf '%s' "$1"; }
 LEDGER="${DATA:+$DATA/state/archivist/deepmine-ledger.json}"   # notes-durable: {desk: last_mined_epoch}
 PER_DESK_MIN_AGE_DAYS=25                                        # a desk is "due" only if last mined >= this
 
@@ -48,8 +54,13 @@ ARCH_WATCHDOG=1800
 arch_prerun() {
   [ -n "$DATA" ] || return 1
   mkdir -p "$DATA/state/archivist" 2>/dev/null
-  local d name desks=()
-  for d in "$DATA"/desks/*/; do
+  local d name desks=() DATA_GLOB
+  # Folded ONLY as the glob root -- `name` two lines down comes back out of $d, the glob's own
+  # match, whose wildcard portion keeps the real on-disk desk-folder case regardless of this fold
+  # (Windows' filesystem is case-insensitive, so the lowercased root still opens the real
+  # directory, and bash substitutes the wildcard from the actual directory-entry name it read).
+  DATA_GLOB="$(_winfold "$DATA")"
+  for d in "$DATA_GLOB"/desks/*/; do
     [ -d "$d" ] || continue
     name="$(basename "$d")"
     if [ -d "$d/records" ] || [ -d "$d/projects" ]; then desks+=("$name"); fi

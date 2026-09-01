@@ -35,7 +35,9 @@
 
 INPUT=$(cat)
 export INPUT
-python3 <<'PY'
+# GUARD_LIB: same convention as guard_gmail_send.sh's use of lib/gws_guard.py -- resolved once
+# here, by $0's own directory, and handed to the python block below via the environment.
+GUARD_LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib/winpath_fold.py" python3 <<'PY'
 import os, json, sys, re
 
 raw = os.environ.get("INPUT", "")
@@ -48,12 +50,36 @@ except Exception:
     # Can't parse the tool call at all → not our concern to adjudicate here; allow.
     sys.exit(0)
 
+# WINDOWS FOLD: path arrives backslash-native on Windows, so every "/skills/" substring test
+# below would silently never match there and this guard would enforce nothing. Load the shared
+# fold helper and classify off a COMPARISON copy only; `path` itself stays the original spelling
+# for the basename check and any message. Fail closed: a missing helper must not silently widen
+# this guard's scope to "nothing is a skill".
+def _deny_nolib(lib):
+    sys.stderr.write("BLOCKED: enforce_skill_frontmatter could not load lib/winpath_fold.py "
+                      "(looked for it at '%s'), the path-form normaliser this guard's skills/-tree "
+                      "classification depends on -- failing closed rather than guessing whether "
+                      "this write targets a SKILL.md. REDIRECT: confirm "
+                      "system/hooks/lib/winpath_fold.py exists and is readable, then retry.\n" % lib)
+    sys.exit(2)
+
+_lib = os.environ.get("GUARD_LIB", "")
+if not _lib or not os.path.isfile(_lib):
+    _deny_nolib(_lib)
+import importlib.util
+_spec = importlib.util.spec_from_file_location("winpath_fold", _lib)
+_wf = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_wf)
+path_cmp = _wf.winfold(path)
+
 # Only guard a SKILL.md that lives under a skills/ tree, and NOT in a retired/archived holding area
 # or the templates dir (those legitimately need no description).
-base = os.path.basename(path)
-if base != "SKILL.md" or "/skills/" not in path:
+# base: split on either separator from the ORIGINAL path (never the folded copy, which is
+# lowercased) so the "SKILL.md" comparison stays case-sensitive and correct.
+base = re.split(r"[\\/]+", path)[-1] if path else ""
+if base != "SKILL.md" or "/skills/" not in path_cmp:
     sys.exit(0)
-if "/skills/_" in path or "/templates/" in path:
+if "/skills/_" in path_cmp or "/templates/" in path_cmp:
     sys.exit(0)
 
 def deny(reason):

@@ -29,7 +29,7 @@
 # Git-for-Windows install, and the dependency-free approach here is sufficient once both sides of
 # every comparison are folded through it.
 #
-# Usage: _winfold "<path>" [force]
+# Usage: _winfold "<path>" [force]      (or set LIFEHACK_WINFOLD_FORCE=1|0 for the same effect)
 #   force = 1  -> always apply the Windows fold (used by tests, so they don't need to fake uname)
 #   force = 0  -> never apply it (identity — same string back)
 #   omitted    -> autodetect via `uname -s` (the real behaviour every production caller uses)
@@ -51,7 +51,14 @@ _gate_is_windows() {
 
 _winfold() {
   _wf_in="$1"
-  _wf_force="${2:-}"
+  # Precedence: explicit argument, then $LIFEHACK_WINFOLD_FORCE, then autodetect.
+  # The env door exists so a GUARD can be exercised in its forced state from a Linux CI
+  # runner. The argument door only reaches this function directly, which is enough to test
+  # the fold itself but NOT enough to test a guard that calls it internally -- and the guards
+  # are where the bug actually bites. tests/test_guards_path_spelling.sh needs this.
+  # ⛔ Production callers pass no argument and set no env var, so autodetect stays the real
+  # behaviour everywhere outside a test. Mirrored in lib/winpath_fold.py -- keep them equal.
+  _wf_force="${2:-${LIFEHACK_WINFOLD_FORCE:-}}"
   if [ "$_wf_force" = "1" ]; then
     _wf_win=1
   elif [ "$_wf_force" = "0" ]; then

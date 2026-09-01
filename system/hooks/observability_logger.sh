@@ -32,10 +32,15 @@ if [ -z "$ARGS" ]; then
   exit 0
 fi
 
+# WINDOWS FOLD: resolved once here, by $0's own directory (same GUARD_LIB convention
+# guard_gmail_send.sh uses for lib/gws_guard.py), and handed to the python -c string below via
+# the environment (it is single-quoted, so bash does no substitution inside it).
+_OBS_LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib/winpath_fold.py"
+
 # All parsing in Python with a blanket try/except so malformed/garbage input
 # never crashes the hook. On any failure: print nothing, exit 0.
-printf '%s' "$ARGS" | python3 -c '
-import sys, json, datetime
+printf '%s' "$ARGS" | OBS_WINFOLD_LIB="$_OBS_LIB" python3 -c '
+import sys, json, os, datetime
 
 def out_nothing():
     sys.exit(0)
@@ -52,13 +57,33 @@ tool = data.get("tool_name", "") or ""
 session = data.get("session_id", "") or "unknown"
 cwd = data.get("cwd", "") or ""
 
-# Derive desk from cwd: .../desks/<desk>/...  else "root".
+# WINDOWS FOLD: cwd arrives backslash-native on Windows, so a bare "/desks/" substring test
+# never matches there and every Windows call gets misfiled as desk "root", silently. Fold a
+# COMPARISON copy to find the marker; the DESK NAME itself is sliced out of the ORIGINAL cwd (by
+# matching LENGTH, not by re-splitting the folded copy) so the real desk name casing is never
+# lowercased into the log. Degrade-safe, not fail-closed: this is a PostToolUse hook and this
+# this repo header above says it NEVER blocks -- on a missing helper it falls back to the
+# pre-fix (unfolded) comparison rather than trying to block a write that already happened, and
+# flags the line itself so the degradation is visible in the log instead of silent.
+_fold_degraded = False
+try:
+    import importlib.util
+    _obs_lib = os.environ.get("OBS_WINFOLD_LIB", "")
+    _obs_spec = importlib.util.spec_from_file_location("winpath_fold", _obs_lib)
+    _obs_wf = importlib.util.module_from_spec(_obs_spec)
+    _obs_spec.loader.exec_module(_obs_wf)
+    cwd_cmp = _obs_wf.winfold(cwd)
+except Exception:
+    cwd_cmp = cwd
+    _fold_degraded = True
+
 desk = "root"
 marker = "/desks/"
-idx = cwd.find(marker)
+idx = cwd_cmp.find(marker)
 if idx != -1:
-    rest = cwd[idx + len(marker):]
-    seg = rest.split("/", 1)[0]
+    rest_cmp = cwd_cmp[idx + len(marker):]
+    seg_len = len(rest_cmp.split("/", 1)[0])
+    seg = cwd[idx + len(marker):idx + len(marker) + seg_len]
     if seg:
         desk = seg
 
@@ -71,6 +96,10 @@ line = {
     "session": session,
     "status": "ok",
 }
+if _fold_degraded:
+    # Visible, non-blocking: the desk above was computed WITHOUT the Windows fold, so on a real
+    # Windows backslash-native cwd it may read "root" when it should not have.
+    line["fold_degraded"] = True
 
 # SPECIAL CASE: Bash + command contains "gws" → capture full gws command string
 # (capability-boundary audit trail), plus exit code best-effort.
