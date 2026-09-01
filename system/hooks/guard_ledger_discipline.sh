@@ -4,7 +4,7 @@
 #      annotated it "✅ RESOLVED" IN PLACE in the live ## Open list instead of removing it — so
 #      the list only ever accumulated. The 2026-06-18 debt-knockout drain made the ledger's
 #      ## Open section DELETION-ONLY; this guard enforces that structurally so the growth pattern
-#      cannot recur (Priya pre-mortem FATAL #1: the drain must be DETERMINISTIC, not LLM-remembered).
+#      cannot recur (a design pre-mortem's FATAL #1: the drain must be DETERMINISTIC, not LLM-remembered).
 # GUARDS: a Write/Edit to state/debt-ledger.md that ADDS a status-annotation line (✅ / RESOLVED /
 #      CLEARED / FIXED) to the ## Open section. The only legal change to ## Open is DELETION of a line.
 # REDIRECT: to close an item, DELETE its line from ## Open. If it warrants a history note, add a
@@ -18,6 +18,7 @@
 set -uo pipefail
 INPUT=$(cat)
 export CLAUDEOPS_LEDGER_HOOK_INPUT="$INPUT"
+export CLAUDEOPS_LEDGER_WINFOLD_LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib/winpath_fold.py"
 python3 <<'PY'
 import os, json, re, sys
 try:
@@ -25,8 +26,26 @@ try:
 except Exception:
     sys.exit(0)
 ti = (data.get("tool_input") or {})
-path = (ti.get("file_path") or ti.get("path") or "").replace("\\", "/")
-if not path.endswith("state/debt-ledger.md"):
+path = (ti.get("file_path") or ti.get("path") or "")
+# WINDOWS FOLD: tool_input's path arrives backslash-native (and possibly drive-lettered /
+# mixed-case) on Windows, so a bare endswith("state/debt-ledger.md") would silently never
+# match there and this guard would enforce nothing. Fold a COMPARISON copy only -- `path`
+# itself stays the original spelling because it is used below to actually open the file.
+# Fail closed to the OLD behaviour (plain slash-fold), not to a hard block, if the helper
+# cannot be loaded -- this guard's SCOPING NOTE already treats any lookup failure as allow,
+# so a missing lib degrades gracefully rather than blocking every Write/Edit in the repo.
+_lib = os.environ.get("CLAUDEOPS_LEDGER_WINFOLD_LIB", "")
+path_cmp = path.replace("\\", "/")
+if _lib and os.path.isfile(_lib):
+    try:
+        import importlib.util
+        _spec = importlib.util.spec_from_file_location("winpath_fold", _lib)
+        _wf = importlib.util.module_from_spec(_spec)
+        _spec.loader.exec_module(_wf)
+        path_cmp = _wf.winfold(path)
+    except Exception:
+        pass                              # fall back to the plain slash-fold above
+if not path_cmp.endswith("state/debt-ledger.md"):
     sys.exit(0)                          # only the canonical ledger is guarded
 try:
     cur = open(path, encoding="utf-8").read()

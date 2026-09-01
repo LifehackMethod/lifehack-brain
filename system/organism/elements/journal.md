@@ -39,6 +39,12 @@ authority: user
 >
 > ⛔ `state/current.md` is the person's own notes too — here it is `<notes>/state/current.md`, written by
 > `/save` when where-things-stand changes (`docs/data-layout.md`). Never committed to this repo.
+>
+> ⛔ **PATH E's `marc-sensor.py` and `marc-pulse-journal.py` are donor-system files that never migrated
+> here.** ⚠ ADDED 2026-09-01 (#61): neither file exists anywhere in this repo (verified this session,
+> `find . -iname "marc-sensor*" -o -iname "marc-pulse-journal*"` returns nothing). The PATH E write-up
+> below is kept per this banner's stated policy — description as the donor had it, corrected by marker
+> rather than deleted — not evidence the mechanical journal-write path runs here.
 
 > **Altitude = BASE (ground / street view).** The in-the-weeds detail of `system/journal.md` —
 > every write trigger, every format, every step chain, every reader, every gate and its real
@@ -245,7 +251,7 @@ changed.
 
 ---
 
-#### PATH E — mechanical writes (marc-sensor.py + marc-pulse-journal.py)
+#### PATH E — mechanical writes (marc-sensor.py + marc-pulse-journal.py) ⛔ NEITHER FILE EXISTS HERE — see CITATION BANNER at top of page
 
 `marc-health-run.sh (Pulse cron) → python3 marc-sensor.py / marc-pulse-journal.py → open($DRIVE/system/journal.md, "a") → append one row [tool · outside Claude tool plane entirely]`
 

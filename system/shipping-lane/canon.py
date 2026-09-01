@@ -449,6 +449,44 @@ def _isolated_single(chars, j):
     return not left_word and not right_word
 
 
+def _fold_crlf(chars):
+    """Drop the CR of a CRLF pair, so a Windows line break is ONE separator, not two.
+
+    WHY THIS EXISTS (ported from public PR #148, credit Ingrid-lifehack; H.B1b,
+    2026-09-01). _collapse_separators below drops a SINGLE separator sitting between
+    two word characters -- that is what turns a name split by a newline back into one
+    word, and its docstring says "a single newline" on purpose. A CRLF is ONE line
+    break spelled with TWO characters, so neither half ever qualified on its own: the
+    CR sees an LF on its right (not a word char) and the LF sees a CR on its left.
+    The pair survived uncollapsed and a name split across a Windows line ending
+    reached canonicalize() unjoined.
+
+    push_gate.py's scan_tree() already folds CRLF/lone-CR to LF on the text it reads
+    before handing it to this module (see that file's H.B1 comment) -- that closes the
+    live hole for the one caller that matters today. This widens the same fix INTO
+    canon.py itself so every future caller is protected structurally, without having
+    to remember to fold first.
+
+    ONLY a CR immediately followed by LF is dropped here. A lone CR (classic-Mac line
+    ending) is left alone -- it is already in SEP_CHARS and already collapses on its
+    own merits under the single-separator rule below; widening this to "drop every CR"
+    would change what counts as a separator, which is not what the bug needs.
+
+    Runs BEFORE _collapse_separators, not inside it: that function decides every drop
+    in one pass over the ORIGINAL neighbours, so a CR marked dropped there would still
+    be seen as the LF's left-hand neighbour and the LF would not collapse. Two passes
+    is what makes the pair behave as the single separator it already is. Offsets are
+    untouched -- each surviving char keeps its own source index, as everywhere else in
+    this pipeline."""
+    n = len(chars)
+    keep = []
+    for i in range(n):
+        if chars[i][0] == "\r" and i + 1 < n and chars[i + 1][0] == "\n":
+            continue
+        keep.append(chars[i])
+    return keep
+
+
 def _collapse_separators(chars):
     """Drop a SINGLE separator character sitting between two word characters.
 
@@ -495,6 +533,7 @@ def canonicalize_with_offsets(text):
     chars = _fold_homoglyphs(chars)
     chars = _fold_small_caps(chars)
     chars = _fold_leet(chars)
+    chars = _fold_crlf(chars)
     chars = _collapse_separators(chars)
     if not chars:
         return "", []
@@ -797,6 +836,42 @@ def shannon_entropy(s):
     return -sum((c / n) * math.log2(c / n) for c in counts.values())
 
 
+# CANDIDATE-SHAPE GATE for the high-entropy-blob heuristic (2026-09-01 false-positive
+# fix -- root cause, not a threshold change). `_B64_RE` deliberately unions BOTH RFC4648
+# base64 alphabets ('+','/'  for standard,  '-','_'  for url-safe) into one character
+# class, because the DECODE-then-recheck pass (scan_encoded_payloads' main loop, above)
+# needs that breadth: it only ever fires when a candidate ALSO decodes to valid UTF-8
+# AND matches one of the 28 refuse patterns, so a loose class costs nothing there --
+# an ordinary path decoding-and-matching a secret pattern by chance is astronomically
+# unlikely.
+#
+# The high-entropy heuristic has NO such self-checking decode step -- it fires on shape
+# and Shannon entropy alone, which is exactly why a repo path (many unique letters,
+# digits, '/' and '-') can clear 4.5 bits/char and false-positive: measured examples,
+# all real hits before this fix --
+#   "migration-audit/08-THIRD-PARTY-INVENTORY"                    40 chars, 4.52 bits/char
+#   "LIFEHACK_CODE_ROOT/system/tools/guard-fire-test-run"          51 chars, 4.70 bits/char
+# Both mix '/' with '-' (and the second also '_'). That mix is the tell: a SINGLE valid
+# base64 string can never contain a standard-alphabet char ('+' or '/') together with a
+# url-safe-alphabet char ('-' or '_') -- those are two DISJOINT RFC4648 alphabets, never
+# combined in one encoding. A kebab-case, slash-separated path routinely mixes them; a
+# real base64/base64url blob structurally cannot. This is a shape fact about the
+# encoding, not a tuned cutoff -- it costs zero false negatives against genuine base64
+# output (standard OR url-safe) and rejects exactly the path/identifier shape that was
+# false-flagging. Gates ONLY the entropy heuristic below -- the decode-recheck loop
+# above is untouched, and hex's own >=32-char/>=4.5-threshold candidates are unaffected
+# (hex's alphabet has no '+','/','-','_' to mix in the first place; its ceiling is
+# already documented above as a structural 4.0 bits/char < the 4.5 threshold).
+def _base64_shape_is_valid(blob):
+    """True unless `blob` mixes a standard-alphabet char ('+' or '/') with a
+    url-safe-alphabet char ('-' or '_') -- a combination no real base64/base64url
+    output can ever produce, but an ordinary file path or CONST_CASE/kebab-case
+    identifier produces routinely."""
+    has_standard = ("+" in blob) or ("/" in blob)
+    has_urlsafe = ("-" in blob) or ("_" in blob)
+    return not (has_standard and has_urlsafe)
+
+
 def _try_decode_base64(blob):
     s = blob.rstrip("=")
     pad = "=" * (-len(s) % 4)
@@ -934,7 +1009,8 @@ def scan_encoded_payloads(text, refuse_rules):
                                       "decoded_evidence": decoded[:200]}],
                         })
 
-            if kind in ("base64", "hex") and len(blob) >= _ENTROPY_LEN:
+            if (kind in ("base64", "hex") and len(blob) >= _ENTROPY_LEN
+                    and (kind != "base64" or _base64_shape_is_valid(blob))):
                 ent = shannon_entropy(blob)
                 if ent >= _ENTROPY_THRESHOLD:
                     findings.append({
@@ -1365,6 +1441,37 @@ def selftest():
            not any(f["id"] == "high-entropy-blob" for f in findings))
     findings = scan_encoded_payloads("secret=" + random_secret, refuse_rules)
     report("the random secret DOES trigger a high-entropy finding",
+           any(f["id"] == "high-entropy-blob" for f in findings))
+
+    print("\nentropy candidate-shape gate -- paths/identifiers vs real base64 (2026-09-01)")
+    path_1 = "migration-audit/08-THIRD-PARTY-INVENTORY.md"
+    path_2 = "$LIFEHACK_CODE_ROOT/system/tools/guard-fire-test-run.sh"
+    report("a mixed '/'+'-' path candidate is rejected by the shape gate",
+           not _base64_shape_is_valid("migration-audit/08-THIRD-PARTY-INVENTORY"))
+    report("a mixed '/'+'_'+'-' path candidate is rejected by the shape gate",
+           not _base64_shape_is_valid("LIFEHACK_CODE_ROOT/system/tools/guard-fire-test-run"))
+    findings = scan_encoded_payloads(
+        "see " + path_1 + " for the script's own docstring", refuse_rules)
+    report("the slash+hyphen path triggers NO high-entropy finding",
+           not any(f["id"] == "high-entropy-blob" for f in findings),
+           str([f["id"] for f in findings]))
+    findings = scan_encoded_payloads(
+        "cron runs `bash \"" + path_2 + "\"`", refuse_rules)
+    report("the slash+underscore+hyphen path triggers NO high-entropy finding",
+           not any(f["id"] == "high-entropy-blob" for f in findings),
+           str([f["id"] for f in findings]))
+    # url-safe secrets (secrets.token_urlsafe: '-' and '_', never '+' or '/') and
+    # standard-alphabet secrets ('+' and '/', never '-' or '_') must both still pass the
+    # shape gate -- only a MIX of the two disjoint alphabets is rejected.
+    report("a pure url-safe candidate ('-'/'_' only) passes the shape gate",
+           _base64_shape_is_valid(random_secret))
+    standard_secret = base64.b64encode(_secrets.token_bytes(32)).decode("ascii")
+    report("a pure standard-alphabet candidate passes the shape gate even with '/' "
+           "present ({!r})".format(standard_secret),
+           _base64_shape_is_valid(standard_secret))
+    findings = scan_encoded_payloads("key=" + standard_secret, refuse_rules)
+    report("a genuine standard-base64 secret (may contain '/') still triggers a "
+           "high-entropy finding after the shape gate",
            any(f["id"] == "high-entropy-blob" for f in findings))
 
     print("\nfixtures -- no false positives introduced")

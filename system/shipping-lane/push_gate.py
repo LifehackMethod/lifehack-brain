@@ -324,9 +324,17 @@ def effective_rules(refuse=None, rewrite=None, identity=None, workdir=None):
     A caller that already composed a set (the `/ship` sequence does, once, so scrub and
     this gate provably see the SAME rules) passes it in. Otherwise both tiers are composed
     here from the identity file. FAIL CLOSED when there is none: gating a tree with an
-    empty personal tier means a receipt that certifies a file carrying your own name."""
-    if refuse:
-        return refuse, rewrite
+    empty personal tier means a receipt that certifies a file carrying your own name.
+
+    H.B2: an explicit --refuse-rules/--rewrite-rules PATH used to return immediately,
+    never consulting the identity file at all -- an explicit flag could silently disable
+    the personal-tier protection this gate exists to enforce. The identity file is now
+    ALWAYS consulted, flag or no flag, and an explicit set is treated as a SUPPLEMENT:
+    unioned with the identity-derived rules by rule id, never a replacement for them. On
+    an id collision the identity-derived rule wins -- an explicit file cannot smuggle in
+    a same-id rule with a laxer pattern to weaken a protection identity_rules.py itself
+    generated. Anything the explicit file adds that identity_rules did not generate is
+    kept too, so this is strictly additive."""
     sys.path.insert(0, HERE)
     try:
         import identity_rules                                # noqa: E402
@@ -337,7 +345,37 @@ def effective_rules(refuse=None, rewrite=None, identity=None, workdir=None):
         rp, wp, _ip, _n = identity_rules.effective_rule_files(wd, identity_file=identity)
     except identity_rules.IdentityMissing as e:
         raise CannotEvaluate(str(e))
-    return rp, wp
+    if not refuse and not rewrite:
+        return rp, wp
+    final_refuse = _merge_with_identity(refuse, rp, wd, "refuse-rules.merged.json") \
+        if refuse else rp
+    final_rewrite = _merge_with_identity(rewrite, wp, wd, "rewrite-rules.merged.json",
+                                          allow_empty=True) if rewrite else wp
+    return final_refuse, final_rewrite
+
+
+def _merge_with_identity(explicit_path, identity_path, workdir, out_name, allow_empty=False):
+    """Union an explicit rule file with the identity-derived one, keyed by 'id'. The
+    identity-derived rule wins on a collision (see effective_rules()'s docstring for why);
+    everything else from both files is kept. Writes the union to `out_name` under
+    `workdir` and returns that path."""
+    explicit_rules = load_rules(explicit_path,
+                                 "explicit rules ({!r})".format(explicit_path),
+                                 allow_empty=allow_empty)
+    identity_derived = load_rules(identity_path, "identity-derived rules", allow_empty=True)
+    merged = list(explicit_rules)
+    index = {r.get("id"): i for i, r in enumerate(merged) if isinstance(r, dict)}
+    for r in identity_derived:
+        rid = r.get("id") if isinstance(r, dict) else None
+        if rid in index:
+            merged[index[rid]] = r               # identity-derived wins on collision
+        else:
+            merged.append(r)
+            index[rid] = len(merged) - 1
+    out_path = os.path.join(workdir, out_name)
+    with open(out_path, "w", encoding="utf-8") as fh:
+        json.dump(merged, fh, indent=2)
+    return out_path
 
 
 def load_rules(path, what, allow_empty=False):
@@ -500,6 +538,26 @@ def scan_tree(tree_root, refuse_rules, refuse_rules_path, rewrite_rules,
             result["problem_files"].append(
                 {"path": rel, "reason": "binary/non-utf8", "detail": str(e)})
             continue
+
+        # H.B1 (2026-09-01, gate-integrity): this file is opened "rb" and decoded by
+        # hand (FIX 4's stat-before-open guard needs raw bytes, not Python's own
+        # newline-translating text mode) -- so, unlike scrub.py's `open(path, "r",
+        # encoding="utf-8")`, which gets CRLF->LF folding for free from universal
+        # newlines, nothing here ever normalised a line ending. A forbidden term split
+        # across a Windows CRLF (`Wren\r\nOakley`) reaches canon.py's
+        # canonicalize_with_offsets() -> _collapse_separators() as TWO separator bytes,
+        # not one; that function only ever drops a SINGLE separator sitting between two
+        # word characters (by design -- see its docstring), so neither the \r nor the
+        # \n alone qualifies and the pair survives uncollapsed. The canonicalised text
+        # still reads "Wren\r\nOakley" instead of "WrenOakley", canonical_only_hits()
+        # never sees the joined name, and the term walks through the LAST gate before a
+        # public push. Folding here, before any scan, makes this file's on-disk line
+        # ending style provably irrelevant to what canon.py ever receives -- a single
+        # LF is exactly the separator _collapse_separators already collapses
+        # unconditionally when flanked by word characters. A lone CR (classic-Mac
+        # ending) is folded too, since it is just as absent from Python's own text-mode
+        # newline translation as CRLF is.
+        text = text.replace("\r\n", "\n").replace("\r", "\n")
 
         own_hits = []
         for rule in refuse_rules:
@@ -1388,6 +1446,9 @@ def selftest():
         # path, NOT DEFAULT_REFUSE_RULES -- that name is bound to the COMPOSED effective
         # set with the identity fixture folded in, see this selftest's own setup above)
         # has zero personal-tier entries by construction -- exactly the unarmed shape.
+        # First proven directly against run_gate() (bypassing effective_rules() entirely,
+        # which is the only way to still reach it empty since H.B2 -- see that block's
+        # own comment below for the CLI-level case, which now proves a DIFFERENT thing).
         shipped_generic_rules = os.path.join(HERE, "refuse-rules.json")
         bare_rewrite = os.path.join(_rules_dir, "bare-empty-rewrite.json")
         with open(bare_rewrite, "w", encoding="utf-8") as _fh:
@@ -1405,13 +1466,42 @@ def selftest():
                    True)
             report("...and names WHY (zero personal-tier entries), not just THAT",
                    "personal-tier" in str(e) and "ZERO" in str(e), str(e)[:200])
+        # H.B2 (found here, 2026-09-01): the direct run_gate() call just above still
+        # fails closed -- that is the DEFECT-1 layer, and it still guards any caller
+        # who reaches run_gate() without going through effective_rules() at all.
+        # But the CLI never does that: main() ALWAYS calls effective_rules() first,
+        # and H.B2 made effective_rules() consult identity_rules.py unconditionally,
+        # even for an explicit --refuse-rules. So --refuse-rules pointed at the
+        # personal-tier-empty shipped generic set no longer reaches run_gate() empty
+        # at all through the CLI -- it reaches it MERGED with the identity-derived
+        # personal tier, which is the fix working as intended (an explicit flag can
+        # no longer leave the tree unprotected). That means the CLI-level "same case"
+        # this selftest originally expected to hit DEFECT-1's fail-closed exit 2 can
+        # no longer occur -- it is now impossible to construct, not merely untested.
+        # What the CLI test can and must still prove: the merge really happened, and
+        # it used real identity-derived rules (not a hand-waved default) -- so this
+        # asserts personal_tier_terms > 0 in the CLI's own report, isolated against
+        # the SAME identity fixture as the rest of this selftest (never the machine's
+        # real, private identity file -- a selftest that read that would be both
+        # non-deterministic across machines and a leak of private material into a
+        # test run).
         p = subprocess.run(
             [sys.executable, me, "--refuse-rules", shipped_generic_rules,
              "--rewrite-rules", bare_rewrite, "--tree", clean_tree_defect1,
-             "--accept-unjudged"],
+             "--identity", os.path.join(HERE, "fixtures", "identity-fixture.md"),
+             "--accept-unjudged", "--json"],
             capture_output=True, text=True)
-        report("CLI: same case -> exit 2 (CANNOT EVALUATE), never exit 0 (CLEAN)",
-               p.returncode == CANNOT_EVALUATE, "got exit {}".format(p.returncode))
+        try:
+            cli_report = json.loads(p.stdout) if p.returncode == CLEAN else None
+        except json.JSONDecodeError:
+            cli_report = None
+        report("CLI: explicit personal-tier-empty --refuse-rules still gets the "
+               "identity-derived personal tier merged in (H.B2) -> exit 0, never "
+               "an unarmed CLEAN",
+               p.returncode == CLEAN and bool(cli_report)
+               and cli_report.get("personal_tier_terms", 0) > 0,
+               "exit {}, personal_tier_terms={}".format(
+                   p.returncode, cli_report.get("personal_tier_terms") if cli_report else None))
 
         # -------------------------------------------------- EXEMPTIONS (Y.I2), LAST
         # GATE. This is the gate that actually decides whether `git push` happens, so

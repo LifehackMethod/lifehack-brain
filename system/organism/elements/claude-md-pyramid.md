@@ -41,9 +41,12 @@ authority: user
 >
 > **LADDER: ELEMENT (full mechanics). up → manual#claude-md-pyramid ; ground truth → the live artifact (generated_from)**
 >
-> **One-line:** the always-loaded system-prompt stack (global machine cap + root doctrine + per-desk
+> **One-line:** ~~the always-loaded system-prompt stack (global machine cap + root doctrine + per-desk
 > doctrine) plus the SessionStart hook that injects Drive-side canon, TELOS, and the pulse brief to
-> complete what the harness cannot natively load.
+> complete what the harness cannot natively load.~~ ⚠ **CORRECTED 2026-09-01 (#60):** the pulse brief
+> is gone from live code — the SessionStart hook injects root canon, TELOS, and every desk's canon
+> unconditionally, plus a findings/health banner and a skill-capability check. See the FULL HAND-OFF
+> STEP CHAIN correction below for the full mechanism.
 >
 > **Step grammar:** `actor → port/tool → store/file → gate`
 > Enforcement tags: `[hook]` (a real guard fires) · `[skill]` (skill logic / mandatory script) ·
@@ -120,11 +123,18 @@ fail unless the harness itself breaks. The CLAUDE.md files ride in the context w
 start until context compaction clears them.
 
 **Layer 2 — SessionStart hook injection (hook-enforced, complementary):**
-The harness-native load covers only what is in the git clone. Drive-side content — desk canon,
+~~The harness-native load covers only what is in the git clone. Drive-side content — desk canon,
 root canon, TELOS, the pulse brief — must be injected separately. `session_context_loader.sh` is
 a SessionStart hook registered in `settings.json` (matcher `""`, fires before the first user turn)
 that reads the session's `cwd` field and emits Drive-side context to stdout, which the harness
-injects into the session context alongside the CLAUDE.md stack.
+injects into the session context alongside the CLAUDE.md stack.~~
+⚠ **CORRECTED 2026-09-01 (#60):** the harness-native load covers only what is in the git clone;
+Drive-side content still has to be injected separately — that half holds. But `session_context_loader.sh`
+does **not** read a `cwd` field any more (confirmed: zero `cwd`/`CWD` matches in the live file) and it
+does not scope what it injects to "desk canon" vs "root canon" by launch location. It resolves the data
+root via `shared/brain_root.py` and then unconditionally emits root canon.md, TELOS, and EVERY desk's
+`canon/current.md` (budget permitting) to stdout, which the harness injects alongside the CLAUDE.md
+stack. Pulse-brief is gone entirely — see the full re-derivation in the FULL HAND-OFF STEP CHAIN below.
 
 The CLAUDE.md pyramid and session_context_loader.sh are not separate elements — they are the two
 halves of a single mechanism. (NOTE: a prior draft version attributed a "session-context-loader →
@@ -145,8 +155,12 @@ controls it. It loads exactly what the filesystem has at that moment.
 **Trigger 2 — SessionStart event → session_context_loader.sh (hook-enforced):**
 When the harness fires the SessionStart event, it runs every hook registered under
 `settings.json → hooks.SessionStart`. `session_context_loader.sh` is the sole entry (matcher
-`""` = always-fires). The hook receives a JSON payload with the session `cwd` and emits the
-Drive-side context to stdout.
+`""` = always-fires). ~~The hook receives a JSON payload with the session `cwd` and emits the
+Drive-side context to stdout.~~ ⚠ **CORRECTED 2026-09-01 (#60):** the live hook does not parse a
+JSON payload for `cwd` at all — it resolves the data root via `shared/brain_root.py` (no `cwd`
+input) and emits Drive-side context to stdout unconditionally, the same set for every session
+regardless of where it launched. See the FULL HAND-OFF STEP CHAIN correction below for the exact
+mechanism.
 
 **No per-turn re-injection:** There is NO UserPromptSubmit or PreToolUse hook that re-injects the
 CLAUDE.md content per turn. The context floor is set once at session start and then lives in the
@@ -185,7 +199,7 @@ nested subdirectory CLAUDE.md files, not the main pyramid layers.
 
 **B. SessionStart hook injection chain:**
 
-4. `harness → SessionStart event → session_context_loader.sh → stdout injection [hook]`
+~~4. `harness → SessionStart event → session_context_loader.sh → stdout injection [hook]`
    Registered in `system/reference/settings.json` under `hooks.SessionStart[0]`, matcher `""`,
    command: `bash "$HOME/lifehack-brain/system/hooks/session_context_loader.sh"`.
    The hook reads stdin (the SessionStart JSON payload) and extracts the `cwd` field via python3.
@@ -217,7 +231,54 @@ nested subdirectory CLAUDE.md files, not the main pyramid layers.
 9. `session_context_loader.sh → exit 0 → always [hook]`
    Non-blocking by design. Nothing is denied if this hook fails, errors, or is absent. It is a
    context loader, not a guard. Classified as `[honor]` for the purpose of its contribution to
-   behavioral compliance (the content it injects shapes behavior, but failure is silent).
+   behavioral compliance (the content it injects shapes behavior, but failure is silent).~~
+
+> ⚠ **CORRECTED 2026-09-01 (#60):** steps 4–8 above describe a mechanism that is no longer live.
+> `system/hooks/session_context_loader.sh` was read in full this session (320 lines). Three specific
+> things named by this correction are confirmed GONE from live code — grep for `cwd|CWD`, `emit_dir`,
+> and `pulse` inside the file each return zero matches:
+> - **cwd desk-detection is gone.** The hook never reads stdin or a `cwd` field at all any more, and
+>   there is no `case "$CWD" in *"/desks/"*)` branch anywhere in the file. Nothing about which desk's
+>   canon loads depends on where the session was launched from.
+> - **`emit_dir()` is gone.** No such function exists in the file. The desk-canon step is a plain
+>   glob + loop, not a helper call.
+> - **the conditional pulse-brief emit is gone.** `state/pulse-brief.md` is not opened anywhere in the
+>   live script.
+>
+> **What the live hook actually does instead (file:line, `system/hooks/session_context_loader.sh`):**
+> 1. Locates its own repo two directories up from itself (`REPO=...`, line 77); if that fails, prints
+>    a loud "CANNOT START" message and `exit 0` (lines 78–91) — same fail-LOUD posture as before, not
+>    a new behavior.
+> 2. Resolves the data root by calling `python3 "$REPO/shared/brain_root.py" --quiet` (line 94) — no
+>    `cwd` involved at all. If unresolved, it distinguishes "never set" from "set but the folder
+>    vanished" and prints one of two loud messages (lines 96–133), still `exit 0`.
+> 3. Prints root canon, `$ROOT/canon.md`, unconditionally if non-empty (lines 180–196) — a
+>    LOUD-READ, not silent-on-failure: `-s` (exists+non-empty) gates it, and an empty read after that
+>    check prints a "COULD NOT READ" line rather than silently skipping.
+> 4. Prints `$ROOT/state/telos.md` the same way, unconditionally if non-empty (lines 214–226) — gated
+>    on `-s`, same loud-read-failure posture. This replaced the still-true "TELOS is the year-long
+>    strategic brief, read-only, only `/telos` updates it" fact from old step 7 — that fact still holds.
+> 5. Globs **every desk's canon at once**, unconditionally — `CANON=("$ROOT_GLOB"/desks/*/canon/current.md)`
+>    (line 245) — and loops over ALL of them (lines 260–295), printing each desk's `canon/current.md`
+>    (a single fixed filename per desk, not a directory glob of `*.md`) under a labeled header, until a
+>    shared character ceiling (`SESSION_CONTEXT_CHAR_CEIL`, default 20000, line 75) is hit, at which
+>    point it stops and NAMES which remaining subject folders were NOT loaded (lines 279–289). There is
+>    no desk selection of any kind — a root session and a desk session now load the identical set of
+>    desk canons.
+> 6. Calls `_findings_banner()` (line 151), which runs `system/tools/health_line.py` against the fault
+>    ledger (`$HOME/.config/lifehack/faults.json`) and prints whatever it returns, or one short
+>    "did not run" line on a nonzero rc (lines 152–162). This is new machinery, not a pulse-brief
+>    read, and it is not conditional on desk/cwd either.
+> 7. Calls `system/tools/skill_capability_check.py` if present (lines 312–316) and prints its output
+>    if non-empty — usually silent (measured 2026-08-23: 8 of 9 tool-declaring skills produce no
+>    output here).
+> 8. `exit 0` on every path, always (line 320) — this part of old step 9 is still exactly true.
+>
+> Net effect for a reader: **there is no more "which desk am I in" branch to reason about.** Every
+> session gets root canon + TELOS + every desk's `canon/current.md` (budget permitting) + a
+> findings/health banner + a skill-capability note. The desk-scoping this element's step chain,
+> READ list, EDGE CASES, PORTS TOUCHED, and interop sections all describe below is the OLD mechanism;
+> each of those mentions is struck and pointed back to this block rather than re-derived in place.
 
 ---
 
@@ -229,10 +290,19 @@ nested subdirectory CLAUDE.md files, not the main pyramid layers.
 - `~/lifehack-brain/desks/{desk}/CLAUDE.md` — 7 desk files
 
 **READ (by session_context_loader.sh):**
-- `$DRIVE/desks/{desk}/canon/*.md` — desk-specific canon files (injected in desk sessions)
+~~- `$DRIVE/desks/{desk}/canon/*.md` — desk-specific canon files (injected in desk sessions)
 - `$DRIVE/records/canon/*.md` — root-wide canon files (injected in non-desk/root sessions)
 - `$DRIVE/state/telos.md` — TELOS strategic brief (always injected)
-- `$DRIVE/state/pulse-brief.md` — overnight pulse brief (injected conditionally)
+- `$DRIVE/state/pulse-brief.md` — overnight pulse brief (injected conditionally)~~
+⚠ **CORRECTED 2026-09-01 (#60)** — see the full re-derivation in the FULL HAND-OFF STEP CHAIN above.
+Live reads are:
+- `$ROOT/canon.md` — root canon, unconditional (not desk/root-branch-selected — there is no branch)
+- `$ROOT/state/telos.md` — TELOS strategic brief, unconditional
+- `$ROOT/desks/*/canon/current.md` — EVERY desk's single canon file, unconditional, all in one glob,
+  subject to a shared character ceiling (not "desk sessions only" — there is no desk detection)
+- `$HOME/.config/lifehack/faults.json` (via `system/tools/health_line.py`) — the fault ledger, for the
+  findings/health banner
+- `state/pulse-brief.md` is NOT read anywhere in the live script.
 
 **WRITTEN (the write-side of the pyramid — all guarded):**
 - `~/.claude/CLAUDE.md` (= the symlink target `system/reference/global-CLAUDE.md`) — explicitly
@@ -332,9 +402,13 @@ nested subdirectory CLAUDE.md files, not the main pyramid layers.
 - **LIVE CODE VS PROSE DISAGREEMENT (surfaced by source-audit):** The desk CLAUDE.md files declare
   a read-order as if mechanically enforced. LIVE CODE shows only two things are mechanically loaded:
   (a) the harness-native CLAUDE.md stack (not the additional referenced files), and (b)
-  `session_context_loader.sh` which injects `$DRIVE/desks/$DESK/canon/*.md` (all .md files in
-  that dir, not just the specific files named in the prose read-order). The prose read-order is
-  advisory instruction to the model, not a mechanical guarantee. **LIVE CODE WINS.**
+  ~~`session_context_loader.sh` which injects `$DRIVE/desks/$DESK/canon/*.md` (all .md files in
+  that dir, not just the specific files named in the prose read-order).~~ ⚠ **CORRECTED 2026-09-01
+  (#60):** `session_context_loader.sh` injects `$ROOT/desks/*/canon/current.md` — ONE fixed file per
+  desk, for EVERY desk at once, not a directory glob scoped to the launching desk. The conclusion
+  still holds a fortiori: it is not the specific files named in the prose read-order either way.
+  The prose read-order is advisory instruction to the model, not a mechanical guarantee. **LIVE CODE
+  WINS.**
 - **Enforcement: [honor] for the read-order as a whole; [hook] for the canon injection step only.**
 
 **Gate 8 — guard_organism_map.sh on wholesale Write of the host map files [hook · BLOCKING · fire-testable]**
@@ -376,9 +450,13 @@ nested subdirectory CLAUDE.md files, not the main pyramid layers.
 ### PORTS TOUCHED
 
 - **Harness filesystem reader** — reads `~/.claude/CLAUDE.md` and `{cwd}/CLAUDE.md` natively
-- **SessionStart hook channel** — receives JSON payload; emits stdout context injection
-- **Drive filesystem reader** — `session_context_loader.sh` reads canon, TELOS, pulse-brief via
-  `cat` and glob expansion
+- ~~**SessionStart hook channel** — receives JSON payload; emits stdout context injection~~
+  ⚠ **CORRECTED 2026-09-01 (#60):** no JSON payload is parsed — the hook resolves the data root via
+  `shared/brain_root.py` and emits stdout context injection unconditionally.
+- ~~**Drive filesystem reader** — `session_context_loader.sh` reads canon, TELOS, pulse-brief via
+  `cat` and glob expansion~~ **CORRECTED 2026-09-01 (#60):** reads root canon.md, TELOS, and every
+  desk's `canon/current.md` via `cat` and glob expansion; pulse-brief is not read (removed). See the
+  FULL HAND-OFF STEP CHAIN correction for the exact mechanism.
 - **`guard_write_paths.sh`** — PreToolUse Write|Edit: blocking-type hook that ALLOWS CLAUDE.md writes (exit 0); blocks restricted paths
 - **`guard_canon_write.sh`** — PreToolUse Write|Edit: the gate on canon-file writes
 - **`validate_on_write.sh`** — PostToolUse Write|Edit: advisory nudge
@@ -392,10 +470,15 @@ nested subdirectory CLAUDE.md files, not the main pyramid layers.
 
 A fresh session has, in its context window before the first user turn:
 1. The global machine cap (voice, safety stubs, code-vs-content rule, subagent model guidance)
-2. The root Lifehack operating doctrine OR the desk's persona — whichever the cwd selects
-3. The desk canon (or root canon) from the Drive spine — the floor of the knowledge stack
+2. The root Lifehack operating doctrine OR the desk's persona — whichever the cwd selects (this part
+   is the harness-native CLAUDE.md stack, Layer 1, and is unaffected by this correction)
+3. ~~The desk canon (or root canon) from the Drive spine — the floor of the knowledge stack~~
+   ⚠ **CORRECTED 2026-09-01 (#60):** root canon AND every desk's canon (`canon/current.md`), all of
+   them, unconditionally — not a cwd-selected either/or.
 4. TELOS — the year-long strategic brief
-5. The overnight pulse brief — if anything ran
+5. ~~The overnight pulse brief — if anything ran~~ **CORRECTED 2026-09-01 (#60): this no longer
+   exists — removed from live code.** In its place: a findings/health banner (from the fault ledger)
+   and a skill-capability check note (usually silent).
 
 The session begins oriented: the system's behavioral rules are active, the permanent truths are
 loaded, the strategic arc is visible. WITHOUT this stack, the session would have no behavioral
@@ -405,7 +488,7 @@ rail and no knowledge floor — it would be a blank model.
 
 ### EDGE CASES
 
-1. **No desk detected (root session):** `session_context_loader.sh` emits root canon
+~~1. **No desk detected (root session):** `session_context_loader.sh` emits root canon
    (`$DRIVE/records/canon/*.md`). If that directory has zero `.md` files, `emit_dir()` returns
    silently — no canon is injected, no error is emitted.
 
@@ -414,7 +497,17 @@ rail and no knowledge floor — it would be a blank model.
    CLAUDE.md file — that was already loaded by the harness natively.
 
 3. **pulse-brief.md first line is NO_ACTION:** Hook stays silent. The PAI isSentinel() pattern
-   prevents noise when the overnight Pulse had nothing to report.
+   prevents noise when the overnight Pulse had nothing to report.~~
+⚠ **CORRECTED 2026-09-01 (#60):** edge cases 1–3 above describe the removed desk-detection/emit_dir/
+pulse-brief mechanism and no longer apply. The live edge cases in their place:
+1. **No desk folders exist:** the desk-canon glob (`$ROOT/desks/*/canon/current.md`) matches zero
+   files (bash `nullglob`, line 244); the loop body never runs, and no per-desk section is printed —
+   root canon and TELOS (if present) still print normally.
+2. **A desk exists but has no `canon/current.md`:** that desk is simply absent from the glob's match
+   list — there is no fallback branch to reason about, because there is no longer a desk/root
+   either-or to fall back from.
+3. **The pulse-brief NO_ACTION case no longer exists** — there is nothing left in the live script
+   that reads `state/pulse-brief.md` at all, gated or otherwise.
 
 4. **Context compaction after session start:** After compaction, the global `~/.claude/CLAUDE.md`
    and project-root `{cwd}/CLAUDE.md` ARE re-injected from disk by the harness. However, nested
@@ -428,17 +521,23 @@ rail and no knowledge floor — it would be a blank model.
    read-order list at all; it only reads from the `canon/` directory. Files named in the prose
    but not in `canon/` are simply never loaded.
 
-6. **Multi-desk cwd (nested paths):** The `case "$CWD" in *"/desks/"*)` match uses the FIRST
+~~6. **Multi-desk cwd (nested paths):** The `case "$CWD" in *"/desks/"*)` match uses the FIRST
    `/desks/` segment in the cwd. `rest="${CWD#*/desks/}"` strips the prefix up to the FIRST
    `/desks/`, then `DESK="${rest%%/*}"` takes the first path segment — resolving the desk
    immediately after the FIRST `/desks/` occurrence, not the innermost. In practice this is not a
-   real ambiguity since desk directories don't nest.
+   real ambiguity since desk directories don't nest.~~
+⚠ **CORRECTED 2026-09-01 (#60):** moot — there is no cwd parsing left to have a multi-segment
+ambiguity in.
 
 7. **Session launched from outside the clone (e.g., `~/Desktop`):** The harness finds no
    project-level CLAUDE.md (no `CLAUDE.md` in `~/Desktop/`). Only the global cap loads natively.
    <!-- UNVERIFIABLE-BY-CODE · CORROBORATED (Claude Code docs: memory.md, context-window.md) -->
-   `session_context_loader.sh` fires but detects no desk, so it emits root canon + TELOS +
-   pulse-brief. The root doctrine DOES NOT load in this case.
+   ~~`session_context_loader.sh` fires but detects no desk, so it emits root canon + TELOS +
+   pulse-brief. The root doctrine DOES NOT load in this case.~~ ⚠ **CORRECTED 2026-09-01 (#60):**
+   `session_context_loader.sh` fires regardless of cwd (it never reads cwd) and emits root canon +
+   TELOS + every desk's canon, exactly as it would from any other launch location — pulse-brief is
+   gone. The root *doctrine* (the harness-native `{cwd}/CLAUDE.md` load, Layer 1) still does not
+   load in this case — that part is unaffected because it is a different, harness-native mechanism.
 
 8. **CLAUDE.md write via Bash bypasses guard_write_paths:** The guard fires only on Write/Edit
    tool calls. A `echo "..." >> ~/.claude/CLAUDE.md` Bash call passes through. This is the
@@ -597,10 +696,15 @@ is real, only the "silent, no signal" framing was wrong.
   to `state/telos.md`). The pyramid is the always-on injection path; `/telos` is the update path.
   They share the single file.
 
-- `READS` `pulse-cron` · `session_context_loader.sh` reads `state/pulse-brief.md` on every
+~~- `READS` `pulse-cron` · `session_context_loader.sh` reads `state/pulse-brief.md` on every
   SessionStart. The pyramid is the sole consumer. The writer of `state/pulse-brief.md` is
   currently UNKNOWN from live code — `archivist-autoplace` is RETIRED ("DO NOT REGISTER") and
-  no live replacement writer has been identified (open loop OL-4).
+  no live replacement writer has been identified (open loop OL-4).~~
+⚠ **CORRECTED 2026-09-01 (#60):** this relationship no longer exists — `session_context_loader.sh`
+does not read `state/pulse-brief.md` at all (confirmed: zero `pulse` matches in the live file). What
+it reads instead, unconditionally each SessionStart, is the fault ledger via
+`system/tools/health_line.py` (for the findings/health banner) and, separately,
+`system/tools/skill_capability_check.py`. Neither is a pulse-cron relationship.
 
 - `READS` `archivist` · The Archivist proposes placement changes to `desks/{desk}/canon/*.md` and
   `records/canon/*.md` — the exact stores the pyramid loads as the session floor. However, the
@@ -612,10 +716,13 @@ is real, only the "silent, no signal" framing was wrong.
   proposes writes to `desks/{desk}/canon/*.md`. Its approved outputs alter what the pyramid injects
   next session. (NOTE: `/distill` is not in the ranked-element-list ~28 — see NEW CANDIDATES below.)
 
-- `KEYS-OFF` `session_context_loader.sh` desk-detection · The loader's `case "$CWD" in *"/desks/"*)`
+~~- `KEYS-OFF` `session_context_loader.sh` desk-detection · The loader's `case "$CWD" in *"/desks/"*)`
   pattern uses the cwd to determine WHICH desk's canon to inject. The desk CLAUDE.md files declare
   this cwd implicitly by living in `desks/{desk}/`; the loader uses the same path structure as the
-  routing signal. This means the desk CLAUDE.md's LOCATION is its routing identity for the loader.
+  routing signal. This means the desk CLAUDE.md's LOCATION is its routing identity for the loader.~~
+⚠ **CORRECTED 2026-09-01 (#60):** this KEYS-OFF relationship no longer exists — `session_context_loader.sh`
+has no cwd desk-detection to key off of. It globs and loads every desk's `canon/current.md`
+unconditionally; a desk CLAUDE.md's location is no longer a routing signal for the loader at all.
 
 ---
 

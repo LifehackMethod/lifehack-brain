@@ -7,7 +7,7 @@
 # path with Windows-native Python's `os.path.realpath`. Off Windows those two calls produce
 # identical strings. On Windows they do not — they are both fully correct, but they speak two
 # different alphabets for the same directory:
-#   pwd -P                -> /c/Users/name/Repo        (MSYS/Git-Bash POSIX form)
+#   pwd -P                -> /c/Users/$USER/Repo        (MSYS/Git-Bash POSIX form)
 #   os.path.realpath(...)  -> C:\Users\name\Repo         (native Windows form)
 # A `case "$x" in "$y"/*)` test is a literal string-prefix match, so two spellings of the
 # identical folder never match, and every comparison built on it falls through to its deny arm —
@@ -29,7 +29,7 @@
 # Git-for-Windows install, and the dependency-free approach here is sufficient once both sides of
 # every comparison are folded through it.
 #
-# Usage: _winfold "<path>" [force]
+# Usage: _winfold "<path>" [force]      (or set LIFEHACK_WINFOLD_FORCE=1|0 for the same effect)
 #   force = 1  -> always apply the Windows fold (used by tests, so they don't need to fake uname)
 #   force = 0  -> never apply it (identity — same string back)
 #   omitted    -> autodetect via `uname -s` (the real behaviour every production caller uses)
@@ -51,7 +51,11 @@ _gate_is_windows() {
 
 _winfold() {
   _wf_in="$1"
-  _wf_force="${2:-}"
+  # Precedence: explicit argument, then $LIFEHACK_WINFOLD_FORCE, then autodetect.
+  # The env door lets a guard be exercised in its forced state from a Linux/macOS scratch check
+  # without faking uname. Production callers pass no argument and set no env var, so autodetect
+  # stays the real behaviour everywhere outside a deliberate test. Mirrored in lib/winpath_fold.py.
+  _wf_force="${2:-${LIFEHACK_WINFOLD_FORCE:-}}"
   if [ "$_wf_force" = "1" ]; then
     _wf_win=1
   elif [ "$_wf_force" = "0" ]; then

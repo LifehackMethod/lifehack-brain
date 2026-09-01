@@ -39,9 +39,11 @@ it is in insights — it is trusted to the degree that independent sources agree
 
 - A lone finding = one data point, not a verdict.
 - **Facts earn UP into canon via human review**, not by age, repetition, or machine confidence.
-- The corroboration ladder (originally from `skills/_archived-location-scan/SKILL.md`, retired 2026-07-12
-  and **DELETED 2026-07-28** in the S2.4 retirement sweep — the source text is preserved verbatim at
-  `state/archive/2026-07-28-s24-retirement-sweep/skills/_archived-location-scan/`; the ladder itself is
+- The corroboration ladder (originally from `skills/_archived-location-scan/SKILL.md` ⛔ gone — retired 2026-07-12
+  and **DELETED 2026-07-28** in the S2.4 retirement sweep. **CORRECTION 2026-09-01**: the claimed verbatim
+  copy at `state/archive/2026-07-28-s24-retirement-sweep/skills/_archived-location-scan/` was searched for
+  this session, in both this repo and the AI Brain (`state/archive/`), and was NOT found in either —
+  that preservation claim is itself unverified/stale, not re-asserted here; the ladder itself is
   doctrine and lives HERE now, so this file is the source, not that one):
   `documented > corroborated > single_signal > manual > inferred`
 
@@ -293,7 +295,7 @@ These existing sources define the vocabulary this model relies on. Cite them; do
 | Concept | Source |
 |---|---|
 | Confidence vocab (CONFIRMED/INFERRED/HYPOTHESIS/USER-HYPOTHESIS/UNKNOWN) | `skills/project-manager/SKILL.md` lines 309–316 |
-| Corroboration tier ladder (documented > corroborated > single_signal > manual > inferred) | THIS FILE is now the source. Originally `skills/_archived-location-scan/SKILL.md` lines 107–120 (retired 2026-07-12, deleted 2026-07-28; verbatim copy at `state/archive/2026-07-28-s24-retirement-sweep/`) |
+| Corroboration tier ladder (documented > corroborated > single_signal > manual > inferred) | THIS FILE is now the source. Originally `skills/_archived-location-scan/SKILL.md` ⛔ gone — lines 107–120 (retired 2026-07-12, deleted 2026-07-28; claimed verbatim copy at `state/archive/2026-07-28-s24-retirement-sweep/` NOT found this session in repo or AI Brain — CORRECTED 2026-09-01, unverified) |
 | Canon admission test (the plain-question level ladder) | `system/knowledge-altitude.md` §3 |
 | Temperature model (always-on vs scoped vs on-demand) | ⛔ `system/memory-system.md` §1 — **not shipped.** `docs/data-layout.md` is the map here |
 | Frontmatter schema (required fields, record_type canonical list) | `system/schemas/managed-file-frontmatter.md` |

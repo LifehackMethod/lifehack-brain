@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""security-health.py — compose `state/status/_security.json` for a Security-tab dashboard
+"""security-health.py — compose `state/status/_security.json` ⛔ not a repo path — written under
+the resolved AI Brain root (`<brain_root>/state/status/_security.json`, see `resolve_brain_root()`
+below), never committed to this repo — for a Security-tab dashboard
 (PORTED 2026-08-14 from claudeops-config's system/tools/security-health.py).
 
 ALIVENESS-STYLE OWNS THIS COMPOSITION. The lane split: SENTINEL owns the verdicts
@@ -47,10 +49,11 @@ WHAT CHANGED IN THIS PORT (generalisation, not a redesign):
   · The ingestion-gate channel's hook list was updated to this repo's REAL registered names,
     found by listing `system/hooks/` rather than trusted from the donor: `block_primary_calendar`
     -> `guard_calendar_writes` (confirmed renamed during its own port).
-  · The MCP-surface row's text hardcoded a specific approved integration tied to an excluded
-    personal desk, naming both the desk and the integration outright. That desk is excluded
-    here, so the claim would be actively wrong on this install; the row is now derived purely
-    from whether a root `.mcp.json` exists, with no per-integration claim baked in.
+  · The MCP-surface row's text hardcoded a specific donor-specific integration claim tied
+    to a desk that does not exist in this install (a Supabase integration approved for one
+    named donor desk). That desk is excluded here, so the claim would be actively wrong on
+    this install; the row is now derived purely from whether a root `.mcp.json` exists, with
+    no per-integration claim baked in.
 """
 import json, os, sys, time, base64
 

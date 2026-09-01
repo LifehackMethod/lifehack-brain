@@ -49,6 +49,17 @@ authority: user
 >
 > ⛔ `councils/*/council.md` — never ships: a roster cartridge is the reader's own, written by the /advisory-council Builder into `<notes>/councils/<slug>/council.md` (.claude/skills/advisory-council/SKILL.md line 192: *"⛔ never ships — they are yours to write"*); the shipped seed is .claude/skills/advisory-council/example-council.md.
 > ⛔ `councils/market-analysis/council.md` — same reason: never ships. The market-analysis cartridge additionally belonged to marc-checkin, which is ⛔ excluded from the migration — desk.
+>
+> ⚠ **CORRECTED 2026-09-01:** the bare `skills/advisory-council/SKILL.md`, `skills/advisory-council/SCOPE.md`,
+> `skills/council/SKILL.md`, `skills/planning-weekly/prompts/04-council.md`, and
+> `skills/planning-weekly/prompts/council/_member-format.md` cited above and below (including at
+> "the skills themselves" and "ground truth → the live artifacts") are the donor's repo-relative form and
+> resolve nowhere from this repo's root. Verified this session: all five ship from the installed plugin at
+> `.claude/skills/<name>/` (plugin root, confirmed under `~/.claude/plugins/marketplaces/lifehack-brain/`),
+> not from any path inside this repository.
+> ⛔ The sixth, `skills/marc-checkin/SKILL.md`, is different again — it does not ship from the plugin or
+> this repo; it resolves at the user-owned `~/.claude/skills/marc-checkin/SKILL.md` (confirmed this
+> session).
 
 ---
 

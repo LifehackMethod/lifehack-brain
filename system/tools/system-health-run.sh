@@ -18,4 +18,8 @@ JOB="system-health"
 
 ingest_acquire_lock "$JOB"
 
-exec python3 "$CODE_ROOT/system/tools/system-health.py"
+# NOT `exec`: exec replaces this shell, so the EXIT trap ingest_acquire_lock() registered never
+# fires and the lock dir outlives every run — the next ticks then skip on "another run in
+# progress" until the 25-minute stale-steal, turning a 300s job into a ~30-minute one. A plain
+# call lets bash wait, clean the lock, and still exit with python's status (it is the last command).
+python3 "$CODE_ROOT/system/tools/system-health.py"

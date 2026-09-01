@@ -40,10 +40,19 @@ PROMPT="${PARSED%%$'\t'*}"
 CWD="${PARSED#*$'\t'}"
 [ -n "$CWD" ] || CWD="${CLAUDE_PROJECT_DIR:-$PWD}"
 
+# See system/hooks/lib/winpath_fold.sh. Degrade-safe fallback (identity) matches this whole file's
+# own posture: "any error exits 0 silently, and the turn proceeds with nothing added."
+_ICM_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
+. "$_ICM_DIR/lib/winpath_fold.sh" 2>/dev/null || _winfold() { printf '%s' "$1"; }
+
 # The subject folder this window is sitting in, if any. `/ingest` writes <notes>/desks/<subject>/,
 # so a window opened inside one has a name here and every other window has an empty string.
-case "$CWD" in
-  *"/desks/"*) _rest="${CWD#*/desks/}"; SUBJECT="${_rest%%/*}";;
+# FOLD FOR DETECTION ONLY -- CWD arrives backslash-native on Windows, so the forward-slash test
+# below would otherwise never match there. SUBJECT is sliced from the ORIGINAL CWD, below, with a
+# slash-or-backslash-tolerant pattern, so a desk's on-disk case is never lowercased by this.
+_CWD_C="$(_winfold "$CWD" 2>/dev/null)"; [ -n "$_CWD_C" ] || _CWD_C="$CWD"
+case "$_CWD_C" in
+  *"/desks/"*) _rest="${CWD#*[/\\]desks[/\\]}"; SUBJECT="${_rest%%[/\\]*}";;
   *) SUBJECT="";;
 esac
 
@@ -78,7 +87,10 @@ notes_root() {
   while [ "${_nr%/}" != "$_nr" ]; do _nr="${_nr%/}"; done
   case "$_nr" in
     ""|"/"|"$HOME") return 1 ;;
-    /*) [ -d "$_nr" ] || return 1 ;;
+    # WINDOWS PATH FOLD: `/*` alone is POSIX-only -- a Windows absolute path (`D:\Notes\Brain` or
+    # `D:/Notes/Brain`) does not start with `/`, so it fell through this case with no match and no
+    # validation at all (a bare `case` has no default arm). `[A-Za-z]:*` catches both spellings.
+    /*|[A-Za-z]:*) [ -d "$_nr" ] || return 1 ;;
     *) return 1 ;;
   esac
   printf '%s' "$_nr"

@@ -8,9 +8,17 @@ WHY THIS EXISTS — two bugs found running PHASE 1 end to end on a fixture corpu
 `corpus_map.py migrate` seeds every chat into UNCLUSTERED before a subject exists (1-sort.md 1.0d),
 then re-seeds real piles once the human Splits them out (1.2b, THE MOVE SET's "Split" — every chat
 moved out of its auto-tagged basket into named subject piles). `migrate` only ever ADDS/refreshes
-basket entries in `m['baskets']` — it never prunes one (deliberately: a stray entry is safer than
-silently deleting something a later reader might expect). So once EVERY chat has left UNCLUSTERED, its
-basket ENTRY survives with zero member rows, still `basket_status: queued`.
+basket entries in `m['baskets']` —
+
+~~it never prunes one (deliberately: a stray entry is safer than silently deleting something a later
+reader might expect).~~ SUPERSEDED 2026-09-01, issue #26: commit 75e5176 made `migrate` prune a
+zero-membership basket at the producer end. The premise this file originally rested on — that the
+UNCLUSTERED entry survives empty — is now false, and the assertion that checked it has been updated
+below to assert the opposite (that it gets pruned). The consumer-side guards (BUG 1 and BUG 2 below)
+stay: they fix the same root cause defensively, at the point where an empty basket would otherwise get
+named, locked, or printed — cheap insurance that costs nothing even now that the producer no longer
+lets an empty basket survive. So once EVERY chat has left UNCLUSTERED, its basket ENTRY used to survive
+with zero member rows, still `basket_status: queued`; as of #26 it is pruned instead.
 
 Two symptoms of that one root cause:
   BUG 1 — `pipeline.py phase` named UNCLUSTERED as the next pile to SCAN, and `pipeline.py lock` happily
@@ -67,12 +75,19 @@ class TestEmptyBasketNeverNamedOrLocked(Case):
     """BUG 1."""
 
     def test_unclustered_survives_the_map_with_zero_chats(self):
-        """Sanity: the orphan really is there, and really is empty — the premise of this whole file."""
+        """Sanity: the orphan is gone — the premise of this whole file, post-#26.
+        Until 2026-09-01 this asserted the OPPOSITE: that the empty UNCLUSTERED basket entry SURVIVED
+        the map with zero member rows (per the "never prunes / deliberately" rationale this file's
+        docstring used to state). Commit 75e5176 (issue #26) made `corpus_map.py migrate` prune a
+        zero-membership basket at the producer end, which superseded that rationale — see the dated
+        note in the module docstring. The name is kept for continuity with BUG 1/BUG 2 below, which
+        still exist as defence in depth even though the premise they guarded against no longer arises
+        from `migrate` itself."""
         self.split_every_chat_out_of_unclustered()
         with io.open(self.map, encoding="utf-8") as fh:
             m = json.load(fh)
-        self.assertIn("UNCLUSTERED", m["baskets"])
-        self.assertEqual([f for f, r in m["rows"].items() if r["basket"] == "UNCLUSTERED"], [])
+        self.assertNotIn("UNCLUSTERED", m["baskets"],
+                          "UNCLUSTERED should have been pruned once empty (issue #26): %r" % m["baskets"])
 
     def test_phase_never_names_the_empty_basket(self):
         self.split_every_chat_out_of_unclustered()

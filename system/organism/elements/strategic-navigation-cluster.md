@@ -48,7 +48,7 @@ authority: user
 
 ### /checkin — pointer (homed in memory-read)
 
-`/checkin` → full step-chain, triggers, stores, enforcement, and interop live in the **memory-read element** (`elements/read.md.draft`). It is memory+state machinery (session re-orientation + pm/plan flag arming), not direction-questioning — primary home is memory-read, not this cluster.
+`/checkin` → full step-chain, triggers, stores, enforcement, and interop live in the **memory-read element** (`elements/read.md`). It is memory+state machinery (session re-orientation + pm/plan flag arming), not direction-questioning — primary home is memory-read, not this cluster.
 
 ---
 
@@ -277,7 +277,7 @@ line 16, guard_throughline_write_scope.sh lines 28-30)
 ### INTEROP SEAMS (cluster-level)
 
 The three skills do not call each other, but they share a coherent operating posture. `/checkin`
-interop seams live in the memory-read element (`elements/read.md.draft`).
+interop seams live in the memory-read element (`elements/read.md`).
 
 **`/telos` → `memory-read` / `/checkin` (FEEDS):** the TELOS (`$DRIVE/state/telos.md`) is the
 year-long desired-state brief that `/checkin` (memory-read element) uses as the "whole-system desired
@@ -313,7 +313,7 @@ consuming task notes. (security-canon.md; ingestion-reader-contract.md)
 | `/first-principles` | user input only | nothing | nothing |
 | `/telos` | `$DRIVE/state/telos.md` · Google Tasks (Life Map) | `$DRIVE/state/telos.md` (on approval) | nothing |
 | `/throughline` | plot file or Cal diary rollups · brief (dead_ends/desired outcome) · `state/telos.md` | scratchpad ONLY (`…/evaluator/scratchpads/` — ⚠ see 2026-08-27 correction: live DEST is `<notes>/records/insights/throughline/`) | `throughline_flag.sh` (self-clears) |
-| `/checkin` | → see memory-read element (`elements/read.md.draft`) | | |
+| `/checkin` | → see memory-read element (`elements/read.md`) | | |
 
 ---
 
@@ -342,7 +342,7 @@ consuming task notes. (security-canon.md; ingestion-reader-contract.md)
 3. **`/first-principles` — entirely honor.** No writes, no hooks; if the session skips phases or
    answers the stated request directly, nothing prevents it. Low blast radius (no writes).
 
-4. **`/checkin` gaps** → documented in the memory-read element (`elements/read.md.draft`).
+4. **`/checkin` gaps** → documented in the memory-read element (`elements/read.md`).
 
 ---
 

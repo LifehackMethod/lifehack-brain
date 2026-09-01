@@ -322,8 +322,7 @@ or `--query <gmail-query>` or `--label <label-id>`.
     labels the audit row only. The universal sanitizer is the sole defense.
 
 **Enforcement:** `ingest_gate_enforce.sh` case `Bash`·(c) blocks any `gws gmail` body read
-(`messages.get`/`threads.get` with `format:full|minimal|raw`) NOT routing through `email_convert.py`.
-`[hook]`
+(`messages.get`/`threads.get` with `format:full|minimal|raw`) NOT routing through ~~`email_convert.py`~~ **`safe_read.py` / `safe_docx.py` / `safe_pdf.py`** `[hook, ⚠ CORRECTED 2026-09-01, #63 finding 3 — `ingest_gate_enforce.sh:351-356` greps the command for `safe_read\.py|safe_docx\.py|safe_pdf\.py`, never `email_convert.py`; a caller that runs `email_convert.py` alone still trips this block. The deny message's REDIRECT text tells the caller to capture the body to a file and run `system/tools/safe_read.py` on it — e.g. `gws gmail messages read <ID> > /tmp/mail.txt && python3 system/tools/safe_read.py /tmp/mail.txt`.]`
 Also: case `Read`·(email-summary store) and case `Bash`·(g) block un-wrapped reads of the v2 faithful
 store (`state/email-summary/threads-v2/`) — must use `email_service_read.py` adapter. `[hook]`
 
@@ -381,14 +380,14 @@ The unified enforcement gate is `ingest_gate_enforce.sh`, registered as a
 `PreToolUse` hook on ~~four matchers~~ **six matchers**: `Bash`, `WebFetch`, `WebSearch`, `Read`, `Grep`,
 `Glob`. [CORRECTED 2026-08-27, lb2-controls.md matcher-contradiction resolution — confirmed against BOTH
 the live installed plugin cache (`~/.claude/plugins/cache/lifehack-brain/lifehack-brain/0.3.13/hooks/hooks.json`)
-and the repo-tracked `system/hooks/registrations.json` ⛔ private-repo runtime state, not shipped in this public tree; both independently show `"Bash|WebFetch|WebSearch|Read|Grep|Glob"`.
+and the repo-tracked `system/hooks/registrations.json`; both independently show `"Bash|WebFetch|WebSearch|Read|Grep|Glob"`.
 `ingest-gate.md` and `security-ingest-gate.md` already had this right — this file was the stale one.]
 
 **Registration confirmed**: ~~`system/reference/settings.json` lines ~212–250~~ — [CORRECTED 2026-08-27:
 `system/reference/settings.json` never existed in this repo, confirmed by `git log --all`; it is not a
 migration casualty, it is a path that was never real. The live registration lives in the plugin-cache
 `hooks/hooks.json` (six PreToolUse blocks, one per matcher token, all pointing at `ingest_gate_enforce.sh`)
-and is mirrored in the repo-tracked `system/hooks/registrations.json` ⛔ private-repo runtime state, not shipped in this public tree.]
+and is mirrored in the repo-tracked `system/hooks/registrations.json`.]
 
 **What each case blocks (from the live script `system/hooks/ingest_gate_enforce.sh`):**
 
@@ -404,7 +403,7 @@ and is mirrored in the repo-tracked `system/hooks/registrations.json` ⛔ privat
 | `Read` · item store | Read of `state/item-store/*` | exit 2 | `item_store_read.py` |
 | `Bash`·(a) | `LIFEHACK_SKIP_SAFE_*=` assignment | exit 2 | never bypass |
 | `Bash`·(b) | cat/head/tail of `/tmp/rdr/*` by main session | exit 2 | spawn `ingest-reader` |
-| `Bash`·(c) | raw `gws gmail` body read | exit 2 | `email_convert.py` |
+| `Bash`·(c) | raw `gws gmail` body read | exit 2 | ~~`email_convert.py`~~ **capture to file, then `safe_read.py`** [⚠ CORRECTED 2026-09-01, #63 finding 3 — `ingest_gate_enforce.sh:351-356` is what's live; it never checks for `email_convert.py`] |
 | `Bash`·(d) | raw `gws calendar events list` | exit 2 | `safe_calendar.py` |
 | `Bash`·(e) | raw `gws tasks tasks list|get` | exit 2 | `safe_tasks.py` |
 | `Bash`·(f) | non-janitor write to email-summary store | exit 2 | run janitor only |
@@ -418,11 +417,13 @@ and is mirrored in the repo-tracked `system/hooks/registrations.json` ⛔ privat
 scratch-dir lock: a sub-agent (tool-less `ingest-reader`) is ALLOWED to read `/tmp/rdr/*`; the main
 session is denied.
 
-**Retired hooks** (still exist on disk, unregistered, harmless):
-- `guard_file_reads.sh` — per-channel file-read deny (superseded by `ingest_gate_enforce.sh`).
-- `guard_web_fetch.sh` — per-channel WebFetch deny (superseded).
-- `guard_web_search.sh` — per-channel WebSearch deny (superseded).
-- `guard_skip_safe_backdoor.sh` — bypass var block (superseded by `Bash`·(a) inside the unified gate).
+**Retired hooks** (⚠ **CORRECTED 2026-09-01** (H.C10, `find` across this repo for each basename):
+stale — none of the four exist anywhere on disk here; "still exist on disk, unregistered, harmless"
+should read "deleted"):
+- `guard_file_reads.sh` — per-channel file-read deny (superseded by `ingest_gate_enforce.sh`). DELETED.
+- `guard_web_fetch.sh` — per-channel WebFetch deny (superseded). DELETED.
+- `guard_web_search.sh` — per-channel WebSearch deny (superseded). DELETED.
+- `guard_skip_safe_backdoor.sh` — bypass var block (superseded by `Bash`·(a) inside the unified gate). DELETED.
 
 UNVERIFIED: whether the retired hooks remain registered anywhere outside `system/reference/settings.json`
 (e.g. on the second machine or in a local `settings.json` that diverges from the reference). A
@@ -438,7 +439,7 @@ All triggers are mediated by the hook plane (blocking) or by skill/CLAUDE.md con
 2. **Web search** → `safe_search_api.sh` (primary) or `safe_search.sh` (Chrome fallback) `[hook: WebSearch blocked]`
 3. **Calendar read** → `safe_calendar.py` `[hook: raw gws calendar blocked]`
 4. **Google Tasks read** → `safe_tasks.py` `[hook: raw gws tasks blocked]`
-5. **Gmail body read** → `email_convert.py` `[hook: raw gws gmail body blocked]`
+5. **Gmail body read** → ~~`email_convert.py`~~ **capture to file, then `safe_read.py`** `[hook: raw gws gmail body blocked]` [⚠ CORRECTED 2026-09-01, #63 finding 3 — `ingest_gate_enforce.sh:351-356` denies the raw gmail-body pull and redirects to capture-to-file + `system/tools/safe_read.py` (e.g. `gws gmail messages read <ID> > /tmp/mail.txt && python3 system/tools/safe_read.py /tmp/mail.txt`); it does not check for or route through `email_convert.py`. A reader following the old instruction runs a script not on this path.]
 6. **PDF / DOCX / XLSX / CSV file read** → format-specific `safe_*.py` `[hook: Read on these extensions blocked]`
 7. **External .txt / .md file read** → `safe_read.py` `[hook: Read on external path blocked]`
 8. **ClaudeGate two-way slot** → `safe_read.py` (scan IN; Write tool for reply OUT) `[hook: raw ClaudeGate Read blocked]`
@@ -533,10 +534,14 @@ COMPLEMENTS  /websearch skill   · skill wraps safe_search_api.sh (primary) + sa
    (7) `guard_ingest_reader_split.sh` conformance hook. `state:actionable`.
 
 4. **Retired hooks (`guard_file_reads.sh`, `guard_web_fetch.sh`, `guard_web_search.sh`,
-   `guard_skip_safe_backdoor.sh`) still exist on disk, unregistered**. Harmless on this machine, but
+   `guard_skip_safe_backdoor.sh`) still exist on disk, unregistered**.
+   ⚠ **CORRECTED 2026-09-01** (H.C10, `find` across this repo for each basename): stale — all four
+   are DELETED, not on disk. Harmless on this machine, but
    if a settings drift on the second machine re-registers them instead of `ingest_gate_enforce.sh`,
    the unified gate's full logic would silently regress to the older per-channel-only coverage
-   (missing the Bash cases, the scratch-dir lock, the item-store guards, etc.). Not currently tracked.
+   (missing the Bash cases, the scratch-dir lock, the item-store guards, etc.) — a re-registration
+   would now have to reintroduce the files from source control history, not merely flip a flag on
+   files already present. Not currently tracked.
 
 5. **`guard_web_search.sh` redirect is stale** (still points to `safe_search.sh` Chrome fallback, not
    `safe_search_api.sh` which became the primary 2026-07-03). The deny message is wrong but

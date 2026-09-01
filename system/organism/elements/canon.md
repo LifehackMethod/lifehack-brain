@@ -297,7 +297,7 @@ including canon writes. Observability only; no canon-specific relationship.
 
 ### SESSION LOAD PATH (the always-on canon read)
 
-`SessionStart → session_context_loader.sh → $DRIVE/records/canon/*.md or $DRIVE/desks/{desk}/canon/*.md → injected into session context [hook, non-blocking]`
+~~`SessionStart → session_context_loader.sh → $DRIVE/records/canon/*.md or $DRIVE/desks/{desk}/canon/*.md → injected into session context [hook, non-blocking]`
 
 **Registered:** `settings.json` lines 310–319, `SessionStart`, matcher `""` (fires on every session start).
 
@@ -305,7 +305,7 @@ including canon writes. Observability only; no canon-specific relationship.
 - Desk context (cwd contains `/desks/<desk>/`): `emit_dir "Desk canon" "$DRIVE/desks/$DESK/canon"` at line 60 — reads `*.md` files in the TOP LEVEL of that desk's canon only
 - Root context: `emit_dir "Root canon" "$DRIVE/records/canon"` at line 63 — reads `*.md` files in the top level of root canon
 
-~~**MATERIAL GAP — emit_dir is non-recursive (session_context_loader.sh line 35: `local files=("$dir"/*.md)`):** The single-level glob means canon files in subdirectories are silently excluded from every session load. For the deryl desk this is a confirmed behavioral gap: 9 of 17 canon files (in `income/`, `tax/`, and `assets/` subdirs) are never injected by this hook. A deryl session opens without those files in context regardless of how many files exist on disk.~~
+**MATERIAL GAP — emit_dir is non-recursive (session_context_loader.sh line 35: `local files=("$dir"/*.md)`):** The single-level glob means canon files in subdirectories are silently excluded from every session load. For the deryl desk this is a confirmed behavioral gap: 9 of 17 canon files (in `income/`, `tax/`, and `assets/` subdirs) are never injected by this hook. A deryl session opens without those files in context regardless of how many files exist on disk.~~
 > **⚠ CORRECTED 2026-08-27, lb2-ops-comms.md claim 90 — the mechanism described above is not the live
 > one.** The real `session_context_loader.sh` does NOT read "*.md files in the top level of that desk's
 > canon" at all — it reads exactly ONE specific file per desk: `CANON=("$ROOT"/desks/*/canon/current.md)`.
@@ -313,12 +313,41 @@ including canon writes. Observability only; no canon-specific relationship.
 > count in the struck text also doesn't reconcile with a `current.md`-only mechanism (this repo has no
 > `desks/` directory at all — desk data lives in the AI Brain, where `desks/deryl/canon/` does in fact
 > have 8 top-level .md files and 17 total, per that live directory — but that count was computed against
-> the wrong mechanism). This section needs a fresh, `current.md`-mechanism-accurate re-derivation of
-> whatever coverage gap (if any) actually exists; the struck numbers should not be relied on.
+> the wrong mechanism). ~~This section needs a fresh, `current.md`-mechanism-accurate re-derivation of
+> whatever coverage gap (if any) actually exists; the struck numbers should not be relied on.~~
 
-The same hook also co-loads `state/telos.md` (the strategic brief) and `state/pulse-brief.md` (if non-empty).
+> ⚠ **CORRECTED 2026-09-01 (#60) — the fresh re-derivation the note above asked for**, discharging that
+> admission. `system/hooks/session_context_loader.sh` was read in full this session (320 lines).
+> Since the 2026-08-27 correction, the mechanism moved again — bigger than a name change this time:
+> **cwd desk-detection, `emit_dir()`, and the conditional pulse-brief emit have all been REMOVED from
+> live code**, confirmed by grep (`cwd|CWD`, `emit_dir`, `pulse` each return zero matches in the live
+> file). What actually happens now, unconditionally, every SessionStart:
+> 1. `ROOT` (the data root) is resolved via `python3 "$REPO/shared/brain_root.py" --quiet` (line 94)
+>    — not from `cwd`, not from a JSON payload; the script no longer parses stdin at all.
+> 2. Root canon (`$ROOT/canon.md`) prints unconditionally if non-empty (lines 180–196).
+> 3. `$ROOT/state/telos.md` prints the same way, unconditionally (lines 214–226).
+> 4. **Every desk's canon loads, every session** — `CANON=("$ROOT_GLOB"/desks/*/canon/current.md)`
+>    (line 245) globs ALL desks at once (one fixed file per desk, confirming the 2026-08-27
+>    correction's `current.md`-only mechanism was right) and loops the full list (lines 260–295),
+>    gated only by a shared character ceiling (default 20000) — never by which desk launched the
+>    session.
+> 5. A findings/health banner (`system/tools/health_line.py` against the fault ledger) and a
+>    skill-capability check print after the canon loop — new machinery, not pulse-brief.
+> 6. `exit 0` always (line 320).
+>
+> Net: the "desk session only sees its own desk" scope this note's coverage question presupposed no
+> longer exists — every desk's `canon/current.md` loads into every session (budget permitting).
 
-**Desk-detection is cwd-based** — a root session launched from `Lifehack/` loads `records/canon/`, not any desk's canon. A session launched from `desks/emily/` loads `desks/emily/canon/`. This is correct and confirmed; the CLAUDE.md description ("always-on, auto-loaded every session") is accurate per session context; the cwd determines WHICH branch.
+~~The same hook also co-loads `state/telos.md` (the strategic brief) and `state/pulse-brief.md` (if non-empty).~~
+⚠ **CORRECTED 2026-09-01 (#60):** TELOS is still co-loaded; `state/pulse-brief.md` is not — that read
+was removed from live code, see the fresh re-derivation above/below.
+
+~~**Desk-detection is cwd-based** — a root session launched from `Lifehack/` loads `records/canon/`, not any desk's canon. A session launched from `desks/emily/` loads `desks/emily/canon/`. This is correct and confirmed; the CLAUDE.md description ("always-on, auto-loaded every session") is accurate per session context; the cwd determines WHICH branch.~~
+⚠ **CORRECTED 2026-09-01 (#60):** false as of the live script — there is no cwd branch left to
+determine. Root canon.md and TELOS load unconditionally, and every desk's `canon/current.md` loads
+unconditionally too (subject only to a shared character ceiling); cwd plays no role in what a session
+loads. The CLAUDE.md "always-on, auto-loaded every session" phrase is still accurate — just not
+because cwd selects a branch; there is no branch to select.
 
 `[hook, SessionStart, non-blocking, exit 0, settings.json:310–319]`
 
@@ -372,10 +401,22 @@ From `settings.json`, every hook checked against a `Write|Edit` tool call target
    stale/expiry-marker check.**
    Fail-closed on parse error. Registration confirmed in settings.json lines 246–255.
 
-2. **`guard_write_paths.sh`** (PreToolUse Write|Edit) `[hook, BLOCKING, residency]`
-   The residency wall — blocks writes outside the Drive spine / approved clone paths. For canon:
-   `$DRIVE/records/canon/*` and `$DRIVE/desks/*/canon/*` are inside `$DRIVE/` and PASS this guard.
-   This gate fires BEFORE `guard_canon_write.sh` in the settings.json hook order.
+2. **`guard_write_paths.sh`** (PreToolUse Write|Edit) `[hook, BLOCKING for named zones; residency]`
+   ~~The residency wall — blocks writes outside the Drive spine / approved clone paths.~~
+   ⚠ **CORRECTED 2026-09-01 (audit finding, not #60):** overstated for the general case. Confirmed by
+   reading `system/hooks/guard_write_paths.sh` this session: the named zones (hook self-protection,
+   settings.json, `.git`, and the explicitly listed Drive/clone/notes-root zones) are still
+   unconditional `exit 2` blocks — that holds. But a path matching NONE of the named zones falls to
+   the catch-all at the bottom of the file, and that catch-all is **WARN-ONLY by default**: it
+   computes the deny-by-default decision but only logs it to `$GUARD_WRITE_PATHS_LOG`, then `exit 0`s
+   (ALLOWS) — it does not refuse the write — unless an operator has explicitly set
+   `GUARD_WRITE_PATHS_MODE=enforce` (guard_write_paths.sh:396,404–406). A doc that calls this
+   "blocks writes outside approved paths" without the warn-only caveat tells a reader they have
+   protection they do not have.
+   For canon paths specifically this is moot either way: `$DRIVE/records/canon/*` and
+   `$DRIVE/desks/*/canon/*` are inside `$DRIVE/`, a NAMED zone, so they PASS this guard
+   unconditionally and never reach the catch-all. This gate fires BEFORE `guard_canon_write.sh` in
+   the settings.json hook order.
 
 **One non-blocking SessionStart reader:**
 
@@ -676,9 +717,14 @@ Mixed (live blocking guard + several honor-system edges) → **PARTIAL**.
 
 17. **GUARDED-BY `guard_write_paths.sh` · residency wall (fires before guard_canon_write)**
     The residency wall fires first in settings.json hook order. It allows writes to $DRIVE paths (so canon
-    paths PASS) and blocks writes outside the approved zone. For canon: it's the pre-check that confirms
-    the path is in the right region before the canon-specific check runs.
-    `[hook, PreToolUse, BLOCKING, fires before guard_canon_write]`
+    paths PASS). ~~It ... blocks writes outside the approved zone.~~ ⚠ **CORRECTED 2026-09-01 (audit
+    finding, not #60):** only unconditionally true for the named zones — see the correction under
+    Gate 2 above (`guard_write_paths.sh`). Any path matching none of those zones falls to the
+    catch-all, which is WARN-ONLY by default (logs + `exit 0`, does not refuse) unless an operator
+    has set `GUARD_WRITE_PATHS_MODE=enforce`. For canon: it's the pre-check that confirms the path is
+    in the right region (a named zone, always enforced) before the canon-specific check runs — this
+    part is unaffected by the warn-only caveat.
+    `[hook, PreToolUse, BLOCKING for named zones, WARN-ONLY by default for the catch-all, fires before guard_canon_write]`
 
 18. **COMPLEMENTS validate_on_write.sh · PostToolUse frontmatter nudge**
     An advisory complement: fires after any Write/Edit and surface missing frontmatter fields. Non-blocking.

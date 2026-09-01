@@ -28,6 +28,11 @@ authority: user
 
 # build-plan-plane — element detail
 
+> ⚠ **CORRECTED 2026-09-01:** the `skills/build/SKILL.md` cited in the TRIGGERS table below is the
+> donor's repo-relative form and resolves nowhere from this repo's root. Verified this session: `/build`
+> ships from the installed plugin at `.claude/skills/build/` (plugin root, confirmed under
+> `~/.claude/plugins/marketplaces/lifehack-brain/`), not from any path inside this repository.
+
 > ⚠ **CORRECTED 2026-08-27** (L.B2 audit, direct read of the installed `autoplan` skill, v0.3.13):
 > the entire "`/autoplan` enters native harness plan mode, which mints a new random file every
 > invocation" premise below describes a SUPERSEDED mechanism. The current, already-redesigned

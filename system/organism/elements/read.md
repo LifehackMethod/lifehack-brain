@@ -41,6 +41,12 @@ authority: user
 > DEFECTIVE path the registry-data finding below is reporting — the doubled suffix IS the finding — and it
 > lives inside the person's own notes, not this repo. Left exactly as written, because rewriting it would
 > delete the defect it exists to record.
+>
+> ⚠ **CORRECTED 2026-09-01:** the bare `skills/read/SKILL.md`, `skills/checkin/SKILL.md`, and
+> `skills/project-manager/SKILL.md` cited below (and just below, at "the skills themselves") are the
+> donor's repo-relative form and resolve nowhere from this repo's root. Verified this session: all three
+> ship from the installed plugin at `.claude/skills/<name>/` (plugin root, confirmed under
+> `~/.claude/plugins/marketplaces/lifehack-brain/`), not from any path inside this repository.
 
 > **LADDER: ELEMENT (full mechanics). up → manual#read ; ground truth → the live artifact (generated_from)**
 

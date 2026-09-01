@@ -75,6 +75,12 @@ _ackfile(){ printf '%s/%s.%s.ok' "$ACKDIR" "$KEY" "$(hash_key "$1")"; }
 # is one that gets tested against the real one, or not at all.
 HOOKDIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
 REPO="${HOOKDIR%/system/hooks}"
+# See system/hooks/lib/winpath_fold.sh -- sourced once here, ahead of _slug_of below, which folds
+# a comparison copy of every path it classifies (tool_input.file_path and Bash-door candidates both
+# arrive backslash-native on Windows). Degrade-safe on purpose: if the lib fails to load, _slug_of's
+# own fallback just leaves Windows at its pre-fold behaviour -- a missed detection, not a false
+# block -- which matches this guard's own stated posture (an ALARM, not a wall).
+. "$HOOKDIR/lib/winpath_fold.sh" 2>/dev/null
 
 if [ "${1:-}" = "ack" ]; then
   [ -n "${2:-}" ] || { echo "ack: an absolute file path is required" >&2; exit 1; }
@@ -109,15 +115,22 @@ COMMAND=$(printf '%s' "$PARSED" | sed -n '3p')
 #   a flat project    -> <notes>/state/briefs/<slug>.md
 # The folder's last segment IS the slug — that rule is enforced elsewhere and relied on here.
 _slug_of(){
-  case "$1" in
+  # FOLD FOR DETECTION ONLY (Windows path fold). $1 arrives backslash-native on Windows (either
+  # tool_input.file_path directly, or a Bash-door candidate resolved the same way), so the
+  # forward-slash shape patterns below would otherwise never match there. The slug TEXT is always
+  # sliced from the ORIGINAL $1, below, using a pattern that accepts either separator -- never from
+  # the folded copy, which _winfold lowercases, and this slug is shown back to the person verbatim
+  # in the cross-project deny message.
+  _s1c="$(_winfold "$1" 2>/dev/null)"; [ -n "$_s1c" ] || _s1c="$1"
+  case "$_s1c" in
     */projects/*/canon/current.md|*/projects/*/canon/*.md)
-      p="${1%/canon/*}"; printf '%s' "${p##*/}" ;;
+      p="${1%[/\\]canon[/\\]*}"; printf '%s' "${p##*[/\\]}" ;;
     */projects/*/brief.md|*/projects/*/canon.md)
-      p="${1%/*}"; printf '%s' "${p##*/}" ;;
+      p="${1%[/\\]*}"; printf '%s' "${p##*[/\\]}" ;;
     */state/briefs/*.md)
-      b="${1##*/}"; printf '%s' "${b%.md}" ;;
+      b="${1##*[/\\]}"; printf '%s' "${b%.md}" ;;
     */plans/*.plan.md)
-      b="${1##*/}"; printf '%s' "${b%%.plan*}" ;;
+      b="${1##*[/\\]}"; printf '%s' "${b%%.plan*}" ;;
     *) : ;;
   esac
 }

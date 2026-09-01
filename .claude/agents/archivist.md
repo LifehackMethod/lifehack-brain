@@ -72,10 +72,13 @@ items pile up (the inverse of check J).
 **CAN:**
 - Read any file under `<notes>` and this repository.
 - Report the results of `system/tools/skill_promise_sweep.py` (a read-only sweep) when the
-  orchestrating session runs it and hands you the output. ⏳ **unruled** — `system/tools/ingest_method_audit.py`
-  (also a read-only sweep; see check V below) is cited by this shipped file but has not yet been ported
-  from the donor clone into this repo, and no phase names when it lands; once the orchestrating session
-  can run it, report its output the same way.
+  orchestrating session runs it and hands you the output. ✅ `system/tools/ingest_method_audit.py`
+  **CORRECTED 2026-09-01** — was previously marked (deferred, "not yet ported"); it now exists on
+  disk at `./system/tools/ingest_method_audit.py`, confirmed this session, so the earlier deferred
+  status (struck below, was written with the pending-port marker) no longer applies: SUPERSEDED,
+  "cited by this shipped file but has not yet been ported from the donor clone into this repo, and
+  no phase names when it lands" -- once the orchestrating session can run it, report its output the
+  same way.
 - Return, as part of your report, the content for an audit log
   (`<notes>/records/logs/archivist-{YYYY-MM-DD}-audit.md`), a proposal queue
   (`<notes>/records/proposals/archivist-{YYYY-MM-DD}-{what}.md`, only if actionable items exist), and a

@@ -229,8 +229,20 @@ fi
 # /ingest PHASE 4 builds <root>/desks/<subject>/canon/current.md — "the things that stay true" — and
 # that is what belongs in front of every session. Dated records are NOT loaded: they are retrieved on
 # demand, and loading them all is how a context window fills with last month's noise.
+# WINDOWS PATH FOLD: ROOT is the unfolded output of `brain_root.py --quiet`, which on Windows is
+# backslash-native (drive letter, users folder, account). Bash's glob engine cannot expand that AT ALL -- it treats `\`
+# as an escape character, not a directory separator -- so without this the glob below would
+# silently match zero files and the standing-canon load would report "No subject folders yet" on
+# every single Windows session, regardless of what actually exists on disk.
+# See system/hooks/lib/winpath_fold.sh. Degrade-safe fallback (identity) matches this whole file's
+# never-blocks posture. Folded ONLY for the glob root: SUBJECT below is read back out of $f, the
+# glob's own match, whose wildcard portion keeps the real on-disk case regardless of this fold
+# (confirmed: Windows' filesystem is case-insensitive, so the lowercased root still opens the real
+# directory, and bash substitutes the wildcard from the actual directory-entry name it read).
+. "$REPO/system/hooks/lib/winpath_fold.sh" 2>/dev/null || _winfold() { printf '%s' "$1"; }
+ROOT_GLOB="$(_winfold "$ROOT")"
 shopt -s nullglob 2>/dev/null
-CANON=("$ROOT"/desks/*/canon/current.md)
+CANON=("$ROOT_GLOB"/desks/*/canon/current.md)
 shopt -u nullglob 2>/dev/null
 
 if [ "${#CANON[@]}" -eq 0 ]; then

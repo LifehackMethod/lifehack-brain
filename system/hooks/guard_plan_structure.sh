@@ -41,7 +41,7 @@ echo "$PLAN" | grep -qi 'task'   || miss="${miss}Task "
 echo "$PLAN" | grep -qi 'verif'  || miss="${miss}Verify "
 
 if [ -n "$miss" ]; then
-  printf '%s\n' '{"decision":"block","reason":"BLOCKED: plan is missing required structure ('"$miss"'). WHY: ClaudeOps plans must be Phase -> Feature -> Task, each task Execute -> Verify & test -> mark done (a task is NOT done until its verify passes), per the Planning Output rule in CLAUDE.md. REDIRECT: rewrite the plan in that hierarchy (Features optional for small plans; Phase + Task + Verify are required) before calling ExitPlanMode. Spec: system/sops/architecture-planning-sop.md (star-star ALWAYS)."}' >&2
+  printf '%s\n' '{"decision":"block","reason":"BLOCKED: plan is missing required structure ('"$miss"'). WHY: Lifehack plans must be Phase -> Feature -> Task, each task Execute -> Verify & test -> mark done (a task is NOT done until its verify passes), per the Planning Output rule in CLAUDE.md. REDIRECT: rewrite the plan in that hierarchy (Features optional for small plans; Phase + Task + Verify are required) before calling ExitPlanMode. Spec: system/sops/architecture-planning-sop.md (star-star ALWAYS)."}' >&2
   exit 2
 fi
 exit 0

@@ -409,7 +409,7 @@ and complex if-then statements; code is for prescriptive rules.* The sharpening:
 code's home turf — and the *branching* is.** What the LLM actually owns is not branching but **undecidable
 predicates**. `if chat.is_about_acting()` has no regex behind it, and no amount of `elif` will grow one. Once a
 predicate is crisp, code branches better than the model does; writing down a predicate that cannot be written
-down is exactly the thicket Kim is warning about. **But note what Kim's rule does not cover: it tells you how to
+down is exactly the thicket the rule above is warning about. **But note what that rule does not cover: it tells you how to
 DIVIDE the work and says nothing about how the halves TALK.** All three real `/ingest` bugs found on 2026-08-04/05
 were at the handoff, not inside either half — a reflection screen where code and prose were each correct and
 nothing connected them (dead three weeks); a coalesce that emitted bare strings to a consumer calling `.get()` on
@@ -778,8 +778,14 @@ one actually needs.
   phase_gate answers "is this phase's contract satisfied," never "is X before Y."
 - **`system/parts/order_lint.py`** — positional check with four verdicts (ORDERED / OUT_OF_ORDER /
   BEFORE_MISSING / NOT_APPLICABLE), deliberately separating "B came first" from "A never appeared." CALLERS: 1
-  unconditional — `system/tools/new-skill.sh:154`, every scaffolded skill; deployed copies also sit in
-  `skills/skill-builder/scripts/order_lint.py` and `skills/architect/scripts/order_lint.py`. The strongest of
+  unconditional — `system/tools/new-skill.sh:154`, every scaffolded skill; a deployed copy sits in
+  `skills/architect/scripts/order_lint.py` (resolves to `.claude/skills/architect/scripts/order_lint.py`).
+  ⛔ **CORRECTED 2026-09-01** — ~~deployed copies also sit in `skills/skill-builder/scripts/order_lint.py`~~:
+  checked this session against the repo, `.claude/skills/skill-builder/`, and the installed plugin cache
+  (`~/.claude/plugins/cache/lifehack-brain/.../skill-builder/scripts/`) — no `order_lint.py` exists in any
+  of them. The only copy anywhere is a stale one archived at
+  `system/parked/2026-08-23-ruled-out-resurrections/.claude/skills/skill-builder/scripts/order_lint.py`.
+  This claim was stale; skill-builder does not currently carry a deployed `order_lint.py`. The strongest of
   the whole library on caller count. INTERFACE: `order_lint.py --rules RULES.json --artifact A.md [--section
   "..."] [--json] [--selftest]`. Don't use for: proving something exists at all when there's no "before" — a
   BEFORE_MISSING antecedent that never runs at all is precondition_gate's or section_present's question, not

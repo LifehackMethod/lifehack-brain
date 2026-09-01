@@ -1,0 +1,68 @@
+name: Citation Lint (whole tree)
+
+# WHY THIS EXISTS: system/tools/citation_lint.py proves every file, skill and hook this
+# repo's documents NAME either exists here, or has a line saying what happened to it. The
+# tool has worked since it was built -- but nothing outside a single commit's own staged
+# files has ever called it. `system/githooks/pre-commit` invokes it with `--files`, scoped
+# to $staged (see that hook's own comment for why: a repo-wide gate on every commit was
+# tried and reverted -- issues #81, #90, #74.3). That scoping is correct for a commit gate,
+# but it means a citation that goes stale UNDERNEATH a document nobody happens to touch is
+# never re-checked by anything -- which is how issue #63's rot accumulated under a working
+# linter. This workflow is that missing whole-tree caller: `python3
+# system/tools/citation_lint.py`, no `--files`, run against every push/PR to main.
+#
+# ⛔ A CALLER, NOT A NEW CHECKER. This adds zero lint logic of its own -- it runs the exact
+# tool that already exists and reports its exit code. See system/tools/citation_lint.py for
+# every rule this enforces.
+#
+# ⚠ SEQUENCING -- READ BEFORE ENABLING BRANCH PROTECTION ON THIS CHECK, AND BEFORE MERGING
+# THIS FILE TO main. When this note was first written on 2026-09-01 the sweep reported 8
+# FAILED. ⚠ CORRECTED later the same day: the backlog was cleared and the sweep now reports
+# 0 FAILED across 4020 citations, so the gating condition below is MET. Re-derive before
+# relying on it -- a count in a comment goes stale, which is the very defect this job
+# exists to catch, and this header carried a stale one within an hour of being written. (run
+# `python3 system/tools/citation_lint.py --quiet` on main to see the live count). Merging
+# this workflow while that backlog is open makes every PR's status checks show one
+# pre-existing red that this PR did not cause -- confusing, and exactly the "gate that fires
+# on ordinary work gets disabled by the first annoyed contributor" failure
+# fix-citation-required.yml's own header warns about. DO NOT mark this check "required" in
+# branch protection, and prefer not merging this file to main at all, until
+# `citation_lint.py --quiet` exits 0 on main. This job is deliberately NOT made
+# non-failing/soft to get an early green -- an honest red on a dirty tree is correct; the
+# fix is to clean the tree, never to weaken the caller.
+#
+# WHY A SEPARATE WORKFLOW, NOT A NEW STEP IN exercise-loop.yml OR no-internal-leakage.yml:
+# those two gate different things (repo-wide test/smoke suite; operator-identity leakage) on
+# a different failure surface. citation_lint failing should never block/confuse either of
+# those signals, and vice versa -- each shows up as its own independent status check, same
+# rationale exercise-loop.yml's own header gives for keeping its two jobs apart.
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  # Manual trigger for sanity-checking this workflow's wiring without waiting on a real
+  # push or PR -- never fires on its own.
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  citation-lint:
+    name: Whole-tree citation sweep
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run citation_lint.py over the whole tree (no --files)
+        run: python3 system/tools/citation_lint.py --quiet

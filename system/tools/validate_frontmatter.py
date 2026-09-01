@@ -32,6 +32,30 @@ from datetime import datetime
 REQUIRED_FIELDS = {"record_type", "desk", "created_at", "status"}
 FORBIDDEN_FIELDS = {"artifact_type"}  # record_type is the canonical name
 
+# WINDOWS FOLD: `filepath` can arrive backslash-native (validate_on_write.sh passes
+# tool_input.file_path straight through), so every "xxx/" substring test below would silently
+# never match on Windows. Load the shared fold helper by its path relative to this file -- same
+# helper the system/hooks/*.sh guards load, see lib/winpath_fold.py's own header for why a second,
+# Python copy of the bash helper exists at all.
+_WINFOLD_LIB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "hooks", "lib", "winpath_fold.py")
+
+
+def _load_winfold():
+    import importlib.util
+    try:
+        spec = importlib.util.spec_from_file_location("winpath_fold", _WINFOLD_LIB)
+        if spec is None or spec.loader is None:
+            return None
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+    except Exception:
+        return None
+
+
+_WINFOLD = _load_winfold()
+
+
 def validate_file(filepath):
     """
     Validate frontmatter of a markdown file.
@@ -52,8 +76,19 @@ def validate_file(filepath):
     # Only validate what THIS SYSTEM writes. A person's own files, dropped anywhere in their notes
     # folder, are theirs — a validator that lectures somebody about the frontmatter on a file they
     # wrote by hand is noise, and noise is how a real violation gets skimmed past.
+    # FOLD THE COMPARISON COPY ONLY -- filepath itself keeps its original spelling below, since
+    # it is echoed back verbatim into every message here.
+    if _WINFOLD is None:
+        # Fail closed: a missing fold helper must never be reported as "skip: not managed" --
+        # that would silently restore the exact bug this fixes on Windows (unmanaged-looking
+        # paths that are actually managed sail through with no check at all). This validator
+        # already has a designed "cannot evaluate" signal (None / exit 2) for exactly this
+        # kind of "could not determine" case -- use it rather than inventing a new one.
+        return None, f"cannot evaluate: {filepath} -- lib/winpath_fold.py could not be loaded from {_WINFOLD_LIB}"
+    filepath_cmp = _WINFOLD.winfold(filepath)
+
     MANAGED = ("desks/", "system/", "state/projects/", "records/")
-    if not any(pattern in filepath for pattern in MANAGED):
+    if not any(pattern in filepath_cmp for pattern in MANAGED):
         return True, f"skip: {filepath} is not a managed file"
 
     # Don't validate .bak or fixture files
@@ -63,7 +98,7 @@ def validate_file(filepath):
     # Don't validate quarantined / archived / external content — these are NOT managed records
     # (they're sandboxed external material or immutable archives). Validating them was scope
     # over-reach that inflated the violation count. (organism-audit defect d, 2026-07-20.)
-    if any(seg in filepath for seg in ("quarantine/", "/_archive", "/archive/", "node_modules/")):
+    if any(seg in filepath_cmp for seg in ("quarantine/", "/_archive", "/archive/", "node_modules/")):
         return True, f"skip: {filepath} is quarantined/archived/external (not a managed record)"
 
     try:

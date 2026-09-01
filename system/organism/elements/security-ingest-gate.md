@@ -48,7 +48,7 @@ authority: user
     3. `model → Read(.pdf/.docx/.xlsx/.csv) → file → BLOCK → safe_pdf/docx/xlsx/csv.py [hook]`
     4. `model → Read(external .txt/.md OUTSIDE the trusted zone: clone · ~/.claude · Drive Lifehack) → file → BLOCK → safe_read.py [hook]`
     5. `MAIN session → Read(/tmp/rdr, /tmp/ingest_body) → sanitized scratch → BLOCK (reader-actor lock); a SUB-AGENT (agent_id set) is ALLOWED (exit 0) — the CONTROLLER, not the gate, spawns the tool-less ingest-reader [hook]`
-    6. `model → Bash(gws gmail messages/threads get format:full) → email body → BLOCK → email_convert.py [hook]`
+    6. `model → Bash(gws gmail messages/threads get format:full) → email body → BLOCK → ~~email_convert.py~~ **capture to file, then `safe_read.py`** [hook]` **[⚠ CORRECTED 2026-09-01, #63 finding 3 — `email_convert.py` is not the live redirect. `ingest_gate_enforce.sh:351-356` denies the raw gmail-body pull and tells the caller to capture the body to a file then run `system/tools/safe_read.py` on it — e.g. `gws gmail messages read <ID> > /tmp/mail.txt && python3 system/tools/safe_read.py /tmp/mail.txt`. A reader following the old instruction runs a script that is not on this path.]**
     7. `model → Bash(gws calendar events list) → invite free-text → BLOCK → safe_calendar.py [hook]`
     8. `model → Bash(gws tasks tasks list/get) → task free-text → BLOCK → safe_tasks.py [hook]`
     9. `model → Bash(gws drive files export, raw) → client Doc body → BLOCK → safe_read/safe_docx/safe_pdf [hook]`

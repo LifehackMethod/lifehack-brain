@@ -466,8 +466,12 @@ a gloss; it is not an identifier. The map does not rename the element.
 - **MANUAL:** `> LADDER: MANUAL (how it works together). up → the map ; full mechanics → elements/<slug>.md`
 - **ELEMENT:** `> LADDER: ELEMENT (full mechanics). up → manual#<slug> ; ground truth → the live artifact (generated_from)`
 
-⚠ **Coverage is partial in this repo, measured this session:** 31 of the 42 element files carry a
-`LADDER:` line. The remaining 11 do not. Wording also varies slightly (some entries end
+⚠ **Coverage is partial in this repo, measured this session:** ~~31 of the 42 element files carry a
+`LADDER:` line. The remaining 11 do not.~~ ⚠ **CORRECTED 2026-09-01** — re-derived both numbers this
+session: `system/organism/elements/` holds **44** `.md` files (`ls -1 system/organism/elements/ | wc -l`,
+all `.md`, 0 non-`.md`), not 42, and of those, **33** carry a `LADDER:` line
+(`grep -l "LADDER:" system/organism/elements/*.md | wc -l`), leaving **11** that do not — the
+missing-count held, the denominator was stale. Wording also varies slightly (some entries end
 `→ the live artifacts above` rather than naming `generated_from`). Stated as a finding, not
 retroactively enforced.
 

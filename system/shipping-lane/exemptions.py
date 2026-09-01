@@ -87,6 +87,29 @@ from paths import scratch_dir  # noqa: E402 -- path fixed immediately above, by 
 
 _WILDCARD_CHARS = frozenset("*?")
 
+# WINDOWS FOLD: a hand-typed exemption path can arrive backslash-native, drive-lettered, or
+# mixed-case (a human typed it, not a program that produced it) -- same class of problem the
+# system/hooks/*.sh guards solve with the shared fold helper, so this reuses it rather than
+# re-rolling a partial version. Off Windows (the common case) winfold() is the identity
+# function, so this changes nothing there.
+_WINFOLD_LIB = os.path.join(_REPO_ROOT, "system", "hooks", "lib", "winpath_fold.py")
+
+
+def _load_winfold():
+    import importlib.util
+    try:
+        spec = importlib.util.spec_from_file_location("winpath_fold", _WINFOLD_LIB)
+        if spec is None or spec.loader is None:
+            return None
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+    except Exception:
+        return None
+
+
+_WINFOLD = _load_winfold()
+
 
 class ExemptionError(Exception):
     """Raised on any malformed exemptions.json -- callers convert this to their own
@@ -120,8 +143,21 @@ def _normalize_path(raw):
     """Same normalisation scrub.py/push_gate.py implicitly apply to their own `rel`
     variables (relpath-style: forward slashes, no leading './', no leading '/') so a
     hand-typed exemption path compares like-for-like against the scanners' own repo-
-    relative keys regardless of how the human spelled it."""
-    p = raw.strip().replace("\\", "/")
+    relative keys regardless of how the human spelled it.
+
+    This ALSO folds through the shared Windows-path helper (backslashes, drive letter,
+    case) -- unlike scrub.py/push_gate.py's own `rel`, which comes straight out of
+    os.path.relpath() on THIS process's own os.walk and so is guaranteed forward-slash,
+    driveless, and correctly cased already, `raw` here can be anything a person typed
+    into exemptions.json by hand. Off Windows winfold() is the identity function, so
+    this is a no-op there; if the helper fails to load, fall back to the plain
+    slash-swap rather than raising -- a normaliser must not turn "couldn't load an
+    optional extra fold" into "the whole exemptions file is unusable"."""
+    p = raw.strip()
+    if _WINFOLD is not None:
+        p = _WINFOLD.winfold(p)
+    else:
+        p = p.replace("\\", "/")
     while p.startswith("./"):
         p = p[2:]
     return p.lstrip("/")

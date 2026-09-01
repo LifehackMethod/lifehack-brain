@@ -26,6 +26,13 @@ authority: user
 
 # research-web-plane — element detail
 
+> ⚠ **CORRECTED 2026-09-01:** the bare `skills/research/SKILL.md` and `skills/websearch/SKILL.md`
+> cited above (frontmatter) and throughout the body below (the table, "Effort tiers", "Hard rules",
+> "Full step chain") are the donor's repo-relative form and resolve nowhere from this repo's root.
+> Verified this session: both ship from the installed plugin at `.claude/skills/<name>/` (plugin root,
+> confirmed under `~/.claude/plugins/marketplaces/lifehack-brain/`), not from any path inside this
+> repository.
+
 > **LADDER: ELEMENT (full mechanics). up → manual#research-web-plane ; ground truth → the live artifacts (generated_from)**
 >
 > **Altitude = BASE (ground / street view).** The in-the-weeds detail of how the research/web-access

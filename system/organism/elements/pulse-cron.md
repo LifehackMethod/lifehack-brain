@@ -57,8 +57,7 @@ authority: user
 > ⛔ `state/status/sentinel.json` — runtime-generated, created on first run, never committed. A status tile the reader's own run writes under their notes/data root (shared/gate/sentinel_response.py line 53 resolves it as `{DATA}/state/status/sentinel.json`); its writers system/tools/sentinel-health.py and system/tools/sentinel-health-run.sh DO ship.
 > ⛔ `state/status/*.json` — every other tile of this shape named below is the same class: runtime-generated, created on first run, never committed.
 >
-> The codified `*-run.sh` contract lives in the private clone at:
-> `system/schemas/runner-standard.md` ⛔ private-clone only — not part of the public subset, so it is not in this tree.
+> ✅ landed — `system/schemas/runner-standard.md`, the codified `*-run.sh` contract, is now present in `system/schemas/` (21,251 bytes, confirmed 2026-08-24). The line above previously deferred it; that deferral is now stale.
 > `system/tools/planning-health.py` line 23 reasons against "the runner-standard rc=1", and the contract it cites now exists.
 
 > ⚖ **NOTE 2026-08-15 — the `…_studio_…` gate names below are DONOR CODE IDENTIFIERS, and are
@@ -243,7 +242,7 @@ pulse.sh → bash {job}-run.sh </dev/null   [CODE: system/tools/{job}-run.sh]
           primary-gate.sh:require_primary (lines 44-47): plain echo + return 1, NO notify-send, NO exit
           archivist-run.lib.sh inline gate: return 0, NO notify-send
           (fail-CLOSED for Drive writes — no writer runs without a designated lead — but the notify channel varies)
-  → [GATE 2 — HARDWARE GATE, dobby and the home-energy-monitor job only]
+  → [GATE 2 — HARDWARE GATE, dobby/emporia only]
       require_studio_hardware (ingest-run.lib.sh:89–94):
         case $ComputerName in *<hardware-host>*) ;; *) exit 0 ;; esac
         Hard pin — not lead-selectable; the hardware is physically absent on every other machine.~~
@@ -292,9 +291,30 @@ pulse.sh → bash {job}-run.sh </dev/null   [CODE: system/tools/{job}-run.sh]
         claude -p "$PROMPT" --model {MODEL} --dangerously-skip-permissions
         working dir = DESK_DIR or CODE_ROOT/desks/{desk}/
         + WATCHDOG: ( sleep $WATCHDOG; kill -9 $cpid ) & (background subshell; hard-kills a hung session)
-        watchdog durations: archivist 1800s · emily 1200s (hardcoded) · clair 1200s (env-overridable ${WATCHDOG:-1200}) · deryl 1800s (env-overridable ${DERYL_INGEST_WATCHDOG:-1800}) · NOTE: no single canonical "ingest runner default" — watchdog is caller-supplied and varies per runner ·
+        watchdog durations: archivist 1800s (LIVE — confirmed this session: `ARCH_WATCHDOG` default 1800
+          at `system/tools/archivist-run.lib.sh:32`, the same file dispatching `sleep "$ARCH_WATCHDOG"` at
+          line 160; `archivist-audit`/`archivist-deepmine` are `yes`-enabled, non-`waiting-on-port` rows in
+          `system/pulse-config.md`) ·
+        ~~emily 1200s (hardcoded) · clair 1200s (env-overridable ${WATCHDOG:-1200}) · deryl 1800s
+          (env-overridable ${DERYL_INGEST_WATCHDOG:-1800}) · NOTE: no single canonical "ingest runner
+          default" — watchdog is caller-supplied and varies per runner ·
           marc per-researcher 480s (RWATCH) + synthesis 900s (WATCHDOG) ·
-          marc-wednesday material-scan 300s · marc narrative-emit 180s
+          marc-wednesday material-scan 300s · marc narrative-emit 180s~~
+        **⚠ CORRECTED 2026-09-01 (#61).** The five struck durations above (emily / clair / deryl /
+        marc-weekly / marc-wednesday / marc narrative-emit) describe runners that do not run in this
+        install. Confirmed this session two ways: (1) `system/pulse-config.md` lists every one of
+        `emily-breakdown`, `deryl-ingest`, `deryl-books-health`, `clair-health`, `clair-billing`,
+        `marc-health`, `marc-weekly`, `marc-wednesday`, `marc-deadman` as `waiting-on-port` /
+        "NOT PORTED — see comment above"; (2) a repo-wide filename search this session for
+        `emily-breakdown-run.sh`, `clair-health-run.sh`, `deryl-ingest-run.sh`, `marc-research-lib.sh`,
+        `marc-weekly-run.sh`, `marc-wednesday-run.sh`, and `marc-deadman.py` returned zero files —
+        the source scripts these numbers describe are not present here at all. These durations are
+        **donor-derived**: illustrative internals carried over from the donor system's code for a
+        pipeline that has not been ported, not a measurement of anything executing in this repo.
+        Source of the exact figures (1200s / 1800s / 480s / 900s / 300s / 180s) as originally written
+        into this file is unverified — no port commit or citation ties them to a script that exists
+        here, so their provenance beyond "donor code" is UNKNOWN, not asserted. Only `archivist`,
+        left unstruck above, is confirmed live.
   → [EMIT STATUS]
       emit_status.py (or python3 inline) → atomic write $DRIVE/state/status/{desk}.json
       notify-send.sh on threshold breach (all alert routing goes through notify-plane)
@@ -326,7 +346,7 @@ pulse.sh → bash {job}-run.sh </dev/null   [CODE: system/tools/{job}-run.sh]
 
 #### D. Marc pipeline runners (`marc-research-lib.sh`)
 
-##### D1. marc-weekly (`marc-weekly-run.sh` → `marc_research_run`)
+~~##### D1. marc-weekly (`marc-weekly-run.sh` → `marc_research_run`)
 
 ```
 marc-weekly-run.sh → source marc-research-lib.sh → _lead_gate || exit 0  [marc-research-lib.sh:41]
@@ -334,8 +354,9 @@ marc-weekly-run.sh → source marc-research-lib.sh → _lead_gate || exit 0  [ma
     (NOT a wall-clock cron pin; Pulse ticks daily and the runner checks the day)
   → lock /tmp/lifehack-marc-weekly.lock
   → Stage 0: marc-grade.py (grades due projections — pure code, non-fatal)
-  → Stage 1 — 8-researcher fan-out: for each of 8 domain-specific analytical lenses
-      (named in the donor code, not reproduced here): claude -p "$researcher_prompt" --model sonnet & RPID=$! then
+  → Stage 1 — 8-researcher fan-out: for each of 8 lenses (fed-liquidity · fiscal-currency ·
+      valuation-risk · secular-growth · geopolitics · flows-positioning · credit-shadow ·
+      market-structure): claude -p "$researcher_prompt" --model sonnet & RPID=$! then
       immediately wait "$RPID" with its own 480s watchdog (sequential, one at a time, 8 serially;
       per-researcher watchdog 480s)  [marc-research-lib.sh:77–89]
   → deterministic gather-gate: marc-gather-gate.py (hard-stop if < floor or stale price feed)
@@ -375,28 +396,57 @@ marc-wednesday-run.sh → source marc-research-lib.sh → _lead_gate || exit 0
 ```
 
 NOTE: marc-wednesday does NOT call marc_narrative_emit or the narrative registry health check —
-those are only in the full marc_research_run (D1). The mid-week scan is intentionally lighter.
+those are only in the full marc_research_run (D1). The mid-week scan is intentionally lighter.~~
+
+**⚠ CORRECTED 2026-09-01 (#61).** The entire D1/D2 block above describes donor code that was never
+ported. Confirmed this session two ways: (1) `system/pulse-config.md`'s `` ```jobs ``` `` fence lists
+both `marc-weekly` and `marc-wednesday` as `waiting-on-port` / "NOT PORTED — see comment above";
+(2) a repo-wide filename search this session for `marc-weekly-run.sh`, `marc-wednesday-run.sh`, and
+`marc-research-lib.sh` returned zero files (`find . -name "<name>"`, each empty). This is the same
+donor-relic pattern the 2026-08-24 citations banner already recorded for `marc-research-lib.sh` at
+this file's own header — this D section is the detail that citations banner pointed at but did not
+itself strike. Every internal (watchdog duration, lock name, stage sequence, `_lead_gate` call) is
+donor description, not this system's behaviour.
 
 #### E. marc-deadman (`system/tools/marc-deadman.py`)
 
-```
+~~```
 marc-deadman-run.sh → python3 marc-deadman.py
   → reads $DRIVE/desks/marc/organism/heartbeat/last-run.json   [store: heartbeat set by marc runners]
   → NO lead gate — intentionally runs on EVERY machine (cross-machine dead-man switch;
      both machines must independently catch a dark lead)
   → if >28h stale → notify-send.sh critical (1h dedup via governor collapses double-buzz)
-```
+```~~
+
+**⚠ CORRECTED 2026-09-01 (#61).** `system/tools/marc-deadman.py` does not exist in this repo —
+confirmed this session by `find . -name "marc-deadman.py"` (zero hits). `system/pulse-config.md`'s
+`` ```jobs ``` `` fence lists `marc-deadman` as `waiting-on-port` / "NOT PORTED — see comment above".
+The dead-man mechanism described above (cross-machine no-lead-gate design, the 28h staleness read,
+the 1h notify dedup) is donor description, same class as Section D above — nothing in this repo
+watches a Marc heartbeat today.
 
 #### F. Health/freshness runners (non-gated group)
 
 ```
 {system-health|email-summary-freshness|item-store-freshness|sentinel-health|
- backlog-health|planning-health|clair-health|marc-health|deryl-books-health}-run.sh
+ backlog-health|planning-health|~~clair-health|marc-health|deryl-books-health~~}-run.sh
   → require_primary OR ingest_studio_gate   [same gate as B above]
   → python3 *.py OR emit_status.py
   → writes $DRIVE/state/status/{name}.json (atomic .tmp → os.replace)
   → notify-send.sh on threshold breach
 ```
+
+**⚠ CORRECTED 2026-09-01 (#61).** This group was one undifferentiated roster; it is actually two.
+`system-health`, `email-summary-freshness`, `item-store-freshness`, `sentinel-health`, `backlog-health`,
+and `planning-health` are confirmed live: each is `enabled: yes` in `system/pulse-config.md`'s
+`` ```jobs ``` `` fence and its runner file exists on disk (`system-health-run.sh`,
+`email-summary-freshness-run.sh`, `item-store-freshness-run.sh`, `sentinel-health-run.sh`,
+`backlog-health.py`, `planning-health-run.sh` — all found this session). The three struck above —
+`clair-health`, `marc-health`, `deryl-books-health` — are `waiting-on-port` / "NOT PORTED" in the same
+fence, and a repo-wide filename search this session for `clair-health-run.sh`, `marc-health-run.sh`,
+and `deryl-books-health-run.sh` returned zero files. The dispatch chain drawn above (gate → python3/
+emit_status.py → status tile → notify-send) is real for the six live runners; for the three struck
+names it describes donor code that has not been built here.
 
 #### G. Non-gated infra runners (run on EVERY machine independently)
 
@@ -409,7 +459,8 @@ These have NO machine gate and write only machine-local paths or the shared clon
 
 #### H. Hardware-pinned runners (one designated machine only)
 
-`dobby-health` and a second hardware-pinned health job (named for a specific home energy-monitoring device, not reproduced here) — `require_studio_hardware` (`ingest-run.lib.sh:89–94`; case on the hardware host's `ComputerName`) exits 0 everywhere else. The relevant hardware is physically absent on every other machine; this is a permanent hard pin, NOT a lead-selectable gate.
+~~`dobby-health · emporia` — `require_studio_hardware` (`ingest-run.lib.sh:89–94`; case on the hardware host's `ComputerName`) exits 0 everywhere else. The relevant hardware is physically absent on every other machine; this is a permanent hard pin, NOT a lead-selectable gate.~~
+**⚠ CORRECTED 2026-09-01 (#61).** `require_studio_hardware` is not live — `system/tools/ingest-run.lib.sh`'s own header (lines ~12–14, quoted above at this file's line 64) lists it as one of three functions explicitly DROPPED and never ported, with "None of the three functions exists in this repo — verified by grep: no definition and no call site anywhere, in any language." Re-verified this session: `grep -rn "require_studio_hardware" system/` (excluding this doc) finds it only inside that same drop-note. And `ingest-run.lib.sh:89–94` — read directly this session — is not this function at all; those lines are the `CLAUDE_BIN` resolution block (`CLAUDE_BIN="${CLAUDE_BIN:-$(command -v claude ...)}"` through the fallback loop over `~/.local/bin/claude` / `/opt/homebrew/bin/claude` / `/usr/local/bin/claude`), unrelated to any hardware pin. Whatever machine-pinning `dobby-health`/`emporia` actually rely on (if any) is unverified here — this section only disproves the cited mechanism, it does not establish a replacement.
 
 ---
 
@@ -485,9 +536,20 @@ Three named implementations plus multiple inline copies — all functionally ide
 
 Mechanism in all cases: `/usr/sbin/scutil --get ComputerName` (absolute path — cron's $PATH omits `/usr/sbin`) → mapped to this machine's short token. Compare to `tr -d '[:space:]' < $DRIVE/state/primary-machine`. Non-lead → clean `exit 0` or `return 0`. Pulse's circuit breaker does NOT count deliberate stand-downs as failures.~~
 
-**2. Hardware gate — `require_studio_hardware` (BLOCKING; `exit 0` on any machine but the pinned one; `ingest-run.lib.sh:89–94`)**
+~~**2. Hardware gate — `require_studio_hardware` (BLOCKING; `exit 0` on any machine but the pinned one; `ingest-run.lib.sh:89–94`)**
 
-Case on the raw `ComputerName` of the machine the hardware is physically attached to. NOT lead-selectable — this is a permanent hard pin based on hardware presence. Used by `dobby-health` and the home-energy-monitor health job (see §H).
+Case on the raw `ComputerName` of the machine the hardware is physically attached to. NOT lead-selectable — this is a permanent hard pin based on hardware presence. Used by `dobby-health` and `emporia`.~~
+**⚠ CORRECTED 2026-09-01 (#61) — this subsection was missed by the 2026-08-24 correction banner
+above it, even though that banner's own text names `require_studio_hardware` as one of the things it
+covers.** `require_studio_hardware` does not exist in this repo: `system/tools/ingest-run.lib.sh`'s
+header lists it as one of three functions explicitly DROPPED and never ported ("None of the three
+functions exists in this repo — verified by grep: no definition and no call site anywhere, in any
+language"), and `grep -rn "require_studio_hardware" system/` (outside this doc) confirms it survives
+only in that drop-note. `ingest-run.lib.sh:89–94` — read directly this session — is not this
+function; it is the `CLAUDE_BIN` resolution block (the `command -v claude` / `~/.local/bin/claude` /
+`/opt/homebrew/bin/claude` / `/usr/local/bin/claude` fallback chain), unrelated to hardware pinning.
+See the same finding at this file's "H. Hardware-pinned runners" line above. Whatever actually
+machine-pins `dobby-health`/`emporia` (if anything) is unverified here.
 
 **3. Circuit breaker — `pulse.sh:150–213`**
 
@@ -557,12 +619,38 @@ Pulse itself runs entirely as a raw cron subprocess — no Claude Code session, 
 **Intent:** a single crontab line dispatches ALL interval-based maintenance jobs with machine-local state (no shared-lock contention), single-writer machine-gating for Drive writes, and a circuit breaker that auto-disables a broken job before it burns tokens for hours unattended. The human edits `pulse-config.md` to enable/disable jobs; the system then runs autonomously.
 
 **Current state — LIVE with documented residual gaps.** ~~All 37 active jobs in `pulse-config.md`
-(confirmed live: 37 `enabled: yes` entries, 4 disabled) are dispatched.~~ **[CORRECTED — the real count
-inside this repo's own `pulse-config.md` `jobs` fence, computed live this session, is 15 `enabled: yes`
-rows and 0 `enabled: no` rows, 15 total dispatchable rows, not 37/4. (Private main's own count for its
-copy of this file is 21/1 — a different number, because main's manifest carries additional desk-specific
-jobs that this public tree does not ship. Neither 37/4 nor main's 21/1 describes what is actually in
-THIS repo's `pulse-config.md`.)]** All active jobs are dispatched. Circuit breaker,
+(confirmed live: 37 `enabled: yes` entries, 4 disabled) are dispatched.~~ ~~**[CORRECTED 2026-08-27,
+lb2-ops-comms.md claim 36 — the real count inside `pulse-config.md`'s parseable jobs fence is 21
+`enabled: yes` rows and 1 `enabled: no` row, 22 total dispatchable rows, not 37/4.]**~~
+**⚠ CORRECTED 2026-09-01 (#61) — the 2026-08-27 correction above has itself drifted, AND the "X yes
+/ Y no" shape it used is the deeper defect: this number has now been wrong three times (37/4 →
+21/1/22 → the count below) because a two-bucket format cannot represent a row's `enabled` field,
+which is a free-text disposition, not a yes/no flag. Restructured below to name every state that
+actually occurs, not just "yes" and "everything else."**
+
+Counted this session from `system/pulse-config.md`'s `` ```jobs ``` `` fence — every non-comment
+line matching `name | enabled | interval | command` — first to find the **distinct `enabled` values
+in use**, via
+`grep -vE '^\s*#' <jobs-fence> | grep -E '^\S+ *\| *\S+ *\|' | awk -F'|' '{gsub(/^ +| +$/,"",$2); print $2}' | sort -u`:
+only **two** distinct literals appear — `yes` and `waiting-on-port` — no `no`, no `parked`, no other
+spelling (`sort -u` output has exactly 2 lines; `sort -u | wc -l` confirms `2`). So today the
+"waiting/parked family" the schema must allow for is a family of *one* live member, not several — the
+doc states the actual set rather than assuming `waiting-on-port` was one example among many.
+
+Then the same command with `uniq -c` instead of `sort -u` gives the count per state:
+`grep -vE '^\s*#' <jobs-fence> | grep -E '^\S+ *\| *\S+ *\|' | awk -F'|' '{gsub(/^ +| +$/,"",$2); print $2}' | sort | uniq -c`:
+
+| `enabled:` state | rows | what it means |
+|---|---|---|
+| `yes` | **23** | dispatched by Pulse every tick its interval allows |
+| `no` | **0** | none currently — the literal exists in the schema (see `pulse-config.md`'s own field docs) but no row uses it today |
+| `waiting-on-port` (the wait/park family — currently this one literal only) | **22** | declared not-yet-runnable, not silently off; re-check `pulse-config.md` if a future row uses a different member of this family (`parked`, `waiting-on-<other-thing>`) — the family is open-ended by the manifest's own field docs even though only one member is in use right now |
+| **total rows in the fence** | **45** | 23 + 0 + 22 |
+
+(the set counted is *rows in the parseable jobs fence*, not "installed crontab entries" and not some
+other subset — re-run the commands above against the live file to reproduce every number in this
+table, including a re-check of the distinct-values list itself in case a new state has since been
+added). All active jobs are dispatched. Circuit breaker,
 `require_primary`, sentinel pause, and single-instance lock are all mechanically enforced in live code.
 Drive heartbeat mirror (`_pulse-{machine}.json`) feeds system-health. `install-schedulers.sh` is the
 versioned installer; `runner-standard.md` codifies the runner contract.
@@ -584,14 +672,31 @@ versioned installer; `runner-standard.md` codifies the runner contract.
 ```
 TRIGGERS    system-health               · dispatches system-health-run.sh → reads _pulse-*.json + pulse-config.md to detect missed runs
 TRIGGERS    archivist (audit+deepmine)  · fires archivist-audit/deepmine-run.sh on their respective intervals
-TRIGGERS    emily-breakdown             · fires emily-breakdown-run.sh; ingest runner contract via ingest-run.lib.sh
-TRIGGERS    clair-ingest                · fires clair-ingest-run.sh; ingest runner contract via ingest-run.lib.sh
-TRIGGERS    deryl-ingest                · fires deryl-ingest-run.sh; ingest runner contract via ingest-run.lib.sh
-TRIGGERS    marc-pipeline               · fires marc-weekly/wednesday/deadman-run.sh; marc-research-lib.sh contract
+TRIGGERS    ~~emily-breakdown~~             · ~~fires emily-breakdown-run.sh; ingest runner contract via ingest-run.lib.sh~~
+  [CORRECTED 2026-09-01 (#61) — `emily-breakdown` is `waiting-on-port` in `system/pulse-config.md`'s
+  `` ```jobs ``` `` fence; `find . -name "emily-breakdown-run.sh"` returns zero files this session.
+  Nothing here fires this runner.]
+TRIGGERS    ~~clair-ingest~~                · ~~fires clair-ingest-run.sh; ingest runner contract via ingest-run.lib.sh~~
+  [CORRECTED 2026-09-01 (#61) — `clair-ingest` does not appear in `system/pulse-config.md`'s
+  `` ```jobs ``` `` fence at all (neither `yes` nor `waiting-on-port`); `find . -name
+  "clair-ingest-run.sh"` returns zero files this session. Nothing here fires this runner.]
+TRIGGERS    ~~deryl-ingest~~                · ~~fires deryl-ingest-run.sh; ingest runner contract via ingest-run.lib.sh~~
+  [CORRECTED 2026-09-01 (#61) — `deryl-ingest` is `waiting-on-port` in `system/pulse-config.md`'s
+  `` ```jobs ``` `` fence; `find . -name "deryl-ingest-run.sh"` returns zero files this session.
+  Nothing here fires this runner.]
+TRIGGERS    ~~marc-pipeline~~               · ~~fires marc-weekly/wednesday/deadman-run.sh; marc-research-lib.sh contract~~
+  [CORRECTED 2026-09-01 (#61) — `marc-weekly`, `marc-wednesday`, and `marc-deadman` are all
+  `waiting-on-port` in `system/pulse-config.md`'s `` ```jobs ``` `` fence; none of
+  `marc-weekly-run.sh`, `marc-wednesday-run.sh`, `marc-deadman.py`, or `marc-research-lib.sh` exist
+  in this repo (verified by filename search this session). See Sections D and E above.]
 TRIGGERS    email-service               · fires email-summary-write-run.sh + email-summary-freshness-run.sh
 TRIGGERS    grand-central               · fires tasks-store-sync-run.sh + calendar-store-sync-run.sh
 TRIGGERS    sentinel                    · fires sentinel-health-run.sh → reads sentinel-events.jsonl → tile
-TRIGGERS    git-sync                    · fires git-autopush + git-autopull (keeps both machines' clone in sync)
+TRIGGERS    ~~git-sync~~                    · ~~fires git-autopush + git-autopull (keeps both machines' clone in sync)~~
+  [CORRECTED 2026-09-01 (#61) — both `git-autopush` and `git-autopull` are `waiting-on-port` in
+  `system/pulse-config.md`'s `` ```jobs ``` `` fence; neither `git-autopush.sh` nor `git-autopull.sh`
+  exists in this repo (verified this session). Same finding the SYNCS line below already carries for
+  `git-autopull.sh` alone — this TRIGGERS line was the one instance of it left undisclosed.]
 READS       two-machine-residency       · [STRUCK — ⚠ CORRECTED 2026-08-24: no code reads state/primary-machine via require_primary; require_primary() has zero definitions anywhere in the repo (verified this session) and this system has one machine (docs/data-layout.md:215). See the correction banner at "GATES AND ACTUAL ENFORCEMENT MECHANISMS" above.] was: reads state/primary-machine on every writer-runner tick via require_primary
 READS       pulse-config.md             · reads the ```jobs block every tick for the job schedule manifest
 WRITES->    durable-status-plane        · writes state/status/_pulse-{machine}.json + _pulse.json heartbeat mirrors after every cycle
@@ -601,7 +706,9 @@ WRITES->    system/observability/       · observability-trim job deletes *.json
 WRITES->    system/logs/maintenance-due.md · hook-doc-lint job is the sole writer (honor-system pickup by sessions)
 FEEDS       helm                        · _pulse-*.json glob drives dashboard freshness + per-job heartbeat tiles
 FEEDS       helm                        · state/status/*.json tiles drive per-desk health cards
-FEEDS       marc-pipeline               · marc_research_run + marc_material_change_scan stamp desks/marc/organism/heartbeat/last-run.json; marc-deadman reads it
+~~FEEDS       marc-pipeline               · marc_research_run + marc_material_change_scan stamp desks/marc/organism/heartbeat/last-run.json; marc-deadman reads it~~
+  [CORRECTED 2026-09-01 (#61) — same finding as the TRIGGERS marc-pipeline line above: none of the
+  marc runner scripts this line describes exist in this repo. No heartbeat is written or read here.]
 FEEDS       planning                    · planning-vault-weekly-run.sh writes desks/cal/state/weekly-vault/ → planning-weekly-analyze-run.sh consumes (⚠ `desks/cal/` is DELIBERATE: the desk's code/jobs/tiles renamed to `planning`, the records directory did NOT — the operator's call, untaken)
 FEEDS       email-service               · email-summary-write-run.sh → state/email-summary/threads-v2/ (faithful thread store)
 FEEDS       grand-central               · item-store jobs → state/item-store/tasks/ + state/item-store/calendar/ (sole writers)

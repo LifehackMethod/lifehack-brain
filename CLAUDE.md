@@ -37,8 +37,8 @@ elements/<slug>.md, the exhaustive source. If this map is your only source, you 
 @ /advisory-council  think a hard call through with experts | council-engine.md — the DECISION, including a
                      money decision. the money RECORDS live in the owning subject's own store, never here.
 @ /research /websearch   find something out, sanitized | research-web-plane.md
-@ /explain /condense     have it said plainer | translator-cluster.md
-@ /professor       send someone to LEARN this whole system | `.claude/skills/professor/` — NOT an element;
+@ /explain /simplify     have it said plainer | translator-cluster.md
+@ /professor       send someone to LEARN this whole system | `.claude/skills/professor/` ⛔ not in this repo, only in the installed plugin — NOT an element;
                    the taught tour. this page ROUTES; that one EXPLAINS.
 @ (open the file)  which of the three layers answers THIS question | brain.md — the map ROUTES, the manual
                    EXPLAINS how the parts combine, elements/<slug>.md exhausts one part. wrong layer,
@@ -65,7 +65,11 @@ NOT BUILT — admissions, not omissions. knowing now beats inferring a connectio
 - one subject's records agreeing with another's (a billing row becoming taxable income). no general
   primitive; calculate + compute-mechanically-gate are DORMANT, name-only. you carry it by hand.
 - a weekly/monday cross-subject digest. no weekday cadence exists.
-- a rolled-up count of security events over a week. sentinel logs each one; nothing tallies them.
+- a rolled-up count of security events over a week. sentinel logs each one; ⚠ CORRECTED 2026-09-01
+  (#62, approved by Enver direct): `sentinel_response.py` computes a running 24h tally
+  (`event_count_24h`, `danger_count_24h`, `active_count_24h`, `reviewed_count_24h`) into a
+  runtime status file under the Brain root ⏳ (not a repo path — nothing to bring here).
+  No WEEKLY rollup exists — that half of the claim stands.
 - any rule that auto-decides on inbound business content. BY DESIGN: a human decides.
 <!-- END ORGANISM -->
 

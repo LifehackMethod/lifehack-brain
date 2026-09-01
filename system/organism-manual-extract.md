@@ -1,11 +1,11 @@
 # The session is what's running. Code is a guest it may or may not pick up.
 
 > **This is an extract, and it says so.** It comes from a roughly 1,200-line manual describing a
-> particular running system, with ~~49~~ **42** companion files. ~~None of that ships here.~~ **Two skills cite it for
+> particular running system, with ~~49~~ ~~42~~ **44** companion files. ~~None of that ships here.~~ **Two skills cite it for
 > one idea**, and the idea is below.
 >
 > Source: `system/organism/manual.md` → *THE CODE/LLM SEAM*. ~~**That file is not shipped**~~ — it and its
-> ~~49~~ **42** element files describe the author's own running system. This page is the whole of what crossed.
+> ~~49~~ ~~42~~ **44** element files describe the author's own running system. This page is the whole of what crossed.
 >
 > ⚠ **CORRECTED 2026-08-15 — BOTH STRUCK CLAIMS ABOVE ARE NOW FALSE.** They were true when this page
 > was written (pre-Phase-9), and they are the reason this extract exists at all. Phase 9 shipped the
@@ -20,7 +20,16 @@
 > the directory holds 42 entries total, so nothing is hiding behind a different extension) — and struck
 > the number where it appears. That parenthetical's "the 49 the sentence above still claims" was
 > accurate when written and now reads one pass behind; it is left as the record, not removed.
-> **42 = 51 donor elements − 10 excluded + 1 new (`brain.md`, which has no donor counterpart).**
+> ~~**42 = 51 donor elements − 10 excluded + 1 new (`brain.md`, which has no donor counterpart).**~~
+> ⚠ **CORRECTED 2026-09-01 — the count has moved again and the decomposition above no longer holds.**
+> `ls -1 system/organism/elements/ | wc -l` → **44** this session (all 44 `.md`, 0 non-`.md`, so nothing
+> is hiding behind a different extension — same check as the 2026-08-15 pass above, re-run). The
+> `51 − 10 + 1` arithmetic above accounted for one authored-here file (`brain.md`); `manual.md`'s own
+> ADDENDUM now names **two** authored-here files (`planning.md` and `brain.md`, 41 + 2 = 43) — and even
+> that is one short of the live 44: `elements/where-things-live.md` exists on disk, is cited by
+> `manual.md` itself (its own `## where-things-live` entry), but sits in neither the ranked-51 list nor
+> the two-item ADDENDUM. That gap is a separate finding, not resolved here — this note only fixes the
+> count: **44**, counted by directory listing this session.
 > ⭐ **Read the manual itself for anything load-bearing; this extract is now a pointer, not a substitute.**
 > The one thing that has NOT changed is the caveat below: the idea here was provisional in the source
 > and stays provisional here.

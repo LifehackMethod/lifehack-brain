@@ -31,6 +31,14 @@ authority: user
 > ⛔ `shared/tools/ingest_gate.py` is the donor's path and is not here. The gate ITSELF did land — it ships as
 > `shared/gate/ingest_gate.py`, with its tests beside it — so every mechanism described below is real and
 > running; only the `shared/tools/` location did not come across.
+>
+> ⚠ `shared/tools/sentinel_response.py` is the donor's path. The live, invoked gate is
+> `shared/gate/sentinel_response.py` — confirmed 2026-09-01 by reading `shared/gate/ingest_gate.py:44`,
+> which hardcodes `SENTINEL = .../shared/gate/sentinel_response.py`. A same-named file also still sits
+> at `shared/tools/sentinel_response.py` on disk (not deleted, unlike `ingest_gate.py`'s donor copy) —
+> different content, and its only in-repo caller is `system/tools/cowork-ingest/test_pipeline.py`, not
+> the live gate path. Every mention of `sentinel_response.py` below means the invoked one, at
+> `shared/gate/`.
 
 > **LADDER: ELEMENT (full mechanics). up → manual#ingest-gate ; ground truth → shared/tools/ingest_gate.py + system/hooks/ingest_gate_enforce.sh**
 >

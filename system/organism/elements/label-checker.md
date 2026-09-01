@@ -40,7 +40,7 @@ authority: user
 
 > **CITATIONS — what the paths below resolve to here.** The body describes the donor system truthfully; the three lines below record what happened to each named file at THIS destination, and they cover every mention of them in the body.
 >
-> ⛔ `system/reference/settings.json` — does not ship: the donor kept a git-tracked reference COPY there because its real settings lived outside the repo. Here the real, git-tracked settings file is `.claude/settings.json`, so the copy has no job. The port is recorded in the engine itself — `system/tools/organism/label_checker.py` lines 28-36: *"SETTINGS moved from `system/reference/settings.json` (donor path, absent here) to `.claude/settings.json`."* Every sentence below naming the donor path is describing the donor.
+> ⛔ `system/reference/settings.json` — does not ship: the donor kept a git-tracked reference COPY there because its real settings lived outside the repo. Here the real, git-tracked settings file is .claude/settings.json, so the copy has no job. The port is recorded in the engine itself — system/tools/organism/label_checker.py lines 28-36: *"SETTINGS moved from `system/reference/settings.json` (donor path, absent here) to .claude/settings.json."* Every sentence below naming the donor path is describing the donor.
 >
 > ✅ `system/hooks/guard_organism_map.sh` — **SHIPPED 2026-08-15.** Present, registered under `PreToolUse` / `matcher: "Write"` in `.claude/settings.json`, fire-tested through a real session launched from this repo, and carrying a live row (`organism-map-write-guard`) in `system/tools/organism/label_manifest.yaml` with 6 violations and 5 allow-cases. Suite: `system/hooks/tests/test_organism_map_guard.sh`.
 > ~~⛔ `system/hooks/guard_organism_map.sh` — never ships, DROPPED by ruling. `label_manifest.yaml` records the decision verbatim: three donor guards "DO NOT EXIST HERE AND STRUCTURALLY CANNOT". Its fire-test row is gone from the manifest, so nothing here claims it is enforced.~~ ← struck 2026-08-15. The ruling it cited rested on a single premise — that `system/organism/` did not exist here — and Phase 9 landed that tree, killing it. The last sentence was the costly one: *"nothing here claims it is enforced"* was FALSE even when written, because six shipped files already described the tree as write-guarded — `manual.md` (4 occurrences) and 5 `elements/*.md` (archivist, claude-md-pyramid, hook-plane, label-checker, pulse-cron), counted with grep rather than asserted. `map-format-specs.md` §6.4 was the honest one: it described the guarantee and admitted it was unenforced here. A drop-note that mis-states what the rest of the repo claims is how a documented-but-absent protection survives review (house rule `T9.11b`).
@@ -65,6 +65,9 @@ violation payload, must produce `exit 2`. Only then is the label not lying.
 ### MODES / SUBCOMMANDS
 
 `label_checker.py` is a CLI tool invoked manually (no cron wiring exists in the live codebase today).
+⚠ **CORRECTED 2026-09-01** (H.C10, live read of `system/pulse-config.md:284`): stale — a
+`guard-fire-test` cron row now exists (`bash "$LIFEHACK_CODE_ROOT/system/tools/guard-fire-test-run.sh"`,
+enabled, 604800s/weekly cadence), so cron wiring for this checker does exist in the live codebase.
 It has three subcommands (label_checker.py:389-409):
 
 **1. `check [--manifest PATH] [--guard ID] [--json]`**
@@ -84,6 +87,8 @@ For each guard:
 - Detects **downgrades**: if the manifest claims LIVE but the computed label is lower, exits non-zero
   and names the downgraded guard. The weekly Archivist cron (not yet wired — see GAPS) is the
   declared caller that turns that non-zero into a phone-ping via notify-plane.
+  ⚠ CORRECTED 2026-09-01 (H.C10, live read of pulse-config.md:284): stale — the `guard-fire-test`
+  cron row is wired today (weekly, 604800s, enabled).
 - Exit codes: `0` (all claimed labels verified), `1` (any downgrade), `3` (error: manifest not found,
   yaml module absent, guard id not found).
 - `--json` emits a machine-readable JSON object `{"results": [...], "downgrades": [...]}`.
@@ -342,6 +347,11 @@ proven (inert guard correctly computes PARTIAL — story log #17). `write-labels
 
 **Qualification:** the LIVE label applies to the checker's proven operation within its current manifest
 scope (2 guards). The gaps below document where the checker's coverage or automation is not yet complete.
+⚠ **CORRECTED 2026-09-01** (H.C10, live `check` run, `/usr/bin/python3 system/tools/organism/label_checker.py check`):
+both halves of this line are stale. The manifest scope today is **22 guards** (not 2) — 20 came back
+LIVE and 2 PARTIAL (`skill-frontmatter-birth-guard`, `tasks-readonly-list-guard`), exit 1 overall
+because of those 2 downgrades. (Not "22/22 LIVE, exit 0" either — that overclaims; two real
+downgrades are still open.)
 
 **TARGET items:**
 
@@ -349,6 +359,9 @@ scope (2 guards). The gaps below document where the checker's coverage or automa
    cron (brief story log pairs with Feature 2.1 desk-freshness check). Not yet wired. The
    "downgrade → phone-ping" path (`label_checker.py:262`: `"(weekly cron would phone-ping)"`) is prose,
    not a live escalation. Until wired, downgrade detection requires a manual run.
+   ⚠ **CORRECTED 2026-09-01** (H.C10, live read of `system/pulse-config.md:284`): stale — the
+   `guard-fire-test` row now wires this weekly (604800s), enabled, calling
+   `guard-fire-test-run.sh`. Downgrade detection is now cron-driven, not manual-only.
 
 2. **Add Feature 1.6 manifest write-guard** — `label_manifest.yaml` is unguarded (see GAPS #1). The
    manifest comment names it; the guard was not built as part of the initial Feature 1.5 work.
@@ -356,6 +369,8 @@ scope (2 guards). The gaps below document where the checker's coverage or automa
 3. **Grow manifest coverage** — as T2/T3 elements are authored and their guards are built, a
    corresponding manifest entry must be added. The checker's coverage is 2 guards today; every new
    `[hook]` element adds a guard entry to reach full map coverage.
+   ⚠ **CORRECTED 2026-09-01** (H.C10, live `check` run): stale — coverage is **22 guards** today,
+   not 2.
 
 ---
 
@@ -375,6 +390,10 @@ pointing at inert scripts. The checker would then produce clean output from a co
 **ACCEPTED GAP, named in the code. Real blast-radius: map honesty integrity.**
 
 **GAP 2 — Weekly cron is not wired; downgrade detection requires a manual run.**
+⚠ **CORRECTED 2026-09-01** (H.C10, live read of `system/pulse-config.md:284`): stale — this GAP is
+closed. A `guard-fire-test` cron row now calls `guard-fire-test-run.sh` (which runs this checker)
+weekly (604800s), enabled. Text below is kept for history; the current state is cron-wired, not
+manual-only.
 `label_checker.py:262` prints `"(weekly cron would phone-ping)"` as a prose comment. No cron entry
 calls the checker. The brief (story log #17) names this: "not yet wired to the weekly Archivist cron
 (pairs with the 2.1 desk-freshness check per the pre-mortem — wire both together)." Until wired, a
@@ -460,6 +479,9 @@ FEEDS        notify-plane       · label-checker exits non-zero (exit 1) on any 
                                    turns that non-zero into a phone-ping via notify-plane; the signal
                                    path exists in code (label_checker.py:262); the automation that fires
                                    it does not yet
+                                   ⚠ CORRECTED 2026-09-01 (H.C10, live read of pulse-config.md:284):
+                                   stale — `guard-fire-test` now wires this weekly (604800s), enabled;
+                                   the caller exists, not just the code path.
 
 COMPLEMENTS  conformance-lab    · system/hooks/*.sh (shared fire-test target) — conformance-lab
                                    (system/tools/conformance-lab/: bakeoff.py, probes/guard.py,

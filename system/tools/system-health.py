@@ -301,6 +301,16 @@ def sentinel_fold(now):
     if sec == "FLAGS":
         return {**base, "state": "FLAGS", "severity": "info", "attention": True,
                 "why": f"{flags} security flag(s) in 24h — glance, not urgent"}
+    if sec == "CLEAR":
+        # A CLEAR tile is a RESULT, not an absence — it must reach _emit_findings() like every
+        # other assessed job, so the OK row it produces supersedes the prior DANGER/FLAGS row
+        # (same fingerprint: job=sentinel) and the alarm visibly CLOSES on the next sweep. Before
+        # this branch existed, sentinel was the one job whose recovery never reached
+        # _emit_findings(): a DANGER finding stayed "latest" until it aged out as SILENT.
+        reviewed = t.get("reviewed_count_24h", 0) or 0
+        return {**base, "state": "UP", "severity": "ok", "attention": False,
+                "why": t.get("summary") or f"all clear — {reviewed} reviewed, 0 active (24h)"}
+    # Anything else (missing/unknown status) stays None: absence must never read as OK.
     return None
 
 

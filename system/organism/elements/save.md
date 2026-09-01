@@ -45,6 +45,11 @@ authority: user
 > ⛔ `state/debt-ledger.md` is the person's own notes, not a repo file. Here it is
 > `<notes>/state/debt-ledger.md`, written by `/save` and `/build` (`docs/data-layout.md`) — created by use,
 > never committed.
+>
+> ⚠ **CORRECTED 2026-09-01:** the bare `skills/save/SKILL.md` cited just below (at "the skill itself") is
+> the donor's repo-relative form and resolves nowhere from this repo's root. Verified this session: `/save`
+> ships from the installed plugin at `.claude/skills/save/` (plugin root, confirmed under
+> `~/.claude/plugins/marketplaces/lifehack-brain/`), not from any path inside this repository.
 
 > **Altitude = BASE (ground / street view).** The in-the-weeds detail of how `/save` actually works —
 > every trigger, every mode, every step and sub-step, every store it touches, every gate and its real
@@ -78,7 +83,10 @@ Triggered when: `/save` is called with no argument; OR the argument contains "se
 Triggered when the argument contains "review". Same as v2.4 behavior: show everything before writing; wait for explicit approval at EVERY step (including normally-autonomous record writes). The CONFIRM-GATE becomes universal, not canon-gated.
 
 **4. Deep / ingestion mode**
-Triggered when the argument contains "deep" or "ingestion", OR when `/save` is invoked by the `world-model-builder` skill. Before writing ANY record (not just canon), render a detailed plain-language OUTLINE of every record about to be written and its exact destination, then WAIT for approval. The outline is EXPAND-not-compress: each record gets a full paragraph or several, not a one-liner. Render it via a BACKGROUND AGENT in the `/condense` voice — but here "condense" means plainer WORDS, never fewer: the outline is EXPAND-not-compress (SKILL.md lines 42/72 specify /condense, formerly /simplify, for the deep-mode outline; this is DISTINCT from Step 8's handoff, which correctly uses /explain). The style target is `skills/world-model-builder/PREVIEW-EXEMPLAR.md` exactly: (a) one-line origin, (b) full content point by point, (c) explicit KEEPER-vs-DATED split, (d) destination + do-no-harm action. The canon conflict/dedup scan (Step 4.6) still fires for every canon-bound item and its verdict appears in the same outline. The CANON-GATED PAUSE still applies; the "no abbreviated preview" hard rule means even the deep outline may not be reduced to one-liners. Batch all of a round's outlines in one panel; human approves/edits/kills per item; only then write.  ⛔ not shipped to the public subset — private-clone only.
+Triggered when the argument contains "deep" or "ingestion", OR when /save is invoked by the world-model-builder skill. Before writing ANY record (not just canon), render a detailed plain-language OUTLINE of every record about to be written and its exact destination, then WAIT for approval. The outline is EXPAND-not-compress: each record gets a full paragraph or several, not a one-liner. Render it via a BACKGROUND AGENT in the /simplify voice — but here "simplify" means plainer WORDS, never fewer: the outline is EXPAND-not-compress (SKILL.md lines 42/72 specify /simplify for the deep-mode outline; this is DISTINCT from Step 8's handoff, which correctly uses /explain). The style target is skills/world-model-builder/PREVIEW-EXEMPLAR.md exactly: (a) one-line origin, (b) full content point by point, (c) explicit KEEPER-vs-DATED split, (d) destination + do-no-harm action. The canon conflict/dedup scan (Step 4.6) still fires for every canon-bound item and its verdict appears in the same outline. The CANON-GATED PAUSE still applies; the "no abbreviated preview" hard rule means even the deep outline may not be reduced to one-liners. Batch all of a round's outlines in one panel; human approves/edits/kills per item; only then write.
+
+> ⛔ `/simplify` — exists only at ~/lifehack-brain/.claude/skills/simplify/; not in this repo and not in the installed plugin.
+> ⛔ `skills/world-model-builder/PREVIEW-EXEMPLAR.md` — exists nowhere checked: not this repo, not the installed plugin, not ~/lifehack-brain, not the AI Brain.
 
 ---
 
@@ -270,7 +278,7 @@ The background capture-gate (`scratch_capture_gate.sh`) may not have caught the 
 
 ##### The panel style (WHERE-FIRST, two tiers — HARD)
 
-Imitate `skills/save/SAVE-PANEL-EXEMPLAR.md` exactly. Items are grouped by DESTINATION, not by type.  ⛔ not shipped to the public subset — private-clone only.
+Imitate `skills/save/SAVE-PANEL-EXEMPLAR.md` ⛔ (does not exist here, in the installed plugin, ~/lifehack-brain, or the AI Brain) exactly. Items are grouped by DESTINATION, not by type.
 
 **TIER 1 — the placement glance (what SC-4 shows FIRST):**
 1. Group by destination bucket; the bucket is a HEADER, printed once.
@@ -372,7 +380,7 @@ Check the survivors for a `tier: canon-proposal` item:
 
 **Job:** Write exactly the items the human confirmed in SC-4. Nothing more. Cut items are silently dropped — no stub, no placeholder.
 
-Write per tier, using the named section of `skills/save/WRITE-FORMATS.md`:  ⛔ not shipped to the public subset — private-clone only.
+Write per tier, using the named section of `skills/save/WRITE-FORMATS.md` ⛔ (this exact path does not exist here, in the installed plugin, ~/lifehack-brain, or the AI Brain — a differently-named references/write-formats.md lives under .claude/skills/save/ in the plugin and ~/lifehack-brain, but not at this path):
 
 - **`tier: dated-record`** → write per **`WRITE-FORMATS.md` § "Dated record"** (frontmatter: `id`, `title`, `record_type: insight`, `desk`, `topic`, `created_at`, `updated_at`, `status: active`, `authority: skill`, `confidence`, `tier: dated-record`, `type`, `source_refs` REQUIRED).
 - **`tier: canon-proposal`** → write to `records/proposals/` with `vetted: false` per **`WRITE-FORMATS.md` § "Canon-proposal"** (frontmatter: `id`, `title`, `record_type: proposals`, `status: draft`, `authority: skill`, `vetted: false`, `confidence: INFERRED`). NEVER `vetted: true`.
@@ -670,7 +678,7 @@ Show the operator what was captured (lettered list, each kind noted), then move 
 1. **DRAFT** the handoff with every load-bearing item (dense/rough is fine; this draft is not emitted).
 2. **RE-RENDER your own draft through the `/explain` lens** as a distinct second pass: keep ALL the detail, translate into plain conversational prose, re-anchor every named file/tool in a few words, lead with the answer, reorder freely for a fresh reader, drop the labeled-section scaffolding. **Emit ONLY this re-rendered version.**
 
-The lens is `/explain`, **never `/condense`** — a handoff's whole job is completeness; `/condense` condenses and would cut load-bearing items. The two-step is what actually forces the voice (vs. the always-on "talk nicely" that decays).
+The lens is `/explain`, **never `/simplify`** — a handoff's whole job is completeness; `/simplify` condenses and would cut load-bearing items. The two-step is what actually forces the voice (vs. the always-on "talk nicely" that decays).
 
 **Open the handoff with the WAKE ROUTINE — the resuming instance's first actions:**
 1. **FIRST ACTION — ARM BEFORE ANYTHING ELSE (mandatory; never offered as a choice, never deferred).** Run `/checkin <project> <plan>` as the literal FIRST move — before orienting, summarizing, planning, or building. Emit it as a copy-paste line with the real slug + the linked plan's absolute path. Arming is always correct and fully reversible. Do NOT present as an option, do NOT defer, do NOT let a `/build`, workflow, or `ultracode` launch go first. An unarmed session silently loses the plan HUD AND its scratchpad captures go nowhere.

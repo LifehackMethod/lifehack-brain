@@ -444,7 +444,8 @@ PROPOSES     backlog-authority     · the weekly's ranked output and the daily's
    AROUND it."* This is the `·gap` on this element's label: a reader who stops at the gloss would
    believe calendar writes are walled, and on a non-`gws` path they are not. **Disposition: unruled
    here** — no class-level ruling covers this element.
-   ⚠ **ADDED CONTEXT:** confirmed live — `guard_calendar_writes.sh`'s matcher is `Bash` only, no MCP-tool
+   ⚠ **ADDED CONTEXT 2026-08-27** (L.B2 audit, read of `registrations.json` + `.claude/settings.json`):
+   confirmed live — `PreToolUse[7]` (guard_calendar_writes.sh) matcher is `Bash` only, no MCP-tool
    matcher exists for it, so the hook mechanically cannot fire on an MCP calendar tool call at all.
    But in THIS installation the bypass is not left wide open: `.claude/settings.json`'s
    `permissions.deny` list separately denies `mcp__claude_ai_Google_Calendar__create_event` /
@@ -470,6 +471,13 @@ PROPOSES     backlog-authority     · the weekly's ranked output and the daily's
    `elements/brain.md` points `up → manual#brain` and that anchor does not exist yet.
    *(While counting for this: the migration banner's "42 elements ship here" was stale — mechanically
    it is 41 donor elements + 2 authored here = 43 files. Corrected in place.)*
+   ⚠ **CORRECTED 2026-09-01** — the 43 above is itself stale. Re-derived this session:
+   `ls -1 system/organism/elements/` → **44** files (all `.md`, 0 non-`.md`, counted by directory
+   listing). The `41 donor + 2 authored here` decomposition now accounts for only 43 of 44 —
+   `elements/where-things-live.md` exists on disk and is cited by `manual.md` itself but is not in the
+   ranked-51 list nor the two-item ADDENDUM naming `planning` and `brain`. That gap is a finding, not
+   resolved here (see `manual.md`'s matching 2026-09-01 note beside the ADDENDUM). The one number this
+   note stands behind: **44 files in `elements/`, mechanically counted 2026-09-01.**
 7. ⚠ **NO DOOR ON THE MAP.** The always-loaded map block in `CLAUDE.md` mentions planning only as one
    word inside the scheduled-jobs line; there is no goal-phrased routing line pointing at this file. A
    reader whose only source is the map cannot find the planning capability at all.

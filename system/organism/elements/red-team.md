@@ -15,6 +15,12 @@ authority: user
 
 # red-team (`/red-team`) — element detail
 
+> ⚠ **CORRECTED 2026-09-01:** the bare `skills/red-team/SKILL.md` cited above (frontmatter) and below
+> (at "the skill itself"), and the bare `skills/research/SKILL.md` cited further down at the `/research`
+> distinction, are the donor's repo-relative form and resolve nowhere from this repo's root. Verified
+> this session: both ship from the installed plugin at `.claude/skills/<name>/` (plugin root, confirmed
+> under `~/.claude/plugins/marketplaces/lifehack-brain/`), not from any path inside this repository.
+
 > **Altitude = BASE (ground / street view).** The in-the-weeds detail of how `/red-team` actually works —
 > its trigger, its constraint model (no-nitpick / severity-ranked), its output shape, every interop seam,
 > and its honest enforcement map. The MIDDLE index (`system/organism/manual.md`) carries only a pointer
