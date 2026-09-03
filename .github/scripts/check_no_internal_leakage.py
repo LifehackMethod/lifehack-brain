@@ -1133,6 +1133,16 @@ def scan_files(file_diffs, whole_texts=None):
             violations.append(format_violation(path, path_rule))
             # a denylisted path still gets its content checked below too -- multiple
             # independent findings on one file are all worth surfacing at once.
+        if is_self_referential_fixture_path(path):
+            # scan_whole_tree() has carried this carve-out since 2026-08-23; it was never
+            # wired into the diff-time path the commit hook actually calls, so a fixture
+            # file whose entire purpose is containing example-leak strings tripped the
+            # content scan forever, correctly, on every commit. Same exemption, same
+            # named/documented scope -- see WHOLE_TREE_SELF_REFERENCE_EXCLUDE_PATHS/PREFIXES.
+            # This is not a general suppression mechanism; widening it would defeat the
+            # scanner (see the 2026-08-18 .github/ rewrite note above for why path-based
+            # blanket exemptions are dangerous when NOT this narrowly scoped).
+            continue
         already = set()
         for lineno, text, rule in check_added_lines(added_lines):
             violations.append(format_violation(path, rule, lineno, text))
