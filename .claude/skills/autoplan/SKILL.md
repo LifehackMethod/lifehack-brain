@@ -284,11 +284,16 @@ by the retire step, never in the live plan.
 
 1. **`CONTEXT`** — why this change is being made and the intended outcome; the reason, not the request.
 2. **`FRAME`** — desired outcome · success criteria · constraints · out of scope. Approved once, up
-   front; that is what lets execution run without nagging.
+   front; that is what lets execution run without nagging. **And one `Desired outcome:` line directly
+   under the H1** — the first thing a cold build window reads, before any task.
 3. **`⚠ CUT FROM THIS BUILD`**, directly under the frame, if anything they named is not in the body:
    what it is · why defer · what they lose · **needs an explicit OK**. Plan approval is not cut
    approval; the default is keep-it-in. An approved cut files to the brief's open loops.
-4. **`Phase → Feature → Task`**, never a flat list. **Every task is a card** — the same slots in the
+4. **`Phase → Feature → Task`**, never a flat list. **Every phase is written in full detail** — never
+   an outline to be filled in later; the plan may run unattended, and drift is caught at the phase
+   gate, not by coming back to plan again. **A phase with any `Owner: BUILD` task opens with one
+   `Desired outcome:` line** — the nav window reads it before the task list; a nav-only phase omits it
+   rather than carrying decoration. **Every task is a card** — the same slots in the
    same order, so a blind session that reads one card and nothing else can act. The card *is* the
    sub-agent brief: a delegated task receives it verbatim, and nothing is relayed by memory.
    - `Owner:` — see below.
