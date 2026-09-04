@@ -22,7 +22,7 @@ CLOSED VERDICT SET (house style, see board_check.py):
     CANNOT-READ <why> rc 4 THE NO-OUTCOME MEMBER — git failure, unreadable or
                            missing plan, or nothing to scan. NEVER clean.
 """
-# ⚖ SHIPPED WITH NO CALLER AT ALL (D7, 2026-08-11). A repo-wide grep finds nothing that
+# ⚖ SHIPPED WITH NO CALLER AT ALL (D7, 2026-08-11) — until 3.1 (2026-09-04): plan_retire.py calls --task --hash. A repo-wide grep finds nothing that
 # invokes this — not a skill, not a hook, not another tool. It ships because the ruling is
 # migrate-as-is; it is recorded here rather than discovered later. If nothing claims it by
 # the end of the migration, that is the finding.
@@ -63,9 +63,14 @@ def cannot_read(why):
     sys.exit(CANNOT_READ)
 
 def git_commits(days):
+    # days=None → no window. A pre-epoch --since (e.g. "36500 days ago") returns NOTHING
+    # silently — measured 2026-09-04 — so hash lookup must not use a window at all.
+    cmd = ["git", "-C", REPO_ROOT, "log", "--pretty=format:%h\x1f%s"]
+    if days is not None:
+        cmd.insert(4, f"--since={days} days ago")
     try:
         out = subprocess.run(
-            ["git", "-C", REPO_ROOT, "log", f"--since={days} days ago", "--pretty=format:%h\x1f%s"],
+            cmd,
             capture_output=True, text=True, timeout=30,
         )
     except Exception as e:
@@ -99,7 +104,23 @@ def main():
     ap = argparse.ArgumentParser(description="Do open plan boxes contradict git history?")
     ap.add_argument("--plan", help="one plan file; default scans ~/.claude/plans/*.plan.md")
     ap.add_argument("--days", type=int, default=14, help="git log window (default 14)")
+    ap.add_argument("--task", help="one task id; with --hash, print the newest commit whose subject starts '<id>:'")
+    ap.add_argument("--hash", action="store_true", help="with --task: print the hash and exit 0, or NO-COMMIT and exit 4")
     a = ap.parse_args()
+
+    # 3.1 (2026-09-04) — the first caller this file ever had. plan_retire.py asks
+    # "did task <id> ship?" and needs a hash or the NO-OUTCOME member, never a guess.
+    # Subject convention: the commit subject STARTS with "<id>:" (github-sop, 2026-09-04).
+    # No --since window here (days=None): a task may have shipped long before anyone asks.
+    if a.task:
+        if not a.hash:
+            cannot_read("--task requires --hash (the only mode --task supports)")
+        for h, subj in git_commits(None):
+            if subj.startswith(f"{a.task}:"):
+                print(h)
+                sys.exit(0)
+        print(f"NO-COMMIT {a.task}")
+        sys.exit(CANNOT_READ)
 
     if a.plan:
         plans = [os.path.expanduser(a.plan)]
