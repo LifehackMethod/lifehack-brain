@@ -288,8 +288,30 @@ by the retire step, never in the live plan.
 3. **`⚠ CUT FROM THIS BUILD`**, directly under the frame, if anything they named is not in the body:
    what it is · why defer · what they lose · **needs an explicit OK**. Plan approval is not cut
    approval; the default is keep-it-in. An approved cut files to the brief's open loops.
-4. **`Phase → Feature → Task`**, never a flat list. Every task is `Execute → Verify & test → mark ✅`,
-   and **the verify is runnable** — a command, or an output to look at. Never "looks done".
+4. **`Phase → Feature → Task`**, never a flat list. **Every task is a card** — the same slots in the
+   same order, so a blind session that reads one card and nothing else can act. The card *is* the
+   sub-agent brief: a delegated task receives it verbatim, and nothing is relayed by memory.
+   - `Owner:` — see below.
+   - `Where:` — the path(s) the task touches. A path, not a description.
+   - `Repo:` — **derived, never typed**: `Where:` → the map row it falls under → `public · <branch>` /
+     `private · <branch>` / `none — not git`. The linter re-derives it and refuses a mismatch.
+   - `Do:` — the work, atomic. **Never an enumeration of items tracked somewhere else** — no issue
+     or PR numbers. If the work is a tracked list, the card carries `Query:` instead (below).
+   - `Verify:` — typed `SHAPE` (a command on the artifact, with a `before` value that must fail and an
+     `after` that must pass) · `RUN` (invoke it on a fixture; a broken fixture must be caught) · `JUDGE`
+     (a window that did not write it reads it, told "find where this fails"). Self-report is not a
+     type; the window that built a task never ticks it.
+   - `Done:` — never a checkbox. What re-derives the truth: the Verify re-run by `plan_retire.py`, a
+     commit whose subject starts `<id>:`, or a `Query:` returning empty **and proven well-formed**.
+   - `Commit:` — `<id>: <what>`, local only, explicit paths; absent when `Repo: none`. No push in a plan.
+   - `Query:` + `Proof:` — for tracked work only: the `gh` command that returns the live list, and the
+     command that proves the query is well-formed (the label exists, the repo answers). **A zero result
+     is UNKNOWN until proven** — a typo'd query returns nothing and exit 0, and reads as "all clear".
+   - gear + model, when delegated.
+   **The cycle is Execute → Verify & Test → Commit → Retire.** No further slots (rules tax each other).
+   **A plan never holds what something else can tell you.** Brain files: nothing else can, so the
+   card holds list and state. Git work: git knows what shipped, so `Done:` derives it. GitHub issues:
+   GitHub knows the list and the state, so the card holds the decision and the `Query:`, nothing more.
    **Every task carries an owner line** (Enver, 2026-09-04) — a task is build work only when it has
    been diagnosed and its fix is known, **atomised so a cold build window executes it without
    re-deriving anything**; anything still needing diagnosis, a judgment call, or the human in the loop
@@ -311,6 +333,10 @@ by the retire step, never in the live plan.
 
 **Only the recommended approach goes in the file.** Rejected alternatives belong in `DEFERRED` as
 dead ends, never in the body as a menu.
+
+**Every plan carries a `Review:` line** at the top, written by this skill in both branches — `six-lens
+<date> · <n> findings · <accepted>/<rejected>/<to them>` after the swarm, or `SKIPPED <date> <reason>`
+when `--no-review` was used. An unreviewed plan must look unreviewed a year later.
 
 ### Lanes — when each task runs
 
