@@ -387,6 +387,40 @@ read as standalone.
 - If the shape fits gear-3/4 but nobody opted in, **name it in the frame** — *"this is fan-out-shaped;
   say the word"* — and plan it as gear-2s.
 
+## Step 5.5 — The swarm: six lenses, blind, one table
+
+The plan is written and has passed lint — run `python3 "$ROOT/system/tools/plan_lint.py" "<plan>"`;
+nonzero exit means the plan is not reviewed and is not shown. Only a plan that already passes goes to
+the six readers below.
+
+**Launch all six lenses in one message, in the background.** Each receives exactly two things: the
+plan's **file path**, and its lens file from `.claude/skills/autoplan/lenses/` — `tokens`, `steps`,
+`gating`, `github` run on sonnet; `value`, `postmortem` run on opus. The model is named inside each
+lens file — pin it on the spawn regardless, since a bare spawn inherits the session's own tier. All six
+read the shared rules at `lenses/_contract.md`. Where a lens names `<notes>/...`, substitute `$DATA` on the spawn — a lens file never carries a personal path, because this folder ships to students. **The lenses are blind to each other** — nothing is
+relayed between them by chat, before or after — a lens that saw another's finding would anchor on it
+instead of finding its own; independence is the entire point of running six.
+
+**Collect, then build one table** — finding · lens · severity · accept / reject / ask-them — before
+anything in the plan is touched. Aggregating first is what makes six independent reads worth more than
+one careful one; folding a finding in as it lands loses the count of how many lenses agreed on it.
+
+Apply every `accept` to the plan file. Every `reject` goes to `DEFERRED` as a `DEAD-END`, carrying the
+lens's reason. **Two lenses disagreeing on the same task is not adjudicated here** — it goes to the
+operator, in the four-part decision format: the decision in one line · the context · why it could not
+be settled without them · your recommendation.
+
+**Print the table as the receipt**, and write the `Review:` line the plan already carries at its top:
+`six-lens <date> · <n> findings · <accepted>/<rejected>/<to them>`.
+
+**`--no-review` skips the swarm** — write `Review: SKIPPED <date> <reason>` in place of running it.
+Either branch, the plan says which: an unreviewed plan must look unreviewed a year later, never carry a
+line implying six lenses looked at it when none did.
+
+Six lenses cost roughly `6 × 8,100 = 48,600` tokens fixed, before any reasoning runs — worth it on a
+plan other plans will fork from or follow; the `steps` lens's own time budget is what tells you when a
+plan is small enough to skip the swarm entirely.
+
 ## Step 6 — The efficiency pass
 
 The plan is written. **Now, and only now, look at cost** — an efficiency worry raised mid-design
