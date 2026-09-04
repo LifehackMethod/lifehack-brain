@@ -113,7 +113,11 @@ def lint(path, rows):
             if bm and mpath:
                 lb = live_branch(mpath)
                 if lb and lb.lower() != bm.group(1).lower(): defects.append((tid, f"`Repo:` names branch {bm.group(1)} but {mpath} is on {lb}"))
-        if kind != "none" and "Commit" not in s: defects.append((tid, "missing `Commit:` on a repo task"))
+        if kind != "none":
+            cm = s.get("Commit", "")
+            if not cm: defects.append((tid, "missing `Commit:` on a repo task"))
+            elif cm.strip().lower() in ("n/a", "na", "none", "-"): defects.append((tid, "`Commit: n/a` on a repo task — a file in a repo gets committed, or Where: is wrong"))
+            elif not cm.strip().startswith(tid + ":"): defects.append((tid, f"`Commit:` subject does not start with `{tid}:` — plan_git_check finds the hash by that prefix"))
         card_prose = "\n".join(l for l in c["text"] if not re.match(r'\s*`?(Query|Proof):', l))
         if ISSUE_RE.search(card_prose): defects.append((tid, "card enumerates an issue/PR number — point at the query instead"))
         v = s.get("Verify", "")
