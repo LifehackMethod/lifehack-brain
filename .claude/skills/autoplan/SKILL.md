@@ -3,16 +3,16 @@ skill: autoplan
 title: "Autoplan — plan against what the system actually is"
 shape: interactive-workflow
 status: active
-description: "Build or amend a project's plan. Explores the real system before writing, then writes into that project's ONE living plan file — never a new one. Fires on \"/autoplan\", \"make a plan\", \"update the plan\", \"add this to the plan\", \"plan this\"."
+description: "Fires on \"/autoplan\", \"make a plan\", \"update the plan\", \"add this to the plan\", \"plan this\". Use it for ANY plan: it explores the real system, writes into the project's ONE living plan file, and has six reviewers attack the plan before you see it."
 summary: |
   The surveyor. It maps the ground before it draws the map — never planning from memory and never from
   the conversation alone — then amends the one plan file that project has always used. It reserves the
   person for the things only they can supply: a real fork between viable approaches, a contradiction
   between what they asked for and what the system is, a scope cut. It plans; it never executes.
 triggers: ["/autoplan", "make a plan", "update the plan", "add this to the plan", "plan this"]
-allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, Task]
+allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, Task, Agent]
 created_at: 2026-07-28
-updated_at: 2026-08-11
+updated_at: 2026-09-04
 ---
 
 ## Intent (§0.5)
