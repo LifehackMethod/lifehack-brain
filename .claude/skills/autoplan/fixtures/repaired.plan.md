@@ -1,0 +1,111 @@
+# Plan: Quiet the pulse-cron alert
+
+**Desired outcome:** the pulse-cron health check stops paging on a single missed heartbeat, and the suppressed-alert count is visible on the status tile.
+
+> **Review:** six-lens 2026-09-04 · reviewed, two owner notes appended below.
+
+## CONTEXT
+
+The pulse-cron health-invariants check pages on every missed heartbeat, including a single
+transient one. Three pages in one week resolved themselves before anyone looked. The fix adds
+a debounce window and a visible suppressed-count so a real outage still pages, but a lone blip
+does not.
+
+## FRAME
+
+- Owner: BUILD carries every task below; no other lane touches this plan.
+- Repo: all work lands in the public tree, `V2` branch, commit local per the map.
+- Success criteria:
+  - the debounce window swallows a single missed heartbeat and lets a second consecutive
+    miss through, proven by the regression test in 1.6.
+  - the suppressed-count is visible on the end-of-run status tile.
+  - `python3 -m pytest system/tools/tests/test_pulse_alert.py -q` exits `0` (yes, pipeline
+    behaves) or non-zero (no, it doesn't) — the pipeline's leanness is judged by that pass/fail,
+    not by feel.
+
+## Phase 1 — Quiet the false alarm and prove it
+
+- [ ] **1.1 Silence the false-positive latency alert.** `Owner: BUILD` · gear-1
+  `Where: ~/lifehack-brain/system/health/health_invariants.py`
+  `Do:` widen the latency threshold check to ignore a single missed heartbeat.
+  `Repo: public · V2 · commit local, never push`
+  `Verify: SHAPE` — `grep -c "single missed heartbeat" system/health/health_invariants.py` → before `0`, after `1`.
+  `Commit: 1.1: widen latency threshold tolerance`
+  `Done: Verify passes (re-run by plan_retire.py) → retire`
+
+- [ ] **1.2 Add a debounce window to the alert emitter.** `Owner: BUILD` · gear-1
+  `Where: ~/lifehack-brain/system/tools/pulse_alert.py`
+  `Do:` add a 90-second debounce before the emitter fires a second alert.
+  `Repo: public · V2 · commit local, never push`
+  `Verify: SHAPE` — `grep -c "debounce" system/tools/pulse_alert.py` → before `0`, after `1`.
+  `Commit: 1.2: add alert debounce window`
+  `Done: Verify passes (re-run by plan_retire.py) → retire`
+
+- [ ] **1.3 Log the suppressed-alert count.** `Owner: BUILD` · gear-1
+  `Where: ~/lifehack-brain/system/tools/pulse_alert.py`
+  `Do:` increment a suppressed-count counter each time debounce swallows an alert.
+  `Repo: public · V2 · commit local, never push`
+  `Verify: SHAPE` — `grep -c "suppressed_count" system/tools/pulse_alert.py` → before `0`, after `1`.
+  `Commit: 1.3: log suppressed-alert count`
+  `Done: Verify passes (re-run by plan_retire.py) → retire`
+
+- [ ] **1.4 Surface the suppressed count on the status tile.** `Owner: BUILD` · gear-1
+  `Where: ~/lifehack-brain/system/tools/pulse_status.py`
+  `Do:` append the suppressed-count value to the end-of-run status tile.
+  `Repo: public · V2 · commit local, never push`
+  `Verify: SHAPE` — `grep -c "suppressed_count" system/tools/pulse_status.py` → before `0`, after `1`.
+  `Commit: 1.4: surface suppressed count on status tile`
+  `Done: Verify passes (re-run by plan_retire.py) → retire`
+
+- [ ] **1.5 Rewrite the alert-classification heuristic.** `Owner: BUILD` · gear-2 · `Model: opus`
+  `Where: ~/lifehack-brain/system/tools/pulse_alert.py`
+  `Do:` replace the fixed threshold with a rolling-median comparison.
+  `Repo: public · V2 · commit local, never push`
+  `Verify: SHAPE` — `grep -c "rolling_median" system/tools/pulse_alert.py` → before `0`, after `1`.
+  `Commit: 1.5: rolling-median alert classification`
+  `Done: Verify passes (re-run by plan_retire.py) → retire`
+
+- [ ] **1.6 Backfill a regression test for the debounce window.** `Owner: BUILD` · gear-1
+  `Where: ~/lifehack-brain/system/tools/tests/test_pulse_alert.py`
+  `Do:` add a test asserting a second alert within 90 seconds is swallowed.
+  PARALLEL-LANES: gated on `~/lifehack-brain/system/tools/pulse_alert.py` (task 1.2)
+  `Repo: public · V2 · commit local, never push`
+  `Verify: SHAPE` — `grep -c "test_debounce_swallows" system/tools/tests/test_pulse_alert.py` → before `0`, after `1`.
+  `Commit: 1.6: add debounce regression test`
+  `Done: Verify passes (re-run by plan_retire.py) → retire`
+
+## Phase 2 — Close the loop and confirm
+
+- [ ] **2.1 Retire the old alert-dedup shim.** `Owner: BUILD` · gear-1
+  `Where: ~/lifehack-brain/system/tools/pulse_alert.py`
+  `Do:` delete the deprecated dedup shim tracked by the open issues the query below finds.
+  `Query: gh issue list --repo LifehackMethod/lifehack-brain --label dedup-shim --state open`
+  `Proof: gh label list --repo LifehackMethod/lifehack-brain --search dedup-shim --json name --jq length` → before `1`, after `1` (label exists, query is well-formed)
+  `Repo: public · V2 · commit local, never push`
+  `Verify: SHAPE` — `grep -c "dedup_shim" system/tools/pulse_alert.py` → before `1`, after `0`.
+  `Commit: 2.1: remove deprecated dedup shim`
+  `Done: Verify passes (re-run by plan_retire.py) → retire`
+
+- [ ] **2.2 Move the alert log out of the public tree.** `Owner: BUILD` · gear-1
+  `Where: ~/lifehack-brain/system/tools/pulse_alert.py`
+  `Do:` point the alert logger at the brain-root log path instead of a repo-local file.
+  `Repo: public · V2 · commit local, never push`
+  `Verify: SHAPE` — `grep -c "brain_root" system/tools/pulse_alert.py` → before `0`, after `1`.
+  `Commit: 2.2: log alerts to brain root, not the repo`
+  `Done: Verify passes (re-run by plan_retire.py) → retire`
+
+- [ ] **2.3 Sanity-check the debounce window end to end.** `Owner: BUILD` · gear-1
+  `Where: ~/lifehack-brain/system/tools/pulse_alert.py`
+  `Do:` run the alert emitter twice within 90 seconds and confirm only one alert fires.
+  `Repo: public · V2 · commit local, never push`
+  `Verify: SHAPE` — `python3 -m pytest system/tools/tests/test_pulse_alert.py::test_debounce_swallows -q` → before `fail`, after `pass`.
+  `Commit: 2.3: confirm debounce behaves end to end`
+  `Done: Verify passes (re-run by plan_retire.py) → retire`
+
+- [ ] **2.4 Add the debounce constant name to the module docstring.** `Owner: BUILD` · gear-1
+  `Where: ~/lifehack-brain/system/tools/pulse_alert.py`
+  `Do:` name the debounce constant in the module docstring so its value is discoverable without reading the body.
+  `Repo: public · V2 · commit local, never push`
+  `Verify: SHAPE` — `sed -n '1,20p' system/tools/pulse_alert.py | grep -c "DEBOUNCE_SECONDS"` → before `0`, after `1`.
+  `Commit: 2.4: document debounce constant in module docstring`
+  `Done: Verify passes (re-run by plan_retire.py) → retire`

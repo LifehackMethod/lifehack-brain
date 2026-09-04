@@ -6,7 +6,7 @@ Read FIRST, if present (the spawner substitutes <notes>): <notes>/records/canon/
 Then ask of the plan:
 - where is it load-bearing (must slow down, must not be rushed)
 - where is it over-built for what it buys
-- is every Verify: really SHAPE/RUN/JUDGE, or self-report in a costume
+- is every Verify: typed (SHAPE/RUN/JUDGE) — untyped is unjudgeable, count it as a miss same as self-report
 - is any "before must fail" step vacuous (can't actually fail)
 - does any task secretly rely on the window that built it
 - is the desired outcome falsifiable — what single command returns yes/no
