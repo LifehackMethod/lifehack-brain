@@ -143,12 +143,11 @@ Step 0 decided *where the plan lands*. That is filing, not context. **This decid
 know**, and it runs in all three branches. **Skipping it is how a plan gets written against a picture
 that went stale three sessions ago.**
 
-> 📖 **The mechanism is `system/sops/plan-sharpening-sop.md` §1 — read it; do not work from this gist.**
-> That SOP is shared with `/checkin`, which is what stops the two skills drifting apart. Nothing
-> enforces the read, so **name the SOP in your receipt** or a skipped read is indistinguishable from
-> one that found nothing.
+Nothing enforces a read. So every read this skill makes ends in a one-line **orientation receipt**
+naming what was read and what was absent — a skipped read and a read that found nothing look identical
+unless the read announces itself. *(src: system/sops/plan-sharpening-sop.md:231-243)*
 
-**The gist, for orientation only.** Five blocks, in order:
+**Five blocks, in order:**
 
 1. **FRAME first, deliberately.** Whatever you read first becomes the lens. Anchoring runs 22–61% and
    awareness does not remove it.
@@ -258,9 +257,6 @@ Design **from the exploration results and from what THIS SESSION established** �
 conversation's *requests* alone. Carry the concrete material forward: real filenames, real paths, the
 functions that already do half the job.
 
-> 📖 **Mechanism: `system/sops/plan-sharpening-sop.md` §2 — read it.** Shared with `/checkin`, which
-> runs the same beat. **Name the SOP in your receipt.**
-
 **Mine this session for what changes the world model.** The old rule read *"design from the exploration
 results, not from the conversation."* That intent stands — but taken flat it excludes the freshest
 source in the room. **The discussion is usually where the new understanding actually formed**, and it
@@ -290,9 +286,13 @@ does.
 > builds; situation does not specify one"* — while planning a fix to a live skill. **The default answer
 > here is YES.** Say no only for a pure script or migration with no model at runtime.
 
-**Read `system/build-rules-index.md` now** — it carries the code/LLM seam, the model-reach rule and the
-code-spiral rule, once, and it is the only place any of them lives. ⛔ **Do not paste a copy back into
-this file.**
+**The code/LLM seam** — binds any hybrid build (code and a model in one running product; classify the
+product, not the change). Code hands the model a bounded set of outcomes; the middle is unbounded; what
+comes back is one of those outcomes, and the set must contain one meaning NO OUTCOME WAS REACHED. Code
+checks membership on every path in; anything off-list is surfaced, never absorbed. **The no-outcome
+member is for the model, not the human** — with no legal way to say "nothing was decided" the model
+manufactures a decision code cannot tell from a real one. Name the slot, never the words; perimeter
+only. *(src: system/build-rules-index.md:66-80)*
 
 Then, in the plan: **name each handoff's bounded outcome set and its no-outcome member.** For a
 headless handoff, name the reach and confirm both of its fixes are in place.
@@ -336,8 +336,6 @@ verified, **offer `/research`** rather than answering from training.
 
 ## Step 3 — Review before you show it
 
-> 📖 **Mechanism: `system/sops/plan-sharpening-sop.md` §3 — read it.** Shared with `/checkin`.
-
 Re-read your own draft against the frame's desired outcome. **Four checks, and the fourth is the only
 one that runs backward.**
 
@@ -356,6 +354,10 @@ one that runs backward.**
    no compaction"* protects the record from destruction; it was never a rule against re-reading.
    **Measured:** one plan carried 75 open tasks, 58 from earlier sessions that nothing had revisited.
    **Receipt it as counts, every run.**
+5. **A task may cite a ruling only where that ruling states its verdict, its date and its author.**
+   "See §X" is not a citation if §X still asks the question — that asserts a decision never given and
+   spends the human's authority. When you record a ruling, write those three at the site.
+   *(src: system/sops/architecture-planning-sop.md:59-72)*
 
 ## Step 4 — Stop, when stopping is the right answer
 
@@ -435,6 +437,14 @@ In this order:
    that skips it structurally cannot report "done".
 4. **`Phase → Feature → Task`** — never a flat list. Every task is `Execute → Verify & test → mark ✅`,
    and **the verify is runnable** — a command, or an output to look at. Never "looks done".
+   **Every task carries an owner line** (Enver, 2026-09-04): `**Owner: BUILD**` — diagnosed, high
+   confidence, mechanical; the spec is the work · `**Owner: NAV**` — still needs diagnosis, a judgment
+   call, or the human in the loop · `**Owner: NAV to specify, BUILD to implement**` — mixed; name which
+   half is which. **The test is not difficulty — it is whether the answer is already known.** A build
+   window answers an undiagnosed question confidently and wrongly, and the wrong answer then carries the
+   authority of something written down. If you cannot fully specify a task, that is the signal it is
+   NAV's — write it so, diagnose, then re-write it as BUILD.
+   *(src: system/sops/build-nav-window-remit-sop.md:184-215)*
 5. **A `PARALLEL LANES` block per phase** — which tasks are **independent** (launch together) and which
    are **gated**, and by what. Without it the build walks the phase one task at a time even where
    nothing stops it running them at once, and the plan silently costs wall-clock it never needed to
@@ -464,10 +474,13 @@ in order", not "I'd want to see the first one land". **Independence is the assum
 thing you must justify** — so state the reason beside every gate, and if you cannot name one, the tasks
 are independent.
 
+**Lock the data contracts before parallel writes** — agree the shape each lane reads and emits first;
+skipping this is the #1 regret of parallel builds. *(src: system/sops/build-conductor-sop.md:193-194)*
+
 Draw it plainly, per phase:
 
 ```
-Phase 1  ── Lane A: Task 1.1 (system/build-rules-index.md)  ┐ independent — different files,
+Phase 1  ── Lane A: Task 1.1 (system/tools/foo.py)            ┐ independent — different files,
          └─ Lane B: Task 1.2 (.claude/skills/build/SKILL.md) ┘ launch together
 Phase 2  ── Lane C: Task 2.2 (.claude/skills/build/SKILL.md) ← GATED on 1.2 (same file)
 ```
@@ -498,8 +511,13 @@ task to read as standalone.
   in, **name it in the frame** — *"this is fan-out-shaped; say the word to run it that way"* — and plan
   it as gear-2s.
 
-Full gear doctrine: `system/sops/build-conductor-sop.md`. Plan shape:
-`system/sops/architecture-planning-sop.md`. **Follow them; do not restate them.**
+- **gear-3** is a team wave: several independent surfaces that must coordinate — **~7× tokens**, only on
+  "use agent teams". **gear-4** is a scripted fan-out: **dozens**-to-hundreds of independent items or a
+  repeatable cross-checked pass, up to ~16 concurrent / 1,000 total, only on "use a workflow".
+  *(src: system/sops/build-conductor-sop.md:70-71)*
+- **gear-4's three guardrails:** every `agent()` call sets `model: 'sonnet'` (haiku for pure read-only)
+  or it burns opus at fleet scale · read-only, no mid-run sign-off — anything needing approval or a
+  human-domain write stays gear-1 · opt-in only. *(src: system/sops/build-conductor-sop.md:162-169)*
 
 ## Step 6 — The efficiency pass
 
@@ -549,13 +567,6 @@ with no recorded outcome is indistinguishable from a pass that never ran.
 - **Finished work stays.** Mark it done; never prune, never compact. Long plans grown over time are the
   ones that survived — protect that shape.
 
-## The three rules that bind a build, and where they live
-
-**`system/build-rules-index.md` carries the code/LLM seam, the model-reach rule and the code-spiral
-rule — once, and only there.** Read it at the design step. ⛔ **Do not paste a copy of any of them back
-into this file.** They used to be inlined here *and* in `/build` *and* in the index, with two git hooks
-comparing the copies byte for byte on every commit to stop them drifting. That is a mechanism for
-keeping copies identical, not a reason to have copies.
 
 ## What this skill needs outside its own folder
 
@@ -563,9 +574,4 @@ keeping copies identical, not a reason to have copies.
 |---|---|---|
 | `shared/brain_root.py` · `shared/registry.py` | where the notes are, and which project this is | ✅ here |
 | `system/hooks/pm_flag.sh` · `plan_flag.sh` | which project and plan are armed | ✅ here |
-| `system/build-rules-index.md` | the three binding rule blocks, in one place | ✅ here |
 | `.claude/agents/worker.md` | the read-only explorer | ✅ here |
-| `system/sops/plan-sharpening-sop.md` | the shared world-model load and session mining | ✅ here |
-| `system/sops/architecture-planning-sop.md` | the plan's required shape | ✅ here |
-| `system/sops/build-conductor-sop.md` | the gear doctrine | ✅ here |
-| `docs/data-layout.md` | where plans and briefs live | ✅ here |
