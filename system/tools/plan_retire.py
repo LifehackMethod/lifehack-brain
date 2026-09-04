@@ -5,6 +5,8 @@ WHY: a plan that only accumulates checkmarks grows more confident and less accur
 (canon §5.11) — nothing ever re-checks an old tick. A typed "verified-by:" is
 self-report, not evidence (canon §7.2). So retiring a task means RUNNING the
 card's own `Verify:` command again, right now, and moving nothing on a miss.
+When many cards fail at once, suspect this runner before the cards — 7 of 8
+first-run failures were the runner's working directory.
 
 WHAT: find the task's card, parse its `Verify:` line for runnable command(s), run
 each for real, compare each result to the outcome the card states. All pass +
@@ -24,6 +26,11 @@ VERDICTS
     CANNOT-READ <why>           4  NO-OUTCOME MEMBER -- unreadable/missing plan,
                                     missing card, or no runnable Verify. Never
                                     passes by default.
+
+    2026-09-04: task 2.3 was wrongly RETIRED on this path — an unparsed
+    expectation fell through to `ok = (rc == 0)`, and the card's own preferred
+    `; echo $?` command shape makes the *shell's* exit code 0 unconditionally.
+    Rule since: no parseable expectation => CANNOT-READ, never pass.
 """
 import argparse, os, re, shutil, subprocess, sys
 from datetime import datetime, timezone
@@ -67,7 +74,7 @@ def _verify_cwd(block):
     m = re.search(r'`?Where:\s*([^`\n]+)', block)
     if not m:
         return REPO_ROOT
-    first = m.group(1).split("\u00b7")[0].strip().split()[0].strip("`")
+    first = m.group(1).split("·")[0].strip().split()[0].strip("`")
     p = os.path.expanduser(first)
     if not os.path.isabs(p):
         return REPO_ROOT
@@ -131,7 +138,14 @@ def parse_verify(line):
         m = re.search(r'\bafter\b\s*`?([^`,.\s]+)`?', after_arrow, re.I)
         exp = classify(m.group(1)) if m else None
         if exp is None:
-            exp = classify(after_arrow)
+            # A backtick-quoted expectation sitting right after the arrow is read
+            # verbatim and parsing STOPS at its closing backtick -- a parenthetical
+            # aside or a trailing sentence after that point is never consulted.
+            # Scanning the whole rest of the line (the old fallback) is what
+            # silently erased 2.3's stated `0` behind "(a trailing aside)"
+            # (2026-09-04); this does not guess, it just stops reading sooner.
+            m2 = re.match(r'\s*`([^`]+)`', after_arrow)
+            exp = classify(m2.group(1)) if m2 else classify(after_arrow)
         out.append((cmd, exp))
     return out
 
@@ -157,22 +171,31 @@ def run_cmd(cmd, cwd=None):
 
 def check_verify(block_lines, task_id):
     """Run every command on the card's Verify line; return receipts on full
-    pass, or print VERIFY-FAILED and exit 2 on any miss."""
+    pass, or print VERIFY-FAILED and exit 2 on any miss.
+
+    2026-09-04: an unparseable expectation (exp is None) is CANNOT-READ, never a
+    pass. This is checked for EVERY command before any of them are run, so a
+    card with one unreadable expectation moves nothing. Fixed after task 2.3
+    was wrongly retired: its unparsed `→ `0`` fell through to `ok = (rc == 0)`,
+    and the card's own preferred `; echo $?` shape makes the shell's own exit
+    code 0 unconditionally — an unreachable check is not a clean result.
+    """
     verify_line = next((l for l in block_lines if re.match(r'^\s*`?Verify:', l)), None)
     if verify_line is None:
         cannot_read(f"no Verify: line on {task_id}")
     cmds = parse_verify(verify_line)
     if not cmds:
         cannot_read(f"no runnable verify on {task_id}")
+    for cmd, exp in cmds:
+        if exp is None:
+            cannot_read(f"no parseable expectation for {task_id}: {cmd}")
     cwd = _verify_cwd("\n".join(block_lines))
     receipts, failures = [], []
     for cmd, exp in cmds:
         proc = run_cmd(cmd, cwd)
         rc, out = proc.returncode, proc.stdout
         receipts.append((cmd, rc, out))
-        if exp is None:
-            ok = (rc == 0)
-        elif exp[0] == 'exit':
+        if exp[0] == 'exit':
             ok = (rc == exp[1])
         elif exp[0] == 'bare':
             if out.strip() == str(exp[1]):
