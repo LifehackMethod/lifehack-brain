@@ -85,6 +85,34 @@ orphan.`* It is promotable: rename to `<slug>.plan.md` and set the brief's `plan
 No project means no brief, and that is fine: the check-in and save handoff report the `plan:` step as N/A
 in one line. Never warn, never treat the absence as an error.
 
+## Step 0.1 — Boot guards. Code first, before any judgment.
+
+```bash
+python3 "$ROOT/system/tools/plan_lint.py" --self || { echo "STOP: boot guard failed — read the line above"; exit 1; }
+```
+
+Two checks, both mechanical: the known-bad fixture (`fixtures/broken.plan.md`) must still **fail** the
+linter — a checker that passes a broken plan is dead, and nothing else would notice; and `SKILL.md` must
+not exceed the size recorded in `fixtures/.budget` — the ratchet, because instruction files regrow
+silently and nobody remembers why a line exists well enough to cut it. Nonzero → stop and say which.
+
+## Step 0.2 — Read the map. Every run.
+
+The operator's `~/.claude/CLAUDE.md` carries the repo map — which folder is which repo, public or
+private, and the routing rule for where a change lands. It is already in context: **cite it, do not
+reload it.** From it, every task's `Repo:` is *derived* from the task's `Where:` path — never typed
+from memory, never guessed. Three outcomes:
+
+- **The map names folders.** For each one: `test -d <folder>` — a named folder that is not there means
+  the map has drifted; **STOP and ask**, do not route around it.
+- **No map, or no repo section** (a student, most days). Every task gets `Repo: none — not git`, and
+  the receipt says so in one line. That is a correct answer, not an error.
+- **A task's `Where:` matches no row and is not under the notes root → STOP and ask.**
+
+**Never discover repos** with `git rev-parse` or `git remote -v` — measured 2026-09-04: discovery fails
+to see the second repo and reports "no access" that is not true. The map is the authority; `test -d`
+only checks the map still describes the disk.
+
 ## Step 0.5 — Load the world model
 
 Step 0 was filing. This decides what you already know, and it runs in all three branches — skipping it
@@ -117,7 +145,14 @@ CURRENT STATE · OPEN LOOPS · pad in full · story log (open + last 3); missing
 Thoroughness comes from this beat only. **Read first, from source, this session** — the brief, the
 plan, and the files the work will touch. Never from a summary, a memory, or a prior session's account.
 
-**Then fan out read-only explorers** when scope is uncertain or spans areas you have not read:
+**Any claim the plan rests on — "X is broken", "Y never fires", "there are ~N files" — goes to
+`Skill(audit)`, once, carrying every claim as a list.** It spawns the three refuters this system already
+trusts (the map, the project story, the journals) and returns one verdict per claim. One invocation per
+plan-write, never one per claim: each spawn costs ~8,100 tokens to exist. (Enver, 2026-09-04: *"default
+to my audit skill — that's what I end up doing to reorient the system, and it works."*)
+
+**For what `/audit` does not cover** — a count, a file's real shape, whether something is wired — fan
+out read-only explorers when scope is uncertain or spans areas you have not read:
 - **Always in the background.** A foreground spawn freezes the session; a background spawn costs the
   same and returns the same. Launch, keep working, fold the findings in when they land. This is about
   this skill's own explorers, not only the delegated tasks it writes into a plan.
