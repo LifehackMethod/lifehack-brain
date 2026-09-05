@@ -61,6 +61,12 @@ reader_note: >
 > *Second receipt, from the solutions side (2026-09-05, three readers independently): of thirteen modes, zero fixes held
 > durably; every fix that held at all fired unasked, removed the ability rather than asking for a memory, and had been
 > watched refusing; every fix that failed was a description the next session had to remember.*
+>
+> **Right-sized, or it does not enter** *(Enver, 2026-09-05).* The Lifehack Harness is a minimal harness built on Pareto's
+> principle: the most value, compliance and reliability for the least code, rules and structure. The question is never
+> "how much can we build" but "how little buys the most." **We are not an enterprise solution.** A remedy that works but
+> needs a second system to watch the first is recorded as *likely overbuilt for this harness* — kept, never adopted by
+> default.
 
 # Skill-Building Playbook v2
 
