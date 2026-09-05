@@ -147,6 +147,32 @@ authority: user
 > old ones by reading them, not by adding a layer above them.**
 <!-- ABSENT-SUBJECT-RULE-v1 END -->
 
+<!-- DO-NOT-RETRY-v1 BEGIN -->
+## DO NOT BUILD / DO NOT RETRY — what was tried at the code/LLM seam and failed *(section opened 2026-09-05 by ruling; grows over time)*
+
+> Proven failures at the seam, with receipts, so no build re-tries them from first principles. Same shape as
+> the registers in `system/sops/skill-building-sop.md` §II.4a and `build-sop.md`; `deadend_check.py` matches
+> on the heading phrase. Each entry: tried · failed · date · source · replacement · tier. **Never complete.**
+> Principle-level twins: canon §10a.
+
+- **[S1]** Tried: a meta-checker that scans other checkers for silent-pass behaviour. Failed: the third part would
+  itself need a subject and fail the same way when that subject went missing. `2026-08-11` · ABSENT-SUBJECT block
+  above, ratified F9.7/F9.11 → write new checkers to the shape; audit old ones by reading them.
+- **[S2]** Tried: a "no outcome reached" member whose value a legal outcome can also produce. Failed: a check
+  expected exit 2 from a linter; the linter was absent at its path, *that* also exits 2, the check passed for a
+  reason unrelated to its claim. `2026-09-05` · `<notes>/state/autoplan-rebuild/retired-reverify.md` card 2.3 →
+  the no-outcome member is a value nothing legal can produce (canon §5.6). OBSERVED.
+- **[S3]** Tried: hardcoding the expected output of a check into the verify line (`rc=2, 8 defects`). Failed: the
+  fixture grew to 11 defects, the line stayed at 8, and only a cold window re-running the command noticed.
+  `2026-09-05` · `<notes>/plans/standalone-autoplan-rebuild.plan.md:152`, `cold-verify.md:69` → the verify
+  compares against the answer key it reads, never against a number typed into prose (canon §5.18). OBSERVED.
+- **[S4]** Tried: a regression scan over "every finished task's check" with no exclusion for its own entry. Failed:
+  on retirement its check re-invoked the scan — recursion, 120 s timeout, uncaught exception, and a report of
+  **0 regressions, exit 0** while a retired card failed by hand. `2026-09-05` · commit `3bd635f` on `V2`,
+  card 6.10 → exclude self and say so; abnormal exit is an explicit INCOMPLETE; report EXAMINED beside FOUND.
+  OBSERVED.
+<!-- DO-NOT-RETRY-v1 END -->
+
 # Build Rules-of-Engagement Index
 
 > Read by the `/build` skill's **Step 0** gate. Maps **what you're building** → the **binding docs**

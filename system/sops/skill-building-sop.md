@@ -1362,6 +1362,26 @@ though none of these bind a future build.
   bumping out prematurely. `NO-DATE` · `state/projects/huddle/huddle-skill/brief.md:58-86` → "done" is a
   revocable alignment vote; only the coordinator closes the room.
 
+## §II.4b — DO NOT BUILD / DO NOT RETRY — build *process* moves proven not to work *(section opened 2026-09-05 by ruling; grows over time)*
+
+> §II.4a retires *artifacts* — things built that failed. This section retires *process moves* — ways of
+> working a build that failed, with receipts, so no later session re-tries them. Same entry shape; the heading
+> keeps the phrase `deadend_check.py` matches on. **Never complete.** Principle-level twins: canon §10a;
+> seam-level twins: `system/build-rules-index.md` DO-NOT-RETRY block.
+
+- **[P1]** Tried: acting on a hand-off's factual claims without re-reading the source. Failed: one hand-off
+  (2026-09-05) carried three wrong claims — a block "with no analogue" that duplicated LAW 1b · "3× the length"
+  that measured 1.45× · a tension "unruled 13 months" that §III.10 had ruled. All caught by opening the file.
+  `2026-09-05` · canon §10a [DNR2] → every claim re-checked before it is acted on; a hand-off is a lead, not a
+  finding. OBSERVED.
+- **[P2]** Tried: promoting a §VII candidate to REPRODUCED on two receipts from one build. Failed: proposed by one
+  nav window, withdrawn by it against THE FRAME's bar ("multiple blind sessions *over time*"). `2026-09-05` ·
+  canon §10a [DNR4] → two receipts from one build is OBSERVED ×2; a different build promotes. OBSERVED.
+- **[P3]** Tried: reading `cmd | head; echo $?` as the command's exit status. Failed: `$?` is `head`'s; two
+  operators read a passing verify off it in one day. `2026-09-05` · reported in the nav hand-off, **receipt not
+  re-run by this window** → `set -o pipefail`, or capture the command's status before the pipe. CANDIDATE
+  until a receipt is named.
+
 ## §II.5 — Packaging: two lanes, so enforcement travels
 
 `[C, live experiment 2026-06-29]` **Primitives are skill-local scripts** — they live in the skill's folder and
