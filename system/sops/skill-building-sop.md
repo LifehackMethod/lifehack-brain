@@ -868,7 +868,7 @@ what they are: patterns worth building, not things to reach for today.
 - **[F2]** Tried: letting a script exit 0 on skip, absent input, or a swallowed error. Failed **166×** (the only mode with
   money out). → An error must never produce the same signal as success; the no-outcome value is one nothing legal produces.
   → *Solutions audit 2026-09-05:* **Held (partial, OBSERVED):** scheduled-job exit-code contract + 3-strike breaker — trips DOWN on any non-conforming exit (receipt: system-health-run.sh, LIVE; recurred: 122 of 160 instances land after the fix).
-  → *Research pass 2026-09-05:* **Field remedy (RESEARCHED):** independent output-shape/baseline verification + heartbeat monitoring — emerging-to-strong (n8n community forum) (lying-signals-text-guards). ⛔ (records in the owner's notes)
+  → *Research pass 2026-09-05:* **Field remedy (RESEARCHED):** independent output-shape/baseline verification + heartbeat monitoring — emerging-to-strong (n8n community forum) (lying-signals-text-guards). ⛔ (records in the owner's notes) ✅ ADOPTED (right-size audit 2026-09-05)
 - **[F3]** Tried: keeping one fact in several files with a "remember to update" rule. Failed **177×**: a fix left the
   other copies live. → Count every copy including the template; derive pointers and extracts, never type them.
   → *Solutions audit 2026-09-05:* **Unsolved (NEVER):** tried "derive it or diff it" as a canon rule — failed because it stayed prose, never became a differ (receipt: canon 08-11 ruling; recurred: O-3/26/38/47/55/57/68/71/73/75, FIX: none).
@@ -882,11 +882,11 @@ what they are: patterns worth building, not things to reach for today.
 - **[F6]** Tried: writing a finding down and calling it delivered. Failed **88×**: the next session never looked there.
   → *Solutions audit 2026-09-05:* **Held (partial, OBSERVED):** storage-format rewrite of one handoff artifact — sticks because the format is structurally incapable of the old overflow (receipt: J1-122/B4-93, held 87 days; recurred: 3 readers name 3 mechanisms).
   → Storage is not delivery — name the surface it must reach.
-  → *Research pass 2026-09-05:* **No field remedy** — artifact-over-summary is exactly what local already tried at one site and it fails partially applied → experiment (values-that-did-not-travel). ⛔ (records in the owner's notes)
+  → *Research pass 2026-09-05:* **No field remedy** — artifact-over-summary is exactly what local already tried at one site and it fails partially applied → experiment (values-that-did-not-travel). ⛔ (records in the owner's notes) ✅ ADOPTED (right-size audit 2026-09-05) — the field's strongest mechanism; PARTIAL here, see canon §12.c
 - **[F7]** Tried: a guard that matches a keyword or literal string. Failed **80×**: fails open on every spelling not
   listed, fails closed on a mention. → Default-deny; watch it refuse a real payload before shipping.
   → *Solutions audit 2026-09-05:* **Held (partial, OBSERVED):** one guard rebuilt default-deny + typed parser, "lesson paid for the 3rd time" — sticks for that guard only (receipt: S2-7, 08-14, held 20 days; recurred: L-144/L-146/L-150).
-  → *Research pass 2026-09-05:* **Field remedy (RESEARCHED):** layered guard — typed parsing + narrow regex triage + semantic classifier — strong (arXiv:2506.10597, IEEE S&P 2026) (lying-signals-text-guards). ⛔ (records in the owner's notes)
+  → *Research pass 2026-09-05:* **Field remedy (RESEARCHED):** layered guard — typed parsing + narrow regex triage + semantic classifier — strong (arXiv:2506.10597, IEEE S&P 2026) (lying-signals-text-guards). ⛔ (records in the owner's notes) ✅ ADOPTED (right-size audit 2026-09-05)
 - **[F8]** Tried: believing a helper's account of its own work. Failed **70×**: payloads lost, self-reports believed.
   → *Solutions audit 2026-09-05:* **Held (partial, OBSERVED):** fail-closed check on the shape of a sub-agent return — closes payload-loss, not self-report truth (receipt: guard_agent_return_channel.sh, LIVE; recurred: truth-check DORMANT).
   → Never evidence; re-run the check with a stricter filter than the helper used.
@@ -896,7 +896,7 @@ what they are: patterns worth building, not things to reach for today.
 - **[F10]** Tried: editing by heading string, first match, or line number. Failed **50×**, the failure being silent
   deletion. → Address by identity.
   → *Solutions audit 2026-09-05:* **Unsolved (NEVER):** tried patched string/position fixes on the same tool repeatedly — failed because none replaced string-anchoring with a structural boundary (receipt: J3-84, 07-20; recurred: L-14, 08-31, "unchanged").
-  → *Research pass 2026-09-05:* **Field remedy (RESEARCHED):** fail-loud unique-context-anchored search/replace, optionally hash-augmented — strong (wuu73.org cross-tool survey) (wrong-target-edited-or-run). ⛔ (records in the owner's notes)
+  → *Research pass 2026-09-05:* **Field remedy (RESEARCHED):** fail-loud unique-context-anchored search/replace, optionally hash-augmented — strong (wuu73.org cross-tool survey) (wrong-target-edited-or-run). ⛔ (records in the owner's notes) ✅ ADOPTED (right-size audit 2026-09-05)
 - **[F11]** Tried: a rule in prose the model must remember. Failed **47×** — and this is barn-sour seen from inside a
   skill: steps designed in prose silently do not happen. → Ship the behaviour and what makes it observable in one change.
   → *Solutions audit 2026-09-05:* **Unsolved (NEVER):** tried the inject_* nudge family as the remedy — failed because it is non-blocking by construction, prints and exits 0 (receipt: canon §4.6, 619 points, 50.7% still asked-nicely).
@@ -908,6 +908,16 @@ what they are: patterns worth building, not things to reach for today.
   another, renders empty, no error. → Watch a value travel the whole seam.
   → *Solutions audit 2026-09-05:* **Held (partial, OBSERVED):** fail-closed contract guard on a matched Write — refuses the call outright (receipt: enforce_multiphase_contract.sh, LIVE; return-channel guard silent 34 days, short of the 42-day bar by 8).
   → *Research pass 2026-09-05:* **No field remedy** — consumer-driven contract testing is mature for microservices, never adapted to LLM output anywhere → experiment (values-that-did-not-travel). ⛔ (records in the owner's notes)
+
+> **Right-size audit, 2026-09-05** *(Enver's rule is in THE FRAME; record: `records/research/2026-09-05-remedy-right-size-audit.md` ⛔ owner's notes).*
+> **⚠ LIKELY OVERBUILT for this harness — recorded, not adopted; each is a second system watching the first:** learned output-shape
+> baselines · a semantic classifier behind every guard (also contradicts LAW 3 — held as dissent) · runtime tracing with dashboards ·
+> continuous dead-code deletion with review queues · a code-anchored doc linter · contract testing with a broker · per-line content
+> hashes · model-judge lifecycle monitoring. **Right-sized substitutes:** separate ran/succeeded signals · typed parse, default-deny ·
+> one sweep script (see the tension) · the quarterly disk audit · generated extracts · the one fail-closed contract guard · the
+> unique-match edit tool. **TENSIONS, kept open (canon §12.a–c):** a dead-man's switch on every hook vs "no meta-checker" ·
+> generate-the-copy vs "rather duplication than miss" (and the two frames are not byte-identical while claiming to be) ·
+> artifact-then-pointer strongest outside, PARTIAL here.
 
 > **Coverage: this is ~35% of what's on disk.** Mined 2026-08-07 from ledgers, records, and project briefs;
 > capped at 80 traceable entries by instruction, not by exhaustion — roughly 150 more traceable dead ends
