@@ -354,6 +354,31 @@ def _scan_one(orig_text, task_id):
 
 DONE_ENTRY_RE = re.compile(r'^## (' + ID + r') — retired ', re.M)
 
+# 2026-09-05, card 6.15: a card's own Verify can itself invoke this same
+# script with --regressions (card 6.10 did, testing that the gate catches a
+# named regression) -- running that clause from inside a regression scan
+# starts the SAME scan over again, which reaches that SAME card again, and so
+# on, bounded only by the 120s subprocess timeout, which then raised
+# uncaught and the whole scan silently reported zero findings at rc=0. A
+# self-referential clause is detected by shape (names this script's own
+# basename alongside --regressions), not by hardcoding "6.10" -- any future
+# card that tests the regression gate the same way is caught the same way.
+SELF_REGRESSION_RE = re.compile(
+    r'\b' + re.escape(os.path.basename(__file__)) + r'\b.*--regressions'
+)
+
+
+class ScanIncomplete(Exception):
+    """Raised when the regression scan cannot finish looking -- a Verify
+    command timed out, or anything else broke the loop before every retired
+    card was examined. Caught once, at the top, in main(): an incomplete scan
+    must never render as an empty finding list plus rc=0 (card 6.15) --
+    'found nothing' and 'did not finish looking' are different verdicts."""
+    def __init__(self, tid, reason):
+        self.tid = tid
+        self.reason = reason
+        super().__init__(f"{tid}: {reason}")
+
 
 def _done_entries(done_text):
     """Yield (task_id, card_lines) for every retired entry in `.done.md` -- the
@@ -392,35 +417,60 @@ def _regression_scan(plan_path):
     reported as UNCHECKED, not silently folded into REGRESSION -- an unrunnable
     claim and a claim that ran and failed are different findings (SOP honesty
     rule: report what each verdict actually means).
+
+    2026-09-05, card 6.15: a card whose own Verify recurses into this same
+    scan (matches SELF_REGRESSION_RE) is never run -- it is reported as
+    EXCLUDED, with the reason stated in the finding itself, so the exemption
+    is visible rather than a silent fail-open. Any abnormal termination while
+    a Verify command runs (right now: a subprocess timeout) raises
+    ScanIncomplete instead of propagating an uncaught traceback that used to
+    leave the scan looking clean.
+
+    Returns (findings, examined_count) -- examined_count is every retired
+    card the scan actually looked at (checked, excluded, or unreadable
+    alike), so a caller can print "N regressions across M cards examined"
+    rather than a bare, unverifiable N.
     """
     done_path = re.sub(r'\.md$', '.done.md', plan_path)
     if not os.path.exists(done_path):
-        return []
+        return [], 0
     with open(done_path, encoding="utf-8") as fh:
         done_text = fh.read()
     findings = []
+    examined = 0
     for tid, card in _done_entries(done_text):
         verify_line = _verify_line_text(card)
         if verify_line is None:
-            findings.append((tid, "UNCHECKED", "no Verify: line in receipt")); continue
+            findings.append((tid, "UNCHECKED", "no Verify: line in receipt")); examined += 1; continue
         try:
             cmds = parse_verify(verify_line)
         except VerifyParseError as e:
-            findings.append((tid, "UNCHECKED", f"Verify unparseable: {e}")); continue
+            findings.append((tid, "UNCHECKED", f"Verify unparseable: {e}")); examined += 1; continue
         unreadable = next((cmd for cmd, exp in cmds if exp is None), None)
         if unreadable is not None:
-            findings.append((tid, "UNCHECKED", f"no parseable expectation: {unreadable}")); continue
+            findings.append((tid, "UNCHECKED", f"no parseable expectation: {unreadable}")); examined += 1; continue
+        recursive = next((cmd for cmd, exp in cmds if SELF_REGRESSION_RE.search(cmd)), None)
+        if recursive is not None:
+            findings.append((tid, "EXCLUDED",
+                              f"cmd: {recursive} | self-referential -- invokes this scan (--regressions) "
+                              f"on itself; running it would recurse into this same pass, so it is "
+                              f"skipped rather than run, and this line is how you know that"))
+            examined += 1; continue
         cwd = _verify_cwd("\n".join(card))
         broke = None
         for cmd, exp in cmds:
-            proc = run_cmd(cmd, cwd)
+            try:
+                proc = run_cmd(cmd, cwd)
+            except subprocess.TimeoutExpired:
+                raise ScanIncomplete(tid, f"Verify command timed out (120s), scan abandoned: {cmd}")
             if not _eval_expectation(exp, proc.returncode, proc.stdout):
                 broke = (cmd, exp, proc.returncode, proc.stdout); break
+        examined += 1
         if broke is not None:
             cmd, exp, rc, out = broke
             findings.append((tid, "REGRESSION",
                               f"cmd: {cmd} | expected: {exp} | got rc={rc} stdout={out[:200]!r}"))
-    return findings
+    return findings, examined
 
 
 def _open_ids(lines):
@@ -481,10 +531,20 @@ def main():
     if a.regressions:
         if not a.dry_run:
             cannot_read("--regressions is report-only; pass --dry-run")
-        findings = _regression_scan(a.plan)
+        try:
+            findings, examined = _regression_scan(a.plan)
+        except ScanIncomplete as e:
+            print(f"INCOMPLETE {e.tid}: {e.reason}"); sys.exit(3)
+        except Exception as e:
+            # 2026-09-05, card 6.15: ANY uncaught break mid-scan is INCOMPLETE,
+            # not a clean empty result -- this is the catch-all that used to be
+            # missing, the one an unbounded recursion eventually hit.
+            print(f"INCOMPLETE (uncaught {e.__class__.__name__}): {e}"); sys.exit(3)
         for tid, kind, detail in findings:
             print(f"{kind} {tid}: {detail}")
-        sys.exit(1 if any(kind == "REGRESSION" for _, kind, _ in findings) else 0)
+        regressions = [f for f in findings if f[1] == "REGRESSION"]
+        print(f"{len(regressions)} regressions across {examined} cards examined")
+        sys.exit(1 if regressions else 0)
 
     if a.all:
         if not a.dry_run:
@@ -495,8 +555,19 @@ def main():
         # so a future plan gets it free -- --all already reports every open card's
         # state in one pass; a retired card's claim going stale is the same kind of
         # thing, checked the same run.
-        for tid, kind, detail in _regression_scan(a.plan):
+        # 2026-09-05, card 6.15: same INCOMPLETE handling as --regressions --
+        # this fold-in must not let an abnormal regression-scan termination
+        # render as "ran --all clean".
+        try:
+            findings, examined = _regression_scan(a.plan)
+        except ScanIncomplete as e:
+            print(f"INCOMPLETE {e.tid}: {e.reason}"); sys.exit(3)
+        except Exception as e:
+            print(f"INCOMPLETE (uncaught {e.__class__.__name__}): {e}"); sys.exit(3)
+        for tid, kind, detail in findings:
             print(f"{kind} {tid}: {detail}")
+        regressions = [f for f in findings if f[1] == "REGRESSION"]
+        print(f"{len(regressions)} regressions across {examined} cards examined")
         sys.exit(0)
 
     if a.task_id is None:
