@@ -2492,7 +2492,7 @@ blind judge v1 described.
 
 Evidence: `~/lifehack-brain` branch `V2` (19 commits). **This section is the only home for these candidates** — no scratch copy exists elsewhere.
 ⛔ `plans/standalone-autoplan-rebuild.plan.md` — the plan and its `.done.md` live in the operator's notes folder, never in a repository; cited as where the receipts are, not as something this repo carries.
-**Status: Phase 6 unbuilt, live run not yet made. Per canon §5.2, none of these is distilled from a finished run.**
+~~**Status: Phase 6 unbuilt, live run not yet made.**~~ — **CORRECTED 2026-09-05 (nav claudeops-1a): Phase 6 IS built** (cards 6.1–6.15 retired, 34 commits on `V2`, unpushed). **The live run is still not made**, so per canon §5.2 none of these is distilled from a finished run and [P2] still governs promotion.
 
 *(Tiers below in the frame's vocabulary: Tier 1–2 = OBSERVED with receipt · Tier 3 = CANDIDATE · Tier 4 = CANDIDATE, weak.)*
 
@@ -2524,6 +2524,13 @@ Evidence: `~/lifehack-brain` branch `V2` (19 commits). **This section is the onl
 **Tier 4 — recommendation.**
 - Do not write size estimates into task text (3 for 3 wrong by 2–3×, same direction).
 - Reading the doctrine does not inoculate — Law 5's knows-but-violates, measured on the author. A confirmation, not a finding.
+
+**AWAITING VALIDATION — added 2026-09-05 by nav claudeops-1a, deliberately NOT promoted.**
+*Enver's instruction: these get built and tested first; promote only after the fix is proven. Neither is doctrine and neither may be cited as one.*
+
+- **A `Verify:` that compares against a bare literal freezes a value the system computes.** Write it computed-against-computed instead — `test "$(A)" = "$(B)"` rather than `= "17"`. ⚠ **The rule already existed one altitude up and nobody had applied it here**: §V.4a's *"a number without its instrument recorded beside it is not evidence — and a result that a reader cannot re-derive from the file is not a result."* Grepped 2026-09-05: zero occurrences connecting that rule to a plan card's `Verify:` slot. Receipt: 3 of 27 retired cards (2.4, 4.4, 6.8) fail their own `Verify:` today, all three because a later card moved a count they had frozen; ~57 count-comparisons exist across the retired set, so those three are the visible edge. The grammar ALREADY accepts the invariant form — measured, not assumed: a card whose Verify compares two computed values lints rc 0 and parses and runs under `plan_retire`. **CANDIDATE, NOT YET VALIDATED — the rewrite has not been built or tested.** Refuted if invariant-form Verifies prove vacuous, i.e. they pass while the artefact is genuinely broken; that is the probe that must run before this is promoted.
+
+- **A checker whose own acceptance criterion invokes the checker becomes self-referential the moment its card is retired, and fails SILENT.** Receipt: card 6.10's `Verify:` invoked `plan_retire --regressions`; the scan re-runs every retired card's Verify, so on retirement it began invoking itself, hit the 120s subprocess timeout uncaught, and emitted no findings. Measured: the scan reported zero `REGRESSION` lines while card 2.4's Verify independently returned rc 1; an hour earlier the same scan reported four, with nothing repaired in between. ⚠ The companion claim that it *exited 0* was **asserted and never measured** — struck, see [P3]/A14. Fix built and verified (`65238c6`): self-exclusion stated in the output, `INCOMPLETE` + exit 3 on abnormal termination, and an examined-count beside the found-count. **OBSERVED ×1, one build — per [P2] a different build promotes; this is not that.** ⚠ **The property did not exist until acceptance**: this code passed a real destruction probe AND a selectivity probe and was still wrong. No rule is offered for that; it is recorded as an open question, not dressed up as a finding.
 
 ### What this run says about THIS file (for the next revision, not applied here)
 - **[A13]** is written broadly enough to forbid the angle-panel shape that worked; scope it to persona councils and cross-cite [B23].
