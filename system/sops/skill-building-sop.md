@@ -309,6 +309,11 @@ needs. `[C]` structured-output constraints can degrade reasoning on some tasks (
 > **The test:** are you constraining *what must be true when the step is done* (gate it) or *how the model should
 > think while doing it* (leave it free)? The first is mechanics. The second is a handcuff.
 
+> ⚠ *2026-09-05, single-source, NOT promoted:* one project measured 57 enforcement instances and found code failing
+> 3.6× more often than prose, a third of its failures reporting success while producing nothing (skill-system brief,
+> unresolved). It does not overturn this LAW; it says code that INFERS a judgment from a side-signal fails like prose
+> does. Code holds the line only on membership in a closed set someone else stamped (§II.4a [F4], [F7], [F13]).
+
 **Both extremes ship, and the evidence is instructive** `[C]`: the most-starred public skill suite (261k★) is
 **pure prose persuasion** — famous, genuinely useful, and structurally unable to catch a lying or degraded model.
 Anthropic's own production skills are the **hybrid**, and they draw the line exactly at *verifiability*. Our
@@ -1013,6 +1018,40 @@ what they are: patterns worth building, not things to reach for today.
   size caps, orphan files). A backstop under the birth guard.
 
 ## §II.4a — ⭐ DO NOT BUILD — what was tried and failed
+
+### From the failure census, 2026-09-05 — REPRODUCED (15 blind readers · journal + 38 briefs + ledger + doc-vs-disk · every mode 4–6 months, 11–12 of 12 sources · 1,656 cited instances)
+
+> Method and provenance: `records/research/2026-09-05-failure-mode-census.md` ⛔ (owner's notes). Receipts:
+> `state/failure-census-2026-09-05/` ⛔ (owner's notes). Canon §16 carries the same thirteen as principles;
+> this is the do-not-retry form. Counts are floors. **Enver's ruling:** findings validated over months across
+> sessions outrank outside research — these sit ABOVE the `[R]` entries below.
+
+- **[F1]** Tried: shipping a tool, hook, or detector and calling it done when its tests pass. Failed **194×**: nothing ever
+  invoked it; no effect looked like working. → It does not exist until a live path calls it and you watch the call.
+- **[F2]** Tried: letting a script exit 0 on skip, absent input, or a swallowed error. Failed **166×** (the only mode with
+  money out). → An error must never produce the same signal as success; the no-outcome value is one nothing legal produces.
+- **[F3]** Tried: keeping one fact in several files with a "remember to update" rule. Failed **177×**: a fix left the
+  other copies live. → Count every copy including the template; derive pointers and extracts, never type them.
+- **[F4]** Tried: trusting a check that takes its verdict from the thing it checks. Failed **133×**. → Watch it fail on
+  known-bad input before trusting it passing (§V.4c is now rule zero of PART V).
+- **[F5]** Tried: starting a build from a premise nobody checked. Failed **155×** — the spin cluster, 91 stated days;
+  the scope loop (a verifier setting its own backlog) is one form of it. → Search before designing; measure before planning.
+- **[F6]** Tried: writing a finding down and calling it delivered. Failed **88×**: the next session never looked there.
+  → Storage is not delivery — name the surface it must reach.
+- **[F7]** Tried: a guard that matches a keyword or literal string. Failed **80×**: fails open on every spelling not
+  listed, fails closed on a mention. → Default-deny; watch it refuse a real payload before shipping.
+- **[F8]** Tried: believing a helper's account of its own work. Failed **70×**: payloads lost, self-reports believed.
+  → Never evidence; re-run the check with a stricter filter than the helper used.
+- **[F9]** Tried: carrying a number forward from a hand-off or a note. Failed **55×**. → A number ships with the
+  command that produces it.
+- **[F10]** Tried: editing by heading string, first match, or line number. Failed **50×**, the failure being silent
+  deletion. → Address by identity.
+- **[F11]** Tried: a rule in prose the model must remember. Failed **47×** — and this is barn-sour seen from inside a
+  skill: steps designed in prose silently do not happen. → Ship the behaviour and what makes it observable in one change.
+- **[F12]** Tried: editing a file and assuming it is the one that runs. Failed **40×**: two resolvable copies, runtime
+  picked the other. → After a cutover, check which file loads, not which pointer moved.
+- **[F13]** Tried: a producer and a consumer written separately. Failed **35×**: one emits a key, the other binds
+  another, renders empty, no error. → Watch a value travel the whole seam.
 
 > **Coverage: this is ~35% of what's on disk.** Mined 2026-08-07 from ledgers, records, and project briefs;
 > capped at 80 traceable entries by instruction, not by exhaustion — roughly 150 more traceable dead ends
@@ -2003,6 +2042,11 @@ it next to Part II §II.6's held hypotheses: consistent with everything we've me
 ---
 
 # PART V — VERIFY THE SKILL
+
+> **Rule zero, 2026-09-05 (census, REPRODUCED — §II.4a [F1]/[F4], canon §16 and the frame's operating rule):**
+> *nothing counts as existing, done, enforced or true until you have watched it produce an outcome it could not
+> produce if it were broken.* In 42% of 1,656 recorded failures the system gave the same signal whether the thing
+> worked or not. **Build the failing state first** — §V.4c (destruction) is not a late probe, it is the first step.
 
 > v1 had nowhere to put this — verification got folded into §3.5 as an afterthought. It deserves its own part:
 > **building** a skill and **proving** it works are different jobs, with different failure modes. This part is
