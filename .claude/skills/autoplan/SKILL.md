@@ -410,10 +410,10 @@ lens's reason. **Two lenses disagreeing on the same task is not adjudicated here
 operator, in the four-part decision format: the decision in one line · the context · why it could not
 be settled without them · your recommendation.
 
-**Print the table as the receipt**, and write the `Review:` line the plan already carries at its top:
-`six-lens <date> · <n> findings · <accepted>/<rejected>/<to them>`.
+**Save the table** to `<notes>/state/<plan-slug>/<name>-<date>.<ext>` (a claim beside nothing is the
+thing, SOP §V.4d), add that path to `Review:` as `· artifact: \`<path>\`` — `plan_lint.py` requires it.
 
-**`--no-review` skips the swarm** — write `Review: SKIPPED <date> <reason>` in place of running it.
+**`--no-review` skips the swarm** — write `Review: SKIPPED <date> <reason>`, no artifact needed.
 Either branch, the plan says which: an unreviewed plan must look unreviewed a year later, never carry a
 line implying six lenses looked at it when none did.
 

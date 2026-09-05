@@ -22,7 +22,10 @@ WHAT — for every `- [ ] **<id>` card:
   Query:   if present, a `Proof:` line follows (a zero result is UNKNOWN until proven well-formed)
   gates:   every "gated on" (any case) names a file path
   gear-2+: names a model
-  plan:    has a `Review:` line
+  plan:    has a `Review:` line; a `six-lens` Review: names an `artifact:` path that EXISTS on disk
+           (2026-09-05, card 6.3: a claim next to a thing is read as the thing -- SOP V.4d -- so
+           the swarm's receipt is checked, not just asserted). `SKIPPED <date> <reason>` names no
+           artifact and is not checked here.
 
 --self — the every-run guards: fixtures/broken.plan.md must FAIL (a known-bad plan coming back
 clean means the checker is dead); SKILL.md must not exceed fixtures/.budget (the ratchet).
@@ -64,6 +67,36 @@ def derive_kind(where, rows):
         if w == path or w.startswith(path + os.sep): return kind, path
     return "none", None
 
+REVIEW_LINE_START = ("> **Review:**", "Review:", "**Review:**")
+REVIEW_CONTENT_RE = re.compile(r'\*\*Review:\*\*\s*(.*)$')
+ARTIFACT_RE = re.compile(r'\bartifact:\s*(?:`([^`]+)`|(\S+))', re.I)
+
+def notes_root():
+    """The person's own notes root, resolved the same way system/tools/journal.py does
+    (shared/brain_root.py, THIS FILE's own position -- never cwd). None if unset; this
+    file never hardcodes a personal path, since it ships in the public repo."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    repo = os.path.normpath(os.path.join(here, "..", ".."))
+    sys.path.insert(0, os.path.join(repo, "shared"))
+    try:
+        import brain_root
+    except ImportError:
+        return None
+    return brain_root.resolve_brain_root()[1]
+
+def resolve_artifact_path(raw):
+    """An artifact: value in a `Review:` line. `<notes>/...` or `$DATA/...` (both names for the
+    same thing -- Step 5.5 already uses `$DATA` on a lens spawn) resolve against notes_root();
+    anything else (an absolute path, or `~/...`) is used as written -- this is also what lets a
+    scratch fixture's literal `/nonexistent.json` be checked without a notes root at all."""
+    for prefix in ("<notes>", "$DATA"):
+        if raw.startswith(prefix):
+            root = notes_root()
+            if root is None: return None
+            rest = raw[len(prefix):].lstrip("/")
+            return os.path.join(root, rest)
+    return os.path.expanduser(raw)
+
 def live_branch(path):
     try:
         r = subprocess.run(["git", "-C", path, "branch", "--show-current"], capture_output=True, text=True, timeout=10)
@@ -102,8 +135,28 @@ def lint(path, rows):
     try: lines = open(path, encoding="utf-8").read().split("\n")
     except Exception as e: cannot_read(f"plan unreadable ({e}): {path}")
     defects = []
-    if not any(l.strip().startswith(("> **Review:**", "Review:", "**Review:**")) for l in lines):
+    review_line = next((l for l in lines if l.strip().startswith(REVIEW_LINE_START)), None)
+    if review_line is None:
         defects.append(("plan", "no `Review:` line (reviewed or SKIPPED — either way it must say)"))
+    else:
+        rm = REVIEW_CONTENT_RE.search(review_line)
+        content = rm.group(1) if rm else re.sub(r'^\s*>?\s*Review:\s*', '', review_line.strip())
+        if re.match(r'\s*six-lens\b', content, re.I):
+            am = ARTIFACT_RE.search(content)
+            if not am:
+                defects.append(("plan", "`Review:` line is `six-lens` but names no `artifact:` "
+                                 "path — a claim next to a thing is read as the thing (SOP V.4d); "
+                                 "point at the swarm's receipt or write `Review: SKIPPED <date> "
+                                 "<reason>` instead"))
+            else:
+                raw_path = (am.group(1) or am.group(2)).rstrip('.,;:)')
+                resolved = resolve_artifact_path(raw_path)
+                if resolved is None:
+                    defects.append(("plan", f"`Review:` artifact `{raw_path}` uses <notes>/$DATA "
+                                     f"but no notes root is set (shared/brain_root.py) — cannot "
+                                     f"confirm it exists"))
+                elif not os.path.exists(resolved):
+                    defects.append(("plan", f"`Review:` artifact does not exist: {raw_path}"))
     cards, unrecognised = parse_cards(lines)
     if not cards: cannot_read(f"no `- [ ] **<id>` cards found in {path}")
     for lineno, text in unrecognised:
