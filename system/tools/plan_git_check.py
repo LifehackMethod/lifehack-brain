@@ -53,8 +53,19 @@ from verdicts import CANNOT_READ
 # digits, dot, digits, optional trailing letter). \b makes a bracket group like
 # [W11.5/W11.6] split for free on "/", ",", whitespace — no separate split step.
 ID = r'[A-Za-z]{0,2}\d{1,3}\.\d{1,2}[a-z]?'
-COMMIT_ID_RE = re.compile(r'\b' + ID + r'\b')
 CHECKBOX_RE = re.compile(r'^- \[ \] \*\*(' + ID + r')\*\*')
+# 6.13 — the STALE-BOX scan must use the SAME start-of-subject rule the --task
+# path already enforces (subject starts "<id>: ", github-sop, 2026-09-04). An id
+# ANYWHERE in the subject ("...see notes on 6.2 for context only") is prose, not
+# evidence — a bare \b-bounded search over the whole subject read that prose as
+# a shipped task. Anchored at position 0, one capture group, colon required.
+LEADING_ID_RE = re.compile(r'^(' + ID + r'):')
+
+def leading_commit_id(subj):
+    """The id this commit claims to ship, or None. Start-of-subject only —
+    mirrors the --task/--hash convention, never a whole-subject search."""
+    m = LEADING_ID_RE.match(subj)
+    return m.group(1) if m else None
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -100,13 +111,45 @@ def open_boxes(path):
             boxes.append((i + 1, m.group(1), l.strip()))
     return boxes
 
+# 6.13 --self fixture: proves BOTH directions of the start-of-subject rule.
+# No git call, no plan file — a check that only ever runs against live
+# history can't be re-run once history moves, and a check that always passes
+# is not a check at all.
+SELF_FIXTURE = [
+    # (subject, id it must NOT count as evidence for, must-not-match)
+    ("Refactor unrelated helper, see notes on 6.2 for context only", "6.2", False),
+    # (subject, id it MUST count as evidence for, must-match)
+    ("6.2: fix stale-box scan to require id prefix", "6.2", True),
+]
+
+def run_self_test():
+    ok = True
+    print("plan_git_check --self")
+    for subj, tid, must_match in SELF_FIXTURE:
+        got = leading_commit_id(subj)
+        matched = (got == tid)
+        verdict = "PASS" if matched == must_match else "FAIL"
+        if verdict == "FAIL":
+            ok = False
+        want = f"count as {tid}" if must_match else f"NOT count as {tid}"
+        print(f"  [{verdict}] {want}")
+        print(f"    subject: {subj!r}")
+        print(f"    leading_commit_id -> {got!r}")
+    print("SELF-OK" if ok else "SELF-FAIL")
+    return 0 if ok else 1
+
 def main():
     ap = argparse.ArgumentParser(description="Do open plan boxes contradict git history?")
     ap.add_argument("--plan", help="one plan file; default scans ~/.claude/plans/*.plan.md")
     ap.add_argument("--days", type=int, default=14, help="git log window (default 14)")
     ap.add_argument("--task", help="one task id; with --hash, print the newest commit whose subject starts '<id>:'")
     ap.add_argument("--hash", action="store_true", help="with --task: print the hash and exit 0, or NO-COMMIT and exit 4")
+    ap.add_argument("--self", action="store_true", dest="self_test",
+                     help="prove the start-of-subject rule both directions on a fixed fixture, no git/plan I/O")
     a = ap.parse_args()
+
+    if a.self_test:
+        sys.exit(run_self_test())
 
     # 3.1 (2026-09-04) — the first caller this file ever had. plan_retire.py asks
     # "did task <id> ship?" and needs a hash or the NO-OUTCOME member, never a guess.
@@ -135,7 +178,8 @@ def main():
     commits = git_commits(a.days)
     ids_to_commits = {}
     for h, subj in commits:
-        for cid in COMMIT_ID_RE.findall(subj):
+        cid = leading_commit_id(subj)
+        if cid:
             ids_to_commits.setdefault(cid, []).append((h, subj))
 
     stale = []
