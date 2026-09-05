@@ -269,14 +269,25 @@ def check_verify(block_lines, task_id):
     return receipts
 
 def get_evidence(block_lines, task_id):
-    art = re.search(r'artifact:\s*(\S+)', '\n'.join(block_lines), re.I)
+    """The `artifact:` value on a card's own lines, whole -- not the first word of it.
+
+    2026-09-05, card 6.7: `\\S+` split the real value (a notes path) at its first space,
+    since every notes path on this machine sits under Google Drive's `My Drive`. The
+    truncated pointer parsed as valid and pointed at nothing (SOP V.4d). A card writes
+    its artifact value inside one backtick pair -- `` `artifact: /path with spaces/x` ``
+    (see e.g. card 6.6's own `Repo:`/`artifact:` line) -- so the value runs from just
+    after the `artifact:` label to the NEXT backtick, not to the next space. Recorded
+    back out backtick-quoted (`artifact:`<value>``) so it round-trips through the same
+    convention rather than being ambiguous prose again.
+    """
+    art = re.search(r'artifact:\s*([^`\n]+)', '\n'.join(block_lines), re.I)
     tool = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plan_git_check.py")
     proc = subprocess.run([sys.executable, tool, "--task", task_id, "--hash"],
                            cwd=REPO_ROOT, capture_output=True, text=True, timeout=30)
     if proc.returncode == 0:
         return proc.stdout.strip()
     if art:
-        return f"artifact:{art.group(1)}"
+        return f"artifact:`{art.group(1).strip()}`"
     print(f"NO-EVIDENCE {task_id}"); sys.exit(2)
 
 def collapse_phases(text):
