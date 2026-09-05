@@ -318,8 +318,13 @@ position is the second, plus the verification machinery in PART V that neither h
 
 > # ⚠ SUPERSEDED THE SAME DAY IT SHIPPED — 2026-08-05. READ THIS BEFORE THE SECTION BELOW.
 >
-> **The live rule is now:** *Code hands the model a bounded set of outcomes; the middle is unbounded; what
-> comes back is one of those outcomes, and the set must contain one meaning **NO OUTCOME WAS REACHED**.*
+> ~~**The live rule is now:**~~ **The shape this system has tried and measured is** *(reworded 2026-09-05, REFINED —
+> Enver: "here's one method, but it's not the only one")*: *Code hands the model a bounded set of outcomes; the
+> middle is unbounded; what comes back is one of those outcomes, and the set contains one meaning **NO OUTCOME WAS
+> REACHED**.* **This is ONE observed interface shape, not a claim that it is the only way code and a model can
+> interact.** Other shapes are unmapped here; the causal story behind this one did not survive testing (point 2
+> below), only the shape did. A blind /research pass on the wider field was launched 2026-09-05 — its record, when
+> written, is the place to look for what else exists. Tier for the shape: OBSERVED.
 > Carried verbatim and inline in `/autoplan` STEP 2 and `/build` Step 0 — you do not need to fetch it.
 > Rich version + full evidence: `records/insight/2026-08-05-the-code-llm-seam.md` (Drive).
 >
@@ -352,7 +357,8 @@ between the sides is, and that turned out to be where the failures actually live
 *(Not to be confused with **LAW 2's four seams**, which are the places intent leaks between what you designed and
 what a run does. **This** seam is a single structural joint: where code hands off to the model, and back.)*
 
-> **THE SEAM IS A CLOSED VOCABULARY.** The LLM **picks a member**; code **enforces membership, fail-closed**.
+> ~~**THE SEAM IS A CLOSED VOCABULARY.**~~ **ONE seam shape that has held here is a closed vocabulary** *(softened
+> 2026-09-05)*. The LLM **picks a member**; code **enforces membership, fail-closed**.
 > Neither does the other's job. The model cannot wander off the list. The list cannot judge content.
 
 `system/tools/cowork-ingest/tag.py` is the working model: the model answers the genuinely undecidable question

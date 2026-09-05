@@ -64,8 +64,11 @@ authority: user
 <!-- CODE-SPIRAL-v2 END -->
 
 <!-- SEAM-RULE-v1 BEGIN -->
-> **THE CODE/LLM SEAM — binds only a HYBRID build** (code and a model in the same running product;
+> **THE CODE/LLM SEAM — applies to a HYBRID build** (code and a model in the same running product;
 > question zero below). **Classify the PRODUCT, not the change.**
+> ⚠ *2026-09-05:* **this block describes ONE interface shape this system has tried and measured — not the only
+> way code and a model can interact.** Read it as an observed method (OBSERVED), not a boundary on what may be
+> built. Other shapes are unmapped; a blind /research pass on the field was launched 2026-09-05.
 >
 > **Code hands the model a bounded set of outcomes. The middle is unbounded — the model, alone or in
 > conversation with a human, works however it needs to. What comes back is one of those outcomes, and the
