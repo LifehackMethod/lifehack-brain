@@ -52,6 +52,12 @@ reader_note: >
 >
 > **Compliance is a stack, not a choice** (§II.1a). Each layer catches what the one above misses; a hook is the
 > scarce top, never a substitute for the layers beneath it.
+>
+> **The operating rule under the one law** *(added 2026-09-05 from the failure census — CANDIDATE as a single
+> sentence, since one synthesis wrote it; the thirteen modes beneath it (§II.4a [F1]–[F13]) are REPRODUCED):*
+> **nothing counts as existing, done, enforced or true until you have watched it produce an outcome it could not
+> produce if it were broken. Build the failing state first.** In 42% of 1,656 recorded failures the system gave
+> the same signal whether the thing worked or not. And outside that rule: **look before you build.**
 
 # Skill-Building Playbook v2
 
