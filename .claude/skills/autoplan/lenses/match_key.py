@@ -16,13 +16,24 @@ EXIT CODES: 0 = every row HIT by its owner, zero false positives ·
 unparseable file, malformed key row, unknown owning lens) — never 0 on
 unreadable input.
 """
-import sys, json, argparse
-
-OWNERS = {"github", "tokens", "gating", "value", "postmortem", "steps"}
+import sys, os, json, argparse
 
 def fail(msg):
     print(f"CANNOT-READ {msg}")
     sys.exit(4)
+
+def load_owners():
+    # WHY: a hardcoded owner list drifts silently the moment a card adds a
+    # lens file or a key row names one that was never real — the OWNERS set
+    # must always equal what actually exists on disk in this directory.
+    lens_dir = os.path.dirname(os.path.abspath(__file__))
+    names = {os.path.splitext(f)[0] for f in os.listdir(lens_dir)
+              if f.endswith(".md") and not f.startswith("_")}
+    if not names:
+        fail(f"no lens files found in {lens_dir}")
+    return names
+
+OWNERS = load_owners()
 
 def load_json(path):
     try:
