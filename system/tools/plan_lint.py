@@ -61,15 +61,23 @@ def load_map():
             rows.append((os.path.realpath(os.path.expanduser(m.group(1))), m.group(2).lower()))
     return rows
 
+def split_where(where):
+    """A `Where:` value may legitimately hold SEVERAL paths, separated by ' · ' -- splitting on
+    that separator is correct. Splitting on whitespace is not: a single path (a Google-Drive-style
+    mount, say) can itself contain a space, and 6.7/6.12 are the same truncation bug hitting a
+    third and fourth site. Never call .split() on a raw Where: value again -- call this."""
+    return [p.strip() for p in where.split(" · ") if p.strip()] if where else []
+
 def derive_kind(where, rows):
-    w = os.path.realpath(os.path.expanduser(where.split()[0])) if where else ""
-    for path, kind in rows:
-        if w == path or w.startswith(path + os.sep): return kind, path
+    for raw in split_where(where):
+        w = os.path.realpath(os.path.expanduser(raw))
+        for path, kind in rows:
+            if w == path or w.startswith(path + os.sep): return kind, path
     return "none", None
 
 REVIEW_LINE_START = ("> **Review:**", "Review:", "**Review:**")
 REVIEW_CONTENT_RE = re.compile(r'\*\*Review:\*\*\s*(.*)$')
-ARTIFACT_RE = re.compile(r'\bartifact:\s*(?:`([^`]+)`|(\S+))', re.I)
+ARTIFACT_RE = re.compile(r'\bartifact:\s*(?:`([^`]+)`|(.+))', re.I)
 
 def notes_root():
     """The person's own notes root, resolved the same way system/tools/journal.py does
@@ -209,12 +217,25 @@ def lint(path, rows):
                 defects.append((tid, "`gated on` names no file"))
         gm = GEAR_RE.search(c["text"][0])          # the tag is on the header line; prose about gears is not a delegation
         if gm and not MODEL_RE.search(body): defects.append((tid, f"gear-{gm.group(1)} with no model named"))
-        w = s.get("Where", "").split()[0] if s.get("Where") else ""
-        if w and not (w.startswith("/") or w.startswith("~")):
-            defects.append((tid, f"`Where:` is not an absolute path or ~ ({w}) — a relative or placeholder path derives the wrong repo"))
+        for w in split_where(s.get("Where", "")):
+            if not (w.startswith("/") or w.startswith("~")):
+                defects.append((tid, f"`Where:` is not an absolute path or ~ ({w}) — a relative or placeholder path derives the wrong repo"))
     return cards, defects
 
+def _check_where_space_derivation():
+    """6.12: a `Where:` path containing a space must derive its repo kind correctly, not get
+    truncated at the first word. Synthetic map row + synthetic Where: -- no real filesystem
+    paths needed, derive_kind only compares normalised strings."""
+    root = os.path.realpath(os.path.expanduser("~/My Drive/lifehack-brain"))
+    rows = [(root, "private")]
+    where = "~/My Drive/lifehack-brain/system/tools/plan_lint.py"
+    kind, mpath = derive_kind(where, rows)
+    return kind == "private" and mpath == root
+
 def self_check(skill_dir):
+    if not _check_where_space_derivation():
+        print("SELF-CHECK FAILED: a Where: path containing a space did not derive its repo kind "
+              "correctly — derive_kind is truncating at the first whitespace again"); sys.exit(2)
     fx = os.path.join(skill_dir, "fixtures", "broken.plan.md")
     if not os.path.exists(fx): cannot_read(f"no known-bad fixture at {fx} — cannot prove the checker fires")
     _, d = lint(fx, load_map())
@@ -226,7 +247,7 @@ def self_check(skill_dir):
         txt = open(skill, encoding="utf-8").read(); nl, nw = txt.count("\n"), len(txt.split())
         if nl > bl or nw > bw:
             print(f"RATCHET: SKILL.md {nl} lines / {nw} words exceeds recorded floor {bl} / {bw}"); sys.exit(2)
-    print(f"SELF-CHECK OK: fixture fails ({len(d)} defects); budget held"); sys.exit(0)
+    print(f"SELF-CHECK OK: spacey Where: derives correctly; fixture fails ({len(d)} defects); budget held"); sys.exit(0)
 
 def main():
     ap = argparse.ArgumentParser(description="plan_lint — a plan is not shown until every task is a complete card")
