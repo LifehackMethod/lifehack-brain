@@ -696,6 +696,13 @@ not a fourth floor.)*
 
 ## §II.1a — Compliance is a STACK, not a rung to pick *(added 2026-09-05, OBSERVED)*
 
+> *Outside caveat, 2026-09-05, RESEARCHED — `records/research/2026-09-05-code-llm-interaction-modalities.md`:*
+> **"unbypassable" is not "harmless."** In a 2026 breach, automated guardrail / kill-switch logic stalled the human
+> responders while an agent compromised production (three sources, one incident). Gates with high false-positive
+> rates (15–40% reported, one practitioner source) produce **shadow bypass** — operators quietly disable them, net
+> enforcement zero. Local receipts this week: a commit guard blocked a correct commit over a flag named in the
+> message; the repo signpost misread the repo under `cd`. The stack still holds; the top of it has a cost side.
+
 The families below and the ladder in §II.3 read as "choose one." The observed truth is that each layer catches
 what the one above misses, and the design is to **stack** them, sized to the stakes. One build, three layers,
 three disjoint catches: the **refuse** layer (a linter at write time) found 8 defects that six reviewer lenses
@@ -1866,6 +1873,20 @@ elsewhere in this SOP (blind the arc: show only the next step, not the whole seq
 from view, this one *paces* it in time — and the per-step companion to §IV.3's rich-loads-once / lean-fires-every-
 turn split: each step gets a fresh, self-contained prompt so the model works *this* step, not the destination.
 
+> **What outside research adds (2026-09-05, RESEARCHED — `records/research/2026-09-05-multi-step-execution-enforcement.md`):**
+> barn-sour has two measured causes we had only observed: **reinforcement post-training raises the shortcut rate**
+> (0.6% → 13.9% on identical tasks, sibling models; in 72% of shortcut episodes the model's own reasoning framed the
+> skip as legitimate) and **the rate rises with task difficulty**. Separately, **context length alone degrades
+> procedure-following** even with perfect retrieval; reciting the evidence before acting mitigates it.
+> ⚠ **NEEDS CONFIRMATION — the blindfold is CONFOUNDED.** Four blind angles found **zero** studies of hiding the
+> goal or later steps from the model; we are alone in using it for compliance. And our per-step injection hides
+> the barn *and* shortens the context at the same time — the field has shown the second helps on its own. Whether
+> this section works because the model cannot see the destination, or because each step is short, is unmeasured.
+> One adjacent paper (TaskGen) argues full concealment hurts coherence; our sub-agents get an abstracted remit,
+> not nothing. **The discriminating test** (three arms, blind graders, measured by artifact): whole arc shown ·
+> one step at a time in one session · one step per fresh sub-agent. Until it runs, this section is OBSERVED, not
+> mechanism.
+
 ## §IV.7 — Anchoring the session, not just the user
 
 **Translate to anchor the session, not just to teach the user.** A leading skill restates the user's loose words
@@ -1961,6 +1982,11 @@ prompt fully removes.
 Everything above holds a *single* session on the rails. Our own position goes further: **stop asking one session
 to survive seven phases at all.** Instead, a durable working file carries all state, and each phase runs in a
 **fresh context** loaded from that file — the file is the continuity, not the thread.
+
+> *2026-09-05, RESEARCHED:* still not crowd-validated — four blind angles found sub-agent isolation adopted everywhere
+> for context-window cost, **never tested for step compliance**. The field's measured mechanisms are the ones this
+> architecture already carries (evidence-gated transitions, externalised state, recite-before-act); the "blind to
+> the arc" half is ours alone and confounded with context length — see §IV.6's NEEDS CONFIRMATION note and test.
 
 The rationale is Law 5's own "turns" bullet, taken at face value: multi-turn sessions degrade ~39% measured, and
 collapsing state into one fresh consolidated call recovers near single-turn quality where mid-thread reminders do
@@ -2537,6 +2563,34 @@ Evidence: `~/lifehack-brain` branch `V2` (19 commits). **This section is the onl
 - **A `Verify:` that compares against a bare literal freezes a value the system computes.** Write it computed-against-computed instead — `test "$(A)" = "$(B)"` rather than `= "17"`. ⚠ **The rule already existed one altitude up and nobody had applied it here**: §V.4a's *"a number without its instrument recorded beside it is not evidence — and a result that a reader cannot re-derive from the file is not a result."* Grepped 2026-09-05: zero occurrences connecting that rule to a plan card's `Verify:` slot. Receipt: 3 of 27 retired cards (2.4, 4.4, 6.8) fail their own `Verify:` today, all three because a later card moved a count they had frozen; ~57 count-comparisons exist across the retired set, so those three are the visible edge. The grammar ALREADY accepts the invariant form — measured, not assumed: a card whose Verify compares two computed values lints rc 0 and parses and runs under `plan_retire`. **CANDIDATE, NOT YET VALIDATED — the rewrite has not been built or tested.** Refuted if invariant-form Verifies prove vacuous, i.e. they pass while the artefact is genuinely broken; that is the probe that must run before this is promoted.
 
 - **A checker whose own acceptance criterion invokes the checker becomes self-referential the moment its card is retired, and fails SILENT.** Receipt: card 6.10's `Verify:` invoked `plan_retire --regressions`; the scan re-runs every retired card's Verify, so on retirement it began invoking itself, hit the 120s subprocess timeout uncaught, and emitted no findings. Measured: the scan reported zero `REGRESSION` lines while card 2.4's Verify independently returned rc 1; an hour earlier the same scan reported four, with nothing repaired in between. ⚠ The companion claim that it *exited 0* was **asserted and never measured** — struck, see [P3]/A14. Fix built and verified (`65238c6`): self-exclusion stated in the output, `INCOMPLETE` + exit 3 on abnormal termination, and an examined-count beside the found-count. **OBSERVED ×1, one build — per [P2] a different build promotes; this is not that.** ⚠ **The property did not exist until acceptance**: this code passed a real destruction probe AND a selectivity probe and was still wrong. No rule is offered for that; it is recorded as an open question, not dressed up as a finding.
+
+### From the two blind research runs, 2026-09-05 — outside evidence, tiered; nothing here is doctrine
+
+Records: `records/research/2026-09-05-code-llm-interaction-modalities.md` · `…-multi-step-execution-enforcement.md`.
+Canon holds the principle-level twins in §15. **Every rate below is single-source and unreplicated** — directions
+converge across independent angles; magnitudes do not yet exist as facts.
+
+- **[R1] Three-tier reliability spectrum.** Enforced by code · schema-constrained output (near-zero *syntactic*
+  failure — **shape, not truth**; validate-then-retry is the accepted complement) · prompts. RESEARCHED, four angles.
+  *Refuted by:* a measured case of prompt-only governance matching code gates (none found).
+- **[R2] Constrained decoding degrades reasoning under the grammar.** Reason free, then constrain only the final
+  tokens. RESEARCHED (ACL 2025, CRANE). *Untried here — our seam checks membership after generation.* CANDIDATE
+  for one headless seam. **Fixes the handback, not the skip** — a fabricated answer can still be well-formed.
+- **[R3] Compiled AI.** Model writes a deterministic artifact once; frozen, tested; model leaves the runtime path.
+  RESEARCHED, one origin. *This harness already is this; never named or used on purpose.* CANDIDATE: when a
+  judgment recurs identically three times, compile it — with the code-spiral rule as the guard on the other side.
+- **[R4] Environment hardening beats instruction.** Remove the shortcut from the ground: exploit rate −87.7%
+  relative, no loss of task success (one benchmark family). RESEARCHED. *This is LAW 1's fence and canon §4.6's
+  three tests, confirmed from outside.*
+- **[R5] Runtime gating on evidence is the only mechanism with measured near-complete reliability** (AgentSpec:
+  >90% unsafe-execution prevention). RESEARCHED. *This is §V.4b and phase_gate.*
+- **[R6] Self-certification is gameable** — "state an intention, privately deviate" (one thesis, relayed).
+  RESEARCHED, thin. *This is LAW 3.*
+- **[R7] NEEDS CONFIRMATION — the blindfold.** See §IV.6. OBSERVED locally, confounded, unstudied outside.
+- **[R8] NEEDS CONFIRMATION — the headline compliance figure** ("18 models, 30–50% SOP compliance") was reported by
+  two angles and could not be located by the disconfirming pass. UNVERIFIED; do not cite the number.
+- **[R9] Accuracy is rising while reliability is flat; reliability is multi-dimensional.** RESEARCHED (Princeton
+  HAL; CSET), no rebuttal. *Outside support for THE FRAME's one law and for stacking (§II.1a).*
 
 ### What this run says about THIS file (for the next revision, not applied here)
 - **[A13]** is written broadly enough to forbid the angle-panel shape that worked; scope it to persona councils and cross-cite [B23].
