@@ -66,7 +66,15 @@ def _verify_cwd(block):
     m = re.search(r'`?Where:\s*([^`\n]+)', block)
     if not m:
         return REPO_ROOT
-    first = m.group(1).split("·")[0].strip().split()[0].strip("`")
+    # 2026-09-05, card 6.10: `.split()[0]` here truncated the value at its FIRST
+    # SPACE -- the identical whitespace-truncation bug 6.7 fixed in get_evidence()
+    # four lines away. Every notes path on this machine sits under Google Drive's
+    # `My Drive`, so any card whose Where: names such a path silently ran its
+    # Verify from REPO_ROOT instead -- no error, just the wrong directory. The
+    # regex above already captures the WHOLE value up to the next backtick or
+    # newline; only strip the ` · ...` suffix and surrounding whitespace, never
+    # split on internal spaces.
+    first = m.group(1).split("·")[0].strip().strip("`")
     p = os.path.expanduser(first)
     if not os.path.isabs(p):
         return REPO_ROOT
@@ -344,6 +352,77 @@ def _scan_one(orig_text, task_id):
     return f"{task_id}: WOULD-RETIRE"
 
 
+DONE_ENTRY_RE = re.compile(r'^## (' + ID + r') — retired ', re.M)
+
+
+def _done_entries(done_text):
+    """Yield (task_id, card_lines) for every retired entry in `.done.md` -- the
+    embedded card block exactly as it stood the moment it was retired (its own
+    `Where:`/`Verify:` lines included), so re-running it re-checks the SAME claim
+    that was made at retirement, never a hypothetical new one. Stops each block
+    at the `verified-by:` line the retirer itself writes -- everything after that
+    is the receipt, not the card.
+
+    2026-09-05, card 6.10: this defect has fired three times in one day (6.4 vs
+    4.4, 6.3 vs 6.4, 6.8 vs 6.4) because a card's own Verify passing at ITS OWN
+    retirement was never treated as a claim that could go stale. `.done.md` is
+    the ledger of every such claim; this is what re-checks them.
+    """
+    lines = done_text.split("\n")
+    heads = [(i, m.group(1)) for i, m in
+             ((i, DONE_ENTRY_RE.match(l)) for i, l in enumerate(lines)) if m]
+    for idx, (i, tid) in enumerate(heads):
+        end = heads[idx + 1][0] if idx + 1 < len(heads) else len(lines)
+        section = lines[i + 1:end]
+        header_re = re.compile(r'^(\s*)- \[ \] \*\*' + re.escape(tid) + r'\b')
+        start = next((j for j, l in enumerate(section) if header_re.match(l)), None)
+        if start is None:
+            continue
+        stop = next((j for j in range(start + 1, len(section))
+                     if section[j].strip().startswith('verified-by:')), len(section))
+        yield tid, section[start:stop]
+
+
+def _regression_scan(plan_path):
+    """Re-run every retired card's own Verify, exactly as check_verify() would for
+    a live card, and report the ones that passed at retirement (they are IN
+    `.done.md` at all only because they did) and fail now. Never writes anything,
+    never touches the live plan or `.done.md`. A card whose receipt can no longer
+    even be parsed or run (a stale scratch fixture, a since-deleted artifact) is
+    reported as UNCHECKED, not silently folded into REGRESSION -- an unrunnable
+    claim and a claim that ran and failed are different findings (SOP honesty
+    rule: report what each verdict actually means).
+    """
+    done_path = re.sub(r'\.md$', '.done.md', plan_path)
+    if not os.path.exists(done_path):
+        return []
+    with open(done_path, encoding="utf-8") as fh:
+        done_text = fh.read()
+    findings = []
+    for tid, card in _done_entries(done_text):
+        verify_line = _verify_line_text(card)
+        if verify_line is None:
+            findings.append((tid, "UNCHECKED", "no Verify: line in receipt")); continue
+        try:
+            cmds = parse_verify(verify_line)
+        except VerifyParseError as e:
+            findings.append((tid, "UNCHECKED", f"Verify unparseable: {e}")); continue
+        unreadable = next((cmd for cmd, exp in cmds if exp is None), None)
+        if unreadable is not None:
+            findings.append((tid, "UNCHECKED", f"no parseable expectation: {unreadable}")); continue
+        cwd = _verify_cwd("\n".join(card))
+        broke = None
+        for cmd, exp in cmds:
+            proc = run_cmd(cmd, cwd)
+            if not _eval_expectation(exp, proc.returncode, proc.stdout):
+                broke = (cmd, exp, proc.returncode, proc.stdout); break
+        if broke is not None:
+            cmd, exp, rc, out = broke
+            findings.append((tid, "REGRESSION",
+                              f"cmd: {cmd} | expected: {exp} | got rc={rc} stdout={out[:200]!r}"))
+    return findings
+
+
 def _open_ids(lines):
     ids = []
     for l in lines:
@@ -385,6 +464,9 @@ def main():
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--all", action="store_true",
                      help="report every open card's state in one pass; report-only, requires --dry-run")
+    ap.add_argument("--regressions", action="store_true",
+                     help="re-run every .done.md card's own Verify; report any that "
+                          "passed at retirement and fails now. report-only, requires --dry-run")
     a = ap.parse_args()
 
     if not os.path.exists(a.plan):
@@ -396,11 +478,25 @@ def main():
         cannot_read(f"plan unreadable ({e.__class__.__name__}: {e}): {a.plan}")
     lines = orig_text.split("\n")
 
+    if a.regressions:
+        if not a.dry_run:
+            cannot_read("--regressions is report-only; pass --dry-run")
+        findings = _regression_scan(a.plan)
+        for tid, kind, detail in findings:
+            print(f"{kind} {tid}: {detail}")
+        sys.exit(1 if any(kind == "REGRESSION" for _, kind, _ in findings) else 0)
+
     if a.all:
         if not a.dry_run:
             cannot_read("--all is report-only; pass --dry-run")
         for tid in _open_ids(lines):
             print(_scan_one(orig_text, tid))
+        # 2026-09-05, card 6.10: fold the regression gate into the every-run guard
+        # so a future plan gets it free -- --all already reports every open card's
+        # state in one pass; a retired card's claim going stale is the same kind of
+        # thing, checked the same run.
+        for tid, kind, detail in _regression_scan(a.plan):
+            print(f"{kind} {tid}: {detail}")
         sys.exit(0)
 
     if a.task_id is None:
