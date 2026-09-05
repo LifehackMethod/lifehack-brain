@@ -3,8 +3,9 @@ model: sonnet
 Angle: pass/fail on every card touching git or GitHub.
 
 Check each card for:
-- Repo: present and consistent with Where: (public · V2 for ~/lifehack-brain;
-  private · main for ~/.claude/skills/ClaudeOps; none for anything else)
+- Repo: present and consistent with Where: — public / private / none.
+  ⛔ No branch name lives here. The repo map, the branch rules and any live
+  exception to them are in ~/.claude/CLAUDE.md — read it there, every run.
 - Commit: subject starts with the task id
 - no push, merge, or close anywhere in the card
 - no issue/PR numbers enumerated in a card — a Query: line points at gh instead,

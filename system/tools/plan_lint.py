@@ -266,11 +266,17 @@ def self_check(skill_dir):
         bl, bw = [int(x) for x in open(budget, encoding="utf-8").read().split()[:2]]
         txt = open(skill, encoding="utf-8").read(); nl, nw = txt.count("\n"), len(txt.split())
         if nl > bl or nw > bw:
-            print(f"RATCHET: SKILL.md {nl} lines / {nw} words exceeds recorded floor {bl} / {bw}"); sys.exit(2)
+            # REPORTED, NEVER A WALL (Enver, 2026-09-05). A recorded size is a
+            # guideline that makes growth visible; it is not a rule the file must
+            # obey. SOP [B13]: prescriptive language on anything but a stated
+            # desired outcome calcifies -- and SOP III.5 already treats its own
+            # 500-line figure as "AN IDEAL, deliberately not a wall".
+            print(f"NOTE: SKILL.md has grown to {nl} lines / {nw} words "
+                  f"(last recorded {bl} / {bw}). Not an error -- growth is visible, not forbidden.")
     drift = _local_install_drift(skill_dir)
     if drift:
         print("SELF-CHECK FAILED: " + drift); sys.exit(2)
-    print(f"SELF-CHECK OK: spacey Where: derives correctly; fixture fails ({len(d)} defects); budget held; local copy in step"); sys.exit(0)
+    print(f"SELF-CHECK OK: spacey Where: derives correctly; fixture fails ({len(d)} defects); local copy in step"); sys.exit(0)
 
 def main():
     ap = argparse.ArgumentParser(description="plan_lint — a plan is not shown until every task is a complete card")

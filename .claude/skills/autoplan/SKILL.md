@@ -316,7 +316,7 @@ by the retire step, never in the live plan.
    **The cycle is Execute → Verify & Test → Commit → Retire.** No further slots (rules tax each other).
    **A plan never holds what something else can tell you.** Brain files: nothing else can, so the
    card holds list and state. Git work: git knows what shipped, so `Done:` derives it. GitHub issues:
-   GitHub knows the list and the state, so the card holds the decision and the `Query:`, nothing more.
+   GitHub knows the list and the state, so the card holds the decision and the `Query:`, nothing more. ⛔ Binds only when the work is tracked in a repo: system work outside one has no tracker, so it carries `Done:` and no `Query:`.
    **Every task carries an owner line** (Enver, 2026-09-04) — a task is build work only when it has
    been diagnosed and its fix is known, **atomised so a cold build window executes it without
    re-deriving anything**; anything still needing diagnosis, a judgment call, or the human in the loop
