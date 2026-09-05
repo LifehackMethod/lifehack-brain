@@ -26,6 +26,33 @@ reader_note: >
   inline (an [M] claim means "this mechanism demonstrably exists," never "this is the rate").
 ---
 
+> # THE FRAME — read before any line below. Identical text sits atop `records/canon/2026-09-02-canonical-principles.md`.
+> *(Enver, 2026-09-05. This block is the one place both documents agree by construction.)*
+>
+> **This is a stochastic environment, not a rules-based one.** Compliance is nudged, layered, and rarely
+> guaranteed. **That sentence is the one law in this document.** Everything else is a principle, and its tier
+> says how far to trust it.
+>
+> **Every line carries an evidence tier:**
+> **REPRODUCED** — held across multiple blind sessions over time, receipts named ·
+> **RESEARCHED** — outside evidence that has not yet met this system ·
+> **OBSERVED** — seen here, receipt named, not yet reproduced ·
+> **CANDIDATE** — proposed, awaiting a test ·
+> **REFINED** — an earlier line changed by evidence; the old text struck, never deleted, with what changed and why.
+> *Mapping onto the tags already in this file:* `[M]` with several runs = REPRODUCED; `[M]` with one = OBSERVED;
+> `[R]` `[R2]` `[C]` = RESEARCHED; ⏸ HELD = CANDIDATE; a struck or superseded section = REFINED.
+>
+> **A tier without a dated receipt decays one step.** **Structural findings** — what a model cannot do by
+> construction — earn OBSERVED on one clean case. **Behavioural findings** — how often — need reproduction.
+>
+> **A rule the MODEL must follow enters this document only at REPRODUCED.** Harness FACTS (§II.4a cluster 1 —
+> stdin not `$1`, exit 0 is allow) are rules because they are reproduced. **A rule CODE enforces needs no tier.**
+> Rules live in code; prose carries principles with their reason. **"LAW" below is kept as a stable label for
+> cross-references; read it as PRINCIPLE, tiered per line — none but the sentence above meets the bar for law.**
+>
+> **Compliance is a stack, not a choice** (§II.1a). Each layer catches what the one above misses; a hook is the
+> scarce top, never a substitute for the layers beneath it.
+
 # Skill-Building Playbook v2
 
 > ## NOTE — WHAT THIS PAGE CITES THAT IS NOT IN THIS REPOSITORY
@@ -247,7 +274,9 @@ tag legend; `⏗ OUR OWN BET` (after §IV.10) is flagged separately as not crowd
 
 ---
 
-# PART I — THE LAWS OF PHYSICS
+# PART I — WHAT HOLDS IN A STOCHASTIC ENVIRONMENT *(formerly "the laws of physics" — retitled 2026-09-05, REFINED; labels kept for cross-reference)*
+
+> Tiers, per the frame: **1** REPRODUCED (code-vs-judgment, converged across [C][R][M]) · **1b** OBSERVED (one live failure + four measurements) · **2** OBSERVED (links 1–2 measured, 3 untested) · **3** REPRODUCED (five sources + local, and three new local receipts 2026-09-04/05) · **4.1** REPRODUCED (structural) · **4.2** RESEARCHED · **4.3** OBSERVED (n small) · **5** RESEARCHED with numbers.
 
 > **Read this part first.** These five are not house style or preference. They are how LLMs behave — measured in
 > our own lab [M], measured by outside researchers [R][R2], and confirmed by practitioners and primary
@@ -533,7 +562,9 @@ links 2–4 = "behavior." Fine as shorthand; use the four links when you actuall
 
 ## LAW 3 — Never let the actor grade its own completion
 
-The thing that did the work must never be the thing that declares the work done.
+The thing that did the work must never be the thing that declares the work done — **nor may the checker grade
+from the actor's REPORT of the work** (added 2026-09-05, OBSERVED ×3: a helper's wrong diagnosis relayed into a
+plan card; a helper's PASS on a shell-misread placeholder; the author marking a card done against a printed `0`).
 
 `[C]` **"Hallucinated success"** — the agent confidently reports the file written, the email sent, the step
 complete, when it isn't — is the **most-regretted failure in production LLM systems** (5 independent sources).
@@ -657,6 +688,16 @@ instrument for a state-floor property**, and it failed confidently.
 at the final output — by the final artifact a loss is already invisible. *(Data is what FLOWS THROUGH the floors,
 not a fourth floor.)*
 
+## §II.1a — Compliance is a STACK, not a rung to pick *(added 2026-09-05, OBSERVED)*
+
+The families below and the ladder in §II.3 read as "choose one." The observed truth is that each layer catches
+what the one above misses, and the design is to **stack** them, sized to the stakes. One build, three layers,
+three disjoint catches: the **refuse** layer (a linter at write time) found 8 defects that six reviewer lenses
+never named · the **judge** layer (a cold window) found 3 false passes the **verify** layer (a script re-running
+checks) had certified · the **wall** layer (guards) refused a leaked personal path and an unencoded `open()` that
+every layer above had passed. **A hook is the scarce top** — expensive, machine-wide, unbypassable, and never the
+first thing reached for. *(Receipts: `V2` commits 2026-09-04; `<notes>/state/autoplan-rebuild/`.)*
+
 ## §II.1 — The four families (in order of preference)
 
 **1. REPLACE — take the job away from the model.** Anything mechanizable (counting, diffing, date math,
@@ -706,7 +747,9 @@ behavior, don't under-gate a high-stakes structural invariant.
 
 1. **Self-reported marker** ("GATE CLEARED") — *fakeable.* Orientation only, **never a guarantee** (Law 4.2).
 2. **Required artifact** — the deliverable must literally contain the section/ledger/heading in the required
-   position. Missing is honest; silent is a FAIL. **The workhorse — usually enough.**
+   position. Missing is honest; silent is a FAIL. **The workhorse for STRUCTURE — never for a completion claim.**
+   *(Softened 2026-09-05, OBSERVED: a typed `verified-by:` and a typed `Review:` line are both artifacts and both
+   self-attestation — rung 1 wearing rung 2's clothes. §V.4b.)*
 3. **Code-verified evidence** — a script checks the real world. The only un-fakeable option. Reserve for
    genuinely critical, order-of-operations gates.
 
@@ -775,7 +818,8 @@ one actually needs.
   refused phase. CALLERS: 1 — `system/tools/new-skill.sh:228`, unconditional for any multiphase skill scaffold.
   INTERFACE: `phase_gate.py --contract C.json --artifact A.md --phase N [--stamp] [--json] [--selftest]`.
   Don't use for: checking whether one section precedes another inside a phase — that's order_lint's job;
-  phase_gate answers "is this phase's contract satisfied," never "is X before Y."
+  phase_gate answers "is this phase's contract satisfied," never "is X before Y." ⚠ Its own docstring bounds it:
+  `requires` is text-in/text-out and cannot tell real work from words typed to match — presence only.
 - **`system/parts/order_lint.py`** — positional check with four verdicts (ORDERED / OUT_OF_ORDER /
   BEFORE_MISSING / NOT_APPLICABLE), deliberately separating "B came first" from "A never appeared." CALLERS: 1
   unconditional — `system/tools/new-skill.sh:154`, every scaffolded skill; a deployed copy sits in
@@ -1103,7 +1147,10 @@ what they are: patterns worth building, not things to reach for today.
   personas don't reproduce independent reviewers" (cites Park 2024) — error amplification. **§IV.10 already
   states this** ("same-base-model agents share a homogeneity floor no prompt fully removes," cross-ref).
   `2026-06-04` · `records/decision/2026-06-04-design-lifehack-skill.md` → one skill, 7 lenses as internal
-  sections.
+  sections. **REFINED 2026-09-05:** this binds PERSONA councils. Blind ANGLE panels — one named angle each,
+  no cross-talk, one aggregation spine (§IV.10's conditions) — scored 11/11 with 0 false positives against a
+  same-file control (OBSERVED, `match-2026-09-04.txt`), and [B23] below already measured that collapsing lenses
+  loses findings. Do not read this entry as forbidding the panel shape.
 - **[A35]** Tried: a mechanical section-counter (≥5 bold headers = "reads like a report") as the sole
   wall-of-text detector. Failed: couldn't distinguish a mild wall from a genuinely good reply. `2026-07-12` ·
   `records/2026-07-13-translator-voice-debug-history.md` → folded into the 3-layer approach.
@@ -1540,7 +1587,7 @@ what keeps a skill loading lean turn after turn:
 | Level | Loads | Budget |
 |---|---|---|
 | **Metadata** (`description:` + frontmatter) | always, every session | **~100 words** |
-| **SKILL.md body** | on trigger, then recurs every turn | **<500 lines** ideal — a table of contents, not a manual. **An IDEAL, deliberately not a wall** (2026-07-28): `enforce_skill_frontmatter.sh` blocks only at a **pathological 1500 lines** (runaway generation); leanness against the 500 target is REPORTED by the conformance sweep, never silently walls an edit. hook-sop.md §1 — a preference forced into a hook becomes wallpaper. What the guard blocks is CORRECTNESS (missing `description:`, unparseable YAML), not authorship style. |
+| **SKILL.md body** | on trigger, then recurs every turn | **<500 lines** ideal *(the skill-body ceiling; canon §5.1's ~1,000 WORDS governs always-loaded files — two figures, two units, reconciled 2026-09-05: a skill body may exceed the word figure because it carries steps; an always-loaded file may not)* — a table of contents, not a manual. **An IDEAL, deliberately not a wall** (2026-07-28): `enforce_skill_frontmatter.sh` blocks only at a **pathological 1500 lines** (runaway generation); leanness against the 500 target is REPORTED by the conformance sweep, never silently walls an edit. hook-sop.md §1 — a preference forced into a hook becomes wallpaper. What the guard blocks is CORRECTNESS (missing `description:`, unparseable YAML), not authorship style. |
 | **Bundled files** (`references/`, `scripts/`, `assets/`) | only when opened | zero cost until read |
 
 - **Bundle scripts to EXECUTE, not read.** Write "run `scripts/x.py`," never "see `scripts/x.py`" — the folder
@@ -1646,6 +1693,8 @@ LAW 4.2 wearing a gate's clothes, and a fake gate is worse than no gate, because
 
 - **Real life is the test bed** — stand it up rough, run it, fix one break at a time (write → test → lock →
   next). Do not hand-prototype a long flow before writing it; that dry-run is itself a long session that rots.
+- **FAIL ONCE → sweep every sibling before the second fix** *(added 2026-09-05, OBSERVED: four rounds of
+  one-card-at-a-time fixes with six more waiting; the mechanical form is a checker's `--all` mode; canon §5.13).*
 - **FAIL TWICE → the architecture is the bug, not the wording.** If a rule breaks, reword it once. If it breaks
   again, **stop rewording** — the second failure is evidence the rule is at the wrong rung (§II.3) or the flow
   is wrong. Endlessly re-phrasing a rule the model keeps losing is the most common way to waste a week.
@@ -2236,7 +2285,10 @@ one voice); staged skills sharing a state file on the **inside**; the seam hidde
 - **The shared state file IS the state machine** — read the file, never your recollection; each stage writes
   only its own fields; every field is asserted true on entry to the next stage.
 - **The handoff carries FULL context, not a summary** — the receiving stage must find the whole prior-stage
-  state in the shared file. A lossy summary at the handoff is the documented failure mode.
+  state in the shared file. A lossy summary at the handoff is the documented failure mode. *(Exception, OBSERVED
+  2026-09-04: a DIAGNOSED atomic build card — nav/build SOP's diagnosis gate — deliberately carries LESS; the spec
+  is the context, and the card held as a sub-agent brief with zero follow-ups. Full context is for STAGE
+  handoffs; a card is a different unit.)*
 - **Progress reads from a receipts file, never recall.** Scratch ≠ saved. Ship a cold-restore runbook: read true
   state → skip terminal rows → requeue in-flight rows, idempotently.
 - **Two-tier work.** A cheap pass sets a manifest; only the flagged survivors get the expensive pass.
@@ -2421,12 +2473,18 @@ Evidence: `~/lifehack-brain` branch `V2` (19 commits). **This section is the onl
 ⛔ `plans/standalone-autoplan-rebuild.plan.md` — the plan and its `.done.md` live in the operator's notes folder, never in a repository; cited as where the receipts are, not as something this repo carries.
 **Status: Phase 6 unbuilt, live run not yet made. Per canon §5.2, none of these is distilled from a finished run.**
 
+*(Tiers below in the frame's vocabulary: Tier 1–2 = OBSERVED with receipt · Tier 3 = CANDIDATE · Tier 4 = CANDIDATE, weak.)*
+
 **Tier 1 — mechanisms; a script can enforce each; the author had read the relevant rule and broke it anyway.**
 - **A field a script consumes is written in the script's grammar, and the writer is refused, not warned.** 7 of 8 `Verify:` lines read correctly to a human and failed a machine re-run. AUTHORITATIVE · refuted if a constrained format still fails to re-run at a real rate.
 - **A checker's "could not determine" never resolves to pass.** A fallback to "shell exited 0" on a `; echo $?` command retired a card whose check printed 2 against a stated 0. AUTHORITATIVE · Law 1b's no-outcome member applied to the verifier.
 - **A parser that silently skips what it does not recognise is a fail-open.** An id regex dropped 5 of 15 cards and reported clean; a command allowlist dropped a clause and the card passed on the rest. Count examined vs present. AUTHORITATIVE, 2 instances · canon §5.6 for tokenizers.
 - **Any session-level list beside a plan file is a second tracker.** The harness task queue diverged from the plan's cards inside the build fixing two-tracker failures. AUTHORITATIVE, 1 instance.
 - **A verify runs as written, by a stranger, with nothing to substitute.** `<copy>` reached the shell as a redirect and a verify PASSED on it. AUTHORITATIVE.
+
+- **A failure to run must not be able to equal a legal answer.** A check expected exit 2 from a linter; the linter was not found at the path, that failure also exits 2, and the check PASSED by coincidence. OBSERVED · `retired-reverify.md` card 2.3 · canon §5.6 sharpened.
+- **A retired check un-passes itself.** Three retired cards failed their own checks after later cards moved the files; nothing re-runs a retired check. OBSERVED · canon §1.3 sharpened; card 6.10 builds the regression gate.
+- **An exit code read after a pipe is the pipe's.** `cmd | head; echo $?` reports `head`'s. Two operators hit it in one build. OBSERVED ×2.
 
 **Tier 2 — principles; true and receipted; process, not code.**
 - Retiring a finished task preserves the amendment, not only the final form; second-resolution backup names collided (8 → 2 files). AUTHORITATIVE.
