@@ -35,31 +35,12 @@ VERDICTS
 import argparse, os, re, shutil, subprocess, sys
 from datetime import datetime, timezone
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from verify_parse import ID, parse_verify, VerifyParseError, BARE_CARD_RE  # noqa: E402
+
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 CANNOT_READ = 4
-ID = r'[A-Za-z]{0,2}\d{1,3}\.\d{1,2}[a-z]?'
-KNOWN_CMDS = {"python3", "grep", "test", "wc", "ls", "awk", "git", "gh",
-              "bash", "sh", "cat", "diff", "head", "tail"}
-SCRIPT_RE = re.compile(r'^[\w.-]+\.py$')          # a bare `foo.py` naming a repo tool
-
-def _is_known_cmd(text):
-    """True for a shell builtin/tool in KNOWN_CMDS, or a bare `<script>.py NAME arg...`
-    invocation — cards name their own tools by filename only (e.g. `plan_lint.py args`),
-    and that was being silently dropped as unrecognised (2026-09-04, task 2.3:
-    CANNOT-READ 'no runnable verify' when the tool itself was right there, executable,
-    on disk). A bare script name with NO args (task 2.1: `plan_lint.py` alone, mid
-    prose) is a REFERENCE to the tool, not a complete invocation — recognising it
-    anyway pulled in an unrelated `exit 2` from three clauses later in the sentence
-    (2026-09-04, discovered fixing 2.3). Requiring an argument is what tells the two
-    apart; a card that genuinely means to run a script with no arguments does not
-    exist here."""
-    toks = text.split()
-    if not toks:
-        return False
-    if toks[0] in KNOWN_CMDS:
-        return True
-    return bool(SCRIPT_RE.match(toks[0])) and len(toks) > 1
-CARD_ANY_RE = re.compile(r'^- \[ \] \*\*', re.M)
+CARD_ANY_RE = re.compile(BARE_CARD_RE.pattern, re.M)
 DONE_HEAD_RE = re.compile(r'^## ', re.M)
 
 
@@ -106,49 +87,6 @@ def find_block(lines, task_id):
             return i, end
     cannot_read(f"task {task_id} not found in plan")
 
-def classify(text):
-    """Given a chunk of expectation text, return (kind, value) or None."""
-    t = text.strip()
-    m = re.search(r'\bexit\s+(-?\d+)', t, re.I)
-    if m: return ('exit', int(m.group(1)))
-    m = re.search(r'≥\s*(-?\d+)', t)          # >=
-    if m: return ('ge', int(m.group(1)))
-    m = re.search(r'≤\s*(-?\d+)', t)          # <=
-    if m: return ('le', int(m.group(1)))
-    m = re.search(r'"([^"]+)"', t)
-    if m: return ('substr', m.group(1))
-    m = re.search(r"'([^']+)'", t)
-    if m: return ('substr', m.group(1))
-    bare = t.strip('`.,; \t')
-    if re.fullmatch(r'-?\d+', bare):
-        return ('bare', int(bare))
-    return None
-
-def parse_verify(line):
-    """Return [(cmd_text, expectation-or-None), ...] found on one Verify line."""
-    spans = [(m.start(), m.end(), m.group(1)) for m in re.finditer(r'`([^`]+)`', line)]
-    cmd_spans = [s for s in spans if _is_known_cmd(s[2])]
-    out = []
-    for k, (start, end, cmd) in enumerate(cmd_spans):
-        gap_end = cmd_spans[k + 1][0] if k + 1 < len(cmd_spans) else len(line)
-        gap = line[end:gap_end]
-        if '→' not in gap:               # no arrow -> no stated outcome
-            out.append((cmd, None)); continue
-        after_arrow = gap.split('→', 1)[1]
-        m = re.search(r'\bafter\b\s*`?([^`,.\s]+)`?', after_arrow, re.I)
-        exp = classify(m.group(1)) if m else None
-        if exp is None:
-            # A backtick-quoted expectation sitting right after the arrow is read
-            # verbatim and parsing STOPS at its closing backtick -- a parenthetical
-            # aside or a trailing sentence after that point is never consulted.
-            # Scanning the whole rest of the line (the old fallback) is what
-            # silently erased 2.3's stated `0` behind "(a trailing aside)"
-            # (2026-09-04); this does not guess, it just stops reading sooner.
-            m2 = re.match(r'\s*`([^`]+)`', after_arrow)
-            exp = classify(m2.group(1)) if m2 else classify(after_arrow)
-        out.append((cmd, exp))
-    return out
-
 def _resolve_script(cmd):
     """A card names its own tool bare (`plan_lint.py args`), meaning 'run the tool
     that lives in this card's own directory' — but shell=True/cwd does not put cwd
@@ -179,13 +117,20 @@ def check_verify(block_lines, task_id):
     was wrongly retired: its unparsed `→ `0`` fell through to `ok = (rc == 0)`,
     and the card's own preferred `; echo $?` shape makes the shell's own exit
     code 0 unconditionally — an unreachable check is not a clean result.
+
+    2026-09-05: parsing itself now comes from the shared verify_parse module and
+    can raise VerifyParseError — a dropped ` · ` clause, an unsubstituted
+    `<placeholder>`, or no runnable command at all. Any of those is CANNOT-READ,
+    same as an unparseable expectation; never a partial run on the clauses that
+    happened to parse (card 6.1).
     """
     verify_line = next((l for l in block_lines if re.match(r'^\s*`?Verify:', l)), None)
     if verify_line is None:
         cannot_read(f"no Verify: line on {task_id}")
-    cmds = parse_verify(verify_line)
-    if not cmds:
-        cannot_read(f"no runnable verify on {task_id}")
+    try:
+        cmds = parse_verify(verify_line)
+    except VerifyParseError as e:
+        cannot_read(f"Verify unparseable for {task_id}: {e}")
     for cmd, exp in cmds:
         if exp is None:
             cannot_read(f"no parseable expectation for {task_id}: {cmd}")
@@ -198,9 +143,17 @@ def check_verify(block_lines, task_id):
         if exp[0] == 'exit':
             ok = (rc == exp[1])
         elif exp[0] == 'bare':
-            if out.strip() == str(exp[1]):
+            # Compare the LAST non-empty line of stdout, not the whole of it: a
+            # `cmd; echo $?` on a command that prints its own output (pytest -q,
+            # grep with matches, etc) is multi-line, and `; echo $?` only ever
+            # adds ONE more line at the end (2026-09-05, card 6.1). Comparing the
+            # full strip() failed every chatty command even when its own printed
+            # exit code was exactly right.
+            nonempty = [ln for ln in out.splitlines() if ln.strip() != '']
+            last = nonempty[-1].strip() if nonempty else ''
+            if last == str(exp[1]):
                 ok = True
-            elif out.strip() == '' and 0 <= exp[1] <= 255:
+            elif last == '' and 0 <= exp[1] <= 255:
                 # no stdout at all (e.g. `test -f x` with no `; echo $?`) -> the
                 # stated number is the command's exit code, not printed text.
                 ok = (rc == exp[1])

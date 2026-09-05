@@ -11,7 +11,12 @@ WHAT — for every `- [ ] **<id>` card:
   Repo:    RE-DERIVED from Where: + the map in ~/.claude/CLAUDE.md, must match the card's kind
            (public | private | none). Branch, if named, must match the live checkout at that path.
   Do:      present. The CARD contains NO `#NNN` issue/PR number outside Query:/Proof: (the two-tracker failure)
-  Verify:  typed SHAPE|RUN|JUDGE; SHAPE names a `before`
+  Verify:  typed SHAPE|RUN|JUDGE; SHAPE names a `before`; the Verify: line itself must parse,
+           via the shared verify_parse.parse_verify(), into (command, expectation) pairs —
+           a dropped clause, an unsubstituted `<placeholder>`, or a prose-only Verify is a defect
+  card id: every `- [ ] **` header's id must match the shared ID pattern, or it is a defect
+           (2026-09-05: ids shaped like `3b.1` were silently invisible to the old pattern —
+           a card can vanish from the plan's own read of itself with nothing said)
   Done:    present
   Commit:  present unless Repo is none
   Query:   if present, a `Proof:` line follows (a zero result is UNKNOWN until proven well-formed)
@@ -26,8 +31,10 @@ VERDICTS  0 clean · 2 defects (one line each, task id first) · 4 CANNOT-READ (
 """
 import os, re, subprocess, sys, argparse
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from verify_parse import ID, BARE_CARD_RE, parse_verify, VerifyParseError  # noqa: E402
+
 CANNOT_READ = 4
-ID = r'[A-Za-z]{0,2}\d{1,3}\.\d{1,2}[a-z]?'
 CARD_RE = re.compile(r'^- \[ \] \*\*(' + ID + r')\b')
 SLOT_RE = re.compile(r'^\s*`?(Owner|Where|Repo|Do|Verify|Done|Commit|Query|Proof):\s*(.*?)`?\s*$')
 ISSUE_RE = re.compile(r'(?<![\w/`])#\d{1,5}\b(?!`)')
@@ -65,12 +72,19 @@ def live_branch(path):
         return None
 
 def parse_cards(lines):
-    cards, cur = [], None
+    """Return (cards, unrecognised) where `unrecognised` is [(lineno, text), ...] for
+    every `- [ ] **` header whose id the ID pattern could not match — surface (b),
+    2026-09-05: those lines used to just fail CARD_RE and vanish from `cards` with
+    nothing said, so a plan could read PLAN-CLEAN while carrying dropped cards."""
+    cards, cur, unrecognised = [], None, []
     for i, l in enumerate(lines, 1):
         m = CARD_RE.match(l)
         if m:
             cur = {"id": m.group(1), "line": i, "text": [l], "slots": {}}
             cards.append(cur); continue
+        if BARE_CARD_RE.match(l):
+            unrecognised.append((i, l.strip()))
+            cur = None; continue
         if cur is None: continue
         if l.startswith("- [ ]") or l.startswith("## ") or l.startswith("---"):
             cur = None; continue
@@ -81,7 +95,7 @@ def parse_cards(lines):
             if sm: c["slots"].setdefault(sm.group(1), sm.group(2))
             om = re.search(r'`Owner:\s*([^`]+)`', l)      # Owner often sits on the header line
             if om: c["slots"].setdefault("Owner", om.group(1))
-    return cards
+    return cards, unrecognised
 
 def lint(path, rows):
     if not os.path.exists(path): cannot_read(f"plan does not exist: {path}")
@@ -90,8 +104,12 @@ def lint(path, rows):
     defects = []
     if not any(l.strip().startswith(("> **Review:**", "Review:", "**Review:**")) for l in lines):
         defects.append(("plan", "no `Review:` line (reviewed or SKIPPED — either way it must say)"))
-    cards = parse_cards(lines)
+    cards, unrecognised = parse_cards(lines)
     if not cards: cannot_read(f"no `- [ ] **<id>` cards found in {path}")
+    for lineno, text in unrecognised:
+        defects.append((f"line {lineno}", f"`- [ ] **` card header id not recognised by the "
+                         f"ID pattern (`{ID}`) — silently dropping this line would let the plan "
+                         f"read PLAN-CLEAN with a card missing: {text[:100]!r}"))
     for c in cards:
         s, tid, body = c["slots"], c["id"], "\n".join(c["text"])
         for req in ("Owner", "Where", "Do", "Verify", "Done"):
@@ -123,6 +141,15 @@ def lint(path, rows):
         v = s.get("Verify", "")
         if v and not re.match(r'\s*(SHAPE|RUN|JUDGE)\b', v): defects.append((tid, "`Verify:` is untyped (SHAPE|RUN|JUDGE)"))
         if v.startswith("SHAPE") and "before" not in body.lower(): defects.append((tid, "SHAPE verify names no `before` value"))
+        if v:
+            # Use the RAW line, not the SLOT_RE-captured group -- that regex eats the
+            # leading backtick, which throws off verify_parse's own backtick-span scan.
+            raw_verify = next((l for l in c["text"] if re.match(r'^\s*`?Verify:', l)), None)
+            if raw_verify is not None:
+                try:
+                    parse_verify(raw_verify)
+                except VerifyParseError as e:
+                    defects.append((tid, f"Verify: unparseable — {e}"))
         if "Query" in s and "Proof" not in s: defects.append((tid, "`Query:` with no `Proof:` — a zero result is UNKNOWN until the query is proven well-formed"))
         for l in c["text"]:
             if GATE_RE.search(l) and not PATHISH.search(l.split("gated on",1)[-1] if "gated on" in l.lower() else ""):
