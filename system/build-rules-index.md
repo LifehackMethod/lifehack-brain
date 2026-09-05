@@ -168,7 +168,8 @@ authority: user
   compares against the answer key it reads, never against a number typed into prose (canon §5.18). OBSERVED.
 - **[S4]** Tried: a regression scan over "every finished task's check" with no exclusion for its own entry. Failed:
   on retirement its check re-invoked the scan — recursion, 120 s timeout, uncaught exception, and a report of
-  **0 regressions, exit 0** while a retired card failed by hand. `2026-09-05` · commit `3bd635f` on `V2`,
+  ~~**0 regressions, exit 0**~~ **no REGRESSION lines** (the exit code was asserted, never measured — corrected
+  2026-09-05 by claudeops-1a's transcript audit, A14) while a retired card failed by hand. `2026-09-05` · commit `3bd635f` on `V2`,
   card 6.10 → exclude self and say so; abnormal exit is an explicit INCOMPLETE; report EXAMINED beside FOUND.
   OBSERVED.
 <!-- DO-NOT-RETRY-v1 END -->

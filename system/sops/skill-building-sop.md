@@ -1378,9 +1378,10 @@ though none of these bind a future build.
   nav window, withdrawn by it against THE FRAME's bar ("multiple blind sessions *over time*"). `2026-09-05` ·
   canon §10a [DNR4] → two receipts from one build is OBSERVED ×2; a different build promotes. OBSERVED.
 - **[P3]** Tried: reading `cmd | head; echo $?` as the command's exit status. Failed: `$?` is `head`'s; two
-  operators read a passing verify off it in one day. `2026-09-05` · reported in the nav hand-off, **receipt not
-  re-run by this window** → `set -o pipefail`, or capture the command's status before the pipe. CANDIDATE
-  until a receipt is named.
+  operators read a passing verify off it in one day. `2026-09-05` · ~~reported in the nav hand-off, receipt not
+  re-run by this window~~ receipt named: claudeops-1a's transcript audit, entry A10 — four `rc=` values in one
+  block were all `head`'s, two coincidentally right → `set -o pipefail`, or capture the command's status before
+  the pipe. ~~CANDIDATE until a receipt is named~~ OBSERVED (2026-09-05).
 
 ## §II.5 — Packaging: two lanes, so enforcement travels
 
