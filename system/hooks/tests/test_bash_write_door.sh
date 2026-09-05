@@ -58,6 +58,54 @@ want no  "python3 read.py $GUARDED >&2"            "interpreter+path+fd-dup, no 
 want no  "node script.js $GUARDED 1>&2"            "node + fd-dup, no write"
 
 echo
+echo "── WINDOWS + QUOTED paths (added 2026-09-04) ─────────────────────────────"
+# TWO defects, both DETECTION-side, both fixed in lib/bash_write_door.sh on 2026-09-04.
+#
+#  (1) `looks_like_path` tested only for "/" or a known extension. A native Windows path has
+#      neither once it reaches this library as an INTERPRETER write, because the whole
+#      expression is ONE token that ends in ")". So it was dropped, the caller received an
+#      EMPTY target list, and every guard downstream read that as "nothing to check" and
+#      exited 0. That is the exact shape that truncated a live project brief to zero bytes
+#      on 2026-09-04 — the third such loss since 2026-08-30.
+#  (2) the redirect scanner stopped at the first space, so ANY quoted target containing one
+#      was truncated to an unmatchable fragment. ⚠ NOT Windows-specific: measured the same
+#      day, `echo hi > "$HOME/My Notes/x/brief.md"` emitted the fragment up to the space. Posix installs with a
+#      space in the path had this too.
+#
+# Measured against the pre-fix library that day: (1) returned nothing, (2) returned `D:\My`
+# and a truncated fragment. Everything else in this file was already green and stayed green.
+WIN="D:\Notes\state\projects\demo\brief.md"
+WIN_SP="D:\My Notes\state\projects\demo\brief.md"
+POSIX_SP="/notes/My Files/state/projects/demo/brief.md"
+
+hits_exact() { bwd_write_targets "$2" | grep -Fxq "$1" && echo yes || echo no; }
+hits_sub()   { bwd_write_targets "$2" | grep -Fq  "$1" && echo yes || echo no; }
+
+wx() { # wx <exact|sub> <expected yes|no> <path> <command> <label>
+  case "$1" in
+    exact) got=$(hits_exact "$3" "$4") ;;
+    sub)   got=$(hits_sub   "$3" "$4") ;;
+  esac
+  if [ "$got" = "$2" ]; then
+    pass=$((pass+1)); printf '   ok   %s\n' "$5"
+  else
+    fail=$((fail+1)); printf '  FAIL  %s  (wanted %s, got %s)\n' "$5" "$2" "$got"
+  fi
+}
+
+# the expensive direction FIRST, as everywhere else in this file
+wx exact no "$WIN"      "cat \"$WIN\""                     "windows path, plain read"
+wx exact no "$WIN"      "grep -n frame \"$WIN\""           "windows path, grep"
+wx exact no "$WIN_SP"   "cat \"$WIN_SP\""                  "windows path with a space, plain read"
+wx exact no "$WIN"      "python3 read.py \"$WIN\" 2>/dev/null" "windows path, interpreter with NO write call"
+
+wx sub   yes "$WIN"     "python3 -c 'open(r\"$WIN\",\"w\").write(x)'" "WINDOWS interpreter write — the 2026-09-04 vector"
+wx exact yes "$WIN"     "cat > $WIN"                       "windows redirect"
+wx exact yes "$WIN"     "rm -f \"$WIN\""                   "windows rm"
+wx exact yes "$WIN_SP"  "echo hi > \"$WIN_SP\""            "windows redirect, QUOTED with a space"
+wx exact yes "$POSIX_SP" "echo hi > \"$POSIX_SP\""         "POSIX redirect, QUOTED with a space — not a windows bug"
+
+echo
 echo "── fail-closed ───────────────────────────────────────────────────────────"
 if [ -z "$(bwd_write_targets '')" ]; then
   pass=$((pass+1)); printf '   ok   an empty command yields no targets\n'

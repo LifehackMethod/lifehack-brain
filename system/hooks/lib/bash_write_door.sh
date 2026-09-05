@@ -17,7 +17,11 @@
 # FAIL_POSTURE: closed — on any parse failure it prints the sentinel `__BWD_PARSE_ERROR__`, and every
 #      caller must treat that as "deny", never as "no targets found". An empty result and a broken
 #      result must never look the same.
-# UPDATED: 2026-08-13
+# UPDATED: 2026-09-04 -- Windows path blindness closed. Until this date `looks_like_path`
+#      tested only for "/" or a known extension, so a native backslash path was invisible to
+#      EVERY caller, and the redirect scanner stopped at the first space, so a quoted target
+#      containing one was truncated to an unmatchable fragment. Both are DETECTION-side only;
+#      nothing about what is emitted, or about the fail-closed sentinel, changed.
 #
 # ⚠ WHY ONE SOURCED COPY AND NOT THREE PRIVATE ONES. `build-sop.md`: *"a gate/guard used by more than
 #   one runner lives in ONE sourced helper; a private copy is debt, not independence."* That rule was
@@ -82,7 +86,18 @@ WRITE_CALLS   = ("open(", ".write(", ".writelines(", "write_text", "writeFileSyn
 def looks_like_path(tok):
     if not tok or tok.startswith("-"):
         return False
-    return "/" in tok or tok.endswith((".md", ".json", ".txt", ".py", ".sh"))
+    # WINDOWS, 2026-09-04. A backslash is a path separator too. Without this clause a native
+    # Windows path satisfied NEITHER test and was silently dropped: an interpreter write arrives
+    # as ONE token -- open(r"D:\...\notes.md","w").write(x) -- which contains no "/" and ends in
+    # ")", not in a known extension. Measured that day by sourcing this library directly: the
+    # POSIX spelling of the same write returned the full expression, the Windows spelling
+    # returned NOTHING, and every guard downstream then read "no write targets" as "nothing to
+    # check" and exited 0. Three guards were affected -- guard_canon_write,
+    # guard_cross_project_write and guard_throughline_write_scope.
+    # This widens DETECTION only. What is EMITTED stays the raw text the command used, because
+    # each caller folds separators itself via lib/winpath_fold.sh; rewriting a path here would
+    # hand a caller a string its own scope test never saw.
+    return "/" in tok or "\\" in tok or tok.endswith((".md", ".json", ".txt", ".py", ".sh"))
 
 out, seen = [], set()
 
@@ -105,9 +120,23 @@ try:
                     j += 1
                 while j < len(seg) and seg[j] in " \t":
                     j += 1
+                # QUOTE-AWARE, 2026-09-04. A redirect target may be QUOTED and may contain
+                # spaces: cat > "D:\My Notes\projects\x\notes.md". The old scanner stopped at
+                # the first space and emitted a truncated fragment, which no scope test
+                # downstream could ever match -- so a quoted target with a space in it was
+                # effectively invisible. Scan to the matching quote instead; emit() already
+                # strips the quote characters off both ends.
                 k = j
-                while k < len(seg) and seg[k] not in " \t;|&":
-                    k += 1
+                if j < len(seg) and seg[j] in "\"\x27":
+                    _q = seg[j]
+                    k = j + 1
+                    while k < len(seg) and seg[k] != _q:
+                        k += 1
+                    if k < len(seg):
+                        k += 1
+                else:
+                    while k < len(seg) and seg[k] not in " \t;|&":
+                        k += 1
                 emit(seg[j:k])
                 i = k
             else:
