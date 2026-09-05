@@ -2404,3 +2404,54 @@ edge-cases last. Added the entire VERIFY part (v1 had nowhere to put it). Folded
 and the six-repo code dissection `[C]`. Corrected v1 §3.5's stale single-instrument door-tester framing — the
 current design is a three-tier × pipeline-seam architecture (reasoning · enforcement · state), not the single
 blind judge v1 described.
+
+---
+
+## §VII — LIVING INTAKE: candidates, not doctrine
+
+> The frontmatter names `system/sops/skill-irl-findings.md` as where observations land before they graduate
+> into this file. **That file does not exist in either repository (checked 2026-09-05).** Until it does,
+> candidates land here, in this section, clearly marked. Nothing below is a rule. Each carries the canon's
+> confidence tier, its receipt, and what would refute it. **Per Enver 2026-09-05: write principles with
+> their reason; a rule only where it is 100% — a harness fact or a mechanical refusal.**
+
+### From the `/autoplan` rebuild, 2026-09-04 → 05 — the plan format's first execution against itself
+
+Full ranked list with receipts: `<notes>/state/autoplan-rebuild/canonical-candidates-2026-09-05.md`.
+Evidence: `~/lifehack-brain` branch `V2` (18 commits).
+⛔ `plans/standalone-autoplan-rebuild.plan.md` — the plan and its `.done.md` live in the operator's notes folder, never in a repository; cited as where the receipts are, not as something this repo carries.
+**Status: Phase 6 unbuilt, live run not yet made. Per canon §5.2, none of these is distilled from a finished run.**
+
+**Tier 1 — mechanisms; a script can enforce each; the author had read the relevant rule and broke it anyway.**
+- **A field a script consumes is written in the script's grammar, and the writer is refused, not warned.** 7 of 8 `Verify:` lines read correctly to a human and failed a machine re-run. AUTHORITATIVE · refuted if a constrained format still fails to re-run at a real rate.
+- **A checker's "could not determine" never resolves to pass.** A fallback to "shell exited 0" on a `; echo $?` command retired a card whose check printed 2 against a stated 0. AUTHORITATIVE · Law 1b's no-outcome member applied to the verifier.
+- **A parser that silently skips what it does not recognise is a fail-open.** An id regex dropped 5 of 15 cards and reported clean; a command allowlist dropped a clause and the card passed on the rest. Count examined vs present. AUTHORITATIVE, 2 instances · canon §5.6 for tokenizers.
+- **Any session-level list beside a plan file is a second tracker.** The harness task queue diverged from the plan's cards inside the build fixing two-tracker failures. AUTHORITATIVE, 1 instance.
+- **A verify runs as written, by a stranger, with nothing to substitute.** `<copy>` reached the shell as a redirect and a verify PASSED on it. AUTHORITATIVE.
+
+**Tier 2 — principles; true and receipted; process, not code.**
+- Retiring a finished task preserves the amendment, not only the final form; second-resolution backup names collided (8 → 2 files). AUTHORITATIVE.
+- When a checker refuses one item, run it against every item before fixing any — the mechanical form of §5.13. Four rounds of one-at-a-time; six more waiting. AUTHORITATIVE.
+- The monitor re-runs the verify and never grades from the actor's report (LAW 3 at the nav/build seam). Three instances in one session. AUTHORITATIVE.
+- Cold verification is a gate before the human, not a postmortem after. One cold pass caught a builder-certified false pass. AUTHORITATIVE.
+- A size floor set by the party being measured measures nothing during the build (canon §4.1 for budgets). AUTHORITATIVE.
+- A guard matching a MENTION blocks the fix for the thing it guards. New instance of a ledgered class. AUTHORITATIVE.
+
+**Tier 3 — investigate; n=1 or awaiting the live run.**
+- The control for a defect fixture is the same file with defects repaired, generated not hand-kept — never a different clean file (colliding ids manufactured false positives).
+- Build order and verify order differ; a checker says NOT-YET, not FAILED, when the verify-dependency is unmet. WORKING THEORY.
+- Blind ANGLE panels are not the PERSONA councils [A13] warns against: 11/11 hit, 0 false positives, canon §4.11 conditions met, [B23] agrees. WORKING THEORY until the live run.
+- Code and reviewer lenses catch disjoint defect classes (32 vs 8, no overlap). AUTHORITATIVE-local, n=1.
+
+**Tier 4 — recommendation.**
+- Do not write size estimates into task text (3 for 3 wrong by 2–3×, same direction).
+- Reading the doctrine does not inoculate — Law 5's knows-but-violates, measured on the author. A confirmation, not a finding.
+
+### What this run says about THIS file (for the next revision, not applied here)
+- **[A13]** is written broadly enough to forbid the angle-panel shape that worked; scope it to persona councils and cross-cite [B23].
+- **§II.3 rung 2** "required artifact — usually enough": enough for structure, never for a completion claim — a typed marker is rung 1 in rung 2's clothes (§V.4b).
+- **§II.4 phase_gate blurb** omits the file's own caveat that `requires` cannot tell real work from words typed to match.
+- **LAW 3** wants the clause "nor from the actor's report." **§III.9** wants the companion "fail once → sweep siblings." **§VI.1** wants the diagnosis-gate exception: a BUILD card carries less, by design.
+- **§III.5** "<500 lines" and canon §5.1 "~1,000 words" never meet; state which governs.
+- **This file's voice**: §VI.4 says avoid ALL-CAPS MUST/NEVER walls; the file is dense with them. Harness facts stay rules; doctrine reads as principle.
+- **Two copies of this file exist (private ClaudeOps, public lifehack-brain), they differ, and `separation-manifest.md:287` calls them byte-identical.** One home, or a comparison that runs.
