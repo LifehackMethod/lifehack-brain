@@ -58,6 +58,9 @@ reader_note: >
 > **nothing counts as existing, done, enforced or true until you have watched it produce an outcome it could not
 > produce if it were broken. Build the failing state first.** In 42% of 1,656 recorded failures the system gave
 > the same signal whether the thing worked or not. And outside that rule: **look before you build.**
+> *Second receipt, from the solutions side (2026-09-05, three readers independently): of thirteen modes, zero fixes held
+> durably; every fix that held at all fired unasked, removed the ability rather than asking for a memory, and had been
+> watched refusing; every fix that failed was a description the next session had to remember.*
 
 # Skill-Building Playbook v2
 
@@ -1751,6 +1754,11 @@ turn split: each step gets a fresh, self-contained prompt so the model works *th
 > not nothing. **The discriminating test** (three arms, blind graders, measured by artifact): whole arc shown ·
 > one step at a time in one session · one step per fresh sub-agent. Until it runs, this section is OBSERVED, not
 > mechanism.
+> **REFINED 2026-09-05 (solutions audit, `records/research/2026-09-05-durable-solutions-audit.md` ⛔ owner's notes):** the
+> per-step prompt is *a habit, not a solution.* Inside `/checkin`, already built per-step, prose-backed steps were skipped
+> a THIRD time while tool-backed steps ran — delivery held constant, only the exit code varied (J5-144, 2026-08-15). What
+> holds is the external check with an exit code. Keep the per-step shape for the reasons above (short context, one
+> job per prompt); do not count on it for compliance. Every step that must happen gets a tool with an exit code.
 
 ## §IV.7 — Anchoring the session, not just the user
 
