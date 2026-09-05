@@ -9,8 +9,13 @@ authority: user
 ---
 
 <!-- CODE-SPIRAL-v2 BEGIN -->
-> ⚠ **PROVISIONAL — 2026-08-09.** Best current thinking, not doctrine. Full record:
-> it sits in tension with the skill-building SOP's LAW 1 and has not been ruled on.
+> ~~⚠ **PROVISIONAL — 2026-08-09.** Best current thinking, not doctrine. Full record:
+> it sits in tension with the skill-building SOP's LAW 1 and has not been ruled on.~~
+> **REFINED 2026-09-05:** ruled, not in tension — the skills SOP §III.10 names this the THIRD BRANCH beside LAW 1
+> (a fact the session needs to see is not a tool) and cites this file; canon §5.4 carries it as a principle. Tier
+> OBSERVED on three dated receipts (four detectors with no caller 2026-08-08 · 111 lines vs 1, 2026-08-09 · 15 tools
+> nothing calls, census 2026-09-01) and the census's largest mode, "built then never called," 194 instances. This
+> block is now a LOCAL COPY; the homes are canon §5.4 and SOP §III.10.
 >
 > **A failure appears → *"how do we DETECT this?"* is almost always the WRONG FIRST QUESTION.** The model
 > is rarely bad at detecting; it is bad at **REMEMBERING TO LOOK**. Detection code answers a delivery
@@ -38,7 +43,9 @@ authority: user
 > **4 · IF THIS BROKE SILENTLY, HOW WOULD YOU FIND OUT?** No answer means you moved the failure somewhere
 > invisible. You did not remove it.
 >
-> ⛔ **THE RULE — AN ORDER, NOT AN OBSERVATION:**
+> ⛔ ~~**THE RULE — AN ORDER, NOT AN OBSERVATION:**~~ **THE PRINCIPLE** *(softened 2026-09-05 — the frame admits a rule
+> for the model only at REPRODUCED; this has one worked receipt, OBSERVED; canon §4.1 states it: an effect check needs
+> no second checker)*:
 > **IF YOUR FIX HAS THREE PARTS AND ONE OF THEM CHECKS THE OTHER TWO — DELETE THAT ONE.**
 > **THE EXCEPTION:** a part that checks its **own** output before finishing is one part. The forbidden
 > third is a **separate** thing that watches the first two.
@@ -83,6 +90,8 @@ authority: user
 <!-- SEAM-RULE-v1 END -->
 
 <!-- MODEL-REACH-RULE-v1 BEGIN -->
+> *2026-09-05: this block is a compressed copy of the skills SOP's LAW 1b, which carries the same taxonomy, the same
+> fix, and more evidence (the `claude -p` subscription-removal risk is absent here). LAW 1b is the home.*
 > LAW 1 above says WHAT crosses the seam. **This asks whether the seam is REACHABLE AT ALL** — a seam
 > with no reach is not a weak seam, it is an absent one wearing the paperwork of a present one.
 >
@@ -102,6 +111,9 @@ authority: user
 <!-- MODEL-REACH-RULE-v1 END -->
 
 <!-- ABSENT-SUBJECT-RULE-v1 BEGIN -->
+> *2026-09-05: the principle lives in canon §5.6 ("a zero must mean could not look"; "a failure to RUN must not equal a
+> legal answer") and §4.2; with this week's two more instances it is REPRODUCED. This block keeps the six local receipts
+> and the two worked patterns; canon is the home.*
 > ⛔ **HOUSE RULE — RATIFIED `T9.11b`, 2026-08-15: A CHECKER FAILS LOUD WHEN ITS SUBJECT IS ABSENT OR
 > AMBIGUOUS.** "I checked and it's clean" and "there was nothing here I could check" are different
 > claims. A checker that cannot reach, find, or disambiguate what it is supposed to inspect **must say
