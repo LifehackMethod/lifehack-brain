@@ -232,6 +232,26 @@ def _check_where_space_derivation():
     kind, mpath = derive_kind(where, rows)
     return kind == "private" and mpath == root
 
+def _local_install_drift(skill_dir):
+    """A local install at <config>/skills/autoplan must match the repo copy.
+
+    CONDITIONAL BY DESIGN: a student installs by plugin and has NO local copy --
+    absent is fine and silent. An unconditional check would fail for every student.
+    Also refuses to compare a file with itself: if --self runs FROM the local
+    install, skill_dir IS that copy and the comparison would be a tautology.
+    Returns None when there is nothing to say, else the failure message.
+    """
+    cfg = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.expanduser("~/.claude")
+    local = os.path.realpath(os.path.join(cfg, "skills", "autoplan", "SKILL.md"))
+    repo = os.path.realpath(os.path.join(skill_dir, "SKILL.md"))
+    if not os.path.exists(local) or local == repo or not os.path.exists(repo):
+        return None
+    if open(local, encoding="utf-8").read() == open(repo, encoding="utf-8").read():
+        return None
+    return ("LOCAL COPY DRIFTED: " + local + " differs from the repo source " + repo +
+            ". The local install is a DERIVED copy, never a source -- edit the repo and refresh it. "
+            "If the repo is also ahead of origin, that is unpushed work.")
+
 def self_check(skill_dir):
     if not _check_where_space_derivation():
         print("SELF-CHECK FAILED: a Where: path containing a space did not derive its repo kind "
@@ -247,7 +267,10 @@ def self_check(skill_dir):
         txt = open(skill, encoding="utf-8").read(); nl, nw = txt.count("\n"), len(txt.split())
         if nl > bl or nw > bw:
             print(f"RATCHET: SKILL.md {nl} lines / {nw} words exceeds recorded floor {bl} / {bw}"); sys.exit(2)
-    print(f"SELF-CHECK OK: spacey Where: derives correctly; fixture fails ({len(d)} defects); budget held"); sys.exit(0)
+    drift = _local_install_drift(skill_dir)
+    if drift:
+        print("SELF-CHECK FAILED: " + drift); sys.exit(2)
+    print(f"SELF-CHECK OK: spacey Where: derives correctly; fixture fails ({len(d)} defects); budget held; local copy in step"); sys.exit(0)
 
 def main():
     ap = argparse.ArgumentParser(description="plan_lint — a plan is not shown until every task is a complete card")
