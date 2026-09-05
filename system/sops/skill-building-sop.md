@@ -2417,8 +2417,7 @@ blind judge v1 described.
 
 ### From the `/autoplan` rebuild, 2026-09-04 → 05 — the plan format's first execution against itself
 
-Full ranked list with receipts: `<notes>/state/autoplan-rebuild/canonical-candidates-2026-09-05.md`.
-Evidence: `~/lifehack-brain` branch `V2` (18 commits).
+Evidence: `~/lifehack-brain` branch `V2` (19 commits). **This section is the only home for these candidates** — no scratch copy exists elsewhere.
 ⛔ `plans/standalone-autoplan-rebuild.plan.md` — the plan and its `.done.md` live in the operator's notes folder, never in a repository; cited as where the receipts are, not as something this repo carries.
 **Status: Phase 6 unbuilt, live run not yet made. Per canon §5.2, none of these is distilled from a finished run.**
 
