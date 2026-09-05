@@ -103,3 +103,43 @@ does not.
   `Verify: SHAPE` — `grep -c "DEBOUNCE_SECONDS" system/tools/pulse_alert.py` → before `1`, after `1`.
   `Commit: 2.4: confirm debounce constant documented`
   `Done: Verify passes (re-run by plan_retire.py) → retire`
+
+- [ ] **2.5 Surface the suppressed count in the status-tile docstring.** `Owner: BUILD` · gear-1
+  `Where: ~/lifehack-brain/system/tools/pulse_status.py`
+  `Do:` confirm the module docstring names the suppressed-count tile field.
+  `Repo: public · V2 · commit local, never push`
+  `Verify: SHAPE` — `grep -c "suppressed_count" pulse_status.py` → before `0`, after `1`.
+  `Commit: 2.5: confirm suppressed-count field documented`
+  `Done: Verify passes (re-run by plan_retire.py) → retire`
+
+- [ ] **2.6 Confirm the alert emitter still imports the debounce constant.** `Owner: BUILD` · gear-1
+  `Where: ~/lifehack-brain/system/tools/pulse_alert.py`
+  `Do:` confirm the emitter module still imports DEBOUNCE_SECONDS at the top of the file.
+  `Repo: public · V2 · commit local, never push`
+  `Verify: SHAPE` — `grep -c "DEBOUNCE_SECONDS"` → before `0`, after `1`.
+  `Commit: 2.6: confirm debounce constant import`
+  `Done: Verify passes (re-run by plan_retire.py) → retire`
+
+- [ ] **2.7 Add the retry-backoff constant to the alert emitter.** `Owner: BUILD` · gear-1
+  `Where: ~/lifehack-brain/system/tools/pulse_alert.py`
+  `Do:` add a RETRY_BACKOFF_SECONDS constant near the top of the module.
+  `Repo: public · V2 · commit local, never push`
+  `Verify: SHAPE` — `grep -c "RETRY_BACKOFF_SECONDS" system/tools/pulse_alert.py` → before `1`, after `0`.
+  `Commit: 2.7: add retry-backoff constant`
+  `Done: Verify passes (re-run by plan_retire.py) → retire`
+
+- [ ] **2.8 Confirm the status-tile label wording.** `Owner: BUILD` · gear-1
+  `Where: ~/lifehack-brain/system/tools/pulse_status.py`
+  `Do:` confirm the tile label reads "the run's suppressed count" verbatim, apostrophe included.
+  `Repo: public · V2 · commit local, never push`
+  `Verify: SHAPE` — `grep -c "the runs suppressed count" system/tools/pulse_status.py` → before `0`, after `1`.
+  `Commit: 2.8: confirm suppressed-count label wording`
+  `Done: Verify passes (re-run by plan_retire.py) → retire`
+
+- [ ] **2.9 Confirm the pulse-alert test suite exists.** `Owner: BUILD` · gear-1
+  `Where: ~/lifehack-brain/system/tools/tests/test_pulse_alert.py`
+  `Do:` confirm the regression test file for the debounce window is present.
+  `Repo: public · V2 · commit local, never push`
+  `Verify: RUN` `true; echo $?` → `0`
+  `Commit: 2.9: confirm test suite present`
+  `Done: Verify passes (re-run by plan_retire.py) → retire`

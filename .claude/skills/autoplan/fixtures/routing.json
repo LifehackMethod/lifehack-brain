@@ -1,0 +1,17 @@
+{
+  "_note": "card 6.4: five SHOULD-FIRE prompts for /autoplan and five near-miss BOUNDARY prompts that should NOT fire it -- for system/parts/routing_evals.py, tuning autoplan's SKILL.md description against real cases rather than intuition (SOP III.4). Consumed by run_routing_eval.py in this same directory.",
+  "skill": "autoplan",
+  "description_source": ".claude/skills/autoplan/SKILL.md#description",
+  "cases": [
+    {"id": "sf1", "expect": "fire", "prompt": "/autoplan"},
+    {"id": "sf2", "expect": "fire", "prompt": "make a plan for shipping the pulse-alert debounce fix"},
+    {"id": "sf3", "expect": "fire", "prompt": "update the plan with the new routing-eval card"},
+    {"id": "sf4", "expect": "fire", "prompt": "add this to the plan: plant five more defects in broken.plan.md"},
+    {"id": "sf5", "expect": "fire", "prompt": "plan this: migrate the alert log out of the public tree"},
+    {"id": "bd1", "expect": "no-fire", "prompt": "what's the plan for tonight, are we still doing dinner", "reason": "casual use of 'plan' with no project or plan file involved"},
+    {"id": "bd2", "expect": "no-fire", "prompt": "build the plan we already wrote", "reason": "belongs to /build -- execute an existing plan, not amend one"},
+    {"id": "bd3", "expect": "no-fire", "prompt": "where are we on the pulse-alert project", "reason": "belongs to /checkin or /project-manager -- re-orient, not (re)write the plan"},
+    {"id": "bd4", "expect": "no-fire", "prompt": "plan my week", "reason": "belongs to /planning-weekly -- a calendar/week plan, not a project plan file"},
+    {"id": "bd5", "expect": "no-fire", "prompt": "I don't have a plan B if the debounce fix doesn't hold up", "reason": "plain-English 'plan', no request to write or amend a plan file"}
+  ]
+}
