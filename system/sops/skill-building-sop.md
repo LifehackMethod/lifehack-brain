@@ -26,7 +26,7 @@ reader_note: >
   inline (an [M] claim means "this mechanism demonstrably exists," never "this is the rate").
 ---
 
-> # THE FRAME — read before any line below. Identical text sits atop `records/canon/2026-09-02-canonical-principles.md`.
+> # THE FRAME — read before any line below. A near-copy of this text sits atop `records/canon/2026-09-02-canonical-principles.md`.
 > *(Enver, 2026-09-05. This block is the one place both documents agree by construction.)*
 >
 > **This is a stochastic environment, not a rules-based one.** Compliance is nudged, layered, and rarely
@@ -62,11 +62,17 @@ reader_note: >
 > durably; every fix that held at all fired unasked, removed the ability rather than asking for a memory, and had been
 > watched refusing; every fix that failed was a description the next session had to remember.*
 >
-> **Right-sized, or it does not enter** *(Enver, 2026-09-05).* The Lifehack Harness is a minimal harness built on Pareto's
+> **REFINED 2026-09-06 (Enver's ruling — the heading and the closing clause were prescriptive; the description stays).**
+> ~~**Right-sized, or it does not enter** *(Enver, 2026-09-05).* The Lifehack Harness is a minimal harness built on Pareto's
 > principle: the most value, compliance and reliability for the least code, rules and structure. The question is never
 > "how much can we build" but "how little buys the most." **We are not an enterprise solution.** A remedy that works but
 > needs a second system to watch the first is recorded as *likely overbuilt for this harness* — kept, never adopted by
-> default.
+> default.~~
+> *(Enver, 2026-09-05; reworded by Enver 2026-09-06.)* The Lifehack Harness is a minimal harness built on Pareto's
+> principle: the most value, compliance and reliability for the least code, rules and structure. We are not an enterprise
+> solution. A remedy that works but needs large-scale code or enterprise machinery in order to work is likely overbuilt
+> for this harness. A large build is not ruled out. It is rare, it is an extenuating circumstance, and when one is
+> proposed it is justified to the human in the loop, who decides.
 
 # Skill-Building Playbook v2
 
