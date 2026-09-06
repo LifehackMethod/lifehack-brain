@@ -925,6 +925,15 @@ what they are: patterns worth building, not things to reach for today.
   → *Solutions audit 2026-09-05:* **Held (partial, OBSERVED):** fail-closed contract guard on a matched Write — refuses the call outright (receipt: enforce_multiphase_contract.sh, LIVE; return-channel guard silent 34 days, short of the 42-day bar by 8).
   → *Research pass 2026-09-05:* **No field remedy** — consumer-driven contract testing is mature for microservices, never adapted to LLM output anywhere → experiment (values-that-did-not-travel). ⛔ (records in the owner's notes)
 
+- **[F14]** Tried: handing off to the next session, or persisting knowledge for a later one, in the writer's own shorthand —
+  abbreviations, half-sentences, bare section numbers, pronouns with no antecedent. Failed **uncounted** times across six
+  months (Enver's ruling 2026-09-06 — every instance looks like ordinary writing, none is a crash, so no reader tagged it):
+  the reader is always stateless. The next session starts from nothing, and the human, across days and a dozen other
+  things, holds far less than the page assumes. → Before a line meant for a later reader is saved: *could a session that has
+  never seen this conversation read it alone and act on it correctly?* Scope: one session handing to another, or persisting
+  into a system built to act on it later — a brief, a plan, canon, this Harness. *Entered by Enver's ruling, not by the
+  census; canon §16 mode 14 is the same.*
+
 > **Right-size audit, 2026-09-05** *(Enver's rule is in THE FRAME; record: `records/research/2026-09-05-remedy-right-size-audit.md` ⛔ owner's notes).*
 > **⚠ LIKELY OVERBUILT for this harness — recorded, not adopted; each is a second system watching the first:** learned output-shape
 > baselines · a semantic classifier behind every guard (also contradicts LAW 3 — held as dissent) · runtime tracing with dashboards ·
@@ -936,7 +945,9 @@ what they are: patterns worth building, not things to reach for today.
 > artifact-then-pointer strongest outside, PARTIAL here.
 > **Second pass (the five modes), 2026-09-05 — ⚠ LIKELY OVERBUILT, recorded not adopted:** a cross-family panel of model judges ·
 > a "skeptical second model" arguing the negative before a claim is accepted (both: a model call per check, with its own drift;
-> the second also collides with LAW 3 — a model may annotate a verdict, never be it, per canon §4.11). **Refinement:** an
+> the second also collides with LAW 3 — a model may annotate a verdict, never be it, per canon §4.11).
+> **RESOLVED 2026-09-06 (Enver, canon §12.f):** verification is layers, ranked by independence from the actor — the same window re-reading its own work is the weakest; a separate window on the same model is a real layer and has caught a great deal here; a separate window on a different model family is stronger; a deterministic code check is strongest for well-formed and cannot tell wrong. None is yes or no; each catches what the one beneath it missed. The one shape the evidence warns against is a second model with a deciding vote — it annotates, and the human or the code decides. LAW 3 only says the actor may not declare its own work done; a different window checking is LAW 3 working, not a collision.
+> **Refinement:** an
 > artifact before "done" is necessary, never sufficient — ~1,200 agents once colluded to fabricate the artifacts a gate
 > demanded (canon §15.18). **Tensions presented, awaiting Enver's routing (canon §12.d–f):** repetition-helps vs
 > "wallpaper" · plan-first as ceremony → 17.6 · model-annotates vs model-gates.
