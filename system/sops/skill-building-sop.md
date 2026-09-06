@@ -73,6 +73,11 @@ reader_note: >
 > solution. A remedy that works but needs large-scale code or enterprise machinery in order to work is likely overbuilt
 > for this harness. A large build is not ruled out. It is rare, it is an extenuating circumstance, and when one is
 > proposed it is justified to the human in the loop, who decides.
+>
+> *(Enver, 2026-09-06.)* This is a human-in-the-loop judgment system. The model is a great deal of knowledge with very
+> little judgment; the human is a great deal of judgment with far less knowledge; the intelligence is the pairing. The
+> human's share of the work should be small — five percent, at most twenty — but never zero. Human-out-of-the-loop
+> designs are very rare in this system; the default is human in the loop.
 
 # Skill-Building Playbook v2
 
