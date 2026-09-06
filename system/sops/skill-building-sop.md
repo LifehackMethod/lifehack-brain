@@ -54,11 +54,11 @@ reader_note: >
 > scarce top, never a substitute for the layers beneath it.
 >
 > **The operating rule under the one law** *(added 2026-09-05 from the failure census — CANDIDATE as a single
-> sentence, since one synthesis wrote it; the thirteen modes beneath it (§II.4a [F1]–[F13]) are REPRODUCED — a fourteenth, [F14], entered 2026-09-06 by Enver's ruling, not by the census):*
+> sentence, since one synthesis wrote it; the modes beneath it (§II.4a, the [F] entries) are REPRODUCED, except where an entry says it entered by Enver's ruling rather than by the census):*
 > **nothing counts as existing, done, enforced or true until you have watched it produce an outcome it could not
 > produce if it were broken. Build the failing state first.** In 42% of 1,656 recorded failures the system gave
 > the same signal whether the thing worked or not. And outside that rule: **look before you build.**
-> *Second receipt, from the solutions side (2026-09-05, three readers independently): of thirteen modes, zero fixes held
+> *Second receipt, from the solutions side (2026-09-05, three readers independently): across the modes, zero fixes held
 > durably; every fix that held at all fired unasked, removed the ability rather than asking for a memory, and had been
 > watched refusing; every fix that failed was a description the next session had to remember.*
 >
@@ -868,7 +868,7 @@ what they are: patterns worth building, not things to reach for today.
 ### From the failure census, 2026-09-05 — REPRODUCED (15 blind readers · journal + 38 briefs + ledger + doc-vs-disk · every mode 4–6 months, 11–12 of 12 sources · 1,656 cited instances)
 
 > Method and provenance: `records/research/2026-09-05-failure-mode-census.md` ⛔ (owner's notes). Receipts:
-> `state/failure-census-2026-09-05/` ⛔ (owner's notes). Canon §16 carries the same modes as principles (thirteen from the census, a fourteenth by ruling);
+> `state/failure-census-2026-09-05/` ⛔ (owner's notes). Canon §16 carries the same modes as principles;
 > this is the do-not-retry form. Counts are floors. **Enver's ruling:** findings validated over months across
 > sessions outrank outside research — these sit ABOVE the `[R]` entries below.
 
