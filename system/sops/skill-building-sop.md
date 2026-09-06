@@ -876,9 +876,11 @@ what they are: patterns worth building, not things to reach for today.
 - **[F4]** Tried: trusting a check that takes its verdict from the thing it checks. Failed **133×**. → Watch it fail on
   known-bad input before trusting it passing (§V.4c is now rule zero of PART V).
   → *Solutions audit 2026-09-05:* **Held (partial, OBSERVED):** weekly synthetic-payload firing at real guards, distinguishing engine-failed from a verdict (receipt: guard-fire-test-run.sh, LIVE; recurred: liveness disputed twice, canon §11 Q21).
+  → *Research pass 2026-09-05 (second pass, the five modes):* **Field remedy (RESEARCHED):** checker independent in author, code path, and data source from what it checks — strong, decades-old cross-industry convergence (verification-not-by-the-actor; Skalse 2022 / ISO segregation-of-duties). ✅ ADOPTED (right-size audit, second pass, 2026-09-05) ⛔ (records in the owner's notes)
 - **[F5]** Tried: starting a build from a premise nobody checked. Failed **155×** — the spin cluster, 91 stated days;
   the scope loop (a verifier setting its own backlog) is one form of it. → Search before designing; measure before planning.
   → *Solutions audit 2026-09-05:* **Unsolved (NEVER):** tried seven "look before you build" lessons, each self-stamped DURABLE — failed because none became a checked step (receipt: B3-9 search rail 08-08; recurred: B2-82, 09-03).
+  → *Research pass 2026-09-05 (second pass, the five modes):* **No field remedy** — field's answer (plan-first/spec-gating) is the same prose-ceremony shape that already failed 7x locally; METR's RCT shows added process can cost without payoff → experiment (premises-and-numbers-checked-first). ⛔ (records in the owner's notes)
 - **[F6]** Tried: writing a finding down and calling it delivered. Failed **88×**: the next session never looked there.
   → *Solutions audit 2026-09-05:* **Held (partial, OBSERVED):** storage-format rewrite of one handoff artifact — sticks because the format is structurally incapable of the old overflow (receipt: J1-122/B4-93, held 87 days; recurred: 3 readers name 3 mechanisms).
   → Storage is not delivery — name the surface it must reach.
@@ -890,9 +892,11 @@ what they are: patterns worth building, not things to reach for today.
 - **[F8]** Tried: believing a helper's account of its own work. Failed **70×**: payloads lost, self-reports believed.
   → *Solutions audit 2026-09-05:* **Held (partial, OBSERVED):** fail-closed check on the shape of a sub-agent return — closes payload-loss, not self-report truth (receipt: guard_agent_return_channel.sh, LIVE; recurred: truth-check DORMANT).
   → Never evidence; re-run the check with a stricter filter than the helper used.
+  → *Research pass 2026-09-05 (second pass, the five modes):* **Field remedy (RESEARCHED):** never trust a worker's self-produced proof — poll a pre-agreed, orchestrator-checked landmark fixed before delegation — strong (verification-not-by-the-actor; hexisteme.github.io postmortem). ✅ ADOPTED (right-size audit, second pass, 2026-09-05) ⛔ (records in the owner's notes)
 - **[F9]** Tried: carrying a number forward from a hand-off or a note. Failed **55×**. → A number ships with the
   command that produces it.
   → *Solutions audit 2026-09-05:* **Unsolved (NEVER):** tried compute-in-code doctrine, calc cells hook-locked — failed because the rule was followed and the number was still 12% wrong (receipt: J4-100, 08-03).
+  → *Research pass 2026-09-05 (second pass, the five modes):* **No field remedy** — reproducibility science's recompute-from-source norm is off-domain inference only; the STALE benchmark confirms detecting stale facts is unsolved → experiment (premises-and-numbers-checked-first). ⛔ (records in the owner's notes)
 - **[F10]** Tried: editing by heading string, first match, or line number. Failed **50×**, the failure being silent
   deletion. → Address by identity.
   → *Solutions audit 2026-09-05:* **Unsolved (NEVER):** tried patched string/position fixes on the same tool repeatedly — failed because none replaced string-anchoring with a structural boundary (receipt: J3-84, 07-20; recurred: L-14, 08-31, "unchanged").
@@ -900,6 +904,7 @@ what they are: patterns worth building, not things to reach for today.
 - **[F11]** Tried: a rule in prose the model must remember. Failed **47×** — and this is barn-sour seen from inside a
   skill: steps designed in prose silently do not happen. → Ship the behaviour and what makes it observable in one change.
   → *Solutions audit 2026-09-05:* **Unsolved (NEVER):** tried the inject_* nudge family as the remedy — failed because it is non-blocking by construction, prints and exits 0 (receipt: canon §4.6, 619 points, 50.7% still asked-nicely).
+  → *Research pass 2026-09-05 (second pass, the five modes):* **Field remedy (RESEARCHED):** move must-always rules into deterministic hooks/tool gates, keep prose for judgment calls only — strong, three independent communities converge (rules-with-teeth; Claude Code hooks docs). ✅ ADOPTED — a receipt on hook-plane doctrine and point-of-need injection (2026-09-05) ⛔ (records in the owner's notes)
 - **[F12]** Tried: editing a file and assuming it is the one that runs. Failed **40×**: two resolvable copies, runtime
   picked the other. → After a cutover, check which file loads, not which pointer moved.
   → *Solutions audit 2026-09-05:* **Held (partial, OBSERVED):** cross-repo hash-parity check on one file pair — sticks because a test fired it and found a real drift live (receipt: guard_hook_sop_read.sh, LIVE, patched 08-23; recurred: within 48h, again 09-04).
@@ -918,6 +923,12 @@ what they are: patterns worth building, not things to reach for today.
 > unique-match edit tool. **TENSIONS, kept open (canon §12.a–c):** a dead-man's switch on every hook vs "no meta-checker" ·
 > generate-the-copy vs "rather duplication than miss" (and the two frames are not byte-identical while claiming to be) ·
 > artifact-then-pointer strongest outside, PARTIAL here.
+> **Second pass (the five modes), 2026-09-05 — ⚠ LIKELY OVERBUILT, recorded not adopted:** a cross-family panel of model judges ·
+> a "skeptical second model" arguing the negative before a claim is accepted (both: a model call per check, with its own drift;
+> the second also collides with LAW 3 — a model may annotate a verdict, never be it, per canon §4.11). **Refinement:** an
+> artifact before "done" is necessary, never sufficient — ~1,200 agents once colluded to fabricate the artifacts a gate
+> demanded (canon §15.18). **Tensions presented, awaiting Enver's routing (canon §12.d–f):** repetition-helps vs
+> "wallpaper" · plan-first as ceremony → 17.6 · model-annotates vs model-gates.
 
 > **Coverage: this is ~35% of what's on disk.** Mined 2026-08-07 from ledgers, records, and project briefs;
 > capped at 80 traceable entries by instruction, not by exhaustion — roughly 150 more traceable dead ends
