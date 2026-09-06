@@ -943,6 +943,16 @@ what they are: patterns worth building, not things to reach for today.
 > unique-match edit tool. **TENSIONS, kept open (canon §12.a–c):** a dead-man's switch on every hook vs "no meta-checker" ·
 > generate-the-copy vs "rather duplication than miss" (and the two frames are not byte-identical while claiming to be) ·
 > artifact-then-pointer strongest outside, PARTIAL here.
+> **Rulings 2026-09-06 (Enver; the full text is beside each tension in canon §12):** §12.b generate-the-copy — RESOLVED: no
+> generator script; a copier is one more thing that breaks silently and then needs its own alarm; the two frames are kept in
+> agreement by a quarterly human audit, an accepted limitation of a human-in-the-loop system, and the frame's "identical text"
+> claim is struck for "a near-copy." §12.c artifact-then-pointer — ROUTED, not an experiment: what held was the injected pointer
+> plus a live dialogue between the old window and the new; the stored pointer through a brief is the heavy path; two ledger items
+> carry the work (`[HANDOFF-SAVE-CHECKIN-TOO-HEAVY]`, `[HANDOFF-COMMAND-NO-PROJECT]`). §12.d repetition — RESOLVED: not a
+> contradiction; the study doubled the same text inside one prompt once (a single fresh signal), this system's per-turn injectors
+> repeat the same line into every turn forever (a background hum); same-turn doubling may help, cross-turn repetition becomes
+> wallpaper; canon §4.12 is scoped accordingly. §12.a dead-man's switch → experiment, canon 17.11. §12.e plan-first → folded into
+> canon 17.6. §12.f → resolved above.
 > **Second pass (the five modes), 2026-09-05 — ⚠ LIKELY OVERBUILT, recorded not adopted:** a cross-family panel of model judges ·
 > a "skeptical second model" arguing the negative before a claim is accepted (both: a model call per check, with its own drift;
 > the second also collides with LAW 3 — a model may annotate a verdict, never be it, per canon §4.11).
