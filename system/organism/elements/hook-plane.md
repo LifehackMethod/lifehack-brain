@@ -241,7 +241,7 @@ the ASUS-router write-guard this section describes is not part of the currently-
 
 #### A9. enforce_skill_frontmatter.sh
 **Matcher:** Write
-**Step chain:** `Claude → Write → skills/*/SKILL.md → Python3 checks: (a) YAML frontmatter block present, (b) description field non-empty and non-placeholder, (c) line count ≤ 500 → DENY exit 2 on any violation [hook]`
+**Step chain:** `Claude → Write → .claude/skills/*/SKILL.md → Python3 checks: (a) YAML frontmatter block present, (b) description field non-empty and non-placeholder, (c) line count ≤ 500 → DENY exit 2 on any violation [hook]`
 **Stores protected:** the skill registration surface — ⛔ `skills/*/SKILL.md` — no top-level `skills/` dir exists in this repo; the real path is `.claude/skills/*/SKILL.md` (36 found).
 
 **Scope note:** fires ONLY on full-content Write (content field present), not Edit. YAML parse via `yaml.safe_load`; regex fallback if yaml not installed. Non-SKILL.md targets exit 0 (correct scoping).

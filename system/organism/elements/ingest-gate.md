@@ -150,7 +150,7 @@ as a subprocess.
 
 **Command built (`ingest_gate.py:105–112`):**
 ```bash
-python3 shared/tools/sentinel_response.py \
+python3 shared/gate/sentinel_response.py \
   --source <desk_id> \
   --item <item[:120]> \
   --provenance <tag>

@@ -9,8 +9,8 @@ gap_disposition: defect
 gap_disposition_note: "ruled 2026-07-28 at class level — C4 silent-death — security-health has no Pulse slot; the monthly audit LaunchAgent was retired with no replacement"
 generated_from:
   - shared/gate/sentinel_response.py
-  - shared/tools/sentinel_ack.py
-  - shared/tools/sentinel_quarantine.py
+  - shared/gate/sentinel_ack.py
+  - shared/gate/sentinel_quarantine.py
   - shared/tools/ingest_gate.py
   - system/tools/ingest-run.lib.sh
   - system/tools/sentinel-health.py
@@ -134,11 +134,11 @@ taxonomy from the three COMPONENTS, and they remain five.
 ```
 ingest harness desk -run.sh  [actor]
   -> ingest_sentinel_check()  [ingest-run.lib.sh:231]
-     -> Bash: python3 shared/tools/sentinel_response.py --source <job> --item <id>  [port: subprocess]
+     -> Bash: python3 shared/gate/sentinel_response.py --source <job> --item <id>  [port: subprocess]
         stdin: findings JSON from scan_for_injection / email_convert.py  [port: pipe]
 
         sentinel_response.py:main()  [actor]
-          -> parse_findings()  [internal: shared/tools/sentinel_response.py:120]
+          -> parse_findings()  [internal: shared/gate/sentinel_response.py:120]
           -> fingerprint_for(source, labels)  [internal: sentinel_response.py:73]
 
           == CLEAN path (no labels) ==
@@ -282,7 +282,7 @@ user -> invokes the "sentinel" subagent by name  [human]  (scope=secrets|invento
                              root are reported as permission-UNVERIFIABLE rather than asserted as a pass
      -> SECTION 3 (3 boxes): hook and config integrity — the named core enforcement set is present in
                              system/hooks/ (error if any is missing); settings.json denies Edit on
-                             system/hooks/** + settings.json + agents/** + skills/**; plus a standing
+                             system/hooks/** + settings.json + agents/** + .claude/skills/**; plus a standing
                              note that permissions.deny is not OS-level protection (recorded every run)
      -> SECTION 4 (3 boxes): config inventory — MCP surface (transport risk-graded stdio-local /
                              http-local / networked + data sensitivity), root permissions, per-desk
@@ -346,8 +346,8 @@ compact and readable.
 
 ### GENERATED_FROM
 
-`shared/tools/sentinel_response.py` · `shared/tools/sentinel_ack.py` ·
-`shared/tools/sentinel_quarantine.py` · `shared/tools/ingest_gate.py` (v2 gate, live via email_convert.py import; direct per-item runner wiring pending) ·
+`shared/gate/sentinel_response.py` · `shared/gate/sentinel_ack.py` ·
+`shared/gate/sentinel_quarantine.py` · `shared/tools/ingest_gate.py` (v2 gate, live via email_convert.py import; direct per-item runner wiring pending) ·
 `system/tools/ingest-run.lib.sh` (ingest_sentinel_check + ingest_check_paused) ·
 `system/tools/sentinel-health.py` · `system/tools/sentinel-health-run.sh` ·
 `system/tools/security-health.py` · `system/tools/system-health.py:567` · `agents/sentinel.md` ·
@@ -550,7 +550,7 @@ against a much larger live hook plane (`records/2026-07-16-synthesis-defect-clus
 `guard_write_paths.sh` · `guard_canon_write.sh` · `guard_calendar_writes.sh` · `guard_egress.sh` ·
 `enforce_egress_allowlist.sh` — raising an **error** on any absence, on the reasoning that someone may
 have deleted a guard; and (b) that `settings.json` denies `Edit` on `system/hooks/**`, on
-`settings.json` itself, on `agents/**` and on `skills/**` — the hook self-protection layer, an error if
+`settings.json` itself, on `agents/**` and on `.claude/skills/**` — the hook self-protection layer, an error if
 any of the four is missing. ⚠ The audit still does not enumerate every hook file, and it now says so
 out loud with a third standing note recorded every run: `permissions.deny` is **not** OS-level file
 protection — a Bash-tool session can still overwrite a hook via shell redirection with the deny rule
