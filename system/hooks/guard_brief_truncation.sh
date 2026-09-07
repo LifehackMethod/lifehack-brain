@@ -129,10 +129,10 @@ for line in sys.stdin:
   # A Bash overwrite cannot be sized before it runs, so the snapshot is unconditional here.
   if [ -f "$HIT.pre-shrink.bak" ]; then
     now=$(date +%s)
-    mt=$(stat -f %m "$HIT.pre-shrink.bak" 2>/dev/null || stat -c %Y "$HIT.pre-shrink.bak" 2>/dev/null || echo 0)
+    mt=$(stat -c %Y "$HIT.pre-shrink.bak" 2>/dev/null || stat -f %m "$HIT.pre-shrink.bak" 2>/dev/null || echo 0)
     age=$(( now - mt ))
-    bs=$(stat -f %z "$HIT.pre-shrink.bak" 2>/dev/null || stat -c %s "$HIT.pre-shrink.bak" 2>/dev/null || echo 0)
-    cs=$(stat -f %z "$HIT" 2>/dev/null || stat -c %s "$HIT" 2>/dev/null || echo 0)
+    bs=$(stat -c %s "$HIT.pre-shrink.bak" 2>/dev/null || stat -f %z "$HIT.pre-shrink.bak" 2>/dev/null || echo 0)
+    cs=$(stat -c %s "$HIT" 2>/dev/null || stat -f %z "$HIT" 2>/dev/null || echo 0)
     if [ "$age" -le "$RECEIPT_MAX_AGE" ] && [ "$bs" -ge "$cs" ]; then exit 0; fi
   fi
 
@@ -202,9 +202,9 @@ else:
 
       if [ -f "$path.pre-shrink.bak" ]; then
         now=$(date +%s)
-        mt=$(stat -f %m "$path.pre-shrink.bak" 2>/dev/null || stat -c %Y "$path.pre-shrink.bak" 2>/dev/null || echo 0)
+        mt=$(stat -c %Y "$path.pre-shrink.bak" 2>/dev/null || stat -f %m "$path.pre-shrink.bak" 2>/dev/null || echo 0)
         age=$(( now - mt ))
-        bs=$(stat -f %z "$path.pre-shrink.bak" 2>/dev/null || stat -c %s "$path.pre-shrink.bak" 2>/dev/null || echo 0)
+        bs=$(stat -c %s "$path.pre-shrink.bak" 2>/dev/null || stat -f %z "$path.pre-shrink.bak" 2>/dev/null || echo 0)
         if [ "$age" -le "$RECEIPT_MAX_AGE" ] && [ "$bs" -ge "$cur" ]; then exit 0; fi
       fi
 
