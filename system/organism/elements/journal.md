@@ -7,19 +7,19 @@ record_type: organism-element
 maturity_label: PARTIAL (honor)
 generated_from:
   - Lifehack/system/journal.md (header + format spec + ## Log section)
-  - skills/save/SKILL.md (v3.3) Steps 7 · 7d · SC-4(iv-journal-first) · SC-5 · Step 9 coverage-note
-  - skills/checkin/SKILL.md (v1.3) Step 3.6b journal-first rule
-  - skills/project-manager/SKILL.md "Ongoing update rule" + "JOURNAL-FIRST" block (~lines 278–390)
+  - .claude/skills/save/SKILL.md (v3.3) Steps 7 · 7d · SC-4(iv-journal-first) · SC-5 · Step 9 coverage-note
+  - .claude/skills/checkin/SKILL.md (v1.3) Step 3.6b journal-first rule
+  - .claude/skills/project-manager/SKILL.md "Ongoing update rule" + "JOURNAL-FIRST" block (~lines 278–390)
   - system/tools/planning-diary-capture.py (read_journal() · JOURNAL constant · build())
   - system/tools/planning-diary-rollup.py (journal_range() · JOURNAL constant)
   - system/tools/marc-sensor.py (TRIP journal-append block lines 113–130)
   - system/tools/marc-pulse-journal.py (full file — slot-level daily append)
   - system/hooks/guard_write_paths.sh (line ~270, not 130 [corrected 2026-08-27, claim 78] — journal.md in clone block-list; live effective behavior for this path did not match "blocked" when fire-tested, claim 77 — see STORE section)
   - system/reference/settings.json (hook registrations PreToolUse Write|Edit)
-  - skills/read/SKILL.md Step 0 journal-slice + gap-signal + coverage-disclaimer
-  - skills/throughline/SKILL.md (journal failure-rows subagent input)
+  - .claude/skills/read/SKILL.md Step 0 journal-slice + gap-signal + coverage-disclaimer
+  - .claude/skills/throughline/SKILL.md (journal failure-rows subagent input)
   - skills/marc-checkin/SKILL.md (marc journal-row read)
-  - skills/archivist-audit/SKILL.md (journal-newer-than-brief staleness check)
+  - .claude/skills/archivist-audit/SKILL.md (journal-newer-than-brief staleness check)
 created_at: 2026-07-23
 updated_at: 2026-07-23
 status: active
@@ -490,8 +490,11 @@ This is the same signal the archivist uses during drift detection. Read-only.
    whole file on every run (`lines = f.readlines()`) with no hard cap or warning.
    **✅ THIS IS RESOLVED — `system/tools/journal.py` carries a `rotate` subcommand
    (`journal.py rotate [--dry-run]`).** It moves every entry from a *completed* month out of
-   `journal.md` into a segment file `system/journal/YYYY-MM.md`, and leaves the current month in
-   place (rotating the current month would split a month across two files). Rotation is
+   `journal.md` into a segment file under `system/journal/`, named on the pattern `YYYY-MM.md`, and
+   leaves the current month in place (rotating the current month would split a month across two
+   files). `system/journal/` is the person's own notes folder, not a path this repo ships — same
+   as `system/journal.md` itself — and today it holds nothing at all: no month has completed
+   rotation yet, so no `YYYY-MM.md` segment exists anywhere, here or on a live install. Rotation is
    **move-and-verify: it never deletes and never rewrites** — it moves whole lines between files and
    refuses, raising before anything is removed, if the segment did not receive every row. This also
    bounds the full-file `readlines()` scan cost the gap flagged, since only the current month
@@ -567,8 +570,10 @@ intentional bottleneck that keeps the Cal pipeline from being wired to every ind
    Would catch the malformed-row edge case that currently makes entries invisible to the Cal
    pipeline.
 3. **File-size monitoring** — ✅ the rotation half of this is DONE (see Edge Case 6):
-   `journal.py rotate` segments completed months into `system/journal/YYYY-MM.md`, so the full-file
-   scan on each planning-diary-capture.py run is bounded to the current month. What remains open is the
+   `journal.py rotate` segments completed months into files under `system/journal/` (pattern
+   `YYYY-MM.md`), so the full-file scan on each planning-diary-capture.py run is bounded to the
+   current month. `system/journal/` is data, not a repo path — nothing has landed there yet since
+   no month has completed rotation. What remains open is the
    indexed-format question and any automatic scheduling of `rotate` — today it is a CLI subcommand
    a human or a job invokes, not a cadence.
 

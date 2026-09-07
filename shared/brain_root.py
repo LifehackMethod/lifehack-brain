@@ -27,6 +27,7 @@ Usage as a CLI:
 
 import argparse
 import os
+import stat
 import sys
 
 # ── THE BRAIN ROOT: asked once, remembered forever (the author 2026-08-08) ─────────────────────────
@@ -166,34 +167,90 @@ def read_main_worktree_pointer():
     return value or None
 
 
+def _classify_dir(path):
+    """Is PATH a real, readable directory, nothing at all, or there-but-refused?
+
+    THE PROBLEM THIS FIXES (row #86-3). `os.path.isdir()` catches every OSError internally and
+    just returns False — so "nothing there" and "something is there but the OS won't let us stat
+    or list it" (wrong owner, chmod 000, a locked-down mount) look IDENTICAL to every call site
+    below. Each of those call sites was treating that single False as proof the route names no
+    real folder and falling through — which, once every route has been tried, lands on NOT-SET
+    and tells someone to pick a new folder when their actual, correctly-named AI Brain is sitting
+    right there, just inaccessible. Different problem, different fix (chmod / ownership, not a
+    new --set), so it has to be reported as what it is.
+
+    Returns one of "ok", "missing", "denied". Never raises — same never-throw contract the rest
+    of this module's path checks hold, so a caller can keep treating the return value as a plain
+    classification rather than guarding a call."""
+    try:
+        st = os.stat(path)
+    except PermissionError:
+        # Stat itself was refused — nothing there, and being refused, but we know for certain the
+        # PARENT let us get this far without a FileNotFoundError, so this is not "missing".
+        return "denied"
+    except OSError:
+        # FileNotFoundError, NotADirectoryError, and anything else unresolvable — no such place.
+        return "missing"
+    if not stat.S_ISDIR(st.st_mode):
+        return "missing"
+    if not os.access(path, os.R_OK | os.X_OK):
+        # Exists, IS a directory, stat succeeded (e.g. we own it) — but read/traverse is refused.
+        # This is the chmod-000-directory case: isdir() alone reports this exactly like NOT-SET.
+        return "denied"
+    return "ok"
+
+
 def resolve_brain_root():
     """The one resolver every caller (skill drivers, tests, this CLI) goes through. Returns
     (source, path) with source in {"env", "repo-pointer", "main-worktree-pointer", "persisted",
-    "legacy-glob"} and path a real directory, OR (None, None) for NOT-SET. Never guesses, never
-    defaults to cwd, never invents a path."""
+    "legacy-glob"} and path a real, READABLE directory; OR ("permission-denied", path) when a
+    route names a real path that exists but this process was refused access to it — path there is
+    the refused location, not a usable one, so callers must not write through it without checking
+    source first; OR (None, None) for NOT-SET. Never guesses, never defaults to cwd, never invents
+    a path — and a permission refusal must never be silently reported as NOT-SET either (row
+    #86-3): see _classify_dir for why isdir() alone could not tell the two apart."""
     env = os.environ.get(BRAIN_ROOT_ENV)
-    if env and os.path.isdir(env):
-        return "env", env
+    if env:
+        status = _classify_dir(env)
+        if status == "ok":
+            return "env", env
+        if status == "denied":
+            return "permission-denied", env
     pointer = read_repo_pointer()
-    if pointer and os.path.isdir(pointer):
-        return "repo-pointer", pointer
+    if pointer:
+        status = _classify_dir(pointer)
+        if status == "ok":
+            return "repo-pointer", pointer
+        if status == "denied":
+            return "permission-denied", pointer
     # (2b) A linked worktree has no pointer of its own and cannot be given one by git — borrow the
     # main worktree's, ahead of the machine-global, which belongs to no repo in particular.
     borrowed = read_main_worktree_pointer()
-    if borrowed and os.path.isdir(borrowed):
-        return "main-worktree-pointer", borrowed
+    if borrowed:
+        status = _classify_dir(borrowed)
+        if status == "ok":
+            return "main-worktree-pointer", borrowed
+        if status == "denied":
+            return "permission-denied", borrowed
     if os.path.isfile(BRAIN_ROOT_CONFIG):
         try:
             persisted = open(BRAIN_ROOT_CONFIG, encoding="utf-8").read().strip()
         except OSError:
             persisted = ""
-        if persisted and os.path.isdir(persisted):
-            return "persisted", persisted
+        if persisted:
+            status = _classify_dir(persisted)
+            if status == "ok":
+                return "persisted", persisted
+            if status == "denied":
+                return "permission-denied", persisted
     if BRAIN_ROOT_LEGACY_GLOB:          # unset on a fresh install -> step (4) is a no-op, never a guess
         import glob as _glob
         for hit in sorted(_glob.glob(BRAIN_ROOT_LEGACY_GLOB)):
-            if os.path.isdir(hit):
+            status = _classify_dir(hit)
+            if status == "ok":
                 return "legacy-glob", hit
+            if status == "denied":
+                return "permission-denied", hit
     return None, None
 
 
@@ -426,6 +483,13 @@ def main(argv=None):
             print(f"  To put it back: {os.path.basename(__file__)} --set \"{previous}\" --replace-global")
         return 0
     source, path = resolve_brain_root()
+    if source == "permission-denied":
+        if not a.quiet:
+            print(f"PERMISSION-DENIED: '{path}' is the AI Brain this machine already points at, "
+                  f"but this process was refused access to it — wrong owner, or its permissions "
+                  f"block reading/entering it. This is NOT a missing or unset brain root; fix the "
+                  f"folder's permissions (or ownership) rather than picking a new one.")
+        return 1
     if path is None:
         if not a.quiet:
             print(NOT_SET_MESSAGE)

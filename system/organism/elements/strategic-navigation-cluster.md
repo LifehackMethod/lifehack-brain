@@ -6,9 +6,9 @@ altitude: base
 record_type: organism-element
 maturity_label: PARTIAL [provisional]
 generated_from:
-  - skills/first-principles/SKILL.md (v1.0.0)
-  - skills/telos/SKILL.md (v1.0)
-  - skills/throughline/SKILL.md (v1.1)
+  - .claude/skills/first-principles/SKILL.md (v1.0.0)
+  - .claude/skills/telos/SKILL.md (v1.0)
+  - .claude/skills/throughline/SKILL.md (v1.1)
   - system/hooks/throughline_flag.sh (UPDATED 2026-06-22)
   - system/hooks/guard_throughline_write_scope.sh (UPDATED 2026-06-22)
   - ~/.claude/settings.json (lines 175-179 PreToolUse Write/Edit; line 206 ExitPlanMode; line 342 UserPromptSubmit)

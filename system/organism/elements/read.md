@@ -6,9 +6,9 @@ altitude: base
 record_type: organism-element
 maturity_label: PARTIAL (honor)
 generated_from:
-  - skills/read/SKILL.md
-  - skills/checkin/SKILL.md
-  - skills/project-manager/SKILL.md
+  - .claude/skills/read/SKILL.md
+  - .claude/skills/checkin/SKILL.md
+  - .claude/skills/project-manager/SKILL.md
   - system/hooks/pm_flag.sh
   - system/hooks/pm_persist.sh
   - system/hooks/session_context_loader.sh
@@ -43,10 +43,18 @@ authority: user
 > delete the defect it exists to record.
 >
 > ⚠ **CORRECTED 2026-09-01:** the bare `skills/read/SKILL.md`, `skills/checkin/SKILL.md`, and
-> `skills/project-manager/SKILL.md` cited below (and just below, at "the skills themselves") are the
-> donor's repo-relative form and resolve nowhere from this repo's root. Verified this session: all three
-> ship from the installed plugin at `.claude/skills/<name>/` (plugin root, confirmed under
-> `~/.claude/plugins/marketplaces/lifehack-brain/`), not from any path inside this repository.
+> `.claude/skills/project-manager/SKILL.md` cited below (and just below, at "the skills themselves") are the
+> donor's repo-relative form (missing the `.claude/` prefix) and resolve nowhere from this repo's root
+> AS WRITTEN. ~~Verified this session: all three ship from the installed plugin at `.claude/skills/<name>/`
+> (plugin root, confirmed under `~/.claude/plugins/marketplaces/lifehack-brain/`), not from any path
+> inside this repository.~~
+> ⚠ **THIS 2026-09-01 CORRECTION IS ITSELF WRONG for all three (BUG window, 2026-09-07):** all three are
+> tracked in THIS repo, confirmed by `git ls-files` and direct read this session:
+> `.claude/skills/read/SKILL.md` (367 lines), `.claude/skills/checkin/SKILL.md` (180 lines),
+> `.claude/skills/project-manager/SKILL.md` (227 lines). None ships "only from the installed plugin" —
+> all are repo-tracked files right here. Likely cause: the 2026-09-01 audit tested each bare path
+> (missing `.claude/`), found nothing literal, and wrongly generalized non-existence in this repo — the
+> same defect pattern found across this cluster (see `archivist.md` for the fullest write-up).
 
 > **LADDER: ELEMENT (full mechanics). up → manual#read ; ground truth → the live artifact (generated_from)**
 
@@ -54,7 +62,7 @@ authority: user
 > rehydrated — every trigger, every mode, every step, every store touched, every gate and its real
 > enforcement, and every interop seam with the rest of the system. The MIDDLE index (`system/organism/manual.md`)
 > carries only a one-line pointer here; the TIP (`CLAUDE.md` schematic) shows only the box + arrows;
-> the **skills themselves** (`skills/read/SKILL.md`, `skills/checkin/SKILL.md`, `skills/project-manager/SKILL.md`)
+> the **skills themselves** (`.claude/skills/read/SKILL.md`, `.claude/skills/checkin/SKILL.md`, `.claude/skills/project-manager/SKILL.md`)
 > are the fourth level — the executable runtime ground truth.
 > This entry is the UNDERSTANDING layer: exhaustive description of what the element does + why + how it connects.
 >
@@ -772,7 +780,7 @@ What this element never does:
 
 The manual/directed nature of `/read` is INTENTIONAL. The earlier audit draft framed recall as "the flywheel only turns when the operator turns it" — a gap. The operator corrected this: "RECALL is already fairly automated — open a window from the correct desk, ask the question." The `session_context_loader.sh` floor pre-loads canon every session; `pm_persist.sh` re-injects project state every turn; `/read` is the directed top-up for specific context needs. The human-judgment gate on when to invoke `/read` is by design, not a defect.
 
-The `/checkin` check in the checkin-conflicts-drift audit (conflicts-drift-A.md line 135) flagged `skills/checkin/SKILL.md` as "describes retirement of the core function" — a stale-path signal. The source audit confirms `/checkin` is live and used; the SKILL.md file may have prose describing an older framing that hasn't been fully updated. This is a doc-vs-code drift to investigate in the SKILL.md, not a functional defect.
+The `/checkin` check in the checkin-conflicts-drift audit (conflicts-drift-A.md line 135) flagged `.claude/skills/checkin/SKILL.md` as "describes retirement of the core function" — a stale-path signal. The source audit confirms `/checkin` is live and used; the SKILL.md file may have prose describing an older framing that hasn't been fully updated. This is a doc-vs-code drift to investigate in the SKILL.md, not a functional defect.
 
 **Current state → PARTIAL, for precise reasons:**
 

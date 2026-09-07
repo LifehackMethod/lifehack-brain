@@ -60,16 +60,18 @@ authority: user
 > ⛔ `/skill-name` — same reason: not a skill, a PLACEHOLDER word (*"an accessible `/skill-name` command"*), standing for *any* slash command. No skill by this name exists in the donor or here, so there is nothing to bring.
 >
 > ⛔ ~~`system/tools/bootstrap-machine.sh` — never ships. Its whole job was wiring a `~/.claude/skills/` symlink farm pointing INTO a second machine's clone; that layer does not exist here at all — verified, every entry under `.claude/skills/` is a real in-repo directory, not a symlink, so the harness discovers skills with nothing to wire. The destination's bootstrap is `system/tools/bootstrap.py`, which scaffolds the reader's NOTES folder and deliberately nothing else. The two-machine residency tooling it belonged to is on the closed exclusion list.~~
-> ⚠ **CORRECTED 2026-08-23.** This was true when written (2026-07-24/28) and is now stale: two-machine residency was REINSTATED and `bootstrap-machine.sh` was PORTED INTO THIS REPO the same day this correction is dated (T1.C7) — see the script's own header banner at `system/tools/bootstrap-machine.sh:3-4` ("PORTED INTO THIS REPO, T1.C7, 2026-08-23 … two-machine sync was REINSTATED 2026-08-23 and is wanted"). It is wired live into Pulse as the `bootstrap-sync` row (`system/pulse-config.md:419-425`, "✅ PORTED + ENABLED 2026-08-23 (T1.C7)", every 1800s).
+> ⚠ **CORRECTED 2026-08-23.** This was true when written (2026-07-24/28) and is now stale: two-machine residency was REINSTATED and `bootstrap-machine.sh` was PORTED INTO THIS REPO the same day this correction is dated (T1.C7) — see the script's own header banner at `system/tools/bootstrap-machine.sh:3-4` ("PORTED INTO THIS REPO, T1.C7, 2026-08-23 … two-machine sync was REINSTATED 2026-08-23 and is wanted"). It is wired live into Pulse as the `bootstrap-sync` row (`system/pulse-config.md:419-425`, "`✅` PORTED + ENABLED 2026-08-23 (T1.C7)", every 1800s) — quoted here as the literal text this now-stale claim used, not asserted as current (see the correction directly below).
+>
+> ⛔ **CITATION FIXED (BUG window, 2026-09-07):** the 2026-08-23 correction directly above is itself now stale and wrong. Verified this session: `system/tools/bootstrap-machine.sh` is not on disk anywhere in this repo, and `git show HEAD:system/tools/bootstrap-machine.sh` finds it in neither the working tree nor `origin/main`. Its only commits (e.g. `65d3702` "Track bootstrap-machine.sh…") live on the `claudeops` remote (`egjokaj/ClaudeOps`, private) — `git remote -v` confirms `origin` is `LifehackMethod/lifehack-brain` (public) and `claudeops` is the separate private repo. It never shipped here; the "PORTED INTO THIS REPO" claim above does not hold today. `system/pulse-config.md` also carries no `bootstrap-sync` row (confirmed by direct grep) — that citation is equally stale. Treat `bootstrap-machine.sh` as ⛔ not-here: private ClaudeOps tooling, not lifehack-brain's.
 >
 > ⛔ `system/claudeops-schema-brief.md:14` — one of the docs this correction lists as naming bootstrap-machine.sh — is verified absent at that path this session; the file now lives at system/parked/2026-08-23-donor-spillover/system/claudeops-schema-brief.md.
 >
-> It is also named by `system/machine-readiness-checklist.md`, `system/sops/recovery-runbook.md:45,58`, `docs/design.md:68`, and `system/organism/manual.md` under `## two-machine-residency` (`TRIGGERS bootstrap-machine.sh`, `SYNCS skill-system`). At the time of this correction the file is still untracked in `git ls-files` (present on disk, not yet committed) and absent from the public `lifehack-brain` clone — the port is real and enabled but not yet shipped to students. See `manual.md`'s `## two-machine-residency` section for the current interop detail; that section is the one to trust going forward, not this struck paragraph.
+> It is also named by `system/machine-readiness-checklist.md`, `system/sops/recovery-runbook.md:45,58`, and `system/organism/manual.md` under `## two-machine-residency` (`TRIGGERS bootstrap-machine.sh`, `SYNCS skill-system`) — ⛔ `docs/design.md:68` is dropped from that list: no file named `design.md` exists anywhere in this repo, verified this session, so there is no correct referent for it. At the time of the 2026-08-23 correction the file was said to be untracked in `git ls-files` and absent from the public `lifehack-brain` clone; verified today it is absent from this repo outright. See `manual.md`'s `## two-machine-residency` section for the current interop detail; that section is the one to trust going forward, not this struck paragraph.
 >
 > ⏳ unruled — `system/tools/conformance-lab/conformance.py`, the grader itself. On no ship list and no phase owes it: a DEBT, not a pass.
 > The rest of the lab DID come over — `system/tools/conformance-lab/driver.py`, `system/tools/conformance-lab/probes/`, `system/tools/conformance-lab/rule-registry.md` and `system/tools/conformance-lab/_verify_guards_manual.py` are all here — while `system/tools/new-skill.sh` line 184 still promises that "conformance.py grades the skill with ZERO new code."
 >
-> ⛔ **`auto_register_skill.sh` DOES NOT EXIST** — **CORRECTED 2026-08-27** (L.B2 audit: `find . -iname "auto_register_skill.sh"` and a grep of both `registrations.json` and `.claude/settings.json` return zero hits anywhere in this repo). `registrations.json`'s PostToolUse array contains only `validate_on_write.sh` and `observability_logger.sh`. Every mention of `auto_register_skill.sh` in the body below (command-stub creation, title/note frontmatter consumption, the global-skill skip rule) describes a mechanism that was never shipped or ported here — the donor-layout pattern this file's own CITATIONS block already applies elsewhere. Kept intact, not rewritten.
+> ⛔ **`auto_register_skill.sh` DOES NOT EXIST** — **CORRECTED 2026-08-27** (L.B2 audit: `find . -iname "auto_register_skill.sh"` returns zero hits anywhere in this repo). ⚠ **CITATION FIXED (BUG window, 2026-09-07):** this note used to cite `registrations.json`, a file that does not exist anywhere in this repo (that name belongs to private ClaudeOps tooling, not lifehack-brain). The live PostToolUse array is `.claude/settings.json` (mirrored by `hooks/hooks.json` for the plugin build) and contains only `validate_on_write.sh` (matcher `Write|Edit`) and `observability_logger.sh` (matcher `*`) — confirmed by direct read of both files. Every mention of `auto_register_skill.sh` in the body below (command-stub creation, title/note frontmatter consumption, the global-skill skip rule) describes a mechanism that was never shipped or ported here — the donor-layout pattern this file's own CITATIONS block already applies elsewhere. Kept intact, not rewritten.
 >
 > ⚠ **Frontmatter cap revised 2026-07-28** — CORRECTED 2026-08-27 (L.B2 audit, header read of the live `enforce_skill_frontmatter.sh`): the guard now fires on a Write **or Edit** of any `skills/*/SKILL.md` (closing the "Edit path is dark" gap this element's own frontmatter `gap_disposition_note` still names as open above), and the hard line-cap was raised to **1500** lines (pathological-only) — the 500-line figure quoted throughout the body below is now only a non-enforced "ideal," not a wall. `save/SKILL.md` ⛔ (not present under this repo's own `.claude/skills/` — measured at its live home, `~/lifehack-brain/.claude/skills/save/SKILL.md`, and the plugin cache's copy) — cited below as the reference over-cap example at 871/893 lines — stands at **171 lines today** (confirmed live, both live copies), the shrink this cap revision produced. No live `SKILL.md` in this repo, `~/lifehack-brain`, or the plugin cache (0.3.13) currently exceeds ~525 lines.
 >
@@ -147,7 +149,7 @@ path — makes it portable across git worktrees (verified in code, lines 33–35
 2026-08-27 CITATIONS correction above:** the live guard's matcher now covers `Write` **or** `Edit`.
 **What it checks (Python embedded, verified line-by-line):**
 
-1. **Path filter** — only fires on `*/skills/*/SKILL.md`; skips `*/skills/_*` (archived/retired holding areas) and `*/templates/*` (those legitimately need no description). `[hook: enforce_skill_frontmatter.sh line 38–42]`
+1. **Path filter** — only fires on `*/skills/*/SKILL.md`; skips `*/.claude/skills/_*` (archived/retired holding areas) and `*/templates/*` (those legitimately need no description). `[hook: enforce_skill_frontmatter.sh line 38–42]`
 2. **Content-only guard** — ~~fires only on a full-content `Write` (where `content:` field is present); an `Edit` (which carries old/new strings, not the whole file) is not covered by this hook.~~ **CORRECTED 2026-08-27**: this gap was closed 2026-07-28 — the guard now also covers `Edit`. `[hook: line 57–59, superseded]`
 3. **Size cap (c)** — ~~>500 lines → exit 2, BLOCKED.~~ **CORRECTED 2026-08-27**: hard cap raised to 1500 lines (pathological-only) 2026-07-28; 500 is now a non-enforced "ideal." `[hook: line 61–63, superseded]`
 4. **YAML frontmatter block** — must open with `--- ... ---`; no block → exit 2. `[hook: line 66–69]`
@@ -201,11 +203,13 @@ What it does (verified, lines 62–79):
 **UNVERIFIED:** as of 2026-07-24, the `~/.claude/commands/` dir under the clone root holds no entries
 (`ls $HOME/lifehack-brain/.claude/commands/` returns empty); the desk stubs in
 `~/.claude/commands/` appear to have been created by other means or an earlier version of the hook.
-The hook's PostToolUse Write|Edit matcher applies to both Write AND Edit tool calls, unlike
-`enforce_skill_frontmatter.sh` which is Write-only. ⚠ **CORRECTED 2026-09-01** (H.C10, live read of
-`system/hooks/registrations.json`): that comparison is now stale — `enforce_skill_frontmatter.sh`'s
-registered matcher is `Bash|Write|Edit` today (the S2.3 fix, 2026-07-28, per the guard's own header
-and the top-of-file CITATIONS note); both hooks now cover Write and Edit alike.
+The hook's PostToolUse Write|Edit matcher applies to both Write AND Edit tool calls — and so
+does `enforce_skill_frontmatter.sh`'s own matcher, `Write|Edit` (the S2.3 fix, 2026-07-28); both hooks
+cover Write and Edit alike. ⚠ **CITATION FIXED (BUG window, 2026-09-07):** an earlier "CORRECTED
+2026-09-01" note here claimed the registered matcher was `Bash|Write|Edit` and cited ⛔
+`system/hooks/registrations.json` — no such file exists in this repo (that name belongs to private
+ClaudeOps tooling). Confirmed instead by direct read of `.claude/settings.json` and `hooks/hooks.json`:
+the live matcher is `Write|Edit`, not `Bash|Write|Edit`.
 
 ---
 
@@ -400,13 +404,15 @@ an element growing new code is a human/peer-window catch until a completeness ch
 
 **Live hook-enforced walls:**
 
-1. **`enforce_skill_frontmatter.sh`** (PreToolUse Write, matcher `Write`) `[hook]`
-   — BLOCKS the Write (exit 2) when a `skills/*/SKILL.md` lacks a non-empty `description:`, fails
-   YAML parse, or exceeds 500 lines. **Only fires on full-content Write** (not Edit). Does not fire
-   on archived/retired skill paths or template dirs.
-   ⚠ **CORRECTED 2026-09-01** (H.C10, live read of `system/hooks/registrations.json`): the matcher
-   and the "not Edit" claim above are stale — the live registered matcher is `Bash|Write|Edit` (the
-   S2.3 fix, 2026-07-28), so the guard fires on Edit too, not Write-only.
+1. **`enforce_skill_frontmatter.sh`** (PreToolUse, matcher `Write|Edit`) `[hook]`
+   — BLOCKS the Write or Edit (exit 2) when a `skills/*/SKILL.md` lacks a non-empty `description:`,
+   fails YAML parse, or exceeds 500 lines. Fires on Write AND Edit (matcher `Write|Edit`, the S2.3
+   fix, 2026-07-28) — confirmed by direct read of `.claude/settings.json` and `hooks/hooks.json`.
+   Does not fire on archived/retired skill paths or template dirs.
+   ⚠ **CITATION FIXED (BUG window, 2026-09-07):** an earlier "CORRECTED 2026-09-01" note here named
+   matcher `Bash|Write|Edit` and cited ⛔ `system/hooks/registrations.json` — no such file exists in
+   this repo (that name belongs to private ClaudeOps tooling, not lifehack-brain). The live matcher,
+   confirmed directly, is `Write|Edit`.
 
 2. **`auto_register_skill.sh`** (PostToolUse Write|Edit, matcher `Write|Edit`) `[hook]`
    — AUTO-CREATES a command stub for desk skills after a Write|Edit to the SKILL.md. For global
@@ -441,7 +447,7 @@ an element growing new code is a human/peer-window catch until a completeness ch
    **VERIFIED 2026-07-28 (S1.1 T1.5):** registration in the tracked `settings.json` is
    `PreToolUse` / matcher **`Write`** — confirmed from source, not inferred. **Live proof the dark
    path is real:** the SOP's own ceiling is **<500 lines** (`skill-building-sop.md`) and
-   `skills/save/SKILL.md` currently stands at **871 lines** — it grew past the cap entirely through
+   `.claude/skills/save/SKILL.md` currently stands at **871 lines** — it grew past the cap entirely through
    `Edit`, the path the guard cannot see. **This is the ONLY over-cap SKILL.md in the repo** (measured
    this session across all `skills/*/SKILL.md`; the Step-2 note claiming *two* over-cap files is wrong
    — the grandfather list needs one entry, not two).
@@ -495,13 +501,22 @@ an element growing new code is a human/peer-window catch until a completeness ch
    authored in the clone before that date may lack command stubs. Existing stubs are not audited
    for staleness.
 
-8. **Bash-write bypass (system-class gap, per §8.4b SYSTEM-CLASS GAP EXCLUSION):** ~~`guard_write_paths.sh`
-   fires on `Write|Edit` only~~ — **CORRECTED 2026-08-27** (L.B2 audit, live registration read):
-   the registered matcher is actually `Bash|Write|Edit` — the hook DOES also fire on a Bash tool
-   call. The functional bypass is still real, but for a different reason: the guard's `FILE_PATH`
-   is extracted only from `tool_input.file_path`/`.path`, fields a Bash `tool_input` never carries
-   (it carries `.command` instead) — so a Bash file-write mechanically skips the path check even
-   though the hook technically fires. This is an accepted,
+8. **Bash-write bypass (system-class gap, per §8.4b SYSTEM-CLASS GAP EXCLUSION):** `guard_write_paths.sh`
+   fires on `Write|Edit` only — a Bash tool call never triggers it at all.
+   ~~**CORRECTED 2026-08-27** (L.B2 audit, live registration read): the registered matcher is
+   actually `Bash|Write|Edit` — the hook DOES also fire on a Bash tool call.~~ ⚠ **STRUCK (BUG
+   window, 2026-09-07):** that 2026-08-27 correction is itself wrong, not the line it corrected.
+   Direct read of `.claude/settings.json` and `hooks/hooks.json` (both parsed programmatically this
+   session) shows `guard_write_paths.sh` registered under exactly one PreToolUse matcher,
+   `Write|Edit` — never `Bash|Write|Edit`. (Other guards in the same file — `guard_canon_write.sh`,
+   `guard_cross_project_write.sh`, `guard_pm_flag_store.sh`, and several more — genuinely are
+   registered under `Bash|Write|Edit`; the 2026-08-27 note appears to have generalized from those
+   neighbors rather than `guard_write_paths.sh` itself.) The original ~~struck~~ sentence was
+   correct: the hook simply never runs on a Bash tool call, full stop — this is a matcher-scope gap,
+   not the field-extraction gap the (wrong) correction went on to describe. The
+   `tool_input.file_path`/`.path`-vs-`.command` extraction detail below may still be accurate
+   engineering trivia about the hook's code, but it is moot for THIS gap: the hook never reaches
+   that extraction step on a Bash call, because it never fires. This is an accepted,
    system-wide design (documented in `guard_write_paths.sh` header 2026-07-14). NOT derived as a
    skill-system-specific `·gap` — blast-radius is identical to the system baseline.
 
@@ -552,13 +567,14 @@ template's required structure.
 
 ### INTENT / CURRENT-VS-TARGET
 
-**BY DESIGN:** the `enforce_skill_frontmatter.sh` guard is intentionally Write-only (not Edit) — the
-hook targets birth conformance (the 46-skill remediation proved skills are born malformed, not
-degraded-in-place). Post-birth Edit protection is deferred as KISS (an Edit stripping `description:`
-is detectable but uncommon; the birth guard is the 80/20 fix).
-⚠ **CORRECTED 2026-09-01** (H.C10, live read of `system/hooks/registrations.json`): this "BY DESIGN"
-claim is stale — the Edit path was closed by the S2.3 fix (2026-07-28); the live matcher is
-`Bash|Write|Edit`, so a post-birth Edit is guarded, not deferred.
+**WAS BY DESIGN, NOW CLOSED:** the `enforce_skill_frontmatter.sh` guard was originally
+Write-only (not Edit) — the hook targeted birth conformance (the 46-skill remediation proved skills
+are born malformed, not degraded-in-place), deferring post-birth Edit protection as KISS. That gap
+was closed by the S2.3 fix (2026-07-28): the guard's live matcher is `Write|Edit`, so a post-birth
+Edit is guarded too, not deferred. ⚠ **CITATION FIXED (BUG window, 2026-09-07):** an earlier
+"CORRECTED 2026-09-01" note here gave the matcher as `Bash|Write|Edit` and cited ⛔
+`system/hooks/registrations.json` — no such file exists in this repo. Confirmed instead by direct
+read of `.claude/settings.json` and `hooks/hooks.json`: the live matcher is `Write|Edit`.
 
 **BY DESIGN:** `auto_register_skill.sh` skips global skills to avoid duplicate harness entries — the
 `~/.claude/skills/` symlinks ARE the registration for global skills; a stub would create a collision.
@@ -589,10 +605,12 @@ can drop it). The `docs/skill-conformance.md §6` table marks this as `build` st
 
 - **maturity_label:** PARTIAL·gap
 - **check_detail:** Three live hooks constitute the enforcement surface:
-  (1) `enforce_skill_frontmatter.sh` — PreToolUse Write, exit-2 BLOCKS non-conformant SKILL.md writes
-  (description + YAML + 500-line cap); settings.json line 147–154. Write-only (not Edit).
-  ⚠ **CORRECTED 2026-09-01** (H.C10, live read of `system/hooks/registrations.json`): stale — live
-  matcher is `Bash|Write|Edit`; the guard fires on Edit as well as Write.
+  (1) `enforce_skill_frontmatter.sh` — PreToolUse, matcher `Write|Edit`, exit-2 BLOCKS
+  non-conformant SKILL.md writes (description + YAML + 500-line cap); settings.json line 147–154.
+  Fires on Edit as well as Write. ⚠ **CITATION FIXED (BUG window, 2026-09-07):** an earlier
+  "CORRECTED 2026-09-01" note here gave the matcher as `Bash|Write|Edit` and cited ⛔
+  `system/hooks/registrations.json` — no such file exists in this repo. Confirmed instead by direct
+  read of `.claude/settings.json` and `hooks/hooks.json`: the live matcher is `Write|Edit`.
   (2) `auto_register_skill.sh` — PostToolUse Write|Edit, creates desk command stubs automatically;
   settings.json line 283–291. Non-blocking (stderr only).
   (3) `skill_anchor_inject.sh` — UserPromptSubmit matcher "", re-injects anchor body every turn when

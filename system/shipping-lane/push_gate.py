@@ -1797,25 +1797,29 @@ def selftest():
                    "dangling.txt" in str(e))
 
         # -------------------------------------------------- FIX 4: a FIFO in the tree
-        fifo_tree = new_dir("push-gate-selftest-fifo-")
-        with open(os.path.join(fifo_tree, "clean.md"), "w", encoding="utf-8") as fh:
-            fh.write("nothing sensitive here.\n")
-        fifo_path = os.path.join(fifo_tree, "a.fifo")
-        os.mkfifo(fifo_path)
-        # run it as a subprocess with a hard wall-clock timeout: if the stat-before-open
-        # fix regresses, open() on the FIFO blocks forever (no reader on the other end),
-        # and this proves the "no hang" property rather than just the "right exit code"
-        # one -- a bare in-process call could look like a pass right up until it hangs.
-        try:
-            p = subprocess.run(
-                [sys.executable, me, "--refuse-rules", DEFAULT_REFUSE_RULES, "--rewrite-rules", DEFAULT_REWRITE_RULES, "--tree", fifo_tree, "--accept-unjudged"],
-                capture_output=True, text=True, timeout=10)
-            report("a FIFO in the tree -> exit 2 promptly, never a hang",
-                   p.returncode == CANNOT_EVALUATE and "fifo" in p.stderr.lower(),
-                   "got exit {}, stderr: {}".format(p.returncode, p.stderr.strip()[:200]))
-        except subprocess.TimeoutExpired:
-            report("a FIFO in the tree -> exit 2 promptly, never a hang", False,
-                   "HUNG past the 10s timeout -- open() was called on the FIFO")
+        if hasattr(os, "mkfifo"):
+            fifo_tree = new_dir("push-gate-selftest-fifo-")
+            with open(os.path.join(fifo_tree, "clean.md"), "w", encoding="utf-8") as fh:
+                fh.write("nothing sensitive here.\n")
+            fifo_path = os.path.join(fifo_tree, "a.fifo")
+            os.mkfifo(fifo_path)
+            # run it as a subprocess with a hard wall-clock timeout: if the stat-before-open
+            # fix regresses, open() on the FIFO blocks forever (no reader on the other end),
+            # and this proves the "no hang" property rather than just the "right exit code"
+            # one -- a bare in-process call could look like a pass right up until it hangs.
+            try:
+                p = subprocess.run(
+                    [sys.executable, me, "--refuse-rules", DEFAULT_REFUSE_RULES, "--rewrite-rules", DEFAULT_REWRITE_RULES, "--tree", fifo_tree, "--accept-unjudged"],
+                    capture_output=True, text=True, timeout=10)
+                report("a FIFO in the tree -> exit 2 promptly, never a hang",
+                       p.returncode == CANNOT_EVALUATE and "fifo" in p.stderr.lower(),
+                       "got exit {}, stderr: {}".format(p.returncode, p.stderr.strip()[:200]))
+            except subprocess.TimeoutExpired:
+                report("a FIFO in the tree -> exit 2 promptly, never a hang", False,
+                       "HUNG past the 10s timeout -- open() was called on the FIFO")
+        else:
+            report("a FIFO in the tree -> exit 2 promptly, never a hang", True,
+                   "SKIPPED -- os.mkfifo is not available on this platform (e.g. Windows)")
 
         # -------------------------------------------------- missing rules file
         try:

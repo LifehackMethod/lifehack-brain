@@ -380,14 +380,18 @@ The unified enforcement gate is `ingest_gate_enforce.sh`, registered as a
 `PreToolUse` hook on ~~four matchers~~ **six matchers**: `Bash`, `WebFetch`, `WebSearch`, `Read`, `Grep`,
 `Glob`. [CORRECTED 2026-08-27, lb2-controls.md matcher-contradiction resolution — confirmed against BOTH
 the live installed plugin cache (`~/.claude/plugins/cache/lifehack-brain/lifehack-brain/0.3.13/hooks/hooks.json`)
-and the repo-tracked `system/hooks/registrations.json`; both independently show `"Bash|WebFetch|WebSearch|Read|Grep|Glob"`.
+and the repo-tracked `hooks/hooks.json`; both independently show `"Bash|WebFetch|WebSearch|Read|Grep|Glob"`.
+[CORRECTED 2026-09-07: this note originally cited a path that does not exist in this repo:
+`system/hooks/registrations.json` ⛔ not present here.
+The real repo-tracked registration surface is `hooks/hooks.json`, cited above.]
 `ingest-gate.md` and `security-ingest-gate.md` already had this right — this file was the stale one.]
 
 **Registration confirmed**: ~~`system/reference/settings.json` lines ~212–250~~ — [CORRECTED 2026-08-27:
 `system/reference/settings.json` never existed in this repo, confirmed by `git log --all`; it is not a
 migration casualty, it is a path that was never real. The live registration lives in the plugin-cache
 `hooks/hooks.json` (six PreToolUse blocks, one per matcher token, all pointing at `ingest_gate_enforce.sh`)
-and is mirrored in the repo-tracked `system/hooks/registrations.json`.]
+and is mirrored in the repo-tracked `hooks/hooks.json`.
+[CORRECTED 2026-09-07: this note originally cited `system/hooks/registrations.json` ⛔ here — that path does not exist in this repo; see correction above.]]
 
 **What each case blocks (from the live script `system/hooks/ingest_gate_enforce.sh`):**
 
@@ -534,9 +538,9 @@ COMPLEMENTS  /websearch skill   · skill wraps safe_search_api.sh (primary) + sa
    (7) `guard_ingest_reader_split.sh` conformance hook. `state:actionable`.
 
 4. **Retired hooks (`guard_file_reads.sh`, `guard_web_fetch.sh`, `guard_web_search.sh`,
-   `guard_skip_safe_backdoor.sh`) still exist on disk, unregistered**.
-   ⚠ **CORRECTED 2026-09-01** (H.C10, `find` across this repo for each basename): stale — all four
-   are DELETED, not on disk. Harmless on this machine, but
+   `guard_skip_safe_backdoor.sh`) are DELETED, not merely unregistered**.
+   ⚠ **CORRECTED 2026-09-01** (H.C10, `find` across this repo for each basename): all four files
+   are gone from disk entirely. Harmless on this machine, but
    if a settings drift on the second machine re-registers them instead of `ingest_gate_enforce.sh`,
    the unified gate's full logic would silently regress to the older per-channel-only coverage
    (missing the Bash cases, the scratch-dir lock, the item-store guards, etc.) — a re-registration

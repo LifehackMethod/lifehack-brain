@@ -7,6 +7,10 @@ enforce_egress_allowlist.sh, which is the registered half.
 """
 import sys, json, os, re
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tools")))
+from utf8_stdio import force_utf8_stdio
+force_utf8_stdio()
+
 # ── RESERVED NAMES: the ones that CANNOT reach a real destination ────────────────────────────────
 # RFC 2606 / RFC 6761 set aside .example, .test and .invalid as names guaranteed never to resolve on
 # the public internet. An outbound attempt at one therefore cannot be a real attempt to send data

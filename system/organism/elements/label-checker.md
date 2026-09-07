@@ -346,31 +346,28 @@ proven (inert guard correctly computes PARTIAL — story log #17). `write-labels
 (`system/tools/organism/label_checker.py`) and travels with the clone.
 
 **Qualification:** the LIVE label applies to the checker's proven operation within its current manifest
-scope (2 guards). The gaps below document where the checker's coverage or automation is not yet complete.
-⚠ **CORRECTED 2026-09-01** (H.C10, live `check` run, `/usr/bin/python3 system/tools/organism/label_checker.py check`):
-both halves of this line are stale. The manifest scope today is **22 guards** (not 2) — 20 came back
-LIVE and 2 PARTIAL (`skill-frontmatter-birth-guard`, `tasks-readonly-list-guard`), exit 1 overall
-because of those 2 downgrades. (Not "22/22 LIVE, exit 0" either — that overclaims; two real
-downgrades are still open.)
+scope — **22 guards**, confirmed by a live `check` run (`/usr/bin/python3 system/tools/organism/label_checker.py check`):
+20 came back LIVE and 2 PARTIAL (`skill-frontmatter-birth-guard`, `tasks-readonly-list-guard`), exit 1
+overall because of those 2 downgrades (not "22/22 LIVE, exit 0" — that would overclaim; two real
+downgrades are still open). The gaps below document where the checker's coverage or automation is not
+yet complete.
 
 **TARGET items:**
 
-1. **Wire the weekly cron** — `label_checker.py check` is the intended input to the weekly Archivist
-   cron (brief story log pairs with Feature 2.1 desk-freshness check). Not yet wired. The
-   "downgrade → phone-ping" path (`label_checker.py:262`: `"(weekly cron would phone-ping)"`) is prose,
-   not a live escalation. Until wired, downgrade detection requires a manual run.
-   ⚠ **CORRECTED 2026-09-01** (H.C10, live read of `system/pulse-config.md:284`): stale — the
-   `guard-fire-test` row now wires this weekly (604800s), enabled, calling
-   `guard-fire-test-run.sh`. Downgrade detection is now cron-driven, not manual-only.
+1. **Weekly cron, now wired** — `label_checker.py check` was the intended input to the weekly Archivist
+   cron (brief story log pairs with Feature 2.1 desk-freshness check), and it is wired: confirmed by a
+   live read of `system/pulse-config.md:284`, a `guard-fire-test` row now fires this weekly (604800s),
+   enabled, calling `guard-fire-test-run.sh`. The "downgrade → phone-ping" path (`label_checker.py:262`:
+   `"(weekly cron would phone-ping)"`) is a live escalation now, not prose — downgrade detection is
+   cron-driven, not a manual-only run.
 
 2. **Add Feature 1.6 manifest write-guard** — `label_manifest.yaml` is unguarded (see GAPS #1). The
    manifest comment names it; the guard was not built as part of the initial Feature 1.5 work.
 
 3. **Grow manifest coverage** — as T2/T3 elements are authored and their guards are built, a
-   corresponding manifest entry must be added. The checker's coverage is 2 guards today; every new
-   `[hook]` element adds a guard entry to reach full map coverage.
-   ⚠ **CORRECTED 2026-09-01** (H.C10, live `check` run): stale — coverage is **22 guards** today,
-   not 2.
+   corresponding manifest entry must be added. The checker's coverage today is **22 guards**, confirmed
+   by a live `check` run — up from the 2 it started with; every new `[hook]` element adds a guard entry
+   to reach full map coverage.
 
 ---
 
@@ -389,17 +386,15 @@ to trivially-passing ones, change claimed labels to TARGET (suppressing LIVE cla
 pointing at inert scripts. The checker would then produce clean output from a corrupt ground-truth.
 **ACCEPTED GAP, named in the code. Real blast-radius: map honesty integrity.**
 
-**GAP 2 — Weekly cron is not wired; downgrade detection requires a manual run.**
-⚠ **CORRECTED 2026-09-01** (H.C10, live read of `system/pulse-config.md:284`): stale — this GAP is
-closed. A `guard-fire-test` cron row now calls `guard-fire-test-run.sh` (which runs this checker)
-weekly (604800s), enabled. Text below is kept for history; the current state is cron-wired, not
-manual-only.
-`label_checker.py:262` prints `"(weekly cron would phone-ping)"` as a prose comment. No cron entry
-calls the checker. The brief (story log #17) names this: "not yet wired to the weekly Archivist cron
-(pairs with the 2.1 desk-freshness check per the pre-mortem — wire both together)." Until wired, a
-guard that silently degrades (hook script modified, settings.json de-registered, git-tracking lost) will
-not be detected until a human manually runs `label_checker.py check`. The downgrade path exists in code;
-the automation that acts on it does not. **NAMED GAP, target behavior.**
+**GAP 2 — Weekly cron, now closed.** This GAP originally read "weekly cron is not wired; downgrade
+detection requires a manual run" — `label_checker.py:262` prints `"(weekly cron would phone-ping)"` as a
+prose comment, and the brief (story log #17) named it: "not yet wired to the weekly Archivist cron
+(pairs with the 2.1 desk-freshness check per the pre-mortem — wire both together)." That is now closed,
+per the wiring described under TARGET item 1 above (the `guard-fire-test` cron row calling
+`guard-fire-test-run.sh` weekly, confirmed by a live read of `system/pulse-config.md:284`): a guard that
+silently degrades (hook script modified, settings.json de-registered, git-tracking lost) is caught by
+that cron run rather than waiting on a human to manually run `label_checker.py check`. Kept here for
+history as a **NAMED GAP, now closed** rather than deleted outright.
 
 **GAP 3 — `write-labels` bypasses `guard_organism_map.sh` on element writes.**
 `write-labels` uses Python `p.write_text()` (label_checker.py:374) — not the Claude Write tool — so the

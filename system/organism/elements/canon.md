@@ -21,11 +21,11 @@ generated_from:
   - system/confidence-model.md
   - system/topic-vocab.md
   - system/canon-purpose-map.md
-  - skills/save/SKILL.md §4.6, §6b, §SC-2
+  - .claude/skills/save/SKILL.md §4.6, §6b, §SC-2
   # skills/archivist-autoplace/SKILL.md — DELETED 2026-07-28 (S2.4 sweep; RETIRED since 2026-06-29,
   # zero live callers). Archived at state/archive/2026-07-28-s24-retirement-sweep/.
-  - skills/archivist-route/SKILL.md
-  - skills/read/SKILL.md
+  - .claude/skills/archivist-route/SKILL.md
+  - .claude/skills/read/SKILL.md
   - system/organism/map-format-specs.md §0–§1
 created_at: 2026-07-23
 updated_at: 2026-07-23

@@ -121,6 +121,8 @@ One line, appended under the log section:
 
 ## § Mid-session record
 
+**Legacy:** mid-session records are retired as a record type — use /save's end-of-session contract instead; do not build new tooling against this template.
+
 Filename: `YYYY-MM-DD-{slug}.md`, where the slug is 2–5 kebab-cased words from the title.
 
 ```yaml

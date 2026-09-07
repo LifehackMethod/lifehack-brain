@@ -751,6 +751,13 @@ def failed_producers(d: dict) -> list:
 
 if __name__ == "__main__":
     import sys as _sys
+    if len(_sys.argv) > 1 and _sys.argv[1] == "--print-ledger-path":
+        # Dedicated, stable flag: prints LEDGER and NOTHING else — one line, no decoration.
+        # Exists so a caller (session_context_loader.sh) can get this module's portable path
+        # computation (STATE_DIR/LEDGER above, honouring LIFEHACK_FAULT_STATE_DIR) without
+        # duplicating it in bash, and without importing this module or parsing `show` output.
+        print(LEDGER)
+        _sys.exit(0)
     d = load()
     if len(_sys.argv) > 1 and _sys.argv[1] == "show":
         print(json.dumps(d, indent=2, sort_keys=True))

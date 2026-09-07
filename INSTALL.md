@@ -22,14 +22,20 @@ You hand this file to Claude and answer its questions.
 
 ## ⛔ FIRST — WHICH APP ARE YOU IN? ANSWER BEFORE YOU MAKE ANY FOLDER.
 
-**This setup only works in Claude Code — the `Code` tab of the Claude app.** What it installs is a
-library of Claude Code skills — `/ingest` and every other one in it — and **no other app can load any
-of them.** So in any other app this install cannot work at all, no matter how well the rest of it goes.
+**This was built and tested for Claude Code — the `Code` tab of the Claude app.** Official support is
+Mac or Windows · Claude Code · Google Drive — that is what this file installs against and what the rest
+of it assumes. What it installs is a library of Claude Code skills — `/ingest` and every other one in
+it — and **no other app is known to load all of them.**
 
-⭐ **So, before anything else: say which app you are reading this in.** If the answer is anything other
-than Claude Code — Codex, ChatGPT, Gemini, Cursor, a plain terminal, anything — **stop here.** Nothing
-is broken and nothing is your fault; this simply needs Claude Code. Get the Claude app, open its `Code`
-tab, and start again from this line.
+⭐ **So, before anything else: say which app you are reading this in.** If the answer is ChatGPT, Gemini,
+Cursor, a plain terminal, or anything else that isn't Claude Code — **stop here.** Nothing is broken and
+nothing is your fault; this simply needs Claude Code. Get the Claude app, open its `Code` tab, and start
+again from this line.
+
+⚠ **If the answer is Codex: this wasn't built or tested for it, and it isn't supported yet — but if
+you're trying it anyway, here's what we know, not a door slam.** Read on with that caveat in mind, and
+before you go further see `CODEX-ADAPTER-SCOPE.md` at the repo root — it is for Codex users only, not
+part of the supported path, and it names what is and isn't known to work under Codex.
 
 ⚠ **If the answer is Cowork, that is its own case, not a plain stop.** This file's automated install —
 the folder-picking, the git clone, the restart proof, all of it — runs only in Claude Code and does not
@@ -383,9 +389,18 @@ notice.
 > 4. ⚠ **THE SYNC CHECKS READ THE PATH AS TEXT.** On Windows, `C:\Users\<name>` is commonly the
 >    OneDrive mirror root and **contains no matchable word**, so STEP 1's and STEP 4's checks both
 >    report clean on a folder OneDrive is actively syncing.
-> 5. ⛔ **`/ingest` IS A CLAUDE CODE SKILL, AND CODEX NEVER LOADS IT.** A Codex install cannot work even
->    if every single step above appears to pass. **The which-app question at the very top of this file
->    is the only thing that catches this — ask it first, every time.**
+> 5. ⚠ **`/ingest` IS A CLAUDE CODE SKILL, BUILT AND TESTED THERE — CODEX ISN'T KNOWN TO LOAD IT.** A
+>    Codex install is not expected to work even if every single step above appears to pass, but if
+>    someone is trying it anyway, that is their call to make with eyes open, not a hidden failure. **The
+>    which-app question at the very top of this file is the only thing that catches this — ask it first,
+>    every time — and it now tells a Codex reader what we know instead of just stopping them.**
+> 6. ⚠ **A "PERMISSION DENIED" FROM CODEX IS NOT WINDOWS ASKING FOR ADMIN RIGHTS.** Codex's sandbox
+>    grants network access, repo-config writes, and external-drive reads as separate, per-task on/off
+>    permission scopes, and any one of them can be switched off for a given run. When Codex refuses a
+>    step with a permission error, that is Codex declining to use a capability it currently has toggled
+>    off — its own boundary, not the operating system asking to elevate. **Do not respond to it by
+>    hunting for a Windows admin prompt or telling them to "Run as Administrator";** the fix is checking
+>    or changing that task's permission scope inside Codex itself.
 
 > ## ⛔⛔ YOUR JOB IS THE INSTALL. IT IS NOT THE INGEST. DO NOT START THE INGEST.
 >
@@ -887,25 +902,44 @@ Git is the thing that will fetch the files, and later fetch updates.
 git --version
 ```
 
-**If that printed a version number:** tell them Git is already installed and there's nothing to do. Move
-on.
+**If that printed a version number, don't stop there.** A Git that answers `--version` can still be
+unable to reach anything over the network — a broken PATH shim, a corrupted install, a proxy or firewall
+blocking HTTPS. And reaching github.com in general is not the same as reaching the specific repo this
+install needs — that repo could be renamed, private, or mistyped and github.com would still answer fine.
+Run the reach check below, against the actual repo, before telling them Git is ready.
 
-**If it did not — Mac:**
+```bash
+git ls-remote https://github.com/LifehackMethod/lifehack-brain.git HEAD >/dev/null 2>&1 \
+  && echo "GIT CAN REACH A REMOTE - installed and usable" \
+  || echo "GIT CANNOT REACH A REMOTE - installed but not usable yet"
+```
+
+**If that printed `GIT CAN REACH A REMOTE`:** tell them Git is already installed and there's nothing to
+do. Move on.
+
+**If that printed `GIT CANNOT REACH A REMOTE`:** this is a different problem from "Git isn't installed,"
+and reinstalling Git will not fix it. Check their network connection first; on a work or school machine,
+a proxy or firewall may be blocking Git's HTTPS traffic specifically even though the app itself is fine.
+Do not move on until this check passes.
+
+**If `git --version` printed nothing at all — Mac:**
 ```bash
 xcode-select --install
 ```
 This opens a small Apple dialog box on their screen. **Tell them it will appear, tell them to click
 Install, and tell them it can take several minutes.** Then wait — do not move on until `git --version`
-answers. Check again when they say it finished.
+answers, then run the reach check above. Check again when they say it finished.
 
-**If it did not — Windows:**
+**If `git --version` printed nothing at all — Windows:**
 ```powershell
 winget install --id Git.Git -e --source winget
 ```
 If `winget` isn't available, send them to <https://git-scm.com/download/win>, tell them to run the
-installer and click Next through all of it, and wait for them to say it's done.
+installer and click Next through all of it, and wait for them to say it's done. Then run the reach check
+above.
 
-⛔ **Do not continue until `git --version` prints a version.** Every later step depends on it.
+⛔ **Do not continue until the reach check prints `GIT CAN REACH A REMOTE`.** Every later step depends on
+it.
 
 ```bash
 sh ~/.config/lifehack/install-note.sh step "STEP 2"
@@ -1289,9 +1323,17 @@ esac
 if [ -e "$DEST" ] && [ -n "$(ls -A "$DEST" 2>/dev/null)" ]; then
   echo "STOP - that folder already exists and is not empty"; ls -A "$DEST"; exit 1
 fi
-mkdir -p "$DEST" && printf 'write test\n' > "$DEST/.writetest" \
-  && [ "$(cat "$DEST/.writetest")" = "write test" ] && rm -f "$DEST/.writetest" \
-  && echo "THE DESTINATION IS LOCAL AND WRITABLE" || echo "THE DESTINATION COULD NOT BE WRITTEN TO"
+if mkdir -p "$DEST" && printf 'write test\n' > "$DEST/.writetest" \
+  && [ "$(cat "$DEST/.writetest")" = "write test" ] && rm -f "$DEST/.writetest"; then
+  sleep 2
+  if [ -e "$DEST/.writetest" ]; then
+    echo "THE DESTINATION COULD NOT BE WRITTEN TO - leftover file still present at: $DEST/.writetest"
+  else
+    echo "THE DESTINATION IS LOCAL AND WRITABLE"
+  fi
+else
+  echo "THE DESTINATION COULD NOT BE WRITTEN TO"
+fi
 ```
 
 ⛔ **`STOP - that folder already exists and is not empty` → do not merge into it.** Tell them what is in

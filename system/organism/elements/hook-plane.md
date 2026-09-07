@@ -125,6 +125,7 @@ The hook-plane's ground truth is a TWO-LAYER artifact:
 > only 7 commands, not the larger count implied by 15,516 bytes — see the claim-51 correction just below).
 2. **`system/hooks/*.sh`** (git-tracked) — the FLEET. The scripts travel to both machines via `git push` / `git pull`. ~~The `settings.json` symlink also travels, so registration and script bodies stay in lockstep.~~ NOTE: `~/.claude/hooks/` is a regular directory (NOT a symlink to `system/hooks/`) — it contains a stale older set of 8 files. ~~The live fleet is at `~/lifehack-brain/system/hooks/` (the clone); harness registration in `settings.json` points to absolute paths there.~~
 > **⚠ CORRECTED 2026-08-24:** since `~/.claude/settings.json` is a real, independent file (not a symlink — see correction above), registration does NOT travel with `git push`/`git pull` the way the fleet scripts do. Each machine's `~/.claude/settings.json` is registered separately (e.g. via `system/tools/install-guard-registrations.py`, per `.claude/settings.json`'s own `_hooks_moved` note) and can drift from the repo's copy — it is not kept "in lockstep" by any symlink mechanism.
+> ⛔ `system/tools/install-guard-registrations.py` — does not exist in this repo; private ClaudeOps machine-provisioning tooling, never shipped here.
 > ⚖ CORRECTED 2026-08-23 — the line above was WRONG. Checked live `~/.claude/settings.json` this session: 48 `command` entries total. 47 of them reference a hooks path, and all 47 point at `$HOME/ClaudeOps/system/hooks/*.sh`; zero point at `~/lifehack-brain/` and zero point at `~/.claude/hooks/`. (The 48th command entry is `~/.claude/statusline.sh`, not a hook.) The live fleet is `~/ClaudeOps/system/hooks/`, full stop — there is no separate `~/lifehack-brain/system/hooks/` clone in the registration path.
 > ⚖ CORRECTED 2026-08-27, lb2-controls.md claim 51 — the 48/47 count above is now WRONG and was measuring
 > the wrong artifact even at the time: `~/.claude/settings.json` today has **7 distinct hook registrations**
@@ -241,7 +242,8 @@ the ASUS-router write-guard this section describes is not part of the currently-
 #### A9. enforce_skill_frontmatter.sh
 **Matcher:** Write
 **Step chain:** `Claude → Write → skills/*/SKILL.md → Python3 checks: (a) YAML frontmatter block present, (b) description field non-empty and non-placeholder, (c) line count ≤ 500 → DENY exit 2 on any violation [hook]`
-**Stores protected:** `skills/*/SKILL.md` files — the skill registration surface.
+**Stores protected:** the skill registration surface — ⛔ `skills/*/SKILL.md` — no top-level `skills/` dir exists in this repo; the real path is `.claude/skills/*/SKILL.md` (36 found).
+
 **Scope note:** fires ONLY on full-content Write (content field present), not Edit. YAML parse via `yaml.safe_load`; regex fallback if yaml not installed. Non-SKILL.md targets exit 0 (correct scoping).
 **Fail posture:** OPEN on JSON parse failure — not a security gate; quality enforcement only.
 
@@ -268,7 +270,8 @@ The residency decision table (in resolution order):
 #### A11. guard_ledger_discipline.sh
 **Matcher:** Write|Edit
 **Step chain:** `Claude → Write/Edit → state/debt-ledger.md → Python3 reconstructs the ## Open section after the proposed edit → counts FORBIDDEN lines (✅/RESOLVED/CLEARED/FIXED) in ## Open → if new count > current count → DENY exit 2 [hook]`
-**Stores protected:** `state/debt-ledger.md` `## Open` section — enforces deletion-not-annotation discipline (resolved items must be DELETED from `## Open`, not ✅-marked in place).
+**Stores protected:** `state/debt-ledger.md` `## Open` section — enforces deletion-not-annotation discipline (resolved items must be DELETED from `## Open`, not `✅`-marked in place).
+> ⛔ `state/debt-ledger.md` — same as the entry at line 96 above: the person's own notes-folder content, never a repo file here.
 **Fail posture:** OPEN for non-ledger targets or parse failure — a bug must never block the whole edit surface.
 
 #### A12. guard_throughline_write_scope.sh
@@ -370,7 +373,9 @@ The residency decision table (in resolution order):
 #### A20. guard_gmail_send.sh
 **Matcher:** Bash
 **Step chain:** `Claude → Bash → gws gmail (messages|drafts) send (or a +send helper) → guard_gmail_send.sh scope-gates on "a gws binary is NAMED anywhere" + "gmail is named" → passes the command through the shared parser system/hooks/lib/gws_guard.py (gws_segments/has_nonliteral — the same parser A19 uses) → is_send() checked FIRST and unconditionally → DENY exit 2; any other gmail operation is checked against a SAFE_HEAD/SAFE_VERBS allowlist and denied by default if unrecognised [hook]`
-**Registration:** live and registered — confirmed this session at `system/hooks/registrations.json:251` (`bash "$HOME/.claude/skills/ClaudeOps/system/hooks/guard_gmail_send.sh"`, statusMessage "Checking this Gmail command does not send..."), installed onto the machine's `~/.claude/settings.json` by `system/tools/install-guard-registrations.py` per the Deploy & Verify section above — **not** a line inside the repo's tracked `.claude/settings.json`, which as of T3.3 (2026-08-23) carries no `hooks` block at all (see `_hooks_moved` note at the top of that file) and was never the live registration source for this guard.
+**Registration:** live and registered — in this repo the real registration surface is `hooks/hooks.json`, where `guard_gmail_send.sh` is confirmed registered — installed onto the machine's `~/.claude/settings.json` by `system/tools/install-guard-registrations.py` per the Deploy & Verify section above — **not** a line inside the repo's tracked `.claude/settings.json`, which as of T3.3 (2026-08-23) carries no `hooks` block at all (see `_hooks_moved` note at the top of that file) and was never the live registration source for this guard.
+> ⛔ `system/hooks/registrations.json` — does not exist in this repo; private ClaudeOps machine-registry path, never shipped here.
+> ⛔ `system/tools/install-guard-registrations.py` — does not exist in this repo; private ClaudeOps machine-provisioning tooling, never shipped here.
 **Stores protected:** the act of SENDING mail in the user's name via `gws`. Sibling to A19 (`guard_gmail_destructive.sh`): that guard stops an unattended run from deleting a message (recoverable in the Gmail bin); this one stops it from sending one (irreversible the instant it leaves, outward-facing, to a real person, with no undo anywhere). Per the hook's own header, a fresh install shipped the delete-side guard and had nothing at all on the send side — the gap was measured, not theorised, and `system/tools/organism/label_manifest.yaml` carried a standing flag naming it before this hook existed.
 **Gate logic — DEFAULT-DENY, not an allowlist of bad verbs:** the guard recognises the SAFE gmail operations and denies everything else, including a verb `gws` adds tomorrow. Allowed: `drafts` create/update/get/list/read/delete (drafting is explicitly the point); reads on `messages`/`threads` (get/list/read/modify/batchModify/trash/untrash/insert/import/delete/batchDelete — deletion verbs are read-through here only because they belong to A19, not this guard); `getProfile`/`history`/`labels`/`settings`/`attachments get`/`+triage`/`help`. `read` was added to the safe set deliberately (2026-08-15 port note) because it is a real gmail body-read alias in this repo's `label_manifest.yaml` and is already gated upstream by `ingest_gate_enforce.sh`, so refusing it here would be a second wall on a path that is neither a send nor unguarded. Any operation this guard doesn't recognise — not just an explicit send — is denied.
 **Redirect:** compose it as a DRAFT with the same `--params` body (`gws gmail users drafts create`, or `drafts update` to revise one), then open Gmail and press send yourself. The draft is the deliverable; the human is the send button.
@@ -597,7 +602,7 @@ All exit 0. Cannot block. Represent behavioral nudges and state-writing, not enf
 **HONOR-SYSTEM (no hook enforces these doctrine rules):**
 The "doctrine outpaced enforcement" finding from the prior audit applies to the hook-plane directly. Named rules with NO hook backstop (the ~40 honor-system rules; the next-phase scope item hooks only the 3–5 with the highest blast radius):
 - CLAUDE.md "Task tracker on command" and "Planning Output ALWAYS" — zero hook enforcement
-- `skills/project-manager` SKILL.md JOURNAL-FIRST hard rule — no hook backstop ⚠ CORRECTED
+- `.claude/skills/project-manager` SKILL.md JOURNAL-FIRST hard rule — no hook backstop ⚠ CORRECTED
   2026-09-01: this bare form resolves nowhere from this repo's root; `project-manager` ships from
   the installed plugin at `.claude/skills/project-manager/` (confirmed under
   `~/.claude/plugins/marketplaces/lifehack-brain/`), not from any path inside this repository —

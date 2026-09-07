@@ -253,6 +253,60 @@ class TheThreeClaims(Fixture):
         self.assertEqual(rc, 1)
         self.assertIn("two.py", out)
 
+    # ── THE ESCAPE (row 80-a) ────────────────────────────────────────────────────────────────
+    # A sentence explaining what a marker MEANS necessarily contains the marker, and was then read
+    # as asserting that every path beside it is on disk -- so the markers could not be written about
+    # at all. Reported by the person documenting this tool: they removed a marker, wrote a note
+    # saying why, and the note failed for containing the glyph. A marker inside backticks is now
+    # QUOTED, not used.
+
+    def test_the_reporters_case_a_note_explaining_a_removed_marker_is_not_a_claim(self):
+        # The banner declines the file; a later note explains why the marker was taken off that row.
+        # Before the escape the note's own glyph out-claimed the banner and failed the file.
+        self.write("docs/a.md",
+                   "> \u26d4 `system/tools/gone.py` \u2014 not shipped; it never crossed.\n\n"
+                   "I removed the `\u2705` from that row, because `system/tools/gone.py` is not on\n"
+                   "disk. A `\u2705` asserts presence and that assertion was false.\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 0)
+        self.assertNotIn("gone.py", out)
+
+    def test_a_quoted_marker_makes_no_claim_but_never_excuses_a_missing_file(self):
+        # The escape REMOVES a claim. It does not account for anything: the path is still missing,
+        # and now says so honestly instead of being reported as a broken presence claim.
+        self.write("docs/a.md",
+                   "A `\u2705` means the file is present. `system/tools/gone.py` has no marker.\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 1)
+        self.assertIn("does not exist here", out)
+        self.assertNotIn("is claimed \u2705 here", out)
+
+    def test_a_quoted_marker_does_not_shadow_the_real_marker_beside_it(self):
+        # Why `normalise` refuses a bare marker span: counted as a second target, the quoted glyph
+        # would make this line look like two citations sharing one marker and demote the REAL path
+        # into the non-blocking `shared` state instead of honouring its \u26d4.
+        self.write("docs/a.md",
+                   "\u26d4 `system/tools/nope.py` \u2014 not shipped; its `\u2705` was removed.\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 0)
+        self.assertIn("1 declined", out)
+        self.assertNotIn("SHADOWED", out)
+
+    def test_a_bare_marker_still_claims_even_when_another_is_quoted(self):
+        # The control. Nothing about the escape loosens the rule for a marker actually being used.
+        self.write("docs/a.md",
+                   "\u2705 `system/tools/gone.py` is here \u2014 unlike a quoted `\u26d4`.\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 1)
+        self.assertIn("is claimed \u2705 here and is NOT here", out)
+
+    def test_a_table_status_cell_still_claims_with_an_unquoted_marker(self):
+        self.write("docs/a.md",
+                   "| `system/tools/gone.py` | the widget | \u2705 here |\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 1)
+        self.assertIn("is claimed \u2705 here and is NOT here", out)
+
     def test_worded_status_does_not_count_in_ordinary_prose(self):
         # The measured false positive: a planning rule reading "...or lands in this block".
         self.write("docs/a.md",

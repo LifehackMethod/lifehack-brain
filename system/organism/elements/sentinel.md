@@ -8,7 +8,7 @@ maturity_label: LIVE·gap
 gap_disposition: defect
 gap_disposition_note: "ruled 2026-07-28 at class level — C4 silent-death — security-health has no Pulse slot; the monthly audit LaunchAgent was retired with no replacement"
 generated_from:
-  - shared/tools/sentinel_response.py
+  - shared/gate/sentinel_response.py
   - shared/tools/sentinel_ack.py
   - shared/tools/sentinel_quarantine.py
   - shared/tools/ingest_gate.py

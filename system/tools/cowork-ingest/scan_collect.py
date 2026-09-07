@@ -84,7 +84,7 @@ def _measure_chars(flat_dir, f):
         return None
 
 
-def collect(m, raw_dir, desk="cowork-ingest", flat_dir=None):
+def collect(m, raw_dir, desk="cowork-ingest", flat_dir=None, store_cap=STORE_CAP):
     """Returns a stats dict; mutates m in place (caller saves)."""
     files = sorted(glob.glob(os.path.join(raw_dir, "*")))
     wrote = withheld = dropped_guess = skipped = too_short = 0
@@ -121,7 +121,7 @@ def collect(m, raw_dir, desk="cowork-ingest", flat_dir=None):
                 too_short += 1
                 continue
             if not withheld_this:
-                gist = _store_trim(gist)   # store whole if <=cap; else cut back to a sentence boundary
+                gist = _store_trim(gist, cap=store_cap)   # store whole if <=cap; else cut back to a sentence boundary
             ok, _msg = pipeline.set_scan(m, f, guess=guess, summary=gist,
                                          chars=_measure_chars(flat_dir, f))
             if ok:
@@ -140,9 +140,12 @@ def main():
     ap.add_argument("--flat", default=os.path.expanduser("~/.cache/cowork-ingest/flatten"),
                     help="flattened-corpus dir; the chat's char length is MEASURED from here for the "
                          "ruling screen. Omit/point elsewhere and the size is simply not shown.")
+    ap.add_argument("--store-cap", type=int, default=STORE_CAP, dest="store_cap",
+                    help=f"max stored gist length in chars, trimmed to a sentence boundary "
+                         f"(default {STORE_CAP})")
     a = ap.parse_args()
     m = pipeline.load(a.map)
-    st = collect(m, a.raw, a.desk, flat_dir=a.flat)
+    st = collect(m, a.raw, a.desk, flat_dir=a.flat, store_cap=a.store_cap)
     pipeline._save(m, a.map)
     print(f"OK scan-collect: wrote {st['wrote']} gists from {st['raw_files']} reader file(s) — "
           f"{st['withheld']} withheld by the gate, {st['too_short']} rejected as too short (stay un-scanned "
