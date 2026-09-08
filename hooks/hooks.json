@@ -355,6 +355,16 @@
       "statusMessage": "Checking what this push would actually send..."
      }
     ]
+   },
+   {
+    "matcher": "Bash",
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_no_upstream_commit_signpost.sh\"",
+      "statusMessage": "Checking whether the remote has seen this branch..."
+     }
+    ]
    }
   ],
   "PostToolUse": [

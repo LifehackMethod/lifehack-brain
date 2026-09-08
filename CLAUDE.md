@@ -50,6 +50,9 @@ elements/<slug>.md, the exhaustive source. If this map is your only source, you 
                 deny message names WHICH guard and why; the guards are listed in `.claude/settings.json`.
 ! (no command)  make the system actually STOP me | hook-plane.md — you name the rule, a session writes+registers
                 the hook, then it fires alone forever. a doctrine line only asks nicely.
+! (no command)  I am committing onto a branch the remote has never seen | guard_no_upstream_commit_signpost.sh —
+                no-upstream. the clone is the remote plus today's work; a branch with no remote twin
+                needs a stated reason. fires once per branch per session, then yields.
 ! (automatic)   stop something leaving the system | egress-allowlist-wall.md
 ! (automatic)   the system files a ticket on ITSELF, ranked | hospital.md — detectors write ONE comparable
                 finding; the session-start line speaks it unasked. DETECTS+RANKS, never fixes.
