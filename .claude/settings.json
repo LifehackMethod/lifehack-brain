@@ -318,6 +318,16 @@
             "statusMessage": "Checking this would not overwrite the map of itself..."
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_commit_identity.sh\"",
+            "statusMessage": "Checking the commit identity matches the operator's..."
+          }
+        ]
       }
     ],
     "PostToolUse": [

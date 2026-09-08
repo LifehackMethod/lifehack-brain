@@ -335,6 +335,16 @@
       "statusMessage": "Checking this doesn't re-point a symlink into the private repo..."
      }
     ]
+   },
+   {
+    "matcher": "Bash",
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_commit_identity.sh\"",
+      "statusMessage": "Checking the commit identity matches the operator's..."
+     }
+    ]
    }
   ],
   "PostToolUse": [
