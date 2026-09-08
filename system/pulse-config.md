@@ -296,6 +296,14 @@ guard-fire-test    | yes | 604800 | bash "$LIFEHACK_CODE_ROOT/system/tools/guard
 # the interactive keychain a headless/cron context cannot unlock (per the sibling runners' own
 # comments), risking a hang rather than a clean failure. Superseded, not summoned.
 #
+# mirror-fetch: M14 — the scheduled fetch that keeps mirror_line.sh's (M9/M13) "behind" and
+# "ahead" figures honest. mirror_line.sh reads only local refs by contract (a session-start line
+# must not touch the network), so without something else fetching, "behind" can only ever read 0.
+# FETCH ONLY: git fetch origin --prune against THIS clone (never pull/merge/checkout, never
+# touches a working tree or a local branch) — a REPORT, not a gate, per SOP §9. Hourly cadence:
+# frequent enough that "behind" stays close to true without hammering the remote on every tick.
+mirror-fetch       | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/mirror-fetch-run.sh"
+#
 # ── TEMPLATE — copy this row when a new lane wires up a job, then delete the comment. ──────────
 # your-job-name  | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/your-runner.sh"
 ```
