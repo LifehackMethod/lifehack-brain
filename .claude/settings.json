@@ -328,6 +328,16 @@
             "statusMessage": "Checking the commit identity matches the operator's..."
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_git_push_signpost.sh\"",
+            "statusMessage": "Checking what this push would actually send..."
+          }
+        ]
       }
     ],
     "PostToolUse": [
