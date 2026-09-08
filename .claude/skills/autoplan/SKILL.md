@@ -37,6 +37,7 @@ will mint a new file and your amendment lands there. Edit the plan file directly
 
 ```bash
 ROOT="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && pwd)"
+[ -f "$ROOT/system/tools/plan_lint.py" ] || { echo "STOP: cannot resolve this skill's own repo — \$ROOT=$ROOT has no system/tools/plan_lint.py (wrong repo, or not a git checkout). cd into the lifehack-brain repo, or set CLAUDE_PROJECT_DIR, before running autoplan."; exit 1; }
 DATA="$(python3 "$ROOT/shared/brain_root.py" --quiet)" || {
   echo "STOP: nobody has said where their notes live yet."
   echo "Ask them, then: python3 $ROOT/shared/brain_root.py --set \"<that folder>\" --create"; exit 1; }

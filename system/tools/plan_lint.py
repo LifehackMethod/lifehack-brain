@@ -32,7 +32,7 @@ clean means the checker is dead); SKILL.md must not exceed fixtures/.budget (the
 
 VERDICTS  0 clean · 2 defects (one line each, task id first) · 4 CANNOT-READ (the no-outcome member)
 """
-import os, re, subprocess, sys, argparse
+import os, re, subprocess, sys, argparse, tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from verify_parse import ID, BARE_CARD_RE, parse_verify, VerifyParseError  # noqa: E402
@@ -109,6 +109,20 @@ def live_branch(path):
     try:
         r = subprocess.run(["git", "-C", path, "branch", "--show-current"], capture_output=True, text=True, timeout=10)
         return r.stdout.strip() if r.returncode == 0 else None
+    except Exception:
+        return None
+
+def branch_exists(path, branch):
+    """Whether `branch` is a real local branch at `path` — validated on ITS OWN terms,
+    never against whatever happens to be checked out right now (2026-09-08: a card
+    targeting V2 while the local checkout sits on main is normal, not a defect; the
+    old check compared a card's declared branch to live_branch() and false-failed on
+    exactly that). None means the check could not run (bad path, no git) — callers
+    must not treat None as a pass."""
+    try:
+        r = subprocess.run(["git", "-C", path, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"],
+                            capture_output=True, text=True, timeout=10)
+        return r.returncode == 0
     except Exception:
         return None
 
@@ -190,8 +204,8 @@ def lint(path, rows):
             if said != kind: defects.append((tid, f"`Repo:` says {said} but Where: derives {kind} from the map"))
             bm = re.search(r'\b(V2|v2|main)\b', repo)
             if bm and mpath:
-                lb = live_branch(mpath)
-                if lb and lb.lower() != bm.group(1).lower(): defects.append((tid, f"`Repo:` names branch {bm.group(1)} but {mpath} is on {lb}"))
+                exists = branch_exists(mpath, bm.group(1))
+                if exists is False: defects.append((tid, f"`Repo:` names branch {bm.group(1)} but no such branch exists at {mpath}"))
         if kind != "none":
             cm = s.get("Commit", "")
             if not cm: defects.append((tid, "missing `Commit:` on a repo task"))
@@ -278,12 +292,56 @@ def self_check(skill_dir):
         print("SELF-CHECK FAILED: " + drift); sys.exit(2)
     print(f"SELF-CHECK OK: spacey Where: derives correctly; fixture fails ({len(d)} defects); local copy in step"); sys.exit(0)
 
+def _prove_it_fails(skill_dir):
+    """The negative test: prove the FIXED checker actually REFUSES, not just that
+    --self returns clean. Two independent probes, both must come back refused —
+    every one of the four 2026-09-08 defects was a SILENT PASS, so a check that only
+    exercises the happy path (--self == 0) would reproduce exactly that blindness.
+
+    (a) a deliberately broken plan (fixtures/broken.plan.md) must still come back
+        with defects — the existing --self guard, re-asserted here explicitly.
+    (b) SKILL.md's own ROOT boot-guard (the literal `ROOT=...` + `[ -f ... ]` lines,
+        extracted from the shipped SKILL.md and run for real) must exit LOUDLY
+        nonzero when run from a git repo that has no system/tools/plan_lint.py —
+        never silently continue past a wrong or unresolvable ROOT.
+
+    Returns (ok_a, ok_b) — never a single bool, so a caller can report which probe
+    (if either) failed to refuse.
+    """
+    fx = os.path.join(skill_dir, "fixtures", "broken.plan.md")
+    ok_a = False
+    if os.path.exists(fx):
+        _, d = lint(fx, load_map())
+        ok_a = bool(d)
+
+    ok_b = False
+    skill_md = os.path.join(skill_dir, "SKILL.md")
+    if os.path.exists(skill_md):
+        text = open(skill_md, encoding="utf-8").read()
+        m = re.search(r'(ROOT="\$\(cd.*?\n\[ -f "\$ROOT/system/tools/plan_lint\.py" \].*?\n)', text)
+        if m:
+            snippet = m.group(1)
+            with tempfile.TemporaryDirectory() as td:
+                subprocess.run(["git", "init", "-q"], cwd=td, capture_output=True)
+                r = subprocess.run(["bash", "-c", snippet], cwd=td, capture_output=True, text=True, timeout=10)
+                ok_b = (r.returncode != 0)
+    return ok_a, ok_b
+
 def main():
     ap = argparse.ArgumentParser(description="plan_lint — a plan is not shown until every task is a complete card")
     ap.add_argument("plan", nargs="?")
     ap.add_argument("--self", action="store_true", help="every-run guards: fixture must fail; SKILL.md within budget")
+    ap.add_argument("--prove-it-fails", action="store_true",
+                     help="with --self: the negative test -- prove the checker REFUSES a broken "
+                          "fixture AND an unresolvable ROOT boot-guard. Exits 1 if either was NOT "
+                          "refused, 0 if both were. --self alone does not run this.")
     ap.add_argument("--skill-dir", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".claude", "skills", "autoplan"))
     a = ap.parse_args()
+    if a.self and a.prove_it_fails:
+        skill_dir = os.path.normpath(a.skill_dir)
+        ok_a, ok_b = _prove_it_fails(skill_dir)
+        print(f"PROVE-IT-FAILS: broken-fixture refused={ok_a}  ROOT-boot-guard refused={ok_b}")
+        sys.exit(0 if (ok_a and ok_b) else 1)
     if a.self: self_check(os.path.normpath(a.skill_dir))
     if not a.plan: cannot_read("no plan path given")
     cards, defects = lint(os.path.expanduser(a.plan), load_map())
