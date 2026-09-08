@@ -3,7 +3,7 @@ skill: autoplan
 title: "Autoplan — plan against what the system actually is"
 shape: interactive-workflow
 status: active
-description: "Fires on \"/autoplan\", \"make a plan\", \"update the plan\", \"add this to the plan\", \"plan this\". Use it for ANY plan: it explores the real system, writes into the project's ONE living plan file, and has six reviewers attack the plan before you see it."
+description: "Fires on \"/autoplan\", \"make a plan\", \"update the plan\", \"add this to the plan\", \"plan this\". Use it for ANY plan: it explores the real system, writes into the project's ONE living plan file, and has eight reviewers attack the plan before you see it."
 summary: |
   The surveyor. It maps the ground before it draws the map — never planning from memory and never from
   the conversation alone — then amends the one plan file that project has always used. It reserves the
@@ -388,17 +388,30 @@ read as standalone.
 - If the shape fits gear-3/4 but nobody opted in, **name it in the frame** — *"this is fan-out-shaped;
   say the word"* — and plan it as gear-2s.
 
-## Step 5.5 — The swarm: six lenses, blind, one table
+## Step 5.5 — The swarm: eight lenses, blind, one table
 
 The plan is written and has passed lint — run `python3 "$ROOT/system/tools/plan_lint.py" "<plan>"`;
 nonzero exit means the plan is not reviewed and is not shown. Only a plan that already passes goes to
-the six readers below.
+the eight readers below.
 
-**Launch all six lenses in one message, in the background.** Each receives exactly two things: the
+**Launch all eight lenses in one message, in the background.** Each receives exactly two things: the
 plan's **file path**, and its lens file from `.claude/skills/autoplan/lenses/` — `tokens`, `steps`,
-`gating`, `github` run on sonnet; `value`, `postmortem` run on opus. The model is named inside each
+`gating`, `github` run on sonnet; `value`, `postmortem`, `canon`, `skills-sop` run on opus. The model is named inside each
 lens file — pin it on the spawn regardless, since a bare spawn inherits the session's own tier. All six
-read the shared rules at `lenses/_contract.md`. Where a lens names `<notes>/...`, substitute `$DATA` on the spawn — a lens file never carries a personal path, because this folder ships to students. **The lenses are blind to each other** — nothing is
+read the shared rules at `lenses/_contract.md`. Where a lens names `<notes>/...`, substitute `$DATA` on the spawn — a lens file never carries a personal path, because this folder ships to students.
+
+> ⭐ **`canon` and `skills-sop` are the two highest-yield lenses, and they were added late.** Measured
+> once, 2026-09-08, on a 9-task plan: eight lenses returned 78 findings; **these two returned 37 of
+> them — 47% of every finding, from 25% of the council.** Each out-found all six originals. `canon`
+> alone surfaced a DO-NOT-RETRY hit the other six missed entirely (a no-outcome member sharing a value
+> with a legal outcome), and caught the plan doing the exact thing canon §5.11 names — *recording
+> findings instead of fixing them, growing more confident and less accurate at once*. `skills-sop`
+> caught two fabricated ⚖ citations, one of which quoted a dead-end rule the plan violated two tasks
+> earlier. **Do not drop these two to save the spawn cost; they are where the cost pays back.**
+> ⚠ `canon` degrades honestly on an install with no `records/canon/` — it returns `findings: []` and
+> says the lens is not applicable, rather than erroring or substituting another document.
+
+**The lenses are blind to each other** — nothing is
 relayed between them by chat, before or after — a lens that saw another's finding would anchor on it
 instead of finding its own; independence is the entire point of running six.
 
@@ -416,9 +429,9 @@ thing, SOP §V.4d), add that path to `Review:` as `· artifact: \`<path>\`` — 
 
 **`--no-review` skips the swarm** — write `Review: SKIPPED <date> <reason>`, no artifact needed.
 Either branch, the plan says which: an unreviewed plan must look unreviewed a year later, never carry a
-line implying six lenses looked at it when none did.
+line implying eight lenses looked at it when none did.
 
-Six lenses cost roughly `6 × 8,100 = 48,600` tokens fixed, before any reasoning runs — worth it on a
+Eight lenses cost roughly `8 × 8,100 = 64,800` tokens fixed, before any reasoning runs — worth it on a
 plan other plans will fork from or follow; the `steps` lens's own time budget is what tells you when a
 plan is small enough to skip the swarm entirely.
 
