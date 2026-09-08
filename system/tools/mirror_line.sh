@@ -158,9 +158,9 @@ if [ "$GONE_COUNT" -gt 0 ]; then
 fi
 if [ "$NOUP_COUNT" -gt 0 ]; then
   if [ -z "$PARTS" ]; then
-    PARTS="${NOUP_COUNT} no-upstream"
+    PARTS="${NOUP_COUNT} no-upstream (-> CLAUDE.md map: no-upstream)"
   else
-    PARTS="${PARTS} · ${NOUP_COUNT} no-upstream"
+    PARTS="${PARTS} · ${NOUP_COUNT} no-upstream (-> CLAUDE.md map: no-upstream)"
   fi
 fi
 if [ "$AHEAD_COUNT" -gt 0 ]; then
