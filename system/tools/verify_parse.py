@@ -39,7 +39,7 @@ clause) — that is a *different*, pre-existing failure mode callers already han
 """
 import re
 
-ID = r'[A-Za-z]{0,2}\d{1,3}[a-z]?\.\d{1,2}[a-z]?'
+ID = r'[A-Za-z]{0,2}\d{1,3}[a-z]?(?:\.\d{1,2}[a-z]?)?'
 BARE_CARD_RE = re.compile(r'^- \[ \] \*\*')
 CARD_ID_RE = re.compile(r'^- \[ \] \*\*(' + ID + r')\b')
 
