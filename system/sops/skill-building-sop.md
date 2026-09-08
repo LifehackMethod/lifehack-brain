@@ -44,6 +44,17 @@ reader_note: >
 > *Mapping onto the tags already in this file:* `[M]` with several runs = REPRODUCED; `[M]` with one = OBSERVED;
 > `[R]` `[R2]` `[C]` = RESEARCHED; ⏸ HELD = CANDIDATE; a struck or superseded section = REFINED.
 >
+> **A separate scale, beside this one, answers a different question — not how well a fix is evidenced but how
+> durably it holds** (ruled by Enver, 2026-09-07): **prose-asked-nicely** (weakest — a rule that only asks) →
+> **a speed-bump / a redundant signal / a second check** → **structurally impossible on every path** (strongest).
+> When no perfect structural fix exists, **layered redundancy is the best available fix and is a legitimate,
+> rankable outcome** — not a failure to find one. ⚠ **A guard on ONE path is not a guard on ALL paths** —
+> "already enforced" is never assumed; it is true only for the paths the guard actually covers, and the record
+> must name which. Live instance: an Edit-tool guard refused a bad anchor while `sed`, line-number deletes and
+> first-match replaces had no such guard, and the failure lived on those unguarded paths. **The two scales are
+> ORTHOGONAL** — a fix can be VALIDATED evidence-wise and still sit at prose-asked-nicely for durability; say
+> so explicitly, so no future reader collapses them.
+>
 > **A tier without a dated receipt decays one step.** **Structural findings** — what a model cannot do by
 > construction — earn OBSERVED on one clean case. **Behavioural findings** — how often — need reproduction.
 >
@@ -935,6 +946,45 @@ what they are: patterns worth building, not things to reach for today.
   never seen this conversation read it alone and act on it correctly?* Scope: one session handing to another, or persisting
   into a system built to act on it later — a brief, a plan, canon, this Harness. *Entered by Enver's ruling, not by the
   census; canon §16 mode 14 is the same.* · **CANDIDATE** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; Enver's ruling 2026-09-06; nothing watched)
+- **[F15]** Tried: trusting a check, guard or Verify clause's refusal without first testing the checker on
+  known-good input. Failed **7×** over one day (2026-09-07; no census): the measuring command was wrong, read
+  only part of its input, or compared against a stale expectation — the cost lands on honest work while what
+  the check was built to catch goes unmeasured. → Test a checker on known-good input before trusting its no.
+  Scope: any check, guard or Verify clause's refusal. Category: **both** (canon §16 mode 15, 5.3 category,
+  2026-09-07 amendment). Receipt: `state/experiments/coordinator/mode-15-draft.md` ⛔ (records in the owner's
+  notes) and `state/experiments/coordinator/defects-2026-09-07.md` ⛔ (records in the owner's notes) rows 10-11
+  (fix landed as commit `d6a1afa`). ·
+  **CANDIDATE** (derived 2026-09-07 from canon §16 mode 15; nothing watched)
+- **[F16]** Tried: treating anything written as prescriptive and, of two contradicting findings, obeying the
+  OLDER over the NEWER as if age were authority. Failed **7×** (A: 4 + B: 3) in one session on 2026-09-07 (no
+  census): a dated claim whose date was dropped in retelling, sitting beside a live source or a newer
+  contradicting block, gets acted on without re-checking the live one. → A claim ships with its date; of two
+  disagreeing claims, re-derive from the live source and weight the more recent. Scope: any handoff or
+  retelling that carries a dated claim past a live or newer contradicting source. Category: **operational**
+  (canon §16 mode 16, 5.3 category, 2026-09-07). Receipt: no file — Enver's own direct observation and ruling,
+  2026-09-07, corroborated the same day in the 10k window and by canon §5.10. · **CANDIDATE** (derived
+  2026-09-07 from canon §16 mode 16; nothing watched)
+- **[F17]** Tried: compressing an observation, preference or hedged suggestion into an unqualified rule. Failed
+  **7×** (A: 4 + B: 3) in one session on 2026-09-07 (no census): a qualifier — a hedge, a scope, a unit, an
+  "offered lightly" — is stripped in the retelling while the assertive frame survives, and downstream discards
+  anything that does not fit a rule nobody issued. → Carry the hedge — a scope, a unit, an "offered lightly" —
+  through every retelling; a summary that drops one is wrong even when every fact in it is true. Scope: any
+  retelling or summary of an observation, preference or hedged suggestion. Category: **operational** (canon
+  §16 mode 17, 5.3 category, 2026-09-07). Receipt: no file — Enver's own direct observation and ruling,
+  2026-09-07, corroborated the same day in the 10k window and by canon §5.10. · **CANDIDATE** (derived
+  2026-09-07 from canon §16 mode 17; nothing watched)
+- **[F18]** Tried: treating the local git clone as a faithful copy of the remote. Failed **2×** (two repos) on
+  2026-09-07 (no census): git has no cleanup step — a branch merged and deleted on the remote leaves its local
+  pointer forever, an unpushed experiment persists until removed, and without `fetch.prune` cached `origin/*`
+  refs for deleted branches linger; each session inherits the pile and adds to it, so two windows can measure
+  "the repo" from local vs. remote and both be correct yet irreconcilable to the human. → `fetch.prune true`,
+  delete local in the same act as remote, push nightly — and push is not ship: only a merge to `main` ships.
+  Scope: any git repo the harness maintains a local clone of. Category: **both** (canon §16 mode 18, 5.3
+  category, 2026-09-07 — architectural for `fetch.prune`/delete-with-remote, operational for the nightly-push
+  habit). Receipt: the direct two-repo audit itself, 2026-09-07 — `lifehack-brain`: 58 local branches vs. 2 on
+  GitHub, 35 with remote `[gone]`, 13 with no upstream, 4 stale `origin/*` refs, `V2` 57 commits ahead of
+  `origin/V2`; `ClaudeOps`: 21 local, `main` 14 ahead. · **CANDIDATE** (derived 2026-09-07 from canon §16 mode
+  18; nothing watched)
 
 > **Right-size audit, 2026-09-05** *(Enver's rule is in THE FRAME; record: `records/research/2026-09-05-remedy-right-size-audit.md` ⛔ owner's notes).*
 > **⚠ LIKELY OVERBUILT for this harness — recorded, not adopted; each is a second system watching the first:** learned output-shape
