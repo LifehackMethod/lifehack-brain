@@ -945,7 +945,7 @@ what they are: patterns worth building, not things to reach for today.
   things, holds far less than the page assumes. → Before a line meant for a later reader is saved: *could a session that has
   never seen this conversation read it alone and act on it correctly?* Scope: one session handing to another, or persisting
   into a system built to act on it later — a brief, a plan, canon, this Harness. *Entered by Enver's ruling, not by the
-  census; canon §16 mode 14 is the same.* · Category: **operational** (canon §16 mode 14, 2026-09-08 retrofit) · **CANDIDATE** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; Enver's ruling 2026-09-06; nothing watched)
+  census; canon §16 mode 14 is the same.* · Category: **operational** (canon §16 mode 14, 2026-09-08 retrofit) · **Field remedy (RESEARCHED):** structural substitution over debiasing — name a concrete low-context reader and test against them directly; minimal, self-contained units, dynamically curated for an LLM reader rather than statically front-loaded (`records/research/2026-09-08-mode-14-reader-holds-no-state.md`). · **CANDIDATE** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; Enver's ruling 2026-09-06; nothing watched)
 - **[F15]** Tried: trusting a check, guard or Verify clause's refusal without first testing the checker on
   known-good input. Failed **7×** over one day (2026-09-07; no census): the measuring command was wrong, read
   only part of its input, or compared against a stale expectation — the cost lands on honest work while what
@@ -954,6 +954,10 @@ what they are: patterns worth building, not things to reach for today.
   2026-09-07 amendment). Receipt: `state/experiments/coordinator/mode-15-draft.md` ⛔ (records in the owner's
   notes) and `state/experiments/coordinator/defects-2026-09-07.md` ⛔ (records in the owner's notes) rows 10-11
   (fix landed as commit `d6a1afa`). ·
+  **Field remedy (RESEARCHED):** deliberately manufacture a known-bad input and confirm the checker fails on
+  it — mutation testing, invalid-case requirements, vacuous-pass detection, adversarial-anchor calibration are
+  independent instances across four traditions and five decades; explicitly bounded, never complete
+  (`records/research/2026-09-08-mode-15-instrument-refuses-truth.md`). ·
   **CANDIDATE** (derived 2026-09-07 from canon §16 mode 15; nothing watched)
 - **[F16]** Tried: treating anything written as prescriptive and, of two contradicting findings, obeying the
   OLDER over the NEWER as if age were authority. Failed **7×** (A: 4 + B: 3) in one session on 2026-09-07 (no
@@ -962,7 +966,11 @@ what they are: patterns worth building, not things to reach for today.
   disagreeing claims, re-derive from the live source and weight the more recent. Scope: any handoff or
   retelling that carries a dated claim past a live or newer contradicting source. Category: **operational**
   (canon §16 mode 16, 5.3 category, 2026-09-07). Receipt: no file — Enver's own direct observation and ruling,
-  2026-09-07, corroborated the same day in the 10k window and by canon §5.10. · **CANDIDATE** (derived
+  2026-09-07, corroborated the same day in the 10k window and by canon §5.10. · **Field remedy
+  (RESEARCHED):** architectural avoidance — ground in live tool/function calls at generation time rather than
+  retrieving static text for facts a tool can answer live; in-context arbitration when both a stale and live
+  source are present remains explicitly unsolved per 2025 research
+  (`records/research/2026-09-08-mode-16-written-word-outranks-live.md`). · **CANDIDATE** (derived
   2026-09-07 from canon §16 mode 16; nothing watched)
 - **[F17]** Tried: compressing an observation, preference or hedged suggestion into an unqualified rule. Failed
   **7×** (A: 4 + B: 3) in one session on 2026-09-07 (no census): a qualifier — a hedge, a scope, a unit, an
@@ -971,7 +979,11 @@ what they are: patterns worth building, not things to reach for today.
   through every retelling; a summary that drops one is wrong even when every fact in it is true. Scope: any
   retelling or summary of an observation, preference or hedged suggestion. Category: **operational** (canon
   §16 mode 17, 5.3 category, 2026-09-07). Receipt: no file — Enver's own direct observation and ruling,
-  2026-09-07, corroborated the same day in the 10k window and by canon §5.10. · **CANDIDATE** (derived
+  2026-09-07, corroborated the same day in the 10k window and by canon §5.10. · **Field remedy
+  (RESEARCHED):** enforced modal-verb discipline (ban weak hedges like "should/may" in favor of explicit
+  "shall," backed by traceability tooling) — the one domain-tested practice, from requirements engineering,
+  predating LLMs; explicitly leaky per its own practitioners ("traceability drift")
+  (`records/research/2026-09-08-mode-17-observation-hardened-into-rule.md`). · **CANDIDATE** (derived
   2026-09-07 from canon §16 mode 17; nothing watched)
 - **[F18]** Tried: treating the local git clone as a faithful copy of the remote. Failed **2×** (two repos) on
   2026-09-07 (no census): git has no cleanup step — a branch merged and deleted on the remote leaves its local
@@ -983,7 +995,11 @@ what they are: patterns worth building, not things to reach for today.
   category, 2026-09-07 — architectural for `fetch.prune`/delete-with-remote, operational for the nightly-push
   habit). Receipt: the direct two-repo audit itself, 2026-09-07 — `lifehack-brain`: 58 local branches vs. 2 on
   GitHub, 35 with remote `[gone]`, 13 with no upstream, 4 stale `origin/*` refs, `V2` 57 commits ahead of
-  `origin/V2`; `ClaudeOps`: 21 local, `main` 14 ahead. · **CANDIDATE** (derived 2026-09-07 from canon §16 mode
+  `origin/V2`; `ClaudeOps`: 21 local, `main` 14 ahead. · **Field remedy (RESEARCHED):** `fetch.prune=true` plus
+  host-side merged-branch auto-delete plus a periodic stale-branch CI sweep with an archive-tag safety net —
+  uncontested for the mechanical layer. For the LLM-agent-specific risk, no dedicated fix exists yet;
+  convergent 2026 practitioner guidance is to gate mutating git actions outside the model's own reasoning
+  (`records/research/2026-09-08-mode-18-mirror-rot.md`). · **CANDIDATE** (derived 2026-09-07 from canon §16 mode
   18; nothing watched)
 
 - **[F19]** Tried: reading a large `main..<branch>` commit count as unmerged local work needing a merge. Failed
@@ -999,7 +1015,11 @@ what they are: patterns worth building, not things to reach for today.
   says must be DELETED.** Receipt: canon `records/canon/2026-09-02-canonical-principles.md` §16 mode 19, §17.26
   — direct branch-content audit, private `egjokaj/ClaudeOps`, 2026-09-08: 20 `ship/*`/`land/*` branches, 211
   commits absent from `main`, ~142 shared between any two, carrying `.claude-plugin/` paths private `main` has
-  never held. See also GitHub SOP **[G17]**. · **CANDIDATE** (derived 2026-09-08 from canon §16 mode 19;
+  never held. See also GitHub SOP **[G17]**. · **Field remedy: none found 2026-09-08** — no literature names this
+  exact conflation. Two structural analogs (`git subtree --rejoin`; Copybara/Dagster revision-ID trailers)
+  converge on recording delivery as commit-graph data rather than branch-state inference, but neither directly
+  solves it, and one tool's own default takes the opposite view
+  (`records/research/2026-09-08-mode-19-delivery-packaging-as-stranded-work.md`). · **CANDIDATE** (derived 2026-09-08 from canon §16 mode 19;
   nothing watched)
 
 > **Right-size audit, 2026-09-05** *(Enver's rule is in THE FRAME; record: `records/research/2026-09-05-remedy-right-size-audit.md` ⛔ owner's notes).*
