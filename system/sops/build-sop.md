@@ -243,6 +243,60 @@ authority: user
 - **Quote every Drive path.** The Lifehack Drive root contains a space (`"My Drive"`). An unquoted
   path dies mid-argument — and it fails in a way that looks like a different bug entirely.
 
+- **⛔ "CHECKS SETTLED" READ IN THE POST-PUSH GAP IS A FALSE RESULT.** Immediately after pushing to a
+  PR branch there is a window where the OLD check run has finished and the NEW one has not queued yet.
+  Polling "does every check have a conclusion?" in that window returns TRUE and reports the PREVIOUS
+  run's verdict. Measured: it reported FAILURE on PR #119 for a version bump that was in fact correct
+  (`0.2.5 > 0.2.4`). **Fix: pin the poll to the pushed HEAD SHA and require every check to carry a
+  non-empty conclusion.** ⭐ It produced a false RED here, which is the safe direction — but the
+  identical bug produces a false GREEN just as easily. (2026-08-25.)
+
+- **⛔ A PUSH CAN SILENTLY NO-OP AFTER A REBASE.** `git rebase` can drop the branch's upstream tracking
+  ref; a bare `git push` then prints `push.default` configuration help to stdout and exits without
+  pushing. The remote stays on the old SHA. Measured: PR #124 sat on a stale commit with the old version
+  while the local branch was correct, and it was caught ONLY by checking odd-looking output instead of
+  accepting it. **Fix: push with an explicit refspec — `git push origin HEAD:<branch>` — and verify the
+  remote SHA afterward, never trust the command's own output.** (2026-08-25.)
+
+- **⭐ "SUSPECT THE TEST FIRST" CUTS BOTH WAYS — INCLUDING AGAINST A SUB-AGENT'S REPORT.** The existing
+  rule above covers suspecting a failing test. Measured three times in one night that the same
+  discipline applies to a LANE'S RETURN: a lane reported the `ship` skill was never fixed — it had
+  searched `skills/ship/` while the repo path is `.claude/skills/ship/`. The lead's own verification
+  (commit touches the file, commit is an ancestor of the installed SHA, fix present in the installed
+  cache) refuted it in three commands. **Rule: when a lane's finding contradicts something you measured
+  yourself, re-derive before accepting either. A lane is a witness, not an oracle.** (2026-08-25.)
+
+- **⛔⛔ A CORRECTLY-SCOPED NARROW FINDING, READ BROADLY, IS AS DANGEROUS AS A WRONG ONE.** A lane
+  established that plugin-served skills are LISTED to the model only under a namespaced `plugin:skill`
+  name — true, well-evidenced, and it honestly flagged that it could not trace the INVOCATION path. The
+  lead read that as "bare names do not work" and recommended abandoning a correct fix. A later
+  demonstration proved bare-name invocation works fine. **Listing and invocation were different claims
+  and only one had been measured.** ⭐ **Rule: when a lane names its own unproven boundary, that boundary
+  is part of the finding. Do not round it off. The lane was right and the reader was wrong.**
+  (2026-08-25.)
+
+- **⛔ A VALIDATOR PASSING IS NOT THE THING WORKING.** `claude plugin validate` returned "passed with
+  warnings" against a plugin that was serving ZERO of its 34 skills. It checks component
+  well-formedness, never whether components sit somewhere the loader actually scans. **Rule: a
+  validator answers "is this well-formed?", never "does this do anything?" Require a behavioural
+  measurement — the count moving, the guard denying, the output appearing — and never accept a
+  validator's green as proof of function.** (2026-08-25.)
+
+- **⚠ CONCURRENT WRITES TO ONE LARGE FILE FROM TWO WINDOWS.** Two windows independently persisted the
+  same finding into the same ~897KB plan file at the same time. It came out clean — verified no
+  duplicate section headers, no adjacent-duplicate lines — but that was luck, not design. **Rule: when
+  two windows need to persist the same finding, ONE owns the file and the other relays. Verify
+  afterward by checking for duplicated section headers, not by trusting that the writes landed.**
+  (2026-08-25. Different failure shape from the stale-prep-clobber rule above — that one is a prep
+  going stale between read and write; this one is two live writers landing at once.)
+
+- **⭐ THE SAFE ROUTE FOR PLUGIN EXPERIMENTS (a positive pattern, record it as such).**
+  `claude -p "<command>" --plugin-dir <path>` loads a plugin for a SINGLE PROCESS and touches no
+  persisted config. ⚠ Also record the inert route so nobody repeats it: copying a plugin cache to
+  scratch and repointing `installed_plugins.json` is **INERT** — `claude plugin details` ignores it
+  entirely, output unchanged. It is not the real read path. Patching the installed cache in place works
+  but requires a byte-for-byte, hash-verified restore. (2026-08-25.)
+
 ## Measurement — sizing, grading, and pricing an experiment
 - **n=1 resolves nothing.** `EXPRESSION: pooled CV = 22.25%` → `MDE at n=1 = 62.9%`, `n=3 = 36.3%`. A
   null result at n=1 is **`CANNOT RESOLVE`, never "no effect."** State that distinction plainly —
@@ -254,6 +308,20 @@ authority: user
 - **Fan-out is genuinely concurrent but it is NOT free.** `EXPRESSION: n4/n1 = 73.87/52.53 = 1.41×`
   against `4×` if it were serial — so parallelism is real, but there is a **~30–41% spawn-and-collect
   toll** that must be priced into any fan-out estimate.
+- **A count is only as good as the shape you searched for — and nobody writes the shape down.** Three
+  correct searches on 2026-08-27, each measuring a population that wasn't the one in question: a
+  "runner missing" count that searched the repo when the runners live in the AI Brain (true answer:
+  ZERO of 23 missing); a row reported absent by its label (`token-burn-mine`) when the file existed
+  under its filename (`token_burn_mine.py`) — label ≠ filename, hyphen ≠ underscore; a PII sweep that
+  matched email-shaped strings and home paths and so missed seven more tracked files carrying the same
+  identifier as a bare username — precise about the wrong shape. In all three the search **ran
+  correctly and returned a true fact about the population it actually searched**; nothing errored, so
+  the miscount was invisible from the output. Same family as: a registration count of 71 reached by
+  grepping for a helper's *absence* (real number, by reading all 47 by hand: 12); `timeout` not
+  existing on macOS (exit 127, no output, reads clean); a lint invoked `--files $VAR` under zsh that
+  checked zero files and exited 0. **Before trusting any count, write down the shape you searched
+  for — tree, string/label, regex class — and ask whether that shape is the population in question.**
+  A negative result is only as good as the name, the tree, and the pattern behind it.
 
 ## Domain — background / scheduled runners
 
@@ -444,6 +512,20 @@ authority: user
   **unit** (`63 files, 2026-07-28`), and when two figures disagree, ask *"are these even measuring the same
   thing?"* before assuming one is stale. Correct a stale figure by **dating it in place**, never by
   overwriting — the old number is evidence about when the world changed. (2026-08-01, project-system Phase 7.)
+
+- **★ AN EVENT THAT CORRECTS A STALE NUMBER DOES NOT CLOSE THE WORK — paid for twice in one week.**
+  "Nine promote blocks" was corrected to "three" — the three were still unapplied. "86 uncommitted
+  files" was corrected to "73" — the files were still uncommitted. Both times the corrected label got
+  read as a finished job. **The mechanism:** a correction FEELS like a resolution — striking a wrong
+  figure produces the same satisfaction as completing the task, so the label now looks *handled* and
+  nobody re-opens it. A struck-through item reads as done; an unstruck one at least reads as open —
+  which makes this class worse than plain staleness. **How to apply:** when correcting a count, state
+  the WORK STATUS separately and explicitly in the same edit — *"nine → three, and all three remain
+  unapplied"* is a status; *"nine → three"* alone is just a number. Never let the first stand in for
+  the second. Same family as the "NUMBER WITHOUT A UNIT" rule above and as the recorded case of a
+  correction that announced four stale locations and struck four while eight existed — a correction
+  that misses its own instances leaves the error live while looking resolved. (2026-08, two measured
+  instances.)
 
 - **VERSION ON THE WAY OUT, NEVER ON THE WAY IN — a version slot at creation is a fork button.** Asked to
   "make space in the filename for versioning, just in case," the tempting answer is `<name>.v2.ext`. That

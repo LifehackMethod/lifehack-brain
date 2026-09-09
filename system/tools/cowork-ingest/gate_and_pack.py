@@ -46,7 +46,7 @@ from ingest_gate import gate   # noqa: E402
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
-from tag import adaptive_char_slice, giant_sample   # noqa: E402
+from tag import adaptive_char_slice, giant_sample, explore_char_slice   # noqa: E402
 
 MAX_FILES = 10        # ≤10 conversations per reader spawn
 MAX_CHARS = 10_000    # ~8–10k chars body per spawn (bin-pack cap)
@@ -109,11 +109,12 @@ def main():
     ap.add_argument("--files", nargs="+", default=None, help="specific flattened files (else all)")
     ap.add_argument("--max-files", type=int, default=MAX_FILES, help="max items per bundle (raise for the 5k tag pass)")
     ap.add_argument("--max-chars", type=int, default=MAX_CHARS, help="max chars per bundle")
-    ap.add_argument("--slice", choices=["none", "adaptive", "giant"], default="none",
+    ap.add_argument("--slice", choices=["none", "adaptive", "explore", "giant"], default="none",
                     help="none = the full sanitized body (the DEEP-READ whole-read rung). adaptive = a "
-                         "length-adaptive SCAN slice. giant = a head+tail GIANT_COVER sample for a keeper "
-                         "over the whole-read ceiling. EVERY slice is cut AFTER the gate, from SANITIZED "
-                         "text, so an injection buried in the dropped middle was still scanned on the full body.")
+                         "length-adaptive SCAN slice. explore = the WIDER re-read for step 2.9 (SCAN's "
+                         "EXPLORE verdict), ~3x the adaptive window. giant = a head+tail GIANT_COVER sample "
+                         "for a keeper over the whole-read ceiling. EVERY slice is cut AFTER the gate, from "
+                         "SANITIZED text, so an injection buried in the dropped middle was still scanned on the full body.")
     args = ap.parse_args()
     MAX_FILES, MAX_CHARS = args.max_files, args.max_chars
 
@@ -145,6 +146,8 @@ def main():
         clean = res["content"]
         if args.slice == "adaptive":                 # SCAN rung: slice the SANITIZED body (gate already ran)
             clean = adaptive_char_slice(clean)        # → small, bounded; no chat is ever "oversized" now
+        elif args.slice == "explore":                # SCAN step 2.9: the WIDER re-read of an EXPLORE chat
+            clean = explore_char_slice(clean)         # same gate-sanitized path, ~3x the window
         elif args.slice == "giant":                  # DEEP-READ giant rung: head+tail sample of the SANITIZED body
             clean = giant_sample(clean)               # 30% cover; the gate already ran on the FULL body
         if len(clean) > MAX_CHARS:                   # giant chat → its own chunked bundle set

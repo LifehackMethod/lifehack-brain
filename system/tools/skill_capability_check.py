@@ -196,4 +196,8 @@ def self_test():
 
 
 if __name__ == "__main__":
+    import os as _os
+    sys.path.insert(0, _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "system", "tools")))
+    from utf8_stdio import force_utf8_stdio
+    force_utf8_stdio()
     sys.exit(main())

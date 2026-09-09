@@ -145,7 +145,9 @@ def do_set(a):
     if a.note:    row["learned_note"] = a.note
     if a.desk:    row["desk"] = a.desk
     if a.vein:    row["vein"] = a.vein
-    if getattr(a, "subject", None):  row["subject"] = a.subject   # ad-hoc cluster label (Pass-1 clustering)
+    if getattr(a, "subject", None):
+        row["subject"] = a.subject
+        row["basket"] = a.subject   # ad-hoc cluster label (Pass-1 clustering) — kept in lockstep (#56)
     save(m, a.map)
     print(f"OK: {a.file} → status={row.get('filing_status')} desk={row.get('desk')} vein={row.get('vein')} "
           f"subject={row.get('subject')} note={(row.get('learned_note') or '')[:50]!r}")
