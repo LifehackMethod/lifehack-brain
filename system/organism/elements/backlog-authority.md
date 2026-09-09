@@ -17,6 +17,9 @@ generated_from:
   # CORRECTED: system/reference/settings.json is a donor-layout path and does not exist in this
   # repo. The live registration is this repo's own .claude/settings.json — the hook itself is
   # genuinely registered and fires; only the citation path was stale.
+  # CORRECTED 2026-08-27 (L.B2 audit): system/reference/settings.json is a donor-layout path and
+  # does not exist in this repo. The live registration is system/hooks/registrations.json:272
+  # (+ plugin hooks.json:158) — the hook itself is genuinely registered; only the citation was stale.
   - system/pulse-config.md (line 299 — backlog-health Pulse slot)
   - state/projects/infrastructure/backlog-authority/brief.md
   - system/schemas/backlog-entry-schema.md
@@ -262,10 +265,10 @@ The Backlog Authority is a READ-ONLY engine — it never writes. The writer is `
 - Format: `- **[AREA] description** \`type:debt\` \`state:actionable\``
 - Dedup first (grep the file for the same item — update, don't duplicate).
 - ~~`guard_ledger_discipline.sh` BLOCKS any edit that adds a RESOLVED/✅/DONE line to `## Open`.~~
-  **CORRECTED** (source read of `guard_ledger_discipline.sh`): the live forbidden pattern is
-  `✅|\b(RESOLVED|CLEARED|FIXED)\b` -- "DONE" is not in it. A live test confirms an Edit adding a
-  backtick `state:done` tag to an `## Open` line passes (exit 0, allow), so the word DONE
-  specifically is not blocked by this guard.
+  **CORRECTED 2026-08-27** (L.B2 audit, source read of `guard_ledger_discipline.sh`): the live
+  forbidden pattern is `` ✅|\b(RESOLVED|CLEARED|FIXED)\b `` — "DONE" is not in it. A live test
+  confirms an Edit adding a backtick `` `state:done` `` tag to an `## Open` line passes (exit 0,
+  allow), so the word DONE specifically is not blocked by this guard.
 
 **`/save` Step 7c.6 — sweep OUT** (`elements/save.md` §Step 7c.6):
 `skill → Edit/Delete → state/debt-ledger.md ## Open → DELETE resolved lines`

@@ -43,9 +43,9 @@ authority: user
 > ⏳ unruled — `system/egress-allowlist.hosts`, the OS-firewall companion list. It did not come over, and the canonical
 > allowlist that DID come over (`system/egress-allowlist.md`) makes no mention of a hosts file. Nothing automated ever read it — the body says so at the OS-layer-backstop section: *"The OS firewall does NOT literally read `egress-allowlist.hosts`."* Whether an OS-layer backstop gets armed here at all is an OPEN human decision, and no phase owes this file. A DEBT, not a pass — ~~the same class as the `SAFE_FETCH_ALLOWLIST` per-run seal the body correctly labels HONOR-SYSTEM / UNBUILT~~ ⚠ CORRECTED 2026-08-15: that comparison no longer holds. The per-run seal was built out and made switchable today (see the CORRECTION banner immediately below); this hosts-file debt now stands on its own. The disposition on this line is unchanged by that — the OS-layer backstop is still an open human decision.
 >
-> ⛔ `system/reference/settings.json` — does not ship: the donor kept a git-tracked reference COPY there because its real settings lived outside the repo. Here the real, git-tracked settings file is `.claude/settings.json`, which is where this wall's PreToolUse registrations actually live. Recorded independently in `system/tools/organism/label_checker.py` lines 28-36.
+> ⛔ `system/reference/settings.json` — does not ship: the donor kept a git-tracked reference COPY there because its real settings lived outside the repo. Here the real, git-tracked settings file is .claude/settings.json, which is where this wall's PreToolUse registrations actually live. Recorded independently in system/tools/organism/label_checker.py lines 28-36.
 >
-> ⛔ `state/status/sentinel.json` — runtime-generated, created on first run, never committed. It is a status tile the reader's own run writes under their notes/data root (`shared/gate/sentinel_response.py` line 53 resolves it as `{DATA}/state/status/sentinel.json`); the writers `system/tools/sentinel-health.py` and `system/tools/sentinel-health-run.sh` DO ship. Absent from a fresh checkout is CORRECT.
+> ⛔ `state/status/sentinel.json` — runtime-generated, created on first run, never committed. It is a status tile the reader's own run writes under their notes/data root (shared/gate/sentinel_response.py line 53 resolves it as `{DATA}/state/status/sentinel.json`); the writers system/tools/sentinel-health.py and system/tools/sentinel-health-run.sh DO ship. Absent from a fresh checkout is CORRECT.
 
 > **⚠ CORRECTION — 2026-08-15 — the in-process domain seal was ARMED. It still ships OFF.**
 > Everything below that calls the `SAFE_FETCH_ALLOWLIST` per-run seal UNBUILT, HONOR-SYSTEM, "not armed",
@@ -339,7 +339,7 @@ real improvement in honesty and in reach, and it is **not** the same thing as th
    env-var-passed key will NOT trigger L1. (This is correct behavior — the key is not being exfiltrated.)
 3. `serper.dev` is on the allowlist → L2 passes the call.
 4. Daily call cap: `${TMPDIR:-/tmp}/serper_calls_YYYYMMDD.log` tracks the count; default `MAX=500`; exit 2 on
-   breach. [CORRECTED — live test: `CALL_LOG="${TMPDIR:-/tmp}/..."` in
+   breach. [CORRECTED 2026-08-27, lb2-controls.md claim 23 — live test: `CALL_LOG="${TMPDIR:-/tmp}/..."` in
    safe_search_api.sh; on a normal macOS session `TMPDIR` is always set to a per-session `/var/folders/.../T/`
    path, so the counter lives there, NOT at the bare `/tmp/...` path this doc previously stated as the sole
    location. Cap enforcement itself works correctly once the real file is seeded — only the documented path
@@ -365,7 +365,8 @@ real improvement in honesty and in reach, and it is **not** the same thing as th
 **Read (operational):**
 - `system/egress-allowlist.hosts` — firewall companion file (read only by human when syncing firewall rules)
 - `${TMPDIR:-/tmp}/serper_calls_YYYYMMDD.log` — daily call counter (read + written by `safe_search_api.sh`)
-  [CORRECTED — resolves through `$TMPDIR` on macOS, not the bare `/tmp` path this line previously named]
+  [CORRECTED 2026-08-27, lb2-controls.md claim 23 — resolves through `$TMPDIR` on macOS, not the bare `/tmp`
+  path this line previously named]
 
 **Written on block event:**
 - `$DRIVE/system/logs/sentinel-events.jsonl` — L2 appends a `{"source":"hook/egress","verdict":"blocked",...}`
@@ -545,7 +546,7 @@ The skills' SKILL.md enforces `safe_search_api.sh` as the sole search path; `saf
 URL-fetch path. This wall is what MAKES them the sole path — without L3's WebFetch/WebSearch block and L2's
 domain gating, the skills' enforcement would be honor-system only. `[skill]`
 
-**FEEDS research-web-plane** · `${TMPDIR:-/tmp}/serper_calls_YYYYMMDD.log` [path corrected]
+**FEEDS research-web-plane** · `${TMPDIR:-/tmp}/serper_calls_YYYYMMDD.log` [path corrected 2026-08-27, claim 23]
 (written by `safe_search_api.sh`) is the
 shared daily call-cap counter. Every caller of the search gateway — across all sessions — draws from the
 same `/tmp` counter file. The wall's tool writes this file; the research plane reads it. `[honor]`

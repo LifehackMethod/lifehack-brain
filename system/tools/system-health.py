@@ -323,24 +323,89 @@ def load_prev_attention():
         return set()
 
 
+# ── mode 2 fix: ran/succeeded two-signal split (canonical-housecleaning, card 11.2) ─────────────────
+#
+# THE FAILURE THIS CLOSES: a monitored job that SKIPPED or half-did its real work but still exited
+# 0 was, before this change, indistinguishable in the finding shape from a job that genuinely ran and
+# succeeded — both just landed as one `status` field. This fix does not detect mode 2 happening
+# elsewhere; it stops THIS FILE's own finding-emission from re-creating that same illusion for the
+# jobs it assesses. It is a distinct, complementary mechanism from the option set already on record
+# for mode 2 in `state/experiments/coordinator/option-sets.md` (that file, not this repo — the brain
+# root; see CLAUDE.md's "durable state" rule) — cited here in full, smallest-enforceable-first, NONE
+# struck, as the standing fallback if this field split ever proves insufficient on its own:
+#   - Option A: heartbeat (9h-rulings.md, line 60)
+#   - Option B: output-shape check against a baseline (9h-rulings.md, line 60)
+#   - Option C: both (9h-rulings.md, line 60)
+# None of A/B/C is "chosen" by this change — they detect mode 2 from OUTSIDE a job; this change makes
+# system-health's OWN emitted findings honest about ran-vs-succeeded from the INSIDE.
+def _ran_succeeded(row):
+    """(ran, succeeded) as 1/0, derived from one assess()/assess_tile_only()/sentinel_fold() row's
+    existing `state` (primary signal) and `attention`/`severity` (tie-breakers for states not listed
+    below — treat by analogy). Reasoning, state by state:
+
+    - UP, OK — attention=False, ran cleanly to a real verdict.               -> ran=1, succeeded=1
+    - DANGER, FLAGS — sentinel genuinely ran and detected something real;
+      the verdict just needs a human glance, the CHECK itself succeeded.    -> ran=1, succeeded=1
+    - DOWN — heartbeat shows a last_tick (it started) but the circuit is
+      broken on repeated fails: started, did not complete cleanly.         -> ran=1, succeeded=0
+    - ERROR — assess_tile_only's tile exists (it ran) but rc!=0.           -> ran=1, succeeded=0
+    - VERIFY — ran, produced a tile, but expect_findings/0 is inconclusive
+      ("verify me", not a pass) — started, no real completed verdict.      -> ran=1, succeeded=0
+    - LATE, STALE, NO-TILE — no fresh evidence of execution at all (never
+      ticked, overdue past grace, or no tile ever written).                -> ran=0, succeeded=0
+    - PAUSED-BY-SENTINEL, BY DESIGN, PAUSED — DELIBERATE non-run (Sentinel
+      paused it, or a human declared it off in pulse-config.md). This is
+      NOT a failure — it is excluded by design, and a reader must not read
+      ran=0 here as "broken"; the `why` field already says so per-row.     -> ran=0, succeeded=0
+    - anything else unseen — fall back to the `attention`/`severity` shape:
+      attention=False (healthy-shaped) -> ran=1, succeeded=1; attention=True
+      with severity=="error" -> ran=1, succeeded=0 (assume it started and
+      failed, the more informative guess for an error state); anything
+      else attention=True -> ran=0, succeeded=0 (unknown/no-evidence state,
+      treated like LATE/STALE rather than assumed to have started).
+    """
+    state = row.get("state", "")
+    if state in ("UP", "OK", "DANGER", "FLAGS"):
+        return 1, 1
+    if state in ("DOWN", "ERROR", "VERIFY"):
+        return 1, 0
+    if state in ("LATE", "STALE", "NO-TILE"):
+        return 0, 0
+    if state in ("PAUSED-BY-SENTINEL", "BY DESIGN", "PAUSED"):
+        return 0, 0
+    # Unseen state — by-analogy fallback via attention/severity.
+    if not row.get("attention"):
+        return 1, 1
+    if row.get("severity") == "error":
+        return 1, 0
+    return 0, 0
+
+
 def _emit_findings(scanned_n, rows):
     """ONE Hospital finding PER ASSESSED JOB, every sweep (mirrors the donor's T18.1 idiom) — not
     just the attention-worthy ones, so a job that RECOVERS shows a fresh OK finding on the very next
     sweep (the self-healing signal a fault ledger would otherwise need extra state to express). Each
-    finding is independent (own try/except) so one bad row costs only that one finding."""
+    finding is independent (own try/except) so one bad row costs only that one finding.
+
+    Every finding also carries `ran`/`succeeded` in its payload (mode 2 fix, see _ran_succeeded()
+    above) — this is the ONLY emit_finding() call site in this file (verified: no other call exists),
+    so applying it here covers assess(), assess_tile_only() and sentinel_fold() rows alike, since all
+    three flow into this one loop via main()'s results.append() pattern."""
     for row in rows:
         job = row.get("job", "?")
         try:
             status = "OK" if not row.get("attention") else ("ERROR" if row.get("severity") == "error" else "NEEDS_REVIEW")
             why = row.get("why") or ""
             summary = f"{job}: {row.get('state', '?')}" + (f" — {why}" if why else "")
+            ran, succeeded = _ran_succeeded(row)
             emit_finding(
                 producer="system-health",
                 status=status,
                 scanned_n=scanned_n,
                 labels={"job": "system-health", "check": "missed-run", "target": job},
                 summary=summary,
-                payload={"detail": {k: v for k, v in row.items() if k != "label"}},
+                payload={"detail": {k: v for k, v in row.items() if k != "label"},
+                         "ran": ran, "succeeded": succeeded},
                 rc=0 if status == "OK" else 1,
             )
         except FindingContractError as e:
@@ -349,7 +414,36 @@ def _emit_findings(scanned_n, rows):
             sys.stderr.write(f"[system-health] emit_finding failed for missed-run/{job}: {e}\n")
 
 
+def _selftest():
+    """--selftest: prove the ran/succeeded split (mode 2 fix) without a real sweep. Builds two
+    synthetic rows shaped exactly like assess()'s return value, runs each through the SAME
+    _ran_succeeded() helper _emit_findings() uses, and prints a literal `ran=<0|1> succeeded=<0|1>`
+    line for each — this exact format is what the plan card's Verify command greps for. Does NOT
+    call emit_finding() / write to the real findings dir, so it never pollutes real findings data.
+
+    Case 1 — a check that STARTED but did not complete real work (mode 2's actual shape: reporting
+    is not the same as doing). Modeled as state VERIFY (assess()'s own "ran, produced a tile, but
+    inconclusive" state) rather than PAUSED/BY-DESIGN, because a deliberately-skipped check is a
+    DIFFERENT thing (ran=0) from one that started and quietly under-delivered (ran=1, succeeded=0) —
+    the plan card's Verify command expects the latter shape.
+    Case 2 — a real, complete, successful check: state UP.
+    """
+    skipped_row = {"job": "selftest-skipped", "group": "platform", "state": "VERIFY",
+                   "severity": "info", "attention": True,
+                   "why": "selftest: started but did not reach a real completed verdict"}
+    real_row = {"job": "selftest-real", "group": "platform", "state": "UP",
+                "severity": "ok", "attention": False, "why": ""}
+
+    print("[system-health --selftest] mode 2 ran/succeeded field-split check")
+    for label, row in (("skipped-but-reporting", skipped_row), ("real-and-complete", real_row)):
+        ran, succeeded = _ran_succeeded(row)
+        print(f"  {label} (state={row['state']}): ran={ran} succeeded={succeeded}")
+    return 0
+
+
 def main():
+    if "--selftest" in sys.argv[1:]:
+        return _selftest()
     now = int(time.time())
     if NOTES_ROOT is None:
         # No notes root configured anywhere yet — there is nothing to sweep (every tile this sweep

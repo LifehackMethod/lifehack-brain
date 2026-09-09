@@ -116,9 +116,14 @@ Stop event (every turn-end)
       │              turn so active sessions do not expire.  (scratch_flag.sh line 34)
       │      → pm_flag.sh status (CLAUDE_CODE_SESSION_ID=$SID)  [only if scratch_flag = none/empty PAD]
       │            reads: ~/.claude/run/pm/pm-$KEY.flag  (KEY="sess-$SID" or "cwd-<hash>")
-      │            TTL: pm_flag.sh line 17 sets TTL_HOURS=36 (pm_flag.sh own expiry);
+      │            TTL: ~~pm_flag.sh line 17 sets TTL_HOURS=36 (pm_flag.sh own expiry);
       │                 BUT pm_persist.sh (line 16) uses TTL_HOURS=12 and ALSO deletes the flag
-      │                 at 12h (pm_persist.sh line 83) — effective TTL is 12h (whichever fires first).
+      │                 at 12h (pm_persist.sh line 83) — effective TTL is 12h (whichever fires first).~~
+      │            ⚠ CORRECTED 2026-09-01: pm_flag.sh line 92 sets `TTL_HOURS="${PM_TTL_HOURS:-36}"`.
+      │            pm_persist.sh line 79 sets `TTL_HOURS="${PM_TTL_HOURS:-$(_pm_default_ttl)}"`, where
+      │            `_pm_default_ttl()` (line 74) shells out to `pm_flag.sh ttl` (36) — the literal 36
+      │            on pm_persist.sh line 76 is only a last-resort fallback if pm_flag.sh is
+      │            unreachable. Both resolve to 36h today — effective TTL is 36h.
       │            if "none" → PAD = ""
       │      if PAD = "" or PAD file not on disk → exit 0  [hook: dormancy guard, line 51]
       │
@@ -193,7 +198,7 @@ Stop event (every turn-end)
 |---|---|---|
 | Stop event JSON (stdin) | READ | session_id, stop_hook_active, transcript_path |
 | `scratch_flag.sh status` | READ | primary pad resolver — armed state + scratch_path (30m TTL, scratch_flag.sh line 18) |
-| `pm_flag.sh status` | READ | secondary pad resolver — active brief path (36h TTL in pm_flag.sh; 12h effective via pm_persist.sh) |
+| `pm_flag.sh status` | READ | secondary pad resolver — active brief path (36h TTL, single-source: pm_flag.sh line 92, read by pm_persist.sh line 79) |
 | JSONL transcript (`transcript_path`) | READ | last assistant usage block → token count |
 | `~/.claude/run/scratch-capture/cap-sess-$SID.state` | READ + WRITE | bucket watermark (last checkpoint) |
 | `~/.claude/run/scratch-capture/cap-sess-$SID.pad` | READ + WRITE | last-checkpoint SCRATCHPAD section copy |
@@ -217,8 +222,8 @@ On all other turns (not due, dormant, or error): silent exit 0.
 
 - `system/hooks/scratch_capture_gate.sh` — the Stop hook (primary logic)
 - `system/hooks/scratch_flag.sh` — pad override resolver (arm/clear/status; 30m TTL; scratch_flag.sh line 18)
-- `system/hooks/pm_flag.sh` — brief path resolver (arm/clear/status; 36h TTL native; effective 12h)
-- `system/hooks/pm_persist.sh` — UserPromptSubmit hook that maintains pm_flag (12h TTL; pm_persist.sh line 16)
+- `system/hooks/pm_flag.sh` — brief path resolver (arm/clear/status; 36h TTL, single source: line 92)
+- `system/hooks/pm_persist.sh` — UserPromptSubmit hook that maintains pm_flag (reads the 36h TTL from pm_flag.sh via `_pm_default_ttl()`, line 79)
 - `system/hooks/scratch_sweep_nudge.sh` — sibling UserPromptSubmit hook (advisory switch-session warning)
 - `system/hooks/save_routing_hint.sh` — sibling UserPromptSubmit hook (advisory save routing)
 - `system/reference/settings.json` — Stop entry[3] (matcher "", line 448); UPS entries[1],[6],[8]
@@ -279,9 +284,11 @@ same scratchpad target this gate protects but is entirely non-blocking.
 **9. `pm_persist.sh`** (UserPromptSubmit, settings.json UPS[1], matcher `""`) `[advisory]`
 Fires every turn; injects the active brief path + pm-flag reminders. Also maintains the `pm_flag`
 this gate depends on for its secondary pad resolver (refreshes `armed_at` on each turn via
-`_refresh_armed_at`, pm_persist.sh lines 37–50). CRITICAL: pm_persist.sh uses its own
-`TTL_HOURS="${PM_TTL_HOURS:-12}"` (line 16) and DELETES the pm_flag at 12h (line 83) — overriding
-pm_flag.sh's native 36h TTL. The effective pm_flag TTL is therefore 12h when pm_persist.sh is running.
+`_refresh_armed_at`, pm_persist.sh lines 37–50). ⚠ CORRECTED 2026-09-01: pm_persist.sh no longer
+carries its own TTL literal — line 79 sets `TTL_HOURS="${PM_TTL_HOURS:-$(_pm_default_ttl)}"`, where
+`_pm_default_ttl()` (line 74) shells out to `pm_flag.sh ttl`, reading pm_flag.sh's own 36h default
+(pm_flag.sh line 92). The DELETE at line 234 (`if [ $(( NOW - ARMED_AT )) -ge $(( TTL_HOURS * 3600 )) ]`)
+now fires against that same 36h value, not a hardcoded 12h. The effective pm_flag TTL is 36h.
 If pm_persist breaks, the pm_flag path stales → this gate falls back to scratch_flag or goes dormant.
 
 **Receipt: model-executed, not mechanically verified** `[honor]`
@@ -303,7 +310,7 @@ documentation lag corrected, NOT a destination-only improvement.
 | Store | Path | Role | Notes |
 |---|---|---|---|
 | scratch_flag | `~/.claude/run/scratch/scratch-$KEY.flag` (KEY="sess-$SID" or "cwd-<hash>") | primary pad override (arm path) | 30m TTL from `armed_at`; self-expires on `status` call (scratch_flag.sh line 34); pm_persist.sh refreshes `armed_at` each turn |
-| pm_flag | `~/.claude/run/pm/pm-$KEY.flag` (KEY="sess-$SID" or "cwd-<hash>") | secondary pad (brief path) | Native 36h TTL (pm_flag.sh line 17); pm_persist.sh deletes at 12h (pm_persist.sh line 83) — effective TTL is 12h when pm_persist is running |
+| pm_flag | `~/.claude/run/pm/pm-$KEY.flag` (KEY="sess-$SID" or "cwd-<hash>") | secondary pad (brief path) | 36h TTL, single source: pm_flag.sh line 92; pm_persist.sh line 79 reads the same value via `_pm_default_ttl()` before its own deletion check (pm_persist.sh line 234) — effective TTL is 36h |
 | bucket watermark | `~/.claude/run/scratch-capture/cap-sess-$SID.state` | last-captured token-bucket index | written on every checkpoint (due or first-sight seeding); (scratch_capture_gate.sh lines 101, 124) |
 | pad sidecar | `~/.claude/run/scratch-capture/cap-sess-$SID.pad` | copy of ## SCRATCHPAD at last checkpoint | diff baseline for ADDED lines computation; (scratch_capture_gate.sh line 77) |
 | Active brief / scratch pad | Drive path from pm_flag or scratch_path from scratch_flag | the `## SCRATCHPAD` section the model writes to | READ only by this hook; written by the model after the bounce |
@@ -339,7 +346,8 @@ fail-open conditions exist (see GAPS).
 **TARGET:** no outstanding enforcement targets — the gate is LIVE for its primary mechanism. The
 identified gaps are accepted by design (fail-open is the explicit posture for a Stop hook; the
 30m scratch_flag TTL is acknowledged as a known limitation; the pm_flag 12h/36h TTL discrepancy
-is a known interaction between pm_persist.sh and pm_flag.sh). Future improvement: a PostToolUse
+⚠ CORRECTED 2026-09-01 — FIXED, not a live gap: pm_persist.sh now reads its TTL default from
+pm_flag.sh (both resolve to 36h; see Gap 5)). Future improvement: a PostToolUse
 Write observer that verifies the receipt line appeared in the reply would close Gap 1, but no such
 hook currently exists. Additionally, no guard hook currently protects this element's own Stop-hook
 registration from being removed; `guard_organism_map.sh` (Feature 1.6, built 2026-07-22, registered

@@ -283,7 +283,7 @@ copy it out and run it separately, and it will not receive Harness updates.)*
    > **⚠ CORRECTED 2026-08-24:** Wrong on both premise and conclusion, measured directly this session.
    > `~/.claude/settings.json` is **not** a symlink into this repo's `.claude/settings.json` — it is a
    > regular file, ~~15,516 bytes~~ **CORRECTED 2026-08-27 (L.B2 audit, live wc -c): now 4,999 bytes**, whose content DIFFERS from the repo's copy (it carries `env` and
-   > `hooks` blocks the repo copy lacks). `system/tools/gws-audit.sh` ⛔ private-repo runtime state, not shipped in this public tree documents that the symlink was
+   > `hooks` blocks the repo copy lacks). `system/tools/gws-audit.sh` documents that the symlink was
    > *deliberately* converted to a real file precisely to stop edits there writing through to the
    > tracked (public-upstream) copy. So the corrected conclusion is the opposite of what was written:
    > **there IS an independent user-level settings surface** — `~/.claude/settings.json` itself — and
@@ -404,7 +404,7 @@ GUARDED-BY   guard_write_paths.sh  · PreToolUse Write|Edit blocks a NEW file wr
   a symlink into this repo's `.claude/settings.json` (`ls -la`)~~ — is **⚠ CORRECTED 2026-08-24:**
   false, per direct measurement this session: it is a regular file, ~~15,516 bytes~~ **CORRECTED 2026-08-27: 4,999 bytes, live-measured**, with content that
   DIFFERS from the repo's copy (an `env` block and a `hooks` block the repo copy lacks). See EDGE CASE
-  1's correction above for the full account, including `system/tools/gws-audit.sh` ⛔ private-repo runtime state, not shipped in this public tree's documentation that
+  1's correction above for the full account, including `system/tools/gws-audit.sh`'s documentation that
   this was a deliberate symlink-to-real-file conversion. What remains verified: 12 real (non-symlink) directories exist under
   `~/.claude/skills/` (`find -maxdepth 1 -type d`); `~/.claude/settings.local.json` exists, is real
   (not a symlink), and holds only a `permissions` block in current use; `guard_write_paths.sh` blocks
