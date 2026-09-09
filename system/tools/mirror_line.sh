@@ -15,7 +15,7 @@
 #
 # Run it: bash system/tools/mirror_line.sh
 #
-# Five measurements, each local-refs-only:
+# Six measurements, each local-refs-only:
 # 1. gone — local branches whose upstream was deleted. The track field format is
 # "[origin/x: gone]", not "[gone]" — a bare `\[gone\]` pattern matches
 # zero branches and silently under-reports. Tested via the substring
@@ -32,6 +32,32 @@
 # remote (5 refs) and 9 `origin-pr/*` refs with no configured remote at all; M10's other
 # four checks never look at either, and `git remote prune origin` cannot see them because
 # they are not origin's.
+# 6. harness-overlap — ONLY in a two-remote clone, and only when exactly one of the two
+# remotes' URL matches the same public-shaped pattern the push-gate uses
+# (`github\.com[:/]LifehackMethod/`, see ClaudeOps system/shipping-lane/public-remotes.json).
+# Counts paths from `git ls-tree -r --name-only HEAD` whose blob at that path is IDENTICAL
+# (via ONE bulk `git cat-file --batch-check` over both `HEAD:<path>` and
+# `<public-remote>/<default-branch>:<path>` for every path — never a per-path `git rev-parse`
+# loop, which froze three agents for 52 minutes on this project, and never
+# `git log --find-object`, which produced a false positive on this project). Exists because
+# `system/tools/resolution-census.sh` (ClaudeOps) counts symlinks only (`[ -L "$f" ] || continue`)
+# — a real-directory copy is invisible to it, which is how 47 real directories hid in plain
+# sight. That tool can prove the claim FALSE, never TRUE; this segment is the instrument that
+# CAN prove it true. Students have single-remote clones and never see this. Silent whenever:
+# not exactly 2 remotes, 0 or 2+ remotes match the public-shaped pattern, or the public remote's
+# default-branch ref was never fetched locally — this section never fetches to find out.
+#
+# 2.24: overlap alone is unsatisfiable as a signal — KEEP-dispositioned paths (config,
+# infrastructure, personal files ruled to live on both sides on purpose) are SUPPOSED to
+# overlap, so a bare count can never read 0. This segment now reports TWO numbers: overlap
+# among KEEP-* dispositioned paths (expected, informational) and overlap among every other
+# disposition, UNRULED included (the real signal — this one must be 0). Dispositions come from
+# the ruled table at `<brain-root>/state/projects/cowork-migration/housekeeping-2026-09/
+# phase2-ruled-table.md` (path from `<repo>/shared/brain_root.py --quiet`), a pipe-delimited
+# table with columns `path | bin | refs | v2_only | disposition | proof | fingerprint`. A path
+# with no row in the table (or no readable table at all) counts as non-KEEP — unproven is not
+# proof of KEEP. If the table cannot be read at all, this falls back to the old undifferentiated
+# count so the line never breaks.
 
 set +e
 set +u
@@ -146,8 +172,120 @@ case "$ORPHAN_REFS" in
 esac
 STRAY_REMOTE_COUNT=$((REMOTE_EXTRA + ORPHAN_REFS))
 
+# ── harness-overlap: paths in THIS clone whose blob is byte-identical to the same path
+#    at the public remote's default branch. Two-remote clones only — see header note 6.
+#    Local refs only: no fetch, ever. Missing/unfetched ref = silent, not an error.
+OVERLAP_COUNT=0
+REMOTE_NAMES="$("$GIT_BIN" remote 2>/dev/null)"
+REMOTE_N=0
+if [ -n "$REMOTE_NAMES" ]; then
+  REMOTE_N="$(printf '%s\n' "$REMOTE_NAMES" | grep -c .)"
+fi
+case "$REMOTE_N" in
+  ''|*[!0-9]*) REMOTE_N=0 ;;
+esac
+
+if [ "$REMOTE_N" -eq 2 ] 2>/dev/null; then
+  PUBLIC_REMOTE=""
+  PUBLIC_MATCHES=0
+  OLDIFS4="$IFS"
+  IFS='
+'
+  for RNAME in $REMOTE_NAMES; do
+    RURL="$("$GIT_BIN" remote get-url "$RNAME" 2>/dev/null)"
+    case "$RURL" in
+      *github.com[:/]LifehackMethod/*)
+        PUBLIC_REMOTE="$RNAME"
+        PUBLIC_MATCHES=$((PUBLIC_MATCHES + 1))
+        ;;
+    esac
+  done
+  IFS="$OLDIFS4"
+
+  if [ "$PUBLIC_MATCHES" -eq 1 ]; then
+    PUBLIC_REF=""
+    HEAD_SYM="$("$GIT_BIN" symbolic-ref -q "refs/remotes/${PUBLIC_REMOTE}/HEAD" 2>/dev/null)"
+    if [ -n "$HEAD_SYM" ]; then
+      PUBLIC_REF="$HEAD_SYM"
+    elif "$GIT_BIN" show-ref --verify --quiet "refs/remotes/${PUBLIC_REMOTE}/main" 2>/dev/null; then
+      PUBLIC_REF="refs/remotes/${PUBLIC_REMOTE}/main"
+    elif "$GIT_BIN" show-ref --verify --quiet "refs/remotes/${PUBLIC_REMOTE}/master" 2>/dev/null; then
+      PUBLIC_REF="refs/remotes/${PUBLIC_REMOTE}/master"
+    fi
+
+    if [ -n "$PUBLIC_REF" ]; then
+      LOCAL_PATHS="$("$GIT_BIN" ls-tree -r --name-only HEAD 2>/dev/null)"
+      if [ -n "$LOCAL_PATHS" ]; then
+        # ── ONE bulk batch-check over both sides, never a per-path git call ─────────────
+        BATCH_INPUT="$(printf '%s\n' "$LOCAL_PATHS" | awk -v ref="$PUBLIC_REF" '{ print "HEAD:" $0; print ref ":" $0 }')"
+        BATCH_OUT="$(printf '%s\n' "$BATCH_INPUT" | "$GIT_BIN" cat-file --batch-check='%(objectname)' 2>/dev/null)"
+        # pair up local/remote hash lines (2 lines per path, same order as LOCAL_PATHS), then
+        # attach the path name — still zero per-path git invocations.
+        HASH_PAIRS="$(printf '%s\n' "$BATCH_OUT" | paste - -)"
+        JOINED="$(paste <(printf '%s\n' "$LOCAL_PATHS") <(printf '%s\n' "$HASH_PAIRS"))"
+        OVERLAP_PATHS="$(printf '%s\n' "$JOINED" | awk -F'\t' '$2 != "" && $2 == $3 { print $1 }')"
+        if [ -n "$OVERLAP_PATHS" ]; then
+          OVERLAP_COUNT="$(printf '%s\n' "$OVERLAP_PATHS" | grep -c .)"
+        fi
+
+        # ── 2.24: split the overlap by disposition — KEEP-* is expected, everything else
+        #    (including a path with no row, i.e. UNRULED-or-absent) is the real signal.
+        KEEP_OVERLAP_COUNT=0
+        NONKEEP_OVERLAP_COUNT=0
+        SPLIT_OK=0
+        if [ "$OVERLAP_COUNT" -gt 0 ] 2>/dev/null; then
+          BRAIN_ROOT_PY="${TOPLEVEL}/shared/brain_root.py"
+          if [ -x "$(command -v python3 2>/dev/null)" ] && [ -f "$BRAIN_ROOT_PY" ]; then
+            DRIVE="$(python3 "$BRAIN_ROOT_PY" --quiet 2>/dev/null)"
+            if [ -n "$DRIVE" ]; then
+              RULED_TABLE="${DRIVE}/state/projects/cowork-migration/housekeeping-2026-09/phase2-ruled-table.md"
+              if [ -f "$RULED_TABLE" ]; then
+                # two-file FNR==NR join (overlap list first, ruled table second) — NOT -v with
+                # an embedded newline: macOS's bundled awk (20200816, BWK "one true awk")
+                # rejects a literal newline inside a -v string ("newline in string ... at
+                # source line 1"), so the overlap-path list is passed as an awk INPUT FILE via
+                # process substitution instead, never on the command line.
+                SPLIT_LINE="$(awk -F'|' '
+                  FNR == NR {
+                    p = $0
+                    gsub(/^[ \t]+|[ \t]+$/, "", p)
+                    if (p != "") is_overlap[p] = 1
+                    next
+                  }
+                  NF >= 7 {
+                    path = $2; disp = $6
+                    gsub(/^[ \t]+|[ \t]+$/, "", path)
+                    gsub(/^[ \t]+|[ \t]+$/, "", disp)
+                    if (path == "" || path == "path" || path ~ /^-+$/) next
+                    if (path in is_overlap) seen[path] = disp
+                  }
+                  END {
+                    keep = 0; nonkeep = 0
+                    for (p in is_overlap) {
+                      if (seen[p] ~ /^KEEP-/) keep++
+                      else nonkeep++
+                    }
+                    printf "%d %d\n", keep, nonkeep
+                  }
+                ' <(printf '%s\n' "$OVERLAP_PATHS") "$RULED_TABLE" 2>/dev/null)"
+                case "$SPLIT_LINE" in
+                  [0-9]*' '[0-9]*)
+                    KEEP_OVERLAP_COUNT="${SPLIT_LINE%% *}"
+                    NONKEEP_OVERLAP_COUNT="${SPLIT_LINE##* }"
+                    SPLIT_OK=1
+                    ;;
+                esac
+              fi
+            fi
+          fi
+        fi
+      fi
+    fi
+  fi
+fi
+
 # ── nothing to report? print nothing. ───────────────────────────────────────────────
-if [ "$GONE_COUNT" -eq 0 ] && [ "$NOUP_COUNT" -eq 0 ] && [ "$AHEAD_COUNT" -eq 0 ] && [ "$BEHIND_COUNT" -eq 0 ] && [ "$STRAY_REMOTE_COUNT" -eq 0 ]; then
+if [ "$GONE_COUNT" -eq 0 ] && [ "$NOUP_COUNT" -eq 0 ] && [ "$AHEAD_COUNT" -eq 0 ] && [ "$BEHIND_COUNT" -eq 0 ] && [ "$STRAY_REMOTE_COUNT" -eq 0 ] && [ "$OVERLAP_COUNT" -eq 0 ]; then
   exit 0
 fi
 
@@ -182,6 +320,18 @@ if [ "$STRAY_REMOTE_COUNT" -gt 0 ]; then
     PARTS="${STRAY_REMOTE_COUNT} stray-remotes"
   else
     PARTS="${PARTS} · ${STRAY_REMOTE_COUNT} stray-remotes"
+  fi
+fi
+if [ "$OVERLAP_COUNT" -gt 0 ]; then
+  if [ "$SPLIT_OK" -eq 1 ] 2>/dev/null; then
+    OVERLAP_STR="harness-overlap: ${KEEP_OVERLAP_COUNT} keep + ${NONKEEP_OVERLAP_COUNT} non-keep"
+  else
+    OVERLAP_STR="harness-overlap: ${OVERLAP_COUNT} (disposition table unavailable)"
+  fi
+  if [ -z "$PARTS" ]; then
+    PARTS="${OVERLAP_STR}"
+  else
+    PARTS="${PARTS} · ${OVERLAP_STR}"
   fi
 fi
 
