@@ -20,7 +20,11 @@ mkdir -p "$(dirname "$STUB")"
 # guard-protected file that a blind `cat >` would have destroyed with no warning and no copy.
 # If anything is there that is not our own stub, keep it: back it up, name the backup, and let
 # the person decide. Losing someone's own work to an install script is not a recoverable mistake.
-if [ -e "$STUB" ] && ! grep -q 'lifehack-brain@lifehack-brain' "$STUB" 2>/dev/null; then
+if [ -L "$STUB" ] && [ ! -e "$STUB" ]; then
+  # A DEAD symlink: there is no content to preserve, so there is nothing to back up.
+  # Say where it pointed — that is the only information it carried — and replace it.
+  echo "⚠ $STUB was a symlink to $(readlink "$STUB"), which no longer exists. Replacing it."
+elif { [ -e "$STUB" ] || [ -L "$STUB" ]; } && ! grep -q 'lifehack-brain@lifehack-brain' "$STUB" 2>/dev/null; then
   BAK="$STUB.before-lifehack-$(date +%Y%m%dT%H%M%S)"
   cp -p "$STUB" "$BAK"
   echo "⚠ $STUB already exists and is NOT this stub — it looks like your own."
@@ -28,6 +32,12 @@ if [ -e "$STUB" ] && ! grep -q 'lifehack-brain@lifehack-brain' "$STUB" 2>/dev/nu
   echo "  Overwriting now. If that was deliberate work of yours, restore it from that copy."
 fi
 
+# ⛔ REMOVE FIRST. `cat >` FOLLOWS a symlink: if $STUB is a symlink to a path that no longer
+# exists, the redirect tries to create the file at the DEAD TARGET and fails with a bare
+# "No such file or directory" — the install silently does nothing. Found on a real machine
+# 2026-09-09, where this path was a symlink into a folder deleted long ago. A sandbox test
+# with an ordinary file cannot reproduce it.
+rm -f "$STUB"
 cat > "$STUB" <<'STUBEOF'
 #!/usr/bin/env bash
 # Fixed-path stub (see system/statusline-bootstrap.sh, public Harness). NO Harness logic here
