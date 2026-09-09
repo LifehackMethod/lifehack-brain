@@ -2585,6 +2585,24 @@ file in again — out of habit, or because something looked wrong — STEP 0's r
 `STEP 10 — finished, report given` under `STEPS ALREADY DONE`, with the Harness folder on the `harness`
 line above it, and you can say so instead of reinstalling on top of a working install. ⚠ **Still never mentioned to them.**
 
+### 10.2 — Turn on the status bar (optional)
+
+**This is a genuinely optional extra, not part of finishing the install** — offer it once, after the
+report above, never before it. It puts a small bar at the bottom of the Claude Code window: which
+model, context used, cost, which desk. A plugin install cannot register this on its own — Claude Code
+only accepts a `statusLine` naming a real, fixed path, and the plugin's own location is neither real
+in that sense nor fixed (it moves on every update). So this one command installs a tiny helper file
+that always finds the plugin wherever it currently lives:
+
+```bash
+bash system/statusline-bootstrap.sh
+```
+
+**It writes exactly one file outside this folder** — `~/.claude/statusline.sh` — and never touches
+`~/.claude/settings.json` itself. It prints one JSON line for you to add to that file by hand; that is
+**their act**, the same rule as every other settings change in this project. If they'd rather skip it,
+nothing else depends on it.
+
 # IF SOMETHING GOES WRONG
 
 ⭐ **THE FIRST MOVE, BEFORE ANY OF THESE: re-read this file from the top and confirm every step really
