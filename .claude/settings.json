@@ -30,6 +30,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/session_context_loader.sh\"",
             "statusMessage": "Loading your standing notes..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/emit_harness_brief.sh\"",
+            "statusMessage": "Delivering the Harness brief..."
           }
         ]
       }
