@@ -28,7 +28,7 @@ name: Fix Citation In PR Body Required
 # repeating the defect it exists to prevent.
 #
 # WHY A PR GATE, NOT AN AUTO-COMMENT ON MERGE: this repo's existing CI convention
-# (no-internal-leakage.yml) is "fail the PR red until a
+# (no-internal-leakage.yml, plugin-version-bump-required.yml) is "fail the PR red until a
 # human fixes it, never silently act on their behalf" -- this gate follows the same
 # convention. It never edits the PR body, never comments on or closes the issue, and never
 # merges or blocks a merge on its own authority beyond reporting a failed check; branch
