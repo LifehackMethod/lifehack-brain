@@ -113,14 +113,11 @@ if status == "NOT_OURS":
 if status == "REFUSE_AMBIGUOUS":
     print("REFUSE_AMBIGUOUS"); raise SystemExit
 if status == "AMBIGUOUS":
-    # a real push shape was found but shlex itself could not tokenize the
-    # command at all (heredoc, unbalanced quote), so there is no reliable
-    # cd/-C target AND no reliable push argv either -- fall through like a
-    # bare push (empty target, unresolved argv), never a silent allow. The
-    # bash side then sees argv_ok=False and prints the same heredoc/unbalanced
-    # quote UNRESOLVED manifest line the old inline matcher ValueError
-    # fallback used to print.
-    print("DENY\t\t" + cmd_key); raise SystemExit
+    # a real outbound shape was found but the tokenizer itself failed. We
+    # therefore do NOT know whether the command changes directory -- so we
+    # cannot treat it as a bare in-place act, and we must not name a repo we
+    # would only be guessing at. Refuse instead.
+    print("REFUSE_TOKENIZE"); raise SystemExit
 if status != "DENY":
     print("BLOCK_NOLIB"); raise SystemExit
 
@@ -202,6 +199,12 @@ case "$VERDICT" in
     # from an unprovable `cd X || <non-exit-shaped>` construct -- refuse
     # rather than guess.
     _refuse_unresolved "The command changes directory in a way this guard cannot resolve with confidence (an unprovable cd/-C)."
+    ;;
+  REFUSE_TOKENIZE)
+    # the tokenizer failed outright, so whether a cd/-C is present is unknown.
+    # Naming the repo of $PWD here would assert knowledge this guard does not
+    # have -- the exact wrong-repo failure this file exists to prevent.
+    _refuse_unresolved "The command could not be tokenised, so this guard cannot tell which repo it targets."
     ;;
   DENY)
     # a -C/cd target was resolved but does not exist on disk -- refuse rather
