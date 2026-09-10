@@ -76,8 +76,10 @@
 
 INPUT=$(cat 2>/dev/null)
 
-VERDICT=$(printf '%s' "$INPUT" | python3 -c '
-import sys, json, shlex, os, base64
+_LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib/git_target_resolver.py"
+
+VERDICT=$(printf '%s' "$INPUT" | GUARD_LIB="$_LIB" python3 -c '
+import sys, json, os, base64, importlib.util
 
 try:
     d = json.load(sys.stdin)
@@ -94,92 +96,72 @@ if not cmd.strip():
 # hash so it identifies THIS push, not merely this session.
 cmd_key = base64.b64encode(" ".join(cmd.split()).encode("utf-8", "surrogateescape")).decode("ascii")
 
+_lib = os.environ.get("GUARD_LIB", "")
+if not _lib or not os.path.isfile(_lib):
+    print("BLOCK_NOLIB"); raise SystemExit
+
 try:
-    toks = shlex.split(cmd, comments=False, posix=True)
-except ValueError:
-    import re as _re
-    _shape = _re.compile(r"(^|[;&|(\s])git\s+(-{1,2}\S+\s+)*push\b")
-    if _shape.search(cmd):
-        print("DENY\t\t" + cmd_key); raise SystemExit
+    _spec = importlib.util.spec_from_file_location("git_target_resolver", _lib)
+    _gtr = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(_gtr)
+    status, target = _gtr.resolve(cmd, "push")
+except Exception:
+    print("BLOCK_NOLIB"); raise SystemExit
+
+if status == "NOT_OURS":
     print("NOT_OURS"); raise SystemExit
+if status == "REFUSE_AMBIGUOUS":
+    print("REFUSE_AMBIGUOUS"); raise SystemExit
+if status == "AMBIGUOUS":
+    # a real push shape was found but shlex itself could not tokenize the
+    # command at all (heredoc, unbalanced quote), so there is no reliable
+    # cd/-C target AND no reliable push argv either -- fall through like a
+    # bare push (empty target, unresolved argv), never a silent allow. The
+    # bash side then sees argv_ok=False and prints the same heredoc/unbalanced
+    # quote UNRESOLVED manifest line the old inline matcher ValueError
+    # fallback used to print.
+    print("DENY\t\t" + cmd_key); raise SystemExit
+if status != "DENY":
+    print("BLOCK_NOLIB"); raise SystemExit
 
-# (segment, operator-that-PRECEDES-it) pairs. A cd before an AND/semicolon
-# reliably takes effect on what follows. A cd itself preceded by a PIPE runs
-# in a pipeline subshell and never touches the parent shell, and a cd itself
-# preceded by OR only ran if the left side failed -- neither is trustworthy
-# enough to ADOPT as the new cwd (see the loop below), but a cwd already
-# established by an earlier, trusted cd is NOT discarded just because a
-# later segment happens to be preceded by `|`/`||` (A1.3, 2026-09-16).
-segments, buf, op = [], [], None
-for t in toks:
-    if t in ("&&", "||", ";", "|"):
-        if buf: segments.append((buf, op))
-        buf = []
-        op = t
-    else:
-        buf.append(t)
-if buf: segments.append((buf, op))
+# The shared resolver contract (system/hooks/lib/git_target_resolver.py) is
+# (status, target) only -- extracting the matched push subcommand OWN argv
+# (needed for the REFSPEC manifest below, see the LLM CONTEXT block above) is
+# this guard own concern, not the resolver own job. Re-walk the command with
+# the resolver OWN tokenizer/segmenter (never a bare shlex.split -- that gap,
+# an unpadded `;` like `exit;` gluing to the next token, is exactly what this
+# port replaces; see MATCHING note above) so argv extraction can never
+# disagree with the target resolution that already succeeded above.
+push_argv = []
+try:
+    for seg, _op in _gtr._segment(_gtr._tokenize(cmd)):
+        idx = 0
+        while idx < len(seg) and "=" in seg[idx] and not seg[idx].startswith("-"):
+            idx += 1
+        if idx >= len(seg) or not _gtr._is_git(seg[idx]):
+            continue
+        j = idx + 1
+        while j < len(seg) and seg[j].startswith("-"):
+            if seg[j] in ("-C", "-c"):
+                if seg[j] == "-C" and j + 1 < len(seg):
+                    j += 2
+                else:
+                    j += 1
+            else:
+                j += 1
+        if j < len(seg) and seg[j] == "push":
+            push_argv = seg[j + 1:]
+            break
+except Exception:
+    push_argv = []
 
-def is_git(tok):
-    return os.path.basename(tok) == "git"
-
-cwd = ""
-for seg, preceding_op in segments:
-    if seg and seg[0] == "cd":
-        # A cd reached via `|` runs in a pipeline subshell and never affects the
-        # parent shell; a cd reached via `||` only runs if the PRECEDING segment
-        # FAILED, so its target is not trustworthy enough to adopt. Neither case
-        # invalidates a cwd already established by an EARLIER, trusted segment --
-        # fixed 2026-09-16 (A1.3) after the 2026-09-08 incident: the old code reset
-        # cwd to "" on ANY segment merely preceded by `|`/`||`, which forgot a cwd
-        # that a genuinely-ran `cd` had already set. `cd X || exit 1 ; git push`
-        # is the standard cd-or-bail idiom -- the `cd` IS the left side of the
-        # `||`; it ran and succeeded. The `exit 1` segment that follows is what is
-        # preceded by `||`, not the `cd` -- discarding cwd there was inverted.
-        if preceding_op not in ("|", "||"):
-            target = ""
-            for tok in seg[1:]:
-                if not tok.startswith("-"):
-                    target = tok
-                    break
-            if target:
-                cwd = target
-        continue
-
-    i = 0
-    while i < len(seg) and "=" in seg[i] and not seg[i].startswith("-"):
-        i += 1
-    if i >= len(seg) or not is_git(seg[i]):
-        continue
-    j = i + 1
-    cdir = ""
-    while j < len(seg) and seg[j].startswith("-"):
-        if seg[j] in ("-C", "-c"):
-            if seg[j] == "-C" and j + 1 < len(seg):
-                cdir = seg[j + 1]
-            j += 2
-        else:
-            j += 1
-    if j < len(seg) and seg[j] == "push":
-        # explicit -C wins over an inherited cd — confirmed against real git behaviour
-        resolved = cdir if cdir else cwd
-        # carry the push subcommand argv (everything after "push" in THIS segment) so
-        # the bash side can resolve the NAMED refspec(s), never the currently checked
-        # out branch — see the REFSPEC note in the LLM CONTEXT block above.
-        push_argv = seg[j + 1:]
-        argv_b64 = base64.b64encode(json.dumps(push_argv).encode("utf-8", "surrogateescape")).decode("ascii")
-        print("DENY\t" + resolved + "\t" + cmd_key + "\t" + argv_b64); raise SystemExit
-
-print("OK")
+argv_b64 = base64.b64encode(json.dumps(push_argv).encode("utf-8", "surrogateescape")).decode("ascii")
+print("DENY\t" + target + "\t" + cmd_key + "\t" + argv_b64)
 ' 2>/dev/null)
 
 case "$VERDICT" in
-  PARSE_ERROR)
-    printf '%s\n' "BLOCKED (push signpost): the hook payload itself was not readable JSON. WHY: failing OPEN would let an unreadable push slip past unseen. REDIRECT: retry the command. RULE: system/sops/github-sop.md section 0c -- FAIL_POSTURE: closed." >&2
-    exit 2
-    ;;
-  "")
-    printf '%s\n' "BLOCKED (push signpost): the hook payload itself was not readable JSON. WHY: failing OPEN would let an unreadable push slip past unseen. REDIRECT: retry the command. RULE: system/sops/github-sop.md section 0c -- FAIL_POSTURE: closed." >&2
+  PARSE_ERROR|BLOCK_NOLIB|"")
+    printf '%s\n' "BLOCKED (push signpost): the hook payload was unreadable, or the shared repo-matcher library is missing or errored ($_LIB). WHY: failing open would let an unreadable/unmatchable push slip past unseen. REDIRECT: retry the command; if it recurs, restore system/hooks/lib/git_target_resolver.py. RULE: system/sops/github-sop.md section 0c -- FAIL_POSTURE: closed." >&2
     exit 2
     ;;
 esac
@@ -196,19 +178,37 @@ _REST3="${_REST2#*$'\t'}"
 [ "$_REST3" = "$_REST2" ] && _REST3=""
 PUSH_ARGV_B64="$_REST3"
 
+# Two distinct roads into the same refusal: (1) the resolver could not prove
+# a cd/-C target at all (REFUSE_AMBIGUOUS), or (2) it extracted a target but
+# that path does not exist on disk (the resolver's job is extraction only --
+# existence-checking has always belonged to the caller). Either one refuses
+# rather than falling through to the identity/print block below, which is
+# exactly the block that would otherwise name a confident, wrong repo.
+_refuse_unresolved() {
+  printf '📍 PUSH · cannot determine the target repo\n' >&2
+  printf '   %s\n' "$1" >&2
+  printf '   WHY: printing a guess about which repo this pushes to is worse than admitting the guard cannot tell.\n' >&2
+  printf '   REDIRECT: verify the path, then re-run.\n' >&2
+  printf '   -> system/sops/github-sop.md section 0c\n' >&2
+  exit 2
+}
+
 case "$VERDICT" in
   OK|NOT_OURS)
     exit 0
     ;;
+  REFUSE_AMBIGUOUS)
+    # the resolver found a real `git push`, but the only cd information came
+    # from an unprovable `cd X || <non-exit-shaped>` construct -- refuse
+    # rather than guess.
+    _refuse_unresolved "The command changes directory in a way this guard cannot resolve with confidence (an unprovable cd/-C)."
+    ;;
   DENY)
-    # a -C/cd target was named but does not resolve — refuse rather than guess
+    # a -C/cd target was resolved but does not exist on disk -- refuse rather
+    # than guess. (Same behaviour as the original inline-matcher check; now
+    # fed by the resolver's own extracted target instead.)
     if [ -n "$REQUESTED_DIR" ] && [ ! -d "$REQUESTED_DIR" ]; then
-      printf '📍 PUSH · cannot determine the target repo\n' >&2
-      printf '   The command names a path (%s) that does not exist here.\n' "$REQUESTED_DIR" >&2
-      printf '   WHY: printing a guess about which repo this pushes to is worse than admitting the guard cannot tell.\n' >&2
-      printf '   REDIRECT: verify the path, then re-run.\n' >&2
-      printf '   -> system/sops/github-sop.md section 0c\n' >&2
-      exit 2
+      _refuse_unresolved "The command names a path ($REQUESTED_DIR) that does not exist here."
     fi
 
     REPO_DIR="$PWD"
