@@ -109,6 +109,15 @@ want() { # want <label> <expected-exit> <exit-got> <grep-pattern-or-empty>
   pass=$((pass+1)); printf '   ok   %s\n' "$label"
 }
 
+not_want() { # not_want <label> <forbidden-egrep-pattern> -- asserts pattern is ABSENT from stderr
+  local label="$1" pattern="$2"
+  if grep -Eq "$pattern" "$WORK/stderr.$sid"; then
+    fail=$((fail+1)); printf '  FAIL  %-70s (stderr should NOT contain: %s)\n' "$label" "$pattern"
+    return
+  fi
+  pass=$((pass+1)); printf '   ok   %s\n' "$label"
+}
+
 skip() { # skip <label> <one-line-reason>
   local label="$1" reason="$2"
   skipped=$((skipped+1))
@@ -152,32 +161,64 @@ want "outbound-shaped text INSIDE a quoted string -> does not false-fire" 0 "$e"
 sid=$((sid+1)); e=$(run_guard guard_git_push_signpost.sh 'echo "git push origin main"')
 want "bare echo of push-shaped text -> does NOT fire (regression guard)" 0 "$e" ""
 
+# FALLBACK PATH EXERCISED HERE: the lone, unbalanced apostrophe in "guard's"
+# below (ordinary English, never closed by a matching quote) makes shlex raise
+# on this command, so the PRIMARY shlex match never runs at all -- only the
+# character-class regex fallback (the shlex-ValueError branch the file's own
+# header documents at line 31, "heredoc, unbalanced quote") ever inspects this
+# text. This is the ONLY case in this suite that actually reaches that
+# fallback; the "bare echo" case above tokenises cleanly and never does.
+sid=$((sid+1)); e=$(run_guard guard_git_push_signpost.sh "cat <<'EOF'
+The guard's fallback path only runs when shlex actually breaks.
+EOF
+cd $PUB || exit 1; git push origin main")
+want "FALLBACK PATH: shlex-breaking apostrophe + push-shaped text -> REFUSES" 2 "$e" "cannot determine the target repo"
+not_want "FALLBACK PATH refusal must never name a repository" "PUBLIC|PRIVATE"
+
+# PRIMARY PATH CONTROL: the identical push-shaped words as the case just above
+# (cd ... || exit 1; git push origin main), plus a contraction's apostrophe,
+# but this time fully inside ONE balanced double-quoted argument to `echo` --
+# shlex tokenises the whole thing as a single quoted token, so it never
+# reaches the fallback. Pairs with the case above to prove the primary path is
+# not over-firing on the very words that (left unbalanced) make it fall
+# through above.
+sid=$((sid+1)); e=$(run_guard guard_git_push_signpost.sh "echo \"note to self: cd $PUB || exit 1; git push origin main -- guard's fallback doesn't run when this parses cleanly\"")
+want "PRIMARY PATH control: same push-shaped words, balanced quoting -> silent" 0 "$e" ""
+
 sid=$((sid+1)); e=$(run_guard guard_git_push_signpost.sh "git -C $PUB push origin main --force")
 want "a real outbound act (with extra flags) -> DOES fire" 2 "$e" "PUBLIC"
 
 echo "── guard_git_commit_signpost.sh -- SKIPPED (7 cases) ──────────────────────"
-printf 'SKIP REASON: guard_git_commit_signpost.sh does not exist in this repo. Its\n'
-printf 'nearest public-repo relative, guard_no_upstream_commit_signpost.sh, was read in\n'
-printf 'full (not assumed from the name) and fires on a DIFFERENT condition -- missing\n'
-printf 'or gone upstream tracking on the current branch -- and never computes or prints\n'
-printf 'repo identity (no PUBLIC/PRIVATE text anywhere in it, confirmed by grep and a\n'
-printf 'live run). It does not exhibit the behaviour these cases test, so per the\n'
-printf 'ruling governing this port they are SKIPPED, LOUDLY -- never deleted.\n'
+printf 'SKIP REASON: these 7 cases assert repo-identity text (PUBLIC/PRIVATE) on a\n'
+printf 'commit-time guard stderr, so they apply only to a guard that actually\n'
+printf 'computes and prints that identity. guard_git_commit_signpost.sh, the guard\n'
+printf 'they were written against, does not exist in this repo -- the registered\n'
+printf 'commit-time hook here (see .claude/settings.json) is\n'
+printf 'guard_no_upstream_commit_signpost.sh instead, a different guard for a\n'
+printf 'different condition (missing/gone upstream tracking, not repo identity).\n'
+printf 'FAILURE MODE this skip exists to prevent: silently asserting identity text\n'
+printf 'against a guard that never emits it would report a false PASS, not catch a\n'
+printf 'real regression. When read in full on 2026-09-10, that guard printed no\n'
+printf 'PUBLIC/PRIVATE text at all (confirmed by grep and a live run) -- but a\n'
+printf 'guard can change after this comment was written. Re-read\n'
+printf 'system/hooks/guard_no_upstream_commit_signpost.sh yourself before trusting\n'
+printf 'this skip; do not carry this reason forward on faith. Per the ruling\n'
+printf 'governing this port: SKIPPED, LOUDLY -- never deleted.\n'
 
 skip "git -C <public> commit -> names PUBLIC repo, denies" \
-  "guard_no_upstream_commit_signpost.sh never prints repo identity -- see SKIP REASON above"
+  "applies only to a guard that prints repo identity; this one did not as of 2026-09-10 -- re-read it before trusting this skip (see SKIP REASON above)"
 skip "cd <public> && git commit -> names PUBLIC repo, denies (root-cause case)" \
-  "guard_no_upstream_commit_signpost.sh never prints repo identity -- see SKIP REASON above"
+  "applies only to a guard that prints repo identity; this one did not as of 2026-09-10 -- re-read it before trusting this skip (see SKIP REASON above)"
 skip "cd <public> || exit; git commit -> names PUBLIC repo, denies (live-failed case)" \
-  "guard_no_upstream_commit_signpost.sh never prints repo identity -- see SKIP REASON above"
+  "applies only to a guard that prints repo identity; this one did not as of 2026-09-10 -- re-read it before trusting this skip (see SKIP REASON above)"
 skip "cd <public> || echo nope; git commit -> REFUSES (non-exit guard, unproven)" \
   "guard_no_upstream_commit_signpost.sh's trigger is upstream-tracking, not cd-ambiguity -- not the same behaviour"
 skip "plain git commit (cwd=private, no -C/cd) -> names repo of \$PWD" \
-  "guard_no_upstream_commit_signpost.sh never prints repo identity -- see SKIP REASON above"
+  "applies only to a guard that prints repo identity; this one did not as of 2026-09-10 -- re-read it before trusting this skip (see SKIP REASON above)"
 skip "outbound-shaped text INSIDE a quoted string -> does not false-fire" \
   "would only exercise a shared matching-robustness property, not the identity behaviour this suite is chartered to verify -- not genuinely the same case"
 skip "a real outbound act (with extra flags) -> DOES fire" \
-  "guard_no_upstream_commit_signpost.sh never prints repo identity -- see SKIP REASON above"
+  "applies only to a guard that prints repo identity; this one did not as of 2026-09-10 -- re-read it before trusting this skip (see SKIP REASON above)"
 
 echo
 echo "$pass passed, $fail failed, $skipped skipped"
