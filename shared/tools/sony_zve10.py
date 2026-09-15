@@ -24,6 +24,7 @@ Examples:
   sony_zve10.py choices whitebalance   # the values a setting accepts
   sony_zve10.py set whitebalance=Daylight --yes
   sony_zve10.py record --seconds 3 --yes
+  sony_zve10.py preview -o frame.jpg    # one live-view frame to judge exposure and framing
 """
 import argparse
 import os
@@ -60,13 +61,14 @@ ALIASES = {
     "pictureprofile": "/main/other/d23f",
     "movieformat": "/main/other/d241",
     "moviesetting": "/main/other/d242",
+    "focus": "/main/status/focusindication",
 }
 
 # Paths this tool refuses to touch, ever. FormatMedia would wipe the card.
 FORBIDDEN = ("d2ca", "formatmedia", "delete", "format")
 
 STATUS_KEYS = ["firmware", "battery", "expprogram", "aperture", "shutterspeed", "iso", "ev",
-               "whitebalance", "focusmode", "focusarea", "recording", "remaining"]
+               "whitebalance", "focusmode", "focusarea", "focus", "recording", "remaining"]
 
 
 def die(msg, code=2):
@@ -221,6 +223,20 @@ def cmd_record(a):
     return 0 if ok else 1
 
 
+def cmd_preview(a):
+    """One live-view frame (1024x576 JPEG on the ZV-E10) so the operator can judge the shot."""
+    out_path = os.path.abspath(a.output)
+    _, out = gphoto(["--capture-preview", "--filename", out_path])
+    # gphoto2 prefixes the name with thumb_ on some builds; report whichever landed.
+    d, b = os.path.split(out_path)
+    for cand in (out_path, os.path.join(d, "thumb_" + b)):
+        if os.path.exists(cand):
+            print(f"wrote {cand} ({os.path.getsize(cand)} bytes)")
+            return 0
+    print(out)
+    die("no preview frame was written", 1)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -239,6 +255,9 @@ def main():
     s.add_argument("assignment", help="NAME=VALUE")
     s.add_argument("--yes", action="store_true")
     s.set_defaults(fn=cmd_set)
+    v = sub.add_parser("preview", help="grab one live-view frame as JPEG (read-only)")
+    v.add_argument("-o", "--output", default="preview.jpg")
+    v.set_defaults(fn=cmd_preview)
     r = sub.add_parser("record", help="start and stop a movie recording (needs --yes)")
     r.add_argument("--seconds", default=3)
     r.add_argument("--yes", action="store_true")
