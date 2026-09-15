@@ -21,6 +21,9 @@ below) — v1 is now locked to that ruling.
    `schema_v1.py` and the `type: hook` table below for the full 33-value list and citation.
 2. **`launch_mode` is DROPPED from v1 entirely** — removed from the schema, the validator, this
    doc, and both fixture generators. Not deferred-null; not present at all.
+   ⚠ **SUPERSEDED, 2026-09-15 (same day, later — Option G, B2.3's design-contradiction ruling).**
+   `launch_mode` was RESTORED, with a narrower, now-answerable meaning. See the "Addendum" section
+   near the end of this file — the ruling above stood for only part of the day.
 3. **STRICT unknown-key rejection** — any field not in the schema fails the row, and the
    validator's error message names the offending key (`validate_register.py`,
    `STRICT_UNKNOWN_KEYS`).
@@ -76,6 +79,7 @@ question every other field branches on.
 | `surfaces` | non-empty list, closed enum (6 live files) | T2-proven. Which of today's live registration files currently carry this entry — B2's de-duplication target. Required non-empty: a hook entry with zero surfaces isn't a registered hook. |
 | `status_conflicts` | list of strings, default `[]` | T2-proven — same key, disagreeing status messages across surfaces. |
 | `if` | nullable string | **Not in T2/B1.1's original shape — found and closed live by Feature B2.2 (2026-09-15).** Claude Code's own hook-entry format carries an OPTIONAL narrowing condition (e.g. `Skill(checkin)` on `guard_checkin_needs_project.sh`'s `PreToolUse`/`matcher=Skill` entry) that T2/B1.1/B1.2/B1.3 never harvested, because nothing before B2.2 ever regenerated the REAL `.claude/settings.json`/`hooks/hooks.json` (B1.3 wrote only to a scratch `--out` dir). The first real write silently dropped it — caught by the repo's own `system/hooks/tests/test_guard_checkin_needs_project.sh` going RED, not by the semantic-diff method, which is why that method (`(event, matcher, command, statusMessage)` tuples) is now `(event, matcher, command, statusMessage, if)` everywhere it's used. Null for every other hook row today. |
+| `launch_mode` | string, **closed enum (4 values)** | **RESTORED 2026-09-15 (Option G) — see the "Addendum" section below for the full history and derivation.** `project` / `plugin` / `both` / `private` — which of the two real public wiring files (`.claude/settings.json` = "project", `hooks/hooks.json` = "plugin") carries this hook registration, or `private` if neither does (a private-repo hook, carried by `registrations`/`user` instead). Harvested mechanically from the row's own `surfaces` (`harvest.py`'s `derive_launch_mode()`) — 0 hand-typed values, required (not nullable): every hook row resolves to exactly one of the four. |
 
 ### `type: tool` — system/tools/ units
 
@@ -128,9 +132,68 @@ verdict each one got; nothing here still applies.
 1. ~~`hook.event` — closed enum or open string?~~ **Ruled: CLOSED**, to the documented 33-event
    Claude Code set (Ruling 1).
 2. ~~`launch_mode` — what closes it, and when?~~ **Ruled: DROPPED from v1 entirely** — not
-   deferred, not left null (Ruling 2).
+   deferred, not left null (Ruling 2). **Then RESTORED the same day** (Option G) — see the
+   "Addendum" section below; this history entry stands as what was asked and answered FIRST, not
+   as the field's final state.
 3. ~~Strict unknown-key rejection — too strict for v1?~~ **Ruled: STRICT stays**, permanently
    (Ruling 3).
 4. ~~JSONL vs YAML — confirm the call.~~ **Ruled: JSONL**, confirmed (Ruling 4).
 5. ~~`scheduled.path` is forced to double duty — confirm acceptable?~~ **Ruled: KEPT**, documented
    as intended (Ruling 5).
+
+---
+
+## Addendum, 2026-09-15 (later the same day) — `launch_mode` RESTORED (Option G)
+
+**This supersedes Ruling 2 above for everything except the historical record — that stays as
+written, because it is honestly what was asked and ruled first.**
+
+Between the morning rulings (above) and this addendum, Phase B2 ran its live re-measurement
+(B2.3) and hit a **design contradiction**: the plan's "non-overlapping, complementary" de-dup
+target for the two public wiring files cannot coexist with "no mode loses a guard" — every
+duplicated hook row besides `emit_harness_brief.sh` protects something a *single* surface's own
+standalone population still needs (external-service guards, general git safety, absolute
+Brain-root paths). Reported in `B2.2-report.md` / `B2.3-report.md`; Enver's ruling (**Option G**,
+2026-09-15, "third set" in the plan's Discoveries) reframed the target around measured reality
+(students never double-fire; only the admin's own repo/plugin-folder sessions do) and named the
+fix explicitly: *"The `launch_mode` field is RESTORED to the register (records which file holds
+which guards)."*
+
+**The restored field is deliberately NOT the field B1.1 first drafted.** B1.1's version asked
+"which SESSION MODE loads this unit" (clone-only vs plugin-enabled vs plugin-folder-as-cwd) — a
+question the morning ruling correctly dropped as premature, since D5 (the runner) hadn't been
+decided yet and B2 hadn't yet measured which files actually survive its de-dup. Option G's version
+asks a narrower, already-mechanically-answerable question instead: **for one hook registration,
+which of the two real PUBLIC wiring FILES carries it right now** — `.claude/settings.json`
+("project") and/or `hooks/hooks.json` ("plugin"). That is a fact already sitting in every hook
+row's own `surfaces` list; nothing new needs to be measured or guessed to answer it.
+
+**Schema (`schema_v1.py`):** a new `TYPE_FIELDS["hook"]["launch_mode"]` field, required
+(non-nullable), closed 4-value enum — `LAUNCH_MODES = ("project", "plugin", "both", "private")`.
+Derived from what the live register actually contains (a fresh 319-row harvest, 63 hook rows,
+2026-09-15), not chosen in the abstract:
+
+| value | meaning | count (2026-09-15 harvest) |
+|---|---|---|
+| `both` | registered on both `settings` (project) and `plugin` | 50 |
+| `plugin` | `hooks/hooks.json` only | 5 (includes the post-B2.2 de-dup'd `emit_harness_brief.sh`) |
+| `project` | `.claude/settings.json` only | 1 |
+| `private` | neither — a private-repo hook carried by `registrations`/`user` instead; the public project/plugin split does not apply | 7 |
+
+Cache mirrors (`cache-settings`/`cache-plugin`) are deliberately excluded from this axis: every
+cache surface observed in the live register accompanies its own real `settings`/`plugin` (or is
+absent entirely for private hooks), so folding them in would never change today's answer — a
+cache-only row would be a content-divergence finding for the generator's existing
+cache-divergence check, not this field's job.
+
+**Harvester (`harvest.py`):** `derive_launch_mode(surfaces)` — reads the same `surfaces` set
+`harvest_hooks()` already builds from `hook_surfaces()`'s own surface names; 0 hand-typed values,
+same discipline as every T2-proven field. Raises loudly (never silently defaults) on a surface
+combination none of the four cases cover — a genuine unmodeled finding, not a case to paper over.
+
+**Generator (`generate.py`):** reports the launch_mode distribution (`LAUNCH_MODE DISTRIBUTION`
+section, `report()`) as a pure read of already-validated rows. `build_hooks_doc()` never reads
+`launch_mode` — it plays no part in what gets written to any wiring file, so restoring it cannot
+change emitted wiring (verified: `--install-root` into a scratch `git archive HEAD` copy still
+produces byte-identical `.claude/settings.json` / `hooks/hooks.json`).
+

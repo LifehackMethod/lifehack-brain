@@ -27,6 +27,35 @@ SURFACES = (
     "cache-settings", "cache-plugin",
 )
 
+# ---------------------------------------------------------------------------
+# launch_mode — RESTORED to schema v1, 2026-09-15 (Enver's Option G ruling,
+# enforcement-layer Phase 2 build, "Discoveries" §"RULINGS ... third set").
+# History: B1.1 first drafted this field to mean "which SESSION mode loads
+# this unit" (clone-only vs plugin-enabled vs plugin-folder-as-cwd); Enver's
+# first-set ruling that same day DROPPED it as premature — the session-mode
+# question was still open pending D5/T3 (see the struck-through history in
+# schema-v1.md). Option G gives it a narrower, now-answerable meaning
+# instead: for one HOOK registration, which of the two real PUBLIC wiring
+# FILES carries it — `.claude/settings.json` ("project") and/or
+# `hooks/hooks.json` ("plugin"). Harvested MECHANICALLY from the row's own
+# `surfaces` (harvest.py's `derive_launch_mode()`, reading `hook_surfaces()`'s
+# own surface names) — 0 hand-typed values, same discipline as every other
+# T2-proven field. Closed to exactly the four combinations the live register
+# actually produces (verified 2026-09-15 against a fresh 319-row harvest, 63
+# hook rows): "both" (registered on both public files) · "project" (settings
+# file only) · "plugin" (plugin file only — includes the post-B2.2 de-dup'd
+# `emit_harness_brief.sh`) · "private" (a private-repo hook, carried by
+# `registrations` and/or `user` — the public project/plugin split doesn't
+# apply to it; `repo` already says "private", this value only says "not on
+# either public wiring file"). Cache mirrors (`cache-settings`/
+# `cache-plugin`) never decide this axis on their own — every cache surface
+# observed in the live register accompanies its real settings/plugin
+# counterpart, so folding them in would never change an answer today; a
+# cache-only row (no repo-owned backing file at all) is a content-divergence
+# finding the generator's own cache-divergence check already surfaces
+# separately, not this field's job.
+LAUNCH_MODES = ("project", "plugin", "both", "private")
+
 # Closed enum: which checkout owns this unit's source. NOT the same axis as
 # "surfaces" — the plugin cache is a derived surface, never a repo of record
 # (constraint 0.5: "the plugin cache is platform-owned — the register
@@ -121,6 +150,9 @@ TYPE_FIELDS = {
         # condition on this entry", the honest default for every other hook row).
         # See schema-v1.md's "if" section for the incident this field closes.
         "if": (str, True, None),
+        # RESTORED 2026-09-15 (Option G) — see the LAUNCH_MODES block above
+        # for the full history and the ('enum', ...) closure's derivation.
+        "launch_mode": (str, False, ("enum", LAUNCH_MODES)),
     },
     "tool": {
         "language": (str, False, ("enum", ("py", "sh", "other"))),

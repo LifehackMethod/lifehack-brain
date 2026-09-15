@@ -438,6 +438,14 @@ def generate(register_path, out_dir, public_root, private_root, cache_root,
 
     hook_rows = [(ln, row) for ln, row, _ in entries if row.get("type") == "hook"]
 
+    # launch_mode distribution (Option G, restored 2026-09-15) — purely a
+    # report over already-validated rows; never influences what gets
+    # written (build_hooks_doc() never reads this field).
+    launch_mode_distribution = {}
+    for _, row in hook_rows:
+        lm = row.get("launch_mode")
+        launch_mode_distribution[lm] = launch_mode_distribution.get(lm, 0) + 1
+
     os.makedirs(out_dir, exist_ok=True)
 
     dedup_path = dedup_path if dedup_path is not None else DEFAULT_DEDUP_PATH
@@ -492,6 +500,7 @@ def generate(register_path, out_dir, public_root, private_root, cache_root,
         "dedup_applied": {k: dedup[k] for k in dedup_applied},
         "dedup_in_effect": dedup_in_effect,
         "dedup_stale": dedup_stale,
+        "launch_mode_distribution": launch_mode_distribution,
     }
 
 
@@ -570,6 +579,17 @@ def report(result):
                 f"  {repo}:{path} event={event} matcher={matcher!r} args={args!r} "
                 f"drop_surface={drop_surface!r}"
             )
+
+    if result.get("launch_mode_distribution") is not None:
+        lines.append("")
+        lines.append("LAUNCH_MODE DISTRIBUTION (hook registrations, Option G restored 2026-09-15):")
+        dist = result["launch_mode_distribution"]
+        for value in ("project", "plugin", "both", "private"):
+            lines.append(f"  {value:<8} {dist.get(value, 0)}")
+        unrecognized = {k: v for k, v in dist.items()
+                        if k not in ("project", "plugin", "both", "private")}
+        if unrecognized:
+            lines.append(f"  UNRECOGNIZED VALUE(S) — a finding, not expected: {unrecognized}")
 
     if result.get("omission") is not None:
         lines.append("")
