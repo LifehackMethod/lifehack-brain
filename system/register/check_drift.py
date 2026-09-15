@@ -131,7 +131,8 @@ def _read_bytes(path):
 
 FIX_COMMAND = (
     "python3 system/register/harvest.py --out /tmp/lhb-register.jsonl && "
-    "python3 system/register/generate.py /tmp/lhb-register.jsonl --install-root ."
+    "python3 system/register/generate.py /tmp/lhb-register.jsonl "
+    "--out /tmp/lhb-gen-out --install-root ."
 )
 
 
