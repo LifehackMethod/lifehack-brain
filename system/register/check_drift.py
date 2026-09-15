@@ -61,6 +61,20 @@ machine. Skipping it keeps the on-commit path fast and self-contained; the cache
 divergence warning still fires in the normal (non-drift-check) uses of `generate.py` (its
 own CLI, and the CI workflow).
 
+⛔ SECOND CORRECTION 2026-09-15 (same day, after the fix above shipped). This tool refused
+EVERY commit, independent of anything a given commit actually changed: `generate.py`'s exit
+code conflated a PRIVATE target's own broken path (a private-repo hook file legitimately
+deleted on THIS machine's `~/.claude/skills/ClaudeOps` checkout, commit `9aad44f`, with the
+committed register not yet refreshed to match) into the SAME exit code this PUBLIC repo's
+commit gate reads. A public commit gate must not depend on the private repo's live disk
+state on whatever machine happens to run it. FIX: `generate.py` gained an additive,
+backward-compatible `--targets {all,public}` flag (default "all", unchanged behavior
+everywhere else); this tool now passes `--targets public`, which downgrades a REFUSED
+PRIVATE target to a named, non-blocking WARN inside `generate.py`'s own report (still
+visible in `gen_text` below) instead of refusing the whole run. This tool's OWN drift diff
+(the `GOVERNED_FILES` loop, below) is unaffected — it only ever compared the two PUBLIC
+wiring files anyway.
+
 FAIL CLOSED, on purpose, matching this repo's existing `system/githooks/pre-commit`
 precedent for a load-bearing check (gitleaks, check_no_internal_leakage.py): any internal
 failure -- `git write-tree` refusing (e.g. unmerged paths), the archive step failing, a
@@ -252,14 +266,26 @@ def main(argv=None):
             "--out", gen_out_dir,
             "--install-root", tmp_dir,
             "--public-root", tmp_dir,
+            # B3.2 fix, 2026-09-15: this is a PUBLIC repo commit gate. It must
+            # refuse on PUBLIC wiring drift (the thing it exists for) but must
+            # NOT refuse because the PRIVATE repo's checkout on THIS machine
+            # is stale or incomplete (this tool does not even pass
+            # --private-root -- it relies on generate.py's own default,
+            # `~/.claude/skills/ClaudeOps`, live on whatever machine runs
+            # this hook). A REFUSED private target becomes a named, printed
+            # WARN inside generate.py's own report (see gen_text below) --
+            # never a reason to block a public commit.
+            "--targets", "public",
         ])
         gen_text = (generate_result.stdout.decode("utf-8", "replace")
                     + generate_result.stderr.decode("utf-8", "replace"))
 
         if generate_result.returncode != 0:
             print("  ⛔ COMMIT REFUSED — generate.py refused against the staged "
-                  "register (schema problem, a broken path, or an omission at "
-                  "--severity refuse).", file=sys.stderr)
+                  "register (schema problem, a broken PUBLIC path, or an omission "
+                  "at --severity refuse). A private-target path issue alone would "
+                  "NOT trigger this (see --targets public above) -- this is a real "
+                  "public-repo finding.", file=sys.stderr)
             print(gen_text, file=sys.stderr)
             print("", file=sys.stderr)
             print(f"  Fix: {FIX_COMMAND}", file=sys.stderr)
@@ -289,6 +315,18 @@ def main(argv=None):
                   "again.", file=sys.stderr)
             print("", file=sys.stderr)
             return 1
+
+        # A non-blocking private-target finding (targets=public mode, above)
+        # is real information — a stale private row a maintainer should still
+        # refresh — even though it never refuses this PUBLIC commit. Surface
+        # it on the OK path too (never only on failure), always (not gated on
+        # --quiet): a WARN nobody sees is the exact "reported success while
+        # producing nothing observable" failure shape hook-sop.md's own
+        # DO-NOT-BUILD register warns against.
+        if "WARN — non-blocking private-target" in gen_text:
+            warn_start = gen_text.index("WARN — non-blocking private-target")
+            print(gen_text[warn_start:].rstrip())
+            print("")
 
         if not args.quiet:
             print("  check_drift.py: OK — staged wiring matches the committed "

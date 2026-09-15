@@ -369,7 +369,7 @@ def cache_divergence_warnings(hook_rows, public_root, cache_root):
 # ---------------------------------------------------------------------------
 def generate(register_path, out_dir, public_root, private_root, cache_root,
              severity="warn", exemptions_path=None, dedup_path=None,
-             skip_caller_lint=False, home_root=None):
+             skip_caller_lint=False, home_root=None, targets="all"):
     """Returns a result dict; never raises for an ordinary refusal (schema,
     broken-path, or a refuse-severity omission) — those are reported in the
     result, and the caller (main()) decides the exit code. Only writes files
@@ -387,7 +387,20 @@ def generate(register_path, out_dir, public_root, private_root, cache_root,
     `skip_caller_lint` (Feature B1.5w): when True, the caller-lint report
     section below is skipped entirely — a mechanical opt-out, never a
     disguised gate, since the lint is WARN-only and cannot affect what gets
-    written regardless."""
+    written regardless.
+
+    `targets` (Feature B3.2 fix, 2026-09-15 — the "public commit gate must not
+    depend on the private repo's live disk state" repair): default "all" is
+    UNCHANGED behavior — a broken path on ANY target (public or private)
+    refuses that target and contributes to a non-zero exit code, exactly as
+    before this flag existed. "public" is the new, opt-in, additive mode a
+    caller passes deliberately (`check_drift.py` does, for its on-commit
+    gate): every target is still ATTEMPTED and reported identically, but a
+    REFUSED target whose `repo_filter` is "private" is downgraded to a
+    non-blocking WARN (named, never silent) and excluded from the exit-code
+    computation — the public wiring drift check this tool exists for must not
+    fail because someone else's private-repo checkout is stale or absent on
+    this machine."""
     entries = load_register(register_path)
 
     problems = schema_check(entries)
@@ -452,6 +465,13 @@ def generate(register_path, out_dir, public_root, private_root, cache_root,
     dedup = load_surface_dedup(dedup_path)
     dedup_applied = set()
 
+    # A REFUSED target's own broken-path finding only refuses the WHOLE run
+    # (contributes to generate.py's exit code) when it is "blocking" — always
+    # true at targets="all" (unchanged default); false for a private-repo
+    # target at targets="public" (the check_drift.py on-commit-gate mode).
+    def _blocking(repo_filter):
+        return not (targets == "public" and repo_filter == "private")
+
     target_results = []
     for surface, form, repo_filter, filename in SURFACE_TARGETS:
         matched = rows_for_surface(hook_rows, surface, repo_filter,
@@ -460,6 +480,7 @@ def generate(register_path, out_dir, public_root, private_root, cache_root,
             target_results.append({
                 "filename": filename, "surface": surface, "status": "SKIP",
                 "reason": "no rows registered on this surface", "broken": [],
+                "blocking": _blocking(repo_filter),
             })
             continue
         broken = [
@@ -470,6 +491,7 @@ def generate(register_path, out_dir, public_root, private_root, cache_root,
             target_results.append({
                 "filename": filename, "surface": surface, "status": "REFUSED",
                 "reason": "target path does not exist on disk", "broken": broken,
+                "blocking": _blocking(repo_filter),
             })
             continue
         ordered = sorted((row for _, row in matched), key=sort_key)
@@ -483,7 +505,7 @@ def generate(register_path, out_dir, public_root, private_root, cache_root,
         target_results.append({
             "filename": filename, "surface": surface, "status": "OK",
             "reason": None, "broken": [], "rows_written": len(ordered),
-            "path": final_path, "doc": doc,
+            "path": final_path, "doc": doc, "blocking": _blocking(repo_filter),
         })
 
     warnings = cache_divergence_warnings(hook_rows, public_root, cache_root)
@@ -525,17 +547,39 @@ def report(result):
         return "\n".join(lines), 1
 
     any_refused = False
+    non_blocking_refusals = []
     for t in result["targets"]:
         if t["status"] == "OK":
             lines.append(f"  {t['filename']:<38} OK       ({t['rows_written']} rows) -> {t['path']}")
         elif t["status"] == "SKIP":
             lines.append(f"  {t['filename']:<38} SKIP     ({t['reason']})")
+        elif not t.get("blocking", True):
+            # targets="public" mode (check_drift.py's on-commit gate): a
+            # REFUSED private target is real information (named below, in
+            # its own WARN section) but never refuses the run — the public
+            # wiring drift check must not depend on the private repo's live
+            # disk state on this machine.
+            lines.append(f"  {t['filename']:<38} WARN     ({t['reason']}, non-blocking: private target) "
+                         f"— nothing written for this target")
+            non_blocking_refusals.append(t)
         else:
             any_refused = True
             lines.append(f"  {t['filename']:<38} REFUSED  ({t['reason']}) — nothing written for this target")
             for ln, row in t["broken"]:
                 lines.append(
                     f"      line {ln}: id={row.get('id')!r} path={row.get('path')!r} "
+                    f"repo={row.get('repo')} event={row.get('event')} matcher={row.get('matcher')!r}"
+                )
+
+    if non_blocking_refusals:
+        lines.append("")
+        lines.append("WARN — non-blocking private-target finding(s), STALE ROW(S) NAMED "
+                     "(targets=public mode; a maintainer should still refresh the register — "
+                     "see FIX_COMMAND — this just never refuses the PUBLIC commit for it):")
+        for t in non_blocking_refusals:
+            for ln, row in t["broken"]:
+                lines.append(
+                    f"  {t['filename']}: line {ln}: id={row.get('id')!r} path={row.get('path')!r} "
                     f"repo={row.get('repo')} event={row.get('event')} matcher={row.get('matcher')!r}"
                 )
 
@@ -711,6 +755,15 @@ def main(argv=None):
                    help="Feature B1.5w: skip the caller-lint report section entirely. The "
                         "lint is informational (WARN only) and never affects what gets "
                         "written or the exit code either way — this flag only silences it.")
+    p.add_argument("--targets", choices=("all", "public"), default="all",
+                   help="B3.2 fix, 2026-09-15: default 'all' is UNCHANGED prior behavior — "
+                        "a broken path on ANY target (public or private) refuses that "
+                        "target and contributes to a non-zero exit code. 'public' is the "
+                        "new, opt-in mode check_drift.py's on-commit gate passes: a REFUSED "
+                        "PRIVATE target (registrations.json / user-settings.hooks-section."
+                        "json) is downgraded to a named, non-blocking WARN and excluded "
+                        "from the exit code — the public wiring drift check must not "
+                        "depend on the private repo's live disk state on this machine.")
     args = p.parse_args(argv)
 
     public_root = os.path.abspath(args.public_root)
@@ -725,7 +778,7 @@ def main(argv=None):
     result = generate(
         args.register, os.path.abspath(args.out), public_root, private_root, cache_root,
         severity=args.severity, exemptions_path=args.exemptions, dedup_path=args.dedup,
-        skip_caller_lint=args.no_caller_lint,
+        skip_caller_lint=args.no_caller_lint, targets=args.targets,
     )
     text, exit_code = report(result)
     print(f"generate.py — {args.register} -> {args.out}")

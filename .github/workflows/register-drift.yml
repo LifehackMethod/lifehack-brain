@@ -94,11 +94,19 @@ jobs:
           fi
 
       - name: Generate WITH the caller lint (warn-level report), from the COMMITTED register, and install into this checkout
+        # --targets public (B3.2 second fix, 2026-09-15): the private
+        # egjokaj/ClaudeOps checkout does not exist on this runner at all, so
+        # EVERY private-repo hook row's own path resolves as "broken" here —
+        # that must never fail this job (a public-repo drift check), only be
+        # named as a WARN in the log. Same additive, backward-compatible flag
+        # check_drift.py's local pre-commit stage now passes; see that
+        # script's module docstring for the full incident this repairs.
         run: |
           python3 system/register/generate.py system/register/register.jsonl \
             --no-cache \
             --out "$RUNNER_TEMP/gen-out" \
-            --install-root .
+            --install-root . \
+            --targets public
 
       - name: Fail on drift — the committed register must reproduce the committed wiring exactly
         run: |
