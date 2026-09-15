@@ -14,61 +14,48 @@
 # SIGNPOST: the RULE this arms — that a number a decision rests on is computed by code and never in
 #         the model's head — is stated in the `/calculate` skill and re-stated by the injector. To
 #         change what gets injected, edit inject_compute_mechanically.sh; to change when it arms,
-#         edit this file.
+#         edit this file. Shared mechanics (key derivation, TTL expiry, sweep-clear) live in
+#         system/hooks/lib/flag.sh — change those there, not here.
 # FAIL_POSTURE: degrade-safe — a recorder, never a gate. Any error exits 0 and the session behaves
 #         exactly as if numbers-mode had never been armed.
-# UPDATED: 2026-08-11 (ported; the shasum shim added, per the Git Bash floor)
+# UPDATED: 2026-09-15 (B5.1 — converted to a thin shim over system/hooks/lib/flag.sh; CLI
+#          contract, payload keys, and output text unchanged. Was: 2026-08-11, ported; the shasum
+#          shim added, per the Git Bash floor)
 # ─────────────────────────────────────────────────────────────────────────────
 #   numbers_flag.sh arm     # arm numbers-mode for this session
 #   numbers_flag.sh clear   # disarm (remove this session's flag(s))
 #   numbers_flag.sh status  # print "armed" or "none"
-# ── hash_key: the fallback session key, and it MUST match everywhere ──────────────────────────────
-# When the harness gives us no session id we key on the working directory instead. `shasum` does that
-# on macOS and Linux and is ABSENT from Git Bash on Windows, where it produces an EMPTY key — so every
-# window on that machine would collide on one flag, silently.
-# ⚠ SHA-1 DELIBERATELY, NOT SHA-256: this must equal what `shasum` prints, or a machine that has
-# shasum and a machine that does not would key the SAME folder differently. One writer and one reader
-# disagreeing about the key is worse than having no key at all.
-# ⚠ This snippet is IDENTICAL in every file that needs it (plan_flag, pm_flag, pm_persist, skill_anchor,
-# skill_anchor_inject, statusline). Keep it that way — the next platform fix should land in one shape.
-# ⚠ DEFINE IT AT THE TOP, never beside its first use: these files branch on whether the harness gave
-# us a session id, and a definition placed inside that branch is not defined on the other one.
-# TEMPORARY: Git Bash is the documented Windows floor; a real Windows story is still owed.
-hash_key() {
-  _hk="$(printf '%s' "$1" | shasum 2>/dev/null | cut -c1-12)"
-  if [ -z "$_hk" ]; then
-    _hk="$(printf '%s' "$1" | python3 -c 'import hashlib,sys; sys.stdout.write(hashlib.sha1(sys.stdin.buffer.read()).hexdigest())' 2>/dev/null | cut -c1-12)"
-  fi
-  printf '%s' "$_hk"
-}
+# ─────────────────────────────────────────────────────────────────────────────
 
 set +e
+
+# Condition ⑤ (D6): resolve the shared library relative to THIS shim's own location, quoted — the
+# notes root and the plugin cache path both contain spaces, so an unquoted expansion breaks.
+_SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
+_LIB="$_SELF_DIR/lib/flag.sh"
+if [ ! -f "$_LIB" ]; then
+  echo "numbers_flag.sh: FATAL — shared library missing at $_LIB (cannot arm/clear/read numbers state)" >&2
+  exit 1
+fi
+# shellcheck source=lib/flag.sh
+. "$_LIB" || { echo "numbers_flag.sh: FATAL — shared library at $_LIB failed to load" >&2; exit 1; }
+for _fn in flag_init flag_write flag_get flag_ttl_expired flag_clear_sweep; do
+  command -v "$_fn" >/dev/null 2>&1 || { echo "numbers_flag.sh: FATAL — shared library at $_LIB is missing $_fn() (corrupt)" >&2; exit 1; }
+done
+
 TTL_HOURS="${NUMBERS_TTL_HOURS:-12}"
-FLAGDIR="$HOME/.claude/run/numbers"; mkdir -p "$FLAGDIR" 2>/dev/null
-if [ -n "$CLAUDE_CODE_SESSION_ID" ]; then KEY="sess-$CLAUDE_CODE_SESSION_ID"
-else KEY="cwd-$(hash_key "$PWD")"; fi
-FLAG="$FLAGDIR/numbers-$KEY.flag"
-NOW="$(date +%s 2>/dev/null)"
+flag_init numbers numbers
+
 case "$1" in
   arm)
-    { echo "armed_at=$NOW"; echo "cwd=$PWD"; echo "session=$CLAUDE_CODE_SESSION_ID"; } > "$FLAG"
+    flag_write "armed_at=$NOW" "cwd=$PWD" "session=$CLAUDE_CODE_SESSION_ID"
     echo "ARMED: numbers-mode (session ${CLAUDE_CODE_SESSION_ID:-none}, cwd $PWD)";;
   clear)
-    n=0; [ -f "$FLAG" ] && { rm -f "$FLAG" 2>/dev/null; n=$((n+1)); }
-    if [ -n "$CLAUDE_CODE_SESSION_ID" ]; then
-      for f in "$FLAGDIR"/numbers-*.flag; do
-        [ -f "$f" ] || continue
-        s="$(grep '^session=' "$f" 2>/dev/null | cut -d= -f2-)"
-        [ "$s" = "$CLAUDE_CODE_SESSION_ID" ] && { rm -f "$f" 2>/dev/null; n=$((n+1)); }
-      done
-    fi
+    n="$(flag_clear_sweep numbers)"
     echo "CLEARED ($n)";;
   status)
     if [ -f "$FLAG" ]; then
-      AT="$(grep '^armed_at=' "$FLAG" 2>/dev/null | cut -d= -f2-)"
-      if [ -n "$AT" ] && [ -n "$NOW" ] && [ $(( NOW - AT )) -ge $(( TTL_HOURS * 3600 )) ]; then
-        rm -f "$FLAG" 2>/dev/null; echo "none"
-      else echo "armed"; fi
+      if flag_ttl_expired $(( TTL_HOURS * 3600 )); then echo "none"; else echo "armed"; fi
     else echo "none"; fi;;
   *) echo "usage: numbers_flag.sh arm | clear | status" >&2; exit 2;;
 esac
