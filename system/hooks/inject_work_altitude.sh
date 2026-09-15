@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# LHB fire-journal (B4.1): observes only; never alters this hook's decision/exit/stdout/stderr.
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/lib/journal.sh" 2>/dev/null || lhb_journal_fire() { :; }
+trap 'lhb_journal_fire "$?" "inject_work_altitude.sh" "UserPromptSubmit" "" 2>/dev/null || true' EXIT
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # WHY: reported 2026-08-05, in the words of the person it kept happening to: "constantly it is
 #      pulled into the lowest altitude and it loses its perspective." A session fixes the file

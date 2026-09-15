@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# LHB fire-journal (B4.1): observes only; never alters this hook's decision/exit/stdout/stderr.
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/lib/journal.sh" 2>/dev/null || lhb_journal_fire() { :; }
+trap 'lhb_journal_fire "$?" "guard_ledger_discipline.sh" "PreToolUse" "Bash|Write|Edit" 2>/dev/null || true' EXIT
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # WHY: The debt list GREW +29 items over 4 days (2026-06-14..18) because "closing" an item
 #      annotated it "✅ RESOLVED" IN PLACE in the live ## Open list instead of removing it — so

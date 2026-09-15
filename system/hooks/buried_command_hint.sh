@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# LHB fire-journal (B4.1): observes only; never alters this hook's decision/exit/stdout/stderr.
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/lib/journal.sh" 2>/dev/null || lhb_journal_fire() { :; }
+trap 'lhb_journal_fire "$?" "buried_command_hint.sh" "UserPromptSubmit" "" 2>/dev/null || true' EXIT
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # ── CORRECTION (2026-08-23, lifehack-brain port, phase G2/G3) ───────────────
 # The STATUS line immediately below, and everything through "not rely on it

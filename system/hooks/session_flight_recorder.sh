@@ -1,4 +1,7 @@
 #!/bin/bash
+# LHB fire-journal (B4.1): observes only; never alters this hook's decision/exit/stdout/stderr.
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/lib/journal.sh" 2>/dev/null || lhb_journal_fire() { :; }
+trap 'lhb_journal_fire "$?" "session_flight_recorder.sh" "Stop" "" 2>/dev/null || true' EXIT
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # WHY: Session learnings were repeatedly lost when /save was never called, and
 #      there was no lightweight, durable record of what each session actually did
