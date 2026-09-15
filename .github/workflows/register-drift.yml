@@ -1,0 +1,86 @@
+name: Register Drift (full generator, with caller lint)
+
+# WHY THIS EXISTS: enforcement-layer Phase 2, Feature B3.2. D5 (Enver, 2026-09-15) ruled the
+# register's runner ON-COMMIT — every commit regenerates the wiring from the register and runs
+# the FAST checks locally (system/githooks/pre-commit -> system/register/check_drift.py),
+# refusing the commit on drift. That local stage deliberately passes `--no-caller-lint`: the
+# caller lint (Feature B1.5) is measured at ~8.2 s, ~99% of `generate.py`'s own runtime with it
+# on (see the plan's Discoveries, "Runner cost, measured for D5") — too slow to make a human
+# wait on for every `git commit`. This workflow is where that cost is paid instead: it runs the
+# SAME generator, in FULL (caller lint included), server-side, where a few extra seconds cost
+# nobody a commit.
+#
+# ⛔ A CALLER, NOT A NEW CHECKER. This adds no drift logic of its own beyond what
+# `check_drift.py`'s own `--no-caller-lint` pre-commit stage already does; the difference is
+# WHICH generator flags are used and WHERE the report shows up. The caller lint is WARN-only by
+# design (Feature B1.5's own T1 ontology — "lists; it never judges" an uncalled unit) and never
+# affects `generate.py`'s exit code, so it can never fail this job on its own; it is printed here
+# purely as a report, visible in the job log for anyone to read.
+#
+# WHAT FAILS THIS JOB: (1) generator REFUSAL — a malformed register row (schema gate), a
+# registered hook whose target no longer exists on disk (assert-on-write gate), or an omission
+# finding IF this job is ever run at `--severity refuse` (it is not, by default — Enver's B1.4
+# ruling keeps v1 at WARN, matched here); (2) DRIFT — the generator, run with `--install-root .`
+# against this exact checkout, would rewrite `.claude/settings.json` or `hooks/hooks.json` from
+# what is actually committed. Either failure means the committed wiring no longer matches the
+# register that is supposed to be its single source of truth.
+#
+# WHY `--no-cache` HERE TOO: a GitHub-hosted runner has no local Claude plugin cache checkout to
+# compare against, so the cache-divergence check (Feature B1.3, itself WARN-only) has nothing
+# real to read. Skipping it removes a check that would otherwise report a permanent, meaningless
+# "cache missing" finding on every run.
+#
+# WHY NO PRIVATE-REPO ROOT: the private `egjokaj/ClaudeOps` checkout does not exist on this
+# runner (by design — constraint 0.5, "no secrets in any shared store", and the private repo is
+# never pushed anywhere public). `harvest.py`'s tool/skill/hook walks already treat a missing
+# root as empty rather than erroring (`os.path.isdir` guards — see harvest.py's own code), so
+# this only affects the PRIVATE surfaces ("registrations", "user") — never the two PUBLIC files
+# this job actually diffs ("settings", "plugin"), which only ever draw from public-repo rows.
+
+on:
+  pull_request:
+    branches:
+      - V2
+  push:
+    branches:
+      - V2
+  # Manual trigger for sanity-checking this workflow's wiring without waiting on a real push or
+  # PR — never fires on its own, same rationale as this repo's other workflows.
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  register-drift:
+    name: harvest -> generate (with caller lint) -> diff against committed wiring
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Harvest the register from this checkout
+        run: |
+          python3 system/register/harvest.py --no-cache --out "$RUNNER_TEMP/register.jsonl"
+
+      - name: Generate WITH the caller lint (warn-level report) and install into this checkout
+        run: |
+          python3 system/register/generate.py "$RUNNER_TEMP/register.jsonl" \
+            --no-cache \
+            --out "$RUNNER_TEMP/gen-out" \
+            --install-root .
+
+      - name: Fail on drift — the generator must not have rewritten committed wiring
+        run: |
+          if ! git diff --exit-code -- .claude/settings.json hooks/hooks.json; then
+            echo ""
+            echo "::error::Committed wiring has drifted from what the register generates."
+            echo "The diff above is what 'generate.py --install-root .' would change."
+            echo "Fix locally: python3 system/register/harvest.py --out /tmp/lhb-register.jsonl && python3 system/register/generate.py /tmp/lhb-register.jsonl --install-root ."
+            exit 1
+          fi
