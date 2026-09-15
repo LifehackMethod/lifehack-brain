@@ -1,4 +1,7 @@
 #!/bin/bash
+# LHB fire-journal (B4.1): observes only; never alters this hook's decision/exit/stdout/stderr.
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/lib/journal.sh" 2>/dev/null || lhb_journal_fire() { :; }
+trap 'lhb_journal_fire "$?" "guard_cross_project_write.sh" "PreToolUse" "Bash|Write|Edit" 2>/dev/null || true' EXIT
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # WHY: a session once re-pointed its own window from one project to another and then — with the
 #      wrong project active — rewrote that brief's hand-authored frame block, the section a person

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# LHB fire-journal (B4.1): observes only; never alters this hook's decision/exit/stdout/stderr.
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/lib/journal.sh" 2>/dev/null || lhb_journal_fire() { :; }
+trap 'lhb_journal_fire "$?" "inject_sop_before_build.sh" "UserPromptSubmit" "" 2>/dev/null || true' EXIT
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # WHY: Skills/hooks/desks/sheets/dashboards/crons were being built WITHOUT their
 #      hard-won SOP being read first — nothing put the rulebook in front of the
