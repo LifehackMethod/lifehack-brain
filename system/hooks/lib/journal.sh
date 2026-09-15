@@ -123,7 +123,13 @@ lhb_journal_fire() {
     esac
 
     _dir="${_journal%/*}"
-    if [ "$_dir" != "$_journal" ]; then
+    # `mkdir` is an external binary (not a bash builtin) — a second subprocess fork on every single
+    # fire, on top of the `date` call above, and it was the single biggest driver of a measured
+    # overshoot against the ceiling this session (67.13 ms vs a 61.35 ms budget on the 25-guard
+    # reference set — see B4.1-report.md). `[ -d ... ]` IS a builtin, so on every fire after the
+    # very first (per journal directory, almost always true — the directory outlives any one hook),
+    # this now costs nothing. `mkdir -p` still runs, once, the first time the directory is missing.
+    if [ "$_dir" != "$_journal" ] && [ ! -d "$_dir" ]; then
         mkdir -p "$_dir" 2>/dev/null
     fi
 

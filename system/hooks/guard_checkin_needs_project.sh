@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# LHB fire-journal (B4.1): observes only; never alters this hook's decision/exit/stdout/stderr.
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/lib/journal.sh" 2>/dev/null || lhb_journal_fire() { :; }
+trap 'lhb_journal_fire "$?" "guard_checkin_needs_project.sh" "PreToolUse+UserPromptExpansion" "Skill|checkin" 2>/dev/null || true' EXIT
 # guard_checkin_needs_project.sh — PreToolUse(Skill, if="Skill(checkin)") + UserPromptExpansion(checkin)
 #
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────

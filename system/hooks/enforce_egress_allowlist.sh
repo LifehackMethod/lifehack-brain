@@ -1,4 +1,6 @@
 #!/bin/bash
+# LHB fire-journal (B4.1): observes only; never alters this hook's decision/exit/stdout/stderr.
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/lib/journal.sh" 2>/dev/null || lhb_journal_fire() { :; }
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # WHY: everything else in this wall is about what comes IN. This is the only piece about what goes
 #      OUT — and that is the half that actually costs something. An instruction hidden in a web page
@@ -24,4 +26,11 @@
 # PreToolUse JSON flows straight through on stdin via exec.
 
 _HOOKDIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
-exec python3 "$_HOOKDIR/enforce_egress_allowlist.py"
+# LHB fire-journal (B4.1): this hook used `exec` (process replacement), so no EXIT trap
+# could ever fire here. Converted to an explicit run + rc-capture + re-exit, which is
+# observably identical (same stdin/stdout/stderr, same final exit code) and now lets the
+# journal record the real outcome.
+python3 "$_HOOKDIR/enforce_egress_allowlist.py"
+_lhb_rc=$?
+lhb_journal_fire "$_lhb_rc" "enforce_egress_allowlist.sh" "PreToolUse" "Bash" 2>/dev/null || true
+exit "$_lhb_rc"

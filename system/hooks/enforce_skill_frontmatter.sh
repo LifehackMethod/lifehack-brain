@@ -1,4 +1,7 @@
 #!/bin/bash
+# LHB fire-journal (B4.1): observes only; never alters this hook's decision/exit/stdout/stderr.
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/lib/journal.sh" 2>/dev/null || lhb_journal_fire() { :; }
+trap 'lhb_journal_fire "$?" "enforce_skill_frontmatter.sh" "PreToolUse" "Write|Edit" 2>/dev/null || true' EXIT
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # WHY: The 46-skill remediation (2026-07) proved skills are born malformed one at a time — a missing
 #      `description:` (the ONLY field the harness reads to auto-trigger), an unquoted colon-space that
