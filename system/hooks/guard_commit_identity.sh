@@ -36,10 +36,17 @@
 #      argument (parsed by shlex above) or a leading `cd <path> &&`, falling back to
 #      $PWD only when neither is given. Never $PWD unconditionally — that was the
 #      push-signpost's bug (O3b).
-# IDENTITY (allow-list): read from THIS RUN's Brain root — resolved via
-#      `<target-repo>/shared/brain_root.py --quiet`, never a path baked into this
-#      script (a hard-coded path would be this operator's path shipped to every
-#      student). The allow-list is every line in `<brain>/config/ship-identity.md`
+# IDENTITY (allow-list): read from THIS RUN's Brain root — resolved by running
+#      `shared/brain_root.py --quiet`, preferring the copy AT THE TARGET REPO
+#      (`<target-repo>/shared/brain_root.py`) when it exists there, and falling back to
+#      THIS SCRIPT'S OWN plugin install (`$CLAUDE_PLUGIN_ROOT/shared/brain_root.py`, or this
+#      script's own directory when that env var is unset) when it does not — e.g. a commit
+#      made inside a repo that is not the Harness clone (2026-09-15, #O5: this guard denied
+#      every commit in such a repo, because brain_root.py resolves the Brain from ITS OWN
+#      file position, never from cwd — same class of bug as guard_findings_write.sh's
+#      winpath_fold.py lookup, PR #165). Never a path baked into this script (a hard-coded
+#      path would be this operator's path shipped to every student). The allow-list is every
+#      line in `<brain>/config/ship-identity.md`
 #      that CONTAINS "@" (same shape-detection identity_rules.py already uses for
 #      that file: contains "@" -> an address), comments (#) and blank lines skipped,
 #      compared case-insensitively.
@@ -51,6 +58,10 @@
 # RULE: system/sops/github-sop.md — system/hook-contract.md (mechanics)
 # ─────────────────────────────────────────────────────────────────────────────
 # guard_commit_identity.sh — PreToolUse hook (matcher: Bash)
+
+# This script's own directory, never the target repo or $PWD — the fallback route for
+# resolving shared/brain_root.py below (see IDENTITY (allow-list) above).
+_HOOKDIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd -P)"
 
 INPUT=$(cat 2>/dev/null)
 
@@ -139,9 +150,19 @@ case "$VERDICT" in
       _deny "🛑 COMMIT IDENTITY (blocked): $_repo_name has no git config user.email set. WHY: an unattributed commit is exactly the failure this guard exists to prevent. REDIRECT: run 'git -C $_target config user.email you@example.com' with the address listed in your Brain's config/ship-identity.md, then retry. FAIL_POSTURE: closed."
     fi
 
+    # Prefer the TARGET repo's own copy (the common case: committing inside the Harness
+    # clone itself). When the target repo does not carry shared/brain_root.py at all — any
+    # repo that is not the Harness (e.g. a private personal repo) — fall back to THIS
+    # SCRIPT'S OWN plugin install, never $PWD or the target: a non-Harness repo must still be
+    # CHECKED, not skipped. brain_root.py resolves the Brain from its own file position, so
+    # either copy resolves to the same one AI Brain on this machine.
     _brain_root_script="$_target/shared/brain_root.py"
     if [ ! -f "$_brain_root_script" ]; then
-      _deny "🛑 COMMIT IDENTITY (blocked): cannot find shared/brain_root.py under $_target to resolve the AI Brain. WHY: the identity allow-list lives in the Brain, never hard-coded in this script. REDIRECT: verify the install (INSTALL.md) put shared/brain_root.py at the repo root, then retry. FAIL_POSTURE: closed."
+      _plugin_root="${CLAUDE_PLUGIN_ROOT:-${_HOOKDIR%/system/hooks}}"
+      _brain_root_script="$_plugin_root/shared/brain_root.py"
+    fi
+    if [ ! -f "$_brain_root_script" ]; then
+      _deny "🛑 COMMIT IDENTITY (blocked): cannot find shared/brain_root.py under $_target or under the plugin install ($_plugin_root) to resolve the AI Brain. WHY: the identity allow-list lives in the Brain, never hard-coded in this script. REDIRECT: verify the install (INSTALL.md) put shared/brain_root.py at the Harness repo root, then retry. FAIL_POSTURE: closed."
     fi
 
     _brain=$(python3 "$_brain_root_script" --quiet 2>/dev/null)
