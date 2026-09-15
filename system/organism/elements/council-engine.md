@@ -8,11 +8,11 @@ maturity_label: LIVE·gap
 gap_disposition: by-design
 gap_disposition_note: "ruled 2026-07-28 at class level — C2 honor-caller throughout; the model-pin guard was deliberately parked as over-build for a single-operator system"
 generated_from:
-  - skills/advisory-council/SKILL.md
-  - skills/advisory-council/SCOPE.md
-  - skills/council/SKILL.md
-  - skills/planning-weekly/prompts/04-council.md
-  - skills/planning-weekly/prompts/council/_member-format.md
+  - .claude/skills/advisory-council/SKILL.md
+  - .claude/skills/advisory-council/SCOPE.md
+  - .claude/skills/council/SKILL.md
+  - .claude/skills/planning-weekly/prompts/04-council.md
+  - .claude/skills/planning-weekly/prompts/council/_member-format.md
   - skills/marc-checkin/SKILL.md (lines 79–87)
   - system/sops/architecture-planning-sop.md (lines 59–104, 139)
   - system/hooks/plan_flag.sh (lines 94–96)
@@ -29,7 +29,7 @@ authority: user
 > every trigger, every protocol step, the fixed advisor schema, the model-selection exception, the
 > roster-library structure, and every interop seam. The MIDDLE index (`system/organism/manual.md`)
 > carries only a pointer here; the TIP shows only a box + arrows; the **skills themselves**
-> (`skills/advisory-council/SKILL.md`, `skills/council/SKILL.md`) are the executable ground truth.
+> (`.claude/skills/advisory-council/SKILL.md`, `.claude/skills/council/SKILL.md`) are the executable ground truth.
 > This entry is the UNDERSTANDING layer.
 >
 > **One-line:** two skills sharing one blind-diverge → argue → converge protocol — `/advisory-council`
@@ -41,7 +41,7 @@ authority: user
 > `[honor]` (prose instruction only, no mechanical enforcement) · `[human]` (deliberate HITL pause)
 
 > **LADDER: ELEMENT (full mechanics). up → manual#council-engine ; ground truth → the live artifacts
-> (skills/advisory-council/SKILL.md · skills/council/SKILL.md)**
+> (.claude/skills/advisory-council/SKILL.md · .claude/skills/council/SKILL.md)**
 
 > **CITATIONS — what the paths below resolve to here.** This element describes the donor system truthfully; the two lines below record what happened to each named file at THIS destination, and they cover every mention of them in the body.
 >
@@ -53,13 +53,23 @@ authority: user
 > ⚠ **CORRECTED 2026-09-01:** the bare `skills/advisory-council/SKILL.md`, `skills/advisory-council/SCOPE.md`,
 > `skills/council/SKILL.md`, `skills/planning-weekly/prompts/04-council.md`, and
 > `skills/planning-weekly/prompts/council/_member-format.md` cited above and below (including at
-> "the skills themselves" and "ground truth → the live artifacts") are the donor's repo-relative form and
-> resolve nowhere from this repo's root. Verified this session: all five ship from the installed plugin at
-> `.claude/skills/<name>/` (plugin root, confirmed under `~/.claude/plugins/marketplaces/lifehack-brain/`),
-> not from any path inside this repository.
+> "the skills themselves" and "ground truth → the live artifacts") are the donor's repo-relative form
+> (missing the `.claude/` prefix) and resolve nowhere from this repo's root AS WRITTEN. ~~Verified this
+> session: all five ship from the installed plugin at `.claude/skills/<name>/` (plugin root, confirmed
+> under `~/.claude/plugins/marketplaces/lifehack-brain/`), not from any path inside this repository.~~
+> ⚠ **THIS 2026-09-01 CORRECTION IS ITSELF WRONG for all five (BUG window, 2026-09-07):** all five are
+> tracked in THIS repo, confirmed by `git ls-files` and direct read this session:
+> `.claude/skills/advisory-council/SKILL.md` (192 lines), `.claude/skills/advisory-council/SCOPE.md`
+> (312 lines), `.claude/skills/council/SKILL.md` (258 lines), `.claude/skills/planning-weekly/prompts/04-council.md`
+> (37 lines), `.claude/skills/planning-weekly/prompts/council/_member-format.md` (18 lines). None of the
+> five ships "only from the installed plugin" — all are repo-tracked files right here. Likely cause: the
+> 2026-09-01 audit tested each bare path (missing `.claude/`), found nothing literal, and wrongly
+> generalized non-existence in this repo — the same defect pattern found across this cluster (see
+> `archivist.md` for the fullest write-up).
 > ⛔ The sixth, `skills/marc-checkin/SKILL.md`, is different again — it does not ship from the plugin or
 > this repo; it resolves at the user-owned `~/.claude/skills/marc-checkin/SKILL.md` (confirmed this
-> session).
+> session AND confirmed absent from this repo's own `.claude/skills/` — this part of the 2026-09-01
+> correction is accurate).
 
 ---
 
@@ -432,9 +442,9 @@ each condition?"). The SOP's own exploration/drafting subagents stay **sonnet** 
 line 139). Loop exit: READY verdict from the council AND stakeholder confirms no overrides outstanding.
 
 **2. `planning-weekly` Phase 4 IS the advisory-council engine.**
-(skills/planning-weekly/prompts/04-council.md)
+(.claude/skills/planning-weekly/prompts/04-council.md)
 The weekly planning skill's pressure-testing phase dispatches 6 fresh-context member files from
-`skills/planning-weekly/prompts/council/*.md` as the advisory-council's advisor roster, running the
+`.claude/skills/planning-weekly/prompts/council/*.md` as the advisory-council's advisor roster, running the
 blind-diverge → argue → converge protocol. Members run **opus** (the designed exception, as stated in
 `04-council.md` and `_member-format.md`). Cost note in `04-council.md`: "6 opus advisors/run is heavier
 than the rule's 'small roster 2–4' — the operator can down-scope to sonnet if cost bites." The Phase 4 output

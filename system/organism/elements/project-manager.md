@@ -6,7 +6,7 @@ altitude: base
 record_type: organism-element
 maturity_label: PARTIAL (honor)
 generated_from:
-  - skills/project-manager/SKILL.md
+  - .claude/skills/project-manager/SKILL.md
   - system/hooks/pm_persist.sh
   - system/hooks/pm_flag.sh
   - system/hooks/scratch_capture_gate.sh
@@ -44,7 +44,7 @@ authority: user
 > `<notes>/state/debt-ledger.md`, written by `/save` and `/build` when something is knowingly left imperfect
 > (`docs/data-layout.md`). It is created by use, and never committed.
 
-> **LADDER: ELEMENT (full mechanics). up → manual#project-manager ; ground truth → skills/project-manager/SKILL.md**
+> **LADDER: ELEMENT (full mechanics). up → manual#project-manager ; ground truth → .claude/skills/project-manager/SKILL.md**
 >
 > **Altitude = BASE (ground / street view).** The in-the-weeds mechanics of the brief lifecycle
 > engine: how a project doc is created (with human-in-the-loop Frame intake), kept alive across
@@ -122,7 +122,7 @@ stop if uncaptured scratchpad content has appeared since the last bucket checkpo
    constraints, scope edges). Ask nothing yet.
 2. **Scorecard.** Rate every frame slot: `CONFIRMED` / `INFERRED` / `THIN` / `MISSING`.
    Full critical-slot list: `references/intake_questions.md`
-   (skills/project-manager/references/intake_questions.md).
+   (.claude/skills/project-manager/references/intake_questions.md).
 3. **Reflect-back round.** Present the scorecard in one round. For each un-CONFIRMED
    slot, show the inferred guess labeled, ask the user to confirm / correct / fill.
    Never ask cold — always lead with best guess.

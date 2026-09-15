@@ -30,6 +30,16 @@ claim, and the lint holds each claim to its own standard:
                              already prefers it to silence (see the "NOT missing" table in
                              `.claude/skills/ingest/SKILL.md`).
 
+THE ESCAPE, so the markers can be WRITTEN ABOUT. A marker inside backticks -- `✅` -- is being
+NAMED, not used, and makes no claim. Without it there is no way to document these markers at all: a
+sentence explaining what ✅ means necessarily contains ✅, and was then read as asserting that every
+path in that sentence is on disk. (Reported by the person documenting this tool: they removed a
+marker, wrote a note saying why, and the note failed for containing the glyph.) Backticks are
+already this repo's "I am naming this token" convention -- 51 lines in these documents were quoting
+markers that way before the escape existed, and one of them had to carry a hand-written warning
+about this very false positive. The escape REMOVES A CLAIM; it never excuses a missing file. A
+citation whose only cover was a quoted marker now reads as unaccounted-for, which is the truth.
+
 IN A TABLE'S STATUS COLUMN the words do the same work as the markers -- `lands in` / `lands with` /
 `ships in` count as ⏳, and `not shipped` / `does not ship` / `not owed` / `never ships` count as ⛔ --
 because the manifest tables were written that way before this lint existed. IN PROSE they do not:
@@ -142,6 +152,19 @@ UNREGISTERED_OK = {
                             "is stated rather than silent, and so it stops blocking unrelated "
                             "commits while the ruling is open. ⛔ This entry does NOT say the guard "
                             "is correctly unregistered — it says nobody has ruled yet.",
+    "guard_harness_writeback.sh": "registered in hooks/hooks.json:319, the plugin manifest a student "
+                                  "actually runs, but NOT in .claude/settings.json — so a repo-clone "
+                                  "user does not get it, only a plugin install does. This lint reads "
+                                  ".claude/settings.json and system/hooks/registrations.json; it does "
+                                  "not read hooks/hooks.json, which is why it sees the hook as "
+                                  "registered nowhere when it is in fact registered there. Whether it "
+                                  "SHOULD also be in .claude/settings.json is UNDECIDED and not ruled "
+                                  "on here. A further open question, also unresolved: an earlier "
+                                  "investigation this session found the guard's own logic is written "
+                                  "in terms of protecting a ClaudeOps checkout, which a student running "
+                                  "the plugin does not have — so whether it does anything meaningful "
+                                  "once shipped is itself an open consideration. Recorded here so the "
+                                  "gap is stated rather than silent.",
 }
 
 # A backticked `/word` is usually a skill here — but not always, and neither of these is ours to
@@ -197,6 +220,10 @@ SKILL_REF = re.compile(r"^/([a-z][a-z0-9][a-z0-9-]*)$")
 PLACEHOLDER = re.compile(r"[$<>{}|()\\\[\]…]")
 
 PRESENT, DEFERRED, DECLINED = "present", "deferred", "declined"
+# The three markers, in the order claim_kind resolves them. Named once so `claim_kind` (what counts
+# as a claim) and `normalise` (what counts as a citation) cannot drift apart about what a marker is.
+MARKERS = (("✅", PRESENT), ("⏳", DEFERRED), ("⛔", DECLINED))
+MARKER_GLYPHS = frozenset(g for g, _ in MARKERS)
 DEFER_PHRASES = ("lands in", "lands with", "ships in")
 DECLINE_PHRASES = ("not shipped", "does not ship", "not owed", "never ships")
 
@@ -205,16 +232,27 @@ def claim_kind(line):
     """Which of the three claims, if any, this line makes. ✅ wins over the others when a line
     somehow carries two, because presence is the one claim that is checkable against disk.
 
+    A MARKER INSIDE BACKTICKS IS QUOTED, NOT CLAIMED (the escape -- see the file docstring). Only
+    the text OUTSIDE inline code spans is read for markers, so a sentence explaining what ✅ means
+    stops asserting that every path beside it is on disk. Measured over these documents: 51 lines
+    already wrote a marker that way, every one of them discussing the marker rather than declaring
+    anything, and one of them (`system/organism/elements/skill-system.md`) carried a hand-written
+    warning about the false positive this closes.
+
+    THE WORDED FORMS ARE DELIBERATELY NOT ESCAPED THIS WAY. They are read only from a table's LAST
+    CELL, which is a declaration site prose cannot reach -- nobody writes `not shipped` in a status
+    column in order to discuss the phrase -- so there is no false positive to fix there, and
+    narrowing the change to the glyph keeps it to the one defect that was measured. (Confirmed: 0
+    lines in these documents change either way.)
+
     THE WORDED FORMS ONLY COUNT IN A TABLE'S LAST CELL. Ordinary prose says "lands in" about all
     sorts of things -- the measured false positive was a planning rule reading "nothing vanishes...
     or lands in this block", which would have quietly excused every path named on that line. A
     status column is a declaration; a sentence is not. In prose, use the marker."""
-    if "✅" in line:
-        return PRESENT
-    if "⏳" in line:
-        return DEFERRED
-    if "⛔" in line:
-        return DECLINED
+    outside_code = BACKTICK.sub(" ", line)
+    for glyph, kind in MARKERS:
+        if glyph in outside_code:
+            return kind
     status = ""
     if line.lstrip().startswith("|"):
         cells = line.strip().strip("|").split("|")
@@ -265,6 +303,14 @@ def normalise(span):
     if not span:
         return None
     span = span.split()[0]                       # `pm_flag.sh status` -> `pm_flag.sh`
+    if span in MARKER_GLYPHS:
+        return None                              # `✅` / `✅ phase N complete` -- the escape, quoting a
+                                                 # marker. Not a path, and (the reason this is here
+                                                 # rather than left to Pass 2, which already ignores
+                                                 # it) not a second "target" either: counted as one,
+                                                 # it would make its line look like two citations
+                                                 # sharing a marker and demote the REAL path beside
+                                                 # it into the non-blocking `shared` state.
     if PLACEHOLDER.search(span):
         return None                              # `<slug>.plan.md`, `$T/tag.py`, `a | b`
     span = LINE_ANCHOR.sub("", span)             # `tag.py:138-160` -> `tag.py`
@@ -509,6 +555,19 @@ def resolves_in_repo_skill(root, name, rest):
     return os.path.exists(full)
 
 
+def find_claim(claims, claims_by_para, key, n):
+    """Which claim covers citation `key` at line `n`. Prefers the claim made IN THIS CITATION'S OWN
+    PARAGRAPH (`claims_by_para`, per-paragraph, see the Pass 1 comment) over the file-wide banner
+    (`claims`, first paragraph in the file to mark this key) -- so a paragraph that independently
+    marks a path is never overridden by an earlier, unrelated paragraph doing the same. Only when
+    this citation's own paragraph made no claim of its own does it fall back to the banner, which is
+    the documented, tested, intentional feature this lint is built on."""
+    for start, end, items in claims_by_para:
+        if start <= n <= end and key in items:
+            return items[key]
+    return claims.get(key)
+
+
 def lint_paths_and_skills(root, findings, counts, scope=None):
     tops = repo_tops(root)
     skills_dir = os.path.join(root, ".claude", "skills")
@@ -552,7 +611,28 @@ def lint_paths_and_skills(root, findings, counts, scope=None):
         # the top covers a name the document uses twenty times below" is the documented, intentional
         # feature this lint is built on, and this fix narrows the defect to what was actually found:
         # citations sharing one line, not a banner's whole paragraph.
-        claims, own_line = {}, {}
+        # TWO TIERS, because the file's own design makes two different claims and row 80-b conflated
+        # them into one dict:
+        #
+        #   1. THE FILE-WIDE BANNER (documented at the top of this file: "it accounts for them
+        #      EVERYWHERE IN THAT FILE. So one banner at the top can cover a name the document uses
+        #      twenty times below" -- and enforced by test_a_claim_covers_the_whole_file_not_just_
+        #      its_own_line / test_a_missing_command_can_be_accounted_for_like_any_other_citation). A
+        #      BARE, unmarked mention of a path elsewhere in the file inherits the FIRST paragraph
+        #      that ever marked it. `claims` (a dict, `setdefault` keeps the first) is that banner,
+        #      unchanged from before this fix.
+        #
+        #   2. A PARAGRAPH'S OWN CLAIM. THE BUG THIS CLOSES (row 80-b): when a SECOND, unrelated
+        #      paragraph independently marks that SAME path again -- its own ✅/⏳/⛔, not riding on
+        #      the first banner -- the old code still only had the one file-wide dict, so
+        #      `claims.setdefault` silently discarded the second paragraph's own marking and Pass 2
+        #      reported ITS citation at the FIRST paragraph's line. `claims_by_para` (a list of
+        #      (start, end, items) records, one per paragraph) preserves each paragraph's own claim
+        #      so `find_claim` below can prefer it over the banner when the citation falls inside it.
+        #      This does not reach past a paragraph's own wrapped continuation lines for capture --
+        #      that scope was always paragraph-local -- it only stops one paragraph's OWN marker from
+        #      being erased by an earlier, unrelated one that happens to share a path.
+        claims, claims_by_para, own_line = {}, [], {}
         n = 0
         while n < len(lines):
             n += 1
@@ -570,11 +650,15 @@ def lint_paths_and_skills(root, findings, counts, scope=None):
                     n += 1
                     block += targets_on(lines[n - 1])
                     text += " " + lines[n - 1].strip()
+            items = {}
             for span in block:
                 key = normalise(span)
                 if key:
                     shared = same_line_shared and key in first_line_keys
-                    claims.setdefault(key, (kind, first, text, shared))
+                    entry = (kind, first, text, shared)
+                    items.setdefault(key, entry)
+                    claims.setdefault(key, entry)
+            claims_by_para.append((first, n, items))
             # The STALE check reads this tighter map instead. A deferral paragraph often mentions
             # what you should use MEANWHILE -- which is here, and is not what the paragraph defers.
             # Forgiving where forgiveness costs a missing file nobody promised; strict where the
@@ -646,7 +730,7 @@ def lint_paths_and_skills(root, findings, counts, scope=None):
                 else:
                     continue
 
-                claim = claims.get(key)
+                claim = find_claim(claims, claims_by_para, key, n)
                 where = "%s:%d" % (rel, n)
 
                 if exists:
@@ -670,7 +754,8 @@ def lint_paths_and_skills(root, findings, counts, scope=None):
                         where, "`%s` does not exist here" % target,
                         "nothing on this line says what happened to it",
                         "bring the file, or mark it ✅ / ⏳ <open phase> / ⛔ with the reason — the "
-                        "marker must be on the SAME LINE as the path, so write one per line"))
+                        "marker must be somewhere in this citation's own paragraph (in a table, "
+                        "that paragraph is the row itself, so put it in the row's own status cell)"))
                 elif claim[0] == PRESENT:
                     # A ✅ shadowing a DIFFERENT, missing citation on its own line is exactly the
                     # false claim it names -- so this stays a hard FAIL either way (downgrading it
@@ -683,7 +768,9 @@ def lint_paths_and_skills(root, findings, counts, scope=None):
                         "`%s` is NOT here, and has no marker of its own -- it shares a line with "
                         "an unrelated ✅ that is not about it" % target,
                         "the one claim a reader has no reason to doubt",
-                        "bring the file, or give it its own line with its own ✅/⏳/⛔"))
+                        "bring the file, or give it its own line with its own ✅/⏳/⛔ — or, if that "
+                        "line is only DISCUSSING the marker rather than claiming anything, put the "
+                        "marker in backticks (`✅`), which quotes it instead of asserting it"))
                 elif claim[3]:
                     # ⭐ THE SHADOW STATE. This key was never independently marked -- it rode along
                     # with a DIFFERENT citation that happened to share its physical line, and inherited

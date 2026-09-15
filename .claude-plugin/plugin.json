@@ -1,8 +1,8 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "lifehack-brain",
-  "version": "0.3.15",
-  "description": "lifehack-brain — the public Lifehack Harness engine (skills, tools, hooks).",
+  "version": "0.3.20",
+  "description": "lifehack-brain \u2014 the public Lifehack Harness engine (skills, tools, hooks).",
   "author": {
     "name": "Enver Gjokaj"
   },

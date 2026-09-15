@@ -7,8 +7,8 @@ record_type: organism-element
 maturity_label: PARTIAL [provisional]
 generated_from:
   - skills/simplify/SKILL.md (v2.1)
-  - skills/explain/SKILL.md (v4.4)
-  - skills/summarize/SKILL.md (v1.0)
+  - .claude/skills/explain/SKILL.md (v4.4)
+  - .claude/skills/summarize/SKILL.md (v1.0)
   - system/hooks/simplify_anchor_inject.sh ⛔ DELETED 2026-08-05 — see the banner below
   - system/hooks/translator_gate.sh (v7.1; updated 2026-07-13)
   - system/translator-rubric.md (updated 2026-07-15)
@@ -46,12 +46,21 @@ authority: user
 > - ⛔ `system/hooks/simplify_anchor_inject.sh` — nothing to port: deleted in the DONOR itself on 2026-08-05 as a failed experiment, as the banner immediately below records. There is no per-turn voice re-injection here, and there is no plan for one.
 > - ⛔ `/distill` — never ships. It was deprecated in the donor on 2026-06-07 and retired to a tombstone there; it exists in neither tree. /summarize's routing target below therefore has no destination here — the multi-turn distillation path is simply absent.
 > - ⛔ `.claude/skills/simplify/` — not coming. Verified 2026-08-27: the skill exists only in the operator's separate `~/lifehack-brain` checkout — it is neither in this repository nor in the installed plugin cache. Every mention of `/simplify` or its skill path below is donor description, not a promise of a local copy.
-> - ⚠ **CORRECTED 2026-09-01:** unlike `simplify` above, `skills/explain/SKILL.md` and
->   `skills/summarize/SKILL.md` (cited in frontmatter and at `#explain`/`#summarize` below) DO ship —
->   but not at the bare donor-relative path shown. Verified this session: both live at the installed
->   plugin's `.claude/skills/explain/SKILL.md` and `.claude/skills/summarize/SKILL.md` (plugin root,
->   confirmed under `~/.claude/plugins/marketplaces/lifehack-brain/`), not from any path inside this
->   repository.
+> - ⚠ **CORRECTED 2026-09-01:** unlike `simplify` above, `explain/SKILL.md` and
+>   `summarize/SKILL.md` (cited in frontmatter and at `#explain`/`#summarize` below, now with the
+>   `.claude/` prefix restored by this BUG window) DO ship — the original citations were the bare
+>   donor-relative form, missing the `.claude/` prefix. ~~Verified this
+>   session: both live at the installed plugin's `.claude/skills/explain/SKILL.md` and
+>   `.claude/skills/summarize/SKILL.md` (plugin root, confirmed under
+>   `~/.claude/plugins/marketplaces/lifehack-brain/`), not from any path inside this repository.~~
+>   ⚠ **THIS 2026-09-01 CORRECTION IS ITSELF WRONG for both (BUG window, 2026-09-07):** both are tracked
+>   in THIS repo, confirmed by `git ls-files` and direct read this session: `.claude/skills/explain/SKILL.md`
+>   (39 lines), `.claude/skills/summarize/SKILL.md` (28 lines). Neither ships "only from the installed
+>   plugin" — both are repo-tracked files right here (`simplify`'s absence, unlike these two, IS
+>   confirmed real — that part of the surrounding text stands). Likely cause: the 2026-09-01 audit
+>   tested each bare path (missing `.claude/`), found nothing literal, and wrongly generalized
+>   non-existence in this repo — the same defect pattern found across this cluster (see `archivist.md`
+>   for the fullest write-up).
 
 ---
 
@@ -174,7 +183,7 @@ not just the last response, not the whole thread. That span can be several assis
 
 ---
 
-#### `/explain` (skills/explain/SKILL.md — v4.4, updated 2026-07-17)
+#### `/explain` (.claude/skills/explain/SKILL.md — v4.4, updated 2026-07-17)
 
 **Mandate:** UNPACK + TRANSLATE. Re-render everything since the user's last message as the
 clearest human translation — ALL technical detail kept, none dropped, reordered freely for
@@ -204,7 +213,7 @@ one-shot.
 
 ---
 
-#### `/summarize` (skills/summarize/SKILL.md — v1.0, updated 2026-05-25)
+#### `/summarize` (.claude/skills/summarize/SKILL.md — v1.0, updated 2026-05-25)
 
 **Mandate:** GIST. Briefest of the three. Last response only — not the full thread, not the
 span. ≤3 sentences, plain prose, no bullets, no headers. One sentence per main point of the
@@ -270,8 +279,11 @@ FIRST, then propagate here + `output-styles/simplify.md`."
 > not migrate that."*). Re-verified this session: `find . -iname translator_gate.sh` → 0 results;
 > `grep -rn translator_gate .claude/settings.json system/hooks/registrations.json` → 0 hits in
 > either file; `.claude/settings.json` is 84 lines total and has carried no hook registrations at
-> all since T3.3 (2026-08-23) — those moved to `system/hooks/registrations.json` — so "settings.json
-> line 443" cannot exist in this tree. `system/organism/elements/hook-plane.md` (~line 406, ~line
+> all since T3.3 (2026-08-23) — those moved to `hooks/hooks.json` — so "settings.json
+> line 443" cannot exist in this tree.
+> [CORRECTED 2026-09-07: this note originally cited a path that does not exist in this repo:
+> `system/hooks/registrations.json` ⛔ not present here.
+> The real repo-tracked registration surface is `hooks/hooks.json`, cited above.] `system/organism/elements/hook-plane.md` (~line 406, ~line
 > 481) independently confirms the same fact: script and registration were both deleted outright
 > here, not left dormant. The file/registration/enforcement-class lines above describe the DONOR
 > only; nothing below this note in this subsection is a claim about a live control here.
@@ -329,10 +341,13 @@ every Stop but exits 0 immediately unless armed — zero runtime cost in steady 
 > translator_gate.sh` → 0 results; `grep -rn translator_gate .claude/settings.json
 > system/hooks/registrations.json` → 0 hits in either; `.claude/settings.json` is 84 lines total
 > with zero hook registrations since T3.3 (2026-08-23, moved to
-> `system/hooks/registrations.json`) — "settings.json line 443" cannot exist. `hook-plane.md`
+> `hooks/hooks.json`) — "settings.json line 443" cannot exist. `hook-plane.md`
 > (~line 406) confirms this fleet's practice is the opposite of the donor's: a retired hook is
 > deleted outright — script and registration both removed, nothing left "awaiting removal." There
 > is no "fires on every Stop, exits 0" happening here; there is no script left to fire.
+> [CORRECTED 2026-09-07: this note originally cited a path that does not exist in this repo:
+> `system/hooks/registrations.json` ⛔ not present here.
+> The real repo-tracked registration surface is `hooks/hooks.json`, cited above.]
 
 ---
 
@@ -539,7 +554,7 @@ re-render as its voice-seed. This is the only place in the system that calls a t
 skill as a REQUIRED intermediate step in another skill's flow. The rubric contract's quality
 directly affects the handoff's readability — a voice drift in the cluster degrades `/save`'s
 most critical output.
-Referenced in: `skills/save/SKILL.md` Step 8 ⚠ CORRECTED 2026-09-01 — this bare form resolves nowhere
+Referenced in: `.claude/skills/save/SKILL.md` Step 8 ⚠ CORRECTED 2026-09-01 — this bare form resolves nowhere
 from this repo's root; `save` ships from the installed plugin at `.claude/skills/save/SKILL.md`
 (confirmed under `~/.claude/plugins/marketplaces/lifehack-brain/`) and from the operator's separate
 `~/lifehack-brain` checkout, not from any path inside this repository (see `skill-system.md`'s own
@@ -596,8 +611,11 @@ elements' voice. No other hook guards the cluster's own execution.
   > registered-but-dormant hook; it does not exist here at all (full re-verification at line
   > ~260 above). "Settings.json line 372 / line 443" cannot exist: `.claude/settings.json` is 84
   > lines total and has carried no hook registrations since T3.3 (2026-08-23; moved to
-  > `system/hooks/registrations.json`). Current live enforcement in this cluster is
+  > `hooks/hooks.json`). Current live enforcement in this cluster is
   > `skill_anchor_inject.sh` (a different hook, `system/hooks/skill_anchor_inject.sh`, registered
-  > in `system/hooks/registrations.json`) plus the three on-demand skills — not the two donor
+  > in `hooks/hooks.json`) plus the three on-demand skills — not the two donor
   > hooks named above. `PARTIAL [provisional]` maturity is left as-is pending the owed rewrite
   > (`[TRANSLATOR-ELEMENT-REWRITE]`, line ~78 above) rather than re-derived here.
+  > [CORRECTED 2026-09-07: this note originally cited a path that does not exist in this repo:
+  > `system/hooks/registrations.json` ⛔ not present here.
+  > The real repo-tracked registration surface is `hooks/hooks.json`, cited above.]

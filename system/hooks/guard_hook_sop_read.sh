@@ -309,7 +309,7 @@ RECEIPT="$RUN_DIR/hook.$KEY.receipt"
 FOUND=0
 for cand in "$RECEIPT" "$RUN_DIR/hook.cwd-$HASHCWD.receipt"; do
   [ -f "$cand" ] || continue
-  MTIME=$(stat -f %m "$cand" 2>/dev/null || stat -c %Y "$cand" 2>/dev/null)
+  MTIME=$(stat -c %Y "$cand" 2>/dev/null || stat -f %m "$cand" 2>/dev/null)
   if [ -z "$MTIME" ]; then
     # Neither BSD nor GNU stat could read the mtime of a receipt that DOES exist -- CANNOT-DETERMINE,
     # never `echo 0` (which would make AGE ~= now, permanently and silently failing the TTL as if

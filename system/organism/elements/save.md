@@ -6,7 +6,7 @@ altitude: base
 record_type: organism-element
 maturity_label: PARTIAL
 generated_from:
-  - skills/save/SKILL.md (v3.3)
+  - .claude/skills/save/SKILL.md (v3.3)
   - skills/save/WRITE-FORMATS.md
   - system/schemas/project-doc-schema.md (BRIEF COMPACTION)
   - system/hooks/pm_flag.sh
@@ -47,15 +47,23 @@ authority: user
 > never committed.
 >
 > ⚠ **CORRECTED 2026-09-01:** the bare `skills/save/SKILL.md` cited just below (at "the skill itself") is
-> the donor's repo-relative form and resolves nowhere from this repo's root. Verified this session: `/save`
-> ships from the installed plugin at `.claude/skills/save/` (plugin root, confirmed under
-> `~/.claude/plugins/marketplaces/lifehack-brain/`), not from any path inside this repository.
+> the donor's repo-relative form (missing the `.claude/` prefix) and resolves nowhere from this repo's
+> root AS WRITTEN. ~~Verified this session: `/save` ships from the installed plugin at
+> `.claude/skills/save/` (plugin root, confirmed under `~/.claude/plugins/marketplaces/lifehack-brain/`),
+> not from any path inside this repository.~~
+> ⚠ **THIS 2026-09-01 CORRECTION IS ITSELF WRONG (BUG window, 2026-09-07):** `.claude/skills/save/SKILL.md`
+> IS tracked in this repo — 171 lines, confirmed by `git ls-files` and direct read this session (matches
+> the 171-line figure independently verified for `#62-1` in this same BUG window). It does not ship "only
+> from the installed plugin"; it is a repo-tracked file right here. Likely cause: the 2026-09-01 audit
+> tested the bare `skills/save/SKILL.md` (missing `.claude/`), found nothing at that literal path, and
+> wrongly generalized non-existence in this repo from that single miss — the same defect pattern found
+> across this cluster (see `archivist.md` for the fullest write-up).
 
 > **Altitude = BASE (ground / street view).** The in-the-weeds detail of how `/save` actually works —
 > every trigger, every mode, every step and sub-step, every store it touches, every gate and its real
 > enforcement, and its overlaps with the rest of the system. The MIDDLE index (`system/organism/manual.md`)
 > carries only a one-line pointer here; the TIP (`CLAUDE.md` schematic) shows only its box + arrows;
-> the **skill itself** (`skills/save/SKILL.md`) is the fourth level — the executable runtime ground truth.
+> the **skill itself** (`.claude/skills/save/SKILL.md`) is the fourth level — the executable runtime ground truth.
 > This entry is the UNDERSTANDING layer: exhaustive description of what the skill does + why + how it connects.
 >
 > **One-line:** turn what happened in a session into durable, correctly-filed memory — with a human gate

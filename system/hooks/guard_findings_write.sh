@@ -93,7 +93,10 @@ export GFW_TOOLS_DIR="$REPO/system/tools"
 # The path-form normaliser, loaded by the python below. Same GUARD_LIB convention this hook
 # plane already uses for lib/gws_guard.py. Without it every path test here is forward-slash
 # only, so a Windows-native target sails through this guard silently -- see lib/winpath_fold.sh.
-export GFW_WINFOLD_LIB="$REPO/system/hooks/lib/winpath_fold.py"
+# 2026-09-09: resolve the lib beside THIS script, never from CLAUDE_PROJECT_DIR (= the session cwd).
+# A session whose cwd lacks system/hooks/lib/ could not load the resolver, so this guard failed CLOSED
+# and denied EVERY Bash and Write call for the whole session. Observed live on 0.3.20.
+export GFW_WINFOLD_LIB="$_HOOKDIR/lib/winpath_fold.py"
 
 EVAL=$(printf '%s' "$INPUT" | python3 -c '
 import sys, json, os, re

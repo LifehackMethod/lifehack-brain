@@ -8,6 +8,16 @@
       "type": "command",
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/session_context_loader.sh\"",
       "statusMessage": "Loading your standing notes..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/tools/mirror_line.sh\"",
+      "statusMessage": "Checking clone mirror state..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/emit_harness_brief.sh\"",
+      "statusMessage": "Delivering the Harness brief..."
      }
     ]
    }
@@ -328,6 +338,36 @@
       "type": "command",
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_no_repoint_into_claudeops.sh\"",
       "statusMessage": "Checking this doesn't re-point a symlink into the private repo..."
+     }
+    ]
+   },
+   {
+    "matcher": "Bash",
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_commit_identity.sh\"",
+      "statusMessage": "Checking the commit identity matches the operator's..."
+     }
+    ]
+   },
+   {
+    "matcher": "Bash",
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_git_push_signpost.sh\"",
+      "statusMessage": "Checking what this push would actually send..."
+     }
+    ]
+   },
+   {
+    "matcher": "Bash",
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_no_upstream_commit_signpost.sh\"",
+      "statusMessage": "Checking whether the remote has seen this branch..."
      }
     ]
    }

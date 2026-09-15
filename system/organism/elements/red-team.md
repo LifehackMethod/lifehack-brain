@@ -6,7 +6,7 @@ altitude: base
 record_type: organism-element
 maturity_label: LIVE [provisional]
 generated_from:
-  - skills/red-team/SKILL.md (v1.0)
+  - .claude/skills/red-team/SKILL.md (v1.0)
 created_at: 2026-07-24
 updated_at: 2026-07-24
 status: draft
@@ -17,15 +17,22 @@ authority: user
 
 > ⚠ **CORRECTED 2026-09-01:** the bare `skills/red-team/SKILL.md` cited above (frontmatter) and below
 > (at "the skill itself"), and the bare `skills/research/SKILL.md` cited further down at the `/research`
-> distinction, are the donor's repo-relative form and resolve nowhere from this repo's root. Verified
-> this session: both ship from the installed plugin at `.claude/skills/<name>/` (plugin root, confirmed
-> under `~/.claude/plugins/marketplaces/lifehack-brain/`), not from any path inside this repository.
+> distinction, are the donor's repo-relative form (missing the `.claude/` prefix) and resolve nowhere
+> from this repo's root AS WRITTEN. ~~Verified this session: both ship from the installed plugin at
+> `.claude/skills/<name>/` (plugin root, confirmed under `~/.claude/plugins/marketplaces/lifehack-brain/`),
+> not from any path inside this repository.~~
+> ⚠ **THIS 2026-09-01 CORRECTION IS ITSELF WRONG for both (BUG window, 2026-09-07):** both are tracked
+> in THIS repo, confirmed by `git ls-files` and direct read this session: `.claude/skills/red-team/SKILL.md`
+> (36 lines), `.claude/skills/research/SKILL.md` (225 lines). Neither ships "only from the installed
+> plugin" — both are repo-tracked files right here. Likely cause: the 2026-09-01 audit tested each bare
+> path (missing `.claude/`), found nothing literal, and wrongly generalized non-existence in this repo —
+> the same defect pattern found across this cluster (see `archivist.md` for the fullest write-up).
 
 > **Altitude = BASE (ground / street view).** The in-the-weeds detail of how `/red-team` actually works —
 > its trigger, its constraint model (no-nitpick / severity-ranked), its output shape, every interop seam,
 > and its honest enforcement map. The MIDDLE index (`system/organism/manual.md`) carries only a pointer
 > here; the TIP (`CLAUDE.md` schematic) shows only its box + arrows; the **skill itself**
-> (`skills/red-team/SKILL.md`) is the fourth level — the executable runtime ground truth.
+> (`.claude/skills/red-team/SKILL.md`) is the fourth level — the executable runtime ground truth.
 > This entry is the UNDERSTANDING layer: exhaustive description of what the skill does + why + how it connects.
 >
 > **One-line:** surface the glaring errors in a plan before they get expensive — no nitpicking, no
@@ -139,7 +146,7 @@ All behavioral contracts are prose-only:
 
 4. **`planning-weekly` council: "red-team" label banned** — `planning-weekly/prompts/04-council.md` (line 16) explicitly bans the "red team" label in council dispatch framing ("the label makes members perform adversarialism instead of thinking"). When chairing a weekly council, `/red-team` is NOT invoked; advisors receive a neutral "challenge it" charge instead. This is a deliberate design choice, not a gap.
 
-5. **`/research` distinction** — `/research` explicitly states it is "not a red-team / refutation run" (`skills/research/SKILL.md` line 21); convergence-mapping measures the distribution of expert practice and does not argue a side. They are complementary: `/research` finds what experts converge on; `/red-team` challenges whether the plan survives.
+5. **`/research` distinction** — `/research` explicitly states it is "not a red-team / refutation run" (`.claude/skills/research/SKILL.md` line 21); convergence-mapping measures the distribution of expert practice and does not argue a side. They are complementary: `/research` finds what experts converge on; `/red-team` challenges whether the plan survives.
 
 ---
 
@@ -203,4 +210,4 @@ No documented fail-open conditions exist for `/red-team`. The skill has no enfor
 ## AUTO-COMPUTED   (machine-only — hand-set at authoring; the F1.5 checker will own this once built)
 
 - **maturity_label:** LIVE [provisional]
-- **check_detail:** No hooks registered (grep of settings.json: zero hits for `red-team`/`red_team`). One source file: `skills/red-team/SKILL.md` (30 lines, v1.0). Behavioral contract is entirely skill-prose `[honor]`: adversarial posture, no-nitpick bar, severity ranking, stop-after-list. No stores touched. No mechanical enforcement — correct by design for a stateless one-shot utility. Debt-ledger entry (line 214) tracks Wave 3 recategorization as `state:actionable`. `[provisional]` because no runtime conformance test has been run against the skill; LIVE label is based on source-read only.
+- **check_detail:** No hooks registered (grep of settings.json: zero hits for `red-team`/`red_team`). One source file: `.claude/skills/red-team/SKILL.md` (30 lines, v1.0). Behavioral contract is entirely skill-prose `[honor]`: adversarial posture, no-nitpick bar, severity ranking, stop-after-list. No stores touched. No mechanical enforcement — correct by design for a stateless one-shot utility. Debt-ledger entry (line 214) tracks Wave 3 recategorization as `state:actionable`. `[provisional]` because no runtime conformance test has been run against the skill; LIVE label is based on source-read only.

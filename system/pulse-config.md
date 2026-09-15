@@ -369,11 +369,11 @@ deryl-books-health       | waiting-on-port | 86400   | bash "$(python3 "$LIFEHAC
 # prerequisite is separate from "does the runner exist."
 deryl-ingest             | waiting-on-port | 86400   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/deryl/tools/deryl-ingest/deryl-ingest-run.sh"
 #
-# cp-utilities: College Park utilities ingest chain (eCARe + submeter). CORRECTED 2026-08-26
+# cp-utilities: property utilities ingest chain (utility portal + submeter). CORRECTED 2026-08-26
 # (verified this session): "Missing runner" was wrong — runner exists in the Brain at
 # desks/deryl/tools/cp-utilities/cp-utilities-run.sh. RUN THIS SESSION: `CP_DRYRUN=1` — exit 0,
 # both ingest scripts ran --dry-run cleanly, reconcile=OK, ZERO writes. Its own header still lists
-# two unmet prerequisites (keychain env-fallback code, Enver's one-time eCARe keychain export)
+# two unmet prerequisites (keychain env-fallback code, Enver's one-time utility-portal keychain export)
 # before a live run is safe.
 cp-utilities             | waiting-on-port | 86400   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/deryl/tools/cp-utilities/cp-utilities-run.sh"
 #
@@ -431,6 +431,14 @@ token-burn-mine          | waiting-on-port | 86400   | PYTHONPATH="$LIFEHACK_COD
 # this repo at system/tools/obsidian-reindex.sh with the lock + watchdog intact. RUN THIS SESSION:
 # exit 0 (ran to completion, no scandir/timeout errors).
 obsidian-reindex         | waiting-on-port | 21600   | bash "$LIFEHACK_CODE_ROOT/system/tools/obsidian-reindex.sh"
+#
+# mirror-fetch: M14 — the scheduled fetch that keeps mirror_line.sh's (M9/M13) "behind" and
+# "ahead" figures honest. mirror_line.sh reads only local refs by contract (a session-start line
+# must not touch the network), so without something else fetching, "behind" can only ever read 0.
+# FETCH ONLY: git fetch origin --prune against THIS clone (never pull/merge/checkout, never
+# touches a working tree or a local branch) — a REPORT, not a gate, per SOP §9. Hourly cadence:
+# frequent enough that "behind" stays close to true without hammering the remote on every tick.
+mirror-fetch       | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/mirror-fetch-run.sh"
 #
 # ── TEMPLATE — copy this row when a new lane wires up a job, then delete the comment. ──────────
 # your-job-name  | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/your-runner.sh"

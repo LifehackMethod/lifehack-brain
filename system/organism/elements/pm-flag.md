@@ -18,11 +18,11 @@ generated_from:
   - system/tools/pm_flag_recover.py
   - system/reference/settings.json (lines 333-410 UserPromptSubmit; lines 444-452 Stop; lines 455-458 statusLine)
   - system/statusline.sh (via ~/.claude/statusline.sh symlink)
-  - skills/save/SKILL.md (Step 0, Step 0.4)
-  - skills/read/SKILL.md
-  - skills/checkin/SKILL.md
-  - skills/project-manager/SKILL.md
-  - skills/advisory-council/SKILL.md
+  - .claude/skills/save/SKILL.md (Step 0, Step 0.4)
+  - .claude/skills/read/SKILL.md
+  - .claude/skills/checkin/SKILL.md
+  - .claude/skills/project-manager/SKILL.md
+  - .claude/skills/advisory-council/SKILL.md
 created_at: 2026-07-23
 updated_at: 2026-07-23
 status: active
@@ -91,7 +91,7 @@ status` returns `none`. Reads `arm-events.log` to find the last arm/clear for th
 5. `/design-lifehack` discovery SOP references arming via `pm_flag.sh arm`.
 6. `/save` Step 0 returns a live doc path (flag already armed) — after completing the save, the
    skill immediately calls `pm_flag.sh arm` again with the same path/slug/desk to refresh the
-   `armed_at` TTL (skills/save/SKILL.md lines 95–98). This re-arm-on-success fires on every
+   `armed_at` TTL (.claude/skills/save/SKILL.md lines 95–98). This re-arm-on-success fires on every
    successful pm-routed save and is a regularly-exercised arm invocation.
 
 **pm_flag.sh status** fires on every invocation of `announce_plan_write.sh` (unconditionally),
@@ -295,7 +295,7 @@ The logbook is append-only and survives flag TTL; only genuinely-executed arms l
 | `~/.claude/run/sweep/sweep-<KEY>.state` | `scratch_sweep_nudge.sh` | same | bucket watermark for switch-warning rate-limit |
 | `~/.claude/run/scratch-capture/cap-sess-<SID>.state` | `scratch_capture_gate.sh` | same | bucket watermark for Stop-gate capture |
 | `~/.claude/run/scratch-capture/cap-sess-<SID>.pad` | `scratch_capture_gate.sh` | same | sidecar of last-checkpointed scratchpad section |
-| Active project brief (doc_path) | downstream skills/hooks (not pm_flag.sh itself) | `pm_persist.sh` (read for excerpt), `announce_plan_write.sh` (write plan pointer to ## SCRATCHPAD) | pm_flag.sh only stores the PATH; the brief content is the payload |
+| Active project brief (doc_path) | downstream .claude/skills/hooks (not pm_flag.sh itself) | `pm_persist.sh` (read for excerpt), `announce_plan_write.sh` (write plan pointer to ## SCRATCHPAD) | pm_flag.sh only stores the PATH; the brief content is the payload |
 | `~/.claude/run/pm/lock-<KEY>.project` | `pm_flag.sh arm` (write-once; rewritten ONLY by a human-word override) | `pm_flag.sh` `_locked_id`, `pm_persist.sh` (TAMPER cross-check) | ⚠ ADDED 2026-08-15 — the window's project IDENTITY. Fields: lock_slug, lock_doc, lock_desk, locked_at, origin (`first-arm`/`logbook`/`human-override`), session; on an override also previous_slug + override_phrase. Pruned after 30 days. **NEVER deleted by `clear`** — that is what stops the clear-then-arm-elsewhere bypass |
 | `~/.claude/run/pm/arm-denied.log` | `pm_flag.sh` (refusals AND authorised overrides) | humans | ⚠ ADDED 2026-08-15 — deliberately NOT `arm-events.log`: `pm_flag_recover.py` reads the LAST event there and would report a DENIED project as recoverable |
 | `~/.claude/run/pm/override-<KEY>.grant` | `pm_persist.sh` ONLY (from the human's raw prompt) | `pm_flag.sh` `_consume_grant` **and `plan_flag.sh` `_consume_grant`** | ⚠ ADDED 2026-08-15 — the human-word grant. Fields: granted_at, session, phrase, cwd. **GENERIC ON PURPOSE — ONE grant type serves BOTH the project lock and the plan lock.** Single-use, burned on spend; dies on the next prompt that does not re-authorise |

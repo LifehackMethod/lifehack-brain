@@ -284,4 +284,6 @@ def main():
 
 
 if __name__ == "__main__":
+    from utf8_stdio import force_utf8_stdio
+    force_utf8_stdio()
     sys.exit(main())

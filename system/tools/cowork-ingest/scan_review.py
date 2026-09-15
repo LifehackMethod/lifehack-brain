@@ -135,7 +135,14 @@ def cmd_show(a):
     so it's byte-identical in shape to every other screen: title + one overall %-bar → the verdict legend →
     one numbered row per chat (no title, size when known) → the ONE action last."""
     m = pipeline.load(a.map)
-    rows_all = [(k, r) for k, r in pipeline.basket_chats(m, a.basket) if pipeline._scanned_unruled(r)]
+    # --include-explore widens THIS call site only (never the shared `_scanned_unruled` predicate): step
+    # 2.9's re-read loop has to put the EXPLORE stack back in front of the human, and EXPLORE is a
+    # deferral, not a verdict — the pile cannot close while any remain.
+    def _rulable(r):
+        if pipeline._scanned_unruled(r):
+            return True
+        return bool(getattr(a, "include_explore", False)) and r.get("skim_verdict") == "explore"
+    rows_all = [(k, r) for k, r in pipeline.basket_chats(m, a.basket) if _rulable(r)]
     total = len(rows_all)
     basket = a.basket
     pretty = basket.replace("-", " ").title()
@@ -240,6 +247,9 @@ def main():
     s.add_argument("--basket", required=True)
     s.add_argument("--page", type=int, default=1)
     s.add_argument("--page-size", type=int, default=0, help="rows/page (floor 10; default 15)")
+    s.add_argument("--include-explore", action="store_true",
+                   help="also show chats already ruled EXPLORE, so step 2.9's wider re-read can be ruled "
+                        "again. EXPLORE is non-terminal; the pile cannot close while any remain.")
     s.set_defaults(func=cmd_show)
     a = ap.parse_args()
     sys.exit(a.func(a))

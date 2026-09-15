@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+r"""
 pad_archive.py — the deterministic safety core for LOSSLESS deletion from a brief.
 
 Nothing is ever removed from a brief until this tool has copied it somewhere append-only

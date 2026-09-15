@@ -143,7 +143,8 @@ printf '%s' "$COMMAND" | grep -qE '\.claude/run/(pm|plan)($|[/"'"'"'[:space:]])'
 STORE_DENY="$DENY_PLAN"
 printf '%s' "$COMMAND" | grep -qE '\.claude/run/pm($|[/"'"'"'[:space:]])' && STORE_DENY="$DENY"
 
-# --- Tier 1: unambiguous write/destroy tokens, EACH ANCHORED TO THE STORE PATH.
+# --- Tier 1: unambiguous write/destroy tokens, EACH ANCHORED TO THE STORE PATH (TOKENIZED —
+# ported from guard_hook_sop_read.sh, 2026-09-07, row #127-ClassC / #82).
 # ⛔ THE FALSE POSITIVE THIS SHAPE FIXES fired three times in one session, and the third time it
 # blocked the very edit that repairs it, because the patch text pairs the verb list with the store
 # path. The verb list used to match a destroy token ANYWHERE in a command that merely MENTIONED the
@@ -151,6 +152,20 @@ printf '%s' "$COMMAND" | grep -qE '\.claude/run/pm($|[/"'"'"'[:space:]])' && STO
 # READ of the store was denied, twice, while someone was verifying a documented procedure.
 # ⭐ THE RULE, which this guard's own header already claimed: match the WRITE-TO-TARGET pattern,
 # never the keyword alone.
+# PORTED FIX (2026-09-07): the plain regex above still could not tell a real redirect/verb argument
+# from the SAME TEXT sitting inside an unrelated quoted string — the identical bug class
+# guard_hook_sop_read.sh's own header already fixed for the hook plane on 2026-08-03. Reproduced
+# live: `grep -rn "cat > .claude/run/pm/foo.flag" docs/notes.md` is a pure read whose only
+# "argument" is one quoted search string, yet the un-tokenized regex saw a `>` eventually followed
+# by the store path and denied it. FIX: tokenize with shlex, exactly as guard_hook_sop_read.sh does
+# — a real redirect operator survives tokenization as its OWN bare token; text glued inside a quoted
+# token (which shlex strips of its quotes but keeps as ONE token containing a space) never matches a
+# bare-operator or lone-verb-argument check. A write VERB only counts in COMMAND POSITION within its
+# own segment (split on `;`, `&&`, `||`, `|`, `&`), and only when a store path appears among THAT
+# segment's own arguments. `bash -c "..."` recurses so the tokenizer cannot be used as a bypass. On
+# a tokenizer error we FALL BACK to the old regex, which is strictly more blocking — fail-closed,
+# per FAIL_POSTURE. Matches the reference's approach, not a variant — the two guards must parse
+# identically.
 # ⇒ Each verb must be followed, WITHIN THE SAME COMMAND SEGMENT (no `;`, `&` or `|` between), by the
 # store path. A delete aimed at the store still denies; a delete aimed at /tmp in a script that also
 # reads the store does not. Flattening newlines to `;` above is what makes "same segment" mean
@@ -159,7 +174,64 @@ printf '%s' "$COMMAND" | grep -qE '\.claude/run/pm($|[/"'"'"'[:space:]])' && STO
 # boundary check above exits when the literal path is absent — and this guard does not resolve
 # variables, as the header says. That is a narrow, contrived miss traded against a repeated false
 # positive on read-only work.
-if printf '%s' "$COMMAND" | grep -qE '(>>?[[:space:]]*[^|&;]*\.claude/run/(pm|plan)|(^|[[:space:]!;&|(])(rmdir|rm|mv|cp|tee|truncate|ln|install|dd|chmod|chown|touch|shred|unlink)[[:space:]][^;&|]*\.claude/run/(pm|plan)|(sed|perl)[[:space:]]+-[a-zA-Z]*i[^;&|]*\.claude/run/(pm|plan))'; then
+IS_WRITE1=$(printf '%s' "$COMMAND" | python3 -c "
+import sys, re, shlex
+STORE = re.compile(r'\.claude/run/(pm|plan)(\$|/)')
+WRITE_VERBS = {'rmdir','rm','mv','cp','tee','truncate','ln','install','dd','chmod','chown','touch','shred','unlink'}
+WRAPPERS = {'sudo','doas','env','command','nohup','time','stdbuf'}
+SEPS = {';','&&','||','|','&'}
+ASSIGN = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*=')
+
+def check(cmd, depth=0):
+    if depth > 3:
+        return True                      # pathological nesting -> fail closed
+    toks = shlex.split(cmd, posix=True)  # ValueError propagates -> caller falls back
+    segs = [[]]
+    for t in toks:
+        if t in SEPS: segs.append([])
+        else: segs[-1].append(t)
+    for s in segs:
+        if not s: continue
+        # -- redirect: a bare operator token. Quoted text keeps its spaces; an operator cannot.
+        for i, t in enumerate(s):
+            if ' ' in t: continue
+            m = re.match(r'^[0-9]*>>?\|?(.*)\$', t)
+            if not m or '>' not in t: continue
+            tgt = m.group(1) or (s[i+1] if i+1 < len(s) else '')
+            if STORE.search(tgt): return True
+        # -- write verb, but only in COMMAND POSITION for this segment
+        j = 0
+        while j < len(s) and (s[j] in WRAPPERS or ASSIGN.match(s[j])): j += 1
+        if j >= len(s): continue
+        head = s[j].rsplit('/', 1)[-1]
+        args = s[j+1:]
+        if head in ('bash','sh','zsh','dash','ksh'):
+            for k, a in enumerate(args):
+                if a == '-c' and k+1 < len(args):
+                    if check(args[k+1], depth+1): return True
+            continue                     # 'bash <hook>' style pass-through, mirrors the reference
+        if head in ('sed', 'perl'):
+            if any(re.match(r'^-[a-zA-Z]*i', a) for a in args) and any(STORE.search(a) for a in args):
+                return True
+            continue
+        if head in WRITE_VERBS and any(STORE.search(a) for a in args):
+            return True
+    return False
+
+raw = sys.stdin.read()
+try:
+    print('1' if check(raw) else '0')
+except Exception:
+    print('__FALLBACK__')
+" 2>/dev/null)
+
+if [ "$IS_WRITE1" = "__FALLBACK__" ] || [ -z "$IS_WRITE1" ]; then
+  # Tokenizer could not parse (unbalanced quotes, etc.) -> the old, more-blocking regex.
+  IS_WRITE1=0
+  printf '%s' "$COMMAND" | grep -qE '(>>?[[:space:]]*[^|&;]*\.claude/run/(pm|plan)|(^|[[:space:]!;&|(])(rmdir|rm|mv|cp|tee|truncate|ln|install|dd|chmod|chown|touch|shred|unlink)[[:space:]][^;&|]*\.claude/run/(pm|plan)|(sed|perl)[[:space:]]+-[a-zA-Z]*i[^;&|]*\.claude/run/(pm|plan))' && IS_WRITE1=1
+fi
+
+if [ "$IS_WRITE1" = "1" ]; then
   printf '%s\n' "$STORE_DENY" >&2
   exit 2
 fi

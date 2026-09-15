@@ -59,7 +59,9 @@ THRESHOLD=2700   # 45 min. system-health runs every 5 min -> 9 consecutive misse
 # introduction has that hook simply MISSING on disk there, and git treats a missing hook as a
 # SILENT NO-OP: no error, no output, the push just goes through unguarded. A fresh clone or a new
 # machine that never runs the one-time absolute-path fix reopens this hole with zero symptoms.
-# Fix applied on this machine: `git config core.hooksPath <absolute path>/system/githooks`.
+# This check only validates that core.hooksPath is set to an ABSOLUTE path so hook resolution
+# is worktree-independent — it does not require any specific hook file to exist. (Any push-gate
+# hook is a local/personal addition, not something this public repo ships.)
 _check_hooks_path() {
   local hp
   hp="$(git -C "$CODE_ROOT" config --get core.hooksPath 2>/dev/null || true)"
@@ -74,10 +76,6 @@ _check_hooks_path() {
       return 1
       ;;
   esac
-  if [ ! -x "$hp/pre-push" ]; then
-    echo "[health-deadman] pre-push is not resolvable/executable at '$hp/pre-push' — the public-push gate cannot fire. FAIL." >&2
-    return 1
-  fi
   return 0
 }
 

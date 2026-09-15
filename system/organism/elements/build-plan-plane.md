@@ -6,7 +6,7 @@ altitude: base
 record_type: organism-element
 maturity_label: LIVE (honor)
 generated_from:
-  - skills/build/SKILL.md
+  - .claude/skills/build/SKILL.md
   - commands/autoplan.md
   - system/sops/architecture-planning-sop.md
   - system/sops/build-sop.md
@@ -28,10 +28,17 @@ authority: user
 
 # build-plan-plane — element detail
 
-> ⚠ **CORRECTED 2026-09-01:** the `skills/build/SKILL.md` cited in the TRIGGERS table below is the
-> donor's repo-relative form and resolves nowhere from this repo's root. Verified this session: `/build`
-> ships from the installed plugin at `.claude/skills/build/` (plugin root, confirmed under
-> `~/.claude/plugins/marketplaces/lifehack-brain/`), not from any path inside this repository.
+> ⚠ **CORRECTED 2026-09-01:** the `.claude/skills/build/SKILL.md` cited in the TRIGGERS table below is the
+> donor's repo-relative form (missing the `.claude/` prefix) and resolves nowhere from this repo's root
+> AS WRITTEN. ~~Verified this session: `/build` ships from the installed plugin at `.claude/skills/build/`
+> (plugin root, confirmed under `~/.claude/plugins/marketplaces/lifehack-brain/`), not from any path
+> inside this repository.~~
+> ⚠ **THIS 2026-09-01 CORRECTION IS ITSELF WRONG (BUG window, 2026-09-07):** `.claude/skills/build/SKILL.md`
+> IS tracked in this repo — 259 lines, confirmed by `git ls-files` and direct read this session. It does
+> not ship "only from the installed plugin"; it is a repo-tracked file right here. Likely cause: the
+> 2026-09-01 audit tested the bare `skills/build/SKILL.md` (missing `.claude/`), found nothing at that
+> literal path, and wrongly generalized non-existence in this repo from that single miss — the same
+> defect pattern found across this cluster (see `archivist.md` for the fullest write-up).
 
 > ⚠ **CORRECTED 2026-08-27** (L.B2 audit, direct read of the installed `autoplan` skill, v0.3.13):
 > the entire "`/autoplan` enters native harness plan mode, which mints a new random file every
@@ -208,7 +215,7 @@ Plan-shape enforcement hooks (`guard_plan_structure.sh`, `plan_flag.sh`, `announ
 | `ExitPlanMode` | `plan_flag.sh record` (PreToolUse) | write session plan flag (non-blocking) |
 | Any user prompt (build-verb + tracked noun) | `inject_sop_before_build.sh` (UserPromptSubmit) | inject SOP pointer (non-blocking) |
 | Any user prompt (every turn) | `announce_plan_write.sh` (UserPromptSubmit) | diff plans dir; announce NEW/updated plans |
-| `/build` (or "build", "execute the plan") | skill `skills/build/SKILL.md` | Step-0 rules gate → execution loop |
+| `/build` (or "build", "execute the plan") | skill `.claude/skills/build/SKILL.md` | Step-0 rules gate → execution loop |
 
 ---
 

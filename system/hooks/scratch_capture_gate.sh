@@ -33,7 +33,8 @@
 #      MECHANICALLY here (proof-not-ask). Token signal reuses scratch_sweep_nudge.sh.
 #      Change the RULE in the plan/brief first.
 # FAIL_POSTURE: degrade-safe -- any error -> exit 0 (allow stop, never wedge a turn).
-# UPDATED: 2026-08-14 (ported from claudeops-config commits dc9538a + f3db2d0 — the pad
+# UPDATED: 2026-09-04 (sub-agent spawn REMOVED on the operator's ruling; the main window
+#      appends the pad itself. Previously 2026-08-14.) (ported from claudeops-config commits dc9538a + f3db2d0 — the pad
 #      write moved to a sonnet sub-agent, bounded to three verdicts, and the fired
 #      message trimmed to the instruction only; the reasoning moved into a comment)
 # PORTED: 2026-08-13 from claudeops-config — the scratch_flag.sh / pm_flag.sh calls below were
@@ -178,22 +179,37 @@ rm -f "$CURSEC_FILE"
 #  - NO REPRINT: the pad is already on disk; echoing it back is a second copy of saved text
 #    in the very window the gate is trying to protect.
 #  - THE PAD IS CLEARED only at the approval-gated compaction in /save or /checkin, never here.
+#
+# ⛔⛔ SUPERSEDED 2026-09-04 — THE SUB-AGENT SPAWN IS REMOVED. Ruled by the operator: "remove the
+#    spawn entirely." The SONNET-not-haiku argument and the three-verdict bounded set above
+#    are kept for the record and are no longer in force, because there is no sub-agent left
+#    to carry them. What replaced them: the MAIN WINDOW appends the pad itself.
+#    WHY: this gate's instruction is the common thread through THREE truncations of the same
+#    project brief — 2026-08-30, 2026-09-03, and 2026-09-04, the last to ZERO BYTES, after
+#    which the agent drove the operator's real Chrome for five minutes attempting to repair
+#    its own damage without reporting it. A guard (guard_brief_truncation.sh) now catches the
+#    truncation, but a guard is a NET, not a fix: a fresh session reads this instruction with
+#    none of that memory and obeys it. The hazard was never the writing — it was handing a
+#    pad-writer a browser and a Drive connector to do a text append.
+#    ⭐ WHAT DID NOT COME BACK: the reprint. The 2026-08-14 complaint about three copies of
+#    the same text in one window was correct and still is; both messages below still forbid
+#    it. Removing the spawn restores the writer, not the echo.
 # ─────────────────────────────────────────────────────────────────────────────
 if [ -n "$ADDED" ]; then
-  REASON="SCRATCHPAD CHECKPOINT (~${K}k tokens). Already captured since the last checkpoint — verify it covers the recent work; anything missing, spawn ONE sonnet sub-agent IN THE BACKGROUND (run_in_background: true) to append it — do not wait on it. Reply ONE line: '📝 Scratchpad: N lines captured, verified' — or, if you just launched a background spawn to fill a gap, '📝 Scratchpad: capture launched in background'. ⛔ Do not reprint the lines.
+  REASON="SCRATCHPAD CHECKPOINT (~${K}k tokens). Already captured since the last checkpoint — verify it covers the recent work. Anything missing, append it to the '## SCRATCHPAD' section of ${PAD} FROM THIS WINDOW, append-only. ⛔ Do NOT spawn a sub-agent. ⛔ Do NOT reprint the lines. Reply ONE line: '📝 Scratchpad: N lines captured, verified'.
 
 CAPTURED SINCE LAST CHECKPOINT:
 ${ADDED}"
 else
   REASON="SCRATCHPAD CHECKPOINT (~${K}k tokens) — nothing captured since the last checkpoint.
 
-⛔ Do NOT write the pad from this window. Spawn ONE sub-agent, model: sonnet, IN THE BACKGROUND (run_in_background: true) — do not wait on it: it reads this session and appends the decisions / observations / loose-threads worth keeping to the '## SCRATCHPAD' section of ${PAD}. Nothing new ⇒ it appends a dated '— (no new decisions) —' line.
+Append the decisions / observations / loose-threads worth keeping to the '## SCRATCHPAD' section of ${PAD}, FROM THIS WINDOW, append-only. Nothing worth keeping ⇒ append a dated '— (no new decisions) —' line.
 
-It still returns EXACTLY ONE of: 'WROTE <n> lines' · 'NOTHING-TO-CAPTURE' · 'FAILED <why>' — never the content, and never FAILED reported as NOTHING-TO-CAPTURE — but that verdict now arrives later, via its own task notification, not this turn.
+⛔ Do NOT spawn a sub-agent for this. Ruled by the operator 2026-09-04, after a delegated pad-writer truncated a project brief to zero bytes — the third such loss since 2026-08-30.
+⛔ Do NOT reprint what you wrote. The pad is on disk; echoing it back is a second copy of saved text in the window this gate exists to protect.
+⭐ Use an append-only door the truncation guard can size — the Edit tool, or a shell append (>> / tee -a). Never an overwrite.
 
-Safe by design: if the background write fails or never runs, this checkpoint's own diff finds nothing new next time and this gate fires again — nothing is silently lost.
-
-Then print ONE line confirming the launch: '📝 Scratchpad: capture launched in background'."
+Then print ONE line: '📝 Scratchpad: N lines appended'."
 fi
 printf '{"decision":"block","reason":%s}\n' "$(printf '%s' "$REASON" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')"
 exit 0

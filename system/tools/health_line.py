@@ -933,6 +933,9 @@ def main() -> int:
 
 if __name__ == "__main__":
     try:
+        from utf8_stdio import force_utf8_stdio
+        force_utf8_stdio()
         sys.exit(main())
-    except Exception:
+    except Exception as e:
+        sys.stderr.write(f"[health_line] swallowed failure: {type(e).__name__}: {e}\n")
         sys.exit(0)

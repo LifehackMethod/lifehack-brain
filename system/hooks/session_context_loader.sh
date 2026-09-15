@@ -7,7 +7,7 @@
 #      anyone having to think to search for it.
 # GUARDS: Nothing — this is a context loader, not a blocker. It never stops a session.
 # REDIRECT: N/A (non-blocking). Reads <data root>/canon.md and <data root>/desks/*/canon/current.md,
-#      resolved through shared/brain_root.py. Set the data root with: python3 shared/brain_root.py --set <path>
+#      resolved through shared/brain_root.py. Set the data root with: python3 (or python) shared/brain_root.py --set <path>
 #      Also invokes `system/tools/health_line.py <ledger>` (see _findings_banner() below) once ROOT is
 #      resolved, to render the Hospital/Efficiency findings banner nothing else was calling.
 # SIGNPOST: the data-root contract lives in shared/brain_root.py; the folder shape it reads is what
@@ -90,8 +90,31 @@ if [ -z "$REPO" ] || [ ! -f "$REPO/shared/brain_root.py" ]; then
   exit 0
 fi
 
+# ── PYTHON INTERPRETER — resolved, never hardcoded (Issue #55) ───────────────────────────────────
+# ⭐ THE BUG THIS BLOCK FIXES: the official Windows Python installer does NOT create a `python3`
+# executable — only `python.exe` + the `py` launcher. A hardcoded `python3` call below therefore
+# fails on a stock Windows install with "command not found" (RC 127), which the old code could not
+# tell apart from "brain_root.py ran fine and honestly reports NOT-SET" — both look like "RC != 0,
+# empty ROOT." The result: a Windows user whose data root WAS set for days got told "nothing was
+# loaded, and that is correct, not broken" — the exact false-reassurance this file's header exists
+# to prevent, one layer down, in its own interpreter call. Resolving PY explicitly, and treating
+# "no interpreter at all" as its own loud, distinct case BEFORE the NOT-SET branch is ever reached,
+# is the fix — not a Windows-only patch, since `python3` genuinely does not exist on some machines.
+PY="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
+if [ -z "$PY" ]; then
+  echo "=== Session context ==="
+  echo "!! CANNOT START: no Python interpreter found on PATH (tried: python3, python)."
+  echo "!! Nothing was loaded. This is NOT the same as an empty or fresh system — the loader itself"
+  echo "!! could not run, so it has no way to know whether a data root is set or not."
+  echo "!! Install Python 3 and make sure it is on PATH (on Windows: the python.org installer adds"
+  echo "!! 'python', not 'python3' — either works here), then start a new session."
+  echo "=== end session context ==="
+  exit 0                      # same reasoning as every other branch in this file: exit 0 is what
+                               # gets this message into the model's context; exit 1 would hide it
+fi
+
 # The one resolver. NOT-SET is a real answer and is reported as one; it is never guessed around.
-ROOT="$(python3 "$REPO/shared/brain_root.py" --quiet 2>/dev/null)"
+ROOT="$("$PY" "$REPO/shared/brain_root.py" --quiet 2>/dev/null)"
 RC=$?
 if [ "$RC" -ne 0 ] || [ -z "$ROOT" ]; then
   # ⭐ NOT-SET has TWO causes and they are not the same problem. "You have not chosen a folder yet" is
@@ -100,7 +123,7 @@ if [ "$RC" -ne 0 ] || [ -z "$ROOT" ]; then
   # point the system at an empty folder and lose the association with their real notes.
   # The resolver deliberately collapses the two (a remembered path that is not a directory falls
   # through rather than resolving), so ask what was remembered, directly.
-  REMEMBERED="$(python3 - "$REPO" <<'_REMEMBERED_EOF' 2>/dev/null
+  REMEMBERED="$("$PY" - "$REPO" <<'_REMEMBERED_EOF' 2>/dev/null
 import sys, os
 sys.path.insert(0, os.path.join(sys.argv[1], "shared"))
 try:
@@ -119,7 +142,7 @@ _REMEMBERED_EOF
     echo "!! memory. If that folder lives in a cloud drive, it may simply not be mounted yet."
     echo "!! Do NOT start writing, and do NOT point this at a new empty folder — you would lose the"
     echo "!! link to everything already there. Get the folder back, or:"
-    echo "    python3 \"$REPO/shared/brain_root.py\" --set \"<where they actually are now>\""
+    echo "    $PY \"$REPO/shared/brain_root.py\" --set \"<where they actually are now>\""
     echo "=== end session context ==="
     exit 0                    # same reasoning as the REPO-not-found branch above: exit 0 is what
                                # gets this message into the model's context; exit 1 would hide it
@@ -127,7 +150,7 @@ _REMEMBERED_EOF
   echo "=== Session context ==="
   echo "No data root set yet — nothing was loaded, and that is correct, not broken."
   echo "This is where everything you write will live. Set it once:"
-  echo "    python3 \"$REPO/shared/brain_root.py\" --set \"<the folder your notes live in>\" [--create]"
+  echo "    $PY \"$REPO/shared/brain_root.py\" --set \"<the folder your notes live in>\" [--create]"
   echo "=== end session context ==="
   exit 0                      # a legitimate state (a fresh install), not a failure
 fi
@@ -150,8 +173,23 @@ echo "Your notes: $ROOT"
 # that finds nothing still prints nothing, same as always; this loader adds no new command.
 _findings_banner() {
   local ledger out rc
-  ledger="$HOME/.config/lifehack/faults.json"     # fault_ledger.py's own LEDGER path — read-only
-  out="$(python3 "$REPO/system/tools/health_line.py" "$ledger" 2>/dev/null)"
+  # ⭐ Issue #77-D8: the ledger path used to be hardcoded here as "$HOME/.config/lifehack/faults.json".
+  # Under Git Bash on Windows, $HOME resolves to the MSYS spelling (a /c/... drive-letter path), which a native
+  # Windows Python cannot open — health_line.py then reports a false "ledger MISSING" even though the
+  # ledger is healthy. fault_ledger.py already owns this exact computation portably (STATE_DIR/LEDGER,
+  # honouring LIFEHACK_FAULT_STATE_DIR) — so ask IT for the path via a dedicated, decoration-free flag,
+  # instead of duplicating (and mis-duplicating) the computation here.
+  ledger="$("$PY" "$REPO/system/tools/fault_ledger.py" --print-ledger-path 2>/dev/null)"
+  rc=$?
+  if [ "$rc" -ne 0 ] || [ -z "$ledger" ]; then
+    # FAIL-SOFT: if the path lookup itself fails, do NOT fall back to a guessed path and do NOT call
+    # health_line.py with an empty/bad one — that would risk printing a confident false MISSING claim,
+    # the exact defect this fix exists to remove. Degrade exactly like "tool did not run".
+    echo ""
+    echo "note: health_line.py did not run this session (rc=$rc) — findings/health banner unavailable"
+    return 0
+  fi
+  out="$("$PY" "$REPO/system/tools/health_line.py" "$ledger" 2>/dev/null)"
   rc=$?
   if [ "$rc" -ne 0 ]; then
     echo ""
@@ -245,6 +283,21 @@ shopt -s nullglob 2>/dev/null
 CANON=("$ROOT_GLOB"/desks/*/canon/current.md)
 shopt -u nullglob 2>/dev/null
 
+# ── NESTED CANON — make the miss LOUD, never silent (Issue #96-§5) ───────────────────────────────
+# ⭐ THE GAP: the glob just above reaches exactly one level -- desks/<desk>/canon/current.md. A desk
+# directory can also contain a NESTED subject folder with its OWN canon/current.md
+# (desks/<desk>/<nested>/canon/current.md), and that file is invisible to the glob -- today it is
+# skipped with no trace at all. ⛔ The fix is NOT a recursive glob (withdrawn -- a deeper glob changes
+# what gets LOADED, and on-demand sub-agent loading for a nested subject is V2 scope, out of bounds
+# here). This block changes nothing about what loads; it only prints the path of anything the glob
+# above would silently miss, so the gap is visible instead of silent.
+for _d in "$ROOT_GLOB"/desks/*/; do
+  [ -d "$_d" ] || continue
+  while IFS= read -r _nested; do
+    echo "!! NESTED CANON NOT LOADED (one-level glob above does not reach it): $_nested"
+  done < <(find "$_d" -mindepth 3 -type f -name current.md -path "*/canon/current.md" 2>/dev/null)
+done
+
 if [ "${#CANON[@]}" -eq 0 ]; then
   echo ""
   echo "No subject folders yet — nothing standing to load beyond the above. Run /ingest to build them,"
@@ -311,7 +364,7 @@ _findings_banner
 # call is guarded by `-r` first and `|| true` besides -- no nonzero exit from here ever escapes.
 CAP_CHECK="$REPO/system/tools/skill_capability_check.py"
 if [ -r "$CAP_CHECK" ]; then
-  CAP_OUT="$(python3 "$CAP_CHECK" 2>/dev/null || true)"
+  CAP_OUT="$("$PY" "$CAP_CHECK" 2>/dev/null || true)"
   [ -n "$CAP_OUT" ] && { echo ""; printf '%s\n' "$CAP_OUT"; }
 fi
 
