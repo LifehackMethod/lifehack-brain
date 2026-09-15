@@ -49,12 +49,18 @@ is written to disk:
      refuse` makes the identical finding a whole-run refusal, matching the
      schema gate's own all-or-nothing posture — nothing written, any target.
 
-Extension point for B1.5 (the caller lint) — NOT implemented here, per this
-task's scope: a read-only lint pass over the same loaded rows using
-`needs`/`returns` plus T1's caller classes (not carried by schema v1 today) to
-report units with no caller surface — a report function next to
-`cache_divergence_warnings()` below, not a new gate, since T1 "lists; it never
-judges."
+  5. CALLER LINT (Feature B1.5, `caller_lint.py`, a sibling module this generator
+     calls, not re-implemented here — merged in and wired by Feature B1.5w) — a
+     read-only report, run right after the omission check, over the same loaded
+     register rows: which governed hook-plane/tool-plane units have NO known
+     caller (T1's validated 7-class ontology: registered-hook, scheduled,
+     script-invoked, skill-referenced, ci-invoked, cli-instructed, else
+     UNCALLED). WARN severity always — informational only, this NEVER refuses a
+     write and has no `--severity` knob of its own (unlike the omission check
+     above, which can escalate to `refuse`), because T1 "lists; it never judges"
+     what an UNCALLED unit means. `--no-caller-lint` skips this section entirely
+     (mechanically, not by hiding output) — every other gate's behavior is
+     unchanged either way.
 
 Usage:
     python3 generate.py <register.jsonl> --out DIR
@@ -91,6 +97,8 @@ from validate_register import validate_row
 from harvest import REPO_ROOT_FROM_SCRIPT, DEFAULT_PRIVATE_ROOT, cache_root_for, short_sha
 import omission_check  # Feature B1.4 — the omission check, a sibling module this
                        # generator calls; see omission_check.py for the design.
+import caller_lint  # Feature B1.5 — the caller lint, a sibling module this generator
+                    # calls (wired by B1.5w); see caller_lint.py for the design.
 
 # Surface -> (form, repo_filter, output filename). Feature B2.2 (this task) applies
 # a hand-editable, reason-required de-dup exception list (`surface-dedup.txt`,
@@ -360,7 +368,8 @@ def cache_divergence_warnings(hook_rows, public_root, cache_root):
 # orchestration
 # ---------------------------------------------------------------------------
 def generate(register_path, out_dir, public_root, private_root, cache_root,
-             severity="warn", exemptions_path=None, dedup_path=None):
+             severity="warn", exemptions_path=None, dedup_path=None,
+             skip_caller_lint=False, home_root=None):
     """Returns a result dict; never raises for an ordinary refusal (schema,
     broken-path, or a refuse-severity omission) — those are reported in the
     result, and the caller (main()) decides the exit code. Only writes files
@@ -373,7 +382,12 @@ def generate(register_path, out_dir, public_root, private_root, cache_root,
     currently-both-registered hook row is generated onto. See
     `load_surface_dedup()`'s and the file's own docstrings for the safety
     reasoning — this NEVER adds a row to a surface, only ever removes one, and
-    only for a row a human has named with evidence."""
+    only for a row a human has named with evidence.
+
+    `skip_caller_lint` (Feature B1.5w): when True, the caller-lint report
+    section below is skipped entirely — a mechanical opt-out, never a
+    disguised gate, since the lint is WARN-only and cannot affect what gets
+    written regardless."""
     entries = load_register(register_path)
 
     problems = schema_check(entries)
@@ -384,6 +398,7 @@ def generate(register_path, out_dir, public_root, private_root, cache_root,
             "targets": [],
             "warnings": [],
             "omission": None,
+            "caller_lint": None,
         }
 
     # Feature B1.4 — the omission check, run right after the schema gate (every
@@ -396,6 +411,20 @@ def generate(register_path, out_dir, public_root, private_root, cache_root,
     omission_result = omission_check.run(
         entries, public_root, private_root, exemptions_path, severity,
     )
+
+    # Feature B1.5w — the caller lint, run right after the omission check, over
+    # the same loaded rows (every row here is already schema-valid). Always
+    # WARN severity, never a gate: computed before the omission-refusal branch
+    # below so the report section appears whichever way that branch resolves,
+    # exactly like the omission check itself. `rows` matches the entry point's
+    # own documented calling convention (`caller_lint.py`'s module docstring).
+    caller_lint_result = None
+    if not skip_caller_lint:
+        rows = [row for _, row, _ in entries if row]
+        caller_lint_result = caller_lint.lint_register(
+            rows, public_root, private_root, cache_root=cache_root, home_root=home_root,
+        )
+
     if severity == "refuse" and omission_result["flagged_count"] > 0:
         return {
             "schema_ok": True,
@@ -404,6 +433,7 @@ def generate(register_path, out_dir, public_root, private_root, cache_root,
             "warnings": [],
             "omission": omission_result,
             "omission_refused": True,
+            "caller_lint": caller_lint_result,
         }
 
     hook_rows = [(ln, row) for ln, row, _ in entries if row.get("type") == "hook"]
@@ -458,6 +488,7 @@ def generate(register_path, out_dir, public_root, private_root, cache_root,
         "targets": target_results,
         "warnings": warnings,
         "omission": omission_result,
+        "caller_lint": caller_lint_result,
         "dedup_applied": {k: dedup[k] for k in dedup_applied},
         "dedup_in_effect": dedup_in_effect,
         "dedup_stale": dedup_stale,
@@ -479,6 +510,9 @@ def report(result):
             "registered nor exempt — writing NOTHING (no target touched)."
         )
         lines.extend(omission_check.report_lines(result["omission"]))
+        if result.get("caller_lint") is not None:
+            lines.append("")
+            lines.extend(caller_lint.report_lines(result["caller_lint"]))
         return "\n".join(lines), 1
 
     any_refused = False
@@ -540,6 +574,10 @@ def report(result):
     if result.get("omission") is not None:
         lines.append("")
         lines.extend(omission_check.report_lines(result["omission"]))
+
+    if result.get("caller_lint") is not None:
+        lines.append("")
+        lines.extend(caller_lint.report_lines(result["caller_lint"]))
 
     exit_code = 1 if any_refused else 0
     return "\n".join(lines), exit_code
@@ -649,6 +687,10 @@ def main(argv=None):
                         "into <PATH>/.claude/settings.json and <PATH>/hooks/hooks.json "
                         "(existing files only, other keys untouched). Opt-in; omitting this "
                         "leaves plain --out DIR behavior above unchanged.")
+    p.add_argument("--no-caller-lint", action="store_true",
+                   help="Feature B1.5w: skip the caller-lint report section entirely. The "
+                        "lint is informational (WARN only) and never affects what gets "
+                        "written or the exit code either way — this flag only silences it.")
     args = p.parse_args(argv)
 
     public_root = os.path.abspath(args.public_root)
@@ -663,6 +705,7 @@ def main(argv=None):
     result = generate(
         args.register, os.path.abspath(args.out), public_root, private_root, cache_root,
         severity=args.severity, exemptions_path=args.exemptions, dedup_path=args.dedup,
+        skip_caller_lint=args.no_caller_lint,
     )
     text, exit_code = report(result)
     print(f"generate.py — {args.register} -> {args.out}")

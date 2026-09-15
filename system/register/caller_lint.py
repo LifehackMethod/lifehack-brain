@@ -460,6 +460,33 @@ def render_verdict_table(result):
 
 
 # ---------------------------------------------------------------------------
+# report_lines — generate.py's own integration point (Feature B1.5w), same
+# shape/convention as omission_check.report_lines(): a short summary line the
+# arithmetic is computed from, then one line per finding. WARN only, never a
+# refusal — this module has no severity knob of its own (T1 "lists; it never
+# judges").
+# ---------------------------------------------------------------------------
+def report_lines(result):
+    if result is None:
+        return []
+    lines = [
+        "CALLER LINT (Feature B1.5, informational — WARN only, never blocks):",
+        "  {governed} governed unit(s) checked, {exempt} exempt (test-class)".format(
+            governed=len(result.rows), exempt=result.exempt_count
+        ),
+    ]
+    unc = result.uncalled
+    if unc:
+        lines.append(f"WARN: {len(unc)} governed unit(s) with no known caller (UNCALLED):")
+        for r in sorted(unc, key=lambda x: (x["repo"], x["rel"])):
+            lines.append(f"    {r['repo']}:{r['rel']}")
+    delta = result.tool_disk_vs_register_delta
+    if delta["disk_only"] or delta["register_only"]:
+        lines.append(f"WARN tool disk-vs-register delta (sanity cross-check): {delta}")
+    return lines
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 def load_register_rows(path):
