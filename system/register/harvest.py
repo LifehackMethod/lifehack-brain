@@ -154,6 +154,34 @@ def hook_surfaces(public_root, private_root, cache_root):
     return surfaces
 
 
+def derive_launch_mode(surfaces):
+    """Mechanical mapping from a hook row's raw `surfaces` set to schema
+    v1's coarser `launch_mode` axis (RESTORED 2026-09-15, Option G — see
+    `schema_v1.LAUNCH_MODES` for the full history/derivation). 0 hand-typed
+    values: this only ever reads the same `surfaces` set `harvest_hooks()`
+    already built from `hook_surfaces()`'s own names, never a separately
+    typed judgment. Cache mirrors (`cache-settings`/`cache-plugin`) are
+    deliberately NOT part of this decision — they mirror an already-real
+    `settings`/`plugin` row, never decide the axis alone (every combination
+    in the live register bears this out: no row has ever been cache-only)."""
+    has_settings = "settings" in surfaces
+    has_plugin = "plugin" in surfaces
+    if has_settings and has_plugin:
+        return "both"
+    if has_settings:
+        return "project"
+    if has_plugin:
+        return "plugin"
+    if surfaces & {"registrations", "user"}:
+        return "private"
+    raise ValueError(
+        f"hook row has no recognized launch-mode surface: {sorted(surfaces)} "
+        "— a cache-only or otherwise unmodeled surface set; this is a real "
+        "finding (a content divergence the cache-divergence check should "
+        "also be seeing), not a case to silently default."
+    )
+
+
 def parse_hook_file(path):
     """Yield (event, matcher, command, statusMessage, if_cond) tuples from one
     registration file. T2's `parse_file`, extended by ONE field, B2.2 (2026-09-15):
@@ -242,6 +270,7 @@ def harvest_hooks(public_root, private_root, cache_root):
             "if": e["if_cond"],
             "surfaces": sorted(e["surfaces"]),
             "status_conflicts": sorted(e["status_conflicts"]),
+            "launch_mode": derive_launch_mode(e["surfaces"]),
         })
         rows.append(row)
     return rows
