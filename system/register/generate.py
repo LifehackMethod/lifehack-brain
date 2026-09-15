@@ -61,15 +61,22 @@ Usage:
         [--public-root PATH] [--private-root PATH]
         [--cache-root PATH | --no-cache]
         [--severity warn|refuse] [--exemptions PATH]
+        [--dedup PATH] [--install-root PATH]
 
-Writes only inside --out (never `.claude/settings.json` / `hooks/hooks.json`
-in a real checkout — that overwrite is explicitly out of scope for this task
-and stays a human/B3-runner decision). No new dependency: stdlib only, plus
-this folder's own `schema_v1.py` / `validate_register.py` / `harvest.py`.
+With plain `--out DIR`, writes ONLY inside DIR — never a real checkout's
+`.claude/settings.json` / `hooks/hooks.json` directly. `--install-root PATH`
+(Feature B2.2, opt-in — the default behavior above is unchanged) additionally
+merges the "settings"/"plugin" targets' generated "hooks" section straight
+into `<PATH>/.claude/settings.json` / `<PATH>/hooks/hooks.json`, leaving every
+other top-level key untouched (`install_into_repo()` below) — this is the
+generator writing its own two real files, never a hand edit. No new
+dependency: stdlib only, plus this folder's own `schema_v1.py` /
+`validate_register.py` / `harvest.py`.
 """
 import argparse
 import json
 import os
+import re
 import sys
 
 # Sibling-module imports — same convention `validate_register.py` already
@@ -85,17 +92,22 @@ from harvest import REPO_ROOT_FROM_SCRIPT, DEFAULT_PRIVATE_ROOT, cache_root_for,
 import omission_check  # Feature B1.4 — the omission check, a sibling module this
                        # generator calls; see omission_check.py for the design.
 
-# Surface -> (form, repo_filter, output filename). This is TODAY's overlapping
-# wiring shape (the double registration T2 proved) — Feature B2.2 (later, NOT
-# this task) swaps this table for a non-overlapping split; nothing else in
-# this module needs to change for that, which is the point of keeping it as
-# one small piece of data instead of inlined per-target logic below.
+# Surface -> (form, repo_filter, output filename). Feature B2.2 (this task) applies
+# a hand-editable, reason-required de-dup exception list (`surface-dedup.txt`,
+# `load_surface_dedup()` below) ON TOP of this table's rows_for_surface() lookup, so
+# a hook row that is registered on BOTH public surfaces still lands on both UNLESS a
+# specific, evidenced line in that file says to drop it from ONE of them. This table
+# itself never needed to change for that — the split lives in the exception file, not
+# here, which is why B1.3 left this table as one small piece of data.
 SURFACE_TARGETS = (
     ("settings",      "settings",      "public",  "settings.hooks-section.json"),
     ("plugin",        "plugin",        "public",  "hooks.json"),
     ("registrations", "registrations", "private", "registrations.json"),
     ("user",          "user",          "private", "user-settings.hooks-section.json"),
 )
+
+DEFAULT_DEDUP_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                   "surface-dedup.txt")
 
 # (repo-side surface, cache-side surface) pairs — only rows registered on BOTH
 # have a cache mirror to compare against at all.
@@ -190,19 +202,104 @@ def build_hooks_doc(rows, form):
             if row["matcher"]:
                 grp["matcher"] = row["matcher"]
             entry_list.append(grp)
-        h = {"type": "command", "command": emit_command(row["path"], row["args"], form)}
+        h = {"type": "command"}
+        if row.get("if"):
+            h["if"] = row["if"]
+        h["command"] = emit_command(row["path"], row["args"], form)
         if row["status"]:
             h["statusMessage"] = row["status"]
         grp["hooks"].append(h)
     return {"hooks": hooks}
 
 
-def rows_for_surface(hook_rows, surface, repo_filter):
-    """hook_rows: [(line_no, row)]. Returns the matching subset, same shape."""
-    return [
-        (line_no, row) for line_no, row in hook_rows
-        if row.get("repo") == repo_filter and surface in (row.get("surfaces") or [])
-    ]
+def load_surface_dedup(path):
+    """Return {(repo, path, event, matcher, args, drop_surface): reason}. Missing
+    file == no exceptions (not an error — the same convention as B1.4's
+    `omission_check.load_exemptions`: a fresh checkout with none declared yet is a
+    legal state, not a defect)."""
+    dedup = {}
+    if not path or not os.path.isfile(path):
+        return dedup
+    with open(path, encoding="utf-8") as f:
+        for lineno, raw in enumerate(f, start=1):
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = line.split("|", 6)
+            if len(parts) != 7:
+                raise ValueError(
+                    f"{path}:{lineno}: malformed dedup line "
+                    f"(need repo|path|event|matcher|args|drop_surface|reason): {raw!r}"
+                )
+            repo, dp_path, event, matcher, args, drop_surface = (
+                p.strip() for p in parts[:6]
+            )
+            reason = parts[6].strip()
+            if repo not in ("public", "private"):
+                raise ValueError(f"{path}:{lineno}: repo must be 'public' or 'private': {raw!r}")
+            if not dp_path.startswith("/"):
+                raise ValueError(f"{path}:{lineno}: path must start with '/': {raw!r}")
+            if drop_surface not in ("settings", "plugin"):
+                raise ValueError(
+                    f"{path}:{lineno}: drop_surface must be 'settings' or 'plugin' "
+                    f"(the only two surfaces this generator writes): {raw!r}"
+                )
+            if not reason:
+                raise ValueError(f"{path}:{lineno}: dedup entry has no reason (required): {raw!r}")
+            dedup[(repo, dp_path, event, matcher, args, drop_surface)] = reason
+    return dedup
+
+
+def rows_for_surface(hook_rows, surface, repo_filter, dedup=None, applied=None):
+    """hook_rows: [(line_no, row)]. Returns the matching subset, same shape, minus
+    any row a `surface-dedup.txt` entry (Feature B2.2) names for THIS surface
+    specifically. `dedup`: the dict `load_surface_dedup()` returns. `applied`, if
+    given, is a set this function adds every dedup KEY it actually STRIPPED off a
+    row THIS run into — a key can be a no-op here (the row already doesn't carry
+    that surface, e.g. because a prior `--install-root` already applied it) without
+    that meaning the exception is stale; `dedup_identity_status()` below is what
+    decides staleness, by asking whether the underlying hook still exists in the
+    register AT ALL, regardless of which surfaces it currently carries."""
+    dedup = dedup or {}
+    matched = []
+    for line_no, row in hook_rows:
+        if row.get("repo") != repo_filter:
+            continue
+        surfaces = row.get("surfaces") or []
+        if surface not in surfaces:
+            continue
+        key = (row.get("repo"), row.get("path"), row.get("event"),
+               row.get("matcher"), row.get("args"), surface)
+        if key in dedup:
+            if applied is not None:
+                applied.add(key)
+            continue
+        matched.append((line_no, row))
+    return matched
+
+
+def dedup_identity_status(hook_rows, dedup):
+    """Split `dedup`'s keys into IN-EFFECT (the hook this key names still exists
+    somewhere in the register, whether or not it currently carries the surface
+    this key drops it from — a policy can be a standing no-op run after run, once
+    a prior install already removed the row from that surface, and that is NOT
+    staleness) vs STALE (no hook with this (repo, path, event, matcher, args)
+    identity exists in the register at all anymore — the row was deleted or
+    renamed, and this line should be removed, not left to mislead the next
+    reader). Returns (in_effect: {key: reason}, stale: {key: reason})."""
+    identities = {
+        (row.get("repo"), row.get("path"), row.get("event"),
+         row.get("matcher"), row.get("args"))
+        for _, row in hook_rows
+    }
+    in_effect, stale = {}, {}
+    for key, reason in dedup.items():
+        repo, path, event, matcher, args, _drop_surface = key
+        if (repo, path, event, matcher, args) in identities:
+            in_effect[key] = reason
+        else:
+            stale[key] = reason
+    return in_effect, stale
 
 
 def sort_key(row):
@@ -263,12 +360,20 @@ def cache_divergence_warnings(hook_rows, public_root, cache_root):
 # orchestration
 # ---------------------------------------------------------------------------
 def generate(register_path, out_dir, public_root, private_root, cache_root,
-             severity="warn", exemptions_path=None):
+             severity="warn", exemptions_path=None, dedup_path=None):
     """Returns a result dict; never raises for an ordinary refusal (schema,
     broken-path, or a refuse-severity omission) — those are reported in the
     result, and the caller (main()) decides the exit code. Only writes files
     after every gate that applies to that specific file has passed, via
-    temp-file + os.replace (atomic rename on the same filesystem)."""
+    temp-file + os.replace (atomic rename on the same filesystem).
+
+    `dedup_path` (Feature B2.2, default `surface-dedup.txt` next to this script
+    when None and the default file exists): a hand-editable, reason-required
+    exception list narrowing which of the "settings"/"plugin" surfaces a
+    currently-both-registered hook row is generated onto. See
+    `load_surface_dedup()`'s and the file's own docstrings for the safety
+    reasoning — this NEVER adds a row to a surface, only ever removes one, and
+    only for a row a human has named with evidence."""
     entries = load_register(register_path)
 
     problems = schema_check(entries)
@@ -305,9 +410,14 @@ def generate(register_path, out_dir, public_root, private_root, cache_root,
 
     os.makedirs(out_dir, exist_ok=True)
 
+    dedup_path = dedup_path if dedup_path is not None else DEFAULT_DEDUP_PATH
+    dedup = load_surface_dedup(dedup_path)
+    dedup_applied = set()
+
     target_results = []
     for surface, form, repo_filter, filename in SURFACE_TARGETS:
-        matched = rows_for_surface(hook_rows, surface, repo_filter)
+        matched = rows_for_surface(hook_rows, surface, repo_filter,
+                                    dedup=dedup, applied=dedup_applied)
         if not matched:
             target_results.append({
                 "filename": filename, "surface": surface, "status": "SKIP",
@@ -335,10 +445,12 @@ def generate(register_path, out_dir, public_root, private_root, cache_root,
         target_results.append({
             "filename": filename, "surface": surface, "status": "OK",
             "reason": None, "broken": [], "rows_written": len(ordered),
-            "path": final_path,
+            "path": final_path, "doc": doc,
         })
 
     warnings = cache_divergence_warnings(hook_rows, public_root, cache_root)
+
+    dedup_in_effect, dedup_stale = dedup_identity_status(hook_rows, dedup)
 
     return {
         "schema_ok": True,
@@ -346,6 +458,9 @@ def generate(register_path, out_dir, public_root, private_root, cache_root,
         "targets": target_results,
         "warnings": warnings,
         "omission": omission_result,
+        "dedup_applied": {k: dedup[k] for k in dedup_applied},
+        "dedup_in_effect": dedup_in_effect,
+        "dedup_stale": dedup_stale,
     }
 
 
@@ -387,12 +502,117 @@ def report(result):
         for w in result["warnings"]:
             lines.append(f"  {w}")
 
+    if result.get("dedup_applied"):
+        lines.append("")
+        lines.append("SURFACE-DEDUP APPLIED THIS RUN (Feature B2.2, surface-dedup.txt):")
+        for (repo, path, event, matcher, args, drop_surface), reason in sorted(
+                result["dedup_applied"].items()):
+            lines.append(
+                f"  DROPPED from {drop_surface!r}: {repo}:{path} event={event} "
+                f"matcher={matcher!r} args={args!r}"
+            )
+            lines.append(f"      reason: {reason}")
+
+    dormant = {
+        k: v for k, v in (result.get("dedup_in_effect") or {}).items()
+        if k not in result.get("dedup_applied", {})
+    }
+    if dormant:
+        lines.append("")
+        lines.append("SURFACE-DEDUP DORMANT (already off that surface — a prior install already "
+                      "applied this policy; not a finding, the entry is still correct):")
+        for (repo, path, event, matcher, args, drop_surface) in sorted(dormant):
+            lines.append(f"  {repo}:{path} event={event} matcher={matcher!r} "
+                         f"drop_surface={drop_surface!r}")
+
+    if result.get("dedup_stale"):
+        lines.append("")
+        lines.append("WARN surface-dedup.txt entries are STALE (no hook with this identity exists "
+                      "in the register at ALL anymore — the underlying row was deleted or renamed; "
+                      "remove this line, it names nothing real):")
+        for (repo, path, event, matcher, args, drop_surface), reason in sorted(
+                result["dedup_stale"].items()):
+            lines.append(
+                f"  {repo}:{path} event={event} matcher={matcher!r} args={args!r} "
+                f"drop_surface={drop_surface!r}"
+            )
+
     if result.get("omission") is not None:
         lines.append("")
         lines.extend(omission_check.report_lines(result["omission"]))
 
     exit_code = 1 if any_refused else 0
     return "\n".join(lines), exit_code
+
+
+# ---------------------------------------------------------------------------
+# install: merge the "settings"/"plugin" targets into a REAL checkout's own
+# .claude/settings.json / hooks/hooks.json (Feature B2.2 — opt-in, `--install-
+# root`; plain `--out DIR` behavior above is unchanged and remains the default)
+# ---------------------------------------------------------------------------
+_INDENT_RE = re.compile(r'(?m)^([ \t]+)"')
+
+
+def detect_indent(raw_text, default=2):
+    """The two real files use DIFFERENT indent widths today (`.claude/settings.json`
+    is 2-space, `hooks/hooks.json` is 1-space) — detected from the file's own first
+    indented line rather than hardcoded per filename, so install stays correct if
+    either file's house style ever changes."""
+    m = _INDENT_RE.search(raw_text)
+    return len(m.group(1)) if m else default
+
+
+def install_into_repo(result, repo_root):
+    """Merge ONLY the "hooks" key of each OK'd "settings"/"plugin" target doc into
+    the REAL `<repo_root>/.claude/settings.json` / `<repo_root>/hooks/hooks.json` —
+    every other top-level key (permissions/statusLine, description, ...) is parsed
+    and re-serialized untouched, in its original position (Python dicts preserve
+    insertion order; assigning to an EXISTING key never moves it). This is the only
+    code in this repo that writes those two files (task rule: the generator is the
+    only writer, never a hand edit) and it only ever merges into a file that already
+    exists — it never creates `.claude/settings.json` or `hooks/hooks.json` from
+    nothing. A target this run did not mark "OK" (SKIP or REFUSED) is left alone in
+    the real file — install never partially applies a target its own gates rejected."""
+    installed, skipped = [], []
+    real_path_for_surface = {
+        "settings": os.path.join(repo_root, ".claude", "settings.json"),
+        "plugin": os.path.join(repo_root, "hooks", "hooks.json"),
+    }
+    by_surface = {t["surface"]: t for t in result["targets"]}
+    for surface, real_path in real_path_for_surface.items():
+        t = by_surface.get(surface)
+        if t is None or t["status"] != "OK":
+            skipped.append((surface, real_path,
+                            t["status"] if t else "MISSING-FROM-REGISTER",
+                            (t.get("reason") if t else None) or "no OK'd target to install"))
+            continue
+        if not os.path.isfile(real_path):
+            skipped.append((surface, real_path, "NO-REAL-FILE",
+                             "real file does not exist — install merges into an "
+                             "existing file only, it never creates one"))
+            continue
+        with open(real_path, encoding="utf-8") as f:
+            raw = f.read()
+        existing = json.loads(raw)
+        existing["hooks"] = t["doc"]["hooks"]
+        indent = detect_indent(raw)
+        new_content = json.dumps(existing, indent=indent, ensure_ascii=False,
+                                  sort_keys=False) + "\n"
+        tmp_path = real_path + ".install.tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            f.write(new_content)
+        os.replace(tmp_path, real_path)
+        installed.append((surface, real_path, t["rows_written"]))
+    return {"installed": installed, "skipped": skipped}
+
+
+def install_report_lines(install_result):
+    lines = ["INSTALL (Feature B2.2, --install-root):"]
+    for surface, path, rows in install_result["installed"]:
+        lines.append(f"  INSTALLED {surface!r} -> {path} ({rows} rows)")
+    for surface, path, status, reason in install_result["skipped"]:
+        lines.append(f"  SKIPPED {surface!r} -> {path} ({status}: {reason})")
+    return lines
 
 
 def main(argv=None):
@@ -421,6 +641,14 @@ def main(argv=None):
     p.add_argument("--exemptions", default=None,
                    help="omission-check exemption file (default: omission-exemptions.txt "
                         "next to this script)")
+    p.add_argument("--dedup", default=None,
+                   help="Feature B2.2 surface-dedup exception file (default: "
+                        "surface-dedup.txt next to this script, if it exists)")
+    p.add_argument("--install-root", default=None,
+                   help="Feature B2.2: ALSO merge the generated 'settings'/'plugin' targets "
+                        "into <PATH>/.claude/settings.json and <PATH>/hooks/hooks.json "
+                        "(existing files only, other keys untouched). Opt-in; omitting this "
+                        "leaves plain --out DIR behavior above unchanged.")
     args = p.parse_args(argv)
 
     public_root = os.path.abspath(args.public_root)
@@ -434,11 +662,17 @@ def main(argv=None):
 
     result = generate(
         args.register, os.path.abspath(args.out), public_root, private_root, cache_root,
-        severity=args.severity, exemptions_path=args.exemptions,
+        severity=args.severity, exemptions_path=args.exemptions, dedup_path=args.dedup,
     )
     text, exit_code = report(result)
     print(f"generate.py — {args.register} -> {args.out}")
     print(text)
+
+    if args.install_root and exit_code == 0:
+        install_result = install_into_repo(result, os.path.abspath(args.install_root))
+        print()
+        print("\n".join(install_report_lines(install_result)))
+
     sys.exit(exit_code)
 
 

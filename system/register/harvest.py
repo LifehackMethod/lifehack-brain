@@ -12,6 +12,11 @@ Four unit classes (schema v1's `UNIT_TYPES`):
               unchanged: public settings.json + public hooks/hooks.json + private
               registrations.json + the user's global settings.json, plus the platform plugin
               cache's mirrors of the first two). One row per (repo, path, event, matcher, args).
+              Also carries the entry's optional "if" narrowing condition (e.g.
+              "Skill(checkin)"), a real Claude Code hook field T2/B1.1/B1.2/B1.3 never
+              harvested — found and closed by B2.2 (2026-09-15) the first time this
+              register was used to write the real wiring files, not a new capability
+              added on purpose (schema-v1.md's "if" section has the incident).
   tool      — every `.py`/`.sh` file under `system/tools/` in either repo, T1's exact governed-dir
               + exempt-test-class rules (`t1_caller_detection.py`), disk-walked.
   skill     — every `.claude/skills/**/SKILL.md` in either repo, `name`/`description` read
@@ -150,8 +155,15 @@ def hook_surfaces(public_root, private_root, cache_root):
 
 
 def parse_hook_file(path):
-    """Yield (event, matcher, command, statusMessage) tuples from one registration file.
-    T2's `parse_file`, unchanged."""
+    """Yield (event, matcher, command, statusMessage, if_cond) tuples from one
+    registration file. T2's `parse_file`, extended by ONE field, B2.2 (2026-09-15):
+    live-writing the real `.claude/settings.json`/`hooks/hooks.json` for the first
+    time (B1.3 only ever wrote to a scratch --out dir) surfaced that Claude Code's
+    own hook-entry shape carries an OPTIONAL "if" narrowing condition (e.g.
+    "Skill(checkin)") that T2/B1.1/B1.2/B1.3 never harvested — dropping a live
+    `guard_checkin_needs_project.sh` entry's `if=Skill(checkin)` on regeneration,
+    silently widening it to fire on every Skill, not just /checkin. `if_cond` is
+    `None` when the key is absent (every other hook entry today)."""
     try:
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
@@ -162,7 +174,8 @@ def parse_hook_file(path):
         for entry in entries:
             matcher = entry.get("matcher", "")
             for h in entry.get("hooks", []):
-                yield event, matcher, h.get("command", ""), h.get("statusMessage", "")
+                yield (event, matcher, h.get("command", ""), h.get("statusMessage", ""),
+                       h.get("if"))
 
 
 def norm_command(cmd, surface_prefix):
@@ -184,7 +197,7 @@ def harvest_hooks(public_root, private_root, cache_root):
     function's job)."""
     register = {}
     for surface, path, declared_repo, prefix in hook_surfaces(public_root, private_root, cache_root):
-        for event, matcher, cmd, status in parse_hook_file(path):
+        for event, matcher, cmd, status, if_cond in parse_hook_file(path):
             rel, args = norm_command(cmd, prefix)
             if rel is None:
                 rel, args = f"UNPARSED:{cmd[:60]}", ""
@@ -198,10 +211,18 @@ def harvest_hooks(public_root, private_root, cache_root):
             e = register.setdefault(key, {
                 "repo": home_repo, "path": rel, "event": event, "matcher": matcher,
                 "args": args, "status": status, "surfaces": set(), "status_conflicts": set(),
+                "if_cond": if_cond, "if_conflicts": set(),
             })
             e["surfaces"].add(surface)
             if status and status != e["status"]:
                 e["status_conflicts"].add(status)
+            # Same T2-proven pattern as `status` above: the FIRST surface visited
+            # (hook_surfaces()'s own fixed order) sets `if_cond`; any surface that
+            # disagrees is recorded, never silently overwritten or averaged away.
+            if if_cond and if_cond != e["if_cond"]:
+                e["if_conflicts"].add(if_cond)
+            elif e["if_cond"] is None and if_cond:
+                e["if_cond"] = if_cond
 
     rows = []
     for (home_repo, rel, event, matcher, args), e in register.items():
@@ -218,6 +239,7 @@ def harvest_hooks(public_root, private_root, cache_root):
             "matcher": matcher,
             "args": args,
             "status": e["status"],
+            "if": e["if_cond"],
             "surfaces": sorted(e["surfaces"]),
             "status_conflicts": sorted(e["status_conflicts"]),
         })

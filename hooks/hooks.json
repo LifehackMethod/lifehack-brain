@@ -1,152 +1,130 @@
 {
  "description": "Lifehack Harness guard plane — the enforcement hooks, carried by the plugin.",
  "hooks": {
-  "SessionStart": [
+  "PostToolUse": [
    {
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/session_context_loader.sh\"",
-      "statusMessage": "Loading your standing notes..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/tools/mirror_line.sh\"",
-      "statusMessage": "Checking clone mirror state..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/emit_harness_brief.sh\"",
-      "statusMessage": "Delivering the Harness brief..."
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/observability_logger.sh\"",
+      "statusMessage": "Recording what ran..."
      }
-    ]
-   }
-  ],
-  "UserPromptSubmit": [
-   {
-    "hooks": [
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/pm_persist.sh\"",
-      "statusMessage": "Checking the active project..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/skill_anchor_inject.sh\"",
-      "statusMessage": "Re-anchoring the running skill..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/inject_sop_before_build.sh\"",
-      "statusMessage": "SOP check (build-time)..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/scratch_sweep_nudge.sh\"",
-      "statusMessage": "Scratchpad sweep check..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/announce_plan_write.sh\"",
-      "statusMessage": "Checking for new plans..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/save_routing_hint.sh\"",
-      "statusMessage": "Checking where a save goes..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/inject_compute_mechanically.sh\"",
-      "statusMessage": "Checking whether this turn has maths in it..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/inject_work_altitude.sh\"",
-      "statusMessage": "Re-asking what this work is for..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/rating_capture.sh\"",
-      "statusMessage": "Noting a rating, if you gave one..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/inject_delegation_standing.sh\"",
-      "statusMessage": "Confirming delegation is standing-authorized..."
-     }
-    ]
+    ],
+    "matcher": "*"
    },
    {
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/buried_command_hint.sh\"",
-      "statusMessage": "Checking for a buried slash command..."
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/validate_on_write.sh\"",
+      "statusMessage": "Checking the note kept its labels..."
      }
-    ]
-   }
-  ],
-  "UserPromptExpansion": [
-   {
-    "matcher": "checkin",
-    "hooks": [
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_checkin_needs_project.sh\"",
-      "statusMessage": "Checking a project is armed before /checkin..."
-     }
-    ]
+    ],
+    "matcher": "Write|Edit"
    }
   ],
   "PreToolUse": [
    {
-    "matcher": "ExitPlanMode",
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_plan_structure.sh\"",
-      "statusMessage": "Checking plan structure (Phase/Feature/Task)..."
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_agent_return_channel.sh\"",
+      "statusMessage": "Checking this helper can hand its work back..."
+     }
+    ],
+    "matcher": "Agent"
+   },
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/enforce_egress_allowlist.sh\"",
+      "statusMessage": "Checking where this call is going..."
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/plan_flag.sh\" record",
-      "statusMessage": "Recording the active plan..."
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_calendar_writes.sh\"",
+      "statusMessage": "Checking which calendar this would write to..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_commit_identity.sh\"",
+      "statusMessage": "Checking the commit identity matches the operator's..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_egress.sh\"",
+      "statusMessage": "Checking no secret is going out with this..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_gh_account_switch.sh\"",
+      "statusMessage": "Checking this doesn't mutate global gh auth state..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_git_add_class.sh\"",
+      "statusMessage": "Checking this stages only what you changed..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_git_push_signpost.sh\"",
+      "statusMessage": "Checking what this push would actually send..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_gmail_destructive.sh\"",
+      "statusMessage": "Checking nothing would destroy mail you cannot get back..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_gmail_send.sh\"",
+      "statusMessage": "Checking this would not send mail in your name..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_gws_logout.sh\"",
+      "statusMessage": "Checking for credential-destroying logout..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_no_upstream_commit_signpost.sh\"",
+      "statusMessage": "Checking whether the remote has seen this branch..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_sheet_formula_writes.sh\"",
+      "statusMessage": "Checking this write would not land on a formula..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_sheet_writes.sh\"",
+      "statusMessage": "Checking this sheet's own instructions were read first..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_statusline_lock.sh\"",
+      "statusMessage": "Guarding the status-line pointer..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_tasks_writes.sh\"",
+      "statusMessage": "Checking whether this would write to your goals list..."
      }
-    ]
+    ],
+    "matcher": "Bash"
    },
    {
-    "matcher": "Bash|WebFetch|WebSearch|Read|Grep|Glob",
     "hooks": [
      {
       "type": "command",
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/ingest_gate_enforce.sh\"",
       "statusMessage": "Checking where this text came from..."
      }
-    ]
+    ],
+    "matcher": "Bash|WebFetch|WebSearch|Read|Grep|Glob"
    },
    {
-    "matcher": "Write|Edit",
-    "hooks": [
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_write_paths.sh\"",
-      "statusMessage": "Checking this is not a guard editing itself..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/enforce_skill_frontmatter.sh\"",
-      "statusMessage": "Checking the skill declares what it is for..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/guard_harness_write.sh\"",
-      "statusMessage": "Checking this write isn't landing inside the harness itself..."
-     }
-    ]
-   },
-   {
-    "matcher": "Bash|Write|Edit",
     "hooks": [
      {
       "type": "command",
@@ -160,8 +138,13 @@
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_throughline_write_scope.sh\"",
-      "statusMessage": "Checking a read-only investigation stays read-only..."
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_findings_write.sh\"",
+      "statusMessage": "Checking this doesn't bypass the findings writer..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_hook_sop_read.sh\"",
+      "statusMessage": "Checking the hook SOP was read first..."
      },
      {
       "type": "command",
@@ -170,93 +153,38 @@
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_findings_write.sh\"",
-      "statusMessage": "Checking this doesn't bypass the findings writer..."
-     }
-    ]
-   },
-   {
-    "matcher": "Bash|Write|Edit",
-    "hooks": [
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_no_repoint_into_claudeops.sh\"",
+      "statusMessage": "Checking this doesn't re-point a symlink into the private repo..."
+     },
      {
       "type": "command",
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_pm_flag_store.sh\"",
       "statusMessage": "Checking nothing rewrites which project this window is on..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_throughline_write_scope.sh\"",
+      "statusMessage": "Checking a read-only investigation stays read-only..."
      }
-    ]
+    ],
+    "matcher": "Bash|Write|Edit"
    },
    {
-    "matcher": "Bash",
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_egress.sh\"",
-      "statusMessage": "Checking no secret is going out with this..."
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_plan_structure.sh\"",
+      "statusMessage": "Checking plan structure (Phase/Feature/Task)..."
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/enforce_egress_allowlist.sh\"",
-      "statusMessage": "Checking where this call is going..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_sheet_writes.sh\"",
-      "statusMessage": "Checking this sheet's own instructions were read first..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_sheet_formula_writes.sh\"",
-      "statusMessage": "Checking this write would not land on a formula..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_calendar_writes.sh\"",
-      "statusMessage": "Checking which calendar this would write to..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_tasks_writes.sh\"",
-      "statusMessage": "Checking whether this would write to your goals list..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_statusline_lock.sh\"",
-      "statusMessage": "Guarding the status-line pointer..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_gws_logout.sh\"",
-      "statusMessage": "Checking for credential-destroying logout..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_git_add_class.sh\"",
-      "statusMessage": "Checking this stages only what you changed..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_gmail_destructive.sh\"",
-      "statusMessage": "Checking nothing would destroy mail you cannot get back..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_gmail_send.sh\"",
-      "statusMessage": "Checking this would not send mail in your name..."
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/plan_flag.sh\" record",
+      "statusMessage": "Recording the active plan..."
      }
-    ]
+    ],
+    "matcher": "ExitPlanMode"
    },
    {
-    "matcher": "Agent",
-    "hooks": [
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_agent_return_channel.sh\"",
-      "statusMessage": "Checking this helper can hand its work back..."
-     }
-    ]
-   },
-   {
-    "matcher": "Skill",
     "hooks": [
      {
       "type": "command",
@@ -264,10 +192,10 @@
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_checkin_needs_project.sh\"",
       "statusMessage": "Checking a project is armed before /checkin..."
      }
-    ]
+    ],
+    "matcher": "Skill"
    },
    {
-    "matcher": "Write",
     "hooks": [
      {
       "type": "command",
@@ -279,117 +207,72 @@
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_organism_map.sh\"",
       "statusMessage": "Checking this would not overwrite the map of itself..."
      }
-    ]
+    ],
+    "matcher": "Write"
    },
    {
-    "matcher": "Bash|Write|Edit",
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_hook_sop_read.sh\"",
-      "statusMessage": "Checking the hook SOP was read first..."
-     }
-    ]
-   },
-   {
-    "matcher": "Write|Edit|MultiEdit|Bash",
-    "hooks": [
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/guard_harness_write.sh\"",
+      "statusMessage": "Checking this write isn't landing inside the harness itself..."
+     },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_brief_truncation.sh\"",
-      "statusMessage": "Checking this doesn't silently shrink a project brief..."
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/enforce_skill_frontmatter.sh\"",
+      "statusMessage": "Checking the skill declares what it is for..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_harness_writeback.sh\"",
+      "statusMessage": "Checking this isn't writing a harness file back into the private repo..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_write_paths.sh\"",
+      "statusMessage": "Checking this is not a guard editing itself..."
      }
-    ]
+    ],
+    "matcher": "Write|Edit"
    },
    {
-    "matcher": "Write|Edit|MultiEdit",
     "hooks": [
      {
       "type": "command",
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_disable_model_invocation.sh\"",
       "statusMessage": "Checking for the retired disable-model-invocation flag..."
      }
-    ]
+    ],
+    "matcher": "Write|Edit|MultiEdit"
    },
    {
-    "matcher": "Bash",
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_gh_account_switch.sh\"",
-      "statusMessage": "Checking this doesn't mutate global gh auth state..."
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_brief_truncation.sh\"",
+      "statusMessage": "Checking this doesn't silently shrink a project brief..."
      }
-    ]
-   },
-   {
-    "matcher": "Write|Edit",
-    "hooks": [
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_harness_writeback.sh\"",
-      "statusMessage": "Checking this isn't writing a harness file back into the private repo..."
-     }
-    ]
-   },
-   {
-    "matcher": "Bash|Write|Edit",
-    "hooks": [
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_no_repoint_into_claudeops.sh\"",
-      "statusMessage": "Checking this doesn't re-point a symlink into the private repo..."
-     }
-    ]
-   },
-   {
-    "matcher": "Bash",
-    "hooks": [
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_commit_identity.sh\"",
-      "statusMessage": "Checking the commit identity matches the operator's..."
-     }
-    ]
-   },
-   {
-    "matcher": "Bash",
-    "hooks": [
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_git_push_signpost.sh\"",
-      "statusMessage": "Checking what this push would actually send..."
-     }
-    ]
-   },
-   {
-    "matcher": "Bash",
-    "hooks": [
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_no_upstream_commit_signpost.sh\"",
-      "statusMessage": "Checking whether the remote has seen this branch..."
-     }
-    ]
+    ],
+    "matcher": "Write|Edit|MultiEdit|Bash"
    }
   ],
-  "PostToolUse": [
+  "SessionStart": [
    {
-    "matcher": "Write|Edit",
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/validate_on_write.sh\"",
-      "statusMessage": "Checking the note kept its labels..."
-     }
-    ]
-   },
-   {
-    "matcher": "*",
-    "hooks": [
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/emit_harness_brief.sh\"",
+      "statusMessage": "Delivering the Harness brief..."
+     },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/observability_logger.sh\"",
-      "statusMessage": "Recording what ran..."
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/session_context_loader.sh\"",
+      "statusMessage": "Loading your standing notes..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/tools/mirror_line.sh\"",
+      "statusMessage": "Checking clone mirror state..."
      }
     ]
    }
@@ -406,6 +289,79 @@
       "type": "command",
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/session_flight_recorder.sh\"",
       "statusMessage": "Closing the session log..."
+     }
+    ]
+   }
+  ],
+  "UserPromptExpansion": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_checkin_needs_project.sh\"",
+      "statusMessage": "Checking a project is armed before /checkin..."
+     }
+    ],
+    "matcher": "checkin"
+   }
+  ],
+  "UserPromptSubmit": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/announce_plan_write.sh\"",
+      "statusMessage": "Checking for new plans..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/buried_command_hint.sh\"",
+      "statusMessage": "Checking for a buried slash command..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/inject_compute_mechanically.sh\"",
+      "statusMessage": "Checking whether this turn has maths in it..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/inject_delegation_standing.sh\"",
+      "statusMessage": "Confirming delegation is standing-authorized..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/inject_sop_before_build.sh\"",
+      "statusMessage": "SOP check (build-time)..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/inject_work_altitude.sh\"",
+      "statusMessage": "Re-asking what this work is for..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/pm_persist.sh\"",
+      "statusMessage": "Checking the active project..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/rating_capture.sh\"",
+      "statusMessage": "Noting a rating, if you gave one..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/save_routing_hint.sh\"",
+      "statusMessage": "Checking where a save goes..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/scratch_sweep_nudge.sh\"",
+      "statusMessage": "Scratchpad sweep check..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/skill_anchor_inject.sh\"",
+      "statusMessage": "Re-anchoring the running skill..."
      }
     ]
    }

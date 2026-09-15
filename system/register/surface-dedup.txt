@@ -1,0 +1,60 @@
+# surface-dedup.txt — hand-editable de-dup exception list for the register's
+# GENERATOR (Feature B2.2, enforcement-layer Phase 2 plan).
+#
+# WHY THIS FILE EXISTS (read before adding a line): `.claude/settings.json` (surface
+# "settings") and `hooks/hooks.json` (surface "plugin") are two INDEPENDENTLY-LOADED
+# registration sources with no platform de-dup between them (plan §0.5: "all matching
+# hooks run in parallel" — Claude Code concatenates every source's entries and fires
+# all of them, whichever sources happen to be present in a given session). A hook
+# registered on BOTH surfaces is therefore invoked ONCE per surface that is present
+# in that session — TWICE in any session where both are (a checkout with the plugin
+# also enabled: "plugin-folder-as-cwd", B2.1's mode 3).
+#
+# B2.2's own safety constraint (B2.1's launch-mode matrix, HALT condition carried into
+# this task): a session relying on EXACTLY ONE of the two surfaces alone — mode 1
+# (plugin enabled, cwd has no project settings.json of its own) or mode 2 (a raw
+# clone, NO plugin installed — "the at-risk mode") — must still get the FULL,
+# currently-intended hook set from that one surface. Removing a hook's registration
+# from surface X therefore requires PROVING that surface X's own standalone-fire
+# population never needed it for real (not merely "it would cost less"), because a
+# wrong removal here silently drops a guard for exactly the population that surface
+# was the ONLY thing protecting.
+#
+# B2.2's audit (2026-09-15, see scratchpad/B2.2-report.md) read every one of the 51
+# hook rows currently duplicated across BOTH public surfaces — its own LLM-CONTEXT
+# WHY/GUARDS header, and where that wasn't conclusive, its body's actual path-matching
+# logic — looking for a row whose OWN DOCUMENTED SCOPE excludes one surface's
+# population, the same standard the three PRE-EXISTING single-surface entries already
+# meet (`hooks/guard_harness_write.sh`, `system/hooks/guard_harness_writeback.sh`,
+# `system/tools/mirror_line.sh` — none of these three are register rows with BOTH
+# surfaces set in the first place, so none of them need a line here; they are simply
+# not touched by generation). Of the 51, exactly ONE entry met that bar. Every other
+# entry either (a) protects an external service/absolute Brain-root path/general git
+# safety that is meaningful regardless of which surface fired it (so BOTH standalone
+# populations genuinely need it), or (b) is a per-turn UserPromptSubmit/PostToolUse/
+# Stop injector or observer whose content is not redundant with anything else that
+# loads in either population. See the B2.2 report for the row-by-row reasoning; DO
+# NOT add a second entry here without the same rigor — a plausible-sounding guess is
+# exactly how a guard silently drops.
+#
+# Format (pipe-delimited, one entry per line): repo|path|event|matcher|args|drop_surface|reason
+#   repo          — "public" or "private" (today only "public" rows have both
+#                   surfaces; kept general so a future private double-registration
+#                   is expressible the same way)
+#   path          — repo-relative, forward slashes, leading "/" (schema-v1.md's shape)
+#   event         — the hook.event value (schema_v1.HOOK_EVENTS)
+#   matcher       — the row's matcher field, may be "" (empty string, not omitted)
+#   args          — the row's args field, may be "" (empty string, not omitted)
+#   drop_surface  — which ONE surface to OMIT this row from when generating (must be
+#                   one of the two surfaces this generator writes: "settings" or
+#                   "plugin"); the row keeps every other surface it already carries.
+#   reason        — REQUIRED, free text; generate.py refuses to load a reason-less
+#                   line, same rule as omission-exemptions.txt.
+#
+# Lines starting with "#" and blank lines are ignored. Read at generation time only —
+# it never edits the register (harvest.py's harvested `surfaces` field stays the
+# honest disk truth); this file narrows what a GIVEN generation run writes to a
+# GIVEN target, exactly the way `--severity` narrows the omission check without
+# touching what harvest.py found.
+
+public|/system/hooks/emit_harness_brief.sh|SessionStart|||settings|Redundant on the "settings" surface specifically: this hook's own LLM-CONTEXT WHY (system/hooks/emit_harness_brief.sh) states its purpose is delivering the harness's standing brief to sessions that do NOT already get it — i.e. sessions with no project CLAUDE.md auto-load in their cwd, which is exactly the "plugin, arbitrary cwd" population the "plugin" surface alone reaches. A session in a checkout (the "settings" surface's own population, modes 2 and 3) already receives this repo's real CLAUDE.md automatically via Claude Code's own project-instructions auto-load, with no hook involved. The hook's own body confirms this is not merely theoretical: it walks up from cwd comparing byte-for-byte against the plugin's bundled CLAUDE.md and SELF-SUPPRESSES its output on a byte-identical match (B2.0-report.md §2.1) — i.e. firing it via "settings" from inside a checkout already prints nothing today; dropping the registration removes a wasted invocation, not a guard. Kept on "plugin" (its one real audience). Verified 2026-09-15, B2.2.

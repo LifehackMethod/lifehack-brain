@@ -75,6 +75,7 @@ question every other field branches on.
 | `status` | string, may be `""` | T2-proven — the `statusMessage` shown to the user. |
 | `surfaces` | non-empty list, closed enum (6 live files) | T2-proven. Which of today's live registration files currently carry this entry — B2's de-duplication target. Required non-empty: a hook entry with zero surfaces isn't a registered hook. |
 | `status_conflicts` | list of strings, default `[]` | T2-proven — same key, disagreeing status messages across surfaces. |
+| `if` | nullable string | **Not in T2/B1.1's original shape — found and closed live by Feature B2.2 (2026-09-15).** Claude Code's own hook-entry format carries an OPTIONAL narrowing condition (e.g. `Skill(checkin)` on `guard_checkin_needs_project.sh`'s `PreToolUse`/`matcher=Skill` entry) that T2/B1.1/B1.2/B1.3 never harvested, because nothing before B2.2 ever regenerated the REAL `.claude/settings.json`/`hooks/hooks.json` (B1.3 wrote only to a scratch `--out` dir). The first real write silently dropped it — caught by the repo's own `system/hooks/tests/test_guard_checkin_needs_project.sh` going RED, not by the semantic-diff method, which is why that method (`(event, matcher, command, statusMessage)` tuples) is now `(event, matcher, command, statusMessage, if)` everywhere it's used. Null for every other hook row today. |
 
 ### `type: tool` — system/tools/ units
 

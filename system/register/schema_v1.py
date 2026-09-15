@@ -113,6 +113,14 @@ TYPE_FIELDS = {
         "status":  (str, False, None),   # may be ""
         "surfaces": (list, False, ("nonempty_list", SURFACES)),
         "status_conflicts": (list, False, ("list_of_str", None)),
+        # Discovered live, B2.2 (2026-09-15): Claude Code's own hook-entry schema
+        # carries an OPTIONAL "if" narrowing condition (e.g. "Skill(checkin)") that
+        # T2/B1.1/B1.2/B1.3 never harvested — a real, pre-existing gap, not a new
+        # capability being added on purpose. Required-but-nullable (schema-v1.md's
+        # own convention: a missing KEY is always a reject; null means "no
+        # condition on this entry", the honest default for every other hook row).
+        # See schema-v1.md's "if" section for the incident this field closes.
+        "if": (str, True, None),
     },
     "tool": {
         "language": (str, False, ("enum", ("py", "sh", "other"))),
