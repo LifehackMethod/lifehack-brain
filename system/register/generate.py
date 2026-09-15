@@ -37,25 +37,30 @@ is written to disk:
      refuse, for the analogous omission check — the same posture is used
      here for cache drift since the plan does not rule otherwise for B1.3).
 
-Extension points for B1.4 (the omission check) and B1.5 (the caller lint) —
-NOT implemented here, per this task's scope:
-  - B1.4 would add a Phase 0.5 between the schema gate and the write gate:
-    scan `system/hooks`, `system/tools` in both repos for files with NO
-    matching register row (the inverse of this tool's "does the row's path
-    exist" check) and warn/refuse per Enver's ruling. `load_register()`
-    below already returns every row with its line number, which is exactly
-    what an omission-diff needs to cross-reference against a fresh disk
-    walk (reusing `harvest.harvest_tools`/`harvest_skills`'s own walk logic).
-  - B1.5 would add a read-only lint pass over the same loaded rows using
-    `needs`/`returns` plus T1's caller classes (not carried by schema v1
-    today) to report units with no caller surface — a report function next
-    to `cache_divergence_warnings()` below, not a new gate, since T1 "lists;
-    it never judges."
+  4. OMISSION CHECK (Feature B1.4, `omission_check.py`, a sibling module this
+     generator calls, not re-implemented here) — after the schema gate, a fresh
+     disk walk of the GOVERNED FOLDERS (`system/hooks`, `system/tools`, both
+     repos — T1's own `GOVERNED_DIRS`) is cross-referenced against this same
+     register: any governed-folder file that is neither the `path` of a matching
+     register row NOR listed in the hand-editable exemption file
+     (`omission-exemptions.txt`, this folder) is NAMED. Severity is Enver's
+     2026-09-15 ruling (WARN for v1): `--severity warn` (default) prints a
+     clearly marked WARN section and does not affect the exit code; `--severity
+     refuse` makes the identical finding a whole-run refusal, matching the
+     schema gate's own all-or-nothing posture — nothing written, any target.
+
+Extension point for B1.5 (the caller lint) — NOT implemented here, per this
+task's scope: a read-only lint pass over the same loaded rows using
+`needs`/`returns` plus T1's caller classes (not carried by schema v1 today) to
+report units with no caller surface — a report function next to
+`cache_divergence_warnings()` below, not a new gate, since T1 "lists; it never
+judges."
 
 Usage:
     python3 generate.py <register.jsonl> --out DIR
         [--public-root PATH] [--private-root PATH]
         [--cache-root PATH | --no-cache]
+        [--severity warn|refuse] [--exemptions PATH]
 
 Writes only inside --out (never `.claude/settings.json` / `hooks/hooks.json`
 in a real checkout — that overwrite is explicitly out of scope for this task
@@ -77,6 +82,8 @@ import sys
 from schema_v1 import UNIT_TYPES  # noqa: F401  (re-exported for callers/tests)
 from validate_register import validate_row
 from harvest import REPO_ROOT_FROM_SCRIPT, DEFAULT_PRIVATE_ROOT, cache_root_for, short_sha
+import omission_check  # Feature B1.4 — the omission check, a sibling module this
+                       # generator calls; see omission_check.py for the design.
 
 # Surface -> (form, repo_filter, output filename). This is TODAY's overlapping
 # wiring shape (the double registration T2 proved) — Feature B2.2 (later, NOT
@@ -255,12 +262,13 @@ def cache_divergence_warnings(hook_rows, public_root, cache_root):
 # ---------------------------------------------------------------------------
 # orchestration
 # ---------------------------------------------------------------------------
-def generate(register_path, out_dir, public_root, private_root, cache_root):
-    """Returns a result dict; never raises for an ordinary refusal (schema or
-    broken-path) — those are reported in the result, and the caller (main())
-    decides the exit code. Only writes files after every gate that applies
-    to that specific file has passed, via temp-file + os.replace (atomic
-    rename on the same filesystem)."""
+def generate(register_path, out_dir, public_root, private_root, cache_root,
+             severity="warn", exemptions_path=None):
+    """Returns a result dict; never raises for an ordinary refusal (schema,
+    broken-path, or a refuse-severity omission) — those are reported in the
+    result, and the caller (main()) decides the exit code. Only writes files
+    after every gate that applies to that specific file has passed, via
+    temp-file + os.replace (atomic rename on the same filesystem)."""
     entries = load_register(register_path)
 
     problems = schema_check(entries)
@@ -270,6 +278,27 @@ def generate(register_path, out_dir, public_root, private_root, cache_root):
             "schema_problems": problems,
             "targets": [],
             "warnings": [],
+            "omission": None,
+        }
+
+    # Feature B1.4 — the omission check, run right after the schema gate (every
+    # row it reads is already known well-formed) and before any target is
+    # written. `--severity refuse` behaves like the schema gate above: a real
+    # finding refuses the WHOLE run, nothing written for any target, because an
+    # omission is a register-wide integrity finding, not a single target's
+    # problem. `--severity warn` (default) never blocks; its findings are
+    # carried into the result and printed as a clearly marked WARN section.
+    omission_result = omission_check.run(
+        entries, public_root, private_root, exemptions_path, severity,
+    )
+    if severity == "refuse" and omission_result["flagged_count"] > 0:
+        return {
+            "schema_ok": True,
+            "schema_problems": [],
+            "targets": [],
+            "warnings": [],
+            "omission": omission_result,
+            "omission_refused": True,
         }
 
     hook_rows = [(ln, row) for ln, row, _ in entries if row.get("type") == "hook"]
@@ -316,6 +345,7 @@ def generate(register_path, out_dir, public_root, private_root, cache_root):
         "schema_problems": [],
         "targets": target_results,
         "warnings": warnings,
+        "omission": omission_result,
     }
 
 
@@ -326,6 +356,14 @@ def report(result):
         for line_no, errs in result["schema_problems"]:
             for e in errs:
                 lines.append(f"  {e}")
+        return "\n".join(lines), 1
+
+    if result.get("omission_refused"):
+        lines.append(
+            "REFUSED (--severity refuse): omission check found governed script(s) neither "
+            "registered nor exempt — writing NOTHING (no target touched)."
+        )
+        lines.extend(omission_check.report_lines(result["omission"]))
         return "\n".join(lines), 1
 
     any_refused = False
@@ -349,6 +387,10 @@ def report(result):
         for w in result["warnings"]:
             lines.append(f"  {w}")
 
+    if result.get("omission") is not None:
+        lines.append("")
+        lines.extend(omission_check.report_lines(result["omission"]))
+
     exit_code = 1 if any_refused else 0
     return "\n".join(lines), exit_code
 
@@ -371,6 +413,14 @@ def main(argv=None):
                         "plugin.json's own version field)")
     p.add_argument("--no-cache", action="store_true",
                    help="skip the cache-divergence check entirely")
+    p.add_argument("--severity", choices=("warn", "refuse"), default="warn",
+                   help="omission-check severity (Feature B1.4; Enver's ruling, 2026-09-15: "
+                        "default WARN for v1). 'warn': name every omission, exit code "
+                        "unaffected. 'refuse': the same finding refuses the WHOLE run, "
+                        "nothing written — a one-flag escalation, never a code change.")
+    p.add_argument("--exemptions", default=None,
+                   help="omission-check exemption file (default: omission-exemptions.txt "
+                        "next to this script)")
     args = p.parse_args(argv)
 
     public_root = os.path.abspath(args.public_root)
@@ -382,7 +432,10 @@ def main(argv=None):
     else:
         cache_root = cache_root_for(public_root)
 
-    result = generate(args.register, os.path.abspath(args.out), public_root, private_root, cache_root)
+    result = generate(
+        args.register, os.path.abspath(args.out), public_root, private_root, cache_root,
+        severity=args.severity, exemptions_path=args.exemptions,
+    )
     text, exit_code = report(result)
     print(f"generate.py — {args.register} -> {args.out}")
     print(text)
