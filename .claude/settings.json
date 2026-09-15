@@ -33,6 +33,11 @@
           },
           {
             "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/tools/mirror_line.sh\"",
+            "statusMessage": "Checking clone mirror state..."
+          },
+          {
+            "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/emit_harness_brief.sh\"",
             "statusMessage": "Delivering the Harness brief..."
           }
@@ -150,6 +155,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/enforce_skill_frontmatter.sh\"",
             "statusMessage": "Checking the skill declares what it is for..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/hooks/guard_harness_write.sh\"",
+            "statusMessage": "Checking this write isn't landing inside the harness itself..."
           }
         ]
       },
@@ -278,13 +288,18 @@
           },
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_hook_sop_read.sh\"",
-            "statusMessage": "Checking the hook SOP was read first..."
-          },
-          {
-            "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_gh_account_switch.sh\"",
             "statusMessage": "Checking this doesn't mutate global gh auth state..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_hook_sop_read.sh\"",
+            "statusMessage": "Checking the hook SOP was read first..."
           }
         ]
       },
