@@ -10,20 +10,39 @@ name: Register Drift (full generator, with caller lint)
 # SAME generator, in FULL (caller lint included), server-side, where a few extra seconds cost
 # nobody a commit.
 #
+# ⛔ CORRECTED 2026-09-15 — CIRCULARITY FIX, same root cause as check_drift.py's own correction
+# (see that file's module docstring for the full diagnosis). This workflow used to HARVEST a
+# register fresh from THIS checkout and feed that straight into `generate.py` — but a hook row
+# has no source other than `.claude/settings.json` / `hooks/hooks.json` themselves, so a
+# hand-edit to either file would be harvested as the new "truth" and faithfully reproduced,
+# never caught. The register is now a COMMITTED file (`system/register/register.jsonl`); this
+# job checks it two INDEPENDENT ways instead of one circular one:
+#   1. REGISTER FRESHNESS — harvest.py, run fresh against this checkout's disk state, must
+#      match the COMMITTED register byte-for-byte. A mismatch means someone changed a governed
+#      script or a wiring file without re-running harvest.py and re-committing its output —
+#      the register itself has gone stale relative to reality.
+#   2. WIRING DRIFT — `generate.py`, run WITH the caller lint against the COMMITTED register
+#      (never the fresh harvest above), must reproduce the COMMITTED `.claude/settings.json` /
+#      `hooks/hooks.json` exactly. A mismatch means the wiring was hand-edited (or never
+#      regenerated) relative to what the committed register says it should be.
+# Both checks are independent of each other and of the files they are meant to catch drifting —
+# neither one can pass just because the other did.
+#
 # ⛔ A CALLER, NOT A NEW CHECKER. This adds no drift logic of its own beyond what
-# `check_drift.py`'s own `--no-caller-lint` pre-commit stage already does; the difference is
-# WHICH generator flags are used and WHERE the report shows up. The caller lint is WARN-only by
+# `check_drift.py`'s own `--no-caller-lint` pre-commit stage already does for check #2; the
+# difference is WHICH generator flags are used (caller lint ON here) and WHERE the report shows
+# up, plus check #1, which only makes sense in this slower lane (a full harvest on every commit
+# was ruled out for the local hook by D5's own cost measurement). The caller lint is WARN-only by
 # design (Feature B1.5's own T1 ontology — "lists; it never judges" an uncalled unit) and never
 # affects `generate.py`'s exit code, so it can never fail this job on its own; it is printed here
 # purely as a report, visible in the job log for anyone to read.
 #
-# WHAT FAILS THIS JOB: (1) generator REFUSAL — a malformed register row (schema gate), a
-# registered hook whose target no longer exists on disk (assert-on-write gate), or an omission
-# finding IF this job is ever run at `--severity refuse` (it is not, by default — Enver's B1.4
-# ruling keeps v1 at WARN, matched here); (2) DRIFT — the generator, run with `--install-root .`
-# against this exact checkout, would rewrite `.claude/settings.json` or `hooks/hooks.json` from
-# what is actually committed. Either failure means the committed wiring no longer matches the
-# register that is supposed to be its single source of truth.
+# WHAT FAILS THIS JOB: (1) register staleness — check #1 above; (2) generator REFUSAL — a
+# malformed register row (schema gate), a registered hook whose target no longer exists on disk
+# (assert-on-write gate), or an omission finding IF this job is ever run at `--severity refuse`
+# (it is not, by default — Enver's B1.4 ruling keeps v1 at WARN, matched here); (3) WIRING DRIFT —
+# check #2 above. Any of the three means the committed register, the committed wiring, and disk
+# reality no longer all agree with each other.
 #
 # WHY `--no-cache` HERE TOO: a GitHub-hosted runner has no local Claude plugin cache checkout to
 # compare against, so the cache-divergence check (Feature B1.3, itself WARN-only) has nothing
@@ -53,7 +72,7 @@ permissions:
 
 jobs:
   register-drift:
-    name: harvest -> generate (with caller lint) -> diff against committed wiring
+    name: register freshness -> generate (with caller lint, from the COMMITTED register) -> diff
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -64,23 +83,29 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Harvest the register from this checkout
+      - name: Register freshness — a fresh harvest must match the committed register
         run: |
-          python3 system/register/harvest.py --no-cache --out "$RUNNER_TEMP/register.jsonl"
+          python3 system/register/harvest.py --no-cache --out "$RUNNER_TEMP/fresh-register.jsonl"
+          if ! diff -u system/register/register.jsonl "$RUNNER_TEMP/fresh-register.jsonl"; then
+            echo ""
+            echo "::error::system/register/register.jsonl is stale — a fresh harvest of this checkout's disk state does not match the committed register."
+            echo "Fix locally: python3 system/register/harvest.py --out system/register/register.jsonl"
+            exit 1
+          fi
 
-      - name: Generate WITH the caller lint (warn-level report) and install into this checkout
+      - name: Generate WITH the caller lint (warn-level report), from the COMMITTED register, and install into this checkout
         run: |
-          python3 system/register/generate.py "$RUNNER_TEMP/register.jsonl" \
+          python3 system/register/generate.py system/register/register.jsonl \
             --no-cache \
             --out "$RUNNER_TEMP/gen-out" \
             --install-root .
 
-      - name: Fail on drift — the generator must not have rewritten committed wiring
+      - name: Fail on drift — the committed register must reproduce the committed wiring exactly
         run: |
           if ! git diff --exit-code -- .claude/settings.json hooks/hooks.json; then
             echo ""
-            echo "::error::Committed wiring has drifted from what the register generates."
-            echo "The diff above is what 'generate.py --install-root .' would change."
-            echo "Fix locally: python3 system/register/harvest.py --out /tmp/lhb-register.jsonl && python3 system/register/generate.py /tmp/lhb-register.jsonl --install-root ."
+            echo "::error::Committed wiring has drifted from what the committed register generates."
+            echo "The diff above is what 'generate.py system/register/register.jsonl --install-root .' would change."
+            echo "Fix locally: python3 system/register/generate.py system/register/register.jsonl --install-root ."
             exit 1
           fi
