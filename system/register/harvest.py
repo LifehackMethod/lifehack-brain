@@ -271,6 +271,15 @@ def harvest_hooks(public_root, private_root, cache_root):
             "surfaces": sorted(e["surfaces"]),
             "status_conflicts": sorted(e["status_conflicts"]),
             "launch_mode": derive_launch_mode(e["surfaces"]),
+            # B5.2, 2026-09-15 — `group` is a HAND-CURATED chaining field (like
+            # `needs`/`returns` above `base_row()`'s own honest-default
+            # comment already describes for those two): a fresh harvest has
+            # no way to know a maintainer wants N rows to share a dispatcher,
+            # so it always mechanically defaults to null here. A maintainer
+            # re-applies any `group`/`needs`/`returns` values by hand after
+            # running this tool — see system/register/register.jsonl's own
+            # git history for exactly that two-step workflow (B5.2).
+            "group": None,
         })
         rows.append(row)
     return rows

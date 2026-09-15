@@ -310,13 +310,13 @@
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/announce_plan_write.sh\"",
-      "statusMessage": "Checking for new plans..."
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/buried_command_hint.sh\"",
+      "statusMessage": "Checking for a buried slash command..."
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/buried_command_hint.sh\"",
-      "statusMessage": "Checking for a buried slash command..."
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/group_dispatch_pilot-map-ups.sh\"",
+      "statusMessage": "Running the \"pilot-map-ups\" group (announce_plan_write.sh, pm_persist.sh, save_routing_hint.sh, skill_anchor_inject.sh)..."
      },
      {
       "type": "command",
@@ -340,28 +340,13 @@
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/pm_persist.sh\"",
-      "statusMessage": "Checking the active project..."
-     },
-     {
-      "type": "command",
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/rating_capture.sh\"",
       "statusMessage": "Noting a rating, if you gave one..."
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/save_routing_hint.sh\"",
-      "statusMessage": "Checking where a save goes..."
-     },
-     {
-      "type": "command",
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/scratch_sweep_nudge.sh\"",
       "statusMessage": "Scratchpad sweep check..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/skill_anchor_inject.sh\"",
-      "statusMessage": "Re-anchoring the running skill..."
      }
     ]
    }

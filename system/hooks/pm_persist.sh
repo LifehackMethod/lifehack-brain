@@ -82,6 +82,7 @@ _pm_is_abs() {
   return 1
 }
 
+run() {
 set +e
 # TTL_HOURS: single definition lives in pm_flag.sh — read it via its read-only `ttl` verb
 # instead of carrying an independent literal here (that duplication is exactly what let the
@@ -370,3 +371,9 @@ fi
 
 echo "[project-manager ACTIVE] Source of truth: ${SLUG:-project} doc at ${DOC_PATH} (last written ${WHEN}).${ANCHOR} Route /read and /save through this doc, when you make a plan, save it normally and record a link to its path in the doc (keep that link current); update the doc after meaningful progress. If this project is done, the user can say 'stop tracking'.${READER_NOTE}"
 exit 0
+}
+
+if [ "${BASH_SOURCE[0]:-$0}" = "$0" ]; then
+  run
+  exit $?
+fi

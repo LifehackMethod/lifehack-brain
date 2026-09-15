@@ -16,7 +16,7 @@ plan §0.1 rule 3) before its verdict counts for anything downstream.
 import json
 import sys
 
-from schema_v1 import fields_for, UNIT_TYPES, STRICT_UNKNOWN_KEYS
+from schema_v1 import fields_for, UNIT_TYPES, STRICT_UNKNOWN_KEYS, GROUPABLE_HOOK_EVENTS
 
 
 def _isinstance_strict(value, expected_type):
@@ -91,7 +91,27 @@ def validate_row(row, line_no):
         # hook/tool/skill only (see schema-v1.md).
         errors.append(f"line {line_no}: exists=True but sha is null")
 
-    # 3. no unregistered fields — "encode only what has already converged"
+    # 3. cross-field constraint: `group` (B5.2) is legal ONLY on a hook row
+    #    whose event structurally cannot block a tool call (schema_v1's
+    #    GROUPABLE_HOOK_EVENTS). HARD REJECT, never a WARN — the lead's
+    #    binding condition for B5.2: collapsing rows into one dispatcher
+    #    process must never be reachable for a row whose exit code can deny
+    #    something (PreToolUse and its subclasses, Stop/SubagentStop, any
+    #    guard). This is enforced HERE (not as a per-field enum in
+    #    schema_v1.py) because it depends on a SECOND field's value, which a
+    #    single-field ('enum', ...) hint cannot express.
+    if row.get("type") == "hook" and row.get("group") is not None:
+        event = row.get("event")
+        if event not in GROUPABLE_HOOK_EVENTS:
+            errors.append(
+                f"line {line_no}: field 'group'={row.get('group')!r} is set on "
+                f"event={event!r}, but 'group' is only legal on "
+                f"{GROUPABLE_HOOK_EVENTS} — a blocking-capable event's row must "
+                f"never be merged into a shared dispatcher (constraint 0.5, "
+                f"'weakest guard wins')"
+            )
+
+    # 4. no unregistered fields — "encode only what has already converged"
     #    (constraint 0.5): a stray key is either dead weight or an
     #    un-ruled extension, and either way it doesn't belong in v1 silently.
     if STRICT_UNKNOWN_KEYS:

@@ -80,6 +80,7 @@ question every other field branches on.
 | `status_conflicts` | list of strings, default `[]` | T2-proven — same key, disagreeing status messages across surfaces. |
 | `if` | nullable string | **Not in T2/B1.1's original shape — found and closed live by Feature B2.2 (2026-09-15).** Claude Code's own hook-entry format carries an OPTIONAL narrowing condition (e.g. `Skill(checkin)` on `guard_checkin_needs_project.sh`'s `PreToolUse`/`matcher=Skill` entry) that T2/B1.1/B1.2/B1.3 never harvested, because nothing before B2.2 ever regenerated the REAL `.claude/settings.json`/`hooks/hooks.json` (B1.3 wrote only to a scratch `--out` dir). The first real write silently dropped it — caught by the repo's own `system/hooks/tests/test_guard_checkin_needs_project.sh` going RED, not by the semantic-diff method, which is why that method (`(event, matcher, command, statusMessage)` tuples) is now `(event, matcher, command, statusMessage, if)` everywhere it's used. Null for every other hook row today. |
 | `launch_mode` | string, **closed enum (4 values)** | **RESTORED 2026-09-15 (Option G) — see the "Addendum" section below for the full history and derivation.** `project` / `plugin` / `both` / `private` — which of the two real public wiring files (`.claude/settings.json` = "project", `hooks/hooks.json` = "plugin") carries this hook registration, or `private` if neither does (a private-repo hook, carried by `registrations`/`user` instead). Harvested mechanically from the row's own `surfaces` (`harvest.py`'s `derive_launch_mode()`) — 0 hand-typed values, required (not nullable): every hook row resolves to exactly one of the four. |
+| `group` | nullable string, **open vocabulary, but legal only on a small non-blocking event allowlist** | **NEW 2026-09-15 (B5.2, "the map pilot") — see the second Addendum below.** Rows sharing one non-null value collapse onto ONE generated wiring entry (`generate.py`'s `collapse_group_rows()`), pointed at a single dispatcher script that runs each member's own body, unmodified, in its own isolated subshell, sequentially. Required-but-nullable, same convention as `if`. HARD-REJECTED by `validate_register.py` (not merely discouraged) on any row whose `event` is outside `schema_v1.GROUPABLE_HOOK_EVENTS` (`UserPromptSubmit`/`SessionStart`/`Notification`) — never a `PreToolUse`/`Stop`/`SubagentStop`/guard row, because collapsing a blocking-capable row into a shared dispatcher would recreate the single-point-of-failure "weakest guard wins" forbids (plan constraint 0.5). |
 
 ### `type: tool` — system/tools/ units
 
@@ -196,4 +197,52 @@ section, `report()`) as a pure read of already-validated rows. `build_hooks_doc(
 `launch_mode` — it plays no part in what gets written to any wiring file, so restoring it cannot
 change emitted wiring (verified: `--install-root` into a scratch `git archive HEAD` copy still
 produces byte-identical `.claude/settings.json` / `hooks/hooks.json`).
+
+## Addendum, 2026-09-15 (same day) — `group` NEW (B5.2, the map pilot)
+
+**Feature B5.2** (`enforcement-layer.phase-2.plan.md` PHASE B5) collapses the pilot skill group's
+(read / checkin / save / project-manager) 4 always-firing `UserPromptSubmit` inject hooks
+(`announce_plan_write.sh`, `pm_persist.sh`, `save_routing_hint.sh`, `skill_anchor_inject.sh` — all
+matcher `""`, all `launch_mode: "both"`) onto ONE generated load path, per the design scout's
+approved design (session scratchpad `B5.2-design.md`). This is the FIRST field this schema adds
+that was not T2-proven or forced by a live regeneration bug — it is a forward-looking chaining/
+grouping primitive, deliberately narrow in scope.
+
+**Schema (`schema_v1.py`):** `TYPE_FIELDS["hook"]["group"]` — nullable string, required key
+(present-but-null is the default for a row not in any group), open vocabulary (same reasoning as
+`needs`/`returns`: closing it to a fixed enum would force a schema migration for a second pilot
+group next quarter). `GROUPABLE_HOOK_EVENTS = ("UserPromptSubmit", "SessionStart", "Notification")`
+is the allowlist a non-null `group` may combine with — enforced in `validate_register.py` (a
+cross-field check, since a single-field `('enum', ...)` hint cannot express "legal combined with
+THIS OTHER field's value"), not in `schema_v1.py` itself.
+
+**Why the allowlist is a HARD REJECT, not a WARN or a convention:** the lead's binding condition
+for B5.2 (Discoveries, 2026-09-15) states it plainly — collapsing rows into one dispatcher process
+entangles their exit codes into one process's exit code. For an INJECT hook this is harmless (it
+never blocks; there is no "decision" to entangle). For a row whose event CAN deny a tool call
+(`PreToolUse` and its subclasses, `Stop`/`SubagentStop`, or any guard on any event), it would
+recreate exactly the single point of failure plan constraint 0.5 forbids ("weakest guard wins —
+one dispatcher on a broad event is a single point of failure"). Closing this at the validator
+means the mistake is structurally impossible to introduce by a later hand-edit, rather than
+relying on someone remembering a rule that lives only in a comment. Proven with a planted-bad row
+(`group` set on a `PreToolUse` guard row): `validate_register.py` rejects it, and `generate.py`
+(which runs the identical schema gate before writing anything) refuses the whole run — no file
+written, for any target.
+
+**Generator (`generate.py`):** `collapse_group_rows()` — for each distinct non-null `group` value
+among rows destined for one wiring surface, sharing the same `(event, matcher, launch_mode, if,
+args)`, emits ONE synthetic row in their place, whose `path` is the group's dispatcher script
+(`system/hooks/group_dispatch_<group>.sh`, the filename DERIVED from the group string, never
+hand-typed in the generator). The dispatcher's own on-disk existence is re-checked by the same
+assert-on-write gate every other hook row goes through — a missing dispatcher script REFUSES that
+target's write, exactly like a missing member script would. The dispatcher file itself is a
+normal, hand-authored, committed hook script (never generated on disk) and deliberately carries NO
+register row of its own (that would double-emit its own wiring entry alongside the synthetic one)
+— it is named in `system/register/omission-exemptions.txt` instead, with the reason stated there.
+
+**Pilot value, this feature:** `group: "pilot-map-ups"` on the 4 named hook rows above; every other
+hook row in the register carries `group: null`. The 3 guards in the pilot's scope
+(`guard_checkin_needs_project.sh`, `guard_pm_flag_store.sh`, `guard_brief_truncation.sh`) are
+`PreToolUse` rows and therefore structurally ineligible for `group` — untouched by this feature,
+by construction, not merely by convention.
 

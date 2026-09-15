@@ -36,6 +36,7 @@ hash_key() {
   printf '%s' "$_hk"
 }
 
+run() {
 set +e
 TTL_HOURS="${ANCHOR_TTL_HOURS:-12}"
 CEIL="${ANCHOR_CHAR_CEIL:-1200}"
@@ -84,3 +85,9 @@ printf '%s\n' "[SKILL ANCHOR — ${SKILL:-active skill} · harness-injected ever
 printf '%s\n' "$BODY"
 printf '%s\n' "↳ Before responding: silently re-confirm you are LEADING per the above — not drifting into the user's framing/terminology or a side-quest. Re-anchor if you've slipped. (You MAY still adapt when the user is genuinely right — anchor your PRINCIPLES, don't go deaf.)"
 exit 0
+}
+
+if [ "${BASH_SOURCE[0]:-$0}" = "$0" ]; then
+  run
+  exit $?
+fi

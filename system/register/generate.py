@@ -315,6 +315,70 @@ def sort_key(row):
 
 
 # ---------------------------------------------------------------------------
+# group collapse (Feature B5.2) — N member rows sharing one `group` -> 1 row
+# ---------------------------------------------------------------------------
+def dispatcher_path_for_group(group):
+    """The dispatcher script's repo-relative path, DERIVED from the group
+    string — never a hand-typed lookup table entry. Kept as its own function
+    so the ONE naming rule lives in one place (the schema-v1.md `group`
+    Addendum names this exact function)."""
+    return f"/system/hooks/group_dispatch_{group}.sh"
+
+
+def collapse_group_rows(rows):
+    """`rows`: hook rows already filtered to ONE surface (settings, plugin,
+    registrations, or user). Rows carrying a null/absent `group` pass through
+    unchanged. Rows sharing a non-null `group` AND an identical
+    (event, matcher, launch_mode, if, args) — the only combination that can
+    legitimately share one wiring entry, since anything else would mean the
+    members do not actually agree on how they're invoked — collapse onto ONE
+    synthetic row whose `path` is that group's dispatcher script
+    (`dispatcher_path_for_group`). The schema/validator gate (`schema_check`,
+    already run before this is ever called) is what makes it structurally
+    impossible for a collapsed group to include a blocking-capable event row
+    — this function does not re-check that; it trusts the gate that already
+    ran, same as every other step in `generate()` trusts the schema gate.
+
+    Raises ValueError on a group whose members disagree on repo (a public/
+    private mix would need a dispatcher in two places at once — unsupported,
+    and no such case exists in this register today) — fail loud rather than
+    silently pick one.
+    """
+    buckets = {}
+    passthrough = []
+    for row in rows:
+        group = row.get("group")
+        if not group:
+            passthrough.append(row)
+            continue
+        key = (group, row["event"], row["matcher"], row.get("launch_mode"),
+               row.get("if"), row["args"])
+        buckets.setdefault(key, []).append(row)
+
+    out = list(passthrough)
+    for (group, event, matcher, launch_mode, if_cond, args), members in buckets.items():
+        repos = {m.get("repo") for m in members}
+        if len(repos) != 1:
+            raise ValueError(
+                f"group {group!r} has members in more than one repo ({sorted(repos)}) "
+                f"— a single dispatcher script cannot live in two repos at once"
+            )
+        member_names = sorted(m["path"].rsplit("/", 1)[-1] for m in members)
+        out.append({
+            "event": event,
+            "matcher": matcher,
+            "path": dispatcher_path_for_group(group),
+            "args": args,
+            "if": if_cond,
+            "status": f"Running the \"{group}\" group ({', '.join(member_names)})...",
+            "repo": repos.pop(),
+            "launch_mode": launch_mode,
+            "group": group,
+        })
+    return out
+
+
+# ---------------------------------------------------------------------------
 # cache-divergence: WARN only, read-only against the platform cache
 # ---------------------------------------------------------------------------
 def cache_divergence_warnings(hook_rows, public_root, cache_root):
@@ -495,6 +559,34 @@ def generate(register_path, out_dir, public_root, private_root, cache_root,
             })
             continue
         ordered = sorted((row for _, row in matched), key=sort_key)
+
+        # Feature B5.2 — collapse any rows sharing a `group` onto their one
+        # dispatcher row BEFORE building the doc, so the dispatcher's command
+        # is what actually gets emitted for the whole group. The schema gate
+        # (already run, above, before ANY target is touched) is what makes a
+        # blocking-capable event row structurally unable to reach here with a
+        # non-null `group` — see collapse_group_rows()'s own docstring.
+        ordered = sorted(collapse_group_rows(ordered), key=sort_key)
+
+        # The assert-on-write gate above already checked every ORIGINAL
+        # member's own file — but a dispatcher's path is synthetic (derived
+        # from the group string, not a register row), so it never went
+        # through that check. Re-run the identical check on just the
+        # synthetic rows: a missing dispatcher script refuses this target
+        # exactly like a missing member script would, never a silent skip.
+        group_broken = [
+            row for row in ordered
+            if row.get("group") and not live_exists(row, public_root, private_root)
+        ]
+        if group_broken:
+            target_results.append({
+                "filename": filename, "surface": surface, "status": "REFUSED",
+                "reason": "group dispatcher script does not exist on disk",
+                "broken": [(None, row) for row in group_broken],
+                "blocking": _blocking(repo_filter),
+            })
+            continue
+
         doc = build_hooks_doc(ordered, form)
         content = json.dumps(doc, indent=2, ensure_ascii=False, sort_keys=False) + "\n"
         final_path = os.path.join(out_dir, filename)

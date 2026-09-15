@@ -24,6 +24,7 @@ trap 'lhb_journal_fire "$?" "save_routing_hint.sh" "UserPromptSubmit" "" 2>/dev/
 #      a turn; a missing hint is a small loss, a stuck turn is a large one.
 # UPDATED: 2026-08-11 (ported; paths resolved from this script, not from a home directory)
 # ─────────────────────────────────────────────────────────────────────────────
+run() {
 set +e
 INPUT="$(cat 2>/dev/null)"
 
@@ -64,3 +65,9 @@ else
   echo "[save-routing] They asked to save, and NO project is armed. Do not guess a home — ASK: \"No project's active — save to a standalone note, or which project's brief?\" (Normally it is the \`## 7. SCRATCHPAD\` section of the armed brief.)"
 fi
 exit 0
+}
+
+if [ "${BASH_SOURCE[0]:-$0}" = "$0" ]; then
+  run
+  exit $?
+fi

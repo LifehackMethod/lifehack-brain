@@ -185,6 +185,31 @@ UNREGISTERED_OK = {
                              "which is exactly the double-registration cost B2 exists to remove. See "
                              "scratchpad/B2.2-report.md for the full row-by-row audit of why this is "
                              "the ONE entry among 51 duplicated public hook rows that met this bar.",
+    # Feature B5.2 (enforcement-layer Phase 2, PHASE B5 "the map pilot", 2026-09-15). These 4 are
+    # real, registered UserPromptSubmit hooks -- their register.jsonl rows carry
+    # group: "pilot-map-ups" (schema v1's new field) -- but B5.2's generator
+    # (collapse_group_rows(), system/register/generate.py) collapses all 4 onto ONE wiring entry
+    # pointing at system/hooks/group_dispatch_pilot-map-ups.sh instead of naming each script
+    # individually. This lint greps .claude/settings.json / registrations.json TEXT for each
+    # script's own filename, so it correctly can't see an invocation that only happens inside the
+    # dispatcher's own MEMBERS array (a bash array literal in a hook file, not a wiring file this
+    # lint reads). All 4 are genuinely wired and fire every turn -- confirmed live, B5.2-report.md
+    # ("hook_started" UserPromptSubmit count dropped from 11 to 8, exactly the 4-to-1 collapse).
+    "announce_plan_write.sh": "B5.2 group member -- invoked via "
+                              "system/hooks/group_dispatch_pilot-map-ups.sh's MEMBERS array, not "
+                              "named directly in any wiring file. See the block comment above this "
+                              "entry.",
+    "pm_persist.sh": "B5.2 group member -- invoked via "
+                     "system/hooks/group_dispatch_pilot-map-ups.sh's MEMBERS array, not named "
+                     "directly in any wiring file. See the block comment above this entry.",
+    "save_routing_hint.sh": "B5.2 group member -- invoked via "
+                            "system/hooks/group_dispatch_pilot-map-ups.sh's MEMBERS array, not "
+                            "named directly in any wiring file. See the block comment above this "
+                            "entry.",
+    "skill_anchor_inject.sh": "B5.2 group member -- invoked via "
+                              "system/hooks/group_dispatch_pilot-map-ups.sh's MEMBERS array, not "
+                              "named directly in any wiring file. See the block comment above this "
+                              "entry.",
 }
 
 # A backticked `/word` is usually a skill here — but not always, and neither of these is ours to

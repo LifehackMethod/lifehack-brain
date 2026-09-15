@@ -56,6 +56,29 @@ SURFACES = (
 # separately, not this field's job.
 LAUNCH_MODES = ("project", "plugin", "both", "private")
 
+# hook.group — NEW field, B5.2 (enforcement-layer Phase 2 plan, PHASE B5 "the
+# map pilot"). Nullable, OPEN vocabulary (same non-closed-enum reasoning as
+# `needs`/`returns` above — a second pilot group next quarter must not force a
+# schema migration): rows sharing one non-null `group` value collapse onto ONE
+# generated wiring entry (`generate.py`'s `collapse_group_rows()`), pointed at
+# a single small dispatcher script that runs each member's own body in its own
+# isolated subshell, sequentially, preserving each member's own byte-for-byte
+# output and its own fire-journal line.
+#
+# ⛔ LEAD'S BINDING CONDITION (Discoveries, 2026-09-15): `group` is legal ONLY
+# on a hook row whose `event` is in GROUPABLE_HOOK_EVENTS below — HARD-REJECTED
+# by validate_register.py on every other event, never left as a convention or
+# a code comment. This is the mechanical form of plan constraint 0.5's
+# "weakest guard wins": collapsing N rows into one dispatcher process means
+# their exit codes and decisions become entangled — fine for an INJECT hook
+# (never blocks, so there is no "decision" to entangle), but a single point of
+# failure if it ever reached a row whose event CAN deny a tool call
+# (PreToolUse and its subclasses, Stop/SubagentStop, or any guard). Closing
+# this to a small, explicitly non-blocking allowlist makes that misuse
+# structurally impossible to introduce by accident, rather than relying on
+# someone remembering a rule.
+GROUPABLE_HOOK_EVENTS = ("UserPromptSubmit", "SessionStart", "Notification")
+
 # Closed enum: which checkout owns this unit's source. NOT the same axis as
 # "surfaces" — the plugin cache is a derived surface, never a repo of record
 # (constraint 0.5: "the plugin cache is platform-owned — the register
@@ -153,6 +176,13 @@ TYPE_FIELDS = {
         # RESTORED 2026-09-15 (Option G) — see the LAUNCH_MODES block above
         # for the full history and the ('enum', ...) closure's derivation.
         "launch_mode": (str, False, ("enum", LAUNCH_MODES)),
+        # NEW 2026-09-15 (B5.2) — see the GROUPABLE_HOOK_EVENTS block above.
+        # Required-but-nullable, same convention as "if": a missing KEY is
+        # always a reject; null is the honest default for every row not in a
+        # group. The event-allowlist cross-check lives in
+        # validate_register.py (a single-field enum can't express "legal
+        # combined with THIS OTHER field's value").
+        "group": (str, True, None),
     },
     "tool": {
         "language": (str, False, ("enum", ("py", "sh", "other"))),

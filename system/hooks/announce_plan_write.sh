@@ -27,6 +27,7 @@ trap 'lhb_journal_fire "$?" "announce_plan_write.sh" "UserPromptSubmit" "" 2>/de
 #      else ($HOME/.claude/plans etc.) is the harness's own per-user global state, not
 #      operator-specific, so it is left as $HOME-derived, matching plan_flag.sh's existing baseline.
 # ─────────────────────────────────────────────────────────────────────────────
+run() {
 set +e
 INPUT="$(cat 2>/dev/null)"
 
@@ -117,3 +118,9 @@ for tag, p in sorted(deltas):
         except Exception: pass
 PY
 exit 0
+}
+
+if [ "${BASH_SOURCE[0]:-$0}" = "$0" ]; then
+  run
+  exit $?
+fi
