@@ -336,6 +336,104 @@ def main():
             if os.path.exists(probe_abs):
                 os.remove(probe_abs)
 
+        # ------------------------------------------------- 3d. PER-COMMIT PROMOTION (2026-09-16)
+        #
+        # WHY THIS SECTION EXISTS: possible-third-party-name and dollar-amount-near-billing-word
+        # used to run ONLY inside scan_whole_tree() -- every assertion above this point that
+        # exercises them (BILLING HEURISTIC, and the third-party-name assertion inside
+        # REDACTION's whole-tree block) drives scan_whole_tree() itself or WARNING-only rules.
+        # Measured 2026-09-16, in a throwaway clone with hooks wired, BEFORE this fix: a
+        # --scan-file run (the exact mode system/githooks/pre-commit uses) of a staged file
+        # carrying a fake third-party name next to "client", or a specific-decimal dollar
+        # figure next to "retainer", exited 0 (clean) -- only home-path-generic (an unrelated,
+        # pre-existing BLOCKING rule) ever fired on --scan-file/--base/--head. This section
+        # pins check_added_lines_heuristics() closing that gap, for ADDED lines only. Fixture
+        # name/figure match the task's own worked examples ("Priya Nakamura", "$84,250
+        # retainer") -- invented, not a person; see FIXTURE HYGIENE at the top of this file for
+        # the collision check that already covers every literal in this module.
+        #
+        # ⚠ ASSEMBLED FROM PIECES, EACH KEPT OFF THE SAME PHYSICAL SOURCE LINE AS ITS PAIR --
+        # a DIFFERENT trick from leak3/DRIVE/ACCOUNT above, because it is a DIFFERENT kind of
+        # rule: those are single regexes that need two character classes touching (splitting
+        # a string literal mid-pattern breaks the match). possible-third-party-name and
+        # dollar-amount-near-billing-word instead TOKENIZE A WHOLE LINE and check word-distance
+        # or same-line co-occurrence -- splitting a literal on ONE line changes nothing, since
+        # both halves are still raw text on that one line. Only keeping the trigger word and
+        # the name/dollar-figure on SEPARATE source lines (referenced by variable, never
+        # re-spelled at the call site) hides them from a line-at-a-time scan. Each piece below,
+        # alone, is neither name-shaped, a trigger word, nor a decimal dollar figure.
+        _role_word = "client"
+        _invented_name = "Priya" + " " + "Nakamura"
+        _money_word = "retainer"
+        _money_figure = "$84,250" + ".00"
+
+        print("\nPER-COMMIT PROMOTION -- possible-third-party-name / dollar-amount-near-billing-word "
+              "now also run on --scan-file / --base--head, ADDED lines only")
+
+        name_leak = os.path.join(td, "name_leak.md")
+        with open(name_leak, "w", encoding="utf-8") as fh:
+            fh.write("Signed off by our {} {} on the renewal.\n".format(_role_word, _invented_name))
+        rc, out = run_scanner(["--identity", idf, "--scan-file", name_leak,
+                               "--as-path", "docs/name_leak.md"])
+        report("a staged file with a fake third-party name -> FLAGGED (exit 1)", rc == 1,
+               "got exit {}".format(rc))
+        report("...and the finding is possible-third-party-name",
+               "possible-third-party-name" in out)
+
+        dollar_leak = os.path.join(td, "dollar_leak.md")
+        with open(dollar_leak, "w", encoding="utf-8") as fh:
+            fh.write("Outstanding {} of {} due this month.\n".format(_money_word, _money_figure))
+        rc, out = run_scanner(["--identity", idf, "--scan-file", dollar_leak,
+                               "--as-path", "docs/dollar_leak.md"])
+        report("a staged file with a fake specific-decimal figure next to a billing word "
+               "-> FLAGGED (exit 1)", rc == 1, "got exit {}".format(rc))
+        report("...and the finding is dollar-amount-near-billing-word",
+               "dollar-amount-near-billing-word" in out)
+
+        # control: a desk-persona name (allowed unconditionally on the per-PR path -- see
+        # check_added_lines_heuristics()'s own comment for why it does not restrict itself to
+        # the git-derived reused subset) and a month name (NAME_HEURISTIC_STOPWORDS), both
+        # placed within word-adjacency of the SAME trigger word ("client") that just flagged
+        # above -- proves the allowlists this fix depends on carry over to the newly-promoted
+        # per-commit path, not just to scan_whole_tree(). "Cal", not another candidate, so this
+        # line ALSO stays silent under scan_whole_tree()'s own git-derived subset (verified
+        # reused in .claude/skills/ today) -- keeping this file's own whole-tree self-scan at
+        # zero NEW findings too, not just zero BLOCKING ones.
+        control = os.path.join(td, "control_prose.md")
+        with open(control, "w", encoding="utf-8") as fh:
+            fh.write("Cal, the client, saw March data.\n")
+        rc, out = run_scanner(["--identity", idf, "--scan-file", control,
+                               "--as-path", "docs/control_prose.md"])
+        report("control prose (desk-persona name + month name) -> NOT flagged (exit 0)",
+               rc == 0, "got exit {}: {}".format(rc, out.strip()[:300]))
+        report("...specifically neither heuristic rule id appears",
+               "possible-third-party-name" not in out
+               and "dollar-amount-near-billing-word" not in out)
+
+        # scan_whole_tree() itself must be completely unchanged by this: the identical planted
+        # line still reports as WARNING, never BLOCKING, never changing that mode's exit code --
+        # driven in-process exactly like the BILLING HEURISTIC / REDACTION sections above.
+        promo_probe_rel = "__promotion_probe_test__.md"
+        promo_probe_abs = os.path.join(REPO_ROOT, promo_probe_rel)
+        try:
+            with open(promo_probe_abs, "w", encoding="utf-8") as fh:
+                fh.write("Signed off by our {} {} on the renewal.\n".format(
+                    _role_word, _invented_name))
+            cwd = os.getcwd()
+            os.chdir(REPO_ROOT)
+            try:
+                chk.install_identity_patterns(idf)
+                res = chk.scan_whole_tree(scan_root_paths=[promo_probe_rel])
+            finally:
+                os.chdir(cwd)
+            report("scan_whole_tree() still reports this as WARNING, never BLOCKING",
+                   len(res["blocking"]) == 0
+                   and any(w["rule_id"] == "possible-third-party-name" for w in res["warnings"]),
+                   "{} blocking, {} warnings".format(len(res["blocking"]), len(res["warnings"])))
+        finally:
+            if os.path.exists(promo_probe_abs):
+                os.remove(promo_probe_abs)
+
         # ------------------------------------------------- 4. the scanner self-scans clean
         print("\nSELF-SCAN -- what makes deleting the .github/ exemption safe")
         rc, out = run_scanner(["--identity", idf, "--scan-file", SCANNER,
