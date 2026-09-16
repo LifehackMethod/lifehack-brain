@@ -292,4 +292,57 @@ else
 	echo "  ⚠ encoding lint SKIPPED — no python3 on PATH. New open() calls were NOT checked."
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# WIRING-DRIFT CHECK (check_drift.py) — WIRED 2026-09-15, enforcement-layer Phase 2 Feature B3.2.
+# D5 (Enver, 2026-09-15): the register's runner is ON-COMMIT — every commit regenerates the
+# wiring from the register and runs the FAST checks here, REFUSING the commit on drift. The one
+# slow check (the caller lint, ~8.2 s of `generate.py`'s ~99% of its own runtime — see the plan's
+# "Runner cost, measured for D5") runs in GitHub CI instead (`--no-caller-lint` here) — a human
+# waiting on `git commit` should not pay a cost a server-side job can absorb for them.
+#
+# WHY THIS MECHANISM AND NOT A NEW CLAUDE SESSION HOOK: this repository already runs its
+# commit-time checks (the personal-notes guard, gitleaks, check_no_internal_leakage.py, the
+# citation lint, the encoding lint, all above) as stages inside THIS FILE — a versioned git hook
+# activated by `git config core.hooksPath system/githooks` (see the repo-wide setup this file's
+# own stages already assume). check_drift.py is one more stage in the same mechanism, on
+# purpose: it fires only at the one moment that matters (a real commit), needs no Claude session
+# to be running, and adds ZERO entries to `.claude/settings.json` / `hooks/hooks.json` — the
+# whole point of putting the runner here rather than teaching a new Claude PreToolUse hook to
+# watch for `git commit`.
+#
+# ⛔ FAIL CLOSED — same posture as gitleaks and check_no_internal_leakage.py above, and for the
+# same reason: a stale `.claude/settings.json` / `hooks/hooks.json` is a silent guard-disablement
+# risk (a hook that quietly stops firing because the wiring file drifted out from under it), not
+# a cosmetic lint. If python3 is missing, or check_drift.py itself is gone, the commit is
+# REFUSED — not silently allowed through unchecked.
+#
+# check_drift.py calls `generate.py` by its CLI only, against the COMMITTED register
+# (`system/register/register.jsonl` — the fixed point; see check_drift.py's own module
+# docstring for why an earlier version that re-harvested the staged tree itself was circular
+# and missed real drift) inside a throwaway copy of the STAGED tree (never the real working
+# tree), cleaning up after itself either way. Default severity is WARN (Enver's B1.4 ruling,
+# 2026-09-15): an omission-check finding is reported, never a refusal, unless generate.py is
+# explicitly run at `--severity refuse`, which this stage does not do.
+repo=$(git rev-parse --show-toplevel)
+if ! command -v python3 >/dev/null 2>&1; then
+	echo ""
+	echo "  ⛔ COMMIT REFUSED — no python3 on PATH, so the wiring-drift check could not run."
+	echo "  This hook FAILS CLOSED rather than committing unchecked wiring."
+	echo ""
+	exit 1
+fi
+
+drift_checker="$repo/system/register/check_drift.py"
+if [ ! -f "$drift_checker" ]; then
+	echo ""
+	echo "  ⛔ COMMIT REFUSED — $drift_checker is missing. The wiring-drift check cannot run,"
+	echo "  and this hook FAILS CLOSED rather than committing unchecked wiring."
+	echo ""
+	exit 1
+fi
+
+if ! python3 "$drift_checker"; then
+	exit 1
+fi
+
 exit 0

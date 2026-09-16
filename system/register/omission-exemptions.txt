@@ -1,0 +1,55 @@
+# omission-exemptions.txt — hand-editable exemption list for the register's
+# omission check (Feature B1.4, enforcement-layer Phase 2 plan).
+#
+# Format (pipe-delimited, one entry per line): repo|path|reason
+#   repo   — "public" or "private"
+#   path   — repo-relative, forward slashes, leading "/" (schema-v1.md's path shape)
+#   reason — REQUIRED, free text; omission_check.py refuses to load a reason-less line
+#
+# Lines starting with "#" and blank lines are ignored. This file is read by
+# omission_check.py at every run — nothing here is duplicated into or overridden by
+# code. Add an entry only for a governed-folder script that is DELIBERATELY not
+# tracked by any register row; do not add an entry to silence a finding you have not
+# actually looked at.
+
+private|/system/hooks/guard_mcp_connector_shape.sh|T1 UNCALLED (2026-09-13, records/2026-09-13-phase-1/t1-result.md + t1-verdict-table.md): a hook script present on disk with zero live wiring registrations on any of the 6 registration surfaces. Doc-mentioned (separation-manifest.md, capability-census.md, personal-guards.md) and referenced from public system/tools/citation_lint.py and its own test, but never actually wired. A known gap T1 already found and named, not a regression introduced by the register build.
+private|/system/hooks/guard_public_write_notice.sh|T1 UNCALLED (2026-09-13, records/2026-09-13-phase-1/t1-result.md + t1-verdict-table.md): same class as guard_mcp_connector_shape.sh above — hook script on disk, zero wiring registrations on any surface, doc-mentioned (personal-guards.md) and referenced from private system/tools/ruled_table_generator.py but never wired. Known gap, not a regression.
+
+# --- hook-adjacent library/helper scripts, T1 class script-invoked or skill-referenced ---
+# These are governed system/hooks/ files that will NEVER carry a "hook"-type register row
+# by design: each is sourced/imported by another governed hook script (or referenced from a
+# SKILL.md), never itself wired to an event on any of the 6 registration surfaces. B1.4's
+# register-entry check cannot see that call relationship (that is T1's caller-enum / B1.5's
+# caller lint, a deliberately separate task) — so each is named here, not silently widened
+# into "registered," with the exact T1 evidence for why it is a real caller, not an orphan.
+private|/system/hooks/lib/git_target_resolver.py|T1 class script-invoked (t1-verdict-table.md, 2026-09-13): sourced by private system/hooks/guard_git_commit_signpost.sh and guard_git_push_signpost.sh. A library helper, never itself a registered event handler.
+public|/system/hooks/altitude_flag.sh|T1 class skill-referenced (t1-verdict-table.md): referenced by public .claude/skills/altitude/SKILL.md as a flag-file helper, not a registered event handler.
+public|/system/hooks/enforce_egress_allowlist.py|T1 class script-invoked (t1-verdict-table.md): invoked by public system/hooks/enforce_egress_allowlist.sh (the registered hook); this .py is its helper module.
+public|/system/hooks/guard_no_repoint_into_claudeops.py|T1 class script-invoked (t1-verdict-table.md): invoked by public system/hooks/guard_no_repoint_into_claudeops.sh (the registered hook); this .py is its helper module.
+public|/system/hooks/lib/bash_write_door.sh|T1 class script-invoked (t1-verdict-table.md): sourced by guard_brief_truncation.sh, guard_canon_write.sh, guard_cross_project_write.sh and others. A shared library helper, never itself registered.
+public|/system/hooks/lib/gws_guard.py|T1 class script-invoked (t1-verdict-table.md): sourced by guard_gmail_destructive.sh, guard_gmail_send.sh, guard_sheet_formula_writes.sh, guard_sheet_writes.sh. A shared library helper, never itself registered.
+public|/system/hooks/lib/tasks_guard.py|T1 class script-invoked (t1-verdict-table.md): sourced by public system/hooks/guard_tasks_writes.sh (the registered hook). A library helper, never itself registered.
+public|/system/hooks/lib/winpath_fold.py|T1 class script-invoked (t1-verdict-table.md): sourced by enforce_multiphase_contract.sh, enforce_skill_frontmatter.sh, guard_canon_write.sh and others. A shared library helper, never itself registered.
+public|/system/hooks/lib/winpath_fold.sh|T1 class script-invoked (t1-verdict-table.md): sourced by guard_canon_write.sh, guard_cross_project_write.sh, guard_findings_write.sh, guard_organism_map.sh and others. A shared library helper, never itself registered.
+public|/system/hooks/numbers_flag.sh|T1 class skill-referenced (t1-verdict-table.md): referenced by public .claude/skills/calculate/SKILL.md as a flag-file helper, not a registered event handler.
+public|/system/hooks/pm_flag.sh|T1 class script-invoked (t1-verdict-table.md): sourced by announce_plan_write.sh, guard_checkin_needs_project.sh, guard_cross_project_write.sh, guard_pm_flag_store.sh. A flag-file helper, never itself registered.
+public|/system/hooks/scratch_flag.sh|T1 class script-invoked/skill-referenced (t1-verdict-table.md): sourced by scratch_capture_gate.sh and scratch_sweep_nudge.sh, and referenced by the planning-weekly/planning-daily SKILL.md files. A flag-file helper, never itself registered.
+public|/system/hooks/skill_anchor.sh|T1 class skill-referenced (t1-verdict-table.md): referenced by design-lifehack/project-manager/ingest SKILL.md files as a flag-file helper, not a registered event handler.
+public|/system/hooks/throughline_flag.sh|T1 class script-invoked/skill-referenced (t1-verdict-table.md): sourced by guard_throughline_write_scope.sh, and referenced by the throughline SKILL.md. A flag-file helper, never itself registered.
+public|/system/hooks/lib/journal.sh|B4.1 (2026-09-15, enforcement-layer Phase 2): the fire-journal library, sourced via a two-line EXIT-trap pattern by all 53 registered system/hooks/*.sh entry points plus system/tools/mirror_line.sh (B4.1-report.md). A shared library helper, never itself a registered event handler — same class as the other system/hooks/lib/*.sh entries above.
+public|/system/hooks/lib/flag.sh|B5.1 (2026-09-15, enforcement-layer Phase 2): the shared flag-helper library, sourced by the five simple flag scripts (skill_anchor.sh, scratch_flag.sh, altitude_flag.sh, numbers_flag.sh, throughline_flag.sh) — none of which are registered hooks themselves (skills call them directly, per T1's skill-referenced/script-invoked entries for those five above). A shared library helper, never itself a registered event handler — same class as the other system/hooks/lib/*.sh entries above.
+public|/system/hooks/group_dispatch_pilot-map-ups.sh|B5.2 (2026-09-15, enforcement-layer Phase 2, PHASE B5 the map pilot): the "pilot-map-ups" group's dispatcher — a normal, hand-authored, committed hook script, but its WIRING ENTRY is entirely synthetic, produced by generate.py's collapse_group_rows() from the 4 member rows (announce_plan_write.sh, pm_persist.sh, save_routing_hint.sh, skill_anchor_inject.sh) that carry group="pilot-map-ups". Giving this file its own "hook" register row too would double-emit its own command onto both public wiring files. Deliberately exempt, not an oversight — see schema-v1.md's `group` Addendum.
+
+# --- private "0R" personal-guard cleanup series (C1.1, commit c29e8d0, 2026-09-15/16):
+# these 3 files remain on disk in the private repo but were dropped from
+# system/hooks/registrations.json (49 of 50 removed rows were already wired natively by
+# the plugin's hooks.json; repointing would double-fire). Confirmed this session
+# (2026-09-16): registrations.json's PreToolUse/Bash block now carries only
+# guard_gh_pr_merge.sh; neither ~/.claude/settings.json nor settings.local.json wires
+# any of the 3; none exist in the public repo except guard_git_push_signpost.sh (see
+# below). Each is exercised only by its own proof harness via a direct subprocess call
+# (test_inert_guards_fire.sh / test_git_signpost_resolver.sh), never through live event
+# wiring — disposition below states the CURRENT unwired reality per file, not a guess.
+private|/system/hooks/guard_commit_allowlist.sh|Confirmed 2026-09-16: on disk (7984 bytes), not in private registrations.json (C1.1, commit c29e8d0), not wired in live ~/.claude/settings.json, absent from the public repo. Ruled KEEP-INFRASTRUCTURE (card 2.12, ruled_table_generator.py MANUAL_DISPOSITION_OVERRIDES) and DROP-keep-private (per this task's build-window ruling, 2026-09-16): not installed/shipped, kept private for its own opt-in $CLAUDEOPS_COMMIT_ALLOW use. Exercised only by test_inert_guards_fire.sh's direct subprocess call, never via live wiring.
+private|/system/hooks/guard_hook_syntax.sh|Confirmed 2026-09-16: on disk (5299 bytes), not in private registrations.json (C1.1, commit c29e8d0), not wired in live ~/.claude/settings.json, absent from the public repo. Subject of an OPEN install/ship decision under card 2.21 (a separate work window, as of 2026-09-16) — exempted to reflect its CURRENT unwired state only, not to preempt that decision; revisit once card 2.21 resolves. Exercised only by test_inert_guards_fire.sh's direct subprocess call, never via live wiring.
+private|/system/hooks/guard_git_push_signpost.sh|Confirmed 2026-09-16: exists in BOTH repos and has DIVERGED. Public system/hooks/guard_git_push_signpost.sh (register row hook:public:/system/hooks/guard_git_push_signpost.sh, wired via the plugin) carries the 0.3.21 fix (marker keyed on session+push-hash, never deleted). This PRIVATE copy still has the pre-fix delete-on-allow marker — the "toggle never yields" bug root-caused 2026-09-15 (discoveries.md, "Push-signpost never yields") — and is not registered in private registrations.json (C1.1, commit c29e8d0) nor wired into live settings. Exempted on that basis, naming the divergence rather than hiding it: the private file is stale, unwired, and its own fix (session+push-hash marker, never delete) is proposed but not yet built or merged. Exercised only by test_git_signpost_resolver.sh's direct subprocess calls, never via live wiring.

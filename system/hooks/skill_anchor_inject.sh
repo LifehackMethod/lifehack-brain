@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# LHB fire-journal (B4.1): observes only; never alters this hook's decision/exit/stdout/stderr.
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/lib/journal.sh" 2>/dev/null || lhb_journal_fire() { :; }
+trap 'lhb_journal_fire "$?" "skill_anchor_inject.sh" "UserPromptSubmit" "" 2>/dev/null || true' EXIT
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # WHY: A SKILL.md body is injected once at invocation, then sinks into the
 #      low-attention middle as the session grows (context rot / lost-in-the-middle,
@@ -33,6 +36,7 @@ hash_key() {
   printf '%s' "$_hk"
 }
 
+run() {
 set +e
 TTL_HOURS="${ANCHOR_TTL_HOURS:-12}"
 CEIL="${ANCHOR_CHAR_CEIL:-1200}"
@@ -81,3 +85,9 @@ printf '%s\n' "[SKILL ANCHOR — ${SKILL:-active skill} · harness-injected ever
 printf '%s\n' "$BODY"
 printf '%s\n' "↳ Before responding: silently re-confirm you are LEADING per the above — not drifting into the user's framing/terminology or a side-quest. Re-anchor if you've slipped. (You MAY still adapt when the user is genuinely right — anchor your PRINCIPLES, don't go deaf.)"
 exit 0
+}
+
+if [ "${BASH_SOURCE[0]:-$0}" = "$0" ]; then
+  run
+  exit $?
+fi

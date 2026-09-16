@@ -165,6 +165,51 @@ UNREGISTERED_OK = {
                                   "the plugin does not have — so whether it does anything meaningful "
                                   "once shipped is itself an open consideration. Recorded here so the "
                                   "gap is stated rather than silent.",
+    "emit_harness_brief.sh": "registered in hooks/hooks.json (the plugin surface) but, as of "
+                             "enforcement-layer Phase 2 Feature B2.2 (2026-09-15), DELIBERATELY NOT "
+                             "in .claude/settings.json — a hand-editable, reason-required generator "
+                             "exception (system/register/surface-dedup.txt) removes it from that "
+                             "surface. This lint reads .claude/settings.json and "
+                             "system/hooks/registrations.json; it does not read hooks/hooks.json, "
+                             "which is why it sees the hook as registered nowhere when it is in fact "
+                             "registered there. Reason for the split (RULED, not open, unlike "
+                             "guard_harness_writeback.sh above): this hook's own job is delivering "
+                             "the harness's standing brief to sessions that do NOT already get this "
+                             "repo's CLAUDE.md auto-loaded — i.e. sessions reached only via the "
+                             "plugin, arbitrary cwd. A session with .claude/settings.json present "
+                             "(a checkout) already gets the real CLAUDE.md automatically with no hook "
+                             "involved, and the hook's own body already self-suppresses on a "
+                             "byte-identical ancestor CLAUDE.md match — firing it via settings.json "
+                             "already prints nothing there today. Registering it on that surface too "
+                             "would only pay a second bash+python3 startup for a guaranteed no-op, "
+                             "which is exactly the double-registration cost B2 exists to remove. See "
+                             "scratchpad/B2.2-report.md for the full row-by-row audit of why this is "
+                             "the ONE entry among 51 duplicated public hook rows that met this bar.",
+    # Feature B5.2 (enforcement-layer Phase 2, PHASE B5 "the map pilot", 2026-09-15). These 4 are
+    # real, registered UserPromptSubmit hooks -- their register.jsonl rows carry
+    # group: "pilot-map-ups" (schema v1's new field) -- but B5.2's generator
+    # (collapse_group_rows(), system/register/generate.py) collapses all 4 onto ONE wiring entry
+    # pointing at system/hooks/group_dispatch_pilot-map-ups.sh instead of naming each script
+    # individually. This lint greps .claude/settings.json / registrations.json TEXT for each
+    # script's own filename, so it correctly can't see an invocation that only happens inside the
+    # dispatcher's own MEMBERS array (a bash array literal in a hook file, not a wiring file this
+    # lint reads). All 4 are genuinely wired and fire every turn -- confirmed live, B5.2-report.md
+    # ("hook_started" UserPromptSubmit count dropped from 11 to 8, exactly the 4-to-1 collapse).
+    "announce_plan_write.sh": "B5.2 group member -- invoked via "
+                              "system/hooks/group_dispatch_pilot-map-ups.sh's MEMBERS array, not "
+                              "named directly in any wiring file. See the block comment above this "
+                              "entry.",
+    "pm_persist.sh": "B5.2 group member -- invoked via "
+                     "system/hooks/group_dispatch_pilot-map-ups.sh's MEMBERS array, not named "
+                     "directly in any wiring file. See the block comment above this entry.",
+    "save_routing_hint.sh": "B5.2 group member -- invoked via "
+                            "system/hooks/group_dispatch_pilot-map-ups.sh's MEMBERS array, not "
+                            "named directly in any wiring file. See the block comment above this "
+                            "entry.",
+    "skill_anchor_inject.sh": "B5.2 group member -- invoked via "
+                              "system/hooks/group_dispatch_pilot-map-ups.sh's MEMBERS array, not "
+                              "named directly in any wiring file. See the block comment above this "
+                              "entry.",
 }
 
 # A backticked `/word` is usually a skill here — but not always, and neither of these is ours to

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# LHB fire-journal (B4.1): observes only; never alters this hook's decision/exit/stdout/stderr.
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/lib/journal.sh" 2>/dev/null || lhb_journal_fire() { :; }
+trap 'lhb_journal_fire "$?" "announce_plan_write.sh" "UserPromptSubmit" "" 2>/dev/null || true' EXIT
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # WHY: Claude Code plan mode saves plans to ~/.claude/plans/ with RANDOM two-word
 #      names, silently — users can't find them, and one intended plan silently
@@ -24,6 +27,7 @@
 #      else ($HOME/.claude/plans etc.) is the harness's own per-user global state, not
 #      operator-specific, so it is left as $HOME-derived, matching plan_flag.sh's existing baseline.
 # ─────────────────────────────────────────────────────────────────────────────
+run() {
 set +e
 INPUT="$(cat 2>/dev/null)"
 
@@ -114,3 +118,9 @@ for tag, p in sorted(deltas):
         except Exception: pass
 PY
 exit 0
+}
+
+if [ "${BASH_SOURCE[0]:-$0}" = "$0" ]; then
+  run
+  exit $?
+fi

@@ -9,45 +9,44 @@
 # REDIRECT: Flag ~/.claude/run/scratch/scratch-sess-<id>.flag. Reader: system/statusline.sh.
 # SIGNPOST: what the status bar shows is `system/statusline.sh`, which reads this flag. ⛔ The plan
 #           and research write-up this was built from are records in the author's own notes and do
-#           not ship; the behaviour is here.
+#           not ship; the behaviour is here. Shared mechanics (key derivation, TTL expiry,
+#           sweep-clear) live in system/hooks/lib/flag.sh — change those there, not here.
 # FAIL_POSTURE: degrade-safe — a recorder, never a gate.
-# UPDATED: 2026-08-11 (ported; the shasum shim added, per the Git Bash floor)
+# UPDATED: 2026-09-15 (B5.1 — converted to a thin shim over system/hooks/lib/flag.sh; CLI
+#          contract, payload keys, and output text unchanged. Was: 2026-08-11, ported; the shasum
+#          shim added, per the Git Bash floor)
 # ─────────────────────────────────────────────────────────────────────────────
 #   scratch_flag.sh arm <scratch_path> <skill>   # a scratchpad became active this session
 #   scratch_flag.sh clear                        # scratchpad closed
 #   scratch_flag.sh status                       # armed | none
-# ── hash_key: the fallback session key, and it MUST match everywhere ──────────────────────────────
-# When the harness gives us no session id we key on the working directory instead. `shasum` does that
-# on macOS and Linux and is ABSENT from Git Bash on Windows, where it produces an EMPTY key — so every
-# window on that machine would collide on one flag, silently.
-# ⚠ SHA-1 DELIBERATELY, NOT SHA-256: this must equal what `shasum` prints, or a machine that has
-# shasum and a machine that does not would key the SAME folder differently.
-hash_key() {
-  _hk="$(printf '%s' "$1" | shasum 2>/dev/null | cut -c1-12)"
-  if [ -z "$_hk" ]; then
-    _hk="$(printf '%s' "$1" | python3 -c 'import hashlib,sys; sys.stdout.write(hashlib.sha1(sys.stdin.buffer.read()).hexdigest())' 2>/dev/null | cut -c1-12)"
-  fi
-  printf '%s' "$_hk"
-}
+# ─────────────────────────────────────────────────────────────────────────────
 
 set +e
+
+# Condition ⑤ (D6): resolve the shared library relative to THIS shim's own location, quoted — the
+# notes root and the plugin cache path both contain spaces, so an unquoted expansion breaks.
+_SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
+_LIB="$_SELF_DIR/lib/flag.sh"
+if [ ! -f "$_LIB" ]; then
+  echo "scratch_flag.sh: FATAL — shared library missing at $_LIB (cannot arm/clear/read scratch state)" >&2
+  exit 1
+fi
+# shellcheck source=lib/flag.sh
+. "$_LIB" || { echo "scratch_flag.sh: FATAL — shared library at $_LIB failed to load" >&2; exit 1; }
+for _fn in flag_init flag_write flag_get flag_ttl_expired flag_clear_sweep; do
+  command -v "$_fn" >/dev/null 2>&1 || { echo "scratch_flag.sh: FATAL — shared library at $_LIB is missing $_fn() (corrupt)" >&2; exit 1; }
+done
+
 TTL_MIN="${SCRATCH_TTL_MIN:-30}"
-FLAGDIR="$HOME/.claude/run/scratch"; mkdir -p "$FLAGDIR" 2>/dev/null
-if [ -n "$CLAUDE_CODE_SESSION_ID" ]; then KEY="sess-$CLAUDE_CODE_SESSION_ID"
-else KEY="cwd-$(hash_key "$PWD")"; fi
-FLAG="$FLAGDIR/scratch-$KEY.flag"
-NOW="$(date +%s 2>/dev/null)"
+flag_init scratch scratch
+
 case "$1" in
-  arm)   { echo "scratch_path=$2"; echo "skill=$3"; echo "armed_at=$NOW"; echo "session=$CLAUDE_CODE_SESSION_ID"; } > "$FLAG"
+  arm)   flag_write "scratch_path=$2" "skill=$3" "armed_at=$NOW" "session=$CLAUDE_CODE_SESSION_ID"
          echo "SCRATCH-ARMED: ${3:-?} -> ${2:-?} (session ${CLAUDE_CODE_SESSION_ID:-none})";;
-  clear) rm -f "$FLAG" 2>/dev/null
-         if [ -n "$CLAUDE_CODE_SESSION_ID" ]; then
-           for f in "$FLAGDIR"/scratch-*.flag; do [ -f "$f" ] || continue
-             s="$(grep '^session=' "$f" 2>/dev/null | cut -d= -f2-)"
-             [ "$s" = "$CLAUDE_CODE_SESSION_ID" ] && rm -f "$f" 2>/dev/null; done; fi
+  clear) flag_clear_sweep scratch >/dev/null
          echo "SCRATCH-CLEARED";;
-  status) if [ -f "$FLAG" ]; then AT="$(grep '^armed_at=' "$FLAG" 2>/dev/null | cut -d= -f2-)"
-            if [ -n "$AT" ] && [ -n "$NOW" ] && [ $(( NOW - AT )) -ge $(( TTL_MIN * 60 )) ]; then rm -f "$FLAG"; echo "none"; else echo "armed"; fi
+  status) if [ -f "$FLAG" ]; then
+            if flag_ttl_expired $(( TTL_MIN * 60 )); then echo "none"; else echo "armed"; fi
           else echo "none"; fi;;
   *) echo "usage: scratch_flag.sh arm <path> <skill> | clear | status" >&2; exit 2;;
 esac
