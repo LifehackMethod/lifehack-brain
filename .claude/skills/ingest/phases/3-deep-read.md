@@ -123,7 +123,10 @@ it survives her absence.
    Pack the FULL sanitized body (`--slice none` — the gate runs on the whole body; no slice):
    `python3 $T/gate_and_pack.py --in "$FLAT" --out "$SCRATCH" --slice none --max-chars 40000 --max-files 3 --files "${WHOLE[@]}"`.
    Spawn ONE tool-less **`ingest-conclusions`** agent (Read-only, model **sonnet** — keep Sonnet for judgment;
-   Haiku lost the recognition intuition — **`run_in_background: true`**, non-blocking) per `bundle-*.txt`.
+   Haiku lost the recognition intuition — **`run_in_background: true`**, non-blocking) per `bundle-*.txt` —
+   subagent_type `lifehack-brain:ingest-conclusions` first, bare `ingest-conclusions` as the clone-install
+   fallback; **if neither spawns, STOP and refuse — do not read the bundle in a tooled context** (naming
+   rule + why: `system/ingestion-reader-contract.md`, the spawn step).
    **Spawn them as PLAIN background sub-agents — do NOT give them addressable teammate NAMES.** A named teammate
    is handed a `SendMessage` tool by the harness, which (a) breaks the tool-less guarantee the security model
    depends on and (b) makes the reader ship its JSON via a message instead of returning it as final text, so the
@@ -170,7 +173,9 @@ it survives her absence.
    for f in "${GIANT[@]}"; do python3 $T/pipeline.py giant --map "$MAP" --file "$f" --sampled true; done
    python3 $T/gate_and_pack.py --in "$FLAT" --out "$SCRATCH-giant" --slice giant --max-files 1 --max-chars 200000 --files "${GIANT[@]}"
    ```
-   Spawn one tool-less `ingest-conclusions` reader per bundle; collect as in Step 3. **PRODUCE THE REQUIRED
+   Spawn one tool-less `ingest-conclusions` reader per bundle — `lifehack-brain:ingest-conclusions` first,
+   bare `ingest-conclusions` fallback, refuse if neither spawns (`system/ingestion-reader-contract.md`, the
+   spawn step); collect as in Step 3. **PRODUCE THE REQUIRED
    ARTIFACT — a visible NUMBERED list of EVERY sampled giant** (a count you cannot miss), each with the reader's
    partial conclusion and a plain *"I read the front and back of this one, not the whole thing."* Then the
    **say-go HITL — the human rules EACH giant before it is staged:**
