@@ -104,9 +104,11 @@ def validate_row(row, line_no):
     # 2. cross-field constraint: exists=False <=> sha is None (T2's own rule).
     if row.get("exists") is False and row.get("sha") is not None:
         errors.append(f"line {line_no}: exists=False but sha is not null")
-    if row.get("exists") is True and row.get("type") in ("hook", "tool", "skill") and row.get("sha") is None:
+    if row.get("exists") is True and row.get("type") in ("hook", "tool", "skill", "githook") and row.get("sha") is None:
         # scheduled rows have no single backing file, so this constraint is
-        # hook/tool/skill only (see schema-v1.md).
+        # hook/tool/skill/githook only (see schema-v1.md). A githook row DOES
+        # have one backing file (one row per git-hook script, K2, 2026-09-16),
+        # same one-row-one-file shape as hook/tool/skill above.
         errors.append(f"line {line_no}: exists=True but sha is null")
 
     # 3. cross-field constraint: `group` (B5.2) is legal ONLY on a hook row

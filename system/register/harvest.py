@@ -6,7 +6,7 @@ real tool: walks disk + wiring sources across BOTH repos (public V2 checkout + t
 `egjokaj/ClaudeOps` checkout) and emits a schema-v1 JSONL register (`schema_v1.py` /
 `validate_register.py`, both in this folder — Feature B1.1).
 
-Four unit classes (schema v1's `UNIT_TYPES`):
+Five unit classes (schema v1's `UNIT_TYPES`):
 
   hook      — a registration entry on any of the 6 live wiring surfaces (T2's original shape,
               unchanged: public settings.json + public hooks/hooks.json + private
@@ -25,6 +25,12 @@ Four unit classes (schema v1's `UNIT_TYPES`):
   scheduled — one row per line of the public repo's `system/pulse-config.md` ```jobs``` block.
               All scheduled rows share one `path` (the manifest itself) — Enver's Ruling 5,
               schema-v1.md.
+  githook   — NEW, K2 (2026-09-16): one row per git-hook SCRIPT under `system/githooks/` in
+              either repo (activated via `git config core.hooksPath system/githooks`, a wiring
+              surface none of the six `hook` surfaces above cover). Closes the register's
+              git-hooks blind spot — a tool invoked ONLY by `system/githooks/pre-commit` used
+              to read UNCALLED (see `caller_lint.py`'s module docstring and `schema_v1.py`'s
+              `githook` TYPE_FIELDS comment for the incident).
 
 Constraint 0.5 (binding on every task in this plan): **the platform plugin cache is accounted
 for, never generated.** This tool only ever READS the cache (to fold its two hook surfaces into a
@@ -491,6 +497,84 @@ def harvest_scheduled(public_root):
 
 
 # ---------------------------------------------------------------------------
+# type: githook — system/githooks/, both repos (K2, the register's git-hooks blind spot)
+# ---------------------------------------------------------------------------
+# The SAME invocation-token set caller_lint.py's own INVOKE_TOK checks at lint time (kept in
+# sync by inspection, not by import — a harvest.py -> caller_lint.py dependency isn't worth
+# the coupling for one small, stable regex; see caller_lint.py's module docstring for why the
+# two modules deliberately don't import each other). Used here only to keep the harvested
+# `commands` list small and code-shaped, never to make the final invocation-vs-mention call —
+# that judgment still happens once, downstream, in caller_lint.py's `githook_evidence()`
+# (via `ref_kind()`), exactly as it already does for every other evidence surface in this repo.
+GITHOOK_INVOKE_TOK = re.compile(
+    r"\b(bash|source|python3?|exec|subprocess|Popen|os\.system|check_output|check_call)\b"
+    r"|`|\$\(|(^|[\s;|&])\.[\s]+['\"]"
+)
+
+
+def extract_invocation_lines(text):
+    """Mechanical extraction, no judgment (this module's own convention — 'never a hand-typed
+    value'): every non-comment, non-blank line of a git-hook script that is SHAPED like an
+    invocation. A whole-line '#...' comment or a trailing ' #...' suffix is stripped first, so
+    a line that only MENTIONS a tool in prose (this very file's own docstrings, for instance)
+    is never captured as a command. This function may still over-collect a little (an `if`/
+    variable-assignment line that merely LOOKS invocation-shaped) — the real mention-vs-
+    invocation judgment happens once more, downstream, in caller_lint.py's `githook_evidence()`
+    (`ref_kind()`), the same two-stage division of labor `script_body_evidence()` already uses
+    for every other governed-unit cross-reference in this repo."""
+    lines = []
+    for raw in text.splitlines():
+        s = raw.strip()
+        if not s or s.startswith("#"):
+            continue
+        s = re.sub(r"\s+#.*$", "", s)
+        if not s:
+            continue
+        if GITHOOK_INVOKE_TOK.search(s):
+            lines.append(s)
+    # Dedupe + a stable sort — determinism (byte-identical regeneration) matters far more here
+    # than preserving the script's own line order, which this row's `commands` field never
+    # promises to reflect.
+    return sorted(set(lines))
+
+
+def harvest_githooks(public_root, private_root):
+    """type: githook — one row per git-hook SCRIPT under `system/githooks/` in either repo
+    (public: `pre-commit`; private: `pre-push`, today) — NOT one row per invoked command,
+    because a single git hook fires many commands in one process, unlike pulse-config.md's
+    one-job-per-line `scheduled` shape. Carries the invocation-shaped lines its own body
+    contains as `commands` (list_of_str), never the whole file body (constraint 0.5: the
+    register stores identity + existence + a content hash, not full text). A `tests/`
+    subdirectory alongside the hook scripts (the private repo has one) is skipped by the same
+    `is_test_class` exempt rule every other governed surface already uses."""
+    rows = []
+    for repo, root in (("public", public_root), ("private", private_root)):
+        base = os.path.join(root, "system", "githooks")
+        if not os.path.isdir(base):
+            continue
+        for f in sorted(os.listdir(base)):
+            full = os.path.join(base, f)
+            if not os.path.isfile(full):
+                continue  # skip tests/ and any other subdirectory
+            if is_test_class(f):
+                continue  # same exempt-class rule as every other governed surface
+            try:
+                with open(full, encoding="utf-8") as fh:
+                    text_body = fh.read()
+            except OSError:
+                continue
+            path = to_repo_path(root, full)
+            row = base_row(
+                unit_id=f"githook:{repo}:{path}", unit_type="githook", repo=repo, path=path,
+                exists=True, sha=short_sha(full),
+            )
+            row["hook_name"] = f
+            row["commands"] = extract_invocation_lines(text_body)
+            rows.append(row)
+    return rows
+
+
+# ---------------------------------------------------------------------------
 # orchestration
 # ---------------------------------------------------------------------------
 def _sort_key(row):
@@ -507,6 +591,7 @@ def harvest_all(public_root, private_root, cache_root):
     rows.extend(harvest_tools(public_root, private_root))
     rows.extend(harvest_skills(public_root, private_root))
     rows.extend(harvest_scheduled(public_root))
+    rows.extend(harvest_githooks(public_root, private_root))
     rows.sort(key=_sort_key)
     return rows
 
@@ -566,7 +651,8 @@ def main(argv=None):
     summary = (
         f"harvest.py — {len(rows)} rows "
         f"(hook={by_type.get('hook', 0)} tool={by_type.get('tool', 0)} "
-        f"skill={by_type.get('skill', 0)} scheduled={by_type.get('scheduled', 0)}) "
+        f"skill={by_type.get('skill', 0)} scheduled={by_type.get('scheduled', 0)} "
+        f"githook={by_type.get('githook', 0)}) "
         f"· broken (exists=false): {broken} "
         f"· public={public_root} private={private_root} cache={cache_root or '(none)'}"
     )

@@ -17,7 +17,7 @@ here as a comment — comments here drift, the doc is what a human opens.
 # ---------------------------------------------------------------------------
 # Unit classes (B1.1 (a)) — the full set this schema covers.
 # ---------------------------------------------------------------------------
-UNIT_TYPES = ("hook", "tool", "skill", "scheduled")
+UNIT_TYPES = ("hook", "tool", "skill", "scheduled", "githook")
 
 # Closed enum: the six live surfaces T2 harvested from. A hook entry names
 # every surface it is CURRENTLY registered on; B2's de-dup collapses these
@@ -214,6 +214,32 @@ TYPE_FIELDS = {
         "enabled":          (str, False, None),   # declared word, open vocab
         "interval_seconds": ((int,), True, None),
         "command":          (str, False, None),
+    },
+    # githook — NEW type, 2026-09-16 (K2, enforcement-layer Phase 2 plan, "the register's
+    # git-hooks blind spot"). The register held ZERO rows for git hooks, so a tool invoked
+    # ONLY by a local git hook (activated via `git config core.hooksPath system/githooks`,
+    # never any of the six wiring surfaces the `hook` type above already covers) read as
+    # UNCALLED to caller_lint.py — the incident that nearly retired `encoding_lint.py`
+    # (system/journal.md, 2026-09-16: its only caller is `system/githooks/pre-commit`).
+    # One row per git-hook SCRIPT (`system/githooks/pre-commit`, `system/githooks/pre-push`,
+    # one per repo that has one) — NOT one row per invoked command, because a single git
+    # hook fires many commands in one process, unlike pulse-config.md's one-job-per-line
+    # `scheduled` shape above.
+    #   "hook_name": the git-hooks filename itself (e.g. "pre-commit") — deliberately NOT
+    #                called `event`, to keep this axis visually and semantically distinct
+    #                from the `hook` type's Claude-Code-specific `event` enum (HOOK_EVENTS
+    #                above); a git hook has no such concept.
+    #   "commands":  the invocation-shaped lines harvest.py's `harvest_githooks()`
+    #                mechanically extracts from the script's own body — never the whole
+    #                file text (constraint 0.5: "the register stores identity + existence +
+    #                a content hash, not full text"). caller_lint.py's `githook_evidence()`
+    #                re-applies its own invocation-vs-mention judgment (`ref_kind()`) to
+    #                each line before crediting a governed unit — harvest.py does the
+    #                mechanical extraction, caller_lint.py keeps the judgment, same division
+    #                of labor as every other evidence surface in that module.
+    "githook": {
+        "hook_name": (str, False, None),
+        "commands":  (list, False, ("list_of_str", None)),
     },
 }
 
