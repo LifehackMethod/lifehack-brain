@@ -63,7 +63,7 @@
 # WHAT CHANGED IN THIS PORT — READ BEFORE ADDING OR TRUSTING A ROW
 # ══════════════════════════════════════════════════════════════════════════════════════════
 #
-# ⛔ ~~THREE~~ TWO DONOR GUARDS DO NOT EXIST HERE AND STRUCTURALLY CANNOT — their rows are DROPPED,
+# ⛔ ~~THREE~~ ~~TWO~~ ONE DONOR GUARD DOES NOT EXIST HERE AND STRUCTURALLY CANNOT — its row is DROPPED,
 #    not carried over as a permanently-red TARGET (a TARGET label means "declared intent, not
 #    built yet"; these were never going to be built here, which is a different claim and
 #    deserves a different word — an absence, framed):
@@ -98,9 +98,23 @@
 #      · `guard_router_writes.sh` (donor: "router-write-guard") — protects a home-mesh-router
 #        write surface reachable only through `desks/dobby/tools/asus_mesh_read.py`. Dobby is
 #        an excluded personal desk (the Desk Ruling, 2026-08-14); its tool tree does not ship.
-#      · `guard_hook_sop_read.sh` (donor: "hook-sop-read-gate") — verified absent from this
+#      · `guard_hook_sop_read.sh` (donor: "hook-sop-read-gate") — ~~verified absent from this
 #        repo and CORRECTLY so, per this port's own instructions (same exclusion class as
-#        `architecture_reason.py` and `auto_register_skill.sh`).
+#        `architecture_reason.py` and `auto_register_skill.sh`).~~
+#        ⚠ CORRECTED 2026-09-16 — THE STRUCK CLAIM IS FALSE. `system/hooks/guard_hook_sop_read.sh`
+#        is a live, git-tracked, 329-line script (verified this session: `ls -la` + `wc -l`), and it
+#        IS registered — in BOTH `.claude/settings.json` (project) and `hooks/hooks.json` (plugin),
+#        each under `"matcher": "Bash|Write|Edit"` (verified this session by reading both files
+#        directly). Since release 0.3.21 this closed a previously-exploited Write/Edit bypass on
+#        this exact guard (see the guard's own header). Flagged by the A1.8 helper's build report
+#        (2026-09-15, "Close student-facing guard coverage gap in .claude/settings.json") as a
+#        pre-existing staleness it found but did not fix. The header count above (this section's
+#        opening line) is corrected alongside this, from two to one — `guard_router_writes.sh`
+#        is now the sole guard genuinely absent here. The "DROPPED" row for hook-sop-read-gate
+#        below (search `hook-sop-read-gate: DROPPED`) carried the same false claim and is
+#        corrected there too. NOT fixed here, and out of scope for this correction: the manifest
+#        still has no real fire-test row for this guard, which it would need now that it is known
+#        LIVE and registered — that is a separate, larger addition for a person to schedule.
 #
 # ⚖ TWO GUARDS WERE RENAMED DURING THEIR OWN PORT — updated here to the real filename, found
 #    by listing `system/hooks/*.sh` rather than trusting the donor's name:
@@ -778,8 +792,13 @@ guards:
         tool_input:
           command: grep -n statusLine .claude/settings.json
 
-  # ══ hook-sop-read-gate: DROPPED — see "WHAT CHANGED" above. guard_hook_sop_read.sh is
-  # verified absent from this repo, deliberately, per this port's own instructions. ══
+  # ══ hook-sop-read-gate: DROPPED — see "WHAT CHANGED" above. ~~guard_hook_sop_read.sh is
+  # verified absent from this repo, deliberately, per this port's own instructions.~~ ══
+  # ⚠ CORRECTED 2026-09-16: false — see the dated correction in "WHAT CHANGED" above (same
+  # date). The script is live, git-tracked, and registered in both wiring files under
+  # Bash|Write|Edit. This row stays DROPPED here only because no fire-test row exists yet for
+  # it, not because the guard is absent — adding a real row is a separate task, out of scope
+  # for this correction.
 
   - id: tasks-readonly-list-guard
     label_claim: PARTIAL

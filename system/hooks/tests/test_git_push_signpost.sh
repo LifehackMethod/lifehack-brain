@@ -140,6 +140,121 @@ invoke_project "$PAY_MENTION" "$HOME_D" "sess-D" >/dev/null 2>&1; c=$?
 want_allow "$c" "a mere mention of 'git push' inside a quoted commit message is not tripped"
 
 echo
+echo "── E. refspec-summary fix (A1.9): summarises the NAMED ref, never the checkout ──"
+# A1.9 bug (observed live 2026-09-15): `git -C <repo> push origin <named-branch>`,
+# run while the checkout was on a DIFFERENT branch, signposted the CHECKOUT's
+# commits/files instead of the named branch's. This section builds a real scratch
+# git fixture (bare remote + local clone) and drives the guard through it via
+# `-C`, covering: the exact bug shape, src:dst, HEAD, no refspec, --tags, and an
+# unresolvable refspec.
+FIX_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/push-signpost-fixture.XXXXXX") || exit 1
+TMP_HOMES+=("$FIX_ROOT")
+FIX_BARE="$FIX_ROOT/remote.git"
+FIX_LOCAL="$FIX_ROOT/local"
+git init --bare -q "$FIX_BARE"
+git init -q "$FIX_LOCAL"
+export GIT_AUTHOR_NAME="A19 Test" GIT_AUTHOR_EMAIL="a19@example.invalid"
+export GIT_COMMITTER_NAME="A19 Test" GIT_COMMITTER_EMAIL="a19@example.invalid"
+git -C "$FIX_LOCAL" checkout -q -b main
+git -C "$FIX_LOCAL" remote add origin "$FIX_BARE"
+printf 'root\n' > "$FIX_LOCAL/root.txt"; git -C "$FIX_LOCAL" add root.txt; git -C "$FIX_LOCAL" commit -q -m "root commit"
+git -C "$FIX_LOCAL" push -q -u origin main
+git -C "$FIX_LOCAL" symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main
+
+git -C "$FIX_LOCAL" checkout -q -b branchA main
+printf 'a\n' > "$FIX_LOCAL/a_only.txt"; git -C "$FIX_LOCAL" add a_only.txt; git -C "$FIX_LOCAL" commit -q -m "branchA-only commit"
+git -C "$FIX_LOCAL" push -q -u origin branchA
+
+git -C "$FIX_LOCAL" checkout -q -b branchB main
+git -C "$FIX_LOCAL" push -q -u origin branchB
+printf 'b\n' > "$FIX_LOCAL/b_new_file.txt"; git -C "$FIX_LOCAL" add b_new_file.txt; git -C "$FIX_LOCAL" commit -q -m "branchB ahead-by-one commit"
+
+git -C "$FIX_LOCAL" checkout -q -b newbranch main
+printf 'n\n' > "$FIX_LOCAL/new_file.txt"; git -C "$FIX_LOCAL" add new_file.txt; git -C "$FIX_LOCAL" commit -q -m "newbranch commit"
+
+git -C "$FIX_LOCAL" tag v1.0 main
+
+# leave the checkout on branchA -- this IS the reported bug shape: checked out on
+# one branch while the push command NAMES a different one.
+git -C "$FIX_LOCAL" checkout -q branchA
+unset GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
+
+HOME_E=$(new_home); TMP_HOMES+=("$HOME_E")
+
+# E1 -- THE EXACT REPORTED BUG: checked out on branchA, push NAMES branchB.
+PAY_E1=$(payload "git -C $FIX_LOCAL push origin branchB")
+ERR_E1=$(mktemp "${TMPDIR:-/tmp}/push-signpost-test.XXXXXX")
+invoke_project "$PAY_E1" "$HOME_E" "sess-E1" >/dev/null 2>"$ERR_E1"; c=$?
+want_deny "$c" "E1: push names branchB while checked out on branchA"
+if grep -q "branchB -> origin/branchB" "$ERR_E1" && grep -q "b_new_file.txt" "$ERR_E1" && ! grep -q "a_only" "$ERR_E1"; then
+  pass=$((pass+1)); printf '   ok   E1: manifest names the PUSHED branch (branchB), not the checkout (branchA)\n'
+else
+  fail=$((fail+1)); printf '  FAIL  E1: manifest did not correctly summarise the named refspec\n'; cat "$ERR_E1"
+fi
+rm -f "$ERR_E1"
+
+# E2 -- src:dst refspec (local newbranch -> remote name renamed)
+PAY_E2=$(payload "git -C $FIX_LOCAL push origin newbranch:renamed")
+ERR_E2=$(mktemp "${TMPDIR:-/tmp}/push-signpost-test.XXXXXX")
+invoke_project "$PAY_E2" "$HOME_E" "sess-E2" >/dev/null 2>"$ERR_E2"; c=$?
+want_deny "$c" "E2: src:dst refspec"
+if grep -q "newbranch -> origin/renamed" "$ERR_E2" && grep -q "NEW BRANCH" "$ERR_E2" && grep -q "new_file.txt" "$ERR_E2"; then
+  pass=$((pass+1)); printf '   ok   E2: src:dst resolved to the correct dst name, flagged as a new branch\n'
+else
+  fail=$((fail+1)); printf '  FAIL  E2: src:dst refspec not resolved correctly\n'; cat "$ERR_E2"
+fi
+rm -f "$ERR_E2"
+
+# E3 -- literal HEAD, checked out on branchB
+git -C "$FIX_LOCAL" checkout -q branchB
+PAY_E3=$(payload "git -C $FIX_LOCAL push origin HEAD")
+ERR_E3=$(mktemp "${TMPDIR:-/tmp}/push-signpost-test.XXXXXX")
+invoke_project "$PAY_E3" "$HOME_E" "sess-E3" >/dev/null 2>"$ERR_E3"; c=$?
+want_deny "$c" "E3: literal HEAD refspec"
+if grep -q "HEAD (branchB)" "$ERR_E3" && grep -q "origin/branchB" "$ERR_E3" && grep -q "b_new_file.txt" "$ERR_E3"; then
+  pass=$((pass+1)); printf '   ok   E3: HEAD resolved to the checked-out branch (branchB) by name\n'
+else
+  fail=$((fail+1)); printf '  FAIL  E3: HEAD refspec not resolved correctly\n'; cat "$ERR_E3"
+fi
+rm -f "$ERR_E3"
+
+# E4 -- no refspec at all; current branch (branchB) has an upstream
+PAY_E4=$(payload "git -C $FIX_LOCAL push")
+ERR_E4=$(mktemp "${TMPDIR:-/tmp}/push-signpost-test.XXXXXX")
+invoke_project "$PAY_E4" "$HOME_E" "sess-E4" >/dev/null 2>"$ERR_E4"; c=$?
+want_deny "$c" "E4: bare push, no refspec"
+if grep -q "branchB (current branch, no refspec)" "$ERR_E4" && grep -q "origin/branchB" "$ERR_E4"; then
+  pass=$((pass+1)); printf '   ok   E4: no-refspec push resolved via the current branch + its upstream\n'
+else
+  fail=$((fail+1)); printf '  FAIL  E4: no-refspec push not resolved correctly\n'; cat "$ERR_E4"
+fi
+rm -f "$ERR_E4"
+
+# E5 -- --tags
+PAY_E5=$(payload "git -C $FIX_LOCAL push origin --tags")
+ERR_E5=$(mktemp "${TMPDIR:-/tmp}/push-signpost-test.XXXXXX")
+invoke_project "$PAY_E5" "$HOME_E" "sess-E5" >/dev/null 2>"$ERR_E5"; c=$?
+want_deny "$c" "E5: --tags"
+if grep -q "v1.0 -> origin/v1.0" "$ERR_E5"; then
+  pass=$((pass+1)); printf '   ok   E5: --tags lists the local tag\n'
+else
+  fail=$((fail+1)); printf '  FAIL  E5: --tags did not list the local tag\n'; cat "$ERR_E5"
+fi
+rm -f "$ERR_E5"
+
+# E6 -- unresolvable refspec must say UNRESOLVED loudly, never a silent allow
+PAY_E6=$(payload "git -C $FIX_LOCAL push origin does-not-exist-anywhere")
+ERR_E6=$(mktemp "${TMPDIR:-/tmp}/push-signpost-test.XXXXXX")
+invoke_project "$PAY_E6" "$HOME_E" "sess-E6" >/dev/null 2>"$ERR_E6"; c=$?
+want_deny "$c" "E6: unresolvable refspec still signposts (never silently allows)"
+if grep -q "UNRESOLVED" "$ERR_E6"; then
+  pass=$((pass+1)); printf '   ok   E6: unresolvable refspec says UNRESOLVED rather than guessing\n'
+else
+  fail=$((fail+1)); printf '  FAIL  E6: unresolvable refspec did not say UNRESOLVED\n'; cat "$ERR_E6"
+fi
+rm -f "$ERR_E6"
+
+echo
 printf 'RESULT: %d passed, %d failed.\n' "$pass" "$fail"
 if [ "$fail" -eq 0 ]; then echo "PUSH SIGNPOST GUARD GREEN"; exit 0; fi
 echo "PUSH SIGNPOST GUARD RED"; exit 1
