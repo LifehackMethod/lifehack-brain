@@ -43,11 +43,26 @@
 #      commit's own invocation wins over an inherited `cd` — confirmed against
 #      real git behaviour, not assumed. Falls back to `$PWD` when neither is
 #      present or the resolved path is not a real directory.
+# BRANCH: resolved from the COMMAND when it can be, never blindly from live
+#      `HEAD` — this hook fires PreToolUse, BEFORE the inspected command runs,
+#      so a chained `git checkout -b X` / `checkout -B X` / `switch -c X` /
+#      `switch -C X` earlier in the SAME `&&`/`;` chain (dropped across
+#      `|`/`||`, exactly like the `cd` tracking above, and scoped to the same
+#      resolved repo dir) has not actually switched HEAD yet at fire time —
+#      reading live HEAD there silently reports the OLD branch and misses the
+#      new one entirely (2026-09-16 bug, reported by 0-3-21-5c, fixed here). A
+#      branch introduced this way does not exist as a ref yet at fire time, so
+#      the usual `for-each-ref` tracking probe is skipped for it: absent an
+#      explicit `--track`, git's own `checkout -b`/`switch -c` never sets an
+#      upstream, so it is treated as upstream-less directly. No chained
+#      creation in the same chain (or a plain `checkout <existing-branch>`,
+#      which this hook does not special-case) falls back to live HEAD exactly
+#      as before.
 # FAIL_POSTURE: degrade-safe — any error (unreadable payload, shlex failure,
 #      git error mid-check) exits 0 SILENT. This is a SPEED BUMP on ordinary
 #      work, not a security boundary; a hook that can throw and block a commit
 #      no one can diagnose is worse than one that occasionally stays quiet.
-# UPDATED: 2026-09-08
+# UPDATED: 2026-09-16 (chained checkout -b/switch -c branch resolution — see BRANCH)
 # RULE: O3 (lifehack-migration.plan.md) — O2's CLAUDE.md map line (mechanics)
 # ─────────────────────────────────────────────────────────────────────────────
 # guard_no_upstream_commit_signpost.sh — PreToolUse hook (matcher: Bash)
@@ -90,9 +105,13 @@ def is_git(tok):
     return os.path.basename(tok) == "git"
 
 cwd = ""
+pending_branch = None
+pending_branch_repo = ""
 for seg, preceding_op in segments:
     if preceding_op in ("|", "||"):
         cwd = ""
+        pending_branch = None
+        pending_branch_repo = ""
 
     if seg and seg[0] == "cd":
         target = ""
@@ -118,9 +137,38 @@ for seg, preceding_op in segments:
             j += 2
         else:
             j += 1
-    if j < len(seg) and seg[j] == "commit":
-        resolved = cdir if cdir else cwd
-        print("DENY\t" + resolved); raise SystemExit
+    if j >= len(seg):
+        continue
+    subcmd = seg[j]
+    resolved = cdir if cdir else cwd
+
+    # A preceding `checkout -b/-B NAME` or `switch -c/-C NAME` in this same
+    # &&/; chain (never trusted across |/|| — reset above with cwd) creates a
+    # brand-new branch that HEAD has not moved to yet at fire time. Remember
+    # it, scoped to the resolved repo dir it was invoked against, so a later
+    # `commit` segment targeting the SAME repo dir can use it instead of live
+    # HEAD. A plain `checkout NAME` (no -b/-B) switches to an EXISTING branch
+    # this hook cannot safely fabricate tracking info for, so it is left
+    # alone — that case still falls back to live HEAD, unchanged.
+    if subcmd in ("checkout", "switch"):
+        create_flags = ("-b", "-B") if subcmd == "checkout" else ("-c", "-C")
+        branch_name = ""
+        for k in range(j + 1, len(seg) - 1):
+            if seg[k] in create_flags:
+                branch_name = seg[k + 1]
+                break
+        if branch_name:
+            pending_branch = branch_name
+            pending_branch_repo = resolved
+        continue
+
+    if subcmd != "commit":
+        continue
+
+    chained = ""
+    if pending_branch is not None and pending_branch_repo == resolved:
+        chained = pending_branch
+    print("DENY\t" + resolved + "\t" + chained); raise SystemExit
 
 print("OK")
 ' 2>/dev/null)
@@ -131,32 +179,40 @@ case "$VERDICT" in
     ;;
 esac
 
-CDIR="${VERDICT#*$'\t'}"
-[ "$CDIR" = "$VERDICT" ] && CDIR=""
-VERDICT="${VERDICT%%$'\t'*}"
+IFS=$'\t' read -r STATUS CDIR CHAINED_BRANCH <<< "$VERDICT"
 REPO_DIR="$PWD"
 if [ -n "$CDIR" ] && [ -d "$CDIR" ]; then REPO_DIR="$CDIR"; fi
 
-case "$VERDICT" in
+case "$STATUS" in
   OK|NOT_OURS)
     exit 0
     ;;
   DENY)
-    BRANCH=$(git -C "$REPO_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null)
-    [ -n "$BRANCH" ] || exit 0
-
-    TRACKLINE=$(git -C "$REPO_DIR" for-each-ref --format='%(upstream:short)|%(upstream:track)' "refs/heads/$BRANCH" 2>/dev/null)
-    [ -n "$TRACKLINE" ] || exit 0
-    UPSTREAM="${TRACKLINE%%|*}"
-    TRACK="${TRACKLINE#*|}"
-
-    FIRE=0
-    if [ -z "$UPSTREAM" ]; then
+    if [ -n "$CHAINED_BRANCH" ]; then
+      # A branch named by a chained `checkout -b`/`switch -c` in this same
+      # command does not exist as a ref yet — HEAD has not moved there, the
+      # checkout has not run. It cannot have an upstream (git's own -b/-c
+      # never sets one absent an explicit --track), so skip the for-each-ref
+      # probe entirely — it would only find nothing and stand this hook down.
+      BRANCH="$CHAINED_BRANCH"
       FIRE=1
     else
-      case "$TRACK" in
-        *gone*) FIRE=1 ;;
-      esac
+      BRANCH=$(git -C "$REPO_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null)
+      [ -n "$BRANCH" ] || exit 0
+
+      TRACKLINE=$(git -C "$REPO_DIR" for-each-ref --format='%(upstream:short)|%(upstream:track)' "refs/heads/$BRANCH" 2>/dev/null)
+      [ -n "$TRACKLINE" ] || exit 0
+      UPSTREAM="${TRACKLINE%%|*}"
+      TRACK="${TRACKLINE#*|}"
+
+      FIRE=0
+      if [ -z "$UPSTREAM" ]; then
+        FIRE=1
+      else
+        case "$TRACK" in
+          *gone*) FIRE=1 ;;
+        esac
+      fi
     fi
     [ "$FIRE" -eq 1 ] || exit 0
 
