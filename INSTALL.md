@@ -63,6 +63,10 @@ to Claude Code the way any other non-Claude-Code app is sent above.
 
 ## ⭐ NEXT — HOW YOU GET THIS: MANUAL CLONE (the path this file walks you through) OR PLUGIN (an experimental fast way in, and it DOES ship the guards)
 
+⛔ **Setting this up for yourself? Skip straight to the `MANUAL CLONE PATH` heading below — that is the
+supported route.** The plugin section in between is experimental and kept for the people testing it; you
+do not need to read or run anything in it first.
+
 **As of 2026-08-23 this harness is also a Claude Code marketplace plugin.** One command adds the
 marketplace, one installs the plugin — no folder to create, no `git` to run by hand. ⛔ **It does NOT
 keep itself updated from then on.** `lifehack-brain` is a third-party marketplace, and Claude Code ships
