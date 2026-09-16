@@ -61,11 +61,11 @@ to Claude Code the way any other non-Claude-Code app is sent above.
 > hand. ⛔ **Never offer help without saying how to reach it** — a promise with no route is where someone
 > quietly gives up. Then stop.
 
-## ⭐ NEXT — HOW YOU GET THIS: MANUAL CLONE (the path this file walks you through) OR PLUGIN (an experimental fast way in, and it DOES ship the guards)
+## ⭐ NEXT — HOW YOU GET THIS: PLUGIN (two commands, no folder) OR MANUAL CLONE (a folder this file walks you through) — both fully supported
 
-⛔ **Setting this up for yourself? Skip straight to the `MANUAL CLONE PATH` heading below — that is the
-supported route.** The plugin section in between is experimental and kept for the people testing it; you
-do not need to read or run anything in it first.
+⛔ **Choose one before you run anything: the plugin (next block, two commands) or the manual clone
+(jump straight to the `MANUAL CLONE PATH` heading below) — both are fully supported.** Pick the one you
+want, then start there; you don't need to read or run the other one first.
 
 **As of 2026-08-23 this harness is also a Claude Code marketplace plugin.** One command adds the
 marketplace, one installs the plugin — no folder to create, no `git` to run by hand. ⛔ **It does NOT
@@ -118,12 +118,13 @@ that matter) gets you the plugin's 45 guards — not that private maintainer-onl
 maintainer-only arrangement, not something this project promises anyone else; it is not a reason to
 prefer one install path over the other.
 
-**So, which one to use:** the manual clone below is the path this file is written for — guard hooks
-included, and everything after this point in the file assumes you're standing inside it. **The plugin
-above is an experimental way in:** it installs the same guard hooks in two commands, but it isn't yet
-the path most people should reach for, and using it means bridging STEP 7's cloned-folder assumption
-yourself, the way the note just above this one shows. The clone is also the one path that lets you read
-the harness's own source, change a skill, or send a PR back, if that's ever something you want to do.
+**So, which one to use:** both are fully supported and permanent, and they work in conjunction — pick
+whichever fits you. **The plugin above:** two commands, no folder, guard hooks included. **The manual
+clone below:** a folder you can open, read and edit — guard hooks included too, and it's what the rest
+of this file walks through step by step, so everything after this point assumes you're standing inside
+it. Only the clone lets you read the harness's own source, change a skill, or send a PR back; using the
+plugin means bridging STEP 7's cloned-folder assumption yourself, the way the note just above this one
+shows.
 
 ⭐ **If you do use the plugin and later want to connect your AI Brain (STEP 7 below) anyway:** its commands are written assuming you're sitting inside a cloned Harness folder. A plugin install has no such folder — ask Claude to find where the plugin actually landed (`claude plugin list`, or look under `~/.claude/plugins/cache/lifehack-brain/lifehack-brain/<version>/` — the full repo layout, including `shared/brain_root.py`, is really there) and run STEP 7's commands from inside *that* folder instead. The commands don't care which install method put the files on disk, only that you're standing in the right one.
 
@@ -131,11 +132,11 @@ the harness's own source, change a skill, or send a PR back, if that's ever some
 GitHub account signed in, name the one the plugin commands actually used, since a marketplace add can
 silently pick the wrong one.
 
-⛔ **Use the manual clone path** — this file is written around it, and it's also your path if your
-environment cannot install Claude Code plugins at all. **Both paths give you the guard hooks** — that
-is not what decides between them. **If you already installed the plugin and later decide you want the
-clone too, the manual clone below is additive, not a do-over:** it lands in its own folder and does not
-touch the plugin install.
+⭐ **A reason to pick the clone specifically: it's also your path if your environment cannot install
+Claude Code plugins at all.** Otherwise, both paths give you the guard hooks — that is not what decides
+between them. **If you already installed the plugin and later decide you want the clone too, the manual
+clone below is additive, not a do-over:** it lands in its own folder and does not touch the plugin
+install.
 
 ## ⭐ MANUAL CLONE PATH — FOUR QUESTIONS, BEFORE ANY FOLDER IS MADE
 
