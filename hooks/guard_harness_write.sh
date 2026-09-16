@@ -1,4 +1,7 @@
 #!/bin/bash
+# LHB fire-journal (B4.1): observes only; never alters this hook's decision/exit/stdout/stderr.
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/../system/hooks/lib/journal.sh" 2>/dev/null || lhb_journal_fire() { :; }
+trap 'lhb_journal_fire "$?" "guard_harness_write.sh" "PreToolUse" "Write|Edit" 2>/dev/null || true' EXIT
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # WHY: this ships in the PUBLIC repo (LifehackMethod/lifehack-brain), not ClaudeOps. A student's
 #      install lands the harness in a folder they control, and nothing stops them saving their own
