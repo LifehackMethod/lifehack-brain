@@ -14,9 +14,16 @@ passing known-good input AND failing known-bad input (the collapse rule,
 plan §0.1 rule 3) before its verdict counts for anything downstream.
 """
 import json
+import re
 import sys
+from datetime import date
 
 from schema_v1 import fields_for, UNIT_TYPES, STRICT_UNKNOWN_KEYS, GROUPABLE_HOOK_EVENTS
+
+# S1/K1 (2026-09-16): the register-backed switch's expiry shape. Date REALITY
+# (2026-02-31 is a reject, not a suspension) is checked with fromisoformat in
+# validate_row(); this regex only anchors the YYYY-MM-DD shape first.
+EXPIRY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _isinstance_strict(value, expected_type):
@@ -28,6 +35,17 @@ def _isinstance_strict(value, expected_type):
     if is_numeric_check and isinstance(value, bool):
         return False
     return isinstance(value, expected_type)
+
+
+def _real_date(value):
+    """YYYY-MM-DD-shaped string -> is it a date that actually exists?
+    date.fromisoformat raises on 2026-02-31-shaped impossibilities; the shape
+    itself is anchored by EXPIRY_RE before this is ever called."""
+    try:
+        date.fromisoformat(value)
+        return True
+    except ValueError:
+        return False
 
 
 def validate_row(row, line_no):
@@ -111,7 +129,38 @@ def validate_row(row, line_no):
                 f"'weakest guard wins')"
             )
 
-    # 4. no unregistered fields — "encode only what has already converged"
+    # 4. cross-field constraint: the register-backed switch (S1/K1, 2026-09-16 —
+    #    Enver's stamped binding constraint: the hook-edit protection's switch
+    #    STATE and EXPIRY live in the register as data). state="suspended"
+    #    REQUIRES a valid, real YYYY-MM-DD `expiry`: a suspension with no
+    #    expiry is a permanent lift, and the design's whole point is that a
+    #    forgotten switch self-heals AT its expiry. state="active" requires
+    #    expiry null: an active row carrying a date is an ambiguous switch,
+    #    and the register never stores ambiguity. HARD REJECT, like `group`
+    #    above — never a WARN.
+    if row.get("type") == "hook":
+        state = row.get("state")
+        expiry = row.get("expiry")
+        if state == "suspended":
+            if expiry is None:
+                errors.append(
+                    f"line {line_no}: state='suspended' but 'expiry' is null — a "
+                    "suspension with no expiry is a permanent lift, which S1 "
+                    "forbids (the self-heal IS the expiry)"
+                )
+            elif not EXPIRY_RE.match(expiry) or not _real_date(expiry):
+                errors.append(
+                    f"line {line_no}: 'expiry'={expiry!r} is not a real "
+                    "YYYY-MM-DD date (required when state='suspended')"
+                )
+        elif state == "active" and expiry is not None:
+            errors.append(
+                f"line {line_no}: state='active' but 'expiry'={expiry!r} — an "
+                "active row carries expiry=null; the register never stores an "
+                "ambiguous switch"
+            )
+
+    # 5. no unregistered fields — "encode only what has already converged"
     #    (constraint 0.5): a stray key is either dead weight or an
     #    un-ruled extension, and either way it doesn't belong in v1 silently.
     if STRICT_UNKNOWN_KEYS:

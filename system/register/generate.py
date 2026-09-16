@@ -95,6 +95,7 @@ import sys
 from schema_v1 import UNIT_TYPES  # noqa: F401  (re-exported for callers/tests)
 from validate_register import validate_row
 from harvest import REPO_ROOT_FROM_SCRIPT, DEFAULT_PRIVATE_ROOT, cache_root_for, short_sha
+import switch_state  # S1/K1 — shared register-backed switch semantics
 import omission_check  # Feature B1.4 — the omission check, a sibling module this
                        # generator calls; see omission_check.py for the design.
 import caller_lint  # Feature B1.5 — the caller lint, a sibling module this generator
@@ -515,6 +516,26 @@ def generate(register_path, out_dir, public_root, private_root, cache_root,
 
     hook_rows = [(ln, row) for ln, row, _ in entries if row.get("type") == "hook"]
 
+    # S1/K1 (2026-09-16) — the register-backed switch, applied ONCE here so
+    # every surface agrees: a hook row declaring state="suspended" with an
+    # UNEXPIRED `expiry` is OMITTED from all generated wiring (the lane's
+    # declared, temporary lift — and the mechanism that lets the on-commit
+    # drift gate ACCEPT the lane's flipped wiring, since the register itself
+    # regenerates it). An EXPIRED suspension stays in the active list = emitted
+    # as ACTIVE (Enver's "every release regenerates the default ON" self-heal)
+    # and is ALARMED in the report below. Semantics shared with harvest.py via
+    # switch_state.py; the schema gate above already guaranteed shape.
+    today = switch_state.resolve_today()
+    active_hook_rows, suspensions_honored, suspensions_expired = [], [], []
+    for ln, row in hook_rows:
+        verdict = switch_state.classify(row, today)
+        if verdict == "honored":
+            suspensions_honored.append((ln, row))
+            continue
+        if verdict == "expired":
+            suspensions_expired.append((ln, row))
+        active_hook_rows.append((ln, row))
+
     # launch_mode distribution (Option G, restored 2026-09-15) — purely a
     # report over already-validated rows; never influences what gets
     # written (build_hooks_doc() never reads this field).
@@ -538,7 +559,7 @@ def generate(register_path, out_dir, public_root, private_root, cache_root,
 
     target_results = []
     for surface, form, repo_filter, filename in SURFACE_TARGETS:
-        matched = rows_for_surface(hook_rows, surface, repo_filter,
+        matched = rows_for_surface(active_hook_rows, surface, repo_filter,
                                     dedup=dedup, applied=dedup_applied)
         if not matched:
             target_results.append({
@@ -615,6 +636,8 @@ def generate(register_path, out_dir, public_root, private_root, cache_root,
         "dedup_in_effect": dedup_in_effect,
         "dedup_stale": dedup_stale,
         "launch_mode_distribution": launch_mode_distribution,
+        "suspensions_honored": suspensions_honored,
+        "suspensions_expired": suspensions_expired,
     }
 
 
@@ -662,6 +685,27 @@ def report(result):
                     f"      line {ln}: id={row.get('id')!r} path={row.get('path')!r} "
                     f"repo={row.get('repo')} event={row.get('event')} matcher={row.get('matcher')!r}"
                 )
+
+    if result.get("suspensions_expired"):
+        lines.append("")
+        lines.append("⛔ ALARM — register suspension(s) EXPIRED, protection RE-ARMED: "
+                     "the row(s) below claim state='suspended' but their expiry has "
+                     "passed, so they were emitted as ACTIVE (a forgotten switch "
+                     "self-heals ON — never silently). Flip 'state' back to 'active' or "
+                     "extend 'expiry' in system/register/register.jsonl:")
+        for ln, row in result["suspensions_expired"]:
+            lines.append(f"  line {ln}: id={row.get('id')!r} path={row.get('path')!r} "
+                         f"expiry={row.get('expiry')!r}")
+
+    if result.get("suspensions_honored"):
+        lines.append("")
+        lines.append("NOTICE — register-declared suspension(s) HONORED: the row(s) "
+                     "below are OMITTED from all generated wiring until their expiry "
+                     "(the lane opted into this lift via the register, so the "
+                     "on-commit drift gate accepts the matching wiring):")
+        for ln, row in result["suspensions_honored"]:
+            lines.append(f"  line {ln}: id={row.get('id')!r} path={row.get('path')!r} "
+                         f"expiry={row.get('expiry')!r}")
 
     if non_blocking_refusals:
         lines.append("")

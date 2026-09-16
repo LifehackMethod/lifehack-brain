@@ -328,6 +328,20 @@ def main(argv=None):
             print(gen_text[warn_start:].rstrip())
             print("")
 
+        # S1/K1 (2026-09-16): surface the switch's ALARM and NOTICE on the OK
+        # path too — the drift check itself must alarm loudly when a suspension
+        # has expired (Enver's stamped constraint), and a legitimately-honored
+        # one must be visible. generate.py prints each section ending with a
+        # blank line; slice marker -> next "\n\n" to avoid printing unrelated
+        # sections.
+        for marker in ("ALARM — register suspension", "NOTICE — register-declared suspension"):
+            if marker in gen_text:
+                start = gen_text.index(marker)
+                end = gen_text.find("\n\n", start)
+                section = gen_text[start:] if end == -1 else gen_text[start:end]
+                print(section.rstrip())
+                print("")
+
         if not args.quiet:
             print("  check_drift.py: OK — staged wiring matches the committed "
                   "register.")

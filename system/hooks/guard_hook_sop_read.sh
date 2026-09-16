@@ -91,6 +91,15 @@ trap 'lhb_journal_fire "$?" "guard_hook_sop_read.sh" "PreToolUse" "Bash|Write|Ed
 # own location (repo-relative), matching the pattern already used by this repo's other ported
 # hooks (announce_plan_write.sh etc.) — never a hardcoded home directory.
 # ─────────────────────────────────────────────────────────────────────────────
+# SWITCH (S1/K1, 2026-09-16): this guard is REGISTER-BACKED. Its row in
+# system/register/register.jsonl carries `state` + `expiry`: state="active"
+# (DEFAULT — students) means protection ON and this guard is wired normally.
+# state="suspended" with an unexpired `expiry` means the guard-rebuild lane
+# has a declared, temporary lift; generate.py omits it from fresh wiring.
+# The runtime backstop below catches STALE wiring (e.g. an un-refreshed
+# plugin cache) and honors/alarms instead of enforcing. A past-expiry
+# suspension is treated as ACTIVE again and alarms loudly — the self-heal.
+# 
 # guard_hook_sop_read.sh — PreToolUse hook (matcher: Bash|Write|Edit)
 # Blocks editing the enforcement layer until its rulebook is demonstrably in context.
 set -uo pipefail
@@ -98,6 +107,7 @@ set -uo pipefail
 _HOOKDIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
 _REPO="$(cd "$_HOOKDIR" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null)"
 [ -n "$_REPO" ] || _REPO="${_HOOKDIR%/system/hooks}"
+export _REPO
 
 INPUT=$(cat 2>/dev/null) || INPUT=""
 
@@ -260,6 +270,57 @@ except Exception:
 esac
 
 [ "$IS_WRITE" -eq 1 ] || exit 0
+
+# ── S1/K1 register-backed switch (2026-09-16) ────────────────────────────────────────────
+# This guard is SWITCHABLE by register data, not by editing this file: its row in
+# system/register/register.jsonl carries state+expiry. state=suspended with an
+# UNEXPIRED expiry means the guard-rebuild lane has a declared, temporary lift and
+# this guard was also OMITTED from freshly generated wiring. If we fire here, the
+# wiring is STALE (e.g. an un-refreshed plugin cache), so honor the declaration:
+# NOTICE, then allow. An EXPIRED suspension means the lift lapsed: ALARM LOUDLY,
+# then enforce normally (the self-heal: protection is ON again). Missing or
+# unparseable register defaults to enforce (protection ON is the fail-safe).
+_SWITCH=$(python3 - <<'PY' 2>/dev/null
+import os, json
+from datetime import date
+guard_path = "/system/hooks/guard_hook_sop_read.sh"
+register_path = os.environ.get("_REPO", "") + "/system/register/register.jsonl"
+state = "active"
+expiry = None
+if os.path.isfile(register_path):
+    try:
+        with open(register_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                row = json.loads(line)
+                if row.get("type") == "hook" and row.get("path") == guard_path:
+                    state = row.get("state", "active")
+                    expiry = row.get("expiry")
+                    break
+    except Exception:
+        pass
+if state != "suspended" or not expiry:
+    print("ACTIVE")
+else:
+    try:
+        today = date.fromisoformat(os.environ.get("LHB_REGISTER_TODAY", date.today().isoformat()))
+        expiry_date = date.fromisoformat(expiry)
+        print("HONORED" if expiry_date >= today else "EXPIRED")
+    except Exception:
+        print("ACTIVE")
+PY
+)
+case "$_SWITCH" in
+  HONORED)
+    printf '%s\n' "NOTICE: guard_hook_sop_read is REGISTER-SUSPENDED until its expiry in system/register/register.jsonl — this guard should not be wired at all; it fires only because the plugin cache or wiring is stale. The lane's declared lift is honored (protection OFF)." >&2
+    exit 0
+    ;;
+  EXPIRED)
+    printf '%s\n' "⛔ ALARM: guard_hook_sop_read has a register-declared suspension whose EXPIRY HAS PASSED — protection is RE-ARMED. Update system/register/register.jsonl (state=active or a fresh expiry) to clear this alarm." >&2
+    ;;
+esac
 
 # ── receipt check ────────────────────────────────────────────────────────────────────────
 # shasum is NOT guaranteed on PATH (Git Bash on Windows ships without it). Called bare, it emits

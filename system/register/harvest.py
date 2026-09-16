@@ -57,6 +57,9 @@ import os
 import re
 import sys
 
+import switch_state  # S1/K1 — sibling module, one shared semantics for the
+                     # register-backed switch (see switch_state.py's docstring)
+
 THIS_FILE = os.path.abspath(__file__)
 # system/register/harvest.py -> repo root is three levels up.
 REPO_ROOT_FROM_SCRIPT = os.path.dirname(os.path.dirname(os.path.dirname(THIS_FILE)))
@@ -280,9 +283,78 @@ def harvest_hooks(public_root, private_root, cache_root):
             # running this tool — see system/register/register.jsonl's own
             # git history for exactly that two-step workflow (B5.2).
             "group": None,
+            # S1/K1, 2026-09-16 — `state`/`expiry` are HAND-CURATED
+            # ENFORCEMENT fields (the register-backed switch), NOT disk facts
+            # a fresh harvest can derive: every row defaults to active/null
+            # here, and main() then carries any declared, unexpired suspension
+            # FORWARD from the committed register via
+            # carry_forward_switch_state(). Unlike `group`, a suspension LOST
+            # to re-harvest silently re-arms a guard the lane declared off —
+            # so preservation is mechanical, never a re-apply-by-hand step.
+            "state": "active",
+            "expiry": None,
         })
         rows.append(row)
     return rows
+
+
+# ---------------------------------------------------------------------------
+# S1/K1 — carry switch declarations forward from the committed register
+# ---------------------------------------------------------------------------
+def carry_forward_switch_state(rows, prior_register_path, today=None):
+    """`state`/`expiry` are hand-curated ENFORCEMENT declarations (S1/K1,
+    2026-09-16), not disk facts: a fresh harvest can never derive them, and a
+    suspension LOST to re-harvest would silently re-arm a guard the lane
+    declared off (and the on-commit drift gate would then read the lane's
+    wiring as drift — the exact failure Enver's binding constraint names).
+    So each prior hook row's suspension is carried onto the fresh rows, keyed
+    by the row's synthetic `id`, from the COMMITTED register — NOT the --out
+    path (CI harvests to $RUNNER_TEMP; reading the committed file is also what
+    keeps the freshness byte-diff stable across a declared suspension).
+
+    One direction is deliberately NOT carried: an EXPIRED suspension drops
+    back to the active/null default (self-heal, protection re-armed) and is
+    NAMED in the return value's `dropped` list for the caller to ALARM — a
+    silent drop would be the "forgotten switch" failure the expiry exists to
+    detect. A missing/unreadable prior register is NOT an error (first-ever
+    harvest is a legal state): every row keeps its defaults.
+
+    Returns (carried, dropped): lists of (row_id, expiry) tuples."""
+    today = switch_state.resolve_today() if today is None else today
+    prior = {}
+    try:
+        with open(prior_register_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    prow = json.loads(line)
+                except json.JSONDecodeError:
+                    continue  # a malformed prior line carries nothing
+                if prow.get("type") == "hook" and prow.get("state") == "suspended":
+                    prior[prow.get("id")] = prow.get("expiry")
+    except OSError:
+        return [], []
+
+    carried, dropped = [], []
+    for row in rows:
+        if row.get("type") != "hook":
+            continue
+        expiry = prior.get(row.get("id"))
+        if expiry is None:
+            continue
+        verdict = switch_state.classify(
+            {"type": "hook", "state": "suspended", "expiry": expiry}, today)
+        if verdict == "honored":
+            row["state"] = "suspended"
+            row["expiry"] = expiry
+            carried.append((row["id"], expiry))
+        elif verdict == "expired":
+            dropped.append((row["id"], expiry))
+        # an unparseable prior expiry classifies "active": leave the defaults
+        # and do NOT carry — a malformed suspension must never silently extend
+    return carried, dropped
 
 
 # ---------------------------------------------------------------------------
@@ -469,6 +541,23 @@ def main(argv=None):
         cache_root = cache_root_for(public_root)
 
     rows = harvest_all(public_root, private_root, cache_root)
+
+    # S1/K1 (2026-09-16) — carry the register-backed switch's declarations
+    # forward from the COMMITTED register (never the --out path: CI harvests
+    # to $RUNNER_TEMP, and reading the committed file keeps the freshness
+    # byte-diff stable across a declared suspension). Expired suspensions
+    # drop to active/null and are ALARMED, not silently carried — the
+    # self-heal is the design.
+    carried, dropped = carry_forward_switch_state(
+        rows, os.path.join(public_root, "system", "register", "register.jsonl"))
+    for rid, expiry in carried:
+        print(f"  NOTICE — suspension carried forward (still honored until "
+              f"{expiry}): {rid}", file=sys.stderr)
+    for rid, expiry in dropped:
+        print(f"  ⛔ ALARM — suspension EXPIRED ({expiry}) and was NOT carried "
+              f"forward; row is ACTIVE again (protection re-armed): {rid}. "
+              f"Re-declare with a fresh expiry in system/register/register.jsonl "
+              f"if the lift is still intended.", file=sys.stderr)
 
     by_type = {}
     for row in rows:

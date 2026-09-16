@@ -183,6 +183,24 @@ TYPE_FIELDS = {
         # validate_register.py (a single-field enum can't express "legal
         # combined with THIS OTHER field's value").
         "group": (str, True, None),
+        # NEW 2026-09-16 (S1/K1) — the register-backed switch. Enver's stamped
+        # binding constraint (system/journal.md, 2026-09-16): the hook-edit
+        # protection's switch STATE and EXPIRY live IN THE REGISTER as data —
+        # otherwise the on-commit drift gate reads the guard-rebuild lane's
+        # local flip as drift and refuses their legitimate commits.
+        #   "state":   "active" (DEFAULT — every student's row; generate.py
+        #              emits the hook normally = protection ON) or "suspended"
+        #              (generate.py OMITS the row from all generated wiring
+        #              until `expiry` = protection OFF, declared, temporary).
+        #   "expiry":  YYYY-MM-DD, required when state="suspended" (a
+        #              suspension with no expiry is a permanent lift — the
+        #              design's self-heal IS the expiry), must be null when
+        #              state="active" (no ambiguous switches in the register).
+        # The suspended⇔expiry cross-rules live in validate_register.py (same
+        # pattern as `group` above); the honored/expired/active semantics live
+        # in switch_state.py (this folder), shared by generate.py + harvest.py.
+        "state": (str, False, ("enum", ("active", "suspended"))),
+        "expiry": (str, True, None),
     },
     "tool": {
         "language": (str, False, ("enum", ("py", "sh", "other"))),
