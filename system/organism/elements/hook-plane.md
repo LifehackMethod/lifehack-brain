@@ -15,6 +15,19 @@ maturity_label: PARTIAL
 # — every path below is a hook script with a live settings.json registration, verified 2026-08-01.
 # The two non-hook sources (settings.json itself, hook-contract.md) are kept as bookends since they
 # are the registry + the house standard this element also describes.
+# ⚠ CORRECTED 2026-09-16: the regenerate command above and the first generated_from entry
+# below both cite `system/reference/settings.json` — a donor-only path. Confirmed absent from
+# this repo this session (no such file, and ⛔ `system/reference/` does not exist at all), which
+# matches this file's own prose confirmation lower down ("WHERE THE PATHS THIS FILE NAMES ENDED
+# UP HERE", dated 2026-08-27: "never existed in this repo at all — checked git log --all"). This
+# repo's live hook registry is `.claude/settings.json` (project) / `hooks/hooks.json` (plugin) —
+# see REGISTRATION MECHANICS below. No working tool in this repo regenerates this list today:
+# checked `label_checker.py` this session (zero references to `generated_from` in its source),
+# and `nudge_flow_drift.sh` — which the manual and this element cite as the reader of
+# `generated_from` — does not exist anywhere in this repo (repo-wide search, zero hits); that is
+# a separate, pre-existing gap, left untouched here. Not inventing a replacement source — left
+# for a person to decide the real regeneration path. Flagged stale by the A1.8 helper's build
+# report, 2026-09-15.
 generated_from:
   - system/reference/settings.json
   - system/hook-contract.md

@@ -47,7 +47,10 @@ trap 'lhb_journal_fire "$?" "guard_write_paths.sh" "PreToolUse" "Write|Edit" 2>/
 # REDIRECT: hooks and settings are edited through Bash, deliberately and visibly — chmod 644 the
 #      file, edit it, chmod 755 it back (755, not 444: a hook here must stay executable, and
 #      stripping that bit is how three guards went silently dark on 2026-08-14).
-# UPDATED: 2026-08-23 (T1.C6: both CLONE_ROOT sites now also recognise $_SELF_REPO -- the
+# UPDATED: 2026-09-16 (0R.12-derived fix ported to main: replaced the $CLONE_ROOT / $_SELF_REPO
+#      name-match in the skills/commands zone with the structural _git_repo_root_with_remote()
+#      check -- see that block's own comment for why the old nominal test was wrong)
+#      2026-08-23 (T1.C6: both CLONE_ROOT sites now also recognise $_SELF_REPO -- the
 #      skills/commands symlink check accepts a symlink into EITHER clone; see that block + the
 #      ZONE-2 comment just above CLONE_ROOT's second declaration for what was and was not changed)
 #      2026-08-22 (T10.D3/B1: restored deny-by-default in the catch-all's LOGIC for good, shipped
@@ -187,53 +190,79 @@ if [[ "$FILE_PATH" == "$DRIVE_ROOT/"* ]]; then
     exit 0
 fi
 
-# ~/.claude/skills/ + /commands/ are REAL dirs of per-item SYMLINKS into a code clone. Writing to an
-# EXISTING item follows its symlink INTO a clone (-> committed + synced) = OK. Writing a NEW item makes a
-# real ORPHAN file under ~/.claude that never commits/syncs to the other machine (CLAUDE-DIR-WRITE-LEAK,
-# hole 1, 2026-07-14). Distinguish by RESOLVING the real path: allow ONLY if it lands inside A clone.
+# ~/.claude/skills/ + /commands/ are REAL dirs of per-item entries that MAY be symlinks into a code
+# clone, or may just as well be real, ordinary directories -- FALSIFIED 2026-09-10: all 20 live
+# skill folders under ~/.claude/skills/ were checked independently and are genuine real directories,
+# zero symlinks. The check below used to hardcode "inside a clone" as "resolves under $CLONE_ROOT or
+# $_SELF_REPO" -- a nominal test that can only ever recognise the specific clones it was told about,
+# and goes wrong the moment the arrangement changes (exactly what happened here). The property that
+# actually matters is structural, not nominal: does the resolved path land inside a REAL git working
+# tree that has at least one remote configured. A repo in that shape commits and syncs through
+# ordinary git regardless of whether anything under ~/.claude points at it by symlink or just IS it.
+# A path that resolves nowhere such a repo makes a real ORPHAN file under ~/.claude that never
+# commits/syncs to the other machine (CLAUDE-DIR-WRITE-LEAK, hole 1, 2026-07-14) -- that harm is
+# real and still guarded against below, just by the right test.
+#
+# _git_repo_root_with_remote(): walks up from the target to the nearest existing ancestor directory
+# (the target itself may not exist yet -- a new file about to be created, and `git -C` requires a
+# directory that already exists), then asks git directly rather than name-matching a root: prints
+# the repo root on stdout and returns 0 only when that directory is inside a git working tree AND
+# `git remote` for it returns at least one line; returns 1 (prints nothing) otherwise.
+_git_repo_root_with_remote() {
+    local d="$1"
+    while [[ ! -d "$d" && "$d" != "/" ]]; do
+        d="$(dirname "$d")"
+    done
+    [[ -d "$d" ]] || return 1
+    local top
+    top="$(git -C "$d" rev-parse --show-toplevel 2>/dev/null)" || return 1
+    [[ -n "$top" ]] || return 1
+    git -C "$top" remote 2>/dev/null | grep -q . || return 1
+    printf '%s' "$top"
+}
 if [[ "$FILE_PATH" == "$CLAUDE_DIR/skills/"* || "$FILE_PATH" == "$HOME/.claude/skills/"* \
    || "$FILE_PATH" == "$CLAUDE_DIR/commands/"* || "$FILE_PATH" == "$HOME/.claude/commands/"* ]]; then
     RESOLVED=$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "$FILE_PATH" 2>/dev/null)
-    # T1.C6 (2026-08-23): BOTH clones recognised, never just the old one. $CLONE_ROOT is
-    # ~/claudeops-config (still live production); $_SELF_REPO is THIS clone, resolved at the top of
-    # this file the same way guard_gh_account_switch.sh now does (commit 08789f5) --
-    # CLAUDE_PROJECT_DIR, falling back to this script's own on-disk location -- so a symlink into
-    # EITHER checkout is recognised as "in a clone." Added alongside CLONE_ROOT; CLONE_ROOT is not
-    # replaced, since a symlink can still legitimately resolve into the old clone.
+    # Structural repo check (replaces the old $CLONE_ROOT / $_SELF_REPO name-match, 2026-09-10):
+    # REPO_ROOT is the real, remote-having git working tree that RESOLVED lands inside, if any --
+    # found by walking up from RESOLVED itself, never by matching a hardcoded path. Both
+    # previously-recognised clones ($CLONE_ROOT, $_SELF_REPO) still resolve here, along with any
+    # OTHER real, remote-having repo ~/.claude/skills or /commands might point at or contain --
+    # this is a generalisation of the old check, not a narrowing of it.
+    REPO_ROOT="$(_git_repo_root_with_remote "$RESOLVED")"
     #
-    # ZONEFIX (2026-08-24): hook self-protection carve-out, evaluated BEFORE the clone allow just
-    # below. WHY: without this, a write that resolves into EITHER clone's system/hooks/ (e.g. this
-    # repo reached via ~/.claude/skills/ClaudeOps/system/hooks/<file>) matched the clone-allow on the
+    # ZONEFIX (2026-08-24): hook self-protection carve-out, evaluated BEFORE the repo allow just
+    # below. WHY: without this, a write that resolves into the repo's system/hooks/ (e.g. this
+    # repo reached via ~/.claude/skills/ClaudeOps/system/hooks/<file>) matched the repo-allow on the
     # next line and returned exit 0 -- ZONE 3b's hook self-protection block (further down this file,
     # scoped to $CLAUDEOPS_FORK_ROOT/system/hooks/) was written for exactly this path and never got a
     # chance to run, because this zone always fires first for anything reached through
     # ~/.claude/skills or /commands. The tests carve-out (system/hooks/tests/*) is NOT repeated here
     # on purpose -- it is already handled globally above, before this zone runs at all, so a tests
     # path never reaches this block in the first place.
-    if [[ "$RESOLVED" == "$CLONE_ROOT/system/hooks/"* || "$RESOLVED" == "$_SELF_REPO/system/hooks/"* ]]; then
+    if [[ -n "$REPO_ROOT" && "$RESOLVED" == "$REPO_ROOT/system/hooks/"* ]]; then
         printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: hook scripts are protected, including when reached through a ~/.claude/skills or /commands symlink ($RESOLVED). WHY: hooks are the enforcement layer; self-modification breaks the guard system regardless of which path was used to reach them. REDIRECT: edit via Bash only -- chmod 644 the hook, edit, chmod 755. RULE: system/hook-contract.md.\"}" >&2
         exit 2
     fi
     # ZONE-ESCAPE FIX (found + evidenced 2026-08-28, b3-tests): the carve-out just above only
-    # excluded system/hooks/ before the unconditional clone-allow below -- .claude/settings.json,
+    # excluded system/hooks/ before the unconditional repo-allow below -- .claude/settings.json,
     # settings.local.json and .git/ reached through a ~/.claude/skills or /commands symlink into
-    # EITHER clone matched the unconditional exit 0 on the next check and never reached this
-    # zone's own settings/.git protection, or ZONE 3b's (further down, scoped to
-    # $CLAUDEOPS_FORK_ROOT). Same bug class, same shape, as the system/hooks/ ZONEFIX above --
-    # mirrored here for the other two protected classes.
-    if [[ "$RESOLVED" == "$CLONE_ROOT/.git/"* || "$RESOLVED" == "$_SELF_REPO/.git/"* ]]; then
+    # the repo matched the unconditional exit 0 on the next check and never reached this zone's own
+    # settings/.git protection, or ZONE 3b's (further down, scoped to $CLAUDEOPS_FORK_ROOT). Same
+    # bug class, same shape, as the system/hooks/ ZONEFIX above -- mirrored here for the other two
+    # protected classes.
+    if [[ -n "$REPO_ROOT" && "$RESOLVED" == "$REPO_ROOT/.git/"* ]]; then
         printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: git internals are not hand-editable, including when reached through a ~/.claude/skills or /commands symlink ($RESOLVED). WHY: .git holds the repository own bookkeeping; a hand edit corrupts history regardless of which path was used to reach it. REDIRECT: use git commands via Bash (git add / commit / push), never an editor on .git. RULE: system/hook-contract.md.\"}" >&2
         exit 2
     fi
-    if [[ "$RESOLVED" == "$CLONE_ROOT/.claude/settings.json" || "$RESOLVED" == "$CLONE_ROOT/.claude/settings.local.json" \
-       || "$RESOLVED" == "$_SELF_REPO/.claude/settings.json" || "$RESOLVED" == "$_SELF_REPO/.claude/settings.local.json" ]]; then
+    if [[ -n "$REPO_ROOT" && ( "$RESOLVED" == "$REPO_ROOT/.claude/settings.json" || "$RESOLVED" == "$REPO_ROOT/.claude/settings.local.json" ) ]]; then
         printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: settings.json/settings.local.json is protected, including when reached through a ~/.claude/skills or /commands symlink ($RESOLVED). WHY: settings decide which hooks run; agent self-modification is not permitted regardless of which path was used to reach it. REDIRECT: edit via Bash if intentional, and re-read it afterwards to confirm it still parses.\"}" >&2
         exit 2
     fi
-    if [[ "$RESOLVED" == "$CLONE_ROOT/"* || "$RESOLVED" == "$_SELF_REPO/"* ]]; then
-        exit 0   # write resolves through a symlink INTO a clone -> will be committed + synced
+    if [[ -n "$REPO_ROOT" ]]; then
+        exit 0   # resolves inside a real git working tree with a configured remote -> will be committed + synced
     fi
-    printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: writing a NEW skill/command directly under ~/.claude makes a real ORPHAN file that is never committed to git and never syncs to the other machine (CLAUDE-DIR-WRITE-LEAK). WHY: ~/.claude/skills and /commands are dirs of SYMLINKS into a code clone; only writes that resolve INTO a clone sync. REDIRECT: author it in a clone -- \$_SELF_REPO/.claude/skills/<name>/ (or .claude/commands/<name>), then symlink ~/.claude/skills/<name> -> that path. Code-vs-content + sync: docs/architecture.md -> Code Residency and Git Sync.\"}" >&2
+    printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: this path does not resolve inside a git repository with a configured remote ($RESOLVED). WHY: a ~/.claude/skills or /commands entry only syncs when what it points at (or is) is a real git working tree with a remote -- anything else left here becomes a real ORPHAN file that is never committed and never syncs to the other machine (CLAUDE-DIR-WRITE-LEAK). REDIRECT: author it inside a real git repo with a configured remote (e.g. \$_SELF_REPO/.claude/skills/<name>/, or any other cloned repo that has 'git remote' set), then place or symlink ~/.claude/skills/<name> there. Code-vs-content + sync: docs/architecture.md -> Code Residency and Git Sync.\"}" >&2
     exit 2
 fi
 

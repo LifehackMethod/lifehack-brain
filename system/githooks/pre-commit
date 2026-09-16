@@ -266,14 +266,45 @@ fi
 # while removing another in the same file nets zero and passes.
 #
 # EXIT 1 (a real new defect) REFUSES the commit -- same as the leak scanner above. EXIT 2
-# (CANNOT EVALUATE -- no .py staged, an unparseable staged file, or no git) is handled
-# DIFFERENTLY from the leak scanner's "CANNOT EVALUATE is also a refusal": this gate protects
-# code quality, not an irreversible push of the person's own data, so the same doctrine that
-# lets the citation-lint stage above fail open applies here too. "No .py staged" is the ORDINARY
-# case for a markdown-only or config-only commit, and treating it as a refusal would brick every
-# such commit -- the exact failure class this whole plan exists to fix. So exit 2 PRINTS the
-# reason (never silent -- the absent subject is spoken) and lets the commit continue.
+# (CANNOT EVALUATE) covers THREE distinct causes -- see encoding_lint.py's own --help:
+# no-python-staged (ordinary: nothing in this commit for the linter to look at), and
+# unparseable <path> / no-git (NOT ordinary: the check itself did not complete). Only
+# no-python-staged gets the same fail-open the citation-lint stage above gets, and for the
+# same reason: it is the ORDINARY case for a markdown-only or config-only commit, and
+# treating it as a refusal would brick every such commit -- the exact failure class this
+# whole plan exists to fix. unparseable/no-git are NOT that -- they mean the check itself
+# did not complete, same category as a missing script (below), not an empty input.
+#
+# ⚠ RESTORED 2026-09-16 (fix/red-tests) -- this exit-2 split, and the missing-script check
+# below, shipped in commits e38f99e and 0ee941e (2026-08-24) and were silently dropped by
+# d13c5e4's "Phase H" doc re-derivation (2026-09-01), which rewrote this section's comments
+# and, with them, overwrote the two functional fixes back to their pre-fix shape -- the commit
+# message never mentions removing either, so this reads as re-derivation clobbering code, not a
+# deliberate call. test_encoding_lint.py::HookWiring caught the drop (expected 6 non-comment
+# lines naming encoding_lint.py, found 3); that failure is what surfaced this. Do not re-fold
+# this split into one branch, and do not drop the missing-script check again.
+#
+# A FOURTH STATE, DISTINCT FROM ALL THREE ABOVE: THE SCRIPT ITSELF IS MISSING (found
+# 2026-08-24). "no python3 on PATH" and "no .py staged" are both ordinary, environment- or
+# commit-shaped absences -- the CONTROL is present and simply has nothing to check, or
+# nothing to check it with. A missing encoding_lint.py is not that: the control itself has
+# been removed from this checkout, and python3 would happily exit 2 ("[Errno 2] No such
+# file or directory") -- indistinguishable, to a hook that isn't checking for it, from
+# "nothing to check." Measured: a fresh clone of origin/main with this hook wired ran
+# `python3 <missing path> --staged --quiet`, got exit 2, and committed a bare unencoded
+# open() clean. That is fail-open on the CONTROL DISAPPEARING, not on its input being empty,
+# so it does not get the pass an absent python3 or an absent .py file gets: it REFUSES,
+# checked BEFORE the script ever runs.
 if command -v python3 >/dev/null 2>&1; then
+	if [ ! -f "$repo/system/tools/encoding_lint.py" ]; then
+		echo ""
+		echo "  ⛔ COMMIT REFUSED — encoding lint tool MISSING: system/tools/encoding_lint.py is not"
+		echo "  present in this checkout. This is not 'nothing to check' -- the security control"
+		echo "  itself is absent. Restore it (git checkout origin/main -- system/tools/encoding_lint.py)"
+		echo "  or pull latest."
+		echo ""
+		exit 1
+	fi
 	encoding_out=$(python3 "$repo/system/tools/encoding_lint.py" --staged --quiet 2>&1)
 	encoding_status=$?
 	if [ "$encoding_status" -eq 1 ]; then
@@ -286,7 +317,17 @@ if command -v python3 >/dev/null 2>&1; then
 		echo ""
 		exit 1
 	elif [ "$encoding_status" -eq 2 ]; then
-		echo "  ⚠ encoding lint: $(printf '%s\n' "$encoding_out" | head -1)"
+		if printf '%s\n' "$encoding_out" | head -1 | grep -q 'CANNOT-EVALUATE: no-python-staged'; then
+			echo "  ⚠ encoding lint: $(printf '%s\n' "$encoding_out" | head -1)"
+		else
+			echo ""
+			echo "  ⛔ COMMIT REFUSED — encoding lint could not evaluate your staged changes (see below)."
+			printf '%s\n' "$encoding_out"
+			echo "  This is not 'nothing to check' -- the check itself did not complete. Fix the"
+			echo "  underlying problem (an unparseable staged file, or git) and commit again."
+			echo ""
+			exit 1
+		fi
 	fi
 else
 	echo "  ⚠ encoding lint SKIPPED — no python3 on PATH. New open() calls were NOT checked."

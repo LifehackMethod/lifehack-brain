@@ -132,6 +132,54 @@ _SOLO_GWS_QUOTE = re.compile(r"(['\"`])((?:[^'\"`\\]|\\.)*?)\1\s*,")
 # "$VAR" it cannot resolve -- the same fail-closed rule, not a new one.
 UNPARSEABLE = '\x00UNPARSEABLE\x00'
 
+# A heredoc operator with a QUOTED delimiter (<<'EOF', <<"EOF", <<-'EOF' ...). POSIX guarantees
+# a quoted delimiter suppresses EVERY expansion inside the body -- the shell writes it
+# byte-for-byte, nothing in it is ever substituted or executed. An UNQUOTED delimiter (<<EOF) is
+# the opposite: the body undergoes the same parameter/command substitution a double-quoted
+# string would, so it can genuinely execute something and must stay visible.
+_HEREDOC_OP = re.compile(r"<<-?[ \t]*(['\"])(\w+)\1")
+
+
+def _strip_quoted_heredocs(cmd):
+    """Blank the BODY of every heredoc introduced with a QUOTED delimiter, leaving everything
+    else (including the operator line and any UNQUOTED-delimiter heredoc) untouched.
+
+    WHY THIS EXISTS: measured 2026-09-15 -- writing an ordinary project brief via
+    `tee brief.md <<'EOF' ... EOF` whose prose happened to mention, in backticks separated by
+    commas, the words `gws`, `gmail`, `send` (documenting THIS guard's own behaviour) was
+    BLOCKED as "sends mail". Root cause: FIX 4's comma-list scan below (_COMMA_LIST) reads the
+    ENTIRE raw command text looking for the SHAPE of an interpreter-built argv (two or more
+    comma-separated quoted literals) with no regard for WHERE that text sits -- it cannot tell
+    a real `subprocess.run(['gws','gmail',...])` argument apart from the identical-looking words
+    sitting inside a heredoc BODY that is merely being written to a file as data. A quoted
+    heredoc's body is POSIX-guaranteed to be inert (literal, never executed, never even
+    substituted) -- that is precisely the same "impossible to be a live invocation" guarantee
+    _STMT's per-line split already leans on elsewhere in this module. Stripping it here removes
+    exactly the DATA that can never be a real gws call, before the shape-scan ever sees it,
+    while an unquoted-delimiter heredoc (which CAN execute a `$(...)`/backtick substitution
+    inside its body) is left fully visible to every check below, unchanged.
+    """
+    out = []
+    i = 0
+    for m in _HEREDOC_OP.finditer(cmd):
+        if m.start() < i:
+            continue  # this span was already consumed inside a prior heredoc's body
+        delim = m.group(2)
+        nl = cmd.find('\n', m.end())
+        if nl == -1:
+            continue  # no body follows on a later line -- nothing to strip
+        term_re = re.compile(r'\n[ \t]*' + re.escape(delim) + r'[ \t]*(?=\n|$)')
+        tm = term_re.search(cmd, nl)
+        if not tm:
+            continue  # no closing delimiter found -- leave the text visible, not less so
+        out.append(cmd[i:nl + 1])                 # everything up to and incl. the operator line
+        body = cmd[nl + 1:tm.start() + 1]
+        out.append(''.join(c if c == '\n' else ' ' for c in body))  # blank the body only
+        i = tm.start() + 1                         # resume at the terminator line's own newline
+    out.append(cmd[i:])
+    return ''.join(out)
+
+
 
 def _list_items(span_text):
     """Decode every quoted literal in a comma-run match, in order, the way an interpreter
@@ -179,6 +227,7 @@ def gws_segments(cmd):
     # wrapped form and the joined form execute identically -- but every guard saw a
     # different string and all four missed it (second audit, 2026-08-14). Join first.
     cmd = cmd.replace('\\\n', ' ')
+    cmd = _strip_quoted_heredocs(cmd)
     out = []
     # `bash -c "..."`, `sh -c "..."` and `eval "..."` EXECUTE their argument. Parse it.
     # A heredoc that merely WRITES the same words does not execute them and is left
@@ -454,6 +503,24 @@ def _selftest():
         # ABSENT: a real, unrelated two-item list near an unrelated mention of gws elsewhere in
         # the same line must not be swept in by proximity alone.
         ("echo 'gws was mentioned here'; run(['a','b'])", 'gmail', 'PASS'),
+
+        # -- REGRESSION, 2026-09-15: a QUOTED heredoc's BODY is pure data (POSIX suppresses every
+        # expansion inside it), but FIX 4's comma-list scan used to read it anyway -- prose
+        # mentioning `gws`, `gmail`, `send` in backticks, written to a file, was misread as a
+        # live interpreter-built argv. See _strip_quoted_heredocs().
+        ("tee brief.md <<'EOF'\nDocumenting the rule: `gws`, `gmail`, `send` is what it blocks.\nEOF",
+         'gmail', 'PASS'),
+        # The identical shape via cat > (redirect form) must pass the same way.
+        ("cat > brief.md <<'EOF'\nSee `gws`, `gmail`, `send` in the guard's own header.\nEOF",
+         'gmail', 'PASS'),
+        # NOT WEAKENED: the same argv-list shape inside an UNQUOTED-delimiter heredoc CAN execute
+        # (POSIX performs substitution in an unquoted body) and must stay fully visible. Uses
+        # 'trash' (not 'send' -- send is a guard_gmail_send.sh-specific concept this shared
+        # module's generic verdict()/destructive-list harness does not model) so this exercises
+        # gws_segments()'s heredoc handling specifically, through the same destructive-verb rule
+        # every other case above already uses.
+        ("python3 <<EOF\nimport subprocess; subprocess.run(['gws','gmail','users','threads','trash','--id','18abc'])\nEOF",
+         'gmail', 'BLOCK'),
     ]
     gmail_d = ['delete', 'batchDelete', 'trash']
     gmail_s = ['modify', 'untrash', 'list', 'get']

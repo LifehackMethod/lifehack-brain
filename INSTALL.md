@@ -61,7 +61,11 @@ to Claude Code the way any other non-Claude-Code app is sent above.
 > hand. ⛔ **Never offer help without saying how to reach it** — a promise with no route is where someone
 > quietly gives up. Then stop.
 
-## ⭐ NEXT — HOW YOU GET THIS: PLUGIN (fastest way in, and it DOES ship the guards) OR MANUAL CLONE (if you want to develop the harness itself)
+## ⭐ NEXT — HOW YOU GET THIS: PLUGIN (two commands, no folder) OR MANUAL CLONE (a folder this file walks you through) — both fully supported
+
+⛔ **Choose one before you run anything: the plugin (next block, two commands) or the manual clone
+(jump straight to the `MANUAL CLONE PATH` heading below) — both are fully supported.** Pick the one you
+want, then start there; you don't need to read or run the other one first.
 
 **As of 2026-08-23 this harness is also a Claude Code marketplace plugin.** One command adds the
 marketplace, one installs the plugin — no folder to create, no `git` to run by hand. ⛔ **It does NOT
@@ -114,10 +118,13 @@ that matter) gets you the plugin's 45 guards — not that private maintainer-onl
 maintainer-only arrangement, not something this project promises anyone else; it is not a reason to
 prefer one install path over the other.
 
-**So, which one to use:** the plugin above is the fast way in, and — guard hooks included — it is a
-complete install for anyone just using this on their own material. **Use the manual clone path below
-if you intend to develop the harness itself:** read its source, change a skill, send a PR back. That is
-the one thing a plugin-only install cannot do.
+**So, which one to use:** both are fully supported and permanent, and they work in conjunction — pick
+whichever fits you. **The plugin above:** two commands, no folder, guard hooks included. **The manual
+clone below:** a folder you can open, read and edit — guard hooks included too, and it's what the rest
+of this file walks through step by step, so everything after this point assumes you're standing inside
+it. Only the clone lets you read the harness's own source, change a skill, or send a PR back; using the
+plugin means bridging STEP 7's cloned-folder assumption yourself, the way the note just above this one
+shows.
 
 ⭐ **If you do use the plugin and later want to connect your AI Brain (STEP 7 below) anyway:** its commands are written assuming you're sitting inside a cloned Harness folder. A plugin install has no such folder — ask Claude to find where the plugin actually landed (`claude plugin list`, or look under `~/.claude/plugins/cache/lifehack-brain/lifehack-brain/<version>/` — the full repo layout, including `shared/brain_root.py`, is really there) and run STEP 7's commands from inside *that* folder instead. The commands don't care which install method put the files on disk, only that you're standing in the right one.
 
@@ -125,11 +132,11 @@ the one thing a plugin-only install cannot do.
 GitHub account signed in, name the one the plugin commands actually used, since a marketplace add can
 silently pick the wrong one.
 
-⛔ **Use the manual clone path if:** you intend to develop the harness itself (read its source, change
-a skill, send back a PR), or your environment cannot install Claude Code plugins at all. **Both paths
-give you the guard hooks** — that is not a reason to pick one over the other. **If you already
-installed the plugin and later decide you want the clone too, the manual clone below is additive, not
-a do-over:** it lands in its own folder and does not touch the plugin install.
+⭐ **A reason to pick the clone specifically: it's also your path if your environment cannot install
+Claude Code plugins at all.** Otherwise, both paths give you the guard hooks — that is not what decides
+between them. **If you already installed the plugin and later decide you want the clone too, the manual
+clone below is additive, not a do-over:** it lands in its own folder and does not touch the plugin
+install.
 
 ## ⭐ MANUAL CLONE PATH — FOUR QUESTIONS, BEFORE ANY FOLDER IS MADE
 
@@ -2699,8 +2706,8 @@ goes wrong.
 
 ## Taking an update later
 
-⭐ **If you installed via the plugin (this file's default, near the top): these `git` commands are
-not your path, but you still have to act.** Auto-update is off by default for this marketplace and was
+⭐ **If you installed via the plugin (one of the two install paths near the top of this file): these `git`
+commands are not your path, but you still have to act.** Auto-update is off by default for this marketplace and was
 not turned on for you at install. Your update story is:
 
 ```bash
@@ -2716,7 +2723,7 @@ removes the step of running the command yourself, not the maintainer's part of t
 lands, quit Claude and reopen it — the update is only *installed* until a new session *loads* it.**
 This session keeps running the old code until you do. That gap is exactly why the security fix in PR
 #130 kept getting bypassed after the fix was already on disk. Everything below is for the manual clone
-fallback.
+path.
 
 **Ask Claude:** *"check if there's an update to my brain and install it."*
 
