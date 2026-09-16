@@ -134,6 +134,24 @@ allow "a payload body that merely CONTAINS the word send" \
 allow "the live label-map read this repo actually performs" \
                                               'gws gmail users labels list --params {"userId":"me"}'
 
+# ⭐ 2026-09-15 false positive, fixed: a project brief authored via a QUOTED heredoc whose prose
+# discusses filenames (gws-audit.sh, gws-reauth.sh) and, separately, mentions the words `gws`,
+# `gmail`, `send` in backticks as documentation. Root cause: the shared comma-list argv scanner
+# (gws_guard.py's FIX 4, meant to catch `subprocess.run(['gws','gmail',...,'send'])`) read the
+# ENTIRE raw command text for the SHAPE of a comma-separated quoted list with no regard for
+# whether that text sits inside a heredoc BODY (pure data, never executed) or a live argument.
+# Fixed by _strip_quoted_heredocs() in system/hooks/lib/gws_guard.py, which blanks a
+# quoted-delimiter heredoc's body (POSIX-guaranteed inert) before the shape-scan runs.
+allow "a project brief written via a quoted heredoc, mentioning gws/gmail/send as prose" \
+                                              "tee project-brief.md << 'EOF'
+Reference scripts discussed: gws-audit.sh, gws-reauth.sh for reauthorizing gmail access.
+The guard checks the shape \`gws\`, \`gmail\`, \`send\` before blocking.
+EOF"
+allow "same false positive via cat > (redirect form)" \
+                                              "cat > notes.md << 'EOF'
+Documenting the guard's own rule: \`gws\`, \`gmail\`, \`send\` is the pattern it blocks.
+EOF"
+
 echo
 echo "=== DENY cases — every one also asserts the message is well-formed and re-parses ==="
 
@@ -153,6 +171,16 @@ deny "an operation hidden behind a variable"  'gws gmail users messages $VERB --
 deny "an unrecognised resource"               "gws gmail users outbox flush"
 deny_raw "unparseable stdin must fail CLOSED" "not json at all"
 deny_raw "empty stdin must fail CLOSED"       ""
+
+echo
+echo "=== regression: the heredoc fix must not weaken the argv-list threat it sits beside ==="
+
+deny "argv built by another interpreter, no heredoc involved at all" \
+     'python3 -c "import subprocess; subprocess.run([\"gws\",\"gmail\",\"users\",\"messages\",\"send\",\"--params\",\"x\"])"'
+deny "the SAME argv-list shape, but inside an UNQUOTED-delimiter heredoc that IS executed" \
+     "python3 <<EOF
+import subprocess; subprocess.run(['gws','gmail','users','messages','send','--params','x'])
+EOF"
 
 rm -f "$ERRF"
 echo
