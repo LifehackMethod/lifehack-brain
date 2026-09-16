@@ -145,7 +145,25 @@ def do_set(a):
     if a.note:    row["learned_note"] = a.note
     if a.desk:    row["desk"] = a.desk
     if a.vein:    row["vein"] = a.vein
-    if getattr(a, "subject", None):  row["subject"] = a.subject   # ad-hoc cluster label (Pass-1 clustering)
+    if getattr(a, "subject", None):
+        # ad-hoc cluster label (Pass-1 clustering). ⚠ WRITE BOTH FIELDS (#56). `basket` is what
+        # pipeline.py routes on; `subject` is what basket_review.py matches on. Writing only
+        # `subject` here let the two disagree the instant a chat was RE-clustered: do_migrate()
+        # seeds `basket` from `subject` ONLY while `basket` is still falsy or the placeholder
+        # "UNCLUSTERED", never on top of a real value -- so a second `set --subject` moved one
+        # field and left the other, and two tools then believed the row was in two different
+        # piles. This is the one place `subject` is set, so keeping them in lockstep here needs
+        # no change to migrate's narrower seed-only rule or any other call site.
+        #
+        # ⚠ RESTORED 2026-09-16 (fix/red-tests) -- 671d15f (#56) added this dual write; d13c5e4's
+        # "Phase H" doc re-derivation (2026-09-01) silently dropped it back to a subject-only
+        # write while reworking nearby code in the same function, with no commit-message mention
+        # of an intentional behaviour change -- an accidental drop, not a decision (matching the
+        # same-day, same-commit regression found in system/githooks/pre-commit's encoding-lint
+        # stage). test_subject_basket_lockstep.py caught it (4/4 failing); restoring this dual
+        # write is the fix, not a weakened assertion.
+        row["subject"] = a.subject
+        row["basket"] = a.subject
     save(m, a.map)
     print(f"OK: {a.file} → status={row.get('filing_status')} desk={row.get('desk')} vein={row.get('vein')} "
           f"subject={row.get('subject')} note={(row.get('learned_note') or '')[:50]!r}")
