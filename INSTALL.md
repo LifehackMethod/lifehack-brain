@@ -2706,7 +2706,7 @@ goes wrong.
 
 ## Taking an update later
 
-⭐ **If you installed via the plugin (the experimental path near the top of this file): these `git`
+⭐ **If you installed via the plugin (one of the two install paths near the top of this file): these `git`
 commands are not your path, but you still have to act.** Auto-update is off by default for this marketplace and was
 not turned on for you at install. Your update story is:
 
