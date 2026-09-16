@@ -83,15 +83,147 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Register freshness — a fresh harvest must match the committed register
+      - name: Register freshness — a fresh harvest of PUBLIC, non-hook rows must match the committed register
+        # ⛔ CORRECTED 2026-09-16 — this step was structurally red on EVERY PR, independent of
+        # any real drift, for THREE separate reasons (all confirmed by actually running these
+        # commands in an isolated detached worktree with no private-repo checkout and an empty
+        # $HOME — see ci-register-freshness-fix.md):
+        #   1. PRIVATE ROWS. This runner has no `egjokaj/ClaudeOps` checkout and no populated
+        #      ~/.claude (by design — constraint 0.5, "no secrets in any shared store"; see this
+        #      workflow's own header comment, "WHY NO PRIVATE-REPO ROOT"). `harvest.py`'s
+        #      `os.path.isdir` guards make a missing private root harvest as EMPTY rather than
+        #      erroring, so any of the committed register's `repo: "private"` rows can never
+        #      round-trip through a fresh harvest run here. Same class of problem `generate.py`'s
+        #      own `--targets public` flag already exists to solve (the B3.2/B5.2 fix in
+        #      `check_drift.py`) — mirrored here rather than reinvented: this step now compares
+        #      only `repo == "public"` rows, and reports a private-row count as a named,
+        #      non-blocking WARN, never a failure.
+        #   2. HOOK-TYPE ROWS. `harvest.py`'s own `harvest_hooks()` docstring establishes that a
+        #      hook row has NO source other than the wiring files themselves
+        #      (`.claude/settings.json` / `hooks/hooks.json`). Since B5.2's group-dispatch
+        #      collapse landed, a fresh harvest of hooks reads whatever the wiring files
+        #      literally contain post-collapse (one `group_dispatch_<group>.sh` entry) — never
+        #      the N individual member rows the committed register correctly still carries. That
+        #      makes a fresh-harvest-vs-committed-register byte diff on hook rows permanently
+        #      circular for any grouped hook, independent of environment (measured on this repo's
+        #      own pilot-map-ups group: 4 rows removed / 1 added even after narrowing to
+        #      repo=="public"). This is the exact circularity `check_drift.py` was corrected to
+        #      avoid for hooks (see that script's own module docstring) — and hook wiring
+        #      correctness is already independently verified by THIS SAME WORKFLOW's next two
+        #      steps (generate.py run against the committed register, diffed against the
+        #      committed wiring), so excluding hook rows here duplicates no coverage and closes
+        #      no gap.
+        #   3. HAND-CURATED FIELDS. `needs`/`returns` (any unit type) and `group` (hook/skill
+        #      rows) are, by `harvest.py`'s own `base_row()` docstring, mechanical
+        #      always-empty/null defaults on every fresh harvest — a maintainer hand-annotates
+        #      them afterward (see B5.2's own two-step workflow: harvest, then hand-apply
+        #      group/needs/returns). A byte-diff that includes these fields would permanently
+        #      flag every hand-annotated row (measured: the 3 pilot-group skill rows —
+        #      project-manager/checkin/save — via their hand-set `needs`) as "stale" forever,
+        #      for a field a fresh harvest can never legitimately reproduce. These three fields
+        #      are excluded from the comparison; every other field (path, exists, sha,
+        #      description, language, …) is still compared in full.
+        # tool/skill/scheduled rows are otherwise compared in full and still FAIL on any
+        # mismatch: each has an independent disk source (system/tools/, a SKILL.md file,
+        # pulse-config.md), so a real content change with no matching register update — e.g. a
+        # governed script edited without re-harvesting — is real drift. (This is exactly how a
+        # genuinely stale row was actually caught while building this fix: `system/register/
+        # register.jsonl`'s row for `system/tools/citation_lint.py` still carried the PRE-B5.2
+        # sha even though B5.2's merge had changed the file on disk — fixed in this same PR by
+        # refreshing that one row's `sha`, not by loosening this check further.)
         run: |
           python3 system/register/harvest.py --no-cache --out "$RUNNER_TEMP/fresh-register.jsonl"
-          if ! diff -u system/register/register.jsonl "$RUNNER_TEMP/fresh-register.jsonl"; then
-            echo ""
-            echo "::error::system/register/register.jsonl is stale — a fresh harvest of this checkout's disk state does not match the committed register."
-            echo "Fix locally: python3 system/register/harvest.py --out system/register/register.jsonl"
-            exit 1
-          fi
+          python3 - "$RUNNER_TEMP/fresh-register.jsonl" <<'PY'
+          import json
+          import sys
+
+          fresh_path = sys.argv[1]
+
+          # Hand-curated chaining/grouping metadata (reason 3 above) — never reproducible by a
+          # fresh harvest, excluded from the equality check on every row, every unit type.
+          HAND_CURATED_FIELDS = {"needs", "returns", "group"}
+
+
+          def load(path):
+              rows = []
+              with open(path, encoding="utf-8") as f:
+                  for line in f:
+                      line = line.strip()
+                      if line:
+                          rows.append(json.loads(line))
+              return rows
+
+
+          committed = load("system/register/register.jsonl")
+          fresh = load(fresh_path)
+
+
+          def checkable(rows):
+              # repo=="public" mirrors generate.py's own --targets public narrowing (reason 1);
+              # type!="hook" excludes the structurally-circular unit class (reason 2); stripping
+              # HAND_CURATED_FIELDS excludes fields no fresh harvest can ever reproduce (reason
+              # 3). tool/skill/scheduled rows keep a real, independent disk source and are
+              # compared on every remaining field.
+              out = {}
+              for r in rows:
+                  if r["repo"] != "public" or r["type"] == "hook":
+                      continue
+                  stripped = {k: v for k, v in r.items() if k not in HAND_CURATED_FIELDS}
+                  out[r["id"]] = stripped
+              return out
+
+
+          committed_checkable = checkable(committed)
+          fresh_checkable = checkable(fresh)
+
+          private_committed = sum(1 for r in committed if r["repo"] == "private")
+          private_fresh = sum(1 for r in fresh if r["repo"] == "private")
+          if private_committed or private_fresh:
+              print(
+                  "::warning::register freshness — {0} private-repo row(s) in the committed "
+                  "register, {1} in this runner's fresh harvest (this runner has no "
+                  "private-repo checkout, so these can never be compared here — see "
+                  "check_drift.py's own local, private-repo-aware gate). Non-blocking."
+                  .format(private_committed, private_fresh)
+              )
+
+          only_committed = sorted(set(committed_checkable) - set(fresh_checkable))
+          only_fresh = sorted(set(fresh_checkable) - set(committed_checkable))
+          changed = sorted(
+              rid for rid in (set(committed_checkable) & set(fresh_checkable))
+              if committed_checkable[rid] != fresh_checkable[rid]
+          )
+
+          if only_committed or only_fresh or changed:
+              print(
+                  "::error::system/register/register.jsonl is stale — a fresh harvest of this "
+                  "checkout's disk state (public, non-hook rows, hand-curated fields excluded) "
+                  "does not match the committed register."
+              )
+              print("")
+              for rid in only_committed:
+                  print("- only in committed register: " + rid)
+              for rid in only_fresh:
+                  print("+ only in fresh harvest: " + rid)
+              for rid in changed:
+                  print("~ changed: " + rid)
+                  before = committed_checkable[rid]
+                  after = fresh_checkable[rid]
+                  for field in sorted(set(before) | set(after)):
+                      if before.get(field) != after.get(field):
+                          print(
+                              "    {0}: committed={1!r} fresh={2!r}"
+                              .format(field, before.get(field), after.get(field))
+                          )
+              print("")
+              print("Fix locally: python3 system/register/harvest.py --out system/register/register.jsonl")
+              sys.exit(1)
+
+          print(
+              "register freshness: OK ({0} public, non-hook row(s) match; hook rows are "
+              "verified separately by the generate+diff steps below)".format(len(committed_checkable))
+          )
+          PY
 
       - name: Generate WITH the caller lint (warn-level report), from the COMMITTED register, and install into this checkout
         # --targets public (B3.2 second fix, 2026-09-15): the private

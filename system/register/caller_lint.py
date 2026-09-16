@@ -340,6 +340,19 @@ def ci_evidence(governed, repo_roots, ev):
 def doc_evidence(governed, repo_roots, ev):
     doc_files = []
     for repo, root in repo_roots.items():
+        # ⛔ FIX 2026-09-16 (found while repairing register-drift.yml's CI freshness check,
+        # see ci-register-freshness-fix.md): unlike every other evidence pass in this file
+        # (walk_governed/scheduled_text_evidence/skill_evidence's own os.walk() calls, and
+        # ci_evidence's explicit os.path.isdir(gh) guard just above), this was the one spot
+        # still calling os.listdir(root) directly with no existence guard -- os.walk() on a
+        # missing directory silently yields nothing, but os.listdir() raises
+        # FileNotFoundError. A CI runner with no private-repo checkout (this workflow's own
+        # documented, by-design case -- see register-drift.yml's "WHY NO PRIVATE-REPO ROOT")
+        # has no `private_root` on disk at all, so this crashed generate.py outright the
+        # first time anything upstream let this step actually run. Matches this same file's
+        # own established idiom (os.path.isdir before descending), not new logic.
+        if not os.path.isdir(root):
+            continue
         for f in os.listdir(root):
             if f.endswith(".md"):
                 doc_files.append((repo, os.path.join(root, f)))
