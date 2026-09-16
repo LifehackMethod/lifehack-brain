@@ -84,7 +84,15 @@ trap 'lhb_journal_fire "$?" "guard_hook_sop_read.sh" "PreToolUse" "Bash|Write|Ed
 #   3. BASH-STRING DETECTION IS STILL A SPEED BUMP. The Write/Edit path (2) above is exact — it reads
 #      the typed file_path field, not a guessed string — but the Bash path (1) is still the same
 #      command-as-TEXT matcher the file's own banner warns about above: one phrasing behind, always.
-# UPDATED: 2026-08-24 (widened matcher intent + added Write/Edit file_path parsing — see FIXED note
+#   4. BASH-SHAPED REGISTER RESOLUTION IS UNCHANGED (R2 Part A, 2026-09-16). Only the Write/Edit/
+#      MultiEdit path resolves the register from the write target's own repo. A Bash-shaped
+#      write-into-the-hook-plane still resolves it from _REPO (this hook's own tree), because a
+#      single command string has no one resolved target to derive a git toplevel from. Stated as a
+#      known limit, not fixed here — see R2-SPEC-A-plugin-guard.md Decision 5.
+# UPDATED: 2026-09-16 (R2 Part A — Write/Edit register lookup now resolves from the write target's
+#      own repo, gated by a strict Harness-repo test, so a plugin-cache copy of this guard honors a
+#      target repo's declared suspension instead of always defaulting to "active"). Previously
+#      2026-08-24 (widened matcher intent + added Write/Edit file_path parsing — see FIXED note
 #      above). Previously 2026-08-03.
 # PORTED (T9.7b, 2026-08-15) from claudeops-config: the REDIRECT message and read_sop.sh call
 # below carried a hardcoded `~/claudeops-config/...` path; both now resolve from this hook's
@@ -99,7 +107,34 @@ trap 'lhb_journal_fire "$?" "guard_hook_sop_read.sh" "PreToolUse" "Bash|Write|Ed
 # The runtime backstop below catches STALE wiring (e.g. an un-refreshed
 # plugin cache) and honors/alarms instead of enforcing. A past-expiry
 # suspension is treated as ACTIVE again and alarms loudly — the self-heal.
-# 
+#
+# R2 PART A (2026-09-16): a globally-enabled PLUGIN copy of this guard runs
+# from a hookdir with no register at all (the plugin cache ships no
+# system/register/register.jsonl) — measured live, C1.2. The switch above
+# only works when the guard's OWN tree happens to carry the register; a
+# plugin copy never does, so its lookup always defaulted to "active" and
+# a repo's declared suspension was invisible to it. FIX: for a Write/Edit/
+# MultiEdit call the register is resolved from the WRITE TARGET's own repo
+# (git toplevel of dirname(FILE_PATH), which is already realpath'd below —
+# symlink-safe by construction), never from this hook's own location, never
+# from CLAUDE_PROJECT_DIR/cwd (neither is documented as available inside a
+# hook process; see R2-SPEC-A-plugin-guard.md Decision 1). That target root
+# must pass a strict "is a Harness repo" test (Decision 2: register.jsonl +
+# switch_state.py + this guard itself, all present as regular files) before
+# its register is trusted at all — a repo with the data file but not the
+# mechanism (or vice versa) is not a real install and is treated as having
+# no register (state stays "active"). This is what makes the security
+# property hold (Decision 3): repo X's declared suspension can only ever
+# lift an edit whose REALPATH lands inside X — never inside another repo,
+# never inside a plugin cache with no register of its own. No target-repo
+# Python is imported or exec'd for this (Decision 4) — the register is read
+# as plain JSON lines here, same as the same-repo path below.
+# Bash-shaped commands are NOT changed by this fix and keep resolving the
+# register from `_REPO` (this hook's own tree) as before — a single Bash
+# string has no one resolved target to derive a toplevel from, so this is a
+# documented known-limit, not an oversight (R2-SPEC-A Decision 5; C1.2
+# exercises the Write/Edit path this fix covers).
+#
 # guard_hook_sop_read.sh — PreToolUse hook (matcher: Bash|Write|Edit)
 # Blocks editing the enforcement layer until its rulebook is demonstrably in context.
 set -uo pipefail
@@ -108,6 +143,17 @@ _HOOKDIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
 _REPO="$(cd "$_HOOKDIR" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null)"
 [ -n "$_REPO" ] || _REPO="${_HOOKDIR%/system/hooks}"
 export _REPO
+# Default register-lookup root: the Bash path (below) never overrides these,
+# so it keeps resolving from _REPO exactly as before -- including the OLD,
+# looser "does register.jsonl exist" check, no strict Harness-repo gate
+# (Decision 5, documented known-limit: a Bash string has no one resolved
+# target to derive a toplevel from, so there is no independent repo to
+# validate). The Write/Edit path overrides BOTH once a hook-plane target is
+# confirmed (Decision 1) and is the only path gated by Decision 2's strict
+# three-file test.
+_REGISTER_ROOT="$_REPO"
+_REGISTER_MODE="repo"
+export _REGISTER_ROOT _REGISTER_MODE
 
 INPUT=$(cat 2>/dev/null) || INPUT=""
 
@@ -169,7 +215,17 @@ case "$TOOL_NAME" in
         # Tests are not the enforcement layer they test — same carve-out as guard_write_paths.sh.
         exit 0 ;;
       */system/hooks/*|*/.claude/hooks/*)
-        IS_WRITE=1 ;;
+        IS_WRITE=1
+        # R2 Part A: resolve the register from the WRITE TARGET's own repo, not
+        # this hook's (_REPO stays self-location/sha plumbing only, per Decision 1).
+        # FILE_PATH is already realpath'd (see the single parse pass above), so a
+        # symlink escaping repo X into repo Y lands _TARGET_ROOT on Y, never X.
+        _TARGET_DIR="$(dirname "$FILE_PATH")"
+        _TARGET_ROOT="$(cd "$_TARGET_DIR" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null)"
+        _REGISTER_ROOT="$_TARGET_ROOT"
+        _REGISTER_MODE="target"
+        export _REGISTER_ROOT _REGISTER_MODE
+        ;;
       *)
         exit 0 ;;
     esac
@@ -284,10 +340,39 @@ _SWITCH=$(python3 - <<'PY' 2>/dev/null
 import os, json
 from datetime import date
 guard_path = "/system/hooks/guard_hook_sop_read.sh"
-register_path = os.environ.get("_REPO", "") + "/system/register/register.jsonl"
+# R2 Part A: _REGISTER_ROOT is the write target's own repo for a Write/Edit/
+# MultiEdit call (Decision 1), or _REPO unchanged for a Bash-shaped command
+# (Decision 5, documented known-limit) — set by the bash side above.
+# _REGISTER_MODE says which: "target" gates the lookup on Decision 2's strict
+# Harness-repo test (all three files present); "repo" is the ORIGINAL,
+# unchanged behavior for the Bash path -- just "does register.jsonl exist" --
+# because Decision 5 leaves that path as-is, known-limit and all, and it has
+# no independently resolved target repo to hold to a stricter standard.
+target_root = os.environ.get("_REGISTER_ROOT", "") or ""
+register_mode = os.environ.get("_REGISTER_MODE", "repo")
+
+def is_harness_repo(root):
+    # Decision 2: strict, ALL three, as regular files. A data file (register.jsonl)
+    # with no mechanism (switch_state.py / this guard) alongside it, or the reverse,
+    # is not a real install — the register is ignored (state stays "active").
+    if not root:
+        return False
+    for rel in (
+        "system/register/register.jsonl",
+        "system/register/switch_state.py",
+        "system/hooks/guard_hook_sop_read.sh",
+    ):
+        if not os.path.isfile(os.path.join(root, rel)):
+            return False
+    return True
+
 state = "active"
 expiry = None
-if os.path.isfile(register_path):
+register_ok = is_harness_repo(target_root) if register_mode == "target" else (
+    bool(target_root) and os.path.isfile(os.path.join(target_root, "system/register/register.jsonl"))
+)
+if register_ok:
+    register_path = os.path.join(target_root, "system/register/register.jsonl")
     try:
         with open(register_path, encoding="utf-8") as f:
             for line in f:

@@ -8,6 +8,11 @@ Tests three seams:
   1. validate_register.py cross-rules (active/suspended/expiry shape & reality).
   2. generate.py honors/expired/active behavior + NOTICE/ALARM output.
   3. harvest.carry_forward_switch_state() preserves honored, drops expired.
+  4. R2 Part A (2026-09-16), Decision 4 parity: guard_hook_sop_read.sh inlines its own
+     copy of this classification (it cannot import switch_state.py from a target repo
+     it does not control — see the guard's own R2 PART A comment). This extracts that
+     inline heredoc VERBATIM from the live guard file and runs it for real, so a future
+     edit that lets the two copies drift is caught here rather than discovered live.
 
 Every failing case is proven to FAIL before the fix is trusted — the suite
 uses known-bad rows and asserts validate/generate refuse them."""
@@ -207,6 +212,97 @@ def test_carry_forward_honored_and_expired():
         assert fresh[1]["state"] == "active" and fresh[1]["expiry"] is None, "dropped row must reset to active/null"
 
 
+def _extract_guard_switch_heredoc():
+    """The exact python3 heredoc body guard_hook_sop_read.sh runs for its register-backed
+    switch (R2 Part A) — extracted VERBATIM from the live file, never retyped, so a future
+    edit that drifts the guard's inline copy away from switch_state.classify() fails THIS
+    test instead of being discovered live."""
+    guard_path = os.path.join(REPO_ROOT, "system", "hooks", "guard_hook_sop_read.sh")
+    with open(guard_path, encoding="utf-8") as f:
+        lines = f.readlines()
+    start_idx = end_idx = None
+    for i, line in enumerate(lines):
+        if line.startswith("_SWITCH=$(python3 - <<'PY'"):
+            start_idx = i + 1
+            break
+    assert start_idx is not None, "guard_hook_sop_read.sh: _SWITCH heredoc opener not found"
+    for j in range(start_idx, len(lines)):
+        if lines[j].rstrip("\n") == "PY":
+            end_idx = j
+            break
+    assert end_idx is not None, "guard_hook_sop_read.sh: _SWITCH heredoc closer ('PY') not found"
+    return "".join(lines[start_idx:end_idx])
+
+
+def _run_guard_heredoc(register_root, today_iso):
+    """Run the guard's own extracted heredoc as a real subprocess against register_root,
+    exactly as the guard invokes it (same env var names, same stdlib-only body)."""
+    code = _extract_guard_switch_heredoc()
+    env = os.environ.copy()
+    env["_REGISTER_ROOT"] = register_root
+    env["LHB_REGISTER_TODAY"] = today_iso
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, env=env
+    )
+    return result.stdout.strip()
+
+
+def test_parity_guard_heredoc_matches_classify():
+    """R2 Part A, Decision 4: for a date/state/expiry matrix, the guard's inlined
+    classification (run for real, extracted from the live file) must agree with
+    switch_state.classify() on every case — the two are supposed to be behavioral
+    duplicates and this is the seam that proves they have not drifted apart."""
+    sys.path.insert(0, REGISTER_DIR)
+    import switch_state
+
+    today = date(2026, 9, 16)
+    future = (today + timedelta(days=7)).isoformat()
+    past = (today - timedelta(days=1)).isoformat()
+    on_the_day = today.isoformat()
+
+    verdict_map = {"ACTIVE": "active", "HONORED": "honored", "EXPIRED": "expired"}
+
+    matrix = [
+        ("active", None),
+        ("suspended", future),
+        ("suspended", past),
+        ("suspended", on_the_day),   # edge: expiry == today is still honored
+        ("suspended", None),          # malformed: missing expiry
+        ("suspended", "not-a-date"),  # malformed: unparseable expiry
+    ]
+
+    with tempfile.TemporaryDirectory() as tmp:
+        fixture_repo = os.path.join(tmp, "fixture-harness-repo")
+        os.makedirs(os.path.join(fixture_repo, "system", "register"))
+        os.makedirs(os.path.join(fixture_repo, "system", "hooks"))
+        # Decision 2's Harness-repo test only checks these two are present as regular
+        # files; content is irrelevant to the classification being tested here.
+        with open(os.path.join(fixture_repo, "system", "register", "switch_state.py"),
+                   "w", encoding="utf-8") as f:
+            f.write("# fixture stub\n")
+        with open(os.path.join(fixture_repo, "system", "hooks", "guard_hook_sop_read.sh"),
+                   "w", encoding="utf-8") as f:
+            f.write("# fixture stub\n")
+        register_path = os.path.join(fixture_repo, "system", "register", "register.jsonl")
+
+        for state, expiry in matrix:
+            row = base_hook_row(state=state, expiry=expiry)
+            with open(register_path, "w", encoding="utf-8") as f:
+                f.write(json.dumps(row, sort_keys=True) + "\n")
+
+            guard_out = _run_guard_heredoc(fixture_repo, today.isoformat())
+            guard_verdict = verdict_map.get(guard_out)
+            assert guard_verdict is not None, (
+                f"guard heredoc produced unrecognised output {guard_out!r} for "
+                f"state={state!r} expiry={expiry!r}"
+            )
+            expected = switch_state.classify(row, today=today)
+            assert guard_verdict == expected, (
+                f"parity mismatch state={state!r} expiry={expiry!r}: "
+                f"guard={guard_verdict!r} classify={expected!r}"
+            )
+
+
 def main():
     tests = [
         test_schema_active_ok,
@@ -219,6 +315,7 @@ def main():
         test_generate_active_emits_guard,
         test_generate_expired_alarms_and_rearms,
         test_carry_forward_honored_and_expired,
+        test_parity_guard_heredoc_matches_classify,
     ]
     passed = failed = 0
     for t in tests:
