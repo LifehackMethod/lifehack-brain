@@ -50,6 +50,88 @@ class Fixture(unittest.TestCase):
         return json.loads(out)
 
 
+class RotatedShards(Fixture):
+    """B4.3: journal.sh now rotates to "<journal>.<epoch>.<pid>" shards under a byte cap. The
+    query tool must read across them transparently -- Verify #5 of the rotation build report."""
+
+    def write_shard(self, epoch, pid, lines):
+        path = self.journal + (".%d.%d" % (epoch, pid))
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+        return path
+
+    def _line(self, i, hook):
+        return json.dumps({"ts": 1700000000 + i, "hook": hook, "event": "PreToolUse",
+                            "matcher": "Bash", "decision": "allow" if i % 3 else "deny",
+                            "exit_code": 0 if i % 3 else 2, "session_id": "s1"})
+
+    def test_rotated_plus_current_matches_single_unrotated_file_exactly(self):
+        lines = [self._line(i, "guard_x.sh" if i % 2 == 0 else "guard_y.sh") for i in range(60)]
+
+        single_dir = tempfile.mkdtemp()
+        try:
+            single_path = os.path.join(single_dir, "single.jsonl")
+            with open(single_path, "w", encoding="utf-8") as f:
+                f.write("\n".join(lines) + "\n")
+            rc, out, err = run("--json", journal=single_path)
+            self.assertEqual(rc, 0, err)
+            single_result = json.loads(out)
+        finally:
+            shutil.rmtree(single_dir, ignore_errors=True)
+
+        self.write_shard(1700000000, 111, lines[0:20])
+        self.write_shard(1700000010, 222, lines[20:40])
+        self.write_journal(lines[40:60])
+        rotated_result = self.run_json()
+
+        for key in ("total_lines_seen", "malformed_count", "kept_count",
+                    "by_hook", "by_event", "by_matcher"):
+            self.assertEqual(single_result[key], rotated_result[key],
+                              "mismatch on %r: %r != %r" % (key, single_result[key], rotated_result[key]))
+
+    def test_shards_read_oldest_first_then_live_file_last(self):
+        self.write_shard(1700000010, 222, [self._line(2, "guard_newer_shard.sh")])
+        self.write_shard(1700000000, 111, [self._line(1, "guard_older_shard.sh")])
+        self.write_journal([self._line(3, "guard_live.sh")])
+        files = fjq.discover_journal_files(self.journal)
+        names = [os.path.basename(f) for f in files]
+        self.assertEqual(names, [
+            os.path.basename(self.journal) + ".1700000000.111",
+            os.path.basename(self.journal) + ".1700000010.222",
+            os.path.basename(self.journal),
+        ])
+
+    def test_sidecar_meta_files_never_mistaken_for_shards(self):
+        self.write_shard(1700000000, 111, [self._line(1, "guard_a.sh")])
+        self.write_journal([self._line(2, "guard_b.sh")])
+        # Exactly what journal.sh's rotation logic writes alongside the journal.
+        base = os.path.basename(self.journal)
+        with open(os.path.join(self.root, "." + base + ".rotstate"), "w", encoding="utf-8") as f:
+            f.write("1700000000")
+        os.mkdir(os.path.join(self.root, "." + base + ".rotlock"))
+        files = fjq.discover_journal_files(self.journal)
+        self.assertEqual(len(files), 2)
+        for f in files:
+            self.assertNotIn("rotstate", f)
+            self.assertNotIn("rotlock", f)
+
+    def test_no_rotated_flag_reads_only_the_exact_path_given(self):
+        self.write_shard(1700000000, 111, [self._line(1, "guard_in_shard_only.sh")])
+        self.write_journal([self._line(2, "guard_in_live_only.sh")])
+        result = self.run_json("--no-rotated")
+        hooks = set(result["by_hook"] and [r["name"] for r in result["by_hook"]])
+        self.assertIn("guard_in_live_only.sh", hooks)
+        self.assertNotIn("guard_in_shard_only.sh", hooks)
+        self.assertEqual(result["journal_files"], [self.journal])
+
+    def test_missing_live_file_but_rotated_shards_exist_is_not_reported_missing(self):
+        self.write_shard(1700000000, 111, [self._line(1, "guard_only_in_shard.sh")])
+        # self.journal itself deliberately never created.
+        result = self.run_json()
+        self.assertFalse(result["journal_missing"])
+        self.assertEqual(result["kept_count"], 1)
+
+
 class MissingAndEmpty(Fixture):
     def test_missing_journal_file_is_not_a_crash(self):
         rc, out, err = run("--json", journal=os.path.join(self.root, "does-not-exist.jsonl"))

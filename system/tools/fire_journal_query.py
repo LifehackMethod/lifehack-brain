@@ -224,6 +224,47 @@ def read_journal(path):
             yield rec, None
 
 
+_ROTATED_SUFFIX_RE = re.compile(r"^\.(\d+)\.(\d+)$")
+
+
+def discover_journal_files(path):
+    """Given the configured (live) journal path, return the ordered list of files to actually
+    read: every rotated shard oldest-first, then the live file last (if it exists).
+
+    Rotated shards are written by system/hooks/lib/journal.sh's rotation
+    (lhb_journal_maybe_rotate) as "<path>.<epoch-seconds>.<pid>" -- a rename of the live file,
+    never an edit, so each shard's own lines are untouched JSONL. Only names matching that exact
+    two-numeric-group suffix are treated as shards; anything else sharing the prefix (a stray
+    unrelated file) is ignored rather than guessed at. The rotation sidecar files
+    (".<basename>.rotstate", ".<basename>.rotlock") live under a DIFFERENT basename entirely (a
+    leading dot on the whole name) precisely so they can never collide with this pattern -- see
+    the header of journal.sh for why.
+
+    Ordered by the embedded epoch (not lexical filename sort, which would be wrong once the PID
+    suffix has a different digit count than another shard's).
+    """
+    d = os.path.dirname(path) or "."
+    base = os.path.basename(path)
+    shards = []
+    try:
+        entries = os.listdir(d)
+    except OSError:
+        entries = []
+    for name in entries:
+        if not name.startswith(base + "."):
+            continue
+        m = _ROTATED_SUFFIX_RE.match(name[len(base):])
+        if not m:
+            continue
+        epoch, pid = int(m.group(1)), int(m.group(2))
+        shards.append((epoch, pid, os.path.join(d, name)))
+    shards.sort(key=lambda t: (t[0], t[1]))
+    files = [p for _, _, p in shards]
+    if os.path.isfile(path):
+        files.append(path)
+    return files
+
+
 # ── stats ────────────────────────────────────────────────────────────────────────────────────
 
 def percentile(sorted_vals, pct):
@@ -452,6 +493,11 @@ def build_parser():
                     help="a register.jsonl, a wiring file (hooks.json / settings.json shape), "
                          "or a plain text list of hook names — used for the coverage check: "
                          "which registered hooks have ZERO journal lines in the filtered window")
+    p.add_argument("--no-rotated", action="store_true",
+                    help="read ONLY the exact --journal path given, ignoring any rotated shards "
+                         "(<journal>.<epoch>.<pid>) sitting alongside it. Default is to include "
+                         "them automatically -- this flag exists for debugging one shard in "
+                         "isolation, not for normal use.")
     return p
 
 
@@ -468,6 +514,16 @@ def main(argv=None):
 
     journal_path = os.path.expanduser(args.journal)
 
+    # Read across rotated shards automatically (B4.3) -- oldest shard first, live file last --
+    # unless --no-rotated asks for just the one exact path. This is what makes the CLI keep
+    # working unchanged on an installation with no rotated shards yet (discover_journal_files
+    # just returns [journal_path], identical to the old single-file behavior) while also covering
+    # a rotated installation without the caller doing anything differently.
+    if args.no_rotated:
+        journal_files = [journal_path] if os.path.isfile(journal_path) else []
+    else:
+        journal_files = discover_journal_files(journal_path)
+
     malformed_count = 0
     malformed_samples = []  # first few (reason, ) for a human to act on
     total_lines_seen = 0
@@ -475,14 +531,14 @@ def main(argv=None):
     filtered_out_session = 0
     filtered_out_time = 0
 
-    journal_missing = not os.path.isfile(journal_path)
-    if not journal_missing:
-        for rec, reason in read_journal(journal_path):
+    journal_missing = len(journal_files) == 0
+    for one_file in journal_files:
+        for rec, reason in read_journal(one_file):
             total_lines_seen += 1
             if reason is not None:
                 malformed_count += 1
                 if len(malformed_samples) < 10:
-                    malformed_samples.append(reason)
+                    malformed_samples.append("[%s] %s" % (os.path.basename(one_file), reason))
                 continue
             if since_ts is not None and rec["ts"] < since_ts:
                 filtered_out_time += 1
@@ -516,6 +572,7 @@ def main(argv=None):
 
     result = {
         "journal_path": journal_path,
+        "journal_files": journal_files,
         "journal_missing": journal_missing,
         "total_lines_seen": total_lines_seen,
         "malformed_count": malformed_count,
@@ -540,6 +597,10 @@ def main(argv=None):
             print("NOTE: journal file does not exist yet: %s (reporting zero fires, not an error)"
                   % journal_path)
         print("Journal: %s" % journal_path)
+        if len(journal_files) > 1:
+            print("  (+ %d rotated shard(s) read alongside it: %s)"
+                  % (len(journal_files) - 1,
+                     ", ".join(os.path.basename(f) for f in journal_files[:-1])))
         print("Lines seen: %d · kept: %d · filtered by time: %d · filtered by session: %d"
               % (total_lines_seen, len(kept), filtered_out_time, filtered_out_session))
         print()
