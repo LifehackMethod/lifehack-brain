@@ -256,7 +256,7 @@ def selftest():
   · confidence: CONFIRMED
 
 - **Tuesday 3pm — a dentist appointment sits against a client call** — details here.
-  · pointer: `evtddd444444` (Dentist) · `evtefff555555` (Client call)
+  · pointer: `evtddd444444` (appointment) · `evtefff555555` (Client call)
   · confidence: CONFIRMED
 
 ### Pre-drafted questions (not findings — must not be parsed as one)
