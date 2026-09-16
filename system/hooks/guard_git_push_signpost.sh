@@ -19,7 +19,7 @@ trap 'lhb_journal_fire "$?" "guard_git_push_signpost.sh" "PreToolUse" "Bash" 2>/
 #      student the instant it lands on main — and nothing paused to show what is
 #      actually going out before that moment.
 # GUARDS: DENIES a real `git push` subcommand (never a mere MENTION — tokenized, see
-#      MATCHING) on the FIRST attempt of a session, printing which repo (private/
+#      MATCHING) on the first attempt of a given push command in a session, printing which repo (private/
 #      public), the branch and its remote target, and the commit/file manifest that
 #      would leave the machine. ALLOWS every other git verb untouched: status, diff,
 #      log, fetch, pull, add, commit, branch, checkout, stash, show, blame.
@@ -63,7 +63,7 @@ trap 'lhb_journal_fire "$?" "guard_git_push_signpost.sh" "PreToolUse" "Bash" 2>/
 INPUT=$(cat 2>/dev/null)
 
 VERDICT=$(printf '%s' "$INPUT" | python3 -c '
-import sys, json, shlex, os
+import sys, json, shlex, os, base64
 
 try:
     d = json.load(sys.stdin)
@@ -74,13 +74,19 @@ cmd = ((d.get("tool_input") or {}).get("command") or "")
 if not cmd.strip():
     print("NOT_OURS"); raise SystemExit
 
+# Normalized (whitespace-collapsed) command, base64-carried so a stray tab
+# or newline inside the real command text can never collide with the
+# tab-delimited VERDICT protocol below. Bash folds this into the signpost
+# hash so it identifies THIS push, not merely this session.
+cmd_key = base64.b64encode(" ".join(cmd.split()).encode("utf-8", "surrogateescape")).decode("ascii")
+
 try:
     toks = shlex.split(cmd, comments=False, posix=True)
 except ValueError:
     import re as _re
     _shape = _re.compile(r"(^|[;&|(\s])git\s+(-{1,2}\S+\s+)*push\b")
     if _shape.search(cmd):
-        print("DENY\t"); raise SystemExit
+        print("DENY\t\t" + cmd_key); raise SystemExit
     print("NOT_OURS"); raise SystemExit
 
 # (segment, operator-that-PRECEDES-it) pairs. A cd before an AND/semicolon
@@ -133,7 +139,7 @@ for seg, preceding_op in segments:
     if j < len(seg) and seg[j] == "push":
         # explicit -C wins over an inherited cd — confirmed against real git behaviour
         resolved = cdir if cdir else cwd
-        print("DENY\t" + resolved); raise SystemExit
+        print("DENY\t" + resolved + "\t" + cmd_key); raise SystemExit
 
 print("OK")
 ' 2>/dev/null)
@@ -149,9 +155,13 @@ case "$VERDICT" in
     ;;
 esac
 
-REQUESTED_DIR="${VERDICT#*$'\t'}"
-[ "$REQUESTED_DIR" = "$VERDICT" ] && REQUESTED_DIR=""
-VERDICT="${VERDICT%%$'\t'*}"
+_RAW_VERDICT="$VERDICT"
+VERDICT="${_RAW_VERDICT%%$'\t'*}"
+_REST="${_RAW_VERDICT#*$'\t'}"
+[ "$_REST" = "$_RAW_VERDICT" ] && _REST=""
+REQUESTED_DIR="${_REST%%$'\t'*}"
+CMD_B64="${_REST#*$'\t'}"
+[ "$CMD_B64" = "$_REST" ] && CMD_B64=""
 
 case "$VERDICT" in
   OK|NOT_OURS)
@@ -171,15 +181,36 @@ case "$VERDICT" in
     REPO_DIR="$PWD"
     if [ -n "$REQUESTED_DIR" ] && [ -d "$REQUESTED_DIR" ]; then REPO_DIR="$REQUESTED_DIR"; fi
 
-    _key="${CLAUDE_CODE_SESSION_ID:-$PWD}"
-    _hash=$(printf '%s' "$_key" | shasum 2>/dev/null | cut -c1-12)
+    # FIXED 2026-09-15 (double-registration race): this hook is registered
+    # TWICE for the same PreToolUse Bash event -- hooks/hooks.json loads it via
+    # ${CLAUDE_PLUGIN_ROOT} AND .claude/settings.json loads the identical
+    # script via ${CLAUDE_PROJECT_DIR} -- so both copies run in PARALLEL on
+    # every single push attempt. The marker used to be keyed on session id
+    # ALONE and DELETED itself on the allow branch: one copy created it and
+    # denied, the other found it, deleted it, and allowed -- so the marker was
+    # gone before either copy (or the next real attempt) could see it, and
+    # every attempt denied, forever.
+    #
+    # Fix: key the marker on session id + WHICH push this is (the normalized
+    # command + the resolved target dir), and NEVER delete it. A genuine
+    # repeat of the exact same push is then recognized as "already
+    # signposted" by both racing copies alike; a different push command still
+    # gets its own first-sight deny. Creation uses mkdir, which is atomic on
+    # POSIX filesystems, so at most one of the two parallel copies can ever
+    # win the create -- the loser sees the directory already there and
+    # allows, instead of racing on a plain `[ -f ] && rm` check.
+    _key="${CLAUDE_CODE_SESSION_ID:-$PWD}|${CMD_B64}|${REPO_DIR}"
+    _hash=$(printf '%s' "$_key" | shasum 2>/dev/null | cut -c1-16)
     [ -n "$_hash" ] || _hash="default"
     _bump="$HOME/.claude/.push-signpost.$_hash"
-    if [ -f "$_bump" ]; then
-      rm -f "$_bump"
-      exit 0
+    if mkdir "$_bump" 2>/dev/null; then
+      : # first sighting of this exact push in this session -- fall through and signpost
+    elif [ -d "$_bump" ]; then
+      exit 0   # already signposted (this copy or a racing sibling copy) -- allow
     fi
-    : > "$_bump" 2>/dev/null || true
+    # else: mkdir failed for some other reason (e.g. $HOME/.claude unwritable)
+    # -- fail closed like the rest of this hook: fall through and signpost
+    # rather than silently allow an un-recorded push.
 
     _branch=$(git -C "$REPO_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null)
     [ -n "$_branch" ] || _branch="UNKNOWN"
@@ -233,7 +264,7 @@ case "$VERDICT" in
       printf '   Not sure which repo this belongs in? STOP and ask. Never guess harness vs personal.\n'
       printf '   WHY: "by push time I just approve, because I cant tell whats in it" -- this is the fix. Identity above was read from the real git remote, not guessed.\n'
       printf '   -> system/sops/github-sop.md section 0c\n'
-      printf '   (run the same push again to proceed -- this fires once per session)\n'
+      printf '   (run the same push again to proceed -- this fires once per distinct push in a session)\n'
     } >&2
     exit 2
     ;;

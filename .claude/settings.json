@@ -110,11 +110,6 @@
           },
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_hook_sop_read.sh\"",
-            "statusMessage": "Checking the hook SOP was read first..."
-          },
-          {
-            "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_no_upstream_commit_signpost.sh\"",
             "statusMessage": "Checking whether the remote has seen this branch..."
           },
@@ -167,6 +162,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_findings_write.sh\"",
             "statusMessage": "Checking this doesn't bypass the findings writer..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_hook_sop_read.sh\"",
+            "statusMessage": "Checking the hook SOP was read first..."
           },
           {
             "type": "command",
@@ -236,6 +236,11 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/hooks/guard_harness_write.sh\"",
+            "statusMessage": "Checking this write isn't landing inside the harness itself..."
+          },
+          {
+            "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/enforce_skill_frontmatter.sh\"",
             "statusMessage": "Checking the skill declares what it is for..."
           },
@@ -275,6 +280,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/session_context_loader.sh\"",
             "statusMessage": "Loading your standing notes..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/tools/mirror_line.sh\"",
+            "statusMessage": "Checking clone mirror state..."
           }
         ]
       }
