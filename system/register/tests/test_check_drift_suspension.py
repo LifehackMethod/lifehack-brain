@@ -32,6 +32,15 @@ Cases:
   3. DECLARED suspension + regenerated wiring               -> exit 0, NOTICE, guard absent
   4. DECLARED suspension but wiring NOT regenerated         -> exit 1 (stale wiring is still drift)
   5. EXPIRED suspension + regenerated wiring                -> exit 0, ALARM on stdout, guard re-armed
+  6. UNDECLARED hand-removal of the deny string ALONE        -> exit 1 (register R2 Part B, 2026-09-16 —
+     (hooks wiring untouched, register active)                the direct C1.2 regression: the deny line
+                                                               is now register-governed too)
+
+R2 Part B (2026-09-16) additionally seeds the fixture's `.claude/settings.json` stub with a
+`permissions.deny` block (previously `{"hooks": {}}` only) carrying the real
+`Edit(system/hooks/**)` string PLUS one UNRELATED human-added deny entry, so every case
+above also proves: the managed string is removed/re-added exactly on the switch's
+honored/expired verdict, and the unrelated entry is NEVER touched or repositioned.
 """
 import json
 import os
@@ -52,6 +61,12 @@ WIRING = (os.path.join(".claude", "settings.json"), os.path.join("hooks", "hooks
 TODAY = "2026-09-16"
 FUTURE = "2026-09-20"
 PAST = "2026-09-10"
+
+# R2 Part B (2026-09-16) — the register-governed permissions.deny string, and a
+# human-added deny entry no row owns, seeded into the fixture's `.claude/settings.json`
+# stub so every case can also prove the unrelated entry is never touched/repositioned.
+GUARD_DENY = "Edit(system/hooks/**)"
+UNRELATED_DENY = "Bash(curl:*)"
 
 
 def real_row(rel):
@@ -98,7 +113,11 @@ def build_fixture(row):
     os.makedirs(os.path.join(root, ".claude"))
     os.makedirs(os.path.join(root, "hooks"))
     with open(os.path.join(root, WIRING[0]), "w", encoding="utf-8") as f:
-        json.dump({"hooks": {}}, f, indent=2)
+        # R2 Part B: a real permissions.deny block, carrying the real managed
+        # string PLUS one entry no row owns — every case proves the unrelated
+        # entry survives untouched, in its original position.
+        json.dump({"hooks": {}, "permissions": {"deny": [GUARD_DENY, UNRELATED_DENY]}},
+                   f, indent=2)
         f.write("\n")
     with open(os.path.join(root, WIRING[1]), "w", encoding="utf-8") as f:
         json.dump({"description": "k1 drift fixture", "hooks": {}}, f, indent=2)
@@ -188,6 +207,29 @@ def hand_remove_guard(root):
             f.write("\n")
 
 
+def deny_list(root):
+    """R2 Part B: the live permissions.deny array in the fixture's .claude/settings.json,
+    as currently written to disk (never the staged copy)."""
+    with open(os.path.join(root, WIRING[0]), encoding="utf-8") as f:
+        doc = json.load(f)
+    return doc.get("permissions", {}).get("deny", [])
+
+
+def hand_remove_deny_string(root):
+    """R2 Part B, C1.2 regression case (t6): an UNDECLARED edit to permissions.deny
+    ALONE — the hooks wiring is left completely untouched, only the managed deny
+    string is stripped by hand, leaving the register saying the guard row is active."""
+    path = os.path.join(root, WIRING[0])
+    with open(path, encoding="utf-8") as f:
+        doc = json.load(f)
+    doc.setdefault("permissions", {})["deny"] = [
+        s for s in doc.get("permissions", {}).get("deny", []) if s != GUARD_DENY
+    ]
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+
+
 RESULTS = []
 
 
@@ -214,9 +256,13 @@ def t1_active_consistent():
     regenerate(root)
     stage_all(root)
     r = check_drift(root)
+    # R2 Part B: default (all active) must round-trip permissions.deny BYTE-IDENTICAL —
+    # the managed string was already present, at the same position, and the unrelated
+    # human-added entry is untouched.
     check("1 active register + generated wiring -> exit 0",
-          anchor_wired(root) and r.returncode == 0 and "OK" in r.stdout and all(wiring_mentions_guard(root)),
-          f"rc={r.returncode}\n{r.stdout}{r.stderr}")
+          anchor_wired(root) and r.returncode == 0 and "OK" in r.stdout and all(wiring_mentions_guard(root))
+          and deny_list(root) == [GUARD_DENY, UNRELATED_DENY],
+          f"rc={r.returncode} deny={deny_list(root)}\n{r.stdout}{r.stderr}")
     return root
 
 
@@ -239,9 +285,14 @@ def t3_declared_suspension_regenerated():
     regenerate(root)
     stage_all(root)
     r = check_drift(root)
-    check("3 DECLARED suspension + regenerated wiring -> exit 0, NOTICE, guard absent",
-          anchor_wired(root) and r.returncode == 0 and "NOTICE" in r.stdout and not any(wiring_mentions_guard(root)),
-          f"rc={r.returncode} wiring_mentions_guard={wiring_mentions_guard(root)}\n{r.stdout}{r.stderr}")
+    # R2 Part B (this IS "TEST-FIRST item 2" — proven RED before the generator change,
+    # see the suite's own header/journal): the honored suspension must also REMOVE the
+    # guard's permissions.deny string, leaving every other deny entry (the unrelated one)
+    # untouched.
+    check("3 DECLARED suspension + regenerated wiring -> exit 0, NOTICE, guard absent, deny lacks the string",
+          anchor_wired(root) and r.returncode == 0 and "NOTICE" in r.stdout and not any(wiring_mentions_guard(root))
+          and deny_list(root) == [UNRELATED_DENY],
+          f"rc={r.returncode} wiring_mentions_guard={wiring_mentions_guard(root)} deny={deny_list(root)}\n{r.stdout}{r.stderr}")
     return root
 
 
@@ -266,9 +317,30 @@ def t5_expired_rearmed():
     regenerate(root)
     stage_all(root)
     r = check_drift(root)
-    check("5 EXPIRED suspension -> exit 0, ALARM on stdout, guard re-armed in wiring",
-          anchor_wired(root) and r.returncode == 0 and "ALARM" in r.stdout and all(wiring_mentions_guard(root)),
-          f"rc={r.returncode} wiring_mentions_guard={wiring_mentions_guard(root)}\n{r.stdout}{r.stderr}")
+    # R2 Part B ("TEST-FIRST item 3"): an expired suspension re-arms the deny string too
+    # (it was already present in the fixture's seed, so this also proves "already-present
+    # is never repositioned/duplicated" — the unrelated entry keeps its place).
+    check("5 EXPIRED suspension -> exit 0, ALARM on stdout, guard re-armed in wiring AND deny",
+          anchor_wired(root) and r.returncode == 0 and "ALARM" in r.stdout and all(wiring_mentions_guard(root))
+          and deny_list(root) == [GUARD_DENY, UNRELATED_DENY],
+          f"rc={r.returncode} wiring_mentions_guard={wiring_mentions_guard(root)} deny={deny_list(root)}\n{r.stdout}{r.stderr}")
+    return root
+
+
+def t6_undeclared_deny_hand_removal():
+    """R2 Part B, C1.2 regression: hand-remove ONLY the permissions.deny string (hooks
+    wiring completely untouched), register stays active -> the on-commit gate must still
+    catch it as drift, mirroring t2 but for the deny line instead of the hooks wiring."""
+    root = build_fixture(real_guard_row())
+    regenerate(root)
+    hand_remove_deny_string(root)
+    stage_all(root)
+    r = check_drift(root)
+    check("6 UNDECLARED hand-removal of the deny string ALONE -> exit 1, refused as drift",
+          anchor_wired(root) and r.returncode == 1 and "COMMIT REFUSED" in r.stderr
+          and all(wiring_mentions_guard(root))  # hooks wiring itself is untouched
+          and deny_list(root) == [UNRELATED_DENY],  # real file stays hand-edited, uncorrected, until fixed
+          f"rc={r.returncode} deny={deny_list(root)}\n{r.stdout}{r.stderr}")
     return root
 
 
@@ -276,7 +348,8 @@ def main():
     print("=== check_drift.py x register-backed switch (K1/S1) ===")
     for name, fn in (("t1", t1_active_consistent), ("t2", t2_undeclared_hand_removal),
                      ("t3", t3_declared_suspension_regenerated),
-                     ("t4", t4_declared_suspension_stale_wiring), ("t5", t5_expired_rearmed)):
+                     ("t4", t4_declared_suspension_stale_wiring), ("t5", t5_expired_rearmed),
+                     ("t6", t6_undeclared_deny_hand_removal)):
         case(name, fn)
     passed = sum(1 for ok in RESULTS if ok)
     failed = len(RESULTS) - passed

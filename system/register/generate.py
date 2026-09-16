@@ -74,10 +74,15 @@ With plain `--out DIR`, writes ONLY inside DIR — never a real checkout's
 (Feature B2.2, opt-in — the default behavior above is unchanged) additionally
 merges the "settings"/"plugin" targets' generated "hooks" section straight
 into `<PATH>/.claude/settings.json` / `<PATH>/hooks/hooks.json`, leaving every
-other top-level key untouched (`install_into_repo()` below) — this is the
-generator writing its own two real files, never a hand edit. No new
-dependency: stdlib only, plus this folder's own `schema_v1.py` /
-`validate_register.py` / `harvest.py`.
+other top-level key untouched, WITH ONE NAMED EXCEPTION (R2 Part B,
+2026-09-16, corrected from the original "every other key untouched" claim
+this line used to make): on the "settings" surface, the specific
+`permissions.deny` string(s) a hook row's own `protects_permissions` names
+are also register-governed — see `install_into_repo()` below for the exact
+REMOVE/APPEND rule. Every other key, and every other deny/allow/ask entry no
+row claims, is still untouched. This is the generator writing its own two
+real files, never a hand edit. No new dependency: stdlib only, plus this
+folder's own `schema_v1.py` / `validate_register.py` / `harvest.py`.
 """
 import argparse
 import json
@@ -638,6 +643,15 @@ def generate(register_path, out_dir, public_root, private_root, cache_root,
         "launch_mode_distribution": launch_mode_distribution,
         "suspensions_honored": suspensions_honored,
         "suspensions_expired": suspensions_expired,
+        # R2 Part B (2026-09-16) — exposed so install_into_repo() can compute
+        # which permissions.deny strings should be PRESENT (this list's rows'
+        # own `protects_permissions`) vs ABSENT (suspensions_honored's rows'
+        # own `protects_permissions`) without recomputing the switch
+        # partition a second time. Includes both truly-active rows and
+        # expired-suspension rows (the self-heal — see the partition loop
+        # above), matching "active" in the everyday sense generate.py's own
+        # wiring output already uses.
+        "active_hook_rows": active_hook_rows,
     }
 
 
@@ -803,14 +817,29 @@ def detect_indent(raw_text, default=2):
 def install_into_repo(result, repo_root):
     """Merge ONLY the "hooks" key of each OK'd "settings"/"plugin" target doc into
     the REAL `<repo_root>/.claude/settings.json` / `<repo_root>/hooks/hooks.json` —
-    every other top-level key (permissions/statusLine, description, ...) is parsed
-    and re-serialized untouched, in its original position (Python dicts preserve
+    every other top-level key (statusLine, description, ...) is parsed and
+    re-serialized untouched, in its original position (Python dicts preserve
     insertion order; assigning to an EXISTING key never moves it). This is the only
     code in this repo that writes those two files (task rule: the generator is the
     only writer, never a hand edit) and it only ever merges into a file that already
     exists — it never creates `.claude/settings.json` or `hooks/hooks.json` from
     nothing. A target this run did not mark "OK" (SKIP or REFUSED) is left alone in
-    the real file — install never partially applies a target its own gates rejected."""
+    the real file — install never partially applies a target its own gates rejected.
+
+    R2 Part B (2026-09-16) exception to "every other top-level key ... untouched":
+    for the "settings" surface ONLY, this also owns the specific `permissions.deny`
+    string(s) a hook row declares via `protects_permissions` (Enver's ruling
+    extending R2/S1 — "one register suspension lifts all three hook-edit blocks
+    ... the Edit(system/hooks/**) permission deny (generator manages that line
+    from the same row)"). `present` = every string named by an active/expired row
+    (`result["active_hook_rows"]`); `absent` = every string named by an
+    honored-suspended row (`result["suspensions_honored"]`). The deny array is
+    mutated in place: a string in `absent` is REMOVED; a string in `present` not
+    already there is APPENDED at the end — an already-present string is NEVER
+    repositioned. Every other `permissions` key (`defaultMode`, `allow`, `ask`,
+    and any deny entry no row claims) is left exactly where it is. The "plugin"
+    surface's `hooks/hooks.json` has no `permissions` key at all (confirmed,
+    R2-SPEC-B evidence) and is never touched by this block."""
     installed, skipped = [], []
     real_path_for_surface = {
         "settings": os.path.join(repo_root, ".claude", "settings.json"),
@@ -833,6 +862,27 @@ def install_into_repo(result, repo_root):
             raw = f.read()
         existing = json.loads(raw)
         existing["hooks"] = t["doc"]["hooks"]
+
+        deny_added, deny_removed = [], []
+        if surface == "settings":
+            present = {
+                s for _, row in result.get("active_hook_rows", [])
+                for s in row.get("protects_permissions", [])
+            }
+            absent = {
+                s for _, row in result.get("suspensions_honored", [])
+                for s in row.get("protects_permissions", [])
+            }
+            deny_list = existing.setdefault("permissions", {}).setdefault("deny", [])
+            for s in list(deny_list):
+                if s in absent:
+                    deny_list.remove(s)
+                    deny_removed.append(s)
+            for s in present:
+                if s not in deny_list:
+                    deny_list.append(s)
+                    deny_added.append(s)
+
         indent = detect_indent(raw)
         new_content = json.dumps(existing, indent=indent, ensure_ascii=False,
                                   sort_keys=False) + "\n"
@@ -840,14 +890,18 @@ def install_into_repo(result, repo_root):
         with open(tmp_path, "w", encoding="utf-8") as f:
             f.write(new_content)
         os.replace(tmp_path, real_path)
-        installed.append((surface, real_path, t["rows_written"]))
+        installed.append((surface, real_path, t["rows_written"], deny_added, deny_removed))
     return {"installed": installed, "skipped": skipped}
 
 
 def install_report_lines(install_result):
     lines = ["INSTALL (Feature B2.2, --install-root):"]
-    for surface, path, rows in install_result["installed"]:
+    for surface, path, rows, deny_added, deny_removed in install_result["installed"]:
         lines.append(f"  INSTALLED {surface!r} -> {path} ({rows} rows)")
+        for s in deny_removed:
+            lines.append(f"      permissions.deny -REMOVED (honored suspension): {s!r}")
+        for s in deny_added:
+            lines.append(f"      permissions.deny +APPENDED (active/re-armed): {s!r}")
     for surface, path, status, reason in install_result["skipped"]:
         lines.append(f"  SKIPPED {surface!r} -> {path} ({status}: {reason})")
     return lines

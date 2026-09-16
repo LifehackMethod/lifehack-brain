@@ -201,6 +201,28 @@ TYPE_FIELDS = {
         # in switch_state.py (this folder), shared by generate.py + harvest.py.
         "state": (str, False, ("enum", ("active", "suspended"))),
         "expiry": (str, True, None),
+        # NEW 2026-09-16 (R2 Part B, enforcement-layer Phase 2 plan). Enver's
+        # ruling extending R2/S1 (system/journal.md, 2026-09-16): "one register
+        # suspension lifts all three hook-edit blocks: repo wiring (done), the
+        # plugin's copy of guard_hook_sop_read.sh (Part A), and the
+        # Edit(system/hooks/**) permission deny (generator manages that line
+        # from the same row)." `protects_permissions` names the
+        # Claude-Code-native `permissions.deny` string(s) THIS row's own
+        # `state`/`expiry` switch owns — required-but-honest-empty-default,
+        # same convention as `needs`/`returns` (COMMON_FIELDS above): every
+        # hook row carries `[]` except `guard_hook_sop_read.sh`'s row, which
+        # carries `["Edit(system/hooks/**)"]` (the one entry R2's own scope
+        # names; `.claude/settings.json`'s `permissions.deny` has exactly one
+        # `system/hooks` entry today — verified 2026-09-16). generate.py's
+        # `install_into_repo()` reads this field (only for the "settings"
+        # surface) to REMOVE a string when its owning row is honored-suspended
+        # and APPEND it back (never reposition) when active/expired and
+        # missing — see that function's own docstring. Cross-row ownership
+        # must be UNIQUE (a string claimed by two rows gives a conflicting
+        # present/absent verdict) — enforced in validate_register.py's
+        # `validate_file()` (a cross-*row* rule, so it cannot live in this
+        # per-row schema like `list_of_str` above).
+        "protects_permissions": (list, False, ("list_of_str", None)),
     },
     "tool": {
         "language": (str, False, ("enum", ("py", "sh", "other"))),

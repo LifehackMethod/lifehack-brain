@@ -176,6 +176,7 @@ def validate_row(row, line_no):
 
 def validate_file(path):
     passed, rejected = [], []
+    rows_by_line = {}
     with open(path, encoding="utf-8") as f:
         for i, line in enumerate(f, start=1):
             line = line.strip()
@@ -191,6 +192,44 @@ def validate_file(path):
                 rejected.append((i, errs))
             else:
                 passed.append(i)
+                rows_by_line[i] = row
+
+    # Cross-*row* check (R2 Part B, 2026-09-16): `protects_permissions`
+    # ownership of a `permissions.deny` string must be UNIQUE across rows —
+    # generate.py's install_into_repo() reads the switch state of whichever
+    # row(s) claim a string to decide REMOVE vs APPEND, and two rows claiming
+    # the same string could disagree (one honored-suspended, one active),
+    # giving a conflicting present/absent verdict for the same deny line.
+    # This can't live in validate_row() (per-row) — it's inherently about
+    # relationships BETWEEN rows. Only individually-passed rows are
+    # considered: a row already rejected for its own shape is not
+    # trustworthy input for a cross-row rule.
+    owners = {}
+    for i, row in rows_by_line.items():
+        if row.get("type") != "hook":
+            continue
+        for s in row.get("protects_permissions", []):
+            owners.setdefault(s, []).append(i)
+    dup_errors = {}
+    for s, lines in owners.items():
+        if len(lines) > 1:
+            for i in lines:
+                others = [l for l in lines if l != i]
+                dup_errors.setdefault(i, []).append(
+                    f"line {i}: 'protects_permissions' string {s!r} is also "
+                    f"claimed by line(s) {others} — ownership must be unique "
+                    "(ambiguous present/absent verdict downstream)"
+                )
+    if dup_errors:
+        still_passed = []
+        for i in passed:
+            if i in dup_errors:
+                rejected.append((i, dup_errors[i]))
+            else:
+                still_passed.append(i)
+        passed = still_passed
+        rejected.sort(key=lambda t: t[0])
+
     return passed, rejected
 
 

@@ -51,6 +51,7 @@ def base_hook_row(**overrides):
         "group": None,
         "state": "active",
         "expiry": None,
+        "protects_permissions": [],
     }
     row.update(overrides)
     return row
@@ -128,6 +129,129 @@ def test_schema_unknown_key_rejected():
         row["suspension_reason"] = "testing"
         write_register(reg, [row])
         assert run_validate(reg) == 1, "unknown key must be rejected"
+
+
+# ---------------------------------------------------------------------------
+# R2 Part B (2026-09-16) — `protects_permissions` schema + cross-row uniqueness
+# ---------------------------------------------------------------------------
+def test_schema_protects_permissions_default_ok():
+    with tempfile.TemporaryDirectory() as tmp:
+        reg = os.path.join(tmp, "register.jsonl")
+        write_register(reg, [base_hook_row()])
+        assert run_validate(reg) == 0, "empty protects_permissions must validate"
+
+
+def test_schema_protects_permissions_non_list_rejected():
+    with tempfile.TemporaryDirectory() as tmp:
+        reg = os.path.join(tmp, "register.jsonl")
+        write_register(reg, [base_hook_row(protects_permissions="Edit(system/hooks/**)")])
+        assert run_validate(reg) == 1, "a bare string (not a list) must be rejected"
+
+
+def test_schema_protects_permissions_non_string_items_rejected():
+    with tempfile.TemporaryDirectory() as tmp:
+        reg = os.path.join(tmp, "register.jsonl")
+        write_register(reg, [base_hook_row(protects_permissions=[123])])
+        assert run_validate(reg) == 1, "a non-string list item must be rejected"
+
+
+def test_validate_duplicate_protects_permissions_ownership_rejected():
+    """Two rows claiming the same permissions.deny string is ambiguous ownership —
+    generate.py's install_into_repo() would get a conflicting present/absent
+    verdict for the same string if one row is honored-suspended and the other
+    is active. This is a cross-ROW rule; validate_row() alone cannot see it."""
+    with tempfile.TemporaryDirectory() as tmp:
+        reg = os.path.join(tmp, "register.jsonl")
+        row_a = base_hook_row(protects_permissions=["Edit(system/hooks/**)"])
+        row_b = base_hook_row(
+            id="hook:public:/system/hooks/other_guard.sh@PreToolUse:Bash|Write|Edit",
+            path="/system/hooks/other_guard.sh",
+            protects_permissions=["Edit(system/hooks/**)"],
+        )
+        write_register(reg, [row_a, row_b])
+        assert run_validate(reg) == 1, "a string claimed by two rows must be rejected"
+
+
+def test_validate_unique_protects_permissions_across_distinct_strings_ok():
+    """Sanity counterpart: two rows claiming DIFFERENT strings must both pass —
+    the uniqueness rule is per-string ownership, not "only one row may declare
+    a non-empty protects_permissions"."""
+    with tempfile.TemporaryDirectory() as tmp:
+        reg = os.path.join(tmp, "register.jsonl")
+        row_a = base_hook_row(protects_permissions=["Edit(system/hooks/**)"])
+        row_b = base_hook_row(
+            id="hook:public:/system/hooks/other_guard.sh@PreToolUse:Bash|Write|Edit",
+            path="/system/hooks/other_guard.sh",
+            protects_permissions=["Edit(system/other/**)"],
+        )
+        write_register(reg, [row_a, row_b])
+        assert run_validate(reg) == 0, "distinct strings on distinct rows must both validate"
+
+
+def test_generate_exposes_active_hook_rows():
+    """generate.py's return dict must expose `active_hook_rows` (install_into_repo()'s
+    "present" side) alongside the pre-existing suspensions_honored/expired — R2 Part B."""
+    sys.path.insert(0, REGISTER_DIR)
+    import generate
+    future = (date.today() + timedelta(days=7)).isoformat()
+    with tempfile.TemporaryDirectory() as tmp:
+        reg = os.path.join(tmp, "register.jsonl")
+        public = os.path.join(tmp, "public")
+        os.makedirs(os.path.join(public, "system", "hooks"))
+        for name in ("guard_hook_sop_read.sh", "other_guard.sh"):
+            with open(os.path.join(public, "system", "hooks", name), "w", encoding="utf-8") as f:
+                f.write("# stub guard\n")
+        active_row = base_hook_row()
+        honored_row = base_hook_row(
+            id="hook:public:/system/hooks/other_guard.sh@PreToolUse:Bash|Write|Edit",
+            path="/system/hooks/other_guard.sh",
+            state="suspended", expiry=future,
+            protects_permissions=["Edit(system/other/**)"],
+        )
+        write_register(reg, [active_row, honored_row])
+        out = os.path.join(tmp, "out")
+        result = generate.generate(reg, out, public, public, None,
+                                    skip_caller_lint=True)
+        assert result["schema_ok"], result.get("schema_problems")
+        assert "active_hook_rows" in result, "active_hook_rows must be exposed"
+        active_ids = [row["id"] for _, row in result["active_hook_rows"]]
+        assert active_row["id"] in active_ids, "the active row must be in active_hook_rows"
+        assert honored_row["id"] not in active_ids, "an honored-suspended row must NOT be in active_hook_rows"
+        honored_ids = [row["id"] for _, row in result["suspensions_honored"]]
+        assert honored_row["id"] in honored_ids
+
+
+def test_carry_forward_protects_permissions_preserved():
+    """harvest.carry_forward_protects_permissions() must carry a prior non-empty
+    declaration forward onto a fresh row (which always defaults to []) — losing it
+    on re-harvest would silently defeat install_into_repo()'s deny-line ownership."""
+    sys.path.insert(0, REGISTER_DIR)
+    import harvest
+    with tempfile.TemporaryDirectory() as tmp:
+        prior = os.path.join(tmp, "prior.jsonl")
+        write_register(prior, [
+            base_hook_row(protects_permissions=["Edit(system/hooks/**)"]),
+        ])
+        fresh = [base_hook_row(protects_permissions=[])]
+        carried = harvest.carry_forward_protects_permissions(fresh, prior)
+        assert len(carried) == 1 and carried[0][0] == fresh[0]["id"]
+        assert fresh[0]["protects_permissions"] == ["Edit(system/hooks/**)"], \
+            "a fresh row's empty default must be overwritten by the prior declaration"
+
+
+def test_carry_forward_protects_permissions_no_prior_stays_empty():
+    """A row with no prior non-empty declaration keeps harvest's honest [] default —
+    this is not a re-apply-by-hand field like `group`, but it must never MANUFACTURE
+    a declaration that was never there."""
+    sys.path.insert(0, REGISTER_DIR)
+    import harvest
+    with tempfile.TemporaryDirectory() as tmp:
+        prior = os.path.join(tmp, "prior.jsonl")
+        write_register(prior, [base_hook_row(protects_permissions=[])])
+        fresh = [base_hook_row(protects_permissions=[])]
+        carried = harvest.carry_forward_protects_permissions(fresh, prior)
+        assert carried == []
+        assert fresh[0]["protects_permissions"] == []
 
 
 def test_generate_honored_omits_guard():
@@ -311,6 +435,14 @@ def main():
         test_schema_suspended_bad_date_rejected,
         test_schema_active_with_expiry_rejected,
         test_schema_unknown_key_rejected,
+        test_schema_protects_permissions_default_ok,
+        test_schema_protects_permissions_non_list_rejected,
+        test_schema_protects_permissions_non_string_items_rejected,
+        test_validate_duplicate_protects_permissions_ownership_rejected,
+        test_validate_unique_protects_permissions_across_distinct_strings_ok,
+        test_generate_exposes_active_hook_rows,
+        test_carry_forward_protects_permissions_preserved,
+        test_carry_forward_protects_permissions_no_prior_stays_empty,
         test_generate_honored_omits_guard,
         test_generate_active_emits_guard,
         test_generate_expired_alarms_and_rearms,

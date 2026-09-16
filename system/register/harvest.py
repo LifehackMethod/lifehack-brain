@@ -299,6 +299,18 @@ def harvest_hooks(public_root, private_root, cache_root):
             # so preservation is mechanical, never a re-apply-by-hand step.
             "state": "active",
             "expiry": None,
+            # R2 Part B, 2026-09-16 — `protects_permissions` is a HAND-CURATED
+            # ENFORCEMENT declaration (which `permissions.deny` string this
+            # row's own switch owns), NOT a disk fact: a script's own bytes
+            # say nothing about which Claude-Code permission line protects
+            # it. Every fresh row defaults to `[]` here; main() then carries
+            # any prior non-empty declaration FORWARD from the committed
+            # register via carry_forward_protects_permissions() — same
+            # preservation discipline as `state`/`expiry` above (losing it
+            # silently would defeat the deny-line mechanism, not just an
+            # organizational grouping like `group`), never a re-apply-by-hand
+            # step.
+            "protects_permissions": [],
         })
         rows.append(row)
     return rows
@@ -361,6 +373,55 @@ def carry_forward_switch_state(rows, prior_register_path, today=None):
         # an unparseable prior expiry classifies "active": leave the defaults
         # and do NOT carry — a malformed suspension must never silently extend
     return carried, dropped
+
+
+def carry_forward_protects_permissions(rows, prior_register_path):
+    """`protects_permissions` (R2 Part B, 2026-09-16) is a HAND-CURATED
+    ENFORCEMENT declaration — which `permissions.deny` string(s) this hook
+    row OWNS — not a disk fact a fresh harvest can derive: a script's own
+    bytes say nothing about which Claude-Code permission line protects it.
+    A fresh harvest defaults every row to `[]` (see the hook row-builder
+    above); this carries any prior NON-EMPTY declaration forward from the
+    COMMITTED register (same file `carry_forward_switch_state()` reads, for
+    the same "never the --out path" reason given there), keyed by the row's
+    own synthetic `id`, so re-harvesting never silently drops a permission
+    line's declared owner. Unlike `group`/`needs`/`returns` (re-applied by
+    hand after a harvest, per `group`'s own comment above), losing this
+    silently defeats a security mechanism rather than an organizational
+    grouping — install_into_repo()'s deny-array patch would have no owner
+    left to re-append the string after a future suspension lifts it — so
+    preservation here is mechanical, same discipline as `state`/`expiry`.
+
+    There is no "dropped/expired" half here (unlike the switch): this field
+    carries no expiry of its own, it only needs to survive intact.
+
+    Returns `carried`: list of (row_id, protects_permissions) tuples, for
+    the caller's own NOTICE line."""
+    prior = {}
+    try:
+        with open(prior_register_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    prow = json.loads(line)
+                except json.JSONDecodeError:
+                    continue  # a malformed prior line carries nothing
+                if prow.get("type") == "hook" and prow.get("protects_permissions"):
+                    prior[prow.get("id")] = prow.get("protects_permissions")
+    except OSError:
+        return []
+
+    carried = []
+    for row in rows:
+        if row.get("type") != "hook":
+            continue
+        pp = prior.get(row.get("id"))
+        if pp:
+            row["protects_permissions"] = pp
+            carried.append((row["id"], pp))
+    return carried
 
 
 # ---------------------------------------------------------------------------
@@ -643,6 +704,15 @@ def main(argv=None):
               f"forward; row is ACTIVE again (protection re-armed): {rid}. "
               f"Re-declare with a fresh expiry in system/register/register.jsonl "
               f"if the lift is still intended.", file=sys.stderr)
+
+    # R2 Part B (2026-09-16) — carry `protects_permissions` forward the same
+    # way, from the same committed register file, so re-harvesting never
+    # silently drops a permissions.deny string's declared owner.
+    carried_pp = carry_forward_protects_permissions(
+        rows, os.path.join(public_root, "system", "register", "register.jsonl"))
+    for rid, pp in carried_pp:
+        print(f"  NOTICE — protects_permissions carried forward: {rid} -> {pp}",
+              file=sys.stderr)
 
     by_type = {}
     for row in rows:
