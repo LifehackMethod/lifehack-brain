@@ -20,7 +20,9 @@ sources:
 reader_note: >
   READ ORDER IS THE RANKING. PART I is the physics — five laws you cannot prompt your way around; if you read
   nothing else, read those. PART II is the toolbox that obeys them. PART III builds a skill start to finish
-  (self-contained — start here if you just need to scaffold). PART IV holds it at runtime, PART V verifies it,
+  (self-contained — start here if you just need to scaffold). PART IV holds it at runtime. **PART V tells you
+  WHICH DETECTOR TO BUILD and how you would know it still works** — ⭐ read §V.1 BEFORE you build, not after:
+  it is diagnosis, not verification, and *fixing the wrong seam is the single biggest waste in skill work.*
   PART VI is the earn-it edge cases. Evidence tags: [R]/[R2] = prior multi-agent research maps · [C] = the
   2026-07-25 crowd-convergence + code-dissection maps · [M] = MEASURED in our own conformance lab, sample stated
   inline (an [M] claim means "this mechanism demonstrably exists," never "this is the rate").
@@ -93,6 +95,26 @@ reader_note: >
 > designs are very rare in this system; the default is human in the loop.
 
 # Skill-Building Playbook v2
+
+> ## TESTING ASKS "DOES IT WORK?" SECURITY ASKS "WHAT HAPPENS WHEN IT DOESN'T?"
+> *(The centering frame. Enver's, sharpened and adopted 2026-09-11. A near-copy leads `records/canon/2026-09-02-canonical-principles.md`; per canon §12.b the two are kept in agreement by a quarterly human audit, not by construction. ⚠ **That audit is a thing someone must REMEMBER — so by canon §0.1's own test it is a PREFERENCE, not a layer, and it will drift.** Chosen knowingly anyway: a sync script is one more thing that breaks silently and then needs its own alarm. **Stated so the weakness is owned rather than discovered.**)*
+>
+> **Use the first on code. Use the second on anything a model decides.** Code is deterministic — one run settles it, and a failure is a bug you fix. A model is not: the same input can produce a different move, so "does it work" has no answer, only a rate. **You cannot patch a model into compliance.** So stop trying to eliminate the failure and design what catches it — **a stochastic environment needs a security architecture, not a test suite.**
+>
+> **Borrow security's architecture, never its threat model.** Borrow: no perfect control · every layer eventually fails · test the *combination*, since a stack whose layers each pass alone can still fail as a stack · **never claim zero — state what is covered and what remains.** Don't borrow the attacker: nothing is breaking in. What you guard is already inside, holds your tools, forgets between turns, and can reason its way past a rule it understands. *(Exception: anything read from outside can be authored against you — full adversarial posture there.)*
+>
+> **⇒ You are buying FRICTION, not certainty.** Every control raises the cost of going wrong without ever making it impossible, **and tools differ enormously in how much friction they buy** — a check that fires before the model is consulted is a wall; a line of prose is a speed bump. **Stacked layers compound friction, but only when they fail differently** — three speed bumps in a row is still one speed bump.
+> **⇒ Progress is coverage and remainder, never pass/fail.** "Nineteen problems, none solved" is a testing scoreboard that stalls forever; *"this much caught, this much left"* is actionable.
+> **⇒ A real layer depends on neither memory nor agreement** — it acts without consulting the model. If the model can talk past it, it's a preference, not a layer. Preferences are cheap and buy real friction; keep them, never count them as protection.
+> **⇒ Depth is set by blast radius and reversibility, not importance** — irreversible → stack; **reversible and cheap → one deterministic check, then STOP.** ⚠ And blast radius is knowable at DESIGN time, so **a new irreversible action gets its stack up front**; the brake below governs *adding to* a control set that already exists, never the first build.
+>
+> ⛔ **This is a minimal harness on Pareto's principle, and security culture adds controls forever.** Friction costs you too — every layer is paid on every run. **Add one because an incident demanded it, never because this frame permits it.** ⚠ **That governs ADDING a control. It does not govern checking that one you already have still works** — a detector that went dark is not a new layer, it is an existing layer you have stopped owning, and confirming it still fires is **maintenance, never addition.**
+>
+> ⚠ **TWO WORDS, TWO MEANINGS — do not merge them.** A **LAYER** is a rung in the enforcement stack (prose · a
+> gate · a hook), and layers are what this frame counts. A **SEAM** is a link in LAW 2's loss-chain — a place
+> where intent died between design and run. **Different questions: *which control failed* versus *where the
+> intent was lost.*** ⇒ **LAW 2 tells you which SEAM leaked. This frame tells you whether your LAYERS were ever
+> real.** ⛔ *Evidence: `state/projects/canonical-housecleaning/records/2026-09-11-layered-enforcement-composition.md` (Brain, not this repo).*
 
 > ## NOTE — WHAT THIS PAGE CITES THAT IS NOT IN THIS REPOSITORY
 >
@@ -573,6 +595,38 @@ different detectors — and **fixing the wrong seam is the single biggest waste 
 | **2** | **FILE → FIRED** | It's written down; the session breaks it anyway on a clean early turn. A **compliance** loss. | Grade a real run against the spec (voted judge). |
 | **3** | **FIRED → HELD** | It held at turn 3 and stopped holding at turn 30 as context filled. A **decay** loss. | Same rule tested at increasing session depth. **We have ZERO measurements here — treat any claim about this link as untested.** |
 | **4** | **HELD → PROVABLE** | Obeyed, but left no trace anyone can check — indistinguishable from skipped. An **evidence** loss. | Evidence-surface audit (PART III). |
+| **5** ⭐ *(added 2026-09-11)* | **DETECTOR → STILL RUNNING** | **The instrument itself went dark.** Links 1–4 all assume the detector works. An **instrument** loss — ⛔ **a dead detector and a clean system emit IDENTICAL signals.** | *When did this last produce output, and does it still fire on a deliberate break?* |
+
+⭐ **WHY LINK 5 IS NOT COVERED BY §V.4.** §V.4 says the verifier fails like the thing it grades — that is a
+verifier being **buggy**. This is a verifier being **absent**. **Documented in this harness:** a hook script
+failing on a missing dependency reports **only to debug**, never the session · **invalid JSON on stdout
+silently ignored** · a matcher pointed at a tool the work no longer uses · config edited but not reloaded ·
+hooks that do not fire at all in piped mode, bare mode, on MCP calls, or on **sub-agent tool calls**.
+⚠ Those are known instances, **not a closed set** — any detector you rely on needs a liveness answer, or its
+silence means nothing.
+
+> ~~hooks that stop firing after ~2.5 hours **with zero error output**~~
+> ⛔ **STRUCK 2026-09-12 — the citation was checked against its source for the first time and did not
+> survive.** It rested on `anthropics/claude-code#16047`, which is **one reporter**, **labelled
+> `platform:windows` by the maintainers**, and **CLOSED** — on a macOS harness it does not apply. It had
+> been graded "STRONG, 5 independent sources"; those sources support the *category* of silent hook
+> failure, **never the time-based claim.** ⭐ **LINK 5 IS UNAFFECTED** — it never needed a clock. The
+> surviving causes above are enough on their own, and they are not time-bounded, which makes the law
+> *stronger*: there is no safe session length to hide behind.
+> ⚠ **Kept visible on purpose** — a citation that gained a grade it never earned, then hardened into
+> doctrine because nobody re-opened the source, is this SOP's own subject matter.
+
+⭐ **AND TEST THE COMBINATION, NOT ONLY THE PARTS.** Each link above is normally proven by manufacturing a
+break and watching **that one detector** fire, in isolation. ⛔ **That is precisely the condition under which
+CORRELATED FAILURE IS INVISIBLE:** a layered pipeline whose every layer passed alone was defeated **71%** of
+the time by pressure applied stage by stage, where single-shot attempts succeeded **0%**. Every layer worked;
+the stack did not.
+> **The cheap version: DISABLE LAYER A, CONFIRM LAYER B STILL CATCHES IT** — a manufactured break at the
+> **STACK** level rather than the **CHECK** level.
+⚠ **Honest limit: no source publishes a validated method for this.** Disable-one-and-retest is the minimum
+viable form, **not established practice.** ⇒ And remember what makes two layers two: **they must fail for
+different reasons** (canon §0.1, §5.20). Disabling three prose rules one at a time teaches you nothing — they
+are one layer.
 
 **Worked example (ours).** planning-weekly's files turned out **~95% faithful** to their spec — so every prose rewrite
 would have been aimed at the wrong seam. The bad runs were links 2 and 3 (rules broken at runtime, worse as the
@@ -642,6 +696,23 @@ Build them in code, or accept you don't have them. These are not "hard" — they
      **met** means it *didn't notice*. **Absence of evidence must never outvote evidence**, so one
      quote-verified violation decides the clause even against a majority. A *groundless* violation (no
      verifiable quote) gets no such power, so a spurious cry of foul can't dominate either.
+   - ⭐ **HOW TO CHOOSE K — added 2026-09-11, because this law mandated sampling and never said how many.**
+     **K is arithmetic, not taste.** For a 95% chance of observing a behaviour that occurs at rate `r`:
+     **`n = ln(0.05)/ln(1−r)`** → **40% → 6 runs · 20% → 14 · 10% → 29 · 5% → 59.**
+     ⛔ **State the smallest rate you intend to be able to DETECT before the run.** A K chosen afterwards fits
+     the answer you already have.
+     ⛔⛔ **AND KNOW WHAT THE FORMULA DOES NOT TELL YOU.** It gives **detection power** — the chance of seeing a
+     behaviour AT LEAST ONCE if it occurs at rate `r`. **It does NOT bound the true rate.** Running K=6 for a
+     40% target and seeing zero does **not** mean "the rate is under 40%" — that is a different and unsupported
+     claim. **A null result tells you only that your chosen K could not see it. Report `pass@k` with K stated,
+     never a rate you did not measure.**
+     ⛔ **AND READ A NULL CORRECTLY: seeing ZERO failures in six trials, when the true rate is 10%, happens
+     53.1% of the time** (`(1−0.10)**6 = 0.5314`). **That is not evidence of absence — it is no information.**
+     ⚠ **Receipt, and it cost a week:** six paired firings of a behavioural battery returned zero, were read as
+     *"cannot be induced,"* and the instrument was retired as unworkable. **Six runs was exactly right — for a
+     40% rate.** For anything rarer it could never have seen it, and nobody computed the power before running
+     or before quitting. *(Also un-computed: the price. Assumed $116.00; measured $7.81 — a budget CAP read as
+     SPEND, 14.9×. **A cap is not a price.**)*
 
 ## LAW 5 — Prose decays, and the decay is measured
 
@@ -2065,6 +2136,16 @@ tells you nothing about the seam you actually broke.
 | **2. FILE → FIRED** | a written rule the session breaks anyway | grade a real run against the spec with a **VOTED** judge (K-sample, fail-closed fold — Law 4.3) | 2 confirmed real deltas on planning-weekly, after the instrument itself was fixed twice |
 | **3. FIRED → HELD** | a rule that holds at turn 3 and dies by turn 30 | the same rule graded at increasing session depth (fork one phase at turn 1 / 5 / 12…, K runs each) | the machinery exists (design is E3 in the IRL ledger) — **it has NEVER BEEN RUN.** Treat any claim about decay as untested until it is. |
 | **4. HELD → PROVABLE** | a rule obeyed but left no trace | name each rule's evidence surface **before grading**, not after (§II below) | confirmed: purely-conversational rules graded as failures for no reason but the tester's own blind spot |
+| **5. DETECTOR → STILL RUNNING** ⭐ | **the instrument itself went dark** — ⛔ **defined in LAW 2, not restated here** | *when did this last produce output, and does it still fire on a deliberate break?* (LAW 2) | ⛔ **UNMEASURED.** Known instances only: a failed hook script reporting only to debug · invalid stdout silently dropped · a matcher aimed at a tool the work no longer uses · hooks not firing on **sub-agent tool calls**. ⚠ **AMENDED 2026-09-12:** *"hooks silent after ~2.5h with zero error"* **STRUCK** — its source (`#16047`) is one Windows-only CLOSED report and does not apply here; see LAW 2. **None of the survivors is time-bounded, so there is no safe session length.** **No liveness answer exists for this harness's own detector fleet.** |
+
+⚠ **THIS TABLE IS A STATUS VIEW OF LAW 2'S LOSS-CHAIN — LAW 2 DEFINES THE LINKS; THIS SECTION SAYS ONLY WHERE
+WE STAND ON EACH.** ⛔ **Never restate a link's definition or its detector here.** *(Corrected 2026-09-11: the
+two tables had been near-duplicates 1,405 lines apart — both carrying a Detector column — and link 5 was added
+to this copy alone, so they read four-versus-five within the hour. That is mode 3, "the copy you didn't count,"
+inside the document that teaches it. Canon §5.19: one truth, one home.)*
+⭐ **COMBINATION TESTING — also defined in LAW 2.** Status here: **never run.** Every detector in this system
+has only ever been proven against a manufactured break **in isolation**, which is the exact condition under
+which correlated failure is invisible.
 
 **Diagnose before you touch anything.** Fixing the wrong seam is the dominant waste in skill work — hardening a
 runtime gate for a rule that never reached the file, or rewording a prompt for a rule that only decays at
