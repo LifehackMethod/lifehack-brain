@@ -39,7 +39,13 @@ clause) — that is a *different*, pre-existing failure mode callers already han
 """
 import re
 
-ID = r'[A-Za-z]{0,2}\d{1,3}[a-z]?(?:\.\d{1,2}[a-z]?)?'
+# 2026-09-16, card 0R.15: widened again for DIGIT-THEN-LETTER phase ids -- `0R.15`,
+# `0N.2`, `0R.E1`, `0R.8a` -- a phase like `0R` puts its letter AFTER the digit, and a
+# sub-id after the dot may itself lead with a letter (`0R.E1`) or trail one (`0R.8a`).
+# The letter slot is now `[A-Za-z]` (either case) on both sides of the dot; every
+# previously-recognised shape (`6.12`, `2.3`, `3b.1`, `B2.0`) still matches unchanged --
+# this only ADDS shapes, never narrows one already accepted.
+ID = r'[A-Za-z]{0,2}\d{1,3}[A-Za-z]?(?:\.[A-Za-z]?\d{1,2}[a-z]?)?'
 BARE_CARD_RE = re.compile(r'^- \[ \] \*\*')
 CARD_ID_RE = re.compile(r'^- \[ \] \*\*(' + ID + r')\b')
 

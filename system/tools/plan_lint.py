@@ -14,9 +14,19 @@ WHAT — for every `- [ ] **<id>` card:
   Verify:  typed SHAPE|RUN|JUDGE; SHAPE names a `before`; the Verify: line itself must parse,
            via the shared verify_parse.parse_verify(), into (command, expectation) pairs —
            a dropped clause, an unsubstituted `<placeholder>`, or a prose-only Verify is a defect
-  card id: every `- [ ] **` header's id must match the shared ID pattern, or it is a defect
-           (2026-09-05: ids shaped like `3b.1` were silently invisible to the old pattern —
-           a card can vanish from the plan's own read of itself with nothing said)
+  card id: every `- [ ] **` header's id must match the shared ID pattern, or it is a HARD
+           FAIL (CANNOT-READ, never folded into the ordinary defect list — a card can vanish
+           from the plan's own read of itself with nothing said, and a HARD FAIL is the only
+           shape that cannot be lost among other unrelated warnings, 2026-09-16, card 0R.15)
+           (2026-09-05: ids shaped like `3b.1` were silently invisible to the old pattern.
+           2026-09-16: widened again for DIGIT-THEN-LETTER phase ids — `0R.15`, `0N.2`,
+           `0R.E1`, `0R.8a` — where the letter sits AFTER the phase's digit, not before)
+  Owner:   a card whose `Owner:` names BUILD — bare, or inside the mixed `NAV to specify
+           (...), BUILD to implement` phrasing — may not also carry an undecided
+           instruction (`rule each one`, `decide`, `establish which`): BUILD is diagnosed,
+           mechanical work; an open question is NAV's to resolve first (2026-09-16, card
+           0R.15 — a grep keyed to a closed set of "sanctioned" Owner strings would miss
+           this exact phrasing, the same failure class the ID pattern already had)
   Done:    present
   Commit:  present unless Repo is none
   Query:   if present, a `Proof:` line follows (a zero result is UNKNOWN until proven well-formed)
@@ -45,6 +55,11 @@ GATE_RE = re.compile(r'gated on\b', re.I)
 GEAR_RE = re.compile(r'gear-([2-4])')
 MODEL_RE = re.compile(r'\b(sonnet|opus|haiku)\b', re.I)
 PATHISH = re.compile(r'[\w~./-]+\.(md|py|sh|json|key|txt|yaml)|/')
+BUILD_OWNER_RE = re.compile(r'\bBUILD\b')     # a bare word anywhere in Owner: -- matches
+                                               # `BUILD` alone AND the mixed `NAV to specify
+                                               # (...), BUILD to implement` phrasing, never a
+                                               # closed set of exact strings (0R.15).
+UNDECIDED_RE = re.compile(r'\b(?:rule each one|decide|establish which)\b', re.I)
 
 def cannot_read(why):
     print(f"CANNOT-READ\n  {why}"); sys.exit(CANNOT_READ)
@@ -181,14 +196,29 @@ def lint(path, rows):
                     defects.append(("plan", f"`Review:` artifact does not exist: {raw_path}"))
     cards, unrecognised = parse_cards(lines)
     if not cards: cannot_read(f"no `- [ ] **<id>` cards found in {path}")
-    for lineno, text in unrecognised:
-        defects.append((f"line {lineno}", f"`- [ ] **` card header id not recognised by the "
-                         f"ID pattern (`{ID}`) — silently dropping this line would let the plan "
-                         f"read PLAN-CLEAN with a card missing: {text[:100]!r}"))
+    if unrecognised:
+        # 0R.15 ②: a HARD FAIL on its own — never one line folded into the ordinary
+        # `defects` list, where it reads as just one warning among however many others
+        # a real plan happens to carry. This is CANNOT-READ (rc=4): the checker could not
+        # even establish which card this line is, so nothing downstream about it (Owner,
+        # Verify, Repo...) can be trusted either — unlike an ordinary defect, there is no
+        # partial, still-useful read to report alongside it.
+        detail = "; ".join(f"line {ln}: {t[:100]!r}" for ln, t in unrecognised)
+        cannot_read(f"{len(unrecognised)} `- [ ] **` card header(s) with an id the ID "
+                    f"pattern (`{ID}`) could not recognise — silently dropping these would "
+                    f"let the plan read PLAN-CLEAN with a card missing: {detail}")
     for c in cards:
         s, tid, body = c["slots"], c["id"], "\n".join(c["text"])
         for req in ("Owner", "Where", "Do", "Verify", "Done"):
             if req not in s: defects.append((tid, f"missing `{req}:`"))
+        owner = s.get("Owner", "")
+        if BUILD_OWNER_RE.search(owner):          # 0R.15 ③+④: BUILD, bare or inside the mixed
+            um = UNDECIDED_RE.search(body)         # NAV-to-specify phrasing, may not also carry
+            if um:                                 # an open question -- that is NAV's to resolve.
+                defects.append((tid, f"`Owner:` names BUILD ({owner.strip()!r}) but the card "
+                                 f"still carries an undecided instruction ({um.group(0)!r}) — "
+                                 f"BUILD is diagnosed, mechanical work; an open question is "
+                                 f"NAV's to resolve first"))
         kind, mpath = derive_kind(s.get("Where", ""), rows)
         repo = s.get("Repo", "")
         if not repo: defects.append((tid, "missing `Repo:` (derive it: Where: → map)"))
