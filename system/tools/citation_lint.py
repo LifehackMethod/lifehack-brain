@@ -81,6 +81,7 @@ Exit: 0 clean * 1 drift (the failures are named) * 2 bad arguments * 4 could not
 """
 import argparse
 import glob as globmod
+import importlib.util
 import json
 import os
 import re
@@ -123,9 +124,21 @@ EXEMPT_FILES = {
         "provenance of decisions in the author's own project tree, never part of what ships",
 }
 
-# Scripts living in system/hooks/ that are NOT registered in settings.json, and correctly so.
-# Without this list, every one of them would have to be either registered (wrong -- they are not
-# hooks) or moved (wrong -- they belong beside the hooks whose state they read).
+# Scripts living in system/hooks/ that are NOT registered in settings.json, and correctly so --
+# but this dict is NOT the exhaustive list of legitimate reasons; it is only the first of two,
+# checked two different ways:
+#   1. BY NAME, below: a script that is not a hook at all (an arm/status/clear helper a skill
+#      calls directly), or one this lint's own registered-surfaces reading cannot see -- see each
+#      entry's own comment (group-dispatch members, personal-vs-shipped, plugin-only surfaces).
+#      Without this list, every one of these would have to be either registered (wrong -- they
+#      are not hooks) or moved (wrong -- they belong beside the hooks whose state they read).
+#   2. BY DATA, never by name: a system/register/register.jsonl row whose switch_state.classify()
+#      reads "honored" -- a declared, unexpired suspension (K1, enforcement-layer Phase 2,
+#      2026-09-16). generate.py deliberately OMITS an honored row from generated wiring, so it is
+#      registered nowhere ON PURPOSE. See `_honored_suspended_hooks()` below, which is what
+#      actually grants that pass -- a suspended hook is never added to this dict, because its
+#      declaration and expiry live in the register, not here, and an EXPIRED suspension must
+#      still fail (generate.py re-emits it as active, so missing-from-wiring is real drift again).
 UNREGISTERED_OK = {
     "pm_flag.sh": "a command-line tool the skills call directly (arm/status/clear), not a hook",
     "skill_anchor.sh": "same — the arming half; `skill_anchor_inject.sh` is the registered hook",
@@ -842,6 +855,69 @@ def lint_paths_and_skills(root, findings, counts, scope=None):
                     counts["declined"] += 1
 
 
+def _load_switch_state(root):
+    """Import switch_state.py from THIS lint's own `root` (a lint_hooks() parameter, overridable
+    with --root), never from a path fixed to citation_lint.py's own file location. `root` is what
+    every other HOOKS input already resolves against, and a test fixture carries its own copy of
+    switch_state.py under system/register/ for the same reason test_check_drift_suspension.py's
+    fixtures do -- proving this reads the tree it was pointed at, not the real repo beside it.
+
+    Returns None on anything short of a clean, importable module: missing file, syntax error,
+    whatever. A broken or absent switch_state.py must fall back to today's behavior (nothing
+    recognized as a declared suspension) -- never raise, and never invent a lenient default."""
+    path = os.path.join(root, "system", "register", "switch_state.py")
+    if not os.path.isfile(path):
+        return None
+    try:
+        spec = importlib.util.spec_from_file_location("citation_lint_switch_state", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+    except Exception:
+        return None
+
+
+def _honored_suspended_hooks(root):
+    """Hook basenames whose system/register/register.jsonl row is a REGISTER-DECLARED, unexpired
+    suspension -- switch_state.classify(row) returns "honored". K1 (enforcement-layer Phase 2,
+    2026-09-16): generate.py deliberately OMITS an honored row from generated wiring, so such a
+    hook is registered nowhere ON PURPOSE -- the second legitimate reason a hook can be absent
+    from .claude/settings.json / registrations.json, alongside UNREGISTERED_OK. Uses
+    switch_state.classify()/resolve_today() for the date logic rather than re-implementing it, so
+    this lint and generate.py can never read one suspension two different ways.
+
+    An EXPIRED suspension classifies "expired", not "honored" -- generate.py re-emits it as
+    active, so a hook missing from wiring under that state IS drift and must still fail.
+
+    Any failure -- no register.jsonl, unreadable/invalid JSON, no switch_state.py to import --
+    returns the empty set: exactly today's behavior (UNREGISTERED_OK or a finding), no new
+    failure and no silent pass invented on this function's own say-so."""
+    switch_state = _load_switch_state(root)
+    if switch_state is None:
+        return set()
+    register_path = os.path.join(root, "system", "register", "register.jsonl")
+    if not os.path.isfile(register_path):
+        return set()
+    honored = set()
+    try:
+        with open(register_path, encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                row = json.loads(line)
+                if row.get("type") != "hook":
+                    continue
+                name = os.path.basename(row.get("path") or "")
+                if not name:
+                    continue
+                if switch_state.classify(row) == "honored":
+                    honored.add(name)
+    except Exception:
+        return set()
+    return honored
+
+
 def lint_hooks(root, findings, counts, scope=None):
     settings_rel = ".claude/settings.json"
     registrations_rel = "system/hooks/registrations.json"
@@ -909,6 +985,10 @@ def lint_hooks(root, findings, counts, scope=None):
     hooks_dir = os.path.join(root, "system", "hooks")
     if not os.path.isdir(hooks_dir):
         return 0
+    # Lazy: only read register.jsonl / import switch_state.py if some hook actually needs the
+    # second legitimate reason -- most trees resolve every hook via `registered` or UNREGISTERED_OK
+    # and never touch this.
+    honored_hooks = None
     # Non-recursive on purpose: system/hooks/tests/ holds tests, and a test is not a hook.
     for name in sorted(os.listdir(hooks_dir)):
         if not name.endswith(".sh") or not os.path.isfile(os.path.join(hooks_dir, name)):
@@ -919,11 +999,16 @@ def lint_hooks(root, findings, counts, scope=None):
         elif name in UNREGISTERED_OK:
             counts["declined"] += 1
         else:
-            findings.append(Finding(
-                "system/hooks/%s" % name, "on disk, registered nowhere, declared nowhere",
-                "an unregistered hook never fires — and reads as a control that exists",
-                "register it in %s (or %s, whichever this repo uses), or add it to "
-                "UNREGISTERED_OK in this lint with the reason" % (settings_rel, registrations_rel)))
+            if honored_hooks is None:
+                honored_hooks = _honored_suspended_hooks(root)
+            if name in honored_hooks:
+                counts["declined"] += 1
+            else:
+                findings.append(Finding(
+                    "system/hooks/%s" % name, "on disk, registered nowhere, declared nowhere",
+                    "an unregistered hook never fires — and reads as a control that exists",
+                    "register it in %s (or %s, whichever this repo uses), or add it to "
+                    "UNREGISTERED_OK in this lint with the reason" % (settings_rel, registrations_rel)))
     return 0
 
 
