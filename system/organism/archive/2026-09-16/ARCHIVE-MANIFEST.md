@@ -1,6 +1,6 @@
 ---
 status: active
-authority: user
+authority: agent
 ---
 
 # Organism-docs archive manifest — 2026-09-16
