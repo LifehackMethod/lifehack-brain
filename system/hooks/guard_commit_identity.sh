@@ -38,7 +38,10 @@ trap 'lhb_journal_fire "$?" "guard_commit_identity.sh" "PreToolUse" "Bash" 2>/de
 # IDENTITY (repo target): resolved from the command's ACTUAL target — the `-C`
 #      argument (parsed by shlex above) or a leading `cd <path> &&`, falling back to
 #      $PWD only when neither is given. Never $PWD unconditionally — that was the
-#      push-signpost's bug (O3b).
+#      push-signpost's bug (O3b). shlex.split() does NOT expand `~` or `$HOME` — a target
+#      of `~`, `~/repo`, `$HOME/repo` or `${HOME}/repo` is expanded here, using THIS HOOK'S
+#      OWN $HOME, before it is used for anything below (2026-09-16, #tilde: unexpanded, it
+#      denied a correctly-configured repo with a false "no git config user.email set").
 # IDENTITY (allow-list): read from THIS RUN's Brain root — resolved by running
 #      `shared/brain_root.py --quiet`, preferring the copy AT THE TARGET REPO
 #      (`<target-repo>/shared/brain_root.py`) when it exists there, and falling back to
@@ -57,7 +60,7 @@ trap 'lhb_journal_fire "$?" "guard_commit_identity.sh" "PreToolUse" "Bash" 2>/de
 #      root unresolved, ship-identity.md missing/unreadable, zero "@" lines found in
 #      it, `git config user.email` empty/unreadable, or the hook payload itself not
 #      readable JSON. An unguarded commit is the failure this hook exists to prevent.
-# UPDATED: 2026-09-08
+# UPDATED: 2026-09-16
 # RULE: system/sops/github-sop.md — system/hook-contract.md (mechanics)
 # ─────────────────────────────────────────────────────────────────────────────
 # guard_commit_identity.sh — PreToolUse hook (matcher: Bash)
@@ -138,6 +141,35 @@ case "$VERDICT" in
     ;;
   CHECK:*)
     _target="${VERDICT#CHECK:}"
+
+    # shlex.split() above does NOT perform shell expansion, so a target written as "~", "~/repo",
+    # "$HOME/repo" or "${HOME}/repo" reaches us as that LITERAL string — `git -C "$_target"` then
+    # fails to resolve it and falls through to a false "no git config user.email set" / MISMATCH
+    # deny, even when the real repo's identity is fine and on the allow-list (2026-09-16, observed
+    # live: `cd ~/.claude/skills/ClaudeOps && git commit` denied "has no git config user.email
+    # set" though that repo's email IS set and allow-listed). Expand using THIS HOOK'S OWN $HOME —
+    # never a hard-coded path — before anything below resolves or reports on $_target.
+    case "$_target" in
+      '~')
+        _target="$HOME"
+        ;;
+      '~/'*)
+        _target="$HOME/${_target:2}"
+        ;;
+      '$HOME')
+        _target="$HOME"
+        ;;
+      '$HOME/'*)
+        _target="$HOME/${_target:6}"
+        ;;
+      '${HOME}')
+        _target="$HOME"
+        ;;
+      '${HOME}/'*)
+        _target="$HOME/${_target:8}"
+        ;;
+    esac
+
     [ -n "$_target" ] || _target="$PWD"
 
     _deny() {

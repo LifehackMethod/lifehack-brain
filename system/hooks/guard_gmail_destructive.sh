@@ -144,7 +144,15 @@ LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib/gws_guard.py"
 printf '%s' "$COMMAND" | python3 "$LIB" --service gmail \
   --require-any messages,threads \
   --destructive delete,batchDelete,trash 2>/dev/null
-if [ $? -eq 7 ]; then
+RC=$?
+# 7 = block, a real decision -- use the rule message. Any OTHER non-zero means the decision
+# program itself failed to run to completion (not a rule match) -> FAIL CLOSED, per FAIL_POSTURE
+# above, with the honest "could not evaluate" message (A1.1, 2026-09-16: the old code only
+# special-cased RC=7 and let every other non-zero exit -- e.g. an uncaught Python exception,
+# whose default exit is 1 -- fall through to the unconditional `exit 0` below, i.e. silently
+# ALLOW a command this guard would otherwise recognise as destructive). Mirrors
+# guard_gmail_send.sh's existing RC/elif pattern. Never append an allow here.
+if [ "$RC" -eq 7 ]; then
   # MESSAGE SELECTION ONLY -- the decision above already fixed this exact command as BLOCK; this
   # second, side call to the same shared library (see gws_guard.py's --reason-only) never changes
   # that, it only asks WHICH of the library's BLOCK conditions fired, so the right one of the two
@@ -157,6 +165,8 @@ if [ $? -eq 7 ]; then
   else
     deny_unresolved
   fi
+elif [ "$RC" -ne 0 ]; then
+  deny_parse
 fi
 
 exit 0

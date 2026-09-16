@@ -94,6 +94,26 @@ print(json.dumps({'tool_name':'Bash','tool_input':{'command':sys.argv[1]}}))" "$
   if [ "$got" = "$exp" ]; then ok; else bad "$label" "expected exit $exp, got $got — $out"; fi
 }
 
+# run2 <label> <expected-rc> <command> <home> <brain> <plugin_root> [<deny-text-substring>]
+# Like run(), but HOME and the Brain (LIFEHACK_ROOT) are both per-call — for the tilde/$HOME
+# expansion cases below, each of which needs its OWN isolated HOME so "~/repo" / "$HOME/repo"
+# resolve, under env -i, to exactly that case's fixture and no other case's.
+run2() {
+  local label="$1" exp="$2" cmd="$3" home="$4" brain="$5" plugin_root="$6" want_text="${7:-}"
+  local got out
+  out=$(python3 -c "
+import json,sys
+print(json.dumps({'tool_name':'Bash','tool_input':{'command':sys.argv[1]}}))" "$cmd" 2>/dev/null \
+    | env -i HOME="$home" PATH="$PATH" LIFEHACK_ROOT="$brain" CLAUDE_PLUGIN_ROOT="$plugin_root" \
+        bash "$plugin_root/system/hooks/guard_commit_identity.sh" 2>&1 >/dev/null)
+  got=$?
+  if [ "$got" != "$exp" ]; then bad "$label" "expected exit $exp, got $got — $out"; return; fi
+  ok
+  if [ -n "$want_text" ]; then
+    if printf '%s' "$out" | grep -qF "$want_text"; then ok; else bad "$label (deny text)" "expected substring not found: [$want_text] — got: $out"; fi
+  fi
+}
+
 echo "── not ours: no write verb, never even reaches identity resolution ──────"
 run "git status"     0 "git -C $PLAIN_REPO status"          "$REPO_ROOT"
 run "git log"        0 "git -C $PLAIN_REPO log -1"          "$REPO_ROOT"
@@ -122,6 +142,42 @@ import json; print(json.dumps({'tool_input':{'command':'git -C $PLAIN_REPO commi
 printf '%s' "$MSG" | grep -q "FAIL_POSTURE: closed" && ok || bad "unresolvable names FAIL_POSTURE" "$MSG"
 printf '%s' "$MSG" | grep -q "$PLAIN_REPO" && ok || bad "unresolvable names the target checked" "$MSG"
 printf '%s' "$MSG" | grep -q "$NO_BRAIN_PLUGIN" && ok || bad "unresolvable names the plugin fallback checked" "$MSG"
+
+echo "── ⭐ THE FIX (2026-09-16): shlex.split() does NOT expand ~ or \$HOME — a cd/-C target written
+      that way must still resolve to the real repo, not fall through to a false 'no user.email' /
+      mismatch deny (observed live: 'cd ~/.claude/skills/ClaudeOps && git commit' denied though
+      that repo's email IS on the allow-list) ──"
+
+# Each case below gets its OWN fresh, isolated HOME — a repo at its root plus its own scratch
+# Brain (config/ship-identity.md) — so "~/reponame" / "$HOME/reponame", expanded under env -i,
+# land on exactly that case's fixture and nothing else's. CLAUDE_PLUGIN_ROOT=$REPO_ROOT is the
+# fallback route (these fixture repos carry no shared/ of their own), same as the plain-repo
+# cases above.
+mk_tilde_case() {  # mk_tilde_case <case-name> <repo-basename> <email> -> sets TC_HOME TC_BRAIN TC_REPO
+  local name="$1" reponame="$2" email="$3"
+  TC_HOME="$SANDBOX/tilde-$name-home"
+  mkdir -p "$TC_HOME"
+  TC_REPO="$TC_HOME/$reponame"
+  git_repo "$TC_REPO" "$email"
+  TC_BRAIN="$SANDBOX/tilde-$name-brain"
+  mkdir -p "$TC_BRAIN/config"
+  printf '# scratch allow-list\n%s\n' "$ALLOWED" > "$TC_BRAIN/config/ship-identity.md"
+}
+
+mk_tilde_case "cd-tilde" "good-repo-a" "$ALLOWED"
+run2 "(a) cd ~/repo, allowed identity"     0 "cd ~/good-repo-a && git commit -m x" "$TC_HOME" "$TC_BRAIN" "$REPO_ROOT"
+
+mk_tilde_case "dashC-tilde" "good-repo-b" "$ALLOWED"
+run2 "(b) git -C ~/repo, allowed identity" 0 "git -C ~/good-repo-b commit -m x"    "$TC_HOME" "$TC_BRAIN" "$REPO_ROOT"
+
+mk_tilde_case "cd-dollarhome" "good-repo-c" "$ALLOWED"
+run2 '(c) cd $HOME/repo, allowed identity' 0 'cd $HOME/good-repo-c && git commit -m x' "$TC_HOME" "$TC_BRAIN" "$REPO_ROOT"
+
+mk_tilde_case "cd-bracehome" "good-repo-d" "$ALLOWED"
+run2 '(bonus) cd ${HOME}/repo, allowed identity' 0 'cd ${HOME}/good-repo-d && git commit -m x' "$TC_HOME" "$TC_BRAIN" "$REPO_ROOT"
+
+mk_tilde_case "cd-tilde-mismatch" "bad-repo" "$WRONG"
+run2 "(d) cd ~/repo, WRONG identity -> MISMATCH text, not just exit 2" 2 "cd ~/bad-repo && git commit -m x" "$TC_HOME" "$TC_BRAIN" "$REPO_ROOT" "which is not in the allow-list"
 
 echo
 if [ "$fail" = 0 ]; then echo "RESULT: $pass passed, 0 failed."; echo "COMMIT IDENTITY GUARD GREEN"; exit 0

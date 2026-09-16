@@ -84,7 +84,12 @@ trap 'lhb_journal_fire "$?" "guard_hook_sop_read.sh" "PreToolUse" "Bash|Write|Ed
 #   3. BASH-STRING DETECTION IS STILL A SPEED BUMP. The Write/Edit path (2) above is exact — it reads
 #      the typed file_path field, not a guessed string — but the Bash path (1) is still the same
 #      command-as-TEXT matcher the file's own banner warns about above: one phrasing behind, always.
-# UPDATED: 2026-08-24 (widened matcher intent + added Write/Edit file_path parsing — see FIXED note
+# UPDATED: 2026-09-16 (a heredoc BODY that merely MENTIONS a hooks path was tokenizing as
+#      literal argv to the enclosing write verb -- e.g. `tee <plan path> << 'EOF' ... system/hooks/
+#      ... EOF` blocked a PLAN-file write. Fixed with _trim_heredoc(): args are truncated at the
+#      first `<<`/`<<-` token before the HOOK-mention scan runs, so heredoc CONTENT is never read
+#      as a command-line argument again. See system/hooks/tests/test_hook_sop_read_guard.sh.)
+#      2026-08-24 (widened matcher intent + added Write/Edit file_path parsing — see FIXED note
 #      above). Previously 2026-08-03.
 # PORTED (T9.7b, 2026-08-15) from claudeops-config: the REDIRECT message and read_sop.sh call
 # below carried a hardcoded `~/claudeops-config/...` path; both now resolve from this hook's
@@ -205,6 +210,27 @@ WRAPPERS = {'sudo','doas','env','command','nohup','time','stdbuf'}
 SEPS = {';','&&','||','|','&'}
 ASSIGN = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*=')
 
+    # ⛔ NO BACKTICKS IN THIS BLOCK: it is a bash DOUBLE-quoted string, so a backtick is live command
+    # substitution. A backticked tee example here truncated the migration plan to 28 bytes, 2026-09-16.
+def _trim_heredoc(args):
+    # shlex has no concept of a bash heredoc (<<DELIM ... DELIM) -- it is a multi-line shell
+    # construct, not a quoting rule, so shlex.split happily explodes the heredoc BODY into a run
+    # of ordinary-looking tokens glued onto the END of the preceding command's argv. Measured
+    # 2026-09-15: tee ~/.claude/plans/lifehack-migration.plan.md << 'EOF' ... this plan touches
+    # system/hooks/ ... EOF tokenizes to ['tee', '<plan path>', '<<', 'EOF', ..., 'system/hooks/',
+    # ..., 'EOF'] -- the mere MENTION of a hooks path inside the file's own CONTENT (the heredoc
+    # body) then reads as an "argument" to tee and trips the HOOK.search(args) check below, even
+    # though the actual write target (the plan file, captured correctly by the REDIRECT check
+    # elsewhere in this function) is nowhere near system/hooks/. A real write-verb TARGET argument
+    # (e.g. cp foo.sh system/hooks/bar.sh) always appears BEFORE any << operator in the same
+    # segment, never after -- so truncating args at the first heredoc operator removes exactly the
+    # DATA (file content) that was never a command-line argument in the first place, while a
+    # genuine target argument earlier in the same args list is untouched.
+    for idx, a in enumerate(args):
+        if a == '<<' or a == '<<-' or a.startswith('<<'):
+            return args[:idx]
+    return args
+
 def check(cmd, depth=0):
     if depth > 3:
         return True                      # pathological nesting -> fail closed
@@ -227,7 +253,7 @@ def check(cmd, depth=0):
         while j < len(s) and (s[j] in WRAPPERS or ASSIGN.match(s[j])): j += 1
         if j >= len(s): continue
         head = s[j].rsplit('/', 1)[-1]
-        args = s[j+1:]
+        args = _trim_heredoc(s[j+1:])
         if head in ('bash','sh','zsh','dash','ksh'):
             for k, a in enumerate(args):
                 if a == '-c' and k+1 < len(args):
@@ -326,4 +352,4 @@ done
 
 [ "$FOUND" -eq 1 ] && exit 0
 
-deny "BLOCKED: this Bash command or Write/Edit call WRITES to the hook plane (system/hooks/) but the hook SOP has not been read this session. WHY: on 2026-07-28 a hook was edited with its rulebook unread — the existing reminder (inject_sop_before_build.sh) keys on the USER prompt, so it fires at session start and is silent at the moment the agent actually edits a hook. Hooks are the enforcement layer: a wrong edit here silently disables a control, and a silently-dark guard is worse than no guard because the map still reports it green. REDIRECT: run \`bash $_REPO/system/tools/read_sop.sh hook\` (it PRINTS hook-sop.md + hook-contract.md and stamps a 12h session receipt as a side effect), then retry this exact command/edit. Reading is the only way to earn the receipt. RULE: system/sops/hook-sop.md (WHEN + which kind) + system/hook-contract.md (mechanics + the two-machine Deploy & Verify checklist) — edit those + get the operator's sign-off (a HUMAN ruling, \`authority: user\`) to change what is gated, then update this guard."
+deny "BLOCKED: this Bash command or Write/Edit call WRITES to the hook plane (system/hooks/) but the hook SOP has not been read this session. WHY: on 2026-07-28 a hook was edited with its rulebook unread — the existing reminder (inject_sop_before_build.sh) keys on the USER prompt, so it fires at session start and is silent at the moment the agent actually edits a hook. Hooks are the enforcement layer: a wrong edit here silently disables a control, and a silently-dark guard is worse than no guard because the map still reports it green. REDIRECT: run `bash $_REPO/system/tools/read_sop.sh hook` (it PRINTS hook-sop.md + hook-contract.md and stamps a 12h session receipt as a side effect), then retry this exact command/edit. Reading is the only way to earn the receipt. RULE: system/sops/hook-sop.md (WHEN + which kind) + system/hook-contract.md (mechanics + the two-machine Deploy & Verify checklist) — edit those + get the operator's sign-off (a HUMAN ruling, `authority: user`) to change what is gated, then update this guard."
