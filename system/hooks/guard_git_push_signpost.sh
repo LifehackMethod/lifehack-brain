@@ -49,10 +49,16 @@
 #      PRIVATE" — the wrong repo, confidently. This hook is a PreToolUse hook, so it
 #      runs BEFORE the command — it can never observe a `cd` that hasn't happened
 #      yet, so it tracks one explicitly instead: an explicit `-C <path>` on the
-#      matched git invocation, or a `cd <path>` earlier in the same `&&`/`;` chain
-#      (dropped, not trusted, across `|`/`||` — a `cd` before a pipe runs in a
-#      subshell and never takes effect on what follows; a `cd` before `||` only ran
-#      if the left side failed). An explicit `-C` on the push's own invocation wins
+#      matched git invocation, or a `cd <path>` earlier in the same chain. A `cd`
+#      ITSELF preceded by `|` (pipeline subshell, never affects the parent shell) or
+#      `||` (only ran if the left side failed) is not trusted enough to ADOPT as the
+#      new cwd — but a cwd already established by an earlier, trusted `cd` is left
+#      untouched by what precedes a LATER segment (FIXED 2026-09-16, A1.3: `cd X ||
+#      exit 1 ; git push` is the standard cd-or-bail idiom — the `cd` IS the left
+#      side of the `||`, so once it is reached it ran and succeeded; the old code
+#      instead reset cwd to "" on ANY segment merely preceded by `|`/`||`, discarding
+#      a cwd that a genuinely-run `cd` had already set — see the 2026-09-08 INCIDENT
+#      this exact idiom caused). An explicit `-C` on the push's own invocation wins
 #      over an inherited `cd` — confirmed against real git behaviour (`git -C B`, run
 #      from a cwd `cd`'d to A, resolves to B), not assumed. Falls back to `$PWD` only
 #      when NEITHER is present (no regression on a plain `git push`). If a `-C`/`cd`
@@ -98,10 +104,12 @@ except ValueError:
     print("NOT_OURS"); raise SystemExit
 
 # (segment, operator-that-PRECEDES-it) pairs. A cd before an AND/semicolon
-# reliably takes effect on what follows; a cd before a PIPE runs in a
-# pipeline subshell and never touches the rest of the command, and a cd
-# before OR only ran if the left side failed — neither is trustworthy, so
-# cwd tracking is dropped, not guessed, across those two.
+# reliably takes effect on what follows. A cd itself preceded by a PIPE runs
+# in a pipeline subshell and never touches the parent shell, and a cd itself
+# preceded by OR only ran if the left side failed -- neither is trustworthy
+# enough to ADOPT as the new cwd (see the loop below), but a cwd already
+# established by an earlier, trusted cd is NOT discarded just because a
+# later segment happens to be preceded by `|`/`||` (A1.3, 2026-09-16).
 segments, buf, op = [], [], None
 for t in toks:
     if t in ("&&", "||", ";", "|"):
@@ -117,17 +125,25 @@ def is_git(tok):
 
 cwd = ""
 for seg, preceding_op in segments:
-    if preceding_op in ("|", "||"):
-        cwd = ""
-
     if seg and seg[0] == "cd":
-        target = ""
-        for tok in seg[1:]:
-            if not tok.startswith("-"):
-                target = tok
-                break
-        if target:
-            cwd = target
+        # A cd reached via `|` runs in a pipeline subshell and never affects the
+        # parent shell; a cd reached via `||` only runs if the PRECEDING segment
+        # FAILED, so its target is not trustworthy enough to adopt. Neither case
+        # invalidates a cwd already established by an EARLIER, trusted segment --
+        # fixed 2026-09-16 (A1.3) after the 2026-09-08 incident: the old code reset
+        # cwd to "" on ANY segment merely preceded by `|`/`||`, which forgot a cwd
+        # that a genuinely-ran `cd` had already set. `cd X || exit 1 ; git push`
+        # is the standard cd-or-bail idiom -- the `cd` IS the left side of the
+        # `||`; it ran and succeeded. The `exit 1` segment that follows is what is
+        # preceded by `||`, not the `cd` -- discarding cwd there was inverted.
+        if preceding_op not in ("|", "||"):
+            target = ""
+            for tok in seg[1:]:
+                if not tok.startswith("-"):
+                    target = tok
+                    break
+            if target:
+                cwd = target
         continue
 
     i = 0
