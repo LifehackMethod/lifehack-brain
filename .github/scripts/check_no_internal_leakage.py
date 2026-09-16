@@ -37,6 +37,16 @@ WHAT IT CATCHES (three kinds, deliberately no more):
      (refuse-rules.json's "1-secret" tier) are a related but separate concern and are out
      of scope for this check -- see "WHAT THIS DOES NOT CATCH" in the workflow's own
      comments / the task report.
+  4. ⛔ ADDED 2026-09-16 (Criterion 8 gap -- "personal content cannot reach the public
+     repo by accident"). POSSIBLE-THIRD-PARTY-NAME and DOLLAR-AMOUNT-NEAR-BILLING-WORD, on
+     a line a change ADDS -- the SAME two heuristics scan_whole_tree() has carried as
+     WARNING-tier (non-blocking) findings since gaps 2+4, now ALSO applied here, where a
+     hit DOES flag. See check_added_lines_heuristics() and "WHOLE-TREE BASELINE MODE"
+     below for why WARNING-only was right for a whole-tree rescan and is not the right
+     call for one ADDED line -- same "why added lines" argument as items 1-3 above,
+     applied to these two for the first time. FICTIONAL_FIXTURE_WORDS/PHRASES and the
+     full DESK_PERSONA_CANDIDATES set are honored so established shipped content and this
+     repo's own six desk-persona names do not suddenly fail.
 
 ⛔ NEVER PRINT A MATCHED IDENTITY TERM. A finding from rule 3 reports path, line and an
 OPAQUE rule id (operator-identity-NN), and its evidence line has the matched span replaced
@@ -72,8 +82,12 @@ USAGE
 
 EXIT CODES
   0  CLEAN    -- nothing flagged (whole-tree: no BLOCKING finding; WARNING-tier findings,
-                 if any, do not change this -- see below)
-  1  FLAGGED  -- at least one BLOCKING violation (path or identity content)
+                 if any, do not change this -- see below. Per-PR/per-commit: nothing in
+                 `violations`, which as of 2026-09-16 includes items 1-4 above.)
+  1  FLAGGED  -- at least one BLOCKING violation (path or identity content), or, in the
+                 per-PR/per-commit path only, a possible-third-party-name /
+                 dollar-amount-near-billing-word hit on an ADDED line (item 4; WARNING-tier
+                 and non-blocking in --whole-tree, see below).
   2  CANNOT EVALUATE -- git diff/ls-files itself failed, a file could not be read, bad
                         arguments, OR no usable identity file (see rule 3). NEVER exit 0
                         on an error -- an unevaluated run must not read as a clean one,
@@ -92,21 +106,38 @@ WHOLE-TREE BASELINE MODE -- WHY IT EXISTS, SEPARATE FROM THE PER-PR GATE ABOVE
   per-PR gate itself runs or scores (verified: `--base --head --mode` code paths are
   untouched by this mode; see the module's own test invocations).
 
-  It ALSO carries two WARNING-tier checks the per-PR gate does not have, both scoped to
-  whole-tree only so the per-PR gate's behavior is provably unchanged:
+  It ALSO carries two heuristics, scoped to whole-tree as WARNING-tier (never changing
+  this mode's exit code):
     - a third-party NAME heuristic (a capitalised name-shaped token sharing a line with a
       personal/relationship word -- "wife", "client", "tenant", etc.) -- see NAME_SHAPE_RE.
     - a DOLLAR-AMOUNT-NEAR-BILLING-WORD heuristic -- a specific-decimal dollar figure
       sharing a line with a money-owed/money-settled word (billed, unbilled, receivable,
       arrears, retainer, payment, balance, ...) -- see BILLING_TRIGGER_STEMS, which also
       records which candidate words were REJECTED and on what measurement.
-  WARNING findings are reported and written to the JSON report but NEVER change the exit
-  code -- a hardcoded regex cannot enumerate every third party's name or every dollar
-  figure that matters, so these are heuristics for a HUMAN to triage, not a gate. Flagging
-  them as BLOCKING would either (a) false-positive often enough that the whole check gets
-  disabled, or (b) get quietly allowlisted into uselessness -- see ⛔ in the module's
-  "suppression" note below. Both heuristics are deliberately narrow (same-line
-  co-occurrence, not whole-paragraph) to keep the false-positive rate low enough to trust.
+  In scan_whole_tree() ITSELF, WARNING findings are reported and written to the JSON report
+  but NEVER change the exit code -- a hardcoded regex cannot enumerate every third party's
+  name or every dollar figure that matters, so across the WHOLE TREE (every line ever
+  committed, rescanned on a schedule) these are heuristics for a HUMAN to triage, not a
+  gate: flagging them as BLOCKING there would either (a) false-positive often enough that
+  the whole check gets disabled, or (b) get quietly allowlisted into uselessness -- see ⛔
+  in the module's "suppression" note below. Both heuristics are deliberately narrow
+  (same-line co-occurrence, not whole-paragraph) to keep the false-positive rate low enough
+  to trust even at whole-tree scale.
+  ⛔ ADDED 2026-09-16: check_added_lines_heuristics() now runs these SAME two heuristics a
+  second way, over ADDED lines only, from the per-PR/per-commit path (scan_files(), called
+  by --scan-file and --base/--head) -- and THERE a hit DOES flag (see EXIT CODES above and
+  item 4 of "WHAT IT CATCHES"). This is not a contradiction of the paragraph above: the
+  false-positive argument for WARNING-only is a property of rescanning this repo's entire
+  EXISTING history on every unrelated touch, not of these heuristics as such -- the exact
+  same "why added lines, not whole-file" reasoning the module docstring already uses to
+  justify items 1-3 being BLOCKING on added lines. scan_whole_tree()'s own severity, exit
+  code and JSON report are unchanged by this; NAME_SHAPE_RE, find_name_candidates(),
+  BILLING_TRIGGER_RE/DOLLAR_AMOUNT_RE, FICTIONAL_FIXTURE_WORDS and FICTIONAL_FIXTURE_PHRASES
+  moved ABOVE the whole-tree wall below so both paths read the same data and logic -- see
+  the move-note there. What stays whole-tree-only: git_ls_files(),
+  derive_reused_desk_personas() and scan_whole_tree() itself -- the per-PR path allows the
+  full, static DESK_PERSONA_CANDIDATES tuple rather than calling either (see
+  check_added_lines_heuristics()'s own comment for why).
 
   ⛔ NO PER-FILE SUPPRESSION. The only exemption whole-tree mode honors is
   FICTIONAL_FIXTURE_ALLOWLIST -- a small, fixed, curated list of THIS REPO'S OWN
@@ -466,13 +497,14 @@ def content_patterns():
     return _CONTENT_PATTERNS
 
 
-# ============================================================================ WHOLE-TREE
-# BASELINE MODE ONLY -- nothing below this line, until scan_whole_tree()'s return, is
-# reachable from the per-PR (--base/--head/--scan-file) code paths above. That separation
-# is deliberate and load-bearing: "prove the per-PR mode is unchanged" only holds if the
-# per-PR functions (check_path, check_added_lines, scan_files, parse_unified_diff,
-# run_git_diff) are never called from here, and nothing here is ever called from them.
 
+# ⭐ MOVED ABOVE THE WHOLE-TREE WALL, 2026-09-16, ALONGSIDE FICTIONAL_FIXTURE_USERNAMES
+# (moved 2026-08-23, see its own comment below content_patterns() above). Same reasoning:
+# check_added_lines_heuristics() (per-PR "rule engines" section, below) needs this same
+# fixture data to honor the identical allowlist scan_whole_tree() already honors -- this is
+# DATA, never a call into whole-tree orchestration (git_ls_files() / derive_reused_desk_
+# personas() / scan_whole_tree() itself), so sharing it does not touch the wall's actual
+# load-bearing property -- see the updated wall comment a few lines below.
 # --------------------------------------------------------- fictional-fixture allowlist
 # This is NOT a general suppression mechanism (see module docstring, ⛔ NO PER-FILE
 # SUPPRESSION). It is a small, fixed, curated list of identities this repo's OWN test
@@ -502,124 +534,17 @@ FICTIONAL_FIXTURE_WORDS = frozenset({
     "marlowe", "rosalind", "handbook",
 })
 FICTIONAL_FIXTURE_PHRASES = ("whitfield contracting",)
-# Fixture home-path usernames -- the segment right after /Users/ or /home/ that this repo's
-# own examples already use for an invented account, so home-path-generic (rule 2) does not
-# fire on them in whole-tree mode. Matches the task's own named set exactly.
-# (moved above the WHOLE-TREE wall 2026-08-23 — see FICTIONAL_FIXTURE_USERNAMES there)
 
-# --------------------------------------------------------- self-reference exclusions
-# ⭐ RE-EXAMINED 2026-08-18 (issue #59) ALONGSIDE THE .github/ EXEMPTION, AND KEPT.
-# Measured with rule 3 compiled from the real out-of-repo identity file: ZERO identity-term
-# hits in either path. Neither is hiding a person. What they trip is the generic, impersonal
-# cloud-drive shape, on lines whose declared job is to carry it:
-#   - system/shipping-lane/fixtures/ -- 1 line, `operator-drive-account`. refuse-fixture.md's
-#     own header: "THIS FILE EXISTS TO BE CAUGHT. It is deliberately full of the exact shapes
-#     the shipping lane refuses ... it is never in a shipping manifest." A directory whose
-#     declared job is to be a positive test fixture FOR A DIFFERENT SCANNER (verify_rules.py)
-#     is not a leak when THIS scanner rediscovers it; it is that scanner working.
-#   - system/shipping-lane/refuse-rules.json -- ⚠ RE-MEASURED AFTER THE 2026-08-18 TIGHTENING
-#     OF operator-drive-cloudstorage: it now produces ZERO findings, so this entry is no
-#     longer load-bearing. (Before the tightening it tripped 1 line; the count of "4 lines"
-#     this comment used to claim for the fixtures directory was measured under the old,
-#     looser rule and is likewise superseded.) KEPT ANYWAY, and this is a judgement call
-#     stated plainly rather than a fact: that file's whole job is to hold leak SHAPES as
-#     data, so the next rule anyone adds to it may legitimately carry an account-shaped
-#     example, and CI reddening on the shipping lane documenting itself is a false positive
-#     waiting to happen. It is also consumed by four other tools (scrub.py, push_gate.py,
-#     verify_rules.py, canon.py) with their own tests pinned to it, so it is not this
-#     check's to reshape. Delete this entry if you would rather find out.
-# ⚠ Deliberately two named paths, not a directory-wide exclusion of system/shipping-lane/ --
-# scrub.py, canon.py, identity_rules.py etc. in that same directory are real code where a
-# genuine leak would be exactly as serious as anywhere else in the tree, and stay scanned.
-WHOLE_TREE_SELF_REFERENCE_EXCLUDE_PATHS = frozenset({
-    "system/shipping-lane/refuse-rules.json",
-})
-WHOLE_TREE_SELF_REFERENCE_EXCLUDE_PREFIXES = ("system/shipping-lane/fixtures/",)
-
-
-def is_self_referential_fixture_path(path: str) -> bool:
-    return (path in WHOLE_TREE_SELF_REFERENCE_EXCLUDE_PATHS
-            or any(path.startswith(p) for p in WHOLE_TREE_SELF_REFERENCE_EXCLUDE_PREFIXES))
-
-# --------------------------------------------------------- desk-persona allowlist (derived)
-# ClaudeOps (the private donor system this product migrated out of) named its personal
-# desks after people -- cal / marc / emily / clair / deryl / dobby. None of those six is a
-# real third party; they are internal role names. But only some of the six survived into
-# THIS product's own shipped skills (some were renamed to generic slugs during migration --
-# e.g. cal-daily/cal-weekly -> planning-daily/planning-weekly -- while "Cal" the persona
-# voice stayed in the prose). A name in this list should never trip the WARNING-tier NAME
-# heuristic just for being a desk-persona word.
-#
-# ⚠ NOT HARDCODED TO "only cal" -- that was one auditor's read of the tree at one moment.
-# derive_reused_desk_personas() below RE-CHECKS .claude/skills/ every run and only
-# allowlists a candidate that is actually still present there, so a future rename (in
-# either direction) changes this automatically rather than silently going stale.
-DESK_PERSONA_CANDIDATES = ("cal", "marc", "emily", "clair", "deryl", "dobby")
-
-
-def git_ls_files() -> list:
-    """Every path `git` tracks in the current checkout (respects .gitignore by
-    construction -- an ignored or untracked file was never `git add`ed, so it never
-    appears here). This is the whole-tree mode's file universe: it must match what is
-    actually SHIPPED, not everything sitting on disk (migration-audit/, KIMI-*, local
-    .tmp scratch, etc. are gitignored and correctly invisible to a baseline audit of
-    committed content)."""
-    proc = subprocess.run(["git", "ls-files"], capture_output=True, text=True)
-    if proc.returncode != 0:
-        sys.stderr.write(proc.stderr)
-        raise SystemExit("CANNOT EVALUATE: git ls-files failed (exit {})".format(proc.returncode))
-    return [p for p in proc.stdout.splitlines() if p]
-
-
-def git_head_sha() -> str:
-    proc = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True)
-    if proc.returncode != 0:
-        sys.stderr.write(proc.stderr)
-        raise SystemExit("CANNOT EVALUATE: git rev-parse HEAD failed (exit {})".format(proc.returncode))
-    return proc.stdout.strip()
-
-
-def derive_reused_desk_personas(tracked_paths) -> set:
-    """Gap 3: which of the six ClaudeOps desk-persona names does THIS product's own
-    .claude/skills/ tree actually still reuse, right now? Checks path segments AND file
-    content (case-insensitive, whole-word) so a rename that keeps the word in prose (like
-    cal-daily -> planning-daily, which kept "Cal" as the voice name throughout) still
-    counts as reused. Returns a set of the surviving candidate names (lowercase)."""
-    skill_paths = [p for p in tracked_paths if p.startswith(".claude/skills/")]
-    reused = set()
-    remaining = set(DESK_PERSONA_CANDIDATES)
-    word_res = {name: re.compile(r"(?i)(?<![A-Za-z0-9])" + re.escape(name) + r"(?![A-Za-z0-9])")
-                for name in remaining}
-    for path in skill_paths:
-        if not remaining:
-            break
-        for name in list(remaining):
-            if word_res[name].search(path):
-                reused.add(name)
-                remaining.discard(name)
-        if not remaining:
-            break
-        text = read_text_file(path)
-        if text is None:
-            continue
-        for name in list(remaining):
-            if word_res[name].search(text):
-                reused.add(name)
-                remaining.discard(name)
-    return reused
-
-
-def read_text_file(path: str):
-    """Returns the file's text, or None if it can't be read as UTF-8 text (binary asset,
-    or genuinely unreadable) -- never raises, because one unreadable file must not abort a
-    whole-tree run; it is counted as SKIPPED instead (see scan_whole_tree)."""
-    try:
-        with open(path, "r", encoding="utf-8") as fh:
-            return fh.read()
-    except (UnicodeDecodeError, OSError):
-        return None
-
-
+# ⭐ MOVED ABOVE THE WHOLE-TREE WALL, 2026-09-16 -- alongside FICTIONAL_FIXTURE_WORDS/
+# PHRASES just above. These two heuristics (NAME_SHAPE_RE .. find_name_candidates() below)
+# used to be reachable ONLY from scan_whole_tree(). check_added_lines_heuristics() (per-PR
+# "rule engines" section, below) now calls find_name_candidates() and uses BILLING_TRIGGER_RE
+# / DOLLAR_AMOUNT_RE directly, over ADDED lines -- see that function's own comment for why
+# BLOCKING is the right call there even though scan_whole_tree() keeps these WARNING-tier
+# (non-exit-code) for a whole-tree rescan. Nothing here calls git_ls_files(),
+# derive_reused_desk_personas() or scan_whole_tree() -- those stay below, whole-tree-only,
+# and the wall's real invariant ("whole-tree orchestration/state is never reachable from a
+# per-PR function") still holds; what moved is shared vocabulary, not that boundary.
 # --------------------------------------------------------- WARNING-tier heuristics (gaps 2+4)
 # Capitalised, name-shaped token: one capital letter then 2-14 lowercase letters, on real
 # word boundaries. Deliberately does NOT match ALL-CAPS acronyms (JSON, SOP, README -- no
@@ -829,6 +754,142 @@ def find_name_candidates(line: str, allowed_personas: frozenset) -> list:
             continue
         hits.append(token)
     return hits
+
+
+# ============================================================================ WHOLE-TREE
+# BASELINE MODE ONLY -- nothing below this line, until scan_whole_tree()'s return, is
+# reachable from the per-PR (--base/--head/--scan-file) code paths above. That separation
+# is deliberate and load-bearing for GIT-DEPENDENT / WHOLE-TREE STATE specifically:
+# git_ls_files(), derive_reused_desk_personas() and scan_whole_tree() itself are never
+# called from the per-PR functions (check_path, check_added_lines,
+# check_added_lines_heuristics, scan_files, parse_unified_diff, run_git_diff), and none of
+# those five is ever called from here. ⚠ CHANGED 2026-09-16: this used to also cover the
+# possible-third-party-name / dollar-amount-near-billing-word heuristics and their data
+# (FICTIONAL_FIXTURE_WORDS/PHRASES, NAME_SHAPE_RE, find_name_candidates(),
+# BILLING_TRIGGER_RE, DOLLAR_AMOUNT_RE) -- those are now ABOVE this marker, shared by both
+# sides on purpose (see the two move-notes just above). The wall's actual load-bearing
+# claim was always about whole-tree ORCHESTRATION and GIT STATE leaking into or being
+# broken by per-PR changes, not about which module-level constants a per-PR function may
+# read -- FICTIONAL_FIXTURE_USERNAMES (2026-08-23) and is_self_referential_fixture_path()
+# (already called from scan_files() below, pre-dating this note) already crossed on that
+# same basis.
+
+# Fixture home-path usernames -- the segment right after /Users/ or /home/ that this repo's
+# own examples already use for an invented account, so home-path-generic (rule 2) does not
+# fire on them in whole-tree mode. Matches the task's own named set exactly.
+# (moved above the WHOLE-TREE wall 2026-08-23 — see FICTIONAL_FIXTURE_USERNAMES there)
+
+# --------------------------------------------------------- self-reference exclusions
+# ⭐ RE-EXAMINED 2026-08-18 (issue #59) ALONGSIDE THE .github/ EXEMPTION, AND KEPT.
+# Measured with rule 3 compiled from the real out-of-repo identity file: ZERO identity-term
+# hits in either path. Neither is hiding a person. What they trip is the generic, impersonal
+# cloud-drive shape, on lines whose declared job is to carry it:
+#   - system/shipping-lane/fixtures/ -- 1 line, `operator-drive-account`. refuse-fixture.md's
+#     own header: "THIS FILE EXISTS TO BE CAUGHT. It is deliberately full of the exact shapes
+#     the shipping lane refuses ... it is never in a shipping manifest." A directory whose
+#     declared job is to be a positive test fixture FOR A DIFFERENT SCANNER (verify_rules.py)
+#     is not a leak when THIS scanner rediscovers it; it is that scanner working.
+#   - system/shipping-lane/refuse-rules.json -- ⚠ RE-MEASURED AFTER THE 2026-08-18 TIGHTENING
+#     OF operator-drive-cloudstorage: it now produces ZERO findings, so this entry is no
+#     longer load-bearing. (Before the tightening it tripped 1 line; the count of "4 lines"
+#     this comment used to claim for the fixtures directory was measured under the old,
+#     looser rule and is likewise superseded.) KEPT ANYWAY, and this is a judgement call
+#     stated plainly rather than a fact: that file's whole job is to hold leak SHAPES as
+#     data, so the next rule anyone adds to it may legitimately carry an account-shaped
+#     example, and CI reddening on the shipping lane documenting itself is a false positive
+#     waiting to happen. It is also consumed by four other tools (scrub.py, push_gate.py,
+#     verify_rules.py, canon.py) with their own tests pinned to it, so it is not this
+#     check's to reshape. Delete this entry if you would rather find out.
+# ⚠ Deliberately two named paths, not a directory-wide exclusion of system/shipping-lane/ --
+# scrub.py, canon.py, identity_rules.py etc. in that same directory are real code where a
+# genuine leak would be exactly as serious as anywhere else in the tree, and stay scanned.
+WHOLE_TREE_SELF_REFERENCE_EXCLUDE_PATHS = frozenset({
+    "system/shipping-lane/refuse-rules.json",
+})
+WHOLE_TREE_SELF_REFERENCE_EXCLUDE_PREFIXES = ("system/shipping-lane/fixtures/",)
+
+
+def is_self_referential_fixture_path(path: str) -> bool:
+    return (path in WHOLE_TREE_SELF_REFERENCE_EXCLUDE_PATHS
+            or any(path.startswith(p) for p in WHOLE_TREE_SELF_REFERENCE_EXCLUDE_PREFIXES))
+
+# --------------------------------------------------------- desk-persona allowlist (derived)
+# ClaudeOps (the private donor system this product migrated out of) named its personal
+# desks after people -- cal / marc / emily / clair / deryl / dobby. None of those six is a
+# real third party; they are internal role names. But only some of the six survived into
+# THIS product's own shipped skills (some were renamed to generic slugs during migration --
+# e.g. cal-daily/cal-weekly -> planning-daily/planning-weekly -- while "Cal" the persona
+# voice stayed in the prose). A name in this list should never trip the WARNING-tier NAME
+# heuristic just for being a desk-persona word.
+#
+# ⚠ NOT HARDCODED TO "only cal" -- that was one auditor's read of the tree at one moment.
+# derive_reused_desk_personas() below RE-CHECKS .claude/skills/ every run and only
+# allowlists a candidate that is actually still present there, so a future rename (in
+# either direction) changes this automatically rather than silently going stale.
+DESK_PERSONA_CANDIDATES = ("cal", "marc", "emily", "clair", "deryl", "dobby")
+
+
+def git_ls_files() -> list:
+    """Every path `git` tracks in the current checkout (respects .gitignore by
+    construction -- an ignored or untracked file was never `git add`ed, so it never
+    appears here). This is the whole-tree mode's file universe: it must match what is
+    actually SHIPPED, not everything sitting on disk (migration-audit/, KIMI-*, local
+    .tmp scratch, etc. are gitignored and correctly invisible to a baseline audit of
+    committed content)."""
+    proc = subprocess.run(["git", "ls-files"], capture_output=True, text=True)
+    if proc.returncode != 0:
+        sys.stderr.write(proc.stderr)
+        raise SystemExit("CANNOT EVALUATE: git ls-files failed (exit {})".format(proc.returncode))
+    return [p for p in proc.stdout.splitlines() if p]
+
+
+def git_head_sha() -> str:
+    proc = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True)
+    if proc.returncode != 0:
+        sys.stderr.write(proc.stderr)
+        raise SystemExit("CANNOT EVALUATE: git rev-parse HEAD failed (exit {})".format(proc.returncode))
+    return proc.stdout.strip()
+
+
+def derive_reused_desk_personas(tracked_paths) -> set:
+    """Gap 3: which of the six ClaudeOps desk-persona names does THIS product's own
+    .claude/skills/ tree actually still reuse, right now? Checks path segments AND file
+    content (case-insensitive, whole-word) so a rename that keeps the word in prose (like
+    cal-daily -> planning-daily, which kept "Cal" as the voice name throughout) still
+    counts as reused. Returns a set of the surviving candidate names (lowercase)."""
+    skill_paths = [p for p in tracked_paths if p.startswith(".claude/skills/")]
+    reused = set()
+    remaining = set(DESK_PERSONA_CANDIDATES)
+    word_res = {name: re.compile(r"(?i)(?<![A-Za-z0-9])" + re.escape(name) + r"(?![A-Za-z0-9])")
+                for name in remaining}
+    for path in skill_paths:
+        if not remaining:
+            break
+        for name in list(remaining):
+            if word_res[name].search(path):
+                reused.add(name)
+                remaining.discard(name)
+        if not remaining:
+            break
+        text = read_text_file(path)
+        if text is None:
+            continue
+        for name in list(remaining):
+            if word_res[name].search(text):
+                reused.add(name)
+                remaining.discard(name)
+    return reused
+
+
+def read_text_file(path: str):
+    """Returns the file's text, or None if it can't be read as UTF-8 text (binary asset,
+    or genuinely unreadable) -- never raises, because one unreadable file must not abort a
+    whole-tree run; it is counted as SKIPPED instead (see scan_whole_tree)."""
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            return fh.read()
+    except (UnicodeDecodeError, OSError):
+        return None
 
 
 def scan_whole_tree(scan_root_paths=None):
@@ -1064,6 +1125,88 @@ def check_added_lines(added_lines):
     return hits
 
 
+# ⛔ PROMOTED FROM WARNING TO PER-COMMIT-BLOCKING, 2026-09-16 (Criterion 8 gap: "personal
+# content cannot reach the public repo by accident" -- see module docstring, item 4 of "WHAT
+# IT CATCHES", and the wall-comment update above content_patterns()). possible-third-party-
+# name and dollar-amount-near-billing-word used to run ONLY inside scan_whole_tree(), as
+# WARNING-tier findings that never change the exit code there -- see that function and the
+# module docstring's "WHOLE-TREE BASELINE MODE" section for why: a hardcoded regex cannot
+# enumerate every third party's name or every dollar figure that matters, and running either
+# heuristic over the ENTIRE historical tree on every touch would either drown the gate in
+# false positives until it got disabled, or get quietly allowlisted into uselessness.
+# MEASURED 2026-09-16 (throwaway clone, hooks wired): neither heuristic ran in --scan-file
+# or --base/--head at all, so a staged file introducing a fake third-party name next to
+# "client" or a specific-decimal figure next to "retainer" committed clean -- only
+# home-path-generic (a GENERIC_CONTENT_PATTERNS/BLOCKING rule) fired.
+#
+# WHY BLOCKING IS SAFE HERE WHEN IT WAS NOT SAFE FOR WHOLE-TREE: this reuses the SAME
+# argument the module docstring already makes for the three original BLOCKING rules --
+# "WHY ADDED LINES, NOT WHOLE-FILE CONTENT" -- applied to these two for the first time. The
+# false-positive volume that makes whole-tree WARNING-only is a property of rescanning this
+# repo's ENTIRE EXISTING history on every unrelated touch (thousands of untouched lines,
+# including this file's own teaching examples and this very comment block's prose). A line
+# a human just staged is a different, much smaller, much more deliberate population -- the
+# same reasoning that already lets home-path-generic and the identity rules be BLOCKING on
+# added lines without drowning the gate. scan_whole_tree()'s own WARNING severity, exit code
+# and JSON report are UNTOUCHED by this function: it is a separate code path, called only
+# from scan_files() below, never from run_whole_tree_mode().
+#
+# ALLOWLISTING -- honors the SAME data scan_whole_tree() honors: FICTIONAL_FIXTURE_PHRASES
+# and FICTIONAL_FIXTURE_WORDS (both moved above the WHOLE-TREE wall for exactly this, see
+# the move-note there), so this repo's own already-established fixture content (Wren Oakley,
+# Fern, the advisory-council example roster, ...) does not suddenly fail here either.
+#
+# DESK PERSONAS -- deliberately NOT derive_reused_desk_personas(git_ls_files()). This always
+# allows the FULL static DESK_PERSONA_CANDIDATES tuple, not just whichever subset is
+# currently reused in .claude/skills/, for two reasons: (a) --scan-file is documented to
+# need "no git" (module docstring, "Manual / fixture testing"), and git_ls_files() /
+# derive_reused_desk_personas() are whole-tree-only, git-dependent helpers -- calling them
+# here would either break that "no git" contract or reach back across the wall for GIT STATE
+# specifically, which is the one thing the updated wall comment says still may not happen;
+# (b) the module's own desk-persona comment already states plainly "None of those six is a
+# real third party; they are internal role names" -- true regardless of which are currently
+# reused in .claude/skills/, so the more permissive static set costs nothing in missed real
+# leaks and never depends on which files happen to be staged in a given commit.
+def check_added_lines_heuristics(added_lines, allowed_personas):
+    """The per-commit/diff counterpart to scan_whole_tree()'s WARNING-tier gap-2/gap-4
+    loop (possible-third-party-name, dollar-amount-near-billing-word), restricted to ADDED
+    lines only -- never a whole-file/whole-tree rescan, see the comment above for why that
+    restriction is what makes BLOCKING safe here. `allowed_personas` is normally
+    frozenset(DESK_PERSONA_CANDIDATES) -- see main(). Returns (lineno, evidence, rule)
+    tuples in the exact shape check_added_lines() returns, so scan_files() can format and
+    collect them identically."""
+    hits = []
+    for lineno, text in added_lines:
+        if any(phrase in text.lower() for phrase in FICTIONAL_FIXTURE_PHRASES):
+            name_hits = []
+        else:
+            name_hits = find_name_candidates(text, allowed_personas)
+        for token in name_hits:
+            rule = {
+                "id": "possible-third-party-name",
+                "remedy": (
+                    "a capitalised name-shaped word ('{}') sits near a "
+                    "personal/relationship word on this line. If this names a real "
+                    "person other than the operator, remove it or genericize it; if it "
+                    "is product content or an established fictional fixture, add it to "
+                    "FICTIONAL_FIXTURE_WORDS with the same provenance comment as the "
+                    "existing entries.".format(token)),
+            }
+            hits.append((lineno, text, rule))
+        if BILLING_TRIGGER_RE.search(text) and DOLLAR_AMOUNT_RE.search(text):
+            rule = {
+                "id": "dollar-amount-near-billing-word",
+                "remedy": (
+                    "a specific-decimal dollar figure shares this line with a "
+                    "billing-context word (see BILLING_TRIGGER_STEMS). If this is a real "
+                    "figure from a real dispute/invoice/ledger, remove it or round it "
+                    "into a non-identifying example; if it is a worked example, say so "
+                    "explicitly in the surrounding text."),
+            }
+            hits.append((lineno, text, rule))
+    return hits
+
+
 def whole_text_hits(text, already):
     """The SECOND pass, over `text` WHOLE and UNSPLIT -- never `.splitlines()`'d first.
 
@@ -1119,14 +1262,17 @@ def format_violation(path, rule, lineno=None, evidence=None):
     return "\n".join(lines)
 
 
-def scan_files(file_diffs, whole_texts=None):
+def scan_files(file_diffs, whole_texts=None, allowed_personas=None):
     """file_diffs: list of (path, added_lines). `whole_texts`, if given, maps path -> the
     RAW, UNSPLIT text of everything this diff added for that path (--scan-file mode: the
     whole file, since the whole file counts as added; git-diff mode: the added lines
     rejoined with "\\n", in order -- see main()). Runs the whole-text pass (Defect 2, see
-    whole_text_hits()) alongside the per-line one whenever that text is available. Returns
-    list of violation strings."""
+    whole_text_hits()) alongside the per-line one whenever that text is available.
+    `allowed_personas` (default: none allowed) is passed straight to
+    check_added_lines_heuristics() -- see main(), which passes
+    frozenset(DESK_PERSONA_CANDIDATES). Returns list of violation strings."""
     violations = []
+    _allowed_personas = allowed_personas if allowed_personas is not None else frozenset()
     for path, added_lines in file_diffs:
         path_rule = check_path(path)
         if path_rule:
@@ -1141,7 +1287,8 @@ def scan_files(file_diffs, whole_texts=None):
             # named/documented scope -- see WHOLE_TREE_SELF_REFERENCE_EXCLUDE_PATHS/PREFIXES.
             # This is not a general suppression mechanism; widening it would defeat the
             # scanner (see the 2026-08-18 .github/ rewrite note above for why path-based
-            # blanket exemptions are dangerous when NOT this narrowly scoped).
+            # blanket exemptions are dangerous when NOT this narrowly scoped). Covers the
+            # 2026-09-16 heuristics below too -- same reasoning, same scope.
             continue
         already = set()
         for lineno, text, rule in check_added_lines(added_lines):
@@ -1151,6 +1298,11 @@ def scan_files(file_diffs, whole_texts=None):
         if whole is not None:
             for lineno, evidence, rule in whole_text_hits(whole, already):
                 violations.append(format_violation(path, rule, lineno, evidence))
+        # possible-third-party-name / dollar-amount-near-billing-word, ADDED lines only --
+        # 2026-09-16, see check_added_lines_heuristics() for why these are BLOCKING here
+        # even though they stay WARNING (non-exit-code) in scan_whole_tree().
+        for lineno, text, rule in check_added_lines_heuristics(added_lines, _allowed_personas):
+            violations.append(format_violation(path, rule, lineno, text))
     return violations
 
 
@@ -1313,7 +1465,11 @@ def main():
         ap.error("either --scan-file, or both --base and --head, are required")
         return CANNOT_EVALUATE
 
-    violations = scan_files(file_diffs, whole_texts)
+    # Static, not derive_reused_desk_personas(git_ls_files()) -- see
+    # check_added_lines_heuristics()'s own comment for why the per-PR/per-commit path
+    # always allows the full six-name set rather than the git-derived subset.
+    allowed_personas = frozenset(DESK_PERSONA_CANDIDATES)
+    violations = scan_files(file_diffs, whole_texts, allowed_personas)
 
     if violations:
         print("NO-INTERNAL-LEAKAGE: {} violation(s) found\n".format(len(violations)))
