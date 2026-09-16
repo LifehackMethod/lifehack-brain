@@ -67,6 +67,49 @@ run "a test"                    0 "$REPO/system/hooks/tests/test_calendar_guard.
 run "the README"                0 "$REPO/README.md"
 run "a hook test, new"          0 "$REPO/system/hooks/tests/test_new_thing.sh"
 
+echo "── ⭐ 2026-09-16 fix: ~/.claude/skills/<X> as a REAL git repo, not a symlink ─"
+# 2026-09-15 false positive: guard_write_paths.sh's skills/commands zone used to require the
+# resolved target to land under a HARDCODED clone root ($CLONE_ROOT / $_SELF_REPO). ClaudeOps is
+# a full git repo parked directly at ~/.claude/skills/ClaudeOps -- not a symlink into either
+# hardcoded clone -- so a legitimate write there was denied for a reason that was never actually
+# true (measured 2026-09-10: all 20 live skill folders are real directories, zero symlinks). The
+# fix (ported from commit 91bf573, branch 0R.12-push-guard-resolver) replaces the name-match with
+# a structural check: does the resolved path land inside a real git working tree with a
+# configured remote. Build a throwaway HOME with exactly that shape and drive the real guard
+# against it -- ALLOW case first, per the hook SOP.
+# mktemp -d on macOS returns a /var/... path where /var is itself a symlink to /private/var; the
+# guard realpath()-resolves FILE_PATH before comparing it against $HOME-built prefixes, so an
+# unresolved $HOME here would silently mismatch every zone check below. cd -P to the PHYSICAL path.
+TMPHOME="$(cd "$(mktemp -d)" && pwd -P)"
+trap 'rm -rf "$TMPHOME"' EXIT
+mkdir -p "$TMPHOME/.claude/skills/ClaudeOps/system/hooks"
+git -C "$TMPHOME/.claude/skills/ClaudeOps" init -q
+git -C "$TMPHOME/.claude/skills/ClaudeOps" remote add origin "https://example.invalid/ClaudeOps.git"
+
+run_home() {
+  local label="$1" exp="$2" path="$3" home="$4" tool="${5:-Edit}" got
+  python3 -c "
+import json,sys
+print(json.dumps({'tool_name':sys.argv[2],'tool_input':{'file_path':sys.argv[1]}}))" "$path" "$tool" 2>/dev/null \
+    | env CLAUDE_PROJECT_DIR="$REPO" HOME="$home" bash "$GUARD" >/dev/null 2>&1
+  got=$?
+  [ "$got" = "$exp" ] && ok || bad "$label" "expected exit $exp, got $got"
+}
+
+run_home "real repo w/ remote, ordinary file -> ALLOW (the false positive, now fixed)" \
+  0 "$TMPHOME/.claude/skills/ClaudeOps/some_test_note.md" "$TMPHOME"
+run_home "same real repo, its OWN system/hooks/ -> still DENIED (regression check)" \
+  2 "$TMPHOME/.claude/skills/ClaudeOps/system/hooks/guard_egress.sh" "$TMPHOME"
+
+mkdir -p "$TMPHOME/.claude/skills/orphan-skill"
+run_home "brand-new dir, no git repo at all -> DENY (true positive: genuine orphan)" \
+  2 "$TMPHOME/.claude/skills/orphan-skill/SKILL.md" "$TMPHOME"
+
+mkdir -p "$TMPHOME/.claude/skills/no-remote-repo"
+git -C "$TMPHOME/.claude/skills/no-remote-repo" init -q
+run_home "real git repo but NO remote configured -> DENY (still an orphan for sync purposes)" \
+  2 "$TMPHOME/.claude/skills/no-remote-repo/notes.md" "$TMPHOME"
+
 echo "── what this guard deliberately does NOT do (see the scope note) ────────"
 # These are ASSERTIONS, not gaps. Changing them is the product decision named at the top.
 run "a file on the Desktop"     0 "$HOME/Desktop/notes.md"
