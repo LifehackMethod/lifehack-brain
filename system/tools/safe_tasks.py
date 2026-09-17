@@ -73,7 +73,7 @@ import paths as _paths
 def _scratch_dir():
     """Resolved per call, not at import — keeps import side-effect-free."""
     return _paths.scratch_dir("rdr")
-_REDACT_MARKER = "⟦reader-scratch — spawn ingest-reader on _reader_scratch⟧"
+_REDACT_MARKER = "⟦reader-scratch — spawn subagent_type: lifehack-brain:ingest-reader (bare ingest-reader fallback; refuse if neither spawns) on _reader_scratch⟧"
 
 
 def _isolate_freetext(data):
@@ -227,7 +227,9 @@ def main():
         print(json.dumps(data, ensure_ascii=False, indent=2))
         sys.stderr.write(
             f"\n🔒 ISOLATE — free-text moved to reader scratch: {data.get('_reader_scratch')}\n"
-            "   The controller may NOT read it directly; spawn subagent_type: ingest-reader on that path.\n")
+            "   The controller may NOT read it directly; spawn subagent_type: lifehack-brain:ingest-reader\n"
+            "   first, bare ingest-reader as the clone-install fallback, and refuse rather than read it\n"
+            "   yourself if neither spawns.\n")
     else:
         # --no-isolate/--redact (PLUMBING/store opt-out): sanitized JSON to stdout, same shape gws returned.
         print(json.dumps(data, ensure_ascii=False, indent=2))
