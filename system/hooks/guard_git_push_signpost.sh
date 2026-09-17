@@ -36,13 +36,28 @@
 #      vs personal. Then re-run the exact same push.
 # SIGNPOST: system/sops/github-sop.md §0c — the branch/push decision. To change what
 #      is gated here, edit that SOP + get sign-off, then update this guard.
-# MATCHING: argv STRUCTURE via shlex, never a keyword grep on the command string — a
-#      literal "git push" inside a quoted commit message must not trip it. Segments
-#      split on ; && || |; only a token that IS literally `git` (or ends in /git),
-#      followed by the literal subcommand `push`, counts. On a shlex failure (heredoc,
-#      unbalanced quote) we fall back to a raw-text adjacency scan for `git push` as a
-#      shape, same fallback guard_gh_pr_merge.sh uses, and deny only if that shape is
-#      present.
+# MATCHING: argv STRUCTURE via the SHARED resolver (system/hooks/lib/
+#      git_target_resolver.py, ported 2026-09-10/re-applied for 0.3.23), never a
+#      keyword grep on the command string — a literal "git push" inside a quoted
+#      commit message must not trip it. Segments split on ; && || |; only a token
+#      that IS literally `git` (or ends in /git), followed by the literal
+#      subcommand `push`, counts. The shared resolver replaces a hand-rolled
+#      plain `shlex.split`, which glued an unpadded `;` (e.g. `exit;`) onto the
+#      next token and missed the outbound act entirely — the resolver tokenizes
+#      with `punctuation_chars=True` so `;`/`&&`/`||`/`|` split correctly whether
+#      or not they are whitespace-padded. When the resolver cannot prove a cd/-C
+#      target from an unprovable `cd X || <non-exit-shaped>` construct, it
+#      REFUSES rather than guessing (REFUSE_AMBIGUOUS); when shlex cannot
+#      tokenize the command at all (heredoc, unbalanced quote) but a raw-text
+#      scan still sees a `git ... push` shape, it likewise REFUSES rather than
+#      naming a repo of $PWD it cannot actually vouch for (REFUSE_TOKENIZE,
+#      0N.1). Extracting the matched push subcommand's OWN argv (for the REFSPEC
+#      manifest below) is this guard's own job, re-walking the resolver's OWN
+#      tokenizer/segmenter so it never disagrees with the target already
+#      resolved — and strips shell redirection tokens ([n]<word, [n]>word,
+#      [n]>&word, ...) from that argv first: a redirection is consumed by the
+#      SHELL, never part of git's own argv, and `git push -u origin <branch>
+#      2>&1 | tail -3` used to surface a phantom refspec literally named "2>&1".
 # IDENTITY: resolved from the COMMAND, never bare `$PWD` — fixed 2026-09-08 after a
 #      real incident: a push from a ClaudeOps cwd targeting `git -C
 #      ~/lifehack-brain push origin main` was signposted as "ClaudeOps
@@ -69,7 +84,7 @@
 #      tokenize falls back to the raw-text adjacency scan above and denies only if
 #      that still reads as `git push`. SILENT (exit 0) when there is no command to
 #      judge, or the command is a genuinely different git verb.
-# UPDATED: 2026-09-15
+# UPDATED: 2026-09-17
 # RULE: system/sops/github-sop.md §0c — system/hook-contract.md (mechanics)
 # ─────────────────────────────────────────────────────────────────────────────
 # guard_git_push_signpost.sh — PreToolUse hook (matcher: Bash)
@@ -129,6 +144,38 @@ if status != "DENY":
 # an unpadded `;` like `exit;` gluing to the next token, is exactly what this
 # port replaces; see MATCHING note above) so argv extraction can never
 # disagree with the target resolution that already succeeded above.
+
+# FIXED: a shell redirection ([n]<word, [n]>word, [n]>>word, [n]>&word,
+# [n]&>word, ...) is consumed by the SHELL before git ever sees it -- it is
+# never part of git own argv. Measured live: `git -C <path> push -u origin
+# <branch> 2>&1 | tail -3` printed a manifest row for a phantom refspec named
+# literally "2>&1" (UNRESOLVED 2>&1 -> origin/2>&1). Root cause: shlex, even
+# in punctuation_chars mode, cannot glue an fd-number word onto the following
+# punctuation-only redirect operator the way a real shell lexer does, so
+# "2>&1" surfaces as three separate tokens here: "2", ">&", "1" -- and those
+# then look like three ordinary positional refspec arguments to everything
+# downstream. Recognise that shape (and the simpler undigited forms) and drop
+# every token a redirection consumes, so it can never masquerade as a
+# refspec, a remote name, or any other positional git argument.
+def _strip_shell_redirections(tokens):
+    redir_punct = ("<", ">", "<<", ">>", "<&", ">&", "&>", "&>>", "<>")
+    out = []
+    i = 0
+    n = len(tokens)
+    while i < n:
+        j = i
+        if tokens[i].isdigit() and (i + 1) < n and tokens[i + 1] in redir_punct:
+            j = i + 1
+        if tokens[j] in redir_punct:
+            k = j + 1
+            if k < n and (tokens[k].isdigit() or tokens[j] not in ("<&", ">&", "&>", "&>>")):
+                k += 1
+            i = k
+            continue
+        out.append(tokens[i])
+        i += 1
+    return out
+
 push_argv = []
 try:
     for seg, _op in _gtr._segment(_gtr._tokenize(cmd)):
@@ -147,7 +194,7 @@ try:
             else:
                 j += 1
         if j < len(seg) and seg[j] == "push":
-            push_argv = seg[j + 1:]
+            push_argv = _strip_shell_redirections(seg[j + 1:])
             break
 except Exception:
     push_argv = []
