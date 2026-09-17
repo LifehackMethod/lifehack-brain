@@ -1137,13 +1137,13 @@ INTEROP:
   COMPLEMENTS  council              · /council (convergence) and /red-team (critique) are orthogonal; run council to generate options, /red-team to punch holes in the winning option — UNVERIFIED
 
 ## emily-desk · new Emily-Ingest mail | /emily-* skills   [LIVE·gap [provisional]]   → elements/emily-desk.md
-The audition/casting operating desk — ingest to breakdown to emit spine; the Relationship Ledger (Hollywood data layer); the cron/headless runner; and the Helm tile (HITL note store: planned/unverified). Contained subsystem with its own Google Sheets data layer, cron trigger, and Helm tile.
+The audition/casting operating desk — ingest to breakdown to emit spine; a contacts/relationship tracking sheet; the cron/headless runner; and the Helm tile (HITL note store: planned/unverified). Contained subsystem with its own Google Sheets data layer, cron trigger, and Helm tile.
 
 INTEROP:
   READS      email-service          · durable thread store (state/email-summary/threads-v2/) for Phase 0 body pull; store-first before raw gws
   FEEDS      helm                   · tile at state/status/emily.json via emily-emit.py; rich pending_auditions[] shape drives renderEmily() in app.js; required_payload contract enforced in emitter
   READS      gws-plane              · Gmail label list/modify, Sheets batchGet/batchUpdate, calendar events insert, Drive files update, docs create — full gws surface
-  WRITES→    durable-memory         · breakdown Google Doc lands in "2026 Breakdowns" Drive folder; session.md + breakdowns markdown in desks/emily/state/; Relationship Ledger rows in the Sheet
+  WRITES→    durable-memory         · breakdown Google Doc lands in a dated output folder; session.md + breakdowns markdown in desks/emily/state/; Relationship Ledger rows in the Sheet
   GUARDED-BY ingest-gate            · ingest_gate_enforce.sh blocks raw gws format:full body reads; forces email_convert.py path [hook]
   GUARDED-BY calendar-guard         · calendar write hook blocks any event write to primary or non-Agent-Ops calendar [hook]
   GUARDED-BY ~~primary-gate.sh~~ · **⚠ CORRECTED 2026-08-24: ⛔ `system/tools/primary-gate.sh` does not exist** (0 files, verified this session); `require_primary()` has no definition anywhere in the repo. Emily-desk Drive writes are NOT gated on machine lead-election — this system has one machine (`docs/data-layout.md:215`). See `elements/pulse-cron.md`'s corrected GATES section. [was: script]
@@ -1152,7 +1152,6 @@ INTEROP:
   READS      pulse-cron             · emily-breakdown-run.sh is a Pulse-managed cron job; Pulse owns cadence + circuit-breaker (3 non-zero → auto-disable + buzz)
   CHAINS     emily-2-interrogate    · quick kill-filter + calendar gate on current session materials; reads session.md seeded by today's ingest; live interactive skill
   CHAINS     emily-ledger-write     · forensic ledger-write guard called by emily-1-ingest Step 6; 5 hard stops before any Sheet write; live interactive skill
-  COMPLEMENTS hollywood-db          · shared/skills/hollywood-db is a distinct project (industry player database, Supabase-backed) sharing the Emily desk context; researcher reads the Relationship Ledger, not Hollywood DB directly during breakdown
 
 ## marc-desk · sensor→gather→narrative→checkin spine   [PARTIAL [provisional]]   → elements/marc-desk.md
 Marc is a self-running market-intelligence organism — a daily data + tripwire plane, two weekly LLM-research rhythms, a falsifiable-projection/grade loop, a narrative registry, and a human HITL check-in (/marc-checkin) that is the only path that writes HIGH-confidence output. Machine writes LOW; human check-in writes HIGH.
@@ -1170,7 +1169,7 @@ INTEROP:
   GUARDED-BY   guard_marc_narrative   · PostToolUse advisory lint on narrative/scenario file writes via marc-narrative-check.py (advisory, not blocking)
 
 ## clair-desk · /ingest + /clair-session-close   [PARTIAL·gap [provisional]]   → elements/clair-desk.md
-Consulting-ops desk — reads every Consulting Gmail thread through a safety-isolated reader agent, surfaces what needs the operator in needs-me.json, closes sessions with Drive-doc ingest + an append-only billing write to Tracker v3, and keeps a cadence-nudge cron that fires a phone push exactly once per new due-state. ·gap because Drive-side billing scripts are not git-tracked and the concern-bar classification is LLM-judgment with no deterministic enforcement.
+Consulting-ops desk — reads every Consulting Gmail thread through a safety-isolated reader agent, surfaces what needs the operator in needs-me.json, closes sessions with Drive-doc ingest + an append-only billing write to the billing tracker, and keeps a cadence-nudge cron that fires a phone push exactly once per new due-state. ·gap because Drive-side billing scripts are not git-tracked and the concern-bar classification is LLM-judgment with no deterministic enforcement.
 
 INTEROP:
   READS        email-service          · store-first path (email_service_read.py --desk clair) is the primary body-read source
@@ -1178,7 +1177,7 @@ INTEROP:
   READS        grand-central          · reads the v2 store that email_summary_sync.py writes; clair-desk is a consumer, not a writer of that store
   WRITES->     needs-me.json          · consumed by the Helm clair.json tile via clair-health.py
   WRITES->     ledger.md              · append-only Clair session-close journal (distinct from system/journal.md)
-  WRITES->     Billing Tracker v3     · the billing sheet; the only external-service write clair makes
+  WRITES->     the billing sheet      · the only external-service write clair makes
   FEEDS        pulse-cron             · clair-billing-run.sh + clair-ingest-run.sh + clair-health-run.sh are all Pulse-dispatched runners
   COMPLEMENTS  save                   · /save routes clair records to records/ + ledger to state/debt-ledger.md; clair's own ledger.md is separate and append-only
   KEYS-OFF     gws-plane              · all Gmail / Drive / Sheets / Tasks reads and writes go through gws CLI (/opt/homebrew/bin/gws)
@@ -1186,16 +1185,16 @@ INTEROP:
   GUARDED-BY   guard_ledger_discipline.sh · guard_sheet_writes.sh · guard_sheet_formula_writes.sh · ingest_gate_enforce.sh   · the walls that fire here
 
 ## deryl-desk · /deryl-ingest + /reconcile + /deryl-rocketmoney   [PARTIAL [provisional]]   → elements/deryl-desk.md
-The personal-finance operator — ingests email, transactions, and utility data; maintains the live ledger (Deryl Financial Master); runs a nightly health check that feeds the Helm dashboard; and provides a human-gated reconcile session for periodic tax bookkeeping. Multiple documented honor-system failure modes (stale-number recitation, mental arithmetic, email-scope breach).
+The personal-finance operator — ingests email, transactions, and utility data; maintains the financial ledger; runs a nightly health check that feeds the Helm dashboard; and provides a human-gated reconcile session for periodic tax bookkeeping. Multiple documented honor-system failure modes (stale-number recitation, mental arithmetic, email-scope breach).
 
 INTEROP:
   CHAINS      ingest-run.lib.sh  · deryl-ingest-run.sh is built on the shared ingest-run.lib.sh scaffold (primary-machine gate, new-mail gate, bounded work-list, single-instance lock, watchdog, marker-advance); a change to the lib propagates to all ingest runners
   FEEDS       helm               · deryl-ingest writes state/status/deryl-ingest.json (LOCKED schema decision #38) — Helm d.ingest card; deryl-books-health.py emits state/status/deryl.json — Helm finances/property/tax tiles
-  WRITES→     Gmail Deryl-Archive   · deryl-ingest routes True Submeter emails to Deryl-Archive (Label_32) as pipeline hand-off to true_submeter_ingest.py; all other processed threads move to Deryl-Processed
+  WRITES→     Gmail Deryl-Archive   · deryl-ingest routes utility-meter emails to Deryl-Archive as pipeline hand-off to true_submeter_ingest.py; all other processed threads move to Deryl-Processed
   FEEDS       deryl open-loops   · deryl-ingest appends HIGH items with gmail links to desks/deryl/state/open-loops.md; Deryl session reads on launch; /save can relocate resolved loops
   READS       email-service      · daily ingest tries read_thread() store-first before re-fetching from Gmail; falls back to raw sanitization on MISS-*/DISABLED; never writes the store
   CHAINS      cp_utilities_ingest · cp_utilities_ingest → true_submeter_ingest are chained inside cp-utilities-run.sh; true_submeter must not run if cp_utilities fails
-  SYNCS       reconcile marker   · /reconcile writes last-reconciled marker to Tax Workbook _REVIEW_STORE!H1; deryl-books-health.py reads and parses this same cell for dashboard signals — format must stay parseable
+  SYNCS       reconcile marker   · /reconcile writes last-reconciled marker to the tax workbook's review-store marker cell; deryl-books-health.py reads and parses this same cell for dashboard signals — format must stay parseable
   GUARDED-BY  guard_sheet_writes.sh · DFM and CP sheets flagged BRITTLE; destructive ops confirm before executing
   GUARDED-BY  guard_ledger_discipline.sh · blocks adding ✅/RESOLVED/CLEARED/FIXED annotation to ## Open in state/debt-ledger.md; deletion-only discipline
   GUARDED-BY  guard_canon_write.sh · blocks Write/Edit to **/canon/** lacking authority:user; prevents silent promotion of financial findings
