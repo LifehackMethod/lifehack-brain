@@ -26,7 +26,7 @@ session could load this week's record and treat it as ground truth.
 
 ## Layer 2 — the skill's role
 
-Cal delivers it as a **detective** (one voice; Olsen only at the very end) — an **interrogative
+Cal delivers it as a **detective** (one voice; the closing voice only at the very end) — an **interrogative
 exploration that stays away from solutions, conclusions, and overconfidence; it never jumps to an
 answer.** It treats the full pull (the Grand Central dots, distilled into the night-before **Map**) as a
 **guess** and **mines him for what only he holds.** Any conclusion waits for the very end — if ever — and only when the human

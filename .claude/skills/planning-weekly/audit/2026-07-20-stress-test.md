@@ -22,7 +22,7 @@ real files.
 | 10 | Confirmation gate ambiguous + fakeable; sub-agent fences absent. | F5: ONE instruction-grade gate at end of Report (honestly labeled); READ-ONLY/DATA fences on council + leverage + clerk (structural versions → tech-debt). | ✅ |
 | 11 | map-agent briefs told a blind sub-agent to "go read" a file. | F1.3: briefs now say content is EMBEDDED at dispatch. | ✅ |
 | 12 | Phase-2 "game continues until gaps filled" — no exit / infinite-loop risk. | F6/T6.2: bounded exit backstop (round cap + "move on" carries gaps forward). | ✅ |
-| — | Weekly-review-file path undefined; Olsen persona not loaded; capture-gate 30m TTL dormant mid-run. | F2/T2.2 literal path · F6/T6.3 olsen.md load + SCRATCH_TTL_MIN=180. | ✅ |
+| — | Weekly-review-file path undefined; the closing-voice persona not loaded; capture-gate 30m TTL dormant mid-run. | F2/T2.2 literal path · F6/T6.3 closing-voice-persona file load + SCRATCH_TTL_MIN=180. | ✅ |
 
 ## Deferred (named, with homes) — see the plan
 - To live shakeout: Phase-4 loop-back exit · "no final verdict" wording · Phase-1→2 size/confidence hand-off + flywheel skip.
