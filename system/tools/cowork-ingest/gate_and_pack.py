@@ -21,7 +21,10 @@ Packing (adopts the sentinel wiring's batch pattern — reader runs on haiku):
 Output (to --out scratch dir):
   bundle-NNN.txt        — one or more sanitized chats, each under a parseable delimiter.
   spawn_manifest.json   — [{bundle, provenance_tags, contains:[...] }] — the actor reads
-                          this and spawns ONE `ingest-reader` (model: haiku) per bundle.
+                          this and spawns ONE `ingest-reader` (model: haiku) per bundle — name
+                          `lifehack-brain:ingest-reader` first, bare `ingest-reader` as the
+                          clone-install fallback, and refuse rather than read a bundle itself if
+                          neither spawns.
   quarantine.json       — the DANGER skips (provenance tags only; NO content).
 
 This is the CONTROLLER: it holds the tools and orchestrates, but it NEVER hands a raw
