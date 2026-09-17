@@ -701,9 +701,14 @@ NAME_HEURISTIC_STOPWORDS = frozenset({
     "claude", "anthropic", "claudeops", "google", "gmail", "drive", "slack", "python",
     "markdown", "github", "opus", "sonnet", "haiku", "wren",  # "wren" also FICTIONAL_FIXTURE
     "dropbox", "script", "apps",  # "cloud-drive client (Dropbox...)" / "not just Apps Script"
-    "doc", "docs",  # "client Doc body" -- Google Doc, the product noun, not a person;
-    # false positive found merging 0.3.22 down into V2 (hook-plane.md line 345, "Doc"
-    # name-shaped and adjacent to trigger word "client").
+    # "doc"/"docs" REMOVED from this blanket list 2026-09-16 (task E1b) -- a flat entry
+    # here made EVERY "Doc"/"Docs" token invisible to the detector, everywhere, regardless
+    # of context. Replaced by a context-gated exemption inside find_name_candidates()
+    # itself -- see DOC_PRODUCT_NOUN_CONTINUATIONS just below this frozenset, and the
+    # doc/docs guard in find_name_candidates(). Original false positive this line was
+    # added for: "client Doc body" -- Google Doc, the product noun, not a person; found
+    # merging 0.3.22 down into V2 (hook-plane.md line 345, "Doc" name-shaped and adjacent
+    # to trigger word "client").
     # this corpus's own persona/role vocabulary -- every skill in this product is styled as
     # a character ("detective", "coach", "operator", "customer", "voice"), and those role
     # words are themselves name-shaped and constantly adjacent to the trigger words above.
@@ -715,6 +720,18 @@ NAME_HEURISTIC_STOPWORDS = frozenset({
     # ("Target customer", "Market/customer insight") -- not people either.
     "target", "market",
 })
+
+# ⭐ NARROWER THAN THE STOPWORD IT REPLACED (task E1b, 2026-09-16). The old flat
+# "doc"/"docs" entry in NAME_HEURISTIC_STOPWORDS above made every "Doc"/"Docs" token
+# invisible to this detector, everywhere, regardless of context -- including the shape of
+# a genuine leak ("the tenant Doc filed a complaint about the landlord Marcus", where "Doc"
+# names a PERSON, not a product). The real false positive it was added for
+# ("client Doc body", "the client Google Doc link") is the product noun, not a person, and
+# that reads from CONTEXT: it sits immediately after "Google", or immediately before a
+# continuation word from the product's own vocabulary. Only that shape is exempt now --
+# see the doc/docs guard inside find_name_candidates() below, chosen as the narrowest fix
+# that still clears the real false positive without re-widening back to a bare stopword.
+DOC_PRODUCT_NOUN_CONTINUATIONS = frozenset({"body", "bodies", "folder", "link", "id"})
 
 
 def find_name_candidates(line: str, allowed_personas: frozenset) -> list:
@@ -745,6 +762,17 @@ def find_name_candidates(line: str, allowed_personas: frozenset) -> list:
             continue  # the trigger word itself, not a candidate name next to one
         if low in NAME_HEURISTIC_STOPWORDS or low in FICTIONAL_FIXTURE_WORDS or low in allowed_personas:
             continue
+        if low in ("doc", "docs"):
+            # narrow, context-gated replacement for the old blanket "doc"/"docs" stopword
+            # -- see DOC_PRODUCT_NOUN_CONTINUATIONS above. Exempt ONLY "Google Doc" (the
+            # previous token is "Google") or "Doc"/"Docs" immediately followed by a
+            # product-noun continuation ("Doc body", "Docs folder", ...). Every other
+            # "Doc"/"Docs" still flows through the normal checks below, so a real leak
+            # shaped like "the tenant Doc filed a complaint" is still caught.
+            prev_word = words[i - 1].group(0).lower() if i > 0 else ""
+            next_word = words[i + 1].group(0).lower() if i + 1 < len(words) else ""
+            if prev_word == "google" or next_word in DOC_PRODUCT_NOUN_CONTINUATIONS:
+                continue
         if not any(abs(i - tp) <= NAME_ADJACENCY_WINDOW for tp in trigger_positions):
             continue  # not actually near a trigger word, just elsewhere on a long line
         # bold-markdown label guard: "**Term:** description" -- the word right after "**"
