@@ -193,6 +193,31 @@ set -uo pipefail
 
 deny() { printf '%s\n' "$1" >&2; exit 2; }
 
+# ── WORKTREE TRUST (2026-09-17, INGEST-GATE-WORKTREE-FIX-CARD). Runs ONLY here, on the deny path,
+# after every allowlist route above has already missed — one subprocess call, paid once, never on
+# every tool call. Trusts a target file by asking git, FROM THE FILE'S OWN LOCATION, "what repo is
+# this" — never from $0 (locks onto whichever of the two registered copies fired; the plugin-cache
+# one can never be the worktree) and never $CLAUDE_PROJECT_DIR (an unauthenticated launch-cwd env
+# var; trusting it here would let anyone disarm the whole ingest gate for an arbitrary directory
+# just by cd-ing there first — the fix card rejects that pattern explicitly for this file).
+_worktree_trusted() {
+  _wt_fp="$1"
+  _wt_root="$(cd "$(dirname "$_wt_fp")" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null)"
+  [ -n "$_wt_root" ] || return 1
+  _wt_root="$(_winfold "$_wt_root")"
+  # Strict shape test — never bare `git rev-parse` success, which would sweep in any unrelated repo
+  # the person happens to have open. Missing ANY of the three -> not a recognized Harness checkout
+  # -> this route contributes nothing -> falls through to today's deny.
+  [ -f "$_wt_root/system/hooks/ingest_gate_enforce.sh" ] || return 1
+  [ -f "$_wt_root/system/register/register.jsonl" ] || return 1
+  [ -f "$_wt_root/CLAUDE.md" ] || return 1
+  # TRACKED FILES ONLY. Proving the git plumbing is shared only proves identity of the repo, not of
+  # every byte physically sitting in that working directory — a linked worktree can hold untracked
+  # drop-in material (a downloaded attachment, scratch notes) never part of the repo's history. Same
+  # posture this file already applies to memory//_unpacked/, extended here to worktrees.
+  git -C "$_wt_root" ls-files --error-unmatch -- "${_wt_fp#"$_wt_root"/}" >/dev/null 2>&1
+}
+
 INPUT=$(cat 2>/dev/null) || deny '{"decision":"block","reason":"BLOCKED: ingest_gate_enforce could not read its input — failing CLOSED."}'
 
 # tool_name (top-level parse). A top-level JSON failure -> fail CLOSED (house standard).
@@ -304,6 +329,7 @@ except Exception: print('')" 2>/dev/null)
           "$REPO"/*|"$HOME_FOLDED"/.claude/*|"$HOME_P"/.claude/*|"$NOTES_ROOT"/*)
             exit 0 ;;
           *)
+            _worktree_trusted "$FP" && exit 0
             deny '{"decision":"block","reason":"BLOCKED: raw Read of an EXTERNAL .txt/.md file. WHY: text from outside this repo and your own notes can carry what a human cannot see — zero-width characters, right-to-left overrides, control codes, and an instruction written to the model rather than to you. Plain text is not safe text. REDIRECT: python3 <repo>/system/tools/safe_read.py <path> — sanitize, scan, then clean text. RULE: the trusted zone is this repo, ~/.claude, and your notes root; the allowlist lives in system/hooks/ingest_gate_enforce.sh."}' ;;
         esac
         ;;
@@ -322,6 +348,7 @@ except Exception: print('')" 2>/dev/null)
           "$REPO"/*|"$HOME_FOLDED"/.claude/*|"$HOME_P"/.claude/*|"$NOTES_ROOT"/*)
             exit 0 ;;
           *)
+            _worktree_trusted "$FP" && exit 0
             deny '{"decision":"block","reason":"BLOCKED: raw Read of an EXTERNAL file whose type this gate does not recognise (.eml .html .ics .vcf .json .xml .log, or no extension at all). WHY: fail-safe defaults — an unrecognised type outside the trusted zone is UNKNOWN, not safe. A .eml or a .html carries exactly the payloads the .pdf and .docx branches above already block. REDIRECT: python3 <repo>/system/tools/safe_read.py <path>. RULE: the trusted zone is this repo, ~/.claude, and your notes root; widen the allowlist in system/hooks/ingest_gate_enforce.sh — do not restore a bare allow here."}' ;;
         esac
         ;;
