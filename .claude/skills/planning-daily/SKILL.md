@@ -10,7 +10,7 @@ summary: >
   interrogative daily-planning conversation, and open-loop tracking; it is the whole run when Google
   isn't connected. Layer 2, on top of it when Google is connected: clear the surfaces (email/calendar/
   tasks), check the life-lanes for gaps, run the logistics (body through space), rank the
-  one-thing-per-lane dominoes, ground it in Olsen's voice, then write (gated). Replaces the old
+  one-thing-per-lane dominoes, ground it in the person's chosen closing voice, then write (gated). Replaces the old
   cal-1..5 chain (renamed cal → planning, 2026-08-14).
   Triggered by: "planning daily", "trust fall", "what's my day", "morning check-in", "run my day",
   "let's do the day".
@@ -76,7 +76,8 @@ verdicts. When you feel the urge to wrap it up with a recommendation, ask anothe
 - `references/purpose.md` — WHAT the run is for. Don't recite it, don't let it set pace, don't chase "complete" literally.
 - `<notes>/desks/cal/skill-refs/user-canon.md` — the life lanes, the rails, the voice. The body is generic; their specifics live there.
 - `references/question-style.md` — HOW to ask (TL;DR + bold-lead-in numbered Qs + real refreshers). Read before Pass 1.
-- `<notes>/desks/cal/skill-refs/olsen.md` — the closing-voice character (used in Pass 3).
+- `<notes>/desks/cal/skill-refs/closing-voice.md` — OPTIONAL: your own closing-voice persona, if you've set
+  one (used in Pass 3). Not present → the close renders plain and neutral instead, in Cal's own voice.
 
 ## The session scratchpad (your working world model)
 The day's working memory is an **ephemeral scratchpad** at `<notes>/desks/cal/state/raw-vault/<today>/session-scratchpad.md`,

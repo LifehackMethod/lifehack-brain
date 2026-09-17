@@ -56,7 +56,7 @@ Status: ⬜ not started · ✍️ written
 ## Phase 5 — Action — B5
 - [~] 29. **Phase 5 driver** (`prompts/05-action.md`) — 3 steps · scope guard · write-reach bounds · un-skippable confirm gate · read-back rule.
 - [~] 30. **Calendarize** step sub-driver — body-first · Win-in-best-energy-window · shallow-batching · WRITE-LEDGER · floor+ceiling · masterpiece bar.
-- [~] 31. **Report** step sub-driver — SMAL Win · Bonus Aims · NOT-THIS-WEEK · capacity · week shape · mid-week checkpoint · skeptic pass · Olsen close.
+- [~] 31. **Report** step sub-driver — SMAL Win · Bonus Aims · NOT-THIS-WEEK · capacity · week shape · mid-week checkpoint · skeptic pass · closing-voice-persona close.
 - [~] 32. **Act / Clerk** sub-agent brief — full WRITE-LEDGER embedded · read-back gate every row · ❌/✅ · delete scratchpad last only if all ✅ · Agent-Ops-only rail · bounded task/email reach.
 
 ## Phase 6 — Inbox Zero / Triage — BUILT 2026-07-21 (pulled into planning-weekly per the person; task-app-neutral, outside-framework depth folded)
