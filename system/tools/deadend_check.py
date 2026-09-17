@@ -58,6 +58,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 from pathlib import Path
@@ -79,9 +80,67 @@ SOPS = (
 # "## §II.4a — ⭐ DO NOT BUILD — …"), so match on the phrase, not on an exact heading. Loose ON
 # PURPOSE: this is the FIND step, and `checkin_open.py`'s lesson applies — a tighter matcher
 # trades a visible false positive for a silent false negative, and here a silent miss means a
-# dead end goes un-warned.
-_SECTION_RE = re.compile(r"^#{1,4}\s.*DO NOT BUILD", re.I)
+# dead end goes un-warned. Local extra rulebooks (see `_extra_sops`) register under
+# `DO NOT RETRY`, so the match accepts either phrase.
+_SECTION_RE = re.compile(r"^#{1,4}\s.*DO NOT (?:BUILD|RETRY)", re.I)
 _NEXT_H2_RE = re.compile(r"^##\s")
+
+
+# ── OPTIONAL, machine-local extra rulebooks ─────────────────────────────────────────────────
+# A user may keep PRIVATE rulebooks — e.g. a personal SOP carrying a `DO NOT RETRY` register —
+# that this PUBLIC repo must neither ship nor name. So extra paths are read at RUN TIME from two
+# generic, opt-in sources and nothing private is committed here: the env var
+# `DEADEND_EXTRA_REGISTERS` (os.pathsep-separated file paths), then one path per line in
+# `~/.config/lifehack/deadend_registers.txt` (`~/.config/lifehack/` is this repo's established
+# machine-local config home — the same convention as `safe_search_api.sh`). `#` starts a
+# comment, `~` is expanded, blank lines are ignored; the two sources are ADDITIVE (env first)
+# and de-duplicated. Absent settings = today's behaviour EXACTLY — no default, no notice. A
+# listed path that is missing or has no register section gets ONE stderr note and is skipped:
+# never silently (a silent miss is the failure this tool exists to cure), and never via stdout's
+# `INCOMPLETE` banner, which is for the shipped SOPs — an optional extra must not poison every
+# result.
+_EXTRA_ENV_VAR = "DEADEND_EXTRA_REGISTERS"
+_EXTRA_CONFIG = "~/.config/lifehack/deadend_registers.txt"
+
+def _config_paths():
+    """Paths from the optional config file; an absent or unreadable file simply means none."""
+    try:
+        lines = Path(os.path.expanduser(_EXTRA_CONFIG)).read_text(
+            encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return []
+    out = []
+    for ln in lines:
+        ln = ln.split("#", 1)[0].strip()
+        if ln:
+            out.append(os.path.expanduser(ln))
+    return out
+
+def _extra_sops():
+    """(label, path) for each configured extra register, labelled by its filename stem.
+
+    The label becomes the source name and results show `<filename>:<line>`. Problems are
+    reported once on stderr and skipped; they deliberately do NOT enter `missing` — see above.
+    """
+    raw = [os.path.expanduser(x) for x in
+           os.environ.get(_EXTRA_ENV_VAR, "").split(os.pathsep) if x.strip()]
+    raw += _config_paths()
+    seen, out = set(), []
+    for s in raw:
+        if s in seen:
+            continue
+        seen.add(s)
+        p = Path(s)
+        if not p.is_file():
+            print(f"deadend_check: extra register not found (or not a file): {s} — skipped",
+                  file=sys.stderr)
+        elif not any(_SECTION_RE.match(l) for l in
+                     p.read_text(encoding="utf-8", errors="replace").splitlines()):
+            print(f"deadend_check: no DO NOT BUILD/RETRY section in extra register: {s} — skipped",
+                  file=sys.stderr)
+        else:
+            out.append((p.stem, p))
+    return out
 
 # Coverage, quoted from §II.4a's own header rather than asserted here — see the module docstring.
 COVERAGE_CAVEAT = (
@@ -125,7 +184,7 @@ def _sections():
     homework."* A missing/unreadable SOP is skipped and REPORTED, never silently treated as
     empty."""
     out, missing = [], []
-    for name, p in SOPS:
+    for name, p in tuple(SOPS) + tuple(_extra_sops()):
         try:
             lines = p.read_text(encoding="utf-8", errors="replace").splitlines()
         except Exception:
@@ -146,6 +205,16 @@ def _sections():
                 break
         out.append((name, p, start, lines[start:end]))
     return out, missing
+
+
+def _display_path(p):
+    """How a source path shows in results: repo-relative for the shipped SOPs, bare filename
+    for extra registers — they live outside the repo and are labelled by their stem
+    (e.g. `github-sop.md:<line>`)."""
+    try:
+        return str(p.relative_to(REPO))
+    except ValueError:
+        return p.name
 
 
 def entries():
@@ -175,7 +244,7 @@ def entries():
                 return
             seen.add(key)
             m = re.search(r"\*\*\[?([A-Z]\d+)\]?", text)
-            found.append({"sop": name, "path": str(p.relative_to(REPO)),
+            found.append({"sop": name, "path": _display_path(p),
                           "line": cur_ln, "id": m.group(1) if m else "",
                           "group": group, "text": text})
         for i, ln in enumerate(lines):

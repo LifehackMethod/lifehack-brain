@@ -198,8 +198,13 @@ auto-fix. (This doubles as the proof-run for the whole capability.)
    foundational-first** (data → logic → render); **diff-review each branch before it lands**;
    optionally a reviewer sub-agent (~1 per 3–4 builders); **never trust a "done" mark.**
 6. **Worktrees only when two workers must edit the SAME file** — give each its own `git worktree`
-   + its own port (Helm's `:8080` collides; offset). The `isolation:worktree` param is buggy for
-   teams → wire manually. Worktrees carry real tax; not the default.
+   + its own port (Helm's `:8080` collides; offset). ~~The `isolation:worktree` param is buggy for
+   teams → wire manually.~~ *(CORRECTED 2026-09-17: stale. Claude Code's managed worktrees — the
+   `--worktree` flag, sub-agent `isolation: worktree`, and the EnterWorktree/ExitWorktree tools —
+   shipped Feb 2026 and are maintained; the spring bug reports are closed, and the automatic cleanup
+   sweep skips worktrees you made by hand and any holding uncommitted work. Checked against the
+   official changelog and worktree docs on 2026-09-17, Claude Code 2.1.274.)* Worktrees carry real
+   tax; not the default.
 
 ## The worker loop (depth)
 
