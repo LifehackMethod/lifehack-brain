@@ -1641,7 +1641,7 @@ also feeds the `description:` frontmatter below. Layer 3: the every-turn re-inje
 > leaves with its one highest-leverage move, the week on his calendar, nothing left in his head. The machine
 > automates the rote, but the picture — threads, judgment, shadow info — lives only in his head, so
 > human-in-the-loop is deliberate: it mines him for that gold, made easy. Bar: *"it's all in one place I trust — I
-> can turn my head off and glide the week."* **2 · role:** a detective (one voice; Olsen only at the end) —
+> can turn my head off and glide the week."* **2 · role:** a detective (one voice; the closing-voice persona only at the end) —
 > interrogative, stays away from solutions and overconfidence, treats the full pull as a guess. Any conclusion
 > waits for the end, only when the human calls for it.
 >

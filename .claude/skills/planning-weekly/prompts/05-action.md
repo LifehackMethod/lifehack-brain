@@ -29,7 +29,7 @@ Every surface = one read-back-gated row in the WRITE-LEDGER (which MUST cover AL
 
 ## Steps (load each at its own entry — do not read ahead)
 1. `05-calendarize.md` — body-first best-guess fill → correction rounds → the WRITE-LEDGER.
-2. `05-report.md` — the Radical Clarity Report → skeptic pass → confirm → Olsen's closing voice.
+2. `05-report.md` — the Radical Clarity Report → skeptic pass → confirm → the closing voice.
 3. `05-act-clerk.md` — the machine-only clerk drains the ledger, read-back-gated, deletes the scratchpad last.
 
 ## do NOT

@@ -1,4 +1,4 @@
-# PASS 4 — RANK (the dominoes, then Olsen)
+# PASS 4 — RANK (the dominoes, then the close)
 
 TRIPWIRE: don't write anything here. Ranking produces a PLAN; writing is Pass 5, only after the person confirms.
 A wrong plan executed beautifully is still wrong.
@@ -35,14 +35,16 @@ LANE/item → held because [one-line reason]
 
 One row per held item. No editorializing; no re-ranking; no second-guessing the choice. This is a ledger, not a debate. **Capture this list verbatim into the scratchpad** — it must survive into the DURABLE RECORDS bucket in Pass 4.5 and land in the diary stamp (Pass 5). It does NOT touch the Life Map or Google Tasks — diary-only.
 
-## Then — the OLSEN closing beat
-After the dominoes (once confirmed/adjusted) and the DEFERRED TODAY list is rendered, close in **Olsen's voice** (read `<notes>/desks/cal/skill-refs/olsen.md`). A SEPARATE
-grounding voice — NOT Cal's. He does NOT touch the *what*; he grounds the *why*: one-day-at-a-time, the Serenity-
-Prayer line (what the person controls vs. can't), the read on "the one thing" (protect the standing non-negotiable
-commitment first; the rest is gravy). Salty + warm, says just enough. Tie it to today's actual dominoes.
+## Then — the CLOSING VOICE beat
+After the dominoes (once confirmed/adjusted) and the DEFERRED TODAY list is rendered, close: if
+`<notes>/desks/cal/skill-refs/closing-voice.md` exists, read it and close in that voice — a SEPARATE grounding
+voice, NOT Cal's. If it does not exist, close plainly instead, in Cal's own voice: warm and neutral, says just
+enough — no persona invented. Either way, the close does NOT touch the *what*; it grounds the *why*:
+one-day-at-a-time, the Serenity-Prayer line (what the person controls vs. can't), the read on "the one thing"
+(protect the standing non-negotiable commitment first; the rest is gravy). Tie it to today's actual dominoes.
 
 STOP-CHECK: the person confirmed the ranked list + the Daily Win (edits folded + re-confirmed); both captured verbatim into
-the scratchpad; Olsen close rendered. **No writes happen here — the WHOLE scratchpad (not just the dominoes) gets
+the scratchpad; the closing-voice beat rendered. **No writes happen here — the WHOLE scratchpad (not just the dominoes) gets
 consolidated into the WRITE-LEDGER at the next beat.**
 
 NEXT: load and follow `prompts/04.5-consolidate.md`.
