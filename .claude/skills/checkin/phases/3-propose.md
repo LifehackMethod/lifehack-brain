@@ -375,6 +375,25 @@ this session** — an unresolved question is `open`, never `locked`. When unsure
 **One receipt:** *"📝 scratchpad +N · 📖 story log +M · ⛔ ruled-out +K — [terse list]."* Nothing rose to
 the bar → say so in one line. **Never manufacture entries.**
 
+## Step 3.65 — Write the step-receipt (checkin→save seam)
+
+**Purely informational — never a gate.** This is a data seam for `/save`'s session-close flow, not a
+precondition anything here enforces. One line, no judgment:
+
+```bash
+bash "$ROOT/system/hooks/step_receipt.sh" write checkin \
+  slug="$(bash "$ROOT/system/hooks/pm_flag.sh" locked)" \
+  doc_path="$(bash "$ROOT/system/hooks/pm_flag.sh" status)"
+```
+
+Reconcile has already completed by this point in the run, and a project is armed by construction
+(`system/hooks/guard_checkin_needs_project.sh` refuses `/checkin` with none armed) — so `locked` and
+`status` are always real values here, never `none`. If the write itself fails for any reason, say so in
+one line and continue; nothing downstream depends on this succeeding. `/save`'s SC-0 reads this back to
+skip re-deriving the same project identity **once** — see `.claude/skills/save/phases/session-close.md`.
+If the receipt is absent, expired, or unreadable when `/save` looks, its own existing ask-fallback runs
+completely unchanged. This never blocks anything, on either side.
+
 ## Step 4 — Offer the deep pass
 
 The harvest captured the ephemeral notes and appended the confirmed decisions. **The heavy curation —
