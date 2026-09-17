@@ -38,6 +38,22 @@ with it instead of depending on someone separately remembering to run it.
 **Verify:** a session-close `/save` shows `/checkin` running before SC-1. A mid-session `/save` does not
 invoke it at all. With no project armed, the refusal appears and `/save` completes normally.
 
+**Then, whether `/checkin` ran to completion or was refused — read its step-receipt, informationally:**
+
+```bash
+bash "$ROOT/system/hooks/step_receipt.sh" read checkin slug doc_path
+```
+
+- **Exit 0** → `/checkin` confirmed a project this session and the printed `slug=`/`doc_path=` lines are
+  authoritative for the rest of this save — **use them, skip re-deriving the project in step 0.5
+  below.** This is a shortcut, nothing more.
+- **Any non-zero exit** (the receipt is absent, expired, or corrupt — the command prints `ABSENT` /
+  `EXPIRED` / `INVALID` to say which) → **change nothing.** Continue into step 0 / 0.4 / 0.5's normal
+  ask-fallback exactly as if this step did not exist. ⛔ **This is never a gate.** A missing or bad
+  receipt is not an error to report or a reason to slow down — it is the ordinary case for a session
+  that never ran `/checkin`, or ran it before a project was truly settled, per §0 of the K6 design
+  (advisory/informational only; `/save` must never be blocked by this seam).
+
 ---
 
 ## SC-1 — Extract, with reasoning
