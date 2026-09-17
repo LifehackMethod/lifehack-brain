@@ -294,6 +294,146 @@ printf '%s' "$WT_PAYLOAD" | env -u LIFEHACK_ROOT bash "$LINKWT/system/hooks/inge
 if [ $? = 0 ]; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL [linked worktree borrows main's brain]: own notes read as EXTERNAL from inside a linked worktree"; fi
 rm -rf "$WTROOT"
 
+echo "-- ⭐ INGEST-GATE-WORKTREE-FIX-CARD: trust by the TARGET FILE's own git identity, never by \$0 --"
+# THE BUG (INGEST-GATE-WORKTREE-FIX-CARD.md, 2026-09-16): \$REPO is derived from wherever *this
+# script* happens to be invoked from (\$0), never from what repo the session is actually working in.
+# A session running inside a linked worktree, with the plugin ALSO registering this same hook from
+# the (non-git) plugin cache, gets denied its OWN repo's tracked files as somebody else's document --
+# the plugin-cache copy's \$0 can never be the worktree, no matter how worktree-aware the logic
+# inside the script becomes. This suite's own \$HOOK may or may not itself sit inside a git repo
+# depending on which checkout runs it; every case below builds its OWN synthetic Harness checkout,
+# deliberately separate from \$REPO/\$HOOKDIR, so a pass proves the NEW cross-repo route fired, not
+# the ordinary \$REPO allow.
+#
+# Real, disposable \`git init\`/\`git worktree add\`, fully disconnected from this repo's own git
+# history -- unlike the #95 fixture above (which fakes the .git-file SHAPE precisely to avoid a git
+# subprocess on every call), the new route here only runs \`git\` on the deny path, so there is no
+# reason to fake it and a real repo/worktree is more faithful to what is actually being proven.
+WTFROOT="$(mktemp -d "${TMPDIR:-/tmp}/gatetest-wtfix.XXXXXX")"
+CANON_ORIGIN="https://github.com/LifehackMethod/lifehack-brain.git"
+
+# An outside target that exists BEFORE any symlink points at it, so realpath resolves cleanly.
+OUTSIDE_TARGET="$WTFROOT/outside-file.md"
+printf 'outside\n' > "$OUTSIDE_TARGET"
+
+MAINCLONE="$WTFROOT/main-clone"
+mkdir -p "$MAINCLONE/system/hooks" "$MAINCLONE/system/register" "$MAINCLONE/docs"
+git -C "$MAINCLONE" init -q
+git -C "$MAINCLONE" config user.email "test@example.com"
+git -C "$MAINCLONE" config user.name "test"
+# ⭐ LEAD REVIEW (2026-09-17): the canonical-remote check means every legitimate positive case below
+# needs this origin configured -- worktrees share their main clone's config, so setting it once here
+# covers the worktree created from this clone too.
+git -C "$MAINCLONE" remote add origin "$CANON_ORIGIN"
+cp "$HOOK" "$MAINCLONE/system/hooks/ingest_gate_enforce.sh"
+printf '{}\n' > "$MAINCLONE/system/register/register.jsonl"
+printf '# CLAUDE\n' > "$MAINCLONE/CLAUDE.md"
+printf 'tracked note\n' > "$MAINCLONE/docs/note.md"
+# A tracked symlink pointing to ANOTHER TRACKED FILE inside this same repo (relative target, same
+# dir) -- proves a legitimate in-repo alias is not collateral damage from the new escape check.
+ln -s note.md "$MAINCLONE/docs/alias-inside.md"
+# A tracked symlink pointing OUTSIDE the repo entirely -- git only ever tracks the symlink's own
+# path; nothing here validates where it leads, which is exactly what the new escape check must.
+ln -s "$OUTSIDE_TARGET" "$MAINCLONE/docs/alias-outside.md"
+git -C "$MAINCLONE" add -A
+git -C "$MAINCLONE" commit -q -m "seed"
+
+# A REAL linked worktree of MAINCLONE -- \`git worktree add\` materialises only TRACKED files.
+HARNESSWT="$WTFROOT/harness-worktree"
+git -C "$MAINCLONE" worktree add -q "$HARNESSWT" -b gatetest-wtfix-branch >/dev/null 2>&1
+# An UNTRACKED file, dropped straight onto the worktree's disk -- never part of the repo's history.
+printf 'untracked note\n' > "$HARNESSWT/docs/dropped-in.md"
+# An UNTRACKED symlink pointing outside -- distinct from the TRACKED case below: this one is already
+# caught by the tracked-files-only check alone, whatever the escape check does.
+ln -s "$OUTSIDE_TARGET" "$HARNESSWT/docs/points-outside-untracked.md"
+
+TRACKED_PAYLOAD="$(j Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]}))" "$HARNESSWT/docs/note.md")")"
+UNTRACKED_PAYLOAD="$(j Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]}))" "$HARNESSWT/docs/dropped-in.md")")"
+ALIAS_INSIDE_PAYLOAD="$(j Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]}))" "$HARNESSWT/docs/alias-inside.md")")"
+ALIAS_OUTSIDE_PAYLOAD="$(j Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]}))" "$HARNESSWT/docs/alias-outside.md")")"
+UNTRACKED_SYMLINK_PAYLOAD="$(j Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]}))" "$HARNESSWT/docs/points-outside-untracked.md")")"
+
+run "worktree: tracked file, plugin-copy hook -> ALLOW"          0 "$TRACKED_PAYLOAD"
+run "worktree: UNTRACKED file, same worktree -> gated"           2 "$UNTRACKED_PAYLOAD"
+run "worktree: tracked symlink -> tracked file inside -> ALLOW"  0 "$ALIAS_INSIDE_PAYLOAD"
+run "worktree: tracked symlink -> outside the repo -> gated"     2 "$ALIAS_OUTSIDE_PAYLOAD"
+run "worktree: UNTRACKED symlink -> outside -> gated"            2 "$UNTRACKED_SYMLINK_PAYLOAD"
+
+# A real git repo that is NOT a recognized Harness checkout (missing the 3 required files).
+OTHERREPO="$WTFROOT/other-repo"
+mkdir -p "$OTHERREPO/docs"
+git -C "$OTHERREPO" init -q
+git -C "$OTHERREPO" config user.email "test@example.com"
+git -C "$OTHERREPO" config user.name "test"
+git -C "$OTHERREPO" remote add origin "$CANON_ORIGIN"
+printf 'hi\n' > "$OTHERREPO/docs/note.md"
+git -C "$OTHERREPO" add -A
+git -C "$OTHERREPO" commit -q -m "seed"
+OTHER_PAYLOAD="$(j Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]}))" "$OTHERREPO/docs/note.md")")"
+run "non-Harness git repo (tracked, wrong shape) -> gated" 2 "$OTHER_PAYLOAD"
+
+# A path outside any repo whatsoever.
+NOREPODIR="$WTFROOT/plain-dir"
+mkdir -p "$NOREPODIR"
+printf 'hi\n' > "$NOREPODIR/note.txt"
+NOREPO_PAYLOAD="$(j Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]}))" "$NOREPODIR/note.txt")")"
+run "path outside any repo -> gated"                        2 "$NOREPO_PAYLOAD"
+
+echo "-- ⭐ LEAD REVIEW 2026-09-17: shape alone is spoofable -- the origin must be the canonical remote --"
+# A hostile repo with the EXACT 3-file shape (a lookalike deliberately mimicking the layout) but an
+# origin that is NOT the canonical Harness remote.
+HOSTILE="$WTFROOT/hostile-lookalike"
+mkdir -p "$HOSTILE/system/hooks" "$HOSTILE/system/register" "$HOSTILE/docs"
+git -C "$HOSTILE" init -q
+git -C "$HOSTILE" config user.email "test@example.com"
+git -C "$HOSTILE" config user.name "test"
+git -C "$HOSTILE" remote add origin "https://github.com/evil/lifehack-brain-lookalike.git"
+cp "$HOOK" "$HOSTILE/system/hooks/ingest_gate_enforce.sh"
+printf '{}\n' > "$HOSTILE/system/register/register.jsonl"
+printf '# CLAUDE\n' > "$HOSTILE/CLAUDE.md"
+printf 'hostile note\n' > "$HOSTILE/docs/note.md"
+git -C "$HOSTILE" add -A
+git -C "$HOSTILE" commit -q -m "seed"
+HOSTILE_PAYLOAD="$(j Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]}))" "$HOSTILE/docs/note.md")")"
+run "hostile lookalike (right shape, wrong origin) -> gated"      2 "$HOSTILE_PAYLOAD"
+
+# Same shape, but NO remote configured at all -- must fall to gated, never trust by absence.
+NOREMOTE="$WTFROOT/no-remote"
+mkdir -p "$NOREMOTE/system/hooks" "$NOREMOTE/system/register" "$NOREMOTE/docs"
+git -C "$NOREMOTE" init -q
+git -C "$NOREMOTE" config user.email "test@example.com"
+git -C "$NOREMOTE" config user.name "test"
+cp "$HOOK" "$NOREMOTE/system/hooks/ingest_gate_enforce.sh"
+printf '{}\n' > "$NOREMOTE/system/register/register.jsonl"
+printf '# CLAUDE\n' > "$NOREMOTE/CLAUDE.md"
+printf 'no-remote note\n' > "$NOREMOTE/docs/note.md"
+git -C "$NOREMOTE" add -A
+git -C "$NOREMOTE" commit -q -m "seed"
+NOREMOTE_PAYLOAD="$(j Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]}))" "$NOREMOTE/docs/note.md")")"
+run "right shape, NO remote at all -> gated"                      2 "$NOREMOTE_PAYLOAD"
+
+# The ssh-form origin, which must be accepted exactly like the https form.
+SSHREPO="$WTFROOT/ssh-origin-repo"
+mkdir -p "$SSHREPO/system/hooks" "$SSHREPO/system/register" "$SSHREPO/docs"
+git -C "$SSHREPO" init -q
+git -C "$SSHREPO" config user.email "test@example.com"
+git -C "$SSHREPO" config user.name "test"
+git -C "$SSHREPO" remote add origin "git@github.com:LifehackMethod/lifehack-brain.git"
+cp "$HOOK" "$SSHREPO/system/hooks/ingest_gate_enforce.sh"
+printf '{}\n' > "$SSHREPO/system/register/register.jsonl"
+printf '# CLAUDE\n' > "$SSHREPO/CLAUDE.md"
+printf 'ssh note\n' > "$SSHREPO/docs/note.md"
+git -C "$SSHREPO" add -A
+git -C "$SSHREPO" commit -q -m "seed"
+SSH_PAYLOAD="$(j Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]}))" "$SSHREPO/docs/note.md")")"
+run "ssh-form canonical origin (git@github.com:...) -> ALLOW"    0 "$SSH_PAYLOAD"
+
+git -C "$MAINCLONE" worktree remove --force "$HARNESSWT" >/dev/null 2>&1
+rm -rf "$WTFROOT"
+# The plugin cache's own files (no .git at all) must stay UNCHANGED by all of the above -- the
+# existing "external .txt"/"external .md"/"external no extension" cases earlier in this suite
+# already prove that end to end and are left unmodified; their tally is part of the RESULT below.
+
 echo ""
 echo "RESULT: $pass passed, $fail failed."
 [ "$fail" = 0 ] && echo "INGEST GATE GREEN" || exit 1

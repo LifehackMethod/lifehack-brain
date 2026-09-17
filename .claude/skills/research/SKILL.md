@@ -101,7 +101,11 @@ Not four rephrasings of one query:
 
 ## Step 3 — Dispatch them blind, isolated, in parallel
 
-Spawn every angle **in one message** so they run concurrently, each as `subagent_type: web-searcher`.
+Spawn every angle **in one message** so they run concurrently, each as `subagent_type:
+lifehack-brain:web-searcher` first, bare `web-searcher` second (clone-install fallback); if neither
+spawns, STOP and refuse rather than search from the main session or through an unrestricted agent —
+the whole point of `web-searcher` is that it holds ONLY Bash + Read, forced through the safe stack,
+and a raw fallback loses exactly that guarantee.
 That agent's own file pins its model and its tool list; do not override either. Fill in the angle and
 the neutral question, and **never mention the user's current approach**:
 
