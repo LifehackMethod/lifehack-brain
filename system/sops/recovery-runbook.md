@@ -48,8 +48,8 @@ authority: user
 5. Restore the OS schedule from the versioned manifest — **do not hand-add cron lines**:
    `bash ~/claudeops-config/system/tools/install-schedulers.sh --install`
    This reads `system/pulse-config.md` (the enforced single source of truth for all crontab + launchd jobs)
-   and installs the correct schedule for this machine. If this machine should be the Pulse writer (Studio vs Air),
-   flip the primary-machine marker first: `bash ~/claudeops-config/system/tools/claudeops-lead.sh studio`
+   and installs the correct schedule for this machine. If this machine should be the Pulse writer (primary vs secondary),
+   flip the primary-machine marker first: `bash ~/claudeops-config/system/tools/claudeops-lead.sh primary`
    (or `mba`). The marker lives at `state/primary-machine`.
 6. Verify: `python3 ~/claudeops-config/system/tools/verify-connections.py` (board) +
    `python3 ~/claudeops-config/system/tools/check-content-paths.py` (P9 clean).
@@ -80,7 +80,7 @@ authority: user
   machine-local, never Drive). Runners export it as `CLAUDE_CODE_OAUTH_TOKEN`.
 
 ## F. The Air is out of sync (e.g. after a history rewrite)
-- The Air is a peer clone + observer (single-writer = Studio owns scheduled Drive writes). To resync after a
+- The secondary machine is a peer clone + observer (single-writer = the primary machine owns scheduled Drive writes). To resync after a
   normal change: `cd ~/claudeops-config && git pull --ff-only`. **After a history rewrite/force-push** a pull
   will fail — instead: `git fetch origin && git reset --hard origin/main && git gc --prune=now`.
 
@@ -92,7 +92,7 @@ authority: user
 
 - **`verify-connections.py` → expect `5/6` on the Air today, NOT 6/6.** *(Was "6/6 desk tiles GREEN" — an
   **unpassable** condition.)* The 6th is **dobby**, reported STALE at **584.2 h ≈ 24.3 days**, which exactly
-  matches the Studio being dark since 2026-07-04. **dobby is machine-local to the Studio and was ruled
+  matches the primary machine being dark since 2026-07-04. **dobby is machine-local to the primary machine and was ruled
   DORMANT by design (`c08f554`) — its red is CORRECT, not a defect.** A recovery bar that can only go green
   when a deliberately-offline machine is online is the same unfalsifiable-condition defect this system's
   audit keeps finding. **⇒ Read the LIST, not the ratio: every tile except a known-dormant one must be

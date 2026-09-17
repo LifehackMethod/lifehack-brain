@@ -57,7 +57,7 @@ authority: user
 > ⛔ `state/status/sentinel.json` — runtime-generated, created on first run, never committed. A status tile the reader's own run writes under their notes/data root (shared/gate/sentinel_response.py line 53 resolves it as `{DATA}/state/status/sentinel.json`); its writers system/tools/sentinel-health.py and system/tools/sentinel-health-run.sh DO ship.
 > ⛔ `state/status/*.json` — every other tile of this shape named below is the same class: runtime-generated, created on first run, never committed.
 >
-> ✅ landed — `system/schemas/runner-standard.md`, the codified `*-run.sh` contract, is now present in `system/schemas/` (21,251 bytes, confirmed 2026-08-24). The line above previously deferred it; that deferral is now stale.
+> ~~`✅` landed — `system/schemas/runner-standard.md`, the codified `*-run.sh` contract, is now present in `system/schemas/` (21,251 bytes, confirmed 2026-08-24). The line above previously deferred it; that deferral is now stale.~~ **⚠ CORRECTED 2026-09-17: ⛔ `system/schemas/runner-standard.md` is NOT in this repo** (0 files, verified this session; `git log --follow` on this path returns no commits — it was never added here). The 2026-08-24 confirmation above does not hold today.
 > `system/tools/planning-health.py` line 23 reasons against "the runner-standard rc=1", and the contract it cites now exists.
 
 > ⚖ **NOTE 2026-08-15 — the `…_studio_…` gate names below are DONOR CODE IDENTIFIERS, and are
@@ -242,7 +242,7 @@ pulse.sh → bash {job}-run.sh </dev/null   [CODE: system/tools/{job}-run.sh]
           primary-gate.sh:require_primary (lines 44-47): plain echo + return 1, NO notify-send, NO exit
           archivist-run.lib.sh inline gate: return 0, NO notify-send
           (fail-CLOSED for Drive writes — no writer runs without a designated lead — but the notify channel varies)
-  → [GATE 2 — HARDWARE GATE, dobby/emporia only]
+  → [GATE 2 — HARDWARE GATE, dobby/the energy-monitor host only]
       require_studio_hardware (ingest-run.lib.sh:89–94):
         case $ComputerName in *<hardware-host>*) ;; *) exit 0 ;; esac
         Hard pin — not lead-selectable; the hardware is physically absent on every other machine.~~
@@ -459,7 +459,7 @@ These have NO machine gate and write only machine-local paths or the shared clon
 
 #### H. Hardware-pinned runners (one designated machine only)
 
-~~`dobby-health · emporia` — `require_studio_hardware` (`ingest-run.lib.sh:89–94`; case on the hardware host's `ComputerName`) exits 0 everywhere else. The relevant hardware is physically absent on every other machine; this is a permanent hard pin, NOT a lead-selectable gate.~~
+~~`dobby-health` · the energy monitor — `require_studio_hardware` (`ingest-run.lib.sh:89–94`; case on the hardware host's `ComputerName`) exits 0 everywhere else. The relevant hardware is physically absent on every other machine; this is a permanent hard pin, NOT a lead-selectable gate.~~
 **⚠ CORRECTED 2026-09-01 (#61).** `require_studio_hardware` is not live — `system/tools/ingest-run.lib.sh`'s own header (lines ~12–14, quoted above at this file's line 64) lists it as one of three functions explicitly DROPPED and never ported, with "None of the three functions exists in this repo — verified by grep: no definition and no call site anywhere, in any language." Re-verified this session: `grep -rn "require_studio_hardware" system/` (excluding this doc) finds it only inside that same drop-note. And `ingest-run.lib.sh:89–94` — read directly this session — is not this function at all; those lines are the `CLAUDE_BIN` resolution block (`CLAUDE_BIN="${CLAUDE_BIN:-$(command -v claude ...)}"` through the fallback loop over `~/.local/bin/claude` / `/opt/homebrew/bin/claude` / `/usr/local/bin/claude`), unrelated to any hardware pin. Whatever machine-pinning `dobby-health`/`emporia` actually rely on (if any) is unverified here — this section only disproves the cited mechanism, it does not establish a replacement.
 
 ---
@@ -538,7 +538,7 @@ Mechanism in all cases: `/usr/sbin/scutil --get ComputerName` (absolute path —
 
 ~~**2. Hardware gate — `require_studio_hardware` (BLOCKING; `exit 0` on any machine but the pinned one; `ingest-run.lib.sh:89–94`)**
 
-Case on the raw `ComputerName` of the machine the hardware is physically attached to. NOT lead-selectable — this is a permanent hard pin based on hardware presence. Used by `dobby-health` and `emporia`.~~
+Case on the raw `ComputerName` of the machine the hardware is physically attached to. NOT lead-selectable — this is a permanent hard pin based on hardware presence. Used by `dobby-health` and the energy monitor.~~
 **⚠ CORRECTED 2026-09-01 (#61) — this subsection was missed by the 2026-08-24 correction banner
 above it, even though that banner's own text names `require_studio_hardware` as one of the things it
 covers.** `require_studio_hardware` does not exist in this repo: `system/tools/ingest-run.lib.sh`'s
@@ -549,7 +549,7 @@ only in that drop-note. `ingest-run.lib.sh:89–94` — read directly this sessi
 function; it is the `CLAUDE_BIN` resolution block (the `command -v claude` / `~/.local/bin/claude` /
 `/opt/homebrew/bin/claude` / `/usr/local/bin/claude` fallback chain), unrelated to hardware pinning.
 See the same finding at this file's "H. Hardware-pinned runners" line above. Whatever actually
-machine-pins `dobby-health`/`emporia` (if anything) is unverified here.
+machine-pins `dobby-health`/the energy monitor (if anything) is unverified here.
 
 **3. Circuit breaker — `pulse.sh:150–213`**
 
