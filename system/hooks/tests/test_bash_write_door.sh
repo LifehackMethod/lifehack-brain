@@ -221,6 +221,45 @@ case "$got" in
     fail=$((fail+1)); printf '  FAIL  %s  (got %s) -- the allowlist must never silently widen to the full environment\n' "an arbitrary inherited env var must not be resolved" "$got" ;;
 esac
 
+# CLAUDE_PROJECT_DIR and TMPDIR -- added 2026-09-17 after a lead review found the first cut of this
+# fix denying ordinary commands built from these two (every hook legitimately sees both) outright.
+CPD_TEST_VAL="/tmp/bwd-allowlist-cpd-$$"
+got=$(CLAUDE_PROJECT_DIR="$CPD_TEST_VAL" bwd_write_targets 'cp a "$CLAUDE_PROJECT_DIR/tmp/b"')
+if [ "$got" = "$CPD_TEST_VAL/tmp/b" ]; then
+  pass=$((pass+1)); printf '   ok   %s\n' "bare \$CLAUDE_PROJECT_DIR resolves via the allowlist"
+else
+  fail=$((fail+1)); printf '  FAIL  %s  (wanted %s, got %s)\n' "bare \$CLAUDE_PROJECT_DIR resolves via the allowlist" "$CPD_TEST_VAL/tmp/b" "$got"
+fi
+TMPDIR_TEST_VAL="/tmp/bwd-allowlist-tmpdir-$$"
+got=$(TMPDIR="$TMPDIR_TEST_VAL" bwd_write_targets 'echo x > "$TMPDIR/foo.txt"')
+if [ "$got" = "$TMPDIR_TEST_VAL/foo.txt" ]; then
+  pass=$((pass+1)); printf '   ok   %s\n' "bare \$TMPDIR resolves via the allowlist -- an ordinary command is not denied"
+else
+  fail=$((fail+1)); printf '  FAIL  %s  (wanted %s, got %s)\n' "bare \$TMPDIR resolves via the allowlist" "$TMPDIR_TEST_VAL/foo.txt" "$got"
+fi
+
+echo
+echo "── bwd_sentinel_remainder (lib/bwd_sentinel_scope.sh) ──────────────────────────────────────"
+. lib/bwd_sentinel_scope.sh || { echo "FATAL: cannot source lib/bwd_sentinel_scope.sh"; exit 1; }
+
+remainder_eq() { # remainder_eq <expected> <raw_token> <name> <label>
+  got=$(bwd_sentinel_remainder "$2" "$3")
+  if [ "$got" = "$1" ]; then
+    pass=$((pass+1)); printf '   ok   %s\n' "$4"
+  else
+    fail=$((fail+1)); printf '  FAIL  %s  (wanted %s, got %s)\n' "$4" "$1" "$got"
+  fi
+}
+
+remainder_eq "/plans/x.plan.md" '$UNSET/plans/x.plan.md' "UNSET" \
+  "a leading \$NAME reference is removed, leaving the rest of the path"
+remainder_eq "/plans/x.plan.md" '${UNSET}/plans/x.plan.md' "UNSET" \
+  "the brace form \${NAME} is removed the same way"
+remainder_eq "" '$UNSET' "UNSET" \
+  "a token that WAS just the reference leaves an EMPTY remainder (the bare-variable case)"
+remainder_eq '$UNSET2/plans/x.plan.md' '$UNSET2/plans/x.plan.md' "UNSET" \
+  "word-boundary safe -- a name that is a strict prefix of a longer identifier is untouched"
+
 echo
 printf 'RESULT: %d passed, %d failed.\n' "$pass" "$fail"
 if [ "$fail" -eq 0 ]; then echo "BASH WRITE DOOR GREEN"; exit 0; fi

@@ -76,6 +76,18 @@ run "an EDIT of ordinary canon"       "$CANON" 0 "$(epay "$NOTES/desks/lamps/can
 printf 'not json' | env HOME="$SANDBOX" bash "$CANON" >/dev/null 2>&1
 [ $? = 2 ] && pass=$((pass+1)) || { fail=$((fail+1)); echo "  FAIL [canon: unparseable]: expected deny"; }
 
+echo "── guard_canon_write: unresolved-var scope narrowing (lead review, 2026-09-17) ─────────────"
+# An unresolved variable is NOT, on its own, evidence a Bash write lands in canon -- this is the
+# false-block regression a lead review caught in the first cut of the var-resolve fix.
+run "ordinary \$TMPDIR write -- ALLOW, unchanged" \
+  "$CANON" 0 "$(bpay 'echo x > "$TMPDIR/foo.txt"')" TMPDIR="$SANDBOX/tmp"
+run "unresolved var, remainder OUT of canon scope -- ALLOW" \
+  "$CANON" 0 "$(bpay 'cat >> "$UNSET_CANON_VAR/records/notes.md"')"
+run "unresolved var, remainder INSIDE canon scope -- DENY, names the var" \
+  "$CANON" 2 "$(bpay 'cat >> "$UNSET_CANON_VAR/canon/foo.md"')"
+run "a bare unresolved var with no remainder at all -- DENY (could be anything)" \
+  "$CANON" 2 "$(bpay 'cat >> "$UNSET_CANON_VAR"')"
+
 echo "── guard_pm_flag_store ───────────────────────────────────────────────────"
 PMDIR="\$HOME/.claude/run/pm"
 run "Write into the store"            "$STORE" 2 "$(wpay Write "$SANDBOX/.claude/run/pm/pm-sess-x.flag" "slug=beta")"
@@ -179,6 +191,16 @@ if printf '%s' "$OUT2" | grep -qF 'SOME_RANDOM_UNSET_VAR'; then
 else
   fail=$((fail+1)); echo "  FAIL [cross: unresolved var names the variable]: deny text did not name SOME_RANDOM_UNSET_VAR (got: $OUT2)"
 fi
+
+echo "── guard_cross_project_write: unresolved-var scope narrowing (lead review, 2026-09-17) ────"
+# An unresolved variable is NOT, on its own, evidence a Bash write lands in a project artifact --
+# this is the false-block regression a lead review caught in the first cut of the var-resolve fix.
+run "ordinary \$TMPDIR write -- ALLOW, unchanged" \
+  "$CROSS" 0 "$(bpay 'echo x > "$TMPDIR/foo.txt"')" CLAUDE_CODE_SESSION_ID=sess-alpha TMPDIR="$SANDBOX/tmp"
+run "unresolved var, remainder OUT of project-artifact scope -- ALLOW" \
+  "$CROSS" 0 "$(bpay 'cat >> "$UNSET_CROSS_VAR/records/notes.md"')" CLAUDE_CODE_SESSION_ID=sess-alpha
+run "a bare unresolved var with no remainder at all -- DENY (could be anything)" \
+  "$CROSS" 2 "$(bpay 'cat >> "$UNSET_CROSS_VAR"')" CLAUDE_CODE_SESSION_ID=sess-alpha
 
 echo ""
 echo "RESULT: $pass passed, $fail failed."

@@ -110,7 +110,10 @@ def looks_like_path(tok):
 # therefore hashed, is the real path.
 # ⛔ NARROW ON PURPOSE. Only `known_vars` (assignments seen EARLIER in this same command -- a
 # variable used before it is assigned is NOT resolved, same as a real shell) and a three-name
-# allowlist of vars any shell always inherits truthfully -- HOME, USER, PWD -- are ever substituted.
+# allowlist of vars a hook always legitimately sees -- HOME, USER, PWD, CLAUDE_PROJECT_DIR, TMPDIR
+# (2026-09-17: the last two added after a lead review found the first cut of this fix denying
+# ordinary commands like `echo x > "$TMPDIR/foo"` outright -- see the 5 caller scope-narrowing
+# checks, lib/bwd_sentinel_scope.sh, for the other half of that fix) -- are ever substituted.
 # Never the full os.environ: an unrelated build tool or session env var must never quietly stand in
 # for a real value. A command-substitution RHS (`` ` `` or `$(`) is NEVER evaluated -- this
 # file does no shell execution of any kind anywhere, only text analysis -- so a variable assigned that
@@ -126,7 +129,7 @@ def looks_like_path(tok):
 # specific message instead of the generic parse-error text.
 VAR_RE = re.compile("\\$\\{([A-Za-z_][A-Za-z0-9_]*)\\}|\\$([A-Za-z_][A-Za-z0-9_]*)")
 ASSIGN_RE = re.compile("^(?:export\\s+)?([A-Za-z_][A-Za-z0-9_]*)=(\\x22[^\\x22]*\\x22|\\x27[^\\x27]*\\x27|[^\\s]*)$")
-INHERITED_ALLOWLIST = ("HOME", "USER", "PWD")
+INHERITED_ALLOWLIST = ("HOME", "USER", "PWD", "CLAUDE_PROJECT_DIR", "TMPDIR")
 
 known_vars = {}
 poisoned = set()

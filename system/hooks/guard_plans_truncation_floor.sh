@@ -145,6 +145,8 @@ except Exception: print('')
   # shellcheck source=lib/bash_write_door.sh
   . "$_HOOKDIR/lib/bash_write_door.sh" 2>/dev/null || \
     deny "BLOCKED: guard_plans_truncation_floor could not load lib/bash_write_door.sh, so it is failing closed. This command names a path under .claude/plans and the Bash door into that directory is unguarded without the library. REDIRECT: restore system/hooks/lib/bash_write_door.sh from git, then retry. RULE: system/sops/hook-sop.md."
+  . "$_HOOKDIR/lib/bwd_sentinel_scope.sh" 2>/dev/null || \
+    deny "BLOCKED: guard_plans_truncation_floor could not load lib/bwd_sentinel_scope.sh, so an unresolved-variable write target cannot be safely narrowed against this guard's scope. REDIRECT: restore system/hooks/lib/bwd_sentinel_scope.sh from git, then retry. RULE: system/sops/hook-sop.md."
 
   # Append-only shapes cannot truncate. Neutralise them, then ask the library again.
   SCRUBBED=$(printf '%s' "$COMMAND" | sed -e 's/>>/ /g' -e 's/tee[[:space:]]\{1,\}-a/tee_append_noop/g')
@@ -157,8 +159,25 @@ except Exception: print('')
   esac
   case "$TARGETS" in
     *__BWD_UNRESOLVED_VAR__*)
-      _PT_VAR=$(printf '%s\n' "$TARGETS" | grep -m1 '__BWD_UNRESOLVED_VAR__' | cut -f2)
-      deny "BLOCKED: guard_plans_truncation_floor cannot verify this command's write target -- it builds a path from ${_PT_VAR:-a shell variable}, which this guard could not resolve from earlier in the same command, and this command names a path under .claude/plans. WHY: no backup can be made and no floor can be checked against a target this guard cannot actually resolve. REDIRECT: write the plan file through the Write tool instead, or expand ${_PT_VAR:-the variable} by hand before running this command. RULE: system/sops/hook-sop.md."
+      # SCOPE-NARROWED (2026-09-17, lead review). An unresolved variable alone is not evidence
+      # this write lands under the plans directory -- `echo x > "$TMPDIR/foo"` produces the same
+      # sentinel and has nothing to do with it. Only checks the FIRST sentinel line, same posture
+      # as the __BWD_PARSE_ERROR__ check above.
+      _PT_LINE=$(printf '%s\n' "$TARGETS" | grep -m1 '__BWD_UNRESOLVED_VAR__')
+      _PT_VAR=$(printf '%s' "$_PT_LINE" | cut -f2)
+      _PT_RAW=$(printf '%s' "$_PT_LINE" | cut -f3)
+      _PT_REM=$(bwd_sentinel_remainder "$_PT_RAW" "${_PT_VAR#\$}")
+      if [ -z "$_PT_REM" ]; then
+        deny "BLOCKED: guard_plans_truncation_floor cannot verify this command's write target -- it is JUST an unresolved shell variable (${_PT_VAR:-a shell variable}) with no surrounding path text this guard can rule out, and this command names a path under .claude/plans. REDIRECT: write the plan file through the Write tool instead, or expand ${_PT_VAR:-the variable} by hand before running this command. RULE: system/sops/hook-sop.md."
+      fi
+      # The plans directory's OWN last path segment (default "plans"; LHB_PLANS_DIR can rename
+      # it) is the one thing this guard can still check for without the unresolved prefix.
+      _PT_PLANS_BASENAME=$(basename "$PLANS_DIR")
+      case "$_PT_REM" in
+        */"$_PT_PLANS_BASENAME"/*|"$_PT_PLANS_BASENAME"/*)
+          deny "BLOCKED: guard_plans_truncation_floor cannot verify this command's write target -- it builds a path from ${_PT_VAR:-a shell variable}, which this guard could not resolve from earlier in the same command, and what is known of the rest of the path looks like the plans directory. WHY: no backup can be made and no floor can be checked against a target this guard cannot actually resolve. REDIRECT: write the plan file through the Write tool instead, or expand ${_PT_VAR:-the variable} by hand before running this command. RULE: system/sops/hook-sop.md."
+          ;;
+      esac
       ;;
   esac
 

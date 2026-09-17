@@ -150,6 +150,8 @@ case "$TOOL" in
     # shellcheck source=lib/bash_write_door.sh
     . "$HOOKDIR/lib/bash_write_door.sh" 2>/dev/null || {
       printf '%s\n' '{"decision":"block","reason":"BLOCKED: guard_cross_project_write could not load lib/bash_write_door.sh, so it is failing closed. The Bash door into another project'"'"'s brief is unguarded without it. REDIRECT: restore system/hooks/lib/bash_write_door.sh from git."}' >&2; exit 2; }
+    . "$HOOKDIR/lib/bwd_sentinel_scope.sh" 2>/dev/null || {
+      printf '%s\n' '{"decision":"block","reason":"BLOCKED: guard_cross_project_write could not load lib/bwd_sentinel_scope.sh, so an unresolved-variable write target cannot be safely narrowed against this guard'"'"'s scope. REDIRECT: restore system/hooks/lib/bwd_sentinel_scope.sh from git."}' >&2; exit 2; }
     _HIT=""
     while IFS= read -r _cand; do
       [ -n "$_cand" ] || continue
@@ -158,8 +160,22 @@ case "$TOOL" in
       fi
       case "$_cand" in
         __BWD_UNRESOLVED_VAR__*)
+          # SCOPE-NARROWED (2026-09-17, lead review). An unresolved variable alone is not
+          # evidence this write lands in a project artifact -- `echo x > "$TMPDIR/foo"` produces
+          # the same sentinel and has nothing to do with one. Re-run _slug_of, the SAME
+          # classification a real resolved candidate gets, against the REMAINDER (the token with
+          # its one unresolved $NAME reference removed) instead of denying on sight.
           _cvar="$(printf '%s' "$_cand" | cut -f2)"
-          printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: guard_cross_project_write cannot verify this Bash command's write target -- it builds a path from ${_cvar:-a shell variable}, which this guard could not resolve from earlier in the same command, so it cannot tell which project this write belongs to. WHY: an unresolved variable that happens to end in a project-shaped path is exactly the shape a cross-project write could hide inside (see lib/bash_write_door.sh, FIXCARD-CROSS-PROJECT-WRITE-VAR-PATHS). REDIRECT: use the Write or Edit tool, which this guard can read reliably, or expand ${_cvar:-the variable} by hand before running this command.\"}" >&2; exit 2 ;;
+          _craw="$(printf '%s' "$_cand" | cut -f3)"
+          _crem="$(bwd_sentinel_remainder "$_craw" "${_cvar#\$}")"
+          if [ -z "$_crem" ]; then
+            printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: guard_cross_project_write cannot verify this Bash command's write target -- it is JUST an unresolved shell variable (${_cvar:-a shell variable}) with no surrounding path text this guard can rule out. REDIRECT: use the Write or Edit tool, which this guard can read reliably, or expand ${_cvar:-the variable} by hand before running this command.\"}" >&2; exit 2
+          fi
+          if [ -n "$(_slug_of "$_crem")" ]; then
+            printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: guard_cross_project_write cannot verify this Bash command's write target -- it builds a path from ${_cvar:-a shell variable}, which this guard could not resolve from earlier in the same command, and what is known of the rest of the path looks like a project artifact. WHY: an unresolved variable that happens to end in a project-shaped path is exactly the shape a cross-project write could hide inside (see lib/bash_write_door.sh, FIXCARD-CROSS-PROJECT-WRITE-VAR-PATHS). REDIRECT: use the Write or Edit tool, which this guard can read reliably, or expand ${_cvar:-the variable} by hand before running this command.\"}" >&2; exit 2
+          fi
+          continue
+          ;;
       esac
       # only a path that is a PROJECT ARTIFACT is this guard's business; everything else is noise
       [ -n "$(_slug_of "$_cand")" ] && { _HIT="$_cand"; break; }

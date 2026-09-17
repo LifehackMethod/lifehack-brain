@@ -45,8 +45,9 @@ mkjson_bash() {
   T_CMD="$1" python3 -c 'import os, json; print(json.dumps({"tool_name": "Bash", "tool_input": {"command": os.environ["T_CMD"]}}))'
 }
 
+SCRATCH_TMPDIR="$SCRATCH/tmp"; mkdir -p "$SCRATCH_TMPDIR"
 run_guard() {
-  cat | HOME="$SCRATCH/home" CLAUDE_PROJECT_DIR="$REPO" bash "$GUARD" 2>"$ERRF"
+  cat | HOME="$SCRATCH/home" CLAUDE_PROJECT_DIR="$REPO" TMPDIR="$SCRATCH_TMPDIR" bash "$GUARD" 2>"$ERRF"
 }
 
 allow() {
@@ -129,6 +130,25 @@ else
   FAILED=$((FAILED + 1))
 fi
 rm -f "$BRIEF.pre-shrink.bak"
+
+echo
+echo "=== unresolved-var scope narrowing (lead review, 2026-09-17) ==="
+# An unresolved variable is NOT, on its own, evidence a Bash write lands in a project brief --
+# false-block regression a lead review caught in the first cut of the var-resolve fix.
+# NOTE: these use a single ">" (overwrite), never ">>" -- this guard SCRUBS ">>" before analysis
+# (appends cannot truncate, so they are never its business, unrelated to this fix).
+
+allow "an ordinary \$TMPDIR write, unrelated to any brief" \
+  "$(mkjson_bash "echo x > \"\$TMPDIR/foo.txt\"; cat \"$BRIEF\" > /dev/null")"
+
+allow "unresolved var write elsewhere, brief only READ in the same command" \
+  "$(mkjson_bash "printf 'x' > \"\$UNSET_BRIEF_VAR/scratch/notes.md\"; python3 -c \"print(len(open('$BRIEF').read()))\"")"
+
+deny "unresolved var whose remainder looks like a project brief -- names the var" \
+  "$(mkjson_bash "cat > \"\$UNSET_BRIEF_VAR/projects/demo/brief.md\"")" "UNSET_BRIEF_VAR"
+
+deny "a bare unresolved var with no remainder, brief mentioned elsewhere -- could be anything" \
+  "$(mkjson_bash "cat > \"\$UNSET_BRIEF_VAR\"; cat \"$BRIEF\" > /dev/null")" "UNSET_BRIEF_VAR"
 
 echo
 echo "  $PASSED passed, $FAILED failed"
