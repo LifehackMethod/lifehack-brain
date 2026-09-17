@@ -223,6 +223,30 @@ UNREGISTERED_OK = {
                               "system/hooks/group_dispatch_pilot-map-ups.sh's MEMBERS array, not "
                               "named directly in any wiring file. See the block comment above this "
                               "entry.",
+    # K6 (enforcement-layer Phase 2, 2026-09-17) -- two new system/hooks/ files, both unregistered
+    # ON PURPOSE. See K6-DESIGN-SPEC.md and each script's own LLM CONTEXT block for the full
+    # reasoning; short version below.
+    "guard_step_gate.sh": "IS a hook (PreToolUse(Skill) + UserPromptExpansion branches, same shape "
+                          "as guard_checkin_needs_project.sh) but deliberately NOT registered in "
+                          "this build -- no row in system/register/register.jsonl wires it to any "
+                          "real skill. It is a generic, register-driven mechanism: given the "
+                          "invoked skill's own `needs`, it denies on a missing step-receipt. Wiring "
+                          "it to save's Skill invocation would turn the checkin->save seam's "
+                          "advisory-only `needs`/`returns` declaration (K6 SS1) into a hard block, "
+                          "which R9/R34 explicitly forbid -- and no other genuine hard-gate "
+                          "boundary exists yet in this build. Proven correct via its own test "
+                          "suite (system/hooks/tests/test_guard_step_gate.sh) against a synthetic "
+                          "register fixture instead. It ships as infrastructure for a FUTURE "
+                          "no-skip boundary -- see its own REDIRECT note for exactly what wiring "
+                          "it in later requires (a register row, not a new bash file).",
+    "step_receipt.sh": "a command-line tool a skill's own phase file calls directly (write/read), "
+                       "not a hook -- same category as pm_flag.sh/skill_anchor.sh above. It is "
+                       "the checkin->save seam's carrier (K6 SS3): checkin/phases/3-propose.md "
+                       "writes a receipt, save/phases/session-close.md SC-0 reads it back, "
+                       "informationally only -- a non-zero read exit is never a block, only a "
+                       "signal to fall back to save's existing ask-fallback unchanged. Proven via "
+                       "system/hooks/tests/test_checkin_save_seam.sh, including the proven-fail "
+                       "(corrupted receipt) case.",
 }
 
 # A backticked `/word` is usually a skill here — but not always, and neither of these is ours to
