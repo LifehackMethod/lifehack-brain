@@ -14,9 +14,16 @@ passing known-good input AND failing known-bad input (the collapse rule,
 plan §0.1 rule 3) before its verdict counts for anything downstream.
 """
 import json
+import re
 import sys
+from datetime import date
 
 from schema_v1 import fields_for, UNIT_TYPES, STRICT_UNKNOWN_KEYS, GROUPABLE_HOOK_EVENTS
+
+# S1/K1 (2026-09-16): the register-backed switch's expiry shape. Date REALITY
+# (2026-02-31 is a reject, not a suspension) is checked with fromisoformat in
+# validate_row(); this regex only anchors the YYYY-MM-DD shape first.
+EXPIRY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _isinstance_strict(value, expected_type):
@@ -28,6 +35,17 @@ def _isinstance_strict(value, expected_type):
     if is_numeric_check and isinstance(value, bool):
         return False
     return isinstance(value, expected_type)
+
+
+def _real_date(value):
+    """YYYY-MM-DD-shaped string -> is it a date that actually exists?
+    date.fromisoformat raises on 2026-02-31-shaped impossibilities; the shape
+    itself is anchored by EXPIRY_RE before this is ever called."""
+    try:
+        date.fromisoformat(value)
+        return True
+    except ValueError:
+        return False
 
 
 def validate_row(row, line_no):
@@ -86,9 +104,11 @@ def validate_row(row, line_no):
     # 2. cross-field constraint: exists=False <=> sha is None (T2's own rule).
     if row.get("exists") is False and row.get("sha") is not None:
         errors.append(f"line {line_no}: exists=False but sha is not null")
-    if row.get("exists") is True and row.get("type") in ("hook", "tool", "skill") and row.get("sha") is None:
+    if row.get("exists") is True and row.get("type") in ("hook", "tool", "skill", "githook") and row.get("sha") is None:
         # scheduled rows have no single backing file, so this constraint is
-        # hook/tool/skill only (see schema-v1.md).
+        # hook/tool/skill/githook only (see schema-v1.md). A githook row DOES
+        # have one backing file (one row per git-hook script, K2, 2026-09-16),
+        # same one-row-one-file shape as hook/tool/skill above.
         errors.append(f"line {line_no}: exists=True but sha is null")
 
     # 3. cross-field constraint: `group` (B5.2) is legal ONLY on a hook row
@@ -111,7 +131,38 @@ def validate_row(row, line_no):
                 f"'weakest guard wins')"
             )
 
-    # 4. no unregistered fields — "encode only what has already converged"
+    # 4. cross-field constraint: the register-backed switch (S1/K1, 2026-09-16 —
+    #    Enver's stamped binding constraint: the hook-edit protection's switch
+    #    STATE and EXPIRY live in the register as data). state="suspended"
+    #    REQUIRES a valid, real YYYY-MM-DD `expiry`: a suspension with no
+    #    expiry is a permanent lift, and the design's whole point is that a
+    #    forgotten switch self-heals AT its expiry. state="active" requires
+    #    expiry null: an active row carrying a date is an ambiguous switch,
+    #    and the register never stores ambiguity. HARD REJECT, like `group`
+    #    above — never a WARN.
+    if row.get("type") == "hook":
+        state = row.get("state")
+        expiry = row.get("expiry")
+        if state == "suspended":
+            if expiry is None:
+                errors.append(
+                    f"line {line_no}: state='suspended' but 'expiry' is null — a "
+                    "suspension with no expiry is a permanent lift, which S1 "
+                    "forbids (the self-heal IS the expiry)"
+                )
+            elif not EXPIRY_RE.match(expiry) or not _real_date(expiry):
+                errors.append(
+                    f"line {line_no}: 'expiry'={expiry!r} is not a real "
+                    "YYYY-MM-DD date (required when state='suspended')"
+                )
+        elif state == "active" and expiry is not None:
+            errors.append(
+                f"line {line_no}: state='active' but 'expiry'={expiry!r} — an "
+                "active row carries expiry=null; the register never stores an "
+                "ambiguous switch"
+            )
+
+    # 5. no unregistered fields — "encode only what has already converged"
     #    (constraint 0.5): a stray key is either dead weight or an
     #    un-ruled extension, and either way it doesn't belong in v1 silently.
     if STRICT_UNKNOWN_KEYS:
@@ -125,6 +176,7 @@ def validate_row(row, line_no):
 
 def validate_file(path):
     passed, rejected = [], []
+    rows_by_line = {}
     with open(path, encoding="utf-8") as f:
         for i, line in enumerate(f, start=1):
             line = line.strip()
@@ -140,6 +192,44 @@ def validate_file(path):
                 rejected.append((i, errs))
             else:
                 passed.append(i)
+                rows_by_line[i] = row
+
+    # Cross-*row* check (R2 Part B, 2026-09-16): `protects_permissions`
+    # ownership of a `permissions.deny` string must be UNIQUE across rows —
+    # generate.py's install_into_repo() reads the switch state of whichever
+    # row(s) claim a string to decide REMOVE vs APPEND, and two rows claiming
+    # the same string could disagree (one honored-suspended, one active),
+    # giving a conflicting present/absent verdict for the same deny line.
+    # This can't live in validate_row() (per-row) — it's inherently about
+    # relationships BETWEEN rows. Only individually-passed rows are
+    # considered: a row already rejected for its own shape is not
+    # trustworthy input for a cross-row rule.
+    owners = {}
+    for i, row in rows_by_line.items():
+        if row.get("type") != "hook":
+            continue
+        for s in row.get("protects_permissions", []):
+            owners.setdefault(s, []).append(i)
+    dup_errors = {}
+    for s, lines in owners.items():
+        if len(lines) > 1:
+            for i in lines:
+                others = [l for l in lines if l != i]
+                dup_errors.setdefault(i, []).append(
+                    f"line {i}: 'protects_permissions' string {s!r} is also "
+                    f"claimed by line(s) {others} — ownership must be unique "
+                    "(ambiguous present/absent verdict downstream)"
+                )
+    if dup_errors:
+        still_passed = []
+        for i in passed:
+            if i in dup_errors:
+                rejected.append((i, dup_errors[i]))
+            else:
+                still_passed.append(i)
+        passed = still_passed
+        rejected.sort(key=lambda t: t[0])
+
     return passed, rejected
 
 

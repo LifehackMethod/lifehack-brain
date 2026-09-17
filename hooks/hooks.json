@@ -251,6 +251,11 @@
       "type": "command",
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_brief_truncation.sh\"",
       "statusMessage": "Checking this doesn't silently shrink a project brief..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_plans_truncation_floor.sh\"",
+      "statusMessage": "Checking this doesn't shrink a plan file below the floor..."
      }
     ],
     "matcher": "Write|Edit|MultiEdit|Bash"

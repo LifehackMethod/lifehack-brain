@@ -169,6 +169,14 @@ session cannot quietly re-wire its own guards. Editing it is a deliberate act by
   of a clone into a home directory and read-only was the only protection available. Here git tracks
   the executable bit and nothing else, so a `444` file is just a file you cannot edit without a
   `chmod` first — friction with no guarantee behind it. The deny-list is the actual control.
+  ⛔ **CORRECTED 2026-09-16 (R2 Part B):** this `Edit(system/hooks/**)` deny entry is now
+  REGISTER-GOVERNED, not a fixed constant — `system/register/register.jsonl`'s
+  `guard_hook_sop_read.sh` row carries it in `protects_permissions`, and
+  `generate.py`'s `install_into_repo()` REMOVES it from `.claude/settings.json` for the
+  duration of a declared, expiring `state=suspended` suspension on that row (and APPENDS
+  it back the moment the suspension expires or is lifted — the self-heal is the expiry).
+  "The deny-list is the actual control" above still holds in the everyday case; it is no
+  longer a claim that this specific line can never move.
 
 ---
 

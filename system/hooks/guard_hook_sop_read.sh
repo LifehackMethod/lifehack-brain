@@ -84,18 +84,92 @@ trap 'lhb_journal_fire "$?" "guard_hook_sop_read.sh" "PreToolUse" "Bash|Write|Ed
 #   3. BASH-STRING DETECTION IS STILL A SPEED BUMP. The Write/Edit path (2) above is exact — it reads
 #      the typed file_path field, not a guessed string — but the Bash path (1) is still the same
 #      command-as-TEXT matcher the file's own banner warns about above: one phrasing behind, always.
-# UPDATED: 2026-09-16 (a heredoc BODY that merely MENTIONS a hooks path was tokenizing as
-#      literal argv to the enclosing write verb -- e.g. `tee <plan path> << 'EOF' ... system/hooks/
-#      ... EOF` blocked a PLAN-file write. Fixed with _trim_heredoc(): args are truncated at the
-#      first `<<`/`<<-` token before the HOOK-mention scan runs, so heredoc CONTENT is never read
-#      as a command-line argument again. See system/hooks/tests/test_hook_sop_read_guard.sh.)
-#      2026-08-24 (widened matcher intent + added Write/Edit file_path parsing — see FIXED note
-#      above). Previously 2026-08-03.
+#   4. BASH-SHAPED REGISTER RESOLUTION NOW MATCHES WRITE/EDIT (R2-C, 2026-09-16 — Decision 5 of
+#      R2-SPEC-A-plugin-guard.md is no longer a limit, it is fixed below). Every hook-plane target
+#      the Bash tokenizer already finds (a redirect target, a write-verb argument, a `sed -i`
+#      target) is resolved against the payload's own `cwd` field when relative, taken as-is when
+#      absolute, realpath'd, and its git toplevel found — the same Decision-2 strict Harness-repo
+#      test and Decision-3 no-cross-repo-lift rule as the Write/Edit path, gated on ALL targets in
+#      the command agreeing on one suspended repo. `cd` inside the command itself is NOT tracked:
+#      a relative target always resolves against the payload's `cwd`, never a `cd` the command
+#      performs, so `cd <repo> && echo x >> system/hooks/f` is judged by the session's real cwd.
+#      Any target that fails to resolve, targets spanning more than one repo, or the regex-fallback
+#      path (no tokenizer result, so no resolved target at all) leave the lookup at the old
+#      `_REPO`-based default — never a lift.
+# UPDATED: 2026-09-16 (R2-C — Bash-shaped writes into the hook plane now resolve the register from
+#      the write target(s)' own repo too, closing the gap Decision 5 left open; see
+#      system/hooks/tests/test_hook_sop_read_guard_bash_target.sh). Previously 2026-09-16 (R2 Part A
+#      — Write/Edit register lookup now resolves from the write target's own repo, gated by a
+#      strict Harness-repo test, so a plugin-cache copy of this guard honors a target repo's
+#      declared suspension instead of always defaulting to "active"). Previously 2026-09-16 (a
+#      heredoc BODY that merely MENTIONS a hooks path was tokenizing as literal argv to the
+#      enclosing write verb -- e.g. `tee <plan path> << 'EOF' ... system/hooks/ ... EOF` blocked a
+#      PLAN-file write. Fixed with _trim_heredoc(): args are truncated at the first `<<`/`<<-`
+#      token before the HOOK-mention scan runs, so heredoc CONTENT is never read as a command-line
+#      argument again. See system/hooks/tests/test_hook_sop_read_guard.sh.). Previously 2026-08-24
+#      (widened matcher intent + added Write/Edit file_path parsing — see FIXED note above).
+#      Previously 2026-08-03.
 # PORTED (T9.7b, 2026-08-15) from claudeops-config: the REDIRECT message and read_sop.sh call
 # below carried a hardcoded `~/claudeops-config/...` path; both now resolve from this hook's
 # own location (repo-relative), matching the pattern already used by this repo's other ported
 # hooks (announce_plan_write.sh etc.) — never a hardcoded home directory.
 # ─────────────────────────────────────────────────────────────────────────────
+# SWITCH (S1/K1, 2026-09-16): this guard is REGISTER-BACKED. Its row in
+# system/register/register.jsonl carries `state` + `expiry`: state="active"
+# (DEFAULT — students) means protection ON and this guard is wired normally.
+# state="suspended" with an unexpired `expiry` means the guard-rebuild lane
+# has a declared, temporary lift; generate.py omits it from fresh wiring.
+# The runtime backstop below catches STALE wiring (e.g. an un-refreshed
+# plugin cache) and honors/alarms instead of enforcing. A past-expiry
+# suspension is treated as ACTIVE again and alarms loudly — the self-heal.
+#
+# R2 PART A (2026-09-16): a globally-enabled PLUGIN copy of this guard runs
+# from a hookdir with no register at all (the plugin cache ships no
+# system/register/register.jsonl) — measured live, C1.2. The switch above
+# only works when the guard's OWN tree happens to carry the register; a
+# plugin copy never does, so its lookup always defaulted to "active" and
+# a repo's declared suspension was invisible to it. FIX: for a Write/Edit/
+# MultiEdit call the register is resolved from the WRITE TARGET's own repo
+# (git toplevel of dirname(FILE_PATH), which is already realpath'd below —
+# symlink-safe by construction), never from this hook's own location, never
+# from CLAUDE_PROJECT_DIR/cwd (neither is documented as available inside a
+# hook process; see R2-SPEC-A-plugin-guard.md Decision 1). That target root
+# must pass a strict "is a Harness repo" test (Decision 2: register.jsonl +
+# switch_state.py + this guard itself, all present as regular files) before
+# its register is trusted at all — a repo with the data file but not the
+# mechanism (or vice versa) is not a real install and is treated as having
+# no register (state stays "active"). This is what makes the security
+# property hold (Decision 3): repo X's declared suspension can only ever
+# lift an edit whose REALPATH lands inside X — never inside another repo,
+# never inside a plugin cache with no register of its own. No target-repo
+# Python is imported or exec'd for this (Decision 4) — the register is read
+# as plain JSON lines here, same as the same-repo path below.
+# Bash-shaped commands were NOT changed by this fix and kept resolving the
+# register from `_REPO` (this hook's own tree) — a single Bash string has no
+# one resolved target to derive a toplevel from, so this was documented as a
+# known-limit, not an oversight (R2-SPEC-A Decision 5; C1.2 exercises the
+# Write/Edit path this fix covers).
+# ⚠ SUPERSEDED 2026-09-16 by R2-C, directly below: Decision 5 is no longer a
+# limit — a Bash-shaped write now resolves the register from its own
+# target(s)' repo too, on the same Decision 1-4 rules, reusing the SAME
+# tokenizer that already finds a hook-plane target in a Bash command (below)
+# rather than a second parser.
+#
+# R2-C (2026-09-16): extends the Write/Edit fix above to Bash. The tokenizer
+# in the Bash path below (the one that decides IS_WRITE) already walks every
+# segment of the command looking for a hook-plane target (a redirect target,
+# a write-verb argument, a `sed -i` target) — R2-C has it also COLLECT those
+# target strings instead of discarding them once IS_WRITE is known. Each
+# collected target is then resolved exactly like FILE_PATH above: relative to
+# the payload's own `cwd` field (never a `cd` the command itself performs —
+# that is not tracked), realpath'd, and its git toplevel found. A lift is
+# granted only when EVERY target in the command agrees on the SAME toplevel
+# AND that toplevel passes Decision 2's strict Harness-repo test; one
+# unresolved target, disagreeing toplevels, or the regex-fallback path (no
+# tokenizer result, so no target at all) all leave the lookup at the old
+# `_REPO`/"repo" default — never a lift. See
+# system/hooks/tests/test_hook_sop_read_guard_bash_target.sh.
+#
 # guard_hook_sop_read.sh — PreToolUse hook (matcher: Bash|Write|Edit)
 # Blocks editing the enforcement layer until its rulebook is demonstrably in context.
 set -uo pipefail
@@ -103,6 +177,19 @@ set -uo pipefail
 _HOOKDIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
 _REPO="$(cd "$_HOOKDIR" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null)"
 [ -n "$_REPO" ] || _REPO="${_HOOKDIR%/system/hooks}"
+export _REPO
+# Default register-lookup root: this is the fallback for BOTH paths. The
+# Write/Edit branch always overrides it once a hook-plane target is confirmed
+# (Decision 1). The Bash branch (below) ALSO overrides it now (R2-C,
+# 2026-09-16) when every hook-plane target the tokenizer found resolves,
+# unambiguously, into the SAME repo -- otherwise (an unresolved target,
+# disagreeing repos, or the regex-fallback path with no target at all) it
+# stays right here: _REPO, checked with the OLD, looser "does register.jsonl
+# exist" check, no strict Harness-repo gate. Either override is the only way
+# to reach Decision 2's strict three-file test ("target" mode, below).
+_REGISTER_ROOT="$_REPO"
+_REGISTER_MODE="repo"
+export _REGISTER_ROOT _REGISTER_MODE
 
 INPUT=$(cat 2>/dev/null) || INPUT=""
 
@@ -128,11 +215,16 @@ if path:
     except Exception:
         resolved = '__PATH_ERR__'
 sid = d.get('session_id', '') or ''
+# R2-C: the payload's own cwd, used ONLY to resolve a RELATIVE Bash-target string below --
+# an absolute target ignores it entirely, same as FILE_PATH resolution above ignores it once
+# a path is already absolute.
+cwd = (d.get('cwd') or '').replace(chr(10), ' ')
 print('OK')
 print(tool)
 print(cmd)
 print(resolved)
 print(sid)
+print(cwd)
 " 2>/dev/null)
 
 if [ -z "$_PARSED" ] || [ "$(printf '%s' "$_PARSED" | sed -n '1p')" = "__ERR__" ]; then
@@ -144,6 +236,7 @@ TOOL_NAME=$(printf '%s' "$_PARSED" | sed -n '2p')
 RAW=$(printf '%s' "$_PARSED" | sed -n '3p')
 FILE_PATH=$(printf '%s' "$_PARSED" | sed -n '4p')
 SID=$(printf '%s' "$_PARSED" | sed -n '5p')
+CWD=$(printf '%s' "$_PARSED" | sed -n '6p')
 
 deny() {
   printf '%s\n' "$1" >&2
@@ -164,13 +257,23 @@ case "$TOOL_NAME" in
         # Tests are not the enforcement layer they test — same carve-out as guard_write_paths.sh.
         exit 0 ;;
       */system/hooks/*|*/.claude/hooks/*)
-        IS_WRITE=1 ;;
+        IS_WRITE=1
+        # R2 Part A: resolve the register from the WRITE TARGET's own repo, not
+        # this hook's (_REPO stays self-location/sha plumbing only, per Decision 1).
+        # FILE_PATH is already realpath'd (see the single parse pass above), so a
+        # symlink escaping repo X into repo Y lands _TARGET_ROOT on Y, never X.
+        _TARGET_DIR="$(dirname "$FILE_PATH")"
+        _TARGET_ROOT="$(cd "$_TARGET_DIR" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null)"
+        _REGISTER_ROOT="$_TARGET_ROOT"
+        _REGISTER_MODE="target"
+        export _REGISTER_ROOT _REGISTER_MODE
+        ;;
       *)
         exit 0 ;;
     esac
     ;;
   *)
-    # ── Bash path (original logic, unchanged) ──────────────────────────────────────────────
+    # ── Bash path (write-shape detection unchanged; register resolution extended by R2-C) ──
     # ── does this command touch the hook plane at all? ───────────────────────────────────────
     printf '%s' "$RAW" | grep -qE '(system/hooks/|\.claude/hooks/)' || exit 0
 
@@ -202,13 +305,19 @@ case "$TOOL_NAME" in
     # bash system/hooks/plan_flag.sh set x` no longer blocks. `bash -c "..."` recurses so the
     # tokenizer cannot be used as a bypass. On a tokenizer error we FALL BACK to the old regexes,
     # which are strictly more blocking — fail-closed, per FAIL_POSTURE.
-    IS_WRITE=$(printf '%s' "$RAW" | python3 -c "
+    # R2-C (2026-09-16): the SAME tokenizer/check() below now also collects the literal
+    # hook-plane TARGET string(s) it matched on (a redirect target, a write-verb argument, a
+    # `sed -i` target) into TARGETS, printed after the '1'/'0' verdict line -- one extra channel
+    # of output from the same parse pass, never a second parser. The regex-fallback path
+    # (tokenizer ValueError) still has no resolved target at all, by construction.
+    _BASH_DETECT=$(printf '%s' "$RAW" | python3 -c "
 import sys, re, shlex
 HOOK = re.compile(r'(system/hooks/|\.claude/hooks/)')
 WRITE_VERBS = {'chmod','chown','cp','mv','rm','install','truncate','dd','tee','ln','touch','patch','ed','shred'}
 WRAPPERS = {'sudo','doas','env','command','nohup','time','stdbuf'}
 SEPS = {';','&&','||','|','&'}
 ASSIGN = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*=')
+TARGETS = []
 
     # ⛔ NO BACKTICKS IN THIS BLOCK: it is a bash DOUBLE-quoted string, so a backtick is live command
     # substitution. A backticked tee example here truncated the migration plan to 28 bytes, 2026-09-16.
@@ -233,6 +342,7 @@ def _trim_heredoc(args):
 
 def check(cmd, depth=0):
     if depth > 3:
+        TARGETS.append('__UNRESOLVED__')  # R2-C: pathological nesting has no single target -> fail-safe
         return True                      # pathological nesting -> fail closed
     toks = shlex.split(cmd, posix=True)  # ValueError propagates -> caller falls back
     segs = [[]]
@@ -247,7 +357,9 @@ def check(cmd, depth=0):
             m = re.match(r'^[0-9]*>>?\|?(.*)$', t)
             if not m or '>' not in t: continue
             tgt = m.group(1) or (s[i+1] if i+1 < len(s) else '')
-            if HOOK.search(tgt): return True
+            if HOOK.search(tgt):
+                TARGETS.append(tgt)  # R2-C
+                return True
         # -- write verb, but only in COMMAND POSITION for this segment
         j = 0
         while j < len(s) and (s[j] in WRAPPERS or ASSIGN.match(s[j])): j += 1
@@ -260,32 +372,184 @@ def check(cmd, depth=0):
                     if check(args[k+1], depth+1): return True
             continue                     # 'bash <hook>' = RUNNING a hook; the fire-test fleet needs this
         if head == 'sed':
-            if any(a.startswith('-i') or a == '--in-place' for a in args) and any(HOOK.search(a) for a in args):
-                return True
+            if any(a.startswith('-i') or a == '--in-place' for a in args):
+                matched = [a for a in args if HOOK.search(a)]
+                if matched:
+                    TARGETS.extend(matched)  # R2-C
+                    return True
             continue
-        if head in WRITE_VERBS and any(HOOK.search(a) for a in args):
-            return True
+        if head in WRITE_VERBS:
+            matched = [a for a in args if HOOK.search(a)]
+            if matched:
+                TARGETS.extend(matched)  # R2-C
+                return True
     return False
 
 raw = sys.stdin.read()
 try:
-    print('1' if check(raw) else '0')
+    verdict = '1' if check(raw) else '0'
 except Exception:
-    print('__FALLBACK__')
+    verdict = '__FALLBACK__'
+    TARGETS[:] = []  # R2-C: no tokenizer result means no resolved target either
+print(verdict)
+for t in TARGETS:
+    print(t)
 " 2>/dev/null)
+
+    IS_WRITE=$(printf '%s' "$_BASH_DETECT" | sed -n '1p')
+    _BASH_TARGETS=$(printf '%s' "$_BASH_DETECT" | tail -n +2)
 
     if [ "$IS_WRITE" = "__FALLBACK__" ] || [ -z "$IS_WRITE" ]; then
       # Tokenizer could not parse (unbalanced quotes, etc.) -> the old, more-blocking regexes.
+      # No resolved target exists on this path, so the R2-C block below never runs for it --
+      # fail-safe: the register lookup stays at the _REPO/"repo" default set at the top of this file.
       WRITE_RE='(^|[|;&[:space:]])(chmod[[:space:]]+[0-7]{3,4}[[:space:]]|sed[[:space:]]+-i([[:space:]]|$)|tee([[:space:]]|$)|cp([[:space:]]|$)|mv([[:space:]]|$)|rm([[:space:]]|$)|install([[:space:]]|$)|truncate([[:space:]]|$)|dd[[:space:]]+.*of=)'
       REDIR_RE='>>?[[:space:]]*[^|;&]*(system/hooks/|\.claude/hooks/)'
       IS_WRITE=0
       printf '%s' "$RAW" | grep -qE "$WRITE_RE" && IS_WRITE=1
       printf '%s' "$RAW" | grep -qE "$REDIR_RE" && IS_WRITE=1
+      _BASH_TARGETS=""
+    fi
+
+    # ── R2-C (2026-09-16): resolve the register from the Bash write target(s)' own repo ──────
+    # Same rules as the Write/Edit path (Decision 1-4 of R2-SPEC-A, extended to Bash). Every
+    # candidate target line in _BASH_TARGETS is resolved against CWD (the payload's own `cwd`
+    # field) when relative, taken as-is when absolute, realpath'd, and its git toplevel found.
+    # A lift is only even considered when EVERY target resolves and every one agrees on the SAME
+    # toplevel -- one unresolved target, a resolution error, or targets spanning more than one
+    # repo all leave _REGISTER_ROOT/_REGISTER_MODE at the _REPO/"repo" default (never a lift).
+    # `cd` inside the command is NOT tracked: a relative target resolves against the session's
+    # real cwd, never a `cd` the command itself performs.
+    if [ "$IS_WRITE" = "1" ] && [ -n "$_BASH_TARGETS" ]; then
+      _BASH_TOPLEVEL=""
+      _BASH_RESOLVE_OK=1
+      while IFS= read -r _tgt; do
+        [ -n "$_tgt" ] || continue
+        if [ "$_tgt" = "__UNRESOLVED__" ]; then
+          _BASH_RESOLVE_OK=0
+          break
+        fi
+        _RESOLVED=$(_TGT="$_tgt" _CWD="$CWD" python3 -c "
+import os
+tgt = os.environ.get('_TGT', '')
+cwd = os.environ.get('_CWD', '')
+base = cwd if cwd else os.getcwd()
+p = tgt if os.path.isabs(tgt) else os.path.join(base, tgt)
+try:
+    print(os.path.realpath(p))
+except Exception:
+    print('__PATH_ERR__')
+" 2>/dev/null)
+        if [ -z "$_RESOLVED" ] || [ "$_RESOLVED" = "__PATH_ERR__" ]; then
+          _BASH_RESOLVE_OK=0
+          break
+        fi
+        _TOP=$(cd "$(dirname "$_RESOLVED")" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null)
+        if [ -z "$_TOP" ]; then
+          _BASH_RESOLVE_OK=0
+          break
+        fi
+        if [ -z "$_BASH_TOPLEVEL" ]; then
+          _BASH_TOPLEVEL="$_TOP"
+        elif [ "$_TOP" != "$_BASH_TOPLEVEL" ]; then
+          _BASH_RESOLVE_OK=0
+          break
+        fi
+      done <<< "$_BASH_TARGETS"
+      if [ "$_BASH_RESOLVE_OK" = "1" ] && [ -n "$_BASH_TOPLEVEL" ]; then
+        _REGISTER_ROOT="$_BASH_TOPLEVEL"
+        _REGISTER_MODE="target"
+        export _REGISTER_ROOT _REGISTER_MODE
+      fi
     fi
     ;;
 esac
 
 [ "$IS_WRITE" -eq 1 ] || exit 0
+
+# ── S1/K1 register-backed switch (2026-09-16) ────────────────────────────────────────────
+# This guard is SWITCHABLE by register data, not by editing this file: its row in
+# system/register/register.jsonl carries state+expiry. state=suspended with an
+# UNEXPIRED expiry means the guard-rebuild lane has a declared, temporary lift and
+# this guard was also OMITTED from freshly generated wiring. If we fire here, the
+# wiring is STALE (e.g. an un-refreshed plugin cache), so honor the declaration:
+# NOTICE, then allow. An EXPIRED suspension means the lift lapsed: ALARM LOUDLY,
+# then enforce normally (the self-heal: protection is ON again). Missing or
+# unparseable register defaults to enforce (protection ON is the fail-safe).
+_SWITCH=$(python3 - <<'PY' 2>/dev/null
+import os, json
+from datetime import date
+guard_path = "/system/hooks/guard_hook_sop_read.sh"
+# _REGISTER_ROOT is the write target's own repo for a Write/Edit/MultiEdit
+# call (Decision 1), OR for a Bash-shaped command whose every hook-plane
+# target agrees on one repo (R2-C, 2026-09-16, extending Decision 1 to Bash);
+# otherwise it is _REPO (this hook's own tree) unchanged -- set by the bash
+# side above.
+# _REGISTER_MODE says which: "target" gates the lookup on Decision 2's strict
+# Harness-repo test (all three files present) -- reached by EITHER an
+# unambiguous Write/Edit target or an unambiguous, fully-agreeing Bash target
+# set; "repo" is the ORIGINAL behavior -- just "does register.jsonl exist" --
+# for whichever path (Bash falls back here on any unresolved/disagreeing
+# target or the regex-fallback path) has no independently resolved target
+# repo to hold to a stricter standard.
+target_root = os.environ.get("_REGISTER_ROOT", "") or ""
+register_mode = os.environ.get("_REGISTER_MODE", "repo")
+
+def is_harness_repo(root):
+    # Decision 2: strict, ALL three, as regular files. A data file (register.jsonl)
+    # with no mechanism (switch_state.py / this guard) alongside it, or the reverse,
+    # is not a real install — the register is ignored (state stays "active").
+    if not root:
+        return False
+    for rel in (
+        "system/register/register.jsonl",
+        "system/register/switch_state.py",
+        "system/hooks/guard_hook_sop_read.sh",
+    ):
+        if not os.path.isfile(os.path.join(root, rel)):
+            return False
+    return True
+
+state = "active"
+expiry = None
+register_ok = is_harness_repo(target_root) if register_mode == "target" else (
+    bool(target_root) and os.path.isfile(os.path.join(target_root, "system/register/register.jsonl"))
+)
+if register_ok:
+    register_path = os.path.join(target_root, "system/register/register.jsonl")
+    try:
+        with open(register_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                row = json.loads(line)
+                if row.get("type") == "hook" and row.get("path") == guard_path:
+                    state = row.get("state", "active")
+                    expiry = row.get("expiry")
+                    break
+    except Exception:
+        pass
+if state != "suspended" or not expiry:
+    print("ACTIVE")
+else:
+    try:
+        today = date.fromisoformat(os.environ.get("LHB_REGISTER_TODAY", date.today().isoformat()))
+        expiry_date = date.fromisoformat(expiry)
+        print("HONORED" if expiry_date >= today else "EXPIRED")
+    except Exception:
+        print("ACTIVE")
+PY
+)
+case "$_SWITCH" in
+  HONORED)
+    printf '%s\n' "NOTICE: guard_hook_sop_read is REGISTER-SUSPENDED until its expiry in system/register/register.jsonl — this guard should not be wired at all; it fires only because the plugin cache or wiring is stale. The lane's declared lift is honored (protection OFF)." >&2
+    exit 0
+    ;;
+  EXPIRED)
+    printf '%s\n' "⛔ ALARM: guard_hook_sop_read has a register-declared suspension whose EXPIRY HAS PASSED — protection is RE-ARMED. Update system/register/register.jsonl (state=active or a fresh expiry) to clear this alarm." >&2
+    ;;
+esac
 
 # ── receipt check ────────────────────────────────────────────────────────────────────────
 # shasum is NOT guaranteed on PATH (Git Bash on Windows ships without it). Called bare, it emits

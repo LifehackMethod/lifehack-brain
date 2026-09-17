@@ -11,6 +11,15 @@ auto-removed or auto-fixed — "T1 lists; it never judges" (t1-result.md). This 
 judgment call about what an UNCALLED unit means (dead code vs. an intentionally hand-run tool vs.
 a genuine gap) — that reading is a human's, same as it was for T1's own 32.
 
+⛔ K2 (2026-09-16) ADDS AN EIGHTH SURFACE, `githooks-invoked` — a real blind spot T1's original
+ontology never covered, not a retroactive edit of T1's own proven set: T1's raw six-wiring-file
+scan never looked at `system/githooks/` (a LOCAL git hook activated via `git config
+core.hooksPath system/githooks`, never any of Claude Code's own wiring surfaces). This nearly
+cost `encoding_lint.py` its retirement — its only caller is `system/githooks/pre-commit`, so it
+read UNCALLED until `githook_evidence()` (below) and a new register row type (`schema_v1.py`'s
+`githook`, harvested by `harvest.py`'s `harvest_githooks()`) closed the gap. See
+`system/journal.md`, 2026-09-16, for the incident.
+
 WHY TWO EVIDENCE SOURCES, NOT ONE:
 
 T1's original script re-parsed six raw wiring JSON files (settings.json x3 + hooks.json x2 +
@@ -79,9 +88,14 @@ GOVERNED_DIRS = ["system/hooks", "system/tools"]
 SCRIPT_EXTS = (".sh", ".py")
 TEST_DIR = re.compile(r"/tests?/", re.I)
 
-# Verdict precedence — T1's own STR list, unchanged.
+# Verdict precedence — T1's own STR list, unchanged, PLUS one new surface (K2, 2026-09-16):
+# "githooks-invoked", inserted right after "registered-hook" since both are register-row-
+# sourced direct-registration evidence (a hook wiring entry vs. a local git-hook script), ahead
+# of "scheduled" and the disk-scanned surfaces below. This closes the register's git-hooks
+# blind spot — see this module's docstring and `githook_evidence()` below for the incident
+# (`encoding_lint.py`, called only by `system/githooks/pre-commit`, used to read UNCALLED).
 CALLER_CLASSES = [
-    "registered-hook", "scheduled", "script-invoked",
+    "registered-hook", "githooks-invoked", "scheduled", "script-invoked",
     "skill-referenced", "ci-invoked", "cli-instructed",
 ]
 
@@ -156,6 +170,33 @@ def registered_hook_evidence(rows, units_by_key, ev):
             continue
         seen.add(dedupe)
         ev(key[0], key[1], "registered-hook", detail)
+
+
+def githook_evidence(rows, governed_and_exempt, ev):
+    """Evidence source, register-sourced (K2, 2026-09-16 — the register's git-hooks blind
+    spot, see this module's docstring): a governed unit is 'githooks-invoked' if its basename
+    appears, on an INVOCATION-SHAPED line (`ref_kind()`, the SAME judgment
+    `script_body_evidence()` already applies to a governed unit's own body), inside a register
+    row of type=='githook' `commands` list — harvest.py's `harvest_githooks()`, sourced from
+    `system/githooks/*` in either repo (activated via `git config core.hooksPath
+    system/githooks`, a wiring surface none of `registered_hook_evidence()`'s six surfaces
+    above cover). harvest.py already restricts `commands` to invocation-shaped lines at
+    harvest time (its own `extract_invocation_lines()`), but the mention-vs-invocation
+    JUDGMENT still belongs here, not there — `ref_kind()` is re-applied rather than trusted,
+    the same two-stage division of labor `script_body_evidence()` already uses. This is what
+    closes the incident this module's docstring names: a tool invoked ONLY by
+    `system/githooks/pre-commit` (`encoding_lint.py`) used to read UNCALLED because T1's
+    original 7-class ontology never modeled the local git-hooks surface at all."""
+    githook_rows = [r for r in rows if r.get("type") == "githook"]
+    for g in governed_and_exempt:
+        for row in githook_rows:
+            for cmd in row.get("commands", []):
+                if g["base"] not in cmd:
+                    continue
+                if ref_kind(cmd, g["base"], ".sh") == "script-invoked":
+                    ev(g["repo"], g["rel"], "githooks-invoked",
+                       f"register:githook:{row.get('hook_name', '?')}")
+                    break
 
 
 def scheduled_evidence(rows, governed_and_exempt, ev):
@@ -426,6 +467,7 @@ def lint_register(rows, public_root, private_root, cache_root=None, home_root=No
         evidence.setdefault((repo, rel), []).append((surface, detail))
 
     registered_hook_evidence(rows, units_by_key, ev)
+    githook_evidence(rows, governed + exempt_units, ev)
     scheduled_evidence(rows, governed + exempt_units, ev)
     scheduled_text_evidence(governed + exempt_units, repo_roots, ev)
     script_body_evidence(governed, exempt_units, repo_roots, ev)
