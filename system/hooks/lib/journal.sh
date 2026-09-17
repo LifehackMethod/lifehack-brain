@@ -137,7 +137,7 @@ lhb_journal_fire() {
         return 0
     fi
 
-    local _rc _hook _event _matcher _journal _dir _ts _decision _sid
+    local _rc _hook _event _matcher _journal _dir _base _ts _decision _sid _tsfile _tsrefresh _cached_ts _cached_n
 
     _rc="${1:-}"
     _hook="${2:-unknown}"
@@ -180,7 +180,42 @@ lhb_journal_fire() {
         ''|*[!0-9-]*) _rc=-1 ;;
     esac
 
-    _ts="$(date +%s 2>/dev/null)"
+    # Timestamp: a real `date +%s` is an external fork on every fire -- on bash 3.2 (macOS's
+    # frozen default; $EPOCHSECONDS and printf '%()T' both need bash 4.2+, neither exists here)
+    # there is no builtin way to ask the wall clock, so this cost can't be removed, only
+    # amortized. Same instinct as the rotation check's own time-gating above, but gated by FIRE
+    # COUNT instead of elapsed wall-clock time -- gating on elapsed time would itself need
+    # `date` to measure the elapsed time, the exact fork this is trying to avoid. A tiny sidecar
+    # file (bash builtins only: arithmetic + `read`/`printf`, no fork) tracks how many fires have
+    # reused the last real timestamp; every LHB_JOURNAL_TS_REFRESH_FIRES-th fire pays one real
+    # `date` call and every other fire reuses that cached value straight off disk.
+    # Precision cost: up to (N-1) fires can share one timestamp -- irrelevant for this journal's
+    # actual job ("did guard X ever fire this week"), and no query this journal serves is ever
+    # finer-grained than a session turn. Delimiter is \x1f (unit separator), never a tab: bash's
+    # `read` treats tab as IFS-whitespace even when IFS is set to just tab, silently dropping an
+    # empty field and shifting everything after it -- the exact bug found and fixed in
+    # guard_no_upstream_commit_signpost.sh this same session; not repeating it here.
+    _dir="${_journal%/*}"; [ "$_dir" = "$_journal" ] && _dir="."
+    _base="${_journal##*/}"
+    _tsfile="$_dir/.${_base}.tsstate"
+    _tsrefresh="${LHB_JOURNAL_TS_REFRESH_FIRES:-20}"
+    case "$_tsrefresh" in ''|*[!0-9]*) _tsrefresh=20 ;; esac
+
+    _cached_ts="" _cached_n=0
+    if [ "$_tsrefresh" -gt 1 ] && [ -f "$_tsfile" ]; then
+        IFS=$'\x1f' read -r _cached_ts _cached_n 2>/dev/null <"$_tsfile"
+        case "$_cached_n" in ''|*[!0-9]*) _cached_n=0 ;; esac
+        case "$_cached_ts" in ''|*[!0-9]*) _cached_ts="" ;; esac
+    fi
+
+    if [ -n "$_cached_ts" ] && [ "$_cached_n" -lt "$_tsrefresh" ]; then
+        _ts="$_cached_ts"
+        printf '%s\x1f%s' "$_ts" "$((_cached_n + 1))" 2>/dev/null >"$_tsfile"
+    else
+        _ts="$(date +%s 2>/dev/null)"
+        case "$_ts" in ''|*[!0-9]*) _ts=0 ;; esac
+        printf '%s\x1f%s' "$_ts" "0" 2>/dev/null >"$_tsfile"
+    fi
     case "$_ts" in
         ''|*[!0-9]*) _ts=0 ;;
     esac
