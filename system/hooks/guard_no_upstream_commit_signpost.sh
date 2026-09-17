@@ -171,7 +171,7 @@ for seg, preceding_op in segments:
     chained = ""
     if pending_branch is not None and pending_branch_repo == resolved:
         chained = pending_branch
-    print("DENY\t" + resolved + "\t" + chained); raise SystemExit
+    print("DENY\x1f" + resolved + "\x1f" + chained); raise SystemExit
 
 print("OK")
 ' 2>/dev/null)
@@ -182,7 +182,7 @@ case "$VERDICT" in
     ;;
 esac
 
-IFS=$'\t' read -r STATUS CDIR CHAINED_BRANCH <<< "$VERDICT"
+IFS=$'\x1f' read -r STATUS CDIR CHAINED_BRANCH <<< "$VERDICT"
 REPO_DIR="$PWD"
 if [ -n "$CDIR" ] && [ -d "$CDIR" ]; then REPO_DIR="$CDIR"; fi
 
