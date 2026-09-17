@@ -490,6 +490,83 @@ def main():
         report("the .github/ content-scan exemption is gone as executable code", not live,
                "still assigned at: {}".format(live))
 
+        # ------------------------------------------------- task E1b: narrowed doc/docs exemption
+        #
+        # WHY THIS BLOCK EXISTS. NAME_HEURISTIC_STOPWORDS used to carry a blanket "doc"/"docs"
+        # entry, added to silence one false positive (hook-plane.md:345, a trigger word next
+        # to the product-noun token this section is about). A blanket stopword means
+        # find_name_candidates() can NEVER flag that capitalised token, anywhere, regardless
+        # of context -- including the shape of a genuine leak where it names an actual PERSON
+        # next to a trigger word. This replaces that blanket entry with a context-gated
+        # exemption (see DOC_PRODUCT_NOUN_CONTINUATIONS and the doc/docs guard inside
+        # find_name_candidates()). Cases 2 and 3 below are the ones a blanket stopword gets
+        # WRONG and this fix gets RIGHT -- run this file against origin/V2's copy of the
+        # scanner and both go red.
+        #
+        # ⭐ EVERY FIXTURE STRING BELOW IS ASSEMBLED FROM LOWERCASE-IDENTIFIER PIECES, on
+        # separate source lines from where they are combined -- same reason, same technique,
+        # as the PER-COMMIT PROMOTION fixtures above (_role_word / _invented_name): a trigger
+        # word sitting next to a capitalised name-shaped word IN THIS FILE'S OWN SOURCE trips
+        # the exact heuristic under test the moment this file itself is self-scanned (see
+        # SELF-SCAN above). Writing the sentences as one literal here would make this test
+        # fail the very "this test file scans CLEAN too" check two sections up.
+        print("\nDOC/DOCS EXEMPTION -- narrowed to context, not every 'Doc'/'Docs' token (task E1b)")
+
+        _doc_tok = "Doc"
+        _google_tok = "Google"
+        _client_tok = "client"
+        _tenant_tok = "tenant"
+        _landlord_tok = "landlord"
+        _marcus_tok = "Marcus"
+        _body_tok = "body"
+        _link_tok = "link"
+
+        doc_case_1 = _client_tok + " " + _doc_tok + " " + _body_tok
+        doc_case_2 = ("My {} {} says the {} issue needs escalation."
+                      .format(_client_tok, _doc_tok, _tenant_tok))
+        doc_case_3 = ("The {} {} filed a complaint about the {} {}."
+                      .format(_tenant_tok, _doc_tok, _landlord_tok, _marcus_tok))
+        doc_case_4 = "the {} {} {} {}".format(_client_tok, _google_tok, _doc_tok, _link_tok)
+
+        doc_cases = [
+            (doc_case_1, []),
+            (doc_case_2, [_doc_tok]),
+            (doc_case_3, [_doc_tok, _marcus_tok]),
+            (doc_case_4, []),
+        ]
+        for text, expected in doc_cases:
+            got = chk.find_name_candidates(text, frozenset())
+            report("find_name_candidates({!r}) == {!r}".format(text, expected),
+                   got == expected, "got {!r}".format(got))
+
+        # Integration round-trip on the real per-commit path (--scan-file), not just the
+        # bare function -- proves the fix reaches the gate CI actually runs, not only the
+        # unit in isolation. doc_case_2's shape (a relationship trigger word, the
+        # capitalised token this section is about, and a second trigger word -- no
+        # product-noun continuation and no preceding platform name) must still promote to
+        # a BLOCKING finding (see check_added_lines_heuristics()'s "PER-COMMIT PROMOTION"
+        # test above for why exit 1 is the flagged outcome on this path).
+        doc_leak = os.path.join(td, "doc_leak.md")
+        with open(doc_leak, "w", encoding="utf-8") as fh:
+            fh.write(doc_case_2 + "\n")
+        rc, out = run_scanner(["--identity", idf, "--scan-file", doc_leak,
+                               "--as-path", "docs/doc_leak.md"])
+        report("a real 'Doc'-as-person leak (no product-noun context) -> FLAGGED (exit 1)",
+               rc == 1 and "possible-third-party-name" in out,
+               "exit {}: {}".format(rc, out.strip()[:300]))
+
+        # ...and the exact false positive this exemption exists for stays silent end to end,
+        # reproducing hook-plane.md:345's own sentence shape (a trigger word, this section's
+        # product-noun token, then the continuation word "body") rather than just the
+        # isolated fragment above.
+        doc_body_clean = os.path.join(td, "doc_body_clean.md")
+        with open(doc_body_clean, "w", encoding="utf-8") as fh:
+            fh.write("... " + doc_case_1 + " -> BLOCK -> ...\n")
+        rc, out = run_scanner(["--identity", idf, "--scan-file", doc_body_clean,
+                               "--as-path", "docs/doc_body_clean.md"])
+        report("the real false positive (doc_case_1's shape) stays NOT flagged (exit 0)",
+               rc == 0, "exit {}: {}".format(rc, out.strip()[:300]))
+
     print("")
     if _failures:
         print("FAIL -- {} check(s): {}".format(len(_failures), "; ".join(_failures)))

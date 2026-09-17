@@ -161,8 +161,11 @@ parser and never proceed past it.
 consumes — a PHASE 1 step, not a manual prerequisite.
 ⑂ `$COWORK_WORK/world-tags.json` already exists → **ALREADY-DONE**, skip to `1.0d`; never overwritten.
 · Missing → thin-slice every flattened chat, gate + pack the slices, spawn one tool-less **`ingest-tagger`**
-agent (Read-only, model **haiku**, `run_in_background: true`) per bundle — the same reader/actor split PHASE
-3 uses for `ingest-conclusions` — then collect + validate into the closed tag vocabulary:
+agent (Read-only, model **haiku**, `run_in_background: true`) per bundle — name `lifehack-brain:ingest-tagger`
+first, bare `ingest-tagger` as the clone-install fallback; if neither spawns, STOP and refuse rather than
+read the bundle in a tooled context (naming rule + why: `system/ingestion-reader-contract.md`, the spawn
+step) — the same reader/actor split PHASE 3 uses for `ingest-conclusions` — then collect + validate into
+the closed tag vocabulary:
 ```bash
 if [ -s "$COWORK_WORK/world-tags.json" ]; then
   echo "ALREADY-DONE: $COWORK_WORK/world-tags.json already exists — skipping tag"
@@ -171,8 +174,9 @@ else
   python3 $T/tag.py slice --in "$FLAT" --out "$SLICES"
   python3 $T/gate_and_pack.py --in "$SLICES" --out "$TAGSCRATCH" --desk cowork-ingest --max-files 25 --slice none
   mkdir -p "$RAWTAGS"
-  # spawn one tool-less `ingest-tagger` agent per $TAGSCRATCH/bundle-*.txt (its own agent file
-  # already exists, unused until now), collect automatically, then:
+  # spawn one tool-less `ingest-tagger` agent per $TAGSCRATCH/bundle-*.txt — subagent_type
+  # `lifehack-brain:ingest-tagger` first, bare `ingest-tagger` fallback, refuse if neither spawns
+  # (its own agent file already exists, unused until now), collect automatically, then:
   python3 $T/agent_output.py --agents <id1> <id2> … --out "$RAWTAGS"
   python3 $T/tag.py collect --raw "$RAWTAGS" --out "$COWORK_WORK/tags-collected.json"
   python3 $T/tag.py validate --tags "$COWORK_WORK/tags-collected.json" --out "$COWORK_WORK/world-tags.json"
