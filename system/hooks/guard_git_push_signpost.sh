@@ -354,6 +354,7 @@ positional = []
 do_all = False
 do_tags = False
 do_mirror = False
+delete_all = False
 force_all = False
 set_upstream = False
 i = 0
@@ -379,6 +380,8 @@ while i < n:
             do_tags = True
         elif base == "--mirror":
             do_mirror = True
+        elif base in ("--delete", "-d"):
+            delete_all = True
         elif base in ("--force", "-f", "--force-with-lease", "--force-if-includes"):
             force_all = True
         elif base in ("--set-upstream", "-u"):
@@ -429,9 +432,53 @@ def find_remote_default(rname):
             return rname + "/" + cand
     return ""
 
+# A brand-new branch (no existing remote-tracking ref of its own) needs a
+# comparison base to summarise against -- find_remote_default() alone always
+# picked origin/main, even for a branch actually built on V2, showing
+# everything V2 has ahead of main as if it were this branch own content
+# (100+ phantom commits). Ranked resolution, most authoritative first:
+#   1. the branch own configured upstream, if set -- short-circuits the
+#      heuristic entirely, since it is an explicit human decision, not a guess.
+#   2. nearest-by-merge-base among a small fixed candidate set: the default
+#      main/master/HEAD candidate, plus <remote>/V2 if it resolves -- whichever
+#      gives the smallest `rev-list --count <cand>..<src_token>` is the
+#      tighter real ancestor. Evaluated in this order so an exact tie keeps
+#      main as the winner (todays behaviour) rather than V2.
+#   3. neither resolves -- caller falls through to its own no-base message.
+def choose_new_branch_base(src_token):
+    rc, up_out = run(["rev-parse", "--abbrev-ref", "--symbolic-full-name", src_token + "@{u}"])
+    up_out = up_out.strip()
+    if rc == 0 and up_out and "/" in up_out:
+        return up_out
+    candidates = []
+    default_cand = find_remote_default(remote)
+    if default_cand:
+        candidates.append(default_cand)
+    v2_cand = remote + "/V2"
+    if v2_cand not in candidates and resolves(v2_cand):
+        candidates.append(v2_cand)
+    best = ""
+    best_count = None
+    for cand in candidates:
+        rc2, out2 = run(["rev-list", "--count", cand + ".." + src_token])
+        if rc2 == 0 and out2.strip().isdigit():
+            count = int(out2.strip())
+            if best_count is None or count < best_count:
+                best = cand
+                best_count = count
+    return best
+
 def render_ref(label, src_token, dst_name, force_marked, delete_only):
     if delete_only:
-        rows.append("   [DELETE] " + dst_name + " on " + remote + " (no local ref pushed)")
+        remote_ref = remote + "/" + dst_name
+        if resolves(remote_ref):
+            _rc, _sha = run(["rev-parse", "--short", remote_ref])
+            tip = _sha.strip() if _rc == 0 and _sha.strip() else "unknown"
+            rows.append("   DELETE " + remote_ref + "  (remote tip " + tip + ")")
+        else:
+            rows.append("   DELETE " + remote_ref +
+                         "  (remote tip unknown locally -- refs/remotes/" + remote_ref +
+                         " not fetched; fetch to see it)")
         return
     if not resolves(src_token + "^{commit}"):
         rows.append("   UNRESOLVED  " + label + " -> " + remote + "/" + dst_name + "  (does not resolve to a known local commit -- verify by hand)")
@@ -447,7 +494,7 @@ def render_ref(label, src_token, dst_name, force_marked, delete_only):
         if extra > 0:
             rows.append("        +" + str(extra) + " more")
     else:
-        default_ref = find_remote_default(remote)
+        default_ref = choose_new_branch_base(src_token)
         if default_ref:
             commit_count, file_count, shown, extra = commit_file_summary(default_ref + ".." + src_token)
             rows.append("   " + label + " -> " + remote_ref + force_flag + "  [NEW BRANCH vs " + default_ref + "]")
@@ -493,6 +540,9 @@ else:
             if s.startswith("+"):
                 force_this = True
                 s = s[1:]
+            if delete_all:
+                render_ref(raw, "", s, force_this, True)
+                continue
             if ":" in s:
                 src, dst = s.split(":", 1)
             else:

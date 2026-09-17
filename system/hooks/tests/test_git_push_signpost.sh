@@ -275,6 +275,166 @@ fi
 rm -f "$ERR_F"
 
 echo
+echo "── G. --delete/-d refspecs render as DELETE, never UNRESOLVED or a false 0/0 ──"
+# Bug 1 (fix card 2026-09-16-round-4/FIXCARD-PUSH-SIGNPOST-DELETE-AND-BASE.md): the
+# flag-parsing loop never recognized --delete/-d at all, so a remote branch deletion
+# either printed UNRESOLVED (no same-named local branch) or a false-reassuring
+# "0 commit(s), 0 file(s)" (a same-named local branch happened to exist) -- never
+# what it actually is. The colon form (`git push origin :branch`) already worked;
+# --delete/-d now shares the exact same render path and text.
+HOME_G=$(new_home); TMP_HOMES+=("$HOME_G")
+
+# G1 -- --delete of a branch with no same-named local ref: must say DELETE, never
+# UNRESOLVED. Mutation-provable: reverting the fix reintroduces the literal string
+# UNRESOLVED in this exact scenario.
+PAY_G1=$(payload "git -C $FIX_LOCAL push origin --delete ghost-branch-xyz-never-existed")
+ERR_G1=$(mktemp "${TMPDIR:-/tmp}/push-signpost-test.XXXXXX")
+invoke_project "$PAY_G1" "$HOME_G" "sess-G1" >/dev/null 2>"$ERR_G1"; c=$?
+want_deny "$c" "G1: --delete, no same-named local branch"
+if grep -q "DELETE origin/ghost-branch-xyz-never-existed" "$ERR_G1" && ! grep -q "UNRESOLVED" "$ERR_G1"; then
+  pass=$((pass+1)); printf '   ok   G1: renders DELETE, never UNRESOLVED\n'
+else
+  fail=$((fail+1)); printf '  FAIL  G1: did not render as a clean DELETE\n'; cat "$ERR_G1"
+fi
+rm -f "$ERR_G1"
+
+# G2 -- --delete of a branch that DOES exist locally (branchA, from section E): the
+# worse failure mode -- a false "0 commit(s), 0 file(s)" that actively reassures
+# nothing is happening. Mutation-provable: a fix that only guards the
+# "local ref missing" path (partial fix) still fails this one.
+PAY_G2=$(payload "git -C $FIX_LOCAL push origin --delete branchA")
+ERR_G2=$(mktemp "${TMPDIR:-/tmp}/push-signpost-test.XXXXXX")
+invoke_project "$PAY_G2" "$HOME_G" "sess-G2" >/dev/null 2>"$ERR_G2"; c=$?
+want_deny "$c" "G2: --delete of a branch that exists locally too"
+if grep -q "DELETE origin/branchA" "$ERR_G2" && ! grep -q "0 commit(s), 0 file(s)" "$ERR_G2"; then
+  pass=$((pass+1)); printf '   ok   G2: renders DELETE, never the false 0/0 summary\n'
+else
+  fail=$((fail+1)); printf '  FAIL  G2: still shows the false 0-commits reassurance\n'; cat "$ERR_G2"
+fi
+rm -f "$ERR_G2"
+
+# G3 -- the -d short flag, and --delete with TWO branch names: proves the fix
+# is not a single-refspec special case.
+PAY_G3=$(payload "git -C $FIX_LOCAL push origin -d branchA branchB")
+ERR_G3=$(mktemp "${TMPDIR:-/tmp}/push-signpost-test.XXXXXX")
+invoke_project "$PAY_G3" "$HOME_G" "sess-G3" >/dev/null 2>"$ERR_G3"; c=$?
+want_deny "$c" "G3: -d with two branch names"
+if grep -q "DELETE origin/branchA" "$ERR_G3" && grep -q "DELETE origin/branchB" "$ERR_G3"; then
+  pass=$((pass+1)); printf '   ok   G3: both branches render as DELETE\n'
+else
+  fail=$((fail+1)); printf '  FAIL  G3: not both branches rendered as DELETE\n'; cat "$ERR_G3"
+fi
+rm -f "$ERR_G3"
+
+# G4 -- the colon form is unaffected functionally, but now shares the SAME render
+# text as --delete/-d (the old "[DELETE] ... (no local ref pushed)" text is gone).
+PAY_G4=$(payload "git -C $FIX_LOCAL push origin :branchA")
+ERR_G4=$(mktemp "${TMPDIR:-/tmp}/push-signpost-test.XXXXXX")
+invoke_project "$PAY_G4" "$HOME_G" "sess-G4" >/dev/null 2>"$ERR_G4"; c=$?
+want_deny "$c" "G4: colon-form delete"
+if grep -q "DELETE origin/branchA" "$ERR_G4" && grep -q "remote tip" "$ERR_G4" && ! grep -q "no local ref pushed" "$ERR_G4"; then
+  pass=$((pass+1)); printf '   ok   G4: colon form uses the new shared DELETE (remote tip ...) format\n'
+else
+  fail=$((fail+1)); printf '  FAIL  G4: colon form did not use the new shared format\n'; cat "$ERR_G4"
+fi
+rm -f "$ERR_G4"
+
+echo
+echo "── H. NEW-BRANCH base: upstream, then nearest-by-merge-base (main vs V2) ──"
+# Bug 2 (same fix card): a brand-new branch's manifest was ALWAYS diffed against
+# origin/main via find_remote_default(), never the branch's real base. A branch
+# built on V2 with 0-3 real commits showed 100+ phantom commits (everything V2 has
+# ahead of main). Dedicated scratch fixture, mirroring the card's own test recipe:
+# init, commit on main, branch V2 with N=2 extra commits, branch the test subject
+# off V2 with M=1 more commit, no upstream set.
+HFIX_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/push-signpost-basefixture.XXXXXX") || exit 1
+TMP_HOMES+=("$HFIX_ROOT")
+HFIX_BARE="$HFIX_ROOT/remote.git"
+HFIX_LOCAL="$HFIX_ROOT/local"
+git init --bare -q "$HFIX_BARE"
+git init -q "$HFIX_LOCAL"
+export GIT_AUTHOR_NAME="H Test" GIT_AUTHOR_EMAIL="h@example.invalid"
+export GIT_COMMITTER_NAME="H Test" GIT_COMMITTER_EMAIL="h@example.invalid"
+git -C "$HFIX_LOCAL" checkout -q -b main
+git -C "$HFIX_LOCAL" remote add origin "$HFIX_BARE"
+printf 'root\n' > "$HFIX_LOCAL/root.txt"; git -C "$HFIX_LOCAL" add root.txt; git -C "$HFIX_LOCAL" commit -q -m "root commit"
+git -C "$HFIX_LOCAL" push -q -u origin main
+git -C "$HFIX_LOCAL" symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main
+
+# V2: the other long-lived integration branch, N=2 commits ahead of main.
+git -C "$HFIX_LOCAL" checkout -q -b V2 main
+printf 'v2-1\n' > "$HFIX_LOCAL/v2_1.txt"; git -C "$HFIX_LOCAL" add v2_1.txt; git -C "$HFIX_LOCAL" commit -q -m "V2 commit 1"
+printf 'v2-2\n' > "$HFIX_LOCAL/v2_2.txt"; git -C "$HFIX_LOCAL" add v2_2.txt; git -C "$HFIX_LOCAL" commit -q -m "V2 commit 2"
+git -C "$HFIX_LOCAL" push -q -u origin V2
+
+# H1 subject: forked off V2, M=1 more commit, NO upstream set.
+git -C "$HFIX_LOCAL" checkout -q -b v2-based-newbranch V2
+printf 'feat\n' > "$HFIX_LOCAL/v2_feature.txt"; git -C "$HFIX_LOCAL" add v2_feature.txt; git -C "$HFIX_LOCAL" commit -q -m "feature on top of V2"
+
+# Advance main independently (a main-only commit unrelated to V2) so the H3
+# regression case has a clean, non-trivial count difference either way.
+git -C "$HFIX_LOCAL" checkout -q main
+printf 'main-2\n' > "$HFIX_LOCAL/main_2.txt"; git -C "$HFIX_LOCAL" add main_2.txt; git -C "$HFIX_LOCAL" commit -q -m "main-only commit"
+git -C "$HFIX_LOCAL" push -q origin main
+
+# H3 subject: forked directly off the (advanced) main, no V2 relation, no upstream.
+git -C "$HFIX_LOCAL" checkout -q -b main-based-branch main
+printf 'mfeat\n' > "$HFIX_LOCAL/main_feature.txt"; git -C "$HFIX_LOCAL" add main_feature.txt; git -C "$HFIX_LOCAL" commit -q -m "feature on top of main"
+
+# H2 subject: forked off main (so the merge-base heuristic ALONE would pick main --
+# 1 commit ahead of main vs 2 ahead of V2), but with branch.<name>.remote/.merge
+# explicitly configured to V2. Proves the configured upstream short-circuits the
+# heuristic rather than merely agreeing with it by coincidence.
+git -C "$HFIX_LOCAL" checkout -q -b upstream-override main
+printf 'ofeat\n' > "$HFIX_LOCAL/upstream_feature.txt"; git -C "$HFIX_LOCAL" add upstream_feature.txt; git -C "$HFIX_LOCAL" commit -q -m "feature, upstream forced to V2"
+git -C "$HFIX_LOCAL" config branch.upstream-override.remote origin
+git -C "$HFIX_LOCAL" config branch.upstream-override.merge refs/heads/V2
+unset GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
+
+HOME_H=$(new_home); TMP_HOMES+=("$HOME_H")
+
+# H1 -- V2-based branch, no upstream: must show "vs origin/V2" and exactly the
+# M=1 real commit, never "vs origin/main" or the inflated M+N=3 count. Mutation-
+# provable: reverting to find_remote_default()-only makes this assert vs main
+# and the inflated count instead.
+PAY_H1=$(payload "git -C $HFIX_LOCAL push origin v2-based-newbranch")
+ERR_H1=$(mktemp "${TMPDIR:-/tmp}/push-signpost-test.XXXXXX")
+invoke_project "$PAY_H1" "$HOME_H" "sess-H1" >/dev/null 2>"$ERR_H1"; c=$?
+want_deny "$c" "H1: NEW BRANCH forked off V2, no upstream"
+if grep -q "\[NEW BRANCH vs origin/V2\]" "$ERR_H1" && grep -q "1 commit(s), 1 file(s):" "$ERR_H1" && ! grep -q "vs origin/main" "$ERR_H1"; then
+  pass=$((pass+1)); printf '   ok   H1: based against origin/V2, exactly 1 commit, never main\n'
+else
+  fail=$((fail+1)); printf '  FAIL  H1: wrong NEW-BRANCH base or count\n'; cat "$ERR_H1"
+fi
+rm -f "$ERR_H1"
+
+# H2 -- upstream set takes priority over the heuristic even when the heuristic
+# alone would have picked a DIFFERENT (also real) candidate.
+PAY_H2=$(payload "git -C $HFIX_LOCAL push origin upstream-override")
+ERR_H2=$(mktemp "${TMPDIR:-/tmp}/push-signpost-test.XXXXXX")
+invoke_project "$PAY_H2" "$HOME_H" "sess-H2" >/dev/null 2>"$ERR_H2"; c=$?
+want_deny "$c" "H2: NEW BRANCH with an explicit upstream configured"
+if grep -q "\[NEW BRANCH vs origin/V2\]" "$ERR_H2" && ! grep -q "vs origin/main" "$ERR_H2"; then
+  pass=$((pass+1)); printf '   ok   H2: configured upstream (V2) wins over the merge-base heuristic\n'
+else
+  fail=$((fail+1)); printf '  FAIL  H2: configured upstream did not win\n'; cat "$ERR_H2"
+fi
+rm -f "$ERR_H2"
+
+# H3 -- regression: a branch built directly off main, unrelated to V2, must still
+# land "vs origin/main" (non-trivial distinct counts: 1 vs main, 2 vs V2).
+PAY_H3=$(payload "git -C $HFIX_LOCAL push origin main-based-branch")
+ERR_H3=$(mktemp "${TMPDIR:-/tmp}/push-signpost-test.XXXXXX")
+invoke_project "$PAY_H3" "$HOME_H" "sess-H3" >/dev/null 2>"$ERR_H3"; c=$?
+want_deny "$c" "H3: NEW BRANCH forked off main, no V2 relation"
+if grep -q "\[NEW BRANCH vs origin/main\]" "$ERR_H3" && ! grep -q "vs origin/V2" "$ERR_H3"; then
+  pass=$((pass+1)); printf '   ok   H3: main-based branch still lands vs origin/main\n'
+else
+  fail=$((fail+1)); printf '  FAIL  H3: main-based branch was wrongly attributed to V2\n'; cat "$ERR_H3"
+fi
+rm -f "$ERR_H3"
+
+echo
 printf 'RESULT: %d passed, %d failed.\n' "$pass" "$fail"
 if [ "$fail" -eq 0 ]; then echo "PUSH SIGNPOST GUARD GREEN"; exit 0; fi
 echo "PUSH SIGNPOST GUARD RED"; exit 1
