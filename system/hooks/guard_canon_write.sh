@@ -100,11 +100,34 @@ if [ "$(printf '%s' "$_CANON_TOOL" | sed -n '1p')" = "Bash" ]; then
         printf '%s\n' '{"decision":"block","reason":"BLOCKED: guard_canon_write could not load lib/winpath_fold.sh, the path-form normaliser this Bash-side canon check depends on -- failing closed rather than guessing whether this command targets canon. REDIRECT: confirm system/hooks/lib/winpath_fold.sh exists and is readable, then retry."}' >&2
         exit 2
       }
+      . "$_CW_DIR/lib/bwd_sentinel_scope.sh" 2>/dev/null || {
+        printf '%s\n' '{"decision":"block","reason":"BLOCKED: guard_canon_write could not load lib/bwd_sentinel_scope.sh, so an unresolved-variable write target cannot be safely narrowed against this guard'"'"'s scope. REDIRECT: confirm system/hooks/lib/bwd_sentinel_scope.sh exists and is readable, then retry."}' >&2
+        exit 2
+      }
       while IFS= read -r _cc; do
         [ -n "$_cc" ] || continue
         if [ "$_cc" = "__BWD_PARSE_ERROR__" ]; then
           printf '%s\n' '{"decision":"block","reason":"BLOCKED: guard_canon_write could not analyse this Bash command, so it is failing closed. An unreadable command and a harmless one must never look the same. REDIRECT: use the Write or Edit tool for canon — the content rails only work there."}' >&2; exit 2
         fi
+        case "$_cc" in
+          __BWD_UNRESOLVED_VAR__*)
+            # SCOPE-NARROWED (2026-09-17, lead review). An unresolved variable alone is not
+            # evidence this write lands in canon -- `echo x > "$TMPDIR/foo"` produces the same
+            # sentinel and is not this guard's business.
+            _ccvar="$(printf '%s' "$_cc" | cut -f2)"
+            _ccraw="$(printf '%s' "$_cc" | cut -f3)"
+            _ccrem="$(bwd_sentinel_remainder "$_ccraw" "${_ccvar#\$}")"
+            if [ -z "$_ccrem" ]; then
+              printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: guard_canon_write cannot verify this Bash command's write target -- it is JUST an unresolved shell variable (${_ccvar:-a shell variable}) with no surrounding path text this guard can rule out. REDIRECT: use the Write or Edit tool for canon, or expand ${_ccvar:-the variable} by hand before running this command.\"}" >&2; exit 2
+            fi
+            _ccrem_cmp="$(_winfold "$_ccrem")"
+            case "$_ccrem_cmp" in
+              */canon/*|*/canon.md|canon.md)
+                printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: guard_canon_write cannot verify this Bash command's write target -- it builds a path from ${_ccvar:-a shell variable}, which this guard could not resolve from earlier in the same command, and what is known of the rest of the path looks like canon. REDIRECT: use the Write or Edit tool for canon, or expand ${_ccvar:-the variable} by hand before running this command -- the content rails only work through Write/Edit anyway.\"}" >&2; exit 2 ;;
+            esac
+            continue
+            ;;
+        esac
         _cc_cmp="$(_winfold "$_cc")"
         case "$_cc_cmp" in
           */canon/*|*/canon.md|canon.md)

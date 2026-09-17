@@ -88,6 +88,9 @@ except Exception: print('')
   # shellcheck source=lib/bash_write_door.sh
   . "$_HOOKDIR/lib/bash_write_door.sh" 2>/dev/null || \
     deny "BLOCKED: guard_brief_truncation could not load lib/bash_write_door.sh, so it is failing closed. The Bash door into a project brief is unguarded without it, and that door is how 2,640 lines of the cowork-migration brief were deleted on 2026-08-22. REDIRECT: restore system/hooks/lib/bash_write_door.sh from git, then retry."
+  # shellcheck source=lib/bwd_sentinel_scope.sh
+  . "$_HOOKDIR/lib/bwd_sentinel_scope.sh" 2>/dev/null || \
+    deny "BLOCKED: guard_brief_truncation could not load lib/bwd_sentinel_scope.sh, so it is failing closed. An unresolved-variable write target cannot be safely narrowed against this guard's scope without it. REDIRECT: restore system/hooks/lib/bwd_sentinel_scope.sh from git, then retry."
 
   # Append-only shapes cannot truncate. Neutralise them, then ask the library again:
   # if the brief stops being a write target once >> and tee -a are scrubbed, the command
@@ -98,6 +101,29 @@ except Exception: print('')
   case "$TARGETS" in
     *__BWD_PARSE_ERROR__*)
       deny "BLOCKED: guard_brief_truncation could not analyse this command, and it names a project brief. WHY: on 2026-08-22 an unanchored substring search for a section heading matched the heading QUOTED INSIDE a Story Log entry 2,161 lines earlier, and the rewrite that followed deleted 2,640 lines. An unparseable command targeting a brief is refused rather than guessed at. REDIRECT: write the brief through the Write tool, or through system/tools/save/pad_archive.py, or snapshot first with: cp \"<brief>\" \"<brief>.pre-shrink.bak\" and retry. RULE: system/sops/hook-sop.md."
+      ;;
+  esac
+  case "$TARGETS" in
+    *__BWD_UNRESOLVED_VAR__*)
+      # SCOPE-NARROWED (2026-09-17, lead review). An unresolved variable is NOT, on its own,
+      # evidence this write lands in a project brief -- `echo x > "$TMPDIR/foo"` produces the
+      # same sentinel and has nothing to do with one. Only checks the FIRST sentinel line, same
+      # posture as the __BWD_PARSE_ERROR__ check above.
+      _BT_LINE=$(printf '%s\n' "$TARGETS" | grep -m1 '__BWD_UNRESOLVED_VAR__')
+      _BT_VAR=$(printf '%s' "$_BT_LINE" | cut -f2)
+      _BT_RAW=$(printf '%s' "$_BT_LINE" | cut -f3)
+      _BT_REM=$(bwd_sentinel_remainder "$_BT_RAW" "${_BT_VAR#\$}")
+      if [ -z "$_BT_REM" ]; then
+        deny "BLOCKED: guard_brief_truncation cannot verify this Bash command's write target -- it is JUST an unresolved shell variable (${_BT_VAR:-a shell variable}) with no surrounding path text this guard can rule out, and this command names a project brief. REDIRECT: use the Write tool, or expand ${_BT_VAR:-the variable} by hand before running this command. RULE: system/sops/hook-sop.md."
+      fi
+      _BT_INSCOPE=$(printf '%s' "$_BT_REM" | python3 -c '
+import sys, re
+PAT = re.compile(r"[^\s\x27\"()]*(?:/projects/[^\s\x27\"()]*/brief\.md|/state/briefs/[^\s\x27\"()]*\.md)")
+print("yes" if PAT.search(sys.stdin.read()) else "no")
+')
+      if [ "$_BT_INSCOPE" = "yes" ]; then
+        deny "BLOCKED: guard_brief_truncation cannot verify this Bash command's write target -- it builds a path from ${_BT_VAR:-a shell variable}, which this guard cannot resolve from earlier in the same command, and what is known of the rest of the path looks like a project brief. WHY: a resolvable-looking write target that is actually an unexpanded variable is exactly the shape this guard cannot afford to guess at -- see lib/bash_write_door.sh's own FIXCARD-CROSS-PROJECT-WRITE-VAR-PATHS note. REDIRECT: use the Write tool, or expand ${_BT_VAR:-the variable} by hand before running this command. RULE: system/sops/hook-sop.md."
+      fi
       ;;
   esac
 

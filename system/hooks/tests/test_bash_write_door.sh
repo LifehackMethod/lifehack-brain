@@ -114,6 +114,153 @@ else
 fi
 
 echo
+echo "── variable resolution (FIXCARD-CROSS-PROJECT-WRITE-VAR-PATHS, 2026-09-17) ────────────────"
+# The incident: B="$HOME/.../_ClaudeOps"; cat >> "$B/plans/enforcement-layer.phase-2.plan.md"
+# emitted the LITERAL, unexpanded "$B/plans/..." -- so acking the real absolute path (the only
+# thing a person actually has to paste) could never match the hash of the literal string that was
+# captured. Each case below is phrased so a reverted fix, OR a "fix" that silently resolves-and-
+# passes-through on failure, visibly fails.
+
+resolve_eq() { # resolve_eq <expected single line of output> <command> <label>
+  got=$(bwd_write_targets "$2")
+  if [ "$got" = "$1" ]; then
+    pass=$((pass+1)); printf '   ok   %s\n' "$3"
+  else
+    fail=$((fail+1)); printf '  FAIL  %s  (wanted %s, got %s)\n' "$3" "$1" "$got"
+  fi
+}
+
+resolve_sentinel() { # resolve_sentinel <$NAME as it should appear> <command> <label>
+  got=$(bwd_write_targets "$2")
+  case "$got" in
+    *"__BWD_UNRESOLVED_VAR__"*"$1"*)
+      pass=$((pass+1)); printf '   ok   %s\n' "$3" ;;
+    *)
+      fail=$((fail+1)); printf '  FAIL  %s  (wanted a sentinel naming %s, got: %s)\n' "$3" "$1" "$got" ;;
+  esac
+}
+
+# 1. the card's own repro, resolved
+resolve_eq "/tmp/proj-a/plans/x.plan.md" 'B="/tmp/proj-a"; cat >> "$B/plans/x.plan.md"' \
+  "double-quoted same-command assignment resolves in the write target (card repro #1)"
+
+# 2. undeclared var -> sentinel, never the raw literal, never nothing
+got=$(bwd_write_targets 'cat >> "$UNDECLARED_VAR/plans/x.plan.md"')
+if printf '%s\n' "$got" | grep -Fxq '$UNDECLARED_VAR/plans/x.plan.md'; then
+  fail=$((fail+1)); printf '  FAIL  an undeclared var must never be emitted as a bare literal path line\n'
+else
+  pass=$((pass+1)); printf '   ok   an undeclared var is never emitted as a bare literal path line\n'
+fi
+resolve_sentinel '$UNDECLARED_VAR' 'cat >> "$UNDECLARED_VAR/plans/x.plan.md"' \
+  "an undeclared var emits the __BWD_UNRESOLVED_VAR__ sentinel (card repro #2)"
+if [ -n "$got" ]; then
+  pass=$((pass+1)); printf '   ok   an undeclared var emits SOMETHING -- never silently nothing\n'
+else
+  fail=$((fail+1)); printf '  FAIL  an undeclared var emitted nothing -- a caller would read that as "no targets"\n'
+fi
+
+# 3. chained/shadowed assignment -- last one wins, same-command order respected
+resolve_eq "/tmp/b/plans/x.plan.md" 'B="/tmp/a"; B="/tmp/b"; cat >> "$B/plans/x.plan.md"' \
+  "a re-assignment shadows the earlier one -- last assignment wins (card repro #3)"
+
+# literal path, unaffected by any of this
+resolve_eq "$GUARDED" "cat > $GUARDED" "a literal path with no \$VAR at all is completely unaffected"
+
+# a real prefix env-assignment (VAR=val cmd ...) is NOT mistaken for a bare NAME=value assignment,
+# and the write it prefixes is still detected
+want yes "FOO=/tmp cat file > $GUARDED" \
+  "a prefix env-assignment before a real command is still scanned as a write"
+
+# B=/x; cat >> "$B/f.md"  ->  /x/f.md
+resolve_eq "/x/f.md" 'B=/x; cat >> "$B/f.md"' "unquoted RHS assignment resolves"
+
+# export B=/x && echo >> $B/f  ->  /x/f  (export-prefixed, &&-chained, unquoted target)
+resolve_eq "/x/f" 'export B=/x && echo >> $B/f' "export-prefixed assignment, &&-chained, resolves"
+
+# ${B} brace form
+resolve_eq "/x/f.md" 'B=/x; cat >> "${B}/f.md"' "brace form \${B} resolves"
+
+# a variable defined AFTER its use is NOT retroactively resolved -- order matters, same as a real shell
+got=$(bwd_write_targets 'cat >> "$B/f.md"; B=/x')
+if printf '%s\n' "$got" | grep -Fxq "/x/f.md"; then
+  fail=$((fail+1)); printf '  FAIL  a later assignment must not retroactively resolve an earlier use\n'
+else
+  pass=$((pass+1)); printf '   ok   a later assignment does not retroactively resolve an earlier use\n'
+fi
+resolve_sentinel '$B' 'cat >> "$B/f.md"; B=/x' \
+  "a variable defined AFTER use emits the unresolved sentinel instead"
+
+# command substitution in the RHS is NEVER evaluated -- no shell execution happens in this file at
+# all, only text analysis. Mutation-provable: a "fix" that actually shells out to run $(pwd) would
+# make this assert the real $PWD-based path, which this test explicitly rejects.
+REAL_PWD="$(pwd)"
+got=$(bwd_write_targets 'B=$(pwd); cat >> "$B/f.md"')
+if printf '%s\n' "$got" | grep -Fxq "$REAL_PWD/f.md"; then
+  fail=$((fail+1)); printf '  FAIL  a command-substitution RHS must never be executed or resolved\n'
+else
+  pass=$((pass+1)); printf '   ok   a command-substitution RHS ( \$(...) ) is never executed or resolved\n'
+fi
+resolve_sentinel '$B' 'B=$(pwd); cat >> "$B/f.md"' \
+  "\$(...) command substitution in the RHS resolves to the unresolved sentinel"
+resolve_sentinel '$B' 'B=`pwd`; cat >> "$B/f.md"' \
+  "backtick command substitution in the RHS also resolves to the unresolved sentinel"
+
+# the narrow inherited-var allowlist: HOME, USER, PWD -- and ONLY those three
+HOME_TEST_VAL="/tmp/bwd-allowlist-test-$$"
+got=$(HOME="$HOME_TEST_VAL" bwd_write_targets 'cat >> "$HOME/f.md"')
+if [ "$got" = "$HOME_TEST_VAL/f.md" ]; then
+  pass=$((pass+1)); printf '   ok   %s\n' "bare \$HOME resolves via the narrow inherited-var allowlist"
+else
+  fail=$((fail+1)); printf '  FAIL  %s  (wanted %s, got %s)\n' "bare \$HOME resolves via the narrow inherited-var allowlist" "$HOME_TEST_VAL/f.md" "$got"
+fi
+got=$(SOME_RANDOM_BUILD_VAR="/should/not/be/used" bwd_write_targets 'cat >> "$SOME_RANDOM_BUILD_VAR/f.md"')
+case "$got" in
+  *"__BWD_UNRESOLVED_VAR__"*)
+    pass=$((pass+1)); printf '   ok   %s\n' "an arbitrary INHERITED env var outside the 3-name allowlist is NOT resolved" ;;
+  *)
+    fail=$((fail+1)); printf '  FAIL  %s  (got %s) -- the allowlist must never silently widen to the full environment\n' "an arbitrary inherited env var must not be resolved" "$got" ;;
+esac
+
+# CLAUDE_PROJECT_DIR and TMPDIR -- added 2026-09-17 after a lead review found the first cut of this
+# fix denying ordinary commands built from these two (every hook legitimately sees both) outright.
+CPD_TEST_VAL="/tmp/bwd-allowlist-cpd-$$"
+got=$(CLAUDE_PROJECT_DIR="$CPD_TEST_VAL" bwd_write_targets 'cp a "$CLAUDE_PROJECT_DIR/tmp/b"')
+if [ "$got" = "$CPD_TEST_VAL/tmp/b" ]; then
+  pass=$((pass+1)); printf '   ok   %s\n' "bare \$CLAUDE_PROJECT_DIR resolves via the allowlist"
+else
+  fail=$((fail+1)); printf '  FAIL  %s  (wanted %s, got %s)\n' "bare \$CLAUDE_PROJECT_DIR resolves via the allowlist" "$CPD_TEST_VAL/tmp/b" "$got"
+fi
+TMPDIR_TEST_VAL="/tmp/bwd-allowlist-tmpdir-$$"
+got=$(TMPDIR="$TMPDIR_TEST_VAL" bwd_write_targets 'echo x > "$TMPDIR/foo.txt"')
+if [ "$got" = "$TMPDIR_TEST_VAL/foo.txt" ]; then
+  pass=$((pass+1)); printf '   ok   %s\n' "bare \$TMPDIR resolves via the allowlist -- an ordinary command is not denied"
+else
+  fail=$((fail+1)); printf '  FAIL  %s  (wanted %s, got %s)\n' "bare \$TMPDIR resolves via the allowlist" "$TMPDIR_TEST_VAL/foo.txt" "$got"
+fi
+
+echo
+echo "── bwd_sentinel_remainder (lib/bwd_sentinel_scope.sh) ──────────────────────────────────────"
+. lib/bwd_sentinel_scope.sh || { echo "FATAL: cannot source lib/bwd_sentinel_scope.sh"; exit 1; }
+
+remainder_eq() { # remainder_eq <expected> <raw_token> <name> <label>
+  got=$(bwd_sentinel_remainder "$2" "$3")
+  if [ "$got" = "$1" ]; then
+    pass=$((pass+1)); printf '   ok   %s\n' "$4"
+  else
+    fail=$((fail+1)); printf '  FAIL  %s  (wanted %s, got %s)\n' "$4" "$1" "$got"
+  fi
+}
+
+remainder_eq "/plans/x.plan.md" '$UNSET/plans/x.plan.md' "UNSET" \
+  "a leading \$NAME reference is removed, leaving the rest of the path"
+remainder_eq "/plans/x.plan.md" '${UNSET}/plans/x.plan.md' "UNSET" \
+  "the brace form \${NAME} is removed the same way"
+remainder_eq "" '$UNSET' "UNSET" \
+  "a token that WAS just the reference leaves an EMPTY remainder (the bare-variable case)"
+remainder_eq '$UNSET2/plans/x.plan.md' '$UNSET2/plans/x.plan.md' "UNSET" \
+  "word-boundary safe -- a name that is a strict prefix of a longer identifier is untouched"
+
+echo
 printf 'RESULT: %d passed, %d failed.\n' "$pass" "$fail"
 if [ "$fail" -eq 0 ]; then echo "BASH WRITE DOOR GREEN"; exit 0; fi
 echo "BASH WRITE DOOR RED"; exit 1

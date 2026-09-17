@@ -219,6 +219,20 @@ if [ "$TOOL_NAME" = "Bash" ]; then
   while IFS= read -r _c; do
     [ -n "$_c" ] || continue
     [ "$_c" = "__BWD_PARSE_ERROR__" ] && deny "this Bash command could not be analysed during an armed run, so there is no way to tell what it writes"
+    case "$_c" in
+      __BWD_UNRESOLVED_VAR__*)
+        # NOT scope-narrowed, unlike the other 4 callers -- and deliberately so (lead review,
+        # 2026-09-17). Those guards protect AGAINST a scope, so "the remainder does not look like
+        # my scope" safely means allow. This guard is the opposite shape: it protects FOR exactly
+        # one destination, $DEST, and denies everything else BY DESIGN, armed or not. An unresolved
+        # variable can never prove a write safely lands inside $DEST -- the missing part could
+        # always be the difference -- so there is no remainder test here that would ever turn this
+        # into "allow, ordinary work." Every sentinel during an armed run denies, same as it always
+        # did; only the message got clearer, naming the specific variable instead of a generic one.
+        _tlvar="$(printf '%s' "$_c" | cut -f2)"
+        deny "this Bash command's write target is built from ${_tlvar:-a shell variable}, which could not be resolved from earlier in the same command during an armed run, so there is no way to tell whether it writes outside $DEST"
+        ;;
+    esac
     case "$(canon "$_c")" in
       "$DEST"/*) : ;;                 # the one sanctioned destination — allowed
       *) _TL_HIT="$_c"; break ;;

@@ -133,9 +133,37 @@ write "configured resolved, arriving via the link"    0 "sess-run" "$LINK/record
 echo "   and resolving must not become a way in"
 write "a stranger, through the link"                  2 "sess-run" "$LINK/canon.md" "$REAL"
 
+echo "── armed, the Bash door: an unresolved variable ALWAYS denies (lead review, 2026-09-17) ──"
+# write_bash <label> <expected-rc> <session-id> <command> [notes-root-override]
+# Unlike the other 4 callers of lib/bash_write_door.sh, this guard is NOT scope-narrowed on an
+# unresolved-variable sentinel: it protects FOR exactly one destination and denies everything else
+# by design, so a variable this guard cannot resolve can never prove a write safely lands inside
+# $DEST. Every case below must still deny, armed or not -- only the message text changed.
+write_bash() {
+  local label="$1" exp="$2" sid="$3" cmd="$4" root="${5-$NOTES}" got
+  python3 -c "
+import json,sys
+print(json.dumps({'session_id': sys.argv[1], 'cwd': '/somewhere', 'tool_name': 'Bash',
+                  'tool_input': {'command': sys.argv[2]}}))" "$sid" "$cmd" \
+    | env HOME="$FAKEHOME" LIFEHACK_ROOT="$root" CLAUDE_CODE_SESSION_ID="$sid" bash "$GUARD" >/dev/null 2>&1
+  got=$?
+  [ "$got" = "$exp" ] && ok || bad "$label" "expected exit $exp, got $got"
+}
+write_bash "an ordinary \$TMPDIR write during an armed run -- still outside \$DEST, still denied" \
+  2 "sess-run" 'echo x > "$TMPDIR/foo.txt"'
+write_bash "an unresolved var whose remainder even LOOKS like \$DEST -- still denied, no scope escape" \
+  2 "sess-run" 'cat >> "$UNSET_TL_VAR/records/insights/throughline/x.md"'
+MSG_TL="$(python3 -c "
+import json; print(json.dumps({'session_id':'sess-run','cwd':'/x','tool_name':'Bash',
+                                'tool_input':{'command':'cat >> \"\$UNSET_TL_VAR/x.md\"'}}))" \
+  | env HOME="$FAKEHOME" LIFEHACK_ROOT="$NOTES" CLAUDE_CODE_SESSION_ID=sess-run bash "$GUARD" 2>&1 >/dev/null)"
+printf '%s' "$MSG_TL" | grep -q 'UNSET_TL_VAR' && ok || bad "Bash-door deny names the variable" "$MSG_TL"
+
 flag sess-run clear >/dev/null
 echo "   after clear, the session is ordinary again"
 write "post-clear write"         0 "sess-run" "$NOTES/state/projects/alpha/brief.md"
+write_bash "post-clear Bash write with an unresolved var -- ordinary again, not this guard's business" \
+  0 "sess-run" 'cat >> "$UNSET_TL_VAR/x.md"'
 
 echo
 if [ "$fail" = 0 ]; then echo "RESULT: $pass passed, 0 failed."; echo "THROUGHLINE SCOPE GREEN"; exit 0

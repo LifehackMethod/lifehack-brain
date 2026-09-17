@@ -58,8 +58,9 @@ mkjson_bash() {
   T_CMD="$1" python3 -c 'import os, json; print(json.dumps({"tool_name": "Bash", "tool_input": {"command": os.environ["T_CMD"]}}))'
 }
 
+TESTTMPDIR="$SCRATCH/tmp"; mkdir -p "$TESTTMPDIR"
 run_guard() {  # extra env vars may already be exported by the caller
-  cat | HOME="$TESTHOME" CLAUDE_PROJECT_DIR="$REPO" bash "$GUARD" 2>"$ERRF"
+  cat | HOME="$TESTHOME" CLAUDE_PROJECT_DIR="$REPO" TMPDIR="$TESTTMPDIR" bash "$GUARD" 2>"$ERRF"
 }
 
 allow() {
@@ -218,6 +219,33 @@ else
   printf "  FAIL  override  a mismatched override value allowed the write (rc=%s) -- override is not scoped\n" "$rc"
   FAILED=$((FAILED + 1))
 fi
+
+echo
+echo "=== guard_plans_truncation_floor.sh — unresolved-var scope narrowing (lead review, 2026-09-17) ==="
+# An unresolved variable alone is NOT evidence a Bash write lands under the plans directory --
+# `echo x > "$TMPDIR/foo"` produced a false block in the first cut of the var-resolve fix
+# (FIXCARD-CROSS-PROJECT-WRITE-VAR-PATHS); this is the lead-review correction.
+
+# NOTE: these use a single ">" (overwrite), never ">>" -- this guard SCRUBS ">>" before analysis
+# (appends cannot truncate, so they are never its business, unrelated to this fix). Each command
+# also mentions the REAL plans dir in a harmless second segment so it clears the guard's own
+# cheap ".claude/plans" pre-filter, the same way a real command naming the directory would.
+
+allow "an ordinary \$TMPDIR write (unrelated to the plans dir)" \
+  "$(mkjson_bash "echo x > \"\$TMPDIR/foo.txt\"; ls \"$PLANSDIR\" >/dev/null")"
+
+allow "unresolved var whose remainder is OUT of the plans-dir scope" \
+  "$(mkjson_bash "cat > \"\$UNSET_PLANS_VAR/records/notes.md\"; ls \"$PLANSDIR\" >/dev/null")"
+
+deny "unresolved var whose remainder looks like the plans dir -- names the var" \
+  "$(mkjson_bash "cat > \"\$UNSET_PLANS_VAR/plans/x.plan.md\"; ls \"$PLANSDIR\" >/dev/null")" \
+  "UNSET_PLANS_VAR"
+
+deny "a bare unresolved var with no remainder at all -- could be anything" \
+  "$(mkjson_bash "cat > \"\$UNSET_PLANS_VAR\"; ls \"$PLANSDIR\" >/dev/null")" "UNSET_PLANS_VAR"
+
+allow "a same-command variable assignment resolves normally (below the floor, so allowed)" \
+  "$(mkjson_bash "B=\"$PLANSDIR\"; printf 'short' > \"\$B/brand-new-2.plan.md\"")"
 
 echo
 echo "=================================================================="
