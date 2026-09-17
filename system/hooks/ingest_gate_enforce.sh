@@ -211,11 +211,40 @@ _worktree_trusted() {
   [ -f "$_wt_root/system/hooks/ingest_gate_enforce.sh" ] || return 1
   [ -f "$_wt_root/system/register/register.jsonl" ] || return 1
   [ -f "$_wt_root/CLAUDE.md" ] || return 1
+  # ── THE CANONICAL REMOTE (2026-09-17, lead security review). Shape alone is spoofable: any
+  # hostile repo that merely CONTAINS these 3 files at these 3 paths -- a lookalike clone, a repo
+  # mimicking the layout on purpose -- would pass the test above. Require the worktree's own origin
+  # to BE the canonical Harness remote, never widened by $CLAUDE_PROJECT_DIR or cwd. A student clone
+  # has this origin; a fork or a repo with no remote at all falls to gated, the safe direction.
+  # Accepts https and ssh forms, case-insensitive, optional .git suffix and trailing slash.
+  _wt_origin="$(git -C "$_wt_root" config --get remote.origin.url 2>/dev/null)"
+  [ -n "$_wt_origin" ] || return 1
+  _wt_origin="$(printf '%s' "$_wt_origin" | tr '[:upper:]' '[:lower:]')"
+  while [ "${_wt_origin%/}" != "$_wt_origin" ]; do _wt_origin="${_wt_origin%/}"; done
+  case "$_wt_origin" in
+    *github.com[:/]lifehackmethod/lifehack-brain|*github.com[:/]lifehackmethod/lifehack-brain.git) ;;
+    *) return 1 ;;
+  esac
   # TRACKED FILES ONLY. Proving the git plumbing is shared only proves identity of the repo, not of
   # every byte physically sitting in that working directory — a linked worktree can hold untracked
   # drop-in material (a downloaded attachment, scratch notes) never part of the repo's history. Same
   # posture this file already applies to memory//_unpacked/, extended here to worktrees.
-  git -C "$_wt_root" ls-files --error-unmatch -- "${_wt_fp#"$_wt_root"/}" >/dev/null 2>&1
+  git -C "$_wt_root" ls-files --error-unmatch -- "${_wt_fp#"$_wt_root"/}" >/dev/null 2>&1 || return 1
+  # ── NO SYMLINK ESCAPE (2026-09-17, lead security review). `git ls-files` proves the SYMLINK's own
+  # path is tracked -- it says nothing about where that symlink POINTS. A tracked symlink file can
+  # point anywhere on disk; require it points nowhere, or points somewhere still under this same
+  # toplevel. Bash-3.2 compatible (no `realpath`/`readlink -f`, neither ships on a stock macOS box):
+  # `cd -P <dirname> && pwd -P` resolves symlinks the same way Python's os.path.realpath does. The
+  # prefix strip above already used $_wt_fp as given; this re-derives the REALPATH form specifically
+  # so a symlink's resolved target — not its own tracked name — is what gets compared to the root.
+  if [ -L "$_wt_fp" ]; then
+    _wt_real="$(cd -P "$(dirname "$_wt_fp")" 2>/dev/null && pwd -P)/$(basename "$_wt_fp")"
+    _wt_real="$(_winfold "$_wt_real")"
+    case "$_wt_real" in
+      "$_wt_root"/*) ;;
+      *) return 1 ;;
+    esac
+  fi
 }
 
 INPUT=$(cat 2>/dev/null) || deny '{"decision":"block","reason":"BLOCKED: ingest_gate_enforce could not read its input — failing CLOSED."}'
