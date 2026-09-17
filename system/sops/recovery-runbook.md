@@ -79,7 +79,7 @@ authority: user
 - `claude setup-token` → save the `sk-ant-oat01-…` to `~/.config/claudeops/claude-oauth-token` (chmod 600,
   machine-local, never Drive). Runners export it as `CLAUDE_CODE_OAUTH_TOKEN`.
 
-## F. The Air is out of sync (e.g. after a history rewrite)
+## F. The secondary machine is out of sync (e.g. after a history rewrite)
 - The secondary machine is a peer clone + observer (single-writer = the primary machine owns scheduled Drive writes). To resync after a
   normal change: `cd ~/claudeops-config && git pull --ff-only`. **After a history rewrite/force-push** a pull
   will fail — instead: `git fetch origin && git reset --hard origin/main && git gc --prune=now`.
@@ -90,7 +90,7 @@ authority: user
 > operator mid-recovery cannot tell "my restore failed" from "this bar was always wrong." Corrected to
 > bars that can actually pass. **Measured, not recalled.**
 
-- **`verify-connections.py` → expect `5/6` on the Air today, NOT 6/6.** *(Was "6/6 desk tiles GREEN" — an
+- **`verify-connections.py` → expect `5/6` on the secondary machine today, NOT 6/6.** *(Was "6/6 desk tiles GREEN" — an
   **unpassable** condition.)* The 6th is **dobby**, reported STALE at **584.2 h ≈ 24.3 days**, which exactly
   matches the primary machine being dark since 2026-07-04. **dobby is machine-local to the primary machine and was ruled
   DORMANT by design (`c08f554`) — its red is CORRECT, not a defect.** A recovery bar that can only go green
