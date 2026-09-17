@@ -9,6 +9,7 @@ real one would pass or fail for reasons that have nothing to do with the code.
 
 Run: python3 system/tools/test_citation_lint.py
 """
+import json
 import os
 import shutil
 import sys
@@ -32,6 +33,20 @@ SETTINGS = """{
     "command": "bash \\"${CLAUDE_PROJECT_DIR}/system/hooks/live.sh\\""}]}]}
 }
 """
+
+# K1 (enforcement-layer Phase 2, 2026-09-16) fixture data — a hook that a register.jsonl row can
+# declare suspended, plus the real switch_state.py the fix imports FROM `root` (never from this
+# script's own location, so a fixture with no copy of it must fall back to today's behavior).
+SUSPEND_HOOK_NAME = "guard_suspend_demo.sh"
+SETTINGS_WITH_SUSPEND_HOOK_WIRED = """{
+  "hooks": {"UserPromptSubmit": [{"hooks": [
+    {"type": "command", "command": "bash \\"${CLAUDE_PROJECT_DIR}/system/hooks/live.sh\\""},
+    {"type": "command", "command": "bash \\"${CLAUDE_PROJECT_DIR}/system/hooks/%s\\""}
+  ]}]}
+}
+""" % SUSPEND_HOOK_NAME
+SWITCH_STATE_SRC_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "register", "switch_state.py")
 
 
 class Fixture(unittest.TestCase):
@@ -386,6 +401,74 @@ class HooksBothWays(Fixture):
         rc, out = self.lint()
         self.assertEqual(rc, lint.CANNOT_READ)
         self.assertIn("CANNOT-READ", out)
+
+
+class ADeclaredSuspensionIsTheSecondLegitimateReason(Fixture):
+    """K1 (enforcement-layer Phase 2, 2026-09-16). generate.py deliberately OMITS a hook from
+    generated wiring when its register.jsonl row is a declared, unexpired suspension
+    (switch_state.classify() == "honored") — so before this fix, a correctly-declared suspension
+    read identically to an undeclared hand-edit: both said "registered nowhere, declared
+    nowhere". These cases prove the second legitimate reason is now recognized, and that it is
+    narrow: an EXPIRED suspension (generate.py re-emits it as active) and a plain active row must
+    still fail exactly as before — a register.jsonl row is not a blank check against drift."""
+
+    def setUp(self):
+        super().setUp()
+        # This lint must import switch_state.py from `root` (a lint_hooks() parameter), never
+        # from a path fixed to citation_lint.py's own location — carrying the REAL module into
+        # the fixture is what proves that, the same reason test_check_drift_suspension.py's
+        # fixtures carry real register/ files rather than stubs.
+        with open(SWITCH_STATE_SRC_PATH, encoding="utf-8") as fh:
+            self.write("system/register/switch_state.py", fh.read())
+        self.write("system/hooks/" + SUSPEND_HOOK_NAME, "#!/bin/sh\nexit 0\n")
+        # Pinned so honored/expired is deterministic and never drifts with the calendar.
+        self._today_patch = unittest.mock.patch.dict(
+            os.environ, {"LHB_REGISTER_TODAY": "2026-09-16"})
+        self._today_patch.start()
+
+    def tearDown(self):
+        self._today_patch.stop()
+        super().tearDown()
+
+    def hook_row(self, **overrides):
+        row = {"type": "hook", "path": "/system/hooks/" + SUSPEND_HOOK_NAME,
+               "state": "active", "expiry": None}
+        row.update(overrides)
+        return row
+
+    def write_register(self, *rows):
+        self.write("system/register/register.jsonl",
+                    "\n".join(json.dumps(r) for r in rows) + "\n")
+
+    def test_1_active_row_and_wired_passes(self):
+        self.write(".claude/settings.json", SETTINGS_WITH_SUSPEND_HOOK_WIRED)
+        self.write_register(self.hook_row(state="active", expiry=None))
+        rc, out = self.lint()
+        self.assertEqual(rc, 0, out)
+
+    def test_2_honored_suspension_omitted_from_wiring_passes(self):
+        # The base Fixture's settings.json only wires live.sh, so the suspended hook is genuinely
+        # absent from wiring here — exactly what generate.py produces for an honored row.
+        self.write_register(self.hook_row(state="suspended", expiry="2026-09-30"))
+        rc, out = self.lint()
+        self.assertEqual(rc, 0, out)
+        self.assertNotIn("registered nowhere, declared nowhere", out)
+
+    def test_3_expired_suspension_omitted_from_wiring_still_fails(self):
+        # generate.py re-emits an expired suspension as active, so a hook missing from wiring
+        # under this state is real, undeclared drift — the fix must not paper over it.
+        self.write_register(self.hook_row(state="suspended", expiry="2026-09-01"))
+        rc, out = self.lint()
+        self.assertEqual(rc, 1, out)
+        self.assertIn("registered nowhere, declared nowhere", out)
+
+    def test_4_active_row_but_hand_removed_from_wiring_still_fails(self):
+        # A register row existing at all is not a blank check: "active" classifies the same as no
+        # row, so a hand-edit that dropped the hook from wiring must still be caught.
+        self.write_register(self.hook_row(state="active", expiry=None))
+        rc, out = self.lint()
+        self.assertEqual(rc, 1, out)
+        self.assertIn("registered nowhere, declared nowhere", out)
 
 
 class ScopedToStagedFiles(Fixture):
