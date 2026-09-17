@@ -127,6 +127,59 @@ run "a second window is not covered"  "$CROSS" 2 "$(wpay Write "$B_BRIEF" "x")" 
 printf 'not json' | env HOME="$SANDBOX" CLAUDE_CODE_SESSION_ID=sess-alpha bash "$CROSS" >/dev/null 2>&1
 [ $? = 2 ] && pass=$((pass+1)) || { fail=$((fail+1)); echo "  FAIL [cross: unparseable]: expected deny"; }
 
+echo "── guard_cross_project_write: variable-built write target (FIXCARD-CROSS-PROJECT-WRITE-VAR-PATHS) ──"
+# Reproduces the live 2026-09-16 incident exactly: an ordinary, obedient two-line idiom -- assign
+# once, reuse -- built the write target from a shell variable in the SAME command. This window is
+# still on alpha (armed above); the target's slug is a different, sibling project ("other-project"),
+# same shape as the live incident's "enforcement-layer" vs "enforcement-layer.phase-2".
+# B is assigned to a ROOT (the shape of the real incident: B held the AI Brain root, and "/plans/"
+# stayed LITERAL text in the command -- only the root prefix was behind the variable). That is what
+# makes the OLD code's _slug_of() pattern-match the literal, unexpanded text and fire the block in
+# the first place; if B itself were the plans dir, the old bug would be a silent MISS instead of the
+# reported ack-mismatch, which is a different (also real, but not this card's) failure shape.
+VAR_CMD="B=\"$NOTES\"; printf 'hello\n' >> \"\$B/plans/other-project.plan.md\""
+RESOLVED_TARGET="$NOTES/plans/other-project.plan.md"
+
+OUT=$(printf '%s' "$(bpay "$VAR_CMD")" | env HOME="$SANDBOX" CLAUDE_CODE_SESSION_ID=sess-alpha bash "$CROSS" 2>&1)
+GOT=$?
+if [ "$GOT" = 2 ]; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL [cross: var-built target blocked]: expected exit 2, got $GOT"; fi
+
+# (a) the suggested ack command must name the REAL resolved absolute path...
+if printf '%s' "$OUT" | grep -qF "$RESOLVED_TARGET"; then
+  pass=$((pass+1))
+else
+  fail=$((fail+1)); echo "  FAIL [cross: deny names the resolved path]: deny text did not contain $RESOLVED_TARGET"
+fi
+# ...and NEVER the literal, unexpanded "$B/..." -- that is the exact bug this closes.
+if printf '%s' "$OUT" | grep -qF '$B/other-project.plan.md'; then
+  fail=$((fail+1)); echo "  FAIL [cross: deny leaks the literal \$B]: the unexpanded variable appeared in the deny text"
+else
+  pass=$((pass+1))
+fi
+
+# (b) acking the printed RESOLVED path clears the SAME variable-built write on re-run
+env HOME="$SANDBOX" CLAUDE_CODE_SESSION_ID=sess-alpha bash "$CROSS" ack "$RESOLVED_TARGET" >/dev/null 2>&1
+run "var-built target, after acking the RESOLVED path" "$CROSS" 0 "$(bpay "$VAR_CMD")" CLAUDE_CODE_SESSION_ID=sess-alpha
+
+# (c) regression guard against ever "fixing" this via basename-keying: a DIFFERENT real "plans/"
+# path with the SAME basename, never acked, must still be blocked here.
+OTHER_VAR_CMD="B=\"$SANDBOX/another\"; printf 'hello\n' >> \"\$B/plans/other-project.plan.md\""
+run "a different path, same basename, still stops" "$CROSS" 2 "$(bpay "$OTHER_VAR_CMD")" CLAUDE_CODE_SESSION_ID=sess-alpha
+
+echo "── guard_cross_project_write: unresolved variable fails closed ────────────"
+# A write target built from a var this guard genuinely cannot see anywhere in the same command.
+# Must still deny (never exit 0, never silently pass the literal through), and must name the
+# specific variable rather than a generic parse-error message.
+UNRES_CMD='printf "hello\n" >> "$SOME_RANDOM_UNSET_VAR/plans/other-project.plan.md"'
+OUT2=$(printf '%s' "$(bpay "$UNRES_CMD")" | env HOME="$SANDBOX" CLAUDE_CODE_SESSION_ID=sess-alpha bash "$CROSS" 2>&1)
+GOT2=$?
+if [ "$GOT2" = 2 ]; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL [cross: unresolved var fails closed]: expected exit 2, got $GOT2"; fi
+if printf '%s' "$OUT2" | grep -qF 'SOME_RANDOM_UNSET_VAR'; then
+  pass=$((pass+1))
+else
+  fail=$((fail+1)); echo "  FAIL [cross: unresolved var names the variable]: deny text did not name SOME_RANDOM_UNSET_VAR (got: $OUT2)"
+fi
+
 echo ""
 echo "RESULT: $pass passed, $fail failed."
 [ "$fail" = 0 ] && echo "WRITE CUSTODY GREEN" || exit 1

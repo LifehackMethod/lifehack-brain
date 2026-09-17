@@ -105,6 +105,11 @@ if [ "$(printf '%s' "$_CANON_TOOL" | sed -n '1p')" = "Bash" ]; then
         if [ "$_cc" = "__BWD_PARSE_ERROR__" ]; then
           printf '%s\n' '{"decision":"block","reason":"BLOCKED: guard_canon_write could not analyse this Bash command, so it is failing closed. An unreadable command and a harmless one must never look the same. REDIRECT: use the Write or Edit tool for canon — the content rails only work there."}' >&2; exit 2
         fi
+        case "$_cc" in
+          __BWD_UNRESOLVED_VAR__*)
+            _ccvar="$(printf '%s' "$_cc" | cut -f2)"
+            printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: guard_canon_write cannot verify this Bash command's write target -- it builds a path from ${_ccvar:-a shell variable}, which this guard could not resolve from earlier in the same command, so it cannot tell whether this writes to canon. REDIRECT: use the Write or Edit tool for canon, or expand ${_ccvar:-the variable} by hand before running this command -- the content rails only work through Write/Edit anyway.\"}" >&2; exit 2 ;;
+        esac
         _cc_cmp="$(_winfold "$_cc")"
         case "$_cc_cmp" in
           */canon/*|*/canon.md|canon.md)

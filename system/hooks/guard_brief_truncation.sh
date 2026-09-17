@@ -100,6 +100,12 @@ except Exception: print('')
       deny "BLOCKED: guard_brief_truncation could not analyse this command, and it names a project brief. WHY: on 2026-08-22 an unanchored substring search for a section heading matched the heading QUOTED INSIDE a Story Log entry 2,161 lines earlier, and the rewrite that followed deleted 2,640 lines. An unparseable command targeting a brief is refused rather than guessed at. REDIRECT: write the brief through the Write tool, or through system/tools/save/pad_archive.py, or snapshot first with: cp \"<brief>\" \"<brief>.pre-shrink.bak\" and retry. RULE: system/sops/hook-sop.md."
       ;;
   esac
+  case "$TARGETS" in
+    *__BWD_UNRESOLVED_VAR__*)
+      _BT_VAR=$(printf '%s\n' "$TARGETS" | grep -m1 '__BWD_UNRESOLVED_VAR__' | cut -f2)
+      deny "BLOCKED: guard_brief_truncation cannot verify this Bash command's write target -- it builds a path from ${_BT_VAR:-a shell variable}, which this guard cannot resolve from earlier in the same command, and this command names a project brief. WHY: a resolvable-looking write target that is actually an unexpanded variable is exactly the shape this guard cannot afford to guess at -- see lib/bash_write_door.sh's own FIXCARD-CROSS-PROJECT-WRITE-VAR-PATHS note. REDIRECT: use the Write tool, or expand ${_BT_VAR:-the variable} by hand before running this command. RULE: system/sops/hook-sop.md."
+      ;;
+  esac
 
   # The library emits one token per write target, but an inline interpreter write comes back as
   # the WHOLE expression -- open('.../brief.md','w').write(x) -- not as a bare path, so a suffix

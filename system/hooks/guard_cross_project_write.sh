@@ -156,6 +156,11 @@ case "$TOOL" in
       if [ "$_cand" = "__BWD_PARSE_ERROR__" ]; then
         printf '%s\n' '{"decision":"block","reason":"BLOCKED: guard_cross_project_write could not analyse this Bash command, so it is failing closed. An unreadable command and a harmless one must never look the same. REDIRECT: use the Write or Edit tool, which this guard can read reliably."}' >&2; exit 2
       fi
+      case "$_cand" in
+        __BWD_UNRESOLVED_VAR__*)
+          _cvar="$(printf '%s' "$_cand" | cut -f2)"
+          printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: guard_cross_project_write cannot verify this Bash command's write target -- it builds a path from ${_cvar:-a shell variable}, which this guard could not resolve from earlier in the same command, so it cannot tell which project this write belongs to. WHY: an unresolved variable that happens to end in a project-shaped path is exactly the shape a cross-project write could hide inside (see lib/bash_write_door.sh, FIXCARD-CROSS-PROJECT-WRITE-VAR-PATHS). REDIRECT: use the Write or Edit tool, which this guard can read reliably, or expand ${_cvar:-the variable} by hand before running this command.\"}" >&2; exit 2 ;;
+      esac
       # only a path that is a PROJECT ARTIFACT is this guard's business; everything else is noise
       [ -n "$(_slug_of "$_cand")" ] && { _HIT="$_cand"; break; }
     done <<EOF

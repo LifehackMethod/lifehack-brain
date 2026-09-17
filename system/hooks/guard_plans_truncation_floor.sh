@@ -155,6 +155,12 @@ except Exception: print('')
       deny "BLOCKED: guard_plans_truncation_floor could not analyse this command, and it names a path under .claude/plans. WHY: an unparseable command targeting the plans directory is refused rather than guessed at, and no backup can be made because the target path itself could not be determined with confidence. REDIRECT: write the plan file through the Write tool instead, or simplify the command so its target is a literal path. RULE: system/sops/hook-sop.md."
       ;;
   esac
+  case "$TARGETS" in
+    *__BWD_UNRESOLVED_VAR__*)
+      _PT_VAR=$(printf '%s\n' "$TARGETS" | grep -m1 '__BWD_UNRESOLVED_VAR__' | cut -f2)
+      deny "BLOCKED: guard_plans_truncation_floor cannot verify this command's write target -- it builds a path from ${_PT_VAR:-a shell variable}, which this guard could not resolve from earlier in the same command, and this command names a path under .claude/plans. WHY: no backup can be made and no floor can be checked against a target this guard cannot actually resolve. REDIRECT: write the plan file through the Write tool instead, or expand ${_PT_VAR:-the variable} by hand before running this command. RULE: system/sops/hook-sop.md."
+      ;;
+  esac
 
   # Find a TARGET that resolves under PLANS_DIR. bwd_write_targets emits either a bare
   # path (a real shell redirect/writer verb -- EXACT) or, for an interpreter, the WHOLE
