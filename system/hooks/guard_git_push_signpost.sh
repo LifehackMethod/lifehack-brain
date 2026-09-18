@@ -82,7 +82,12 @@ trap 'lhb_journal_fire "$?" "guard_git_push_signpost.sh" "PreToolUse" "Bash" 2>/
 #      when NEITHER is present (no regression on a plain `git push`). If a `-C`/`cd`
 #      path WAS given but does not resolve to a real directory, this hook REFUSES
 #      rather than silently falling back to `$PWD` — printing a guess is worse than
-#      admitting it cannot tell.
+#      admitting it cannot tell. TILDE (2026-09-18, T3.2a): shlex-based extraction
+#      performs NO shell expansion, so a cd/-C target written as `~`, `~/repo`,
+#      `$HOME/repo` or `${HOME}/repo` is expanded HERE, using THIS HOOK OWN $HOME,
+#      before the existence check — the same fix the twin guard
+#      guard_commit_identity.sh got in 3f03efcd — instead of refusing "cannot
+#      determine the target repo" on a real, resolvable push.
 # MEANING: FIXED 2026-09-18 (T3.5) — the signpost named a destination branch but
 #      not its consequence. The deny message now carries what landing there
 #      MEANS, for pushes to the PUBLIC lifehack-brain repo (see the manifest
@@ -270,6 +275,39 @@ case "$VERDICT" in
     _refuse_unresolved "The command could not be tokenised, so this guard cannot tell which repo it targets."
     ;;
   DENY)
+    # TILDE: FIXED 2026-09-18 (T3.2a) — shlex-based target extraction above
+    # performs NO shell expansion, so a cd/-C target written as "~", "~/repo",
+    # "$HOME/repo" or "${HOME}/repo" arrives here as that LITERAL string — the
+    # existence check below then fails on a path that really exists, and the
+    # guard refuses "cannot determine the target repo" on a perfectly
+    # resolvable push (observed live 2026-09-18: `cd ~/lifehack-brain && git
+    # push origin main` — the session is denied but told nothing useful,
+    # blinding the identity line, the MEANING lines, the STALENESS line and
+    # the whole manifest). Expand using THIS HOOK OWN $HOME — never a
+    # hard-coded path — exactly as the twin guard guard_commit_identity.sh
+    # does (commit 3f03efcd, which fixed this identical bug there and its
+    # comment names this file), so the two guards cannot drift apart.
+    case "$REQUESTED_DIR" in
+      '~')
+        REQUESTED_DIR="$HOME"
+        ;;
+      '~/'*)
+        REQUESTED_DIR="$HOME/${REQUESTED_DIR:2}"
+        ;;
+      '$HOME')
+        REQUESTED_DIR="$HOME"
+        ;;
+      '$HOME/'*)
+        REQUESTED_DIR="$HOME/${REQUESTED_DIR:6}"
+        ;;
+      '${HOME}')
+        REQUESTED_DIR="$HOME"
+        ;;
+      '${HOME}/'*)
+        REQUESTED_DIR="$HOME/${REQUESTED_DIR:8}"
+        ;;
+    esac
+
     # a -C/cd target was resolved but does not exist on disk -- refuse rather
     # than guess. (Same behaviour as the original inline-matcher check; now
     # fed by the resolver's own extracted target instead.)
