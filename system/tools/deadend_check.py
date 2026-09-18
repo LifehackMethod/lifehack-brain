@@ -58,6 +58,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import math
 import os
 import re
 import sys
@@ -311,10 +312,40 @@ def _tokens(s):
     return out
 
 
-# A match must clear this to be called STRONG. Calibrated against real queries, not invented —
-# see `_selftest`'s calibration block, which pins both a known-hit and a known-miss on either
-# side of it. Raise it and real dead ends go unflagged; lower it and noise gets a confident label.
-STRONG_SCORE = 0.55
+# ── WHAT "STRONG" MEANS, AND WHY IT IS A FRACTION AND NOT A NUMBER ─────────────
+# STRONG means: this entry shares enough RARE vocabulary with the query that it is probably
+# the recorded dead end for what you are about to build — as opposed to weak ("same words,
+# maybe relevant — skim, do not treat as a finding").
+#
+# History, measured not argued: this file shipped `sum(1/df) >= 0.55`, an ABSOLUTE cutoff on
+# raw inverse-document-frequency mass. It passed its selftest and still broke the moment the
+# corpus grew: adding ONE extra register (140 → 169 entries) dropped "delete a stale branch"
+# from two STRONG matches to ZERO while its ranking actually improved (the true entry rose
+# to #2). Raw 1/df mass decays as the corpus grows because every df denominator rises, so an
+# absolute cutoff flags fewer and fewer real dead ends — a rule that decays with scale is
+# not a rule. (Measured 2026-09-17 with a three-size calibration harness; `_selftest` pins it.)
+#
+# The rule now:
+#   wt(w)      = log(n / df[w]) / log(n)  — rarity normalised into [0, 1], INVARIANT to n
+#   score(e)   = Σ wt over the query tokens the entry matches
+#   ceiling(q) = Σ wt over ALL query tokens + 1.0   (a token absent from the corpus weighs
+#                the maximum 1.0; the +1.0 is one rare-word's worth of caution, so a
+#                near-complete match still has headroom to clear the bar)
+#   STRONG ⇔ score >= STRONG_FRACTION * ceiling  AND  >= 2 distinct query tokens matched
+#
+# ⛔ THE RULING IS RESPECTED, NOT OVERTURNED: this is NOT normalisation by query length.
+# Dividing a score by len(query) PUNISHES detail — a longer question has the same absolute
+# mass spread thinner. The ceiling does the opposite: it GROWS with the query, one wt per
+# token, so each additional descriptive word raises the bar by exactly as much as that word
+# can contribute. A detailed question is credited for its detail, never punished for it.
+# Measured proof: the 15-token "scan every worktree and delete the merged ones" query holds
+# its STRONG match at every corpus size (140/169/300) — pinned in `_selftest` — while the
+# control queries stay quiet at every size under the same rule.
+#
+# The 2-token floor is coherence, not strength: one shared token — however rare — is a
+# coincidence until a second confirms it. (Measured: the comic-sans control's best cell is a
+# single-token match; without this floor it flagged at every corpus size.)
+STRONG_FRACTION = 0.26
 
 
 def search(query, limit=5):
@@ -335,9 +366,14 @@ def search(query, limit=5):
     proved nothing about the real miss case: an ordinary English question about something simply
     not on the list. ⇒ **the test was written from the same mental model as the code and graded
     its own homework** — `build-sop.md`'s named anti-pattern, hit exactly.
-    ⇒ A token is now worth `1/df` (how many entries contain it), so `hook`/`block`/`add` — which
-    appear everywhere — count for almost nothing, while `websearch`/`haiku`/`comic` count for a
-    lot. Classic inverse document frequency, one line, fully explainable.
+    ⇒ A token is worth `log(n/df)/log(n)` — classic inverse document frequency, NORMALISED
+    into [0, 1] so "rare" keeps the same value at 140 entries and at 300. `hook`/`block`/`add`
+    — which appear everywhere — count for almost nothing, while `websearch`/`haiku`/`comic`
+    count for a lot. Raw `1/df` had the right shape but its mass decayed as the corpus grew,
+    and the absolute STRONG cutoff it fed decayed with it (see STRONG_FRACTION above).
+    ⇒ The STRONG verdict is a FRACTION of what the query could have achieved: scale-stable,
+    and ⛔ still NOT normalised by query length — the ceiling GROWS with the query rather
+    than dividing it, so detail is credited, never punished.
 
     ⛔ WEAK MATCHES ARE LABELLED, NEVER DROPPED. Hiding them would convert a visible false
     positive into an invisible false negative — the exact trade this file refuses everywhere
@@ -357,28 +393,52 @@ def search(query, limit=5):
             df[w] = df.get(w, 0) + 1
 
     n = len(all_e) or 1
+    lnn = math.log(n) if n > 1 else 1.0   # n <= 1: no rarity information exists yet
+
+    def wt(w):
+        # rarity of one token, normalised into [0, 1] and INVARIANT to corpus size. A token
+        # absent from the corpus weighs the MAXIMUM 1.0 (df.get(w, 1)) — the honest weight
+        # for "could be anywhere", and the reason a detailed question's unmatched words
+        # raise the ceiling instead of poisoning the score.
+        return math.log(n / df.get(w, 1)) / lnn
+
+    # what the query could achieve at most, plus one rare-word's worth of caution so a
+    # near-complete match still has headroom. GROWS with query length — never divided by it.
+    ceiling = sum(wt(w) for w in q) + 1.0
+    floor = STRONG_FRACTION * ceiling
+
     scored = []
     for e, t in zip(all_e, toks):
         overlap = q & t
         if not overlap:
             continue
-        # rarity-weighted ONLY. ⛔ NOT normalised by query length: dividing by the query size
-        # punishes a DETAILED question, and a detailed question is exactly what a session
-        # about to build something has. A rare token is worth ~1.0; a token in 50 entries ~0.02.
-        score = sum(1.0 / df.get(w, n) for w in overlap)
+        # rarity-weighted ONLY. ⛔ NOT normalised by query length: the STRONG bar is a FRACTION
+        # of a ceiling that grows one weight per query token, so a DETAILED question is
+        # credited for its detail, never punished for it (measured: the 15-token worktree
+        # query holds STRONG at every corpus size — pinned in `_selftest`).
+        score = sum(wt(w) for w in overlap)
         # rank the EXPLANATION by rarity too, so "matched on:" names the informative words first
         why = sorted(overlap, key=lambda w: df.get(w, n))
         scored.append((score, why, e))
     scored.sort(key=lambda t: -t[0])
-    return scored[:limit], len(all_e), missing
+    return scored[:limit], len(all_e), missing, floor
 
 
-def _render(query, hits, total, missing, limit):
+def _is_strong(hit, floor):
+    """THE single definition of the STRONG verdict: enough of the query's achievable rarity
+    mass, AND at least two distinct query tokens matched (coherence — one shared token,
+    however rare, is a coincidence until a second confirms it). `_render` and `_selftest`
+    both go through here, so the verdict cannot drift between presentation and test."""
+    score, why, _e = hit
+    return score >= floor and len(why) >= 2
+
+
+def _render(query, hits, total, missing, limit, floor):
     out = []
     if missing:
         # A source we could not read is NEVER silently an empty source.
         out.append(f"⛔ UNREAD SOURCE(S): {', '.join(missing)} — this answer is INCOMPLETE.")
-    strong = [h for h in hits if h[0] >= STRONG_SCORE]
+    strong = [h for h in hits if _is_strong(h, floor)]
     if not hits:
         out.append(f'NO MATCH for "{query}" across {total} recorded dead ends.')
         out.append(COVERAGE_CAVEAT)
@@ -388,14 +448,16 @@ def _render(query, hits, total, missing, limit):
         # pieces of keyword noise as findings. A weak tier that is not LABELLED weak is a false
         # positive wearing a verdict.
         out.append(f'⚠ NO STRONG MATCH for "{query}" (of {total} recorded dead ends).')
-        out.append("The entries below share only COMMON words and are probably noise — "
-                   "skim them, do not treat them as findings.")
+        out.append("The entries below fall short of the STRONG bar — too little of the "
+                   "query's rarity mass, or a one-token coincidence — and are probably "
+                   "noise: skim them, do not treat them as findings.")
     else:
         out.append(f'{len(strong)} STRONG match(es) for "{query}" '
                    f'(of {total} recorded dead ends) — read these before you build:')
-    for score, why, e in hits:
+    for hit in hits:
+        score, why, e = hit
         ident = f"[{e['id']}] " if e["id"] else ""
-        tier = "STRONG" if score >= STRONG_SCORE else "weak"
+        tier = "STRONG" if _is_strong(hit, floor) else "weak"
         out.append("")
         out.append(f"  [{tier}] {ident}{e['path']}:{e['line']}  ·  "
                    f"matched on: {', '.join(why[:6])}")
@@ -557,15 +619,15 @@ def _selftest():
        all(e["path"] and isinstance(e["line"], int) for e in all_e))
 
     # ── THE HIT PATH — a real, known dead end must be findable.
-    hits, total, _ = search("warning-only hook that exits 0 so the model never sees it")
+    hits, total, _, fl = search("warning-only hook that exits 0 so the model never sees it")
     ck("finds the exit-0 warning-hook dead end", bool(hits))
     ck("...and the top hit is actually about exit 0",
        bool(hits) and ("exit" in hits[0][2]["text"].lower()))
 
-    hits2, _, _ = search("downgrade the ingest scan to haiku to save money")
+    hits2, _, _, _ = search("downgrade the ingest scan to haiku to save money")
     ck("finds the haiku-downgrade dead end", bool(hits2))
 
-    hits3, _, _ = search("name a subagent so it can be addressed")
+    hits3, _, _, _ = search("name a subagent so it can be addressed")
     ck("finds the named-subagent dead end", bool(hits3))
 
     # ── THE MISS PATH — prove it FAILS, per build-sop.md ("a check never SEEN to fail is not a
@@ -579,9 +641,9 @@ def _selftest():
     # are real sentences a person would type.
     for ctrl in ("add a bright pink border around the calendar widget and use Comic Sans",
                  "write a recipe for vegetarian lasagna with three cheeses"):
-        h, t, _ = search(ctrl)
+        h, t, _, fl = search(ctrl)
         ck(f"CONTROL yields NO STRONG match: {ctrl[:38]}...",
-           not [x for x in h if x[0] >= STRONG_SCORE])
+           not [x for x in h if _is_strong(x, fl)])
         # ⚠ ACCEPTS EITHER "NO MATCH" OR "NO STRONG MATCH", and the reason matters. v1 asserted
         # only the latter and went RED when the stop-word fix made the lasagna control match
         # NOTHING AT ALL — a strictly BETTER outcome the test was too specific to accept. The
@@ -589,7 +651,7 @@ def _selftest():
         # not which of the two honest phrasings it used. ⛔ This is not tuning a test to pass:
         # the code improved, and the assertion had encoded an implementation detail instead of
         # the guarantee. Both branches also carry the coverage caveat, asserted below.
-        rendered = _render(ctrl, h, t, [], 5)
+        rendered = _render(ctrl, h, t, [], 5, fl)
         ck("...and nothing is presented as a finding",
            ("NO STRONG MATCH" in rendered) or ("NO MATCH" in rendered))
         ck("...and the coverage caveat rides along either way",
@@ -597,22 +659,38 @@ def _selftest():
     # a genuine dead end must still clear the floor — prove the guard did not just mute everything
     for real in ("a PreToolUse hook that warns before WebSearch but exits 0",
                  "switch the ingest scan from sonnet down to haiku to save money"):
-        h, _, _ = search(real)
+        h, _, _, fl = search(real)
         ck(f"REAL dead end still clears the floor: {real[:34]}...",
-           bool([x for x in h if x[0] >= STRONG_SCORE]))
-    hits4, total4, _ = search("zzqqx nonexistent flibbertigibbet vermicular")
+           bool([x for x in h if _is_strong(x, fl)]))
+    hits4, total4, _, fl4 = search("zzqqx nonexistent flibbertigibbet vermicular")
     ck("a zero-overlap query returns NO match at all", not hits4)
-    rendered = _render("zzqqx nonexistent", hits4, total4, [], 5)
+    rendered = _render("zzqqx nonexistent", hits4, total4, [], 5, fl4)
     ck("a NO-MATCH states it is not an all-clear", "NOT AN ALL-CLEAR" in rendered)
     ck("a NO-MATCH quotes the ~35% coverage", "35%" in rendered)
 
+    # ── THE CALIBRATION PINS — the queries the STRONG rule was measured against at corpus
+    # sizes 140/169/300, pinned so the rule cannot silently decay again (it did once: the
+    # absolute 0.55 cutoff passed every test here while real dead ends stopped clearing it
+    # as the corpus grew). The DETAILED query is the case the old "not normalised by query
+    # length" comment exists to protect: the rule must credit detail, never punish it.
+    hits6, _, _, fl6 = search("delete a stale branch")
+    ck("stale-branch dead end is STRONG", bool([x for x in hits6 if _is_strong(x, fl6)]))
+    hits7, _, _, fl7 = search(
+        "write a session-start script that scans every worktree and deletes the ones "
+        "that look merged")
+    ck("DETAILED query keeps its STRONG match (the ruling's protected case)",
+       bool([x for x in hits7 if _is_strong(x, fl7)]))
+    hits8, _, _, fl8 = search("hook")
+    ck("a SINGLE-token match is never STRONG (coherence floor)",
+       not [x for x in hits8 if _is_strong(x, fl8)])
+
     # ── An unreadable source must be reported, never counted as clean.
-    bad = _render("x", [], 0, ["hook-sop"], 5)
+    bad = _render("x", [], 0, ["hook-sop"], 5, 0.0)
     ck("an unread source is reported loudly", "UNREAD SOURCE" in bad and "INCOMPLETE" in bad)
 
     # ── THE FENCE — a hit must not dump the corpus.
-    hits5, total5, _ = search("exit 0 hook", limit=5)
-    out5 = _render("exit 0 hook", hits5, total5, [], 5)
+    hits5, total5, _, fl5 = search("exit 0 hook", limit=5)
+    out5 = _render("exit 0 hook", hits5, total5, [], 5, fl5)
     ck("output is capped, never the whole corpus", out5.count("matched on:") <= 5)
 
     print("\n" + ("deadend_check.py self-test PASSED" if ok else "✗ SELFTEST FAILED"))
@@ -649,8 +727,8 @@ def main():
         return 2
 
     query = " ".join(a.query)
-    hits, total, missing = search(query, a.limit)
-    print(_render(query, hits, total, missing, a.limit))
+    hits, total, missing, floor = search(query, a.limit)
+    print(_render(query, hits, total, missing, a.limit, floor))
     # T27.16 — the SECOND source. Prose about failures above; artifacts on disk below.
     a_hits, gen, a_missing = _artifact_hits(query)
     a_rows, _, _ = _artifacts()
