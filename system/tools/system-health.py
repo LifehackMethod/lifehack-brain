@@ -78,11 +78,19 @@ TILE_ALIAS = {
     "backlog-health": "backlog",
     "sentinel-health": "sentinel",
     "system-health": "_system-health",     # this sweeper's own feed
+    # ── added 2026-08-27, closing the 9-job NO-TILE mismatch: these five jobs were already
+    #    emitting real tiles, just not under their pulse-job names ──
+    "fault-proposer": "fault-proposer-local",      # fault-proposer-run.sh suffixes MACHINE="local" (fixed constant)
+    "item-store-freshness": "item-store",          # the tile is named for the STORE it checks
+    "email-summary-freshness": "email-summary",    # ditto
+    "archivist-audit": "archivist",                # both archivist modes share ONE tile
+    "archivist-deepmine": "archivist",             # (archivist-run.lib.sh: per-mode sub-keys, shared last_run)
 }
-# NO_TILE_EXPECTED — jobs that legitimately never emit a state/status/*.json tile. Empty today: every
-# job in this repo's pulse-config.md does emit one. Left as a named, checked set (not removed) so the
-# convention this repo's job-authoring pattern expects stays visible for whoever adds the next job.
-NO_TILE_EXPECTED = set()
+# NO_TILE_EXPECTED — jobs that legitimately never emit a state/status/*.json tile.
+# guard-fire-test writes DELIBERATELY machine-local (~/.config/lifehack/guard-fire-test/ + a
+# faults.json finding — its runner header: never the notes root, no shared-file race); its RED/CLEAR
+# verdict reaches the board through the findings banner, not a tile.
+NO_TILE_EXPECTED = {"guard-fire-test"}
 _MISSING = object()   # sentinel: a tile was EXPECTED (not opted out) but the file doesn't exist
 
 
