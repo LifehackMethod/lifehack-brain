@@ -71,9 +71,16 @@ which check does what and when it runs.
 - **Plugin Version Bump Required** (`plugin-version-bump-required.yml`) — runs on every PR
   against `main`. This repo ships as a Claude Code plugin, and students only pick up a
   change once `.claude-plugin/plugin.json`'s version number goes up. If your PR changes
-  anything that actually ships to students, this check fails until you bump that version.
+  anything that actually ships to students, this check stays red until that version goes up.
   A PR that only touches `.github/`, `docs/`, or a root-level `*.md` file (like this one)
   is exempt — nothing a student's installed copy runs differently changed.
+
+  ⭐ **You do not have to do this yourself, and please don't guess at it.** The version
+  number is assigned by the maintainer, not by the contributor: you have no way to know
+  which number is next, and several open PRs guessing at once would hand back conflicting
+  versions. **The maintainer pushes the bump commit to your branch**, the check goes green,
+  and then your PR is merged. Leave the red version check alone — it is expected on your
+  side, and it is not something you did wrong.
 
 ## 4. `action_required`
 
