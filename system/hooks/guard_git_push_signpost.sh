@@ -82,12 +82,35 @@ trap 'lhb_journal_fire "$?" "guard_git_push_signpost.sh" "PreToolUse" "Bash" 2>/
 #      when NEITHER is present (no regression on a plain `git push`). If a `-C`/`cd`
 #      path WAS given but does not resolve to a real directory, this hook REFUSES
 #      rather than silently falling back to `$PWD` — printing a guess is worse than
-#      admitting it cannot tell.
+#      admitting it cannot tell. TILDE (2026-09-18, T3.2a): shlex-based extraction
+#      performs NO shell expansion, so a cd/-C target written as `~`, `~/repo`,
+#      `$HOME/repo` or `${HOME}/repo` is expanded HERE, using THIS HOOK OWN $HOME,
+#      before the existence check — the same fix the twin guard
+#      guard_commit_identity.sh got in 3f03efcd — instead of refusing "cannot
+#      determine the target repo" on a real, resolvable push.
+# MEANING: FIXED 2026-09-18 (T3.5) — the signpost named a destination branch but
+#      not its consequence. The deny message now carries what landing there
+#      MEANS, for pushes to the PUBLIC lifehack-brain repo (see the manifest
+#      block below): `main` = ships to students NOW — a push here reaches people
+#      immediately; `V2` = the next full version and does NOT ship to students
+#      yet — Enver releases it when he says so, on the order of weeks or months.
+#      It also computes, live, how far the checkout's local `main` sits behind
+#      <remote>/main. ⚠ DELIBERATE-NORMAL RULE: V2 running far ahead of main is
+#      the DESIGNED state of this repo — not a backlog, not a misroute, not
+#      drift, and never something to close. These lines state meaning and
+#      consequence, nothing more: no V2-vs-main counts, no language implying a
+#      mistake. (A previous session read "V2 is N ahead" as a problem and sent
+#      real work down a dead end on exactly that misread.)
+# MARKER: FIXED 2026-09-18 (T3.2b) — the once-per-push marker is keyed on the
+# RESOLVED repo plus the push subcommand OWN argv (remote + refspec(s)), not
+# the raw command string: `git push origin main | tail -12` and `| tail -8`
+# are the same push and must not deny twice. Empty argv (a bare `git push`,
+# or argv extraction failed) falls back to the normalized command string.
 # FAIL_POSTURE: closed — an unreadable hook payload denies. A command shlex cannot
 #      tokenize falls back to the raw-text adjacency scan above and denies only if
 #      that still reads as `git push`. SILENT (exit 0) when there is no command to
 #      judge, or the command is a genuinely different git verb.
-# UPDATED: 2026-09-17
+# UPDATED: 2026-09-18
 # RULE: system/sops/github-sop.md §0c — system/hook-contract.md (mechanics)
 # ─────────────────────────────────────────────────────────────────────────────
 # guard_git_push_signpost.sh — PreToolUse hook (matcher: Bash)
@@ -257,6 +280,39 @@ case "$VERDICT" in
     _refuse_unresolved "The command could not be tokenised, so this guard cannot tell which repo it targets."
     ;;
   DENY)
+    # TILDE: FIXED 2026-09-18 (T3.2a) — shlex-based target extraction above
+    # performs NO shell expansion, so a cd/-C target written as "~", "~/repo",
+    # "$HOME/repo" or "${HOME}/repo" arrives here as that LITERAL string — the
+    # existence check below then fails on a path that really exists, and the
+    # guard refuses "cannot determine the target repo" on a perfectly
+    # resolvable push (observed live 2026-09-18: `cd ~/lifehack-brain && git
+    # push origin main` — the session is denied but told nothing useful,
+    # blinding the identity line, the MEANING lines, the STALENESS line and
+    # the whole manifest). Expand using THIS HOOK OWN $HOME — never a
+    # hard-coded path — exactly as the twin guard guard_commit_identity.sh
+    # does (commit 3f03efcd, which fixed this identical bug there and its
+    # comment names this file), so the two guards cannot drift apart.
+    case "$REQUESTED_DIR" in
+      '~')
+        REQUESTED_DIR="$HOME"
+        ;;
+      '~/'*)
+        REQUESTED_DIR="$HOME/${REQUESTED_DIR:2}"
+        ;;
+      '$HOME')
+        REQUESTED_DIR="$HOME"
+        ;;
+      '$HOME/'*)
+        REQUESTED_DIR="$HOME/${REQUESTED_DIR:6}"
+        ;;
+      '${HOME}')
+        REQUESTED_DIR="$HOME"
+        ;;
+      '${HOME}/'*)
+        REQUESTED_DIR="$HOME/${REQUESTED_DIR:8}"
+        ;;
+    esac
+
     # a -C/cd target was resolved but does not exist on disk -- refuse rather
     # than guess. (Same behaviour as the original inline-matcher check; now
     # fed by the resolver's own extracted target instead.)
@@ -277,15 +333,30 @@ case "$VERDICT" in
     # gone before either copy (or the next real attempt) could see it, and
     # every attempt denied, forever.
     #
-    # Fix: key the marker on session id + WHICH push this is (the normalized
-    # command + the resolved target dir), and NEVER delete it. A genuine
-    # repeat of the exact same push is then recognized as "already
-    # signposted" by both racing copies alike; a different push command still
-    # gets its own first-sight deny. Creation uses mkdir, which is atomic on
-    # POSIX filesystems, so at most one of the two parallel copies can ever
-    # win the create -- the loser sees the directory already there and
-    # allows, instead of racing on a plain `[ -f ] && rm` check.
-    _key="${CLAUDE_CODE_SESSION_ID:-$PWD}|${CMD_B64}|${REPO_DIR}"
+    # Fix: key the marker on session id + WHICH push this is, and NEVER delete
+    # it. WHICH push is (T3.2b, 2026-09-18) the RESOLVED target dir plus the
+    # push subcommand OWN argv (remote + refspec(s), extracted by the VERDICT
+    # python into PUSH_ARGV_B64) -- NOT the raw command string: `git push
+    # origin main | tail -12` and `| tail -8` are THE SAME push, and keying on
+    # the command text denied each spelling separately (observed live
+    # 2026-09-18). A genuinely different remote or refspec still gets its own
+    # first-sight deny. When the argv is EMPTY (a bare `git push`, or argv
+    # extraction failed) fall back to the normalized command string --
+    # conservative: a byte-identical re-run still yields. A genuine repeat is
+    # then recognized as "already signposted" by both racing copies alike.
+    # Creation uses mkdir, which is atomic on POSIX filesystems, so at most
+    # one of the two parallel copies can ever win the create -- the loser
+    # sees the directory already there and allows, instead of racing on a
+    # plain `[ -f ] && rm` check.
+    # PUSH_ARGV_B64 is always the base64 of a JSON list; the base64 of the
+    # EMPTY list is exactly the constant W10= -- anything else means real
+    # argv (remote + refspec(s)) was recovered and identifies THIS push.
+    if [ -n "$PUSH_ARGV_B64" ] && [ "$PUSH_ARGV_B64" != "W10=" ]; then
+      _push_key="$PUSH_ARGV_B64"
+    else
+      _push_key="$CMD_B64"
+    fi
+    _key="${CLAUDE_CODE_SESSION_ID:-$PWD}|${_push_key}|${REPO_DIR}"
     _hash=$(printf '%s' "$_key" | shasum 2>/dev/null | cut -c1-16)
     [ -n "$_hash" ] || _hash="default"
     _bump="$HOME/.claude/.push-signpost.$_hash"
@@ -409,6 +480,7 @@ print(remote)
 
 rows = []
 notes = []
+seen_dsts = []   # T3.5: every destination branch this push names, for the MEANING lines below
 
 def commit_file_summary(range_expr):
     rc1, out1 = run(["rev-list", "--count", range_expr])
@@ -469,6 +541,7 @@ def choose_new_branch_base(src_token):
     return best
 
 def render_ref(label, src_token, dst_name, force_marked, delete_only):
+    seen_dsts.append(dst_name)
     if delete_only:
         remote_ref = remote + "/" + dst_name
         if resolves(remote_ref):
@@ -582,6 +655,40 @@ if set_upstream:
 
 if not rows:
     rows.append("   UNRESOLVED  -- could not determine what this push would send; verify manually with git log/diff before pushing.")
+
+# ── T3.5 (2026-09-18): what the destination MEANS, not just its name ──────────
+# The manifest names WHERE this push lands; these lines say what landing there
+# MEANS. The main/V2 meaning is stated only when the push URL is the PUBLIC
+# lifehack-brain repo (same substring the bash identity line matches):
+#   `main` = ships to students NOW -- a push here reaches people immediately.
+#   `V2`   = the next full version. It does NOT ship to students yet -- Enver
+#            releases it when he says so (on the order of weeks or months).
+# ⚠ DELIBERATE-NORMAL RULE: V2 sitting far ahead of main is the DESIGNED state
+# of this repo -- not a backlog, not a misroute, not drift. These lines state
+# meaning and consequence, nothing more: no V2-vs-main counts, no language that
+# implies the gap should be closed or that being on V2 is a mistake. (A
+# previous session read "V2 is N ahead" as a problem and sent work down a dead
+# end on exactly that misread.)
+# STALENESS is computed LIVE from the checkout: how many commits the named
+# remote has on its `main` that the local `main` lacks. Printed only when N > 0 --
+# a zero-behind warning is noise, not a warning.
+meaning_rows = []
+rc_url, push_url = run(["remote", "get-url", "--push", remote])
+if rc_url == 0 and "LifehackMethod/lifehack-brain" in push_url:
+    seen_unique = []
+    for d in seen_dsts:
+        if d and d not in seen_unique:
+            seen_unique.append(d)
+    for d in seen_unique:
+        if d == "main":
+            meaning_rows.append("   MEANING: `main` = ships to students NOW -- a push here reaches people immediately.")
+        elif d == "V2":
+            meaning_rows.append("   MEANING: `V2` = the next full version. It does NOT ship to students yet -- Enver releases it when he says so (on the order of weeks or months).")
+if resolves("main") and resolves(remote + "/main"):
+    rc_n, n_out = run(["rev-list", "--count", "main.." + remote + "/main"])
+    if rc_n == 0 and n_out.strip().isdigit() and int(n_out.strip()) > 0:
+        meaning_rows.append("   STALENESS: your local `main` is " + n_out.strip() + " commit(s) behind `" + remote + "/main`.")
+rows = meaning_rows + rows
 
 for nline in notes:
     rows.append("   NOTE: " + nline)
