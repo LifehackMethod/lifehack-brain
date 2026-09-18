@@ -83,11 +83,24 @@ trap 'lhb_journal_fire "$?" "guard_git_push_signpost.sh" "PreToolUse" "Bash" 2>/
 #      path WAS given but does not resolve to a real directory, this hook REFUSES
 #      rather than silently falling back to `$PWD` — printing a guess is worse than
 #      admitting it cannot tell.
+# MEANING: FIXED 2026-09-18 (T3.5) — the signpost named a destination branch but
+#      not its consequence. The deny message now carries what landing there
+#      MEANS, for pushes to the PUBLIC lifehack-brain repo (see the manifest
+#      block below): `main` = ships to students NOW — a push here reaches people
+#      immediately; `V2` = the next full version and does NOT ship to students
+#      yet — Enver releases it when he says so, on the order of weeks or months.
+#      It also computes, live, how far the checkout's local `main` sits behind
+#      <remote>/main. ⚠ DELIBERATE-NORMAL RULE: V2 running far ahead of main is
+#      the DESIGNED state of this repo — not a backlog, not a misroute, not
+#      drift, and never something to close. These lines state meaning and
+#      consequence, nothing more: no V2-vs-main counts, no language implying a
+#      mistake. (A previous session read "V2 is N ahead" as a problem and sent
+#      real work down a dead end on exactly that misread.)
 # FAIL_POSTURE: closed — an unreadable hook payload denies. A command shlex cannot
 #      tokenize falls back to the raw-text adjacency scan above and denies only if
 #      that still reads as `git push`. SILENT (exit 0) when there is no command to
 #      judge, or the command is a genuinely different git verb.
-# UPDATED: 2026-09-17
+# UPDATED: 2026-09-18
 # RULE: system/sops/github-sop.md §0c — system/hook-contract.md (mechanics)
 # ─────────────────────────────────────────────────────────────────────────────
 # guard_git_push_signpost.sh — PreToolUse hook (matcher: Bash)
@@ -409,6 +422,7 @@ print(remote)
 
 rows = []
 notes = []
+seen_dsts = []   # T3.5: every destination branch this push names, for the MEANING lines below
 
 def commit_file_summary(range_expr):
     rc1, out1 = run(["rev-list", "--count", range_expr])
@@ -469,6 +483,7 @@ def choose_new_branch_base(src_token):
     return best
 
 def render_ref(label, src_token, dst_name, force_marked, delete_only):
+    seen_dsts.append(dst_name)
     if delete_only:
         remote_ref = remote + "/" + dst_name
         if resolves(remote_ref):
@@ -582,6 +597,40 @@ if set_upstream:
 
 if not rows:
     rows.append("   UNRESOLVED  -- could not determine what this push would send; verify manually with git log/diff before pushing.")
+
+# ── T3.5 (2026-09-18): what the destination MEANS, not just its name ──────────
+# The manifest names WHERE this push lands; these lines say what landing there
+# MEANS. The main/V2 meaning is stated only when the push URL is the PUBLIC
+# lifehack-brain repo (same substring the bash identity line matches):
+#   `main` = ships to students NOW -- a push here reaches people immediately.
+#   `V2`   = the next full version. It does NOT ship to students yet -- Enver
+#            releases it when he says so (on the order of weeks or months).
+# ⚠ DELIBERATE-NORMAL RULE: V2 sitting far ahead of main is the DESIGNED state
+# of this repo -- not a backlog, not a misroute, not drift. These lines state
+# meaning and consequence, nothing more: no V2-vs-main counts, no language that
+# implies the gap should be closed or that being on V2 is a mistake. (A
+# previous session read "V2 is N ahead" as a problem and sent work down a dead
+# end on exactly that misread.)
+# STALENESS is computed LIVE from the checkout: how many commits the named
+# remote has on its `main` that the local `main` lacks. Printed only when N > 0 --
+# a zero-behind warning is noise, not a warning.
+meaning_rows = []
+rc_url, push_url = run(["remote", "get-url", "--push", remote])
+if rc_url == 0 and "LifehackMethod/lifehack-brain" in push_url:
+    seen_unique = []
+    for d in seen_dsts:
+        if d and d not in seen_unique:
+            seen_unique.append(d)
+    for d in seen_unique:
+        if d == "main":
+            meaning_rows.append("   MEANING: `main` = ships to students NOW -- a push here reaches people immediately.")
+        elif d == "V2":
+            meaning_rows.append("   MEANING: `V2` = the next full version. It does NOT ship to students yet -- Enver releases it when he says so (on the order of weeks or months).")
+if resolves("main") and resolves(remote + "/main"):
+    rc_n, n_out = run(["rev-list", "--count", "main.." + remote + "/main"])
+    if rc_n == 0 and n_out.strip().isdigit() and int(n_out.strip()) > 0:
+        meaning_rows.append("   STALENESS: your local `main` is " + n_out.strip() + " commit(s) behind `" + remote + "/main`.")
+rows = meaning_rows + rows
 
 for nline in notes:
     rows.append("   NOTE: " + nline)
