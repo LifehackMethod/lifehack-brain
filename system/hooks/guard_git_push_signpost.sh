@@ -101,6 +101,11 @@ trap 'lhb_journal_fire "$?" "guard_git_push_signpost.sh" "PreToolUse" "Bash" 2>/
 #      consequence, nothing more: no V2-vs-main counts, no language implying a
 #      mistake. (A previous session read "V2 is N ahead" as a problem and sent
 #      real work down a dead end on exactly that misread.)
+# MARKER: FIXED 2026-09-18 (T3.2b) — the once-per-push marker is keyed on the
+# RESOLVED repo plus the push subcommand OWN argv (remote + refspec(s)), not
+# the raw command string: `git push origin main | tail -12` and `| tail -8`
+# are the same push and must not deny twice. Empty argv (a bare `git push`,
+# or argv extraction failed) falls back to the normalized command string.
 # FAIL_POSTURE: closed — an unreadable hook payload denies. A command shlex cannot
 #      tokenize falls back to the raw-text adjacency scan above and denies only if
 #      that still reads as `git push`. SILENT (exit 0) when there is no command to
@@ -328,15 +333,30 @@ case "$VERDICT" in
     # gone before either copy (or the next real attempt) could see it, and
     # every attempt denied, forever.
     #
-    # Fix: key the marker on session id + WHICH push this is (the normalized
-    # command + the resolved target dir), and NEVER delete it. A genuine
-    # repeat of the exact same push is then recognized as "already
-    # signposted" by both racing copies alike; a different push command still
-    # gets its own first-sight deny. Creation uses mkdir, which is atomic on
-    # POSIX filesystems, so at most one of the two parallel copies can ever
-    # win the create -- the loser sees the directory already there and
-    # allows, instead of racing on a plain `[ -f ] && rm` check.
-    _key="${CLAUDE_CODE_SESSION_ID:-$PWD}|${CMD_B64}|${REPO_DIR}"
+    # Fix: key the marker on session id + WHICH push this is, and NEVER delete
+    # it. WHICH push is (T3.2b, 2026-09-18) the RESOLVED target dir plus the
+    # push subcommand OWN argv (remote + refspec(s), extracted by the VERDICT
+    # python into PUSH_ARGV_B64) -- NOT the raw command string: `git push
+    # origin main | tail -12` and `| tail -8` are THE SAME push, and keying on
+    # the command text denied each spelling separately (observed live
+    # 2026-09-18). A genuinely different remote or refspec still gets its own
+    # first-sight deny. When the argv is EMPTY (a bare `git push`, or argv
+    # extraction failed) fall back to the normalized command string --
+    # conservative: a byte-identical re-run still yields. A genuine repeat is
+    # then recognized as "already signposted" by both racing copies alike.
+    # Creation uses mkdir, which is atomic on POSIX filesystems, so at most
+    # one of the two parallel copies can ever win the create -- the loser
+    # sees the directory already there and allows, instead of racing on a
+    # plain `[ -f ] && rm` check.
+    # PUSH_ARGV_B64 is always the base64 of a JSON list; the base64 of the
+    # EMPTY list is exactly the constant W10= -- anything else means real
+    # argv (remote + refspec(s)) was recovered and identifies THIS push.
+    if [ -n "$PUSH_ARGV_B64" ] && [ "$PUSH_ARGV_B64" != "W10=" ]; then
+      _push_key="$PUSH_ARGV_B64"
+    else
+      _push_key="$CMD_B64"
+    fi
+    _key="${CLAUDE_CODE_SESSION_ID:-$PWD}|${_push_key}|${REPO_DIR}"
     _hash=$(printf '%s' "$_key" | shasum 2>/dev/null | cut -c1-16)
     [ -n "$_hash" ] || _hash="default"
     _bump="$HOME/.claude/.push-signpost.$_hash"

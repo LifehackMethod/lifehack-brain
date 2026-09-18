@@ -9,9 +9,12 @@
 # denied, the other found it, deleted it, and allowed -- so every attempt denied,
 # forever (see this file's git history for the empirical reproduction).
 #
-# THE FIX: key the marker on session id + a hash of the normalized command + the
-# resolved target dir, created via `mkdir` (atomic on POSIX filesystems) and NEVER
-# deleted. This file exercises exactly the shapes the fix promises:
+# THE FIX: key the marker on session id + WHICH push this is (the resolved
+# target dir + the push subcommand own argv -- remote + refspec(s); T3.2b,
+# 2026-09-18, replacing the old raw-command-text hash, which denied the
+# same push again whenever the command spelling changed, e.g. a different
+# `tail` suffix), created via `mkdir` (atomic on POSIX filesystems) and
+# NEVER deleted. This file exercises exactly the shapes the fix promises:
 #   A. single registration      -- first sighting denies, every repeat allows
 #   B. a DIFFERENT push command in the same session -- gets its OWN first-sight deny
 #   C. double registration (the real bug) -- two copies invoked in TRUE parallel for
@@ -486,6 +489,36 @@ tilde_case "I2: git -C ~/repo resolves"           "sess-I2" 2 'git -C ~/lifehack
 tilde_case "I3: cd \$HOME/repo resolves"          "sess-I3" 2 'cd $HOME/lifehack-brain && git push origin main' "📍 PUSH · lifehack-brain" "cannot determine the target repo"
 tilde_case "I4: cd \${HOME}/repo resolves"        "sess-I4" 2 'cd ${HOME}/lifehack-brain && git push origin main' "📍 PUSH · lifehack-brain" "cannot determine the target repo"
 tilde_case "I5: missing tilde path STILL refuses" "sess-I5" 2 'git -C ~/no-such-repo-t32 push origin main' "cannot determine the target repo" "📍 PUSH · lifehack-brain"
+
+echo
+echo "── J. T3.2b: the marker keys on the PUSH (remote+refspecs), not the raw command ──"
+# `git -C <repo> push origin branchB | tail -12` and `... | tail -8` are THE
+# SAME push. The old marker key hashed the whole normalized command text, so
+# each spelling denied separately (observed live 2026-09-18). Re-keyed on the
+# resolved repo + the push subcommand own argv (remote + refspec(s)); a
+# different remote or refspec still gets its own first-sight deny; a bare
+# `git push` (empty argv) still falls back to the command text.
+HOME_J=$(new_home); TMP_HOMES+=("$HOME_J")
+PAY_J1=$(payload "git -C $FIX_LOCAL push origin branchB | tail -12")
+invoke_project "$PAY_J1" "$HOME_J" "sess-J" >/dev/null 2>&1; c=$?
+want_deny "$c" "J1: first sight of the push denies"
+invoke_project "$PAY_J1" "$HOME_J" "sess-J" >/dev/null 2>&1; c=$?
+want_allow "$c" "J2: byte-identical re-run yields"
+PAY_J2=$(payload "git -C $FIX_LOCAL push origin branchB | tail -8")
+invoke_project "$PAY_J2" "$HOME_J" "sess-J" >/dev/null 2>&1; c=$?
+want_allow "$c" "J3: same push, different pipeline suffix -- NO second deny"
+PAY_J3=$(payload "git -C $FIX_LOCAL push origin main | tail -12")
+invoke_project "$PAY_J3" "$HOME_J" "sess-J" >/dev/null 2>&1; c=$?
+want_deny "$c" "J4: different refspec (main, not branchB) denies once on its own"
+invoke_project "$PAY_J3" "$HOME_J" "sess-J" >/dev/null 2>&1; c=$?
+want_allow "$c" "J5: ...and its byte-identical re-run yields"
+git init --bare -q "$FIX_ROOT/remote2.git"
+git -C "$FIX_LOCAL" remote add upstream "$FIX_ROOT/remote2.git"
+PAY_J4=$(payload "git -C $FIX_LOCAL push upstream branchB | tail -12")
+invoke_project "$PAY_J4" "$HOME_J" "sess-J" >/dev/null 2>&1; c=$?
+want_deny "$c" "J6: different REMOTE (upstream, not origin) denies once on its own"
+invoke_project "$PAY_J4" "$HOME_J" "sess-J" >/dev/null 2>&1; c=$?
+want_allow "$c" "J7: ...and its byte-identical re-run yields"
 
 echo
 printf 'RESULT: %d passed, %d failed.\n' "$pass" "$fail"
