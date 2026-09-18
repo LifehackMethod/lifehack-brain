@@ -1,4 +1,7 @@
 #!/bin/bash
+# LHB fire-journal (B4.1): observes only; never alters this hook's decision/exit/stdout/stderr.
+_lhb_src="${BASH_SOURCE[0]}"; case "$_lhb_src" in */*) _lhb_dir="${_lhb_src%/*}" ;; *) _lhb_dir=. ;; esac; . "$_lhb_dir/lib/journal.sh" 2>/dev/null || lhb_journal_fire() { :; }
+trap 'lhb_journal_fire "$?" "emit_harness_brief.sh" "SessionStart" "" 2>/dev/null || true' EXIT
 #
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # WHY: measured on a live plugin install 2026-09-09 — the Harness shipped a 213-line standing

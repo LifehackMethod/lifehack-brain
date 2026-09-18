@@ -255,6 +255,26 @@ fi
 rm -f "$ERR_E6"
 
 echo
+echo "── F. a shell redirection never masquerades as a refspec (2>&1 case) ──────"
+# Observed live 2026-09-16, against the re-applied 0R.12 resolver port:
+# `git -C <path> push -u origin <branch> 2>&1 | tail -3` printed a manifest row
+# for a phantom refspec literally named "2>&1" (UNRESOLVED 2>&1 -> origin/2>&1).
+# A redirection is consumed by the SHELL before git ever sees it -- it must
+# never reach the refspec parser as if it were a positional git argument.
+git -C "$FIX_LOCAL" checkout -q branchB
+HOME_F=$(new_home); TMP_HOMES+=("$HOME_F")
+PAY_F=$(payload "git -C $FIX_LOCAL push -u origin branchB 2>&1 | tail -3")
+ERR_F=$(mktemp "${TMPDIR:-/tmp}/push-signpost-test.XXXXXX")
+invoke_project "$PAY_F" "$HOME_F" "sess-F" >/dev/null 2>"$ERR_F"; c=$?
+want_deny "$c" "F: -u origin <branch> 2>&1 | tail -3"
+if ! grep -qF "2>&1" "$ERR_F" && ! grep -q "UNRESOLVED" "$ERR_F" && grep -q "branchB -> origin/branchB" "$ERR_F"; then
+  pass=$((pass+1)); printf ' ok F: the redirection (2>&1) never surfaces as a phantom refspec\n'
+else
+  fail=$((fail+1)); printf ' FAIL F: a shell redirection token leaked into the refspec manifest\n'; cat "$ERR_F"
+fi
+rm -f "$ERR_F"
+
+echo
 printf 'RESULT: %d passed, %d failed.\n' "$pass" "$fail"
 if [ "$fail" -eq 0 ]; then echo "PUSH SIGNPOST GUARD GREEN"; exit 0; fi
 echo "PUSH SIGNPOST GUARD RED"; exit 1
