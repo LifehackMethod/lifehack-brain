@@ -21,7 +21,7 @@
 #      worse than no logging shim. Rotation inherits this exactly: a rotation that fails (read-only
 #      dir, a rotated file that can't be deleted, a lost lock race) degrades to "the journal keeps
 #      growing a bit past its cap this cycle," never to a changed decision, never to a leaked byte.
-# UPDATED: 2026-09-16
+# UPDATED: 2026-09-19
 # ─────────────────────────────────────────────────────────────────────────────
 #
 # Contract for callers (every system/hooks/*.sh entry point + system/tools/mirror_line.sh):
@@ -61,6 +61,13 @@
 #   exit_code   — the real, unmodified "$?" the caller's trap captured
 #   session_id  — from $CLAUDE_CODE_SESSION_ID if the platform set it (env var, not a stdin re-parse
 #                 — free, no subprocess); sanitized to [A-Za-z0-9_-] before going in the JSON line
+#   plugin_version — the plugin version THIS fire's process context resolved (e.g. "0.3.34"), or ""
+#                 when it cannot be determined honestly. Added 2026-09-19 (T2.5): without it the
+#                 journal proves a hook fired but not WHICH COPY, so a fix that shipped and a stale
+#                 cache still firing produce identical evidence.
+#   plugin_src  — HOW plugin_version resolved: "root" ($CLAUDE_PLUGIN_ROOT, authoritative), "path"
+#                 (the inherited PATH), or "" (unknown/ambiguous). Kept because a version is only as
+#                 trustworthy as the channel it came from.
 #
 # Cost note (measured this session, this machine, arm64 macOS, bash 3.2.57):
 #   - `printf '...' >> file` from an already-running bash: ~0.057 ms/append (negligible).
@@ -138,6 +145,7 @@ lhb_journal_fire() {
     fi
 
     local _rc _hook _event _matcher _journal _dir _base _ts _decision _sid _tsfile _tsrefresh _cached_ts _cached_n
+    local _pv _psrc _pcand _pseen _pn _prest _pe
 
     _rc="${1:-}"
     _hook="${2:-unknown}"
@@ -179,6 +187,56 @@ lhb_journal_fire() {
     case "$_rc" in
         ''|*[!0-9-]*) _rc=-1 ;;
     esac
+
+    # ── WHICH COPY FIRED (T2.5) ──────────────────────────────────────────────────────────────
+    # A record that proves a hook ran but not WHICH VERSION of it makes "the guard is fixed" and
+    # "a stale cached guard is still firing" identical in the evidence — the blind spot that makes a
+    # correct-but-not-loaded guard indistinguishable from no guard at all.
+    # Resolution MIRRORS ClaudeOps `git_drift_finding.py: resolve_running_plugin_version`, refusals
+    # included: ${CLAUDE_PLUGIN_ROOT} first (the harness's own per-hook substitution, authoritative
+    # when set), else the inherited PATH. NEVER a glob of the cache dir and never mtime (the dead
+    # end that file records as [A12]); several DISTINCT versions in PATH — a process context layered
+    # across an update — is REFUSED as ambiguous rather than guessed. Unknown emits "", because a
+    # wrong version stamp is worse than an absent one.
+    # COST: parameter expansion and `case` only — ZERO forks, on every fire. The PATH walk is a
+    # `while` peeling "${_prest%%:*}" rather than `for _pe in ${PATH//:/ }` on purpose: the unquoted
+    # word-split form pathname-EXPANDS, so a PATH entry holding a glob char would be silently
+    # rewritten, and `set -f` is not available as a fix — this file is SOURCED into the caller's
+    # shell and must not leave one bit of shell state changed behind it.
+    # SHAPE: the VERSION plus HOW it resolved, not the absolute cache path. That path is
+    # "<cache>/lifehack-brain/lifehack-brain/<version>", so it is reconstructible from the version;
+    # storing it per line would add ~100 bytes to a ~200-byte record and nearly halve how much
+    # history the 20 MiB total budget holds, while carrying no extra information.
+    _pv="" _psrc=""
+    case "${CLAUDE_PLUGIN_ROOT:-}" in
+        */plugins/cache/lifehack-brain/lifehack-brain/*)
+            _pv="${CLAUDE_PLUGIN_ROOT#*/plugins/cache/lifehack-brain/lifehack-brain/}"
+            _pv="${_pv%%/*}"
+            [ -n "$_pv" ] && _psrc="root"
+            ;;
+    esac
+    if [ -z "$_pv" ]; then
+        _pseen="" _pn=0 _prest="${PATH:-}"
+        while [ -n "$_prest" ]; do
+            _pe="${_prest%%:*}"
+            if [ "$_pe" = "$_prest" ]; then _prest=""; else _prest="${_prest#*:}"; fi
+            case "$_pe" in
+                */plugins/cache/lifehack-brain/lifehack-brain/*/bin)
+                    _pcand="${_pe#*/plugins/cache/lifehack-brain/lifehack-brain/}"
+                    _pcand="${_pcand%%/*}"
+                    [ -n "$_pcand" ] || continue
+                    case " $_pseen " in
+                        *" $_pcand "*) continue ;;
+                    esac
+                    _pseen="$_pseen $_pcand"
+                    _pn=$((_pn + 1))
+                    _pv="$_pcand"
+                    ;;
+            esac
+        done
+        if [ "$_pn" -eq 1 ]; then _psrc="path"; else _pv=""; fi
+    fi
+    _pv="${_pv//[^A-Za-z0-9_.-]/}"
 
     # Timestamp: a real `date +%s` is an external fork on every fire -- on bash 3.2 (macOS's
     # frozen default; $EPOCHSECONDS and printf '%()T' both need bash 4.2+, neither exists here)
@@ -238,8 +296,8 @@ lhb_journal_fire() {
     # "Permission denied" bash prints on a failed open is swallowed instead of leaking to the real
     # caller's stderr. Verified empirically — the reverse order leaks the message. This is exactly
     # the kind of stray byte the FAIL_POSTURE note above promises never happens.
-    printf '{"ts":%s,"hook":"%s","event":"%s","matcher":"%s","decision":"%s","exit_code":%s,"session_id":"%s"}\n' \
-        "$_ts" "$_hook" "$_event" "$_matcher" "$_decision" "$_rc" "$_sid" 2>/dev/null >>"$_journal"
+    printf '{"ts":%s,"hook":"%s","event":"%s","matcher":"%s","decision":"%s","exit_code":%s,"session_id":"%s","plugin_version":"%s","plugin_src":"%s"}\n' \
+        "$_ts" "$_hook" "$_event" "$_matcher" "$_decision" "$_rc" "$_sid" "$_pv" "$_psrc" 2>/dev/null >>"$_journal"
 
     # Rotation/cap check — best-effort, see the header block above. Wrapped in its own
     # `2>/dev/null` and never allowed to influence this function's own (already-fixed) return 0.
