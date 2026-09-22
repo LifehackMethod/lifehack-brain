@@ -159,20 +159,28 @@ expanding every recurring event occurrence:
   — concrete dated instances of a recurring series, bounded to the ±window so the cadence reader
   sees real meeting dates. [line 281-296]
 
-**Calendar allowlist** (CT-3.5) — only these 5 calendars are pulled, NOT all 17:
-[`calendar_store_sync.py:60-66`]
+**Calendar allowlist** (CT-3.5) — the pull is restricted to an allowlist, not every calendar the
+account can see. ⭐ **CORRECTED 2026-09-20: the allowlist is RESOLVED PER-READER, never hardcoded.**
+`_default_calendar_allowlist()` builds `CALENDAR_ALLOWLIST` from the reader's own
+`shared/cal_config.py` — which knows exactly two identifiers this system can name without guessing:
+**`personal_calendar`** (the reader's own, read-only) and **`agent_calendar`** (the one calendar this
+system may write to). **A key that is not on file is OMITTED — never guessed, never defaulted.**
 
-| Calendar id | Label |
-|---|---|
-| `you@example.com` | The operator (main) |
-| `<agent-ops-calendar-id>` | Cal — Agent Ops |
-| `you-work@example.com` | The operator's business |
-| `someone-else@example.com` | Another person's calendar |
-| `en.usa#holiday@group.v.calendar.google.com` | Holidays in United States |
+> ~~"only these 5 calendars are pulled, NOT all 17" + a five-row table of calendar ids, and: "the
+> authoritative list is `CALENDAR_ALLOWLIST` in `calendar_store_sync.py` lines 60–66. Change
+> `CALENDAR_ALLOWLIST` there to add/drop."~~
+> ⛔⛔ **STRUCK 2026-09-20 — THIS INSTRUCTION WAS ACTIVELY DANGEROUS AND IS THE REASON THIS SECTION
+> WAS REWRITTEN RATHER THAN RE-CITED.** Following it would have reintroduced the exact defect the
+> source file names, in its own words, as **"THE WORST LEAK IN THIS FILE"**: the hardcoded form
+> carried **five real calendar addresses — a personal account, an Agent-Ops id, a consulting-business
+> domain, and a NAMED THIRD PARTY'S personal email — in a PUBLIC repo.** The code was de-hardcoded
+> for that reason; this page went on telling readers to put it back. The struck text is kept visible
+> per §6.2 (strike, never overwrite) so the hazard stays legible.
 
-Excluded: all non-allowlisted calendars (12 as of the 2026-07-11 proving run; the count varies as
-calendars are added/removed — the authoritative list is `CALENDAR_ALLOWLIST` in
-`calendar_store_sync.py` lines 60–66). Change `CALENDAR_ALLOWLIST` there to add/drop.
+**To add or drop a calendar:** edit **your own `<notes>/config/cal.md`** — *never* by another commit
+to `calendar_store_sync.py`. ⚠ The former "12 excluded as of the 2026-07-11 proving run" figure is
+**withdrawn, not updated**: with a per-reader allowlist there is no single correct count, and a
+number here would be wrong for every reader but one.
 
 **Lifecycle state assignment for calendar events** [`calendar_store_sync.py:377-416`]:
 - `status == 'cancelled'` → `cold`

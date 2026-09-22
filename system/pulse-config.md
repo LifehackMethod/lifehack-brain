@@ -218,20 +218,33 @@ email-summary-freshness | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/e
 #    each runner's own header.
 #
 # calendar-store-sync: refreshes state/item-store/calendar/ via calendar_store_sync.py --sync
-# (mechanical, no claude -p — confirmed). LIVE — see the note above. Interval matches the runner's
+# ~~(mechanical, no claude -p — confirmed)~~ ⛔ STRUCK 2026-09-19, FALSE: it DOES call claude -p.
+# calendar_store_sync.py imports run_intake_judge at :163 and calls it at :548, UNCONDITIONALLY on
+# every item carrying free text (:546) — a real haiku call (intake_reader.py:46,:164-166). The
+# module's own docstring :15 ("No LLM in the write path") is stale and was the source of this error.
+# LIVE — see the note above. Interval matches the runner's
 # own header ("own absence horizon... writers run ~daily", STALE_AFTER_HOURS=30). 1-day cadence.
 calendar-store-sync     | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/calendar-store-sync-run.sh"
 #
-# tasks-store-sync: refreshes state/item-store/tasks/ via tasks_store_sync.py --sync (mechanical,
-# no claude -p — confirmed). LIVE for the SAME reason as calendar-store-sync immediately above —
+# tasks-store-sync: refreshes state/item-store/tasks/ via tasks_store_sync.py --sync ~~(mechanical,
+# no claude -p — confirmed)~~ ⛔ STRUCK 2026-09-19, FALSE: tasks_store_sync.py imports
+# run_intake_judge at :102 and calls it at :391, UNCONDITIONALLY on every task carrying free text.
+# Its own docstring :13 carries the identical stale "No LLM in the write path" wording as calendar.
+# LIVE for the SAME reason as calendar-store-sync immediately above —
 # tasks-store-sync-run.sh shared the identical GWS_CREDS-missing branch and got the identical fix.
 # Interval matches the runner's own header ("writers run ~daily", STALE_AFTER_HOURS=30). 1-day
 # cadence.
 tasks-store-sync        | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/tasks-store-sync-run.sh"
 #
 # email-summary-write: refreshes the v2 faithful-thread store (threads-v2/) via
-# email_summary_sync.py --write-v2 (mechanical, no claude -p — confirmed: CLAUDE_BIN is kept but
-# never invoked by the v2 write path; see shared/tools/email_summary_sync.py:114-120). LIVE for
+# email_summary_sync.py --write-v2 ~~(mechanical, no claude -p — confirmed: CLAUDE_BIN is kept but
+# never invoked by the v2 write path; see shared/tools/email_summary_sync.py:114-120)~~
+# ⛔ STRUCK 2026-09-19, FALSE: email_summary_sync.py imports run_intake_judge at :197 and calls it
+# at :832 inside the per-message loop of process_thread_v2(). ⚠ UNLIKE calendar and tasks, email
+# calls the judge CONDITIONALLY — only when scan_for_injection already flagged spans; unflagged
+# bodies reach the store with no model having read them. That asymmetry is unexplained and may be
+# drift rather than design. The cited proof-lines :114-120 describe the RETIRED v1 digest step, and
+# the same file's docstring :19 already lists the decode-and-judge as a live security step. LIVE for
 # the SAME rc=3-vs-rc=75 fix as the two rows above (identical GWS_CREDS-missing branch in
 # email-summary-write-run.sh) — same fix, same session. Interval matches the runner's OWN header,
 # which is explicit: STALE_AFTER_HOURS=4, "just over one 3h cadence, so a SINGLE missed run
