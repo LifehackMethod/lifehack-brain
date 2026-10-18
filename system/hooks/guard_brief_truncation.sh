@@ -83,7 +83,17 @@ except Exception: print('')
   [ -z "$COMMAND" ] && exit 0
 
   # Cheap pre-filter: no brief-shaped path mentioned at all -> not our business.
-  printf '%s' "$COMMAND" | grep -qE '(projects/[^ ]*/brief\.md|state/briefs/[^ ]*\.md)' || exit 0
+  # WINDOWS BLIND SPOT, closed 2026-09-04. A native Windows path --
+  # D:\...\state\projects\<slug>\brief.md -- contains no forward slash at all, so this
+  # pattern could never fire on it and the Bash door stood wide open on this machine.
+  # Measured that day: the pattern returned NO MATCH on a backslash path and the guard
+  # exited 0. The typed-tool door below was never affected (fnmatch normalises on
+  # Windows). Normalisation here is for DETECTION ONLY; $COMMAND is never rewritten.
+  # Parameter expansion, not printf|tr: this runs on EVERY Bash call, ahead of the cheap
+  # pre-filter below that decides whether this guard cares at all. Measured on Git Bash,
+  # 40 iterations: the two-fork pipeline ~62 ms, this ~1.7 ms. Same result, no subprocess.
+  COMMAND_NORM=${COMMAND//\\//}
+  printf '%s' "$COMMAND_NORM" | grep -qE '(projects/[^ ]*/brief\.md|state/briefs/[^ ]*\.md)' || exit 0
 
   # shellcheck source=lib/bash_write_door.sh
   . "$_HOOKDIR/lib/bash_write_door.sh" 2>/dev/null || \
@@ -108,12 +118,78 @@ except Exception: print('')
 import sys, re
 PAT = re.compile(r"[^\s\x27\"()]*(?:/projects/[^\s\x27\"()]*/brief\.md|/state/briefs/[^\s\x27\"()]*\.md)")
 for line in sys.stdin:
-    m = PAT.search(line)
+    # WINDOWS, 2026-09-04: match on a separator-normalised copy and emit the normalised
+    # path. A forward-slash Windows path works in Git Bash stat/cp and in python alike.
+    m = PAT.search(line.replace("\\", "/"))
     if m:
         print(m.group(0)); break
 ' 2>/dev/null)
 
-  [ -z "$HIT" ] && exit 0    # append-only, or the brief is only being READ
+  # FAIL-CLOSED BACKSTOP, added 2026-09-04 after a fire test showed the door still open.
+  # MEASURED that day: lib/bash_write_door.sh returns an EMPTY target list for
+  #   python3 -c "open(r'D:\...state\projects\<slug>\brief.md','w').write(x)"
+  # -- an interpreter write whose path carries backslashes and spaces. HIT was then
+  # empty and the guard exited 0, even though the pre-filter had ALREADY identified a
+  # brief as the target. That contradicted this file's own FAIL_POSTURE: once a brief
+  # IS the target, failing to size the write must DENY, because an unreadable payload
+  # and a safe payload must never look the same.
+  #
+  # Reads and appends are unaffected: they carry no mutation verb, and >> has already
+  # been scrubbed out of $SCRUBBED above, so no bare > survives an append.
+  if [ -z "$HIT" ]; then
+    SCRUBBED_NORM=${SCRUBBED//\\//}   # parameter expansion; see COMMAND_NORM above
+    # Patterns built with ANSI-C quoting so the quote characters never appear
+    # literally in shell source -- 2026-09-04: a literal " inside a double-quoted
+    # pattern closed the string early and silently disabled this whole check.
+    _BT_VERBS=$'\\.write[a-zA-Z]*\\(|\\.truncate\\(|open\\([^)]*,[[:space:]]*[\x27\x22][^\x27\x22]*[wax+]|os\\.(replace|rename|remove|unlink)|shutil\\.(move|copy)|write_text|writeFileSync'
+    # [^>]* not [^ ]* -- this brain lives under 'Google Drive' and 'Shared drives',
+    # and a space stopped the old class dead. Still requires the redirect to TARGET
+    # a brief, so `cat <brief> > /dev/null` and `2>/dev/null` are not caught.
+    # ⛔ ONE TOKEN, NOT THE REST OF THE LINE. Narrowed 2026-09-04. The previous class was
+    # [^>]*, which spans spaces AND every other character, so ANY earlier redirect in the
+    # command -- `2>/dev/null` above all -- followed by a brief path ANYWHERE later matched
+    # as "a redirect targeting a brief". MEASURED: it blocked `pm_flag.sh arm <brief>`, a
+    # command that only NAMES the path and writes nothing, twice in one session. The three
+    # alternatives below are the three real shapes of a redirect target: double-quoted (may
+    # contain spaces, which is why the old class was widened in the first place),
+    # single-quoted, or bare (cannot contain a space). A bare `2>/dev/null ... brief.md` no
+    # longer matches, because the bare alternative stops at the first space.
+    _BT_REDIR=$'>[[:space:]]*(\x22[^\x22]*brief\\.md|\x27[^\x27]*brief\\.md|[^[:space:]\x22\x27>]*brief\\.md)'
+    if printf '%s' "$SCRUBBED" | grep -qE "$_BT_VERBS" || \
+       printf '%s' "$SCRUBBED_NORM" | grep -qE "$_BT_REDIR"; then
+      # ── HONOUR THE REDIRECT THIS MESSAGE ADVERTISES. Added 2026-09-04. ──────────
+      # The deny below says "snapshot first and retry within 15 minutes". Until this
+      # block existed, nothing here looked for that receipt, so the redirect was a dead
+      # end and every legitimate Bash write to a brief was refused. Same test the HIT
+      # path uses: fresh, and not smaller than the file it protects.
+      # The extractor takes QUOTED segments first, because a real brief path here lives
+      # under folder names that contain spaces -- and a space is exactly what
+      # defeated lib/bash_write_door.sh and put us in this branch to begin with.
+      _BT_TARGET=$(printf '%s' "$COMMAND" | python3 -c "
+import sys
+cmd = sys.stdin.read().replace(chr(92), '/')
+parts = []
+for ch in (chr(34), chr(39)):
+    seg = cmd.split(ch)
+    parts += seg[1::2]
+parts += cmd.split()
+hits = [p for p in parts
+        if p.endswith('/brief.md') or ('/state/briefs/' in p and p.endswith('.md'))]
+print(hits[0] if hits else '')
+" 2>/dev/null)
+      if [ -n "$_BT_TARGET" ] && [ -f "$_BT_TARGET.pre-shrink.bak" ]; then
+        _bt_now=$(date +%s)
+        _bt_mt=$(stat -c %Y "$_BT_TARGET.pre-shrink.bak" 2>/dev/null || stat -f %m "$_BT_TARGET.pre-shrink.bak" 2>/dev/null || echo 0)
+        _bt_bs=$(stat -c %s "$_BT_TARGET.pre-shrink.bak" 2>/dev/null || stat -f %z "$_BT_TARGET.pre-shrink.bak" 2>/dev/null || echo 0)
+        _bt_cs=$(stat -c %s "$_BT_TARGET" 2>/dev/null || stat -f %z "$_BT_TARGET" 2>/dev/null || echo 0)
+        if [ $(( _bt_now - _bt_mt )) -le "$RECEIPT_MAX_AGE" ] && [ "$_bt_bs" -ge "$_bt_cs" ]; then
+          exit 0
+        fi
+      fi
+      deny "BLOCKED: a MUTATING Bash command names a project brief, but the write-door library could not identify a target, so this guard is failing closed. WHY: measured 2026-09-04, lib/bash_write_door.sh returns no targets for an interpreter write whose path carries Windows backslashes and spaces -- and a sub-agent using exactly that shape truncated a live brief to ZERO BYTES the same morning, the third such loss since 2026-08-30. An unsizeable write to a brief is refused rather than guessed at. REDIRECT: (1) append instead -- >> and tee -a are never blocked and cannot truncate; (2) or use the Write/Edit tools, which this guard CAN size; (3) or, if the overwrite is intended, snapshot first -- cp <brief> <brief>.pre-shrink.bak -- and retry within 15 minutes. RULE: system/sops/hook-sop.md."
+    fi
+    exit 0    # append-only, or the brief is only being READ
+  fi
 
   # NARROWING -- a false positive caught in fire-test, 2026-08-22. lib/bash_write_door.sh treats a
   # bare `open(` as evidence of a write, so an ORDINARY READ --
@@ -124,10 +200,42 @@ for line in sys.stdin:
   # out of it. So: exact match = a real shell write, keep blocking. Extracted from inside a larger
   # token = an interpreter, and it only counts if the code actually MUTATES.
   # (hook-sop.md: "Narrow by evidence of a WRITE, never by adding words.")
-  if ! printf '%s\n' "$TARGETS" | grep -Fxq "$HIT"; then
+  # ⛔ COMPARE LIKE WITH LIKE. Added 2026-09-04, found by fire test. $HIT is emitted from a
+  # SEPARATOR-NORMALISED copy (the .replace above), $TARGETS is the raw text the command used.
+  # On any Windows spelling the two therefore never matched, this test fell through to the
+  # interpreter branch, that branch demands a write VERB, and a shell redirect has none --
+  # so `echo x > "D:\...\brief.md"` EXITED 0 and the overwrite ran. MEASURED that day on a
+  # fixture brief: forward-slash spelling BLOCK, mixed separators ALLOWED, native backslash
+  # ALLOWED. That is the guard's whole purpose failing open on the platform it was written for.
+  TARGETS_NORM=${TARGETS//\\//}
+  if ! printf '%s\n' "$TARGETS_NORM" | grep -Fxq "$HIT"; then
     printf '%s' "$COMMAND" | grep -qE "\\.write[a-zA-Z]*\\(|\\.truncate\\(|open\\([^)]*,[[:space:]]*['\"][^'\"]*[wax+]|os\\.(replace|rename|remove|unlink)|shutil\\.(move|copy)|write_text|writeFileSync" \
       || exit 0
   fi
+
+  # ── SPACE-AWARE TARGET. Added 2026-09-04, found by the fire test. ─────────────
+  # $HIT comes from a [^\s] class, so it truncates at the last space in the path.
+  # MEASURED that day on ".../My Test Brain/projects/testproj/brief.md", the guard
+  # reported  TARGET: Brain/projects/testproj/brief.md  -- and then looked for the
+  # receipt beside THAT, which does not exist. So a valid, fresh snapshot could never
+  # lift the block, and the deny named the wrong file. The real brief lives under
+  # folders whose names contain spaces, so this was live, not theoretical.
+  # Re-derive from quoted segments; prefer it ONLY when it names a file that exists.
+  # ⛔ Detection is untouched -- this changes which file we look BESIDE, never whether
+  # the guard fires.
+  _BT_FULL=$(printf '%s' "$COMMAND" | python3 -c "
+import sys
+cmd = sys.stdin.read().replace(chr(92), '/')
+parts = []
+for ch in (chr(34), chr(39)):
+    seg = cmd.split(ch)
+    parts += seg[1::2]
+parts += cmd.split()
+hits = [p for p in parts
+        if p.endswith('/brief.md') or ('/state/briefs/' in p and p.endswith('.md'))]
+print(hits[0] if hits else '')
+" 2>/dev/null)
+  if [ -n "$_BT_FULL" ] && [ -f "$_BT_FULL" ]; then HIT="$_BT_FULL"; fi
 
   # A Bash overwrite cannot be sized before it runs, so the snapshot is unconditional here.
   if [ -f "$HIT.pre-shrink.bak" ]; then
