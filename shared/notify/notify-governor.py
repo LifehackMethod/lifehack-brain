@@ -39,10 +39,63 @@
 # NOTE: auto-mute-after-false-alerts is intentionally NOT in v1 — it needs a
 #       feedback channel ("that was a false alert") we don't have yet. Add later.
 
-import sys, os, json, time, hashlib, fcntl
+import sys, os, json, time, hashlib
 
+# ── Cross-platform exclusive file lock ────────────────────────────────────────
+# WHY THIS EXISTS: `fcntl` is POSIX-only. Importing it unconditionally made this whole
+# module die at import time on Windows — and because notify-send.sh reads ANY governor
+# failure as "suppressed by the gate" and exits 0, every push on a Windows machine was
+# silently swallowed and reported as a success. Nothing reached the phone; nothing said so.
+# (Found 2026-09-21 on a Windows install whose topic had been configured since
+# 2026-08-25 and not one notification could ever have been delivered.)
+# The lock guards concurrent read-modify-write of the state file, so it still has to work —
+# it just must not be POSIX-shaped.
+try:
+    import fcntl  # POSIX
+
+    def _flock_ex(fh):
+        fcntl.flock(fh, fcntl.LOCK_EX)
+
+    def _flock_un(fh):
+        fcntl.flock(fh, fcntl.LOCK_UN)
+
+except ImportError:  # Windows
+    try:
+        import msvcrt
+
+        def _flock_ex(fh):
+            # Locks one byte at offset 0; blocking. The lock is advisory between processes
+            # using the same mechanism, which is all this state file needs.
+            try:
+                fh.seek(0)
+                msvcrt.locking(fh.fileno(), msvcrt.LK_LOCK, 1)
+            except OSError:
+                pass   # lock unavailable (e.g. already held past the retry window) — proceed
+                       # unlocked rather than lose the notification entirely
+
+        def _flock_un(fh):
+            try:
+                fh.seek(0)
+                msvcrt.locking(fh.fileno(), msvcrt.LK_UNLCK, 1)
+            except OSError:
+                pass
+
+    except ImportError:  # neither — do not take the whole gate down over a lock
+        def _flock_ex(fh):
+            pass
+
+        def _flock_un(fh):
+            pass
+
+# WHY tempfile.gettempdir() and not "/tmp": on Windows TMPDIR is unset, so the old
+# hardcoded "/tmp" fallback produced a path that does not exist and the governor died on
+# open() — silently, for the same exit-0 reason described above. gettempdir() honours
+# TMPDIR/TEMP/TMP where they are set and falls back to the platform's real temp directory.
+# (Found 2026-09-21, immediately behind the fcntl bug.)
+import tempfile
 STATE = os.environ.get("NOTIFY_STATE_FILE",
-                       os.path.join(os.environ.get("TMPDIR", "/tmp"), "lifehack-notify-state.json"))
+                       os.path.join(os.environ.get("TMPDIR") or tempfile.gettempdir(),
+                                    "lifehack-notify-state.json"))
 QUIET_START = int(os.environ.get("NOTIFY_QUIET_START", "22"))
 QUIET_END   = int(os.environ.get("NOTIFY_QUIET_END", "7"))
 DAILY_CAP   = int(os.environ.get("NOTIFY_DAILY_CAP", "3"))
@@ -104,7 +157,7 @@ def flush_deferred():
     now = time.time()
     lock = open(STATE + ".lock", "w")
     try:
-        fcntl.flock(lock, fcntl.LOCK_EX)
+        _flock_ex(lock)
         state = load_state()
         deferred = state.get("deferred", [])
         hour = time.localtime(now).tm_hour
@@ -122,7 +175,7 @@ def flush_deferred():
         state["deferred"] = keep
         save_state(state)
     finally:
-        fcntl.flock(lock, fcntl.LOCK_UN)
+        _flock_un(lock)
         lock.close()
     for item in to_send:
         print(f"{item.get('source', '')}\t{item.get('message', '')}\t{item.get('title', '')}\t{item.get('tags', '')}\t{item.get('url', '')}")
@@ -144,7 +197,7 @@ def queue_deferred(args):
     now = time.time()
     lock = open(STATE + ".lock", "w")
     try:
-        fcntl.flock(lock, fcntl.LOCK_EX)
+        _flock_ex(lock)
         state = load_state()
         deferred = state.get("deferred", [])
         deferred.append({"ts": now, "source": source, "message": message, "title": title,
@@ -152,7 +205,7 @@ def queue_deferred(args):
         state["deferred"] = deferred
         save_state(state)
     finally:
-        fcntl.flock(lock, fcntl.LOCK_UN)
+        _flock_un(lock)
         lock.close()
     return 0
 
@@ -184,7 +237,7 @@ def main():
     # Serialize the read-modify-write so concurrent jobs can't both slip past the cap.
     lock = open(STATE + ".lock", "w")
     try:
-        fcntl.flock(lock, fcntl.LOCK_EX)
+        _flock_ex(lock)
         state = load_state()
         sent = state.get("sent", [])
 
@@ -252,7 +305,7 @@ def main():
         print("ALLOW")
         return 0
     finally:
-        fcntl.flock(lock, fcntl.LOCK_UN)
+        _flock_un(lock)
         lock.close()
 
 
