@@ -71,6 +71,23 @@ SOURCE = "google-calendar"
 # editing their own <notes>/config/cal.md and this dict, never by another commit to this file.
 # A key that is not on file is simply OMITTED here (fewer calendars pulled), never guessed or defaulted.
 # ─────────────────────────────────────────────────────────────────────────────
+def _read_roster_names():
+    """name<TAB>calendar_id rows from <notes>/config/calendar-sweep-roster.tsv, if present — used only
+    to LABEL extra read calendars. Absent file → no labels, never an error."""
+    names = {}
+    try:
+        roster = os.path.join(DRIVE, "config", "calendar-sweep-roster.tsv")
+        with open(roster, encoding="utf-8") as fh:
+            for line in fh:
+                if line.startswith("#") or "\t" not in line:
+                    continue
+                name, cal_id = line.rstrip("\n").split("\t", 1)
+                names[cal_id.strip()] = name.strip()
+    except OSError:
+        pass
+    return names
+
+
 def _default_calendar_allowlist():
     cfg = cal_config.load()
     out = {}
@@ -80,6 +97,15 @@ def _default_calendar_allowlist():
     agent = cfg.get("agent_calendar")
     if agent:
         out[agent] = "Agent Calendar"
+    # read_calendars (OPTIONAL): a comma-separated list of extra calendar ids
+    # this reader wants PULLED (read-only — the write guard is untouched by this key). Set in the
+    # reader's own <notes>/config/cal.md, never here. Unset → exactly the two calendars above.
+    extra = cfg.get("read_calendars", "")
+    if extra:
+        labels = _read_roster_names()
+        for cal_id in (x.strip() for x in extra.split(",")):
+            if cal_id and cal_id not in out:
+                out[cal_id] = labels.get(cal_id, "Read-only extra")
     return out
 
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 # LHB fire-journal (B4.1): observes only; never alters this hook's decision/exit/stdout/stderr.
-. "$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/lib/journal.sh" 2>/dev/null || lhb_journal_fire() { :; }
+_lhb_src="${BASH_SOURCE[0]}"; case "$_lhb_src" in */*) _lhb_dir="${_lhb_src%/*}" ;; *) _lhb_dir=. ;; esac; . "$_lhb_dir/lib/journal.sh" 2>/dev/null || lhb_journal_fire() { :; }
 trap 'lhb_journal_fire "$?" "guard_git_push_signpost.sh" "PreToolUse" "Bash" 2>/dev/null || true' EXIT
 #
 # ══════════════════════════════════════════════════════════════════════════════
@@ -39,13 +39,28 @@ trap 'lhb_journal_fire "$?" "guard_git_push_signpost.sh" "PreToolUse" "Bash" 2>/
 #      vs personal. Then re-run the exact same push.
 # SIGNPOST: system/sops/github-sop.md §0c — the branch/push decision. To change what
 #      is gated here, edit that SOP + get sign-off, then update this guard.
-# MATCHING: argv STRUCTURE via shlex, never a keyword grep on the command string — a
-#      literal "git push" inside a quoted commit message must not trip it. Segments
-#      split on ; && || |; only a token that IS literally `git` (or ends in /git),
-#      followed by the literal subcommand `push`, counts. On a shlex failure (heredoc,
-#      unbalanced quote) we fall back to a raw-text adjacency scan for `git push` as a
-#      shape, same fallback guard_gh_pr_merge.sh uses, and deny only if that shape is
-#      present.
+# MATCHING: argv STRUCTURE via the SHARED resolver (system/hooks/lib/
+#      git_target_resolver.py, ported 2026-09-10/re-applied for 0.3.23), never a
+#      keyword grep on the command string — a literal "git push" inside a quoted
+#      commit message must not trip it. Segments split on ; && || |; only a token
+#      that IS literally `git` (or ends in /git), followed by the literal
+#      subcommand `push`, counts. The shared resolver replaces a hand-rolled
+#      plain `shlex.split`, which glued an unpadded `;` (e.g. `exit;`) onto the
+#      next token and missed the outbound act entirely — the resolver tokenizes
+#      with `punctuation_chars=True` so `;`/`&&`/`||`/`|` split correctly whether
+#      or not they are whitespace-padded. When the resolver cannot prove a cd/-C
+#      target from an unprovable `cd X || <non-exit-shaped>` construct, it
+#      REFUSES rather than guessing (REFUSE_AMBIGUOUS); when shlex cannot
+#      tokenize the command at all (heredoc, unbalanced quote) but a raw-text
+#      scan still sees a `git ... push` shape, it likewise REFUSES rather than
+#      naming a repo of $PWD it cannot actually vouch for (REFUSE_TOKENIZE,
+#      0N.1). Extracting the matched push subcommand's OWN argv (for the REFSPEC
+#      manifest below) is this guard's own job, re-walking the resolver's OWN
+#      tokenizer/segmenter so it never disagrees with the target already
+#      resolved — and strips shell redirection tokens ([n]<word, [n]>word,
+#      [n]>&word, ...) from that argv first: a redirection is consumed by the
+#      SHELL, never part of git's own argv, and `git push -u origin <branch>
+#      2>&1 | tail -3` used to surface a phantom refspec literally named "2>&1".
 # IDENTITY: resolved from the COMMAND, never bare `$PWD` — fixed 2026-09-08 after a
 #      real incident: a push from a ClaudeOps cwd targeting `git -C
 #      ~/lifehack-brain push origin main` was signposted as "ClaudeOps
@@ -67,20 +82,45 @@ trap 'lhb_journal_fire "$?" "guard_git_push_signpost.sh" "PreToolUse" "Bash" 2>/
 #      when NEITHER is present (no regression on a plain `git push`). If a `-C`/`cd`
 #      path WAS given but does not resolve to a real directory, this hook REFUSES
 #      rather than silently falling back to `$PWD` — printing a guess is worse than
-#      admitting it cannot tell.
+#      admitting it cannot tell. TILDE (2026-09-18, T3.2a): shlex-based extraction
+#      performs NO shell expansion, so a cd/-C target written as `~`, `~/repo`,
+#      `$HOME/repo` or `${HOME}/repo` is expanded HERE, using THIS HOOK OWN $HOME,
+#      before the existence check — the same fix the twin guard
+#      guard_commit_identity.sh got in 3f03efcd — instead of refusing "cannot
+#      determine the target repo" on a real, resolvable push.
+# MEANING: FIXED 2026-09-18 (T3.5) — the signpost named a destination branch but
+#      not its consequence. The deny message now carries what landing there
+#      MEANS, for pushes to the PUBLIC lifehack-brain repo (see the manifest
+#      block below): `main` = ships to students NOW — a push here reaches people
+#      immediately; `V2` = the next full version and does NOT ship to students
+#      yet — Enver releases it when he says so, on the order of weeks or months.
+#      It also computes, live, how far the checkout's local `main` sits behind
+#      <remote>/main. ⚠ DELIBERATE-NORMAL RULE: V2 running far ahead of main is
+#      the DESIGNED state of this repo — not a backlog, not a misroute, not
+#      drift, and never something to close. These lines state meaning and
+#      consequence, nothing more: no V2-vs-main counts, no language implying a
+#      mistake. (A previous session read "V2 is N ahead" as a problem and sent
+#      real work down a dead end on exactly that misread.)
+# MARKER: FIXED 2026-09-18 (T3.2b) — the once-per-push marker is keyed on the
+# RESOLVED repo plus the push subcommand OWN argv (remote + refspec(s)), not
+# the raw command string: `git push origin main | tail -12` and `| tail -8`
+# are the same push and must not deny twice. Empty argv (a bare `git push`,
+# or argv extraction failed) falls back to the normalized command string.
 # FAIL_POSTURE: closed — an unreadable hook payload denies. A command shlex cannot
 #      tokenize falls back to the raw-text adjacency scan above and denies only if
 #      that still reads as `git push`. SILENT (exit 0) when there is no command to
 #      judge, or the command is a genuinely different git verb.
-# UPDATED: 2026-09-15
+# UPDATED: 2026-09-18
 # RULE: system/sops/github-sop.md §0c — system/hook-contract.md (mechanics)
 # ─────────────────────────────────────────────────────────────────────────────
 # guard_git_push_signpost.sh — PreToolUse hook (matcher: Bash)
 
 INPUT=$(cat 2>/dev/null)
 
-VERDICT=$(printf '%s' "$INPUT" | python3 -c '
-import sys, json, shlex, os, base64
+_LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib/git_target_resolver.py"
+
+VERDICT=$(printf '%s' "$INPUT" | GUARD_LIB="$_LIB" python3 -c '
+import sys, json, os, base64, importlib.util
 
 try:
     d = json.load(sys.stdin)
@@ -97,92 +137,101 @@ if not cmd.strip():
 # hash so it identifies THIS push, not merely this session.
 cmd_key = base64.b64encode(" ".join(cmd.split()).encode("utf-8", "surrogateescape")).decode("ascii")
 
+_lib = os.environ.get("GUARD_LIB", "")
+if not _lib or not os.path.isfile(_lib):
+    print("BLOCK_NOLIB"); raise SystemExit
+
 try:
-    toks = shlex.split(cmd, comments=False, posix=True)
-except ValueError:
-    import re as _re
-    _shape = _re.compile(r"(^|[;&|(\s])git\s+(-{1,2}\S+\s+)*push\b")
-    if _shape.search(cmd):
-        print("DENY\t\t" + cmd_key); raise SystemExit
+    _spec = importlib.util.spec_from_file_location("git_target_resolver", _lib)
+    _gtr = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(_gtr)
+    status, target = _gtr.resolve(cmd, "push")
+except Exception:
+    print("BLOCK_NOLIB"); raise SystemExit
+
+if status == "NOT_OURS":
     print("NOT_OURS"); raise SystemExit
+if status == "REFUSE_AMBIGUOUS":
+    print("REFUSE_AMBIGUOUS"); raise SystemExit
+if status == "AMBIGUOUS":
+    # a real outbound shape was found but the tokenizer itself failed. We
+    # therefore do NOT know whether the command changes directory -- so we
+    # cannot treat it as a bare in-place act, and we must not name a repo we
+    # would only be guessing at. Refuse instead.
+    print("REFUSE_TOKENIZE"); raise SystemExit
+if status != "DENY":
+    print("BLOCK_NOLIB"); raise SystemExit
 
-# (segment, operator-that-PRECEDES-it) pairs. A cd before an AND/semicolon
-# reliably takes effect on what follows. A cd itself preceded by a PIPE runs
-# in a pipeline subshell and never touches the parent shell, and a cd itself
-# preceded by OR only ran if the left side failed -- neither is trustworthy
-# enough to ADOPT as the new cwd (see the loop below), but a cwd already
-# established by an earlier, trusted cd is NOT discarded just because a
-# later segment happens to be preceded by `|`/`||` (A1.3, 2026-09-16).
-segments, buf, op = [], [], None
-for t in toks:
-    if t in ("&&", "||", ";", "|"):
-        if buf: segments.append((buf, op))
-        buf = []
-        op = t
-    else:
-        buf.append(t)
-if buf: segments.append((buf, op))
+# The shared resolver contract (system/hooks/lib/git_target_resolver.py) is
+# (status, target) only -- extracting the matched push subcommand OWN argv
+# (needed for the REFSPEC manifest below, see the LLM CONTEXT block above) is
+# this guard own concern, not the resolver own job. Re-walk the command with
+# the resolver OWN tokenizer/segmenter (never a bare shlex.split -- that gap,
+# an unpadded `;` like `exit;` gluing to the next token, is exactly what this
+# port replaces; see MATCHING note above) so argv extraction can never
+# disagree with the target resolution that already succeeded above.
 
-def is_git(tok):
-    return os.path.basename(tok) == "git"
-
-cwd = ""
-for seg, preceding_op in segments:
-    if seg and seg[0] == "cd":
-        # A cd reached via `|` runs in a pipeline subshell and never affects the
-        # parent shell; a cd reached via `||` only runs if the PRECEDING segment
-        # FAILED, so its target is not trustworthy enough to adopt. Neither case
-        # invalidates a cwd already established by an EARLIER, trusted segment --
-        # fixed 2026-09-16 (A1.3) after the 2026-09-08 incident: the old code reset
-        # cwd to "" on ANY segment merely preceded by `|`/`||`, which forgot a cwd
-        # that a genuinely-ran `cd` had already set. `cd X || exit 1 ; git push`
-        # is the standard cd-or-bail idiom -- the `cd` IS the left side of the
-        # `||`; it ran and succeeded. The `exit 1` segment that follows is what is
-        # preceded by `||`, not the `cd` -- discarding cwd there was inverted.
-        if preceding_op not in ("|", "||"):
-            target = ""
-            for tok in seg[1:]:
-                if not tok.startswith("-"):
-                    target = tok
-                    break
-            if target:
-                cwd = target
-        continue
-
+# FIXED: a shell redirection ([n]<word, [n]>word, [n]>>word, [n]>&word,
+# [n]&>word, ...) is consumed by the SHELL before git ever sees it -- it is
+# never part of git own argv. Measured live: `git -C <path> push -u origin
+# <branch> 2>&1 | tail -3` printed a manifest row for a phantom refspec named
+# literally "2>&1" (UNRESOLVED 2>&1 -> origin/2>&1). Root cause: shlex, even
+# in punctuation_chars mode, cannot glue an fd-number word onto the following
+# punctuation-only redirect operator the way a real shell lexer does, so
+# "2>&1" surfaces as three separate tokens here: "2", ">&", "1" -- and those
+# then look like three ordinary positional refspec arguments to everything
+# downstream. Recognise that shape (and the simpler undigited forms) and drop
+# every token a redirection consumes, so it can never masquerade as a
+# refspec, a remote name, or any other positional git argument.
+def _strip_shell_redirections(tokens):
+    redir_punct = ("<", ">", "<<", ">>", "<&", ">&", "&>", "&>>", "<>")
+    out = []
     i = 0
-    while i < len(seg) and "=" in seg[i] and not seg[i].startswith("-"):
+    n = len(tokens)
+    while i < n:
+        j = i
+        if tokens[i].isdigit() and (i + 1) < n and tokens[i + 1] in redir_punct:
+            j = i + 1
+        if tokens[j] in redir_punct:
+            k = j + 1
+            if k < n and (tokens[k].isdigit() or tokens[j] not in ("<&", ">&", "&>", "&>>")):
+                k += 1
+            i = k
+            continue
+        out.append(tokens[i])
         i += 1
-    if i >= len(seg) or not is_git(seg[i]):
-        continue
-    j = i + 1
-    cdir = ""
-    while j < len(seg) and seg[j].startswith("-"):
-        if seg[j] in ("-C", "-c"):
-            if seg[j] == "-C" and j + 1 < len(seg):
-                cdir = seg[j + 1]
-            j += 2
-        else:
-            j += 1
-    if j < len(seg) and seg[j] == "push":
-        # explicit -C wins over an inherited cd — confirmed against real git behaviour
-        resolved = cdir if cdir else cwd
-        # carry the push subcommand argv (everything after "push" in THIS segment) so
-        # the bash side can resolve the NAMED refspec(s), never the currently checked
-        # out branch — see the REFSPEC note in the LLM CONTEXT block above.
-        push_argv = seg[j + 1:]
-        argv_b64 = base64.b64encode(json.dumps(push_argv).encode("utf-8", "surrogateescape")).decode("ascii")
-        print("DENY\t" + resolved + "\t" + cmd_key + "\t" + argv_b64); raise SystemExit
+    return out
 
-print("OK")
+push_argv = []
+try:
+    for seg, _op in _gtr._segment(_gtr._tokenize(cmd)):
+        idx = 0
+        while idx < len(seg) and "=" in seg[idx] and not seg[idx].startswith("-"):
+            idx += 1
+        if idx >= len(seg) or not _gtr._is_git(seg[idx]):
+            continue
+        j = idx + 1
+        while j < len(seg) and seg[j].startswith("-"):
+            if seg[j] in ("-C", "-c"):
+                if seg[j] == "-C" and j + 1 < len(seg):
+                    j += 2
+                else:
+                    j += 1
+            else:
+                j += 1
+        if j < len(seg) and seg[j] == "push":
+            push_argv = _strip_shell_redirections(seg[j + 1:])
+            break
+except Exception:
+    push_argv = []
+
+argv_b64 = base64.b64encode(json.dumps(push_argv).encode("utf-8", "surrogateescape")).decode("ascii")
+print("DENY\t" + target + "\t" + cmd_key + "\t" + argv_b64)
 ' 2>/dev/null)
 
 case "$VERDICT" in
-  PARSE_ERROR)
-    printf '%s\n' "BLOCKED (push signpost): the hook payload itself was not readable JSON. WHY: failing OPEN would let an unreadable push slip past unseen. REDIRECT: retry the command. RULE: system/sops/github-sop.md section 0c -- FAIL_POSTURE: closed." >&2
-    exit 2
-    ;;
-  "")
-    printf '%s\n' "BLOCKED (push signpost): the hook payload itself was not readable JSON. WHY: failing OPEN would let an unreadable push slip past unseen. REDIRECT: retry the command. RULE: system/sops/github-sop.md section 0c -- FAIL_POSTURE: closed." >&2
+  PARSE_ERROR|BLOCK_NOLIB|"")
+    printf '%s\n' "BLOCKED (push signpost): the hook payload was unreadable, or the shared repo-matcher library is missing or errored ($_LIB). WHY: failing open would let an unreadable/unmatchable push slip past unseen. REDIRECT: retry the command; if it recurs, restore system/hooks/lib/git_target_resolver.py. RULE: system/sops/github-sop.md section 0c -- FAIL_POSTURE: closed." >&2
     exit 2
     ;;
 esac
@@ -199,19 +248,76 @@ _REST3="${_REST2#*$'\t'}"
 [ "$_REST3" = "$_REST2" ] && _REST3=""
 PUSH_ARGV_B64="$_REST3"
 
+# Two distinct roads into the same refusal: (1) the resolver could not prove
+# a cd/-C target at all (REFUSE_AMBIGUOUS), or (2) it extracted a target but
+# that path does not exist on disk (the resolver's job is extraction only --
+# existence-checking has always belonged to the caller). Either one refuses
+# rather than falling through to the identity/print block below, which is
+# exactly the block that would otherwise name a confident, wrong repo.
+_refuse_unresolved() {
+  printf '📍 PUSH · cannot determine the target repo\n' >&2
+  printf '   %s\n' "$1" >&2
+  printf '   WHY: printing a guess about which repo this pushes to is worse than admitting the guard cannot tell.\n' >&2
+  printf '   REDIRECT: verify the path, then re-run.\n' >&2
+  printf '   -> system/sops/github-sop.md section 0c\n' >&2
+  exit 2
+}
+
 case "$VERDICT" in
   OK|NOT_OURS)
     exit 0
     ;;
+  REFUSE_AMBIGUOUS)
+    # the resolver found a real `git push`, but the only cd information came
+    # from an unprovable `cd X || <non-exit-shaped>` construct -- refuse
+    # rather than guess.
+    _refuse_unresolved "The command changes directory in a way this guard cannot resolve with confidence (an unprovable cd/-C)."
+    ;;
+  REFUSE_TOKENIZE)
+    # the tokenizer failed outright, so whether a cd/-C is present is unknown.
+    # Naming the repo of $PWD here would assert knowledge this guard does not
+    # have -- the exact wrong-repo failure this file exists to prevent.
+    _refuse_unresolved "The command could not be tokenised, so this guard cannot tell which repo it targets."
+    ;;
   DENY)
-    # a -C/cd target was named but does not resolve — refuse rather than guess
+    # TILDE: FIXED 2026-09-18 (T3.2a) — shlex-based target extraction above
+    # performs NO shell expansion, so a cd/-C target written as "~", "~/repo",
+    # "$HOME/repo" or "${HOME}/repo" arrives here as that LITERAL string — the
+    # existence check below then fails on a path that really exists, and the
+    # guard refuses "cannot determine the target repo" on a perfectly
+    # resolvable push (observed live 2026-09-18: `cd ~/lifehack-brain && git
+    # push origin main` — the session is denied but told nothing useful,
+    # blinding the identity line, the MEANING lines, the STALENESS line and
+    # the whole manifest). Expand using THIS HOOK OWN $HOME — never a
+    # hard-coded path — exactly as the twin guard guard_commit_identity.sh
+    # does (commit 3f03efcd, which fixed this identical bug there and its
+    # comment names this file), so the two guards cannot drift apart.
+    case "$REQUESTED_DIR" in
+      '~')
+        REQUESTED_DIR="$HOME"
+        ;;
+      '~/'*)
+        REQUESTED_DIR="$HOME/${REQUESTED_DIR:2}"
+        ;;
+      '$HOME')
+        REQUESTED_DIR="$HOME"
+        ;;
+      '$HOME/'*)
+        REQUESTED_DIR="$HOME/${REQUESTED_DIR:6}"
+        ;;
+      '${HOME}')
+        REQUESTED_DIR="$HOME"
+        ;;
+      '${HOME}/'*)
+        REQUESTED_DIR="$HOME/${REQUESTED_DIR:8}"
+        ;;
+    esac
+
+    # a -C/cd target was resolved but does not exist on disk -- refuse rather
+    # than guess. (Same behaviour as the original inline-matcher check; now
+    # fed by the resolver's own extracted target instead.)
     if [ -n "$REQUESTED_DIR" ] && [ ! -d "$REQUESTED_DIR" ]; then
-      printf '📍 PUSH · cannot determine the target repo\n' >&2
-      printf '   The command names a path (%s) that does not exist here.\n' "$REQUESTED_DIR" >&2
-      printf '   WHY: printing a guess about which repo this pushes to is worse than admitting the guard cannot tell.\n' >&2
-      printf '   REDIRECT: verify the path, then re-run.\n' >&2
-      printf '   -> system/sops/github-sop.md section 0c\n' >&2
-      exit 2
+      _refuse_unresolved "The command names a path ($REQUESTED_DIR) that does not exist here."
     fi
 
     REPO_DIR="$PWD"
@@ -227,15 +333,30 @@ case "$VERDICT" in
     # gone before either copy (or the next real attempt) could see it, and
     # every attempt denied, forever.
     #
-    # Fix: key the marker on session id + WHICH push this is (the normalized
-    # command + the resolved target dir), and NEVER delete it. A genuine
-    # repeat of the exact same push is then recognized as "already
-    # signposted" by both racing copies alike; a different push command still
-    # gets its own first-sight deny. Creation uses mkdir, which is atomic on
-    # POSIX filesystems, so at most one of the two parallel copies can ever
-    # win the create -- the loser sees the directory already there and
-    # allows, instead of racing on a plain `[ -f ] && rm` check.
-    _key="${CLAUDE_CODE_SESSION_ID:-$PWD}|${CMD_B64}|${REPO_DIR}"
+    # Fix: key the marker on session id + WHICH push this is, and NEVER delete
+    # it. WHICH push is (T3.2b, 2026-09-18) the RESOLVED target dir plus the
+    # push subcommand OWN argv (remote + refspec(s), extracted by the VERDICT
+    # python into PUSH_ARGV_B64) -- NOT the raw command string: `git push
+    # origin main | tail -12` and `| tail -8` are THE SAME push, and keying on
+    # the command text denied each spelling separately (observed live
+    # 2026-09-18). A genuinely different remote or refspec still gets its own
+    # first-sight deny. When the argv is EMPTY (a bare `git push`, or argv
+    # extraction failed) fall back to the normalized command string --
+    # conservative: a byte-identical re-run still yields. A genuine repeat is
+    # then recognized as "already signposted" by both racing copies alike.
+    # Creation uses mkdir, which is atomic on POSIX filesystems, so at most
+    # one of the two parallel copies can ever win the create -- the loser
+    # sees the directory already there and allows, instead of racing on a
+    # plain `[ -f ] && rm` check.
+    # PUSH_ARGV_B64 is always the base64 of a JSON list; the base64 of the
+    # EMPTY list is exactly the constant W10= -- anything else means real
+    # argv (remote + refspec(s)) was recovered and identifies THIS push.
+    if [ -n "$PUSH_ARGV_B64" ] && [ "$PUSH_ARGV_B64" != "W10=" ]; then
+      _push_key="$PUSH_ARGV_B64"
+    else
+      _push_key="$CMD_B64"
+    fi
+    _key="${CLAUDE_CODE_SESSION_ID:-$PWD}|${_push_key}|${REPO_DIR}"
     _hash=$(printf '%s' "$_key" | shasum 2>/dev/null | cut -c1-16)
     [ -n "$_hash" ] || _hash="default"
     _bump="$HOME/.claude/.push-signpost.$_hash"
@@ -304,6 +425,7 @@ positional = []
 do_all = False
 do_tags = False
 do_mirror = False
+delete_all = False
 force_all = False
 set_upstream = False
 i = 0
@@ -329,6 +451,8 @@ while i < n:
             do_tags = True
         elif base == "--mirror":
             do_mirror = True
+        elif base in ("--delete", "-d"):
+            delete_all = True
         elif base in ("--force", "-f", "--force-with-lease", "--force-if-includes"):
             force_all = True
         elif base in ("--set-upstream", "-u"):
@@ -356,6 +480,7 @@ print(remote)
 
 rows = []
 notes = []
+seen_dsts = []   # T3.5: every destination branch this push names, for the MEANING lines below
 
 def commit_file_summary(range_expr):
     rc1, out1 = run(["rev-list", "--count", range_expr])
@@ -379,9 +504,54 @@ def find_remote_default(rname):
             return rname + "/" + cand
     return ""
 
+# A brand-new branch (no existing remote-tracking ref of its own) needs a
+# comparison base to summarise against -- find_remote_default() alone always
+# picked origin/main, even for a branch actually built on V2, showing
+# everything V2 has ahead of main as if it were this branch own content
+# (100+ phantom commits). Ranked resolution, most authoritative first:
+#   1. the branch own configured upstream, if set -- short-circuits the
+#      heuristic entirely, since it is an explicit human decision, not a guess.
+#   2. nearest-by-merge-base among a small fixed candidate set: the default
+#      main/master/HEAD candidate, plus <remote>/V2 if it resolves -- whichever
+#      gives the smallest `rev-list --count <cand>..<src_token>` is the
+#      tighter real ancestor. Evaluated in this order so an exact tie keeps
+#      main as the winner (todays behaviour) rather than V2.
+#   3. neither resolves -- caller falls through to its own no-base message.
+def choose_new_branch_base(src_token):
+    rc, up_out = run(["rev-parse", "--abbrev-ref", "--symbolic-full-name", src_token + "@{u}"])
+    up_out = up_out.strip()
+    if rc == 0 and up_out and "/" in up_out:
+        return up_out
+    candidates = []
+    default_cand = find_remote_default(remote)
+    if default_cand:
+        candidates.append(default_cand)
+    v2_cand = remote + "/V2"
+    if v2_cand not in candidates and resolves(v2_cand):
+        candidates.append(v2_cand)
+    best = ""
+    best_count = None
+    for cand in candidates:
+        rc2, out2 = run(["rev-list", "--count", cand + ".." + src_token])
+        if rc2 == 0 and out2.strip().isdigit():
+            count = int(out2.strip())
+            if best_count is None or count < best_count:
+                best = cand
+                best_count = count
+    return best
+
 def render_ref(label, src_token, dst_name, force_marked, delete_only):
+    seen_dsts.append(dst_name)
     if delete_only:
-        rows.append("   [DELETE] " + dst_name + " on " + remote + " (no local ref pushed)")
+        remote_ref = remote + "/" + dst_name
+        if resolves(remote_ref):
+            _rc, _sha = run(["rev-parse", "--short", remote_ref])
+            tip = _sha.strip() if _rc == 0 and _sha.strip() else "unknown"
+            rows.append("   DELETE " + remote_ref + "  (remote tip " + tip + ")")
+        else:
+            rows.append("   DELETE " + remote_ref +
+                         "  (remote tip unknown locally -- refs/remotes/" + remote_ref +
+                         " not fetched; fetch to see it)")
         return
     if not resolves(src_token + "^{commit}"):
         rows.append("   UNRESOLVED  " + label + " -> " + remote + "/" + dst_name + "  (does not resolve to a known local commit -- verify by hand)")
@@ -397,7 +567,7 @@ def render_ref(label, src_token, dst_name, force_marked, delete_only):
         if extra > 0:
             rows.append("        +" + str(extra) + " more")
     else:
-        default_ref = find_remote_default(remote)
+        default_ref = choose_new_branch_base(src_token)
         if default_ref:
             commit_count, file_count, shown, extra = commit_file_summary(default_ref + ".." + src_token)
             rows.append("   " + label + " -> " + remote_ref + force_flag + "  [NEW BRANCH vs " + default_ref + "]")
@@ -443,6 +613,9 @@ else:
             if s.startswith("+"):
                 force_this = True
                 s = s[1:]
+            if delete_all:
+                render_ref(raw, "", s, force_this, True)
+                continue
             if ":" in s:
                 src, dst = s.split(":", 1)
             else:
@@ -482,6 +655,40 @@ if set_upstream:
 
 if not rows:
     rows.append("   UNRESOLVED  -- could not determine what this push would send; verify manually with git log/diff before pushing.")
+
+# ── T3.5 (2026-09-18): what the destination MEANS, not just its name ──────────
+# The manifest names WHERE this push lands; these lines say what landing there
+# MEANS. The main/V2 meaning is stated only when the push URL is the PUBLIC
+# lifehack-brain repo (same substring the bash identity line matches):
+#   `main` = ships to students NOW -- a push here reaches people immediately.
+#   `V2`   = the next full version. It does NOT ship to students yet -- Enver
+#            releases it when he says so (on the order of weeks or months).
+# ⚠ DELIBERATE-NORMAL RULE: V2 sitting far ahead of main is the DESIGNED state
+# of this repo -- not a backlog, not a misroute, not drift. These lines state
+# meaning and consequence, nothing more: no V2-vs-main counts, no language that
+# implies the gap should be closed or that being on V2 is a mistake. (A
+# previous session read "V2 is N ahead" as a problem and sent work down a dead
+# end on exactly that misread.)
+# STALENESS is computed LIVE from the checkout: how many commits the named
+# remote has on its `main` that the local `main` lacks. Printed only when N > 0 --
+# a zero-behind warning is noise, not a warning.
+meaning_rows = []
+rc_url, push_url = run(["remote", "get-url", "--push", remote])
+if rc_url == 0 and "LifehackMethod/lifehack-brain" in push_url:
+    seen_unique = []
+    for d in seen_dsts:
+        if d and d not in seen_unique:
+            seen_unique.append(d)
+    for d in seen_unique:
+        if d == "main":
+            meaning_rows.append("   MEANING: `main` = ships to students NOW -- a push here reaches people immediately.")
+        elif d == "V2":
+            meaning_rows.append("   MEANING: `V2` = the next full version. It does NOT ship to students yet -- Enver releases it when he says so (on the order of weeks or months).")
+if resolves("main") and resolves(remote + "/main"):
+    rc_n, n_out = run(["rev-list", "--count", "main.." + remote + "/main"])
+    if rc_n == 0 and n_out.strip().isdigit() and int(n_out.strip()) > 0:
+        meaning_rows.append("   STALENESS: your local `main` is " + n_out.strip() + " commit(s) behind `" + remote + "/main`.")
+rows = meaning_rows + rows
 
 for nline in notes:
     rows.append("   NOTE: " + nline)

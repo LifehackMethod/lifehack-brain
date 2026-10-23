@@ -4,6 +4,22 @@ CONTRIBUTING.md (repo root) walks through everything below in more detail — wo
 before your first PR here, especially the "What CI checks" and "action_required" sections.
 -->
 
+## Branch routing — decide this before you branch
+
+<!--
+This is the one page GitHub puts in front of every author at the exact moment the base
+branch gets picked. Get it right here; CONTRIBUTING.md has the full rule if you want it.
+-->
+
+- **`main` is the DEFAULT.** One atomic fix, ships to students now; the system retires
+  the branch after merge. Almost every PR belongs here.
+- **`V2` is a NAMED TEMPORARY EXCEPTION** — the version-release batch only, and it
+  retires at release. It is NOT a permanent lane, NOT a staging area, and NOT where
+  ordinary fixes go. ⚠ **When V2 ships, this section comes out of this template.**
+- A feature branch is ONE change, off `main`.
+
+- [ ] Base branch: `main` (default) — or, if `V2`, say which release batch this belongs to:
+
 ## What this changes, and why
 
 <!-- One or two sentences. What was broken or missing, and what this does about it. -->
@@ -47,4 +63,5 @@ don't need it.
       `local.settings.json`, `.claude/settings.local.json`, `CLAUDE.local.md`, or a legacy  ⛔ absent from this repo by design — that is the point
       `memory/` folder) — see CONTRIBUTING.md §2.
 - [ ] I ran the local test suite and smoke check before opening this PR.
-- [ ] Branch is off `main` and doesn't include unrelated changes.
+- [ ] Branch is off `main` (or the stated `V2` exception above) and doesn't include
+      unrelated changes.

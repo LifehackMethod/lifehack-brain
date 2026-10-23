@@ -85,7 +85,7 @@ registered in `system/pulse-config.md:147` [line corrected 2026-08-27, lb2-ops-c
 slot). The tile itself carries `stale_after_s=86400` (24h freshness window, set by
 `sentinel-health.py:84` in the `emit_status()` call). Reads the
 full `sentinel-events.jsonl` ledger and rewrites `state/status/sentinel.json` (the same tile shape
-`sentinel_response.write_tile()` writes inline). Both writers use atomic `os.replace` → double-write
+`sentinel_response.write_status()` writes inline). Both writers use atomic `os.replace` → double-write
 is harmless. This is the freshness path between ingestion runs (tile freshness window = 24h;
 individual Pulse ticks ~1800s apart).
 
@@ -123,6 +123,34 @@ real fourth thing it gets added explicitly. ⚠ This does NOT collapse the **fiv
 (T1–T5) enumerated in this section — those are five distinct CALLERS of the subsystem, a different
 taxonomy from the three COMPONENTS, and they remain five.
 
+⭐⭐ **THE POINTER THIS CARD WAS MISSING — READ THIS BEFORE CONCLUDING ANYTHING ABOUT MODEL CALLS.**
+*(Added 2026-09-19. Three components is correct and stays. What follows is what the count does NOT
+cover, and its absence has demonstrably misled readers.)*
+**The checkpoint has a SECOND LAYER that lives in a different element file.** The tool-less
+`ingest-reader` — a Read-only haiku judge (`shared/tools/intake_reader.py`, model pin and `claude -p`
+call site near the top and in `run_intake_judge`) — decodes and judges inbound content and is
+documented in **`system/organism/elements/safe-reader-plane.md`**, not here. It is not an optional
+extra pass: the operator's ratified map (2026-07-29) states *"The tool-less reader is LAYER 2 OF THE
+CHECKPOINT ITSELF — not an extra pass a consumer runs. It runs once, at the door, on the way in."*
+⛔ That map lives at `organism-audit/intended-map.md` **in the notes root, NOT in this repo** — quoted
+here rather than cited as a repo path, because a reader of this repo cannot open it.
+⛔ **Why this line exists:** on 2026-09-19 a session read this card alone, correctly counted three
+mechanical components, and concluded the email path was ungated — then proposed hardening the scrub.
+That is backwards. `system/information-ingestion-interpretation.md:237` lists *"the scrub is the
+wall"* as a **dead idea**: the reader-actor structure is the wall, the scrub is a speed-bump
+(`system/ingestion-reader-contract.md:113`). **A gap in the mechanical scrub is not a hole in the
+checkpoint — containment is downstream and structural, and it is NOT described on this page.**
+⚠ Sentinel still consumes no model verdict today: `--reader-verdict` has zero live callers (GAP-9).
+The reader gates the CONTENT; it does not currently feed Sentinel's own alert.
+
+⚠ **NAME CORRECTION, 2026-09-19:** every reference on this page formerly read
+`sentinel_response.write_tile()`. **No such function exists** — it is `write_status()`
+(`shared/gate/sentinel_response.py:167`), verified by grep this session. All 11 occurrences were
+corrected in place rather than struck, since the strike-never-overwrite rule governs CLAIMS, not a
+wrong identifier — eleven struck names would be noise with no evidentiary value. ⚠ The `.py:NNN`
+line-citations sitting beside those references were NOT re-verified and several are likely stale;
+treat any line number on this page as approximate and grep for the symbol instead.
+
 ---
 
 ### FULL HAND-OFF CHAINS
@@ -152,14 +180,14 @@ ingest harness desk -run.sh  [actor]
                [honor: DANGER never auto-suppressed — sentinel_response.py:79]
              log_event(..., verdict="flag", ...)
                [store: DRIVE/system/logs/sentinel-events.jsonl, append — sentinel_response.py:185]
-             write_tile()
+             write_status()
                [store: DRIVE/state/status/sentinel.json, atomic os.replace — sentinel_response.py:182]
              exit 0  → caller continues
 
           == DANGER path (danger-class label + --flag-only NOT set) ==
              log_event(..., verdict="danger", disposition="unreviewed", ...)
                [store: DRIVE/system/logs/sentinel-events.jsonl, append — sentinel_response.py:185]
-             write_tile()  [store: DRIVE/state/status/sentinel.json, atomic os.replace]
+             write_status()  [store: DRIVE/state/status/sentinel.json, atomic os.replace]
              pause_source(source)
                [store: ~/.config/lifehack/sentinel-paused-sources, append-dedup; machine-local]
                [sentinel_response.py:199 — un-pause is human-only]
@@ -192,7 +220,7 @@ ingest harness desk -run.sh  [actor]
        rc==0 + output: _sentinel_log() + continue
 ```
 
-NOTE on the inline write_tile() (binary vs ternary): `sentinel_response.write_tile()`
+NOTE on the inline write_status() (binary vs ternary): `sentinel_response.write_status()`
 (`sentinel_response.py:138-182`) emits status as `"DANGER"` if `active_danger` else `"CLEAR"` only
 — it does NOT emit `"FLAGS"`. The Pulse twin (`sentinel-health.py:69`) emits `"DANGER"` /
 `"FLAGS"` / `"CLEAR"`. Between Pulse ticks, the tile written by Chain A underreports active FLAG
@@ -214,7 +242,7 @@ pulse.sh (cron, every ~1800s)  [actor: cron/pulse]
 ```
 
 `sentinel-health.py:69` emits ternary status: `"DANGER"` / `"FLAGS"` / `"CLEAR"`. The inline writer
-(`sentinel_response.write_tile()`) emits binary: `"DANGER"` / `"CLEAR"` only. Between Pulse ticks
+(`sentinel_response.write_status()`) emits binary: `"DANGER"` / `"CLEAR"` only. Between Pulse ticks
 (~1800s poll interval), the tile underreports active FLAG events. `[gap — see GAP-7]`
 
 ---
@@ -251,7 +279,7 @@ operator  [human]
      -> atomic rewrite: sentinel-events.jsonl.tmp → os.replace  [store: atomic write]
      -> optional: _save_store()
         -> DRIVE/system/logs/sentinel-acked-fingerprints.json  [store: atomic write]
-     -> sr.write_tile()  [sentinel_ack.py imports sentinel_response as sr]
+     -> sr.write_status()  [sentinel_ack.py imports sentinel_response as sr]
         -> DRIVE/state/status/sentinel.json  [store: atomic refresh]
 ```
 
@@ -311,9 +339,9 @@ user -> invokes the "sentinel" subagent by name  [human]  (scope=secrets|invento
   `sentinel_response.py:185`); atomic rewrite (`sentinel_ack.py`); also appended by
   `enforce_egress_allowlist.py` on block events.
 - `DRIVE/state/status/sentinel.json` — atomic `os.replace` by three writers:
-  `sentinel_response.write_tile()` (`sentinel_response.py:182`);
+  `sentinel_response.write_status()` (`sentinel_response.py:182`);
   `sentinel-health.py` via `emit_status()` (`sentinel-health.py:84`);
-  `sentinel_ack.py` via `sr.write_tile()`.
+  `sentinel_ack.py` via `sr.write_status()`.
 - `DRIVE/state/status/_security.json` — atomic `os.replace` by `security-health.py:207`
   (Helm Security tab composition tile).
 - `~/.config/lifehack/sentinel-paused-sources` — append-dedup by `pause_source()`
@@ -360,7 +388,7 @@ compact and readable.
 | Store | Path | Writer(s) | Reader(s) | Access |
 |---|---|---|---|---|
 | Event ledger | `DRIVE/system/logs/sentinel-events.jsonl` | `sentinel_response.log_event()` (append, `sentinel_response.py:185`); `_sentinel_log()` in `ingest-run.lib.sh:241` (append, duplicate on DANGER v1); `sentinel_ack.py` (atomic rewrite); `enforce_egress_allowlist.py` (append on block) | `sentinel-health.py`, `sentinel_ack.py`, `security-health.py` (via tile), `ingest_coverage.py` | append / atomic-rewrite |
-| Security tile | `DRIVE/state/status/sentinel.json` | `sentinel_response.write_tile()` (binary: DANGER/CLEAR only, `sentinel_response.py:170`); `sentinel-health.py` via `emit_status()` (ternary: DANGER/FLAGS/CLEAR, `sentinel-health.py:69`); `sentinel_ack.py` | `security-health.py`, Helm | atomic `os.replace` |
+| Security tile | `DRIVE/state/status/sentinel.json` | `sentinel_response.write_status()` (binary: DANGER/CLEAR only, `sentinel_response.py:170`); `sentinel-health.py` via `emit_status()` (ternary: DANGER/FLAGS/CLEAR, `sentinel-health.py:69`); `sentinel_ack.py` | `security-health.py`, Helm | atomic `os.replace` |
 | Security composition tile | `DRIVE/state/status/_security.json` | `security-health.py` (`security-health.py:207`) | Helm Security tab | atomic `os.replace` |
 | Pause list | `~/.config/lifehack/sentinel-paused-sources` | `sentinel_response.pause_source()` (`sentinel_response.py:199`) | `ingest_check_paused()` (`ingest-run.lib.sh:103`) | append-dedup; machine-local |
 | Acked fingerprints | `DRIVE/system/logs/sentinel-acked-fingerprints.json` | `sentinel_ack._save_store()` | `sentinel_response.load_acked_fingerprints()` (`sentinel_response.py:84`) | atomic `os.replace` |
@@ -491,7 +519,7 @@ These are documented gaps; the label carries `·gap`.
 ```
 FEEDS        pulse-cron            · sentinel-events.jsonl is the source for sentinel-health.py (a Pulse job); Pulse polls the slot every ~1800s and rewrites the tile with stale_after_s=86400 — sentinel produces the event record; Pulse produces the tile refresh
 TRIGGERS     notify-plane          · on DANGER: sentinel_response.notify_danger() calls notify-send.sh (critical NTFY push); unidirectional fire; suppressed if reader_verdict=="BENIGN" (honor-only suppression)
-WRITES->     helm                  · sentinel_response.write_tile() + sentinel-health.py both write state/status/sentinel.json; security-health.py composes that into state/status/_security.json; Helm's Security tab reads both tiles
+WRITES->     helm                  · sentinel_response.write_status() + sentinel-health.py both write state/status/sentinel.json; security-health.py composes that into state/status/_security.json; Helm's Security tab reads both tiles
 WRITES->     email-service         · on DANGER with a Gmail message-id: sentinel_quarantine.py applies the Sentinel/Quarantine Gmail label to the message (reversible; caller-side wiring absent for non-Gmail items — gap)
 SHARES       egress-allowlist-wall · sentinel-events.jsonl is the shared append-only event ledger; egress-allowlist-wall writes block events there (enforce_egress_allowlist.py appends on every off-allowlist denial); sentinel-health.py reads it — sentinel is the shared event store for both inbound-injection and outbound-block violation classes
 FEEDS        ingest-coverage       · sentinel-events.jsonl is the fallback coverage source when the provenance breadcrumb ledger (ingest-provenance.jsonl) is absent; ingest_coverage.py switches to it automatically (ingest_coverage.py:28, :68)
@@ -564,7 +592,7 @@ both side effects can be silenced without any blocking guard.
 Source: `sentinel_response.py:229, 249`.
 
 **GAP-7: Inline tile writer emits binary status; Pulse twin emits ternary — FLAGS state is underreported.**
-`sentinel_response.write_tile()` emits only `"DANGER"` or `"CLEAR"` (binary —
+`sentinel_response.write_status()` emits only `"DANGER"` or `"CLEAR"` (binary —
 `sentinel_response.py:170`). `sentinel-health.py` emits `"DANGER"` / `"FLAGS"` / `"CLEAR"` (ternary
 — `sentinel-health.py:69`). Between Pulse ticks (~1800s poll interval), the tile written by the
 inline path does not reflect active FLAG events — the tile shows `"CLEAR"` even when unreviewed flag

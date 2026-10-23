@@ -81,6 +81,32 @@ check "Grep, path in repo"      0 Grep "$(python3 -c "import json,sys;print(json
 check "Glob, path in repo"      0 Glob "$(python3 -c "import json,sys;print(json.dumps(dict(pattern='*.py',path=sys.argv[1]+'/shared')))" "$REPO")"
 check "Grep, path in notes"     0 Grep "$(python3 -c "import json,sys;print(json.dumps(dict(pattern='x',path=sys.argv[1]+'/state')))" "$NOTES")"
 
+echo "-- ⭐ N5 (2026-08-26, archivist-audit finding): both halves of the root-path gap --"
+# HALF (a): a Grep/Glob whose path is EXACTLY a trusted root was refused — only "$ROOT"/* matched,
+# so the legitimate spelling was blocked while the pattern-riding workaround below passed.
+# A guard that blocks the legitimate spelling and passes the workaround spelling is inverted.
+check "Grep path = notes root"    0 Grep "$(python3 -c "import json,sys;print(json.dumps(dict(pattern='x',path=sys.argv[1])))" "$NOTES")"
+check "Glob path = notes root"    0 Glob "$(python3 -c "import json,sys;print(json.dumps(dict(pattern='**/*.md',path=sys.argv[1])))" "$NOTES")"
+check "Grep path = repo root"     0 Grep "$(python3 -c "import json,sys;print(json.dumps(dict(pattern='x',path=sys.argv[1])))" "$REPO")"
+# THE MIRROR of half (a), found while fixing it: a path EXACTLY = a carve-out directory missed the
+# carve-out arm ("$NOTES_ROOT"/memory/* needs a deeper component) and was ALLOWED by "$NOTES_ROOT"/*
+# — a raw Grep rooted at the carve-out itself searched external content. Must deny.
+check "Grep path = memory/ dir"   2 Grep "$(python3 -c "import json,sys;print(json.dumps(dict(pattern='x',path=sys.argv[1]+'/memory')))" "$NOTES")"
+check "Glob path = _unpacked dir" 2 Glob "$(python3 -c "import json,sys;print(json.dumps(dict(pattern='*',path=sys.argv[1]+'/corpus/_unpacked')))" "$NOTES")"
+# HALF (b): with 'path' omitted, an ABSOLUTE Glob pattern still names a location on disk, and used
+# to leave the extracted path empty — exit 0, uninspected. The gate now derives the fixed directory
+# prefix (before the first glob metacharacter) and gates on that.
+check "Glob abs pattern, notes"     0 Glob "$(python3 -c "import json,sys;print(json.dumps(dict(pattern=sys.argv[1]+'/state/**/*.md')))" "$NOTES")"
+check "Glob abs pattern, external"  2 Glob "$(python3 -c "import json;print(json.dumps(dict(pattern='/tmp/elsewhere/**/*.md')))")"
+check "Glob abs pattern, _unpacked" 2 Glob "$(python3 -c "import json,sys;print(json.dumps(dict(pattern=sys.argv[1]+'/corpus/_unpacked/**')))" "$NOTES")"
+check "Glob abs pattern, memory/"   2 Glob "$(python3 -c "import json,sys;print(json.dumps(dict(pattern=sys.argv[1]+'/memory/*.md')))" "$NOTES")"
+# NEGATIVE CONTROLS. A relative pattern names no location (cwd semantics, unchanged), and a Grep
+# 'pattern' is a CONTENT regex — a path-shaped string there is legitimate search text, and turning
+# it into a location check is the path-shaped false positive this repo has already logged (scrub,
+# 2026-08-25). Neither may start denying.
+check "Glob relative pattern"     0 Glob '{"pattern":"**/*.md"}'
+check "Grep path-shaped pattern"  0 Grep '{"pattern":"/etc/passwd"}'
+
 echo "-- THE SCRATCH LOCK: main session out, sub-agent in --"
 check  "main reads scratch"     2 Read '{"file_path":"/tmp/ingest_body/bundle-1.md"}'
 check  "main reads /tmp/rdr"    2 Read '{"file_path":"/tmp/rdr/note.txt"}'

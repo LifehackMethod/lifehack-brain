@@ -218,20 +218,33 @@ email-summary-freshness | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/e
 #    each runner's own header.
 #
 # calendar-store-sync: refreshes state/item-store/calendar/ via calendar_store_sync.py --sync
-# (mechanical, no claude -p — confirmed). LIVE — see the note above. Interval matches the runner's
+# ~~(mechanical, no claude -p — confirmed)~~ ⛔ STRUCK 2026-09-19, FALSE: it DOES call claude -p.
+# calendar_store_sync.py imports run_intake_judge at :163 and calls it at :548, UNCONDITIONALLY on
+# every item carrying free text (:546) — a real haiku call (intake_reader.py:46,:164-166). The
+# module's own docstring :15 ("No LLM in the write path") is stale and was the source of this error.
+# LIVE — see the note above. Interval matches the runner's
 # own header ("own absence horizon... writers run ~daily", STALE_AFTER_HOURS=30). 1-day cadence.
 calendar-store-sync     | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/calendar-store-sync-run.sh"
 #
-# tasks-store-sync: refreshes state/item-store/tasks/ via tasks_store_sync.py --sync (mechanical,
-# no claude -p — confirmed). LIVE for the SAME reason as calendar-store-sync immediately above —
+# tasks-store-sync: refreshes state/item-store/tasks/ via tasks_store_sync.py --sync ~~(mechanical,
+# no claude -p — confirmed)~~ ⛔ STRUCK 2026-09-19, FALSE: tasks_store_sync.py imports
+# run_intake_judge at :102 and calls it at :391, UNCONDITIONALLY on every task carrying free text.
+# Its own docstring :13 carries the identical stale "No LLM in the write path" wording as calendar.
+# LIVE for the SAME reason as calendar-store-sync immediately above —
 # tasks-store-sync-run.sh shared the identical GWS_CREDS-missing branch and got the identical fix.
 # Interval matches the runner's own header ("writers run ~daily", STALE_AFTER_HOURS=30). 1-day
 # cadence.
 tasks-store-sync        | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/tasks-store-sync-run.sh"
 #
 # email-summary-write: refreshes the v2 faithful-thread store (threads-v2/) via
-# email_summary_sync.py --write-v2 (mechanical, no claude -p — confirmed: CLAUDE_BIN is kept but
-# never invoked by the v2 write path; see shared/tools/email_summary_sync.py:114-120). LIVE for
+# email_summary_sync.py --write-v2 ~~(mechanical, no claude -p — confirmed: CLAUDE_BIN is kept but
+# never invoked by the v2 write path; see shared/tools/email_summary_sync.py:114-120)~~
+# ⛔ STRUCK 2026-09-19, FALSE: email_summary_sync.py imports run_intake_judge at :197 and calls it
+# at :832 inside the per-message loop of process_thread_v2(). ⚠ UNLIKE calendar and tasks, email
+# calls the judge CONDITIONALLY — only when scan_for_injection already flagged spans; unflagged
+# bodies reach the store with no model having read them. That asymmetry is unexplained and may be
+# drift rather than design. The cited proof-lines :114-120 describe the RETIRED v1 digest step, and
+# the same file's docstring :19 already lists the decode-and-judge as a live security step. LIVE for
 # the SAME rc=3-vs-rc=75 fix as the two rows above (identical GWS_CREDS-missing branch in
 # email-summary-write-run.sh) — same fix, same session. Interval matches the runner's OWN header,
 # which is explicit: STALE_AFTER_HOURS=4, "just over one 3h cadence, so a SINGLE missed run
@@ -464,14 +477,22 @@ mirror-fetch       | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/mirror
 # `/opt/homebrew/bin` (Apple Silicon Homebrew) and `/usr/local/bin` (Intel Homebrew / most Linux
 # user installs) — without it, a job command that shells out to a Homebrew-installed tool by bare
 # name would silently fail to find it under cron even though it works fine in an interactive shell.
-pulse             | */5 * * * *      | PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin LIFEHACK_CODE_ROOT="$LIFEHACK_CODE_ROOT" bash "$LIFEHACK_CODE_ROOT/system/tools/pulse.sh" >> "${TMPDIR:-/tmp}/lifehack-pulse.log" 2>&1
+# `$HOME/.local/bin` LEADS THE LIST, and it is not hypothetical: on a Mac with no Homebrew and no
+# sudo, that is where a standalone binary goes, and it is where the Google Workspace CLI (`gws`)
+# actually lives on this system. Without it every scheduled job that touches Google reported "not
+# installed" while the same command worked perfectly in an interactive shell — the failure is
+# silent, and it is invisible from the shell you would test in. Found 2026-08-23 (open loop #34a),
+# fixed 2026-08-24. It stays UNEXPANDED here on purpose: install-schedulers.sh substitutes only
+# `$LIFEHACK_CODE_ROOT`, so `$HOME` is written literally into the crontab and expanded by /bin/sh
+# at fire time — which makes the same manifest correct on every machine and every user account.
+pulse             | */5 * * * *      | PATH=$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin LIFEHACK_CODE_ROOT="$LIFEHACK_CODE_ROOT" bash "$LIFEHACK_CODE_ROOT/system/tools/pulse.sh" >> "${TMPDIR:-/tmp}/lifehack-pulse.log" 2>&1
 #
 # health-deadman: the OUT-OF-BAND watcher for system-health ITSELF. DELIBERATELY its own dedicated
 # scheduled entry, NEVER a Pulse job — dispatching it FROM Pulse would make the sweep the sole
 # witness to its own death; if Pulse wedges, a Pulse-dispatched watchdog wedges with it and the
 # silence would read exactly like health. Hourly: system-health runs every 5 min, so an hour of
 # silence from it is unambiguous without being twitchy.
-health-deadman    | 17 * * * *       | PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin LIFEHACK_CODE_ROOT="$LIFEHACK_CODE_ROOT" bash "$LIFEHACK_CODE_ROOT/system/tools/health-deadman-check.sh" >> "${TMPDIR:-/tmp}/lifehack-health-deadman.log" 2>&1
+health-deadman    | 17 * * * *       | PATH=$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin LIFEHACK_CODE_ROOT="$LIFEHACK_CODE_ROOT" bash "$LIFEHACK_CODE_ROOT/system/tools/health-deadman-check.sh" >> "${TMPDIR:-/tmp}/lifehack-health-deadman.log" 2>&1
 ```
 
 ## Why `$LIFEHACK_CODE_ROOT` and not a literal path

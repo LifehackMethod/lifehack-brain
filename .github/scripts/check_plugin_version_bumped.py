@@ -64,13 +64,9 @@ NON_SHIPPED_PATTERNS = [
     r"^\.github/",                 # CI workflows and their scripts -- not installed content
     r"^docs/",                     # project documentation, not shipped skill/tool behavior
     r"^\.claude-plugin/",          # the version file itself and the marketplace listing
-    r"^README\.md$",
-    r"^INSTALL\.md$",
-    r"^UPDATE\.md$",
-    r"^PUSH-FORWARD\.md$",
-    r"^REPAIR\.md$",
-    r"^TARGET-STATE\.md$",
-    r"^CLAUDE\.md$",
+    r"^[^/]+\.md$",                # ANY root-level markdown file, known name or not (ruling D1, 2026-09-18:
+                                   # no student-executable content can live in a root .md, so exempting the
+                                   # whole class is still fail-closed). A .md BELOW the root still ships.
     r"^\.gitignore$",
     r"^\.gitattributes$",
 ]

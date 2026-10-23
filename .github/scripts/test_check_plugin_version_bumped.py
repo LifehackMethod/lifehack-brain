@@ -33,7 +33,8 @@ class IsShipped(unittest.TestCase):
             ".claude/skills/save/SKILL.md",
             "agents/sentinel.md",
             "memory/README.md",
-            "NEWFILE-NOBODY-EXEMPTED.md",  # denylist is closed, not open -- fail closed
+            "NEWFILE-NOBODY-EXEMPTED.txt",  # root-level but NOT a .md -- still shipped, fail closed
+                                           # (a .md below the root is covered by memory/README.md above)
         ]:
             self.assertTrue(is_shipped(path), path)
 
@@ -46,6 +47,8 @@ class IsShipped(unittest.TestCase):
             ".claude-plugin/marketplace.json",
             "README.md",
             "INSTALL.md",
+            "ZZZ-ARBITRARY-ROOT-DOC.md",  # ANY root-level .md is exempt (ruling D1) -- the rule is
+                                         # general, not a list of known names
             ".gitignore",
         ]:
             self.assertFalse(is_shipped(path), path)
