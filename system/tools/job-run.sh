@@ -73,6 +73,9 @@ mkdir -p "$STATE/errors" || exit 1
 # ~/.local/bin on this kind of install; Homebrew in /opt/homebrew/bin or /usr/local/bin.
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:${PATH:-/usr/bin:/bin}"
 export LIFEHACK_CODE_ROOT="$CODE_ROOT"
+# 5.5 fix: a SCHEDULED job's web reads are sealed to the job host list (safe_fetch.py Level 2, per-run seal). Sessions are not.
+_JH="$(grep -vE '^[[:space:]]*(#|$)' "$CODE_ROOT/system/tools/job-fetch-hosts.txt" 2>/dev/null | tr -d '[:blank:]' | paste -sd, -)"
+[ -n "$_JH" ] && export SAFE_FETCH_ALLOWLIST="$_JH"
 
 # Everything this run prints goes to one capture file, appended to the rolling log at the end.
 # stderr too: launch.err must stay empty unless the launch line itself failed.

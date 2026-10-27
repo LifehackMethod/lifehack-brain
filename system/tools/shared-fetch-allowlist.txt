@@ -13,6 +13,11 @@ system/tools/safe_fetch.py
 system/tools/safe_search_api.sh
 # Google Sheets values (the ONE sanctioned sheet read; sanitises every cell, scans for injection, fails safe):
 system/tools/safe_sheets.py
+# The governed push (notify-send.sh holds the one curl to the push service; notify-governor.py is its gate: quiet hours, dedup,
+# per-source cap). This is the ONE sanctioned way for a scheduled job to push a phone notification; a runner calls notify-send.sh,
+# never curl. Both files are listed because the door's static scan follows what a runner invokes.
+shared/notify/notify-send.sh
+shared/notify/notify-governor.py
 # Gmail: TODAY the email shared fetch is split across these two files (the runner's gws pre-flight
 # `gmail users getProfile`, and the python's labels/threads list+get). Task 5.4 consolidates them into one shared
 # email fetch; then this section shrinks to that one file.

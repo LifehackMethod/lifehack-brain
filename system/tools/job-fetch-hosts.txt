@@ -1,0 +1,11 @@
+# job-fetch-hosts.txt — the domain allowlist for SCHEDULED JOBS only (self-monitoring 5.5 fix).
+# job-run.sh exports these (comma-joined) as SAFE_FETCH_ALLOWLIST, safe_fetch.py's existing per-run Level-2 seal, for every
+# job run. Sessions never see it: the shipped system/safe-fetch-allowlist.md stays OFF, so /websearch and /research work.
+# Exactly the hosts Marc's three feed fetchers read (marc-data-fetch, flows_fetch, cftc_cot_fetch), as full hosts.
+# To let a job read another site, add its host here on purpose.
+query1.finance.yahoo.com
+fred.stlouisfed.org
+stooq.com
+www.ici.org
+ticdata.treasury.gov
+publicreporting.cftc.gov

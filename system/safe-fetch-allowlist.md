@@ -1,8 +1,8 @@
 # Level 2 — sealing ordinary web reads to a list of domains
 
 This is the switch for the middle of the three outbound levels described in
-`docs/OUTSIDE-SERVICES.md`. **It ships OFF in the package; THIS install has it ON** (armed 2026-10-27, see the list below). Turning it on is a decision
-this package leaves to you, and nothing here turns it on by itself.
+`docs/OUTSIDE-SERVICES.md`. **It ships OFF.** Turning it on is a decision this package leaves to you,
+and nothing here turns it on by itself.
 
 ## What it does when it is on
 
@@ -22,7 +22,7 @@ covers, stricter than it in what it does when unsure.
 One word between the markers. `on` or `off`, nothing else.
 
 <!-- L2-MODE-START -->
-on
+off
 <!-- L2-MODE-END -->
 
 ## The domains
@@ -31,16 +31,10 @@ Base domains only, one per line, between the markers. A host is allowed if it **
 domain or is a **subdomain** of it — so `example.com`, never `www.example.com`. `#` starts a comment.
 
 <!-- ALLOWLIST-START -->
-# ARMED 2026-10-27 (self-monitoring 5.5, "safe stack sealed"). Exactly the hosts Marc's three feed fetchers
-# (marc-data-fetch, flows_fetch, cftc_cot_fetch) read, listed as full hosts (tighter than a base domain).
-# Anything else a safe_fetch.py read asks for is refused before the socket opens. To read another site, add its
-# host here on purpose; a one-off research run can seal itself with SAFE_FETCH_ALLOWLIST=<hosts> instead.
-query1.finance.yahoo.com
-fred.stlouisfed.org
-stooq.com
-www.ici.org
-ticdata.treasury.gov
-publicreporting.cftc.gov
+# Nothing is listed, because the switch above is off. Uncomment or add what you want reachable
+# BEFORE you flip it on — see the half-configured note below.
+# wikipedia.org
+# arxiv.org
 <!-- ALLOWLIST-END -->
 
 ## Three states, and no quiet fourth one

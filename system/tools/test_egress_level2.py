@@ -64,23 +64,32 @@ class EgressLevelTwoCase(unittest.TestCase):
                     "<!-- ALLOWLIST-START -->\n%s\n<!-- ALLOWLIST-END -->\n"
                     % (mode, "\n".join(domains)))
 
-    def test_the_shipped_file_is_armed_with_exactly_the_feed_hosts(self):
-        """The file in the repo, not a fixture. 5.5 (2026-10-27) ARMED it: on, with exactly the hosts the three Marc feed
-        fetchers read. (It used to ship off; a half-configured state would raise instead of returning, so this also proves
-        the shipped file is a valid armed state, never the ambiguous one.)"""
+    def test_it_ships_off_and_the_shipped_file_says_so(self):
+        """The file in the repo, not a fixture — the state a person actually receives."""
         os.environ.pop("SAFE_FETCH_ALLOWLIST_FILE", None)
         state, domains, why = self.sf.l2_state()
-        self.assertEqual(state, "on", f"the shipped switch must be on, said {state} ({why})")
-        self.assertEqual(sorted(domains), sorted([
+        self.assertEqual(state, "off", f"the shipped switch must be off, said {state} ({why})")
+        self.assertEqual(domains, [])
+
+    def test_jobs_are_sealed_to_the_job_hosts_but_sessions_are_not(self):
+        """5.5 fix: job-run.sh exports SAFE_FETCH_ALLOWLIST from job-fetch-hosts.txt; the shipped file stays off."""
+        here = os.path.dirname(os.path.abspath(__file__))
+        jr = open(os.path.join(here, "job-run.sh")).read()
+        self.assertIn('export SAFE_FETCH_ALLOWLIST="$_JH"', jr)
+        hosts = [l.strip() for l in open(os.path.join(here, "job-fetch-hosts.txt")) if l.strip() and not l.startswith("#")]
+        self.assertEqual(sorted(hosts), sorted([
             "query1.finance.yahoo.com", "fred.stlouisfed.org", "stooq.com",
             "www.ici.org", "ticdata.treasury.gov", "publicreporting.cftc.gov"]))
-
-    def test_an_unlisted_host_is_refused_by_the_shipped_file(self):
         os.environ.pop("SAFE_FETCH_ALLOWLIST_FILE", None)
-        with self.assertRaises(RuntimeError) as cm:
-            self.sf._enforce_egress_allowlist("https://example.com/not-a-feed")
-        self.assertIn("L2-ALLOWLIST REFUSED", str(cm.exception))
-        self.sf._enforce_egress_allowlist("https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10")   # a listed host passes the wall
+        os.environ["SAFE_FETCH_ALLOWLIST"] = ",".join(hosts)
+        try:
+            with self.assertRaises(RuntimeError) as cm:
+                self.sf._enforce_egress_allowlist("https://example.com/x")
+            self.assertIn("L2-ALLOWLIST REFUSED", str(cm.exception))
+            self.sf._enforce_egress_allowlist("https://fred.stlouisfed.org/x")
+        finally:
+            os.environ.pop("SAFE_FETCH_ALLOWLIST", None)
+        self.sf._enforce_egress_allowlist("https://example.com/x")   # session: not refused
 
     def test_off_is_announced_rather_than_silent(self):
         self.write("off")
