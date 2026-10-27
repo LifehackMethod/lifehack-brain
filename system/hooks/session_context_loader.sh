@@ -30,6 +30,9 @@ trap 'lhb_journal_fire "$?" "session_context_loader.sh" "SessionStart" "" 2>/dev
 #      file exists for — the exact bug this header describes, one exit code later. `exit 0` +
 #      stdout is the ONLY channel that reaches the model here, so every branch uses it.
 # UPDATED: 2026-08-11 (ported; the silent-success bug fixed, and the exit path made real).
+#      2026-10-27 (task 2.1): _findings_banner() replaced by _job_health_line() — health_line.py now prints ONE
+#      job-health line from local job state, and the hook prints it as THE FIRST LINE, before the header.
+#      No exit code changed — every path is still `exit 0`.
 #      2026-10-27: writes ~/.config/lifehack/code-root, the pointer every scheduled job's launch
 #      line reads to find job-run.sh (self-monitoring plan §B.1). Silent and fail-soft, no exit change.
 #      2026-08-14: wired in system/tools/health_line.py (_findings_banner()) — see the note below the
@@ -133,6 +136,24 @@ if [ -z "$PY" ]; then
                                # gets this message into the model's context; exit 1 would hide it
 fi
 
+# ── THE JOB-HEALTH LINE (2.1) — printed FIRST, before any header. One line from local job state
+# (system/tools/health_line.py reads ~/.config/lifehack/state/jobs/*). health_line.py never raises and
+# never exits nonzero, so a nonzero rc means the TOOL could not start: say so in one line rather than
+# go silent. Always returns 0.
+_job_health_line() {
+  local out rc
+  out="$("$PY" "$REPO/system/tools/health_line.py" 2>/dev/null)"
+  rc=$?
+  if [ "$rc" -ne 0 ] || [ -z "$out" ]; then
+    echo "note: health_line.py did not run this session (rc=$rc) — job health unavailable"
+    return 0
+  fi
+  printf '%s\n' "$out"
+  return 0
+}
+
+_job_health_line   # FIRST line of output, ahead of every "=== Session context" header below
+
 # The one resolver. NOT-SET is a real answer and is reported as one; it is never guessed around.
 ROOT="$("$PY" "$REPO/shared/brain_root.py" --quiet 2>/dev/null)"
 RC=$?
@@ -177,47 +198,6 @@ fi
 
 echo "=== Session context (loaded automatically) ==="
 echo "Your notes: $ROOT"
-
-# ── THE FINDINGS/HEALTH BANNER — the other half of a promise this file already fixed once. ────
-# Detection was never the missing piece: emit_finding.py -> findings_reader.py -> health_line.py
-# already form a complete chain, and health_line.py renders real content when run directly
-# (confirmed: a guard-fire-test ERROR row renders correctly standalone). But nothing called
-# health_line.py from a real session — the exact "detection works, consumption does not"
-# failure this system keeps re-finding, and the fix is almost always this small: one call from a
-# surface that ALREADY fires every session, not new machinery. This is that call.
-# FAIL-SOFT, ON PURPOSE: health_line.py's own contract is "never raises, never exits nonzero" —
-# so a nonzero rc here means the TOOL ITSELF could not even start (missing file, broken
-# interpreter), a different failure than "nothing to report." That case gets ONE short line
-# saying so, rather than being swallowed — silence there would grow a second copy of the exact
-# bug this file's own header describes fixing for the canon path above. A working health_line.py
-# that finds nothing still prints nothing, same as always; this loader adds no new command.
-_findings_banner() {
-  local ledger out rc
-  # ⭐ Issue #77-D8: the ledger path used to be hardcoded here as "$HOME/.config/lifehack/faults.json".
-  # Under Git Bash on Windows, $HOME resolves to the MSYS spelling (a /c/... drive-letter path), which a native
-  # Windows Python cannot open — health_line.py then reports a false "ledger MISSING" even though the
-  # ledger is healthy. fault_ledger.py already owns this exact computation portably (STATE_DIR/LEDGER,
-  # honouring LIFEHACK_FAULT_STATE_DIR) — so ask IT for the path via a dedicated, decoration-free flag,
-  # instead of duplicating (and mis-duplicating) the computation here.
-  ledger="$("$PY" "$REPO/system/tools/fault_ledger.py" --print-ledger-path 2>/dev/null)"
-  rc=$?
-  if [ "$rc" -ne 0 ] || [ -z "$ledger" ]; then
-    # FAIL-SOFT: if the path lookup itself fails, do NOT fall back to a guessed path and do NOT call
-    # health_line.py with an empty/bad one — that would risk printing a confident false MISSING claim,
-    # the exact defect this fix exists to remove. Degrade exactly like "tool did not run".
-    echo ""
-    echo "note: health_line.py did not run this session (rc=$rc) — findings/health banner unavailable"
-    return 0
-  fi
-  out="$("$PY" "$REPO/system/tools/health_line.py" "$ledger" 2>/dev/null)"
-  rc=$?
-  if [ "$rc" -ne 0 ]; then
-    echo ""
-    echo "note: health_line.py did not run this session (rc=$rc) — findings/health banner unavailable"
-    return 0
-  fi
-  [ -n "$out" ] && { echo ""; printf '%s\n' "$out"; }
-}
 
 TOTAL=0
 
@@ -322,7 +302,6 @@ if [ "${#CANON[@]}" -eq 0 ]; then
   echo ""
   echo "No subject folders yet — nothing standing to load beyond the above. Run /ingest to build them,"
   echo "or just start working and /save will make them as it goes."
-  _findings_banner
   echo "=== end session context ==="
   exit 0
 fi
@@ -366,8 +345,6 @@ for f in "${CANON[@]}"; do
   echo "--- $SUBJECT ---"
   printf '%s\n' "$BODY"
 done
-
-_findings_banner
 
 # ── SKILL CAPABILITY CHECK — T3.7(c) wiring ───────────────────────────────────────────────────
 # WHY THIS LIVES HERE, NOT A NEW DETECTOR: system/build-rules-index.md's code-spiral rule says

@@ -177,5 +177,28 @@ says "health_line.py did not run this session" && ok || bad "health_line unavail
 [ "$RC" = 0 ] && ok || bad "health_line unavailable: exit code" "expected 0, got $RC"
 
 echo ""
+echo "── 2.1: the job-health line is THE FIRST LINE, and health_line.py is fail-soft ─────────────"
+# Fixture: a temp HOME whose job state has one never-ran job; loader run with that HOME.
+JH="$SANDBOX/jh"; mkdir -p "$JH/.config/lifehack/state/jobs"
+OUT="$(env HOME="$JH" LIFEHACK_ROOT="$NOTES" bash "$LOADER" 2>&1)"; RC=$?
+FIRST="$(printf '%s\n' "$OUT" | head -1)"
+case "$FIRST" in "never ran: "*|"jobs: "*|"jobs cannot find"*|*" overdue: "*|"stood down: "*) ok ;; *) bad "first line is the job-health line" "got: $FIRST" ;; esac
+[ "$RC" = 0 ] && ok || bad "job-health first line: exit code" "expected 0, got $RC"
+HLPY="$REPO/system/tools/health_line.py"
+# unreadable state dir + manifest: one fail-soft line, exit 0
+R="$(python3 "$HLPY" /nonexistent "$SANDBOX/no-such-manifest.md" 2>&1)"; HRC=$?
+[ "$HRC" = 0 ] && ok || bad "health_line fail-soft: exit code" "expected 0, got $HRC"
+case "$R" in "job health: could not read ("*")") ok ;; *) bad "health_line fail-soft: message" "got: $R" ;; esac
+[ "$(printf '%s\n' "$R" | wc -l | tr -d ' ')" = 1 ] && ok || bad "health_line: exactly one line" "got: $R"
+# worst-state-wins: launch.err beats never-ran
+printf '```jobs\nj1 | yes | 100 | x\nj2 | yes | 100 | x\n```\n' > "$SANDBOX/man.md"
+mkdir -p "$SANDBOX/st/j1"; echo boom > "$SANDBOX/st/j1/launch.err"
+R="$(python3 "$HLPY" "$SANDBOX/st" "$SANDBOX/man.md")"
+[ "$R" = "jobs cannot find the code — open any desk once to repair" ] && ok || bad "launch.err wins" "got: $R"
+rm -f "$SANDBOX/st/j1/launch.err"
+R="$(python3 "$HLPY" "$SANDBOX/st" "$SANDBOX/man.md")"
+[ "$R" = "never ran: j1, j2" ] && ok || bad "never ran is never OK" "got: $R"
+
+echo ""
 echo "RESULT: $pass passed, $fail failed."
 [ "$fail" = 0 ] && echo "SESSION CONTEXT GREEN" || exit 1
