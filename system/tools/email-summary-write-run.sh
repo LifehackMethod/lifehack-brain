@@ -12,7 +12,7 @@
 #      KEYCHAIN-FREE + isolated so a headless run can NEVER touch the interactive `gws` keychain.
 #      NO claude token (the write path is mechanical). Writes ONLY: the v2 store (via the janitor's
 #      own HARD-guarded writer), the health tile (via the janitor), a machine-local {rc,ts} proof.
-#      A write ERROR (e.g. dead auth) buzzes the phone IMMEDIATELY.
+#      A write ERROR no longer texts from here (2.5c, 2026-10-27): job-run.sh is the one alarm.
 # REDIRECT: v2 store threads-v2/ + tile state/status/email-summary.json (both written by the python);
 #      machine-local proof $OUT_DIR/last-run.json (trap) + $OUT_DIR/last-write.log (the run's output).
 # ⚖ PORT NOTE: donor's PRIMARY-machine gate (state/primary-machine marker election between two machines)
@@ -67,25 +67,14 @@ if ! mkdir "$LOCKDIR" 2>/dev/null; then
 fi
 
 # ── ONE exit handler: write the {rc,ts} proof, buzz the phone on a real FAILURE, clear the lock — on ANY
-#    exit (success, set -e death, watchdog kill). A write ERROR (RC≠0) pages critical IMMEDIATELY so a
-#    broken-auth runner reaches the person's phone this tick, not after 3 Pulse-breaker strikes. ──
+#    exit (success, set -e death, watchdog kill). No text from here (2.5c): job-run.sh is the one alarm. ──
 RC=1
 _on_exit() {
   printf '{"subsystem":"%s","rc":%s,"ts":"%s","stale_after_h":%s}\n' \
     "$SUBSYSTEM_NAME" "$RC" "$(date -u +%FT%TZ)" "$STALE_AFTER_HOURS" > "$STATUS_ARTIFACT" 2>/dev/null || true
-  # rc=75 = STOOD DOWN (no gws creds configured yet) — the job's own preflight declined to run,
-  # not a failure; PERMANENT-BY-DESIGN for a student with no Google account, so it fires on every
-  # future dispatch until credentials are configured. Paging on it — even once — would just move
-  # the noise from "every tick" to "every day forever," which is worse than the red tile this fix
-  # replaces. DEFAULT TO SILENCE, matching the established convention: planning-health.py /
-  # backlog-health.py's own "not configured" branch pages nobody, and pulse.sh's own rc=75 handling
-  # counts it `skipped` with no notify-send call of its own. Genuine failures (anything else
-  # non-zero) still page below, unchanged.
-  if [ "$RC" -ne 0 ] && [ "$RC" -ne 75 ]; then
-    bash "$CODE_ROOT/shared/notify/notify-send.sh" --source "$SUBSYSTEM_NAME" --tags warning --priority critical \
-      --title "⚠️ email write-cadence failed" \
-      --message "email_summary_sync --write-v2 errored (rc=$RC) — v2 store not refreshing. See $STATUS_ARTIFACT." 2>/dev/null || true
-  fi
+  # 2026-10-27 (self-monitoring 2.5c): this runner no longer sends its own text. job-run.sh is now the ONE
+  # alarm for this job (it pages on the 2nd consecutive miss and sends the recovery). The trap still writes
+  # last-run.json and the Drive status tile, so the failure stays visible; rc=75 (no gws creds) is a stand-down.
   # Drive-visible status tile (state/status/email-summary-write.json) — emitted on EVERY outcome so
   # system-health never renders this job NO-TILE while it is silently dying (the 2026-08-27 failure).
   write_status_tile "$SUBSYSTEM_NAME" "$RC" $(( STALE_AFTER_HOURS * 3600 )) \
@@ -163,15 +152,8 @@ if [ "$RC" -eq 0 ]; then
   python3 "$CODE_ROOT/shared/tools/email_summary_sync.py" --stamp-write-ok --write-errors "${_ERRS:-0}" 2>/dev/null || \
     echo "[$SUBSYSTEM_NAME] WARNING: write succeeded but tile-stamp failed (non-fatal)."
 
-  # ── H2.1 PARTIAL-failure visibility: N>0 → the store is only partially refreshed → a WARNING-priority
-  #    buzz (NOT critical: a transient per-thread hiccup must never trip Pulse's breaker or wake anyone at
-  #    3am; the S-1 dead-man still backstops a real stall). ──
-  if [ "${_ERRS:-0}" -gt 0 ]; then
-    bash "$CODE_ROOT/shared/notify/notify-send.sh" --source "$SUBSYSTEM_NAME" --tags mailbox,warning \
-      --title "📭 email write PARTIAL" \
-      --message "v2 write finished with ${_ERRS} thread error(s) — store only partially refreshed. See $WORKLOG." 2>/dev/null || true
-    echo "[$SUBSYSTEM_NAME] partial refresh: ${_ERRS} thread error(s) → warning buzz sent."
-  fi
+  # 2026-10-27 (2.5c): the H2.1 partial-failure text was removed with the failure text above; job-run.sh is the
+  # one alarm. A partial refresh (errors=N) is still recorded: _ERRS goes to the tile stamp above and the worklog.
 fi
 
 echo "[$SUBSYSTEM_NAME] done (rc=$RC)."
