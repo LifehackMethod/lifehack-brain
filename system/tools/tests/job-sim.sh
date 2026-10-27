@@ -15,7 +15,7 @@
 #     pages; transient (rc=2); two jobs failing at once; pointer broken (launch.err); never-ran is never OK;
 #     four jobs fail in one day (the daily cap of 3 per source); an overdue push during quiet hours
 #     (deferred; delivered by --flush-deferred, or dropped after 18 h).
-#   - 200 fuzz reps of random mode/flavor/gap sequences, FIXED seed, checked against an oracle: a small
+#   - 50 (per-commit) or 200 (--gate) fuzz reps of random mode/flavor/gap sequences, FIXED seed, checked against an oracle: a small
 #     python model of the intended rules (wrapper alert rule + governor + session line) that predicts the
 #     line and the push list. The scenarios carry hand-written expectations; the model is cross-checked
 #     against them too.
@@ -35,11 +35,13 @@
 #   LIFEHACK_STATE_DIR is set). The rig never touches ~/.config/lifehack, never pushes, never uses the
 #   network, and runs no real job. HOME is pointed at a throwaway directory.
 #
-# HOW TO RUN:   bash system/tools/tests/job-sim.sh
-#   exit 0 = every row green, "fuzz: 200/200", under 60 s.   exit 1 = any miss (the miss is printed).
+# HOW TO RUN:   bash system/tools/tests/job-sim.sh            per-commit run: 50 fuzz reps, budget DEFAULT_BUDGET s
+#               bash system/tools/tests/job-sim.sh --gate     full gate run: 200 fuzz reps, budget GATE_BUDGET s
+#   exit 0 = every row green, "fuzz: n/n (seed ...)", inside the budget.   exit 1 = any miss (printed).
+#   Budgets carry >= 2x headroom over measured runs, so load alone cannot flip it RED. JOB_SIM_BUDGET=<s> overrides.
 #   JOB_SIM_BREAK=1 bash system/tools/tests/job-sim.sh     deliberately corrupts ONE expected value;
 #   the rig must then exit 1 (proof that the assertions can fail).
-#   JOB_SIM_FUZZ=<n> changes the rep count (default 200).  JOB_SIM_V=1 prints the per-tick timeline.
+#   JOB_SIM_FUZZ=<n> sets the rep count (default 50; 200 with --gate; seed is fixed).  JOB_SIM_V=1 prints the per-tick timeline.
 set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export JOB_SIM_ROOT="$(cd "$HERE/../../.." && pwd)"
@@ -51,9 +53,14 @@ ROOT = os.environ["JOB_SIM_ROOT"]
 JR = f"{ROOT}/system/tools/job-run.sh"
 HL = f"{ROOT}/system/tools/health_line.py"
 NS = f"{ROOT}/shared/notify/notify-send.sh"
+DEFAULT_BUDGET = 40.0   # seconds: >= 2x the slowest measured default (50-rep) run
+GATE_BUDGET = 120.0     # seconds: 2x the measured gate (200-rep) run
 BREAK = os.environ.get("JOB_SIM_BREAK") == "1"
 VERBOSE = os.environ.get("JOB_SIM_V") == "1"
-FUZZ_N = int(os.environ.get("JOB_SIM_FUZZ", "200"))
+GATE = "--gate" in sys.argv[1:]
+FUZZ_N = int(os.environ.get("JOB_SIM_FUZZ") or (200 if GATE else 50))
+FUZZ_SEED = 20261027
+BUDGET = float(os.environ.get("JOB_SIM_BUDGET") or (GATE_BUDGET if GATE else DEFAULT_BUDGET))
 P = 3600
 DAY = 86400
 BASE = calendar.timegm((2026, 11, 2, 0, 0, 0))   # a Monday, 00:00 UTC
@@ -404,7 +411,7 @@ MODES = ["ok"] * 5 + ["fail", "fail", "silent", "standdown", "transient", "trans
 
 
 def fuzz_case(rep):
-    r = random.Random(20261027 * 1000 + rep)
+    r = random.Random(FUZZ_SEED * 1000 + rep)
     jobs = [(A, P)] + ([(B, P)] if r.random() < 0.25 else [])
     t0 = BASE + r.randrange(24) * 3600 + r.choice([0, 0, 1800])
     ticks = []
@@ -459,7 +466,7 @@ def main():
     for n, f in fz:
         for x in f[:3]:
             print(f"    MISS {x}"); bad += 1
-    print(f"fuzz: {passed}/{FUZZ_N}")
+    print(f"fuzz: {passed}/{FUZZ_N} (seed {FUZZ_SEED})")
     if True:
         print("\n-- documented behaviour (asserted above) --")
         nt = notes["four jobs fail in a day -> 3 pushes"][1]
@@ -470,9 +477,9 @@ def main():
         print("quiet-hours, never flushed:")
         for ln in notes["quiet-hours push never flushed"][0][-2:]: print(f"    {ln}")
     el = time.time() - t_start
-    print(f"\nruntime: {el:.1f}s   {'ALL GREEN' if bad == 0 and el < 60 else 'RED'}")
-    if el >= 60:
-        print("MISS runtime over 60 s"); bad += 1
+    print(f"\nruntime {el:.1f}s / budget {BUDGET:g}s   {'ALL GREEN' if bad == 0 and el < BUDGET else 'RED'}")
+    if el >= BUDGET:
+        print(f"MISS runtime over the {BUDGET:g} s budget"); bad += 1
     return 1 if bad else 0
 
 
