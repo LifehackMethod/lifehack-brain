@@ -86,10 +86,12 @@ fi
 # ── finish: the one exit path. Records last-run (unless told not to), an error file on failure,
 #    appends this run to the rolling log and trims it to 20 runs. ──
 LOCKDIR=""
-# notify <title> <message> <identity> — fail-soft: one log line on failure, never touches the exit code.
+# notify <title> <message> <identity> [priority] — fail-soft: one log line on failure, never touches the exit code.
 notify() {
-  local sender="${JOB_RUN_NOTIFY:-$CODE_ROOT/shared/notify/notify-send.sh}"
-  bash "$sender" --source job-run --title "$1" --message "$2" --identity "$3" --tags warning \
+  local sender="${JOB_RUN_NOTIFY:-$CODE_ROOT/shared/notify/notify-send.sh}" prio="${4:-normal}"
+  # 2.5b: source is per job ("job-run:<job>") so the governor's cap of 3/day applies to each job; a
+  # recovery goes out as priority "recovery" (cap-exempt; still respects quiet hours and dedup).
+  bash "$sender" --source "job-run:$JOB" --title "$1" --message "$2" --identity "$3" --priority "$prio" --tags warning \
     || echo "[job-run] notify failed or unavailable ($sender) — run result unchanged"
   return 0
 }
@@ -108,7 +110,7 @@ alert_check() {
   local rc="$1" ls_age="" last_ok="never" mark="$STATE/alerted"
   if [ "$rc" -eq 0 ]; then
     [ -f "$mark" ] || return 0
-    notify "Job recovered: $JOB" "$JOB succeeded again · output check passed" "job-up:$JOB:$(awk '{print $3}' "$mark")"
+    notify "Job recovered: $JOB" "$JOB succeeded again · output check passed" "job-up:$JOB:$(awk '{print $3}' "$mark")" recovery
     rm -f "$mark"
     return 0
   fi

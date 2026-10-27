@@ -15,7 +15,7 @@
 #
 # Usage:
 #   notify-send.sh --source <name> --message <teaser> \
-#                  [--priority normal|critical] [--url <drive-link>] \
+#                  [--priority normal|critical|recovery] [--url <drive-link>] \
 #                  [--title <title>] [--tags <tag1,tag2>]
 #
 # Exit 0  = sent (or deliberately SUPPRESSED by the governor — not an error).
@@ -46,11 +46,12 @@ if [ "${1:-}" = "--flush-deferred" ]; then
   out="$(python3 "$GOVERNOR_DIR/notify-governor.py" --flush-deferred 2>/dev/null)" || true
   [ -z "$out" ] && exit 0
   rc_all=0
-  while IFS=$'\t' read -r d_source d_message d_title d_tags d_url; do
+  while IFS=$'\t' read -r d_source d_message d_title d_tags d_prio d_url; do
     [ -n "$d_source" ] || continue
     args=(--source "$d_source" --message "$d_message")
     [ -n "$d_title" ] && args+=(--title "$d_title")
     [ -n "$d_tags" ]  && args+=(--tags "$d_tags")
+    [ -n "$d_prio" ] && [ "$d_prio" != "normal" ] && args+=(--priority "$d_prio")   # 2.5b: a deferred recovery stays cap-exempt
     [ -n "$d_url" ]   && args+=(--url "$d_url")
     bash "${BASH_SOURCE[0]}" "${args[@]}" || rc_all=1
   done <<< "$out"
@@ -105,7 +106,7 @@ if ! python3 "$GOVERNOR" "$SOURCE" "$MESSAGE" "$PRIORITY" "$IDENTITY" >/dev/null
   # once quiet hours lift, instead of being lost for good. See --flush-deferred above.
   case "$reason" in
     "SUPPRESS: quiet hours"*)
-      python3 "$GOVERNOR" --queue-deferred "$SOURCE" "$MESSAGE" "$TITLE" "$TAGS" "$URL" >/dev/null 2>&1 || true
+      python3 "$GOVERNOR" --queue-deferred "$SOURCE" "$MESSAGE" "$TITLE" "$TAGS" "$URL" "$PRIORITY" >/dev/null 2>&1 || true
       ;;
   esac
   exit 0   # being suppressed is the system working — never report it as a failure

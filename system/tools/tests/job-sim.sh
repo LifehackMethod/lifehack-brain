@@ -95,13 +95,15 @@ class Model:
         h = (t // 3600) % 24
         return h >= self.QS or h < self.QE
 
-    def gov(self, t, basis, title, msg, identity, defer_ok=True):
-        if any(k == basis and ts >= t - self.DEDUP for ts, k in self.sent): return
+    def gov(self, t, job, basis, title, msg, identity, defer_ok=True, exempt=False):
+        # source is 'job-run:<job>' (2.5b): dedup and the daily cap are per job; a recovery is cap-exempt
+        # (and does not count toward the cap), but still respects quiet hours and dedup.
+        if any(k == (job, basis) and ts >= t - self.DEDUP for ts, k, _j, _e in self.sent): return
         if self.quiet(t):
-            if defer_ok: self.deferred.append((t, title, msg))
+            if defer_ok: self.deferred.append((t, job, title, msg, exempt))
             return
-        if sum(1 for ts, _ in self.sent if ts >= t - 86400) >= self.CAP: return
-        self.sent.append((t, basis)); self.log.append((title, identity))
+        if not exempt and sum(1 for ts, _k, j, e in self.sent if j == job and not e and ts >= t - 86400) >= self.CAP: return
+        self.sent.append((t, (job, basis), job, exempt)); self.log.append((title, identity))
 
     def run(self, job, flavor, mode, t):
         s = self.j[job]; P_ = s["P"]
@@ -115,8 +117,8 @@ class Model:
         if rc == 0:
             s["ls"] = t; s["lr"] = (0, "")
             if s["alerted"]:
-                self.gov(t, ("id", f"job-up:{job}:{s['alerted']}"), f"Job recovered: {job}",
-                         f"{job} succeeded again · output check passed", f"job-up:{job}:{s['alerted']}")
+                self.gov(t, job, ("id", f"job-up:{job}:{s['alerted']}"), f"Job recovered: {job}",
+                         f"{job} succeeded again · output check passed", f"job-up:{job}:{s['alerted']}", exempt=True)
                 s["alerted"] = False
             return
         s["lr"] = (rc, reason)
@@ -126,7 +128,7 @@ class Model:
             age = t - s["ls"]
             if age < 2 * P_: return        # 2.5d: the 2nd consecutive miss pages (age >= 2 x period)
             last_ok = f"{age // 3600}h ago"
-        self.gov(t, ("id", f"job-down:{job}:{t}"), f"Job down: {job}",
+        self.gov(t, job, ("id", f"job-down:{job}:{t}"), f"Job down: {job}",
                  f"exit {rc} · last success {last_ok} · next: open any desk; the first line names it, the error is in "
                  f"~/.config/lifehack/state/jobs/{job}/errors/", f"job-down:{job}:{t}")
         s["alerted"] = t
@@ -137,8 +139,8 @@ class Model:
             if t - item[0] > self.MAXDEF: continue
             (keep if self.quiet(t) else send).append(item)
         self.deferred = keep
-        for _, title, msg in send:       # replayed with no identity: dedup keys on the message text
-            self.gov(t, ("msg", msg), title, msg, "", defer_ok=False)
+        for _, job, title, msg, exempt in send:   # replayed with no identity: dedup keys on the message text
+            self.gov(t, job, ("msg", msg), title, msg, "", defer_ok=False, exempt=exempt)
 
     def line(self, t):
         if any(s["le"] for s in self.j.values()): return REPAIR
@@ -372,18 +374,34 @@ def scenarios():
         dict(dt=P, acts={B: ("cal", "standdown")}, line=od((B, "never succeeded")), push=0),
         dict(dt=P, acts={A: ("cal", "ok"), B: ("cal", "ok")}, line="jobs: 2 OK", push=0)]))
 
-    # 12 (a) four jobs fail in one day -> three pushes (cap of 3 per source 'job-run', shared by all jobs)
+    # 12 (b) four jobs fail in one day -> FOUR pushes (2.5b: the cap of 3 is per job, source 'job-run:<job>')
     four = [(n, P) for n in (A, B, C, D)]
     def acts(m_): return {n: ("cal", m_) for n, _ in four}
     l4 = od((A, "2h"), (B, "2h"), (C, "2h"), (D, "2h"))
-    dn = ["Job down: sim-a", "Job down: sim-b", "Job down: sim-c"]
-    S.append(("four jobs fail in a day -> 3 pushes", four, BASE + 8 * 3600, [
+    dn = ["Job down: sim-a", "Job down: sim-b", "Job down: sim-c", "Job down: sim-d"]
+    up = ["Job recovered: sim-a", "Job recovered: sim-b", "Job recovered: sim-c", "Job recovered: sim-d"]
+    S.append(("four jobs fail in a day -> 4 pushes", four, BASE + 8 * 3600, [
         dict(dt=0, acts=acts("ok"), line="jobs: 4 OK", push=0),
         dict(dt=P, acts=acts("fail"), line="jobs: 4 OK", push=0),
-        dict(dt=P, acts=acts("fail"), line=l4, push=3, titles=dn),
-        dict(dt=P, acts=acts("fail"), line=od((A, "3h"), (B, "3h"), (C, "3h"), (D, "3h")), push=3, titles=dn),
-        # recoveries are normal-priority pushes too: the cap swallows all four
-        dict(dt=P, acts=acts("ok"), line="jobs: 4 OK", push=3, titles=dn)]))
+        dict(dt=P, acts=acts("fail"), line=l4, push=4, titles=dn),
+        dict(dt=P, acts=acts("fail"), line=od((A, "3h"), (B, "3h"), (C, "3h"), (D, "3h")), push=4, titles=dn),
+        dict(dt=P, acts=acts("ok"), line="jobs: 4 OK", push=8, titles=dn + up)]))
+
+    # 12b (b) a recovery is delivered even after its job used its 3 texts of the day (cap-exempt)
+    cyc = []
+    for k in range(4):                        # 4 incidents: the 4th "down" is capped, its recovery is not
+        cyc += [dict(dt=P, acts={A: ("cal", "fail")}, line=OK1, push=None),
+                dict(dt=P, acts={A: ("cal", "fail")}, line=od((A, "2h")), push=None),
+                dict(dt=P, acts={A: ("cal", "ok")}, line=OK1, push=None)]
+    cyc[0]["dt"] = P
+    ct = [dict(dt=0, acts={A: ("cal", "ok")}, line=OK1, push=0)] + cyc
+    # pushes after each incident's 3 ticks: down, recovery = +2 for incidents 1-3; incident 4: down capped, recovery +1
+    for k, (d_, r_) in enumerate([(1, 2), (3, 4), (5, 6), (6, 7)]):
+        ct[1 + 3 * k + 1]["push"] = d_ if k < 3 else 6    # the 2nd miss: down (capped on the 4th incident)
+        ct[1 + 3 * k + 2]["push"] = r_                    # the success: recovery, always delivered
+        ct[1 + 3 * k]["push"] = (0 if k == 0 else [2, 4, 6][k - 1])
+    ct[-1]["titles"] = ["Job down: sim-a", "Job recovered: sim-a"] * 3 + ["Job recovered: sim-a"]
+    S.append(("recovery delivered after the job used its 3", [(A, P)], BASE + 8 * 3600, ct))
 
     # 13 (b) overdue push during quiet hours: suppressed -> queued -> delivered by --flush-deferred
     def quiet_ticks(final):
@@ -483,7 +501,7 @@ def main():
     print(f"fuzz: {passed}/{FUZZ_N} (seed {FUZZ_SEED})")
     if True:
         print("\n-- documented behaviour (asserted above) --")
-        nt = notes["four jobs fail in a day -> 3 pushes"][1]
+        nt = notes["four jobs fail in a day -> 4 pushes"][1]
         print("four jobs fail in a day, pushes that reached the log (title | identity):")
         for title, ident in nt: print(f"    {title} | {ident}")
         print("quiet-hours timeline (job sim-a, period 1h; UTC):")

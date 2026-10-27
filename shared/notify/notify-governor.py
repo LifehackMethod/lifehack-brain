@@ -16,6 +16,8 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # notify-governor.py <source> <message> [priority] [identity]
 #   priority: normal (default) | critical (bypasses quiet hours + daily cap; still dedups)
+#           | recovery (2.5b: an all-clear. Exempt from the daily cap and not counted toward it, so a
+#             job that used its 3 texts still gets its recovery text; still respects quiet hours + dedup)
 #           | misconfig (T10.A3 OL-N1 ⑤: a PERMANENT-until-fixed condition — e.g. a required env
 #             var nobody has set — is not news twice. Dedups like normal but over a ~1-year
 #             floor instead of 24h, so the SAME misconfig alerts once and then stands down. Still
@@ -133,7 +135,7 @@ def flush_deferred():
         fcntl.flock(lock, fcntl.LOCK_UN)
         lock.close()
     for item in to_send:
-        print(f"{item.get('source', '')}\t{item.get('message', '')}\t{item.get('title', '')}\t{item.get('tags', '')}\t{item.get('url', '')}")
+        print(f"{item.get('source', '')}\t{item.get('message', '')}\t{item.get('title', '')}\t{item.get('tags', '')}\t{item.get('priority', 'normal')}\t{item.get('url', '')}")
     return 0
 
 
@@ -149,6 +151,7 @@ def queue_deferred(args):
     title = args[2] if len(args) > 2 else ""
     tags = args[3] if len(args) > 3 else ""
     url = args[4] if len(args) > 4 else ""
+    priority = args[5] if len(args) > 5 else "normal"
     now = _now()
     lock = open(STATE + ".lock", "w")
     try:
@@ -156,7 +159,7 @@ def queue_deferred(args):
         state = load_state()
         deferred = state.get("deferred", [])
         deferred.append({"ts": now, "source": source, "message": message, "title": title,
-                          "tags": tags, "url": url})
+                          "tags": tags, "url": url, "priority": priority})
         state["deferred"] = deferred
         save_state(state)
     finally:
@@ -180,6 +183,7 @@ def main():
     identity = (sys.argv[4] if len(sys.argv) > 4 and sys.argv[4] != "" else None)
     critical = priority == "critical"
     misconfig = priority == "misconfig"
+    exempt = priority == "recovery"   # cap-exempt (and not counted in the cap); quiet hours + dedup still apply
 
     now = _now()
     # OL-N1 ④: hash on <identity> when the caller supplied one — a STABLE string naming what
@@ -244,9 +248,9 @@ def main():
                 return 1
 
             # 3. Per-source daily cap. DAILY_CAP <= 0 = UNLIMITED (cap disabled).
-            if DAILY_CAP > 0:
+            if DAILY_CAP > 0 and not exempt:
                 day_floor = now - 24 * 3600
-                count = sum(1 for s in sent if s.get("source") == source and s.get("ts", 0) >= day_floor)
+                count = sum(1 for s in sent if s.get("source") == source and not s.get("exempt") and s.get("ts", 0) >= day_floor)
                 if count >= DAILY_CAP:
                     state["sent"] = sent
                     save_state(state)
@@ -254,7 +258,7 @@ def main():
                     return 1
 
         # ALLOW — record the send (crit flag lets the burst-coalesce count only criticals).
-        sent.append({"ts": now, "source": source, "hash": msg_hash, "crit": critical})
+        sent.append({"ts": now, "source": source, "hash": msg_hash, "crit": critical, "exempt": exempt})
         state["sent"] = sent
         save_state(state)
         print("ALLOW")
