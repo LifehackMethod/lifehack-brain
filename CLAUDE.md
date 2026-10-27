@@ -54,16 +54,16 @@ elements/<slug>.md, the exhaustive source. If this map is your only source, you 
                 no-upstream. the clone is the remote plus today's work; a branch with no remote twin
                 needs a stated reason. fires once per branch per session, then yields.
 ! (automatic)   stop something leaving the system | egress-allowlist-wall.md
-! (automatic)   the system files a ticket on ITSELF, ranked | hospital.md — detectors write ONE comparable
-                finding; the session-start line speaks it unasked. DETECTS+RANKS, never fixes.
+! (automatic)   the system files a ticket on ITSELF, ranked | hospital.md — its detector jobs are RETIRED;
+                job-run.sh's per-job state is the finding; the session-start line speaks it. Never fixes.
 ~ (automatic)   mail/calendar/tasks arrive in the inbox | grand-central.md gws-plane.md — gws-plane fetches
                 outside the wall > sentinel clears > grand-central holds > the skills read. fills while you sleep.
-~ (automatic)   a scheduled job died | health-invariants.md pulse-cron.md — alerts via notify-plane.
-                health-deadman watches the watcher.
+~ (automatic)   a scheduled job died | pulse-cron.md notify-plane.md — job-run.sh judges it: ONE ntfy text on
+                break, ONE on recovery. the session-start line is the backup. no watcher of watchers.
 @ (config) push alerts, rate limits, quiet hours | notify-plane.md — quiet hours 22:00-07:00 silences NORMAL
            pushes only; a CRITICAL page (sentinel DANGER, dead monitor) BYPASSES it and WILL wake you.
-~ pulse fires the scheduled jobs {health+guards, store sync, email, diary, archivist, planning}; each EMITS a
-  status tile on finish — that is how you learn it happened. manifest: `system/pulse-config.md`
+~ Mac: launchd -> ~/.config/lifehack/code-root -> job-run.sh runs each job; exit 0 only if its output check
+  passed. Linux/Windows: pulse.sh + cron. manifest, one row per job: `system/pulse-config.md`
 NOT BUILT — admissions, not omissions. knowing now beats inferring a connection that isn't there:
 - one subject's records agreeing with another's (a billing row becoming taxable income). no general
   primitive; calculate + compute-mechanically-gate are DORMANT, name-only. you carry it by hand.

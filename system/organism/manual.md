@@ -481,7 +481,7 @@ useful is unknown.
 9. **claude-md-pyramid** *[GLOBAL]* — PARTIAL·gap → `elements/claude-md-pyramid.md`  · ↓ `#claude-md-pyramid`
 10. **pm-flag** *[GLOBAL]* — PARTIAL·gap → `elements/pm-flag.md`  · ↓ `#pm-flag`
 11. **gws-plane** *[GLOBAL]* — LIVE·gap → `elements/gws-plane.md`  · ↓ `#gws-plane`
-12. **pulse-cron** *[GLOBAL]* — LIVE·gap → `elements/pulse-cron.md`  · ↓ `#pulse-cron`
+12. **pulse-cron** *[GLOBAL]* — LIVE·gap → `elements/pulse-cron.md`  · ↓ `#pulse-cron`  ⚠ CORRECTED 2026-10-27: on a Mac the scheduler is now launchd → `job-run.sh`, see THE SCHEDULER section above; `pulse.sh` + cron remain for Linux/Windows
 13. **grand-central** *[GLOBAL]* — PARTIAL·gap → `elements/grand-central.md`  · ↓ `#grand-central`
 14. **safe-reader-plane** *[GLOBAL]* — LIVE·gap → `elements/safe-reader-plane.md`  · ↓ `#safe-reader-plane`
 15. **sentinel** *[GLOBAL]* — LIVE·gap → `elements/sentinel.md`  · ↓ `#sentinel`
@@ -519,8 +519,112 @@ useful is unknown.
 47. **overmyshoulder** *[GLOBAL·optional]* — DORMANT → `elements/overmyshoulder.md`  *(index only — dormant)*
 48. **calculate** *[SHARED: deryl/clair/manual]* — DORMANT → `elements/calculate.md`  *(index only — dormant)*
 49. **google-sheet** *[GLOBAL·optional]* — DORMANT → `elements/google-sheet.md`  *(index only — dormant)*
-50. **hospital** *[GLOBAL]* — PARTIAL·gap [provisional] → `elements/hospital.md`  · ↓ `#hospital`
+50. **hospital** *[GLOBAL]* — PARTIAL·gap [provisional] → `elements/hospital.md`  · ↓ `#hospital`  ⚠ CORRECTED 2026-10-27: detector jobs retired; producers are now `job-run.sh` job state, see THE SCHEDULER section above
 51. **efficiency** *[GLOBAL]* — PARTIAL·gap [provisional — not fire-tested] → `elements/efficiency.md`  · ↓ `#efficiency`
+
+---
+
+## THE SCHEDULER, THE JOB WRAPPER AND THE ALARM — how a scheduled job runs and how you hear it died
+
+> **AUTHORED 2026-10-27 (self-monitoring plan, Sprint 4).** Source of truth is the code: `system/tools/job-run.sh`,
+> `system/tools/install-schedulers.sh` (macOS branch), `system/tools/health_line.py`,
+> `system/hooks/session_context_loader.sh`, `shared/notify/notify-send.sh` + `notify-governor.py`, and the
+> ```jobs block of `system/pulse-config.md`. If this section and those files disagree, the files win.
+
+**The chain on a Mac.** One launchd LaunchAgent per ENABLED row of the ```jobs block, written by the installer to
+`~/Library/LaunchAgents/ai.lifehack.<job>.plist`. Its launch line carries no code path:
+`/bin/bash -c 'exec /bin/bash "$(cat "$HOME/.config/lifehack/code-root")/system/tools/job-run.sh" <job> --if-overdue'`.
+launchd → the code-root pointer → `job-run.sh` → the job's own command → the job's output check. No tick, no
+dispatcher. A run missed in sleep fires once on wake.
+
+**Non-Mac is unchanged.** Linux and Windows are still driven by `pulse.sh` (a cron line on Linux, Task Scheduler on
+Windows), which dispatches the same ```jobs rows and does NOT go through `job-run.sh`: no output check, no local job
+state, no ntfy-on-break text, no session line for those jobs. The ```crontab block in `pulse-config.md` still exists
+for them. On a Mac the installer no longer writes a crontab entry.
+
+**The exit-code contract (what `job-run.sh` returns, and what the job's own command may return).**
+
+| rc | meaning |
+|---|---|
+| `0` | the job's OUTPUT CHECK passed. Nothing else ever exits 0 — a command that exits 0 but produced nothing is a failure (dead end F2: 166 silent failures) |
+| `75` | stood down: row not `yes`, not configured, not overdue, or another run holds the lock. Never a fault, never a text |
+| `2` | transient (network, Google pre-flight). Retried next period |
+| anything else | failed. A file is written to `errors/` and the alarm rule below applies |
+
+**The code-root pointer.** `~/.config/lifehack/code-root` is one line: the absolute path of the harness code the jobs
+run. The session-start hook writes it every session from `$CLAUDE_PLUGIN_ROOT`, and ONLY when that root contains
+`system/tools/job-run.sh` (an older release would point the jobs at nothing). Written atomically, silent, fail-soft.
+No plist ever holds a code path, so moving or releasing the code needs no reinstall. Two sessions from different copies
+flip it; the last one wins. Repair is "open any desk once".
+
+**Local job state** — `~/.config/lifehack/state/jobs/<job>/`, never Drive (Drive keeps content, not state):
+
+| file | what it is |
+|---|---|
+| `last-run` | `<ISO time> rc=<n> <reason>` — every run that got past the overdue check |
+| `last-success` | `<ISO time>`, written ONLY after the output check passed; its file mtime is the clock everything compares against |
+| `log` | the last 20 runs, one `=== run …` section each |
+| `errors/` | one file per FAILED run (not 75, not 2), named by time |
+| `launch.err` | launchd's stderr. Non-empty means the launch line could not find `job-run.sh` (bad pointer). The wrapper moves it into `log` and clears it once it runs |
+| `alerted` | exists while ONE "job down" text is out and no success has followed |
+
+**The alarm rules** (ntfy through `shared/notify/notify-send.sh`; the governor owns quiet hours and dedup).
+- A "Job down: <job>" text goes out when a run FAILS (not 75) and `last-success` is missing or its age is >= 2 periods
+  (the second consecutive miss, ~6 h for a 3 h job). A transient 2 that is still inside 2 periods stays quiet.
+- ONE text per incident: the `alerted` marker suppresses later failures until a success.
+- The next success sends ONE "Job recovered" text (priority `recovery`) and removes the marker.
+- Quiet hours 22:00-07:00: the text is deferred, not lost. EVERY wrapper run (any job) first flushes the governor's
+  deferred queue, so the first run after 07:00 delivers last night's text. Items older than 18 h are dropped.
+- Cap of 3 texts per day PER JOB (source `job-run:<job>`). Recovery texts are exempt from the cap and not counted in it.
+  They still respect quiet hours and the 24 h identity dedup.
+- A push that fails never changes the job's exit code.
+- The ntfy text is the alarm. The first line of every session (`health_line.py`: "jobs: <n> OK" / "<n> overdue: job (9h)" /
+  "never ran: …" / "stood down: …" / "jobs cannot find the code — open any desk once to repair") is the backup; nothing
+  further is built on it. There is no watcher of watchers.
+
+**Hospital, as rebuilt.** Hospital is still the problem-collector with a refusal to call "OK" what examined nothing, but
+its producers are now `job-run.sh`'s per-job state (a job with no `last-run` is "never ran", never OK) and its reader is
+`health_line.py`. The detector jobs (system-health, sentinel-health, planning-health, backlog-health, fault-proposer,
+the freshness and deadman jobs, and the rest) are RETIRED with their runners. The incident ledger and fault grader are
+on hold, not deleted, pending the operator's ruling.
+
+**The ONE-ROW-PER-JOB rule.** Every job is exactly one row of the ```jobs block in `system/pulse-config.md`
+(`name | enabled | interval_seconds | command`). One row = one launchd agent = one state folder = one output check. Never
+chain two unrelated jobs into one row's command, and never schedule a job anywhere else (no private crontab line, no
+hand-written plist): the row is the only place a job exists, and the installer generates everything else from it.
+
+**The rig.** `bash system/tools/tests/job-sim.sh` replays days of schedule in seconds against the REAL `job-run.sh`,
+`health_line.py`, `notify-send.sh` and `notify-governor.py` (fake clock, throwaway state, no network, no LLM). It runs
+15 scenarios plus fuzz against an oracle and checks the session line and the exact text count after every tick. Run it
+BEFORE EVERY COMMIT that touches any of those four scripts or the alarm rules. Run `--gate` (200 fuzz reps) at gates. A
+red rig is a stop. It does not cover real launchd sleep/wake, real ntfy delivery, or real Google/Claude auth.
+
+### How to add a job (Mac) — step by step
+
+1. **Write the command.** A stand-alone shell command or runner script (`system/tools/<job>-run.sh`). It must exit 0 only
+   on real success, 75 if it is simply not configured, 2 for a transient failure, anything else for a failure. Reach a
+   model or Google only through the shared libraries (`ingest-run.lib.sh`), never a bare `claude -p`.
+2. **Add ONE row** to the ```jobs block of `system/pulse-config.md`: `my-job | yes | 10800 | bash "$LIFEHACK_CODE_ROOT/system/tools/my-job-run.sh"`.
+   Name: lowercase letters, digits and hyphens only. Interval: seconds, and on a Mac a whole number of hours that divides
+   86400 (3600, 7200, 10800, 14400, 21600, 28800, 43200, 86400) — anything else makes the installer refuse, touching nothing.
+   Use `no`, `parked` or `waiting-on-<thing>` for a declared-off row.
+3. **Declare what it needs, in `job-run.sh`.** In the `case "$JOB"` block add `my-job) NEEDS="gws"; WATCHDOG=1200 ;;` —
+   `NEEDS` is any of `claude` and `gws` (each makes the wrapper run that credential pre-flight and stand down with 75 if
+   it is missing), and `WATCHDOG` is the most seconds the command may run (default 3600) before it is killed.
+4. **Write the output check, in `job-run.sh`: `check_my_job` (hyphens become underscores).** It returns 0 only if the job's
+   promised output is present AND newer than `$START_MARK`, and echoes the reason when it fails. Check the output that
+   proves the work, not the exit code: an empty result is not a success. **Without this function, or without `NEEDS`
+   where the job needs credentials, the job can never succeed** — the wrapper fails it with "no output check declared".
+5. **Run the rig:** `bash system/tools/tests/job-sim.sh` (and add a scenario if you changed the alarm rules).
+6. **Run it once by hand through the wrapper** (no `--if-overdue`): `bash system/tools/job-run.sh my-job`. Expect exit 0,
+   `~/.config/lifehack/state/jobs/my-job/last-success` present, and the log ending `output check passed`. A failure leaves
+   a file in `errors/`.
+7. **Install the schedule:** `bash system/tools/install-schedulers.sh --install` (without `--install` it only prints the
+   plan). It rewrites every `ai.lifehack.*` agent from the whole block, so it is safe to re-run. Confirm with
+   `launchctl list | grep ai.lifehack.my-job`.
+8. **Confirm the chain:** open a new session and read the first line (`jobs: <n> OK`; a brand-new job reads "never ran"
+   until its first run), and check `cat ~/.config/lifehack/code-root` names the code you mean. To retire a job, set its
+   row to `no` and re-run the installer; leave its state folder.
 
 ---
 
@@ -746,6 +850,7 @@ INTEROP:
   COMPLEMENTS security-ingest-gate            · ingest_gate_enforce.sh overlaps — the ingest gate IS the on-path enforcement arm of this plane for read channels
 
 ## pulse-cron · crontab */5   [LIVE·gap]   → elements/pulse-cron.md
+⚠ **CORRECTED 2026-10-27 (self-monitoring plan): on macOS this is no longer how jobs run.** Each enabled row now has its own launchd agent that runs `job-run.sh` (see THE SCHEDULER, THE JOB WRAPPER AND THE ALARM above); the Pulse/system-health/deadman machinery described below, and the per-tick heartbeat mirrors, apply only to Linux and Windows, and the watcher jobs named in the INTEROP list (system-health, sentinel-health, backlog-health, deadman) were removed. The text below is kept as history.
 One crontab line ticks pulse.sh every 5 minutes; it reads the jobs block in pulse-config.md and fires any job whose interval has elapsed, with machine-local circuit-breaker safety, single-writer machine-gating, and a Drive-mirrored heartbeat feed. The Bash-write bypass gap (guard_write_paths.sh matches Write/Edit only) is accepted.
 
 INTEROP:
@@ -1226,6 +1331,7 @@ INTEROP:
 ---
 
 ## hospital · emit_finding.py + findings_reader.py + fault_proposer.py   [PARTIAL·gap [provisional]]   → elements/hospital.md
+⚠ **CORRECTED 2026-10-27 (self-monitoring plan): Hospital was rebuilt, not deleted.** The detector jobs below are RETIRED; its producers are now `job-run.sh`'s per-job state under `~/.config/lifehack/state/jobs/`, and its reader is `health_line.py` (one line, first in every session). The incident ledger and fault grader are on hold. See THE SCHEDULER section above. The text below is kept as history.
 Every problem the system detects about itself becomes ONE comparable record, so "what is wrong?" can be asked once — at ground, subsystem or whole-system altitude — and answered with a ranked, evidence-cited list instead of a pile of incompatible notes. It DETECTS and RANKS; it never REMEDIATES (council: auto-fix CUT 7/7). Four producers emit through it today; ~8 known failure producers still do not (GAP-1), and nothing guards the store against a hand-authored write (GAP-3).
 
 INTEROP:
