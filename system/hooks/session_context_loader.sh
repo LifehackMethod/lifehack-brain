@@ -30,6 +30,8 @@ trap 'lhb_journal_fire "$?" "session_context_loader.sh" "SessionStart" "" 2>/dev
 #      file exists for — the exact bug this header describes, one exit code later. `exit 0` +
 #      stdout is the ONLY channel that reaches the model here, so every branch uses it.
 # UPDATED: 2026-08-11 (ported; the silent-success bug fixed, and the exit path made real).
+#      2026-10-27: writes ~/.config/lifehack/code-root, the pointer every scheduled job's launch
+#      line reads to find job-run.sh (self-monitoring plan §B.1). Silent and fail-soft, no exit change.
 #      2026-08-14: wired in system/tools/health_line.py (_findings_banner()) — see the note below the
 #      "Deliberately NOT ported" paragraph for why this is not a reversal of that exclusion.
 #      2026-08-14: two more suppressed reads fixed (an existing-but-unreadable canon.md or subject
@@ -76,6 +78,21 @@ trap 'lhb_journal_fire "$?" "session_context_loader.sh" "SessionStart" "" 2>/dev
 # closing that gap, not reintroducing the excluded donor block.
 
 CEIL="${SESSION_CONTEXT_CHAR_CEIL:-20000}"
+
+# ── code-root pointer (self-monitoring plan §B.1) ── every scheduled job's launchd line runs
+# "$(cat ~/.config/lifehack/code-root)/system/tools/job-run.sh", so no plist ever carries a code path.
+# Whatever copy of the harness this session runs from becomes the copy the jobs run. Only a root that
+# actually has job-run.sh is written (an older release would point the jobs at nothing). Atomic
+# (tmp + mv), silent, fail-soft: a pointer problem must never cost a session its context.
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "$CLAUDE_PLUGIN_ROOT/system/tools/job-run.sh" ]; then
+  _cr_file="$HOME/.config/lifehack/code-root"
+  if [ "$(cat "$_cr_file" 2>/dev/null)" != "$CLAUDE_PLUGIN_ROOT" ]; then
+    mkdir -p "$HOME/.config/lifehack" 2>/dev/null \
+      && printf '%s\n' "$CLAUDE_PLUGIN_ROOT" > "$_cr_file.tmp.$$" 2>/dev/null \
+      && mv -f "$_cr_file.tmp.$$" "$_cr_file" 2>/dev/null
+    rm -f "$_cr_file.tmp.$$" 2>/dev/null
+  fi
+fi
 
 REPO="$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd)"
 if [ -z "$REPO" ] || [ ! -f "$REPO/shared/brain_root.py" ]; then
