@@ -185,8 +185,8 @@ class World:
                  JOB_RUN_WATCHDOG="1", NTFY_TOPIC="sim-topic", TMPDIR=self.dir)
         return e
 
-    def sh(self, args, t):
-        return subprocess.run(args, env=self.env(t), stdin=subprocess.DEVNULL, capture_output=True, text=True)
+    def sh(self, args, t, extra=None):
+        return subprocess.run(args, env=dict(self.env(t), **(extra or {})), stdin=subprocess.DEVNULL, capture_output=True, text=True)
 
     def set_mode(self, job, mode):
         open(f"{self.sim}/mode/{job}", "w").write(mode)
@@ -510,6 +510,7 @@ def main():
         rows.append(("bad-row", bad_row()))
         rows.append(("mirror-fetch-contract", receipt_contract("mirror-fetch")))   # 5.7
         rows.append(("guard-fire-test-contract", receipt_contract("guard-fire-test")))   # 5.7
+        rows.append(("marc-health-contract", receipt_contract("marc-health")))   # 5.7 (the first AI job: small tier, one call)
         rows.append(("force-flag", force_flag()))   # 5.7
         rows.extend(model_scenarios())   # 5.3
         fz = [f.result() for f in ffut]
@@ -652,7 +653,10 @@ RECEIPTS = {   # job -> (a receipt line a SUCCESSFUL real run writes, one a run 
                      "mirror-fetch DONE behind=? ahead=? 2026-11-02T12:00:00Z"),
     "guard-fire-test": ('{"subsystem":"guard-fire-test","rc":0,"ts":"2026-11-02T12:00:00Z","stale_after_h":192}',
                         '{"subsystem":"guard-fire-test","rc":1,"ts":"2026-11-02T12:00:00Z","stale_after_h":192}'),
+    "marc-health": ("marc-health ok fetched_at=2026-11-02T12:00:00+00:00 tickers=19 fred=13 errors=0 core_ok=1 tile_rc=0",
+                    "marc-health FAIL fetched_at=? tickers=0 fred=0 errors=0 core_ok=0 tile_rc=1 :: snapshot unreadable"),
 }
+CONTRACT_MODEL = {"marc-health": ("small", "3", 1)}   # job -> (row model, row budget, model calls one run makes); default none/0/0
 
 
 def real_row(job):
@@ -675,10 +679,13 @@ def receipt_contract(job):
     if not row or len(row) != 9: return 1, [f"{job}-contract: real row not found / not 9 columns"], ([], [])
     _n, _en, _iv, outcome, check, model, budget, source, _cmd = row
     if " ~ " not in check: return 1, [f"{job}-contract: real check is '{check}'"], ([], [])
-    if (model, budget) != ("none", "0"): fails.append(f"{job}-contract: model/budget are {model}/{budget}, expected none/0")
+    want_model, want_budget, want_calls = CONTRACT_MODEL.get(job, ("none", "0", 0))
+    if (model, budget) != (want_model, want_budget): fails.append(f"{job}-contract: model/budget are {model}/{budget}, expected {want_model}/{want_budget}")
     w, t = World([(job, P)]), BASE + 12 * 3600
     try:
-        home_path = check.split(" ~ ")[0].strip().replace("~", w.home, 1)
+        home_path = check.split(" ~ ")[0].strip().replace("$HOME", w.home).replace("~", w.home, 1)
+        open(f"{w.sim}/model-mode", "w").write("ok")
+        mextra = {"LIFEHACK_MODEL_STUB": f"{HERE_TESTS}/job-sim-model-stub.sh"}   # inert for a job that makes no model call
         stub = f"{HERE_TESTS}/job-sim-receipt-stub.sh"
         open(w.manifest, "w").write("# receipt manifest\n```jobs\n"
             f"{job} | yes | {P} | {outcome} | {check} | {model} | {budget} | {source} | bash {stub} {job} {home_path}\n```\n")
@@ -687,12 +694,12 @@ def receipt_contract(job):
         open(f"{w.sim}/receipt/{job}.bad", "w").write(RECEIPTS[job][1] + "\n")
         for i, (mode, want) in enumerate([("missing", 1), ("old", 1), ("bad", 1), ("good", 0)]):
             w.set_mode(job, mode)
-            rc = w.sh(["bash", JR, job], t + 100 * i).returncode
+            rc = w.sh(["bash", JR, job], t + 100 * i, mextra).returncode
             if rc != want: fails.append(f"{job}-contract: receipt '{mode}' exited {rc}, expected {want}")
             if want == 1 and w.ls_mtime(job) is not None: fails.append(f"{job}-contract: receipt '{mode}' stamped last-success")
         if w.ls_mtime(job) is None: fails.append(f"{job}-contract: good receipt did not stamp last-success")
         lr = w.read(job, "last-run").strip()
-        if " rc=0 calls=0 " not in lr or " model=none " not in lr: fails.append(f"{job}-contract: good last-run wrong: {lr!r}")
+        if f" rc=0 calls={want_calls} " not in lr or f" model={want_model} " not in lr: fails.append(f"{job}-contract: good last-run wrong (want calls={want_calls} model={want_model}): {lr!r}")
         if "[check] ok" not in w.read(job, "log"): fails.append(f"{job}-contract: no '[check] ok' in the log")
         r = subprocess.run(["bash", f"{ROOT}/system/tools/install-schedulers.sh", "--check-row", job],
                            env={k: v for k, v in os.environ.items() if k not in SEAMS}, capture_output=True, text=True)

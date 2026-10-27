@@ -184,6 +184,7 @@ SOURCE="$(echo "$SOURCE" | tr -d '[:space:]')"
 MODEL_TIER="$(echo "$MODEL" | tr -d '[:space:]')"; [ -n "$MODEL_TIER" ] || MODEL_TIER=none
 JOB_RUN_BUDGET="$(echo "$BUDGET" | tr -d '[:space:]')"
 export JOB_RUN_BUDGET MODEL_TIER JOB_RUN_MODEL="$MODEL_TIER"
+export JOB_RUN_FORCED="$FORCE"   # 5.7: 1 on a by-hand --force run (a test: a command must not push or stamp "done today" state), else 0
 JOB_RUN_CALLS_FILE="$STATE/calls.current"; : > "$JOB_RUN_CALLS_FILE"; rm -f "$JOB_RUN_CALLS_FILE.fail"
 export JOB_RUN_CALLS_FILE
 case "$INTERVAL" in ''|*[!0-9]*) finish 1 "interval '$INTERVAL' is not a number of seconds" ;; esac

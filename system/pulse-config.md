@@ -272,12 +272,12 @@ planning-weekly-prime | off | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHAC
 # matches the runner's own STALE_AFTER_HOURS=192 (168h weekly + 24h slack) header.
 guard-fire-test | off | 604800 | Every guard was fire-tested this week and the verdict (GREEN or a named downgrade) reached the findings store, so a weakened guard shows on the session line. | ~/.config/lifehack/guard-fire-test/last-run.json ~ "rc":0, | none | 0 | none | bash "$LIFEHACK_CODE_ROOT/system/tools/guard-fire-test-run.sh"
 #
-# marc-health: mechanical market-data health chain (no LLM). CORRECTED 2026-08-26 (verified this
-# session): "Missing runner" was wrong — the runner exists in the Brain (not the repo) at
-# desks/marc/tools/marc-health/marc-health-run.sh. RUN THIS SESSION: exit 0 (17 equities fetched, 4
-# FRED series errored non-fatally, health tile + diary written; the once/day Sonnet voice push
-# self-gated out because today's ping marker was already stamped).
-marc-health | waiting-on-port | 7200 | TBD | TBD | TBD | 0 | TBD | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/marc/tools/marc-health/marc-health-run.sh"
+# marc-health: Marc's market-data health chain. MIGRATED 2026-10-27 (self-monitoring 5.5 + 5.7), row OFF. The runner is DESK code: it
+# lives in the private ClaudeOps repo (desks/marc/tools/marc-health/, origin egjokaj/ClaudeOps), reached as $HOME/.claude/skills/ClaudeOps/...
+# (the door allows runners under that repo and refuses any pinned clone path). Every feed read goes through safe_fetch.py with the
+# Level-2 domain allowlist ON; its ONE AI call (the daily voice read) goes through run_model, tier small; it never pushes (job-run alerts).
+# The check reads the receipt the runner writes after verifying the snapshot it just refreshed (the Drive path itself cannot be written here).
+marc-health | off | 7200 | Marc's market snapshot is refreshed from the public feeds through the safe fetch every cycle, with the SPY and VIX core read verified fresh and the daily voice read written, so Marc's weekly reads never start on a stale price feed. | ~/.config/lifehack/marc-health/health-note.txt ~ ^marc-health ok .* core_ok=1 | small | 3 | web | bash "$HOME/.claude/skills/ClaudeOps/desks/marc/tools/marc-health/marc-health-run.sh"
 #
 # marc-weekly: eight-researcher weekly deep-read fan-out. CORRECTED 2026-08-26 (verified this
 # session): "Missing runner" was wrong — runner exists in the Brain at

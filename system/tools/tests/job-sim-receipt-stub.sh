@@ -16,6 +16,13 @@ mode="$(cat "$dir/mode/$job" 2>/dev/null || echo missing)"
 stampto() { [ -n "${LIFEHACK_FAKE_NOW:-}" ] || return 0
   touch -t "$(date -r "$1" +%Y%m%d%H%M.%S 2>/dev/null || date -d "@$1" +%Y%m%d%H%M.%S)" "$out"; }
 mkdir -p "$(dirname "$out")"
+# A job whose row names a model tier (marc-health: small) makes its ONE model call per run through the shared run_model, like the real
+# runner (job-run.sh exports JOB_RUN_MODEL and the budget/calls files); the rig's LIFEHACK_MODEL_STUB answers it. No-AI jobs skip this.
+if [ "${JOB_RUN_MODEL:-none}" != none ]; then
+  . "$LIFEHACK_CODE_ROOT/system/tools/model.lib.sh"
+  printf 'prompt\n' > "$dir/prompt-$job"
+  run_model "$JOB_RUN_MODEL" "$dir/prompt-$job" "$dir/reply-$job" "MARK" || true
+fi
 case "$mode" in
   good)    cp "$dir/receipt/$job.good" "$out"; stampto "${LIFEHACK_FAKE_NOW:-0}" ;;
   bad)     cp "$dir/receipt/$job.bad" "$out"; stampto "${LIFEHACK_FAKE_NOW:-0}" ;;
