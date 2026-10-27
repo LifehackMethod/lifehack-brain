@@ -145,6 +145,8 @@ NEEDS=""; WATCHDOG=3600
 case "$JOB" in
   email-summary-write) NEEDS="gws"; WATCHDOG=1200 ;;
 esac
+# Test seam (kill-one-job, plan 2.3): a by-hand run may shorten the watchdog. launchd never sets it.
+case "${JOB_RUN_WATCHDOG:-}" in ''|*[!0-9]*) ;; *) WATCHDOG="$JOB_RUN_WATCHDOG" ;; esac
 
 # Each check returns 0 only if the job's promised output is there AND newer than $START_MARK.
 # The reason for a failure goes to stdout (the log). A job without a check never succeeds.
