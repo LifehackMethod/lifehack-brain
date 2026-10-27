@@ -10,16 +10,18 @@
 #
 # WHAT IT COVERS (the real job-run.sh, health_line.py, notify-send.sh and notify-governor.py, unmodified
 #   in behaviour):
-#   - 14 fixed scenarios: quiet week; died and stayed dead; died then recovered; laptop shut 3 days then
+#   - 15 fixed scenarios: quiet week; died and stayed dead; died then recovered; laptop shut 3 days then
 #     opened (at-login catch-up); silent-success never stamps; hang kills and records; stood-down never
 #     pages; transient (rc=2); two jobs failing at once; pointer broken (launch.err); never-ran is never OK;
-#     four jobs fail in one day (the daily cap of 3 per source); an overdue push during quiet hours
-#     (deferred; delivered by --flush-deferred, or dropped after 18 h).
+#     four jobs fail in one day (the daily cap of 3 is per job; 4 texts); a recovery after a job used its 3;
+#     a night failure (deferred; delivered by the job's own next run after 07:00, or dropped after 18 h).
+#   - 2.5e: a before/after snapshot of the REAL job state tree, real job locks and the real governor state file;
+#     any change is a MISS "seam leak: <path>".
 #   - 50 (per-commit) or 200 (--gate) fuzz reps of random mode/flavor/gap sequences, FIXED seed, checked against an oracle: a small
 #     python model of the intended rules (wrapper alert rule + governor + session line) that predicts the
 #     line and the push list. The scenarios carry hand-written expectations; the model is cross-checked
 #     against them too.
-#   - the GOVERNOR: quiet hours (22:00-07:00), 24 h identity dedup and the daily cap of 3 per source ARE
+#   - the GOVERNOR: quiet hours (22:00-07:00), 24 h identity dedup and the daily cap of 3 per job (source job-run:<job>; recoveries exempt) ARE
 #     exercised. The notify log sits AFTER the governor (LIFEHACK_NOTIFY_LOG, see notify-send.sh), so the
 #     push counts asserted here are exactly what would have reached the phone. The governor runs against a
 #     throwaway NOTIFY_STATE_FILE and the fake clock (TZ=UTC, so the quiet-hour is the UTC hour).
@@ -473,8 +475,30 @@ def prod_unchanged():
     return ok, out if ok else f"{out!r} (seams unset) vs {ref!r} (seams explicit)"
 
 
+def real_snapshot():
+    """2.5e: (existence, mtime_ns) of everything a rig run must never touch: the real job state tree, the real
+    job locks, and the governor's real state file (what notify-governor.py uses with NOTIFY_STATE_FILE unset)."""
+    import glob
+    snap, paths = {}, set(glob.glob("/tmp/lifehack-job-*.lock"))
+    paths.add("/tmp/claudeops-email-summary-write.lock")
+    gov = os.path.join(os.environ.get("TMPDIR", "/tmp"), "lifehack-notify-state.json")
+    paths.update({gov, gov + ".lock", gov + ".tmp"})
+    for root, dirs, files in os.walk(os.path.expanduser("~/.config/lifehack/state/jobs")):
+        paths.add(root); paths.update(os.path.join(root, n) for n in dirs + files)
+    for q in paths:
+        try: snap[q] = os.stat(q).st_mtime_ns
+        except OSError: snap[q] = None
+    return snap
+
+
+def seam_leaks(before):
+    after = real_snapshot()
+    return sorted(q for q in set(before) | set(after) if before.get(q) != after.get(q))
+
+
 def main():
     t_start = time.time()
+    real_before = real_snapshot()
     sc = scenarios()
     notes = {}
     with ThreadPoolExecutor(max_workers=10) as ex:
@@ -494,6 +518,10 @@ def main():
     print(f"{'production unchanged (seams unset)':<38} | {'-':>5} | {'PASS' if ok_prod else 'FAIL'}")
     if not ok_prod:
         print(f"    MISS seams not inert: {got}"); bad += 1
+    leaks = seam_leaks(real_before)
+    print(f"{'real state untouched (no seam leak)':<38} | {'-':>5} | {'PASS' if not leaks else 'FAIL'}")
+    for q in leaks:
+        print(f"    MISS seam leak: {q}"); bad += 1
     passed = sum(1 for n, f in fz if not f)
     for n, f in fz:
         for x in f[:3]:
