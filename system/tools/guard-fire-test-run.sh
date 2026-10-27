@@ -133,12 +133,12 @@ do_work() {
 
 do_work && RC=0 || RC=$?
 
-# Active failure-buzz: fires ONLY when the TOOL broke (RC!=0) — never for a RED guard, which
-# is a found-result carried by the ledger + banner. No new ping channel added.
+# Failure alerting (5.7): the scheduled chain owns it. A non-zero exit (the TOOL broke, never a RED guard) is a failed
+# run for job-run.sh, which pushes ONE "Job down" under its two-misses rule, and the finding written above carries the
+# verdict to the session line. This runner used to push by itself through notify-send.sh; that was a second,
+# ungoverned alert path and a raw-curl call the door (install-schedulers.sh --check-row) refuses inside a job runner.
 if [ "$RC" -ne 0 ]; then
-  bash "$CODE_ROOT/shared/notify/notify-send.sh" --source "$SUBSYSTEM_NAME" --tags warning --priority critical \
-    --title "⚠️ ${SUBSYSTEM_NAME} failed" \
-    --message "${SUBSYSTEM_NAME} could not run (rc=$RC). Guard fire-testing is DARK. Check $STATUS_ARTIFACT." 2>/dev/null || true
+  echo "[$SUBSYSTEM_NAME] FAILED (rc=$RC) — guard fire-testing is DARK. Status: $STATUS_ARTIFACT" >&2
 fi
 
 echo "[$SUBSYSTEM_NAME] done (rc=$RC)."
