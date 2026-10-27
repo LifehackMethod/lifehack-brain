@@ -15,6 +15,7 @@
 #   last-success  "<ISO time>" — written ONLY after the output check passed; its mtime is the clock
 #   log           the last 20 runs, one "=== run …" section each
 #   errors/       one file per FAILED run (not 75, not 2), named by time
+#   alerted       exists while ONE "job down" push is out and no success has followed: "<ISO time> rc=<n>"
 #   launch.err    launchd's StandardErrorPath — non-empty means the launch line could not find this
 #                 file (a bad code-root pointer). This wrapper moves its contents into the log and
 #                 clears it, because reaching this line proves the pointer works again.
@@ -24,6 +25,12 @@
 #   75 stood down: row not enabled, not configured, not overdue, another run holds the lock
 #   2  transient (network / Google pre-flight); retried next period
 #   *  failed — an errors/ file is written
+#
+# ALERT RULE (§A, "two misses"): a FAILED run (not 0, not 75; 2 counts) pushes ONCE when last-success
+# is missing or older than 2 x INTERVAL, then drops the `alerted` marker so later failures stay quiet.
+# The next success pushes ONE recovery and removes the marker. A push that fails never changes the exit
+# code. Sent through shared/notify/notify-send.sh (its governor owns quiet hours and dedup);
+# JOB_RUN_NOTIFY overrides the path, for tests.
 #
 # --if-overdue: run only if last-success is older than one period minus a 10% grace (capped at
 # 30 min). launchd gives a plist ONE argument list, so the calendar fire and RunAtLoad cannot pass
@@ -71,6 +78,33 @@ fi
 # ── finish: the one exit path. Records last-run (unless told not to), an error file on failure,
 #    appends this run to the rolling log and trims it to 20 runs. ──
 LOCKDIR=""
+# notify <title> <message> <identity> — fail-soft: one log line on failure, never touches the exit code.
+notify() {
+  local sender="${JOB_RUN_NOTIFY:-$CODE_ROOT/shared/notify/notify-send.sh}"
+  bash "$sender" --source job-run --title "$1" --message "$2" --identity "$3" --tags warning \
+    || echo "[job-run] notify failed or unavailable ($sender) — run result unchanged"
+  return 0
+}
+# alert_check <rc> — the alert rule above; called from finish() so every exit path gets it.
+alert_check() {
+  local rc="$1" ls_age="" last_ok="never" mark="$STATE/alerted"
+  if [ "$rc" -eq 0 ]; then
+    [ -f "$mark" ] || return 0
+    notify "Job recovered: $JOB" "$JOB succeeded again · output check passed" "job-up:$JOB"
+    rm -f "$mark"
+    return 0
+  fi
+  [ "$rc" -eq 75 ] && return 0
+  case "${INTERVAL:-}" in ''|*[!0-9]*) return 0 ;; esac   # no usable period: nothing to measure against
+  [ -f "$mark" ] && return 0
+  if [ -f "$STATE/last-success" ]; then
+    ls_age=$(( $(date +%s) - $(mtime "$STATE/last-success") ))
+    [ "$ls_age" -le $(( 2 * INTERVAL )) ] && return 0
+    last_ok="$(( ls_age / 3600 ))h ago"
+  fi
+  notify "Job down: $JOB" "exit $rc · last success $last_ok · next: open any desk; the first line names it, the error is in ~/.config/lifehack/state/jobs/$JOB/errors/" "job-down:$JOB"
+  printf '%s rc=%s\n' "$(iso_now)" "$rc" > "$mark"
+}
 finish() {
   local rc="$1" reason="$2" record="${3:-yes}"
   echo "[job-run] exit $rc — $reason"
@@ -79,6 +113,7 @@ finish() {
     cp "$RUNLOG" "$STATE/errors/$(date +%Y%m%dT%H%M%S).txt" 2>/dev/null
   fi
   [ -n "$LOCKDIR" ] && rm -rf "$LOCKDIR"
+  alert_check "$rc"
   cat "$RUNLOG" >> "$STATE/log"
   awk '/^=== run /{n++} {line[NR]=$0; sec[NR]=n} END{for(i=1;i<=NR;i++) if(sec[i]>n-20) print line[i]}' \
     "$STATE/log" > "$STATE/log.tmp" && mv -f "$STATE/log.tmp" "$STATE/log"
