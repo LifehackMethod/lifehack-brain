@@ -27,7 +27,7 @@
 #   *  failed — an errors/ file is written
 #
 # ALERT RULE (§A, "two misses"): a FAILED run (not 0, not 75; 2 counts) pushes ONCE when last-success
-# is missing or older than 2 x INTERVAL, then drops the `alerted` marker so later failures stay quiet.
+# is missing or at least 2 x INTERVAL old (2.5d: the 2nd consecutive miss, same instant health_line.py says "overdue"), then drops the `alerted` marker so later failures stay quiet.
 # The next success pushes ONE recovery and removes the marker. A push that fails never changes the exit
 # code. Sent through shared/notify/notify-send.sh (its governor owns quiet hours and dedup);
 # JOB_RUN_NOTIFY overrides the path, for tests.
@@ -117,7 +117,7 @@ alert_check() {
   [ -f "$mark" ] && return 0
   if [ -f "$STATE/last-success" ]; then
     ls_age=$(( $(now_epoch) - $(mtime "$STATE/last-success") ))
-    [ "$ls_age" -le $(( 2 * INTERVAL )) ] && return 0
+    [ "$ls_age" -lt $(( 2 * INTERVAL )) ] && return 0   # 2.5d: page at age >= 2 x INTERVAL (the 2nd miss)
     last_ok="$(( ls_age / 3600 ))h ago"
   fi
   # The identity carries this incident's id: the marker already dedups within an incident, and the

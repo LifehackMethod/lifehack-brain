@@ -124,7 +124,7 @@ class Model:
         last_ok = "never"
         if s["ls"] is not None:
             age = t - s["ls"]
-            if age <= 2 * P_: return
+            if age < 2 * P_: return        # 2.5d: the 2nd consecutive miss pages (age >= 2 x period)
             last_ok = f"{age // 3600}h ago"
         self.gov(t, ("id", f"job-down:{job}:{t}"), f"Job down: {job}",
                  f"exit {rc} · last success {last_ok} · next: open any desk; the first line names it, the error is in "
@@ -148,7 +148,7 @@ class Model:
         for n, p in self.jobs:
             ls = self.j[n]["ls"]
             if ls is None: od.append(f"{n} (never succeeded)")
-            elif t - ls > 2 * p: od.append(f"{n} ({_age(t - ls)})")
+            elif t - ls >= 2 * p: od.append(f"{n} ({_age(t - ls)})")
         if od: return f"{len(od)} overdue: " + ", ".join(od)
         for n, _ in self.jobs:
             rc, reason = self.j[n]["lr"]
@@ -295,16 +295,16 @@ def scenarios():
     t[-1]["chk"] = lambda w, _t: [] if w.errfiles(A) == 0 else ["a login 10 min after success ran the job"]
     S.append(("quiet week", [(A, DAY)], BASE + 12 * 3600, t))
 
-    # 2 died and stayed dead: last success tick 2; first push on the 3rd consecutive miss (tick 5)
+    # 2 died and stayed dead: last success tick 2; first push on the 2nd consecutive miss (tick 4)
     S.append(("died and stayed dead", [(A, P)], BASE + 8 * 3600, seq(
         A, ["ok", "ok", "fail", "fail", "fail", "fail", "fail"],
-        [OK1, OK1, OK1, OK1, od((A, "3h")), od((A, "4h")), od((A, "5h"))],
-        [0, 0, 0, 0, 1, 1, 1])))
+        [OK1, OK1, OK1, od((A, "2h")), od((A, "3h")), od((A, "4h")), od((A, "5h"))],
+        [0, 0, 0, 1, 1, 1, 1])))
 
     # 3 died then recovered
     S.append(("died then recovered", [(A, P)], BASE + 8 * 3600, seq(
         A, ["ok", "fail", "fail", "fail", "ok", "ok"],
-        [OK1, OK1, OK1, od((A, "3h")), OK1, OK1], [0, 0, 0, 1, 2, 2])))
+        [OK1, OK1, od((A, "2h")), od((A, "3h")), OK1, OK1], [0, 0, 1, 1, 2, 2])))
 
     # 4 laptop shut 3 days, then opened: session line first (nobody ran), then the at-login catch-up
     t = [dict(dt=0, acts={A: ("cal", "ok")}, line=OK1, push=0),
@@ -326,7 +326,7 @@ def scenarios():
         if " rc=143 " not in w.read(A, "last-run"): f.append(f"last-run does not record the kill: {w.read(A, 'last-run')!r}")
         if w.ls_mtime(A) != w.t0s: f.append("last-success moved after a hang")
         return f
-    t = seq(A, ["ok", "hang", "hang", "hang"], [OK1, OK1, OK1, od((A, "3h"))], [0, 0, 0, 1])
+    t = seq(A, ["ok", "hang", "hang", "hang"], [OK1, OK1, od((A, "2h")), od((A, "3h"))], [0, 0, 1, 1])
     for k in (1, 2, 3): t[k]["chk"] = hang_chk
     S.append(("hang kills and records", [(A, P)], BASE + 8 * 3600, t))
 
@@ -334,18 +334,18 @@ def scenarios():
     SD = f"stood down: {A} ({STAND_REASON})"
     S.append(("stood-down never pages", [(A, P)], BASE + 8 * 3600, seq(
         A, ["ok"] + ["standdown"] * 5,
-        [OK1, SD, SD, od((A, "3h")), od((A, "4h")), od((A, "5h"))], [0] * 6)))
+        [OK1, SD, od((A, "2h")), od((A, "3h")), od((A, "4h")), od((A, "5h"))], [0] * 6)))
 
-    # 8 transient (rc=2): same rule as a failure, no errors/ file; first push on the 3rd miss
+    # 8 transient (rc=2): same rule as a failure, no errors/ file; first push on the 2nd miss
     t = seq(A, ["ok", "transient", "transient", "transient", "transient", "ok"],
-            [OK1, OK1, OK1, od((A, "3h")), od((A, "4h")), OK1], [0, 0, 0, 1, 1, 2])
+            [OK1, OK1, od((A, "2h")), od((A, "3h")), od((A, "4h")), OK1], [0, 0, 1, 1, 1, 2])
     S.append(("transient pages after 2 misses", [(A, P)], BASE + 8 * 3600, t))
 
     # 9 two jobs failing at once
     t = []
     for i, (m_, l_, p_, ti) in enumerate([
             ("ok", OK1.replace("1", "2"), 0, []), ("fail", OK1.replace("1", "2"), 0, []),
-            ("fail", OK1.replace("1", "2"), 0, []),
+            ("fail", od((A, "2h"), (B, "2h")), 2, ["Job down: sim-a", "Job down: sim-b"]),
             ("fail", od((A, "3h"), (B, "3h")), 2, ["Job down: sim-a", "Job down: sim-b"]),
             ("fail", od((A, "4h"), (B, "4h")), 2, ["Job down: sim-a", "Job down: sim-b"])]):
         tk = dict(dt=0 if i == 0 else P, acts={A: ("cal", m_), B: ("cal", m_)}, line=l_, push=p_)
@@ -375,42 +375,40 @@ def scenarios():
     # 12 (a) four jobs fail in one day -> three pushes (cap of 3 per source 'job-run', shared by all jobs)
     four = [(n, P) for n in (A, B, C, D)]
     def acts(m_): return {n: ("cal", m_) for n, _ in four}
-    l4 = od((A, "3h"), (B, "3h"), (C, "3h"), (D, "3h"))
+    l4 = od((A, "2h"), (B, "2h"), (C, "2h"), (D, "2h"))
     dn = ["Job down: sim-a", "Job down: sim-b", "Job down: sim-c"]
     S.append(("four jobs fail in a day -> 3 pushes", four, BASE + 8 * 3600, [
         dict(dt=0, acts=acts("ok"), line="jobs: 4 OK", push=0),
         dict(dt=P, acts=acts("fail"), line="jobs: 4 OK", push=0),
-        dict(dt=P, acts=acts("fail"), line="jobs: 4 OK", push=0),
         dict(dt=P, acts=acts("fail"), line=l4, push=3, titles=dn),
-        dict(dt=P, acts=acts("fail"), line=od((A, "4h"), (B, "4h"), (C, "4h"), (D, "4h")), push=3, titles=dn),
+        dict(dt=P, acts=acts("fail"), line=od((A, "3h"), (B, "3h"), (C, "3h"), (D, "3h")), push=3, titles=dn),
         # recoveries are normal-priority pushes too: the cap swallows all four
         dict(dt=P, acts=acts("ok"), line="jobs: 4 OK", push=3, titles=dn)]))
 
     # 13 (b) overdue push during quiet hours: suppressed -> queued -> delivered by --flush-deferred
     def quiet_ticks(final):
         return [
-            dict(dt=0, acts={A: ("cal", "ok")}, line=OK1, push=0),                     # 19:00
-            dict(dt=P, acts={A: ("cal", "fail")}, line=OK1, push=0),                   # 20:00
+            dict(dt=0, acts={A: ("cal", "ok")}, line=OK1, push=0),                     # 20:00
             dict(dt=P, acts={A: ("cal", "fail")}, line=OK1, push=0),                   # 21:00
-            dict(dt=P, acts={A: ("cal", "fail")}, line=od((A, "3h")), push=0),         # 22:00 3rd miss: quiet, deferred
-            dict(dt=3 * P, acts={A: ("cal", "fail")}, line=od((A, "6h")), push=0),     # 01:00 marker set: silent
+            dict(dt=P, acts={A: ("cal", "fail")}, line=od((A, "2h")), push=0),         # 22:00 2nd miss: quiet, deferred
+            dict(dt=3 * P, acts={A: ("cal", "fail")}, line=od((A, "5h")), push=0),     # 01:00 marker set: silent
         ] + final
     t13 = quiet_ticks([
-        dict(dt=5 * P, acts={}, flush=True, line=od((A, "11h")), push=0),              # 06:00 still quiet: kept
-        dict(dt=P, acts={}, flush=True, line=od((A, "12h")), push=1, titles=["Job down: sim-a"]),   # 07:00 delivered
+        dict(dt=5 * P, acts={}, flush=True, line=od((A, "10h")), push=0),              # 06:00 still quiet: kept
+        dict(dt=P, acts={}, flush=True, line=od((A, "11h")), push=1, titles=["Job down: sim-a"]),   # 07:00 delivered
         dict(dt=P, acts={A: ("cal", "ok")}, line=OK1, push=2, titles=["Job down: sim-a", "Job recovered: sim-a"])])
-    S.append(("quiet-hours push deferred, flushed", [(A, P)], BASE + 19 * 3600, t13))
+    S.append(("quiet-hours push deferred, flushed", [(A, P)], BASE + 20 * 3600, t13))
     # 13b 2.5a: nobody calls --flush-deferred; the job's own next run after 07:00 delivers the night page, once
     t13b = quiet_ticks([
-        dict(dt=6 * P, acts={A: ("cal", "fail")}, line=od((A, "12h")), push=1, titles=["Job down: sim-a"]),   # 07:00 run flushes
-        dict(dt=P, acts={A: ("cal", "fail")}, line=od((A, "13h")), push=1, titles=["Job down: sim-a"]),       # 08:00 not re-sent
+        dict(dt=6 * P, acts={A: ("cal", "fail")}, line=od((A, "11h")), push=1, titles=["Job down: sim-a"]),   # 07:00 run flushes
+        dict(dt=P, acts={A: ("cal", "fail")}, line=od((A, "12h")), push=1, titles=["Job down: sim-a"]),       # 08:00 not re-sent
         dict(dt=P, acts={A: ("cal", "ok")}, line=OK1, push=2, titles=["Job down: sim-a", "Job recovered: sim-a"])])
-    S.append(("night failure delivered once at the first run after 07:00", [(A, P)], BASE + 19 * 3600, t13b))
+    S.append(("night failure delivered once at the first run after 07:00", [(A, P)], BASE + 20 * 3600, t13b))
     # 13c nothing runs for 19 h: the deferred page is dropped (max age 18 h), never delivered
     t13c = quiet_ticks([
-        dict(dt=16 * P, acts={}, flush=True, line=od((A, "22h")), push=0),             # 17:00 next day: 19 h old
+        dict(dt=16 * P, acts={}, flush=True, line=od((A, "21h")), push=0),             # 17:00 next day: queued 22:00, 19 h old
         dict(dt=P, acts={A: ("cal", "ok")}, line=OK1, push=1, titles=["Job recovered: sim-a"])])
-    S.append(("deferred push older than 18 h is dropped", [(A, P)], BASE + 19 * 3600, t13c))
+    S.append(("deferred push older than 18 h is dropped", [(A, P)], BASE + 20 * 3600, t13c))
     return S
 
 

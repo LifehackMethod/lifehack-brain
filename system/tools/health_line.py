@@ -10,7 +10,7 @@ health_line.py — the ONE-LINE job-health line printed first in every session.
 # CONTRACT: prints EXACTLY ONE line, worst state first:
 #      1. any job has a non-empty launch.err -> "jobs cannot find the code — open any desk once to repair"
 #      2. an ENABLED job with no last-run    -> "never ran: a, b"   (never reported as OK: dead end F2)
-#      3. last-success missing or older than 2 x period -> "<n> overdue: job (9h), ..."
+#      3. last-success missing or at least 2 x period old -> "<n> overdue: job (9h), ..."
 #      4. last-run shows rc=75               -> "stood down: job (<reason from last-run>)"
 #      5. otherwise                          -> "jobs: <n> OK"
 #      Never raises, never exits nonzero. On an internal error: "job health: could not read (<reason>)".
@@ -93,7 +93,7 @@ def compute(state_dir: str, manifest: str, now: float | None = None) -> str:
     if never:
         return "never ran: " + ", ".join(never)
 
-    # 3) overdue: last-success missing or older than 2 x period
+    # 3) overdue: last-success missing or at least 2 x period old (2.5d: the same instant job-run.sh texts)
     overdue = []
     for j, period in jobs:
         try:
@@ -101,7 +101,7 @@ def compute(state_dir: str, manifest: str, now: float | None = None) -> str:
         except OSError:
             overdue.append(f"{j} (never succeeded)")
             continue
-        if age > 2 * period:
+        if age >= 2 * period:
             overdue.append(f"{j} ({_age(age)})")
     if overdue:
         return f"{len(overdue)} overdue: " + ", ".join(overdue)
