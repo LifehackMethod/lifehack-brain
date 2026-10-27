@@ -93,6 +93,16 @@ notify() {
     || echo "[job-run] notify failed or unavailable ($sender) — run result unchanged"
   return 0
 }
+# flush_deferred — 2.5a: every run of any job replays the governor's quiet-hours queue. The governor only
+# releases items once quiet hours (22-07) are over and drops any older than 18 h, so "the first run after
+# 07:00 delivers last night's text". Cheap (one python start), fail-soft, never touches the exit code.
+# Honours LIFEHACK_FAKE_NOW and NOTIFY_STATE_FILE through the environment.
+flush_deferred() {
+  local sender="${JOB_RUN_NOTIFY:-$CODE_ROOT/shared/notify/notify-send.sh}"
+  bash "$sender" --flush-deferred \
+    || echo "[job-run] deferred-queue flush failed or unavailable ($sender) — run result unchanged"
+  return 0
+}
 # alert_check <rc> — the alert rule above; called from finish() so every exit path gets it.
 alert_check() {
   local rc="$1" ls_age="" last_ok="never" mark="$STATE/alerted"
@@ -126,6 +136,7 @@ finish() {
     cp "$RUNLOG" "$STATE/errors/$(err_stamp).txt" 2>/dev/null
   fi
   [ -n "$LOCKDIR" ] && rm -rf "$LOCKDIR"
+  flush_deferred
   alert_check "$rc"
   cat "$RUNLOG" >> "$STATE/log"
   awk '/^=== run /{n++} {line[NR]=$0; sec[NR]=n} END{for(i=1;i<=NR;i++) if(sec[i]>n-20) print line[i]}' \

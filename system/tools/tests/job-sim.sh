@@ -106,6 +106,7 @@ class Model:
     def run(self, job, flavor, mode, t):
         s = self.j[job]; P_ = s["P"]
         s["le"] = False
+        self.flush(t)        # 2.5a: job-run.sh flushes the deferred queue on EVERY run, before its alert logic
         if flavor == "login" and s["ls"] is not None:
             if t - s["ls"] < P_ - min(P_ // 10, 1800): return          # stood down, nothing recorded
         rc = {"ok": 0, "fail": 1, "silent": 1, "hang": 143, "standdown": 75, "transient": 2}[mode]
@@ -126,7 +127,8 @@ class Model:
             if age <= 2 * P_: return
             last_ok = f"{age // 3600}h ago"
         self.gov(t, ("id", f"job-down:{job}:{t}"), f"Job down: {job}",
-                 f"exit {rc} · last success {last_ok}", f"job-down:{job}:{t}")
+                 f"exit {rc} · last success {last_ok} · next: open any desk; the first line names it, the error is in "
+                 f"~/.config/lifehack/state/jobs/{job}/errors/", f"job-down:{job}:{t}")
         s["alerted"] = t
 
     def flush(self, t):
@@ -398,11 +400,17 @@ def scenarios():
         dict(dt=P, acts={}, flush=True, line=od((A, "12h")), push=1, titles=["Job down: sim-a"]),   # 07:00 delivered
         dict(dt=P, acts={A: ("cal", "ok")}, line=OK1, push=2, titles=["Job down: sim-a", "Job recovered: sim-a"])])
     S.append(("quiet-hours push deferred, flushed", [(A, P)], BASE + 19 * 3600, t13))
-    # 13b the same, but nobody flushes for 19 h: the deferred page is dropped (max age 18 h), never delivered
+    # 13b 2.5a: nobody calls --flush-deferred; the job's own next run after 07:00 delivers the night page, once
     t13b = quiet_ticks([
+        dict(dt=6 * P, acts={A: ("cal", "fail")}, line=od((A, "12h")), push=1, titles=["Job down: sim-a"]),   # 07:00 run flushes
+        dict(dt=P, acts={A: ("cal", "fail")}, line=od((A, "13h")), push=1, titles=["Job down: sim-a"]),       # 08:00 not re-sent
+        dict(dt=P, acts={A: ("cal", "ok")}, line=OK1, push=2, titles=["Job down: sim-a", "Job recovered: sim-a"])])
+    S.append(("night failure delivered once at the first run after 07:00", [(A, P)], BASE + 19 * 3600, t13b))
+    # 13c nothing runs for 19 h: the deferred page is dropped (max age 18 h), never delivered
+    t13c = quiet_ticks([
         dict(dt=16 * P, acts={}, flush=True, line=od((A, "22h")), push=0),             # 17:00 next day: 19 h old
         dict(dt=P, acts={A: ("cal", "ok")}, line=OK1, push=1, titles=["Job recovered: sim-a"])])
-    S.append(("quiet-hours push never flushed", [(A, P)], BASE + 19 * 3600, t13b))
+    S.append(("deferred push older than 18 h is dropped", [(A, P)], BASE + 19 * 3600, t13c))
     return S
 
 
@@ -482,8 +490,8 @@ def main():
         for title, ident in nt: print(f"    {title} | {ident}")
         print("quiet-hours timeline (job sim-a, period 1h; UTC):")
         for ln in notes["quiet-hours push deferred, flushed"][0]: print(f"    {ln}")
-        print("quiet-hours, never flushed:")
-        for ln in notes["quiet-hours push never flushed"][0][-2:]: print(f"    {ln}")
+        print("night failure, no explicit flush (the job's own run delivers it at 07:00):")
+        for ln in notes["night failure delivered once at the first run after 07:00"][0][-3:]: print(f"    {ln}")
     el = time.time() - t_start
     print(f"\nruntime {el:.1f}s / budget {BUDGET:g}s   {'ALL GREEN' if bad == 0 and el < BUDGET else 'RED'}")
     if el >= BUDGET:
