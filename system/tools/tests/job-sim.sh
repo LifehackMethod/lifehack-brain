@@ -507,6 +507,7 @@ def main():
         ffut = [ex.submit(run_fuzz, rep) for rep in range(FUZZ_N)]
         rows = [(name, f.result()) for name, f in sfut]
         rows.append(("row-contract", row_contract()))
+        rows.append(("bad-row", bad_row()))
         rows.extend(model_scenarios())   # 5.3
         fz = [f.result() for f in ffut]
     bad = 0
@@ -607,6 +608,39 @@ def model_scenarios():
 
 
 HERE_TESTS = f"{ROOT}/system/tools/tests"
+
+
+def bad_row():
+    """5.2 the door: install-schedulers.sh --check-row refuses a row with a missing outcome, a TBD check, a pinned code
+    path, or a runner containing a raw curl -- each with its reason -- and passes a good row (control, so the four
+    refusals are not vacuous). A throwaway manifest + code root; nothing real is read or written."""
+    fails = []
+    d = tempfile.mkdtemp(prefix="job-sim-door.")
+    try:
+        os.makedirs(f"{d}/system/tools")
+        ok_sh, bad_sh = f"{d}/system/tools/ok-run.sh", f"{d}/system/tools/curl-run.sh"
+        open(ok_sh, "w").write("#!/usr/bin/env bash\necho fine\n")
+        open(bad_sh, "w").write("#!/usr/bin/env bash\ncurl -s https://example.com > /dev/null\n")
+        good = 'bash "$LIFEHACK_CODE_ROOT/system/tools/ok-run.sh"'
+        chk = "$HOME/x ~ ^ok$"
+        rows = [("good", f"good | yes | 3600 | o. | {chk} | small | 5 | none | {good}"),
+                ("no-outcome", f"no-outcome | yes | 3600 |  | {chk} | small | 5 | none | {good}"),
+                ("tbd-check", f"tbd-check | yes | 3600 | o. | TBD | small | 5 | none | {good}"),
+                ("pinned", f"pinned | yes | 3600 | o. | {chk} | small | 5 | none | bash \"/Users/someone/lifehack-v2/system/tools/ok-run.sh\""),
+                ("raw-curl", f"raw-curl | yes | 3600 | o. | {chk} | small | 5 | none | bash \"$LIFEHACK_CODE_ROOT/system/tools/curl-run.sh\"")]
+        mf = f"{d}/manifest.md"
+        open(mf, "w").write("```jobs\n" + "\n".join(r for _, r in rows) + "\n```\n")
+        env = dict(os.environ, LIFEHACK_JOBS_FILE=mf, LIFEHACK_CODE_ROOT=d, LIFEHACK_DESK_REPO=f"{d}/no-desk")
+        inst = f"{ROOT}/system/tools/install-schedulers.sh"
+        want = {"good": (0, "PASS"), "no-outcome": (1, "missing contract: outcome"), "tbd-check": (1, "missing contract: check"),
+                "pinned": (1, "pinned code path"), "raw-curl": (1, "raw curl call at system/tools/curl-run.sh:2")}
+        for name, (rc_w, txt) in want.items():
+            r = subprocess.run(["bash", inst, "--check-row", name], env=env, capture_output=True, text=True)
+            if r.returncode != rc_w or txt not in r.stdout:
+                fails.append(f"bad-row: {name}: rc={r.returncode} out={r.stdout.strip()!r}, wanted rc={rc_w} with {txt!r}")
+        return 5, fails, ([], [])
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
 
 
 def play_t0(name, jobs, t0, ticks):

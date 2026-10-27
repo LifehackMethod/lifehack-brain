@@ -630,6 +630,11 @@ def _selftest():
     hits3, _, _, _ = search("name a subagent so it can be addressed")
     ck("finds the named-subagent dead end", bool(hits3))
 
+    # 5.2 the door: a raw call outside the shared fetch is a dead end (refused at install and in a session).
+    hits4, _, _, _ = search("raw curl or gws gmail call outside the shared fetch in a job runner")
+    ck("finds the raw-call-outside-the-shared-fetch dead end",
+       bool(hits4) and "shared fetch" in hits4[0][2]["text"].lower())
+
     # ── THE MISS PATH — prove it FAILS, per build-sop.md ("a check never SEEN to fail is not a
     # check"), and prove the miss is not silent.
     # ⛔⛔ THE MISS CASE MUST BE A REAL QUESTION, NOT GIBBERISH — v1 tested

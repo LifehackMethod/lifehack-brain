@@ -199,6 +199,15 @@ dated INCIDENTS — evidence, not a restatement.**
   built the key"* · `check_screens.py` · 4 unused shared primitives). See **THE CODE SPIRAL**,
   `system/build-rules-index.md`. **UNIVERSAL**
 
+### a raw fetch outside the shared fetch is refused, in a job and in a session (self-monitoring 5.2 — the door)
+- **Tried:** a job runner or a session making its own raw Gmail, calendar, sheet-values, curl, urllib or requests
+  call instead of going through the shared fetch → **failed:** the text arrives unsanitised, unscanned and
+  unrecorded, and a desk that holds its own credential can bypass every lock the shared layer carries; this is
+  a dead end, REFUSED mechanically, not advised against. `2026-10-27` · `system/tools/install-schedulers.sh --check-row`
+  (jobs: refused at install, no plist) and `system/hooks/ingest_gate_enforce.sh` clause (h) (sessions) →
+  replaced by the shared fetch (`safe_fetch.py`, `safe_search_api.sh`, the email shared fetch), the only files
+  allowed a raw call, listed in `system/tools/shared-fetch-allowlist.txt`. **UNIVERSAL**
+
 ## §5 — The front door (pointers — one home each, zero duplication)
 - **Mechanics** (exit codes · stdin parsing · deny format · registration · the **Deploy & Verify
   checklist**) → ✅ `system/hook-contract.md`

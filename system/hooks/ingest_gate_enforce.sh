@@ -56,6 +56,10 @@ trap 'lhb_journal_fire "$?" "ingest_gate_enforce.sh" "PreToolUse" "Bash|WebFetch
 #      exactly the "control that forces a routine workaround" this widening exists to prevent, and it
 #      came back in through string formatting. So: both roots go through `pwd -P`, the incoming path
 #      goes through realpath, and the comparison is between two canonical paths.
+# UPDATED: 2026-10-27 (self-monitoring 5.2, the door, session side): clause (h) in the Bash arm refuses raw Gmail pulls
+#      (gws gmail users messages|threads get|list), raw web fetches (curl/wget to http(s), python -c / heredoc with
+#      urllib/requests) with WHY + REDIRECT (safe_fetch.py / safe_search_api.sh / the email shared fetch) + SIGNPOST. The
+#      scripts in system/tools/shared-fetch-allowlist.txt are not blocked when invoked by path. Job side: install-schedulers.sh.
 # UPDATED: 2026-08-26 (N5, archivist-audit finding: exact-root Grep/Glob paths now ALLOWED and the
 #      carve-out directories matched EXACTLY — both sides of the same off-by-one — and an ABSOLUTE
 #      Glob pattern with 'path' omitted is now gated on its fixed directory prefix instead of
@@ -467,6 +471,40 @@ except Exception: print('__ERR__')" 2>/dev/null)
     if printf '%s' "$CMD" | grep -qE "(gws|\.cargo/bin/gws|/opt/homebrew/bin/gws)[^|]*drive[^|]*files[^|]*export" \
        && ! printf '%s' "$CMD" | grep -qE 'safe_read\.py|safe_docx\.py|safe_pdf\.py'; then
       deny '{"decision":"block","reason":"BLOCKED: this exports a Google Doc straight into context, unscrubbed and unscanned. WHY: someone else authored that document — it is external content, and after email it is the commonest place an instruction arrives. REDIRECT: capture it to a file, then read that through the safe reader — gws drive files export --params '"'"'<JSON with mimeType text/plain>'"'"' 2>/dev/null > /tmp/drive_export.txt && python3 <repo>/system/tools/safe_read.py /tmp/drive_export.txt (use safe_docx.py for a .docx export)."}'
+    fi
+
+    # (h) RAW GMAIL PULLS AND RAW WEB FETCHES (self-monitoring 5.2, 2026-10-27). Everything ingested goes through the
+    # shared fetch -- sessions AND jobs. The job side is the installer's door (install-schedulers.sh --check-row); this is
+    # the session side: a raw `gws gmail users messages|threads get|list`, a curl/wget of an http(s) URL, or a python -c /
+    # heredoc using urllib/requests puts unsanitised third-party text in front of the model. The shared-fetch scripts
+    # themselves (the allowlist, system/tools/shared-fetch-allowlist.txt) are NOT blocked when invoked by path as the first
+    # command of a plain pipeline; whatever follows the first pipe is still checked. Fail posture: a missing allowlist file
+    # means no exemption (closed). Loopback URLs (localhost, 127.0.0.1) are not external and are left alone.
+    _RAWCMD="$CMD"
+    _SF_ALLOW="$REPO/system/tools/shared-fetch-allowlist.txt"
+    case "$CMD" in
+      *';'*|*'&'*|*'`'*|*'$('*|*$'\n'*) ;;   # compound command: no exemption, the whole text is checked
+      *)
+        if [ -f "$_SF_ALLOW" ]; then
+          _sf_first="$(printf '%s' "$CMD" | sed -E 's/^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=("[^"]*"|[^[:space:]]*)[[:space:]]+)*((python3?|bash|sh)[[:space:]]+)?//; s/^["'"'"']//; s/[[:space:]|].*//; s/["'"'"']$//')"
+          case "$_sf_first" in
+            */*)
+              _sf_base="${_sf_first##*/}"
+              if grep -v '^[[:space:]]*#' "$_SF_ALLOW" | grep -qE "(^|/)$(printf '%s' "$_sf_base" | sed 's/[.[\*^$()+?{|]/\\&/g')\$"; then
+                _RAWCMD="$(printf '%s' "$CMD" | cut -s -d'|' -f2-)"
+              fi ;;
+          esac
+        fi ;;
+    esac
+    _RAWFLAT="$(printf '%s' "$_RAWCMD" | tr '\n' ' ' | sed -E 's#https?://(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])[^[:space:]]*##g')"
+    if printf '%s' "$_RAWFLAT" | grep -qE '(gws|GWS[A-Za-z_]*)[^|;&]*gmail[[:space:]]+users[[:space:]]+(messages|threads)[[:space:]]+(get|list)([[:space:]]|$)'; then
+      deny '{"decision":"block","reason":"BLOCKED: a raw Gmail pull (gws gmail users messages|threads get|list) skips the shared fetch. WHY: mail is third-party text anyone can write, and a raw pull hands it to the model unsanitised, unscanned and unrecorded; the Gmail credential lives in the shared fetch so that this path is the only one. REDIRECT: read mail already ingested through python3 <repo>/shared/tools/email_service_read.py (the v2 thread store adapter); to refresh the store let the email-summary-write job run it (python3 <repo>/shared/tools/email_summary_sync.py --write-v2). SIGNPOST: self-monitoring plan B.4 (the door); allowed files are listed in system/tools/shared-fetch-allowlist.txt."}'
+    fi
+    if printf '%s' "$_RAWFLAT" | grep -qE '(^|[[:space:];&|(])(curl|wget)[[:space:]][^;&|]*https?://'; then
+      deny '{"decision":"block","reason":"BLOCKED: a raw curl/wget of a web URL skips the shared fetch. WHY: a web page is untrusted text that can carry instructions addressed to the model, and the egress allowlist, sanitiser and injection scan only exist inside the shared fetch. REDIRECT: python3 <repo>/system/tools/safe_fetch.py <url> to read a page, or bash <repo>/system/tools/safe_search_api.sh <query> to search. SIGNPOST: self-monitoring plan B.4 (the door); allowed files are listed in system/tools/shared-fetch-allowlist.txt."}'
+    fi
+    if printf '%s' "$_RAWFLAT" | grep -qE 'python[0-9.]*[[:space:]]+(-[A-Za-z]*c[[:space:]]|-[[:space:]]*<<).*(urllib|requests\.|import requests|from requests|httpx|http\.client)'; then
+      deny '{"decision":"block","reason":"BLOCKED: inline python that fetches over the network (urllib/requests) skips the shared fetch. WHY: the same as a raw curl: the page arrives unsanitised and unscanned, outside the egress allowlist. REDIRECT: python3 <repo>/system/tools/safe_fetch.py <url> (or safe_search_api.sh for a search). SIGNPOST: self-monitoring plan B.4 (the door); allowed files are listed in system/tools/shared-fetch-allowlist.txt."}'
     fi
 
     # (g) THE STORE READ/WRITE-WALL, MIRRORED INTO Bash (2026-08-24, confirmed shipped gap —

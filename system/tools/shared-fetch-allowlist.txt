@@ -1,0 +1,18 @@
+# shared-fetch-allowlist.txt — the ONE place that names the files allowed to make a RAW external call
+# (gws gmail / gws calendar / gws sheets values get / curl / urllib / requests). Paths are relative to the code root.
+#
+# WHY: everything ingested goes through the security system (self-monitoring plan B.4). A job row whose runner
+# contains a raw call is refused at install (install-schedulers.sh, the door); a session that types one is refused by
+# system/hooks/ingest_gate_enforce.sh. The shared fetch is the only code that may hold the raw call and the credential.
+# Read by: install-schedulers.sh (static scan), ingest_gate_enforce.sh (do not block these scripts when invoked by path).
+#
+# NEVER add a desk runner here. Add a file only if it IS the shared fetch.
+#
+# Web fetch / search (the sanitising stack):
+system/tools/safe_fetch.py
+system/tools/safe_search_api.sh
+# Gmail: TODAY the email shared fetch is split across these two files (the runner's gws pre-flight
+# `gmail users getProfile`, and the python's labels/threads list+get). Task 5.4 consolidates them into one shared
+# email fetch; then this section shrinks to that one file.
+shared/tools/email_summary_sync.py
+system/tools/email-summary-write-run.sh

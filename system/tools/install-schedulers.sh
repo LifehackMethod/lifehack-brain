@@ -12,6 +12,9 @@
 # That branch below is NEW DESIGN, not a port: no file in the donor answers "what does a Windows
 # install need," because every install target there was implicitly a Mac.
 #
+# UPDATED 2026-10-27 (self-monitoring 5.2, THE DOOR): on macOS --install refuses an enabled row with a missing/TBD contract
+# column, a runner outside the code root / private desk repo, a pinned absolute code path, or a raw gmail/calendar/
+# sheets/curl/urllib/requests call (section 1a; `--check-row <name>` runs it alone). Refused = reason printed, no plist, exit 1.
 # UPDATED 2026-10-27: macOS now installs one launchd LaunchAgent per enabled ```jobs``` row (section 1b,
 # self-monitoring plan §B.1) instead of cron; Linux (crontab) and Windows (schtasks) are unchanged.
 # CORRECTED 2026-10-27: everything below that says "cron on Mac", "CRON, NOT LAUNCHD, on Mac", or
@@ -104,6 +107,140 @@ PULSE_SH="$CODE_ROOT/system/tools/pulse.sh"
 
 trim() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]]}"}"; printf '%s' "$s"; }
 
+# ── 1a) THE DOOR (self-monitoring 5.2) — refuse a job row that has no contract, a pinned code path, or a runner
+# that makes a raw external call. A refused row gets NO plist. Usable alone: `install-schedulers.sh --check-row <name>`
+# prints PASS or the refusal reasons (one per line) and exits 0 / 1 (2 = no such row). The rules:
+#   (a) outcome, check, model, budget, source are all present and not `TBD`; model is none|small|medium|large;
+#       budget is an integer > 0 unless model=none.
+#   (b) every script the command runs resolves (after $LIFEHACK_CODE_ROOT / $HOME expansion) under the code root or the
+#       private desk repo, and the command pins no absolute code path (a /Users/... clone, a plugin cache) instead of
+#       $LIFEHACK_CODE_ROOT.
+#   (c) a static scan of those scripts, of what they source, and of the python/bash scripts they invoke, finds no raw
+#       Gmail / Calendar / Sheets-values-get / curl / urllib / requests call. Only the files in
+#       system/tools/shared-fetch-allowlist.txt (the ONE list of the shared fetch) may hold one.
+# TEST SEAMS: LIFEHACK_JOBS_FILE (manifest for --check-row), LIFEHACK_CODE_ROOT (code root), LIFEHACK_DESK_REPO.
+DOOR_ALLOWLIST="$CODE_ROOT/system/tools/shared-fetch-allowlist.txt"
+door_check_row() {   # name enabled outcome check model budget source command -> reasons on stdout; rc 0 = pass
+  python3 - "${LIFEHACK_CODE_ROOT:-$CODE_ROOT}" "${LIFEHACK_DESK_REPO:-$HOME/.claude/skills/ClaudeOps}" \
+    "$DOOR_ALLOWLIST" "$@" <<'DOORPY'
+import os, re, shlex, sys
+code, desk, allow_file, name, enabled, outcome, check, model, budget, source, cmd = sys.argv[1:12]
+code = os.path.realpath(code); desk = os.path.realpath(desk); home = os.path.expanduser("~")
+reasons = []
+
+# (a) the contract
+for col, val in (("outcome", outcome), ("check", check), ("model", model), ("budget", budget), ("source", source)):
+    if not val.strip() or val.strip().upper() == "TBD":
+        reasons.append(f"missing contract: {col}")
+m = model.strip()
+if m and m.upper() != "TBD" and m not in ("none", "small", "medium", "large"):
+    reasons.append(f"bad model '{m}': must be none|small|medium|large")
+b = budget.strip()
+if b and b.upper() != "TBD" and m != "none" and not (b.isdigit() and int(b) > 0):
+    reasons.append(f"bad budget '{b}': must be an integer > 0 unless model=none")
+
+def under(p, root):
+    return p == root or p.startswith(root.rstrip("/") + "/")
+
+def expand(tok):
+    for k, v in (("LIFEHACK_CODE_ROOT", code), ("CODE_ROOT", code), ("HOME", home)):
+        tok = tok.replace("${%s}" % k, v).replace("$%s" % k, v)
+    if tok.startswith("~/"): tok = home + tok[1:]
+    return tok
+
+# (b) the runner
+cmd = cmd.strip()
+scripts = []
+if cmd.startswith("@"):
+    pass   # a builtin: no script of its own
+elif cmd:
+    if code in cmd or "/plugins/cache/" in cmd or re.search(r"/(Users|home)/[^/\s\"']+/[^\s\"']*(lifehack-v2|lifehack-brain)", cmd):
+        reasons.append("pinned code path in command: use $LIFEHACK_CODE_ROOT, never an absolute clone/plugin path")
+    try:
+        lex = shlex.shlex(cmd, posix=True, punctuation_chars=True); lex.whitespace_split = True
+        toks = list(lex)
+    except ValueError as e:
+        toks = []; reasons.append(f"unparseable command: {e}")
+    for t in toks:
+        e = expand(t)
+        if re.search(r"\.(sh|py)$", e) and not e.startswith("-"):
+            scripts.append(e)
+    if not scripts and not any(r.startswith("unparseable") for r in reasons):
+        reasons.append("no runner script found in command")
+for e in scripts:
+    if "$" in e:
+        reasons.append(f"unresolvable variable in runner path: {e}")
+    elif not (under(os.path.realpath(e), code) or under(os.path.realpath(e), desk)):
+        reasons.append(f"runner outside the code root and the private desk repo: {e}")
+
+# (c) the static scan
+allow = set()
+try:
+    for ln in open(allow_file, encoding="utf-8"):
+        ln = ln.strip()
+        if ln and not ln.startswith("#"): allow.add(os.path.realpath(os.path.join(code, ln)))
+except OSError:
+    reasons.append(f"shared-fetch allowlist unreadable: {allow_file}")
+G = r'(?:\bgws\b|\bGWS\w*\b|\$\{?GWS\w*\}?)["\'\]]*[\s,]+["\']?'
+RAW = [("gws gmail", re.compile(G + r"gmail\b")),
+       ("gws calendar", re.compile(G + r"calendar\b")),
+       ("gws sheets values get", re.compile(r"\bsheets\b.*\bvalues\b.*\bget\b|\bvalues\s*(\(\s*\))?\.get\b")),
+       ("curl", re.compile(r"\bcurl\s")),
+       ("urllib", re.compile(r"\burllib\b")),
+       ("requests", re.compile(r"\brequests\.|^\s*(?:import requests|from requests\b)"))]
+SRC = re.compile(r"""^\s*(?:source|\.)\s+["']?([^"'\s;&|]+)""")
+INV = re.compile(r"""\b(?:python3?|bash|sh)\s+["']?([^"'\s;&|]+\.(?:py|sh))""")
+seen, todo = set(), [os.path.realpath(e) for e in scripts if "$" not in e]
+while todo:
+    f = todo.pop()
+    if f in seen or not os.path.isfile(f) or not (under(f, code) or under(f, desk)):
+        continue
+    seen.add(f)
+    try: lines = open(f, encoding="utf-8", errors="replace").read().splitlines()
+    except OSError: continue
+    scan = f not in allow
+    for i, ln in enumerate(lines, 1):
+        if ln.lstrip().startswith("#"): continue
+        if scan:
+            for kind, rx in RAW:
+                if rx.search(ln):
+                    rel = os.path.relpath(f, code) if under(f, code) else f
+                    reasons.append(f"raw {kind} call at {rel}:{i} — go through the shared fetch"); break
+        for rx in (SRC, INV):
+            for mm in rx.finditer(ln):
+                p = expand(mm.group(1))
+                if "$" not in p and not p.startswith("-"):
+                    todo.append(os.path.realpath(p if os.path.isabs(p) else os.path.join(os.path.dirname(f), p)))
+if reasons:
+    print("\n".join(dict.fromkeys(reasons))); sys.exit(1)
+print("PASS")
+DOORPY
+}
+
+# Look a row up by name in a manifest and run the door on it (the --check-row entry point).
+door_check_named() {   # name manifest
+  local want="$1" mf="$2" line n en iv oc ck md bg sr cm found=0 in=0
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"
+    if [ "$line" = '```jobs' ]; then in=1; continue; fi
+    if [ "$in" -eq 1 ] && [ "$line" = '```' ]; then in=0; continue; fi
+    [ "$in" -eq 1 ] || continue
+    case "$line" in ''|\#*) continue;; esac
+    IFS='|' read -r n en iv oc ck md bg sr cm <<< "$line"
+    [ "$(trim "$n")" = "$want" ] || continue
+    found=1
+    door_check_row "$(trim "$n")" "$(trim "$en")" "$(trim "$oc")" "$(trim "$ck")" "$(trim "$md")" "$(trim "$bg")" "$(trim "$sr")" "$(trim "$cm")"
+    return $?
+  done < "$mf"
+  [ "$found" -eq 1 ] || { echo "no such row: $want" >&2; return 2; }
+}
+if [ "${1:-}" = "--check-row" ]; then
+  [ -n "${2:-}" ] || { echo "usage: install-schedulers.sh --check-row <name>" >&2; exit 2; }
+  door_check_named "$2" "${LIFEHACK_JOBS_FILE:-$MANIFEST}"
+  exit $?
+fi
+DOOR_REFUSED=0
+
 # ── 1) OS detection — THE SAME RULE this product's own INSTALL.md states to a human installer
 # (Step 1: "Darwin means a Mac. Linux means Linux. Anything else, treat it as Windows.") — one rule,
 # stated once, followed by both the human-facing doc and this script. ──────────────────────────────
@@ -144,7 +281,7 @@ install_mac_launchd() {
 
   # --- parse the ```jobs``` block: name | enabled | interval | outcome | check | model | budget | source | command ---
   local -a names=() ivals=()
-  local in=0 fence_seen=0 line name enabled interval cmd
+  local in=0 fence_seen=0 line name enabled interval cmd reasons
   while IFS= read -r line || [ -n "$line" ]; do
     line="${line%$'\r'}"
     if [ "$line" = '```jobs' ]; then in=1; fence_seen=1; continue; fi
@@ -155,6 +292,11 @@ install_mac_launchd() {
     name="$(trim "$name")"; enabled="$(trim "$enabled")"; interval="$(trim "$interval")"
     [ -n "$name" ] || continue
     [ "$enabled" = "yes" ] || continue
+    # THE DOOR (5.2): a row that fails it is refused -- reason printed, no plist, non-zero exit at the end.
+    if ! reasons="$(door_check_row "$name" "$enabled" "$(trim "$_outcome")" "$(trim "$_check")" "$(trim "$_model")" "$(trim "$_budget")" "$(trim "$_source")" "$(trim "$cmd")")"; then
+      while IFS= read -r _r; do echo "[install-schedulers] REFUSED $name: $_r" >&2; done <<< "$reasons"
+      DOOR_REFUSED=$((DOOR_REFUSED + 1)); continue
+    fi
     names+=("$name"); ivals+=("$interval")
   done < "$MANIFEST"
   if [ "$fence_seen" -eq 0 ]; then
@@ -180,6 +322,7 @@ install_mac_launchd() {
   if [ "$apply" -eq 0 ]; then
     for i in "${!names[@]}"; do echo "  WOULD WRITE $la_dir/ai.lifehack.${names[$i]}.plist (every ${ivals[$i]}s)"; done
     echo "[install-schedulers] plan only (re-run with --install to apply)."
+    [ "$DOOR_REFUSED" -eq 0 ] || echo "[install-schedulers] $DOOR_REFUSED enabled row(s) REFUSED by the door." >&2
     return 0
   fi
 
@@ -239,11 +382,14 @@ PLIST
     _run launchctl bootstrap "gui/$uid" "$plist"
   done
   echo "[install-schedulers] REGISTRATION is not proof it fires: check ~/.config/lifehack/state/jobs/<job>/last-success after the first scheduled run."
+  [ "$DOOR_REFUSED" -eq 0 ] || echo "[install-schedulers] $DOOR_REFUSED enabled row(s) REFUSED by the door -- no plist written for them." >&2
 }
 
 if [ "$OS" = "mac" ]; then
   install_mac_launchd
-  exit 0
+  _rc=$?
+  [ "$DOOR_REFUSED" -eq 0 ] || _rc=1   # any refused enabled row = non-zero at the end
+  exit $_rc
 fi
 
 # ── 2) Parse the ```crontab``` block → [(name, schedule, command)] ─────────────────────────────

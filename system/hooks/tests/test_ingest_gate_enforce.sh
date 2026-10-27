@@ -180,6 +180,32 @@ check "drive export via safe"   0 Bash '{"command":"gws drive files export --par
 check "Glob, no path (cwd)"     0 Glob '{"pattern":"**/*.md"}'
 check "Grep, no path (cwd)"     0 Grep '{"pattern":"TODO"}'
 
+echo "-- 5.2 THE DOOR, SESSION SIDE: the shared fetch and ordinary work are untouched (expect 0) --"
+check "5.2 safe_fetch by path"          0 Bash '{"command":"python3 system/tools/safe_fetch.py https://example.com"}'
+check "5.2 safe_fetch piped to head"    0 Bash '{"command":"python3 /x/system/tools/safe_fetch.py https://example.com | head -50"}'
+check "5.2 safe_search_api by path"     0 Bash '{"command":"bash system/tools/safe_search_api.sh \"gmail api quota\""}'
+check "5.2 email sync by path + env"    0 Bash '{"command":"EMAIL_WRITE_LIMIT=3 python3 shared/tools/email_summary_sync.py --write-v2"}'
+check "5.2 gmail getProfile (no pull)"  0 Bash '{"command":"gws gmail users getProfile --params {}"}'
+check "5.2 gmail labels list (no pull)" 0 Bash '{"command":"gws gmail users labels list --params {}"}'
+check "5.2 curl to localhost"           0 Bash '{"command":"curl -s http://localhost:8080/health"}'
+check "5.2 curl, no URL (a flag help)"  0 Bash '{"command":"curl --version"}'
+check "5.2 grep curl in a file"         0 Bash '{"command":"grep -n curl README.md"}'
+check "5.2 python -c, no network"       0 Bash '{"command":"python3 -c \"print(1+1)\""}'
+
+echo "-- 5.2 THE DOOR, SESSION SIDE: raw Gmail pulls and raw web fetches (expect 2) --"
+check "5.2 gmail users messages list"   2 Bash '{"command":"gws gmail users messages list --params {\"userId\":\"me\"}"}'
+check "5.2 gmail users threads get"     2 Bash '{"command":"gws gmail users threads get --params {\"userId\":\"me\",\"id\":\"1\"}"}'
+check "5.2 gmail threads list via var"  2 Bash '{"command":"\"$GWS_BIN\" gmail users threads list --params {}"}'
+check "5.2 curl https"                  2 Bash '{"command":"curl -s https://example.com/page"}'
+check "5.2 curl -o file https"          2 Bash '{"command":"curl -sL -o /tmp/x.html https://example.com/page"}'
+check "5.2 wget http"                   2 Bash '{"command":"wget http://example.com/a.zip"}'
+check "5.2 python -c urllib"            2 Bash '{"command":"python3 -c \"import urllib.request; print(urllib.request.urlopen(\\\"https://example.com\\\").read())\""}'
+check "5.2 python -c requests"          2 Bash '{"command":"python -c \"import requests; print(requests.get(\\\"https://example.com\\\").text)\""}'
+check "5.2 python heredoc requests"     2 Bash '{"command":"python3 - <<EOF\nimport requests\nprint(requests.get(\"https://example.com\").text)\nEOF"}'
+check "5.2 safe_fetch then curl (pipe)" 2 Bash '{"command":"python3 system/tools/safe_fetch.py https://a.example | curl -s https://b.example"}'
+check "5.2 safe_fetch; curl (compound)" 2 Bash '{"command":"python3 system/tools/safe_fetch.py https://a.example; curl -s https://b.example"}'
+check "5.2 curl hidden behind a path"   2 Bash '{"command":"cd /tmp && curl -s https://example.com"}'
+
 echo "-- ⭐ THE SHAPE OF THE ROOT MUST NOT DECIDE WHETHER YOU CAN READ YOUR OWN NOTES --"
 # THE BUG THIS BLOCK EXISTS FOR, found on 2026-08-11 by running a real session rather than a
 # fixture: the session could not read its own canon. The tool hands this hook the RESOLVED path —
