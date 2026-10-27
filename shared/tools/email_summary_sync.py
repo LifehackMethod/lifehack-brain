@@ -910,12 +910,14 @@ def process_thread_v2(thread_id, thread_meta, tmp_dir, dry_run=False, verbose=Fa
     return f"V2    {thread_id[:16]}… — {subject[:60]}", flagged
 
 
-def _should_cold_sweep(thread_ids, filter_label):
-    """Cold-sweep runs ONLY on a genuinely FULL run — no explicit --threads AND no --label filter —
-    so `ids` is the authoritative active set across ALL tracked labels. A subset run (either filter)
-    does NOT know the full active set and MUST NOT sweep (else it wrongly cold-marks everything
-    outside the subset). This is the one gate; keep it here + tested."""
-    return thread_ids is None and filter_label is None
+def _should_cold_sweep(thread_ids, filter_label, limit=None):
+    """Cold-sweep runs ONLY on a genuinely FULL run — no explicit --threads, no --label filter AND
+    no --limit — so `ids` is the authoritative active set across ALL tracked labels. A subset run
+    (any of the three) does NOT know the full active set and MUST NOT sweep (else it wrongly
+    cold-marks everything outside the subset). This is the one gate; keep it here + tested.
+    ⚖ FIXED 2026-10-27 (self-monitoring Sprint 1): --limit truncates `ids` but was not in this gate,
+    so a capped run would have cold-marked every stored thread outside its first N."""
+    return thread_ids is None and filter_label is None and (limit is None or limit < 0)
 
 
 _CONTRACT_VALIDATED = False
@@ -1038,7 +1040,7 @@ def write_v2(thread_ids=None, filter_label=None, recency_days=RECENCY_FLOOR_DAYS
     # v2 record NOT in the full active set has left its labels → mark state=cold (stamp cold_at),
     # KEEP the file. cold/completed/deep-cold records are left as-is.
     counts["cold"] = 0
-    if _should_cold_sweep(thread_ids, filter_label) and os.path.isdir(THREADS_V2_DIR):
+    if _should_cold_sweep(thread_ids, filter_label, limit) and os.path.isdir(THREADS_V2_DIR):
         active_set = set(ids)
         stored_v2 = {fn[:-5] for fn in os.listdir(THREADS_V2_DIR) if fn.endswith(".json")}
         for tid in stored_v2 - active_set:

@@ -139,8 +139,11 @@ fi
 #    ONLY when the janitor itself broke (→ the trap buzzes + Pulse breaker counts). NOTE: stdout is REDIRECTED
 #    (not piped) so `wait` returns the python exit code, never a pipe's tail. ──
 WORKLOG="$OUT_DIR/last-write.log"
+# EMAIL_WRITE_LIMIT (optional): cap a run at the first N threads. Set on the job's row in
+# system/pulse-config.md. A capped run never cold-sweeps (email_summary_sync._should_cold_sweep).
 do_work() {
-  python3 "$CODE_ROOT/shared/tools/email_summary_sync.py" --write-v2 --verbose > "$WORKLOG" 2>&1
+  python3 "$CODE_ROOT/shared/tools/email_summary_sync.py" --write-v2 --verbose \
+    ${EMAIL_WRITE_LIMIT:+--limit "$EMAIL_WRITE_LIMIT"} > "$WORKLOG" 2>&1
 }
 
 do_work & WORK_PID=$!

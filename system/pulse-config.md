@@ -249,7 +249,9 @@ tasks-store-sync        | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/t
 # email-summary-write-run.sh) — same fix, same session. Interval matches the runner's OWN header,
 # which is explicit: STALE_AFTER_HOURS=4, "just over one 3h cadence, so a SINGLE missed run
 # surfaces on the next tick." 3h cadence.
-email-summary-write     | yes | 10800 | bash "$LIFEHACK_CODE_ROOT/system/tools/email-summary-write-run.sh"
+# 2026-10-27 (self-monitoring Sprint 1, Enver's ruling): capped at 3 threads per run, enough to prove
+# the scheduled chain without pulling the whole inbox. Remove EMAIL_WRITE_LIMIT=3 to return to full runs.
+email-summary-write     | yes | 10800 | EMAIL_WRITE_LIMIT=3 bash "$LIFEHACK_CODE_ROOT/system/tools/email-summary-write-run.sh"
 #
 # ── T9.8b, 2026-08-15 — five rows closing four previously-missing wiring gaps. Each runner was
 #    ported/built THIS session and syntax/dry-path verified (skip branches exercised with real
