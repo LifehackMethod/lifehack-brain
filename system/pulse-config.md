@@ -358,7 +358,7 @@ obsidian-reindex | waiting-on-port | 21600 | TBD | TBD | TBD | 0 | TBD | bash "$
 # FETCH ONLY: git fetch origin --prune against THIS clone (never pull/merge/checkout, never
 # touches a working tree or a local branch) — a REPORT, not a gate, per SOP §9. Hourly cadence:
 # frequent enough that "behind" stays close to true without hammering the remote on every tick.
-mirror-fetch | off | 3600 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/mirror-fetch-run.sh"
+mirror-fetch | off | 3600 | This clone's remote-tracking refs are freshly fetched from origin, so the session line's "behind" figure is true. | ~/.config/lifehack/mirror-fetch/last-ok ~ ^mirror-fetch DONE behind=[0-9]+ ahead=[0-9]+ | none | 0 | git | bash "$LIFEHACK_CODE_ROOT/system/tools/mirror-fetch-run.sh"
 #
 # ── TEMPLATE — copy this row when a new lane wires up a job, then delete the comment. ──────────
 # your-job-name  | yes | 3600  | <one-sentence outcome> | <path> ~ <regex> | none | 0 | none | bash "$LIFEHACK_CODE_ROOT/system/tools/your-runner.sh"

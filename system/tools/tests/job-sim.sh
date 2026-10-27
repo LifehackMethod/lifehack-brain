@@ -508,6 +508,9 @@ def main():
         rows = [(name, f.result()) for name, f in sfut]
         rows.append(("row-contract", row_contract()))
         rows.append(("bad-row", bad_row()))
+        rows.append(("mirror-fetch-contract", receipt_contract("mirror-fetch")))   # 5.7
+        rows.append(("guard-fire-test-contract", receipt_contract("guard-fire-test")))   # 5.7
+        rows.append(("force-flag", force_flag()))   # 5.7
         rows.extend(model_scenarios())   # 5.3
         fz = [f.result() for f in ffut]
     bad = 0
@@ -641,6 +644,103 @@ def bad_row():
         return 5, fails, ([], [])
     finally:
         shutil.rmtree(d, ignore_errors=True)
+
+
+# ───── 5.7: migrated-job contracts and the --force flag ─────
+RECEIPTS = {   # job -> (a receipt line a SUCCESSFUL real run writes, one a run that did not succeed leaves)
+    "mirror-fetch": ("mirror-fetch DONE behind=0 ahead=3 2026-11-02T12:00:00Z",
+                     "mirror-fetch DONE behind=? ahead=? 2026-11-02T12:00:00Z"),
+    "guard-fire-test": ('{"subsystem":"guard-fire-test","rc":0,"ts":"2026-11-02T12:00:00Z","stale_after_h":192}',
+                        '{"subsystem":"guard-fire-test","rc":1,"ts":"2026-11-02T12:00:00Z","stale_after_h":192}'),
+}
+
+
+def real_row(job):
+    """The job's REAL row from system/pulse-config.md, as a list of nine trimmed columns."""
+    inb = False
+    for ln in open(f"{ROOT}/system/pulse-config.md", encoding="utf-8").read().splitlines():
+        if ln.strip() == "```jobs": inb = True; continue
+        if inb and ln.strip() == "```": inb = False
+        if inb and not ln.lstrip().startswith("#"):
+            f = [x.strip() for x in ln.split("|", 8)]
+            if f and f[0] == job: return f
+    return None
+
+
+def receipt_contract(job):
+    """5.7 <job>-contract: the row's REAL check (read from pulse-config.md) against a stub runner that writes the receipt.
+    Missing receipt, a receipt older than the run start and a receipt with the wrong marker each FAIL (exit 1, no last-success);
+    a good receipt PASSES (exit 0, `[check] ok`, last-run `rc=0 calls=0 ... model=none`). Also: the real row's door passes."""
+    fails, row = [], real_row(job)
+    if not row or len(row) != 9: return 1, [f"{job}-contract: real row not found / not 9 columns"], ([], [])
+    _n, _en, _iv, outcome, check, model, budget, source, _cmd = row
+    if " ~ " not in check: return 1, [f"{job}-contract: real check is '{check}'"], ([], [])
+    if (model, budget) != ("none", "0"): fails.append(f"{job}-contract: model/budget are {model}/{budget}, expected none/0")
+    w, t = World([(job, P)]), BASE + 12 * 3600
+    try:
+        home_path = check.split(" ~ ")[0].strip().replace("~", w.home, 1)
+        stub = f"{HERE_TESTS}/job-sim-receipt-stub.sh"
+        open(w.manifest, "w").write("# receipt manifest\n```jobs\n"
+            f"{job} | yes | {P} | {outcome} | {check} | {model} | {budget} | {source} | bash {stub} {job} {home_path}\n```\n")
+        os.makedirs(f"{w.sim}/receipt", exist_ok=True)
+        open(f"{w.sim}/receipt/{job}.good", "w").write(RECEIPTS[job][0] + "\n")
+        open(f"{w.sim}/receipt/{job}.bad", "w").write(RECEIPTS[job][1] + "\n")
+        for i, (mode, want) in enumerate([("missing", 1), ("old", 1), ("bad", 1), ("good", 0)]):
+            w.set_mode(job, mode)
+            rc = w.sh(["bash", JR, job], t + 100 * i).returncode
+            if rc != want: fails.append(f"{job}-contract: receipt '{mode}' exited {rc}, expected {want}")
+            if want == 1 and w.ls_mtime(job) is not None: fails.append(f"{job}-contract: receipt '{mode}' stamped last-success")
+        if w.ls_mtime(job) is None: fails.append(f"{job}-contract: good receipt did not stamp last-success")
+        lr = w.read(job, "last-run").strip()
+        if " rc=0 calls=0 " not in lr or " model=none " not in lr: fails.append(f"{job}-contract: good last-run wrong: {lr!r}")
+        if "[check] ok" not in w.read(job, "log"): fails.append(f"{job}-contract: no '[check] ok' in the log")
+        r = subprocess.run(["bash", f"{ROOT}/system/tools/install-schedulers.sh", "--check-row", job],
+                           env={k: v for k, v in os.environ.items() if k not in SEAMS}, capture_output=True, text=True)
+        if r.returncode != 0 or "PASS" not in r.stdout: fails.append(f"{job}-contract: the door refuses the real row: {r.stdout.strip()!r}")
+        return 5, fails, ([], [])
+    finally:
+        w.close()
+
+
+def force_flag():
+    """5.7: `job-run.sh <job> --force` runs a NON-yes row exactly once and never changes the row; a plain run of the
+    same row still stands down 75; a forced FAILURE pushes nothing (no `alerted` marker, empty notify log)."""
+    fails, t = [], BASE + 12 * 3600
+    w = World([("sim-f", P)])
+    try:
+        stub = 'bash "$LIFEHACK_CODE_ROOT/system/tools/tests/job-sim-stub.sh" sim-f'
+        for en in ("off", "waiting-on-port"):
+            text = ("# force manifest\n```jobs\n"
+                    f"sim-f | {en} | {P} | o | $JOB_SIM_DIR/out/sim-f ~ ^ran sim-f at | none | 0 | none | {stub}\n```\n")
+            open(w.manifest, "w").write(text)
+            for f in (f"{w.sim}/out/sim-f",): 
+                if os.path.exists(f): os.remove(f)
+            shutil.rmtree(w.p("sim-f", "."), ignore_errors=True)
+            w.set_mode("sim-f", "ok")
+            rc = w.sh(["bash", JR, "sim-f"], t).returncode
+            if rc != 75: fails.append(f"force-flag[{en}]: plain run exited {rc}, expected 75")
+            if os.path.exists(f"{w.sim}/out/sim-f"): fails.append(f"force-flag[{en}]: plain run executed the job")
+            if "stood down" not in w.read("sim-f", "last-run"): fails.append(f"force-flag[{en}]: plain last-run is not a stand-down")
+            rc = w.sh(["bash", JR, "sim-f", "--force"], t + 100).returncode
+            if rc != 0: fails.append(f"force-flag[{en}]: --force exited {rc}, expected 0")
+            if not os.path.exists(f"{w.sim}/out/sim-f"): fails.append(f"force-flag[{en}]: --force did not run the job")
+            lr = w.read("sim-f", "last-run")
+            if " rc=0 calls=0 " not in lr or " model=none " not in lr: fails.append(f"force-flag[{en}]: forced last-run wrong: {lr!r}")
+            if open(w.manifest).read() != text: fails.append(f"force-flag[{en}]: --force changed the manifest")
+            rc = w.sh(["bash", JR, "sim-f"], t + 200).returncode
+            if rc != 75: fails.append(f"force-flag[{en}]: plain run AFTER --force exited {rc}, expected 75")
+        # a forced FAILURE: no push, no alerted marker
+        w.set_mode("sim-f", "fail")
+        shutil.rmtree(w.p("sim-f", "."), ignore_errors=True)
+        rc = w.sh(["bash", JR, "sim-f", "--force"], t + 300).returncode
+        if rc != 1: fails.append(f"force-flag: forced failing job exited {rc}, expected 1")
+        if w.pushes(): fails.append(f"force-flag: a forced failure pushed: {w.pushes()}")
+        if os.path.exists(w.p("sim-f", "alerted")): fails.append("force-flag: a forced failure dropped the alerted marker")
+        # bad usage stays refused
+        if w.sh(["bash", JR, "sim-f", "--bogus"], t).returncode != 64: fails.append("force-flag: an unknown flag was not refused (64)")
+        return 8, fails, ([], [])
+    finally:
+        w.close()
 
 
 def play_t0(name, jobs, t0, ticks):

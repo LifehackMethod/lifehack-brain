@@ -10,6 +10,11 @@
 #   /bin/bash -c 'exec /bin/bash "$(cat "$HOME/.config/lifehack/code-root")/system/tools/job-run.sh" <job> --if-overdue'
 # so no plist ever carries a code path (§B.1). By hand: bash system/tools/job-run.sh <job>
 #
+# --force (BY-HAND USE ONLY, 5.7): runs a row whose `enabled` is not `yes` (off, waiting-on-port...) exactly ONCE, so a
+# migrated job can be dry-run and its output check proven BEFORE its row is flipped. It NEVER changes the row (this script
+# never writes the manifest). A plain run of the same row still stands down 75. A forced run is a test: it sends NO push
+# (no "job down", no recovery, no deferred-queue flush), so a forced failure cannot page anyone. launchd never passes it.
+#
 # STATE (local, never Drive — §B.2): ~/.config/lifehack/state/jobs/<job>/
 #   last-run      "<ISO time> rc=<n> calls=<N> secs=<S> model=<tier> <reason>" — calls/secs = model calls this run
 #                 (5.3, via model.lib.sh run_model; 0/0 for a job with no AI), model = the row's tier or none — every run that got past the overdue check
@@ -45,9 +50,17 @@ set -uo pipefail
 
 JOB="${1:-}"
 IF_OVERDUE=0
-[ "${2:-}" = "--if-overdue" ] && IF_OVERDUE=1
+FORCE=0
+[ "$#" -gt 0 ] && shift
+for _a in "$@"; do
+  case "$_a" in
+    --if-overdue) IF_OVERDUE=1 ;;
+    --force) FORCE=1 ;;
+    *) echo "usage: job-run.sh <job-name> [--if-overdue] [--force]" >&2; exit 64 ;;
+  esac
+done
 case "$JOB" in
-  ''|*[!a-z0-9-]*) echo "usage: job-run.sh <job-name> [--if-overdue]" >&2; exit 64 ;;
+  ''|*[!a-z0-9-]*) echo "usage: job-run.sh <job-name> [--if-overdue] [--force]" >&2; exit 64 ;;
 esac
 
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -76,7 +89,7 @@ iso_now() { if [ -n "$FAKE_NOW" ]; then fake_fmt %Y-%m-%dT%H:%M:%S%z; else date 
 err_stamp() { if [ -n "$FAKE_NOW" ]; then fake_fmt %Y%m%dT%H%M%S; else date +%Y%m%dT%H%M%S; fi; }
 stamp() { [ -n "$FAKE_NOW" ] || return 0; touch -t "$(fake_fmt %Y%m%d%H%M.%S)" "$@"; }
 mtime() { stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0; }
-echo "=== run $(iso_now) job=$JOB code_root=$CODE_ROOT$([ "$IF_OVERDUE" = 1 ] && echo ' --if-overdue')"
+echo "=== run $(iso_now) job=$JOB code_root=$CODE_ROOT$([ "$IF_OVERDUE" = 1 ] && echo ' --if-overdue')$([ "$FORCE" = 1 ] && echo ' --force')"
 
 if [ -s "$STATE/launch.err" ]; then
   echo "[job-run] launch.err was non-empty (pointer was broken before this run):"
@@ -143,8 +156,7 @@ finish() {
     cp "$RUNLOG" "$STATE/errors/$(err_stamp).txt" 2>/dev/null
   fi
   [ -n "$LOCKDIR" ] && rm -rf "$LOCKDIR"
-  flush_deferred
-  alert_check "$rc"
+  if [ "$FORCE" != 1 ]; then flush_deferred; alert_check "$rc"; fi   # --force is a test: it never pushes
   cat "$RUNLOG" >> "$STATE/log"
   awk '/^=== run /{n++} {line[NR]=$0; sec[NR]=n} END{for(i=1;i<=NR;i++) if(sec[i]>n-20) print line[i]}' \
     "$STATE/log" > "$STATE/log.tmp" && mv -f "$STATE/log.tmp" "$STATE/log"
@@ -175,8 +187,11 @@ export JOB_RUN_BUDGET MODEL_TIER JOB_RUN_MODEL="$MODEL_TIER"
 JOB_RUN_CALLS_FILE="$STATE/calls.current"; : > "$JOB_RUN_CALLS_FILE"; rm -f "$JOB_RUN_CALLS_FILE.fail"
 export JOB_RUN_CALLS_FILE
 case "$INTERVAL" in ''|*[!0-9]*) finish 1 "interval '$INTERVAL' is not a number of seconds" ;; esac
-[ -n "$CMD" ] || [ "$ENABLED" != yes ] || finish 1 "row has no command (is it an old 4-column row? the contract columns are required)"
-[ "$ENABLED" = yes ] || finish 75 "row is '$ENABLED' in the manifest, not 'yes' — stood down"
+[ -n "$CMD" ] || { [ "$ENABLED" != yes ] && [ "$FORCE" != 1 ]; } || finish 1 "row has no command (is it an old 4-column row? the contract columns are required)"
+if [ "$ENABLED" != yes ]; then
+  [ "$FORCE" = 1 ] || finish 75 "row is '$ENABLED' in the manifest, not 'yes' — stood down"
+  echo "[job-run] --force: row is '$ENABLED', running ONCE by hand; the row is not changed and nothing is pushed"
+fi
 
 # ── 2) per-job declarations: what credentials it needs, how long it may run, what it promises ──
 # NEEDS comes from the row's `source` (5.1): gmail -> the gws credentials. WATCHDOG stays per job until 5.3.
