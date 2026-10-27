@@ -436,9 +436,17 @@ def run_fuzz(rep):
 
 
 def prod_unchanged():
-    env = {k: v for k, v in os.environ.items() if k not in SEAMS}
-    out = subprocess.run(["python3", HL], env=env, capture_output=True, text=True).stdout.strip()
-    return out == "jobs: 1 OK", out
+    # Seams inert when unset: health_line.py with every seam unset must say exactly what it says with
+    # the seams pointed explicitly at the production defaults (same live state, same instant). It used
+    # to demand "jobs: 1 OK", which went RED whenever the real job was mid-run or stood down.
+    base = {k: v for k, v in os.environ.items() if k not in SEAMS}
+    out = subprocess.run(["python3", HL], env=base, capture_output=True, text=True).stdout.strip()
+    explicit = dict(base, LIFEHACK_STATE_DIR=os.path.expanduser("~/.config/lifehack/state"),
+                    LIFEHACK_JOBS_FILE=os.path.join(os.path.dirname(os.path.dirname(HL)), "pulse-config.md"),
+                    LIFEHACK_FAKE_NOW=str(int(time.time())))
+    ref = subprocess.run(["python3", HL], env=explicit, capture_output=True, text=True).stdout.strip()
+    ok = out == ref and bool(out) and not out.startswith("job health: could not read")
+    return ok, out if ok else f"{out!r} (seams unset) vs {ref!r} (seams explicit)"
 
 
 def main():
@@ -461,7 +469,7 @@ def main():
     ok_prod, got = prod_unchanged()
     print(f"{'production unchanged (seams unset)':<38} | {'-':>5} | {'PASS' if ok_prod else 'FAIL'}")
     if not ok_prod:
-        print(f"    MISS health_line.py against real state said {got!r}, expected 'jobs: 1 OK'"); bad += 1
+        print(f"    MISS seams not inert: {got}"); bad += 1
     passed = sum(1 for n, f in fz if not f)
     for n, f in fz:
         for x in f[:3]:
