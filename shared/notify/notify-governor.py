@@ -69,6 +69,14 @@ MISCONFIG_DEDUP_HOURS = int(os.environ.get("NOTIFY_MISCONFIG_DEDUP_HOURS", str(3
 DEFERRED_MAX_AGE_HOURS = int(os.environ.get("NOTIFY_DEFERRED_MAX_AGE_HOURS", "18"))
 
 
+def _now():
+    # TEST-ONLY seam (self-monitoring 2.0): LIFEHACK_FAKE_NOW (epoch seconds) replaces the clock for the
+    # dedup window, quiet hours (time.localtime of the fake epoch, so TZ governs the hour) and the daily
+    # cap. Inert unless set to all digits.
+    f = os.environ.get("LIFEHACK_FAKE_NOW", "")
+    return float(f) if f.isdigit() else time.time()
+
+
 def in_quiet_hours(hour):
     # Window may wrap midnight (e.g. 22 -> 7).
     if QUIET_START == QUIET_END:
@@ -101,7 +109,7 @@ def flush_deferred():
     queued items are still worth sending and clears them from the queue either way (a deferred
     item beyond DEFERRED_MAX_AGE_HOURS is dropped, not sent — a stale digest arriving at noon
     about something from two nights ago is noise, not news)."""
-    now = time.time()
+    now = _now()
     lock = open(STATE + ".lock", "w")
     try:
         fcntl.flock(lock, fcntl.LOCK_EX)
@@ -141,7 +149,7 @@ def queue_deferred(args):
     title = args[2] if len(args) > 2 else ""
     tags = args[3] if len(args) > 3 else ""
     url = args[4] if len(args) > 4 else ""
-    now = time.time()
+    now = _now()
     lock = open(STATE + ".lock", "w")
     try:
         fcntl.flock(lock, fcntl.LOCK_EX)
@@ -173,7 +181,7 @@ def main():
     critical = priority == "critical"
     misconfig = priority == "misconfig"
 
-    now = time.time()
+    now = _now()
     # OL-N1 ④: hash on <identity> when the caller supplied one — a STABLE string naming what
     # this alert IS, independent of a changing number embedded in <message>. Falls back to
     # hashing <message> itself (the pre-existing behaviour) when no identity was given, so every

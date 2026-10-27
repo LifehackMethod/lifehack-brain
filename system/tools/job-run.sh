@@ -50,8 +50,9 @@ case "$JOB" in
 esac
 
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-MANIFEST="$CODE_ROOT/system/pulse-config.md"
-STATE="$HOME/.config/lifehack/state/jobs/$JOB"
+# TEST-ONLY seams (self-monitoring 2.0): LIFEHACK_JOBS_FILE and LIFEHACK_STATE_DIR. Inert when unset.
+MANIFEST="${LIFEHACK_JOBS_FILE:-$CODE_ROOT/system/pulse-config.md}"
+STATE="${LIFEHACK_STATE_DIR:-$HOME/.config/lifehack/state}/jobs/$JOB"
 mkdir -p "$STATE/errors" || exit 1
 
 # launchd starts jobs with PATH=/usr/bin:/bin:/usr/sbin:/sbin. gws and claude live in
@@ -65,7 +66,14 @@ RUNLOG="$STATE/run.current"
 : > "$RUNLOG"
 exec >>"$RUNLOG" 2>&1
 
-iso_now() { date +%Y-%m-%dT%H:%M:%S%z; }
+# TEST-ONLY seam LIFEHACK_FAKE_NOW (epoch seconds; inert unless all digits). When set: every "now" and age
+# computation reads it, and files whose MTIME is a clock (last-success, last-run, alerted) are stamped to it.
+FAKE_NOW=""; case "${LIFEHACK_FAKE_NOW:-}" in ''|*[!0-9]*) ;; *) FAKE_NOW="$LIFEHACK_FAKE_NOW" ;; esac
+now_epoch() { if [ -n "$FAKE_NOW" ]; then echo "$FAKE_NOW"; else date +%s; fi; }
+fake_fmt() { date -r "$FAKE_NOW" "+$1" 2>/dev/null || date -d "@$FAKE_NOW" "+$1"; }
+iso_now() { if [ -n "$FAKE_NOW" ]; then fake_fmt %Y-%m-%dT%H:%M:%S%z; else date +%Y-%m-%dT%H:%M:%S%z; fi; }
+err_stamp() { if [ -n "$FAKE_NOW" ]; then fake_fmt %Y%m%dT%H%M%S; else date +%Y%m%dT%H%M%S; fi; }
+stamp() { [ -n "$FAKE_NOW" ] || return 0; touch -t "$(fake_fmt %Y%m%d%H%M.%S)" "$@"; }
 mtime() { stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0; }
 echo "=== run $(iso_now) job=$JOB code_root=$CODE_ROOT$([ "$IF_OVERDUE" = 1 ] && echo ' --if-overdue')"
 
@@ -98,22 +106,24 @@ alert_check() {
   case "${INTERVAL:-}" in ''|*[!0-9]*) return 0 ;; esac   # no usable period: nothing to measure against
   [ -f "$mark" ] && return 0
   if [ -f "$STATE/last-success" ]; then
-    ls_age=$(( $(date +%s) - $(mtime "$STATE/last-success") ))
+    ls_age=$(( $(now_epoch) - $(mtime "$STATE/last-success") ))
     [ "$ls_age" -le $(( 2 * INTERVAL )) ] && return 0
     last_ok="$(( ls_age / 3600 ))h ago"
   fi
   # The identity carries this incident's id: the marker already dedups within an incident, and the
   # governor's 24 h identity dedup must not swallow the NEXT incident (e.g. a real failure hours after a test).
-  local incident; incident="$(date +%s)"
+  local incident; incident="$(now_epoch)"
   notify "Job down: $JOB" "exit $rc · last success $last_ok · next: open any desk; the first line names it, the error is in ~/.config/lifehack/state/jobs/$JOB/errors/" "job-down:$JOB:$incident"
   printf '%s rc=%s %s\n' "$(iso_now)" "$rc" "$incident" > "$mark"
+  stamp "$mark"
 }
 finish() {
   local rc="$1" reason="$2" record="${3:-yes}"
   echo "[job-run] exit $rc — $reason"
   [ "$record" = yes ] && printf '%s rc=%s %s\n' "$(iso_now)" "$rc" "$reason" > "$STATE/last-run"
+  [ "$record" = yes ] && stamp "$STATE/last-run"
   if [ "$rc" -ne 0 ] && [ "$rc" -ne 75 ] && [ "$rc" -ne 2 ]; then
-    cp "$RUNLOG" "$STATE/errors/$(date +%Y%m%dT%H%M%S).txt" 2>/dev/null
+    cp "$RUNLOG" "$STATE/errors/$(err_stamp).txt" 2>/dev/null
   fi
   [ -n "$LOCKDIR" ] && rm -rf "$LOCKDIR"
   alert_check "$rc"
@@ -144,6 +154,9 @@ case "$INTERVAL" in ''|*[!0-9]*) finish 1 "interval '$INTERVAL' is not a number 
 NEEDS=""; WATCHDOG=3600
 case "$JOB" in
   email-summary-write) NEEDS="gws"; WATCHDOG=1200 ;;
+  # TEST-ONLY (self-monitoring 2.0 rig): "sim-*" jobs run a stub and need nothing. Honoured ONLY while
+  # LIFEHACK_STATE_DIR is set (a throwaway state root), so it can never act on production state.
+  sim-*) [ -n "${LIFEHACK_STATE_DIR:-}" ] && { NEEDS=""; WATCHDOG=60; } ;;
 esac
 # Test seam (kill-one-job, plan 2.3): a by-hand run may shorten the watchdog. launchd never sets it.
 case "${JOB_RUN_WATCHDOG:-}" in ''|*[!0-9]*) ;; *) WATCHDOG="$JOB_RUN_WATCHDOG" ;; esac
@@ -170,10 +183,18 @@ check_email_summary_write() {
   echo "[check] ok: written=$w unchanged=$u errors=${e:-0}"
 }
 
+# TEST-ONLY: the sim-* output check — passes only if the stub's output file is newer than the run start.
+check_sim_stub() {
+  local out="${JOB_SIM_DIR:-/nonexistent}/out/$JOB"
+  [ -f "$out" ] || { echo "[check] sim output missing: $out"; return 1; }
+  [ "$out" -nt "$START_MARK" ] || { echo "[check] sim output not newer than run start: $out"; return 1; }
+  echo "[check] ok: sim output fresh"
+}
+
 # ── 3) --if-overdue ──
 if [ "$IF_OVERDUE" = 1 ] && [ -f "$STATE/last-success" ]; then
   GRACE=$(( INTERVAL / 10 )); [ "$GRACE" -gt 1800 ] && GRACE=1800
-  AGE=$(( $(date +%s) - $(mtime "$STATE/last-success") ))
+  AGE=$(( $(now_epoch) - $(mtime "$STATE/last-success") ))
   if [ "$AGE" -lt $(( INTERVAL - GRACE )) ]; then
     finish 75 "not overdue: last success ${AGE}s ago, period ${INTERVAL}s" no
   fi
@@ -197,8 +218,9 @@ esac
 
 # ── 5) single-instance lock — contention is a stand-down (75), never a 0 ──
 LOCKDIR="/tmp/lifehack-job-$JOB.lock"
+[ -n "${LIFEHACK_STATE_DIR:-}" ] && LOCKDIR="$LIFEHACK_STATE_DIR/.lock-$JOB"   # test seam: lock lives in the throwaway root
 if ! mkdir "$LOCKDIR" 2>/dev/null; then
-  if [ $(( $(date +%s) - $(mtime "$LOCKDIR") )) -gt $(( WATCHDOG + 300 )) ]; then
+  if [ $(( $(now_epoch) - $(mtime "$LOCKDIR") )) -gt $(( WATCHDOG + 300 )) ]; then
     echo "[job-run] stale lock — stealing"; rm -rf "$LOCKDIR"
     mkdir "$LOCKDIR" 2>/dev/null || { LOCKDIR=""; finish 75 "lock race lost"; }
   else
@@ -208,7 +230,11 @@ fi
 
 # ── 6) run the command under a watchdog ──
 START_MARK="$STATE/.run-start"
-touch "$START_MARK"; sleep 1   # mtime granularity is one second; outputs must land strictly after
+if [ -n "$FAKE_NOW" ]; then   # test seam: no real sleep; the run starts one fake second before "now"
+  touch "$START_MARK"; FAKE_NOW=$((FAKE_NOW - 1)) stamp "$START_MARK"
+else
+  touch "$START_MARK"; sleep 1   # mtime granularity is one second; outputs must land strictly after
+fi
 echo "[job-run] command: $CMD (watchdog ${WATCHDOG}s)"
 bash -c "$CMD" & CPID=$!
 ( sleep "$WATCHDOG"; echo "[job-run] watchdog: killing after ${WATCHDOG}s"
@@ -230,7 +256,9 @@ esac
 
 # ── 7) output check, then — and only then — last-success ──
 FN="check_$(echo "$JOB" | tr '-' '_')"
+case "$JOB" in sim-*) [ -n "${LIFEHACK_STATE_DIR:-}" ] && FN=check_sim_stub ;; esac   # TEST-ONLY
 declare -F "$FN" >/dev/null || finish 1 "no output check declared for '$JOB' — exit 0 alone is never a success"
 "$FN" || finish 1 "output check failed"
 iso_now > "$STATE/last-success"
+stamp "$STATE/last-success"
 finish 0 "output check passed"

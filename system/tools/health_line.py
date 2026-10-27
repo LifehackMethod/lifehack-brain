@@ -120,11 +120,18 @@ def compute(state_dir: str, manifest: str, now: float | None = None) -> str:
 
 def main() -> int:
     try:
+        # TEST-ONLY seams (self-monitoring 2.0), all inert when unset: LIFEHACK_STATE_DIR (root; jobs live in
+        # <root>/jobs), LIFEHACK_JOBS_FILE (manifest), LIFEHACK_FAKE_NOW (epoch seconds, the clock).
+        fake = os.environ.get("LIFEHACK_FAKE_NOW", "")
+        now = float(fake) if fake.isdigit() else None
+        sroot = os.environ.get("LIFEHACK_STATE_DIR")
         state = (sys.argv[1] if len(sys.argv) > 1 else os.environ.get("LIFEHACK_JOBS_STATE_DIR")
+                 or (os.path.join(sroot, "jobs") if sroot else None)
                  or os.path.join(os.path.expanduser("~"), ".config", "lifehack", "state", "jobs"))
         manifest = (sys.argv[2] if len(sys.argv) > 2 else os.environ.get("LIFEHACK_JOBS_MANIFEST")
+                    or os.environ.get("LIFEHACK_JOBS_FILE")
                     or os.path.join(CODE_ROOT, "system", "pulse-config.md"))
-        line = compute(state, manifest)
+        line = compute(state, manifest, now)
     except BaseException as e:  # fail-soft: never raise, never non-zero
         line = f"job health: could not read ({type(e).__name__}: {e})"
     line = " ".join(str(line).split())

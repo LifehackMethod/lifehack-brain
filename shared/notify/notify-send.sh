@@ -122,6 +122,15 @@ HDRS=(-H "Priority: $NTFY_PRIO")
 [ -n "$URL" ]   && HDRS+=(-H "Click: $URL")
 [ "$MARKDOWN" = "1" ] && HDRS+=(-H "Markdown: yes")
 
+# TEST-ONLY seam (self-monitoring 2.0): LIFEHACK_NOTIFY_LOG. This sits AFTER the governor, so the governor's
+# quiet hours, dedup and daily cap all ran; where this script would POST to ntfy it appends one line
+# "title | message | identity | priority" to the file instead, so the log holds exactly what would reach the
+# phone. No network. Inert when unset.
+if [ -n "${LIFEHACK_NOTIFY_LOG:-}" ]; then
+  printf '%s | %s | %s | %s\n' "$TITLE" "$MESSAGE" "$IDENTITY" "$PRIORITY" >> "$LIFEHACK_NOTIFY_LOG"
+  exit 0
+fi
+
 # Dry-run: print what WOULD be sent, no network. (Setup verification.)
 if [ "${NOTIFY_DRY_RUN:-0}" = "1" ]; then
   echo "DRY_RUN would POST -> $SERVER/<your topic, not printed>"
