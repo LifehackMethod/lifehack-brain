@@ -23,10 +23,18 @@ and every job's own file for how each resolves ITS notes root through `shared/br
 
 ## How it works
 
-`pulse.sh` runs on a schedule (installed by `install-schedulers.sh` — every 5 minutes on Mac/Linux
-via `cron`, or via Windows Task Scheduler on Windows; see that script's own header for why the
-mechanism differs by OS while the dispatcher itself does not). On each run it reads the `jobs` block
-below and executes any job whose interval has elapsed since its last run.
+> ⚠ **CORRECTED 2026-10-27:** the text below used to say Pulse runs on Mac via `cron`. That is no
+> longer true. **On macOS, scheduled jobs run through launchd:** `install-schedulers.sh --install`
+> writes one `~/Library/LaunchAgents/ai.lifehack.<job>.plist` per row of the `jobs` block whose
+> enabled column is `yes`, and each plist runs that job inside `system/tools/job-run.sh`
+> (`<job> --if-overdue`). Pulse is not involved on a Mac. See the scheduler section of
+> `system/organism/manual.md`. **`pulse.sh` and the `crontab` block apply to Linux and Windows only.**
+
+On Linux and Windows, `pulse.sh` runs on a schedule (installed by `install-schedulers.sh` — every 5
+minutes via `cron` on Linux, or via Windows Task Scheduler on Windows; see that script's own header
+for why the mechanism differs by OS while the dispatcher itself does not). On each run it reads the
+`jobs` block below and executes any job whose interval has elapsed since its last run. The `jobs`
+block itself is shared: macOS reads the same rows (name, enabled, command) to build its launchd jobs.
 
 ## Job format
 
@@ -50,6 +58,11 @@ name | enabled | interval_seconds | command
 Comment a line out with a leading `#`.
 
 ### Exit-code contract every job command should honor
+
+> ⚠ **CORRECTED 2026-10-27:** the right-hand column below describes **Pulse** (Linux/Windows). On
+> macOS each job runs inside `system/tools/job-run.sh`, whose contract is: `0` = output check passed ·
+> `75` = stood down · `2` = transient · anything else = failed; the alarm is an ntfy text sent by
+> `job-run.sh`, not a Pulse breaker. The job commands' own exit codes mean the same thing on both.
 
 | rc | meaning | counted by Pulse as |
 |---|---|---|
@@ -333,9 +346,13 @@ mirror-fetch       | off | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/mirror
 
 ## The OS-level schedule — installed by `install-schedulers.sh`
 
+> ⚠ **CORRECTED 2026-10-27:** this block is **Linux and Windows only**. macOS does not read it: a Mac
+> installs launchd LaunchAgents built from the `jobs` block (see "How it works" above and
+> `system/organism/manual.md`). The text below originally said "crontab on Mac/Linux".
+>
 > This block is NOT Pulse-dispatched (`pulse.sh` only parses the ```jobs``` block above). It is the
-> versioned source of truth for what the OPERATING SYSTEM's own scheduler runs:
-> `system/tools/install-schedulers.sh` reads it and installs (crontab on Mac/Linux, Task Scheduler on
+> versioned source of truth for what the OPERATING SYSTEM's own scheduler runs on Linux/Windows:
+> `system/tools/install-schedulers.sh` reads it and installs (crontab on Linux, Task Scheduler on
 > Windows — see that script for why the mechanism differs by OS). **Edit here → run the installer on
 > a machine → that machine is current.** Format: `name | schedule (5-field cron) | command` — a
 > single-machine install has no `machine` column to filter on (the donor's had one; dropped here, see

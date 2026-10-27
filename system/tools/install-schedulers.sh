@@ -14,7 +14,12 @@
 #
 # UPDATED 2026-10-27: macOS now installs one launchd LaunchAgent per enabled ```jobs``` row (section 1b,
 # self-monitoring plan §B.1) instead of cron; Linux (crontab) and Windows (schtasks) are unchanged.
-# The cron-on-Mac reasoning below is history for the other two branches.
+# CORRECTED 2026-10-27: everything below that says "cron on Mac", "CRON, NOT LAUNCHD, on Mac", or
+# "Mac/Linux: crontab runs pulse.sh" is HISTORY and no longer true for macOS. On macOS, --install
+# writes ~/Library/LaunchAgents/ai.lifehack.<job>.plist per `yes` row of the ```jobs``` block, each
+# launching job-run.sh (<job> --if-overdue); job-run.sh's exit contract is 0 = output check passed ·
+# 75 = stood down · 2 = transient · else failed, and its alarm is an ntfy text. pulse.sh and the
+# ```crontab``` block are Linux/Windows only. See system/organism/manual.md (scheduler section).
 #
 # ⛔ A38, ADDRESSED DIRECTLY (found in the donor's own dead-end record, `system/sops/skill-building-
 # sop.md:1207` / `records/logs/2026-05-26-cross-machine-sync-infrastructure.md`): launchd was tried
