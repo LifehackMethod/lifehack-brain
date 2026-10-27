@@ -41,8 +41,11 @@ block itself is shared: macOS reads the same rows (name, enabled, command) to bu
 Each line inside the fenced `jobs` block:
 
 ```
-name | enabled | interval_seconds | command
+name | enabled | interval_seconds | outcome | check | model | budget | source | command
 ```
+
+The five contract columns (outcome, check, model, budget, source) are documented in the `jobs` block's header comment;
+`command` stays last because it may contain `|`.
 
 - **enabled**: `yes` to run. Anything else is a DECLARED disposition, not just "off" — write the
   actual word (`no`, `parked`, `waiting-on-<thing>`) so a future health sweeper can render your own
@@ -144,7 +147,24 @@ That severity difference is real, so the loop stays with its callers.
 ## Jobs
 
 ```jobs
-# name           | enabled | interval | command
+# name | enabled | interval | outcome | check | model | budget | source | command
+#
+# COLUMNS (self-monitoring 5.1 - a row carries its contract; `command` is LAST because a command may contain `|`,
+# so NO other column may contain a `|` character):
+#   name      job name; also the launchd label fragment and the state folder.
+#   enabled   `yes` runs; any other word is a declared disposition (`off`, `waiting-on-port`, ...).
+#   interval  minimum seconds between runs (macOS: a whole-hour divisor of 86400).
+#   outcome   ONE sentence: what is true after a good run. The `check` is written against it. `TBD` until written.
+#   check     `<path> ~ <extended regex>`, evaluated by job-run.sh after the command exits 0. Passes only if <path>
+#             exists, its mtime is newer than the run start, and some line of it matches the regex (grep -E).
+#             $HOME, ${HOME}, $LIFEHACK_CODE_ROOT and a leading ~ are expanded in <path>. Split at the FIRST ` ~ `.
+#             No `|` inside the regex (it is the column delimiter): write alternation as an optional group instead.
+#             Empty or `TBD` = no check declared = the job can never succeed.
+#   model     none | small | medium | large  (the model tier the job may use; named in one place, not here). `TBD` if unset.
+#   budget    max model calls per run, an integer; a generous tripwire sized to the outcome. 0 = none.
+#   source    which shared fetch feeds the job: gmail | web | gsheet | none. `gmail` makes job-run.sh load the gws
+#             credentials (NEEDS=gws). `TBD` if unset.
+#   command   literal bash (executed as `bash -c`), or a leading-`@` builtin. Everything after the 8th `|` is the command.
 #
 # 2026-10-27 self-monitoring Sprint 1: only email-summary-write is enabled; rows below set off (were yes), restored in later sprints.
 # 2026-10-27 self-monitoring 3.1: the watcher rows (system-health, sentinel-health, planning-health, backlog-health,
@@ -177,7 +197,7 @@ That severity difference is real, so the loop stays with its callers.
 # module's own docstring :15 ("No LLM in the write path") is stale and was the source of this error.
 # LIVE — see the note above. Interval matches the runner's
 # own header ("own absence horizon... writers run ~daily", STALE_AFTER_HOURS=30). 1-day cadence.
-calendar-store-sync     | off | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/calendar-store-sync-run.sh"
+calendar-store-sync | off | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/calendar-store-sync-run.sh"
 #
 # tasks-store-sync: refreshes state/item-store/tasks/ via tasks_store_sync.py --sync ~~(mechanical,
 # no claude -p — confirmed)~~ ⛔ STRUCK 2026-09-19, FALSE: tasks_store_sync.py imports
@@ -187,7 +207,7 @@ calendar-store-sync     | off | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/c
 # tasks-store-sync-run.sh shared the identical GWS_CREDS-missing branch and got the identical fix.
 # Interval matches the runner's own header ("writers run ~daily", STALE_AFTER_HOURS=30). 1-day
 # cadence.
-tasks-store-sync        | off | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/tasks-store-sync-run.sh"
+tasks-store-sync | off | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/tasks-store-sync-run.sh"
 #
 # email-summary-write: refreshes the v2 faithful-thread store (threads-v2/) via
 # email_summary_sync.py --write-v2 ~~(mechanical, no claude -p — confirmed: CLAUDE_BIN is kept but
@@ -204,7 +224,7 @@ tasks-store-sync        | off | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/t
 # surfaces on the next tick." 3h cadence.
 # 2026-10-27 (self-monitoring Sprint 1, Enver's ruling): capped at 3 threads per run, enough to prove
 # the scheduled chain without pulling the whole inbox. Remove EMAIL_WRITE_LIMIT=3 to return to full runs.
-email-summary-write     | yes | 10800 | EMAIL_WRITE_LIMIT=3 bash "$LIFEHACK_CODE_ROOT/system/tools/email-summary-write-run.sh"
+email-summary-write | yes | 10800 | Keeps the v2 email thread store current: the run reads at least one Gmail thread and records written plus unchanged threads. | ~/.local/share/lifehack/email-summary-write/last-write.log ~ v2 write DONE.*written=(0 unchanged=)?[1-9] | small | 30 | gmail | EMAIL_WRITE_LIMIT=3 bash "$LIFEHACK_CODE_ROOT/system/tools/email-summary-write-run.sh"
 #
 # ── T9.8b, 2026-08-15 — five rows closing four previously-missing wiring gaps. Each runner was
 #    ported/built THIS session and syntax/dry-path verified (skip branches exercised with real
@@ -220,7 +240,7 @@ email-summary-write     | yes | 10800 | EMAIL_WRITE_LIMIT=3 bash "$LIFEHACK_CODE
 # runners. ONE row chains all five cadence checks — each periodic call is a cheap no-op except on
 # its own due date, so a single daily tick is sufficient to drive every cadence. && (not ;) so a
 # real daily failure is not masked by continuing to the periodic checks.
-planning-diary    | off | 86400  | bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" && bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" --cadence weekly && bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" --cadence monthly && bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" --cadence quarterly && bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" --cadence yearly
+planning-diary | off | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" && bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" --cadence weekly && bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" --cadence monthly && bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" --cadence quarterly && bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" --cadence yearly
 #
 # archivist-audit / archivist-deepmine: archivist-run.lib.sh (shared engine) + both wrappers
 # were entirely absent — no file, no row — so the weekly structural audit and the monthly
@@ -233,8 +253,8 @@ planning-diary    | off | 86400  | bash "$LIFEHACK_CODE_ROOT/system/tools/planni
 # says "its scheduled runner does NOT ship... the skill IS the interactive path" — that line
 # predates this port and is now stale; this task's own plan named the missing scheduled leg as
 # the gap to close. The skill file is outside this row's ownership to correct.
-archivist-audit    | off | 604800 | bash "$LIFEHACK_CODE_ROOT/system/tools/archivist-audit-run.sh"
-archivist-deepmine | off | 345600 | bash "$LIFEHACK_CODE_ROOT/system/tools/archivist-deepmine-run.sh"
+archivist-audit | off | 604800 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/archivist-audit-run.sh"
+archivist-deepmine | off | 345600 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/archivist-deepmine-run.sh"
 #
 # planning-weekly-prime: the mid-week map-warming cron for the planning-weekly skill's Phase 0,
 # cited by name (with a line number) at .claude/skills/planning-weekly/prompts/
@@ -243,28 +263,28 @@ archivist-deepmine | off | 345600 | bash "$LIFEHACK_CODE_ROOT/system/tools/archi
 # map.md's own existence) needs a daily check to catch the window at all — see the runner's
 # header for why the "real" Phase 0 fan-out (Agent-tool-based) cannot be invoked from cron and
 # what this ships instead.
-planning-weekly-prime | off | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/planning-weekly-prime-run.sh"
+planning-weekly-prime | off | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/planning-weekly-prime-run.sh"
 #
 # guard-fire-test: the engine (organism/label_checker.py + label_manifest.yaml, run through
 # verify-hooks.sh) already exists and is correct (confirmed GREEN this session — 20/20 guards
 # LIVE) but nothing fired it on a schedule and nothing read its result — a downgrade from LIVE
 # to PARTIAL would sit invisible until a human happened to run it by hand. Weekly cadence
 # matches the runner's own STALE_AFTER_HOURS=192 (168h weekly + 24h slack) header.
-guard-fire-test    | off | 604800 | bash "$LIFEHACK_CODE_ROOT/system/tools/guard-fire-test-run.sh"
+guard-fire-test | off | 604800 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/guard-fire-test-run.sh"
 #
 # marc-health: mechanical market-data health chain (no LLM). CORRECTED 2026-08-26 (verified this
 # session): "Missing runner" was wrong — the runner exists in the Brain (not the repo) at
 # desks/marc/tools/marc-health/marc-health-run.sh. RUN THIS SESSION: exit 0 (17 equities fetched, 4
 # FRED series errored non-fatally, health tile + diary written; the once/day Sonnet voice push
 # self-gated out because today's ping marker was already stamped).
-marc-health              | waiting-on-port | 7200    | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/marc/tools/marc-health/marc-health-run.sh"
+marc-health | waiting-on-port | 7200 | TBD | TBD | TBD | 0 | TBD | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/marc/tools/marc-health/marc-health-run.sh"
 #
 # marc-weekly: eight-researcher weekly deep-read fan-out. CORRECTED 2026-08-26 (verified this
 # session): "Missing runner" was wrong — runner exists in the Brain at
 # desks/marc/tools/marc-weekly/marc-weekly-run.sh. It self-gates to Sat/Sun only (DOW guard); a
 # by-hand run today (Wed) hit a pre-existing single-instance lock and exited 0 clean before
 # reaching the DOW check — a real, safe stand-down, not a fabricated pass.
-marc-weekly              | waiting-on-port | 86400   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/marc/tools/marc-weekly/marc-weekly-run.sh"
+marc-weekly | waiting-on-port | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/marc/tools/marc-weekly/marc-weekly-run.sh"
 #
 # marc-wednesday: mid-week light scan (donor notes a live false-all-clear defect carried forward,
 # not fixed by this port). CORRECTED 2026-08-26 (verified this session): "Missing runner" was
@@ -272,14 +292,14 @@ marc-weekly              | waiting-on-port | 86400   | bash "$(python3 "$LIFEHAC
 # ⛔ NOT RUN THIS SESSION: this job is genuinely due today (its own due-window includes today, and
 # its marker is behind the current ISO week) — invoking it would fire a real multi-source LLM
 # research fan-out (real token spend), not a dry no-op. UNVERIFIED-BY-DESIGN, not confirmed working.
-marc-wednesday           | waiting-on-port | 86400   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/marc/tools/marc-wednesday/marc-wednesday-run.sh"
+marc-wednesday | waiting-on-port | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/marc/tools/marc-wednesday/marc-wednesday-run.sh"
 #
 # clair-billing: billing/client detail emit + cadence-nudge push. CORRECTED 2026-08-26 (verified
 # this session): "Missing runner" was wrong — runner exists in the Brain at
 # desks/clair/tools/clair-billing/clair-billing-run.sh. RUN THIS SESSION: exit 0 — wrote its two
 # signal files (read-only on Google + local writes only); the push-due branch correctly
 # self-deduped, so no new phone notification fired.
-clair-billing            | waiting-on-port | 21600   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/clair/tools/clair-billing/clair-billing-run.sh"
+clair-billing | waiting-on-port | 21600 | TBD | TBD | TBD | 0 | TBD | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/clair/tools/clair-billing/clair-billing-run.sh"
 #
 # deryl-ingest: Deryl desk light daily email doorman. CORRECTED 2026-08-26 (verified this
 # session): "Missing runner" was wrong — runner exists in the Brain at
@@ -288,7 +308,7 @@ clair-billing            | waiting-on-port | 21600   | bash "$(python3 "$LIFEHAC
 # tokens). The command below is the sanctioned live shape; its own header still says this row is
 # registered disabled until the Huddle-2 staged live test proves the reader/actor split — that
 # prerequisite is separate from "does the runner exist."
-deryl-ingest             | waiting-on-port | 86400   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/deryl/tools/deryl-ingest/deryl-ingest-run.sh"
+deryl-ingest | waiting-on-port | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/deryl/tools/deryl-ingest/deryl-ingest-run.sh"
 #
 # cp-utilities: property utilities ingest chain (utility portal + submeter). CORRECTED 2026-08-26
 # (verified this session): "Missing runner" was wrong — runner exists in the Brain at
@@ -296,13 +316,13 @@ deryl-ingest             | waiting-on-port | 86400   | bash "$(python3 "$LIFEHAC
 # both ingest scripts ran --dry-run cleanly, reconcile=OK, ZERO writes. Its own header still lists
 # two unmet prerequisites (keychain env-fallback code, Enver's one-time utility-portal keychain export)
 # before a live run is safe.
-cp-utilities             | waiting-on-port | 86400   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/deryl/tools/cp-utilities/cp-utilities-run.sh"
+cp-utilities | waiting-on-port | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/deryl/tools/cp-utilities/cp-utilities-run.sh"
 #
 # emporia: carriage-house electric submeter ingest. CORRECTED 2026-08-26 (verified this session):
 # "Missing runner" was wrong — runner exists in the Brain at desks/deryl/tools/emporia/
 # emporia-run.sh. RUN THIS SESSION: `EMPORIA_DRYRUN=1` — exit 0, ran --dry-run cleanly, plausible
 # reading, ZERO writes. Its own header still lists the same two open prerequisites as cp-utilities.
-emporia                  | waiting-on-port | 86400   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/deryl/tools/emporia/emporia-run.sh"
+emporia | waiting-on-port | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/deryl/tools/emporia/emporia-run.sh"
 #
 # emily-breakdown: Emily desk audition-ingest cron slot. CORRECTED 2026-08-26 (verified this
 # session): "Missing runner" was wrong — runner exists in the Brain at
@@ -312,7 +332,7 @@ emporia                  | waiting-on-port | 86400   | bash "$(python3 "$LIFEHAC
 # confirmed both the skill file and notify-send.sh resolved to [exists: NO] under that hardcoded
 # path. Genuine wiring defect in the Brain-resident runner itself, out of this row's scope to fix.
 # ⚠ enable-recommend NO until that path is corrected.
-emily-breakdown          | waiting-on-port | 300     | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/emily/tools/emily-breakdown/emily-breakdown-run.sh"
+emily-breakdown | waiting-on-port | 300 | TBD | TBD | TBD | 0 | TBD | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/emily/tools/emily-breakdown/emily-breakdown-run.sh"
 #
 # token-burn-mine: cost-trend Hospital finding mined from the existing transcript corpus.
 # CORRECTED 2026-08-26 (verified this session): "Missing runner" was wrong — it exists, parked at
@@ -324,13 +344,13 @@ emily-breakdown          | waiting-on-port | 300     | bash "$(python3 "$LIFEHAC
 # cleanly, correct aggregate table, no transcript content leaked. The PYTHONPATH prefix below is a
 # workaround for the parked location, not a fix — once properly wired into system/tools/ (out of
 # this row's scope today) the prefix becomes unnecessary.
-token-burn-mine          | waiting-on-port | 86400   | PYTHONPATH="$LIFEHACK_CODE_ROOT/system/tools" python3 "$LIFEHACK_CODE_ROOT/system/parked/2026-08-23-donor-spillover/system/tools/token_burn_mine.py"
+token-burn-mine | waiting-on-port | 86400 | TBD | TBD | TBD | 0 | TBD | PYTHONPATH="$LIFEHACK_CODE_ROOT/system/tools" python3 "$LIFEHACK_CODE_ROOT/system/parked/2026-08-23-donor-spillover/system/tools/token_burn_mine.py"
 #
 # obsidian-reindex: machine-local vault index rebuild (single-instance lock + watchdog in donor).
 # CORRECTED 2026-08-26 (verified this session): "Missing runner" was wrong — the runner exists in
 # this repo at system/tools/obsidian-reindex.sh with the lock + watchdog intact. RUN THIS SESSION:
 # exit 0 (ran to completion, no scandir/timeout errors).
-obsidian-reindex         | waiting-on-port | 21600   | bash "$LIFEHACK_CODE_ROOT/system/tools/obsidian-reindex.sh"
+obsidian-reindex | waiting-on-port | 21600 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/obsidian-reindex.sh"
 #
 # mirror-fetch: M14 — the scheduled fetch that keeps mirror_line.sh's (M9/M13) "behind" and
 # "ahead" figures honest. mirror_line.sh reads only local refs by contract (a session-start line
@@ -338,10 +358,10 @@ obsidian-reindex         | waiting-on-port | 21600   | bash "$LIFEHACK_CODE_ROOT
 # FETCH ONLY: git fetch origin --prune against THIS clone (never pull/merge/checkout, never
 # touches a working tree or a local branch) — a REPORT, not a gate, per SOP §9. Hourly cadence:
 # frequent enough that "behind" stays close to true without hammering the remote on every tick.
-mirror-fetch       | off | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/mirror-fetch-run.sh"
+mirror-fetch | off | 3600 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/mirror-fetch-run.sh"
 #
 # ── TEMPLATE — copy this row when a new lane wires up a job, then delete the comment. ──────────
-# your-job-name  | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/your-runner.sh"
+# your-job-name  | yes | 3600  | <one-sentence outcome> | <path> ~ <regex> | none | 0 | none | bash "$LIFEHACK_CODE_ROOT/system/tools/your-runner.sh"
 ```
 
 ## The OS-level schedule — installed by `install-schedulers.sh`

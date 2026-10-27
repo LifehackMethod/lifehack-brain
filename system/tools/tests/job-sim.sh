@@ -169,7 +169,8 @@ class World:
         self.nlog, self.manifest = f"{d}/notify.log", f"{d}/jobs.md"
         for p in (self.state, f"{self.sim}/mode", f"{self.sim}/out", self.home): os.makedirs(p)
         open(self.nlog, "w").close()
-        rows = "".join(f'{n} | yes | {p} | bash "$LIFEHACK_CODE_ROOT/system/tools/tests/job-sim-stub.sh" {n}\n'
+        rows = "".join(f'{n} | yes | {p} | sim stub wrote its output | $JOB_SIM_DIR/out/{n} ~ ^ran {n} at | none | 0 | none | '
+                       f'bash "$LIFEHACK_CODE_ROOT/system/tools/tests/job-sim-stub.sh" {n}\n'
                        for n, p in jobs)
         open(self.manifest, "w").write("# throwaway manifest\n```jobs\n" + rows + "```\n")
         self.jobs = jobs
@@ -505,6 +506,7 @@ def main():
         sfut = [(name, ex.submit(play_t0, name, jobs, t0, ticks)) for name, jobs, t0, ticks in sc]
         ffut = [ex.submit(run_fuzz, rep) for rep in range(FUZZ_N)]
         rows = [(name, f.result()) for name, f in sfut]
+        rows.append(("row-contract", row_contract()))
         fz = [f.result() for f in ffut]
     bad = 0
     print(f"{'scenario':<38} | {'ticks':>5} | result")
@@ -541,6 +543,32 @@ def main():
     if el >= BUDGET:
         print(f"MISS runtime over the {BUDGET:g} s budget"); bad += 1
     return 1 if bad else 0
+
+
+def row_contract():
+    """5.1: a row carries its contract. A check that does not match -> exit 1 and no last-success; a row with no
+    check -> exit 1 'no output check declared'; a matching check -> exit 0 (control, so the first two are not vacuous)."""
+    jobs = [("sim-a", P), ("sim-b", P), ("sim-c", P)]
+    w, fails, t = World(jobs), [], BASE + 12 * 3600
+    stub = 'bash "$LIFEHACK_CODE_ROOT/system/tools/tests/job-sim-stub.sh"'
+    try:
+        rows = (f"sim-a | yes | {P} | o | $JOB_SIM_DIR/out/sim-a ~ ^this line never appears$ | none | 0 | none | {stub} sim-a\n"
+                f"sim-b | yes | {P} | o |  | none | 0 | none | {stub} sim-b\n"
+                f"sim-c | yes | {P} | o | $JOB_SIM_DIR/out/sim-c ~ ^ran sim-c at | none | 0 | none | {stub} sim-c\n")
+        open(w.manifest, "w").write("# row-contract manifest\n```jobs\n" + rows + "```\n")
+        for j in ("sim-a", "sim-b", "sim-c"): w.set_mode(j, "ok")
+        rc = {j: w.run_job(j, "cal", t) for j in ("sim-a", "sim-b", "sim-c")}
+        if rc["sim-a"] != 1: fails.append(f"row-contract: non-matching check exited {rc['sim-a']}, expected 1")
+        if w.ls_mtime("sim-a") is not None: fails.append("row-contract: non-matching check stamped last-success")
+        if "output check failed" not in w.read("sim-a", "last-run"): fails.append("row-contract: sim-a reason is not 'output check failed'")
+        if rc["sim-b"] != 1: fails.append(f"row-contract: no-check row exited {rc['sim-b']}, expected 1")
+        if w.ls_mtime("sim-b") is not None: fails.append("row-contract: no-check row stamped last-success")
+        if "no output check declared" not in w.read("sim-b", "last-run"): fails.append("row-contract: sim-b reason is not 'no output check declared'")
+        if rc["sim-c"] != 0: fails.append(f"row-contract: matching check exited {rc['sim-c']}, expected 0")
+        if w.ls_mtime("sim-c") is None: fails.append("row-contract: matching check did not stamp last-success")
+        return 3, fails, ([], [])
+    finally:
+        w.close()
 
 
 def play_t0(name, jobs, t0, ticks):

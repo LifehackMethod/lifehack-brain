@@ -3,7 +3,7 @@
 #
 # WHY: "ran" is not "succeeded." Dead end [F2] — a script exiting 0 on a skip, an absent input or a
 # swallowed error — failed 166 times, the most expensive mistake in this system's history. This
-# wrapper is where a job's exit 0 is earned: the job's own command runs, then a PER-JOB OUTPUT CHECK
+# wrapper is where a job's exit 0 is earned: the job's own command runs, then the OUTPUT CHECK DECLARED IN ITS ROW
 # must pass before last-success is stamped. A job with no declared output check can never succeed.
 #
 # HOW IT IS CALLED: by one launchd LaunchAgent per job (install-schedulers.sh), whose launch line is
@@ -147,7 +147,8 @@ finish() {
   exit "$rc"
 }
 
-# ── 1) the job's row in the manifest's ```jobs block: name | enabled | interval | command ──
+# ── 1) the job's row in the manifest's ```jobs block:
+#    name | enabled | interval | outcome | check | model | budget | source | command  (command LAST: it may hold `|`) ──
 ROW="$(awk -v j="$JOB" '
   /^```jobs[[:space:]]*$/ {inb=1; next}
   inb && /^```[[:space:]]*$/ {inb=0}
@@ -156,52 +157,53 @@ ROW="$(awk -v j="$JOB" '
     if (n == j) { print; exit }
   }' "$MANIFEST" 2>/dev/null)"
 [ -n "$ROW" ] || finish 1 "no row named '$JOB' in the jobs block of $MANIFEST"
-IFS='|' read -r _ ENABLED INTERVAL CMD <<< "$ROW"
+IFS='|' read -r _ ENABLED INTERVAL OUTCOME CHECK MODEL BUDGET SOURCE CMD <<< "$ROW"
 ENABLED="$(echo "$ENABLED" | tr -d '[:space:]')"
 INTERVAL="$(echo "$INTERVAL" | tr -d '[:space:]')"
 CMD="$(echo "$CMD" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
+CHECK="$(echo "$CHECK" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
+SOURCE="$(echo "$SOURCE" | tr -d '[:space:]')"
 case "$INTERVAL" in ''|*[!0-9]*) finish 1 "interval '$INTERVAL' is not a number of seconds" ;; esac
+[ -n "$CMD" ] || [ "$ENABLED" != yes ] || finish 1 "row has no command (is it an old 4-column row? the contract columns are required)"
 [ "$ENABLED" = yes ] || finish 75 "row is '$ENABLED' in the manifest, not 'yes' — stood down"
 
 # ── 2) per-job declarations: what credentials it needs, how long it may run, what it promises ──
+# NEEDS comes from the row's `source` (5.1): gmail -> the gws credentials. WATCHDOG stays per job until 5.3.
 NEEDS=""; WATCHDOG=3600
+case "$SOURCE" in gmail) NEEDS="gws" ;; esac
 case "$JOB" in
-  email-summary-write) NEEDS="gws"; WATCHDOG=1200 ;;
-  # TEST-ONLY (self-monitoring 2.0 rig): "sim-*" jobs run a stub and need nothing. Honoured ONLY while
+  email-summary-write) WATCHDOG=1200 ;;
+  # TEST-ONLY (self-monitoring 2.0 rig): "sim-*" jobs get a short watchdog. Honoured ONLY while
   # LIFEHACK_STATE_DIR is set (a throwaway state root), so it can never act on production state.
-  sim-*) [ -n "${LIFEHACK_STATE_DIR:-}" ] && { NEEDS=""; WATCHDOG=60; } ;;
+  sim-*) [ -n "${LIFEHACK_STATE_DIR:-}" ] && WATCHDOG=60 ;;
 esac
 # Test seam (kill-one-job, plan 2.3): a by-hand run may shorten the watchdog. launchd never sets it.
 case "${JOB_RUN_WATCHDOG:-}" in ''|*[!0-9]*) ;; *) WATCHDOG="$JOB_RUN_WATCHDOG" ;; esac
 
-# Each check returns 0 only if the job's promised output is there AND newer than $START_MARK.
-# The reason for a failure goes to stdout (the log). A job without a check never succeeds.
-check_email_summary_write() {
-  # write_v2 SKIPS unchanged threads, so a quiet period writes nothing into threads-v2/ — a file
-  # there is not a per-run promise. And write_v2 exits 0 on a HARD-STOP and when every label lists
-  # zero threads. The run's own worklog is the honest receipt: newer than this run, carrying the
-  # DONE summary, having seen at least one thread.
-  local wl="$HOME/.local/share/lifehack/email-summary-write/last-write.log" done_line w u e
-  [ -f "$wl" ] || { echo "[check] worklog missing: $wl"; return 1; }
-  [ "$wl" -nt "$START_MARK" ] || { echo "[check] worklog not written by this run: $wl"; return 1; }
-  done_line="$(grep 'v2 write DONE' "$wl" | tail -1)"
-  [ -n "$done_line" ] || { echo "[check] no 'v2 write DONE' line — write_v2 stopped early (HARD-STOP?)"; return 1; }
-  w="$(echo "$done_line" | sed -nE 's/.*written=([0-9]+).*/\1/p')"
-  u="$(echo "$done_line" | sed -nE 's/.*unchanged=([0-9]+).*/\1/p')"
-  e="$(echo "$done_line" | sed -nE 's/.*errors=([0-9]+).*/\1/p')"
-  if [ $(( ${w:-0} + ${u:-0} )) -lt 1 ]; then
-    echo "[check] zero threads seen (written=${w:-?} unchanged=${u:-?} errors=${e:-?}) — an empty result is not a success"
-    return 1
-  fi
-  echo "[check] ok: written=$w unchanged=$u errors=${e:-0}"
+# The output check is READ FROM THE ROW (5.1): `check` = `<path> ~ <extended regex>`. It passes only if <path> exists,
+# its mtime is newer than $START_MARK (this run's start), and some line of it matches the regex (grep -E). $HOME,
+# ${HOME}, $LIFEHACK_CODE_ROOT, $JOB_SIM_DIR and a leading ~ are expanded in <path>. The reason for a failure goes to
+# stdout (the log). A row with an empty / TBD check never succeeds. Returns 0 pass, 1 fail, 3 no check declared.
+expand_path() {
+  local p="$1"
+  p="${p//\$\{HOME\}/$HOME}"; p="${p//\$HOME/$HOME}"
+  p="${p//\$LIFEHACK_CODE_ROOT/${LIFEHACK_CODE_ROOT:-}}"; p="${p//\$JOB_SIM_DIR/${JOB_SIM_DIR:-}}"
+  case "$p" in "~"|"~/"*) p="$HOME${p#\~}" ;; esac
+  printf '%s' "$p"
 }
-
-# TEST-ONLY: the sim-* output check — passes only if the stub's output file is newer than the run start.
-check_sim_stub() {
-  local out="${JOB_SIM_DIR:-/nonexistent}/out/$JOB"
-  [ -f "$out" ] || { echo "[check] sim output missing: $out"; return 1; }
-  [ "$out" -nt "$START_MARK" ] || { echo "[check] sim output not newer than run start: $out"; return 1; }
-  echo "[check] ok: sim output fresh"
+run_row_check() {
+  local path re hit
+  case "$CHECK" in ''|TBD) return 3 ;; esac
+  case "$CHECK" in *" ~ "*) ;; *) echo "[check] malformed check (want '<path> ~ <regex>'): $CHECK"; return 1 ;; esac
+  path="$(echo "${CHECK%% ~ *}" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
+  re="$(echo "${CHECK#* ~ }" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
+  [ -n "$path" ] && [ -n "$re" ] || { echo "[check] malformed check (empty path or regex): $CHECK"; return 1; }
+  path="$(expand_path "$path")"
+  [ -f "$path" ] || { echo "[check] output file missing: $path"; return 1; }
+  [ "$path" -nt "$START_MARK" ] || { echo "[check] output file not written by this run: $path"; return 1; }
+  hit="$(grep -E -e "$re" "$path" 2>/dev/null | tail -1)"
+  [ -n "$hit" ] || { echo "[check] no line of $path matches /$re/"; return 1; }
+  echo "[check] ok: $hit"
 }
 
 # ── 3) --if-overdue ──
@@ -268,10 +270,9 @@ case "$RC" in
 esac
 
 # ── 7) output check, then — and only then — last-success ──
-FN="check_$(echo "$JOB" | tr '-' '_')"
-case "$JOB" in sim-*) [ -n "${LIFEHACK_STATE_DIR:-}" ] && FN=check_sim_stub ;; esac   # TEST-ONLY
-declare -F "$FN" >/dev/null || finish 1 "no output check declared for '$JOB' — exit 0 alone is never a success"
-"$FN" || finish 1 "output check failed"
+run_row_check; _crc=$?
+[ "$_crc" -ne 3 ] || finish 1 "no output check declared for '$JOB' — exit 0 alone is never a success"
+[ "$_crc" -eq 0 ] || finish 1 "output check failed"
 iso_now > "$STATE/last-success"
 stamp "$STATE/last-success"
 finish 0 "output check passed"

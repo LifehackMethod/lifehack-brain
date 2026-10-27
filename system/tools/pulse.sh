@@ -351,7 +351,7 @@ while IFS= read -r line || [ -n "$line" ]; do
   [ "$in_block" -eq 1 ] || continue
   case "$line" in ''|\#*) continue;; esac
 
-  IFS='|' read -r name enabled interval cmd <<< "$line"
+  IFS='|' read -r name enabled interval _outcome _check _model _budget _source cmd <<< "$line"   # 5.1: command is LAST
   name=$(trim "$name"); enabled=$(trim "$enabled"); interval=$(trim "$interval"); cmd=$(trim "$cmd")
   [ -n "$name" ] || continue
 

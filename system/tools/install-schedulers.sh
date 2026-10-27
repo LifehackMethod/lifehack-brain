@@ -142,7 +142,7 @@ install_mac_launchd() {
   local uid; uid="$(id -u)"
   local state_root="$HOME/.config/lifehack/state/jobs"
 
-  # --- parse the ```jobs``` block: name | enabled | interval | command ---
+  # --- parse the ```jobs``` block: name | enabled | interval | outcome | check | model | budget | source | command ---
   local -a names=() ivals=()
   local in=0 fence_seen=0 line name enabled interval cmd
   while IFS= read -r line || [ -n "$line" ]; do
@@ -151,7 +151,7 @@ install_mac_launchd() {
     if [ "$in" -eq 1 ] && [ "$line" = '```' ]; then in=0; continue; fi
     [ "$in" -eq 1 ] || continue
     case "$line" in ''|\#*) continue;; esac
-    IFS='|' read -r name enabled interval cmd <<< "$line"
+    IFS='|' read -r name enabled interval _outcome _check _model _budget _source cmd <<< "$line"
     name="$(trim "$name")"; enabled="$(trim "$enabled")"; interval="$(trim "$interval")"
     [ -n "$name" ] || continue
     [ "$enabled" = "yes" ] || continue

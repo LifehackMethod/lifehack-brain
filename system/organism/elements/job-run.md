@@ -43,14 +43,14 @@ never succeed.
    launch line itself failed. If `launch.err` is non-empty, its text is copied into the log and it is
    cleared: reaching this line proves the pointer works again.
 2. **Row lookup.** The job's row in the ```jobs block of the manifest (awk on the fence;
-   `name | enabled | interval | command`). No row: exit 1. Interval not a number: exit 1. `enabled`
+   `name | enabled | interval | outcome | check | model | budget | source | command`, command last). No row: exit 1. Interval not a number: exit 1. `enabled`
    not `yes`: exit 75 "stood down".
-3. **Per-job declarations.** `NEEDS` (credentials: `email-summary-write` needs `gws`) and `WATCHDOG`
-   seconds (default 3600; email 1200). Then the **output check** is looked up as
-   `check_<job with - as _>`. `check_email_summary_write` passes only if the run's own worklog is newer
-   than the run start, carries the `v2 write DONE` line, and saw at least one thread
-   (`written + unchanged >= 1`): write_v2 skips unchanged threads and exits 0 on a hard stop, so an
-   empty result is not a success.
+3. **Per-job declarations.** `NEEDS` comes from the row's `source` (`gmail` -> `gws`); `WATCHDOG`
+   seconds (default 3600; email 1200). The **output check** is read from the row's `check` column,
+   `<path> ~ <extended regex>`: it passes only if the file exists, is newer than the run start, and some
+   line matches. An empty or `TBD` check exits 1 "no output check declared". email-summary-write's check
+   requires its worklog to carry `v2 write DONE` with `written` or `unchanged` of at least 1: write_v2
+   skips unchanged threads and exits 0 on a hard stop, so an empty result is not a success.
 4. **`--if-overdue`.** Only when `last-success` exists: run if its age is at least one period minus a
    grace of `INTERVAL/10` capped at 1800 s; otherwise exit 75 "not overdue" WITHOUT recording
    `last-run`. launchd gives a plist one argument list, so the scheduled fire and `RunAtLoad` cannot

@@ -589,7 +589,7 @@ the freshness and deadman jobs, and the rest) are RETIRED with their runners. Th
 on hold, not deleted, pending the operator's ruling.
 
 **The ONE-ROW-PER-JOB rule.** Every job is exactly one row of the ```jobs block in `system/pulse-config.md`
-(`name | enabled | interval_seconds | command`). One row = one launchd agent = one state folder = one output check. Never
+(`name | enabled | interval_seconds | outcome | check | model | budget | source | command`). One row = one launchd agent = one state folder = one output check. Never
 chain two unrelated jobs into one row's command, and never schedule a job anywhere else (no private crontab line, no
 hand-written plist): the row is the only place a job exists, and the installer generates everything else from it.
 

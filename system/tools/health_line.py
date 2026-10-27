@@ -15,7 +15,7 @@ health_line.py — the ONE-LINE job-health line printed first in every session.
 #      5. otherwise                          -> "jobs: <n> OK"
 #      Never raises, never exits nonzero. On an internal error: "job health: could not read (<reason>)".
 #      Pure stdlib, local files only (no Drive, no subprocess): finishes in a few ms.
-# INPUTS: ENABLED rows of the ```jobs block in system/pulse-config.md (name | enabled | interval | cmd;
+# INPUTS: ENABLED rows of the ```jobs block in system/pulse-config.md (name | enabled | interval | outcome | check | model | budget | source | cmd;
 #      '#' = comment; parsed the same way job-run.sh's awk does). Period = 3rd column, seconds.
 #      Overrides (for fixtures): argv[1]=state dir, argv[2]=manifest; or env LIFEHACK_JOBS_STATE_DIR /
 #      LIFEHACK_JOBS_MANIFEST. Defaults: ~/.config/lifehack/state/jobs and <script>/../pulse-config.md.
