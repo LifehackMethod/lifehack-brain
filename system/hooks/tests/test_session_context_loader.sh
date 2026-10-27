@@ -200,5 +200,53 @@ R="$(python3 "$HLPY" "$SANDBOX/st" "$SANDBOX/man.md")"
 [ "$R" = "never ran: j1, j2" ] && ok || bad "never ran is never OK" "got: $R"
 
 echo ""
+echo "── 3.3: the code-root pointer is only written by a root that carries job-run.sh ──"
+# Each case gets its own throwaway HOME under the sandbox — never the real one. CLAUDE_PLUGIN_ROOT
+# points at a temp dir that holds only system/tools/job-run.sh, while the REAL loader file runs.
+CR_FAKE="$SANDBOX/cr-with"; mkdir -p "$CR_FAKE/system/tools"; : > "$CR_FAKE/system/tools/job-run.sh"
+CR_BARE="$SANDBOX/cr-without"; mkdir -p "$CR_BARE/system/tools"
+cr_run() { # $1=HOME $2=CLAUDE_PLUGIN_ROOT ("" = unset)
+  if [ -n "$2" ]; then
+    OUT="$(env HOME="$1" LIFEHACK_ROOT="$NOTES" CLAUDE_PLUGIN_ROOT="$2" bash "$LOADER" 2>&1)"; RC=$?
+  else
+    OUT="$(env -u CLAUDE_PLUGIN_ROOT HOME="$1" LIFEHACK_ROOT="$NOTES" bash "$LOADER" 2>&1)"; RC=$?
+  fi
+}
+# 1. ALLOW: a root with job-run.sh is written
+H1="$SANDBOX/cr-h1"; mkdir -p "$H1"
+cr_run "$H1" "$CR_FAKE"
+[ "$(cat "$H1/.config/lifehack/code-root" 2>/dev/null)" = "$CR_FAKE" ] && ok || bad "code-root: root with job-run.sh" "pointer not written with the root"
+[ "$RC" = 0 ] && ok || bad "code-root: write: exit code" "expected 0, got $RC"
+# 2. the release-path guard: a root WITHOUT job-run.sh leaves an existing pointer alone
+H2="$SANDBOX/cr-h2"; mkdir -p "$H2/.config/lifehack"; printf '%s\n' "$CR_FAKE" > "$H2/.config/lifehack/code-root"
+cr_run "$H2" "$CR_BARE"
+[ "$(cat "$H2/.config/lifehack/code-root" 2>/dev/null)" = "$CR_FAKE" ] && ok || bad "code-root: root without job-run.sh" "pointer was overwritten by a root that cannot run jobs"
+[ "$RC" = 0 ] && ok || bad "code-root: guard: exit code" "expected 0, got $RC"
+# 3. no CLAUDE_PLUGIN_ROOT: nothing created
+H3="$SANDBOX/cr-h3"; mkdir -p "$H3"
+cr_run "$H3" ""
+[ ! -e "$H3/.config/lifehack/code-root" ] && ok || bad "code-root: no plugin root" "a pointer was created anyway"
+[ "$RC" = 0 ] && ok || bad "code-root: unset: exit code" "expected 0, got $RC"
+# 4. unwritable config dir: exit 0, normal context, no .tmp left (POSIX chmod only; root bypasses it)
+if [ "$(id -u)" = "0" ] || [ "$_IS_POSIX_CHMOD" = 0 ]; then
+  echo "  (skipped: chmod does not block writes here — assertion would be vacuous)"
+else
+  H4="$SANDBOX/cr-h4"; mkdir -p "$H4/.config/lifehack"; chmod 555 "$H4/.config/lifehack"
+  cr_run "$H4" "$CR_FAKE"
+  chmod 755 "$H4/.config/lifehack"
+  [ "$RC" = 0 ] && ok || bad "code-root: unwritable dir: exit code" "expected 0, got $RC"
+  says "one L" && ok || bad "code-root: unwritable dir" "the normal context was not printed"
+  [ -z "$(ls "$H4/.config/lifehack" | grep 'tmp')" ] && ok || bad "code-root: unwritable dir" "a .tmp file was left behind"
+  [ ! -e "$H4/.config/lifehack/code-root" ] && ok || bad "code-root: unwritable dir" "pointer exists despite unwritable dir"
+fi
+# 5. already equal: no rewrite (mtime unchanged)
+H5="$SANDBOX/cr-h5"; mkdir -p "$H5/.config/lifehack"; printf '%s\n' "$CR_FAKE" > "$H5/.config/lifehack/code-root"
+touch -t 200001010000 "$H5/.config/lifehack/code-root"
+M0="$(stat -f %m "$H5/.config/lifehack/code-root" 2>/dev/null || stat -c %Y "$H5/.config/lifehack/code-root")"
+cr_run "$H5" "$CR_FAKE"
+M1="$(stat -f %m "$H5/.config/lifehack/code-root" 2>/dev/null || stat -c %Y "$H5/.config/lifehack/code-root")"
+[ "$M0" = "$M1" ] && ok || bad "code-root: pointer already equal" "file was rewritten (mtime $M0 -> $M1)"
+
+echo ""
 echo "RESULT: $pass passed, $fail failed."
 [ "$fail" = 0 ] && echo "SESSION CONTEXT GREEN" || exit 1
