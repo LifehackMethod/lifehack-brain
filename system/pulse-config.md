@@ -133,72 +133,11 @@ That severity difference is real, so the loop stays with its callers.
 ```jobs
 # name           | enabled | interval | command
 #
-# system-health: THE MISSED-RUN SWEEPER (dead-man's-switch). Reads this manifest x the
-# state/status/_pulse.json heartbeat x every state/status/*.json tile -> writes
-# state/status/_system-health.json (need_attention[] + groups{}). Catches a job that SHOULD have
-# fired and didn't. Also runs health_invariants.py (hooks present / guards untampered / clone fresh
-# / coverage complete) and folds its findings in. 5-min cadence (same as Pulse itself, so a missed
-# run is caught within one tick of it happening).
 # 2026-10-27 self-monitoring Sprint 1: only email-summary-write is enabled; rows below set off (were yes), restored in later sprints.
-system-health    | off | 300   | bash "$LIFEHACK_CODE_ROOT/system/tools/system-health-run.sh"
+# 2026-10-27 self-monitoring 3.1: the watcher rows (system-health, sentinel-health, planning-health, backlog-health,
+# fault-proposer, item-store-freshness, email-summary-freshness, helm-keepalive, marc-deadman, clair-health,
+# deryl-books-health, dobby-health, recommend) were removed with their runners; git history has them.
 #
-# sentinel-health: rolls system/logs/sentinel-events.jsonl -> state/status/sentinel.json on its own
-# cadence, independent of any per-item check firing (so the tile's last_run doesn't go stale just
-# because nothing happened to get scanned for hours). READ-ONLY, local jsonl only. 30-min cadence.
-sentinel-health  | off | 1800  | bash "$LIFEHACK_CODE_ROOT/system/tools/sentinel-health-run.sh"
-#
-# planning-health: READ-ONLY calendar check (conflicts + unconfirmed invites, 7-day forward window).
-# Degrades cleanly (rc=75, "stood down") when config/cal.md has no calendar id configured yet — see
-# shared/cal_config.py. (Those two names stay `cal` on purpose: they are the CALENDAR-identifier
-# config, shared with the calendar write guards — not the renamed planning desk.)
-# CORRECTED: the line below used to call planning-health.py directly — the comment here previously
-# said "No *-run.sh wrapper exists yet for this job... calls the checker directly," which is the
-# root cause of a real recurring failure: invoked bare, the job inherits the scheduler's bare
-# environment with no GOOGLE_WORKSPACE_CLI_* vars exported, so every gws call fails with
-# `error[auth]: Access denied. No credentials provided.` even though the credential itself is
-# alive — calendar-store-sync and tasks-store-sync never hit this because they already source
-# gws-auth.lib.sh via their own *-run.sh wrappers. This repo already ships
-# system/tools/planning-health-run.sh (verified: it sources gws-auth.lib.sh at line 35 and exports
-# those vars before invoking the checker) — the manifest below just wasn't calling it. 6h cadence,
-# unchanged.
-planning-health  | off | 21600 | bash "$LIFEHACK_CODE_ROOT/system/tools/planning-health-run.sh"
-#
-# backlog-health: emits state/status/backlog.json from the read-only backlog groom engine
-# (backlog_groom.py). CORRECTED 2026-08-14: that engine landed in the SAME commit as this file
-# (8aeda8f) — the line here previously claiming it "has not landed in this repo yet" was stale on
-# arrival, never true even at the moment it was written. Verified this session: `python3
-# system/tools/backlog-health.py` imports backlog_groom cleanly and runs the real report (not the
-# "not present yet" NEEDS_REVIEW fallback) — on a fresh clone it currently reports "not configured
-# - no debt ledger, desk backlogs, or legacy swamp file found yet", which is a DATA-level gap
-# (nothing to scan yet), not an import failure. (backlog-health.py's own header docstring carries
-# the same stale claim; out of scope for this file to fix.) Same no-wrapper note as planning-health
-# above. 6h cadence.
-backlog-health   | off | 21600 | python3 "$LIFEHACK_CODE_ROOT/system/tools/backlog-health.py"
-#
-# fault-proposer: the FIRST machine reader of this repo's failure signals — grades open faults
-# INSTANCE/SUBSYSTEM/ORGANISM, cites the evidence that chose the altitude, and REFUSES to emit
-# anything it cannot cite (a refusal is exit 0 — a correct outcome, not a failure; see
-# fault-proposer-run.sh's own exit-code contract). READ-ONLY: writes only its own proposal text +
-# a machine-local status artifact (+ a best-effort tile if a notes root is configured); no gws, no
-# notes-root requirement to RUN, no claude -p (confirmed absent from fault_proposer.py). Its own
-# header sizes itself as "daily cadence + 6h slack before it alarms" (STALE_AFTER_HOURS=30) — this
-# row honors that literally. 1-day cadence.
-fault-proposer          | off | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/fault-proposer-run.sh"
-#
-# item-store-freshness: dead-man for state/item-store/{tasks,calendar}/ — LOCAL files only, no
-# gws, no auth, independent of the tasks/calendar writers so it still fires and pages even if a
-# writer silently stops producing. Exit 0 on BOTH ok and ERROR (the tile carries the signal, never
-# the exit code) — ERROR routes to a governor-gated phone push. Its own header sizes itself at
-# STALE_AFTER_HOURS=4, "Pulse cadence ~ hourly" — this row honors that literally. 1h cadence.
-item-store-freshness    | off | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/item-store-freshness-run.sh"
-#
-# email-summary-freshness: dead-man for the v2 faithful-thread store (state/email-summary/
-# threads-v2/) — LOCAL files only, no gws, no auth, independent of the write-cadence job below so
-# it still fires even if writing is down/disabled/unwired. Exit 0 on both UP and DEGRADED (tile
-# carries the signal); DEGRADED routes to a governor-gated phone push (normal priority — quiet
-# hours hold). Its own header sizes itself at STALE_AFTER_HOURS=6, "Pulse cadence ~ hourly" — this
-# row honors that literally. 1h cadence.
-email-summary-freshness | off | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/email-summary-freshness-run.sh"
 #
 # ── The next three refresh Google-backed stores (calendar item-store, tasks item-store, v2 email
 #    thread-store) — LIVE as of 2026-08-14, having just cleared the ONE verified defect that kept
@@ -300,35 +239,6 @@ planning-weekly-prime | off | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/pla
 # matches the runner's own STALE_AFTER_HOURS=192 (168h weekly + 24h slack) header.
 guard-fire-test    | off | 604800 | bash "$LIFEHACK_CODE_ROOT/system/tools/guard-fire-test-run.sh"
 #
-# NOT ADDED: shared/tools/email_summary_run.sh (the older v1-shaped watchdog wrapper). Not parked,
-# not given a row at all — two independent reasons, both verified this session. (1) It passes its
-# args straight through to email_summary_sync.py with NO action flag added; that janitor is
-# v2-only and has "no legacy default run mode" (its own main(), read directly: no flag set -> 
-# ap.print_help() + return 1) — a bare/scheduled call ALWAYS returns rc=1 on EVERY machine,
-# Google-configured or not, 100% of the time, which is worse than the three parked rows above (at
-# least those succeed once configured). (2) Even patched with --write-v2 in its command string, it
-# would duplicate email-summary-write-run.sh above while lacking that wrapper's isolated
-# gws-credentials handling and single-instance lock — a bare `gws` call from this script would hit
-# the interactive keychain a headless/cron context cannot unlock (per the sibling runners' own
-# comments), risking a hang rather than a clean failure. Superseded, not summoned.
-#
-#
-# ── Cowork-desk rows, ported from ClaudeOps' divergent copy of this file (commit 6079d32,
-#    "Expand pulse-config crontab coverage"), 2026-08-26 — CORRECTED on arrival. That copy's
-#    comments claimed every runner below was "NOT PORTED" / had a "Missing runner"; this session
-#    verified each one against the actual Brain-resident and repo-resident tree and found 16 of 16
-#    of those claims WRONG — every runner listed below already exists and was executed this
-#    session (exit codes recorded per row). Left at `waiting-on-port` (never `yes`): flipping
-#    `enabled` is not this lane's call (Enver's ruling, recorded at the hook-doc-lint row above).
-#
-# helm-keepalive: keeps the Helm dashboard server up. CORRECTED 2026-08-26 (verified this session):
-# the prior comment was WRONG on both counts — it claimed the runner AND the whole `helm/` app
-# directory were absent from this clone. Neither is true: `helm/app/healthcheck.sh` exists in the
-# Brain (not the repo) at $NOTES_ROOT/helm/app/healthcheck.sh — idempotent (:8080 alive-check,
-# launches server.py only if down), local-only, no external side effects. RUN THIS SESSION: exit 0
-# (already alive or started clean).
-helm-keepalive           | waiting-on-port | 300     | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/helm/app/healthcheck.sh"
-#
 # marc-health: mechanical market-data health chain (no LLM). CORRECTED 2026-08-26 (verified this
 # session): "Missing runner" was wrong — the runner exists in the Brain (not the repo) at
 # desks/marc/tools/marc-health/marc-health-run.sh. RUN THIS SESSION: exit 0 (17 equities fetched, 4
@@ -351,30 +261,12 @@ marc-weekly              | waiting-on-port | 86400   | bash "$(python3 "$LIFEHAC
 # research fan-out (real token spend), not a dry no-op. UNVERIFIED-BY-DESIGN, not confirmed working.
 marc-wednesday           | waiting-on-port | 86400   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/marc/tools/marc-wednesday/marc-wednesday-run.sh"
 #
-# marc-deadman: organism dead-man's-switch for Marc's heartbeat. CORRECTED 2026-08-26 (verified
-# this session): "Missing runner" was wrong — runner exists in the Brain at
-# desks/marc/tools/marc-deadman/marc-deadman.py. RUN THIS SESSION: exit 0, heartbeat well within
-# its own staleness window.
-marc-deadman             | waiting-on-port | 10800   | python3 "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/marc/tools/marc-deadman/marc-deadman.py"
-#
-# clair-health: read-only daily consulting billing-tracker check. CORRECTED 2026-08-26 (verified
-# this session): "Missing runner" was wrong — runner exists in the Brain at
-# desks/clair/tools/clair-health/clair-health-run.sh. RUN THIS SESSION: exit 0 (NEEDS_REVIEW tile
-# surfaced unbilled sessions — read-only, zero writes to the billing sheet).
-clair-health             | waiting-on-port | 21600   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/clair/tools/clair-health/clair-health-run.sh"
-#
 # clair-billing: billing/client detail emit + cadence-nudge push. CORRECTED 2026-08-26 (verified
 # this session): "Missing runner" was wrong — runner exists in the Brain at
 # desks/clair/tools/clair-billing/clair-billing-run.sh. RUN THIS SESSION: exit 0 — wrote its two
 # signal files (read-only on Google + local writes only); the push-due branch correctly
 # self-deduped, so no new phone notification fired.
 clair-billing            | waiting-on-port | 21600   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/clair/tools/clair-billing/clair-billing-run.sh"
-#
-# deryl-books-health: read-only nightly books-integrity check. CORRECTED 2026-08-26 (verified this
-# session): "Missing runner" was wrong — runner exists in the Brain at
-# desks/deryl/tools/deryl-books-health/deryl-books-health-run.sh. RUN THIS SESSION: exit 0
-# (NEEDS_REVIEW, warnings only, zero errors — zero writes to the books).
-deryl-books-health       | waiting-on-port | 86400   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/deryl/tools/deryl-books-health/deryl-books-health-run.sh"
 #
 # deryl-ingest: Deryl desk light daily email doorman. CORRECTED 2026-08-26 (verified this
 # session): "Missing runner" was wrong — runner exists in the Brain at
@@ -399,13 +291,6 @@ cp-utilities             | waiting-on-port | 86400   | bash "$(python3 "$LIFEHAC
 # reading, ZERO writes. Its own header still lists the same two open prerequisites as cp-utilities.
 emporia                  | waiting-on-port | 86400   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/deryl/tools/emporia/emporia-run.sh"
 #
-# dobby-health: home-systems tile emit (HA REST reads, mechanical). CORRECTED 2026-08-26 (verified
-# this session): "Missing runner" was wrong — runner exists in the Brain at
-# desks/dobby/tools/dobby-health/dobby-health-run.sh. RUN THIS SESSION: exit 0 — "not Studio — skip"
-# (this job is Studio-hardware-pinned by design; ran clean on this non-Studio machine as the
-# documented no-op, never a failure).
-dobby-health             | waiting-on-port | 21600   | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/dobby/tools/dobby-health/dobby-health-run.sh"
-#
 # emily-breakdown: Emily desk audition-ingest cron slot. CORRECTED 2026-08-26 (verified this
 # session): "Missing runner" was wrong — runner exists in the Brain at
 # desks/emily/tools/emily-breakdown/emily-breakdown-run.sh. RUN THIS SESSION: `DRY_RUN=1` — exit 0,
@@ -415,20 +300,6 @@ dobby-health             | waiting-on-port | 21600   | bash "$(python3 "$LIFEHAC
 # path. Genuine wiring defect in the Brain-resident runner itself, out of this row's scope to fix.
 # ⚠ enable-recommend NO until that path is corrected.
 emily-breakdown          | waiting-on-port | 300     | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/emily/tools/emily-breakdown/emily-breakdown-run.sh"
-#
-# recommend: ground-altitude reasoner between Hospital and a human. CORRECTED 2026-08-26 (verified
-# this session): the prior comment ("only its -run.sh wrapper is missing") was wrong in detail —
-# the wrapper DOES exist, just sitting unwired in
-# system/parked/2026-08-23-donor-spillover/system/tools/recommend-run.sh, not in system/tools/. RUN
-# THIS SESSION at its actual current location: FAILED, exit 1 — its sibling `ingest-run.lib.sh`
-# could not be found. Root cause: the wrapper derives its own code root as two levels up from its
-# own location, correct only if it sits at system/tools/recommend-run.sh — from its current parked
-# nesting that arithmetic lands one level short of the real system/tools/, so every sibling
-# source/python3 call resolves to a directory that does not exist. It cannot be run correctly from
-# where it sits today; moving it into system/tools/ would fix it, but that move is out of scope for
-# this row (another lane owns it). The command below is the CORRECT shape for once it is properly
-# wired — not runnable at its current parked path. ⚠ enable-recommend NO until wired.
-recommend                | waiting-on-port | 86400   | bash "$LIFEHACK_CODE_ROOT/system/tools/recommend-run.sh"
 #
 # token-burn-mine: cost-trend Hospital finding mined from the existing transcript corpus.
 # CORRECTED 2026-08-26 (verified this session): "Missing runner" was wrong — it exists, parked at
@@ -490,12 +361,7 @@ mirror-fetch       | off | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/mirror
 # at fire time — which makes the same manifest correct on every machine and every user account.
 pulse             | */5 * * * *      | PATH=$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin LIFEHACK_CODE_ROOT="$LIFEHACK_CODE_ROOT" bash "$LIFEHACK_CODE_ROOT/system/tools/pulse.sh" >> "${TMPDIR:-/tmp}/lifehack-pulse.log" 2>&1
 #
-# health-deadman: the OUT-OF-BAND watcher for system-health ITSELF. DELIBERATELY its own dedicated
-# scheduled entry, NEVER a Pulse job — dispatching it FROM Pulse would make the sweep the sole
-# witness to its own death; if Pulse wedges, a Pulse-dispatched watchdog wedges with it and the
-# silence would read exactly like health. Hourly: system-health runs every 5 min, so an hour of
-# silence from it is unambiguous without being twitchy.
-health-deadman    | 17 * * * *       | PATH=$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin LIFEHACK_CODE_ROOT="$LIFEHACK_CODE_ROOT" bash "$LIFEHACK_CODE_ROOT/system/tools/health-deadman-check.sh" >> "${TMPDIR:-/tmp}/lifehack-health-deadman.log" 2>&1
+# (2026-10-27 3.1: the health-deadman watcher row was removed with its script, health-deadman-check.sh.)
 ```
 
 ## Why `$LIFEHACK_CODE_ROOT` and not a literal path
