@@ -12,6 +12,10 @@
 # That branch below is NEW DESIGN, not a port: no file in the donor answers "what does a Windows
 # install need," because every install target there was implicitly a Mac.
 #
+# UPDATED 2026-10-27: macOS now installs one launchd LaunchAgent per enabled ```jobs``` row (section 1b,
+# self-monitoring plan §B.1) instead of cron; Linux (crontab) and Windows (schtasks) are unchanged.
+# The cron-on-Mac reasoning below is history for the other two branches.
+#
 # ⛔ A38, ADDRESSED DIRECTLY (found in the donor's own dead-end record, `system/sops/skill-building-
 # sop.md:1207` / `records/logs/2026-05-26-cross-machine-sync-infrastructure.md`): launchd was tried
 # for scheduled jobs once already and FAILED — "blocked by macOS Full Disk Access — 'Operation not
@@ -107,6 +111,135 @@ esac
 # TEST-ONLY override — there is no Windows box in this build environment, so the Windows branch is
 # verified by forcing this rather than by claiming it works unread. Never set outside a test.
 OS="${LIFEHACK_TEST_OS_OVERRIDE:-$OS}"
+
+# ── 1b) macOS — one launchd LaunchAgent per enabled row of the ```jobs``` block ─────────────────
+# (self-monitoring plan §B.1, 2026-10-27.) SUPERSEDES the cron-on-Mac decision in the header above
+# for macOS ONLY: Linux keeps the crontab path and Windows keeps schtasks, both untouched below.
+# Each enabled job gets ~/Library/LaunchAgents/ai.lifehack.<job>.plist whose launch line is
+#   /bin/bash -c 'exec /bin/bash "$(cat "$HOME/.config/lifehack/code-root")/system/tools/job-run.sh" <job> --if-overdue'
+# so no plist carries a code path (the pointer file does). $HOME stays literal for bash to expand.
+# Schedule: StartCalendarInterval derived from the interval; only intervals that are a whole number
+# of hours dividing 86400 are supported — anything else FAILS LOUDLY, nothing is touched.
+# TEST SEAMS: LAUNCHAGENTS_DIR (default ~/Library/LaunchAgents); LIFEHACK_INSTALL_DRY_RUN=1 writes
+# the plists there but skips every launchctl call (and the state-dir mkdir), printing what it would run.
+# Without --install and without LIFEHACK_INSTALL_DRY_RUN=1 this only prints the plan.
+_xml_escape() {
+  local s="$1"
+  s="${s//&/&amp;}"; s="${s//</&lt;}"; s="${s//>/&gt;}"; s="${s//\"/&quot;}"
+  printf '%s' "$s"
+}
+
+install_mac_launchd() {
+  local la_dir="${LAUNCHAGENTS_DIR:-$HOME/Library/LaunchAgents}"
+  local dry=0 apply=0
+  [ "${LIFEHACK_INSTALL_DRY_RUN:-}" = "1" ] && dry=1
+  if [ "$dry" -eq 1 ] || [ "$MODE" = "--install" ]; then apply=1; fi
+  local uid; uid="$(id -u)"
+  local state_root="$HOME/.config/lifehack/state/jobs"
+
+  # --- parse the ```jobs``` block: name | enabled | interval | command ---
+  local -a names=() ivals=()
+  local in=0 fence_seen=0 line name enabled interval cmd
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"
+    if [ "$line" = '```jobs' ]; then in=1; fence_seen=1; continue; fi
+    if [ "$in" -eq 1 ] && [ "$line" = '```' ]; then in=0; continue; fi
+    [ "$in" -eq 1 ] || continue
+    case "$line" in ''|\#*) continue;; esac
+    IFS='|' read -r name enabled interval cmd <<< "$line"
+    name="$(trim "$name")"; enabled="$(trim "$enabled")"; interval="$(trim "$interval")"
+    [ -n "$name" ] || continue
+    [ "$enabled" = "yes" ] || continue
+    names+=("$name"); ivals+=("$interval")
+  done < "$MANIFEST"
+  if [ "$fence_seen" -eq 0 ]; then
+    echo "[install-schedulers] FATAL: the \`\`\`jobs\`\`\` fence was never found in $MANIFEST (CRLF or edited marker?). Nothing was installed." >&2
+    exit 2
+  fi
+
+  # --- validate every enabled row BEFORE touching launchd ---
+  local i bad=0
+  for i in "${!names[@]}"; do
+    name="${names[$i]}"; interval="${ivals[$i]}"
+    if ! [[ "$name" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+      echo "[install-schedulers] FATAL: job name '$name' is not a safe launchd label fragment." >&2; bad=1; continue
+    fi
+    if ! [[ "$interval" =~ ^[0-9]+$ ]] || [ "$interval" -lt 3600 ] || [ $((86400 % interval)) -ne 0 ] || [ $((interval % 3600)) -ne 0 ]; then
+      echo "[install-schedulers] FATAL: job '$name' has interval '$interval'; launchd StartCalendarInterval is only generated for whole-hour intervals that divide 86400 (3600, 7200, 10800, 14400, 21600, 28800, 43200, 86400). Set the row off or extend install_mac_launchd()." >&2
+      bad=1
+    fi
+  done
+  [ "$bad" -eq 0 ] || { echo "[install-schedulers] nothing was changed." >&2; exit 1; }
+
+  echo "[install-schedulers] macOS launchd: ${#names[@]} enabled job(s); agents dir: $la_dir"
+  if [ "$apply" -eq 0 ]; then
+    for i in "${!names[@]}"; do echo "  WOULD WRITE $la_dir/ai.lifehack.${names[$i]}.plist (every ${ivals[$i]}s)"; done
+    echo "[install-schedulers] plan only (re-run with --install to apply)."
+    return 0
+  fi
+
+  _run() { if [ "$dry" -eq 1 ]; then echo "  DRY-RUN would run: $*"; else "$@"; fi; }
+
+  # --- idempotent: bootout every loaded ai.lifehack.* label, delete stale plists ---
+  local label
+  if [ "$dry" -eq 1 ]; then
+    echo "  DRY-RUN would run: launchctl list | (bootout each loaded ai.lifehack.* label)"
+  else
+    while IFS= read -r label; do
+      [ -n "$label" ] || continue
+      launchctl bootout "gui/$uid/$label" >/dev/null 2>&1 || true
+    done < <(launchctl list 2>/dev/null | awk '{print $3}' | grep '^ai\.lifehack\.' || true)
+  fi
+  mkdir -p "$la_dir"
+  rm -f "$la_dir"/ai.lifehack.*.plist
+
+  # --- write, lint, bootstrap ---
+  local plist hours h launch launch_x cal err
+  for i in "${!names[@]}"; do
+    name="${names[$i]}"; interval="${ivals[$i]}"
+    label="ai.lifehack.$name"
+    plist="$la_dir/$label.plist"
+    err="$state_root/$name/launch.err"
+    [ "$dry" -eq 1 ] || mkdir -p "$state_root/$name"
+    launch="exec /bin/bash \"\$(cat \"\$HOME/.config/lifehack/code-root\")/system/tools/job-run.sh\" $name --if-overdue"
+    launch_x="$(_xml_escape "$launch")"
+    cal=""
+    for ((h=0; h<24; h+=interval/3600)); do
+      cal+="    <dict><key>Hour</key><integer>$h</integer><key>Minute</key><integer>0</integer></dict>"$'\n'
+    done
+    cat > "$plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>$label</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-c</string>
+    <string>$launch_x</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <array>
+${cal}  </array>
+  <key>RunAtLoad</key><true/>
+  <key>StandardErrorPath</key><string>$(_xml_escape "$err")</string>
+</dict>
+</plist>
+PLIST
+    if ! plutil -lint "$plist" >/dev/null; then
+      echo "[install-schedulers] FATAL: plutil -lint rejected $plist" >&2; exit 1
+    fi
+    echo "[install-schedulers] wrote $plist"
+    _run launchctl bootstrap "gui/$uid" "$plist"
+  done
+  echo "[install-schedulers] REGISTRATION is not proof it fires: check ~/.config/lifehack/state/jobs/<job>/last-success after the first scheduled run."
+}
+
+if [ "$OS" = "mac" ]; then
+  install_mac_launchd
+  exit 0
+fi
 
 # ── 2) Parse the ```crontab``` block → [(name, schedule, command)] ─────────────────────────────
 declare -a JOB_NAMES=() JOB_SCHEDS=() JOB_CMDS=()
@@ -372,6 +505,7 @@ install_windows() {
 }
 
 case "$OS" in
-  mac|linux) install_mac_linux ;;
+  mac)       install_mac_launchd ;;   # normally handled (and exited) earlier, in section 1b
+  linux)     install_mac_linux ;;
   windows)   install_windows ;;
 esac

@@ -139,12 +139,13 @@ That severity difference is real, so the loop stays with its callers.
 # fired and didn't. Also runs health_invariants.py (hooks present / guards untampered / clone fresh
 # / coverage complete) and folds its findings in. 5-min cadence (same as Pulse itself, so a missed
 # run is caught within one tick of it happening).
-system-health    | yes | 300   | bash "$LIFEHACK_CODE_ROOT/system/tools/system-health-run.sh"
+# 2026-10-27 self-monitoring Sprint 1: only email-summary-write is enabled; rows below set off (were yes), restored in later sprints.
+system-health    | off | 300   | bash "$LIFEHACK_CODE_ROOT/system/tools/system-health-run.sh"
 #
 # sentinel-health: rolls system/logs/sentinel-events.jsonl -> state/status/sentinel.json on its own
 # cadence, independent of any per-item check firing (so the tile's last_run doesn't go stale just
 # because nothing happened to get scanned for hours). READ-ONLY, local jsonl only. 30-min cadence.
-sentinel-health  | yes | 1800  | bash "$LIFEHACK_CODE_ROOT/system/tools/sentinel-health-run.sh"
+sentinel-health  | off | 1800  | bash "$LIFEHACK_CODE_ROOT/system/tools/sentinel-health-run.sh"
 #
 # planning-health: READ-ONLY calendar check (conflicts + unconfirmed invites, 7-day forward window).
 # Degrades cleanly (rc=75, "stood down") when config/cal.md has no calendar id configured yet — see
@@ -160,7 +161,7 @@ sentinel-health  | yes | 1800  | bash "$LIFEHACK_CODE_ROOT/system/tools/sentinel
 # system/tools/planning-health-run.sh (verified: it sources gws-auth.lib.sh at line 35 and exports
 # those vars before invoking the checker) — the manifest below just wasn't calling it. 6h cadence,
 # unchanged.
-planning-health  | yes | 21600 | bash "$LIFEHACK_CODE_ROOT/system/tools/planning-health-run.sh"
+planning-health  | off | 21600 | bash "$LIFEHACK_CODE_ROOT/system/tools/planning-health-run.sh"
 #
 # backlog-health: emits state/status/backlog.json from the read-only backlog groom engine
 # (backlog_groom.py). CORRECTED 2026-08-14: that engine landed in the SAME commit as this file
@@ -172,7 +173,7 @@ planning-health  | yes | 21600 | bash "$LIFEHACK_CODE_ROOT/system/tools/planning
 # (nothing to scan yet), not an import failure. (backlog-health.py's own header docstring carries
 # the same stale claim; out of scope for this file to fix.) Same no-wrapper note as planning-health
 # above. 6h cadence.
-backlog-health   | yes | 21600 | python3 "$LIFEHACK_CODE_ROOT/system/tools/backlog-health.py"
+backlog-health   | off | 21600 | python3 "$LIFEHACK_CODE_ROOT/system/tools/backlog-health.py"
 #
 # fault-proposer: the FIRST machine reader of this repo's failure signals — grades open faults
 # INSTANCE/SUBSYSTEM/ORGANISM, cites the evidence that chose the altitude, and REFUSES to emit
@@ -182,14 +183,14 @@ backlog-health   | yes | 21600 | python3 "$LIFEHACK_CODE_ROOT/system/tools/backl
 # notes-root requirement to RUN, no claude -p (confirmed absent from fault_proposer.py). Its own
 # header sizes itself as "daily cadence + 6h slack before it alarms" (STALE_AFTER_HOURS=30) — this
 # row honors that literally. 1-day cadence.
-fault-proposer          | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/fault-proposer-run.sh"
+fault-proposer          | off | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/fault-proposer-run.sh"
 #
 # item-store-freshness: dead-man for state/item-store/{tasks,calendar}/ — LOCAL files only, no
 # gws, no auth, independent of the tasks/calendar writers so it still fires and pages even if a
 # writer silently stops producing. Exit 0 on BOTH ok and ERROR (the tile carries the signal, never
 # the exit code) — ERROR routes to a governor-gated phone push. Its own header sizes itself at
 # STALE_AFTER_HOURS=4, "Pulse cadence ~ hourly" — this row honors that literally. 1h cadence.
-item-store-freshness    | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/item-store-freshness-run.sh"
+item-store-freshness    | off | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/item-store-freshness-run.sh"
 #
 # email-summary-freshness: dead-man for the v2 faithful-thread store (state/email-summary/
 # threads-v2/) — LOCAL files only, no gws, no auth, independent of the write-cadence job below so
@@ -197,7 +198,7 @@ item-store-freshness    | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/i
 # carries the signal); DEGRADED routes to a governor-gated phone push (normal priority — quiet
 # hours hold). Its own header sizes itself at STALE_AFTER_HOURS=6, "Pulse cadence ~ hourly" — this
 # row honors that literally. 1h cadence.
-email-summary-freshness | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/email-summary-freshness-run.sh"
+email-summary-freshness | off | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/email-summary-freshness-run.sh"
 #
 # ── The next three refresh Google-backed stores (calendar item-store, tasks item-store, v2 email
 #    thread-store) — LIVE as of 2026-08-14, having just cleared the ONE verified defect that kept
@@ -224,7 +225,7 @@ email-summary-freshness | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/e
 # module's own docstring :15 ("No LLM in the write path") is stale and was the source of this error.
 # LIVE — see the note above. Interval matches the runner's
 # own header ("own absence horizon... writers run ~daily", STALE_AFTER_HOURS=30). 1-day cadence.
-calendar-store-sync     | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/calendar-store-sync-run.sh"
+calendar-store-sync     | off | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/calendar-store-sync-run.sh"
 #
 # tasks-store-sync: refreshes state/item-store/tasks/ via tasks_store_sync.py --sync ~~(mechanical,
 # no claude -p — confirmed)~~ ⛔ STRUCK 2026-09-19, FALSE: tasks_store_sync.py imports
@@ -234,7 +235,7 @@ calendar-store-sync     | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/c
 # tasks-store-sync-run.sh shared the identical GWS_CREDS-missing branch and got the identical fix.
 # Interval matches the runner's own header ("writers run ~daily", STALE_AFTER_HOURS=30). 1-day
 # cadence.
-tasks-store-sync        | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/tasks-store-sync-run.sh"
+tasks-store-sync        | off | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/tasks-store-sync-run.sh"
 #
 # email-summary-write: refreshes the v2 faithful-thread store (threads-v2/) via
 # email_summary_sync.py --write-v2 ~~(mechanical, no claude -p — confirmed: CLAUDE_BIN is kept but
@@ -267,7 +268,7 @@ email-summary-write     | yes | 10800 | EMAIL_WRITE_LIMIT=3 bash "$LIFEHACK_CODE
 # runners. ONE row chains all five cadence checks — each periodic call is a cheap no-op except on
 # its own due date, so a single daily tick is sufficient to drive every cadence. && (not ;) so a
 # real daily failure is not masked by continuing to the periodic checks.
-planning-diary    | yes | 86400  | bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" && bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" --cadence weekly && bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" --cadence monthly && bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" --cadence quarterly && bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" --cadence yearly
+planning-diary    | off | 86400  | bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" && bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" --cadence weekly && bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" --cadence monthly && bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" --cadence quarterly && bash "$LIFEHACK_CODE_ROOT/system/tools/planning-diary-run.sh" --cadence yearly
 #
 # archivist-audit / archivist-deepmine: archivist-run.lib.sh (shared engine) + both wrappers
 # were entirely absent — no file, no row — so the weekly structural audit and the monthly
@@ -280,8 +281,8 @@ planning-diary    | yes | 86400  | bash "$LIFEHACK_CODE_ROOT/system/tools/planni
 # says "its scheduled runner does NOT ship... the skill IS the interactive path" — that line
 # predates this port and is now stale; this task's own plan named the missing scheduled leg as
 # the gap to close. The skill file is outside this row's ownership to correct.
-archivist-audit    | yes | 604800 | bash "$LIFEHACK_CODE_ROOT/system/tools/archivist-audit-run.sh"
-archivist-deepmine | yes | 345600 | bash "$LIFEHACK_CODE_ROOT/system/tools/archivist-deepmine-run.sh"
+archivist-audit    | off | 604800 | bash "$LIFEHACK_CODE_ROOT/system/tools/archivist-audit-run.sh"
+archivist-deepmine | off | 345600 | bash "$LIFEHACK_CODE_ROOT/system/tools/archivist-deepmine-run.sh"
 #
 # planning-weekly-prime: the mid-week map-warming cron for the planning-weekly skill's Phase 0,
 # cited by name (with a line number) at .claude/skills/planning-weekly/prompts/
@@ -290,14 +291,14 @@ archivist-deepmine | yes | 345600 | bash "$LIFEHACK_CODE_ROOT/system/tools/archi
 # map.md's own existence) needs a daily check to catch the window at all — see the runner's
 # header for why the "real" Phase 0 fan-out (Agent-tool-based) cannot be invoked from cron and
 # what this ships instead.
-planning-weekly-prime | yes | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/planning-weekly-prime-run.sh"
+planning-weekly-prime | off | 86400 | bash "$LIFEHACK_CODE_ROOT/system/tools/planning-weekly-prime-run.sh"
 #
 # guard-fire-test: the engine (organism/label_checker.py + label_manifest.yaml, run through
 # verify-hooks.sh) already exists and is correct (confirmed GREEN this session — 20/20 guards
 # LIVE) but nothing fired it on a schedule and nothing read its result — a downgrade from LIVE
 # to PARTIAL would sit invisible until a human happened to run it by hand. Weekly cadence
 # matches the runner's own STALE_AFTER_HOURS=192 (168h weekly + 24h slack) header.
-guard-fire-test    | yes | 604800 | bash "$LIFEHACK_CODE_ROOT/system/tools/guard-fire-test-run.sh"
+guard-fire-test    | off | 604800 | bash "$LIFEHACK_CODE_ROOT/system/tools/guard-fire-test-run.sh"
 #
 # NOT ADDED: shared/tools/email_summary_run.sh (the older v1-shaped watchdog wrapper). Not parked,
 # not given a row at all — two independent reasons, both verified this session. (1) It passes its
@@ -453,7 +454,7 @@ obsidian-reindex         | waiting-on-port | 21600   | bash "$LIFEHACK_CODE_ROOT
 # FETCH ONLY: git fetch origin --prune against THIS clone (never pull/merge/checkout, never
 # touches a working tree or a local branch) — a REPORT, not a gate, per SOP §9. Hourly cadence:
 # frequent enough that "behind" stays close to true without hammering the remote on every tick.
-mirror-fetch       | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/mirror-fetch-run.sh"
+mirror-fetch       | off | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/mirror-fetch-run.sh"
 #
 # ── TEMPLATE — copy this row when a new lane wires up a job, then delete the comment. ──────────
 # your-job-name  | yes | 3600  | bash "$LIFEHACK_CODE_ROOT/system/tools/your-runner.sh"
