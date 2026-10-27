@@ -11,7 +11,8 @@
 # so no plist ever carries a code path (§B.1). By hand: bash system/tools/job-run.sh <job>
 #
 # STATE (local, never Drive — §B.2): ~/.config/lifehack/state/jobs/<job>/
-#   last-run      "<ISO time> rc=<n> <reason>" — every run that got past the overdue check
+#   last-run      "<ISO time> rc=<n> calls=<N> secs=<S> model=<tier> <reason>" — calls/secs = model calls this run
+#                 (5.3, via model.lib.sh run_model; 0/0 for a job with no AI), model = the row's tier or none — every run that got past the overdue check
 #   last-success  "<ISO time>" — written ONLY after the output check passed; its mtime is the clock
 #   log           the last 20 runs, one "=== run …" section each
 #   errors/       one file per FAILED run (not 75, not 2), named by time
@@ -132,7 +133,11 @@ alert_check() {
 finish() {
   local rc="$1" reason="$2" record="${3:-yes}"
   echo "[job-run] exit $rc — $reason"
-  [ "$record" = yes ] && printf '%s rc=%s %s\n' "$(iso_now)" "$rc" "$reason" > "$STATE/last-run"
+  local ncalls=0 nsecs=0
+  if [ -s "${JOB_RUN_CALLS_FILE:-}" ]; then
+    ncalls="$(wc -l < "$JOB_RUN_CALLS_FILE" | tr -d ' ')"; nsecs="$(awk '{s+=$2} END{print s+0}' "$JOB_RUN_CALLS_FILE")"
+  fi
+  [ "$record" = yes ] && printf '%s rc=%s calls=%s secs=%s model=%s %s\n' "$(iso_now)" "$rc" "$ncalls" "$nsecs" "${MODEL_TIER:-none}" "$reason" > "$STATE/last-run"
   [ "$record" = yes ] && stamp "$STATE/last-run"
   if [ "$rc" -ne 0 ] && [ "$rc" -ne 75 ] && [ "$rc" -ne 2 ]; then
     cp "$RUNLOG" "$STATE/errors/$(err_stamp).txt" 2>/dev/null
@@ -143,7 +148,7 @@ finish() {
   cat "$RUNLOG" >> "$STATE/log"
   awk '/^=== run /{n++} {line[NR]=$0; sec[NR]=n} END{for(i=1;i<=NR;i++) if(sec[i]>n-20) print line[i]}' \
     "$STATE/log" > "$STATE/log.tmp" && mv -f "$STATE/log.tmp" "$STATE/log"
-  rm -f "$RUNLOG"
+  rm -f "$RUNLOG" "${JOB_RUN_CALLS_FILE:-}" "${JOB_RUN_CALLS_FILE:+$JOB_RUN_CALLS_FILE.fail}"
   exit "$rc"
 }
 
@@ -163,6 +168,12 @@ INTERVAL="$(echo "$INTERVAL" | tr -d '[:space:]')"
 CMD="$(echo "$CMD" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
 CHECK="$(echo "$CHECK" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
 SOURCE="$(echo "$SOURCE" | tr -d '[:space:]')"
+# 5.3: the row's model tier and budget go to the job's command; run_model (model.lib.sh) counts calls into the file.
+MODEL_TIER="$(echo "$MODEL" | tr -d '[:space:]')"; [ -n "$MODEL_TIER" ] || MODEL_TIER=none
+JOB_RUN_BUDGET="$(echo "$BUDGET" | tr -d '[:space:]')"
+export JOB_RUN_BUDGET MODEL_TIER JOB_RUN_MODEL="$MODEL_TIER"
+JOB_RUN_CALLS_FILE="$STATE/calls.current"; : > "$JOB_RUN_CALLS_FILE"; rm -f "$JOB_RUN_CALLS_FILE.fail"
+export JOB_RUN_CALLS_FILE
 case "$INTERVAL" in ''|*[!0-9]*) finish 1 "interval '$INTERVAL' is not a number of seconds" ;; esac
 [ -n "$CMD" ] || [ "$ENABLED" != yes ] || finish 1 "row has no command (is it an old 4-column row? the contract columns are required)"
 [ "$ENABLED" = yes ] || finish 75 "row is '$ENABLED' in the manifest, not 'yes' — stood down"
@@ -262,6 +273,11 @@ wait "$CPID"; RC=$?
 WSLEEP="$(pgrep -P "$WPID" 2>/dev/null)"
 kill "$WPID" 2>/dev/null; [ -n "$WSLEEP" ] && kill $WSLEEP 2>/dev/null
 
+# 5.3: a model failure run_model recorded (over budget, empty output, timeout...) fails the run and is NAMED,
+# even when the job swallowed the return code (exit 0 alone is never a success). Stand-downs keep their meaning.
+if [ -s "$JOB_RUN_CALLS_FILE.fail" ] && [ "$RC" -ne 75 ] && [ "$RC" -ne 2 ]; then
+  finish "$([ "$RC" -eq 0 ] && echo 1 || echo "$RC")" "$(head -1 "$JOB_RUN_CALLS_FILE.fail")"
+fi
 case "$RC" in
   0)  ;;
   75) finish 75 "the job's own pre-flight stood down" ;;

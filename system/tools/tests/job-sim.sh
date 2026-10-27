@@ -507,6 +507,7 @@ def main():
         ffut = [ex.submit(run_fuzz, rep) for rep in range(FUZZ_N)]
         rows = [(name, f.result()) for name, f in sfut]
         rows.append(("row-contract", row_contract()))
+        rows.extend(model_scenarios())   # 5.3
         fz = [f.result() for f in ffut]
     bad = 0
     print(f"{'scenario':<38} | {'ticks':>5} | result")
@@ -569,6 +570,43 @@ def row_contract():
         return 3, fails, ([], [])
     finally:
         w.close()
+
+
+# ───── 5.3 model scenarios (self-contained block): empty-model-output, over-budget, cost-line ─────
+def model_scenarios():
+    """5.3: run_model through the stub (LIFEHACK_MODEL_STUB). The job command swallows run_model's rc and exits 0,
+    so every failure below is job-run.sh's doing. Three scenarios, one world each; returns [(name, (n, fails, extra))]."""
+    out = []
+    jobcmd = 'bash "$LIFEHACK_CODE_ROOT/system/tools/tests/job-sim-model-job.sh"'
+    for name, budget, calls, mmode, want_rc, want_in, want_calls in [
+            ("empty-model-output", 5, 1, "empty", 1, "empty model output", 1),
+            ("over-budget", 2, 3, "ok", 1, "over budget: 3 calls > 2", 2),
+            ("cost-line", 5, 2, "ok", 0, "output check passed", 2)]:
+        w, fails, t = World([("sim-m", P)]), [], BASE + 12 * 3600
+        try:
+            row = (f"sim-m | yes | {P} | o | $JOB_SIM_DIR/out/sim-m ~ ^ran sim-m at | small | {budget} | none | "
+                   f"{jobcmd} sim-m\n")
+            open(w.manifest, "w").write("# model manifest\n```jobs\n" + row + "```\n")
+            w.set_mode("sim-m", "ok"); open(f"{w.sim}/mode/sim-m-calls", "w").write(str(calls))
+            open(f"{w.sim}/model-mode", "w").write(mmode)
+            env = dict(w.env(t), LIFEHACK_MODEL_STUB=f"{HERE_TESTS}/job-sim-model-stub.sh")
+            rc = subprocess.run(["bash", JR, "sim-m"], env=env, stdin=subprocess.DEVNULL, capture_output=True, text=True).returncode
+            lr = w.read("sim-m", "last-run").strip()
+            tag = f"model {name}"
+            if rc != want_rc: fails.append(f"{tag}: exit {rc}, expected {want_rc}")
+            if want_in not in lr: fails.append(f"{tag}: last-run lacks {want_in!r}: {lr!r}")
+            if f" calls={want_calls} " not in lr or " secs=" not in lr or " model=small " not in lr:
+                fails.append(f"{tag}: last-run cost line wrong (want calls={want_calls} secs= model=small): {lr!r}")
+            if want_rc == 0 and w.ls_mtime("sim-m") is None: fails.append(f"{tag}: good run did not stamp last-success")
+            if want_rc != 0 and w.ls_mtime("sim-m") is not None: fails.append(f"{tag}: failed run stamped last-success")
+            if want_rc != 0 and w.errfiles("sim-m") != 1: fails.append(f"{tag}: expected one errors/ file")
+        finally:
+            w.close()
+        out.append((name, (1, fails, ([], []))))
+    return out
+
+
+HERE_TESTS = f"{ROOT}/system/tools/tests"
 
 
 def play_t0(name, jobs, t0, ticks):
