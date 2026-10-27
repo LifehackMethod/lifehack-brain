@@ -39,6 +39,17 @@ status: draft
 authority: user
 ---
 
+> 🔄 **2026-10-27 — Hospital, first rebuild step (self-monitoring plan rev 4, §B.3 / task 2.4).**
+> Everything below this note describes the OLD design and is kept as written; nothing has been deleted.
+> **Producers are now the wrapper's per-job state.** Every scheduled job runs inside
+> `system/tools/job-run.sh`, which writes `~/.config/lifehack/state/jobs/<job>/` (`last-run`,
+> `last-success`, `log`, `errors/`, `launch.err`). **The reader is `system/tools/health_line.py`,**
+> re-pointed at that folder: one line at session start, and a job with no `last-run` is "never ran",
+> never "OK". **The detector jobs** (the `*-health` rows in `system/pulse-config.md`) are switched
+> off and **retired pending Gate 2.** **Held, awaiting Enver's ruling at Gate 2:** the incident
+> ledger (`fault_ledger.py`, `faults.json`, `incidents.jsonl`), the fault grader
+> (`fault_proposer.py`), and the fingerprint-across-detectors logic. Rebuild later, or retire.
+
 # hospital — element detail
 
 > ⛔⛔ **PORT BANNER — WHAT THIS ELEMENT NAMES THAT IS NOT IN THIS REPOSITORY.** The description below
