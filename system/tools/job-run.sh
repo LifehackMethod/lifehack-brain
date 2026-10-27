@@ -15,7 +15,7 @@
 #   last-success  "<ISO time>" — written ONLY after the output check passed; its mtime is the clock
 #   log           the last 20 runs, one "=== run …" section each
 #   errors/       one file per FAILED run (not 75, not 2), named by time
-#   alerted       exists while ONE "job down" push is out and no success has followed: "<ISO time> rc=<n>"
+#   alerted       exists while ONE "job down" push is out and no success has followed: "<ISO time> rc=<n> <incident id>"
 #   launch.err    launchd's StandardErrorPath — non-empty means the launch line could not find this
 #                 file (a bad code-root pointer). This wrapper moves its contents into the log and
 #                 clears it, because reaching this line proves the pointer works again.
@@ -90,7 +90,7 @@ alert_check() {
   local rc="$1" ls_age="" last_ok="never" mark="$STATE/alerted"
   if [ "$rc" -eq 0 ]; then
     [ -f "$mark" ] || return 0
-    notify "Job recovered: $JOB" "$JOB succeeded again · output check passed" "job-up:$JOB"
+    notify "Job recovered: $JOB" "$JOB succeeded again · output check passed" "job-up:$JOB:$(awk '{print $3}' "$mark")"
     rm -f "$mark"
     return 0
   fi
@@ -102,8 +102,11 @@ alert_check() {
     [ "$ls_age" -le $(( 2 * INTERVAL )) ] && return 0
     last_ok="$(( ls_age / 3600 ))h ago"
   fi
-  notify "Job down: $JOB" "exit $rc · last success $last_ok · next: open any desk; the first line names it, the error is in ~/.config/lifehack/state/jobs/$JOB/errors/" "job-down:$JOB"
-  printf '%s rc=%s\n' "$(iso_now)" "$rc" > "$mark"
+  # The identity carries this incident's id: the marker already dedups within an incident, and the
+  # governor's 24 h identity dedup must not swallow the NEXT incident (e.g. a real failure hours after a test).
+  local incident; incident="$(date +%s)"
+  notify "Job down: $JOB" "exit $rc · last success $last_ok · next: open any desk; the first line names it, the error is in ~/.config/lifehack/state/jobs/$JOB/errors/" "job-down:$JOB:$incident"
+  printf '%s rc=%s %s\n' "$(iso_now)" "$rc" "$incident" > "$mark"
 }
 finish() {
   local rc="$1" reason="$2" record="${3:-yes}"
