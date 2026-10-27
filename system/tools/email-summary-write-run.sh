@@ -109,10 +109,10 @@ GWS_CREDS="$GWS_CREDS_FILE"   # path the helper actually looked at — quoted in
 # ── PRE-FLIGHT: confirm gws auth is HEALTHY via the isolated creds before pulling. RETRY 3×4s so a
 #    transient token-refresh blip becomes a brief wait, not a hard failure. A real dead-auth still buzzes
 #    (RC=2 → the trap pages). SAFE: the isolated config never touches the interactive login keychain. ──
-GWS_BIN="$(command -v gws 2>/dev/null || echo /opt/homebrew/bin/gws)"
+# 5.4: the probe itself is the shared fetch's (--preflight = getProfile); this runner holds no raw Gmail call.
 PREFLIGHT_OK=0
 for _attempt in 1 2 3; do
-  if "$GWS_BIN" gmail users getProfile --params '{"userId":"me"}' >/dev/null 2>&1; then
+  if python3 "$CODE_ROOT/shared/tools/email_fetch.py" --preflight >/dev/null 2>&1; then
     PREFLIGHT_OK=1; break
   fi
   [ "$_attempt" -lt 3 ] && { echo "[$SUBSYSTEM_NAME] gws pre-flight attempt $_attempt failed — retrying in 4s…"; sleep 4; }

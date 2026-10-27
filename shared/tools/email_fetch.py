@@ -1,0 +1,383 @@
+#!/usr/bin/env python3
+"""email_fetch.py -- THE shared email fetch: the only sanctioned Gmail read (self-monitoring plan 5.4, 2026-10-27).
+
+WHY ONE COPY. Everything ingested goes through the security system (plan B.4). Gmail used to be read by a dozen
+scripts, each with its own filter, its own cap, its own bookmark and (mostly) no gate. This file is the one place that
+holds the raw `gws gmail` call and that decides, for EVERY message it returns:
+  1. the label is not PAUSED (a paused label is refused, exit 75 "paused: <label>");
+  2. the query is `category:primary` unless the caller overrides it (no promotions / social / updates / spam);
+  3. a per-run cap bounds the read (default 10 threads);
+  4. the body passes the ingest gate INSIDE this fetch -- sanitise + scan + the tool-less reader's judgment -- so a
+     headless (cron) job is covered exactly like a session;
+  5. a REAL-ATTACK verdict PAUSES the label and sends ONE critical push (via ingest_gate -> sentinel_response), and the
+     run stops reading. A NONE / BENIGN / unavailable verdict never pauses (fail-safe: doubt is a FLAG, not a stop);
+  6. a high-water bookmark is kept in ONE format, a per-consumer file `<consumer>-last-seen`.
+
+INTERFACE (library):
+  fetch(consumer, label=None, query=None, cap=DEFAULT_CAP, since_last_seen=True, mark_seen=True) -> dict
+        raises Paused(unit) / Disabled / FetchError
+  list_threads(params) / get_thread(thread_id, fmt) / labels_list() / preflight()   -- the raw calls, (data, err) tuples
+  check_paused(unit)        -- raises Paused
+  report_attack(unit, body, item)  -- for a caller that ran its OWN judge (the store janitor): pause + one critical push
+  read_last_seen(consumer) / write_last_seen(consumer, ms, msg_id)
+INTERFACE (CLI):  python3 email_fetch.py --consumer NAME [--label L] [--query Q] [--cap N] [--no-since] [--no-mark]
+                  [--out FILE] | --preflight
+  query: omitted = category:primary; `--query ''` = no query filter (a label-only read, e.g. a drill label).
+  exit 0 ok | 75 paused / email read disabled | 2 Gmail unreachable (transient) | 1 other failure.
+
+THE UNIT THAT GETS PAUSED is the label (or "primary" when no label): pause-file line `email:<unit>` in
+~/.config/lifehack/sentinel-paused-sources (sentinel_response.PAUSE_FILE, env SENTINEL_PAUSE_FILE). Only a person
+removes the line. health_line.py reads the same file and prints `paused: <unit>`.
+
+WHERE *-last-seen LIVES: ~/.config/lifehack/<consumer>-last-seen (env LIFEHACK_LAST_SEEN_DIR overrides the directory).
+One line: `<newest internalDate in ms> <message id>`. It only moves forward. A consumer opts out of filtering with
+since_last_seen=False. The store janitor (email_summary_sync) is such a consumer: it dedups by newest-message-id itself
+and keeps no bookmark file (a thread read once at the same newest id is skipped).
+The bookmark is NOT advanced on a run that hit an attack.
+
+EMAIL_SERVICE_READ is ON by default: unset/empty/1/all/on -> on. 0 / off / false / no / none -> the fetch refuses (75).
+
+TEST SEAMS (all inert when unset): LIFEHACK_GWS_BIN (a stub gws), CLAUDE_BIN (a stub reader, see intake_reader.py),
+SENTINEL_PAUSE_FILE / SENTINEL_LOG / SENTINEL_STATUS (sentinel_response), LIFEHACK_LAST_SEEN_DIR.
+"""
+import argparse
+import base64
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile  # noqa: F401  (kept for callers that monkeypatch)
+from html.parser import HTMLParser
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+CODE_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+for _d in (os.path.join(CODE_ROOT, "shared", "gate"), os.path.join(CODE_ROOT, "system", "tools"), HERE):
+    if _d not in sys.path:
+        sys.path.insert(0, _d)
+
+DEFAULT_QUERY = "category:primary"
+DEFAULT_CAP = 10
+MAX_MSGS_PER_THREAD = 20
+EXIT_PAUSED = 75
+EXIT_TRANSIENT = 2
+
+
+class Paused(Exception):
+    """The label is paused (a REAL-ATTACK stopped it). str(e) is the unit name."""
+
+
+class Disabled(Exception):
+    """EMAIL_SERVICE_READ is explicitly off."""
+
+
+class FetchError(Exception):
+    """Gmail could not be read (transient) or the gate could not run."""
+
+
+# ─────────────────────────── switches, pause file, bookmark ───────────────────────────
+def enabled():
+    v = (os.environ.get("EMAIL_SERVICE_READ") or "").strip().lower()
+    return v not in ("0", "off", "false", "no", "none")
+
+
+def pause_file():
+    return os.environ.get("SENTINEL_PAUSE_FILE") or os.path.expanduser("~/.config/lifehack/sentinel-paused-sources")
+
+
+def paused_units():
+    try:
+        with open(pause_file(), encoding="utf-8", errors="replace") as fh:
+            return {ln.strip()[len("email:"):] for ln in fh if ln.strip().startswith("email:")}
+    except OSError:
+        return set()
+
+
+def check_paused(unit):
+    if unit in paused_units():
+        raise Paused(unit)
+
+
+def last_seen_path(consumer):
+    d = os.environ.get("LIFEHACK_LAST_SEEN_DIR") or os.path.expanduser("~/.config/lifehack")
+    return os.path.join(d, f"{consumer}-last-seen")
+
+
+def read_last_seen(consumer):
+    """(internalDate_ms, message_id); (0, '') when there is no bookmark yet."""
+    try:
+        parts = open(last_seen_path(consumer), encoding="utf-8").read().split()
+        return int(parts[0]), (parts[1] if len(parts) > 1 else "")
+    except (OSError, ValueError, IndexError):
+        return 0, ""
+
+
+def write_last_seen(consumer, ms, msg_id=""):
+    """Forward-only; atomic. Returns True if it moved."""
+    if ms <= read_last_seen(consumer)[0]:
+        return False
+    p = last_seen_path(consumer)
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    tmp = p + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        fh.write(f"{int(ms)} {msg_id}\n")
+    os.replace(tmp, p)
+    return True
+
+
+# ─────────────────────────── the raw gws calls (the ONLY ones) ───────────────────────────
+def _gws():
+    return os.environ.get("LIFEHACK_GWS_BIN") or shutil.which("gws") or "/opt/homebrew/bin/gws"
+
+
+def _call(path, params, timeout=30):
+    try:
+        r = subprocess.run([_gws(), "gmail", "users", *path, "--params", json.dumps(params)],
+                           capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return None, "timeout"
+    except Exception as e:  # noqa: BLE001
+        return None, str(e)
+    if r.returncode != 0:
+        tail = [l for l in (r.stderr or "").splitlines() if l.strip()]
+        return None, f"gws_error: {tail[-1] if tail else f'gws exit {r.returncode}'}"
+    try:
+        return json.loads(r.stdout), None
+    except json.JSONDecodeError as e:
+        return None, f"json_parse: {e}"
+
+
+def preflight():
+    """True when Google auth answers (getProfile)."""
+    data, err = _call(["getProfile"], {"userId": "me"})
+    return err is None
+
+
+def labels_list():
+    return _call(["labels", "list"], {"userId": "me"})
+
+
+def list_threads(params):
+    """threads.list with the caller's params (userId added). Returns (data, err)."""
+    return _call(["threads", "list"], dict({"userId": "me"}, **params))
+
+
+def get_thread(thread_id, fmt="metadata"):
+    return _call(["threads", "get"], {"userId": "me", "id": thread_id, "format": fmt})
+
+
+# ─────────────────────────── message body extraction ───────────────────────────
+class _Text(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.out, self._skip = [], 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ("script", "style"):
+            self._skip += 1
+
+    def handle_endtag(self, tag):
+        if tag in ("script", "style") and self._skip:
+            self._skip -= 1
+
+    def handle_data(self, data):
+        if not self._skip:
+            self.out.append(data)
+
+
+def _decode(b64):
+    try:
+        return base64.urlsafe_b64decode(b64 + "=" * (-len(b64) % 4)).decode("utf-8", "replace")
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def _walk(payload, mime):
+    if (payload.get("mimeType") or "").lower() == mime and (payload.get("body") or {}).get("data"):
+        yield _decode(payload["body"]["data"])
+    for part in payload.get("parts") or []:
+        yield from _walk(part, mime)
+
+
+def message_text(msg):
+    payload = msg.get("payload") or {}
+    plain = "\n".join(t for t in _walk(payload, "text/plain") if t.strip())
+    if plain.strip():
+        return plain
+    html = "\n".join(_walk(payload, "text/html"))
+    p = _Text()
+    try:
+        p.feed(html)
+    except Exception:  # noqa: BLE001
+        pass
+    return " ".join("".join(p.out).split())
+
+
+def _headers(msg):
+    return {h.get("name", ""): h.get("value", "") for h in (msg.get("payload") or {}).get("headers", [])}
+
+
+# ─────────────────────────── the gate, inside the fetch ───────────────────────────
+def _gate_modules():
+    try:
+        from ingest_gate import gate  # shared/gate
+        from safe_input import scan_for_injection  # system/tools
+    except Exception as e:  # noqa: BLE001
+        raise FetchError(f"ingest gate unavailable ({e}) -- refusing to hand back UNGATED email")
+    try:
+        from intake_reader import run_intake_judge  # shared/tools
+    except Exception:  # noqa: BLE001
+        run_intake_judge = None   # no reader: the scanner's FLAG still stands; nothing can pause (fail-safe)
+    return gate, scan_for_injection, run_intake_judge
+
+
+def load_claude_token():
+    """The tool-less reader needs the subscription token, and a cron/launchd job does not have it in its environment.
+    The credential is handed to the shared layer HERE (plan B.4: the key lives in the shared fetch, not in a desk
+    runner). Reads $CLAUDE_OAUTH_TOKEN_FILE or ~/.config/lifehack/claude-oauth-token into CLAUDE_CODE_OAUTH_TOKEN, only
+    when it is not already set. No token = the reader fails safe (UNJUDGED -> FLAG only, nothing pauses)."""
+    if os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
+        return True
+    p = os.environ.get("CLAUDE_OAUTH_TOKEN_FILE") or os.path.expanduser("~/.config/lifehack/claude-oauth-token")
+    try:
+        tok = open(p, encoding="utf-8").read().strip()
+    except OSError:
+        return False
+    if tok:
+        os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = tok
+    return bool(tok)
+
+
+def desk_id(unit):
+    return f"email:{unit}"
+
+
+def report_attack(unit, body, item=""):
+    """A caller that ran its own judge found REAL-ATTACK: pause the label and send ONE critical push (the lifted
+    clamp, ingest_gate.gate(reader_verdict='REAL-ATTACK')). Returns the gate result."""
+    gate, _scan, _judge = _gate_modules()
+    return gate(desk_id(unit), "email", body, item=item, reader_verdict="REAL-ATTACK")
+
+
+def gate_message(unit, body, item=""):
+    """Gate ONE message body. Returns dict(content, provenance_tag, verdict, attack). Never feeds ungated text out."""
+    gate, scan, judge = _gate_modules()
+    findings = []
+    try:
+        findings = scan(body) or []
+    except Exception:  # noqa: BLE001
+        findings = []
+    if not findings or judge is None:
+        res = gate(desk_id(unit), "email", body, item=item)
+        return {"content": res["content"], "provenance_tag": res["provenance_tag"], "verdict": "NONE", "attack": False}
+    load_claude_token()
+    j = judge(body, findings)
+    verdict = j.get("verdict") if j.get("reader_applied") else None
+    if verdict == "REAL-ATTACK":
+        res = gate(desk_id(unit), "email", body, item=item, reader_verdict="REAL-ATTACK")
+        return {"content": "", "provenance_tag": res["provenance_tag"], "verdict": verdict, "attack": True}
+    text = j.get("cleared_text") if j.get("reader_applied") else body
+    res = gate(desk_id(unit), "email", text or body, item=item)
+    return {"content": res["content"], "provenance_tag": res["provenance_tag"], "verdict": verdict or "UNJUDGED",
+            "attack": False}
+
+
+# ─────────────────────────── the fetch ───────────────────────────
+def _label_id(label):
+    if label.isupper() or label.startswith("Label_"):
+        return label
+    data, err = labels_list()
+    if err:
+        raise FetchError(f"labels.list failed: {err}")
+    for l in data.get("labels", []):
+        if l.get("name") == label or l.get("id") == label:
+            return l["id"]
+    raise FetchError(f"unknown label '{label}'")
+
+
+def fetch(consumer, label=None, query=None, cap=DEFAULT_CAP, since_last_seen=True, mark_seen=True):
+    """Read up to `cap` threads, gate every message, return {unit, query, count, messages[], attack}.
+    Raises Disabled / Paused / FetchError. A REAL-ATTACK pauses the label, stops the read and raises Paused."""
+    if not enabled():
+        raise Disabled("EMAIL_SERVICE_READ is off")
+    unit = label or "primary"
+    check_paused(unit)
+    q = DEFAULT_QUERY if query is None else query
+    seen_ms, _ = read_last_seen(consumer)
+    if since_last_seen and seen_ms:
+        q = (q + " " if q else "") + f"after:{seen_ms // 1000}"
+    params = {"maxResults": max(1, int(cap))}
+    if label:
+        params["labelIds"] = _label_id(label)
+    if q:
+        params["q"] = q
+    data, err = list_threads(params)
+    if err:
+        raise FetchError(err)
+    ids = [t["id"] for t in data.get("threads", [])][:cap]
+    out, newest_ms, newest_id = [], 0, ""
+    for tid in ids:
+        th, err = get_thread(tid, "full")
+        if err:
+            raise FetchError(f"thread {tid}: {err}")
+        for msg in (th.get("messages") or [])[:MAX_MSGS_PER_THREAD]:
+            try:
+                ms = int(msg.get("internalDate") or 0)
+            except ValueError:
+                ms = 0
+            if since_last_seen and seen_ms and ms <= seen_ms:
+                continue
+            h = _headers(msg)
+            g = gate_message(unit, message_text(msg), item=f"{consumer}:{msg.get('id', '')}")
+            if g["attack"]:
+                raise Paused(unit)
+            out.append({"thread_id": tid, "message_id": msg.get("id", ""), "internal_date": ms,
+                        "from": h.get("From", ""), "subject": h.get("Subject", ""), "date": h.get("Date", ""),
+                        "body": g["content"], "provenance_tag": g["provenance_tag"], "verdict": g["verdict"]})
+            if ms > newest_ms:
+                newest_ms, newest_id = ms, msg.get("id", "")
+    if mark_seen and newest_ms:
+        write_last_seen(consumer, newest_ms, newest_id)
+    return {"unit": unit, "query": q, "count": len(out), "messages": out, "attack": False}
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="The shared email fetch (the only sanctioned Gmail read).")
+    ap.add_argument("--consumer", help="who is reading (names the *-last-seen file)")
+    ap.add_argument("--label", default=None, help="Gmail label to read (also the unit that gets paused)")
+    ap.add_argument("--query", default=None, help="Gmail query; default category:primary; '' = none")
+    ap.add_argument("--cap", type=int, default=DEFAULT_CAP, help=f"max threads per run (default {DEFAULT_CAP})")
+    ap.add_argument("--no-since", action="store_true", help="do not filter by the *-last-seen bookmark")
+    ap.add_argument("--no-mark", action="store_true", help="do not advance the bookmark")
+    ap.add_argument("--out", default=None, help="write the JSON result here instead of stdout")
+    ap.add_argument("--preflight", action="store_true", help="exit 0 if Google auth answers, else 2")
+    a = ap.parse_args(argv)
+    if a.preflight:
+        return 0 if preflight() else EXIT_TRANSIENT
+    if not a.consumer:
+        ap.error("--consumer is required")
+    try:
+        res = fetch(a.consumer, label=a.label, query=a.query, cap=a.cap,
+                    since_last_seen=not a.no_since, mark_seen=not a.no_mark)
+    except Paused as e:
+        sys.stderr.write(f"paused: {e}\n")
+        return EXIT_PAUSED
+    except Disabled as e:
+        sys.stderr.write(f"email read disabled: {e}\n")
+        return EXIT_PAUSED
+    except FetchError as e:
+        sys.stderr.write(f"[email-fetch] {e}\n")
+        return EXIT_TRANSIENT if re.match(r"(gws_error|timeout|json_parse)", str(e)) else 1
+    text = json.dumps(res)
+    if a.out:
+        os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
+        with open(a.out, "w", encoding="utf-8") as fh:
+            fh.write(text + "\n")
+    else:
+        print(text)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

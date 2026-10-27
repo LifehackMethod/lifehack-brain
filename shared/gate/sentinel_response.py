@@ -311,9 +311,14 @@ def main():
 
     fp = fingerprint_for(args.source, labels)
     danger_hits = sorted({lab for lab in labels if lab in DANGER_LABELS})
+    # 2026-10-27 (self-monitoring 5.4): a tool-less reader's positive REAL-ATTACK verdict IS a danger even when no
+    # scanner label is in DANGER_LABELS. --flag-only still wins (it caps everything); with no verdict nothing changes.
+    if args.reader_verdict == "REAL-ATTACK" and not args.flag_only and not danger_hits:
+        danger_hits = ["reader judged real attack"]
     if danger_hits and not args.flag_only:
         detail = "DANGER: " + ", ".join(danger_hits)
-        evidence = [{"label": lab, "snippet_b64": _defang(m)} for m, lab in findings if lab in DANGER_LABELS]
+        evidence = [{"label": lab, "snippet_b64": _defang(m)} for m, lab in findings
+                    if lab in DANGER_LABELS or lab in danger_hits or args.reader_verdict == "REAL-ATTACK"]
         # A DANGER is never auto-silenced by an accepted fingerprint. It always lands unreviewed.
         log_event(args.source, args.item, "danger", detail, evidence,
                   provenance=args.provenance, fp=fp, disposition="unreviewed")

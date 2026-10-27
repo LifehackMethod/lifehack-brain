@@ -102,7 +102,7 @@ def _provenance_tag(desk_id, source_type, raw_content):
     return f"{desk_id}/{source_type}/{h}"
 
 
-def gate(desk_id, source_type, raw_content, message_id="", item="", preserve_structure=False):
+def gate(desk_id, source_type, raw_content, message_id="", item="", preserve_structure=False, reader_verdict=None):
     """The frozen on-path gate. See module docstring for the contract. Never RAISES — but the verdict on an
     internal error is POSTURE-dependent: under ENFORCE (the default since the W5 cutover) a non-email read
     that can't be gated returns passed=False (fail-CLOSED); email always returns passed=True (fail-open,
@@ -131,18 +131,24 @@ def gate(desk_id, source_type, raw_content, message_id="", item="", preserve_str
             return {"content": clean, "provenance_tag": tag, "passed": True}
 
         is_email = (source_type == "email")
+        # 2026-10-27 (self-monitoring 5.4): the email FLAG-only clamp is lifted ONLY for a positive judged
+        # verdict -- the tool-less reader said REAL-ATTACK. No verdict, BENIGN, NONE or a reader that never ran
+        # (reader_verdict=None) keeps the clamp, so the scanner alone still can never DANGER an email (fail-safe).
+        email_attack = is_email and reader_verdict == "REAL-ATTACK"
         cmd = ["python3", SENTINEL, "--source", desk_id, "--item", (item or "")[:120],
                "--provenance", tag]
         if message_id and not is_email:
             cmd += ["--message-id", message_id]   # email never quarantines → never pass its id
-        if is_email:
-            cmd += ["--flag-only"]                 # LOCKED invariant: email capped at FLAG
+        if is_email and not email_attack:
+            cmd += ["--flag-only"]                 # LOCKED invariant: email capped at FLAG (5.4: unless judged REAL-ATTACK)
+        if email_attack:
+            cmd += ["--reader-verdict", "REAL-ATTACK"]
 
         payload = json.dumps([[m, l] for m, l in findings])
         r = subprocess.run(cmd, input=payload, capture_output=True, text=True, timeout=20)
 
         # exit 2 = DANGER (only reachable for non-email; email is --flag-only → always exit 0).
-        if r.returncode == 2 and not is_email:
+        if r.returncode == 2 and (not is_email or email_attack):
             _breadcrumb(tag, source_type, desk_id, "danger")
             return {"content": "", "provenance_tag": tag, "passed": False}
         _breadcrumb(tag, source_type, desk_id, "flag")

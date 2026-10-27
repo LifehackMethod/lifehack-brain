@@ -435,7 +435,10 @@ def _enabled_for(desk):
 
     Per-desk granularity from ONE var is what lets us prove/retire desks one at a time."""
     val = (os.environ.get("EMAIL_SERVICE_READ") or "").strip().lower()
+    # 2026-10-27 (self-monitoring 5.4): ON by default. Unset or empty = every desk; only an explicit off value disables.
     if not val:
+        return True
+    if val in ("0", "off", "false", "no", "none"):
         return False
     if val in ("all", "1", "true", "*", "on"):
         return True
@@ -622,11 +625,16 @@ def _run_self_tests():
             else fail("state:deep-cold-retrievable", f"{r}")
         globals()["THREADS_V2_COLD_DIR"] = _save_cold
 
-        # 12 — blue-green gate: unset env → DISABLED (byte-identical fall-through), no store touched
+        # 12 — blue-green gate: an EXPLICIT off → DISABLED (byte-identical fall-through), no store touched.
+        #      (5.4, 2026-10-27: the default flipped to ON -- an UNSET env is now enabled; see 12b.)
         _env_save = os.environ.pop("EMAIL_SERVICE_READ", None)
+        os.environ["EMAIL_SERVICE_READ"] = "off"
         cli = cli_read_thread("t1", "planning")
         good = (cli["flag"] == "DISABLED" and cli["scratch_path"] == "" and not cli.get("has_inline_content"))
-        ok("cli:disabled-default — unset env → DISABLED, no store read") if good else fail("cli:disabled-default", f"{cli}")
+        ok("cli:disabled-explicit — EMAIL_SERVICE_READ=off → DISABLED, no store read") if good else fail("cli:disabled-explicit", f"{cli}")
+        os.environ.pop("EMAIL_SERVICE_READ", None)
+        ok("cli:on-by-default — unset env enables every desk") if (_enabled_for("planning") and _enabled_for("anyone")) \
+            else fail("cli:on-by-default", "unset env did not enable the gate")
 
         # 13 — enable only planning: planning reads the store (OK+scratch, NO inline body), otherdesk stays DISABLED
         os.environ["EMAIL_SERVICE_READ"] = "planning"

@@ -8,6 +8,9 @@ health_line.py — the ONE-LINE job-health line printed first in every session.
 #      read that state back: a job that never ran, or stopped running, looked identical to a healthy
 #      one. This tool reads it at session start and says so, in one line, whether or not anyone looks.
 # CONTRACT: prints EXACTLY ONE line, worst state first:
+#      0. (5.4) an email label is PAUSED by the sentinel (a REAL-ATTACK) -> "paused: <label>[, <label>]". A security stop
+#         outranks every plant state: it is read from the sentinel pause file (env SENTINEL_PAUSE_FILE, else
+#         ~/.config/lifehack/sentinel-paused-sources), lines `email:<label>` only (other sources never show here).
 #      1. any job has a non-empty launch.err -> "jobs cannot find the code — open any desk once to repair"
 #      2. an ENABLED job with no last-run    -> "never ran: a, b"   (never reported as OK: dead end F2)
 #      3. last-success missing or at least 2 x period old -> "<n> overdue: job (9h), ..."
@@ -75,6 +78,17 @@ def _read(path: str) -> str:
 def compute(state_dir: str, manifest: str, now: float | None = None) -> str:
     now = time.time() if now is None else now
     jobs = _enabled_jobs(manifest)
+
+    # 0) (5.4) a paused email label: the loudest state there is
+    pf = os.environ.get("SENTINEL_PAUSE_FILE") or os.path.join(os.path.expanduser("~"), ".config", "lifehack",
+                                                                "sentinel-paused-sources")
+    try:
+        with open(pf, encoding="utf-8", errors="replace") as fh:
+            paused = sorted({ln.strip()[len("email:"):] for ln in fh if ln.strip().startswith("email:")} - {""})
+    except OSError:
+        paused = []
+    if paused:
+        return "paused: " + ", ".join(paused)
 
     # 1) any launch.err anywhere under the state dir (enabled or not)
     try:

@@ -42,6 +42,8 @@ _SANITIZE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "
 if _SANITIZE_DIR not in sys.path:
     sys.path.insert(0, _SANITIZE_DIR)
 from sanitize import sanitize, NO_CAP  # noqa: E402
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import email_fetch as _email_fetch  # noqa: E402  (5.4: the one shared Gmail read)
 
 # The data root, through the one resolver (shared/brain_root.py) — never a hardcoded personal Drive
 # path. NOT-SET degrades to a machine-local cache dir so a fresh install (or a run before the reader
@@ -141,19 +143,9 @@ def _audit_email_read(thread_id, reader, message_count=None):
 def fetch_thread(thread_id):
     """Fetch full thread from Gmail via gws. Returns (data, error)."""
     try:
-        result = subprocess.run(
-            [GWS, "gmail", "users", "threads", "get",
-             "--params", json.dumps({"userId": "me", "id": thread_id, "format": "full"})],
-            capture_output=True, text=True, timeout=30
-        )
-        if result.returncode != 0:
-            return None, f"fetch_error: gws exit {result.returncode}"
-        data = json.loads(result.stdout)
-        return data, None
-    except subprocess.TimeoutExpired:
-        return None, "fetch_error: timeout"
-    except json.JSONDecodeError as e:
-        return None, f"fetch_error: json_parse {e}"
+        # 2026-10-27 (self-monitoring 5.4): the raw Gmail call lives in the shared fetch (email_fetch.py), nowhere else.
+        data, err = _email_fetch.get_thread(thread_id, "full")
+        return (None, f"fetch_error: {err}") if err else (data, None)
     except Exception as e:
         return None, f"fetch_error: {e}"
 
@@ -164,14 +156,9 @@ def fetch_thread_ids_by_query(query, limit=None):
     if limit:
         params["maxResults"] = limit
     try:
-        result = subprocess.run(
-            [GWS, "gmail", "users", "threads", "list",
-             "--params", json.dumps(params)],
-            capture_output=True, text=True, timeout=30
-        )
-        if result.returncode != 0:
-            return None, f"fetch_error: gws exit {result.returncode}"
-        data = json.loads(result.stdout)
+        data, err = _email_fetch.list_threads(params)   # 5.4: the shared fetch holds the raw call
+        if err:
+            return None, f"fetch_error: {err}"
         ids = [t["id"] for t in data.get("threads", [])]
         return ids, None
     except Exception as e:
@@ -184,14 +171,9 @@ def fetch_thread_ids_by_label(label_id, limit=None):
     if limit:
         params["maxResults"] = limit
     try:
-        result = subprocess.run(
-            [GWS, "gmail", "users", "threads", "list",
-             "--params", json.dumps(params)],
-            capture_output=True, text=True, timeout=30
-        )
-        if result.returncode != 0:
-            return None, f"fetch_error: gws exit {result.returncode}"
-        data = json.loads(result.stdout)
+        data, err = _email_fetch.list_threads(params)   # 5.4: the shared fetch holds the raw call
+        if err:
+            return None, f"fetch_error: {err}"
         ids = [t["id"] for t in data.get("threads", [])]
         return ids, None
     except Exception as e:

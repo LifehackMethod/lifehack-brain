@@ -76,6 +76,10 @@ CONVERTER = "email_convert.py"
 # and hard-stops if any OTHER file contains Gmail-access patterns.
 SERVICE_ENTRYPOINT = "email_summary_sync.py"
 
+# ENF-A.5b — 2026-10-27 (self-monitoring 5.4): the ONE shared email fetch. Every raw `gws gmail` call lives here; the
+# entrypoint above, email_convert.py and every other reader go through it. Sanctioned for validate_contract()'s grep.
+SHARED_FETCH = "email_fetch.py"
+
 # ENF-A.6 — additional sanctioned Gmail accessor (the body converter; called BY the entrypoint,
 # not a standalone Gmail caller — but it legitimately contains Gmail-API strings in comments).
 CONVERTER_SANCTIONED = "email_convert.py"

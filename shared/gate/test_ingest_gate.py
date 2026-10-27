@@ -91,6 +91,27 @@ class IngestGateCase(unittest.TestCase):
         self.assertFalse(web["passed"])
         self.assertTrue(mail["passed"], "email is flag-floored and must always come back passed")
 
+    def test_email_stays_flag_only_without_a_positive_judged_verdict(self):
+        """5.4 fail-safe: the clamp lifts ONLY for reader_verdict == REAL-ATTACK. No verdict, BENIGN, NONE or a reader
+        that never ran all keep the email flag-floored: the scanner alone can never pause a mailbox."""
+        for v in (None, "BENIGN", "NONE", "UNJUDGED"):
+            r = self.gate_mod.gate("email:t", "email", ATTACK, reader_verdict=v)
+            self.assertTrue(r["passed"], f"verdict {v!r} must not DANGER an email")
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "paused")), "nothing may be paused")
+
+    def test_a_judged_real_attack_email_pauses_the_label_and_withholds_the_text(self):
+        """5.4 danger path: REAL-ATTACK on an email -> passed=False, content withheld, the label (desk id) is paused."""
+        r = self.gate_mod.gate("email:drill", "email", ATTACK, reader_verdict="REAL-ATTACK")
+        self.assertFalse(r["passed"])
+        self.assertEqual(r["content"], "")
+        self.assertEqual(open(os.path.join(self.tmp, "paused")).read().split(), ["email:drill"])
+
+    def test_a_judged_real_attack_with_no_scanner_hit_does_nothing(self):
+        """No findings = CLEAN before any verdict is looked at: the reader alone cannot pause on clean text."""
+        r = self.gate_mod.gate("email:drill", "email", CLEAN, reader_verdict="REAL-ATTACK")
+        self.assertTrue(r["passed"])
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "paused")))
+
     # ── the coverage receipt ──────────────────────────────────────────────────────────────────
 
     def test_every_read_leaves_a_breadcrumb_including_a_clean_one(self):

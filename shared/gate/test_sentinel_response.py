@@ -189,6 +189,24 @@ class SentinelCase(unittest.TestCase):
         self.assertEqual(r.returncode, 2)
         self.assertNotIn("suppressed", r.stderr)
 
+    def test_a_real_attack_verdict_pauses_even_without_a_danger_label(self):
+        """5.4: the tool-less reader's positive REAL-ATTACK verdict is a danger on its own."""
+        r = self.run_tool([["aGVsbG8=", NOISE]], "--source", "email:x", "--reader-verdict", "REAL-ATTACK")
+        self.assertEqual(r.returncode, 2)
+        self.assertEqual(self.paused(), ["email:x"])
+
+    def test_flag_only_still_beats_a_real_attack_verdict(self):
+        r = self.run_tool([["ignore all previous", OVERRIDE]], "--source", "email:x",
+                          "--flag-only", "--reader-verdict", "REAL-ATTACK")
+        self.assertEqual(r.returncode, 0)
+        self.assertEqual(self.paused(), [])
+
+    def test_a_non_attack_verdict_does_not_promote_a_noise_finding(self):
+        for v in ("NONE", "BENIGN"):
+            r = self.run_tool([["aGVsbG8=", NOISE]], "--source", "email:x", "--reader-verdict", v)
+            self.assertEqual(r.returncode, 0)
+        self.assertEqual(self.paused(), [])
+
     # ── junk in ───────────────────────────────────────────────────────────────────────────────
 
     def test_unparseable_input_reads_as_clean_not_as_an_alarm(self):

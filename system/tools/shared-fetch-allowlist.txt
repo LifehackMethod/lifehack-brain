@@ -18,8 +18,7 @@ system/tools/safe_sheets.py
 # never curl. Both files are listed because the door's static scan follows what a runner invokes.
 shared/notify/notify-send.sh
 shared/notify/notify-governor.py
-# Gmail: TODAY the email shared fetch is split across these two files (the runner's gws pre-flight
-# `gmail users getProfile`, and the python's labels/threads list+get). Task 5.4 consolidates them into one shared
-# email fetch; then this section shrinks to that one file.
-shared/tools/email_summary_sync.py
-system/tools/email-summary-write-run.sh
+# Gmail: the ONE shared email fetch (task 5.4, 2026-10-27). Every raw `gws gmail` call (labels, threads list/get, the
+# getProfile pre-flight) lives in this file; the store janitor, email_convert.py and the runner call it. Primary-only
+# default, per-run cap, *-last-seen bookmark, the ingest gate inside, REAL-ATTACK pauses the label.
+shared/tools/email_fetch.py
