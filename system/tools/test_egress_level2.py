@@ -64,12 +64,23 @@ class EgressLevelTwoCase(unittest.TestCase):
                     "<!-- ALLOWLIST-START -->\n%s\n<!-- ALLOWLIST-END -->\n"
                     % (mode, "\n".join(domains)))
 
-    def test_it_ships_off_and_the_shipped_file_says_so(self):
-        """The file in the repo, not a fixture — the state a person actually receives."""
+    def test_the_shipped_file_is_armed_with_exactly_the_feed_hosts(self):
+        """The file in the repo, not a fixture. 5.5 (2026-10-27) ARMED it: on, with exactly the hosts the three Marc feed
+        fetchers read. (It used to ship off; a half-configured state would raise instead of returning, so this also proves
+        the shipped file is a valid armed state, never the ambiguous one.)"""
         os.environ.pop("SAFE_FETCH_ALLOWLIST_FILE", None)
         state, domains, why = self.sf.l2_state()
-        self.assertEqual(state, "off", f"the shipped switch must be off, said {state} ({why})")
-        self.assertEqual(domains, [])
+        self.assertEqual(state, "on", f"the shipped switch must be on, said {state} ({why})")
+        self.assertEqual(sorted(domains), sorted([
+            "query1.finance.yahoo.com", "fred.stlouisfed.org", "stooq.com",
+            "www.ici.org", "ticdata.treasury.gov", "publicreporting.cftc.gov"]))
+
+    def test_an_unlisted_host_is_refused_by_the_shipped_file(self):
+        os.environ.pop("SAFE_FETCH_ALLOWLIST_FILE", None)
+        with self.assertRaises(RuntimeError) as cm:
+            self.sf._enforce_egress_allowlist("https://example.com/not-a-feed")
+        self.assertIn("L2-ALLOWLIST REFUSED", str(cm.exception))
+        self.sf._enforce_egress_allowlist("https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10")   # a listed host passes the wall
 
     def test_off_is_announced_rather_than_silent(self):
         self.write("off")

@@ -280,15 +280,16 @@ def _enforce_egress_allowlist(url):
         "belongs, add its base domain to the list; if it does not, that is the seal doing its job.")
 
 
-def fetch_and_sanitize(url: str, desk: str = "root") -> str:
+def fetch_and_sanitize(url: str, desk: str = "root", timeout=None) -> str:
     """Fetch URL, extract visible text, run L0 sanitization.
 
     Returns clean plaintext. Raises on network error. `desk` tags provenance/coverage (Window 5).
+    `timeout` (seconds) overrides the 10 s default for a caller that knows its source is slow (a job fetching a government file).
     """
     _enforce_egress_allowlist(url)
     req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
     try:
-        with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
+        with urllib.request.urlopen(req, timeout=timeout or _TIMEOUT) as resp:
             charset = _detect_charset(dict(resp.headers), b"")
             raw_bytes = resp.read(_MAX_BYTES)
     except urllib.error.URLError as e:

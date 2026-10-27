@@ -11,6 +11,8 @@
 # Web fetch / search (the sanitising stack):
 system/tools/safe_fetch.py
 system/tools/safe_search_api.sh
+# Google Sheets values (the ONE sanctioned sheet read; sanitises every cell, scans for injection, fails safe):
+system/tools/safe_sheets.py
 # Gmail: TODAY the email shared fetch is split across these two files (the runner's gws pre-flight
 # `gmail users getProfile`, and the python's labels/threads list+get). Task 5.4 consolidates them into one shared
 # email fetch; then this section shrinks to that one file.
