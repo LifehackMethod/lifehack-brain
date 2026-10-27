@@ -964,6 +964,9 @@ what they are: patterns worth building, not things to reach for today.
   money out). → An error must never produce the same signal as success; the no-outcome value is one nothing legal produces.
   → *Solutions audit 2026-09-05:* **Held (partial, OBSERVED):** scheduled-job exit-code contract + 3-strike breaker — trips DOWN on any non-conforming exit (receipt: system-health-run.sh, LIVE; recurred: 122 of 160 instances land after the fix).
   → *Research pass 2026-09-05:* **Field remedy (RESEARCHED):** independent output-shape/baseline verification + heartbeat monitoring — emerging-to-strong (n8n community forum) (lying-signals-text-guards). ⛔ (records in the owner's notes) ✅ ADOPTED (right-size audit 2026-09-05) · Category: **architectural** (canon §16 mode 2, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; field remedy also noted)
+  → *Cure built 2026-10-27:* `job-run.sh` stamps last-success only after a per-job output check. Proven live the
+  same day: the email runner's own stale lock printed "skip this tick" and exited 0; the wrapper failed the run
+  (rc=1, no false success).
 - **[F3]** Tried: keeping one fact in several files with a "remember to update" rule. Failed **177×**: a fix left the
   other copies live. → Count every copy including the template; derive pointers and extracts, never type them.
   → *Solutions audit 2026-09-05:* **Unsolved (NEVER):** tried "derive it or diff it" as a canon rule — failed because it stayed prose, never became a differ (receipt: canon 08-11 ruling; recurred: O-3/26/38/47/55/57/68/71/73/75, FIX: none).
@@ -1450,6 +1453,17 @@ though none of these bind a future build.
 - **[A38]** Tried: launchd LaunchAgents for scheduled bootstrap jobs on both machines. Failed: blocked by
   macOS Full Disk Access — "Operation not permitted" on the Drive path. `2026-05-26` ·
   `records/logs/2026-05-26-cross-machine-sync-infrastructure.md` → cron.
+  **CLOSED 2026-10-27 (Sprint 0):** from a LaunchAgent, screen unlocked, locked, and lid-closed-then-opened,
+  Drive writes, `claude -p` with the token file and gws with the file keyring all worked; a run missed in sleep
+  fired once on wake. launchd is usable; cron is no longer the only answer.
+- **[A41]** Tried: `guard_harness_writeback.sh` / `guard_harness_write` deriving "this repo" from `$0`. Failed: a window running the plugin FROM the V2 checkout blocks every edit there, so building from a V2-launched window is impossible. `2026-10-27` → build from a window running the installed plugin. OPEN.
+- **[A42]** Tried: trusting `write_v2` (`email_summary_sync.py --write-v2`) exit 0. Failed: it exits 0 on a HARD-STOP and when every label lists 0 threads. `2026-10-27` → the wrapper's output check catches it.
+- **[A43]** Tried: `--limit` as a cap on a sweep run. Failed: it did not stop the cold-sweep, so a capped run would have cold-marked the whole store. `2026-10-27` → fixed (e9150b9).
+- **[A44]** Tried: a watchdog `sleep` in the draft wrapper. Failed: it was orphaned on every run. `2026-10-27` → fixed in 1.2.
+- **[A45]** Tried: deferring quiet-hours texts and flushing them only from `pulse.sh`. Failed: with Pulse off, overnight down-texts were never delivered. `2026-10-27` → fixed 2.5a: every wrapper run flushes.
+- **[A46]** Tried: a daily push cap of 3 counted per source `job-run`. Failed: one cap shared by all jobs, and recoveries counted against it. `2026-10-27` → fixed 2.5b: per job, recoveries exempt.
+- **[A47]** Tried: `guard_git_push_signpost.sh` reading the SESSION cwd. Failed: it ignores the `cd`/`-C` target, so it labelled a public push "ClaudeOps (PRIVATE)". `2026-10-27` → read the push target's own repo. OPEN.
+- **[A48]** Tried: cancelling a hand run mid-flight. Failed: it orphaned both the wrapper lock and the runner's inner lock; stale locks self-clear only after watchdog + 300 s. `2026-10-27` → wait out the clear, or remove both locks. OPEN, low.
 - **[B2]** Tried: a status-bar write-GUARD hook on `statusline.sh` blocking python/bash writes. Failed:
   false-positived on legitimate work. `NO-DATE` · `state/projects/project-system/brief.md:170` → edit
   `statusline.sh` with the Edit tool only + an inline warning comment, no hook.
@@ -1502,6 +1516,7 @@ though none of these bind a future build.
   re-run by this window~~ receipt named: claudeops-1a's transcript audit, entry A10 — four `rc=` values in one
   block were all `head`'s, two coincidentally right → `set -o pipefail`, or capture the command's status before
   the pipe. ~~CANDIDATE until a receipt is named~~ OBSERVED (2026-09-05).
+- **[P4]** Tried: calendar waits in a plan ("watch 48 h", "two quiet weeks"). Failed: a forced test (kickstart, backdated last-success, stubs, the job-sim rig) proves the same thing in minutes. `2026-10-27` · plan §D.7 (the Pareto rule) → force the condition instead of waiting for it.
 
 ## §II.5 — Packaging: two lanes, so enforcement travels
 
