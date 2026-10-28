@@ -61,6 +61,33 @@ SHAPE_RE = re.compile(r'\bgrep\b[^|]*(-\w*[xE]\w*|\^|\$)|\bjq\b|\bcase\b|=~|\bpy
 MARK_NAME_RE = re.compile(r'(last|marker|state|tick|stamp|done|cursor|checkpoint|seen|watermark|synced|progress|success|\.ok\b|heartbeat|ran\b)', re.I)
 
 CLAUDE_P_RE = re.compile(r'\bclaude\b[^|;]*?\s(?:-p|--print)\b')
+# a -p call whose command word is a variable expansion: $X  "$X"  ${X}  ${X:-claude}
+VAR_P_RE = re.compile(r'(?:^|[\s;&|(])"?\$\{?(\w+)(?::?-([^}"\s]*))?\}?"?\s[^|;]*?\s?(?:-p|--print)\b')
+AI_NAME_RE = re.compile(r'CLAUDE|LLM|(?:^|_)AI(?:_|$)', re.I)
+AI_ASSIGN_RE = re.compile(r'^\s*(?:export\s+|readonly\s+|local\s+)?(\w+)=(.*)$')
+
+
+def ai_vars(lines):
+    """Names assigned (in these lines) a value that points at claude."""
+    names = set()
+    for _, t in lines:
+        m = AI_ASSIGN_RE.match(t)
+        if m and re.search(r'claude', m.group(2), re.I):
+            names.add(m.group(1))
+    return names
+
+
+def ai_call_pos(seg, names):
+    """Index in seg where an ai `-p` call starts, or None. Literal claude, or a variable command word."""
+    m = CLAUDE_P_RE.search(seg)
+    if m:
+        i = seg.find("claude", m.start())
+        return i if i >= 0 else m.start()
+    for m in VAR_P_RE.finditer(seg):
+        var, dflt = m.group(1), m.group(2) or ""
+        if AI_NAME_RE.search(var) or var in names or re.search(r'claude', dflt, re.I):
+            return m.start()
+    return None
 
 
 # ---------------------------------------------------------------- loading
@@ -474,9 +501,11 @@ def ord2(ctx):
         if kind == "ai" and name_re.search(action):
             out.append((label, n, "ai step %s action names the record" % cid))
     for u in ctx["code_units"]:
+        names = ai_vars(u.lines)
         for n, t in u.lines:
-            if CLAUDE_P_RE.search(t):
-                body = re.sub(r'>{1,2}\s*("[^"]*"|\S+)', "", t[t.find("claude"):])
+            pos = ai_call_pos(t, names)
+            if pos is not None:
+                body = re.sub(r'>{1,2}\s*("[^"]*"|\S+)', "", t[pos:])
                 if name_re.search(body):
                     out.append((u.label, n, "claude -p call names the record in its prompt"))
     return out
@@ -505,9 +534,10 @@ def ord3(ctx):
 
 def claude_calls(ctx):
     for u in ctx["code_units"]:
+        names = ai_vars(u.lines)
         for n, t in u.lines:
             for seg in re.split(r'\|\||&&|;', prep(t)):
-                if CLAUDE_P_RE.search(seg):
+                if ai_call_pos(seg, names) is not None:
                     yield u, n, seg
 
 
@@ -542,7 +572,8 @@ def build_context(root, files, decls):
         return os.path.relpath(p, base) if os.path.isdir(root) else os.path.basename(p)
 
     ctx = {"rootlabel": os.path.basename(os.path.abspath(root)), "units": [], "code_units": [],
-           "card_lines": [], "card_files": [], "card_bad": [], "md": [], "codefiles": []}
+           "card_lines": [], "card_files": [], "card_bad": [], "md": [], "codefiles": [],
+           "skill_units": []}
     for p in files:
         label = lab(p)
         ext = os.path.splitext(p)[1].lower()
@@ -550,7 +581,10 @@ def build_context(root, files, decls):
             parse_decls(read_text(p), label, decls)
             continue
         if ext == ".md":
-            ctx["md"].append((p, label))
+            if os.path.basename(p) == "SKILL.md":   # fenced bash/sh/shell blocks of a SKILL.md are executable steps
+                ctx["skill_units"] += md_blocks(p, label)
+            else:
+                ctx["md"].append((p, label))
             continue
         if not is_code_file(p):
             continue
@@ -575,7 +609,7 @@ def build_context(root, files, decls):
 
 
 def classify(ctx, decls):
-    has_code = bool(ctx["codefiles"])
+    has_code = bool(ctx["codefiles"] or ctx["skill_units"])
     rec = any(re.search(r'record\.tsv|--record\b', t) for u in ctx["code_units"] for _, t in u.lines)
     if not has_code:
         ev = "not-applicable"
@@ -644,6 +678,7 @@ def main(argv):
             emit("verdict=N/A scope=not-applicable examined=0 fail=0 exceptions=0 judge=0")
             return 3
 
+    ctx["units"] += ctx["skill_units"]
     # markdown fenced bash blocks count when the folder has code
     if ctx["codefiles"]:
         for p, label in ctx["md"]:
