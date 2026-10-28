@@ -1,7 +1,9 @@
 ---
 topic: [skill-design]
 id: system-playbook-skill-building
-title: "Skill-Building Playbook — the laws first, then the tools, then the procedure"
+title: "Skill-Building Playbook — the laws first, then the tools, then the procedure — v2 DRAFT (2026-10-28, not yet in force)"
+v1_title: "Skill-Building Playbook — the laws first, then the tools, then the procedure"
+v2_status: "DRAFT built on the assumption that the orchestrator-v2 rig validates. v1 is the authority until Enver swaps this in. No v1 text was deleted: changed passages are struck through (~~) with a > v2 line beneath."
 record_type: playbook
 desk: root
 status: active
@@ -94,7 +96,9 @@ reader_note: >
 > human's share of the work should be small — five percent, at most twenty — but never zero. Human-out-of-the-loop
 > designs are very rare in this system; the default is human in the loop.
 
-# Skill-Building Playbook v2
+# Skill-Building Playbook v2 — v2 DRAFT (2026-10-28, not yet in force)
+
+> **STATUS — DRAFT.** Built on the assumption that the orchestrator-v2 rig validates. **v1 is the authority until Enver swaps this in.** No v1 text was deleted — changed passages are struck through (~~) and followed by a `> **v2 (orchestrator-v2, 2026-10-28):**` line with a confidence tier. Reordering waits (see PART 0, "What waits").
 
 > ## TESTING ASKS "DOES IT WORK?" SECURITY ASKS "WHAT HAPPENS WHEN IT DOESN'T?"
 > *(The centering frame. Enver's, sharpened and adopted 2026-09-11. A near-copy leads `records/canon/2026-09-02-canonical-principles.md`; per canon §12.b the two are kept in agreement by a quarterly human audit, not by construction. ⚠ **That audit is a thing someone must REMEMBER — so by canon §0.1's own test it is a PREFERENCE, not a layer, and it will drift.** Chosen knowingly anyway: a sync script is one more thing that breaks silently and then needs its own alarm. **Stated so the weakness is owned rather than discovered.**)*
@@ -156,6 +160,183 @@ reader_note: >
 
 **How to build a Lifehack skill that fires when it should, runs the right flow, obeys its own procedure, and
 holds the line over a long session — without over-building.**
+
+
+# PART 0 — THE HOSPITAL (v2 frame, 2026-10-28)
+
+## Read this first (audit, 2026-10-28)
+
+1. The card and runner here are a bash prototype: cards are `id | kind | what | check` lines and the runner is about 150 lines of shell (see `state/projects/orchestrator-v2/rig/`). It is not a product.
+2. Verdict in one line: the ordering machinery held, and every wrong outcome came from step design.
+3. Green means "right shape", not "good work"; taste checks need a reviewer.
+4. Caveat: Stage 4 used a fake claude and a fake clock; the real-sonnet controls were 38 calls. Real multi-week use is still the bar.
+
+
+## The two ideas everything else rests on (v2, 2026-10-28)
+
+### 1. The flip: the script calls the AI, not the other way round  *(OBSERVED)*
+
+- In an ordinary session the model is the outer loop. It holds the step list in its head and chooses whether to run each step. So steps get skipped. The code lives inside the LLM.
+- With headless `claude -p` the script holds the step list. It calls the model for ONE step: one prompt in, one answer out. Then that model is gone.
+- That model never sees the next step. So it cannot skip it.
+- Evidence (OBSERVED): orchestrator-v2 Stage 1. 10 runs from a plain terminal and 10 runs from INSIDE a live Claude Code window (Claude Code 2.1.312). 0 out-of-order, 0 hangs.
+  > **v2 (audit, 2026-10-28):** read "0 hangs" as: 10/10 passed, 0 out-of-order (no hang observed).
+- This qualifies, and does not refute, the LAW 1b nested-hang warning. Re-check per version.
+- Consequence: work from the normal window. The window only starts the runner. From then on the runner owns the chain.
+- A dead window does not break the chain. Resume from the record.
+- The one limit: the model still has to START the runner. That single step is still a choice. Hooks and `/checkin` cover it.
+
+### 2. The AI-to-code handoff is a contract: a form, not a letter  *(OBSERVED)*
+
+- Code to AI is easy. Hand it files and a question.
+- AI to code is the hard seam. Code can only check things like an exact token, a value in range, a choice from a fixed list, a yes/no.
+- So every ai step returns a fixed shape: a field, a pick from a list, a number, an exact yes.
+- The next code step checks BOTH the shape AND the content.
+- Wrong, missing, malformed or empty: the step fails loudly. Never "close enough".
+- `--json-schema` does not guarantee a valid shape (see the ⛔ SCHEMA entry in LAW 1b). So validate every time.
+- If an answer cannot be a form (judgment, writing, taste), code cannot grade it. Route it to a separate reviewer or the human. Say so on the card. See "A check that is only taste" in PART 0.
+- Evidence (OBSERVED): strict format ("TOKEN=<value>"): the checker caught 5/5 deliberate lies.
+- Loose checks ("did it say anything", unvalidated values): 26 silently-wrong days of 300, and 3 of 50 pickups, in the Stage 4 meal.
+- The human "no" carried on until code checked for an exact "yes".
+
+> *DRAFT, built on the assumption that the orchestrator-v2 rig validates. Evidence: `state/projects/orchestrator-v2/brief.md` §2 and §4. Tiers: OBSERVED = seen in the rig with a receipt; CANDIDATE = one skill, awaits the week-long /save test and a second skill on a card (per [P2]).*
+
+## The frame, in plain language
+
+The harness is a **hospital for very intelligent Alzheimer's patients** — the patients are fresh agents: brilliant, capable, and with no memory of what happened a minute ago.
+
+- **WALLS = hooks.** They keep the agents in and block one bad action. They cannot make a patient do steps in order.
+- **CHART = the card plus the record on disk.** A fresh agent reads where things stand and the one next step. Hand it STATE, not history.
+- **NURSE = the runner script.** It hands over one step at a time with its inputs as files, runs the check, and writes the chart. The patient never writes the chart.
+
+**Principle: do not try to make the patient obedient; put the rules in the nurse.** (The ESCALATION LADDER in §II.3 and LAW 3 are the same instinct, one altitude down.)
+
+## The default shape for any skill whose step order must hold  *(CANDIDATE)*
+
+1. **Card** — the ordered steps, each of a kind (`code` / `ai` / `human`), each with a check.
+2. **Runner** — one shared script. Delivers one step, runs its check, writes the record, hands over the next.
+3. **Record** — append-only, written by the runner only, one line per step: `run, step, status, utc, output path, reason`, with `status` one of `pass | fail | waiting | answered | skipped-done`.
+4. **Scorer** — code counts the record and prints **examined beside found** (e.g. `examined=30 runs=10 pass=30 fail=0 waiting=0 out_of_order=0`).
+
+## The evidence (receipts from the orchestrator-v2 brief)
+
+- **Stage 1 (OBSERVED):** 10 terminal runs (t01–t10) and 10 nested-in-a-live-session runs (n01–n10), Claude Code 2.1.312, every `ai` step on sonnet — `examined=30 runs=10 pass=30 fail=0 waiting=0 out_of_order=0` each. Nested split: 5 as-is + 5 with `env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT`, all passing. **0 fail, 0 out-of-order.**
+- **Stage 2 (OBSERVED):** the checker caught **5/5** deliberate lies (rung 3: bad runs all failed at s2, no s3 line; good runs 15/15). Kill-and-resume **skipped the done steps and ran the rest exactly once**. A **3-way code-held fan-out** passed 5/5 (`examined=15 pass=15`), the checker having been watched failing first (`bad=1 good=0`).
+- **What the rig found about itself:** the runner never checked a human answer (fixed; p06 "no" stopped, p07 "yes" completed); a hard kill leaves the lock (see the lock rule below); one of the 5 kill samples was not clean.
+- **LAW 4.3's limit, stated plainly:** with K=10 runs, 95% detection reaches only failure rates of about **26% or more** (1 - 0.05^(1/10)). These are **pass@N counts, not rates.** Zero failures in 10 does not bound the true rate under ~26%.
+
+## Stage 4–5 evidence (months in an afternoon)
+
+> *Fake clock and fake `claude`, random faults injected; Stage 5 is paper only. Source: orchestrator-v2 brief §4 (Stage 4 bite + meal, Stage 5) and `rig/paper/`.*
+
+- **Bite (OBSERVED):** the test rig's own check. Run 1 printed `BITE BROKEN: 1 of 17 known faults not named as predicted` — the injector's day-7 truncation bled into day 6's row (an injector bug, not a runner bug); injector fixed, run 2 `BITE CLEAN: all 17 known faults named exactly as predicted` (selftest 24/24).
+- **Meal (OBSERVED), scored with the card:**
+  - REPEAT, 300 days: `finished=212 failed_loudly=104 silent_wrong=26 double_ran=19 stuck=0 lost_items=0`.
+  - LONG RUN, 50 pickups over a fake 6 months: `finished=48 failed_loudly=20 silent_wrong=3 double_ran=11 stuck=0 lost_items=0`.
+  - OPEN-ENDED, 500 check-ins / 50 tidies: `silent_wrong=0 double_ran=0 stuck=0 lost_items=0` (`finished=464 failed_loudly=68`).
+  - `out_of_order=0` in every world. Real-sonnet controls: 38 calls, 38 passed (REPEAT 10, LONG RUN 5 pickups, OPEN-ENDED 20).
+- **Where the wrong outcomes came from:** `silent_wrong` = presence-only checks (almost-right AI replies that pass a non-empty test, 8), unvalidated values (zeroed feeds, 6), and record truncation the runner's resume does not detect (12+3). `double_ran` = kills between a NON-idempotent side-effect step and its record row (19+11); the idempotent-by-id append never double-ran.
+- **LAW 4.3 caveat:** fake clock and fake claude; these are **pass@N counts, not rates**, and the fake claude is not the real model. The 38/38 real-sonnet controls are small.
+- **Reading (OBSERVED):** order and resume held under abuse (`stuck=0 lost_items=0 out_of_order=0` everywhere). Every wrong outcome traced to step design (weak checks, non-idempotent steps) or to one runner gap (truncated record), not to the ordering machinery.
+- **Stage 5, on paper only (CANDIDATE):** emily-breakdown fits as 20 steps (14 code, 6 ai). The card cannot branch and cannot run two ai steps in parallel (see "When NOT to use a card" below). The live runners hide errors (see the new rules below).
+
+## Stage 3 evidence — real skills (OBSERVED)
+
+> *Source: orchestrator-v2 brief §4 and §6; rig README. Tier: OBSERVED unless marked.*
+
+- **/save dry run (5 steps, writes only to rig output):** "yes" gave an 8-item preview in 43s; "no" stopped at the gate with no preview; `out_of_order=0`. Caveat: it ran on the rig session's own transcript, so it proves the mechanics, not a real save.
+- **marc-health on a card:** 9 steps, about 1.8 to 3.5 min per run; a HUP-kill after fetch resumed with fetch `skipped-done`; `examined=37 pass=36 fail=0 out_of_order=0`. Per-fetch data errors (IORB once, MOVE stuck three times) were hidden by production's `|| true` and visible only in the fetch log.
+- **Checkers watched failing first:** save 3/3, marc 14/14.
+- **Recommendation (CANDIDATE):** a short job that just reruns from scratch (marc: 2 to 3 min every 2h) does NOT need a card or resume; it needs per-step failure and content checks instead of `|| true`.
+
+## MAP — where the existing sections sit in the hospital
+
+| Role | Existing sections |
+|---|---|
+| **Walls** (keep in, block one action; cannot order steps) | §II.1 family 3 (WALL); §IV.7 "Simpler skill + structural hook" bullet |
+| **Chart** (state on disk, read to resume) | §II.0 floor (c), the state/memory layer; "OUR OWN BET" and §VI.1 (the shared state file); §IV.8 per-run receipt; §IV.9 the HUD |
+| **Nurse** (the runner: delivers, checks, writes) | LAW 1 (code owns the mechanical perimeter); LAW 3 (never let the actor grade its own completion); §II.1 families 1-2 (REPLACE / VERIFY); PART V checkers |
+| **Shrinks to "a human is talking to the model"** | §IV.1 to §IV.7 (anchoring); the barn-sour material |
+
+## New rules in this draft (each also placed in the body)
+
+- Code reads the human's answer and refuses anything but an explicit yes (§II.3, §V.4b). **OBSERVED**
+- The record has a distinct `waiting` state, separate from `fail` (§II.3). **OBSERVED**
+- A hard kill (SIGKILL) leaves the mkdir lock until stale-steal (1500s); a normal close (SIGHUP) releases it; the live cron runner has the same pattern; the 1500s window is a deliberate trade-off (after [A48]). **OBSERVED**
+
+> **v2 (audit, 2026-10-28):** Stage 3 fix (OBSERVED): the lock now records its owner pid. A dead owner's lock is stolen at once; a live owner still gets rc 75. The 1500s wait described above was the pre-fix behaviour.
+- The AI never writes the record; only the runner does (LAW 3, §V.9). **OBSERVED**
+- When testing a kill, verify the kill landed before the step you meant to interrupt (§V.4c). **OBSERVED**
+- Hand state, not history (§IV.6, §VI.1). **CANDIDATE**
+- Card + runner + record is the default shape for any ordered skill (§III.1, §III.4). **CANDIDATE**
+- A session-reach step receives its inputs as FILES written by a code step, or it cannot run under a runner (LAW 1b reach table). **CANDIDATE**
+
+- Every check tests CONTENT, never presence; "non-empty" is not a check (LAW 3, §V.4b). **OBSERVED**
+- Every side-effect step is safe to run twice (idempotent), or records what it did BEFORE acting so a resume can skip it (LAW 1). **OBSERVED**
+- The runner detects a truncated or malformed record before resuming and fails loudly instead of guessing (LAW 1). **OBSERVED**
+- An exit code of 0 from the AI step is never by itself proof of work; the next step's check reads the artifact (LAW 3). **OBSERVED** (emily marker finding, on paper)
+- Never silence an external command's errors (`2>/dev/null`, `|| true`) in a card step; a failed fetch must not read as "nothing new" (LAW 1). **OBSERVED**
+- Always score with the card, or `out_of_order` is false (§V.5). **OBSERVED**
+  > **v2 (audit, 2026-10-28):** cause: without the card the scorer orders steps alphabetically and reported false out_of_order (2 on /save, 16 on marc). OBSERVED.
+- Test the test rig first: a bite with known faults must name every fault before a big run is trusted; the injector bug was found this way (§V.4c). **OBSERVED**
+- The AI→code handoff is a contract: fixed shape, code checks shape and content, loud fail on anything else; judgment goes to a reviewer. OBSERVED.
+- The flip: the runner calls the model per step; the model never holds the step list. OBSERVED.
+
+> **Tiering note (audit):** the tags above are per rule, not blanket: each rule carries its own tier (OBSERVED where the rig saw it; CANDIDATE otherwise). The same holds for the "Default shape" section above, which is CANDIDATE as a whole only because the week-long test has not run.
+
+Audit additions (each with its own tier):
+
+- Exit-code contract: 0 complete · 70 waiting · 75 stood down · 1 step failed · 124 watchdog; the cron runner also uses 3 missing config · 2 transient auth · 137 watchdog kill. A marker advances only on rc 0 AND a passing content check. **OBSERVED** (brief §4; rig README).
+- Version pinning: the runner writes `ccv=<claude version>` on each run's first record line; 13 version changes occurred across 300 simulated days. Use JSON output; a past `claude -p` empty-stdout regression (2.1.81 to 2.1.83); `--bare` is slated to become the `-p` default. Pin and re-test on upgrade. **OBSERVED / CANDIDATE** (ccv line and version churn observed; the `--bare` change is from the research record).
+- ai steps run read-only (`--allowedTools Read`); only the runner writes outputs and the record. **OBSERVED** (rig README).
+- Scorer definition: out_of_order = a pass whose predecessor has no earlier pass / answered / skipped-done line. **OBSERVED** (rig scorer).
+- Most steps are plain code: emily 14/20, deryl 13/15, clair 12/14 on paper. **CANDIDATE** (`rig/paper/`).
+- The card pins the model per ai step (paper found skill text, runner and plan disagreeing on models). **CANDIDATE** (`rig/paper/*.notes.md`).
+- Classify steps copy values verbatim (later steps must not work from a paraphrase); undefined flags (emily's Fit/Confidence) must be defined before carding. **CANDIDATE** (`rig/paper/`).
+- When skill, runner and old copies disagree (folder names, which runner is live), the card names the one live path. **CANDIDATE** (`rig/paper/`).
+- A stale scratchpad is a second source of truth; the record is the one source. **CANDIDATE** (`rig/paper/`).
+
+## When NOT to use a card
+
+> *Built from `rig/paper/when-not-to-use.md` (card 5.2) and four paper drawings (emily-breakdown, deryl-ingest, clair-ingest, planning-weekly). **CANDIDATE** throughout: nothing here was run; the live runners' error-hiding findings are read from their source.*
+
+- **A conversation (CANDIDATE):** clair-ingest interactive path (Pass 1 to 3, disposition: batches of 5, "number 3, drill in", archive after Enver confirms); planning-weekly phases 1a, 1, 2 and the talking part of 3 and 4 (steps `lookback`, `orient_and_dots`, `prioritize_confirm`, `council_decide`). A card is written before the run; a conversation is written during it. Keep the chat; let the card own what comes before and after, joined by files.
+- **A check that is only taste (CANDIDATE):** Emily's grade and direction, Deryl's LOW/MEDIUM/HIGH, Clair's "needs Enver", Cal's ranked Win and council. Green means "right shape", not "good work"; report "shape checked, judgment not", with a weekly human read of a sample.
+- **One quick step, or short pure code (CANDIDATE, by arithmetic only):** the nearest steps are Deryl `marker`, Clair `cleanup`, Emily `buzz`, worth a card only inside a chain. Use a plain script with a read-back. Exception: code that changes the outside world, runs over a minute, or must resume after a crash does earn a card (Deryl card C "close", planning-weekly `assemble_map`, `lifemap_check`, `clerk`). No measured cost exists.
+- **Unwritten reasoning between steps (MOSTLY REFUTED):** every case was fixed by making the earlier step write it down. Not a reason to avoid cards; a drawing test: if a step's input cannot be a file, fix the earlier step first.
+- **Writing to the real world (use a card):** calendar, notes, labels: always a card, with a read-back check.
+- **Limit 1, no branching (CANDIDATE):** the runner has no "skip". emily-breakdown: commercial needs a short version of the job, so use **one card per path**, picked by the classify step. Deryl and Clair worked around it with no-op files that the check accepts. planning-weekly's council loop-back to Phase 3 and its optional Phase 6 cannot be drawn.
+- **Limit 2, no parallel ai steps (CANDIDATE):** emily-breakdown's script-reader and researcher; planning-weekly's 4 + 9 + 6 = 19 AI calls would run in a row (council on Opus today, plan pins sonnet). Use a **code-held fan-out step** (the Stage 2 3-way fan-out passed 5/5, OBSERVED) and a card for each piece.
+- **Per-item jobs (CANDIDATE):** deryl-ingest (one card per email), clair-ingest (one per thread). The loop lives outside the card; count that outside script as part of the design and test it (the worst hidden errors sit in the glue: Deryl's cap and marker, Clair's unwired verify).
+- **Drawing test:** "Can every input be a file? Can every output be read by code?" No for the whole job means chat; no for some steps means those are `human` or outside-card steps.
+
+- **Decision rule: card or no card (CANDIDATE, audit 2026-10-28):** use a card when step order must hold AND at least one of: the run is long enough that losing progress costs real time/money, a human pause sits mid-run, it spans sessions, or it has more than one ai step. A short job that can simply rerun from scratch gets per-step checks and loud failure, not a card. Every job, carded or not, follows the ALWAYS rules (content checks, no silenced errors, exit 0 is not proof). This reconciles the "5-step linear run still gets a card" note at §IV.8.
+- **A card makes a chat feel finished once files exist (CANDIDATE):** planning-weekly paper drawing; the files existing is not the conversation having happened.
+- **Per-step timeouts vs one global limit (CANDIDATE):** the card needs a timeout per step; one global limit hides which step hung.
+
+## Strike-and-replace edits made in the body (all `> **v2 (orchestrator-v2, 2026-10-28):**`)
+
+§IV.8 engine/state-machine (CANDIDATE) · §IV.8 short-run "add nothing" (CANDIDATE) · §IV.8 receipt emitted (OBSERVED) · §IV.6 "habit, not a solution" (CANDIDATE) · §IV.4 model-written banner (CANDIDATE) · §II.3 "say go" most reliably-held (OBSERVED) · LAW 1b HEADLESS cannot pause (OBSERVED) · LAW 1b nested `claude -p` (OBSERVED, qualified not refuted) · §VI.1 handoff carries FULL context (CANDIDATE).
+
+## What waits
+
+These wait for the **week-long /save-on-a-card test and a second skill on a card** (per [P2]); until both, everything tagged CANDIDATE stays CANDIDATE:
+
+- The full reorganisation of this document under the hospital frame (no section is moved in this draft).
+- Promotion of every CANDIDATE item above to doctrine.
+- The held lines: the [F11] and §IV.6 prose-step entries' core text; LAW 1b's policy-risk lines; [P4] (the week-long test is a deliberate exception to "force the condition instead of waiting").
+
+## Where this could be wrong (dissent from the research — CANDIDATE)
+
+- Models outgrow hardcoded steps (Cognition, Browser Use). Fair for open-ended work; the card is for work whose order must hold.
+- A fresh reviewer on the same model is not independent (self-preference bias, arXiv 2604.22891); see §V.4a.
+- Engines earn their keep as steps multiply (10 steps x 99% is about 90%); at-least-once delivery means steps must be idempotent.
+- Unattended loops hang on permission prompts.
+- The built-in Workflow tool was held back (Anthropic-only, AI-authored scripts, same-session resume only).
+- Headless churn and lock-in: pin versions.
+
+
+---
 
 ## 🧭 ROUTE — find your question, not the outline
 
@@ -351,6 +532,8 @@ needs. `[C]` structured-output constraints can degrade reasoning on some tasks (
 Anthropic's own production skills are the **hybrid**, and they draw the line exactly at *verifiability*. Our
 position is the second, plus the verification machinery in PART V that neither has.
 
+> **v2 (orchestrator-v2 Stage 4/5, 2026-10-28):** Three rules from the Stage 4 meal (OBSERVED, fake clock and fake claude; pass@N counts, not rates). (1) Every side-effect step is safe to run twice, or records what it did BEFORE acting so a resume can skip it: all `double_ran` (19 of 300 days, 11 of 50 pickups) came from kills between a NON-idempotent step's side effect and its record row; the idempotent-by-id append never double-ran. (2) The runner detects a truncated or malformed record before resuming and fails loudly: `silent_wrong` included record truncation (12+3) that the runner's resume accepted and only the scorer noticed. (3) Never silence an external command's errors (`2>/dev/null`, `|| true`) in a card step: emily-breakdown ends every Google command in `2>/dev/null`, a failed Gmail query reads as "no new mail" (Emily, Deryl, Clair), and marc-health's `|| true` hid IORB/MOVE data errors (paper, Stage 5). *(OBSERVED.)*
+
 ### ⭐ THE SEAM — what the line between the two halves is actually MADE OF
 
 > # ⚠ SUPERSEDED THE SAME DAY IT SHIPPED — 2026-08-05. READ THIS BEFORE THE SECTION BELOW.
@@ -516,6 +699,11 @@ required"* and the reader reasonably heard *"the LLM runs now."* **I built the l
 | **HEADLESS** | a script shells `claude -p` | ✅ yes — **with the two fixes below** | ⛔ no |
 | **NONE** | nothing reaches a model | — | — |
 
+> **v2 (orchestrator-v2, 2026-10-28):** The HEADLESS row's "can pause for approval: ⛔ no" is **superseded**: a headless run CAN pause if the runner stores the question, exits with a distinct waiting code, and resumes on the answer. *(OBSERVED — p01–p07 pause/resume, brief §4 Stage 2. Table row kept as written above because a table cell cannot be struck without breaking the table.)*
+
+- **NEW RULE — a session-reach step receives its inputs as FILES written by a code step, or it cannot run under a runner.** A step whose reach is SESSION (e.g. `/save` reading the live conversation or armed flags) has nothing to read once a runner owns the order; a code step must first write what it needs to disk. *(CANDIDATE — awaits the week-long /save test.)*
+
+
 **⛔ LAW: A SEAM WHOSE ONLY REACH IS `SESSION` DOES NOT EXIST IN CRON.** Write that in the artifact, or a
 background path will silently skip the judgment step and report success. **This is the same disease as
 §V.9's `validator-exists-but-nothing-calls-it`**, one altitude up: there, code had no caller; here, a
@@ -528,6 +716,9 @@ revised plan, with the right to re-impose expressly reserved.** ⇒ **Do not bui
 subsystem on subscription-backed inference without a conscious decision** — the `TOKEN_FILE` pattern this
 very row depends on is exactly that bet. Policy moves faster than architecture. *(`/research`,
 2026-08-05 — Anthropic Help Center / Axios / Zed Industries.)*
+
+> v2 note: held for the week-long test
+
 
 **MEASURED 2026-08-05 — the two things that break HEADLESS in cron, and the house already fixed both:**
 - ⛔ **PATH.** `claude` lives at `~/.local/bin/claude`, which is **NOT on cron's PATH**
@@ -556,6 +747,9 @@ very row depends on is exactly that bet. Policy moves faster than architecture. 
   Bash tool — independently confirming this house's own rule that a subagent shelling `claude -p`
   double-nests. **If a hard schema guarantee is needed, the Messages API's `output_config.format`
   (constrained decoding, GA) is the only surface that provides one — not this flag.**
+
+> **v2 (orchestrator-v2, 2026-10-28):** Qualification, not refutation: a nested `claude -p` from inside a live Claude Code session ran **10/10** (n01–n10, Claude Code 2.1.312), with and without unsetting `CLAUDECODE` / `CLAUDE_CODE_ENTRYPOINT` (5 + 5, all passing). The hang/double-nest hazard above is kept; re-check it per version. *(OBSERVED — brief §2 Rung 2.)*
+
 
 **⭐⭐ THE LAW THAT MATTERS MOST — AN UNREACHABLE MODEL IS NOT A CLEAN RESULT.**
 **Measured:** when `claude -p` cannot run, **stdout is EMPTY and the exit code is 127.** An empty stdout
@@ -664,9 +858,16 @@ phase's required artifacts exist. The model never stamps its own homework. A com
 **side-effect check** (does the file exist, does the row read back) — because `[C]` a schema check happily passes
 a well-formed lie.
 
+> v2 receipt (orchestrator-v2): checker-writes-marker held in the rig — 10 terminal + 10 nested runs, 0 fail, 0 out-of-order, every record line written by the runner (brief §2/§4; Claude Code 2.1.312). OBSERVED, one rig.
+
+- **NEW RULE — the AI never writes the record; only the runner does.** The model produces a step's output file; the runner runs the check and writes the record line. *(OBSERVED — also see §V.9.)*
+
+
 **The anti-pattern, seen in the wild** `[C]`: a 261k★ suite whose ledger lines (`Task N: complete`) are written
 by the model with nothing validating them against git; a 13.8k★ pipeline whose "checkpoint" JSON is written by
 the model on the honor system. Both are prose choreography dressed as rigor.
+
+> **v2 (orchestrator-v2 Stage 4/5, 2026-10-28):** Two more instances. (1) Every check tests CONTENT, never presence; "non-empty" is not a check: `silent_wrong` came from almost-right AI replies passing a non-empty test (8) and zeroed feeds whose values were never validated (6); the marc voice check only tested non-empty. (2) An exit code of 0 from the AI step is never by itself proof of work; the next step's check reads the artifact: the live emily-breakdown, deryl-ingest and clair-ingest runners advance the "new mail seen" marker on rc 0 alone, so nothing proves the document, the open loop or the archive happened (Emily marker finding, on paper). *(OBSERVED.)*
 
 ## LAW 4 — Three things an LLM structurally CANNOT do
 
@@ -858,9 +1059,15 @@ behavior, don't under-gate a high-stakes structural invariant.
 cannot see.
 
 **The ESCALATION LADDER (when a rule keeps losing):** reword ❌ → **binary gate** → **the user-turn boundary**.
-The user-turn boundary is the only truly unbypassable gate, and the **"say go" HARD-STOP is the most
-reliably-held gate type there is `[R]`** — use it at every real pause point, and **spend it sparingly**: each one
+~~The user-turn boundary is the only truly unbypassable gate, and the **"say go" HARD-STOP is the most
+reliably-held gate type there is `[R]`** — use it at every real pause point, and **spend it sparingly**: each one~~
 costs the user a tap, and a skill that stops six times gets skipped entirely.
+
+> **v2 (orchestrator-v2, 2026-10-28):** A stop is only a gate if code reads the answer and refuses anything but an explicit yes; a "say go" the runner ignores is a speed bump, not a gate (the rig's runner ignored a "no" until fixed; then "no" gave a fail at the step and a stop, "yes" completed). Spend-it-sparingly still stands. *(OBSERVED — brief §4 Stage 2, p06/p07.)*
+
+- **NEW RULE — code reads the human's answer and refuses anything but an explicit yes.** The runner stores the question, reads the reply, and proceeds only on yes; any other reply fails the step. *(OBSERVED — p06 "no" stopped at s3, p07 "yes" completed.)* Also applies at §V.4b.
+- **NEW RULE — the record has a distinct `waiting` state, separate from `fail`.** A run paused for a human is neither passing nor failing; collapsing the two hides either a stuck run or a broken one. *(OBSERVED — rungs 4+5: `waiting=11`, then 13, with `fail` counted apart.)*
+
 
 - **Layer calibration is model-era specific.** What must live in code today may hold in prose under a stronger
   model — re-run the test when the tier changes. "The least rung that holds" is never permanent.
@@ -943,6 +1150,9 @@ what they are: patterns worth building, not things to reach for today.
   dispatch failure). Keeps the controller's context clean and scales fan-out.
 - **File-existence resume** — skip items whose output file already exists. The cheapest reliable checkpoint;
   it's a filesystem check, not a fragile state-file read.
+
+> v2 receipt (orchestrator-v2): kill-and-resume skipped the done steps and ran the rest exactly once (every resumed run: s1/s2 `skipped-done`, s3/s4/s5 once). OBSERVED, 5 kill samples (4 clean).
+
 - **Plan-scoped workspace dirs** with a self-ignoring `.gitignore` — no cross-run state collision.
 - **CI-gated skill linter** — a repo-level check that blocks a merge on structural violations (frontmatter,
   size caps, orphan files). A backstop under the birth guard.
@@ -967,6 +1177,9 @@ what they are: patterns worth building, not things to reach for today.
   → *Cure built 2026-10-27:* `job-run.sh` stamps last-success only after a per-job output check. Proven live the
   same day: the email runner's own stale lock printed "skip this tick" and exited 0; the wrapper failed the run
   (rc=1, no false success).
+
+> v2 receipt (orchestrator-v2): the checker caught **5/5** deliberate lies (rung 3: bad b01–b05 each failed at s2, no s3 line; good g01–g05 passed 15/15). OBSERVED.
+
 - **[F3]** Tried: keeping one fact in several files with a "remember to update" rule. Failed **177×**: a fix left the
   other copies live. → Count every copy including the template; derive pointers and extracts, never type them.
   → *Solutions audit 2026-09-05:* **Unsolved (NEVER):** tried "derive it or diff it" as a canon rule — failed because it stayed prose, never became a differ (receipt: canon 08-11 ruling; recurred: O-3/26/38/47/55/57/68/71/73/75, FIX: none).
@@ -975,6 +1188,9 @@ what they are: patterns worth building, not things to reach for today.
   known-bad input before trusting it passing (§V.4c is now rule zero of PART V).
   → *Solutions audit 2026-09-05:* **Held (partial, OBSERVED):** weekly synthetic-payload firing at real guards, distinguishing engine-failed from a verdict (receipt: guard-fire-test-run.sh, LIVE; recurred: liveness disputed twice, canon §11 Q21).
   → *Research pass 2026-09-05 (second pass, the five modes):* **Field remedy (RESEARCHED):** checker independent in author, code path, and data source from what it checks — strong, decades-old cross-industry convergence (verification-not-by-the-actor; Skalse 2022 / ISO segregation-of-duties). ✅ ADOPTED (right-size audit, second pass, 2026-09-05) ⛔ (records in the owner's notes) · Category: **architectural** (canon §16 mode 4, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; field remedy also noted)
+
+> v2 receipt (orchestrator-v2): also for Part V rule zero — the check was watched failing first (`bad=1 good=0`, rung 6) and failing 5/5 on known-bad runs before being trusted passing. OBSERVED.
+
 - **[F5]** Tried: starting a build from a premise nobody checked. Failed **155×** — the spin cluster, 91 stated days;
   the scope loop (a verifier setting its own backlog) is one form of it. → Search before designing; measure before planning.
   → *Solutions audit 2026-09-05:* **Unsolved (NEVER):** tried seven "look before you build" lessons, each self-stamped DURABLE — failed because none became a checked step (receipt: B3-9 search rail 08-08; recurred: B2-82, 09-03).
@@ -991,6 +1207,9 @@ what they are: patterns worth building, not things to reach for today.
   → *Solutions audit 2026-09-05:* **Held (partial, OBSERVED):** fail-closed check on the shape of a sub-agent return — closes payload-loss, not self-report truth (receipt: guard_agent_return_channel.sh, LIVE; recurred: truth-check DORMANT).
   → Never evidence; re-run the check with a stricter filter than the helper used.
   → *Research pass 2026-09-05 (second pass, the five modes):* **Field remedy (RESEARCHED):** never trust a worker's self-produced proof — poll a pre-agreed, orchestrator-checked landmark fixed before delegation — strong (verification-not-by-the-actor; hexisteme.github.io postmortem). ✅ ADOPTED (right-size audit, second pass, 2026-09-05) ⛔ (records in the owner's notes) · Category: **operational** (canon §16 mode 8, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; field remedy also noted)
+
+> v2 receipt (orchestrator-v2): the runner, not the helper, runs the check and writes the record; the rig's 3-way code-held fan-out passed 5/5 (`examined=15 pass=15`). OBSERVED.
+
 - **[F9]** Tried: carrying a number forward from a hand-off or a note. Failed **55×**. → A number ships with the
   command that produces it.
   → *Solutions audit 2026-09-05:* **Unsolved (NEVER):** tried compute-in-code doctrine, calc cells hook-locked — failed because the rule was followed and the number was still 12% wrong (receipt: J4-100, 08-03).
@@ -1003,6 +1222,11 @@ what they are: patterns worth building, not things to reach for today.
   skill: steps designed in prose silently do not happen. → Ship the behaviour and what makes it observable in one change.
   → *Solutions audit 2026-09-05:* **Unsolved (NEVER):** tried the inject_* nudge family as the remedy — failed because it is non-blocking by construction, prints and exits 0 (receipt: canon §4.6, 619 points, 50.7% still asked-nicely).
   → *Research pass 2026-09-05 (second pass, the five modes):* **Field remedy (RESEARCHED):** move must-always rules into deterministic hooks/tool gates, keep prose for judgment calls only — strong, three independent communities converge (rules-with-teeth; Claude Code hooks docs). ✅ ADOPTED — a receipt on hook-plane doctrine and point-of-need injection (2026-09-05) ⛔ (records in the owner's notes) · Category: **architectural** (canon §16 mode 11, 2026-09-08 retrofit) · **RESEARCHED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; field remedy, never held here)
+
+> v2 receipt (orchestrator-v2): prose-step order did not decide any outcome in the rig, where the runner held it (0 out-of-order in 20 + 5 + 5 runs). OBSERVED.
+
+> v2 note: held for the week-long test
+
 - **[F12]** Tried: editing a file and assuming it is the one that runs. Failed **40×**: two resolvable copies, runtime
   picked the other. → After a cutover, check which file loads, not which pointer moved.
   → *Solutions audit 2026-09-05:* **Held (partial, OBSERVED):** cross-repo hash-parity check on one file pair — sticks because a test fired it and found a real drift live (receipt: guard_hook_sop_read.sh, LIVE, patched 08-23; recurred: within 48h, again 09-04).
@@ -1460,10 +1684,22 @@ though none of these bind a future build.
 - **[A42]** Tried: trusting `write_v2` (`email_summary_sync.py --write-v2`) exit 0. Failed: it exits 0 on a HARD-STOP and when every label lists 0 threads. `2026-10-27` → the wrapper's output check catches it.
 - **[A43]** Tried: `--limit` as a cap on a sweep run. Failed: it did not stop the cold-sweep, so a capped run would have cold-marked the whole store. `2026-10-27` → fixed (e9150b9).
 - **[A44]** Tried: a watchdog `sleep` in the draft wrapper. Failed: it was orphaned on every run. `2026-10-27` → fixed in 1.2.
+
+> v2 receipt (orchestrator-v2): the same orphan-lock family showed in the rig — a hard kill (SIGKILL, k05) left the mkdir lock. OBSERVED.
+
 - **[A45]** Tried: deferring quiet-hours texts and flushing them only from `pulse.sh`. Failed: with Pulse off, overnight down-texts were never delivered. `2026-10-27` → fixed 2.5a: every wrapper run flushes.
 - **[A46]** Tried: a daily push cap of 3 counted per source `job-run`. Failed: one cap shared by all jobs, and recoveries counted against it. `2026-10-27` → fixed 2.5b: per job, recoveries exempt.
 - **[A47]** Tried: `guard_git_push_signpost.sh` reading the SESSION cwd. Failed: it ignores the `cd`/`-C` target, so it labelled a public push "ClaudeOps (PRIVATE)". `2026-10-27` → read the push target's own repo. OPEN.
 - **[A48]** Tried: cancelling a hand run mid-flight. Failed: it orphaned both the wrapper lock and the runner's inner lock; stale locks self-clear only after watchdog + 300 s. `2026-10-27` → wait out the clear, or remove both locks. OPEN, low.
+
+> v2 receipt (orchestrator-v2): confirmed on the rig runner (k05, SIGKILL leaves the lock; resume stands down rc 75 for up to 1500s; removed by hand). OBSERVED.
+
+> **v2 (audit, 2026-10-28):** Stage 3 fix (OBSERVED): the lock now records its owner pid. A dead owner's lock is stolen at once; a live owner still gets rc 75. The 1500s wait described above was the pre-fix behaviour.
+
+- **NEW RULE — lock behaviour on a kill, and the stale-steal trade-off.** A hard kill (SIGKILL) leaves the mkdir lock until stale-steal (1500s); a normal close (SIGHUP) releases it; the live cron runner has the same pattern. The 1500s stale-steal window is a **deliberate trade-off** (a shorter window risks stealing a live run's lock; a longer one delays resume) — name it, do not hide it. *(OBSERVED — brief §4 Stage 2 finding 2.)*
+
+> **v2 (audit, 2026-10-28):** Stage 3 fix (OBSERVED): the lock now records its owner pid. A dead owner's lock is stolen at once; a live owner still gets rc 75. The 1500s wait described above was the pre-fix behaviour.
+
 - **[B2]** Tried: a status-bar write-GUARD hook on `statusline.sh` blocking python/bash writes. Failed:
   false-positived on legitimate work. `NO-DATE` · `state/projects/project-system/brief.md:170` → edit
   `statusline.sh` with the Edit tool only + an inline warning comment, no hook.
@@ -1511,12 +1747,17 @@ though none of these bind a future build.
 - **[P2]** Tried: promoting a §VII candidate to REPRODUCED on two receipts from one build. Failed: proposed by one
   nav window, withdrawn by it against THE FRAME's bar ("multiple blind sessions *over time*"). `2026-09-05` ·
   canon §10a [DNR4] → two receipts from one build is OBSERVED ×2; a different build promotes. OBSERVED.
+> **v2 (orchestrator-v2 Stage 4/5, 2026-10-28):** Stage 4 adds a second, independent evidence line for the card architecture: the simulated meal (300-day REPEAT, 50-pickup LONG RUN, 500-check-in OPEN-ENDED; fake clock and fake claude), plus 38/38 real-sonnet controls. It is simulated, so it does not promote anything: real multi-week use remains the bar for REPRODUCED/VALIDATED. *(OBSERVED, simulated.)*
+
 - **[P3]** Tried: reading `cmd | head; echo $?` as the command's exit status. Failed: `$?` is `head`'s; two
   operators read a passing verify off it in one day. `2026-09-05` · ~~reported in the nav hand-off, receipt not
   re-run by this window~~ receipt named: claudeops-1a's transcript audit, entry A10 — four `rc=` values in one
   block were all `head`'s, two coincidentally right → `set -o pipefail`, or capture the command's status before
   the pipe. ~~CANDIDATE until a receipt is named~~ OBSERVED (2026-09-05).
 - **[P4]** Tried: calendar waits in a plan ("watch 48 h", "two quiet weeks"). Failed: a forced test (kickstart, backdated last-success, stubs, the job-sim rig) proves the same thing in minutes. `2026-10-27` · plan §D.7 (the Pareto rule) → force the condition instead of waiting for it.
+
+> v2 note: held for the week-long test — the week-long /save test is a deliberate exception to "force the condition instead of waiting": the question (does a real, ordinary week of use hold) cannot be forced.
+
 
 ## §II.5 — Packaging: two lanes, so enforcement travels
 
@@ -1609,6 +1850,9 @@ the thing lives:
 true about this system, always). **A skill holds a PROCEDURE** (what to do when a particular job comes up). A
 fact that keeps getting restated inside skills belongs in CLAUDE.md; a procedure sitting in CLAUDE.md is loading
 into every session for nothing.
+
+- **NEW RULE — card + runner + record is the default shape for any skill whose step order must hold.** Classify with this in mind (§III.1): if order matters, the skill gets a card, a runner and a record (see PART 0). *(CANDIDATE.)*
+
 
 ## III.2 — Declare its INTENT (three layers, written before anything else)
 
@@ -1734,6 +1978,9 @@ enforcement:
 - **Error taxonomy by who-fixes-it.** transient → retry · model-recoverable → loop · user-fixable → pause ·
   unknown → bubble up.
 - **Light evals, after the fake pass.** 20–50 real cases that define "good"; grade the *outcome*, not the path.
+
+- **NEW RULE (§III.4) — design the flow as card + runner + record by default** when order must hold: ordered steps of kind code/ai/human, each with a check; one shared runner; an append-only runner-written record. *(CANDIDATE.)*
+
 
 ## III.5 — Progressive disclosure + layout
 
@@ -1968,8 +2215,11 @@ Confirm both fire, not just one: **(a)** the identity anchor (who you are) and *
 the other alone.
 
 **The Path Beat is orientation, not proof** — ladder rung 1 (Part II §II.2: self-reported marker, fakeable). A
-plain model-written banner is fine for a simple skill; where a receipts file already exists, *prefer* printing the
-banner from it — a design preference, not a per-turn runtime gate.
+~~plain model-written banner is fine for a simple skill; where a receipts file already exists, *prefer* printing the
+banner from it — a design preference, not a per-turn runtime gate.~~
+
+> **v2 (orchestrator-v2, 2026-10-28):** Print the banner from the record, never from the model: a model-written banner is the actor reporting its own position. *(CANDIDATE.)*
+
 
 **Measured caution [R2]:** a model accurately *restates* a rule it is simultaneously *violating* 8–99% of the
 time (Law 4.2, "knows-but-violates"). Declarative recall is not behavioral adherence. **Never treat a
@@ -2008,8 +2258,13 @@ turn split: each step gets a fresh, self-contained prompt so the model works *th
 > not nothing. **The discriminating test** (three arms, blind graders, measured by artifact): whole arc shown ·
 > one step at a time in one session · one step per fresh sub-agent. Until it runs, this section is OBSERVED, not
 > mechanism.
-> **REFINED 2026-09-05 (solutions audit, `records/research/2026-09-05-durable-solutions-audit.md` ⛔ owner's notes):** the
-> per-step prompt is *a habit, not a solution.* Inside `/checkin`, already built per-step, prose-backed steps were skipped
+~~> **REFINED 2026-09-05 (solutions audit, `records/research/2026-09-05-durable-solutions-audit.md` ⛔ owner's notes):** the
+> per-step prompt is *a habit, not a solution.* Inside `/checkin`, already built per-step, prose-backed steps were skipped~~
+
+> **v2 (orchestrator-v2, 2026-10-28):** Keep per-step delivery, but the runner delivers each step and checks it before handing over the next, so the exit code is part of the delivery rather than a separate hope. The skip evidence above (J5-144) stands and is the reason. *(CANDIDATE.)*
+
+> **Hand state, not history** *(new rule, CANDIDATE)*: what a fresh agent is handed is the current state (where things stand) and its one next step, written by the runner — never the transcript of how it got there.
+
 > a THIRD time while tool-backed steps ran — delivery held constant, only the exit code varied (J5-144, 2026-08-15). What
 > holds is the external check with an exit code. Keep the per-step shape for the reasons above (short context, one
 > job per prompt); do not count on it for compliance. Every step that must happen gets a tool with an exit code.
@@ -2037,20 +2292,31 @@ Anchoring (§IV.1–§IV.7) keeps a skill on-*principle* — comparatively easy,
 on-*procedure* — not skipping a step — is a separate problem, because **the model fakes its own progress.** Two
 questions decide the mechanism, and both must be asked, not assumed:
 
-1. **Is this run long enough to lose its place?** Short/linear → add **nothing**. Only a long, multi-pass, or
+~~1. **Is this run long enough to lose its place?** Short/linear → add **nothing**. Only a long, multi-pass, or
    headless run earns an external **scratchpad** — and there it's mandatory, because it *will* get compacted.
-   Never reach for a scratchpad by default.
+   Never reach for a scratchpad by default.~~
+
+> **v2 (orchestrator-v2, 2026-10-28):** Order that must hold is held by a runner, whatever the run's length — a 5-step linear run still gets the card and the runner if its order matters. External state beyond the record is still for long or headless runs. *(CANDIDATE.)*
+
+> **v2 (audit, 2026-10-28):** reconciled with PART 0 "When NOT to use a card": use a card when step order must hold AND at least one of: the run is long enough that losing progress costs real time/money, a human pause sits mid-run, it spans sessions, or it has more than one ai step. A short job that can simply rerun from scratch gets per-step checks and loud failure, not a card. (CANDIDATE.)
+
 2. **Does this particular gate MATTER?** Scale the proof to the stakes using Part II §II.2's reliability ladder
    (marker → artifact → code-gate). Reach for a code-gate only when running out of order would genuinely break
    something.
 
-**Per-run conformance receipt.** A multi-step skill emits one machine-checkable pass/fail block at close, so each
-gated step is provably done on *that* run — not just claimed at the end.
+~~**Per-run conformance receipt.** A multi-step skill emits one machine-checkable pass/fail block at close, so each
+gated step is provably done on *that* run — not just claimed at the end.~~
 
-**Our context.** Frontier Claude running bash/markdown skills, not a general agent framework: an in-context SOP
+> **v2 (orchestrator-v2, 2026-10-28):** The runner writes one record line per step as each step finishes (run, step, status, utc, output path, reason); the skill never emits its own receipt, because a receipt the actor emits is the actor grading itself (LAW 3). *(OBSERVED — 10+10 runs, every line runner-written; brief §4 Stage 1.)*
+
+
+~~**Our context.** Frontier Claude running bash/markdown skills, not a general agent framework: an in-context SOP
 beats heavy orchestration, and rigid state machines are brittle for us specifically. **We essentially never need
 workflow-engine orchestration.** The heaviest this SOP asks for: a scratchpad for a long headless run, plus one
-blocking validator hook for a single genuinely critical gate.
+blocking validator hook for a single genuinely critical gate.~~
+
+> **v2 (orchestrator-v2, 2026-10-28):** We do not need an engine. Any multi-step skill whose order must hold gets a **card** (ordered steps, each with a check), a **runner** (one shared script) and a **record** (append-only, runner-written) — a script, not a workflow engine, and "rigid state machine" is the wrong description of it. *(CANDIDATE: one skill; awaits the week-long /save-on-a-card test and a second skill, per [P2]. Rig: Stage 1 and 2 scorer lines, orchestrator-v2 brief §2/§4.)*
+
 
 ## §IV.9 — Draw the Path Beat on the status bar (a skill's own HUD line)
 
@@ -2126,6 +2392,9 @@ enough to hit it.
 code-dissection research [C] that grounds PARTS I–III — it rests entirely on our own evidence (planning-weekly, the
 conformance lab) and is **UNPROVEN** until a real multi-phase run is built this way and graded end to end. File
 it next to Part II §II.6's held hypotheses: consistent with everything we've measured, not yet doctrine.
+
+> v2 receipt (orchestrator-v2): a fresh session resumed from a file and finished the run (kill-and-resume, k01–k05). **OBSERVED, one rig — not REPRODUCED.**
+
 
 ---
 
@@ -2210,6 +2479,8 @@ suspicion §V.2 asks you to hold toward a first-pass finding.
 
 ## §V.4a — BLIND THE GRADERS, NEVER THE ACTORS
 
+> **v2 (audit, 2026-10-28):** a fresh reviewer on the same model is not independent (self-preference bias, arXiv 2604.22891); see PART 0 "Where this could be wrong". CANDIDATE.
+
 `[M: verified live 2026-07-28; doctrine approved the same day]` §V.4 says the verifier fails like the thing it
 grades. Here is the sharpest instance we have found, because it invalidated results rather than producing an
 obvious error.
@@ -2287,6 +2558,9 @@ hard way: our first fix demanded four evidence fields, and the next probe suppli
 (`str(1)` is non-empty). Types are part of the evidence — a timestamp is a string, a runnable command is a
 string.
 
+- **NEW RULE (see §II.3) — code reads the human's answer and refuses anything but an explicit yes.** A gate on a human's reply verifies the evidence (the reply) not the form of the claim that one was asked for. *(OBSERVED.)*
+
+
 ## §V.4c — Probe a gate by DESTRUCTION, not by minimization
 
 `[M: 2026-07-28, four sweeps]` The obvious probe is *"ask a blind model for the smallest artifact that passes."*
@@ -2321,6 +2595,11 @@ whether the check NOTICED. That is deterministic, needs no clause, and cannot be
 - **Verify your prober the same way.** Ours emitted two false alarms, both caught by RUNNING it: it treated any
   12-letter English word as an identifier, and it renamed a JSON *key* (schema) as though it were a *value*
   (identity). §V.4 applies to the tool that applies §V.4.
+
+- **NEW RULE — when testing a kill, verify the kill landed before the step you meant to interrupt.** One of 5 kill samples (k01) landed after the runner had already reached s3, so it was not a clean sample (4 clean of 5). Read the record to confirm where the kill fell before counting it. *(OBSERVED.)*
+
+
+> **v2 (orchestrator-v2 Stage 4/5, 2026-10-28):** Test the test rig first: a bite with known faults must name every fault before a big run is trusted. Stage 4 run 1 printed `BITE BROKEN: 1 of 17 known faults not named as predicted`; the injector, not the tester, had broken isolation (day 7's truncation glued into day 6's last row). Fixed with truth/expected/checks untouched; run 2 `BITE CLEAN: all 17 known faults named exactly as predicted`. Only then was the 300-day meal run. *(OBSERVED.)*
 
 ## §V.4d — A CLAIM WRITTEN NEXT TO A THING IS TREATED AS THE THING
 
@@ -2377,6 +2656,10 @@ This is the verification twin of Law 2: a per-component pass proves the componen
 - **Why this bites hardest in verification tooling:** a broken seam in a grader doesn't crash — it produces a
   confident, well-formatted, *wrong* verdict, which is the single most expensive output a tester can emit.
 
+> **v2 (orchestrator-v2 Stage 4/5, 2026-10-28):** (Placed at the end of §V.5.) Always score with the card: the scorer reads the card's step order, or `out_of_order` is false. All three Stage 4 meal worlds were scored with their card (`out_of_order=0`). *(OBSERVED.)*
+
+> **v2 (audit, 2026-10-28):** cause: without the card the scorer orders steps alphabetically and reported false out_of_order (2 on /save, 16 on marc). OBSERVED.
+
 ## §V.6 — The three failure types (from v1 §3.5, preserved)
 
 When a run diverges from spec, sort it into exactly one of three buckets — they have different evidentiary
@@ -2428,6 +2711,13 @@ catch drift and regressions at scale, not to replace the moment a human actually
 says "yes, that's right." Build the lab to sharpen your judgment about what "right" looks like; don't let it
 substitute for looking.
 
+> **v2 (audit, 2026-10-28):** Testing hygiene (OBSERVED, orchestrator-v2 rig):
+- Never point a live schedule at a throwaway rig (the cron runner's /tmp lock is shared).
+- Experiments live under the notes folder, because the harness-write guard refuses writes inside the installed tree.
+- Keep bulk test output OFF Google Drive: the rig wrote 17,832 files / 41M and Drive sync choked; it was moved to ~/lifehack-scratch/.
+- In plan Verify lines use $HOME, never `~` inside quotes (it does not expand; 6 Stage 4/5 Verify lines would always have failed).
+- Use a fake claude (scripted bad modes) for cheap abuse testing of the runner; real claude only for small controls (38 calls).
+
 ## §V.9 — Anti-patterns observed in the wild `[C]`
 
 From dissecting six trust-gated public skill repos — name these so we never copy them, no matter how popular
@@ -2445,6 +2735,7 @@ the source:
 - **Validator-exists-but-nothing-calls-it.** A real schema validator sits in the repo, invoked only because a
   prompt asks the model to run it — no orchestrator re-checks that it ran. COMMITTED to the file; never
   ENFORCED. Exactly the gap Law 3 exists to close.
+- **A record the AI writes.** The model-written ledger is the anti-pattern above; the v2 form is that the runner writes the record and the AI never does (LAW 3 NEW RULE). *(OBSERVED.)*
 - **An LLM judge sold as a deterministic test.** *(Our inference from Law 4.3 — NOT an observed anti-pattern in
   the dissected repos. Named here because it's the trap the evidence implies, not one we caught anyone in.)* A
   routing eval or completion check reported as "passing" when it's a single non-repeated model call. A green
@@ -2454,6 +2745,8 @@ the source:
   single samples lie." That is the honest form. The anti-pattern is the same practice **without** the caveat.
 
 ---
+
+> **v2 (audit, 2026-10-28):** plan_retire's commit lookup matched unrelated commits by card number and stamped 8 cards with false evidence; root cause unfixed. OBSERVED.
 
 # PART VI — SCALE & SPECIAL SHAPES
 
@@ -2479,13 +2772,21 @@ one voice); staged skills sharing a state file on the **inside**; the seam hidde
 - **One persona spans the seam** — the human never feels the handoff.
 - **The shared state file IS the state machine** — read the file, never your recollection; each stage writes
   only its own fields; every field is asserted true on entry to the next stage.
-- **The handoff carries FULL context, not a summary** — the receiving stage must find the whole prior-stage
+~~- **The handoff carries FULL context, not a summary** — the receiving stage must find the whole prior-stage
   state in the shared file. A lossy summary at the handoff is the documented failure mode. *(Exception, OBSERVED
   2026-09-04: a DIAGNOSED atomic build card — nav/build SOP's diagnosis gate — deliberately carries LESS; the spec
   is the context, and the card held as a sub-agent brief with zero follow-ups. Full context is for STAGE
-  handoffs; a card is a different unit.)*
+  handoffs; a card is a different unit.)*~~
+
+> **v2 (orchestrator-v2, 2026-10-28):** The runner writes the state; hand a fresh agent the state and its one next step, not the history. *(CANDIDATE.)*
+
+- **NEW RULE — hand state, not history.** See §IV.6 note and the rule above: the unit of handoff is state plus the one next step. *(CANDIDATE.)*
+
 - **Progress reads from a receipts file, never recall.** Scratch ≠ saved. Ship a cold-restore runbook: read true
   state → skip terminal rows → requeue in-flight rows, idempotently.
+
+> v2 receipt (orchestrator-v2): the same kill-and-resume result (`skipped-done` on s1/s2, rest once). OBSERVED.
+
 - **Two-tier work.** A cheap pass sets a manifest; only the flagged survivors get the expensive pass.
 - **Capture/rank two-file seam.** Capture writes an append-only file A, then goes read-only; a separate
   processing/ranking pass writes file B, keyed by id. Processing can hide or reorder an item but can **never
@@ -2674,6 +2975,9 @@ Evidence: `~/lifehack-brain` branch `V2` (19 commits). **This section is the onl
 - **A field a script consumes is written in the script's grammar, and the writer is refused, not warned.** 7 of 8 `Verify:` lines read correctly to a human and failed a machine re-run. AUTHORITATIVE · refuted if a constrained format still fails to re-run at a real rate.
 - **A checker's "could not determine" never resolves to pass.** A fallback to "shell exited 0" on a `; echo $?` command retired a card whose check printed 2 against a stated 0. ~~AUTHORITATIVE~~ OBSERVED ×2 (one build, two operators, two mechanisms — not REPRODUCED until a different build) · Law 1b's no-outcome member applied to the verifier.
   **Extended 2026-09-05, clause → whole scan:** "found nothing" and "did not finish looking" must never render identically — at clause, card, or scan level. A scan killed mid-run (timeout, recursion, exception) exits non-zero with an explicit INCOMPLETE and never an empty finding list; it states EXAMINED beside FOUND ("0 regressions across 27 cards" is checkable; "0 regressions" is not). Receipt: the regression gate went blind on retirement (commit `3bd635f`; fix `65238c6`); a cold window saw "2 regressions across 29 cards examined" with the self-referential cards printed as EXCLUDED. Canon §1.3.
+
+> v2 receipt (orchestrator-v2): the scorer prints examined beside found on every line (`examined=30 runs=10 pass=30 fail=0 waiting=0 out_of_order=0`). OBSERVED.
+
 - **A verifier is also work, and any checker over "all finished work" will enumerate itself.** CANDIDATE (one build). Mechanical form: exclude its own entry and say so in the output; a self-exemption is honest only when visible. Its own check is the natural way to prove it works, so the recursion is what a well-written card produces, not an accident. *Open question, recorded not dressed up: this passed a destruction probe and a selectivity probe and was still wrong, because the property did not exist until acceptance — no pre-acceptance verification could have caught it.*
 - **A parser that silently skips what it does not recognise is a fail-open.** An id regex dropped 5 of 15 cards and reported clean; a command allowlist dropped a clause and the card passed on the rest. Count examined vs present. AUTHORITATIVE, 2 instances · canon §5.6 for tokenizers.
 - **Any session-level list beside a plan file is a second tracker.** The harness task queue diverged from the plan's cards inside the build fixing two-tracker failures. AUTHORITATIVE, 1 instance.
