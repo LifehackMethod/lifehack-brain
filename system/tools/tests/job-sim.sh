@@ -41,6 +41,11 @@
 #               bash system/tools/tests/job-sim.sh --gate     full gate run: 200 fuzz reps, budget GATE_BUDGET s
 #   exit 0 = every row green, "fuzz: n/n (seed ...)", inside the budget.   exit 1 = any miss (printed).
 #   Budgets carry >= 2x headroom over measured runs, so load alone cannot flip it RED. JOB_SIM_BUDGET=<s> overrides.
+#   bash system/tools/tests/job-sim.sh --bite     5.9(i) TEST THE TESTER: plants one known fault per fix-round item (a)-(h) (each against a COPY or a
+#   seam, never live state) plus JOB_SIM_BREAK, and asserts the real mechanism catches each and NAMES it exactly. One line per fault
+#   ("PLANTED x -> CAUGHT "<name>"") and a total; exit 1 if any is missed or named wrong. --gate runs the bite FIRST and refuses to run
+#   (exit 1, "GATE REFUSED") if it fails. The 5.9 scenarios (lock-owner, corrupt-*, bookmark-moves-only-when-done, model-readonly,
+#   silenced-error-door, email-summary-errors, guard-fire-verdict ...) are registered in NEW_SCENARIOS and run in the worker pool.
 #   JOB_SIM_BREAK=1 bash system/tools/tests/job-sim.sh     deliberately corrupts ONE expected value;
 #   the rig must then exit 1 (proof that the assertions can fail).
 #   JOB_SIM_FUZZ=<n> sets the rep count (default 50; 200 with --gate; seed is fixed).  JOB_SIM_V=1 prints the per-tick timeline.
@@ -502,6 +507,12 @@ def seam_leaks(before):
 
 def main():
     t_start = time.time()
+    if GATE:   # 5.9(i): test the tester FIRST. A rig that cannot catch a planted fault must not vouch for the gate.
+        print("-- the bite: planted faults, each must be caught and named exactly (--gate runs this first) --")
+        if bite_main() != 0:
+            print("\nGATE REFUSED: the bite failed, so this rig cannot be trusted to catch faults; its green would be no evidence. Fix the bite first.")
+            return 1
+        print()
     real_before = real_snapshot()
     sc = scenarios()
     notes = {}
@@ -1664,8 +1675,6 @@ def model_readonly():
     fails = []
     v = model_args_violation()
     if v: fails.append(f"model-readonly: {v}")
-    if "dangerously-skip-permissions" in open(f"{ROOT}/system/tools/model.lib.sh").read().replace("never the permission bypass", ""):
-        pass   # (the library may mention the flag by name in a comment; the args check above is the real test)
     t = BASE + 12 * 3600
     w = World([("sim-m", P), ("sim-a", P)])
     try:
