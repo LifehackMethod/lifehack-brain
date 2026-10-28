@@ -55,7 +55,7 @@ STATUS_ARTIFACT="$OUT_DIR/last-run.json"                        # {rc, ts} proof
 mkdir -p "$OUT_DIR" 2>/dev/null || true
 
 # ── Single-instance lock (a write run can take minutes; a second Pulse tick must not double-pull). ──
-LOCKDIR="/tmp/claudeops-${SUBSYSTEM_NAME}.lock"
+LOCKDIR="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/claudeops-${SUBSYSTEM_NAME}.lock"   # LIFEHACK_RUNNER_LOCK_ROOT: TEST-ONLY seam (job-sim.sh)
 if ! mkdir "$LOCKDIR" 2>/dev/null; then
   _lock_mtime="$(stat -c %Y "$LOCKDIR" 2>/dev/null || stat -f %m "$LOCKDIR" 2>/dev/null || echo 0)"
   case "$_lock_mtime" in ''|*[!0-9]*) _lock_mtime=0 ;; esac
@@ -138,22 +138,36 @@ do_work() {
 do_work & WORK_PID=$!
 ( sleep "$WATCHDOG_SECS"; kill -9 "$WORK_PID" 2>/dev/null ) & WD_PID=$!
 if wait "$WORK_PID" 2>/dev/null; then RC=0; else RC=$?; fi
-kill "$WD_PID" 2>/dev/null || true
+pkill -P "$WD_PID" 2>/dev/null; kill "$WD_PID" 2>/dev/null || true   # the watchdog subshell AND its sleep (else a 900 s sleep leaks per run)
 wait "$WD_PID" 2>/dev/null || true
 [ -f "$WORKLOG" ] && cat "$WORKLOG"   # surface the work output to the Pulse log
 
-# ── On SUCCESS → stamp write-health into the shared tile (a durable last_write_run; PRESERVES any DEGRADED
-#    the S-1 dead-man set — a good write never masks a stale/zeroed store). Best-effort: a tile-stamp hiccup
-#    must not fail an otherwise-successful write. ──
+# ── 5.9(c): the run's SUMMARY LINE decides success, not the janitor's exit code. write_v2 exits 0 even if SOME threads errored; its
+#    summary line carries "errors=N". A missing summary line is a FAILURE (the run did not say how it went), never "zero errors";
+#    errors=[1-9] fails the run. The tile stamp below still records the count either way. ──
 if [ "$RC" -eq 0 ]; then
-  # write_v2 exits 0 even if SOME threads errored — its summary line carries "errors=N". Read it once,
-  # feed it to the tile stamp AND use it for the partial-failure buzz below.
-  _ERRS="$(grep -oE 'errors=[0-9]+' "$WORKLOG" 2>/dev/null | tail -1 | grep -oE '[0-9]+' || echo 0)"
-  python3 "$CODE_ROOT/shared/tools/email_summary_sync.py" --stamp-write-ok --write-errors "${_ERRS:-0}" 2>/dev/null || \
-    echo "[$SUBSYSTEM_NAME] WARNING: write succeeded but tile-stamp failed (non-fatal)."
-
-  # 2026-10-27 (2.5c): the H2.1 partial-failure text was removed with the failure text above; job-run.sh is the
-  # one alarm. A partial refresh (errors=N) is still recorded: _ERRS goes to the tile stamp above and the worklog.
+  if ! _SUMLINE="$(grep -E 'v2 write DONE' "$WORKLOG" | tail -1)"; then _SUMLINE=""; fi
+  _ERRS=""
+  if [ -n "$_SUMLINE" ]; then
+    if ! _ERRS="$(printf '%s\n' "$_SUMLINE" | grep -oE 'errors=[0-9]+' | tail -1 | grep -oE '[0-9]+')"; then _ERRS=""; fi
+  fi
+  if [ -z "$_SUMLINE" ]; then
+    echo "[$SUBSYSTEM_NAME] FAILED: no 'v2 write DONE' summary line in $WORKLOG — a missing summary is a failure, not zero errors." >&2
+    RC=1
+  elif [ -z "$_ERRS" ]; then
+    echo "[$SUBSYSTEM_NAME] FAILED: the summary line has no errors=N field: $_SUMLINE" >&2
+    RC=1
+  elif [ "$_ERRS" -ge 1 ]; then
+    echo "[$SUBSYSTEM_NAME] FAILED: the write finished with errors=$_ERRS — $_SUMLINE" >&2
+    RC=1
+  fi
+  # Stamp write-health into the shared tile (a durable last_write_run; PRESERVES any DEGRADED the S-1 dead-man set). A tile-stamp hiccup is
+  # named on stderr but does not by itself fail an otherwise-successful write.
+  if [ -n "$_ERRS" ]; then
+    python3 "$CODE_ROOT/shared/tools/email_summary_sync.py" --stamp-write-ok --write-errors "$_ERRS" || \
+      echo "[$SUBSYSTEM_NAME] WARNING: the write finished but the tile-stamp failed (rc=$?)." >&2
+  fi
+  # 2026-10-27 (2.5c): job-run.sh is the one alarm; a partial refresh now FAILS the run above and is named in the log.
 fi
 
 echo "[$SUBSYSTEM_NAME] done (rc=$RC)."

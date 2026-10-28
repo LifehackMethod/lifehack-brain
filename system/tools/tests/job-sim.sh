@@ -1107,6 +1107,84 @@ def bite_b():
 BITES.append(("b", "guard-fire-test artifact with an exit code and no verdict", "output check failed", bite_b))
 
 
+# SPLICE:5.9c
+def esw_world(d):
+    """A throwaway code root holding the REAL email-summary-write-run.sh and stubs for everything it calls (gws auth, tile, fetch
+    preflight, the janitor). The janitor stub prints $ESW_OUT (a file the scenario writes) as its run output. Returns the runner path."""
+    tools, shared = f"{d}/code/system/tools", f"{d}/code/shared"
+    os.makedirs(tools); os.makedirs(f"{shared}/tools")
+    shutil.copy(f"{ROOT}/system/tools/email-summary-write-run.sh", tools)
+    open(f"{tools}/gws-auth.lib.sh", "w").write('require_gws_credentials() { GWS_CREDS_FILE=/dev/null; return 0; }\n')
+    open(f"{tools}/status-tile.lib.sh", "w").write('write_status_tile() { return 0; }\n')
+    open(f"{shared}/brain_root.py", "w").write(f"print({d + '/brain'!r})\n")
+    open(f"{shared}/tools/email_fetch.py", "w").write("import sys\nsys.exit(0)\n")
+    open(f"{shared}/tools/email_summary_sync.py", "w").write(
+        "import os, sys\n"
+        "if '--stamp-write-ok' in sys.argv:\n"
+        "    open(os.environ['ESW_STAMP'], 'a').write(' '.join(sys.argv[1:]) + '\\n'); sys.exit(0)\n"
+        "sys.stdout.write(open(os.environ['ESW_OUT']).read())\n")
+    os.makedirs(f"{d}/brain")
+    return f"{tools}/email-summary-write-run.sh"
+
+
+def esw_run(d, runner, summary_text, home=None):
+    open(f"{d}/esw-out.txt", "w").write(summary_text)
+    env = {k: v for k, v in os.environ.items() if k not in SEAMS}
+    env.update(HOME=home or f"{d}/home", ESW_OUT=f"{d}/esw-out.txt", ESW_STAMP=f"{d}/esw-stamp.txt", LIFEHACK_RUNNER_LOCK_ROOT=d, TZ="UTC")
+    os.makedirs(env["HOME"], exist_ok=True)
+    # output to a FILE, not a pipe: the runner's watchdog leaves a `sleep` holding any inherited pipe open for its full period
+    with open(f"{d}/esw-run.out", "w") as fh:
+        r = subprocess.run(["bash", runner], env=env, stdin=subprocess.DEVNULL, stdout=fh, stderr=subprocess.STDOUT)
+    log = open(f"{env['HOME']}/.local/share/lifehack/email-summary-write/last-write.log").read()
+    return r.returncode, open(f"{d}/esw-run.out").read(), log
+
+
+def esw_check_regex():
+    return real_row("email-summary-write")[4].split(" ~ ", 1)[1].strip()
+
+
+def esw_matches(log):
+    import re
+    return any(re.search(esw_check_regex(), ln) for ln in log.splitlines())
+
+
+def email_summary_errors():
+    """5.9(c): the REAL runner (stubbed janitor). errors=5 fails the run and says so; a MISSING summary line fails (it is not zero errors);
+    `written=0 unchanged=1 errors=5` fails the runner AND does not satisfy the row's own check; a clean summary passes both (control)."""
+    fails, d = [], tempfile.mkdtemp(prefix="job-sim-esw.")
+    try:
+        runner = esw_world(d)
+        pre = "[email-summary-sync] fetching...\n  V2 abc — a subject\n"
+        for tag, text, want_rc, want_msg, want_check in [
+                ("clean", pre + "[email-summary-sync] v2 write DONE — written=2 unchanged=1 flagged=0 cold=0 errors=0\n", 0, None, True),
+                ("errors=5", pre + "[email-summary-sync] v2 write DONE — written=2 unchanged=1 flagged=0 cold=0 errors=5\n", 1, "errors=5", False),
+                ("written=0 unchanged=1 errors=5", pre + "[email-summary-sync] v2 write DONE — written=0 unchanged=1 flagged=0 cold=0 errors=5\n", 1, "errors=5", False),
+                ("no-summary-line", pre + "[email-summary-sync] v2 active-by-scope: INBOX=90\n", 1, "no 'v2 write DONE' summary line", False)]:
+            rc, out, log = esw_run(d, runner, text)
+            if rc != want_rc: fails.append(f"email-summary-errors[{tag}]: runner exit {rc}, expected {want_rc} ({out[-200:]!r})")
+            if want_msg and want_msg not in out: fails.append(f"email-summary-errors[{tag}]: output does not name {want_msg!r}")
+            if esw_matches(log) != want_check: fails.append(f"email-summary-errors[{tag}]: the row check {'rejected' if want_check else 'accepted'} this summary")
+        return 4, fails, ([], [])
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+NEW_SCENARIOS.append(("email-summary-errors", email_summary_errors))
+
+
+def bite_c():
+    d = tempfile.mkdtemp(prefix="job-sim-esw.")
+    try:
+        runner = esw_world(d)
+        rc, out, log = esw_run(d, runner, "[email-summary-sync] v2 write DONE — written=0 unchanged=1 flagged=0 cold=0 errors=5\n")
+        return "FAILED: the write finished with errors=5" if rc == 1 and "FAILED: the write finished with errors=5" in out and not esw_matches(log) else None
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+BITES.append(("c", "email-summary-write finishing with errors=5", "FAILED: the write finished with errors=5", bite_c))
+
+
 def play_t0(name, jobs, t0, ticks):
     # a scenario check may need the first tick's time (w.t0s): wrap each chk to set it
     def wrap(chk):

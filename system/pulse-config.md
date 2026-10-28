@@ -224,7 +224,7 @@ tasks-store-sync | off | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_COD
 # surfaces on the next tick." 3h cadence.
 # 2026-10-27 (self-monitoring Sprint 1, Enver's ruling): capped at 3 threads per run, enough to prove
 # the scheduled chain without pulling the whole inbox. Remove EMAIL_WRITE_LIMIT=3 to return to full runs.
-email-summary-write | yes | 10800 | Keeps the v2 email thread store current: the run reads at least one Gmail thread and records written plus unchanged threads. | ~/.local/share/lifehack/email-summary-write/last-write.log ~ v2 write DONE.*written=(0 unchanged=)?[1-9] | small | 30 | gmail | EMAIL_WRITE_LIMIT=3 bash "$LIFEHACK_CODE_ROOT/system/tools/email-summary-write-run.sh"
+email-summary-write | yes | 10800 | Keeps the v2 email thread store current: the run reads at least one Gmail thread and records written plus unchanged threads. | ~/.local/share/lifehack/email-summary-write/last-write.log ~ v2 write DONE.*written=(0 unchanged=)?[1-9].* errors=0$ | small | 30 | gmail | EMAIL_WRITE_LIMIT=3 bash "$LIFEHACK_CODE_ROOT/system/tools/email-summary-write-run.sh"
 #
 # ── T9.8b, 2026-08-15 — five rows closing four previously-missing wiring gaps. Each runner was
 #    ported/built THIS session and syntax/dry-path verified (skip branches exercised with real
