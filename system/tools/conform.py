@@ -245,8 +245,17 @@ def is_fetch_member(member):
     if not words:
         return None
     w = os.path.basename(words[0].strip("\"'"))
+    vm = re.match(r'^\$\{?(\w+)\}?$', w)
+    if vm:  # command held in a variable, e.g. "$GWS_BIN" / $CURL
+        for tok in re.split(r'_+', vm.group(1).lower()):
+            if tok in FETCH_CMDS:
+                return tok
     if w in FETCH_CMDS:
         return w
+    if re.match(r'(ba|z)?sh$|python3?$', w) and len(words) > 1:
+        sw = os.path.basename(words[1].strip("\"'"))
+        if re.search(r'fetch|notify[-_]send|download', sw, re.I):
+            return sw
     if w == "git" and re.search(r'\bpush\b', s):
         return "git push"
     if re.match(r'python3?$', w) and re.search(r'requests|urllib|httpx|urlopen', s):
@@ -267,7 +276,7 @@ def alw1_shell(unit):
     for n, line in unit.lines:
         segs = segments(line)
         for i, (delim, text) in enumerate(segs):
-            if delim == "||" and re.match(r'^\s*(true|:)\s*\)?\s*$', text) and i > 0:
+            if delim == "||" and re.match(r'^\s*(true|:|echo\b[^\n]*|printf\b[^\n]*)\s*\)?\s*$', text) and i > 0:
                 f = fetch_in(segs[i - 1][1])
                 if f:
                     out.append((unit.label, n, "`|| %s` swallows a failed %s" % (text.strip(), f)))
@@ -324,7 +333,7 @@ def find_marker_write(text):
 
 def rc_only_condition(cond):
     c = cond.strip()
-    if re.search(r'\$\{?(\?|rc|ret|status|exit\w*|retval|code|result)\}?"?\s*(-eq|==?)\s*"?0|\$\{?(rc|ret|status|retval)\}?"?\s*(-ne|!=)', c) \
+    if re.search(r'\$\{?(\?|rc|ret|status|exit\w*|retval|code|result)\}?"?\s*(-eq|==?)\s*"?0|\$\{?(rc|ret|status|retval)\}?"?\s*(-ne|!=)', c, re.I) \
             and not re.search(r'\b(grep|jq|cmp|diff|case|awk)\b', c):
         return True
     if CONTENT_RE.search(c):
