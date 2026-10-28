@@ -69,7 +69,7 @@ BASE = calendar.timegm((2026, 11, 2, 0, 0, 0))   # a Monday, 00:00 UTC
 SEAMS = ["LIFEHACK_FAKE_NOW", "LIFEHACK_STATE_DIR", "LIFEHACK_JOBS_FILE", "LIFEHACK_NOTIFY_LOG",
          "LIFEHACK_JOBS_STATE_DIR", "LIFEHACK_JOBS_MANIFEST", "JOB_RUN_NOTIFY", "JOB_RUN_WATCHDOG",
          "NOTIFY_STATE_FILE", "JOB_SIM_DIR", "SENTINEL_PAUSE_FILE", "LIFEHACK_GWS_BIN", "LIFEHACK_LAST_SEEN_DIR",
-         "LIFEHACK_RUNNER_LOCK_ROOT"]
+         "LIFEHACK_RUNNER_LOCK_ROOT", "JOB_RUN_PENDING_LIST"]
 STAND_REASON = "the job's own pre-flight stood down"
 REPAIR = "jobs cannot find the code — open any desk once to repair"
 
@@ -1533,6 +1533,98 @@ def bite_e_bookmark():
 BITES.append(("e/job-run", "a corrupt last-success", "corrupt state file: <root>/state/jobs/sim-a/last-success is not one ISO timestamp", bite_e_jobrun))
 BITES.append(("e/governor", "a corrupt notify-governor state file", "CORRUPT: notify-governor state file is corrupt: <root> is not valid JSON", bite_e_governor))
 BITES.append(("e/bookmark", "a corrupt *-last-seen bookmark", "[email-fetch] CORRUPT bookmark: <file> should hold", bite_e_bookmark))
+
+
+# SPLICE:5.9f
+OLD_MARK = "1700000000000 old-id"
+FETCH_CMD = ('python3 "$LIFEHACK_CODE_ROOT/shared/tools/email_fetch.py" --consumer sim-drill --label sim-drill --query "" --cap 5 '
+             '--out "$JOB_SIM_DIR/out/fetch.json"{extra} && '
+             '{{ [ -z "$LIFEHACK_FAKE_NOW" ] || touch -t "$(date -r "$LIFEHACK_FAKE_NOW" +%Y%m%d%H%M.%S)" "$JOB_SIM_DIR/out/fetch.json"; }}{tail}')
+
+
+def bookmark_run(check_regex, extra="", tail="", force=False, mark=OLD_MARK):
+    """Run the REAL job-run.sh + the REAL email_fetch.py (stub gws, stub reader) on a throwaway mailbox with a pre-existing bookmark.
+    Returns dict(rc, bookmark text, pending-exists, last-run, log)."""
+    t = BASE + 12 * 3600
+    w = World([("sim-fetch", P)])
+    try:
+        d = w.dir
+        gm = f"{w.sim}/gmail"; os.makedirs(gm)
+        seen = f"{d}/seen"; os.makedirs(seen)
+        ids = [f"t{i}" for i in range(1, 8)]
+        open(f"{gm}/labels.json", "w").write('{"labels":[{"id":"Label_9","name":"sim-drill"}]}')
+        open(f"{gm}/threads.json", "w").write(json.dumps({"label_ids": {"Label_9": ids}, "all": ids}))
+        for i, tid in enumerate(ids):
+            open(f"{gm}/thread-{tid}.json", "w").write(json.dumps(_gm_thread(tid, f"subject {i}", f"Plain note number {i}.", 1793000000000 + i * 1000)))
+        bm = f"{seen}/sim-drill-last-seen"
+        if mark is not None: open(bm, "w").write(mark + "\n")
+        extra_env = {"LIFEHACK_GWS_BIN": f"{HERE_TESTS}/job-sim-gws-stub.py", "CLAUDE_BIN": f"{HERE_TESTS}/job-sim-claude-stub.sh",
+                     "SENTINEL_PAUSE_FILE": f"{d}/paused", "SENTINEL_LOG": f"{d}/sentinel/events.jsonl", "SENTINEL_STATUS": f"{d}/sentinel/status.json",
+                     "SENTINEL_ACKED_FP": f"{d}/sentinel/acked.json", "SENTINEL_QUARANTINE_DISABLE": "1", "LIFEHACK_ROOT": f"{d}/brain",
+                     "LIFEHACK_LAST_SEEN_DIR": seen, "EMAIL_SERVICE_READ": ""}
+        cmd = FETCH_CMD.format(extra=extra, tail=tail)
+        open(w.manifest, "w").write("# bookmark manifest\n```jobs\n"
+            f"sim-fetch | yes | {P} | o | $JOB_SIM_DIR/out/fetch.json ~ {check_regex} | none | 0 | none | {cmd}\n```\n")
+        args = ["bash", JR, "sim-fetch"] + (["--force"] if force else [])
+        rc = w.sh(args, t, extra_env).returncode
+        return dict(rc=rc, mark=open(bm).read().strip() if os.path.exists(bm) else None, pending=os.path.exists(bm + ".pending"),
+                    lr=w.read("sim-fetch", "last-run"), log=w.read("sim-fetch", "log"), seen=seen, d=d)
+    finally:
+        w.close()
+
+
+def bookmark_moves_only_when_done():
+    """5.9(f): the bookmark moves only when the work is done. Through the real job-run.sh + email_fetch.py (stub mailbox, pre-existing
+    bookmark): a consumer whose row CHECK FAILS leaves the bookmark unchanged and leaves no .pending behind; a job whose command FAILS after
+    a good fetch does too; a PEEK (--no-mark) and a forced test run never move it; a run that passes (rc 0 + check) promotes it to the
+    newest message and removes the pending file. fetch() on its own (outside job-run.sh) only ever writes the .pending."""
+    fails = []
+    ok_re, bad_re = '"count": [0-9]', '"count": 99'
+    r = bookmark_run(bad_re)
+    if r["rc"] != 1 or "output check failed" not in r["lr"]: fails.append(f"bookmark[check fails]: rc={r['rc']} last-run={r['lr']!r}")
+    if r["mark"] != OLD_MARK: fails.append(f"bookmark[check fails]: the bookmark moved to {r['mark']!r}")
+    if r["pending"]: fails.append("bookmark[check fails]: a .pending file was left behind")
+    r = bookmark_run(ok_re, tail=" && false")
+    if r["rc"] == 0 or r["mark"] != OLD_MARK or r["pending"]: fails.append(f"bookmark[command fails after a good fetch]: rc={r['rc']} mark={r['mark']!r} pending={r['pending']}")
+    r = bookmark_run(ok_re, extra=" --no-mark")
+    if r["rc"] != 0 or r["mark"] != OLD_MARK or r["pending"]: fails.append(f"bookmark[peek]: rc={r['rc']} mark={r['mark']!r} pending={r['pending']}; a peek must write nothing")
+    r = bookmark_run(ok_re, force=True)
+    if r["rc"] != 0 or r["mark"] != OLD_MARK or r["pending"]: fails.append(f"bookmark[forced]: rc={r['rc']} mark={r['mark']!r} pending={r['pending']}; a test run must not move it")
+    r = bookmark_run(ok_re)
+    if r["rc"] != 0 or r["mark"] != "1793000004000 m-t5" or r["pending"]: fails.append(f"bookmark[passes]: rc={r['rc']} mark={r['mark']!r} pending={r['pending']}; expected promotion to 1793000004000 m-t5")
+    r = bookmark_run(ok_re, mark=None)
+    if r["rc"] != 0 or r["mark"] != "1793000004000 m-t5": fails.append(f"bookmark[first run, no bookmark]: rc={r['rc']} mark={r['mark']!r}")
+    # fetch() alone (no job-run.sh): only the pending file appears
+    d = tempfile.mkdtemp(prefix="job-sim-bmf.")
+    try:
+        gm = f"{d}/sim/gmail"; os.makedirs(gm)
+        open(f"{gm}/labels.json", "w").write('{"labels":[{"id":"Label_9","name":"sim-drill"}]}')
+        open(f"{gm}/threads.json", "w").write(json.dumps({"label_ids": {"Label_9": ["t1"]}, "all": ["t1"]}))
+        open(f"{gm}/thread-t1.json", "w").write(json.dumps(_gm_thread("t1", "s", "Plain note.", 1793000001000)))
+        seen = f"{d}/seen"; os.makedirs(seen); open(f"{seen}/sim-drill-last-seen", "w").write(OLD_MARK + "\n")
+        env = {k: v for k, v in os.environ.items() if k not in SEAMS}
+        env.update(HOME=f"{d}/home", JOB_SIM_DIR=f"{d}/sim", LIFEHACK_GWS_BIN=f"{HERE_TESTS}/job-sim-gws-stub.py", CLAUDE_BIN=f"{HERE_TESTS}/job-sim-claude-stub.sh",
+                   LIFEHACK_LAST_SEEN_DIR=seen, SENTINEL_PAUSE_FILE=f"{d}/paused", SENTINEL_LOG=f"{d}/s/e.jsonl", SENTINEL_STATUS=f"{d}/s/s.json",
+                   SENTINEL_ACKED_FP=f"{d}/s/a.json", SENTINEL_QUARANTINE_DISABLE="1", LIFEHACK_ROOT=f"{d}/brain", EMAIL_SERVICE_READ="")
+        rc = subprocess.run(["python3", EF, "--consumer", "sim-drill", "--label", "sim-drill", "--query", "", "--out", f"{d}/o.json"], env=env,
+                            stdin=subprocess.DEVNULL, capture_output=True, text=True).returncode
+        mark = open(f"{seen}/sim-drill-last-seen").read().strip()
+        pend = open(f"{seen}/sim-drill-last-seen.pending").read().strip() if os.path.exists(f"{seen}/sim-drill-last-seen.pending") else None
+        if rc != 0 or mark != OLD_MARK or pend != "1793000001000 m-t1": fails.append(f"bookmark[fetch alone]: rc={rc} bookmark={mark!r} pending={pend!r}; fetch() must only write the .pending")
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    return 7, fails, ([], [])
+
+
+NEW_SCENARIOS.append(("bookmark-moves-only-when-done", bookmark_moves_only_when_done))
+
+
+def bite_f():
+    r = bookmark_run('"count": 99')
+    return f"output check failed; bookmark unchanged ({r['mark']})" if r["rc"] == 1 and r["mark"] == OLD_MARK and not r["pending"] and "output check failed" in r["lr"] else None
+
+
+BITES.append(("f", "a consumer whose row check fails", f"output check failed; bookmark unchanged ({OLD_MARK})", bite_f))
 
 
 def play_t0(name, jobs, t0, ticks):

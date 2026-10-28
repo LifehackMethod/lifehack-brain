@@ -20,6 +20,7 @@
 #                 (5.3, via model.lib.sh run_model; 0/0 for a job with no AI), model = the row's tier or none — every run that got past the overdue check
 #   last-success  "<ISO time>" — written ONLY after the output check passed; its mtime is the clock
 #   log           the last 20 runs, one "=== run …" section each
+#   pending.current  per-run list of *-last-seen.pending files the shared fetch wrote (5.9(f)); promoted on rc 0 + a passing check, else deleted
 #   errors/       one file per FAILED run (not 75, not 2), named by time
 #   alerted       exists while ONE "job down" push is out and no success has followed: "<ISO time> rc=<n> <incident id>"
 #   launch.err    launchd's StandardErrorPath — non-empty means the launch line could not find this
@@ -158,6 +159,12 @@ finish() {
   if [ "$rc" -ne 0 ] && [ "$rc" -ne 75 ] && [ "$rc" -ne 2 ]; then
     cp "$RUNLOG" "$STATE/errors/$(err_stamp).txt" 2>/dev/null
   fi
+  if [ -n "${JOB_RUN_PENDING_LIST:-}" ] && [ -f "$JOB_RUN_PENDING_LIST" ]; then
+    while IFS= read -r _pp; do
+      [ -n "$_pp" ] && [ -e "$_pp" ] && { rm -f "$_pp" && echo "[job-run] dropped $_pp (not promoted: the work did not finish with a passing check, or this was a forced test)"; }
+    done < "$JOB_RUN_PENDING_LIST"
+    rm -f "$JOB_RUN_PENDING_LIST"
+  fi
   [ -n "$LOCKDIR" ] && rm -rf "$LOCKDIR"
   if [ "$FORCE" != 1 ]; then flush_deferred; alert_check "$rc"; fi   # --force is a test: it never pushes
   cat "$RUNLOG" >> "$STATE/log"
@@ -190,6 +197,10 @@ export JOB_RUN_BUDGET MODEL_TIER JOB_RUN_MODEL="$MODEL_TIER"
 export JOB_RUN_FORCED="$FORCE"   # 5.7: 1 on a by-hand --force run (a test: a command must not push or stamp "done today" state), else 0
 JOB_RUN_CALLS_FILE="$STATE/calls.current"; : > "$JOB_RUN_CALLS_FILE"; rm -f "$JOB_RUN_CALLS_FILE.fail"
 export JOB_RUN_CALLS_FILE
+# 5.9(f): the shared fetch appends the path of each *-last-seen.pending it writes to this list. They are PROMOTED to the bookmark only on
+# rc 0 AND a passing row check (below); on any other outcome, and on a --force run (a test), finish() deletes them: a bookmark moves
+# only when the work is done.
+JOB_RUN_PENDING_LIST="$STATE/pending.current"; : > "$JOB_RUN_PENDING_LIST"; export JOB_RUN_PENDING_LIST
 case "$INTERVAL" in ''|*[!0-9]*) finish 1 "interval '$INTERVAL' is not a number of seconds" ;; esac
 # ── 1b) 5.9(e): a state file that is PRESENT but unreadable is REFUSED and NAMED -- never treated as a first run ("start fresh" would
 #    hide a torn write or a tamper, and e.g. a last-success of garbage would read as an old success). A MISSING file is normal (first run).
@@ -323,6 +334,15 @@ esac
 run_row_check; _crc=$?
 [ "$_crc" -ne 3 ] || finish 1 "no output check declared for '$JOB' — exit 0 alone is never a success"
 [ "$_crc" -eq 0 ] || finish 1 "output check failed"
+# 5.9(f): the work is done (rc 0) and its check passed -> NOW the bookmarks may move. A forced run is a test: finish() drops them instead.
+if [ "$FORCE" != 1 ] && [ -s "$JOB_RUN_PENDING_LIST" ]; then
+  while IFS= read -r _pp; do
+    [ -n "$_pp" ] || continue
+    python3 "$CODE_ROOT/shared/tools/email_fetch.py" --promote-pending "$_pp" \
+      || finish 1 "bookmark promotion failed for $_pp (named above); last-success NOT stamped"
+  done < "$JOB_RUN_PENDING_LIST"
+  : > "$JOB_RUN_PENDING_LIST"
+fi
 iso_now > "$STATE/last-success"
 stamp "$STATE/last-success"
 finish 0 "output check passed"

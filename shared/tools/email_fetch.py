@@ -14,7 +14,9 @@ holds the raw `gws gmail` call and that decides, for EVERY message it returns:
      not judge (verdict UNJUDGED: no token, retired model, timeout) is never delivered raw and never pauses: the WHOLE
      run is withheld (no output, bookmark not advanced) and the fetch fails LOUD, exit 3 "reader unavailable: <n>
      flagged message(s) withheld -- <reason>" (5.4, 2026-10-28; this used to be silent, so the danger path never ran);
-  6. a high-water bookmark is kept in ONE format, a per-consumer file `<consumer>-last-seen`.
+  6. a high-water bookmark is kept in ONE format, a per-consumer file `<consumer>-last-seen`, and it moves ONLY when the work is done
+     (5.9(f)): fetch() writes the new value to `<consumer>-last-seen.pending`; job-run.sh promotes it on rc 0 AND a passing row check
+     and deletes it on failure. A peek (mark_seen=False / --no-mark) writes nothing. A corrupt bookmark is refused and named (5.9(e)).
 
 INTERFACE (library):
   fetch(consumer, label=None, query=None, cap=DEFAULT_CAP, since_last_seen=True, mark_seen=True) -> dict
@@ -33,7 +35,7 @@ THE UNIT THAT GETS PAUSED is the label (or "primary" when no label): pause-file 
 removes the line. health_line.py reads the same file and prints `paused: <unit>`.
 
 WHERE *-last-seen LIVES: ~/.config/lifehack/<consumer>-last-seen (env LIFEHACK_LAST_SEEN_DIR overrides the directory).
-One line: `<newest internalDate in ms> <message id>`. It only moves forward. A consumer opts out of filtering with
+One line: `<newest internalDate in ms> <message id>`. It only moves forward, and only via promote_pending (see 6. above). A consumer opts out of filtering with
 since_last_seen=False. The store janitor (email_summary_sync) is such a consumer: it dedups by newest-message-id itself
 and keeps no bookmark file (a thread read once at the same newest id is skipped).
 The bookmark is NOT advanced on a run that hit an attack.
@@ -137,8 +139,54 @@ def read_last_seen(consumer):
     return parse_bookmark(p, text)
 
 
+def pending_path(consumer):
+    return last_seen_path(consumer) + ".pending"
+
+
+def write_pending(consumer, ms, msg_id=""):
+    """5.9(f): record the NEW high-water mark as <consumer>-last-seen.pending -- NOT in last-seen. The bookmark moves only when the work
+    on this mail is DONE: job-run.sh promotes the pending file (promote_pending) on rc 0 AND a passing row check, and deletes it on any
+    failure. Forward-only against the current bookmark; atomic. Under job-run.sh (JOB_RUN_PENDING_LIST set) the pending path is
+    appended to that list so the wrapper knows which files this run owns. Returns True if a pending file was written."""
+    if ms <= read_last_seen(consumer)[0]:
+        return False
+    p = pending_path(consumer)
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    tmp = p + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        fh.write(f"{int(ms)} {msg_id}\n")
+    os.replace(tmp, p)
+    lst = os.environ.get("JOB_RUN_PENDING_LIST")
+    if lst:
+        with open(lst, "a", encoding="utf-8") as fh:
+            fh.write(p + "\n")
+    return True
+
+
+def promote_pending(path):
+    """Called by job-run.sh ONLY after rc 0 AND a passing row check (python3 email_fetch.py --promote-pending FILE): validate the pending
+    file, then move it over the bookmark (forward-only). Raises BookmarkCorrupt naming whichever file is bad. Returns True if the bookmark moved."""
+    if not path.endswith(".pending"):
+        raise BookmarkCorrupt(f"{path} is not a *-last-seen.pending file")
+    try:
+        text = open(path, encoding="utf-8").read()
+    except OSError as e:
+        raise BookmarkCorrupt(f"{path} is unreadable ({e})")
+    ms, _ = parse_bookmark(path, text)
+    bookmark = path[: -len(".pending")]
+    cur = 0
+    if os.path.exists(bookmark):
+        cur = parse_bookmark(bookmark, open(bookmark, encoding="utf-8").read())[0]
+    if ms <= cur:
+        os.remove(path)
+        return False
+    os.replace(path, bookmark)
+    return True
+
+
 def write_last_seen(consumer, ms, msg_id=""):
-    """Forward-only; atomic. Returns True if it moved."""
+    """Forward-only; atomic. Returns True if it moved. NOT called by fetch() any more (5.9(f)): only a caller that has FINISHED the work on
+    the mail (or tooling that seeds a bookmark by hand) may move the bookmark directly; everything else writes the pending file."""
     if ms <= read_last_seen(consumer)[0]:
         return False
     p = last_seen_path(consumer)
@@ -352,6 +400,9 @@ def fetch(consumer, label=None, query=None, cap=DEFAULT_CAP, since_last_seen=Tru
     check_paused(unit)
     q = DEFAULT_QUERY if query is None else query
     seen_ms, _ = read_last_seen(consumer)
+    stale_pending = pending_path(consumer)   # 5.9(f): a pending file left by a run that never finished is never trusted
+    if os.path.exists(stale_pending):
+        os.remove(stale_pending)
     if since_last_seen and seen_ms:
         q = (q + " " if q else "") + f"after:{seen_ms // 1000}"
     params = {"maxResults": max(1, int(cap))}
@@ -390,8 +441,8 @@ def fetch(consumer, label=None, query=None, cap=DEFAULT_CAP, since_last_seen=Tru
                 newest_ms, newest_id = ms, msg.get("id", "")
     if withheld:   # safest: withhold the WHOLE run (benign mail waits too); bookmark untouched, so all of it is re-read
         raise ReaderDown(f"reader unavailable: {withheld} flagged message(s) withheld -- {why or 'reader did not run'}")
-    if mark_seen and newest_ms:
-        write_last_seen(consumer, newest_ms, newest_id)
+    if mark_seen and newest_ms:   # 5.9(f): NEVER the bookmark itself; a peek (mark_seen=False / --no-mark) writes nothing at all
+        write_pending(consumer, newest_ms, newest_id)
     return {"unit": unit, "query": q, "count": len(out), "messages": out, "attack": False}
 
 
@@ -405,7 +456,16 @@ def main(argv=None):
     ap.add_argument("--no-mark", action="store_true", help="do not advance the bookmark")
     ap.add_argument("--out", default=None, help="write the JSON result here instead of stdout")
     ap.add_argument("--preflight", action="store_true", help="exit 0 if Google auth answers, else 2")
+    ap.add_argument("--promote-pending", metavar="FILE", help="(job-run.sh only) move a *-last-seen.pending over its bookmark, forward-only")
     a = ap.parse_args(argv)
+    if a.promote_pending:
+        try:
+            moved = promote_pending(a.promote_pending)
+        except BookmarkCorrupt as e:
+            sys.stderr.write(f"[email-fetch] CORRUPT bookmark: {e} -- refusing to start fresh; fix or remove that file by hand\n")
+            return 1
+        print(f"[email-fetch] bookmark {'advanced' if moved else 'already at or past this mark'}: {a.promote_pending[:-len('.pending')]}")
+        return 0
     if a.preflight:
         return 0 if preflight() else EXIT_TRANSIENT
     if not a.consumer:
