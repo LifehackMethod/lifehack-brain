@@ -1,0 +1,3 @@
+# good card
+s1 | ai | read notes.txt and answer yes or no | grep -qx -E 'yes|no' "$OUT"
+s2 | code | bash step.sh load | grep -q '^rows=[0-9][0-9]*$' step.out

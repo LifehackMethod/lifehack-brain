@@ -1,0 +1,1 @@
+exception: ALW-1 because the ping is best-effort telemetry; a failed ping must never abort the real fetch

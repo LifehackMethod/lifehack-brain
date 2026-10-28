@@ -1,0 +1,4 @@
+# clean header
+s1 | ai | read notes.txt, answer yes or no, append it to record.tsv | grep -qx -E 'yes|no' "$OUT"
+s2 | code | bash step.sh load | grep -q '^rows=[0-9][0-9]*$' step.out
+  # ^ breaks ORD-2 on line 2: ai action names record.tsv
