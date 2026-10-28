@@ -270,7 +270,7 @@ planning-weekly-prime | off | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHAC
 # LIVE) but nothing fired it on a schedule and nothing read its result — a downgrade from LIVE
 # to PARTIAL would sit invisible until a human happened to run it by hand. Weekly cadence
 # matches the runner's own STALE_AFTER_HOURS=192 (168h weekly + 24h slack) header.
-guard-fire-test | off | 604800 | Every guard was fire-tested this week and the verdict (GREEN or a named downgrade) reached the findings store, so a weakened guard shows on the session line. | ~/.config/lifehack/guard-fire-test/last-run.json ~ "rc":0, | none | 0 | none | bash "$LIFEHACK_CODE_ROOT/system/tools/guard-fire-test-run.sh"
+guard-fire-test | off | 604800 | Every guard was fire-tested this week and the verdict (GREEN or a named downgrade) reached the findings store, so a weakened guard shows on the session line. | ~/.config/lifehack/guard-fire-test/last-run.json ~ "verdict":"[GD][A-Z]+","named":"[^"]+" | none | 0 | none | bash "$LIFEHACK_CODE_ROOT/system/tools/guard-fire-test-run.sh"
 #
 # marc-health: Marc's market-data health chain. MIGRATED 2026-10-27 (self-monitoring 5.5 + 5.7), row OFF. The runner is DESK code: it
 # lives in the private ClaudeOps repo (desks/marc/tools/marc-health/, origin egjokaj/ClaudeOps), reached as $HOME/.claude/skills/ClaudeOps/...

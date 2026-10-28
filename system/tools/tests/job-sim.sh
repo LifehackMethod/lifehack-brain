@@ -68,7 +68,8 @@ DAY = 86400
 BASE = calendar.timegm((2026, 11, 2, 0, 0, 0))   # a Monday, 00:00 UTC
 SEAMS = ["LIFEHACK_FAKE_NOW", "LIFEHACK_STATE_DIR", "LIFEHACK_JOBS_FILE", "LIFEHACK_NOTIFY_LOG",
          "LIFEHACK_JOBS_STATE_DIR", "LIFEHACK_JOBS_MANIFEST", "JOB_RUN_NOTIFY", "JOB_RUN_WATCHDOG",
-         "NOTIFY_STATE_FILE", "JOB_SIM_DIR", "SENTINEL_PAUSE_FILE", "LIFEHACK_GWS_BIN", "LIFEHACK_LAST_SEEN_DIR"]
+         "NOTIFY_STATE_FILE", "JOB_SIM_DIR", "SENTINEL_PAUSE_FILE", "LIFEHACK_GWS_BIN", "LIFEHACK_LAST_SEEN_DIR",
+         "LIFEHACK_RUNNER_LOCK_ROOT"]
 STAND_REASON = "the job's own pre-flight stood down"
 REPAIR = "jobs cannot find the code — open any desk once to repair"
 
@@ -507,6 +508,7 @@ def main():
     with ThreadPoolExecutor(max_workers=10) as ex:
         sfut = [(name, ex.submit(play_t0, name, jobs, t0, ticks)) for name, jobs, t0, ticks in sc]
         ffut = [ex.submit(run_fuzz, rep) for rep in range(FUZZ_N)]
+        nfut = [(n, ex.submit(fn)) for n, fn in NEW_SCENARIOS]   # 5.9
         rows = [(name, f.result()) for name, f in sfut]
         rows.append(("row-contract", row_contract()))
         rows.append(("bad-row", bad_row()))
@@ -515,6 +517,7 @@ def main():
         rows.append(("marc-health-contract", receipt_contract("marc-health")))   # 5.7 (the first AI job: small tier, one call)
         rows.append(("force-flag", force_flag()))   # 5.7
         rows.extend(model_scenarios())   # 5.3
+        rows.extend((n, f.result()) for n, f in nfut)   # 5.9
         rows.append(("danger-email", danger_email()))   # 5.4
         rows.append(("reader-down", reader_down()))   # 5.4
         rows.append(("hardcoded-model-id", hardcoded_model_id()))   # 5.4
@@ -838,8 +841,8 @@ def hardcoded_model_id():
 RECEIPTS = {   # job -> (a receipt line a SUCCESSFUL real run writes, one a run that did not succeed leaves)
     "mirror-fetch": ("mirror-fetch DONE behind=0 ahead=3 2026-11-02T12:00:00Z",
                      "mirror-fetch DONE behind=? ahead=? 2026-11-02T12:00:00Z"),
-    "guard-fire-test": ('{"subsystem":"guard-fire-test","rc":0,"ts":"2026-11-02T12:00:00Z","stale_after_h":192}',
-                        '{"subsystem":"guard-fire-test","rc":1,"ts":"2026-11-02T12:00:00Z","stale_after_h":192}'),
+    "guard-fire-test": ('{"subsystem":"guard-fire-test","rc":0,"verdict":"GREEN","named":"all guards + regression suites GREEN","ts":"2026-11-02T12:00:00Z","stale_after_h":192}',
+                        '{"subsystem":"guard-fire-test","rc":0,"ts":"2026-11-02T12:00:00Z","stale_after_h":192}'),   # 5.9(b): the bad receipt is the OLD shape -- an exit code and no verdict
     "marc-health": ("marc-health ok fetched_at=2026-11-02T12:00:00+00:00 tickers=19 fred=13 errors=0 core_ok=1 tile_rc=0",
                     "marc-health FAIL fetched_at=? tickers=0 fred=0 errors=0 core_ok=0 tile_rc=1 :: snapshot unreadable"),
 }
@@ -935,6 +938,66 @@ def force_flag():
         return 8, fails, ([], [])
     finally:
         w.close()
+
+
+# SPLICE:5.9b
+# ───── 5.9: the fix round. Scenarios registered in NEW_SCENARIOS run in the worker pool; BITES (job-sim.sh --bite) are in BITES. ─────
+NEW_SCENARIOS, BITES = [], []
+
+
+def realtime_env(w, **extra):
+    """The rig's env WITHOUT the fake clock: for a scenario whose subject writes a file with the REAL mtime
+    (a real runner, not a stub). job-run.sh then uses the real clock and its 1 s START_MARK sleep."""
+    e = w.env(0)
+    e.pop("LIFEHACK_FAKE_NOW", None)
+    e.update(extra)
+    return e
+
+
+def guard_fire_verdict():
+    """5.9(b): the REAL guard-fire-test-run.sh (copied into a throwaway code root with stub verify-hooks / emit_finding / record)
+    under the REAL job-run.sh with the REAL row check. GREEN passes; a named DOWNGRADE passes (a found-result); a broken engine
+    (rc 127) fails; the OLD artifact shape (an exit code and nothing else) fails the check -- the exit code is never the proof."""
+    fails = []
+    row = real_row("guard-fire-test")
+    if not row or " ~ " not in row[4]: return 1, ["guard-fire-verdict: real row/check not found"], ([], [])
+    check = row[4]
+    w = World([("guard-fire-test", P)])
+    d = w.dir
+    try:
+        tools = f"{d}/code/system/tools"; os.makedirs(tools)
+        shutil.copy(f"{ROOT}/system/tools/guard-fire-test-run.sh", tools)
+        for f in ("emit_finding.py", "guard_fire_test_record.py"):
+            open(f"{tools}/{f}", "w").write("import sys\nsys.exit(0)\n")
+        art = f"{w.home}/.config/lifehack/guard-fire-test/last-run.json"
+        def manifest(cmd):
+            open(w.manifest, "w").write("# gf manifest\n```jobs\n"
+                f"guard-fire-test | yes | {P} | o | {check} | none | 0 | none | {cmd}\n```\n")
+        def run(tag, vh=None, want_rc=0, want_art=None, want_log=None, cmd=None):
+            for f in (f"{tools}/verify-hooks.sh", art): 
+                if os.path.exists(f): os.remove(f)
+            if vh is not None: open(f"{tools}/verify-hooks.sh", "w").write(vh)
+            manifest(cmd or f"bash {tools}/guard-fire-test-run.sh")
+            shutil.rmtree(w.p("guard-fire-test", "."), ignore_errors=True)
+            rc = subprocess.run(["bash", JR, "guard-fire-test"], env=realtime_env(w, LIFEHACK_RUNNER_LOCK_ROOT=d),
+                                stdin=subprocess.DEVNULL, capture_output=True, text=True).returncode
+            if rc != want_rc: fails.append(f"guard-fire-verdict[{tag}]: exit {rc}, expected {want_rc} ({w.read('guard-fire-test', 'log')[-300:]!r})")
+            body = open(art).read() if os.path.exists(art) else ""
+            if want_art and want_art not in body: fails.append(f"guard-fire-verdict[{tag}]: artifact lacks {want_art!r}: {body!r}")
+            if want_rc == 0 and w.ls_mtime("guard-fire-test") is None: fails.append(f"guard-fire-verdict[{tag}]: good run did not stamp last-success")
+            if want_rc != 0 and w.ls_mtime("guard-fire-test") is not None: fails.append(f"guard-fire-verdict[{tag}]: bad run stamped last-success")
+            if want_log and want_log not in w.read("guard-fire-test", "log"): fails.append(f"guard-fire-verdict[{tag}]: log lacks {want_log!r}")
+        run("green", "echo '14 guard(s) LIVE'; exit 0\n", 0, '"verdict":"GREEN","named":"all guards', "[check] ok")
+        run("downgrade", "echo 'DOWNGRADE guard_x: LIVE -> PARTIAL'; exit 1\n", 0, '"verdict":"DOWNGRADE","named":"DOWNGRADE guard_x: LIVE -> PARTIAL"', "[check] ok")
+        run("engine-broken", None, 127, '"verdict":"ERROR"')
+        old = f"mkdir -p $(dirname {art}) && printf '{{\"subsystem\":\"guard-fire-test\",\"rc\":0,\"ts\":\"x\"}}\\n' > {art}"
+        run("old-shape-rc-only", None, 1, None, "output check failed", cmd=f"bash -c '{old}'")
+        return 4, fails, ([], [])
+    finally:
+        w.close()
+
+
+NEW_SCENARIOS.append(("guard-fire-verdict", guard_fire_verdict))
 
 
 def play_t0(name, jobs, t0, ticks):

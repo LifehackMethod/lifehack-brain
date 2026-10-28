@@ -51,7 +51,7 @@ OUT_DIR="$HOME/.config/lifehack/${SUBSYSTEM_NAME}"   # machine-local, OUTSIDE th
 STATUS_ARTIFACT="$OUT_DIR/last-run.json"
 mkdir -p "$OUT_DIR" 2>/dev/null || true
 
-LOCKDIR="/tmp/claudeops-${SUBSYSTEM_NAME}.lock"
+LOCKDIR="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/claudeops-${SUBSYSTEM_NAME}.lock"   # LIFEHACK_RUNNER_LOCK_ROOT: TEST-ONLY seam (job-sim.sh)
 if ! mkdir "$LOCKDIR" 2>/dev/null; then
   _lock_mtime="$(stat -c %Y "$LOCKDIR" 2>/dev/null || stat -f %m "$LOCKDIR" 2>/dev/null || echo 0)"
   case "$_lock_mtime" in ''|*[!0-9]*) _lock_mtime=0 ;; esac
@@ -63,9 +63,14 @@ if ! mkdir "$LOCKDIR" 2>/dev/null; then
 fi
 
 RC=1   # pessimistic: die before do_work returns -> rc stays non-zero (honest)
+# 5.9(b): the artifact carries the VERDICT, because the row's check must test the verdict, never the exit code.
+#   GREEN = every guard fired as expected · DOWNGRADE = a guard is weaker than it should be, NAMED in "named" (a found-result, rc 0)
+#   ERROR = the engine itself did not run (rc != 0). The row's check accepts only GREEN or a named DOWNGRADE.
+VERDICT="ERROR"; NAMED="verify-hooks did not complete"
+_json_safe() { printf '%s' "$1" | tr -d '"\\' | tr '\n\r\t' '   ' | cut -c1-200; }
 _on_exit() {
-  printf '{"subsystem":"%s","rc":%s,"ts":"%s","stale_after_h":%s}\n' \
-    "$SUBSYSTEM_NAME" "$RC" "$(date -u +%FT%TZ)" "$STALE_AFTER_HOURS" > "$STATUS_ARTIFACT" 2>/dev/null || true
+  printf '{"subsystem":"%s","rc":%s,"verdict":"%s","named":"%s","ts":"%s","stale_after_h":%s}\n' \
+    "$SUBSYSTEM_NAME" "$RC" "$VERDICT" "$(_json_safe "$NAMED")" "$(date -u +%FT%TZ)" "$STALE_AFTER_HOURS" > "$STATUS_ARTIFACT" || echo "[$SUBSYSTEM_NAME] FAILED to write the status artifact $STATUS_ARTIFACT" >&2
   rm -rf "$LOCKDIR" 2>/dev/null || true
 }
 trap _on_exit EXIT INT TERM
@@ -109,6 +114,8 @@ do_work() {
 
   err_line=""
   [ "$rc" -ne 0 ] && err_line="$(printf '%s\n' "$out" | grep -E 'DOWNGRADE|FAIL|RESULT: RED' | tail -1)"
+  if [ "$rc" -eq 0 ]; then VERDICT="GREEN"; NAMED="all guards + regression suites GREEN"
+  else VERDICT="DOWNGRADE"; NAMED="${err_line:-verify-hooks reported RED with no detail line}"; fi
 
   # ── THE shell/CLI-emitted Hospital finding ──────────────────────────────────
   # Proof the CLI is real *reference* propagation, not decoration: this detector is bash, never
