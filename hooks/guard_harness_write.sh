@@ -26,7 +26,7 @@ trap 'lhb_journal_fire "$?" "guard_harness_write.sh" "PreToolUse" "Write|Edit" 2
 # SIGNPOST: shared/brain_root.py (the one resolver) + INSTALL.md (where the harness actually lands)
 #      + system/hook-contract.md (this hook's mechanics). Change the rule there first.
 # FAIL_POSTURE: closed — unparseable stdin, an unresolvable path, or any python failure DENIES.
-# UPDATED: 2026-08-25 (spec draft — see P.A3-public-pr-draft.md for the dry-run evidence this was
+# UPDATED: 2026-10-28 (sandbox tag: LIFEHACK_SANDBOX=V2 allows writes inside ~/lifehack-v2 on branch V2) · 2026-08-25 (spec draft — see P.A3-public-pr-draft.md for the dry-run evidence this was
 #      built and verified against).
 # ─────────────────────────────────────────────────────────────────────────────
 # guard_harness_write.sh — PreToolUse hook (matcher: Write|Edit)
@@ -44,6 +44,24 @@ deny() {
 }
 
 INPUT=$(cat 2>/dev/null)
+# SANDBOX (2026-10-28, Enver): the maintainer's V2 checkout is a working copy, not a student install.
+# Writes inside it are allowed only when ALL hold: LIFEHACK_SANDBOX=V2 (exported ONLY by the V2 desktop
+# launchers), the target resolves inside $HOME/lifehack-v2, and that checkout is on branch V2.
+# Any error here falls through to the normal checks below (fail-closed is unchanged).
+# Students never have the tag, so their protection is unchanged and nothing needs undoing before a merge.
+if [ "${LIFEHACK_SANDBOX:-}" = "V2" ]; then
+  _sbx_path=$(printf '%s' "$INPUT" | python3 -c 'import sys,json,os
+try:
+    d=json.load(sys.stdin); p=(d.get("tool_input") or {}).get("file_path") or ""
+    print(os.path.realpath(os.path.expanduser(p)) if p else "")
+except Exception:
+    print("")' 2>/dev/null)
+  _sbx_root=$(python3 -c 'import os; print(os.path.realpath(os.path.expanduser("~/lifehack-v2")))' 2>/dev/null)
+  if [ -n "$_sbx_path" ] && [ -n "$_sbx_root" ] && { [ "$_sbx_path" = "$_sbx_root" ] || [[ "$_sbx_path" == "$_sbx_root"/* ]]; } \
+     && [ "$(git -C "$_sbx_root" branch --show-current 2>/dev/null)" = "V2" ]; then
+    exit 0
+  fi
+fi
 if [ -z "$INPUT" ]; then
   deny '{"decision":"block","reason":"BLOCKED: guard_harness_write got no stdin at all, so it cannot tell what is being written or where. Failing closed rather than guessing. RULE: system/hook-contract.md — a guard that cannot parse its input must deny, never allow."}'
 fi
