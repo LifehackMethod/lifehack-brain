@@ -1042,6 +1042,71 @@ def bite_a():
 BITES.append(("a", 'a check that only tests `"rc":0,`', PRESENCE_RC, bite_a))
 
 
+# SPLICE:5.9bite
+def bite_break():
+    """The existing JOB_SIM_BREAK: one deliberately wrong expectation in 'died and stayed dead' must make the rig report a MISS."""
+    global BREAK
+    old, BREAK = BREAK, True
+    try:
+        for name, jobs, t0, ticks in scenarios():
+            if name == "died and stayed dead":
+                _n, fails, _x = play_t0(name, jobs, t0, ticks)
+                hit = [f for f in fails if "died and stayed dead tick 5" in f and "pushes" in f]
+                return "pushes != expected (JOB_SIM_BREAK)" if hit else None
+    finally:
+        BREAK = old
+    return None
+
+
+BITES.append(("break", "JOB_SIM_BREAK: one corrupted expectation", "pushes != expected (JOB_SIM_BREAK)", bite_break))
+
+
+def bite_main():
+    """--bite: plant one known fault per item (a)-(h) plus JOB_SIM_BREAK, each against a COPY or a seam (never live state), and
+    assert the real mechanism catches it and NAMES it exactly. One line per fault; exit 1 if any is missed or named wrong."""
+    t0 = time.time()
+    before = real_snapshot()
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        futs = [(k, label, want, ex.submit(fn)) for k, label, want, fn in BITES]
+        results = []
+        for k, label, want, f in futs:
+            try: got = f.result()
+            except Exception as e: got = None; label = f"{label} [bite crashed: {e!r}]"
+            results.append((k, label, want, got))
+    caught = 0
+    for k, label, want, got in results:
+        if got == want:
+            caught += 1; print(f'PLANTED {k} ({label}) -> CAUGHT "{got}"')
+        else:
+            print(f'PLANTED {k} ({label}) -> MISSED (wanted "{want}", got {got!r})')
+    leaks = seam_leaks(before)
+    for q in leaks: print(f"MISS seam leak during the bite: {q}")
+    ok = caught == len(results) and not leaks
+    print(f"bite: {caught}/{len(results)} planted faults caught and named exactly ({time.time() - t0:.1f}s)  {'BITE OK' if ok else 'BITE FAILED'}")
+    return 0 if ok else 1
+
+
+# SPLICE:5.9bite-b
+def bite_b():
+    """(b) plant the OLD guard-fire-test artifact (an exit code, no verdict) against the REAL row check: job-run.sh must fail the run."""
+    row = real_row("guard-fire-test")
+    w = World([("guard-fire-test", P)])
+    try:
+        art = f"{w.home}/gf/last-run.json"
+        os.makedirs(os.path.dirname(art))
+        check = row[4].replace("~/.config/lifehack/guard-fire-test/last-run.json", art)
+        open(w.manifest, "w").write("```jobs\n"
+            f"guard-fire-test | yes | {P} | o | {check} | none | 0 | none | bash -c 'echo {{\\\"subsystem\\\":\\\"guard-fire-test\\\",\\\"rc\\\":0}} > {art}'\n```\n")
+        rc = subprocess.run(["bash", JR, "guard-fire-test"], env=realtime_env(w), stdin=subprocess.DEVNULL, capture_output=True, text=True).returncode
+        lr = w.read("guard-fire-test", "last-run")
+        return "output check failed" if rc == 1 and "output check failed" in lr and w.ls_mtime("guard-fire-test") is None else None
+    finally:
+        w.close()
+
+
+BITES.append(("b", "guard-fire-test artifact with an exit code and no verdict", "output check failed", bite_b))
+
+
 def play_t0(name, jobs, t0, ticks):
     # a scenario check may need the first tick's time (w.t0s): wrap each chk to set it
     def wrap(chk):
@@ -1053,5 +1118,7 @@ def play_t0(name, jobs, t0, ticks):
     return play(name, jobs, t0, ticks)
 
 
+if "--bite" in sys.argv[1:]:
+    sys.exit(bite_main())
 sys.exit(main())
 PYEOF
