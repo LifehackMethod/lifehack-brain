@@ -21,6 +21,14 @@ CLOSED VERDICT SET (house style, see board_check.py):
     STALE-BOX <n>    rc 2  n open box(es) whose id appears in a commit subject
     CANNOT-READ <why> rc 4 THE NO-OUTCOME MEMBER — git failure, unreadable or
                            missing plan, or nothing to scan. NEVER clean.
+
+LOOKUP SCOPING (LK2) — `--task <id> --hash` is otherwise ANY plan's `<id>:` commit:
+    --subject <text>  match only a commit whose subject starts with that full text;
+                      <text> must itself start `<id>:`
+    --path <file>     only commits touching that path (`git log -- <path>`)
+    Both may be given; both then apply. With neither, the lookup is unscoped and
+    prints `WARN unscoped lookup ...` to stderr.
+    env PLAN_GIT_REPO — git repo to read history from (default: this repo).
 """
 # ⚖ SHIPPED WITH NO CALLER AT ALL (D7, 2026-08-11) — until 3.1 (2026-09-04): plan_retire.py calls --task --hash. A repo-wide grep finds nothing that
 # invokes this — not a skill, not a hook, not another tool. It ships because the ruling is
@@ -67,18 +75,21 @@ def leading_commit_id(subj):
     m = LEADING_ID_RE.match(subj)
     return m.group(1) if m else None
 
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# LK2: PLAN_GIT_REPO points the lookup at another repo's history when set.
+REPO_ROOT = os.environ.get("PLAN_GIT_REPO") or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def cannot_read(why):
     print(f"CANNOT-READ\n  {why}")
     sys.exit(CANNOT_READ)
 
-def git_commits(days):
+def git_commits(days, path=None):
     # days=None → no window. A pre-epoch --since (e.g. "36500 days ago") returns NOTHING
     # silently — measured 2026-09-04 — so hash lookup must not use a window at all.
     cmd = ["git", "-C", REPO_ROOT, "log", "--pretty=format:%h\x1f%s"]
     if days is not None:
         cmd.insert(4, f"--since={days} days ago")
+    if path:
+        cmd += ["--", path]
     try:
         out = subprocess.run(
             cmd,
@@ -144,6 +155,8 @@ def main():
     ap.add_argument("--days", type=int, default=14, help="git log window (default 14)")
     ap.add_argument("--task", help="one task id; with --hash, print the newest commit whose subject starts '<id>:'")
     ap.add_argument("--hash", action="store_true", help="with --task: print the hash and exit 0, or NO-COMMIT and exit 4")
+    ap.add_argument("--subject", help="with --task --hash: match only a commit whose subject starts with this full text (must itself start '<id>:')")
+    ap.add_argument("--path", help="with --task --hash: only commits touching this path (git log -- <path>)")
     ap.add_argument("--self", action="store_true", dest="self_test",
                      help="prove the start-of-subject rule both directions on a fixed fixture, no git/plan I/O")
     a = ap.parse_args()
@@ -158,8 +171,14 @@ def main():
     if a.task:
         if not a.hash:
             cannot_read("--task requires --hash (the only mode --task supports)")
-        for h, subj in git_commits(None):
-            if subj.startswith(f"{a.task}:"):
+        prefix = f"{a.task}:"
+        if a.subject is not None and not a.subject.startswith(prefix):
+            cannot_read(f"--subject must start with {prefix!r} (got {a.subject!r})")
+        if a.subject is None and a.path is None:
+            print(f"WARN unscoped lookup for {a.task}: any plan's '{a.task}:' commit will match", file=sys.stderr)
+        want = a.subject if a.subject is not None else prefix
+        for h, subj in git_commits(None, a.path):
+            if subj.startswith(want):
                 print(h)
                 sys.exit(0)
         print(f"NO-COMMIT {a.task}")
