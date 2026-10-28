@@ -118,6 +118,8 @@ trim() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]
 #   (c) a static scan of those scripts, of what they source, and of the python/bash scripts they invoke, finds no raw
 #       Gmail / Calendar / Sheets-values-get / curl / urllib / requests call. Only the files in
 #       system/tools/shared-fetch-allowlist.txt (the ONE list of the shared fetch) may hold one.
+#   (a2) 5.9(a) the check must match real content: a regex that only tests an exit code in a file ("rc":0), that the file is
+#       non-empty (^.+$), or that it exists / is fresh, is refused as "presence-grade check".
 #   (d) the same scan refuses a literal model id (claude-haiku|sonnet|opus|fable-<n>) anywhere but model.lib.sh and
 #       model_ids.py, and any literal passed as --model X / model="X" / MODEL=X: a runner names a TIER and the table turns it into an id, so a retired id can never rot silently.
 # TEST SEAMS: LIFEHACK_JOBS_FILE (manifest for --check-row), LIFEHACK_CODE_ROOT (code root), LIFEHACK_DESK_REPO.
@@ -140,6 +142,28 @@ if m and m.upper() != "TBD" and m not in ("none", "small", "medium", "large"):
 b = budget.strip()
 if b and b.upper() != "TBD" and m != "none" and not (b.isdigit() and int(b) > 0):
     reasons.append(f"bad budget '{b}': must be an integer > 0 unless model=none")
+
+# (a2) 5.9(a): a check must match REAL CONTENT. Refused: a regex that only tests an exit code written to a file ("rc":0), that the
+# file is non-empty (^.+$, .*), or -- being a bare class/anchor -- that the file merely exists / is fresh. Content = at least one
+# literal word that is not an exit-code word. (A `|` is not usable in a check anyway: it is the column separator of the row.)
+EXIT_WORDS = {"rc", "exit", "code", "exitcode", "returncode", "retcode", "ret", "status"}
+OK_WORDS = {"ok", "success", "pass", "passed", "done", "true"}
+def presence_grade(rx):
+    lit = re.sub(r"\[[^\]]*\]", "", rx)               # bracket expressions are classes, not content
+    lit = re.sub(r"\\[A-Za-z]", "", lit)              # \S \w \d ... are classes too
+    words = {w.lower() for w in re.findall(r"[A-Za-z]+", lit)}
+    if not words:
+        return "matches any non-empty line: it proves the file exists or is non-empty, not what is in it"
+    if words & EXIT_WORDS and words <= (EXIT_WORDS | OK_WORDS):
+        return "tests only an exit code / bare status written to a file: the exit code is never the proof"
+    return ""
+ck = check.strip()
+if ck and ck.upper() != "TBD":
+    if " ~ " not in ck:
+        reasons.append("presence-grade check: not '<path> ~ <regex>', so it can only test that the file exists")
+    else:
+        _why = presence_grade(ck.split(" ~ ", 1)[1].strip())
+        if _why: reasons.append(f"presence-grade check: {_why}")
 
 def under(p, root):
     return p == root or p.startswith(root.rstrip("/") + "/")

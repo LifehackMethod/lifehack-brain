@@ -738,18 +738,27 @@ def bad_row():
                 ("no-outcome", f"no-outcome | yes | 3600 |  | {chk} | small | 5 | none | {good}"),
                 ("tbd-check", f"tbd-check | yes | 3600 | o. | TBD | small | 5 | none | {good}"),
                 ("pinned", f"pinned | yes | 3600 | o. | {chk} | small | 5 | none | bash \"/Users/someone/lifehack-v2/system/tools/ok-run.sh\""),
-                ("raw-curl", f"raw-curl | yes | 3600 | o. | {chk} | small | 5 | none | bash \"$LIFEHACK_CODE_ROOT/system/tools/curl-run.sh\"")]
+                ("raw-curl", f"raw-curl | yes | 3600 | o. | {chk} | small | 5 | none | bash \"$LIFEHACK_CODE_ROOT/system/tools/curl-run.sh\""),
+                # 5.9(a): presence-grade checks. A check must match REAL content, never an exit code / non-empty / exists.
+                ("rc-check", f"rc-check | yes | 3600 | o. | $HOME/x.json ~ \"rc\":0, | small | 5 | none | {good}"),
+                ("nonempty-check", f"nonempty-check | yes | 3600 | o. | $HOME/x ~ ^.+$ | small | 5 | none | {good}"),
+                ("any-check", f"any-check | yes | 3600 | o. | $HOME/x ~ . | small | 5 | none | {good}"),
+                ("exists-check", f"exists-check | yes | 3600 | o. | $HOME/x | small | 5 | none | {good}"),
+                ("status-ok-check", f"status-ok-check | yes | 3600 | o. | $HOME/x ~ \"status\":\"ok\" | small | 5 | none | {good}")]
         mf = f"{d}/manifest.md"
         open(mf, "w").write("```jobs\n" + "\n".join(r for _, r in rows) + "\n```\n")
         env = dict(os.environ, LIFEHACK_JOBS_FILE=mf, LIFEHACK_CODE_ROOT=d, LIFEHACK_DESK_REPO=f"{d}/no-desk")
         inst = f"{ROOT}/system/tools/install-schedulers.sh"
         want = {"good": (0, "PASS"), "no-outcome": (1, "missing contract: outcome"), "tbd-check": (1, "missing contract: check"),
-                "pinned": (1, "pinned code path"), "raw-curl": (1, "raw curl call at system/tools/curl-run.sh:2")}
+                "pinned": (1, "pinned code path"), "raw-curl": (1, "raw curl call at system/tools/curl-run.sh:2"),
+                "rc-check": (1, "presence-grade check: tests only an exit code"), "nonempty-check": (1, "presence-grade check: matches any non-empty line"),
+                "any-check": (1, "presence-grade check: matches any non-empty line"), "exists-check": (1, "presence-grade check: not '<path> ~ <regex>'"),
+                "status-ok-check": (1, "presence-grade check: tests only an exit code")}
         for name, (rc_w, txt) in want.items():
             r = subprocess.run(["bash", inst, "--check-row", name], env=env, capture_output=True, text=True)
             if r.returncode != rc_w or txt not in r.stdout:
                 fails.append(f"bad-row: {name}: rc={r.returncode} out={r.stdout.strip()!r}, wanted rc={rc_w} with {txt!r}")
-        return 5, fails, ([], [])
+        return 10, fails, ([], [])
     finally:
         shutil.rmtree(d, ignore_errors=True)
 
@@ -998,6 +1007,39 @@ def guard_fire_verdict():
 
 
 NEW_SCENARIOS.append(("guard-fire-verdict", guard_fire_verdict))
+
+
+# SPLICE:5.9a
+def door_run(row_cols, files=None, name="planted"):
+    """Run the REAL door (install-schedulers.sh --check-row) on one row in a throwaway code root + manifest. `files` = {relpath: text}
+    written under <root>/system/tools (a clean ok-run.sh is always there). row_cols = (check, command) -> (rc, stdout)."""
+    d = tempfile.mkdtemp(prefix="job-sim-door59.")
+    try:
+        os.makedirs(f"{d}/system/tools")
+        open(f"{d}/system/tools/ok-run.sh", "w").write("#!/usr/bin/env bash\necho fine\n")
+        for rel, text in (files or {}).items():
+            os.makedirs(os.path.dirname(f"{d}/{rel}"), exist_ok=True)
+            open(f"{d}/{rel}", "w").write(text)
+        check, cmd = row_cols
+        mf = f"{d}/manifest.md"
+        open(mf, "w").write(f"```jobs\n{name} | yes | 3600 | o. | {check} | small | 5 | none | {cmd}\n```\n")
+        env = dict(os.environ, LIFEHACK_JOBS_FILE=mf, LIFEHACK_CODE_ROOT=d, LIFEHACK_DESK_REPO=f"{d}/no-desk")
+        r = subprocess.run(["bash", f"{ROOT}/system/tools/install-schedulers.sh", "--check-row", name], env=env, capture_output=True, text=True)
+        return r.returncode, r.stdout.strip()
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+GOOD_CMD = 'bash "$LIFEHACK_CODE_ROOT/system/tools/ok-run.sh"'
+PRESENCE_RC = "presence-grade check: tests only an exit code / bare status written to a file: the exit code is never the proof"
+
+
+def bite_a():
+    rc, out = door_run(('$HOME/x.json ~ "rc":0,', GOOD_CMD))
+    return out if rc == 1 and out == PRESENCE_RC else None
+
+
+BITES.append(("a", 'a check that only tests `"rc":0,`', PRESENCE_RC, bite_a))
 
 
 def play_t0(name, jobs, t0, ticks):
