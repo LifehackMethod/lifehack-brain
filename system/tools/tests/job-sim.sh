@@ -1906,6 +1906,62 @@ def bite_k():
 BITES.append(("k", "a vendor read (allowlisted file) on a row that is NOT model=none", VENDOR_REQ_REFUSAL, bite_k))
 
 
+# ───── Sprint 5 item 5: a desk runner's helper files beside it are scanned ─────
+def helper_door(helper_name, helper_body, model="none", listed="nothing none.py"):
+    """A clean runner run.sh in <desk>/desks/x/tools/hjob/ plus a helper file beside it; the REAL door -> (rc, stdout)."""
+    d = os.path.realpath(tempfile.mkdtemp(prefix="job-sim-helper."))
+    try:
+        desk = f"{d}/desk"; tools = f"{desk}/desks/x/tools/hjob"
+        os.makedirs(tools); os.makedirs(f"{d}/code/system/tools")
+        open(f"{tools}/run.sh", "w").write("#!/usr/bin/env bash\necho fine\n")
+        open(f"{tools}/{helper_name}", "w").write(helper_body)
+        al = f"{d}/vendor-allow.txt"; open(al, "w").write(f"# test\n{listed}\n")
+        mf = f"{d}/manifest.md"
+        open(mf, "w").write(f"```jobs\nhjob | yes | 86400 | o. | $HOME/x ~ ^done ok$ | {model} | {'0' if model == 'none' else '5'} | none | bash \"{tools}/run.sh\"\n```\n")
+        env = dict(os.environ, LIFEHACK_JOBS_FILE=mf, LIFEHACK_CODE_ROOT=f"{d}/code", LIFEHACK_DESK_REPO=desk, LIFEHACK_VENDOR_ALLOWLIST=al)
+        r = subprocess.run(["bash", f"{ROOT}/system/tools/install-schedulers.sh", "--check-row", "hjob"], env=env, capture_output=True, text=True)
+        return r.returncode, r.stdout.strip().replace(desk + "/", "")
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+HELPER_GMAIL_REFUSAL = "raw gws gmail read call at desks/x/tools/hjob/helper.py:2 \u2014 go through the shared fetch"
+HELPER_RD = '"$GWS" gmail users messages get --params "{}"\n'
+HELPER_WR = '"$GWS" gmail users messages modify --params "{}"\n'
+
+
+def helper_scan_door():
+    """Item 5: a helper .py beside a clean runner that does a raw gmail READ is refused; a helper with only a gmail WRITE passes; a
+    helper with a hard-coded model id and a helper with a silenced push are refused; a requests helper is refused unless it is the
+    vendor-allowlisted file of a model=none row; curl in a .mjs is refused; a .txt beside the runner is not scanned."""
+    fails = []
+    cases = [("gmail-read-helper", ("helper.py", "#!/usr/bin/env python3\n" + HELPER_RD), {}, 1, "raw gws gmail read call at desks/x/tools/hjob/helper.py:2"),
+             ("gmail-write-helper", ("helper.py", "#!/usr/bin/env python3\n" + HELPER_WR), {}, 0, "PASS"),
+             ("model-id-helper", ("helper.sh", '#!/usr/bin/env bash\nMODEL="claude-sonnet-4-6"\n'), {}, 1, "hard-coded model id at desks/x/tools/hjob/helper.sh:2"),
+             ("silenced-helper", ("helper.sh", "#!/usr/bin/env bash\ngit push origin main || true\n"), {}, 1, "silenced push error at desks/x/tools/hjob/helper.sh:2"),
+             ("requests-helper", ("helper.py", "import requests\n"), {}, 1, "raw requests call at desks/x/tools/hjob/helper.py:1"),
+             ("requests-helper-vendor", ("helper.py", "import requests\n"), {"listed": "hjob helper.py"}, 0, "PASS"),
+             ("mjs-helper", ("helper.mjs", "// x\ncurl -s https://x.example\n"), {}, 1, "raw curl call at desks/x/tools/hjob/helper.mjs:2"),
+             ("txt-not-scanned", ("notes.txt", "curl -s https://x.example\n"), {}, 0, "PASS")]
+    for label, (hn, hb), kw, want_rc, want_txt in cases:
+        rc, out = helper_door(hn, hb, **kw)
+        if rc != want_rc or want_txt not in out:
+            fails.append(f"helper-scan-door: {label}: rc={rc} out={out!r}, wanted rc={want_rc} with {want_txt!r}")
+    return len(cases), fails, ([], [])
+
+
+NEW_SCENARIOS.append(("helper-scan-door", helper_scan_door))
+
+
+def bite_l():
+    rc, out = helper_door("helper.py", "#!/usr/bin/env python3\n" + HELPER_RD)
+    first = out.splitlines()[0] if out else ""
+    return first if rc == 1 and first == HELPER_GMAIL_REFUSAL else None
+
+
+BITES.append(("l", "a raw gmail READ in a helper .py beside a clean runner", HELPER_GMAIL_REFUSAL, bite_l))
+
+
 if "--bite" in sys.argv[1:]:
     sys.exit(bite_main())
 sys.exit(main())

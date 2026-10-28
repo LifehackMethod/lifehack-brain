@@ -124,6 +124,7 @@ trim() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]
 #       non-empty (^.+$), or that it exists / is fresh, is refused as "presence-grade check".
 #   (d) the same scan refuses a literal model id (claude-haiku|sonnet|opus|fable-<n>) anywhere but model.lib.sh and
 #       model_ids.py, and any literal passed as --model X / model="X" / MODEL=X: a runner names a TIER and the table turns it into an id, so a retired id can never rot silently.
+#   (g) a desk runner's helper files (.sh/.py/.mjs in the runner's own directory, non-recursive) get the same scan as the runner.
 #   (f) VENDOR READS (2026-10-28 ruling): a row with model=none may make its own logged-in read of Enver's own vendor account
 #       (python `requests`/`urllib`: the cp-utilities portal login, the Emporia SDK) from ONE allowlisted file per desk. The list is
 #       system/tools/vendor-read-allowlist.txt, lines `<job> <file>`; <file> is relative to the job's tools folder (a file F matches when
@@ -281,6 +282,13 @@ def silenced_call(line):
 SRC = re.compile(r"""^\s*(?:source|\.)\s+["']?([^"'\s;&|]+)""")
 INV = re.compile(r"""\b(?:python3?|bash|sh)\s+["']?([^"'\s;&|]+\.(?:py|sh))""")
 seen, todo = set(), [os.path.realpath(e) for e in scripts if "$" not in e]
+# (g) a desk runner's helpers: every .sh/.py/.mjs file in the runner's OWN directory (non-recursive) is scanned too, so a helper beside
+# the runner is never read-free. Only for a runner under the private desk repo; code-root runners keep today's reach (what they source/invoke).
+for _e in list(todo):
+    _dir = os.path.dirname(_e)
+    if under(_e, desk) and not under(_e, code) and os.path.isdir(_dir):
+        for _n in sorted(os.listdir(_dir)):
+            if _n.endswith((".sh", ".py", ".mjs")): todo.append(os.path.join(_dir, _n))
 while todo:
     f = todo.pop()
     if f in seen or not os.path.isfile(f) or not (under(f, code) or under(f, desk)):
