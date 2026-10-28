@@ -54,10 +54,11 @@ undeclared exception fails. `JUDGE` items (ORD-6, ORD-7) go to a reviewer or Env
 
 ## How to run it
 
-The runner walks the plan's open cards. Run it as:
+The runner walks the plan's open cards. Run it from this skill's base directory (the absolute path
+Claude Code prints as "Base directory for this skill" when the skill loads; never a guessed path):
 
 ```bash
-bash "$HOME/lifehack-v2/.claude/skills/build/scripts/build_run.sh" <plan.md>
+bash "<base directory>/scripts/build_run.sh" <plan.md>
 ```
 
 - The runner, not the AI, runs every Verify and writes the record (`BUILD_RUN_HOME`, default
