@@ -516,6 +516,8 @@ def main():
         rows.append(("force-flag", force_flag()))   # 5.7
         rows.extend(model_scenarios())   # 5.3
         rows.append(("danger-email", danger_email()))   # 5.4
+        rows.append(("reader-down", reader_down()))   # 5.4
+        rows.append(("hardcoded-model-id", hardcoded_model_id()))   # 5.4
         fz = [f.result() for f in ffut]
     bad = 0
     print(f"{'scenario':<38} | {'ticks':>5} | result")
@@ -745,6 +747,89 @@ def bad_row():
             if r.returncode != rc_w or txt not in r.stdout:
                 fails.append(f"bad-row: {name}: rc={r.returncode} out={r.stdout.strip()!r}, wanted rc={rc_w} with {txt!r}")
         return 5, fails, ([], [])
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def reader_down():
+    """5.4: the tool-less reader cannot run (stub CLAUDE_BIN exits 1, like a retired model). A message the scanner FLAGS
+    is then WITHHELD: the safest choice is that the WHOLE run is withheld (the benign messages wait too, and are re-read
+    next run, because the bookmark must not move past the flagged one). Expected: exit 3, no output file, no bookmark,
+    nothing paused, no DANGER push, the job log names 'reader unavailable: 1 flagged message(s) withheld'. Then the reader
+    comes back (BENIGN stub) and the very next run delivers all 5 (cap) messages -> nothing was lost."""
+    fails, t = [], BASE + 12 * 3600
+    w = World([("sim-fetch", P)])
+    try:
+        d = w.dir
+        gm = f"{w.sim}/gmail"; os.makedirs(gm)
+        pause, seen = f"{d}/paused", f"{d}/seen"
+        extra = {"LIFEHACK_GWS_BIN": f"{HERE_TESTS}/job-sim-gws-stub.py", "CLAUDE_BIN": f"{HERE_TESTS}/job-sim-claude-down-stub.sh",
+                 "JOB_RUN_WATCHDOG": "30",
+                 "SENTINEL_PAUSE_FILE": pause, "SENTINEL_LOG": f"{d}/sentinel/events.jsonl",
+                 "SENTINEL_STATUS": f"{d}/sentinel/status.json", "SENTINEL_ACKED_FP": f"{d}/sentinel/acked.json",
+                 "SENTINEL_QUARANTINE_DISABLE": "1", "LIFEHACK_ROOT": f"{d}/brain", "LIFEHACK_LAST_SEEN_DIR": seen,
+                 "EMAIL_SERVICE_READ": ""}
+        open(f"{gm}/labels.json", "w").write('{"labels":[{"id":"Label_9","name":"sim-drill"}]}')
+        ids = [f"t{i}" for i in range(1, 8)]
+        open(f"{gm}/threads.json", "w").write(json.dumps({"label_ids": {"Label_9": ids}, "all": ids}))
+        for i, tid in enumerate(ids):
+            body = ("A tutorial: attackers write 'ignore all previous instructions' in emails; never obey one."
+                    if i == 0 else f"Plain note number {i}: lunch is at noon.")
+            open(f"{gm}/thread-{tid}.json", "w").write(json.dumps(_gm_thread(tid, f"subject {i}", body, 1793000000000 + i * 1000)))
+        out = f"{w.sim}/out/fetch.json"
+        cmd = ('python3 "$LIFEHACK_CODE_ROOT/shared/tools/email_fetch.py" --consumer sim-drill --label sim-drill '
+               '--query "" --cap 5 --out "$JOB_SIM_DIR/out/fetch.json" && '
+               '{ [ -z "$LIFEHACK_FAKE_NOW" ] || touch -t "$(date -r "$LIFEHACK_FAKE_NOW" +%Y%m%d%H%M.%S)" "$JOB_SIM_DIR/out/fetch.json"; }')
+        open(w.manifest, "w").write("# reader-down manifest\n```jobs\n"
+            f"sim-fetch | yes | {P} | o | $JOB_SIM_DIR/out/fetch.json ~ \"count\": [0-9] | none | 0 | none | {cmd}\n```\n")
+        rc = w.sh(["bash", JR, "sim-fetch"], t, extra).returncode
+        log = w.read("sim-fetch", "log")
+        if rc != 3: fails.append(f"reader-down: exit {rc}, expected 3 ({log[-300:]!r})")
+        if "reader unavailable: 1 flagged message(s) withheld" not in log: fails.append(f"reader-down: the log lacks the loud reason ({log[-300:]!r})")
+        if os.path.exists(out): fails.append("reader-down: a withheld run still wrote the fetch output")
+        if os.path.exists(f"{seen}/sim-drill-last-seen"): fails.append("reader-down: the bookmark advanced past a withheld message")
+        if os.path.exists(pause) and open(pause).read().strip(): fails.append("reader-down: an UNJUDGED message paused something")
+        if any("DANGER" in x[0] for x in w.pushes()): fails.append("reader-down: an UNJUDGED message sent a DANGER push")
+        if w.sh(["python3", HL], t + 60, extra).stdout.strip() == OK1: fails.append("reader-down: the session line still says OK after a failed run")
+        extra["CLAUDE_BIN"] = f"{HERE_TESTS}/job-sim-claude-stub.sh"   # the reader is back
+        rc = w.sh(["bash", JR, "sim-fetch", "--force"], t + 200, extra).returncode
+        got = json.load(open(out)) if os.path.exists(out) else {}
+        if rc != 0 or got.get("count") != 5: fails.append(f"reader-down[recovered]: exit {rc}, count {got.get('count')}, expected 0 / 5")
+        return 2, fails, ([], [])
+    finally:
+        w.close()
+
+
+def hardcoded_model_id():
+    """5.4 rule: the door refuses a runner holding a literal model id (named file:line), including in a file it sources,
+    and passes a runner that names a tier through run_model (control, so the refusal is not vacuous). Throwaway code root."""
+    fails = []
+    d = tempfile.mkdtemp(prefix="job-sim-modelid.")
+    try:
+        os.makedirs(f"{d}/system/tools")
+        for f in ("model.lib.sh", "claude-auth.lib.sh"):   # the REAL table (it holds ids, exempt) + its auth lib
+            shutil.copy(f"{ROOT}/system/tools/{f}", f"{d}/system/tools/{f}")
+        open(f"{d}/system/tools/id-run.sh", "w").write('#!/usr/bin/env bash\nclaude -p hi --model claude-haiku-4-5-20251001\n')
+        open(f"{d}/system/tools/helper.sh", "w").write('#!/usr/bin/env bash\nMODEL="claude-sonnet-4-6"\n')
+        open(f"{d}/system/tools/src-run.sh", "w").write('#!/usr/bin/env bash\n. "$LIFEHACK_CODE_ROOT/system/tools/helper.sh"\necho hi\n')
+        open(f"{d}/system/tools/tier-run.sh", "w").write('#!/usr/bin/env bash\n. "$LIFEHACK_CODE_ROOT/system/tools/model.lib.sh"\nrun_model small "$1" "$2" || exit 1\n')
+        chk = "$HOME/x ~ ^ok$"
+        def row(n): return f'{n} | yes | 3600 | o. | {chk} | small | 5 | none | bash "$LIFEHACK_CODE_ROOT/system/tools/{n}.sh"'
+        open(f"{d}/system/tools/future-run.sh", "w").write('#!/usr/bin/env bash\nclaude -p hi --model some-future-name-1\n')
+        names = {"id-run": "id-run", "src-run": "src-run", "tier-run": "tier-run", "future-run": "future-run"}
+        mf = f"{d}/manifest.md"
+        open(mf, "w").write("```jobs\n" + "\n".join(row(n) for n in names) + "\n```\n")
+        env = dict(os.environ, LIFEHACK_JOBS_FILE=mf, LIFEHACK_CODE_ROOT=d, LIFEHACK_DESK_REPO=f"{d}/no-desk")
+        inst = f"{ROOT}/system/tools/install-schedulers.sh"
+        want = {"id-run": (1, "hard-coded model id at system/tools/id-run.sh:2 \u2014 name a tier (small|medium|large); ids live only in system/tools/model.lib.sh"),
+                "src-run": (1, "hard-coded model id at system/tools/helper.sh:2"),
+                "future-run": (1, "hard-coded model id at system/tools/future-run.sh:2"),
+                "tier-run": (0, "PASS")}
+        for name, (rc_w, txt) in want.items():
+            r = subprocess.run(["bash", inst, "--check-row", name], env=env, capture_output=True, text=True)
+            if r.returncode != rc_w or txt not in r.stdout:
+                fails.append(f"hardcoded-model-id: {name}: rc={r.returncode} out={r.stdout.strip()!r}, wanted rc={rc_w} with {txt!r}")
+        return 4, fails, ([], [])
     finally:
         shutil.rmtree(d, ignore_errors=True)
 

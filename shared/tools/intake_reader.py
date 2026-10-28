@@ -173,13 +173,13 @@ def run_intake_judge(raw_text: str, findings: list) -> dict:
             "[intake-reader] FAIL-SAFE: claude -p timed out; "
             "returning reader_applied=False\n"
         )
-        return {"verdict": None, "cleared_text": raw_text, "reader_applied": False}
+        return {"verdict": None, "cleared_text": raw_text, "reader_applied": False, "reason": "claude -p timed out"}
     except Exception as exc:
         sys.stderr.write(
             f"[intake-reader] FAIL-SAFE: subprocess error ({exc}); "
             "returning reader_applied=False\n"
         )
-        return {"verdict": None, "cleared_text": raw_text, "reader_applied": False}
+        return {"verdict": None, "cleared_text": raw_text, "reader_applied": False, "reason": f"subprocess error ({exc})"}
 
     if r.returncode != 0:
         reason = (r.stderr.strip().splitlines() or [f"exit {r.returncode}"])[-1]
@@ -187,7 +187,7 @@ def run_intake_judge(raw_text: str, findings: list) -> dict:
             f"[intake-reader] FAIL-SAFE: claude -p exit {r.returncode} ({reason}); "
             "returning reader_applied=False\n"
         )
-        return {"verdict": None, "cleared_text": raw_text, "reader_applied": False}
+        return {"verdict": None, "cleared_text": raw_text, "reader_applied": False, "reason": f"claude -p exit {r.returncode} ({reason})"}
 
     try:
         verdict, cleared_text = _parse_envelope(r.stdout)
@@ -196,7 +196,7 @@ def run_intake_judge(raw_text: str, findings: list) -> dict:
             f"[intake-reader] FAIL-SAFE: unparseable output ({exc}); "
             "returning reader_applied=False\n"
         )
-        return {"verdict": None, "cleared_text": raw_text, "reader_applied": False}
+        return {"verdict": None, "cleared_text": raw_text, "reader_applied": False, "reason": f"unparseable output ({exc})"}
 
     return {"verdict": verdict, "cleared_text": cleared_text, "reader_applied": True}
 

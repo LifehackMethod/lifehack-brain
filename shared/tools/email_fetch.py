@@ -10,7 +10,10 @@ holds the raw `gws gmail` call and that decides, for EVERY message it returns:
   4. the body passes the ingest gate INSIDE this fetch -- sanitise + scan + the tool-less reader's judgment -- so a
      headless (cron) job is covered exactly like a session;
   5. a REAL-ATTACK verdict PAUSES the label and sends ONE critical push (via ingest_gate -> sentinel_response), and the
-     run stops reading. A NONE / BENIGN / unavailable verdict never pauses (fail-safe: doubt is a FLAG, not a stop);
+     run stops reading. A NONE / BENIGN verdict delivers normally. A message the scanner FLAGGED but the reader could
+     not judge (verdict UNJUDGED: no token, retired model, timeout) is never delivered raw and never pauses: the WHOLE
+     run is withheld (no output, bookmark not advanced) and the fetch fails LOUD, exit 3 "reader unavailable: <n>
+     flagged message(s) withheld -- <reason>" (5.4, 2026-10-28; this used to be silent, so the danger path never ran);
   6. a high-water bookmark is kept in ONE format, a per-consumer file `<consumer>-last-seen`.
 
 INTERFACE (library):
@@ -23,7 +26,7 @@ INTERFACE (library):
 INTERFACE (CLI):  python3 email_fetch.py --consumer NAME [--label L] [--query Q] [--cap N] [--no-since] [--no-mark]
                   [--out FILE] | --preflight
   query: omitted = category:primary; `--query ''` = no query filter (a label-only read, e.g. a drill label).
-  exit 0 ok | 75 paused / email read disabled | 2 Gmail unreachable (transient) | 1 other failure.
+  exit 0 ok | 75 paused / email read disabled | 2 Gmail unreachable (transient) | 3 reader down (flagged mail withheld) | 1 other.
 
 THE UNIT THAT GETS PAUSED is the label (or "primary" when no label): pause-file line `email:<unit>` in
 ~/.config/lifehack/sentinel-paused-sources (sentinel_response.PAUSE_FILE, env SENTINEL_PAUSE_FILE). Only a person
@@ -62,6 +65,7 @@ DEFAULT_CAP = 10
 MAX_MSGS_PER_THREAD = 20
 EXIT_PAUSED = 75
 EXIT_TRANSIENT = 2
+EXIT_READER_DOWN = 3
 
 
 class Paused(Exception):
@@ -74,6 +78,10 @@ class Disabled(Exception):
 
 class FetchError(Exception):
     """Gmail could not be read (transient) or the gate could not run."""
+
+
+class ReaderDown(FetchError):
+    """Flagged message(s) the tool-less reader could not judge: the run is withheld, loudly (exit 3)."""
 
 
 # ─────────────────────────── switches, pause file, bookmark ───────────────────────────
@@ -252,7 +260,7 @@ def load_claude_token():
     """The tool-less reader needs the subscription token, and a cron/launchd job does not have it in its environment.
     The credential is handed to the shared layer HERE (plan B.4: the key lives in the shared fetch, not in a desk
     runner). Reads $CLAUDE_OAUTH_TOKEN_FILE or ~/.config/lifehack/claude-oauth-token into CLAUDE_CODE_OAUTH_TOKEN, only
-    when it is not already set. No token = the reader fails safe (UNJUDGED -> FLAG only, nothing pauses)."""
+    when it is not already set. No token = the reader is down: flagged mail is withheld and the run fails loudly (exit 3), nothing pauses."""
     if os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
         return True
     p = os.environ.get("CLAUDE_OAUTH_TOKEN_FILE") or os.path.expanduser("~/.config/lifehack/claude-oauth-token")
@@ -284,18 +292,25 @@ def gate_message(unit, body, item=""):
         findings = scan(body) or []
     except Exception:  # noqa: BLE001
         findings = []
-    if not findings or judge is None:
+    if findings and judge is None:
+        return {"content": "", "provenance_tag": "", "verdict": "UNJUDGED", "attack": False,
+                "reason": "intake_reader could not be imported"}
+    if not findings:
         res = gate(desk_id(unit), "email", body, item=item)
         return {"content": res["content"], "provenance_tag": res["provenance_tag"], "verdict": "NONE", "attack": False}
     load_claude_token()
     j = judge(body, findings)
-    verdict = j.get("verdict") if j.get("reader_applied") else None
+    if not j.get("reader_applied"):
+        # FLAGGED + unjudged: never hand the raw text on. The caller withholds the run (fetch -> ReaderDown).
+        return {"content": "", "provenance_tag": "", "verdict": "UNJUDGED", "attack": False,
+                "reason": str(j.get("reason") or "reader did not run")}
+    verdict = j.get("verdict")
     if verdict == "REAL-ATTACK":
         res = gate(desk_id(unit), "email", body, item=item, reader_verdict="REAL-ATTACK")
         return {"content": "", "provenance_tag": res["provenance_tag"], "verdict": verdict, "attack": True}
-    text = j.get("cleared_text") if j.get("reader_applied") else body
+    text = j.get("cleared_text")
     res = gate(desk_id(unit), "email", text or body, item=item)
-    return {"content": res["content"], "provenance_tag": res["provenance_tag"], "verdict": verdict or "UNJUDGED",
+    return {"content": res["content"], "provenance_tag": res["provenance_tag"], "verdict": verdict or "NONE",
             "attack": False}
 
 
@@ -333,6 +348,7 @@ def fetch(consumer, label=None, query=None, cap=DEFAULT_CAP, since_last_seen=Tru
         raise FetchError(err)
     ids = [t["id"] for t in data.get("threads", [])][:cap]
     out, newest_ms, newest_id = [], 0, ""
+    withheld, why = 0, ""
     for tid in ids:
         th, err = get_thread(tid, "full")
         if err:
@@ -348,11 +364,16 @@ def fetch(consumer, label=None, query=None, cap=DEFAULT_CAP, since_last_seen=Tru
             g = gate_message(unit, message_text(msg), item=f"{consumer}:{msg.get('id', '')}")
             if g["attack"]:
                 raise Paused(unit)
+            if g["verdict"] == "UNJUDGED":
+                withheld, why = withheld + 1, why or g.get("reason", "")
+                continue
             out.append({"thread_id": tid, "message_id": msg.get("id", ""), "internal_date": ms,
                         "from": h.get("From", ""), "subject": h.get("Subject", ""), "date": h.get("Date", ""),
                         "body": g["content"], "provenance_tag": g["provenance_tag"], "verdict": g["verdict"]})
             if ms > newest_ms:
                 newest_ms, newest_id = ms, msg.get("id", "")
+    if withheld:   # safest: withhold the WHOLE run (benign mail waits too); bookmark untouched, so all of it is re-read
+        raise ReaderDown(f"reader unavailable: {withheld} flagged message(s) withheld -- {why or 'reader did not run'}")
     if mark_seen and newest_ms:
         write_last_seen(consumer, newest_ms, newest_id)
     return {"unit": unit, "query": q, "count": len(out), "messages": out, "attack": False}
@@ -382,6 +403,9 @@ def main(argv=None):
     except Disabled as e:
         sys.stderr.write(f"email read disabled: {e}\n")
         return EXIT_PAUSED
+    except ReaderDown as e:
+        sys.stderr.write(f"[email-fetch] {e}\n")
+        return EXIT_READER_DOWN
     except FetchError as e:
         sys.stderr.write(f"[email-fetch] {e}\n")
         return EXIT_TRANSIENT if re.match(r"(gws_error|timeout|json_parse)", str(e)) else 1
