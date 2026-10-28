@@ -55,7 +55,7 @@ load_gws_credentials_optional planning-vault
 # TRANSIENT blip (token mid-refresh, momentary API hiccup) rather than a real outage.
 _GWS_PREFLIGHT_OK=0
 for _gws_try in 1 2 3; do
-  if "$GWS_BIN" gmail users getProfile --params '{"userId":"me"}' >/dev/null 2>&1; then _GWS_PREFLIGHT_OK=1; break; fi
+  if "$GWS_BIN" gmail users getProfile --params '{"userId":"me"}' >/dev/null; then _GWS_PREFLIGHT_OK=1; break; fi
   if [ "$_gws_try" -lt 3 ]; then echo "[gws] pre-flight attempt $_gws_try failed — retry in 4s…"; sleep 4; fi
 done
 if [ "$_GWS_PREFLIGHT_OK" -ne 1 ]; then
@@ -78,7 +78,7 @@ tmp='$_TILE.tmp'
 os.makedirs(os.path.dirname('$_TILE'), exist_ok=True)
 json.dump(d,open(tmp,'w'),indent=2)
 os.replace(tmp,'$_TILE')
-" 2>/dev/null || echo "[planning-vault] WARN: status tile write failed (non-fatal)"
+" || echo "[planning-vault] WARN: status tile write failed (non-fatal)" >&2
 
 # ── CHAIN → STAGE 2: the analysis panel runs the moment the pull lands a vault ──
 # (planning-vault-pull exits 0 whenever the vault was written, even with partial sources — the

@@ -1185,6 +1185,83 @@ def bite_c():
 BITES.append(("c", "email-summary-write finishing with errors=5", "FAILED: the write finished with errors=5", bite_c))
 
 
+# SPLICE:5.9d
+SILENCE_CONTROL = '''#!/usr/bin/env bash
+# harmless uses the door must let through
+sleep 30 & PID=$!
+kill "$PID" 2>/dev/null
+pgrep -f nothing 2>/dev/null
+rm -f /tmp/x 2>/dev/null || true
+GWS_BIN="$(command -v gws 2>/dev/null || echo /opt/homebrew/bin/gws)"
+stat -f %m /tmp 2>/dev/null || stat -c %Y /tmp 2>/dev/null || echo 0
+python3 "$LIFEHACK_CODE_ROOT/shared/tools/email_fetch.py" --consumer x --out /tmp/o || echo "fetch failed (rc=$?)" >&2
+'''
+SILENCE_PLANTS = [   # (tag, file text, exact refusal the door must print)
+    ("fetch || true", '#!/usr/bin/env bash\npython3 "$LIFEHACK_CODE_ROOT/shared/tools/email_fetch.py" --consumer x --out /tmp/o || true\n',
+     "silenced fetch error at system/tools/ok-run.sh:2"),
+    ("fetch || :", '#!/usr/bin/env bash\npython3 "$LIFEHACK_CODE_ROOT/shared/tools/email_fetch.py" --consumer x --out /tmp/o || :\n',
+     "silenced fetch error at system/tools/ok-run.sh:2"),
+    ("fetch 2>/dev/null", '#!/usr/bin/env bash\npython3 "$LIFEHACK_CODE_ROOT/shared/tools/email_fetch.py" --consumer x --out /tmp/o 2>/dev/null\n',
+     "silenced fetch error at system/tools/ok-run.sh:2"),
+    ("model || true", '#!/usr/bin/env bash\n. "$LIFEHACK_CODE_ROOT/system/tools/model.lib.sh"\nrun_model small p o MARK || true\n',
+     "silenced model error at system/tools/ok-run.sh:3"),
+    ("push 2>/dev/null", '#!/usr/bin/env bash\nbash "$LIFEHACK_CODE_ROOT/shared/notify/notify-send.sh" --source x --message y 2>/dev/null\n',
+     "silenced push error at system/tools/ok-run.sh:2"),
+    ("write ... 2>/dev/null (continued line)", '#!/usr/bin/env bash\npython3 "$LIFEHACK_CODE_ROOT/shared/tools/email_summary_sync.py" --stamp-write-ok \\\n  --write-errors 0 2>/dev/null\n',
+     "silenced write error at system/tools/ok-run.sh:2"),
+]
+
+
+def silenced_error_door():
+    """5.9(d): the door's static scan. A planted `|| true` / `|| :` / `2>/dev/null` on a fetch, a model call, a push and a write is
+    refused with the line named; a runner with only harmless uses (kill, pgrep, rm, command -v, a NAMED fetch failure) passes (control)."""
+    fails = []
+    for name, text, want in [("control", SILENCE_CONTROL, None)] + [(t, x, w) for t, x, w in SILENCE_PLANTS]:
+        rc, out = door_run(("$HOME/x ~ ^done ok$", GOOD_CMD), {"system/tools/ok-run.sh": text})
+        if want is None:
+            if rc != 0 or out != "PASS": fails.append(f"silenced-error-door[{name}]: the door refused a harmless runner: {out!r}")
+        elif rc != 1 or not any(ln.startswith(want) for ln in out.splitlines()):
+            fails.append(f"silenced-error-door[{name}]: rc={rc} out={out!r}, wanted a line starting {want!r}")
+    return len(SILENCE_PLANTS) + 1, fails, ([], [])
+
+
+NEW_SCENARIOS.append(("silenced-error-door", silenced_error_door))
+
+
+def model_stderr():
+    """5.9(d): a failing `claude -p` (stub CLAUDE_BIN) -- its stderr is NOT discarded: it reaches the job log tagged [claude stderr] and
+    its first line rides on the reason job-run.sh writes to last-run."""
+    fails, t = [], BASE + 12 * 3600
+    w = World([("sim-m", P)])
+    try:
+        jobcmd = 'bash "$LIFEHACK_CODE_ROOT/system/tools/tests/job-sim-model-job.sh"'
+        open(w.manifest, "w").write("# model-stderr manifest\n```jobs\n"
+            f"sim-m | yes | {P} | o | $JOB_SIM_DIR/out/sim-m ~ ^ran sim-m at | small | 5 | none | {jobcmd} sim-m\n```\n")
+        w.set_mode("sim-m", "ok")
+        tok = f"{w.dir}/token"; open(tok, "w").write("sim-token\n")
+        env = dict(w.env(t), CLAUDE_BIN=f"{HERE_TESTS}/job-sim-claude-fail-stub.sh", CLAUDE_OAUTH_TOKEN_FILE=tok, JOB_RUN_WATCHDOG="30")
+        rc = subprocess.run(["bash", JR, "sim-m"], env=env, stdin=subprocess.DEVNULL, capture_output=True, text=True).returncode
+        lr, log = w.read("sim-m", "last-run"), w.read("sim-m", "log")
+        if rc != 1: fails.append(f"model-stderr: exit {rc}, expected 1")
+        if "[claude stderr] boom: simulated model failure" not in log: fails.append(f"model-stderr: the job log lacks the model's stderr: {log[-300:]!r}")
+        if "model call failed (rc=1): boom: simulated model failure" not in lr: fails.append(f"model-stderr: last-run does not carry the reason: {lr!r}")
+        return 1, fails, ([], [])
+    finally:
+        w.close()
+
+
+NEW_SCENARIOS.append(("model-stderr", model_stderr))
+
+
+def bite_d():
+    rc, out = door_run(("$HOME/x ~ ^done ok$", GOOD_CMD), {"system/tools/ok-run.sh": SILENCE_PLANTS[0][1]})
+    got = [ln for ln in out.splitlines() if ln.startswith("silenced fetch error at")]
+    return got[0].split(" — ")[0] if rc == 1 and got else None
+
+
+BITES.append(("d", "a fetch silenced with `|| true`", SILENCE_PLANTS[0][2], bite_d))
+
+
 def play_t0(name, jobs, t0, ticks):
     # a scenario check may need the first tick's time (w.t0s): wrap each chk to set it
     def wrap(chk):

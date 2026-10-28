@@ -117,7 +117,7 @@ _emit_tile() {  # $1=status $2=summary $3=skip_reason(optional)
   printf '%s' "$payload" | python3 "$CODE_ROOT/system/tools/emit_status.py" \
     --out "$DATA/state/status/planning-weekly-prime.json" \
     --desk planning --pulse-job planning-weekly-prime --stale-after-s "$STALE_AFTER_S" \
-    --status "$status" --rc 0 --summary "$summary" --json - 2>/dev/null || \
+    --status "$status" --rc 0 --summary "$summary" --json - || \
     echo "[planning-weekly-prime] WARN: tile write failed (non-fatal)"
 }
 

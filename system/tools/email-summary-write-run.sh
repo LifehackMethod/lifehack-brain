@@ -71,7 +71,7 @@ fi
 RC=1
 _on_exit() {
   printf '{"subsystem":"%s","rc":%s,"ts":"%s","stale_after_h":%s}\n' \
-    "$SUBSYSTEM_NAME" "$RC" "$(date -u +%FT%TZ)" "$STALE_AFTER_HOURS" > "$STATUS_ARTIFACT" 2>/dev/null || true
+    "$SUBSYSTEM_NAME" "$RC" "$(date -u +%FT%TZ)" "$STALE_AFTER_HOURS" > "$STATUS_ARTIFACT" || echo "[$SUBSYSTEM_NAME] FAILED to write the status artifact $STATUS_ARTIFACT" >&2
   # 2026-10-27 (self-monitoring 2.5c): this runner no longer sends its own text. job-run.sh is now the ONE
   # alarm for this job (it pages on the 2nd consecutive miss and sends the recovery). The trap still writes
   # last-run.json and the Drive status tile, so the failure stays visible; rc=75 (no gws creds) is a stand-down.
@@ -112,7 +112,7 @@ GWS_CREDS="$GWS_CREDS_FILE"   # path the helper actually looked at — quoted in
 # 5.4: the probe itself is the shared fetch's (--preflight = getProfile); this runner holds no raw Gmail call.
 PREFLIGHT_OK=0
 for _attempt in 1 2 3; do
-  if python3 "$CODE_ROOT/shared/tools/email_fetch.py" --preflight >/dev/null 2>&1; then
+  if python3 "$CODE_ROOT/shared/tools/email_fetch.py" --preflight >/dev/null; then
     PREFLIGHT_OK=1; break
   fi
   [ "$_attempt" -lt 3 ] && { echo "[$SUBSYSTEM_NAME] gws pre-flight attempt $_attempt failed — retrying in 4s…"; sleep 4; }

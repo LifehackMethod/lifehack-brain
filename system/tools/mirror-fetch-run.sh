@@ -79,9 +79,9 @@ fi
 #    start, so the check fails honestly. The counts are "?" if rev-list could not be read, which the check refuses. ──
 if [ "$RC" -eq 0 ]; then
   _RCPT_DIR="$HOME/.config/lifehack/$JOB"
-  mkdir -p "$_RCPT_DIR" 2>/dev/null
+  mkdir -p "$_RCPT_DIR" || echo "[$JOB] WARN: cannot create $_RCPT_DIR" >&2
   printf '%s DONE behind=%s ahead=%s %s\n' "$JOB" "${BEHIND:-?}" "${AHEAD:-?}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    > "$_RCPT_DIR/last-ok" 2>/dev/null || echo "[$JOB] WARN: receipt write failed — the row check will fail"
+    > "$_RCPT_DIR/last-ok" || echo "[$JOB] WARN: receipt write failed — the row check will fail" >&2
 fi
 
 # ── STATUS TILE EMIT — hourly Pulse job; stale_after_s = 2x the interval (7200). Values pass

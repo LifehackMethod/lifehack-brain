@@ -12,7 +12,8 @@
 #   run_model <tier> <prompt-file> <out-file> [marker] || exit 1
 # RETURNS 0 ok. 1 failed (reason printed; also written for job-run.sh to name in last-run).
 #   Failure reasons: "empty model output" · "model output missing marker" · "model call timed out"
-#   · "over budget: <n> calls > <budget>" · "unknown model tier" · "model call failed (rc=<n>)".
+#   · "over budget: <n> calls > <budget>" · "unknown model tier" · "model call failed (rc=<n>)[: <first stderr line>]".
+#   The model's stderr is appended to THIS function's stderr (the job log), tagged "[claude stderr]" (5.9(d)).
 # job-run.sh provides (all optional outside it): JOB_RUN_CALLS_FILE (one "<tier> <secs>" line per call,
 #   appended here), JOB_RUN_BUDGET (max calls this run; the tripwire), and reads $JOB_RUN_CALLS_FILE.fail
 #   (this library writes the failure reason there so a job that swallows the return code still fails).
@@ -68,7 +69,7 @@ run_model() {
     require_claude_token "run_model" || { _model_fail "claude token not configured"; return 1; }
     local bin="${CLAUDE_BIN:-$(command -v claude 2>/dev/null)}"
     [ -n "$bin" ] || { _model_fail "claude binary not reachable"; return 1; }
-    "$bin" -p --model "$id" --dangerously-skip-permissions < "$prompt" > "$out" 2>/dev/null &
+    "$bin" -p --model "$id" --dangerously-skip-permissions < "$prompt" > "$out" 2> "$out.err" &
     cpid=$!
   fi
   ( sleep "${MODEL_TIMEOUT:-600}"; touch "$out.timeout"; pkill -TERM -P "$cpid" 2>/dev/null; kill -TERM "$cpid" 2>/dev/null
@@ -78,11 +79,19 @@ run_model() {
   local wsleep; wsleep="$(pgrep -P "$wpid" 2>/dev/null)"   # kill the watchdog FIRST so it can never reach its kill lines
   kill "$wpid" 2>/dev/null; [ -n "$wsleep" ] && kill $wsleep 2>/dev/null
   secs=$(( $(date +%s) - t0 ))
+  # 5.9(d): the model's stderr is NEVER discarded -- it goes to the job log (this function's own stderr, which job-run.sh captures),
+  # tagged, and its first line rides on the failure reason so "the model call failed" always says why.
+  local errline=""
+  if [ -s "$out.err" ]; then
+    sed 's/^/[claude stderr] /' "$out.err" >&2
+    errline="$(head -1 "$out.err" | cut -c1-200)"
+  fi
+  rm -f "$out.err"
   # every call counts, success or not
   [ -n "${JOB_RUN_CALLS_FILE:-}" ] && printf '%s %s\n' "$tier" "$secs" >> "$JOB_RUN_CALLS_FILE"
 
   if [ -f "$out.timeout" ]; then rm -f "$out.timeout"; _model_fail "model call timed out after ${MODEL_TIMEOUT:-600}s"; return 1; fi
-  [ "$rc" -eq 0 ] || { _model_fail "model call failed (rc=$rc)"; return 1; }
+  [ "$rc" -eq 0 ] || { _model_fail "model call failed (rc=$rc)${errline:+: $errline}"; return 1; }
   [ -s "$out" ] || { _model_fail "empty model output"; return 1; }
   if [ -n "$marker" ] && ! grep -qF -e "$marker" "$out"; then _model_fail "model output missing marker"; return 1; fi
   return 0

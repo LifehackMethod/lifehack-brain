@@ -215,6 +215,6 @@ d={'schema_version':1,'emit_mode':'manual','last_run':'$_ANALYZE_NOW','rc':$_PLA
 tmp='$_ANALYZE_TILE.tmp'
 json.dump(d,open(tmp,'w'),indent=2)
 os.replace(tmp,'$_ANALYZE_TILE')
-" 2>/dev/null || echo "[planning-analyze] WARN: status tile write failed (non-fatal)"
+" || echo "[planning-analyze] WARN: status tile write failed (non-fatal)" >&2
 
 exit "$_PLANNING_ANALYZE_RC"

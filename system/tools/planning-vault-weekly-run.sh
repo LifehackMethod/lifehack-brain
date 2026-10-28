@@ -95,7 +95,7 @@ fi
 RC=1   # pessimistic default: die before do_work returns → honest non-zero
 _on_exit() {
   printf '{"subsystem":"%s","rc":%s,"ts":"%s","stale_after_h":%s}\n' \
-    "$SUBSYSTEM_NAME" "$RC" "$(date -u +%FT%TZ)" "$STALE_AFTER_HOURS" > "$STATUS_ARTIFACT" 2>/dev/null || true
+    "$SUBSYSTEM_NAME" "$RC" "$(date -u +%FT%TZ)" "$STALE_AFTER_HOURS" > "$STATUS_ARTIFACT" || echo "[$SUBSYSTEM_NAME] FAILED to write the status artifact $STATUS_ARTIFACT" >&2
   rm -rf "$LOCKDIR" 2>/dev/null || true
 
   local _status="OK"; [ "${RC:-1}" -ne 0 ] && _status="ERROR"
@@ -108,7 +108,7 @@ d={'schema_version':1,'emit_mode':'manual','last_run':'$(date -u +%FT%TZ)','rc':
 tmp='$DRIVE/state/status/planning-vault-weekly.json.tmp'
 json.dump(d,open(tmp,'w'),indent=2)
 os.replace(tmp,'$DRIVE/state/status/planning-vault-weekly.json')
-" 2>/dev/null || true
+" || echo "[${SUBSYSTEM_NAME}] WARN: status tile write failed (non-fatal)" >&2
 }
 trap _on_exit EXIT INT TERM
 
@@ -118,7 +118,7 @@ trap _on_exit EXIT INT TERM
 do_work() {
   local _ok=0 _try
   for _try in 1 2 3; do
-    if "$GWS_BIN" gmail users getProfile --params '{"userId":"me"}' >/dev/null 2>&1; then _ok=1; break; fi
+    if "$GWS_BIN" gmail users getProfile --params '{"userId":"me"}' >/dev/null; then _ok=1; break; fi
     [ "$_try" -lt 3 ] && { echo "[$SUBSYSTEM_NAME] gws pre-flight $_try failed — retry 4s…"; sleep 4; }
   done
   [ "$_ok" -ne 1 ] && echo "[$SUBSYSTEM_NAME] WARN: gws pre-flight failed (or gws is not installed) — sources may be marked failed."
@@ -152,7 +152,8 @@ do_work "$@" && RC=0 || RC=$?
 if [ "$RC" -ne 0 ]; then
   bash "$CODE_ROOT/shared/notify/notify-send.sh" --source "$SUBSYSTEM_NAME" --tags warning --priority critical \
     --title "⚠️ ${SUBSYSTEM_NAME} failed" \
-    --message "${SUBSYSTEM_NAME} run failed (rc=$RC). Check $STATUS_ARTIFACT." 2>/dev/null || true
+    --message "${SUBSYSTEM_NAME} run failed (rc=$RC). Check $STATUS_ARTIFACT." \
+      || echo "[${SUBSYSTEM_NAME}] WARN: the failure alert (notify-send) itself failed (rc=$?)" >&2
 fi
 
 echo "[$SUBSYSTEM_NAME] done (rc=$RC)."

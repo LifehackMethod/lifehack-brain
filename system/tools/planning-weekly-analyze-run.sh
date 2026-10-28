@@ -138,7 +138,7 @@ fi
 RC=1   # pessimistic default: die before do_work returns → honest non-zero
 _on_exit() {
   printf '{"subsystem":"%s","rc":%s,"ts":"%s","stale_after_h":%s}\n' \
-    "$SUBSYSTEM_NAME" "$RC" "$(date -u +%FT%TZ)" "$STALE_AFTER_HOURS" > "$STATUS_ARTIFACT" 2>/dev/null || true
+    "$SUBSYSTEM_NAME" "$RC" "$(date -u +%FT%TZ)" "$STALE_AFTER_HOURS" > "$STATUS_ARTIFACT" || echo "[$SUBSYSTEM_NAME] FAILED to write the status artifact $STATUS_ARTIFACT" >&2
   rm -rf "$LOCKDIR" 2>/dev/null || true
 }
 trap _on_exit EXIT INT TERM
@@ -357,7 +357,7 @@ d={'schema_version':1,'emit_mode':'manual','last_run':'$_NOW','rc':0,'stale_afte
 tmp='$_TILE.tmp'
 json.dump(d,open(tmp,'w'),indent=2)
 os.replace(tmp,'$_TILE')
-" 2>/dev/null || echo "[$SUBSYSTEM_NAME] WARN: status tile write failed (non-fatal)"
+" || echo "[$SUBSYSTEM_NAME] WARN: status tile write failed (non-fatal)" >&2
 
   return 0
 }
@@ -369,7 +369,8 @@ do_work && RC=0 || RC=$?
 if [ "$RC" -ne 0 ]; then
   bash "$CODE_ROOT/shared/notify/notify-send.sh" --source "$SUBSYSTEM_NAME" --tags warning --priority critical \
     --title "⚠️ ${SUBSYSTEM_NAME} failed" \
-    --message "${SUBSYSTEM_NAME} run failed (rc=$RC). Check $STATUS_ARTIFACT." 2>/dev/null || true
+    --message "${SUBSYSTEM_NAME} run failed (rc=$RC). Check $STATUS_ARTIFACT." \
+      || echo "[${SUBSYSTEM_NAME}] WARN: the failure alert (notify-send) itself failed (rc=$?)" >&2
 fi
 
 echo "[$SUBSYSTEM_NAME] done (rc=$RC)."

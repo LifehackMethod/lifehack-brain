@@ -78,16 +78,16 @@ _write_tile() {  # args: status count summary
   # argv, never string-interpolated into the python source — a headline/summary containing a
   # quote (very likely — "can't", "3 items — don't skip") would otherwise break or inject.
   python3 -c 'import json,sys; print(json.dumps({sys.argv[1]: {"finding_count": int(sys.argv[2]), "headline": sys.argv[3]}}))' \
-    "$ARCH_MODE" "${count:-0}" "$summary" 2>/dev/null | \
+    "$ARCH_MODE" "${count:-0}" "$summary" | \
     python3 "$CODE_ROOT/system/tools/emit_status.py" \
       --out "$DATA/state/status/archivist.json" --desk archivist --pulse-job "archivist-$ARCH_MODE" \
-      --stale-after-s 1209600 --status "$status" --rc 0 --summary "$summary" --json - 2>/dev/null || \
+      --stale-after-s 1209600 --status "$status" --rc 0 --summary "$summary" --json - || \
     _alog "WARN: tile write failed (non-fatal)"
 }
 
 _ping() {  # args: title message
   bash "$CODE_ROOT/shared/notify/notify-send.sh" --source archivist \
-    --title "$1" --message "$2" 2>/dev/null || true
+    --title "$1" --message "$2" || _alog "WARN: notify-send failed (rc=$?) — the ping was not sent"
 }
 
 run_archivist() {

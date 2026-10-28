@@ -43,7 +43,13 @@ GOVERNOR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # reaches the phone once quiet hours lift, instead of being silently lost forever.
 if [ "${1:-}" = "--flush-deferred" ]; then
   export NOTIFY_QUIET_START NOTIFY_QUIET_END NOTIFY_DAILY_CAP NOTIFY_DEDUP_HOURS NOTIFY_DEFERRED_MAX_AGE_HOURS
-  out="$(python3 "$GOVERNOR_DIR/notify-governor.py" --flush-deferred 2>/dev/null)" || true
+  _FE="${TMPDIR:-/tmp}/notify-flush.$$"
+  out="$(python3 "$GOVERNOR_DIR/notify-governor.py" --flush-deferred 2>"$_FE")"; _frc=$?
+  if [ "$_frc" -ne 0 ]; then   # 5.9(d): a failed flush is NAMED and fails the call (the deferred alerts are still queued, not lost)
+    echo "notify-send: --flush-deferred FAILED (rc=$_frc): $(cat "$_FE")" >&2; rm -f "$_FE"; exit "$_frc"
+  fi
+  [ -s "$_FE" ] && cat "$_FE" >&2
+  rm -f "$_FE"
   [ -z "$out" ] && exit 0
   rc_all=0
   while IFS=$'\t' read -r d_source d_message d_title d_tags d_prio d_url; do
@@ -106,7 +112,11 @@ if ! python3 "$GOVERNOR" "$SOURCE" "$MESSAGE" "$PRIORITY" "$IDENTITY" >/dev/null
   # once quiet hours lift, instead of being lost for good. See --flush-deferred above.
   case "$reason" in
     "SUPPRESS: quiet hours"*)
-      python3 "$GOVERNOR" --queue-deferred "$SOURCE" "$MESSAGE" "$TITLE" "$TAGS" "$URL" "$PRIORITY" >/dev/null 2>&1 || true
+      if ! python3 "$GOVERNOR" --queue-deferred "$SOURCE" "$MESSAGE" "$TITLE" "$TAGS" "$URL" "$PRIORITY" >/dev/null; then
+        # 5.9(d): the queue write failed -> this alert is LOST. Say so on stderr and fail the call; never "suppressed, fine".
+        echo "notify-send: LOST: could not queue the quiet-hours alert from '$SOURCE' (queue write failed) -- it will not be delivered" >&2
+        exit 1
+      fi
       ;;
   esac
   exit 0   # being suppressed is the system working — never report it as a failure

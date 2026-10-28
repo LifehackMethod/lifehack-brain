@@ -118,6 +118,8 @@ trim() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]
 #   (c) a static scan of those scripts, of what they source, and of the python/bash scripts they invoke, finds no raw
 #       Gmail / Calendar / Sheets-values-get / curl / urllib / requests call. Only the files in
 #       system/tools/shared-fetch-allowlist.txt (the ONE list of the shared fetch) may hold one.
+#   (e) 5.9(d) a bash line that fetches, writes, pushes or calls a model must not silence its error (`|| true`, `|| :`, `2>/dev/null`):
+#       refused as "silenced <kind> error at file:line". Harmless uses (kill, pgrep, stat, rm, `command -v`) pass.
 #   (a2) 5.9(a) the check must match real content: a regex that only tests an exit code in a file ("rc":0), that the file is
 #       non-empty (^.+$), or that it exists / is fresh, is refused as "presence-grade check".
 #   (d) the same scan refuses a literal model id (claude-haiku|sonnet|opus|fable-<n>) anywhere but model.lib.sh and
@@ -223,6 +225,25 @@ MODEL_LIT = [re.compile(p) for p in (
     r"""["']--model["']\s*,\s*["']([\w.\-]+)["']""",
     r"""\b[Mm][Oo][Dd][Ee][Ll]\s*=\s*["']([\w.\-]+)["']""",
     r"""^\s*(?:export\s+)?MODEL\s*=\s*([A-Za-z0-9][\w.\-]*)\s*(?:#.*)?$""")]
+# (e) 5.9(d) no silenced error on a fetch, write, push or model call: `|| true`, `|| :` and `2>/dev/null` hide the one thing the
+# wrapper needs to see. Narrow and pattern-based, one LINE at a time, bash files only: the line must (1) carry one of those
+# silencers and (2) call something that fetches, writes, pushes or calls a model. Harmless uses pass: kill/pkill/pgrep/stat/rm/
+# date/wait, `command -v`/`which` lookups, reading a stamp with cat. Failures are named, never swallowed: log to stderr and set the rc.
+SILENCER = re.compile(r"\|\|\s*(?:true|:)(?=\s*(?:$|[;&|)}#]))|2>\s*/dev/null|&>\s*/dev/null|>\s*/dev/null\s+2>&1")
+LOOKUP = re.compile(r"(?:command\s+-v|\bwhich|\btype\s+-p)\s+\S+")
+CALLEES = [("fetch", re.compile(r"(?<![\w/.-])(?:gws|curl|wget)\b|\$\{?GWS\w*\}?\x22?\s+[a-z]|email_fetch\.py|safe_fetch|safe_search|[\w.-]*fetch[\w.-]*\.(?:py|sh)\b|\bgit\s+(?:-C\s+\S+\s+)?(?:fetch|pull|clone)\b")),
+           ("push", re.compile(r"notify-send|\bgit\s+(?:-C\s+\S+\s+)?push\b|\bntfy\b")),
+           ("model", re.compile(r"\brun_model\b|\bclaude\s+-p\b|\$\{?CLAUDE(?:_BIN)?\}?\s+-p\b|\"\$\{?CLAUDE(?:_BIN)?\}?\"\s+-p\b")),
+           ("write", re.compile(r"emit_finding|emit_status|status-tile|(?<![\w:?-])write_status_tile(?=\s)|--write\b|--stamp\w*|--finish\b|[\w.-]*(?:write|sync|diary|journal|sensor|record)[\w.-]*\.(?:py|sh)\b"
+                                r"|\b(?:printf|echo|cat|tee|cp|mv)\b[^|;&<>]*\s>>?\s*[^&\s>]"))]
+def silenced_call(line):
+    """-> kind ('fetch'|'push'|'model'|'write') if this bash line silences the error of a fetch/write/push/model call, else ''."""
+    if not SILENCER.search(line): return ""
+    probe = LOOKUP.sub("", line)
+    probe = re.sub(r"[\w./$\"{}-]*(?:\btest[_-]|[_-]tests?\.)[\w.-]*\.(?:sh|py)", "", probe)   # a test script's exit code IS its verdict, read by the caller
+    for kind, rx in CALLEES:
+        if rx.search(probe): return kind
+    return ""
 SRC = re.compile(r"""^\s*(?:source|\.)\s+["']?([^"'\s;&|]+)""")
 INV = re.compile(r"""\b(?:python3?|bash|sh)\s+["']?([^"'\s;&|]+\.(?:py|sh))""")
 seen, todo = set(), [os.path.realpath(e) for e in scripts if "$" not in e]
@@ -234,6 +255,18 @@ while todo:
     try: lines = open(f, encoding="utf-8", errors="replace").read().splitlines()
     except OSError: continue
     scan = f not in allow
+    if f.endswith(".sh"):   # 5.9(d): backslash-continued physical lines are ONE command (the silencer is often on the last one)
+        _acc, _start = "", 0
+        for i, ln in enumerate(lines, 1):
+            if not _acc: _start = i
+            if ln.endswith("\\") and not ln.lstrip().startswith("#"):
+                _acc += ln[:-1] + " "; continue
+            full, _acc = _acc + ln, ""
+            if full.lstrip().startswith("#"): continue
+            _k = silenced_call(full.split(" #", 1)[0])
+            if _k:
+                rel = os.path.relpath(f, code) if under(f, code) else f
+                reasons.append(f"silenced {_k} error at {rel}:{_start} \u2014 `|| true`, `|| :` and `2>/dev/null` hide a failure; log it to stderr and fail the step")
     for i, ln in enumerate(lines, 1):
         if ln.lstrip().startswith("#"): continue
         if os.path.basename(f) not in MODEL_TABLE_FILES and (MODEL_ID.search(ln) or any(r.search(ln) for r in MODEL_LIT)):

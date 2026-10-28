@@ -59,7 +59,7 @@ fi
 RC=1
 _on_exit() {
   printf '{"subsystem":"%s","rc":%s,"ts":"%s","stale_after_h":%s}\n' \
-    "$SUBSYSTEM_NAME" "$RC" "$(date -u +%FT%TZ)" "$STALE_AFTER_HOURS" > "$STATUS_ARTIFACT" 2>/dev/null || true
+    "$SUBSYSTEM_NAME" "$RC" "$(date -u +%FT%TZ)" "$STALE_AFTER_HOURS" > "$STATUS_ARTIFACT" || echo "[$SUBSYSTEM_NAME] FAILED to write the status artifact $STATUS_ARTIFACT" >&2
   # rc=75 = STOOD DOWN (no gws creds configured yet) — the job's own preflight declined to run,
   # not a failure; PERMANENT-BY-DESIGN for a student with no Google account, so it fires on every
   # future dispatch until credentials are configured. Paging on it — even once — would just move
@@ -71,7 +71,8 @@ _on_exit() {
   if [ "$RC" -ne 0 ] && [ "$RC" -ne 75 ]; then
     bash "$CODE_ROOT/shared/notify/notify-send.sh" --source "$SUBSYSTEM_NAME" --tags warning --priority critical \
       --title "⚠️ tasks-store sync failed" \
-      --message "tasks_store_sync --sync errored (rc=$RC) — tasks store not refreshing. See $STATUS_ARTIFACT." 2>/dev/null || true
+      --message "tasks_store_sync --sync errored (rc=$RC) — tasks store not refreshing. See $STATUS_ARTIFACT." \
+      || echo "[$SUBSYSTEM_NAME] WARN: the failure alert (notify-send) itself failed (rc=$?)" >&2
   fi
   # Drive-visible status tile (state/status/tasks-store-sync.json) — emitted on EVERY outcome so
   # system-health never renders this job NO-TILE while it is silently dying (the 2026-08-27 failure).
@@ -107,7 +108,7 @@ require_gws_credentials "$SUBSYSTEM_NAME" || { RC=75; exit 75; }
 GWS_BIN="$(command -v gws 2>/dev/null || echo /opt/homebrew/bin/gws)"
 PREFLIGHT_OK=0
 for _attempt in 1 2 3; do
-  if "$GWS_BIN" tasks tasklists list >/dev/null 2>&1; then PREFLIGHT_OK=1; break; fi
+  if "$GWS_BIN" tasks tasklists list >/dev/null; then PREFLIGHT_OK=1; break; fi
   [ "$_attempt" -lt 3 ] && { echo "[$SUBSYSTEM_NAME] gws pre-flight attempt $_attempt failed — retry in 4s…"; sleep 4; }
 done
 if [ "$PREFLIGHT_OK" -ne 1 ]; then

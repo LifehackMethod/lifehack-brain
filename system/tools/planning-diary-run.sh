@@ -223,7 +223,7 @@ if [ "$CADENCE" = "daily" ]; then
   # TRANSIENT blip (token mid-refresh, momentary API hiccup) rather than a real outage.
   _GWS_PREFLIGHT_OK=0
   for _gws_try in 1 2 3; do
-    if "$GWS_BIN" gmail users getProfile --params '{"userId":"me"}' >/dev/null 2>&1; then _GWS_PREFLIGHT_OK=1; break; fi
+    if "$GWS_BIN" gmail users getProfile --params '{"userId":"me"}' >/dev/null; then _GWS_PREFLIGHT_OK=1; break; fi
     if [ "$_gws_try" -lt 3 ]; then echo "[gws] pre-flight attempt $_gws_try failed — retry in 4s…"; sleep 4; fi
   done
   if [ "$_GWS_PREFLIGHT_OK" -ne 1 ]; then
@@ -247,7 +247,7 @@ d={'schema_version':1,'emit_mode':'manual','last_run':'$_DIARY_NOW','rc':$RC,'st
 tmp='$DRIVE/state/status/planning-diary.json.tmp'
 json.dump(d,open(tmp,'w'),indent=2)
 os.replace(tmp,'$DRIVE/state/status/planning-diary.json')
-" 2>/dev/null || echo "[planning-diary] WARN: status tile write failed (non-fatal)"
+" || echo "[planning-diary] WARN: status tile write failed (non-fatal)" >&2
   exit "$RC"   # daily is SILENT — no buzz
 fi
 
@@ -257,7 +257,7 @@ _run_period_gate "$CADENCE"   # exits 0 (skip) or returns 0 (proceed); exits wit
 # PRE-FLIGHT for periodic cadences (same retry pattern as daily path)
 _GWS_PREFLIGHT_OK=0
 for _gws_try in 1 2 3; do
-  if "$GWS_BIN" gmail users getProfile --params '{"userId":"me"}' >/dev/null 2>&1; then _GWS_PREFLIGHT_OK=1; break; fi
+  if "$GWS_BIN" gmail users getProfile --params '{"userId":"me"}' >/dev/null; then _GWS_PREFLIGHT_OK=1; break; fi
   if [ "$_gws_try" -lt 3 ]; then echo "[gws] pre-flight attempt $_gws_try failed — retry in 4s…"; sleep 4; fi
 done
 if [ "$_GWS_PREFLIGHT_OK" -ne 1 ]; then
@@ -278,6 +278,6 @@ if [ "$RC" -eq 0 ]; then
     --source "planning-checkin" --tags "calendar,spiral_calendar" \
     --title "📋 ${CAP} check-in ready" \
     --message "Your ${CADENCE} review is teed up — open Cal to do the check-in." \
-    2>/dev/null || true
+    || echo "[planning-diary] WARN: the check-in-ready alert (notify-send) failed (rc=$?)" >&2
 fi
 exit "$RC"

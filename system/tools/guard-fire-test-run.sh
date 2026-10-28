@@ -108,7 +108,7 @@ do_work() {
       --producer guard-fire-test --status ERROR --scanned-n 0 \
       --label job=guard-fire-test --label check=guard-integrity \
       --summary "verify-hooks.sh itself failed to run (rc=$rc) — guard health could not be verified this run" \
-      --rc "$rc" >/dev/null 2>&1 || echo "[$SUBSYSTEM_NAME] emit_finding (broken-tool path) failed to write" >&2
+      --rc "$rc" >/dev/null || echo "[$SUBSYSTEM_NAME] emit_finding (broken-tool path) failed to write" >&2
     return "$rc"
   fi
 
@@ -131,7 +131,7 @@ do_work() {
     --producer guard-fire-test --status "$status_val" --scanned-n "$scanned_n" \
     --label job=guard-fire-test --label check=guard-integrity \
     --summary "${err_line:-all guards + regression suites GREEN}" \
-    --rc "$rc" >/dev/null 2>&1 || echo "[$SUBSYSTEM_NAME] emit_finding failed to write" >&2
+    --rc "$rc" >/dev/null || echo "[$SUBSYSTEM_NAME] emit_finding failed to write" >&2
 
   # Producer-liveness only — the verdict above is Hospital's job; this call takes no rc/err.
   python3 "$CODE_ROOT/system/tools/guard_fire_test_record.py"

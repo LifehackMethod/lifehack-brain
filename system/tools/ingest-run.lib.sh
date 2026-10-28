@@ -193,7 +193,7 @@ ingest_load_gws() {      # gws keychain-free isolated creds + pre-flight
   # instead of an immediate hard failure avoids flapping a runner whose auth is actually fine.
   _GWS_PREFLIGHT_OK=0
   for _gws_try in 1 2 3; do
-    if "$GWS_BIN" gmail users getProfile --params '{"userId":"me"}' >/dev/null 2>&1; then _GWS_PREFLIGHT_OK=1; break; fi
+    if "$GWS_BIN" gmail users getProfile --params '{"userId":"me"}' >/dev/null; then _GWS_PREFLIGHT_OK=1; break; fi
     if [ "$_gws_try" -lt 3 ]; then echo "[gws] pre-flight attempt $_gws_try failed — retry in 4s…"; sleep 4; fi
   done
   if [ "$_GWS_PREFLIGHT_OK" -ne 1 ]; then
@@ -248,7 +248,7 @@ ingest_new_mail_gate() {
   fi
   local q="label:${label} after:${marker}"
   local new_count
-  new_count="$("$GWS_BIN" gmail users messages list --params "{\"userId\":\"me\",\"q\":\"$q\",\"maxResults\":1}" 2>/dev/null | python3 -c "
+  new_count="$("$GWS_BIN" gmail users messages list --params "{\"userId\":\"me\",\"q\":\"$q\",\"maxResults\":1}" | python3 -c "
 import sys, json
 try: d = json.load(sys.stdin)
 except Exception: d = {}
