@@ -191,6 +191,20 @@ export JOB_RUN_FORCED="$FORCE"   # 5.7: 1 on a by-hand --force run (a test: a co
 JOB_RUN_CALLS_FILE="$STATE/calls.current"; : > "$JOB_RUN_CALLS_FILE"; rm -f "$JOB_RUN_CALLS_FILE.fail"
 export JOB_RUN_CALLS_FILE
 case "$INTERVAL" in ''|*[!0-9]*) finish 1 "interval '$INTERVAL' is not a number of seconds" ;; esac
+# ── 1b) 5.9(e): a state file that is PRESENT but unreadable is REFUSED and NAMED -- never treated as a first run ("start fresh" would
+#    hide a torn write or a tamper, and e.g. a last-success of garbage would read as an old success). A MISSING file is normal (first run).
+#    The lock is checked by runner-lock.lib.sh at step 5. last-run is left as it is (record=no) so the damaged bytes stay for inspection. ──
+_ISO='[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([+-][0-9]{4}|Z)?'
+if [ -e "$STATE/last-success" ]; then
+  if [ ! -f "$STATE/last-success" ] || ! head -1 "$STATE/last-success" | grep -qE "^${_ISO}\$" || [ "$(wc -l < "$STATE/last-success" | tr -d ' ')" -gt 1 ]; then
+    finish 1 "corrupt state file: $STATE/last-success is not one ISO timestamp -- refusing to treat it as a first run; fix or remove it by hand"
+  fi
+fi
+if [ -e "$STATE/last-run" ]; then
+  if [ ! -f "$STATE/last-run" ] || ! head -1 "$STATE/last-run" | grep -qE "^${_ISO} rc=[0-9]+( |\$)"; then
+    finish 1 "corrupt state file: $STATE/last-run is not '<ISO time> rc=<n> ...' -- refusing to overwrite it unread; fix or remove it by hand" no
+  fi
+fi
 [ -n "$CMD" ] || { [ "$ENABLED" != yes ] && [ "$FORCE" != 1 ]; } || finish 1 "row has no command (is it an old 4-column row? the contract columns are required)"
 if [ "$ENABLED" != yes ]; then
   [ "$FORCE" = 1 ] || finish 75 "row is '$ENABLED' in the manifest, not 'yes' — stood down"

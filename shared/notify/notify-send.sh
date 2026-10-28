@@ -19,7 +19,8 @@
 #                  [--title <title>] [--tags <tag1,tag2>]
 #
 # Exit 0  = sent (or deliberately SUPPRESSED by the governor — not an error).
-# Exit 1  = send attempted but FAILED (network/curl).
+# Exit 1  = send attempted but FAILED (network/curl), or a quiet-hours alert could not be queued.
+# Exit 3  = the governor's state file is CORRUPT (5.9(e)): named on stderr, and the one alarm about it is still pushed.
 # Exit 2  = setup/usage error (no topic configured, bad args).
 #
 # DISCIPLINE, and it is the whole reason this wrapper exists rather than a bare curl:
@@ -104,7 +105,17 @@ fi
 # ── Governor gate (anti-spam) — pass tuning through as env ────────────────────
 export NOTIFY_QUIET_START NOTIFY_QUIET_END NOTIFY_DAILY_CAP NOTIFY_DEDUP_HOURS NOTIFY_MISCONFIG_DEDUP_HOURS
 _TMP="${TMPDIR:-/tmp}"
-if ! python3 "$GOVERNOR" "$SOURCE" "$MESSAGE" "$PRIORITY" "$IDENTITY" >/dev/null 2>"$_TMP/notify-gov.$$"; then
+# 5.9(e): governor exit 3 = its state file is CORRUPT. Say so loudly on stderr, DO NOT swallow it as "suppressed", and still send the one
+# alarm about the problem itself (the governor cannot gate it -- it is the thing that is broken), then fail the call (exit 3).
+FINAL_RC=0
+python3 "$GOVERNOR" "$SOURCE" "$MESSAGE" "$PRIORITY" "$IDENTITY" >/dev/null 2>"$_TMP/notify-gov.$$"; _grc=$?
+if [ "$_grc" -eq 3 ]; then
+  echo "notify-send: $(cat "$_TMP/notify-gov.$$")" >&2; rm -f "$_TMP/notify-gov.$$"
+  _orig_source="$SOURCE"
+  SOURCE="notify-governor"; TITLE="Notify governor state corrupt"; PRIORITY="critical"; TAGS="rotating_light"; URL=""
+  MESSAGE="The notification governor state file ($(basename "${NOTIFY_STATE_FILE:-lifehack-notify-state.json}")) is corrupt, so an alert from '$_orig_source' was NOT sent. Fix or delete the file."
+  FINAL_RC=3
+elif [ "$_grc" -ne 0 ]; then
   reason="$(cat "$_TMP/notify-gov.$$" 2>/dev/null)"; rm -f "$_TMP/notify-gov.$$"
   echo "notify-send: ${reason:-suppressed by the gate}" >&2
   # OL-N1 ⑥: a normal-priority send dropped for QUIET HOURS SPECIFICALLY (never dedup, never the
@@ -139,7 +150,7 @@ HDRS=(-H "Priority: $NTFY_PRIO")
 # phone. No network. Inert when unset.
 if [ -n "${LIFEHACK_NOTIFY_LOG:-}" ]; then
   printf '%s | %s | %s | %s\n' "$TITLE" "$MESSAGE" "$IDENTITY" "$PRIORITY" >> "$LIFEHACK_NOTIFY_LOG"
-  exit 0
+  exit "$FINAL_RC"
 fi
 
 # Dry-run: print what WOULD be sent, no network. (Setup verification.)
@@ -147,14 +158,14 @@ if [ "${NOTIFY_DRY_RUN:-0}" = "1" ]; then
   echo "DRY_RUN would POST -> $SERVER/<your topic, not printed>"
   echo "  priority: $NTFY_PRIO  title: '${TITLE:-}'  tags: '${TAGS:-}'  click: '${URL:-}'  markdown: $MARKDOWN"
   echo "  body: $MESSAGE"
-  exit 0
+  exit "$FINAL_RC"
 fi
 
 # --max-time = circuit breaker: a hung network must never wedge a cron job.
 if curl -sS --max-time 10 "${HDRS[@]}" -d "$MESSAGE" "$SERVER/$TOPIC" >/dev/null 2>"$_TMP/notify-curl.$$"; then
   rm -f "$_TMP/notify-curl.$$"
   echo "notify-send: sent ($SOURCE -> $SERVER)"    # the topic is never printed — it is a secret
-  exit 0
+  exit "$FINAL_RC"
 else
   err="$(cat "$_TMP/notify-curl.$$" 2>/dev/null)"; rm -f "$_TMP/notify-curl.$$"
   echo "notify-send: SEND FAILED — ${err:-curl error}" >&2

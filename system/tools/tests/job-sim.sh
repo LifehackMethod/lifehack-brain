@@ -1366,6 +1366,175 @@ def bite_h():
 BITES.append(("h", "a live process owns the lock (wrapper and a runner)", "another run holds the lock (pid N is alive) — standing down", bite_h))
 
 
+# SPLICE:5.9e
+def norm_paths(text, *roots):
+    """Replace a throwaway root with <root> so a planted-fault NAME is stable across runs."""
+    for r in roots: text = text.replace(r, "<root>")
+    return text
+
+
+def corrupt_job_state_runs():
+    """Run the REAL job-run.sh on a sim job after planting a corrupt last-success / last-run / lock. Returns {kind: (rc, last-run, log, ran?, file-bytes-after)}."""
+    out, t = {}, BASE + 12 * 3600
+    for kind in ("last-success", "last-run", "lock-garbage-pid", "lock-no-pid"):
+        w = World([("sim-a", P)])
+        try:
+            w.set_mode("sim-a", "ok")
+            if w.run_job("sim-a", "cal", t) != 0: out[kind] = ("setup failed",); continue
+            os.remove(f"{w.sim}/out/sim-a")
+            target = None
+            if kind in ("last-success", "last-run"):
+                target = w.p("sim-a", kind); open(target, "w").write("garbage, not a record\n" if kind == "last-success" else "")
+            else:
+                d = plant_wrapper_lock(w, "sim-a", "not-a-pid\n" if kind == "lock-garbage-pid" else None, t + P - 100)
+                target = d + "/pid"
+            rc = w.run_job("sim-a", "cal", t + P)
+            after = open(target).read() if os.path.exists(target) else None
+            out[kind] = (rc, w.read("sim-a", "last-run"), w.read("sim-a", "log"), os.path.exists(f"{w.sim}/out/sim-a"), after, w.dir)
+        finally:
+            w.close()
+    return out
+
+
+def corrupt_job_state():
+    """5.9(e) job-run state: a last-success / last-run / lock that is PRESENT but unreadable is refused (exit 1), NAMED (the file path is in
+    the log), the job does NOT run, and the damaged last-run is not overwritten unread. A missing file is normal (the setup run is that control)."""
+    fails = []
+    for kind, res in corrupt_job_state_runs().items():
+        if len(res) == 1: fails.append(f"corrupt-job-state[{kind}]: {res[0]}"); continue
+        rc, lr, log, ran, after, _d = res
+        want = {"last-success": "corrupt state file: ", "last-run": "corrupt state file: ", "lock-garbage-pid": "CORRUPT lock ", "lock-no-pid": "CORRUPT lock "}[kind]
+        if rc != 1: fails.append(f"corrupt-job-state[{kind}]: exit {rc}, expected 1")
+        if ran: fails.append(f"corrupt-job-state[{kind}]: the job ran on top of a corrupt record")
+        if want not in log or kind.split("-")[0] not in log.replace("last-run", "last-run"): fails.append(f"corrupt-job-state[{kind}]: the log does not name the file: {log[-300:]!r}")
+        if kind == "last-run" and after != "": fails.append("corrupt-job-state[last-run]: the damaged last-run was overwritten unread")
+        if kind == "last-success" and "last-success" not in lr: fails.append(f"corrupt-job-state[last-success]: last-run reason lacks the file: {lr!r}")
+    return 4, fails, ([], [])
+
+
+NEW_SCENARIOS.append(("corrupt-job-state", corrupt_job_state))
+
+
+def notify_env(d, state_text, fake_now=BASE + 12 * 3600):
+    log, state = f"{d}/notify.log", f"{d}/gov-state.json"
+    if state_text is not None: open(state, "w").write(state_text)
+    elif os.path.exists(state): os.remove(state)
+    open(log, "w").close()
+    env = {k: v for k, v in os.environ.items() if k not in SEAMS}
+    env.update(HOME=f"{d}/home", TZ="UTC", LIFEHACK_FAKE_NOW=str(fake_now), NTFY_TOPIC="sim-topic", LIFEHACK_NOTIFY_LOG=log,
+               NOTIFY_STATE_FILE=state, TMPDIR=d)
+    os.makedirs(env["HOME"], exist_ok=True)
+    return env, log, state
+
+
+def corrupt_governor_runs():
+    out = {}
+    d = tempfile.mkdtemp(prefix="job-sim-gov.")
+    try:
+        for kind, text in [("garbage", "{not json at all"), ("empty", ""), ("wrong-shape-list", "[]"), ("wrong-shape-sent", '{"sent": "x"}'), ("missing", None)]:
+            env, log, state = notify_env(d, text)
+            r = subprocess.run(["bash", NS, "--source", "job-run:x", "--message", "m", "--identity", "i"], env=env, stdin=subprocess.DEVNULL, capture_output=True, text=True)
+            fr = subprocess.run(["bash", NS, "--flush-deferred"], env=env, stdin=subprocess.DEVNULL, capture_output=True, text=True)
+            after = open(state).read() if os.path.exists(state) else None
+            out[kind] = (r.returncode, r.stderr, open(log).read().splitlines(), text, after, state, fr.returncode, fr.stderr)
+        return out
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def corrupt_governor_state():
+    """5.9(e) notify-governor state: a corrupt state file (garbage / empty / wrong shape) makes notify-send exit 3, names the file on stderr,
+    leaves the file as it was, and STILL pushes the one alarm about the problem (a critical line in the notify log). A missing file is
+    normal (control: exit 0, one ordinary push). --flush-deferred fails loudly too."""
+    fails = []
+    for kind, (rc, err, lines, text, after, state, frc, ferr) in corrupt_governor_runs().items():
+        if kind == "missing":
+            if rc != 0 or len(lines) != 1 or "Notify governor state corrupt" in lines[0]: fails.append(f"corrupt-governor-state[missing]: rc={rc} log={lines}; a missing state file is a first run")
+            continue
+        if rc != 3: fails.append(f"corrupt-governor-state[{kind}]: exit {rc}, expected 3")
+        if "CORRUPT" not in err or state not in err: fails.append(f"corrupt-governor-state[{kind}]: stderr does not name the file: {err!r}")
+        if len(lines) != 1 or not lines[0].startswith("Notify governor state corrupt | ") or not lines[0].endswith("| critical"):
+            fails.append(f"corrupt-governor-state[{kind}]: the alarm about the corruption was not pushed (log: {lines})")
+        if after != text: fails.append(f"corrupt-governor-state[{kind}]: the corrupt state file was rewritten ({after!r})")
+        if frc != 3 or state not in ferr: fails.append(f"corrupt-governor-state[{kind}]: --flush-deferred rc={frc} stderr={ferr!r}")
+    return 5, fails, ([], [])
+
+
+NEW_SCENARIOS.append(("corrupt-governor-state", corrupt_governor_state))
+
+EF = f"{ROOT}/shared/tools/email_fetch.py"
+
+
+def corrupt_bookmark_runs():
+    out, d = {}, tempfile.mkdtemp(prefix="job-sim-bm.")
+    try:
+        gm = f"{d}/sim/gmail"; os.makedirs(gm)
+        open(f"{gm}/labels.json", "w").write('{"labels":[{"id":"Label_9","name":"sim-drill"}]}')
+        open(f"{gm}/threads.json", "w").write(json.dumps({"label_ids": {"Label_9": []}, "all": []}))
+        seen = f"{d}/seen"; os.makedirs(seen)
+        for kind, text in [("garbage", "not-a-number abc"), ("empty", ""), ("three-fields", "1793000000000 m-1 extra"), ("valid", "1793000000000 m-1\n"), ("missing", None)]:
+            bm = f"{seen}/sim-drill-last-seen"
+            if os.path.exists(bm): os.remove(bm)
+            if text is not None: open(bm, "w").write(text)
+            env = {k: v for k, v in os.environ.items() if k not in SEAMS}
+            env.update(HOME=f"{d}/home", JOB_SIM_DIR=f"{d}/sim", LIFEHACK_GWS_BIN=f"{HERE_TESTS}/job-sim-gws-stub.py", LIFEHACK_LAST_SEEN_DIR=seen,
+                       SENTINEL_PAUSE_FILE=f"{d}/paused", SENTINEL_LOG=f"{d}/s/e.jsonl", SENTINEL_STATUS=f"{d}/s/s.json", SENTINEL_ACKED_FP=f"{d}/s/a.json",
+                       SENTINEL_QUARANTINE_DISABLE="1", LIFEHACK_ROOT=f"{d}/brain", EMAIL_SERVICE_READ="")
+            outf = f"{d}/out-{kind}.json"
+            r = subprocess.run(["python3", EF, "--consumer", "sim-drill", "--label", "sim-drill", "--query", "", "--out", outf], env=env,
+                               stdin=subprocess.DEVNULL, capture_output=True, text=True)
+            out[kind] = (r.returncode, r.stderr, os.path.exists(outf), bm, text, open(bm).read() if os.path.exists(bm) else None)
+        return out
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def corrupt_bookmark():
+    """5.9(e) *-last-seen: a bookmark that is present but unparseable / the wrong shape (garbage, empty, 3 fields) makes email_fetch.py exit 1,
+    name the file on stderr, write no output and leave the file alone. A valid bookmark and a missing one (first run) both work (controls)."""
+    fails = []
+    for kind, (rc, err, wrote, bm, text, after) in corrupt_bookmark_runs().items():
+        if kind in ("valid", "missing"):
+            if rc != 0 or not wrote: fails.append(f"corrupt-bookmark[{kind}]: rc={rc} wrote={wrote}; {err[-200:]!r}")
+            continue
+        if rc != 1: fails.append(f"corrupt-bookmark[{kind}]: exit {rc}, expected 1")
+        if "CORRUPT bookmark" not in err or bm not in err: fails.append(f"corrupt-bookmark[{kind}]: stderr does not name the file: {err!r}")
+        if wrote: fails.append(f"corrupt-bookmark[{kind}]: the fetch still wrote output")
+        if after != text: fails.append(f"corrupt-bookmark[{kind}]: the corrupt bookmark was rewritten")
+    return 5, fails, ([], [])
+
+
+NEW_SCENARIOS.append(("corrupt-bookmark", corrupt_bookmark))
+
+
+def bite_e_jobrun():
+    res = corrupt_job_state_runs().get("last-success")
+    if not res or len(res) == 1: return None
+    rc, lr, log, ran, after, d = res
+    line = next((ln for ln in log.splitlines() if "corrupt state file:" in ln), "")
+    line = norm_paths(line.split("[job-run] exit 1 — ", 1)[-1], d)
+    return line.split(" -- ")[0] if rc == 1 and not ran else None
+
+
+def bite_e_governor():
+    rc, err, lines, text, after, state, frc, ferr = corrupt_governor_runs()["garbage"]
+    name = norm_paths(err, state).strip().replace("notify-send: ", "")
+    name = name.split(" -- ")[0].split(" (")[0]
+    return name if rc == 3 and lines and lines[0].startswith("Notify governor state corrupt") else None
+
+
+def bite_e_bookmark():
+    rc, err, wrote, bm, text, after = corrupt_bookmark_runs()["garbage"]
+    name = err.strip().split(" -- ")[0].replace(bm, "<file>")
+    name = name.split(" should hold ")[0] + " should hold" if " should hold " in name else name
+    return name if rc == 1 and not wrote else None
+
+
+BITES.append(("e/job-run", "a corrupt last-success", "corrupt state file: <root>/state/jobs/sim-a/last-success is not one ISO timestamp", bite_e_jobrun))
+BITES.append(("e/governor", "a corrupt notify-governor state file", "CORRUPT: notify-governor state file is corrupt: <root> is not valid JSON", bite_e_governor))
+BITES.append(("e/bookmark", "a corrupt *-last-seen bookmark", "[email-fetch] CORRUPT bookmark: <file> should hold", bite_e_bookmark))
+
+
 def play_t0(name, jobs, t0, ticks):
     # a scenario check may need the first tick's time (w.t0s): wrap each chk to set it
     def wrap(chk):

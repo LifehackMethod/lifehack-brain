@@ -112,13 +112,29 @@ def last_seen_path(consumer):
     return os.path.join(d, f"{consumer}-last-seen")
 
 
+class BookmarkCorrupt(Exception):
+    """5.9(e): a *-last-seen file is PRESENT but unparseable or the wrong shape. Never 'no bookmark': that would re-read (or skip) a
+    whole mailbox without saying so. A MISSING file is normal (first run) and is not this."""
+
+
+def parse_bookmark(path, text):
+    """(internalDate_ms, message_id) from the text of a bookmark file; raises BookmarkCorrupt naming `path`."""
+    parts = text.split()
+    if len(parts) not in (1, 2) or not parts[0].isdigit():
+        raise BookmarkCorrupt(f"{path} should hold '<internalDate ms> [message id]' but holds {text.strip()[:60]!r}")
+    return int(parts[0]), (parts[1] if len(parts) > 1 else "")
+
+
 def read_last_seen(consumer):
-    """(internalDate_ms, message_id); (0, '') when there is no bookmark yet."""
+    """(internalDate_ms, message_id); (0, '') when there is no bookmark yet. Raises BookmarkCorrupt if the file is there but bad."""
+    p = last_seen_path(consumer)
     try:
-        parts = open(last_seen_path(consumer), encoding="utf-8").read().split()
-        return int(parts[0]), (parts[1] if len(parts) > 1 else "")
-    except (OSError, ValueError, IndexError):
+        text = open(p, encoding="utf-8").read()
+    except FileNotFoundError:
         return 0, ""
+    except OSError as e:
+        raise BookmarkCorrupt(f"{p} is unreadable ({e})")
+    return parse_bookmark(p, text)
 
 
 def write_last_seen(consumer, ms, msg_id=""):
@@ -397,6 +413,9 @@ def main(argv=None):
     try:
         res = fetch(a.consumer, label=a.label, query=a.query, cap=a.cap,
                     since_last_seen=not a.no_since, mark_seen=not a.no_mark)
+    except BookmarkCorrupt as e:
+        sys.stderr.write(f"[email-fetch] CORRUPT bookmark: {e} -- refusing to start fresh; fix or remove that file by hand\n")
+        return 1
     except Paused as e:
         sys.stderr.write(f"paused: {e}\n")
         return EXIT_PAUSED

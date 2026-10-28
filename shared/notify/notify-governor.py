@@ -30,6 +30,7 @@
 #             human-readable <message>, which keeps carrying the live number for the reader.
 # Exit 0 + "ALLOW" on stdout  -> caller should send (the send is now recorded).
 # Exit 1 + "SUPPRESS: <reason>" on stderr -> caller must NOT send.
+# Exit 3 + "CORRUPT: <file> ..." on stderr -> the state file is present but unreadable (5.9(e)): nothing was decided, nothing was written.
 #
 # Config via env (all optional):
 #   NOTIFY_QUIET_START (22)  NOTIFY_QUIET_END (7)  -> quiet window [start,end) local hours
@@ -88,12 +89,29 @@ def in_quiet_hours(hour):
     return hour >= QUIET_START or hour < QUIET_END
 
 
+class StateCorrupt(Exception):
+    """5.9(e): the state file is PRESENT but unreadable or the wrong shape. Never 'start fresh': a silent reset of the cap and the dedup
+    history can flood the phone or go quiet. A MISSING file is normal (first run) and is not this."""
+
+
 def load_state():
     try:
         with open(STATE) as f:
-            return json.load(f)
-    except Exception:
+            raw = f.read()
+    except FileNotFoundError:
         return {"sent": []}
+    except OSError as e:
+        raise StateCorrupt(f"{STATE} is unreadable ({e})")
+    try:
+        state = json.loads(raw)
+    except ValueError as e:
+        raise StateCorrupt(f"{STATE} is not valid JSON ({e})")
+    if not isinstance(state, dict):
+        raise StateCorrupt(f"{STATE} holds a {type(state).__name__}, not a JSON object")
+    for key in ("sent", "deferred"):
+        if key in state and not (isinstance(state[key], list) and all(isinstance(x, dict) for x in state[key])):
+            raise StateCorrupt(f"{STATE}: '{key}' is not a list of objects")
+    return state
 
 
 def save_state(state):
@@ -269,4 +287,10 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except StateCorrupt as e:
+        # exit 3 = CORRUPT STATE (distinct from 1 = suppressed): notify-send.sh sees it, says so loudly and still pushes the problem itself.
+        sys.stderr.write(f"CORRUPT: notify-governor state file is corrupt: {e} -- refusing to start fresh "
+                         f"(the cap and dedup history would silently reset). Fix or delete the file.\n")
+        sys.exit(3)
