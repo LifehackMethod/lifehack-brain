@@ -292,7 +292,7 @@ marc-weekly | waiting-on-port | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$(pyth
 # ⛔ NOT RUN THIS SESSION: this job is genuinely due today (its own due-window includes today, and
 # its marker is behind the current ISO week) — invoking it would fire a real multi-source LLM
 # research fan-out (real token spend), not a dry no-op. UNVERIFIED-BY-DESIGN, not confirmed working.
-marc-wednesday | waiting-on-port | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/marc/tools/marc-wednesday/marc-wednesday-run.sh"
+marc-wednesday | off | 86400 | Marc's mid-week scan ran once this ISO week and recorded one verdict, QUIET or MATERIAL, against the live levels, so a material shift is never missed between the Saturday reads. | ~/.config/lifehack/marc-wednesday/last-run.txt ~ ^marc-wednesday ok week=[0-9]{4}-W[0-9]{2} verdict=[QM][A-Z]+ at=[0-9]{4}- | medium | 2 | none | bash "$HOME/.claude/skills/ClaudeOps/desks/marc/tools/marc-wednesday/marc-wednesday-run.sh"
 #
 # clair-billing: billing/client detail emit + cadence-nudge push. CORRECTED 2026-08-26 (verified
 # this session): "Missing runner" was wrong — runner exists in the Brain at
@@ -350,7 +350,7 @@ token-burn-mine | waiting-on-port | 86400 | TBD | TBD | TBD | 0 | TBD | PYTHONPA
 # CORRECTED 2026-08-26 (verified this session): "Missing runner" was wrong — the runner exists in
 # this repo at system/tools/obsidian-reindex.sh with the lock + watchdog intact. RUN THIS SESSION:
 # exit 0 (ran to completion, no scandir/timeout errors).
-obsidian-reindex | waiting-on-port | 21600 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/obsidian-reindex.sh"
+obsidian-reindex | off | 21600 | The Obsidian vault search index was rebuilt from the Drive notes and the archived-copy prune ran, so vault search reflects notes written up to six hours ago. | ~/.config/lifehack/obsidian-reindex/last-index.txt ~ ^obsidian-reindex ok index_rc=0 prune_rc=0 db_bytes=[1-9][0-9]+ | none | 0 | none | bash "$LIFEHACK_CODE_ROOT/system/tools/obsidian-reindex.sh"
 #
 # mirror-fetch: M14 — the scheduled fetch that keeps mirror_line.sh's (M9/M13) "behind" and
 # "ahead" figures honest. mirror_line.sh reads only local refs by contract (a session-start line

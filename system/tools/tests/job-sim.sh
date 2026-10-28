@@ -526,6 +526,8 @@ def main():
         rows.append(("mirror-fetch-contract", receipt_contract("mirror-fetch")))   # 5.7
         rows.append(("guard-fire-test-contract", receipt_contract("guard-fire-test")))   # 5.7
         rows.append(("marc-health-contract", receipt_contract("marc-health")))   # 5.7 (the first AI job: small tier, one call)
+        rows.append(("obsidian-reindex-contract", receipt_contract("obsidian-reindex")))   # Sprint 5 item 3 (no AI)
+        rows.append(("marc-wednesday-contract", receipt_contract("marc-wednesday")))   # Sprint 5 item 3 (medium tier, one call)
         rows.append(("force-flag", force_flag()))   # 5.7
         rows.extend(model_scenarios())   # 5.3
         rows.extend((n, f.result()) for n, f in nfut)   # 5.9
@@ -863,10 +865,14 @@ RECEIPTS = {   # job -> (a receipt line a SUCCESSFUL real run writes, one a run 
                      "mirror-fetch DONE behind=? ahead=? 2026-11-02T12:00:00Z"),
     "guard-fire-test": ('{"subsystem":"guard-fire-test","rc":0,"verdict":"GREEN","named":"all guards + regression suites GREEN","ts":"2026-11-02T12:00:00Z","stale_after_h":192}',
                         '{"subsystem":"guard-fire-test","rc":0,"ts":"2026-11-02T12:00:00Z","stale_after_h":192}'),   # 5.9(b): the bad receipt is the OLD shape -- an exit code and no verdict
+    "obsidian-reindex": ("obsidian-reindex ok index_rc=0 prune_rc=0 db_bytes=591396864",
+                         "obsidian-reindex FAIL index_rc=1 prune_rc=0 db_bytes=0"),
+    "marc-wednesday": ("marc-wednesday ok week=2026-W45 verdict=QUIET at=2026-11-04T12:00:00Z",
+                       "marc-wednesday FAIL week=? verdict=? at=? :: model call failed"),
     "marc-health": ("marc-health ok fetched_at=2026-11-02T12:00:00+00:00 tickers=19 fred=13 errors=0 core_ok=1 tile_rc=0",
                     "marc-health FAIL fetched_at=? tickers=0 fred=0 errors=0 core_ok=0 tile_rc=1 :: snapshot unreadable"),
 }
-CONTRACT_MODEL = {"marc-health": ("small", "3", 1)}   # job -> (row model, row budget, model calls one run makes); default none/0/0
+CONTRACT_MODEL = {"marc-health": ("small", "3", 1), "marc-wednesday": ("medium", "2", 1)}   # job -> (row model, row budget, model calls one run makes); default none/0/0
 
 
 def real_row(job):
