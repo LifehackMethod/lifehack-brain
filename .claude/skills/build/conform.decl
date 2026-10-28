@@ -1,0 +1,2 @@
+exception: ORD-4 because the build nurse's ai step is the builder — it must write the card's Where: files; it gets no Bash, never sees the record path, and the runner (not the ai) runs Verify and writes the record
+exception: ORD-1 because the build nurse is a generic runner — its card is the plan file handed to it at run time, read in order by scripts/plan_queue.py; there is no fixed *.card to ship
