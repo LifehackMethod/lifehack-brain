@@ -43,7 +43,9 @@ CLAUDE_BIN = (
 )
 
 # Haiku — cheapest capable model; keep in sync with ingest-reader.md intent.
-INTAKE_JUDGE_MODEL = "claude-haiku-4-5-20251001"
+import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))  # noqa: E401,E702
+from model_ids import model_id  # noqa: E402  (the ONE model table; 2026-10-28 retired-id fix)
+INTAKE_JUDGE_MODEL = model_id("small")
 
 # ---------------------------------------------------------------------------
 # Judge prompt — mirrors ingest-reader.md instructions verbatim.

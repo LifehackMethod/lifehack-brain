@@ -257,7 +257,7 @@ def load_claude_token():
         return True
     p = os.environ.get("CLAUDE_OAUTH_TOKEN_FILE") or os.path.expanduser("~/.config/lifehack/claude-oauth-token")
     try:
-        tok = open(p, encoding="utf-8").read().strip()
+        tok = "".join(open(p, encoding="utf-8").read().split())  # ALL whitespace, like claude-auth.lib.sh (the file wraps)
     except OSError:
         return False
     if tok:

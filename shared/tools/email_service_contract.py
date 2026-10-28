@@ -55,7 +55,9 @@ constants at startup; if the import fails it hard-stops.
 # ENF-A.1 — model pinned to the Haiku version that A/B-matched Sonnet at 4x lower cost
 # (internal scale-up 2026-05-07/08).  The dated slug pins the exact release so a new model
 # release cannot silently change behaviour.  Injection-safety lives in ingest_gate upstream.
-SUMMARY_MODEL = "claude-haiku-4-5-20251001"
+import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))  # noqa: E401,E702
+from model_ids import model_id  # noqa: E402  (the ONE model table; 2026-10-28)
+SUMMARY_MODEL = model_id("small")
 
 # ENF-A.2 — parallel worker count ceiling.  10 workers hit Gmail rate limits in the internal
 # scale-up (2026-05-08); 5 is the proven safe ceiling.  Haiku is reliable on CLEAN text only

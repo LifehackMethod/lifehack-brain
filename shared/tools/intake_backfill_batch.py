@@ -39,7 +39,9 @@ from safe_input import scan_for_injection
 from email_summary_sync import write_thread_v2_atomic
 from intake_reader import run_intake_judge  # for the rare REAL-ATTACK redaction pass
 
-MODEL = "claude-haiku-4-5-20251001"
+import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))  # noqa: E401,E702
+from model_ids import model_id  # noqa: E402  (the ONE model table; 2026-10-28)
+MODEL = model_id("small")
 # Binary resolution — mirrors intake_reader.py / email_summary_sync.py (cron-PATH-safe). An
 # explicit $CLAUDE_BIN override first (never guessed away), then PATH, then a short list of known
 # install locations as a last resort.
