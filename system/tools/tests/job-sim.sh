@@ -976,6 +976,7 @@ def guard_fire_verdict():
     try:
         tools = f"{d}/code/system/tools"; os.makedirs(tools)
         shutil.copy(f"{ROOT}/system/tools/guard-fire-test-run.sh", tools)
+        shutil.copy(f"{ROOT}/system/tools/runner-lock.lib.sh", tools)
         for f in ("emit_finding.py", "guard_fire_test_record.py"):
             open(f"{tools}/{f}", "w").write("import sys\nsys.exit(0)\n")
         art = f"{w.home}/.config/lifehack/guard-fire-test/last-run.json"
@@ -1114,6 +1115,7 @@ def esw_world(d):
     tools, shared = f"{d}/code/system/tools", f"{d}/code/shared"
     os.makedirs(tools); os.makedirs(f"{shared}/tools")
     shutil.copy(f"{ROOT}/system/tools/email-summary-write-run.sh", tools)
+    shutil.copy(f"{ROOT}/system/tools/runner-lock.lib.sh", tools)
     open(f"{tools}/gws-auth.lib.sh", "w").write('require_gws_credentials() { GWS_CREDS_FILE=/dev/null; return 0; }\n')
     open(f"{tools}/status-tile.lib.sh", "w").write('write_status_tile() { return 0; }\n')
     open(f"{shared}/brain_root.py", "w").write(f"print({d + '/brain'!r})\n")
@@ -1260,6 +1262,108 @@ def bite_d():
 
 
 BITES.append(("d", "a fetch silenced with `|| true`", SILENCE_PLANTS[0][2], bite_d))
+
+
+# SPLICE:5.9h
+def dead_pid():
+    p = subprocess.Popen(["true"]); p.wait(); return p.pid
+
+
+def live_owner():
+    """A real, alive process whose pid can own a lock. Caller must .kill() it."""
+    return subprocess.Popen(["sleep", "60"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def plant_wrapper_lock(w, job, pid_text, t):
+    d = f"{w.state}/.lock-{job}"
+    os.makedirs(d, exist_ok=True)
+    if pid_text is not None: open(f"{d}/pid", "w").write(pid_text)
+    os.utime(d, (t, t))
+    return d
+
+
+def wrapper_lock_run(job_mode, pid_text_fn, tag):
+    """Run the REAL job-run.sh on a sim job whose lock was planted. Returns (rc, last-run, log, ran?, lockdir-exists)."""
+    t = BASE + 12 * 3600
+    w = World([("sim-a", P)])
+    proc = None
+    try:
+        w.set_mode("sim-a", "ok")
+        pid_text, proc = pid_text_fn()
+        d = plant_wrapper_lock(w, "sim-a", pid_text, t)
+        rc = w.run_job("sim-a", "cal", t)
+        return rc, w.read("sim-a", "last-run"), w.read("sim-a", "log"), os.path.exists(f"{w.sim}/out/sim-a"), os.path.exists(d)
+    finally:
+        if proc: proc.kill(); proc.wait()
+        w.close()
+
+
+def runner_lock_run(which, pid_kind):
+    """The REAL guard-fire-test / email-summary-write runner (stubbed callees), lock planted with a live / dead owner pid.
+    Returns (rc, output, artifact-written?)."""
+    d = tempfile.mkdtemp(prefix="job-sim-rl.")
+    proc = None
+    try:
+        if which == "email-summary-write":
+            runner = esw_world(d)
+            lock = f"{d}/claudeops-email-summary-write.lock"
+        else:
+            tools = f"{d}/code/system/tools"; os.makedirs(tools)
+            for f in ("guard-fire-test-run.sh", "runner-lock.lib.sh"): shutil.copy(f"{ROOT}/system/tools/{f}", tools)
+            for f in ("emit_finding.py", "guard_fire_test_record.py"): open(f"{tools}/{f}", "w").write("import sys\nsys.exit(0)\n")
+            open(f"{tools}/verify-hooks.sh", "w").write("echo '14 guard(s) LIVE'; exit 0\n")
+            runner = f"{tools}/guard-fire-test-run.sh"
+            lock = f"{d}/claudeops-guard-fire-test.lock"
+        os.makedirs(lock)
+        if pid_kind == "live": proc = live_owner(); pid = proc.pid
+        else: pid = dead_pid()
+        open(f"{lock}/pid", "w").write(f"{pid}\n")
+        home = f"{d}/home"; os.makedirs(home)
+        env = {k: v for k, v in os.environ.items() if k not in SEAMS}
+        env.update(HOME=home, LIFEHACK_RUNNER_LOCK_ROOT=d, TZ="UTC", ESW_OUT=f"{d}/esw-out.txt", ESW_STAMP=f"{d}/esw-stamp.txt")
+        open(f"{d}/esw-out.txt", "w").write("[email-summary-sync] v2 write DONE — written=1 unchanged=0 flagged=0 cold=0 errors=0\n")
+        with open(f"{d}/run.out", "w") as fh:
+            rc = subprocess.run(["bash", runner], env=env, stdin=subprocess.DEVNULL, stdout=fh, stderr=subprocess.STDOUT).returncode
+        art = f"{home}/.config/lifehack/guard-fire-test/last-run.json" if which != "email-summary-write" else f"{home}/.local/share/lifehack/email-summary-write/last-run.json"
+        return rc, open(f"{d}/run.out").read(), os.path.exists(art)
+    finally:
+        if proc: proc.kill(); proc.wait()
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def lock_owner():
+    """5.9(h): locks record their owner pid. WRAPPER: a dead owner's lock is taken at once (the job runs, rc 0); a live owner stands the run
+    down with 75 (the job does NOT run, the live owner's lock is untouched). RUNNERS (guard-fire-test, email-summary-write): a live owner
+    exits 75 -- never 0 -- and writes nothing; a dead owner's lock is taken and the runner runs to exit 0."""
+    fails = []
+    rc, lr, log, ran, lock_left = wrapper_lock_run("dead", lambda: (f"{dead_pid()}\n", None), "dead")
+    if rc != 0 or not ran: fails.append(f"lock-owner[wrapper dead owner]: rc={rc} ran={ran}; a dead owner's lock must be taken at once ({log[-250:]!r})")
+    if "is dead — taking the lock at once" not in log: fails.append(f"lock-owner[wrapper dead owner]: the log does not say the lock was taken: {log[-250:]!r}")
+    rc, lr, log, ran, lock_left = wrapper_lock_run("live", lambda: (lambda p: (f"{p.pid}\n", p))(live_owner()), "live")
+    if rc != 75 or ran: fails.append(f"lock-owner[wrapper live owner]: rc={rc} ran={ran}; a live owner must give 75 and no run")
+    if "another run holds the lock (pid" not in lr or "is alive) — standing down" not in lr: fails.append(f"lock-owner[wrapper live owner]: last-run reason: {lr!r}")
+    if not lock_left: fails.append("lock-owner[wrapper live owner]: the live owner's lock was removed")
+    for which in ("guard-fire-test", "email-summary-write"):
+        rc, out, art = runner_lock_run(which, "live")
+        if rc != 75: fails.append(f"lock-owner[{which} live owner]: runner exit {rc}, expected 75 (never 0) ({out[-200:]!r})")
+        if art: fails.append(f"lock-owner[{which} live owner]: a runner that stood down still wrote its status artifact")
+        rc, out, art = runner_lock_run(which, "dead")
+        if rc != 0 or not art: fails.append(f"lock-owner[{which} dead owner]: runner exit {rc}, artifact={art}; expected the lock taken and a clean run ({out[-200:]!r})")
+    return 6, fails, ([], [])
+
+
+NEW_SCENARIOS.append(("lock-owner", lock_owner))
+
+
+def bite_h():
+    rc, lr, log, ran, lock_left = wrapper_lock_run("live", lambda: (lambda p: (f"{p.pid}\n", p))(live_owner()), "live")
+    rc2, out, art = runner_lock_run("guard-fire-test", "live")
+    import re
+    name = re.sub(r"pid \d+", "pid N", lr.split("model=none ", 1)[-1].strip()) if lr else ""
+    return name if rc == 75 and not ran and rc2 == 75 else None
+
+
+BITES.append(("h", "a live process owns the lock (wrapper and a runner)", "another run holds the lock (pid N is alive) — standing down", bite_h))
 
 
 def play_t0(name, jobs, t0, ticks):

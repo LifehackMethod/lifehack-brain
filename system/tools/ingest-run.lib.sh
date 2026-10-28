@@ -55,7 +55,7 @@
 #   source "$CODE_ROOT/system/tools/ingest-run.lib.sh"   # the lib derives its own CODE_ROOT
 #   ingest_check_paused  "cal-ingest"                       # exit 0 if a human paused this source
 #   ingest_load_auth     "cal-ingest"                       # claude token + isolated gws creds + pre-flight
-#   ingest_acquire_lock  "cal-ingest"                       # single-instance (exit 0 if already running)
+#   ingest_acquire_lock  "cal-ingest"                       # single-instance (exit 75 if a live run holds it; 1 if the lock is corrupt)
 #   ingest_new_mail_gate "cal-ingest" "SomeLabel"            # INLINE (never $()); exits cheap if nothing new
 #   CUTOFF="$INGEST_CUTOFF"                                  # the gate set it as a global
 #   ingest_run_claude    "$MODEL" "$WATCHDOG" "$PROMPT" "$WORK_DIR"   # launch + watchdog → sets INGEST_RC
@@ -212,15 +212,10 @@ ingest_load_auth() {     # FULL auth (claude + gws)
 # buffer) in case a prior run was hard-killed and never cleaned up after itself.
 _INGEST_LOCKDIR=""
 ingest_acquire_lock() {
-  local job="$1"; _INGEST_LOCKDIR="/tmp/claudeops-${job}.lock"
-  if ! mkdir "$_INGEST_LOCKDIR" 2>/dev/null; then
-    _lock_mtime="$(stat -c %Y "$_INGEST_LOCKDIR" 2>/dev/null || stat -f %m "$_INGEST_LOCKDIR" 2>/dev/null || echo 0)"
-    case "$_lock_mtime" in ''|*[!0-9]*) _lock_mtime=0 ;; esac
-    if [ -d "$_INGEST_LOCKDIR" ] && [ "$(( $(date +%s) - _lock_mtime ))" -gt 1500 ]; then
-      echo "[$job] stale lock (>25m) — stealing."; rm -rf "$_INGEST_LOCKDIR"
-      mkdir "$_INGEST_LOCKDIR" 2>/dev/null || { echo "[$job] lock race — skip."; exit 0; }
-    else echo "[$job] another run in progress — skip this tick."; exit 0; fi
-  fi
+  local job="$1"; _INGEST_LOCKDIR="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/claudeops-${job}.lock"
+  . "${CODE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}/system/tools/runner-lock.lib.sh" || { echo "[$job] FATAL: cannot source runner-lock.lib.sh" >&2; exit 1; }
+  # 5.9(h): the lock records its owner pid; a dead owner is taken at once, a LIVE one is a stand-down (75, never the [F2] exit 0).
+  runner_lock_acquire "$_INGEST_LOCKDIR" 1500 "$job" || { _rc=$?; _INGEST_LOCKDIR=""; exit "$_rc"; }
   trap '_ingest_cleanup' EXIT
 }
 _ingest_cleanup() { [ -n "${_INGEST_LOCKDIR:-}" ] && rm -rf "$_INGEST_LOCKDIR" 2>/dev/null; }

@@ -264,14 +264,15 @@ esac
 # ── 5) single-instance lock — contention is a stand-down (75), never a 0 ──
 LOCKDIR="/tmp/lifehack-job-$JOB.lock"
 [ -n "${LIFEHACK_STATE_DIR:-}" ] && LOCKDIR="$LIFEHACK_STATE_DIR/.lock-$JOB"   # test seam: lock lives in the throwaway root
-if ! mkdir "$LOCKDIR" 2>/dev/null; then
-  if [ $(( $(now_epoch) - $(mtime "$LOCKDIR") )) -gt $(( WATCHDOG + 300 )) ]; then
-    echo "[job-run] stale lock — stealing"; rm -rf "$LOCKDIR"
-    mkdir "$LOCKDIR" 2>/dev/null || { LOCKDIR=""; finish 75 "lock race lost"; }
-  else
-    LOCKDIR=""; finish 75 "another run holds the lock"
-  fi
-fi
+# 5.9(h)+(e): the lock records its owner pid (runner-lock.lib.sh). A dead owner's lock is taken at once; a LIVE owner stands this run down
+# (75); a lock that is present but unreadable is refused and NAMED (exit 1), never guessed at. The mtime window is only a pid-reuse guard.
+. "$CODE_ROOT/system/tools/runner-lock.lib.sh" || finish 1 "cannot source runner-lock.lib.sh"
+runner_lock_acquire "$LOCKDIR" $(( WATCHDOG + 300 )) "job-run:$JOB"; _lrc=$?
+case "$_lrc" in
+  0) ;;
+  75) LOCKDIR=""; finish 75 "${RUNNER_LOCK_MSG:-another run holds the lock}" ;;
+  *)  _lmsg="${RUNNER_LOCK_MSG:-the lock could not be taken}"; LOCKDIR=""; finish 1 "$_lmsg" ;;
+esac
 
 # ── 6) run the command under a watchdog ──
 START_MARK="$STATE/.run-start"

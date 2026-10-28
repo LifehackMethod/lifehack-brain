@@ -100,15 +100,12 @@ require_claude_token planning-analyze || exit 75
 load_gws_credentials_optional planning-analyze
 
 # ── single-instance lock ──
-LOCKDIR="/tmp/claudeops-planning-analyze.lock"
+LOCKDIR="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/claudeops-planning-analyze.lock"
 cleanup(){ rm -rf "$LOCKDIR" 2>/dev/null; }
-if ! mkdir "$LOCKDIR" 2>/dev/null; then
-  _lock_mtime="$(stat -c %Y "$LOCKDIR" 2>/dev/null || stat -f %m "$LOCKDIR" 2>/dev/null || echo 0)"
-  case "$_lock_mtime" in ''|*[!0-9]*) _lock_mtime=0 ;; esac
-  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - _lock_mtime ))" -gt 1800 ]; then
-    rm -rf "$LOCKDIR"; mkdir "$LOCKDIR" 2>/dev/null || { echo "[planning-analyze] lock race — skip"; exit 0; }
-  else echo "[planning-analyze] another run in progress — skip"; exit 0; fi
-fi
+. "$CODE_ROOT/system/tools/runner-lock.lib.sh" || { echo "FATAL: cannot source runner-lock.lib.sh" >&2; exit 1; }
+# 5.9(h): the lock records its owner pid. A dead owner's lock is taken at once; a LIVE owner is a stand-down (75), never a 0;
+# a lock that is present but unreadable is refused and named (1).
+runner_lock_acquire "$LOCKDIR" 1800 "planning-analyze" || exit $?
 trap cleanup EXIT
 
 # ── idempotent: if today's draft already exists, the chained pull already succeeded — skip (unless --force) ──

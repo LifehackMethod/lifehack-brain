@@ -21,17 +21,11 @@ JOB="mirror-fetch"
 # Single-instance lock, inline (5.7): this job needs nothing from ingest-run.lib.sh but its lock, and that library
 # carries the Gmail pre-flight, which the door (install-schedulers.sh --check-row) refuses to see inside a job that
 # never touches Gmail. Contention is a STAND-DOWN (75), never exit 0 — exit 0 on a skip is the [F2] shape.
-LOCKDIR="/tmp/claudeops-${JOB}.lock"
-if ! mkdir "$LOCKDIR" 2>/dev/null; then
-  _lm="$(stat -f %m "$LOCKDIR" 2>/dev/null || stat -c %Y "$LOCKDIR" 2>/dev/null || echo 0)"
-  case "$_lm" in ''|*[!0-9]*) _lm=0 ;; esac
-  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - _lm ))" -gt 1500 ]; then
-    echo "[$JOB] stale lock (>25m) — stealing."; rm -rf "$LOCKDIR"
-    mkdir "$LOCKDIR" 2>/dev/null || { echo "[$JOB] lock race — standing down."; exit 75; }
-  else
-    echo "[$JOB] another run in progress — standing down this tick."; exit 75
-  fi
-fi
+LOCKDIR="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/claudeops-${JOB}.lock"
+. "$CODE_ROOT/system/tools/runner-lock.lib.sh" || { echo "FATAL: cannot source runner-lock.lib.sh" >&2; exit 1; }
+# 5.9(h): the lock records its owner pid. A dead owner's lock is taken at once; a LIVE owner is a stand-down (75), never a 0;
+# a lock that is present but unreadable is refused and named (1).
+runner_lock_acquire "$LOCKDIR" 1500 "$JOB" || exit $?
 trap 'rm -rf "$LOCKDIR" 2>/dev/null' EXIT
 
 GIT_BIN="$(command -v git 2>/dev/null)"

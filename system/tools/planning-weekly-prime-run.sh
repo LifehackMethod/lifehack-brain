@@ -174,16 +174,11 @@ fi
 load_gws_credentials_optional planning-weekly-prime
 
 # ── single-instance lock ──
-LOCKDIR="/tmp/claudeops-planning-weekly-prime.lock"
-if ! mkdir "$LOCKDIR" 2>/dev/null; then
-  _lock_mtime="$(stat -c %Y "$LOCKDIR" 2>/dev/null || stat -f %m "$LOCKDIR" 2>/dev/null || echo 0)"
-  case "$_lock_mtime" in ''|*[!0-9]*) _lock_mtime=0 ;; esac
-  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - _lock_mtime ))" -gt "$((WATCHDOG + 300))" ]; then
-    rm -rf "$LOCKDIR"; mkdir "$LOCKDIR" 2>/dev/null || { echo "[planning-weekly-prime] lock race — skip"; exit 0; }
-  else
-    echo "[planning-weekly-prime] another run in progress — skip"; exit 0
-  fi
-fi
+LOCKDIR="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/claudeops-planning-weekly-prime.lock"
+. "$CODE_ROOT/system/tools/runner-lock.lib.sh" || { echo "FATAL: cannot source runner-lock.lib.sh" >&2; exit 1; }
+# 5.9(h): the lock records its owner pid. A dead owner's lock is taken at once; a LIVE owner is a stand-down (75), never a 0;
+# a lock that is present but unreadable is refused and named (1).
+runner_lock_acquire "$LOCKDIR" "$((WATCHDOG + 300))" "planning-weekly-prime" || exit $?
 trap 'rm -rf "'"$LOCKDIR"'" 2>/dev/null || true' EXIT INT TERM
 
 if [ ! -d "$AGENT_DIR" ]; then

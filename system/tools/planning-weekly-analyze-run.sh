@@ -124,14 +124,11 @@ require_claude_token "$SUBSYSTEM_NAME" || exit 75
 load_gws_credentials_optional "$SUBSYSTEM_NAME"
 
 # ── Single-instance lock ──
-LOCKDIR="/tmp/claudeops-${SUBSYSTEM_NAME}.lock"
-if ! mkdir "$LOCKDIR" 2>/dev/null; then
-  _lock_mtime="$(stat -c %Y "$LOCKDIR" 2>/dev/null || stat -f %m "$LOCKDIR" 2>/dev/null || echo 0)"
-  case "$_lock_mtime" in ''|*[!0-9]*) _lock_mtime=0 ;; esac
-  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - _lock_mtime ))" -gt 1800 ]; then
-    rm -rf "$LOCKDIR"; mkdir "$LOCKDIR" 2>/dev/null || { echo "[$SUBSYSTEM_NAME] lock race — skip"; exit 0; }
-  else echo "[$SUBSYSTEM_NAME] another run in progress — skip"; exit 0; fi
-fi
+LOCKDIR="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/claudeops-${SUBSYSTEM_NAME}.lock"
+. "$CODE_ROOT/system/tools/runner-lock.lib.sh" || { echo "FATAL: cannot source runner-lock.lib.sh" >&2; exit 1; }
+# 5.9(h): the lock records its owner pid. A dead owner's lock is taken at once; a LIVE owner is a stand-down (75), never a 0;
+# a lock that is present but unreadable is refused and named (1).
+runner_lock_acquire "$LOCKDIR" 1800 "$SUBSYSTEM_NAME" || exit $?
 
 # ── ONE exit handler: writes the {rc,ts} status artifact AND clears the lock on ANY exit
 #    (success, set -e death, or kill) — so "it ran" vs "it succeeded" is always recorded. ──

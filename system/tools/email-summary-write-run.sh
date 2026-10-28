@@ -56,15 +56,10 @@ mkdir -p "$OUT_DIR" 2>/dev/null || true
 
 # ── Single-instance lock (a write run can take minutes; a second Pulse tick must not double-pull). ──
 LOCKDIR="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/claudeops-${SUBSYSTEM_NAME}.lock"   # LIFEHACK_RUNNER_LOCK_ROOT: TEST-ONLY seam (job-sim.sh)
-if ! mkdir "$LOCKDIR" 2>/dev/null; then
-  _lock_mtime="$(stat -c %Y "$LOCKDIR" 2>/dev/null || stat -f %m "$LOCKDIR" 2>/dev/null || echo 0)"
-  case "$_lock_mtime" in ''|*[!0-9]*) _lock_mtime=0 ;; esac
-  if [ -d "$LOCKDIR" ] && [ "$(( $(date +%s) - _lock_mtime ))" -gt 1200 ]; then
-    echo "[$SUBSYSTEM_NAME] stale lock (>20m) — stealing."; rm -rf "$LOCKDIR"; mkdir "$LOCKDIR" 2>/dev/null || exit 0
-  else
-    echo "[$SUBSYSTEM_NAME] another run in progress — skip this tick."; exit 0
-  fi
-fi
+. "$CODE_ROOT/system/tools/runner-lock.lib.sh" || { echo "FATAL: cannot source runner-lock.lib.sh" >&2; exit 1; }
+# 5.9(h): the lock records its owner pid. A dead owner's lock is taken at once; a LIVE owner is a stand-down (75), never a 0;
+# a lock that is present but unreadable is refused and named (1).
+runner_lock_acquire "$LOCKDIR" 1200 "$SUBSYSTEM_NAME" || exit $?
 
 # ── ONE exit handler: write the {rc,ts} proof, buzz the phone on a real FAILURE, clear the lock — on ANY
 #    exit (success, set -e death, watchdog kill). No text from here (2.5c): job-run.sh is the one alarm. ──

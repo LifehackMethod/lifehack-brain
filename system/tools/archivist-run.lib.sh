@@ -124,18 +124,11 @@ run_archivist() {
 
   # 2) SINGLE-INSTANCE LOCK (mkdir atomic; stale-steal after watchdog+buffer).
   local lockdir steal
-  lockdir="/tmp/claudeops-${ARCH_LABEL}.lock"
+  lockdir="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/claudeops-${ARCH_LABEL}.lock"
   steal=$(( ARCH_WATCHDOG + 300 ))
-  if ! mkdir "$lockdir" 2>/dev/null; then
-    _lock_mtime="$(stat -c %Y "$lockdir" 2>/dev/null || stat -f %m "$lockdir" 2>/dev/null || echo 0)"
-    case "$_lock_mtime" in ''|*[!0-9]*) _lock_mtime=0 ;; esac
-    if [ -d "$lockdir" ] && [ "$(( $(date +%s) - _lock_mtime ))" -gt "$steal" ]; then
-      _alog "stale lock (>${steal}s) — stealing."; rm -rf "$lockdir"
-      mkdir "$lockdir" 2>/dev/null || { _alog "lock race — skip."; return 0; }
-    else
-      _alog "another run in progress — skip this tick."; return 0
-    fi
-  fi
+  . "$CODE_ROOT/system/tools/runner-lock.lib.sh" || { _alog "FATAL: cannot source runner-lock.lib.sh"; return 1; }
+  # 5.9(h): pid-recording lock; a live owner is a stand-down (75, not the [F2] return 0), a corrupt lock is refused and named (1).
+  runner_lock_acquire "$lockdir" "$steal" "$ARCH_LABEL" || return $?
   trap "rm -rf '$lockdir' 2>/dev/null" EXIT
 
   # 3) DATE + PRERUN HOOK. A wrapper may define arch_prerun to choose work dynamically
