@@ -125,9 +125,9 @@ def compute(state_dir: str, manifest: str, now: float | None = None) -> str:
         lr = _read(os.path.join(state_dir, j, "last-run"))
         parts = lr.split(None, 2)
         if len(parts) >= 2 and parts[1] == "rc=75":
-            # 5.3: the reason follows "calls=N secs=S model=T" (older lines have none of the three)
+            # 5.3: the reason follows "calls=N secs=S model=T" (older lines have none of the three); 5.9(g) adds "ccv=V" after model=
             import re as _re
-            reason = _re.sub(r"^(?:(?:calls|secs|model)=\S+\s+)+", "", parts[2]) if len(parts) > 2 else "no reason recorded"
+            reason = _re.sub(r"^(?:(?:calls|secs|model|ccv)=\S+\s+)+", "", parts[2]) if len(parts) > 2 else "no reason recorded"
             reason = reason or "no reason recorded"
             return f"stood down: {j} ({reason})"
 

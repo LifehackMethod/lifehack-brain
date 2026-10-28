@@ -16,7 +16,7 @@
 # (no "job down", no recovery, no deferred-queue flush), so a forced failure cannot page anyone. launchd never passes it.
 #
 # STATE (local, never Drive — §B.2): ~/.config/lifehack/state/jobs/<job>/
-#   last-run      "<ISO time> rc=<n> calls=<N> secs=<S> model=<tier> <reason>" — calls/secs = model calls this run
+#   last-run      "<ISO time> rc=<n> calls=<N> secs=<S> model=<tier> ccv=<claude version|none|stub|unknown> <reason>" — calls/secs = model calls this run
 #                 (5.3, via model.lib.sh run_model; 0/0 for a job with no AI), model = the row's tier or none — every run that got past the overdue check
 #   last-success  "<ISO time>" — written ONLY after the output check passed; its mtime is the clock
 #   log           the last 20 runs, one "=== run …" section each
@@ -104,6 +104,19 @@ fi
 # ── finish: the one exit path. Records last-run (unless told not to), an error file on failure,
 #    appends this run to the rolling log and trims it to 20 runs. ──
 LOCKDIR=""
+# claude_version_short — `claude --version` reduced to its version number; only asked when the row names a model tier (else "none"),
+# never hangs the wrapper (10 s cap), "unknown" if it cannot be read. Called once per run (finish caches it).
+claude_version_short() {
+  [ "${MODEL_TIER:-none}" != none ] || { echo none; return 0; }
+  [ -z "${LIFEHACK_MODEL_STUB:-}" ] || { echo stub; return 0; }
+  local bin="${CLAUDE_BIN:-$(command -v claude)}" tmp="$STATE/ccv.tmp" v="" p i=0
+  [ -n "$bin" ] || { echo unknown; return 0; }
+  "$bin" --version > "$tmp" 2>&1 < /dev/null & p=$!
+  while kill -0 "$p" 2>/dev/null && [ "$i" -lt 50 ]; do sleep 0.2; i=$((i + 1)); done
+  kill "$p" 2>/dev/null
+  v="$(head -1 "$tmp" | awk '{print $1}')"; rm -f "$tmp"
+  echo "${v:-unknown}"
+}
 # notify <title> <message> <identity> [priority] — fail-soft: one log line on failure, never touches the exit code.
 notify() {
   local sender="${JOB_RUN_NOTIFY:-$CODE_ROOT/shared/notify/notify-send.sh}" prio="${4:-normal}"
@@ -154,7 +167,9 @@ finish() {
   if [ -s "${JOB_RUN_CALLS_FILE:-}" ]; then
     ncalls="$(wc -l < "$JOB_RUN_CALLS_FILE" | tr -d ' ')"; nsecs="$(awk '{s+=$2} END{print s+0}' "$JOB_RUN_CALLS_FILE")"
   fi
-  [ "$record" = yes ] && printf '%s rc=%s calls=%s secs=%s model=%s %s\n' "$(iso_now)" "$rc" "$ncalls" "$nsecs" "${MODEL_TIER:-none}" "$reason" > "$STATE/last-run"
+  # 5.9(g): ccv = the Claude Code version that ran (cached per run; "none" for a job with no model, "stub" under the rig's model stub)
+  [ -n "${_CCV:-}" ] || _CCV="$(claude_version_short)"
+  [ "$record" = yes ] && printf '%s rc=%s calls=%s secs=%s model=%s ccv=%s %s\n' "$(iso_now)" "$rc" "$ncalls" "$nsecs" "${MODEL_TIER:-none}" "$_CCV" "$reason" > "$STATE/last-run"
   [ "$record" = yes ] && stamp "$STATE/last-run"
   if [ "$rc" -ne 0 ] && [ "$rc" -ne 75 ] && [ "$rc" -ne 2 ]; then
     cp "$RUNLOG" "$STATE/errors/$(err_stamp).txt" 2>/dev/null

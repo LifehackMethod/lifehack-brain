@@ -1359,7 +1359,7 @@ def bite_h():
     rc, lr, log, ran, lock_left = wrapper_lock_run("live", lambda: (lambda p: (f"{p.pid}\n", p))(live_owner()), "live")
     rc2, out, art = runner_lock_run("guard-fire-test", "live")
     import re
-    name = re.sub(r"pid \d+", "pid N", lr.split("model=none ", 1)[-1].strip()) if lr else ""
+    name = re.sub(r"pid \d+", "pid N", re.sub(r"^.* model=\S+ ccv=\S+ ", "", lr.strip())) if lr else ""
     return name if rc == 75 and not ran and rc2 == 75 else None
 
 
@@ -1625,6 +1625,87 @@ def bite_f():
 
 
 BITES.append(("f", "a consumer whose row check fails", f"output check failed; bookmark unchanged ({OLD_MARK})", bite_f))
+
+
+# SPLICE:5.9g
+def model_args_violation(lib_root_tools=None):
+    """Run the model job (system/tools/tests/job-sim-model-job.sh) against a model.lib.sh -- the REAL one, or `lib_root_tools` = a directory
+    holding a COPY -- with a stub `claude` that records its argv. Returns the violation text, or '' when the model was started read-only."""
+    d = tempfile.mkdtemp(prefix="job-sim-args.")
+    try:
+        sim = f"{d}/sim"; os.makedirs(f"{sim}/mode"); os.makedirs(f"{sim}/out")
+        root = f"{d}/code"
+        if lib_root_tools is None:
+            root = ROOT
+        else:
+            os.makedirs(f"{root}/system/tools/tests")
+            for f in ("model.lib.sh", "claude-auth.lib.sh"): shutil.copy(f"{lib_root_tools}/{f}", f"{root}/system/tools/{f}")
+            shutil.copy(f"{HERE_TESTS}/job-sim-model-job.sh", f"{root}/system/tools/tests/job-sim-model-job.sh")
+        tok = f"{d}/token"; open(tok, "w").write("sim-token\n")
+        env = {k: v for k, v in os.environ.items() if k not in SEAMS and k != "LIFEHACK_MODEL_STUB"}
+        env.update(HOME=f"{d}/home", JOB_SIM_DIR=sim, LIFEHACK_CODE_ROOT=root, CLAUDE_BIN=f"{HERE_TESTS}/job-sim-claude-args-stub.sh",
+                   CLAUDE_OAUTH_TOKEN_FILE=tok, TZ="UTC")
+        os.makedirs(env["HOME"])
+        rc = subprocess.run(["bash", f"{root}/system/tools/tests/job-sim-model-job.sh", "sim-m"], env=env, stdin=subprocess.DEVNULL,
+                            capture_output=True, text=True).returncode
+        try: args = open(f"{sim}/claude-args").read().strip()
+        except OSError: return f"the model was never started (rc={rc})"
+        if "--dangerously-skip-permissions" in args: return "claude was started with --dangerously-skip-permissions"
+        if "--allowedTools Read" not in args: return f"claude was started without --allowedTools Read: {args!r}"
+        return ""
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def model_readonly():
+    """5.9(g): run_model starts the model read-only (`--allowedTools Read`, never the permission bypass) -- checked against a stub `claude`
+    that records its args -- and job-run.sh records ccv=<claude --version short> after model= in last-run (the stub says 9.9.9); a job with no
+    model records ccv=none. The model's stderr is kept (see model-stderr)."""
+    fails = []
+    v = model_args_violation()
+    if v: fails.append(f"model-readonly: {v}")
+    if "dangerously-skip-permissions" in open(f"{ROOT}/system/tools/model.lib.sh").read().replace("never the permission bypass", ""):
+        pass   # (the library may mention the flag by name in a comment; the args check above is the real test)
+    t = BASE + 12 * 3600
+    w = World([("sim-m", P), ("sim-a", P)])
+    try:
+        jobcmd = 'bash "$LIFEHACK_CODE_ROOT/system/tools/tests/job-sim-model-job.sh"'
+        open(w.manifest, "w").write("# readonly manifest\n```jobs\n"
+            f"sim-m | yes | {P} | o | $JOB_SIM_DIR/out/sim-m ~ ^ran sim-m at | small | 5 | none | {jobcmd} sim-m\n"
+            f"sim-a | yes | {P} | o | $JOB_SIM_DIR/out/sim-a ~ ^ran sim-a at | none | 0 | none | "
+            'bash "$LIFEHACK_CODE_ROOT/system/tools/tests/job-sim-stub.sh" sim-a\n```\n')
+        w.set_mode("sim-m", "ok"); w.set_mode("sim-a", "ok")
+        tok = f"{w.dir}/token"; open(tok, "w").write("sim-token\n")
+        env = dict(w.env(t), CLAUDE_BIN=f"{HERE_TESTS}/job-sim-claude-args-stub.sh", CLAUDE_OAUTH_TOKEN_FILE=tok, JOB_RUN_WATCHDOG="30")
+        rc = subprocess.run(["bash", JR, "sim-m"], env=env, stdin=subprocess.DEVNULL, capture_output=True, text=True).returncode
+        lr = w.read("sim-m", "last-run")
+        if rc != 0: fails.append(f"model-readonly: model job exit {rc} ({w.read('sim-m', 'log')[-250:]!r})")
+        if " model=small ccv=9.9.9 " not in lr: fails.append(f"model-readonly: last-run lacks 'model=small ccv=9.9.9': {lr!r}")
+        w.run_job("sim-a", "cal", t)
+        lr = w.read("sim-a", "last-run")
+        if " model=none ccv=none " not in lr: fails.append(f"model-readonly: a job with no model should record 'model=none ccv=none': {lr!r}")
+        return 3, fails, ([], [])
+    finally:
+        w.close()
+
+
+NEW_SCENARIOS.append(("model-readonly", model_readonly))
+
+
+def bite_g():
+    d = tempfile.mkdtemp(prefix="job-sim-plant.")
+    try:
+        for f in ("model.lib.sh", "claude-auth.lib.sh"): shutil.copy(f"{ROOT}/system/tools/{f}", f"{d}/{f}")
+        s = open(f"{d}/model.lib.sh").read()
+        assert "--allowedTools Read" in s
+        open(f"{d}/model.lib.sh", "w").write(s.replace("--allowedTools Read", "--dangerously-skip-permissions"))   # the planted fault (in a COPY)
+        got = model_args_violation(d)
+        return got or None
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+BITES.append(("g", "model.lib.sh regressed to the permission bypass (a copy)", "claude was started with --dangerously-skip-permissions", bite_g))
 
 
 def play_t0(name, jobs, t0, ticks):

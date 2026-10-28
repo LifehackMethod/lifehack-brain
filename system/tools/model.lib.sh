@@ -19,6 +19,8 @@
 #   (this library writes the failure reason there so a job that swallows the return code still fails).
 # ENV: MODEL_TIMEOUT (seconds per call, default 600). LIFEHACK_MODEL_STUB=<script> (TEST-ONLY, inert
 #   when unset): called as `<script> <model-id> <prompt-file> <out-file>` instead of `claude`.
+# READ-ONLY (5.9(g)): the model is started with `--allowedTools Read` and NOTHING that bypasses permissions. A reply is TEXT the runner writes
+#   (rule 5: the runner writes the record, the AI never does). A caller that needs the model to write a file needs a deliberate, reviewed change here.
 # ⛔ NO `set` LINE: sourced into callers with different option sets. The token is never printed.
 
 # ── THE tier table. The ONLY place model ids live. ──
@@ -69,7 +71,7 @@ run_model() {
     require_claude_token "run_model" || { _model_fail "claude token not configured"; return 1; }
     local bin="${CLAUDE_BIN:-$(command -v claude 2>/dev/null)}"
     [ -n "$bin" ] || { _model_fail "claude binary not reachable"; return 1; }
-    "$bin" -p --model "$id" --dangerously-skip-permissions < "$prompt" > "$out" 2> "$out.err" &
+    "$bin" -p --model "$id" --allowedTools Read < "$prompt" > "$out" 2> "$out.err" &
     cpid=$!
   fi
   ( sleep "${MODEL_TIMEOUT:-600}"; touch "$out.timeout"; pkill -TERM -P "$cpid" 2>/dev/null; kill -TERM "$cpid" 2>/dev/null
