@@ -90,7 +90,20 @@ _ping() {  # args: title message
     --title "$1" --message "$2" || _alog "WARN: notify-send failed (rc=$?) — the ping was not sent"
 }
 
+# 5.7 ENVELOPE. Dry mode (`--dry`, or JOB_RUN_FORCED=1 from a by-hand `job-run.sh --force`): a real run is NOT bounded -- it launches a
+# whole-tree model session (up to the watchdog), writes the log/proposals/sidecar, the audit's territory map (check 8), the status tile,
+# a phone ping and (deepmine) the rotation ledger. That is more than "its own output", so a forced run is DRY: it does every READ
+# (the notes root, the due-desk pick), prints what it WOULD do, and writes nothing -- no lock, no file, no tile, no ping, no ledger,
+# no receipt, no model call.
+# Exit codes: 0 ran and proved its work (receipt written) | 75 stood down (no token, a live owner holds the lock, NOTHING DUE) |
+#             1 or other = a real failure, named on stderr.
+_arch_fail() { echo "[${ARCH_LABEL}] FAILED at step '$1': $2" >&2; }
+
 run_archivist() {
+  local dry=0 _a
+  [ "${JOB_RUN_FORCED:-0}" = 1 ] && dry=1
+  for _a in "$@"; do [ "$_a" = "--dry" ] && dry=1; done
+  ARCH_DRY="$dry"
   if [ -z "$DATA" ]; then
     _alog "FATAL: no notes root set — nothing to audit. Set one: python3 shared/brain_root.py --set <folder>"
     return 2
@@ -112,7 +125,7 @@ run_archivist() {
   # planning-weekly-prime-run.sh while three sibling copies kept `exit 3`. `_alog` is passed as the
   # logger so the stand-down line keeps this lib's own timestamped "[ts] <label>: …" format.
   # `return`, never `exit` — an exit here would kill the wrapper before its own cleanup.
-  require_claude_token "$ARCH_LABEL" _alog || return 75
+  if [ "$ARCH_DRY" != 1 ]; then require_claude_token "$ARCH_LABEL" _alog || return 75; fi
   # gws is OPTIONAL for the archivist — it audits the local filesystem tree, so no Google means a
   # complete audit, not a failure. (Contrast the claude token directly above, which IS required.)
   # ⚖ 2026-08-15: was a hand-rolled `[ -s "$GWS_CREDS" ]` block, one of eleven identical copies —
@@ -120,29 +133,43 @@ run_archivist() {
   # a whitespace-only or corrupt file and exported it anyway, and the absence was SILENT. The
   # helper validates, and names the absence in one non-fatal line — routed through `_alog` so it
   # keeps this lib's own timestamped "[ts] <label>: …" format. ⛔ Do not re-inline it.
-  load_gws_credentials_optional "$ARCH_LABEL" _alog
+  [ "$ARCH_DRY" = 1 ] || load_gws_credentials_optional "$ARCH_LABEL" _alog
 
   # 2) SINGLE-INSTANCE LOCK (mkdir atomic; stale-steal after watchdog+buffer).
-  local lockdir steal
+  local lockdir steal datestamp prc
   lockdir="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/claudeops-${ARCH_LABEL}.lock"
   steal=$(( ARCH_WATCHDOG + 300 ))
   . "$CODE_ROOT/system/tools/runner-lock.lib.sh" || { _alog "FATAL: cannot source runner-lock.lib.sh"; return 1; }
   # 5.9(h): pid-recording lock; a live owner is a stand-down (75, not the [F2] return 0), a corrupt lock is refused and named (1).
-  runner_lock_acquire "$lockdir" "$steal" "$ARCH_LABEL" || return $?
-  trap "rm -rf '$lockdir' 2>/dev/null" EXIT
+  if [ "$ARCH_DRY" != 1 ]; then
+    runner_lock_acquire "$lockdir" "$steal" "$ARCH_LABEL" || return $?
+    trap "rm -rf '$lockdir'" EXIT
+  fi
 
   # 3) DATE + PRERUN HOOK. A wrapper may define arch_prerun to choose work dynamically
   #    (the deep-mine dispatcher picks the most-overdue desk here and sets ARCH_PROMPT +
   #    desk-specific paths). Returning non-zero from arch_prerun = "nothing due -> skip clean."
-  local datestamp; datestamp="$(date +%F)"
+  # arch_prerun: 0 = work chosen | 1 = NOTHING DUE (stand down: 75, never the [F2] "exit 0 having done nothing") | other = a real fault.
+  datestamp="$(date +%F)"
   if type arch_prerun >/dev/null 2>&1; then
-    arch_prerun || { _alog "prerun: nothing due this tick — skip clean."; return 0; }
+    arch_prerun; prc=$?
+    if [ "$prc" -eq 1 ]; then _alog "prerun: nothing due this tick — standing down (75), no receipt."; return 75; fi
+    if [ "$prc" -ne 0 ]; then _arch_fail prerun "arch_prerun failed (rc=$prc)"; return 1; fi
   fi
   : "${ARCH_QUEUE_FILE:=$DATA/records/logs/archivist-${datestamp}-${ARCH_MODE}.md}"
   : "${ARCH_SUMMARY_FILE:=$DATA/system/logs/archivist_${datestamp}_${ARCH_MODE}.summary.json}"
   [ -n "${ARCH_PROMPT:-}" ] || { _alog "FATAL: ARCH_PROMPT unset"; return 1; }
-  mkdir -p "$(dirname "$ARCH_QUEUE_FILE")" "$(dirname "$ARCH_SUMMARY_FILE")" 2>/dev/null || true
-  rm -f "$ARCH_QUEUE_FILE" "$ARCH_SUMMARY_FILE" 2>/dev/null  # never read a prior run's stale output
+  if [ "$ARCH_DRY" = 1 ]; then
+    echo "[${ARCH_LABEL}] DRY RUN -- nothing below is done, nothing is written (no lock, file, tile, ping, ledger, receipt or model call)"
+    echo "[${ARCH_LABEL}] would work on : ${ARCH_RECEIPT_DESK:-all} (notes root $DATA)"
+    echo "[${ARCH_LABEL}] would run     : one headless model session, watchdog ${ARCH_WATCHDOG}s, prompt ${#ARCH_PROMPT} chars"
+    echo "[${ARCH_LABEL}] would write   : $ARCH_QUEUE_FILE"
+    echo "[${ARCH_LABEL}]                 $ARCH_SUMMARY_FILE"
+    echo "[${ARCH_LABEL}]                 tile $DATA/state/status/archivist.json, receipt $HOME/.config/lifehack/archivist-${ARCH_MODE}/last-run.txt"
+    return 0
+  fi
+  mkdir -p "$(dirname "$ARCH_QUEUE_FILE")" "$(dirname "$ARCH_SUMMARY_FILE")" || { _arch_fail mkdir "cannot create the output folders"; return 1; }
+  rm -f "$ARCH_QUEUE_FILE" "$ARCH_SUMMARY_FILE" || { _arch_fail clear-stale "cannot remove a prior run's output"; return 1; }  # never read a prior run's stale output
 
   # 4) RUN the read-only audit/mine headless, hard-bounded by the watchdog.
   cd "$DATA" || { _alog "FATAL: cannot cd to $DATA"; return 1; }
@@ -152,7 +179,7 @@ run_archivist() {
   cpid=$!
   ( sleep "$ARCH_WATCHDOG"; kill -9 "$cpid" 2>/dev/null ) & wpid=$!
   wait "$cpid" 2>/dev/null; rc=$?
-  kill "$wpid" 2>/dev/null; wait "$wpid" 2>/dev/null
+  pkill -P "$wpid" 2>/dev/null; kill "$wpid" 2>/dev/null; wait "$wpid" 2>/dev/null   # the watchdog's own sleep must die too, or it holds the job log pipe open for 30 min
   _alog "claude exit: $rc"
 
   # 5) TOOL BROKE (non-zero / watchdog kill) -> tile=ERROR, return non-zero so Pulse's circuit
@@ -173,15 +200,19 @@ run_archivist() {
 
   # 6) SUCCESS -> read the sidecar, write the tile, ping only if there's something to review.
   #    Found-drift is SUCCESS (exit 0) — only a broken tool exits non-zero.
-  local status count headline
-  if [ -s "$ARCH_SUMMARY_FILE" ]; then
-    status="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("status","NEEDS_REVIEW"))' "$ARCH_SUMMARY_FILE" 2>/dev/null || echo NEEDS_REVIEW)"
-    count="$(python3 -c 'import json,sys; print(int(json.load(open(sys.argv[1])).get("finding_count",0)))' "$ARCH_SUMMARY_FILE" 2>/dev/null || echo 0)"
-    headline="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("headline",""))' "$ARCH_SUMMARY_FILE" 2>/dev/null || echo "")"
-  else
-    _alog "WARN: no summary sidecar — run completed but produced no machine-readable summary."
-    status="NEEDS_REVIEW"; count="?"; headline="review queue ready (no summary)"
-  fi
+  # The sidecar is the PROOF the session did the work: absent, empty or malformed is a failure, never a default "NEEDS_REVIEW".
+  local status count headline parsed
+  [ -s "$ARCH_SUMMARY_FILE" ] || { _write_tile "ERROR" 0 "no summary sidecar — run produced no proof of work"; _arch_fail sidecar "no summary sidecar at $ARCH_SUMMARY_FILE"; return 1; }
+  parsed="$(python3 -c '
+import json,sys
+d=json.load(open(sys.argv[1]))
+st=d["status"]; n=d["finding_count"]
+assert st in ("OK","NEEDS_REVIEW"), "status must be OK or NEEDS_REVIEW, got %r" % (st,)
+assert isinstance(n,int) and not isinstance(n,bool) and n>=0, "finding_count must be a non-negative integer"
+print(st); print(n); print(str(d.get("headline","")).replace("\n"," "))
+' "$ARCH_SUMMARY_FILE")" || { _write_tile "ERROR" 0 "summary sidecar is malformed"; _arch_fail sidecar "malformed sidecar $ARCH_SUMMARY_FILE"; return 1; }
+  status="$(printf '%s\n' "$parsed" | sed -n 1p)"; count="$(printf '%s\n' "$parsed" | sed -n 2p)"; headline="$(printf '%s\n' "$parsed" | sed -n 3p)"
+  [ -s "$ARCH_QUEUE_FILE" ] || { _write_tile "ERROR" 0 "no log written"; _arch_fail log "the session wrote no log at $ARCH_QUEUE_FILE"; return 1; }
 
   if [ "$status" = "OK" ] && [ "$count" = "0" ]; then
     _write_tile "OK" 0 "clean — no drift found"
@@ -194,6 +225,14 @@ run_archivist() {
 
   # POSTRUN HOOK — runs ONLY on success (the deep-mine dispatcher stamps the desk's
   # last-mined time here so the rotation advances). The audit wrapper defines no postrun.
-  if type arch_postrun >/dev/null 2>&1; then arch_postrun; fi
+  if type arch_postrun >/dev/null 2>&1; then arch_postrun || { _arch_fail postrun "arch_postrun failed"; return 1; }; fi
+
+  # RECEIPT -- only now, after every step above succeeded. One line, atomic: `<job> ok desk=<d> status=<S> findings=<n> log_bytes=<b>`.
+  local rdir rfile bytes
+  rdir="$HOME/.config/lifehack/archivist-${ARCH_MODE}"; rfile="$rdir/last-run.txt"
+  bytes="$(wc -c < "$ARCH_QUEUE_FILE" | tr -d ' ')"
+  mkdir -p "$rdir" && printf 'archivist-%s ok desk=%s status=%s findings=%s log_bytes=%s\n' \
+    "$ARCH_MODE" "${ARCH_RECEIPT_DESK:-all}" "$status" "$count" "$bytes" > "$rfile.tmp" && mv "$rfile.tmp" "$rfile" \
+    || { _arch_fail receipt "cannot write $rfile"; return 1; }
   return 0
 }

@@ -52,8 +52,7 @@ ARCH_WATCHDOG=1800
 
 # ── DISPATCHER (prerun hook): pick the most-overdue desk; skip clean if none is due ──────
 arch_prerun() {
-  [ -n "$DATA" ] || return 1
-  mkdir -p "$DATA/state/archivist" 2>/dev/null
+  [ -n "$DATA" ] || return 2    # 2 = a real fault; 1 = "nothing due" (the lib stands down with 75)
   local d name desks=() DATA_GLOB
   # Folded ONLY as the glob root -- `name` two lines down comes back out of $d, the glob's own
   # match, whose wildcard portion keeps the real on-disk desk-folder case regardless of this fold
@@ -81,22 +80,26 @@ arch_prerun() {
 
   local pick
   pick="$(DESKS="${desks[*]}" LEDGER="$LEDGER" MIN_AGE_DAYS="$PER_DESK_MIN_AGE_DAYS" python3 - <<'PY'
-import json, os, time
+import json, os, sys, time
 desks = os.environ["DESKS"].split()
 min_age = int(os.environ["MIN_AGE_DAYS"]) * 86400
 try:
     led = json.load(open(os.environ["LEDGER"]))
-    if not isinstance(led, dict): led = {}
-except Exception:
+except FileNotFoundError:
     led = {}
+except Exception as e:
+    sys.exit("corrupt ledger %s: %s -- refused, not reset; fix or remove it by hand" % (os.environ["LEDGER"], e))
+if not isinstance(led, dict):
+    sys.exit("corrupt ledger %s: not a JSON object -- refused, not reset" % os.environ["LEDGER"])
 now = time.time()
 oldest = sorted(desks, key=lambda d: led.get(d, 0))[0]
 print(oldest if (now - led.get(oldest, 0)) >= min_age else "")
 PY
-)"
+)" || { _alog "FAILED at step 'pick': the ledger is unreadable (named above)" >&2; return 2; }
   [ -n "$pick" ] || { _alog "no desk overdue (all mined < ${PER_DESK_MIN_AGE_DAYS}d ago) — skip cheap."; return 1; }
 
   DESK="$pick"
+  ARCH_RECEIPT_DESK="$pick"
   local datestamp; datestamp="$(date +%F)"
   ARCH_QUEUE_FILE="$DATA/system/logs/archivist_${datestamp}_deepmine-${DESK}.md"
   ARCH_SUMMARY_FILE="$DATA/system/logs/archivist_${datestamp}_deepmine-${DESK}.summary.json"
@@ -118,14 +121,18 @@ Do NOT send any notification, do NOT touch any other file — the runner pings d
 
 # ── LEDGER STAMP (postrun hook): only on success, advance this desk's clock ──────────────
 arch_postrun() {
-  DESK="$DESK" LEDGER="$LEDGER" python3 - <<'PY' 2>/dev/null || true
-import json, os, time
+  mkdir -p "$DATA/state/archivist" || { echo "[archivist-deepmine] FAILED at step 'ledger': cannot create the ledger folder" >&2; return 1; }
+  DESK="$DESK" LEDGER="$LEDGER" python3 - <<'PY' || { echo "[archivist-deepmine] FAILED at step 'ledger': stamp not written" >&2; return 1; }
+import json, os, sys, time
 p = os.environ["LEDGER"]; desk = os.environ["DESK"]
 try:
     led = json.load(open(p))
-    if not isinstance(led, dict): led = {}
-except Exception:
+except FileNotFoundError:
     led = {}
+except Exception as e:
+    sys.exit("corrupt ledger %s: %s -- refused, not reset" % (p, e))
+if not isinstance(led, dict):
+    sys.exit("corrupt ledger %s: not a JSON object -- refused, not reset" % p)
 led[desk] = int(time.time())
 os.makedirs(os.path.dirname(p), exist_ok=True)
 tmp = p + ".tmp"
@@ -137,5 +144,5 @@ PY
 
 # shellcheck source=/dev/null
 source "$CODE_ROOT/system/tools/archivist-run.lib.sh"
-run_archivist
+run_archivist "$@"
 exit $?

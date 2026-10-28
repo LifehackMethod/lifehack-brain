@@ -25,6 +25,7 @@ DATA="$(python3 "$CODE_ROOT/shared/brain_root.py" --quiet 2>/dev/null)"
 DATESTAMP="$(date +%F)"
 
 ARCH_MODE="audit"
+ARCH_RECEIPT_DESK="all"
 ARCH_LABEL="archivist-audit"
 ARCH_WATCHDOG=1800
 ARCH_PING_TITLE="Archivist — weekly audit"
@@ -47,5 +48,5 @@ Do NOT send any notification — the runner pings deterministically from the sum
 
 # shellcheck source=/dev/null
 source "$CODE_ROOT/system/tools/archivist-run.lib.sh"
-run_archivist
+run_archivist "$@"
 exit $?
