@@ -287,11 +287,27 @@ def get_evidence(block_lines, task_id):
     after the `artifact:` label to the NEXT backtick, not to the next space. Recorded
     back out backtick-quoted (`artifact:`<value>``) so it round-trips through the same
     convention rather than being ambiguous prose again.
+
+    2026-10-28, card LK3: the lookup now gets the card's own scope -- its `Commit:` value
+    (whole, up to the closing backtick) as `--subject`, and its first `Where:` path, when
+    inside the repo, as `--path` -- and the environment passes through so `PLAN_GIT_REPO`
+    reaches the child.
     """
-    art = re.search(r'artifact:\s*([^`\n]+)', '\n'.join(block_lines), re.I)
+    text = '\n'.join(block_lines)
+    art = re.search(r'artifact:\s*([^`\n]+)', text, re.I)
     tool = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plan_git_check.py")
-    proc = subprocess.run([sys.executable, tool, "--task", task_id, "--hash"],
-                           cwd=REPO_ROOT, capture_output=True, text=True, timeout=30)
+    cmd = [sys.executable, tool, "--task", task_id, "--hash"]
+    commit = re.search(r'Commit:\s*([^`\n]+)', text)
+    if commit and commit.group(1).strip():
+        cmd += ["--subject", commit.group(1).strip()]
+    where = re.search(r'Where:\s*`?\s*([^\s`,;]+)', text)
+    if where:
+        wp = os.path.abspath(os.path.expanduser(where.group(1)))
+        root = os.path.abspath(REPO_ROOT)
+        if wp == root or wp.startswith(root + os.sep):
+            cmd += ["--path", os.path.relpath(wp, root)]
+    proc = subprocess.run(cmd, cwd=REPO_ROOT, env=os.environ.copy(),
+                           capture_output=True, text=True, timeout=30)
     if proc.returncode == 0:
         return proc.stdout.strip()
     if art:
