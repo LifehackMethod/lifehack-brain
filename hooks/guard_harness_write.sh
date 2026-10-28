@@ -45,11 +45,13 @@ deny() {
 
 INPUT=$(cat 2>/dev/null)
 # SANDBOX (2026-10-28, Enver): the maintainer's V2 checkout is a working copy, not a student install.
-# Writes inside it are allowed only when ALL hold: LIFEHACK_SANDBOX=V2 (exported ONLY by the V2 desktop
-# launchers), the target resolves inside $HOME/lifehack-v2, and that checkout is on branch V2.
+# Writes inside it are allowed only when ALL hold: the sandbox is marked (LIFEHACK_SANDBOX=V2 from the V2
+# launchers, OR the local marker file ~/lifehack-v2/.lifehack-sandbox, excluded from git via .git/info/exclude
+# so it never ships), the target resolves inside $HOME/lifehack-v2, and that checkout is on branch V2.
+# The marker file means already-open windows get the fix with no restart (hooks re-read every call).
 # Any error here falls through to the normal checks below (fail-closed is unchanged).
 # Students never have the tag, so their protection is unchanged and nothing needs undoing before a merge.
-if [ "${LIFEHACK_SANDBOX:-}" = "V2" ]; then
+if [ "${LIFEHACK_SANDBOX:-}" = "V2" ] || [ -f "$HOME/lifehack-v2/.lifehack-sandbox" ]; then
   _sbx_path=$(printf '%s' "$INPUT" | python3 -c 'import sys,json,os
 try:
     d=json.load(sys.stdin); p=(d.get("tool_input") or {}).get("file_path") or ""
