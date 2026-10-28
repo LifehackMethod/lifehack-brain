@@ -118,6 +118,8 @@ trim() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]
 #   (c) a static scan of those scripts, of what they source, and of the python/bash scripts they invoke, finds no raw
 #       Gmail / Calendar / Sheets-values-get / curl / urllib / requests call. Only the files in
 #       system/tools/shared-fetch-allowlist.txt (the ONE list of the shared fetch) may hold one.
+#   (d) the same scan refuses a literal model id (claude-haiku|sonnet|opus|fable-<n>) anywhere but model.lib.sh and
+#       model_ids.py, and any literal passed as --model X / model="X" / MODEL=X: a runner names a TIER and the table turns it into an id, so a retired id can never rot silently.
 # TEST SEAMS: LIFEHACK_JOBS_FILE (manifest for --check-row), LIFEHACK_CODE_ROOT (code root), LIFEHACK_DESK_REPO.
 DOOR_ALLOWLIST="$CODE_ROOT/system/tools/shared-fetch-allowlist.txt"
 door_check_row() {   # name enabled outcome check model budget source command -> reasons on stdout; rc 0 = pass
@@ -188,6 +190,15 @@ RAW = [("gws gmail", re.compile(G + r"gmail\b")),
        ("curl", re.compile(r"\bcurl\s")),
        ("urllib", re.compile(r"\burllib\b")),
        ("requests", re.compile(r"\brequests\.|^\s*(?:import requests|from requests\b)"))]
+MODEL_ID = re.compile(r"claude-(?:haiku|sonnet|opus|fable)-[0-9]")   # (d) no literal model id outside the table
+MODEL_TABLE_FILES = ("model.lib.sh", "model_ids.py")
+# a literal passed as a model flag/assignment (any future family name): --model X, "--model", "X", model="X", MODEL=X.
+# A variable/expansion ($MODEL_ID_*, model_id(tier), run_model's tier) never matches: a value must START with a letter/digit.
+MODEL_LIT = [re.compile(p) for p in (
+    r"""--model(?:=|[ \t]+)["']?([A-Za-z0-9][\w.\-]*)""",
+    r"""["']--model["']\s*,\s*["']([\w.\-]+)["']""",
+    r"""\b[Mm][Oo][Dd][Ee][Ll]\s*=\s*["']([\w.\-]+)["']""",
+    r"""^\s*(?:export\s+)?MODEL\s*=\s*([A-Za-z0-9][\w.\-]*)\s*(?:#.*)?$""")]
 SRC = re.compile(r"""^\s*(?:source|\.)\s+["']?([^"'\s;&|]+)""")
 INV = re.compile(r"""\b(?:python3?|bash|sh)\s+["']?([^"'\s;&|]+\.(?:py|sh))""")
 seen, todo = set(), [os.path.realpath(e) for e in scripts if "$" not in e]
@@ -201,6 +212,9 @@ while todo:
     scan = f not in allow
     for i, ln in enumerate(lines, 1):
         if ln.lstrip().startswith("#"): continue
+        if os.path.basename(f) not in MODEL_TABLE_FILES and (MODEL_ID.search(ln) or any(r.search(ln) for r in MODEL_LIT)):
+            rel = os.path.relpath(f, code) if under(f, code) else f
+            reasons.append(f"hard-coded model id at {rel}:{i} \u2014 name a tier (small|medium|large); ids live only in system/tools/model.lib.sh")
         if scan:
             for kind, rx in RAW:
                 if rx.search(ln):

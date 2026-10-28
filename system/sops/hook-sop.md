@@ -208,6 +208,15 @@ dated INCIDENTS — evidence, not a restatement.**
   replaced by the shared fetch (`safe_fetch.py`, `safe_search_api.sh`, the email shared fetch), the only files
   allowed a raw call, listed in `system/tools/shared-fetch-allowlist.txt`. **UNIVERSAL**
 
+### a hard-coded model id outside the one table is refused (self-monitoring 5.4 — the door)
+- **Tried:** a runner, reader or library naming a model by its literal id (`claude-haiku-4-5...`) instead of a tier
+  (`small|medium|large`) → **failed:** the id retires, the call exits 1, and a fail-safe wrapper swallows it. The
+  email reader named a retired id, so the danger path had NEVER worked headless and nothing said so; `2026-10-28`
+  · `shared/tools/intake_reader.py` · REFUSED mechanically, `system/tools/install-schedulers.sh --check-row`
+  rule (d) (no plist) and `system/tools/tests/test_no_hardcoded_model_ids.sh` (new ids fail the suite) →
+  replaced by the tier table `system/tools/model.lib.sh` (`MODEL_ID_SMALL/MEDIUM/LARGE`; Python reads it via
+  `shared/tools/model_ids.py` `model_id(tier)`), the only files allowed an id. **UNIVERSAL**
+
 ## §5 — The front door (pointers — one home each, zero duplication)
 - **Mechanics** (exit codes · stdin parsing · deny format · registration · the **Deploy & Verify
   checklist**) → ✅ `system/hook-contract.md`
