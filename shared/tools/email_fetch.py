@@ -131,10 +131,26 @@ def _gws():
     return os.environ.get("LIFEHACK_GWS_BIN") or shutil.which("gws") or "/opt/homebrew/bin/gws"
 
 
+def _gws_env():
+    """The Gmail key lives HERE, in the shared fetch (plan §B.4), never in a desk runner's environment.
+    Same rule as system/tools/gws-auth.lib.sh: the isolated, keychain-free credentials file. Without
+    this a headless run (cron/launchd) had no credentials at all: found by the 5.4 danger drill
+    2026-10-28 ('Access denied. No credentials provided'). An already-exported caller env wins."""
+    env = dict(os.environ)
+    if env.get("GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE"):
+        return env
+    creds = env.get("LIFEHACK_GWS_CREDS_FILE") or os.path.expanduser("~/.config/lifehack/gws-credentials.json")
+    if os.path.isfile(creds) and os.path.getsize(creds) > 0:
+        env["GOOGLE_WORKSPACE_CLI_CONFIG_DIR"] = os.path.join(os.path.dirname(creds) or ".", "gws-cron")
+        env["GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE"] = creds
+        env["GOOGLE_WORKSPACE_CLI_KEYRING_BACKEND"] = "file"
+    return env
+
+
 def _call(path, params, timeout=30):
     try:
         r = subprocess.run([_gws(), "gmail", "users", *path, "--params", json.dumps(params)],
-                           capture_output=True, text=True, timeout=timeout)
+                           capture_output=True, text=True, timeout=timeout, env=_gws_env())
     except subprocess.TimeoutExpired:
         return None, "timeout"
     except Exception as e:  # noqa: BLE001
