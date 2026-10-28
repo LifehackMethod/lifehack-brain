@@ -1852,6 +1852,60 @@ def bite_j():
 BITES.append(("j", "a 90000 s interval (not whole days) on an enabled row", "interval '90000'", bite_j))
 
 
+# ───── Sprint 5 item 4: vendor reads (model=none + ONE allowlisted file per job) ─────
+VENDOR_REQ = "#!/usr/bin/env python3\nimport requests\nrequests.post('https://portal.example/login')\n"
+VENDOR_REQ_REFUSAL = "raw requests call at desks/deryl/tools/vjob/vjob_ingest.py:2 \u2014 go through the shared fetch"
+
+
+def vendor_door(model="none", rel="vjob_ingest.py", script_body=VENDOR_REQ, listed="vjob vjob_ingest.py"):
+    """Run the REAL door on a row 'vjob' whose runner (under <desk>/desks/deryl/tools/vjob/) is `rel` holding `script_body`.
+    LIFEHACK_VENDOR_ALLOWLIST points at a throwaway list holding `listed`. -> (rc, stdout)."""
+    d = os.path.realpath(tempfile.mkdtemp(prefix="job-sim-vendor."))
+    try:
+        desk = f"{d}/desk"; tools = f"{desk}/desks/deryl/tools/vjob"
+        os.makedirs(tools); os.makedirs(f"{d}/code/system/tools")
+        open(f"{tools}/{rel}", "w").write(script_body)
+        al = f"{d}/vendor-allow.txt"; open(al, "w").write(f"# test list\n{listed}\n")
+        mf = f"{d}/manifest.md"
+        bud = "0" if model == "none" else "5"
+        open(mf, "w").write(f"```jobs\nvjob | yes | 86400 | o. | $HOME/x ~ ^done ok$ | {model} | {bud} | none | python3 \"{tools}/{rel}\"\n```\n")
+        env = dict(os.environ, LIFEHACK_JOBS_FILE=mf, LIFEHACK_CODE_ROOT=f"{d}/code", LIFEHACK_DESK_REPO=desk, LIFEHACK_VENDOR_ALLOWLIST=al)
+        r = subprocess.run(["bash", f"{ROOT}/system/tools/install-schedulers.sh", "--check-row", "vjob"], env=env, capture_output=True, text=True)
+        return r.returncode, r.stdout.strip().replace(desk + "/", "")
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def vendor_read_door():
+    """Item 4: a model=none row whose ONE allowlisted file uses requests passes; the same row with model=small is refused; a
+    non-allowlisted file using requests is refused; a raw gmail read inside the allowlisted file is refused even for model=none;
+    curl in the allowlisted file is refused."""
+    fails = []
+    cases = [("none+listed", dict(), 0, "PASS"),
+             ("small+listed", dict(model="small"), 1, "raw requests call at"),
+             ("none+unlisted-file", dict(rel="other_ingest.py"), 1, "raw requests call at"),
+             ("none+other-job-listed", dict(listed="otherjob vjob_ingest.py"), 1, "raw requests call at"),
+             ("none+listed+gmail-read", dict(script_body=VENDOR_REQ + '"$GWS" gmail users messages get --params "{}"\n'), 1, "raw gws gmail read call at"),
+             ("none+listed+curl", dict(script_body=VENDOR_REQ + "curl -s https://x.example\n"), 1, "raw curl call at")]
+    for label, kw, want_rc, want_txt in cases:
+        rc, out = vendor_door(**kw)
+        if rc != want_rc or want_txt not in out:
+            fails.append(f"vendor-read-door: {label}: rc={rc} out={out!r}, wanted rc={want_rc} with {want_txt!r}")
+    return len(cases), fails, ([], [])
+
+
+NEW_SCENARIOS.append(("vendor-read-door", vendor_read_door))
+
+
+def bite_k():
+    rc, out = vendor_door(model="small")
+    first = out.splitlines()[0] if out else ""
+    return first if rc == 1 and first == VENDOR_REQ_REFUSAL else None
+
+
+BITES.append(("k", "a vendor read (allowlisted file) on a row that is NOT model=none", VENDOR_REQ_REFUSAL, bite_k))
+
+
 if "--bite" in sys.argv[1:]:
     sys.exit(bite_main())
 sys.exit(main())

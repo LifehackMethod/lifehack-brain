@@ -124,13 +124,20 @@ trim() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]
 #       non-empty (^.+$), or that it exists / is fresh, is refused as "presence-grade check".
 #   (d) the same scan refuses a literal model id (claude-haiku|sonnet|opus|fable-<n>) anywhere but model.lib.sh and
 #       model_ids.py, and any literal passed as --model X / model="X" / MODEL=X: a runner names a TIER and the table turns it into an id, so a retired id can never rot silently.
-# TEST SEAMS: LIFEHACK_JOBS_FILE (manifest for --check-row), LIFEHACK_CODE_ROOT (code root), LIFEHACK_DESK_REPO.
+#   (f) VENDOR READS (2026-10-28 ruling): a row with model=none may make its own logged-in read of Enver's own vendor account
+#       (python `requests`/`urllib`: the cp-utilities portal login, the Emporia SDK) from ONE allowlisted file per desk. The list is
+#       system/tools/vendor-read-allowlist.txt, lines `<job> <file>`; <file> is relative to the job's tools folder (a file F matches when
+#       its path ends in /tools/<job>/<file>). The exemption needs ALL of: the row's name is the listed job, the row's model is exactly
+#       `none`, and the file is the listed one. Anything else (model=small, another file, another job) is refused as before. It
+#       covers only requests/urllib: a raw Gmail read and curl are NEVER a vendor read, for any row.
+# TEST SEAMS: LIFEHACK_JOBS_FILE (manifest for --check-row), LIFEHACK_CODE_ROOT (code root), LIFEHACK_DESK_REPO, LIFEHACK_VENDOR_ALLOWLIST.
 DOOR_ALLOWLIST="$CODE_ROOT/system/tools/shared-fetch-allowlist.txt"
+DOOR_VENDOR_ALLOWLIST="${LIFEHACK_VENDOR_ALLOWLIST:-$CODE_ROOT/system/tools/vendor-read-allowlist.txt}"
 door_check_row() {   # name enabled outcome check model budget source command -> reasons on stdout; rc 0 = pass
   python3 - "${LIFEHACK_CODE_ROOT:-$CODE_ROOT}" "${LIFEHACK_DESK_REPO:-$HOME/.claude/skills/ClaudeOps}" \
-    "$DOOR_ALLOWLIST" "$@" <<'DOORPY'
+    "$DOOR_ALLOWLIST" "$DOOR_VENDOR_ALLOWLIST" "$@" <<'DOORPY'
 import os, re, shlex, sys
-code, desk, allow_file, name, enabled, outcome, check, model, budget, source, cmd = sys.argv[1:12]
+code, desk, allow_file, vendor_file, name, enabled, outcome, check, model, budget, source, cmd = sys.argv[1:13]
 code = os.path.realpath(code); desk = os.path.realpath(desk); home = os.path.expanduser("~")
 reasons = []
 
@@ -209,6 +216,17 @@ try:
         if ln and not ln.startswith("#"): allow.add(os.path.realpath(os.path.join(code, ln)))
 except OSError:
     reasons.append(f"shared-fetch allowlist unreadable: {allow_file}")
+vendor = []   # (f) [(job, file)] -- read only when the row is model=none; a missing list simply exempts nothing
+if model.strip() == "none":
+    try:
+        for ln in open(vendor_file, encoding="utf-8"):
+            ln = ln.split("#", 1)[0].split()
+            if len(ln) == 2 and ln[0] == name.strip(): vendor.append(ln[1])
+    except OSError:
+        pass
+def vendor_exempt(f):
+    return any(f.endswith("/tools/%s/%s" % (name.strip(), rel)) for rel in vendor)
+VENDOR_KINDS = ("requests", "urllib")
 G = r'(?:\bgws\b|\bGWS\w*\b|\$\{?GWS\w*\}?)["\'\]]*[\s,]+["\']?'
 # Reads of outside content (Gmail messages/attachments, web) go ONLY through the shared fetch; WRITES to Enver's own Google account are
 # allowed from a desk runner (2026-10-28 ruling): gmail messages modify/batchModify/send + labels + getProfile (a harmless preflight),
@@ -295,7 +313,7 @@ while todo:
                 reasons.append(f"raw {_g[0]} call at {rel}:{i} — {_g[1]}")
             else:
                 for kind, rx, tail in RAW:
-                    if rx.search(ln):
+                    if rx.search(ln) and not (kind in VENDOR_KINDS and vendor_exempt(f)):
                         rel = os.path.relpath(f, code) if under(f, code) else f
                         reasons.append(f"raw {kind} call at {rel}:{i} — {tail}"); break
         for rx in (SRC, INV):

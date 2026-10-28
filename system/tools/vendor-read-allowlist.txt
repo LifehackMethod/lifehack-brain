@@ -1,0 +1,7 @@
+# Vendor reads the door allows (install-schedulers.sh rule (f)). One line per job: `<job> <file>`.
+# <file> is relative to the job's tools folder: it matches a script whose path ends in /tools/<job>/<file>.
+# The exemption applies ONLY while the row's model column is exactly `none`, and only to python requests/urllib
+# (the vendor's logged-in read of Enver's own account). Gmail reads and curl are never a vendor read.
+# Add a line only for one file per desk job; keep this list separate from shared-fetch-allowlist.txt.
+cp-utilities cp_utilities_ingest.py
+emporia emporia_ingest.py
