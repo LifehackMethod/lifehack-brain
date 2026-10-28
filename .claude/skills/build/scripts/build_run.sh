@@ -133,6 +133,8 @@ while [ "$i" -lt "$N" ]; do
   if [ "$(cat "$Q/$i.cp")" = 1 ]; then pause "$id" "checkpoint: $title"; i=$((i+1)); continue; fi
   bprompt="You are the builder for plan card $id: $title. Plan (for context only): $PLAN. Where: $where. Do: $(cat "$Q/$i.do"). Write or edit only the files named in Where. You cannot run commands; the runner verifies afterwards. When finished, end your reply with exactly one line: BUILT $id"
   bout="$($AI -p "$bprompt" --model "$MODEL" --allowedTools Read,Write,Edit,Glob,Grep)"; brc=$?
+  # Keep the builder's whole reply beside the record: the record holds 200 chars, too few to diagnose a failed card.
+  printf '%s\n' "$bout" > "$(dirname "$RECORD")/$id.builder.txt"
   if [ "$brc" -ne 0 ] || ! printf '%s\n' "$bout" | grep -qx "BUILT $id"; then
     rec "$id" failed "builder rc=$brc no 'BUILT $id' line: $(printf '%s' "$bout" | tail -c 200)"
     loud "$id failed: builder rc=$brc or missing BUILT line"; exit 1
