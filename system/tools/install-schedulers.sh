@@ -116,7 +116,7 @@ trim() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]
 #       private desk repo, and the command pins no absolute code path (a /Users/... clone, a plugin cache) instead of
 #       $LIFEHACK_CODE_ROOT.
 #   (c) a static scan of those scripts, of what they source, and of the python/bash scripts they invoke, finds no raw
-#       Gmail / Calendar / Sheets-values-get / curl / urllib / requests call. Only the files in
+#       Gmail READ / Calendar READ / Sheets-values-get / curl / urllib / requests call. Only the files in
 #       system/tools/shared-fetch-allowlist.txt (the ONE list of the shared fetch) may hold one.
 #   (e) 5.9(d) a bash line that fetches, writes, pushes or calls a model must not silence its error (`|| true`, `|| :`, `2>/dev/null`):
 #       refused as "silenced <kind> error at file:line". Harmless uses (kill, pgrep, stat, rm, `command -v`) pass.
@@ -210,12 +210,28 @@ try:
 except OSError:
     reasons.append(f"shared-fetch allowlist unreadable: {allow_file}")
 G = r'(?:\bgws\b|\bGWS\w*\b|\$\{?GWS\w*\}?)["\'\]]*[\s,]+["\']?'
-RAW = [("gws gmail", re.compile(G + r"gmail\b")),
-       ("gws calendar", re.compile(G + r"calendar\b")),
-       ("gws sheets values get", re.compile(r"\bsheets\b.*\bvalues\b.*\bget\b|\bvalues\s*(\(\s*\))?\.get\b")),
-       ("curl", re.compile(r"\bcurl\s")),
-       ("urllib", re.compile(r"\burllib\b")),
-       ("requests", re.compile(r"\brequests\.|^\s*(?:import requests|from requests\b)"))]
+# Reads of outside content (Gmail messages/attachments, web) go ONLY through the shared fetch; WRITES to Enver's own Google account are
+# allowed from a desk runner (2026-10-28 ruling): gmail messages modify/batchModify/send + labels + getProfile (a harmless preflight),
+# calendar events insert/patch; sheets values update/append/batchUpdate; tasks, docs and drive are not scanned. A raw gmail or calendar
+# call is refused unless its verb is on the write list (fail closed: an unreadable verb is refused). Own-account sheet and calendar READS
+# have shared safe readers (system/tools/safe_sheets.py, safe_calendar.py): the raw read stays refused and the message points there.
+GWS_SVC = re.compile(G + r"(gmail|calendar)\b")
+GWS_WRITE = {"gmail": re.compile(r"\s*users (?:messages (?:modify|batchModify|send)|labels|getProfile)\b"),
+             "calendar": re.compile(r"\s*events (?:insert|patch)\b")}
+GWS_TAIL = {"gmail": "go through the shared fetch", "calendar": "read through system/tools/safe_calendar.py"}
+def gws_refusal(ln):
+    """-> (kind, tail) if this line holds a raw gws gmail/calendar call whose verb is not a write on the list, else None."""
+    ms = list(GWS_SVC.finditer(ln))
+    for i, m in enumerate(ms):
+        rest = ln[m.end(): ms[i + 1].start() if i + 1 < len(ms) else len(ln)]
+        rest = " " + " ".join(t for t in re.split(r"[\s,\"'\[\]()]+", rest) if t)
+        if not GWS_WRITE[m.group(1)].match(rest):
+            return f"gws {m.group(1)} read", GWS_TAIL[m.group(1)]
+    return None
+RAW = [("gws sheets values get", re.compile(r"\bsheets\b.*\bvalues\b.*\b(?:get|batchGet)\b|\bvalues\s*(\(\s*\))?\.(?:get|batchGet)\b"), "read through system/tools/safe_sheets.py"),
+       ("curl", re.compile(r"\bcurl\s"), "go through the shared fetch"),
+       ("urllib", re.compile(r"\burllib\b"), "go through the shared fetch"),
+       ("requests", re.compile(r"\brequests\.|^\s*(?:import requests|from requests\b)"), "go through the shared fetch")]
 MODEL_ID = re.compile(r"claude-(?:haiku|sonnet|opus|fable)-[0-9]")   # (d) no literal model id outside the table
 MODEL_TABLE_FILES = ("model.lib.sh", "model_ids.py")
 # a literal passed as a model flag/assignment (any future family name): --model X, "--model", "X", model="X", MODEL=X.
@@ -273,10 +289,15 @@ while todo:
             rel = os.path.relpath(f, code) if under(f, code) else f
             reasons.append(f"hard-coded model id at {rel}:{i} \u2014 name a tier (small|medium|large); ids live only in system/tools/model.lib.sh")
         if scan:
-            for kind, rx in RAW:
-                if rx.search(ln):
-                    rel = os.path.relpath(f, code) if under(f, code) else f
-                    reasons.append(f"raw {kind} call at {rel}:{i} — go through the shared fetch"); break
+            _g = gws_refusal(ln)
+            if _g:
+                rel = os.path.relpath(f, code) if under(f, code) else f
+                reasons.append(f"raw {_g[0]} call at {rel}:{i} — {_g[1]}")
+            else:
+                for kind, rx, tail in RAW:
+                    if rx.search(ln):
+                        rel = os.path.relpath(f, code) if under(f, code) else f
+                        reasons.append(f"raw {kind} call at {rel}:{i} — {tail}"); break
         for rx in (SRC, INV):
             for mm in rx.finditer(ln):
                 p = expand(mm.group(1))

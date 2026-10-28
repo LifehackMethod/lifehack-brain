@@ -1728,6 +1728,51 @@ def play_t0(name, jobs, t0, ticks):
     return play(name, jobs, t0, ticks)
 
 
+# ───── Sprint 5 item 1: the door splits reads from writes (2026-10-28 ruling) ─────
+GWS_READ_RUN = '#!/usr/bin/env bash\n"$GWS" gmail users messages list --params "{}"\n'
+GWS_WRITE_RUN = ('#!/usr/bin/env bash\n"$GWS" gmail users messages modify --params "{}"\n"$GWS" gmail users getProfile --params "{}"\n'
+                 '"$GWS" sheets spreadsheets values update --params "{}"\n"$GWS" calendar events insert --params "{}"\n')
+GWS_CAL_READ_RUN = '#!/usr/bin/env bash\n"$GWS" calendar events list --params "{}"\n'
+GWS_SHEET_READ_RUN = '#!/usr/bin/env bash\n"$GWS" sheets spreadsheets values get --params "{}"\n'
+GMAIL_READ_REFUSAL = "raw gws gmail read call at system/tools/ok-run.sh:2 \u2014 go through the shared fetch"
+
+
+def gws_read_write_door():
+    """Item 1: a planted raw gmail READ is refused (named, pointing at the shared fetch); a planted gmail modify + getProfile + sheets
+    values-write + calendar insert PASS; a raw calendar READ and a raw sheets values-get stay refused and point at the safe readers."""
+    fails = []
+    chk = ("$HOME/x ~ ^done ok$", GOOD_CMD)
+    for label, text, want_rc, want_txt in (
+            ("gmail-read", GWS_READ_RUN, 1, GMAIL_READ_REFUSAL),
+            ("writes", GWS_WRITE_RUN, 0, "PASS"),
+            ("calendar-read", GWS_CAL_READ_RUN, 1, "read through system/tools/safe_calendar.py"),
+            ("sheets-read", GWS_SHEET_READ_RUN, 1, "read through system/tools/safe_sheets.py")):
+        rc, out = door_run(chk, {"system/tools/ok-run.sh": text})
+        if rc != want_rc or want_txt not in out:
+            fails.append(f"gws-read-write-door: {label}: rc={rc} out={out!r}, wanted rc={want_rc} with {want_txt!r}")
+    return 4, fails, ([], [])
+
+
+NEW_SCENARIOS.append(("gws-read-write-door", gws_read_write_door))
+
+
+def bite_i():
+    rc, out = door_run(chk_i, {"system/tools/ok-run.sh": GWS_READ_RUN})
+    return out if rc == 1 and out == GMAIL_READ_REFUSAL else None
+
+
+chk_i = ("$HOME/x ~ ^done ok$", GOOD_CMD)
+BITES.append(("i", "a raw gmail READ in a runner", GMAIL_READ_REFUSAL, bite_i))
+
+
+def bite_i_write():
+    rc, out = door_run(chk_i, {"system/tools/ok-run.sh": GWS_WRITE_RUN})
+    return "PASSED: a gmail modify + a sheets values write are allowed" if rc == 0 and out == "PASS" else None
+
+
+BITES.append(("i/write", "a raw gmail modify + sheets values write in a runner", "PASSED: a gmail modify + a sheets values write are allowed", bite_i_write))
+
+
 if "--bite" in sys.argv[1:]:
     sys.exit(bite_main())
 sys.exit(main())
