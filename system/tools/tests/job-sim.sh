@@ -1773,6 +1773,79 @@ def bite_i_write():
 BITES.append(("i/write", "a raw gmail modify + sheets values write in a runner", "PASSED: a gmail modify + a sheets values write are allowed", bite_i_write))
 
 
+# ───── Sprint 5 item 2: weekly rows can install (a daily trigger; --if-overdue enforces the row's real interval) ─────
+def weekly_row():
+    """A 604800 row installs ONE daily plist (no refusal), a 90000 row (not a whole day) is still refused; job-run --if-overdue compares
+    last-success to the ROW's interval: at age 1 day it stands down (75), at age 8 days it runs (0). The real guard-fire-test row
+    (604800) passes --check-row."""
+    fails, n = [], 0
+    d = tempfile.mkdtemp(prefix="job-sim-weekly.")
+    try:
+        os.makedirs(f"{d}/system/tools"); os.makedirs(f"{d}/home"); os.makedirs(f"{d}/la")
+        open(f"{d}/system/tools/ok-run.sh", "w").write("#!/usr/bin/env bash\necho fine\n")
+        good = 'bash "$LIFEHACK_CODE_ROOT/system/tools/ok-run.sh"'
+        for iv, want_rc in ((604800, 0), (172800, 0), (90000, 1)):
+            mf = f"{d}/manifest-{iv}.md"
+            open(mf, "w").write(f"```jobs\nweekly | yes | {iv} | o. | $HOME/x ~ ^done ok$ | none | 0 | none | {good}\n```\n")
+            shutil.rmtree(f"{d}/la", ignore_errors=True); os.makedirs(f"{d}/la")
+            env = dict(os.environ, PULSE_CONFIG=mf, LIFEHACK_CODE_ROOT=d, LIFEHACK_DESK_REPO=f"{d}/no-desk", HOME=f"{d}/home",
+                       LAUNCHAGENTS_DIR=f"{d}/la", LIFEHACK_INSTALL_DRY_RUN="1", LIFEHACK_TEST_OS_OVERRIDE="mac")
+            r = subprocess.run(["bash", f"{ROOT}/system/tools/install-schedulers.sh", "--install"], env=env, capture_output=True, text=True)
+            n += 1
+            if r.returncode != want_rc: fails.append(f"weekly-row: interval {iv} install exited {r.returncode}, wanted {want_rc}: {r.stderr.strip()[-200:]!r}")
+            plist = f"{d}/la/ai.lifehack.weekly.plist"
+            if want_rc == 0:
+                txt = open(plist).read() if os.path.exists(plist) else ""
+                if txt.count("<key>Hour</key>") != 1 or "<key>Hour</key><integer>0</integer>" not in txt:
+                    fails.append(f"weekly-row: interval {iv} did not get ONE daily trigger: {txt.count('<key>Hour</key>')} Hour entries")
+            elif os.path.exists(plist): fails.append(f"weekly-row: interval {iv} was refused but a plist was written")
+        # job-run --if-overdue against the ROW's interval
+        w, t = World([("sim-w", 604800)]), BASE + 12 * 3600
+        try:
+            stub = 'bash "$LIFEHACK_CODE_ROOT/system/tools/tests/job-sim-stub.sh" sim-w'
+            open(w.manifest, "w").write("# weekly manifest\n```jobs\n"
+                f"sim-w | yes | 604800 | o | $JOB_SIM_DIR/out/sim-w ~ ^ran sim-w at | none | 0 | none | {stub}\n```\n")
+            w.set_mode("sim-w", "ok")
+            if w.sh(["bash", JR, "sim-w"], t).returncode != 0: fails.append("weekly-row: the first run did not succeed")
+            rc = w.sh(["bash", JR, "sim-w", "--if-overdue"], t + 86400).returncode
+            if rc != 75: fails.append(f"weekly-row: --if-overdue at age 1 day exited {rc}, expected 75 (stand down)")
+            rc = w.sh(["bash", JR, "sim-w", "--if-overdue"], t + 8 * 86400).returncode
+            if rc != 0: fails.append(f"weekly-row: --if-overdue at age 8 days exited {rc}, expected 0 (runs)")
+            n += 3
+        finally:
+            w.close()
+        row = real_row("guard-fire-test")
+        if not row or row[2] != "604800": fails.append(f"weekly-row: the real guard-fire-test row interval is {row[2] if row else None}, expected 604800")
+        r = subprocess.run(["bash", f"{ROOT}/system/tools/install-schedulers.sh", "--check-row", "guard-fire-test"],
+                           env={k: v for k, v in os.environ.items() if k not in SEAMS}, capture_output=True, text=True)
+        if r.returncode != 0 or "PASS" not in r.stdout: fails.append(f"weekly-row: --check-row guard-fire-test: {r.stdout.strip()!r}")
+        return n + 1, fails, ([], [])
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+NEW_SCENARIOS.append(("weekly-row", weekly_row))
+
+
+def bite_j():
+    """Planted: a 90000 s row (not a whole number of days) must still be refused loudly -- the widening did not open the door to anything."""
+    d = tempfile.mkdtemp(prefix="job-sim-weeklybite.")
+    try:
+        os.makedirs(f"{d}/system/tools"); os.makedirs(f"{d}/home"); os.makedirs(f"{d}/la")
+        open(f"{d}/system/tools/ok-run.sh", "w").write("#!/usr/bin/env bash\necho fine\n")
+        mf = f"{d}/m.md"
+        open(mf, "w").write('```jobs\nweekly | yes | 90000 | o. | $HOME/x ~ ^done ok$ | none | 0 | none | bash "$LIFEHACK_CODE_ROOT/system/tools/ok-run.sh"\n```\n')
+        env = dict(os.environ, PULSE_CONFIG=mf, LIFEHACK_CODE_ROOT=d, LIFEHACK_DESK_REPO=f"{d}/no-desk", HOME=f"{d}/home",
+                   LAUNCHAGENTS_DIR=f"{d}/la", LIFEHACK_INSTALL_DRY_RUN="1", LIFEHACK_TEST_OS_OVERRIDE="mac")
+        r = subprocess.run(["bash", f"{ROOT}/system/tools/install-schedulers.sh", "--install"], env=env, capture_output=True, text=True)
+        return "interval '90000'" if r.returncode == 1 and "has interval '90000'" in r.stderr and not os.listdir(f"{d}/la") else None
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+BITES.append(("j", "a 90000 s interval (not whole days) on an enabled row", "interval '90000'", bite_j))
+
+
 if "--bite" in sys.argv[1:]:
     sys.exit(bite_main())
 sys.exit(main())

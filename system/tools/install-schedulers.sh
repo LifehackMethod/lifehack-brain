@@ -353,7 +353,8 @@ OS="${LIFEHACK_TEST_OS_OVERRIDE:-$OS}"
 #   /bin/bash -c 'exec /bin/bash "$(cat "$HOME/.config/lifehack/code-root")/system/tools/job-run.sh" <job> --if-overdue'
 # so no plist carries a code path (the pointer file does). $HOME stays literal for bash to expand.
 # Schedule: StartCalendarInterval derived from the interval; only intervals that are a whole number
-# of hours dividing 86400 are supported — anything else FAILS LOUDLY, nothing is touched.
+# of hours dividing 86400 are supported, plus whole-day multiples (604800 = weekly: a DAILY trigger, --if-overdue enforces the row's
+# real interval) — anything else FAILS LOUDLY, nothing is touched.
 # TEST SEAMS: LAUNCHAGENTS_DIR (default ~/Library/LaunchAgents); LIFEHACK_INSTALL_DRY_RUN=1 writes
 # the plists there but skips every launchctl call (and the state-dir mkdir), printing what it would run.
 # Without --install and without LIFEHACK_INSTALL_DRY_RUN=1 this only prints the plan.
@@ -403,8 +404,11 @@ install_mac_launchd() {
     if ! [[ "$name" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
       echo "[install-schedulers] FATAL: job name '$name' is not a safe launchd label fragment." >&2; bad=1; continue
     fi
-    if ! [[ "$interval" =~ ^[0-9]+$ ]] || [ "$interval" -lt 3600 ] || [ $((86400 % interval)) -ne 0 ] || [ $((interval % 3600)) -ne 0 ]; then
-      echo "[install-schedulers] FATAL: job '$name' has interval '$interval'; launchd StartCalendarInterval is only generated for whole-hour intervals that divide 86400 (3600, 7200, 10800, 14400, 21600, 28800, 43200, 86400). Set the row off or extend install_mac_launchd()." >&2
+    # whole-hour intervals that divide 86400, OR a multiple of 86400 (weekly 604800 ...): the latter gets a DAILY trigger and
+    # job-run.sh --if-overdue enforces the row's real interval (it compares last-success age to the ROW's period, not the trigger's).
+    if ! [[ "$interval" =~ ^[0-9]+$ ]] || [ "$interval" -lt 3600 ] || [ $((interval % 3600)) -ne 0 ] \
+       || { [ "$interval" -le 86400 ] && [ $((86400 % interval)) -ne 0 ]; } || { [ "$interval" -gt 86400 ] && [ $((interval % 86400)) -ne 0 ]; }; then
+      echo "[install-schedulers] FATAL: job '$name' has interval '$interval'; launchd StartCalendarInterval is only generated for whole-hour intervals that divide 86400 (3600, 7200, 10800, 14400, 21600, 28800, 43200, 86400) or a whole number of days above that (172800, 604800 ...: a daily trigger, the real interval enforced by --if-overdue). Set the row off or extend install_mac_launchd()." >&2
       bad=1
     fi
   done
@@ -444,7 +448,8 @@ install_mac_launchd() {
     launch="exec /bin/bash \"\$(cat \"\$HOME/.config/lifehack/code-root\")/system/tools/job-run.sh\" $name --if-overdue"
     launch_x="$(_xml_escape "$launch")"
     cal=""
-    for ((h=0; h<24; h+=interval/3600)); do
+    local step=$((interval/3600)); [ "$interval" -le 86400 ] || step=24   # > 1 day: a DAILY trigger; --if-overdue holds the real period
+    for ((h=0; h<24; h+=step)); do
       cal+="    <dict><key>Hour</key><integer>$h</integer><key>Minute</key><integer>0</integer></dict>"$'\n'
     done
     cat > "$plist" <<PLIST
