@@ -136,9 +136,17 @@ class GovernorCase(unittest.TestCase):
 
     def test_critical_goes_through_in_the_middle_of_the_night(self):
         hour = time.localtime().tm_hour
-        ok, why = self.ask("security", "a real one", "critical",
+        ok, why = self.ask("sentinel", "a real one", "critical",
                            NOTIFY_QUIET_START=hour, NOTIFY_QUIET_END=(hour + 1) % 24)
         self.assertTrue(ok, f"a critical alert was held by quiet hours: {why}")
+
+    def test_only_the_sentinel_may_break_quiet_hours(self):
+        """5.14(c): any other source asking for critical is held for the morning like a normal send."""
+        hour = time.localtime().tm_hour
+        ok, why = self.ask("security", "not the sentinel", "critical",
+                           NOTIFY_QUIET_START=hour, NOTIFY_QUIET_END=(hour + 1) % 24)
+        self.assertFalse(ok)
+        self.assertIn("quiet hours", why)
 
     def test_critical_goes_through_after_the_cap_is_spent(self):
         for i in range(3):

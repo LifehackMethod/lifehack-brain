@@ -15,7 +15,7 @@
 # UPDATED: 2026-08-11 (ported)
 # ─────────────────────────────────────────────────────────────────────────────
 # notify-governor.py <source> <message> [priority] [identity]
-#   priority: normal (default) | critical (bypasses quiet hours + daily cap; still dedups)
+#   priority: normal (default) | critical (bypasses the daily cap; bypasses quiet hours ONLY for source "sentinel" -- 5.14(c); still dedups)
 #           | recovery (2.5b: an all-clear. Exempt from the daily cap and not counted toward it, so a
 #             job that used its 3 texts still gets its recovery text; still respects quiet hours + dedup)
 #           | misconfig (T10.A3 OL-N1 ⑤: a PERMANENT-until-fixed condition — e.g. a required env
@@ -77,6 +77,9 @@ MISCONFIG_DEDUP_HOURS = int(os.environ.get("NOTIFY_MISCONFIG_DEDUP_HOURS", str(3
 # queued here instead of silently lost, so a once-a-day digest that happens to land at 23:50
 # still reaches the phone once quiet hours lift — see flush_deferred() and --flush-deferred below.
 DEFERRED_MAX_AGE_HOURS = int(os.environ.get("NOTIFY_DEFERRED_MAX_AGE_HOURS", "18"))
+
+
+NIGHT_BREAKER = "sentinel"   # 5.14(c): the ONE source whose critical push may break quiet hours (the dangerous-email text)
 
 
 def _now():
@@ -148,7 +151,7 @@ def save_state(state):
 def flush_deferred():
     """--flush-deferred: replay any normal-priority sends that were queued because quiet hours
     (and ONLY quiet hours — never dedup, never cap) blocked them, now that it may no longer be
-    quiet. Prints one line per item to REPLAY on stdout as `source\tmessage`, TAB-separated (the
+    quiet. Prints one line per item to REPLAY on stdout as `source<US>message<US>title<US>tags<US>priority<US>url`, separated by the ASCII unit separator (5.14: not a TAB, because a title may now be empty and `read` collapses empty TAB fields) (the
     caller — notify-send.sh — actually performs the send); this function only decides which
     queued items are still worth sending and clears them from the queue either way (a deferred
     item beyond DEFERRED_MAX_AGE_HOURS is dropped, not sent — a stale digest arriving at noon
@@ -177,7 +180,7 @@ def flush_deferred():
         fcntl.flock(lock, fcntl.LOCK_UN)
         lock.close()
     for item in to_send:
-        print(f"{item.get('source', '')}\t{item.get('message', '')}\t{item.get('title', '')}\t{item.get('tags', '')}\t{item.get('priority', 'normal')}\t{item.get('url', '')}")
+        print(f"{item.get('source', '')}\x1f{item.get('message', '')}\x1f{item.get('title', '')}\x1f{item.get('tags', '')}\x1f{item.get('priority', 'normal')}\x1f{item.get('url', '')}")
     return 0
 
 
@@ -241,6 +244,9 @@ def main():
         return queue_deferred(sys.argv[2:])
     if len(sys.argv) > 1 and sys.argv[1] == "--unrecord":
         return unrecord(sys.argv[2:])
+    if len(sys.argv) > 1 and sys.argv[1] == "--quiet-now":
+        # 5.14(c): exit 0 if it is quiet hours right now (the corrupt-state alarm asks this, because it cannot use the gate), else 1.
+        return 0 if in_quiet_hours(time.localtime(_now()).tm_hour) else 1
     if len(sys.argv) < 3:
         sys.stderr.write("usage: notify-governor.py <source> <message> [priority] [identity]\n"
                           "       notify-governor.py --flush-deferred\n")
@@ -303,9 +309,10 @@ def main():
                 sys.stderr.write(f"SUPPRESS: '{source}' critical burst-coalesce ({CRITICAL_BURST_MINUTES}m)\n")
                 return 1
 
-        if not critical:
-            # 2. Quiet hours. (misconfig is NOT critical — it respects quiet hours too, since a
-            #    standing misconfiguration is never an emergency worth a 3am buzz.)
+        # 2. Quiet hours. 5.14(c): ONLY the sentinel's danger push (source "sentinel", critical) may break them. Any other source asking for
+        #    critical still gets the critical dedup/burst/cap treatment but is held for the morning like a normal send (misconfig likewise:
+        #    a standing misconfiguration is never an emergency worth a 3am buzz).
+        if not (critical and source == NIGHT_BREAKER):
             hour = time.localtime(now).tm_hour
             if in_quiet_hours(hour):
                 state["sent"] = sent
@@ -315,6 +322,7 @@ def main():
                 )
                 return 1
 
+        if not critical:
             # 3. Per-source daily cap. DAILY_CAP <= 0 = UNLIMITED (cap disabled).
             if DAILY_CAP > 0 and not exempt:
                 day_floor = now - 24 * 3600
