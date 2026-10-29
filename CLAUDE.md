@@ -6,6 +6,10 @@
 
 ## System at a glance — the organism map
 
+**Building a desk, skill, job, hook or tool? Use the shared layer first.** Common tools live ONCE in `shared/`;
+desks USE them and never copy them. The list of what exists is `system/register/toolbox.md` (generated) — read it
+before writing anything. Detail: `shared-layer.md`.
+
 > **Chosen by measurement, not argument** (2026-08-03). Two nights of sealed-agent scoring — **58 probes
 > on 2026-08-03** (counted from returned payloads) on top of the prior night's variant bake-off. This page
 > won; **every structural alternative scored worse.** Do not "improve" it from taste — the losing ideas
@@ -24,8 +28,6 @@
 ⚠ CRUDE SIMPLIFICATIONS — a DOOR, not a DEFINITION. Each line names the COMMONEST reason only; every
 part does considerably more than its line says. NEVER answer "what can X do?" from this page — open
 elements/<slug>.md, the exhaustive source. If this map is your only source, you are under-informed by design.
-@ (you build a desk, skill, job, hook or tool) FIRST: common tools live ONCE in the shared layer (`shared/`) | shared-layer.md
-  desks USE them, never copy them. the list of what exists: `system/register/toolbox.md` (generated). check it before writing any tool.
 @ /save    keep it so a later session finds it | save.md — canon only on YOUR act, never automatic
            ! records a DECISION or a fact. to change what a skill DOES, that is /build below.
            ! SYSTEM knowledge only. subject records (clients, money, contacts) live in the OWNING
