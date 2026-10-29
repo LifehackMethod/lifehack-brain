@@ -20,7 +20,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REGISTER_DIR = os.path.dirname(HERE)
 REPO_ROOT = os.path.dirname(os.path.dirname(REGISTER_DIR))
 REG = "system/register/register.jsonl"
-OVERLAY = ("system/githooks/pre-commit", "system/register/refresh_staged.py")
+OVERLAY = ("system/githooks/pre-commit", "system/register/refresh_staged.py", "system/register/toolbox.py")
 NOTICE = re.compile(r"^pre-commit: refreshed register sha for (\d+) staged file\(s\): (.+)$", re.M)
 ENV = {**os.environ, "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null"}
 

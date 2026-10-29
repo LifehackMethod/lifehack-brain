@@ -366,6 +366,22 @@ if ! python3 "$refresh_script"; then
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
+# TOOLBOX REGENERATION — v2 plan step 2.2b. toolbox.md is generated from the register + each shared tool's
+# header; it goes stale when either changes. Same shape as the refresh above: regenerate from the STAGED
+# register and STAGED headers into the INDEX (unstaged edits never swept in), one stdout line, FAIL CLOSED.
+# The grep makes the no-relevant-path case instant (no python started).
+if git diff --cached --name-only | grep -Eq '^(system/register/register\.jsonl$|shared/|system/tools/job-run\.sh$|.*\.lib\.sh$)'; then
+	toolbox_script="$(git rev-parse --show-toplevel)/system/register/toolbox.py"
+	if [ ! -f "$toolbox_script" ] || ! python3 "$toolbox_script" --staged; then
+		echo ""
+		echo "  ⛔ COMMIT REFUSED — toolbox.md could not be regenerated from the staged register (see above)."
+		echo "  Refresh by hand: python3 system/register/toolbox.py"
+		echo ""
+		exit 1
+	fi
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
 # NEW-TOOL REGISTRATION GATE — WIRED 2026-10-29, v2 plan step 1.3 ("registering a new tool happens
 # when it's saved"). A commit that ADDS a .py/.sh under system/tools/ or shared/ must also carry its
 # register row in system/register/register.jsonl.
