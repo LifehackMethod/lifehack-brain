@@ -54,16 +54,16 @@ elements/<slug>.md, the exhaustive source. If this map is your only source, you 
                 no-upstream. the clone is the remote plus today's work; a branch with no remote twin
                 needs a stated reason. fires once per branch per session, then yields.
 ! (automatic)   stop something leaving the system | egress-allowlist-wall.md
-! (automatic)   the system files a ticket on ITSELF, ranked | hospital.md — its detector jobs are RETIRED;
-                job-run.sh's per-job state is the finding; the session-start line speaks it. Never fixes.
+! (automatic)   a job broke: you get ONE text | alarms.md notify-plane.md — job-run.sh says it broke (its
+                output check failed); one text on break, one on recovery; session-start line = backup.
 ~ (automatic)   mail/calendar/tasks arrive in the inbox | grand-central.md gws-plane.md — gws-plane fetches
                 outside the wall > sentinel clears > grand-central holds > the skills read. fills while you sleep.
-~ (automatic)   a scheduled job died | pulse-cron.md notify-plane.md — job-run.sh judges it: ONE ntfy text on
-                break, ONE on recovery. the session-start line is the backup. no watcher of watchers.
+~ (automatic)   a job runs on its schedule | cron.md job-run.md — launchd wakes it; job-run.sh runs it with a
+                lock and a time limit, and passes it ONLY if its output check reads real content.
 @ (config) push alerts, rate limits, quiet hours | notify-plane.md — quiet hours 22:00-07:00 silences NORMAL
            pushes only; a CRITICAL page (sentinel DANGER, dead monitor) BYPASSES it and WILL wake you.
-~ Mac: launchd -> ~/.config/lifehack/code-root -> job-run.sh runs each job; exit 0 only if its output check
-  passed. Linux/Windows: pulse.sh + cron. manifest, one row per job: `system/pulse-config.md`
+~ Mac: launchd -> ~/.config/lifehack/code-root -> job-run.sh. Linux/Windows: pulse.sh + cron. ONE row per
+  job in `system/pulse-config.md`; the door (install-schedulers.sh) refuses a row that breaks the rules.
 NOT BUILT — admissions, not omissions. knowing now beats inferring a connection that isn't there:
 - one subject's records agreeing with another's (a billing row becoming taxable income). no general
   primitive; calculate + compute-mechanically-gate are DORMANT, name-only. you carry it by hand.

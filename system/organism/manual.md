@@ -481,7 +481,7 @@ useful is unknown.
 9. **claude-md-pyramid** *[GLOBAL]* — PARTIAL·gap → `elements/claude-md-pyramid.md`  · ↓ `#claude-md-pyramid`
 10. **pm-flag** *[GLOBAL]* — PARTIAL·gap → `elements/pm-flag.md`  · ↓ `#pm-flag`
 11. **gws-plane** *[GLOBAL]* — LIVE·gap → `elements/gws-plane.md`  · ↓ `#gws-plane`
-12. **pulse-cron** *[GLOBAL]* — LIVE·gap → `elements/pulse-cron.md`  · ↓ `#pulse-cron`  ⚠ CORRECTED 2026-10-27: on a Mac the scheduler is now launchd → `job-run.sh`, see THE SCHEDULER section above; `pulse.sh` + cron remain for Linux/Windows
+12. **pulse-cron** *[GLOBAL]* — LIVE·gap → `elements/cron.md`  · ↓ `#pulse-cron`  ⚠ CORRECTED 2026-10-27: on a Mac the scheduler is now launchd → `job-run.sh`, see THE SCHEDULER section above; `pulse.sh` + cron remain for Linux/Windows
 13. **grand-central** *[GLOBAL]* — PARTIAL·gap → `elements/grand-central.md`  · ↓ `#grand-central`
 14. **safe-reader-plane** *[GLOBAL]* — LIVE·gap → `elements/safe-reader-plane.md`  · ↓ `#safe-reader-plane`
 15. **sentinel** *[GLOBAL]* — LIVE·gap → `elements/sentinel.md`  · ↓ `#sentinel`
@@ -519,12 +519,26 @@ useful is unknown.
 47. **overmyshoulder** *[GLOBAL·optional]* — DORMANT → `elements/overmyshoulder.md`  *(index only — dormant)*
 48. **calculate** *[SHARED: deryl/clair/manual]* — DORMANT → `elements/calculate.md`  *(index only — dormant)*
 49. **google-sheet** *[GLOBAL·optional]* — DORMANT → `elements/google-sheet.md`  *(index only — dormant)*
-50. **hospital** *[GLOBAL]* — PARTIAL·gap [provisional] → `elements/hospital.md`  · ↓ `#hospital`  ⚠ CORRECTED 2026-10-27: detector jobs retired; producers are now `job-run.sh` job state, see THE SCHEDULER section above
+50. **hospital** *[GLOBAL]* — PARTIAL·gap [provisional] → `elements/alarms.md`  · ↓ `#hospital`  ⚠ CORRECTED 2026-10-27: detector jobs retired; producers are now `job-run.sh` job state, see THE SCHEDULER section above
 51. **efficiency** *[GLOBAL]* — PARTIAL·gap [provisional — not fire-tested] → `elements/efficiency.md`  · ↓ `#efficiency`
 
 ---
 
-## THE SCHEDULER, THE JOB WRAPPER AND THE ALARM — how a scheduled job runs and how you hear it died
+## CRON AND ALARMS — how a scheduled job runs, and how you hear it broke
+
+> **RENAMED 2026-10-29 (operator's ruling).** The scheduled-jobs area is TWO subsystems, matching the two components
+> the rebuild was ordered to have: **Cron** (scheduled execution: launchd, `job-run.sh`, the job list, the door, the
+> rig) and **Alarms** (error handling: the texts, quiet hours, the session-start line, each job's error folder). The
+> old names are retired as subsystem names: "Pulse" survives only as the Linux/Windows scheduler (`pulse.sh`) and in
+> file names (`pulse-config.md`); "Hospital" now means only the skills SOP's nurse-and-chart picture of how a skill
+> runs its steps (`system/sops/skill-building-sop.md` PART 0), never a subsystem here.
+
+### CRON — how a job runs
+
+**Three layers, three owners.** The **trigger** (launchd: "is it time?") · the **job envelope** (`job-run.sh`, the row,
+the door: "did one run start, finish in time, and pass a content check?") · the **routine** (the skill or script the
+row's command starts: "what are the steps?"). Cron owns the first two and never edits the third. A row's command stays
+short — check whether there is work, then start the routine, or stand down (75).
 
 > **AUTHORED 2026-10-27 (self-monitoring plan, Sprint 4).** Source of truth is the code: `system/tools/job-run.sh`,
 > `system/tools/install-schedulers.sh` (macOS branch), `system/tools/health_line.py`,
@@ -582,11 +596,47 @@ flip it; the last one wins. Repair is "open any desk once".
   "never ran: …" / "stood down: …" / "jobs cannot find the code — open any desk once to repair") is the backup; nothing
   further is built on it. There is no watcher of watchers.
 
-**Hospital, as rebuilt.** Hospital is still the problem-collector with a refusal to call "OK" what examined nothing, but
-its producers are now `job-run.sh`'s per-job state (a job with no `last-run` is "never ran", never OK) and its reader is
-`health_line.py`. The detector jobs (system-health, sentinel-health, planning-health, backlog-health, fault-proposer,
-the freshness and deadman jobs, and the rest) are RETIRED with their runners. The incident ledger and fault grader are
-on hold, not deleted, pending the operator's ruling.
+### ALARMS — how you hear a job broke
+
+**Alarms is three small pieces** (formerly called "Hospital, as rebuilt"): each job's own state and error folder under
+`~/.config/lifehack/state/jobs/<job>/` (a job with no `last-run` is "never ran", never OK) · the ntfy texts that
+`job-run.sh` sends through `shared/notify/notify-send.sh` (the rules above) · and `health_line.py`, the backup line at
+the start of every session. There is no central error log: the old Drive findings store (`state/findings/`) is retired
+(ruled 2026-10-29) because nothing reads it; a real problem reaches the owner through a job's own check failing. The old
+detector jobs (system-health, sentinel-health, planning-health, backlog-health, fault-proposer, the freshness and deadman
+jobs) are RETIRED with their runners; the incident ledger and fault grader are on hold, not deleted. Being built
+(self-monitoring 5.10): a failed text retries until it is confirmed sent; a job that keeps standing down texts once;
+every run checks the other jobs and texts once for one that is not running.
+
+**The row contract.** Every row carries, besides its name, switch, interval and command: an `outcome` (one sentence:
+what a good run leaves behind), a `check` (`<path> ~ <ERE>`: the file must be newer than this run's start AND some line
+must match the pattern), a `model` tier (`none | small | medium | large`, never a model id), a `budget` (model calls per
+run, a tripwire), and a `source` (which shared reader it uses, or `none`). The wrapper reads the check from the row.
+
+**The door** (`system/tools/install-schedulers.sh --install`, or `--check-row <job>` to test one row). A row that
+breaks a rule gets NO plist, and the refusal names the reason. It refuses: a missing or `TBD` contract field · a
+presence-grade check (only an exit code in a file, "non-empty", or "exists") · a pinned absolute code path · a raw
+outside READ (Gmail, Calendar, Sheets values, curl, urllib, requests) anywhere in the runner, what it sources, or the
+helper files beside it, except in the files listed in `system/tools/shared-fetch-allowlist.txt` · a silenced error
+(`|| true`, `|| :`, `2>/dev/null`) on a fetch, write, push or model call · a literal model id anywhere but the one model
+table. **Writes** to the owner's own Google account are allowed from a job (an accepted risk, ruled 2026-10-28).
+**One exception for reads:** a row with `model=none` may make its own logged-in read of the owner's own vendor
+account from ONE file listed in `system/tools/vendor-read-allowlist.txt`; the exemption ends if the row gains an AI step.
+A row that is off may be door-refused; a row that is on must pass.
+
+**The shared AI call** (`run_model` in `system/tools/model.lib.sh`). A job reaches a model only through it. It turns
+the tier into an id from ONE table, enforces the row's budget, a per-call time limit and a non-empty reply, writes
+`calls=` `secs=` `ccv=` (the Claude version) to `last-run`, and starts the model with read-only tools; the runner, never
+the model, writes the job's files and record. Ruled 2026-10-28, not yet built: per-job tool grants scoped to the job's
+own output folder, replacing read-only.
+
+**The shared scanned reader** (`shared/tools/email_fetch.py`). The one file that reads Gmail for a job. It holds the
+key, runs every message through the sanitiser, the injection scan and the reader judge, pauses the source and sends one
+critical text on a real attack, and withholds a message it could not judge. It sets NO read policy of its own: the
+calling job must pass its query, its cap and its start point. Each job's read policy is decided with the owner when
+that job's skill is built. Other outside reads have their own shared readers on the same allowlist: Sheets values
+through `system/tools/safe_sheets.py`, web pages through `safe_fetch.py` (its domain allowlist is armed for scheduled
+jobs only, from `system/tools/job-fetch-hosts.txt`), web search through `safe_search_api.sh`.
 
 **The ONE-ROW-PER-JOB rule.** Every job is exactly one row of the ```jobs block in `system/pulse-config.md`
 (`name | enabled | interval_seconds | outcome | check | model | budget | source | command`). One row = one launchd agent = one state folder = one output check. Never
@@ -597,9 +647,15 @@ hand-written plist): the row is the only place a job exists, and the installer g
 `health_line.py`, `notify-send.sh` and `notify-governor.py` (fake clock, throwaway state, no network, no LLM). It runs
 15 scenarios plus fuzz against an oracle and checks the session line and the exact text count after every tick. Run it
 BEFORE EVERY COMMIT that touches any of those four scripts or the alarm rules. Run `--gate` (200 fuzz reps) at gates. A
-red rig is a stop. It does not cover real launchd sleep/wake, real ntfy delivery, or real Google/Claude auth.
+red rig is a stop. **The bite** (`--bite`; `--gate` runs it first) tests the tester: it plants one known fault per rule
+and must name every one exactly, or the gate refuses to trust the rig. It does not cover real launchd sleep/wake, real ntfy delivery, or real Google/Claude auth.
 
 ### How to add a job (Mac) — step by step
+
+> ⚠ **OUT OF DATE since 2026-10-27 (self-monitoring 5.1–5.3), kept until the jobs SOP replaces it.** The check now lives
+> in the ROW, not in `job-run.sh` (steps 3–4 below are wrong); every row needs the five contract fields; the door refuses
+> a non-conforming row; a model is reached through `run_model`, not `ingest-run.lib.sh`. Follow `system/sops/jobs-sop.md`
+> once it exists.
 
 1. **Write the command.** A stand-alone shell command or runner script (`system/tools/<job>-run.sh`). It must exit 0 only
    on real success, 75 if it is simply not configured, 2 for a transient failure, anything else for a failure. Reach a
@@ -629,6 +685,11 @@ red rig is a stop. It does not cover real launchd sleep/wake, real ntfy delivery
 ---
 
 ## ELEMENT ENTRIES — the "how it works together" narratives (per `map-format-specs.md §8.5`)
+
+> ⚠ **READ THIS FIRST (2026-10-29).** Any entry below that says a part is run by "Pulse" ("Pulse every 900s", "TRIGGERS-BY
+> pulse-cron", "Pulse-dispatched") describes the OLD Mac scheduler. On a Mac today a job runs ONLY if its row in
+> `system/pulse-config.md` is switched to `yes`, through Cron (see CRON AND ALARMS above). Check that file for what is
+> actually on; do not infer it from an entry below.
 
 > Each non-trivial element: a `## <slug>` entry — one-line purpose + a TYPED INTEROP SEAM LIST (compress words, never seams). Seam-verbs = the closed set in §8.3. Derived from each element's own INTEROP SEAMS (2026-07-24 fan-out).
 
@@ -849,7 +910,21 @@ INTEROP:
   SYNCS       grand-central                   · Google-touching skills route through desks that invoke this plane
   COMPLEMENTS security-ingest-gate            · ingest_gate_enforce.sh overlaps — the ingest gate IS the on-path enforcement arm of this plane for read channels
 
-## pulse-cron · crontab */5   [LIVE·gap]   → elements/pulse-cron.md
+## cron · launchd + job-run.sh, one agent per enabled row   [LIVE]   → elements/cron.md
+Runs each scheduled job on time and decides whether it really worked. One launchd agent per enabled row; the launch line
+reads the code-root pointer and runs `job-run.sh`, which holds a lock, a time limit, and the row's content check; only a
+passing check counts as success. The door refuses a row that breaks the rules. No AI in this chain except what a row's
+routine calls through `run_model`.
+
+INTEROP:
+  READS        pulse-config.md     · the ```jobs block: one row per job, with its contract
+  READS        code-root           · ~/.config/lifehack/code-root names the code every launch line runs
+  CHAINS       job-run             · launchd -> job-run.sh -> the row's command -> the row's check
+  FEEDS        alarms              · job-run.sh's per-job state and its break/recovery decision
+  GUARDED-BY   the door            · install-schedulers.sh refuses a non-conforming row (no plist)
+  READS        safe-reader-plane   · a job's outside reads go only through the shared scanned reader
+
+## pulse-cron (HISTORY) · crontab */5   [Linux/Windows only]   → elements/cron.md (history section)
 ⚠ **CORRECTED 2026-10-27 (self-monitoring plan): on macOS this is no longer how jobs run.** Each enabled row now has its own launchd agent that runs `job-run.sh` (see THE SCHEDULER, THE JOB WRAPPER AND THE ALARM above); the Pulse/system-health/deadman machinery described below, and the per-tick heartbeat mirrors, apply only to Linux and Windows, and the watcher jobs named in the INTEROP list (system-health, sentinel-health, backlog-health, deadman) were removed. The text below is kept as history.
 One crontab line ticks pulse.sh every 5 minutes; it reads the jobs block in pulse-config.md and fires any job whose interval has elapsed, with machine-local circuit-breaker safety, single-writer machine-gating, and a Drive-mirrored heartbeat feed. The Bash-write bypass gap (guard_write_paths.sh matches Write/Edit only) is accepted.
 
@@ -881,7 +956,7 @@ INTEROP:
   FEEDS        security-posture-scan · pulse-config.md is read by security-posture-scan.sh to verify supabase jobs stay disabled + emily stays enabled
   COMPLEMENTS  notify-plane         · pulse.sh calls notify-send.sh directly for circuit-breaker trips + no-lead nag; all *-run.sh runners channel alerts through notify-send.sh
   COMPLEMENTS  health-deadman-check · launchd watcher (BY DESIGN outside Pulse) watches system-health tile mtime; catches a dead Pulse+health chain that no Pulse job could detect
-  GUARDED-BY   ~~require_primary~~ · **⚠ CORRECTED 2026-08-24: not a real guard.** `require_primary()` has zero definitions anywhere in this repo and `primary-gate.sh` does not exist on disk (grep/find, verified this session). This system has one machine (`docs/data-layout.md:215`); Drive-writing jobs run with no machine gate. Correctly stated in `elements/backlog-authority.md:203-205` and `elements/archivist.md:71-72`; corrected in full in `elements/pulse-cron.md`'s GATES section.
+  GUARDED-BY   ~~require_primary~~ · **⚠ CORRECTED 2026-08-24: not a real guard.** `require_primary()` has zero definitions anywhere in this repo and `primary-gate.sh` does not exist on disk (grep/find, verified this session). This system has one machine (`docs/data-layout.md:215`); Drive-writing jobs run with no machine gate. Correctly stated in `elements/backlog-authority.md:203-205` and `elements/archivist.md:71-72`; corrected in full in `elements/cron.md`'s GATES section.
   GUARDED-BY   ingest_acquire_lock  · prevents stacked runs per job; single-instance enforcement in every claude-invoking runner
   GUARDED-BY   circuit breaker (pulse.sh) · auto-disables a job after 3 consecutive non-transient failures; rc=2 never trips it
   GUARDED-BY   ingest_check_paused  · Sentinel danger verdict → human-gated source pause; no auto-resume
@@ -1079,7 +1154,7 @@ INTEROP:
   GUARDED-BY   guard_write_paths.sh · PreToolUse Write|Edit — BLOCKS content writes to clone, wrong-zone paths, orphan ~/.claude/skills/ writes; fails CLOSED on unparseable input
   GUARDED-BY   ~~check-content-paths.py~~ · **⚠ CORRECTED 2026-08-24: wrong filename, not a phantom.** No file named `check-content-paths.py` exists anywhere (0 matches, verified this session), but the control it describes is real, just differently named and split across two mechanisms in the actual pre-commit hook, `system/githooks/pre-commit` (read in full this session): (1) a personal-notes path guard (data/, memory/, state/, etc. — the top section of the file) plus (2) a SEPARATE gitleaks secret scan (`GITLEAKS="$(command -v gitleaks || echo /opt/homebrew/bin/gitleaks)"`; fails CLOSED if gitleaks is not installed) plus (3) `check_no_internal_leakage.py` for content-class/operator-identity leakage, also fail-closed. So the CONTROL is live — secrets and content-class files staged for commit genuinely get blocked — but under the path `system/githooks/pre-commit`, not a script called `check-content-paths.py`; that name matches nothing on disk.
   GUARDED-BY   ~~primary-gate.sh~~ · **⚠ CORRECTED 2026-08-24: ⛔ `system/tools/primary-gate.sh` does not exist.**
-               (find . -iname '*primary-gate*' → 0 files, verified this session), and require_primary() has no definition anywhere in the repo. No headless Pulse runner is gated on machine lead-election; this system has one machine (`docs/data-layout.md:215`). See `elements/pulse-cron.md`'s corrected GATES section.
+               (find . -iname '*primary-gate*' → 0 files, verified this session), and require_primary() has no definition anywhere in the repo. No headless Pulse runner is gated on machine lead-election; this system has one machine (`docs/data-layout.md:215`). See `elements/cron.md`'s corrected GATES section.
   GUARDED-BY   ~~mirror_plans.sh~~ · **⚠ CORRECTED 2026-08-24: ⛔ `system/hooks/mirror_plans.sh` does not exist.**
                (0 files, verified this session), and neither does the per-machine plan-sync it describes. Correctly stated in `elements/plan-integrity-cluster.md:160-168`: "There is no fourth hook — this heading is a leftover from the donor." Two-machine plan mirroring is not part of this system (`docs/data-layout.md:215`).
 
@@ -1251,7 +1326,7 @@ INTEROP:
   WRITES→    durable-memory         · breakdown Google Doc lands in a dated output folder; session.md + breakdowns markdown in desks/emily/state/; Relationship Ledger rows in the Sheet
   GUARDED-BY ingest-gate            · ingest_gate_enforce.sh blocks raw gws format:full body reads; forces email_convert.py path [hook]
   GUARDED-BY calendar-guard         · calendar write hook blocks any event write to primary or non-Agent-Ops calendar [hook]
-  GUARDED-BY ~~primary-gate.sh~~ · **⚠ CORRECTED 2026-08-24: ⛔ `system/tools/primary-gate.sh` does not exist** (0 files, verified this session); `require_primary()` has no definition anywhere in the repo. Emily-desk Drive writes are NOT gated on machine lead-election — this system has one machine (`docs/data-layout.md:215`). See `elements/pulse-cron.md`'s corrected GATES section. [was: script]
+  GUARDED-BY ~~primary-gate.sh~~ · **⚠ CORRECTED 2026-08-24: ⛔ `system/tools/primary-gate.sh` does not exist** (0 files, verified this session); `require_primary()` has no definition anywhere in the repo. Emily-desk Drive writes are NOT gated on machine lead-election — this system has one machine (`docs/data-layout.md:215`). See `elements/cron.md`'s corrected GATES section. [was: script]
   CHAINS     safe-reader-plane      · script-reader subagent uses safe_pdf.py; researcher uses safe_search_api.sh (Serper primary, Chrome fallback); calendar + email free-text isolated via safe_calendar.py / reader-actor subagent
   FEEDS      notify-plane           · buzz via notify-send.sh after successful breakdown (Phase 6)
   READS      pulse-cron             · emily-breakdown-run.sh is a Pulse-managed cron job; Pulse owns cadence + circuit-breaker (3 non-zero → auto-disable + buzz)
@@ -1330,7 +1405,17 @@ INTEROP:
   COMPLEMENTS pulse-cron              · Pulse dispatches Stage 1 + Stage 2 cron jobs; cal-pipeline owns the skill/human layer
 ---
 
-## hospital · emit_finding.py + findings_reader.py + fault_proposer.py   [PARTIAL·gap [provisional]]   → elements/hospital.md
+## alarms · job-run.sh texts + notify-send.sh + health_line.py   [LIVE]   → elements/alarms.md
+Makes a job that broke impossible to not-see. When a failing job's last success is two periods old, ONE text goes out;
+when it next passes, ONE recovery text. Quiet hours hold texts until morning; a cap stops floods. The session-start line
+is the backup. No central error log: each job keeps its own errors in its own folder.
+
+INTEROP:
+  READS        cron                · job-run.sh's per-job state under ~/.config/lifehack/state/jobs/<job>/
+  CHAINS       notify-plane        · every text goes through notify-send.sh and its governor
+  FEEDS        health-line         · health_line.py reads the same per-job state at session start
+
+## hospital (HISTORY — retired as a subsystem name 2026-10-29) · emit_finding.py + findings_reader.py + fault_proposer.py   → elements/alarms.md (history section)
 ⚠ **CORRECTED 2026-10-27 (self-monitoring plan): Hospital was rebuilt, not deleted.** The detector jobs below are RETIRED; its producers are now `job-run.sh`'s per-job state under `~/.config/lifehack/state/jobs/`, and its reader is `health_line.py` (one line, first in every session). The incident ledger and fault grader are on hold. See THE SCHEDULER section above. The text below is kept as history.
 Every problem the system detects about itself becomes ONE comparable record, so "what is wrong?" can be asked once — at ground, subsystem or whole-system altitude — and answered with a ranked, evidence-cited list instead of a pile of incompatible notes. It DETECTS and RANKS; it never REMEDIATES (council: auto-fix CUT 7/7). Four producers emit through it today; ~8 known failure producers still do not (GAP-1), and nothing guards the store against a hand-authored write (GAP-3).
 

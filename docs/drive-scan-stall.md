@@ -57,7 +57,7 @@ side of the same folder:
 - `system/tools/emit_finding.py` — `WRITE_TIMEOUT_S = 15`, and its message says it outright:
   *"the brain root's mount likely wedged … this is a hang"*
 - `system/tools/health_line.py` — `FINDINGS_READ_TIMEOUT_S = 8`, *"a wedged mount blocks instead of raising"*
-- `system/organism/elements/hospital.md` — the measured **EDEADLK-on-7/8-runs** failure mode
+- `system/organism/elements/alarms.md` — the measured **EDEADLK-on-7/8-runs** failure mode
 - `shared/tools/item_store_window.py` — *"~2.03 s/file on the Drive mount — putting a real 7-day
   window at ~59 min"*
 - `system/tools/checkin/board_check.py` — a live **false green**: a readability probe passed while

@@ -23,7 +23,7 @@ authority: user
 > the harness that scheduled jobs should run. It exists so that **no launchd plist ever carries a code
 > path** (self-monitoring plan section B.1).
 >
-> **LADDER: ELEMENT. siblings -> `pulse-cron.md` (the launch line that reads it), `job-run.md` (what it
+> **LADDER: ELEMENT. siblings -> `cron.md` (the launch line that reads it), `job-run.md` (what it
 > finds) ; ground truth -> `system/hooks/session_context_loader.sh` (the writer).**
 
 ## The pointer

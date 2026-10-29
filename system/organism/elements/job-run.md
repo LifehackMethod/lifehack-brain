@@ -25,7 +25,7 @@ authority: user
 > **Altitude = BASE.** `system/tools/job-run.sh`: the ONE wrapper every scheduled job runs inside on
 > macOS. A job's exit 0 is earned here, not claimed by the job.
 >
-> **LADDER: ELEMENT. up -> `hospital.md` ; siblings -> `pulse-cron.md` (what fires it), `code-root.md`
+> **LADDER: ELEMENT. up -> `alarms.md` ; siblings -> `cron.md` (what fires it), `code-root.md`
 > (how it is found), `health-line.md` (who reads its state) ; ground truth -> `system/tools/job-run.sh`.**
 
 **Why it exists** (`job-run.sh:2-8`): "ran" is not "succeeded". A script that exits 0 on a skip, an absent
@@ -33,7 +33,7 @@ input or a swallowed error is dead end [F2], which failed 166 times. The wrapper
 then a PER-JOB OUTPUT CHECK must pass before `last-success` is stamped. A job with no declared check can
 never succeed.
 
-**Invocation.** By launchd through the plist's launch line (`pulse-cron.md`), by hand as
+**Invocation.** By launchd through the plist's launch line (`cron.md`), by hand as
 `bash system/tools/job-run.sh <job> [--if-overdue]`. A name that is empty or not `[a-z0-9-]` exits 64.
 
 ## The run, in order
@@ -69,6 +69,15 @@ never succeed.
 8. **Output check, then last-success.** No `check_*` function: exit 1 "exit 0 alone is never a
    success". Check fails: exit 1. Only a pass writes `last-success` and exits 0. Its mtime is the clock
    everything else reads.
+
+> ⚠ **CHANGED SINCE THIS WAS TRACED (2026-10-29 note; full re-trace after the self-monitoring Gate 5).** Steps 5–8 and
+> the line numbers below describe the 2026-10-27 wrapper. Since then: the check is read from the ROW's `check` column
+> (`<path> ~ <ERE>`, 5.1), not a `check_*` function · a model failure recorded by `run_model` fails the run even if the
+> job swallowed its rc (5.3) · a lock records its owner pid, a dead owner's lock is taken at once and a live owner is a
+> stand-down 75 (5.9h) · a corrupt state file is refused and named, never "start fresh" (5.9e) · a bookmark advances only
+> when the work is done (5.9f). Being built now (5.10): texts retry until confirmed sent; a persistent stand-down texts
+> once; each run checks the other jobs and texts once for one that is not running. Until the re-trace, `job-run.sh`
+> itself and `manual.md` → CRON AND ALARMS are the truth.
 
 Code locations: state `job-run.sh:54-55`; launch.err handling `:80-84`; row lookup `:150-162`;
 declarations `:166-175`; `--if-overdue` `:207-214`; credentials `:217-229`; lock `:231-243`; watchdog

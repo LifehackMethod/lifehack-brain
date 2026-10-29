@@ -1,12 +1,12 @@
 ---
-element: hospital
-title: "hospital — element detail (ground/base altitude)"
-subsystem: hospital
+element: alarms
+title: "alarms — element detail (ground/base altitude)"
+subsystem: alarms
 altitude: base
 record_type: organism-element
 maturity_label: LIVE
 gap_disposition: by-design
-gap_disposition_note: "REBUILT 2026-10-27 (self-monitoring plan rev 4, Sprints 2-3, commit 0088c24). The detector-and-ledger design this file used to describe is retired; Hospital is now three small pieces (job-run.sh's local job state, health_line.py, job-run.sh's ntfy texts). The old design's claims, corrections and port banners are NOT carried forward: they described files that no longer exist. They are recoverable verbatim: git show 0088c24^:system/organism/elements/hospital.md."
+gap_disposition_note: "REBUILT 2026-10-27 (self-monitoring plan rev 4, Sprints 2-3, commit 0088c24). The detector-and-ledger design this file used to describe is retired; Hospital is now three small pieces (job-run.sh's local job state, health_line.py, job-run.sh's ntfy texts). The old design's claims, corrections and port banners are NOT carried forward: they described files that no longer exist. They are recoverable verbatim: git show 0088c24^:system/organism/elements/alarms.md."
 generated_from:
   - system/tools/job-run.sh
   - system/tools/health_line.py
@@ -25,13 +25,20 @@ status: active
 authority: user
 ---
 
+> **RENAMED 2026-10-29 from `alarms.md` (operator's ruling).** This element is **ALARMS**: Bekim's "error handling"
+> component — each job's state and error folder, the ntfy texts `job-run.sh` sends, and the session-start backup line.
+> "Hospital" is no longer a subsystem name; it now means only the skills SOP's nurse-and-chart picture
+> (`system/sops/skill-building-sop.md` PART 0). The old central findings store is retired (2026-10-29). Where the text
+> below still says "Hospital", read "Alarms". Sibling: `cron.md` (what runs the jobs).
+
+
 # hospital — element detail
 
 > **Altitude = BASE.** What Hospital is today, source-traced. The one-line job: *a scheduled job that
 > stopped working must be impossible to not-see.*
 >
 > **LADDER: ELEMENT. siblings -> `job-run.md` (the producer), `health-line.md` (the reader),
-> `code-root.md` (how launchd finds the code), `pulse-cron.md` (the scheduler). Ground truth ->
+> `code-root.md` (how launchd finds the code), `cron.md` (the scheduler). Ground truth ->
 > `system/tools/job-run.sh` + `system/tools/health_line.py`.**
 
 ## Superseded 2026-10-27 - what Hospital WAS
@@ -47,7 +54,7 @@ authority: user
 > It failed in the way it was built to prevent: the banner read a Drive store (median 9 s), a fleet of
 > watchers had to be kept alive in turn, and a job that exited 0 on a skip looked healthy
 > (dead end [F2], 166 occurrences). The record is not erased: the full prior text, including its
-> dated corrections, is `git show 0088c24^:system/organism/elements/hospital.md`. What was done to it:
+> dated corrections, is `git show 0088c24^:system/organism/elements/alarms.md`. What was done to it:
 > the 13 watcher rows, 8 watcher runners, `fault_proposer.py`, `findings_deadman.py`, `recommend.py`
 > were deleted (`0088c24`); `faults.json` and `incidents.jsonl` (and the Drive mirror `state/incidents/`)
 > were MOVED to a dated archive folder, never removed; the session banner was rewritten (941 -> 149

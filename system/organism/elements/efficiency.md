@@ -143,7 +143,7 @@ that matter more than the grading:
 file's own header records the ruling. ⚠ **Two artifacts have not caught up** — `system/pulse-config.md`
 still labels the daily job *"fault-proposer: HOSPITAL's runner"*, and `fault-proposer-run.sh`'s header
 still frames the tool in Hospital terms. Both are stale-by-one-day rather than wrong-in-substance;
-`elements/hospital.md` already carries the corrected boundary.
+`elements/alarms.md` already carries the corrected boundary.
 
 ### THE SESSION-START REVIEW SURFACE (`health_line.py`)
 
@@ -155,7 +155,7 @@ prefix that `recommendation_disposition.py` accepts directly, so the path from *
 
 **It is silent when there is nothing to say** — which today is indistinguishable from the store being
 empty, because the store IS empty. (One silence IS now distinguished: the session floor rc-checks
-`health_line.py` and says so when the tool itself could not run — see `elements/hospital.md`, which
+`health_line.py` and says so when the tool itself could not run — see `elements/alarms.md`, which
 owns the wiring description.)
 
 ### GATES AND ENFORCEMENT (the honest map)
@@ -278,9 +278,9 @@ rather than on triage, and the organism evolves deliberately instead of accretin
   `python3 system/tools/organism/label_checker.py write-labels`, which has not yet been run against this
   element. `PARTIAL` is the honest floor regardless of what a fire test returns, because the pipeline has
   never carried a load. ⛔ **This value is stated IDENTICALLY in the frontmatter above — deliberately.**
-  ~~`elements/hospital.md` currently disagrees with itself (frontmatter `LIVE·gap` vs this section's
+  ~~`elements/alarms.md` currently disagrees with itself (frontmatter `LIVE·gap` vs this section's
   `PARTIAL·gap`), which is a live false-green inside the false-green subsystem~~ — **CORRECTED
-  2026-08-27** (L.B2 audit, live `grep -n "maturity_label" system/organism/elements/hospital.md`):
+  2026-08-27** (L.B2 audit, live `grep -n "maturity_label" system/organism/elements/alarms.md`):
   this premise is false. Both hospital.md's frontmatter (line 7) and its AUTO-COMPUTED body
   section (line 655) say the SAME thing — `LIVE·gap` / `LIVE·gap [provisional]`. There is no
   `LIVE·gap` vs `PARTIAL·gap` split in that file today; that contradiction is NOT

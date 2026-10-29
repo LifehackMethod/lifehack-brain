@@ -20,9 +20,9 @@ authority: user
 # health-line — element detail
 
 > **Altitude = BASE.** `system/tools/health_line.py`: the one line printed first in every session. It is
-> the BACKUP reader of job health; the alarm is the ntfy text from `job-run.sh` (`hospital.md`).
+> the BACKUP reader of job health; the alarm is the ntfy text from `job-run.sh` (`alarms.md`).
 >
-> **LADDER: ELEMENT. up -> `hospital.md` ; producer -> `job-run.md` ; ground truth ->
+> **LADDER: ELEMENT. up -> `alarms.md` ; producer -> `job-run.md` ; ground truth ->
 > `system/tools/health_line.py`.**
 
 ## What it does

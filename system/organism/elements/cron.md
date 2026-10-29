@@ -1,13 +1,13 @@
 ---
 topic: [system-architecture]
-element: pulse-cron
-title: "pulse-cron — element detail (ground/base altitude)"
-subsystem: automation
+element: cron
+title: "cron — element detail (ground/base altitude)"
+subsystem: cron
 altitude: base
 record_type: organism-element
 maturity_label: LIVE
 gap_disposition: by-design
-gap_disposition_note: "REWRITTEN 2026-10-27 (task 4.3). On macOS the scheduler is now launchd, one agent per enabled job (self-monitoring plan section B.1); Linux and Windows still use pulse.sh behind the crontab block / Task Scheduler. The prior 776-line description (Pulse as the only dispatcher, its breaker, park file, runner contract, Drive heartbeat) is recoverable: git show 0088c24^:system/organism/elements/pulse-cron.md."
+gap_disposition_note: "REWRITTEN 2026-10-27 (task 4.3). On macOS the scheduler is now launchd, one agent per enabled job (self-monitoring plan section B.1); Linux and Windows still use pulse.sh behind the crontab block / Task Scheduler. The prior 776-line description (Pulse as the only dispatcher, its breaker, park file, runner contract, Drive heartbeat) is recoverable: git show 0088c24^:system/organism/elements/cron.md."
 generated_from:
   - system/tools/install-schedulers.sh
   - system/tools/job-run.sh
@@ -21,12 +21,19 @@ status: active
 authority: user
 ---
 
+> **RENAMED 2026-10-29 from `cron.md` (operator's ruling).** This element is **CRON**: Bekim's "scheduled
+> execution" component — launchd, the code-root pointer, `job-run.sh`, the job list and the door. "Pulse" survives
+> only as the Linux/Windows scheduler (`pulse.sh`) and in file names (`pulse-config.md`). Sibling: `alarms.md` (how
+> you hear a job broke). The row contract, the door, `run_model` and the shared scanned reader are described in
+> `manual.md` → CRON AND ALARMS.
+
+
 # pulse-cron — element detail (the scheduler)
 
 > **Altitude = BASE.** Which OS mechanism fires which job on which machine, and what each leaves behind.
 >
 > **LADDER: ELEMENT. up -> manual#pulse-cron ; siblings -> `job-run.md`, `code-root.md`,
-> `health-line.md`, `hospital.md` ; ground truth -> `system/tools/install-schedulers.sh` +
+> `health-line.md`, `alarms.md` ; ground truth -> `system/tools/install-schedulers.sh` +
 > `system/pulse-config.md`.**
 
 ## Superseded 2026-10-27 - what it WAS
@@ -36,7 +43,7 @@ authority: user
 > due, behind a 3-strike circuit breaker with doubling backoff, a durable park file, an rc 0/75/2/else
 > contract and a Drive-mirrored heartbeat that a dead-man's-switch watched. On a Mac that is gone: the OS
 > scheduler now owns the schedule and `job-run.sh` owns each run. The old text (every mode, store and
-> gate) is `git show 0088c24^:system/organism/elements/pulse-cron.md`.
+> gate) is `git show 0088c24^:system/organism/elements/cron.md`.
 
 ## One manifest, two schedulers
 
@@ -86,5 +93,5 @@ seconds | command`; `system/pulse-config.md:146-147`). Which mechanism acts depe
 ## Interop
 
 - `job-run.md` - what runs when launchd fires. `code-root.md` - the pointer the launch line reads.
-- `health-line.md` / `hospital.md` - what reports on the result.
+- `health-line.md` / `alarms.md` - what reports on the result.
 - `notify-plane.md` - the governor behind the texts.
