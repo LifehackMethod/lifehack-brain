@@ -179,6 +179,31 @@ run2 '(bonus) cd ${HOME}/repo, allowed identity' 0 'cd ${HOME}/good-repo-d && gi
 mk_tilde_case "cd-tilde-mismatch" "bad-repo" "$WRONG"
 run2 "(d) cd ~/repo, WRONG identity -> MISMATCH text, not just exit 2" 2 "cd ~/bad-repo && git commit -m x" "$TC_HOME" "$TC_BRAIN" "$REPO_ROOT" "which is not in the allow-list"
 
+echo "── 3b-fa: repo resolution for ; && quoted paths, -C, and same-command variables ──"
+mk_tilde_case "fa" "good" "$ALLOWED"
+git_repo "$TC_HOME/bad" "$WRONG"
+mkdir -p "$TC_HOME/sub dir"; git_repo "$TC_HOME/sub dir/spaced" "$ALLOWED"
+FH="$TC_HOME"; FB="$TC_BRAIN"
+fa() { run2 "$1" "$2" "$3" "$FH" "$FB" "$REPO_ROOT" "${4:-}"; }
+fa "fa: cd ~/good; git commit"            0 'cd ~/good; git commit -m x'
+fa "fa: cd ~/bad; git commit"             2 'cd ~/bad; git commit -m x' "not in the allow-list"
+fa "fa: cd ~/good && git commit"          0 'cd ~/good && git commit -m x'
+fa "fa: cd quoted path"                   0 'cd "$HOME/sub dir/spaced" && git commit -m x'
+fa "fa: cd single-quoted ~ is literal -> deny" 2 "cd '~/good' && git commit -m x"
+fa "fa: git -C ~/bad"                     2 'git -C ~/bad commit -m x' "not in the allow-list"
+fa "fa: git -C quoted"                    0 'git -C "~/good" commit -m x' 
+fa "fa: var, same command (;)"            0 'R=$HOME/good; git -C "$R" commit -m x'
+fa "fa: var, same command (&&), bad repo" 2 'R=$HOME/bad && git -C "$R" commit -m x' "not in the allow-list"
+fa "fa: var with ${}"                     0 'R=~/good; git -C ${R} commit -m x'
+fa "fa: var not set here -> still denied (closed)" 2 'git -C "$NOPE_UNSET" commit -m x'
+fa "fa: relative -C after cd"             0 'cd ~ && git -C good commit -m x'
+fa "fa: last cd wins (bad then good)"     0 'cd ~/bad; cd ~/good; git commit -m x'
+fa "fa: last cd wins (good then bad)"     2 'cd ~/good; cd ~/bad; git commit -m x' "not in the allow-list"
+fa "fa: cd /tmp; cd ~/bad; commit"        2 'cd /tmp; cd ~/bad; git commit -m x'
+fa "fa: subshell cd does not leak"        2 '(cd ~/good); cd ~/bad; git commit -m x'
+fa "fa: quoted ; in message is not a split" 2 'cd ~/bad && git commit -m "a; cd ~/good"'
+fa "fa: git status after cd stays allowed" 0 'cd ~/bad; git status'
+
 echo
 if [ "$fail" = 0 ]; then echo "RESULT: $pass passed, 0 failed."; echo "COMMIT IDENTITY GUARD GREEN"; exit 0
 else echo "RESULT: $pass passed, $fail failed."; exit 1; fi

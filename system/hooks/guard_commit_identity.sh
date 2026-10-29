@@ -85,52 +85,108 @@ if not cmd.strip():
 
 WRITE_VERBS = ("commit", "rebase", "cherry-pick")
 
+import re as _re
+_shape = _re.compile(r"(^|[;&|(\s])git\s+(-{1,2}\S+\s+)*(commit|rebase|cherry-pick)\b")
+
 try:
-    toks = shlex.split(cmd, comments=False, posix=True)
+    # punctuation_chars=True splits ; && || | ( ) off adjacent words, so
+    # "cd ~/repo; git commit" yields cd, ~/repo, ; (3b-fa: it used to yield "repo;").
+    _lex = shlex.shlex(cmd, posix=True, punctuation_chars=True)
+    _lex.whitespace_split = True
+    _lex.commenters = ""
+    toks = list(_lex)
 except ValueError:
-    import re as _re
-    _shape = _re.compile(r"(^|[;&|(\s])git\s+(-{1,2}\S+\s+)*(commit|rebase|cherry-pick)\b")
     if _shape.search(cmd):
         print("CHECK:"); raise SystemExit
     print("NOT_OURS"); raise SystemExit
 
-segments, buf = [], []
+# Items are (sep, op) or (word, text). Punctuation-only tokens may glue several operators.
+items = []
 for t in toks:
-    if t in ("&&", "||", ";", "|"):
-        if buf: segments.append(buf)
-        buf = []
+    if t and all(ch in "();<>|&" for ch in t):
+        for m in _re.findall(r"&&|\|\||;;|[;|&()]|[<>]+&?", t):
+            items.append(("sep", m) if m in ("&&", "||", ";;", ";", "|", "&", "(", ")") else ("word", m))
     else:
-        buf.append(t)
-if buf: segments.append(buf)
+        items.append(("word", t))
 
 def is_git(tok):
     return os.path.basename(tok) == "git"
 
-_cd_target = ""
-for seg in segments:
-    if seg and seg[0] == "cd" and len(seg) >= 2:
-        _cd_target = seg[1]
+_ASSIGN = _re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+_VAR = _re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)")
+HOME = os.environ.get("HOME", "")
+cvars = {}   # variables assigned earlier in THIS command
 
-for seg in segments:
+def expand(p):
+    # ~ and $VAR/${VAR}: HOME from the hook env, others only if set earlier in this command.
+    # An unresolvable $VAR is left LITERAL, so the bash side fails closed (deny) as before.
+    if p == "~" or p.startswith("~/"):
+        p = HOME + p[1:]
+    def sub(m):
+        n = m.group(1) or m.group(2)
+        if n in cvars: return cvars[n]
+        if n == "HOME" and HOME: return HOME
+        return m.group(0)
+    return _VAR.sub(sub, p)
+
+def resolve(p, cwd):
+    p = expand(p)
+    if p and not p.startswith("/") and "$" not in p and cwd and "$" not in cwd:
+        p = os.path.join(cwd, p)
+    return p
+
+cwd = ""
+stack = []   # subshell scopes: (cwd, vars) restored at ")"
+buf = []
+
+def flush():
+    # Process one finished segment. Returns a CHECK target string, or None.
+    global cwd, cvars
+    seg = buf[:]
+    del buf[:]
+    if not seg:
+        return None
+    if seg[0] == "export":
+        seg = seg[1:]
     i = 0
-    while i < len(seg) and "=" in seg[i] and not seg[i].startswith("-"):
+    while i < len(seg) and _ASSIGN.match(seg[i]):
         i += 1
-    if i >= len(seg) or not is_git(seg[i]):
-        continue
+    if i == len(seg):
+        for w in seg:
+            k, v = w.split("=", 1)
+            cvars[k] = expand(v)
+        return None
+    if seg[i] == "cd":
+        args = [w for w in seg[i + 1:] if not w.startswith("-") or w == "-"]
+        cwd = resolve(args[0], cwd) if args else HOME
+        return None
+    if not is_git(seg[i]):
+        return None
     j = i + 1
     c_target = ""
     while j < len(seg) and seg[j].startswith("-"):
         if seg[j] == "-C":
             if j + 1 < len(seg):
-                c_target = seg[j + 1]
+                c_target = resolve(seg[j + 1], cwd)
             j += 2
         elif seg[j] == "-c":
             j += 2
         else:
             j += 1
     if j < len(seg) and seg[j] in WRITE_VERBS:
-        _target = c_target or _cd_target
-        print("CHECK:" + _target); raise SystemExit
+        return c_target or cwd
+    return None
+
+for kind, v in items + [("sep", ";")]:
+    if kind == "word":
+        buf.append(v); continue
+    r = flush()
+    if r is not None:
+        print("CHECK:" + r); raise SystemExit
+    if v == "(":
+        stack.append((cwd, dict(cvars)))
+    elif v == ")" and stack:
+        cwd, cvars = stack.pop()
 
 print("OK")
 ' 2>/dev/null)
