@@ -75,7 +75,7 @@ never succeed.
 > (`<path> ~ <ERE>`, 5.1), not a `check_*` function · a model failure recorded by `run_model` fails the run even if the
 > job swallowed its rc (5.3) · a lock records its owner pid, a dead owner's lock is taken at once and a live owner is a
 > stand-down 75 (5.9h) · a corrupt state file is refused and named, never "start fresh" (5.9e) · a bookmark advances only
-> when the work is done (5.9f). Being built now (5.10): texts retry until confirmed sent; a persistent stand-down texts
+> when the work is done (5.9f). Built 2026-10-29 (5.10): texts retry until confirmed sent; a persistent stand-down texts
 > once; each run checks the other jobs and texts once for one that is not running. Until the re-trace, `job-run.sh`
 > itself and `manual.md` → CRON AND ALARMS are the truth.
 
