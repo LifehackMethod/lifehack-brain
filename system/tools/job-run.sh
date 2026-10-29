@@ -142,16 +142,47 @@ flush_deferred() {
     || echo "[job-run] deferred-queue flush failed or unavailable ($sender) — run result unchanged"
   return 0
 }
-# alert_check <rc> — the alert rule above; called from finish() so every exit path gets it.
+# 5.10(2)(3) test seam: JOB_RUN_NO_WATCH=1 switches OFF the stand-down text and the not-running watch. Honoured ONLY while LIFEHACK_STATE_DIR is set
+# (a throwaway state root), so it can never silence production. launchd never sets either.
+NO_WATCH=0; [ "${JOB_RUN_NO_WATCH:-}" = 1 ] && [ -n "${LIFEHACK_STATE_DIR:-}" ] && NO_WATCH=1
+SD_MULT=2   # 5.10(2): a job is "standing down" once its run of recorded 75s is LONGER than SD_MULT x its interval (one text)
+WATCH_MULT=2   # 5.10(3): a job is "not running" once its last-run is OLDER than WATCH_MULT x its interval (one text)
+fmt_epoch() { date -r "$1" "+%Y-%m-%d %H:%M" 2>/dev/null || date -d "@$1" "+%Y-%m-%d %H:%M"; }
+# standdown_check <record> — 5.10(2). "Continuously 75" is measured by a streak marker, standdown-since (its mtime = the first recorded 75 of the
+# run of 75s). finish() clears it on EVERY other result (0, 2, a failure), so the streak is exactly "the recorded runs since X were all 75".
+# A run that records nothing (--if-overdue "not overdue", --force) neither starts nor extends it. A row that is not `yes` is never texted
+# (an off row stands down by design). Past SD_MULT x INTERVAL: ONE text "<job> stood down since <time>: <reason>" (reason = last-run's);
+# standdown-alerted is written only on a confirmed send (a failed one is retried next run); the next pass sends ONE recovery (alert_check).
+standdown_check() {
+  local since="$STATE/standdown-since" mark="$STATE/standdown-alerted" age reason incident nrc t0
+  [ "$NO_WATCH" = 1 ] && return 0
+  [ "$1" = yes ] && [ "${ENABLED:-}" = yes ] || return 0
+  case "${INTERVAL:-}" in ''|*[!0-9]*) return 0 ;; esac
+  [ -f "$since" ] || { iso_now > "$since"; stamp "$since"; }
+  [ -f "$mark" ] && return 0
+  t0="$(mtime "$since")"; age=$(( $(now_epoch) - t0 ))
+  [ "$age" -gt $(( SD_MULT * INTERVAL )) ] || return 0
+  reason="$(head -1 "$STATE/last-run" 2>/dev/null | sed -E 's/^[^ ]+ rc=[0-9]+ calls=[0-9]+ secs=[0-9]+ model=[^ ]+ ccv=[^ ]+ ?//')"
+  incident="$(now_epoch)"
+  notify "Job standing down: $JOB" "$JOB stood down since $(fmt_epoch "$t0"): ${reason:-no reason recorded}" "job-standdown:$JOB:$incident"; nrc=$?
+  if confirmed_send "$nrc"; then printf '%s rc=75 %s\n' "$(iso_now)" "$incident" > "$mark"; stamp "$mark"
+  else echo "[job-run] stand-down text for $JOB NOT confirmed (notify rc=$nrc): no marker written; retried on the next stood-down run"; fi
+}
+# alert_check <rc> [record] — the alert rule above; called from finish() so every exit path gets it.
 alert_check() {
-  local rc="$1" ls_age="" last_ok="never" mark="$STATE/alerted" nrc
+  local rc="$1" record="${2:-yes}" ls_age="" last_ok="never" mark="$STATE/alerted" nrc smark="$STATE/standdown-alerted"
+  [ "$rc" -eq 75 ] || rm -f "$STATE/standdown-since"   # 5.10(2): any result but 75 ends a run of stand-downs
+  if [ "$rc" -eq 0 ] && [ -f "$smark" ] && [ "$NO_WATCH" != 1 ]; then   # 5.10(2): ONE recovery after a stand-down text
+    notify "Job running again: $JOB" "$JOB is running again · output check passed" "job-standdown-up:$JOB:$(awk '{print $3}' "$smark")" recovery; nrc=$?
+    if confirmed_send "$nrc"; then rm -f "$smark"; else echo "[job-run] stand-down recovery text not confirmed: marker stays, retried on the next passing run"; fi
+  fi
   if [ "$rc" -eq 0 ]; then
     [ -f "$mark" ] || return 0
     notify "Job recovered: $JOB" "$JOB succeeded again · output check passed" "job-up:$JOB:$(awk '{print $3}' "$mark")" recovery; nrc=$?
     if confirmed_send "$nrc"; then rm -f "$mark"; else echo "[job-run] recovery text not confirmed: the alerted marker stays, the recovery is retried on the next passing run"; fi
     return 0
   fi
-  [ "$rc" -eq 75 ] && return 0
+  [ "$rc" -eq 75 ] && { standdown_check "$record"; return 0; }
   case "${INTERVAL:-}" in ''|*[!0-9]*) return 0 ;; esac   # no usable period: nothing to measure against
   [ -f "$mark" ] && return 0
   if [ -f "$STATE/last-success" ]; then
@@ -192,7 +223,7 @@ finish() {
     rm -f "$JOB_RUN_PENDING_LIST"
   fi
   [ -n "$LOCKDIR" ] && rm -rf "$LOCKDIR"
-  if [ "$FORCE" != 1 ]; then flush_deferred; alert_check "$rc"; fi   # --force is a test: it never pushes
+  if [ "$FORCE" != 1 ]; then flush_deferred; alert_check "$rc" "$record"; fi   # --force is a test: it never pushes
   cat "$RUNLOG" >> "$STATE/log"
   awk '/^=== run /{n++} {line[NR]=$0; sec[NR]=n} END{for(i=1;i<=NR;i++) if(sec[i]>n-20) print line[i]}' \
     "$STATE/log" > "$STATE/log.tmp" && mv -f "$STATE/log.tmp" "$STATE/log"

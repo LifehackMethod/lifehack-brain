@@ -74,7 +74,7 @@ BASE = calendar.timegm((2026, 11, 2, 0, 0, 0))   # a Monday, 00:00 UTC
 SEAMS = ["LIFEHACK_FAKE_NOW", "LIFEHACK_STATE_DIR", "LIFEHACK_JOBS_FILE", "LIFEHACK_NOTIFY_LOG",
          "LIFEHACK_JOBS_STATE_DIR", "LIFEHACK_JOBS_MANIFEST", "JOB_RUN_NOTIFY", "JOB_RUN_WATCHDOG",
          "NOTIFY_STATE_FILE", "JOB_SIM_DIR", "SENTINEL_PAUSE_FILE", "LIFEHACK_GWS_BIN", "LIFEHACK_LAST_SEEN_DIR",
-         "LIFEHACK_RUNNER_LOCK_ROOT", "JOB_RUN_PENDING_LIST"]
+         "LIFEHACK_RUNNER_LOCK_ROOT", "JOB_RUN_PENDING_LIST", "JOB_RUN_NO_WATCH"]
 STAND_REASON = "the job's own pre-flight stood down"
 REPAIR = "jobs cannot find the code — open any desk once to repair"
 
@@ -188,7 +188,8 @@ class World:
         e.update(HOME=self.home, TZ="UTC", LIFEHACK_FAKE_NOW=str(t), LIFEHACK_STATE_DIR=self.state,
                  LIFEHACK_JOBS_FILE=self.manifest, LIFEHACK_NOTIFY_LOG=self.nlog,
                  NOTIFY_STATE_FILE=f"{self.dir}/notify-state.json", JOB_SIM_DIR=self.sim,
-                 JOB_RUN_WATCHDOG="1", NTFY_TOPIC="sim-topic", TMPDIR=self.dir)
+                 JOB_RUN_WATCHDOG="1", NTFY_TOPIC="sim-topic", TMPDIR=self.dir,
+                 JOB_RUN_NO_WATCH="1")   # 5.10(2)(3): the stand-down / not-running texts are OFF here (the oracle predates them); their scenarios switch them on
         return e
 
     def sh(self, args, t, extra=None):
@@ -2096,6 +2097,73 @@ def bite_m():
 
 
 BITES.append(("m", "a failed send that wrongly writes the alerted marker", "failed-send-retries", bite_m))
+
+
+# ── 5.10(2): a job that keeps standing down texts ONCE ──
+WATCH_ON = {"JOB_RUN_NO_WATCH": ""}   # the rig's World switches the 5.10(2)/(3) texts OFF by default (the oracle predates them); these scenarios switch them on
+
+
+def notify_lines(w):
+    """The notify log, one (title, message, identity, priority) per line -- exactly what would reach the phone."""
+    out = []
+    for ln in open(w.nlog).read().splitlines():
+        out.append(tuple((ln.split(" | ") + ["", "", "", ""])[:4]))
+    return out
+
+
+def fmt_utc(t):
+    return time.strftime("%Y-%m-%d %H:%M", time.gmtime(t))
+
+
+def standdown_texts_once(jr=None):
+    """5.10(2): a job whose recorded runs are ALL 75 for LONGER than 2 x its interval sends ONE text '<job> stood down since <time>: <reason>'
+    (a failed send is retried, not lost); ONE recovery when it next passes. A shorter streak, a streak broken by any other result, and a row
+    that is off never text."""
+    N, fails = "standdown-texts-once", []
+    w = World([(A, P)]); t0 = BASE + 8 * 3600
+    try:
+        x = dict(WATCH_ON, JOB_RUN_NOTIFY=flaky_notify(w))
+        w.set_mode(A, "standdown")
+        for k in range(3):                                   # +0h +1h +2h: a streak of 2h is not LONGER than 2 x 1h
+            jr_run(w, A, t0 + k * P, x, jr)
+        if notify_lines(w): fails.append(f"{N}: texted at a streak of only 2 x the interval: {notify_lines(w)}")
+        send_fails(w, True); jr_run(w, A, t0 + 3 * P, x, jr)  # +3h: over the line, but the send fails
+        if os.path.exists(w.p(A, "standdown-alerted")): fails.append(f"{N}: a FAILED stand-down send wrote its marker")
+        send_fails(w, False); jr_run(w, A, t0 + 4 * P, x, jr)  # +4h: the retry goes out
+        want = (f"Job standing down: {A}", f"{A} stood down since {fmt_utc(t0)}: {STAND_REASON}")
+        got = [(a, b) for a, b, _c, _d in notify_lines(w)]
+        if got != [want]: fails.append(f"{N}: expected exactly {want}, got {got}")
+        for k in (5, 6): jr_run(w, A, t0 + k * P, x, jr)     # a permanent stand-down texts ONCE, not every run
+        if len(notify_lines(w)) != 1: fails.append(f"{N}: kept texting while still standing down: {len(notify_lines(w))} texts")
+        w.set_mode(A, "ok"); jr_run(w, A, t0 + 7 * P, x, jr)
+        got = [a for a, *_ in notify_lines(w)]
+        if got != [want[0], f"Job running again: {A}"]: fails.append(f"{N}: expected one recovery after the pass: {got}")
+        # a fresh run of 75s that is broken by a transient (rc 2) never reaches 'longer than 2 x'
+        w.set_mode(A, "standdown")
+        for k, m_ in ((8, "standdown"), (9, "standdown"), (10, "transient"), (11, "standdown"), (12, "standdown"), (13, "standdown")):
+            w.set_mode(A, m_); jr_run(w, A, t0 + k * P, x, jr)
+        sd = [a for a, *_ in notify_lines(w) if a.startswith("Job standing down")]   # (the rc 2 itself is a failed run and may text 'Job down': not this item)
+        if len(sd) != 1: fails.append(f"{N}: a streak broken by another result still texted a second stand-down: {[a for a, *_ in notify_lines(w)]}")
+    finally:
+        w.close()
+    w = World([(A, P)])       # a row that is OFF stands down 75 forever by design: never a text
+    try:
+        s = open(w.manifest).read().replace(" | yes | ", " | no | "); open(w.manifest, "w").write(s)
+        for k in range(6): jr_run(w, A, t0 + k * P, WATCH_ON, jr)
+        if notify_lines(w): fails.append(f"{N}: a row that is off texted: {notify_lines(w)}")
+    finally:
+        w.close()
+    return 5, fails, ([], [])
+
+
+NEW_SCENARIOS.append(("standdown-texts-once", standdown_texts_once))
+
+
+def bite_n():
+    return bite_planted([("SD_MULT=2 ", "SD_MULT=999999 ")], standdown_texts_once, "standdown-texts-once")
+
+
+BITES.append(("n", "a permanent 75 that never texts", "standdown-texts-once", bite_n))
 
 
 if "--bite" in sys.argv[1:]:
