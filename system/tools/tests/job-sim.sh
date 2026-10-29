@@ -1983,6 +1983,121 @@ def bite_l():
 BITES.append(("l", "a raw gmail READ in a helper .py beside a clean runner", HELPER_GMAIL_REFUSAL, bite_l))
 
 
+# ───── 5.10: audit fixes -- (1) a failed text keeps trying; (2) a job that keeps standing down texts once; (3) jobs watch each other;
+#        (4) job-run.sh shows the cp / grep errors it used to drop. Scenarios in NEW_SCENARIOS; BITES plant the opposite fault in a COPY of job-run.sh. ─────
+def jr_run(w, job, t, extra=None, jr=None, flavor="cal"):
+    """Run job-run.sh (or a planted copy of it) for one job at fake time t, with extra env. Returns the exit code."""
+    args = ["bash", jr or JR, job] + (["--if-overdue"] if flavor == "login" else [])
+    return subprocess.run(args, env=dict(w.env(t), **(extra or {})), stdin=subprocess.DEVNULL, capture_output=True, text=True).returncode
+
+
+def flaky_notify(w):
+    """A notify stub: exits 1 (a send that failed) while <world>/send-fails exists, else hands over to the REAL notify-send.sh."""
+    p = f"{w.dir}/flaky-notify.sh"
+    open(p, "w").write(f'#!/usr/bin/env bash\nif [ -e "{w.dir}/send-fails" ]; then echo "stub: ntfy unreachable" >&2; exit 1; fi\nexec bash "{NS}" "$@"\n')
+    return p
+
+
+def send_fails(w, on):
+    f = f"{w.dir}/send-fails"
+    if on: open(f, "w").close()
+    elif os.path.exists(f): os.remove(f)
+
+
+def titles(w):
+    return [x[0] for x in w.pushes()]
+
+
+def failed_send_retries(jr=None):
+    """5.10(1): `alerted` is written ONLY on a confirmed send (notify-send rc 0). A failed 'job down' text is logged loudly and retried on the
+    next run; the same for the recovery text; a quiet-hours deferral (the queue delivers it) still counts as sent."""
+    N, fails = "failed-send-retries", []
+    w = World([(A, P)]); t = BASE + 8 * 3600
+    try:
+        x = {"JOB_RUN_NOTIFY": flaky_notify(w)}
+        w.set_mode(A, "fail")
+        send_fails(w, True); jr_run(w, A, t, x, jr)
+        if os.path.exists(w.p(A, "alerted")): fails.append(f"{N}: a FAILED 'job down' send still wrote the alerted marker")
+        if "NOTIFY FAILED" not in w.read(A, "log"): fails.append(f"{N}: the failed send was not logged loudly (no 'NOTIFY FAILED' in the log)")
+        send_fails(w, False); t += P; jr_run(w, A, t, x, jr)
+        if titles(w) != [f"Job down: {A}"]: fails.append(f"{N}: the next run did not retry the down text: {titles(w)}")
+        if not os.path.exists(w.p(A, "alerted")): fails.append(f"{N}: the confirmed retry did not write the alerted marker")
+        t += P; jr_run(w, A, t, x, jr)
+        if len(titles(w)) != 1: fails.append(f"{N}: a third failing run texted again after a confirmed send: {titles(w)}")
+        w.set_mode(A, "ok"); send_fails(w, True); t += P; jr_run(w, A, t, x, jr)
+        if not os.path.exists(w.p(A, "alerted")): fails.append(f"{N}: a FAILED recovery send still removed the alerted marker (the recovery is lost)")
+        send_fails(w, False); t += P; jr_run(w, A, t, x, jr)
+        if titles(w) != [f"Job down: {A}", f"Job recovered: {A}"]: fails.append(f"{N}: the recovery was not retried to a send: {titles(w)}")
+        if os.path.exists(w.p(A, "alerted")): fails.append(f"{N}: the confirmed recovery did not remove the marker")
+        # a quiet-hours deferral counts as sent: the queue delivers it
+        w.set_mode(A, "fail"); t = BASE + DAY + 23 * 3600; jr_run(w, A, t, x, jr)
+        if not os.path.exists(w.p(A, "alerted")): fails.append(f"{N}: a quiet-hours deferral (queued, rc 0) was treated as a failed send")
+        if len(titles(w)) != 2: fails.append(f"{N}: a quiet-hours text reached the phone at 23:00: {titles(w)}")
+        try: queued = len(json.load(open(f"{w.dir}/notify-state.json")).get("deferred", []))
+        except (OSError, ValueError): queued = 0
+        if queued != 1: fails.append(f"{N}: the quiet-hours text was not queued ({queued} queued)")
+        return 6, fails, ([], [])
+    finally:
+        w.close()
+
+
+NEW_SCENARIOS.append(("failed-send-retries", failed_send_retries))
+
+
+def failed_curl_unrecords():
+    """5.10(1): a send the governor ALLOWED but curl then FAILED must not use up the identity's dedup or the daily cap, or the retry is silently
+    swallowed (rc 0 'suppressed') and the text is lost. notify-send.sh un-records it; the same identity is retried to another real attempt."""
+    N, fails = "failed-curl-unrecords", []
+    w = World([(A, P)])
+    try:
+        e = w.env(BASE + 8 * 3600); e.pop("LIFEHACK_NOTIFY_LOG", None); e.update(NTFY_SERVER="http://localhost:9")
+        cmd = ["bash", NS, "--source", f"job-run:{A}", "--title", "t", "--message", "m", "--identity", f"job-down:{A}:1", "--priority", "normal"]
+        r1 = subprocess.run(cmd, env=e, stdin=subprocess.DEVNULL, capture_output=True, text=True)
+        r2 = subprocess.run(cmd, env=e, stdin=subprocess.DEVNULL, capture_output=True, text=True)
+        if r1.returncode != 1: fails.append(f"{N}: a refused connection exited {r1.returncode}, not 1")
+        if r2.returncode != 1: fails.append(f"{N}: the retry of a failed send exited {r2.returncode} (dedup swallowed it), not 1: {r2.stderr.strip()[:120]!r}")
+        return 2, fails, ([], [])
+    finally:
+        w.close()
+
+
+NEW_SCENARIOS.append(("failed-curl-unrecords", failed_curl_unrecords))
+
+
+def mutated_jr(subs):
+    """A throwaway code root whose job-run.sh is the real one with `subs` [(old, new)] applied; everything else is symlinked. -> (path, dir) or (None, why)."""
+    d = tempfile.mkdtemp(prefix="job-sim-bite510.")
+    os.makedirs(f"{d}/system/tools")
+    for n in os.listdir(f"{ROOT}/system/tools"):
+        if n != "job-run.sh": os.symlink(f"{ROOT}/system/tools/{n}", f"{d}/system/tools/{n}")
+    os.symlink(f"{ROOT}/shared", f"{d}/shared")
+    src = open(JR).read()
+    for old, new in subs:
+        if old not in src:
+            shutil.rmtree(d, ignore_errors=True); return None, f"mutation did not apply: {old!r}"
+        src = src.replace(old, new)
+    open(f"{d}/system/tools/job-run.sh", "w").write(src)
+    return f"{d}/system/tools/job-run.sh", d
+
+
+def bite_planted(subs, scenario, name):
+    """Plant a fault in a copy of job-run.sh and return `name` iff the scenario run against the copy reports a miss that carries `name`."""
+    jr, d = mutated_jr(subs)
+    if jr is None: return d
+    try:
+        _n, fails, _x = scenario(jr)
+        return name if any(f.startswith(name) for f in fails) else None
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def bite_m():
+    return bite_planted([("confirmed_send() { [ \"$1\" -eq 0 ]; }", "confirmed_send() { return 0; }")], failed_send_retries, "failed-send-retries")
+
+
+BITES.append(("m", "a failed send that wrongly writes the alerted marker", "failed-send-retries", bite_m))
+
+
 if "--bite" in sys.argv[1:]:
     sys.exit(bite_main())
 sys.exit(main())

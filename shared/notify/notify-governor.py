@@ -186,11 +186,37 @@ def queue_deferred(args):
     return 0
 
 
+def unrecord(args):
+    """--unrecord <source> <identity-or-message> -- called by notify-send.sh ONLY when the gate said ALLOW (and recorded the send) but the
+    delivery then FAILED (5.10(1)). A send that never reached the phone must not use up its dedup identity or the daily cap, or the retry
+    would be suppressed as 'duplicate' / 'cap' and the text lost for good. Removes the newest matching record; no match is fine."""
+    if len(args) < 2:
+        return 2
+    msg_hash = hashlib.sha256(f"{args[0].strip().lower()}\x00{args[1]}".encode()).hexdigest()
+    lock = open(STATE + ".lock", "w")
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        state = load_state()
+        sent = state.get("sent", [])
+        for i in range(len(sent) - 1, -1, -1):
+            if sent[i].get("hash") == msg_hash:
+                del sent[i]
+                state["sent"] = sent
+                save_state(state)
+                break
+    finally:
+        fcntl.flock(lock, fcntl.LOCK_UN)
+        lock.close()
+    return 0
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--flush-deferred":
         return flush_deferred()
     if len(sys.argv) > 1 and sys.argv[1] == "--queue-deferred":
         return queue_deferred(sys.argv[2:])
+    if len(sys.argv) > 1 and sys.argv[1] == "--unrecord":
+        return unrecord(sys.argv[2:])
     if len(sys.argv) < 3:
         sys.stderr.write("usage: notify-governor.py <source> <message> [priority] [identity]\n"
                           "       notify-governor.py --flush-deferred\n")

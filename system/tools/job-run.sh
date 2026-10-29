@@ -36,7 +36,8 @@
 # ALERT RULE (§A, "two misses"): a FAILED run (not 0, not 75; 2 counts) pushes ONCE when last-success
 # is missing or at least 2 x INTERVAL old (2.5d: the 2nd consecutive miss, same instant health_line.py says "overdue"), then drops the `alerted` marker so later failures stay quiet.
 # The next success pushes ONE recovery and removes the marker. A push that fails never changes the exit
-# code. Sent through shared/notify/notify-send.sh (its governor owns quiet hours and dedup);
+# code. 5.10(1): `alerted` is written ONLY on a confirmed send (notify-send rc 0; a quiet-hours deferral is rc 0 and counts); a failed send is
+# logged loudly and retried on the next run, recovery included. Sent through shared/notify/notify-send.sh (its governor owns quiet hours and dedup);
 # JOB_RUN_NOTIFY overrides the path, for tests.
 #
 # --if-overdue: run only if last-success is older than one period minus a 10% grace (capped at
@@ -117,15 +118,20 @@ claude_version_short() {
   v="$(head -1 "$tmp" | awk '{print $1}')"; rm -f "$tmp"
   echo "${v:-unknown}"
 }
-# notify <title> <message> <identity> [priority] — fail-soft: one log line on failure, never touches the exit code.
+# notify <title> <message> <identity> [priority] — returns notify-send's exit code (5.10(1)): the caller writes its marker ONLY on a confirmed
+# send. A failure is logged LOUDLY and never touches the run's exit code; the caller leaves the marker unwritten so the next run retries.
 notify() {
-  local sender="${JOB_RUN_NOTIFY:-$CODE_ROOT/shared/notify/notify-send.sh}" prio="${4:-normal}"
+  local sender="${JOB_RUN_NOTIFY:-$CODE_ROOT/shared/notify/notify-send.sh}" prio="${4:-normal}" nrc
   # 2.5b: source is per job ("job-run:<job>") so the governor's cap of 3/day applies to each job; a
   # recovery goes out as priority "recovery" (cap-exempt; still respects quiet hours and dedup).
-  bash "$sender" --source "job-run:$JOB" --title "$1" --message "$2" --identity "$3" --priority "$prio" --tags warning \
-    || echo "[job-run] notify failed or unavailable ($sender) — run result unchanged"
-  return 0
+  bash "$sender" --source "job-run:$JOB" --title "$1" --message "$2" --identity "$3" --priority "$prio" --tags warning; nrc=$?
+  [ "$nrc" -eq 0 ] || echo "[job-run] NOTIFY FAILED (rc=$nrc, $sender): the text '$1' was NOT delivered -- it will be retried on the next run; run result unchanged"
+  return "$nrc"
 }
+# confirmed_send <notify rc> — the ONE definition of "the text went out": notify-send exit 0 = sent, OR suppressed by the governor (dedup/cap:
+# correct permanent drops), OR queued for quiet hours (the queue delivers it). Anything else (1 failed, 2 setup, 3 corrupt state, 127 missing)
+# is NOT a send.
+confirmed_send() { [ "$1" -eq 0 ]; }
 # flush_deferred — 2.5a: every run of any job replays the governor's quiet-hours queue. The governor only
 # releases items once quiet hours (22-07) are over and drops any older than 18 h, so "the first run after
 # 07:00 delivers last night's text". Cheap (one python start), fail-soft, never touches the exit code.
@@ -138,11 +144,11 @@ flush_deferred() {
 }
 # alert_check <rc> — the alert rule above; called from finish() so every exit path gets it.
 alert_check() {
-  local rc="$1" ls_age="" last_ok="never" mark="$STATE/alerted"
+  local rc="$1" ls_age="" last_ok="never" mark="$STATE/alerted" nrc
   if [ "$rc" -eq 0 ]; then
     [ -f "$mark" ] || return 0
-    notify "Job recovered: $JOB" "$JOB succeeded again · output check passed" "job-up:$JOB:$(awk '{print $3}' "$mark")" recovery
-    rm -f "$mark"
+    notify "Job recovered: $JOB" "$JOB succeeded again · output check passed" "job-up:$JOB:$(awk '{print $3}' "$mark")" recovery; nrc=$?
+    if confirmed_send "$nrc"; then rm -f "$mark"; else echo "[job-run] recovery text not confirmed: the alerted marker stays, the recovery is retried on the next passing run"; fi
     return 0
   fi
   [ "$rc" -eq 75 ] && return 0
@@ -156,9 +162,14 @@ alert_check() {
   # The identity carries this incident's id: the marker already dedups within an incident, and the
   # governor's 24 h identity dedup must not swallow the NEXT incident (e.g. a real failure hours after a test).
   local incident; incident="$(now_epoch)"
-  notify "Job down: $JOB" "exit $rc · last success $last_ok · next: open any desk; the first line names it, the error is in ~/.config/lifehack/state/jobs/$JOB/errors/" "job-down:$JOB:$incident"
-  printf '%s rc=%s %s\n' "$(iso_now)" "$rc" "$incident" > "$mark"
-  stamp "$mark"
+  notify "Job down: $JOB" "exit $rc · last success $last_ok · next: open any desk; the first line names it, the error is in ~/.config/lifehack/state/jobs/$JOB/errors/" "job-down:$JOB:$incident"; nrc=$?
+  # 5.10(1): the marker is written ONLY on a confirmed send. A failed send leaves it unwritten, so the next failing run tries again.
+  if confirmed_send "$nrc"; then
+    printf '%s rc=%s %s\n' "$(iso_now)" "$rc" "$incident" > "$mark"
+    stamp "$mark"
+  else
+    echo "[job-run] down text for $JOB NOT confirmed (notify rc=$nrc): no alerted marker written; retried on the next failing run"
+  fi
 }
 finish() {
   local rc="$1" reason="$2" record="${3:-yes}"

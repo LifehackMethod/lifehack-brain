@@ -19,7 +19,8 @@
 #                  [--title <title>] [--tags <tag1,tag2>]
 #
 # Exit 0  = sent (or deliberately SUPPRESSED by the governor — not an error).
-# Exit 1  = send attempted but FAILED (network/curl), or a quiet-hours alert could not be queued.
+# Exit 1  = send attempted but FAILED (network/curl), or a quiet-hours alert could not be queued. A failed curl is un-recorded in the governor (5.10(1)) so a retry is not deduped.
+#           job-run.sh treats ONLY exit 0 as a confirmed send: 0 = sent, OR suppressed by the gate, OR queued for quiet hours (the queue delivers it).
 # Exit 3  = the governor's state file is CORRUPT (5.9(e)): named on stderr, and the one alarm about it is still pushed.
 # Exit 2  = setup/usage error (no topic configured, bad args).
 #
@@ -169,5 +170,9 @@ if curl -sS --max-time 10 "${HDRS[@]}" -d "$MESSAGE" "$SERVER/$TOPIC" >/dev/null
 else
   err="$(cat "$_TMP/notify-curl.$$" 2>/dev/null)"; rm -f "$_TMP/notify-curl.$$"
   echo "notify-send: SEND FAILED — ${err:-curl error}" >&2
+  # 5.10(1): the governor already RECORDED this send (dedup identity + daily cap). It never reached the phone, so take the record back --
+  # otherwise the caller's retry is suppressed as a duplicate (exit 0) and the text is lost. Best-effort; a failure here is only named.
+  python3 "$GOVERNOR" --unrecord "$SOURCE" "${IDENTITY:-$MESSAGE}" >/dev/null 2>&1 \
+    || echo "notify-send: could not un-record the failed send; a retry may be suppressed as a duplicate" >&2
   exit 1
 fi
