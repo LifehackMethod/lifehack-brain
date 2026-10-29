@@ -19,7 +19,7 @@ generated_from:
   - system/tools/system-health.py
   - agents/sentinel.md
   - system/reference/settings.json
-  - system/pulse-config.md
+  - system/jobs.md
 created_at: 2026-07-23
 updated_at: 2026-07-23
 status: active
@@ -80,7 +80,7 @@ describing the invariant, not enforcement code).
 
 **T3 — Pulse tile recompute (periodic twin, sentinel-health.py)**
 `system/tools/sentinel-health-run.sh` → `sentinel-health.py`. Pulse slot named `sentinel-health`,
-registered in `system/pulse-config.md:147` [line corrected 2026-08-27, lb2-ops-comms.md claim 89 — content
+registered in `system/jobs.md:147` [line corrected 2026-08-27, lb2-ops-comms.md claim 89 — content
 (slot exists, interval 1800s) confirmed TRUE, the cited line was off by ~144 lines] with a poll interval of ~1800s (how often Pulse runs the
 slot). The tile itself carries `stale_after_s=86400` (24h freshness window, set by
 `sentinel-health.py:84` in the `emit_status()` call). Reads the
@@ -379,7 +379,7 @@ compact and readable.
 `system/tools/ingest-run.lib.sh` (ingest_sentinel_check + ingest_check_paused) ·
 `system/tools/sentinel-health.py` · `system/tools/sentinel-health-run.sh` ·
 `system/tools/security-health.py` · `system/tools/system-health.py:567` · `agents/sentinel.md` ·
-`system/reference/settings.json` · `system/pulse-config.md`.
+`system/reference/settings.json` · `system/jobs.md`.
 
 ---
 
@@ -555,7 +555,7 @@ Source: `ingest-run.lib.sh:260`.
 The Helm Security tab tile (`_security.json`) is only refreshed when `system-health.py` sweeps.
 `security-health.py` has `emit_mode: "manual"` (`security-health.py:192`) and no `stale_after_s`
 watcher. If `system-health.py` degrades, the Security tab can go stale with no freshness guard or
-alert. Source: `system/tools/security-health.py:192`; `system/pulse-config.md` (no
+alert. Source: `system/tools/security-health.py:192`; `system/jobs.md` (no
 security-health Pulse entry).
 
 **GAP-4: ~~Monthly security-audit LaunchAgent is retired — audit runs manually only.~~ ✅ NOT A GAP —

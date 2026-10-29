@@ -13,7 +13,7 @@ generated_from:
   - system/tools/system-health-run.sh
   - system/tools/health-deadman-check.sh
   - system/tools/marc-deadman.py
-  - system/pulse-config.md (system-health Pulse slot; launchd manifest)
+  - system/jobs.md (system-health Pulse slot; launchd manifest)
   - system/tools/planning-health.py
   - system/tools/marc-health.py
   - system/tools/clair-health.py
@@ -115,7 +115,7 @@ happens to write there — see the corrected point below on `state/primary-machi
 this fabrication.
 
 **Input sources (read by the sweeper each run):**
-- `system/pulse-config.md` — authoritative job list (enabled flag, interval, command); parsed from
+- `system/jobs.md` — authoritative job list (enabled flag, interval, command); parsed from
   the ` ```jobs ` block (`system-health.py:181–195`). Code-resident (clone), not Drive, so a fix in
   the clone is picked up immediately without a Drive sync.
 - `state/status/_pulse-*.json` — machine-namespaced heartbeat files; sweeper takes `max(last_tick)`
@@ -141,7 +141,7 @@ this fabrication.
 |---|---|
 | `EXPECTED-ABSENT` | job pinned to hardware only one machine has + lead ≠ that machine |
 | `PAUSED-BY-SENTINEL` | source name is in the sentinel-paused-sources list |
-| `PAUSED` | `enabled: no` in pulse-config |
+| `PAUSED` | `enabled: no` in system/jobs.md |
 | `DOWN` | circuit-broken (`disabled: true` in heartbeat — set by Pulse's circuit breaker after MAX_FAILURES consecutive fails; `consecutive_fails` is a count stored alongside, not the trigger) |
 | `LATE` | never ticked OR now − last_tick > interval + grace (grace = max(600, interval × 0.5)) |
 | `STALE` | job ticked on time BUT its status tile is older than `stale_after_s` |
@@ -290,7 +290,7 @@ state for hardware-pinned jobs). UNVERIFIED whether a planned suppression exists
 
 `health_invariants.py:168–193`
 
-Parses `system/pulse-config.md` for all `enabled: yes` jobs. Compares against the
+Parses `system/jobs.md` for all `enabled: yes` jobs. Compares against the
 `assessed_jobs` set passed in by the sweeper. Any enabled job the sweeper never assessed =
 `masking-by-omission`. FAIL LOUD.
 
@@ -309,7 +309,7 @@ refreshing and the board shows a stale tile — but the system cannot tell you i
 cannot watch itself from inside Pulse.
 
 **Scheduler:** launchd `ai.lifehack.health-deadman` (second-machine-only, every 900s / 15 min). Registered
-in `system/pulse-config.md` launchd manifest (`pulse-config.md:347`). Script: `system/tools/health-deadman-check.sh`.
+in `system/jobs.md` launchd manifest (`jobs.md:347`). Script: `system/tools/health-deadman-check.sh`.
 > **⚠ CORRECTED 2026-08-27, lb2-ops-comms.md claim 17 — wrong FOR THIS MACHINE.** `crontab -l` on this
 > machine shows `health-deadman-check.sh` actually run via **cron, hourly** (`17 * * * *`), not launchd,
 > and not every 15 min. The `THRESHOLD=2700` (45 min) value itself is confirmed verbatim in the live
@@ -336,7 +336,7 @@ is a wake-me event). The notify-governor deduplicates so a persisting wedge buzz
 every 15 min.
 
 This watcher is NEVER in a Pulse slot BY DESIGN: a Pulse-dispatched version would die with the very
-thing it watches (`pulse-config.md:365`).
+thing it watches (`jobs.md:365`).
 
 ---
 
@@ -373,7 +373,7 @@ heartbeat is > 28h stale (`THRESH_H = 28`, `marc-deadman.py:12`), fires one `cri
 so the non-lead can catch the lead going dark — the heartbeat is Drive-synced, so any machine reads
 the last-known stamp." Double-buzz is collapsed by notify-governor's 1h critical-dedup.
 
-**Scheduler:** Pulse slot `marc-deadman`, every 10800s (3h), `pulse-config.md:200`.
+**Scheduler:** Pulse slot `marc-deadman`, every 10800s (3h), `jobs.md:200`.
 
 ---
 
@@ -433,7 +433,7 @@ mechanism exists in the current code. UNVERIFIED whether a planned fix is in the
 
 **GAP-3: `health-deadman-check.sh` launchd plist template is absent from the clone.**
 `system/templates/launchd/ai.lifehack.health-deadman.plist` does not exist (confirmed 2026-07-24).
-The pulse-config.md launchd manifest (`pulse-config.md:347`) lists `ai.lifehack.health-deadman |
+The jobs.md launchd manifest (`jobs.md:347`) lists `ai.lifehack.health-deadman |
 <machine> | ai.lifehack.health-deadman.plist` but the plist template is not in the clone. Whether it is
 installed on the second machine locally is UNVERIFIED from this machine. The script
 (`health-deadman-check.sh`) IS clone-resident and canonical — only the installer artifact is missing

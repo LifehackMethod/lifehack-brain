@@ -57,7 +57,7 @@ are run.
   READ adapter) reads from; see `system/schemas/email-summary-schema.md` for the full store
   contract. Second: **this repo does have a scheduler** — `system/tools/pulse.sh` (the heartbeat
   daemon) and `system/tools/install-schedulers.sh` (the OS-scheduler installer) both ship, and
-  `system/pulse-config.md` carries a real `email-summary-write` row (10800s) that calls the
+  `system/jobs.md` carries a real `email-summary-write` row (10800s) that calls the
   janitor. On a fresh install, before `install-schedulers.sh` has been run on a machine, or
   before a Google account is connected, every email read still returns `MISS-NEW` ("no record
   for this thread") — that remains the correct, by-design state of an unpopulated store, never a

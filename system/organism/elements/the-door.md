@@ -10,7 +10,7 @@ generated_from:
   - system/tools/shared-fetch-allowlist.txt
   - system/tools/vendor-read-allowlist.txt
   - system/tools/model.lib.sh
-  - system/pulse-config.md (```jobs block)
+  - system/jobs.md (```jobs block)
   - system/tools/tests/job-sim.sh
 created_at: 2026-10-29
 updated_at: 2026-10-29

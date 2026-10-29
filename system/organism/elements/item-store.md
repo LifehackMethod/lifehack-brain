@@ -15,7 +15,7 @@ generated_from:
   - shared/tools/hitl_note_store.py
   - system/tools/item-store-freshness-run.sh
   - system/hooks/ingest_gate_enforce.sh
-  - system/pulse-config.md
+  - system/jobs.md
 created_at: 2026-07-24
 updated_at: 2026-07-24
 status: draft
@@ -115,7 +115,7 @@ factory functions that stamp the correct keys; the sync writers call these — n
 ### WRITERS: HOW THE STORE IS POPULATED
 
 Two independent Pulse-dispatched sync scripts, both ~~primary-machine-gated~~, both running at ~~6-hour
-cadence (`21600 s`~~ **24-hour cadence (`86400 s`)** in `system/pulse-config.md`.
+cadence (`21600 s`~~ **24-hour cadence (`86400 s`)** in `system/jobs.md`.
 > **⚠ CORRECTED 2026-08-27, lb2-ops-comms.md claim 76 — two separate stale claims here.** The cadence is
 > 86400s (24h) for both `tasks-store-sync` and `calendar-store-sync`, not 21600s (6h) — the same stale
 > figure was independently found in `grand-central.md`. Separately, "primary-machine-gated" is also

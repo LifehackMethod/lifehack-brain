@@ -23,7 +23,7 @@ generated_from:
   - system/tools/archivist-deepmine-run.sh
   - system/tools/archivist-lean.py
   - system/tools/archivist-placements.py
-  - system/pulse-config.md (lines 254–268)
+  - system/jobs.md (lines 254–268)
   - system/reference/settings.json (hooks: guard_write_paths · guard_canon_write · guard_organism_map · nudge_flow_drift · validate_on_write · enforce_skill_frontmatter · observability_logger)
 created_at: 2026-07-23
 updated_at: 2026-07-23
@@ -92,8 +92,8 @@ Three distinct trigger paths, all converging on the same read-only, propose-only
 
 **T1 — Weekly cron (structural audit)**
 Pulse fires `archivist-audit-run.sh` every 604 800 s (~7 days). Registered in
-`system/pulse-config.md` line 208 as `archivist-audit | yes | 604800`. The `yes`
-column means `enabled: yes to run` (pulse-config.md line 20). Effective cadence: weekly.
+`system/jobs.md` line 208 as `archivist-audit | yes | 604800`. The `yes`
+column means `enabled: yes to run` (jobs.md line 20). Effective cadence: weekly.
 There is no machine gate on the run — `archivist-run.lib.sh` line 17 records that the donor's
 lead-machine gate (`require_primary`, `machine-token.sh`) was DROPPED, not translated, because
 this system has one machine (`docs/data-layout.md` line 214).
@@ -121,7 +121,7 @@ Any of the four live skills called directly in a main session:
 **T4 — INERT (archivist-autoplace)**
 ⛔ `skills/archivist-autoplace/SKILL.md` is RETIRED (2026-06-29; header: "RETIRED — DO NOT
 REGISTER") and gone from disk — deleted in the 2026-07-28 S2.4 retirement sweep, confirmed absent here. `system/tools/archivist-autoplace-run.sh` exists in the clone but is NOT
-registered in `pulse-config.md`. Both are dead code. The autonomy leg (PHASE 2b of the
+registered in `jobs.md`. Both are dead code. The autonomy leg (PHASE 2b of the
 original archivist-rebuild plan) never shipped to production.
 
 ---
@@ -390,7 +390,7 @@ It never writes durable content directly (canon, records, briefs, CLAUDE.md laye
 The ONE exception is `system/canon-purpose-map.md` — the territory-map index the Archivist
 itself owns and must regenerate on every full walk.
 
-**Current state → PARTIAL (with documented gaps):** cron jobs were LIVE (pulse-config.md
+**Current state → PARTIAL (with documented gaps):** cron jobs were LIVE (jobs.md
 lines 254 + 262: "✅ LIVE 2026-06-10") but status tile now shows audit=ERROR (2026-07-21)
 and deepmine=ERROR (2026-07-20). Interactive skills work. ~~Propose-only boundary is enforced
 by `guard_canon_write.sh` + `guard_write_paths.sh` on Write/Edit tool calls~~ **CORRECTED 2026-08-24:**
@@ -414,14 +414,14 @@ and prior-findings sweeps):**
    SKILL.md exclusively. Deferred to archivist-cluster cleanup session.
 
 2. **Zombie runner (VD-1 / C-04):** ⛔ `skills/archivist-autoplace/SKILL.md` is lifecycle=retired and confirmed gone from disk;
-   `system/tools/archivist-autoplace-run.sh` is NOT registered in pulse-config.md and carries
-   no `lifecycle=active` field — its header says "NOT YET REGISTERED in system/pulse-config.md
+   `system/tools/archivist-autoplace-run.sh` is NOT registered in jobs.md and carries
+   no `lifecycle=active` field — its header says "NOT YET REGISTERED in system/jobs.md
    — INERT." The runner has write power with no governing spec and no callers. Fix (scope.md
    §GROUND-3): delete the zombie runner. Deferred.
 
 3. **Retired-archivist-review callers (~10 refs — DIV-3):** `archivist-review` was retired
    2026-07-11 but ~10 files (the four archivist skills, `docs/architecture.md`,
-   `docs/skill-conformance.md`, `system/knowledge-altitude.md`, `system/pulse-config.md`,
+   `docs/skill-conformance.md`, `system/knowledge-altitude.md`, `system/jobs.md`,
    and others) still name it as their handoff step. These are mis-pointed in live code.
 
 4. **archivist-audit cron status (DIV-4):** last confirmed log is
@@ -472,7 +472,7 @@ READS       canon-audit       · canon-audit reads system/canon-purpose-map.md f
 READS       archivist-declutter · declutter reads $DRIVE/system/archivist/home-intents.md for per-home admission bars before each line-level pass
 WRITES->    helm              · archivist-run.lib.sh _write_tile() writes $DRIVE/state/status/archivist.json after each run (audit + deepmine sub-keys); archivist-lean.py + archivist-placements.py also write sub-keys via system-health sweep; Helm reads the tile
 FEEDS       helm              · archivist-placements.py reads $DRIVE/state/archivist/autoplace-ledger.md to populate recent_placements[] in archivist.json (data stale — autoplace retired)
-TRIGGERS    pulse-cron        · pulse-cron (*/5) fires archivist-audit-run.sh + archivist-deepmine-run.sh on their registered intervals via pulse-config.md
+TRIGGERS    pulse-cron        · pulse-cron (*/5) fires archivist-audit-run.sh + archivist-deepmine-run.sh on their registered intervals via jobs.md
 CHAINS      archivist-route   · deepmine synthesis chains into archivist-route to rank homes for each promotable insight before writing the proposal; route reads the territory map (canon-purpose-map.md) only — it does NOT read home-intents.md
 COMPLEMENTS save              · archivist is the scanner (DETECT + PROPOSE); /save is the writer (EXECUTE + GATE); they are the two halves of the knowledge-health loop
 GUARDED-BY  guard-write-paths · guard_write_paths.sh PreToolUse Write|Edit blocks out-of-bounds writes (with Bash bypass — see GAPS)
@@ -554,7 +554,7 @@ per-run BODY-CAP exists (logged as tech-debt)." That body-cap does not exist in 
 ## AUTO-COMPUTED   (machine-only — hand-set at authoring; the F1.5 checker will own this once built)
 
 - **maturity_label:** PARTIAL·gap
-- **check_detail:** LIVE: both cron jobs registered in pulse-config.md (✅ 2026-06-10) and
+- **check_detail:** LIVE: both cron jobs registered in jobs.md (✅ 2026-06-10) and
   proven running; interactive skills work; ~~propose-only boundary enforced by
   `guard_canon_write.sh` (PreToolUse Write|Edit → blocks non-`authority:user` /canon/ writes,
   BLOCKING exit 2)~~ **CORRECTED 2026-08-24: `guard_canon_write.sh` blocks only oversized (>3,200

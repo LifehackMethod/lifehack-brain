@@ -10,7 +10,7 @@ generated_from:
   - system/hooks/session_context_loader.sh
   - system/hooks/tests/test_session_context_loader.sh
   - system/tools/job-run.sh
-  - system/pulse-config.md (```jobs block)
+  - system/jobs.md (```jobs block)
 created_at: 2026-10-27
 updated_at: 2026-10-27
 status: active
@@ -32,7 +32,7 @@ line. Rewritten 2026-10-27 (task 2.1) from a ~940-line findings/ledger banner; t
 history (`health_line.py:22-24`). Measured: `jobs: 1 OK` in 0.01 s against the real state, inside the
 plan's < 200 ms budget (the Drive read it replaced took a median of 9 s).
 
-**Inputs.** The ENABLED rows of the ```jobs block in `system/pulse-config.md` (name, period = third
+**Inputs.** The ENABLED rows of the ```jobs block in `system/jobs.md` (name, period = third
 column, seconds; `#` rows and non-numeric periods skipped; `health_line.py:35-55`) and each job's folder
 under `~/.config/lifehack/state/jobs/` (`:130`).
 

@@ -111,7 +111,7 @@ gate scripts (`shared/gate/sentinel_response.py`, `shared/gate/sentinel_ack.py`)
 mechanism, and the review is a thing you do, not a thing you run. No automated schedule for THIS
 review either — ⚠ CORRECTED 2026-08-15: this used to say the repo has no scheduler at all, which
 is no longer true (`system/tools/pulse.sh` is real and several jobs run on it); it is specifically
-this review that has no `pulse-config.md` row, so its trigger stays manual by construction.
+this review that has no `jobs.md` row, so its trigger stays manual by construction.
 ⚠ The event log is written under YOUR NOTES ROOT, not into this repository — `sentinel_response.py:52`
 resolves it as `{notes root}/system/logs/sentinel-events.jsonl` (falling back to
 `~/.cache/lifehack-sentinel` when no root is set). It is a record of your own traffic and must never be

@@ -13,7 +13,7 @@ generated_from:
   - shared/notify/notify-send.sh
   - shared/notify/notify-governor.py
   - system/tools/tests/job-sim.sh
-  - system/pulse-config.md (```jobs block)
+  - system/jobs.md (```jobs block)
 created_at: 2026-10-27
 updated_at: 2026-10-27
 status: active

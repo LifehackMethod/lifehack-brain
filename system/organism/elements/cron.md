@@ -13,7 +13,7 @@ generated_from:
   - system/tools/job-run.sh
   - system/hooks/session_context_loader.sh
   - system/tools/pulse.sh
-  - system/pulse-config.md (```jobs + ```crontab blocks)
+  - system/jobs.md (```jobs + ```crontab blocks)
   - "git: 0088c24 (3.1: pulse.sh, pulse-park.sh and the crontab block KEPT for non-Mac installs)"
 created_at: 2026-07-23
 updated_at: 2026-10-27
@@ -23,7 +23,7 @@ authority: user
 
 > **RENAMED 2026-10-29 from `cron.md` (operator's ruling).** This element is **CRON**: Bekim's "scheduled
 > execution" component — launchd, the code-root pointer, `job-run.sh`, the job list and the door. "Pulse" survives
-> only as the Linux/Windows scheduler (`pulse.sh`) and in file names (`pulse-config.md`). Sibling: `alarms.md` (how
+> only as the Linux/Windows scheduler (`pulse.sh`) and in file names (`jobs.md`). Sibling: `alarms.md` (how
 > you hear a job broke). The row contract, the door, `run_model` and the shared scanned reader are described in
 > `manual.md` → CRON AND ALARMS.
 
@@ -34,7 +34,7 @@ authority: user
 >
 > **LADDER: ELEMENT. up -> manual#pulse-cron ; siblings -> `job-run.md`, `code-root.md`,
 > `health-line.md`, `alarms.md` ; ground truth -> `system/tools/install-schedulers.sh` +
-> `system/pulse-config.md`.**
+> `system/jobs.md`.**
 
 ## Superseded 2026-10-27 - what it WAS
 
@@ -47,8 +47,8 @@ authority: user
 
 ## One manifest, two schedulers
 
-Both read the same file, the ```jobs block of `system/pulse-config.md` (rows `name | enabled | interval
-seconds | command`; `system/pulse-config.md:146-147`). Which mechanism acts depends on the OS, decided in
+Both read the same file, the ```jobs block of `system/jobs.md` (rows `name | enabled | interval
+seconds | command`; `system/jobs.md:146-147`). Which mechanism acts depends on the OS, decided in
 `install-schedulers.sh:107-118` (Darwin = mac, Linux = linux, anything else = windows).
 
 ### macOS: launchd, one agent per enabled job
@@ -78,7 +78,7 @@ seconds | command`; `system/pulse-config.md:146-147`). Which mechanism acts depe
 ### Linux and Windows: pulse.sh plus the crontab block (kept)
 
 - `pulse.sh` is unchanged and still the dispatcher there: a `pulse` row in the ```crontab block
-  (`system/pulse-config.md:379`, `*/5 * * * *`, with a PATH prefix) runs `system/tools/pulse.sh` every 5
+  (`system/jobs.md:379`, `*/5 * * * *`, with a PATH prefix) runs `system/tools/pulse.sh` every 5
   minutes on Linux; on Windows `install_windows` registers a Task Scheduler task that launches Git Bash
   against `pulse.sh` (`install-schedulers.sh:409`, `:356-362`).
 - Pulse reads the same `jobs` block, runs jobs that are due, holds a failing job behind a circuit

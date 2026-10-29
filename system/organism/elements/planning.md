@@ -14,7 +14,7 @@ generated_from:
   - system/tools/planning-diary-run.sh · system/tools/planning-diary-capture.py (the diary, scheduled)
   - system/hooks/guard_calendar_writes.sh · system/hooks/guard_tasks_writes.sh · system/hooks/lib/tasks_guard.py
   - shared/cal_config.py (the four identifiers, and why none of them has a default)
-  - system/pulse-config.md (the scheduler manifest — the jobs block read row by row)
+  - system/jobs.md (the scheduler manifest — the jobs block read row by row)
   - system/tools/organism/label_manifest.yaml (the two guards' fire-test fixtures)
   - .claude/settings.json (hook registrations — grep-verified, 2026-08-15)
 created_at: 2026-08-15
@@ -80,7 +80,7 @@ this explicitly).
 |---|---|---|
 | the daily cadence | `.claude/skills/planning-daily/SKILL.md` (+ 11 prompt beats + 3 references) | ships · Layer 1 verified end to end · Layer 2 unproven here |
 | the weekly cadence | `.claude/skills/planning-weekly/SKILL.md` (+ ANCHOR + 17 prompt beats + 4 map-agents + 9 leverage angles + 6 council members) | ships · **UNDER CONSTRUCTION, never run end to end here** |
-| the mid-week map priming cron | `system/tools/planning-weekly-prime-run.sh` + its row in `system/pulse-config.md` | ships · scheduled · never LIVE-fired end to end |
+| the mid-week map priming cron | `system/tools/planning-weekly-prime-run.sh` + its row in `system/jobs.md` | ships · scheduled · never LIVE-fired end to end |
 | the diary (capture + rollups) | `system/tools/planning-diary-capture.py` · `system/tools/planning-diary-rollup.py` · `system/tools/planning-diary-run.sh` | ships · scheduled (one row drives five cadences) |
 | the read-only calendar health check | `system/tools/planning-health.py` | ships · scheduled · no `*-run.sh` wrapper (no lock, no buzz) |
 | the overnight raw-vault pull | `system/tools/planning-vault-run.sh` → `system/tools/planning-vault-pull.py` | ships · **NO scheduler row** — see GAPS |
@@ -214,7 +214,7 @@ is the ASSUMPTION, never the SCHEDULE.** The superseded text is struck in place,
 
 ### THE SCHEDULED LEG — one row carries the new name, three runners carry none
 
-`system/tools/planning-weekly-prime-run.sh` has a row in `system/pulse-config.md`'s jobs block and is
+`system/tools/planning-weekly-prime-run.sh` has a row in `system/jobs.md`'s jobs block and is
 dispatched by `system/tools/pulse.sh`. It ticks **daily** even though its work is weekly, because its
 own cadence guard (a Thursday window with Friday/Saturday catch-up, ISO-week-idempotent on the mere
 existence of `map.md`) needs a daily check to catch the window at all.
@@ -388,7 +388,7 @@ GUARDED-BY   hook-plane            · guard_calendar_writes.sh (agent calendar o
                                      carve-out, delete/clear never) — both registered PreToolUse/Bash and
                                      both fire-tested LIVE [hook]
 
-TRIGGERS     pulse-cron            · system/pulse-config.md carries planning-weekly-prime (daily tick, weekly
+TRIGGERS     pulse-cron            · system/jobs.md carries planning-weekly-prime (daily tick, weekly
                                      work), planning-diary (one row driving five cadences) and
                                      planning-health; planning-vault / planning-vault-weekly /
                                      planning-analyze have NO row — see GAPS [skill]
@@ -429,7 +429,7 @@ PROPOSES     backlog-authority     · the weekly's ranked output and the daily's
 
 1. ⛔ **THREE RUNNERS HAVE NO SCHEDULER ROW** — `system/tools/planning-vault-run.sh`,
    `system/tools/planning-vault-weekly-run.sh`, `system/tools/planning-analyze-run.sh`. Verified this
-   session by reading the whole jobs block in `system/pulse-config.md`. `planning-vault-run.sh` names its own
+   session by reading the whole jobs block in `system/jobs.md`. `planning-vault-run.sh` names its own
    absence in its header (*"this runner specifically has no row there yet"*). **Blast radius:** the
    "overnight vault" the daily's Layer 2 is written around never gets built unattended. Mitigated,
    not closed — the daily pulls live when no vault exists. **Disposition: unruled.**
@@ -514,7 +514,7 @@ runners have no scheduler row. `·gap` for the MCP bypass in GAPS #3. `(honor)` 
 `[provisional]` because this file is newly authored and has not been independently reviewed.
 
 **TARGET, in the order that buys the most.**
-1. **Wire the three missing rows** into `system/pulse-config.md`. It is the smallest change with the
+1. **Wire the three missing rows** into `system/jobs.md`. It is the smallest change with the
    largest effect: it converts the daily's Layer 2 from *pull it live and wait* to *it was ready
    before you woke up*, which is the experience the skill is written around.
 2. **Run the weekly once, end to end, and record what breaks.** It has a stress-test artifact from
@@ -553,7 +553,7 @@ runners have no scheduler row. `·gap` for the MCP bypass in GAPS #3. `(honor)` 
   hand-set: the element label is not an entry in `system/tools/organism/label_manifest.yaml`, and no
   fixture exists for a skill's conversational discipline. What is REAL, verified by reading the
   artifacts this session: both skill trees ship whole; twelve tools ship under `system/tools/`; three
-  rows exist in `system/pulse-config.md` (`planning-weekly-prime`, `planning-diary`, `planning-health`);
+  rows exist in `system/jobs.md` (`planning-weekly-prime`, `planning-diary`, `planning-health`);
   `system/desk-registry.yaml` ships empty by design. What is HONOR-ONLY: the interrogative law, the
   blind chain, the one-dataset rail, the rolling roundup, mark-inference, and
   never-write-synchronously. What is UNPROVEN: any end-to-end run of either skill in this repository.

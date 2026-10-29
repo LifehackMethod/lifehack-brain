@@ -20,7 +20,7 @@ generated_from:
   # CORRECTED 2026-08-27 (L.B2 audit): system/reference/settings.json is a donor-layout path and
   # does not exist in this repo. The live registration is system/hooks/registrations.json:272
   # (+ plugin hooks.json:158) — the hook itself is genuinely registered; only the citation was stale.
-  - system/pulse-config.md (line 299 — backlog-health Pulse slot)
+  - system/jobs.md (line 299 — backlog-health Pulse slot)
   - state/projects/infrastructure/backlog-authority/brief.md
   - system/schemas/backlog-entry-schema.md
   - state/status/backlog.json (live tile, last_run 2026-07-23T19:19:29)
@@ -210,7 +210,7 @@ line 214: *"there is one machine. The two-machine plane is not part of this syst
 no machine gate, no `require_primary`, and no `state/primary-machine` marker; the tile has a
 single writer because there is only ever one writer.
 
-**Pulse slot** (`system/pulse-config.md` line 115):
+**Pulse slot** (`system/jobs.md` line 115):
 ```
 backlog-health   | yes | 21600 | python3 "$LIFEHACK_CODE_ROOT/system/tools/backlog-health.py"
 ```
@@ -409,7 +409,7 @@ conflated: the Archivist must not be stretched to work-hygiene, and Backlog Auth
 touch knowledge/canon placement. (brief.md §4 explicit boundary.)
 
 **8. `pulse-cron` TRIGGERS → `backlog-authority` tile.**
-Pulse invokes `backlog-health.py` on a 6h interval (`pulse-config.md` line 115). Nothing gates
+Pulse invokes `backlog-health.py` on a 6h interval (`jobs.md` line 115). Nothing gates
 that call — one machine, one writer of the tile.
 
 ---
@@ -518,7 +518,7 @@ What keeps it PARTIAL:
   deny, registered `settings.json` line 171) · `backlog_groom.py` (read-only groomer, produces
   decomposed counts + proposals, ~0-LLM in steady state) · `backlog-health.py` (tile producer,
   emits `state/status/backlog.json` via `emit_status`) · `backlog-health-run.sh` (Pulse runner,
-  6h cadence, primary-machine-gated) · `system/pulse-config.md` line 299 (Pulse slot registered,
+  6h cadence, primary-machine-gated) · `system/jobs.md` line 299 (Pulse slot registered,
   `enabled:yes`). Tile confirmed live (last_run 2026-07-23T19:19:29, rc:0). What is honor-system:
   stamp correctness on new ledger entries (`/save` Step 7c.5 prose instruction, no hook verifies
   `type:`/`state:` presence or correctness) · one-home discipline (groomer proposes, human acts) ·

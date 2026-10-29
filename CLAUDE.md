@@ -65,7 +65,7 @@ elements/<slug>.md, the exhaustive source. If this map is your only source, you 
 @ (config) push alerts, rate limits, quiet hours | notify-plane.md — quiet hours 22:00-07:00 silences NORMAL
            pushes only; a CRITICAL page (sentinel DANGER, dead monitor) BYPASSES it and WILL wake you.
 ~ Mac: launchd -> ~/.config/lifehack/code-root -> job-run.sh. Linux/Windows: pulse.sh + cron. ONE row per
-  job in `system/pulse-config.md`; the door (install-schedulers.sh) refuses a row that breaks the rules.
+  job in `system/jobs.md`; the door (install-schedulers.sh) refuses a row that breaks the rules.
 @ (you add a job) the rules for any cron job | jobs-sop.md (system/sops/) — one row, a content check, the
   door. read it before adding or changing any scheduled job.
 NOT BUILT — admissions, not omissions. knowing now beats inferring a connection that isn't there:

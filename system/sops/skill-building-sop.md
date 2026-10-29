@@ -733,7 +733,7 @@ very row depends on is exactly that bet. Policy moves faster than architecture. 
   ⛔ **DO NOT HAND-ROLL THAT CHECK — it now lives in exactly one place:** `require_claude_token`
   in **`system/tools/claude-auth.lib.sh`** (`source` it, then `require_claude_token "<job>" || exit 75`).
   **Why the prohibition is this blunt:** the check *was* hand-rolled five times, every copy carrying
-  its own literal `exit 3`, which `system/pulse-config.md`'s exit-code table classes as a REAL
+  its own literal `exit 3`, which `system/jobs.md`'s exit-code table classes as a REAL
   FAILURE — so on a fresh install, where the token file legitimately does not exist yet, three ticks
   tripped Pulse's 3-strike breaker and permanently auto-disabled the runner. It was fixed **twice**,
   in two of the five, and stayed broken in the other three, because **a fix applied to a copy does

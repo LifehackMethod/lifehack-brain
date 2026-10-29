@@ -2956,14 +2956,14 @@ Two gaps, named so a reader who runs into one of them knows it is expected, not 
 was true when it was written and stopped being true once `system/tools/pulse.sh` (the heartbeat
 daemon) and `system/tools/install-schedulers.sh` (which writes the cron/Task-Scheduler entry for
 you — see that script) landed. **This package does have a scheduler now.** `install-schedulers.sh`
-replays the job list in `system/pulse-config.md` onto your machine's own scheduler (cron on
+replays the job list in `system/jobs.md` onto your machine's own scheduler (cron on
 Mac/Linux, Task Scheduler on Windows); until you run it, nothing fires on its own — that one-time
 setup step is the real remaining gap, not an absent mechanism.
 
 **A few ported tools still have nothing that calls them.** Most pieces under `system/tools/` and
-`shared/tools/` that were built to run on a cadence now have a `pulse-config.md` row — including
+`shared/tools/` that were built to run on a cadence now have a `jobs.md` row — including
 the email-reading tools' writer (`email_summary_sync.py`, called by `email-summary-write-run.sh`
-every 3 hours). A handful genuinely do not yet: check `system/pulse-config.md` for the live list of
+every 3 hours). A handful genuinely do not yet: check `system/jobs.md` for the live list of
 what's wired rather than trusting a skill file's own claim about its schedule, which can drift out
 of date exactly the way this section just did. If a skill's own file talks about something happening
 "daily" or "on a cadence" and you're not sure it's real, that file is the one to check.

@@ -160,7 +160,7 @@ and `~/.aws/**` (9 rules total).
 
 ## 12. pulse-job-state
 
-**Check:** In `system/pulse-config.md`: `emily-breakdown` enabled=`yes`;
+**Check:** In `system/jobs.md`: `emily-breakdown` enabled=`yes`;
 `supabase-keepalive` and `supabase-backup` both enabled=`no`.
 
 **Approved-safe baseline (2026-06-18):** emily-breakdown=yes (active ingest pipeline);

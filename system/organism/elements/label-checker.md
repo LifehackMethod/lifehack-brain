@@ -65,7 +65,7 @@ violation payload, must produce `exit 2`. Only then is the label not lying.
 ### MODES / SUBCOMMANDS
 
 `label_checker.py` is a CLI tool invoked manually (no cron wiring exists in the live codebase today).
-⚠ **CORRECTED 2026-09-01** (H.C10, live read of `system/pulse-config.md:284`): stale — a
+⚠ **CORRECTED 2026-09-01** (H.C10, live read of `system/jobs.md:284`): stale — a
 `guard-fire-test` cron row now exists (`bash "$LIFEHACK_CODE_ROOT/system/tools/guard-fire-test-run.sh"`,
 enabled, 604800s/weekly cadence), so cron wiring for this checker does exist in the live codebase.
 It has three subcommands (label_checker.py:389-409):
@@ -87,7 +87,7 @@ For each guard:
 - Detects **downgrades**: if the manifest claims LIVE but the computed label is lower, exits non-zero
   and names the downgraded guard. The weekly Archivist cron (not yet wired — see GAPS) is the
   declared caller that turns that non-zero into a phone-ping via notify-plane.
-  ⚠ CORRECTED 2026-09-01 (H.C10, live read of pulse-config.md:284): stale — the `guard-fire-test`
+  ⚠ CORRECTED 2026-09-01 (H.C10, live read of jobs.md:284): stale — the `guard-fire-test`
   cron row is wired today (weekly, 604800s, enabled).
 - Exit codes: `0` (all claimed labels verified), `1` (any downgrade), `3` (error: manifest not found,
   yaml module absent, guard id not found).
@@ -356,7 +356,7 @@ yet complete.
 
 1. **Weekly cron, now wired** — `label_checker.py check` was the intended input to the weekly Archivist
    cron (brief story log pairs with Feature 2.1 desk-freshness check), and it is wired: confirmed by a
-   live read of `system/pulse-config.md:284`, a `guard-fire-test` row now fires this weekly (604800s),
+   live read of `system/jobs.md:284`, a `guard-fire-test` row now fires this weekly (604800s),
    enabled, calling `guard-fire-test-run.sh`. The "downgrade → phone-ping" path (`label_checker.py:262`:
    `"(weekly cron would phone-ping)"`) is a live escalation now, not prose — downgrade detection is
    cron-driven, not a manual-only run.
@@ -391,7 +391,7 @@ detection requires a manual run" — `label_checker.py:262` prints `"(weekly cro
 prose comment, and the brief (story log #17) named it: "not yet wired to the weekly Archivist cron
 (pairs with the 2.1 desk-freshness check per the pre-mortem — wire both together)." That is now closed,
 per the wiring described under TARGET item 1 above (the `guard-fire-test` cron row calling
-`guard-fire-test-run.sh` weekly, confirmed by a live read of `system/pulse-config.md:284`): a guard that
+`guard-fire-test-run.sh` weekly, confirmed by a live read of `system/jobs.md:284`): a guard that
 silently degrades (hook script modified, settings.json de-registered, git-tracking lost) is caught by
 that cron run rather than waiting on a human to manually run `label_checker.py check`. Kept here for
 history as a **NAMED GAP, now closed** rather than deleted outright.
@@ -474,7 +474,7 @@ FEEDS        notify-plane       · label-checker exits non-zero (exit 1) on any 
                                    turns that non-zero into a phone-ping via notify-plane; the signal
                                    path exists in code (label_checker.py:262); the automation that fires
                                    it does not yet
-                                   ⚠ CORRECTED 2026-09-01 (H.C10, live read of pulse-config.md:284):
+                                   ⚠ CORRECTED 2026-09-01 (H.C10, live read of jobs.md:284):
                                    stale — `guard-fire-test` now wires this weekly (604800s), enabled;
                                    the caller exists, not just the code path.
 

@@ -437,7 +437,7 @@ useful is unknown.
 >   **two-machine.** Both exist to keep one person's two machines in step. `OL-P8-4` is **no longer
 >   unruled** — the operator ruled 2026-08-22 that two-machine functionality IS wanted, reversing a
 >   same-day "no second machine" retirement of bootstrap-sync/git-autopush/git-autopull in
->   `pulse-config.md` (see that file's REINSTATED note). What is still open is only mechanical: these
+>   `jobs.md` (see that file's REINSTATED note). What is still open is only mechanical: these
 >   two element files have not been ported into this repo's `elements/` yet — restoring full
 >   two-machine capability needs that port; it is owed work, not done in this pass.
 >
@@ -551,7 +551,7 @@ changes a note's format in a way an older copy of the system cannot read: the NO
 > the rebuild was ordered to have: **Cron** (scheduled execution: launchd, `job-run.sh`, the job list, the door, the
 > rig) and **Alarms** (error handling: the texts, quiet hours, the session-start line, each job's error folder). The
 > old names are retired as subsystem names: "Pulse" survives only as the Linux/Windows scheduler (`pulse.sh`) and in
-> file names (`pulse-config.md`); "Hospital" now means only the skills SOP's nurse-and-chart picture of how a skill
+> the old file name of the job list (now `system/jobs.md`); "Hospital" now means only the skills SOP's nurse-and-chart picture of how a skill
 > runs its steps (`system/sops/skill-building-sop.md` PART 0), never a subsystem here.
 
 ### CRON — how a job runs
@@ -564,7 +564,7 @@ short — check whether there is work, then start the routine, or stand down (75
 > **AUTHORED 2026-10-27 (self-monitoring plan, Sprint 4).** Source of truth is the code: `system/tools/job-run.sh`,
 > `system/tools/install-schedulers.sh` (macOS branch), `system/tools/health_line.py`,
 > `system/hooks/session_context_loader.sh`, `shared/notify/notify-send.sh` + `notify-governor.py`, and the
-> ```jobs block of `system/pulse-config.md`. If this section and those files disagree, the files win.
+> ```jobs block of `system/jobs.md`. If this section and those files disagree, the files win.
 
 **The chain on a Mac.** One launchd LaunchAgent per ENABLED row of the ```jobs block, written by the installer to
 `~/Library/LaunchAgents/ai.lifehack.<job>.plist`. Its launch line carries no code path:
@@ -574,7 +574,7 @@ dispatcher. A run missed in sleep fires once on wake.
 
 **Non-Mac is unchanged.** Linux and Windows are still driven by `pulse.sh` (a cron line on Linux, Task Scheduler on
 Windows), which dispatches the same ```jobs rows and does NOT go through `job-run.sh`: no output check, no local job
-state, no ntfy-on-break text, no session line for those jobs. The ```crontab block in `pulse-config.md` still exists
+state, no ntfy-on-break text, no session line for those jobs. The ```crontab block in `jobs.md` still exists
 for them. On a Mac the installer no longer writes a crontab entry.
 
 **The exit-code contract (what `job-run.sh` returns, and what the job's own command may return).**
@@ -667,7 +667,7 @@ that job's skill is built. Other outside reads have their own shared readers on 
 through `system/tools/safe_sheets.py`, web pages through `safe_fetch.py` (its domain allowlist is armed for scheduled
 jobs only, from `system/tools/job-fetch-hosts.txt`), web search through `safe_search_api.sh`.
 
-**The ONE-ROW-PER-JOB rule.** Every job is exactly one row of the ```jobs block in `system/pulse-config.md`
+**The ONE-ROW-PER-JOB rule.** Every job is exactly one row of the ```jobs block in `system/jobs.md`
 (`name | enabled | interval_seconds | outcome | check | model | budget | source | command`). One row = one launchd agent = one state folder = one output check. Never
 chain two unrelated jobs into one row's command, and never schedule a job anywhere else (no private crontab line, no
 hand-written plist): the row is the only place a job exists, and the installer generates everything else from it.
@@ -689,7 +689,7 @@ and must name every one exactly, or the gate refuses to trust the rig. It does n
 1. **Write the command.** A stand-alone shell command or runner script (`system/tools/<job>-run.sh`). It must exit 0 only
    on real success, 75 if it is simply not configured, 2 for a transient failure, anything else for a failure. Reach a
    model or Google only through the shared libraries (`ingest-run.lib.sh`), never a bare `claude -p`.
-2. **Add ONE row** to the ```jobs block of `system/pulse-config.md`: `my-job | yes | 10800 | bash "$LIFEHACK_CODE_ROOT/system/tools/my-job-run.sh"`.
+2. **Add ONE row** to the ```jobs block of `system/jobs.md`: `my-job | yes | 10800 | bash "$LIFEHACK_CODE_ROOT/system/tools/my-job-run.sh"`.
    Name: lowercase letters, digits and hyphens only. Interval: seconds, and on a Mac a whole number of hours that divides
    86400 (3600, 7200, 10800, 14400, 21600, 28800, 43200, 86400) — anything else makes the installer refuse, touching nothing.
    Use `no`, `parked` or `waiting-on-<thing>` for a declared-off row.
@@ -717,7 +717,7 @@ and must name every one exactly, or the gate refuses to trust the rig. It does n
 
 > ⚠ **READ THIS FIRST (2026-10-29).** Any entry below that says a part is run by "Pulse" ("Pulse every 900s", "TRIGGERS-BY
 > pulse-cron", "Pulse-dispatched") describes the OLD Mac scheduler. On a Mac today a job runs ONLY if its row in
-> `system/pulse-config.md` is switched to `yes`, through Cron (see CRON AND ALARMS above). Check that file for what is
+> `system/jobs.md` is switched to `yes`, through Cron (see CRON AND ALARMS above). Check that file for what is
 > actually on; do not infer it from an entry below.
 
 > Each non-trivial element: a `## <slug>` entry — one-line purpose + a TYPED INTEROP SEAM LIST (compress words, never seams). Seam-verbs = the closed set in §8.3. Derived from each element's own INTEROP SEAMS (2026-07-24 fan-out).
@@ -946,7 +946,7 @@ passing check counts as success. The door refuses a row that breaks the rules. N
 routine calls through `run_model`.
 
 INTEROP:
-  READS        pulse-config.md     · the ```jobs block: one row per job, with its contract
+  READS        jobs.md     · the ```jobs block: one row per job, with its contract
   READS        code-root           · ~/.config/lifehack/code-root names the code every launch line runs
   CHAINS       job-run             · launchd -> job-run.sh -> the row's command -> the row's check
   FEEDS        alarms              · job-run.sh's per-job state and its break/recovery decision
@@ -955,10 +955,10 @@ INTEROP:
 
 ## pulse-cron (HISTORY) · crontab */5   [Linux/Windows only]   → elements/cron.md (history section)
 ⚠ **CORRECTED 2026-10-27 (self-monitoring plan): on macOS this is no longer how jobs run.** Each enabled row now has its own launchd agent that runs `job-run.sh` (see THE SCHEDULER, THE JOB WRAPPER AND THE ALARM above); the Pulse/system-health/deadman machinery described below, and the per-tick heartbeat mirrors, apply only to Linux and Windows, and the watcher jobs named in the INTEROP list (system-health, sentinel-health, backlog-health, deadman) were removed. The text below is kept as history.
-One crontab line ticks pulse.sh every 5 minutes; it reads the jobs block in pulse-config.md and fires any job whose interval has elapsed, with machine-local circuit-breaker safety, single-writer machine-gating, and a Drive-mirrored heartbeat feed. The Bash-write bypass gap (guard_write_paths.sh matches Write/Edit only) is accepted.
+One crontab line ticks pulse.sh every 5 minutes; it reads the jobs block in jobs.md and fires any job whose interval has elapsed, with machine-local circuit-breaker safety, single-writer machine-gating, and a Drive-mirrored heartbeat feed. The Bash-write bypass gap (guard_write_paths.sh matches Write/Edit only) is accepted.
 
 INTEROP:
-  TRIGGERS     system-health        · dispatches system-health-run.sh → reads _pulse-*.json + pulse-config.md to detect missed runs
+  TRIGGERS     system-health        · dispatches system-health-run.sh → reads _pulse-*.json + jobs.md to detect missed runs
   TRIGGERS     archivist            · fires archivist-audit/deepmine-run.sh on their respective intervals
   TRIGGERS     emily-breakdown      · fires emily-breakdown-run.sh; ingest runner contract via ingest-run.lib.sh
   TRIGGERS     clair-ingest         · fires clair-ingest-run.sh; ingest runner contract via ingest-run.lib.sh
@@ -969,7 +969,7 @@ INTEROP:
   TRIGGERS     sentinel             · fires sentinel-health-run.sh → reads sentinel-events.jsonl → tile
   TRIGGERS     git-sync             · fires git-autopush + git-autopull (keeps both machines' clone in sync)
   READS        two-machine-residency · reads state/primary-machine on every writer-runner tick via require_primary
-  READS        pulse-config.md      · reads the ```jobs block every tick for the job schedule manifest
+  READS        jobs.md      · reads the ```jobs block every tick for the job schedule manifest
   WRITES->     durable-status-plane · writes state/status/_pulse-{machine}.json + _pulse.json heartbeat mirrors after every cycle
   WRITES->     durable-status-plane · runner jobs write state/status/{desk}.json tiles via emit_status.py
   WRITES->     learnings-store      · Pulse trims system/learnings.md sections older than 90d; /save appends
@@ -981,8 +981,8 @@ INTEROP:
   FEEDS        planning             · planning-vault-weekly-run.sh writes desks/cal/state/weekly-vault/ → planning-weekly-analyze-run.sh consumes (⚠ desks/cal/ is DELIBERATE — code/jobs/tiles renamed to planning, the records directory was NOT)
   FEEDS        email-service        · email-summary-write-run.sh → state/email-summary/threads-v2/ (faithful thread store)
   FEEDS        grand-central        · item-store jobs → state/item-store/tasks/ + state/item-store/calendar/ (sole writers)
-  SYNCS        two-machine-residency · git-autopush/pull keep pulse-config.md in sync; NOTE: git-autopull does not call install-schedulers.sh — manual install required after pull
-  FEEDS        security-posture-scan · pulse-config.md is read by security-posture-scan.sh to verify supabase jobs stay disabled + emily stays enabled
+  SYNCS        two-machine-residency · git-autopush/pull keep jobs.md in sync; NOTE: git-autopull does not call install-schedulers.sh — manual install required after pull
+  FEEDS        security-posture-scan · jobs.md is read by security-posture-scan.sh to verify supabase jobs stay disabled + emily stays enabled
   COMPLEMENTS  notify-plane         · pulse.sh calls notify-send.sh directly for circuit-breaker trips + no-lead nag; all *-run.sh runners channel alerts through notify-send.sh
   COMPLEMENTS  health-deadman-check · launchd watcher (BY DESIGN outside Pulse) watches system-health tile mtime; catches a dead Pulse+health chain that no Pulse job could detect
   GUARDED-BY   ~~require_primary~~ · **⚠ CORRECTED 2026-08-24: not a real guard.** `require_primary()` has zero definitions anywhere in this repo and `primary-gate.sh` does not exist on disk (grep/find, verified this session). This system has one machine (`docs/data-layout.md:215`); Drive-writing jobs run with no machine gate. Correctly stated in `elements/backlog-authority.md:203-205` and `elements/archivist.md:71-72`; corrected in full in `elements/cron.md`'s GATES section.
@@ -1003,7 +1003,7 @@ INTEROP:
   FEEDS      item-store-freshness-runner  · grand-central's output stores (item-store/tasks/, item-store/calendar/) are the input item_store_read.py --freshness-check reads; that runner writes state/status/item-store.json
   TRIGGERS   notify-plane           · write-runners and freshness-runners call notify-send.sh on ERROR/DEGRADED; grand-central is a direct trigger source on every write failure
   GUARDED-BY security-ingest-gate   · ingest_gate_enforce.sh blocks direct Read of threads-v2/ and item-store/, and blocks non-janitor Write to those paths; session boundary only (not headless cron)
-  KEYS-OFF   pulse-cron             · all three writers and both freshness runners registered in pulse-config.md; Pulse is the sole trigger source for the write paths
+  KEYS-OFF   pulse-cron             · all three writers and both freshness runners registered in jobs.md; Pulse is the sole trigger source for the write paths
   SHARES     security-ingest-gate   · email_convert.py, ingest_gate.py, safe_input.py (in-degree 17), and intake_reader.py are shared library components used by grand-central's Python writers AND by security-ingest-gate's redirect targets
 
 ## safe-reader-plane · safe_*/email_convert cluster   [LIVE·gap]   → elements/safe-reader-plane.md
@@ -1126,7 +1126,7 @@ INTEROP:
   TRIGGERS     sentinel-health.py · archivist-placements.py · archivist-lean.py   · the sweeper calls these as child processes on each run (graceful, non-blocking)
   READS        desk-registry.yaml     · system-health.py derives DESKS and drift-cop checks from the registry; load_registry() is graceful (returns [] on failure)
   FEEDS        health_invariants.py   · invoked by system-health.py; checks substrate integrity and ~~appends to state/health.jsonl~~ ⚠ CORRECTED 2026-09-01 (#61): emits findings through `emit_finding()` only — verified this session, `system/tools/health_invariants.py` has zero references to `health.jsonl`. The old append was deleted (see line ~1222, same correction, T15.19 `fe56626`); this line was the stale half.
-  KEYS-OFF     pulse-config.md        · system-health.py loads job intervals from the same config Aliveness dispatches from (CODE_ROOT, not Drive — avoids stale job-list drift)
+  KEYS-OFF     jobs.md        · system-health.py loads job intervals from the same config Aliveness dispatches from (CODE_ROOT, not Drive — avoids stale job-list drift)
   CHAINS       emily-emit.py          · POST /api/emily/dismiss calls _reemit_emily() which runs emily-emit.py to rebuild emily.json from the store; the next /api/state poll reflects it
   COMPLEMENTS  verify-connections.py  · the readiness scorecard is the emit→served audit tool; Helm's render-pixel check is the complementary half
 
@@ -1157,7 +1157,7 @@ INTEROP:
   READS       archivist-declutter     · declutter reads $DRIVE/system/archivist/home-intents.md for per-home admission bars before each line-level pass
   WRITES→     helm                    · archivist-run.lib.sh _write_tile() writes $DRIVE/state/status/archivist.json after each run; archivist-lean.py + archivist-placements.py also write sub-keys; Helm reads the tile
   FEEDS       helm                    · archivist-placements.py reads autoplace-ledger.md to populate recent_placements[] in archivist.json (data stale — autoplace retired)
-  TRIGGERS    pulse-cron              · pulse-cron (*/5) fires archivist-audit-run.sh + archivist-deepmine-run.sh on their registered intervals via pulse-config.md
+  TRIGGERS    pulse-cron              · pulse-cron (*/5) fires archivist-audit-run.sh + archivist-deepmine-run.sh on their registered intervals via jobs.md
   KEYS-OFF    two-machine-residency   · archivist-run.lib.sh reads $DRIVE/state/primary-machine on every tick; stands down if not the lead machine (single-writer safety; [ARCHIVIST-AUDIT-DEAD] known wrong design)
   CHAINS      archivist-route         · deepmine synthesis chains into archivist-route to rank homes for each promotable insight; route reads territory map only — not home-intents.md
   COMPLEMENTS save                    · archivist is the scanner (DETECT + PROPOSE); /save is the writer (EXECUTE + GATE) — two halves of the knowledge-health loop
@@ -1176,8 +1176,8 @@ INTEROP:
   TRIGGERS     ~~mirror_plans.sh~~  · ⛔ CORRECTED 2026-08-25: does not exist — see GUARDED-BY line below; no Stop hook triggers a plan rsync on this system
   TRIGGERS     lifehack-lead.sh    · a human command flips the primary-machine marker between the primary and the second machine
   TRIGGERS     bootstrap-machine.sh · human runs bootstrap-machine.sh to wire all symlinks on a new machine — ⚠ CORRECTED 2026-08-23: elements/skill-system.md carried a stale "never ships" claim about this script (true 2026-07-24/28, false after the T1.C7 port reinstated it 2026-08-23); see that file's CITATIONS block for the struck text and the evidence this line rests on
-  READS        pulse-cron           · git-autopush/pull are registered Pulse slots (pulse-config.md); two-machine-residency owns their purpose in the sync model
-  WRITES->     pulse-cron           · git-autopush/pull keep pulse-config.md in sync across machines; NOTE: git-autopull does not call install-schedulers.sh — manual install required
+  READS        pulse-cron           · git-autopush/pull are registered Pulse slots (jobs.md); two-machine-residency owns their purpose in the sync model
+  WRITES->     pulse-cron           · git-autopush/pull keep jobs.md in sync across machines; NOTE: git-autopull does not call install-schedulers.sh — manual install required
   FEEDS        notify-plane         · autopush circuit breaker fires a critical ntfy on 3+ consecutive push failures (P10)
   SYNCS        skill-system         · bootstrap-machine.sh creates all skill/agent/command symlinks; ~/.claude/skills/<name> symlinks point INTO the clone (correct direction)
   GUARDED-BY   guard_write_paths.sh · PreToolUse Write|Edit — BLOCKS content writes to clone, wrong-zone paths, orphan ~/.claude/skills/ writes; fails CLOSED on unparseable input

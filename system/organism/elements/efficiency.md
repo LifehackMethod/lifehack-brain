@@ -19,7 +19,7 @@ generated_from:
   - system/tools/findings_reader.py
   - system/hooks/guard_findings_write.sh
   - system/hooks/session_context_loader.sh
-  - system/pulse-config.md
+  - system/jobs.md
 created_at: 2026-08-05
 updated_at: 2026-08-05
 status: draft
@@ -121,7 +121,7 @@ modified 2026-08-22), `SUBSYSTEM.mba.jsonl` (26,588 bytes, 2026-08-05), and a po
 `dispositions/dispositions.mba.jsonl`. A live run of `health_line.py` against the real ledger path
 confirms it: a `RECOMMENDATIONS: 65 recommendation(s)` line, ranked and capped at 3 shown. The
 2026-08-05 measurement was accurate THEN; it is stale now. `recommend.py` genuinely still has no
-wired `-run.sh` caller (confirmed via `system/pulse-config.md:394-397`, "NOT PORTED"), so
+wired `-run.sh` caller (confirmed via `system/jobs.md:394-397`, "NOT PORTED"), so
 recommendations are most likely reaching the store via `fault_proposer.py` / other direct
 `emit_recommendation` callers, not via `recommend.py` — but the store is unambiguously live and
 loaded with real data today, the OPPOSITE of "zero recommendations in production."
@@ -140,7 +140,7 @@ that matter more than the grading:
 2. **EVIDENCE OR REFUSE** — it will not propose what it cannot cite.
 
 ⚖ **OWNERSHIP: this file is EFFICIENCY'S, not Hospital's. RULED 2026-08-05 by the operator (`T18.8`)**, and the
-file's own header records the ruling. ⚠ **Two artifacts have not caught up** — `system/pulse-config.md`
+file's own header records the ruling. ⚠ **Two artifacts have not caught up** — `system/jobs.md`
 still labels the daily job *"fault-proposer: HOSPITAL's runner"*, and `fault-proposer-run.sh`'s header
 still frames the tool in Hospital terms. Both are stale-by-one-day rather than wrong-in-substance;
 `elements/alarms.md` already carries the corrected boundary.
@@ -182,7 +182,7 @@ owns the wiring description.)
 ### GAPS (documented fail-open conditions)
 
 **GAP-1 · THE PIPELINE HAS NEVER CARRIED A LOAD — the honest reason this element is PARTIAL.**
-`recommend.py` has **no caller** (grepped repo-wide, including `pulse-config.md`: every hit is inside the
+`recommend.py` has **no caller** (grepped repo-wide, including `jobs.md`: every hit is inside the
 file itself) — that half stands, re-confirmed 2026-08-27. ~~and `state/recommendations/` **does not
 exist**. Zero recommendations in production.~~ **CORRECTED 2026-08-27** (L.B2 audit): the store
 now exists and holds 962KB+ of real data and 65 live recommendations — see THE STORE section

@@ -41,8 +41,8 @@ sheet; it NEVER writes canon and NEVER deletes. (Part of `archivist-rebuild` —
   stale-claim sweep):** this line used to claim nothing here scheduled it, and that the package
   shipped without any scheduler at all.
   That's no longer true — `system/tools/archivist-deepmine-run.sh` has a real row in
-  `system/pulse-config.md` (4-day tick, internally staggered to the single most-overdue desk each
-  fire — see the wrapper's own header and `system/pulse-config.md`'s comment beside that row,
+  `system/jobs.md` (4-day tick, internally staggered to the single most-overdue desk each
+  fire — see the wrapper's own header and `system/jobs.md`'s comment beside that row,
   which flagged this exact page as stale). Once `install-schedulers.sh` has been run on a machine,
   the standing pass fires on its own; running `/archivist-deepmine` by hand is still fine and
   identical in procedure, just no longer the ONLY way it runs. The structural audit (checks A–O)
@@ -125,5 +125,5 @@ It reads your notes and writes a proposal queue into them
 (`<notes>/records/proposals/`), which the next `/save` picks up.
 
 Its scheduled runner **does ship** — see "When it runs" above: `system/tools/archivist-deepmine-run.sh`
-is a real, executable file with an enabled row in `system/pulse-config.md` (4-day tick). The skill is
+is a real, executable file with an enabled row in `system/jobs.md` (4-day tick). The skill is
 also fully usable by hand (`/archivist-deepmine desk=<name>`) — the scheduler is additive, not required.

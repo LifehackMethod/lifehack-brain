@@ -76,7 +76,7 @@ State is local, never Drive: `$HOME/.config/lifehack/state/jobs/<job>/` holds `l
 
 ## 5. The row contract
 
-One row per job, in the `jobs` block of `$CODE/system/pulse-config.md`:
+One row per job, in the `jobs` block of `$CODE/system/jobs.md`:
 
 ```
 name | enabled | interval | outcome | check | model | budget | source | command

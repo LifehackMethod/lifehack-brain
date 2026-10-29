@@ -288,7 +288,7 @@ A build can also be multiple types below. This question, though, has exactly one
 > - **a cron or scheduled job** — ⚠ CORRECTED 2026-08-15: this row used to say there is no
 >   scheduler in this release. That's no longer true — `system/tools/pulse.sh` (the heartbeat
 >   daemon) and `system/tools/install-schedulers.sh` (the OS-scheduler installer) both ship.
->   There is no standalone job-authoring SOP, though: `system/pulse-config.md` — the manifest
+>   There is no standalone job-authoring SOP, though: `system/jobs.md` — the manifest
 >   both scripts read — is itself the binding reference; add a row there in the same shape as
 >   its existing rows.
 > - **a spreadsheet** — the sheet-building skill is not in this release.

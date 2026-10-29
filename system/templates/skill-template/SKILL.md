@@ -88,7 +88,7 @@ thin_ai_boundary:
 - [ ] CF-14  `shape:` present (+ matches the runner shape A/B/C)
 - [ ] CF-5   LLM-bearing → JUDGMENT_SPEC present; fetch + emit separated by the `claude -p` boundary
 - [ ] CF-1/6 tile written via `emit_status.py` (atomic; never hand-rolled); `verify-connections.py` GREEN
-- [ ] CF-8   registered in `pulse-config.md`, DISABLED until the supervised test passes
+- [ ] CF-8   registered in `jobs.md`, DISABLED until the supervised test passes
 
 <!-- ─────────────────────────────────────────────────────────────────────────────
 HOW TO USE THIS TEMPLATE

@@ -47,7 +47,7 @@ authority: user
 4. Rebuild gws auth (see D). Rebuild the headless cron token (see E) if this machine runs Pulse/runners.
 5. Restore the OS schedule from the versioned manifest — **do not hand-add cron lines**:
    `bash ~/claudeops-config/system/tools/install-schedulers.sh --install`
-   This reads `system/pulse-config.md` (the enforced single source of truth for all crontab + launchd jobs)
+   This reads `system/jobs.md` (the enforced single source of truth for all crontab + launchd jobs)
    and installs the correct schedule for this machine. If this machine should be the Pulse writer (primary vs secondary),
    flip the primary-machine marker first: `bash ~/claudeops-config/system/tools/claudeops-lead.sh primary`
    (or `mba`). The marker lives at `state/primary-machine`.

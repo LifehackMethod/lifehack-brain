@@ -24,7 +24,7 @@ generated_from:
   - system/hooks/ingest_gate_enforce.sh
   - system/hooks/block_primary_calendar.sh
   - system/reference/settings.json
-  - system/pulse-config.md
+  - system/jobs.md
 created_at: 2026-07-23
 updated_at: 2026-07-23
 status: draft
@@ -58,7 +58,7 @@ authority: user
 >   378-387) shows a HARD `sys.exit(1)` on scan-unavailable, not a soft warn-and-continue — matching
 >   `item-store.md`'s account of the same mechanism, not this file's gap-1 description of it.
 > - **gap-3 (v1 `email-summary-sync` "still enabled: yes") is STALE the other direction.**
->   `pulse-config.md` shows `email-summary-sync` commented `(RETIRED)` with no live `enabled: yes` row at
+>   `jobs.md` shows `email-summary-sync` commented `(RETIRED)` with no live `enabled: yes` row at
 >   all — it is not a scheduled Pulse slot today.
 > - **`tasks-store-sync` / `calendar-store-sync` cadence is 86400s (24h), not 21600s (6h)** as this file's
 >   table below states (same stale figure independently found in `item-store.md`).
@@ -87,7 +87,7 @@ authority: user
 ### TRIGGERS / MODES
 
 Three independent Pulse-dispatched cron runners, each machine-gated to the primary machine only. All
-three are `enabled: yes` in `system/pulse-config.md`; Pulse itself fires every 5 min via crontab.
+three are `enabled: yes` in `system/jobs.md`; Pulse itself fires every 5 min via crontab.
 
 | Pulse slot | Interval | Runner | Python entrypoint |
 |---|---|---|---|
@@ -112,7 +112,7 @@ Two companion **read-side dead-men** (not writers; they check freshness and emit
 **Legacy slot (v1 path, not a writer of the live stores):**
 `email-summary-sync` (7200 s, `email_summary_run.sh` → `email_summary_sync.py` no flags) — runs the
 v1 `sync()` path and writes `state/email-summary/threads/` + `meta.json`. This is the deprecated path;
-the `--write-v2` runner is the live intake. The v1 slot has NOT been disabled in `pulse-config.md`
+the `--write-v2` runner is the live intake. The v1 slot has NOT been disabled in `jobs.md`
 (see GAPS gap-3).
 
 **Operational sub-modes inside `email_summary_sync.py` (all CLI flags; used in supervised sessions):**
@@ -588,7 +588,7 @@ WRITES->   helm             · state/status/email-summary.json — written by em
                               via stamp_write_success() → --stamp-write-ok runner invocation after
                               RC=0 (and also by the v1 janitor and freshness runner; see ARM 4 note).
                               system-health.py (Helm) does NOT read email-summary.json; Helm monitors
-                              the email-summary-sync/freshness/write jobs by HEARTBEAT (pulse-config),
+                              the email-summary-sync/freshness/write jobs by HEARTBEAT (system/jobs.md),
                               not by tile. The tile is read by email-summary-freshness-run.sh itself
                               for local DEGRADED notification logic.
 FEEDS      item-store-freshness-runner  · grand-central's output stores (state/item-store/tasks/,
@@ -605,7 +605,7 @@ GUARDED-BY security-ingest-gate  · ingest_gate_enforce.sh blocks direct Read of
                               + Read hook, fail-CLOSED; the write-side single-writer invariant is
                               enforced at the session boundary (not during headless cron)
 KEYS-OFF   pulse-cron       · all three writers and both freshness runners are registered in
-                              pulse-config.md and dispatched by Pulse on their cadences (3h, 6h,
+                              jobs.md and dispatched by Pulse on their cadences (3h, 6h,
                               6h, 1h, 1h); Pulse is the sole trigger source for the write paths
 SHARES     security-ingest-gate  · email_convert.py (universal sanitizer), ingest_gate.py,
                               safe_input.py (injection scanner, in-degree 17), and intake_reader.py
@@ -642,9 +642,9 @@ any hook gating. Documented in `ingest_gate_enforce.sh` header as a known struct
 2026-07-14 (`guard_write_paths.sh` header notes the same limitation for Bash writes).
 
 **gap-3 · legacy v1 email-summary-sync Pulse slot still enabled (operational, ~~documented-intentional~~ CLOSED)**
-~~`pulse-config.md` lines 89-94: `email-summary-sync` (7200 s, `email_summary_run.sh` → no `--write-v2`
+~~`jobs.md` lines 89-94: `email-summary-sync` (7200 s, `email_summary_run.sh` → no `--write-v2`
 flag) is `enabled: yes`~~ **⚠ CORRECTED 2026-08-27, lb2-ops-comms.md claim 46 — this is stale.**
-`pulse-config.md` now shows `email-summary-sync` commented `(RETIRED)` with no live `enabled: yes` row
+`jobs.md` now shows `email-summary-sync` commented `(RETIRED)` with no live `enabled: yes` row
 at all — it is not a scheduled Pulse slot today, contradicting the claim that it is running as
 documented-intentional debt. The concurrent-writer risk this entry warns about no longer applies since
 the slot isn't dispatched. **No fix needed — already retired.**

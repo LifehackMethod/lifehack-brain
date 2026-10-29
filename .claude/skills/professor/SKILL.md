@@ -273,10 +273,10 @@ part owns this, what it's supposed to do, and where reality differs.
   checked this session instead.
 - **Never repeats a scheduling claim from a document.** This package DOES schedule work:
   `system/tools/pulse.sh` is the daemon, `system/tools/install-schedulers.sh` installs its entry
-  (cron on macOS/Linux, Task Scheduler on Windows), and `system/pulse-config.md` is the row manifest.
+  (cron on macOS/Linux, Task Scheduler on Windows), and `system/jobs.md` is the row manifest.
   Many pages were written before that landed and denied it outright; those were corrected on
   2026-08-15, but the lesson stands — if scheduling matters to the question, read
-  `system/pulse-config.md` and the live crontab rather than repeat what any page says. Note that
+  `system/jobs.md` and the live crontab rather than repeat what any page says. Note that
   what is scheduled on a given machine still depends on whether `install-schedulers.sh` has been run
   there, so "a row exists" and "it is firing on this computer" are two different questions.
 - **Never moves, edits, or deletes a stranger's files.** The migrate case guides; it never touches

@@ -96,12 +96,12 @@ hook for any of it — a conformance page that fails your skill for not declarin
 cannot have is worse than no page, because it teaches you the tool is broken.
 
 ⚠ **That is a narrower claim than "none of this infrastructure exists," and it used to be true here —
-it no longer is, checked live.** `system/tools/pulse.sh` + `system/pulse-config.md` (a real, git-
+it no longer is, checked live.** `system/tools/pulse.sh` + `system/jobs.md` (a real, git-
 shipped job scheduler and its registry) landed in this repo the same day this page did. Several of the
 CF rules' underlying mechanisms genuinely exist now; they are just not wired to skill-authoring the
 way the donor wired them. The table below was checked against the live tree rather than repeated from
 memory — **the one fact that still holds, and is the only one that binds a skill author:** nothing
-here declares `shape: cron-producer`, and `system/pulse-config.md` says outright that no registered
+here declares `shape: cron-producer`, and `system/jobs.md` says outright that no registered
 job invokes a model yet, so `JUDGMENT_SPEC` has no live case to attach to.
 
 ### The frontmatter/schema pieces that did not travel
@@ -125,9 +125,9 @@ history and hit a `CF-` number, you have somewhere to look instead of guessing.
 | CF-2 | envelope completeness swept by `verify-connections.py` | No such script anywhere here | Not applicable |
 | CF-3 | exactly one "obsidian-brain" call site | No — the term doesn't appear anywhere in this repo, and isn't defined anywhere in the donor beyond this one matrix row either | Meaningless here — there's no component by this name to have one call site or many |
 | CF-4 | a canon-routing rule, documented and reviewed via the donor's `archivist-review` skill | Partially — `canon/` is a real, live concept here (resolved under the reader's own gitignored `data/` root, same as `<notes>/state/debt-ledger.md` — legitimately absent from a fresh checkout, not missing), and `.claude/skills/archivist-route/SKILL.md` does exactly this job: *"ranks the right canon home (1–3, with why) — never a silent pick, and catches non-canon misfiling."* | **Enforceable here**, under a different skill name — `archivist-route` ships; the donor's `archivist-review` does not ship here |
-| CF-5 | no cron runner mixes a fetch call and a tile-emit without an intervening `claude -p` judgment boundary | No — nothing declares `shape: cron-producer`, and `system/pulse-config.md` states outright that no registered job invokes a model | Not applicable — nothing exists yet for this rule to police |
-| CF-6 | every cron-producer emits a tile | No, in the `SKILL.md`-producer sense — nothing declares that shape | Not applicable to skill-authoring. Adjacent but distinct: `system/tools/system-health.py` genuinely does watch every job registered in `system/pulse-config.md` for a live heartbeat/tile — real and live, just not scoped to skills. |
-| CF-7 | no cron job runs outside the registry | Yes — `system/pulse-config.md` is a real job registry; `system-health.py` + `health_invariants.py` watch it | **Enforceable here**, at the job-scheduling level (not skill-authoring) |
+| CF-5 | no cron runner mixes a fetch call and a tile-emit without an intervening `claude -p` judgment boundary | No — nothing declares `shape: cron-producer`, and `system/jobs.md` states outright that no registered job invokes a model | Not applicable — nothing exists yet for this rule to police |
+| CF-6 | every cron-producer emits a tile | No, in the `SKILL.md`-producer sense — nothing declares that shape | Not applicable to skill-authoring. Adjacent but distinct: `system/tools/system-health.py` genuinely does watch every job registered in `system/jobs.md` for a live heartbeat/tile — real and live, just not scoped to skills. |
+| CF-7 | no cron job runs outside the registry | Yes — `system/jobs.md` is a real job registry; `system-health.py` + `health_invariants.py` watch it | **Enforceable here**, at the job-scheduling level (not skill-authoring) |
 | CF-8 | a freshness/liveness signal per job | Yes — `system-health.py`'s UP/LATE/DOWN/PAUSED read against the Pulse heartbeat | **Enforceable here** |
 | CF-9 | no dual scheduler running at once | Not tracked by any tool found here | This was a one-time decommission checklist tied to a specific past donor migration event, not a standing rule. This repo is single-machine by design (`docs/data-layout.md`: *"there is one machine. The two-machine plane is not part of this system"*), so the scenario mostly doesn't arise — but nothing here specifically detects "you ran `install-schedulers.sh` twice." Marked UNKNOWN rather than guessed enforceable. |
 | CF-10 | every hook opens with an LLM-CONTEXT block that educates + redirects, checked against a canonical hook contract | Yes — `system/hook-contract.md` exists and defines this exact mandatory block; checked live: all 44 files in `system/hooks/*.sh` carry it (`grep -l "LLM CONTEXT" system/hooks/*.sh` = 44 of 44) | **Enforceable here** — currently 100% compliant. Enforcement today is convention + human/Archivist review; no automated per-hook checker was found. |

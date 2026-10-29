@@ -29,7 +29,7 @@ below) — v1 is now locked to that ruling.
    `STRICT_UNKNOWN_KEYS`).
 4. **Format is JSONL** — confirmed, not YAML.
 5. **`scheduled` rows sharing the manifest path is KEPT** — every `scheduled` row's `path`
-   resolves to `/system/pulse-config.md` rather than a unique per-row file; documented as
+   resolves to `/system/jobs.md` rather than a unique per-row file; documented as
    intended, not a gap to close later.
 
 **Format: JSONL** (one JSON object per line), not YAML. One line per unit means `git diff` shows
@@ -47,7 +47,7 @@ for four field-checks would be the opposite of "files a human can open and fix b
 
 Every register row has a `type`: `hook` (system/hooks/, both repos — T2's original set) · `tool`
 (system/tools/, both repos) · `skill` (`.claude/skills/**/SKILL.md`) · `scheduled` (one row of
-`system/pulse-config.md`'s `jobs` block). This is deliberately not the full T1 caller-ontology
+`system/jobs.md`'s `jobs` block). This is deliberately not the full T1 caller-ontology
 (that is Feature B1.5's lint, layered on top later) — it is only "what kind of thing is this," the
 question every other field branches on.
 
@@ -95,17 +95,17 @@ question every other field branches on.
 | `name` | string | Read straight from the SKILL.md frontmatter's `skill:` field — the skill's declared identity, independent of its folder name. |
 | `description` | string, may be `""` | Read straight from the frontmatter's `description:` field — this is what the model itself reads as an instruction surface (T1's `skill-referenced` caller class already treats these documents that way); the register should carry what's actually there, not a re-summary of it. |
 
-### `type: scheduled` — one row of `system/pulse-config.md`'s `jobs` block
+### `type: scheduled` — one row of `system/jobs.md`'s `jobs` block
 
 | field | type | rationale |
 |---|---|---|
-| `schedule_name` | string | The row's `name` column — pulse-config.md's own identifier for the job. |
-| `enabled` | string, open vocabulary | pulse-config.md's own convention: `yes` to run, anything else is a DECLARED disposition (`no`, `parked`, `waiting-on-<thing>`), not just "off." Closing this to an enum would freeze vocabulary a human still writes by hand today — left open on purpose. |
+| `schedule_name` | string | The row's `name` column — jobs.md's own identifier for the job. |
+| `enabled` | string, open vocabulary | jobs.md's own convention: `yes` to run, anything else is a DECLARED disposition (`no`, `parked`, `waiting-on-<thing>`), not just "off." Closing this to an enum would freeze vocabulary a human still writes by hand today — left open on purpose. |
 | `interval_seconds` | nullable int | The row's `interval` column, parsed as-is. |
 | `command` | string | The row's `command` column — the shell command Pulse actually fires. |
 
 `scheduled` still carries the common `path` field (every type does, see below) — it resolves to
-the shared manifest file (`/system/pulse-config.md`), since a scheduled row's identity is really
+the shared manifest file (`/system/jobs.md`), since a scheduled row's identity is really
 `schedule_name` plus that one file, not a unique file of its own. **Ruled KEPT by Enver,
 2026-09-15** (Ruling 5, above) — this is documented as intended, not a gap `path` nullability
 would later need to close.

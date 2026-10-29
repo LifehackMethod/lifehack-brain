@@ -17,7 +17,7 @@ generated_from:
   - system/tools/guard_fire_test_record.py
   - system/tools/guard-fire-test-run.sh
   - system/hooks/session_context_loader.sh
-  - system/pulse-config.md (```jobs block)
+  - system/jobs.md (```jobs block)
   - "git: 0088c24 (3.1 retire the watcher machinery)"
 created_at: 2026-08-04
 updated_at: 2026-10-27
@@ -45,7 +45,7 @@ authority: user
 
 > **SUPERSEDED 2026-10-27 (task 4.3; the design change landed in commits `120bc68`/Sprint 2 and
 > `0088c24`/Sprint 3).** Until then Hospital was a findings pipeline: a fleet of detector jobs (the
-> `*-health` rows in `system/pulse-config.md`: system-health, sentinel-health, planning-health,
+> `*-health` rows in `system/jobs.md`: system-health, sentinel-health, planning-health,
 > backlog-health, item-store/email freshness, and a dead-man's-switch watching them) each wrote
 > structured findings through `emit_finding.py` into a Drive-resident store; `findings_reader.py` and
 > `health_line.py` ranked them into a session-start banner (capped at 3, oldest first);
@@ -83,7 +83,7 @@ commit message):
 - `system/tools/fault_ledger.py` - called through `system/tools/guard_fire_test_record.py:35` from
   `guard-fire-test-run.sh:130`.
 
-Both exist for the guard-fire-test runner (row `guard-fire-test` is `off` in `system/pulse-config.md:253`;
+Both exist for the guard-fire-test runner (row `guard-fire-test` is `off` in `system/jobs.md:253`;
 the runner is kept, not deleted). They are NOT part of the job-health path: nothing in `job-run.sh` or
 `health_line.py` imports either. `system/hooks/guard_findings_write.sh` (blocks writes to the findings
 store) is likewise still registered. If guard-fire-test is ever retired, these two go with it.
@@ -97,6 +97,6 @@ store) is likewise still registered. If guard-fire-test is ever retired, these t
   fires leaves "never ran" (line) but no text; the installer says so:
   registration is not proof it fires (`system/tools/install-schedulers.sh:241`).
 - The session line only appears when a desk is opened; the text does not need one.
-- Only `email-summary-write` is enabled in the manifest today (`system/pulse-config.md:207`), so the
+- Only `email-summary-write` is enabled in the manifest today (`system/jobs.md:207`), so the
   fleet being watched is one job. Every `yes` row added later is watched automatically (both the
   installer and `health_line.py` read the same `jobs` block).
