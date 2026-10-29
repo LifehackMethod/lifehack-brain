@@ -39,8 +39,8 @@ gstatic.com
 googleusercontent.com
 # Serper — the search API behind safe_search_api.sh
 serper.dev
-# ntfy — push notifications, if you turn them on
-ntfy.sh
+# ntfy.sh is deliberately NOT listed (v2 3.5): the only road to the phone is shared/notify/notify-send.sh,
+# which goes through the governor. A session's own raw call to ntfy.sh is refused.
 <!-- ALLOWLIST-END -->
 
 ## Two things worth knowing

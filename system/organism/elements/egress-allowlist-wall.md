@@ -186,7 +186,6 @@ scanning approach; L2 and the OS firewall are the backstop for exfiltration of e
 | `gstatic.com` | Google static assets |
 | `googleusercontent.com` | Google user content |
 | `serper.dev` | Serper search API (`safe_search_api.sh`) |
-| `ntfy.sh` | Sentinel push notifications (notify-plane) |
 | `<your-supabase-host>` | Emily desk's Supabase project (host-locked — NOT `*.supabase.co`) |
 | `github.com` | Git clone / push / pull |
 | `githubusercontent.com` | Raw GitHub content |
@@ -551,10 +550,10 @@ domain gating, the skills' enforcement would be honor-system only. `[skill]`
 shared daily call-cap counter. Every caller of the search gateway — across all sessions — draws from the
 same `/tmp` counter file. The wall's tool writes this file; the research plane reads it. `[honor]`
 
-**SYNCS notify-plane** · `ntfy.sh` is an approved domain in `egress-allowlist.md`. `notify-send.sh` (the
-notify-plane element) makes outbound HTTPS calls to `ntfy.sh`; the allowlist entry is what structurally
-permits the notification channel to exist. A change that removed `ntfy.sh` from the allowlist would sever
-push notifications. `[honor]`
+**SYNCS notify-plane** · `ntfy.sh` is deliberately NOT in `egress-allowlist.md` (v2 3.5). `notify-send.sh`
+makes the outbound call from inside the script, which this hook (it reads only the command text) never
+sees, so the governor road works from a session and a job alike while a session's own raw call to
+`ntfy.sh` is refused. `[honor]`
 
 **SYNCS gws-plane** · `googleapis.com`, `google.com`, `gstatic.com`, `googleusercontent.com` are all in
 `egress-allowlist.md`. Every `gws` CLI call targets the Google API plane; the allowlist entries are what

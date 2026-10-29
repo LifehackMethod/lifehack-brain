@@ -61,7 +61,12 @@ echo "   the list itself"
 run "anthropic.com"               "$LIST" 0 "curl -s https://api.anthropic.com/v1/messages"
 run "a subdomain of a listed one" "$LIST" 0 "curl -s https://raw.githubusercontent.com/x/y/main/z"
 run "serper"                      "$LIST" 0 "curl -s https://google.serper.dev/search"
-run "ntfy"                        "$LIST" 0 "curl -d hello https://ntfy.sh/mytopic"
+# v2 3.5: ntfy.sh is OFF the list - a session's own curl to the phone is refused; the governor road stays open.
+# The hook only reads the command TEXT, so `notify-send.sh ...` (the curl lives inside the script) never matches.
+run "ntfy direct is refused"      "$LIST" 2 "curl -d hello https://ntfy.sh/mytopic"
+run "ntfy subdomain refused"      "$LIST" 2 "curl -d hello https://x.ntfy.sh/mytopic"
+run "ntfy, notify-send in a comment" "$LIST" 2 "curl -d hi https://ntfy.sh/t # notify-send.sh"
+run "sanctioned notify-send"      "$LIST" 0 "bash shared/notify/notify-send.sh --source t --message hi"
 echo "   the host must END where the shell ends it, not run into the punctuation"
 # Every one of these was a REAL false block before 2026-08-11: a URL with no path ran to the end of
 # the word and the shell's next character came along for the ride, producing a hostname like
