@@ -210,3 +210,29 @@ A carded routine is switched on the same way: its row runs the card's runner and
 - `jobs cannot find the code`: `launch.err` is non-empty. Open any desk once; the hook rewrites the pointer.
 - `paused: <label>`: the sentinel found a real injection in that label. Only a person removes the line from the pause file.
 - Always read `last-run` first: `rc`, `calls`, `secs` and the reason usually answer it.
+
+## 14. Texts are written for a person (operator's rule, 2026-10-29)
+
+Every text that reaches the owner's phone is read by a regular person, not a programmer. The operator, on the first
+drill: *"I have no idea what drill never, drill fail [means]. None of this stuff is written for humans."*
+
+**Every text answers three things, in plain words:** what happened · whether it matters · what to do (or "nothing to
+do"). A text that needs the owner ends with: **"Open Claude and say: what broke?"**
+
+**Never in a text:** a job's code name (use its plain name from the jobs table's name list), an exit code, a file
+path, a script name, a flag, or a word only a programmer knows ("output check", "stood down", "rc").
+
+**Only something that needs the owner right now may wake them at night.** Everything else waits until morning.
+
+**The wording lives in ONE place** (the message file beside `job-run.sh`), so it can be changed without touching code.
+A new kind of text is added there, in the same voice, never written inline in a runner.
+
+| instead of | write |
+|---|---|
+| Job down: email-summary-write · exit 1 · last success 6h ago | ⚠ Your email summary stopped updating. It last worked at 2:10 PM. Nothing is lost. Open Claude and say: what broke? |
+| Job recovered: email-summary-write | ✅ Your email summary is working again. |
+| Job standing down: x · no gws credentials | ⏸ Your email summary is paused: your Google login expired. Open Claude and say: reconnect Google. |
+| Job not running: x · launchd agent may be unloaded | ⚠ Your email summary hasn't run since Tuesday. Open Claude once and it will check. |
+
+**The check is the owner.** At every switch-on gate (section 12) the owner sees the job's real texts on their phone
+before saying yes. A text they cannot understand is a reason to say no.
