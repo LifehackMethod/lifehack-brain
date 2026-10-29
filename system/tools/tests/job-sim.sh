@@ -2166,6 +2166,63 @@ def bite_n():
 BITES.append(("n", "a permanent 75 that never texts", "standdown-texts-once", bite_n))
 
 
+# ── 5.10(3): jobs watch each other ──
+def watch_each_other(jr=None):
+    """5.10(3): after its own work every job-run checks every ENABLED row's last-run age. An enabled row older than 2 x its interval -- or one that
+    never ran at all -- gets ONE 'not running' text (marker + retry rules as 5.10(1)), and ONE 'running again' text when it next runs. An off row is
+    never watched. An error in the watch step is logged loudly and never changes the current job's exit code."""
+    N, fails = "watch-each-other", []
+    B_, C_, D_, E_ = "sim-b", "sim-c", "sim-d", "sim-e"
+    w = World([(A, P), (B_, P), (C_, P), (D_, P)]); t0 = BASE + 8 * 3600
+    try:
+        row = [ln for ln in open(w.manifest).read().splitlines() if ln.startswith(D_ + " ")][0]
+        mf = open(w.manifest).read().rstrip("\n").rsplit("```", 1)[0]
+        open(w.manifest, "w").write(mf + row.replace(D_, E_, 1).replace(" | yes | ", " | no | ", 1) + "\n```\n")   # sim-e: a row that is OFF and never runs
+        x = dict(WATCH_ON, JOB_RUN_NOTIFY=flaky_notify(w))
+        for j in (A, B_, C_): w.set_mode(j, "ok")
+        rcs = [jr_run(w, j, t0, x, jr) for j in (A, B_, C_)]    # D never runs; E is off
+        if notify_lines(w): fails.append(f"{N}: texted on the first tick, before anything was late: {notify_lines(w)}")
+        rc = jr_run(w, A, t0 + 3 * P, x, jr)                  # +3h: only A ran. B, C are 3h stale (> 2h); D never ran and has been watched for 3h
+        got = sorted(a for a, *_ in notify_lines(w))
+        if got != [f"Job not running: {j}" for j in (B_, C_, D_)]: fails.append(f"{N}: expected one 'not running' text each for sim-b, sim-c, sim-d (not the off sim-e): {got}")
+        if rc != 0: fails.append(f"{N}: the watch changed the job's own exit code: {rc}")
+        jr_run(w, A, t0 + 4 * P, x, jr)
+        if len(notify_lines(w)) != 3: fails.append(f"{N}: a still-dead job was texted again: {len(notify_lines(w))} texts")
+        w.set_mode(B_, "ok"); jr_run(w, B_, t0 + 5 * P, x, jr)    # B runs again: ONE recovery
+        got = sorted(a for a, *_ in notify_lines(w))
+        if got.count(f"Job running again: {B_}") != 1 or len(got) != 4: fails.append(f"{N}: expected exactly one 'running again' for sim-b: {got}")
+        jr_run(w, A, t0 + 6 * P, x, jr)
+        if len(notify_lines(w)) != 4: fails.append(f"{N}: texts changed with nothing new: {len(notify_lines(w))}")
+        # a failed 'not running' send is retried (no marker), then goes out once
+        send_fails(w, True); jr_run(w, A, t0 + 9 * P, x, jr)  # B last ran at +5h: 4h stale again
+        if len(notify_lines(w)) != 4: fails.append(f"{N}: a text got through a failing send: {len(notify_lines(w))}")
+        if "NOTIFY FAILED" not in w.read(A, "log"): fails.append(f"{N}: the failed watch send was not logged loudly")
+        send_fails(w, False); jr_run(w, A, t0 + 10 * P, x, jr)
+        got = [a for a, *_ in notify_lines(w)]
+        if len(got) != 5 or got[-1] != f"Job not running: {B_}": fails.append(f"{N}: the failed watch text was not retried to one send: {got}")
+        # the message names the job and says what is wrong
+        msgs = {a: m for a, m, *_ in notify_lines(w)}
+        if "sim-d" not in msgs.get(f"Job not running: {D_}", "") or "never ran" not in msgs.get(f"Job not running: {D_}", ""): fails.append(f"{N}: the never-ran text does not say so: {msgs.get(f'Job not running: {D_}')!r}")
+        # an error inside the watch step must not change the job's exit code, and must be loud
+        shutil.rmtree(f"{w.state}/jobs/.watch", ignore_errors=True); open(f"{w.state}/jobs/.watch", "w").write("not a directory")
+        rc = jr_run(w, A, t0 + 11 * P, x, jr)
+        if rc != 0: fails.append(f"{N}: an error in the watch step changed the job's exit code to {rc}")
+        if "WATCH" not in w.read(A, "log").split("=== run ")[-1]: fails.append(f"{N}: the watch error was not logged loudly")
+        return 8, fails, ([], [])
+    finally:
+        w.close()
+
+
+NEW_SCENARIOS.append(("watch-each-other", watch_each_other))
+
+
+def bite_o():
+    return bite_planted([("NEVER_RAN_WATCHED=1 ", "NEVER_RAN_WATCHED=0 ")], watch_each_other, "watch-each-other")
+
+
+BITES.append(("o", "an enabled row that never runs (an unloaded job) and is never texted about", "watch-each-other", bite_o))
+
+
 if "--bite" in sys.argv[1:]:
     sys.exit(bite_main())
 sys.exit(main())

@@ -23,6 +23,8 @@
 #   pending.current  per-run list of *-last-seen.pending files the shared fetch wrote (5.9(f)); promoted on rc 0 + a passing check, else deleted
 #   errors/       one file per FAILED run (not 75, not 2), named by time
 #   alerted       exists while ONE "job down" push is out and no success has followed: "<ISO time> rc=<n> <incident id>"
+#   standdown-since / standdown-alerted   5.10(2): the first recorded 75 of the current run of 75s / the one 'stood down since' text is out
+#   ../.watch/<job>.alerted|.seen         5.10(3): the one 'not running' text for ANOTHER job is out / when a never-run row was first seen
 #   launch.err    launchd's StandardErrorPath — non-empty means the launch line could not find this
 #                 file (a bad code-root pointer). This wrapper moves its contents into the log and
 #                 clears it, because reaching this line proves the pointer works again.
@@ -118,13 +120,13 @@ claude_version_short() {
   v="$(head -1 "$tmp" | awk '{print $1}')"; rm -f "$tmp"
   echo "${v:-unknown}"
 }
-# notify <title> <message> <identity> [priority] — returns notify-send's exit code (5.10(1)): the caller writes its marker ONLY on a confirmed
+# notify <title> <message> <identity> [priority] [source-job] — returns notify-send's exit code (5.10(1)): the caller writes its marker ONLY on a confirmed
 # send. A failure is logged LOUDLY and never touches the run's exit code; the caller leaves the marker unwritten so the next run retries.
 notify() {
-  local sender="${JOB_RUN_NOTIFY:-$CODE_ROOT/shared/notify/notify-send.sh}" prio="${4:-normal}" nrc
+  local sender="${JOB_RUN_NOTIFY:-$CODE_ROOT/shared/notify/notify-send.sh}" prio="${4:-normal}" src="${5:-$JOB}" nrc
   # 2.5b: source is per job ("job-run:<job>") so the governor's cap of 3/day applies to each job; a
   # recovery goes out as priority "recovery" (cap-exempt; still respects quiet hours and dedup).
-  bash "$sender" --source "job-run:$JOB" --title "$1" --message "$2" --identity "$3" --priority "$prio" --tags warning; nrc=$?
+  bash "$sender" --source "job-run:$src" --title "$1" --message "$2" --identity "$3" --priority "$prio" --tags warning; nrc=$?
   [ "$nrc" -eq 0 ] || echo "[job-run] NOTIFY FAILED (rc=$nrc, $sender): the text '$1' was NOT delivered -- it will be retried on the next run; run result unchanged"
   return "$nrc"
 }
@@ -167,6 +169,61 @@ standdown_check() {
   notify "Job standing down: $JOB" "$JOB stood down since $(fmt_epoch "$t0"): ${reason:-no reason recorded}" "job-standdown:$JOB:$incident"; nrc=$?
   if confirmed_send "$nrc"; then printf '%s rc=75 %s\n' "$(iso_now)" "$incident" > "$mark"; stamp "$mark"
   else echo "[job-run] stand-down text for $JOB NOT confirmed (notify rc=$nrc): no marker written; retried on the next stood-down run"; fi
+}
+# human_s <seconds> — "90m", "5h", "3d" for a text.
+human_s() { local s="$1"; if [ "$s" -lt 7200 ]; then echo "$(( s / 60 ))m"; elif [ "$s" -lt 172800 ]; then echo "$(( s / 3600 ))h"; else echo "$(( s / 86400 ))d"; fi; }
+# watch_others — 5.10(3), runs AFTER the job's own work (finish). Reads every row of the jobs block once; for each ENABLED (yes) row other than this
+# one whose last-run is OLDER than WATCH_MULT x its interval -- or that has no last-run at all (never ran: the clock starts the first time any job
+# sees the row, in jobs/.watch/<name>.seen) -- sends ONE "not running" text, source job-run:<that job> (so the governor's dedup + cap of 3/day apply to
+# it), identity job-down:<job>:<epoch>. The marker jobs/.watch/<name>.alerted is written only on a confirmed send (5.10(1)); when the row is fresh again
+# (this job's own row counts) ONE "running again" recovery goes out and the marker is removed. A row that is not `yes` is never watched (its marker
+# is dropped). Cheap: one awk over the manifest, a stat per row, a python start only when a text is actually due.
+NEVER_RAN_WATCHED=1   # 5.10(3): 1 = a row that never ran is watched too (the unloaded-plist case); the rig's bite plants 0
+watch_others() {
+  local root wdir wn we wi ref age mark seen nrc incident lr what
+  root="$(dirname "$STATE")"; wdir="$root/.watch"
+  [ -r "$MANIFEST" ] || { echo "[job-run] WATCH ERROR: cannot read the manifest $MANIFEST -- the other jobs were not checked"; return 1; }
+  mkdir -p "$wdir" || { echo "[job-run] WATCH ERROR: cannot create $wdir -- the other jobs were not checked"; return 1; }
+  while IFS='|' read -r wn we wi; do
+    case "$wn" in ''|*[!a-z0-9-]*) continue ;; esac
+    case "$wi" in ''|*[!0-9]*) continue ;; esac
+    mark="$wdir/$wn.alerted"; seen="$wdir/$wn.seen"; lr="$root/$wn/last-run"
+    if [ "$we" != yes ]; then rm -f "$mark" "$seen"; continue; fi
+    if [ -f "$lr" ]; then ref="$(mtime "$lr")"; rm -f "$seen"
+    elif [ -f "$root/$wn/last-success" ]; then ref="$(mtime "$root/$wn/last-success")"; rm -f "$seen"
+    else
+      [ "$NEVER_RAN_WATCHED" = 1 ] || continue
+      [ -f "$seen" ] || { iso_now > "$seen"; stamp "$seen"; }
+      ref="$(mtime "$seen")"
+    fi
+    age=$(( $(now_epoch) - ref ))
+    if [ "$age" -gt $(( WATCH_MULT * wi )) ]; then
+      [ "$wn" = "$JOB" ] && continue      # this job just ran: its own staleness is the job-down rule's business
+      [ -f "$mark" ] && continue
+      if [ -f "$lr" ] || [ -f "$root/$wn/last-success" ]; then what="last run $(human_s "$age") ago"; else what="never ran (watched since $(fmt_epoch "$ref"))"; fi
+      incident="$(now_epoch)"
+      notify "Job not running: $wn" "$wn is not running: $what, expected every $(human_s "$wi") · next: open any desk; the first line names it; the launchd agent may be unloaded" "job-down:$wn:$incident" normal "$wn"; nrc=$?
+      if confirmed_send "$nrc"; then printf '%s %s\n' "$(iso_now)" "$incident" > "$mark"; stamp "$mark"
+      else echo "[job-run] not-running text for $wn NOT confirmed (notify rc=$nrc): no marker written; retried on the next job run"; fi
+    elif [ -f "$mark" ]; then
+      incident="$(awk '{print $2}' "$mark")"
+      notify "Job running again: $wn" "$wn is running again" "job-up:$wn:$incident" recovery "$wn"; nrc=$?
+      if confirmed_send "$nrc"; then rm -f "$mark"; else echo "[job-run] running-again text for $wn NOT confirmed (notify rc=$nrc): marker stays, retried on the next job run"; fi
+    fi
+  done < <(awk '
+    /^```jobs[[:space:]]*$/ {inb=1; next}
+    inb && /^```[[:space:]]*$/ {inb=0}
+    inb && $0 !~ /^[[:space:]]*#/ && NF {
+      n=split($0, f, "|"); if (n < 3) next
+      for (i=1; i<=3; i++) gsub(/[[:space:]]+/, "", f[i])
+      print f[1] "|" f[2] "|" f[3]
+    }' "$MANIFEST")
+}
+# watch_jobs — fail-safe wrapper: the watch runs in a subshell; ANY error is logged loudly and NEVER changes this run's exit code.
+watch_jobs() {
+  [ "$NO_WATCH" = 1 ] && return 0
+  ( watch_others ) || echo "[job-run] WATCH STEP FAILED (rc=$?): the other jobs were not (fully) checked this run; this job's own result is unchanged"
+  return 0
 }
 # alert_check <rc> [record] — the alert rule above; called from finish() so every exit path gets it.
 alert_check() {
@@ -223,7 +280,7 @@ finish() {
     rm -f "$JOB_RUN_PENDING_LIST"
   fi
   [ -n "$LOCKDIR" ] && rm -rf "$LOCKDIR"
-  if [ "$FORCE" != 1 ]; then flush_deferred; alert_check "$rc" "$record"; fi   # --force is a test: it never pushes
+  if [ "$FORCE" != 1 ]; then flush_deferred; alert_check "$rc" "$record"; watch_jobs; fi   # --force is a test: it never pushes
   cat "$RUNLOG" >> "$STATE/log"
   awk '/^=== run /{n++} {line[NR]=$0; sec[NR]=n} END{for(i=1;i<=NR;i++) if(sec[i]>n-20) print line[i]}' \
     "$STATE/log" > "$STATE/log.tmp" && mv -f "$STATE/log.tmp" "$STATE/log"
