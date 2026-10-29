@@ -390,6 +390,7 @@ _xml_escape() {
   printf '%s' "$s"
 }
 
+BOOTSTRAP_FAILED=0
 install_mac_launchd() {
   local la_dir="${LAUNCHAGENTS_DIR:-$HOME/Library/LaunchAgents}"
   local dry=0 apply=0
@@ -502,10 +503,16 @@ PLIST
       echo "[install-schedulers] FATAL: plutil -lint rejected $plist" >&2; exit 1
     fi
     echo "[install-schedulers] wrote $plist"
-    _run launchctl bootstrap "gui/$uid" "$plist"
+    # 5.10(4): a failed bootstrap means the job is NOT scheduled; say so loudly and fail the install (the other jobs still get tried).
+    _brc=0; _run launchctl bootstrap "gui/$uid" "$plist" || _brc=$?
+    if [ "$_brc" -ne 0 ]; then
+      echo "[install-schedulers] FATAL: launchctl bootstrap FAILED for $label (rc=$_brc) -- $name is NOT scheduled. Plist: $plist" >&2
+      BOOTSTRAP_FAILED=$((BOOTSTRAP_FAILED + 1))
+    fi
   done
   echo "[install-schedulers] REGISTRATION is not proof it fires: check ~/.config/lifehack/state/jobs/<job>/last-success after the first scheduled run."
   [ "$DOOR_REFUSED" -eq 0 ] || echo "[install-schedulers] $DOOR_REFUSED enabled row(s) REFUSED by the door -- no plist written for them." >&2
+  [ "$BOOTSTRAP_FAILED" -eq 0 ] || { echo "[install-schedulers] $BOOTSTRAP_FAILED job(s) FAILED to bootstrap -- the install FAILED." >&2; return 1; }
 }
 
 if [ "$OS" = "mac" ]; then

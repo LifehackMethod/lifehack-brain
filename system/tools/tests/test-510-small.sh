@@ -55,4 +55,25 @@ sc b-other-error-exit2      2 "__SERPER_ERROR__ URLError: x"     0 "Serper reque
 sc b-reducer-crash-exit2    2 "1. partial result"                1 "reducer"
 sc b-clean-exit0            0 "1. a result"                      0
 
+# ── (c) a failed `launchctl bootstrap` fails the install, loudly (stub launchctl on PATH; no real launchctl) ──
+mkdir -p "$T/c/code/system/tools" "$T/c/home" "$T/c/bin"
+printf '#!/usr/bin/env bash\necho fine\n' > "$T/c/code/system/tools/ok-run.sh"
+printf '```jobs\nj1 | yes | 3600 | o. | $HOME/x ~ ^ran j1 n=[0-9]+ | none | 0 | none | bash "$LIFEHACK_CODE_ROOT/system/tools/ok-run.sh"\n```\n' > "$T/c/manifest.md"
+cat > "$T/c/bin/launchctl" <<'STUB'
+#!/bin/bash
+echo "launchctl $*" >> "$STUBLOG"
+[ "$1" = bootstrap ] && exit "${BOOTSTRAP_RC:-0}"
+exit 0
+STUB
+chmod +x "$T/c/bin/launchctl"
+ci() {  # case-name want-rc bootstrap-rc
+  : > "$T/c/log"; rm -rf "$T/c/la"; mkdir -p "$T/c/la"
+  STUBLOG="$T/c/log" BOOTSTRAP_RC="$3" PATH="$T/c/bin:$PATH" PULSE_CONFIG="$T/c/manifest.md" LIFEHACK_CODE_ROOT="$T/c/code" LIFEHACK_DESK_REPO="$T/c/nodesk" \
+    HOME="$T/c/home" LAUNCHAGENTS_DIR="$T/c/la" LIFEHACK_TEST_OS_OVERRIDE=mac bash "$ROOT/system/tools/install-schedulers.sh" --install >"$T/c/out" 2>"$T/c/err"; local rc=$?
+  grep -q "^launchctl bootstrap" "$T/c/log" || { fail "$1" "bootstrap was never called (stub unused): $(head -c 200 "$T/c/err")"; return; }
+  if [ "$rc" -eq "$2" ] && { [ "$2" -eq 0 ] || grep -qi "bootstrap.*fail" "$T/c/err"; }; then pass "$1"; else fail "$1" "rc=$rc want $2; err=$(head -c 200 "$T/c/err")"; fi
+}
+ci c-bootstrap-fails-install 1 5
+ci c-bootstrap-ok-installs   0 0
+
 [ "$FAILS" -eq 0 ]
