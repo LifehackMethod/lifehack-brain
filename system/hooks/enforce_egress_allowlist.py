@@ -120,6 +120,81 @@ for m in re.finditer(r'\b(?:nc|ncat|netcat|telnet)\b\s+((?:-\S+\s+)*)([A-Za-z0-9
     if host:
         hosts.add(host)
 
+# ── BARE HOSTNAMES (v2 3.5b): `curl -d hi ntfy.sh/topic` has no scheme, so the URL pattern above never
+# saw it and the call passed with only the "no hostname" warning. This pass reads tokens in a network
+# tool's ARGUMENT position only (first word of a command segment is curl/wget/http/nc/...), and only
+# accepts a token that is wholly `host.tld[:port][/path]`. Kept conservative on purpose:
+#   - flags, and the value of a value-taking flag (-o out.json, --data @f.txt), are skipped
+#   - `@file`, `./a.b/c`, `/abs`, `~/x`, `$VAR`, key=value, anything with :// are skipped
+#   - with no path and no port, a file-extension "TLD" (notes.md, out.json) is skipped
+# It only ever ADDS hosts to check, and only from network-tool args; every case above is unchanged.
+_NET_TOOLS = {'curl', 'wget', 'http', 'https', 'httpie', 'xh', 'nc', 'ncat', 'netcat', 'telnet'}
+_PREFIX = {'sudo', 'env', 'time', 'nohup', 'command', 'exec'}
+_VAL_FLAGS = {  # flags whose NEXT token is a value, not a destination
+    '-o', '-d', '-H', '-X', '-u', '-A', '-e', '-T', '-F', '-b', '-c', '-K', '-m', '-x', '-w', '-D', '-E',
+    '-P', '-U', '-C', '-r', '-z',   # NOT -s -q -i -I -O -p: no value in curl/wget (-q is wget quiet)
+    '--data', '--data-raw', '--data-binary', '--data-urlencode', '--data-ascii', '--json', '--output',
+    '--header', '--request', '--user', '--user-agent', '--referer', '--form', '--form-string',
+    '--upload-file', '--cookie', '--cookie-jar', '--max-time', '--connect-timeout', '--proxy', '--cacert',
+    '--cert', '--key', '--config', '--write-out', '--dump-header', '--retry', '--output-document',
+    '--post-data', '--post-file', '--directory-prefix', '--input-file', '--timeout',
+    '--auth', '--session', '--proxy-user', '--limit-rate', '--range', '--resolve', '--url-query'}
+_FILE_EXT = set("""md txt json yaml yml xml csv tsv log html htm py js mjs ts rb pl php c h cpp go rs java
+jpg jpeg png gif svg pdf zip gz tgz tar bz2 xz bin dat out tmp conf cfg ini toml lock sql db pem key crt
+cer css map env sample bak orig diff patch jsonl ndjson cookies""".split())
+_BARE = re.compile(r'^((?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}|\d{1,3}(?:\.\d{1,3}){3})(?::(\d{1,5}))?(/\S*)?$', re.I)
+
+
+def _segments(c):
+    import shlex
+    try:
+        lx = shlex.shlex(c, posix=True, punctuation_chars=';&|()')
+        lx.whitespace_split = True
+        toks = list(lx)
+    except Exception:
+        return []
+    segs, cur = [], []
+    for t in toks:
+        if t and set(t) <= set(';&|()'):
+            segs.append(cur); cur = []
+        else:
+            cur.append(t)
+    segs.append(cur)
+    return segs
+
+
+def _bare_hosts(c):
+    out = set()
+    for seg in _segments(c):
+        i = 0
+        while i < len(seg) and (seg[i] in _PREFIX or re.match(r'^[A-Za-z_][A-Za-z0-9_]*=', seg[i])):
+            i += 1
+        if i >= len(seg) or os.path.basename(seg[i]) not in _NET_TOOLS:
+            continue
+        skip = False
+        for t in seg[i + 1:]:
+            if skip:
+                skip = False; continue
+            if t.startswith('-'):
+                if t in _VAL_FLAGS:
+                    skip = True
+                continue
+            if not t or t[0] in '@./~$' or '://' in t or '=' in t or '\\' in t:
+                continue
+            m = _BARE.match(t)
+            if not m:
+                continue
+            host, port, path = m.group(1).lower(), m.group(2), m.group(3)
+            if re.match(r'^\d', host) and not (port or path):
+                continue                      # a bare dotted number (1.5) is a number, not a host
+            if not (port or path) and host.rsplit('.', 1)[1] in _FILE_EXT:
+                continue                      # notes.md, out.json
+            out.add(host)
+    return out
+
+
+hosts |= _bare_hosts(cmd)
+
 if not hosts:                        # a mechanism but no host we can read → allow, and say so
     sys.stderr.write("[egress] an outbound call with no hostname this hook could read — allowed. "
                      "Your OS firewall is the layer that actually holds this line.\n")
