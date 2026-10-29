@@ -1,0 +1,22 @@
+# job-names.txt -- the plain name of every job, one per line:  <job> = <plain name>   (self-monitoring 5.14; jobs-sop.md section 14).
+# Every text says "Your <plain name> ...", so keep each name short and in words a non-programmer uses.
+# A job with no line here falls back to its code name with the dashes turned into spaces. Keep this beside the jobs table.
+calendar-store-sync = calendar copy
+tasks-store-sync = task list copy
+email-summary-write = email summary
+planning-diary = planning diary
+archivist-audit = weekly notes tidy-up check
+archivist-deepmine = monthly notes review
+planning-weekly-prime = weekly planning prep
+guard-fire-test = safety-guard self-test
+marc-health = Marc's daily market check
+marc-weekly = Marc's weekly market review
+marc-wednesday = Marc's Wednesday market review
+clair-billing = coaching billing
+deryl-ingest = daily email sorting for the books
+cp-utilities = utilities bill tracking
+emporia = home energy report
+emily-breakdown = audition breakdown
+token-burn-mine = usage cost report
+obsidian-reindex = notes search index
+mirror-fetch = code backup check

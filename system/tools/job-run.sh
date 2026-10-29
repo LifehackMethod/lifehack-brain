@@ -123,12 +123,52 @@ claude_version_short() {
 # notify <title> <message> <identity> [priority] [source-job] — returns notify-send's exit code (5.10(1)): the caller writes its marker ONLY on a confirmed
 # send. A failure is logged LOUDLY and never touches the run's exit code; the caller leaves the marker unwritten so the next run retries.
 notify() {
-  local sender="${JOB_RUN_NOTIFY:-$CODE_ROOT/shared/notify/notify-send.sh}" prio="${4:-normal}" src="${5:-$JOB}" nrc
+  local sender="${JOB_RUN_NOTIFY:-$CODE_ROOT/shared/notify/notify-send.sh}" prio="${4:-normal}" src="${5:-$JOB}" nrc targs=()
   # 2.5b: source is per job ("job-run:<job>") so the governor's cap of 3/day applies to each job; a
   # recovery goes out as priority "recovery" (cap-exempt; still respects quiet hours and dedup).
-  bash "$sender" --source "job-run:$src" --title "$1" --message "$2" --identity "$3" --priority "$prio" --tags warning; nrc=$?
-  [ "$nrc" -eq 0 ] || echo "[job-run] NOTIFY FAILED (rc=$nrc, $sender): the text '$1' was NOT delivered -- it will be retried on the next run; run result unchanged"
+  # 5.14: the text carries its own symbol and no title; job-run NEVER sends priority critical, so none of its texts can break quiet hours (22-07).
+  [ -z "$1" ] || targs=(--title "$1")
+  bash "$sender" --source "job-run:$src" "${targs[@]+"${targs[@]}"}" --message "$2" --identity "$3" --priority "$prio"; nrc=$?
+  [ "$nrc" -eq 0 ] || echo "[job-run] NOTIFY FAILED (rc=$nrc, $sender): the text '${2:0:60}' was NOT delivered -- it will be retried on the next run; run result unchanged"
   return "$nrc"
+}
+# ── 5.14: the words of every text live in ONE file, system/tools/job-texts.txt (editable without touching code); a job's plain name lives in
+# job-names.txt beside the jobs table. job_text <key> prints the wording; plain_name <job> its plain name (no entry: the code name with dashes
+# turned into spaces); when_text <epoch> reads "2:10 PM", "yesterday 2:10 PM" or "Tuesday 8 AM"; render_text <key> <job> [epoch...] fills the blanks.
+TEXTS_FILE="${LIFEHACK_JOB_TEXTS:-$CODE_ROOT/system/tools/job-texts.txt}"
+NAMES_FILE="${LIFEHACK_JOB_NAMES:-$(dirname "$MANIFEST")/job-names.txt}"
+job_text() {
+  local line
+  while IFS= read -r line; do
+    case "$line" in "$1 = "*) printf '%s' "${line#"$1 = "}"; return 0 ;; esac
+  done < "$TEXTS_FILE" 2>/dev/null
+  printf '%s' "⚠ Something needs a look. Open Claude and say: what broke?"   # the file or the key is missing: still say something, plainly
+}
+plain_name() {
+  local line n=""
+  while IFS= read -r line; do
+    case "$line" in "$1 = "*) n="${line#"$1 = "}"; break ;; esac
+  done < "$NAMES_FILE" 2>/dev/null
+  [ -n "$n" ] || n="${1//-/ }"
+  printf '%s' "$n"
+}
+when_text() {
+  local e="$1" now d y h m ap clock
+  now="$(now_epoch)"
+  _wf() { date -r "$1" "+$2" 2>/dev/null || date -d "@$1" "+$2"; }
+  h="$(_wf "$e" %I)"; m="$(_wf "$e" %M)"; ap="$(_wf "$e" %p)"; h="${h#0}"
+  if [ "$m" = 00 ]; then clock="$h $ap"; else clock="$h:$m $ap"; fi
+  d="$(_wf "$e" %Y%m%d)"; y="$(_wf $(( now - 86400 )) %Y%m%d)"
+  if [ "$d" = "$(_wf "$now" %Y%m%d)" ]; then printf '%s' "$clock"
+  elif [ "$d" = "$y" ]; then printf '%s' "yesterday $clock"
+  elif [ $(( now - e )) -lt $(( 6 * 86400 )) ]; then printf '%s' "$(_wf "$e" %A) $clock"
+  else d="$(_wf "$e" %d)"; printf '%s' "$(_wf "$e" %b) ${d#0}, $clock"; fi
+}
+render_text() {   # render_text <key> <job> [<epoch for {last_ok} and {since}>]
+  local t name when=""; t="$(job_text "$1")"; name="$(plain_name "$2")"
+  [ -z "${3:-}" ] || when="$(when_text "$3")"
+  t="${t//\{name\}/$name}"; t="${t//\{last_ok\}/$when}"; t="${t//\{since\}/$when}"
+  printf '%s' "$t"
 }
 # confirmed_send <notify rc> — the ONE definition of "the text went out": notify-send exit 0 = sent, OR suppressed by the governor (dedup/cap:
 # correct permanent drops), OR queued for quiet hours (the queue delivers it). Anything else (1 failed, 2 setup, 3 corrupt state, 127 missing)
@@ -156,7 +196,7 @@ fmt_epoch() { date -r "$1" "+%Y-%m-%d %H:%M" 2>/dev/null || date -d "@$1" "+%Y-%
 # (an off row stands down by design). Past SD_MULT x INTERVAL: ONE text "<job> stood down since <time>: <reason>" (reason = last-run's);
 # standdown-alerted is written only on a confirmed send (a failed one is retried next run); the next pass sends ONE recovery (alert_check).
 standdown_check() {
-  local since="$STATE/standdown-since" mark="$STATE/standdown-alerted" age reason incident nrc t0
+  local since="$STATE/standdown-since" mark="$STATE/standdown-alerted" age incident nrc t0
   [ "$NO_WATCH" = 1 ] && return 0
   [ "$1" = yes ] && [ "${ENABLED:-}" = yes ] || return 0
   case "${INTERVAL:-}" in ''|*[!0-9]*) return 0 ;; esac
@@ -164,9 +204,8 @@ standdown_check() {
   [ -f "$mark" ] && return 0
   t0="$(mtime "$since")"; age=$(( $(now_epoch) - t0 ))
   [ "$age" -gt $(( SD_MULT * INTERVAL )) ] || return 0
-  reason="$(head -1 "$STATE/last-run" 2>/dev/null | sed -E 's/^[^ ]+ rc=[0-9]+ calls=[0-9]+ secs=[0-9]+ model=[^ ]+ ccv=[^ ]+ ?//')"
   incident="$(now_epoch)"
-  notify "Job standing down: $JOB" "$JOB stood down since $(fmt_epoch "$t0"): ${reason:-no reason recorded}" "job-standdown:$JOB:$incident"; nrc=$?
+  notify "" "$(render_text standdown "$JOB" "$t0")" "job-standdown:$JOB:$incident"; nrc=$?
   if confirmed_send "$nrc"; then printf '%s rc=75 %s\n' "$(iso_now)" "$incident" > "$mark"; stamp "$mark"
   else echo "[job-run] stand-down text for $JOB NOT confirmed (notify rc=$nrc): no marker written; retried on the next stood-down run"; fi
 }
@@ -200,14 +239,14 @@ watch_others() {
     if [ "$age" -gt $(( WATCH_MULT * wi )) ]; then
       [ "$wn" = "$JOB" ] && continue      # this job just ran: its own staleness is the job-down rule's business
       [ -f "$mark" ] && continue
-      if [ -f "$lr" ] || [ -f "$root/$wn/last-success" ]; then what="last run $(human_s "$age") ago"; else what="never ran (watched since $(fmt_epoch "$ref"))"; fi
+      if [ -f "$lr" ] || [ -f "$root/$wn/last-success" ]; then what="$(render_text notrunning "$wn" "$ref")"; else what="$(render_text notrunning_never "$wn")"; fi
       incident="$(now_epoch)"
-      notify "Job not running: $wn" "$wn is not running: $what, expected every $(human_s "$wi") · next: open any desk; the first line names it; the launchd agent may be unloaded" "job-down:$wn:$incident" normal "$wn"; nrc=$?
+      notify "" "$what" "job-down:$wn:$incident" normal "$wn"; nrc=$?
       if confirmed_send "$nrc"; then printf '%s %s\n' "$(iso_now)" "$incident" > "$mark"; stamp "$mark"
       else echo "[job-run] not-running text for $wn NOT confirmed (notify rc=$nrc): no marker written; retried on the next job run"; fi
     elif [ -f "$mark" ]; then
       incident="$(awk '{print $2}' "$mark")"
-      notify "Job running again: $wn" "$wn is running again" "job-up:$wn:$incident" recovery "$wn"; nrc=$?
+      notify "" "$(render_text running_again "$wn")" "job-up:$wn:$incident" recovery "$wn"; nrc=$?
       if confirmed_send "$nrc"; then rm -f "$mark"; else echo "[job-run] running-again text for $wn NOT confirmed (notify rc=$nrc): marker stays, retried on the next job run"; fi
     fi
   done < <(awk '
@@ -227,15 +266,15 @@ watch_jobs() {
 }
 # alert_check <rc> [record] — the alert rule above; called from finish() so every exit path gets it.
 alert_check() {
-  local rc="$1" record="${2:-yes}" ls_age="" last_ok="never" mark="$STATE/alerted" nrc smark="$STATE/standdown-alerted"
+  local rc="$1" record="${2:-yes}" ls_age="" last_ok="" mark="$STATE/alerted" nrc smark="$STATE/standdown-alerted"
   [ "$rc" -eq 75 ] || rm -f "$STATE/standdown-since"   # 5.10(2): any result but 75 ends a run of stand-downs
   if [ "$rc" -eq 0 ] && [ -f "$smark" ] && [ "$NO_WATCH" != 1 ]; then   # 5.10(2): ONE recovery after a stand-down text
-    notify "Job running again: $JOB" "$JOB is running again · output check passed" "job-standdown-up:$JOB:$(awk '{print $3}' "$smark")" recovery; nrc=$?
+    notify "" "$(render_text running_again "$JOB")" "job-standdown-up:$JOB:$(awk '{print $3}' "$smark")" recovery; nrc=$?
     if confirmed_send "$nrc"; then rm -f "$smark"; else echo "[job-run] stand-down recovery text not confirmed: marker stays, retried on the next passing run"; fi
   fi
   if [ "$rc" -eq 0 ]; then
     [ -f "$mark" ] || return 0
-    notify "Job recovered: $JOB" "$JOB succeeded again · output check passed" "job-up:$JOB:$(awk '{print $3}' "$mark")" recovery; nrc=$?
+    notify "" "$(render_text recovered "$JOB")" "job-up:$JOB:$(awk '{print $3}' "$mark")" recovery; nrc=$?
     if confirmed_send "$nrc"; then rm -f "$mark"; else echo "[job-run] recovery text not confirmed: the alerted marker stays, the recovery is retried on the next passing run"; fi
     return 0
   fi
@@ -245,12 +284,13 @@ alert_check() {
   if [ -f "$STATE/last-success" ]; then
     ls_age=$(( $(now_epoch) - $(mtime "$STATE/last-success") ))
     [ "$ls_age" -lt $(( 2 * INTERVAL )) ] && return 0   # 2.5d: page at age >= 2 x INTERVAL (the 2nd miss)
-    last_ok="$(( ls_age / 3600 ))h ago"
+    last_ok="$(mtime "$STATE/last-success")"
   fi
   # The identity carries this incident's id: the marker already dedups within an incident, and the
   # governor's 24 h identity dedup must not swallow the NEXT incident (e.g. a real failure hours after a test).
-  local incident; incident="$(now_epoch)"
-  notify "Job down: $JOB" "exit $rc · last success $last_ok · next: open any desk; the first line names it, the error is in ~/.config/lifehack/state/jobs/$JOB/errors/" "job-down:$JOB:$incident"; nrc=$?
+  local incident dtext; incident="$(now_epoch)"
+  if [ -n "$last_ok" ]; then dtext="$(render_text down "$JOB" "$last_ok")"; else dtext="$(render_text down_never "$JOB")"; fi
+  notify "" "$dtext" "job-down:$JOB:$incident"; nrc=$?
   # 5.10(1): the marker is written ONLY on a confirmed send. A failed send leaves it unwritten, so the next failing run tries again.
   if confirmed_send "$nrc"; then
     printf '%s rc=%s %s\n' "$(iso_now)" "$rc" "$incident" > "$mark"

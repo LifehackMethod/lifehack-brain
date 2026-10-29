@@ -1,0 +1,15 @@
+# job-texts.txt -- ALL the wording of the texts that reach the owner's phone (self-monitoring 5.14; rule: jobs-sop.md section 14).
+# One line per text:  <key> = <text>.  Edit the words here; no code changes. A new kind of text is added here, in the same voice.
+# Placeholders: {name} = the job's plain name (system/job-names.txt, "Your <plain name>"); {last_ok} and {since} = a time like
+# "2:10 PM", "yesterday 2:10 PM" or "Tuesday 8 AM".
+# Read by: system/tools/job-run.sh (the first seven keys), shared/gate/sentinel_response.py (danger), shared/notify/notify-send.sh (governor).
+# Only `danger` may wake the owner at night (quiet hours 22-07); every other text waits until morning.
+down = ⚠ Your {name} stopped updating. It last worked at {last_ok}. Nothing is lost. Open Claude and say: what broke?
+down_never = ⚠ Your {name} stopped updating. It has not worked yet. Nothing is lost. Open Claude and say: what broke?
+recovered = ✅ Your {name} is working again.
+standdown = ⏸ Your {name} has been paused since {since}, so it isn't updating. Open Claude and say: what broke?
+notrunning = ⚠ Your {name} hasn't run since {since}. Your Mac may have been off. Open Claude once and it will check.
+notrunning_never = ⚠ Your {name} hasn't run yet since it was switched on. Open Claude once and it will check.
+running_again = ✅ Your {name} is running again.
+danger = 🛑 I blocked a suspicious email. It looked like an attempt to trick your assistant. I didn't open it, and I've paused reading that folder. Open Claude and say: what broke?
+governor = ⚠ Your alert system needs a quick fix: its memory got damaged, so it might repeat or miss texts. Open Claude and say: what broke?

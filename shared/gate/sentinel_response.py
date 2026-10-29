@@ -244,6 +244,18 @@ def pause_source(source):
         sys.stderr.write(f"[sentinel] pause-marker write failed: {e}\n")
 
 
+def danger_text():
+    """The dangerous-email text, read from the one message file (key "danger"); a plain fallback if the file is unreadable."""
+    path = os.environ.get("LIFEHACK_JOB_TEXTS") or f"{CODE_ROOT}/system/tools/job-texts.txt"
+    try:
+        for line in open(path, encoding="utf-8"):
+            if line.startswith("danger = "):
+                return line[len("danger = "):].rstrip("\n")
+    except OSError:
+        pass
+    return "I blocked a suspicious email and paused reading that folder. Open Claude and say: what broke?"
+
+
 def notify_danger(source, labels, reader_verdict=None):
     """Send one notification. A teaser only — never the content, because whatever reads the
     notification is one more thing the content could talk to.
@@ -261,12 +273,13 @@ def notify_danger(source, labels, reader_verdict=None):
         sys.stderr.write("[sentinel] notifications disabled (test) — skipping push\n"); return
     if not os.path.exists(NOTIFY):
         sys.stderr.write("[sentinel] no notifier installed — skipping push (the log and the pause stand)\n"); return
-    teaser = (f"DANGER in {source}: {', '.join(sorted(set(labels))[:3])}. That source is PAUSED. "
-              f"What tripped it is in the event log. Review it, then un-pause by hand.")
+    # 5.14: the wording is plain words from the one message file (system/tools/job-texts.txt, key "danger"): no label names, no source name, no title.
+    # This is the ONLY push allowed to break quiet hours (priority critical + source "sentinel"; the governor enforces it).
     try:
         subprocess.run(["bash", NOTIFY, "--source", "sentinel", "--priority", "critical",
-                        "--title", "Security: DANGER (source paused)", "--message", teaser,
-                        "--tags", "rotating_light,lock"],
+                        "--message", danger_text(),
+                        # the words no longer carry the source/labels, so dedup keys on them (as before) via the identity
+                        "--identity", f"danger:{source}:{','.join(sorted(set(labels)))}"],
                        timeout=20, capture_output=True)
     except Exception as e:
         sys.stderr.write(f"[sentinel] notification failed: {e}\n")

@@ -54,7 +54,7 @@ if [ "${1:-}" = "--flush-deferred" ]; then
   rm -f "$_FE"
   [ -z "$out" ] && exit 0
   rc_all=0
-  while IFS=$'\t' read -r d_source d_message d_title d_tags d_prio d_url; do
+  while IFS=$'\x1f' read -r d_source d_message d_title d_tags d_prio d_url; do
     [ -n "$d_source" ] || continue
     args=(--source "$d_source" --message "$d_message")
     [ -n "$d_title" ] && args+=(--title "$d_title")
@@ -113,8 +113,16 @@ python3 "$GOVERNOR" "$SOURCE" "$MESSAGE" "$PRIORITY" "$IDENTITY" >/dev/null 2>"$
 if [ "$_grc" -eq 3 ]; then
   echo "notify-send: $(cat "$_TMP/notify-gov.$$")" >&2; rm -f "$_TMP/notify-gov.$$"
   _orig_source="$SOURCE"
-  SOURCE="notify-governor"; TITLE="Notify governor state corrupt"; PRIORITY="critical"; TAGS="rotating_light"; URL=""
-  MESSAGE="The notification governor state file ($(basename "${NOTIFY_STATE_FILE:-lifehack-notify-state.json}")) is corrupt, so an alert from '$_orig_source' was NOT sent. Fix or delete the file."
+  # 5.14: the alarm is plain words from the one message file (system/tools/job-texts.txt, key "governor"), carries no title, and is a normal
+  # priority: it never wakes anyone at night. The gate itself is the broken thing, so quiet hours are asked of the governor's clock directly;
+  # at night the alarm is held (the state is still broken in the morning, so the next send raises it then).
+  if python3 "$GOVERNOR" --quiet-now; then
+    echo "notify-send: the damaged-state alarm is held until quiet hours end (22-07); it is raised again by the next send while the file stays damaged" >&2
+    exit 3
+  fi
+  SOURCE="notify-governor"; TITLE=""; PRIORITY="normal"; TAGS=""; URL=""
+  MESSAGE="⚠ Something needs a look. Open Claude and say: what broke?"   # used only if the message file is unreadable
+  while IFS= read -r _l; do case "$_l" in "governor = "*) MESSAGE="${_l#governor = }"; break ;; esac; done < "${LIFEHACK_JOB_TEXTS:-$CODE_ROOT/system/tools/job-texts.txt}" 2>/dev/null
   FINAL_RC=3
 elif [ "$_grc" -ne 0 ]; then
   reason="$(cat "$_TMP/notify-gov.$$" 2>/dev/null)"; rm -f "$_TMP/notify-gov.$$"
