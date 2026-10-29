@@ -219,6 +219,10 @@ drill: *"I have no idea what drill never, drill fail [means]. None of this stuff
 **Every text answers three things, in plain words:** what happened · whether it matters · what to do (or "nothing to
 do"). A text that needs the owner ends with: **"Open Claude and say: what broke?"**
 
+**Every text carries a short plain title** (default "Lifehack", set by `notify-send.sh`). On 2026-10-29 a set of
+title-less texts reached the alert server but never popped up on the phone; with a title they did. The cause was not
+proven, so the title is the safe rule. Never send a text without one.
+
 **Never in a text:** a job's code name (use its plain name from `system/job-names.txt`, one line per job), an exit
 code, a file path, a script name, a flag, or a word only a programmer knows ("output check", "stood down", "rc").
 **A new job adds its plain name there** in the same change that adds its row.
