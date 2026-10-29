@@ -407,6 +407,31 @@ if diff -q "$FSOK.err" "$FSBAD.err" >/dev/null 2>&1; then ok "real guard: stderr
 rm -rf "$FSOK" "$FSOK.out" "$FSOK.err" "$FSBAD" "$FSBAD.out" "$FSBAD.err"
 
 # ---------------------------------------------------------------------------
+echo "── which harness fired: plugin_version / plugin_src / harness (v2 1.1) ─────"
+# ---------------------------------------------------------------------------
+mkroot() { # $1=dir $2=version : a fake plugin root holding a copy of the library
+    mkdir -p "$1/.claude-plugin" "$1/system/hooks/lib"
+    printf '{\n  "name": "x",\n  "version": "%s",\n  "description": "d"\n}\n' "$2" > "$1/.claude-plugin/plugin.json"
+    cp "$LIB" "$1/system/hooks/lib/journal.sh"
+}
+LB="$SCRATCH/label"
+mkroot "$LB/lifehack-v2" 0.4.0
+mkroot "$LB/home/.claude/plugins/cache/lifehack-brain/lifehack-brain/0.3.36" 0.3.36
+for spec in "$LB/lifehack-v2|0.4.0|V2" "$LB/home/.claude/plugins/cache/lifehack-brain/lifehack-brain/0.3.36|0.3.36|main"; do
+    r="${spec%%|*}"; rest="${spec#*|}"; wv="${rest%%|*}"; wh="${rest#*|}"
+    rm -f "$SCRATCH/lab.jsonl"
+    env -u CLAUDE_PLUGIN_ROOT LHB_JOURNAL_PATH="$SCRATCH/lab.jsonl" bash -c ". '$r/system/hooks/lib/journal.sh'; lhb_journal_fire 0 t.sh PreToolUse Bash"
+    got="$(cat "$SCRATCH/lab.jsonl" 2>/dev/null)"
+    case "$got" in *"\"plugin_version\":\"$wv\",\"plugin_src\":\"$r\",\"harness\":\"$wh\"}"*) ok "labels: $wh ($wv) from the library's own plugin.json";; *) bad "labels: $wh -> $got";; esac
+    if python3 -c 'import json,sys; json.loads(sys.stdin.read())' <<<"$got" 2>/dev/null; then ok "labels: $wh line is valid JSON"; else bad "labels: $wh line is valid JSON"; fi
+done
+mkdir -p "$LB/bare/system/hooks/lib"; cp "$LIB" "$LB/bare/system/hooks/lib/journal.sh"
+rm -f "$SCRATCH/lab.jsonl"
+bare_err="$(env -u CLAUDE_PLUGIN_ROOT LHB_JOURNAL_PATH="$SCRATCH/lab.jsonl" bash -c ". '$LB/bare/system/hooks/lib/journal.sh'; lhb_journal_fire 0 t.sh PreToolUse Bash" 2>&1)"
+case "$(cat "$SCRATCH/lab.jsonl")" in *'"harness":""}'*) ok "labels: no plugin.json -> harness empty, line still written";; *) bad "labels: no plugin.json fallback";; esac
+if [ -z "$bare_err" ]; then ok "labels: no plugin.json -> no stderr/stdout"; else bad "labels: leaked: $bare_err"; fi
+
+# ---------------------------------------------------------------------------
 echo ""
 echo "=== $pass passed, $fail failed ==="
 [ "$fail" -eq 0 ]

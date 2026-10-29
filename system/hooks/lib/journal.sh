@@ -68,6 +68,10 @@
 #   plugin_src  — HOW plugin_version resolved: "root" ($CLAUDE_PLUGIN_ROOT, authoritative), "path"
 #                 (the inherited PATH), or "" (unknown/ambiguous). Kept because a version is only as
 #                 trustworthy as the channel it came from.
+#                 SUPERSEDED 2026-10-29 (v2 1.1): when a .claude-plugin/plugin.json is found above this
+#                 library, plugin_version is ITS "version" and plugin_src is that plugin ROOT PATH;
+#                 "root"/"path" now appear only on the env/PATH fallback.
+#   harness     — "V2" | "main" | "" (added v2 1.1): which harness fired. Readers ignore unknown keys.
 #
 # Cost note (measured this session, this machine, arm64 macOS, bash 3.2.57):
 #   - `printf '...' >> file` from an already-running bash: ~0.057 ms/append (negligible).
@@ -145,7 +149,7 @@ lhb_journal_fire() {
     fi
 
     local _rc _hook _event _matcher _journal _dir _base _ts _decision _sid _tsfile _tsrefresh _cached_ts _cached_n
-    local _pv _psrc _pcand _pseen _pn _prest _pe
+    local _pv _psrc _pcand _pseen _pn _prest _pe _lself _pd _pj _pl _pver _pharn _pi
 
     _rc="${1:-}"
     _hook="${2:-unknown}"
@@ -238,6 +242,55 @@ lhb_journal_fire() {
     fi
     _pv="${_pv//[^A-Za-z0-9_.-]/}"
 
+    # ── WHICH HARNESS FIRED (v2 1.1) ─────────────────────────────────────────────────────────
+    # The block above resolves from env/PATH only, and a V2 window (a --plugin-dir checkout, not the
+    # cache) matches neither pattern -- ~15k lines carry plugin_version "" and none could ever say V2.
+    # So the nearest .claude-plugin/plugin.json ABOVE THIS LIBRARY decides, because this file sits in
+    # the very copy that is executing: <root>/system/hooks/lib/journal.sh (BASH_SOURCE[0] inside a
+    # function is the file that DEFINES it, i.e. this one). plugin_src becomes that ROOT PATH,
+    # plugin_version its "version", and `harness` is "main" for a path under /plugins/cache/, "V2"
+    # for a root named lifehack-v2 or any other checkout at version 0.4+, else "main".
+    # ZERO forks: parameter expansion, `[ -f ]` and a `read` loop over a ~20-line file. Any miss
+    # leaves the env/PATH result above untouched (fail-soft, same silent-degrade posture).
+    _pharn=""
+    _lself="${BASH_SOURCE[0]:-}"
+    case "$_lself" in
+        */system/hooks/lib/journal.sh)
+            _pd="${_lself%/system/hooks/lib/journal.sh}"
+            case "$_pd" in /*) ;; *) _pd="${PWD:-.}/$_pd" ;; esac
+            _pi=0
+            while [ -n "$_pd" ] && [ "$_pi" -lt 6 ]; do
+                _pi=$((_pi + 1))
+                _pj="$_pd/.claude-plugin/plugin.json"
+                if [ -f "$_pj" ]; then
+                    _pver=""
+                    while IFS= read -r _pl || [ -n "$_pl" ]; do
+                        case "$_pl" in
+                            *'"version"'*)
+                                _pl="${_pl#*\"version\"}"
+                                _pl="${_pl#*\"}"
+                                _pver="${_pl%%\"*}"
+                                break
+                                ;;
+                        esac
+                    done 2>/dev/null <"$_pj"
+                    _pver="${_pver//[^A-Za-z0-9_.+-]/}"
+                    if [ -n "$_pver" ]; then
+                        _pv="$_pver"
+                        _psrc="${_pd//[\"\\]/}"
+                        case "$_pd" in
+                            */plugins/cache/*) _pharn="main" ;;
+                            */lifehack-v2|*/lifehack-v2/*) _pharn="V2" ;;
+                            *) case "$_pver" in 0.[0-3].*) _pharn="main" ;; *) _pharn="V2" ;; esac ;;
+                        esac
+                    fi
+                    break
+                fi
+                case "$_pd" in */*) _pd="${_pd%/*}" ;; *) break ;; esac
+            done
+        ;;
+    esac
+
     # Timestamp: a real `date +%s` is an external fork on every fire -- on bash 3.2 (macOS's
     # frozen default; $EPOCHSECONDS and printf '%()T' both need bash 4.2+, neither exists here)
     # there is no builtin way to ask the wall clock, so this cost can't be removed, only
@@ -296,8 +349,8 @@ lhb_journal_fire() {
     # "Permission denied" bash prints on a failed open is swallowed instead of leaking to the real
     # caller's stderr. Verified empirically — the reverse order leaks the message. This is exactly
     # the kind of stray byte the FAIL_POSTURE note above promises never happens.
-    printf '{"ts":%s,"hook":"%s","event":"%s","matcher":"%s","decision":"%s","exit_code":%s,"session_id":"%s","plugin_version":"%s","plugin_src":"%s"}\n' \
-        "$_ts" "$_hook" "$_event" "$_matcher" "$_decision" "$_rc" "$_sid" "$_pv" "$_psrc" 2>/dev/null >>"$_journal"
+    printf '{"ts":%s,"hook":"%s","event":"%s","matcher":"%s","decision":"%s","exit_code":%s,"session_id":"%s","plugin_version":"%s","plugin_src":"%s","harness":"%s"}\n' \
+        "$_ts" "$_hook" "$_event" "$_matcher" "$_decision" "$_rc" "$_sid" "$_pv" "$_psrc" "$_pharn" 2>/dev/null >>"$_journal"
 
     # Rotation/cap check — best-effort, see the header block above. Wrapped in its own
     # `2>/dev/null` and never allowed to influence this function's own (already-fixed) return 0.
