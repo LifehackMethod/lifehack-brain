@@ -890,7 +890,7 @@ def real_row(job):
 def receipt_contract(job):
     """5.7 <job>-contract: the row's REAL check (read from pulse-config.md) against a stub runner that writes the receipt.
     Missing receipt, a receipt older than the run start and a receipt with the wrong marker each FAIL (exit 1, no last-success);
-    a good receipt PASSES (exit 0, `[check] ok`, last-run `rc=0 calls=0 ... model=none`). Also: the real row's door passes."""
+    a good receipt PASSES (exit 0, `[check] ok`, last-run `rc=0 calls=0 ... model=none`). Also: an ON row's door passes."""
     fails, row = [], real_row(job)
     if not row or len(row) != 9: return 1, [f"{job}-contract: real row not found / not 9 columns"], ([], [])
     _n, _en, _iv, outcome, check, model, budget, source, _cmd = row
@@ -919,7 +919,9 @@ def receipt_contract(job):
         if "[check] ok" not in w.read(job, "log"): fails.append(f"{job}-contract: no '[check] ok' in the log")
         r = subprocess.run(["bash", f"{ROOT}/system/tools/install-schedulers.sh", "--check-row", job],
                            env={k: v for k, v in os.environ.items() if k not in SEAMS}, capture_output=True, text=True)
-        if r.returncode != 0 or "PASS" not in r.stdout: fails.append(f"{job}-contract: the door refuses the real row: {r.stdout.strip()!r}")
+        # A row that is ON must pass the door. A row that is OFF may be door-refused: its skill is fixed at its own
+        # gate (Enver 2026-10-28, "nothing should be fixing skills"), and the refusal is what keeps it off.
+        if (r.returncode != 0 or "PASS" not in r.stdout) and _en.strip() == "yes": fails.append(f"{job}-contract: the door refuses the real ON row: {r.stdout.strip()!r}")
         return 5, fails, ([], [])
     finally:
         w.close()
