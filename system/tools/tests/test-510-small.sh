@@ -76,4 +76,25 @@ ci() {  # case-name want-rc bootstrap-rc
 ci c-bootstrap-fails-install 1 5
 ci c-bootstrap-ok-installs   0 0
 
+# ── (d) email-summary-write-run.sh: the watchdog kills the whole process group, so no python is left orphaned ──
+D="$T/d"; mkdir -p "$D/code/system/tools" "$D/code/shared/tools" "$D/home" "$D/lock"
+cp "$ROOT/system/tools/email-summary-write-run.sh" "$ROOT/system/tools/runner-lock.lib.sh" "$D/code/system/tools/"
+printf 'require_gws_credentials() { GWS_CREDS_FILE=/dev/null; return 0; }\n' > "$D/code/system/tools/gws-auth.lib.sh"
+printf 'write_status_tile() { :; }\n' > "$D/code/system/tools/status-tile.lib.sh"
+printf 'print("%s")\n' "$D/data" > "$D/code/shared/brain_root.py"
+printf 'import sys\nsys.exit(0)\n' > "$D/code/shared/tools/email_fetch.py"
+cat > "$D/code/shared/tools/email_summary_sync.py" <<'PY'
+import os, sys, time
+open(os.environ["ORPHAN_PIDFILE"], "w").write(str(os.getpid()))
+time.sleep(120)
+PY
+ORPHAN_PIDFILE="$D/pid" HOME="$D/home" LIFEHACK_RUNNER_LOCK_ROOT="$D/lock" EMAIL_WRITE_WATCHDOG_SECS=2 \
+  bash "$D/code/system/tools/email-summary-write-run.sh" >"$D/out" 2>&1; drc=$?
+sleep 1
+if [ -s "$D/pid" ] && kill -0 "$(cat "$D/pid")" 2>/dev/null; then
+  fail d-watchdog-no-orphan "python pid $(cat "$D/pid") survived the watchdog (rc=$drc)"; kill -9 "$(cat "$D/pid")" 2>/dev/null
+elif [ ! -s "$D/pid" ]; then fail d-watchdog-no-orphan "the stub work never started: $(head -c 200 "$D/out")"
+elif [ "$drc" -eq 0 ]; then fail d-watchdog-no-orphan "a watchdog-killed run exited 0"
+else pass d-watchdog-no-orphan; fi
+
 [ "$FAILS" -eq 0 ]

@@ -31,7 +31,7 @@ set -eo pipefail
 SUBSYSTEM_NAME="email-summary-write"
 STALE_AFTER_HOURS="4"                              # own absence horizon — just over one 3h cadence, so a SINGLE
                                                    #   missed run surfaces on the next tick (not after 4 misses)
-WATCHDOG_SECS="900"                                # a full --write-v2 touches Gmail per label; budget generously
+WATCHDOG_SECS="${EMAIL_WRITE_WATCHDOG_SECS:-900}"                                # a full --write-v2 touches Gmail per label; budget generously
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"  # residency: code from clone
 
 # The ONE headless-gws credential preflight (require_gws_credentials) — shared with the ten other
@@ -130,8 +130,12 @@ do_work() {
     ${EMAIL_WRITE_LIMIT:+--limit "$EMAIL_WRITE_LIMIT"} > "$WORKLOG" 2>&1
 }
 
+# 5.10(4): job control (set -m) puts the work in its OWN process group, so the watchdog kills the group (-PID), python included;
+# killing only the subshell used to leave the python orphaned. Job control is switched off again straight after the launch.
+set -m
 do_work & WORK_PID=$!
-( sleep "$WATCHDOG_SECS"; kill -9 "$WORK_PID" 2>/dev/null ) & WD_PID=$!
+( sleep "$WATCHDOG_SECS"; kill -9 -- "-$WORK_PID" 2>/dev/null || kill -9 "$WORK_PID" 2>/dev/null ) & WD_PID=$!
+set +m
 if wait "$WORK_PID" 2>/dev/null; then RC=0; else RC=$?; fi
 pkill -P "$WD_PID" 2>/dev/null; kill "$WD_PID" 2>/dev/null || true   # the watchdog subshell AND its sleep (else a 900 s sleep leaks per run)
 wait "$WD_PID" 2>/dev/null || true
