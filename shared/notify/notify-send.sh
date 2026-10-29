@@ -148,7 +148,8 @@ rm -f "$_TMP/notify-gov.$$"
 NTFY_PRIO=3; [ "$PRIORITY" = "critical" ] && NTFY_PRIO=5
 
 HDRS=(-H "Priority: $NTFY_PRIO")
-[ -n "$TITLE" ] && HDRS+=(-H "Title: $TITLE")
+# A text with no title still gets a plain one: some phones file a title-less push silently (2026-10-29 drill).
+HDRS+=(-H "Title: ${TITLE:-Lifehack}")
 [ -n "$TAGS" ]  && HDRS+=(-H "Tags: $TAGS")
 [ -n "$URL" ]   && HDRS+=(-H "Click: $URL")
 [ "$MARKDOWN" = "1" ] && HDRS+=(-H "Markdown: yes")
