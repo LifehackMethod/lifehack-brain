@@ -53,7 +53,7 @@ set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export JOB_SIM_ROOT="$(cd "$HERE/../../.." && pwd)"
 exec python3 - "$@" <<'PYEOF'
-import calendar, json, os, random, shutil, subprocess, sys, tempfile, time
+import calendar, json, os, random, re, shutil, subprocess, sys, tempfile, time
 from concurrent.futures import ThreadPoolExecutor
 
 ROOT = os.environ["JOB_SIM_ROOT"]
@@ -74,9 +74,40 @@ BASE = calendar.timegm((2026, 11, 2, 0, 0, 0))   # a Monday, 00:00 UTC
 SEAMS = ["LIFEHACK_FAKE_NOW", "LIFEHACK_STATE_DIR", "LIFEHACK_JOBS_FILE", "LIFEHACK_NOTIFY_LOG",
          "LIFEHACK_JOBS_STATE_DIR", "LIFEHACK_JOBS_MANIFEST", "JOB_RUN_NOTIFY", "JOB_RUN_WATCHDOG",
          "NOTIFY_STATE_FILE", "JOB_SIM_DIR", "SENTINEL_PAUSE_FILE", "LIFEHACK_GWS_BIN", "LIFEHACK_LAST_SEEN_DIR",
-         "LIFEHACK_RUNNER_LOCK_ROOT", "JOB_RUN_PENDING_LIST", "JOB_RUN_NO_WATCH"]
+         "LIFEHACK_RUNNER_LOCK_ROOT", "JOB_RUN_PENDING_LIST", "JOB_RUN_NO_WATCH", "LIFEHACK_JOB_TEXTS", "LIFEHACK_JOB_NAMES"]
 STAND_REASON = "the job's own pre-flight stood down"
 REPAIR = "jobs cannot find the code — open any desk once to repair"
+
+
+# ── 5.14: the texts are plain words from ONE file (system/tools/job-texts.txt). The rig reads that same file, so a wording change is a one-file
+# edit; a push whose words match NO line of it is labelled "UNKNOWN" and fails every comparison. label_of(msg) -> "<kind>: <job>" (the job is the
+# plain name with spaces turned back into dashes, which is right for the sim jobs because they have no entry in job-names.txt).
+JOB_TEXTS = {}
+for _ln in open(f"{ROOT}/system/tools/job-texts.txt", encoding="utf-8"):
+    if " = " in _ln and not _ln.startswith("#"):
+        _k, _v = _ln.rstrip("\n").split(" = ", 1); JOB_TEXTS[_k] = _v
+_KIND = {"down_never": "down", "notrunning_never": "notrunning"}
+
+
+def _build(template):
+    out, first = "", True
+    for part in re.split(r"(\{name\}|\{last_ok\}|\{since\})", template):
+        if part == "{name}": out += "(?P<name>.+?)"
+        elif part in ("{last_ok}", "{since}"): out += ".+?"
+        else: out += re.escape(part)
+    return out
+
+
+_RES = [(k, re.compile(_build(v) + r"\Z")) for k, v in JOB_TEXTS.items()]
+
+
+def label_of(msg):
+    for k, rx in _RES:
+        m = rx.match(msg)
+        if m:
+            kind = _KIND.get(k, k)
+            return f"{kind}: {m.group('name').replace(' ', '-')}" if "name" in rx.groupindex else kind
+    return f"UNKNOWN: {msg}"
 
 
 def hhmm(t):
@@ -125,7 +156,7 @@ class Model:
         if rc == 0:
             s["ls"] = t; s["lr"] = (0, "")
             if s["alerted"]:
-                self.gov(t, job, ("id", f"job-up:{job}:{s['alerted']}"), f"Job recovered: {job}",
+                self.gov(t, job, ("id", f"job-up:{job}:{s['alerted']}"), f"recovered: {job}",
                          f"{job} succeeded again · output check passed", f"job-up:{job}:{s['alerted']}", exempt=True)
                 s["alerted"] = False
             return
@@ -136,7 +167,7 @@ class Model:
             age = t - s["ls"]
             if age < 2 * P_: return        # 2.5d: the 2nd consecutive miss pages (age >= 2 x period)
             last_ok = f"{age // 3600}h ago"
-        self.gov(t, job, ("id", f"job-down:{job}:{t}"), f"Job down: {job}",
+        self.gov(t, job, ("id", f"job-down:{job}:{t}"), f"down: {job}",
                  f"exit {rc} · last success {last_ok} · next: open any desk; the first line names it, the error is in "
                  f"~/.config/lifehack/state/jobs/{job}/errors/", f"job-down:{job}:{t}")
         s["alerted"] = t
@@ -216,7 +247,7 @@ class World:
         out = []
         for ln in open(self.nlog).read().splitlines():
             title, _msg, ident, _prio = (ln.split(" | ") + ["", "", "", ""])[:4] if ln.count(" | ") >= 3 else (ln, "", "", "")
-            out.append((title, ident))
+            out.append((title or label_of(_msg), ident))   # 5.14: the texts carry no title; the label is read back from their words
         return out
 
     def p(self, job, name):
@@ -357,9 +388,9 @@ def scenarios():
     t = []
     for i, (m_, l_, p_, ti) in enumerate([
             ("ok", OK1.replace("1", "2"), 0, []), ("fail", OK1.replace("1", "2"), 0, []),
-            ("fail", od((A, "2h"), (B, "2h")), 2, ["Job down: sim-a", "Job down: sim-b"]),
-            ("fail", od((A, "3h"), (B, "3h")), 2, ["Job down: sim-a", "Job down: sim-b"]),
-            ("fail", od((A, "4h"), (B, "4h")), 2, ["Job down: sim-a", "Job down: sim-b"])]):
+            ("fail", od((A, "2h"), (B, "2h")), 2, ["down: sim-a", "down: sim-b"]),
+            ("fail", od((A, "3h"), (B, "3h")), 2, ["down: sim-a", "down: sim-b"]),
+            ("fail", od((A, "4h"), (B, "4h")), 2, ["down: sim-a", "down: sim-b"])]):
         tk = dict(dt=0 if i == 0 else P, acts={A: ("cal", m_), B: ("cal", m_)}, line=l_, push=p_)
         if ti: tk["titles"] = ti
         t.append(tk)
@@ -388,8 +419,8 @@ def scenarios():
     four = [(n, P) for n in (A, B, C, D)]
     def acts(m_): return {n: ("cal", m_) for n, _ in four}
     l4 = od((A, "2h"), (B, "2h"), (C, "2h"), (D, "2h"))
-    dn = ["Job down: sim-a", "Job down: sim-b", "Job down: sim-c", "Job down: sim-d"]
-    up = ["Job recovered: sim-a", "Job recovered: sim-b", "Job recovered: sim-c", "Job recovered: sim-d"]
+    dn = ["down: sim-a", "down: sim-b", "down: sim-c", "down: sim-d"]
+    up = ["recovered: sim-a", "recovered: sim-b", "recovered: sim-c", "recovered: sim-d"]
     S.append(("four jobs fail in a day -> 4 pushes", four, BASE + 8 * 3600, [
         dict(dt=0, acts=acts("ok"), line="jobs: 4 OK", push=0),
         dict(dt=P, acts=acts("fail"), line="jobs: 4 OK", push=0),
@@ -410,7 +441,7 @@ def scenarios():
         ct[1 + 3 * k + 1]["push"] = d_ if k < 3 else 6    # the 2nd miss: down (capped on the 4th incident)
         ct[1 + 3 * k + 2]["push"] = r_                    # the success: recovery, always delivered
         ct[1 + 3 * k]["push"] = (0 if k == 0 else [2, 4, 6][k - 1])
-    ct[-1]["titles"] = ["Job down: sim-a", "Job recovered: sim-a"] * 3 + ["Job recovered: sim-a"]
+    ct[-1]["titles"] = ["down: sim-a", "recovered: sim-a"] * 3 + ["recovered: sim-a"]
     S.append(("recovery delivered after the job used its 3", [(A, P)], BASE + 8 * 3600, ct))
 
     # 13 (b) overdue push during quiet hours: suppressed -> queued -> delivered by --flush-deferred
@@ -423,19 +454,19 @@ def scenarios():
         ] + final
     t13 = quiet_ticks([
         dict(dt=5 * P, acts={}, flush=True, line=od((A, "10h")), push=0),              # 06:00 still quiet: kept
-        dict(dt=P, acts={}, flush=True, line=od((A, "11h")), push=1, titles=["Job down: sim-a"]),   # 07:00 delivered
-        dict(dt=P, acts={A: ("cal", "ok")}, line=OK1, push=2, titles=["Job down: sim-a", "Job recovered: sim-a"])])
+        dict(dt=P, acts={}, flush=True, line=od((A, "11h")), push=1, titles=["down: sim-a"]),   # 07:00 delivered
+        dict(dt=P, acts={A: ("cal", "ok")}, line=OK1, push=2, titles=["down: sim-a", "recovered: sim-a"])])
     S.append(("quiet-hours push deferred, flushed", [(A, P)], BASE + 20 * 3600, t13))
     # 13b 2.5a: nobody calls --flush-deferred; the job's own next run after 07:00 delivers the night page, once
     t13b = quiet_ticks([
-        dict(dt=6 * P, acts={A: ("cal", "fail")}, line=od((A, "11h")), push=1, titles=["Job down: sim-a"]),   # 07:00 run flushes
-        dict(dt=P, acts={A: ("cal", "fail")}, line=od((A, "12h")), push=1, titles=["Job down: sim-a"]),       # 08:00 not re-sent
-        dict(dt=P, acts={A: ("cal", "ok")}, line=OK1, push=2, titles=["Job down: sim-a", "Job recovered: sim-a"])])
+        dict(dt=6 * P, acts={A: ("cal", "fail")}, line=od((A, "11h")), push=1, titles=["down: sim-a"]),   # 07:00 run flushes
+        dict(dt=P, acts={A: ("cal", "fail")}, line=od((A, "12h")), push=1, titles=["down: sim-a"]),       # 08:00 not re-sent
+        dict(dt=P, acts={A: ("cal", "ok")}, line=OK1, push=2, titles=["down: sim-a", "recovered: sim-a"])])
     S.append(("night failure delivered once at the first run after 07:00", [(A, P)], BASE + 20 * 3600, t13b))
     # 13c nothing runs for 19 h: the deferred page is dropped (max age 18 h), never delivered
     t13c = quiet_ticks([
         dict(dt=16 * P, acts={}, flush=True, line=od((A, "21h")), push=0),             # 17:00 next day: queued 22:00, 19 h old
-        dict(dt=P, acts={A: ("cal", "ok")}, line=OK1, push=1, titles=["Job recovered: sim-a"])])
+        dict(dt=P, acts={A: ("cal", "ok")}, line=OK1, push=1, titles=["recovered: sim-a"])])
     S.append(("deferred push older than 18 h is dropped", [(A, P)], BASE + 20 * 3600, t13c))
     return S
 
@@ -711,7 +742,7 @@ def danger_email():
         pz = open(pause).read().split() if os.path.exists(pause) else []
         if pz != ["email:sim-drill"]: fails.append(f"danger-email[B]: pause file holds {pz}, expected ['email:sim-drill']")
         ps = w.pushes()
-        if len(ps) != 1 or "DANGER" not in ps[0][0]: fails.append(f"danger-email[B]: pushes {ps}, expected exactly one DANGER push")
+        if len(ps) != 1 or ps[0][0] != "danger": fails.append(f"danger-email[B]: pushes {ps}, expected exactly one danger push (the plain-words text of job-texts.txt)")
         if not any(x.rstrip().endswith("| critical") for x in open(w.nlog).read().splitlines()):
             fails.append("danger-email[B]: the push was not priority critical")
         if os.path.exists(out): fails.append("danger-email[B]: an attack run still wrote the fetch output")
@@ -1474,11 +1505,11 @@ def corrupt_governor_state():
     fails = []
     for kind, (rc, err, lines, text, after, state, frc, ferr) in corrupt_governor_runs().items():
         if kind == "missing":
-            if rc != 0 or len(lines) != 1 or "Notify governor state corrupt" in lines[0]: fails.append(f"corrupt-governor-state[missing]: rc={rc} log={lines}; a missing state file is a first run")
+            if rc != 0 or len(lines) != 1 or label_of(lines[0].split(" | ")[1]) == "governor": fails.append(f"corrupt-governor-state[missing]: rc={rc} log={lines}; a missing state file is a first run")
             continue
         if rc != 3: fails.append(f"corrupt-governor-state[{kind}]: exit {rc}, expected 3")
         if "CORRUPT" not in err or state not in err: fails.append(f"corrupt-governor-state[{kind}]: stderr does not name the file: {err!r}")
-        if len(lines) != 1 or not lines[0].startswith("Notify governor state corrupt | ") or not lines[0].endswith("| critical"):
+        if len(lines) != 1 or label_of(lines[0].split(" | ")[1]) != "governor" or not lines[0].endswith("| normal"):
             fails.append(f"corrupt-governor-state[{kind}]: the alarm about the corruption was not pushed (log: {lines})")
         if after != text: fails.append(f"corrupt-governor-state[{kind}]: the corrupt state file was rewritten ({after!r})")
         if frc != 3 or state not in ferr: fails.append(f"corrupt-governor-state[{kind}]: --flush-deferred rc={frc} stderr={ferr!r}")
@@ -1623,7 +1654,7 @@ def bite_e_governor():
     rc, err, lines, text, after, state, frc, ferr = corrupt_governor_runs()["garbage"]
     name = norm_paths(err, state).strip().replace("notify-send: ", "")
     name = name.split(" -- ")[0].split(" (")[0]
-    return name if rc == 3 and lines and lines[0].startswith("Notify governor state corrupt") else None
+    return name if rc == 3 and lines and label_of(lines[0].split(" | ")[1]) == "governor" else None
 
 
 def bite_e_bookmark():
@@ -2085,14 +2116,14 @@ def failed_send_retries(jr=None):
         if os.path.exists(w.p(A, "alerted")): fails.append(f"{N}: a FAILED 'job down' send still wrote the alerted marker")
         if "NOTIFY FAILED" not in w.read(A, "log"): fails.append(f"{N}: the failed send was not logged loudly (no 'NOTIFY FAILED' in the log)")
         send_fails(w, False); t += P; jr_run(w, A, t, x, jr)
-        if titles(w) != [f"Job down: {A}"]: fails.append(f"{N}: the next run did not retry the down text: {titles(w)}")
+        if titles(w) != [f"down: {A}"]: fails.append(f"{N}: the next run did not retry the down text: {titles(w)}")
         if not os.path.exists(w.p(A, "alerted")): fails.append(f"{N}: the confirmed retry did not write the alerted marker")
         t += P; jr_run(w, A, t, x, jr)
         if len(titles(w)) != 1: fails.append(f"{N}: a third failing run texted again after a confirmed send: {titles(w)}")
         w.set_mode(A, "ok"); send_fails(w, True); t += P; jr_run(w, A, t, x, jr)
         if not os.path.exists(w.p(A, "alerted")): fails.append(f"{N}: a FAILED recovery send still removed the alerted marker (the recovery is lost)")
         send_fails(w, False); t += P; jr_run(w, A, t, x, jr)
-        if titles(w) != [f"Job down: {A}", f"Job recovered: {A}"]: fails.append(f"{N}: the recovery was not retried to a send: {titles(w)}")
+        if titles(w) != [f"down: {A}", f"recovered: {A}"]: fails.append(f"{N}: the recovery was not retried to a send: {titles(w)}")
         if os.path.exists(w.p(A, "alerted")): fails.append(f"{N}: the confirmed recovery did not remove the marker")
         # a quiet-hours deferral counts as sent: the queue delivers it
         w.set_mode(A, "fail"); t = BASE + DAY + 23 * 3600; jr_run(w, A, t, x, jr)
@@ -2171,7 +2202,8 @@ def notify_lines(w):
     """The notify log, one (title, message, identity, priority) per line -- exactly what would reach the phone."""
     out = []
     for ln in open(w.nlog).read().splitlines():
-        out.append(tuple((ln.split(" | ") + ["", "", "", ""])[:4]))
+        t_, m_, i_, p_ = (ln.split(" | ") + ["", "", "", ""])[:4]
+        out.append((t_ or label_of(m_), m_, i_, p_))
     return out
 
 
@@ -2194,19 +2226,19 @@ def standdown_texts_once(jr=None):
         send_fails(w, True); jr_run(w, A, t0 + 3 * P, x, jr)  # +3h: over the line, but the send fails
         if os.path.exists(w.p(A, "standdown-alerted")): fails.append(f"{N}: a FAILED stand-down send wrote its marker")
         send_fails(w, False); jr_run(w, A, t0 + 4 * P, x, jr)  # +4h: the retry goes out
-        want = (f"Job standing down: {A}", f"{A} stood down since {fmt_utc(t0)}: {STAND_REASON}")
+        want = (f"standdown: {A}", JOB_TEXTS["standdown"].replace("{name}", "sim a").replace("{since}", "8 AM"))   # t0 = 08:00 UTC, the same day as the run
         got = [(a, b) for a, b, _c, _d in notify_lines(w)]
         if got != [want]: fails.append(f"{N}: expected exactly {want}, got {got}")
         for k in (5, 6): jr_run(w, A, t0 + k * P, x, jr)     # a permanent stand-down texts ONCE, not every run
         if len(notify_lines(w)) != 1: fails.append(f"{N}: kept texting while still standing down: {len(notify_lines(w))} texts")
         w.set_mode(A, "ok"); jr_run(w, A, t0 + 7 * P, x, jr)
         got = [a for a, *_ in notify_lines(w)]
-        if got != [want[0], f"Job running again: {A}"]: fails.append(f"{N}: expected one recovery after the pass: {got}")
+        if got != [want[0], f"running_again: {A}"]: fails.append(f"{N}: expected one recovery after the pass: {got}")
         # a fresh run of 75s that is broken by a transient (rc 2) never reaches 'longer than 2 x'
         w.set_mode(A, "standdown")
         for k, m_ in ((8, "standdown"), (9, "standdown"), (10, "transient"), (11, "standdown"), (12, "standdown"), (13, "standdown")):
             w.set_mode(A, m_); jr_run(w, A, t0 + k * P, x, jr)
-        sd = [a for a, *_ in notify_lines(w) if a.startswith("Job standing down")]   # (the rc 2 itself is a failed run and may text 'Job down': not this item)
+        sd = [a for a, *_ in notify_lines(w) if a.startswith("standdown")]   # (the rc 2 itself is a failed run and may text 'Job down': not this item)
         if len(sd) != 1: fails.append(f"{N}: a streak broken by another result still texted a second stand-down: {[a for a, *_ in notify_lines(w)]}")
     finally:
         w.close()
@@ -2248,13 +2280,13 @@ def watch_each_other(jr=None):
         if notify_lines(w): fails.append(f"{N}: texted on the first tick, before anything was late: {notify_lines(w)}")
         rc = jr_run(w, A, t0 + 3 * P, x, jr)                  # +3h: only A ran. B, C are 3h stale (> 2h); D never ran and has been watched for 3h
         got = sorted(a for a, *_ in notify_lines(w))
-        if got != [f"Job not running: {j}" for j in (B_, C_, D_)]: fails.append(f"{N}: expected one 'not running' text each for sim-b, sim-c, sim-d (not the off sim-e): {got}")
+        if got != [f"notrunning: {j}" for j in (B_, C_, D_)]: fails.append(f"{N}: expected one 'not running' text each for sim-b, sim-c, sim-d (not the off sim-e): {got}")
         if rc != 0: fails.append(f"{N}: the watch changed the job's own exit code: {rc}")
         jr_run(w, A, t0 + 4 * P, x, jr)
         if len(notify_lines(w)) != 3: fails.append(f"{N}: a still-dead job was texted again: {len(notify_lines(w))} texts")
         w.set_mode(B_, "ok"); jr_run(w, B_, t0 + 5 * P, x, jr)    # B runs again: ONE recovery
         got = sorted(a for a, *_ in notify_lines(w))
-        if got.count(f"Job running again: {B_}") != 1 or len(got) != 4: fails.append(f"{N}: expected exactly one 'running again' for sim-b: {got}")
+        if got.count(f"running_again: {B_}") != 1 or len(got) != 4: fails.append(f"{N}: expected exactly one 'running again' for sim-b: {got}")
         jr_run(w, A, t0 + 6 * P, x, jr)
         if len(notify_lines(w)) != 4: fails.append(f"{N}: texts changed with nothing new: {len(notify_lines(w))}")
         # a failed 'not running' send is retried (no marker), then goes out once
@@ -2263,10 +2295,10 @@ def watch_each_other(jr=None):
         if "NOTIFY FAILED" not in w.read(A, "log"): fails.append(f"{N}: the failed watch send was not logged loudly")
         send_fails(w, False); jr_run(w, A, t0 + 10 * P, x, jr)
         got = [a for a, *_ in notify_lines(w)]
-        if len(got) != 5 or got[-1] != f"Job not running: {B_}": fails.append(f"{N}: the failed watch text was not retried to one send: {got}")
+        if len(got) != 5 or got[-1] != f"notrunning: {B_}": fails.append(f"{N}: the failed watch text was not retried to one send: {got}")
         # the message names the job and says what is wrong
         msgs = {a: m for a, m, *_ in notify_lines(w)}
-        if "sim-d" not in msgs.get(f"Job not running: {D_}", "") or "never ran" not in msgs.get(f"Job not running: {D_}", ""): fails.append(f"{N}: the never-ran text does not say so: {msgs.get(f'Job not running: {D_}')!r}")
+        if msgs.get(f"notrunning: {D_}", "") != JOB_TEXTS["notrunning_never"].replace("{name}", "sim d"): fails.append(f"{N}: the never-ran text is not the approved one: {msgs.get(f'notrunning: {D_}')!r}")
         # an error inside the watch step must not change the job's exit code, and must be loud
         shutil.rmtree(f"{w.state}/jobs/.watch", ignore_errors=True); open(f"{w.state}/jobs/.watch", "w").write("not a directory")
         rc = jr_run(w, A, t0 + 11 * P, x, jr)
@@ -2319,6 +2351,68 @@ def stderr_shown(jr=None):
 
 
 NEW_SCENARIOS.append(("stderr-shown", stderr_shown))
+
+
+# ── 5.14: the texts are written for a person ──
+def plain_texts(jr=None):
+    """5.14: the five job-run texts for a job with a plain name are EXACTLY the approved wording (system/tools/job-texts.txt) with only the blanks
+    filled, say "Your <plain name>", and never contain the code name. None is priority critical, and the night rule holds at the governor:
+    only the sentinel's critical push may break quiet hours (22-07); any other critical, and the governor's own damaged-state alarm, wait."""
+    N, fails = "plain-texts", []
+    T = lambda k, **kw: JOB_TEXTS[k].replace("{name}", kw.get("name", "email summary")).replace("{last_ok}", kw.get("when", "")).replace("{since}", kw.get("when", ""))
+    w = World([(A, P)]); t0 = BASE + 8 * 3600
+    try:
+        open(f"{w.dir}/job-names.txt", "w").write(f"{A} = email summary\n")   # beside the jobs table, as in production
+        x = dict(WATCH_ON)
+        for k, mode in enumerate(["fail", "ok", "ok", "fail", "fail", "ok", "standdown", "standdown", "standdown", "standdown", "ok"]):
+            w.set_mode(A, mode); jr_run(w, A, t0 + k * P, x, jr)
+        want = [T("down_never"), T("recovered"), T("down", when="10 AM"), T("recovered"), T("standdown", when="2 PM"), T("running_again")]
+        got = [m for _a, m, *_ in notify_lines(w)]
+        if got != want: fails.append(f"{N}: the five texts are not the approved wording:\n   got  {got}\n   want {want}")
+        for m in got:
+            if A in m or "sim a" in m: fails.append(f"{N}: a text names the code name: {m!r}")
+            if "Your email summary" not in m and "I blocked" not in m: fails.append(f"{N}: a text does not say 'Your email summary': {m!r}")
+        bad = [r[3] for r in notify_lines(w) if r[3] not in ("normal", "recovery")]
+        if bad: fails.append(f"{N}: a job-run text used priority {bad} (only the sentinel may be critical)")
+    finally:
+        w.close()
+    w = World([(A, P), ("sim-b", P)])
+    try:
+        open(f"{w.dir}/job-names.txt", "w").write(f"{A} = email summary\nsim-b = notes search index\n")
+        x = dict(WATCH_ON)
+        for j in (A, "sim-b"): w.set_mode(j, "ok"); jr_run(w, j, t0, x, jr)
+        jr_run(w, A, t0 + 3 * P, x, jr); jr_run(w, "sim-b", t0 + 5 * P, x, jr)
+        want = [T("notrunning", name="notes search index", when="8 AM"), T("running_again", name="notes search index")]
+        got = [m for _a, m, *_ in notify_lines(w)]
+        if got != want: fails.append(f"{N}: the watch texts are not the approved wording:\n   got  {got}\n   want {want}")
+    finally:
+        w.close()
+    d = tempfile.mkdtemp(prefix="job-sim-night.")
+    try:
+        env, log, state = notify_env(d, None, BASE + 23 * 3600)         # 23:00 UTC, TZ=UTC: quiet hours
+        send = lambda *a: subprocess.run(["bash", NS, *a], env=env, stdin=subprocess.DEVNULL, capture_output=True, text=True).returncode
+        send("--source", "job-run:x", "--message", "a job text", "--priority", "critical", "--identity", "1")
+        send("--source", "job-run:y", "--message", "another job text", "--priority", "normal", "--identity", "2")
+        if open(log).read().strip(): fails.append(f"{N}: a non-sentinel text broke quiet hours: {open(log).read()!r}")
+        send("--source", "sentinel", "--message", JOB_TEXTS["danger"], "--priority", "critical", "--identity", "3")
+        if open(log).read().count("\n") != 1: fails.append(f"{N}: the sentinel danger text did not get through at night: {open(log).read()!r}")
+        open(state, "w").write("{not json")
+        open(log, "w").close()
+        rc = send("--source", "job-run:x", "--message", "m", "--identity", "4")
+        if rc != 3 or open(log).read().strip(): fails.append(f"{N}: the damaged-state alarm woke the owner at night (rc={rc}, log={open(log).read()!r})")
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    return 3, fails, ([], [])
+
+
+NEW_SCENARIOS.append(("plain-texts", plain_texts))
+
+
+def bite_p():
+    return bite_planted([('name="$(plain_name "$2")"', 'name="$2"')], plain_texts, "plain-texts")
+
+
+BITES.append(("p", "a text that shows the job's code name instead of its plain name", "plain-texts", bite_p))
 
 
 if "--bite" in sys.argv[1:]:
