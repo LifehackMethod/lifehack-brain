@@ -165,11 +165,6 @@
           },
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_hook_sop_read.sh\"",
-            "statusMessage": "Checking the hook SOP was read first..."
-          },
-          {
-            "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_ledger_discipline.sh\"",
             "statusMessage": "Checking debt-ledger discipline..."
           },
@@ -190,6 +185,21 @@
           }
         ],
         "matcher": "Bash|Write|Edit"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_build_mode.sh\"",
+            "statusMessage": "Checking you are building with the rulebook open..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_hook_sop_read.sh\"",
+            "statusMessage": "Checking the hook SOP was read first..."
+          }
+        ],
+        "matcher": "Bash|Write|Edit|MultiEdit"
       },
       {
         "hooks": [
