@@ -36,8 +36,8 @@ for the one thing only they can supply — deciding what to do with a contradict
 from a different source, and the main session synthesizes their returns into one answer — including the
 answer that the claim survived.**
 
-This is a **front door over three existing memory surfaces**, not a new one: `system/organism/manual.md`
-+ `system/organism/elements/` (how the system is SUPPOSED to work), the active project's own brief (what
+This is a **front door over three existing memory surfaces**, not a new one: `${CLAUDE_PLUGIN_ROOT}/system/organism/manual.md`
++ `${CLAUDE_PLUGIN_ROOT}/system/organism/elements/` (how the system is SUPPOSED to work), the active project's own brief (what
 we already tried and what happened), and the append-only journal/debt-ledger/records/canon (what the
 history says the brief may have lost). `/audit` invents none of these stores — it only reads them, three
 ways at once, with one mandate: **try to prove the claim wrong.**
@@ -114,8 +114,8 @@ a claim against three memory surfaces is squarely that class.
 > Return `NONE FOUND` plainly if that's the honest answer. Padding a thin result with a low-confidence
 > `CORROBORATES` is worse than an empty return.
 
-**LANE 1 — THE MAP.** Reads `system/organism/manual.md`, the relevant files in
-`system/organism/elements/` (search for ones bearing on the claim's subject — this is the lane's own
+**LANE 1 — THE MAP.** Reads `${CLAUDE_PLUGIN_ROOT}/system/organism/manual.md`, the relevant files in
+`${CLAUDE_PLUGIN_ROOT}/system/organism/elements/` (search for ones bearing on the claim's subject — this is the lane's own
 judgment call, not a fixed list), the organism map at the top of `~/.claude/CLAUDE.md`, and
 `$DRIVE/state/projects/infrastructure/organism-audit/intended-map.md`. Its question: **"How is this
 system SUPPOSED to work on this issue, ideally — and does the claim's premise match that?"**

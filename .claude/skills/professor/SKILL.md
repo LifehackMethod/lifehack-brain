@@ -266,8 +266,8 @@ part owns this, what it's supposed to do, and where reality differs.
 - **Never a hardcoded list of skills, and never a count of what ships.** `.claude/skills/` is read
   live, every time — a typed-out inventory is exactly the thing this system has caught rotting more
   than once.
-- **Never a specific organism element filename.** Reference `system/organism/manual.md` and
-  `system/organism/elements/*.md` by path pattern only, confirm they exist before treating them as a
+- **Never a specific organism element filename.** Reference `${CLAUDE_PLUGIN_ROOT}/system/organism/manual.md` and
+  `${CLAUDE_PLUGIN_ROOT}/system/organism/elements/*.md` by path pattern only, confirm they exist before treating them as a
   source, and say nothing about them when they're absent.
 - **Never claims completeness.** "All the skills," "everything you need" — say what was actually
   checked this session instead.
