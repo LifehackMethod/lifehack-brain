@@ -29,6 +29,11 @@
 write_status_tile() {  # job rc stale_after_s ok_summary err_summary [standdown_reason]
   local _job="$1" _rc="$2" _stale="$3" _ok="$4" _err="$5" _sd="${6:-required credentials not configured yet}"
   local _root
+  # F7 (slip 56): under job-run.sh the tile must be named for the job being run (system-health reads <job-id>.json, no aliases). Refuse, loudly.
+  if [ -n "${LIFEHACK_JOB_RUN_ID:-}" ] && [ "$_job" != "$LIFEHACK_JOB_RUN_ID" ]; then
+    echo "[$_job] REFUSED status tile: running as job '$LIFEHACK_JOB_RUN_ID' but the tile is named '$_job'; a tile is named for its job id." >&2
+    return 1
+  fi
   _root="$(python3 "${CODE_ROOT:?write_status_tile: CODE_ROOT unset}/shared/brain_root.py" --quiet 2>/dev/null)"
   if [ -z "$_root" ]; then
     echo "[$_job] WARN: no notes root — skipping status tile." >&2

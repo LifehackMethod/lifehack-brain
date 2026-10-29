@@ -21,7 +21,7 @@ mkdir -p "$(dirname "$out")"
 if [ "${JOB_RUN_MODEL:-none}" != none ]; then
   . "$LIFEHACK_CODE_ROOT/system/tools/model.lib.sh"
   printf 'prompt\n' > "$dir/prompt-$job"
-  run_model "$JOB_RUN_MODEL" "$dir/prompt-$job" "$dir/reply-$job" "MARK" || true
+  if ! run_model "$JOB_RUN_MODEL" "$dir/prompt-$job" "$dir/reply-$job" "MARK"; then :; fi   # the stub ignores the rc; job-run.sh reads the call record
 fi
 case "$mode" in
   good)    cp "$dir/receipt/$job.good" "$out"; stampto "${LIFEHACK_FAKE_NOW:-0}" ;;

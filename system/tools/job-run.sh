@@ -31,6 +31,7 @@
 #
 # EXIT CONTRACT (§A laws):
 #   0  the output check passed — nothing else ever exits 0
+#   78 refused at run time: the row fails install-schedulers.sh --check-row (3.4b); the job never ran
 #   75 stood down: row not enabled, not configured, not overdue, another run holds the lock
 #   2  transient (network / Google pre-flight); retried next period
 #   *  failed — an errors/ file is written
@@ -85,6 +86,7 @@ _JH="$(grep -vE '^[[:space:]]*(#|$)' "$CODE_ROOT/system/tools/job-fetch-hosts.tx
 # stderr too: launch.err must stay empty unless the launch line itself failed.
 RUNLOG="$STATE/run.current"
 : > "$RUNLOG"
+exec 3>&2   # the real stderr, kept for the run-time refusal line (3.4b)
 exec >>"$RUNLOG" 2>&1
 
 # TEST-ONLY seam LIFEHACK_FAKE_NOW (epoch seconds; inert unless all digits). When set: every "now" and age
@@ -369,6 +371,19 @@ if [ "$ENABLED" != yes ] && [ "$FORCE" != 1 ]; then
   fi
   finish 75 "row is '$ENABLED' in the manifest, not 'yes' — stood down"
 fi
+# ── 1c) 3.4b THE DOOR AT RUN TIME (rig slips 16/18/53/56, fix-group F7): a row that fails `install-schedulers.sh --check-row` is REFUSED here,
+#    so a job launched by hand, by a stale plist or by --force cannot run around the install door. Fail closed: exit 78 (EX_CONFIG; 75 is the OFF stand-down),
+#    never a stand-down, and the checker itself being unusable refuses too. One call. An off row has already stood down above and is not checked.
+#    The refusal is a failed run: an errors/ file, the usual two-misses alert, and one fire-journal line (hook job-run:check-row) for the observation rig.
+_door_out="$(bash "$CODE_ROOT/system/tools/install-schedulers.sh" --check-row "$JOB" 2>&1)"; _door_rc=$?
+if [ "$_door_rc" -ne 0 ] || [ "$_door_out" != PASS ]; then
+  { echo "[job-run] REFUSED $JOB: the job door (install-schedulers.sh --check-row, rc=$_door_rc) refuses this row. Not run."
+    printf '%s\n' "$_door_out" | sed 's/^/[job-run]   door: /'; } | tee /dev/fd/3
+  { . "$CODE_ROOT/system/hooks/lib/journal.sh" && lhb_journal_fire 1 "job-run:check-row" "job-run" "$JOB"; } 2>/dev/null \
+    || echo "[job-run] note: the fire journal could not be written (observer only; the refusal stands)"   # allow-silence: the journal is an observer, and its failure is named on the next line of the log
+  finish 78 "refused at run time: row '$JOB' fails install-schedulers.sh --check-row"
+fi
+export LIFEHACK_JOB_RUN_ID="$JOB"   # F7 run-time marker: write_status_tile (status-tile.lib.sh) refuses a tile named for anything else
 if [ -e "$STATE/last-success" ]; then
   if [ ! -f "$STATE/last-success" ] || ! head -1 "$STATE/last-success" | grep -qE "^${_ISO}\$" || [ "$(wc -l < "$STATE/last-success" | tr -d ' ')" -gt 1 ]; then
     finish 1 "corrupt state file: $STATE/last-success is not one ISO timestamp -- refusing to treat it as a first run; fix or remove it by hand"

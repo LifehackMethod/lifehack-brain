@@ -10,7 +10,8 @@ dir="${JOB_SIM_DIR:?JOB_SIM_DIR not set — this only runs under the rig}"
 n="$(cat "$dir/mode/$job-calls" 2>/dev/null || echo 1)"
 printf 'prompt\n' > "$dir/prompt-$job"
 for i in $(seq 1 "$n"); do
-  run_model small "$dir/prompt-$job" "$dir/reply-$job" "MARK" || true
+  # swallows run_model's rc in a way the door's `|| true` rule cannot see: job-run.sh must still fail the run from the call record
+  if ! run_model small "$dir/prompt-$job" "$dir/reply-$job" "MARK"; then :; fi
 done
 mkdir -p "$dir/out"
 echo "ran $job at ${LIFEHACK_FAKE_NOW:-real-clock}" > "$dir/out/$job"

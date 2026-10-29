@@ -124,6 +124,7 @@ trim() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]
 #       non-empty (^.+$), or that it exists / is fresh, is refused as "presence-grade check".
 #   (d) the same scan refuses a literal model id (claude-haiku|sonnet|opus|fable-<n>) anywhere but model.lib.sh and
 #       model_ids.py, and any literal passed as --model X / model="X" / MODEL=X: a runner names a TIER and the table turns it into an id, so a retired id can never rot silently.
+#   (h) F7 (slip 56) a runner's `write_status_tile <name>` must pass the row's own id (literal, or a variable the file sets to it).
 #   (g) a desk runner's helper files (.sh/.py/.mjs in the runner's own directory, non-recursive) get the same scan as the runner.
 #   (f) VENDOR READS (2026-10-28 ruling): a row with model=none may make its own logged-in read of Enver's own vendor account
 #       (python `requests`/`urllib`: the cp-utilities portal login, the Emporia SDK) from ONE allowlisted file per desk. The list is
@@ -263,7 +264,9 @@ RAW = [("gws sheets values get", re.compile(r"\bsheets\b.*\bvalues\b.*\b(?:get|b
        ("requests", re.compile(r"\brequests\.|^\s*(?:import requests|from requests\b)"), "go through the shared fetch")]
 import os as _os
 sys.path.insert(0, _os.environ.get("DOOR_RULES_DIR", "."))
-from door_rules import MODEL_ID, MODEL_TABLE_FILES, MODEL_LIT, SILENCER, LOOKUP, CALLEES, silenced_call, google_curl, google_curl_exempt, GOOGLE_CURL_WHY   # one copy of the rules (system/tools/door_rules.py)
+from door_rules import MODEL_ID, MODEL_TABLE_FILES, MODEL_LIT, SILENCER, LOOKUP, CALLEES, silenced_call, google_curl, google_curl_exempt, GOOGLE_CURL_WHY, tile_name_refusals, cmd_swallows   # one copy of the rules (system/tools/door_rules.py)
+if cmd_swallows(cmd):
+    reasons.append("silenced job error in the row's command: `|| true` / `|| :` turns every failure into success; let the runner's exit code through")
 SRC = re.compile(r"""^\s*(?:source|\.)\s+["']?([^"'\s;&|]+)""")
 INV = re.compile(r"""\b(?:python3?|bash|sh)\s+["']?([^"'\s;&|]+\.(?:py|sh))""")
 seen, todo = set(), [os.path.realpath(e) for e in scripts if "$" not in e]
@@ -294,6 +297,10 @@ while todo:
             if _k:
                 rel = os.path.relpath(f, code) if under(f, code) else f
                 reasons.append(f"silenced {_k} error at {rel}:{_start} \u2014 `|| true`, `|| :` and `2>/dev/null` hide a failure; log it to stderr and fail the step")
+    if f.endswith(".sh"):   # F7 (slip 56): a status tile is named for the job id
+        for _i, _w in tile_name_refusals(name.strip(), lines):
+            rel = os.path.relpath(f, code) if under(f, code) else f
+            reasons.append(f"{_w} at {rel}:{_i}")
     for i, ln in enumerate(lines, 1):
         if ln.lstrip().startswith("#"): continue
         if os.path.basename(f) not in MODEL_TABLE_FILES and (MODEL_ID.search(ln) or any(r.search(ln) for r in MODEL_LIT)):

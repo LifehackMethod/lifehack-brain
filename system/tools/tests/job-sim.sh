@@ -206,7 +206,7 @@ class World:
         self.nlog, self.manifest = f"{d}/notify.log", f"{d}/jobs.md"
         for p in (self.state, f"{self.sim}/mode", f"{self.sim}/out", self.home): os.makedirs(p)
         open(self.nlog, "w").close()
-        rows = "".join(f'{n} | yes | {p} | sim stub wrote its output | $JOB_SIM_DIR/out/{n} ~ ^ran {n} at | none | 0 | none | '
+        rows = "".join(f'{n} | yes | {p} | sim stub wrote its output | $JOB_SIM_DIR/out/{n} ~ ^ran {n} at [0-9a-z-]+ | none | 0 | none | '
                        f'bash "$LIFEHACK_CODE_ROOT/system/tools/tests/job-sim-stub.sh" {n}\n'
                        for n, p in jobs)
         open(self.manifest, "w").write("# throwaway manifest\n```jobs\n" + rows + "```\n")
@@ -220,7 +220,8 @@ class World:
                  LIFEHACK_JOBS_FILE=self.manifest, LIFEHACK_NOTIFY_LOG=self.nlog,
                  NOTIFY_STATE_FILE=f"{self.dir}/notify-state.json", JOB_SIM_DIR=self.sim,
                  JOB_RUN_WATCHDOG="1", NTFY_TOPIC="sim-topic", TMPDIR=self.dir,
-                 JOB_RUN_NO_WATCH="1")   # 5.10(2)(3): the stand-down / not-running texts are OFF here (the oracle predates them); their scenarios switch them on
+                 JOB_RUN_NO_WATCH="1",
+                 LIFEHACK_DESK_REPO=self.dir)   # 3.4b: job-run runs the job door; a runner copied into the throwaway world counts as a desk runner   # 5.10(2)(3): the stand-down / not-running texts are OFF here (the oracle predates them); their scenarios switch them on
         return e
 
     def sh(self, args, t, extra=None):
@@ -613,18 +614,21 @@ def row_contract():
     w, fails, t = World(jobs), [], BASE + 12 * 3600
     stub = 'bash "$LIFEHACK_CODE_ROOT/system/tools/tests/job-sim-stub.sh"'
     try:
-        rows = (f"sim-a | yes | {P} | o | $JOB_SIM_DIR/out/sim-a ~ ^this line never appears$ | none | 0 | none | {stub} sim-a\n"
+        rows = (f"sim-a | yes | {P} | o | $JOB_SIM_DIR/out/sim-a ~ ^this line never appears n=[0-9]+$ | none | 0 | none | {stub} sim-a\n"
                 f"sim-b | yes | {P} | o |  | none | 0 | none | {stub} sim-b\n"
-                f"sim-c | yes | {P} | o | $JOB_SIM_DIR/out/sim-c ~ ^ran sim-c at | none | 0 | none | {stub} sim-c\n")
+                f"sim-c | yes | {P} | o | $JOB_SIM_DIR/out/sim-c ~ ^ran sim-c at [0-9a-z-]+ | none | 0 | none | {stub} sim-c\n")
         open(w.manifest, "w").write("# row-contract manifest\n```jobs\n" + rows + "```\n")
         for j in ("sim-a", "sim-b", "sim-c"): w.set_mode(j, "ok")
         rc = {j: w.run_job(j, "cal", t) for j in ("sim-a", "sim-b", "sim-c")}
         if rc["sim-a"] != 1: fails.append(f"row-contract: non-matching check exited {rc['sim-a']}, expected 1")
         if w.ls_mtime("sim-a") is not None: fails.append("row-contract: non-matching check stamped last-success")
         if "output check failed" not in w.read("sim-a", "last-run"): fails.append("row-contract: sim-a reason is not 'output check failed'")
-        if rc["sim-b"] != 1: fails.append(f"row-contract: no-check row exited {rc['sim-b']}, expected 1")
+        # 3.4b: a row with no check no longer reaches job-run's own "no output check declared": the job door refuses it first (78, never run)
+        if rc["sim-b"] != 78: fails.append(f"row-contract: no-check row exited {rc['sim-b']}, expected 78 (refused by the door)")
         if w.ls_mtime("sim-b") is not None: fails.append("row-contract: no-check row stamped last-success")
-        if "no output check declared" not in w.read("sim-b", "last-run"): fails.append("row-contract: sim-b reason is not 'no output check declared'")
+        if "refused at run time" not in w.read("sim-b", "last-run"): fails.append("row-contract: sim-b reason is not 'refused at run time'")
+        if "missing contract: check" not in w.read("sim-b", "log"): fails.append("row-contract: sim-b log does not name 'missing contract: check'")
+        if os.path.exists(f"{w.sim}/out/sim-b"): fails.append("row-contract: the no-check row RAN despite the refusal")
         if rc["sim-c"] != 0: fails.append(f"row-contract: matching check exited {rc['sim-c']}, expected 0")
         if w.ls_mtime("sim-c") is None: fails.append("row-contract: matching check did not stamp last-success")
         return 3, fails, ([], [])
@@ -644,7 +648,7 @@ def model_scenarios():
             ("cost-line", 5, 2, "ok", 0, "output check passed", 2)]:
         w, fails, t = World([("sim-m", P)]), [], BASE + 12 * 3600
         try:
-            row = (f"sim-m | yes | {P} | o | $JOB_SIM_DIR/out/sim-m ~ ^ran sim-m at | small | {budget} | none | "
+            row = (f"sim-m | yes | {P} | o | $JOB_SIM_DIR/out/sim-m ~ ^ran sim-m at [0-9a-z-]+ | small | {budget} | none | "
                    f"{jobcmd} sim-m\n")
             open(w.manifest, "w").write("# model manifest\n```jobs\n" + row + "```\n")
             w.set_mode("sim-m", "ok"); open(f"{w.sim}/mode/sim-m-calls", "w").write(str(calls))
@@ -784,7 +788,7 @@ def bad_row():
         rows = [("good", f"good | yes | 3600 | o. | {chk} | small | 5 | none | {good}"),
                 ("no-outcome", f"no-outcome | yes | 3600 |  | {chk} | small | 5 | none | {good}"),
                 ("tbd-check", f"tbd-check | yes | 3600 | o. | TBD | small | 5 | none | {good}"),
-                ("pinned", f"pinned | yes | 3600 | o. | {chk} | small | 5 | none | bash \"/Users/someone/lifehack-v2/system/tools/ok-run.sh\""),
+                ("pinned", f"pinned | yes | 3600 | o. | {chk} | small | 5 | none | bash \"/opt/pinned/plugins/cache/lifehack/system/tools/ok-run.sh\""),
                 ("raw-curl", f"raw-curl | yes | 3600 | o. | {chk} | small | 5 | none | bash \"$LIFEHACK_CODE_ROOT/system/tools/curl-run.sh\""),
                 # 5.9(a): presence-grade checks. A check must match REAL content, never an exit code / non-empty / exists.
                 ("rc-check", f"rc-check | yes | 3600 | o. | $HOME/x.json ~ \"rc\":0, | small | 5 | none | {good}"),
@@ -941,7 +945,7 @@ def receipt_contract(job):
         mextra = {"LIFEHACK_MODEL_STUB": f"{HERE_TESTS}/job-sim-model-stub.sh"}   # inert for a job that makes no model call
         stub = f"{HERE_TESTS}/job-sim-receipt-stub.sh"
         open(w.manifest, "w").write("# receipt manifest\n```jobs\n"
-            f"{job} | yes | {P} | {outcome} | {check} | {model} | {budget} | {source} | bash {stub} {job} {home_path}\n```\n")
+            f"{job} | yes | {P} | {outcome} | {check} | {model} | {budget} | {source} | bash \"$LIFEHACK_CODE_ROOT/system/tools/tests/job-sim-receipt-stub.sh\" {job} {home_path}\n```\n")
         os.makedirs(f"{w.sim}/receipt", exist_ok=True)
         open(f"{w.sim}/receipt/{job}.good", "w").write(RECEIPTS[job][0] + "\n")
         open(f"{w.sim}/receipt/{job}.bad", "w").write(RECEIPTS[job][1] + "\n")
@@ -973,7 +977,7 @@ def force_flag():
         stub = 'bash "$LIFEHACK_CODE_ROOT/system/tools/tests/job-sim-stub.sh" sim-f'
         for en in ("off", "waiting-on-port"):
             text = ("# force manifest\n```jobs\n"
-                    f"sim-f | {en} | {P} | o | $JOB_SIM_DIR/out/sim-f ~ ^ran sim-f at | none | 0 | none | {stub}\n```\n")
+                    f"sim-f | {en} | {P} | o | $JOB_SIM_DIR/out/sim-f ~ ^ran sim-f at [0-9a-z-]+ | none | 0 | none | {stub}\n```\n")
             open(w.manifest, "w").write(text)
             for f in (f"{w.sim}/out/sim-f",): 
                 if os.path.exists(f): os.remove(f)
@@ -1057,7 +1061,8 @@ def guard_fire_verdict():
         run("downgrade", "echo 'DOWNGRADE guard_x: LIVE -> PARTIAL'; exit 1\n", 0, '"verdict":"DOWNGRADE","named":"DOWNGRADE guard_x: LIVE -> PARTIAL"', "[check] ok")
         run("engine-broken", None, 127, '"verdict":"ERROR"')
         old = f"mkdir -p $(dirname {art}) && printf '{{\"subsystem\":\"guard-fire-test\",\"rc\":0,\"ts\":\"x\"}}\\n' > {art}"
-        run("old-shape-rc-only", None, 1, None, "output check failed", cmd=f"bash -c '{old}'")
+        open(f"{tools}/old-shape-run.sh", "w").write("#!/usr/bin/env bash\n" + old + "\n")   # a real runner file: the door (3.4b) wants a script
+        run("old-shape-rc-only", None, 1, None, "output check failed", cmd=f"bash {tools}/old-shape-run.sh")
         return 4, fails, ([], [])
     finally:
         w.close()
@@ -1294,7 +1299,7 @@ def model_stderr():
     try:
         jobcmd = 'bash "$LIFEHACK_CODE_ROOT/system/tools/tests/job-sim-model-job.sh"'
         open(w.manifest, "w").write("# model-stderr manifest\n```jobs\n"
-            f"sim-m | yes | {P} | o | $JOB_SIM_DIR/out/sim-m ~ ^ran sim-m at | small | 5 | none | {jobcmd} sim-m\n```\n")
+            f"sim-m | yes | {P} | o | $JOB_SIM_DIR/out/sim-m ~ ^ran sim-m at [0-9a-z-]+ | small | 5 | none | {jobcmd} sim-m\n```\n")
         w.set_mode("sim-m", "ok")
         tok = f"{w.dir}/token"; open(tok, "w").write("sim-token\n")
         env = dict(w.env(t), CLAUDE_BIN=f"{HERE_TESTS}/job-sim-claude-fail-stub.sh", CLAUDE_OAUTH_TOKEN_FILE=tok, JOB_RUN_WATCHDOG="30")
@@ -1823,8 +1828,8 @@ def model_readonly():
     try:
         jobcmd = 'bash "$LIFEHACK_CODE_ROOT/system/tools/tests/job-sim-model-job.sh"'
         open(w.manifest, "w").write("# readonly manifest\n```jobs\n"
-            f"sim-m | yes | {P} | o | $JOB_SIM_DIR/out/sim-m ~ ^ran sim-m at | small | 5 | none | {jobcmd} sim-m\n"
-            f"sim-a | yes | {P} | o | $JOB_SIM_DIR/out/sim-a ~ ^ran sim-a at | none | 0 | none | "
+            f"sim-m | yes | {P} | o | $JOB_SIM_DIR/out/sim-m ~ ^ran sim-m at [0-9a-z-]+ | small | 5 | none | {jobcmd} sim-m\n"
+            f"sim-a | yes | {P} | o | $JOB_SIM_DIR/out/sim-a ~ ^ran sim-a at [0-9a-z-]+ | none | 0 | none | "
             'bash "$LIFEHACK_CODE_ROOT/system/tools/tests/job-sim-stub.sh" sim-a\n```\n')
         w.set_mode("sim-m", "ok"); w.set_mode("sim-a", "ok")
         tok = f"{w.dir}/token"; open(tok, "w").write("sim-token\n")
@@ -1947,7 +1952,7 @@ def weekly_row():
         try:
             stub = 'bash "$LIFEHACK_CODE_ROOT/system/tools/tests/job-sim-stub.sh" sim-w'
             open(w.manifest, "w").write("# weekly manifest\n```jobs\n"
-                f"sim-w | yes | 604800 | o | $JOB_SIM_DIR/out/sim-w ~ ^ran sim-w at | none | 0 | none | {stub}\n```\n")
+                f"sim-w | yes | 604800 | o | $JOB_SIM_DIR/out/sim-w ~ ^ran sim-w at [0-9a-z-]+ | none | 0 | none | {stub}\n```\n")
             w.set_mode("sim-w", "ok")
             if w.sh(["bash", JR, "sim-w"], t).returncode != 0: fails.append("weekly-row: the first run did not succeed")
             rc = w.sh(["bash", JR, "sim-w", "--if-overdue"], t + 86400).returncode

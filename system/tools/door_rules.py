@@ -71,3 +71,39 @@ def f3_unguarded(path, text, lines_added, lines):
     return [(i, "checker iterates over found files but nothing fails at zero targets (a checker that checked nothing reports pass): "
                 "add `if not files: fail` / `[ -z \"$files\" ] && exit 1`, or `# empty-ok: <why>`")
             for i in sorted(lines_added) if 0 < i <= len(lines) and FOUND_LOOP.search(lines[i - 1])]
+
+# F7 (slip 56: pulse jobs wrote status tiles under other names, 9 of 16): the status tile a job writes must be named for the job's
+# own id, because system-health resolves a tile by that name with zero aliases. Door rule, so it also holds at run time (job-run.sh
+# runs the door on every launch). Mechanical: every `write_status_tile <name> ...` call in a runner (or what it sources) must pass a
+# name that is the row's id, either as a literal or as a variable the same file sets to that literal. Anything else is refused.
+TILE_CALL = re.compile(r"""(?<![\w./-])write_status_tile\s+(?:"([^"]*)"|'([^']*)'|(\S+))""")
+def tile_name_refusals(job, lines):
+    """-> [(lineno, why)] for each write_status_tile call whose first argument is not the job id (comments skipped)."""
+    out = []
+    def assigned(var):
+        val = None
+        for ln in lines:
+            m = re.match(r"""\s*(?:readonly\s+|export\s+|declare\s+-r\s+)?%s=(?:"([^"]*)"|'([^']*)'|([^\s;#]+))""" % re.escape(var), ln)
+            if m: val = next(g for g in m.groups() if g is not None)
+        return val
+    for i, ln in enumerate(lines, 1):
+        if ln.lstrip().startswith("#"): continue
+        m = TILE_CALL.search(ln)
+        if not m: continue
+        arg = next(g for g in m.groups() if g is not None)
+        v = arg
+        mv = re.fullmatch(r"\$\{?(\w+)\}?", arg)
+        if mv:
+            v = assigned(mv.group(1))
+            if v is None:
+                out.append((i, f"status tile name '{arg}' is not set to a literal in this file: the tile must be named for the job id '{job}'")); continue
+        if v != job:
+            out.append((i, f"status tile named '{v}' but the job id is '{job}': system-health finds a tile by the job id, a differently named tile is never read"))
+    return out
+
+# 3.4b (slips 16/18): the row's OWN command must not swallow the job's exit code. `<runner> || true` (or `|| :`) turns every failure
+# into success before job-run.sh sees it, whatever the runner is. Checked on the command text itself, at the door and so at run time.
+CMD_SWALLOW = re.compile(r"\|\|\s*(?:true|:)(?=\s*(?:$|[;&|)}#]))")
+def cmd_swallows(cmd):
+    """-> True when the row's command ends a step in `|| true` / `|| :`."""
+    return bool(CMD_SWALLOW.search(cmd))
