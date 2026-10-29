@@ -334,6 +334,38 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
+# DERIVED-FIELD REFRESH — WIRED 2026-10-29, v2 plan step 1.3b. CI's register-drift.yml goes red when a
+# registered file is edited without the register's `sha` (and other harvest-derived fields) following it.
+# For every STAGED file that has a tool/skill/githook row, system/register/refresh_staged.py recomputes
+# those fields from the STAGED content with harvest.py's own functions, writes the result into the INDEX
+# (so it lands in THIS commit, and unstaged register edits are never swept in), mirrors it into the working
+# copy where safe, and prints ONE line. Hand-written fields are never touched; see its docstring.
+# ⛔ FAIL CLOSED: if it cannot run (python3 or the script missing, a corrupt staged register, an import or
+# write failure) the commit is REFUSED -- never skipped. Fast: it exits at once when no staged path has a row.
+if ! command -v python3 >/dev/null 2>&1; then
+	echo ""
+	echo "  ⛔ COMMIT REFUSED — no python3 on PATH, so the register refresh could not run."
+	echo ""
+	exit 1
+fi
+refresh_script="$(git rev-parse --show-toplevel)/system/register/refresh_staged.py"
+if [ ! -f "$refresh_script" ]; then
+	echo ""
+	echo "  ⛔ COMMIT REFUSED — $refresh_script is missing. The register refresh cannot run,"
+	echo "  and this hook FAILS CLOSED rather than committing a stale register."
+	echo ""
+	exit 1
+fi
+if ! python3 "$refresh_script"; then
+	echo ""
+	echo "  ⛔ COMMIT REFUSED — the register's derived fields could not be refreshed for the staged files (see above)."
+	echo "  Fix the cause (usually a malformed staged system/register/register.jsonl), or refresh by hand:"
+	echo "      python3 system/register/harvest.py --update-register system/register/register.jsonl"
+	echo ""
+	exit 1
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
 # NEW-TOOL REGISTRATION GATE — WIRED 2026-10-29, v2 plan step 1.3 ("registering a new tool happens
 # when it's saved"). A commit that ADDS a .py/.sh under system/tools/ or shared/ must also carry its
 # register row in system/register/register.jsonl.
