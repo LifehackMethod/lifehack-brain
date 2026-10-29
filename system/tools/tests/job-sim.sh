@@ -2223,6 +2223,40 @@ def bite_o():
 BITES.append(("o", "an enabled row that never runs (an unloaded job) and is never texted about", "watch-each-other", bite_o))
 
 
+# ── 5.10(4): job-run.sh shows the errors it used to drop (the error-file copy, the output-check grep) ──
+def stderr_shown(jr=None):
+    """5.10(4): a failed `cp` of the error file and a failing `grep` in the output check (a regex grep cannot compile) are SHOWN in the run's log,
+    never dropped; a grep that cannot run fails the check by name instead of reading as 'no line matches'."""
+    N, fails = "stderr-shown", []
+    w = World([(A, P)]); t = BASE + 8 * 3600
+    try:
+        s = open(w.manifest).read().replace(f"~ ^ran {A} at", f"~ ^ran ({A} at"); open(w.manifest, "w").write(s)   # an unbalanced '(' : grep -E refuses it
+        w.set_mode(A, "ok"); jr_run(w, A, t, None, jr)
+        log = w.read(A, "log")
+        if "grep failed" not in log: fails.append(f"{N}: a grep that could not run was not named as such in the log: {log[-300:]!r}")
+        if "parenthes" not in log and "grep:" not in log: fails.append(f"{N}: grep's own error text was dropped from the log: {log[-300:]!r}")
+    finally:
+        w.close()
+    w = World([(A, P)])
+    try:
+        ed = w.p(A, "errors"); os.makedirs(ed); os.chmod(ed, 0o500)   # the error file cannot be written
+        try:
+            w.set_mode(A, "fail"); jr_run(w, A, t, None, jr)
+        finally:
+            os.chmod(ed, 0o700)
+        log = w.read(A, "log")
+        if os.geteuid() != 0:
+            if "could not save the error file" not in log: fails.append(f"{N}: the failed error-file copy was not reported: {log[-300:]!r}")
+            if "Permission denied" not in log: fails.append(f"{N}: cp's own error was dropped from the log: {log[-300:]!r}")
+    finally:
+        os.chmod(w.p(A, "errors"), 0o700) if os.path.isdir(w.p(A, "errors")) else None
+        w.close()
+    return 2, fails, ([], [])
+
+
+NEW_SCENARIOS.append(("stderr-shown", stderr_shown))
+
+
 if "--bite" in sys.argv[1:]:
     sys.exit(bite_main())
 sys.exit(main())

@@ -271,7 +271,8 @@ finish() {
   [ "$record" = yes ] && printf '%s rc=%s calls=%s secs=%s model=%s ccv=%s %s\n' "$(iso_now)" "$rc" "$ncalls" "$nsecs" "${MODEL_TIER:-none}" "$_CCV" "$reason" > "$STATE/last-run"
   [ "$record" = yes ] && stamp "$STATE/last-run"
   if [ "$rc" -ne 0 ] && [ "$rc" -ne 75 ] && [ "$rc" -ne 2 ]; then
-    cp "$RUNLOG" "$STATE/errors/$(err_stamp).txt" 2>/dev/null
+    # 5.10(4): cp's own error is SHOWN (it lands in this run's log), and the failure is named -- never dropped.
+    cp "$RUNLOG" "$STATE/errors/$(err_stamp).txt" || echo "[job-run] could not save the error file under $STATE/errors/ (cp's error is above) -- this failed run has no errors/ file"
   fi
   if [ -n "${JOB_RUN_PENDING_LIST:-}" ] && [ -f "$JOB_RUN_PENDING_LIST" ]; then
     while IFS= read -r _pp; do
@@ -370,7 +371,9 @@ run_row_check() {
   path="$(expand_path "$path")"
   [ -f "$path" ] || { echo "[check] output file missing: $path"; return 1; }
   [ "$path" -nt "$START_MARK" ] || { echo "[check] output file not written by this run: $path"; return 1; }
-  hit="$(grep -E -e "$re" "$path" 2>/dev/null | tail -1)"
+  # 5.10(4): grep's stderr is SHOWN (it lands in the log). rc 1 = no match (normal); rc 2 = grep could not run (bad regex, unreadable file) -> named.
+  hit="$(grep -E -e "$re" "$path" | tail -1; exit "${PIPESTATUS[0]}")"; _grc=$?
+  [ "$_grc" -le 1 ] || { echo "[check] grep failed (rc=$_grc) on $path with /$re/ -- its error is above; the check cannot pass"; return 1; }
   [ -n "$hit" ] || { echo "[check] no line of $path matches /$re/"; return 1; }
   echo "[check] ok: $hit"
 }
