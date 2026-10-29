@@ -491,6 +491,8 @@ def real_snapshot():
     paths.add("/tmp/claudeops-email-summary-write.lock")
     gov = os.path.join(os.environ.get("TMPDIR", "/tmp"), "lifehack-notify-state.json")
     paths.update({gov, gov + ".lock", gov + ".tmp"})
+    gov = os.path.expanduser("~/.config/lifehack/notify-state.json")   # 5.14(d): the one persistent governor state file
+    paths.update({gov, gov + ".lock", gov + ".tmp"})
     paths.add(os.path.expanduser("~/.config/lifehack/sentinel-paused-sources"))   # 5.4: the REAL pause file
     paths.update(glob.glob(os.path.expanduser("~/.config/lifehack/*-last-seen")))   # 5.4: the REAL bookmarks
     for root, dirs, files in os.walk(os.path.expanduser("~/.config/lifehack/state/jobs")):
@@ -1484,6 +1486,54 @@ def corrupt_governor_state():
 
 
 NEW_SCENARIOS.append(("corrupt-governor-state", corrupt_governor_state))
+
+
+GOVERNOR_PY = f"{ROOT}/shared/notify/notify-governor.py"
+
+
+def governor_one_state():
+    """5.14(d): the governor keeps ONE persistent state file (~/.config/lifehack/notify-state.json), not one per $TMPDIR. (1) Two runs under
+    different TMPDIR values (launchd's /tmp vs a session's /var/folders) share it: the repeat is suppressed as a duplicate. (2) With the
+    new file missing, the one-time migration merges two old files (union of sent; deferred de-duplicated by identity), writes the new file,
+    and leaves the old files untouched."""
+    fails = []
+    d = tempfile.mkdtemp(prefix="job-sim-gov1.")
+    try:
+        home = f"{d}/home"; os.makedirs(home)
+        t1, t2 = f"{d}/tmp-launchd", f"{d}/tmp-session"; os.makedirs(t1); os.makedirs(t2)
+        old1, old2 = f"{t1}/lifehack-notify-state.json", f"{t2}/lifehack-notify-state.json"
+        env = {k: v for k, v in os.environ.items() if k not in SEAMS}
+        env.update(HOME=home, TZ="UTC", LIFEHACK_FAKE_NOW=str(BASE + 12 * 3600), NOTIFY_LEGACY_STATE_FILES=f"{old1}:{old2}")
+        new = f"{home}/.config/lifehack/notify-state.json"
+        def gov(tmpdir):
+            return subprocess.run(["python3", GOVERNOR_PY, "job-run:x", "m", "normal", "ident-1"], env=dict(env, TMPDIR=tmpdir),
+                                  capture_output=True, text=True)
+        a, b = gov(t1), gov(t2)
+        if a.returncode != 0: fails.append(f"governor-one-state: first run rc={a.returncode} {a.stderr!r}")
+        if b.returncode != 1: fails.append(f"governor-one-state: the same text under a different TMPDIR was not suppressed (rc={b.returncode}); two state files")
+        if not os.path.exists(new): fails.append("governor-one-state: no state file at ~/.config/lifehack/notify-state.json")
+        if os.listdir(t1) or os.listdir(t2): fails.append(f"governor-one-state: state written under TMPDIR: {os.listdir(t1)} {os.listdir(t2)}")
+        # migration
+        if os.path.exists(new): os.remove(new)
+        sa = {"ts": BASE, "source": "s", "hash": "h1"}; sb = {"ts": BASE + 1, "source": "s", "hash": "h2"}
+        da = {"ts": BASE, "source": "s", "message": "q", "title": "t", "url": ""}
+        db = {"ts": BASE + 5, "source": "s", "message": "q", "title": "t", "url": ""}   # same identity as da
+        dc = {"ts": BASE + 6, "source": "s", "message": "other", "title": "t", "url": ""}
+        o1 = json.dumps({"sent": [sa], "deferred": [da]}); o2 = json.dumps({"sent": [sa, sb], "deferred": [db, dc]})
+        open(old1, "w").write(o1); open(old2, "w").write(o2)
+        r = subprocess.run(["python3", GOVERNOR_PY, "--queue-deferred", "s", "extra"], env=dict(env, TMPDIR=t1), capture_output=True, text=True)
+        try: m = json.load(open(new))
+        except Exception as e: m = {}; fails.append(f"governor-one-state[migrate]: no readable merged file ({e!r}) {r.stderr!r}")
+        if m:
+            ns, nd = len(m.get("sent", [])), len(m.get("deferred", []))
+            if ns != 2 or nd != 3: fails.append(f"governor-one-state[migrate]: sent={ns} deferred={nd}, expected 2 and 3 (union; deferred de-duplicated, +1 just queued)")
+        if open(old1).read() != o1 or open(old2).read() != o2: fails.append("governor-one-state[migrate]: an old file was modified")
+        return 4, fails, ([], [])
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+NEW_SCENARIOS.append(("governor-one-state", governor_one_state))
 
 EF = f"{ROOT}/shared/tools/email_fetch.py"
 

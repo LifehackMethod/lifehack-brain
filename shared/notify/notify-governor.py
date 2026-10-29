@@ -37,15 +37,22 @@
 #   NOTIFY_DAILY_CAP   (3)   per-source allowed sends per rolling 24h
 #   NOTIFY_DEDUP_HOURS (24)  identical (source,identity-or-message) suppressed within this window
 #   NOTIFY_MISCONFIG_DEDUP_HOURS (8760)  same, for priority=misconfig — ~1 year, i.e. "once"
-#   NOTIFY_STATE_FILE  (<tmp>/lifehack-notify-state.json)
+#   NOTIFY_STATE_FILE  (~/.config/lifehack/notify-state.json -- ONE persistent file, not per-$TMPDIR; 5.14(d))
 #
 # NOTE: auto-mute-after-false-alerts is intentionally NOT in v1 — it needs a
 #       feedback channel ("that was a false alert") we don't have yet. Add later.
 
 import sys, os, json, time, hashlib, fcntl
 
-STATE = os.environ.get("NOTIFY_STATE_FILE",
-                       os.path.join(os.environ.get("TMPDIR", "/tmp"), "lifehack-notify-state.json"))
+STATE = os.environ.get("NOTIFY_STATE_FILE") or os.path.expanduser("~/.config/lifehack/notify-state.json")
+# 5.14(d): the two old per-$TMPDIR files (launchd sees /tmp, sessions see /var/folders/...). Read ONCE, only to seed a missing new file.
+# NOTIFY_LEGACY_STATE_FILES (colon-separated) is a TEST seam replacing that list.
+_LEG = os.environ.get("NOTIFY_LEGACY_STATE_FILES")
+LEGACY = _LEG.split(":") if _LEG is not None else [os.path.join(d, "lifehack-notify-state.json") for d in ("/tmp", os.environ.get("TMPDIR", "/tmp"))]
+try:
+    os.makedirs(os.path.dirname(STATE) or ".", exist_ok=True)
+except OSError:
+    pass
 QUIET_START = int(os.environ.get("NOTIFY_QUIET_START", "22"))
 QUIET_END   = int(os.environ.get("NOTIFY_QUIET_END", "7"))
 DAILY_CAP   = int(os.environ.get("NOTIFY_DAILY_CAP", "3"))
@@ -94,24 +101,41 @@ class StateCorrupt(Exception):
     history can flood the phone or go quiet. A MISSING file is normal (first run) and is not this."""
 
 
-def load_state():
+def _read_state(path):
     try:
-        with open(STATE) as f:
+        with open(path) as f:
             raw = f.read()
     except FileNotFoundError:
         return {"sent": []}
     except OSError as e:
-        raise StateCorrupt(f"{STATE} is unreadable ({e})")
+        raise StateCorrupt(f"{path} is unreadable ({e})")
     try:
         state = json.loads(raw)
     except ValueError as e:
-        raise StateCorrupt(f"{STATE} is not valid JSON ({e})")
+        raise StateCorrupt(f"{path} is not valid JSON ({e})")
     if not isinstance(state, dict):
-        raise StateCorrupt(f"{STATE} holds a {type(state).__name__}, not a JSON object")
+        raise StateCorrupt(f"{path} holds a {type(state).__name__}, not a JSON object")
     for key in ("sent", "deferred"):
         if key in state and not (isinstance(state[key], list) and all(isinstance(x, dict) for x in state[key])):
-            raise StateCorrupt(f"{STATE}: '{key}' is not a list of objects")
+            raise StateCorrupt(f"{path}: '{key}' is not a list of objects")
     return state
+
+
+def load_state():
+    if not os.path.exists(STATE) and not os.environ.get("NOTIFY_STATE_FILE"):
+        olds = [_read_state(p) for p in dict.fromkeys(LEGACY) if p and os.path.exists(p)]   # a corrupt old file raises StateCorrupt, never skipped
+        if olds:   # 5.14(d) one-time migration: union of sent, deferred de-duplicated by identity; old files left untouched
+            merged = {"sent": [], "deferred": []}
+            seen_s, seen_d = set(), set()
+            for o in olds:
+                for e in o.get("sent", []):
+                    k = json.dumps(e, sort_keys=True)
+                    if k not in seen_s: seen_s.add(k); merged["sent"].append(e)
+                for e in o.get("deferred", []):
+                    k = (e.get("source"), e.get("message"), e.get("title"), e.get("url"))
+                    if k not in seen_d: seen_d.add(k); merged["deferred"].append(e)
+            save_state(merged)
+    return _read_state(STATE)
 
 
 def save_state(state):
