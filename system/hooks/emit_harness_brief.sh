@@ -59,6 +59,7 @@ while [ -n "$d" ] && [ "$d" != "/" ]; do
   d="$(dirname "$d")"
 done
 
+printf 'plugin root = %s\n' "$(cd "$ROOT" 2>/dev/null && pwd -P || printf '%s' "$ROOT")" 2>/dev/null
 printf '=== Lifehack Harness — standing brief (delivered by the plugin; not auto-loaded here) ===\n\n'
 cat "$SRC"
 exit 0
