@@ -351,13 +351,19 @@ def report_attack(unit, body, item=""):
 
 
 def gate_message(unit, body, item=""):
-    """Gate ONE message body. Returns dict(content, provenance_tag, verdict, attack). Never feeds ungated text out."""
+    """Gate ONE message body. Returns dict(content, provenance_tag, verdict, attack). Never feeds ungated text out.
+    5.10(4): an exception from the scanner, the reader or the gate on a message is verdict UNJUDGED (the run is withheld, exit 3),
+    never a clean read."""
     gate, scan, judge = _gate_modules()
-    findings = []
     try:
-        findings = scan(body) or []
-    except Exception:  # noqa: BLE001
-        findings = []
+        return _gate_message(unit, body, item, gate, scan, judge)
+    except Exception as e:  # noqa: BLE001
+        return {"content": "", "provenance_tag": "", "verdict": "UNJUDGED", "attack": False,
+                "reason": f"gate/scanner raised {type(e).__name__}: {e}"}
+
+
+def _gate_message(unit, body, item, gate, scan, judge):
+    findings = scan(body) or []
     if findings and judge is None:
         return {"content": "", "provenance_tag": "", "verdict": "UNJUDGED", "attack": False,
                 "reason": "intake_reader could not be imported"}
