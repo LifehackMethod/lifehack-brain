@@ -208,6 +208,8 @@ for e in scripts:
         reasons.append(f"unresolvable variable in runner path: {e}")
     elif not (under(os.path.realpath(e), code) or under(os.path.realpath(e), desk)):
         reasons.append(f"runner outside the code root and the private desk repo: {e}")
+    elif not os.path.isfile(e):
+        reasons.append(f"runner script does not exist: {e}")   # 5.10(5): a row whose command file is gone can never run
 
 # (c) the static scan
 allow = set()

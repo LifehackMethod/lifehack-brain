@@ -97,4 +97,16 @@ elif [ ! -s "$D/pid" ]; then fail d-watchdog-no-orphan "the stub work never star
 elif [ "$drc" -eq 0 ]; then fail d-watchdog-no-orphan "a watchdog-killed run exited 0"
 else pass d-watchdog-no-orphan; fi
 
+# ── (e) the door refuses a check with no value-bearing field; (f) it refuses a row whose command file is missing ──
+E="$T/e"; mkdir -p "$E/code/system/tools" "$E/home/.claude/skills/ClaudeOps/desks/x"; printf '#!/usr/bin/env bash\necho fine\n' > "$E/code/system/tools/ok-run.sh"
+door() {  # check [command] -> sets DOOR_OUT, DOOR_RC
+  printf '```jobs\nrow1 | yes | 3600 | o. | %s | none | 0 | none | %s\n```\n' "$1" "${2:-bash \"\$LIFEHACK_CODE_ROOT/system/tools/ok-run.sh\"}" > "$E/m.md"
+  DOOR_OUT="$(LIFEHACK_JOBS_FILE="$E/m.md" LIFEHACK_CODE_ROOT="$E/code" LIFEHACK_DESK_REPO="$E/home/.claude/skills/ClaudeOps" HOME="$E/home" bash "$ROOT/system/tools/install-schedulers.sh" --check-row row1 2>&1)"; DOOR_RC=$?
+}
+want_refused() { door "$2" "${3:-}"; if [ "$DOOR_RC" -ne 0 ] && echo "$DOOR_OUT" | grep -q -- "$4"; then pass "$1"; else fail "$1" "rc=$DOOR_RC $DOOR_OUT"; fi; }
+want_pass()    { door "$2" "${3:-}"; if [ "$DOOR_RC" -eq 0 ]; then pass "$1"; else fail "$1" "rc=$DOOR_RC $DOOR_OUT"; fi; }
+want_refused f-missing-command-file     '$HOME/x ~ ^ran n=[0-9]+' 'bash "$LIFEHACK_CODE_ROOT/system/tools/gone-run.sh"' "gone-run.sh"
+want_refused f-missing-home-file        '$HOME/x ~ ^ran n=[0-9]+' 'bash "$HOME/.claude/skills/ClaudeOps/desks/x/gone-run.sh"' "gone-run.sh"
+want_pass    f-existing-file-passes     '$HOME/x ~ ^ran n=[0-9]+'
+
 [ "$FAILS" -eq 0 ]
