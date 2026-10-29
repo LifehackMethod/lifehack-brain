@@ -5,8 +5,12 @@ WHY ONE COPY. Everything ingested goes through the security system (plan B.4). G
 scripts, each with its own filter, its own cap, its own bookmark and (mostly) no gate. This file is the one place that
 holds the raw `gws gmail` call and that decides, for EVERY message it returns:
   1. the label is not PAUSED (a paused label is refused, exit 75 "paused: <label>");
-  2. the query is `category:primary` unless the caller overrides it (no promotions / social / updates / spam);
-  3. a per-run cap bounds the read (default 10 threads);
+  2. it sets NO read policy of its own (Enver 2026-10-28: read policy is per skill, set at that skill's gate). The
+     CALLER passes every choice explicitly: the query (folders/category; '' = none), the cap, and the start point
+     (--since bookmark | none). There are no silent defaults; a missing choice is an error. Order is Gmail's own
+     (newest first); the fetch does not reorder. A capped read with a bookmark can therefore leave older mail
+     behind -- that trade-off belongs to the calling skill;
+  3. the caller's cap bounds the read;
   4. the body passes the ingest gate INSIDE this fetch -- sanitise + scan + the tool-less reader's judgment -- so a
      headless (cron) job is covered exactly like a session;
   5. a REAL-ATTACK verdict PAUSES the label and sends ONE critical push (via ingest_gate -> sentinel_response), and the
@@ -19,15 +23,15 @@ holds the raw `gws gmail` call and that decides, for EVERY message it returns:
      and deletes it on failure. A peek (mark_seen=False / --no-mark) writes nothing. A corrupt bookmark is refused and named (5.9(e)).
 
 INTERFACE (library):
-  fetch(consumer, label=None, query=None, cap=DEFAULT_CAP, since_last_seen=True, mark_seen=True) -> dict
+  fetch(consumer, *, label, query, cap, since_last_seen, mark_seen) -> dict   (every choice explicit, no defaults)
         raises Paused(unit) / Disabled / FetchError
   list_threads(params) / get_thread(thread_id, fmt) / labels_list() / preflight()   -- the raw calls, (data, err) tuples
   check_paused(unit)        -- raises Paused
   report_attack(unit, body, item)  -- for a caller that ran its OWN judge (the store janitor): pause + one critical push
   read_last_seen(consumer) / write_last_seen(consumer, ms, msg_id)
-INTERFACE (CLI):  python3 email_fetch.py --consumer NAME [--label L] [--query Q] [--cap N] [--no-since] [--no-mark]
+INTERFACE (CLI):  python3 email_fetch.py --consumer NAME [--label L] --query Q --cap N --since bookmark|none [--no-mark]
                   [--out FILE] | --preflight
-  query: omitted = category:primary; `--query ''` = no query filter (a label-only read, e.g. a drill label).
+  query: required; `--query ''` = no query filter (a label-only read, e.g. a drill label).
   exit 0 ok | 75 paused / email read disabled | 2 Gmail unreachable (transient) | 3 reader down (flagged mail withheld) | 1 other.
 
 THE UNIT THAT GETS PAUSED is the label (or "primary" when no label): pause-file line `email:<unit>` in
@@ -62,8 +66,6 @@ for _d in (os.path.join(CODE_ROOT, "shared", "gate"), os.path.join(CODE_ROOT, "s
     if _d not in sys.path:
         sys.path.insert(0, _d)
 
-DEFAULT_QUERY = "category:primary"
-DEFAULT_CAP = 10
 MAX_MSGS_PER_THREAD = 20
 EXIT_PAUSED = 75
 EXIT_TRANSIENT = 2
@@ -391,14 +393,16 @@ def _label_id(label):
     raise FetchError(f"unknown label '{label}'")
 
 
-def fetch(consumer, label=None, query=None, cap=DEFAULT_CAP, since_last_seen=True, mark_seen=True):
+def fetch(consumer, *, label, query, cap, since_last_seen, mark_seen):
     """Read up to `cap` threads, gate every message, return {unit, query, count, messages[], attack}.
     Raises Disabled / Paused / FetchError. A REAL-ATTACK pauses the label, stops the read and raises Paused."""
     if not enabled():
         raise Disabled("EMAIL_SERVICE_READ is off")
     unit = label or "primary"
     check_paused(unit)
-    q = DEFAULT_QUERY if query is None else query
+    if query is None or cap is None or since_last_seen is None or mark_seen is None:
+        raise TypeError("email_fetch.fetch: query, cap, since_last_seen and mark_seen are the caller's choice -- pass each explicitly")
+    q = query
     seen_ms, _ = read_last_seen(consumer)
     stale_pending = pending_path(consumer)   # 5.9(f): a pending file left by a run that never finished is never trusted
     if os.path.exists(stale_pending):
@@ -450,9 +454,10 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="The shared email fetch (the only sanctioned Gmail read).")
     ap.add_argument("--consumer", help="who is reading (names the *-last-seen file)")
     ap.add_argument("--label", default=None, help="Gmail label to read (also the unit that gets paused)")
-    ap.add_argument("--query", default=None, help="Gmail query; default category:primary; '' = none")
-    ap.add_argument("--cap", type=int, default=DEFAULT_CAP, help=f"max threads per run (default {DEFAULT_CAP})")
-    ap.add_argument("--no-since", action="store_true", help="do not filter by the *-last-seen bookmark")
+    ap.add_argument("--query", default=None, help="Gmail query (required for a read; '' = none). No default: read policy is the caller's")
+    ap.add_argument("--cap", type=int, default=None, help="max threads per run (required for a read). No default")
+    ap.add_argument("--since", choices=["bookmark", "none"], default=None,
+                    help="start point (required for a read): after the consumer's *-last-seen bookmark, or no filter")
     ap.add_argument("--no-mark", action="store_true", help="do not advance the bookmark")
     ap.add_argument("--out", default=None, help="write the JSON result here instead of stdout")
     ap.add_argument("--preflight", action="store_true", help="exit 0 if Google auth answers, else 2")
@@ -470,9 +475,12 @@ def main(argv=None):
         return 0 if preflight() else EXIT_TRANSIENT
     if not a.consumer:
         ap.error("--consumer is required")
+    missing = [f for f, v in (("--query", a.query), ("--cap", a.cap), ("--since", a.since)) if v is None]
+    if missing:   # the fetch sets no read policy of its own; the calling job states every choice
+        ap.error(f"{', '.join(missing)} required: read policy (query, cap, start point) is the calling job's choice, never a default")
     try:
         res = fetch(a.consumer, label=a.label, query=a.query, cap=a.cap,
-                    since_last_seen=not a.no_since, mark_seen=not a.no_mark)
+                    since_last_seen=(a.since == "bookmark"), mark_seen=not a.no_mark)
     except BookmarkCorrupt as e:
         sys.stderr.write(f"[email-fetch] CORRUPT bookmark: {e} -- refusing to start fresh; fix or remove that file by hand\n")
         return 1

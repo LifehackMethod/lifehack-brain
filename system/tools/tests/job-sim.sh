@@ -679,7 +679,7 @@ def danger_email():
                 open(f"{gm}/thread-{tid}.json", "w").write(json.dumps(_gm_thread(tid, f"subject {i}", body, 1793000000000 + i * 1000)))
         out = f"{w.sim}/out/fetch.json"
         cmd = ('python3 "$LIFEHACK_CODE_ROOT/shared/tools/email_fetch.py" --consumer sim-drill --label sim-drill '
-               '--query "" --cap 5 --out "$JOB_SIM_DIR/out/fetch.json" && '
+               '--query "" --cap 5 --since bookmark --out "$JOB_SIM_DIR/out/fetch.json" && '
                '{ [ -z "$LIFEHACK_FAKE_NOW" ] || touch -t "$(date -r "$LIFEHACK_FAKE_NOW" +%Y%m%d%H%M.%S)" "$JOB_SIM_DIR/out/fetch.json"; }')   # the fake clock stamps the output, as the other stubs do
         open(w.manifest, "w").write("# danger-email manifest\n```jobs\n"
             f"sim-fetch | yes | {P} | o | $JOB_SIM_DIR/out/fetch.json ~ \"count\": [0-9] | none | 0 | none | {cmd}\n```\n")
@@ -803,7 +803,7 @@ def reader_down():
             open(f"{gm}/thread-{tid}.json", "w").write(json.dumps(_gm_thread(tid, f"subject {i}", body, 1793000000000 + i * 1000)))
         out = f"{w.sim}/out/fetch.json"
         cmd = ('python3 "$LIFEHACK_CODE_ROOT/shared/tools/email_fetch.py" --consumer sim-drill --label sim-drill '
-               '--query "" --cap 5 --out "$JOB_SIM_DIR/out/fetch.json" && '
+               '--query "" --cap 5 --since bookmark --out "$JOB_SIM_DIR/out/fetch.json" && '
                '{ [ -z "$LIFEHACK_FAKE_NOW" ] || touch -t "$(date -r "$LIFEHACK_FAKE_NOW" +%Y%m%d%H%M.%S)" "$JOB_SIM_DIR/out/fetch.json"; }')
         open(w.manifest, "w").write("# reader-down manifest\n```jobs\n"
             f"sim-fetch | yes | {P} | o | $JOB_SIM_DIR/out/fetch.json ~ \"count\": [0-9] | none | 0 | none | {cmd}\n```\n")
@@ -1500,7 +1500,7 @@ def corrupt_bookmark_runs():
                        SENTINEL_PAUSE_FILE=f"{d}/paused", SENTINEL_LOG=f"{d}/s/e.jsonl", SENTINEL_STATUS=f"{d}/s/s.json", SENTINEL_ACKED_FP=f"{d}/s/a.json",
                        SENTINEL_QUARANTINE_DISABLE="1", LIFEHACK_ROOT=f"{d}/brain", EMAIL_SERVICE_READ="")
             outf = f"{d}/out-{kind}.json"
-            r = subprocess.run(["python3", EF, "--consumer", "sim-drill", "--label", "sim-drill", "--query", "", "--out", outf], env=env,
+            r = subprocess.run(["python3", EF, "--consumer", "sim-drill", "--label", "sim-drill", "--query", "", "--cap", "5", "--since", "bookmark", "--out", outf], env=env,
                                stdin=subprocess.DEVNULL, capture_output=True, text=True)
             out[kind] = (r.returncode, r.stderr, os.path.exists(outf), bm, text, open(bm).read() if os.path.exists(bm) else None)
         return out
@@ -1524,6 +1524,25 @@ def corrupt_bookmark():
 
 
 NEW_SCENARIOS.append(("corrupt-bookmark", corrupt_bookmark))
+
+
+def reader_no_policy():
+    """Enver 2026-10-28: the shared reader sets NO read policy. A read that omits --query, --cap or --since is refused
+    (exit 2, named), and the library fetch() refuses a call without every choice. Each call runs with no mailbox at all."""
+    fails = []
+    env = {k: v for k, v in os.environ.items() if k not in SEAMS}
+    full = ["--query", "", "--cap", "3", "--since", "bookmark"]
+    for drop in ("--query", "--cap", "--since"):
+        i = full.index(drop); args = full[:i] + full[i + 2:]
+        r = subprocess.run(["python3", EF, "--consumer", "sim-x"] + args, env=env, capture_output=True, text=True, timeout=30)
+        if r.returncode != 2 or drop not in r.stderr or "calling job's choice" not in r.stderr:
+            fails.append(f"reader-no-policy[{drop}]: rc={r.returncode} {r.stderr[-160:]!r}")
+    code = ("import sys; sys.path.insert(0, sys.argv[1]); import email_fetch as e\n"
+            "try:\n    e.fetch('sim-x', label=None, query=None, cap=3, since_last_seen=True, mark_seen=False)\nexcept TypeError:\n    sys.exit(0)\nsys.exit(1)")
+    r = subprocess.run(["python3", "-c", code, os.path.dirname(EF)], env=env, capture_output=True, text=True, timeout=30)
+    if r.returncode != 0: fails.append(f"reader-no-policy[library]: fetch() accepted a missing query: {r.stderr[-160:]!r}")
+    return 4, fails, ([], [])
+NEW_SCENARIOS.append(("reader-no-policy", reader_no_policy))
 
 
 def bite_e_jobrun():
@@ -1556,7 +1575,7 @@ BITES.append(("e/bookmark", "a corrupt *-last-seen bookmark", "[email-fetch] COR
 
 # SPLICE:5.9f
 OLD_MARK = "1700000000000 old-id"
-FETCH_CMD = ('python3 "$LIFEHACK_CODE_ROOT/shared/tools/email_fetch.py" --consumer sim-drill --label sim-drill --query "" --cap 5 '
+FETCH_CMD = ('python3 "$LIFEHACK_CODE_ROOT/shared/tools/email_fetch.py" --consumer sim-drill --label sim-drill --query "" --cap 5 --since bookmark '
              '--out "$JOB_SIM_DIR/out/fetch.json"{extra} && '
              '{{ [ -z "$LIFEHACK_FAKE_NOW" ] || touch -t "$(date -r "$LIFEHACK_FAKE_NOW" +%Y%m%d%H%M.%S)" "$JOB_SIM_DIR/out/fetch.json"; }}{tail}')
 
@@ -1625,7 +1644,7 @@ def bookmark_moves_only_when_done():
         env.update(HOME=f"{d}/home", JOB_SIM_DIR=f"{d}/sim", LIFEHACK_GWS_BIN=f"{HERE_TESTS}/job-sim-gws-stub.py", CLAUDE_BIN=f"{HERE_TESTS}/job-sim-claude-stub.sh",
                    LIFEHACK_LAST_SEEN_DIR=seen, SENTINEL_PAUSE_FILE=f"{d}/paused", SENTINEL_LOG=f"{d}/s/e.jsonl", SENTINEL_STATUS=f"{d}/s/s.json",
                    SENTINEL_ACKED_FP=f"{d}/s/a.json", SENTINEL_QUARANTINE_DISABLE="1", LIFEHACK_ROOT=f"{d}/brain", EMAIL_SERVICE_READ="")
-        rc = subprocess.run(["python3", EF, "--consumer", "sim-drill", "--label", "sim-drill", "--query", "", "--out", f"{d}/o.json"], env=env,
+        rc = subprocess.run(["python3", EF, "--consumer", "sim-drill", "--label", "sim-drill", "--query", "", "--cap", "5", "--since", "bookmark", "--out", f"{d}/o.json"], env=env,
                             stdin=subprocess.DEVNULL, capture_output=True, text=True).returncode
         mark = open(f"{seen}/sim-drill-last-seen").read().strip()
         pend = open(f"{seen}/sim-drill-last-seen.pending").read().strip() if os.path.exists(f"{seen}/sim-drill-last-seen.pending") else None

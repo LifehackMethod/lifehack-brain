@@ -195,6 +195,8 @@ except Exception:
 # 2026-10-27 (self-monitoring 5.4): the ONE shared email fetch holds every raw `gws gmail` call. This module lists,
 # reads metadata and checks the pause file only through it; a REAL-ATTACK verdict pauses the label via report_attack().
 import email_fetch  # noqa: E402  (shared/tools, same directory)
+# This job's own read policy (5.4, owner's wish "primary only"). The shared fetch sets none of its own (Enver 2026-10-28).
+INBOX_QUERY = "category:primary"
 
 _INTAKE_READER_DIR = os.path.join(CODE_ROOT, "shared", "tools")
 if _INTAKE_READER_DIR not in sys.path:
@@ -996,7 +998,7 @@ def write_v2(thread_ids=None, filter_label=None, recency_days=RECENCY_FLOOR_DAYS
             # 5.4 (owner's wish "primary only"): INBOX is read as category:primary; SENT / SNOOZED keep their own scope.
             lids, err = list_thread_ids_for_label(
                 lid, label_name=lname, recency_days=recency_days,
-                extra_query=(email_fetch.DEFAULT_QUERY if lname == "INBOX" else None),
+                extra_query=(INBOX_QUERY if lname == "INBOX" else None),
                 max_total=(limit if (limit is not None and limit >= 0) else None))
             if err:
                 sys.stderr.write(f"[email-summary-sync] v2 label '{lname}' list error: {err}\n")
