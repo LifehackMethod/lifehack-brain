@@ -343,7 +343,7 @@ fi
 # runner-lock.lib.sh, safe_sheets.py) and all of shared/ landed with no register entry and nothing said so.
 #
 # SCOPE, ON PURPOSE: ADDED files only (--diff-filter=A). A modification or deletion never fires, so the
-# existing backlog of unregistered or stale rows cannot block an unrelated commit (github-sop G14: a
+# existing backlog of unregistered or stale rows cannot block an unrelated commit (the owner's git rule G14: a
 # gate must not start blocking on an existing red backlog). Test-class files are exempt, exactly as
 # harvest.py's is_test_class() (tests/ dir, test_/test-/firetest basenames, fixtures/ dir).
 # Reads STAGED content only (git show :path) and does one grep per added tool: fast. Needs no python3.

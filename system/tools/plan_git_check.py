@@ -63,7 +63,7 @@ from verdicts import CANNOT_READ
 ID = r'[A-Za-z]{0,2}\d{1,3}\.\d{1,2}[a-z]?'
 CHECKBOX_RE = re.compile(r'^- \[ \] \*\*(' + ID + r')\*\*')
 # 6.13 — the STALE-BOX scan must use the SAME start-of-subject rule the --task
-# path already enforces (subject starts "<id>: ", github-sop, 2026-09-04). An id
+# path already enforces (subject starts "<id>: ", ruled 2026-09-04). An id
 # ANYWHERE in the subject ("...see notes on 6.2 for context only") is prose, not
 # evidence — a bare \b-bounded search over the whole subject read that prose as
 # a shipped task. Anchored at position 0, one capture group, colon required.
@@ -166,7 +166,7 @@ def main():
 
     # 3.1 (2026-09-04) — the first caller this file ever had. plan_retire.py asks
     # "did task <id> ship?" and needs a hash or the NO-OUTCOME member, never a guess.
-    # Subject convention: the commit subject STARTS with "<id>:" (github-sop, 2026-09-04).
+    # Subject convention: the commit subject STARTS with "<id>:" (ruled 2026-09-04).
     # No --since window here (days=None): a task may have shipped long before anyone asks.
     if a.task:
         if not a.hash:

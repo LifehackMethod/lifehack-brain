@@ -19,7 +19,7 @@ generated_from:
   - system/tools/archivist-audit-run.sh
   - system/memory-system.md
   - system/confidence-model.md
-  - system/topic-vocab.md
+  - <notes>/memory/topic-vocab.md
   - system/canon-purpose-map.md
   - .claude/skills/save/SKILL.md §4.6, §6b, §SC-2
   # skills/archivist-autoplace/SKILL.md — DELETED 2026-07-28 (S2.4 sweep; RETIRED since 2026-06-29,
@@ -275,7 +275,7 @@ Fires AFTER the Write/Edit tool completes. Calls `validate_frontmatter.py` again
 If REQUIRED_FIELDS (`record_type`, `desk`, `created_at`, `status`) are missing → emits a stderr reminder.
 Always exits 0 — cannot block. Purpose is hygiene nudge only.
 
-**Advisory gap:** `topic:` is REQUIRED by doctrine (system/memory-system.md + system/topic-vocab.md)
+**Advisory gap:** `topic:` is REQUIRED by doctrine (system/memory-system.md + <notes>/memory/topic-vocab.md)
 but is NOT in `REQUIRED_FIELDS` in `validate_frontmatter.py`. The validator gives a false-clean signal
 on a canon file missing the `topic:` field. This is a named gap: the honor doctrine requires it, but no
 mechanical check enforces it at write-time.
@@ -501,7 +501,7 @@ discipline + the ban on unreviewed Bash writes to Drive canon paths.
 
 **Gap 4 — `topic:` not in REQUIRED_FIELDS**
 `validate_frontmatter.py` REQUIRED_FIELDS = {`record_type`, `desk`, `created_at`, `status`}. The `topic:`
-field is required by doctrine (`system/memory-system.md`, `system/topic-vocab.md`) but not checked at
+field is required by doctrine (`system/memory-system.md`, `<notes>/memory/topic-vocab.md`) but not checked at
 write-time. A canon file missing `topic:` passes the guard and gets no validator complaint. Named gap,
 no fix in place.
 
@@ -550,7 +550,7 @@ certifies). The field is the signal; the human's judgment is the substance.
 | `system/canon-purpose-map.md` | READ | archivist-route skill | Ranks the correct canon home for a proposal |
 | `system/confidence-model.md` | READ (doctrine) | /save SC-2, Archivist, every tier-decision | Defines the four tiers; canon = human-vetted only |
 | `system/memory-system.md` | READ (doctrine) | all save/load/audit elements | Defines temperature/load rules + canon always-on doctrine |
-| `system/topic-vocab.md` | READ (doctrine) | /save, /read, all canon writers | Controlled vocabulary for topic: frontmatter; status: LOCKED 2026-06-15, authority: user |
+| `<notes>/memory/topic-vocab.md` | READ (doctrine) | /save, /read, all canon writers | Controlled vocabulary for topic: frontmatter; status: LOCKED 2026-06-15, authority: user |
 
 ---
 
@@ -603,7 +603,7 @@ Mixed (live blocking guard + several honor-system edges) → **PARTIAL**.
    larger decision of whether to RESTORE an authority rail at all — and if so, one that doesn't break
    `/save`'s own approved-canon writes the way the donor's did on 2026-08-11.
 2. **`topic:` in REQUIRED_FIELDS** — add `topic` to `validate_frontmatter.py`'s `REQUIRED_FIELDS` set
-   and constrain it to `system/topic-vocab.md` slugs. The validator would then catch missing/invalid topics
+   and constrain it to `<notes>/memory/topic-vocab.md` slugs. The validator would then catch missing/invalid topics
    at write-time (still advisory, but visible).
 3. ~~**`authority: research` corpus file** — promote to `authority: user` if it is human-vetted, or move to
    `records/` if it is a research finding. The current state (authority:research in canon/) is a doctrine

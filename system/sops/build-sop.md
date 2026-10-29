@@ -12,6 +12,11 @@ authority: user
 
 # Build SOP
 
+> **Which build doc is which (2026-10-29):** three docs, three jobs; read the one that matches your question.
+> - `system/sops/build-sop.md` - the do's and don'ts of *executing* a build (hard-won lessons, grown over time).
+> - `system/sops/build-conductor-sop.md` - how one lead *orchestrates* a parallel or multi-agent build.
+> - `system/build-rules-index.md` - the *router*: what to read before building, by kind of thing built.
+
 > ## NOTE — WHAT THIS PAGE CITES THAT IS NOT IN THIS REPOSITORY
 >
 > This page earns its length by naming the exact record where each lesson was learned. Those records

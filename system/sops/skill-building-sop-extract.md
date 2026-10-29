@@ -1,7 +1,7 @@
 # A model cannot report on its own compliance
 
 > **This is an extract, and it says so.** The document it comes from is roughly 2,300 lines and belongs
-> to the skill-building work, which is not part of this release. **The core skills cite it for exactly
+> ~~to the skill-building work, which is not part of this release.~~ *(corrected 2026-10-29: the full SOP ships here as `system/sops/skill-building-sop.md`, ~3,050 lines)*. **The core skills cite it for exactly
 > one idea**, and that idea is below in full. Landing the whole thing here to carry one paragraph would
 > ship 2,300 lines nobody reads to hold a rule everybody needs.
 >

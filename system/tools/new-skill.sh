@@ -86,7 +86,7 @@ mkdir -p "$DIR"
 # crashes frontmatter parsing and the harness falls back to the body heading). Keep it quoted.
 cat > "$FILE" <<EOF
 ---
-topic: [REPLACE-with-a-slug-from-system/topic-vocab.md]
+topic: [REPLACE-with-a-slug-from-notes-memory/topic-vocab.md]
 skill: $NAME
 description: "$DESC_ESC"
 shape: $SHAPE

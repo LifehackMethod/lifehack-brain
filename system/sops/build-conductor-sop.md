@@ -10,6 +10,11 @@ authority: user
 
 # Build Conductor SOP
 
+> **Which build doc is which (2026-10-29):** three docs, three jobs; read the one that matches your question.
+> - `system/sops/build-sop.md` - the do's and don'ts of *executing* a build (hard-won lessons, grown over time).
+> - `system/sops/build-conductor-sop.md` - how one lead *orchestrates* a parallel or multi-agent build.
+> - `system/build-rules-index.md` - the *router*: what to read before building, by kind of thing built.
+
 > The operating mode `project-manager` arms for any **build**: a lean coordinator at altitude
 > that puts the work into the right **gear**, delegates decided work, keeps state in files, and
 > stays out of the swamp. Promoted from the build-loop draft + proven live 2026-06-22 (Agent

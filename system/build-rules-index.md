@@ -191,6 +191,11 @@ authority: user
 
 # Build Rules-of-Engagement Index
 
+> **Which build doc is which (2026-10-29):** three docs, three jobs; read the one that matches your question.
+> - `system/sops/build-sop.md` - the do's and don'ts of *executing* a build (hard-won lessons, grown over time).
+> - `system/sops/build-conductor-sop.md` - how one lead *orchestrates* a parallel or multi-agent build.
+> - `system/build-rules-index.md` - the *router*: what to read before building, by kind of thing built.
+
 > Read by the `/build` skill's **Step 0** gate. Maps **what you're building** → the **binding docs**
 > whose rules govern it. `/build` FETCHES these (reads the real files) before building — it never relies
 > on memory. **Paths are relative to this repo's root**, wherever it was cloned — resolve them with
