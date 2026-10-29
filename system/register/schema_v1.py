@@ -116,7 +116,7 @@ HOOK_EVENTS = (
     "SessionStart", "Setup",
 )
 
-# scheduled.enabled — an open, DECLARED-disposition word per pulse-config.md
+# scheduled.enabled — an open, DECLARED-disposition word per jobs.md
 # ("yes" to run; anything else is a stated reason, not just "off"). Kept
 # open for the same reason: closing it would freeze vocabulary a human
 # still writes by hand in that file today.
@@ -245,7 +245,7 @@ TYPE_FIELDS = {
     # (system/journal.md, 2026-09-16: its only caller is `system/githooks/pre-commit`).
     # One row per git-hook SCRIPT (`system/githooks/pre-commit`, `system/githooks/pre-push`,
     # one per repo that has one) — NOT one row per invoked command, because a single git
-    # hook fires many commands in one process, unlike pulse-config.md's one-job-per-line
+    # hook fires many commands in one process, unlike jobs.md's one-job-per-line
     # `scheduled` shape above.
     #   "hook_name": the git-hooks filename itself (e.g. "pre-commit") — deliberately NOT
     #                called `event`, to keep this axis visually and semantically distinct

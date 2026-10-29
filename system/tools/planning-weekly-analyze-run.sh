@@ -30,7 +30,7 @@
 # they use this tool. ⚠ CORRECTED 2026-08-15 (T9.7d): this used to deny that DEST had any
 # scheduler or cron scaffold. That's false — `system/tools/pulse.sh` is the live daemon,
 # `system/tools/install-schedulers.sh` installs its entry, and several sibling runners have rows
-# in `system/pulse-config.md`. What's still true: this runner has no direct row of its own — it
+# in `system/jobs.md`. What's still true: this runner has no direct row of its own — it
 # only runs chained from planning-vault-weekly-run.sh (which also has no row yet).
 # ─────────────────────────────────────────────────────────────────────────────
 set -eo pipefail
@@ -99,13 +99,13 @@ if [ ! -d "$VAULT" ]; then echo "[$SUBSYSTEM_NAME] no weekly vault at $VAULT —
 
 # ── headless claude auth (subscription token; NEVER written into the tracked repo or notes root) ──
 # ⚖ FIXED 2026-08-15: this used to hand-roll the check and `exit 3` on a missing token file, which
-# system/pulse-config.md's exit-code contract classes as a REAL FAILURE ("anything else"). On a
+# system/jobs.md's exit-code contract classes as a REAL FAILURE ("anything else"). On a
 # fresh install there IS no token file until the person runs the one-time `claude setup-token`, so
 # the day this runner gets a scheduler row, three ticks would trip Pulse's 3-strike breaker and
 # system-health.py would render it DOWN/severity:error permanently — auto-disabling a runner the
 # student never got to configure. rc=75 = "this job's OWN preflight declined to run this tick"
 # -> counted `skipped`, never a fault. It stays LOUD: the helper always names the missing
-# credential and how to supply it. This runner has no pulse-config.md row TODAY (it only runs
+# credential and how to supply it. This runner has no jobs.md row TODAY (it only runs
 # chained from planning-vault-weekly-run.sh), so the fix is pre-emptive — it becomes the live bug the
 # day a row is wired, which is precisely when nobody would be looking.
 # This was one of five identical hand-rolled copies; two had already been fixed without the fix

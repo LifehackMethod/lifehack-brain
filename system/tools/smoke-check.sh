@@ -175,7 +175,7 @@ except (ValueError, RecursionError) as exc:
 #     15s cap kills it mid-job — the TIMEOUT this loop would otherwise report is real,
 #     not idle, work being cut off, and safe only because LIFEHACK_ROOT + the gws stub
 #     are already pinned above.
-#   system/tools/*-run.sh (the whole family): these are pulse-config.md's scheduled-job
+#   system/tools/*-run.sh (the whole family): these are jobs.md's scheduled-job
 #     wrappers — bash "$LIFEHACK_CODE_ROOT/system/tools/<name>-run.sh" is the ONLY call
 #     shape pulse.sh ever makes, so none of them was ever given argument parsing, let
 #     alone a --help convention. Every one checked runs its real body unconditionally on
@@ -224,7 +224,7 @@ while IFS= read -r f <&3; do
   case " $UNSAFE_TO_PROBE " in
     *" $name "*) unsafe_hit=1 ;;
   esac
-  # *-run.sh, at any depth: pulse-config.md's scheduled-job wrappers, never given a
+  # *-run.sh, at any depth: jobs.md's scheduled-job wrappers, never given a
   # --help/--status guard (see UNSAFE_TO_PROBE comment above) — glob-matched, not
   # hand-listed, so a newly ported wrapper is unsafe by default until proven otherwise.
   case "$name" in

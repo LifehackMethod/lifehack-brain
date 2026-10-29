@@ -15,8 +15,8 @@
 # COST DECISION, not a personal identifier — a student can change it. ⚠ CORRECTED 2026-08-15
 # (T9.7d): this used to deny that DEST had any scheduler or cron scaffold. That's false —
 # `system/tools/pulse.sh` is the live daemon, `system/tools/install-schedulers.sh` installs its
-# entry, and `system/pulse-config.md` has rows for several sibling runners. What's still true:
-# THIS specific runner has no direct pulse-config.md row of its own — it only runs chained from
+# entry, and `system/jobs.md` has rows for several sibling runners. What's still true:
+# THIS specific runner has no direct jobs.md row of its own — it only runs chained from
 # planning-vault-run.sh (which itself also has no row yet — see that file). A student with no
 # `claude setup-token` run yet gets a clear FATAL line below, never a stack trace.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -78,13 +78,13 @@ mkdir -p "$VAULT/analysis"
 
 # ── headless claude auth (subscription token; NEVER written into the tracked repo or notes root) ──
 # ⚖ FIXED 2026-08-15: this used to hand-roll the check and `exit 3` on a missing token file, which
-# system/pulse-config.md's exit-code contract classes as a REAL FAILURE ("anything else"). On a
+# system/jobs.md's exit-code contract classes as a REAL FAILURE ("anything else"). On a
 # fresh install there IS no token file until the person runs the one-time `claude setup-token`, so
 # the day this runner gets a scheduler row, three ticks would trip Pulse's 3-strike breaker and
 # system-health.py would render it DOWN/severity:error permanently — auto-disabling a runner the
 # student never got to configure. rc=75 = "this job's OWN preflight declined to run this tick"
 # -> counted `skipped`, never a fault. It stays LOUD: the helper always names the missing
-# credential and how to supply it. This runner has no pulse-config.md row TODAY (it only runs
+# credential and how to supply it. This runner has no jobs.md row TODAY (it only runs
 # chained from planning-vault-run.sh), so the fix is pre-emptive — it becomes the live bug the day a
 # row is wired, which is precisely when nobody would be looking.
 # This was one of five identical hand-rolled copies; two had already been fixed without the fix

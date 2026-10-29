@@ -507,7 +507,7 @@ def prod_unchanged():
     base = {k: v for k, v in os.environ.items() if k not in SEAMS}
     out = subprocess.run(["python3", HL], env=base, capture_output=True, text=True).stdout.strip()
     explicit = dict(base, LIFEHACK_STATE_DIR=os.path.expanduser("~/.config/lifehack/state"),
-                    LIFEHACK_JOBS_FILE=os.path.join(os.path.dirname(os.path.dirname(HL)), "pulse-config.md"),
+                    LIFEHACK_JOBS_FILE=os.path.join(os.path.dirname(os.path.dirname(HL)), "jobs.md"),
                     LIFEHACK_FAKE_NOW=str(int(time.time())))
     ref = subprocess.run(["python3", HL], env=explicit, capture_output=True, text=True).stdout.strip()
     ok = out == ref and bool(out) and not out.startswith("job health: could not read")
@@ -913,9 +913,9 @@ CONTRACT_MODEL = {"marc-health": ("small", "3", 1), "marc-wednesday": ("medium",
 
 
 def real_row(job):
-    """The job's REAL row from system/pulse-config.md, as a list of nine trimmed columns."""
+    """The job's REAL row from system/jobs.md, as a list of nine trimmed columns."""
     inb = False
-    for ln in open(f"{ROOT}/system/pulse-config.md", encoding="utf-8").read().splitlines():
+    for ln in open(f"{ROOT}/system/jobs.md", encoding="utf-8").read().splitlines():
         if ln.strip() == "```jobs": inb = True; continue
         if inb and ln.strip() == "```": inb = False
         if inb and not ln.lstrip().startswith("#"):
@@ -925,7 +925,7 @@ def real_row(job):
 
 
 def receipt_contract(job):
-    """5.7 <job>-contract: the row's REAL check (read from pulse-config.md) against a stub runner that writes the receipt.
+    """5.7 <job>-contract: the row's REAL check (read from jobs.md) against a stub runner that writes the receipt.
     Missing receipt, a receipt older than the run start and a receipt with the wrong marker each FAIL (exit 1, no last-success);
     a good receipt PASSES (exit 0, `[check] ok`, last-run `rc=0 calls=0 ... model=none`). Also: an ON row's door passes."""
     fails, row = [], real_row(job)

@@ -6,7 +6,7 @@
 #      summary sidecar, then the shared lib writes the status tile and pings.
 # GUARDS: read-only forever; exits 0 EVEN when it finds drift (non-zero = tool broke -> Pulse
 #      auto-disables after 3). Lock+watchdog-bounded (1800s).
-# REDIRECT: registered as `archivist-audit` in system/pulse-config.md (interval 604800 = weekly).
+# REDIRECT: registered as `archivist-audit` in system/jobs.md (interval 604800 = weekly).
 #      Findings flow to the next /save (main session, human-gated) — the skill's own doc: "there
 #      is no /archivist-review... the scanner just FLAGS, and the next /save picks it up."
 #      Shared machinery: system/tools/archivist-run.lib.sh.

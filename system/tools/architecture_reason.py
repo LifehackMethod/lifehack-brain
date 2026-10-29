@@ -221,7 +221,7 @@ _PULSE_ROW = re.compile(
 
 
 def _pulse_config_text() -> str:
-    """`system/pulse-config.md`'s text, with the COMMAND column of any non-`yes` job row
+    """`system/jobs.md`'s text, with the COMMAND column of any non-`yes` job row
     redacted before it joins the roots blob.
 
     ⛔⛔ T-session 2026-08-24 — SECOND HALF OF THE SELF-POISONING FIX (see the comment in
@@ -252,7 +252,7 @@ def _pulse_config_text() -> str:
     `yes` row, or one not immediately followed by any row at all (file-level prose, the header,
     `## Job format`'s own explanation), is untouched.
     """
-    p = REPO / "system" / "pulse-config.md"
+    p = REPO / "system" / "jobs.md"
     if not p.exists():
         return ""
     lines = p.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -303,7 +303,7 @@ def _roots() -> str:
     # (`--selftest`) once these files existed/were regenerated with today's new tool names in
     # them. ⚠ Deliberately worded here WITHOUT a `/`-prefixed literal path to that specimen —
     # this file is itself swept into the roots blob by the `.py` hop below whenever
-    # `pulse-config.md` merely NAMES it in prose (measured: it does, describing this row as
+    # `jobs.md` merely NAMES it in prose (measured: it does, describing this row as
     # `waiting-on-port`), so this file's OWN comment text joins the blob `_invoked_by()` searches.
     # A `/`-prefixed mention here would re-poison the exact bar this fix repairs.
     # FIX: REPO's own internals were never meant to vouch as a "personal skill" root — the ONE
@@ -333,7 +333,7 @@ def _roots() -> str:
     # ⭐ ONE TRANSITIVE STEP, and it is load-bearing — added after the first run flagged 54
     # CLI-never-invoked, most of them FALSE. Pulse does not call `archivist-lean.py` directly; it
     # calls `archivist-run.lib.sh`, which calls the tool. A runner is a TOOL by location and a
-    # ROOT by function, so a roots blob built only from pulse-config + hooks + skills declares
+    # ROOT by function, so a roots blob built only from jobs.md + hooks + skills declares
     # every runner-invoked tool dead. ⇒ any `system/tools/**/*.sh` that a real root NAMES is
     # promoted to a root itself, and its text joins the blob.
     # ⚠ Deliberately ONE step, not a full closure: two hops is where a dead subgraph starts
@@ -874,7 +874,7 @@ def detect_introduce(roots: str, decision_units: dict) -> list:
             "evidence": [
                 f"{p.relative_to(REPO)} carries a {len(doc)}-char docstring describing a capability",
                 f"no Pulse row, hook registration, skill, or reachable tool references {name}",
-                f"{len(all_tools)} tool files examined; roots = pulse-config.md + settings.json "
+                f"{len(all_tools)} tool files examined; roots = jobs.md + settings.json "
                 f"+ .claude/skills/ + ~/.claude/skills/ + hooks/",
                 f"checked for a prior human ruling in state/debt-ledger.md, every "
                 f"state/projects/**/brief.md, state/open-loops.md and system/journal.md — none found",

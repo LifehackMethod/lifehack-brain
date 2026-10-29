@@ -279,7 +279,7 @@ def inv_coverage(code_root, assessed_jobs):
     try:
         if assessed_jobs is None:
             return _entry("integrity:coverage", True, "")  # standalone run — sweeper didn't pass its set
-        config = os.path.join(code_root, "system", "pulse-config.md")
+        config = os.path.join(code_root, "system", "jobs.md")
         enabled, in_block = set(), False
         for line in open(config, encoding="utf-8"):
             s = line.strip()

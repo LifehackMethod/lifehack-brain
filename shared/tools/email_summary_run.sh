@@ -24,7 +24,7 @@
 # scheduler or cron scaffold — that's false, `system/tools/pulse.sh` is the live daemon and
 # `system/tools/install-schedulers.sh` installs its entry. What's still true, and now for a
 # different reason: this specific runner (the older v1-shaped watchdog wrapper) has no caller and
-# is DELIBERATELY not in `system/pulse-config.md` — see that file's own "NOT ADDED" note beside
+# is DELIBERATELY not in `system/jobs.md` — see that file's own "NOT ADDED" note beside
 # `email-summary-write-run.sh`, which supersedes this file. Not an oversight; not wired on purpose.
 #
 # Usage (cron-safe, no args):

@@ -16,7 +16,7 @@
 # it costs the same again. ⛔ Do not re-inline it.
 #
 # THE CONTRACT — rc=75 means STOOD DOWN, and it is NOT rc=3:
-#   `system/pulse-config.md`'s exit-code table is the authority:
+#   `system/jobs.md`'s exit-code table is the authority:
 #     rc=0  -> ran and succeeded (including "checked, found nothing wrong")  -> counted `ran`
 #     rc=75 -> the job's OWN preflight declined to run this tick (config/credentials not set
 #              up yet)                                                       -> counted `skipped`
@@ -54,7 +54,7 @@
 # this helper's 75 would tell Pulse "not configured yet" about a machine that IS configured, and
 # would hide genuinely dead auth forever. It also ends differently per caller by design: four treat
 # it as FATAL, three are warn-only and degrade into a partial result. Left with its callers,
-# deliberately. See the decision note in `system/pulse-config.md`.
+# deliberately. See the decision note in `system/jobs.md`.
 #
 # USAGE — the caller decides HOW to terminate, this file only decides WHETHER:
 #   source "$CODE_ROOT/system/tools/gws-auth.lib.sh"

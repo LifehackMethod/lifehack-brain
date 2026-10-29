@@ -125,7 +125,7 @@ jobs:
         #      description, language, …) is still compared in full.
         # tool/skill/scheduled rows are otherwise compared in full and still FAIL on any
         # mismatch: each has an independent disk source (system/tools/, a SKILL.md file,
-        # pulse-config.md), so a real content change with no matching register update — e.g. a
+        # jobs.md), so a real content change with no matching register update — e.g. a
         # governed script edited without re-harvesting — is real drift. (This is exactly how a
         # genuinely stale row was actually caught while building this fix: `system/register/
         # register.jsonl`'s row for `system/tools/citation_lint.py` still carried the PRE-B5.2

@@ -13,7 +13,7 @@
 # That is why this is a shared function and not a sixth careful edit. ⛔ Do not re-inline it.
 #
 # THE CONTRACT — rc=75 means STOOD DOWN, and it is NOT rc=3:
-#   `system/pulse-config.md`'s exit-code table is the authority:
+#   `system/jobs.md`'s exit-code table is the authority:
 #     rc=0  -> ran and succeeded (including "checked, found nothing wrong")  -> counted `ran`
 #     rc=75 -> the job's OWN preflight declined to run this tick (config/credentials not set
 #              up yet)                                                       -> counted `skipped`

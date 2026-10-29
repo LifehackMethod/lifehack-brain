@@ -16,7 +16,7 @@ trap 'lhb_journal_fire "$?" "observability_logger.sh" "PostToolUse" "*" 2>/dev/n
 #      session end, resolved through `shared/brain_root.py` — see that hook for the exact
 #      path. ⚠ CORRECTED 2026-08-15 (T9.7d): this used to deny the repo had any scheduler at all —
 #      that's false (`system/tools/pulse.sh` is the live daemon), but no pruning job is registered for these logs in
-#      `system/pulse-config.md`, so nothing prunes them automatically today; trim
+#      `system/jobs.md`, so nothing prunes them automatically today; trim
 #      `<notes root>/system/observability/` by hand if it grows large.
 #      If lines are missing, check this hook is registered under PostToolUse with
 #      command: bash "${CLAUDE_PROJECT_DIR}/system/hooks/observability_logger.sh".

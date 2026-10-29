@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# install-schedulers.sh — replay the schedule from the VERSIONED manifest (pulse-config.md) onto
+# install-schedulers.sh — replay the schedule from the VERSIONED manifest (jobs.md) onto
 # THIS machine's OS scheduler. This is what makes the schedule edit-once-and-run-everywhere: update
-# the ```crontab``` block in pulse-config.md -> commit -> run this on a machine -> that machine is
+# the ```crontab``` block in jobs.md -> commit -> run this on a machine -> that machine is
 # current. No hand-editing crontab, one declaration per job, no duplication.
 #
 # PORTED (2026-08-14) from claudeops-config's system/tools/install-schedulers.sh, under a 2026-08-13
@@ -88,7 +88,7 @@
 # not apply to a plain local `data/` folder). If a future job genuinely needs launchd, that is new
 # scope for whoever adds it, not a gap in this installer.
 #
-# Reads the ```crontab``` fenced block in pulse-config.md: `name | schedule(cron 5-field) | command`.
+# Reads the ```crontab``` fenced block in jobs.md: `name | schedule(cron 5-field) | command`.
 # Every row is installed (single machine — there is no `machine` column to filter on anymore).
 #
 # Usage:
@@ -97,7 +97,7 @@
 set -uo pipefail
 
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-MANIFEST="${PULSE_CONFIG:-$CODE_ROOT/system/pulse-config.md}"
+MANIFEST="${LIFEHACK_JOBS_FILE:-${PULSE_CONFIG:-$CODE_ROOT/system/jobs.md}}"
 MODE="${1:---dry-run}"
 BEGIN="# >>> LIFEHACK SCHEDULERS (managed by install-schedulers.sh — do not edit by hand) >>>"
 END="# <<< LIFEHACK SCHEDULERS <<<"
@@ -727,7 +727,7 @@ install_windows() {
     # `bash.exe "<pulse.sh-win-path>"`, not the manifest command directly — pulse.sh is always the
     # thing the scheduler calls; pulse.sh is what parses the ```jobs``` block and runs each job's
     # own command in turn. This crontab-block row IS pulse.sh's own entry for the `pulse` name (and
-    # health-deadman's dedicated entry) — see pulse-config.md.
+    # health-deadman's dedicated entry) — see jobs.md.
     #
     # ⚠ WINDOW HIDING: bash.exe is a console-subsystem binary, so if Task Scheduler ran it directly
     # a visible console window would flash open on EVERY fire — every 5 minutes for the pulse job.

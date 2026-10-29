@@ -18,7 +18,7 @@
 #   NOT PAUSED        rc=1   nothing parked (file missing, key missing, or retry_at in the past)
 #   PAUSED — until ts  rc=0   a live, future park record exists
 #   CANNOT DETERMINE   rc=3   the manifest or the park file exists but cannot be parsed/trusted
-#   ABSENT SUBJECT     rc=2   <job> has no row in the pulse-config.md jobs block at all
+#   ABSENT SUBJECT     rc=2   <job> has no row in the jobs.md jobs block at all
 #
 # USAGE:
 #   pulse-park.sh set <job> --minutes N     write/refresh a durable park, N in (0, 10080] minutes
@@ -28,12 +28,12 @@
 # ENV (all optional, for sandboxing / override — mirrors pulse.sh's own):
 #   LIFEHACK_ROOT      forces the notes root brain_root.py resolves (see shared/brain_root.py)
 #   PULSE_PARK_FILE    forces the park file path directly, bypassing notes-root resolution
-#   PULSE_CONFIG       forces the manifest path (default: <repo>/system/pulse-config.md)
+#   PULSE_CONFIG       forces the manifest path (default: <repo>/system/jobs.md)
 # ──────────────────────────────────────────────────────────────────────────────────────────────
 set -uo pipefail   # NOT -e: we want to control every exit path explicitly
 
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-CONFIG="${PULSE_CONFIG:-$CODE_ROOT/system/pulse-config.md}"
+CONFIG="${LIFEHACK_JOBS_FILE:-${PULSE_CONFIG:-$CODE_ROOT/system/jobs.md}}"
 
 _ROOT_LINE="$(python3 "$CODE_ROOT/shared/brain_root.py" --quiet 2>/dev/null)"
 NOTES_ROOT="${_ROOT_LINE:-}"
@@ -126,7 +126,7 @@ case "$VERB" in
       exit 3
     fi
     if [ "$lookup_rc" -eq 1 ]; then
-      echo "ABSENT SUBJECT — '$JOB' has no row in the pulse-config.md jobs block"
+      echo "ABSENT SUBJECT — '$JOB' has no row in the jobs.md jobs block"
       exit 2
     fi
 
@@ -192,7 +192,7 @@ print(int(d.get(sys.argv[2], 0)))
       exit 3
     fi
     if [ "$lookup_rc" -eq 1 ]; then
-      echo "ABSENT SUBJECT — '$JOB' has no row in the pulse-config.md jobs block; refusing to park a job that does not exist" >&2
+      echo "ABSENT SUBJECT — '$JOB' has no row in the jobs.md jobs block; refusing to park a job that does not exist" >&2
       exit 2
     fi
 

@@ -23,7 +23,7 @@ read UNCALLED until `githook_evidence()` (below) and a new register row type (`s
 WHY TWO EVIDENCE SOURCES, NOT ONE:
 
 T1's original script re-parsed six raw wiring JSON files (settings.json x3 + hooks.json x2 +
-registrations.json) and pulse-config.md/crontab directly, with its own ad-hoc regex over the raw
+registrations.json) and jobs.md/crontab directly, with its own ad-hoc regex over the raw
 command strings. This lint instead takes the already-parsed REGISTER (harvest.py, B1.2) as its
 source for exactly the two surfaces the register already carries structurally and byte-for-byte
 equivalently (T2's own round-trip proof, 0 semantic-diff rows, is the receipt that this switch
@@ -31,8 +31,8 @@ changes nothing):
   - 'registered-hook' evidence  <- register rows of type == "hook" (one row per registration
     entry; a governed unit is registered-hook'd if any hook row's (repo, path) matches it)
   - 'scheduled' evidence        <- register rows of type == "scheduled" (their `command` field is
-    exactly the pulse-config.md ```jobs``` line T1 substring-matched), PLUS a verbatim-ported
-    fallback scan of the whole pulse-config.md file text (`scheduled_text_evidence`) — the
+    exactly the jobs.md ```jobs``` line T1 substring-matched), PLUS a verbatim-ported
+    fallback scan of the whole jobs.md file text (`scheduled_text_evidence`) — the
     register's scheduled rows only cover the fenced ```jobs``` block (Ruling 5, schema-v1.md),
     but T1 substring-matched the WHOLE file, which also catches the separate ```crontab``` block
     (e.g. `health-deadman-check.sh`, deliberately wired outside Pulse's own dispatch — found
@@ -202,7 +202,7 @@ def githook_evidence(rows, governed_and_exempt, ev):
 def scheduled_evidence(rows, governed_and_exempt, ev):
     """Evidence source 2/2 from the register: a governed unit is 'scheduled' if its basename
     appears in a register row of type=='scheduled' `command` field — the exact text T1
-    substring-matched out of pulse-config.md's fenced job block directly."""
+    substring-matched out of jobs.md's fenced job block directly."""
     sched_rows = [r for r in rows if r.get("type") == "scheduled"]
     for g in governed_and_exempt:
         for row in sched_rows:
@@ -213,9 +213,9 @@ def scheduled_evidence(rows, governed_and_exempt, ev):
 
 def scheduled_text_evidence(governed_and_exempt, repo_roots, ev):
     """Fallback / completeness pass, ported from T1 verbatim: the register's `scheduled` rows
-    (harvest.py's `harvest_scheduled`) parse ONLY the fenced ```jobs``` block of pulse-config.md
+    (harvest.py's `harvest_scheduled`) parse ONLY the fenced ```jobs``` block of jobs.md
     — by design, that block is the OS-scheduler-installable source of truth. But T1 substring-
-    matched the WHOLE pulse-config.md file text, which also catches the separate ```crontab```
+    matched the WHOLE jobs.md file text, which also catches the separate ```crontab```
     block below it — used for entries deliberately wired OUTSIDE Pulse's own dispatch (e.g.
     `health-deadman-check.sh`, wired as its own dedicated crontab line specifically so a Pulse
     wedge cannot also silence its watchdog; see that block's own comment). Also re-checks the
@@ -225,10 +225,10 @@ def scheduled_text_evidence(governed_and_exempt, repo_roots, ev):
 
     sched_texts = []
     for repo, root in repo_roots.items():
-        p = os.path.join(root, "system/pulse-config.md")
+        p = os.path.join(root, "system/jobs.md")
         if os.path.exists(p):
             with open(p, encoding="utf-8", errors="replace") as f:
-                sched_texts.append((f"{repo}:pulse-config.md", f.read()))
+                sched_texts.append((f"{repo}:jobs.md", f.read()))
     try:
         cron = subprocess.run(["crontab", "-l"], capture_output=True, text=True).stdout
         cron = "\n".join(l for l in cron.splitlines() if not l.lstrip().startswith("#"))

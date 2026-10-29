@@ -362,7 +362,7 @@ ITEM_STATUS_TILE_PATH = os.path.join(DRIVE, "state", "status", "item-store.json"
 # ── "never configured" signal — the SAME gate the two writers themselves preflight on
 # (calendar-store-sync-run.sh / tasks-store-sync-run.sh, which as of 2026-08-15 both call
 # `require_gws_credentials` from system/tools/gws-auth.lib.sh, rc=75 STOOD DOWN when absent —
-# system/pulse-config.md's "stood down, not a fault" convention). Neither writer has any
+# system/jobs.md's "stood down, not a fault" convention). Neither writer has any
 # OTHER hard gate: calendar_store_sync.py reads cal_config with a tolerant `.load().get(...)`, never
 # `.require()`, so a missing <notes>/config/cal.md does not stop it; tasks_store_sync.py has no
 # cal_config dependency at all. gws-credentials.json is therefore the one real "has this person ever

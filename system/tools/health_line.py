@@ -18,10 +18,10 @@ health_line.py — the ONE-LINE job-health line printed first in every session.
 #      5. otherwise                          -> "jobs: <n> OK"
 #      Never raises, never exits nonzero. On an internal error: "job health: could not read (<reason>)".
 #      Pure stdlib, local files only (no Drive, no subprocess): finishes in a few ms.
-# INPUTS: ENABLED rows of the ```jobs block in system/pulse-config.md (name | enabled | interval | outcome | check | model | budget | source | cmd;
+# INPUTS: ENABLED rows of the ```jobs block in system/jobs.md (name | enabled | interval | outcome | check | model | budget | source | cmd;
 #      '#' = comment; parsed the same way job-run.sh's awk does). Period = 3rd column, seconds.
 #      Overrides (for fixtures): argv[1]=state dir, argv[2]=manifest; or env LIFEHACK_JOBS_STATE_DIR /
-#      LIFEHACK_JOBS_MANIFEST. Defaults: ~/.config/lifehack/state/jobs and <script>/../pulse-config.md.
+#      LIFEHACK_JOBS_MANIFEST. Defaults: ~/.config/lifehack/state/jobs and <script>/../jobs.md.
 # UPDATED: 2026-10-27 (task 2.1) — replaced the old Drive findings/ledger banner (Hospital findings,
 #      recommendations, gauge, fault ledger; ~900 lines, recoverable from git history) with this
 #      local-job-state line. The hook no longer passes a ledger argument.
@@ -147,7 +147,7 @@ def main() -> int:
                  or os.path.join(os.path.expanduser("~"), ".config", "lifehack", "state", "jobs"))
         manifest = (sys.argv[2] if len(sys.argv) > 2 else os.environ.get("LIFEHACK_JOBS_MANIFEST")
                     or os.environ.get("LIFEHACK_JOBS_FILE")
-                    or os.path.join(CODE_ROOT, "system", "pulse-config.md"))
+                    or os.path.join(CODE_ROOT, "system", "jobs.md"))
         line = compute(state, manifest, now)
     except BaseException as e:  # fail-soft: never raise, never non-zero
         line = f"job health: could not read ({type(e).__name__}: {e})"

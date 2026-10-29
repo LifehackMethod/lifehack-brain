@@ -13,8 +13,8 @@
 # ⚠ CORRECTED 2026-08-15 (T9.7d): this used to deny that DEST had any scheduler or cron scaffold.
 # That's false — `system/tools/pulse.sh` is the live daemon, `system/tools/install-schedulers.sh`
 # installs its entry (cron or Windows Task Scheduler), and several sibling runners have rows in
-# `system/pulse-config.md`. What's still true: this runner specifically has no row there yet
-# (the cron comment above is the intended shape, not yet wired into pulse-config.md) — ported so
+# `system/jobs.md`. What's still true: this runner specifically has no row there yet
+# (the cron comment above is the intended shape, not yet wired into jobs.md) — ported so
 # it is correct and callable the moment one is added. A student with no `gws` binary / no
 # Google account is fine here: this runner is fail-soft by design (a source failure marks it in
 # the manifest and still exits 0), matching planning-vault-pull.py's own already-ported honest-degrade

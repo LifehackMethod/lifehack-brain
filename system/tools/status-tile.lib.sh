@@ -7,10 +7,10 @@
 # their gws preflight (rc=2) every run for a whole night, and nothing on the status board said so —
 # they wrote only machine-local proofs under ~/.local/share/lifehack/, so system-health rendered
 # them NO-TILE (job ticked, no tile anywhere) while the stores sat empty. The pulse convention
-# (system/pulse-config.md: every job "EMITS a status tile on finish — that is how you learn it
+# (system/jobs.md: every job "EMITS a status tile on finish — that is how you learn it
 # happened") was being honored by every job EXCEPT the three whose silence cost the most.
 #
-# CONTRACT — mirrors the rc table in system/pulse-config.md and the planning-health.py tile shape:
+# CONTRACT — mirrors the rc table in system/jobs.md and the planning-health.py tile shape:
 #   rc=0  -> status OK, the caller's summary verbatim
 #   rc=75 -> status OK, configured:false, summary "stood down: <reason arg>" — an unconfigured
 #            install must NEVER render as breakage (see gws-auth.lib.sh's header), but per

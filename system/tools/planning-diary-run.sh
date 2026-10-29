@@ -28,7 +28,7 @@
 # is DELETED, not translated — a student has one computer. ⚠ CORRECTED 2026-08-15 (T9.7d): this
 # used to deny that DEST had any scheduler or cron scaffold, and to say this runner had no
 # caller. Both are false —
-# `system/pulse-config.md` carries a real `planning-diary` row (86400s, chaining all five cadences)
+# `system/jobs.md` carries a real `planning-diary` row (86400s, chaining all five cadences)
 # invoking this file.
 # ─────────────────────────────────────────────────────────────────────────────
 set -u

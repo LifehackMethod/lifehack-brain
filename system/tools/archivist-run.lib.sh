@@ -100,7 +100,7 @@ run_archivist() {
   # STOOD DOWN, not a fault. No token file is true on day one of EVERY install (and stays true
   # until the person runs the one-time setup), so this branch fires on every tick of a fresh
   # machine. rc=75 = "this job's OWN preflight declined to run this tick" per
-  # system/pulse-config.md's exit-code contract — Pulse counts it `skipped`, never toward the
+  # system/jobs.md's exit-code contract — Pulse counts it `skipped`, never toward the
   # 3-strike breaker. It was `return 3` before 2026-08-15, which fell in that contract's
   # "anything else -> a real failure" bucket: three ticks with no token tripped the breaker on
   # BOTH archivist rows (this lib drives audit AND deepmine), held them 60min, and paged the

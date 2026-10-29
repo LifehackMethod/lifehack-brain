@@ -5,7 +5,7 @@
 #      that ever called a health check or a sync job on its own. Pulse is the fix, and it is now the
 #      live answer: ONE scheduled entry (installed by install-schedulers.sh, which covers cron AND
 #      Windows Task Scheduler) invokes THIS script, and this script reads a plain-text manifest
-#      (system/pulse-config.md) and runs whichever job is due.
+#      (system/jobs.md) and runs whichever job is due.
 #      ⚠ Do not re-read this paragraph as a present-tense claim that scheduling is missing — that
 #      reading was the single most-copied stale fact in the tree (T9.7d sweep, 2026-08-15).
 #
@@ -40,7 +40,7 @@ CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"   # this script'
 # install-schedulers.sh, which substitutes this token literally for the OS-scheduled crontab/
 # Task-Scheduler entries, which run outside this process entirely and can't inherit an export).
 export LIFEHACK_CODE_ROOT="$CODE_ROOT"
-CONFIG="${PULSE_CONFIG:-$CODE_ROOT/system/pulse-config.md}"        # the manifest — always CODE-resident
+CONFIG="${LIFEHACK_JOBS_FILE:-${PULSE_CONFIG:-$CODE_ROOT/system/jobs.md}}"        # the manifest — always CODE-resident
 # STATE is machine-local — losing it just means every job looks "never run" and re-fires next cycle
 # (safe, see the breaker comment above). It must NOT be keyed off the calling shell's $TMPDIR: on
 # macOS, cron's environment has no TMPDIR (falls back to /tmp), while an interactive Terminal gets a
@@ -163,11 +163,11 @@ BACKOFF_MAX="${PULSE_BACKOFF_MAX:-86400}"     # never wait longer than a day to 
 # contend for the identical lock path and cannot run concurrently, without this file taking a
 # redundant lock of its own (which would self-deadlock against the runner's own mkdir on every
 # dispatch — see the runner files for the actual mechanism). Jobs dispatched WITHOUT a `*-run.sh`
-# wrapper (e.g. backlog-health.py, planning-health.py called directly from pulse-config.md) are NOT
+# wrapper (e.g. backlog-health.py, planning-health.py called directly from jobs.md) are NOT
 # covered by this — a known gap, out of this task's scope (it owns pulse.sh + `*-run.sh` lock lines,
-# not pulse-config.md or those scripts).
+# not jobs.md or those scripts).
 # Budget is per-job (env override keyed by a sanitized job name), NOT a manifest field — this
-# repo's pulse-config.md is a 4-field format (name|enabled|interval|command) owned by many lanes;
+# repo's jobs.md is a 4-field format (name|enabled|interval|command) owned by many lanes;
 # adding a 5th column is a manifest change this task does not own. An env override reads the
 # same for every caller (a human export, a launchd/cron EnvironmentVariables block, or a test)
 # without touching that file.
@@ -224,7 +224,7 @@ MODE="${1:-run}"   # run | --status | --help
 # as orphans and keep running. Handled here, first, before the config file is even read.
 case "$MODE" in
   --help|-h)
-    echo "pulse.sh — the heartbeat daemon: reads system/pulse-config.md and runs whichever job is due."
+    echo "pulse.sh — the heartbeat daemon: reads system/jobs.md and runs whichever job is due."
     echo
     echo "Usage:  bash pulse.sh [run|--status|--help]"
     echo "  run       (default) dispatch every due job for real"
@@ -341,7 +341,7 @@ jobs_fence_seen=0   # did the ```jobs``` fence EVER match, this run? (ABSENT-SUB
 
 while IFS= read -r line || [ -n "$line" ]; do
   # Strip a trailing \r on EVERY line, not just the fence line: Git for Windows' default
-  # core.autocrlf=true checks pulse-config.md out with CRLF endings, and everything below the fence
+  # core.autocrlf=true checks jobs.md out with CRLF endings, and everything below the fence
   # check is ALSO exact-string matching (the blank/comment `case`, the `IFS='|' read` row fields) —
   # a strip on only the fence line would still leave every data row's last field carrying a \r.
   # Measured: before this strip, a CRLF manifest dispatched 0 jobs, silently, every tick.

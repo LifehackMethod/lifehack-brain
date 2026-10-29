@@ -16,7 +16,7 @@
 #      is DELETED, not translated — a student has one computer. ⚠ CORRECTED 2026-08-15 (T9.7d):
 #      this used to deny that DEST had any scheduler or cron scaffold, and to say this runner had
 #      no caller. Both are
-#      false — `system/pulse-config.md` carries a real `tasks-store-sync` row (86400s) invoking
+#      false — `system/jobs.md` carries a real `tasks-store-sync` row (86400s) invoking
 #      this file.
 # ─────────────────────────────────────────────────────────────────────────────
 set -eo pipefail
@@ -85,7 +85,7 @@ trap _on_exit EXIT INT TERM
 #    A student with no Google account / no gws binary fails here with a clear FATAL line.
 # No creds file is true on day one of every install, and PERMANENTLY true for a student with no
 # Google account — not a runner fault. rc=75 = "this job's own preflight declined to run this
-# tick" (system/pulse-config.md's exit-code contract; matches planning-health.py / backlog-health.py's
+# tick" (system/jobs.md's exit-code contract; matches planning-health.py / backlog-health.py's
 # identical "not configured yet" convention) — Pulse counts it as `skipped`, never toward the
 # 3-strike circuit breaker, so a permanently-unconfigured install never renders DOWN/error forever.
 # ⚖ 2026-08-15: the check itself now lives in ONE place (gws-auth.lib.sh, sourced at the top) —

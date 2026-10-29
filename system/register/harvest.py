@@ -22,7 +22,7 @@ Five unit classes (schema v1's `UNIT_TYPES`):
   skill     — every `.claude/skills/**/SKILL.md` in either repo, `name`/`description` read
               straight off its own frontmatter — no re-summarizing (B1.1 (b)'s "0 hand-annotation"
               rule).
-  scheduled — one row per line of the public repo's `system/pulse-config.md` ```jobs``` block.
+  scheduled — one row per line of the public repo's `system/jobs.md` ```jobs``` block.
               All scheduled rows share one `path` (the manifest itself) — Enver's Ruling 5,
               schema-v1.md.
   githook   — NEW, K2 (2026-09-16): one row per git-hook SCRIPT under `system/githooks/` in
@@ -521,7 +521,7 @@ JOBS_BLOCK_RE = re.compile(r"```jobs\r?\n(.*?)\r?\n```", re.S)
 
 
 def harvest_scheduled(public_root):
-    manifest = os.path.join(public_root, "system", "pulse-config.md")
+    manifest = os.path.join(public_root, "system", "jobs.md")
     rows = []
     if not os.path.isfile(manifest):
         return rows
@@ -602,7 +602,7 @@ def extract_invocation_lines(text):
 def harvest_githooks(public_root, private_root):
     """type: githook — one row per git-hook SCRIPT under `system/githooks/` in either repo
     (public: `pre-commit`; private: `pre-push`, today) — NOT one row per invoked command,
-    because a single git hook fires many commands in one process, unlike pulse-config.md's
+    because a single git hook fires many commands in one process, unlike jobs.md's
     one-job-per-line `scheduled` shape. Carries the invocation-shaped lines its own body
     contains as `commands` (list_of_str), never the whole file body (constraint 0.5: the
     register stores identity + existence + a content hash, not full text). A `tests/`

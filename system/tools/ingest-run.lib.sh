@@ -40,13 +40,13 @@
 # not assume. BOTH halves of that are FALSE, and it was the loudest stale claim in the tree:
 #   - A scheduler ships. `system/tools/pulse.sh` is the daemon, `system/tools/install-schedulers.sh`
 #     installs the single entry that drives it (cron on macOS/Linux, Task Scheduler on Windows), and
-#     `system/pulse-config.md` is the row manifest.
+#     `system/jobs.md` is the row manifest.
 #   - This library IS invoked on a cadence, by two live rows: `system-health` (300s) via
 #     system-health-run.sh, and `sentinel-health` (1800s) via sentinel-health-run.sh. Both `source`
 #     this file. A change here reaches them on their next tick — edit it as LIVE plumbing, not as
 #     dormant ported code.
 # Still true, and the reason the original note existed: this file is a LIBRARY, so it has no
-# pulse-config.md row of its own and never will — it runs only through a caller that has one.
+# jobs.md row of its own and never will — it runs only through a caller that has one.
 #
 # LANE: this is plumbing only. What to flag, what to score, what a run should actually DO belongs in
 # the calling skill/runner's own prompt — never in here.
@@ -145,7 +145,7 @@ ingest_check_paused() {                      # $1 = source key (job name, matchi
 # also needs Google.
 ingest_load_claude() {   # claude OAuth subscription token — for any runner that fires `claude -p`
   # ⚖ FIXED 2026-08-15: this used to hand-roll the check and `exit 3` on a missing token file. That
-  # is a REAL FAILURE under system/pulse-config.md's exit-code contract ("anything else"), so on a
+  # is a REAL FAILURE under system/jobs.md's exit-code contract ("anything else"), so on a
   # fresh install — where no token file exists until the person runs the one-time `claude
   # setup-token` — three ticks would trip Pulse's 3-strike breaker and system-health.py would
   # render the job DOWN/severity:error permanently, auto-disabling a runner the student never got
@@ -163,7 +163,7 @@ ingest_load_claude() {   # claude OAuth subscription token — for any runner th
 ingest_load_gws() {      # gws keychain-free isolated creds + pre-flight
   local job="$1"
   # ⚖ FIXED 2026-08-15: this used to hand-roll the check and `exit 3` on a missing creds file. That
-  # is a REAL FAILURE under system/pulse-config.md's exit-code contract ("anything else"), so three
+  # is a REAL FAILURE under system/jobs.md's exit-code contract ("anything else"), so three
   # ticks trip Pulse's 3-strike breaker and system-health.py renders the job DOWN/severity:error
   # PERMANENTLY. ⭐ And unlike the claude-token twin above, this branch is not a day-one-only
   # condition: it is PERMANENTLY true for anyone who never connects a Google account, which on a
@@ -183,7 +183,7 @@ ingest_load_gws() {      # gws keychain-free isolated creds + pre-flight
   # ── SEPARATE CHECK, SEPARATE CODE — deliberately NOT folded into the stand-down above. ──
   # Reaching this line means credentials EXIST and parse, i.e. this person HAS configured Google. A
   # failing live call is therefore a transient/infra condition, not "not set up yet": rc=2 = "held,
-  # never trips the breaker" in pulse-config.md's table, which is the correct bucket and is what
+  # never trips the breaker" in jobs.md's table, which is the correct bucket and is what
   # the three sibling runners do verbatim. Collapsing it into 75 would report a CONFIGURED machine
   # as unconfigured and hide genuinely dead auth forever. Left inline (not in gws-auth.lib.sh) for
   # the same reason: it ends FATAL here and warn-only in planning-vault/planning-diary, and that difference

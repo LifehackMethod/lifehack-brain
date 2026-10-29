@@ -146,7 +146,7 @@ fi
 # STOOD DOWN, not a fault — the SAME "config isn't set up yet" case as the not-due /
 # already-primed branches above, and it fires on EVERY tick of a fresh install until the
 # one-time `claude setup-token` step is done. rc=75 = "this job's OWN preflight declined to run
-# this tick" (system/pulse-config.md's exit-code contract) -> counted `skipped`, never toward
+# this tick" (system/jobs.md's exit-code contract) -> counted `skipped`, never toward
 # the 3-strike breaker. It was `exit 3` before 2026-08-15, which landed in that contract's
 # "anything else -> a real failure" bucket and tripped the breaker within three ticks on a
 # machine that had simply never been configured. The tile follows the same correction: this

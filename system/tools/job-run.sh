@@ -69,7 +69,7 @@ esac
 
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # TEST-ONLY seams (self-monitoring 2.0): LIFEHACK_JOBS_FILE and LIFEHACK_STATE_DIR. Inert when unset.
-MANIFEST="${LIFEHACK_JOBS_FILE:-$CODE_ROOT/system/pulse-config.md}"
+MANIFEST="${LIFEHACK_JOBS_FILE:-$CODE_ROOT/system/jobs.md}"
 STATE="${LIFEHACK_STATE_DIR:-$HOME/.config/lifehack/state}/jobs/$JOB"
 mkdir -p "$STATE/errors" || exit 1
 

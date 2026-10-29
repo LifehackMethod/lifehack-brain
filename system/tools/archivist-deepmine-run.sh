@@ -8,7 +8,7 @@
 #      DETECTS + PROPOSES only; never fixes, never writes canon, never deletes.
 # GUARDS: read-only forever; exits 0 even when it finds promotions (non-zero = tool broke ->
 #      Pulse auto-disables after 3). Lock+watchdog (1800s).
-# REDIRECT: registered as `archivist-deepmine` in system/pulse-config.md (interval 345600 = 4d
+# REDIRECT: registered as `archivist-deepmine` in system/jobs.md (interval 345600 = 4d
 #      tick; the ~30-day-per-desk cadence is enforced inside via the ledger, mirroring the
 #      donor's stagger). Engine: archivist-run.lib.sh.
 #

@@ -21,7 +21,7 @@
 #      ticks on the SAME machine, which is still possible with one computer). ⚠ CORRECTED
 #      2026-08-15 (T9.7d): this used to deny that DEST had any scheduler or cron scaffold, and to
 #      say this runner had no
-#      caller. Both are false — `system/pulse-config.md` carries a real `email-summary-write`
+#      caller. Both are false — `system/jobs.md` carries a real `email-summary-write`
 #      row (10800s) invoking this file. A student with no `gws` binary / no Google
 #      account gets a clear FATAL line below, never a stack trace or a silent no-op success.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -89,7 +89,7 @@ trap _on_exit EXIT INT TERM
 #    never a stack trace or a silent success.
 # No creds file is true on day one of every install, and PERMANENTLY true for a student with no
 # Google account — not a runner fault. rc=75 = "this job's own preflight declined to run this
-# tick" (system/pulse-config.md's exit-code contract; matches planning-health.py / backlog-health.py's
+# tick" (system/jobs.md's exit-code contract; matches planning-health.py / backlog-health.py's
 # identical "not configured yet" convention) — Pulse counts it as `skipped`, never toward the
 # 3-strike circuit breaker, so a permanently-unconfigured install never renders DOWN/error forever.
 # ⚖ 2026-08-15: the check itself now lives in ONE place (gws-auth.lib.sh, sourced at the top) —
@@ -124,7 +124,7 @@ fi
 #    (not piped) so `wait` returns the python exit code, never a pipe's tail. ──
 WORKLOG="$OUT_DIR/last-write.log"
 # EMAIL_WRITE_LIMIT (optional): cap a run at the first N threads. Set on the job's row in
-# system/pulse-config.md. A capped run never cold-sweeps (email_summary_sync._should_cold_sweep).
+# system/jobs.md. A capped run never cold-sweeps (email_summary_sync._should_cold_sweep).
 do_work() {
   python3 "$CODE_ROOT/shared/tools/email_summary_sync.py" --write-v2 --verbose \
     ${EMAIL_WRITE_LIMIT:+--limit "$EMAIL_WRITE_LIMIT"} > "$WORKLOG" 2>&1
