@@ -95,4 +95,11 @@ fire m1 Bash "$(J command "echo x > $CODE/system/hooks/y.sh")"; want 2 "after re
 fire m1 Bash "$(J command "echo x > $CODE/system/hooks/y.sh")"; want 0 "then retry passes"
 fire m2 Write "$(J file_path "$CODE/system/hooks/z.sh" content '#!/bin/bash')"; want 2 "Write tool into hooks: denied" "building a hook"
 [ ! -e "$MK/hook.m2.seen" ] && { pass=$((pass+1)); echo "   ok   Write-tool into hooks: marker NOT written"; } || { fail=$((fail+1)); echo "  FAIL  marker written for Write into hooks"; }
+# ---- F6a: git worktree in the wrong home (placement.conf worktree-home, Bash `git worktree add`)
+fire w1 Bash "$(J command "git worktree add $NOTES/desks/marc/wt -b feat")"; want 2 "worktree inside notes: denied once" "Git worktrees live in"
+fire w1 Bash "$(J command "git worktree add $NOTES/desks/marc/wt -b feat")"; want 0 "worktree wrong home: retry passes"
+fire w2 Bash "$(J command "git -C $CODE worktree add ../sibling-wt")"; want 2 "worktree beside the repo (-C, relative): denied once" "Git worktrees live in"
+fire w3 Bash "$(J command "git worktree add $HOME/worktrees/v2-x -b v2-x")"; want 0 "worktree in ~/worktrees/<name>: allowed"; silent "worktree home"
+fire w3 Bash "$(J command "git worktree add $CODE/.claude/worktrees/agent1")"; want 0 "Claude-managed .claude/worktrees: allowed"; silent "managed worktree"
+fire w3 Bash "$(J command "echo 'git worktree add /elsewhere/x'")"; want 0 "worktree add inside a quoted echo: allowed"
 echo "passed=$pass failed=$fail"; [ "$fail" -eq 0 ]

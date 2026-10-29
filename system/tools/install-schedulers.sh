@@ -113,7 +113,7 @@ trim() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]
 #   (a) outcome, check, model, budget, source are all present and not `TBD`; model is none|small|medium|large;
 #       budget is an integer > 0 unless model=none.
 #   (b) every script the command runs resolves (after $LIFEHACK_CODE_ROOT / $HOME expansion) under the code root or the
-#       private desk repo, and the command pins no absolute code path (a /Users/... clone, a plugin cache) instead of
+#       private desk repo, and the command pins no absolute code path (a home-folder clone, a plugin cache) instead of
 #       $LIFEHACK_CODE_ROOT.
 #   (c) a static scan of those scripts, of what they source, and of the python/bash scripts they invoke, finds no raw
 #       Gmail READ / Calendar READ / Sheets-values-get / curl / urllib / requests call. Only the files in
@@ -135,7 +135,7 @@ trim() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]
 DOOR_ALLOWLIST="$CODE_ROOT/system/tools/shared-fetch-allowlist.txt"
 DOOR_VENDOR_ALLOWLIST="${LIFEHACK_VENDOR_ALLOWLIST:-$CODE_ROOT/system/tools/vendor-read-allowlist.txt}"
 door_check_row() {   # name enabled outcome check model budget source command -> reasons on stdout; rc 0 = pass
-  python3 - "${LIFEHACK_CODE_ROOT:-$CODE_ROOT}" "${LIFEHACK_DESK_REPO:-$HOME/.claude/skills/ClaudeOps}" \
+  DOOR_RULES_DIR="$CODE_ROOT/system/tools" python3 - "${LIFEHACK_CODE_ROOT:-$CODE_ROOT}" "${LIFEHACK_DESK_REPO:-$HOME/.claude/skills/ClaudeOps}" \
     "$DOOR_ALLOWLIST" "$DOOR_VENDOR_ALLOWLIST" "$@" <<'DOORPY'
 import os, re, shlex, sys
 code, desk, allow_file, vendor_file, name, enabled, outcome, check, model, budget, source, cmd = sys.argv[1:13]
@@ -261,34 +261,9 @@ RAW = [("gws sheets values get", re.compile(r"\bsheets\b.*\bvalues\b.*\b(?:get|b
        ("curl", re.compile(r"\bcurl\s"), "go through the shared fetch"),
        ("urllib", re.compile(r"\burllib\b"), "go through the shared fetch"),
        ("requests", re.compile(r"\brequests\.|^\s*(?:import requests|from requests\b)"), "go through the shared fetch")]
-MODEL_ID = re.compile(r"claude-(?:haiku|sonnet|opus|fable)-[0-9]")   # (d) no literal model id outside the table
-MODEL_TABLE_FILES = ("model.lib.sh", "model_ids.py")
-# a literal passed as a model flag/assignment (any future family name): --model X, "--model", "X", model="X", MODEL=X.
-# A variable/expansion ($MODEL_ID_*, model_id(tier), run_model's tier) never matches: a value must START with a letter/digit.
-MODEL_LIT = [re.compile(p) for p in (
-    r"""--model(?:=|[ \t]+)["']?([A-Za-z0-9][\w.\-]*)""",
-    r"""["']--model["']\s*,\s*["']([\w.\-]+)["']""",
-    r"""\b[Mm][Oo][Dd][Ee][Ll]\s*=\s*["']([\w.\-]+)["']""",
-    r"""^\s*(?:export\s+)?MODEL\s*=\s*([A-Za-z0-9][\w.\-]*)\s*(?:#.*)?$""")]
-# (e) 5.9(d) no silenced error on a fetch, write, push or model call: `|| true`, `|| :` and `2>/dev/null` hide the one thing the
-# wrapper needs to see. Narrow and pattern-based, one LINE at a time, bash files only: the line must (1) carry one of those
-# silencers and (2) call something that fetches, writes, pushes or calls a model. Harmless uses pass: kill/pkill/pgrep/stat/rm/
-# date/wait, `command -v`/`which` lookups, reading a stamp with cat. Failures are named, never swallowed: log to stderr and set the rc.
-SILENCER = re.compile(r"\|\|\s*(?:true|:)(?=\s*(?:$|[;&|)}#]))|2>\s*/dev/null|&>\s*/dev/null|>\s*/dev/null\s+2>&1")
-LOOKUP = re.compile(r"(?:command\s+-v|\bwhich|\btype\s+-p)\s+\S+")
-CALLEES = [("fetch", re.compile(r"(?<![\w/.-])(?:gws|curl|wget)\b|\$\{?GWS\w*\}?\x22?\s+[a-z]|email_fetch\.py|safe_fetch|safe_search|[\w.-]*fetch[\w.-]*\.(?:py|sh)\b|\bgit\s+(?:-C\s+\S+\s+)?(?:fetch|pull|clone)\b")),
-           ("push", re.compile(r"notify-send|\bgit\s+(?:-C\s+\S+\s+)?push\b|\bntfy\b")),
-           ("model", re.compile(r"\brun_model\b|\bclaude\s+-p\b|\$\{?CLAUDE(?:_BIN)?\}?\s+-p\b|\"\$\{?CLAUDE(?:_BIN)?\}?\"\s+-p\b")),
-           ("write", re.compile(r"emit_finding|emit_status|status-tile|(?<![\w:?-])write_status_tile(?=\s)|--write\b|--stamp\w*|--finish\b|[\w.-]*(?:write|sync|diary|journal|sensor|record)[\w.-]*\.(?:py|sh)\b"
-                                r"|\b(?:printf|echo|cat|tee|cp|mv)\b[^|;&<>]*\s>>?\s*[^&\s>]"))]
-def silenced_call(line):
-    """-> kind ('fetch'|'push'|'model'|'write') if this bash line silences the error of a fetch/write/push/model call, else ''."""
-    if not SILENCER.search(line): return ""
-    probe = LOOKUP.sub("", line)
-    probe = re.sub(r"[\w./$\"{}-]*(?:\btest[_-]|[_-]tests?\.)[\w.-]*\.(?:sh|py)", "", probe)   # a test script's exit code IS its verdict, read by the caller
-    for kind, rx in CALLEES:
-        if rx.search(probe): return kind
-    return ""
+import os as _os
+sys.path.insert(0, _os.environ.get("DOOR_RULES_DIR", "."))
+from door_rules import MODEL_ID, MODEL_TABLE_FILES, MODEL_LIT, SILENCER, LOOKUP, CALLEES, silenced_call, google_curl, google_curl_exempt, GOOGLE_CURL_WHY   # one copy of the rules (system/tools/door_rules.py)
 SRC = re.compile(r"""^\s*(?:source|\.)\s+["']?([^"'\s;&|]+)""")
 INV = re.compile(r"""\b(?:python3?|bash|sh)\s+["']?([^"'\s;&|]+\.(?:py|sh))""")
 seen, todo = set(), [os.path.realpath(e) for e in scripts if "$" not in e]
@@ -326,7 +301,10 @@ while todo:
             reasons.append(f"hard-coded model id at {rel}:{i} \u2014 name a tier (small|medium|large); ids live only in system/tools/model.lib.sh")
         if scan:
             _g = gws_refusal(ln)
-            if _g:
+            if google_curl(ln) and not google_curl_exempt(f):
+                rel = os.path.relpath(f, code) if under(f, code) else f
+                reasons.append(f"{GOOGLE_CURL_WHY} at {rel}:{i}")
+            elif _g:
                 rel = os.path.relpath(f, code) if under(f, code) else f
                 reasons.append(f"raw {_g[0]} call at {rel}:{i} — {_g[1]}")
             else:

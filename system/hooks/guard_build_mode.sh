@@ -36,7 +36,7 @@ IFS= read -r -d '' PAYLOAD || true
 BODY="${PAYLOAD#*\"tool_input\"}"
 go=0
 case "$BODY" in
-  *skills/*|*desks*|*hooks/*|*hooks.json*|*settings*.json*|*jobs.md*|*-run.sh*|*.plist*|*/shared/*) go=1 ;;
+  *"worktree add"*|*skills/*|*desks*|*hooks/*|*hooks.json*|*settings*.json*|*jobs.md*|*-run.sh*|*.plist*|*/shared/*) go=1 ;;
 esac
 if [ "$go" -eq 0 ]; then
   # placement pre-filter (builtins only): known roots from the code-root pointer and the notes-root cache

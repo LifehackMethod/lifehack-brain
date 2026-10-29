@@ -324,6 +324,41 @@ GENERIC_CONTENT_PATTERNS = [
                    "very often a personal account or project folder -- replace it with a "
                    "placeholder."),
     },
+    {
+        "id": "email-address-generic",
+        "source": None,
+        # ⛔ ADDED (2026-10-29, v2 plan Phase 3b CHECK 4 "safe to ship"). Before this, an email
+        # was caught only when it matched a term in the out-of-repo identity file, so a
+        # private worksheet quoting SOMEONE ELSE's address (a client, a student) went through.
+        # Any real-looking address is refused; the carve-outs are the reserved/placeholder
+        # domains (RFC 2606 example.*, .invalid/.test/.localhost), no-reply senders, and
+        # calendar-group ids, which is what the existing docs and fixtures use. Written so
+        # the pattern string cannot match itself (no literal domain follows the at-sign).
+        "pattern": (r"(?i)\b(?!git@)[A-Za-z0-9._%+-]+@(?!(?:[A-Za-z0-9-]+\.)*(?:example(?:\.[A-Za-z]+)?"
+                    r"|x\.com|evil\.com|invalid|test|localhost|group\.calendar\.google\.com|users\.noreply\.github\.com"
+                    r"|anthropic\.com)\b)[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}\b"),
+        "remedy": ("an email address. A public file must not carry a real person's address -- "
+                   "use you@example.com, or drop the line if it is private-only material."),
+    },
+    {
+        "id": "private-repo-name",
+        "source": None,
+        # ⛔ ADDED (2026-10-29, CHECK 4). The private ops repo must not be referenced by its
+        # remote URL in public content (a bare owner/name slug in prose is deliberately NOT
+        # matched: register-drift.yml already names it in comments; the URL form is the leak-shaped one).
+        "pattern": r"(?i)github\.com[/:][A-Za-z0-9_.-]+/ClaudeOps\b",
+        "remedy": ("the private ops repo's remote path. It is not public; refer to it by role "
+                   "('the private repo'), not by owner/name."),
+    },
+    {
+        "id": "session-url",
+        "source": None,
+        # ⛔ ADDED (2026-10-29, CHECK 4). A link into one person's chat or Claude Code session
+        # (or a private artifact) is private-only by construction and dead for every reader.
+        "pattern": r"(?i)claude\.ai/(?:code/(?:session|artifact)|chat|share|artifact)[/_][A-Za-z0-9_-]{6,}",
+        "remedy": ("a link to a private chat / session / artifact. Remove it, or state the "
+                   "finding in the text instead of linking the session it came from."),
+    },
 ]
 
 # ⛔ THERE IS NO .github/ CONTENT-SCAN EXEMPTION ANY MORE, AND THAT IS THE POINT OF THIS

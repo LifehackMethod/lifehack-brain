@@ -71,10 +71,26 @@ def handle_bash(ti):
     # substring still appears even when A or B embeds an unexpanded shell variable like
     # $f. Matching the literal invocation text, not a keyword anywhere in the string,
     # per the "match the target, not a bare keyword" rule.
+    # v2 3b-gaps side road 1 (var-path): expand simple `NAME=value` assignments made earlier in the
+    # same command, so `TG=<private path>; LK=<skills path>; ln -sfn $TG $LK` is judged on the real
+    # paths. Only literal assignments are expanded; anything else stays as written (and falls to
+    # the existing logic).
+    assigns = re.findall(r'(?:^|[;&\n])\s*(?:export\s+)?([A-Za-z_]\w*)=(?:"([^"]*)"|\'([^\']*)\'|([^\s;&|]+))', cmd)
+    expanded = cmd
+    for name, dq, sq, bare in assigns:
+        val = dq or sq or bare
+        expanded = re.sub(r'\$\{' + name + r'\}|\$' + name + r'\b', lambda _m, v=val: v, expanded)
     matches = re.findall(
         r'(?:^|[;&|\n]|\bdo\b)\s*ln\s+((?:-[A-Za-z]+\s+)*)(\S+)\s+(\S+)',
-        cmd,
+        expanded,
     )
+    # v2 3b-gaps side road 2 (one-line-script): a python/node/perl one-liner that creates the same
+    # symlink (os.symlink(TARGET, LINK), Path(LINK).symlink_to(TARGET)). Normalised to the `ln -s`
+    # shape (flags "s", target, link) so the SAME judgment below applies.
+    for tgt, lnk in re.findall(r'symlink\(\s*[rbu]?["\']([^"\']+)["\']\s*,\s*[rbu]?["\']([^"\']+)["\']', expanded):
+        matches.append(("-s ", tgt, lnk))
+    for lnk, tgt in re.findall(r'Path\(\s*["\']([^"\']+)["\']\s*\)\.symlink_to\(\s*["\']([^"\']+)["\']', expanded):
+        matches.append(("-s ", tgt, lnk))
     if not matches:
         emit_allow("no `ln` invocation found in this command")
 

@@ -19,8 +19,14 @@ REPO_ROOT = os.path.dirname(os.path.dirname(REGISTER_DIR))
 REG = "system/register/register.jsonl"
 TB = "system/register/toolbox.md"
 OVERLAY = ("system/githooks/pre-commit", "system/register/refresh_staged.py",
-           "system/register/harvest.py", "system/register/toolbox.py")
-ENV = {**os.environ, "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null"}
+           "system/register/harvest.py", "system/register/toolbox.py",
+           "system/githooks/report_checks.sh", "system/githooks/checks/connected.py",
+           "system/githooks/checks/hides_failure.py", "system/githooks/checks/is_copy.py",
+           "system/githooks/checks/safe_to_ship.py", "system/hooks/lib/journal.sh",
+           "system/hooks/lib/build_mode.py", "system/tools/door_rules.py",
+           ".github/scripts/check_no_internal_leakage.py", "system/hooks/placement.conf")
+ENV = {**os.environ, "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null", "LHB_JOURNAL_DISABLE": "1",
+       "LHB_PRECOMMIT_FINDINGS": "/dev/null"}
 LINE = "pre-commit: regenerated toolbox.md"
 
 
@@ -42,7 +48,8 @@ class Staged(unittest.TestCase):
         self.d = d
         self.addCleanup(shutil.rmtree, d, True)
         for rel in OVERLAY:
-            shutil.copy2(os.path.join(REPO_ROOT, rel), os.path.join(d, rel))
+            os.makedirs(os.path.dirname(os.path.join(d, rel)), exist_ok=True)
+        shutil.copy2(os.path.join(REPO_ROOT, rel), os.path.join(d, rel))
         git(d, "config", "user.email", "t@t")
         git(d, "config", "user.name", "t")
         git(d, "config", "core.hooksPath", os.path.join(d, "system", "githooks"))

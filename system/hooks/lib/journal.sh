@@ -174,6 +174,10 @@ lhb_journal_fire() {
         UserPromptSubmit|SessionStart)
             if [ "$_rc" = "0" ]; then _decision="inject"; else _decision="error"; fi
             ;;
+        pre-commit)
+            # v2 3b-gaps: git pre-commit checks. 0 pass, 1 refuse, 3 warn (allowed, reported).
+            case "$_rc" in 0) _decision="allow" ;; 1) _decision="deny" ;; 3) _decision="warn" ;; *) _decision="error" ;; esac
+            ;;
         Stop)
             if [ "$_rc" = "0" ]; then _decision="none"; else _decision="error"; fi
             ;;
@@ -185,7 +189,7 @@ lhb_journal_fire() {
     _sid="${CLAUDE_CODE_SESSION_ID:-}"
     _sid="${_sid//[^A-Za-z0-9_-]/}"
 
-    _hook="${_hook//[^A-Za-z0-9_.-]/}"
+    _hook="${_hook//[^A-Za-z0-9_.:-]/}"
     _event="${_event//[^A-Za-z0-9_+.|-]/}"
     _matcher="${_matcher//[^A-Za-z0-9_+.|-]/}"
     case "$_rc" in

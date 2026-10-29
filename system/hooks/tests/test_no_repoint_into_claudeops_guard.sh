@@ -114,6 +114,18 @@ deny "settings.json write registers a hook command inside the private repo" \
   "re-point"
 
 echo
+echo "=== v2 3b-gaps side roads: variable-held paths and one-line scripts ==="
+allow "variable-held ln pointing at the plugin cache" \
+  "$(mkjson_bash 'TG=/fb/.claude/plugins/cache/lifehack-brain/lifehack-brain/0.4.0/.claude/skills/foo; LK=/fb/.claude/skills/foo; ln -sfn $TG $LK')"
+allow "python one-liner symlink unrelated to skills/agents" \
+  "$(mkjson_bash "python3 -c \"import os; os.symlink('/fb/a','/fb/b')\"")"
+deny "ln -s through shell variables re-points a skills symlink at the private repo" \
+  "$(mkjson_bash 'TG=/fb/ClaudeOps/.claude/skills/foo; LK=/fb/.claude/skills/foo; ln -sfn $TG $LK')" \
+  "re-point"
+deny "python os.symlink one-liner re-points a skills symlink at the private repo" \
+  "$(mkjson_bash "python3 -c \"import os; os.symlink('/fb/ClaudeOps/.claude/skills/foo','/fb/.claude/skills/foo')\"")" \
+  "re-point"
+echo
 echo "  $PASSED passed, $FAILED failed"
 if [ "$FAILED" -eq 0 ]; then
   echo "--- RESULT: GREEN ---"

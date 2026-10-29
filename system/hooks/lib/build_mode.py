@@ -95,6 +95,15 @@ def shared_names(code):
     return names
 
 
+def is_thin_wrapper(content):
+    """True for a thin wrapper of a shared tool: '# wraps-shared:' in the first 10 lines, or 12 or fewer
+    code lines that name a /shared/ path. content None (unknown) is never a wrapper unless marked."""
+    head = content or ""
+    sig = [l for l in head.splitlines() if l.strip() and not l.strip().startswith("#")]
+    marker = any("wraps-shared:" in l for l in head.splitlines()[:10])
+    return marker or (content is not None and len(sig) <= 12 and ("/shared/" in head))
+
+
 def resolve(p, cwd):
     p = os.path.expanduser(p)
     if not os.path.isabs(p):
@@ -154,6 +163,16 @@ def bash_ops(cmd, cwd):
         if not words:
             continue
         verb = os.path.basename(words[0])
+        if verb == "git" and "worktree" in words[1:4] and "add" in words[1:5]:   # F6a: `git [-C d] worktree add [-b X] <path>`
+            a, pos, k = words[words.index("add") + 1:], [], 0
+            while k < len(a):
+                if a[k] in ("-b", "-B", "--reason"): k += 2; continue
+                if not a[k].startswith("-"): pos.append(a[k])
+                k += 1
+            base = resolve(words[words.index("-C") + 1], cwd) if "-C" in words[:3] and len(words) > 3 else cwd
+            if pos:
+                ops.append({"verb": "worktree", "target": resolve(pos[0], base), "srcs": [], "content": ""})
+            continue
         if verb not in WRITE_VERBS:
             continue
         args = [w for w in words[1:] if not (w.startswith("-") and len(w) > 1)]
@@ -316,6 +335,9 @@ def main_inner():
                 elif zone.startswith("code:"):
                     rel = os.path.relpath(t, code) if under(t, code) else ""
                     hit = bool(rel) and rel.split(os.sep)[0] in zone[5:].split(",")
+                elif zone.startswith("worktree:"):   # a `git worktree add` path must sit under one of these homes
+                    hit = w["verb"] == "worktree" and not any(under(t, os.path.realpath(os.path.expanduser(r))) or "/.claude/worktrees/" in t
+                                                              for r in zone[9:].split(","))
                 else:
                     hit = False
                 if hit:
@@ -343,9 +365,7 @@ def main_inner():
                     names = {}
             if base in names:
                 head = (w["content"] or "")
-                sig = [l for l in head.splitlines() if l.strip() and not l.strip().startswith("#")]
-                marker = any("wraps-shared:" in l for l in head.splitlines()[:10])
-                wrapper = marker or (w["content"] is not None and len(sig) <= 12 and ("/shared/" in head))
+                wrapper = is_thin_wrapper(w["content"])
                 if not wrapper:
                     sp = names[base]
                     msg = ("%s is a shared tool (register: %s); it must not be copied into a desk. "

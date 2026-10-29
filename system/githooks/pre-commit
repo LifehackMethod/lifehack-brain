@@ -484,4 +484,63 @@ if ! python3 "$drift_checker"; then
 	exit 1
 fi
 
+
+# ── v2 Phase 3b "Close the known gaps": four checks on the STAGED state ─────────────────────────
+# connected (nothing calls the new thing), hides_failure (|| true, typed model names, /tmp ...),
+# is_copy (a second copy of a shared tool/rulebook), safe_to_ship (private material, missing exec
+# bit). Each exits 1 to refuse and writes `FINDING {json}` lines on stderr. They run in PARALLEL (the
+# wall time is the slowest one, not the sum). FAIL CLOSED: exit >= 2, a crash, or a missing checker
+# is a refusal, never a pass. Every result is then reported to the observation rig by
+# report_checks.sh (fire-journal "precommit:<check>" + ~/.claude/run/precommit-findings.jsonl);
+# that reporter can never change the verdict.
+gap_dir=$(mktemp -d 2>/dev/null) || {
+	echo ""
+	echo "  ⛔ COMMIT REFUSED — could not create a scratch dir for the gap checks. FAILS CLOSED."
+	echo ""
+	exit 1
+}
+for gap in connected hides_failure is_copy safe_to_ship; do
+	(
+		if [ ! -f "$repo/system/githooks/checks/$gap.py" ]; then
+			echo "checker missing: system/githooks/checks/$gap.py" >"$gap_dir/$gap.out"
+			echo 2 >"$gap_dir/$gap.rc"
+		else
+			( cd "$repo" && python3 "system/githooks/checks/$gap.py" ) >"$gap_dir/$gap.out" 2>"$gap_dir/$gap.err"
+			echo $? >"$gap_dir/$gap.rc"
+		fi
+	) &
+done
+wait
+gap_refused=0
+for gap in connected hides_failure is_copy safe_to_ship; do
+	gap_rc=$(cat "$gap_dir/$gap.rc" 2>/dev/null)
+	case "$gap_rc" in
+		0) ;;
+		1)
+			gap_refused=1
+			echo ""
+			echo "  ⛔ COMMIT REFUSED — check '$gap' found a problem:"
+			sed 's/^/      /' "$gap_dir/$gap.out"
+			grep -v '^FINDING ' "$gap_dir/$gap.err" 2>/dev/null | sed 's/^/      /'
+			;;
+		*)
+			gap_refused=1
+			echo ""
+			echo "  ⛔ COMMIT REFUSED — check '$gap' could not run (exit ${gap_rc:-?}); FAILS CLOSED, not a pass:"
+			sed 's/^/      /' "$gap_dir/$gap.out"
+			grep -v '^FINDING ' "$gap_dir/$gap.err" 2>/dev/null | sed 's/^/      /'
+			;;
+	esac
+	# warnings from a passing check are shown, not hidden
+	if [ "$gap_rc" = "0" ] && [ -s "$gap_dir/$gap.out" ]; then
+		sed 's/^/  ⚠ /' "$gap_dir/$gap.out"
+	fi
+done
+bash "$repo/system/githooks/report_checks.sh" "$gap_dir" >/dev/null 2>&1 || true
+rm -rf "$gap_dir"
+if [ "$gap_refused" -ne 0 ]; then
+	echo ""
+	exit 1
+fi
+
 exit 0
