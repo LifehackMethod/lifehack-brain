@@ -148,7 +148,7 @@ lhb_journal_fire() {
         return 0
     fi
 
-    local _rc _hook _event _matcher _journal _dir _base _ts _decision _sid _tsfile _tsrefresh _cached_ts _cached_n
+    local _rc _hook _event _matcher _journal _dir _base _ts _decision _sid _tsfile _tsrefresh _cached_ts _cached_n _cached_ev
     local _pv _psrc _pcand _pseen _pn _prest _pe _lself _pd _pj _pl _pver _pharn _pi
 
     _rc="${1:-}"
@@ -312,20 +312,28 @@ lhb_journal_fire() {
     _tsrefresh="${LHB_JOURNAL_TS_REFRESH_FIRES:-20}"
     case "$_tsrefresh" in ''|*[!0-9]*) _tsrefresh=20 ;; esac
 
-    _cached_ts="" _cached_n=0
+    # AGE BOUND (v2 1.1b): the count alone never looks at age, so after a quiet gap up to 19 lines
+    # reused an old ts (seen live: lines stamped 1793216101 written ~24h later). bash 3.2 has no
+    # builtin wall clock and no builtin file-age test (`-nt` compares two files, it cannot compare a
+    # file to "now"), so a true seconds-based bound needs a fork and is NOT possible here. The bound
+    # used instead is PHASE-based and forkless: the sidecar's third field remembers the event of the
+    # last fire, and a fire whose event differs (PreToolUse -> PostToolUse -> Stop -> next
+    # UserPromptSubmit ...) re-reads the clock. A cached ts is therefore only shared inside one
+    # parallel fan-out of one event (sub-second), never across a tool run, a turn or a quiet gap.
+    _cached_ts="" _cached_n=0 _cached_ev=""
     if [ "$_tsrefresh" -gt 1 ] && [ -f "$_tsfile" ]; then
-        IFS=$'\x1f' read -r _cached_ts _cached_n 2>/dev/null <"$_tsfile"
+        IFS=$'\x1f' read -r _cached_ts _cached_n _cached_ev 2>/dev/null <"$_tsfile"
         case "$_cached_n" in ''|*[!0-9]*) _cached_n=0 ;; esac
         case "$_cached_ts" in ''|*[!0-9]*) _cached_ts="" ;; esac
     fi
 
-    if [ -n "$_cached_ts" ] && [ "$_cached_n" -lt "$_tsrefresh" ]; then
+    if [ -n "$_cached_ts" ] && [ "$_cached_n" -lt "$_tsrefresh" ] && [ "$_cached_ev" = "$_event" ]; then
         _ts="$_cached_ts"
-        printf '%s\x1f%s' "$_ts" "$((_cached_n + 1))" 2>/dev/null >"$_tsfile"
+        printf '%s\x1f%s\x1f%s' "$_ts" "$((_cached_n + 1))" "$_event" 2>/dev/null >"$_tsfile"
     else
         _ts="$(date +%s 2>/dev/null)"
         case "$_ts" in ''|*[!0-9]*) _ts=0 ;; esac
-        printf '%s\x1f%s' "$_ts" "0" 2>/dev/null >"$_tsfile"
+        printf '%s\x1f%s\x1f%s' "$_ts" "0" "$_event" 2>/dev/null >"$_tsfile"
     fi
     case "$_ts" in
         ''|*[!0-9]*) _ts=0 ;;

@@ -432,6 +432,20 @@ case "$(cat "$SCRATCH/lab.jsonl")" in *'"harness":""}'*) ok "labels: no plugin.j
 if [ -z "$bare_err" ]; then ok "labels: no plugin.json -> no stderr/stdout"; else bad "labels: leaked: $bare_err"; fi
 
 # ---------------------------------------------------------------------------
+echo "── cached ts is phase-bounded: a quiet gap cannot reuse an old ts (v2 1.1b) ─"
+# ---------------------------------------------------------------------------
+AJ="$SCRATCH/age.jsonl"; rm -f "$AJ" "$SCRATCH/.age.jsonl.tsstate"
+printf '1000000000\037%s\037%s' 3 PostToolUse > "$SCRATCH/.age.jsonl.tsstate"   # an old ts, count 3 < 20
+LHB_JOURNAL_PATH="$AJ" bash -c ". '$LIB'; lhb_journal_fire 0 t.sh PreToolUse Bash"
+case "$(cat "$AJ")" in *'"ts":1000000000,'*) bad "age: stale ts reused across an event change";; *) ok "age: event change re-reads the clock (old ts not reused)";; esac
+LHB_JOURNAL_PATH="$AJ" bash -c ". '$LIB'; lhb_journal_fire 0 t.sh PreToolUse Bash; lhb_journal_fire 0 u.sh PreToolUse Bash"
+nts="$(python3 -c 'import json,sys; print(len({json.loads(l)["ts"] for l in sys.stdin}))' < "$AJ")"
+if [ "$nts" -eq 1 ]; then ok "age: same-event fan-out still shares one cached ts"; else bad "age: same-event fan-out shares a ts ($nts distinct)"; fi
+rm -f "$AJ"; printf '1000000000\0373' > "$SCRATCH/.age.jsonl.tsstate"             # old 2-field sidecar, no event
+LHB_JOURNAL_PATH="$AJ" bash -c ". '$LIB'; lhb_journal_fire 0 t.sh PreToolUse Bash"
+case "$(cat "$AJ")" in *'"ts":1000000000,'*) bad "age: 2-field legacy sidecar reused a stale ts";; *) ok "age: legacy 2-field sidecar is refreshed, not trusted";; esac
+
+# ---------------------------------------------------------------------------
 echo ""
 echo "=== $pass passed, $fail failed ==="
 [ "$fail" -eq 0 ]
