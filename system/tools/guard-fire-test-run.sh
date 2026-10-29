@@ -83,7 +83,7 @@ trap _on_exit EXIT INT TERM
 # (state/findings/guard-fire-test.<machine>.jsonl), which health_line.py's session-start
 # banner reads.
 do_work() {
-  local out rc err_line guard_n scanned_n status_val
+  local out rc err_line
   set +e
   out="$(bash "$CODE_ROOT/system/tools/verify-hooks.sh" 2>&1)"; rc=$?
   set -e
@@ -94,16 +94,7 @@ do_work() {
     echo "[$SUBSYSTEM_NAME] NOTE: verify-hooks.sh is not ported to this repo yet (see this script's" >&2
     echo "  own header, item 1) — this is the expected, honest result until it (or an equivalent" >&2
     echo "  wrapping organism/label_checker.py check) lands." >&2
-    # Even a broken TOOL is Hospital-worthy: we could not verify guard health AT ALL this run,
-    # which is strictly worse than a clean RED. scanned_n=0 is allowed here ONLY because
-    # status=ERROR, never OK (emit_finding.py refuses scanned_n=0 paired with status=OK).
-    # Best-effort: a notes-root hiccup on THIS call must not turn a real "broken tool" exit
-    # into a hang or a second, different failure.
-    python3 "$CODE_ROOT/system/tools/emit_finding.py" \
-      --producer guard-fire-test --status ERROR --scanned-n 0 \
-      --label job=guard-fire-test --label check=guard-integrity \
-      --summary "verify-hooks.sh itself failed to run (rc=$rc) — guard health could not be verified this run" \
-      --rc "$rc" >/dev/null || echo "[$SUBSYSTEM_NAME] emit_finding (broken-tool path) failed to write" >&2
+    # 5.12(a): no findings-store write any more; the non-zero return is the failed run job-run.sh texts.
     return "$rc"
   fi
 
@@ -112,22 +103,7 @@ do_work() {
   if [ "$rc" -eq 0 ]; then VERDICT="GREEN"; NAMED="all guards + regression suites GREEN"
   else VERDICT="DOWNGRADE"; NAMED="${err_line:-verify-hooks reported RED with no detail line}"; fi
 
-  # ── THE shell/CLI-emitted Hospital finding ──────────────────────────────────
-  # Proof the CLI is real *reference* propagation, not decoration: this detector is bash, never
-  # imports emit_finding.py, and goes through its OWN argparse CLI. `labels={job, check}` is the
-  # finding's STABLE identity: one finding per DETECTOR (guard-fire-test's overall
-  # guard-integrity result), never one per run, so the SAME condition fingerprints identically
-  # run over run and a recurring downgrade is trackable. Per-run detail (which guard, the raw
-  # verify-hooks tail) lives in `summary`, never in `labels`.
-  guard_n="$(printf '%s\n' "$out" | grep -oE '[0-9]+ guard' | head -1 | grep -oE '[0-9]+')"
-  scanned_n=$(( ${guard_n:-0} + 2 ))
-  if [ "$rc" -eq 0 ]; then status_val=OK; else status_val=ERROR; fi
-  python3 "$CODE_ROOT/system/tools/emit_finding.py" \
-    --producer guard-fire-test --status "$status_val" --scanned-n "$scanned_n" \
-    --label job=guard-fire-test --label check=guard-integrity \
-    --summary "${err_line:-all guards + regression suites GREEN}" \
-    --rc "$rc" >/dev/null || echo "[$SUBSYSTEM_NAME] emit_finding failed to write" >&2
-
+  # 5.12(a): the verdict is no longer written to the retired findings store; the row check reads it from last-run.json.
   # Producer-liveness only — the verdict above is Hospital's job; this call takes no rc/err.
   python3 "$CODE_ROOT/system/tools/guard_fire_test_record.py"
   return $?
