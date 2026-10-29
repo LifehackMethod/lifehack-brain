@@ -91,7 +91,18 @@ _shape = _re.compile(r"(^|[;&|(\s])git\s+(-{1,2}\S+\s+)*(commit|rebase|cherry-pi
 try:
     # punctuation_chars=True splits ; && || | ( ) off adjacent words, so
     # "cd ~/repo; git commit" yields cd, ~/repo, ; (3b-fa: it used to yield "repo;").
-    _lex = shlex.shlex(cmd, posix=True, punctuation_chars=True)
+    # Unquoted newlines are command separators too: turn them into " ; " first.
+    _o, _q, _k = [], "", 0
+    while _k < len(cmd):
+        _ch = cmd[_k]
+        if _q:
+            if _ch == _q: _q = ""
+            elif _ch == "\\" and _q == "\"" and _k + 1 < len(cmd): _o.append(_ch); _k += 1; _ch = cmd[_k]
+        elif _ch in "\"\x27": _q = _ch
+        elif _ch == "\\" and _k + 1 < len(cmd): _o.append(_ch); _k += 1; _ch = cmd[_k]
+        elif _ch == "\n": _ch = " ; "
+        _o.append(_ch); _k += 1
+    _lex = shlex.shlex("".join(_o), posix=True, punctuation_chars=True)
     _lex.whitespace_split = True
     _lex.commenters = ""
     toks = list(_lex)

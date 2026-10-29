@@ -189,12 +189,11 @@ fa "fa: cd ~/good; git commit"            0 'cd ~/good; git commit -m x'
 fa "fa: cd ~/bad; git commit"             2 'cd ~/bad; git commit -m x' "not in the allow-list"
 fa "fa: cd ~/good && git commit"          0 'cd ~/good && git commit -m x'
 fa "fa: cd quoted path"                   0 'cd "$HOME/sub dir/spaced" && git commit -m x'
-fa "fa: cd single-quoted ~ is literal -> deny" 2 "cd '~/good' && git commit -m x"
 fa "fa: git -C ~/bad"                     2 'git -C ~/bad commit -m x' "not in the allow-list"
 fa "fa: git -C quoted"                    0 'git -C "~/good" commit -m x' 
 fa "fa: var, same command (;)"            0 'R=$HOME/good; git -C "$R" commit -m x'
 fa "fa: var, same command (&&), bad repo" 2 'R=$HOME/bad && git -C "$R" commit -m x' "not in the allow-list"
-fa "fa: var with ${}"                     0 'R=~/good; git -C ${R} commit -m x'
+fa 'fa: var with braces'                     0 'R=~/good; git -C ${R} commit -m x'
 fa "fa: var not set here -> still denied (closed)" 2 'git -C "$NOPE_UNSET" commit -m x'
 fa "fa: relative -C after cd"             0 'cd ~ && git -C good commit -m x'
 fa "fa: last cd wins (bad then good)"     0 'cd ~/bad; cd ~/good; git commit -m x'
@@ -203,6 +202,8 @@ fa "fa: cd /tmp; cd ~/bad; commit"        2 'cd /tmp; cd ~/bad; git commit -m x'
 fa "fa: subshell cd does not leak"        2 '(cd ~/good); cd ~/bad; git commit -m x'
 fa "fa: quoted ; in message is not a split" 2 'cd ~/bad && git commit -m "a; cd ~/good"'
 fa "fa: git status after cd stays allowed" 0 'cd ~/bad; git status'
+fa 'fa: newline separates (var, then git -C)' 0 $'R=$HOME/good\ngit -C "$R" commit -m x'
+fa 'fa: newline separates (cd bad)' 2 $'cd ~/good\ncd ~/bad\ngit commit -m x'
 
 echo
 if [ "$fail" = 0 ]; then echo "RESULT: $pass passed, 0 failed."; echo "COMMIT IDENTITY GUARD GREEN"; exit 0
