@@ -34,6 +34,34 @@ tier: canon
 >
 > *Detail: §0.1 below. Evidence: `state/projects/canonical-housecleaning/records/2026-09-11-layered-enforcement-composition.md`.* ⛔ owner's notes
 
+> ## THE LAYERS OF FRICTION — compliance is the center of the Venn diagram
+> *(Enver, 2026-10-29. Added in the V2 sandbox.)*
+>
+> **Say "friction," not "enforcement."** "Enforcement" makes an LLM think of perfect control, and nothing
+> here is perfect. Every layer only makes going wrong cost more than going right. Older wording in this
+> file that says "enforcement" means friction, and it gets updated as it's touched.
+>
+> **The layers are overlapping circles, like a Venn diagram, not a stack.** Each circle covers part of the
+> risk. Where the circles overlap, a mistake has to get past several of them at once, and they count as
+> separate layers only if they fail in different ways. **The small area where all the circles overlap —
+> the bullseye at the center — is compliance.** The more something matters, the more circles we bring to
+> overlap on it.
+>
+> **The circles:**
+> - **Hooks** — stop one action before it happens.
+> - **Checks** — refuse bad work when it's saved, committed or installed.
+> - **The runner** — holds the order of steps, so a session can't skip one.
+> - **What a session is handed** — the startup brief and the reminders on each prompt.
+> - **The map, manual and elements** — what the system is meant to do, and what it actually does.
+> - **SOPs and canon** — the rules, and the reasons behind them.
+> - **Observation** — checks that run later and show whether the friction actually held.
+> - **Habit / hygiene — the human's part.** The few things only the person can do: open sessions from
+>   the right place, reach for the right skill at the right moment (`/save`, `/checkin`, `/build`),
+>   approve proposals. The system is built so this is a small part of the work for most of the value. It
+>   is never zero, and it is a circle like any other.
+>
+> *The figures used elsewhere for the human's share are figures of speech, not targets.*
+
 > **What this is.** The single canonical document. It merges three sources: the 37-principle
 > September draft (the v3 draft file), the 54-entry collection in the notes-side canon folder
 > (2026-05-30 → 2026-08-25), and the 28 altitude-tagged lines at
@@ -705,7 +733,7 @@ a *judge* layer (a cold window) found 3 false passes a *verify* layer (a script 
 a *wall* layer (guards) refused a leaked personal path and an unencoded file-open that every layer above had
 passed. **A hook is the scarce top of the stack** — expensive, machine-wide, unbypassable — never a substitute
 for the cheaper layers beneath it, and never the first thing reached for. *(Receipts: commits on `V2`
-2026-09-04; `state/autoplan-rebuild/`.)*
+2026-09-04; `state/autoplan-rebuild/` ⛔ (owner's notes).)*
 ⭐ **HOW TO COUNT ONE IS IN §0.1, NOT HERE** *(added 2026-09-11)*. This section says compliance is a **stack**;
 **§0.1 says how to count one** — and a stack you cannot count is a number you are guessing. ⛔ **The rule is
 stated there and nowhere else, deliberately: it was briefly written in both places, which is **mode 3 — *"the copy you
@@ -1396,7 +1424,7 @@ zero-byte reads at exit 0, dataless files, paths with spaces; four instances, on
 ---
 
 ## 17. EXPERIMENTS TO RUN — proposed, not started *(section opened 2026-09-05 by Enver's ruling; every test proposed in a session lands here)*
-> **v2 (orchestrator-v2, 2026-10-28):** orchestrator-v2 is the experiment behind §0.2: records and the brief live under `state/projects/orchestrator-v2/` (brief.md; run records and scored results there). This section is not moved.
+> **v2 (orchestrator-v2, 2026-10-28):** orchestrator-v2 is the experiment behind §0.2: records and the brief live under `state/projects/orchestrator-v2/` ⛔ (owner's notes) (brief.md; run records and scored results there). This section is not moved.
 
 
 > A test is listed with the question it settles, the arms, what is measured, and which line moves if it passes.
@@ -1628,7 +1656,7 @@ zero-byte reads at exit 0, dataless files, paths with spaces; four instances, on
   **Arms** — Positive control: `--verify-before-fix`, the coordinator's re-run law, on the honest 44-line result it wrongly refused (defect row 11) — read only its first line, declared FAIL on a true result. Fix landed: commit `d6a1afa` (shell-quote parity walked across following lines). Test arm: the same checker, run against the known-good 44-line result *before* the fix is trusted, to see whether a pre-registered known-good check would have caught the false refusal ahead of the live incident.
   **Artifact** — A deterministic command: run the checker binary/script from before `d6a1afa` against the stored 44-line known-good payload from defect row 11, and record its exit code and stdout verbatim. Example shape: run the pre-`d6a1afa` revision of the verify script against the saved known-good payload and echo the exit code.
   **Controls** — *positive:* a checker fed a correct result it wrongly refuses — today's `--verify-before-fix` is the natural specimen; commit `d6a1afa` is the fix. Confirms the checker COULD false-refuse before the fix, and does not after. *negative:* the same checker on a wrong result it correctly refuses — a fabricated bad payload (e.g. a 44-line result with a genuine failing assertion) fed through both the pre-fix and post-fix checker. Confirms the fix did not turn the checker into one that never refuses anything (a fail-open regression masquerading as a fail-closed fix).
-  **Persistence** — Both payloads (known-good, known-bad) and both checker revisions saved under `state/experiments/coordinator/mode-15/` so the test is re-runnable without re-deriving the fixtures from memory.
+  **Persistence** — Both payloads (known-good, known-bad) and both checker revisions saved under `state/experiments/coordinator/mode-15/` ⛔ (owner's notes) so the test is re-runnable without re-deriving the fixtures from memory.
   **Moves** — §16 line **15, "the instrument that refuses the truth"**, from **CANDIDATE** on a ground pass. SOP §II.4a **`[F15]`** is PARKED, not moved here: the lifehack-brain working tree is on a branch whose SOP has zero `[F]` entries — that half is not this entry's to close.
   **Pre-registered pass/fail** — PASS only if all four cells land as predicted: pre-fix+good=refuse, post-fix+good=pass, pre-fix+bad=refuse, post-fix+bad=refuse. Any other pattern is a FAIL, and the mode-15 remedy ("test on known-good input") did not transfer from this specimen to a general rule.
   **Ground result 2026-09-08: fires** — on BOTH task shapes; eight blind pinned-Sonnet cells (2 shapes × plant/twin × fix/nofix) in opaque sandboxes, the build window graded the artifact, every cell where design.md pre-registered it; decisive cell: the no-fix session believed a false FAIL, edited an already-correct file, and reported PASS — visible only in the artifact; with the fix the same cell reads UNCHANGED + PASS. Limits: one session per cell (not three per arm); in-prompt delivery. `--verify 15` exit 0 (build window, an independent auditor, the nav window's hand). Receipt `state/experiments/mode-15/result.md`. ⛔ owner's notes
