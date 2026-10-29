@@ -1471,6 +1471,26 @@ def corrupt_job_state():
 NEW_SCENARIOS.append(("corrupt-job-state", corrupt_job_state))
 
 
+def off_row_corrupt_state():
+    """An OFF row stands down (75) even when its last-success / last-run is corrupt: the enabled check comes before the
+    corrupt-state checks for a non-forced run (lead, 2026-10-29). The damaged file is left alone."""
+    fails, t = [], BASE + 12 * 3600
+    for kind in ("last-success", "last-run"):
+        w = World([("sim-a", P)])
+        try:
+            w.set_mode("sim-a", "ok")
+            if w.run_job("sim-a", "cal", t) != 0: fails.append(f"off-row-corrupt[{kind}]: setup failed"); continue
+            m = open(w.manifest).read(); open(w.manifest, "w").write(m.replace("sim-a | yes |", "sim-a | off |"))
+            target = w.p("sim-a", kind); bad = "garbage, not a record\n"; open(target, "w").write(bad)
+            rc = w.run_job("sim-a", "cal", t + P)
+            if rc != 75: fails.append(f"off-row-corrupt[{kind}]: exit {rc}, expected 75 (an off row stands down); log: {w.read('sim-a', 'log')[-220:]!r}")
+            if open(target).read() != bad: fails.append(f"off-row-corrupt[{kind}]: the damaged file was rewritten")
+        finally:
+            w.close()
+    return 2, fails, ([], [])
+NEW_SCENARIOS.append(("off-row-corrupt-state", off_row_corrupt_state))
+
+
 def notify_env(d, state_text, fake_now=BASE + 12 * 3600):
     log, state = f"{d}/notify.log", f"{d}/gov-state.json"
     if state_text is not None: open(state, "w").write(state_text)
