@@ -747,7 +747,7 @@ def bad_row():
         open(ok_sh, "w").write("#!/usr/bin/env bash\necho fine\n")
         open(bad_sh, "w").write("#!/usr/bin/env bash\ncurl -s https://example.com > /dev/null\n")
         good = 'bash "$LIFEHACK_CODE_ROOT/system/tools/ok-run.sh"'
-        chk = "$HOME/x ~ ^ok$"
+        chk = "$HOME/x ~ ^ok n=[0-9]+$"
         rows = [("good", f"good | yes | 3600 | o. | {chk} | small | 5 | none | {good}"),
                 ("no-outcome", f"no-outcome | yes | 3600 |  | {chk} | small | 5 | none | {good}"),
                 ("tbd-check", f"tbd-check | yes | 3600 | o. | TBD | small | 5 | none | {good}"),
@@ -758,6 +758,8 @@ def bad_row():
                 ("nonempty-check", f"nonempty-check | yes | 3600 | o. | $HOME/x ~ ^.+$ | small | 5 | none | {good}"),
                 ("any-check", f"any-check | yes | 3600 | o. | $HOME/x ~ . | small | 5 | none | {good}"),
                 ("exists-check", f"exists-check | yes | 3600 | o. | $HOME/x | small | 5 | none | {good}"),
+                # 5.10(5): a check with no value-bearing field (a bare word) is the same on every run, so it proves nothing.
+                ("bare-done-check", f"bare-done-check | yes | 3600 | o. | $HOME/x ~ ^done$ | small | 5 | none | {good}"),
                 ("status-ok-check", f"status-ok-check | yes | 3600 | o. | $HOME/x ~ \"status\":\"ok\" | small | 5 | none | {good}")]
         mf = f"{d}/manifest.md"
         open(mf, "w").write("```jobs\n" + "\n".join(r for _, r in rows) + "\n```\n")
@@ -767,7 +769,8 @@ def bad_row():
                 "pinned": (1, "pinned code path"), "raw-curl": (1, "raw curl call at system/tools/curl-run.sh:2"),
                 "rc-check": (1, "presence-grade check: tests only an exit code"), "nonempty-check": (1, "presence-grade check: matches any non-empty line"),
                 "any-check": (1, "presence-grade check: matches any non-empty line"), "exists-check": (1, "presence-grade check: not '<path> ~ <regex>'"),
-                "status-ok-check": (1, "presence-grade check: tests only an exit code")}
+                "status-ok-check": (1, "presence-grade check: tests only an exit code"),
+                "bare-done-check": (1, "presence-grade check: no value-bearing field")}
         for name, (rc_w, txt) in want.items():
             r = subprocess.run(["bash", inst, "--check-row", name], env=env, capture_output=True, text=True)
             if r.returncode != rc_w or txt not in r.stdout:
@@ -839,7 +842,7 @@ def hardcoded_model_id():
         open(f"{d}/system/tools/helper.sh", "w").write('#!/usr/bin/env bash\nMODEL="claude-sonnet-4-6"\n')
         open(f"{d}/system/tools/src-run.sh", "w").write('#!/usr/bin/env bash\n. "$LIFEHACK_CODE_ROOT/system/tools/helper.sh"\necho hi\n')
         open(f"{d}/system/tools/tier-run.sh", "w").write('#!/usr/bin/env bash\n. "$LIFEHACK_CODE_ROOT/system/tools/model.lib.sh"\nrun_model small "$1" "$2" || exit 1\n')
-        chk = "$HOME/x ~ ^ok$"
+        chk = "$HOME/x ~ ^ok n=[0-9]+$"
         def row(n): return f'{n} | yes | 3600 | o. | {chk} | small | 5 | none | bash "$LIFEHACK_CODE_ROOT/system/tools/{n}.sh"'
         open(f"{d}/system/tools/future-run.sh", "w").write('#!/usr/bin/env bash\nclaude -p hi --model some-future-name-1\n')
         names = {"id-run": "id-run", "src-run": "src-run", "tier-run": "tier-run", "future-run": "future-run"}
@@ -1239,7 +1242,7 @@ def silenced_error_door():
     refused with the line named; a runner with only harmless uses (kill, pgrep, rm, command -v, a NAMED fetch failure) passes (control)."""
     fails = []
     for name, text, want in [("control", SILENCE_CONTROL, None)] + [(t, x, w) for t, x, w in SILENCE_PLANTS]:
-        rc, out = door_run(("$HOME/x ~ ^done ok$", GOOD_CMD), {"system/tools/ok-run.sh": text})
+        rc, out = door_run(("$HOME/x ~ ^done ok n=[0-9]+$", GOOD_CMD), {"system/tools/ok-run.sh": text})
         if want is None:
             if rc != 0 or out != "PASS": fails.append(f"silenced-error-door[{name}]: the door refused a harmless runner: {out!r}")
         elif rc != 1 or not any(ln.startswith(want) for ln in out.splitlines()):
@@ -1276,7 +1279,7 @@ NEW_SCENARIOS.append(("model-stderr", model_stderr))
 
 
 def bite_d():
-    rc, out = door_run(("$HOME/x ~ ^done ok$", GOOD_CMD), {"system/tools/ok-run.sh": SILENCE_PLANTS[0][1]})
+    rc, out = door_run(("$HOME/x ~ ^done ok n=[0-9]+$", GOOD_CMD), {"system/tools/ok-run.sh": SILENCE_PLANTS[0][1]})
     got = [ln for ln in out.splitlines() if ln.startswith("silenced fetch error at")]
     return got[0].split(" — ")[0] if rc == 1 and got else None
 
@@ -1546,6 +1549,17 @@ def reader_no_policy():
 NEW_SCENARIOS.append(("reader-no-policy", reader_no_policy))
 
 
+def small_510():
+    """5.10(4)(5): the standalone battery test-510-small.sh (scanner exception -> UNJUDGED, search error -> 2, bootstrap rc,
+    watchdog kills the process group, bare-word check refused, missing command file refused). Each case was watched failing first."""
+    r = subprocess.run(["bash", f"{HERE_TESTS}/test-510-small.sh"], env={k: v for k, v in os.environ.items() if k not in SEAMS},
+                       capture_output=True, text=True, timeout=240)
+    bad = [l for l in r.stdout.splitlines() if " FAIL" in l]
+    fails = [f"510-small: {l}" for l in bad] or ([f"510-small: exit {r.returncode}: {r.stderr[-200:]!r}"] if r.returncode else [])
+    return len([l for l in r.stdout.splitlines() if " PASS" in l or " FAIL" in l]), fails, ([], [])
+NEW_SCENARIOS.append(("510-small", small_510))
+
+
 def bite_e_jobrun():
     res = corrupt_job_state_runs().get("last-success")
     if not res or len(res) == 1: return None
@@ -1769,7 +1783,7 @@ def gws_read_write_door():
     """Item 1: a planted raw gmail READ is refused (named, pointing at the shared fetch); a planted gmail modify + getProfile + sheets
     values-write + calendar insert PASS; a raw calendar READ and a raw sheets values-get stay refused and point at the safe readers."""
     fails = []
-    chk = ("$HOME/x ~ ^done ok$", GOOD_CMD)
+    chk = ("$HOME/x ~ ^done ok n=[0-9]+$", GOOD_CMD)
     for label, text, want_rc, want_txt in (
             ("gmail-read", GWS_READ_RUN, 1, GMAIL_READ_REFUSAL),
             ("writes", GWS_WRITE_RUN, 0, "PASS"),
@@ -1789,7 +1803,7 @@ def bite_i():
     return out if rc == 1 and out == GMAIL_READ_REFUSAL else None
 
 
-chk_i = ("$HOME/x ~ ^done ok$", GOOD_CMD)
+chk_i = ("$HOME/x ~ ^done ok n=[0-9]+$", GOOD_CMD)
 BITES.append(("i", "a raw gmail READ in a runner", GMAIL_READ_REFUSAL, bite_i))
 
 
@@ -1814,7 +1828,7 @@ def weekly_row():
         good = 'bash "$LIFEHACK_CODE_ROOT/system/tools/ok-run.sh"'
         for iv, want_rc in ((604800, 0), (172800, 0), (90000, 1)):
             mf = f"{d}/manifest-{iv}.md"
-            open(mf, "w").write(f"```jobs\nweekly | yes | {iv} | o. | $HOME/x ~ ^done ok$ | none | 0 | none | {good}\n```\n")
+            open(mf, "w").write(f"```jobs\nweekly | yes | {iv} | o. | $HOME/x ~ ^done ok n=[0-9]+$ | none | 0 | none | {good}\n```\n")
             shutil.rmtree(f"{d}/la", ignore_errors=True); os.makedirs(f"{d}/la")
             env = dict(os.environ, PULSE_CONFIG=mf, LIFEHACK_CODE_ROOT=d, LIFEHACK_DESK_REPO=f"{d}/no-desk", HOME=f"{d}/home",
                        LAUNCHAGENTS_DIR=f"{d}/la", LIFEHACK_INSTALL_DRY_RUN="1", LIFEHACK_TEST_OS_OVERRIDE="mac")
@@ -1862,7 +1876,7 @@ def bite_j():
         os.makedirs(f"{d}/system/tools"); os.makedirs(f"{d}/home"); os.makedirs(f"{d}/la")
         open(f"{d}/system/tools/ok-run.sh", "w").write("#!/usr/bin/env bash\necho fine\n")
         mf = f"{d}/m.md"
-        open(mf, "w").write('```jobs\nweekly | yes | 90000 | o. | $HOME/x ~ ^done ok$ | none | 0 | none | bash "$LIFEHACK_CODE_ROOT/system/tools/ok-run.sh"\n```\n')
+        open(mf, "w").write('```jobs\nweekly | yes | 90000 | o. | $HOME/x ~ ^done ok n=[0-9]+$ | none | 0 | none | bash "$LIFEHACK_CODE_ROOT/system/tools/ok-run.sh"\n```\n')
         env = dict(os.environ, PULSE_CONFIG=mf, LIFEHACK_CODE_ROOT=d, LIFEHACK_DESK_REPO=f"{d}/no-desk", HOME=f"{d}/home",
                    LAUNCHAGENTS_DIR=f"{d}/la", LIFEHACK_INSTALL_DRY_RUN="1", LIFEHACK_TEST_OS_OVERRIDE="mac")
         r = subprocess.run(["bash", f"{ROOT}/system/tools/install-schedulers.sh", "--install"], env=env, capture_output=True, text=True)
@@ -1890,7 +1904,7 @@ def vendor_door(model="none", rel="vjob_ingest.py", script_body=VENDOR_REQ, list
         al = f"{d}/vendor-allow.txt"; open(al, "w").write(f"# test list\n{listed}\n")
         mf = f"{d}/manifest.md"
         bud = "0" if model == "none" else "5"
-        open(mf, "w").write(f"```jobs\nvjob | yes | 86400 | o. | $HOME/x ~ ^done ok$ | {model} | {bud} | none | python3 \"{tools}/{rel}\"\n```\n")
+        open(mf, "w").write(f"```jobs\nvjob | yes | 86400 | o. | $HOME/x ~ ^done ok n=[0-9]+$ | {model} | {bud} | none | python3 \"{tools}/{rel}\"\n```\n")
         env = dict(os.environ, LIFEHACK_JOBS_FILE=mf, LIFEHACK_CODE_ROOT=f"{d}/code", LIFEHACK_DESK_REPO=desk, LIFEHACK_VENDOR_ALLOWLIST=al)
         r = subprocess.run(["bash", f"{ROOT}/system/tools/install-schedulers.sh", "--check-row", "vjob"], env=env, capture_output=True, text=True)
         return r.returncode, r.stdout.strip().replace(desk + "/", "")
@@ -1939,7 +1953,7 @@ def helper_door(helper_name, helper_body, model="none", listed="nothing none.py"
         open(f"{tools}/{helper_name}", "w").write(helper_body)
         al = f"{d}/vendor-allow.txt"; open(al, "w").write(f"# test\n{listed}\n")
         mf = f"{d}/manifest.md"
-        open(mf, "w").write(f"```jobs\nhjob | yes | 86400 | o. | $HOME/x ~ ^done ok$ | {model} | {'0' if model == 'none' else '5'} | none | bash \"{tools}/run.sh\"\n```\n")
+        open(mf, "w").write(f"```jobs\nhjob | yes | 86400 | o. | $HOME/x ~ ^done ok n=[0-9]+$ | {model} | {'0' if model == 'none' else '5'} | none | bash \"{tools}/run.sh\"\n```\n")
         env = dict(os.environ, LIFEHACK_JOBS_FILE=mf, LIFEHACK_CODE_ROOT=f"{d}/code", LIFEHACK_DESK_REPO=desk, LIFEHACK_VENDOR_ALLOWLIST=al)
         r = subprocess.run(["bash", f"{ROOT}/system/tools/install-schedulers.sh", "--check-row", "hjob"], env=env, capture_output=True, text=True)
         return r.returncode, r.stdout.strip().replace(desk + "/", "")

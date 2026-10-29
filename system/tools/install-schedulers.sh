@@ -166,7 +166,15 @@ def presence_grade(rx):
         return "matches any non-empty line: it proves the file exists or is non-empty, not what is in it"
     if words & EXIT_WORDS and words <= (EXIT_WORDS | OK_WORDS):
         return "tests only an exit code / bare status written to a file: the exit code is never the proof"
+    if not value_bearing(rx):
+        return "no value-bearing field (an '=', a number, or a captured/variable value): a bare word like ^done$ is the same on every run, so it proves nothing about this one"
     return ""
+def value_bearing(rx):
+    """5.10(5): a check must carry something that varies with the run: a literal '=', a digit (or \\d / [0-9]), a capture group, or a
+    bracket class with a quantifier ([A-Z]+ [^"]+ {2}). Plain words only (^done$, ^ok) are refused. The real guard stays a human reading the check."""
+    if "=" in rx or re.search(r"[0-9]|\\d", rx): return True
+    if re.search(r"\((?!\?)", rx.replace("\\(", "")): return True
+    return bool(re.search(r"\[[^\]]*\][+*]|\[[^\]]*\]\{", rx))
 ck = check.strip()
 if ck and ck.upper() != "TBD":
     if " ~ " not in ck:

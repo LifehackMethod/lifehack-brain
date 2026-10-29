@@ -105,6 +105,12 @@ door() {  # check [command] -> sets DOOR_OUT, DOOR_RC
 }
 want_refused() { door "$2" "${3:-}"; if [ "$DOOR_RC" -ne 0 ] && echo "$DOOR_OUT" | grep -q -- "$4"; then pass "$1"; else fail "$1" "rc=$DOOR_RC $DOOR_OUT"; fi; }
 want_pass()    { door "$2" "${3:-}"; if [ "$DOOR_RC" -eq 0 ]; then pass "$1"; else fail "$1" "rc=$DOOR_RC $DOOR_OUT"; fi; }
+want_refused e-bare-done-refused        '$HOME/x ~ ^done$'          "" "value-bearing"
+want_refused e-bare-word-refused        '$HOME/x ~ ^finished run'   "" "value-bearing"
+want_pass    e-equals-passes            '$HOME/x ~ ^ran status=fine'
+want_pass    e-number-passes            '$HOME/x ~ ^ran n=[0-9]+ items'
+want_pass    e-class-quantifier-passes  '$HOME/x ~ "verdict":"[A-Z]+"'
+want_pass    e-capture-group-passes     '$HOME/x ~ ^ran (alpha)+'
 want_refused f-missing-command-file     '$HOME/x ~ ^ran n=[0-9]+' 'bash "$LIFEHACK_CODE_ROOT/system/tools/gone-run.sh"' "gone-run.sh"
 want_refused f-missing-home-file        '$HOME/x ~ ^ran n=[0-9]+' 'bash "$HOME/.claude/skills/ClaudeOps/desks/x/gone-run.sh"' "gone-run.sh"
 want_pass    f-existing-file-passes     '$HOME/x ~ ^ran n=[0-9]+'
