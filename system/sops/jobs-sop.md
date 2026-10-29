@@ -219,20 +219,26 @@ drill: *"I have no idea what drill never, drill fail [means]. None of this stuff
 **Every text answers three things, in plain words:** what happened · whether it matters · what to do (or "nothing to
 do"). A text that needs the owner ends with: **"Open Claude and say: what broke?"**
 
-**Never in a text:** a job's code name (use its plain name from the jobs table's name list), an exit code, a file
-path, a script name, a flag, or a word only a programmer knows ("output check", "stood down", "rc").
+**Never in a text:** a job's code name (use its plain name from `system/job-names.txt`, one line per job), an exit
+code, a file path, a script name, a flag, or a word only a programmer knows ("output check", "stood down", "rc").
+**A new job adds its plain name there** in the same change that adds its row.
 
-**Only something that needs the owner right now may wake them at night.** Everything else waits until morning.
+**Only something that needs the owner right now may wake them at night** (today: a dangerous email the security
+system blocked). Everything else waits until morning.
 
-**The wording lives in ONE place** (the message file beside `job-run.sh`), so it can be changed without touching code.
-A new kind of text is added there, in the same voice, never written inline in a runner.
+**The wording lives in ONE place:** `system/tools/job-texts.txt`, so it can be changed without touching code. A new
+kind of text is added there, in the same voice, never written inline in a runner. The wording the owner approved
+(2026-10-29), with `{name}` the plain name and `{last_ok}` / `{since}` a time like "2:10 PM" or "Tuesday 8 AM":
 
-| instead of | write |
+| when | text |
 |---|---|
-| Job down: email-summary-write · exit 1 · last success 6h ago | ⚠ Your email summary stopped updating. It last worked at 2:10 PM. Nothing is lost. Open Claude and say: what broke? |
-| Job recovered: email-summary-write | ✅ Your email summary is working again. |
-| Job standing down: x · no gws credentials | ⏸ Your email summary is paused: your Google login expired. Open Claude and say: reconnect Google. |
-| Job not running: x · launchd agent may be unloaded | ⚠ Your email summary hasn't run since Tuesday. Open Claude once and it will check. |
+| it broke | ⚠ Your {name} stopped updating. It last worked at {last_ok}. Nothing is lost. Open Claude and say: what broke? |
+| it's fixed | ✅ Your {name} is working again. |
+| paused too long | ⏸ Your {name} has been paused since {since}, so it isn't updating. Open Claude and say: what broke? |
+| hasn't run | ⚠ Your {name} hasn't run since {since}. Your Mac may have been off. Open Claude once and it will check. |
+| running again | ✅ Your {name} is running again. |
+| dangerous email (may wake you) | 🛑 I blocked a suspicious email. It looked like an attempt to trick your assistant. I didn't open it, and I've paused reading that folder. Open Claude and say: what broke? |
+| the alert system itself | ⚠ Your alert system needs a quick fix: its memory got damaged, so it might repeat or miss texts. Open Claude and say: what broke? |
 
 **The check is the owner.** At every switch-on gate (section 12) the owner sees the job's real texts on their phone
 before saying yes. A text they cannot understand is a reason to say no.
