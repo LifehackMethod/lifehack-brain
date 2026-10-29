@@ -24,6 +24,8 @@
 ⚠ CRUDE SIMPLIFICATIONS — a DOOR, not a DEFINITION. Each line names the COMMONEST reason only; every
 part does considerably more than its line says. NEVER answer "what can X do?" from this page — open
 elements/<slug>.md, the exhaustive source. If this map is your only source, you are under-informed by design.
+@ (you build a desk, skill, job, hook or tool) FIRST: common tools live ONCE in the shared layer (`shared/`) | shared-layer.md
+  desks USE them, never copy them. the list of what exists: `system/register/toolbox.md` (generated). check it before writing any tool.
 @ /save    keep it so a later session finds it | save.md — canon only on YOUR act, never automatic
            ! records a DECISION or a fact. to change what a skill DOES, that is /build below.
            ! SYSTEM knowledge only. subject records (clients, money, contacts) live in the OWNING
@@ -68,9 +70,6 @@ elements/<slug>.md, the exhaustive source. If this map is your only source, you 
   job in `system/jobs.md`; the door (install-schedulers.sh) refuses a row that breaks the rules.
 @ (you add a job) the rules for any cron job | jobs-sop.md (system/sops/) — one row, a content check, the
   door. read it before adding or changing any scheduled job.
-@ (you build anything new) common tools live ONCE in the shared layer (`shared/`) | shared-layer.md
-  desks USE them and never copy them. the list of what exists: `system/register/toolbox.md` (generated) —
-  look there before writing a tool.
 NOT BUILT — admissions, not omissions. knowing now beats inferring a connection that isn't there:
 - one subject's records agreeing with another's (a billing row becoming taxable income). no general
   primitive; calculate + compute-mechanically-gate are DORMANT, name-only. you carry it by hand.
