@@ -98,19 +98,18 @@ if [ -z "$SOP" ] || ! docs_for "$SOP" >/dev/null 2>&1; then
   exit 2
 fi
 
-# ── print every doc for this rung, in full, to STDOUT ────────────────────────────────────
+# ── pre-check, STAMP, then print ─────────────────────────────────────────────────────────
+# ORDER CHANGED 2026-10-29 (v2 3b-n2): the receipt is stamped BEFORE the SOP is printed. Previously it was
+# stamped after, so `read_sop.sh hook | head` killed the script with SIGPIPE before the stamp and the
+# session stayed locked out of hook edits (cost 5 sessions in one day). The receipt's purpose is that the
+# SOP was DELIVERED to the reader; a reader who truncates the pipe chose to. Fail-closed is kept: every doc
+# must exist (checked first) or nothing is stamped.  SIGPIPE then ends the print quietly.
 missing=0
 while IFS= read -r doc; do
   if [ ! -f "$doc" ]; then
     echo "ERROR: SOP doc missing: $doc" >&2
     missing=1
-    continue
   fi
-  echo "════════════════════════════════════════════════════════════════════════════════"
-  echo "  ${doc#$CODE_ROOT/}"
-  echo "════════════════════════════════════════════════════════════════════════════════"
-  cat "$doc"
-  echo
 done < <(docs_for "$SOP")
 
 # FAIL-CLOSED: if any doc could not be printed, do NOT stamp. A receipt must never certify a read
@@ -123,6 +122,14 @@ fi
 mkdir -p "$RUN_DIR" 2>/dev/null
 printf 'read_at=%s key=%s sop=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$KEY" "$SOP" \
   > "$RUN_DIR/$SOP.$KEY.receipt"
+
+while IFS= read -r doc; do
+  echo "════════════════════════════════════════════════════════════════════════════════"
+  echo "  ${doc#$CODE_ROOT/}"
+  echo "════════════════════════════════════════════════════════════════════════════════"
+  cat "$doc"
+  echo
+done < <(docs_for "$SOP")
 
 echo "────────────────────────────────────────────────────────────────────────────────"
 echo "✅ SOP '$SOP' read + receipt stamped for this session ($KEY)."

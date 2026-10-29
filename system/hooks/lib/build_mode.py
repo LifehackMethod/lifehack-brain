@@ -198,6 +198,41 @@ def load_placement(code):
     return rules
 
 # ---------------------------------------------------------------- the decision
+def sop_receipt_valid(sid):
+    """Mirror of guard_hook_sop_read.sh's receipt test (same key order, 12h TTL), in-process, no fork.
+    Key = payload session_id, else CLAUDE_CODE_SESSION_ID, else cwd-<sha1(PWD)[:12]>; also accepts the
+    cwd-keyed receipt. Any doubt (cannot hash, cannot stat) returns True = 'do not assume a sibling deny'."""
+    import hashlib, time
+    run = os.path.join(HOME, ".claude", "run", "sop")
+    try:
+        h = hashlib.sha1((os.environ.get("PWD") or os.getcwd()).encode()).hexdigest()[:12]
+        key = sid or os.environ.get("CLAUDE_CODE_SESSION_ID") or "cwd-" + h
+        for cand in (os.path.join(run, "hook.%s.receipt" % key), os.path.join(run, "hook.cwd-%s.receipt" % h)):
+            if os.path.isfile(cand) and time.time() - os.path.getmtime(cand) < 43200:
+                return True
+        return False
+    except Exception:
+        return True
+
+
+def sibling_certain_deny(tool, writes, code, sid):
+    """True when a PARALLEL PreToolUse hook will CERTAINLY deny this same call, so only its message reaches
+    the model and ours would be masked. Narrow on purpose: exactly two known siblings, nothing else.
+      (a) guard_hook_sop_read.sh: a write into <code>/system/hooks/ (not tests/) with no valid hook-SOP receipt.
+      (b) guard_write_paths.sh: the Write/Edit/MultiEdit tool aimed at <code>/system/hooks/*.sh ('edit via Bash only')."""
+    hooks = os.path.join(code, "system", "hooks")
+    tests = os.path.join(hooks, "tests")
+    for w in writes:
+        t = w["target"]
+        if not under(t, hooks) or under(t, tests):
+            continue
+        if tool in ("Write", "Edit", "MultiEdit") and t.endswith(".sh"):
+            return True
+        if not sop_receipt_valid(sid):
+            return True
+    return False
+
+
 def main_inner():
     raw = sys.stdin.read()
     try:
@@ -383,9 +418,14 @@ def main_inner():
         fresh.append((kind, key, msg, mk))
     if not fresh:
         return 0
+    # A sibling hook that will certainly deny the same call hides our message (parallel hooks: only one
+    # reaches the model). Deny anyway, but do NOT spend the once-per-session marker, so the bump shows on
+    # the next attempt, after the sibling is satisfied.
+    masked = sibling_certain_deny(tool, writes, code, sid)
     out = []
     for kind, key, msg, mk in fresh:
-        _open(mk, "w").close()
+        if not masked:
+            _open(mk, "w").close()
         out.append(msg if msg else bump_message(kind, code))
     sys.stderr.write("\n".join(out) + "\n")
     return 2

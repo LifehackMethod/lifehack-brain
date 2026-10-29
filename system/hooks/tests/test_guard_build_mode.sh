@@ -37,8 +37,9 @@ fire $S Write "$(J file_path "$HOME/.claude/skills/foo/SKILL.md" content hi)"; w
 fire $S Write "$(J file_path "$HOME/.claude/skills/bar/SKILL.md" content hi)"; want 0 "second skill, same session: passes (once per kind)"
 fire $S Bash "$(J command "mkdir -p $NOTES/desks/newdesk")"; want 2 "mkdir new desk denied once (different kind)" "building a desk"
 fire $S Bash "$(J command "mkdir -p $NOTES/desks/newdesk")"; want 0 "desk retry passes"
-fire $S Write "$(J file_path "$CODE/system/hooks/x.sh" content '#!/bin/bash')"; want 2 "new system/hooks/x.sh denied once" "building a hook"
-fire $S Write "$(J file_path "$CODE/system/hooks/x.sh" content '#!/bin/bash')"; want 0 "hook retry passes"
+mkdir -p "$HOME/.claude/run/sop"; : > "$HOME/.claude/run/sop/hook.$S.receipt"   # hook-SOP receipt present: no sibling deny
+fire $S Bash "$(J command "echo x > $CODE/system/hooks/x.sh")"; want 2 "new system/hooks/x.sh (Bash, receipt) denied once" "building a hook"
+fire $S Bash "$(J command "echo x > $CODE/system/hooks/x.sh")"; want 0 "hook retry passes"
 fire $S Edit "$(J file_path "$CODE/system/jobs.md" old_string '| id | cmd |' new_string $'| id | cmd |\n| newjob | x |')"; want 2 "jobs.md new row denied once" "building a job"
 fire s2 Write "$(J file_path "$CODE/system/foo-run.sh" content x)"; want 2 "new *-run.sh denied once (fresh session)" "building a job"
 fire s2 Edit "$(J file_path "$CODE/hooks/hooks.json" old_string '{}' new_string '{"x":[{"command":"y"}]}')"; want 2 "hooks.json adding a command denied once" "building a hook"
@@ -84,4 +85,14 @@ fire s7 Write "$(J file_path "$HOME/.claude/skills/zz/SKILL.md" content hi)"; wa
 mv "$HOME/.config/lifehack/cr.bak" "$HOME/.config/lifehack/code-root"
 printf 'garbage line\n' > "$CODE/system/register/register.jsonl"
 fire s8 Write "$(J file_path "$NOTES/desks/marc/tools/notify-governor.py" content "$FULL")"; want 0 "corrupt register: exit 0 (nothing to match)"
+# masked-by-a-sibling (3b-n2): do not spend the marker when guard_hook_sop_read / guard_write_paths will certainly deny too
+MK="$HOME/.claude/run/build-mode"
+fire m1 Bash "$(J command "echo x > $CODE/system/hooks/y.sh")"; want 2 "hooks write, no receipt: still denied" "building a hook"
+[ ! -e "$MK/hook.m1.seen" ] && { pass=$((pass+1)); echo "   ok   no receipt: marker NOT written"; } || { fail=$((fail+1)); echo "  FAIL  marker written despite sibling deny"; }
+: > "$HOME/.claude/run/sop/hook.m1.receipt"
+fire m1 Bash "$(J command "echo x > $CODE/system/hooks/y.sh")"; want 2 "after receipt: build-mode bump shows" "building a hook"
+[ -e "$MK/hook.m1.seen" ] && { pass=$((pass+1)); echo "   ok   with receipt: marker written on first deny"; } || { fail=$((fail+1)); echo "  FAIL  marker not written with receipt"; }
+fire m1 Bash "$(J command "echo x > $CODE/system/hooks/y.sh")"; want 0 "then retry passes"
+fire m2 Write "$(J file_path "$CODE/system/hooks/z.sh" content '#!/bin/bash')"; want 2 "Write tool into hooks: denied" "building a hook"
+[ ! -e "$MK/hook.m2.seen" ] && { pass=$((pass+1)); echo "   ok   Write-tool into hooks: marker NOT written"; } || { fail=$((fail+1)); echo "  FAIL  marker written for Write into hooks"; }
 echo "passed=$pass failed=$fail"; [ "$fail" -eq 0 ]
