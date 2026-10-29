@@ -36,4 +36,23 @@ for w in scan gate; do
   if [ "$rc" -eq 3 ] && ! grep -q hello "$T/a.out"; then pass "a-$w-exception-run-exit3"; else fail "a-$w-exception-run-exit3" "rc=$rc out=$(head -c 200 "$T/a.out")"; fi
 done
 
+# ── (b) a search error exits 2 (transient), marker text kept ──
+mkdir -p "$T/bin"; cat > "$T/bin/python3" <<'STUB'
+#!/bin/bash
+# stub: the FIRST call is the Serper reducer (stdin heredoc); the second is safe_input.py (sanitizer). STUBOUT/STUBRC drive the first only.
+cat > /dev/null
+if [ ! -e "$STUBDIR/called" ]; then touch "$STUBDIR/called"; [ -n "$STUBOUT" ] && echo "$STUBOUT"; exit "${STUBRC:-0}"; fi
+echo "sanitized"; exit 0
+STUB
+chmod +x "$T/bin/python3"
+sc() {  # case-name want-rc stubout stubrc [want-stderr-substring]
+  rm -rf "$T/sd"; mkdir -p "$T/sd"
+  STUBDIR="$T/sd" STUBOUT="$3" STUBRC="$4" SERPER_API_KEY=k TMPDIR="$T/sd" PATH="$T/bin:$PATH" bash "$ROOT/system/tools/safe_search_api.sh" hello >"$T/sd/out" 2>"$T/sd/err"; local rc=$?
+  if [ "$rc" -eq "$2" ] && { [ -z "${5:-}" ] || grep -q -- "$5" "$T/sd/err"; }; then pass "$1"; else fail "$1" "rc=$rc want $2; err=$(head -c 160 "$T/sd/err")"; fi
+}
+sc b-http-error-exit2       2 "__SERPER_ERROR__ HTTP 500: boom" 0 "Serper request failed: HTTP 500"
+sc b-other-error-exit2      2 "__SERPER_ERROR__ URLError: x"     0 "Serper request failed: URLError"
+sc b-reducer-crash-exit2    2 "1. partial result"                1 "reducer"
+sc b-clean-exit0            0 "1. a result"                      0
+
 [ "$FAILS" -eq 0 ]

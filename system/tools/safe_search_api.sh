@@ -169,6 +169,7 @@ if qs:
 print("\n".join(lines) if lines else "(no results returned)")
 PY
 )
+REDUCER_RC=$?   # 5.10(4): a reducer that died (any non-zero) is an error, whatever it managed to print first
 
 # ---------------------------------------------------------------------------
 # Surface API/auth errors before sanitizing
@@ -179,6 +180,11 @@ if printf '%s' "$REDUCED" | grep -q "^__SERPER_ERROR__"; then
     case "$ERR" in
         *403*|*401*) echo "[safe_search_api] Auth failed — the stored key is probably wrong or truncated. Copy it again from serper.dev." >&2 ;;
     esac
+    exit 2
+fi
+
+if [ "$REDUCER_RC" -ne 0 ]; then
+    echo "[safe_search_api] Serper reducer failed (rc=$REDUCER_RC) — treating as failure (exit 2)." >&2
     exit 2
 fi
 
