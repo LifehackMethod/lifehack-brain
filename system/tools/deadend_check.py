@@ -211,7 +211,7 @@ def _sections():
 def _display_path(p):
     """How a source path shows in results: repo-relative for the shipped SOPs, bare filename
     for extra registers — they live outside the repo and are labelled by their stem
-    (e.g. `github-sop.md:<line>`)."""
+    (e.g. `extra-register.md:<line>`)."""
     try:
         return str(p.relative_to(REPO))
     except ValueError:

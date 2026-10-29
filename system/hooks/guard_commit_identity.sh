@@ -25,8 +25,8 @@ trap 'lhb_journal_fire "$?" "guard_commit_identity.sh" "PreToolUse" "Bash" 2>/de
 # REDIRECT: run `git -C <repo> config user.email you@example.com` to fix the local
 #      identity, or add the address to ship-identity.md if it is a legitimate second
 #      address, then retry the exact same command.
-# SIGNPOST: system/sops/github-sop.md — identity is a boundary, not a mirror-state
-#      report. To change what is gated here, edit that SOP + get sign-off.
+# SIGNPOST: identity is a boundary, not a mirror-state report. To change what is gated
+#      here, get sign-off, then update this guard.
 # MATCHING: argv STRUCTURE via shlex, never a keyword grep on the command string —
 #      a literal "git commit" inside a quoted commit message must not trip it.
 #      Segments split on ; && || |; only a token that IS literally `git` (or ends in
@@ -61,7 +61,7 @@ trap 'lhb_journal_fire "$?" "guard_commit_identity.sh" "PreToolUse" "Bash" 2>/de
 #      it, `git config user.email` empty/unreadable, or the hook payload itself not
 #      readable JSON. An unguarded commit is the failure this hook exists to prevent.
 # UPDATED: 2026-09-16
-# RULE: system/sops/github-sop.md — system/hook-contract.md (mechanics)
+# RULE: system/hook-contract.md (mechanics)
 # ─────────────────────────────────────────────────────────────────────────────
 # guard_commit_identity.sh — PreToolUse hook (matcher: Bash)
 

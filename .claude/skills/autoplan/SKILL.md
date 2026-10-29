@@ -327,7 +327,6 @@ by the retire step, never in the live plan.
    answer is already known.** A build window is not equipped to hold an open question; it closes one
    rather than leave it open, and the wrong answer then carries the authority of something written
    down. If you cannot fully specify a task, it is NAV's — write it so, diagnose, re-write it as BUILD.
-   *(src: system/sops/build-nav-window-remit-sop.md:184-215)*
 5. **`PARALLEL LANES` per phase** — which tasks are independent and which are gated, and by what.
    Without it the build walks the phase one task at a time and the plan silently costs wall-clock.
 6. **The critical files named.** Where a change repeats across many files, describe the pattern once.
