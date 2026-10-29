@@ -72,7 +72,7 @@ State is local, never Drive: `$HOME/.config/lifehack/state/jobs/<job>/` holds `l
 | 2 | transient (network, Google 5xx) | retried next period |
 | other | failed | `errors/` file written; counts toward the alert |
 
-**Alert rule (Alarms).** A failed run (any rc not 0 or 75; 2 counts) pushes ONCE when `last-success` is missing or at least 2 x interval old (the second miss), then leaves `alerted`. The next success pushes one recovery and removes it. A push that fails never changes the exit code. A `--force` run never pushes. Being built (self-monitoring 5.10): `alerted` is written only on a confirmed send, so a failed text retries; a job that keeps standing down texts once; every run checks the other jobs and texts once for one that is not running.
+**Alert rule (Alarms).** A failed run (any rc not 0 or 75; 2 counts) pushes ONCE when `last-success` is missing or at least 2 x interval old (the second miss), then leaves `alerted`. The next success pushes one recovery and removes it. A push that fails never changes the exit code. A `--force` run never pushes. Also (built 2026-10-29): `alerted` is written only on a confirmed send, so a failed text retries; a job that keeps standing down texts once; every run checks the other jobs and texts once for one that is not running. Every text follows section 14.
 
 ## 5. The row contract
 

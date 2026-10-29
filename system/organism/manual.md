@@ -606,7 +606,14 @@ flip it; the last one wins. Repair is "open any desk once".
 **The alarm rules** (ntfy through `shared/notify/notify-send.sh`; the governor owns quiet hours and dedup).
 - A "Job down: <job>" text goes out when a run FAILS (not 75) and `last-success` is missing or its age is >= 2 periods
   (the second consecutive miss, ~6 h for a 3 h job). A transient 2 that is still inside 2 periods stays quiet.
-- ONE text per incident: the `alerted` marker suppresses later failures until a success.
+- ONE text per incident: the `alerted` marker suppresses later failures until a success. The marker is written ONLY
+  on a confirmed send (notify rc 0); a failed send is logged loudly and retried on the next run (5.10, 2026-10-29).
+- A job that keeps standing down (a streak of 75s longer than 2 periods) sends ONE "stood down since <time>: <reason>"
+  text, and one recovery when it next passes. Off rows never text.
+- Jobs watch each other: after its own work, every wrapper run checks each enabled row's `last-run` age (never-ran
+  rows too). A row older than 2 periods (never fired, agent unloaded) gets ONE "not running" text, same marker and
+  retry rules, and one "running again" when it next runs. It never changes the checking job's exit code. Remaining
+  gap, accepted: every job dead at once, or the Mac off.
 - The next success sends ONE "Job recovered" text (priority `recovery`) and removes the marker.
 - Quiet hours 22:00-07:00: the text is deferred, not lost. EVERY wrapper run (any job) first flushes the governor's
   deferred queue, so the first run after 07:00 delivers last night's text. Items older than 18 h are dropped.
@@ -615,7 +622,7 @@ flip it; the last one wins. Repair is "open any desk once".
 - A push that fails never changes the job's exit code.
 - The ntfy text is the alarm. The first line of every session (`health_line.py`: "jobs: <n> OK" / "<n> overdue: job (9h)" /
   "never ran: …" / "stood down: …" / "jobs cannot find the code — open any desk once to repair") is the backup; nothing
-  further is built on it. There is no watcher of watchers.
+  further is built on it. There is no separate watcher of watchers: the jobs watch each other (above).
 
 ### ALARMS — how you hear a job broke
 
@@ -625,9 +632,10 @@ flip it; the last one wins. Repair is "open any desk once".
 the start of every session. There is no central error log: the old Drive findings store (`state/findings/`) is retired
 (ruled 2026-10-29) because nothing reads it; a real problem reaches the owner through a job's own check failing. The old
 detector jobs (system-health, sentinel-health, planning-health, backlog-health, fault-proposer, the freshness and deadman
-jobs) are RETIRED with their runners; the incident ledger and fault grader are on hold, not deleted. Being built
+jobs) are RETIRED with their runners; the incident ledger and fault grader are on hold, not deleted. Built 2026-10-29
 (self-monitoring 5.10): a failed text retries until it is confirmed sent; a job that keeps standing down texts once;
-every run checks the other jobs and texts once for one that is not running.
+every run checks the other jobs and texts once for one that is not running. Every text is written for a person
+(`system/sops/jobs-sop.md` section 14).
 
 **The row contract.** Every row carries, besides its name, switch, interval and command: an `outcome` (one sentence:
 what a good run leaves behind), a `check` (`<path> ~ <ERE>`: the file must be newer than this run's start AND some line
