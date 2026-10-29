@@ -25,7 +25,7 @@ EXEMPT = {"system/tools/model.lib.sh", "shared/tools/model_ids.py"}
 hits = []
 for top in ("shared", "system/tools"):
     for dp, dn, fn in os.walk(top):
-        dn[:] = [d for d in dn if d not in ("__pycache__", ".git", "tests")]
+        dn[:] = [d for d in dn if d not in ("__pycache__", ".git", "tests", "fixtures")]
         for f in fn:
             p = os.path.join(dp, f)
             if p in EXEMPT: continue
