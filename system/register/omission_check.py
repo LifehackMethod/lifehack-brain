@@ -62,12 +62,13 @@ from harvest import (
 # the plan's own B1.4 Execute line names the same two. Stated here, not inferred —
 # a third governed folder later is a one-line addition to this tuple and the map
 # below, never a silent scope change this report doesn't announce.
-GOVERNED_DIRS = ("system/hooks", "system/tools")
+GOVERNED_DIRS = ("system/hooks", "system/tools", "shared")
 
 # Which register unit `type` "covers" a file found under each governed folder.
 FOLDER_UNIT_TYPE = {
     "system/hooks": "hook",
     "system/tools": "tool",
+    "shared": "tool",
 }
 
 DEFAULT_EXEMPTIONS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),

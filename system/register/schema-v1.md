@@ -82,7 +82,7 @@ question every other field branches on.
 | `launch_mode` | string, **closed enum (4 values)** | **RESTORED 2026-09-15 (Option G) — see the "Addendum" section below for the full history and derivation.** `project` / `plugin` / `both` / `private` — which of the two real public wiring files (`.claude/settings.json` = "project", `hooks/hooks.json` = "plugin") carries this hook registration, or `private` if neither does (a private-repo hook, carried by `registrations`/`user` instead). Harvested mechanically from the row's own `surfaces` (`harvest.py`'s `derive_launch_mode()`) — 0 hand-typed values, required (not nullable): every hook row resolves to exactly one of the four. |
 | `group` | nullable string, **open vocabulary, but legal only on a small non-blocking event allowlist** | **NEW 2026-09-15 (B5.2, "the map pilot") — see the second Addendum below.** Rows sharing one non-null value collapse onto ONE generated wiring entry (`generate.py`'s `collapse_group_rows()`), pointed at a single dispatcher script that runs each member's own body, unmodified, in its own isolated subshell, sequentially. Required-but-nullable, same convention as `if`. HARD-REJECTED by `validate_register.py` (not merely discouraged) on any row whose `event` is outside `schema_v1.GROUPABLE_HOOK_EVENTS` (`UserPromptSubmit`/`SessionStart`/`Notification`) — never a `PreToolUse`/`Stop`/`SubagentStop`/guard row, because collapsing a blocking-capable row into a shared dispatcher would recreate the single-point-of-failure "weakest guard wins" forbids (plan constraint 0.5). |
 
-### `type: tool` — system/tools/ units
+### `type: tool` — system/tools/ and shared/ units (shared/ added 2026-10-29, v2 1.3; same type, no new fields)
 
 | field | type | rationale |
 |---|---|---|

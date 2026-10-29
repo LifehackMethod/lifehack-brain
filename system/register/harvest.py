@@ -17,7 +17,7 @@ Five unit classes (schema v1's `UNIT_TYPES`):
               harvested — found and closed by B2.2 (2026-09-15) the first time this
               register was used to write the real wiring files, not a new capability
               added on purpose (schema-v1.md's "if" section has the incident).
-  tool      — every `.py`/`.sh` file under `system/tools/` in either repo, T1's exact governed-dir
+  tool      — every `.py`/`.sh` file under `system/tools/` or `shared/` in either repo, T1's exact governed-dir
               + exempt-test-class rules (`t1_caller_detection.py`), disk-walked.
   skill     — every `.claude/skills/**/SKILL.md` in either repo, `name`/`description` read
               straight off its own frontmatter — no re-summarizing (B1.1 (b)'s "0 hand-annotation"
@@ -95,6 +95,7 @@ def is_test_class(relpath):
     b = os.path.basename(relpath)
     return bool(
         TEST_DIR.search(relpath)
+        or re.search(r"(^|/)fixtures?/", relpath, re.I)  # test data (system/tools/fixtures/conform/*.sh), 2026-10-29
         or re.match(r"test[_-]", b, re.I)
         or re.match(r"firetest", b, re.I)
     )
@@ -427,31 +428,37 @@ def carry_forward_protects_permissions(rows, prior_register_path):
 # ---------------------------------------------------------------------------
 # type: tool — system/tools/, both repos, T1's exact governed/exempt rules
 # ---------------------------------------------------------------------------
+# Governed tool folders. `shared/` added 2026-10-29 (v2 step 1.3): the shared layer's .py/.sh were
+# never scanned, so every shared tool escaped the register. Same `type: tool`, same exempt-test rules.
+TOOL_DIRS = ("system/tools", "shared")
+
+
 def harvest_tools(public_root, private_root):
     rows = []
     for repo, root in (("public", public_root), ("private", private_root)):
-        base = os.path.join(root, "system", "tools")
-        if not os.path.isdir(base):
-            continue
-        for dirpath, dirnames, filenames in os.walk(base):
-            dirnames[:] = [d for d in dirnames if d != "__pycache__"]
-            for f in sorted(filenames):
-                if f.endswith(".bak") or f.endswith(".pyc"):
-                    continue
-                if not f.endswith(SCRIPT_EXTS):
-                    continue
-                full = os.path.join(dirpath, f)
-                rel = os.path.relpath(full, root)
-                if is_test_class(rel):
-                    continue  # exempt class (T1) — a test fixture is not a governed unit
-                path = to_repo_path(root, full)
-                language = "py" if f.endswith(".py") else "sh" if f.endswith(".sh") else "other"
-                row = base_row(
-                    unit_id=f"tool:{repo}:{path}", unit_type="tool", repo=repo, path=path,
-                    exists=True, sha=short_sha(full),
-                )
-                row["language"] = language
-                rows.append(row)
+        for sub in TOOL_DIRS:
+            base = os.path.join(root, *sub.split("/"))
+            if not os.path.isdir(base):
+                continue
+            for dirpath, dirnames, filenames in os.walk(base):
+                dirnames[:] = [d for d in dirnames if d != "__pycache__"]
+                for f in sorted(filenames):
+                    if f.endswith(".bak") or f.endswith(".pyc"):
+                        continue
+                    if not f.endswith(SCRIPT_EXTS):
+                        continue
+                    full = os.path.join(dirpath, f)
+                    rel = os.path.relpath(full, root)
+                    if is_test_class(rel):
+                        continue  # exempt class (T1) — a test fixture is not a governed unit
+                    path = to_repo_path(root, full)
+                    language = "py" if f.endswith(".py") else "sh" if f.endswith(".sh") else "other"
+                    row = base_row(
+                        unit_id=f"tool:{repo}:{path}", unit_type="tool", repo=repo, path=path,
+                        exists=True, sha=short_sha(full),
+                    )
+                    row["language"] = language
+                    rows.append(row)
     return rows
 
 
@@ -535,10 +542,19 @@ def harvest_scheduled(public_root):
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
-            parts = [p.strip() for p in line.split("|", 3)]
-            if len(parts) < 4:
+            # jobs.md grew from 4 columns to 9 on 2026-10-27 (self-monitoring 5.1: name | enabled |
+            # interval | outcome | check | model | budget | source | command). `command` is LAST
+            # because it may contain `|`, so split at most 8 times and take the final field. The old
+            # `split("|", 3)` put columns 4-9 into `command` (the marc-health "stale register" diff
+            # that kept the register-drift check red from 10-23: a harvest bug, not stale data).
+            parts = [p.strip() for p in line.split("|", 8)]
+            if len(parts) == 9:
+                name, enabled, interval, _outcome, _check, _model, _budget, _source, command = parts
+            elif len(parts) >= 4:
+                name, enabled, interval = parts[:3]  # legacy 4-column row
+                command = line.split("|", 3)[3].strip()
+            else:
                 continue  # malformed row — not this tool's job to repair (B1.4's lint, later)
-            name, enabled, interval, command = parts
             try:
                 interval_seconds = int(interval)
             except ValueError:
@@ -657,6 +673,37 @@ def harvest_all(public_root, private_root, cache_root):
     return rows
 
 
+HAND_CURATED = ("needs", "returns", "group")
+
+
+def merge_into_register(fresh_rows, register_path):
+    """The SAFE way to refresh the committed register (v2 1.3): add rows for new files, refresh
+    sha/description/command of existing non-hook rows, keep every hook row exactly as committed
+    (a hook row's only source is the wiring files themselves, so a fresh harvest cannot reproduce
+    grouped hooks or cache surfaces; see register-drift.yml), and carry the hand-curated
+    needs/returns/group of each surviving row forward. Returns (rows, added, dropped)."""
+    with open(register_path, encoding="utf-8") as f:
+        committed = [json.loads(line) for line in f if line.strip()]
+    fresh = {r["id"]: r for r in fresh_rows}
+    out, dropped = [], []
+    for old in committed:
+        if old["type"] == "hook":
+            out.append(old)
+        elif old["id"] in fresh:
+            new = dict(fresh[old["id"]])
+            for k in HAND_CURATED:
+                if k in old and old[k] not in ([], None, "") and new.get(k) in ([], None, ""):
+                    new[k] = old[k]
+            out.append(new)
+        else:
+            dropped.append(old["id"])
+    have = {r["id"] for r in out}
+    added = [r for i, r in fresh.items() if i not in have and r["type"] != "hook"]
+    out.extend(added)
+    out.sort(key=_sort_key)
+    return out, [r["id"] for r in added], dropped
+
+
 def write_jsonl(rows, fileobj):
     for row in rows:
         fileobj.write(json.dumps(row, sort_keys=True, ensure_ascii=False))
@@ -675,6 +722,10 @@ def main(argv=None):
     p.add_argument("--no-cache", action="store_true",
                    help="skip the two cache surfaces entirely (e.g. a scratch fixture run)")
     p.add_argument("--out", default=None, help="write JSONL here instead of stdout")
+    p.add_argument("--update-register", default=None, metavar="REGISTER.jsonl",
+                   help="refresh this committed register in place: add new tool/skill/etc. rows, refresh "
+                        "existing non-hook rows, KEEP hook rows and hand-curated needs/returns/group "
+                        "(use this, not --out, to register a new tool)")
     args = p.parse_args(argv)
 
     public_root = os.path.abspath(args.public_root)
@@ -727,7 +778,17 @@ def main(argv=None):
         f"· public={public_root} private={private_root} cache={cache_root or '(none)'}"
     )
 
-    if args.out:
+    if args.update_register:
+        merged, added, dropped = merge_into_register(rows, args.update_register)
+        with open(args.update_register, "w", encoding="utf-8") as f:
+            write_jsonl(merged, f)
+        print(f"harvest.py --update-register — {len(merged)} rows · added {len(added)} · "
+              f"dropped (file gone from disk) {len(dropped)}")
+        for i in added:
+            print(f"  + {i}")
+        for i in dropped:
+            print(f"  - {i}")
+    elif args.out:
         with open(args.out, "w", encoding="utf-8") as f:
             write_jsonl(rows, f)
         print(summary)
