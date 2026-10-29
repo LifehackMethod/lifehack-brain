@@ -1,3 +1,5 @@
+> Retired 2026-10-29 (v2 2.0b). Lossless check passed: every original line of this archive exists in `system/sops/skill-building-sop.md` as of commit fc1dd2c^ (git history), apart from the archive's own wrapper prose, which is in fc1dd2c. Zero pointers remained. Kept for history only; not a rulebook, do not cite.
+
 # ARCHIVE — skill-building-sop.md, material moved out on 2026-09-05
 
 > Nothing here was deleted; all of it was **moved**, verbatim, out of

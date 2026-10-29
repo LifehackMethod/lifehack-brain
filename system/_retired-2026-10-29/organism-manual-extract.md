@@ -1,3 +1,5 @@
+> RETIRED 2026-10-29 (v2 2.0b): superseded by `system/organism/manual.md` (*THE CODE/LLM SEAM*), which now ships; every pointer was repointed there first. Kept for history only; not a rulebook, do not cite.
+
 # The session is what's running. Code is a guest it may or may not pick up.
 
 > **This is an extract, and it says so.** It comes from a roughly 1,200-line manual describing a

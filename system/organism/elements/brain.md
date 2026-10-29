@@ -9,7 +9,7 @@ generated_from:
   - system/organism/manual.md (the whole file — the MIDDLE layer this element describes)
   - system/organism/elements/ (the BASE layer — the corpus this element belongs to)
   - system/organism/elements/label-checker.md (the honesty loop that stamps AUTO-COMPUTED labels)
-  - system/organism-manual-extract.md (the one chapter extracted for the skills that cite it)
+  - system/organism/manual.md (*THE CODE/LLM SEAM* chapter — the skills that cite that idea read it here)
   - CLAUDE.md (the always-loaded file the TIP layer lives in)
 created_at: 2026-08-15
 updated_at: 2026-08-15
@@ -251,7 +251,7 @@ origin becomes dangling the moment its target lands on the exclusion list.
 | The map (tip) | `CLAUDE.md` | READ (every turn, auto-loaded) | every session |
 | The manual (middle) | `system/organism/manual.md` | READ on demand · WRITE by hand | a human re-authoring; readers |
 | The element corpus (base) | `system/organism/elements/*.md` | READ on demand · `## AUTHORED` written by hand · `## AUTO-COMPUTED` written by the label checker | humans; `label-checker` |
-| The extracted chapter | `system/organism-manual-extract.md` | READ | the skills that cite the CODE/LLM SEAM idea |
+| The seam chapter | `system/organism/manual.md` (*THE CODE/LLM SEAM*) | READ | the skills that cite the CODE/LLM SEAM idea |
 
 ---
 
@@ -295,9 +295,8 @@ possible file to be dishonest in.
    do not delete the description, and do not build the part merely because a file describes it.
 5. **A `generated_from` path that does not resolve here.** Expected for anything traced to an origin
    artifact that was excluded. It must be visibly marked as such, never left to read as a live pointer.
-6. **The extract vs. the manual.** `system/organism-manual-extract.md` carries one manual chapter for
-   the skills that cite it, and states that the full manual is not shipped. If the manual *is* present
-   in this tree, that sentence is stale and should be corrected in the extract — visibly.
+6. **The seam chapter lives in the manual.** The skills that cite the CODE/LLM SEAM idea read
+   `system/organism/manual.md` directly (the old one-chapter extract was retired 2026-10-29).
 7. **Two elements disagreeing with each other.** A finding, not a defect to patch. Record the tension
    where both readers will see it; do not resolve it quietly by editing one to match the other, and do
    not stack a new rule on top of it.
@@ -377,10 +376,9 @@ SHARES-STORE label-checker         · both operate on system/organism/elements/*
                                      meaning (## AUTHORED, human-only), label-checker owns the facts
                                      about enforcement (## AUTO-COMPUTED, machine-only) [honor]
 
-FEEDS        organism-manual-extract · system/organism-manual-extract.md carries one manual chapter
-                                     (the CODE/LLM SEAM) for the skills that cite it; it is an extract
-                                     and says so — ⚠ its claim that the manual is not shipped needs
-                                     reconciling against this tree (Edge Case 6) [honor]
+FEEDS        manual · system/organism/manual.md carries the CODE/LLM SEAM chapter the skills
+                                     that cite that idea read (the old extract was retired 2026-10-29)
+                                     [honor]
 
 DESCRIBES    every-element         · BRAIN is the only element whose subject is the corpus itself; the
                                      descriptive-not-prescriptive rule and the three-way delta reading

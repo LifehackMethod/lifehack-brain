@@ -38,7 +38,7 @@ advisors run `opus` — the sanctioned exception, scoped to the routed advisors 
 > **Checked this session, present vs absent at this destination:**
 > | dependency | mode | status |
 > |---|---|---|
-> | `${CLAUDE_PLUGIN_ROOT}/system/organism/elements/<slug>.md`, `${CLAUDE_PLUGIN_ROOT}/system/organism/manual.md` (step 2a, "WHAT IT IS") | SURVEY | ⛔ **not shipped** — only a single one-idea extract ships here (`system/organism-manual-extract.md`), which says explicitly "None of that ships here." Step 2a has no per-subject element file to read at this destination. |
+> | `${CLAUDE_PLUGIN_ROOT}/system/organism/elements/<slug>.md`, `${CLAUDE_PLUGIN_ROOT}/system/organism/manual.md` (step 2a, "WHAT IT IS") | SURVEY | shipped — read `system/organism/manual.md` (*THE CODE/LLM SEAM*) and the per-subject `system/organism/elements/<slug>.md` files. (Corrected 2026-10-29: the old one-idea extract is retired; the full manual ships here.) |
 > | `system/tools/findings_reader.py` (step 2b, "HOW IT ACTUALLY FAILS" — Hospital's findings) | SURVEY | ⛔ **not shipped** — Hospital itself hasn't migrated here (donor-only concept). Every SURVEY run should say "no failure history available" per the skill's own instruction, not silently skip the rung. |
 > | `system/tools/architecture_reason.py` (the human-ruling filter, step 2) | SURVEY | ⛔ **not shipped** — the "did the operator already rule on this" pre-check cannot run; a SURVEY here cannot detect and stop on a prior ruling. Real degradation, not a blocker. |
 > | `advisory-council` (the engine, step 3) | COUNCIL | **present** (`.claude/skills/advisory-council/`) — but the specific `claudeops-architecture` cartridge/roster it needs does not exist anywhere in this repo or notes root. |
