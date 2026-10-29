@@ -524,6 +524,27 @@ useful is unknown.
 
 ---
 
+## THREE HOMES — one file, one home (ruled 2026-10-29)
+
+Every file in this system lives in exactly ONE of three places. Address it by that place's real root, never by a
+path relative to whatever folder a window happens to be working in.
+
+| home | where | what lives there | who sees it |
+|---|---|---|---|
+| **HARNESS** | the plugin's own root (the maintainer's build copy: `~/lifehack-v2`, branch V2) | the shared machinery: Cron, Alarms, the door, the shared readers, this manual, the map, `elements/` | everyone who installs the plugin |
+| **PRIVATE** | the owner's personal repo (for the maintainer: `~/.claude/skills/ClaudeOps`) | the owner's own desks, their runners and prompts, and a separate DESKS manual | the owner only |
+| **NOTES** | the notes folder (`python3 shared/brain_root.py --quiet`) | plans, briefs, records, journals: content, not code | the owner; shared by the old and the new system |
+
+**Why it matters.** A window's working folder can be the PRIVATE repo while it runs the HARNESS plugin. A bare
+`system/organism/manual.md` then opens the private DESKS manual, not this one. So harness prose points at this
+manual and `elements/` through the plugin's own root, the same way the session hook finds `CLAUDE.md`.
+
+**The three rules.** (1) One file, one home: no file exists in two homes; a duplicate is resolved to one, and the
+loser is archived, never deleted. (2) Harness paths are always resolved from the plugin root. (3) The harness never
+changes a note's format in a way an older copy of the system cannot read: the NOTES home is shared.
+
+---
+
 ## CRON AND ALARMS — how a scheduled job runs, and how you hear it broke
 
 > **RENAMED 2026-10-29 (operator's ruling).** The scheduled-jobs area is TWO subsystems, matching the two components
