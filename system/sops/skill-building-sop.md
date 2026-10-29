@@ -1,9 +1,9 @@
 ---
 topic: [skill-design]
 id: system-playbook-skill-building
-title: "Skill-Building Playbook — the laws first, then the tools, then the procedure — v2 DRAFT (2026-10-28, not yet in force)"
+title: "Skill-Building Playbook — the laws first, then the tools, then the procedure — v2 (in force in the V2 sandbox, 2026-10-29)"
 v1_title: "Skill-Building Playbook — the laws first, then the tools, then the procedure"
-v2_status: "DRAFT built on the assumption that the orchestrator-v2 rig validates. v1 is the authority until Enver swaps this in. No v1 text was deleted: changed passages are struck through (~~) with a > v2 line beneath."
+v2_status: "IN FORCE in the V2 sandbox (Enver, 2026-10-29); main keeps v1 until V2 ships. Was: DRAFT built on the assumption that the orchestrator-v2 rig validates; v1 the authority until Enver swaps this in. No v1 text was deleted: changed passages are struck through (~~) with a > v2 line beneath."
 record_type: playbook
 desk: root
 status: active
@@ -96,9 +96,11 @@ reader_note: >
 > human's share of the work should be small — five percent, at most twenty — but never zero. Human-out-of-the-loop
 > designs are very rare in this system; the default is human in the loop.
 
-# Skill-Building Playbook v2 — v2 DRAFT (2026-10-28, not yet in force)
+# Skill-Building Playbook v2 — in force in the V2 sandbox
 
-> **STATUS — DRAFT.** Built on the assumption that the orchestrator-v2 rig validates. **v1 is the authority until Enver swaps this in.** No v1 text was deleted — changed passages are struck through (~~) and followed by a `> **v2 (orchestrator-v2, 2026-10-28):**` line with a confidence tier. Reordering waits (see PART 0, "What waits").
+> **STATUS (2026-10-29, Enver):** **This v2 is the skills SOP in force for the V2 sandbox** (`~/lifehack-v2`) — the system we are operating in. It applies only there. Main keeps v1 as its SOP, and as the backup until V2 ships.
+>
+> *(Superseded 2026-10-29 — the strike-plus-note editing method below still applies; "draft / v1 is the authority" no longer does.)* **Was:** STATUS — DRAFT. Built on the assumption that the orchestrator-v2 rig validates. **v1 is the authority until Enver swaps this in.** No v1 text was deleted — changed passages are struck through (~~) and followed by a `> **v2 (orchestrator-v2, 2026-10-28):**` line with a confidence tier. Reordering waits (see PART 0, "What waits").
 
 > ## TESTING ASKS "DOES IT WORK?" SECURITY ASKS "WHAT HAPPENS WHEN IT DOESN'T?"
 > *(The centering frame. Enver's, sharpened and adopted 2026-09-11. A near-copy leads `records/canon/2026-09-02-canonical-principles.md`; per canon §12.b the two are kept in agreement by a quarterly human audit, not by construction. ⚠ **That audit is a thing someone must REMEMBER — so by canon §0.1's own test it is a PREFERENCE, not a layer, and it will drift.** Chosen knowingly anyway: a sync script is one more thing that breaks silently and then needs its own alarm. **Stated so the weakness is owned rather than discovered.**)*
@@ -199,7 +201,7 @@ holds the line over a long session — without over-building.**
 - Loose checks ("did it say anything", unvalidated values): 26 silently-wrong days of 300, and 3 of 50 pickups, in the Stage 4 meal.
 - The human "no" carried on until code checked for an exact "yes".
 
-> *DRAFT, built on the assumption that the orchestrator-v2 rig validates. Evidence: `state/projects/orchestrator-v2/brief.md` §2 and §4. Tiers: OBSERVED = seen in the rig with a receipt; CANDIDATE = one skill, awaits the week-long /save test and a second skill on a card (per [P2]).*
+> *DRAFT, built on the assumption that the orchestrator-v2 rig validates. Evidence: `state/projects/orchestrator-v2/brief.md` ⛔ (owner's notes) §2 and §4. Tiers: OBSERVED = seen in the rig with a receipt; CANDIDATE = one skill, awaits the week-long /save test and a second skill on a card (per [P2]).*
 
 ## The frame, in plain language
 

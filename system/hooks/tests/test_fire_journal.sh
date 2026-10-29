@@ -416,8 +416,8 @@ mkroot() { # $1=dir $2=version : a fake plugin root holding a copy of the librar
 }
 LB="$SCRATCH/label"
 mkroot "$LB/lifehack-v2" 0.4.0
-mkroot "$LB/home/.claude/plugins/cache/lifehack-brain/lifehack-brain/0.3.36" 0.3.36
-for spec in "$LB/lifehack-v2|0.4.0|V2" "$LB/home/.claude/plugins/cache/lifehack-brain/lifehack-brain/0.3.36|0.3.36|main"; do
+mkroot "$LB/fakeroot/.claude/plugins/cache/lifehack-brain/lifehack-brain/0.3.36" 0.3.36
+for spec in "$LB/lifehack-v2|0.4.0|V2" "$LB/fakeroot/.claude/plugins/cache/lifehack-brain/lifehack-brain/0.3.36|0.3.36|main"; do
     r="${spec%%|*}"; rest="${spec#*|}"; wv="${rest%%|*}"; wh="${rest#*|}"
     rm -f "$SCRATCH/lab.jsonl"
     env -u CLAUDE_PLUGIN_ROOT LHB_JOURNAL_PATH="$SCRATCH/lab.jsonl" bash -c ". '$r/system/hooks/lib/journal.sh'; lhb_journal_fire 0 t.sh PreToolUse Bash"
