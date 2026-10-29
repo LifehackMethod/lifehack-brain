@@ -28,6 +28,8 @@ reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live i
 
 > **This doc owns WHEN to build a hook and WHICH kind. It does NOT repeat the mechanics — `system/hook-contract.md` owns those.** It is the single **front door** for hooks: it POINTS at the canonical homes, never copies them. Keep it short — if it grows into a second mechanics manual, it has failed. (Council-ratified 2026-06-17; diverge→argue→converge.)
 
+> **Shared tools:** `system/organism/elements/shared-layer.md` — common tools exist once in `shared/` (list: `system/register/toolbox.md`); use them, never copy them.
+
 > NOTE — **WHAT THIS PAGE POINTS AT THAT IS NOT IN THIS REPOSITORY.** A front door is only as good as the
 > rooms behind it, so the missing rooms are named here rather than discovered by a reader who goes
 > looking. This block is the whole list.

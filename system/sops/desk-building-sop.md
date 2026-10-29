@@ -12,6 +12,8 @@ authority: user
 
 # Desk-Building SOP
 
+> **Shared tools:** `system/organism/elements/shared-layer.md` — common tools exist once in `shared/` (list: `system/register/toolbox.md`); use them, never copy them.
+
 > PORTED from `claudeops-config`'s `system/sops/desk-building-sop.md` (migration F9.6, "THE DESK
 > PLANE"). ⚖ The operator, `authority: user`, verbatim: *"the new system should have a template and a way of
 > creating new desks, so that a new desk comes pre-filled with all of the folders that it needs and all

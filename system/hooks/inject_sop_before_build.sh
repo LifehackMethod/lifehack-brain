@@ -22,6 +22,7 @@ trap 'lhb_journal_fire "$?" "inject_sop_before_build.sh" "UserPromptSubmit" "" 2
 #           google-sheet-sop,design-process-sop,jobs-sop}.md. To add a 7th SOP:
 #           add one row to the TABLE list below. Hook doctrine: system/hook-contract.md.
 # UPDATED: 2026-07-11 (new — SOP build-time pointer injector; council-scoped KISS)
+# UPDATED: 2026-10-29 (v2 2.4) — also points at system/register/toolbox.md and /build.
 # UPDATED: 2026-10-29 (self-monitoring 5.8) — the cron row points at system/sops/jobs-sop.md, which
 #          replaces the donor-only cron-safety.md (never shipped here).
 # PORTED: 2026-08-13 from claudeops-config — the TABLE's SOP paths are unchanged (repo-relative,
@@ -101,6 +102,12 @@ out.append(
     "and returns ONLY the matching ones with file:line. It is one command and a few lines of "
     "output, not another document. A NO-MATCH is NOT an all-clear — coverage is ~35%% of what "
     "is on disk, and the tool says so on every empty result.") % DEADEND
+)
+# v2 2.4 (2026-10-29): also point at the shared toolbox and the /build road. Pointers only, no content.
+out.append(
+    "ALSO: common tools live once in the shared layer. Before writing any new tool, look at "
+    "`system/register/toolbox.md` (the generated list) and USE what is there; never copy a shared tool "
+    "into a desk. `/build` is the road that keeps new work in line with the harness."
 )
 sys.stdout.write("\n".join(out) + "\n")
 '

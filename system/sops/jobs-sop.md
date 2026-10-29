@@ -12,6 +12,8 @@ reader_note: "Self-monitoring task 5.8, written 2026-10-29 from the build window
 
 **Read this first.** A scheduled job is an alarm clock plus an envelope around something you could run by hand. This SOP owns the alarm clock and the envelope: the **Cron** subsystem (it runs jobs) and the **Alarms** subsystem (it tells you one broke). It does NOT own what happens inside the routine, and nothing in this SOP is a reason to edit a skill. Every path here is in the HARNESS home, resolved from the plugin root (manual, THREE HOMES), never relative to your working folder. `$CODE` below is the harness code root: whatever `$HOME/.config/lifehack/code-root` says. Never type it as a path.
 
+> **Shared tools:** `system/organism/elements/shared-layer.md` — common tools exist once in `shared/` (list: `system/register/toolbox.md`); use them, never copy them.
+
 ## 1. The three layers
 
 | layer | plain name | its one question | owner |

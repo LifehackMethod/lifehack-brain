@@ -895,6 +895,8 @@ sensitive data off git; if it ever must live in git, encrypt with **SOPS+age** (
 effectively abandoned, breaks on modern git). Do not re-litigate the split; extend it only for
 non-sensitive knowledge.
 
+**2026-10-29 (Enver, V2 plan 2.5) — One copy, in the shared layer.** If something should work the same way everywhere, it exists once, in the shared layer. Desks use it; they never copy it.
+
 **Two disagreements left parked:** multi-step reliability (Enver disagreed; research later confirmed him
 — 4.7) and "decision backlog" (called reductive; corrected to the type model).
 

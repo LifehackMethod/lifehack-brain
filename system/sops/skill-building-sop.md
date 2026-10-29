@@ -98,6 +98,8 @@ reader_note: >
 
 # Skill-Building Playbook v2 — in force in the V2 sandbox
 
+> **Shared tools:** `system/organism/elements/shared-layer.md` — common tools exist once in `shared/` (list: `system/register/toolbox.md`); use them, never copy them.
+
 > **STATUS (2026-10-29, Enver):** **This v2 is the skills SOP in force for the V2 sandbox** (`~/lifehack-v2`) — the system we are operating in. It applies only there. Main keeps v1 as its SOP, and as the backup until V2 ships.
 >
 > *(Superseded 2026-10-29 — the strike-plus-note editing method below still applies; "draft / v1 is the authority" no longer does.)* **Was:** STATUS — DRAFT. Built on the assumption that the orchestrator-v2 rig validates. **v1 is the authority until Enver swaps this in.** No v1 text was deleted — changed passages are struck through (~~) and followed by a `> **v2 (orchestrator-v2, 2026-10-28):**` line with a confidence tier. Reordering waits (see PART 0, "What waits").
