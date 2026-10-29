@@ -6,9 +6,7 @@ scripts, each with its own filter, its own cap, its own bookmark and (mostly) no
 holds the raw `gws gmail` call and that decides, for EVERY message it returns:
   1. the label is not PAUSED (a paused label is refused, exit 75 "paused: <label>");
   2. the query is `category:primary` unless the caller overrides it (no promotions / social / updates / spam);
-  3. a per-run cap bounds the read (default 10 threads). With a bookmark the cap takes the OLDEST `cap` threads after it (6.1: the
-     bookmark then moves only to the newest of THOSE, so nothing older is stranded; stderr says `capped=1 remaining=K`; the next run
-     takes the rest). Without a bookmark (cold start) it takes the newest `cap`. Output is always oldest-first;
+  3. a per-run cap bounds the read (default 10 threads);
   4. the body passes the ingest gate INSIDE this fetch -- sanitise + scan + the tool-less reader's judgment -- so a
      headless (cron) job is covered exactly like a session;
   5. a REAL-ATTACK verdict PAUSES the label and sends ONE critical push (via ingest_gate -> sentinel_response), and the
@@ -25,12 +23,10 @@ INTERFACE (library):
         raises Paused(unit) / Disabled / FetchError
   list_threads(params) / get_thread(thread_id, fmt) / labels_list() / preflight()   -- the raw calls, (data, err) tuples
   check_paused(unit)        -- raises Paused
-  get_attachment(message_id, attachment_id, out_path, label=None) -> dict   -- one attachment to a file; same enabled / paused / label checks
   report_attack(unit, body, item)  -- for a caller that ran its OWN judge (the store janitor): pause + one critical push
   read_last_seen(consumer) / write_last_seen(consumer, ms, msg_id)
 INTERFACE (CLI):  python3 email_fetch.py --consumer NAME [--label L] [--query Q] [--cap N] [--no-since] [--no-mark]
                   [--out FILE] | --preflight
-                  | --get-attachment MESSAGE_ID ATTACHMENT_ID --out FILE [--label L]
   query: omitted = category:primary; `--query ''` = no query filter (a label-only read, e.g. a drill label).
   exit 0 ok | 75 paused / email read disabled | 2 Gmail unreachable (transient) | 3 reader down (flagged mail withheld) | 1 other.
 
@@ -69,7 +65,6 @@ for _d in (os.path.join(CODE_ROOT, "shared", "gate"), os.path.join(CODE_ROOT, "s
 DEFAULT_QUERY = "category:primary"
 DEFAULT_CAP = 10
 MAX_MSGS_PER_THREAD = 20
-MAX_LIST = 500   # most threads listed after a bookmark; beyond this the fetch fails loudly instead of guessing which are oldest
 EXIT_PAUSED = 75
 EXIT_TRANSIENT = 2
 EXIT_READER_DOWN = 3
@@ -260,14 +255,6 @@ def get_thread(thread_id, fmt="metadata"):
     return _call(["threads", "get"], {"userId": "me", "id": thread_id, "format": fmt})
 
 
-def get_message(message_id, fmt="metadata"):
-    return _call(["messages", "get"], {"userId": "me", "id": message_id, "format": fmt})
-
-
-def get_attachment_raw(message_id, attachment_id):
-    return _call(["messages", "attachments", "get"], {"userId": "me", "messageId": message_id, "id": attachment_id}, timeout=120)
-
-
 # ─────────────────────────── message body extraction ───────────────────────────
 class _Text(HTMLParser):
     def __init__(self):
@@ -313,19 +300,6 @@ def message_text(msg):
     except Exception:  # noqa: BLE001
         pass
     return " ".join("".join(p.out).split())
-
-
-def message_attachments(msg):
-    """Attachment METADATA only: [{attachment_id, filename, mime_type, size}], in payload order. No bytes (see get_attachment)."""
-    out, stack = [], [msg.get("payload") or {}]
-    while stack:
-        part = stack.pop(0)
-        body = part.get("body") or {}
-        if part.get("filename") and body.get("attachmentId"):
-            out.append({"attachment_id": body["attachmentId"], "filename": part["filename"],
-                        "mime_type": part.get("mimeType", ""), "size": int(body.get("size") or 0)})
-        stack = list(part.get("parts") or []) + stack
-    return out
 
 
 def _headers(msg):
@@ -417,52 +391,6 @@ def _label_id(label):
     raise FetchError(f"unknown label '{label}'")
 
 
-def _list_all(params):
-    """Every thread id for `params`, following nextPageToken. More than MAX_LIST -> FetchError naming it (never a silent truncation)."""
-    ids, tok = [], None
-    while True:
-        data, err = list_threads(dict(params, pageToken=tok) if tok else params)
-        if err:
-            raise FetchError(err)
-        ids += [t["id"] for t in data.get("threads", [])]
-        tok = data.get("nextPageToken")
-        if len(ids) > MAX_LIST or (tok and len(ids) >= MAX_LIST):
-            raise FetchError(f"more than {MAX_LIST} threads are waiting after the bookmark -- refusing to guess which are oldest; "
-                             f"move the bookmark by hand or raise MAX_LIST")
-        if not tok:
-            return ids
-
-
-def get_attachment(message_id, attachment_id, out_path, label=None):
-    """Download ONE attachment to `out_path`. Same gates as fetch(): EMAIL_SERVICE_READ on, the unit (label, or "primary") not paused,
-    and -- when a label is given -- the message really carries that label. Raises Disabled / Paused / FetchError.
-
-    ⛔ THE BYTES DO NOT GO THROUGH THE TEXT GATE. They land in a FILE for a DETERMINISTIC parser (shared safe_pdf.py) and are never fed
-    raw to a model. Anything a model is to read must first come out of that parser as text and pass the gate like any other text."""
-    if not enabled():
-        raise Disabled("EMAIL_SERVICE_READ is off")
-    unit = label or "primary"
-    check_paused(unit)
-    msg, err = get_message(message_id, "metadata")
-    if err:
-        raise FetchError(f"message {message_id}: {err}")
-    if label and _label_id(label) not in (msg.get("labelIds") or []):
-        raise FetchError(f"message {message_id} is not under label '{label}' -- refusing the attachment")
-    att, err = get_attachment_raw(message_id, attachment_id)
-    if err:
-        raise FetchError(f"attachment {attachment_id}: {err}")
-    try:
-        raw = base64.urlsafe_b64decode((att or {}).get("data", "") + "=" * (-len((att or {}).get("data", "")) % 4))
-    except Exception as e:  # noqa: BLE001
-        raise FetchError(f"attachment {attachment_id}: undecodable ({e})")
-    os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
-    tmp = out_path + ".tmp"
-    with open(tmp, "wb") as fh:
-        fh.write(raw)
-    os.replace(tmp, out_path)
-    return {"path": out_path, "size": len(raw), "message_id": message_id, "attachment_id": attachment_id}
-
-
 def fetch(consumer, label=None, query=None, cap=DEFAULT_CAP, since_last_seen=True, mark_seen=True):
     """Read up to `cap` threads, gate every message, return {unit, query, count, messages[], attack}.
     Raises Disabled / Paused / FetchError. A REAL-ATTACK pauses the label, stops the read and raises Paused."""
@@ -477,31 +405,15 @@ def fetch(consumer, label=None, query=None, cap=DEFAULT_CAP, since_last_seen=Tru
         os.remove(stale_pending)
     if since_last_seen and seen_ms:
         q = (q + " " if q else "") + f"after:{seen_ms // 1000}"
-    cap = max(1, int(cap))
-    params = {"maxResults": cap}
+    params = {"maxResults": max(1, int(cap))}
     if label:
         params["labelIds"] = _label_id(label)
     if q:
         params["q"] = q
-    remaining = 0
-    if since_last_seen and seen_ms:
-        # 6.1: Gmail lists newest-first, so a capped read of the first page would take the NEWEST `cap` and the bookmark would jump past
-        # older unread mail. List EVERY thread after the bookmark (bounded), order them oldest-first by their newest message, take `cap`.
-        ids = _list_all(dict(params, maxResults=MAX_LIST))
-        if len(ids) > cap:
-            dated = []
-            for tid in ids:
-                th, err = get_thread(tid, "metadata")
-                if err:
-                    raise FetchError(f"thread {tid}: {err}")
-                dated.append((max([int(m.get("internalDate") or 0) for m in th.get("messages") or []] or [0]), tid))
-            dated.sort()
-            ids, remaining = [t for _, t in dated[:cap]], len(dated) - cap
-    else:
-        data, err = list_threads(params)   # cold start / no-bookmark consumer: the newest `cap`, never more
-        if err:
-            raise FetchError(err)
-        ids = [t["id"] for t in data.get("threads", [])][:cap]
+    data, err = list_threads(params)
+    if err:
+        raise FetchError(err)
+    ids = [t["id"] for t in data.get("threads", [])][:cap]
     out, newest_ms, newest_id = [], 0, ""
     withheld, why = 0, ""
     for tid in ids:
@@ -524,19 +436,14 @@ def fetch(consumer, label=None, query=None, cap=DEFAULT_CAP, since_last_seen=Tru
                 continue
             out.append({"thread_id": tid, "message_id": msg.get("id", ""), "internal_date": ms,
                         "from": h.get("From", ""), "subject": h.get("Subject", ""), "date": h.get("Date", ""),
-                        "body": g["content"], "provenance_tag": g["provenance_tag"], "verdict": g["verdict"],
-                        "attachments": message_attachments(msg)})
+                        "body": g["content"], "provenance_tag": g["provenance_tag"], "verdict": g["verdict"]})
             if ms > newest_ms:
                 newest_ms, newest_id = ms, msg.get("id", "")
     if withheld:   # safest: withhold the WHOLE run (benign mail waits too); bookmark untouched, so all of it is re-read
         raise ReaderDown(f"reader unavailable: {withheld} flagged message(s) withheld -- {why or 'reader did not run'}")
-    out.sort(key=lambda m: (m["internal_date"], m["message_id"]))   # always oldest-first
-    if remaining:
-        sys.stderr.write(f"[email-fetch] capped=1 remaining={remaining} (consumer {consumer}: the next run takes the rest)\n")
     if mark_seen and newest_ms:   # 5.9(f): NEVER the bookmark itself; a peek (mark_seen=False / --no-mark) writes nothing at all
         write_pending(consumer, newest_ms, newest_id)
-    return {"unit": unit, "query": q, "count": len(out), "messages": out, "attack": False,
-            "capped": bool(remaining), "remaining": remaining}
+    return {"unit": unit, "query": q, "count": len(out), "messages": out, "attack": False}
 
 
 def main(argv=None):
@@ -548,8 +455,6 @@ def main(argv=None):
     ap.add_argument("--no-since", action="store_true", help="do not filter by the *-last-seen bookmark")
     ap.add_argument("--no-mark", action="store_true", help="do not advance the bookmark")
     ap.add_argument("--out", default=None, help="write the JSON result here instead of stdout")
-    ap.add_argument("--get-attachment", nargs=2, metavar=("MESSAGE_ID", "ATTACHMENT_ID"),
-                    help="download one attachment to --out (a FILE, for a deterministic parser; never read raw by a model)")
     ap.add_argument("--preflight", action="store_true", help="exit 0 if Google auth answers, else 2")
     ap.add_argument("--promote-pending", metavar="FILE", help="(job-run.sh only) move a *-last-seen.pending over its bookmark, forward-only")
     a = ap.parse_args(argv)
@@ -563,16 +468,9 @@ def main(argv=None):
         return 0
     if a.preflight:
         return 0 if preflight() else EXIT_TRANSIENT
-    if a.get_attachment:
-        if not a.out:
-            ap.error("--get-attachment needs --out FILE")
-    elif not a.consumer:
+    if not a.consumer:
         ap.error("--consumer is required")
     try:
-        if a.get_attachment:
-            res = get_attachment(a.get_attachment[0], a.get_attachment[1], a.out, label=a.label)
-            print(json.dumps(res))
-            return 0
         res = fetch(a.consumer, label=a.label, query=a.query, cap=a.cap,
                     since_last_seen=not a.no_since, mark_seen=not a.no_mark)
     except BookmarkCorrupt as e:
