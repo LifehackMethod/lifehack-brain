@@ -17,6 +17,8 @@
 >
 > **Deeper layers:** `system/organism/manual.md` (how the parts work together — LOAD-BEARING, holds rules
 > that exist in no element file) + `system/organism/elements/` (44 files, source-traced from code).
+> ⚠ **Every path on this page is under the PLUGIN ROOT, never your working folder** (manual → THREE HOMES). A
+> window working in a private repo that has its own `system/organism/manual.md` is in the DESKS manual, not this one.
 
 <!-- ORGANISM v1 --> files = system/organism/elements/<name> · @ you start it · ~ scheduled, unattended · ! fires unasked
 ⚠ CRUDE SIMPLIFICATIONS — a DOOR, not a DEFINITION. Each line names the COMMONEST reason only; every
@@ -64,6 +66,8 @@ elements/<slug>.md, the exhaustive source. If this map is your only source, you 
            pushes only; a CRITICAL page (sentinel DANGER, dead monitor) BYPASSES it and WILL wake you.
 ~ Mac: launchd -> ~/.config/lifehack/code-root -> job-run.sh. Linux/Windows: pulse.sh + cron. ONE row per
   job in `system/pulse-config.md`; the door (install-schedulers.sh) refuses a row that breaks the rules.
+@ (you add a job) the rules for any cron job | jobs-sop.md (system/sops/) — one row, a content check, the
+  door. read it before adding or changing any scheduled job.
 NOT BUILT — admissions, not omissions. knowing now beats inferring a connection that isn't there:
 - one subject's records agreeing with another's (a billing row becoming taxable income). no general
   primitive; calculate + compute-mechanically-gate are DORMANT, name-only. you carry it by hand.

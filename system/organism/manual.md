@@ -675,8 +675,8 @@ and must name every one exactly, or the gate refuses to trust the rig. It does n
 
 > ⚠ **OUT OF DATE since 2026-10-27 (self-monitoring 5.1–5.3), kept until the jobs SOP replaces it.** The check now lives
 > in the ROW, not in `job-run.sh` (steps 3–4 below are wrong); every row needs the five contract fields; the door refuses
-> a non-conforming row; a model is reached through `run_model`, not `ingest-run.lib.sh`. Follow `system/sops/jobs-sop.md`
-> once it exists.
+> a non-conforming row; a model is reached through `run_model`, not `ingest-run.lib.sh`. **Follow
+> `system/sops/jobs-sop.md` (written 2026-10-29), section 11 "Add a job", instead of the steps below.**
 
 1. **Write the command.** A stand-alone shell command or runner script (`system/tools/<job>-run.sh`). It must exit 0 only
    on real success, 75 if it is simply not configured, 2 for a transient failure, anything else for a failure. Reach a
