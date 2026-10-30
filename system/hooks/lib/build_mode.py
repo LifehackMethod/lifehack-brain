@@ -119,6 +119,26 @@ def under(p, root):
 WRITE_VERBS = {"mkdir", "touch", "cp", "mv", "install", "rsync", "ln", "tee"}
 
 
+def inplace_targets(verb, a):
+    """Files a `sed -i ...` / `truncate ...` call rewrites in place ([] when sed has no -i). Value flags are skipped."""
+    files, skip, script_flag = [], False, False
+    if verb == "sed" and not any(re.fullmatch(r"-[A-Za-z]*i\S*", w) or w == "--in-place" or w.startswith("--in-place=") for w in a if w.startswith("-")):
+        return []
+    for w in a:
+        if skip:
+            skip = False; continue
+        if verb == "sed" and w in ("-e", "-f", "--expression", "--file"):
+            skip = True; script_flag = True; continue
+        if verb == "truncate" and w in ("-s", "-r", "--size", "--reference"):
+            skip = True; continue
+        if w.startswith("-") and len(w) > 1 or w == "":
+            continue
+        files.append(w)
+    if verb == "sed" and not script_flag and files:
+        files = files[1:]   # first plain argument is the script
+    return files
+
+
 def bash_ops(cmd, cwd):
     """-> list of dicts {verb, target, srcs, content}. Verbs only at segment start; a mention inside a
     quoted string is a single token and never a verb. Heredoc body (after <<) is kept as content."""
@@ -134,6 +154,7 @@ def bash_ops(cmd, cwd):
         toks = list(lex)
     except ValueError:
         return []
+    shell_ow = _roundb("fc_shell_overwrite")
     segs, cur = [], []
     for t in toks:
         if t and set(t) <= set(";&|\n()") :
@@ -144,22 +165,22 @@ def bash_ops(cmd, cwd):
     ops = []
     for seg in segs:
         # redirects
-        words, i, redir = [], 0, []
+        words, i, redir, appends = [], 0, [], []
         while i < len(seg):
             t = seg[i]
             if t in (">", ">>", ">|") and i + 1 < len(seg):
-                redir.append(seg[i + 1]); i += 2; continue
+                redir.append(seg[i + 1]); appends.append(t == ">>"); i += 2; continue
             if re.fullmatch(r"\d*>>?", t) and i + 1 < len(seg):
-                redir.append(seg[i + 1]); i += 2; continue
+                redir.append(seg[i + 1]); appends.append(t.endswith(">>")); i += 2; continue
             if t in ("<", "<<", "<<<", ">&") :
                 i += 2; continue
             words.append(t); i += 1
         while words and (re.fullmatch(r"\w+=.*", words[0]) or words[0] in ("sudo", "command", "env")):
             words.pop(0)
-        for r in redir:
+        for r, ap in zip(redir, appends):
             if r.startswith("&") or r == "/dev/null":
                 continue
-            ops.append({"verb": ">", "target": resolve(r, cwd), "srcs": [], "content": heredoc})
+            ops.append({"verb": ">", "target": resolve(r, cwd), "srcs": [], "content": heredoc, "append": ap})
         if not words:
             continue
         verb = os.path.basename(words[0])
@@ -173,12 +194,17 @@ def bash_ops(cmd, cwd):
             if pos:
                 ops.append({"verb": "worktree", "target": resolve(pos[0], base), "srcs": [], "content": ""})
             continue
+        if shell_ow and verb in ("sed", "truncate"):   # Round C 4 (fc_shell_overwrite): in-place edits are overwrites too
+            for f in inplace_targets(verb, words[1:]):
+                ops.append({"verb": verb + "-inplace", "target": resolve(f, cwd), "srcs": [], "content": ""})
+            continue
         if verb not in WRITE_VERBS:
             continue
         args = [w for w in words[1:] if not (w.startswith("-") and len(w) > 1)]
         if verb in ("mkdir", "touch", "tee"):
+            ap = verb == "tee" and any(w in ("-a", "--append") or (w.startswith("-") and not w.startswith("--") and "a" in w[1:]) for w in words[1:] if w.startswith("-"))
             for a in args:
-                ops.append({"verb": verb, "target": resolve(a, cwd), "srcs": [], "content": heredoc if verb == "tee" else ""})
+                ops.append({"verb": verb, "target": resolve(a, cwd), "srcs": [], "content": heredoc if verb == "tee" else "", "append": ap})
         elif len(args) >= 2:
             dest = resolve(args[-1], cwd)
             srcs = [resolve(a, cwd) for a in args[:-1]]
@@ -252,6 +278,36 @@ def outside_homes_target(t, code, notes):
         return None
     return pc
 
+
+
+# ---------------------------------------------------------------- shell overwrite of an SOP or canon (Round C 4, fc_shell_overwrite)
+OVERWRITE_VERBS = {">", "tee", "cp", "mv", "install", "rsync", "sed-inplace", "truncate-inplace"}
+
+
+def protected_doc(t, code):
+    """-> 'sop' | 'canon' | '' for a target path. The SAME two sets the Write/Edit guards govern: an SOP is a file in a
+    rulebook folder named by system/hooks/build_mode_sops.conf (guard_harness_write protects the whole harness tree, SOPs included);
+    canon is a file under a canon/ folder or a top-level canon.md (guard_canon_write's own test). No second list is kept here."""
+    dirs = {os.path.join(code, "system", "sops")}
+    try:
+        for ln in _open(os.path.join(code, "system", "hooks", "build_mode_sops.conf")).read().splitlines():
+            f = ln.split("\t")
+            if len(f) >= 2 and not ln.startswith("#") and f[1].strip():
+                dirs.add(os.path.join(code, os.path.dirname(f[1].strip())))
+    except OSError:
+        pass
+    if t.endswith(".md") and any(under(t, d) for d in dirs):
+        return "sop"
+    if "/canon/" in t or os.path.basename(t) == "canon.md":
+        return "canon"
+    return ""
+
+
+def shell_overwrite_message(t, kind):
+    return ("BLOCKED: this shell command overwrites %s (%s) in place. WHY: a redirect, tee, cp/mv, sed -i or truncate rewrites the whole "
+            "file with no review, and the Edit tool's guards (and for canon its size and expiry checks) cannot see it. Appending (>> or tee -a) is fine. "
+            "WAY THROUGH: make the change with the Edit tool, which the existing guard governs, or ask the person to make it. "
+            "RULE: system/hooks/guard_build_mode.sh header (fc_shell_overwrite)." % (os.path.basename(t), "an SOP" if kind == "sop" else "a canon file"))
 
 
 # ---------------------------------------------------------------- reason gate (Round C 1+2)
@@ -446,6 +502,10 @@ def main_inner():
     for w in writes:
         t = w["target"]
         exists = os.path.exists(t)
+        if tool == "Bash" and exists and w["verb"] in OVERWRITE_VERBS and not w.get("append") and _roundb("fc_shell_overwrite"):
+            pk = protected_doc(t, code)
+            if pk:
+                denies.append(("gate-hard", None, shell_overwrite_message(t, pk)))
         base = os.path.basename(t)
         # ---- check 3: placement (new files only, never hard)
         if not exists and w["verb"] != "mkdir":

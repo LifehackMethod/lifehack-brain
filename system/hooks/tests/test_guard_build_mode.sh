@@ -201,4 +201,25 @@ fire t4 Write "$(J file_path "$HOME/skill-lab/SKILL.md" content $'---\nname: x\n
 fire t5 Write "$(J file_path "$HOME/notify-lab/phone_alert2.py" content 'send a phone alert')"; want 2 "gate ON + hint ON: gate stop" "Shared tools that may already do this"
 unset ROUNDB_PLACEMENT_TOOLBOX_HINT
 unset ROUNDB_REASON_GATE ROUNDB_REMEMBER_REASON ROUNDB_PLACEMENT_OUTSIDE_HOMES
+# ---- Round C 4: a shell overwrite of an SOP or canon (fc_shell_overwrite). Fictional files.
+SOP="$CODE/system/sops/skill-building-sop.md"; mkdir -p "$NOTES/state/demo/canon"; CANF="$NOTES/state/demo/canon/current.md"
+echo "- line one" > "$CANF"; echo "# plain" > "$CODE/system/notes-plain.md"
+export ROUNDB_FC_SHELL_OVERWRITE=off
+for c in "echo x > $SOP" "sed -i 's/a/b/' $SOP" "cp $CODE/system/notes-plain.md $SOP" "echo x > $CANF" "truncate -s 0 $SOP"; do
+  fire so0 Bash "$(J command "$c")"; want 0 "OFF: unchanged: $c"; silent "so off"; done
+export ROUNDB_FC_SHELL_OVERWRITE=on
+# ALLOW first
+for c in "echo x >> $SOP" "echo x | tee -a $SOP" "echo x | tee --append $CANF" "cat $SOP" "grep -n rule $SOP" "sed -n 1,3p $SOP" \
+         "echo x > $CODE/system/notes-plain.md" "sed -i 's/a/b/' $CODE/system/notes-plain.md" "cp $SOP /tmp/lh-so-copy.md" "echo x > /tmp/lh-so-out.txt" \
+         "echo x > $CODE/system/sops/brand-new-sop.md" "echo 'cat > $SOP' > /tmp/lh-so-note.txt" "echo x >> $CANF"; do
+  fire so1 Bash "$(J command "$c")"; want 0 "ON: allowed: $c"; silent "so allow"; done
+fire so1 Edit "$(J file_path "$SOP" old_string a new_string b)"; want 0 "ON: Edit tool on an SOP: untouched by this guard"; silent "so edit"
+# BLOCK
+for c in "echo x > $SOP" "echo x >| $SOP" "echo x | tee $SOP" "cp $CODE/system/notes-plain.md $SOP" "mv $CODE/system/notes-plain.md $SOP" \
+         "sed -i 's/a/b/' $SOP" "sed -i '' 's/a/b/' $SOP" "sed -i.bak -e 's/a/b/' $SOP" "sed -ni 'p' $SOP" "truncate -s 0 $SOP" \
+         "echo x > $CANF" "cat > $SOP <<'EOT'"$'\nnew body\nEOT'; do
+  fire so2 Bash "$(J command "$c")"; want 2 "ON: blocked, every time: ${c%%$'\n'*}" "WAY THROUGH: make the change with the Edit tool"; done
+fire so2 Bash "$(J command "echo x > $SOP")"; want 2 "ON: identical retry blocked again" "(an SOP) in place"
+fire so2 Bash "$(J command "echo x > $CANF")"; want 2 "ON: canon named in the text" "a canon file"
+unset ROUNDB_FC_SHELL_OVERWRITE
 echo "passed=$pass failed=$fail"; [ "$fail" -eq 0 ]

@@ -27,6 +27,9 @@ trap 'lhb_journal_fire "$?" "guard_build_mode.sh" "PreToolUse" "Bash|Write|Edit|
 #      per line; read back by shared/tools/own_list_add.kept_folders) to ~/.config/lifehack/placement.conf; that folder and below are never asked again. Both OFF = the once-per-session bump.
 # WHO-COULD-THIS-BREAK (reason_gate): anyone creating a script outside the three homes, such as a student sketching in ~/Desktop or Enver in a throwaway folder. WAY-THROUGH: write it in the personal code folder, or add `# lifehack-place: <real reason>` to the file or command and retry.
 # WHO-COULD-THIS-BREAK (remember_reason): nobody is blocked by it; it can only make a later file in a remembered folder pass silently. WAY-THROUGH: delete that `kept` line from ~/.config/lifehack/placement.conf to be asked again.
+#      Round C fc_shell_overwrite: a Bash overwrite (`>`, `>|`, `tee` without -a, cp/mv/install/rsync onto, `sed -i`, `truncate`) of an
+#      EXISTING SOP (a .md in the rulebook folders of build_mode_sops.conf) or canon file is a HARD block (exit 2). `>>` and `tee -a` pass.
+# WHO-COULD-THIS-BREAK (fc_shell_overwrite): a session or the person's own script that regenerates an SOP/canon file with a redirect, sed -i or cp. WAY-THROUGH: change it with the Edit tool (the Write-side guards govern it), or ask the person.
 # REDIRECT: every deny names the SOP or the shared path to use instead.
 # SIGNPOST: SOP paths: system/hooks/build_mode_sops.conf (edit there when the rulebook sort renames files).
 #      Logic: system/hooks/lib/build_mode.py. Tests: system/hooks/tests/test_guard_build_mode.sh.
@@ -59,6 +62,9 @@ if [ "$go" -eq 0 ]; then
     case "$BODY" in
       *"$_code"/state/*|*"$_code"/data/*|*"$_code"/memory/*|*"$_code"/records/*|*"$_code"/desks/*) go=1 ;;
     esac
+  fi
+  if [ "$go" -eq 0 ]; then   # Round C 4 (fc_shell_overwrite): a command that names an SOP or canon file
+    case "$BODY" in *sops/*|*canon*) { . "${_lhb_dir}/lib/roundb.sh" && roundb_on fc_shell_overwrite && go=1; } 2>/dev/null ;; esac
   fi
   if [ "$go" -eq 0 ]; then   # placement rule 4 (switch placement_outside_homes): new code can be anywhere, so let the engine look
     case "$BODY" in *.sh*|*.py*|*SKILL.md*) { . "${_lhb_dir}/lib/roundb.sh" && roundb_on placement_outside_homes && go=1; } 2>/dev/null ;; esac
