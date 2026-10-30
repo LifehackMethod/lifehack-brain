@@ -156,7 +156,9 @@ def kept_files(calls):
         cmd = c["input"].get("command", "") if c["name"] == "Bash" else ""
         if c["is_error"] or "own_list_add.py" not in cmd or "--keep" not in cmd or "listed (kept" not in (c["result"] or ""):
             continue
-        out |= {t for t in cmd.split("--keep", 1)[1].split() if t.startswith("/")}
+        out |= {t.strip("\"'") for t in cmd.split("--keep", 1)[1].split() if t.strip("\"'").startswith("/")}
+        # the tool prints the true path of every file it listed (a loop or a quoted path hides it in the command): trust the printed line
+        out |= {m for m in re.findall(r"listed \(kept[^)]*\): (/\S+)", c["result"] or "")}
     return out
 
 

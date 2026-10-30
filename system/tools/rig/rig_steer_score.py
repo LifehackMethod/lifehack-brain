@@ -90,8 +90,8 @@ def stop_fires(path):
                 n += 1
             elif d.get("type") == "user" and c.get("type") == "text" and "END-OF-TURN CHECK" in c.get("text", ""):
                 t = c["text"]
-                own = "not in your own list" in t
-                pm = re.search(r"(/\S+?) is not in your own list", t) or re.search(r"REFUSED (/\S+?):\d+", t)
+                own = "not in your own list" in t or "list it: python3" in t   # Round C: the own_list_unhomed text says "stays here by your choice; list it: ..."
+                pm = re.search(r"(/\S+?) (?:is not in your own list|stays here)", t) or re.search(r"REFUSED (/\S+?):\d+", t)
                 out.append((n - 1, "end_of_turn_checks.sh#" + ("own_list" if own else "back_door"), pm.group(1) if pm else "", t))
     return out
 
