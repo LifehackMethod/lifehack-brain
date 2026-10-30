@@ -94,7 +94,7 @@ reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live i
 > 2026-07-13 status-bar guard that blocked its own build's commit (`build-sop.md`). Workaround when
 > authoring: assemble the trigger tokens from fragments so no literal appears in the command.
 - A hook you haven't **watched block/inject in a live attempt is not a control** — an echo-pipe test proves only that the script didn't crash, not that the harness honored it.
-- **Deploying it:** both halves are files in this repo — the script at `system/hooks/`, the registration in `.claude/settings.json` using `${CLAUDE_PROJECT_DIR}` — so both travel by `git pull` and neither is re-done by hand. ⛔ **Then RESTART.** The harness reads `settings.json` at session start, so a newly registered hook does nothing at all in the window that registered it, and the only symptom is silence. That is the single commonest reason a correct hook appears not to work. (→ `system/hook-contract.md`, Deploy & Verify.)
+- **Deploying it:** both halves are files in this repo — the script at `system/hooks/`, the registration, a row in `system/register/register.jsonl` (`system/register/generate.py` generates `hooks/hooks.json` and `.claude/settings.json` from it) — so both travel by `git pull` and neither is re-done by hand. ⛔ **Then RESTART.** The harness reads `settings.json` at session start, so a newly registered hook does nothing at all in the window that registered it, and the only symptom is silence. That is the single commonest reason a correct hook appears not to work. (→ `system/hook-contract.md`, Deploy & Verify.)
 
 ## DO NOT BUILD — what was tried and failed
 

@@ -1,7 +1,7 @@
 # How this system works, and how to be useful in it
 
-> ~~Loaded automatically in every session started from this folder.~~ *(2026-10-30: it is delivered by the
-> plugin's SessionStart hook, `system/hooks/emit_harness_brief.sh` (`hooks/hooks.json`), not by the folder.)*
+> Delivered at the start of every session by the plugin's SessionStart hook,
+> `system/hooks/emit_harness_brief.sh` (`hooks/hooks.json`), not by the folder.
 > It is the standing brief: how to talk to the person, the rules that hold whatever they ask for, and
 > where things live. Keep it short — everything here is paid for on every single turn.
 
@@ -9,13 +9,13 @@
 
 **Building a desk, skill, job, hook or tool? Use the shared layer first.** Common tools live ONCE in `shared/`;
 desks USE them and never copy them. The list of what exists is `system/register/toolbox.md` (generated) — read it
-before writing anything. Detail: ~~`shared-layer.md`~~ *(2026-10-30: not at the root)* `system/organism/elements/shared-layer.md`.
+before writing anything. Detail: `system/organism/elements/shared-layer.md`.
 
 > **Chosen by measurement, not argument** (2026-08-03): this map layout beat every alternative — do not
 > restructure it from taste. Evidence and the losing ideas: `system/organism/map-measurement-note.md`.
 >
 > **Deeper layers:** `system/organism/manual.md` (how the parts work together — LOAD-BEARING, holds rules
-> that exist in no element file) + `system/organism/elements/` (~~44~~ 49 files, counted 2026-10-30, source-traced from code).
+> that exist in no element file) + `system/organism/elements/` (49 files, counted 2026-10-30, source-traced from code).
 > ⚠ **Every path on this page is under the PLUGIN ROOT, never your working folder** (manual → THREE HOMES). A
 > window working in a private repo that has its own `system/organism/manual.md` is in the DESKS manual, not this one.
 
@@ -39,7 +39,7 @@ elements/<slug>.md, the exhaustive source. If this map is your only source, you 
                      money decision. the money RECORDS live in the owning subject's own store, never here.
 @ /research /websearch   find something out, sanitized | research-web-plane.md
 @ /explain /simplify     have it said plainer | translator-cluster.md
-@ /professor       send someone to LEARN this whole system | `.claude/skills/professor/` ~~⛔ not in this repo, only in the installed plugin~~ *(2026-10-30: it is in this repo, SKILL.md + routing-eval.md)* — NOT an element;
+@ /professor       send someone to LEARN this whole system | `.claude/skills/professor/` (SKILL.md + routing-eval.md) — NOT an element;
                    the taught tour. this page ROUTES; that one EXPLAINS.
 @ (open the file)  which of the three layers answers THIS question | brain.md — the map ROUTES, the manual
                    EXPLAINS how the parts combine, elements/<slug>.md exhausts one part. wrong layer,
@@ -48,7 +48,7 @@ elements/<slug>.md, the exhaustive source. If this map is your only source, you 
 ! (automatic)   a suspicious email is classified | sentinel.md — writes a status tile on EVERY verdict,
                 pushes a CRITICAL alert ONLY on DANGER. a DANGER pause has NO auto-resume: YOU clear it.
 ! (no command)  something blocked me and I never asked | hook-plane.md — a registered guard fired. its
-                deny message names WHICH guard and why; the guards are listed in ~~`.claude/settings.json`~~ *(2026-10-30: a second, drifting copy)* `hooks/hooks.json` (the live registry).
+                deny message names WHICH guard and why; the guards are listed in `hooks/hooks.json` (the live registry; it and `.claude/settings.json` are generated from `system/register/register.jsonl`, the source).
 ! (no command)  make the system actually STOP me | hook-plane.md — you name the rule, a session writes+registers
                 the hook, then it fires alone forever. a doctrine line only asks nicely.
 ! (no command)  I am committing onto a branch the remote has never seen | guard_no_upstream_commit_signpost.sh —
@@ -69,10 +69,10 @@ elements/<slug>.md, the exhaustive source. If this map is your only source, you 
   door. read it before adding or changing any scheduled job.
 NOT BUILT — admissions, not omissions. knowing now beats inferring a connection that isn't there:
 - one subject's records agreeing with another's (a billing row becoming taxable income). no general
-  primitive; the `calculate` skill is DORMANT (manual.md index). ~~compute-mechanically-gate is DORMANT, name-only~~
-  *(2026-10-30: it is LIVE, `inject_compute_mechanically.sh` on UserPromptSubmit, `hooks/hooks.json`; manual.md: NOT dormant)*. you carry the cross-subject part by hand.
-- a weekly/monday cross-subject digest. ~~no weekday cadence exists.~~ *(2026-10-30: `/planning-weekly` and `/planning-daily`
-  exist, you start them; `elements/planning.md`. What is not built is an automatic cross-subject digest.)*
+  primitive; the `calculate` skill is DORMANT (manual.md index); the compute-mechanically gate is LIVE
+  (`inject_compute_mechanically.sh` on UserPromptSubmit, `hooks/hooks.json`). you carry the cross-subject part by hand.
+- a weekly/monday cross-subject digest. `/planning-weekly` and `/planning-daily`
+  exist, you start them (`elements/planning.md`); the automatic cross-subject digest is what is not built.
 - a rolled-up count of security events over a week. sentinel logs each one; ⚠ CORRECTED 2026-09-01
   (#62, approved by Enver direct): `sentinel_response.py` computes a running 24h tally
   (`event_count_24h`, `danger_count_24h`, `active_count_24h`, `reviewed_count_24h`) into a
@@ -97,7 +97,7 @@ All in `system/sops/`. Open the one that matches the job; each is the owner of i
 - `hook-sop.md` — use when deciding whether and how to add a hook that enforces a rule.
 - `jobs-sop.md` — use when adding, changing, switching on or debugging a scheduled job.
 - `plan-sharpening-sop.md` — use when sharpening a plan: the thinking beats shared by `/autoplan` and `/checkin`.
-- `recovery-runbook.md` — use when cold-restoring after a machine, repo or auth failure (written for the private ClaudeOps system).
+- `recovery-runbook.md` — use when cold-restoring after a machine, repo or auth failure (Part 1 is general, for everyone; Part 2 is optional, for a GitHub-backed setup).
 - `skill-building-sop-extract.md` — use when you need the one extract (a model cannot report its own compliance) the core skills cite.
 - `skill-building-sop.md` — use when building, fixing or testing a skill (long; read the part you need).
 - `translator-rubric.md` — use when writing to the person: the one source for the translator voice.
@@ -112,12 +112,6 @@ that nothing has to FIND — records, notes, project state — lives in the AI B
 path is resolved by `shared/brain_root.py` and by nothing else; every path any tool writes to comes
 from there — with one stated exception: throwaway scratch, which `shared/paths.py` deliberately puts
 in the machine's own temp folder, because regenerable files do not belong in an AI Brain.
-
-~~**Four homes, and the question that sorts them is WHO IS THIS FOR.** For me → outside this repo:
-`~/.claude/<kind>/<name>/` (a real folder, never a symlink) if the harness must FIND it, the AI Brain
-if something only CALLS it. For everyone → this repo, on a branch, offered back as a PR. Shared
-content is the exception — next to nothing lives there, a real gap, not an oversight.~~ *(2026-10-30: the
-manual's ruling of 2026-10-29 is THREE HOMES, by place.)*
 
 **Three homes — one file, one home.** HARNESS: this plugin's root, shared machinery for everyone who
 installs it. PRIVATE: your personal code folder (named in the one-line file

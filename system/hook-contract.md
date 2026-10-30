@@ -41,7 +41,7 @@ echo '{"decision":"block","reason":"BLOCKED: [what]. WHY: [why]. REDIRECT: [wher
 
 ### PreToolUse
 Runs BEFORE tool execution. Can block (deny) or allow (exit 0).
-Registered under `"PreToolUse"` in settings.json.
+Registered under `"PreToolUse"` in settings.json (generated from `system/register/register.jsonl`).
 
 **Input:** stdin — JSON with `tool_input` containing the tool's parameters.
 **Output to block (house standard, proven live):** deny text → **stderr + `exit 2`** (the honored block signal — what the live guard fleet uses). The `{"decision":"block",...}` JSON → **stdout** form is also honored. NEVER put the JSON on stderr with `exit 1` — neither channel is read, so the guard goes silently DARK.
@@ -51,7 +51,7 @@ Common matchers: `Bash`, `Write|Edit`, `Write`, `Edit`
 
 ### PostToolUse
 Runs AFTER tool execution. Cannot block. Must always exit 0.
-Registered under `"PostToolUse"` in settings.json.
+Registered under `"PostToolUse"` in settings.json (generated from `system/register/register.jsonl`).
 
 **Input:** `$ARGUMENTS` as first parameter ($1) — JSON string.
 **Output:** advisory only — write to stderr, never exit non-zero to block.
@@ -207,7 +207,7 @@ those tokens from fragments, or put the work in a file and run the file.
 Both halves are files in this repo, so both travel by `git pull` and neither is re-done by hand:
 
 1. **The script** — `system/hooks/{name}.sh`. Commit it.
-2. **The registration** — an entry in `.claude/settings.json`, in the SAME change. A script with no
+2. **The registration** — a row in `system/register/register.jsonl`, the source; `system/register/generate.py` writes `hooks/hooks.json` and `.claude/settings.json` from it. Same change. A script with no
    registration is a file nobody runs; a registration with no script is a hook that fails on every
    turn. `system/tools/citation_lint.py` checks both directions on every commit and refuses one
    without the other, so this is not a rule anyone has to remember.

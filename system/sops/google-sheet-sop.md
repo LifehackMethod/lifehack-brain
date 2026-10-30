@@ -27,7 +27,7 @@ deterministic code. The design ladder, in order of preference:
    It never re-derives a number at read time.
 
 This is the sheets application of the cross-desk rule in `CLAUDE.md` → ~~*"Compute mechanically, never in
-the model."*~~ *"Arithmetic is computed, never done in your head"* *(2026-10-30: heading renamed; CLAUDE.md:145)* (Narrow exception: a summary tier a person has explicitly approved for a specific sheet.)
+the model."*~~ *"Arithmetic is computed, never done in your head"* *(2026-10-30: heading renamed; see CLAUDE.md, "Arithmetic is computed, never done in your head")* (Narrow exception: a summary tier a person has explicitly approved for a specific sheet.)
 
 ## Principle #2 — the sheet checks itself; fail loud, never silent (the corollary)
 If Principle #1 says the sheet does the math, this says **the sheet also proves its own math.** Anything you'd

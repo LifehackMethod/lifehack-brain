@@ -48,6 +48,7 @@ Also from the system laws: "ran" is not "succeeded" (dead end F2, 166 silent fai
 - If a person would be UPSET that it behaved differently in two desks, it is shared, exactly one copy in `$CODE`: fetch, sanitise, scan, pause, auth, lock, timeout, output check, cost, notify, state location.
 - The middle is shared shape, desk content: the loop and its guardrails are shared; the desk hands in its prompt, closed verdict set and output format.
 - Where files live: shared code in `$CODE` (the public harness). Desk runners, prompts and notes in your personal code folder (find it with `python3 $CODE/shared/personal_code_root.py --quiet`; for the maintainer this resolves to ClaudeOps) and the notes folder. Never put desk code in the public harness. Never copy a shared file into a desk.
+- Test seam: the job door (`system/tools/install-schedulers.sh`) judges a runner against the folder in `$LIFEHACK_DESK_REPO`; unset, it defaults to `$HOME/.claude/skills/ClaudeOps` (the maintainer's personal code folder), not to the folder `personal_code_root.py` finds.
 - Everything ingested, in a session or a job, goes through the security system (the door, section 7).
 
 ## 4. The chain
