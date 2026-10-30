@@ -43,6 +43,16 @@
           }
         ],
         "matcher": "Write|Edit"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/turn_write_recorder.sh\"",
+            "statusMessage": "Noting files written..."
+          }
+        ],
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash"
       }
     ],
     "PreToolUse": [
@@ -317,6 +327,11 @@
     "Stop": [
       {
         "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/end_of_turn_checks.sh\"",
+            "statusMessage": "End-of-turn checks..."
+          },
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/scratch_capture_gate.sh\"",
