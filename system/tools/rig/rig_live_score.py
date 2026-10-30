@@ -205,7 +205,9 @@ def score(a):
     wm = [re.compile(x) for x in a.wrong_move]
     denied_calls = [c for c in calls if c["is_error"] and DENY_TEXT.search(c["result"] or "")]
     false_alarms = [c for c in denied_calls if wm and not any(w.search(json.dumps(c["input"])) for w in wm)]
-    results_ok = used_shared and right_home and registered and not registered_in_shared
+    # per-case flag (live.registration_forbidden / --registration-forbidden): the prompt itself forbade the registering step, so obeying it is not a defect
+    deferred = bool(getattr(a, "registration_forbidden", False)) and not registered
+    results_ok = used_shared and right_home and (registered or deferred) and not registered_in_shared
     if not results_ok:
         bucket = "SLIPPED"
     elif denies or denied_calls:
@@ -215,7 +217,7 @@ def score(a):
     else:
         bucket = "RIGHT_FIRST_TIME_UNREAD"      # correct result, no friction, but it skipped the reading: luck, not route
     return {"session_id": sid, "bucket": bucket, "bases": {"read_toolbox": read_toolbox, "read_sop": read_sop, "used_shared": used_shared,
-            "registered": registered, "registered_in_shared": registered_in_shared, "right_home": right_home, "home_by": home_by}, "friction_layers": layers, "deny_rows": len(denies), "denied_calls": len(denied_calls),
+            "registered": registered, "registration_deferred": deferred, "registered_in_shared": registered_in_shared, "right_home": right_home, "home_by": home_by}, "friction_layers": layers, "deny_rows": len(denies), "denied_calls": len(denied_calls),
             "false_alarms": len(false_alarms), "denied_texts": [(c["name"], (c["input"].get("command") or c["input"].get("file_path") or "")[:100], (c["result"] or "")[:160]) for c in denied_calls], "copied_shared": copied, "files": files, "tool_calls": len(calls), "first_build_call": first_build,
             "route": [(c["name"], (c["input"].get("command") or c["input"].get("file_path") or c["input"].get("pattern") or "")[:90]) for c in calls][:40]}
 
@@ -307,6 +309,7 @@ def main():
     ap.add_argument("--shared-ref", action="append", default=[], help="substring a file must contain to count as USING a shared tool")
     ap.add_argument("--register-file", action="append", default=[], help="extra register file to inspect (repeatable); it counts by WHICH list it is: personal <personal-code>/register.jsonl = registered, master system/register/register.jsonl = registered-in-shared")
     ap.add_argument("--personal-root", help="personal code folder (default: the pointer ~/.config/lifehack/personal-code, else ~/lifehack-personal-code)")
+    ap.add_argument("--registration-forbidden", action="store_true", help="the prompt forbade the registering step (e.g. \"do NOT edit jobs.md\"): an unregistered end state is then not a defect (bases.registration_deferred)")
     ap.add_argument("--shared-contribution", action="store_true", help="the piece is a shared-layer contribution (rare): the master register is its right list")
     ap.add_argument("--home-prefix", action="append", default=[], help="(kept for old callers; the home test is now judge_home: Enver's repo OR any non-Drive repo, flagged open)")
     ap.add_argument("--enver-home", default=ENVER_HOME, help="Enver's own accepted code home (private repo desks folder); the student answer is any non-Drive repo, OPEN")

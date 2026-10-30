@@ -121,7 +121,7 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None):
     # files = new files + modified DOC files (a register / README the session edited); modified code is not a new piece
     files = [p for p in mine_new + [m for m in mine_mod if not m.endswith(ls.CODE_EXT)] if os.path.isfile(p)]
     ns = argparse.Namespace(stream=stream, desk="/nonexistent/no-desk", sid=None, journal=os.path.expanduser("~/.claude/run/fire-journal.jsonl"), code_root=rm.ROOT,
-                            sop=L["sop"], shared_ref=L["shared_ref"], register_file=[], home_prefix=[], wrong_move=L["wrong_re"], ignore_hook=[], json=True, files=files)
+                            sop=L["sop"], shared_ref=L["shared_ref"], register_file=[], home_prefix=[], wrong_move=L["wrong_re"], ignore_hook=[], json=True, files=files, registration_forbidden=bool(L.get("registration_forbidden")))
     try:
         sc = ls.score(ns); e2 = ""
     except SystemExit as e:

@@ -152,7 +152,7 @@ def satisfied(calls, i, hook, target, text=""):
 def end_defects(row, calls):
     b = row["bases"]
     d = []
-    if not b.get("registered"):
+    if not b.get("registered") and not b.get("registration_deferred"):   # the prompt forbade registering: obeying it is not a defect
         d.append("unregistered")
     if not b.get("used_shared"):
         d.append("no-shared-use")
@@ -206,7 +206,7 @@ def score_session(row, streams, journal, downgrade):
             continue    # that guard's own fire-slip already carries this outcome (B if the end state is still wrong): do not count it twice
         slips.append(dict(session=row["id"], cls=dcl, kind="fixable", fired=",".join(by) or "-", bucket=("B" if by else "C"),
                           why=("guard fired but end state still " + dcl) if by else "no guard fired, end state " + dcl, target=""))
-    rft = all(row["bases"].get(k) for k in ("read_toolbox", "read_sop", "used_shared", "registered", "right_home")) and not fl
+    rft = all(row["bases"].get(k) for k in ("read_toolbox", "read_sop", "used_shared", "registered", "right_home") if not (k == "registered" and row["bases"].get("registration_deferred"))) and not fl
     return dict(session=row["id"], sid=sid, fires=[(h, t) for _, h, t, _ in fl], journal_only=sorted(h for h in jhooks if h not in {x[1] for x in fl}), slips=slips, rft=rft)
 
 

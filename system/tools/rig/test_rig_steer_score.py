@@ -52,6 +52,12 @@ def main():
         f.write(json.dumps({"message": {"content": [{"type": "tool_result", "tool_use_id": "z", "content": "listed: /skills/q/SKILL.md", "is_error": False}]}}) + "\n")
     S3 = ss.summarize([ss.score_session(row("own"), d, None, {})])
     assert (S3["A"], S3["B"]) == (1, 0), S3
+    # the prompt forbade registering (registration_deferred): an unregistered end state is not a defect; without the flag it still is
+    stream(d + "/defer.stream.jsonl", [("Write", {"file_path": "/w/tool.py"}, "created", False)])
+    S4 = ss.summarize([ss.score_session(row("defer", registered=False, registration_deferred=True), d, None, {})])
+    assert (S4["A"], S4["B"], S4["C"]) == (0, 0, 0), S4
+    S5 = ss.summarize([ss.score_session(row("defer", registered=False), d, None, {})])
+    assert S5["C"] == 1, S5
     print("test_rig_steer_score: ok")
 
 if __name__ == "__main__":
