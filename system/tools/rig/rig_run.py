@@ -63,6 +63,7 @@ def build_fixture():
     T = tempfile.mkdtemp(prefix="rigfx-")
     F = {"T": T, "HOME": T + "/home", "CODE": T + "/code", "NOTES": T + "/notes", "REPO": T + "/repo", "REMOTE": T + "/remote.git"}
     F["DESK"] = F["NOTES"] + "/desks/rigdesk"
+    F["PC"] = F["HOME"] + "/fictional-code"          # a FICTIONAL personal code folder (stop cases point the pointer file at it)
     F["PLUGINCACHE"] = F["HOME"] + "/.claude/plugins/cache/lifehack-brain/lifehack-brain/1.0"
     for d in (F["HOME"] + "/.config/lifehack", F["CODE"] + "/shared/notify", F["CODE"] + "/system/register", F["CODE"] + "/system/sops",
               F["CODE"] + "/system/hooks", F["CODE"] + "/hooks", F["CODE"] + "/system/tools", F["DESK"] + "/tools", F["DESK"] + "/records",
@@ -100,7 +101,7 @@ def build_fixture():
 
 def expand(v, F):
     if isinstance(v, str):
-        for k in ("CODE", "NOTES", "HOME", "DESK", "REPO", "PLUGINCACHE"):
+        for k in ("CODE", "NOTES", "HOME", "DESK", "REPO", "PLUGINCACHE", "PC"):
             v = v.replace("{%s}" % k, F[k])
         v = v.replace("@@", "").replace("{REALCODE}", ROOT)      # "@@" splits a fake secret in the case file so secret scanners do not flag it;
         #      # the real V2 checkout: for guards whose zone is the harness tree they live in; hooks only READ the path, nothing is written
@@ -113,7 +114,61 @@ def expand(v, F):
 
 
 # ───────────────────────── one case ─────────────────────────
+def run_stop_case(case, F, plugin_root, stub=False):
+    """Round B end-of-turn replay: plant this turn's new files + the recorder's list, pipe a Stop payload into the registered
+    end_of_turn_checks.sh. Caught = {"decision":"block"} on stdout. Planted files under {REALCODE} are removed afterwards."""
+    sid = "rig-%s" % re.sub(r"[^A-Za-z0-9_-]", "-", case["id"])
+    wdir, planted, problems = "%s/turnwrites-%s" % (F["T"], sid), [], []
+    os.makedirs(wdir, exist_ok=True)
+    open(F["HOME"] + "/.config/lifehack/personal-code", "w", encoding="utf-8").write(F["PC"] + "\n")
+    os.makedirs(F["PC"], exist_ok=True)
+    rows = []
+    for pl in expand(case.get("plant", []), F):
+        os.makedirs(os.path.dirname(pl["path"]), exist_ok=True)
+        existed = os.path.exists(pl["path"])
+        body = open(pl["from"], encoding="utf-8").read() if pl.get("from") else pl.get("content", "")
+        open(pl["path"], "w", encoding="utf-8").write(body)
+        if not existed and pl["path"].startswith(ROOT + "/"):
+            planted.append(pl["path"])
+        if pl.get("kind", "new") != "unrecorded":
+            rows.append("p1\t%s\t%s\n" % (pl.get("kind", "new"), pl["path"]))
+    if rows:
+        open(wdir + "/%s.list" % sid, "w", encoding="utf-8").write("".join(rows))
+    payload = json.dumps({"session_id": sid, "prompt_id": "p1", "cwd": F["T"], "hook_event_name": "Stop", "stop_hook_active": False})
+    jpath = "%s/journal-%s.jsonl" % (F["T"], sid)
+    env = {k: os.environ[k] for k in KEEP_ENV if k in os.environ}
+    env.update({k: v for k, v in os.environ.items() if k.startswith("ROUNDB_")})
+    env.update(HOME=F["HOME"], LIFEHACK_ROOT=F["NOTES"], LHB_JOURNAL_PATH=jpath, CLAUDE_CODE_SESSION_ID=sid, CLAUDE_PLUGIN_ROOT=plugin_root,
+               LHB_TURN_WRITES_DIR=wdir, LIFEHACK_SANDBOX="V2", GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_SYSTEM="/dev/null")
+    runs = []
+    try:
+        for matcher, script, cmd in registered_hooks("Stop"):
+            if script != "end_of_turn_checks.sh":
+                continue
+            p = subprocess.run(["bash", "-c", cmd], input=payload, capture_output=True, text=True, cwd=F["T"], env=env, timeout=30)
+            runs.append({"hook": script, "rc": p.returncode, "text": (p.stdout + p.stderr)[-600:], "block": '"decision": "block"' in p.stdout or '"decision":"block"' in p.stdout})
+    except subprocess.TimeoutExpired:
+        problems.append("end_of_turn_checks.sh timed out")
+    finally:
+        for f in planted:
+            try:
+                os.remove(f)
+            except OSError:
+                pass
+    if not runs:
+        problems.append("end_of_turn_checks.sh not registered under Stop")
+    if (stub or has_journal_trap("end_of_turn_checks.sh")) and runs and not os.path.exists(jpath):
+        problems.append("NO-JOURNAL-LINE:end_of_turn_checks.sh")
+    deniers = [r["hook"] for r in runs if r["block"]]
+    want = case.get("expect", {}).get("decision") in ("deny", "signpost")
+    grade = "error" if problems else (("caught" if deniers else "slipped") if want else ("false-alarm" if deniers else "clean"))
+    return {"id": case["id"], "grade": grade, "deniers": deniers, "hooks_run": [r["hook"] for r in runs], "problems": problems,
+            "signpost_only": False, "text": next((r["text"] for r in runs if r["block"]), ""), "case": case}
+
+
 def run_case(case, F, plugin_root, hooks, off=None, stub=False):
+    if case.get("event") == "stop":
+        return run_stop_case(case, F, plugin_root, stub)
     sid = "rig-%s" % re.sub(r"[^A-Za-z0-9_-]", "-", case["id"])
     tool = case["tool"]
     tin = expand(case["tool_input"], F)

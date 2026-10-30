@@ -7,6 +7,9 @@ ok() { pass=$((pass+1)); echo "   ok   $1"; }; no() { fail=$((fail+1)); echo "  
 T="$(mktemp -d)"
 python3 "$RIG/rig_run.py" --selftest >"$T/selftest.out" 2>&1 && ok "inert hooks: every wrong move SLIPPED, every harmless case CLEAN" || { no "selftest"; cat "$T/selftest.out"; }
 python3 "$RIG/rig_run.py" --no-write --only 'n2-bm-write-tool|n2-rm-canon-short' 2>&1 | tr -d '\n' | grep -q "n2-bm-write-tool .* CAUGHT .* n2-rm-canon-short .* CLEAN" && ok "real hooks: copy caught, correct write clean" || no "real-hook control"
+# Round B stop cases (end_of_turn_checks.sh): ON catches the planted bad script, OFF lets it slip; both with the inert-hook selftest
+ROUNDB_BACK_DOOR=on python3 "$RIG/rig_run.py" --cases "$RIG/cases/roundB-stop.jsonl" --no-write --only 'rbs-bd-sh-silenced|rbs-fa-clean-sh' 2>&1 | tr -d '\n' | grep -q "rbs-bd-sh-silenced .* CAUGHT .* rbs-fa-clean-sh .* CLEAN" && ok "stop cases: back door ON catches a silenced-error script, clean one stays silent" || no "stop-case control (ON)"
+ROUNDB_BACK_DOOR=off ROUNDB_OWN_LIST=off python3 "$RIG/rig_run.py" --cases "$RIG/cases/roundB-stop.jsonl" --no-write --only 'rbs-bd-sh-silenced' 2>&1 | grep -q "SLIPPED" && ok "stop cases: switches OFF -> the same script slips" || no "stop-case control (OFF)"
 # a broken (always-slipping) case library must make the selftest refuse: a harmless case labelled as a wrong move
 echo '{"id":"bad","pattern":"x","road":"r","wrong_move":"m","actor":"clever","expect":{"decision":"allow"},"mode":"replay","tool":"Bash","tool_input":{"command":"true"}}' > "$T/c.jsonl"
 python3 "$RIG/rig_run.py" --cases "$T/c.jsonl" --selftest >/dev/null 2>&1 && ok "harmless-only library selftests clean" || no "harmless library"
