@@ -29,6 +29,7 @@ trap 'lhb_journal_fire "$?" "guard_build_mode.sh" "PreToolUse" "Bash|Write|Edit|
 # WHO-COULD-THIS-BREAK (remember_reason): nobody is blocked by it; it can only make a later file in a remembered folder pass silently. WAY-THROUGH: delete that `kept` line from ~/.config/lifehack/placement.conf to be asked again.
 #      Round C fc_shell_overwrite: a Bash overwrite (`>`, `>|`, `tee` without -a, cp/mv/install/rsync onto, `sed -i`, `truncate`) of an
 #      EXISTING SOP (a .md in the rulebook folders of build_mode_sops.conf) or canon file is a HARD block (exit 2). `>>` and `tee -a` pass.
+#      Round C gap closure: the same check reads through `bash -c`/`sh -c`/`eval`, `env`/`exec`/`nohup`/`time` prefixes, and `dd of=` (oflag=append passes).
 # WHO-COULD-THIS-BREAK (fc_shell_overwrite): a session or the person's own script that regenerates an SOP/canon file with a redirect, sed -i or cp. WAY-THROUGH: change it with the Edit tool (the Write-side guards govern it), or ask the person.
 # REDIRECT: every deny names the SOP or the shared path to use instead.
 # SIGNPOST: SOP paths: system/hooks/build_mode_sops.conf (edit there when the rulebook sort renames files).

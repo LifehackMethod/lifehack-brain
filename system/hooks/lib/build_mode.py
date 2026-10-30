@@ -139,7 +139,7 @@ def inplace_targets(verb, a):
     return files
 
 
-def bash_ops(cmd, cwd):
+def bash_ops(cmd, cwd, _depth=0):
     """-> list of dicts {verb, target, srcs, content}. Verbs only at segment start; a mention inside a
     quoted string is a single token and never a verb. Heredoc body (after <<) is kept as content."""
     heredoc = None
@@ -177,13 +177,40 @@ def bash_ops(cmd, cwd):
             words.append(t); i += 1
         while words and (re.fullmatch(r"\w+=.*", words[0]) or words[0] in ("sudo", "command", "env")):
             words.pop(0)
+        if shell_ow:   # Round C gap 5: read through exec/nohup/time, env options, and bash -c / sh -c / eval bodies
+            while words and (re.fullmatch(r"\w+=.*", words[0]) or os.path.basename(words[0]) in ("sudo", "command", "env", "exec", "nohup", "time", "nice")
+                             or (words[0].startswith("-") and len(words) > 1)):
+                words.pop(0)
+            body = None
+            if words and os.path.basename(words[0]) in ("bash", "sh", "zsh", "dash", "ksh"):
+                for k in range(1, len(words) - 1):
+                    if not words[k].startswith("-"):
+                        break
+                    if re.fullmatch(r"-[A-Za-z]*c[A-Za-z]*", words[k]):
+                        body = words[k + 1]
+                        break
+            elif words and words[0] == "eval":
+                body = " ".join(words[1:])
+            if body and _depth < 3:
+                ops.extend(bash_ops(body, cwd, _depth + 1))
+                body_done = True
+            else:
+                body_done = False
+        else:
+            body_done = False
         for r, ap in zip(redir, appends):
             if r.startswith("&") or r == "/dev/null":
                 continue
             ops.append({"verb": ">", "target": resolve(r, cwd), "srcs": [], "content": heredoc, "append": ap})
-        if not words:
+        if not words or body_done:
             continue
         verb = os.path.basename(words[0])
+        if shell_ow and verb == "dd":   # Round C gap 5: dd of=<file> overwrites it (oflag=append does not)
+            ap = any(w.startswith("oflag=") and "append" in w for w in words[1:])
+            for w in words[1:]:
+                if w.startswith("of="):
+                    ops.append({"verb": "dd", "target": resolve(w[3:], cwd), "srcs": [], "content": "", "append": ap})
+            continue
         if verb == "git" and "worktree" in words[1:4] and "add" in words[1:5]:   # F6a: `git [-C d] worktree add [-b X] <path>`
             a, pos, k = words[words.index("add") + 1:], [], 0
             while k < len(a):
@@ -281,7 +308,7 @@ def outside_homes_target(t, code, notes):
 
 
 # ---------------------------------------------------------------- shell overwrite of an SOP or canon (Round C 4, fc_shell_overwrite)
-OVERWRITE_VERBS = {">", "tee", "cp", "mv", "install", "rsync", "sed-inplace", "truncate-inplace"}
+OVERWRITE_VERBS = {">", "dd", "tee", "cp", "mv", "install", "rsync", "sed-inplace", "truncate-inplace"}
 
 
 def protected_doc(t, code):
