@@ -29,7 +29,7 @@ bad() { F=$((F+1)); echo "FAIL: $1"; }
 
 drive() { HOME="$S/home" bash "$DRIVE" <<<"$1" >"$OUTF" 2>"$ERRF"; RC=$?; }
 d_allow() { drive "$2"; if [ $RC -eq 0 ] && ! grep -q '"ask"' "$OUTF"; then ok; else bad "ALLOW $1 (rc=$RC $(head -c 150 "$ERRF"))"; fi; }
-d_ask()   { drive "$2"; if [ $RC -eq 2 ] && grep -q "ASK FIRST" "$ERRF" && grep -q "WHY:" "$ERRF" && grep -q "WAY THROUGH:" "$ERRF" && grep -q "RULE:" "$ERRF"; then ok; else bad "ASK $1 (rc=$RC)"; fi; }
+d_ask()   { drive "$2"; if [ $RC -eq 0 ] && grep -q '"permissionDecision": "ask"' "$OUTF" && grep -q "ASK FIRST" "$OUTF" && grep -q "WHY:" "$OUTF" && grep -q "WAY THROUGH:" "$OUTF" && grep -q "RULE:" "$OUTF"; then ok; else bad "ASK $1 (rc=$RC)"; fi; }
 d_mcp_ask() { drive "$1"; if [ $RC -eq 0 ] && grep -q '"permissionDecision": "ask"' "$OUTF"; then ok; else bad "MCP-ASK $2 (rc=$RC $(cat "$OUTF"))"; fi; }
 
 SHEET_DEL=$(mk gws drive files delete --params "'{\"fileId\":\"pondSheet0001\"}'")
@@ -59,12 +59,12 @@ d_allow "delete ONE non-sheet" "$(bashjson "$NOTE_DEL")"
 d_allow "mention in text"      "$(bashjson "$MENTION")"
 d_allow "rm scratch file"      "$(bashjson "$RMSCR")"
 d_allow "tab delete (other guard's job)" "$(bashjson "$TABDEL")"
-d_allow "confirmed with marker" "$(bashjson "$CONFIRMED")"
 d_allow "unrelated tool"       '{"tool_name":"Read","tool_input":{"file_path":"/tmp/x"}}'
 d_allow "mcp trash non-sheet"  "$(mcpjson pondNote0001)"
 d_allow "unreadable payload"   'not json'
 echo "-- drive, ON: ASK"
 d_ask "sheet file delete"      "$(bashjson "$SHEET_DEL")"
+d_ask "a model-typed LIFEHACK_DRIVE_CONFIRM=1 is NOT approval" "$(bashjson "$CONFIRMED")"
 d_ask "sheet via bash -c"      "$(bashjson "$BASHC")"
 d_ask "unknown file"           "$(bashjson "$UNK_DEL")"
 d_ask "xargs bulk"             "$(bashjson "$XARGS")"

@@ -20,12 +20,12 @@ trap 'lhb_journal_fire "$?" "guard_drive_destructive.sh" "PreToolUse" "Bash" 2>/
 #      by name (the script's text is never in the command); the Google Sheets API itself deleting a file (it cannot).
 # REDIRECT: this is an ASK, so nobody is stuck. Show the person the exact file(s) and what will happen (a Sheet: its
 #      name; bulk: the count or query), and on their in-the-moment yes retry the same command with
-#      LIFEHACK_DRIVE_CONFIRM=1 prefixed. Never add the marker without that yes. For the MCP tool the harness asks
+#      (no marker any more: a token the model can type is not approval). The harness asks
 #      the person directly (permissionDecision: ask) - answering yes is the confirmation. Drive trash keeps a file
 #      for 30 days; a permanent delete or an emptied trash does not.
 # WHO-COULD-THIS-BREAK: an unattended job that deletes its own scratch files in bulk, and any session cleaning up
 #      many Drive files, is stopped to ask; with nobody to answer, the run waits. WAY-THROUGH: the person says yes
-#      and the command is retried with LIFEHACK_DRIVE_CONFIRM=1 (a reviewed scheduled job may carry it), or
+#      and answers the harness prompt (headless it is a refusal), or
 #      the person turns the switch off. One scratch file that is not a Sheet is never asked about.
 # SIGNPOST: the Sheet rules live in system/sops/google-sheet-sop.md; what is gated here is set by the two switches
 #      and this file. Change the rule here deliberately, never loosen it to fit a refused command.
@@ -45,7 +45,7 @@ try: print(json.load(sys.stdin).get("tool_name",""))
 except Exception: print("")' 2>/dev/null)
 case "$TOOL" in
   Bash) printf '%s' "$INPUT" | grep -qi 'drive' || exit 0
-        printf '%s' "$INPUT" | grep -qF 'LIFEHACK_DRIVE_CONFIRM=1' && exit 0 ;;
+        : ;;   # Round C practice: no model-typed confirm token (LIFEHACK_DRIVE_CONFIRM=1 is gone); the only way through is the person's answer to the harness ask
   mcp__*trash_file) : ;;
   *) exit 0 ;;
 esac
@@ -55,17 +55,8 @@ LIB="$_lhb_dir/lib/drive_guard.py"
 V=$(printf '%s' "$INPUT" | python3 "$LIB" 2>/dev/null)
 KIND="${V%%$'\t'*}"; DETAIL="${V#*$'\t'}"
 
-ask() {   # ask <what> <why-line>
-  if [ "$TOOL" = Bash ]; then
-    {
-      printf 'ASK FIRST (Drive guard): %s\n' "$1"
-      printf 'WHY: %s\n' "$2"
-      printf 'WAY THROUGH: show the person exactly what will go (file name, or the count/query) and ask. On their yes, retry the same command with LIFEHACK_DRIVE_CONFIRM=1 prefixed. Never add it without that yes.\n'
-      printf 'RULE: system/hooks/guard_drive_destructive.sh (switches fc_sheet_file_delete, fc_drive_bulk_delete in system/hooks/roundB.conf).\n'
-    } >&2
-    exit 2
-  fi
-  R="ASK FIRST (Drive guard): $1 WHY: $2 WAY THROUGH: answer yes here if the person wants this. RULE: system/hooks/guard_drive_destructive.sh (fc_sheet_file_delete)."
+ask() {   # ask <what> <why-line>: the harness asks the PERSON (reaches them even under bypass interactively; headless it is a refusal the session sees)
+  R="ASK FIRST (Drive guard): $1 WHY: $2 WAY THROUGH: the person answers yes to the prompt that appears; never retry with a marker or another route. RULE: system/hooks/guard_drive_destructive.sh (fc_sheet_file_delete, fc_drive_bulk_delete)."
   python3 -c 'import json,sys; print(json.dumps({"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":sys.argv[1]}}))' "$R"
   exit 0
 }

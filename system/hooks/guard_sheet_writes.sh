@@ -34,6 +34,13 @@ trap 'lhb_journal_fire "$?" "guard_sheet_writes.sh" "PreToolUse" "Bash" 2>/dev/n
 # which is this project's documented Windows floor. python3 is already required by every other hook
 # here, so there is now one interpreter dependency instead of two.
 CONFIRM_MARK="LIFEHACK_SHEET_CONFIRM=1"
+ask_json() {   # the harness asks the PERSON; a token typed into the command is not approval
+  python3 -c 'import json,sys; print(json.dumps({"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":sys.argv[1]}}))' "$1"
+}
+. "$_lhb_dir/lib/roundb.sh" 2>/dev/null && roundb_on fc_ask_not_token && ASK_MODE=1 || ASK_MODE=0
+# token honoured only if the switch is off (old behaviour) or the launcher itself set LIFEHACK_REVIEWED_JOB=1 (a model cannot set the hook's own environment)
+token_ok() { [ "$ASK_MODE" = 0 ] || [ "${LIFEHACK_REVIEWED_JOB:-}" = 1 ]; }
+SHEET_KIND=
 # SEPARATOR CLASS — restored 2026-08-21 after a measured fail-open. A gws call does not always arrive
 # whitespace-delimited: a command built in python/JSON arrives as `['gws','sheets',...]`, so the token
 # boundary is a comma or a quote, not a space. Matching only [[:space:]] let a destructive batchUpdate
@@ -44,12 +51,17 @@ MARKDIR="${SHEET_LLM_MARKDIR:-$HOME/.claude/run/sheet-llm}"
 TTL=$(( 12 * 3600 ))
 
 deny() {
+  if [ "$ASK_MODE" = 1 ] && [ "$SHEET_KIND" != llm ]; then
+    ask_json "ASK FIRST (sheet guard): $1 $2 WAY THROUGH: the person answers yes to the prompt that appears; a marker typed into the command no longer counts. RULE: system/sops/google-sheet-sop.md."
+    exit 0
+  fi
   printf 'BLOCKED (sheet guard): %s\n' "$1" >&2
   printf '%s\n' "$2" >&2
   printf '%s\n' "RULE: system/sops/google-sheet-sop.md holds the rules of engagement; the /google-sheet skill holds the design side. Change what is gated there, not here." >&2
   exit 2
 }
 deny_llm() {
+  SHEET_KIND=llm
   deny "a write to a Google Sheet before this window read its _LLM_GUIDE tab." \
 "WHY: every sheet this system builds carries a _LLM_GUIDE tab holding its structure, who owns which fact, and its write rules. Writing before reading it is how a working sheet gets quietly broken.
 REDIRECT: read that tab for THIS spreadsheet first — gws sheets spreadsheets values get --params '{\"spreadsheetId\":\"<ID>\",\"range\":\"_LLM_GUIDE!A:Z\"}' — then retry the write. Any read naming the instruction tab counts, and it holds for 12 hours. A reviewed scheduled writer may carry LIFEHACK_SHEET_CONFIRM=1 to bypass."
@@ -106,7 +118,7 @@ COMMAND=$(printf '%s' "$COMMAND" | perl -0pe 's/\\\n/ /g' 2>/dev/null || printf 
 # A mere mention costs nothing — the real checks below decide, and they are what should decide.
 printf '%s' "$COMMAND" | grep -qE "(^|[^A-Za-z0-9_.-])gws([^A-Za-z0-9_-]|$)|bin/gws" 2>/dev/null || exit 0
 printf '%s' "$COMMAND" | grep -qE "(^|[[:space:],'\"])sheets([[:space:],'\"]|$)" 2>/dev/null || exit 0
-printf '%s' "$COMMAND" | grep -qF "$CONFIRM_MARK" 2>/dev/null && exit 0
+printf '%s' "$COMMAND" | grep -qF "$CONFIRM_MARK" 2>/dev/null && token_ok && exit 0
 
 # ── THE INDIRECTION CATCH ──────────────────────────────────────────────────────
 # Everything below this point (and everything below in the rest of this file) matches LITERAL

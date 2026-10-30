@@ -33,9 +33,19 @@ trap 'lhb_journal_fire "$?" "guard_sheet_formula_writes.sh" "PreToolUse" "Bash" 
 # absent on older macOS, on a plain Linux box, and in Git Bash on Windows. python3 does the same work
 # and is already required by every other hook here.
 CONFIRM_MARK="LIFEHACK_SHEET_CONFIRM=1"
+ask_json() {   # the harness asks the PERSON; a token typed into the command is not approval
+  python3 -c 'import json,sys; print(json.dumps({"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":sys.argv[1]}}))' "$1"
+}
+. "$_lhb_dir/lib/roundb.sh" 2>/dev/null && roundb_on fc_ask_not_token && ASK_MODE=1 || ASK_MODE=0
+# token honoured only if the switch is off (old behaviour) or the launcher itself set LIFEHACK_REVIEWED_JOB=1 (a model cannot set the hook's own environment)
+token_ok() { [ "$ASK_MODE" = 0 ] || [ "${LIFEHACK_REVIEWED_JOB:-}" = 1 ]; }
 GWS="$(command -v gws 2>/dev/null)"
 
 deny() {
+  if [ "$ASK_MODE" = 1 ]; then
+    ask_json "ASK FIRST (sheet formula guard): ${1:-this write targets a FORMULA or lock cell on a Google Sheet.} WHY: the sheet computes its own maths and an owner-credential write can silently overwrite a formula. WAY THROUGH: the person answers yes to the prompt that appears; a marker typed into the command no longer counts. RULE: system/sops/google-sheet-sop.md."
+    exit 0
+  fi
   printf 'BLOCKED (sheet formula guard): %s\n' "${1:-this write targets a FORMULA or 🔒 cell on a Google Sheet.}" >&2
   printf '%s\n' "WHY: the sheet computes its own maths, and a script writing as the file's owner can silently overwrite a formula and corrupt every number downstream of it. Google's own locks do NOT stop an owner write — this does." >&2
   printf '%s\n' "REDIRECT: normal work only APPENDS rows and is never blocked. If changing this formula is genuinely what was asked for, show the exact before and after to the person whose sheet it is, and retry the same command with LIFEHACK_SHEET_CONFIRM=1 prefixed. Never add the marker without that yes." >&2
@@ -43,6 +53,10 @@ deny() {
   exit 2
 }
 deny_unknown() {
+  if [ "$ASK_MODE" = 1 ]; then
+    ask_json "ASK FIRST (sheet formula guard): this gws command hides its operation or target behind a variable, so the guard cannot tell what it does. WAY THROUGH: the person answers yes to the prompt, or the command is rewritten with the operation and target literal."
+    exit 0
+  fi
   printf 'BLOCKED (sheet formula guard): %s\n' "this gws command hides its operation or its target behind a shell variable or a command substitution, so this guard cannot tell what it would do." >&2
   printf '%s\n' "WHY: every check below matches LITERAL text; a \$VAR or \$(...) defeats all of them, and until this guard imported the shared parser such a command was allowed through unconditionally and silently. An unknown must never be read as permission." >&2
   printf '%s\n' "REDIRECT: re-run the command with the operation and the target written out literally so the guard can see them — or, if this is a deliberate reviewed write, prefix LIFEHACK_SHEET_CONFIRM=1." >&2
@@ -84,7 +98,7 @@ COMMAND=$(printf '%s' "$COMMAND" | perl -0pe 's/\\\n/ /g' 2>/dev/null || printf 
 printf '%s' "$COMMAND" | grep -qE "(^|[^A-Za-z0-9_.-])gws([^A-Za-z0-9_-]|$)|bin/gws" 2>/dev/null || exit 0
 printf '%s' "$COMMAND" | grep -qE "(^|[[:space:],'\"\\\\])sheets([[:space:],'\"\\\\]|$)" 2>/dev/null || exit 0
 # Explicit human-approved bypass.
-printf '%s' "$COMMAND" | grep -qF "$CONFIRM_MARK" 2>/dev/null && exit 0
+printf '%s' "$COMMAND" | grep -qF "$CONFIRM_MARK" 2>/dev/null && token_ok && exit 0
 
 # ── THE INDIRECTION CATCH ──────────────────────────────────────────────────────
 # Everything below this point (and everything below in the rest of this file) matches LITERAL

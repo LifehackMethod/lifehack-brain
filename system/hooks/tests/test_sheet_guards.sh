@@ -141,6 +141,24 @@ printf '%s' "$MSG" | grep -q "LIFEHACK_SHEET_CONFIRM" && ok || bad "deny names t
 printf '%s' "$MSG" | grep -q "google-sheet-sop.md" && ok || bad "deny names the rule" "$MSG"
 printf '%s' "$MSG" | grep -qv "LIFEHACK_SHEET_CONFIRM" && ok || bad "deny still names the retired marker" "$MSG"
 
+echo "── fc_ask_not_token ON: a token the MODEL types is not approval; the person is asked ──"
+ask_case() {   # ask_case <label> <hook> <command> [extra env...]
+  local label="$1" hook="$2" cmd="$3" out; shift 3
+  out=$(python3 -c "
+import json,sys
+print(json.dumps({'tool_name':'Bash','tool_input':{'command':sys.argv[1]}}))" "$cmd" 2>/dev/null \
+    | env HOME="$SANDBOX" SHEET_LLM_MARKDIR="$MARKDIR" ROUNDB_FC_ASK_NOT_TOKEN=on "$@" bash "$hook" 2>/dev/null)
+  printf '%s' "$out" | grep -q '"permissionDecision": "ask"' && ok || bad "$label" "expected a harness ask, got: $out"
+}
+CLR="gws sheets spreadsheets values clear --params '{\"spreadsheetId\":\"$SID\",\"range\":\"Data!A:Z\"}'"
+ask_case "destructive asks"            "$WRITES"  "$CLR"
+ask_case "token in the text still asks" "$WRITES"  "LIFEHACK_SHEET_CONFIRM=1 $CLR"
+ask_case "structural asks"             "$WRITES"  "LIFEHACK_SHEET_CONFIRM=1 gws sheets spreadsheets batchUpdate --params '{\"spreadsheetId\":\"$SID\"}'"
+ask_case "formula unverifiable asks"   "$FORMULA" "LIFEHACK_SHEET_CONFIRM=1 gws sheets spreadsheets values update --params '{\"spreadsheetId\":\"$SID\"}'"
+run "a reviewed launcher (env set by the job, not the model) may carry the token" 0 "$WRITES" "LIFEHACK_SHEET_CONFIRM=1 $CLR" ROUNDB_FC_ASK_NOT_TOKEN=on LIFEHACK_REVIEWED_JOB=1
+run "ON: an ordinary append is untouched" 0 "$FORMULA" "gws sheets spreadsheets values append --params '{\"spreadsheetId\":\"$SID\",\"range\":\"Data!A:C\"}'" ROUNDB_FC_ASK_NOT_TOKEN=on
+run "ON: the LLM-guide read gate is still a plain deny" 2 "$WRITES" "gws sheets spreadsheets values update --params '{\"spreadsheetId\":\"$SID\",\"range\":\"Data!A2\"}'" ROUNDB_FC_ASK_NOT_TOKEN=on SHEET_LLM_MARKDIR="$SANDBOX/empty-marks2"
+
 echo
 if [ "$fail" = 0 ]; then echo "RESULT: $pass passed, 0 failed."; echo "SHEET GUARDS GREEN"; exit 0
 else echo "RESULT: $pass passed, $fail failed."; exit 1; fi
