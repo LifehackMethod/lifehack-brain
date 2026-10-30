@@ -128,6 +128,7 @@ def run_case(case, F, plugin_root, hooks, off=None, stub=False):
     payload = json.dumps({"session_id": sid, "cwd": cwd, "hook_event_name": "PreToolUse", "tool_name": tool, "tool_input": tin})
     jpath = "%s/journal-%s.jsonl" % (F["T"], sid)
     env = {k: os.environ[k] for k in KEEP_ENV if k in os.environ}
+    env.update({k: v for k, v in os.environ.items() if k.startswith("ROUNDB_")})   # Round B switches: the environment wins (roundB.conf)
     env.update(HOME=F["HOME"], LIFEHACK_ROOT=F["NOTES"], LHB_JOURNAL_PATH=jpath, CLAUDE_CODE_SESSION_ID=sid, CLAUDE_PLUGIN_ROOT=plugin_root,
                LIFEHACK_SANDBOX="V2", GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_SYSTEM="/dev/null")
     runs, problems, seen = [], [], set()
