@@ -28,7 +28,7 @@ import argparse, json, os, re, subprocess, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "system", "tools"))
-DENY_TEXT = re.compile(r"BLOCKED|Looks like you're|hook error|PUSH ·|COMMIT IDENTITY|speed bump|denied", re.I)
+DENY_TEXT = re.compile(r"BLOCKED|Looks like you're|hook error|PUSH ·|COMMIT IDENTITY|speed bump|denied|ASK FIRST|HARD STOP", re.I)   # ASK FIRST / HARD STOP: Round C fine-china stops (a true harness ask arrives with no "hook error" prefix)
 WRITE_BASH = re.compile(r"(^|[\s;&|(])(tee|cp|mv|mkdir|touch|install|rsync|ln|sed\s+-i|chmod)\b|>\s*[^\s&]|open\([^)]*['\"][wa]|write_text|shutil\.")   # the OLD any-">x" test; kept only for rig_roundA_report's cross-check
 # in-place / scripted writers bash_ops does not model (no redirect syntax involved)
 WRITE_INPLACE = re.compile(r"(^|[\s;&|(])(sed\s+-i|chmod)\b|open\([^)]*['\"][wa]|write_text|shutil\.")
@@ -143,7 +143,21 @@ def home_of(path, a):
         return "enver"
     if p.startswith(os.path.abspath(a.desk) + "/") or _is_drive(p):
         return None
+    if getattr(a, "student", False):   # STUDENT view (no GitHub, no personal layer): any project folder that is not the Drive notes folder is a home (plan 3b.4 ruling: assume no git)
+        return "student-open"
     return "student-open" if _in_git_repo(p) else None
+
+
+def kept_files(calls):
+    """Absolute paths the session listed with `own_list_add.py --keep` (a file the person KEPT outside the homes, with a stated reason): the tool
+    printed 'listed (kept' for them. That is a right home AND a listing (Round C reason gate); transcript evidence, not the model's claim."""
+    out = set()
+    for c in calls:
+        cmd = c["input"].get("command", "") if c["name"] == "Bash" else ""
+        if c["is_error"] or "own_list_add.py" not in cmd or "--keep" not in cmd or "listed (kept" not in (c["result"] or ""):
+            continue
+        out |= {t for t in cmd.split("--keep", 1)[1].split() if t.startswith("/")}
+    return out
 
 
 def judge_home(files, calls, a):
@@ -155,7 +169,8 @@ def judge_home(files, calls, a):
             code.add(fp)
     if not code:
         return bool(files), ("docs-only" if files else None)
-    homes = {home_of(f, a) for f in code}
+    kept = kept_files(calls)
+    homes = {("kept" if os.path.abspath(f) in kept else home_of(f, a)) for f in code}
     if None in homes:
         return False, None
     return True, (homes.pop() if len(homes) == 1 else "mixed")
@@ -200,13 +215,17 @@ def score(a):
     registered_in_shared = bool(names) and in_master and not shared_contrib
     registered = bool(names) and (in_master if shared_contrib else in_personal)
     right_home, home_by = judge_home(files, calls, a)
+    kept = kept_files(calls)
+    if names and code_files and all(os.path.abspath(f) in kept for f in code_files):
+        registered = True      # kept outside the homes on purpose and listed in the person's own list by absolute path
     denies = [r for r in rows if r.get("decision") in ("deny", "signpost") and r.get("hook") not in a.ignore_hook]
     layers = sorted({r.get("hook") for r in denies})
     wm = [re.compile(x) for x in a.wrong_move]
     denied_calls = [c for c in calls if c["is_error"] and DENY_TEXT.search(c["result"] or "")]
     false_alarms = [c for c in denied_calls if wm and not any(w.search(json.dumps(c["input"])) for w in wm)]
     # per-case flag (live.registration_forbidden / --registration-forbidden): the prompt itself forbade the registering step, so obeying it is not a defect
-    deferred = bool(getattr(a, "registration_forbidden", False)) and not registered
+    # STUDENT view: no personal layer exists, so there is no own list to be listed in; not listing is not a defect
+    deferred = (bool(getattr(a, "registration_forbidden", False)) or bool(getattr(a, "student", False))) and not registered
     results_ok = used_shared and right_home and (registered or deferred) and not registered_in_shared
     if not results_ok:
         bucket = "SLIPPED"

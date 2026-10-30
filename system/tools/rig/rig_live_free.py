@@ -78,9 +78,8 @@ def mentioned(stream_text, p):
     return p in stream_text or (os.path.basename(p) in stream_text and len(os.path.basename(p)) > 4)
 
 
-def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None):
+def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model="sonnet"):  # allow-silence: the exam runs live sessions on the Sonnet tier by ruling (plan 3b.4 redesign); this is the tier alias handed to claude --model, not a pinned model id
     L = c["live"]
-    prompt = L["prompt"] + SUFFIX
     stream = os.path.join(work, c["id"] + ".stream.jsonl")
     env = dict(os.environ, LIFEHACK_SANDBOX="V2", **(extra_env or {}))
     cwd = OPS
@@ -88,7 +87,18 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None):
         cwd = os.path.join(scratch, c["id"])
         shutil.rmtree(cwd, ignore_errors=True)
         os.makedirs(cwd)
-    cmd = ["claude", "-p", prompt, "--model", "haiku", "--dangerously-skip-permissions", "--setting-sources", "project,local", "--plugin-dir", V2,  # allow-silence: the rig runs the same cheap tier as the meal-2 BEFORE run, for a fair comparison
+    # placeholders let a case file hold no machine-specific path: {HOME} (the child's HOME), {CWD}, {V2}, {PERSONAL} (the child's personal code folder)
+    home = env.get("HOME") or os.path.expanduser("~")
+    ptr = os.path.join(home, ".config", "lifehack", "personal-code")
+    try:
+        personal = os.path.expanduser(open(ptr, encoding="utf-8").readline().strip()) or os.path.join(home, "lifehack-personal-code")
+    except OSError:
+        personal = os.path.join(home, "lifehack-personal-code")
+    prompt = L["prompt"]
+    for k, v in (("{HOME}", home), ("{CWD}", cwd), ("{V2}", V2), ("{PERSONAL}", personal)):
+        prompt = prompt.replace(k, v)
+    prompt += SUFFIX
+    cmd = ["claude", "-p", prompt, "--model", model, "--permission-mode", "bypassPermissions", "--setting-sources", "project,local", "--plugin-dir", V2,
            "--settings", os.path.join(OPS, "system/desktop-launchers/v2/lab-settings.json"), "--output-format", "stream-json", "--verbose"]
     b = snapshot(notes)
     t0 = time.time()
@@ -120,8 +130,8 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None):
             turns, cost = d.get("num_turns"), d.get("total_cost_usd")
     # files = new files + modified DOC files (a register / README the session edited); modified code is not a new piece
     files = [p for p in mine_new + [m for m in mine_mod if not m.endswith(ls.CODE_EXT)] if os.path.isfile(p)]
-    ns = argparse.Namespace(stream=stream, desk="/nonexistent/no-desk", sid=None, journal=os.path.expanduser("~/.claude/run/fire-journal.jsonl"), code_root=rm.ROOT,
-                            sop=L["sop"], shared_ref=L["shared_ref"], register_file=[], home_prefix=[], wrong_move=L["wrong_re"], ignore_hook=[], json=True, files=files, registration_forbidden=bool(L.get("registration_forbidden")))
+    ns = argparse.Namespace(stream=stream, desk="/nonexistent/no-desk", sid=None, journal=os.path.join(home, ".claude/run/fire-journal.jsonl"), code_root=rm.ROOT,
+                            sop=L["sop"], shared_ref=L["shared_ref"], register_file=[], home_prefix=[], wrong_move=L["wrong_re"], ignore_hook=[], json=True, files=files, registration_forbidden=bool(L.get("registration_forbidden")), student=bool(L.get("student")))
     try:
         sc = ls.score(ns); e2 = ""
     except SystemExit as e:
@@ -148,7 +158,7 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None):
         if commits[r]:
             sc.setdefault("commits", {})[r] = commits[r]
     sid = sc.get("session_id")
-    for d in glob.glob(os.path.expanduser("~/.claude/run/*/*%s*" % sid)) if sid else []:
+    for d in glob.glob(os.path.join(home, ".claude/run/*/*%s*" % sid)) if sid else []:
         try:
             os.remove(d)
         except OSError:
@@ -173,6 +183,7 @@ def main():
     ap.add_argument("--cases", required=True)
     ap.add_argument("--label", required=True)
     ap.add_argument("--only")
+    ap.add_argument("--model", default="sonnet", help="model tier for the live sessions (Round C exam: sonnet, in bypassPermissions mode like most students)")
     ap.add_argument("--scratch")
     ap.add_argument("--env", action="append", default=[])
     a = ap.parse_args()
@@ -183,7 +194,7 @@ def main():
     res_dir = os.path.join(notes, "state/projects/v2/records/rig-results")
     try:
         for c in cases:
-            r = run_one(c, notes, work, a.scratch, dict(e.split("=", 1) for e in a.env), os.path.join(res_dir, "%s-%s-files" % (time.strftime("%Y-%m-%d"), a.label)))
+            r = run_one(c, notes, work, a.scratch, dict(e.split("=", 1) for e in a.env), os.path.join(res_dir, "%s-%s-files" % (time.strftime("%Y-%m-%d"), a.label)), a.model)
             out.append(r)
             print(r["id"], r["bucket"], r["turns"], r["secs"], r["commits"] or "", flush=True)
             open(os.path.join(res_dir, "%s-%s-live.jsonl" % (time.strftime("%Y-%m-%d"), a.label)), "w", encoding="utf-8").write("\n".join(json.dumps(x) for x in out) + "\n")
