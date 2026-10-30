@@ -432,6 +432,9 @@ def gate_message(t, pc, why_weak, remember, hint_tools):
     if remember:
         parts.append("A real reason is remembered for this folder in ~/.config/lifehack/placement.conf, so you are not asked again for it.")
     parts.append("RULE: system/hooks/placement.conf (code-outside-homes).")
+    if hint_tools and _roundb("placement_hint_ranked"):   # lead with the reuse demand: sessions skimmed a trailing list and wrote their own Gmail/phone code
+        return ("FIRST, before anything else: these shared tools may already do this job. If one does, call it from your file (by its path) instead of writing the same thing again:"
+                + hint_tools.split(":", 1)[1] + "\n" + " ".join(parts))
     return " ".join(parts) + hint_tools
 
 # ---------------------------------------------------------------- the decision
@@ -725,7 +728,7 @@ def main_inner():
 
 
 _STOP = set("this that with from have will your into when then they them what which also only more each some than about file files tool tools system shared skill skills build home users claude desks desk hooks hook notes python bash echo true false none test tests code data line lines name path text print import return".split())
-_ALIAS = {"phone": "notify", "alert": "notify", "buzz": "notify", "push": "notify", "ping": "notify", "message": "notify"}
+_ALIAS = {"phone": "notify", "alert": "notify", "buzz": "notify", "push": "notify", "ping": "notify", "message": "notify", "gmail": "email", "mail": "email", "inbox": "email"}
 
 
 def _toks(text):
@@ -738,8 +741,31 @@ def _toks(text):
     return out
 
 
+def tool_hint_ranked(code, hint):
+    """placement_hint_ranked: the file NAME and the opening of its content pick the tools (the first 1500 chars of code share too many common words and
+    the right tool, e.g. the one Gmail reader, fell out of the top 5). A name match counts triple; at most 3 tools, each with a score of 2 or more."""
+    path, _, content = hint.partition(" ")
+    name_t = _toks(re.sub(r"[^A-Za-z]+", " ", os.path.splitext(os.path.basename(path))[0]))
+    head_t = _toks(content[:500])
+    scored = []
+    for line in _open(os.path.join(code, "system", "register", "toolbox.md")):
+        m = re.match(r"- `/(shared/[^`]+)` · (.*)", line)
+        if m:
+            tn = _toks(re.sub(r"[^A-Za-z]+", " ", os.path.splitext(os.path.basename(m.group(1)))[0]))
+            td = _toks(m.group(2))
+            n = 3 * len(name_t & tn) + 2 * len(name_t & td) + 2 * len(head_t & tn) + len(head_t & td)
+            if n >= 2 and re.search(r"\b(THE|ONE)\b|sanctioned", m.group(2)):
+                n += 2   # the tool the notes name as THE one / the sanctioned one comes first
+            if n >= 2:
+                scored.append((-n, m.group(1), m.group(2)[:70].rstrip()))
+    scored.sort()
+    return "".join("\n  %s · %s" % (p2, d) for _, p2, d in scored[:3])
+
+
 def tool_hint(code, hint):
     """Up to 5 shared tools from toolbox.md whose name/purpose shares a keyword with the target path/content."""
+    if _roundb("placement_hint_ranked"):
+        return tool_hint_ranked(code, hint)
     want = _toks(hint)
     if not want:
         return ""

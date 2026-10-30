@@ -209,6 +209,15 @@ printf '%s' "$ERR" | grep -Fq "shared/notify/notify-send.sh" && { pass=$((pass+1
 export ROUNDB_REASON_GATE=on
 fire t4 Write "$(J file_path "$HOME/skill-lab/SKILL.md" content $'---\nname: x\n---\n<!-- lifehack-place: '"$GOOD"$' -->')"; want 0 "gate ON: SKILL.md with the html-comment reason passes"; silent "skill reason"
 fire t5 Write "$(J file_path "$HOME/notify-lab/phone_alert2.py" content 'send a phone alert')"; want 2 "gate ON + hint ON: gate stop" "Shared tools that may already do this"
+# placement_hint_ranked: the hint leads the message and is picked by file name + opening (the one Gmail reader surfaces for a gmail script)
+export ROUNDB_PLACEMENT_HINT_RANKED=off
+fire t6 Write "$(J file_path "$HOME/notify-lab/phone_alert3.py" content 'send a phone alert')"; want 2 "ranked OFF: gate stop (today)" "Shared tools that may already do this"
+export ROUNDB_PLACEMENT_HINT_RANKED=on
+fire t7 Write "$(J file_path "$HOME/notify-lab/phone_alert4.py" content 'send a phone alert')"; want 2 "ranked ON: gate stop leads with the reuse demand" "FIRST, before anything else"
+printf '%s' "$ERR" | grep -Fq "shared/notify/notify-send.sh" && { pass=$((pass+1)); echo "   ok   ranked ON: names notify-send.sh"; } || { fail=$((fail+1)); echo "  FAIL  ranked ON lacks notify-send.sh"; }
+fire t8 Write "$(J file_path "$HOME/notify-lab/zzz_unrelated_thing.py" content 'print(1)')"; want 2 "ranked ON: no tool match still stops with the reason rule" "lifehack-place"
+printf '%s' "$ERR" | grep -Fq "FIRST, before anything else" && { fail=$((fail+1)); echo "  FAIL  ranked ON invented a hint"; } || { pass=$((pass+1)); echo "   ok   ranked ON: no match = no hint block"; }
+unset ROUNDB_PLACEMENT_HINT_RANKED
 unset ROUNDB_PLACEMENT_TOOLBOX_HINT
 unset ROUNDB_REASON_GATE ROUNDB_REMEMBER_REASON ROUNDB_PLACEMENT_OUTSIDE_HOMES
 # ---- Round C 4: a shell overwrite of an SOP or canon (fc_shell_overwrite). Fictional files.
