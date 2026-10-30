@@ -44,10 +44,23 @@ def rel_key(root, path):
     return rp[len(root):]
 
 
+def _project_skills_on():
+    """Switch placement_project_skills (system/hooks/roundB.conf, read through lib/roundb.py): a skill or agent under a PROJECT folder's .claude/ is the person's own code."""
+    try:
+        sys.path.insert(0, os.path.join(HERE, "..", "..", "system", "hooks", "lib"))
+        from roundb import roundb_on
+        return roundb_on("placement_project_skills")
+    except Exception:
+        return False
+    finally:
+        sys.path.pop(0)
+
+
 def is_tool(rel):
     parts = rel.strip("/").split("/")
     base = parts[-1]
-    if any(SKIP_DIR.match(p) for p in parts[:-1]):
+    proj_claude = _project_skills_on() and any(parts[i] == ".claude" and i + 1 < len(parts) and parts[i + 1] in ("skills", "agents") for i in range(len(parts))) and not rel.startswith(os.path.expanduser("~/.claude") + os.sep)   # placement_project_skills
+    if any(SKIP_DIR.match(p) and not (proj_claude and p == ".claude") for p in parts[:-1]):
         return False
     if base == "SKILL.md":
         return True

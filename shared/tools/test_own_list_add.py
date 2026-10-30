@@ -32,6 +32,23 @@ class OwnList(unittest.TestCase):
         return r.returncode, r.stdout, r.stderr
 
     # ---- ALLOW (silent) ----
+    def test_project_dot_claude_skill_counts_only_with_the_switch(self):
+        import own_list_add as ola
+        proj = "/work/proj/.claude/skills/pp/SKILL.md"
+        old = os.environ.get("ROUNDB_PLACEMENT_PROJECT_SKILLS")
+        try:
+            os.environ["ROUNDB_PLACEMENT_PROJECT_SKILLS"] = "off"
+            self.assertFalse(ola.is_tool(proj))
+            os.environ["ROUNDB_PLACEMENT_PROJECT_SKILLS"] = "on"
+            self.assertTrue(ola.is_tool(proj))
+            self.assertFalse(ola.is_tool("/work/proj/.claude/settings/x.py"))   # only skills/ and agents/ under .claude
+            self.assertFalse(ola.is_tool("/work/proj/.git/hooks/x.py"))
+        finally:
+            if old is None:
+                os.environ.pop("ROUNDB_PLACEMENT_PROJECT_SKILLS", None)
+            else:
+                os.environ["ROUNDB_PLACEMENT_PROJECT_SKILLS"] = old
+
     def test_non_tool_files_silent(self):
         ps = [self.mk("notes.md"), self.mk("tests/test_x.py"), self.mk("bin/test_y.sh"), self.mk("data.json"),
               self.mk("_retired-old/z.py"), self.mk("archive/z.sh"), self.mk(".hidden/z.py")]
