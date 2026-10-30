@@ -67,6 +67,11 @@ def main():
     sf = d + "/stop.stream.jsonl"
     open(sf, "w", encoding="utf-8").write(json.dumps({"type": "user", "message": {"content": [{"type": "text", "text": "Stop hook feedback:\nEND-OF-TURN CHECK: x\n/w/a.py stays here by your choice; list it: python3 own_list_add.py --keep /w/a.py"}]}}) + "\n")
     assert ss.stop_fires(sf)[0][1] == "end_of_turn_checks.sh#own_list"
+    # safety: the live runner refuses to start with the real HOME
+    import subprocess
+    r = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "rig_live_free.py"), "run", "--cases", "/nonexistent.jsonl",
+                        "--label", "t", "--only", "NOMATCH", "--env", "HOME=" + os.path.expanduser("~")], capture_output=True, text=True)
+    assert r.returncode != 0 and "REFUSED" in (r.stdout + r.stderr), r
     print("test_rig_steer_score: ok")
 
 if __name__ == "__main__":

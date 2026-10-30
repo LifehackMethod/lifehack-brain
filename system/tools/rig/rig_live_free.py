@@ -188,6 +188,26 @@ def main():
     ap.add_argument("--scratch")
     ap.add_argument("--env", action="append", default=[])
     a = ap.parse_args()
+    # SAFETY (coordinator, 2026-10-30): live sessions NEVER run with the real HOME - remember_reason writes ~/.config/lifehack/placement.conf and
+    # other pieces write under ~/.claude. Unless the caller passes its own throwaway HOME (the student pass does), build one here.
+    envd = dict(e.split("=", 1) for e in a.env)
+    real_home = os.path.realpath(os.path.expanduser("~"))
+    if "HOME" not in envd:
+        iso = os.path.join(real_home, "rig-iso-home")
+        shutil.rmtree(iso, ignore_errors=True)
+        os.makedirs(os.path.join(iso, ".config", "lifehack"))
+        os.makedirs(os.path.join(iso, ".claude"))
+        for ptr in ("personal-code", "code-root", "brain-root"):   # the pointers a session needs; nothing else is copied
+            src = os.path.join(real_home, ".config", "lifehack", ptr)
+            if os.path.exists(src):
+                shutil.copy(src, os.path.join(iso, ".config", "lifehack", ptr))
+        tok = os.path.join(real_home, ".config", "lifehack", "claude-oauth-token")   # a changed HOME loses the login: hand the child the token
+        if os.path.exists(tok) and "CLAUDE_CODE_OAUTH_TOKEN" not in envd and "CLAUDE_CODE_OAUTH_TOKEN" not in os.environ:
+            envd["CLAUDE_CODE_OAUTH_TOKEN"] = re.sub(r"\s+", "", open(tok, encoding="utf-8").read())
+        envd["HOME"] = iso
+    if os.path.realpath(os.path.expanduser(envd["HOME"])) == real_home:
+        sys.exit("REFUSED: the live sessions would run with the real HOME (%s); use a throwaway HOME" % real_home)
+    a.env = ["%s=%s" % kv for kv in envd.items()]
     cases = [c for c in rm.load_all(a.cases) if not a.only or re.search(a.only, c["id"])]
     notes = rm.notes_root()
     work = tempfile.mkdtemp(prefix="riglive-")
@@ -205,6 +225,8 @@ def main():
             shutil.copy(f, keep)
     finally:
         shutil.rmtree(work, ignore_errors=True)
+    if envd["HOME"].endswith("rig-iso-home"):
+        shutil.rmtree(envd["HOME"], ignore_errors=True)
     print("desks before == after:", desks0 == sorted(os.listdir(os.path.join(notes, "desks"))))
 
 
