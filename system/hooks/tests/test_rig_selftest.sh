@@ -29,4 +29,18 @@ out3 = subprocess.run([sys.executable, rig + "/rig_live_score.py", "--stream", d
 e = json.loads(out3)["bases"]["home_by"] == "student-open"
 sys.exit(0 if a and c and e else 1)
 PY
+python3 - "$RIG" <<'PY' && ok "live scorer: redirects to /dev/null, /dev/stderr, 2>&1 are not build acts; real file targets are" || no "live scorer write classification"
+import sys; sys.path.insert(0, sys.argv[1]); import rig_live_score as ls
+B = lambda cmd: ls.is_build_act({"name": "Bash", "input": {"command": cmd}}, "/x")
+T = ls.write_targets
+okc = [not B("cat toolbox.md 2>/dev/null"), not B("head -5 desk-building-sop.md 2>/dev/stderr"), not B("grep -n x toolbox.md 2>&1"), not B("sed -n 1,5p toolbox.md 2>/dev/null"),
+       B("echo x > tool.sh"), T("cmd 2>&1 | tee out.log") == ["/out.log"], B("cmd 2>&1 | tee out.log"), B("sed -i s/a/b/ f.sh")]
+# end to end: a toolbox read with a trailing 2>/dev/null BEFORE the first write counts as a read
+ev = [{"type": "system", "subtype": "init", "session_id": "s"}] + [{"message": {"content": [{"type": "tool_use", "id": str(i), "name": "Bash", "input": {"command": c}}]}} for i, c in enumerate(["cat toolbox.md 2>/dev/null", "echo x > /tmp/zz_tool.sh"])]
+import tempfile, json, os, argparse
+d = tempfile.mkdtemp(); open(d + "/s.jsonl", "w").write("\n".join(json.dumps(e) for e in ev)); open(d + "/j.jsonl", "w").write("")
+r = ls.score(argparse.Namespace(stream=d + "/s.jsonl", desk="/nonexistent/no-desk", sid=None, journal=d + "/j.jsonl", code_root=ls.ROOT, sop=[], shared_ref=[], register_file=[], home_prefix=[], wrong_move=[], ignore_hook=[], json=True, files=[], enver_home=d))
+okc.append(r["bases"]["read_toolbox"] and r["first_build_call"] == 1)
+sys.exit(0 if all(okc) else 1)
+PY
 rm -rf "$T"; echo "rig selftest: $pass ok, $fail failed"; [ "$fail" -eq 0 ]

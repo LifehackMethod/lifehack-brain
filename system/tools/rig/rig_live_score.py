@@ -29,7 +29,25 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "system", "tools"))
 DENY_TEXT = re.compile(r"BLOCKED|Looks like you're|hook error|PUSH ·|COMMIT IDENTITY|speed bump|denied", re.I)
-WRITE_BASH = re.compile(r"(^|[\s;&|(])(tee|cp|mv|mkdir|touch|install|rsync|ln|sed\s+-i|chmod)\b|>\s*[^\s&]|open\([^)]*['\"][wa]|write_text|shutil\.")
+WRITE_BASH = re.compile(r"(^|[\s;&|(])(tee|cp|mv|mkdir|touch|install|rsync|ln|sed\s+-i|chmod)\b|>\s*[^\s&]|open\([^)]*['\"][wa]|write_text|shutil\.")   # the OLD any-">x" test; kept only for rig_roundA_report's cross-check
+# in-place / scripted writers bash_ops does not model (no redirect syntax involved)
+WRITE_INPLACE = re.compile(r"(^|[\s;&|(])(sed\s+-i|chmod)\b|open\([^)]*['\"][wa]|write_text|shutil\.")
+sys.path.insert(0, os.path.join(ROOT, "system", "hooks", "lib"))
+try:
+    import build_mode as _bm      # reuse the hook's write-target parser (bash_ops); no new parser here
+except Exception:                 # the scorer must still run if the lib is missing
+    _bm = None
+
+
+def write_targets(cmd):
+    """Real file paths a Bash command writes to. /dev/* (null, stderr, tty) and fd duplications (2>&1) are not writes."""
+    if _bm is None:
+        return []
+    try:
+        ops = _bm.bash_ops(cmd, "/")
+    except Exception:
+        return []
+    return [o["target"] for o in ops if not o["target"].startswith("/dev/")]
 
 
 def parse_stream(path):
@@ -76,7 +94,8 @@ def is_build_act(c, desk):
     if c["name"] in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
         return True
     if c["name"] == "Bash":
-        return bool(WRITE_BASH.search(c["input"].get("command", "")))
+        cmd = c["input"].get("command", "")
+        return bool(write_targets(cmd)) or bool(WRITE_INPLACE.search(cmd))
     return False
 
 

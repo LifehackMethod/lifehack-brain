@@ -61,7 +61,33 @@ def strict_reads(streams, cases):
     return tb, sop, both
 
 
+def rescore_reads(streams, cases):
+    """Re-score toolbox/SOP read rates through the live scorer's own build-act test: OLD (any `>x`) vs NEW (real write targets only).
+    Usage: rig_roundA_report.py --rescore STREAMS_DIR CASES_FILE"""
+    import rig_live_score as ls
+    old = lambda c: c["name"] in ("Write", "Edit", "MultiEdit", "NotebookEdit") or (c["name"] == "Bash" and bool(ls.WRITE_BASH.search(c["input"].get("command", ""))))
+    res = {}
+    for tag, isb in (("OLD", old), ("NEW", lambda c: ls.is_build_act(c, ""))):
+        tb = sop = both = n = 0
+        for cid, sops in cases.items():
+            f = os.path.join(streams, cid + ".stream.jsonl")
+            if not os.path.exists(f):
+                continue
+            calls = ls.parse_stream(f)[1]; n += 1
+            fb = next((c["i"] for c in calls if isb(c)), len(calls)); pre = [c for c in calls if c["i"] < fb]
+            t = any("toolbox.md" in json.dumps(c["input"]) and c["name"] in ("Read", "Bash", "Grep") for c in pre)
+            o = any((c["name"] in ("Read", "Bash", "Grep") and any(x in json.dumps(c["input"]) for x in sops)) or (c["name"] == "Bash" and "read_sop.sh" in c["input"].get("command", "")) for c in pre)
+            tb += t; sop += o; both += t and o
+        res[tag] = (tb, sop, both, n)
+    return res
+
+
 def main():
+    if sys.argv[1] == "--rescore":
+        cs = {c["id"]: c["live"]["sop"] for c in J(sys.argv[3])}
+        for tag, (tb, sop, both, n) in rescore_reads(sys.argv[2], cs).items():
+            print("%s scorer: toolbox %d/%d, SOP %d/%d, both %d/%d" % (tag, tb, n, sop, n, both, n))
+        return
     br, bl, bs, ar, al = sys.argv[1:6]
     B, A = replay(J(br)), replay(J(ar))
     LB, LA = lv(live_before(J(bl), bs)), lv(live_after(J(al)))
