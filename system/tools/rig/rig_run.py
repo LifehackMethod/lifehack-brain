@@ -96,6 +96,10 @@ def build_fixture():
     for cmd in (["config", "user.email", "rig@example.invalid"], ["config", "user.name", "rig"], ["add", "."], ["commit", "-qm", "init"],
                 ["remote", "add", "origin", F["REMOTE"]], ["push", "-q", "-u", "origin", "main"]):
         subprocess.run(["git", "-C", F["REPO"]] + cmd, env=env, capture_output=True)
+    # a FICTIONAL operator-identity file, so the leakage scan (fc_private_push) can RUN in the fixture: without one the guard
+    # fails closed and every push to a host URL is "stopped", which would measure the fixture, not the guard
+    F["IDENT"] = F["T"] + "/ship-identity.txt"
+    open(F["IDENT"], "w", encoding="utf-8").write("fictional-pond-term\n")
     return F
 
 
@@ -138,7 +142,7 @@ def run_stop_case(case, F, plugin_root, stub=False):
     jpath = "%s/journal-%s.jsonl" % (F["T"], sid)
     env = {k: os.environ[k] for k in KEEP_ENV if k in os.environ}
     env.update({k: v for k, v in os.environ.items() if k.startswith("ROUNDB_")})
-    env.update(HOME=F["HOME"], LIFEHACK_ROOT=F["NOTES"], LHB_JOURNAL_PATH=jpath, CLAUDE_CODE_SESSION_ID=sid, CLAUDE_PLUGIN_ROOT=plugin_root,
+    env.update(SHIP_IDENTITY=F["IDENT"], HOME=F["HOME"], LIFEHACK_ROOT=F["NOTES"], LHB_JOURNAL_PATH=jpath, CLAUDE_CODE_SESSION_ID=sid, CLAUDE_PLUGIN_ROOT=plugin_root,
                LHB_TURN_WRITES_DIR=wdir, LIFEHACK_SANDBOX="V2", GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_SYSTEM="/dev/null")
     runs = []
     try:
@@ -177,6 +181,13 @@ def run_case(case, F, plugin_root, hooks, off=None, stub=False):
         if s == "sop_receipt":
             os.makedirs(F["HOME"] + "/.claude/run/sop", exist_ok=True)
             open(F["HOME"] + "/.claude/run/sop/hook.%s.receipt" % sid, "w", encoding="utf-8").close()
+        elif s == "git_alias_pf":   # an alias that force-pushes (fc_force_push must read through it)
+            subprocess.run(["git", "-C", F["REPO"], "config", "alias.pf", "push --force"], capture_output=True)
+        elif s == "leaky_commit":   # one unpushed commit that carries a home path (assembled here so this file itself stays clean)
+            with open(F["REPO"] + "/pond-notes.md", "w", encoding="utf-8") as fh:
+                fh.write("see %s/marlowe/Desktop/pond-notes/plan.md\n" % ("/Us" + "ers"))
+            for g in (["add", "."], ["-c", "user.email=rig@example.invalid", "-c", "user.name=rig", "commit", "-qm", "add note"]):
+                subprocess.run(["git", "-C", F["REPO"]] + g, capture_output=True)
         elif s.startswith("bm_seen:"):
             os.makedirs(F["HOME"] + "/.claude/run/build-mode", exist_ok=True)
             open(F["HOME"] + "/.claude/run/build-mode/%s.%s.seen" % (s.split(":", 1)[1], sid), "w", encoding="utf-8").close()
@@ -184,7 +195,7 @@ def run_case(case, F, plugin_root, hooks, off=None, stub=False):
     jpath = "%s/journal-%s.jsonl" % (F["T"], sid)
     env = {k: os.environ[k] for k in KEEP_ENV if k in os.environ}
     env.update({k: v for k, v in os.environ.items() if k.startswith("ROUNDB_")})   # Round B switches: the environment wins (roundB.conf)
-    env.update(HOME=F["HOME"], LIFEHACK_ROOT=F["NOTES"], LHB_JOURNAL_PATH=jpath, CLAUDE_CODE_SESSION_ID=sid, CLAUDE_PLUGIN_ROOT=plugin_root,
+    env.update(SHIP_IDENTITY=F["IDENT"], HOME=F["HOME"], LIFEHACK_ROOT=F["NOTES"], LHB_JOURNAL_PATH=jpath, CLAUDE_CODE_SESSION_ID=sid, CLAUDE_PLUGIN_ROOT=plugin_root,
                LIFEHACK_SANDBOX="V2", GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_SYSTEM="/dev/null")
     runs, problems, seen = [], [], set()
     for matcher, script, cmd in hooks:
