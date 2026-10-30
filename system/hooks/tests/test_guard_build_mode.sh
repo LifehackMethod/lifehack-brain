@@ -141,4 +141,50 @@ mv "$HOME/.config/lifehack/personal-code" "$HOME/.config/lifehack/personal-code.
 fire o5 Write "$(J file_path "$HOME/odd-widget/ping3.py" content 'print(1)')"; want 0 "ON: personal folder unresolved: no bump"; silent "unresolved"
 mv "$HOME/.config/lifehack/personal-code.bak" "$HOME/.config/lifehack/personal-code"
 unset ROUNDB_PLACEMENT_OUTSIDE_HOMES
+# ---- Round C 1+2: the reason gate (reason_gate) and remembering the folder (remember_reason). Fictional paths.
+mkdir -p "$CODE/system/tools" "$HOME/gadget-lab/sub" "$HOME/other-lab"
+cp "$HERE/../tools/door_rules.py" "$CODE/system/tools/"
+GOOD="throwaway prototype kept beside its sample recordings, not a tool anyone reuses"
+PCONF="$HOME/.config/lifehack/placement.conf"
+export ROUNDB_PLACEMENT_OUTSIDE_HOMES=on
+# OFF: today's speed bump exactly (a good reason changes nothing, the retry passes, nothing remembered)
+export ROUNDB_REASON_GATE=off ROUNDB_REMEMBER_REASON=off
+fire g0 Write "$(J file_path "$HOME/gadget-lab/a.py" content "# lifehack-place: $GOOD"$'\nprint(1)')"; want 2 "gate OFF: still the once-per-session bump" "Retry the same call and it goes through"
+fire g0 Write "$(J file_path "$HOME/gadget-lab/a.py" content "# lifehack-place: $GOOD"$'\nprint(1)')"; want 0 "gate OFF: identical retry passes"
+fire g0 Write "$(J file_path "$HOME/gadget-lab/b.py" content 'print(2)')"; want 0 "gate OFF: second file same session passes"
+grep -q 'allow:' "$PCONF" 2>/dev/null && { fail=$((fail+1)); echo "  FAIL  OFF wrote a remembered folder"; } || { pass=$((pass+1)); echo "   ok   OFF: nothing remembered"; }
+# ON (gate only), ALLOW cases first
+export ROUNDB_REASON_GATE=on
+fire g1 Write "$(J file_path "$PCODE/tools/ok.py" content 'print(1)')"; want 0 "gate ON: new code in the personal code folder: allowed"; silent "gate pc"
+fire g1 Write "$(J file_path "$HOME/gadget-lab/data.json" content '{}')"; want 0 "gate ON: data file: allowed"; silent "gate json"
+fire g1 Write "$(J file_path "$HOME/gadget-lab/c.py" content "# lifehack-place: $GOOD"$'\nprint(1)')"; want 0 "gate ON: Write with a real reason: passes first time"; silent "gate reason write"
+touch "$HOME/gadget-lab/c.py"
+fire g1 Edit "$(J file_path "$HOME/gadget-lab/c.py" old_string a new_string b)"; want 0 "gate ON: edit of an existing file: allowed"
+fire g1 Bash "$(J command "echo hi > $HOME/gadget-lab/d.sh  # lifehack-place: $GOOD")"; want 0 "gate ON: Bash with a real reason: passes"; silent "gate reason bash"
+fire g1 Bash "$(J command "cat > $HOME/gadget-lab/e.sh <<'EOT'"$'\n# lifehack-place: '"$GOOD"$'\necho hi\nEOT')"; want 0 "gate ON: heredoc carrying the reason line: passes"; silent "gate reason heredoc"
+[ "$(grep -c 'allow:' "$PCONF" 2>/dev/null)" = 0 ] && { pass=$((pass+1)); echo "   ok   remember OFF: no folder written"; } || { fail=$((fail+1)); echo "  FAIL  remember OFF wrote a folder"; }
+# ON, the stops (every time, never once-per-session)
+fire g2 Write "$(J file_path "$HOME/other-lab/f.py" content 'print(1)')"; want 2 "gate ON: no reason: stopped" "lifehack-place: <your reason>"
+for x in "$PCREAL" "personal code folder" '<!-- lifehack-place: <your reason> -->' "end of the command"; do printf '%s' "$ERR" | grep -Fq -- "$x" && { pass=$((pass+1)); echo "   ok   deny text has: $x"; } || { fail=$((fail+1)); echo "  FAIL  deny text lacks: $x"; }; done
+fire g2 Write "$(J file_path "$HOME/other-lab/f.py" content 'print(1)')"; want 2 "gate ON: the IDENTICAL retry is stopped again" "lifehack-place"
+fire g2 Write "$(J file_path "$HOME/other-lab/f.py" content $'# lifehack-place: todo\nprint(1)')"; want 2 "gate ON: junk reason refused" "reason was refused"
+fire g2 Write "$(J file_path "$HOME/other-lab/f.py" content $'# lifehack-place: needed because needed\nprint(1)')"; want 2 "gate ON: filler reason refused" "reason was refused"
+fire g2 Write "$(J file_path "$HOME/other-lab/f.py" content $'# lifehack-place: other lab f py\nprint(1)')"; want 2 "gate ON: reason that only repeats the path refused" "reason was refused"
+fire g2 Bash "$(J command "echo hi > $HOME/other-lab/g.sh")"; want 2 "gate ON: Bash with no reason: stopped" "end of the command"
+fire g2 Bash "$(J command "echo hi > $HOME/other-lab/g.sh  # lifehack-place: ok")"; want 2 "gate ON: Bash junk reason: refused" "reason was refused"
+grep -q 'allow:' "$PCONF" 2>/dev/null && { fail=$((fail+1)); echo "  FAIL  a refused reason was remembered"; } || { pass=$((pass+1)); echo "   ok   refused reasons never remembered"; }
+# remember_reason ON: the folder is added to the person's own file, in the readable allow format
+export ROUNDB_REMEMBER_REASON=on
+fire g3 Write "$(J file_path "$HOME/gadget-lab/sub/h.py" content "# lifehack-place: $GOOD"$'\nprint(1)')"; want 0 "remember ON: real reason passes"; silent "remember pass"
+grep -Fq "allow:$(cd "$HOME" && pwd -P)/gadget-lab/sub" "$PCONF" && { pass=$((pass+1)); echo "   ok   folder written to the personal placement.conf"; } || { fail=$((fail+1)); echo "  FAIL  folder not remembered"; }
+awk -F'\t' '$2 ~ /^allow:/ {n++; if (NF<4) bad=1} END {exit !(n==1 && !bad)}' "$PCONF" && { pass=$((pass+1)); echo "   ok   one line, 4 tab fields (name, allow:<folder>, *, date+reason)"; } || { fail=$((fail+1)); echo "  FAIL  remembered line malformed"; }
+grep -Fq 'code-in-notes' "$PCONF" && { pass=$((pass+1)); echo "   ok   existing personal lines kept"; } || { fail=$((fail+1)); echo "  FAIL  existing personal lines lost"; }
+fire g4 Write "$(J file_path "$HOME/gadget-lab/sub/i.py" content 'print(1)')"; want 0 "remember ON: same folder, no reason, fresh session: allowed"; silent "remembered"
+fire g4 Write "$(J file_path "$HOME/gadget-lab/sub/deeper/j.sh" content 'echo')"; want 0 "remember ON: a folder below it: allowed"; silent "remembered below"
+fire g4 Write "$(J file_path "$HOME/gadget-lab/k.py" content 'print(1)')"; want 2 "remember ON: the PARENT folder is not covered" "lifehack-place"
+fire g4 Write "$(J file_path "$HOME/other-lab/f.py" content 'print(1)')"; want 2 "remember ON: another folder still asked" "lifehack-place"
+fire g5 Bash "$(J command "echo hi > $HOME/other-lab/l.sh  # lifehack-place: $GOOD")"; want 0 "remember ON: Bash reason passes"
+fire g5 Write "$(J file_path "$HOME/other-lab/m.py" content 'print(1)')"; want 0 "remember ON: Bash reason remembered its folder"; silent "bash remembered"
+cnt="$(grep -c 'allow:' "$PCONF")"; fire g5 Bash "$(J command "echo hi > $HOME/other-lab/n.sh  # lifehack-place: $GOOD")"; [ "$(grep -c 'allow:' "$PCONF")" = "$cnt" ] && { pass=$((pass+1)); echo "   ok   no duplicate line for a folder already remembered"; } || { fail=$((fail+1)); echo "  FAIL  duplicate remembered line"; }
+unset ROUNDB_REASON_GATE ROUNDB_REMEMBER_REASON ROUNDB_PLACEMENT_OUTSIDE_HOMES
 echo "passed=$pass failed=$fail"; [ "$fail" -eq 0 ]

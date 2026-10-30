@@ -253,6 +253,97 @@ def outside_homes_target(t, code, notes):
     return pc
 
 
+
+# ---------------------------------------------------------------- reason gate (Round C 1+2)
+REASON_RX = re.compile(r"lifehack-place:[ \t]*([^\n]*)")
+REASON_MARKER = "# lifehack-place: <your reason>"
+
+
+def _roundb(name):
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    try:
+        from roundb import roundb_on
+        return roundb_on(name)
+    except Exception:
+        return False
+    finally:
+        sys.path.pop(0)
+
+
+def stated_reason(blob):
+    """-> (reason, blob_without_the_marker). The marker is `lifehack-place: <reason>` anywhere on a line: a
+    comment in the file content (Write/Edit) or at the end of the shell command (Bash). Trailing quote/comment
+    closers (`-->`, a quote) are stripped."""
+    m = REASON_RX.search(blob or "")
+    if not m:
+        return "", blob or ""
+    r = re.sub(r"\s*(?:-->|\*/)\s*$", "", m.group(1)).strip().strip("\"'`").strip()
+    return r, (blob[:m.start()] + blob[m.end():])
+
+
+def weak_reason_of(reason, code, code_root_dir):
+    """Reuse system/tools/door_rules.weak_reason (imported, not copied). -> '' if real, why-junk string if not,
+    None if the checker cannot be loaded (caller falls back to today's speed bump)."""
+    tools = os.path.join(code_root_dir, "system", "tools")
+    sys.path.insert(0, tools)
+    try:
+        import door_rules
+        return door_rules.weak_reason(reason, code)
+    except Exception as e:
+        warn("door_rules.weak_reason unavailable (%s); reason gate skipped" % e)
+        return None
+    finally:
+        sys.path.pop(0)
+
+
+def personal_conf():
+    return os.path.join(HOME, ".config", "lifehack", "placement.conf")
+
+
+def allowed_folders(placement):
+    """Folders the person has already given a reason for: rules whose zone is `allow:<abs folder>`."""
+    return [z[6:] for (z, _p, _m) in placement.values() if z.startswith("allow:")]
+
+
+def remember_folder(folder, reason):
+    """Append one line to ~/.config/lifehack/placement.conf:  allow-<slug> TAB allow:<folder> TAB * TAB <date> reason: <text>.
+    One folder per line; the 2nd field starting `allow:` is the whole read-back contract."""
+    import datetime
+    path = personal_conf()
+    try:
+        have = _open(path).read()
+    except OSError:
+        have = ""
+    for ln in have.splitlines():
+        f = ln.split("\t")
+        if len(f) >= 2 and f[1] == "allow:" + folder:
+            return False
+    slug = re.sub(r"[^A-Za-z0-9]+", "-", folder).strip("-")[-60:]
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    line = "allow-%s\tallow:%s\t*\t%s reason: %s\n" % (slug, folder, datetime.date.today().isoformat(), reason.replace("\t", " ").replace("\n", " "))
+    with _open(path, "a") as fh:
+        if have and not have.endswith("\n"):
+            fh.write("\n")
+        fh.write(line)
+    return True
+
+
+def gate_message(t, pc, why_weak, remember, hint_tools):
+    parts = []
+    if why_weak:
+        parts.append("BLOCKED: that reason was refused (%s)." % why_weak)
+    else:
+        parts.append("BLOCKED: new code in %s, which is outside all three homes (harness repo, notes folder, personal code folder)." % os.path.dirname(t))
+    parts.append("WHERE IT BELONGS: your personal code folder, %s. Write the file there." % pc)
+    parts.append("OR, if it has to live here, state a real reason (what this folder is for and why the file cannot go in the personal code folder) "
+                 "and retry. EXACT SYNTAX: a line containing  lifehack-place: <your reason>  as a comment: in a .sh/.py file `# lifehack-place: <your reason>`; "
+                 "in a SKILL.md/.md file `<!-- lifehack-place: <your reason> -->`; in a shell command put `# lifehack-place: <your reason>` at the end of the command. "
+                 "Filler (\"needed\", \"todo\") or a restatement of the filename is refused. A retry with no reason is stopped again.")
+    if remember:
+        parts.append("A real reason is remembered for this folder in ~/.config/lifehack/placement.conf, so you are not asked again for it.")
+    parts.append("RULE: system/hooks/placement.conf (code-outside-homes).")
+    return " ".join(parts) + hint_tools
+
 # ---------------------------------------------------------------- the decision
 def sop_receipt_valid(sid):
     """Mirror of guard_hook_sop_read.sh's receipt test (same key order, 12h TTL), in-process, no fork.
@@ -383,6 +474,30 @@ def main_inner():
                         pmsg = pmsg.replace("{path}", pc)
                 else:
                     hit = False
+                if hit and zone == "outside-homes":
+                    if any(under(t, f) for f in allowed_folders(placement)):
+                        hit = False   # the person already gave a reason for this folder (remember_reason)
+                    elif _roundb("reason_gate"):
+                        blob = ti.get("command", "") if tool == "Bash" else w["content"]
+                        reason, rest = stated_reason(blob)
+                        why = weak_reason_of(reason, "%s %s" % (t, rest), code) if reason else ""
+                        if reason and why == "":
+                            hit = False   # a stated, real reason: this one passes
+                            if _roundb("remember_reason"):
+                                try:
+                                    remember_folder(os.path.dirname(t), reason)
+                                except Exception as e:
+                                    warn("could not remember the reason (%s)" % e)
+                        elif why is not None:   # no reason, or a junk one: stop EVERY time, never once-per-session
+                            ht = ""
+                            if _roundb("placement_toolbox_hint"):
+                                try:
+                                    ht = tool_hint(code, "%s %s" % (t, (w["content"] or "")[:1500]))
+                                    ht = ("\nShared tools that may already do this:" + ht) if ht else ""
+                                except Exception:
+                                    ht = ""
+                            denies.append(("gate-hard", None, gate_message(t, pc, why if reason else "", _roundb("remember_reason"), ht)))
+                            hit = False
                 if hit:
                     denies.append(("placement", "place-" + rname,
                                    "Wrong home? %s Retry the same call and it goes through; this stop happens once per session per rule. "
@@ -462,7 +577,7 @@ def main_inner():
 
     # hard blocks win and never write state
     for kind, key, msg in denies:
-        if kind == "copy-hard":
+        if kind in ("copy-hard", "gate-hard"):
             sys.stderr.write(msg + "\n")
             return 2
 
