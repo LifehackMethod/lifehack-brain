@@ -1,26 +1,21 @@
 # How this system works, and how to be useful in it
 
-> Loaded automatically in every session started from this folder. It is the standing brief: how to
-> talk to the person, the rules that hold whatever they ask for, and where things live. Keep it short
-> — everything here is paid for on every single turn.
+> ~~Loaded automatically in every session started from this folder.~~ *(2026-10-30: it is delivered by the
+> plugin's SessionStart hook, `system/hooks/emit_harness_brief.sh` (`hooks/hooks.json`), not by the folder.)*
+> It is the standing brief: how to talk to the person, the rules that hold whatever they ask for, and
+> where things live. Keep it short — everything here is paid for on every single turn.
 
 ## System at a glance — the organism map
 
 **Building a desk, skill, job, hook or tool? Use the shared layer first.** Common tools live ONCE in `shared/`;
 desks USE them and never copy them. The list of what exists is `system/register/toolbox.md` (generated) — read it
-before writing anything. Detail: `shared-layer.md`.
+before writing anything. Detail: ~~`shared-layer.md`~~ *(2026-10-30: not at the root)* `system/organism/elements/shared-layer.md`.
 
-> **Chosen by measurement, not argument** (2026-08-03). Two nights of sealed-agent scoring — **58 probes
-> on 2026-08-03** (counted from returned payloads) on top of the prior night's variant bake-off. This page
-> won; **every structural alternative scored worse.** Do not "improve" it from taste — the losing ideas
-> were: signposting down to the manual, deleting the manual, splitting the manual, tagging the element
-> files, putting search-strings here, and carrying no map at all.
-> ⚠ **Cost deltas from that run are DIRECTIONAL, not precise** — a replicate measured 2.2× within-cell
-> variance at n=1. The categorical results (deleting the manual loses two answers; every arm was worse)
-> are the solid part.
+> **Chosen by measurement, not argument** (2026-08-03): this map layout beat every alternative — do not
+> restructure it from taste. Evidence and the losing ideas: `system/organism/map-measurement-note.md`.
 >
 > **Deeper layers:** `system/organism/manual.md` (how the parts work together — LOAD-BEARING, holds rules
-> that exist in no element file) + `system/organism/elements/` (44 files, source-traced from code).
+> that exist in no element file) + `system/organism/elements/` (~~44~~ 49 files, counted 2026-10-30, source-traced from code).
 > ⚠ **Every path on this page is under the PLUGIN ROOT, never your working folder** (manual → THREE HOMES). A
 > window working in a private repo that has its own `system/organism/manual.md` is in the DESKS manual, not this one.
 
@@ -44,7 +39,7 @@ elements/<slug>.md, the exhaustive source. If this map is your only source, you 
                      money decision. the money RECORDS live in the owning subject's own store, never here.
 @ /research /websearch   find something out, sanitized | research-web-plane.md
 @ /explain /simplify     have it said plainer | translator-cluster.md
-@ /professor       send someone to LEARN this whole system | `.claude/skills/professor/` ⛔ not in this repo, only in the installed plugin — NOT an element;
+@ /professor       send someone to LEARN this whole system | `.claude/skills/professor/` ~~⛔ not in this repo, only in the installed plugin~~ *(2026-10-30: it is in this repo, SKILL.md + routing-eval.md)* — NOT an element;
                    the taught tour. this page ROUTES; that one EXPLAINS.
 @ (open the file)  which of the three layers answers THIS question | brain.md — the map ROUTES, the manual
                    EXPLAINS how the parts combine, elements/<slug>.md exhausts one part. wrong layer,
@@ -53,7 +48,7 @@ elements/<slug>.md, the exhaustive source. If this map is your only source, you 
 ! (automatic)   a suspicious email is classified | sentinel.md — writes a status tile on EVERY verdict,
                 pushes a CRITICAL alert ONLY on DANGER. a DANGER pause has NO auto-resume: YOU clear it.
 ! (no command)  something blocked me and I never asked | hook-plane.md — a registered guard fired. its
-                deny message names WHICH guard and why; the guards are listed in `.claude/settings.json`.
+                deny message names WHICH guard and why; the guards are listed in ~~`.claude/settings.json`~~ *(2026-10-30: a second, drifting copy)* `hooks/hooks.json` (the live registry).
 ! (no command)  make the system actually STOP me | hook-plane.md — you name the rule, a session writes+registers
                 the hook, then it fires alone forever. a doctrine line only asks nicely.
 ! (no command)  I am committing onto a branch the remote has never seen | guard_no_upstream_commit_signpost.sh —
@@ -74,8 +69,10 @@ elements/<slug>.md, the exhaustive source. If this map is your only source, you 
   door. read it before adding or changing any scheduled job.
 NOT BUILT — admissions, not omissions. knowing now beats inferring a connection that isn't there:
 - one subject's records agreeing with another's (a billing row becoming taxable income). no general
-  primitive; calculate + compute-mechanically-gate are DORMANT, name-only. you carry it by hand.
-- a weekly/monday cross-subject digest. no weekday cadence exists.
+  primitive; the `calculate` skill is DORMANT (manual.md index). ~~compute-mechanically-gate is DORMANT, name-only~~
+  *(2026-10-30: it is LIVE, `inject_compute_mechanically.sh` on UserPromptSubmit, `hooks/hooks.json`; manual.md: NOT dormant)*. you carry the cross-subject part by hand.
+- a weekly/monday cross-subject digest. ~~no weekday cadence exists.~~ *(2026-10-30: `/planning-weekly` and `/planning-daily`
+  exist, you start them; `elements/planning.md`. What is not built is an automatic cross-subject digest.)*
 - a rolled-up count of security events over a week. sentinel logs each one; ⚠ CORRECTED 2026-09-01
   (#62, approved by Enver direct): `sentinel_response.py` computes a running 24h tally
   (`event_count_24h`, `danger_count_24h`, `active_count_24h`, `reviewed_count_24h`) into a
@@ -83,6 +80,27 @@ NOT BUILT — admissions, not omissions. knowing now beats inferring a connectio
   No WEEKLY rollup exists — that half of the claim stands.
 - any rule that auto-decides on inbound business content. BY DESIGN: a human decides.
 <!-- END ORGANISM -->
+
+## Rulebooks — which SOP for what
+
+All in `system/sops/`. Open the one that matches the job; each is the owner of its topic.
+
+- `agentic-security-sop.md` — use when opening a new path that reads outside content or acts on a person's behalf.
+- `architecture-planning-sop.md` — use when a fuzzy "build X / fix this" must become a scoped plan for plan mode.
+- `build-conductor-sop.md` — use when running a parallel or orchestrated build, with helpers in gears.
+- `build-sop.md` — use when executing a build: the hard-won do's and don'ts (loaded by `/build`).
+- `canonical-principles-sop.md` — use when you need the merged principles behind the system, in force in V2 (layers of friction).
+- `deck-design-system.md` — use when building a presentation: house rules only; the design system itself lives outside this plugin.
+- `design-process-sop.md` — use when designing a dashboard or UI with an agent.
+- `desk-building-sop.md` — use when creating or changing a desk (the one canonical statement of its shape).
+- `google-sheet-sop.md` — use when building, editing or writing to any Google Sheet.
+- `hook-sop.md` — use when deciding whether and how to add a hook that enforces a rule.
+- `jobs-sop.md` — use when adding, changing, switching on or debugging a scheduled job.
+- `plan-sharpening-sop.md` — use when sharpening a plan: the thinking beats shared by `/autoplan` and `/checkin`.
+- `recovery-runbook.md` — use when cold-restoring after a machine, repo or auth failure (written for the private ClaudeOps system).
+- `skill-building-sop-extract.md` — use when you need the one extract (a model cannot report its own compliance) the core skills cite.
+- `skill-building-sop.md` — use when building, fixing or testing a skill (long; read the part you need).
+- `translator-rubric.md` — use when writing to the person: the one source for the translator voice.
 
 ## The shape of the thing
 
@@ -95,11 +113,17 @@ path is resolved by `shared/brain_root.py` and by nothing else; every path any t
 from there — with one stated exception: throwaway scratch, which `shared/paths.py` deliberately puts
 in the machine's own temp folder, because regenerable files do not belong in an AI Brain.
 
-**Four homes, and the question that sorts them is WHO IS THIS FOR.** For me → outside this repo:
+~~**Four homes, and the question that sorts them is WHO IS THIS FOR.** For me → outside this repo:
 `~/.claude/<kind>/<name>/` (a real folder, never a symlink) if the harness must FIND it, the AI Brain
 if something only CALLS it. For everyone → this repo, on a branch, offered back as a PR. Shared
-content is the exception — next to nothing lives there, a real gap, not an oversight. Full picture:
-`system/organism/elements/where-things-live.md`.
+content is the exception — next to nothing lives there, a real gap, not an oversight.~~ *(2026-10-30: the
+manual's ruling of 2026-10-29 is THREE HOMES, by place.)*
+
+**Three homes — one file, one home.** HARNESS: this plugin's root, shared machinery for everyone who
+installs it. PRIVATE: your personal code folder (named in the one-line file
+`~/.config/lifehack/personal-code`), your own desks and runners, yours alone. NOTES: the AI Brain —
+plans, records, journals, content not code. Address a file by its home's real root. Full picture:
+`system/organism/manual.md` (THREE HOMES) and `system/organism/elements/where-things-live.md`.
 
 If it is not set, the honest answer is "not set" — **never guess a folder, never fall back to the
 current directory.** Putting someone's AI Brain somewhere they did not choose is the failure this rule
@@ -187,10 +211,11 @@ gist, so skimming the bold gives the shape — and never force a reply that is n
 
 ## Planning Output (always)
 
-Any plan you produce — plan mode or not — returns as **Phase → Feature → Task**; every task runs
+Any plan you produce — plan mode or not — opens with a **FRAME block** (desired outcome · success criteria ·
+constraints · out-of-scope) and then returns as **Phase → Feature → Task**; every task runs
 **Execute → Verify & test → mark done**, and is not done until its verify actually passes. Show the
 plan before executing it. Features are optional for a small plan; Phase, Task and Verify are not.
-Detail: `system/sops/architecture-planning-sop.md`.
+Detail, including the full plan spec: `system/sops/architecture-planning-sop.md` (Stage 8).
 
 ## Breadcrumbs during long work
 
