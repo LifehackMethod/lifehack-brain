@@ -47,7 +47,7 @@ Also from the system laws: "ran" is not "succeeded" (dead end F2, 166 silent fai
 - If two desks would WANT it to behave differently, it is the desk's: prompt, verdict set, what is written, where.
 - If a person would be UPSET that it behaved differently in two desks, it is shared, exactly one copy in `$CODE`: fetch, sanitise, scan, pause, auth, lock, timeout, output check, cost, notify, state location.
 - The middle is shared shape, desk content: the loop and its guardrails are shared; the desk hands in its prompt, closed verdict set and output format.
-- Where files live: shared code in `$CODE` (the public harness). Desk runners, prompts and notes in the private desk repo (default `$HOME/.claude/skills/ClaudeOps`, override `LIFEHACK_DESK_REPO`) and the notes folder. Never put desk code in the public harness. Never copy a shared file into a desk.
+- Where files live: shared code in `$CODE` (the public harness). Desk runners, prompts and notes in your personal code folder (find it with `python3 $CODE/shared/personal_code_root.py --quiet`; for the maintainer this resolves to ClaudeOps) and the notes folder. Never put desk code in the public harness. Never copy a shared file into a desk.
 - Everything ingested, in a session or a job, goes through the security system (the door, section 7).
 
 ## 4. The chain
@@ -112,7 +112,7 @@ The door refuses presence-grade checks (5.9): a regex that tests only an exit co
 
 - a missing or `TBD` contract column, a bad model word, or a bad budget;
 - a presence-grade check (5.9);
-- a runner outside `$CODE` and the private desk repo, or a pinned code path (a clone or plugin-cache folder) where `$LIFEHACK_CODE_ROOT` belongs;
+- a runner outside `$CODE` and your personal code folder, or a pinned code path (a clone or plugin-cache folder) where `$LIFEHACK_CODE_ROOT` belongs;
 - a raw outside READ (Gmail or Calendar reads, sheets `values get`, `curl`, `urllib`, `requests`) anywhere in the runner, what it sources or invokes, or the helper files beside it. Only files named in `system/tools/shared-fetch-allowlist.txt` may hold one. Never add a desk runner to that list. **Writes** to the owner's own Google account (labels, archive, Sheets, Tasks, Calendar, Docs) are allowed: an accepted risk (ruled 2026-10-28). **One vendor-read exception:** a row with `model=none` may make its own logged-in read of the owner's own vendor account from ONE file listed in `system/tools/vendor-read-allowlist.txt`; it ends if the row gains an AI step;
 - a literal model id (or `--model X`) anywhere outside `model.lib.sh`. Name a tier;
 - a silenced error (5.9): `|| true`, `|| :` or `2>/dev/null` on a fetch, write, push or model call. Stderr goes to the job log.
@@ -154,13 +154,13 @@ A blind session can do this from here alone. Never skip a step; never flip the r
 
 1. **Write the outcome in one sentence.** If you cannot, the job is not ready.
 2. **Decide the layer.** The routine (steps, prompts, verdicts) is a skill, or a script a person can run by hand. If it needs a card, stop and use the skills SOP v2 PART 0 rule. This job is only the envelope.
-3. **Write a thin runner.** A job that serves ONE owner's desk lives in the private desk repo (`desks/<desk>/tools/<job>/`); a job every installer would want lives in `$CODE/system/tools/`. Never copy shared files into a desk. Resolve everything from `$LIFEHACK_CODE_ROOT`. Use the shared fetch for any read, `run_model` for any AI call, no silenced errors, exit 75 when there is nothing to do or a lock is held, and write a receipt AFTER verifying the artifact.
+3. **Write a thin runner.** A job that serves ONE owner's desk lives in your personal code folder (`desks/<desk>/tools/<job>/`); a job every installer would want lives in `$CODE/system/tools/`. Never copy shared files into a desk. Resolve everything from `$LIFEHACK_CODE_ROOT`. Use the shared fetch for any read, `run_model` for any AI call, no silenced errors, exit 75 when there is nothing to do or a lock is held, and write a receipt AFTER verifying the artifact.
 4. **Add the row, `off`.** Fill all five contract columns. Check the interval against section 4.
 5. **Run the door:** `bash $CODE/system/tools/install-schedulers.sh --check-row <name>` until it prints `PASS`.
 6. **Read policy** (if it reads email): the query, cap and start point the skill decided with the owner. Do not invent one.
 7. **Add the rig scenario** (section 10). Run `bash $CODE/system/tools/tests/job-sim.sh`.
 8. **One forced dry run:** `bash $CODE/system/tools/job-run.sh <name> --force`. Read `$HOME/.config/lifehack/state/jobs/<name>/last-run` and `log`. Expect `rc=0 ... [check] ok`. A forced run pushes nothing and never changes the row.
-9. **Commit** shared work to `$CODE` and desk work to the private desk repo, per the GitHub SOP. Report what the run proved and what it did not test.
+9. **Commit** shared work to `$CODE` and desk work to your personal code folder, per the GitHub SOP. Report what the run proved and what it did not test.
 
 **Worked example.** A job that summarises a local drop folder once a day with one small model call.
 

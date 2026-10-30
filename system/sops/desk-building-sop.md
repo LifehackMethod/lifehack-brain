@@ -68,6 +68,7 @@ desks/{desk}/
 ## Procedure (one-punch, then two hand steps)
 
 1. **Scaffold the folder shape (deterministic):**
+   `$NOTES_ROOT` is your notes folder (the AI Brain): `NOTES_ROOT="$(python3 <plugin>/shared/brain_root.py --quiet)"`.
    ```
    python3 system/tools/cowork-ingest/desk_scaffold.py \
      --drive-root "$NOTES_ROOT" --desk <slug> --purpose "<one line>" \
