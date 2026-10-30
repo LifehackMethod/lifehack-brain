@@ -20,6 +20,11 @@ WHAT COUNTS AS A CUT (stated, deliberate)
   * A passage is "in the log" when its whitespace-collapsed text is inside ONE dated block of <name>.history.md whose heading
     (or the 3 lines after it) says `reason: <something>`. If the whole passage is not found in one piece, each of its lines of
     6+ characters must be found (so a passage logged line by line still counts).
+  * MATCHING IS DONE ON A NORMALISED FORM, on both sides (mdnorm): whitespace collapsed, `>` quote prefixes, list markers and the
+    emphasis marks * _ ` ~ dropped. So a log that quotes, bullets, bolds or re-wraps a passage still matches; no word is ignored.
+  * A removed fragment of a REWORDED line (word diff) is covered when the whole OLD line it came from is in the log (the original
+    line is archived, so each of its pieces is). A deleted line that survives elsewhere in the new text moved, it was not cut.
+  * A dated sub-heading (deeper than an open dated heading) is an entry INSIDE that block; the block still needs its reason.
   * A <name>.history.md file is never itself guarded. A NEW file, or an empty one, has nothing to lose.
 
 # WHO-COULD-THIS-BREAK: a session (or the maintainer) that tidies, de-duplicates, condenses or moves text out of an SOP or canon
@@ -47,29 +52,60 @@ def norm(s):
     return " ".join(s.split())
 
 
+_QUOTE_RX = re.compile(r"^\s*(?:>\s*)+")
+_LIST_RX = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+")
+_EMPH_RX = re.compile(r"[*_`~]")
+
+
+def mdnorm(s):
+    """Match form: whitespace-collapsed, with blockquote `>` prefixes, list markers and emphasis marks (* _ ` ~) dropped,
+    so a passage re-quoted, re-bulleted, re-wrapped or re-emphasised in the log still matches. Applied to BOTH sides."""
+    out = []
+    for ln in s.split("\n"):
+        ln = _LIST_RX.sub("", _QUOTE_RX.sub("", ln))
+        out.append(ln)
+    return norm(_EMPH_RX.sub("", " ".join(out)))
+
+
+class Run(str):
+    """A removed passage. .origin = the whole OLD lines it was cut from (word-diff fragments of a reworded line); if every
+    one of those lines is in the log, the fragment is covered (the original line is archived, so its pieces are too)."""
+    origin = ()
+
+
 def removed_passages(old, new):
     """-> list of removed passages (strings; multi-line ones keep their newlines), or [] when the edit is tiny/additive."""
     if old == new:
         return []
     newn = norm(new)
+    newm = mdnorm(new)
     ol, nl = old.split("\n"), new.split("\n")
     runs = []
     for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, ol, nl, autojunk=False).get_opcodes():
         if tag == "delete":
-            runs.append("\n".join(ol[i1:i2]))
+            for x in ol[i1:i2]:          # one run per old line: a line that moved is not a cut, its neighbours still are
+                r = Run(x); r.origin = (x,); runs.append(r)
         elif tag == "replace":
-            ot, nt = " ".join(ol[i1:i2]).split(), " ".join(nl[j1:j2]).split()
+            ot, nt, oline = [], " ".join(nl[j1:j2]).split(), []
+            for k in range(i1, i2):
+                if len(norm(ol[k])) >= MIN_LINE and mdnorm(ol[k]) in newm:
+                    continue             # this old line survives elsewhere in the new text: moved, not cut
+                w = ol[k].split(); ot += w; oline += [k] * len(w)
             if len(ot) * len(nt) > BIG:
                 newset = {norm(x) for x in nl[j1:j2]}
-                runs.extend(x for x in ol[i1:i2] if norm(x) not in newset)
+                for x in ol[i1:i2]:
+                    if norm(x) not in newset:
+                        r = Run(x); r.origin = (x,); runs.append(r)
                 continue
             for t, a1, a2, _b1, _b2 in difflib.SequenceMatcher(None, ot, nt, autojunk=False).get_opcodes():
                 if t in ("delete", "replace"):
-                    runs.append(" ".join(ot[a1:a2]))
+                    r = Run(" ".join(ot[a1:a2]))
+                    r.origin = tuple(ol[k] for k in sorted(set(oline[a1:a2])))
+                    runs.append(r)
     keep = []
     for r in runs:
         n = norm(r)
-        if n and n not in newn:      # still present elsewhere in the new text -> moved, not cut
+        if n and n not in newn and not (len(n) >= MIN_LINE and mdnorm(r) in newm):   # present elsewhere in the new text -> moved, not cut
             keep.append(r)
     if sum(len(norm(r)) for r in keep) < MIN_TOTAL:
         return []
@@ -89,7 +125,7 @@ def logged_text(hist):
             lines = f.read().split("\n")
     except OSError:
         return ""
-    blocks, cur, fence = [], None, None
+    blocks, stack, fence = [], [], None      # stack: open blocks as (heading level, lines), outermost first
     for ln in lines:
         s = ln.strip()
         if fence is None and (s.startswith("~~~") or s.startswith("```")):
@@ -97,14 +133,20 @@ def logged_text(hist):
         elif fence is not None and s.startswith(fence):
             fence = None
         elif fence is None and HEAD_RX.match(ln) and DATE_RX.search(ln):
-            cur = [ln]; blocks.append(cur); continue
-        if cur is not None:
-            cur.append(ln)
+            lvl = len(ln) - len(ln.lstrip("#"))
+            while stack and stack[-1][0] >= lvl:     # a dated heading of the same or a higher level closes the open ones
+                stack.pop()
+            cur = [ln]; blocks.append(cur); stack.append((lvl, cur))
+            for _l, outer in stack[:-1]:             # a deeper dated heading is also an entry INSIDE its parent block
+                outer.append(ln)
+            continue
+        for _l, b in stack:
+            b.append(ln)
     out = []
     for b in blocks:
         head = " ".join([b[0]] + [x for x in b[1:] if x.strip()][:3])
         if REASON_RX.search(head):
-            out.append(norm("\n".join(b)))
+            out.append(mdnorm("\n".join(b)))
     return "\x00".join(out)
 
 
@@ -112,12 +154,16 @@ def missing_passages(passages, hist):
     log = logged_text(hist)
     miss = []
     for p in passages:
-        pn = norm(p)
+        pn = mdnorm(p)
         if pn in log:
             continue
-        lines = [norm(x) for x in p.split("\n")]
+        lines = [mdnorm(x) for x in p.split("\n")]
         lines = [x for x in lines if len(x) >= MIN_LINE]
         if len(lines) > 1 and all(x in log for x in lines):
+            continue
+        org = [mdnorm(x) for x in getattr(p, "origin", ())]
+        org = [x for x in org if len(x) >= MIN_LINE]
+        if org and all(x in log for x in org):
             continue
         miss.append(p)
     return miss

@@ -95,6 +95,19 @@ $LONG1
 
 End.
 ")"
+# normalisations: the log may quote, bullet, emphasise or re-wrap the passage; a reworded line counts as logged when its whole ORIGINAL line is
+hist_raw() { printf '# History log for pond-sop.md\n\n## 2026-10-30 - reason: pond tidy\n\n%s\n' "$1" > "$SOPS/pond-sop.history.md"; }
+mk_sop; hist_raw "> $LONG2"; allow "history quotes the passage with a > prefix" "$(json Edit "$SOP" "$LONG2
+" "")"
+mk_sop; hist_raw "- **$LONG2**"; allow "history has a list marker and bold around the passage" "$(json Edit "$SOP" "$LONG2
+" "")"
+mk_sop; hist_raw "$(printf '%s' "$LONG2" | fold -s -w 30 | sed 's/^/> /')"; allow "history re-wrapped and quoted line by line" "$(json Edit "$SOP" "$LONG2
+" "")"
+mk_sop; printf '# Pond SOP\n\n*%s*\n\nEnd.\n' "$LONG1" > "$SOP"; hist_raw "$LONG1"; allow "SOP had emphasis the log lacks" "$(json Edit "$SOP" "*$LONG1*
+" "")"
+mk_sop; hist_raw "$LONG1"; allow "reworded line, whole original line is in history" "$(json Edit "$SOP" "$LONG1" "The heron stands on the west bank at noon, and the bell rule was dropped.")"
+mk_sop; printf '# History log for pond-sop.md\n\n## 2026-10-30 - reason: pond tidy\n\n### 2026-10-30 line 3 (before edit)\n\n%s\n' "$LONG2" > "$SOPS/pond-sop.history.md"; allow "dated sub-entry nested under a block that has a reason" "$(json Edit "$SOP" "$LONG2
+" "")"
 mk_sop; refuse "Write replaces SOP with a stub" "$(json Write "$SOP" "# gone")"
 mk_canon; refuse "canon cut, no history" "$(json Edit "$CANON" "$LONG2
 " "")"
@@ -105,6 +118,15 @@ mk_sop; refuse "Bash redirect overwrite (heredoc content)" "$(json Bash "$SOP" "
 EOF")" bm
 mk_sop; refuse "Bash sed -i on an SOP" "$(json Bash "$SOP" "sed -i '' 's/heron/crane/' $SOP")" bm
 mk_sop; printf 'x\n' > "$NOTE"; refuse "Bash cp over an SOP" "$(json Bash "$SOP" "cp $NOTE $SOP")" bm
+
+# normalising must not let UNLOGGED text through
+mk_sop; hist_raw "> The heron stands on the east bank of the pond every morning."; refuse "only a fragment of the passage is in history (quoted)" "$(json Edit "$SOP" "$LONG1
+" "")"
+mk_sop; hist_raw "Frogs are counted three times a week, in the blue ledger, and nothing else."; refuse "history holds different text" "$(json Edit "$SOP" "$LONG2
+" "")"
+mk_sop; hist_raw "The heron stands on the west bank at noon, and the bell rule was dropped."; refuse "reworded line, only the NEW wording is in history" "$(json Edit "$SOP" "$LONG1" "The heron stands on the west bank at noon, and the bell rule was dropped.")"
+mk_sop; printf '# History log for pond-sop.md\n\n## 2026-10-30 - tidy\n\n### 2026-10-30 line 3\n\n%s\n' "$LONG2" > "$SOPS/pond-sop.history.md"; refuse "nested entry but no block has a reason" "$(json Edit "$SOP" "$LONG2
+" "")"
 
 # the way through, followed literally, lets the same Edit pass
 mk_sop; run_cw on "$(json Edit "$SOP" "$LONG2
