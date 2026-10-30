@@ -124,8 +124,10 @@ tier: canon
 > and the model stops following any (§4.5). **A rule CODE enforces needs no tier** — it does not depend on
 > compliance (§4.6). Rules live in code; prose carries principles with their reason.
 >
-> **Compliance is a stack, not a choice.** Each layer catches what the one above misses; a hook is the scarce top,
-> never a substitute for the layers beneath it (§5.20).
+> ~~**Compliance is a stack, not a choice.** Each layer catches what the one above misses; a hook is the scarce top,
+> never a substitute for the layers beneath it (§5.20).~~ *(2026-10-30: see "The layers of friction" above, Venn, not a stack)*
+>
+> **Compliance is the center of the Venn diagram, not a stack.** Each circle of friction covers part of the risk; a hook is the scarce, expensive circle, never a substitute for the cheaper circles around it (§5.20).
 >
 > **The operating rule under the one law** *(added 2026-09-05 from the failure census, §16 — CANDIDATE as a single
 > sentence, since one synthesis wrote it; the modes beneath it are REPRODUCED, except where a mode's own line says it
@@ -202,7 +204,7 @@ building; it decided in one sentence that it did not apply, and proceeded.)*
 
 **COUNT LAYERS BY MECHANISM, NOT NUMBER** — two layers only if they fail for different reasons. Three written
 rules are one layer wearing three hats; a rule **+** a check firing before the model is consulted **+** an
-after-the-fact disk check is genuinely three. *(§5.20 says compliance is a stack; this says how to count one.)*
+after-the-fact disk check is genuinely three. *(§5.20 says compliance is the overlap of several circles of friction; this says how to count them.)*
 ⚠ **THREE ADJACENT WORDS, THREE DIFFERENT THINGS — do not merge them.** A **LAYER** is a rung in the enforcement
 stack (prose · a gate · a hook) — **that is the only sense counted here.** §0's *"the deterministic machinery is
 the OUTER layer"* is a different sense — **which code wraps which** — and is **never** counted. A **SEAM** is a
@@ -221,14 +223,14 @@ the memory-or-agreement test **CANDIDATE** — a reframing, not a measurement.
 ---
 
 ## 0.2 — THE HOSPITAL: one more layer (v2, 2026-10-28)
-> **DRAFT — not in force.** Nothing in §0.1 or the centering frame is struck or qualified by this section. It sits INSIDE that frame: no perfect control · every layer eventually fails · test the combination · FRICTION, not certainty · a real layer depends on neither memory nor agreement · compliance is a stack, not a choice. What follows adds ONE candidate layer to the stack and says exactly what it does and does not buy.
+> **DRAFT — not in force.** Nothing in §0.1 or the centering frame is struck or qualified by this section. It sits INSIDE that frame: no perfect control · every layer eventually fails · test the combination · FRICTION, not certainty · a real layer depends on neither memory nor agreement · compliance is the center of the Venn diagram, not a stack. What follows adds ONE candidate circle of friction and says exactly what it does and does not buy.
 
 **The frame (Enver's).** A fresh AI agent is a very intelligent Alzheimer's patient: sharp in the moment, nothing carried between moments. So the hospital does not rely on the patient remembering.
 - **HOOKS = walls.** A wall blocks one bad action. It cannot force an ORDER of actions. (Layer already counted in §0.1 and §5.20.)
 - **CARD + RECORD = the chart.** Ordered steps, each typed code / ai / human, each with a check. An append-only record on disk. A fresh agent is handed STATE (files), not history.
 - **RUNNER = the nurse.** A small script hands over ONE step at a time with its file inputs, runs the step's check, and is the ONLY writer of the record. The agent never writes the record.
 
-**Where it sits in the stack.** Walls stop an action. The nurse is a separate layer BESIDE the walls: a sequencing-and-proof layer (did step N happen, in order, and does its output pass a code check). It acts without consulting the model, so by the §0.1 test it is a layer and not a preference. But it is one more layer, not the end of the stack: it fails for its own reasons (a check can be presence-only, a value can go unvalidated, the record can be truncated, a step can be non-idempotent), it does nothing about content inside an `ai` step, and it does not replace any hook or any other layer. Layers combine; the combination is what gets tested. It buys friction, not certainty.
+**Where it sits among the circles.** Walls stop an action. The nurse is a separate layer BESIDE the walls: a sequencing-and-proof layer (did step N happen, in order, and does its output pass a code check). It acts without consulting the model, so by the §0.1 test it is a layer and not a preference. But it is one more layer, not the end of the stack: it fails for its own reasons (a check can be presence-only, a value can go unvalidated, the record can be truncated, a step can be non-idempotent), it does nothing about content inside an `ai` step, and it does not replace any hook or any other layer. Layers combine; the combination is what gets tested. It buys friction, not certainty.
 
 **Evidence (orchestrator-v2; every figure scored by code; brief `state/projects/orchestrator-v2/brief.md` §4).** ⛔ owner's notes
 - 20 runs, 10 of them started inside a live Claude Code session: 0 out-of-order. **Caveat (§5.7a): zero events in 20 runs only rules out true rates above ~14%.** It is not a measured rate of zero.
@@ -239,7 +241,7 @@ the memory-or-agreement test **CANDIDATE** — a reframing, not a measurement.
 - **NOT validated by real multi-week use.** Tier: OBSERVED in a fault-injection harness and short real runs; CANDIDATE as a layer in daily operation.
 
 **Map (labels verified against this file).**
-- **Walls:** §4.6 (hook = remove an ability) · §5.4 (bind the predictable and catastrophic) · §5.9 (a guard that looks like it works) · §5.20 (compliance is a stack) · §15.27 (the model gate).
+- **Walls:** §4.6 (hook = remove an ability) · §5.4 (bind the predictable and catastrophic) · §5.9 (a guard that looks like it works) · §5.20 (compliance is the Venn center) · §15.27 (the model gate).
 - **Chart:** §4.7 (reliability belongs to the chain, seam not step) · §4.12 (re-anchor at the generation boundary) · §5.15 (skill as reusable unit, three phases) · §15.15 (externalise state, pass a pointer) · §12.c (artifact-then-pointer) · §7.3 (nothing is saved unless something writes it).
 - **Nurse:** §4.1 (verify the effect, not the report) · §4.3 (a model checking its own work) · §5.6 (alive means saying so) · §5.7 / §5.7a (break the thing; zero events and rates) · §7.2 (a self-written citation must be checked) · §7.7 (a test that authors both sides) · §15.14 (independent positive proof) · §15.17 (independent checker).
 
@@ -725,7 +727,7 @@ existing home and extend it.** Forking creates silent drift: one truth, one home
 get deduped; **two that disagree get surfaced as a conflict, never silently merged.**
 AUTHORITATIVE (system-wide reframe 2026-07-12).
 
-**5.20 Compliance is a stack, not a choice.** `[H]` §5.4 gives the escalation ladder — prose → gate → user-turn
+**5.20 ~~Compliance is a stack, not a choice.~~ Compliance is the center of the Venn diagram, not a choice.** *(heading reworded 2026-10-30; frame in "The layers of friction" above. Where this section says "stack", read overlapping circles of friction.)* `[H]` §5.4 gives the escalation ladder — prose → gate → user-turn
 → hook — as rungs to *pick from*. The observed truth is that each layer catches what the one above misses, and
 the design is to **stack** them, sized to the stakes. OBSERVED 2026-09-04/05, one build, three layers, three
 disjoint catches: a *refuse* layer (a linter at write time) found 8 defects six reviewer lenses never named ·
@@ -734,7 +736,7 @@ a *wall* layer (guards) refused a leaked personal path and an unencoded file-ope
 passed. **A hook is the scarce top of the stack** — expensive, machine-wide, unbypassable — never a substitute
 for the cheaper layers beneath it, and never the first thing reached for. *(Receipts: commits on `V2`
 2026-09-04; `state/autoplan-rebuild/` ⛔ (owner's notes).)*
-⭐ **HOW TO COUNT ONE IS IN §0.1, NOT HERE** *(added 2026-09-11)*. This section says compliance is a **stack**;
+⭐ **HOW TO COUNT ONE IS IN §0.1, NOT HERE** *(added 2026-09-11)*. This section says compliance is the **overlap of several circles**;
 **§0.1 says how to count one** — and a stack you cannot count is a number you are guessing. ⛔ **The rule is
 stated there and nowhere else, deliberately: it was briefly written in both places, which is **mode 3 — *"the copy you
 didn't count"*, §16's third failure mode: one fact in several places with no generator, so a fix leaves the
@@ -1623,7 +1625,7 @@ zero-byte reads at exit 0, dataless files, paths with spaces; four instances, on
   **Artifact** — the count and the hashes, both re-derivable: `for n in guard_write_paths.sh guard_canon_write.sh; do echo "== $n"; find "$HOME/.claude" "$HOME/lifehack-brain" -name "$n" -type f 2>/dev/null -exec shasum -a 256 {} \; | awk '{print substr($1,1,16), $2}' | sort; done` and, for the registration, `grep -o '[^"]*<name>' "$HOME/.claude/settings.json" | sort -u`. **Run 2026-09-07 while writing this entry:**
   - **`guard_write_paths.sh` — 14 resolvable copies, 5 distinct sha256.** Registered copy `ee365358…` (the registered hook directory); plugin-cache `0.3.15` copy `8cbc6cd0…`. They differ. Ledger `[GUARD-WRITE-PATHS-STALE-COPY-BLOCKS-OWN-REPO]`.
   - **`guard_canon_write.sh` — 13 resolvable copies, 3 distinct sha256.** Registered copy `509048d7…` carries **3** references to the v1 canon path and exempts that path from its size rail; plugin-cache `0.3.15` copy `2126249f…` carries **0** and does not. ⚠ **Both fired while this very entry was being written, and disagreed: the registered copy returned ALLOW, the unregistered stale copy returned BLOCK.** Every write in §17 was therefore split to stay under the stale copy's rail — no guard was bypassed, disabled, or routed around, and this note is the receipt for why the entries are chunked the way they are.
-  - **`guard_hook_sop_read.sh` — its own header states it was widened to `Bash|Write|Edit` on 2026-08-24. The live registration is `Bash` only**, in both `registrations.json` and `~/.claude/settings.json` (JSON parse, 2026-09-07). Its Write/Edit branch is unreachable through the harness — the code that runs is not the code the file says runs, which is this mode without a single copy involved.
+  - **`guard_hook_sop_read.sh` — its own header states it was widened to `Bash|Write|Edit` on 2026-08-24. The live registration is `Bash` only**, in both `registrations.json` and `~/.claude/settings.json` (JSON parse, 2026-09-07). *(2026-10-30: in the V2 `hooks/hooks.json` it is now registered on `Bash|Write|Edit|MultiEdit`, so the Write/Edit branch is reachable there.)* Its Write/Edit branch is unreachable through the harness — the code that runs is not the code the file says runs, which is this mode without a single copy involved.
   **Controls** — *positive:* the `guard_canon_write.sh` pair above, divergent on disk today, and a scratch copy of a watched pair made divergent by one line. *Negative:* two scratch copies made byte-identical, on which the mechanism must stay quiet. *Prior run on disk:* §16's audit line for mode 12 — held **partial, OBSERVED**, receipt `system/hooks/guard_hook_sop_read.sh`, live, **patched 2026-08-23, recurred within 48 hours and again on 2026-09-04**. The hold is one file pair; the three specimens above are the reason "one pair" is the whole of it.
   **The generalisation question, measured and not built:** how many resolvable copies of the same file exist across the plugin cache and the repos. Counted, recorded, **not fixed** — the counts above are that measurement, and the coordinator writes them beside mode 12 in §16.
   **Persistence** — set from mode 11's answer. ⚠ The right-size audit lists per-file content hashing as **LIKELY OVERBUILT** for this harness. What these specimens argue for is narrower: parity between *the copy a registration names* and *the copy that answers*, which is a check on two paths rather than on a whole tree.
@@ -1634,7 +1636,7 @@ zero-byte reads at exit 0, dataless files, paths with spaces; four instances, on
 - **17.20 A phase driver whose consumer binds a key it never emits — MODE 13 (producer and consumer never agreed).** *(Written 2026-09-07, card 5.1. Window 13 runs it.)*
   **Question** — Does the fail-closed contract guard refuse a write whose declared shape the consumer cannot bind, and pass one it can?
   **Arms** — the same `Write`, the same path, the same phase declaration, differing in exactly one thing: whether the content carries the `## Output contract` section the consumer reads.
-  **Artifact** — the mechanism is `system/hooks/enforce_multiphase_contract.sh`, **live on `PreToolUse`, matcher `Bash|Write|Edit`, confirmed by JSON parse of `~/.claude/settings.json` 2026-09-07**. It judges a `Write` a phase driver when the path contains `/skills/` and `/prompts/` and ends `.md`, and the content matches `^#\s+Phase\s+\d`; it then requires a line matching `^##\s+Output\s+contract`. `H="$REPO/system/hooks/enforce_multiphase_contract.sh"; P="$SCRATCH/skills/probe/prompts/phase1.md"; python3 -c "import json,sys,os;sys.stdout.write(json.dumps({'tool_input':{'file_path':os.environ['P'],'content':'# Phase 1 — do the thing\n\nSteps here.\n'}}))" | bash "$H" >/dev/null 2>&1; echo "plant=$?"` and the twin with `\n\n## Output contract\n- one line\n` appended to the same content — **run 2026-09-07 while writing this entry: `plant=2`, `twin=0`.**
+  **Artifact** — the mechanism is `system/hooks/enforce_multiphase_contract.sh`, **live on `PreToolUse`, matcher `Bash|Write|Edit`, confirmed by JSON parse of `~/.claude/settings.json` 2026-09-07** *(2026-10-30: the V2 `hooks/hooks.json` registers it on matcher `Write` only)*. It judges a `Write` a phase driver when the path contains `/skills/` and `/prompts/` and ends `.md`, and the content matches `^#\s+Phase\s+\d`; it then requires a line matching `^##\s+Output\s+contract`. `H="$REPO/system/hooks/enforce_multiphase_contract.sh"; P="$SCRATCH/skills/probe/prompts/phase1.md"; python3 -c "import json,sys,os;sys.stdout.write(json.dumps({'tool_input':{'file_path':os.environ['P'],'content':'# Phase 1 — do the thing\n\nSteps here.\n'}}))" | bash "$H" >/dev/null 2>&1; echo "plant=$?"` and the twin with `\n\n## Output contract\n- one line\n` appended to the same content — **run 2026-09-07 while writing this entry: `plant=2`, `twin=0`.**
   ⚠ **What this measures and what it does not.** The guard checks that the producer *declared* a contract, not that the consumer *binds the same keys*. Watching a value travel the whole seam — §16's own prevention for this mode — is a step further than the mechanism goes, and the window records that gap rather than reporting around it.
   **Controls** — *positive:* the phase driver with no `## Output contract`, the producer emitting a shape the consumer cannot read. *Negative:* the identical driver with the section present; a guard that refuses the conforming write blocks legitimate work. **Both on a scratch path under `$SCRATCH`, never a live skill.** *Prior run on disk:* §16's audit line for mode 13 — held **partial, OBSERVED**, receipt `enforce_multiphase_contract.sh`, live, refusing the call outright; the paired return-channel guard was **silent for 34 days, 8 short of the 42-day bar**, which is why the hold is partial and not durable.
   **Persistence** — set from mode 11's answer, with **PreToolUse** the presumption here since a producer and a consumer are usually two sessions and a rule that reaches only one of them has not closed the seam. ⚠ The right-size audit lists contract testing with a broker as **LIKELY OVERBUILT** for this harness; the right-sized substitute is watching one value cross one seam.

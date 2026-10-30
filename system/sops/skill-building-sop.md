@@ -10,15 +10,15 @@ status: active
 authority: user
 created_at: 2026-07-12
 updated_at: 2026-08-15
-companion: system/sops/skill-building-field-notes.md
-living_intake: system/sops/skill-irl-findings.md
+companion: "your personal code folder (not shipped in the plugin): skill-building-field-notes.md"
+living_intake: "your personal code folder (not shipped in the plugin): skill-irl-findings.md"
 sources:
   - system/sops/skill-building-sop.md@v1 (git history)                 # v1 — every law preserved, re-ranked
   - system/research/2026-07-12-skill-sop-ontrack-convergence.md        # [R]  12-agent blind convergence
   - records/research/2026-07-19-step-prompt-injection-craft.md         # [R2] step-prompt convergence
   - records/research/2026-07-25-code-vs-llm-enforcement-split.md       # [C]  6-agent crowd convergence
   - records/research/2026-07-25-skill-dissection-findings.md           # [C]  6 trusted repos, code-level
-  - system/sops/skill-irl-findings.md                                  # [M]  our own measured runs
+  - skill-irl-findings.md (your personal code folder, not shipped)     # [M]  our own measured runs
 reader_note: >
   READ ORDER IS THE RANKING. PART I is the physics — five laws you cannot prompt your way around; if you read
   nothing else, read those. PART II is the toolbox that obeys them. PART III builds a skill start to finish
@@ -67,8 +67,10 @@ reader_note: >
 > Rules live in code; prose carries principles with their reason. **"LAW" below is kept as a stable label for
 > cross-references; read it as PRINCIPLE, tiered per line — none but the sentence above meets the bar for law.**
 >
-> **Compliance is a stack, not a choice** (§II.1a). Each layer catches what the one above misses; a hook is the
-> scarce top, never a substitute for the layers beneath it.
+> ~~**Compliance is a stack, not a choice** (§II.1a). Each layer catches what the one above misses; a hook is the
+> scarce top, never a substitute for the layers beneath it.~~ *(2026-10-30: frame updated, see `canonical-principles-sop.md`, "The layers of friction")*
+>
+> **Compliance is the center of the Venn diagram, not a stack** (§II.1a). The layers are overlapping circles of friction, each covering part of the risk; where they overlap, a mistake has to get past several at once. A hook is the scarce, expensive circle, never a substitute for the cheaper circles around it.
 >
 > **The operating rule under the one law** *(added 2026-09-05 from the failure census — CANDIDATE as a single
 > sentence, since one synthesis wrote it; the modes beneath it (§II.4a, the [F] entries) are REPRODUCED, except where an entry says it entered by Enver's ruling rather than by the census):*
@@ -166,11 +168,13 @@ reader_note: >
 holds the line over a long session — without over-building.**
 
 
-# PART 0 — THE HOSPITAL (v2 frame, 2026-10-28)
+# PART 0 — THE HOSPITAL (v2 skill-design picture, 2026-10-28; sits inside the friction frame)
+
+> *2026-10-30: the system-wide frame is **layers of friction**, see `canonical-principles-sop.md`, "The layers of friction". The hospital below is only the picture for designing a skill: its walls and its nurse are circles of friction, none of them perfect control.*
 
 ## Read this first (audit, 2026-10-28)
 
-1. The card and runner here are a bash prototype: cards are `id | kind | what | check` lines and the runner is about 150 lines of shell (see `state/projects/orchestrator-v2/rig/`). It is not a product.
+1. The card and runner here are a bash prototype: cards are `id | kind | what | check` lines and the runner is about 150 lines of shell (see `<notes>/state/projects/orchestrator-v2/rig/`). It is not a product.
 2. Verdict in one line: the ordering machinery held, and every wrong outcome came from step design.
 3. Green means "right shape", not "good work"; taste checks need a reviewer.
 4. Caveat: Stage 4 used a fake claude and a fake clock; the real-sonnet controls were 38 calls. Real multi-week use is still the bar.
@@ -209,11 +213,11 @@ holds the line over a long session — without over-building.**
 
 The harness is a **hospital for very intelligent Alzheimer's patients** — the patients are fresh agents: brilliant, capable, and with no memory of what happened a minute ago.
 
-- **WALLS = hooks.** They keep the agents in and block one bad action. They cannot make a patient do steps in order.
+- **WALLS = hooks.** One circle of friction: a hook blocks one bad action, so going wrong costs more. ~~They keep the agents in.~~ They cannot make a patient do steps in order.
 - **CHART = the card plus the record on disk.** A fresh agent reads where things stand and the one next step. Hand it STATE, not history.
-- **NURSE = the runner script.** It hands over one step at a time with its inputs as files, runs the check, and writes the chart. The patient never writes the chart.
+- **NURSE = the runner script.** It hands over one step at a time with its inputs as files, runs the check, and writes the chart. The patient never writes the chart. It is another circle of friction, the strongest one for step order, and it fails for its own reasons.
 
-**Principle: do not try to make the patient obedient; put the rules in the nurse.** (The ESCALATION LADDER in §II.3 and LAW 3 are the same instinct, one altitude down.)
+**Principle: do not try to make the patient obedient; put the rules in the nurse.** That is the strongest circle for step order, not a guarantee. (The ESCALATION LADDER in §II.3 and LAW 3 are the same instinct, one altitude down.)
 
 ## The default shape for any skill whose step order must hold  *(CANDIDATE)*
 
@@ -257,7 +261,7 @@ The harness is a **hospital for very intelligent Alzheimer's patients** — the 
 
 | Role | Existing sections |
 |---|---|
-| **Walls** (keep in, block one action; cannot order steps) | §II.1 family 3 (WALL); §IV.7 "Simpler skill + structural hook" bullet |
+| **Walls** (a circle of friction: block one action; cannot order steps) | §II.1 family 3 (WALL); §IV.7 "Simpler skill + structural hook" bullet |
 | **Chart** (state on disk, read to resume) | §II.0 floor (c), the state/memory layer; "OUR OWN BET" and §VI.1 (the shared state file); §IV.8 per-run receipt; §IV.9 the HUD |
 | **Nurse** (the runner: delivers, checks, writes) | LAW 1 (code owns the mechanical perimeter); LAW 3 (never let the actor grade its own completion); §II.1 families 1-2 (REPLACE / VERIFY); PART V checkers |
 | **Shrinks to "a human is talking to the model"** | §IV.1 to §IV.7 (anchoring); the barn-sour material |
@@ -377,7 +381,7 @@ These wait for the **week-long /save-on-a-card test and a second skill on a card
 - PART II — THE ENFORCEMENT TOOLBOX
   - §II.0 — The three floors (what you are enforcing ACROSS)
     - THE FLOOR IS THE INSTRUMENT SELECTOR — use the wrong one and you get a confident wrong answer
-  - §II.1a — Compliance is a STACK, not a rung to pick *(added 2026-09-05, OBSERVED)*
+  - §II.1a — ~~Compliance is a STACK, not a rung to pick~~ Compliance is the center of the Venn diagram, not a rung to pick *(added 2026-09-05, OBSERVED; reworded 2026-10-30)*
   - §II.1 — The four families (in order of preference)
   - §II.2 — WHY prose instructions fail (the five modes gates defeat)
   - §II.3 — The reliability ladder (how hard to gate — the Verify/Wall dial)
@@ -985,7 +989,9 @@ instrument for a state-floor property**, and it failed confidently.
 at the final output — by the final artifact a loss is already invisible. *(Data is what FLOWS THROUGH the floors,
 not a fourth floor.)*
 
-## §II.1a — Compliance is a STACK, not a rung to pick *(added 2026-09-05, OBSERVED)*
+## §II.1a — ~~Compliance is a STACK, not a rung to pick~~ Compliance is the center of the Venn diagram, not a rung to pick *(added 2026-09-05, OBSERVED; heading reworded 2026-10-30)*
+
+> *2026-10-30: read "stack" below as overlapping circles of friction. Frame: `canonical-principles-sop.md`, "The layers of friction". The observed catches are unchanged.*
 
 > *Outside caveat, 2026-09-05, RESEARCHED — `records/research/2026-09-05-code-llm-interaction-modalities.md`:*
 > **"unbypassable" is not "harmless."** In a 2026 breach, automated guardrail / kill-switch logic stalled the human
@@ -2949,7 +2955,7 @@ the casualty check, because a pass that returns early by seeing less is a scope 
 
 **Living intake.** `system/sops/skill-irl-findings.md` is where new observations land first, append-only,
 chronological, tagged TESTER / SKILL / METHOD. When a finding is seen enough to be durably true, it graduates
-here and gets marked. Companion for operational specifics: `skill-building-field-notes.md`.
+here and gets marked. Companion for operational specifics: `skill-building-field-notes.md` *(your personal code folder; not shipped in the plugin)*.
 
 **Delta log.** v2 (2026-07-25) re-ranked v1 — laws first, tools second, procedure third, verification fourth,
 edge-cases last. Added the entire VERIFY part (v1 had nowhere to put it). Folded in the crowd-convergence study
