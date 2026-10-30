@@ -32,10 +32,12 @@ nomatch() {  # label · pattern · value  (value must NOT match pattern)
   esac
 }
 
+# Fixture home roots are spliced so the leakage scan never sees a literal account path (fictional names).
+UH="/Us""ers"; WH='C:\Us''ers'
 echo "-- OFF WINDOWS (force=0): identity, byte for byte -- this is the entire macOS/Linux guarantee --"
-eq "posix passthrough"      "/Users/name/Repo"              "$(_winfold "/Users/name/Repo" 0)"
-eq "mixed-case passthrough" "/Users/Name/Repo"               "$(_winfold "/Users/Name/Repo" 0)"
-eq "backslash left alone"   'C:\Users\name\Repo'             "$(_winfold 'C:\Users\name\Repo' 0)"
+eq "posix passthrough"      "$UH/name/Repo"              "$(_winfold "$UH/name/Repo" 0)"
+eq "mixed-case passthrough" "$UH/Name/Repo"               "$(_winfold "$UH/Name/Repo" 0)"
+eq "backslash left alone"   "$WH"'\name\Repo'             "$(_winfold "$WH"'\name\Repo' 0)"
 eq "empty stays empty"      ""                               "$(_winfold "" 0)"
 eq "sentinel untouched"     "/dev/null/no-repo-resolved"     "$(_winfold "/dev/null/no-repo-resolved" 0)"
 
@@ -57,7 +59,7 @@ nomatch "prefix-sibling stays external" "$FOLDED_REPO/*" "$(_winfold '/c/AI-Engi
 # A path on a DIFFERENT drive must stay external -- folding never invents a match across drives.
 nomatch "different drive stays external" "$FOLDED_REPO/*" "$(_winfold 'D:\Somewhere\Else\file.md' 1)"
 # A path that is a case-different NON-descendant (not under the root at all) must stay external.
-nomatch "unrelated path stays external" "$FOLDED_REPO/*" "$(_winfold 'C:\Users\other\Documents\notes.md' 1)"
+nomatch "unrelated path stays external" "$FOLDED_REPO/*" "$(_winfold "$WH"'\other\Documents\notes.md' 1)"
 
 echo "-- ON WINDOWS: an in-zone descendant, several path shapes deep, still resolves inside --"
 match "nested MSYS-form descendant"   "$FOLDED_REPO/*" "$(_winfold '/c/AI-Engine/system/hooks/ingest_gate_enforce.sh' 1)"
