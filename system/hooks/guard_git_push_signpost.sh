@@ -132,6 +132,12 @@ trap 'lhb_journal_fire "$?" "guard_git_push_signpost.sh" "PreToolUse" "Bash" 2>/
 # WHO-COULD-THIS-BREAK: nobody is blocked by this one; it only removes a speed bump, so the risk is a push that
 #      wanted the manifest not getting it. WAY-THROUGH: turn fc_plain_push_quiet off to get the first-push signpost back;
 #      a force push, a new branch, a diverged branch or any non-tracking refspec still gets the signpost or a hard stop.
+#      ROUND C GAP CLOSURE (fc_force_push, fc_private_push; OFF = unchanged): the push is also read THROUGH `bash -c`/`sh -c`/
+#      `eval`, an `env`/`VAR=x`/`command`/`exec`/`nohup` prefix and a subshell paren (lib/git_target_resolver.py candidates() +
+#      skip_prefix()); `git <alias>` where the alias expands to a push (read with one `git config --get alias.<n>`, only
+#      when the word is not a built-in verb); a `+` refspec in remote.<n>.push config (lib/push_facts.py) and a command that
+#      SETS one (`git config ... remote.<n>.push +...`, `git -c remote.<n>.push=+... push`) -> the same HARD STOP.
+#      STILL NOT SEEN: a script run by name (its text is not in the command), a push from a tool that is not Bash, the web UI.
 # ─────────────────────────────────────────────────────────────────────────────
 # guard_git_push_signpost.sh — PreToolUse hook (matcher: Bash)
 
@@ -139,7 +145,17 @@ INPUT=$(cat 2>/dev/null)
 
 _LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib/git_target_resolver.py"
 
-VERDICT=$(printf '%s' "$INPUT" | GUARD_LIB="$_LIB" python3 -c '
+# ROUND C gap closure (fc_force_push / fc_private_push): read the push THROUGH `bash -c`, `sh -c`, `eval`, an
+# env/VAR=x/command/exec prefix and git aliases, and catch a `+` refspec set in remote.<n>.push config. Both OFF =
+# the resolver is called exactly as before.
+_FCU=""; _FCC=""
+. "$(dirname "$0")/lib/roundb.sh" 2>/dev/null
+if type roundb_on >/dev/null 2>&1; then
+  roundb_on fc_force_push && { _FCU=1; _FCC=1; }
+  roundb_on fc_private_push && _FCU=1
+fi
+
+VERDICT=$(printf '%s' "$INPUT" | GUARD_LIB="$_LIB" GUARD_FC_UNWRAP="$_FCU" GUARD_FC_CFGFORCE="$_FCC" python3 -c '
 import sys, json, os, base64, importlib.util
 
 try:
@@ -165,7 +181,31 @@ try:
     _spec = importlib.util.spec_from_file_location("git_target_resolver", _lib)
     _gtr = importlib.util.module_from_spec(_spec)
     _spec.loader.exec_module(_gtr)
-    status, target = _gtr.resolve(cmd, "push")
+    _unwrap = os.environ.get("GUARD_FC_UNWRAP") == "1"
+    _cfgforce = os.environ.get("GUARD_FC_CFGFORCE") == "1"
+    cmd_eff = cmd
+    if _unwrap or _cfgforce:
+        def _alias_lookup(d, name):
+            import subprocess
+            try:
+                d = os.path.expandvars(os.path.expanduser(d)) if d else ""
+                a = ["git"] + (["-C", d] if d and os.path.isdir(d) else []) + ["config", "--get", "alias." + name]
+                r = subprocess.run(a, capture_output=True, text=True, timeout=5)
+                return r.stdout.strip() if r.returncode == 0 else ""
+            except Exception:
+                return ""
+        _cands = [cmd] + _gtr.candidates(cmd, _alias_lookup if _unwrap else None)
+        if _cfgforce and any(_gtr.config_force(c) for c in _cands):
+            print("CONFIG_FORCE"); raise SystemExit
+        status, target = _gtr.resolve(cmd, "push", _unwrap)
+        if _unwrap and status == "NOT_OURS":
+            for _c in _cands[1:]:
+                _s2, _t2 = _gtr.resolve(_c, "push", True)
+                if _s2 != "NOT_OURS":
+                    status, target, cmd_eff = _s2, _t2, _c
+                    break
+    else:
+        status, target = _gtr.resolve(cmd, "push")
 except Exception:
     print("BLOCK_NOLIB"); raise SystemExit
 
@@ -224,8 +264,10 @@ def _strip_shell_redirections(tokens):
 
 push_argv = []
 try:
-  for seg, _op in _gtr._segment(_gtr._tokenize(cmd)):
+  for seg, _op in _gtr._segment(_gtr._tokenize(cmd_eff)):
       idx = 0
+      if _unwrap:
+          idx = _gtr.skip_prefix(seg)
       while idx < len(seg) and "=" in seg[idx] and not seg[idx].startswith("-"):
           idx += 1
       if idx >= len(seg) or not _gtr._is_git(seg[idx]):
@@ -233,7 +275,7 @@ try:
       j = idx + 1
       while j < len(seg) and seg[j].startswith("-"):
           if seg[j] in ("-C", "-c"):
-              if seg[j] == "-C" and j + 1 < len(seg):
+              if (seg[j] == "-C" or _unwrap) and j + 1 < len(seg):
                   j += 2
               else:
                   j += 1
@@ -255,6 +297,17 @@ case "$VERDICT" in
     exit 2
     ;;
 esac
+
+if [ "$VERDICT" = "CONFIG_FORCE" ]; then
+  # fc_force_push: this command makes every later push a force push (a + refspec in remote.<n>.push)
+  {
+    printf 'HARD STOP (push guard): this sets a force push in git config -- a leading + in a remote.<name>.push refspec makes every later push of that remote a force push.\n'
+    printf 'WHY: a force push overwrites history on the remote, and putting the + in config hides it from the next plain push.\n'
+    printf 'WAY THROUGH: this one is the person'"'"'s own call, not retryable by the assistant. Ask them to set it themselves in their terminal (prefix the command with !), or drop the + from the refspec.\n'
+    printf 'RULE: system/hooks/guard_git_push_signpost.sh (switch fc_force_push in system/hooks/roundB.conf).\n'
+  } >&2
+  exit 2
+fi
 
 _RAW_VERDICT="$VERDICT"
 VERDICT="${_RAW_VERDICT%%$'\t'*}"

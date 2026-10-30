@@ -154,10 +154,12 @@ def _cd_target(seg):
     return ""
 
 
-def resolve(cmd, verb):
+def resolve(cmd, verb, see_through=False):
     """
     cmd: the raw command string from tool_input.
     verb: the git subcommand this guard cares about ("commit", "push", ...).
+    see_through: Round C (fine china). False = exactly the behaviour above. True = also read through a
+                 leading `env [opts]`, `command`, `exec`, `nohup`, `time`, a subshell paren or brace (see skip_prefix).
 
     Returns (status, target):
       NOT_OURS           -- no matching `git <verb>` found; nothing to judge.
@@ -239,6 +241,8 @@ def resolve(cmd, verb):
             continue
 
         idx = 0
+        if see_through:
+            idx = skip_prefix(seg)
         while idx < len(seg) and "=" in seg[idx] and not seg[idx].startswith("-"):
             idx += 1
         if idx >= len(seg) or not _is_git(seg[idx]):
@@ -265,3 +269,143 @@ def resolve(cmd, verb):
         i += 1
 
     return ("NOT_OURS", "")
+
+
+# ───────────────────────── Round C (fine china): see through wrappers, aliases, config ─────────────────────────
+# Everything below is OPT-IN: resolve() with see_through=False and no caller of these functions behaves exactly as
+# before. The push signpost calls them only when fc_force_push or fc_private_push is on.
+# Why a token reader and not the Drive guard's regex (lib/gws_guard.py _EXECWRAP): that regex is quote-blind, so a
+# commit message that merely MENTIONS `bash -c 'git push -f'` would read as a command. Here a quoted mention is one
+# token and never a command word.
+_PREFIX_WORDS = {"command", "exec", "nohup", "time", "builtin", "nice"}
+_SHELLS = {"bash", "sh", "zsh", "dash", "ksh"}
+_KNOWN_VERBS = frozenset("""add am annotate apply archive bisect blame branch bundle checkout cherry cherry-pick clean clone
+commit config describe diff difftool fetch filter-branch format-patch fsck gc grep help init log maintenance merge
+mergetool mv notes pull push range-diff rebase reflog remote repack replace request-pull reset restore revert rm
+send-email shortlog show show-branch sparse-checkout stash status submodule subtree switch tag worktree rev-parse
+rev-list ls-files ls-remote ls-tree cat-file update-ref update-index write-tree commit-tree read-tree symbolic-ref
+for-each-ref name-rev merge-base merge-file diff-tree diff-index diff-files hash-object check-ignore check-attr
+credential daemon gui gitk version count-objects pack-objects unpack-objects prune verify-commit verify-tag whatchanged""".split())
+_RPUSH = re.compile(r"remote\..+\.push", re.I)
+
+
+def skip_prefix(seg):
+    """Index of the program word in a segment, after NAME=value, `env [opts]`, command/exec/nohup/time and leading
+    ( { ! tokens (a subshell or brace group still runs the command)."""
+    i, n = 0, len(seg)
+    while i < n:
+        t = seg[i]
+        if t in ("(", "{", "!"):
+            i += 1
+            continue
+        if "=" in t and not t.startswith("-"):
+            i += 1
+            continue
+        b = os.path.basename(t)
+        if b == "env":
+            i += 1
+            while i < n and seg[i].startswith("-") and seg[i] != "--":
+                i += 2 if seg[i] in ("-u", "-C", "-S", "--unset", "--chdir", "--split-string") else 1
+            continue
+        if b in _PREFIX_WORDS:
+            i += 1
+            while i < n and seg[i].startswith("-"):
+                i += 1
+            continue
+        break
+    return i
+
+
+def _git_sub(seg, i):
+    """-> (index of the subcommand or len(seg), -C dir, [-c values]) for a git word at seg[i]."""
+    j, cdir, ov = i + 1, "", []
+    while j < len(seg) and seg[j].startswith("-"):
+        if seg[j] in ("-C", "-c") and j + 1 < len(seg):
+            if seg[j] == "-C":
+                cdir = seg[j + 1]
+            else:
+                ov.append(seg[j + 1])
+            j += 2
+        else:
+            j += 1
+    return j, cdir, ov
+
+
+def candidates(cmd, alias_lookup=None, depth=0):
+    """Extra command strings the shell would actually run, for the caller to resolve in turn: the body of
+    `bash|sh|zsh -c '...'` (also -lc, -ec), `eval ...` (also behind env/command/exec/VAR=x), and, when alias_lookup
+    is given, `git <alias>` where the alias is not a built-in verb, expanded to what it stands for.
+    alias_lookup(dir, name) -> the alias value or "" (the caller owns the git call; this module runs no process)."""
+    if depth > 3:
+        return []
+    try:
+        toks = _tokenize(cmd)
+    except ValueError:
+        return []
+    out, cwd = [], ""
+    for seg, _op in _segment(toks):
+        if seg and seg[0] == "cd":
+            cwd = _cd_target(seg) or cwd
+            continue
+        i = skip_prefix(seg)
+        if i >= len(seg):
+            continue
+        prog = os.path.basename(seg[i])
+        body = None
+        if prog in _SHELLS:
+            k = i + 1
+            while k < len(seg) and seg[k].startswith("-"):
+                if re.fullmatch(r"-[A-Za-z]*c[A-Za-z]*", seg[k]) and k + 1 < len(seg):
+                    body = seg[k + 1]
+                    break
+                k += 1
+        elif prog == "eval":
+            body = " ".join(seg[i + 1:])
+        if body:
+            out.append(body)
+            out.extend(candidates(body, alias_lookup, depth + 1))
+            continue
+        if alias_lookup and _is_git(seg[i]):
+            j, cdir, _ov = _git_sub(seg, i)
+            if j < len(seg) and seg[j] not in _KNOWN_VERBS and re.fullmatch(r"[A-Za-z0-9_][\w.-]*", seg[j]):
+                val = (alias_lookup(cdir or cwd, seg[j]) or "").strip()
+                if not val:
+                    continue
+                if val.startswith("!"):
+                    exp = val[1:].strip()
+                else:
+                    try:
+                        exp = " ".join(shlex.quote(t) for t in seg[:j] + shlex.split(val) + seg[j + 1:])
+                    except ValueError:
+                        continue
+                    if cwd and not cdir:
+                        exp = "cd %s && %s" % (shlex.quote(cwd), exp)
+                out.append(exp)
+                out.extend(candidates(exp, alias_lookup, depth + 1))
+    return out
+
+
+def config_force(cmd):
+    """True when the command SETS a push refspec with a leading + (a forced push the next time anyone pushes):
+    `git config [--add|--global|...] remote.<n>.push +refs/...`, or `git -c remote.<n>.push=+... push`."""
+    try:
+        toks = _tokenize(cmd)
+    except ValueError:
+        return False
+    for seg, _op in _segment(toks):
+        i = skip_prefix(seg)
+        if i >= len(seg) or not _is_git(seg[i]):
+            continue
+        j, _cdir, ov = _git_sub(seg, i)
+        sub = seg[j] if j < len(seg) else ""
+        if sub == "push":
+            for o in ov:
+                k, _, v = o.partition("=")
+                if _RPUSH.fullmatch(k.strip()) and v.startswith("+"):
+                    return True
+        elif sub == "config":
+            a = seg[j + 1:]
+            for k, w in enumerate(a):
+                if _RPUSH.fullmatch(w) and k + 1 < len(a) and a[k + 1].startswith("+"):
+                    return True
+    return False

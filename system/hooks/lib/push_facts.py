@@ -279,6 +279,12 @@ def main():
             return 0
     branch = current_branch(repo)
     remote = resolve_remote(repo, p, branch)
+    if a.force_on and remote and not p["refspecs"]:
+        # a push that names no refspec uses remote.<n>.push; a leading + there makes it a force push
+        rc, out = git(repo, "config", "--get-all", "remote.%s.push" % remote)
+        if rc == 0 and any(ln.strip().startswith("+") for ln in out.split("\n")):
+            print("HARD_FORCE\ta + refspec in remote.%s.push config" % remote)
+            return 0
     if a.private_on and remote:
         url = push_url(repo, remote) if named_remote(repo, remote) else remote
         # silent and cheap when there is nothing to leak to: no remote, a local path, or the person's own private repo
