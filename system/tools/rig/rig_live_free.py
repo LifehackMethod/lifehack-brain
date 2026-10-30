@@ -78,7 +78,7 @@ def mentioned(stream_text, p):
     return p in stream_text or (os.path.basename(p) in stream_text and len(os.path.basename(p)) > 4)
 
 
-def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model="sonnet"):  # allow-silence: the exam runs live sessions on the Sonnet tier by ruling (plan 3b.4 redesign); this is the tier alias handed to claude --model, not a pinned model id
+def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model="sonnet", settings=None):  # allow-silence: the exam runs live sessions on the Sonnet tier by ruling (plan 3b.4 redesign); this is the tier alias handed to claude --model, not a pinned model id
     L = c["live"]
     stream = os.path.join(work, c["id"] + ".stream.jsonl")
     env = dict(os.environ, LIFEHACK_SANDBOX="V2", **(extra_env or {}))
@@ -99,7 +99,7 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
         prompt = prompt.replace(k, v)
     prompt += SUFFIX
     cmd = ["claude", "-p", prompt, "--model", model, "--permission-mode", "bypassPermissions", "--setting-sources", "project,local", "--plugin-dir", V2,
-           "--settings", os.path.join(OPS, "system/desktop-launchers/v2/lab-settings.json"), "--output-format", "stream-json", "--verbose"]
+           "--settings", settings or os.path.join(OPS, "system/desktop-launchers/v2/lab-settings.json"), "--output-format", "stream-json", "--verbose"]
     b = snapshot(notes)
     t0 = time.time()
     err = ""
@@ -184,6 +184,7 @@ def main():
     ap.add_argument("--label", required=True)
     ap.add_argument("--only")
     ap.add_argument("--model", default="sonnet", help="model tier for the live sessions (Round C exam: sonnet, in bypassPermissions mode like most students)")
+    ap.add_argument("--settings", help="settings file for the child (default: lab-settings.json). Practice rounds pass a copy without Enver's own Edit(.claude/skills/**) deny, which a student does not have")
     ap.add_argument("--scratch")
     ap.add_argument("--env", action="append", default=[])
     a = ap.parse_args()
@@ -194,7 +195,7 @@ def main():
     res_dir = os.path.join(notes, "state/projects/v2/records/rig-results")
     try:
         for c in cases:
-            r = run_one(c, notes, work, a.scratch, dict(e.split("=", 1) for e in a.env), os.path.join(res_dir, "%s-%s-files" % (time.strftime("%Y-%m-%d"), a.label)), a.model)
+            r = run_one(c, notes, work, a.scratch, dict(e.split("=", 1) for e in a.env), os.path.join(res_dir, "%s-%s-files" % (time.strftime("%Y-%m-%d"), a.label)), a.model, a.settings)
             out.append(r)
             print(r["id"], r["bucket"], r["turns"], r["secs"], r["commits"] or "", flush=True)
             open(os.path.join(res_dir, "%s-%s-live.jsonl" % (time.strftime("%Y-%m-%d"), a.label)), "w", encoding="utf-8").write("\n".join(json.dumps(x) for x in out) + "\n")

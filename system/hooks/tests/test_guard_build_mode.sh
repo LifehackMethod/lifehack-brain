@@ -219,6 +219,8 @@ fire t8 Write "$(J file_path "$HOME/notify-lab/zzz_unrelated_thing.py" content '
 printf '%s' "$ERR" | grep -Fq "FIRST, before anything else" && { fail=$((fail+1)); echo "  FAIL  ranked ON invented a hint"; } || { pass=$((pass+1)); echo "   ok   ranked ON: no match = no hint block"; }
 fire t9 Write "$(J file_path "$HOME/notify-lab/fetch-pond.sh" content 'download the pond level into pond.txt')"; want 2 "ranked ON: a generic verb in the name is not a tool match" "lifehack-place"
 printf '%s' "$ERR" | grep -Fq "FIRST, before anything else" && { fail=$((fail+1)); echo "  FAIL  generic fetch name drew a hint"; } || { pass=$((pass+1)); echo "   ok   ranked ON: fetch-pond.sh draws no tool hint"; }
+fire t10 Write "$(J file_path "$HOME/notify-lab/newest_threads.py" content $'"""List the subjects of the newest Gmail threads. Read-only IMAP, fetches headers"""')"; want 2 "ranked ON: gmail script gate stop" "FIRST, before anything else"
+printf '%s' "$ERR" | grep -Fq "shared/tools/email_fetch.py" && { pass=$((pass+1)); echo "   ok   ranked ON: the sanctioned Gmail reader is named"; } || { fail=$((fail+1)); echo "  FAIL  ranked ON missed email_fetch for a gmail script"; }
 unset ROUNDB_PLACEMENT_HINT_RANKED
 unset ROUNDB_PLACEMENT_TOOLBOX_HINT
 unset ROUNDB_REASON_GATE ROUNDB_REMEMBER_REASON ROUNDB_PLACEMENT_OUTSIDE_HOMES

@@ -756,11 +756,11 @@ def tool_hint_ranked(code, hint):
             td = _toks(m.group(2))
             n = 3 * len(name_t & tn) + 2 * len(name_t & td) + 2 * len(head_t & tn) + len(head_t & td)
             if n >= 2 and re.search(r"\b(THE|ONE)\b|sanctioned", m.group(2)):
-                n += 2   # the tool the notes name as THE one / the sanctioned one comes first
+                n += 4   # the tool the notes name as THE one / the sanctioned one comes first
             if n >= 2:
                 scored.append((-n, m.group(1), m.group(2)[:70].rstrip()))
     scored.sort()
-    return "".join("\n  %s · %s" % (p2, d) for _, p2, d in scored[:3])
+    return "".join("\n  %s · %s" % (p2, d) for _, p2, d in scored[:4])
 
 
 def tool_hint(code, hint):
