@@ -28,6 +28,9 @@ KEEP_ENV = ("PATH", "LANG", "LC_ALL", "TERM", "TMPDIR", "SHELL")
 
 
 # ───────────────────────── registration ─────────────────────────
+IF_COND = {}      # (script, command) -> the handler-level `if` (e.g. "Skill(checkin)"); the replay must honour it or it cries wolf on every other Skill
+
+
 def registered_hooks(event="PreToolUse"):
     """[(matcher, script_name, command)] in registration order, read from hooks/hooks.json."""
     d = json.load(open(os.path.join(ROOT, "hooks", "hooks.json"), encoding="utf-8"))
@@ -37,6 +40,8 @@ def registered_hooks(event="PreToolUse"):
             cmd = h.get("command", "")
             m = re.search(r"/([A-Za-z0-9_.\-]+\.(?:sh|py))", cmd)
             out.append((blk.get("matcher", "*"), m.group(1) if m else cmd[:40], cmd))
+            if h.get("if"):
+                IF_COND[(out[-1][1], cmd)] = h["if"]
     return out
 
 
@@ -97,6 +102,8 @@ def expand(v, F):
     if isinstance(v, str):
         for k in ("CODE", "NOTES", "HOME", "DESK", "REPO", "PLUGINCACHE"):
             v = v.replace("{%s}" % k, F[k])
+        v = v.replace("@@", "").replace("{REALCODE}", ROOT)      # "@@" splits a fake secret in the case file so secret scanners do not flag it;
+        #      # the real V2 checkout: for guards whose zone is the harness tree they live in; hooks only READ the path, nothing is written
         return v
     if isinstance(v, dict):
         return {k: expand(x, F) for k, x in v.items()}
@@ -127,6 +134,11 @@ def run_case(case, F, plugin_root, hooks, off=None, stub=False):
     for matcher, script, cmd in hooks:
         if script == off or not matches(matcher, tool) or (script, cmd) in seen:
             continue
+        cond = IF_COND.get((script, cmd))
+        if cond:
+            mm = re.fullmatch(r"(\w+)\(([^)]*)\)", cond)
+            if mm and mm.group(1) == "Skill" and tin.get("skill") != mm.group(2):
+                continue
         seen.add((script, cmd))
         try:
             p = subprocess.run(["bash", "-c", cmd], input=payload, capture_output=True, text=True,
@@ -264,12 +276,22 @@ def is_block(r):
     return r["case"].get("expect", {}).get("decision") in ("deny", "signpost")
 
 
+def weights_ok(results):
+    """None if every case carries a real weight (a number > 0) AND a weight_basis saying where it came from; else the reason to refuse."""
+    bad = [r["case"]["id"] for r in results if not isinstance(r["case"].get("weight"), (int, float)) or r["case"].get("weight") <= 0 or not r["case"].get("weight_basis")]
+    return None if not bad else "%d case(s) have a null/default weight or no weight_basis (e.g. %s)" % (len(bad), ", ".join(bad[:3]))
+
+
 def weighted(results):
-    wc = sum(r["case"].get("weight") or 1 for r in results if r["grade"] in ("caught", "caught-other-layer"))
-    wb = sum(r["case"].get("weight") or 1 for r in results if is_block(r))
     n_c = sum(1 for r in results if r["grade"] in ("caught", "caught-other-layer"))
     n_b = sum(1 for r in results if is_block(r))
-    return "weighted coverage %.0f%% (unweighted %d of %d wrong-move cases caught)" % (100 * wc / wb if wb else 0, n_c, n_b)
+    why = weights_ok(results)
+    if why:      # coordinator ruling 2026-10-29: never print a weighted figure whose weights are missing or default
+        return "weighted coverage: REFUSED (%s). Unweighted: %d of %d wrong-move cases caught" % (why, n_c, n_b)
+    wc = sum(r["case"]["weight"] for r in results if r["grade"] in ("caught", "caught-other-layer"))
+    wb = sum(r["case"]["weight"] for r in results if is_block(r))
+    return "weighted coverage %.1f%% = sum(weight of caught wrong-move cases) / sum(weight of all wrong-move cases) = %.3f / %.3f (unweighted %d of %d)" % (
+        100 * wc / wb if wb else 0, wc, wb, n_c, n_b)
 
 
 def pairs_report(results):

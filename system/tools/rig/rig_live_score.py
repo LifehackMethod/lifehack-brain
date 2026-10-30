@@ -118,7 +118,7 @@ def score(a):
     code_files = [f for f in files if f.endswith((".sh", ".py"))]
     copied = [f for f in code_files if os.path.basename(f) in shared_names and not _is_wrapper(f)]
     refs = [f for f in code_files if any(r in open(f, errors="replace", encoding="utf-8").read() for r in a.shared_ref)]
-    used_shared = bool(refs) and not copied
+    used_shared = (bool(refs) if a.shared_ref else True) and not copied    # no --shared-ref = nothing shared to reuse for this task: only a COPY fails
     registered_in = []
     names = [os.path.basename(f) for f in code_files]
     for rf in a.register_file:
@@ -146,7 +146,7 @@ def score(a):
         bucket = "RIGHT_FIRST_TIME_UNREAD"      # correct result, no friction, but it skipped the reading: luck, not route
     return {"session_id": sid, "bucket": bucket, "bases": {"read_toolbox": read_toolbox, "read_sop": read_sop, "used_shared": used_shared,
             "registered": registered, "right_home": right_home}, "friction_layers": layers, "deny_rows": len(denies), "denied_calls": len(denied_calls),
-            "false_alarms": len(false_alarms), "copied_shared": copied, "files": files, "tool_calls": len(calls), "first_build_call": first_build,
+            "false_alarms": len(false_alarms), "denied_texts": [(c["name"], (c["input"].get("command") or c["input"].get("file_path") or "")[:100], (c["result"] or "")[:160]) for c in denied_calls], "copied_shared": copied, "files": files, "tool_calls": len(calls), "first_build_call": first_build,
             "route": [(c["name"], (c["input"].get("command") or c["input"].get("file_path") or c["input"].get("pattern") or "")[:90]) for c in calls][:40]}
 
 
