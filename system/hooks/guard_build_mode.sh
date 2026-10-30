@@ -23,10 +23,10 @@ trap 'lhb_journal_fire "$?" "guard_build_mode.sh" "PreToolUse" "Bash|Write|Edit|
 #      Round C reason_gate (roundB.conf): placement rule code-outside-homes no longer lets an identical retry through.
 #      It passes only with a stated reason: a line `lifehack-place: <reason>` as a comment in the file content, or at the end
 #      of the Bash command (`<!-- lifehack-place: <reason> -->` in .md). Junk is refused (system/tools/door_rules.weak_reason).
-#      remember_reason: a valid reason appends `allow-<slug> TAB allow:<folder> TAB * TAB <date> reason: <text>` (one folder
-#      per line) to ~/.config/lifehack/placement.conf; that folder and below are never asked again. Both OFF = the once-per-session bump.
+#      remember_reason: a valid reason appends `kept TAB <folder> TAB <date> reason: <text>` (one folder
+#      per line; read back by shared/tools/own_list_add.kept_folders) to ~/.config/lifehack/placement.conf; that folder and below are never asked again. Both OFF = the once-per-session bump.
 # WHO-COULD-THIS-BREAK (reason_gate): anyone creating a script outside the three homes, such as a student sketching in ~/Desktop or Enver in a throwaway folder. WAY-THROUGH: write it in the personal code folder, or add `# lifehack-place: <real reason>` to the file or command and retry.
-# WHO-COULD-THIS-BREAK (remember_reason): nobody is blocked by it; it can only make a later file in a remembered folder pass silently. WAY-THROUGH: delete that `allow-` line from ~/.config/lifehack/placement.conf to be asked again.
+# WHO-COULD-THIS-BREAK (remember_reason): nobody is blocked by it; it can only make a later file in a remembered folder pass silently. WAY-THROUGH: delete that `kept` line from ~/.config/lifehack/placement.conf to be asked again.
 # REDIRECT: every deny names the SOP or the shared path to use instead.
 # SIGNPOST: SOP paths: system/hooks/build_mode_sops.conf (edit there when the rulebook sort renames files).
 #      Logic: system/hooks/lib/build_mode.py. Tests: system/hooks/tests/test_guard_build_mode.sh.

@@ -300,27 +300,34 @@ def personal_conf():
     return os.path.join(HOME, ".config", "lifehack", "placement.conf")
 
 
-def allowed_folders(placement):
-    """Folders the person has already given a reason for: rules whose zone is `allow:<abs folder>`."""
-    return [z[6:] for (z, _p, _m) in placement.values() if z.startswith("allow:")]
+def kept_folders_of(code):
+    """Folders the person already gave a reason for: lines `kept<TAB><folder>[<TAB>reason]` in
+    ~/.config/lifehack/placement.conf, read through shared/tools/own_list_add.kept_folders (imported, not re-parsed)."""
+    tools = os.path.join(code, "shared", "tools")
+    sys.path.insert(0, tools)
+    try:
+        import own_list_add
+        return own_list_add.kept_folders()
+    except Exception as e:
+        warn("kept_folders unavailable (%s); remembered folders ignored" % e)
+        return []
+    finally:
+        sys.path.pop(0)
 
 
-def remember_folder(folder, reason):
-    """Append one line to ~/.config/lifehack/placement.conf:  allow-<slug> TAB allow:<folder> TAB * TAB <date> reason: <text>.
-    One folder per line; the 2nd field starting `allow:` is the whole read-back contract."""
+def remember_folder(code, folder, reason):
+    """Append `kept<TAB><folder><TAB><date> reason: <text>` (one folder per line) to ~/.config/lifehack/placement.conf,
+    the exact shape own_list_add.kept_folders() reads. Skips a folder that is already kept."""
     import datetime
+    if os.path.realpath(folder) in kept_folders_of(code):
+        return False
     path = personal_conf()
     try:
         have = _open(path).read()
     except OSError:
         have = ""
-    for ln in have.splitlines():
-        f = ln.split("\t")
-        if len(f) >= 2 and f[1] == "allow:" + folder:
-            return False
-    slug = re.sub(r"[^A-Za-z0-9]+", "-", folder).strip("-")[-60:]
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    line = "allow-%s\tallow:%s\t*\t%s reason: %s\n" % (slug, folder, datetime.date.today().isoformat(), reason.replace("\t", " ").replace("\n", " "))
+    line = "kept\t%s\t%s reason: %s\n" % (folder, datetime.date.today().isoformat(), reason.replace("\t", " ").replace("\n", " "))
     with _open(path, "a") as fh:
         if have and not have.endswith("\n"):
             fh.write("\n")
@@ -475,7 +482,7 @@ def main_inner():
                 else:
                     hit = False
                 if hit and zone == "outside-homes":
-                    if any(under(t, f) for f in allowed_folders(placement)):
+                    if any(under(t, f) for f in kept_folders_of(code)):
                         hit = False   # the person already gave a reason for this folder (remember_reason)
                     elif _roundb("reason_gate"):
                         blob = ti.get("command", "") if tool == "Bash" else w["content"]
@@ -485,7 +492,7 @@ def main_inner():
                             hit = False   # a stated, real reason: this one passes
                             if _roundb("remember_reason"):
                                 try:
-                                    remember_folder(os.path.dirname(t), reason)
+                                    remember_folder(code, os.path.dirname(t), reason)
                                 except Exception as e:
                                     warn("could not remember the reason (%s)" % e)
                         elif why is not None:   # no reason, or a junk one: stop EVERY time, never once-per-session
