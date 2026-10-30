@@ -120,7 +120,7 @@ def score(a):
     refs = [f for f in code_files if any(r in open(f, errors="replace", encoding="utf-8").read() for r in a.shared_ref)]
     used_shared = (bool(refs) if a.shared_ref else True) and not copied    # no --shared-ref = nothing shared to reuse for this task: only a COPY fails
     registered_in = []
-    names = [os.path.basename(f) for f in code_files]
+    names = [os.path.basename(f) for f in code_files] + [os.path.basename(os.path.dirname(f)) for f in files if os.path.basename(f) == "SKILL.md"]   # a skill is named by its folder (meal2 fix: skills could never score registered)
     for rf in a.register_file:
         if os.path.exists(rf):
             txt = open(rf, errors="replace", encoding="utf-8").read()
