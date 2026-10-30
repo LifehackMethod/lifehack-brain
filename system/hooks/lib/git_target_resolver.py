@@ -60,9 +60,43 @@ _EXIT_SHAPES = {"exit", "return"}
 _SEPARATORS = ("&&", "||", ";", "|")
 
 
+_HEREDOC_OPEN = re.compile(r"<<-?[ \t]*(?:'([^'\n]+)'|\"([^\"\n]+)\"|\\?([A-Za-z_][A-Za-z0-9_]*))")
+# A heredoc fed to one of these is EXECUTED, so its body holds real commands.
+_EXEC_SINKS = {"bash", "sh", "zsh", "dash", "ksh", "eval", "source", ".", "ssh", "xargs"}
+
+
+def _strip_heredoc_bodies(cmd):
+    """Blank out heredoc BODIES (<<EOF, <<'EOF', <<-EOF) so prose inside a note
+    (a stray apostrophe, the words "git push") is never read as a command.
+    A heredoc whose line starts with a shell interpreter is left intact: that
+    body runs. Local fix (fix-fa); the shared parser is proposed separately."""
+    lines = cmd.split("\n")
+    out, i = [], 0
+    while i < len(lines):
+        line = lines[i]
+        out.append(line)
+        i += 1
+        m = _HEREDOC_OPEN.search(line)
+        if not m:
+            continue
+        tag = m.group(1) or m.group(2) or m.group(3)
+        first = line.strip().split(None, 1)
+        sink = os.path.basename(first[0]) if first else ""
+        # find the terminator; if none, leave the rest untouched (fail toward firing)
+        k = i
+        while k < len(lines) and lines[k].strip() != tag:
+            k += 1
+        if k >= len(lines) or sink in _EXEC_SINKS:
+            continue
+        i = k  # drop body lines; the terminator line is dropped too
+        i += 1
+    return "\n".join(out)
+
+
 def _tokenize(cmd):
     """Tokenize with shell metacharacters as their own tokens even when not
     whitespace-padded (e.g. 'exit;'), while still honoring quotes."""
+    cmd = _strip_heredoc_bodies(cmd)
     lex = shlex.shlex(cmd, posix=True, punctuation_chars=True)
     lex.whitespace_split = True
     lex.commenters = ""
@@ -122,7 +156,7 @@ def resolve(cmd, verb):
         toks = _tokenize(cmd)
     except ValueError:
         shape = re.compile(r"(^|[;&|(\s])git\s+(-{1,2}\S+\s+)*" + re.escape(verb) + r"\b")
-        if shape.search(cmd):
+        if shape.search(_strip_heredoc_bodies(cmd)):
             return ("AMBIGUOUS", "")
         return ("NOT_OURS", "")
 

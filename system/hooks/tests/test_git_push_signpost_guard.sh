@@ -102,6 +102,23 @@ allow "git log (not push)"                   "$LOG"
 MENTION="$(mkcmd echo do not forget to git push later)"
 allow "the words git push only as a MENTION, not a command" "$MENTION"
 
+# fix-fa (2026-10-30): heredoc BODIES are prose, not commands -- the 3 rig false alarms.
+# Built from fragments (GIT-WORD HYGIENE above); T_HD_BODY is the note text.
+mkheredoc() {  # mkheredoc <opener> <body>
+  python3 -c '
+import sys
+print(sys.argv[1] + "\n" + sys.argv[2] + "\nEOF")
+' "$1" "$2"
+}
+HD_OPEN="cat > $SCRATCH/note.md <<'EOF'"
+allow "heredoc body: unbalanced double quote + apostrophe, mentions the verb" \
+  "$(mkheredoc "$HD_OPEN" "the man said \"then git pu""sh and it's done")"
+HD_OPEN2="cat > $SCRATCH/note.md <<EOF"
+allow "heredoc body (unquoted EOF): apostrophe, mentions the verb" \
+  "$(mkheredoc "$HD_OPEN2" "Don't forget: git pu""sh after review.")"
+allow "heredoc body (<<-): apostrophe, mentions the verb" \
+  "$(mkheredoc "cat > $SCRATCH/note.md <<-EOF" "Don't forget: git pu""sh after review.")"
+
 SID2="signpost-second-$RANDOM"
 PUSH1="$(mkcmd git -C "$TARGET" push origin main)"
 SIGNPOST_HOME="$(mktemp -d "$SCRATCH/home.signpost.XXXXXX")"
@@ -128,6 +145,9 @@ deny "first push of a session, public repo (SHIPS TO STUDENTS)" "$D2" "PUBLIC" "
 # -C target pointing at a path that does not exist -- refuses rather than guessing
 D3="$(mkcmd git -C /this/path/does/not/exist push origin main)"
 deny "a -C target that does not resolve"       "$D3" "cannot determine" "sess-badpath-$RANDOM"
+
+BH2="$(mkheredoc "cat >/dev/null <<EOF && $D1" "it's a note")"
+deny "real push on the heredoc opener line (apostrophe in body) still fires" "$BH2" "PUSH" "sess-afterheredoc-$RANDOM"
 
 echo
 echo "  $PASSED passed, $FAILED failed"
