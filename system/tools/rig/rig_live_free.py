@@ -78,6 +78,15 @@ def mentioned(stream_text, p):
     return p in stream_text or (os.path.basename(p) in stream_text and len(os.path.basename(p)) > 4)
 
 
+def fresh_personal(path):
+    """A throwaway personal code folder (git init, empty own list, tools/ skills/): the live sessions must never touch the real ClaudeOps."""
+    shutil.rmtree(path, ignore_errors=True)
+    for d in ("tools", "skills"):
+        os.makedirs(os.path.join(path, d))
+    open(os.path.join(path, "register.jsonl"), "w", encoding="utf-8").close()
+    subprocess.run(["git", "init", "-q", path], capture_output=True)
+
+
 def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model="sonnet", settings=None):  # allow-silence: the exam runs live sessions on the Sonnet tier by ruling (plan 3b.4 redesign); this is the tier alias handed to claude --model, not a pinned model id
     L = c["live"]
     stream = os.path.join(work, c["id"] + ".stream.jsonl")
@@ -94,6 +103,9 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
         personal = os.path.expanduser(open(ptr, encoding="utf-8").readline().strip()) or os.path.join(home, "lifehack-personal-code")
     except OSError:
         personal = os.path.join(home, "lifehack-personal-code")
+    isolated = home.endswith("rig-iso-home") and os.path.exists(ptr)
+    if isolated:
+        fresh_personal(personal)   # per session, so one session's files never count for the next
     prompt = L["prompt"]
     for k, v in (("{HOME}", home), ("{CWD}", cwd), ("{V2}", V2), ("{PERSONAL}", personal)):
         prompt = prompt.replace(k, v)
@@ -130,8 +142,11 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
             turns, cost = d.get("num_turns"), d.get("total_cost_usd")
     # files = new files + modified DOC files (a register / README the session edited); modified code is not a new piece
     files = [p for p in mine_new + [m for m in mine_mod if not m.endswith(ls.CODE_EXT)] if os.path.isfile(p)]
+    if isolated:   # what the session put into the throwaway personal folder (its own list and tools) is its product
+        files += sorted(os.path.join(dp, f) for dp, dn, fs in os.walk(personal) if ".git" not in dp.split(os.sep) for f in fs
+                        if os.path.getsize(os.path.join(dp, f)) > 0)
     ns = argparse.Namespace(stream=stream, desk="/nonexistent/no-desk", sid=None, journal=os.path.join(home, ".claude/run/fire-journal.jsonl"), code_root=rm.ROOT,
-                            sop=L["sop"], shared_ref=L["shared_ref"], register_file=[], home_prefix=[], wrong_move=L["wrong_re"], ignore_hook=[], json=True, files=files, registration_forbidden=bool(L.get("registration_forbidden")), student=bool(L.get("student")))
+                            sop=L["sop"], shared_ref=L["shared_ref"], register_file=[], personal_root=(personal if isolated else None), enver_home=(personal if isolated else None), home_prefix=[], wrong_move=L["wrong_re"], ignore_hook=[], json=True, files=files, registration_forbidden=bool(L.get("registration_forbidden")), student=bool(L.get("student")))
     try:
         sc = ls.score(ns); e2 = ""
     except SystemExit as e:
@@ -197,16 +212,27 @@ def main():
         shutil.rmtree(iso, ignore_errors=True)
         os.makedirs(os.path.join(iso, ".config", "lifehack"))
         os.makedirs(os.path.join(iso, ".claude"))
-        for ptr in ("personal-code", "code-root", "brain-root"):   # the pointers a session needs; nothing else is copied
+        for ptr in ("code-root", "brain-root"):   # the pointers a session needs; nothing else is copied. personal-code points at a THROWAWAY folder, below
             src = os.path.join(real_home, ".config", "lifehack", ptr)
             if os.path.exists(src):
                 shutil.copy(src, os.path.join(iso, ".config", "lifehack", ptr))
         tok = os.path.join(real_home, ".config", "lifehack", "claude-oauth-token")   # a changed HOME loses the login: hand the child the token
         if os.path.exists(tok) and "CLAUDE_CODE_OAUTH_TOKEN" not in envd and "CLAUDE_CODE_OAUTH_TOKEN" not in os.environ:
             envd["CLAUDE_CODE_OAUTH_TOKEN"] = re.sub(r"\s+", "", open(tok, encoding="utf-8").read())
+        pcdir = os.path.join(iso, "personal-code")
+        fresh_personal(pcdir)
+        open(os.path.join(iso, ".config", "lifehack", "personal-code"), "w", encoding="utf-8").write(pcdir + "\n")
         envd["HOME"] = iso
     if os.path.realpath(os.path.expanduser(envd["HOME"])) == real_home:
         sys.exit("REFUSED: the live sessions would run with the real HOME (%s); use a throwaway HOME" % real_home)
+    real_ops = os.path.realpath(OPS)
+    pptr = os.path.join(os.path.expanduser(envd["HOME"]), ".config", "lifehack", "personal-code")
+    if os.path.exists(pptr):
+        pc = os.path.realpath(os.path.expanduser(open(pptr, encoding="utf-8").readline().strip()))
+        if pc == real_ops or pc.startswith(real_ops + os.sep):
+            sys.exit("REFUSED: the personal-code pointer resolves to the real ClaudeOps (%s); live sessions must use a throwaway personal-code folder" % pc)
+    if not a.scratch:
+        sys.exit("REFUSED: --scratch is required (without it the session would run inside the real ClaudeOps)")
     a.env = ["%s=%s" % kv for kv in envd.items()]
     cases = [c for c in rm.load_all(a.cases) if not a.only or re.search(a.only, c["id"])]
     notes = rm.notes_root()

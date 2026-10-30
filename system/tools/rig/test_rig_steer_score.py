@@ -72,6 +72,16 @@ def main():
     r = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "rig_live_free.py"), "run", "--cases", "/nonexistent.jsonl",
                         "--label", "t", "--only", "NOMATCH", "--env", "HOME=" + os.path.expanduser("~")], capture_output=True, text=True)
     assert r.returncode != 0 and "REFUSED" in (r.stdout + r.stderr), r
+    # ...and with a pointer at the real ClaudeOps, or without --scratch
+    import tempfile
+    h = tempfile.mkdtemp()
+    os.makedirs(os.path.join(h, ".config", "lifehack"))
+    open(os.path.join(h, ".config", "lifehack", "personal-code"), "w", encoding="utf-8").write(os.path.expanduser("~/.claude/skills/ClaudeOps") + "\n")
+    base = [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "rig_live_free.py"), "run", "--cases", "/nonexistent.jsonl", "--label", "t", "--only", "NOMATCH"]
+    r2 = subprocess.run(base + ["--scratch", h, "--env", "HOME=" + h], capture_output=True, text=True)
+    assert r2.returncode != 0 and "real ClaudeOps" in (r2.stdout + r2.stderr), r2
+    r3 = subprocess.run(base, capture_output=True, text=True)
+    assert r3.returncode != 0 and "--scratch is required" in (r3.stdout + r3.stderr), r3
     print("test_rig_steer_score: ok")
 
 if __name__ == "__main__":
