@@ -194,6 +194,64 @@ def bash_ops(cmd, cwd):
     return ops
 
 
+def _cmdreader():
+    """Round B piece 4: the shared command reader when its switch is ON and it loads; else None (= bash_ops)."""
+    try:
+        import roundb
+        if not roundb.roundb_on("cmdreader"):
+            return None
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "shared"))
+        import cmdreader
+        return cmdreader
+    except Exception:
+        return None
+
+
+def bash_ops_reader(cr, cmd, cwd):
+    """Same list as bash_ops, built from the shared reader: heredoc bodies and quotes are data, variables and
+    cd-chains are resolved, one-line python copies are seen. A command it cannot read yields [] (fail open, as before)."""
+    r = cr.read(cmd, cwd=cwd, trust_resolvers=True)
+    if not r.ok:
+        return []
+    ops = []
+    for w in cr.writes(r, cwd=cwd):
+        path = w.abs or w.path
+        if "$" in path or not path:
+            continue                      # an unresolved variable: nothing to judge
+        verb = {"python copy": "cp", "python open": ">", "python write_text": ">"}.get(w.via, w.via)
+        if verb not in WRITE_VERBS and verb != ">":
+            continue
+        t = resolve(path, cwd)
+        if verb in ("mkdir", "touch"):
+            ops.append({"verb": verb, "target": t, "srcs": [], "content": ""})
+        elif verb in (">", "tee"):
+            ops.append({"verb": verb, "target": t, "srcs": [], "content": w.content})
+        else:
+            srcs = [resolve(x, cwd) for x in w.srcs]
+            content = None
+            for sp in srcs[:1]:
+                try:
+                    if os.path.isfile(sp) and os.path.getsize(sp) < 400000:
+                        content = _open(sp).read()
+                except OSError:
+                    pass
+            ops.append({"verb": verb, "target": t, "srcs": srcs, "content": content, "bash_copy": True})
+    for g in cr.git_calls(r):
+        if g.sub == "worktree" and g.argv[:1] == ["add"]:
+            a, pos, k = g.argv[1:], [], 0
+            while k < len(a):
+                if a[k] in ("-b", "-B", "--reason"):
+                    k += 2
+                    continue
+                if not a[k].startswith("-"):
+                    pos.append(a[k])
+                k += 1
+            base = resolve(g.c_dir, cwd) if g.c_dir else cwd
+            if pos:
+                ops.append({"verb": "worktree", "target": resolve(pos[0], base), "srcs": [], "content": ""})
+    return ops
+
+
 
 def load_placement(code):
     """-> {name: (zone, [patterns], message)} from the shipped list plus the optional user-level file."""
@@ -328,7 +386,8 @@ def main_inner():
         writes.append({"verb": tool, "target": t, "content": text, "old": old, "srcs": [],
                        "full": tool == "Write"})
     elif tool == "Bash":
-        for o in bash_ops(ti.get("command", ""), cwd):
+        _cr = _cmdreader()
+        for o in (bash_ops_reader(_cr, ti.get("command", ""), cwd) if _cr else bash_ops(ti.get("command", ""), cwd)):
             o["old"] = ""; o["full"] = o["verb"] in (">", "tee", "cp", "mv", "install", "rsync")
             writes.append(o)
     else:
