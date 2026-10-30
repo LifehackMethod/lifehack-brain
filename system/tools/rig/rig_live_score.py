@@ -232,8 +232,9 @@ def score(a):
     denied_calls = [c for c in calls if c["is_error"] and DENY_TEXT.search(c["result"] or "")]
     false_alarms = [c for c in denied_calls if wm and not any(w.search(json.dumps(c["input"])) for w in wm)]
     # per-case flag (live.registration_forbidden / --registration-forbidden): the prompt itself forbade the registering step, so obeying it is not a defect
-    # STUDENT view: no personal layer exists, so there is no own list to be listed in; not listing is not a defect
-    deferred = (bool(getattr(a, "registration_forbidden", False)) or bool(getattr(a, "student", False))) and not registered
+    # STUDENT view (Enver's ruling R-B5, 2026-10-30): registered = listed in the person's OWN list in their personal code folder, for a student too.
+    # A tool left in the project folder with no own-list entry is a MISS (the earlier lenient "student: not listing is not a defect" was wrong).
+    deferred = bool(getattr(a, "registration_forbidden", False)) and not registered
     results_ok = used_shared and right_home and (registered or deferred) and not registered_in_shared
     if not results_ok:
         bucket = "SLIPPED"
