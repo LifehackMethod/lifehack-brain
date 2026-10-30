@@ -1,26 +1,119 @@
 ---
 topic: [skill-design]
 id: system-playbook-skill-building
-title: "Skill-Building Playbook — the laws first, then the tools, then the procedure — v2 (in force in the V2 sandbox, 2026-10-29)"
+title: "Skill-Building Playbook — the principles first, then the tools, then the procedure — v2 (in force in the V2 sandbox, 2026-10-29)"
 v1_title: "Skill-Building Playbook — the laws first, then the tools, then the procedure"
-v2_status: "IN FORCE in the V2 sandbox (Enver, 2026-10-29); main keeps v1 until V2 ships. Was: DRAFT built on the assumption that the orchestrator-v2 rig validates; v1 the authority until Enver swaps this in. No v1 text was deleted: changed passages are struck through (~~) with a > v2 line beneath."
+v2_status: "IN FORCE in the V2 sandbox (Enver, 2026-10-29). This is the V2 copy, to be merged into main when V2 ships; main keeps v1 until then. Retired and moved text lives in skill-building-sop.history.md. Where a passage was changed, the old wording may appear struck through (~~) with a > v2 line beneath."
 record_type: playbook
 desk: root
 status: active
 authority: user
 created_at: 2026-07-12
-updated_at: 2026-08-15
+updated_at: 2026-10-30
 companion: "your personal code folder (not shipped in the plugin): skill-building-field-notes.md"
 living_intake: "your personal code folder (not shipped in the plugin): skill-irl-findings.md"
-sources:
-  - system/sops/skill-building-sop.md@v1 (git history)                 # v1 — every law preserved, re-ranked
-  - system/research/2026-07-12-skill-sop-ontrack-convergence.md        # [R]  12-agent blind convergence
-  - records/research/2026-07-19-step-prompt-injection-craft.md         # [R2] step-prompt convergence
-  - records/research/2026-07-25-code-vs-llm-enforcement-split.md       # [C]  6-agent crowd convergence
-  - records/research/2026-07-25-skill-dissection-findings.md           # [C]  6 trusted repos, code-level
-  - skill-irl-findings.md (your personal code folder, not shipped)     # [M]  our own measured runs
+history: "system/sops/skill-building-sop.history.md (retired and moved text; never read in normal use)"
+route_format: "[section_id, line_in_this_file, purpose]; find a section by grep -n on its heading text or id; generated last, regenerate after any edit"
+start_here:
+  - ["Has anyone already tried this and had it fail?", "§II.4a, §II.4b", "grep them before building anything that smells like a retry"]
+  - ["The harness did something I did not expect", "§II.4a.1", "measured behaviours of Claude Code itself"]
+  - ["Is there already a tool I can call?", "§II.4", "system/parts/*.py"]
+route:
+  - ["P0", 216, "hypothetical step-runner: a script, not the AI's memory, holds step order (not validated)"]
+  - ["P0.caveats", 224, "caveats: bash prototype, not a product"]
+  - ["P0.ideas", 232, "the script calls the AI; the AI-to-code handoff is a fixed-shape contract"]
+  - ["P0.shape", 260, "card, runner, record, scorer (candidate)"]
+  - ["P0.evidence", 267, "rig stage 1-2 results"]
+  - ["P0.stage45", 274, "simulated-months results; where wrong outcomes came from"]
+  - ["P0.stage3", 289, "real-skill rig runs (/save, marc-health)"]
+  - ["P0.when-not", 298, "when a card is the wrong tool; card-or-no-card rule"]
+  - ["P0.dissent", 316, "research dissent against the step-runner"]
+  - ["§0", 332, "portrait of a good skill: six traits every rule hangs off"]
+  - ["PI", 358, "what holds in a stochastic environment: five principles"]
+  - ["P1", 366, "code owns the mechanical perimeter; the model owns judgment inside it"]
+  - ["P1.seam", 405, "closed vocabulary at the code/model handoff, with evidence"]
+  - ["P1.finding", 480, "finding is fuzzy; printing, counting, comparing, refusing are not"]
+  - ["P1b", 549, "model-reach: can the seam reach a model at all (session, headless, none)"]
+  - ["P2", 607, "intent leaks at four seams; diagnose which before fixing"]
+  - ["P3", 659, "never let the actor grade its own completion"]
+  - ["P4", 698, "three things a model structurally cannot do"]
+  - ["P5", 744, "prose decays; the measured numbers"]
+  - ["PII", 766, "the friction toolbox"]
+  - ["§II.0", 774, "three floors (reasoning, friction, state)"]
+  - ["§II.0.floor", 790, "the floor picks the instrument"]
+  - ["§II.1a", 810, "compliance is overlapping layers of friction, not one level"]
+  - ["§II.1", 827, "four families: replace, verify, wall, refresh"]
+  - ["§II.2", 850, "why prose fails: five modes"]
+  - ["§II.3", 869, "reliability dial: how much friction to add; escalation path"]
+  - ["§II.3.rules", 905, "name the mechanism and the test; isolate LLM guardrails"]
+  - ["§II.4", 920, "primitives library (system/parts, 14 scripts); patterns worth building"]
+  - ["§II.4a", 950, "DO NOT BUILD: what was tried and failed (grep before building)"]
+  - ["§II.4a.census", 952, "census entries [F1..], reproduced"]
+  - ["§II.4a.1", 1152, "measured behaviours of Claude Code itself"]
+  - ["§II.4a.2", 1190, "prose-only protection failures"]
+  - ["§II.4a.3", 1223, "cheap models and judges cost more than they save"]
+  - ["§II.4a.4", 1262, "tests that grade their own homework"]
+  - ["§II.4a.5", 1291, "prescription calcifies"]
+  - ["§II.4a.univ", 1317, "general failures outside the five clusters"]
+  - ["§II.4b", 1381, "DO NOT RETRY: build-process moves that failed"]
+  - ["§II.5", 1408, "packaging rule: primitives must not depend on hook, host path or settings"]
+  - ["§II.6", 1412, "run-vs-read: the folder is the signal"]
+  - ["§II.7", 1419, "held hypothesis: the demand-class principle"]
+  - ["PIII", 1431, "build a skill: the birth procedure"]
+  - ["III.1", 1437, "classify first: skill or command"]
+  - ["III.2", 1496, "declare intent before anything else"]
+  - ["III.3", 1551, "write the description: frontmatter (top failure mode)"]
+  - ["III.4", 1579, "design the flow"]
+  - ["III.5", 1624, "progressive disclosure and layout"]
+  - ["III.6", 1646, "scaffold at birth"]
+  - ["III.7", 1667, "spec-diff gate: catch authoring loss before running"]
+  - ["III.8", 1679, "name every rule's evidence surface at design time"]
+  - ["III.8.nowhere", 1693, "remove the capability instead of a rule nobody can check"]
+  - ["III.9", 1733, "four build-process principles that survived contact"]
+  - ["III.10", 1747, "close: the per-rule friction decision"]
+  - ["III.10.hitl", 1765, "how to make the human-in-the-loop call"]
+  - ["PIV", 1801, "hold it at runtime"]
+  - ["§IV.1", 1809, "three parties in the room; only one drifts"]
+  - ["§IV.2", 1823, "3-layer injection model"]
+  - ["§IV.3", 1837, "rich canon loads once; a lean anchor fires every turn"]
+  - ["§IV.4", 1849, "two every-turn re-injections; neither is a gate"]
+  - ["§IV.5", 1864, "edges, not middle"]
+  - ["§IV.6", 1871, "one step, one injection"]
+  - ["§IV.7", 1904, "anchoring the session, not just the user"]
+  - ["§IV.8", 1921, "staying on-procedure"]
+  - ["§IV.9", 1941, "Path Beat on the status bar (HUD line)"]
+  - ["§IV.10", 1965, "briefing a panel of independent sub-agents"]
+  - ["IV.bet", 1992, "file-spine / fresh-context-per-phase (unproven)"]
+  - ["PV", 2018, "verify the skill"]
+  - ["§V.1", 2029, "which detector to build, one per loss-chain link (read before building)"]
+  - ["§V.2", 2061, "measure before you add friction"]
+  - ["§V.3", 2070, "a fixture can manufacture a violation the real skill never commits"]
+  - ["§V.4", 2080, "verify the verifier"]
+  - ["§V.4a", 2097, "blind the graders, never the actors"]
+  - ["§V.4b", 2156, "a gate verifies evidence of work, not the form of a claim"]
+  - ["§V.4c", 2181, "probe a gate by destruction"]
+  - ["§V.4d", 2221, "a claim written next to a thing is treated as the thing"]
+  - ["§V.5", 2258, "test the seam as a thing, not only the components"]
+  - ["§V.6", 2280, "three failure types"]
+  - ["§V.7", 2299, "the enforceability partition"]
+  - ["§V.8", 2323, "the real supervised run is the acceptance test"]
+  - ["§V.9", 2331, "anti-patterns seen in the wild"]
+  - ["PVI", 2359, "scale and special shapes"]
+  - ["§VI.1", 2365, "splitting a flow that outgrew one skill"]
+  - ["§VI.2", 2396, "interaction craft for human-facing skills"]
+  - ["§VI.3", 2413, "character with purpose"]
+  - ["§VI.4", 2420, "writing it"]
+  - ["§VI.5", 2441, "quality bar"]
+  - ["§VI.6", 2448, "model tiering (name tiers, not products)"]
+  - ["§VI.7", 2456, "making a skill faster: subtract first, price every non-work layer"]
+  - ["VI.7.A", 2462, "subtract first"]
+  - ["VI.7.B", 2484, "price every layer that is not the work"]
+  - ["VI.7.C", 2501, "wall clock vs human-waiting time"]
+  - ["EVID", 2517, "tag legend, admission bar, held list"]
+  - ["§VII", 2554, "living intake: candidates, not doctrine"]
+  - ["§VII.research", 2561, "outside-research candidates [R1..R9], scope failure"]
 reader_note: >
-  READ ORDER IS THE RANKING. PART I is the physics — five laws you cannot prompt your way around; if you read
+  READ ORDER IS THE RANKING. PART I is the physics — five principles you cannot prompt your way around; if you read
   nothing else, read those. PART II is the toolbox that obeys them. PART III builds a skill start to finish
   (self-contained — start here if you just need to scaffold). PART IV holds it at runtime. **PART V tells you
   WHICH DETECTOR TO BUILD and how you would know it still works** — ⭐ read §V.1 BEFORE you build, not after:
@@ -30,11 +123,11 @@ reader_note: >
   inline (an [M] claim means "this mechanism demonstrably exists," never "this is the rate").
 ---
 
-> # THE FRAME — read before any line below. A near-copy of this text sits atop `records/canon/2026-09-02-canonical-principles.md`.
-> *(Enver, 2026-09-05. This block is the one place both documents agree by construction.)*
+> # THE FRAME — read before any line below. A near-copy of this text sits atop `system/sops/canonical-principles-sop.md`.
+> *(Enver, 2026-09-05. This block is the one place both documents are meant to agree. A human check (the quarterly audit of canon §12.b), not construction, is what keeps them in agreement.)*
 >
 > **This is a stochastic environment, not a rules-based one.** Compliance is nudged, layered, and rarely
-> guaranteed. **That sentence is the one law in this document.** Everything else is a principle, and its tier
+> guaranteed. **That sentence is a Rule** (vetted by Enver, 2026-10-30). Everything else is a principle, and its tier
 > says how far to trust it.
 >
 > **Every line carries an evidence tier:**
@@ -64,29 +157,20 @@ reader_note: >
 >
 > **A rule the MODEL must follow enters this document only at REPRODUCED.** Harness FACTS (§II.4a cluster 1 —
 > stdin not `$1`, exit 0 is allow) are rules because they are reproduced. **A rule CODE enforces needs no tier.**
-> Rules live in code; prose carries principles with their reason. **"LAW" below is kept as a stable label for
-> cross-references; read it as PRINCIPLE, tiered per line — none but the sentence above meets the bar for law.**
+> Rules live in code; prose carries principles with their reason. **Alias note: the old labels "LAW 1" to "LAW 5", "LAW 1b" and "LAW A/B/C" (also written "Law n") are now "Principle 1" to "Principle 5", "Principle 1b" and "Principle A/B/C".** The numbers are unchanged, so older references, here and in other files, still resolve.
+> **Only the stochastic-environment sentence above is vetted as a Rule; everything else here is a principle, tiered per line.**
 >
-> ~~**Compliance is a stack, not a choice** (§II.1a). Each layer catches what the one above misses; a hook is the
-> scarce top, never a substitute for the layers beneath it.~~ *(2026-10-30: frame updated, see `canonical-principles-sop.md`, "The layers of friction")*
+> **Compliance is the center of the Venn diagram** (§II.1a). The layers are overlapping circles of friction, each covering part of the risk; where they overlap, a mistake has to get past several at once. A hook is the scarce, expensive circle, never a substitute for the cheaper circles around it.
 >
-> **Compliance is the center of the Venn diagram, not a stack** (§II.1a). The layers are overlapping circles of friction, each covering part of the risk; where they overlap, a mistake has to get past several at once. A hook is the scarce, expensive circle, never a substitute for the cheaper circles around it.
->
-> **The operating rule under the one law** *(added 2026-09-05 from the failure census — CANDIDATE as a single
+> **The operating principle under the Rule above** *(added 2026-09-05 from the failure census — CANDIDATE as a single
 > sentence, since one synthesis wrote it; the modes beneath it (§II.4a, the [F] entries) are REPRODUCED, except where an entry says it entered by Enver's ruling rather than by the census):*
 > **nothing counts as existing, done, enforced or true until you have watched it produce an outcome it could not
 > produce if it were broken. Build the failing state first.** In 42% of 1,656 recorded failures the system gave
-> the same signal whether the thing worked or not. And outside that rule: **look before you build.**
+> the same signal whether the thing worked or not. And outside that principle: **look before you build.**
 > *Second receipt, from the solutions side (2026-09-05, three readers independently): across the modes, zero fixes held
 > durably; every fix that held at all fired unasked, removed the ability rather than asking for a memory, and had been
 > watched refusing; every fix that failed was a description the next session had to remember.*
 >
-> **REFINED 2026-09-06 (Enver's ruling — the heading and the closing clause were prescriptive; the description stays).**
-> ~~**Right-sized, or it does not enter** *(Enver, 2026-09-05).* The Lifehack Harness is a minimal harness built on Pareto's
-> principle: the most value, compliance and reliability for the least code, rules and structure. The question is never
-> "how much can we build" but "how little buys the most." **We are not an enterprise solution.** A remedy that works but
-> needs a second system to watch the first is recorded as *likely overbuilt for this harness* — kept, never adopted by
-> default.~~
 > *(Enver, 2026-09-05; reworded by Enver 2026-09-06.)* The Lifehack Harness is a minimal harness built on Pareto's
 > principle: the most value, compliance and reliability for the least code, rules and structure. We are not an enterprise
 > solution. A remedy that works but needs large-scale code or enterprise machinery in order to work is likely overbuilt
@@ -104,77 +188,42 @@ reader_note: >
 
 > **STATUS (2026-10-29, Enver):** **This v2 is the skills SOP in force for the V2 sandbox** (`~/lifehack-v2`) — the system we are operating in. It applies only there. Main keeps v1 as its SOP, and as the backup until V2 ships.
 >
-> *(Superseded 2026-10-29 — the strike-plus-note editing method below still applies; "draft / v1 is the authority" no longer does.)* **Was:** STATUS — DRAFT. Built on the assumption that the orchestrator-v2 rig validates. **v1 is the authority until Enver swaps this in.** No v1 text was deleted — changed passages are struck through (~~) and followed by a `> **v2 (orchestrator-v2, 2026-10-28):**` line with a confidence tier. Reordering waits (see PART 0, "What waits").
 
 > ## TESTING ASKS "DOES IT WORK?" SECURITY ASKS "WHAT HAPPENS WHEN IT DOESN'T?"
-> *(The centering frame. Enver's, sharpened and adopted 2026-09-11. A near-copy leads `records/canon/2026-09-02-canonical-principles.md`; per canon §12.b the two are kept in agreement by a quarterly human audit, not by construction. ⚠ **That audit is a thing someone must REMEMBER — so by canon §0.1's own test it is a PREFERENCE, not a layer, and it will drift.** Chosen knowingly anyway: a sync script is one more thing that breaks silently and then needs its own alarm. **Stated so the weakness is owned rather than discovered.**)*
+> *(The centering frame. Enver's, sharpened and adopted 2026-09-11. A near-copy leads `system/sops/canonical-principles-sop.md`; per canon §12.b the two are kept in agreement by a quarterly human audit, not by construction. ⚠ **That audit is a thing someone must REMEMBER — so by canon §0.1's own test it is a PREFERENCE, not a layer, and it will drift.** Chosen knowingly anyway: a sync script is one more thing that breaks silently and then needs its own alarm. **Stated so the weakness is owned rather than discovered.**)*
 >
 > **Use the first on code. Use the second on anything a model decides.** Code is deterministic — one run settles it, and a failure is a bug you fix. A model is not: the same input can produce a different move, so "does it work" has no answer, only a rate. **You cannot patch a model into compliance.** So stop trying to eliminate the failure and design what catches it — **a stochastic environment needs a security architecture, not a test suite.**
 >
-> **Borrow security's architecture, never its threat model.** Borrow: no perfect control · every layer eventually fails · test the *combination*, since a stack whose layers each pass alone can still fail as a stack · **never claim zero — state what is covered and what remains.** Don't borrow the attacker: nothing is breaking in. What you guard is already inside, holds your tools, forgets between turns, and can reason its way past a rule it understands. *(Exception: anything read from outside can be authored against you — full adversarial posture there.)*
+> **Borrow security's architecture, never its threat model.** Borrow: no perfect control · every layer eventually fails · test the *combination*, since layers that each pass alone can still fail together · **never claim zero — state what is covered and what remains.** Don't borrow the attacker: nothing is breaking in. What you guard is already inside, holds your tools, forgets between turns, and can reason its way past a rule it understands. *(Exception: anything read from outside can be authored against you — full adversarial posture there.)*
 >
-> **⇒ You are buying FRICTION, not certainty.** Every control raises the cost of going wrong without ever making it impossible, **and tools differ enormously in how much friction they buy** — a check that fires before the model is consulted is a wall; a line of prose is a speed bump. **Stacked layers compound friction, but only when they fail differently** — three speed bumps in a row is still one speed bump.
+> **⇒ You are buying FRICTION, not certainty.** Every control raises the cost of going wrong without ever making it impossible, **and tools differ enormously in how much friction they buy** — a check that fires before the model is consulted is a wall; a line of prose is a speed bump. **Overlapping layers compound friction, but only when they fail differently** — three speed bumps in a row is still one speed bump.
 > **⇒ Progress is coverage and remainder, never pass/fail.** "Nineteen problems, none solved" is a testing scoreboard that stalls forever; *"this much caught, this much left"* is actionable.
 > **⇒ A real layer depends on neither memory nor agreement** — it acts without consulting the model. If the model can talk past it, it's a preference, not a layer. Preferences are cheap and buy real friction; keep them, never count them as protection.
-> **⇒ Depth is set by blast radius and reversibility, not importance** — irreversible → stack; **reversible and cheap → one deterministic check, then STOP.** ⚠ And blast radius is knowable at DESIGN time, so **a new irreversible action gets its stack up front**; the brake below governs *adding to* a control set that already exists, never the first build.
+> **⇒ Depth is set by blast radius and reversibility, not importance** — irreversible → several overlapping layers; **reversible and cheap → one deterministic check, then STOP.** ⚠ And blast radius is knowable at DESIGN time, so **a new irreversible action gets its overlapping layers up front**; the brake below governs *adding to* a control set that already exists, never the first build.
 >
 > ⛔ **This is a minimal harness on Pareto's principle, and security culture adds controls forever.** Friction costs you too — every layer is paid on every run. **Add one because an incident demanded it, never because this frame permits it.** ⚠ **That governs ADDING a control. It does not govern checking that one you already have still works** — a detector that went dark is not a new layer, it is an existing layer you have stopped owning, and confirming it still fires is **maintenance, never addition.**
 >
-> ⚠ **TWO WORDS, TWO MEANINGS — do not merge them.** A **LAYER** is a rung in the enforcement stack (prose · a
-> gate · a hook), and layers are what this frame counts. A **SEAM** is a link in LAW 2's loss-chain — a place
+> ⚠ **TWO WORDS, TWO MEANINGS — do not merge them.** A **LAYER** is one circle of friction (prose · a
+> gate · a hook), and layers are what this frame counts. A **SEAM** is a link in Principle 2's loss-chain — a place
 > where intent died between design and run. **Different questions: *which control failed* versus *where the
-> intent was lost.*** ⇒ **LAW 2 tells you which SEAM leaked. This frame tells you whether your LAYERS were ever
-> real.** ⛔ *Evidence: `state/projects/canonical-housecleaning/records/2026-09-11-layered-enforcement-composition.md` (Brain, not this repo).*
-
-> ## NOTE — WHAT THIS PAGE CITES THAT IS NOT IN THIS REPOSITORY
->
-> **⛔ Nothing marked ⛔ below is coming** — the lesson's evidence is in the lesson; the path was only ever
-> the filing location of the original write-up. These bullets are load-bearing for `system/tools/citation_lint.py`
-> (a marker accounts for its paths file-wide): correct a bullet, never delete one. Full original prose → `ARCHIVE-2026-09-05.md` § "NOTE blocks — full original text".
->
-> - ⛔ `records/research/2026-07-25-code-vs-llm-enforcement-split.md` · `state/debt-ledger.md` · `state/projects/lifehack-cowork/brief.md` · `state/projects/cowork-bulk-ingestion/brief.md` · `state/projects/huddle/huddle-skill/brief.md` · `state/projects/infrastructure/lifehack-correct-architecture/brief.md` · `state/projects/ingest-skill/brief.md` · `state/projects/project-system/brief.md` · `state/projects/security/security-hardening/brief.md` · `state/projects/security/sentinel-gateway/records/2026-07-03-reader-actor-enforcement-proof.md` · `state/projects/skill-builder/brief.md` · `state/projects/skill-system/brief.md` · `state/projects/translator-voice/brief.md` — records in the author's own notes folder, cited as where a lesson was
->   learned. Not in any repository, and not needed: the evidence is in the rule.
-
-> ## NOTE — THE `[M]` MEASUREMENTS WERE TAKEN UNDER A FORMER SKILL NAME
->
-> `[M]` evidence here was measured 2026-07 against the skill then named `cal-weekly` on the `cal` desk; the desk
-> was renamed `cal` → `planning` on 2026-08-14/15 and every citation updated to `planning-weekly`. The runs behind
-> the numbers are unchanged, nothing was re-measured; the HUD persona `Cal` is a character name, deliberately not renamed. Full text → `ARCHIVE-2026-09-05.md` § "NOTE blocks — full original text".
-
-> ## NOTE — WHAT THIS PAGE POINTS AT THAT IS NOT IN THIS REPOSITORY
->
-> - ⛔ **Evidence in the author's own notes** — every lesson here cites the project record where it
->   was learned, and those live under a personal notes folder, not in any repository: `records/2026-07-13-translator-voice-debug-history.md` · `records/decision/2026-06-04-design-lifehack-skill.md` · `records/decision/2026-06-27-numbers-integrity-enforcement.md` · `records/decision/2026-07-02-plans-backup-hole-postmortem.md` · `records/decision/2026-07-13-scratchpad-in-brief.md` · `records/decision/2026-07-13-statusbar-hud-build.md` · `records/decision/2026-07-28-model-efficiency-plan-abandoned.md` · `records/decisions/2026-07-17-claudegate-two-way-overwrite.md` · `records/insight/2026-08-01-agent-name-discards-report.md` · `records/insight/2026-08-05-the-code-llm-seam.md` · `records/log/2026-05-30-datagate-websearch-automation.md` · `records/log/2026-05-31-lifehack-v2-audit.md` · `records/log/2026-06-03-relay-ghost-root-cause-fix.md` · `records/log/2026-06-07-overmyshoulder-dev-browser-root-cause.md` · `records/logs/2026-05-26-cross-machine-sync-infrastructure.md` · `records/reference/2026-07-12-stage2-email-interpret-method.md` · and 13 more of the same kind.
->   The lesson is complete without them; the path was the filing location of the original write-up.
-> - ✅ **The shared-primitives library — SIX OF THESE HAVE SINCE LANDED, and this line was corrected
->   rather than left to rot.** `system/parts/` now exists here and holds
->   `forbidden_content.py` · `move_aside.py` · `residue_scrub.py` (with the shipping lane) and
->   `order_lint.py` · `phase_gate.py` · `section_present.py` (with `/skill-builder`). Every citation of
->   those six on this page now resolves, and `system/parts/run_selftests.sh` gates them.
-> - ⛔ **The rest of that library is still not here** — `system/parts/README.md` · `system/parts/accrual_gate.py` · `system/parts/bounded_input.py` · `system/parts/capture_gate_selftest.py` · `system/parts/completeness_receipt.py` · `system/parts/fanout_budget.py` · `system/parts/fanout_completeness.py` · `system/parts/fanout_gate.py` · `system/parts/identifier_redaction.py` · `system/parts/map_carry_receipt.py` · `system/parts/precondition_gate.py` · `system/parts/routing_evals.py` · `system/parts/voted_judge.py` · `system/parts/write_ledger.py`
-> - ⛔ **Tools from the donor system** — `system/tools/checkin_open.py` · `system/tools/conformance-lab/t5_grade.py` · `system/tools/fanout-lab/` · `system/tools/gauge_check.py` · `system/tools/health_line.py` · `system/tools/ingest_coverage.py` · `system/tools/ingest_setdiff.py` · `system/tools/new-skill.sh` · `system/tools/section_archive.py` · `system/tools/skill_promise_check.py` · `system/tools/skill_promise_sweep.py`
-> - ⛔ **Hooks from the donor system** — `system/hooks/guard_agent_return_channel.sh` · `system/hooks/mirror_plans.sh` · `system/hooks/scratch_capture_gate.sh`
-> - ✅ **The shipping lane has since landed** — `system/shipping-lane/judge.py` and `system/shipping-lane/scrub.py` are both here now, with `/ship`. 
->   ⛔ Line numbers cited elsewhere on this page against the donor's copies of those two files will
->   not match, because both were rewritten so their rules come from the reader's own identity file
->   rather than the author's name.
-> - ⛔ **Other documents** — `.claude/skills/extension/` · `.claude/skills/invocation/` · `shared/tools/intake_reader.py` · `system/factory/emit_gate.py` · `system/factory/extract_clauses.py` · `system/factory/route_to_part.py` · `system/reference/settings.json` · `system/security-canon.md` · `system/sops/skill-irl-findings.md`
->
-> ⚠ **A STALE ABSENCE-LIST IS WORSE THAN NONE** — it tells a reader not to bother looking for a file that is right
-> there; this block was wrong in ten places the day `/ship` and `/skill-builder` landed. `system/tools/citation_lint.py`
-> catches exactly this; re-run it after anything crosses. Why `system/parts/` is the big one → `ARCHIVE-2026-09-05.md` § "NOTE blocks — full original text".
+> intent was lost.*** ⇒ **Principle 2 tells you which SEAM leaked. This frame tells you whether your LAYERS were ever
+> real.**
 
 **How to build a Lifehack skill that fires when it should, runs the right flow, obeys its own procedure, and
 holds the line over a long session — without over-building.**
 
 
-# PART 0 — THE HOSPITAL (v2 skill-design picture, 2026-10-28; sits inside the friction frame)
+# PART 0 — HOLDING STEP ORDER: THE STEP-RUNNER (hypothetical, not yet validated)
 
-> *2026-10-30: the system-wide frame is **layers of friction**, see `canonical-principles-sop.md`, "The layers of friction". The hospital below is only the picture for designing a skill: its walls and its nurse are circles of friction, none of them perfect control.*
+> *2026-10-30: the system-wide frame is **layers of friction**, see `canonical-principles-sop.md`, "The layers of friction". A script that holds step order is one more circle of friction, none of them perfect control.*
+>
+> **HYPOTHETICAL, NOT YET VALIDATED: our best thinking so far, not proven.** Everything in this Part (the card, the runner, the record, and the test results below) comes from one prototype rig and awaits the week-long test. It is not the default way to build a skill.
+>
+> The multi-step validation-script work from late October 2026 is the more current thinking; it is to be reconciled with this Part later.
 
 ## Read this first (audit, 2026-10-28)
 
-1. The card and runner here are a bash prototype: cards are `id | kind | what | check` lines and the runner is about 150 lines of shell (see `<notes>/state/projects/orchestrator-v2/rig/`). It is not a product.
+1. The card and runner here are a bash prototype: cards are `id | kind | what | check` lines and the runner is about 150 lines of shell. It is not a product.
 2. Verdict in one line: the ordering machinery held, and every wrong outcome came from step design.
 3. Green means "right shape", not "good work"; taste checks need a reviewer.
 4. Caveat: Stage 4 used a fake claude and a fake clock; the real-sonnet controls were 38 calls. Real multi-week use is still the bar.
@@ -189,7 +238,7 @@ holds the line over a long session — without over-building.**
 - That model never sees the next step. So it cannot skip it.
 - Evidence (OBSERVED): orchestrator-v2 Stage 1. 10 runs from a plain terminal and 10 runs from INSIDE a live Claude Code window (Claude Code 2.1.312). 0 out-of-order, 0 hangs.
   > **v2 (audit, 2026-10-28):** read "0 hangs" as: 10/10 passed, 0 out-of-order (no hang observed).
-- This qualifies, and does not refute, the LAW 1b nested-hang warning. Re-check per version.
+- This qualifies, and does not refute, the Principle 1b nested-hang warning. Re-check per version.
 - Consequence: work from the normal window. The window only starts the runner. From then on the runner owns the chain.
 - A dead window does not break the chain. Resume from the record.
 - The one limit: the model still has to START the runner. That single step is still a choice. Hooks and `/checkin` cover it.
@@ -201,25 +250,14 @@ holds the line over a long session — without over-building.**
 - So every ai step returns a fixed shape: a field, a pick from a list, a number, an exact yes.
 - The next code step checks BOTH the shape AND the content.
 - Wrong, missing, malformed or empty: the step fails loudly. Never "close enough".
-- `--json-schema` does not guarantee a valid shape (see the ⛔ SCHEMA entry in LAW 1b). So validate every time.
+- `--json-schema` does not guarantee a valid shape (Anthropic says so outright, claude-code issue #9058). So validate every time.
 - If an answer cannot be a form (judgment, writing, taste), code cannot grade it. Route it to a separate reviewer or the human. Say so on the card. See "A check that is only taste" in PART 0.
 - Evidence (OBSERVED): strict format ("TOKEN=<value>"): the checker caught 5/5 deliberate lies.
 - Loose checks ("did it say anything", unvalidated values): 26 silently-wrong days of 300, and 3 of 50 pickups, in the Stage 4 meal.
 - The human "no" carried on until code checked for an exact "yes".
 
-> *DRAFT, built on the assumption that the orchestrator-v2 rig validates. Evidence: `state/projects/orchestrator-v2/brief.md` ⛔ (owner's notes) §2 and §4. Tiers: OBSERVED = seen in the rig with a receipt; CANDIDATE = one skill, awaits the week-long /save test and a second skill on a card (per [P2]).*
 
-## The frame, in plain language
-
-The harness is a **hospital for very intelligent Alzheimer's patients** — the patients are fresh agents: brilliant, capable, and with no memory of what happened a minute ago.
-
-- **WALLS = hooks.** One circle of friction: a hook blocks one bad action, so going wrong costs more. ~~They keep the agents in.~~ They cannot make a patient do steps in order.
-- **CHART = the card plus the record on disk.** A fresh agent reads where things stand and the one next step. Hand it STATE, not history.
-- **NURSE = the runner script.** It hands over one step at a time with its inputs as files, runs the check, and writes the chart. The patient never writes the chart. It is another circle of friction, the strongest one for step order, and it fails for its own reasons.
-
-**Principle: do not try to make the patient obedient; put the rules in the nurse.** That is the strongest circle for step order, not a guarantee. (The ESCALATION LADDER in §II.3 and LAW 3 are the same instinct, one altitude down.)
-
-## The default shape for any skill whose step order must hold  *(CANDIDATE)*
+## A candidate shape for a skill whose step order must hold  *(CANDIDATE; hypothetical, not yet validated)*
 
 1. **Card** — the ordered steps, each of a kind (`code` / `ai` / `human`), each with a check.
 2. **Runner** — one shared script. Delivers one step, runs its check, writes the record, hands over the next.
@@ -229,9 +267,9 @@ The harness is a **hospital for very intelligent Alzheimer's patients** — the 
 ## The evidence (receipts from the orchestrator-v2 brief)
 
 - **Stage 1 (OBSERVED):** 10 terminal runs (t01–t10) and 10 nested-in-a-live-session runs (n01–n10), Claude Code 2.1.312, every `ai` step on sonnet — `examined=30 runs=10 pass=30 fail=0 waiting=0 out_of_order=0` each. Nested split: 5 as-is + 5 with `env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT`, all passing. **0 fail, 0 out-of-order.**
-- **Stage 2 (OBSERVED):** the checker caught **5/5** deliberate lies (rung 3: bad runs all failed at s2, no s3 line; good runs 15/15). Kill-and-resume **skipped the done steps and ran the rest exactly once**. A **3-way code-held fan-out** passed 5/5 (`examined=15 pass=15`), the checker having been watched failing first (`bad=1 good=0`).
-- **What the rig found about itself:** the runner never checked a human answer (fixed; p06 "no" stopped, p07 "yes" completed); a hard kill leaves the lock (see the lock rule below); one of the 5 kill samples was not clean.
-- **LAW 4.3's limit, stated plainly:** with K=10 runs, 95% detection reaches only failure rates of about **26% or more** (1 - 0.05^(1/10)). These are **pass@N counts, not rates.** Zero failures in 10 does not bound the true rate under ~26%.
+- **Stage 2 (OBSERVED):** the checker caught **5/5** deliberate lies (test level 3: bad runs all failed at s2, no s3 line; good runs 15/15). Kill-and-resume **skipped the done steps and ran the rest exactly once**. A **3-way code-held fan-out** passed 5/5 (`examined=15 pass=15`), the checker having been watched failing first (`bad=1 good=0`).
+- **What the rig found about itself:** the runner never checked a human answer (fixed; p06 "no" stopped, p07 "yes" completed); a hard kill leaves the lock (fixed in Stage 3: the lock now records its owner pid, and a dead owner's lock is stolen at once); one of the 5 kill samples was not clean.
+- **Principle 4.3's limit, stated plainly:** with K=10 runs, 95% detection reaches only failure rates of about **26% or more** (1 - 0.05^(1/10)). These are **pass@N counts, not rates.** Zero failures in 10 does not bound the true rate under ~26%.
 
 ## Stage 4–5 evidence (months in an afternoon)
 
@@ -244,9 +282,9 @@ The harness is a **hospital for very intelligent Alzheimer's patients** — the 
   - OPEN-ENDED, 500 check-ins / 50 tidies: `silent_wrong=0 double_ran=0 stuck=0 lost_items=0` (`finished=464 failed_loudly=68`).
   - `out_of_order=0` in every world. Real-sonnet controls: 38 calls, 38 passed (REPEAT 10, LONG RUN 5 pickups, OPEN-ENDED 20).
 - **Where the wrong outcomes came from:** `silent_wrong` = presence-only checks (almost-right AI replies that pass a non-empty test, 8), unvalidated values (zeroed feeds, 6), and record truncation the runner's resume does not detect (12+3). `double_ran` = kills between a NON-idempotent side-effect step and its record row (19+11); the idempotent-by-id append never double-ran.
-- **LAW 4.3 caveat:** fake clock and fake claude; these are **pass@N counts, not rates**, and the fake claude is not the real model. The 38/38 real-sonnet controls are small.
+- **Principle 4.3 caveat:** fake clock and fake claude; these are **pass@N counts, not rates**, and the fake claude is not the real model. The 38/38 real-sonnet controls are small.
 - **Reading (OBSERVED):** order and resume held under abuse (`stuck=0 lost_items=0 out_of_order=0` everywhere). Every wrong outcome traced to step design (weak checks, non-idempotent steps) or to one runner gap (truncated record), not to the ordering machinery.
-- **Stage 5, on paper only (CANDIDATE):** emily-breakdown fits as 20 steps (14 code, 6 ai). The card cannot branch and cannot run two ai steps in parallel (see "When NOT to use a card" below). The live runners hide errors (see the new rules below).
+- **Stage 5, on paper only (CANDIDATE):** emily-breakdown fits as 20 steps (14 code, 6 ai). The card cannot branch and cannot run two ai steps in parallel (see "When NOT to use a card" below). The live runners hide errors (see the Stage 4/5 note under Principle 1).
 
 ## Stage 3 evidence — real skills (OBSERVED)
 
@@ -256,53 +294,6 @@ The harness is a **hospital for very intelligent Alzheimer's patients** — the 
 - **marc-health on a card:** 9 steps, about 1.8 to 3.5 min per run; a HUP-kill after fetch resumed with fetch `skipped-done`; `examined=37 pass=36 fail=0 out_of_order=0`. Per-fetch data errors (IORB once, MOVE stuck three times) were hidden by production's `|| true` and visible only in the fetch log.
 - **Checkers watched failing first:** save 3/3, marc 14/14.
 - **Recommendation (CANDIDATE):** a short job that just reruns from scratch (marc: 2 to 3 min every 2h) does NOT need a card or resume; it needs per-step failure and content checks instead of `|| true`.
-
-## MAP — where the existing sections sit in the hospital
-
-| Role | Existing sections |
-|---|---|
-| **Walls** (a circle of friction: block one action; cannot order steps) | §II.1 family 3 (WALL); §IV.7 "Simpler skill + structural hook" bullet |
-| **Chart** (state on disk, read to resume) | §II.0 floor (c), the state/memory layer; "OUR OWN BET" and §VI.1 (the shared state file); §IV.8 per-run receipt; §IV.9 the HUD |
-| **Nurse** (the runner: delivers, checks, writes) | LAW 1 (code owns the mechanical perimeter); LAW 3 (never let the actor grade its own completion); §II.1 families 1-2 (REPLACE / VERIFY); PART V checkers |
-| **Shrinks to "a human is talking to the model"** | §IV.1 to §IV.7 (anchoring); the barn-sour material |
-
-## New rules in this draft (each also placed in the body)
-
-- Code reads the human's answer and refuses anything but an explicit yes (§II.3, §V.4b). **OBSERVED**
-- The record has a distinct `waiting` state, separate from `fail` (§II.3). **OBSERVED**
-- A hard kill (SIGKILL) leaves the mkdir lock until stale-steal (1500s); a normal close (SIGHUP) releases it; the live cron runner has the same pattern; the 1500s window is a deliberate trade-off (after [A48]). **OBSERVED**
-
-> **v2 (audit, 2026-10-28):** Stage 3 fix (OBSERVED): the lock now records its owner pid. A dead owner's lock is stolen at once; a live owner still gets rc 75. The 1500s wait described above was the pre-fix behaviour.
-- The AI never writes the record; only the runner does (LAW 3, §V.9). **OBSERVED**
-- When testing a kill, verify the kill landed before the step you meant to interrupt (§V.4c). **OBSERVED**
-- Hand state, not history (§IV.6, §VI.1). **CANDIDATE**
-- Card + runner + record is the default shape for any ordered skill (§III.1, §III.4). **CANDIDATE**
-- A session-reach step receives its inputs as FILES written by a code step, or it cannot run under a runner (LAW 1b reach table). **CANDIDATE**
-
-- Every check tests CONTENT, never presence; "non-empty" is not a check (LAW 3, §V.4b). **OBSERVED**
-- Every side-effect step is safe to run twice (idempotent), or records what it did BEFORE acting so a resume can skip it (LAW 1). **OBSERVED**
-- The runner detects a truncated or malformed record before resuming and fails loudly instead of guessing (LAW 1). **OBSERVED**
-- An exit code of 0 from the AI step is never by itself proof of work; the next step's check reads the artifact (LAW 3). **OBSERVED** (emily marker finding, on paper)
-- Never silence an external command's errors (`2>/dev/null`, `|| true`) in a card step; a failed fetch must not read as "nothing new" (LAW 1). **OBSERVED**
-- Always score with the card, or `out_of_order` is false (§V.5). **OBSERVED**
-  > **v2 (audit, 2026-10-28):** cause: without the card the scorer orders steps alphabetically and reported false out_of_order (2 on /save, 16 on marc). OBSERVED.
-- Test the test rig first: a bite with known faults must name every fault before a big run is trusted; the injector bug was found this way (§V.4c). **OBSERVED**
-- The AI→code handoff is a contract: fixed shape, code checks shape and content, loud fail on anything else; judgment goes to a reviewer. OBSERVED.
-- The flip: the runner calls the model per step; the model never holds the step list. OBSERVED.
-
-> **Tiering note (audit):** the tags above are per rule, not blanket: each rule carries its own tier (OBSERVED where the rig saw it; CANDIDATE otherwise). The same holds for the "Default shape" section above, which is CANDIDATE as a whole only because the week-long test has not run.
-
-Audit additions (each with its own tier):
-
-- Exit-code contract: 0 complete · 70 waiting · 75 stood down · 1 step failed · 124 watchdog; the cron runner also uses 3 missing config · 2 transient auth · 137 watchdog kill. A marker advances only on rc 0 AND a passing content check. **OBSERVED** (brief §4; rig README).
-- Version pinning: the runner writes `ccv=<claude version>` on each run's first record line; 13 version changes occurred across 300 simulated days. Use JSON output; a past `claude -p` empty-stdout regression (2.1.81 to 2.1.83); `--bare` is slated to become the `-p` default. Pin and re-test on upgrade. **OBSERVED / CANDIDATE** (ccv line and version churn observed; the `--bare` change is from the research record).
-- ai steps run read-only (`--allowedTools Read`); only the runner writes outputs and the record. **OBSERVED** (rig README).
-- Scorer definition: out_of_order = a pass whose predecessor has no earlier pass / answered / skipped-done line. **OBSERVED** (rig scorer).
-- Most steps are plain code: emily 14/20, deryl 13/15, clair 12/14 on paper. **CANDIDATE** (`rig/paper/`).
-- The card pins the model per ai step (paper found skill text, runner and plan disagreeing on models). **CANDIDATE** (`rig/paper/*.notes.md`).
-- Classify steps copy values verbatim (later steps must not work from a paraphrase); undefined flags (emily's Fit/Confidence) must be defined before carding. **CANDIDATE** (`rig/paper/`).
-- When skill, runner and old copies disagree (folder names, which runner is live), the card names the one live path. **CANDIDATE** (`rig/paper/`).
-- A stale scratchpad is a second source of truth; the record is the one source. **CANDIDATE** (`rig/paper/`).
 
 ## When NOT to use a card
 
@@ -314,25 +305,13 @@ Audit additions (each with its own tier):
 - **Unwritten reasoning between steps (MOSTLY REFUTED):** every case was fixed by making the earlier step write it down. Not a reason to avoid cards; a drawing test: if a step's input cannot be a file, fix the earlier step first.
 - **Writing to the real world (use a card):** calendar, notes, labels: always a card, with a read-back check.
 - **Limit 1, no branching (CANDIDATE):** the runner has no "skip". emily-breakdown: commercial needs a short version of the job, so use **one card per path**, picked by the classify step. Deryl and Clair worked around it with no-op files that the check accepts. planning-weekly's council loop-back to Phase 3 and its optional Phase 6 cannot be drawn.
-- **Limit 2, no parallel ai steps (CANDIDATE):** emily-breakdown's script-reader and researcher; planning-weekly's 4 + 9 + 6 = 19 AI calls would run in a row (council on Opus today, plan pins sonnet). Use a **code-held fan-out step** (the Stage 2 3-way fan-out passed 5/5, OBSERVED) and a card for each piece.
+- **Limit 2, no parallel ai steps (CANDIDATE):** emily-breakdown's script-reader and researcher; planning-weekly's 4 + 9 + 6 = 19 AI calls would run in a row (council on the judgment tier today, plan pins the middle tier). Use a **code-held fan-out step** (the Stage 2 3-way fan-out passed 5/5, OBSERVED) and a card for each piece.
 - **Per-item jobs (CANDIDATE):** deryl-ingest (one card per email), clair-ingest (one per thread). The loop lives outside the card; count that outside script as part of the design and test it (the worst hidden errors sit in the glue: Deryl's cap and marker, Clair's unwired verify).
 - **Drawing test:** "Can every input be a file? Can every output be read by code?" No for the whole job means chat; no for some steps means those are `human` or outside-card steps.
 
-- **Decision rule: card or no card (CANDIDATE, audit 2026-10-28):** use a card when step order must hold AND at least one of: the run is long enough that losing progress costs real time/money, a human pause sits mid-run, it spans sessions, or it has more than one ai step. A short job that can simply rerun from scratch gets per-step checks and loud failure, not a card. Every job, carded or not, follows the ALWAYS rules (content checks, no silenced errors, exit 0 is not proof). This reconciles the "5-step linear run still gets a card" note at §IV.8.
+- **Decision principle: card or no card (CANDIDATE, audit 2026-10-28):** use a card when step order must hold AND at least one of: the run is long enough that losing progress costs real time/money, a human pause sits mid-run, it spans sessions, or it has more than one ai step. A short job that can simply rerun from scratch gets per-step checks and loud failure, not a card. Every job, carded or not, follows the ALWAYS rules (content checks, no silenced errors, exit 0 is not proof). This reconciles the "5-step linear run still gets a card" note at §IV.8.
 - **A card makes a chat feel finished once files exist (CANDIDATE):** planning-weekly paper drawing; the files existing is not the conversation having happened.
 - **Per-step timeouts vs one global limit (CANDIDATE):** the card needs a timeout per step; one global limit hides which step hung.
-
-## Strike-and-replace edits made in the body (all `> **v2 (orchestrator-v2, 2026-10-28):**`)
-
-§IV.8 engine/state-machine (CANDIDATE) · §IV.8 short-run "add nothing" (CANDIDATE) · §IV.8 receipt emitted (OBSERVED) · §IV.6 "habit, not a solution" (CANDIDATE) · §IV.4 model-written banner (CANDIDATE) · §II.3 "say go" most reliably-held (OBSERVED) · LAW 1b HEADLESS cannot pause (OBSERVED) · LAW 1b nested `claude -p` (OBSERVED, qualified not refuted) · §VI.1 handoff carries FULL context (CANDIDATE).
-
-## What waits
-
-These wait for the **week-long /save-on-a-card test and a second skill on a card** (per [P2]); until both, everything tagged CANDIDATE stays CANDIDATE:
-
-- The full reorganisation of this document under the hospital frame (no section is moved in this draft).
-- Promotion of every CANDIDATE item above to doctrine.
-- The held lines: the [F11] and §IV.6 prose-step entries' core text; LAW 1b's policy-risk lines; [P4] (the week-long test is a deliberate exception to "force the condition instead of waiting").
 
 ## Where this could be wrong (dissent from the research — CANDIDATE)
 
@@ -346,128 +325,9 @@ These wait for the **week-long /save-on-a-card test and a second skill on a card
 
 ---
 
-## 🧭 ROUTE — find your question, not the outline
-
-> **This is the generated map of the file — every heading, in document order.** It replaced a hand-written prose
-> index on 2026-09-05: that index was sorted by the question a builder asks, which is the better shape, but it was
-> maintained by hand and had begun to drift. It is preserved verbatim at `ARCHIVE-2026-09-05.md` § "🧭 ROUTE — the original
-> question-sorted index" — read it for the *questions*; read the map below for *where things are*.
->
-> **The three entries worth knowing before anything else:**
-> ⭐⭐⭐ *"Has anyone already tried this and had it fail?"* → **`§II.4a` / `§II.4b` — DO NOT BUILD**. Grep them
-> before you build anything that smells like a retry; `deadend_check.py` searches them for you. ~35% coverage of
-> what is on disk (its own header says so) — absence there is not proof it is safe.
-> ⭐⭐ *"The HARNESS did something I didn't expect"* → **`§II.4a` cluster 1, facts about the harness** — measured
-> behaviours of Claude Code itself (stdin not `$1`; exit 0 cannot block; only `description:` triggers a skill; a
-> NAMED sub-agent's report is discarded).
-> ⭐ *"Is there already a tool I can call instead of writing one?"* → **`§II.4`** — but read its archive banner
-> first; the per-part caller counts were hand-kept and drifted.
-
-
-> Generated from the headings below. Levels: `#` part · `##` section · `###`/`####` a named rule.
-
-- Skill-Building Playbook v2
-  - 🧭 ROUTE — find your question, not the outline
-  - §0 — WHAT A GOOD SKILL IS (the portrait — every rule below hangs off these six traits)
-- PART I — WHAT HOLDS IN A STOCHASTIC ENVIRONMENT *(formerly "the laws of physics" — retitled 2026-09-05, REFINED; labels kept for cross-reference)*
-  - LAW 1 — The Division of Labor: code owns the mechanical perimeter, the LLM owns judgment inside it
-    - ⭐ THE SEAM — what the line between the two halves is actually MADE OF
-    - ⭐ THE DIVISION INSIDE A SINGLE TOOL: **FINDING is fuzzy; PRINTING, COUNTING, COMPARING and REFUSING are not**
-    - ⭐ LAW 1b — THE SECOND AXIS: **MODEL-REACH**. A closed vocabulary says WHAT crosses the seam. It says nothing about whether the seam is REACHABLE AT ALL.
-  - LAW 2 — Intent leaks at four seams; diagnose WHICH one before you fix anything
-  - LAW 3 — Never let the actor grade its own completion
-  - LAW 4 — Three things an LLM structurally CANNOT do
-  - LAW 5 — Prose decays, and the decay is measured
-- PART II — THE ENFORCEMENT TOOLBOX
-  - §II.0 — The three floors (what you are enforcing ACROSS)
-    - THE FLOOR IS THE INSTRUMENT SELECTOR — use the wrong one and you get a confident wrong answer
-  - §II.1a — ~~Compliance is a STACK, not a rung to pick~~ Compliance is the center of the Venn diagram, not a rung to pick *(added 2026-09-05, OBSERVED; reworded 2026-10-30)*
-  - §II.1 — The four families (in order of preference)
-  - §II.2 — WHY prose instructions fail (the five modes gates defeat)
-  - §II.3 — The reliability ladder (how hard to gate — the Verify/Wall dial)
-    - Three rules that govern the whole toolbox
-  - §II.4 — The primitives library (build once, reuse in every skill)
-    - ⚠ THE HEADLINE INVERSION — read this before the table `[M, verified 2026-08-07, independently re-verified]`
-    - ⛔ THE PER-PART CATALOGUE HAS BEEN ARCHIVED — REGENERATE IT BEFORE YOU TRUST IT *(2026-09-05)*
-  - §II.4a — ⭐ DO NOT BUILD — what was tried and failed
-    - From the failure census, 2026-09-05 — REPRODUCED (15 blind readers · journal + 38 briefs + ledger + doc-vs-disk · every mode 4–6 months, 11–12 of 12 sources · 1,656 cited instances)
-    - 1. Facts about the harness (measured behaviours, not opinions)
-    - 2. Prose does not enforce
-    - 3. Cheap models and cheap judges cost more than they save
-    - 4. Tests that grade their own homework
-    - 5. Prescription calcifies
-    - Also UNIVERSAL, not sorted into the five named clusters
-    - LOCAL — recorded history, binds nothing
-  - §II.4b — DO NOT BUILD / DO NOT RETRY — build *process* moves proven not to work *(section opened 2026-09-05 by ruling; grows over time)*
-  - §II.5 — Packaging: two lanes, so enforcement travels
-  - §II.6 — Run-vs-read: the folder IS the signal
-  - §II.7 — ⏸ HELD hypothesis: the demand-class law (NOT yet doctrine)
-- PART III — BUILD A SKILL (the birth procedure)
-  - III.1 — Classify it FIRST: skill, or command?
-  - III.2 — Declare its INTENT (three layers, written before anything else)
-  - III.3 — Write the `description:` frontmatter (the #1 failure mode)
-  - III.4 — Design the flow (§I refers you here for depth)
-  - III.5 — Progressive disclosure + layout
-  - III.6 — Scaffold at birth, not after the fact
-  - III.7 — The spec-diff gate: catch Law 2's link 1 before you ever run the thing
-  - III.8 — Name every rule's evidence surface, at design time
-    - ⭐ NOWHERE IS A DECISION POINT, NOT A DEAD END — remove the CAPABILITY instead
-  - III.9 — Build process: four rules that survived contact
-  - III.10 — Close: the per-rule enforcement decision
-    - ⭐ THE HUMAN-IN-THE-LOOP TEST — how to make that call (2026-08-01; this is the ruling, not a heuristic)
-- PART IV — HOLD IT AT RUNTIME
-  - §IV.1 — Three parties are in the room, and only one of them drifts
-  - §IV.2 — The 3-layer injection model
-  - §IV.3 — Rich canon loads once; a lean anchor fires every turn
-  - §IV.4 — Two every-turn re-injections — and neither one is a gate
-  - §IV.5 — Edges, not middle [R2]
-  - §IV.6 — One step, one injection — never show the whole arc at once
-  - §IV.7 — Anchoring the session, not just the user
-  - §IV.8 — Staying on-PROCEDURE (distinct from on-principle)
-  - §IV.9 — Draw the Path Beat on the status bar (a skill's own HUD line)
-  - §IV.10 — Briefing a PANEL of independent sub-agents [R2]
-  - ⏗ OUR OWN BET (not crowd-validated) — the file-spine / fresh-context-per-phase architecture
-- PART V — VERIFY THE SKILL
-  - §V.1 — One detector per loss-chain link
-  - §V.2 — Measure before you enforce
-  - §V.3 — A fixture can manufacture a violation the real skill never commits
-  - §V.4 — Verify the verifier
-  - §V.4a — BLIND THE GRADERS, NEVER THE ACTORS
-  - §V.4b — A gate verifies EVIDENCE OF WORK, never the FORM of a claim
-  - §V.4c — Probe a gate by DESTRUCTION, not by minimization
-  - §V.4d — A CLAIM WRITTEN NEXT TO A THING IS TREATED AS THE THING
-  - §V.5 — Component checks say nothing about SEAMS — test the seam as a thing
-  - §V.6 — The three failure types (from v1 §3.5, preserved)
-  - §V.7 — The enforceability partition (from v1 §3.5, preserved)
-  - §V.8 — The real supervised run is the acceptance test
-  - §V.9 — Anti-patterns observed in the wild `[C]`
-- PART VI — SCALE & SPECIAL SHAPES
-  - §VI.1 — Splitting a flow that outgrows one skill (EARN it)
-  - §VI.2 — Interaction craft for human-facing skills
-  - §VI.3 — Character-with-purpose
-  - §VI.4 — Writing it
-  - §VI.5 — Quality bar
-  - §VI.6 — Model tiering
-- EVIDENCE & PROVENANCE
-  - §VI.7 — MAKING A SKILL FASTER: subtract before you optimize, and price every layer that isn't work
-    - ⭐⭐⭐⭐ LAW A — SUBTRACT FIRST. The loudest phase is not automatically the reachable one.
-    - ⭐⭐⭐ LAW B — PRICE EVERY LAYER THAT ISN'T DOING THE WORK. A handoff costs time even when it does nothing.
-    - ⭐⭐ LAW C — WALL CLOCK AND HUMAN-WAITING TIME ARE DIFFERENT TARGETS, AND ONLY ONE OF THEM IS THE JOB
-  - §VII — LIVING INTAKE: candidates, not doctrine
-    - From the `/autoplan` rebuild, 2026-09-04 → 05 — the plan format's first execution against itself
-    - From the two blind research runs, 2026-09-05 — outside evidence, tiered; nothing here is doctrine
-    - What this run says about THIS file (for the next revision, not applied here)
-
 
 ---
 
-> **What changed from v1 (2026-07-25).** Same laws, ranked. v1 was ordered by build-chronology, which buried the
-> load-bearing physics in the middle of §3. v2 puts the laws first, gathers every enforcement mechanism into one
-> toolbox, and adds a VERIFY part that v1 had nowhere to put. Two weeks of conformance-lab measurement, a
-> six-agent crowd-convergence study, and a code-level dissection of six trusted public skill repos are folded in.
-> Nothing from v1 was dropped as wrong; the stale door-tester framing in v1 §3.5 is corrected in PART V.
-
----
 
 ## §0 — WHAT A GOOD SKILL IS (the portrait — every rule below hangs off these six traits)
 
@@ -475,7 +335,7 @@ These wait for the **week-long /save-on-a-card test and a second skill on a card
 > proves its own work, and spends only the complexity it earns.**
 
 1. **One front door, staged inside.** One command, one voice. Split the machinery only when earned, and hide the
-   seam. **Human-facing simplicity is a design LAW** — never hand the user five skills where one door will do.
+   seam. **Human-facing simplicity is a design principle** — never hand the user five skills where one door will do.
 2. **It LEADS, it doesn't follow.** It holds its frame against the pull of the user's words. *(Models drift
    toward the loudest voice in the room — the user — and it gets worse over a long session and worse in more
    capable models. [R])*
@@ -484,7 +344,7 @@ These wait for the **week-long /save-on-a-card test and a second skill on a card
 4. **It PROVES its work — and the proof is never the actor's own report.** Evidence over self-report, scaled to
    the stakes. A skill saying "done" is not evidence; something outside the skill confirming it is. *(Measured: a
    large share of "done" claims are fake, and an LLM judge can't catch it. [R] — independently re-confirmed from
-   the other direction in 2026, see Law 3. Amended 2026-07-25: v1 said "never just claims done"; v2 names WHO may
+   the other direction in 2026, see Principle 3. Amended 2026-07-25: v1 said "never just claims done"; v2 names WHO may
    do the confirming.)*
 5. **It right-sizes.** Earn every step, gate, model-tier, and split. The simplest thing that works; add only
    what a test shows you need.
@@ -495,7 +355,7 @@ These wait for the **week-long /save-on-a-card test and a second skill on a card
 
 ---
 
-# PART I — WHAT HOLDS IN A STOCHASTIC ENVIRONMENT *(formerly "the laws of physics" — retitled 2026-09-05, REFINED; labels kept for cross-reference)*
+# PART I — WHAT HOLDS IN A STOCHASTIC ENVIRONMENT *(formerly "the laws of physics" — retitled 2026-09-05, REFINED; the old "LAW n" labels now read "Principle n", same numbers)*
 
 > Tiers, per the frame: **1** REPRODUCED (code-vs-judgment, converged across [C][R][M]) · **1b** OBSERVED (one live failure + four measurements) · **2** OBSERVED (links 1–2 measured, 3 untested) · **3** REPRODUCED (five sources + local, and three new local receipts 2026-09-04/05) · **4.1** REPRODUCED (structural) · **4.2** RESEARCHED · **4.3** OBSERVED (n small) · **5** RESEARCHED with numbers.
 
@@ -503,7 +363,7 @@ These wait for the **week-long /save-on-a-card test and a second skill on a card
 > our own lab [M], measured by outside researchers [R][R2], and confirmed by practitioners and primary
 > authorities [C]. **You cannot prompt your way around them.** Everything in PARTS II–VI is downstream of these.
 
-## LAW 1 — The Division of Labor: code owns the mechanical perimeter, the LLM owns judgment inside it
+## Principle 1 — The Division of Labor: code owns the mechanical perimeter, the LLM owns judgment inside it
 
 Any part of a skill with a **definite shape** — steps that must happen in an order, a set that must be complete,
 a phase that must finish before the next starts, a write that must land — is enforced by **deterministic code**:
@@ -530,9 +390,9 @@ needs. `[C]` structured-output constraints can degrade reasoning on some tasks (
 > **The test:** are you constraining *what must be true when the step is done* (gate it) or *how the model should
 > think while doing it* (leave it free)? The first is mechanics. The second is a handcuff.
 
-> ⚠ *2026-09-05, single-source, NOT promoted:* one project measured 57 enforcement instances and found code failing
+> ⚠ *2026-09-05, single-source, NOT promoted:* one project measured 57 friction instances and found code failing
 > 3.6× more often than prose, a third of its failures reporting success while producing nothing (skill-system brief,
-> unresolved). It does not overturn this LAW; it says code that INFERS a judgment from a side-signal fails like prose
+> unresolved). It does not overturn Principle 1; it says code that INFERS a judgment from a side-signal fails like prose
 > does. Code holds the line only on membership in a closed set someone else stamped (§II.4a [F4], [F7], [F13]).
 
 **Both extremes ship, and the evidence is instructive** `[C]`: the most-starred public skill suite (261k★) is
@@ -554,7 +414,6 @@ position is the second, plus the verification machinery in PART V that neither h
 > below), only the shape did. A blind /research pass on the wider field was launched 2026-09-05 — its record, when
 > written, is the place to look for what else exists. Tier for the shape: OBSERVED.
 > Carried verbatim and inline in `/autoplan` STEP 2 and `/build` Step 0 — you do not need to fetch it.
-> Rich version + full evidence: `records/insight/2026-08-05-the-code-llm-seam.md` (Drive).
 >
 > **WHY THE SECTION BELOW IS WRONG — kept because the reason is the expensive part (a ruling, 2026-08-05):**
 >
@@ -568,21 +427,21 @@ position is the second, plus the verification machinery in PART V that neither h
 >    two full bands on an unchanged input; the bounded *number* that replaced it has held nine weeks. And
 >    `fault_proposer.py` returned a legal member every single time while its verdict was permanently stuck.
 > 3. **It named a vocabulary.** The rule must name the **slot**, never the words. Naming one skill's verbs in
->    a general law is what turned a 5,000-foot question into one skill's code.
-> 4. ⚠ **Its own evidence table carried a false enforcement claim** — corrected in place above (the
->    `HUMAN_VERBS` row). That is §II.3's *"a claim of enforcement with no named test is a wish"* and the
+>    a general principle is what turned a 5,000-foot question into one skill's code.
+> 4. ⚠ **Its own evidence table carried a false protection claim** — corrected in place above (the
+>    `HUMAN_VERBS` row). That is §II.3's *"a claim of protection with no named test is a wish"* and the
 >    fourth logged instance of §V.4d, committed inside the document that names both.
 >
 > **WHAT STILL STANDS, and why the section is kept rather than deleted:** the HELD/ERODED table's *held* half
 > is real data · the two-sided tell (the fifth `elif`; "be thorough") is correct and still cited · the
-> membership half was independently corroborated by `records/research/2026-07-25-code-vs-llm-enforcement-split.md`
+> membership half was independently corroborated by a separate research pass
 > (four blind angles, all blind to Lifehack). **Also note §II.2 already said "gradient leaks, binary holds"** —
 > this section partly re-derived doctrine that was already here, one altitude up.
 
 Everything above tells you **which side** a piece of work goes on. It does not tell you what the **handoff**
 between the sides is, and that turned out to be where the failures actually live. This section is the answer.
 
-*(Not to be confused with **LAW 2's four seams**, which are the places intent leaks between what you designed and
+*(Not to be confused with **Principle 2's four seams**, which are the places intent leaks between what you designed and
 what a run does. **This** seam is a single structural joint: where code hands off to the model, and back.)*
 
 > ~~**THE SEAM IS A CLOSED VOCABULARY.**~~ **ONE seam shape that has held here is a closed vocabulary** *(softened
@@ -594,13 +453,13 @@ what a run does. **This** seam is a single structural joint: where code hands of
 of the eleven?* — `tag.py:173`, off-list values are dropped by the controller, not argued with).
 
 **THE EVIDENCE — every closed vocabulary in `cowork-ingest`, checked against what actually survived a month of
-contact.** The split is total, and that is why this is a law and not a preference:
+contact.** The split is total, and that is why this is a principle and not a preference:
 
 | **HELD** — a fixed set, membership code-validated | where | outcome |
 |---|---|---|
 | `CATEGORIES` — 11 members | `system/tools/cowork-ingest/tag.py:34` | held perfectly for a month; off-list values dropped by the controller |
 | `FRESHNESS` — fresh / stale / unknown | `tag.py:39` | held |
-| `HUMAN_VERBS` — MINE / TOSS / SAVE | `system/tools/cowork-ingest/pipeline.py` | held. ⚠ **CORRECTED 2026-08-05 — this row originally read *"`check_screens.py` enforces that no jargon leaks past them."* That was FALSE. `check_screens.py` has ZERO callers** (verified: the only references anywhere are this line, `skills/ingest/SPEC.md:567`, and the file's own docstring — no cron, no Pulse job, no hook, no test). It is §V.9's `Validator-exists-but-nothing-calls-it` — COMMITTED, never ENFORCED. **The author of this row asserted enforcement without checking for a runner, which is exactly the wish §II.3 names and the fourth logged instance of §V.4d.** `health_line.py:67` already records the same disease by name. The vocabulary held; nothing was guarding it. |
+| `HUMAN_VERBS` — MINE / TOSS / SAVE | `system/tools/cowork-ingest/pipeline.py` | held. ⚠ **CORRECTED 2026-08-05 — this row originally read *"`check_screens.py` enforces that no jargon leaks past them."* That was FALSE. `check_screens.py` has ZERO callers** (verified: the only references anywhere are this line, `skills/ingest/SPEC.md:567`, and the file's own docstring — no cron, no Pulse job, no hook, no test). It is §V.9's `Validator-exists-but-nothing-calls-it` — COMMITTED, never ENFORCED. **The author of this row asserted protection without checking for a runner, which is exactly the wish §II.3 names and the fourth logged instance of §V.4d.** `health_line.py:67` already records the same disease by name. The vocabulary held; nothing was guarding it. |
 | basket status rungs — `queued`→`skim-complete`→`read-complete`→`committed` | `pipeline.py` | held; the coverage gates work off these |
 | `_TERMINAL_FS` — filed / pointer-only / deferred / declined | `pipeline.py:881` | held |
 
@@ -625,7 +484,7 @@ write down plainly that it is a scalar and will erode — so the next session kn
 > it's appropriate — we don't want it to go way off the rails, but we don't want it to also break if it's
 > spelled just slightly differently or if one symbol throws us off."*
 
-LAW 1 divides the WORK between code and the model. This divides **a single tool's own job**, and it is the
+Principle 1 divides the WORK between code and the model. This divides **a single tool's own job**, and it is the
 division that keeps getting missed, because a tool that locates its own input *feels* self-contained.
 
 **⇒ A tool that operates on a REGION OF A DOCUMENT should be HANDED the region, not asked to find it.**
@@ -636,8 +495,8 @@ cannot, and every attempt to make it can produces the same two-sided failure bel
 
 | # | the tool | what happened |
 |---|---|---|
-| 1 | `system/tools/section_archive.py` | Shipped a heading-guessing regex whose match decided **what gets archived immediately before a deletion** — judgment in code, at the highest-stakes point. It also could not win: the brief fleet is genuinely non-standard, and the first widening matched `## CURRENT STATE NOTES`, a DIFFERENT section. **The ruling:** *"don't make the tool do fuzzy matching, that should belong to the llm. we've got a lot of briefs and they don't have standardized sections."* ⇒ now `--heading "<exact>"` or `--start/--end`, and **a near-miss is REFUSED, never resolved to something close.** |
-| 2 | `system/tools/checkin_open.py` | Scanned a whole brief for a marker character to find its three status lines. Returned **`PARTIAL-RUNGS 6`** on its own project's brief, because **three lines of ordinary prose elsewhere in the file merely MENTIONED that character while describing this very tool.** ⭐ **It matched its own description.** Its sibling `gauge_check.py` did NOT have the bug — for one reason: it is scoped to the section and does not go looking. |
+| 1 | `system/tools/section_archive.py` ⛔ merged into `system/tools/save/pad_archive.py` (2026-08-11) | Shipped a heading-guessing regex whose match decided **what gets archived immediately before a deletion** — judgment in code, at the highest-stakes point. It also could not win: the brief fleet is genuinely non-standard, and the first widening matched `## CURRENT STATE NOTES`, a DIFFERENT section. **The ruling:** *"don't make the tool do fuzzy matching, that should belong to the llm. we've got a lot of briefs and they don't have standardized sections."* ⇒ now `--heading "<exact>"` or `--start/--end`, and **a near-miss is REFUSED, never resolved to something close.** |
+| 2 | `system/tools/checkin/checkin_open.py` | Scanned a whole brief for a marker character to find its three status lines. Returned **`PARTIAL-RUNGS 6`** on its own project's brief, because **three lines of ordinary prose elsewhere in the file merely MENTIONED that character while describing this very tool.** ⭐ **It matched its own description.** Its sibling `gauge_check.py` did NOT have the bug — for one reason: it is scoped to the section and does not go looking. |
 | 3 | the proposed fix for #2 | *"Anchor the marker to the start of the line."* **RULED OUT the same hour**, and it is the instructive one — see below. |
 
 **⛔ WHY #3 IS RULED OUT, AND WHY IT IS THE TRAP:** a tighter matcher **fixes the observed case** — it was
@@ -656,7 +515,7 @@ output a human is already reading. The code guarantees WHAT — it reads from di
 fabricated. **Neither half can fail silently, which is the only reason this split is safe.**
 
 **⚠ RELATED, NOT THE SAME:** `build-sop.md`'s *"a guard that greps a keyword false-positives on mere
-MENTIONS"* is the same disease one rung down, and by 2026-08-06 it had **three logged instances** (the
+MENTIONS"* is the same disease one level down, and by 2026-08-06 it had **three logged instances** (the
 status-bar guard, `guard_findings_write.sh`, and #2 above). **That hardening propagated to two siblings
 and not to the third** — which is why this is written as doctrine rather than left as three bug reports.
 
@@ -664,20 +523,20 @@ and not to the third** — which is why this is written as doctrine rather than 
 - **You are writing your fifth `elif`.** Judgment leaked into code. The predicate went fuzzy about three branches
   ago; you are now hand-writing the thicket of special cases that the model exists to absorb.
 - **You are writing *"be thorough"* / *"check all 23"* / *"don't miss any."*** Set arithmetic leaked into prose.
-  That is **LAW 4.1** — completeness against a source the model cannot hold — and it is structurally unavailable,
+  That is **Principle 4.1** — completeness against a source the model cannot hold — and it is structurally unavailable,
   no matter how firmly you word it.
 
-**A RULE WORTH KEEPING, SHARPENED** (2026-08-05, from someone who works with these systems daily). The rule as stated: *LLMs are for fuzzy matching
+**A PRINCIPLE WORTH KEEPING, SHARPENED** (2026-08-05, from someone who works with these systems daily). The principle as stated: *LLMs are for fuzzy matching
 and complex if-then statements; code is for prescriptive rules.* The sharpening: **"complex if-then" sounds like
 code's home turf — and the *branching* is.** What the LLM actually owns is not branching but **undecidable
 predicates**. `if chat.is_about_acting()` has no regex behind it, and no amount of `elif` will grow one. Once a
 predicate is crisp, code branches better than the model does; writing down a predicate that cannot be written
-down is exactly the thicket the rule above is warning about. **But note what that rule does not cover: it tells you how to
+down is exactly the thicket the principle above is warning about. **But note what that principle does not cover: it tells you how to
 DIVIDE the work and says nothing about how the halves TALK.** All three real `/ingest` bugs found on 2026-08-04/05
 were at the handoff, not inside either half — a reflection screen where code and prose were each correct and
 nothing connected them (dead three weeks); a coalesce that emitted bare strings to a consumer calling `.get()` on
 them; a chat-row manifest handing the filer two booleans when code had computed all eleven tags. **The seam is
-where the bugs are, which is why it needs a law of its own.**
+where the bugs are, which is why it needs a principle of its own.**
 
 > ⚖ **EVIDENCE BASE — read this before you cite the section.** This is **doctrine**, not a `⏸ HELD hypothesis`
 > (§II.7) — ten cases all pointing one direction, with a mechanism that explains why, is past the hypothesis bar.
@@ -686,9 +545,9 @@ where the bugs are, which is why it needs a law of its own.**
 > from outside this system has been sought. Treat the *shape* as reliable and the *universality* as untested. If
 > you find a seam here that is a closed vocabulary and eroded anyway, that is the disconfirming case — record it.
 
-### ⭐ LAW 1b — THE SECOND AXIS: **MODEL-REACH**. A closed vocabulary says WHAT crosses the seam. It says nothing about whether the seam is REACHABLE AT ALL.
+### ⭐ Principle 1b — THE SECOND AXIS: **MODEL-REACH**. A closed vocabulary says WHAT crosses the seam. It says nothing about whether the seam is REACHABLE AT ALL.
 
-> **Added 2026-08-05, from a live failure + four measurements.** LAW 1 is about the *contents* of the
+> **Added 2026-08-05, from a live failure + four measurements.** Principle 1 is about the *contents* of the
 > handoff. This is about its *existence*. Both halves can be perfectly designed and the seam can still be
 > a no-op, because nothing ever reaches the model.
 
@@ -704,72 +563,31 @@ required"* and the reader reasonably heard *"the LLM runs now."* **I built the l
 | reach | what it is | available in cron? | can pause for approval? |
 |---|---|---|---|
 | **SESSION** | the running model does it, driven by **skill prose** (the `/save` → `pad_archive.py` pattern) | ⛔ **NO** | ✅ yes |
-| **HEADLESS** | a script shells `claude -p` | ✅ yes — **with the two fixes below** | ⛔ no |
+| **HEADLESS** | a script shells `claude -p` | ✅ yes — **if the script supplies an absolute path to the CLI and its own login token** (cron's environment is stripped) | ⛔ no |
 | **NONE** | nothing reaches a model | — | — |
 
 > **v2 (orchestrator-v2, 2026-10-28):** The HEADLESS row's "can pause for approval: ⛔ no" is **superseded**: a headless run CAN pause if the runner stores the question, exits with a distinct waiting code, and resumes on the answer. *(OBSERVED — p01–p07 pause/resume, brief §4 Stage 2. Table row kept as written above because a table cell cannot be struck without breaking the table.)*
 
-- **NEW RULE — a session-reach step receives its inputs as FILES written by a code step, or it cannot run under a runner.** A step whose reach is SESSION (e.g. `/save` reading the live conversation or armed flags) has nothing to read once a runner owns the order; a code step must first write what it needs to disk. *(CANDIDATE — awaits the week-long /save test.)*
+- **principle (candidate) — a session-reach step receives its inputs as FILES written by a code step, or it cannot run under a runner.** A step whose reach is SESSION (e.g. `/save` reading the live conversation or armed flags) has nothing to read once a runner owns the order; a code step must first write what it needs to disk. *(CANDIDATE — awaits the week-long /save test.)*
 
 
-**⛔ LAW: A SEAM WHOSE ONLY REACH IS `SESSION` DOES NOT EXIST IN CRON.** Write that in the artifact, or a
+**⛔ PRINCIPLE: A SEAM WHOSE ONLY REACH IS `SESSION` DOES NOT EXIST IN CRON.** Write that in the artifact, or a
 background path will silently skip the judgment step and report success. **This is the same disease as
 §V.9's `validator-exists-but-nothing-calls-it`**, one altitude up: there, code had no caller; here, a
 *model step* has no caller.
 
-🛑 **POLICY RISK ON THE HEADLESS ROW — NOT A TECHNICAL ONE, RE-CHECK BEFORE RELYING ON IT.** On 2026-05-14
-Anthropic announced it would remove `claude -p` / Agent SDK / headless usage from Pro/Max/Team/Enterprise
-**subscription** pools entirely, citing a documented **15–30× subsidy**. **Paused 2026-06-15 pending a
-revised plan, with the right to re-impose expressly reserved.** ⇒ **Do not build a load-bearing unattended
-subsystem on subscription-backed inference without a conscious decision** — the `TOKEN_FILE` pattern this
-very row depends on is exactly that bet. Policy moves faster than architecture. *(`/research`,
-2026-08-05 — Anthropic Help Center / Axios / Zed Industries.)*
 
-> v2 note: held for the week-long test
-
-
-**MEASURED 2026-08-05 — the two things that break HEADLESS in cron, and the house already fixed both:**
-- ⛔ **PATH.** `claude` lives at `~/.local/bin/claude`, which is **NOT on cron's PATH**
-  (`/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin`). A bare `claude` in a cron script returns
-  **`command not found`**. *(Same family as build-sop's `/usr/sbin/scutil` trap.)*
-  ✅ **FIX, and it is already the house pattern** — verified in `archivist-run.lib.sh:34`,
-  two scheduled runners in the donor system: an **absolute `CLAUDE_BIN`**, with one of them
-  own comment saying it outright — *"CLAUDE_BIN is absolute — no PATH dependency."*
-- ⛔ **AUTH.** With the absolute path but a stripped env, `claude -p` returns
-  **`Not logged in · Please run /login`** — measured. ✅ **FIX, also already the house pattern:** the
-  `TOKEN_FILE="$HOME/.config/lifehack/claude-oauth-token"` those same three runners use.
-  ⛔ **DO NOT HAND-ROLL THAT CHECK — it now lives in exactly one place:** `require_claude_token`
-  in **`system/tools/claude-auth.lib.sh`** (`source` it, then `require_claude_token "<job>" || exit 75`).
-  **Why the prohibition is this blunt:** the check *was* hand-rolled five times, every copy carrying
-  its own literal `exit 3`, which `system/jobs.md`'s exit-code table classes as a REAL
-  FAILURE — so on a fresh install, where the token file legitimately does not exist yet, three ticks
-  tripped Pulse's 3-strike breaker and permanently auto-disabled the runner. It was fixed **twice**,
-  in two of the five, and stayed broken in the other three, because **a fix applied to a copy does
-  not reach the other copies.** The correct code is **75** (stood down, counted `skipped`), and the
-  stand-down is always NAMED out loud — per this repo's ABSENT-SUBJECT rule, "I could not look" must
-  never be spelled the same way as "I looked and it was fine."
-- ⛔ **SCHEMA — PATH+AUTH fixed still doesn't buy you a valid shape.** `claude -p --json-schema` does
-  **NOT** guarantee schema-valid output — Anthropic states this outright in GitHub issue
-  `anthropics/claude-code#9058` (open). Issue `#23265` adds a reproducible cold-start bug (first call
-  returns null / exit 1) and a hang (exit 124) when nested inside a running Claude Code session via the
-  Bash tool — independently confirming this house's own rule that a subagent shelling `claude -p`
-  double-nests. **If a hard schema guarantee is needed, the Messages API's `output_config.format`
-  (constrained decoding, GA) is the only surface that provides one — not this flag.**
-
-> **v2 (orchestrator-v2, 2026-10-28):** Qualification, not refutation: a nested `claude -p` from inside a live Claude Code session ran **10/10** (n01–n10, Claude Code 2.1.312), with and without unsetting `CLAUDECODE` / `CLAUDE_CODE_ENTRYPOINT` (5 + 5, all passing). The hang/double-nest hazard above is kept; re-check it per version. *(OBSERVED — brief §2 Rung 2.)*
-
-
-**⭐⭐ THE LAW THAT MATTERS MOST — AN UNREACHABLE MODEL IS NOT A CLEAN RESULT.**
+**⭐⭐ THE PRINCIPLE THAT MATTERS MOST — AN UNREACHABLE MODEL IS NOT A CLEAN RESULT.**
 **Measured:** when `claude -p` cannot run, **stdout is EMPTY and the exit code is 127.** An empty stdout
 parsed as *"the model returned no findings"* is **indistinguishable from a genuinely clean verdict** — and
 in cron **nobody is watching, so it is invisible forever.** ⇒ **Every caller MUST map
 `unreachable · errored · rate-limited · timed-out · malformed` onto the seam's
-`NO OUTCOME WAS REACHED` member — NEVER onto the clean member.** This is LAW 1's required member doing its
+`NO OUTCOME WAS REACHED` member — NEVER onto the clean member.** This is Principle 1's required member doing its
 real job: it exists precisely so *"I could not look"* cannot be spelled the same way as *"I looked and it
 was fine."*
 
 ⭐ **CONFIRMED FROM OUTSIDE THIS SYSTEM, 2026-08-05 (`/research`, 4 blind angles + a disconfirming pass) —
-this is our own law, said better:** *"An instrument that cannot distinguish 'nothing there' from 'I was not
+this is our own principle, said better:** *"An instrument that cannot distinguish 'nothing there' from 'I was not
 allowed to look' will manufacture false reassurance."* — arXiv 2606.14589, an 8-week, 22-incident postmortem
 study of a production agent runtime. And GitHub `anthropics/claude-code#38813` reports the same failure by
 name: OAuth expiry in a LaunchAgent/cron/CI context **fails silently with a 401 and the job is "silently
@@ -785,7 +603,7 @@ private copy is debt."* **Put the prompt and the vocabulary in ONE file both rea
 Tested by asking a headless haiku to Read a file the ingest gate blocks — it came back **`BLOCKED`**. **The
 security wall travels to the headless path**; a background LLM step is not running outside the guard set.
 
-## LAW 2 — Intent leaks at four seams; diagnose WHICH one before you fix anything
+## Principle 2 — Intent leaks at four seams; diagnose WHICH one before you fix anything
 
 `[M: planning-weekly; links 1–2 and 2–3 measured, link 3–4 UNTESTED]` Between what you designed and what a run
 actually does, there are four distinct places intent dies. They have different causes, different fixes, and
@@ -822,9 +640,9 @@ silence means nothing.
 break and watching **that one detector** fire, in isolation. ⛔ **That is precisely the condition under which
 CORRELATED FAILURE IS INVISIBLE:** a layered pipeline whose every layer passed alone was defeated **71%** of
 the time by pressure applied stage by stage, where single-shot attempts succeeded **0%**. Every layer worked;
-the stack did not.
+the combination did not.
 > **The cheap version: DISABLE LAYER A, CONFIRM LAYER B STILL CATCHES IT** — a manufactured break at the
-> **STACK** level rather than the **CHECK** level.
+> **COMBINATION** level rather than the **CHECK** level.
 ⚠ **Honest limit: no source publishes a validated method for this.** Disable-one-and-retest is the minimum
 viable form, **not established practice.** ⇒ And remember what makes two layers two: **they must fail for
 different reasons** (canon §0.1, §5.20). Disabling three prose rules one at a time teaches you nothing — they
@@ -832,12 +650,12 @@ are one layer.
 
 **Worked example (ours).** planning-weekly's files turned out **~95% faithful** to their spec — so every prose rewrite
 would have been aimed at the wrong seam. The bad runs were links 2 and 3 (rules broken at runtime, worse as the
-window filled) plus one structural impossibility (completeness in prose — Law 4).
+window filled) plus one structural impossibility (completeness in prose — Principle 4).
 
 *(The older FILE-correct vs BEHAVIOR-correct split is the coarse two-way version of this: link 1 = "file,"
 links 2–4 = "behavior." Fine as shorthand; use the four links when you actually need to fix something.)*
 
-## LAW 3 — Never let the actor grade its own completion
+## Principle 3 — Never let the actor grade its own completion
 
 The thing that did the work must never be the thing that declares the work done — **nor may the checker grade
 from the actor's REPORT of the work** (added 2026-09-05, OBSERVED ×3: a helper's wrong diagnosis relayed into a
@@ -866,9 +684,8 @@ phase's required artifacts exist. The model never stamps its own homework. A com
 **side-effect check** (does the file exist, does the row read back) — because `[C]` a schema check happily passes
 a well-formed lie.
 
-> v2 receipt (orchestrator-v2): checker-writes-marker held in the rig — 10 terminal + 10 nested runs, 0 fail, 0 out-of-order, every record line written by the runner (brief §2/§4; Claude Code 2.1.312). OBSERVED, one rig.
 
-- **NEW RULE — the AI never writes the record; only the runner does.** The model produces a step's output file; the runner runs the check and writes the record line. *(OBSERVED — also see §V.9.)*
+- **principle (observed) — the AI never writes the record; only the runner does.** The model produces a step's output file; the runner runs the check and writes the record line. *(OBSERVED — also see §V.9.)*
 
 
 **The anti-pattern, seen in the wild** `[C]`: a 261k★ suite whose ledger lines (`Task N: complete`) are written
@@ -877,7 +694,7 @@ the model on the honor system. Both are prose choreography dressed as rigor.
 
 > **v2 (orchestrator-v2 Stage 4/5, 2026-10-28):** Two more instances. (1) Every check tests CONTENT, never presence; "non-empty" is not a check: `silent_wrong` came from almost-right AI replies passing a non-empty test (8) and zeroed feeds whose values were never validated (6); the marc voice check only tested non-empty. (2) An exit code of 0 from the AI step is never by itself proof of work; the next step's check reads the artifact: the live emily-breakdown, deryl-ingest and clair-ingest runners advance the "new mail seen" marker on rc 0 alone, so nothing proves the document, the open loop or the archive happened (Emily marker finding, on paper). *(OBSERVED.)*
 
-## LAW 4 — Three things an LLM structurally CANNOT do
+## Principle 4 — Three things an LLM structurally CANNOT do
 
 Build them in code, or accept you don't have them. These are not "hard" — they are **unavailable**.
 
@@ -900,12 +717,12 @@ Build them in code, or accept you don't have them. These are not "hard" — they
    what this kills. Any LLM verdict a decision rests on is sampled K times and folded **fail-closed**.
    Independently arrived at in the wild `[C]`: a community repo's own written rule — *"run the agent 3+ times
    before trusting a description change; single samples lie."*
-   - **The fold rule (measured, not obvious):** a plain majority is NOT enough. `violated` and `missed` are not
+   - **The fold principle (measured, not obvious):** a plain majority is NOT enough. `violated` and `missed` are not
      symmetric evidence — a quote-verified **violated** means a judge *found and quoted* the forbidden thing;
      **met** means it *didn't notice*. **Absence of evidence must never outvote evidence**, so one
      quote-verified violation decides the clause even against a majority. A *groundless* violation (no
      verifiable quote) gets no such power, so a spurious cry of foul can't dominate either.
-   - ⭐ **HOW TO CHOOSE K — added 2026-09-11, because this law mandated sampling and never said how many.**
+   - ⭐ **HOW TO CHOOSE K — added 2026-09-11, because this principle mandated sampling and never said how many.**
      **K is arithmetic, not taste.** For a 95% chance of observing a behaviour that occurs at rate `r`:
      **`n = ln(0.05)/ln(1−r)`** → **40% → 6 runs · 20% → 14 · 10% → 29 · 5% → 59.**
      ⛔ **State the smallest rate you intend to be able to DETECT before the run.** A K chosen afterwards fits
@@ -923,9 +740,9 @@ Build them in code, or accept you don't have them. These are not "hard" — they
      or before quitting. *(Also un-computed: the price. Assumed $116.00; measured $7.81 — a budget CAP read as
      SPEND, 14.9×. **A cap is not a price.**)*
 
-## LAW 5 — Prose decays, and the decay is measured
+## Principle 5 — Prose decays, and the decay is measured
 
-This is *why* Laws 1–4 exist. A cold session should know these numbers:
+This is *why* Principles 1–4 exist. A cold session should know these numbers:
 
 - **Density:** `[C]` the best frontier model follows only **~68%** of instructions at 500 simultaneous
   instructions, with a systematic bias toward instructions given **earlier** in the prompt.
@@ -945,9 +762,9 @@ instead is PART II.
 
 ---
 
-# PART II — THE ENFORCEMENT TOOLBOX
+# PART II — THE FRICTION TOOLBOX
 
-> How to obey the laws. Everything here is small plain scripts and existing harness features — **no framework**.
+> How to obey the principles. Everything here is small plain scripts and existing harness features — **no framework**.
 > `[C]` Anthropic's own measured observation: their most successful customer builds used plain composable code;
 > frameworks "obscure the underlying prompts and tempt developers to add complexity when a simpler setup would
 > suffice." A team that specced a 10+ agent pipeline collapsed it back to one agent with tools — faster,
@@ -960,8 +777,8 @@ independently, never collapse them:**
 
 - **(a) Reasoning / NL layer** — the SKILL.md, system prompt, context; where voice, judgment, and procedure live.
   Probabilistic. **Dominant failure: it drifts under user pressure** (PART IV).
-- **(b) Deterministic enforcement layer** — hooks, guards, validators, schema checks; where invariants live
-  because code can't be talked out of them. **Dominant failure: over- or under-gated** (§II.3's ladder).
+- **(b) Deterministic friction layer** — hooks, guards, validators, schema checks; where invariants live
+  because code can't be talked out of them. **Dominant failure: over- or under-gated** (§II.3's dial).
 - **(c) State / memory layer** — scratchpad, receipts file, shared state file. Infrastructure, not an LLM
   responsibility. **Dominant failure: treated as RAM instead of storage** (§0 trait 3).
 
@@ -977,9 +794,9 @@ by an instrument suited to it. This is not a preference — a floor graded by th
 
 | Floor | The only instrument that can verify it | Why nothing else works |
 |---|---|---|
-| **(a) Reasoning** | a **blind, K-voted LLM judge** (Law 4.3 fold) | The property is prose-shaped — no script can read for intent. But a single sample lies, so the verdict is voted and fail-closed. ⚠ **AMENDED 2026-08-07** (the rulebook was over-prescriptive here, not the swarm; amended in place, the rule survives): K-voting earns its cost **wherever a missed finding is expensive and a false negative would be invisible** — a completeness or security clause nobody will re-check by hand; **a single blind pass is enough** where a miss is cheap to catch downstream or the property is low-stakes. The reason is Law 4.3's own measurement `[M: 2 runs, 4 clauses]`: one clause judged five times on byte-identical input returned `violated · violated · violated · violated · met`. Counter-evidence that a second pass earns its keep, not noise: this skill-builder's own tension swarm, 2026-08-06 — of 42 candidates, 17 surfaced blind on the first pass, +3 more on a second look, 25 rejected, and **those 3 were unreachable on the first pass — 15% of every finding came from re-reading.** ⚠ **"Blind" is a claim you must MEASURE, not assume — see §V.4a.** A judge launched from a neutral cwd is *not* blind; `claude -p` auto-discovers `~/.claude/CLAUDE.md` from anywhere. |
-| **(b) Enforcement** | **provoke the guard and assert** — fire the faithful forbidden action, require it BLOCKED; fire the allowed twin, require it passes | A guard that was never provoked is untested. Its mere presence in `settings.json` proves nothing about whether it fires. |
-| **(c) State** | a **native-id SET-DIFF vs the source** (Law 4.1) | A model cannot verify completeness against a source it cannot hold — it grades the *claim*. Only a mechanical diff grades the *thing*. |
+| **(a) Reasoning** | a **blind, K-voted LLM judge** (Principle 4.3 fold) | The property is prose-shaped — no script can read for intent. But a single sample lies, so the verdict is voted and fail-closed. ⚠ **AMENDED 2026-08-07** (the rulebook was over-prescriptive here, not the swarm; amended in place, the rule survives): K-voting earns its cost **wherever a missed finding is expensive and a false negative would be invisible** — a completeness or security clause nobody will re-check by hand; **a single blind pass is enough** where a miss is cheap to catch downstream or the property is low-stakes. The reason is Principle 4.3's own measurement `[M: 2 runs, 4 clauses]`: one clause judged five times on byte-identical input returned `violated · violated · violated · violated · met`. Counter-evidence that a second pass earns its keep, not noise: this skill-builder's own tension swarm, 2026-08-06 — of 42 candidates, 17 surfaced blind on the first pass, +3 more on a second look, 25 rejected, and **those 3 were unreachable on the first pass — 15% of every finding came from re-reading.** ⚠ **"Blind" is a claim you must MEASURE, not assume — see §V.4a.** A judge launched from a neutral cwd is *not* blind; `claude -p` auto-discovers `~/.claude/CLAUDE.md` from anywhere. |
+| **(b) Friction** | **provoke the guard and assert** — fire the faithful forbidden action, require it BLOCKED; fire the allowed twin, require it passes | A guard that was never provoked is untested. Its mere presence in `settings.json` proves nothing about whether it fires. |
+| **(c) State** | a **native-id SET-DIFF vs the source** (Principle 4.1) | A model cannot verify completeness against a source it cannot hold — it grades the *claim*. Only a mechanical diff grades the *thing*. |
 
 **The worked failure `[M]`:** a blind judge read a Map built from **241** source items and passed it as "omitting
 nothing"; a set-diff found **20 of 241** traceably covered. The judge was not bad at its job — it was the **wrong
@@ -989,24 +806,22 @@ instrument for a state-floor property**, and it failed confidently.
 at the final output — by the final artifact a loss is already invisible. *(Data is what FLOWS THROUGH the floors,
 not a fourth floor.)*
 
-## §II.1a — ~~Compliance is a STACK, not a rung to pick~~ Compliance is the center of the Venn diagram, not a rung to pick *(added 2026-09-05, OBSERVED; heading reworded 2026-10-30)*
+## §II.1a — Compliance is overlapping layers of friction, not one level to pick *(added 2026-09-05, OBSERVED; heading reworded 2026-10-30)*
 
-> *2026-10-30: read "stack" below as overlapping circles of friction. Frame: `canonical-principles-sop.md`, "The layers of friction". The observed catches are unchanged.*
-
-> *Outside caveat, 2026-09-05, RESEARCHED — `records/research/2026-09-05-code-llm-interaction-modalities.md`:*
+> *Outside caveat, 2026-09-05, RESEARCHED:*
 > **"unbypassable" is not "harmless."** In a 2026 breach, automated guardrail / kill-switch logic stalled the human
 > responders while an agent compromised production (three sources, one incident). Gates with high false-positive
 > rates (15–40% reported, one practitioner source) produce **shadow bypass** — operators quietly disable them, net
-> enforcement zero. Local receipts this week: a commit guard blocked a correct commit over a flag named in the
-> message; the repo signpost misread the repo under `cd`. The stack still holds; the top of it has a cost side.
+> friction zero. Local receipts this week: a commit guard blocked a correct commit over a flag named in the
+> message; the repo signpost misread the repo under `cd`. The layers still hold; the hook layer has a cost side.
 
-The families below and the ladder in §II.3 read as "choose one." The observed truth is that each layer catches
-what the one above misses, and the design is to **stack** them, sized to the stakes. One build, three layers,
+The families below and the dial in §II.3 read as "choose one." The observed truth is that each layer catches
+what the one above misses, and the design is to **overlap** them, sized to the stakes. One build, three layers,
 three disjoint catches: the **refuse** layer (a linter at write time) found 8 defects that six reviewer lenses
 never named · the **judge** layer (a cold window) found 3 false passes the **verify** layer (a script re-running
 checks) had certified · the **wall** layer (guards) refused a leaked personal path and an unencoded `open()` that
 every layer above had passed. **A hook is the scarce top** — expensive, machine-wide, unbypassable, and never the
-first thing reached for. *(Receipts: `V2` commits 2026-09-04; `<notes>/state/autoplan-rebuild/`.)*
+first thing reached for.
 
 ## §II.1 — The four families (in order of preference)
 
@@ -1014,7 +829,7 @@ first thing reached for. *(Receipts: `V2` commits 2026-09-04; `<notes>/state/aut
 assembling returns, writing ledger rows) is done *by a script the model merely calls*. The model can't get it
 wrong because the model isn't doing it. **Pros:** perfect reliability on its territory, cheap, portable,
 debuggable. **Cons:** only covers what's mechanizable; over-applied it turns a leading skill into a brittle
-pipeline (Law 1's fence).
+pipeline (Principle 1's fence).
 
 **2. VERIFY — the model works, code inspects, fail-closed.** A 10–60-line checker confirms the required shape,
 order, or artifact, and **refuses to let the run advance** on failure. This is the **workhorse** — it covers what
@@ -1029,12 +844,12 @@ heaviest and least portable — each one registers machine-side and adds harness
 
 **4. REFRESH — structure through session topology.** Fresh contexts off a file spine; sub-agents to keep raw
 content out of the main window; state re-consolidated at each boundary. **This is the only family that attacks
-DECAY (Law 2, link 3)** — no gate can. Free, and nothing for a student to install. *(Our own bet — see PART IV.)*
+DECAY (Principle 2, link 3)** — no gate can. Free, and nothing for a student to install. *(Our own bet — see PART IV.)*
 
 ## §II.2 — WHY prose instructions fail (the five modes gates defeat)
 
-Law 5 says prose decays; these are the specific mechanisms, and each one names its own counter. Know them, because
-they tell you *which* rung the rule needs.
+Principle 5 says prose decays; these are the specific mechanisms, and each one names its own counter. Know them, because
+they tell you *which* level of friction the rule needs.
 
 - **The model argues with rules.** If a rule keeps getting negotiated away, **change the mechanism, not the
   wording.** Re-phrasing a rule the model talks itself out of is the single most common wasted fix.
@@ -1048,18 +863,18 @@ they tell you *which* rung the rule needs.
   of degree will erode; restate it as a thing that is either present or absent — which is also what makes it
   checkable by a PART II primitive.
 - **Distance decays compliance.** Keep the rule **adjacent to the action** it governs. A rule stated once at the top
-  of a long file is functionally absent by the time the action happens (Law 5's edges-not-middle, applied locally).
+  of a long file is functionally absent by the time the action happens (Principle 5's edges-not-middle, applied locally).
 
-## §II.3 — The reliability ladder (how hard to gate — the Verify/Wall dial)
+## §II.3 — The reliability dial (how much friction to add — the Verify/Wall dial)
 
-Use the least rung that **holds**. Rung choice IS the right-sizing decision; don't over-gate a low-stakes style
+Use the least friction that **holds**. Level choice IS the right-sizing decision; don't over-gate a low-stakes style
 behavior, don't under-gate a high-stakes structural invariant.
 
-1. **Self-reported marker** ("GATE CLEARED") — *fakeable.* Orientation only, **never a guarantee** (Law 4.2).
+1. **Self-reported marker** ("GATE CLEARED") — *fakeable.* Orientation only, **never a guarantee** (Principle 4.2).
 2. **Required artifact** — the deliverable must literally contain the section/ledger/heading in the required
    position. Missing is honest; silent is a FAIL. **The workhorse for STRUCTURE — never for a completion claim.**
    *(Softened 2026-09-05, OBSERVED: a typed `verified-by:` and a typed `Review:` line are both artifacts and both
-   self-attestation — rung 1 wearing rung 2's clothes. §V.4b.)*
+   self-attestation — level 1 wearing level 2's clothes. §V.4b.)*
 3. **Code-verified evidence** — a script checks the real world. The only un-fakeable option. Reserve for
    genuinely critical, order-of-operations gates.
 
@@ -1068,83 +883,48 @@ behavior, don't under-gate a high-stakes structural invariant.
 "show only the next step" from an instruction into a structure — the model cannot triage across an arc it
 cannot see.
 
-**The ESCALATION LADDER (when a rule keeps losing):** reword ❌ → **binary gate** → **the user-turn boundary**.
-~~The user-turn boundary is the only truly unbypassable gate, and the **"say go" HARD-STOP is the most
-reliably-held gate type there is `[R]`** — use it at every real pause point, and **spend it sparingly**: each one~~
+**The ESCALATION PATH (when a rule keeps losing):** reword ❌ → **binary gate** → **the user-turn boundary**.
+Use the user-turn boundary (the "say go" HARD-STOP) at every real pause point, and **spend it sparingly**: each one
 costs the user a tap, and a skill that stops six times gets skipped entirely.
 
 > **v2 (orchestrator-v2, 2026-10-28):** A stop is only a gate if code reads the answer and refuses anything but an explicit yes; a "say go" the runner ignores is a speed bump, not a gate (the rig's runner ignored a "no" until fixed; then "no" gave a fail at the step and a stop, "yes" completed). Spend-it-sparingly still stands. *(OBSERVED — brief §4 Stage 2, p06/p07.)*
 
-- **NEW RULE — code reads the human's answer and refuses anything but an explicit yes.** The runner stores the question, reads the reply, and proceeds only on yes; any other reply fails the step. *(OBSERVED — p06 "no" stopped at s3, p07 "yes" completed.)* Also applies at §V.4b.
-- **NEW RULE — the record has a distinct `waiting` state, separate from `fail`.** A run paused for a human is neither passing nor failing; collapsing the two hides either a stuck run or a broken one. *(OBSERVED — rungs 4+5: `waiting=11`, then 13, with `fail` counted apart.)*
+- **principle (observed) — code reads the human's answer and refuses anything but an explicit yes.** The runner stores the question, reads the reply, and proceeds only on yes; any other reply fails the step. *(OBSERVED — p06 "no" stopped at s3, p07 "yes" completed.)* Also applies at §V.4b.
+- **principle (observed) — the record has a distinct `waiting` state, separate from `fail`.** A run paused for a human is neither passing nor failing; collapsing the two hides either a stuck run or a broken one. *(OBSERVED — test levels 4+5: `waiting=11`, then 13, with `fail` counted apart.)*
 
 
 - **Layer calibration is model-era specific.** What must live in code today may hold in prose under a stronger
-  model — re-run the test when the tier changes. "The least rung that holds" is never permanent.
-- **Blast-radius scaling** `[C]`: as stakes and autonomy rise, the enforcement bar rises with them — the
+  model — re-run the test when the tier changes. "The least friction that holds" is never permanent.
+- **Blast-radius scaling** `[C]`: as stakes and autonomy rise, the friction bar rises with them — the
   governance camp re-fences with *more* determinism precisely because capability gains don't shrink the blast
   radius of a rare failure.
-- **Instantiate the existing enforcement infra** (proof-not-ask, Stop hooks, capture gates) — never author a
+- **Instantiate the existing friction layers** (proof-not-ask, Stop hooks, capture gates) — never author a
   parallel one. Parallel systems fragment the guard set.
 
-### Three rules that govern the whole toolbox
+### Three principles that govern the whole toolbox
 
-- **Name the mechanism + the test, or it's prose.** A claim of enforcement ("by construction," "the skill
+- **Name the mechanism + the test, or it's prose.** A claim of protection ("by construction," "the skill
   ensures") with no named seam and no named test is a **wish**. **A rule without a test is a wish.** This is the
   single fastest audit you can run on your own skill: for each rule, point at the code that enforces it and the
   check that proves the code fires. If you can't, you have a preference, not a gate.
 - **Harness contracts outlive the model.** Invariants encoded in hooks, guards, and validators survive a model
-  upgrade; prose may not. **The LLM is swappable; the enforcement seam holds.** This is the durable "why" behind
+  upgrade; prose may not. **The LLM is swappable; the friction seam holds.** This is the durable "why" behind
   pushing a rule into code — not distrust of today's model, but that today's model is temporary and the skill
   isn't.
 - **LLM-evaluated guardrails: ISOLATE, never mix.** If a guardrail needs an LLM to judge it (tone, factuality,
   safety), run it as a **separate, parallel call** — never folded into the main prompt, which corrupts both the
-  reasoning and the guard. It is non-deterministic by definition (Law 4.3), so it is **never the primary gate**;
+  reasoning and the guard. It is non-deterministic by definition (Principle 4.3), so it is **never the primary gate**;
   a code-gate is the floor beneath it, and its verdict is voted.
 
 ## §II.4 — The primitives library (build once, reuse in every skill)
 
 Each primitive is a small script, deployed into a skill's own `scripts/` folder by `new-skill.sh` (or run
 in-place from `system/parts/`), with its own **two-sided self-test** (it must catch a known-bad AND pass a
-known-good, or it isn't trusted — Law 4.3 applied to our own tools). The law behind the tax: **a gate that
+known-good, or it isn't trusted — Principle 4.3 applied to our own tools). The principle behind the tax: **a gate that
 fails open is worse than no gate — because you trust it.** `[M: 4 silent-zero/fail-open bugs in our own
 tooling in one week]` An unverified gate doesn't just miss failures; it *certifies* them.
 
-### ⚠ THE HEADLINE INVERSION — read this before the table `[M, verified 2026-08-07, independently re-verified]`
-
-For months this table carried the marker `(exists)` on exactly **one** row (capture gate) and nothing on the
-other four. That was read as "only one of these five is actually built" — and a reading that bleak invites a
-builder to re-build something that already exists, which is waste in the specific direction this SOP exists to
-prevent. **It was backwards.** Checked against the filesystem on disk today: **5 of 5 named primitives
-resolve to a real file.** The markers were stale, not the primitives — the rulebook made its own shelf look
-emptier than it was. The bigger miss sits below the table: the library holds **19** built primitives in
-`system/parts/`, and this section, even now, only profiles the ones with something to say. Verify the count
-yourself: `python3 -c "import glob;print(len(glob.glob('system/parts/*.py')))"` → `19`.
-
-**How to read what follows.** For every part: the path, what it does, **how many real callers** (a script or
-skill that actually invokes it — a comment or docstring *mentioning* it is not a caller), its CLI interface,
-and a "don't use this for X" line. The "don't use for" lines are **my read of the code, not a law** — verify
-before leaning on one. Parts are grouped by how alive they are, because that's the fact a builder reaching for
-one actually needs.
-
-### ⛔ THE PER-PART CATALOGUE HAS BEEN ARCHIVED — REGENERATE IT BEFORE YOU TRUST IT *(2026-09-05)*
-
-The tier-by-tier profile of ~17 parts (Tier 1 LIVE · Tier 2 factory-only · the capture-gate category error ·
-Tier 3 zero-callers · also-live-and-uncatalogued) was **hand-kept, and it drifted**: it profiled
-`system/parts/routing_evals.py` in Tier 3 as *"built, exists, but nothing calls it"* while the ⛔ banner at the
-top of this same page listed that file as *"still not here"* — and the file does not exist in this repository at
-all (`find . -name routing_evals*` → nothing; `.claude/skills/autoplan/fixtures/run_routing_eval.py` says in its
-own docstring that no commit has ever touched it). A caller count typed by hand goes stale the day after it is
-typed. **Do not read a caller count off this page. Regenerate it by script from the tree, then trust it.**
-
-Full archived text, verbatim, with every ⚠ CORRECTED ruling and every "don't use this for X" line → `ARCHIVE-2026-09-05.md` § "§II.4 — the primitives catalogue (tiers)".
-The two facts above the archive line that are still worth acting on: **the library holds 19 built parts** —
-verify with `python3 -c "import glob;print(len(glob.glob('system/parts/*.py')))"` — and **a part crosses into a
-repo when it has a caller, never because it is good**.
-
-⛔ **Citation carried over with the archive**, because the paragraph that accounted for it moved: `skills/ingest/SPEC.md`
-is the donor system's path and is not here — this repo ships that spec as `.claude/skills/ingest/SPEC.md`. Two other
-donor-only paths (`agents/archivist.md`, and a parked copy of `order_lint.py`) left this page entirely with the catalogue.
+The library holds **14** scripts in `system/parts/` plus the self-test runner `run_selftests.sh` that gates them. Verify the count yourself: `ls system/parts/*.py | wc -l` → `14`. A part crosses into a repo when it has a caller, never because it is good.
 
 **Stolen patterns worth building alongside them** `[C]` — none of these resolve to a built artifact; verified
 there is no `.github/` CI config in this repo and `.gitignore` is a single root file, not per-plan. They stay
@@ -1154,14 +934,13 @@ what they are: patterns worth building, not things to reach for today.
   tier. *(Caveat observed in the wild: their validator only runs because a prompt asks it to — nothing re-checks
   after. That's COMMITTED≠ENFORCED. Ours is called by the gate, not by a request.)*
 - **Separate-process reviewer** — the reviewer is a genuinely different process/context (or a human), never a
-  "reviewer persona" in the same window. Law 3, implemented structurally.
+  "reviewer persona" in the same window. Principle 3, implemented structurally.
 - **Artifact-file handoff for sub-agents** — briefs, reports, and review packages are **files**, never pasted
   conversation history ("never paste accumulated history into later dispatches" — from a documented 42k-char
   dispatch failure). Keeps the controller's context clean and scales fan-out.
 - **File-existence resume** — skip items whose output file already exists. The cheapest reliable checkpoint;
   it's a filesystem check, not a fragile state-file read.
 
-> v2 receipt (orchestrator-v2): kill-and-resume skipped the done steps and ran the rest exactly once (every resumed run: s1/s2 `skipped-done`, s3/s4/s5 once). OBSERVED, 5 kill samples (4 clean).
 
 - **Plan-scoped workspace dirs** with a self-ignoring `.gitignore` — no cross-run state collision.
 - **CI-gated skill linter** — a repo-level check that blocks a merge on structural violations (frontmatter,
@@ -1171,81 +950,75 @@ what they are: patterns worth building, not things to reach for today.
 
 ### From the failure census, 2026-09-05 — REPRODUCED (15 blind readers · journal + 38 briefs + ledger + doc-vs-disk · every mode 4–6 months, 11–12 of 12 sources · 1,656 cited instances)
 
-> Method and provenance: `records/research/2026-09-05-failure-mode-census.md` ⛔ (owner's notes). Receipts:
-> `state/failure-census-2026-09-05/` ⛔ (owner's notes). Canon §16 carries the same modes as principles;
+> Method: 15 blind readers read the journal, 38 briefs, the ledger and a doc-vs-disk check. Canon §16 carries the same modes
+> as principles;
 > this is the do-not-retry form. Counts are floors. **Enver's ruling:** findings validated over months across
 > sessions outrank outside research — these sit ABOVE the `[R]` entries below.
 
 - **[F1]** Tried: shipping a tool, hook, or detector and calling it done when its tests pass. Failed **194×**: nothing ever
   invoked it; no effect looked like working. → It does not exist until a live path calls it and you watch the call.
   → *Solutions audit 2026-09-05:* **Unsolved (NEVER):** tried point fixes wiring one call site into an already-firing path — failed because nothing stops the next unwired artifact from being born (receipt: assert_dispatch_fidelity.py, DORMANT).
-  → *Research pass 2026-09-05:* **No field remedy** — class-level liveness/reachability sweeps exist for conventional code, none for hooks/skills/tools → experiment (unused-parts-drifting-copies). ⛔ (records in the owner's notes) · Category: **architectural** (canon §16 mode 1, 2026-09-08 retrofit) · **CANDIDATE** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; no field remedy, never held here)
+  → *Research pass 2026-09-05:* **No field remedy** — class-level liveness/reachability sweeps exist for conventional code, none for hooks/skills/tools → experiment (unused-parts-drifting-copies). · Category: **architectural** (canon §16 mode 1, 2026-09-08 retrofit) · **CANDIDATE** (derived 2026-09-07 from the 2026-09-05 durable-solutions audit and the 2026-09-05 research pass; no field remedy, never held here)
 - **[F2]** Tried: letting a script exit 0 on skip, absent input, or a swallowed error. Failed **166×** (the only mode with
   money out). → An error must never produce the same signal as success; the no-outcome value is one nothing legal produces.
   → *Solutions audit 2026-09-05:* **Held (partial, OBSERVED):** scheduled-job exit-code contract + 3-strike breaker — trips DOWN on any non-conforming exit (receipt: system-health-run.sh, LIVE; recurred: 122 of 160 instances land after the fix).
-  → *Research pass 2026-09-05:* **Field remedy (RESEARCHED):** independent output-shape/baseline verification + heartbeat monitoring — emerging-to-strong (n8n community forum) (lying-signals-text-guards). ⛔ (records in the owner's notes) ✅ ADOPTED (right-size audit 2026-09-05) · Category: **architectural** (canon §16 mode 2, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; field remedy also noted)
+  → *Research pass 2026-09-05:* **Field remedy (RESEARCHED):** independent output-shape/baseline verification + heartbeat monitoring — emerging-to-strong (n8n community forum) (lying-signals-text-guards). ✅ ADOPTED (right-size audit 2026-09-05) · Category: **architectural** (canon §16 mode 2, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from the 2026-09-05 durable-solutions audit and the 2026-09-05 research pass; held partially here; field remedy also noted)
   → *Cure built 2026-10-27:* `job-run.sh` stamps last-success only after a per-job output check. Proven live the
   same day: the email runner's own stale lock printed "skip this tick" and exited 0; the wrapper failed the run
   (rc=1, no false success).
 
-> v2 receipt (orchestrator-v2): the checker caught **5/5** deliberate lies (rung 3: bad b01–b05 each failed at s2, no s3 line; good g01–g05 passed 15/15). OBSERVED.
 
 - **[F3]** Tried: keeping one fact in several files with a "remember to update" rule. Failed **177×**: a fix left the
   other copies live. → Count every copy including the template; derive pointers and extracts, never type them.
   → *Solutions audit 2026-09-05:* **Unsolved (NEVER):** tried "derive it or diff it" as a canon rule — failed because it stayed prose, never became a differ (receipt: canon 08-11 ruling; recurred: O-3/26/38/47/55/57/68/71/73/75, FIX: none).
-  → *Research pass 2026-09-05:* **No field remedy** — generate-from-source is proven for docs/config, not for arbitrary duplicated facts in a harness repo → experiment (unused-parts-drifting-copies). ⛔ (records in the owner's notes) · Category: **both** (canon §16 mode 3, 2026-09-08 retrofit) · **CANDIDATE** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; no field remedy, never held here)
+  → *Research pass 2026-09-05:* **No field remedy** — generate-from-source is proven for docs/config, not for arbitrary duplicated facts in a harness repo → experiment (unused-parts-drifting-copies). · Category: **both** (canon §16 mode 3, 2026-09-08 retrofit) · **CANDIDATE** (derived 2026-09-07 from the 2026-09-05 durable-solutions audit and the 2026-09-05 research pass; no field remedy, never held here)
 - **[F4]** Tried: trusting a check that takes its verdict from the thing it checks. Failed **133×**. → Watch it fail on
-  known-bad input before trusting it passing (§V.4c is now rule zero of PART V).
+  known-bad input before trusting it passing (§V.4c is now principle zero of PART V).
   → *Solutions audit 2026-09-05:* **Held (partial, OBSERVED):** weekly synthetic-payload firing at real guards, distinguishing engine-failed from a verdict (receipt: guard-fire-test-run.sh, LIVE; recurred: liveness disputed twice, canon §11 Q21).
-  → *Research pass 2026-09-05 (second pass, the five modes):* **Field remedy (RESEARCHED):** checker independent in author, code path, and data source from what it checks — strong, decades-old cross-industry convergence (verification-not-by-the-actor; Skalse 2022 / ISO segregation-of-duties). ✅ ADOPTED (right-size audit, second pass, 2026-09-05) ⛔ (records in the owner's notes) · Category: **architectural** (canon §16 mode 4, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; field remedy also noted)
+  → *Research pass 2026-09-05 (second pass, the five modes):* **Field remedy (RESEARCHED):** checker independent in author, code path, and data source from what it checks — strong, decades-old cross-industry convergence (verification-not-by-the-actor; Skalse 2022 / ISO segregation-of-duties). ✅ ADOPTED (right-size audit, second pass, 2026-09-05) · Category: **architectural** (canon §16 mode 4, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from the 2026-09-05 durable-solutions audit and the 2026-09-05 research pass; held partially here; field remedy also noted)
 
-> v2 receipt (orchestrator-v2): also for Part V rule zero — the check was watched failing first (`bad=1 good=0`, rung 6) and failing 5/5 on known-bad runs before being trusted passing. OBSERVED.
 
 - **[F5]** Tried: starting a build from a premise nobody checked. Failed **155×** — the spin cluster, 91 stated days;
   the scope loop (a verifier setting its own backlog) is one form of it. → Search before designing; measure before planning.
   → *Solutions audit 2026-09-05:* **Unsolved (NEVER):** tried seven "look before you build" lessons, each self-stamped DURABLE — failed because none became a checked step (receipt: B3-9 search rail 08-08; recurred: B2-82, 09-03).
-  → *Research pass 2026-09-05 (second pass, the five modes):* **No field remedy** — field's answer (plan-first/spec-gating) is the same prose-ceremony shape that already failed 7x locally; METR's RCT shows added process can cost without payoff → experiment (premises-and-numbers-checked-first). ⛔ (records in the owner's notes) · Category: **operational** (canon §16 mode 5, 2026-09-08 retrofit) · **CANDIDATE** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; no field remedy, never held here)
+  → *Research pass 2026-09-05 (second pass, the five modes):* **No field remedy** — field's answer (plan-first/spec-gating) is the same prose-ceremony shape that already failed 7x locally; METR's RCT shows added process can cost without payoff → experiment (premises-and-numbers-checked-first). · Category: **operational** (canon §16 mode 5, 2026-09-08 retrofit) · **CANDIDATE** (derived 2026-09-07 from the 2026-09-05 durable-solutions audit and the 2026-09-05 research pass; no field remedy, never held here)
 - **[F6]** Tried: writing a finding down and calling it delivered. Failed **88×**: the next session never looked there.
   → *Solutions audit 2026-09-05:* **Held (partial, OBSERVED):** storage-format rewrite of one handoff artifact — sticks because the format is structurally incapable of the old overflow (receipt: J1-122/B4-93, held 87 days; recurred: 3 readers name 3 mechanisms).
   → Storage is not delivery — name the surface it must reach.
-  → *Research pass 2026-09-05:* **No field remedy** — artifact-over-summary is exactly what local already tried at one site and it fails partially applied → experiment (values-that-did-not-travel). ⛔ (records in the owner's notes) ✅ ADOPTED (right-size audit 2026-09-05) — the field's strongest mechanism; PARTIAL here, see canon §12.c · Category: **operational** (canon §16 mode 6, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; field remedy also noted)
+  → *Research pass 2026-09-05:* **No field remedy** — artifact-over-summary is exactly what local already tried at one site and it fails partially applied → experiment (values-that-did-not-travel). ✅ ADOPTED (right-size audit 2026-09-05) — the field's strongest mechanism; PARTIAL here, see canon §12.c · Category: **operational** (canon §16 mode 6, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from the 2026-09-05 durable-solutions audit and the 2026-09-05 research pass; held partially here; field remedy also noted)
 - **[F7]** Tried: a guard that matches a keyword or literal string. Failed **80×**: fails open on every spelling not
   listed, fails closed on a mention. → Default-deny; watch it refuse a real payload before shipping.
   → *Solutions audit 2026-09-05:* **Held (partial, OBSERVED):** one guard rebuilt default-deny + typed parser, "lesson paid for the 3rd time" — sticks for that guard only (receipt: S2-7, 08-14, held 20 days; recurred: L-144/L-146/L-150).
-  → *Research pass 2026-09-05:* **Field remedy (RESEARCHED):** layered guard — typed parsing + narrow regex triage + semantic classifier — strong (arXiv:2506.10597, IEEE S&P 2026) (lying-signals-text-guards). ⛔ (records in the owner's notes) ✅ ADOPTED (right-size audit 2026-09-05) · Category: **architectural** (canon §16 mode 7, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; field remedy also noted)
+  → *Research pass 2026-09-05:* **Field remedy (RESEARCHED):** layered guard — typed parsing + narrow regex triage + semantic classifier — strong (arXiv:2506.10597, IEEE S&P 2026) (lying-signals-text-guards). ✅ ADOPTED (right-size audit 2026-09-05) · Category: **architectural** (canon §16 mode 7, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from the 2026-09-05 durable-solutions audit and the 2026-09-05 research pass; held partially here; field remedy also noted)
 - **[F8]** Tried: believing a helper's account of its own work. Failed **70×**: payloads lost, self-reports believed.
   → *Solutions audit 2026-09-05:* **Held (partial, OBSERVED):** fail-closed check on the shape of a sub-agent return — closes payload-loss, not self-report truth (receipt: guard_agent_return_channel.sh, LIVE; recurred: truth-check DORMANT).
   → Never evidence; re-run the check with a stricter filter than the helper used.
-  → *Research pass 2026-09-05 (second pass, the five modes):* **Field remedy (RESEARCHED):** never trust a worker's self-produced proof — poll a pre-agreed, orchestrator-checked landmark fixed before delegation — strong (verification-not-by-the-actor; hexisteme.github.io postmortem). ✅ ADOPTED (right-size audit, second pass, 2026-09-05) ⛔ (records in the owner's notes) · Category: **operational** (canon §16 mode 8, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; field remedy also noted)
+  → *Research pass 2026-09-05 (second pass, the five modes):* **Field remedy (RESEARCHED):** never trust a worker's self-produced proof — poll a pre-agreed, orchestrator-checked landmark fixed before delegation — strong (verification-not-by-the-actor; hexisteme.github.io postmortem). ✅ ADOPTED (right-size audit, second pass, 2026-09-05) · Category: **operational** (canon §16 mode 8, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from the 2026-09-05 durable-solutions audit and the 2026-09-05 research pass; held partially here; field remedy also noted)
 
-> v2 receipt (orchestrator-v2): the runner, not the helper, runs the check and writes the record; the rig's 3-way code-held fan-out passed 5/5 (`examined=15 pass=15`). OBSERVED.
 
 - **[F9]** Tried: carrying a number forward from a hand-off or a note. Failed **55×**. → A number ships with the
   command that produces it.
   → *Solutions audit 2026-09-05:* **Unsolved (NEVER):** tried compute-in-code doctrine, calc cells hook-locked — failed because the rule was followed and the number was still 12% wrong (receipt: J4-100, 08-03).
-  → *Research pass 2026-09-05 (second pass, the five modes):* **No field remedy** — reproducibility science's recompute-from-source norm is off-domain inference only; the STALE benchmark confirms detecting stale facts is unsolved → experiment (premises-and-numbers-checked-first). ⛔ (records in the owner's notes) · Category: **operational** (canon §16 mode 9, 2026-09-08 retrofit) · **CANDIDATE** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; no field remedy, never held here)
+  → *Research pass 2026-09-05 (second pass, the five modes):* **No field remedy** — reproducibility science's recompute-from-source norm is off-domain inference only; the STALE benchmark confirms detecting stale facts is unsolved → experiment (premises-and-numbers-checked-first). · Category: **operational** (canon §16 mode 9, 2026-09-08 retrofit) · **CANDIDATE** (derived 2026-09-07 from the 2026-09-05 durable-solutions audit and the 2026-09-05 research pass; no field remedy, never held here)
 - **[F10]** Tried: editing by heading string, first match, or line number. Failed **50×**, the failure being silent
   deletion. → Address by identity.
   → *Solutions audit 2026-09-05:* **Unsolved (NEVER):** tried patched string/position fixes on the same tool repeatedly — failed because none replaced string-anchoring with a structural boundary (receipt: J3-84, 07-20; recurred: L-14, 08-31, "unchanged").
-  → *Research pass 2026-09-05:* **Field remedy (RESEARCHED):** fail-loud unique-context-anchored search/replace, optionally hash-augmented — strong (wuu73.org cross-tool survey) (wrong-target-edited-or-run). ⛔ (records in the owner's notes) ✅ ADOPTED (right-size audit 2026-09-05) · Category: **both** (canon §16 mode 10, 2026-09-08 retrofit) · **RESEARCHED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; field remedy, never held here)
+  → *Research pass 2026-09-05:* **Field remedy (RESEARCHED):** fail-loud unique-context-anchored search/replace, optionally hash-augmented — strong (wuu73.org cross-tool survey) (wrong-target-edited-or-run). ✅ ADOPTED (right-size audit 2026-09-05) · Category: **both** (canon §16 mode 10, 2026-09-08 retrofit) · **RESEARCHED** (derived 2026-09-07 from the 2026-09-05 durable-solutions audit and the 2026-09-05 research pass; field remedy, never held here)
 - **[F11]** Tried: a rule in prose the model must remember. Failed **47×** — and this is barn-sour seen from inside a
   skill: steps designed in prose silently do not happen. → Ship the behaviour and what makes it observable in one change.
   → *Solutions audit 2026-09-05:* **Unsolved (NEVER):** tried the inject_* nudge family as the remedy — failed because it is non-blocking by construction, prints and exits 0 (receipt: canon §4.6, 619 points, 50.7% still asked-nicely).
-  → *Research pass 2026-09-05 (second pass, the five modes):* **Field remedy (RESEARCHED):** move must-always rules into deterministic hooks/tool gates, keep prose for judgment calls only — strong, three independent communities converge (rules-with-teeth; Claude Code hooks docs). ✅ ADOPTED — a receipt on hook-plane doctrine and point-of-need injection (2026-09-05) ⛔ (records in the owner's notes) · Category: **architectural** (canon §16 mode 11, 2026-09-08 retrofit) · **RESEARCHED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; field remedy, never held here)
+  → *Research pass 2026-09-05 (second pass, the five modes):* **Field remedy (RESEARCHED):** move must-always rules into deterministic hooks/tool gates, keep prose for judgment calls only — strong, three independent communities converge (rules-with-teeth; Claude Code hooks docs). ✅ ADOPTED — a receipt on hook-plane doctrine and point-of-need injection (2026-09-05) · Category: **architectural** (canon §16 mode 11, 2026-09-08 retrofit) · **RESEARCHED** (derived 2026-09-07 from the 2026-09-05 durable-solutions audit and the 2026-09-05 research pass; field remedy, never held here)
 
-> v2 receipt (orchestrator-v2): prose-step order did not decide any outcome in the rig, where the runner held it (0 out-of-order in 20 + 5 + 5 runs). OBSERVED.
-
-> v2 note: held for the week-long test
 
 - **[F12]** Tried: editing a file and assuming it is the one that runs. Failed **40×**: two resolvable copies, runtime
   picked the other. → After a cutover, check which file loads, not which pointer moved.
   → *Solutions audit 2026-09-05:* **Held (partial, OBSERVED):** cross-repo hash-parity check on one file pair — sticks because a test fired it and found a real drift live (receipt: guard_hook_sop_read.sh, LIVE, patched 08-23; recurred: within 48h, again 09-04).
-  → *Research pass 2026-09-05:* **No field remedy** — content-addressed/hash verification matches local's own one-pair fix, but no source generalizes it to a harness's full file set → experiment (wrong-target-edited-or-run). ⛔ (records in the owner's notes) · Category: **architectural** (canon §16 mode 12, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; no field remedy)
+  → *Research pass 2026-09-05:* **No field remedy** — content-addressed/hash verification matches local's own one-pair fix, but no source generalizes it to a harness's full file set → experiment (wrong-target-edited-or-run). · Category: **architectural** (canon §16 mode 12, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from the 2026-09-05 durable-solutions audit and the 2026-09-05 research pass; held partially here; no field remedy)
 - **[F13]** Tried: a producer and a consumer written separately. Failed **35×**: one emits a key, the other binds
   another, renders empty, no error. → Watch a value travel the whole seam.
   → *Solutions audit 2026-09-05:* **Held (partial, OBSERVED):** fail-closed contract guard on a matched Write — refuses the call outright (receipt: enforce_multiphase_contract.sh, LIVE; return-channel guard silent 34 days, short of the 42-day bar by 8).
-  → *Research pass 2026-09-05:* **No field remedy** — consumer-driven contract testing is mature for microservices, never adapted to LLM output anywhere → experiment (values-that-did-not-travel). ⛔ (records in the owner's notes)
- · Category: **architectural** (canon §16 mode 13, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; no field remedy)
+  → *Research pass 2026-09-05:* **No field remedy** — consumer-driven contract testing is mature for microservices, never adapted to LLM output anywhere → experiment (values-that-did-not-travel).
+ · Category: **architectural** (canon §16 mode 13, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from the 2026-09-05 durable-solutions audit and the 2026-09-05 research pass; held partially here; no field remedy)
 - **[F14]** Tried: handing off to the next session, or persisting knowledge for a later one, in the writer's own shorthand —
   abbreviations, half-sentences, bare section numbers, pronouns with no antecedent. Failed **uncounted** times across six
   months (Enver's ruling 2026-09-06 — every instance looks like ordinary writing, none is a crash, so no reader tagged it):
@@ -1253,19 +1026,16 @@ what they are: patterns worth building, not things to reach for today.
   things, holds far less than the page assumes. → Before a line meant for a later reader is saved: *could a session that has
   never seen this conversation read it alone and act on it correctly?* Scope: one session handing to another, or persisting
   into a system built to act on it later — a brief, a plan, canon, this Harness. *Entered by Enver's ruling, not by the
-  census; canon §16 mode 14 is the same.* · Category: **operational** (canon §16 mode 14, 2026-09-08 retrofit) · **Field remedy (RESEARCHED):** structural substitution over debiasing — name a concrete low-context reader and test against them directly; minimal, self-contained units, dynamically curated for an LLM reader rather than statically front-loaded (`records/research/2026-09-08-mode-14-reader-holds-no-state.md`). · **CANDIDATE** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; Enver's ruling 2026-09-06; nothing watched)
+  census; canon §16 mode 14 is the same.* · Category: **operational** (canon §16 mode 14, 2026-09-08 retrofit) · **Field remedy (RESEARCHED):** structural substitution over debiasing — name a concrete low-context reader and test against them directly; minimal, self-contained units, dynamically curated for an LLM reader rather than statically front-loaded. · **CANDIDATE** (derived 2026-09-07 from the 2026-09-05 durable-solutions audit and the 2026-09-05 research pass; Enver's ruling 2026-09-06; nothing watched)
 - **[F15]** Tried: trusting a check, guard or Verify clause's refusal without first testing the checker on
   known-good input. Failed **7×** over one day (2026-09-07; no census): the measuring command was wrong, read
   only part of its input, or compared against a stale expectation — the cost lands on honest work while what
   the check was built to catch goes unmeasured. → Test a checker on known-good input before trusting its no.
   Scope: any check, guard or Verify clause's refusal. Category: **both** (canon §16 mode 15, 5.3 category,
-  2026-09-07 amendment). Receipt: `state/experiments/coordinator/mode-15-draft.md` ⛔ (records in the owner's
-  notes) and `state/experiments/coordinator/defects-2026-09-07.md` ⛔ (records in the owner's notes) rows 10-11
-  (fix landed as commit `d6a1afa`). ·
+  2026-09-07 amendment). Receipt: the fix landed as commit `d6a1afa`. ·
   **Field remedy (RESEARCHED):** deliberately manufacture a known-bad input and confirm the checker fails on
   it — mutation testing, invalid-case requirements, vacuous-pass detection, adversarial-anchor calibration are
-  independent instances across four traditions and five decades; explicitly bounded, never complete
-  (`records/research/2026-09-08-mode-15-instrument-refuses-truth.md`). ·
+  independent instances across four traditions and five decades; explicitly bounded, never complete.
   **CANDIDATE** (derived 2026-09-07 from canon §16 mode 15; nothing watched)
 - **[F16]** Tried: treating anything written as prescriptive and, of two contradicting findings, obeying the
   OLDER over the NEWER as if age were authority. Failed **7×** (A: 4 + B: 3) in one session on 2026-09-07 (no
@@ -1277,8 +1047,8 @@ what they are: patterns worth building, not things to reach for today.
   2026-09-07, corroborated the same day in the 10k window and by canon §5.10. · **Field remedy
   (RESEARCHED):** architectural avoidance — ground in live tool/function calls at generation time rather than
   retrieving static text for facts a tool can answer live; in-context arbitration when both a stale and live
-  source are present remains explicitly unsolved per 2025 research
-  (`records/research/2026-09-08-mode-16-written-word-outranks-live.md`). · **CANDIDATE** (derived
+  source are present remains explicitly unsolved per 2025 research.
+  **CANDIDATE** (derived
   2026-09-07 from canon §16 mode 16; nothing watched)
 - **[F17]** Tried: compressing an observation, preference or hedged suggestion into an unqualified rule. Failed
   **7×** (A: 4 + B: 3) in one session on 2026-09-07 (no census): a qualifier — a hedge, a scope, a unit, an
@@ -1290,8 +1060,8 @@ what they are: patterns worth building, not things to reach for today.
   2026-09-07, corroborated the same day in the 10k window and by canon §5.10. · **Field remedy
   (RESEARCHED):** enforced modal-verb discipline (ban weak hedges like "should/may" in favor of explicit
   "shall," backed by traceability tooling) — the one domain-tested practice, from requirements engineering,
-  predating LLMs; explicitly leaky per its own practitioners ("traceability drift")
-  (`records/research/2026-09-08-mode-17-observation-hardened-into-rule.md`). · **CANDIDATE** (derived
+  predating LLMs; explicitly leaky per its own practitioners ("traceability drift").
+  **CANDIDATE** (derived
   2026-09-07 from canon §16 mode 17; nothing watched)
 - **[F18]** Tried: treating the local git clone as a faithful copy of the remote. Failed **2×** (two repos) on
   2026-09-07 (no census): git has no cleanup step — a branch merged and deleted on the remote leaves its local
@@ -1303,11 +1073,11 @@ what they are: patterns worth building, not things to reach for today.
   category, 2026-09-07 — architectural for `fetch.prune`/delete-with-remote, operational for the nightly-push
   habit). Receipt: the direct two-repo audit itself, 2026-09-07 — `lifehack-brain`: 58 local branches vs. 2 on
   GitHub, 35 with remote `[gone]`, 13 with no upstream, 4 stale `origin/*` refs, `V2` 57 commits ahead of
-  `origin/V2`; `ClaudeOps`: 21 local, `main` 14 ahead. · **Field remedy (RESEARCHED):** `fetch.prune=true` plus
+  `origin/V2`; the operator's private repo showed the same drift. · **Field remedy (RESEARCHED):** `fetch.prune=true` plus
   host-side merged-branch auto-delete plus a periodic stale-branch CI sweep with an archive-tag safety net —
   uncontested for the mechanical layer. For the LLM-agent-specific risk, no dedicated fix exists yet;
-  convergent 2026 practitioner guidance is to gate mutating git actions outside the model's own reasoning
-  (`records/research/2026-09-08-mode-18-mirror-rot.md`). · **CANDIDATE** (derived 2026-09-07 from canon §16 mode
+  convergent 2026 practitioner guidance is to gate mutating git actions outside the model's own reasoning.
+  **CANDIDATE** (derived 2026-09-07 from canon §16 mode
   18; nothing watched)
 
 - **[F19]** Tried: reading a large `main..<branch>` commit count as unmerged local work needing a merge. Failed
@@ -1320,19 +1090,19 @@ what they are: patterns worth building, not things to reach for today.
   architectural for the shipping lane that should delete on delivery, operational for the reader's instinct to
   merge on a large count). **Interaction with [F18]/mode 18 (Mirror Rot): [F18]'s cleanup instinct is what
   makes this mode dangerous — tidying branches under [F18] reaches for MERGE on exactly the branches this mode
-  says must be DELETED.** Receipt: canon `records/canon/2026-09-02-canonical-principles.md` §16 mode 19, §17.26
-  — direct branch-content audit, private `egjokaj/ClaudeOps`, 2026-09-08: 20 `ship/*`/`land/*` branches, 211
+  says must be DELETED.** Receipt: canon `system/sops/canonical-principles-sop.md` §16 mode 19, §17.26
+  — direct branch-content audit, the operator's private repo, 2026-09-08: 20 `ship/*`/`land/*` branches, 211
   commits absent from `main`, ~142 shared between any two, carrying `.claude-plugin/` paths private `main` has
   never held. See also GitHub SOP **[G17]**. · **Field remedy: none found 2026-09-08** — no literature names this
   exact conflation. Two structural analogs (`git subtree --rejoin`; Copybara/Dagster revision-ID trailers)
   converge on recording delivery as commit-graph data rather than branch-state inference, but neither directly
-  solves it, and one tool's own default takes the opposite view
-  (`records/research/2026-09-08-mode-19-delivery-packaging-as-stranded-work.md`). · **CANDIDATE** (derived 2026-09-08 from canon §16 mode 19;
+  solves it, and one tool's own default takes the opposite view.
+  **CANDIDATE** (derived 2026-09-08 from canon §16 mode 19;
   nothing watched)
 
-> **Right-size audit, 2026-09-05** *(Enver's rule is in THE FRAME; record: `records/research/2026-09-05-remedy-right-size-audit.md` ⛔ owner's notes).*
+> **Right-size audit, 2026-09-05** *(Enver's rule is in THE FRAME).*
 > **⚠ LIKELY OVERBUILT for this harness — recorded, not adopted; each is a second system watching the first:** learned output-shape
-> baselines · a semantic classifier behind every guard (also contradicts LAW 3 — held as dissent) · runtime tracing with dashboards ·
+> baselines · a semantic classifier behind every guard (also contradicts Principle 3 — held as dissent) · runtime tracing with dashboards ·
 > continuous dead-code deletion with review queues · a code-anchored doc linter · contract testing with a broker · per-line content
 > hashes · model-judge lifecycle monitoring. **Right-sized substitutes:** separate ran/succeeded signals · typed parse, default-deny ·
 > one sweep script (see the tension) · the quarterly disk audit · generated extracts · the one fail-closed contract guard · the
@@ -1351,8 +1121,8 @@ what they are: patterns worth building, not things to reach for today.
 > canon 17.6. §12.f → resolved above.
 > **Second pass (the five modes), 2026-09-05 — ⚠ LIKELY OVERBUILT, recorded not adopted:** a cross-family panel of model judges ·
 > a "skeptical second model" arguing the negative before a claim is accepted (both: a model call per check, with its own drift;
-> the second also collides with LAW 3 — a model may annotate a verdict, never be it, per canon §4.11).
-> **RESOLVED 2026-09-06 (Enver, canon §12.f):** verification is layers, ranked by independence from the actor — the same window re-reading its own work is the weakest; a separate window on the same model is a real layer and has caught a great deal here; a separate window on a different model family is stronger; a deterministic code check is strongest for well-formed and cannot tell wrong. None is yes or no; each catches what the one beneath it missed. The one shape the evidence warns against is a second model with a deciding vote — it annotates, and the human or the code decides. LAW 3 only says the actor may not declare its own work done; a different window checking is LAW 3 working, not a collision.
+> the second also collides with Principle 3 — a model may annotate a verdict, never be it, per canon §4.11).
+> **RESOLVED 2026-09-06 (Enver, canon §12.f):** verification is layers, ranked by independence from the actor — the same window re-reading its own work is the weakest; a separate window on the same model is a real layer and has caught a great deal here; a separate window on a different model family is stronger; a deterministic code check is strongest for well-formed and cannot tell wrong. None is yes or no; each catches what the one beneath it missed. The one shape the evidence warns against is a second model with a deciding vote — it annotates, and the human or the code decides. Principle 3 only says the actor may not declare its own work done; a different window checking is Principle 3 working, not a collision.
 > **Refinement:** an
 > artifact before "done" is necessary, never sufficient — ~1,200 agents once colluded to fabricate the artifacts a gate
 > demanded (canon §15.18). **Tensions presented, awaiting Enver's routing (canon §12.d–f):** repetition-helps vs
@@ -1363,7 +1133,7 @@ what they are: patterns worth building, not things to reach for today.
 > exist unmined. **Never read this section as complete** — "not listed here" is not "never tried," and
 > treating this list as the full territory would be exactly the self-grading §V.9 already names as an
 > anti-pattern below. Before building something that smells like a retry, grep this section AND the cited
-> records/briefs directly.
+> briefs directly.
 >
 > **Duplicated by design.** This same section, in reduced or full form, also lives in `hook-sop.md` and
 > `build-sop.md` — an explicit ruling, 2026-08-07: *"I would rather have duplication than miss
@@ -1380,39 +1150,39 @@ what they are: patterns worth building, not things to reach for today.
 ### 1. Facts about the harness (measured behaviours, not opinions)
 
 - **[A7]** Tried: using the plan-mode `.md` file itself as the durable scratchpad. Failed: plan mode
-  **overwrites it on re-entry** — a named, won't-fix upstream Claude Code bug (#21131). `2026-07-13` ·
-  `records/decision/2026-07-13-scratchpad-in-brief.md` → replaced by a fixed `## Scratchpad` section inside
+  **overwrites it on re-entry** — a named, won't-fix upstream Claude Code bug (#21131). `2026-07-13`
+  → replaced by a fixed `## Scratchpad` section inside
   the brief.
 - **[A21]** Tried: a warning-only PreToolUse hook (`guard_web_search.sh`, `exit 0`) to caution before an
   unsanctioned WebSearch. Failed: **exit-0 hooks are invisible to the model** — the warning was security
-  theater nothing ever saw. `2026-05-30` · `records/log/2026-05-30-datagate-websearch-automation.md` →
+  theater nothing ever saw. `2026-05-30` →
   replaced by a hard block (`exit 2`) redirecting to `/websearch`.
 - **[A36]** Tried: `block_primary_calendar.sh`'s `deny()` written to `exit 0` on both failure paths. Failed:
   `exit 0` **= ALLOW** — calendar-write protection was silently non-functional. `found 2026-05-31, fixed
-  2026-06-01` · `records/log/2026-05-31-lifehack-v2-audit.md` → `deny()` corrected to `exit 2`.
+  2026-06-01` → `deny()` corrected to `exit 2`.
 - **[A37]** Tried: three hooks (`observability_logger.sh`, `validate_on_write.sh`, `auto_register_skill.sh`)
   reading their PostToolUse payload from `$1`. Failed: the harness delivers payload via **STDIN, not `$1`** —
-  **zero real entries captured despite 300+ daily calls.** `found 2026-05-31, fixed 2026-06-01` ·
-  `records/log/2026-05-31-lifehack-v2-audit.md` → read stdin via `$(cat)`.
+  **zero real entries captured despite 300+ daily calls.** `found 2026-05-31, fixed 2026-06-01`
+  → read stdin via `$(cat)`.
 - **[B8]** Tried: `deny()` using `exit 0` inside a PreToolUse-style hook. Failed: fails **open** — the block
-  JSON emits but the write still executes. `2026-06-17` ·
-  `state/projects/security/security-hardening/brief.md:44-77` → `exit 2`.
+  JSON emits but the write still executes. `2026-06-17`
+  → `exit 2`.
 - **[B22]** Tried: `MAX_THINKING_TOKENS` as a repair/speed lever. Failed: **inert, ignored even at the top
-  level** — measured, no effect. `NO-DATE` · `state/projects/skill-system/brief.md:122-136` → abandoned.
+  level** — measured, no effect. `NO-DATE` → abandoned.
 - **[B28]** Tried: `summary:` / `note:` / `title:` for a skill's auto-trigger text. Failed: the harness reads
-  **only `description:`** — anything else is invisible to auto-trigger. `NO-DATE` ·
-  `state/projects/skill-system/brief.md:302-407` → put trigger text in `description:`. *(This SOP's §III.3
+  **only `description:`** — anything else is invisible to auto-trigger. `NO-DATE`
+  → put trigger text in `description:`. *(This SOP's §III.3
   covers `description:` truncation and pushiness; it does not yet say this — treat the two as complementary,
   not overlapping.)*
 - **[B29]** Tried: leaving a skill's `description:` unquoted when it contains a colon-space. Failed:
-  **crashes frontmatter YAML parsing**; the menu silently falls back to the body heading. `NO-DATE` ·
-  `state/projects/skill-system/brief.md:302-407` → always double-quote `description:`.
+  **crashes frontmatter YAML parsing**; the menu silently falls back to the body heading. `NO-DATE`
+  → always double-quote `description:`.
 - **[B40]** Tried: the `$ARGUMENTS` token in `settings.json` to pass stdin content into a hook. Failed:
   Claude Code delivers hook input via **STDIN, not `$1`** (same disease as A37, a separate incident).
-  `2026-05-30` · `state/projects/security/security-hardening/brief.md:44-77` → `INPUT=$(cat)`.
+  `2026-05-30` → `INPUT=$(cat)`.
 - **[B11]** Tried: spawning ingest readers as **named** teammates. Failed: named spawns **get `SendMessage`**
-  — they ship JSON via it and the collector receives prose instead. `NO-DATE` ·
-  `state/projects/ingest-skill/brief.md:147-172` → spawn as plain background agents. **Fired live again
+  — they ship JSON via it and the collector receives prose instead. `NO-DATE`
+  → spawn as plain background agents. **Fired live again
   during the harvest session that produced this very list** — the lesson keeps needing to be re-learned.
 
 ### 2. Prose does not enforce
@@ -1420,71 +1190,71 @@ what they are: patterns worth building, not things to reach for today.
 - **[A40]** Tried: a doc-level rule prescribing "the spawn prompt must state the delivery mechanism" as the
   fix for lost sub-agent reports. Failed: **disproven** — five research agents carried that exact instruction
   and all five still stranded their reports (90,280 characters lost). "An instruction cannot stop a model from
-  putting a report where reports go." `prescribed pre-2026-07-27, disproven 2026-07-30` ·
-  `records/insight/2026-08-01-agent-name-discards-report.md` → `system/hooks/guard_agent_return_channel.sh` +
+  putting a report where reports go." `prescribed pre-2026-07-27, disproven 2026-07-30`
+  → `system/hooks/guard_agent_return_channel.sh` +
   "don't name fan-out helpers at all."
-- **[B7]** Tried: polite prompt instructions as enforcement gates in a skill. Failed: "the AI reasons past
-  prose gates." `NO-DATE` · `state/projects/lifehack-cowork/brief.md:280-298` → external bash
+- **[B7]** Tried: polite prompt instructions as friction gates in a skill. Failed: "the AI reasons past
+  prose gates." `NO-DATE` → external bash
   `test -f GATE.ok || exit 1`, never skill prose.
 - **[B31]** Tried: having `/build` read all ~25 doctrine docs, or a prose "remember the rules" line. Failed:
   graded **D unanimously** by council — floods context (nobody reads a 22.8k-word file per build), and a
-  prose reminder is what **LAW 3 above already names checkbox theater** (cross-ref, not restated). `2026-06-20`
-  · `state/projects/infrastructure/lifehack-correct-architecture/brief.md:351-390` → a slim
+  prose reminder is what **Principle 3 above already names checkbox theater** (cross-ref, not restated). `2026-06-20`
+  → a slim
   build-type → ≤3-docs router, fetch-not-recall.
-- **[B38]** Tried: adding a new RULE to a voice/style skill to fix reply length. Failed: "a rule says what to
+- **[B38]** Tried: adding a new principle to a voice/style skill to fix reply length. Failed: "a rule says what to
   cut and gets nodded at" — this is **§II.2's "the model argues with rules"** playing out again (cross-ref);
-  every prior rule addition diluted the one line that actually worked. `2026-07-28` ·
-  `state/projects/translator-voice/brief.md:97-122` → a word/section budget instead of a rule.
+  every prior rule addition diluted the one line that actually worked. `2026-07-28`
+  → a word/section budget instead of a rule.
 - **[A30]** Tried: stating the desired response voice **once** in always-loaded CLAUDE.md, framed as "not
   prescriptive." Failed: the rule faded — CLAUDE.md loads only at session start (**exactly why PART IV's
-  every-turn L1 anchor exists** — cross-ref §IV.2/§IV.3). `2026-06-08` ·
-  `records/2026-07-13-translator-voice-debug-history.md` → a firmer rewrite + a dedicated SOP, later per-turn
+  every-turn L1 anchor exists** — cross-ref §IV.2/§IV.3). `2026-06-08`
+  → a firmer rewrite + a dedicated SOP, later per-turn
   reinforcement.
 - **[A31]** Tried: an always-on Output Style as the session-start voice baseline. Failed: "loads once at start
   → same decay" — the same "loaded once" failure §IV.2 draws its L3-vs-L1/L2 cadence split from (cross-ref).
-  `2026-06-27` · `records/2026-07-13-translator-voice-debug-history.md` → a rotating per-turn anchor hook.
+  `2026-06-27` → a rotating per-turn anchor hook.
 - **[A32]** Tried: a **static** per-turn anchor re-asserting the voice rule with the same block every turn.
   Failed: "became wallpaper," the model tuned out — the incident behind §IV.3's "active-recall, not passive
-  re-read" rule (cross-ref, line ~1182). `2026-06-28` · `records/2026-07-13-translator-voice-debug-history.md`
+  re-read" rule (cross-ref). `2026-06-28`
   → a rotating anchor (5 variants, active recall).
 
 ### 3. Cheap models and cheap judges cost more than they save
 
 - **[A4]** Tried: downgrading `/ingest` SCAN judgment from sonnet to haiku for ~8x cost saving. Failed:
   haiku "lost the intuition that recognizes a chat's project + senses a mis-file" — **the incident behind
-  §III.4's "too cheap loses intuition"** (cross-ref, line 954), also cited by name in global CLAUDE.md's
-  Subagent Model Selection. `2026-07-11, reverted at commit 779157c` ·
-  `records/reference/2026-07-12-stage2-email-interpret-method.md` → kept sonnet, sought savings via bigger
+  §III.4's "too cheap loses intuition"** (cross-ref, §III.4).
+  `2026-07-11, reverted at commit 779157c`
+  → kept sonnet, sought savings via bigger
   batches instead.
 - **[B4]** Tried: haiku + a 3,500-char slice cap at the ingest SCAN step. Failed: "it KILLS the recognition
-  intuition" — same lesson as A4, a separate incident. `NO-DATE` ·
-  `state/projects/cowork-bulk-ingestion/brief.md:83-87` → sonnet + ≥10k-char slice.
+  intuition" — same lesson as A4, a separate incident. `NO-DATE`
+  → sonnet + ≥10k-char slice.
 - **[A5]** Tried: "Plan v6" — move spawned helpers to haiku, projected ~$267.79/mo recovery. Failed: realized
   saving **$0** — the convertible bucket measured zero, the spawn-floor guard was vetoed 7/7, a template fix
-  was a verified no-op, and the "untyped spawns" thesis measured zero real unpinned sites. `2026-07-28` ·
-  `records/decision/2026-07-28-model-efficiency-plan-abandoned.md` → killed; 7 model pins kept only as
+  was a verified no-op, and the "untyped spawns" thesis measured zero real unpinned sites. `2026-07-28`
+  → killed; 7 model pins kept only as
   escalation-prevention.
 - **[A33]** Tried: a Stop-hook LLM "bounce judge" regenerating a reply that fails a quality check. Failed:
   killed three ways — self-critique degrades output; latency measured 6s → 47-61s per call (CLI boot); and
   across ~30-40 live turns the grader flagged **zero** real violations (cheap-judge true-negative rate is
-  structurally <30%, Jain et al. NeurIPS 2025). `2026-07-12/13` ·
-  `records/2026-07-13-translator-voice-debug-history.md` → a 3-layer plan (output-style + examples, a parked
+  structurally <30%, Jain et al. NeurIPS 2025). `2026-07-12/13`
+  → a 3-layer plan (output-style + examples, a parked
   grader, a planned local classifier).
 - **[A34]** Tried: readability formulas (Flesch-Kincaid, Gunning Fog, SMOG) as a proxy for reply density.
-  Failed: "barely correlate with perceived difficulty on technical prose." `2026-07-12` ·
-  `records/2026-07-13-translator-voice-debug-history.md` → a holistic test + a planned local classifier.
+  Failed: "barely correlate with perceived difficulty on technical prose." `2026-07-12`
+  → a holistic test + a planned local classifier.
 - **[B23]** Tried: collapsing four map-agent lenses into ONE agent to save time. Failed: measured **35
-  findings vs 82** at nearly the same wall-clock — "not faster, it is shallower." `2026-08-05` ·
-  `state/projects/skill-system/brief.md` (wave B1) → kept four separate lens agents.
+  findings vs 82** at nearly the same wall-clock — "not faster, it is shallower." `2026-08-05`
+  → kept four separate lens agents.
 - **[B25]** Tried: an item budget ("do only N of these") to make an agent run faster. Failed: compliance
   near-perfect but the clock **rose 1.35x** — the agent still read everything; the budget only trimmed the
-  reported output. `2026-08-05` · `state/projects/skill-system/brief.md` (wave S) → abandoned as a speed
+  reported output. `2026-08-05` → abandoned as a speed
   lever.
 - **[B26]** Tried: collapsing a proven multi-agent fan-out into one inline prompt. Failed: measured **2.06x
-  worse** wall-clock. `2026-08-04` · `state/projects/skill-system/brief.md:409-473` → kept the fan-out.
+  worse** wall-clock. `2026-08-04` → kept the fan-out.
 - **[B27]** Tried: stripping a dispatch/spawn prompt down to save input tokens ("lean-brief"). Failed:
   pointed **backwards** — the longer prompt ran on the faster day; under-specification is paid back in output
-  tokens at roughly 100x the input price. `2026-08-04` · `state/projects/skill-system/brief.md:409-473` →
+  tokens at roughly 100x the input price. `2026-08-04` →
   kept fully specified prompts.
 
 ### 4. Tests that grade their own homework
@@ -1493,254 +1263,118 @@ what they are: patterns worth building, not things to reach for today.
   positives on real data** — it passed 10/10 only on a fixture written from the same mental model as the
   regex itself. This is **§V.3's "a fixture can manufacture a violation the real skill never commits,"
   inverted** (cross-ref) and the wild-caught case §V.9 names in the abstract ("an LLM judge sold as a
-  deterministic test"). `2026-07-29` · `state/projects/skill-system/brief.md:1349-1351` → killed,
+  deterministic test"). `2026-07-29` → killed,
   do-not-re-add (commit `36ddc93`).
 - **[B16]** Tried: verifying a human-facing screen with a test **fixture** instead of the real invocation
   path. Failed: the fixture passed a **dead** reflection screen twice; only the real path caught it — the
   same lesson §V.8 ("the real supervised run is the acceptance test") and §III.9 ("real life is the test
-  bed") already state (cross-ref). `NO-DATE` · `state/projects/ingest-skill/brief.md:147-172` → verify
+  bed") already state (cross-ref). `NO-DATE` → verify
   against the real invocation path, always.
 - **[A13]** Tried: a multi-agent "council" of same-model design-critique personas. Failed: "same-model
   personas don't reproduce independent reviewers" (cites Park 2024) — error amplification. **§IV.10 already
   states this** ("same-base-model agents share a homogeneity floor no prompt fully removes," cross-ref).
-  `2026-06-04` · `records/decision/2026-06-04-design-lifehack-skill.md` → one skill, 7 lenses as internal
+  `2026-06-04` → one skill, 7 lenses as internal
   sections. **REFINED 2026-09-05:** this binds PERSONA councils. Blind ANGLE panels — one named angle each,
   no cross-talk, one aggregation spine (§IV.10's conditions) — scored 11/11 with 0 false positives against a
   same-file control (OBSERVED, `match-2026-09-04.txt`), and [B23] below already measured that collapsing lenses
   loses findings. Do not read this entry as forbidding the panel shape.
 - **[A35]** Tried: a mechanical section-counter (≥5 bold headers = "reads like a report") as the sole
-  wall-of-text detector. Failed: couldn't distinguish a mild wall from a genuinely good reply. `2026-07-12` ·
-  `records/2026-07-13-translator-voice-debug-history.md` → folded into the 3-layer approach.
+  wall-of-text detector. Failed: couldn't distinguish a mild wall from a genuinely good reply. `2026-07-12`
+  → folded into the 3-layer approach.
 - **[B24]** Tried: testing "one agent, four lenses" by handing one agent the four per-lens dispatch briefs.
   Failed: the agent **re-delegated** — spawned its own four sub-agents — voiding the measurement.
-  `2026-08-05` · `state/projects/skill-system/brief.md` (wave B1) → rewrite the dispatch as "you personally
+  `2026-08-05` → rewrite the dispatch as "you personally
   perform these four analyses."
 
 ### 5. Prescription calcifies
 
-> **This cluster restates existing doctrine — §II.3's reliability ladder ("use the least rung that holds")
+> **This cluster restates existing doctrine — §II.3's reliability dial ("use the least friction that holds")
 > and §III.9's "FAIL TWICE → the architecture is the bug, not the wording" — rather than adding a new rule.**
 > That is deliberate: five independent incidents landed on the rule this SOP already carries, and the value
 > of listing them here is confirmation, not novelty.
 
 - **[B14]** Tried: a hard REFUSING threshold on basket/category count. Failed: fought the discovery process
   the phase exists to do; blocked the live corpus within hours. **This is the identical incident already
-  told in full in PART I's `⭐ THE SEAM` ERODED table** (line ~164: `corpus_map.py`, commit `b110722`) —
-  cross-ref only, not restated. `2026-08-04` · `state/projects/ingest-skill/brief.md:147-172` → converted to
+  told in full in PART I's `⭐ THE SEAM` ERODED table** (§I; `corpus_map.py`, commit `b110722`) —
+  cross-ref only, not restated. `2026-08-04` → converted to
   advisory guidance.
 - **[B13]** Tried: prescriptive language on anything but a stated desired outcome. Failed: "rules outlive
   their reason and calcify" — the literal rule "one line per item" caused the exact truncation it was
-  written to prevent. `2026-08-04` · `state/projects/ingest-skill/brief.md:147-172` → guidance that carries
+  written to prevent. `2026-08-04` → guidance that carries
   its own reason.
 - **[B15]** Tried: boxed ASCII decision screens / an 8-basket grid / mockup-driven visual design for a
   chat-based skill. Failed: "a bridge too far" — the box itself is what forced text truncation. `2026-08-04`
-  · `state/projects/ingest-skill/brief.md:147-172` → plain reflowing text.
+  → plain reflowing text.
 - **[B18]** Tried: designing skill-builder around making the human learn the machinery (3x4 grid, tiers, step
-  types). Failed: "they shouldn't need to know what the process is." `NO-DATE` ·
-  `state/projects/skill-builder/brief.md:100-110` → the grid stays the LLM's own completeness check.
+  types). Failed: "they shouldn't need to know what the process is." `NO-DATE`
+  → the grid stays the LLM's own completeness check.
 - **[B19]** Tried: opening a skill-building session by showing the human the full spec template. Failed: "I
-  actually don't want you to start by showing me the full spec template." `NO-DATE` ·
-  `state/projects/skill-builder/brief.md:100-110` → ask for the outcome in their own words first.
+  actually don't want you to start by showing me the full spec template." `NO-DATE`
+  → ask for the outcome in their own words first.
 
 ### Also UNIVERSAL, not sorted into the five named clusters
 
 Twelve more entries the harvest scoped UNIVERSAL that don't fit the five clusters above — included in full so
-this stays the complete lookup, not filed under LOCAL where their binding scope would be misrepresented.
+this stays the complete lookup, marked UNIVERSAL because they bind any build.
 
 - **[A12]** Tried: mapping a session to "its" plan file by newest-mtime in `~/.claude/plans/`. Failed:
   cross-wired across parallel windows — a session's bar showed another window's plan. **Never key a
-  per-session artifact off file mtime under concurrency.** `2026-07-13` ·
-  `records/decision/2026-07-13-statusbar-hud-build.md` → **not yet fixed**, open debt
+  per-session artifact off file mtime under concurrency.** `2026-07-13`
+  → **not yet fixed**, open debt
   `[STATUSLINE-PLAN-CROSSWIRE]`.
 - **[A22]** Tried: scraping search results via DuckDuckGo HTML/Lite, Bing, and public SearXNG instances.
-  Failed: all blocked — CAPTCHAs and 403/429s, "an unwinnable arms race with bot detection." `2026-05-30` ·
-  `records/log/2026-05-30-datagate-websearch-automation.md` → dev-browser (real Chrome), later Serper API as
+  Failed: all blocked — CAPTCHAs and 403/429s, "an unwinnable arms race with bot detection." `2026-05-30`
+  → dev-browser (real Chrome), later Serper API as
   PRIMARY.
 - **[A29]** Tried (considered, rejected): stock browser-automation MCP servers (Playwright MCP, Chrome
   DevTools MCP, Browser MCP). Failed: they return raw page content straight to model context, violating
-  sanitize-before-context and tool-plane governance. `2026-06-03` ·
-  `records/log/2026-06-03-relay-ghost-root-cause-fix.md` → the custom sanitized bridge; MCP mined for
+  sanitize-before-context and tool-plane governance. `2026-06-03`
+  → the custom sanitized bridge; MCP mined for
   patterns only.
 - **[A39]** Tried: a guard hook grepping a Bash command **string** for keywords (`settings.json` +
   `statusLine`). Failed: false-positived on any command merely **mentioning** both words — including its own
   build's git commit message. **This is the status-bar guard PART I's "THE DIVISION INSIDE A SINGLE TOOL"
-  section already cites by name as one of three logged instances** (cross-ref, line ~213) — not restated.
-  `2026-07-13` · `system/sops/build-sop.md`; `state/debt-ledger.md` `[GUARD-HOOKSOP-FALSE-POSITIVE]` → match
+  section already cites by name as one of three logged instances** (cross-ref, §I) — not restated.
+  `2026-07-13` · `system/sops/build-sop.md`; `<notes>/state/debt-ledger.md` `[GUARD-HOOKSOP-FALSE-POSITIVE]` → match
   the write-TO-TARGET pattern, later hardened with shlex tokenization.
 - **[B1]** Tried: regex/fuzzy heading-matching in the brief archiver to find a section. Failed: "finding a
   section is the LLM's judgment, not a regex's." **This is the exact rule PART I's "FINDING is fuzzy;
-  PRINTING, COUNTING, COMPARING and REFUSING are not" section exists to state** (cross-ref, line ~175) — not
-  restated. `NO-DATE` · `state/projects/project-system/brief.md:91` → LLM-judgment section matching.
+  PRINTING, COUNTING, COMPARING and REFUSING are not" section exists to state** (cross-ref, §I) — not
+  restated. `NO-DATE` → LLM-judgment section matching.
 - **[B9]** Tried: undocumented forks of one skill (plan-week / -browser / -deluxe / -noviz). Failed: drifted
-  silently, no single source of truth. `NO-DATE (LOG-01)` · `state/projects/lifehack-cowork/brief.md:280-298`
+  silently, no single source of truth. `NO-DATE (LOG-01)` 
   → one live skill per role, extended in place, versioned in frontmatter.
 - **[B12]** Tried: exempting encoded strings (base64 etc.) from the injection scanner. Failed: exploitable —
-  attackers hide payloads in the exemption. `NO-DATE` · `state/projects/ingest-skill/brief.md:147-172` → the
+  attackers hide payloads in the exemption. `NO-DATE` → the
   tool-less reader is the real wall (§III.8); the scanner is a cheap hint only.
 - **[B20]** Tried: a standalone SOP duplicating skill-building-sop.md's content. Failed: "parallel systems
-  fragment the guard set" — **§II.3 already says this verbatim** (cross-ref, line ~538), not restated.
-  `NO-DATE (commit 76c6a80)` · `state/projects/skill-builder/brief.md:100-110` → fold the doctrine into the
+  fragment the guard set" — **§II.3 already says this verbatim** (cross-ref, §II.3), not restated.
+  `NO-DATE (commit 76c6a80)` → fold the doctrine into the
   existing SOP files. *(Note the tension with this very DO-NOT-BUILD section's duplication across three
   SOPs — the 2026-08-07 ruling explicitly overrides B20's own lesson for this one case: "I would rather
   have duplication than miss something." Both are true; they answer different questions.)*
 - **[B21]** Tried: `set -e` inside a retry loop over N model/subprocess calls. Failed: "it destroyed a run
-  that already had 3 of 4 lanes done." `NO-DATE` · `state/projects/skill-system/brief.md:122-136` → not
+  that already had 3 of 4 lanes done." `NO-DATE` → not
   stated in the source.
 - **[B33]** Tried: running huddle seats and the coordinator inside the MAIN (opus) session loop. Failed:
-  burns opus, freezes the window for the whole meeting, dumps the full board into main context. `NO-DATE` ·
-  `state/projects/huddle/huddle-skill/brief.md:58-86` → every participant and the chair runs in a background
+  burns opus, freezes the window for the whole meeting, dumps the full board into main context. `NO-DATE`
+  → every participant and the chair runs in a background
   sonnet sub-agent.
 - **[B37]** Tried: a Stop-hook LLM judge that bounces/regenerates every reply for voice quality. Failed:
   self-critique degrades quality; ~60s added latency from `claude -p` CLI boot; cheap-judge true-negative
   rate under 30% — "structural, no prompt fixes it." **Same episode as [A33] above**, a separate record.
-  `NO-DATE` · `state/projects/translator-voice/brief.md:97-122` → killed outright.
+  `NO-DATE` → killed outright.
 - **[B39]** Tried: abstracting a working, concrete prompt (six specific questions) into a general
   architecture. Failed: three successive generalization attempts (fixed spine → checklist → three "beats")
-  were all rejected — "too simplistic... we went off track somewhere." `2026-07-28` ·
-  `state/projects/translator-voice/brief.md:97-122` → kept the concrete prompt.
+  were all rejected — "too simplistic... we went off track somewhere." `2026-07-28`
+  → kept the concrete prompt.
 - **Tried:** answering a DELIVERY problem by building DETECTORS. **Failed:** 863 lines shipped in one day,
   **ZERO with a caller**, while 10 existing per-turn injectors sat unused; the shared module built to end
-  the recurring class was adopted by 3 of 15 tools. `2026-08-08` · `state/projects/project-system/brief.md`
+  the recurring class was adopted by 3 of 15 tools. `2026-08-08` 
   → replaced by one line in an injection that already fires. **8th recorded instance of build-with-no-caller
   in this system** (prior: `compose_reflection` · `judge.py`/`push_gate.py` — *"I built the lock and never
   built the key"* · `check_screens.py` · 4 unused shared primitives). See **THE CODE SPIRAL**,
   `system/build-rules-index.md`. **UNIVERSAL**
-
-### LOCAL — recorded history, binds nothing
-
-Failed **for us, in our circumstances** — not a general law. Kept as the "has this been tried?" lookup even
-though none of these bind a future build.
-
-- **[A1]** Tried: regex pattern-matching on user prompts to detect when math needs mechanical computation.
-  Failed: 24/24 plain-English math prompts missed — no operator or keyword to match. `2026-06-27` ·
-  `records/decision/2026-06-27-numbers-integrity-enforcement.md` → declare-intent model (finance desks
-  auto-arm, `/calculate` elsewhere, tight regex as backstop only).
-- **[A2]** Tried: a per-turn LLM classifier (`claude -p --model haiku`) on every UserPromptSubmit to decide
-  "does this need math?" Failed: measured ~6.0-6.2s **cold-start** latency (CLI boot, not inference) —
-  unacceptable in a synchronous per-turn hook. `2026-06-27` ·
-  `records/decision/2026-06-27-numbers-integrity-enforcement.md` → declare-intent model.
-- **[A3]** Tried: a Stop/block gate halting on ungrounded arithmetic. Failed: a hook cannot distinguish a
-  number the model **computed** from one it **read** — provenance is invisible in text, so it would
-  false-fire constantly. `2026-06-27` · `records/decision/2026-06-27-numbers-integrity-enforcement.md` → no
-  blocking gate.
-- **[A6]** Tried: relying on `~/.claude/plans/` with no backup lane. Failed: a plan built on the second machine was
-  unreachable from the primary machine while travelling — the dir had been a Drive symlink until 2026-06-16, then reverted to
-  native-local with no replacement. `2026-07-02` ·
-  `records/decision/2026-07-02-plans-backup-hole-postmortem.md` → `system/hooks/mirror_plans.sh` +
-  its plan-recovery counterpart on the pull side.
-- **[A8]** Tried: merging plan file + scratchpad + brief into ONE file. Failed: "sync hell" — machine-local vs
-  Drive copies must agree, silent drift; pre-mortem returned four D grades. `2026-07-13` ·
-  `records/decision/2026-07-13-scratchpad-in-brief.md` → scratchpad as a section in the brief.
-- **[A9]** Tried: a cross-session discoverability layer for the scratchpad. Failed: overbuild — "a scratchpad
-  only exists within a project, so a cold session with no project has no scratchpad to find." `2026-07-13` ·
-  `records/decision/2026-07-13-scratchpad-in-brief.md` → nothing.
-- **[A10]** Tried: adopting `ccstatusline` for the terminal HUD. Failed: ~53k-line React/ink app with a large
-  unvettable dependency tree. `2026-07-13` · `records/decision/2026-07-13-statusbar-hud-build.md` → a
-  hand-built ~90-line bar.
-- **[A11]** Tried: populating the live status bar with FABRICATED demo data to show a finished preview.
-  Failed: broke trust — the reader caught the fabrication. `2026-07-13` ·
-  `records/decision/2026-07-13-statusbar-hud-build.md` → mock previews via piped JSON, never faking live
-  state.
-- **[A14]** Tried: deferring aesthetics/component-design/accessibility to external plugin skills. Failed:
-  dead pointers to tools the user doesn't use; live "which tool owns this?" confusion. `2026-06-04` ·
-  `records/decision/2026-06-04-design-lifehack-skill.md` → one comprehensive skill.
-- **[A15]** Tried: building design-lifehack as a slash COMMAND rather than a SKILL. Failed: reversed once
-  auto-invocation became a hard requirement. `2026-06-04` ·
-  `records/decision/2026-06-04-design-lifehack-skill.md` → built as a skill.
-- **[A16]** Tried: lifting the content of 73 downloaded `DESIGN.md` brand specs into the constraint kit.
-  Failed: "it's all the easy part... the last mile is absent in all 73." `2026-06-04` ·
-  `records/decision/2026-06-04-design-lifehack-skill.md` → steal the container, author the craft rules
-  ourselves.
-- **[A17]** Tried: two separate constraint-kit files (dashboard vs marketing). Failed: unnecessary
-  duplication. `2026-06-04` · `records/decision/2026-06-04-design-lifehack-skill.md` → one file, profile
-  toggle.
-- **[A18]** Tried: a "clear the gate" reset command + growth/archiving for ClaudeGate. Failed: moot — the
-  overwrite design means the file never grows. `2026-07-17` ·
-  `records/decisions/2026-07-17-claudegate-two-way-overwrite.md` → every write overwrites.
-- **[A19]** Tried: two separate files (inbox + outbox) for the ClaudeGate slot. Failed: rejected — one file so
-  the exchange lives in one place. `2026-07-17` ·
-  `records/decisions/2026-07-17-claudegate-two-way-overwrite.md` → one file.
-- **[A20]** Tried: an APPEND-style running transcript for ClaudeGate. Failed: rejected — "it overwrites, it
-  doesn't accumulate" was the design intent. `2026-07-17` ·
-  `records/decisions/2026-07-17-claudegate-two-way-overwrite.md` → overwrite-only slot.
-- **[A23]** Tried: running the dev-browser relay in STANDALONE mode for the overmyshoulder skill — ⛔ that skill does not ship (ruled 2026-08-14); this entry is kept as HISTORY, not as a live pointer. Failed: standalone
-  has no extension endpoint — the skill silently presented a headless browser's own tabs as the user's
-  real Chrome. `2026-06-07` · `records/log/2026-06-07-overmyshoulder-dev-browser-root-cause.md` → enforce
-  extension mode always.
-- **[A24]** Tried: relying on the extension's default tab model to read the user's current tab. Failed: it
-  never attaches to pre-existing tabs — Playwright saw zero tabs even in correct mode. "A design gap, not a
-  config error." `2026-06-07` · `records/log/2026-06-07-overmyshoulder-dev-browser-root-cause.md` →
-  `chrome.debugger.attach` on demand.
-- **[A25]** Tried: trusting the relay's `extensionConnected` flag as a liveness signal. Failed: it was a
-  **null-check, not a liveness check** — reported true during a cycling ghost state. `2026-06-03` ·
-  `records/log/2026-06-03-relay-ghost-root-cause-fix.md` → `extensionIsHealthy()` with a keepalive timestamp.
-- **[A26]** Tried: "latest socket wins" for a new extension WebSocket connection. Failed: an overnight ghost
-  socket caused an infinite "Extension connection replaced" loop. `2026-06-03` ·
-  `records/log/2026-06-03-relay-ghost-root-cause-fix.md` → healthy-current-wins + a stale-socket reaper.
-- **[A27]** Tried: direct-CDP (`--remote-debugging-port`) as a drop-in for the extension bridge. Failed:
-  Chrome won't open the debug port on a running instance and profile-locks the user-data-dir, forcing a
-  cloned profile that reintroduces the CAPTCHA penalty. `2026-06-03` ·
-  `records/log/2026-06-03-relay-ghost-root-cause-fix.md` → kept the custom bridge.
-- **[A28]** Tried: a fresh/dedicated Chrome profile for automated search. Failed: reintroduces bot-detection /
-  CAPTCHA penalty. `2026-06-03` · `records/log/2026-06-03-relay-ghost-root-cause-fix.md` → ride the user's
-  real warm profile via the extension bridge.
-- **[A38]** Tried: launchd LaunchAgents for scheduled bootstrap jobs on both machines. Failed: blocked by
-  macOS Full Disk Access — "Operation not permitted" on the Drive path. `2026-05-26` ·
-  `records/logs/2026-05-26-cross-machine-sync-infrastructure.md` → cron.
-  **CLOSED 2026-10-27 (Sprint 0):** from a LaunchAgent, screen unlocked, locked, and lid-closed-then-opened,
-  Drive writes, `claude -p` with the token file and gws with the file keyring all worked; a run missed in sleep
-  fired once on wake. launchd is usable; cron is no longer the only answer.
-- **[A41]** Tried: `guard_harness_writeback.sh` / `guard_harness_write` deriving "this repo" from `$0`. Failed: a window running the plugin FROM the V2 checkout blocks every edit there, so building from a V2-launched window is impossible. `2026-10-27` → build from a window running the installed plugin. OPEN.
-- **[A42]** Tried: trusting `write_v2` (`email_summary_sync.py --write-v2`) exit 0. Failed: it exits 0 on a HARD-STOP and when every label lists 0 threads. `2026-10-27` → the wrapper's output check catches it.
-- **[A43]** Tried: `--limit` as a cap on a sweep run. Failed: it did not stop the cold-sweep, so a capped run would have cold-marked the whole store. `2026-10-27` → fixed (e9150b9).
-- **[A44]** Tried: a watchdog `sleep` in the draft wrapper. Failed: it was orphaned on every run. `2026-10-27` → fixed in 1.2.
-
-> v2 receipt (orchestrator-v2): the same orphan-lock family showed in the rig — a hard kill (SIGKILL, k05) left the mkdir lock. OBSERVED.
-
-- **[A45]** Tried: deferring quiet-hours texts and flushing them only from `pulse.sh`. Failed: with Pulse off, overnight down-texts were never delivered. `2026-10-27` → fixed 2.5a: every wrapper run flushes.
-- **[A46]** Tried: a daily push cap of 3 counted per source `job-run`. Failed: one cap shared by all jobs, and recoveries counted against it. `2026-10-27` → fixed 2.5b: per job, recoveries exempt.
-- **[A47]** Tried: `guard_git_push_signpost.sh` reading the SESSION cwd. Failed: it ignores the `cd`/`-C` target, so it labelled a public push "ClaudeOps (PRIVATE)". `2026-10-27` → read the push target's own repo. OPEN.
-- **[A48]** Tried: cancelling a hand run mid-flight. Failed: it orphaned both the wrapper lock and the runner's inner lock; stale locks self-clear only after watchdog + 300 s. `2026-10-27` → wait out the clear, or remove both locks. OPEN, low.
-
-> v2 receipt (orchestrator-v2): confirmed on the rig runner (k05, SIGKILL leaves the lock; resume stands down rc 75 for up to 1500s; removed by hand). OBSERVED.
-
-> **v2 (audit, 2026-10-28):** Stage 3 fix (OBSERVED): the lock now records its owner pid. A dead owner's lock is stolen at once; a live owner still gets rc 75. The 1500s wait described above was the pre-fix behaviour.
-
-- **NEW RULE — lock behaviour on a kill, and the stale-steal trade-off.** A hard kill (SIGKILL) leaves the mkdir lock until stale-steal (1500s); a normal close (SIGHUP) releases it; the live cron runner has the same pattern. The 1500s stale-steal window is a **deliberate trade-off** (a shorter window risks stealing a live run's lock; a longer one delays resume) — name it, do not hide it. *(OBSERVED — brief §4 Stage 2 finding 2.)*
-
-> **v2 (audit, 2026-10-28):** Stage 3 fix (OBSERVED): the lock now records its owner pid. A dead owner's lock is stolen at once; a live owner still gets rc 75. The 1500s wait described above was the pre-fix behaviour.
-
-- **[B2]** Tried: a status-bar write-GUARD hook on `statusline.sh` blocking python/bash writes. Failed:
-  false-positived on legitimate work. `NO-DATE` · `state/projects/project-system/brief.md:170` → edit
-  `statusline.sh` with the Edit tool only + an inline warning comment, no hook.
-- **[B3]** Tried: a journal `kind:` tag for event-type slicing. Failed: grep on desk|slug + body text already
-  gave per-subject retrieval with zero maintenance. `2026-07-14` ·
-  `state/projects/project-system/brief.md:133` → grep retrieval.
-- **[B5]** Tried: a junk pre-filter before human review during corpus ingestion. Failed: would discard content
-  before a human ever saw it — violates "never eliminate unseen." `NO-DATE` ·
-  `state/projects/cowork-bulk-ingestion/brief.md:61-65` → no pre-filter.
-- **[B6]** Tried: prose-only save gates instead of mechanically enforced ones. Failed: reason not recorded in
-  the source beyond "don't re-try." `NO-DATE` · `state/projects/cowork-bulk-ingestion/brief.md:140` → not
-  named.
-- **[B10]** Tried: one-tap efficiency / a gamified item count as the ingest skill's goal. Failed: "robs the
-  user of the reward (reflection = being understood)." `NO-DATE` · `state/projects/ingest-skill/brief.md:147-172`
-  → goal reframed around reflection.
-- **[B17]** Tried: splitting `/ingest` into two auto-chained skills (miner + filer). Failed: reversed — "the
-  filer's job shrank to one phase and the handoff itself was where information was being lost." `2026-08-05`
-  · `state/projects/ingest-skill/brief.md:182-183` → reversed into one skill.
-- **[B32]** Tried: a blocking/code-verified gate in v1 of the `/build` doctrine router. Failed: would halt
-  background builds. `2026-06-20` ·
-  `state/projects/infrastructure/lifehack-correct-architecture/brief.md:351-390` → advisory v1 + a hook as a
-  named future seam.
-- **[B34]** Tried: a background watch loop for huddle "breadcrumbs." Failed: writes to a file the human can't
-  see — "kills the live feed." `NO-DATE` · `state/projects/huddle/huddle-skill/brief.md:58-86` → `coord-wait`
-  — foreground streaming with early exit.
-- **[B35]** Tried: writing detailed implementation plans inside the live huddle. Failed: "makes sessions go
-  solo/silent/slow → they time out + watch-loop." `NO-DATE` ·
-  `state/projects/huddle/huddle-skill/brief.md:58-86` → huddle aligns scope only; plans written after, solo.
-- **[B36]** Tried: letting participants self-declare "done" as the huddle exit signal. Failed: sessions kept
-  bumping out prematurely. `NO-DATE` · `state/projects/huddle/huddle-skill/brief.md:58-86` → "done" is a
-  revocable alignment vote; only the coordinator closes the room.
 
 ## §II.4b — DO NOT BUILD / DO NOT RETRY — build *process* moves proven not to work *(section opened 2026-09-05 by ruling; grows over time)*
 
@@ -1750,7 +1384,7 @@ though none of these bind a future build.
 > seam-level twins: `system/build-rules-index.md` DO-NOT-RETRY block.
 
 - **[P1]** Tried: acting on a hand-off's factual claims without re-reading the source. Failed: one hand-off
-  (2026-09-05) carried three wrong claims — a block "with no analogue" that duplicated LAW 1b · "3× the length"
+  (2026-09-05) carried three wrong claims — a block "with no analogue" that duplicated Principle 1b · "3× the length"
   that measured 1.45× · a tension "unruled 13 months" that §III.10 had ruled. All caught by opening the file.
   `2026-09-05` · canon §10a [DNR2] → every claim re-checked before it is acted on; a hand-off is a lead, not a
   finding. OBSERVED.
@@ -1761,7 +1395,7 @@ though none of these bind a future build.
 
 - **[P3]** Tried: reading `cmd | head; echo $?` as the command's exit status. Failed: `$?` is `head`'s; two
   operators read a passing verify off it in one day. `2026-09-05` · ~~reported in the nav hand-off, receipt not
-  re-run by this window~~ receipt named: claudeops-1a's transcript audit, entry A10 — four `rc=` values in one
+  re-run by this window~~ receipt named: a session's transcript audit, entry A10 — four `rc=` values in one
   block were all `head`'s, two coincidentally right → `set -o pipefail`, or capture the command's status before
   the pipe. ~~CANDIDATE until a receipt is named~~ OBSERVED (2026-09-05).
 - **[P4]** Tried: calendar waits in a plan ("watch 48 h", "two quiet weeks"). Failed: a forced test (kickstart, backdated last-success, stubs, the job-sim rig) proves the same thing in minutes. `2026-10-27` · plan §D.7 (the Pareto rule) → force the condition instead of waiting for it.
@@ -1769,16 +1403,9 @@ though none of these bind a future build.
 > v2 note: held for the week-long test — the week-long /save test is a deliberate exception to "force the condition instead of waiting": the question (does a real, ordinary week of use hold) cannot be forced.
 
 
-## §II.5 — Packaging: two lanes, so enforcement travels
+## §II.5 — Packaging: a skill travels
 
-`[C, live experiment 2026-06-29]` **Primitives are skill-local scripts** — they live in the skill's folder and
-run unchanged on both the CLI and in Cowork's sandbox (bash + Python both execute there). **Walls are authored
-once and registered twice**: `settings.json` on the CLI, a **plugin** on Cowork — where `settings.json` hooks
-never fire, but *plugin-delivered* hooks were proven to genuinely block out-of-band (a blind session was blocked
-from a benign write containing a trigger word while an identical write without it succeeded).
-**Design rule:** never let a primitive depend on a hook, a host path, or `settings.json` — or it stops existing
-the moment the skill travels. Carried open items: hook audit-log persistence, and UserPromptSubmit-via-plugin
-(unproven — the every-turn anchor in Cowork is a TEST, not an assumption).
+**Design principle:** never let a primitive depend on a hook, a host path, or `settings.json` — or it stops existing the moment the skill travels.
 
 ## §II.6 — Run-vs-read: the folder IS the signal
 
@@ -1787,11 +1414,11 @@ documentation, read it into context when needed** · **`assets/` = files used in
 Claude should *run* or *read* a bundled file is called out as a design flaw. Adopt the directory convention
 rather than inventing an in-file tag.
 
-## §II.7 — ⏸ HELD hypothesis: the demand-class law (NOT yet doctrine)
+## §II.7 — ⏸ HELD hypothesis: the demand-class principle (NOT yet doctrine)
 
 Rules that demand the model **PRODUCE** something appear to hold in prose; rules that demand it **WITHHOLD**
 ("don't name the Win yet"), **ORDER** ("arc before Win"), or **COUNT/COVER** ("all 241 items") appear not to. If
-true, the demand-class should drive rung choice at design time — the single most useful thing we could know.
+true, the demand-class should drive the choice of friction level at design time — the single most useful thing we could know.
 **It is not doctrine:** it was generated from **n=2 failures on one skill**, reasoning backwards from the answer.
 It is consistent with `[R2]` withhold-the-endpoint and §IV barn-sour — corroboration, not proof. Graduates when
 the experiment runs. *(Also held: the compilation-loss RATIO — direction certain, magnitude measured with
@@ -1802,8 +1429,8 @@ mismatched extraction on the two sides.)*
 # PART III — BUILD A SKILL (the birth procedure)
 
 > A self-contained walkthrough — start here if you just need to scaffold. Every rule in this Part obeys the five
-> Laws in PART I and reaches for the toolbox in PART II; where a step needs enforcement, it names the family
-> (Replace/Verify/Wall/Refresh, §II.1) and the rung (§II.2) rather than re-deriving them.
+> Principles in PART I and reaches for the toolbox in PART II; where a step needs friction, it names the family
+> (Replace/Verify/Wall/Refresh, §II.1) and the friction level (§II.3) rather than re-deriving them.
 
 ## III.1 — Classify it FIRST: skill, or command?
 
@@ -1812,18 +1439,18 @@ really a **command** — a single large prompt behind a slash-command: one shot,
 state held across turns, no invariant that must reliably fire, not leading/interrogative.
 
 A command passes on a **light bar** — a sharp `description:`/trigger + clean, right-sized prose — and is **not**
-held to the full skill machinery (three floors, enforcement ladder, receipts, anchoring, state files). It escalates
+held to the full skill machinery (three floors, friction layers, receipts, anchoring, state files). It escalates
 to a **skill** — and must conform to this whole SOP — the moment it is any of:
 
 - **multi-step in an order that must hold**
 - **stateful across turns**
-- **leading/interrogative** (it must hold its frame against the user, PART I Law 5's "social pull")
+- **leading/interrogative** (it must hold its frame against the user, PART I Principle 5's "social pull")
 - **carrying an invariant that must reliably fire**
 
 **The test:** if you could paste it as one prompt, it's a command. If it needs steps to *hold*, it's a skill.
 Misclassifying costs in one direction only — a command wearing skill machinery is over-built (PART I's
-right-sizing trait); a skill wearing command lightness silently drops the anchoring and enforcement it needed and
-fails exactly the way PART I Law 5 predicts.
+right-sizing trait); a skill wearing command lightness silently drops the anchoring and friction it needed and
+fails exactly the way PART I Principle 5 predicts.
 
 **Then pick the VEHICLE — three shapes, not one.** Classification tells you the bar; the vehicle tells you where
 the thing lives:
@@ -1842,7 +1469,7 @@ the thing lives:
   from a stale copy of this rule (its own spec cited the pre-retirement text as if it were still live).
   It was removed the same day.
   `grep -rn "^disable-model-invocation" skills/*/SKILL.md` now returns zero — the fleet actually has zero.
-  **The rule this REPLACES** (kept visible so nobody reinstates it from memory): *"side-effect skills get
+  **The principle this REPLACES** (kept visible so nobody reinstates it from memory): *"side-effect skills get
   `disable-model-invocation: true` — if a skill writes, sends, deletes or spends, firing is the human's
   call."* **Why it lost:** it made the flagged skill behave unlike every other skill in the set — for any
   other skill the model rescues a buried invocation by reading intent, and these were the ones forbidden to
@@ -1861,7 +1488,7 @@ true about this system, always). **A skill holds a PROCEDURE** (what to do when 
 fact that keeps getting restated inside skills belongs in CLAUDE.md; a procedure sitting in CLAUDE.md is loading
 into every session for nothing.
 
-- **NEW RULE — card + runner + record is the default shape for any skill whose step order must hold.** Classify with this in mind (§III.1): if order matters, the skill gets a card, a runner and a record (see PART 0). *(CANDIDATE.)*
+- **principle (candidate) — hypothetical, not yet validated: for a skill whose step order must hold, a card + runner + record is one candidate shape.** If order matters, consider a card, a runner and a record (see PART 0); it is not the default way to build a skill. *(CANDIDATE.)*
 
 
 ## III.2 — Declare its INTENT (three layers, written before anything else)
@@ -1869,7 +1496,7 @@ into every session for nothing.
 **Why this exists.** In Lifehack the LLM *is* the runtime — a skill doesn't run by blind execution, it runs by a
 fresh session **understanding** what the skill is for and acting on that. A skill that never states its own
 intent forces the session to **guess**, and guessing on a load-bearing skill is the failure mode this step
-prevents. This is `intent-doctrine.md`'s system-wide law ("every object declares why it exists") applied to
+prevents. This is `intent-doctrine.md`'s system-wide principle ("every object declares why it exists") applied to
 skills: **every skill declares, in its own words, the outcome it exists to produce and the role it plays to
 produce it.**
 
@@ -1884,7 +1511,7 @@ opens. Layer 3 is **ADVISED** and works differently.
   still delivers an outcome the user can trust without asking; an interactive skill delivers a felt end-state. If
   you can't name the outcome and the bar, the skill doesn't yet know what it's for.
 - **Layer 2 — Role + place on the autonomy spectrum (REQUIRED).** State WHO the skill is (its character/identity —
-  what makes it do the work *well*, §0 trait 6) and HOW it carries the work (how it leads and holds its lane, Law
+  what makes it do the work *well*, §0 trait 6) and HOW it carries the work (how it leads and holds its lane, Principle
   5's "leads, doesn't follow"). Then name where it sits between two ends:
   - **Fully autonomous** — crons, subagents, background janitors: the machine does *all* the work, no human turn.
     The role is still real and must be stated (e.g. "the faithful janitor that mirrors email verbatim, never
@@ -1942,21 +1569,21 @@ nothing downstream matters, because the skill never fires.
   place a skill's correctness is decided *before the skill ever runs*, and it's invisible from inside. The
   practice worth stealing: keep a small **routing-eval file next to the skill** — a handful of prompts that
   SHOULD fire it, plus the boundary cases that should NOT (the near-miss phrasings that belong to a neighbouring
-  skill) — and re-run them whenever you touch the description. **Fold per Law 4.3: run each case 3+ times.**
+  skill) — and re-run them whenever you touch the description. **Fold per Principle 4.3: run each case 3+ times.**
   Trigger behaviour is exactly the kind of fuzzy verdict that is stable on some prompts and not on others, so a
   single green sample is not evidence the description improved. This is the cheapest real test in the whole
   document and the only one that catches a silent under-trigger.
 
 ## III.4 — Design the flow (§I refers you here for depth)
 
-Applies Law 1 (mechanics vs judgment) and Law 5 (decay) to the shape of the skill itself, not just its
-enforcement:
+Applies Principle 1 (mechanics vs judgment) and Principle 5 (decay) to the shape of the skill itself, not just its
+friction:
 
 - **Earn complexity.** Start with the simplest structure that works; add a step or pass only when a test shows you
   need it. Most multi-step flows are over-built.
 - **Earn complexity applies to prompt CONTENT too, not just flow. `[R2]`** Heavy, rigid, over-constrained
   step-prompts help WEAK models but **handcuff** capable/reasoning ones (a measured performance *drop* —
-  guardrail-to-handcuff, Law 1) and kill the adaptive follow-up a leading/interrogative skill needs. Minimum-viable
+  guardrail-to-handcuff, Principle 1) and kill the adaptive follow-up a leading/interrogative skill needs. Minimum-viable
   scaffolding per step — one objective, the key prohibitions, the output contract, then stop — and reserve hard
   structure for the steps that MUST hold. Validate prompt heaviness on live runs, never from theory.
 - **Build first, revise as it breaks — never fake-pass first.** Real life is the test bed: stand the skill up
@@ -1972,14 +1599,14 @@ enforcement:
   "where are we" NINE times across 741 lines, four blocks still claiming currency, and the physical order was
   not chronological — so every "supersedes the block above" pointer was meaningless.
 - **A clean, consolidated context beats a long accreting thread. `[R2]`** Multi-turn sessions degrade ~39%
-  (Law 5); collapsing state into ONE fresh call recovers near single-turn quality where mid-thread reminders do
+  (Principle 5); collapsing state into ONE fresh call recovers near single-turn quality where mid-thread reminders do
   not. This is the evidence for handing heavy/long work to a fresh-context subagent (§II.1's REFRESH family)
   rather than growing one thread.
 - **Right-size the model — "too cheap loses intuition." `[R]`** Verbatim/structural work → the cheap model; judgment
   a human relies on → the strong model; **never the top model for reading-scale work.** Savings from bigger
   *batches* are durable; savings from a weaker *judgment* model are not — and a cheap model can return valid-looking
   output with wrong values, so validate the values, not just the format.
-- **Gate the deterministic steps; leave the judgment steps free. `[R]`** This is Law 1's fence in flow-design
+- **Gate the deterministic steps; leave the judgment steps free. `[R]`** This is Principle 1's fence in flow-design
   terms: structural constraints reduce reasoning quality, so schema-lock the mechanical steps but don't
   over-structure the thinking ones. Relatedly, chain-of-thought can *hurt* instruction-following — don't force
   "reason it out" where hitting a format is the point.
@@ -1989,7 +1616,7 @@ enforcement:
   unknown → bubble up.
 - **Light evals, after the fake pass.** 20–50 real cases that define "good"; grade the *outcome*, not the path.
 
-- **NEW RULE (§III.4) — design the flow as card + runner + record by default** when order must hold: ordered steps of kind code/ai/human, each with a check; one shared runner; an append-only runner-written record. *(CANDIDATE.)*
+- **principle (candidate) (§III.4) — hypothetical, not yet validated: consider card + runner + record** when order must hold: ordered steps of kind code/ai/human, each with a check; one shared runner; an append-only runner-written record (see PART 0). Not the default way to build a flow. *(CANDIDATE.)*
 
 
 ## III.5 — Progressive disclosure + layout
@@ -2004,7 +1631,7 @@ what keeps a skill loading lean turn after turn:
 | **Bundled files** (`references/`, `scripts/`, `assets/`) | only when opened | zero cost until read |
 
 - **Bundle scripts to EXECUTE, not read.** Write "run `scripts/x.py`," never "see `scripts/x.py`" — the folder
-  itself is the signal (§II.5): `scripts/` = run it, `references/` = read it into context when needed, `assets/`
+  itself is the signal (§II.6): `scripts/` = run it, `references/` = read it into context when needed, `assets/`
   = files used in output. Don't invent an in-file tag for this; the directory convention is the whole contract.
 - **References stay one level deep** — no `references/a/b/c.md` chains a session has to spelunk mid-task.
 - **`[C]` A reference file over ~300 lines gets a table of contents** at its own top — the same progressive-
@@ -2027,21 +1654,21 @@ never has to be retrofitted or remembered:
   `## do NOT` block + a `✅ phase N complete` marker, and `enforce_multiphase_contract.sh` blocks a phase driver
   written without one. This is what makes a phase **born-checkable** — gradeable against its own spec with zero
   new code written later (PART V).
-- **The 3-rung tooling ladder for rules themselves** (distinct from the runtime reliability ladder, §II.2): a rule
+- **The 3-level tooling path for rules themselves** (distinct from the runtime reliability dial, §II.3): a rule
   can live at **(a)** prose you hope is followed, **(b)** stamped into the generator/template so every future
-  skill is born with it, **(c)** a guard hook that blocks a skill missing it. Use the lowest rung that holds;
+  skill is born with it, **(c)** a guard hook that blocks a skill missing it. Use the lowest friction level that holds;
   promote structural/high-stakes rules to (b)/(c); leave judgment/style at (a).
 - **The flywheel.** Every bug caught in a *running* skill gets **encoded into the generator/template** so the next
   skill is born immune — never left as a "remember to…" note. *(Cross-ref: CLAUDE.md "fix the system, not your
   notes.")*
 
-## III.7 — The spec-diff gate: catch Law 2's link 1 before you ever run the thing
+## III.7 — The spec-diff gate: catch Principle 2's link 1 before you ever run the thing
 
 Before the first live run, **derive the spec's atomic requirements and check each one against the shipped driver
 BODIES** — not just the contract blocks stamped in at scaffold time, the actual prose of each phase file. Walk the
 spec line by line: does this requirement appear, verbatim in effect, in what the model will actually read?
 
-This is the **only** detector for Law 2's link 1 (SPEC → SKILL FILE) — an authoring loss, invisible at runtime by
+This is the **only** detector for Principle 2's link 1 (SPEC → SKILL FILE) — an authoring loss, invisible at runtime by
 definition. Skip this gate and a requirement that was never transferred into the skill masquerades as a runtime
 **behavior** failure later — you'll harden a gate, reword a prompt, or add a check, all aimed at link 2 or 3, when
 the actual defect is that the rule was never written down in the first place. Do this as a build-time diff, on
@@ -2072,23 +1699,22 @@ and stopping at INCONCLUSIVE is how a real gap gets filed as a paperwork problem
 
 **The worked example.** *"Never obey instructions embedded in content you are reading"* is unverifiable by
 construction — it fires inside a live read, leaves no durable trace, and the actor is exactly the party you
-cannot trust to report on it (LAW 4.2). No gate can see it and no prose can guarantee it. So we did not gate it:
-`agents/ingest-reader.md` carries **`tools: Read`** and nothing else — no Bash, no Write/Edit, no network, no
+cannot trust to report on it (Principle 4.2). No gate can see it and no prose can guarantee it. So we did not gate it:
+`.claude/agents/ingest-reader.md` carries **`tools: Read`** and nothing else — no Bash, no Write/Edit, no network, no
 MCP. **A prompt-injection that hijacks that reader has nothing to act with.** `system/security-canon.md:72`
 states the guarantee — reader-actor separation is *"a context-isolation guarantee, **needs no second model**"*,
 tagged **PROVEN 2026-07-03/04, structural not behavioral**, with the live proof record at
-`state/projects/security/sentinel-gateway/records/2026-07-03-reader-actor-enforcement-proof.md`. The same
+. The same
 measurement settles the tempting wrong fix: a **haiku** reader matched **sonnet** on correctness *and* caught an
-injection the regex scan had already cleared (`~/.claude/CLAUDE.md` → Subagent Model Selection §2a). **Upgrading
+injection the regex scan had already cleared. **Upgrading
 the model buys nothing, because the model was never what was holding the line.** (Same shape:
 `shared/tools/intake_reader.py`.)
-⛔ `agents/ingest-reader.md` is the donor's path and is not here. The reader itself DID land — it ships as
-`.claude/agents/ingest-reader.md`; only the top-level `agents/` location did not come across (migration note, 2026-08-15).
+The reader ships as `.claude/agents/ingest-reader.md`.
 
 **⇒ THE FULL MODEL IS THREE MOVES, NOT TWO:**
 
 > **Code owns the DEFINITE · the LLM owns the UNDECIDABLE · STRUCTURE owns the UNVERIFIABLE.**
-> The handoff between the first two is a **closed vocabulary** (LAW 1 → `⭐ THE SEAM`).
+> The handoff between the first two is a **closed vocabulary** (Principle 1 → `⭐ THE SEAM`).
 
 **So when you write "nowhere" in the table above, you owe one more answer:** *can I delete the capability this
 rule is asking the actor to refrain from using?* Usually the lever is tool scope (a tool-less or read-only
@@ -2096,34 +1722,34 @@ subagent), context scope (it never receives what it must not act on), or a chann
 reach the target. If yes — do that, and the rule stops being a rule. **If no, "nowhere" stands and INCONCLUSIVE
 is the honest grade** — but now it is a decision you made, not a gap you inherited.
 
-`skills/ingest/SPEC.md` §6 is a live worked backlog of exactly this: **seven** rules already named
+`.claude/skills/ingest/SPEC.md` §6 is a live worked backlog of exactly this: **seven** rules already named
 `Evidence surface = NOWHERE`, several of which look structurally removable rather than merely ungradeable —
 e.g. *"no addressable teammate names"* is checkable at the spawn site, and the filer's main-session HARD_STOP
 is a hook. Note also its own entry *"**SHOW IT**/paste-the-screen — **the model checking itself**"*: that one is
-LAW 4.2 wearing a gate's clothes, and a fake gate is worse than no gate, because it stops anyone looking.
+Principle 4.2 wearing a gate's clothes, and a fake gate is worse than no gate, because it stops anyone looking.
 
-## III.9 — Build process: four rules that survived contact
+## III.9 — Build process: four principles that survived contact
 
 - **Real life is the test bed** — stand it up rough, run it, fix one break at a time (write → test → lock →
   next). Do not hand-prototype a long flow before writing it; that dry-run is itself a long session that rots.
 - **FAIL ONCE → sweep every sibling before the second fix** *(added 2026-09-05, OBSERVED: four rounds of
   one-card-at-a-time fixes with six more waiting; the mechanical form is a checker's `--all` mode; canon §5.13).*
 - **FAIL TWICE → the architecture is the bug, not the wording.** If a rule breaks, reword it once. If it breaks
-  again, **stop rewording** — the second failure is evidence the rule is at the wrong rung (§II.3) or the flow
+  again, **stop rewording** — the second failure is evidence the rule is at the wrong friction level (§II.3) or the flow
   is wrong. Endlessly re-phrasing a rule the model keeps losing is the most common way to waste a week.
-- **Mine transcripts with sonnet subagents.** Reading your own run logs by hand doesn't scale, and the main
+- **Mine transcripts with middle-tier subagents.** Reading your own run logs by hand doesn't scale, and the main
   session is the worst reader of its own history. Fan it out; it's cheap.
 - **Version inside the artifact, and separate dev from prod.** The skill states its own version; a
   work-in-progress skill never sits where a live run can pick it up.
 
-## III.10 — Close: the per-rule enforcement decision
+## III.10 — Close: the per-rule friction decision
 
 Every rule this Part produced — the classification, the intent, the description, the flow steps, the layout
 budgets, the scaffolded contracts — gets one more decision before the skill is considered built: **does this rule
 get a PART II primitive, or does it stay prose on purpose?**
 
 - **Mechanical-shaped** (a definite shape: an order, a count, a required artifact, a write that must land) → build
-  it as a §II.3 primitive at the rung §II.2 calls for. This is Law 1's division of labor made concrete: if code can
+  it as a §II.4 primitive at the friction level §II.3 calls for. This is Principle 1's division of labor made concrete: if code can
   hold the line, code holds it.
 - **Judgment-shaped** (taste, synthesis, reading a room, holding a conversation) → stays prose, on purpose, and
   is measured by hill-climb (does the fire-rate improve run over run) rather than hard-gated. A false gate on a
@@ -2174,7 +1800,7 @@ that's PART IV (anchoring) and PART V (verification).
 
 > PARTS I–III get a skill born correct: the physics, the toolbox, the build. **This part is different — it's not
 > about what the skill IS, it's about what keeps a long INTERACTIVE session from sliding off what the skill IS**
-> as the turns pile up. Law 5 already gave you the numbers (density, duration, turns, position, social pull,
+> as the turns pile up. Principle 5 already gave you the numbers (density, duration, turns, position, social pull,
 > knows-but-violates); PART IV is the set of runtime mechanics that exist because those numbers are real and
 > prose alone can't out-argue them.
 
@@ -2184,7 +1810,7 @@ A long interactive skill run has three parties, not two: **the user, the skill, 
 not the same thing. The skill's SKILL.md can be flawlessly written; the party that drifts is the third one, the
 **session itself**, which behaves like a dog that wants to please whoever's in the room. As the human's turns
 accumulate and become the *majority* of the context, the session leans toward them regardless of what the skill
-says — this is Law 5's social-pull bullet, stated as a design consequence: it gets *worse* the longer the session
+says — this is Principle 5's social-pull bullet, stated as a design consequence: it gets *worse* the longer the session
 runs and *worse* in more capable models [R].
 
 **Leading is therefore not a posture you strike once, it's an act you repeat.** Holding an identity at skill-open
@@ -2224,21 +1850,19 @@ Confirm both fire, not just one: **(a)** the identity anchor (who you are) and *
 *orientation* banner (`Stage X/N · doing … · next …`). Dropping either one leaves the session dead-reckoning on
 the other alone.
 
-**The Path Beat is orientation, not proof** — ladder rung 1 (Part II §II.2: self-reported marker, fakeable). A
-~~plain model-written banner is fine for a simple skill; where a receipts file already exists, *prefer* printing the
-banner from it — a design preference, not a per-turn runtime gate.~~
+**The Path Beat is orientation, not proof** — dial level 1 (Part II §II.3: self-reported marker, fakeable).
 
 > **v2 (orchestrator-v2, 2026-10-28):** Print the banner from the record, never from the model: a model-written banner is the actor reporting its own position. *(CANDIDATE.)*
 
 
 **Measured caution [R2]:** a model accurately *restates* a rule it is simultaneously *violating* 8–99% of the
-time (Law 4.2, "knows-but-violates"). Declarative recall is not behavioral adherence. **Never treat a
-restatement or a banner as a gate** — real enforcement is Part II's Verify/Wall families, not this layer.
+time (Principle 4.2, "knows-but-violates"). Declarative recall is not behavioral adherence. **Never treat a
+restatement or a banner as a gate** — real friction is Part II's Verify/Wall families, not this layer.
 
 ## §IV.5 — Edges, not middle [R2]
 
 Put the re-injected instruction at the **edges of the turn's context — start AND end — never only the middle.**
-This is Law 5's position bullet applied to placement: recall of a mid-context instruction collapses to ~55%
+This is Principle 5's position bullet applied to placement: recall of a mid-context instruction collapses to ~55%
 against ~80% at the ends ("lost in the middle"). The every-turn anchor and Path Beat only earn their keep at the
 positions attention actually reaches — burying either mid-turn is functionally the same as not sending it.
 
@@ -2255,7 +1879,7 @@ elsewhere in this SOP (blind the arc: show only the next step, not the whole seq
 from view, this one *paces* it in time — and the per-step companion to §IV.3's rich-loads-once / lean-fires-every-
 turn split: each step gets a fresh, self-contained prompt so the model works *this* step, not the destination.
 
-> **What outside research adds (2026-09-05, RESEARCHED — `records/research/2026-09-05-multi-step-execution-enforcement.md`):**
+> **What outside research adds (2026-09-05, RESEARCHED):**
 > barn-sour has two measured causes we had only observed: **reinforcement post-training raises the shortcut rate**
 > (0.6% → 13.9% on identical tasks, sibling models; in 72% of shortcut episodes the model's own reasoning framed the
 > skip as legitimate) and **the rate rises with task difficulty**. Separately, **context length alone degrades
@@ -2268,16 +1892,12 @@ turn split: each step gets a fresh, self-contained prompt so the model works *th
 > not nothing. **The discriminating test** (three arms, blind graders, measured by artifact): whole arc shown ·
 > one step at a time in one session · one step per fresh sub-agent. Until it runs, this section is OBSERVED, not
 > mechanism.
-~~> **REFINED 2026-09-05 (solutions audit, `records/research/2026-09-05-durable-solutions-audit.md` ⛔ owner's notes):** the
-> per-step prompt is *a habit, not a solution.* Inside `/checkin`, already built per-step, prose-backed steps were skipped~~
+> **REFINED 2026-09-05 (solutions audit):** the per-step prompt is *a habit, not a solution.* Inside `/checkin`, already built per-step, prose-backed steps were skipped a THIRD time while tool-backed steps ran — delivery held constant, only the exit code varied (J5-144, 2026-08-15). What holds is the external check with an exit code. Keep the per-step shape for the reasons above (short context, one job per prompt); do not count on it for compliance. Every step that must happen gets a tool with an exit code.
 
 > **v2 (orchestrator-v2, 2026-10-28):** Keep per-step delivery, but the runner delivers each step and checks it before handing over the next, so the exit code is part of the delivery rather than a separate hope. The skip evidence above (J5-144) stands and is the reason. *(CANDIDATE.)*
 
-> **Hand state, not history** *(new rule, CANDIDATE)*: what a fresh agent is handed is the current state (where things stand) and its one next step, written by the runner — never the transcript of how it got there.
+> **Hand state, not history** *(principle, candidate)*: what a fresh agent is handed is the current state (where things stand) and its one next step, written by the runner — never the transcript of how it got there.
 
-> a THIRD time while tool-backed steps ran — delivery held constant, only the exit code varied (J5-144, 2026-08-15). What
-> holds is the external check with an exit code. Keep the per-step shape for the reasons above (short context, one
-> job per prompt); do not count on it for compliance. Every step that must happen gets a tool with an exit code.
 
 ## §IV.7 — Anchoring the session, not just the user
 
@@ -2289,7 +1909,7 @@ the session to the skill's frame. It's an anti-drift move first, politeness seco
 never silently break them, and never silently keep obeying them past the point they actually fit.
 
 **Post-compaction is the #1 re-anchor moment.** Whatever wake-up flow the skill has must re-anchor L1+L2 before
-doing anything else — compaction is exactly the event Law 5's "turns" bullet describes, and it's the single
+doing anything else — compaction is exactly the event Principle 5's "turns" bullet describes, and it's the single
 highest-leverage place to re-inject.
 
 **Simpler skill + structural hook beats thick self-policing prose.** Once a hook (Part II, family WALL) holds a
@@ -2302,30 +1922,18 @@ Anchoring (§IV.1–§IV.7) keeps a skill on-*principle* — comparatively easy,
 on-*procedure* — not skipping a step — is a separate problem, because **the model fakes its own progress.** Two
 questions decide the mechanism, and both must be asked, not assumed:
 
-~~1. **Is this run long enough to lose its place?** Short/linear → add **nothing**. Only a long, multi-pass, or
-   headless run earns an external **scratchpad** — and there it's mandatory, because it *will* get compacted.
-   Never reach for a scratchpad by default.~~
-
-> **v2 (orchestrator-v2, 2026-10-28):** Order that must hold is held by a runner, whatever the run's length — a 5-step linear run still gets the card and the runner if its order matters. External state beyond the record is still for long or headless runs. *(CANDIDATE.)*
+> **v2 (orchestrator-v2, 2026-10-28):** Order that must hold is held by a runner, whatever the run's length — a 5-step linear run is a candidate for the card and the runner if its order matters. External state beyond the record is still for long or headless runs. *(CANDIDATE.)*
 
 > **v2 (audit, 2026-10-28):** reconciled with PART 0 "When NOT to use a card": use a card when step order must hold AND at least one of: the run is long enough that losing progress costs real time/money, a human pause sits mid-run, it spans sessions, or it has more than one ai step. A short job that can simply rerun from scratch gets per-step checks and loud failure, not a card. (CANDIDATE.)
 
-2. **Does this particular gate MATTER?** Scale the proof to the stakes using Part II §II.2's reliability ladder
+2. **Does this particular gate MATTER?** Scale the proof to the stakes using Part II §II.3's reliability dial
    (marker → artifact → code-gate). Reach for a code-gate only when running out of order would genuinely break
    something.
 
-~~**Per-run conformance receipt.** A multi-step skill emits one machine-checkable pass/fail block at close, so each
-gated step is provably done on *that* run — not just claimed at the end.~~
-
-> **v2 (orchestrator-v2, 2026-10-28):** The runner writes one record line per step as each step finishes (run, step, status, utc, output path, reason); the skill never emits its own receipt, because a receipt the actor emits is the actor grading itself (LAW 3). *(OBSERVED — 10+10 runs, every line runner-written; brief §4 Stage 1.)*
+> **v2 (orchestrator-v2, 2026-10-28):** The runner writes one record line per step as each step finishes (run, step, status, utc, output path, reason); the skill never emits its own receipt, because a receipt the actor emits is the actor grading itself (Principle 3). *(OBSERVED — 10+10 runs, every line runner-written; brief §4 Stage 1.)*
 
 
-~~**Our context.** Frontier Claude running bash/markdown skills, not a general agent framework: an in-context SOP
-beats heavy orchestration, and rigid state machines are brittle for us specifically. **We essentially never need
-workflow-engine orchestration.** The heaviest this SOP asks for: a scratchpad for a long headless run, plus one
-blocking validator hook for a single genuinely critical gate.~~
-
-> **v2 (orchestrator-v2, 2026-10-28):** We do not need an engine. Any multi-step skill whose order must hold gets a **card** (ordered steps, each with a check), a **runner** (one shared script) and a **record** (append-only, runner-written) — a script, not a workflow engine, and "rigid state machine" is the wrong description of it. *(CANDIDATE: one skill; awaits the week-long /save-on-a-card test and a second skill, per [P2]. Rig: Stage 1 and 2 scorer lines, orchestrator-v2 brief §2/§4.)*
+> **v2 (orchestrator-v2, 2026-10-28):** We do not need an engine (hypothetical, not yet validated). Any multi-step skill whose order must hold could use a **card** (ordered steps, each with a check), a **runner** (one shared script) and a **record** (append-only, runner-written) — a script, not a workflow engine, and "rigid state machine" is the wrong description of it. *(CANDIDATE: one skill; awaits the week-long /save-on-a-card test and a second skill, per [P2]. Rig: Stage 1 and 2 scorer lines, orchestrator-v2 brief §2/§4.)*
 
 
 ## §IV.9 — Draw the Path Beat on the status bar (a skill's own HUD line)
@@ -2342,16 +1950,14 @@ made visible, drawn by the harness instead of the model.
 - **Line format** (planning-weekly convention): `<emoji> <Skill> · <Mode>   <progress-dots>   N/M STAGE · <what> ·
   next → <next>` — e.g. `🧭 Cal · Weekly Review   ◉○○○○   1/5 LOOK BACK · confirming last week · next → triage`.
   One lean line; it is not width-capped by the core, so keep it short enough to fit yourself.
-- **HARD RULE — never clobber the core.** Write ONLY via `skill_hud.sh` (it writes your own per-session HUD
+- **Firm principle — never clobber the core.** Write ONLY via `skill_hud.sh` (it writes your own per-session HUD
   file). **NEVER** edit `system/statusline.sh`, the core flag files (`pm_flag`/`plan_flag`/`scratch_flag`), or
   `settings.json`'s `statusLine` pointer — `guard_statusline_lock.sh` blocks the Bash routes that would repoint
   or replace the bar. You may only **ADD** a line on top; you cannot modify or remove the locked core.
 - **Earn it.** Per §IV.8's first question: only a multi-stage/leading skill needs a HUD; a one-shot does not —
   never add a banner by default. Clear on exit; a crashed skill's HUD auto-drops after the 6h freshness guard in
   `statusline.sh`.
-- **CLI-only — does NOT port to Cowork.** Unlike the Part II §II.4 primitives (skill-local scripts, portable by
-  design), this mechanism is a CLI status-bar feature with no Cowork equivalent — don't design a Cowork-facing
-  skill around it.
+- **CLI-only.** Unlike the Part II §II.4 primitives (skill-local scripts, portable by design), this mechanism is a CLI status-bar feature.
 
 ## §IV.10 — Briefing a PANEL of independent sub-agents [R2]
 
@@ -2370,10 +1976,10 @@ prompt fully removes.
 - **Aggregate BEFORE any cross-contamination** — no agent sees another's output until the combiner does.
 - **One validation spine, always.** Route every agent's output through ONE aggregation/validation point before
   acting — measured: independent agents amplify errors ~17x, a centralized orchestrator holds it to ~4x. This is
-  Law 3's "never let the actor grade its own completion" applied to a fan-out: the spine is the thing that isn't
+  Principle 3's "never let the actor grade its own completion" applied to a fan-out: the spine is the thing that isn't
   any of the agents, same as the checker script that isn't the model.
 - **Count = independence, not headcount** — value flattens past ~5–10 genuinely-orthogonal angles.
-- **Hand the panel FILES, not history.** Cross-ref Part II §II.3's artifact-file handoff: briefs, seeds, and
+- **Hand the panel FILES, not history.** Cross-ref Part II §II.4's artifact-file handoff: briefs, seeds, and
   review packages travel as **files**, never pasted conversation history — the same rule that keeps a two-stage
   handoff clean keeps a fan-out's dispatches clean, and for the same reason (a 42k-char pasted-history dispatch
   is a documented failure).
@@ -2391,17 +1997,17 @@ to survive seven phases at all.** Instead, a durable working file carries all st
 > architecture already carries (evidence-gated transitions, externalised state, recite-before-act); the "blind to
 > the arc" half is ours alone and confounded with context length — see §IV.6's NEEDS CONFIRMATION note and test.
 
-The rationale is Law 5's own "turns" bullet, taken at face value: multi-turn sessions degrade ~39% measured, and
+The rationale is Principle 5's own "turns" bullet, taken at face value: multi-turn sessions degrade ~39% measured, and
 collapsing state into one fresh consolidated call recovers near single-turn quality where mid-thread reminders do
 not [R2]. This is Part II §II.1's **REFRESH** family named plainly: **it is the only family that attacks DECAY**
-(Law 2, link 3 — FIRED → HELD) — no Verify script and no Wall hook can reach decay, because decay isn't a
+(Principle 2, link 3 — FIRED → HELD) — no Verify script and no Wall hook can reach decay, because decay isn't a
 violation to catch, it's a quality curve you avoid walking all the way down by never staying on one thread long
 enough to hit it.
 
-**Mark this honestly: it is a bet, not a Law.** It did **not** surface in the 2026-07-25 crowd-convergence or
+**Mark this honestly: it is a bet, not a principle.** It did **not** surface in the 2026-07-25 crowd-convergence or
 code-dissection research [C] that grounds PARTS I–III — it rests entirely on our own evidence (planning-weekly, the
 conformance lab) and is **UNPROVEN** until a real multi-phase run is built this way and graded end to end. File
-it next to Part II §II.6's held hypotheses: consistent with everything we've measured, not yet doctrine.
+it next to Part II §II.7's held hypotheses: consistent with everything we've measured, not yet doctrine.
 
 > v2 receipt (orchestrator-v2): a fresh session resumed from a file and finished the run (kill-and-resume, k01–k05). **OBSERVED, one rig — not REPRODUCED.**
 
@@ -2410,7 +2016,7 @@ it next to Part II §II.6's held hypotheses: consistent with everything we've me
 
 # PART V — VERIFY THE SKILL
 
-> **Rule zero, 2026-09-05 (census, REPRODUCED — §II.4a [F1]/[F4], canon §16 and the frame's operating rule):**
+> **Principle zero, 2026-09-05 (census, REPRODUCED — §II.4a [F1]/[F4], canon §16 and the frame's operating principle):**
 > *nothing counts as existing, done, enforced or true until you have watched it produce an outcome it could not
 > produce if it were broken.* In 42% of 1,656 recorded failures the system gave the same signal whether the thing
 > worked or not. **Build the failing state first** — §V.4c (destruction) is not a late probe, it is the first step.
@@ -2421,23 +2027,23 @@ it next to Part II §II.6's held hypotheses: consistent with everything we've me
 
 ## §V.1 — One detector per loss-chain link
 
-Law 2 (PART I) names four seams where intent leaks. Each needs a **different** detector — running the wrong one
+Principle 2 (PART I) names four seams where intent leaks. Each needs a **different** detector — running the wrong one
 tells you nothing about the seam you actually broke.
 
 | link | what it catches | the detector | where we stand |
 |---|---|---|---|
 | **1. SPEC → FILE** | a requirement that never made it into the skill | build-time diff of spec-requirements vs shipped file bodies — **no run needed** | direction confirmed (skills ship leaner than their specs); magnitude being re-measured with matched extraction |
-| **2. FILE → FIRED** | a written rule the session breaks anyway | grade a real run against the spec with a **VOTED** judge (K-sample, fail-closed fold — Law 4.3) | 2 confirmed real deltas on planning-weekly, after the instrument itself was fixed twice |
+| **2. FILE → FIRED** | a written rule the session breaks anyway | grade a real run against the spec with a **VOTED** judge (K-sample, fail-closed fold — Principle 4.3) | 2 confirmed real deltas on planning-weekly, after the instrument itself was fixed twice |
 | **3. FIRED → HELD** | a rule that holds at turn 3 and dies by turn 30 | the same rule graded at increasing session depth (fork one phase at turn 1 / 5 / 12…, K runs each) | the machinery exists (design is E3 in the IRL ledger) — **it has NEVER BEEN RUN.** Treat any claim about decay as untested until it is. |
-| **4. HELD → PROVABLE** | a rule obeyed but left no trace | name each rule's evidence surface **before grading**, not after (§II below) | confirmed: purely-conversational rules graded as failures for no reason but the tester's own blind spot |
-| **5. DETECTOR → STILL RUNNING** ⭐ | **the instrument itself went dark** — ⛔ **defined in LAW 2, not restated here** | *when did this last produce output, and does it still fire on a deliberate break?* (LAW 2) | ⛔ **UNMEASURED.** Known instances only: a failed hook script reporting only to debug · invalid stdout silently dropped · a matcher aimed at a tool the work no longer uses · hooks not firing on **sub-agent tool calls**. ⚠ **AMENDED 2026-09-12:** *"hooks silent after ~2.5h with zero error"* **STRUCK** — its source (`#16047`) is one Windows-only CLOSED report and does not apply here; see LAW 2. **None of the survivors is time-bounded, so there is no safe session length.** **No liveness answer exists for this harness's own detector fleet.** |
+| **4. HELD → PROVABLE** | a rule obeyed but left no trace | name each rule's evidence surface **before grading**, not after (§III.8) | confirmed: purely-conversational rules graded as failures for no reason but the tester's own blind spot |
+| **5. DETECTOR → STILL RUNNING** ⭐ | **the instrument itself went dark** — ⛔ **defined in Principle 2, not restated here** | *when did this last produce output, and does it still fire on a deliberate break?* (Principle 2) | ⛔ **UNMEASURED.** Known instances only: a failed hook script reporting only to debug · invalid stdout silently dropped · a matcher aimed at a tool the work no longer uses · hooks not firing on **sub-agent tool calls**. ⚠ **AMENDED 2026-09-12:** *"hooks silent after ~2.5h with zero error"* **STRUCK** — its source (`#16047`) is one Windows-only CLOSED report and does not apply here; see Principle 2. **None of the survivors is time-bounded, so there is no safe session length.** **No liveness answer exists for this harness's own detector fleet.** |
 
-⚠ **THIS TABLE IS A STATUS VIEW OF LAW 2'S LOSS-CHAIN — LAW 2 DEFINES THE LINKS; THIS SECTION SAYS ONLY WHERE
+⚠ **THIS TABLE IS A STATUS VIEW OF Principle 2'S LOSS-CHAIN — Principle 2 DEFINES THE LINKS; THIS SECTION SAYS ONLY WHERE
 WE STAND ON EACH.** ⛔ **Never restate a link's definition or its detector here.** *(Corrected 2026-09-11: the
 two tables had been near-duplicates 1,405 lines apart — both carrying a Detector column — and link 5 was added
 to this copy alone, so they read four-versus-five within the hour. That is mode 3, "the copy you didn't count,"
 inside the document that teaches it. Canon §5.19: one truth, one home.)*
-⭐ **COMBINATION TESTING — also defined in LAW 2.** Status here: **never run.** Every detector in this system
+⭐ **COMBINATION TESTING — also defined in Principle 2.** Status here: **never run.** Every detector in this system
 has only ever been proven against a manufactured break **in isolation**, which is the exact condition under
 which correlated failure is invisible.
 
@@ -2499,13 +2105,13 @@ obvious error.
 judge run … no project context."* It was not blind. **`claude -p` performs CLAUDE.md AUTO-DISCOVERY, which
 reaches `~/.claude/CLAUDE.md` from every directory.** A probe confirmed it live — the judge answered
 `sees_lifehack: true — organism map, safety rails, canon files loaded`. So **a judge deciding what Lifehack
-can enforce was holding Lifehack' own enforcement doctrine while deciding.** Three attempts to isolate it by
+can enforce was holding Lifehack' own friction doctrine while deciding.** Three attempts to isolate it by
 moving the cwd or by `--system-prompt` all failed: auth and context arrive through the same directory. The
 vendor's actual seam is the `--bare` flag.
 
 **Why it wasn't caught for two days.** A rail written for one role was silently applied to another. The July
 rail *"the test subject is a real `claude -p`, NOT `--bare`"* was **correct** — a skill under test must run the
-full hook stack or you are testing a fiction. It was then applied to the **judge**, which sits on the opposite
+full set of hooks or you are testing a fiction. It was then applied to the **judge**, which sits on the opposite
 side of the same seam. Subject and grader are opposites, and they were handed the same rule.
 
 **The doctrine — sort by ROLE, because `--bare` strips guard rails, not just context.** `--bare` skips hooks,
@@ -2548,8 +2154,8 @@ be able to re-derive it on demand.)*
 
 ## §V.4b — A gate verifies EVIDENCE OF WORK, never the FORM of a claim
 
-`[M: 2026-07-28, first hostile sweep of our own parts library]` This is **Law 3's loophole**, and it is the
-single most productive rule we have found. Law 3 forbids the actor from *grading* its own completion. It does
+`[M: 2026-07-28, first hostile sweep of our own parts library]` This is **Principle 3's loophole**, and it is the
+single most productive rule we have found. Principle 3 forbids the actor from *grading* its own completion. It does
 not stop the actor from **asserting** completion in a shape the checker happily swallows.
 
 **Three parts fell to the same bug wearing three faces.** `write_ledger` — whose whole job is proving a write
@@ -2568,7 +2174,7 @@ hard way: our first fix demanded four evidence fields, and the next probe suppli
 (`str(1)` is non-empty). Types are part of the evidence — a timestamp is a string, a runnable command is a
 string.
 
-- **NEW RULE (see §II.3) — code reads the human's answer and refuses anything but an explicit yes.** A gate on a human's reply verifies the evidence (the reply) not the form of the claim that one was asked for. *(OBSERVED.)*
+- **principle (observed) (see §II.3) — code reads the human's answer and refuses anything but an explicit yes.** A gate on a human's reply verifies the evidence (the reply) not the form of the claim that one was asked for. *(OBSERVED.)*
 
 
 ## §V.4c — Probe a gate by DESTRUCTION, not by minimization
@@ -2599,14 +2205,14 @@ whether the check NOTICED. That is deterministic, needs no clause, and cannot be
   verifier, that means confirming the WRONG write and reporting success. Minimization can never find this.
 - **It pays immediately.** First run: `write_ledger` had **no denominator** — delete a row from a drained
   ledger and `--status` exits 0 again, so a queued write could vanish and the gate reports success. That is
-  Law 4.1's *pin the denominator first* missing from the WRITE path. Second run: it mapped a case-blind rule
+  Principle 4.1's *pin the denominator first* missing from the WRITE path. Second run: it mapped a case-blind rule
   (`WIN:` slipping past a rule written for `Win`) — where the part was never buggy, but a rule author who omits
   `flags:["i"]` gets a silently case-blind gate and never learns.
 - **Verify your prober the same way.** Ours emitted two false alarms, both caught by RUNNING it: it treated any
   12-letter English word as an identifier, and it renamed a JSON *key* (schema) as though it were a *value*
   (identity). §V.4 applies to the tool that applies §V.4.
 
-- **NEW RULE — when testing a kill, verify the kill landed before the step you meant to interrupt.** One of 5 kill samples (k01) landed after the runner had already reached s3, so it was not a clean sample (4 clean of 5). Read the record to confirm where the kill fell before counting it. *(OBSERVED.)*
+- **principle (observed) — when testing a kill, verify the kill landed before the step you meant to interrupt.** One of 5 kill samples (k01) landed after the runner had already reached s3, so it was not a clean sample (4 clean of 5). Read the record to confirm where the kill fell before counting it. *(OBSERVED.)*
 
 
 > **v2 (orchestrator-v2 Stage 4/5, 2026-10-28):** Test the test rig first: a bite with known faults must name every fault before a big run is trusted. Stage 4 run 1 printed `BITE BROKEN: 1 of 17 known faults not named as predicted`; the injector, not the tester, had broken isolation (day 7's truncation glued into day 6's last row). Fixed with truth/expected/checks untouched; run 2 `BITE CLEAN: all 17 known faults named exactly as predicted`. Only then was the 300-day meal run. *(OBSERVED.)*
@@ -2632,7 +2238,7 @@ rule ran python, **showed its expression**, and returned `42.00h` — it had sum
 intervals instead of merging them. True answer `37.50h`: **12% wrong, and fully compliant.** ⭐ **Showing the
 expression proves the ARITHMETIC, never the MODEL.** A receipt can be perfectly formed and perfectly wrong.
 
-> **THE RULE:** *a claim's PROXIMITY to a thing is not evidence about that thing.* Before you price, plan, or
+> **THE PRINCIPLE:** *a claim's PROXIMITY to a thing is not evidence about that thing.* Before you price, plan, or
 > certify anything off a comment, a status field, a marker, a docstring or a shown expression — **read the
 > thing itself.** The distance between the claim and the truth is exactly the distance nobody re-measured.
 
@@ -2655,7 +2261,7 @@ them** is broken, and nothing will tell you. Observed: a tester whose capture la
 transcripts on disk** while its reasoning layer reported *"no evidence any sub-agents ran"* — and graded
 accordingly. Every component check was green. The tiers existed; they had never been **wired**.
 
-This is the verification twin of Law 2: a per-component pass proves the component works, not that its output
+This is the verification twin of Principle 2: a per-component pass proves the component works, not that its output
 **reaches** the next stage. So:
 
 - **A seam is a thing to test, not a gap between things you tested.** For each hand-off in a skill (phase → phase,
@@ -2721,13 +2327,6 @@ catch drift and regressions at scale, not to replace the moment a human actually
 says "yes, that's right." Build the lab to sharpen your judgment about what "right" looks like; don't let it
 substitute for looking.
 
-> **v2 (audit, 2026-10-28):** Testing hygiene (OBSERVED, orchestrator-v2 rig):
-- Never point a live schedule at a throwaway rig (the cron runner's /tmp lock is shared).
-- Experiments live under the notes folder, because the harness-write guard refuses writes inside the installed tree.
-- Keep bulk test output OFF Google Drive: the rig wrote 17,832 files / 41M and Drive sync choked; it was moved to ~/lifehack-scratch/.
-- In plan Verify lines use $HOME, never `~` inside quotes (it does not expand; 6 Stage 4/5 Verify lines would always have failed).
-- Use a fake claude (scripted bad modes) for cheap abuse testing of the runner; real claude only for small controls (38 calls).
-
 ## §V.9 — Anti-patterns observed in the wild `[C]`
 
 From dissecting six trust-gated public skill repos — name these so we never copy them, no matter how popular
@@ -2744,9 +2343,9 @@ the source:
   trust gate must read the mechanics, never the popularity.
 - **Validator-exists-but-nothing-calls-it.** A real schema validator sits in the repo, invoked only because a
   prompt asks the model to run it — no orchestrator re-checks that it ran. COMMITTED to the file; never
-  ENFORCED. Exactly the gap Law 3 exists to close.
-- **A record the AI writes.** The model-written ledger is the anti-pattern above; the v2 form is that the runner writes the record and the AI never does (LAW 3 NEW RULE). *(OBSERVED.)*
-- **An LLM judge sold as a deterministic test.** *(Our inference from Law 4.3 — NOT an observed anti-pattern in
+  ENFORCED. Exactly the gap Principle 3 exists to close.
+- **A record the AI writes.** The model-written ledger is the anti-pattern above; the v2 form is that the runner writes the record and the AI never does (Principle 3, observed principle). *(OBSERVED.)*
+- **An LLM judge sold as a deterministic test.** *(Our inference from Principle 4.3 — NOT an observed anti-pattern in
   the dissected repos. Named here because it's the trap the evidence implies, not one we caught anyone in.)* A
   routing eval or completion check reported as "passing" when it's a single non-repeated model call. A green
   single-sample judge call is not a green test. Worth stating precisely because the one repo that does this
@@ -2755,8 +2354,6 @@ the source:
   single samples lie." That is the honest form. The anti-pattern is the same practice **without** the caveat.
 
 ---
-
-> **v2 (audit, 2026-10-28):** plan_retire's commit lookup matched unrelated commits by card number and stamped 8 cards with false evidence; root cause unfixed. OBSERVED.
 
 # PART VI — SCALE & SPECIAL SHAPES
 
@@ -2782,20 +2379,13 @@ one voice); staged skills sharing a state file on the **inside**; the seam hidde
 - **One persona spans the seam** — the human never feels the handoff.
 - **The shared state file IS the state machine** — read the file, never your recollection; each stage writes
   only its own fields; every field is asserted true on entry to the next stage.
-~~- **The handoff carries FULL context, not a summary** — the receiving stage must find the whole prior-stage
-  state in the shared file. A lossy summary at the handoff is the documented failure mode. *(Exception, OBSERVED
-  2026-09-04: a DIAGNOSED atomic build card — nav/build SOP's diagnosis gate — deliberately carries LESS; the spec
-  is the context, and the card held as a sub-agent brief with zero follow-ups. Full context is for STAGE
-  handoffs; a card is a different unit.)*~~
-
 > **v2 (orchestrator-v2, 2026-10-28):** The runner writes the state; hand a fresh agent the state and its one next step, not the history. *(CANDIDATE.)*
 
-- **NEW RULE — hand state, not history.** See §IV.6 note and the rule above: the unit of handoff is state plus the one next step. *(CANDIDATE.)*
+- **principle (candidate) — hand state, not history.** See §IV.6 note and the rule above: the unit of handoff is state plus the one next step. *(CANDIDATE.)*
 
 - **Progress reads from a receipts file, never recall.** Scratch ≠ saved. Ship a cold-restore runbook: read true
   state → skip terminal rows → requeue in-flight rows, idempotently.
 
-> v2 receipt (orchestrator-v2): the same kill-and-resume result (`skipped-done` on s1/s2, rest once). OBSERVED.
 
 - **Two-tier work.** A cheap pass sets a manifest; only the flagged survivors get the expensive pass.
 - **Capture/rank two-file seam.** Capture writes an append-only file A, then goes read-only; a separate
@@ -2814,7 +2404,7 @@ one voice); staged skills sharing a state file on the **inside**; the seam hidde
 - **Plan confirmed before producing.** Slow down on purpose at the plan-to-execution boundary; never skip it
   silently.
 - **Withhold the endpoint; gate the phases `[R2]`.** An interrogative skill shown its own finish line pre-writes
-  the answer — the content-level twin of Law 5's social-pull decay. Give it the **domain**, never the
+  the answer — the content-level twin of Principle 5's social-pull decay. Give it the **domain**, never the
   **conclusion**, and gate the arc as a **hard boundary** (questions-only → optional restate-the-assumptions →
   answer), never a soft preference. A role alone reverts to assistant under pressure — pair it with an explicit
   prohibition: "surface and ask; do not answer or conclude."
@@ -2844,7 +2434,7 @@ detective · forensic-accountant · editor · archivist · curator · throughlin
 - **Rationalization tables — the best prose-tier trick found in the wild.** `[C]` An excuse-to-reality table
   (the specific rationalization a model reaches for, paired with why it's wrong) baked directly into the prose,
   at the point a model is likely to reach for that excuse. This is a **persuasion-tier** tool — it does nothing
-  a gate can't do better — but where prose genuinely is the right rung (a judgment call, not a mechanic), it's
+  a gate can't do better — but where prose genuinely is the right level (a judgment call, not a mechanic), it's
   the sharpest prose tool observed anywhere in the dissection.
 
 ## §VI.5 — Quality bar
@@ -2856,11 +2446,70 @@ as fact destroys it.
 
 ## §VI.6 — Model tiering
 
-Sub-agents run **sonnet unless the subagent is specifically designed to run something else** — never the top
+Sub-agents run **the middle tier unless the subagent is specifically designed to run something else** — never the top
 model for reading-scale or plumbing work; a designed exception (advisory-council-style reasoning-is-the-
 deliverable work) is named, not defaulted into. Whatever model tier does the work, **validate the values, not
 just the format** — a cheap model can return a perfectly-shaped output carrying wrong numbers, and a schema
 check happily passes a well-formed lie.
+
+## §VI.7 — MAKING A SKILL FASTER: subtract before you optimize, and price every layer that isn't work
+
+`[M: measured 2026-08-05, the delivery-ladder wave, `skill-system`]` **Added on explicit instruction
+to make this reusable doctrine rather than one project's finding.** Principles, in rank order. The first is the
+one that decides whether the work is worth doing at all.
+
+### ⭐⭐⭐⭐ Principle A — SUBTRACT FIRST. The loudest phase is not automatically the reachable one.
+
+**Before optimising anything, write down every phase's duration, subtract the phase you intend to attack, and
+compare THE REMAINDER against your target. If the remainder alone already exceeds the target, that phase was
+never the answer — no matter how large it looks.**
+
+**The worked case.** A skill ran **43.5 min** against a **15-min** target, decomposed as
+`EXPRESSION: setup 3.0 + fan-out 31.1 + capture 0.3 + write-file-A 5.3 + write-file-B 3.8`. The fan-out is
+**71.5%** of the clock, so three sessions optimised the fan-out. ⛔ **But**
+`EXPRESSION: everything-except-fan-out = 3.0+0.3+5.3+3.8 = 12.4 min`, against a target of **15**.
+▶ **Even a fan-out of ZERO leaves 12.4 min — so hitting 15 min required the fan-out to finish in 2.6 min, and
+NO amount of agent tuning could ever have delivered it.** The subtraction takes one minute and nobody had done
+it. ⭐ **Three sessions of measurement were aimed at a phase that could not reach the goal alone.**
+
+> **THE PRINCIPLE:** *a phase's SHARE tells you where the time IS; the REMAINDER tells you whether moving it can
+> get you where you want to be. Compute the remainder first — it is the cheaper number and it can cancel the
+> whole effort.*
+
+⚠ **The corollary that stings:** the quiet phases get no attention *precisely because* they are quiet. Here,
+`EXPRESSION: 5.3 + 3.8 = 9.1 min` of writing two files had never been examined once, while a 31-min fan-out
+was measured across three sessions. **Attention follows magnitude; leverage does not.**
+
+### ⭐⭐⭐ Principle B — PRICE EVERY LAYER THAT ISN'T DOING THE WORK. A handoff costs time even when it does nothing.
+
+**Any process, wrapper, controller or relay standing between the dispatch and the thing that actually works is
+a cost. Measure it separately, or it is invisible — it never appears as a step, only as a bigger total.**
+
+**The worked case.** Each cell launched a headless controller whose ENTIRE job was to spawn one sub-agent and
+relay its answer back. Measured: `EXPRESSION: cell 174.9s − agent 121.1s = 53.8s = 30.7%` of every run, buying
+nothing at run time. Removing it: `EXPRESSION: 123.0s vs the agent's own 121.1s = 1.016×` — **the same work in
+the same time, so the worker was never the bottleneck** — and `EXPRESSION: 174.9 − 123.0 = 51.9s ≈ 53.8s`,
+i.e. the subtraction and the direct measurement AGREE. ⭐ **Two independent routes to one number is the bar;
+one route is a hypothesis.**
+
+⚠ **AND THE HALF THAT PREVENTS A BAD FIX: the layer was not useless — it is how the run happens UNATTENDED.**
+The finding is not *"delete the wrapper"*, it is ***"production should not pay for the lab's launcher."***
+⛔ **Before removing any layer, ask what it was silently providing** (headlessness · isolation · a guard ·
+retry). A layer that costs 30% and provides unattended execution is a TRADE, not waste.
+
+### ⭐⭐ Principle C — WALL CLOCK AND HUMAN-WAITING TIME ARE DIFFERENT TARGETS, AND ONLY ONE OF THEM IS THE JOB
+
+For a **human-in-the-loop** skill, `wall = max(agent)` bounds the MACHINE's total — but the number the human
+experiences is **time-to-first-thing-I-can-act-on**. These come apart, and the second one is usually what was
+actually being asked for. **Staging work so a human starts acting at minute 3 instead of minute 31 does not
+reduce wall clock at all and can still be the largest real improvement in the skill.**
+⛔ **Never report a staging win as a wall-clock win, and never report a wall-clock win as a felt-duration win.
+State which clock you moved.**
+⚠ **You cannot get a guaranteed-early return by HOPING one branch finishes first** — measured on this system,
+which branch straggles is an **EVENT, not a property** (the same angles spread `1.29×` one day and `2.35×` the
+next). **A structurally smaller first pass is the only way to guarantee an early return** — and it then owes
+the casualty check, because a pass that returns early by seeing less is a scope cut wearing a stopwatch.
+
 
 ---
 
@@ -2883,9 +2532,9 @@ plausible the story.
 
 **The held list — explicitly NOT doctrine.** Recorded so they aren't lost, and kept **out** of the enforced
 rules so a plausible story can't harden into permanent law before it's earned that:
-- **The demand-class law.** Rules that demand the model **produce** something appear to hold in prose; rules
+- **The demand-class principle.** Rules that demand the model **produce** something appear to hold in prose; rules
   that demand it **withhold**, **order**, or **count/cover** appear not to. If true, this should drive
-  enforcement-rung choice at design time — potentially the single most useful thing we could know. Currently
+  friction-level choice at design time — potentially the single most useful thing we could know. Currently
   generated from **n=2 failures on one skill**, reasoning backwards from the answer. Graduates on **Experiment
   E2**: tag every graded clause by demand-class, measure pass-rate by class.
 - **The compilation-loss ratio.** Direction is certain — skills ship leaner than their specs. Magnitude was
@@ -2895,136 +2544,21 @@ rules so a plausible story can't harden into permanent law before it's earned th
 
 ---
 
-## §VI.7 — MAKING A SKILL FASTER: subtract before you optimize, and price every layer that isn't work
-
-`[M: measured 2026-08-05, the delivery-ladder wave, `skill-system`]` **Added on explicit instruction
-to make this reusable doctrine rather than one project's finding.** Two laws, in rank order. The first is the
-one that decides whether the work is worth doing at all.
-
-### ⭐⭐⭐⭐ LAW A — SUBTRACT FIRST. The loudest phase is not automatically the reachable one.
-
-**Before optimising anything, write down every phase's duration, subtract the phase you intend to attack, and
-compare THE REMAINDER against your target. If the remainder alone already exceeds the target, that phase was
-never the answer — no matter how large it looks.**
-
-**The worked case.** A skill ran **43.5 min** against a **15-min** target, decomposed as
-`EXPRESSION: setup 3.0 + fan-out 31.1 + capture 0.3 + write-file-A 5.3 + write-file-B 3.8`. The fan-out is
-**71.5%** of the clock, so three sessions optimised the fan-out. ⛔ **But**
-`EXPRESSION: everything-except-fan-out = 3.0+0.3+5.3+3.8 = 12.4 min`, against a target of **15**.
-▶ **Even a fan-out of ZERO leaves 12.4 min — so hitting 15 min required the fan-out to finish in 2.6 min, and
-NO amount of agent tuning could ever have delivered it.** The subtraction takes one minute and nobody had done
-it. ⭐ **Three sessions of measurement were aimed at a phase that could not reach the goal alone.**
-
-> **THE RULE:** *a phase's SHARE tells you where the time IS; the REMAINDER tells you whether moving it can
-> get you where you want to be. Compute the remainder first — it is the cheaper number and it can cancel the
-> whole effort.*
-
-⚠ **The corollary that stings:** the quiet phases get no attention *precisely because* they are quiet. Here,
-`EXPRESSION: 5.3 + 3.8 = 9.1 min` of writing two files had never been examined once, while a 31-min fan-out
-was measured across three sessions. **Attention follows magnitude; leverage does not.**
-
-### ⭐⭐⭐ LAW B — PRICE EVERY LAYER THAT ISN'T DOING THE WORK. A handoff costs time even when it does nothing.
-
-**Any process, wrapper, controller or relay standing between the dispatch and the thing that actually works is
-a cost. Measure it separately, or it is invisible — it never appears as a step, only as a bigger total.**
-
-**The worked case.** Each cell launched a headless controller whose ENTIRE job was to spawn one sub-agent and
-relay its answer back. Measured: `EXPRESSION: cell 174.9s − agent 121.1s = 53.8s = 30.7%` of every run, buying
-nothing at run time. Removing it: `EXPRESSION: 123.0s vs the agent's own 121.1s = 1.016×` — **the same work in
-the same time, so the worker was never the bottleneck** — and `EXPRESSION: 174.9 − 123.0 = 51.9s ≈ 53.8s`,
-i.e. the subtraction and the direct measurement AGREE. ⭐ **Two independent routes to one number is the bar;
-one route is a hypothesis.**
-
-⚠ **AND THE HALF THAT PREVENTS A BAD FIX: the layer was not useless — it is how the run happens UNATTENDED.**
-The finding is not *"delete the wrapper"*, it is ***"production should not pay for the lab's launcher."***
-⛔ **Before removing any layer, ask what it was silently providing** (headlessness · isolation · a guard ·
-retry). A layer that costs 30% and provides unattended execution is a TRADE, not waste.
-
-### ⭐⭐ LAW C — WALL CLOCK AND HUMAN-WAITING TIME ARE DIFFERENT TARGETS, AND ONLY ONE OF THEM IS THE JOB
-
-For a **human-in-the-loop** skill, `wall = max(agent)` bounds the MACHINE's total — but the number the human
-experiences is **time-to-first-thing-I-can-act-on**. These come apart, and the second one is usually what was
-actually being asked for. **Staging work so a human starts acting at minute 3 instead of minute 31 does not
-reduce wall clock at all and can still be the largest real improvement in the skill.**
-⛔ **Never report a staging win as a wall-clock win, and never report a wall-clock win as a felt-duration win.
-State which clock you moved.**
-⚠ **You cannot get a guaranteed-early return by HOPING one branch finishes first** — measured on this system,
-which branch straggles is an **EVENT, not a property** (the same angles spread `1.29×` one day and `2.35×` the
-next). **A structurally smaller first pass is the only way to guarantee an early return** — and it then owes
-the casualty check, because a pass that returns early by seeing less is a scope cut wearing a stopwatch.
-
-**Living intake.** `system/sops/skill-irl-findings.md` is where new observations land first, append-only,
+**Living intake.** New observations land first in `skill-irl-findings.md` in your personal code folder (not shipped in the plugin): append-only,
 chronological, tagged TESTER / SKILL / METHOD. When a finding is seen enough to be durably true, it graduates
-here and gets marked. Companion for operational specifics: `skill-building-field-notes.md` *(your personal code folder; not shipped in the plugin)*.
-
-**Delta log.** v2 (2026-07-25) re-ranked v1 — laws first, tools second, procedure third, verification fourth,
-edge-cases last. Added the entire VERIFY part (v1 had nowhere to put it). Folded in the crowd-convergence study
-and the six-repo code dissection `[C]`. Corrected v1 §3.5's stale single-instrument door-tester framing — the
-current design is a three-tier × pipeline-seam architecture (reasoning · enforcement · state), not the single
-blind judge v1 described.
+here and gets marked. Companion for operational specifics: `skill-building-field-notes.md` *(same folder; not shipped in the plugin)*.
 
 ---
 
 ## §VII — LIVING INTAKE: candidates, not doctrine
 
-> The frontmatter names `system/sops/skill-irl-findings.md` as where observations land before they graduate
-> into this file. **That file does not exist in either repository (checked 2026-09-05).** Until it does,
-> candidates land here, in this section, clearly marked. Nothing below is a rule. Each carries the canon's
-> confidence tier, its receipt, and what would refute it. **Per Enver 2026-09-05: write principles with
+> New findings land first in `skill-irl-findings.md` in the person's personal code folder (not shipped in the plugin).
+> Candidates recorded here instead are clearly marked as such.
+> Nothing below is a rule. Each carries the canon's confidence tier, its receipt, and what would refute it. **Per Enver 2026-09-05: write principles with
 > their reason; a rule only where it is 100% — a harness fact or a mechanical refusal.**
-
-### From the `/autoplan` rebuild, 2026-09-04 → 05 — the plan format's first execution against itself
-
-Evidence: `~/lifehack-brain` branch `V2` (19 commits). **This section is the only home for these candidates** — no scratch copy exists elsewhere.
-⛔ `plans/standalone-autoplan-rebuild.plan.md` — the plan and its `.done.md` live in the operator's notes folder, never in a repository; cited as where the receipts are, not as something this repo carries.
-~~**Status: Phase 6 unbuilt, live run not yet made.**~~ — **CORRECTED 2026-09-05 (nav claudeops-1a): Phase 6 IS built** (cards 6.1–6.15 retired, 34 commits on `V2`, unpushed). **The live run is still not made**, so per canon §5.2 none of these is distilled from a finished run and [P2] still governs promotion.
-
-*(Tiers below in the frame's vocabulary: Tier 1–2 = OBSERVED with receipt · Tier 3 = CANDIDATE · Tier 4 = CANDIDATE, weak.)*
-
-**Tier 1 — mechanisms; a script can enforce each; the author had read the relevant rule and broke it anyway.**
-- **A field a script consumes is written in the script's grammar, and the writer is refused, not warned.** 7 of 8 `Verify:` lines read correctly to a human and failed a machine re-run. AUTHORITATIVE · refuted if a constrained format still fails to re-run at a real rate.
-- **A checker's "could not determine" never resolves to pass.** A fallback to "shell exited 0" on a `; echo $?` command retired a card whose check printed 2 against a stated 0. ~~AUTHORITATIVE~~ OBSERVED ×2 (one build, two operators, two mechanisms — not REPRODUCED until a different build) · Law 1b's no-outcome member applied to the verifier.
-  **Extended 2026-09-05, clause → whole scan:** "found nothing" and "did not finish looking" must never render identically — at clause, card, or scan level. A scan killed mid-run (timeout, recursion, exception) exits non-zero with an explicit INCOMPLETE and never an empty finding list; it states EXAMINED beside FOUND ("0 regressions across 27 cards" is checkable; "0 regressions" is not). Receipt: the regression gate went blind on retirement (commit `3bd635f`; fix `65238c6`); a cold window saw "2 regressions across 29 cards examined" with the self-referential cards printed as EXCLUDED. Canon §1.3.
-
-> v2 receipt (orchestrator-v2): the scorer prints examined beside found on every line (`examined=30 runs=10 pass=30 fail=0 waiting=0 out_of_order=0`). OBSERVED.
-
-- **A verifier is also work, and any checker over "all finished work" will enumerate itself.** CANDIDATE (one build). Mechanical form: exclude its own entry and say so in the output; a self-exemption is honest only when visible. Its own check is the natural way to prove it works, so the recursion is what a well-written card produces, not an accident. *Open question, recorded not dressed up: this passed a destruction probe and a selectivity probe and was still wrong, because the property did not exist until acceptance — no pre-acceptance verification could have caught it.*
-- **A parser that silently skips what it does not recognise is a fail-open.** An id regex dropped 5 of 15 cards and reported clean; a command allowlist dropped a clause and the card passed on the rest. Count examined vs present. AUTHORITATIVE, 2 instances · canon §5.6 for tokenizers.
-- **Any session-level list beside a plan file is a second tracker.** The harness task queue diverged from the plan's cards inside the build fixing two-tracker failures. AUTHORITATIVE, 1 instance.
-- **A verify runs as written, by a stranger, with nothing to substitute.** `<copy>` reached the shell as a redirect and a verify PASSED on it. AUTHORITATIVE.
-
-- **A failure to run must not be able to equal a legal answer.** A check expected exit 2 from a linter; the linter was not found at the path, that failure also exits 2, and the check PASSED by coincidence. OBSERVED · `retired-reverify.md` card 2.3 · canon §5.6 sharpened.
-- **A retired check un-passes itself.** Three retired cards failed their own checks after later cards moved the files; nothing re-runs a retired check. OBSERVED · canon §1.3 sharpened; card 6.10 builds the regression gate.
-- **An exit code read after a pipe is the pipe's.** `cmd | head; echo $?` reports `head`'s. Two operators hit it in one build. OBSERVED ×2.
-
-**Tier 2 — principles; true and receipted; process, not code.**
-- Retiring a finished task preserves the amendment, not only the final form; second-resolution backup names collided (8 → 2 files). AUTHORITATIVE.
-- When a checker refuses one item, run it against every item before fixing any — the mechanical form of §5.13. Four rounds of one-at-a-time; six more waiting. AUTHORITATIVE.
-- The monitor re-runs the verify and never grades from the actor's report (LAW 3 at the nav/build seam). Three instances in one session. AUTHORITATIVE.
-- Cold verification is a gate before the human, not a postmortem after. One cold pass caught a builder-certified false pass. AUTHORITATIVE.
-- A size floor set by the party being measured measures nothing during the build (canon §4.1 for budgets). AUTHORITATIVE.
-- A guard matching a MENTION blocks the fix for the thing it guards. New instance of a ledgered class. AUTHORITATIVE.
-
-**Tier 3 — investigate; n=1 or awaiting the live run.**
-- The control for a defect fixture is the same file with defects repaired, generated not hand-kept — never a different clean file (colliding ids manufactured false positives).
-- Build order and verify order differ; a checker says NOT-YET, not FAILED, when the verify-dependency is unmet. WORKING THEORY.
-- Blind ANGLE panels are not the PERSONA councils [A13] warns against: 11/11 hit, 0 false positives, canon §4.11 conditions met, [B23] agrees. WORKING THEORY until the live run.
-- Code and reviewer lenses catch disjoint defect classes (32 vs 8, no overlap). AUTHORITATIVE-local, n=1.
-
-**Tier 4 — recommendation.**
-- Do not write size estimates into task text (3 for 3 wrong by 2–3×, same direction).
-- Reading the doctrine does not inoculate — Law 5's knows-but-violates, measured on the author. A confirmation, not a finding.
-
-**AWAITING VALIDATION — added 2026-09-05 by nav claudeops-1a, deliberately NOT promoted.**
-*Enver's instruction: these get built and tested first; promote only after the fix is proven. Neither is doctrine and neither may be cited as one.*
-
-- **A `Verify:` that compares against a bare literal freezes a value the system computes.** Write it computed-against-computed instead — `test "$(A)" = "$(B)"` rather than `= "17"`. ⚠ **The rule already existed one altitude up and nobody had applied it here**: §V.4a's *"a number without its instrument recorded beside it is not evidence — and a result that a reader cannot re-derive from the file is not a result."* Grepped 2026-09-05: zero occurrences connecting that rule to a plan card's `Verify:` slot. Receipt: 3 of 27 retired cards (2.4, 4.4, 6.8) fail their own `Verify:` today, all three because a later card moved a count they had frozen; ~57 count-comparisons exist across the retired set, so those three are the visible edge. The grammar ALREADY accepts the invariant form — measured, not assumed: a card whose Verify compares two computed values lints rc 0 and parses and runs under `plan_retire`. **CANDIDATE, NOT YET VALIDATED — the rewrite has not been built or tested.** Refuted if invariant-form Verifies prove vacuous, i.e. they pass while the artefact is genuinely broken; that is the probe that must run before this is promoted.
-
-- **A checker whose own acceptance criterion invokes the checker becomes self-referential the moment its card is retired, and fails SILENT.** Receipt: card 6.10's `Verify:` invoked `plan_retire --regressions`; the scan re-runs every retired card's Verify, so on retirement it began invoking itself, hit the 120s subprocess timeout uncaught, and emitted no findings. Measured: the scan reported zero `REGRESSION` lines while card 2.4's Verify independently returned rc 1; an hour earlier the same scan reported four, with nothing repaired in between. ⚠ The companion claim that it *exited 0* was **asserted and never measured** — struck, see [P3]/A14. Fix built and verified (`65238c6`): self-exclusion stated in the output, `INCOMPLETE` + exit 3 on abnormal termination, and an examined-count beside the found-count. **OBSERVED ×1, one build — per [P2] a different build promotes; this is not that.** ⚠ **The property did not exist until acceptance**: this code passed a real destruction probe AND a selectivity probe and was still wrong. No rule is offered for that; it is recorded as an open question, not dressed up as a finding.
 
 ### From the two blind research runs, 2026-09-05 — outside evidence, tiered; nothing here is doctrine
 
-Records: `records/research/2026-09-05-code-llm-interaction-modalities.md` · `…-multi-step-execution-enforcement.md`.
 Canon holds the principle-level twins in §15. **Every rate below is single-source and unreplicated** — directions
 converge across independent angles; magnitudes do not yet exist as facts.
 
@@ -3038,28 +2572,19 @@ converge across independent angles; magnitudes do not yet exist as facts.
   RESEARCHED, one origin. *This harness already is this; never named or used on purpose.* CANDIDATE: when a
   judgment recurs identically three times, compile it — with the code-spiral rule as the guard on the other side.
 - **[R4] Environment hardening beats instruction.** Remove the shortcut from the ground: exploit rate −87.7%
-  relative, no loss of task success (one benchmark family). RESEARCHED. *This is LAW 1's fence and canon §4.6's
+  relative, no loss of task success (one benchmark family). RESEARCHED. *This is Principle 1's fence and canon §4.6's
   three tests, confirmed from outside.*
 - **[R5] Runtime gating on evidence is the only mechanism with measured near-complete reliability** (AgentSpec:
   >90% unsafe-execution prevention). RESEARCHED. *This is §V.4b and phase_gate.*
 - **[R6] Self-certification is gameable** — "state an intention, privately deviate" (one thesis, relayed).
-  RESEARCHED, thin. *This is LAW 3.*
+  RESEARCHED, thin. *This is Principle 3.*
 - **[R7] NEEDS CONFIRMATION — the blindfold.** See §IV.6. OBSERVED locally, confounded, unstudied outside.
 - **[R8] NEEDS CONFIRMATION — the headline compliance figure** ("18 models, 30–50% SOP compliance") was reported by
   two angles and could not be located by the disconfirming pass. UNVERIFIED; do not cite the number.
 - **[R9] Accuracy is rising while reliability is flat; reliability is multi-dimensional.** RESEARCHED (Princeton
-  HAL; CSET), no rebuttal. *Outside support for THE FRAME's one law and for stacking (§II.1a).*
+  HAL; CSET), no rebuttal. *Outside support for THE FRAME's Rule and for layered friction (§II.1a).*
 
-**THE SCOPE FAILURE — added 2026-09-05 by nav claudeops-1a at Enver's instruction. CANDIDATE, NOT VALIDATED.**
+**THE SCOPE FAILURE — added 2026-09-05 by a session at Enver's instruction. CANDIDATE, NOT VALIDATED.**
 *This one is about the SHAPE of the session, not about any tool in it. It is the most consequential thing this build produced and the least proven.*
 
 - **A verifier good enough to trust will set the backlog, and the loop has no terminating condition.** The shape: build a good detector → it finds a REAL defect → the defect becomes a card, because *"it is genuinely broken"* feels like sufficient justification → building the card extends the detector's reach → repeat. Receipt: original Phase 6 was **5 cards**; this session added **10**. Every one cited a measured defect, none was invented, and **every one passed every quality gate in this file** — measured defect, checkable card, destruction probe. Meanwhile all four clauses of the plan's stated desired outcome measured as MET, and the fourth had been satisfied by card 6.2 that morning. ⚠ **It is not gold-plating and not a perfection loop** — nothing was being polished; the things fixed were genuinely broken. That is precisely why it is invisible from inside: the individual steps were correct and the SEQUENCE was not. **This file could not catch it because every rule in it answers "is this being done right?" and none answers "should this be done at all?"** Quality is fully covered here; scope is not covered at all. Offered as guidance carrying its reason, never as a prescription, per **[B13]** ("prescriptive language on anything but a stated desired outcome... rules outlive their reason and calcify"). Three parts: **(a)** a measured defect is not sufficient justification to schedule work — the question is not *"is this broken?"* but *"does the stated outcome fail without this?"*, and a defect serving no clause is RECORDED, not scheduled; **(b)** expect the over-generation, because it is a property of good verifiers rather than a defect in them — put the stopping rule in the PLAN, never in the verifier; **(c)** ⭐ **the tell, and the most useful part because it is mechanically checkable: when every card in a phase cites a defect found by the previous card, you are in a verifier loop.** CANDIDATE. Refuted if a plan carrying (a) or (c) still over-generates at the same rate, or if applying the stopping rule suppresses a defect that later proves load-bearing — the second is the real risk and nothing here has tested it.
-
-### What this run says about THIS file (for the next revision, not applied here)
-- **[A13]** is written broadly enough to forbid the angle-panel shape that worked; scope it to persona councils and cross-cite [B23].
-- **§II.3 rung 2** "required artifact — usually enough": enough for structure, never for a completion claim — a typed marker is rung 1 in rung 2's clothes (§V.4b).
-- **§II.4 phase_gate blurb** omits the file's own caveat that `requires` cannot tell real work from words typed to match.
-- **LAW 3** wants the clause "nor from the actor's report." **§III.9** wants the companion "fail once → sweep siblings." **§VI.1** wants the diagnosis-gate exception: a BUILD card carries less, by design.
-- **§III.5** "<500 lines" and canon §5.1 "~1,000 words" never meet; state which governs.
-- **This file's voice**: §VI.4 says avoid ALL-CAPS MUST/NEVER walls; the file is dense with them. Harness facts stay rules; doctrine reads as principle.
-- **Two copies of this file exist (private ClaudeOps, public lifehack-brain), they differ, and `separation-manifest.md:287` calls them byte-identical.** One home, or a comparison that runs.
