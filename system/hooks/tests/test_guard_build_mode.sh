@@ -20,6 +20,12 @@ cat > "$CODE/system/register/register.jsonl" <<'R'
 {"type":"tool","path":"/shared/paths.py"}
 {"type":"tool","path":"/system/tools/not-shared.py"}
 R
+cat > "$CODE/system/register/toolbox.md" <<'R'
+# Toolbox
+## Notify
+- `/shared/notify/notify-send.sh` · finds your topic -> asks notify-governor.py for permission -> only on ALLOW posts a TEASER
+- `/shared/paths.py` · resolves the notes and code roots
+R
 pass=0; fail=0; ERR=""
 payload() { python3 -c 'import json,sys; print(json.dumps({"session_id":sys.argv[1],"cwd":sys.argv[2],"tool_name":sys.argv[3],"tool_input":json.loads(sys.argv[4])}))' "$1" "$NOTES" "$2" "$3"; }
 fire() { # fire <session> <tool> <tool_input-json>  -> sets RC, ERR
@@ -33,7 +39,12 @@ J() { python3 -c 'import json,sys; print(json.dumps(dict(zip(sys.argv[1::2],sys.
 S=s1
 fire $S Write "$(J file_path "$HOME/.claude/skills/foo/SKILL.md" content hi)"; want 2 "new SKILL.md denied once" "building a skill"
 printf '%s' "$ERR" | grep -Fq "skill-building-sop.md" && { pass=$((pass+1)); echo "   ok   message names the configured SOP path"; } || { fail=$((fail+1)); echo "  FAIL  SOP path not in message"; }
+for x in toolbox.md /build "RULE: system/hooks/build_mode_sops.conf"; do printf '%s' "$ERR" | grep -Fq -- "$x" && { pass=$((pass+1)); echo "   ok   message names $x"; } || { fail=$((fail+1)); echo "  FAIL  message lacks $x"; }; done
+printf '%s' "$ERR" | grep -Fq "may already do this" && { fail=$((fail+1)); echo "  FAIL  tool list shown with nothing matching"; } || { pass=$((pass+1)); echo "   ok   no tool list when nothing matches"; }
 fire $S Write "$(J file_path "$HOME/.claude/skills/foo/SKILL.md" content hi)"; want 0 "identical retry passes"
+fire ph1 Write "$(J file_path "$HOME/.claude/skills/phone-alert/SKILL.md" content 'send a phone alert')"; want 2 "phone-alert skill: denied" "building a skill"
+printf '%s' "$ERR" | grep -Fq "shared/notify/notify-send.sh" && { pass=$((pass+1)); echo "   ok   phone-alert lists notify-send.sh"; } || { fail=$((fail+1)); echo "  FAIL  notify-send.sh not listed"; }
+printf '%s' "$ERR" | grep -Fq "shared/paths.py" && { fail=$((fail+1)); echo "  FAIL  unrelated tool listed"; } || { pass=$((pass+1)); echo "   ok   unrelated tool not listed"; }
 fire $S Write "$(J file_path "$HOME/.claude/skills/bar/SKILL.md" content hi)"; want 0 "second skill, same session: passes (once per kind)"
 fire $S Bash "$(J command "mkdir -p $NOTES/desks/newdesk")"; want 2 "mkdir new desk denied once (different kind)" "building a desk"
 fire $S Bash "$(J command "mkdir -p $NOTES/desks/newdesk")"; want 0 "desk retry passes"

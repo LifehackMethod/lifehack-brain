@@ -446,12 +446,43 @@ def main_inner():
     for kind, key, msg, mk in fresh:
         if not masked:
             _open(mk, "w").close()
-        out.append(msg if msg else bump_message(kind, code))
+        out.append(msg if msg else bump_message(kind, code, " ".join(
+            "%s %s" % (w["target"], (w.get("content") or "")[:1500]) for w in writes)))
     sys.stderr.write("\n".join(out) + "\n")
     return 2
 
 
-def bump_message(kind, code):
+_STOP = set("this that with from have will your into when then they them what which also only more each some than about file files tool tools system shared skill skills build home users claude desks desk hooks hook notes python bash echo true false none test tests code data line lines name path text print import return".split())
+_ALIAS = {"phone": "notify", "alert": "notify", "buzz": "notify", "push": "notify", "ping": "notify", "message": "notify"}
+
+
+def _toks(text):
+    out = set()
+    for w in re.split(r"[^a-z]+", text.lower()):
+        if len(w) >= 4 and w not in _STOP:
+            out.add(_ALIAS.get(w, w)[:5])
+            if w in _ALIAS:
+                out.add(w[:5])
+    return out
+
+
+def tool_hint(code, hint):
+    """Up to 5 shared tools from toolbox.md whose name/purpose shares a keyword with the target path/content."""
+    want = _toks(hint)
+    if not want:
+        return ""
+    scored = []
+    for line in _open(os.path.join(code, "system", "register", "toolbox.md")):
+        m = re.match(r"- `/(shared/[^`]+)` · (.*)", line)
+        if m:
+            n = len(want & _toks(m.group(1).replace("/", " ") + " " + m.group(2)))
+            if n:
+                scored.append((-n, m.group(1), m.group(2)[:70].rstrip()))
+    scored.sort()
+    return "".join("\n  %s · %s" % (p, d) for _, p, d in scored[:5])
+
+
+def bump_message(kind, code, hint=""):
     sop, cmd = None, ""
     try:
         for line in _open(os.path.join(code, "system", "hooks", "build_mode_sops.conf")):
@@ -469,11 +500,14 @@ def bump_message(kind, code):
         where = full if os.path.isfile(full) else "%s (its SOP file could not be found; ask the maintainer)" % full
         if cmd and os.path.isfile(full):
             where += " (%s)" % cmd
-    return ("Looks like you're building a %s — read %s, or use /build. "
-            "WHY: building without the rulebook is how the 68 drifted desk copies happened (v2 plan 3.2). "
-            "Retry the same call and it goes through; this stop happens once per session per kind. "
-            "RULE: system/hooks/guard_build_mode.sh header; SOP paths in system/hooks/build_mode_sops.conf."
-            % (kind, where))
+    try:
+        tools = tool_hint(code, hint)
+    except Exception:
+        tools = ""
+    return ("Looks like you're building a %s. Stop and run /build for this: it hands you the read-list and checks the result. "
+            "Or read %s and system/register/toolbox.md first; never copy a shared tool.%s\n"
+            "Retry the same call and it goes through (once per session per kind). RULE: system/hooks/build_mode_sops.conf."
+            % (kind, where, ("\nShared tools that may already do this:" + tools) if tools else ""))
 
 
 def main():
