@@ -7,8 +7,7 @@ WHY THIS EXISTS: guard_git_push_signpost.sh (fixed 2026-09-08, commit 25a01e1) p
 they run BEFORE the command, so they can never observe a `cd` that hasn't happened
 yet and must track one explicitly instead. guard_git_commit_signpost.sh never got
 that fix and stayed $PWD-only for anything but an explicit `-C`, so on 2026-09-08 a
-live `cd ~/lifehack-brain && git commit ...` was signposted "COMMIT · ClaudeOps
-(PRIVATE)" — the wrong repo, confidently. This module is the ONE place that logic
+live `cd ~/lifehack-brain && git commit ...` was signposted "COMMIT · (PRIVATE)" — the wrong repo, confidently. This module is the ONE place that logic
 now lives, so both guards (and anything built after them) share one proven resolver
 instead of drifting apart again.
 

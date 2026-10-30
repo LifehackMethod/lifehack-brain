@@ -1,14 +1,14 @@
 #!/bin/bash
 # Matrix for the SHARED repo-target resolver (system/hooks/lib/git_target_resolver.py)
-# as exercised by guard_git_push_signpost.sh -- and, in the PRIVATE ClaudeOps repo
+# as exercised by guard_git_push_signpost.sh -- and, in the private repo
 # this file was ported from, also by guard_git_commit_signpost.sh.
 #
 # PORTED 2026-09-10 from
-# ~/.claude/skills/ClaudeOps/system/hooks/tests/test_git_signpost_resolver.sh into
+# the private repo's copy of this file into
 # this public repo. Path resolution below is unchanged from the original -- it was
 # already location-relative ($(dirname "$0")/..), never hardcoded to the private
 # tree, so it needed no adjustment to resolve HOOKS_DIR correctly from here. This
-# file reaches nothing under ~/.claude/skills/ClaudeOps.
+# file reaches nothing in the private repo.
 #
 # COMMIT-GUARD SECTION IS SKIPPED BELOW, NOT DELETED. The cases in that section
 # were written against guard_git_commit_signpost.sh, which does not exist in this
@@ -65,7 +65,7 @@ for d in "$PUB" "$PRIV"; do
   git -C "$d" commit -q -m init
 done
 git -C "$PUB" remote add origin "git@github.com:LifehackMethod/lifehack-brain.git"
-git -C "$PRIV" remote add origin "git@github.com:egjokaj/ClaudeOps.git"
+git -C "$PRIV" remote add origin "git@github.com:example-owner/private-ops.git"
 # a second, uncommitted change so the push guard has something to act on
 echo more >> "$PUB/f.txt"
 echo more >> "$PRIV/f.txt"
@@ -82,6 +82,8 @@ run_guard() { # run_guard <script> <command-string> -- caller must bump $sid BEF
   # across cases regardless of what key the guard hashes on.
   local case_home="$WORK/home.$sid"
   mkdir -p "$case_home/.claude"
+  # fictional pointer: the private fixture repo is this case's personal-code folder
+  mkdir -p "$case_home/.config/lifehack"; printf '%s\n' "$PRIV" > "$case_home/.config/lifehack/personal-code"
   printf '%s' "$payload" | \
     HOME="$case_home" CLAUDE_CODE_SESSION_ID="test-$$-$sid" bash "$HOOKS_DIR/$script" 2>"$WORK/stderr.$sid" 1>"$WORK/stdout.$sid"
   echo $?
@@ -172,8 +174,9 @@ sid=$((sid+1)); e=$(run_guard guard_git_push_signpost.sh "cat <<'EOF'
 The guard's fallback path only runs when shlex actually breaks.
 EOF
 cd $PUB || exit 1; git push origin main")
-want "FALLBACK PATH: shlex-breaking apostrophe + push-shaped text -> REFUSES" 2 "$e" "cannot determine the target repo"
-not_want "FALLBACK PATH refusal must never name a repository" "PUBLIC|PRIVATE"
+# fix-signpost 2026-10-30: since fix-fa strips heredoc bodies the apostrophe no longer breaks shlex, and
+# the newline after the heredoc now separates commands, so this resolves cleanly to the cd target (PUBLIC).
+want "heredoc w/ apostrophe, then newline, cd <public> || exit 1; push -> PUBLIC (cd followed)" 2 "$e" "SHIPS TO STUDENTS"
 
 # PRIMARY PATH CONTROL: the identical push-shaped words as the case just above
 # (cd ... || exit 1; git push origin main), plus a contraction's apostrophe,

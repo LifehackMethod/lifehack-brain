@@ -62,9 +62,8 @@ trap 'lhb_journal_fire "$?" "guard_git_push_signpost.sh" "PreToolUse" "Bash" 2>/
 #      SHELL, never part of git's own argv, and `git push -u origin <branch>
 #      2>&1 | tail -3` used to surface a phantom refspec literally named "2>&1".
 # IDENTITY: resolved from the COMMAND, never bare `$PWD` — fixed 2026-09-08 after a
-#      real incident: a push from a ClaudeOps cwd targeting `git -C
-#      ~/lifehack-brain push origin main` was signposted as "ClaudeOps
-#      PRIVATE" — the wrong repo, confidently. This hook is a PreToolUse hook, so it
+#      real incident: a push from the private repo cwd targeting `git -C
+#      ~/lifehack-brain push origin main` was signposted as "PRIVATE" — the wrong repo, confidently. This hook is a PreToolUse hook, so it
 #      runs BEFORE the command — it can never observe a `cd` that hasn't happened
 #      yet, so it tracks one explicitly instead: an explicit `-C <path>` on the
 #      matched git invocation, or a `cd <path>` earlier in the same chain. A `cd`
@@ -705,11 +704,37 @@ for r in rows:
     [ -n "$_manifest" ] || _manifest="   UNRESOLVED  -- the refspec parser produced no output; verify manually with git log/diff before pushing."
 
     _push_url=$(git -C "$REPO_DIR" remote get-url --push "$_remote_name" 2>/dev/null)
+    # PRIVATE = the push is FROM the person's personal code folder (shared resolver, realpaths
+    # compared); never a remote-name match. NOT-SET / POINTER-MISSING -> never PRIVATE.
+    # One python call, only reached on a push, and skipped when the remote is already PUBLIC.
+    _is_personal=""
+    case "$_push_url" in
+      *LifehackMethod/lifehack-brain*) ;;
+      *)
+        _top=$(git -C "$REPO_DIR" rev-parse --show-toplevel 2>/dev/null)
+        if [ -n "$_top" ]; then
+          _shared="$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd)/shared"
+          _is_personal=$(PCR_SHARED="$_shared" PCR_TOP="$_top" python3 -c '
+import os, sys
+sys.path.insert(0, os.environ["PCR_SHARED"])
+import personal_code_root
+source, path = personal_code_root.resolve_personal_code_root()
+if source in ("pointer", "default") and path and os.path.realpath(path) == os.path.realpath(os.environ["PCR_TOP"]):
+    print("yes")
+' 2>/dev/null)
+        fi
+        ;;
+    esac
     case "$_push_url" in
       *LifehackMethod/lifehack-brain*) _kind="⚠⚠ PUBLIC -- SHIPS TO STUDENTS ⚠⚠" ;;
-      *egjokaj/ClaudeOps*)             _kind="PRIVATE — students never see this" ;;
-      "")                              _kind="UNKNOWN — no push remote resolved; STOP and verify by hand" ;;
-      *)                               _kind="UNKNOWN — unrecognized remote ($_push_url); STOP and verify by hand" ;;
+      *)
+        if [ "$_is_personal" = "yes" ]; then
+          _kind="PRIVATE — students never see this"
+        elif [ -z "$_push_url" ]; then
+          _kind="UNKNOWN — no push remote resolved; STOP and verify by hand"
+        else
+          _kind="UNKNOWN — unrecognized remote ($_push_url); STOP and verify by hand"
+        fi ;;
     esac
 
     {

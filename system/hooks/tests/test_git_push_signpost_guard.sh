@@ -59,8 +59,9 @@ mkjson() {
 run_guard() {  # run_guard <cmd> <session-id>
   local cmd="$1" sid="$2"
   local home; home="$(mktemp -d "$SCRATCH/home.XXXXXX")"
+  [ -n "${RG_HOME:-}" ] && home="$RG_HOME"
   mkdir -p "$home/.claude"
-  mkjson "$cmd" | HOME="$home" CLAUDE_PROJECT_DIR="$REPO" CLAUDE_CODE_SESSION_ID="$sid" bash "$GUARD" 2>"$ERRF"
+  ( [ -n "${RG_CWD:-}" ] && cd "$RG_CWD"; mkjson "$cmd" | HOME="$home" CLAUDE_PROJECT_DIR="$REPO" CLAUDE_CODE_SESSION_ID="$sid" bash "$GUARD" 2>"$ERRF" )
 }
 
 allow() {
@@ -148,6 +149,45 @@ deny "a -C target that does not resolve"       "$D3" "cannot determine" "sess-ba
 
 BH2="$(mkheredoc "cat >/dev/null <<EOF && $D1" "it's a note")"
 deny "real push on the heredoc opener line (apostrophe in body) still fires" "$BH2" "PUSH" "sess-afterheredoc-$RANDOM"
+
+# fix-signpost (2026-10-30): the label must follow `cd X && ...` chains (incl. pipes inside the
+# chain), ~ and quoted paths; an unresolvable repo is UNKNOWN (may be PUBLIC), never PRIVATE.
+PRIVATE_TARGET="$SCRATCH/private_target"
+mkdir -p "$PRIVATE_TARGET"
+git init -q "$PRIVATE_TARGET"
+git -C "$PRIVATE_TARGET" remote add origin "git@github.com:example-owner/private-ops.git"
+# fictional HOME with a fictional pointer to the personal-code folder (name-free fixtures)
+TH="$SCRATCH/tilde_home"; mkdir -p "$TH/.config/lifehack" "$TH/code/personal"
+git init -q "$TH/code/personal"
+git -C "$TH/code/personal" remote add origin "git@github.com:example-owner/private-ops.git"
+printf '%s\n' "$TH/code/personal" > "$TH/.config/lifehack/personal-code"
+# a symlinked path to the same folder (realpath comparison)
+ln -s "$TH/code/personal" "$TH/linkpersonal"
+# a home with NO pointer and no default folder; a home whose pointer names a missing folder
+NH="$SCRATCH/nopointer_home"; mkdir -p "$NH"
+MH="$SCRATCH/missing_home"; mkdir -p "$MH/.config/lifehack"
+printf '%s\n' "$MH/gone" > "$MH/.config/lifehack/personal-code"
+
+CHAIN="$(mkcmd cd "$PUBLIC_TARGET" '&&' git fetch -q origin '&&' git log --oneline origin/V2..V2 '|' head -3 '&&' git push origin V2)"
+RG_CWD="$PRIVATE_TARGET" deny "cd <public> && fetch && log|head && push, cwd=PRIVATE repo -> PUBLIC" "$CHAIN" "SHIPS TO STUDENTS" "sess-fs1-$RANDOM"
+Q="$(mkcmd cd "\"$PUBLIC_TARGET\"" ';' git push origin V2)"
+RG_CWD="$PRIVATE_TARGET" deny "cd \"<public>\" ; push (quoted, ;) -> PUBLIC" "$Q" "SHIPS TO STUDENTS" "sess-fs2-$RANDOM"
+T="$(mkcmd cd '~/code/personal' '&&' git push origin main)"
+RG_HOME="$TH" RG_CWD="$PUBLIC_TARGET" deny "cd <pointer folder> && push (cwd=PUBLIC) -> PRIVATE" "$T" "students never see this" "sess-fs3-$RANDOM"
+P="$(mkcmd git push origin main)"
+RG_HOME="$TH" RG_CWD="$TH/code/personal" deny "plain push from the pointer folder -> PRIVATE" "$P" "students never see this" "sess-fs4-$RANDOM"
+RG_HOME="$TH" RG_CWD="$PUBLIC_TARGET" deny "push via a symlink to the pointer folder -> PRIVATE (realpath)" "$(mkcmd git -C "$TH/linkpersonal" push origin main)" "students never see this" "sess-fs4b-$RANDOM"
+RG_HOME="$TH" RG_CWD="$PUBLIC_TARGET" deny "push from the public clone (pointer set) -> PUBLIC" "$P" "SHIPS TO STUDENTS" "sess-fs4c-$RANDOM"
+RG_HOME="$NH" RG_CWD="$TH/code/personal" deny "no pointer, no default -> UNKNOWN, never PRIVATE" "$P" "UNKNOWN" "sess-fs4d-$RANDOM"
+RG_HOME="$MH" RG_CWD="$TH/code/personal" deny "pointer to a missing folder -> UNKNOWN, never PRIVATE" "$P" "UNKNOWN" "sess-fs4e-$RANDOM"
+RG_HOME="$NH" RG_CWD="$PUBLIC_TARGET" deny "no pointer, public clone -> still PUBLIC" "$P" "SHIPS TO STUDENTS" "sess-fs4f-$RANDOM"
+U="$(mkcmd cd '"$LH_UNSET_X"' '&&' git push)"
+RG_CWD="$PRIVATE_TARGET" deny "cd \"\$X\" && push, X unset -> UNKNOWN REPO" "$U" "UNKNOWN REPO" "sess-fs5-$RANDOM"
+RG_CWD="$PRIVATE_TARGET" deny "... UNKNOWN warns it may be PUBLIC" "$U" "may be PUBLIC" "sess-fs5b-$RANDOM"
+SUB="$(mkcmd '(cd' "$PUBLIC_TARGET" '&&' git push ')')"
+RG_CWD="$PRIVATE_TARGET" deny "(cd <public> && push) subshell -> UNKNOWN, not PRIVATE" "$SUB" "UNKNOWN REPO" "sess-fs6-$RANDOM"
+C2="$(mkcmd git -C "$PUBLIC_TARGET" push origin V2)"
+RG_CWD="$PRIVATE_TARGET" deny "git -C <public> push, cwd=PRIVATE -> PUBLIC (as before)" "$C2" "SHIPS TO STUDENTS" "sess-fs7-$RANDOM"
 
 echo
 echo "  $PASSED passed, $FAILED failed"
