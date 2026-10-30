@@ -107,7 +107,43 @@ def kind_of(fid):
     return ("SHEET\t" if mt == "application/vnd.google-apps.spreadsheet" else "OTHER\t") + name
 
 
+TRASH_WINDOW_S = 600
+
+
+def count_trash(payload):
+    """Round C gap 4 (fc_drive_bulk_delete): how many DIFFERENT files this session has sent to the Drive trash through
+    the MCP tool in the last TRASH_WINDOW_S seconds, counting this one. State: one small file per session
+    (${LHB_DRIVE_TRASH_DIR:-~/.claude/run/drive-trash}/<session_id>), one `epoch<TAB>key` line per call. The hook is
+    registered twice (plugin and project), so both copies see each call: the key is the tool_use_id (else the file id)
+    and a key counts once. Any error -> 1 (never blocks on its own failure)."""
+    import time
+    try:
+        ti = payload.get("tool_input") or {}
+        key = str(payload.get("tool_use_id") or ti.get("fileId") or "?")
+        sid = re.sub(r"[^A-Za-z0-9_-]", "_", str(payload.get("session_id") or os.environ.get("CLAUDE_CODE_SESSION_ID") or "nosession"))[:80]
+        d = os.environ.get("LHB_DRIVE_TRASH_DIR") or os.path.join(os.path.expanduser("~"), ".claude", "run", "drive-trash")
+        os.makedirs(d, exist_ok=True)
+        path = os.path.join(d, sid)
+        now = int(time.time())
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write("%d\t%s\n" % (now, key))
+        keys = set()
+        for ln in open(path, encoding="utf-8").read().splitlines():
+            t, _, k = ln.partition("\t")
+            if t.isdigit() and now - int(t) <= TRASH_WINDOW_S:
+                keys.add(k)
+        return max(1, len(keys))
+    except Exception:
+        return 1
+
+
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "--count":
+        try:
+            print(count_trash(json.load(sys.stdin)))
+        except Exception:
+            print(1)
+        return 0
     if len(sys.argv) > 2 and sys.argv[1] == "--kind":
         print(kind_of(sys.argv[2]))
         return 0

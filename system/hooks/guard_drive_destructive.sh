@@ -14,8 +14,9 @@ trap 'lhb_journal_fire "$?" "guard_drive_destructive.sh" "PreToolUse" "Bash" 2>/
 #      Routes read: `gws drive files delete|trash`, `files update` with trashed:true, emptyTrash (through the shared
 #      gws parser: bash -c bodies, argv lists, assignment prefixes, xargs/for/while/find -exec), and the Drive MCP
 #      tool trash_file. Deleting one NON-sheet file, listing, searching and every other command pass untouched.
-#      NOT COVERED: the Drive web UI (not the assistant's act); many separate single trash_file MCP calls (each is
-#      a separate action, so only the ones that are Sheets ask); a delete built by a script file that is run
+#      Round C gap 4: many separate MCP trash_file calls are counted per session (state file keyed by session_id in
+#      ${LHB_DRIVE_TRASH_DIR:-~/.claude/run/drive-trash}); the 2nd different file within 10 minutes asks, as does every one after.
+#      NOT COVERED: the Drive web UI (not the assistant's act); a delete built by a script file that is run
 #      by name (the script's text is never in the command); the Google Sheets API itself deleting a file (it cannot).
 # REDIRECT: this is an ASK, so nobody is stuck. Show the person the exact file(s) and what will happen (a Sheet: its
 #      name; bulk: the count or query), and on their in-the-moment yes retry the same command with
@@ -68,6 +69,14 @@ ask() {   # ask <what> <why-line>
   python3 -c 'import json,sys; print(json.dumps({"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":sys.argv[1]}}))' "$R"
   exit 0
 }
+
+# Round C gap 4 (fc_drive_bulk_delete): many separate MCP trash_file calls are one bulk delete spread over turns.
+# The 2nd different file trashed in this session within 10 minutes asks (and every one after it).
+if [ "$TOOL" != Bash ] && [ "$SW_BULK" = 1 ] && [ "$KIND" = SINGLE ]; then
+  N=$(printf '%s' "$INPUT" | python3 "$LIB" --count 2>/dev/null)
+  case "$N" in ''|*[!0-9]*) N=1 ;; esac
+  [ "$N" -ge 2 ] && ask "this is Drive file number $N sent to the trash in this session within 10 minutes." "several separate trash calls add up to a bulk delete that no single call looks like; the person should see the whole list before it grows."
+fi
 
 case "$KIND" in
   BULK)
