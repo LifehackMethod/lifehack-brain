@@ -749,6 +749,7 @@ These passages went verbatim, with the date, to the Enver-only file `skill-build
 - lines 2724-2730: Test-rig housekeeping tips
 
 ## 2026-10-30 · FIX · originals of lines reworded or repaired in place
+- Reason: approved FIX list (Enver, 2026-10-30): wording corrected in place to match the COMPASS (Principle/Rule labels, friction wording, cross-references, repaired sentences, private pointers removed, model tiers); originals kept here verbatim.
 
 The SOP's text stays but was corrected (principle/Rule wording, cross-references, friction wording, half-struck repairs, pointers to private notes, front page). The original wording of every such line is kept below, verbatim, so the change can be audited. 224 lines in 176 runs.
 
@@ -2714,4 +2715,208 @@ Original line 1338:
 Original line 1703:
 ```
 `agents/ingest-reader.md` carries **`tools: Read`** and nothing else — no Bash, no Write/Edit, no network, no
+```
+
+
+## 2026-10-30 · MOVE · to skill-building-operator-notes.md (ClaudeOps)
+- Reason: operator-only material (Enver's machine and setup), moved verbatim to ClaudeOps system/sops/skill-building-operator-notes.md; copied here too so the move is on record (archive-before-cut).
+
+### MOVE original · lines 720-727 · POLICY RISK on the headless row
+```
+🛑 **POLICY RISK ON THE HEADLESS ROW — NOT A TECHNICAL ONE, RE-CHECK BEFORE RELYING ON IT.** On 2026-05-14
+Anthropic announced it would remove `claude -p` / Agent SDK / headless usage from Pro/Max/Team/Enterprise
+**subscription** pools entirely, citing a documented **15–30× subsidy**. **Paused 2026-06-15 pending a
+revised plan, with the right to re-impose expressly reserved.** ⇒ **Do not build a load-bearing unattended
+subsystem on subscription-backed inference without a conscious decision** — the `TOKEN_FILE` pattern this
+very row depends on is exactly that bet. Policy moves faster than architecture. *(`/research`,
+2026-08-05 — Anthropic Help Center / Axios / Zed Industries.)*
+
+```
+
+### MOVE original · lines 728-760 · MEASURED 2026-08-05: headless in cron
+```
+> v2 note: held for the week-long test
+
+
+**MEASURED 2026-08-05 — the two things that break HEADLESS in cron, and the house already fixed both:**
+- ⛔ **PATH.** `claude` lives at `~/.local/bin/claude`, which is **NOT on cron's PATH**
+  (`/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin`). A bare `claude` in a cron script returns
+  **`command not found`**. *(Same family as build-sop's `/usr/sbin/scutil` trap.)*
+  ✅ **FIX, and it is already the house pattern** — verified in `archivist-run.lib.sh:34`,
+  two scheduled runners in the donor system: an **absolute `CLAUDE_BIN`**, with one of them
+  own comment saying it outright — *"CLAUDE_BIN is absolute — no PATH dependency."*
+- ⛔ **AUTH.** With the absolute path but a stripped env, `claude -p` returns
+  **`Not logged in · Please run /login`** — measured. ✅ **FIX, also already the house pattern:** the
+  `TOKEN_FILE="$HOME/.config/lifehack/claude-oauth-token"` those same three runners use.
+  ⛔ **DO NOT HAND-ROLL THAT CHECK — it now lives in exactly one place:** `require_claude_token`
+  in **`system/tools/claude-auth.lib.sh`** (`source` it, then `require_claude_token "<job>" || exit 75`).
+  **Why the prohibition is this blunt:** the check *was* hand-rolled five times, every copy carrying
+  its own literal `exit 3`, which `system/jobs.md`'s exit-code table classes as a REAL
+  FAILURE — so on a fresh install, where the token file legitimately does not exist yet, three ticks
+  tripped Pulse's 3-strike breaker and permanently auto-disabled the runner. It was fixed **twice**,
+  in two of the five, and stayed broken in the other three, because **a fix applied to a copy does
+  not reach the other copies.** The correct code is **75** (stood down, counted `skipped`), and the
+  stand-down is always NAMED out loud — per this repo's ABSENT-SUBJECT rule, "I could not look" must
+  never be spelled the same way as "I looked and it was fine."
+- ⛔ **SCHEMA — PATH+AUTH fixed still doesn't buy you a valid shape.** `claude -p --json-schema` does
+  **NOT** guarantee schema-valid output — Anthropic states this outright in GitHub issue
+  `anthropics/claude-code#9058` (open). Issue `#23265` adds a reproducible cold-start bug (first call
+  returns null / exit 1) and a hang (exit 124) when nested inside a running Claude Code session via the
+  Bash tool — independently confirming this house's own rule that a subagent shelling `claude -p`
+  double-nests. **If a hard schema guarantee is needed, the Messages API's `output_config.format`
+  (constrained decoding, GA) is the only surface that provides one — not this flag.**
+
+> **v2 (orchestrator-v2, 2026-10-28):** Qualification, not refutation: a nested `claude -p` from inside a live Claude Code session ran **10/10** (n01–n10, Claude Code 2.1.312), with and without unsetting `CLAUDECODE` / `CLAUDE_CODE_ENTRYPOINT` (5 + 5, all passing). The hang/double-nest hazard above is kept; re-check it per version. *(OBSERVED — brief §2 Rung 2.)*
+
+```
+
+### MOVE original · lines 1609-1744 · LOCAL recorded history, entries A1-B36
+```
+### LOCAL — recorded history, binds nothing
+
+Failed **for us, in our circumstances** — not a general law. Kept as the "has this been tried?" lookup even
+though none of these bind a future build.
+
+- **[A1]** Tried: regex pattern-matching on user prompts to detect when math needs mechanical computation.
+  Failed: 24/24 plain-English math prompts missed — no operator or keyword to match. `2026-06-27` ·
+  `records/decision/2026-06-27-numbers-integrity-enforcement.md` → declare-intent model (finance desks
+  auto-arm, `/calculate` elsewhere, tight regex as backstop only).
+- **[A2]** Tried: a per-turn LLM classifier (`claude -p --model haiku`) on every UserPromptSubmit to decide
+  "does this need math?" Failed: measured ~6.0-6.2s **cold-start** latency (CLI boot, not inference) —
+  unacceptable in a synchronous per-turn hook. `2026-06-27` ·
+  `records/decision/2026-06-27-numbers-integrity-enforcement.md` → declare-intent model.
+- **[A3]** Tried: a Stop/block gate halting on ungrounded arithmetic. Failed: a hook cannot distinguish a
+  number the model **computed** from one it **read** — provenance is invisible in text, so it would
+  false-fire constantly. `2026-06-27` · `records/decision/2026-06-27-numbers-integrity-enforcement.md` → no
+  blocking gate.
+- **[A6]** Tried: relying on `~/.claude/plans/` with no backup lane. Failed: a plan built on the second machine was
+  unreachable from the primary machine while travelling — the dir had been a Drive symlink until 2026-06-16, then reverted to
+  native-local with no replacement. `2026-07-02` ·
+  `records/decision/2026-07-02-plans-backup-hole-postmortem.md` → `system/hooks/mirror_plans.sh` +
+  its plan-recovery counterpart on the pull side.
+- **[A8]** Tried: merging plan file + scratchpad + brief into ONE file. Failed: "sync hell" — machine-local vs
+  Drive copies must agree, silent drift; pre-mortem returned four D grades. `2026-07-13` ·
+  `records/decision/2026-07-13-scratchpad-in-brief.md` → scratchpad as a section in the brief.
+- **[A9]** Tried: a cross-session discoverability layer for the scratchpad. Failed: overbuild — "a scratchpad
+  only exists within a project, so a cold session with no project has no scratchpad to find." `2026-07-13` ·
+  `records/decision/2026-07-13-scratchpad-in-brief.md` → nothing.
+- **[A10]** Tried: adopting `ccstatusline` for the terminal HUD. Failed: ~53k-line React/ink app with a large
+  unvettable dependency tree. `2026-07-13` · `records/decision/2026-07-13-statusbar-hud-build.md` → a
+  hand-built ~90-line bar.
+- **[A11]** Tried: populating the live status bar with FABRICATED demo data to show a finished preview.
+  Failed: broke trust — the reader caught the fabrication. `2026-07-13` ·
+  `records/decision/2026-07-13-statusbar-hud-build.md` → mock previews via piped JSON, never faking live
+  state.
+- **[A14]** Tried: deferring aesthetics/component-design/accessibility to external plugin skills. Failed:
+  dead pointers to tools the user doesn't use; live "which tool owns this?" confusion. `2026-06-04` ·
+  `records/decision/2026-06-04-design-lifehack-skill.md` → one comprehensive skill.
+- **[A15]** Tried: building design-lifehack as a slash COMMAND rather than a SKILL. Failed: reversed once
+  auto-invocation became a hard requirement. `2026-06-04` ·
+  `records/decision/2026-06-04-design-lifehack-skill.md` → built as a skill.
+- **[A16]** Tried: lifting the content of 73 downloaded `DESIGN.md` brand specs into the constraint kit.
+  Failed: "it's all the easy part... the last mile is absent in all 73." `2026-06-04` ·
+  `records/decision/2026-06-04-design-lifehack-skill.md` → steal the container, author the craft rules
+  ourselves.
+- **[A17]** Tried: two separate constraint-kit files (dashboard vs marketing). Failed: unnecessary
+  duplication. `2026-06-04` · `records/decision/2026-06-04-design-lifehack-skill.md` → one file, profile
+  toggle.
+- **[A18]** Tried: a "clear the gate" reset command + growth/archiving for ClaudeGate. Failed: moot — the
+  overwrite design means the file never grows. `2026-07-17` ·
+  `records/decisions/2026-07-17-claudegate-two-way-overwrite.md` → every write overwrites.
+- **[A19]** Tried: two separate files (inbox + outbox) for the ClaudeGate slot. Failed: rejected — one file so
+  the exchange lives in one place. `2026-07-17` ·
+  `records/decisions/2026-07-17-claudegate-two-way-overwrite.md` → one file.
+- **[A20]** Tried: an APPEND-style running transcript for ClaudeGate. Failed: rejected — "it overwrites, it
+  doesn't accumulate" was the design intent. `2026-07-17` ·
+  `records/decisions/2026-07-17-claudegate-two-way-overwrite.md` → overwrite-only slot.
+- **[A23]** Tried: running the dev-browser relay in STANDALONE mode for the overmyshoulder skill — ⛔ that skill does not ship (ruled 2026-08-14); this entry is kept as HISTORY, not as a live pointer. Failed: standalone
+  has no extension endpoint — the skill silently presented a headless browser's own tabs as the user's
+  real Chrome. `2026-06-07` · `records/log/2026-06-07-overmyshoulder-dev-browser-root-cause.md` → enforce
+  extension mode always.
+- **[A24]** Tried: relying on the extension's default tab model to read the user's current tab. Failed: it
+  never attaches to pre-existing tabs — Playwright saw zero tabs even in correct mode. "A design gap, not a
+  config error." `2026-06-07` · `records/log/2026-06-07-overmyshoulder-dev-browser-root-cause.md` →
+  `chrome.debugger.attach` on demand.
+- **[A25]** Tried: trusting the relay's `extensionConnected` flag as a liveness signal. Failed: it was a
+  **null-check, not a liveness check** — reported true during a cycling ghost state. `2026-06-03` ·
+  `records/log/2026-06-03-relay-ghost-root-cause-fix.md` → `extensionIsHealthy()` with a keepalive timestamp.
+- **[A26]** Tried: "latest socket wins" for a new extension WebSocket connection. Failed: an overnight ghost
+  socket caused an infinite "Extension connection replaced" loop. `2026-06-03` ·
+  `records/log/2026-06-03-relay-ghost-root-cause-fix.md` → healthy-current-wins + a stale-socket reaper.
+- **[A27]** Tried: direct-CDP (`--remote-debugging-port`) as a drop-in for the extension bridge. Failed:
+  Chrome won't open the debug port on a running instance and profile-locks the user-data-dir, forcing a
+  cloned profile that reintroduces the CAPTCHA penalty. `2026-06-03` ·
+  `records/log/2026-06-03-relay-ghost-root-cause-fix.md` → kept the custom bridge.
+- **[A28]** Tried: a fresh/dedicated Chrome profile for automated search. Failed: reintroduces bot-detection /
+  CAPTCHA penalty. `2026-06-03` · `records/log/2026-06-03-relay-ghost-root-cause-fix.md` → ride the user's
+  real warm profile via the extension bridge.
+- **[A38]** Tried: launchd LaunchAgents for scheduled bootstrap jobs on both machines. Failed: blocked by
+  macOS Full Disk Access — "Operation not permitted" on the Drive path. `2026-05-26` ·
+  `records/logs/2026-05-26-cross-machine-sync-infrastructure.md` → cron.
+  **CLOSED 2026-10-27 (Sprint 0):** from a LaunchAgent, screen unlocked, locked, and lid-closed-then-opened,
+  Drive writes, `claude -p` with the token file and gws with the file keyring all worked; a run missed in sleep
+  fired once on wake. launchd is usable; cron is no longer the only answer.
+- **[A41]** Tried: `guard_harness_writeback.sh` / `guard_harness_write` deriving "this repo" from `$0`. Failed: a window running the plugin FROM the V2 checkout blocks every edit there, so building from a V2-launched window is impossible. `2026-10-27` → build from a window running the installed plugin. OPEN.
+- **[A42]** Tried: trusting `write_v2` (`email_summary_sync.py --write-v2`) exit 0. Failed: it exits 0 on a HARD-STOP and when every label lists 0 threads. `2026-10-27` → the wrapper's output check catches it.
+- **[A43]** Tried: `--limit` as a cap on a sweep run. Failed: it did not stop the cold-sweep, so a capped run would have cold-marked the whole store. `2026-10-27` → fixed (e9150b9).
+- **[A44]** Tried: a watchdog `sleep` in the draft wrapper. Failed: it was orphaned on every run. `2026-10-27` → fixed in 1.2.
+
+> v2 receipt (orchestrator-v2): the same orphan-lock family showed in the rig — a hard kill (SIGKILL, k05) left the mkdir lock. OBSERVED.
+
+- **[A45]** Tried: deferring quiet-hours texts and flushing them only from `pulse.sh`. Failed: with Pulse off, overnight down-texts were never delivered. `2026-10-27` → fixed 2.5a: every wrapper run flushes.
+- **[A46]** Tried: a daily push cap of 3 counted per source `job-run`. Failed: one cap shared by all jobs, and recoveries counted against it. `2026-10-27` → fixed 2.5b: per job, recoveries exempt.
+- **[A47]** Tried: `guard_git_push_signpost.sh` reading the SESSION cwd. Failed: it ignores the `cd`/`-C` target, so it labelled a public push "ClaudeOps (PRIVATE)". `2026-10-27` → read the push target's own repo. OPEN.
+- **[A48]** Tried: cancelling a hand run mid-flight. Failed: it orphaned both the wrapper lock and the runner's inner lock; stale locks self-clear only after watchdog + 300 s. `2026-10-27` → wait out the clear, or remove both locks. OPEN, low.
+
+> v2 receipt (orchestrator-v2): confirmed on the rig runner (k05, SIGKILL leaves the lock; resume stands down rc 75 for up to 1500s; removed by hand). OBSERVED.
+
+> **v2 (audit, 2026-10-28):** Stage 3 fix (OBSERVED): the lock now records its owner pid. A dead owner's lock is stolen at once; a live owner still gets rc 75. The 1500s wait described above was the pre-fix behaviour.
+
+- **NEW RULE — lock behaviour on a kill, and the stale-steal trade-off.** A hard kill (SIGKILL) leaves the mkdir lock until stale-steal (1500s); a normal close (SIGHUP) releases it; the live cron runner has the same pattern. The 1500s stale-steal window is a **deliberate trade-off** (a shorter window risks stealing a live run's lock; a longer one delays resume) — name it, do not hide it. *(OBSERVED — brief §4 Stage 2 finding 2.)*
+
+> **v2 (audit, 2026-10-28):** Stage 3 fix (OBSERVED): the lock now records its owner pid. A dead owner's lock is stolen at once; a live owner still gets rc 75. The 1500s wait described above was the pre-fix behaviour.
+
+- **[B2]** Tried: a status-bar write-GUARD hook on `statusline.sh` blocking python/bash writes. Failed:
+  false-positived on legitimate work. `NO-DATE` · `state/projects/project-system/brief.md:170` → edit
+  `statusline.sh` with the Edit tool only + an inline warning comment, no hook.
+- **[B3]** Tried: a journal `kind:` tag for event-type slicing. Failed: grep on desk|slug + body text already
+  gave per-subject retrieval with zero maintenance. `2026-07-14` ·
+  `state/projects/project-system/brief.md:133` → grep retrieval.
+- **[B5]** Tried: a junk pre-filter before human review during corpus ingestion. Failed: would discard content
+  before a human ever saw it — violates "never eliminate unseen." `NO-DATE` ·
+  `state/projects/cowork-bulk-ingestion/brief.md:61-65` → no pre-filter.
+- **[B6]** Tried: prose-only save gates instead of mechanically enforced ones. Failed: reason not recorded in
+  the source beyond "don't re-try." `NO-DATE` · `state/projects/cowork-bulk-ingestion/brief.md:140` → not
+  named.
+- **[B10]** Tried: one-tap efficiency / a gamified item count as the ingest skill's goal. Failed: "robs the
+  user of the reward (reflection = being understood)." `NO-DATE` · `state/projects/ingest-skill/brief.md:147-172`
+  → goal reframed around reflection.
+- **[B17]** Tried: splitting `/ingest` into two auto-chained skills (miner + filer). Failed: reversed — "the
+  filer's job shrank to one phase and the handoff itself was where information was being lost." `2026-08-05`
+  · `state/projects/ingest-skill/brief.md:182-183` → reversed into one skill.
+- **[B32]** Tried: a blocking/code-verified gate in v1 of the `/build` doctrine router. Failed: would halt
+  background builds. `2026-06-20` ·
+  `state/projects/infrastructure/lifehack-correct-architecture/brief.md:351-390` → advisory v1 + a hook as a
+  named future seam.
+- **[B34]** Tried: a background watch loop for huddle "breadcrumbs." Failed: writes to a file the human can't
+  see — "kills the live feed." `NO-DATE` · `state/projects/huddle/huddle-skill/brief.md:58-86` → `coord-wait`
+  — foreground streaming with early exit.
+- **[B35]** Tried: writing detailed implementation plans inside the live huddle. Failed: "makes sessions go
+  solo/silent/slow → they time out + watch-loop." `NO-DATE` ·
+  `state/projects/huddle/huddle-skill/brief.md:58-86` → huddle aligns scope only; plans written after, solo.
+- **[B36]** Tried: letting participants self-declare "done" as the huddle exit signal. Failed: sessions kept
+  bumping out prematurely. `NO-DATE` · `state/projects/huddle/huddle-skill/brief.md:58-86` → "done" is a
+  revocable alignment vote; only the coordinator closes the room.
+
+```
+
+### MOVE original · lines 2724-2730 · v2 audit 2026-10-28: testing hygiene
+```
+> **v2 (audit, 2026-10-28):** Testing hygiene (OBSERVED, orchestrator-v2 rig):
+- Never point a live schedule at a throwaway rig (the cron runner's /tmp lock is shared).
+- Experiments live under the notes folder, because the harness-write guard refuses writes inside the installed tree.
+- Keep bulk test output OFF Google Drive: the rig wrote 17,832 files / 41M and Drive sync choked; it was moved to ~/lifehack-scratch/.
+- In plan Verify lines use $HOME, never `~` inside quotes (it does not expand; 6 Stage 4/5 Verify lines would always have failed).
+- Use a fake claude (scripted bad modes) for cheap abuse testing of the runner; real claude only for small controls (38 calls).
+
 ```
