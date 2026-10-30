@@ -93,10 +93,35 @@ def _strip_heredoc_bodies(cmd):
     return "\n".join(out)
 
 
+def _newlines_to_semicolons(cmd):
+    """An UNQUOTED newline separates commands exactly like `;` (fix-signpost, mirrors
+    guard_commit_identity 3b-fa a725747). shlex whitespace-splits it away, so
+    `cd X\ngit push` used to read as one segment `cd X git push` and the push was
+    labelled with the session cwd. Quoted/escaped newlines are left alone."""
+    out, q, i, n = [], None, 0, len(cmd)
+    while i < n:
+        ch = cmd[i]
+        if q:
+            if ch == "\\" and q == '"' and i + 1 < n:
+                out.append(ch); i += 1; ch = cmd[i]
+            elif ch == q:
+                q = None
+        elif ch == "\\" and i + 1 < n:
+            out.append(ch); i += 1; ch = cmd[i]
+            if ch == "\n":          # line continuation: drop both
+                out.pop(); i += 1; continue
+        elif ch in "'\"":
+            q = ch
+        elif ch == "\n":
+            ch = " ; "
+        out.append(ch); i += 1
+    return "".join(out)
+
+
 def _tokenize(cmd):
     """Tokenize with shell metacharacters as their own tokens even when not
     whitespace-padded (e.g. 'exit;'), while still honoring quotes."""
-    cmd = _strip_heredoc_bodies(cmd)
+    cmd = _newlines_to_semicolons(_strip_heredoc_bodies(cmd))
     lex = shlex.shlex(cmd, posix=True, punctuation_chars=True)
     lex.whitespace_split = True
     lex.commenters = ""
@@ -169,14 +194,34 @@ def resolve(cmd, verb):
     while i < n:
         seg, preceding_op = segments[i]
 
-        if preceding_op == "|":
-            # a pipe runs its left side in a subshell; a cd before it never
-            # touches what follows -- drop, don't guess.
-            cwd = ""
-            tainted = False
+        # FIXED 2026-10-30 (fix-signpost): a pipe NEVER resets the working directory
+        # for what follows. `cd X && git log | head && git push` runs the push in X;
+        # the old code dropped cwd at every `|` and the push was then labelled with the
+        # SESSION cwd's repo (a PUBLIC push labelled PRIVATE). A pipeline element
+        # inherits the parent cwd; only a `cd` that is itself a pipeline element
+        # (left or right of `|`) is a subshell cd and must not be believed.
+        next_op = segments[i + 1][1] if (i + 1) < n else None
+        in_pipe = preceding_op == "|" or next_op == "|"
+
+        if seg and seg[0] in ("pushd", "popd"):
+            cwd, tainted = "", True      # directory changes we do not model
+            i += 1
+            continue
+        if seg and seg[0] == "(" and any(t in ("cd", "pushd", "popd") for t in seg):
+            cwd, tainted = "", True      # cd inside a subshell group: not modelled
+            i += 1
+            continue
 
         if seg and seg[0] == "cd":
             target = _cd_target(seg)
+            if in_pipe:
+                cwd, tainted = "", True  # subshell cd: cwd after it is unprovable
+                i += 1
+                continue
+            if not target:
+                cwd, tainted = "", True  # bare `cd` (home) / `cd -`: not modelled
+                i += 1
+                continue
             if target and (i + 1) < n and segments[i + 1][1] == "||":
                 guard_seg = segments[i + 1][0]
                 if guard_seg and guard_seg[0] in _EXIT_SHAPES:
@@ -189,9 +234,8 @@ def resolve(cmd, verb):
                     tainted = True
                 i += 2
                 continue
-            elif target:
-                cwd = target
-                tainted = False
+            cwd = target
+            tainted = False
             i += 1
             continue
 

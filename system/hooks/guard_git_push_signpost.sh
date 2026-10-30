@@ -256,6 +256,9 @@ PUSH_ARGV_B64="$_REST3"
 # exactly the block that would otherwise name a confident, wrong repo.
 _refuse_unresolved() {
   printf '📍 PUSH · cannot determine the target repo\n' >&2
+  # FIXED 2026-10-30 (fix-signpost): fail toward CAUTION. An unresolved repo is never
+  # presented as private -- say plainly that it may be the PUBLIC (student) repo.
+  printf '   ⚠ UNKNOWN REPO — check before pushing: may be PUBLIC\n' >&2
   printf '   %s\n' "$1" >&2
   printf '   WHY: printing a guess about which repo this pushes to is worse than admitting the guard cannot tell.\n' >&2
   printf '   REDIRECT: verify the path, then re-run.\n' >&2
