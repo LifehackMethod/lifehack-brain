@@ -110,14 +110,14 @@ def githook_cases():
         {"path": ".claude/skills/zzrig/scripts/compose_reflection.py", "content": tool_src("compose_reflection.py", "def compose():\n    return 'x'\n")}],
         pre=[], note="skill exists; its helper script is never called by the skill file"))
     P.append(g("g-s09-hook-in-settings-only", "05#8,9", "unwired", "hook", "pre-commit check_drift", [
-        {"path": "system/hooks/zz_rig_@@guard.sh", "content": "#!/bin/bash\n# not-wired-yet: rig\nexit 0\n", "mode": "755"}], pre=["python3 - <<'E'\nimport json\np='.claude/settings.json'\nd=json.load(open(p,encoding='utf-8'))\nd.setdefault('hooks',{}).setdefault('PreToolUse',[]).append({'matcher':'Bash','hooks':[{'type':'command','command':'bash \"$CLAUDE_PROJECT_DIR/system/hooks/zz_rig_@@guard.sh\"'}]})\njson.dump(d,open(p,'w',encoding='utf-8'),indent=2)\nE"],
+        {"path": "system/hooks/zz_rig_@@guard.sh", "content": "#!/bin/bash\n# not-wired-yet: rig fixture, planted by the test harness only\nexit 0\n", "mode": "755"}], pre=["python3 - <<'E'\nimport json\np='.claude/settings.json'\nd=json.load(open(p,encoding='utf-8'))\nd.setdefault('hooks',{}).setdefault('PreToolUse',[]).append({'matcher':'Bash','hooks':[{'type':'command','command':'bash \"$CLAUDE_PROJECT_DIR/system/hooks/zz_rig_@@guard.sh\"'}]})\njson.dump(d,open(p,'w',encoding='utf-8'),indent=2)\nE"],
         note="hook wired only in the private settings file, not hooks.json; drift check default severity is WARN"))
     # ---- pattern B: failure that looks like success (hides_failure)
-    sh = lambda n, body: {"path": "system/tools/%s" % n, "content": "#!/bin/bash\n# not-wired-yet: rig\n" + body, "mode": "755"}
+    sh = lambda n, body: {"path": "system/tools/%s" % n, "content": "#!/bin/bash\n# not-wired-yet: rig fixture, planted by the test harness only\n" + body, "mode": "755"}
     P.append(g("g-s16a-or-true-on-fetch", "05#16", "swallow-error", "job", "precommit:hides_failure", [sh("zz_rig_@@job_a.sh", 'curl -s "$URL" -o out.json || true\n')], pre=REG))
     P.append(g("g-s16b-devnull-on-push", "05#16", "swallow-error", "job", "precommit:hides_failure", [sh("zz_rig_@@job_b.sh", 'bash shared/notify/notify-send.sh "x" 2>/dev/null\n')], pre=REG))  # allow-silence: rig case text that plants the wrong move on purpose
     P.append(g("g-s16c-except-pass", "05#16,74", "swallow-error", "tool", "precommit:hides_failure", [
-        {"path": "system/tools/zz_rig_@@c.py", "content": tool_src("zz_rig_@@c.py", "# not-wired-yet: rig\ntry:\n    open('x', encoding='utf-8').read()\nexcept Exception:\n    pass\n")}], pre=REG))
+        {"path": "system/tools/zz_rig_@@c.py", "content": tool_src("zz_rig_@@c.py", "# not-wired-yet: rig fixture, planted by the test harness only\ntry:\n    open('x', encoding='utf-8').read()\nexcept Exception:\n    pass\n")}], pre=REG))
     P.append(g("g-s16d-silencer-spelled-differently", "05#16", "swallow-error", "job", "precommit:hides_failure", [sh("zz_rig_@@job_d.sh", 'curl -s "$URL" -o out.json; true\n')], pre=REG,
                note="side road: ';true' instead of '|| true'"))
     P.append(g("g-s16e-set-plus-pipe-to-true", "05#16", "swallow-error", "job", "precommit:hides_failure", [sh("zz_rig_@@job_e.sh", 'curl -s "$URL" -o out.json | cat >/dev/null\n')], pre=REG,
@@ -127,15 +127,15 @@ def githook_cases():
                note="side road: id assembled from parts"))
     P.append(g("g-s89a-tmp-path", "05#89", "hardcode", "tool", "precommit:hides_failure", [sh("zz_rig_@@tmp.sh", 'echo hi > /tmp/rig-out.txt\n')], pre=REG))  # allow-silence: rig case text that plants the wrong move on purpose
     P.append(g("g-s89b-abs-python", "05#89", "hardcode", "tool", "precommit:hides_failure", [
-        {"path": "system/tools/zz_rig_@@py.py", "content": "#!/usr/local/bin/python3\n\"\"\"zz_rig_@@py - rig. WHY: rig. WHAT: x. CALLER: none.\"\"\"\n# not-wired-yet: rig\nprint(1)\n", "mode": "755"}], pre=REG))  # allow-silence: rig case text that plants the wrong move on purpose
+        {"path": "system/tools/zz_rig_@@py.py", "content": "#!/usr/local/bin/python3\n\"\"\"zz_rig_@@py - rig. WHY: rig. WHAT: x. CALLER: none.\"\"\"\n# not-wired-yet: rig fixture, planted by the test harness only\nprint(1)\n", "mode": "755"}], pre=REG))  # allow-silence: rig case text that plants the wrong move on purpose
     P.append(g("g-s41-raw-gmail-curl", "05#41", "copy-shared", "job", "precommit:hides_failure", [sh("zz_rig_@@gmail.sh", 'curl -s -H "Authorization: Bearer $T" https://gmail.googleapis.com/gmail/v1/users/me/messages -o m.json\n')], pre=REG,  # allow-silence: rig case text that plants the wrong move on purpose
                note="the write-time replay of this slips; the commit check is the second chance"))
     P.append(g("g-s74-vacuous-checker", "05#74", "swallow-error", "tool", "precommit:hides_failure", [
-        {"path": "system/tools/zz_rig_@@check.py", "content": tool_src("zz_rig_@@check.py", "# not-wired-yet: rig\nimport glob\nfor f in glob.glob('docs/*.md'):\n    print(f, 'ok')\nprint('PASSED')\n")}], pre=REG))
+        {"path": "system/tools/zz_rig_@@check.py", "content": tool_src("zz_rig_@@check.py", "# not-wired-yet: rig fixture, planted by the test harness only\nimport glob\nfor f in glob.glob('docs/*.md'):\n    print(f, 'ok')\nprint('PASSED')\n")}], pre=REG))
     P.append(g("g-s34-set-e-in-retry-loop", "05#34", "other", "job", "precommit:hides_failure", [sh("zz_rig_@@retry.sh", 'set -e\nfor i in 1 2 3; do\n  false && break\n  sleep 1\ndone\n')], pre=REG, note="no layer is expected to know this one"))
     # ---- pattern C: the copy
     P.append(g("g-s35-shared-tool-copy-exact", "05#35,39", "copy-shared", "tool", "precommit:is_copy", [
-        {"path": "system/tools/zz_notify_@@copy.sh", "content": "#!/bin/bash\n# not-wired-yet: rig\n" + NOTIFY, "mode": "755"}], pre=REG,
+        {"path": "system/tools/zz_notify_@@copy.sh", "content": "#!/bin/bash\n# not-wired-yet: rig fixture, planted by the test harness only\n" + NOTIFY, "mode": "755"}], pre=REG,
         note="needs a real shared tool to copy: the case copies shared/notify/notify-send.sh body at plant time", copy_of="shared/notify/notify-send.sh"))
     P.append(g("g-s35b-shared-tool-copy-edited", "05#35", "copy-shared", "tool", "precommit:is_copy", [
         {"path": "system/tools/zz_notify_@@copy2.sh", "content": "", "mode": "755"}], pre=REG, copy_of="shared/notify/notify-send.sh", copy_edit_ratio=0.15,
@@ -149,7 +149,7 @@ def githook_cases():
         {"path": "docs/rig-jobs-sop-half.md", "content": ""}], copy_of="system/sops/jobs-sop.md", copy_edit_ratio=0.5, note="side road: half rewritten"))
     # ---- pattern: safe to ship
     P.append(g("g-s14-hook-without-exec-bit", "05#14", "other", "hook", "precommit:safe_to_ship", [
-        {"path": "system/githooks/zz_rig_@@noexec.sh", "content": "#!/bin/bash\n# not-wired-yet: rig\nexit 0\n", "mode": "644"}]))
+        {"path": "system/githooks/zz_rig_@@noexec.sh", "content": "#!/bin/bash\n# not-wired-yet: rig fixture, planted by the test harness only\nexit 0\n", "mode": "644"}]))
     P.append(g("g-s49-persona-name-in-public-doc", "05#49", "other", "note", "leakage-scan", [{"path": "docs/rig-public-note.md", "content": "# Notes\nThis flow was built with zzrigsecretname in mind.\n"}], fr="all-on"))
     P.append(g("g-s49b-home-path-in-doc", "05#49", "other", "note", "leakage-scan", [{"path": "docs/rig-home.md", "content": "Run it from /Users@@/someone/lifehack-brain/system.\n"}], fr="all-on"))
     P.append(g("g-s49c-name-split-by-zwsp", "05#49", "other", "note", "leakage-scan", [{"path": "docs/rig-zw.md", "content": "built for zzrig​secretname\n"}], fr="all-on", note="side road: zero-width space inside the term"))
@@ -169,9 +169,9 @@ def githook_cases():
     P.append(ok("g-ok-tool-called-from-doc", [tool("zz_rig_@@ok.py"), {"path": "docs/rig-ok-tool.md", "content": "To run it: `python3 system/tools/zz_rig_@@ok.py`\n"}], pre=REG, build="tool", note="tool registered and named on an instruction line"))
     P.append(ok("g-ok-tool-in-jobs-md", [tool("zz_rig_@@okjob.py")], pre=REG + ["python3 - <<'E'\np='system/jobs.md'\nt=open(p,encoding='utf-8').read()\nt=t.replace('```\\n\\n','```\\n\\n') \nopen(p,'w',encoding='utf-8').write(t+'\\n<!-- zz_rig_@@okjob.py is mentioned here, on a comment line for the rig -->\\n')\nE"], build="tool",
               note="named in jobs.md (any mention there counts as connected)"))
-    P.append(ok("g-ok-thin-wrapper", [{"path": "system/tools/zz_rig_@@wrap.sh", "content": '#!/bin/bash\n# wraps-shared: shared/notify/notify-send.sh\n# not-wired-yet: rig\nexec bash "$LIFEHACK_CODE_ROOT/shared/notify/notify-send.sh" "$@"\n', "mode": "755"}], pre=REG, build="tool", note="a wrapper of a shared tool is not a copy"))
-    P.append(ok("g-ok-hook-with-exec-bit", [{"path": "system/githooks/zz_rig_@@okhelper.sh", "content": "#!/bin/bash\n# not-wired-yet: rig\nexit 0\n", "mode": "755"}], build="hook"))
-    P.append(g("g-s08-hook-registered-nowhere", "05#8,9", "unwired", "hook", "citation-lint", [{"path": "system/hooks/zz_rig_@@orphan.sh", "content": "#!/bin/bash\n# not-wired-yet: rig\nexit 0\n", "mode": "755"}], fr="not-loaded", note="a hook on disk, registered nowhere"))
+    P.append(ok("g-ok-thin-wrapper", [{"path": "system/tools/zz_rig_@@wrap.sh", "content": '#!/bin/bash\n# wraps-shared: shared/notify/notify-send.sh\n# not-wired-yet: rig fixture, planted by the test harness only\nexec bash "$LIFEHACK_CODE_ROOT/shared/notify/notify-send.sh" "$@"\n', "mode": "755"}], pre=REG, build="tool", note="a wrapper of a shared tool is not a copy"))
+    P.append(ok("g-ok-hook-with-exec-bit", [{"path": "system/githooks/zz_rig_@@okhelper.sh", "content": "#!/bin/bash\n# not-wired-yet: rig fixture, planted by the test harness only\nexit 0\n", "mode": "755"}], build="hook"))
+    P.append(g("g-s08-hook-registered-nowhere", "05#8,9", "unwired", "hook", "citation-lint", [{"path": "system/hooks/zz_rig_@@orphan.sh", "content": "#!/bin/bash\n# not-wired-yet: rig fixture, planted by the test harness only\nexit 0\n", "mode": "755"}], fr="not-loaded", note="a hook on disk, registered nowhere"))
     P.append(ok("g-ok-silencer-on-harmless-call", [sh("zz_rig_@@okpgrep.sh", 'pgrep -f nothing >/dev/null 2>&1 || true\nrm -f "$TMPDIR/x" 2>/dev/null || true\n')], pre=REG, build="tool", note="|| true on pgrep/rm is the door's own allowed use"))
     P.append(ok("g-ok-test-file-with-tmp", [{"path": "system/tools/tests/test_zz_rig_@@ok.sh", "content": "#!/bin/bash\necho hi > /tmp/rig-test.txt\n", "mode": "755"}], build="tool", note="tests are exempt from the hides-failure rules"))  # allow-silence: rig case text that plants the wrong move on purpose
     P.append(ok("g-ok-doc-with-curl-word", [{"path": "docs/rig-ok-curl.md", "content": "Never run curl against Gmail by hand; use the shared email tool.\n"}]))

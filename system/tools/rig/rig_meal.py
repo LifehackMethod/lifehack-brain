@@ -142,7 +142,7 @@ def plant(d, c):
                 lines = [(l + " # edited") if i % step == 0 else l for i, l in enumerate(lines)]
             content = "\n".join(lines) + "\n"
             if f["path"].endswith(".sh") and "not-wired-yet" not in content:
-                content = content.replace("\n", "\n# not-wired-yet: rig\n", 1)
+                content = content.replace("\n", "\n# not-wired-yet: rig fixture, planted by the test harness only\n", 1)
         open(path, "w", encoding="utf-8").write(content.replace("@@", ""))   # "@@" splits a fake secret in the case file
         os.chmod(path, int(f.get("mode", "644"), 8))
 
@@ -333,7 +333,7 @@ def live_case(c, notes, model, claude_bin, workdir):
         if d.get("type") == "result":
             turns, cost = d.get("num_turns"), d.get("total_cost_usd")
     ns = argparse.Namespace(stream=stream, desk=desk, sid=None, journal=os.path.expanduser("~/.claude/run/fire-journal.jsonl"), code_root=ROOT, sop=L.get("sop", []),
-                            shared_ref=L.get("shared_ref", []), register_file=[], home_prefix=[desk], wrong_move=L.get("wrong_re", []), ignore_hook=[], json=True)
+                            shared_ref=L.get("shared_ref", []), register_file=[], home_prefix=[desk], wrong_move=L.get("wrong_re", []), ignore_hook=[], json=True, registration_forbidden=bool(L.get("registration_forbidden")))
     try:
         sc = ls.score(ns)
         err2 = ""

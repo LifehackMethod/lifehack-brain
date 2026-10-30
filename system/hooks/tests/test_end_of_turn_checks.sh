@@ -5,7 +5,7 @@
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 PLUG="$(cd "$HERE/../.." && pwd -P)"; REC="$HERE/turn_write_recorder.sh"; EOT="$HERE/end_of_turn_checks.sh"
 T="$(cd "$(mktemp -d)" && pwd -P)"; trap 'rm -rf "$T"' EXIT
-export HOME="$T/hm"; PC="$T/hm/my-code"; WORK="$T/hm/scratch-proj"; export LHB_TURN_WRITES_DIR="$T/tw"
+export HOME="$T/hm"; PC="$T/hm/my-code"; WORK="$T/hm/my-code/bin"; export LHB_TURN_WRITES_DIR="$T/tw"
 mkdir -p "$HOME/.config/lifehack" "$PC/bin" "$WORK"; echo "$PC" > "$HOME/.config/lifehack/personal-code"
 pass=0; fail=0
 ok()  { pass=$((pass+1)); printf '   ok   %s\n' "$1"; }
@@ -33,6 +33,7 @@ export ROUNDB_BACK_DOOR=on ROUNDB_OWN_LIST=on
 echo "== ALLOW =="
 stop a1 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "no writes: silent exit 0" || bad "no writes not silent: $OUT $ERR"
 [ ! -e "$T/tw/a1.list" ] && ok "no list file created for a no-write session" || bad "list created for no-write"
+printf '{"type": "tool", "path": "/bin/hello.py"}\n{"type": "tool", "path": "/bin/clean-b.py"}\n' >> "$PC/register.jsonl"   # listed: the clean files live in a home, so they must be on the person's own list too
 mkfile "$WORK/hello.py" $'print("hi")\n'; rec a2 p1 Write "$(Jw "$WORK/hello.py")" create
 stop a2 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "clean new file: silent" || bad "clean file flagged: $OUT $ERR"
 mkfile "$WORK/old-fetch.sh" "$BADSH"; rec a3 p1 Edit "$(Jw "$WORK/old-fetch.sh")"
@@ -55,11 +56,11 @@ rec a10 p1 Bash "$(Jb "echo 'see $WORK/ghost.sh for later'")"; [ ! -e "$T/tw/a10
 
 echo "== SWITCHES OFF = today's behaviour =="
 mkfile "$WORK/fetch-off.sh" "$BADSH"
-ROUNDB_BACK_DOOR=off ROUNDB_OWN_LIST=off rec b1 p1 Write "$(Jw "$WORK/fetch-off.sh")" create
+ROUNDB_BACK_DOOR=off ROUNDB_OWN_LIST=off ROUNDB_OWN_LIST_UNHOMED=off rec b1 p1 Write "$(Jw "$WORK/fetch-off.sh")" create
 [ ! -e "$T/tw/b1.list" ] && ok "both OFF: recorder records nothing" || bad "recorded while OFF"
-ROUNDB_BACK_DOOR=off ROUNDB_OWN_LIST=off stop b1 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "both OFF: Stop hook silent" || bad "Stop acted while OFF"
+ROUNDB_BACK_DOOR=off ROUNDB_OWN_LIST=off ROUNDB_OWN_LIST_UNHOMED=off stop b1 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "both OFF: Stop hook silent" || bad "Stop acted while OFF"
 rec b2 p1 Write "$(Jw "$WORK/fetch-off.sh")" create
-ROUNDB_BACK_DOOR=off ROUNDB_OWN_LIST=off stop b2 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "OFF at Stop even with a recorded list: silent" || bad "Stop blocked while OFF"
+ROUNDB_BACK_DOOR=off ROUNDB_OWN_LIST=off ROUNDB_OWN_LIST_UNHOMED=off stop b2 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "OFF at Stop even with a recorded list: silent" || bad "Stop blocked while OFF"
 mkfile "$PC/bin/new-thing.py" $'print(2)\n'
 rec b3 p1 Write "$(Jw "$PC/bin/new-thing.py")" create
 ROUNDB_OWN_LIST=off stop b3 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "own_list OFF: unlisted tool not flagged" || bad "own_list flagged while OFF: $OUT"
