@@ -197,6 +197,9 @@ fire g4 Write "$(J file_path "$HOME/other-lab/f.py" content 'print(1)')"; want 2
 fire g5 Bash "$(J command "echo hi > $HOME/other-lab/l.sh  # lifehack-place: $GOOD")"; want 0 "remember ON: Bash reason passes"
 fire g5 Write "$(J file_path "$HOME/other-lab/m.py" content 'print(1)')"; want 0 "remember ON: Bash reason remembered its folder"; silent "bash remembered"
 cnt="$(grep -c '^kept' "$PCONF")"; fire g5 Bash "$(J command "echo hi > $HOME/other-lab/n.sh  # lifehack-place: $GOOD")"; [ "$(grep -c '^kept' "$PCONF")" = "$cnt" ] && { pass=$((pass+1)); echo "   ok   no duplicate line for a folder already remembered"; } || { fail=$((fail+1)); echo "  FAIL  duplicate remembered line"; }
+# one command writing TWO files, each carrying the same real reason: the second copy must not make the reason "only repeat the code"
+mkdir -p "$HOME/two-lab"
+fire g9 Bash "$(J command $'cat > '"$HOME"$'/two-lab/a.py <<EOF\n# lifehack-place: '"$GOOD"$'\nprint(1)\nEOF\ncat > '"$HOME"$'/two-lab/b.py <<EOF\n# lifehack-place: '"$GOOD"$'\nprint(2)\nEOF')"; want 0 "gate ON: two files, same real reason in both, passes"; silent "two files one reason"
 # ---- Round C (silent-miss causes C + D): SKILL.md rides the placement rule; placement_toolbox_hint shows the shared tool
 mkdir -p "$HOME/skill-lab" "$HOME/notify-lab"
 export ROUNDB_PLACEMENT_OUTSIDE_HOMES=on ROUNDB_REASON_GATE=off ROUNDB_PLACEMENT_TOOLBOX_HINT=off

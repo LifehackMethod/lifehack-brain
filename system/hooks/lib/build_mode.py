@@ -366,7 +366,7 @@ def stated_reason(blob):
     if not m:
         return "", blob or ""
     r = re.sub(r"\s*(?:-->|\*/)\s*$", "", m.group(1)).strip().strip("\"'`").strip()
-    return r, (blob[:m.start()] + blob[m.end():])
+    return r, REASON_RX.sub("", blob)   # EVERY marker line goes: two files in one command carry the same reason, and the second copy made a real reason 'only repeat the code'
 
 
 def weak_reason_of(reason, code, code_root_dir):
