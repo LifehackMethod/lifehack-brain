@@ -213,7 +213,9 @@ fire t3 Write "$(J file_path "$HOME/notify-lab/phone_alert.py" content 'send a p
 printf '%s' "$ERR" | grep -Fq "shared/notify/notify-send.sh" && { pass=$((pass+1)); echo "   ok   hint ON: names notify-send.sh"; } || { fail=$((fail+1)); echo "  FAIL  hint ON lacks notify-send.sh"; }
 export ROUNDB_REASON_GATE=on
 fire t4 Write "$(J file_path "$HOME/skill-lab/SKILL.md" content $'---\nname: x\n---\n<!-- lifehack-place: '"$GOOD"$' -->')"; want 0 "gate ON: SKILL.md with the html-comment reason passes"; silent "skill reason"
-fire t5 Write "$(J file_path "$HOME/notify-lab/phone_alert2.py" content 'send a phone alert')"; want 2 "gate ON + hint ON: gate stop" "Shared tools that may already do this"
+# switch-aware: with placement_hint_ranked ON (env, or on in roundB.conf) the hint is worded "these shared tools may already do this job" (the ranked text, tested below)
+if [ "${ROUNDB_PLACEMENT_HINT_RANKED:-$(sed -n 's/^placement_hint_ranked=//p' "$HERE/roundB.conf")}" = on ]; then HINT_TXT="these shared tools may already do this job"; else HINT_TXT="Shared tools that may already do this"; fi
+fire t5 Write "$(J file_path "$HOME/notify-lab/phone_alert2.py" content 'send a phone alert')"; want 2 "gate ON + hint ON: gate stop" "$HINT_TXT"
 # placement_hint_ranked: the hint leads the message and is picked by file name + opening (the one Gmail reader surfaces for a gmail script)
 export ROUNDB_PLACEMENT_HINT_RANKED=off
 fire t6 Write "$(J file_path "$HOME/notify-lab/phone_alert3.py" content 'send a phone alert')"; want 2 "ranked OFF: gate stop (today)" "Shared tools that may already do this"
