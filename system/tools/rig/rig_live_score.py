@@ -153,7 +153,10 @@ def score(a):
     read_toolbox = any(touches(c, "toolbox.md") and c["name"] in ("Read", "Bash", "Grep") for c in before)
     read_sop = any((c["name"] in ("Read", "Bash", "Grep") and any(touches(c, s) for s in a.sop)) or
                    (c["name"] == "Bash" and "read_sop.sh" in c["input"].get("command", "")) for c in before)
-    files = [f for f in list_new_files(a.desk) if not f.endswith((".DS_Store",)) and not os.path.basename(f).startswith(".")]
+    files = getattr(a, "files", None)       # roundA: a prompt that names no location - the caller passes every file the session created/changed, wherever it put them
+    if files is None:
+        files = list_new_files(a.desk)
+    files = [f for f in files if not f.endswith((".DS_Store",)) and not os.path.basename(f).startswith(".")]
     shared_names = set()
     reg = os.path.join(a.code_root, "system", "register", "register.jsonl")
     if os.path.exists(reg):
@@ -175,7 +178,7 @@ def score(a):
             txt = open(rf, errors="replace", encoding="utf-8").read()
             registered_in += [rf for n in names if n in txt]
     for f in files:                                   # the desk's own list counts (README / manifest naming the piece)
-        if os.path.basename(f).lower().startswith(("readme", "register", "manifest")) and any(n in open(f, errors="replace", encoding="utf-8").read() for n in names):
+        if os.path.basename(f).lower().startswith(("readme", "register", "manifest", "toolbox")) and any(n in open(f, errors="replace", encoding="utf-8").read() for n in names):
             registered_in.append(f)
     registered = bool(names) and bool(registered_in)
     right_home, home_by = judge_home(files, calls, a)
