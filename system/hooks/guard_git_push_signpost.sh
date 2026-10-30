@@ -118,15 +118,7 @@ INPUT=$(cat 2>/dev/null)
 
 _LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib/git_target_resolver.py"
 
-# Round B piece 4 (switch cmdreader): when ON and shared/cmdreader.py exists, the shared command reader
-# resolves the push target and argv; OFF (or reader missing) = the resolver below, byte for byte as before.
-_CMDR=""
-if . "$(dirname "$0")/lib/roundb.sh" 2>/dev/null && roundb_on cmdreader; then
-  _CMDR="$(cd "$(dirname "$0")/../../shared" 2>/dev/null && pwd)/cmdreader.py"
-  [ -f "$_CMDR" ] || _CMDR=""
-fi
-
-VERDICT=$(printf '%s' "$INPUT" | GUARD_LIB="$_LIB" CMDR_LIB="$_CMDR" python3 -c '
+VERDICT=$(printf '%s' "$INPUT" | GUARD_LIB="$_LIB" python3 -c '
 import sys, json, os, base64, importlib.util
 
 try:
@@ -155,18 +147,6 @@ try:
     status, target = _gtr.resolve(cmd, "push")
 except Exception:
     print("BLOCK_NOLIB"); raise SystemExit
-
-_cr = None
-if os.environ.get("CMDR_LIB"):
-    try:
-        _crs = importlib.util.spec_from_file_location("cmdreader", os.environ["CMDR_LIB"])
-        _cr = importlib.util.module_from_spec(_crs)
-        sys.modules["cmdreader"] = _cr
-        _crs.loader.exec_module(_cr)
-        status, target = _cr.resolve_git(cmd, "push")
-    except Exception:
-        _cr = None
-        status, target = _gtr.resolve(cmd, "push")
 
 if status == "NOT_OURS":
     print("NOT_OURS"); raise SystemExit
@@ -223,27 +203,24 @@ def _strip_shell_redirections(tokens):
 
 push_argv = []
 try:
-  if _cr is not None:
-    push_argv = _cr.git_argv(_cr.read(cmd), "push")
-  else:
-    for seg, _op in _gtr._segment(_gtr._tokenize(cmd)):
-        idx = 0
-        while idx < len(seg) and "=" in seg[idx] and not seg[idx].startswith("-"):
-            idx += 1
-        if idx >= len(seg) or not _gtr._is_git(seg[idx]):
-            continue
-        j = idx + 1
-        while j < len(seg) and seg[j].startswith("-"):
-            if seg[j] in ("-C", "-c"):
-                if seg[j] == "-C" and j + 1 < len(seg):
-                    j += 2
-                else:
-                    j += 1
-            else:
-                j += 1
-        if j < len(seg) and seg[j] == "push":
-            push_argv = _strip_shell_redirections(seg[j + 1:])
-            break
+  for seg, _op in _gtr._segment(_gtr._tokenize(cmd)):
+      idx = 0
+      while idx < len(seg) and "=" in seg[idx] and not seg[idx].startswith("-"):
+          idx += 1
+      if idx >= len(seg) or not _gtr._is_git(seg[idx]):
+          continue
+      j = idx + 1
+      while j < len(seg) and seg[j].startswith("-"):
+          if seg[j] in ("-C", "-c"):
+              if seg[j] == "-C" and j + 1 < len(seg):
+                  j += 2
+              else:
+                  j += 1
+          else:
+              j += 1
+      if j < len(seg) and seg[j] == "push":
+          push_argv = _strip_shell_redirections(seg[j + 1:])
+          break
 except Exception:
     push_argv = []
 

@@ -1,4 +1,4 @@
-"""Round B switch reader. roundb_on("cmdreader") -> bool.
+"""Round B switch reader. roundb_on("back_door") -> bool.
 Env ROUNDB_<NAME> (upper case) overrides roundB.conf; anything but "on" is off."""
 import os
 from pathlib import Path
