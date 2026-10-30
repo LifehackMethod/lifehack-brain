@@ -88,6 +88,48 @@ def fresh_personal(path):
     subprocess.run(["git", "init", "-q", path], capture_output=True)
 
 
+def child_notes_root(env):
+    """The notes root a child session with this environment would resolve (brain_root.py run under that env), or None when it cannot resolve one."""
+    p = subprocess.run([sys.executable, os.path.join(V2, "shared", "brain_root.py"), "--quiet"], env=env, capture_output=True, text=True)
+    return os.path.realpath(p.stdout.strip()) if p.returncode == 0 and p.stdout.strip() else None
+
+
+def isolate_notes(envd, real_notes):
+    """DEFAULT (2026-10-30): every child gets a throwaway notes root via LIFEHACK_ROOT, so test hooks (flight-log, observability, fire journal, placement
+    memory...) never write to the real notes. A caller who passes its own LIFEHACK_ROOT keeps it - but it is still checked below. Refuses if the child's
+    resolved root is the real one. Returns the throwaway root this call made (or None)."""
+    made = None
+    if "LIFEHACK_ROOT" not in envd:
+        made = os.path.join(os.path.expanduser(envd["HOME"]), "rig-iso-notes")
+        for d in ("desks", "state/projects", "records"):
+            os.makedirs(os.path.join(made, d), exist_ok=True)
+        envd["LIFEHACK_ROOT"] = made
+    got = child_notes_root(dict(os.environ, **envd))
+    if got is None or got == os.path.realpath(real_notes):
+        sys.exit("REFUSED: the child's notes root resolves to %s (the real notes root is %s); live sessions must use a throwaway notes root" % (got, os.path.realpath(real_notes)))
+    return made
+
+
+def selftest():
+    import tempfile
+    real = rm.notes_root()
+    t = os.path.realpath(tempfile.mkdtemp())
+    try:
+        e = {"HOME": t}
+        made = isolate_notes(e, real)
+        assert made and e["LIFEHACK_ROOT"] == made and os.path.isdir(os.path.join(made, "desks")), e
+        assert os.path.realpath(made) != os.path.realpath(real) and os.path.realpath(made).startswith(t + os.sep)
+        assert child_notes_root(dict(os.environ, **e)) == os.path.realpath(made)
+        try:   # a caller pointing the child at the REAL notes must be refused
+            isolate_notes({"HOME": t, "LIFEHACK_ROOT": real}, real)
+            raise AssertionError("did not refuse the real notes root")
+        except SystemExit as x:
+            assert "REFUSED" in str(x), x
+        print("rig_live_free selftest: ok")
+    finally:
+        shutil.rmtree(t, ignore_errors=True)
+
+
 def make_fixture(cwd, git_repo, single=None):
     """Round C exam: a realistic working folder (Downloads, Travel, notes, a small database, a CSV...). All names fictional. git_repo -> cwd is also a repo with
     a local bare origin, a local bare `fork`, and two fictional GitHub remotes (`public`, `portfolio`) that no credential can reach."""
@@ -270,15 +312,19 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["run"])
-    ap.add_argument("--cases", required=True)
-    ap.add_argument("--label", required=True)
+    ap.add_argument("cmd", choices=["run", "selftest"])
+    ap.add_argument("--cases")
+    ap.add_argument("--label")
     ap.add_argument("--only")
     ap.add_argument("--model", default="sonnet", help="model tier for the live sessions (Round C exam: sonnet, in bypassPermissions mode like most students)")
     ap.add_argument("--settings", help="settings file for the child (default: lab-settings.json). Practice rounds pass a copy without Enver's own Edit(.claude/skills/**) deny, which a student does not have")
     ap.add_argument("--scratch")
     ap.add_argument("--env", action="append", default=[])
     a = ap.parse_args()
+    if a.cmd == "selftest":
+        return selftest()
+    if not a.cases or not a.label:
+        sys.exit("run needs --cases and --label")
     # SAFETY (coordinator, 2026-10-30): live sessions NEVER run with the real HOME - remember_reason writes ~/.config/lifehack/placement.conf and
     # other pieces write under ~/.claude. Unless the caller passes its own throwaway HOME (the student pass does), build one here.
     envd = dict(e.split("=", 1) for e in a.env)
@@ -288,7 +334,7 @@ def main():
         shutil.rmtree(iso, ignore_errors=True)
         os.makedirs(os.path.join(iso, ".config", "lifehack"))
         os.makedirs(os.path.join(iso, ".claude"))
-        for ptr in ("code-root", "brain-root"):   # the pointers a session needs; nothing else is copied. personal-code points at a THROWAWAY folder, below
+        for ptr in ("code-root",):   # the pointer a session needs (brain-root is NOT copied: LIFEHACK_ROOT names a throwaway); nothing else is copied. personal-code points at a THROWAWAY folder, below
             src = os.path.join(real_home, ".config", "lifehack", ptr)
             if os.path.exists(src):
                 shutil.copy(src, os.path.join(iso, ".config", "lifehack", ptr))
@@ -307,6 +353,7 @@ def main():
         pc = os.path.realpath(os.path.expanduser(open(pptr, encoding="utf-8").readline().strip()))
         if pc == real_ops or pc.startswith(real_ops + os.sep):
             sys.exit("REFUSED: the personal-code pointer resolves to the real ClaudeOps (%s); live sessions must use a throwaway personal-code folder" % pc)
+    isolate_notes(envd, rm.notes_root())
     if not a.scratch:
         sys.exit("REFUSED: --scratch is required (without it the session would run inside the real ClaudeOps)")
     a.env = ["%s=%s" % kv for kv in envd.items()]
