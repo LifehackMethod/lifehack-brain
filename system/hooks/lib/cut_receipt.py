@@ -46,6 +46,12 @@ BIG = 4_000_000         # word-diff cost guard (tokens_old * tokens_new)
 REASON_RX = re.compile(r"reason\W{0,6}\s*\S{3}", re.I)
 DATE_RX = re.compile(r"\d{4}-\d{2}-\d{2}")
 HEAD_RX = re.compile(r"^#{1,6}\s")
+# P-48 placeholder: a log entry whose verbatim text is private is replaced by this one line (the text itself is kept in the
+# operator's private notes, <notes>/state/projects/<slug>/records/, never in the shipped log). Inside a VALID dated block (date +
+# reason) it is a receipt for a private cut. The text cannot be matched (it is not here), so such a block covers any removed
+# passage not found verbatim: the receipt is the operator's word, recorded.
+PRIVATE_RX = re.compile(r"\(verbatim original moved to the operator'?s private notes,\s*\d{4}-\d{2}-\d{2},\s*because it is private\)", re.I)
+PRIVATE_MARK = "\x01PRIVATE-RECEIPT\x01"
 
 
 def norm(s):
@@ -147,6 +153,8 @@ def logged_text(hist):
         head = " ".join([b[0]] + [x for x in b[1:] if x.strip()][:3])
         if REASON_RX.search(head):
             out.append(mdnorm("\n".join(b)))
+            if PRIVATE_RX.search("\n".join(b)):
+                out.append(PRIVATE_MARK)
     return "\x00".join(out)
 
 
@@ -155,7 +163,7 @@ def missing_passages(passages, hist):
     miss = []
     for p in passages:
         pn = mdnorm(p)
-        if pn in log:
+        if pn in log or PRIVATE_MARK in log:
             continue
         lines = [mdnorm(x) for x in p.split("\n")]
         lines = [x for x in lines if len(x) >= MIN_LINE]

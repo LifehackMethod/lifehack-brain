@@ -79,7 +79,24 @@ allow "cut after a real pad_archive cutlog (end to end)" "$(json Edit "$SOP" "$L
 mk_sop; allow "Bash append to SOP (>>)" "$(json Bash "$SOP" "echo more >> $SOP")" bm
 mk_sop; allow "Bash write to a non-SOP file" "$(json Bash "$SOP" "echo x > $S/notes/records/z.md")" bm
 
+# P-48 placeholder: a dated, reasoned block holding the private-notes line is a receipt for a private cut
+PH="(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)"
+mk_sop; printf '# History log\n\n## 2026-10-30 - reason: private pointer removed\n\n%s\n' "$PH" > "$SOPS/pond-sop.history.md"; allow "P-48 placeholder block is a receipt for a cut" "$(json Edit "$SOP" "$LONG2
+" "")"
+mk_sop; printf '# History log\n\n## 2026-10-30 - reason: private pointer removed\n\n%s\n' "$PH" > "$SOPS/pond-sop.history.md"; allow "P-48 placeholder, Write drops a section" "$(json Write "$SOP" "# Pond SOP
+
+$LONG1
+
+End.
+")"
+
 # ---------------- REFUSE (ON refuses, OFF allows)
+mk_sop; printf '# History log\n\n## 2026-10-30\n\n%s\n' "$PH" > "$SOPS/pond-sop.history.md"; refuse "P-48 placeholder but the block has no reason" "$(json Edit "$SOP" "$LONG2
+" "")"
+mk_sop; printf '# History log\n\n%s\n' "$PH" > "$SOPS/pond-sop.history.md"; refuse "P-48 placeholder outside any dated block" "$(json Edit "$SOP" "$LONG2
+" "")"
+mk_sop; printf '# History log\n\n## 2026-10-30 - reason: x\n\n(verbatim original moved somewhere)\n' > "$SOPS/pond-sop.history.md"; refuse "near-miss placeholder wording" "$(json Edit "$SOP" "$LONG2
+" "")"
 mk_sop; refuse "Edit deletes a paragraph, no history file" "$(json Edit "$SOP" "$LONG2
 " "")"
 mk_sop; hist "other" "$LONG1"; refuse "history exists but lacks the passage" "$(json Edit "$SOP" "$LONG2
