@@ -11,7 +11,13 @@ trap 'lhb_journal_fire "$?" "end_of_turn_checks.sh" "Stop" "" 2>/dev/null || tru
 #          each in `--files` mode (no git). safe_to_ship is NOT run (a Write-created file never has +x).
 #      switch `own_list`: a new tool/skill in the personal code folder that is not in the person's OWN list
 #          (<personal code folder>/register.jsonl) -- the message carries the exact one-line command to add it.
-#      Both OFF = does nothing. A failure BLOCKS ONCE (JSON decision on stdout, exit 0); stop_hook_active=true never
+#      switch `own_list_unhomed` (Round C 5A): a NEW .py/.sh/SKILL.md outside EVERY home (plugin, notes, personal code folder;
+#          same scratch/.claude/.config exemptions as placement rule code-outside-homes -- own_list_add.py --unhomed calls
+#          build_mode.outside_homes_target) is flagged too: "move it to <personal>/tools/<name>, then run <own_list_add cmd>";
+#          a folder the person KEPT (a `kept<TAB><folder>` line in ~/.config/lifehack/placement.conf) instead gets
+#          "it stays here by your choice; list it: ... --keep <file>", which lists it in the personal folder's own list by
+#          absolute path. Silent when no personal code folder resolves. No GitHub needed.
+#      All OFF = does nothing. A failure BLOCKS ONCE (JSON decision on stdout, exit 0); stop_hook_active=true never
 #      blocks again; at most 3 blocks per session; a file is never asked about twice. Edits to old files are recorded
 #      but not checked (it would re-flag their old backlog). No model call, no network.
 # REDIRECT: fix the flagged line / run the printed own-list command. Escapes: `# allow-silence: <why>` on the line
@@ -22,8 +28,8 @@ trap 'lhb_journal_fire "$?" "end_of_turn_checks.sh" "Stop" "" 2>/dev/null || tru
 # UPDATED: 2026-10-30
 # ─────────────────────────────────────────────────────────────────────────────
 . "$_lhb_dir/lib/roundb.sh" 2>/dev/null || roundb_on() { return 1; }
-DOOR=0; OWN=0; roundb_on back_door && DOOR=1; roundb_on own_list && OWN=1
-[ "$DOOR$OWN" = "00" ] && exit 0
+DOOR=0; OWN=0; UNH=0; roundb_on back_door && DOOR=1; roundb_on own_list && OWN=1; roundb_on own_list_unhomed && UNH=1
+[ "$DOOR$OWN$UNH" = "000" ] && exit 0
 IFS= read -r -d '' P || true
 re_sid='"session_id"[[:space:]]*:[[:space:]]*"([A-Za-z0-9_-]+)"'; re_pid='"prompt_id"[[:space:]]*:[[:space:]]*"([A-Za-z0-9_-]+)"'
 [[ $P =~ $re_sid ]] || exit 0; SID="${BASH_REMATCH[1]}"
@@ -60,6 +66,10 @@ fi
 if [ "$OWN" = 1 ]; then
   o="$(python3 "$HAR/shared/tools/own_list_add.py" --check "${ALL[@]}" 2>/dev/null)"
   [ -n "$o" ] && OUT+="$(printf '%s\n' "$o" | cut -c1-600 | head -6)"$'\n'
+fi
+if [ "$UNH" = 1 ]; then
+  o="$(python3 "$HAR/shared/tools/own_list_add.py" --unhomed "${ALL[@]}" 2>/dev/null)"
+  [ -n "$o" ] && OUT+="$(printf '%s\n' "$o" | cut -c1-700 | head -6)"$'\n'
 fi
 OUT="$(printf '%s' "$OUT" | grep -v '^$' | head -12)"
 [ -n "$OUT" ] || exit 0

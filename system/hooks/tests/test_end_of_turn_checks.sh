@@ -92,4 +92,34 @@ rec d1 p5 Write "$(Jw "$PC/bin/ring-bell.sh")" create; stop d1 p5; [ -z "$OUT$ER
 mkfile "$PC/bin/fetch-x.sh" "$BADSH"; ROUNDB_BACK_DOOR=off rec d2 p1 Write "$(Jw "$PC/bin/fetch-x.sh")" create
 ROUNDB_BACK_DOOR=off stop d2 p1; R="$(reason)"; printf '%s' "$R" | grep -q "own list" && ! printf '%s' "$R" | grep -q hides_failure && ok "own_list alone: only the list rule" || bad "own-alone wrong: $R"
 
+echo "== OWN LIST, UNHOMED (Round C 5A, switch own_list_unhomed) =="
+# ALLOW first: switch OFF, kept-listed, scratch dirs, test files, non-code, inside a home
+mkdir -p "$HOME/pondproj" "$HOME/.config/lifehack"
+mkfile "$HOME/pondproj/lonely.py" $'print("lonely")\n'; rec u1 p1 Write "$(Jw "$HOME/pondproj/lonely.py")" create
+ROUNDB_OWN_LIST_UNHOMED=off stop u1 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "unhomed OFF: file outside homes not flagged" || bad "flagged while OFF: $OUT"
+mkfile "$T/tmpish/x.sh" $'echo x\n'; rec u2 p1 Write "$(Jw "$T/tmpish/x.sh")" create
+mkfile "$HOME/.claude/scratchpad/y.py" $'print(1)\n'; rec u2 p2 Write "$(Jw "$HOME/.claude/scratchpad/y.py")" create
+ROUNDB_OWN_LIST_UNHOMED=on stop u2 p2; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "unhomed ON: ~/.claude scratchpad exempt" || bad "scratch flagged: $OUT"
+mkfile "$HOME/pondproj/test_lonely.py" $'assert 1\n'; rec u3 p1 Write "$(Jw "$HOME/pondproj/test_lonely.py")" create
+mkfile "$HOME/pondproj/readme.md" $'# hi\n'; rec u3 p1 Write "$(Jw "$HOME/pondproj/readme.md")" create
+ROUNDB_OWN_LIST_UNHOMED=on stop u3 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "unhomed ON: test file and .md silent" || bad "test/md flagged: $OUT"
+mkfile "$PC/bin/inside.py" $'print(3)\n'; python3 "$PLUG/shared/tools/own_list_add.py" "$PC/bin/inside.py" >/dev/null; rec u4 p1 Write "$(Jw "$PC/bin/inside.py")" create
+ROUNDB_OWN_LIST_UNHOMED=on stop u4 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "unhomed ON: file inside personal folder (listed): silent" || bad "inside flagged: $OUT"
+rec u5 p1 Write "$(Jw "$HOME/pondproj/lonely.py")" create
+echo "== unhomed BLOCK =="
+ROUNDB_OWN_LIST_UNHOMED=on stop u5 p1; R="$(reason)"
+printf '%s' "$OUT" | grep -q '"decision": *"block"' && ok "unhomed ON: stray tool blocked" || bad "not blocked: $OUT $ERR"
+printf '%s' "$R" | grep -qF "move it to $PC/tools/lonely.py, then run: python3 \"$PLUG/shared/tools/own_list_add.py\" \"$PC/tools/lonely.py\"" && ok "message: move to <personal>/tools/<name> + exact add command" || bad "move message wrong: $R"
+rec u5 p2 Write "$(Jw "$HOME/pondproj/lonely.py")" create; ROUNDB_OWN_LIST_UNHOMED=on stop u5 p2; [ -z "$OUT" ] && ok "same stray file not asked twice" || bad "asked twice"
+mkdir -p "$HOME/keptproj/sub"; printf 'kept\t%s\tmy old repo\n' "$HOME/keptproj" > "$HOME/.config/lifehack/placement.conf"
+mkfile "$HOME/keptproj/sub/stay.sh" $'#!/bin/bash\necho stay\n'; rec u6 p1 Write "$(Jw "$HOME/keptproj/sub/stay.sh")" create
+ROUNDB_OWN_LIST_UNHOMED=on stop u6 p1; R="$(reason)"
+printf '%s' "$R" | grep -qF "stays here by your choice; list it: python3 \"$PLUG/shared/tools/own_list_add.py\" --keep \"$HOME/keptproj/sub/stay.sh\"" && ! printf '%s' "$R" | grep -q "move it to" && ok "kept folder: 'stays here by your choice' variant" || bad "kept message wrong: $R"
+python3 "$PLUG/shared/tools/own_list_add.py" --keep "$HOME/keptproj/sub/stay.sh" >/dev/null; grep -qF "$HOME/keptproj/sub/stay.sh" "$PC/register.jsonl" && ok "--keep lists it in the personal folder's own list (absolute path)" || bad "keep did not list"
+rec u7 p1 Write "$(Jw "$HOME/keptproj/sub/stay.sh")" create; ROUNDB_OWN_LIST_UNHOMED=on stop u7 p1; [ -z "$OUT$ERR" ] && ok "kept + listed: silent" || bad "kept still flagged: $OUT"
+rm -f "$HOME/.config/lifehack/placement.conf"; rm -f "$HOME/.config/lifehack/personal-code"
+mkfile "$HOME/pondproj/two.py" $'print(2)\n'; rec u8 p1 Write "$(Jw "$HOME/pondproj/two.py")" create
+ROUNDB_OWN_LIST_UNHOMED=on stop u8 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "no personal code folder: silent by design" || bad "flagged with no folder: $OUT"
+echo "$PC" > "$HOME/.config/lifehack/personal-code"
+
 echo; echo "passed=$pass failed=$fail"; [ "$fail" = 0 ]

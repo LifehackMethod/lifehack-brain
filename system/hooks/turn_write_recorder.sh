@@ -7,7 +7,7 @@ trap 'lhb_journal_fire "$?" "turn_write_recorder.sh" "PostToolUse" "Write|Edit|N
 #      they build, and the front door (guard_build_mode) fired in only 2 of 12 live sessions. This records WHICH FILES
 #      a session wrote so end_of_turn_checks.sh (Stop) can run the existing checks on exactly those files.
 # GUARDS: nothing -- OBSERVE (PostToolUse, always exit 0, no output). Switches: roundB.conf `back_door` / `own_list`;
-#      both OFF = records nothing, exactly today's behaviour. One line per file, appended to
+#      all three switches (back_door, own_list, own_list_unhomed) OFF = records nothing, exactly today's behaviour. One line per file, appended to
 #      ${LHB_TURN_WRITES_DIR:-~/.claude/run/turn-writes}/<session_id>.list :
 #          <prompt_id> TAB <new|edit> TAB <absolute path>
 #      Write/Edit/NotebookEdit: the payload's file_path / notebook_path (a Write whose tool_response.type is "create"
@@ -22,7 +22,7 @@ trap 'lhb_journal_fire "$?" "turn_write_recorder.sh" "PostToolUse" "Write|Edit|N
 # UPDATED: 2026-10-30
 # ─────────────────────────────────────────────────────────────────────────────
 . "$_lhb_dir/lib/roundb.sh" 2>/dev/null || roundb_on() { return 1; }
-roundb_on back_door || roundb_on own_list || exit 0
+roundb_on back_door || roundb_on own_list || roundb_on own_list_unhomed || exit 0
 IFS= read -r -d '' P || true
 [ -n "$P" ] || exit 0
 
