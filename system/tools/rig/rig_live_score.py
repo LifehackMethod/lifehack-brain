@@ -10,7 +10,7 @@ BASES (each True/False, from evidence, never from the model's own account):
      read_sop       opened the right rulebook (--sop NAME, repeatable) or ran read_sop.sh BEFORE the first building act
      used_shared    the new piece names a /shared/ path (--shared-ref) and no shared tool was copied under the desk
      registered     the new file is named in a register file (--register-file, repeatable) or the desk's own list
-     right_home     every new file sits under --home-prefix (repeatable)
+     right_home     every CODE file sits in an accepted home: Enver's private-repo desks/<desk>/tools/ OR any non-Drive repo location (the student answer, OPEN - plan item 10); never code in the notes (Drive) desk
      "Opening a rulebook counts only if the result follows it": read_* alone never makes a run RIGHT_FIRST_TIME;
      used_shared, registered and right_home (the results) must all hold too.
 BUCKETS:
@@ -93,6 +93,55 @@ def list_new_files(desk, since_marker=None):
     return sorted(out)
 
 
+# ───────────────────────── where the code lives (plan 3b.2 item 10) ─────────────────────────
+# CODE (.sh/.py) must NOT sit in the notes folder (Google Drive): placement.conf denies it. Two answers are accepted:
+#   "enver"        the private ClaudeOps repo: <enver-home>/<desk>/tools/...   (Enver's own setup - one valid answer, NOT the student truth)
+#   "student-open" any path in a git repo that is not under Google Drive. The student answer is an OPEN design question (plan item 10),
+#                  so any non-Drive repo location is accepted and the score is flagged "open".
+# Docs (README, SKILL.md, ...) may stay in the desk. A session that writes no code at all is judged on the desk files as before.
+ENVER_HOME = os.path.expanduser("~/.claude/skills/ClaudeOps/desks")
+CODE_EXT = (".sh", ".py")
+
+
+def _is_drive(p):
+    return "/CloudStorage/" in p or "/My Drive/" in p or "/Google Drive/" in p
+
+
+def _in_git_repo(p):
+    d = os.path.dirname(os.path.abspath(p))
+    while d and d != os.path.dirname(d):
+        if os.path.exists(os.path.join(d, ".git")):
+            return True
+        d = os.path.dirname(d)
+    return False
+
+
+def home_of(path, a):
+    """-> "enver" | "student-open" | None for ONE code file path."""
+    p = os.path.abspath(path)
+    enver = getattr(a, "enver_home", None) or ENVER_HOME
+    if p.startswith(enver.rstrip("/") + "/") and "/tools/" in p[len(enver):]:
+        return "enver"
+    if p.startswith(os.path.abspath(a.desk) + "/") or _is_drive(p):
+        return None
+    return "student-open" if _in_git_repo(p) else None
+
+
+def judge_home(files, calls, a):
+    """-> (right_home, home_by). home_by: "enver" | "student-open" | "mixed" | "docs-only" | None."""
+    code = {f for f in files if f.endswith(CODE_EXT)}
+    for c in calls:                                   # code the session wrote outside the desk (the throwaway desk is wiped after scoring)
+        fp = c["input"].get("file_path") if c["name"] in ("Write", "Edit", "MultiEdit") and not c["is_error"] else None
+        if fp and fp.endswith(CODE_EXT):
+            code.add(fp)
+    if not code:
+        return bool(files), ("docs-only" if files else None)
+    homes = {home_of(f, a) for f in code}
+    if None in homes:
+        return False, None
+    return True, (homes.pop() if len(homes) == 1 else "mixed")
+
+
 def score(a):
     sid, calls = parse_stream(a.stream)
     sid = a.sid or sid
@@ -129,7 +178,7 @@ def score(a):
         if os.path.basename(f).lower().startswith(("readme", "register", "manifest")) and any(n in open(f, errors="replace", encoding="utf-8").read() for n in names):
             registered_in.append(f)
     registered = bool(names) and bool(registered_in)
-    right_home = bool(files) and all(any(f.startswith(h) for h in a.home_prefix) for f in files)
+    right_home, home_by = judge_home(files, calls, a)
     denies = [r for r in rows if r.get("decision") in ("deny", "signpost") and r.get("hook") not in a.ignore_hook]
     layers = sorted({r.get("hook") for r in denies})
     wm = [re.compile(x) for x in a.wrong_move]
@@ -145,7 +194,7 @@ def score(a):
     else:
         bucket = "RIGHT_FIRST_TIME_UNREAD"      # correct result, no friction, but it skipped the reading: luck, not route
     return {"session_id": sid, "bucket": bucket, "bases": {"read_toolbox": read_toolbox, "read_sop": read_sop, "used_shared": used_shared,
-            "registered": registered, "right_home": right_home}, "friction_layers": layers, "deny_rows": len(denies), "denied_calls": len(denied_calls),
+            "registered": registered, "right_home": right_home, "home_by": home_by}, "friction_layers": layers, "deny_rows": len(denies), "denied_calls": len(denied_calls),
             "false_alarms": len(false_alarms), "denied_texts": [(c["name"], (c["input"].get("command") or c["input"].get("file_path") or "")[:100], (c["result"] or "")[:160]) for c in denied_calls], "copied_shared": copied, "files": files, "tool_calls": len(calls), "first_build_call": first_build,
             "route": [(c["name"], (c["input"].get("command") or c["input"].get("file_path") or c["input"].get("pattern") or "")[:90]) for c in calls][:40]}
 
@@ -168,7 +217,8 @@ def main():
     ap.add_argument("--sop", action="append", default=[], help="SOP basename that counts as the right rulebook (repeatable)")
     ap.add_argument("--shared-ref", action="append", default=[], help="substring a file must contain to count as USING a shared tool")
     ap.add_argument("--register-file", action="append", default=[], help="register file the new piece should be named in (repeatable)")
-    ap.add_argument("--home-prefix", action="append", default=[], help="every new file must sit under one of these (repeatable)")
+    ap.add_argument("--home-prefix", action="append", default=[], help="(kept for old callers; the home test is now judge_home: Enver's repo OR any non-Drive repo, flagged open)")
+    ap.add_argument("--enver-home", default=ENVER_HOME, help="Enver's own accepted code home (private repo desks folder); the student answer is any non-Drive repo, OPEN")
     ap.add_argument("--wrong-move", action="append", default=[], help="regex; a denied call matching none of these counts as a false alarm")
     ap.add_argument("--ignore-hook", action="append", default=[], help="hook name whose rows never count as friction (repeatable)")
     ap.add_argument("--json", action="store_true")

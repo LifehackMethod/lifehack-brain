@@ -51,6 +51,20 @@ def summarize(rs):
     return out
 
 
+def headline_lines(rs):
+    """The scoreboard headline: the STUDENT score first (plugin only, no git), Enver's score (adds the githook layers) as a second labelled section."""
+    o = summarize(rs)
+    st, en = o["student"], o["today"]
+    fmt = lambda x: "%d of %d wrong moves saved (%.1f%% unweighted); weighted %.1f%% (%.3f / %.3f); %d slipped" % (
+        x["saved"], o["wrong_move_n"], x["unweighted_pct"], x["weighted_pct"], x["saved_weight"], x["total_weight"], x["slipped"])
+    return ["## Headline: STUDENT score (plugin only, no git, no githook layers)", "",
+            "- **" + fmt(st) + "**",
+            "- Excluded as not available to a student: precommit:*, register-gate, citation-lint, gitleaks, leakage-scan, personal-notes, pre-commit check_drift, pre-push leak guard. Kept: Claude Code hooks and the job-run check-row door.", "",
+            "## Enver's score (adds the GitHub commit checks: a bonus only Enver has, NOT load-bearing)", "",
+            "- " + fmt(en),
+            "- %d cases are saved ONLY by githook layers (%s): saved for Enver, slipped for a student." % (len(o["flipped"]), ", ".join(o["flipped_layers"])), ""]
+
+
 if __name__ == "__main__":
     rs = [json.loads(l) for l in open(sys.argv[1], encoding="utf-8") if l.strip()]
     print(json.dumps(summarize(rs), indent=1))

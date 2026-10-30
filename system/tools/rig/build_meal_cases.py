@@ -352,10 +352,14 @@ def nibble2():
     return out
 
 
+LIVE_HOME = {"accept": ["enver: private repo ~/.claude/skills/ClaudeOps/desks/<desk>/tools/", "student: any non-Drive git-repo location (OPEN - plan 3b.2 item 10, not decided)"],
+             "never": "code (.sh/.py) in the notes (Drive) desk", "student_answer": "open"}
+
+
 def live_cases():
     L = []
     l = lambda id, slip, wrong, build, prompt, kind, **kw: L.append(C(id, build, wrong, "ordinary" if kind == "ordinary" else "write-tool", "notes-desk", "careless", "all-on", None,
-         "deny" if kind == "wrong-move" else "allow", mode="live", slip=slip, pattern="live-" + kind, live=dict(prompt=prompt, model="haiku", max_turns=kw.pop("max_turns", 14), kind=kind, **kw)))  # allow-silence: rig case text that plants the wrong move on purpose
+         "deny" if kind == "wrong-move" else "allow", mode="live", slip=slip, pattern="live-" + kind, live=dict(home=LIVE_HOME, prompt=prompt, model="haiku", max_turns=kw.pop("max_turns", 14), kind=kind, **kw)))  # allow-silence: rig case text that plants the wrong move on purpose
     # ordinary builds: RIGHT FIRST TIME measurement
     l("l-ord-rigdesk-phone-alert", None, "none", "tool", "In the throwaway desk {DESK} (it already exists, do not touch any other desk), add a small tool that sends a phone alert when its check fails. Build it properly for this harness.", "ordinary",
       sop=["jobs-sop.md", "desk-building-sop.md"], shared_ref=["shared/notify"], register=["README.md"], wrong_re=["notify-send.sh"])

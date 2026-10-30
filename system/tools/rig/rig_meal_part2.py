@@ -96,7 +96,7 @@ def main():
     print("- slipped: READ-LIST would prevent %d, END-CHECKS would catch %d, both %d, neither %d" % (sum(x["rl"] for x in sl), sum(x["ec"] for x in sl), sum(x["rl"] and x["ec"] for x in sl), sum(not x["rl"] and not x["ec"] for x in sl)))
     both = [x for x in rows if x["tb"] and x["sop"]]; part = [x for x in rows if not (x["tb"] and x["sop"])]
     print("- read both toolbox and SOP before building: %d runs, defects in %d; skipped at least one: %d runs, defects in %d" % (len(both), sum(bool(x["defects"]) for x in both), len(part), sum(bool(x["defects"]) for x in part)))
-    for f, name in (("tb", "toolbox"), ("sop", "right SOP"), ("used", "shared tool used/not copied"), ("reg", "registered"), ("home", "home under desk")):
+    for f, name in (("tb", "toolbox"), ("sop", "right SOP"), ("used", "shared tool used/not copied"), ("reg", "registered"), ("home", "code in an accepted home")):
         print("- %s: %d of %d" % (name, sum(x[f] for x in rows), n))
     print("- sessions: %d, turns (model-call rounds) %d, cost $%.4f, session time %.0f s" % (n, sum(x["turns"] or 0 for x in rows), sum(x["cost"] for x in rows), sum(x["secs"] for x in rows)))
 

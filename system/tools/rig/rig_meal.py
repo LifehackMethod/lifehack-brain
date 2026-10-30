@@ -26,6 +26,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 sys.path.insert(0, HERE)
 import rig_run  # noqa: E402
+import rig_student  # noqa: E402
 
 DEFAULT_CASES = os.path.join(HERE, "cases", "meal-2026-10-29.jsonl")
 CHECKS = ("connected", "hides_failure", "is_copy", "safe_to_ship")
@@ -479,7 +480,14 @@ def report(base_path, off_paths, out_path, wall):
     wm = [r for r in base if rig_run.is_block(r)]
     corr = [r for r in base if not rig_run.is_block(r)]
     sv = [r for r in wm if r["grade"] in ("caught", "caught-other-layer")]
-    P("## Headline (computed by script from %s)" % os.path.basename(base_path))
+    why = rig_run.weights_ok(base)
+    if why:
+        P("## Headline: STUDENT score REFUSED (%s)" % why)
+        P("")
+    else:
+        for ln in rig_student.headline_lines(base):
+            P(ln)
+    P("## Details (computed by script from %s; every figure below is Enver's, i.e. with the githook layers)" % os.path.basename(base_path))
     P("")
     P("- Cases run: %d (%s). Wall time of the baseline run: %s." % (len(base), ", ".join("%s %d" % kv for kv in sorted(modes.items())), wall))
     P("- Wrong-move cases: %d. SAVED %d, SLIPPED %d, ERROR %d (errors are never counted as saved or slipped)." % (len(wm), len(sv), sum(1 for r in wm if r["grade"] == "slipped"), sum(1 for r in wm if r["grade"] == "error")))
