@@ -114,7 +114,7 @@ fire w3 Bash "$(J command "git worktree add $HOME/worktrees/v2-x -b v2-x")"; wan
 fire w3 Bash "$(J command "git worktree add $CODE/.claude/worktrees/agent1")"; want 0 "Claude-managed .claude/worktrees: allowed"; silent "managed worktree"
 fire w3 Bash "$(J command "echo 'git worktree add /elsewhere/x'")"; want 0 "worktree add inside a quoted echo: allowed"
 # ---- placement rule 4 (3b.3-P3): new code outside EVERY home (switch placement_outside_homes). Fictional paths.
-cp "$HERE/../../shared/personal_code_root.py" "$CODE/shared/"
+cp "$HERE/../../shared/personal_code_root.py" "$CODE/shared/"; mkdir -p "$CODE/shared/tools"; cp "$HERE/../../shared/tools/own_list_add.py" "$CODE/shared/tools/"
 PCODE="$T/personal-code"; mkdir -p "$PCODE/tools" "$HOME/odd-widget" "$HOME/.claude/scratch"; echo "$PCODE" > "$HOME/.config/lifehack/personal-code"
 PCREAL="$(cd "$PCODE" && pwd -P)"
 # OFF: exactly today's behaviour, the rule never fires
@@ -144,7 +144,6 @@ unset ROUNDB_PLACEMENT_OUTSIDE_HOMES
 # ---- Round C 1+2: the reason gate (reason_gate) and remembering the folder (remember_reason). Fictional paths.
 mkdir -p "$CODE/system/tools" "$HOME/gadget-lab/sub" "$HOME/other-lab"
 cp "$HERE/../tools/door_rules.py" "$CODE/system/tools/"
-mkdir -p "$CODE/shared/tools"; cp "$HERE/../../shared/tools/own_list_add.py" "$CODE/shared/tools/"
 GOOD="throwaway prototype kept beside its sample recordings, not a tool anyone reuses"
 PCONF="$HOME/.config/lifehack/placement.conf"
 export ROUNDB_PLACEMENT_OUTSIDE_HOMES=on
@@ -187,5 +186,19 @@ fire g4 Write "$(J file_path "$HOME/other-lab/f.py" content 'print(1)')"; want 2
 fire g5 Bash "$(J command "echo hi > $HOME/other-lab/l.sh  # lifehack-place: $GOOD")"; want 0 "remember ON: Bash reason passes"
 fire g5 Write "$(J file_path "$HOME/other-lab/m.py" content 'print(1)')"; want 0 "remember ON: Bash reason remembered its folder"; silent "bash remembered"
 cnt="$(grep -c '^kept' "$PCONF")"; fire g5 Bash "$(J command "echo hi > $HOME/other-lab/n.sh  # lifehack-place: $GOOD")"; [ "$(grep -c '^kept' "$PCONF")" = "$cnt" ] && { pass=$((pass+1)); echo "   ok   no duplicate line for a folder already remembered"; } || { fail=$((fail+1)); echo "  FAIL  duplicate remembered line"; }
+# ---- Round C (silent-miss causes C + D): SKILL.md rides the placement rule; placement_toolbox_hint shows the shared tool
+mkdir -p "$HOME/skill-lab" "$HOME/notify-lab"
+export ROUNDB_PLACEMENT_OUTSIDE_HOMES=on ROUNDB_REASON_GATE=off ROUNDB_PLACEMENT_TOOLBOX_HINT=off
+fire t1 Write "$(J file_path "$PCODE/tools/x/SKILL.md" content "name: x")"; want 0 "SKILL.md in the personal code folder: allowed"; silent "skill pc"
+fire t1 Write "$(J file_path "$HOME/skill-lab/SKILL.md" content $'---\nname: x\n---')"; want 2 "SKILL.md outside every home: bump" "personal code folder"
+fire t2 Write "$(J file_path "$HOME/notify-lab/phone_alert.py" content 'send a phone alert')"; want 2 "hint OFF: placement bump" "personal code folder"
+printf '%s' "$ERR" | grep -Fq "notify-send.sh" && { fail=$((fail+1)); echo "  FAIL  hint OFF showed a tool"; } || { pass=$((pass+1)); echo "   ok   hint OFF: text unchanged (no tool list)"; }
+export ROUNDB_PLACEMENT_TOOLBOX_HINT=on
+fire t3 Write "$(J file_path "$HOME/notify-lab/phone_alert.py" content 'send a phone alert')"; want 2 "hint ON: placement bump" "Shared tools that may already do this"
+printf '%s' "$ERR" | grep -Fq "shared/notify/notify-send.sh" && { pass=$((pass+1)); echo "   ok   hint ON: names notify-send.sh"; } || { fail=$((fail+1)); echo "  FAIL  hint ON lacks notify-send.sh"; }
+export ROUNDB_REASON_GATE=on
+fire t4 Write "$(J file_path "$HOME/skill-lab/SKILL.md" content $'---\nname: x\n---\n<!-- lifehack-place: '"$GOOD"$' -->')"; want 0 "gate ON: SKILL.md with the html-comment reason passes"; silent "skill reason"
+fire t5 Write "$(J file_path "$HOME/notify-lab/phone_alert2.py" content 'send a phone alert')"; want 2 "gate ON + hint ON: gate stop" "Shared tools that may already do this"
+unset ROUNDB_PLACEMENT_TOOLBOX_HINT
 unset ROUNDB_REASON_GATE ROUNDB_REMEMBER_REASON ROUNDB_PLACEMENT_OUTSIDE_HOMES
 echo "passed=$pass failed=$fail"; [ "$fail" -eq 0 ]

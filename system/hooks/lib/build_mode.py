@@ -506,9 +506,16 @@ def main_inner():
                             denies.append(("gate-hard", None, gate_message(t, pc, why if reason else "", _roundb("remember_reason"), ht)))
                             hit = False
                 if hit:
+                    ht = ""
+                    if _roundb("placement_toolbox_hint"):   # Round C silent-miss cause D: show the shared tool to reuse
+                        try:
+                            ht = tool_hint(code, "%s %s" % (t, (w["content"] or "")[:1500]))
+                            ht = ("\nShared tools that may already do this:" + ht) if ht else ""
+                        except Exception:
+                            ht = ""
                     denies.append(("placement", "place-" + rname,
                                    "Wrong home? %s Retry the same call and it goes through; this stop happens once per session per rule. "
-                                   "RULE: system/hooks/placement.conf (%s)." % (pmsg, rname)))
+                                   "RULE: system/hooks/placement.conf (%s).%s" % (pmsg, rname, ht)))
         # ---- clause B1: cp/mv/rsync whose SOURCE is under <code>/shared/ -> HARD
         for s in w["srcs"]:
             if w["verb"] in ("cp", "mv", "rsync") and under(s, shared_dir) and not under(t, code):
