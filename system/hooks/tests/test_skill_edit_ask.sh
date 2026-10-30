@@ -19,8 +19,8 @@ fire() { # fire <switch on|off> <session> <tool> <tool_input-json>
     | ROUNDB_SKILL_EDIT_ASK="$1" bash "$HOOK" >"$T/out" 2>"$T/err"; RC=$?; }
 asked() { grep -q '"permissionDecision": "ask"' "$T/out" && [ $RC -eq 0 ]; }
 allow() { fire on "$2" "$3" "$4"; if ! asked; then P=$((P+1)); else F=$((F+1)); echo "FAIL allow $1 rc=$RC $(head -c 160 "$T/out")"; fi; }
-ask() {   # ON asks (names the rule and the way through); OFF does not ask
-  fire on "$2" "$3" "$4"
+ask() {   # ON asks (names the rule and the way through); OFF does not ask. The other checks still run first: a new-skill speed bump answers rc 2 once, the retry asks.
+  fire on "$2" "$3" "$4"; [ $RC -eq 2 ] && fire on "$2" "$3" "$4"
   if asked && grep -q "WAY-THROUGH" "$T/out" && grep -q "WHO-COULD-THIS-BREAK" "$T/out" && grep -q "skill_edit_ask" "$T/out"; then P=$((P+1)); else F=$((F+1)); echo "FAIL ask $1 [on] rc=$RC $(head -c 160 "$T/out")"; fi
   fire off "$2" "$3" "$4"; if ! asked; then P=$((P+1)); else F=$((F+1)); echo "FAIL $1 [off] still asked"; fi; }
 U="$HOME/.claude/skills"; PR="$T/proj/.claude/skills"

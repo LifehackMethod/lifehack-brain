@@ -13,6 +13,7 @@ import fnmatch, json, os, re, shlex, sys
 GENERIC_FIXED = {"__init__.py", "utils.py", "util.py", "helpers.py", "config.py", "common.py", "constants.py",
                  "main.py", "base.py", "types.py", "setup.py", "common.sh", "lib.sh", "utils.sh"}
 HOME = os.path.expanduser("~")
+ASK_OUT = []
 SKILL_DIR_RX = re.compile(r"(^|/)\.claude/skills(/|$)")
 STATE = os.path.join(HOME, ".claude", "run", "build-mode")
 
@@ -536,9 +537,10 @@ def main_inner():
                    "skill (skill-builder, a /save that patches a skill). WAY-THROUGH: press Yes on this prompt if you want the change; in a "
                    "headless run, stop and tell the person which skill file you want to change and why, and let them make or approve it. "
                    "RULE: switch skill_edit_ask in system/hooks/roundB.conf." % ("writes to" if tool == "Bash" else "edits", sk[0]))
-            print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "ask",
-                                                      "permissionDecisionReason": msg}}))
-            return 0
+            # Printed by main() only if nothing else denies: the other checks below (placement, copy, speed bump) still run, because
+            # Claude Code's bypass mode DROPS a hook ask for paths under .claude/skills/ (probe 2026-10-30), so the ask alone may not stop the write.
+            ASK_OUT.append(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "ask",
+                                                              "permissionDecisionReason": msg}}))
 
     shared_dir = os.path.join(code, "shared")
     placement = None
@@ -838,6 +840,8 @@ def main():
     except BaseException as e:   # FAIL OPEN: any internal error allows
         warn("internal error (%s: %s); allowing" % (type(e).__name__, e))
         return 0
+    if ASK_OUT and rc in (0, None):
+        print(ASK_OUT[0])
     return rc if rc in (0, 2) else 0
 
 
