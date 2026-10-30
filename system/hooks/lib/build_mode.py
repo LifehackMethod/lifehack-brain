@@ -298,7 +298,12 @@ def outside_homes_target(t, code, notes):
     for h in (code, notes, pc):
         if h and under(t, h):
             return None
-    if under(t, os.path.join(home, ".claude")) or under(t, os.path.join(home, ".config")) or "/.claude/" in t:
+    proj_skill = False
+    try:   # placement_project_skills: a skill/agent in a PROJECT folder's .claude/ is the person's own code, not Claude's scratch space
+        proj_skill = roundb_on("placement_project_skills") and not under(t, os.path.join(home, ".claude")) and ("/.claude/skills/" in t or "/.claude/agents/" in t)
+    except Exception:
+        proj_skill = False
+    if under(t, os.path.join(home, ".claude")) or under(t, os.path.join(home, ".config")) or ("/.claude/" in t and not proj_skill):
         return None
     if not under(t, home) and any(under(t, r) for r in ("/tmp", "/private/tmp", "/var/folders", "/private/var/folders",
                                                         os.path.realpath(os.environ.get("TMPDIR", "/tmp")))):

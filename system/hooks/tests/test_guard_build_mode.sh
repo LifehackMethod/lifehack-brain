@@ -222,6 +222,15 @@ fire t9 Write "$(J file_path "$HOME/notify-lab/fetch-pond.sh" content 'download 
 printf '%s' "$ERR" | grep -Fq "FIRST, before anything else" && { fail=$((fail+1)); echo "  FAIL  generic fetch name drew a hint"; } || { pass=$((pass+1)); echo "   ok   ranked ON: fetch-pond.sh draws no tool hint"; }
 fire t10 Write "$(J file_path "$HOME/notify-lab/newest_threads.py" content $'"""List the subjects of the newest Gmail threads. Read-only IMAP, fetches headers"""')"; want 2 "ranked ON: gmail script gate stop" "FIRST, before anything else"
 printf '%s' "$ERR" | grep -Fq "shared/tools/email_fetch.py" && { pass=$((pass+1)); echo "   ok   ranked ON: the sanctioned Gmail reader is named"; } || { fail=$((fail+1)); echo "  FAIL  ranked ON missed email_fetch for a gmail script"; }
+# placement_project_skills: <project>/.claude/skills/ is the person's own code (placement + list), ~/.claude stays Claude's own space
+mkdir -p "$HOME/proj-lab/.claude/skills/pp"
+export ROUNDB_REASON_GATE=off
+export ROUNDB_PLACEMENT_PROJECT_SKILLS=off
+fire t11 Write "$(J file_path "$HOME/proj-lab/.claude/skills/pp/SKILL.md" content $'---\nname: pp\n---')"; printf '%s' "$ERR" | grep -Fq "personal code folder" && { fail=$((fail+1)); echo "  FAIL  project skills OFF drew the placement stop"; } || { pass=$((pass+1)); echo "   ok   project skills OFF: no placement stop (today)"; }
+export ROUNDB_PLACEMENT_PROJECT_SKILLS=on
+fire t12 Write "$(J file_path "$HOME/proj-lab/.claude/skills/pp/SKILL.md" content $'---\nname: pp\n---')"; want 2 "project skills ON: a project .claude skill gets the placement stop" "personal code folder"
+fire t13 Write "$(J file_path "$HOME/.claude/skills/qq/SKILL.md" content $'---\nname: qq\n---')"; printf '%s' "$ERR" | grep -Fq "personal code folder" && { fail=$((fail+1)); echo "  FAIL  ~/.claude/skills drew the placement stop"; } || { pass=$((pass+1)); echo "   ok   project skills ON: ~/.claude/skills stays exempt"; }
+unset ROUNDB_PLACEMENT_PROJECT_SKILLS
 unset ROUNDB_PLACEMENT_HINT_RANKED
 unset ROUNDB_PLACEMENT_TOOLBOX_HINT
 unset ROUNDB_REASON_GATE ROUNDB_REMEMBER_REASON ROUNDB_PLACEMENT_OUTSIDE_HOMES
