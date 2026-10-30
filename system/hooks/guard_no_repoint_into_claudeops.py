@@ -60,10 +60,54 @@ def plugin_equivalent_exists(basename_guess):
     return len(hits) > 0
 
 
+def _cmdreader():
+    """Round B piece 4: the shared command reader, only when its switch is ON and it loads; else None
+    (= the old text matching below, unchanged)."""
+    try:
+        here = os.path.dirname(os.path.abspath(__file__))
+        sys.path.insert(0, os.path.join(here, "lib"))
+        import roundb
+        if not roundb.roundb_on("cmdreader"):
+            return None
+        sys.path.insert(0, os.path.join(here, "..", "..", "shared"))
+        import cmdreader
+        return cmdreader
+    except Exception:
+        return None
+
+
+def handle_bash_reader(cr, cmd):
+    """Same judgment as handle_bash, but `ln` / symlink calls come from the shared reader, so a heredoc body
+    or a quoted string that merely MENTIONS an ln line is data and never matches."""
+    r = cr.read(cmd)
+    if not r.ok:
+        # 7.2 of the reader design: unreadable + the protected words visible in the raw text = deny; else allow.
+        if mentions_private_repo(cmd) and (".claude/skills/" in cmd or ".claude/agents/" in cmd):
+            emit_block("could not read this command safely (%s) and its text names a guarded symlink directory and the private repo; run it as a script file I can read" % r.parse_error)
+        emit_allow("command could not be parsed and names nothing protected")
+    matches = []
+    for seg in cr.iter_segments(r):
+        if seg.program != "ln":
+            continue
+        letters = "".join(a.lstrip("-") if not a.startswith("--") else ("s" if a == "--symbolic" else "") for a in seg.args if a.startswith("-"))
+        pos = [a for a in seg.args if not a.startswith("-")]
+        if len(pos) >= 2:
+            matches.append((letters + " ", pos[0], pos[1]))
+    for w in cr.writes(r):
+        if w.via == "symlink" and w.srcs:
+            matches.append(("s ", w.srcs[0], w.path))
+    if not matches:
+        emit_allow("no `ln` invocation found in this command")
+    review_matches(matches)
+
+
 def handle_bash(ti):
     cmd = ti.get("command", "")
     if not isinstance(cmd, str) or cmd.strip() == "":
         emit_block("Bash tool_input carried no usable command string")
+    cr = _cmdreader()
+    if cr is not None:
+        handle_bash_reader(cr, cmd)
 
     # Find every `ln ... A B` invocation ANYWHERE in the command text -- not just at
     # top-level ; / && boundaries. This deliberately also catches one written inside a
@@ -93,7 +137,10 @@ def handle_bash(ti):
         matches.append(("-s ", tgt, lnk))
     if not matches:
         emit_allow("no `ln` invocation found in this command")
+    review_matches(matches)
 
+
+def review_matches(matches):
     for flags, arg1, arg2 in matches:
         if "s" not in flags:
             continue  # not a symlink operation -- e.g. a hardlink or malformed match, not our concern
