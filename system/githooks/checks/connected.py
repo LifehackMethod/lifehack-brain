@@ -44,8 +44,25 @@ def kind_of(path):
     return None
 
 
+FILES_MODE = False      # --files: read the disk instead of the git index (no git needed)
+
+
 def staged_text(root, path):
+    if FILES_MODE:
+        try:
+            return open(os.path.join(root, path), encoding="utf-8", errors="replace").read()
+        except OSError:
+            return ""
     return git(root, "show", ":" + path)
+
+
+def grep_callers(root, path, needle):
+    """git grep --cached lines, or (no git) a plain grep over the harness folder with the same 'p:n:text' shape."""
+    if not FILES_MODE:
+        return git(root, "grep", "--cached", "-n", "-I", "-F", "-e", needle, "--", ".", ":!" + path)
+    r = subprocess.run(["grep", "-rnIF", "--exclude-dir=.git", "--exclude-dir=__pycache__", "--exclude=" + os.path.basename(path), "-e", needle, "."],
+                       cwd=root, capture_output=True, text=True, errors="replace")
+    return "\n".join(l[2:] if l.startswith("./") else l for l in r.stdout.splitlines())
 
 
 def called(root, path):
@@ -55,7 +72,7 @@ def called(root, path):
     import_pat = (re.compile(r"\b(?:import\s+" + re.escape(stem) + r"\b|from\s+" + re.escape(stem)
                              + r"\s+import\b)") if stem else None)
     needle = stem or base
-    out = git(root, "grep", "--cached", "-n", "-I", "-F", "-e", needle, "--", ".", ":!" + path)
+    out = grep_callers(root, path, needle)
     for ln in out.splitlines():
         try:
             p, _, text = ln.split(":", 2)
@@ -83,8 +100,12 @@ def called(root, path):
     return None
 
 
-def check(root):
-    added = git(root, "diff", "--cached", "--name-status", "--diff-filter=A").splitlines()
+def check(root, files=None):
+    if files is not None:        # --files: only paths INSIDE the harness folder have a kind; anything else is skipped
+        rootp = os.path.realpath(root) + "/"
+        added = ["A\t" + os.path.realpath(f)[len(rootp):] for f in files if os.path.realpath(f).startswith(rootp) and os.path.isfile(f)]
+    else:
+        added = git(root, "diff", "--cached", "--name-status", "--diff-filter=A").splitlines()
     refused, warned = [], []
     for ln in added:
         parts = ln.split("\t")
@@ -116,5 +137,8 @@ def check(root):
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 2 and sys.argv[1] == "--files":
+        FILES_MODE = True
+        sys.exit(check(os.path.realpath(os.path.join(HERE, "..", "..", "..")), sys.argv[2:]))
     root = sys.argv[1] if len(sys.argv) > 1 else git(".", "rev-parse", "--show-toplevel").strip()
     sys.exit(check(root))

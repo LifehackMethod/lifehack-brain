@@ -68,8 +68,9 @@ def read(path):
 
 
 def main():
-    top = git("rev-parse", "--show-toplevel").decode().strip()
-    new = staged_new()
+    files = sys.argv[2:] if len(sys.argv) > 2 and sys.argv[1] == "--files" else None    # --files P...: no git, read the disk
+    top = os.path.realpath(os.path.join(HERE, "..", "..", "..")) if files else git("rev-parse", "--show-toplevel").decode().strip()
+    new = [os.path.realpath(p) for p in files if os.path.isfile(p)] if files else staged_new()
     if not new:
         return 0
     bm = load_bm()
@@ -88,9 +89,13 @@ def main():
     rulebooks = [r for r in rulebooks if r not in newset]   # only rulebooks that already exist
     findings = []
     for path in new:
+        if files and path.startswith(top + "/"):
+            path = path[len(top) + 1:]           # a file inside the harness gets the same repo-relative rules as a staged one
         if exempt_dir(path) or path.startswith("shared/"):
             continue
-        text = git("show", ":" + path).decode("utf-8", "replace")
+        text = read(os.path.join(top, path)) if files else git("show", ":" + path).decode("utf-8", "replace")
+        if text is None:
+            continue
         base = os.path.basename(path)
         hit = None
         if path.endswith(".md"):

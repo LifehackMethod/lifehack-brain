@@ -27,9 +27,13 @@ CALLEES = [("fetch", re.compile(r"(?<![\w/.-])(?:gws|curl|wget)\b|\$\{?GWS\w*\}?
            ("model", re.compile(r"\brun_model\b|\bclaude\s+-p\b|\$\{?CLAUDE(?:_BIN)?\}?\s+-p\b|\"\$\{?CLAUDE(?:_BIN)?\}?\"\s+-p\b")),
            ("write", re.compile(r"emit_finding|emit_status|status-tile|(?<![\w:?-])write_status_tile(?=\s)|--write\b|--stamp\w*|--finish\b|[\w.-]*(?:write|sync|diary|journal|sensor|record)[\w.-]*\.(?:py|sh)\b"
                                 r"|\b(?:printf|echo|cat|tee|cp|mv)\b[^|;&<>]*\s>>?\s*[^&\s>]"))]
+# The fire-journal boilerplate (system/hooks/lib/journal.sh contract): `. lib/journal.sh 2>/dev/null || lhb_journal_fire() { :; }` and the
+# `trap 'lhb_journal_fire ... 2>/dev/null || true' EXIT` line. Silent on purpose (the journal must never change a hook's own output).
+JOURNAL_IDIOM = re.compile(r"lhb_journal_fire")
 def silenced_call(line):
     """-> kind ('fetch'|'push'|'model'|'write') if this bash line silences the error of a fetch/write/push/model call, else ''."""
     if not SILENCER.search(line): return ""
+    if JOURNAL_IDIOM.search(line): return ""   # the fire-journal boilerplate every hook carries (hooks/lib/journal.sh): silent BY DESIGN
     probe = LOOKUP.sub("", line)
     probe = re.sub(r"[\w./$\"{}-]*(?:\btest[_-]|[_-]tests?\.)[\w.-]*\.(?:sh|py)", "", probe)   # a test script's exit code IS its verdict, read by the caller
     for kind, rx in CALLEES:

@@ -19,6 +19,7 @@ and REPORTED, never silent. Output: exit 1 on refuse; one human line plus one `F
 
 Usage: hides_failure.py                 staged changes (default; run from the repo, as pre-commit does)
        hides_failure.py --commits N     scan ALL added lines of the last N commits (false-alarm measurement)
+       hides_failure.py --files P...    scan every line of these files, no git (the end-of-turn check)
 """
 import ast
 import json
@@ -167,6 +168,17 @@ def scan_staged():
     return found
 
 
+def scan_files(paths):
+    """--files: every line of each existing .sh/.py file counts as added (a file the session just created has no old backlog)."""
+    found = []
+    for p in paths:
+        if not p.endswith((".sh", ".py")) or exempt(p) or not os.path.isfile(p):
+            continue
+        text = open(p, encoding="utf-8", errors="replace").read()
+        found += analyze(p, text, set(range(1, len(text.splitlines()) + 1)))
+    return found
+
+
 def scan_commits(n):
     found = []
     for c in git("log", f"-{n}", "--format=%h").split():
@@ -181,7 +193,10 @@ def scan_commits(n):
 
 
 def main(argv):
-    found = scan_commits(int(argv[2])) if len(argv) >= 3 and argv[1] == "--commits" else scan_staged()
+    if len(argv) >= 3 and argv[1] == "--files":
+        found = scan_files(argv[2:])
+    else:
+        found = scan_commits(int(argv[2])) if len(argv) >= 3 and argv[1] == "--commits" else scan_staged()
     report(found)
     refused = [f for f in found if f["status"] == "refused"]
     if refused:
