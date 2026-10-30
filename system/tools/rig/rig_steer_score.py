@@ -159,7 +159,7 @@ def satisfied(calls, i, hook, target, text=""):
     if g["need"] == "moved_home":
         root = os.path.expanduser(open(os.path.expanduser("~/.config/lifehack/personal-code"), encoding="utf-8").read().splitlines()[0].strip()) \
             if os.path.exists(os.path.expanduser("~/.config/lifehack/personal-code")) else "/nonexistent-personal-code"
-        ok = any(not c["is_error"] and root in json.dumps(c["input"]) for c in after if c["name"] in ("Write", "Edit", "MultiEdit", "Bash"))
+        ok = any(not c["is_error"] and (root in json.dumps(c["input"]) or "rig-iso-home/personal-code" in json.dumps(c["input"])) for c in after if c["name"] in ("Write", "Edit", "MultiEdit", "Bash"))
         return ok, "a later write under the personal code folder" if ok else "retried in place; nothing moved into the personal code folder"
     if g["need"] == "not_copied":
         nm = re.search(r"(\S+) is shared code", text or "")
