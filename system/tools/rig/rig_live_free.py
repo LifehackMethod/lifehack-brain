@@ -6,7 +6,10 @@ WHY: the meal-2 prompts said "add a tool to rigdesk" (a Drive desk), which steer
      the session picks one. Everything it creates is found afterwards by diffing git status of BOTH repos and the notes folder against a
      snapshot taken before, attributed to the session by its transcript (so another window's edits are never touched), scored, then removed.
 SAFETY: never pushes. A commit a session makes in a real repo is reset away (soft) only if HEAD moved and the commit is the session's; reported either way.
-USAGE: rig_live_free.py run --cases cases/meal-roundA-live.jsonl --label L [--only RE]
+USAGE: rig_live_free.py run --cases cases/meal-roundA-live.jsonl --label L [--only RE] [--scratch DIR] [--env K=V ...]
+  --scratch DIR: each session gets its own empty cwd DIR/<case id> (not a repo), files it creates there are scored as its own and copied
+                 to <label>-files/<id>/ before removal. Without it the cwd is ClaudeOps (Round A behaviour).
+  --env K=V:     extra environment for the headless child only (e.g. ROUNDB_BACK_DOOR=on); hooks inherit it.
 """
 import argparse, glob, hashlib, json, os, re, shutil, subprocess, sys, tempfile, time
 
@@ -75,11 +78,16 @@ def mentioned(stream_text, p):
     return p in stream_text or (os.path.basename(p) in stream_text and len(os.path.basename(p)) > 4)
 
 
-def run_one(c, notes, work):
+def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None):
     L = c["live"]
     prompt = L["prompt"] + SUFFIX
     stream = os.path.join(work, c["id"] + ".stream.jsonl")
-    env = dict(os.environ, LIFEHACK_SANDBOX="V2")
+    env = dict(os.environ, LIFEHACK_SANDBOX="V2", **(extra_env or {}))
+    cwd = OPS
+    if scratch:
+        cwd = os.path.join(scratch, c["id"])
+        shutil.rmtree(cwd, ignore_errors=True)
+        os.makedirs(cwd)
     cmd = ["claude", "-p", prompt, "--model", "haiku", "--dangerously-skip-permissions", "--setting-sources", "project,local", "--plugin-dir", V2,  # allow-silence: the rig runs the same cheap tier as the meal-2 BEFORE run, for a fair comparison
            "--settings", os.path.join(OPS, "system/desktop-launchers/v2/lab-settings.json"), "--output-format", "stream-json", "--verbose"]
     b = snapshot(notes)
@@ -87,7 +95,7 @@ def run_one(c, notes, work):
     err = ""
     try:
         with open(stream, "w", encoding="utf-8") as f:
-            p = subprocess.run(cmd, cwd=OPS, env=env, stdout=f, stderr=subprocess.PIPE, text=True, timeout=900, stdin=subprocess.DEVNULL)
+            p = subprocess.run(cmd, cwd=cwd, env=env, stdout=f, stderr=subprocess.PIPE, text=True, timeout=900, stdin=subprocess.DEVNULL)
         err = p.stderr[-200:]
     except subprocess.TimeoutExpired:
         err = "TIMEOUT"
@@ -96,6 +104,9 @@ def run_one(c, notes, work):
     txt = open(stream, errors="replace", encoding="utf-8").read()
     new, mod = changed(b, a)
     mine_new = sorted(p for p in new if mentioned(txt, p))
+    if scratch:  # everything in this session's own scratch cwd is the session's
+        sc_files = sorted(os.path.join(dp, f) for dp, _, fs in os.walk(cwd) for f in fs)
+        mine_new = sorted(set(mine_new) | set(sc_files))
     mine_mod = sorted(p for p in mod if mentioned(txt, p))
     foreign = sorted((new | mod) - set(mine_new) - set(mine_mod))
     commits = {r: git(r, "log", "--oneline", "%s..HEAD" % b["head"][r]).strip() for r in (V2, OPS)}
@@ -115,8 +126,14 @@ def run_one(c, notes, work):
         sc = ls.score(ns); e2 = ""
     except SystemExit as e:
         sc, e2 = {"bucket": "ERROR", "bases": {}, "friction_layers": [], "files": [], "route": [], "denied_texts": []}, str(e)
-    # cleanup: only what this session's transcript names
+    # cleanup: only what this session's transcript names (scratch-cwd files are copied out first, for the hand spot-check)
     removed = []
+    if scratch and keep_files:
+        for p in mine_new:
+            if p.startswith(cwd + os.sep):
+                dst = os.path.join(keep_files, c["id"], os.path.relpath(p, cwd))
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                shutil.copy(p, dst)
     for p in mine_new:
         try:
             os.remove(p); removed.append(p)
@@ -156,6 +173,8 @@ def main():
     ap.add_argument("--cases", required=True)
     ap.add_argument("--label", required=True)
     ap.add_argument("--only")
+    ap.add_argument("--scratch")
+    ap.add_argument("--env", action="append", default=[])
     a = ap.parse_args()
     cases = [c for c in rm.load_all(a.cases) if not a.only or re.search(a.only, c["id"])]
     notes = rm.notes_root()
@@ -164,7 +183,7 @@ def main():
     res_dir = os.path.join(notes, "state/projects/v2/records/rig-results")
     try:
         for c in cases:
-            r = run_one(c, notes, work)
+            r = run_one(c, notes, work, a.scratch, dict(e.split("=", 1) for e in a.env), os.path.join(res_dir, "%s-%s-files" % (time.strftime("%Y-%m-%d"), a.label)))
             out.append(r)
             print(r["id"], r["bucket"], r["turns"], r["secs"], r["commits"] or "", flush=True)
             open(os.path.join(res_dir, "%s-%s-live.jsonl" % (time.strftime("%Y-%m-%d"), a.label)), "w", encoding="utf-8").write("\n".join(json.dumps(x) for x in out) + "\n")
