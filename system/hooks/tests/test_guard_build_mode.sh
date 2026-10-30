@@ -25,6 +25,7 @@ cat > "$CODE/system/register/toolbox.md" <<'R'
 ## Notify
 - `/shared/notify/notify-send.sh` · finds your topic -> asks notify-governor.py for permission -> only on ALLOW posts a TEASER
 - `/shared/paths.py` · resolves the notes and code roots
+- `/shared/tools/email_fetch.py` · THE shared email fetch: the only sanctioned Gmail read
 R
 pass=0; fail=0; ERR=""
 payload() { python3 -c 'import json,sys; print(json.dumps({"session_id":sys.argv[1],"cwd":sys.argv[2],"tool_name":sys.argv[3],"tool_input":json.loads(sys.argv[4])}))' "$1" "$NOTES" "$2" "$3"; }
