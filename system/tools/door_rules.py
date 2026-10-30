@@ -30,6 +30,24 @@ CALLEES = [("fetch", re.compile(r"(?<![\w/.-])(?:gws|curl|wget)\b|\$\{?GWS\w*\}?
 # The fire-journal boilerplate (system/hooks/lib/journal.sh contract): `. lib/journal.sh 2>/dev/null || lhb_journal_fire() { :; }` and the
 # `trap 'lhb_journal_fire ... 2>/dev/null || true' EXIT` line. Silent on purpose (the journal must never change a hook's own output).
 JOURNAL_IDIOM = re.compile(r"lhb_journal_fire")
+# "A real reason, or fix it" (Round C 3, switch allow_silence_reason): what an escape comment (`# allow-silence:`, `# empty-ok:`,
+# `# not-wired-yet:`) must carry before it exempts anything. A reason is JUNK when it is short, only filler/placeholder words, or only
+# repeats the code it sits on. Pure function; the callers read the switch.
+JUNK_WORDS = frozenset("""todo tbd fixme ok okay fine needed need needs reason reasons because intentional intended on purpose ignore ignored
+    ignoring skip skipped none na n/a noqa nope wip temp temporary later yes no safe harmless works work it its this that the a an is are be
+    to for of and or so just here there see above below hack workaround quiet silence silent silenced stub test tests rig""".split())
+REASON_HELP = ("a reason names WHICH failure is tolerated and WHY that is safe, e.g. "
+               "`# allow-silence: best-effort stamp; if the write fails the next run repeats the line, nothing is lost`")
+def weak_reason(reason, code=""):
+    """-> '' if the escape reason is real, else a short why-it-is-junk string."""
+    r = (reason or "").strip()
+    words = re.findall(r"[a-z0-9][a-z0-9_./-]*", r.lower())
+    if len(r) < 15 or len(words) < 3: return "too short to say what failure is tolerated and why"
+    content = [w for w in words if w not in JUNK_WORDS]
+    if len(content) < 2: return "only filler/placeholder words"
+    toks = set(re.findall(r"[a-z0-9]+", (code or "").lower()))
+    if all(w in toks for w in re.findall(r"[a-z0-9]+", " ".join(content))): return "only repeats the code"
+    return ""
 def silenced_call(line):
     """-> kind ('fetch'|'push'|'model'|'write') if this bash line silences the error of a fetch/write/push/model call, else ''."""
     if not SILENCER.search(line): return ""

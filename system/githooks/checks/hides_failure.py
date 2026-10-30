@@ -31,7 +31,9 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 _TOOLS = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(HERE))), "system", "tools")
 sys.path.insert(0, _TOOLS)
-from door_rules import (MODEL_ID, MODEL_LIT, MODEL_TABLE_FILES, silenced_call, google_curl, google_curl_exempt,  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(_TOOLS), "hooks", "lib"))
+from roundb import roundb_on  # noqa: E402
+from door_rules import (weak_reason, REASON_HELP, MODEL_ID, MODEL_LIT, MODEL_TABLE_FILES, silenced_call, google_curl, google_curl_exempt,  # noqa: E402
                         GOOGLE_CURL_WHY, f3_unguarded)  # noqa: E402  (the one copy)
 
 CHECK = "hides_failure"
@@ -115,8 +117,13 @@ def analyze(path, text, added):
             m = ALLOW.search(lines[n - 1]) if 0 < n <= len(lines) else None
             if m:
                 allowed = m.group(1).strip()
+        weak = ""
+        if allowed and roundb_on("allow_silence_reason"):   # Round C 3: a real reason, or fix it (OFF = exactly the old behaviour)
+            weak = weak_reason(allowed, " ".join(re.sub(r"#.*$", "", lines[n - 1]) for n in span if 0 < n <= len(lines)))
+            if weak:
+                why = f"{why} -- the allow-silence reason is {weak}; {REASON_HELP}"
         out.append({"check": CHECK, "file": path, "line": line, "rule": rule, "detail": why,
-                    "status": "allowed" if allowed else "refused", "reason": allowed or ""})
+                    "status": "allowed" if allowed and not weak else "refused", "reason": allowed or ""})
 
     if path.endswith((".sh", ".py")):
         for start, nums, full in bash_commands(lines):
