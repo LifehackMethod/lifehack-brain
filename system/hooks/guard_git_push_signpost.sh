@@ -109,8 +109,29 @@ trap 'lhb_journal_fire "$?" "guard_git_push_signpost.sh" "PreToolUse" "Bash" 2>/
 #      tokenize falls back to the raw-text adjacency scan above and denies only if
 #      that still reads as `git push`. SILENT (exit 0) when there is no command to
 #      judge, or the command is a genuinely different git verb.
-# UPDATED: 2026-09-18
+# UPDATED: 2026-10-30 (Round C fine-china switches, see ROUND C above)
 # RULE: system/hook-contract.md (mechanics)
+# ROUND C (2026-10-30), three switches in roundB.conf, all OFF = the behaviour above, unchanged:
+#      fc_force_push: `git push --force`/`-f`/`--force-with-lease`/`--force-if-includes`/`+refspec`/`--mirror` is a
+#      HARD STOP, not the retryable signpost (exit 2 every time, no marker). Way through: the person runs it
+#      themselves (`! git push ...`).
+# WHO-COULD-THIS-BREAK: anyone who legitimately rewrites a branch (rebase then force-with-lease on a private feature
+#      branch, or a repo owner repairing history) is stopped. WAY-THROUGH: the person runs the force push
+#      themselves with `! git push ...` -- no hook sees a `!` command -- or turns fc_force_push off.
+#      fc_private_push: a push to a remote other people can read (a host URL, not a local path, not the personal
+#      code repo) whose OUTGOING commits fail the existing leakage scan (.github/scripts/check_no_internal_leakage.py,
+#      imported not copied) is a HARD STOP. No remote, a local-path remote, or no scanner shipped = silent, no work.
+# WHO-COULD-THIS-BREAK: a collaborator pushing a commit the scan flags wrongly (a fixture path, a quoted example) is
+#      stopped, and so is anyone whose operator-identity file is missing (the scan cannot run, and a scan that did
+#      not run is not a pass). WAY-THROUGH: remove or reword the flagged lines, restore the identity file, or the
+#      person reviews the finding and runs the push themselves with `! git push ...`. Students with no remote never see it.
+#      fc_plain_push_quiet: WHY the signpost fired on a plain `git push origin main` -- it fires on the FIRST sighting
+#      of every push, whether or not anything is unusual, because its job is to show the manifest once. It is
+#      now silent only for the ordinary case: fast-forward, the checked-out branch to the branch it tracks, on a
+#      configured remote that is NOT the public Lifehack repo (that one keeps its signpost: a push there ships).
+# WHO-COULD-THIS-BREAK: nobody is blocked by this one; it only removes a speed bump, so the risk is a push that
+#      wanted the manifest not getting it. WAY-THROUGH: turn fc_plain_push_quiet off to get the first-push signpost back;
+#      a force push, a new branch, a diverged branch or any non-tracking refspec still gets the signpost or a hard stop.
 # ─────────────────────────────────────────────────────────────────────────────
 # guard_git_push_signpost.sh — PreToolUse hook (matcher: Bash)
 
@@ -323,6 +344,57 @@ case "$VERDICT" in
 
     REPO_DIR="$PWD"
     if [ -n "$REQUESTED_DIR" ] && [ -d "$REQUESTED_DIR" ]; then REPO_DIR="$REQUESTED_DIR"; fi
+
+    # ── ROUND C (fine china): HARD STOPS + the quiet plain push, each behind its own switch ──────────────
+    # roundB.conf: fc_force_push, fc_private_push, fc_plain_push_quiet. All three OFF = this block does
+    # nothing (no python is even started) and the signpost below behaves exactly as before.
+    # The facts come from lib/push_facts.py (it reuses the existing leakage scanner; nothing is copied here).
+    # A HARD STOP exits 2 on EVERY attempt -- no once-per-session marker, so a retry cannot pass it. Way
+    # through: the person runs the push themselves in their own terminal (`! git push ...`), which no hook sees.
+    . "$(dirname "$0")/lib/roundb.sh" 2>/dev/null
+    _fc_force=""; _fc_priv=""; _fc_quiet=""
+    if type roundb_on >/dev/null 2>&1; then
+      roundb_on fc_force_push && _fc_force="--force-on"
+      roundb_on fc_private_push && _fc_priv="--private-on"
+      roundb_on fc_plain_push_quiet && _fc_quiet="--quiet-on"
+    fi
+    if [ -n "$_fc_force$_fc_priv$_fc_quiet" ]; then
+      _fc_shared="$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd)/shared"
+      _fc=$(python3 "$(dirname "$0")/lib/push_facts.py" --repo "$REPO_DIR" --argv-b64 "$PUSH_ARGV_B64" --shared "$_fc_shared" $_fc_force $_fc_priv $_fc_quiet 2>/dev/null)
+      _fc_kind="${_fc%%$'\t'*}"; _fc_detail="${_fc#*$'\t'}"
+      _fc_cmd=$(printf '%s' "$CMD_B64" | base64 -d 2>/dev/null)
+      [ -n "$_fc_cmd" ] || _fc_cmd="git push ..."
+      case "$_fc_kind" in
+        HARD_FORCE)
+          {
+            printf 'HARD STOP (push guard): this is a force push -- %s.\n' "$_fc_detail"
+            printf 'WHY: a force push rewrites what the remote holds and the old commits are gone for everyone who pulls from it; after it runs there is nothing to undo.\n'
+            printf 'WAY THROUGH: this one is the person'"'"'s own call, not retryable by the assistant. Ask them to run it themselves in their terminal: ! %s\n' "$_fc_cmd"
+            printf 'RULE: system/hooks/guard_git_push_signpost.sh (switch fc_force_push in system/hooks/roundB.conf). A plain, non-force push is not stopped here.\n'
+          } >&2
+          exit 2 ;;
+        HARD_PRIVATE)
+          {
+            printf 'HARD STOP (push guard): this push would publish private material to a remote other people can read.\n'
+            printf 'FOUND (existing leakage scan, .github/scripts/check_no_internal_leakage.py): %s\n' "$_fc_detail"
+            printf 'WHY: once a commit is on a public remote it is cached and copied within minutes; deleting it later does not take it back.\n'
+            printf 'WAY THROUGH: remove the material from the outgoing commits and push again; if the scan is wrong, the person reviews it and runs the push themselves: ! %s\n' "$_fc_cmd"
+            printf 'RULE: system/hooks/guard_git_push_signpost.sh (switch fc_private_push in system/hooks/roundB.conf); the rules live in .github/scripts/check_no_internal_leakage.py -- change them there.\n'
+          } >&2
+          exit 2 ;;
+        HARD_PRIVATE_CANNOT)
+          {
+            printf 'HARD STOP (push guard): this pushes to a remote other people can read, and the leakage scan could not run, so nothing proves the commits are clean.\n'
+            printf 'DETAIL: %s\n' "$_fc_detail"
+            printf 'WHY: an unchecked push to a public remote cannot be taken back; a scan that did not run is not a scan that passed.\n'
+            printf 'WAY THROUGH: restore the scan (the operator-identity file named in .github/scripts/check_no_internal_leakage.py --help), or the person runs the push themselves after checking: ! %s\n' "$_fc_cmd"
+            printf 'RULE: system/hooks/guard_git_push_signpost.sh (switch fc_private_push in system/hooks/roundB.conf).\n'
+          } >&2
+          exit 2 ;;
+        QUIET)
+          exit 0 ;;   # fc_plain_push_quiet: an ordinary push the branch tracks -- nothing unusual to signpost
+      esac
+    fi
 
     # FIXED 2026-09-15 (double-registration race): this hook is registered
     # TWICE for the same PreToolUse Bash event -- hooks/hooks.json loads it via
