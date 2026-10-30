@@ -129,6 +129,7 @@ def detect_stages(out):
 
 def plant(d, c):
     for f in c["plant"]:
+        f = dict(f, path=f["path"].replace("@@", ""))      # "@@" splits a planted name so the committed generator never names the planted tool (it would count as its caller)
         path = os.path.join(d, f["path"])
         os.makedirs(os.path.dirname(path), exist_ok=True)
         content = f.get("content", "")
@@ -146,6 +147,7 @@ def plant(d, c):
 
 
 def run_githook_case(arena, c, off=None):
+    c = json.loads(json.dumps(c).replace("@@", "")) if c.get("copy_of") is None and False else c
     d, env = arena.clone()
     jp = d + "/../journal-%s.jsonl" % re.sub(r"[^A-Za-z0-9_-]", "-", c["id"])
     env["LHB_JOURNAL_PATH"] = jp
@@ -157,11 +159,11 @@ def run_githook_case(arena, c, off=None):
             sh("git update-index --assume-unchanged system/githooks/pre-commit system/githooks/checks/*.py system/tools/job-run.sh", d, env)
         plant(d, c)
         for step in c.get("pre_sh", []):
-            rc, out = sh(step, d, env)
+            rc, out = sh(step.replace("@@", ""), d, env)
             if rc:
                 problems.append("pre_sh failed: %s :: %s" % (step[:60], out[-120:]))
         sh(["git", "add", "-A"], d, env)
-        sh(["git", "add", "-f", "--"] + [f["path"] for f in c["plant"]], d, env) if c["plant"] else None   # -f: .gitignore must not hide a planted file (data/ is ignored)
+        sh(["git", "add", "-f", "--"] + [f["path"].replace("@@", "") for f in c["plant"]], d, env) if c["plant"] else None   # -f: .gitignore must not hide a planted file (data/ is ignored)
         t0 = time.time()
         rc, out = sh(["git", "commit", "-qm", "rig planted commit"], d, env)
         secs = time.time() - t0
@@ -582,6 +584,7 @@ def main():
     ap = argparse.ArgumentParser(description="Phase 3b meal runner (replay + githook + jobdoor; live is scored by rig_live_score.py)")
     ap.add_argument("cmd", choices=["run", "live", "report"])
     ap.add_argument("--wall", default="n/a")
+    ap.add_argument("--day", help="date prefix of the saved results to report on (default today)")
     ap.add_argument("--cases", default=DEFAULT_CASES)
     ap.add_argument("--off")
     ap.add_argument("--label", default="meal")
@@ -590,7 +593,7 @@ def main():
     a = ap.parse_args()
     if a.cmd == "report":
         d = os.path.join(notes_root(), "state/projects/v2/records/rig-results")
-        day = datetime.date.today().isoformat()
+        day = a.day or datetime.date.today().isoformat()
         out = os.path.join(d, day + "-meal-part1-scoreboard.md")
         report(os.path.join(d, day + "-base.jsonl"), sorted(glob.glob(os.path.join(d, day + "-meal-off-*.jsonl"))), out, a.wall)
         print("wrote", out)
