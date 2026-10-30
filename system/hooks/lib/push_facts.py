@@ -262,6 +262,7 @@ def main():
     ap.add_argument("--force-on", action="store_true")
     ap.add_argument("--private-on", action="store_true")
     ap.add_argument("--quiet-on", action="store_true")
+    ap.add_argument("--local-on", action="store_true")
     a = ap.parse_args()
     try:
         argv = json.loads(base64.b64decode(a.argv_b64).decode("utf-8", "surrogateescape")) if a.argv_b64 else []
@@ -296,6 +297,12 @@ def main():
             if status == "cannot":
                 print("HARD_PRIVATE_CANNOT\t" + " | ".join(lines))
                 return 0
+    if a.local_on and remote and not (p["force"] or p["plus"] or p["mirror"] or p["delete"]):
+        # fc_local_push_quiet: a push to a folder on this same machine (a bare repo, a backup copy) cannot reach anyone: no signpost
+        url = push_url(repo, remote) if named_remote(repo, remote) else remote
+        if url and not is_networked(url) and PUBLIC_REPO not in url and (url.startswith(("/", "./", "../", "~", "file://")) or os.path.isdir(os.path.join(repo, url))):
+            print("QUIET")
+            return 0
     if a.quiet_on and plain_and_tracked(repo, p, branch, remote):
         print("QUIET")
         return 0

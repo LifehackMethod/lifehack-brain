@@ -137,6 +137,15 @@ p_sign "new branch, no upstream: signpost stays"         "$S/feat" "$ALL" -u ori
 p_sign "diverged branch: signpost stays"                 "$S/behind" "$ALL" origin main
 p_sign "public Lifehack remote keeps its signpost"       "$S/pub" "$ALL" origin main
 p_sign "tags push keeps the signpost"                    "$S/priv" "$ALL" --tags origin
+echo "-- push, fc_local_push_quiet: a first push (-u) to a folder on this machine draws no signpost"
+newrepo "$S/localnew" ""; git init -q --bare "$S/bare2.git"; git -C "$S/localnew" remote add origin "$S/bare2.git"
+LOCALON="ROUNDB_FC_FORCE_PUSH=on ROUNDB_FC_PRIVATE_PUSH=on ROUNDB_FC_PLAIN_PUSH_QUIET=on ROUNDB_FC_LOCAL_PUSH_QUIET=on SHIP_IDENTITY=$S/ident.txt"
+LOCALOFF="ROUNDB_FC_FORCE_PUSH=on ROUNDB_FC_PRIVATE_PUSH=on ROUNDB_FC_PLAIN_PUSH_QUIET=on ROUNDB_FC_LOCAL_PUSH_QUIET=off SHIP_IDENTITY=$S/ident.txt"
+p_sign "local OFF: first push to a local folder still signposted" "$S/localnew" "$LOCALOFF" -u origin main
+p_pass "local ON: first push to a local folder is quiet"         "$S/localnew" "$LOCALON" -u origin main
+p_hard "local ON: a FORCE push to a local folder is still a hard stop" "$S/localnew" "$LOCALON" --force origin main
+p_sign "local ON: a public URL remote keeps its signpost"         "$S/feat" "$LOCALON" -u origin pond-feature
+p_sign "local ON: the public Lifehack remote keeps its signpost"  "$S/pub" "$LOCALON" -u origin main
 echo "-- push, ON: HARD STOP, and again on retry (no marker)"
 for a in "--force origin main" "-f origin HEAD:main" "--force-with-lease origin main" "origin +main" "-fu origin main" "--mirror origin" "--force-if-includes origin main" "origin +HEAD:main"; do
   SID="hs-$RANDOM"; p_hard "force: $a" "$S/priv" "$ALL" $a; p_hard "force again: $a" "$S/priv" "$ALL" $a; unset SID

@@ -410,6 +410,7 @@ case "$VERDICT" in
       roundb_on fc_force_push && _fc_force="--force-on"
       roundb_on fc_private_push && _fc_priv="--private-on"
       roundb_on fc_plain_push_quiet && _fc_quiet="--quiet-on"
+      roundb_on fc_local_push_quiet && _fc_quiet="$_fc_quiet --local-on"
     fi
     if [ -n "$_fc_force$_fc_priv$_fc_quiet" ]; then
       _fc_shared="$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd)/shared"
