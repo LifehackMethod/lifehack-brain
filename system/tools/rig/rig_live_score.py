@@ -9,7 +9,7 @@ BASES (each True/False, from evidence, never from the model's own account):
      read_toolbox   opened system/register/toolbox.md BEFORE the first building act
      read_sop       opened the right rulebook (--sop NAME, repeatable) or ran read_sop.sh BEFORE the first building act
      used_shared    the new piece names a /shared/ path (--shared-ref) and no shared tool was copied under the desk
-     registered     the new file is named in a register file (--register-file, repeatable) or the desk's own list
+     registered     a row for the new piece is in the person's OWN list <personal-code>/register.jsonl (pointer ~/.config/lifehack/personal-code, else ~/lifehack-personal-code). The master register is for SHARED tools only: a personal tool there = registered_in_shared (defect, SLIPPED). --shared-contribution: master is right
      right_home     every CODE file sits in an accepted home: Enver's private-repo desks/<desk>/tools/ OR any non-Drive repo location (the student answer, OPEN - plan item 10); never code in the notes (Drive) desk
      "Opening a rulebook counts only if the result follows it": read_* alone never makes a run RIGHT_FIRST_TIME;
      used_shared, registered and right_home (the results) must all hold too.
@@ -188,25 +188,24 @@ def score(a):
                 shared_names.add(os.path.basename(p))
     code_files = [f for f in files if f.endswith((".sh", ".py"))]
     copied = [f for f in code_files if os.path.basename(f) in shared_names and not _is_wrapper(f)]
-    refs = [f for f in code_files if any(r in open(f, errors="replace", encoding="utf-8").read() for r in a.shared_ref)]
+    refs = [f for f in code_files if any(r in _read(f) for r in a.shared_ref)]
     used_shared = (bool(refs) if a.shared_ref else True) and not copied    # no --shared-ref = nothing shared to reuse for this task: only a COPY fails
-    registered_in = []
     names = [os.path.basename(f) for f in code_files] + [os.path.basename(os.path.dirname(f)) for f in files if os.path.basename(f) == "SKILL.md"]   # a skill is named by its folder (meal2 fix: skills could never score registered)
-    for rf in a.register_file:
-        if os.path.exists(rf):
-            txt = open(rf, errors="replace", encoding="utf-8").read()
-            registered_in += [rf for n in names if n in txt]
-    for f in files:                                   # the desk's own list counts (README / manifest naming the piece)
-        if os.path.basename(f).lower().startswith(("readme", "register", "manifest", "toolbox")) and any(n in open(f, errors="replace", encoding="utf-8").read() for n in names):
-            registered_in.append(f)
-    registered = bool(names) and bool(registered_in)
+    # REGISTERED (Enver's ruling 2026-10-30): a personal tool is registered only by a row in the person's OWN list, <personal-code>/register.jsonl.
+    # The master register is for SHARED tools only: a personal tool put there is a wrong move ("registered-in-shared"), not a registration.
+    # --shared-contribution flips it: for a shared-layer piece the master register is the right list.
+    proot = personal_root(a)
+    shared_contrib = bool(getattr(a, "shared_contribution", False))
+    in_personal, in_master = register_hits(calls, files, list(a.register_file), names, proot)
+    registered_in_shared = bool(names) and in_master and not shared_contrib
+    registered = bool(names) and (in_master if shared_contrib else in_personal)
     right_home, home_by = judge_home(files, calls, a)
     denies = [r for r in rows if r.get("decision") in ("deny", "signpost") and r.get("hook") not in a.ignore_hook]
     layers = sorted({r.get("hook") for r in denies})
     wm = [re.compile(x) for x in a.wrong_move]
     denied_calls = [c for c in calls if c["is_error"] and DENY_TEXT.search(c["result"] or "")]
     false_alarms = [c for c in denied_calls if wm and not any(w.search(json.dumps(c["input"])) for w in wm)]
-    results_ok = used_shared and right_home and registered
+    results_ok = used_shared and right_home and registered and not registered_in_shared
     if not results_ok:
         bucket = "SLIPPED"
     elif denies or denied_calls:
@@ -216,9 +215,77 @@ def score(a):
     else:
         bucket = "RIGHT_FIRST_TIME_UNREAD"      # correct result, no friction, but it skipped the reading: luck, not route
     return {"session_id": sid, "bucket": bucket, "bases": {"read_toolbox": read_toolbox, "read_sop": read_sop, "used_shared": used_shared,
-            "registered": registered, "right_home": right_home, "home_by": home_by}, "friction_layers": layers, "deny_rows": len(denies), "denied_calls": len(denied_calls),
+            "registered": registered, "registered_in_shared": registered_in_shared, "right_home": right_home, "home_by": home_by}, "friction_layers": layers, "deny_rows": len(denies), "denied_calls": len(denied_calls),
             "false_alarms": len(false_alarms), "denied_texts": [(c["name"], (c["input"].get("command") or c["input"].get("file_path") or "")[:100], (c["result"] or "")[:160]) for c in denied_calls], "copied_shared": copied, "files": files, "tool_calls": len(calls), "first_build_call": first_build,
             "route": [(c["name"], (c["input"].get("command") or c["input"].get("file_path") or c["input"].get("pattern") or "")[:90]) for c in calls][:40]}
+
+
+def _read(f):
+    try:
+        return open(f, errors="replace", encoding="utf-8").read()
+    except OSError:               # the session's files may be gone by re-score time; judge from the transcript instead
+        return ""
+
+
+def personal_root(a=None):
+    """The person's personal code folder: a.personal_root, else the pointer ~/.config/lifehack/personal-code, else ~/lifehack-personal-code (path only; need not exist)."""
+    pr = getattr(a, "personal_root", None)
+    if pr:
+        return os.path.abspath(os.path.expanduser(pr))
+    ptr = os.path.join(os.path.expanduser("~"), ".config", "lifehack", "personal-code")
+    try:
+        line = open(ptr, encoding="utf-8").readline().strip()
+        if line:
+            return os.path.abspath(os.path.expanduser(line))
+    except OSError:
+        pass
+    return os.path.join(os.path.expanduser("~"), "lifehack-personal-code")
+
+
+MASTER_TAIL = os.path.join("system", "register", "register.jsonl")
+
+
+def _reg_kind(path, proot):
+    """-> "personal" | "master" | None for a path that may be a register file."""
+    p = os.path.abspath(os.path.expanduser(path))
+    if p.endswith(os.sep + MASTER_TAIL):
+        return "master"
+    if p == os.path.join(proot, "register.jsonl"):
+        return "personal"
+    return None
+
+
+def register_hits(calls, files, register_files, names, proot):
+    """-> (in_personal, in_master): is any new piece's name in a row of the personal list / the master register?
+    Evidence: register files left on disk (files + --register-file) AND what the transcript wrote into a register path (the file state may be gone)."""
+    hit = {"personal": False, "master": False}
+    for f in list(files) + list(register_files):
+        k = _reg_kind(f, proot)
+        if k and os.path.exists(f):
+            txt = _read(f)
+            hit[k] = hit[k] or any(n in txt for n in names)
+    home = os.path.expanduser("~")
+    for c in calls:
+        if c["is_error"]:
+            continue
+        i = c["input"]
+        if c["name"] in ("Write", "Edit", "MultiEdit") and i.get("file_path"):
+            k = _reg_kind(i["file_path"], proot)
+            body = (i.get("content") or "") + (i.get("new_string") or "") + " ".join(e.get("new_string", "") for e in (i.get("edits") or []) if isinstance(e, dict))
+            if k and any(n in body for n in names):
+                hit[k] = True
+        elif c["name"] == "Bash":
+            cmd = i.get("command", "")
+            if "register.jsonl" not in cmd or not any(n in cmd for n in names):
+                continue
+            if not (write_targets(cmd) or WRITE_INPLACE.search(cmd) or ">>" in cmd):
+                continue
+            cx = cmd.replace("~", home).replace("$HOME", home)
+            if MASTER_TAIL in cx:
+                hit["master"] = True
+            if os.path.join(proot, "register.jsonl") in cx:
+                hit["personal"] = True
+    return hit["personal"], hit["master"]
 
 
 def _is_wrapper(path):
@@ -238,7 +305,9 @@ def main():
     ap.add_argument("--code-root", default=ROOT, help="harness root holding system/register/register.jsonl")
     ap.add_argument("--sop", action="append", default=[], help="SOP basename that counts as the right rulebook (repeatable)")
     ap.add_argument("--shared-ref", action="append", default=[], help="substring a file must contain to count as USING a shared tool")
-    ap.add_argument("--register-file", action="append", default=[], help="register file the new piece should be named in (repeatable)")
+    ap.add_argument("--register-file", action="append", default=[], help="extra register file to inspect (repeatable); it counts by WHICH list it is: personal <personal-code>/register.jsonl = registered, master system/register/register.jsonl = registered-in-shared")
+    ap.add_argument("--personal-root", help="personal code folder (default: the pointer ~/.config/lifehack/personal-code, else ~/lifehack-personal-code)")
+    ap.add_argument("--shared-contribution", action="store_true", help="the piece is a shared-layer contribution (rare): the master register is its right list")
     ap.add_argument("--home-prefix", action="append", default=[], help="(kept for old callers; the home test is now judge_home: Enver's repo OR any non-Drive repo, flagged open)")
     ap.add_argument("--enver-home", default=ENVER_HOME, help="Enver's own accepted code home (private repo desks folder); the student answer is any non-Drive repo, OPEN")
     ap.add_argument("--wrong-move", action="append", default=[], help="regex; a denied call matching none of these counts as a false alarm")

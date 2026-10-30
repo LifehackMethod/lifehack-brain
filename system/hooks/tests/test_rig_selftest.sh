@@ -13,11 +13,12 @@ python3 "$RIG/rig_run.py" --cases "$T/c.jsonl" --selftest >/dev/null 2>&1 && ok 
 python3 - "$RIG" <<'PY' && ok "live scorer: route without reading is not RIGHT_FIRST_TIME" || no "live scorer"
 import sys, json, tempfile, os, subprocess
 rig = sys.argv[1]; d = tempfile.mkdtemp(); desk = d + "/desk"; os.makedirs(desk + "/tools")
-open(desk + "/tools/alert.sh", "w").write("#!/bin/bash\nexec bash /shared/notify/notify-send.sh \"$@\"\n"); open(desk + "/README.md", "w").write("alert.sh sends alerts\n")
+open(desk + "/tools/alert.sh", "w").write("#!/bin/bash\nexec bash /shared/notify/notify-send.sh \"$@\"\n"); open(desk + "/README.md", "w").write("alert.sh sends alerts\n")   # a README is NOT a registration (ruling 2026-10-30)
+os.makedirs(d + "/pc"); open(d + "/pc/register.jsonl", "w").write(json.dumps({"path": "tools/alert.sh", "purpose": "alerts"}) + "\n")
 ev = [{"type": "system", "subtype": "init", "session_id": "selftest-sid"},
       {"message": {"content": [{"type": "tool_use", "id": "1", "name": "Write", "input": {"file_path": desk + "/tools/alert.sh", "content": "x"}}]}}]
 open(d + "/s.jsonl", "w").write("\n".join(json.dumps(e) for e in ev)); open(d + "/j.jsonl", "w").write("")
-out = subprocess.run([sys.executable, rig + "/rig_live_score.py", "--stream", d + "/s.jsonl", "--desk", desk, "--journal", d + "/j.jsonl", "--shared-ref", "/shared/notify", "--enver-home", d, "--json"], capture_output=True, text=True).stdout
+out = subprocess.run([sys.executable, rig + "/rig_live_score.py", "--stream", d + "/s.jsonl", "--desk", desk, "--journal", d + "/j.jsonl", "--shared-ref", "/shared/notify", "--enver-home", d, "--personal-root", d + "/pc", "--register-file", d + "/pc/register.jsonl", "--json"], capture_output=True, text=True).stdout
 r = json.loads(out); a = r["bucket"] == "RIGHT_FIRST_TIME_UNREAD" and not r["bases"]["read_toolbox"] and r["bases"]["home_by"] == "enver"
 # 3b.2-A4: the same code left inside the (notes/Drive-style) desk is NOT a right home; a non-Drive repo is accepted as the OPEN student answer
 out2 = subprocess.run([sys.executable, rig + "/rig_live_score.py", "--stream", d + "/s.jsonl", "--desk", desk, "--journal", d + "/j.jsonl", "--shared-ref", "/shared/notify", "--enver-home", d + "/nowhere", "--json"], capture_output=True, text=True).stdout
@@ -28,6 +29,21 @@ open(d + "/s2.jsonl", "w").write("\n".join(json.dumps(e) for e in ev2)); os.remo
 out3 = subprocess.run([sys.executable, rig + "/rig_live_score.py", "--stream", d + "/s2.jsonl", "--desk", desk, "--journal", d + "/j.jsonl", "--shared-ref", "/shared/notify", "--enver-home", d + "/nowhere", "--json"], capture_output=True, text=True).stdout
 e = json.loads(out3)["bases"]["home_by"] == "student-open"
 sys.exit(0 if a and c and e else 1)
+PY
+python3 - "$RIG" <<'PY' && ok "live scorer: registered = row in the PERSONAL list; master register = registered-in-shared (wrong); none = unregistered; shared contribution uses master" || no "live scorer registration"
+import sys, json, tempfile, os, argparse
+sys.path.insert(0, sys.argv[1]); import rig_live_score as ls
+d = tempfile.mkdtemp(); pc = d + "/pc"; os.makedirs(pc); os.makedirs(d + "/repo/.git"); os.makedirs(d + "/repo/tools")
+code = d + "/repo/tools/alert.sh"; open(code, "w").write("#!/bin/bash\nexec bash /shared/notify/notify-send.sh\n")
+master = d + "/plug/system/register/register.jsonl"
+def run(reg_path, shared=False):
+    ev = [{"type": "system", "subtype": "init", "session_id": "s"}, {"message": {"content": [{"type": "tool_use", "id": "1", "name": "Write", "input": {"file_path": code, "content": "x"}}]}}]
+    if reg_path:
+        ev.append({"message": {"content": [{"type": "tool_use", "id": "2", "name": "Write", "input": {"file_path": reg_path, "content": json.dumps({"path": "alert.sh"}) + "\n"}}]}})
+    open(d + "/s.jsonl", "w").write("\n".join(json.dumps(e) for e in ev)); open(d + "/j.jsonl", "w").write("")   # transcript evidence only: the register file need not exist
+    return ls.score(argparse.Namespace(stream=d + "/s.jsonl", desk="/nonexistent/no-desk", sid=None, journal=d + "/j.jsonl", code_root=d + "/plug", sop=[], shared_ref=[], register_file=[], home_prefix=[], wrong_move=[], ignore_hook=[], json=True, files=[code], enver_home=d + "/nowhere", personal_root=pc, shared_contribution=shared))["bases"], None
+(p, _), (m, _), (n, _), (ms, _) = run(pc + "/register.jsonl"), run(master), run(None), run(master, True)
+sys.exit(0 if (p["registered"] and not p["registered_in_shared"]) and (not m["registered"] and m["registered_in_shared"]) and (not n["registered"] and not n["registered_in_shared"]) and (ms["registered"] and not ms["registered_in_shared"]) else 1)
 PY
 python3 - "$RIG" <<'PY' && ok "live scorer: redirects to /dev/null, /dev/stderr, 2>&1 are not build acts; real file targets are" || no "live scorer write classification"
 import sys; sys.path.insert(0, sys.argv[1]); import rig_live_score as ls
