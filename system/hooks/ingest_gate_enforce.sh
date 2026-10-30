@@ -1,7 +1,7 @@
 #!/bin/bash
 # LHB fire-journal (B4.1): observes only; never alters this hook's decision/exit/stdout/stderr.
 _lhb_src="${BASH_SOURCE[0]}"; case "$_lhb_src" in */*) _lhb_dir="${_lhb_src%/*}" ;; *) _lhb_dir=. ;; esac; . "$_lhb_dir/lib/journal.sh" 2>/dev/null || lhb_journal_fire() { :; }
-trap 'lhb_journal_fire "$?" "ingest_gate_enforce.sh" "PreToolUse" "Bash|WebFetch|WebSearch|Read|Grep|Glob" 2>/dev/null || true' EXIT
+trap 'lhb_journal_fire "$?" "ingest_gate_enforce.sh" "PreToolUse" "Bash|WebFetch|WebSearch|Read|Grep|Glob|Write|Edit|MultiEdit" 2>/dev/null || true' EXIT
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # WHY: reading is how this system gets hurt. A web page, a PDF, someone else's document, an
 #      exported chat — any of it can carry a sentence addressed to the model rather than to you
@@ -56,6 +56,10 @@ trap 'lhb_journal_fire "$?" "ingest_gate_enforce.sh" "PreToolUse" "Bash|WebFetch
 #      exactly the "control that forces a routine workaround" this widening exists to prevent, and it
 #      came back in through string formatting. So: both roots go through `pwd -P`, the incoming path
 #      goes through realpath, and the comparison is between two canonical paths.
+# UPDATED: 2026-10-30 (Round C lock-prep A, switch email_reader_block in system/hooks/roundB.conf, OFF = unchanged): the gate also covers WRITTEN code. A Write/Edit/MultiEdit
+#      (and a Bash heredoc/redirect write) of a code file that reads mail itself (imaplib/poplib/Gmail API) or fetches outside content itself
+#      (requests/urllib/httpx/curl in a script) is a HARD deny that names email_fetch.py / safe_fetch.py; the allowlisted shared fetches, test files
+#      and loopback-only code pass. Logic: system/hooks/lib/outside_reader_scan.py. Clause (h) also refuses inline python using imaplib/poplib/smtplib.
 # UPDATED: 2026-10-27 (self-monitoring 5.2, the door, session side): clause (h) in the Bash arm refuses raw Gmail pulls
 #      (gws gmail users messages|threads get|list), raw web fetches (curl/wget to http(s), python -c / heredoc with
 #      urllib/requests) with WHY + REDIRECT (safe_fetch.py / safe_search_api.sh / the email shared fetch) + SIGNPOST. The
@@ -419,12 +423,23 @@ except Exception: print('')" "$TOOL" 2>/dev/null)
         ;;
     esac
     ;;
+  Write|Edit|MultiEdit)
+    # email_reader_block: written code that reads mail or fetches outside content itself. Degrade-safe (an internal error allows).
+    if . "$_lhb_dir/lib/roundb.sh" 2>/dev/null && roundb_on email_reader_block; then
+      printf '%s' "$INPUT" | python3 "$_lhb_dir/lib/outside_reader_scan.py" || exit 2
+    fi
+    exit 0
+    ;;
   Bash)
     CMD=$(printf '%s' "$INPUT" | python3 -c "
 import sys, json
 try: print(json.load(sys.stdin).get('tool_input',{}).get('command',''))
 except Exception: print('__ERR__')" 2>/dev/null)
     [ "$CMD" = "__ERR__" ] && deny '{"decision":"block","reason":"BLOCKED: ingest_gate_enforce could not parse the Bash command — failing CLOSED."}'
+    # email_reader_block: a heredoc / redirect write of a code file that is its own mail or web reader.
+    if . "$_lhb_dir/lib/roundb.sh" 2>/dev/null && roundb_on email_reader_block; then
+      printf '%s' "$INPUT" | python3 "$_lhb_dir/lib/outside_reader_scan.py" || exit 2
+    fi
 
     # (a) A command that switches the sanitizer off. Stated honestly: NO tool shipped here reads a
     # *_SKIP_* variable today, so this blocks a shape rather than a live bypass. It stays because
@@ -505,6 +520,9 @@ except Exception: print('__ERR__')" 2>/dev/null)
     fi
     if printf '%s' "$_RAWFLAT" | grep -qE '(^|[[:space:];&|(])(curl|wget)[[:space:]][^;&|]*https?://'; then
       deny '{"decision":"block","reason":"BLOCKED: a raw curl/wget of a web URL skips the shared fetch. WHY: a web page is untrusted text that can carry instructions addressed to the model, and the egress allowlist, sanitiser and injection scan only exist inside the shared fetch. REDIRECT: python3 <repo>/system/tools/safe_fetch.py <url> to read a page, or bash <repo>/system/tools/safe_search_api.sh <query> to search. SIGNPOST: self-monitoring plan B.4 (the door); allowed files are listed in system/tools/shared-fetch-allowlist.txt."}'
+    fi
+    if . "$_lhb_dir/lib/roundb.sh" 2>/dev/null && roundb_on email_reader_block && printf '%s' "$_RAWFLAT" | grep -qE 'python[0-9.]*[[:space:]]+(-[A-Za-z]*c[[:space:]]|-[[:space:]]*<<).*(imaplib|poplib|smtplib|IMAP4|googleapiclient)'; then
+      deny '{"decision":"block","reason":"BLOCKED (email_reader_block): inline python that speaks a mail protocol (imaplib / poplib / smtplib / IMAP4 / googleapiclient) is your own email reader. That is explicitly prohibited. WHY: raw mail skips the ingest sanitiser and the injection scan, and anyone can plant an instruction in an email. USE THE SHARED READER: python3 <repo>/shared/tools/email_fetch.py --consumer <your-name> --query '"'"'<gmail query>'"'"' --cap <max threads> --since none --out <file.json> (sanitised, capped, injection-scanned; mail already ingested: python3 <repo>/shared/tools/email_service_read.py). WHO-COULD-THIS-BREAK: a one-off script that reads mail directly. WAY-THROUGH: call email_fetch.py instead. SIGNPOST: switch email_reader_block; allowed files: system/tools/shared-fetch-allowlist.txt."}'
     fi
     if printf '%s' "$_RAWFLAT" | grep -qE 'python[0-9.]*[[:space:]]+(-[A-Za-z]*c[[:space:]]|-[[:space:]]*<<).*(urllib|requests\.|import requests|from requests|httpx|http\.client)'; then
       deny '{"decision":"block","reason":"BLOCKED: inline python that fetches over the network (urllib/requests) skips the shared fetch. WHY: the same as a raw curl: the page arrives unsanitised and unscanned, outside the egress allowlist. REDIRECT: python3 <repo>/system/tools/safe_fetch.py <url> (or safe_search_api.sh for a search). SIGNPOST: self-monitoring plan B.4 (the door); allowed files are listed in system/tools/shared-fetch-allowlist.txt."}'

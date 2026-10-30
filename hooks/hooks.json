@@ -137,7 +137,7 @@
       "statusMessage": "Checking where this text came from..."
      }
     ],
-    "matcher": "Bash|WebFetch|WebSearch|Read|Grep|Glob"
+    "matcher": "Bash|WebFetch|WebSearch|Read|Grep|Glob|Write|Edit|MultiEdit"
    },
    {
     "hooks": [

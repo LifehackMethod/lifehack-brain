@@ -20,6 +20,8 @@ trap 'lhb_journal_fire "$?" "guard_egress.sh" "PreToolUse" "Bash" 2>/dev/null ||
 # SIGNPOST: the outbound story as a whole is in system/egress-allowlist.md.
 # FAIL_POSTURE: open — unreadable input allows, mirroring its sibling. Neither of these may brick a
 #      shell; the operating system's firewall is the layer that fails closed.
+# UPDATED: 2026-10-30 (Round C lock-prep A, switch email_reader_block, OFF = unchanged): the mechanism test also counts imaplib/poplib/smtplib/IMAP4/googleapiclient,
+#      so a mail-protocol call with a credential in the same command is refused too (the hard block on the code itself is enforce_egress_allowlist.py + ingest_gate_enforce.sh).
 # UPDATED: 2026-08-11 (ported unchanged in substance; wording generalised)
 # ─────────────────────────────────────────────────────────────────────────────
 # guard_egress.sh — PreToolUse hook (matcher: Bash). Blocks a secret and a network call in one breath.
@@ -38,7 +40,14 @@ except Exception:
 # Condition 1 — is anything going out? Shell tools OR inline Python HTTP. The Python patterns match
 # actual CALL sites (requests.get, urllib.request), never the bare word "python" and never
 # urllib.parse, so a legitimate fetcher invoked as a script does not trip this.
+# email_reader_block: a mail-protocol call counts as an outbound mechanism too.
+_mailmech=0
+if . "${_lhb_dir}/lib/roundb.sh" && roundb_on email_reader_block; then
+  printf '%s' "$COMMAND" | grep -qE 'imaplib|poplib|smtplib|IMAP4|googleapiclient' && _mailmech=1
+fi
+if [ "$_mailmech" != 1 ]; then
 printf '%s' "$COMMAND" | grep -qE '(^|[^[:alnum:]_/])(curl|wget|nc|ncat|netcat|telnet)([^[:alnum:]_]|$)|urllib\.request|urllib\.urlopen|\brequests\.(get|post|put|patch|delete|request)|\bhttpx\.|http\.client|socket\.(socket|create_connection)' 2>/dev/null || exit 0
+fi
 
 # Condition 2 — is a credential in the same breath? Only then does it block.
 if printf '%s' "$COMMAND" | grep -qE 'sk-ant-|sk_live_|sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{30,}|gho_[A-Za-z0-9]{30,}|xox[bporsa]-|ANTHROPIC_API_KEY|ANTHROPIC_AUTH_TOKEN|OPENAI_API_KEY|SERPER_API_KEY|AWS_SECRET_ACCESS_KEY|GOOGLE_APPLICATION_CREDENTIALS' 2>/dev/null; then

@@ -87,6 +87,24 @@ MECH = re.compile(
     r'(^|[^A-Za-z0-9_/])(curl|wget|nc|ncat|netcat|telnet)([^A-Za-z0-9_]|$)'
     r'|urllib\.request|urllib\.urlopen|\brequests\.(get|post|put|patch|delete|request)'
     r'|\bhttpx\.|http\.client|socket\.(socket|create_connection)')
+# email_reader_block (Round C lock-prep A, system/hooks/roundB.conf, OFF = unchanged): python that speaks a mail protocol is a homemade email
+# reader, whatever host it names (imap.gmail.com passes the host list because google.com is on it). HARD block, names the shared reader.
+# WHO-COULD-THIS-BREAK: a one-off script that reads or sends mail by itself. WAY-THROUGH: python3 <repo>/shared/tools/email_fetch.py (reading).
+MAILCODE = re.compile(r'\b(import|from)\s+(imaplib|poplib|smtplib)\b|\b(imaplib|poplib|smtplib)\.\w+|\bIMAP4(_SSL)?\s*\(|\bPOP3(_SSL)?\s*\(|\bfrom\s+googleapiclient|\bimport\s+googleapiclient|\bSMTP(_SSL)?\s*\(')
+try:
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+    from roundb import roundb_on as _rb_on
+    _mail_block = _rb_on("email_reader_block")
+except Exception:
+    _mail_block = False
+if _mail_block and re.search(r'\bpython[0-9.]*\b', cmd) and MAILCODE.search(cmd):
+    sys.stderr.write(
+        "BLOCKED (email_reader_block): python that speaks a mail protocol (imaplib / poplib / smtplib / Gmail API) is your own email reader. "
+        "That is explicitly prohibited. WHY: raw mail skips the ingest sanitiser and the injection scan; an email is the commonest place an "
+        "instruction is planted. USE THE SHARED READER: python3 <repo>/shared/tools/email_fetch.py --consumer <your-name> --query '<gmail query>' "
+        "--cap <max threads> --since none --out <file.json> (sanitised, capped, scanned). WHO-COULD-THIS-BREAK: a one-off script that reads mail "
+        "directly. WAY-THROUGH: call email_fetch.py instead.\n")
+    sys.exit(2)
 if not MECH.search(cmd):
     sys.exit(0)
 
