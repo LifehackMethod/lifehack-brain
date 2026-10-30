@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """bootstrap.py — day one. Makes the four things nothing else makes, and nothing more.
+(Also, since ruling 3: your personal code folder + its pointer, see ensure_personal_code.)
 
 Run once, after you have told the system where your notes live:
 
@@ -130,6 +131,48 @@ def bootstrap(root, dry_run=False):
             with open(target, "w", encoding="utf-8") as f:
                 f.write(body)
     return created, existed
+
+
+def ensure_personal_code(dry_run=False):
+    """Your personal code folder (ruling 3): create it, switch on local git history, write the pointer.
+
+    Returns a list of plain-English lines. Never overwrites: an existing pointer
+    (~/.config/lifehack/personal-code) is left exactly as it is, and when it already names a real folder
+    nothing else is touched (the maintainer's pointer names ClaudeOps; a second folder here would be wrong).
+    Only with NO pointer: make ~/lifehack-personal-code if missing, `git init` it if it has no .git,
+    write the pointer. A missing git is a warning, never a failure. Resolution lives in
+    shared/personal_code_root.py."""
+    import subprocess
+    import personal_code_root as pcr
+    out = []
+    existing = pcr.read_pointer()
+    if existing:
+        if os.path.isdir(existing):
+            return ["personal code folder: already set, left alone: %s" % existing]
+        return ["personal code folder: the pointer %s names a folder that is not there (%s). Left alone; "
+                "restore the folder or fix that line." % (pcr.pointer_path(), existing)]
+    folder = pcr.default_folder()
+    verb = "would create" if dry_run else "created"
+    if not os.path.isdir(folder):
+        out.append("personal code folder: %s %s" % (verb, folder))
+        if not dry_run:
+            os.makedirs(folder)
+    else:
+        out.append("personal code folder: already there, left alone: %s" % folder)
+    if not os.path.isdir(os.path.join(folder, ".git")):
+        out.append("personal code folder: %s local git history (git init)" % ("would start" if dry_run else "started"))
+        if not dry_run:
+            try:
+                subprocess.run(["git", "init", "-q", folder], check=True, capture_output=True)
+            except (OSError, subprocess.CalledProcessError):
+                out[-1] = ("personal code folder: could not run `git init` (is git installed?). The folder works "
+                           "without history; run `git init` in %s later." % folder)
+    out.append("personal code folder: %s pointer %s" % ("would write" if dry_run else "wrote", pcr.pointer_path()))
+    if not dry_run:
+        os.makedirs(os.path.dirname(pcr.pointer_path()), exist_ok=True)
+        with open(pcr.pointer_path(), "x", encoding="utf-8") as f:   # "x": refuses to overwrite, by construction
+            f.write(folder + "\n")
+    return out
 
 
 SHIM_BODY = (
@@ -348,6 +391,9 @@ def main(argv=None):
         print("  already there, left alone: %s" % p)
     if not created:
         print("Nothing to do — the shape is already in place.")
+
+    for line in ensure_personal_code(dry_run=a.dry_run):
+        print("  " + line)
 
     # The one machine-shaped thing this step owns besides the folders: making `python3` a real word
     # on Windows, AND making it read files as UTF-8 instead of the machine's default codepage.

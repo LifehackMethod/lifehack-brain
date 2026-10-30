@@ -183,10 +183,20 @@ class TestRefuses(Case):
         self.assertIn("--set", r.stdout + r.stderr, "a refusal has to say how to fix it")
 
     def test_cli_runs_against_an_explicit_root(self):
+        # HOME sandboxed: bootstrap also makes the personal code folder + pointer under $HOME (ruling 3),
+        # and a test must never create those on the developer's real machine.
+        env = dict(os.environ, HOME=os.path.join(self.tmp, "home-pc"))
         r = subprocess.run([sys.executable, os.path.join(HERE, "bootstrap.py"), "--root", self.root],
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, env=env)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(tree(self.root), EXPECTED | {"system/", "state/"})
+        self.assertTrue(os.path.isdir(os.path.join(env["HOME"], "lifehack-personal-code", ".git")))
+        with open(os.path.join(env["HOME"], ".config", "lifehack", "personal-code"), encoding="utf-8") as f:
+            pointer = f.read().strip()
+        r2 = subprocess.run([sys.executable, os.path.join(HERE, "bootstrap.py"), "--root", self.root],
+                            capture_output=True, text=True, env=env)   # second run never overwrites the pointer
+        with open(os.path.join(env["HOME"], ".config", "lifehack", "personal-code"), encoding="utf-8") as f:
+            self.assertEqual(f.read().strip(), pointer)
 
 
 class TestSitsBesideIngest(Case):
