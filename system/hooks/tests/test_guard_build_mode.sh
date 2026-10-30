@@ -132,10 +132,20 @@ fire o2 Write "$(J file_path "$HOME/.claude/scratch/ping.py" content 'print(1)')
 touch "$HOME/odd-widget/existing.py"
 fire o2 Edit "$(J file_path "$HOME/odd-widget/existing.py" old_string a new_string b)"; want 0 "ON: edit of an EXISTING file: allowed"; silent "existing"
 # ON, the bump
-fire o3 Write "$(J file_path "$HOME/odd-widget/ping.py" content 'print(1)')"; want 2 "ON: new .py in an odd folder: denied once" "this belongs in your personal code folder: $PCREAL"
-fire o3 Write "$(J file_path "$HOME/odd-widget/ping.py" content 'print(1)')"; want 0 "ON: identical retry passes"
-fire o3 Write "$(J file_path "$HOME/odd-widget/other.sh" content 'echo')"; want 0 "ON: second file, same session: passes (once per rule)"
-fire o4 Bash "$(J command "echo hi > $HOME/odd-widget/run.sh")"; want 2 "ON: Bash redirect to new .sh outside homes: denied once" "personal code folder: $PCREAL"
+# These four assert the placement text of whichever reason_gate state is live (env wins, else roundB.conf): OFF = the old once-per-session
+# speed bump (a retry passes); ON = the reason gate (stopped every time until the call carries a reason). Neither is weakened.
+GATE_NOW="${ROUNDB_REASON_GATE:-$(sed -n 's/^reason_gate=//p' "$HERE/roundB.conf" | head -1)}"
+if [ "$GATE_NOW" = on ]; then
+  fire o3 Write "$(J file_path "$HOME/odd-widget/ping.py" content 'print(1)')"; want 2 "ON+gate ON: new .py in an odd folder: stopped" "lifehack-place: <your reason>"
+  fire o3 Write "$(J file_path "$HOME/odd-widget/ping.py" content 'print(1)')"; want 2 "ON+gate ON: identical retry is stopped again" "lifehack-place: <your reason>"
+  fire o3 Write "$(J file_path "$HOME/odd-widget/other.sh" content 'echo')"; want 2 "ON+gate ON: second file, same session: stopped too" "lifehack-place: <your reason>"
+  fire o4 Bash "$(J command "echo hi > $HOME/odd-widget/run.sh")"; want 2 "ON+gate ON: Bash redirect to new .sh outside homes: stopped" "end of the command"
+else
+  fire o3 Write "$(J file_path "$HOME/odd-widget/ping.py" content 'print(1)')"; want 2 "ON: new .py in an odd folder: denied once" "this belongs in your personal code folder: $PCREAL"
+  fire o3 Write "$(J file_path "$HOME/odd-widget/ping.py" content 'print(1)')"; want 0 "ON: identical retry passes"
+  fire o3 Write "$(J file_path "$HOME/odd-widget/other.sh" content 'echo')"; want 0 "ON: second file, same session: passes (once per rule)"
+  fire o4 Bash "$(J command "echo hi > $HOME/odd-widget/run.sh")"; want 2 "ON: Bash redirect to new .sh outside homes: denied once" "personal code folder: $PCREAL"
+fi
 # unresolved personal code folder: no bump
 mv "$HOME/.config/lifehack/personal-code" "$HOME/.config/lifehack/personal-code.bak"
 fire o5 Write "$(J file_path "$HOME/odd-widget/ping3.py" content 'print(1)')"; want 0 "ON: personal folder unresolved: no bump"; silent "unresolved"
