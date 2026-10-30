@@ -73,8 +73,8 @@ def main():
                         "--label", "t", "--only", "NOMATCH", "--env", "HOME=" + os.path.expanduser("~")], capture_output=True, text=True)
     assert r.returncode != 0 and "REFUSED" in (r.stdout + r.stderr), r
     # ...and with a pointer at the real ClaudeOps, or without --scratch
-    import tempfile
-    h = tempfile.mkdtemp()
+    import tempfile as _tf
+    h = _tf.mkdtemp()
     os.makedirs(os.path.join(h, ".config", "lifehack"))
     open(os.path.join(h, ".config", "lifehack", "personal-code"), "w", encoding="utf-8").write(os.path.expanduser("~/.claude/skills/ClaudeOps") + "\n")
     base = [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "rig_live_free.py"), "run", "--cases", "/nonexistent.jsonl", "--label", "t", "--only", "NOMATCH"]
