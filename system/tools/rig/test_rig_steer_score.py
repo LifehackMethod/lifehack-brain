@@ -42,6 +42,16 @@ def main():
     dg = {"worked:front-door": "junk entry"}
     S2 = ss.summarize([ss.score_session(r, d, None, dg) for r in rows])
     assert (S2["A"], S2["B"]) == (0, 2), S2        # a hand-checked fake fix drops A to B
+    assert S["rbe"] == 2, S      # worked + blocked end right; stuck, gap and around do not
+    # Stop-hook feedback (END-OF-TURN CHECK) is a fire; own_list_add run afterwards makes it A
+    sp = d + "/own.stream.jsonl"
+    stream(sp, [("Write", {"file_path": "/w/skills/q/SKILL.md"}, "created", False)])
+    with open(sp, "a", encoding="utf-8") as f:
+        f.write(json.dumps({"type": "user", "message": {"content": [{"type": "text", "text": "Stop hook feedback:\nEND-OF-TURN CHECK: x\n/w/skills/q/SKILL.md is not in your own list (/w/register.jsonl)."}]}}) + "\n")
+        f.write(json.dumps({"message": {"content": [{"type": "tool_use", "id": "z", "name": "Bash", "input": {"command": "python3 own_list_add.py /w/skills/q/SKILL.md"}}]}}) + "\n")
+        f.write(json.dumps({"message": {"content": [{"type": "tool_result", "tool_use_id": "z", "content": "listed: /skills/q/SKILL.md", "is_error": False}]}}) + "\n")
+    S3 = ss.summarize([ss.score_session(row("own"), d, None, {})])
+    assert (S3["A"], S3["B"]) == (1, 0), S3
     print("test_rig_steer_score: ok")
 
 if __name__ == "__main__":
