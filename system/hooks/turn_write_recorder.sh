@@ -30,6 +30,26 @@ IFS= read -r -d '' P || true
 # trw_bash_targets <command> <cwd> -> prints absolute paths a Bash command appears to write, one per line.
 # THE ONE REPLACEABLE FUNCTION: today it reads lib/bash_write_door.sh (bwd_write_targets); the cmdreader step swaps it.
 trw_bash_targets() {
+  # Round B piece 4 (switch cmdreader): shared/cmdreader.py writes(). Any failure (missing, throws, cannot parse)
+  # falls through to the bwd_write_targets path below, unchanged. Heredoc bodies and quoted text are data there.
+  if roundb_on cmdreader; then
+    local _cr_out
+    if _cr_out="$(python3 -c '
+import sys
+sys.path.insert(0, sys.argv[3])
+import cmdreader
+r = cmdreader.read(sys.argv[1], cwd=sys.argv[2])
+if not r.ok:
+    sys.exit(3)
+for w in cmdreader.writes(r, cwd=sys.argv[2]):
+    p = w.abs or w.path
+    if p and "$" not in p:
+        print(p)
+' "$1" "$2" "$_lhb_dir/../../shared" 2>/dev/null)"; then
+      [ -z "$_cr_out" ] || printf '%s\n' "$_cr_out"
+      return 0
+    fi
+  fi
   . "$_lhb_dir/lib/bash_write_door.sh" 2>/dev/null || return 0  # allow-silence: observer hook, degrade-safe by design (it must never block or fail a tool call)
   local t
   bwd_write_targets "$1" 2>/dev/null | while IFS= read -r t; do

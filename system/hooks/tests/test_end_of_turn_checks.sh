@@ -92,4 +92,18 @@ rec d1 p5 Write "$(Jw "$PC/bin/ring-bell.sh")" create; stop d1 p5; [ -z "$OUT$ER
 mkfile "$PC/bin/fetch-x.sh" "$BADSH"; ROUNDB_BACK_DOOR=off rec d2 p1 Write "$(Jw "$PC/bin/fetch-x.sh")" create
 ROUNDB_BACK_DOOR=off stop d2 p1; R="$(reason)"; printf '%s' "$R" | grep -q "own list" && ! printf '%s' "$R" | grep -q hides_failure && ok "own_list alone: only the list rule" || bad "own-alone wrong: $R"
 
+echo "== CMDREADER SWITCH (piece 4) =="
+mkfile "$WORK/note-hd.md" "x"; mkfile "$WORK/ghost-hd.sh" "x"; mkfile "$WORK/real-redir.txt" "x"
+HDT="cat > $WORK/note-hd.md <<'EOF'
+echo x > $WORK/ghost-hd.sh
+EOF"
+ROUNDB_CMDREADER=on rec e1 p1 Bash "$(Jb "$HDT")"
+grep -q "note-hd.md" "$T/tw/e1.list" 2>/dev/null && ok "cmdreader ON: the heredoc's real redirect target is recorded" || bad "ON: real target missing"
+grep -q "ghost-hd.sh" "$T/tw/e1.list" 2>/dev/null && bad "cmdreader ON: file named only in heredoc TEXT recorded as a write" || ok "cmdreader ON: file named only in heredoc text is NOT recorded"
+ROUNDB_CMDREADER=on rec e2 p1 Bash "$(Jb "printf 'x' > $WORK/real-redir.txt")"
+grep -q "real-redir.txt" "$T/tw/e2.list" 2>/dev/null && ok "cmdreader ON: a plain redirect write is recorded" || bad "ON: redirect not recorded"
+ROUNDB_CMDREADER=on rec e3 p1 Bash "$(Jb "echo 'unterminated > $WORK/real-redir.txt")"; [ "$?" = 0 ] && ok "cmdreader ON: unparsable command falls back, recorder still exits 0" || bad "ON: unparsable crashed"
+ROUNDB_CMDREADER=off rec e4 p1 Bash "$(Jb "printf 'x' > $WORK/real-redir.txt")"
+grep -q "real-redir.txt" "$T/tw/e4.list" 2>/dev/null && ok "cmdreader OFF: redirect write recorded as before" || bad "OFF: redirect not recorded"
+
 echo; echo "passed=$pass failed=$fail"; [ "$fail" = 0 ]
