@@ -62,6 +62,7 @@ Shared layer = everything under `shared/`. Look here before writing a new tool.
 
 - `/shared/brain_root.py` · THE one root variable. Every data path in this system resolves through here
 - `/shared/cal_config.py` · the one place a calendar or task-list identifier is read from
+- `/shared/cmdreader.py` · the shared command reader (v2 Round B, piece 4)
 - `/shared/paths.py` · every machine-shaped path in this system, answered in ONE place
 - `/shared/personal_code_root.py` · where YOUR personal code lives (desk runners, prompts, your own scripts)
 - `/shared/registry.py` · resolve a project slug to the files that belong to it
