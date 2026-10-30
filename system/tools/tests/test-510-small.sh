@@ -98,10 +98,10 @@ elif [ "$drc" -eq 0 ]; then fail d-watchdog-no-orphan "a watchdog-killed run exi
 else pass d-watchdog-no-orphan; fi
 
 # ── (e) the door refuses a check with no value-bearing field; (f) it refuses a row whose command file is missing ──
-E="$T/e"; mkdir -p "$E/code/system/tools" "$E/home/.claude/skills/ClaudeOps/desks/x"; printf '#!/usr/bin/env bash\necho fine\n' > "$E/code/system/tools/ok-run.sh"
+E="$T/e"; mkdir -p "$E/code/system/tools" "$E/fakehome/.claude/skills/ClaudeOps/desks/x"; printf '#!/usr/bin/env bash\necho fine\n' > "$E/code/system/tools/ok-run.sh"
 door() {  # check [command] -> sets DOOR_OUT, DOOR_RC
   printf '```jobs\nrow1 | yes | 3600 | o. | %s | none | 0 | none | %s\n```\n' "$1" "${2:-bash \"\$LIFEHACK_CODE_ROOT/system/tools/ok-run.sh\"}" > "$E/m.md"
-  DOOR_OUT="$(LIFEHACK_JOBS_FILE="$E/m.md" LIFEHACK_CODE_ROOT="$E/code" LIFEHACK_DESK_REPO="$E/home/.claude/skills/ClaudeOps" HOME="$E/home" bash "$ROOT/system/tools/install-schedulers.sh" --check-row row1 2>&1)"; DOOR_RC=$?
+  DOOR_OUT="$(LIFEHACK_JOBS_FILE="$E/m.md" LIFEHACK_CODE_ROOT="$E/code" LIFEHACK_DESK_REPO="$E/fakehome/.claude/skills/ClaudeOps" HOME="$E/fakehome" bash "$ROOT/system/tools/install-schedulers.sh" --check-row row1 2>&1)"; DOOR_RC=$?
 }
 want_refused() { door "$2" "${3:-}"; if [ "$DOOR_RC" -ne 0 ] && echo "$DOOR_OUT" | grep -q -- "$4"; then pass "$1"; else fail "$1" "rc=$DOOR_RC $DOOR_OUT"; fi; }
 want_pass()    { door "$2" "${3:-}"; if [ "$DOOR_RC" -eq 0 ]; then pass "$1"; else fail "$1" "rc=$DOOR_RC $DOOR_OUT"; fi; }
