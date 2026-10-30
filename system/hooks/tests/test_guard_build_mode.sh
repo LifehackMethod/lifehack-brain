@@ -113,4 +113,32 @@ fire w2 Bash "$(J command "git -C $CODE worktree add ../sibling-wt")"; want 2 "w
 fire w3 Bash "$(J command "git worktree add $HOME/worktrees/v2-x -b v2-x")"; want 0 "worktree in ~/worktrees/<name>: allowed"; silent "worktree home"
 fire w3 Bash "$(J command "git worktree add $CODE/.claude/worktrees/agent1")"; want 0 "Claude-managed .claude/worktrees: allowed"; silent "managed worktree"
 fire w3 Bash "$(J command "echo 'git worktree add /elsewhere/x'")"; want 0 "worktree add inside a quoted echo: allowed"
+# ---- placement rule 4 (3b.3-P3): new code outside EVERY home (switch placement_outside_homes). Fictional paths.
+cp "$HERE/../../shared/personal_code_root.py" "$CODE/shared/"
+PCODE="$T/personal-code"; mkdir -p "$PCODE/tools" "$HOME/odd-widget" "$HOME/.claude/scratch"; echo "$PCODE" > "$HOME/.config/lifehack/personal-code"
+PCREAL="$(cd "$PCODE" && pwd -P)"
+# OFF: exactly today's behaviour, the rule never fires
+export ROUNDB_PLACEMENT_OUTSIDE_HOMES=off
+fire o1 Write "$(J file_path "$HOME/odd-widget/ping.py" content 'print(1)')"; want 0 "OFF: new .py in an odd folder: silent"; silent "outside OFF"
+export ROUNDB_PLACEMENT_OUTSIDE_HOMES=on
+# ON, ALLOW cases first
+fire o2 Write "$(J file_path "$PCODE/tools/ping.py" content 'print(1)')"; want 0 "ON: new code in the personal code folder: allowed"; silent "personal code"
+fire o2 Write "$(J file_path "$CODE/system/tools/ping2.py" content 'print(1)')"; want 0 "ON: new code in the harness: allowed"; silent "harness code"
+fire o2 Write "$(J file_path "$NOTES/system/data.json" content '{}')"; want 0 "ON: data file outside homes untouched"; silent "json"
+fire o2 Write "$(J file_path "$HOME/odd-widget/notes.md" content 'x')"; want 0 "ON: non-code file in an odd folder: allowed"; silent "md"
+fire o2 Write "$(J file_path "/tmp/lh-fixture-nope/ping.py" content 'print(1)')"; want 0 "ON: /tmp scratch: allowed"; silent "tmp"
+fire o2 Write "$(J file_path "/private/tmp/lh-fixture-nope/ping.sh" content 'echo')"; want 0 "ON: /private/tmp scratch: allowed"; silent "private tmp"
+fire o2 Write "$(J file_path "$HOME/.claude/scratch/ping.py" content 'print(1)')"; want 0 "ON: under ~/.claude: allowed"; silent "dot-claude"
+touch "$HOME/odd-widget/existing.py"
+fire o2 Edit "$(J file_path "$HOME/odd-widget/existing.py" old_string a new_string b)"; want 0 "ON: edit of an EXISTING file: allowed"; silent "existing"
+# ON, the bump
+fire o3 Write "$(J file_path "$HOME/odd-widget/ping.py" content 'print(1)')"; want 2 "ON: new .py in an odd folder: denied once" "this belongs in your personal code folder: $PCREAL"
+fire o3 Write "$(J file_path "$HOME/odd-widget/ping.py" content 'print(1)')"; want 0 "ON: identical retry passes"
+fire o3 Write "$(J file_path "$HOME/odd-widget/other.sh" content 'echo')"; want 0 "ON: second file, same session: passes (once per rule)"
+fire o4 Bash "$(J command "echo hi > $HOME/odd-widget/run.sh")"; want 2 "ON: Bash redirect to new .sh outside homes: denied once" "personal code folder: $PCREAL"
+# unresolved personal code folder: no bump
+mv "$HOME/.config/lifehack/personal-code" "$HOME/.config/lifehack/personal-code.bak"
+fire o5 Write "$(J file_path "$HOME/odd-widget/ping3.py" content 'print(1)')"; want 0 "ON: personal folder unresolved: no bump"; silent "unresolved"
+mv "$HOME/.config/lifehack/personal-code.bak" "$HOME/.config/lifehack/personal-code"
+unset ROUNDB_PLACEMENT_OUTSIDE_HOMES
 echo "passed=$pass failed=$fail"; [ "$fail" -eq 0 ]

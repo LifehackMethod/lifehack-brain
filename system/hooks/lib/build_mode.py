@@ -216,6 +216,44 @@ def load_placement(code):
                 rules[f[0]] = (f[1], [x.strip() for x in f[2].split(",")], f[3])
     return rules
 
+def outside_homes_target(t, code, notes):
+    """Placement rule 4. -> the resolved personal code folder when file t sits outside EVERY home, else None.
+    Homes: the harness repo, the notes folder, the personal code folder. Never fires (None) when: the switch
+    is off; the personal code folder does not resolve (no path to name, so no bump); t is in a scratch dir
+    (/tmp, /private/tmp, /var/folders, $TMPDIR) UNLESS it is under the user's home; or t is under ~/.claude,
+    ~/.config or any /.claude/ folder (Claude's own scratchpads, worktrees, config)."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    try:
+        from roundb import roundb_on
+        if not roundb_on("placement_outside_homes"):
+            return None
+    except Exception:
+        return None
+    finally:
+        sys.path.pop(0)
+    try:
+        sys.path.insert(0, os.path.join(code, "shared"))
+        import personal_code_root
+        src, pc = personal_code_root.resolve_personal_code_root()
+    except Exception:
+        return None
+    finally:
+        sys.path.pop(0)
+    if not pc or not os.path.isdir(pc):
+        return None
+    pc = os.path.realpath(pc)
+    home = os.path.realpath(HOME)
+    for h in (code, notes, pc):
+        if h and under(t, h):
+            return None
+    if under(t, os.path.join(home, ".claude")) or under(t, os.path.join(home, ".config")) or "/.claude/" in t:
+        return None
+    if not under(t, home) and any(under(t, r) for r in ("/tmp", "/private/tmp", "/var/folders", "/private/var/folders",
+                                                        os.path.realpath(os.environ.get("TMPDIR", "/tmp")))):
+        return None
+    return pc
+
+
 # ---------------------------------------------------------------- the decision
 def sop_receipt_valid(sid):
     """Mirror of guard_hook_sop_read.sh's receipt test (same key order, 12h TTL), in-process, no fork.
@@ -338,6 +376,12 @@ def main_inner():
                 elif zone.startswith("worktree:"):   # a `git worktree add` path must sit under one of these homes
                     hit = w["verb"] == "worktree" and not any(under(t, os.path.realpath(os.path.expanduser(r))) or "/.claude/worktrees/" in t
                                                               for r in zone[9:].split(","))
+                elif zone == "outside-homes":   # 4th rule: new code outside every home (switch placement_outside_homes)
+                    hit = False
+                    pc = outside_homes_target(t, code, notes)
+                    if pc:
+                        hit = True
+                        pmsg = pmsg.replace("{path}", pc)
                 else:
                     hit = False
                 if hit:

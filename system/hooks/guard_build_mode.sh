@@ -53,6 +53,9 @@ if [ "$go" -eq 0 ]; then
       *"$_code"/state/*|*"$_code"/data/*|*"$_code"/memory/*|*"$_code"/records/*|*"$_code"/desks/*) go=1 ;;
     esac
   fi
+  if [ "$go" -eq 0 ]; then   # placement rule 4 (switch placement_outside_homes): new code can be anywhere, so let the engine look
+    case "$BODY" in *.sh*|*.py*) { . "${_lhb_dir}/lib/roundb.sh" && roundb_on placement_outside_homes && go=1; } 2>/dev/null ;; esac
+  fi
 fi
 [ "$go" -eq 1 ] || exit 0
 PY="${_lhb_dir}/lib/build_mode.py"
