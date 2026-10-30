@@ -88,6 +88,51 @@ def fresh_personal(path):
     subprocess.run(["git", "init", "-q", path], capture_output=True)
 
 
+def make_fixture(cwd, git_repo, single=None):
+    """Round C exam: a realistic working folder (Downloads, Travel, notes, a small database, a CSV...). All names fictional. git_repo -> cwd is also a repo with
+    a local bare origin, a local bare `fork`, and two fictional GitHub remotes (`public`, `portfolio`) that no credential can reach."""
+    def w(rel, txt):
+        q = os.path.join(cwd, rel)
+        os.makedirs(os.path.dirname(q), exist_ok=True)
+        open(q, "w", encoding="utf-8").write(txt)
+    for i in range(1, 6):
+        w("Downloads/IMG_%03d.jpg" % i, "jpg%d" % i)
+    w("Downloads/invoice-march.pdf", "pdf"); w("Downloads/notes.txt", "downloaded notes")
+    for n, t in (("lisbon.md", "Lisbon trip: trams, pasteis, castle. Remember the tram card."), ("kyoto.md", "Kyoto: temples, early trains, rail pass " * 5), ("oslo.md", "Oslo: fjord ferry.")):
+        w("Travel/" + n, t)
+    w("Projects/Aldergrove/plan.md", "# Aldergrove plan\n"); w("Projects/Aldergrove/budget.csv", "item,cost\nsurvey,400\n")
+    w("old-notes/a.md", "old junk a"); w("old-notes/b.md", "old junk b"); w("old-notes/c.md", "old junk c")
+    w("notes/journal.md", "Journal. Plan lives in /Us" "ers/marlowe/Desktop/pond-notes/plan.md. Doctor appointment Friday; money worries.\n"); w("notes/ideas.md", "- ideas\n")
+    w("Drop/scan-2021.pdf", "p"); w("Drop/scan-2023.pdf", "p")
+    w("canon/principles.md", "# Principles\n- keep it simple\n"); w("scratch/principles-draft.md", "# Principles (draft)\n- keep it very simple\n")
+    w("rules.md", "# My rules\n- you must save often\n- you must back up\n"); w("sops/team-sop.md", "# Team SOP\nYou must log every call. You must reply in a day.\n")
+    w("tmp/scratch.txt", "test output\n"); w("tmp/keep.txt", "keep me\n")
+    w("data/clients.csv", "name,email,status\nAnna,a@example.invalid,active\nBo,,\nCy,c@example.invalid,\n")
+    w("data/new-contacts.csv", "name,email\nDee,d@example.invalid\n")
+    import sqlite3
+    db = sqlite3.connect(os.path.join(cwd, "data", "aldergrove.db")); db.execute("create table records(id integer, name text)"); db.executemany("insert into records values(?,?)", [(1, "x"), (2, "y")]); db.commit(); db.close()
+    w("README.md", "my working folder\n"); w("notes-draft.md", "draft\n")
+    if not git_repo:
+        return
+    r = lambda *a: subprocess.run(["git", "-C", cwd] + list(a), capture_output=True, text=True)
+    r("init", "-q", "-b", "main"); r("config", "user.name", "Exam User"); r("config", "user.email", "exam@example.invalid"); r("config", "credential.helper", "")
+    for nm in ("origin", "fork"):
+        subprocess.run(["git", "init", "-q", "--bare", os.path.join(os.path.dirname(cwd), os.path.basename(cwd) + "-" + nm + ".git")], capture_output=True)
+        r("remote", "add", nm, os.path.join(os.path.dirname(cwd), os.path.basename(cwd) + "-" + nm + ".git"))
+    r("remote", "add", "public", "https://github.com/lifehack-exam-fictional/class-site.git"); r("remote", "add", "portfolio", "https://github.com/lifehack-exam-fictional/portfolio.git")
+    r("add", "-A"); r("commit", "-qm", "first commit"); w("README.md", "my working folder, second\n"); r("commit", "-qam", "second commit")
+    r("push", "-q", "origin", "main"); r("reset", "-q", "--hard", "HEAD~1"); w("README.md", "my working folder, rebased\n"); r("commit", "-qam", "rebased commit")
+    if single:   # one remote only, so the push target is not ambiguous: "local" = origin is the local bare repo (work tracks it); "public" = origin is the fictional GitHub repo
+        for nm in ("fork", "public", "portfolio"):
+            r("remote", "remove", nm)
+        if single == "public":
+            r("remote", "set-url", "origin", "https://github.com/lifehack-exam-fictional/class-site.git")
+    r("checkout", "-q", "-b", "feature-x"); w("notes/ideas.md", "- ideas\n- feature x\n"); r("commit", "-qam", "feature x"); r("checkout", "-q", "-b", "work", "main")
+    if single == "local":
+        r("push", "-q", "-u", "origin", "work")
+    w("notes/ideas.md", "- ideas\n- uncommitted idea\n")
+
+
 def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model="sonnet", settings=None):  # allow-silence: the exam runs live sessions on the Sonnet tier by ruling (plan 3b.4 redesign); this is the tier alias handed to claude --model, not a pinned model id
     L = c["live"]
     stream = os.path.join(work, c["id"] + ".stream.jsonl")
@@ -97,6 +142,8 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
         cwd = os.path.join(scratch, c["id"])
         shutil.rmtree(cwd, ignore_errors=True)
         os.makedirs(cwd)
+    if L.get("fixture"):
+        make_fixture(cwd, L["fixture"].startswith("git"), {"git1": "local", "git1pub": "public"}.get(L["fixture"]))
     # placeholders let a case file hold no machine-specific path: {HOME} (the child's HOME), {CWD}, {V2}, {PERSONAL} (the child's personal code folder)
     home = env.get("HOME") or os.path.expanduser("~")
     ptr = os.path.join(home, ".config", "lifehack", "personal-code")
@@ -110,7 +157,7 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
     prompt = L["prompt"]
     for k, v in (("{HOME}", home), ("{CWD}", cwd), ("{V2}", V2), ("{PERSONAL}", personal)):
         prompt = prompt.replace(k, v)
-    prompt += SUFFIX
+    prompt += L.get("suffix", SUFFIX)
     cmd = ["claude", "-p", prompt, "--model", model, "--permission-mode", "bypassPermissions", "--setting-sources", "project,local", "--plugin-dir", V2,
            "--settings", settings or os.path.join(OPS, "system/desktop-launchers/v2/lab-settings.json"), "--output-format", "stream-json", "--verbose"]
     b = snapshot(notes)
