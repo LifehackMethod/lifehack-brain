@@ -140,6 +140,9 @@ EXEMPT_FILES = {
 #      declaration and expiry live in the register, not here, and an EXPIRED suspension must
 #      still fail (generate.py re-emits it as active, so missing-from-wiring is real drift again).
 UNREGISTERED_OK = {
+    "inject_delegation_standing.sh": "a hook, unregistered ON PURPOSE (sop-cleanup ruling 4.2, 2026-10-30): "
+                                     "the delegation line is the maintainer's own preference, so it moved "
+                                     "out of the plugin wiring into his personal settings; kept on disk",
     "pm_flag.sh": "a command-line tool the skills call directly (arm/status/clear), not a hook",
     "skill_anchor.sh": "same — the arming half; `skill_anchor_inject.sh` is the registered hook",
     "numbers_flag.sh": "same — `/calculate` calls it directly; `inject_compute_mechanically.sh` is "

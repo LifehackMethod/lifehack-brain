@@ -40,6 +40,11 @@ trap 'lhb_journal_fire "$?" "inject_delegation_standing.sh" "UserPromptSubmit" "
 #      UserPromptSubmit injects (see inject_work_altitude.sh, inject_compute_mechanically.sh)
 #      already made that same call — the text a model reads every turn stays anonymous even
 #      where this file's own comments, above, describe WHY the hook exists.
+#      2026-10-30 (sop-cleanup Phase 2 ruling 4.2): UNREGISTERED from hooks/hooks.json and .claude/settings.json. The
+#      line is Enver's personal standing request, not a rule students agreed to, so it no longer ships to them. Enver's
+#      own copy now runs ONCE per session (SessionStart + compact) from his personal code folder:
+#      ~/.claude/skills/ClaudeOps/system/hooks/delegation_standing_once.sh, wired in ~/.claude/settings.json.
+#      This file is kept (nothing is deleted outright) as the record of WHY the line exists.
 # ─────────────────────────────────────────────────────────────────────────────
 set +e
 

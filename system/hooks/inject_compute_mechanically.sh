@@ -24,6 +24,7 @@ trap 'lhb_journal_fire "$?" "inject_compute_mechanically.sh" "UserPromptSubmit" 
 # FAIL_POSTURE: degrade-safe — any error exits 0 silently, and the turn proceeds with nothing added.
 # UPDATED: 2026-08-11 (ported; the auto-arm list became the reader's own file, and the two stdin
 #      parses became one)
+#      2026-10-30: arm 3 (the backstop regex) narrowed to real money/arithmetic in typed prose; logic in lib/ups_triggers.py.
 # ─────────────────────────────────────────────────────────────────────────────
 set +e
 
@@ -129,8 +130,13 @@ fi
 # ── ARM 3 — the backstop, and it is deliberately narrow. A currency figure, a percentage, or a digit
 # with an operator between it and another digit. Nothing looser: the loose version was measured and
 # it is arm 1 and 2 that carry this, not the regex.
+# 2026-10-30 (sop-cleanup Phase 2 ruling 4.5, 12-token-audit U4): the old regex also matched any bare percentage, any
+# "a/b" (dates 10/06/2026, fractions 20/20) and any version string, so about 60% of its fires were not arithmetic.
+# Now: a dollar amount or an explicit arithmetic expression in the prose the person TYPED (not a pasted page, a
+# list/table, a date, a version or a bare percentage). The logic is in lib/ups_triggers.py (one copy, also replayed by
+# the rig). Arms 1 and 2 above are untouched. A missing helper prints nothing -> no fire (degrade-safe).
 if [ -z "$REASON" ] && [ -n "$PROMPT" ]; then
-  printf '%s' "$PROMPT" | grep -qE '(\$[0-9]|[0-9][0-9,.]*[[:space:]]*%|[0-9][[:space:]]*[*/+×÷][[:space:]]*[0-9])' 2>/dev/null && REASON="hard math token"
+  [ "$(printf '%s' "$INPUT" | python3 "$_ICM_DIR/lib/ups_triggers.py" num --json 2>/dev/null)" = "1" ] && REASON="hard math token"
 fi
 [ -z "$REASON" ] && exit 0
 

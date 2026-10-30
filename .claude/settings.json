@@ -302,6 +302,16 @@
             "statusMessage": "Checking clone mirror state..."
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/pm_announce_reset.sh\"",
+            "statusMessage": "Re-arming the project line after a compaction..."
+          }
+        ],
+        "matcher": "compact|clear"
       }
     ],
     "Stop": [
@@ -349,11 +359,6 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/inject_compute_mechanically.sh\"",
             "statusMessage": "Checking whether this turn has maths in it..."
-          },
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/inject_delegation_standing.sh\"",
-            "statusMessage": "Confirming delegation is standing-authorized..."
           },
           {
             "type": "command",

@@ -77,9 +77,14 @@ out="$(inject "read version 2.0 of the file" "$NOTES")"
 [ -z "$out" ] && ok || bad "a version number is not maths" "printed: $out"
 
 echo "── arm 3: the backstop, on the shapes it is meant for ───────────────────"
-for p in "can we cover the \$4200 rent" "that is a 30% cut" "what is 12 * 40"; do
+for p in "can we cover the \$4200 rent" "what is 12 * 40"; do
   out="$(inject "$p" "$NOTES")"
   printf '%s' "$out" | grep -q "hard math token" && ok || bad "backstop: $p" "no injection"
+done
+# 2026-10-30 (sop-cleanup Phase 2 ruling 4.5): a bare percentage, a date, a version string and a fraction are NOT maths.
+for p in "that is a 30% cut" "Today's Deliveries: 10/06/2026" "Version 2.524 Updated : 2026/09/22" "tests pass 20/20"; do
+  out="$(inject "$p" "/tmp/elsewhere")"
+  [ -z "$out" ] && ok || bad "backstop silent: $p" "it fired: $out"
 done
 
 echo "── arm 2: you said so ───────────────────────────────────────────────────"

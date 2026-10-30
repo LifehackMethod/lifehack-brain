@@ -369,7 +369,24 @@ except Exception:
   fi
 fi
 
-echo "[project-manager ACTIVE] Source of truth: ${SLUG:-project} doc at ${DOC_PATH} (last written ${WHEN}).${ANCHOR} Route /read and /save through this doc, when you make a plan, save it normally and record a link to its path in the doc (keep that link current); update the doc after meaningful progress. If this project is done, the user can say 'stop tracking'.${READER_NOTE}"
+# -- ONCE PER ARMING, NOT EVERY MESSAGE (2026-10-30, sop-cleanup Phase 2 ruling 4.1, 12-token-audit U6) --
+# WHY: the full line (about 87 words with the doc excerpt) re-fired on every message while a project was
+#      armed: 3,450 words per 50 messages for a fact that does not change between messages. It now prints
+#      ONCE per arming (first message after the project is armed, or after a fresh session start), and
+#      again after a COMPACTION or /clear: the SessionStart hook pm_announce_reset.sh (matcher
+#      "compact|clear") deletes the stamp below, so the next message re-announces.
+#      Armed MID-session is the case a SessionStart-only line would miss (the flag does not exist at
+#      session start); keying the stamp on the doc path covers it, and also re-announces on a re-arm to a
+#      different project.
+# WHAT STAYS PER-MESSAGE (above, untouched): the TTL refresh, the override-grant issuer, the tamper line.
+#      The conditional READER_NOTE still prints every message while the blind reader is unstamped.
+_ANN="$HOME/.claude/run/pm/announced-$KEY"
+if [ "$(cat "$_ANN" 2>/dev/null)" != "$DOC_PATH" ]; then
+  echo "[project-manager ACTIVE] Source of truth: ${SLUG:-project} doc at ${DOC_PATH} (last written ${WHEN}).${ANCHOR} Route /read and /save through this doc, when you make a plan, save it normally and record a link to its path in the doc (keep that link current); update the doc after meaningful progress. If this project is done, the user can say 'stop tracking'.${READER_NOTE}"
+  printf '%s' "$DOC_PATH" > "$_ANN" 2>/dev/null  # allow-silence: best-effort stamp; a failed write only repeats the line next message (degrade-safe)
+elif [ -n "$READER_NOTE" ]; then
+  echo "[project-manager]${READER_NOTE}"
+fi
 exit 0
 }
 
