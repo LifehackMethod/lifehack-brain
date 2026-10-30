@@ -10,9 +10,9 @@ gap_disposition_note: "ruled 2026-07-28 at class level — C5 unguarded ground t
 generated_from:
   - system/tools/organism/label_checker.py
   - system/tools/organism/label_manifest.yaml
-  - system/reference/settings.json
+  # - system/reference/settings.json  # absent here (checked 2026-10-30)
   - system/hooks/guard_organism_map.sh
-  - system/hooks/nudge_flow_drift.sh
+  # - system/hooks/nudge_flow_drift.sh  # absent here (checked 2026-10-30)
   - system/hooks/validate_on_write.sh
   - system/organism/elements/security-ingest-gate.md
   - system/organism/manual.md

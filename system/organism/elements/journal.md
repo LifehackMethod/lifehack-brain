@@ -12,13 +12,13 @@ generated_from:
   - .claude/skills/project-manager/SKILL.md "Ongoing update rule" + "JOURNAL-FIRST" block (~lines 278–390)
   - system/tools/planning-diary-capture.py (read_journal() · JOURNAL constant · build())
   - system/tools/planning-diary-rollup.py (journal_range() · JOURNAL constant)
-  - system/tools/marc-sensor.py (TRIP journal-append block lines 113–130)
-  - system/tools/marc-pulse-journal.py (full file — slot-level daily append)
+  # - system/tools/marc-sensor.py (TRIP journal-append block lines 113–130)  # absent here (checked 2026-10-30)
+  # - system/tools/marc-pulse-journal.py (full file — slot-level daily append)  # absent here (checked 2026-10-30)
   - system/hooks/guard_write_paths.sh (line ~270, not 130 [corrected 2026-08-27, claim 78] — journal.md in clone block-list; live effective behavior for this path did not match "blocked" when fire-tested, claim 77 — see STORE section)
-  - system/reference/settings.json (hook registrations PreToolUse Write|Edit)
+  # - system/reference/settings.json (hook registrations PreToolUse Write|Edit)  # absent here (checked 2026-10-30)
   - .claude/skills/read/SKILL.md Step 0 journal-slice + gap-signal + coverage-disclaimer
   - .claude/skills/throughline/SKILL.md (journal failure-rows subagent input)
-  - skills/marc-checkin/SKILL.md (marc journal-row read)
+  # - skills/marc-checkin/SKILL.md (marc journal-row read)  # absent here (checked 2026-10-30)
   - .claude/skills/archivist-audit/SKILL.md (journal-newer-than-brief staleness check)
 created_at: 2026-07-23
 updated_at: 2026-07-23

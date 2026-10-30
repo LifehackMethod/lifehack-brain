@@ -9,23 +9,23 @@ gap_disposition: defect
 gap_disposition_note: "ruled 2026-07-28 at class level — C3 carve-out — session_context_loader.sh exits 0 on failure, so a session silently starts with no canon/TELOS/pulse-brief and no signal — ⚠ CORRECTED 2026-08-27 (L.B2 audit): the 'silently'/'no signal' half is false. The script deliberately prints a loud stdout failure message on the Drive-unmounted path and exits 0 precisely so that message reaches the model (a non-zero exit would suppress it instead). See the INTENT/CURRENT-VS-TARGET section below for the full correction."
 topic: [system-architecture]
 generated_from:
-  - system/reference/global-CLAUDE.md
-  - lifehack-brain/CLAUDE.md
-  - desks/cal/CLAUDE.md
-  - desks/clair/CLAUDE.md
-  - desks/deryl/CLAUDE.md
-  - desks/dobby/CLAUDE.md
-  - desks/emily/CLAUDE.md
-  - desks/marc/CLAUDE.md
-  - desks/sentinel/CLAUDE.md
+  # - system/reference/global-CLAUDE.md  # absent here (checked 2026-10-30)
+  # - lifehack-brain/CLAUDE.md  # absent here (checked 2026-10-30)
+  # - desks/cal/CLAUDE.md  # absent here (checked 2026-10-30)
+  # - desks/clair/CLAUDE.md  # absent here (checked 2026-10-30)
+  # - desks/deryl/CLAUDE.md  # absent here (checked 2026-10-30)
+  # - desks/dobby/CLAUDE.md  # absent here (checked 2026-10-30)
+  # - desks/emily/CLAUDE.md  # absent here (checked 2026-10-30)
+  # - desks/marc/CLAUDE.md  # absent here (checked 2026-10-30)
+  # - desks/sentinel/CLAUDE.md  # absent here (checked 2026-10-30)
   - system/hooks/session_context_loader.sh
-  - system/reference/settings.json
+  # - system/reference/settings.json  # absent here (checked 2026-10-30)
   - system/hooks/guard_write_paths.sh
   - system/hooks/guard_canon_write.sh
   - system/hooks/validate_on_write.sh
-  - system/hooks/nudge_flow_drift.sh
+  # - system/hooks/nudge_flow_drift.sh  # absent here (checked 2026-10-30)
   - system/hooks/guard_organism_map.sh
-  - system/tools/parity-check.sh
+  # - system/tools/parity-check.sh  # absent here (checked 2026-10-30)
 created_at: 2026-07-23
 updated_at: 2026-07-23
 status: draft
@@ -331,7 +331,7 @@ Live reads are:
   paths), but its CLAUDE.md branch explicitly allows — it does NOT block CLAUDE.md writes.
 - Clone CLAUDE.md paths (`~/lifehack-brain/CLAUDE.md`, `desks/*/CLAUDE.md`,
   `system/reference/global-CLAUDE.md`): allowed via the clone content-class check — none of these
-  paths match the content blocklist (`state/*`, `records/*`, `desks/*/canon/*`, etc.) → `exit 0`.
+  paths match the content blocklist (`<notes>/state/*`, `records/*`, `desks/*/canon/*`, etc.) → `exit 0`.
 - **KNOWN GAP (documented in hook header, accepted 2026-07-14):** Bash file-writes (`echo >`,
   `tee`, `cp`, heredoc) BYPASS this hook entirely — it only matches `Write|Edit` tools. CLAUDE.md
   files can be overwritten via Bash without triggering the guard. Discipline + code review are the

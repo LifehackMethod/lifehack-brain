@@ -7,7 +7,7 @@ record_type: organism-element
 maturity_label: LIVE (honor)
 generated_from:
   - .claude/skills/build/SKILL.md
-  - commands/autoplan.md
+  # - commands/autoplan.md  # absent here (checked 2026-10-30)
   - system/sops/architecture-planning-sop.md
   - system/sops/build-sop.md
   - system/sops/build-conductor-sop.md
@@ -15,10 +15,10 @@ generated_from:
   - system/hooks/guard_plan_structure.sh
   - system/hooks/inject_sop_before_build.sh
   - system/hooks/plan_flag.sh
-  - system/hooks/guard_plan_fork.sh (RETIRED 2026-07-15)
+  # - system/hooks/guard_plan_fork.sh (RETIRED 2026-07-15)  # absent here (checked 2026-10-30)
   - system/hooks/announce_plan_write.sh
-  - system/hooks/mirror_plans.sh
-  - system/reference/settings.json (hook registrations)
+  # - system/hooks/mirror_plans.sh  # absent here (checked 2026-10-30)
+  # - system/reference/settings.json (hook registrations)  # absent here (checked 2026-10-30)
   - $DRIVE/state/debt-ledger.md (AUTOPLAN-PLANMODE-SANDBOX · BUILD-PARKINGLOT · PLAN-DEMOTION-ENFORCE)
 created_at: 2026-07-24
 updated_at: 2026-07-24

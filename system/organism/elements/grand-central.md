@@ -17,13 +17,13 @@ generated_from:
   - shared/tools/intake_backfill.py
   - shared/tools/intake_backfill_batch.py
   - system/tools/email-summary-write-run.sh
-  - system/tools/email-summary-freshness-run.sh
+  # - system/tools/email-summary-freshness-run.sh  # absent here (checked 2026-10-30)
   - system/tools/tasks-store-sync-run.sh
   - system/tools/calendar-store-sync-run.sh
-  - system/tools/item-store-freshness-run.sh
+  # - system/tools/item-store-freshness-run.sh  # absent here (checked 2026-10-30)
   - system/hooks/ingest_gate_enforce.sh
-  - system/hooks/block_primary_calendar.sh
-  - system/reference/settings.json
+  # - system/hooks/block_primary_calendar.sh  # absent here (checked 2026-10-30)
+  # - system/reference/settings.json  # absent here (checked 2026-10-30)
   - system/jobs.md
 created_at: 2026-07-23
 updated_at: 2026-07-23
@@ -111,7 +111,7 @@ Two companion **read-side dead-men** (not writers; they check freshness and emit
 
 **Legacy slot (v1 path, not a writer of the live stores):**
 `email-summary-sync` (7200 s, `email_summary_run.sh` → `email_summary_sync.py` no flags) — runs the
-v1 `sync()` path and writes `state/email-summary/threads/` + `meta.json`. This is the deprecated path;
+v1 `sync()` path and writes `<notes>/state/email-summary/threads/` + `meta.json`. This is the deprecated path;
 the `--write-v2` runner is the live intake. The v1 slot has NOT been disabled in `jobs.md`
 (see GAPS gap-3).
 
@@ -467,7 +467,7 @@ intake_backfill_batch.py) can also write all three stores but only under direct 
    paths is ALLOWED by this hook (it enforces location, not single-writer identity). The single-writer
    invariant for these stores is enforced by `ingest_gate_enforce.sh` (h) for the Bash tool, NOT by
    guard_write_paths. Known gap: a Write/Edit tool call directly authoring valid JSON into
-   `state/item-store/` would pass guard_write_paths (location OK) without touching the schema
+   `<notes>/state/item-store/` would pass guard_write_paths (location OK) without touching the schema
    validators. Fail-CLOSED on unparseable input.
 
 **Python-internal hard-stops (fire inside the cron Python processes — NOT Claude hooks):**
@@ -504,7 +504,7 @@ intake_backfill_batch.py) can also write all three stores but only under direct 
 
 **Shell-level guards (fire in the runner before Python is invoked):**
 
-11. **Primary-machine marker:** `state/primary-machine` read; runner stands down if missing or
+11. **Primary-machine marker:** `<notes>/state/primary-machine` read; runner stands down if missing or
     non-matching. Missing marker → stand-down (fail-safe; stores stay un-refreshed rather than
     running blind). `[honor]` (email-summary-write-run.sh:38-46)
 

@@ -7,7 +7,7 @@ record_type: organism-element
 maturity_label: LIVE
 generated_from:
   - system/hooks/ingest_gate_enforce.sh
-  - system/reference/settings.json
+  # - system/reference/settings.json  # absent here (checked 2026-10-30)
   - system/tools/safe_fetch.py
   - system/tools/safe_read.py
   - system/tools/safe_calendar.py
@@ -57,7 +57,7 @@ authority: user
     12. `non-janitor → Bash(>/tee/rm/open-w into email-summary/ or item-store/) → shared store → BLOCK (single-writer invariant) [hook]`
     13. `model → Read(state/email-summary/threads-v2/*) → verbatim email store → BLOCK → email_service_read.py adapter [hook]`  ·  `model → Read(state/item-store/*) → task/calendar store → BLOCK → item_store_read.py adapter [hook]`  *(the store holds adversarial free-text; a raw read bypasses the adapter's re-scan + refuse-flagged + tool-less-reader routing)*
     14. `MAIN session → Bash(cat/head/tail/... email-summary/threads-v2/ or item-store/) → store → BLOCK → the matching adapter (email_service_read.py / item_store_read.py) [hook]`  *(same wall via the shell, not just the Read tool)*
-- **ports touched:** the WebFetch/WebSearch/Read/Bash tool channels; the `safe_*` redirect family (`safe_fetch.py` · `safe_search_api.sh` · `safe_pdf/docx/xlsx/csv.py` · `safe_read.py` · `safe_calendar.py` · `safe_tasks.py`); `email_convert.py`; the tool-less `ingest-reader` subagent; the `/tmp/rdr` + `/tmp/ingest_body` scratch; the `state/email-summary/` + `state/item-store/` single-writer stores.
+- **ports touched:** the WebFetch/WebSearch/Read/Bash tool channels; the `safe_*` redirect family (`safe_fetch.py` · `safe_search_api.sh` · `safe_pdf/docx/xlsx/csv.py` · `safe_read.py` · `safe_calendar.py` · `safe_tasks.py`); `email_convert.py`; the tool-less `ingest-reader` subagent; the `/tmp/rdr` + `/tmp/ingest_body` scratch; the `<notes>/state/email-summary/` + `<notes>/state/item-store/` single-writer stores.
 - **outcome:** no unsanitized external/adversarial content reaches context — every external-read is redirected through a sanitizer + injection scan, and the reader-actor split isolates untrusted free-text to a tool-less subagent that has nothing to act with.
 - **generated_from:** `system/hooks/ingest_gate_enforce.sh` · `system/reference/settings.json` (ONE PreToolUse registration, matcher `Bash|WebFetch|WebSearch|Read|Grep|Glob` — six tools) · `system/tools/safe_fetch.py` · `safe_search_api.sh` · `safe_read.py` · `safe_pdf.py`/`safe_docx.py`/`safe_xlsx.py`/`safe_csv.py` · `safe_calendar.py` · `safe_tasks.py` · `shared/tools/email_convert.py` · `shared/tools/email_service_read.py` · `shared/tools/item_store_read.py` (the store-read adapters the gate redirects to) · `system/ingestion-reader-contract.md` · `system/information-ingestion-interpretation.md` · `system/security-canon.md`.
 - **enforcement points (the honest map — each fire-tested by `label_checker.py` via `label_manifest.yaml → security-ingest-gate`):**

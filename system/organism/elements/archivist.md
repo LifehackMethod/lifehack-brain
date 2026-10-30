@@ -21,10 +21,10 @@ generated_from:
   - system/tools/archivist-run.lib.sh
   - system/tools/archivist-audit-run.sh
   - system/tools/archivist-deepmine-run.sh
-  - system/tools/archivist-lean.py
-  - system/tools/archivist-placements.py
+  # - system/tools/archivist-lean.py  # absent here (checked 2026-10-30)
+  # - system/tools/archivist-placements.py  # absent here (checked 2026-10-30)
   - system/jobs.md (lines 254–268)
-  - system/reference/settings.json (hooks: guard_write_paths · guard_canon_write · guard_organism_map · nudge_flow_drift · validate_on_write · enforce_skill_frontmatter · observability_logger)
+  # - system/reference/settings.json (hooks: guard_write_paths · guard_canon_write · guard_organism_map · nudge_flow_drift · validate_on_write · enforce_skill_frontmatter · observability_logger)  # absent here (checked 2026-10-30)
 created_at: 2026-07-23
 updated_at: 2026-07-23
 status: active

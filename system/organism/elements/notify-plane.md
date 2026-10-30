@@ -6,21 +6,21 @@ altitude: base
 record_type: organism-element
 maturity_label: LIVE [provisional]
 generated_from:
-  - system/tools/notify-send.sh
-  - system/tools/notify-governor.py
-  - system/notify-config.sh
+  - shared/notify/notify-send.sh  # was system/tools/notify-send.sh (moved) [2026-10-30]
+  - shared/notify/notify-governor.py  # was system/tools/notify-governor.py (moved) [2026-10-30]
+  # - system/notify-config.sh  # absent here (checked 2026-10-30)
   - system/tools/pulse.sh
-  - system/tools/system-health.py
-  - system/tools/health-deadman-check.sh
-  - system/tools/marc-sensor.py
-  - system/tools/marc-deadman.py
+  # - system/tools/system-health.py  # absent here (checked 2026-10-30)
+  # - system/tools/health-deadman-check.sh  # absent here (checked 2026-10-30)
+  # - system/tools/marc-sensor.py  # absent here (checked 2026-10-30)
+  # - system/tools/marc-deadman.py  # absent here (checked 2026-10-30)
   - shared/gate/sentinel_response.py
   - system/tools/ingest-run.lib.sh
   - system/tools/archivist-run.lib.sh
-  - system/tools/clair-coaching.py
-  - system/tools/marc-voice-read.py
+  # - system/tools/clair-coaching.py  # absent here (checked 2026-10-30)
+  # - system/tools/marc-voice-read.py  # absent here (checked 2026-10-30)
   - system/tools/planning-diary-run.sh
-  - system/tools/email-summary-freshness-run.sh
+  # - system/tools/email-summary-freshness-run.sh  # absent here (checked 2026-10-30)
   - system/tools/ingest_coverage.py
   - state/debt-ledger.md (known-issues sweep)
 created_at: 2026-07-24
@@ -74,8 +74,8 @@ Callers as of 2026-07-24 (file:line, live code verified):
 | Pulse — no-lead-machine nag | `system/tools/pulse.sh:127` | critical |
 | Pulse — circuit-breaker trip | `system/tools/pulse.sh:207` | normal (default) |
 | Ingest-run.lib — no-lead preflight | `system/tools/ingest-run.lib.sh:71` | critical |
-| System-health sweeper — newly-attention jobs | `system/tools/system-health.py:624` | normal or critical |
-| Health deadman — sweeper itself gone silent | `system/tools/health-deadman-check.sh:33` | critical |
+| System-health sweeper — newly-attention jobs | `system/tools/system-health.py:624` ⛔ not shipped in the plugin (donor-system tool) | normal or critical |
+| Health deadman — sweeper itself gone silent | `system/tools/health-deadman-check.sh:33` ⛔ not shipped in the plugin (donor-system tool) | critical |
 | Marc sensor — marc alert condition | `system/tools/marc-sensor.py:151` | (UNVERIFIED — line confirmed, priority not read) |
 | Marc deadman — marc-sensor gone silent | `system/tools/marc-deadman.py:45` | critical |
 | Sentinel — scan finds an issue | `shared/gate/sentinel_response.py:236` | critical |
@@ -83,7 +83,7 @@ Callers as of 2026-07-24 (file:line, live code verified):
 | Clair coaching | `system/tools/clair-coaching.py:27` | (UNVERIFIED — ref confirmed, call context not read) |
 | Marc voice-read — push readable brief | `system/tools/marc-voice-read.py:41` | (UNVERIFIED — ref confirmed, call context not read) |
 | Cal diary runner — check-in ready | `system/tools/planning-diary-run.sh:8` | (UNVERIFIED — comment only, not call read) |
-| Email-summary freshness | `system/tools/email-summary-freshness-run.sh:63` | (UNVERIFIED — comment only, not call read) |
+| Email-summary freshness | `system/tools/email-summary-freshness-run.sh:63` ⛔ not shipped in the plugin (donor-system tool) | (UNVERIFIED — comment only, not call read) |
 | Ingest coverage | `system/tools/ingest_coverage.py:40` | (UNVERIFIED — ref confirmed, call context not read) |
 
 ---
@@ -223,7 +223,7 @@ results in settings.json hooks section).
 
 | Port | Direction | What |
 |---|---|---|
-| `system/tools/notify-governor.py` | INTERNAL | Governor subprocess — called every send |
+| `shared/notify/notify-governor.py` | INTERNAL | Governor subprocess — called every send |
 | ~~`system/notify-config.sh`~~ `shared/notify/notify-governor.py` | READ | ⚠ CORRECTED 2026-08-24: `system/notify-config.sh` does not exist on disk (`ls system/notify-config.sh` → No such file or directory, confirmed this session) — matches this doc's own banner above (L44), which already says the file "is not shipped at all." Quiet-hours and cap config actually live as env-var defaults inside `shared/notify/notify-governor.py` (`QUIET_START`/`QUIET_END`, ~L46–47; `DAILY_CAP`, ~L48); topic/server resolve from the reader's own `$HOME/.config/lifehack/ntfy-topic`, per the same banner. Values stated elsewhere in this doc (22:00–07:00 default window) are unchanged by this correction. |
 | `/tmp/lifehack-notify-state.json` | READ + WRITE | Governor rate/dedup state (volatile) |
 | `/tmp/lifehack-notify-state.json.lock` | WRITE | Exclusive lock for concurrent-safe R-M-W |

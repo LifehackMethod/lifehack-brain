@@ -13,10 +13,10 @@ generated_from:
   - system/hooks/enforce_egress_allowlist.py
   - system/hooks/ingest_gate_enforce.sh
   - system/egress-allowlist.md
-  - system/egress-allowlist.hosts
+  # - system/egress-allowlist.hosts  # absent here (checked 2026-10-30)
   - system/tools/safe_fetch.py
   - system/tools/safe_search_api.sh
-  - system/reference/settings.json
+  # - system/reference/settings.json  # absent here (checked 2026-10-30)
 created_at: 2026-07-23
 updated_at: 2026-07-23
 status: active

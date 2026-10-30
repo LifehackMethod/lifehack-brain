@@ -52,7 +52,7 @@ There are **two distinct roles**, and conflating them is a primary failure mode 
 2026-06-22):
 
 - **Build Lead** — runs ONE build. Operates the four gears below, delegates, owns the merge,
-  holds that build's ground-level detail. Anchor: `skills/project-manager/ANCHOR.md`.
+  holds that build's ground-level detail. Anchor: `.claude/skills/project-manager/ANCHOR.md`.
 - **Observation Deck** — WATCHES builds to improve the SOP/systems; is **not part of any build**.
   Never advises a build's execution (cells, sub-agent prompts, curls, edits); only extracts the
   systemic lesson. Product = edits to this SOP, skills, hooks.

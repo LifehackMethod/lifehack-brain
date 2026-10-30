@@ -19,7 +19,7 @@ generated_from:
   - system/hooks/scratch_sweep_nudge.sh
   - system/hooks/scratch_capture_gate.sh
   - system/hooks/skill_anchor.sh
-  - system/reference/settings.json
+  # - system/reference/settings.json  # absent here (checked 2026-10-30)
   - system/organism/map-format-specs.md §0–§1
 created_at: 2026-07-23
 updated_at: 2026-07-23

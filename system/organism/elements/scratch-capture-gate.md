@@ -14,7 +14,7 @@ generated_from:
   - system/hooks/scratch_sweep_nudge.sh
   - system/hooks/save_routing_hint.sh
   - system/hooks/pm_persist.sh
-  - system/reference/settings.json (Stop event entry[3], matcher ""; UserPromptSubmit entries[1],[6],[8])
+  # - system/reference/settings.json (Stop event entry[3], matcher ""; UserPromptSubmit entries[1],[6],[8])  # absent here (checked 2026-10-30)
 created_at: 2026-07-23
 updated_at: 2026-07-23
 status: active

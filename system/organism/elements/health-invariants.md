@@ -9,18 +9,18 @@ gap_disposition: defect
 gap_disposition_note: "ruled 2026-07-28 at class level — C4 silent-death — _security.json tile freshness is governed only by the system-health sweep; no independent guard"
 generated_from:
   - system/tools/health_invariants.py
-  - system/tools/system-health.py
-  - system/tools/system-health-run.sh
-  - system/tools/health-deadman-check.sh
-  - system/tools/marc-deadman.py
+  # - system/tools/system-health.py  # absent here (checked 2026-10-30)
+  # - system/tools/system-health-run.sh  # absent here (checked 2026-10-30)
+  # - system/tools/health-deadman-check.sh  # absent here (checked 2026-10-30)
+  # - system/tools/marc-deadman.py  # absent here (checked 2026-10-30)
   - system/jobs.md (system-health Pulse slot; launchd manifest)
-  - system/tools/planning-health.py
-  - system/tools/marc-health.py
-  - system/tools/clair-health.py
-  - system/tools/deryl-books-health.py
-  - system/tools/dobby-health.py
-  - system/tools/backlog-health.py
-  - system/tools/sentinel-health.py
+  # - system/tools/planning-health.py  # absent here (checked 2026-10-30)
+  # - system/tools/marc-health.py  # absent here (checked 2026-10-30)
+  # - system/tools/clair-health.py  # absent here (checked 2026-10-30)
+  # - system/tools/deryl-books-health.py  # absent here (checked 2026-10-30)
+  # - system/tools/dobby-health.py  # absent here (checked 2026-10-30)
+  # - system/tools/backlog-health.py  # absent here (checked 2026-10-30)
+  # - system/tools/sentinel-health.py  # absent here (checked 2026-10-30)
 created_at: 2026-07-24
 updated_at: 2026-07-24
 status: draft
@@ -83,7 +83,7 @@ The Health Authority is two collaborating components that together answer the qu
 
 | Component | File | Scheduler | Writer | Role |
 |---|---|---|---|---|
-| **Sweeper** | `system-health.py` via `system-health-run.sh` | Pulse slot `system-health`, every 300s | ~~Lead machine only (reads `state/primary-machine`)~~ **⚠ CORRECTED 2026-08-24: no lead-machine gate — `system-health-run.sh` reads no such marker, verified this session; see the correction under COMPONENT A below.** | Dead-man's switch: job ABSENCE past interval+grace = BROKEN |
+| **Sweeper** | `system-health.py` via `system-health-run.sh` | Pulse slot `system-health`, every 300s | ~~Lead machine only (reads `<notes>/state/primary-machine`)~~ **⚠ CORRECTED 2026-08-24: no lead-machine gate — `system-health-run.sh` reads no such marker, verified this session; see the correction under COMPONENT A below.** | Dead-man's switch: job ABSENCE past interval+grace = BROKEN |
 | **Integrity layer** | `health_invariants.py` | Called by sweeper at end of each sweep | Same as sweeper | Deterministic substrate checks: hooks present · guards untampered · clone fresh · both machines heartbeating · coverage complete |
 | **Dead-man's-switch for the sweeper** | `health-deadman-check.sh` | launchd `ai.lifehack.health-deadman`, every 900s, second-machine-only | Notification-only (no shared write) | Watches whether `_system-health.json` itself has gone stale |
 | **Per-desk producers** | `{desk}-health.py` / `{desk}-health-run.sh` | Pulse, desk-specific intervals | Lead machine | Desk-scoped health tiles (`state/status/{desk}.json`) consumed by the sweeper |
@@ -111,7 +111,7 @@ system."), so there is nothing to elect a lead among. `_system-health.json` has 
 because there is only ever one machine running Pulse, not because of a gate — same pattern as
 `elements/backlog-authority.md:199-205`'s correctly-stated equivalent. The sweeper READS the
 machine-namespaced `_pulse-*.json` glob, so it sees both machines' heartbeats if more than one clone
-happens to write there — see the corrected point below on `state/primary-machine` for the rest of
+happens to write there — see the corrected point below on `<notes>/state/primary-machine` for the rest of
 this fabrication.
 
 **Input sources (read by the sweeper each run):**
@@ -122,9 +122,9 @@ this fabrication.
   across machines per job (`system-health.py:198–213`).
 - `state/status/*.json` — per-job or per-desk status tiles; consulted for tile-staleness and
   unexpected-zero overlays (the green-illusion hardening).
-- ~~`state/primary-machine` — the current lead machine identifier (read by `system-health-run.sh` via
+- ~~`<notes>/state/primary-machine` — the current lead machine identifier (read by `system-health-run.sh` via
   `require_primary`; also used by `_current_lead()` at `system-health.py:54`).~~ **⚠ CORRECTED
-  2026-08-24:** `system-health-run.sh` does not read `state/primary-machine`, and `system-health.py`
+  2026-08-24:** `system-health-run.sh` does not read `<notes>/state/primary-machine`, and `system-health.py`
   has no `_current_lead()` function — `grep -n "_current_lead\|primary-machine\|require_primary"
   system/tools/system-health.py` returns zero matches, checked directly this session. Same
   fabrication as the Trigger line above; there is no lead-machine concept in this repo
@@ -406,7 +406,7 @@ partial feed.
 | `READS` | security-ingest-gate | `desk-registry.yaml` `reads_external` field — Invariant 5 / drift-cop coverage check (when `INGEST_COVERAGE_FLAG=on`) |
 | `COMPLEMENTS` | sentinel | Sentinel detects INBOUND injection; health-invariants detects SUBSTRATE failure — parallel, non-redundant |
 | `CHAINS` | archivist | sweeper spawns `archivist-placements.py` + `archivist-lean.py` as side-effects post-sweep (decoupled + graceful) |
-| `READS` | grand-central | ~~`state/primary-machine` — lead-machine detection in `system-health-run.sh` and `_current_lead()`~~ **⚠ CORRECTED 2026-08-24: neither exists — `system-health-run.sh` reads no such marker and `system-health.py` has no `_current_lead()`, verified this session (see COMPONENT A above).** |
+| `READS` | grand-central | ~~`<notes>/state/primary-machine` — lead-machine detection in `system-health-run.sh` and `_current_lead()`~~ **⚠ CORRECTED 2026-08-24: neither exists — `system-health-run.sh` reads no such marker and `system-health.py` has no `_current_lead()`, verified this session (see COMPONENT A above).** |
 | `SYNCS` | (desk-health producers) | `FRESH_TILES` and `assess_registry()` must stay in sync with the desk registry when new desks are added |
 
 ---

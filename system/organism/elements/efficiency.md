@@ -9,12 +9,12 @@ gap_disposition: defect
 gap_disposition_note: "TWO gaps, and they are different in kind. GAP-1 is a DEFECT and is the honest reason this element is PARTIAL: the ground reasoner `recommend.py` has NO CALLER and `state/recommendations/` DOES NOT EXIST ON DISK, so nothing has ever flowed end to end — zero recommendations have been produced in production (measured 2026-08-05 by direct `ls` and by a live read-only `health_line.py` run that printed no RECOMMENDATIONS line). This is deliberate, not an oversight: CUT-E holds the scheduling pending a prove-live-once supervised run the operator said he wants to watch. It is recorded as a defect anyway, because an element that reads as working while its pipeline has never carried a load is precisely the false-green this subsystem exists to kill. GAP-2 is BY DESIGN: Efficiency SUGGESTS and never APPLIES (RULED 2026-08-04 by the operator, plan §18.5), so the absence of any applier is correct and must never be `fixed`."
 generated_from:
   - system/tools/emit_recommendation.py
-  - system/tools/recommend.py
-  - system/tools/fault_proposer.py
+  # - system/tools/recommend.py  # absent here (checked 2026-10-30)
+  # - system/tools/fault_proposer.py  # absent here (checked 2026-10-30)
   - system/tools/recommendations_reader.py
   - system/tools/recommendation_disposition.py
   - system/tools/fault_ledger.py
-  - system/tools/fault-proposer-run.sh
+  # - system/tools/fault-proposer-run.sh  # absent here (checked 2026-10-30)
   - system/tools/health_line.py
   - system/tools/findings_reader.py
   - system/hooks/guard_findings_write.sh
@@ -68,8 +68,8 @@ architecture are different kinds of answer and must not be collapsed into one.
 | Component | File | Role |
 |---|---|---|
 | The validating writer | `system/tools/emit_recommendation.py` | the ONE way a recommendation enters the store; validates producer/altitude/action/evidence, fingerprints, appends JSONL |
-| The ground reasoner | `system/tools/recommend.py` | reads Hospital findings, asks for an altitude verdict, writes through the writer. **NO CALLER — see GAP-1** |
-| The altitude grader | `system/tools/fault_proposer.py` | grades INSTANCE / SUBSYSTEM / ORGANISM from recurrence; the DECISION gate; refuses what it cannot cite |
+| The ground reasoner | `system/tools/recommend.py` ⛔ not shipped in the plugin (donor-system tool) | reads Hospital findings, asks for an altitude verdict, writes through the writer. **NO CALLER — see GAP-1** |
+| The altitude grader | `system/tools/fault_proposer.py` ⛔ not shipped in the plugin (donor-system tool) | grades INSTANCE / SUBSYSTEM / ORGANISM from recurrence; the DECISION gate; refuses what it cannot cite |
 | The union reader | `system/tools/recommendations_reader.py` | reads the store back with shard + degradation accounting |
 | The human's answer | `system/tools/recommendation_disposition.py` | records accept/reject against a fingerprint. **BUILT, NEVER RUN — see GAP-3** |
 | The review surface | `system/tools/health_line.py` | prints open recommendations at session start, ranked, capped at 3 |
@@ -210,7 +210,7 @@ second machine has been dark since 2026-07-04. A hook whose symlink is missing o
 1. **`efficiency` READS `hospital`.** `recommend.py` consumes the findings union via `findings_reader.py`.
    Hospital's contract change is Efficiency's outage — this is the tightest coupling in the pair.
 2. **`efficiency` SHARES-STORE-WITH `hospital`.** One guard, `guard_findings_write.sh`, protects both
-   `state/findings/` and `state/recommendations/`. One hook, two subsystems: hardening it helps both, and
+   `<notes>/state/findings/` and `state/recommendations/`. One hook, two subsystems: hardening it helps both, and
    breaking it blinds both.
 3. **`efficiency` FEEDS `health-line`.** The session-start line is the ONLY surface where Efficiency
    reaches a human. If that line is suppressed, Efficiency is functionally absent.

@@ -12,7 +12,7 @@ generated_from:
   - shared/tools/email_service_contract.py
   - shared/tools/email_thread_schema.py
   - system/hooks/ingest_gate_enforce.sh (Ra-2 store-access guard)
-  - system/reference/settings.json (hook registrations)
+  # - system/reference/settings.json (hook registrations)  # absent here (checked 2026-10-30)
   - system/ingestion-reader-contract.md
   - system/schemas/email-summary-schema.md (v2 section)
 created_at: 2026-07-24
@@ -48,7 +48,7 @@ authority: user
 > desk reads email through `read_thread()`, never directly from the store files.
 >
 > **Distinct from `grand-central` (the WRITE side):** grand-central is the Pulse-dispatched janitor
-> (`email_summary_sync.py`) that WRITES faithful records into `state/email-summary/threads-v2/`.
+> (`email_summary_sync.py`) that WRITES faithful records into `<notes>/state/email-summary/threads-v2/`.
 > This element is only the READ side: how a desk retrieves those records safely.
 >
 > **Step grammar:** `actor → port/tool → store → gate`

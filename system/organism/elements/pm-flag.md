@@ -15,8 +15,8 @@ generated_from:
   - system/hooks/scratch_sweep_nudge.sh
   - system/hooks/announce_plan_write.sh
   - system/hooks/guard_statusline_lock.sh
-  - system/tools/pm_flag_recover.py
-  - system/reference/settings.json (lines 333-410 UserPromptSubmit; lines 444-452 Stop; lines 455-458 statusLine)
+  # - system/tools/pm_flag_recover.py  # absent here (checked 2026-10-30)
+  # - system/reference/settings.json (lines 333-410 UserPromptSubmit; lines 444-452 Stop; lines 455-458 statusLine)  # absent here (checked 2026-10-30)
   - system/statusline.sh (via ~/.claude/statusline.sh symlink)
   - .claude/skills/save/SKILL.md (Step 0, Step 0.4)
   - .claude/skills/read/SKILL.md

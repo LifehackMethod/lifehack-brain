@@ -7,12 +7,12 @@ record_type: organism-element
 maturity_label: PARTIAL [provisional]
 generated_from:
   - system/hooks/guard_plan_structure.sh
-  - system/hooks/guard_plan_fork.sh
-  - system/hooks/mirror_plans.sh
+  # - system/hooks/guard_plan_fork.sh  # absent here (checked 2026-10-30)
+  # - system/hooks/mirror_plans.sh  # absent here (checked 2026-10-30)
   - system/hooks/announce_plan_write.sh
   - system/hooks/inject_sop_before_build.sh
   - system/hooks/plan_flag.sh
-  - system/reference/settings.json
+  # - system/reference/settings.json  # absent here (checked 2026-10-30)
   - CLAUDE.md §"Planning Output"
   - system/sops/architecture-planning-sop.md
   - state/debt-ledger.md (lines 84–85, 146, 349, 369, 419)

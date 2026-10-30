@@ -12,13 +12,13 @@ generated_from:
   - system/google-policy.md (v1.0, 2026-03-27)
   - system/google-capability-registry.yaml (v1.0, 2026-03-27)
   - system/hooks/guard_gws_logout.sh (2026-06-02)
-  - system/hooks/block_primary_calendar.sh (2026-05-31)
-  - system/hooks/enforce_email_sanitize.sh (2026-06-13) [SUPERSEDED — unregistered; file exists for historical reference]
+  # - system/hooks/block_primary_calendar.sh (2026-05-31)  # absent here (checked 2026-10-30)
+  # - system/hooks/enforce_email_sanitize.sh (2026-06-13) [SUPERSEDED — unregistered; file exists for historical reference]  # absent here (checked 2026-10-30)
   - system/hooks/ingest_gate_enforce.sh (2026-07-17, Window-5 gate)
   - system/hooks/guard_sheet_writes.sh (2026-06-27)
   - system/hooks/guard_sheet_formula_writes.sh
   - system/hooks/guard_tasks_writes.sh (2026-06-25)
-  - system/reference/settings.json (hook registrations, verified 2026-07-24)
+  # - system/reference/settings.json (hook registrations, verified 2026-07-24)  # absent here (checked 2026-10-30)
   - system/tools/safe_calendar.py (clone)
   - system/tools/safe_tasks.py (clone)
   - state/debt-ledger.md (gws entries, DRIVE, read 2026-07-24)
@@ -196,9 +196,9 @@ Pattern: `(gws|.cargo/bin/gws|/opt/homebrew/bin/gws).*drive.*files.*export` → 
 
 **SCRATCH-DIR LOCK (F2.1c, 2026-07-04):** the main/controller session may NOT directly Read `/tmp/rdr/*` or `/tmp/ingest_body/*` — only a spawned tool-less `ingest-reader` sub-agent (detected by `agent_id` populated in hook input) may read those paths. This structurally enforces the reader-actor split for both interactive and cron sessions.
 
-**Email-summary store guard (Ra-2):** non-janitor writes to `state/email-summary/threads-v2/` are blocked. Only `email_summary_sync.py` (the janitor) may write the store. Un-wrapped Bash reads of the v2 store are also blocked; use `email_service_read.py` adapter.
+**Email-summary store guard (Ra-2):** non-janitor writes to `<notes>/state/email-summary/threads-v2/` are blocked. Only `email_summary_sync.py` (the janitor) may write the store. Un-wrapped Bash reads of the v2 store are also blocked; use `email_service_read.py` adapter.
 
-**Item-store guard (CT-1):** same pattern for `state/item-store/` — only `tasks_store_sync.py` / `calendar_store_sync.py` may write; reads must use `item_store_read.py`.
+**Item-store guard (CT-1):** same pattern for `<notes>/state/item-store/` — only `tasks_store_sync.py` / `calendar_store_sync.py` may write; reads must use `item_store_read.py`.
 
 #### 4b. `enforce_email_sanitize.sh` — email sanitize guard (legacy, unregistered)
 NOT currently registered in `settings.json` (confirmed 2026-07-24). File exists at `system/hooks/enforce_email_sanitize.sh` for historical reference. All six pre-Window-5 per-channel hooks are unregistered; `ingest_gate_enforce.sh` is the sole active enforcement path. Dates from 2026-06-13 (before the unified gate). Known debt: `[SECURITY-MINOR-2026-07-04]` — consider removing the six subsumed hook files to reduce clutter.
@@ -322,7 +322,7 @@ COMPLEMENTS security-ingest-gate                   · ingest_gate_enforce.sh ove
 
 6. **Non-email gws channel sweep incomplete** — Tasks and Drive channels were hardened (2026-07-04 CT-1), but the `[GWS-CHANNEL-SWEEP]` debt item (`debt-ledger.md`) notes Sheets cell text and Gmail metadata (subjects) haven't been confirmed sanitized-or-explicitly-cleared for injection risk. Monitoring state.
 
-7. **planning-health unsanitized Gmail headers — DONOR-ONLY, the function did not migrate.** The donor's `cal-health.py::read_snoozed()` returned subject/from without the L0 `sanitize()` that `planning-light-sweep.py` applies. ⚠ Verified this session: `system/tools/planning-health.py` has **no `read_snoozed`** — the snoozed-mail read was trimmed in the port, so the gap it describes cannot fire here. Kept as donor description, still tracked upstream as `[CAL-HEALTH-SANITIZE]`.
+7. **planning-health unsanitized Gmail headers — DONOR-ONLY, the function did not migrate.** The donor's `cal-health.py::read_snoozed()` returned subject/from without the L0 `sanitize()` that `planning-light-sweep.py` applies. ⚠ Verified this session: `system/tools/planning-health.py` ⛔ not shipped in the plugin (donor-system tool) has **no `read_snoozed`** — the snoozed-mail read was trimmed in the port, so the gap it describes cannot fire here. Kept as donor description, still tracked upstream as `[CAL-HEALTH-SANITIZE]`.
 
 ---
 

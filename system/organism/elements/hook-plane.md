@@ -29,11 +29,11 @@ maturity_label: PARTIAL
 # for a person to decide the real regeneration path. Flagged stale by the A1.8 helper's build
 # report, 2026-09-15.
 generated_from:
-  - system/reference/settings.json
+  # - system/reference/settings.json  # absent here (checked 2026-10-30)
   - system/hook-contract.md
   - system/hooks/announce_plan_write.sh
-  - system/hooks/auto_register_skill.sh
-  - system/hooks/block_primary_calendar.sh
+  # - system/hooks/auto_register_skill.sh  # absent here (checked 2026-10-30)
+  # - system/hooks/block_primary_calendar.sh  # absent here (checked 2026-10-30)
   - system/hooks/enforce_egress_allowlist.sh
   - system/hooks/enforce_multiphase_contract.sh
   - system/hooks/enforce_skill_frontmatter.sh
@@ -46,10 +46,10 @@ generated_from:
   - system/hooks/guard_gws_logout.sh
   - system/hooks/guard_hook_sop_read.sh
   - system/hooks/guard_ledger_discipline.sh
-  - system/hooks/guard_marc_narrative.sh
+  # - system/hooks/guard_marc_narrative.sh  # absent here (checked 2026-10-30)
   - system/hooks/guard_organism_map.sh
   - system/hooks/guard_plan_structure.sh
-  - system/hooks/guard_router_writes.sh
+  # - system/hooks/guard_router_writes.sh  # absent here (checked 2026-10-30)
   - system/hooks/guard_sheet_formula_writes.sh
   - system/hooks/guard_sheet_writes.sh
   - system/hooks/guard_statusline_lock.sh
@@ -60,8 +60,8 @@ generated_from:
   - system/hooks/inject_compute_mechanically.sh
   - system/hooks/inject_delegation_standing.sh
   - system/hooks/inject_sop_before_build.sh
-  - system/hooks/mirror_plans.sh
-  - system/hooks/nudge_flow_drift.sh
+  # - system/hooks/mirror_plans.sh  # absent here (checked 2026-10-30)
+  # - system/hooks/nudge_flow_drift.sh  # absent here (checked 2026-10-30)
   - system/hooks/observability_logger.sh
   - system/hooks/plan_flag.sh
   - system/hooks/pm_persist.sh
@@ -72,7 +72,7 @@ generated_from:
   - system/hooks/session_context_loader.sh
   - system/hooks/session_flight_recorder.sh
   - system/hooks/skill_anchor_inject.sh
-  - system/hooks/translator_gate.sh
+  # - system/hooks/translator_gate.sh  # absent here (checked 2026-10-30)
   - system/hooks/validate_on_write.sh
 created_at: 2026-07-23
 updated_at: 2026-07-23
@@ -117,7 +117,7 @@ authority: user
 > - ⛔ `system/learnings-signals.jsonl` — same: runtime-generated on first run under the notes root; never committed.
 >   Also written by `system/hooks/rating_capture.sh`.
 > - ⛔ `system/logs/sentinel-events.jsonl` — same: runtime-generated on first run under the notes root; never committed.
-> - ⛔ `system/translator-rubric.md` — never shipped. The gate it graded for is DELETED here, as E3 below already records; a rubric with no grader had nothing to come for.
+> - ⛔ `system/translator-rubric.md` — ~~never shipped~~ *(2026-10-30: it DID land, at `system/sops/translator-rubric.md`, as `translator-cluster.md` already says)*. The gate it graded for is DELETED here, as E3 below already records; a rubric with no grader had nothing to come for.
 > - ⛔ `system/organism/elements/*/generated_from` — not a path at all: generated_from is a YAML key INSIDE each element file, and those files are here.
 > - ✅ `system/organism/map-format-specs.md` — **it is here.** *(Was `⏳ unruled` earlier on 2026-08-15; `T9.4c` landed the file the same day, 579 lines, ported from the donor with its `§` numbering preserved so the six existing citations still resolve. Marker flipped rather than left deferring a file that had arrived — a manifest describing the past is one nobody checks against the present.)*
 

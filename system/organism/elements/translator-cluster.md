@@ -6,14 +6,14 @@ altitude: base
 record_type: organism-element
 maturity_label: PARTIAL [provisional]
 generated_from:
-  - skills/simplify/SKILL.md (v2.1)
+  # - skills/simplify/SKILL.md (v2.1)  # absent here (checked 2026-10-30)
   - .claude/skills/explain/SKILL.md (v4.4)
   - .claude/skills/summarize/SKILL.md (v1.0)
-  - system/hooks/simplify_anchor_inject.sh ⛔ DELETED 2026-08-05 — see the banner below
-  - system/hooks/translator_gate.sh (v7.1; updated 2026-07-13)
-  - system/translator-rubric.md (updated 2026-07-15)
-  - output-styles/simplify.md
-  - system/reference/settings.json (hook registration lines 367-375, 438-446)
+  # - system/hooks/simplify_anchor_inject.sh ⛔ DELETED 2026-08-05 — see the banner below  # absent here (checked 2026-10-30)
+  # - system/hooks/translator_gate.sh (v7.1; updated 2026-07-13)  # absent here (checked 2026-10-30)
+  - system/sops/translator-rubric.md (updated 2026-07-15)  # was system/translator-rubric.md (moved) [2026-10-30]
+  # - output-styles/simplify.md  # absent here (checked 2026-10-30)
+  # - system/reference/settings.json (hook registration lines 367-375, 438-446)  # absent here (checked 2026-10-30)
   - state/debt-ledger.md (TRANSLATOR-GATE-RIP, TRANSLATOR-OUTPUTSTYLE-SECOND-MACHINE)
 created_at: 2026-07-24
 updated_at: 2026-07-24

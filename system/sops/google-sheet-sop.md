@@ -26,8 +26,8 @@ deterministic code. The design ladder, in order of preference:
 3. **Minimum in the LLM** — the LLM only **reads what the sheet already computed and folds it verbatim**.
    It never re-derives a number at read time.
 
-This is the sheets application of the cross-desk rule in `CLAUDE.md` → *"Compute mechanically, never in
-the model."* (Narrow exception: a summary tier a person has explicitly approved for a specific sheet.)
+This is the sheets application of the cross-desk rule in `CLAUDE.md` → ~~*"Compute mechanically, never in
+the model."*~~ *"Arithmetic is computed, never done in your head"* *(2026-10-30: heading renamed; CLAUDE.md:145)* (Narrow exception: a summary tier a person has explicitly approved for a specific sheet.)
 
 ## Principle #2 — the sheet checks itself; fail loud, never silent (the corollary)
 If Principle #1 says the sheet does the math, this says **the sheet also proves its own math.** Anything you'd
@@ -179,11 +179,12 @@ in a browser tab.
   after showing the person whose sheet it is the exact before and after.
 
 ## gws sheets syntax (current — `/opt/homebrew/bin/gws`)
-- Read: `gws sheets spreadsheets values get --params '{"spreadsheetId":"<ID>","range":"_LLM_GUIDE!A:Z"}'`
+- Read: ~~`gws sheets spreadsheets values get --params '{"spreadsheetId":"<ID>","range":"_LLM_GUIDE!A:Z"}'`~~ *(2026-10-30: a raw `values get` is refused — `ingest_gate_enforce.sh` blocks it in a session and the job door blocks it in a runner, `jobs-sop.md` §7.)* The allowed way: `python3 <repo>/system/tools/safe_sheets.py <spreadsheet-id> '_LLM_GUIDE!A:Z'` — it sanitizes every cell, scans for injection and fails closed; exit 1 means spans were flagged and neutralised, so read the stderr list.
+  ⚠ *Open gap (2026-10-30, read from `guard_sheet_writes.sh:143-148`, not fire-tested):* that guard records its "this window read the guide" marker only from a command shaped like `gws sheets ... values get`, which the door refuses, so a write after a `safe_sheets.py` read may still be asked to read the guide first. Unresolved; it belongs to the guard, not this page.
 - Metadata (tab list): `gws sheets spreadsheets get --params '{"spreadsheetId":"<ID>"}'`
 - Append (normal write): `gws sheets spreadsheets values append --params '{...}'`
-- Always `2>/dev/null` when parsing gws JSON — it writes progress chatter there and it will corrupt
-  your parse. ⛔ `system/gws-contract.md` does not ship; see the Pointers section at the bottom.
+- ~~Always `2>/dev/null` when parsing gws JSON — it writes progress chatter there and it will corrupt
+  your parse.~~ *(2026-10-30: never silence a fetch, write or push in a runner — `jobs-sop.md` §7 refuses `2>/dev/null` there, and an error you cannot see reads as "nothing new". The allowed way: send stderr to a file, `2>"$TMP/gws.err"`, parse stdout only, and read the file if the call fails.)* `system/gws-contract.md` has the quoting and error-code patterns; see the Pointers section at the bottom.
 
 ## The workflow (any sheet build)
 1. **Identify the sheet + read its `_LLM_GUIDE`** (satisfies `guard_sheet_writes`).
@@ -230,8 +231,7 @@ in a browser tab.
 - Craft (design/audit/tiers/controls): the `google-sheet` skill + `standards.md` / `capabilities.md`.
 - The law this is one application of: compute mechanically, never in the model. `/calculate` arms it for a whole session.
 - Enforcement mechanics: `system/hook-contract.md` and `system/sops/hook-sop.md`.
-- ⛔ `system/gws-contract.md` does NOT ship. It pinned one machine's `gws` install path and one exact
-  version, which is the opposite of what these hooks now do (`command -v gws`, no version assumption).
+- ~~⛔ `system/gws-contract.md` does NOT ship.~~ *(2026-10-30: the file IS in this repo, `system/gws-contract.md`, frontmatter `gws_version: 0.22.3`.)* ⚠ It pins one `gws` version, which is the opposite of what these hooks now do (`command -v gws`, no version assumption), so read it for the quoting and error-code patterns, not for the install path or version.
   Connecting your own account is `INSTALL.md` → "THE GOOGLE-CONNECTED PARTS"; the quoting and
   error-code patterns are visible in the commands throughout this page.
 

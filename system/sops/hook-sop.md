@@ -45,9 +45,9 @@ reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live i
 > pointer was only ever the filing location of the original write-up:**
 >
 > - ⛔ `docs/architecture.md` — the author's own map of their whole system.
-> - ⛔ `docs/skill-conformance.md` — their conformance checker's rulebook.
+> - ~~⛔ `docs/skill-conformance.md` — their conformance checker's rulebook.~~ *(2026-10-30: it IS shipped, at `docs/skill-conformance.md`; §5 points to it.)*
 > - ⛔ `system/reference/settings.json` — one machine's symlink source, which the single-machine
->   model here made meaningless. Registration lives in `.claude/settings.json` and travels by `git pull`.
+>   model here made meaningless. Registration lives in `.claude/settings.json` and travels by `git pull`. *(2026-10-30: for a plugin install the live guard list is `hooks/hooks.json`, which uses `${CLAUDE_PLUGIN_ROOT}`; `.claude/settings.json` is the project-folder list.)*
 > - ✅ `system/sops/build-sop.md` has landed, carrying the `DO NOT BUILD` register that
 >   `system/tools/deadend_check.py` searches. Its section on scheduled runners names a scheduler and
 >   a dashboard that are NOT here, and says so where it does.
@@ -65,8 +65,8 @@ reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live i
 - **Mis-pick = failure:** a BLOCK used for guidance is a wall with no door; an INJECT used for a hard rule is a wish dressed as enforcement. Decide by: *must this be STOPPED, or REMINDED?*
 
 ## §3 — The three build rules the mechanics doc omits
-1. **Channel law (the landmine):** an INJECT hook delivers via **plain `echo`/stdout + `exit 0`** — **NEVER** the `systemMessage` JSON field (silently dropped: the hook reports success and nothing reaches the model). A BLOCK denies via the **working** channel — deny text + `exit 2` (the honored block signal). Mirror `pm_persist.sh` (inject) and `block_primary_calendar.sh` (block).
-2. **Fail-closed:** on ANY error (can't read stdin / parse fails) a BLOCK hook **denies** — never `exit 0`/allow-on-error. Declare it as one `# FAIL_POSTURE: closed|degrade-safe` line in the LLM-CONTEXT block (a declared intent, not a new enforced field).
+1. **Channel law (the landmine):** an INJECT hook delivers via **plain `echo`/stdout + `exit 0`** — **NEVER** the `systemMessage` JSON field (silently dropped: the hook reports success and nothing reaches the model). A BLOCK denies via the **working** channel — deny text + `exit 2` (the honored block signal). Mirror `pm_persist.sh` (inject) and ~~`block_primary_calendar.sh`~~ `guard_calendar_writes.sh` (block) *(2026-10-30: `block_primary_calendar.sh` is not in this repo; `guard_calendar_writes.sh` is the shipped calendar block hook, exit 2 on deny, registered in `hooks/hooks.json`)*.
+2. **Fail-closed:** on ANY error (can't read stdin / parse fails) a **narrow, single-target** BLOCK hook **denies** — never `exit 0`/allow-on-error. *(Scope, 2026-10-30: fail-closed applies to what a guard is FOR — `canonical-principles-sop.md` "Fail-closed applies to what a guard is FOR". A broad matcher (`Bash`, `Write|Edit`) is **degrade-safe** instead: on an internal error it exits 0 and says so on stderr, or a malformed payload walls the session off from the shell; see `guard_build_mode.sh` `FAIL_POSTURE`. The in-process scan gate in `agentic-security-sop.md` Step 5 is a third case and fails open on purpose.)* Declare it as one `# FAIL_POSTURE: closed|degrade-safe` line in the LLM-CONTEXT block (a declared intent, not a new enforced field).
 3. **Lean / anti-wallpaper (inject only):** injected text ≤ ~150 tokens, **active-recall** (make the model RESTATE its frame, not re-read an identical block that becomes wallpaper), a hard char-ceiling, and an escape path. Re-anchor hardest at **post-compaction**.
 
 ## §4 — Prove it fires (not optional)
@@ -222,6 +222,6 @@ dated INCIDENTS — evidence, not a restatement.**
 ## §5 — The front door (pointers — one home each, zero duplication)
 - **Mechanics** (exit codes · stdin parsing · deny format · registration · the **Deploy & Verify
   checklist**) → ✅ `system/hook-contract.md`
-- **Injector arm/clear/TTL lifecycle + WHEN a skill arms its anchor** → the skill-building SOP §4
+- **Injector arm/clear/TTL lifecycle + WHEN a skill arms its anchor** → ~~the skill-building SOP §4~~ *(2026-10-30: the SOP has no §4 → `system/sops/skill-building-sop.md` PART IV, §IV.3 "a lean anchor fires every turn" and §IV.7)*
 - **Is-this-hook-well-built conformance check** (the LLM-CONTEXT block audit) → `docs/skill-conformance.md`
-- **The catalog of enforced rules / fitness functions** → `docs/architecture.md`
+- **The catalog of enforced rules / fitness functions** → ~~`docs/architecture.md`~~ *(2026-10-30: not shipped, as the preface above says; the live list of enforced rules is `hooks/hooks.json`, and each guard's own header says what it blocks and why)*

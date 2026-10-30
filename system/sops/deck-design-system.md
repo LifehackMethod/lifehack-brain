@@ -10,6 +10,11 @@
 > — `design-system.md` (tokens) · `layout-grammar.md` (which layout for which job + negative rules) ·
 > `decision-log.md` · `deck-workflow.md` · and the engine itself, `lifehack_deck.py`.
 >
+> ⛔ **NOT SHIPPED (2026-10-30).** That folder and all five files are the author's own working material. None is in this
+> repository, and a search of the plugin tree and the Drive root found no copy of any of them. The
+> rules below are all this page can give you. To build a deck, follow §2 and write your own four documents; do not go
+> looking for the originals.
+>
 > **Those documents are generated from the real template by whoever builds against it — sampled from
 > rendered pixels and verified against a working build.** This file used to carry its own token table and
 > layout list; both were **wrong** (API-read colours, and a curated layout set drawn from Google Slides

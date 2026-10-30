@@ -28,7 +28,7 @@ authority: user
 > desks · Pulse (cron) · the security plane — and how they combine. Not a skill-map; skills are one slice.
 >
 > **★ AUTHORED 2026-07-24 (N5):** the middle "how it all works together" layer is now filled — a ranked
-> INDEX of all 50 live parts + a TYPED INTEROP SEAM entry per non-trivial element (42 entries; 8 dormant
+> INDEX of all ~~50~~ *(2026-10-30: the index below lists 51; `elements/` holds 49 files)* live parts + a TYPED INTEROP SEAM entry per non-trivial element (42 entries; 8 dormant
 > parts carry an index line only), derived from each element's own INTEROP SEAMS. The map (tip) is a
 > regenerated slice of this manual + the element STORES tables (N6).
 
@@ -46,7 +46,7 @@ format itself*, so it is testable, not conventional:
   fire-tests the named guards). A human does not hand-edit these.
 
 Kept live by **detect-and-nudge**, redundant channels (split by blast radius): the in-session PostToolUse
-nudge (`nudge_flow_drift.sh`, Feature 1.4) · the Archivist weekly drift-check (Feature 2.1) · the Helm
+nudge (~~`nudge_flow_drift.sh`~~ *(2026-10-30: does not exist, `elements/hook-plane.md` B1)*, Feature 1.4) · the Archivist weekly drift-check (Feature 2.1) · the Helm
 freshness tile (Feature 2.2) · the skill `flow:` frontmatter field (Feature 2.3).
 
 **Format:** the base encyclopedia-entry format (the `## AUTHORED` / `## AUTO-COMPUTED` skeleton) is locked
@@ -460,7 +460,7 @@ useful is unknown.
 > appears in neither the ranked-51 donor list above nor this two-item list. Whether `where-things-live`
 > is a third authored-here element this list never named, or something else, is **not resolved here** —
 > left as a finding, not patched with a guessed third bullet. The one number this note stands behind:
-> **44 files in `elements/`, mechanically counted 2026-09-01.**
+> ~~**44 files in `elements/`, mechanically counted 2026-09-01.**~~ *(2026-10-30: re-counted by `ls -1 system/organism/elements/ | wc -l` → **49** files, all `.md`; the 2026-09-01 figure is stale, the decomposition question above is still unresolved.)*
 >
 > - **planning** *[GLOBAL]* — PARTIAL·gap [provisional] (honor) → `elements/planning.md` · ↓ `#planning`
 >   The daily + weekly cadence layer. It is **not** a rename of the donor's `cal-pipeline` (#44, which
@@ -629,7 +629,7 @@ flip it; the last one wins. Repair is "open any desk once".
 **Alarms is three small pieces** (formerly called "Hospital, as rebuilt"): each job's own state and error folder under
 `~/.config/lifehack/state/jobs/<job>/` (a job with no `last-run` is "never ran", never OK) · the ntfy texts that
 `job-run.sh` sends through `shared/notify/notify-send.sh` (the rules above) · and `health_line.py`, the backup line at
-the start of every session. There is no central error log: the old Drive findings store (`state/findings/`) is retired
+the start of every session. There is no central error log: the old Drive findings store (`<notes>/state/findings/`) is retired
 (ruled 2026-10-29) because nothing reads it; a real problem reaches the owner through a job's own check failing. The old
 detector jobs (system-health, sentinel-health, planning-health, backlog-health, fault-proposer, the freshness and deadman
 jobs) are RETIRED with their runners; the incident ledger and fault grader are on hold, not deleted. Built 2026-10-29
@@ -681,35 +681,32 @@ and must name every one exactly, or the gate refuses to trust the rig. It does n
 
 ### How to add a job (Mac) — step by step
 
-> ⚠ **OUT OF DATE since 2026-10-27 (self-monitoring 5.1–5.3), kept until the jobs SOP replaces it.** The check now lives
-> in the ROW, not in `job-run.sh` (steps 3–4 below are wrong); every row needs the five contract fields; the door refuses
-> a non-conforming row; a model is reached through `run_model`, not `ingest-run.lib.sh`. **Follow
-> `system/sops/jobs-sop.md` (written 2026-10-29), section 11 "Add a job", instead of the steps below.**
+> **This recipe now lives in one place: `system/sops/jobs-sop.md`, section 11 "Add a job (the recipe)"** (2026-10-30). Follow that, not the steps below. The steps below were marked OUT OF DATE on 2026-10-27 (self-monitoring 5.1–5.3: the check now lives in the ROW, not in `job-run.sh`; every row needs the five contract fields; the door refuses a non-conforming row; a model is reached through `run_model`, not `ingest-run.lib.sh`) and are kept struck through for the record only.
 
-1. **Write the command.** A stand-alone shell command or runner script (`system/tools/<job>-run.sh`). It must exit 0 only
+1. ~~**Write the command.** A stand-alone shell command or runner script (`system/tools/<job>-run.sh`). It must exit 0 only
    on real success, 75 if it is simply not configured, 2 for a transient failure, anything else for a failure. Reach a
-   model or Google only through the shared libraries (`ingest-run.lib.sh`), never a bare `claude -p`.
-2. **Add ONE row** to the ```jobs block of `system/jobs.md`: `my-job | yes | 10800 | bash "$LIFEHACK_CODE_ROOT/system/tools/my-job-run.sh"`.
+   model or Google only through the shared libraries (`ingest-run.lib.sh`), never a bare `claude -p`.~~
+2. ~~**Add ONE row** to the ```jobs block of `system/jobs.md`: `my-job | yes | 10800 | bash "$LIFEHACK_CODE_ROOT/system/tools/my-job-run.sh"`.
    Name: lowercase letters, digits and hyphens only. Interval: seconds, and on a Mac a whole number of hours that divides
    86400 (3600, 7200, 10800, 14400, 21600, 28800, 43200, 86400) — anything else makes the installer refuse, touching nothing.
-   Use `no`, `parked` or `waiting-on-<thing>` for a declared-off row.
-3. **Declare what it needs, in `job-run.sh`.** In the `case "$JOB"` block add `my-job) NEEDS="gws"; WATCHDOG=1200 ;;` —
+   Use `no`, `parked` or `waiting-on-<thing>` for a declared-off row.~~
+3. ~~**Declare what it needs, in `job-run.sh`.** In the `case "$JOB"` block add `my-job) NEEDS="gws"; WATCHDOG=1200 ;;` —
    `NEEDS` is any of `claude` and `gws` (each makes the wrapper run that credential pre-flight and stand down with 75 if
-   it is missing), and `WATCHDOG` is the most seconds the command may run (default 3600) before it is killed.
-4. **Write the output check, in `job-run.sh`: `check_my_job` (hyphens become underscores).** It returns 0 only if the job's
+   it is missing), and `WATCHDOG` is the most seconds the command may run (default 3600) before it is killed.~~
+4. ~~**Write the output check, in `job-run.sh`: `check_my_job` (hyphens become underscores).** It returns 0 only if the job's
    promised output is present AND newer than `$START_MARK`, and echoes the reason when it fails. Check the output that
    proves the work, not the exit code: an empty result is not a success. **Without this function, or without `NEEDS`
-   where the job needs credentials, the job can never succeed** — the wrapper fails it with "no output check declared".
-5. **Run the rig:** `bash system/tools/tests/job-sim.sh` (and add a scenario if you changed the alarm rules).
-6. **Run it once by hand through the wrapper** (no `--if-overdue`): `bash system/tools/job-run.sh my-job`. Expect exit 0,
+   where the job needs credentials, the job can never succeed** — the wrapper fails it with "no output check declared".~~
+5. ~~**Run the rig:** `bash system/tools/tests/job-sim.sh` (and add a scenario if you changed the alarm rules).~~
+6. ~~**Run it once by hand through the wrapper** (no `--if-overdue`): `bash system/tools/job-run.sh my-job`. Expect exit 0,
    `~/.config/lifehack/state/jobs/my-job/last-success` present, and the log ending `output check passed`. A failure leaves
-   a file in `errors/`.
-7. **Install the schedule:** `bash system/tools/install-schedulers.sh --install` (without `--install` it only prints the
+   a file in `errors/`.~~
+7. ~~**Install the schedule:** `bash system/tools/install-schedulers.sh --install` (without `--install` it only prints the
    plan). It rewrites every `ai.lifehack.*` agent from the whole block, so it is safe to re-run. Confirm with
-   `launchctl list | grep ai.lifehack.my-job`.
-8. **Confirm the chain:** open a new session and read the first line (`jobs: <n> OK`; a brand-new job reads "never ran"
+   `launchctl list | grep ai.lifehack.my-job`.~~
+8. ~~**Confirm the chain:** open a new session and read the first line (`jobs: <n> OK`; a brand-new job reads "never ran"
    until its first run), and check `cat ~/.config/lifehack/code-root` names the code you mean. To retire a job, set its
-   row to `no` and re-run the installer; leave its state folder.
+   row to `no` and re-run the installer; leave its state folder.~~
 
 ---
 
@@ -781,8 +778,8 @@ INTEROP:
   GUARDED-BY  security-ingest-gate · ingest_gate_enforce.sh IS the security-ingest-gate element's physical body; hook-plane is the enforcement carrier
   READS       egress-allowlist-wall · enforce_egress_allowlist.sh/py reads system/egress-allowlist.md on every Bash call
   WRITES→     sentinel           · enforce_egress_allowlist.py appends blocked-host events to system/logs/sentinel-events.jsonl on every deny
-  FEEDS       skill-system       · auto_register_skill writes ~/.claude/commands/<name>.md stub after a desk SKILL.md write
-  FEEDS       organism-map       · nudge_flow_drift reads system/organism/elements/*/generated_from and emits advisory when an edited file is cited there
+  ~~FEEDS       skill-system       · auto_register_skill writes ~/.claude/commands/<name>.md stub after a desk SKILL.md write~~ *(2026-10-30: `auto_register_skill.sh` does not exist)*
+  ~~FEEDS       organism-map       · nudge_flow_drift reads system/organism/elements/*/generated_from and emits advisory when an edited file is cited there~~ *(2026-10-30: `nudge_flow_drift.sh` does not exist; `elements/hook-plane.md` B1)*
   FEEDS       helm               · observability_logger (all tools) appends to /tmp buffer; session_flight_recorder flushes to system/observability/YYYY-MM-DD.jsonl at Stop
   FEEDS       validate           · validate_on_write reads each written file via validate_frontmatter.py; advisory today, TARGET is blocking
   FEEDS       claude-md-pyramid  · session_context_loader reads desks/{desk}/canon/*.md + state/telos.md and injects into session context at SessionStart
@@ -1078,14 +1075,14 @@ INTEROP:
   SHARES       project-manager      · skill_anchor.sh + skill_anchor_inject.sh are a direct architectural mirror of pm_flag.sh + pm_persist.sh (flag state manager + UserPromptSubmit injector); same session-key scheme, TTL, degrade-safe posture
   FEEDS        save                 · /save's Step 7b (machine-log) and Step 7c (learnings) record skill-related events when a session runs a skill and then saves
   FEEDS        label-checker        · conformance-lab's multi-phase driver contracts (## Output contract + ✅ phase N complete) are the machine-readable seam conformance.py reads; new-skill.sh --multiphase creates this seam at birth
-  TRIGGERS     auto_register_skill.sh · a Write or Edit to desks/{desk}/skills/{name}/SKILL.md automatically triggers stub creation; /save may trigger this if it writes a SKILL.md
+  ~~TRIGGERS     auto_register_skill.sh · a Write or Edit to desks/{desk}/skills/{name}/SKILL.md automatically triggers stub creation; /save may trigger this if it writes a SKILL.md~~ *(2026-10-30: no such hook exists, see the GUARDED-BY note below)*
   CHAINS       skill_anchor.sh → skill_anchor_inject.sh · anchor state manager arms a flag; injector reads it every turn; useless without each other
   READS        system/sops/skill-building-sop.md · canonical doctrine for all skill authoring; the hook's deny message names it explicitly
   SYNCS        docs/skill-conformance.md · frontmatter schema (shape:, emit_diary:, etc.) canonicalized here; changes must land in conformance doc first; hook and scaffolder updated in same commit
   READS        system/templates/skill-template/SKILL.md · canonical template new-skill.sh was designed from; scaffolder's stamp IS the template's required structure
   GUARDED-BY   enforce_skill_frontmatter.sh · PreToolUse Write — exit-2 BLOCKS non-conformant SKILL.md writes (description + YAML + 500-line cap); Write-only (not Edit)
   GUARDED-BY   skill_anchor_inject.sh · UserPromptSubmit — re-injects lean anchor body every turn when armed; DEGRADE-SAFE
-  GUARDED-BY   auto_register_skill.sh · PostToolUse Write|Edit — creates desk command stubs automatically; non-blocking (stderr only)
+  ~~GUARDED-BY   auto_register_skill.sh · PostToolUse Write|Edit — creates desk command stubs automatically; non-blocking (stderr only)~~ *(2026-10-30: `auto_register_skill.sh` does not exist and is not registered; `elements/hook-plane.md` B3)*
 
 ## project-manager · /project-manager | "track this" | build invocation   [PARTIAL (honor)]   → elements/project-manager.md
 Arm a session-scoped flag → re-inject the active brief on every turn → run HITL Frame intake on create → compact the scratchpad losslessly at close → block the Stop event until capture is confirmed. Primary behavioral contract is honor-system; only the Stop-capture gate is a real blocker.
@@ -1271,7 +1268,7 @@ INTEROP:
   WRITES->     save                 · /research Step 7 writes an autonomous tier:dated-record research record to records/research/; /save's Step 4 dedup and Step 8 canon pipeline apply to it; complementary (research captures the map immediately; /save handles canon at session close)
   SYNCS        web-searcher         · /research Step 3 prompt skeleton, effort-tier rules, and tool constraints are tightly coupled to agents/web-searcher.md; the agent's tools:Bash,Read restriction is what makes the structural safe-stack claim true; must stay in sync
   COMPLEMENTS  security-ingest-gate · security-ingest-gate handles inbound external content (email, files); research-web-plane handles outbound-then-inbound web content; both feed into safe_input.py / sanitize.py shared primitives
-  READS        CLAUDE.md            · global "Subagent Model Selection" rule mandates model:sonnet for all spawned agents; /research SKILL.md Hard rule 3 echoes this; CLAUDE.md is authoritative, SKILL.md is the runtime implementation
+  READS        CLAUDE.md            · global ~~"Subagent Model Selection"~~ *(2026-10-30: renamed, now `CLAUDE.md` → "Sending work to a sub-agent", line 201)* rule mandates model:sonnet for all spawned agents; /research SKILL.md Hard rule 3 echoes this; CLAUDE.md is authoritative, SKILL.md is the runtime implementation
 
 ## git-autopush · Pulse every 900s (both machines)   [LIVE·gap]   → elements/git-autopush.md
 Backstop auto-sync of ~/lifehack-brain between the two machines — push side sends new commits to GitHub; pull side fast-forwards the other machine — so a git commit propagates without ever asking the user to push. Conservative: handles clean fast-forward only; bails on anything requiring human judgment.
@@ -1330,10 +1327,10 @@ INTEROP:
 Three-skill cluster + two hooks that continuously re-assert a shared voice contract, keeping every reply readable on first pass for a low-recall reader juggling windows. The Stop-grade layer (translator_gate.sh) is dormant by default — grader parked 2026-07-14; inject hook is always-on.
 
 INTEROP:
-  COMPLEMENTS all-response-outputs      · ⛔ simplify_anchor_inject.sh was DELETED 2026-08-05 (failed experiment — fired EVERY turn, not 1-in-10). The per-turn voice re-anchor NO LONGER EXISTS; translator_gate.sh (Stop) still grades finished replies. This line claimed a live control for 9 days after it was switched off — §19's founding specimen. Was: fires before EVERY turn across every desk, skill, and agent — the voice contract for the entire system
+  COMPLEMENTS all-response-outputs      · ⛔ simplify_anchor_inject.sh was DELETED 2026-08-05 (failed experiment — fired EVERY turn, not 1-in-10). The per-turn voice re-anchor NO LONGER EXISTS; ~~translator_gate.sh (Stop) still grades finished replies.~~ *(2026-10-30: `translator_gate.sh` is not in `system/hooks/` and is not registered; `system/sops/translator-rubric.md` says NOT PORTED.)* This line claimed a live control for 9 days after it was switched off — §19's founding specimen. Was: fires before EVERY turn across every desk, skill, and agent — the voice contract for the entire system
   CHAINS      save                      · /save Step 8 continuation handoff specifies a two-pass DRAFT → /explain re-render as its voice-seed; the only place a translator skill is a REQUIRED intermediate step in another skill's flow
-  KEYS-OFF    system/translator-rubric.md · all five cluster components (3 skills + 2 hooks) key off this file as the authority on translator voice; rubric edit must propagate to all five — propagation is honor-system
-  SYNCS       output-styles/simplify.md · session-startup voice baseline; simplify_anchor_inject.sh is the per-turn re-anchor; both implement the same rubric criteria — out-of-sync means baseline and injection diverge mid-session
+  KEYS-OFF    ~~system/translator-rubric.md~~ `system/sops/translator-rubric.md` *(2026-10-30: moved)* · all five cluster components (3 skills + 2 hooks) key off this file as the authority on translator voice; rubric edit must propagate to all five — propagation is honor-system
+  ~~SYNCS       output-styles/simplify.md · session-startup voice baseline; simplify_anchor_inject.sh is the per-turn re-anchor; both implement the same rubric criteria — out-of-sync means baseline and injection diverge mid-session~~ *(2026-10-30: `output-styles/simplify.md` is not in this repo (archived 2026-07-28) and `simplify_anchor_inject.sh` was deleted 2026-08-05; `system/sops/translator-rubric.md` is the only live copy)*
   COMPLEMENTS distill                   · /summarize explicitly routes full-thread or multi-turn distillations to /distill; complementary non-redundant tools for different scopes
 
 ## red-team · /red-team   [LIVE [provisional]]   → elements/red-team.md
@@ -1356,7 +1353,7 @@ INTEROP:
   GUARDED-BY ingest-gate            · ingest_gate_enforce.sh blocks raw gws format:full body reads; forces email_convert.py path [hook]
   GUARDED-BY calendar-guard         · calendar write hook blocks any event write to primary or non-Agent-Ops calendar [hook]
   GUARDED-BY ~~primary-gate.sh~~ · **⚠ CORRECTED 2026-08-24: ⛔ `system/tools/primary-gate.sh` does not exist** (0 files, verified this session); `require_primary()` has no definition anywhere in the repo. Emily-desk Drive writes are NOT gated on machine lead-election — this system has one machine (`docs/data-layout.md:215`). See `elements/cron.md`'s corrected GATES section. [was: script]
-  CHAINS     safe-reader-plane      · script-reader subagent uses safe_pdf.py; researcher uses safe_search_api.sh (Serper primary, Chrome fallback); calendar + email free-text isolated via safe_calendar.py / reader-actor subagent
+  CHAINS     safe-reader-plane      · script-reader subagent uses safe_pdf.py; researcher uses safe_search_api.sh (~~Serper primary, Chrome fallback~~ *(2026-10-30: Serper is the ONLY search path; the Chrome fallback was deleted, see the correction above)*); calendar + email free-text isolated via safe_calendar.py / reader-actor subagent
   FEEDS      notify-plane           · buzz via notify-send.sh after successful breakdown (Phase 6)
   READS      pulse-cron             · emily-breakdown-run.sh is a Pulse-managed cron job; Pulse owns cadence + circuit-breaker (3 non-zero → auto-disable + buzz)
   CHAINS     emily-2-interrogate    · quick kill-filter + calendar gate on current session materials; reads session.md seeded by today's ingest; live interactive skill
@@ -1375,7 +1372,7 @@ INTEROP:
   KEYS-OFF     state/primary-machine · all gather runners + narrative-writer gate on this value (single Drive writer)
   SYNCS    emit_status()     · every runner writes a Pulse tile so the status bar reflects organism health
   TRIGGERS notify-send.sh    · sensor on CRITICAL cross · deadman on > 28h silence · weekly gather on success
-  GUARDED-BY   guard_marc_narrative   · PostToolUse advisory lint on narrative/scenario file writes via marc-narrative-check.py (advisory, not blocking)
+  ~~GUARDED-BY   guard_marc_narrative   · PostToolUse advisory lint on narrative/scenario file writes via marc-narrative-check.py (advisory, not blocking)~~ *(2026-10-30: `guard_marc_narrative.sh` does not exist — 0 files in `system/hooks/`, 0 registrations in `hooks/hooks.json`; `elements/hook-plane.md` B5 says the same)*
 
 ## clair-desk · /ingest + /clair-session-close   [PARTIAL·gap [provisional]]   → elements/clair-desk.md
 Consulting-ops desk — reads every Consulting Gmail thread through a safety-isolated reader agent, surfaces what needs the operator in needs-me.json, closes sessions with Drive-doc ingest + an append-only billing write to the billing tracker, and keeps a cadence-nudge cron that fires a phone push exactly once per new due-state. ·gap because Drive-side billing scripts are not git-tracked and the concern-bar classification is LLM-judgment with no deterministic enforcement.
@@ -1458,7 +1455,7 @@ INTEROP:
   GUARDED-BY   ~~NOTHING, as of this write · no Hospital hook exists or is registered (GAP-3)~~ ⚠ CORRECTED 2026-08-24: guard_findings_write.sh IS registered (confirmed present in `~/.claude/settings.json` PreToolUse Bash|Write|Edit hooks, and fired a live `{"decision":"block"}` on a synthetic `echo >> state/findings/*.jsonl` this session) — GAP-3 is CLOSED, not open. The Efficiency section three lines below already names this same hook correctly; this clause was the stale one. emit_finding's contract is ALSO structural (no id= parameter, scanned_n required, zero-scan-OK refused) — the hook and the contract are two independent layers, not one. ⚠ UPDATE 2026-08-27 (hook-plane migration): `guard_findings_write.sh` is no longer in `~/.claude/settings.json` — verified this session, that file's 7 remaining entries do not include it. GAP-3 stays CLOSED, not because the 2026-08-24 finding-location was wrong, but because the hook moved: it is now registered in `~/.claude/plugins/cache/lifehack-brain/lifehack-brain/0.3.13/hooks/hooks.json` (confirmed present there this session). It was not re-fire-tested from that location in this pass.
 
 ## efficiency · recommend.py + emit_recommendation.py + fault_proposer.py   [PARTIAL·gap [provisional — not fire-tested]]   → elements/efficiency.md
-Efficiency exists so the system gets SHARPER with use instead of duller. Entropy is the default — junk accumulates, parts rot, seams fray. Efficiency is the counter-force: it reads what is wrong, reasons ACROSS findings rather than one at a time, and proposes how the organism should evolve. Where Hospital DETECTS and RANKS one problem at a time, Efficiency reasons across them at three altitudes — the broken part, the broken chain, the wrong architecture. **It SUGGESTS and never APPLIES** (⚖ RULED 2026-08-04 by the operator; auto-fix CUT 7/7 by council), and there is no applier anywhere in it. ⚠ **Only the GROUND altitude is built, and it has never run in production** — `recommend.py` has no caller and `state/recommendations/` does not exist on disk (measured 2026-08-05), deliberately, pending one supervised live run. **There is no LLM in this subsystem today** — it is deterministic code end to end, so no code/LLM seam binds it as built.
+Efficiency exists so the system gets SHARPER with use instead of duller. Entropy is the default — junk accumulates, parts rot, seams fray. Efficiency is the counter-force: it reads what is wrong, reasons ACROSS findings rather than one at a time, and proposes how the organism should evolve. Where Hospital DETECTS and RANKS one problem at a time, Efficiency reasons across them at three altitudes — the broken part, the broken chain, the wrong architecture. **It SUGGESTS and never APPLIES** (⚖ RULED 2026-08-04 by the operator; auto-fix CUT 7/7 by council), and there is no applier anywhere in it. ⚠ **Only the GROUND altitude is built, and it has never run in production** — `recommend.py` has no caller and `<notes>/state/recommendations/` does not exist on disk (measured 2026-08-05), deliberately, pending one supervised live run. **There is no LLM in this subsystem today** — it is deterministic code end to end, so no code/LLM seam binds it as built.
 
 INTEROP:
   READS        hospital            · consumes the findings union via findings_reader.py — Hospital's contract change is Efficiency's outage; the tightest coupling in the pair

@@ -13,7 +13,7 @@ generated_from:
   - shared/tools/item_store_window.py
   - shared/tools/item_schema.py
   - shared/tools/hitl_note_store.py
-  - system/tools/item-store-freshness-run.sh
+  # - system/tools/item-store-freshness-run.sh  # absent here (checked 2026-10-30)
   - system/hooks/ingest_gate_enforce.sh
   - system/jobs.md
 created_at: 2026-07-24
@@ -141,8 +141,8 @@ cadence (`21600 s`~~ **24-hour cadence (`86400 s`)** in `system/jobs.md`.
    [line 354-375]
 4. Build payload via `make_task_payload()` (list-qualified id: `{list_id}__{task_id}`). [line 378-395]
 5. Validate via `validate_item_record()` → abort if violations. [line 410-414]
-6. Write atomically: `.tmp` → `os.replace()` to `state/item-store/tasks/`. [line 134-141]
-7. Write per-list manifest to `state/item-store/task-lists/`. [line 270-291]
+6. Write atomically: `.tmp` → `os.replace()` to `<notes>/state/item-store/tasks/`. [line 134-141]
+7. Write per-list manifest to `<notes>/state/item-store/task-lists/`. [line 270-291]
 8. ONE union cold-sweep at the end across ALL lists (never per-list, which would false-cold the other
    lists' tasks). [line 466-533]
 
@@ -362,7 +362,7 @@ closed: if the scanner is absent or errors, the raw item body is served, not the
 ### FRESHNESS DEAD-MAN (CT-3)
 
 `item_store_read.freshness_check()` — independent of the writers; fires hourly via the
-`item-store-freshness` Pulse slot (runner: `system/tools/item-store-freshness-run.sh`, interval
+`item-store-freshness` Pulse slot (runner: `system/tools/item-store-freshness-run.sh` ⛔ not shipped in the plugin (donor-system tool), interval
 3600 s). Emits a tile to `state/status/item-store.json` via `emit_status.py` (the ONE validator).
 
 **Signals ERROR (Helm red + phone buzz) when:**
@@ -383,17 +383,17 @@ signals, not store-level health.
 
 **Hook-enforced walls on the read side** (PreToolUse, `ingest_gate_enforce.sh`):
 
-1. **`ingest_gate_enforce.sh` — Direct Read of `state/item-store/`** — BLOCKS any Read tool call
+1. **`ingest_gate_enforce.sh` — Direct Read of `<notes>/state/item-store/`** — BLOCKS any Read tool call
    whose path matches `*item-store/*`. [line 85-86]
    - Deny message: "direct Read of the item store bypasses the read adapter."
    - Redirect: `python3 …/shared/tools/item_store_read.py --type task|calendar --id <id> --desk <desk>`
 
-2. **`ingest_gate_enforce.sh` — Un-wrapped Bash read of `state/item-store/`** — BLOCKS shell reads
+2. **`ingest_gate_enforce.sh` — Un-wrapped Bash read of `<notes>/state/item-store/`** — BLOCKS shell reads
    (`cat`, `head`, `tail`, `less`, `more`, `xxd`, `od`, `nl`, or Python `open(path, 'r')`) unless
    the command also references `item_store_read.py`, `tasks_store_sync.py`, or `calendar_store_sync.py`.
    [line 174-177]
 
-3. **`ingest_gate_enforce.sh` — Non-writer Write to `state/item-store/`** — BLOCKS shell writes
+3. **`ingest_gate_enforce.sh` — Non-writer Write to `<notes>/state/item-store/`** — BLOCKS shell writes
    (`>`, `>>`, `tee`, `rm`, Python `open(path, 'w'/'a')`) unless the command references
    `tasks_store_sync.py` or `calendar_store_sync.py`. Single-writer invariant. [line 167-171]
 
@@ -449,9 +449,9 @@ The item-store rules live inside the Bash and Read branches of the hook.
 calendarList list` (via subprocess, metadata only)
 — all reads are through the safe wrappers; raw `gws` output never lands in the store.
 
-**WRITES→** `state/item-store/tasks/` (one `.json` per task via `tasks_store_sync.py`)
-**WRITES→** `state/item-store/task-lists/` (one manifest `.json` per list)
-**WRITES→** `state/item-store/calendar/` (one `.json` per event via `calendar_store_sync.py`)
+**WRITES→** `<notes>/state/item-store/tasks/` (one `.json` per task via `tasks_store_sync.py`)
+**WRITES→** `<notes>/state/item-store/task-lists/` (one manifest `.json` per list)
+**WRITES→** `<notes>/state/item-store/calendar/` (one `.json` per event via `calendar_store_sync.py`)
 **WRITES→** `state/status/item-store.json` (freshness tile via `emit_status.py`, hourly)
 **WRITES→** `/tmp/rdr/item_*.txt` (isolated free-text scratch for ingest-reader)
 **WRITES→** `/tmp/rdr/window_*.txt` (bundle scratch for the sweep's reader pass)
@@ -561,8 +561,8 @@ parity closes the hole at the source. [`tasks_store_sync.py:378-387`]
 
 - **maturity_label:** LIVE·gap
 - **check_detail:** Three hook rules in `ingest_gate_enforce.sh` (PreToolUse Bash + Read)
-  constitute the live wall: (h) non-writer Bash WRITE to `state/item-store/` is BLOCKED [lines
-  167-171]; (i) un-wrapped Bash READ of `state/item-store/` is BLOCKED [lines 174-177]; Read-tool
+  constitute the live wall: (h) non-writer Bash WRITE to `<notes>/state/item-store/` is BLOCKED [lines
+  167-171]; (i) un-wrapped Bash READ of `<notes>/state/item-store/` is BLOCKED [lines 174-177]; Read-tool
   path match `*item-store/*` is BLOCKED [lines 85-86]. Schema gate (`validate_item_record`) is
   skill-level fail-closed at write time. Freshness dead-man fires hourly. The `·gap` reflects two
   documented fail-open conditions: (1) Python callers can pass `isolate=False` (accepted design for

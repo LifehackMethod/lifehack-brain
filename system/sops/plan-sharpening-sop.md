@@ -232,7 +232,7 @@ plan must contain, disagreeing quietly until someone notices.
 
 SOP loading in this system is a **trusted-read convention with no hook enforcing it** — `/build`'s own
 Step 0 says v1 is "advisory, a compass not a code-gate." The same is true here: nothing forces
-`/autoplan` or `/checkin` to actually open this file.
+`/autoplan` or `/checkin` to actually open this file. *(Scope, 2026-10-30: that holds for THIS SOP. Four rulebooks do now have a hook behind them, for skill, job, hook and desk building: `system/hooks/guard_build_mode.sh` denies the first build attempt of each kind per session until the SOP is named, its paths are in `system/hooks/build_mode_sops.conf`; and `guard_hook_sop_read.sh` blocks hook writes until `hook-sop.md` is read.)*
 
 **Therefore every skill that reads this SOP must emit an orientation receipt naming it** — the same
 receipt-line discipline as §1's world-model read. A skipped read and a read that found nothing look

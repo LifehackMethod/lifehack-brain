@@ -15,7 +15,7 @@ generated_from:
   - system/hooks/scratch_flag.sh (verified 2026-07-24)
   - system/tools/skill_hud.sh (verified 2026-07-24)
   - system/tools/statusline-truth-test.sh (verified 2026-07-24)
-  - system/reference/settings.json (statusLine + guard_statusline hook — verified 2026-07-24)
+  # - system/reference/settings.json (statusLine + guard_statusline hook — verified 2026-07-24)  # absent here (checked 2026-10-30)
   - state/debt-ledger.md (lines 72, 73, 81, 84, 86, 418, 424 — verified 2026-07-24)
 created_at: 2026-07-24
 updated_at: 2026-07-24

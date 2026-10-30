@@ -9,15 +9,15 @@ gap_disposition: defect
 gap_disposition_note: "ruled 2026-07-28 at class level — C6 known-fix-unapplied — enforce_skill_frontmatter matcher is Write only; the Edit path is dark. Fix scheduled as S2.3"
 generated_from:
   - system/hooks/enforce_skill_frontmatter.sh (PreToolUse Write)
-  - system/hooks/auto_register_skill.sh (PostToolUse Write|Edit)
+  # - system/hooks/auto_register_skill.sh (PostToolUse Write|Edit)  # absent here (checked 2026-10-30)
   - system/hooks/skill_anchor.sh (state manager)
   - system/hooks/skill_anchor_inject.sh (UserPromptSubmit)
   - docs/skill-conformance.md
   - system/sops/skill-building-sop.md
   - system/templates/skill-template/SKILL.md
   - system/tools/new-skill.sh
-  - system/tools/conformance-lab/conformance.py
-  - system/reference/settings.json (hook registration lines 147–291, 347–355)
+  # - system/tools/conformance-lab/conformance.py  # absent here (checked 2026-10-30)
+  # - system/reference/settings.json (hook registration lines 147–291, 347–355)  # absent here (checked 2026-10-30)
   - skills/* (directory: 49 live skill folders + ~7 archived/retired)
   - ~/.claude/skills/* (50 symlinks to clone)
   - ~/.claude/commands/* (desk-scoped command stubs; not all from auto_register)
@@ -597,7 +597,7 @@ can drop it). The `docs/skill-conformance.md §6` table marks this as `build` st
    birth guard. Add one YAML check to the existing Python block.
 3. **Audit existing skills for missing `shape:`** — the Archivist sweep (`/archivist-audit
    scope=skills`) surfaces this; the `[SKILL-SOP-FIXES]` debt-ledger item (line 214) tracks the
-   46-skill backlog with scorecards at `state/projects/skill-sop-audit/`.
+   46-skill backlog with scorecards at `<notes>/state/projects/skill-sop-audit/`.
 
 ---
 

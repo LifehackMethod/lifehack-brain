@@ -10,10 +10,10 @@ gap_disposition_note: "ruled 2026-07-28 at class level — the supervised drain 
 generated_from:
   - system/schemas/backlog-entry-schema.md (v1.0)
   - system/tools/backlog_groom.py
-  - system/tools/backlog-health.py
-  - system/tools/backlog-health-run.sh
+  # - system/tools/backlog-health.py  # absent here (checked 2026-10-30)
+  # - system/tools/backlog-health-run.sh  # absent here (checked 2026-10-30)
   - system/hooks/guard_ledger_discipline.sh
-  - system/reference/settings.json (line 171 — guard_ledger_discipline PreToolUse registration)
+  # - system/reference/settings.json (line 171 — guard_ledger_discipline PreToolUse registration)  # absent here (checked 2026-10-30)
   # CORRECTED: system/reference/settings.json is a donor-layout path and does not exist in this
   # repo. The live registration is this repo's own .claude/settings.json — the hook itself is
   # genuinely registered and fires; only the citation path was stale.
@@ -35,7 +35,7 @@ authority: user
 > **Altitude = BASE (ground / street view).** Full mechanics + honest enforcement map + all interop seams.
 > The MIDDLE index (`system/organism/manual.md`) carries only a one-line pointer here; the TIP
 > (`CLAUDE.md` schematic) shows only its box + arrows; the **live artifacts** (`system/tools/backlog_groom.py`,
-> `system/tools/backlog-health.py`) are the fourth level — the
+> `system/tools/backlog-health.py` ⛔ not shipped in the plugin (donor-system tool)) are the fourth level — the
 > executable runtime ground truth. This entry is the UNDERSTANDING layer.
 >
 > **LADDER: ELEMENT (full mechanics). up → manual#backlog-authority ; ground truth → system/tools/backlog_groom.py + backlog-health.py**
@@ -207,7 +207,7 @@ done-never-archived candidates AND no duplicate slugs. In practice the board is 
 `backlog-health-run.sh` exists in `system/tools/`, and nothing needs one — the donor's wrapper
 existed to carry a lead-machine gate, and this system has one machine (`docs/data-layout.md`
 line 214: *"there is one machine. The two-machine plane is not part of this system"*). There is
-no machine gate, no `require_primary`, and no `state/primary-machine` marker; the tile has a
+no machine gate, no `require_primary`, and no `<notes>/state/primary-machine` marker; the tile has a
 single writer because there is only ever one writer.
 
 **Pulse slot** (`system/jobs.md` line 115):

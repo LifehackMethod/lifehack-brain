@@ -57,7 +57,7 @@ Rules: **quarantine the item, never halt the whole pipeline** (that's a self-inf
 - [ ] Is untrusted content isolated in a tool-less reader before the actor — handed over as typed data?
 - [ ] Is the sanitize path enforced by a hook (not "remember to call the cleaner")?
 - [ ] Are irreversible actions human-gated?
-- [ ] Does the security gate **fail OPEN** (bounded timeout + try/except → findings stand, verdict undetermined)? A gate that crashes the read it guards is worse than the gap.
+- [ ] Does the **in-process scan gate** (the Python `gate()` that sanitizes and scans on the read path, `shared/gate/ingest_gate.py`) **fail OPEN** (bounded timeout + try/except → findings stand, verdict undetermined)? A gate that crashes the read it guards is worse than the gap. *(Scope, 2026-10-30: this line is about that processing checkpoint, which fails open by design — `elements/ingest-gate.md` "fail-open invariants". The BLOCK hook at the door is a different kind of gate and follows `hook-sop.md` §3 rule 2: a narrow single-target guard fails closed, a broad matcher is degrade-safe.)*
 - [ ] Is egress filtered / outbound allowlisted?
 
 ## Step 6 — Don't build (enterprise overkill — deliberately skip)

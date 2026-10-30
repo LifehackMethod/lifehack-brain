@@ -13,14 +13,14 @@ generated_from:
   - system/hooks/session_context_loader.sh
   - system/hooks/validate_on_write.sh
   - system/hooks/guard_write_paths.sh
-  - system/reference/settings.json (lines 157–163, 246–255, 269–276, 309–319)
+  # - system/reference/settings.json (lines 157–163, 246–255, 269–276, 309–319)  # absent here (checked 2026-10-30)
   - system/tools/validate_frontmatter.py
   - system/tools/canon_conflict_scan.py
   - system/tools/archivist-audit-run.sh
   - system/memory-system.md
   - system/confidence-model.md
   - <notes>/memory/topic-vocab.md
-  - system/canon-purpose-map.md
+  # - system/canon-purpose-map.md  # absent here (checked 2026-10-30)
   - .claude/skills/save/SKILL.md §4.6, §6b, §SC-2
   # skills/archivist-autoplace/SKILL.md — DELETED 2026-07-28 (S2.4 sweep; RETIRED since 2026-06-29,
   # zero live callers). Archived at state/archive/2026-07-28-s24-retirement-sweep/.
@@ -365,11 +365,11 @@ From `settings.json`, every hook checked against a `Write|Edit` tool call target
 | guard_ledger_discipline.sh | Write\|Edit | PreToolUse | YES | ~165–169 | No — ledger-specific |
 | guard_throughline_write_scope.sh | Write\|Edit | PreToolUse | YES | ~170–175 | No — throughline-specific |
 | **guard_canon_write.sh** | **Write\|Edit** | **PreToolUse** | **YES** | **246–255** | **PRIMARY CANON GUARD** |
-| nudge_flow_drift.sh | Write\|Edit | PostToolUse | advisory | ~258–266 | only if the canon file is in a generated_from list |
+| ~~nudge_flow_drift.sh~~ | ~~Write\|Edit~~ | ~~PostToolUse~~ | ~~advisory~~ | | *(2026-10-30: file does not exist, `hook-plane.md` B1)* |
 | validate_on_write.sh | Write\|Edit | PostToolUse | NO (advisory) | 269–276 | YES — frontmatter check fires |
-| auto_register_skill.sh | Write\|Edit | PostToolUse | advisory | ~278–285 | No — skill-file only |
+| ~~auto_register_skill.sh~~ | ~~Write\|Edit~~ | ~~PostToolUse~~ | ~~advisory~~ | | *(2026-10-30: file does not exist, `hook-plane.md` B3)* |
 | observability_logger.sh | * | PostToolUse | advisory | 289–296 | NO — universal logger |
-| guard_marc_narrative.sh | Write\|Edit | PostToolUse | advisory | ~298–306 | No — marc-desk only |
+| ~~guard_marc_narrative.sh~~ | ~~Write\|Edit~~ | ~~PostToolUse~~ | ~~advisory~~ | | *(2026-10-30: file does not exist, `hook-plane.md` B5)* |
 
 ~~Bash-matcher hooks (`guard_sheet_writes.sh`, `ingest_gate_enforce.sh`, etc.) do NOT fire on Write|Edit tool calls — they fire only on Bash tool calls. This means a `cp`, `tee`, or `echo >` to a canon path bypasses the entire Write|Edit hook stack, including `guard_canon_write.sh`.~~ This is a documented, accepted gap for `guard_write_paths.sh` specifically: its header explicitly states "Bash file-writes BYPASS it entirely" (KNOWN-GAP accepted 2026-07-14). Mitigation for `guard_write_paths.sh` is discipline + review.
 > **⚠ CORRECTED 2026-08-27, lb2-ops-comms.md claim 93 — the system is SAFER than this paragraph claims,

@@ -13,7 +13,7 @@ generated_from:
   - .claude/skills/council/SKILL.md
   - .claude/skills/planning-weekly/prompts/04-council.md
   - .claude/skills/planning-weekly/prompts/council/_member-format.md
-  - skills/marc-checkin/SKILL.md (lines 79–87)
+  # - skills/marc-checkin/SKILL.md (lines 79–87)  # absent here (checked 2026-10-30)
   - system/sops/architecture-planning-sop.md (lines 59–104, 139)
   - system/hooks/plan_flag.sh (lines 94–96)
   - $DRIVE/councils/registry.md

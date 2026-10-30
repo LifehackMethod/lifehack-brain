@@ -7,7 +7,7 @@ record_type: organism-element
 maturity_label: PARTIAL
 generated_from:
   - .claude/skills/save/SKILL.md (v3.3)
-  - skills/save/WRITE-FORMATS.md
+  # - skills/save/WRITE-FORMATS.md  # absent here (checked 2026-10-30)
   - system/schemas/project-doc-schema.md (BRIEF COMPACTION)
   - system/hooks/pm_flag.sh
   - system/hooks/pm_persist.sh
@@ -17,9 +17,9 @@ generated_from:
   - system/hooks/guard_write_paths.sh
   - system/hooks/guard_canon_write.sh
   - system/hooks/guard_ledger_discipline.sh
-  - system/tools/pm_flag_recover.py
+  # - system/tools/pm_flag_recover.py  # absent here (checked 2026-10-30)
   - system/tools/canon_conflict_scan.py
-  - system/tools/pad_archive.py
+  # - system/tools/pad_archive.py  # absent here (checked 2026-10-30)
   # CORRECTED 2026-08-27 (L.B2 audit, live run): this bare path does not exist —
   # `python3 system/tools/pad_archive.py archive ...` → "No such file or directory". The tool's
   # real location is system/tools/save/pad_archive.py (confirmed present and runnable). Every

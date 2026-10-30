@@ -8,9 +8,9 @@ maturity_label: LIVE·gap
 gap_disposition: defect
 gap_disposition_note: "ruled 2026-07-28 at class level — C2 exception — scratch lock admits ANY sub-agent, not only the tool-less reader family (premortem: allow ingest-reader + ingest-conclusions + ingest-tagger)"
 generated_from:
-  - shared/tools/ingest_gate.py
+  - shared/gate/ingest_gate.py
   - system/hooks/ingest_gate_enforce.sh
-  - system/reference/settings.json
+  # - system/reference/settings.json  # absent here (checked 2026-10-30)
   - system/tools/sanitize.py
   - system/tools/safe_input.py
   - shared/gate/sentinel_response.py
@@ -41,7 +41,7 @@ authority: user
 > `shared/tools/` directory and no `test_pipeline.py` anywhere under `system/tools/cowork-ingest/`).
 > Every mention of `sentinel_response.py` below means the invoked one, at `shared/gate/`.
 
-> **LADDER: ELEMENT (full mechanics). up → manual#ingest-gate ; ground truth → shared/tools/ingest_gate.py + system/hooks/ingest_gate_enforce.sh**
+> **LADDER: ELEMENT (full mechanics). up → manual#ingest-gate ; ground truth → shared/gate/ingest_gate.py + system/hooks/ingest_gate_enforce.sh**
 >
 > **Altitude = BASE (ground / street view).** The in-the-weeds mechanics of the universal sanitize →
 > scan → route content-security gate for ALL inbound content — the reader-actor perimeter. The MIDDLE
@@ -78,14 +78,14 @@ Every external-content read that passes the `ingest_gate_enforce.sh` deny wall r
 `safe_calendar.py`, `safe_tasks.py`, `email_convert.py`). Each of those tools calls:
 
 ```python
-from ingest_gate import gate   # shared/tools/ingest_gate.py
+from ingest_gate import gate   # shared/gate/ingest_gate.py
 result = gate(desk_id, source_type, raw_content, message_id="", item="")
 ```
 
 `ingest_gate.py` is also callable as a CLI:
 
 ```bash
-python3 shared/tools/ingest_gate.py \
+python3 shared/gate/ingest_gate.py \
   --desk <desk_id> --source-type <email|web|file|calendar|api> \
   --item <human-readable-id> [--message-id <gmail_id>] \
   < raw_content_stdin
@@ -100,7 +100,7 @@ Exit 0 = passed; exit 2 = DANGER (mirrors the Sentinel verdict-tool convention).
 
 ### FULL STEP CHAIN
 
-Every step below is derived from `shared/tools/ingest_gate.py` (`gate()`, lines 86–136) — live code wins.
+Every step below is derived from `shared/gate/ingest_gate.py` (`gate()`, lines 86–136) — live code wins.
 
 ---
 
@@ -467,4 +467,4 @@ SYNCS          ingest-gate-signature  · frozen contract v1.0 in system/schemas/
 ## AUTO-COMPUTED   (machine-only — hand-set at authoring; the F1.5 checker will own this once built)
 
 - **maturity_label:** LIVE·gap [provisional]
-- **check_detail:** AUTHORED from live code inspection of `shared/tools/ingest_gate.py` (154 lines, stdlib-only) + `system/hooks/ingest_gate_enforce.sh` (194 lines) + debt-ledger sweep + `system/information-ingestion-interpretation.md`. The Python gate fires on every safe_* tool call (structural, not separately fire-tested here — `security-ingest-gate.md` covers the hook fire-test). Gaps G1–G7 documented from live code + debt-ledger. LIVE (gate fires; posture=enforce; breadcrumb live; email invariant code-enforced) + `·gap` (G5 any-sub-agent scratch lock; G4 safe_* convention not hook; G2 200-char Subject cap; G7 reader still at read-time) — label is honest. `[provisional — not fire-tested independently]`
+- **check_detail:** AUTHORED from live code inspection of `shared/gate/ingest_gate.py` (154 lines, stdlib-only) + `system/hooks/ingest_gate_enforce.sh` (194 lines) + debt-ledger sweep + `system/information-ingestion-interpretation.md`. The Python gate fires on every safe_* tool call (structural, not separately fire-tested here — `security-ingest-gate.md` covers the hook fire-test). Gaps G1–G7 documented from live code + debt-ledger. LIVE (gate fires; posture=enforce; breadcrumb live; email invariant code-enforced) + `·gap` (G5 any-sub-agent scratch lock; G4 safe_* convention not hook; G2 200-char Subject cap; G7 reader still at read-time) — label is honest. `[provisional — not fire-tested independently]`

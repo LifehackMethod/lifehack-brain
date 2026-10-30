@@ -10,14 +10,14 @@ generated_from:
   - .claude/skills/websearch/SKILL.md
   - agents/web-searcher.md
   - system/tools/safe_search_api.sh
-  - system/tools/safe_search.sh
+  # - system/tools/safe_search.sh  # absent here (checked 2026-10-30)
   - system/tools/safe_fetch.py
   - system/tools/safe_input.py
   - system/tools/sanitize.py
   - system/hooks/guard_egress.sh (PreToolUse Bash — L1 credential-exfil guard, fires on all Bash)
   - system/hooks/enforce_egress_allowlist.sh (PreToolUse Bash — L2 domain allowlist)
   - system/hooks/ingest_gate_enforce.sh (PreToolUse Bash · WebFetch · WebSearch · Read — L3 blanket raw-tool block)
-  - system/reference/settings.json (hook registrations, lines 117–249)
+  # - system/reference/settings.json (hook registrations, lines 117–249)  # absent here (checked 2026-10-30)
 created_at: 2026-07-24
 updated_at: 2026-07-24
 status: draft

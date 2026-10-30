@@ -32,7 +32,7 @@ authority: user
 > below still says "Hospital", read "Alarms". Sibling: `cron.md` (what runs the jobs).
 
 
-# hospital — element detail
+# ~~hospital~~ alarms — element detail *(2026-10-30: the title carried the old subsystem name, see the rename note above)*
 
 > **Altitude = BASE.** What Hospital is today, source-traced. The one-line job: *a scheduled job that
 > stopped working must be impossible to not-see.*
@@ -56,7 +56,7 @@ authority: user
 > (dead end [F2], 166 occurrences). The record is not erased: the full prior text, including its
 > dated corrections, is `git show 0088c24^:system/organism/elements/alarms.md`. What was done to it:
 > the 13 watcher rows, 8 watcher runners, `fault_proposer.py`, `findings_deadman.py`, `recommend.py`
-> were deleted (`0088c24`); `faults.json` and `incidents.jsonl` (and the Drive mirror `state/incidents/`)
+> were deleted (`0088c24`); `faults.json` and `incidents.jsonl` (and the Drive mirror `<notes>/state/incidents/`)
 > were MOVED to a dated archive folder, never removed; the session banner was rewritten (941 -> 149
 > lines of `health_line.py`).
 

@@ -16,14 +16,14 @@ generated_from:
   - system/hooks/skill_anchor_inject.sh
   - system/hooks/announce_plan_write.sh
   - system/hooks/guard_write_paths.sh
-  - system/tools/pad_archive.py
+  # - system/tools/pad_archive.py  # absent here (checked 2026-10-30)
   # CORRECTED 2026-08-27 (L.B2 audit, live run): this bare path does not exist —
   # `python3 system/tools/pad_archive.py` → "No such file or directory". The tool's real
   # location is system/tools/save/pad_archive.py (confirmed present and runnable). Every
   # mention of "system/tools/pad_archive.py" below carries the same stale path.
-  - system/tools/pm_flag_recover.py
+  # - system/tools/pm_flag_recover.py  # absent here (checked 2026-10-30)
   - system/schemas/project-doc-schema.md
-  - system/reference/settings.json
+  # - system/reference/settings.json  # absent here (checked 2026-10-30)
 created_at: 2026-07-23
 updated_at: 2026-07-23
 status: active

@@ -21,11 +21,11 @@ generated_from:
   - system/tools/safe_csv.py
   - shared/tools/email_convert.py
   - system/hooks/ingest_gate_enforce.sh
-  - system/hooks/guard_file_reads.sh
-  - system/hooks/guard_web_fetch.sh
-  - system/hooks/guard_web_search.sh
-  - system/hooks/guard_skip_safe_backdoor.sh
-  - system/reference/settings.json (PreToolUse hook registrations)
+  # - system/hooks/guard_file_reads.sh  # absent here (checked 2026-10-30)
+  # - system/hooks/guard_web_fetch.sh  # absent here (checked 2026-10-30)
+  # - system/hooks/guard_web_search.sh  # absent here (checked 2026-10-30)
+  # - system/hooks/guard_skip_safe_backdoor.sh  # absent here (checked 2026-10-30)
+  # - system/reference/settings.json (PreToolUse hook registrations)  # absent here (checked 2026-10-30)
   - state/debt-ledger.md (EGRESS-WALL-FAILOPEN, SECURITY-READER-ACTOR, CAL-EMAIL-FALLBACK-REMOVE)
 created_at: 2026-07-24
 updated_at: 2026-07-24
@@ -294,7 +294,7 @@ or `--query <gmail-query>` or `--label <label-id>`.
    for multi-message thread paths (preserves line structure for quote/sig strippers). Headers also
    sanitized with `NO_CAP`.
 4. **Heuristic scan + ingest gate** — `_flag_injection` routes findings through
-   `shared/tools/ingest_gate.gate()` at `source_type="email"` with a `FLAG-only` floor (email can
+   `shared/gate/ingest_gate.gate()` at `source_type="email"` with a `FLAG-only` floor (email can
    never auto-trigger a DANGER/quarantine, which would false-positive on security newsletters etc.).
    Falls back to stderr-only if the gate is unimportable (graceful degradation).
 5. **Quote stripping** — `strip_quoted_text` (7 pattern detectors: `>` quote lines, Gmail "On … wrote:",
@@ -324,10 +324,10 @@ or `--query <gmail-query>` or `--label <label-id>`.
 **Enforcement:** `ingest_gate_enforce.sh` case `Bash`·(c) blocks any `gws gmail` body read
 (`messages.get`/`threads.get` with `format:full|minimal|raw`) NOT routing through ~~`email_convert.py`~~ **`safe_read.py` / `safe_docx.py` / `safe_pdf.py`** `[hook, ⚠ CORRECTED 2026-09-01, #63 finding 3 — `ingest_gate_enforce.sh:351-356` greps the command for `safe_read\.py|safe_docx\.py|safe_pdf\.py`, never `email_convert.py`; a caller that runs `email_convert.py` alone still trips this block. The deny message's REDIRECT text tells the caller to capture the body to a file and run `system/tools/safe_read.py` on it — e.g. `gws gmail messages read <ID> > /tmp/mail.txt && python3 system/tools/safe_read.py /tmp/mail.txt`.]`
 Also: case `Read`·(email-summary store) and case `Bash`·(g) block un-wrapped reads of the v2 faithful
-store (`state/email-summary/threads-v2/`) — must use `email_service_read.py` adapter. `[hook]`
+store (`<notes>/state/email-summary/threads-v2/`) — must use `email_service_read.py` adapter. `[hook]`
 
 **Stores read:** `gws gmail users threads get`. **Stores written:** `--out-dir PATH` (caller-specified);
-the janitor writes `state/email-summary/threads-v2/`.
+the janitor writes `<notes>/state/email-summary/threads-v2/`.
 
 ---
 
@@ -403,8 +403,8 @@ and is mirrored in the repo-tracked `hooks/hooks.json`.
 | `Read` · external txt/md | Read of .txt/.md outside trusted zone | exit 2 | `safe_read.py` |
 | `Read` · ClaudeGate | Read of `~/Desktop/ClaudeGate.md` | exit 2 | `safe_read.py` (no --clear-after) |
 | `Read` · scratch lock | Main session Read of `/tmp/rdr/*` or `/tmp/ingest_body/*` | exit 2 | spawn `ingest-reader` sub-agent |
-| `Read` · email store | Read of `state/email-summary/threads-v2/*` | exit 2 | `email_service_read.py` |
-| `Read` · item store | Read of `state/item-store/*` | exit 2 | `item_store_read.py` |
+| `Read` · email store | Read of `<notes>/state/email-summary/threads-v2/*` | exit 2 | `email_service_read.py` |
+| `Read` · item store | Read of `<notes>/state/item-store/*` | exit 2 | `item_store_read.py` |
 | `Bash`·(a) | `LIFEHACK_SKIP_SAFE_*=` assignment | exit 2 | never bypass |
 | `Bash`·(b) | cat/head/tail of `/tmp/rdr/*` by main session | exit 2 | spawn `ingest-reader` |
 | `Bash`·(c) | raw `gws gmail` body read | exit 2 | ~~`email_convert.py`~~ **capture to file, then `safe_read.py`** [⚠ CORRECTED 2026-09-01, #63 finding 3 — `ingest_gate_enforce.sh:351-356` is what's live; it never checks for `email_convert.py`] |
@@ -463,8 +463,8 @@ All triggers are mediated by the hook plane (blocking) or by skill/CLAUDE.md con
 | Gmail API (via gws) | Read source | `email_convert.py` | thread format: full only |
 | `/tmp/rdr/` (scratch) | Write + temp store | `safe_calendar.py`, `safe_tasks.py` | Isolate mode; main session blocked from reading by hook |
 | `/tmp/ingest_body/` (scratch) | Write + temp store | `email_convert.py` output dir | Same scratch-dir lock applies |
-| `state/email-summary/threads-v2/` | Write (janitor only) | `email_convert.py` via janitor | Single-writer invariant enforced by hook |
-| `state/item-store/` | Write (store writers only) | calendar/tasks store syncs | Single-writer invariant enforced by hook |
+| `<notes>/state/email-summary/threads-v2/` | Write (janitor only) | `email_convert.py` via janitor | Single-writer invariant enforced by hook |
+| `<notes>/state/item-store/` | Write (store writers only) | calendar/tasks store syncs | Single-writer invariant enforced by hook |
 | `{resolved_brain_root}/state/status/email-reads.jsonl` [path corrected 2026-08-27, claim 111 — was wrongly given as `~/.claude/logs/email-reads.jsonl`] | Audit append | `email_convert.py` | Metadata-only rows; never content |
 
 ---

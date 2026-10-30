@@ -11,14 +11,14 @@ generated_from:
   - shared/gate/sentinel_response.py
   - shared/gate/sentinel_ack.py
   - shared/gate/sentinel_quarantine.py
-  - shared/tools/ingest_gate.py
+  - shared/gate/ingest_gate.py
   - system/tools/ingest-run.lib.sh
-  - system/tools/sentinel-health.py
-  - system/tools/sentinel-health-run.sh
+  # - system/tools/sentinel-health.py  # absent here (checked 2026-10-30)
+  # - system/tools/sentinel-health-run.sh  # absent here (checked 2026-10-30)
   - system/tools/security-health.py
-  - system/tools/system-health.py
+  # - system/tools/system-health.py  # absent here (checked 2026-10-30)
   - agents/sentinel.md
-  - system/reference/settings.json
+  # - system/reference/settings.json  # absent here (checked 2026-10-30)
   - system/jobs.md
 created_at: 2026-07-23
 updated_at: 2026-07-23
@@ -70,7 +70,7 @@ per-item runner gating; v1 stays for back-compat." Exit 2 = DANGER; exit 0 = FLA
 path is built but unreachable from live ingest jobs. `[gap — see GAP-2]`
 
 **T2 — gate-routed per-item path (v2, the live path)**
-`ingest_gate_check()` at `ingest-run.lib.sh:264` calls `shared/tools/ingest_gate.py`, which
+`ingest_gate_check()` at `ingest-run.lib.sh:264` calls `shared/gate/ingest_gate.py`, which
 internally invokes `sentinel_response.py` (actual subprocess invocation at `ingest_gate.py:113`;
 `ingest_gate.py:44` is a path constant assignment, not an invocation). The live email path is
 `email_convert.py → ingest_gate.gate()` — a direct Python import of the v2 module. The v2 path adds
@@ -79,7 +79,7 @@ The email FLAG-floor runtime enforcement is at `ingest_gate.py:110` (lines 28-31
 describing the invariant, not enforcement code).
 
 **T3 — Pulse tile recompute (periodic twin, sentinel-health.py)**
-`system/tools/sentinel-health-run.sh` → `sentinel-health.py`. Pulse slot named `sentinel-health`,
+`system/tools/sentinel-health-run.sh` ⛔ not shipped in the plugin (donor-system tool) → `sentinel-health.py`. Pulse slot named `sentinel-health`,
 registered in `system/jobs.md:147` [line corrected 2026-08-27, lb2-ops-comms.md claim 89 — content
 (slot exists, interval 1800s) confirmed TRUE, the cited line was off by ~144 lines] with a poll interval of ~1800s (how often Pulse runs the
 slot). The tile itself carries `stale_after_s=86400` (24h freshness window, set by
@@ -90,7 +90,7 @@ is harmless. This is the freshness path between ingestion runs (tile freshness w
 individual Pulse ticks ~1800s apart).
 
 **T4 — security-health composition (manual / sweeper-triggered)**
-`system/tools/system-health.py:567` invokes `subprocess.run(["python3", ".../security-health.py"],
+`system/tools/system-health.py:567` ⛔ not shipped in the plugin (donor-system tool) invokes `subprocess.run(["python3", ".../security-health.py"],
 ...)` as a side-effect of the system-health sweep. `security-health.py` has `emit_mode: "manual"` and
 `stale_after_s=1800` (set at `security-health.py:33`) but no dedicated Pulse slot — tile freshness
 is governed by how often `system-health.py` sweeps, not a watcher. It reads `sentinel.json` and
@@ -117,7 +117,7 @@ against what actually exists: **(1)** this read-only manual audit file — a che
 cannot block anything, only report; **(2)** the mechanical gate — `shared/gate/sentinel_response.py` +
 `sentinel_quarantine.py` + `sentinel_ack.py`, the actual enforcement teeth, running downstream of the
 ingest/read adapters and quarantining what they flag, live independent of the audit file; **(3)** the
-health tiles — `system/tools/sentinel-health.py` + `sentinel-health-run.sh`, status reporting, not
+health tiles — `system/tools/sentinel-health.py` ⛔ not shipped in the plugin (donor-system tool) + `sentinel-health-run.sh`, status reporting, not
 protection. Three. Nothing is reserved in advance for a fourth or fifth; if a future audit finds a
 real fourth thing it gets added explicitly. ⚠ This does NOT collapse the **five activation paths**
 (T1–T5) enumerated in this section — those are five distinct CALLERS of the subsystem, a different
@@ -375,10 +375,10 @@ compact and readable.
 ### GENERATED_FROM
 
 `shared/gate/sentinel_response.py` · `shared/gate/sentinel_ack.py` ·
-`shared/gate/sentinel_quarantine.py` · `shared/tools/ingest_gate.py` (v2 gate, live via email_convert.py import; direct per-item runner wiring pending) ·
+`shared/gate/sentinel_quarantine.py` · `shared/gate/ingest_gate.py` (v2 gate, live via email_convert.py import; direct per-item runner wiring pending) ·
 `system/tools/ingest-run.lib.sh` (ingest_sentinel_check + ingest_check_paused) ·
-`system/tools/sentinel-health.py` · `system/tools/sentinel-health-run.sh` ·
-`system/tools/security-health.py` · `system/tools/system-health.py:567` · `agents/sentinel.md` ·
+`system/tools/sentinel-health.py` ⛔ not shipped in the plugin (donor-system tool) · `system/tools/sentinel-health-run.sh` ⛔ not shipped in the plugin (donor-system tool) ·
+`system/tools/security-health.py` · `system/tools/system-health.py:567` ⛔ not shipped in the plugin (donor-system tool) · `agents/sentinel.md` ·
 `system/reference/settings.json` · `system/jobs.md`.
 
 ---
