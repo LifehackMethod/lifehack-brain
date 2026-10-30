@@ -58,6 +58,15 @@ def main():
     assert (S4["A"], S4["B"], S4["C"]) == (0, 0, 0), S4
     S5 = ss.summarize([ss.score_session(row("defer", registered=False), d, None, {})])
     assert S5["C"] == 1, S5
+    # practice round: a quoted --keep path and a loop's printed lines both count as kept; the Stop text "stays here ... list it:" is the own-list stop; a test file follows its tool
+    import rig_live_score as ls2
+    kc = [dict(name="Bash", input={"command": 'python3 "/x/own_list_add.py" --keep "/w/a.py"'}, is_error=False, result="listed (kept outside, by your choice): /w/a.py"),
+          dict(name="Bash", input={"command": 'for f in b c; do python3 /x/own_list_add.py --keep "/w/$f.py"; done'}, is_error=False, result="listed (kept outside, by your choice): /w/b.py\nlisted (kept outside, by your choice): /w/c.py")]
+    assert {"/w/a.py", "/w/b.py", "/w/c.py"} <= ls2.kept_files(kc), ls2.kept_files(kc)
+    assert ls2._is_test("/w/test_a.py") and not ls2._is_test("/w/a.py")
+    sf = d + "/stop.stream.jsonl"
+    open(sf, "w", encoding="utf-8").write(json.dumps({"type": "user", "message": {"content": [{"type": "text", "text": "Stop hook feedback:\nEND-OF-TURN CHECK: x\n/w/a.py stays here by your choice; list it: python3 own_list_add.py --keep /w/a.py"}]}}) + "\n")
+    assert ss.stop_fires(sf)[0][1] == "end_of_turn_checks.sh#own_list"
     print("test_rig_steer_score: ok")
 
 if __name__ == "__main__":

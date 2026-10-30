@@ -123,4 +123,11 @@ mkfile "$HOME/pondproj/two.py" $'print(2)\n'; rec u8 p1 Write "$(Jw "$HOME/pondp
 ROUNDB_OWN_LIST_UNHOMED=on stop u8 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "no personal code folder: silent by design" || bad "flagged with no folder: $OUT"
 echo "$PC" > "$HOME/.config/lifehack/personal-code"
 
+echo "== eot_escape_scoped =="
+mkfile "$HOME/pondproj/three.py" $'print(3)\n'; rec u9 p1 Write "$(Jw "$HOME/pondproj/three.py")" create
+ROUNDB_OWN_LIST_UNHOMED=on ROUNDB_EOT_ESCAPE_SCOPED=off stop u9 p1; R="$(reason)"; printf '%s' "$R" | grep -q "Escapes" && ok "scoped OFF: list-only stop still shows Escapes (today)" || bad "OFF changed: $R"
+mkfile "$HOME/pondproj/four.py" $'print(4)\n'; rec u10 p1 Write "$(Jw "$HOME/pondproj/four.py")" create
+ROUNDB_OWN_LIST_UNHOMED=on ROUNDB_EOT_ESCAPE_SCOPED=on stop u10 p1; R="$(reason)"; printf '%s' "$R" | grep -q "four.py" && ! printf '%s' "$R" | grep -q "Escapes" && ok "scoped ON: list-only stop has no Escapes line" || bad "ON still shows escapes: $R"
+mkfile "$WORK/fetch-esc.sh" "$BADSH"; rec u11 p1 Write "$(Jw "$WORK/fetch-esc.sh")" create
+ROUNDB_EOT_ESCAPE_SCOPED=on stop u11 p1; R="$(reason)"; printf '%s' "$R" | grep -q "Escapes" && ok "scoped ON: a failure-hiding stop keeps its Escapes line" || bad "escapes lost on REFUSED: $R"
 echo; echo "passed=$pass failed=$fail"; [ "$fail" = 0 ]

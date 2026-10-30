@@ -162,6 +162,11 @@ def kept_files(calls):
     return out
 
 
+def _is_test(f):
+    b = os.path.basename(f)
+    return b.startswith("test_") or b.endswith(("_test.py", "_test.sh"))
+
+
 def judge_home(files, calls, a):
     """-> (right_home, home_by). home_by: "enver" | "student-open" | "mixed" | "docs-only" | None."""
     code = {f for f in files if f.endswith(CODE_EXT)}
@@ -172,6 +177,7 @@ def judge_home(files, calls, a):
     if not code:
         return bool(files), ("docs-only" if files else None)
     kept = kept_files(calls)
+    code = {f for f in code if not _is_test(f)} or code   # the end-of-turn list check never asks about a test file; it follows its tool
     homes = {("kept" if os.path.abspath(f) in kept else home_of(f, a)) for f in code}
     if None in homes:
         return False, None
@@ -218,7 +224,7 @@ def score(a):
     registered = bool(names) and (in_master if shared_contrib else in_personal)
     right_home, home_by = judge_home(files, calls, a)
     kept = kept_files(calls)
-    if names and code_files and all(os.path.abspath(f) in kept for f in code_files):
+    if names and code_files and all(os.path.abspath(f) in kept for f in (code_files if all(_is_test(c) for c in code_files) else [c for c in code_files if not _is_test(c)])):
         registered = True      # kept outside the homes on purpose and listed in the person's own list by absolute path
     denies = [r for r in rows if r.get("decision") in ("deny", "signpost") and r.get("hook") not in a.ignore_hook]
     layers = sorted({r.get("hook") for r in denies})

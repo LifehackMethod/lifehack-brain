@@ -74,8 +74,9 @@ fi
 OUT="$(printf '%s' "$OUT" | grep -v '^$' | head -12)"
 [ -n "$OUT" ] || exit 0
 printf '%s\n' "${ALL[@]}" >> "$FLAGGED"; mkdir -p "$DIR"; echo $((N + 1)) > "$CNT"
+ESC=1; roundb_on eot_escape_scoped && ! printf '%s' "$OUT" | grep -q 'REFUSED' && ESC=0   # Round C practice: a list-only stop must not show the escapes (a session took '# not-wired-yet' instead of listing the file)
 { echo "END-OF-TURN CHECK: a file you created this turn needs fixing before you finish. (Runs once per turn; it will not ask again.)"
   printf '%s\n' "$OUT"
-  echo "Escapes, only if intended: '# allow-silence: <why>' on the flagged line; '# not-wired-yet: <why>' in the file header. Rules: system/githooks/checks/*.py, shared/tools/own_list_add.py; switches: system/hooks/roundB.conf."; } \
+  [ "$ESC" = 1 ] && echo "Escapes, only if intended: '# allow-silence: <why>' on the flagged line; '# not-wired-yet: <why>' in the file header. Rules: system/githooks/checks/*.py, shared/tools/own_list_add.py; switches: system/hooks/roundB.conf."; } \
   | python3 -c 'import json,sys; print(json.dumps({"decision":"block","reason":sys.stdin.read()}))'
 exit 0
