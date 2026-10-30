@@ -63,6 +63,11 @@
      },
      {
       "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_drive_destructive.sh\"",
+      "statusMessage": "Checking nothing deletes Drive files without asking..."
+     },
+     {
+      "type": "command",
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_egress.sh\"",
       "statusMessage": "Checking no secret is going out with this..."
      },
@@ -279,6 +284,16 @@
      }
     ],
     "matcher": "Write|Edit|MultiEdit|Bash"
+   },
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_drive_destructive.sh\"",
+      "statusMessage": "Checking nothing deletes Drive files without asking..."
+     }
+    ],
+    "matcher": "mcp__.*[Dd]rive__trash_file"
    }
   ],
   "SessionStart": [
