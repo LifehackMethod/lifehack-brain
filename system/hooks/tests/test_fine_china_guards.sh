@@ -2,6 +2,7 @@
 # test_fine_china_guards.sh -- Round C fine-china guards, ALLOW cases first, every switch OFF then ON.
 #   guard_drive_destructive.sh   fc_sheet_file_delete, fc_drive_bulk_delete   (ask first; exit 2 / permissionDecision ask)
 #   guard_git_push_signpost.sh   fc_force_push, fc_private_push (hard stops), fc_plain_push_quiet
+#   Round C gap closure: wrappers (bash -c, eval, env), remote.<n>.push config, aliases, many MCP trashes, shell overwrite through wrappers/dd
 # Fictional names only. No network, no real remote: the guards only read local git state. gws is a stub.
 # GIT-WORD HYGIENE: payload commands are assembled from fragments in python so a live guard never sees a literal push.
 # Run: bash system/hooks/tests/test_fine_china_guards.sh   (exit 0 = all pass)
@@ -153,6 +154,127 @@ mkdir -p "$S/h91/.config/lifehack"; echo "$S/leaky" > "$S/h91/.config/lifehack/p
 if [ $RC -eq 2 ] && grep -q "PUSH ·" "$ERRF" && ! grep -q "HARD STOP" "$ERRF"; then ok; else bad "personal code repo is not scanned (rc=$RC)"; fi
 echo "-- push, no remote: silent and cheap"
 p_sign "no remote, nothing to leak to (signpost as today)" "$S/none" "$ALL"
+
+# ════════════════════════ Round C gap closure ════════════════════════
+echo "-- gap 4: many separate MCP trash calls in one session (fc_drive_bulk_delete)"
+export LHB_DRIVE_TRASH_DIR="$S/trash"
+mcps() { T="$1" SIDX="$2" UID_="${3:-}" python3 -c 'import os,json; d={"tool_name":"mcp__claude_ai_Google_Drive__trash_file","session_id":os.environ["SIDX"],"tool_input":{"fileId":os.environ["T"]}}
+if os.environ.get("UID_"): d["tool_use_id"]=os.environ["UID_"]
+print(json.dumps(d))'; }
+export ROUNDB_FC_SHEET_FILE_DELETE=on ROUNDB_FC_DRIVE_BULK_DELETE=on
+d_allow "1st note trash in session A"            "$(mcps pondNote0001 sessA u1)"
+d_allow "same call seen by both registrations"   "$(mcps pondNote0001 sessA u1)"
+d_allow "other session is counted separately"    "$(mcps pondNote0005 sessB u5)"
+d_mcp_ask "$(mcps pondNote0002 sessA u2)" "2nd different file in session A asks"
+d_mcp_ask "$(mcps pondNote0003 sessA u3)" "3rd asks too"
+export ROUNDB_FC_DRIVE_BULK_DELETE=off
+d_allow "bulk switch OFF: counter silent"        "$(mcps pondNote0004 sessA u4)"
+export ROUNDB_FC_DRIVE_BULK_DELETE=on
+touch -t 200001010000 "$S/trash/sessOld" 2>/dev/null; printf '%s\tolder\n' "$(( $(date +%s) - 3600 ))" > "$S/trash/sessOld"
+d_allow "an hour-old trash does not count"       "$(mcps pondNote0006 sessOld u6)"
+unset ROUNDB_FC_SHEET_FILE_DELETE ROUNDB_FC_DRIVE_BULK_DELETE LHB_DRIVE_TRASH_DIR
+
+echo "-- gaps 1-3: wrappers, config and aliases (fc_force_push, fc_private_push)"
+n2=0
+rawp() {  # rawp <repo> <env-assignments> <literal command>
+  local repo="$1" envs="$2" cmd="$3"; n2=$((n2+1))
+  ( cd "$repo" && env $envs HOME="$S/h$((50+n2))" CLAUDE_CODE_SESSION_ID="raw$n2" bash "$PUSH" <<<"$(bashjson "$cmd")" >"$OUTF" 2>"$ERRF" ); RC=$?
+}
+r_pass() { rawp "$2" "$3" "$4"; if [ $RC -eq 0 ]; then ok; else bad "PASS $1 (rc=$RC $(head -c 160 "$ERRF"))"; fi; }
+r_hard() { rawp "$2" "$3" "$4"; if [ $RC -eq 2 ] && grep -q "HARD STOP" "$ERRF" && grep -q "WHY:" "$ERRF" && grep -q "WAY THROUGH:" "$ERRF" && grep -q "RULE:" "$ERRF"; then ok; else bad "HARD $1 (rc=$RC $(head -c 200 "$ERRF"))"; fi; }
+G="gi""t"; PU="pu""sh"
+newrepo "$S/al" "https://github.com/fictional-org/pond-notes.git"
+git -C "$S/al" config alias.pf "$PU --force"; git -C "$S/al" config alias.sh "!$G $PU -f"; git -C "$S/al" config alias.st "status -sb"
+git -C "$S/al" config alias.up "$PU origin main"; git -C "$S/al" config alias.pf2 "pf"
+newrepo "$S/cfgplus" "https://github.com/fictional-org/pond-notes.git"
+git -C "$S/cfgplus" config remote.origin.push "+refs/heads/main:refs/heads/main"
+newrepo "$S/cfgok" "https://github.com/fictional-org/pond-notes.git"
+git -C "$S/cfgok" config remote.origin.push "refs/heads/main:refs/heads/main"
+for i in $(seq 51 120); do mkdir -p "$S/h$i/.claude"; done
+
+echo "   OFF (= today): none of these is seen"
+for c in "bash -c \"$G $PU -f origin main\"" "eval '$G $PU --force origin main'" "env X=1 $G $PU -f origin main" "$G config remote.origin.push +refs/heads/*:refs/heads/*"; do
+  r_pass "OFF: $c" "$S/priv" "$OFF" "$c"; done
+r_sign() { rawp "$2" "$3" "$4"; if [ $RC -eq 2 ] && grep -q "PUSH ·" "$ERRF" && ! grep -q "HARD STOP" "$ERRF"; then ok; else bad "SIGNPOST $1 (rc=$RC $(head -c 160 "$ERRF"))"; fi; }
+r_pass "OFF: alias force push (alias not read)" "$S/al" "$OFF" "$G pf origin main"
+
+echo "   ON: ALLOW first (look-alikes and ordinary pushes)"
+r_pass "shell -c with no push"                    "$S/priv" "$ALL" "bash -c \"echo hello world\""
+r_pass "commit message that mentions bash -c push -f" "$S/priv" "$ALL" "$G commit --allow-empty -m \"never run: bash -c '$G $PU -f origin main'\""
+r_pass "eval of an unrelated command"             "$S/priv" "$ALL" "eval \"ls -la\""
+r_pass "env prefix on a status"                   "$S/priv" "$ALL" "env FOO=1 $G status"
+r_pass "config READ of remote push"               "$S/cfgplus" "$ALL" "$G config --get remote.origin.push"
+r_pass "config set WITHOUT a plus"                "$S/priv" "$ALL" "$G config remote.origin.push refs/heads/main:refs/heads/main"
+r_pass "config set of something else with a plus" "$S/priv" "$ALL" "$G config user.name +pond"
+r_pass "alias that is not a push"                 "$S/al" "$ALL" "$G st"
+r_pass "unknown git word that is no alias"        "$S/al" "$ALL" "$G frobnicate"
+r_pass "wrapped plain tracked push is quiet"      "$S/priv" "$ALL" "bash -c \"$G $PU origin main\""
+r_pass "env-prefixed plain tracked push is quiet" "$S/priv" "$ALL" "env X=1 $G $PU origin main"
+r_pass "alias of a plain tracked push is quiet"   "$S/al" "$ALL" "$G up"
+r_pass "config + refspec but the push NAMES a refspec" "$S/cfgplus" "$ALL" "$G $PU origin main"
+r_pass "config refspec without a plus"            "$S/cfgok" "$ALL" "$G $PU origin"
+echo "   ON: HARD STOP through wrappers"
+for c in "bash -c \"$G $PU -f origin main\"" "sh -c '$G $PU --force origin main'" "eval \"$G $PU --force-with-lease origin main\"" \
+         "eval $G $PU -f origin main" "bash -lc \"cd $S/priv && $G $PU -f origin main\"" "env GIT_TRACE=1 $G $PU -f origin main" \
+         "GIT_TRACE=1 $G $PU -f origin main" "env -i HOME=/tmp $G $PU origin +main" "command $G $PU -f origin main" "exec $G $PU --mirror origin" \
+         "bash -c \"eval '$G $PU -f origin main'\"" "FOO=1 bash -c \"$G $PU origin +HEAD:main\"" "($G $PU -f origin main)" \
+         "env FOO=1 bash -c '$G $PU -f origin main'" "nohup $G $PU -f origin main"; do
+  r_hard "wrapper: $c" "$S/priv" "$ALL" "$c"; r_hard "wrapper again: $c" "$S/priv" "$ALL" "$c"; done
+r_hard "force-only switch sees through bash -c" "$S/priv" "$FORCE" "bash -c \"$G $PU -f origin main\""
+echo "   ON: HARD STOP, remote.<n>.push config"
+r_hard "bare push with a + refspec in config"      "$S/cfgplus" "$ALL" "$G $PU"
+r_hard "push origin with a + refspec in config"    "$S/cfgplus" "$ALL" "$G $PU origin"
+r_hard "setting a + refspec in config"             "$S/priv" "$ALL" "$G config remote.origin.push +refs/heads/*:refs/heads/*"
+r_hard "setting it with --global --add"            "$S/priv" "$ALL" "$G config --global --add remote.origin.push '+refs/heads/main'"
+r_hard "setting it inside bash -c"                 "$S/priv" "$ALL" "bash -c \"$G config remote.origin.push +refs/heads/main\""
+r_hard "one-off -c remote push plus"               "$S/priv" "$ALL" "$G -c remote.origin.push=+refs/heads/main $PU origin"
+echo "   ON: HARD STOP, aliases"
+r_hard "alias to push --force"                     "$S/al" "$ALL" "$G pf origin main"
+r_hard "shell alias that force pushes"             "$S/al" "$ALL" "$G sh origin main"
+r_hard "alias of an alias"                         "$S/al" "$ALL" "$G pf2 origin main"
+r_hard "alias after cd"                            "$S/priv" "$ALL" "cd $S/al && $G pf origin main"
+r_hard "alias with -C"                             "$S/priv" "$ALL" "$G -C $S/al pf origin main"
+echo "   ON: private material through a wrapper"
+r_hard "leaky push inside bash -c"                 "$S/leaky" "$PRIV" "bash -c \"$G $PU origin main\""
+r_hard "leaky push behind env"                     "$S/leaky" "$PRIV" "env X=1 $G $PU origin main"
+
+echo "-- gap 5: fc_shell_overwrite through wrappers and more verbs (guard_build_mode.sh)"
+BM="$HOOKS/guard_build_mode.sh"; B="$S/bm"; BC="$B/code"; BN="$B/notes"
+mkdir -p "$B/hm/.config/lifehack" "$BC/shared" "$BC/system/sops" "$BC/system/hooks" "$BC/system/register" "$BC/hooks" "$BN/system" "$BN/state/demo/canon"
+echo "$BC" > "$B/hm/.config/lifehack/code-root"
+cp "$HOOKS/../../shared/brain_root.py" "$HOOKS/../tools/utf8_stdio.py" "$BC/shared/" 2>/dev/null
+cp "$HOOKS/build_mode_sops.conf" "$HOOKS/placement.conf" "$BC/system/hooks/"
+for x in skill-building jobs hook desk-building; do echo "# $x" > "$BC/system/sops/$x-sop.md"; done
+echo '{"hooks":{}}' > "$BC/hooks/hooks.json"; : > "$BC/system/register/register.jsonl"
+SOPF="$BC/system/sops/skill-building-sop.md"; CANF="$BN/state/demo/canon/current.md"; PLAIN="$BC/system/notes-plain.md"
+echo "- line" > "$CANF"; echo "# plain" > "$PLAIN"
+bmfire() {  # bmfire <command>
+  N="$BN" BMC="$1" python3 -c 'import json,os; print(json.dumps({"session_id":"bm1","cwd":os.environ["N"],"tool_name":"Bash","tool_input":{"command":os.environ["BMC"]}}))' > "$S/bm.json"
+  env HOME="$B/hm" LIFEHACK_ROOT="$BN" bash "$BM" < "$S/bm.json" >"$OUTF" 2>"$ERRF"; RC=$?
+}
+b_allow() { bmfire "$2"; if [ $RC -eq 0 ]; then ok; else bad "BM-ALLOW $1 (rc=$RC $(head -c 160 "$ERRF"))"; fi; }
+b_block() { bmfire "$2"; if [ $RC -eq 2 ] && grep -q "WAY THROUGH" "$ERRF" && grep -q "overwrites" "$ERRF"; then ok; else bad "BM-BLOCK $1 (rc=$RC $(head -c 160 "$ERRF"))"; fi; }
+export ROUNDB_FC_SHELL_OVERWRITE=off
+for c in "bash -c \"echo x > $SOPF\"" "eval \"echo x > $SOPF\"" "dd of=$SOPF if=$PLAIN" "env FOO=1 sh -c 'echo x > $CANF'"; do b_allow "OFF: $c" "$c"; done
+export ROUNDB_FC_SHELL_OVERWRITE=on
+b_allow "append inside bash -c"            "bash -c \"echo x >> $SOPF\""
+b_allow "read inside bash -c"              "bash -c 'cat $SOPF'"
+b_allow "read inside eval"                 "eval \"grep -n rule $SOPF\""
+b_allow "env prefix on a read"             "env FOO=1 cat $SOPF"
+b_allow "dd READING an SOP"                "dd if=$SOPF of=/tmp/lh-gap5-copy.md"
+b_allow "dd append"                        "dd if=$PLAIN of=$SOPF oflag=append conv=notrunc"
+b_allow "dd onto an ordinary file"         "dd if=$SOPF of=$PLAIN"
+b_allow "bash -c onto an ordinary file"    "bash -c \"echo x > $PLAIN\""
+b_allow "mention inside a note"            "echo 'bash -c \"echo x > $SOPF\"' >> /tmp/lh-gap5-note.txt"
+b_allow "new SOP file via bash -c"         "bash -c \"echo x > $BC/system/sops/brand-new-sop.md\""
+for c in "bash -c \"echo x > $SOPF\"" "sh -c 'echo x > $SOPF'" "eval \"echo x > $SOPF\"" "eval echo x '>' $SOPF" "bash -lc \"echo x > $SOPF\"" \
+         "env FOO=1 bash -c \"echo x > $SOPF\"" "FOO=1 sh -c 'echo x >| $SOPF'" "bash -c \"eval 'echo x > $SOPF'\"" "bash -c \"echo x > $CANF\"" \
+         "echo x >| $SOPF" "truncate -s 0 $SOPF" "bash -c 'truncate -s 0 $SOPF'" "dd of=$SOPF if=$PLAIN" "dd if=/dev/null of=$CANF" \
+         "install -m 644 $PLAIN $SOPF" "rsync $PLAIN $SOPF" "bash -c \"cp $PLAIN $SOPF\"" "exec truncate -s 0 $SOPF" "nohup cp $PLAIN $SOPF" \
+         "env -i sed -i 's/a/b/' $SOPF" "sudo -n tee $SOPF" "bash -c \"sed -i 's/a/b/' $SOPF\""; do
+  b_block "$c" "$c"; done
+unset ROUNDB_FC_SHELL_OVERWRITE
+
 echo
 echo "fine-china guards: $P passed, $F failed"
 [ "$F" -eq 0 ]

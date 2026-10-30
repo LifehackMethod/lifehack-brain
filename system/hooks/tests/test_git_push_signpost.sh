@@ -35,6 +35,22 @@ TMP_HOMES=()
 cleanup() { for d in "${TMP_HOMES[@]}"; do rm -rf "$d"; done; }
 trap cleanup EXIT
 
+# ROUND C (fine china): the old assertions below describe the signpost with the Round C switches OFF. Switches ON
+# change two things on purpose, and this file follows them rather than weakening anything OFF:
+#   fc_plain_push_quiet ON -> a plain push of the checked-out branch to the branch it tracks, fast-forward, on a
+#       remote that is not the public Lifehack repo, gets NO signpost (exit 0). Those assertions expect the old deny
+#       when OFF (FCQ=0) and the quiet pass when ON (FCQ=1).
+#   fc_private_push ON -> a push to a host URL runs the existing leakage scan, which needs the operator-identity
+#       file; the scratch HOME has none, so the guard would fail closed. The fixture gets a FICTIONAL identity file
+#       (SHIP_IDENTITY) so the scan can run and finds nothing.
+. "$REPO_ROOT/system/hooks/lib/roundb.sh" 2>/dev/null
+FCQ=0; type roundb_on >/dev/null 2>&1 && roundb_on fc_plain_push_quiet && FCQ=1
+FC_IDENT=$(mktemp "${TMPDIR:-/tmp}/push-signpost-ident.XXXXXX"); printf 'fictional-pond-term\n' > "${FC_IDENT}"; export SHIP_IDENTITY="${FC_IDENT}"
+trap 'cleanup; rm -f "${FC_IDENT}"' EXIT
+want_deny_unless_quiet() { # <exit_code> <label>: OFF = deny (the old behaviour); fc_plain_push_quiet ON = the tracked push is quiet
+  if [ "$FCQ" -eq 1 ]; then want_allow "$1" "$2 [fc_plain_push_quiet ON: quiet by design]"; else want_deny "$1" "$2"; fi
+}
+
 new_home() {
   local d
   d=$(mktemp -d "${TMPDIR:-/tmp}/push-signpost-test.XXXXXX") || exit 1
@@ -213,8 +229,10 @@ git -C "$FIX_LOCAL" checkout -q branchB
 PAY_E3=$(payload "git -C $FIX_LOCAL push origin HEAD")
 ERR_E3=$(mktemp "${TMPDIR:-/tmp}/push-signpost-test.XXXXXX")
 invoke_project "$PAY_E3" "$HOME_E" "sess-E3" >/dev/null 2>"$ERR_E3"; c=$?
-want_deny "$c" "E3: literal HEAD refspec"
-if grep -q "HEAD (branchB)" "$ERR_E3" && grep -q "origin/branchB" "$ERR_E3" && grep -q "b_new_file.txt" "$ERR_E3"; then
+want_deny_unless_quiet "$c" "E3: literal HEAD refspec"
+if [ "$FCQ" -eq 1 ]; then
+  pass=$((pass+1)); printf '   ok   %s\n' "E3 (quiet: no manifest printed, by design)"
+elif grep -q "HEAD (branchB)" "$ERR_E3" && grep -q "origin/branchB" "$ERR_E3" && grep -q "b_new_file.txt" "$ERR_E3"; then
   pass=$((pass+1)); printf '   ok   E3: HEAD resolved to the checked-out branch (branchB) by name\n'
 else
   fail=$((fail+1)); printf '  FAIL  E3: HEAD refspec not resolved correctly\n'; cat "$ERR_E3"
@@ -225,8 +243,10 @@ rm -f "$ERR_E3"
 PAY_E4=$(payload "git -C $FIX_LOCAL push")
 ERR_E4=$(mktemp "${TMPDIR:-/tmp}/push-signpost-test.XXXXXX")
 invoke_project "$PAY_E4" "$HOME_E" "sess-E4" >/dev/null 2>"$ERR_E4"; c=$?
-want_deny "$c" "E4: bare push, no refspec"
-if grep -q "branchB (current branch, no refspec)" "$ERR_E4" && grep -q "origin/branchB" "$ERR_E4"; then
+want_deny_unless_quiet "$c" "E4: bare push, no refspec"
+if [ "$FCQ" -eq 1 ]; then
+  pass=$((pass+1)); printf '   ok   %s\n' "E4 (quiet: no manifest printed, by design)"
+elif grep -q "branchB (current branch, no refspec)" "$ERR_E4" && grep -q "origin/branchB" "$ERR_E4"; then
   pass=$((pass+1)); printf '   ok   E4: no-refspec push resolved via the current branch + its upstream\n'
 else
   fail=$((fail+1)); printf '  FAIL  E4: no-refspec push not resolved correctly\n'; cat "$ERR_E4"
@@ -269,8 +289,10 @@ HOME_F=$(new_home); TMP_HOMES+=("$HOME_F")
 PAY_F=$(payload "git -C $FIX_LOCAL push -u origin branchB 2>&1 | tail -3")
 ERR_F=$(mktemp "${TMPDIR:-/tmp}/push-signpost-test.XXXXXX")
 invoke_project "$PAY_F" "$HOME_F" "sess-F" >/dev/null 2>"$ERR_F"; c=$?
-want_deny "$c" "F: -u origin <branch> 2>&1 | tail -3"
-if ! grep -qF "2>&1" "$ERR_F" && ! grep -q "UNRESOLVED" "$ERR_F" && grep -q "branchB -> origin/branchB" "$ERR_F"; then
+want_deny_unless_quiet "$c" "F: -u origin <branch> 2>&1 | tail -3"
+if [ "$FCQ" -eq 1 ]; then
+  pass=$((pass+1)); printf '   ok   %s\n' "F (quiet: no manifest printed, by design)"
+elif ! grep -qF "2>&1" "$ERR_F" && ! grep -q "UNRESOLVED" "$ERR_F" && grep -q "branchB -> origin/branchB" "$ERR_F"; then
   pass=$((pass+1)); printf ' ok F: the redirection (2>&1) never surfaces as a phantom refspec\n'
 else
   fail=$((fail+1)); printf ' FAIL F: a shell redirection token leaked into the refspec manifest\n'; cat "$ERR_F"
@@ -501,7 +523,7 @@ echo "── J. T3.2b: the marker keys on the PUSH (remote+refspecs), not the ra
 HOME_J=$(new_home); TMP_HOMES+=("$HOME_J")
 PAY_J1=$(payload "git -C $FIX_LOCAL push origin branchB | tail -12")
 invoke_project "$PAY_J1" "$HOME_J" "sess-J" >/dev/null 2>&1; c=$?
-want_deny "$c" "J1: first sight of the push denies"
+want_deny_unless_quiet "$c" "J1: first sight of the push denies"
 invoke_project "$PAY_J1" "$HOME_J" "sess-J" >/dev/null 2>&1; c=$?
 want_allow "$c" "J2: byte-identical re-run yields"
 PAY_J2=$(payload "git -C $FIX_LOCAL push origin branchB | tail -8")

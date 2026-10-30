@@ -53,6 +53,11 @@ HOOKS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"; rm -f "$HOME/.claude/.commit-signpost."* "$HOME/.claude/.push-signpost."* "$HOME/.claude/.no-upstream-commit-signpost."* 2>/dev/null' EXIT
 
+# ROUND C (fine china): with fc_private_push ON, a push to a host URL (the public fixture) runs the existing leakage
+# scan, which needs the operator-identity file. The scratch HOME has none, so the guard would fail closed and hit the
+# hard stop instead of the signpost these cases are about. The fixture gets a FICTIONAL identity file (SHIP_IDENTITY);
+# the scan then runs and finds nothing. With the switches OFF the scan never runs, so this changes nothing there.
+printf 'fictional-pond-term\n' > "$WORK/fictional-identity.txt"; export SHIP_IDENTITY="$WORK/fictional-identity.txt"
 PUB="$WORK/public-repo"
 PRIV="$WORK/private-repo"
 mkdir -p "$PUB" "$PRIV"
@@ -189,7 +194,14 @@ sid=$((sid+1)); e=$(run_guard guard_git_push_signpost.sh "echo \"note to self: c
 want "PRIMARY PATH control: same push-shaped words, balanced quoting -> silent" 0 "$e" ""
 
 sid=$((sid+1)); e=$(run_guard guard_git_push_signpost.sh "git -C $PUB push origin main --force")
-want "a real outbound act (with extra flags) -> DOES fire" 2 "$e" "PUBLIC"
+# Round C: `--force` is the one flag fc_force_push turns into a hard stop (exit 2, "HARD STOP", no repo identity text).
+# OFF the old expectation stands unchanged (signpost naming PUBLIC); ON the same command still fires (exit 2), as a hard stop.
+. "$HOOKS_DIR/lib/roundb.sh" 2>/dev/null
+if type roundb_on >/dev/null 2>&1 && roundb_on fc_force_push; then
+  want "a real outbound act (with extra flags) -> DOES fire [fc_force_push ON: as a hard stop]" 2 "$e" "HARD STOP"
+else
+  want "a real outbound act (with extra flags) -> DOES fire" 2 "$e" "PUBLIC"
+fi
 
 echo "── guard_git_commit_signpost.sh -- SKIPPED (7 cases) ──────────────────────"
 printf 'SKIP REASON: these 7 cases assert repo-identity text (PUBLIC/PRIVATE) on a\n'
