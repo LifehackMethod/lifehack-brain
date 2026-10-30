@@ -188,6 +188,10 @@ def run_case(case, F, plugin_root, hooks, off=None, stub=False):
                 fh.write("see %s/marlowe/Desktop/pond-notes/plan.md\n" % ("/Us" + "ers"))
             for g in (["add", "."], ["-c", "user.email=rig@example.invalid", "-c", "user.name=rig", "commit", "-qm", "add note"]):
                 subprocess.run(["git", "-C", F["REPO"]] + g, capture_output=True)
+        elif s.startswith("file:"):      # an existing file the case then replaces: "file:<path>" (placeholders allowed)
+            fp = expand(s[5:], F)
+            os.makedirs(os.path.dirname(fp), exist_ok=True)
+            open(fp, "w", encoding="utf-8").write("# existing canon\n")
         elif s.startswith("bm_seen:"):
             os.makedirs(F["HOME"] + "/.claude/run/build-mode", exist_ok=True)
             open(F["HOME"] + "/.claude/run/build-mode/%s.%s.seen" % (s.split(":", 1)[1], sid), "w", encoding="utf-8").close()
@@ -211,10 +215,11 @@ def run_case(case, F, plugin_root, hooks, off=None, stub=False):
             p = subprocess.run(["bash", "-c", cmd], input=payload, capture_output=True, text=True,
                                cwd=cwd if os.path.isdir(cwd) else F["T"], env=env, timeout=30)
             rc, err = p.returncode, (p.stderr + p.stdout)[-600:]
+            asked = rc == 0 and bool(re.search(r'"permissionDecision"\s*:\s*"ask"', p.stdout))   # an ASK (exit 0 + permissionDecision ask) is handled: the person decides
         except subprocess.TimeoutExpired:
-            rc, err = -9, "TIMEOUT"
+            rc, err, asked = -9, "TIMEOUT", False
             problems.append("%s timed out" % script)
-        runs.append({"hook": script, "rc": rc, "text": err})
+        runs.append({"hook": script, "rc": rc, "text": err, "asked": asked})
     lines = []
     if os.path.exists(jpath):
         for ln in open(jpath, errors="replace", encoding="utf-8"):
@@ -233,7 +238,8 @@ def run_case(case, F, plugin_root, hooks, off=None, stub=False):
             r["journal_decision"] = got[-1].get("decision")
             if str(got[-1].get("exit_code")) != str(r["rc"]):
                 problems.append("journal exit_code %s != rc %s for %s" % (got[-1].get("exit_code"), r["rc"], r["hook"]))
-    deniers = [r["hook"] for r in runs if r["rc"] == 2]
+    deniers = [r["hook"] for r in runs if r["rc"] == 2 or r.get("asked")]   # blocked before harm = a deny OR an ask
+    askers = [r["hook"] for r in runs if r.get("asked") and r["rc"] != 2]
     exp = case.get("expect", {})
     expect_block = exp.get("decision") in ("deny", "signpost")
     if problems:
@@ -246,8 +252,8 @@ def run_case(case, F, plugin_root, hooks, off=None, stub=False):
     else:
         grade = "false-alarm" if deniers else "clean"
     return {"id": case["id"], "grade": grade, "deniers": deniers, "hooks_run": [r["hook"] for r in runs], "problems": problems,
-            "signpost_only": bool(deniers) and all(d in SIGNPOST_HOOKS for d in deniers),
-            "text": next((r["text"] for r in runs if r["rc"] == 2), ""), "case": case}
+            "signpost_only": bool(deniers) and all(d in SIGNPOST_HOOKS for d in deniers), "asked": askers,
+            "text": next((r["text"] for r in runs if r["rc"] == 2 or r.get("asked")), ""), "case": case}
 
 
 def run_all(cases, plugin_root, off=None, only=None, stub=False):
