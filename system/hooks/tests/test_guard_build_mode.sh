@@ -217,6 +217,8 @@ fire t7 Write "$(J file_path "$HOME/notify-lab/phone_alert4.py" content 'send a 
 printf '%s' "$ERR" | grep -Fq "shared/notify/notify-send.sh" && { pass=$((pass+1)); echo "   ok   ranked ON: names notify-send.sh"; } || { fail=$((fail+1)); echo "  FAIL  ranked ON lacks notify-send.sh"; }
 fire t8 Write "$(J file_path "$HOME/notify-lab/zzz_unrelated_thing.py" content 'print(1)')"; want 2 "ranked ON: no tool match still stops with the reason rule" "lifehack-place"
 printf '%s' "$ERR" | grep -Fq "FIRST, before anything else" && { fail=$((fail+1)); echo "  FAIL  ranked ON invented a hint"; } || { pass=$((pass+1)); echo "   ok   ranked ON: no match = no hint block"; }
+fire t9 Write "$(J file_path "$HOME/notify-lab/fetch-pond.sh" content 'download the pond level into pond.txt')"; want 2 "ranked ON: a generic verb in the name is not a tool match" "lifehack-place"
+printf '%s' "$ERR" | grep -Fq "FIRST, before anything else" && { fail=$((fail+1)); echo "  FAIL  generic fetch name drew a hint"; } || { pass=$((pass+1)); echo "   ok   ranked ON: fetch-pond.sh draws no tool hint"; }
 unset ROUNDB_PLACEMENT_HINT_RANKED
 unset ROUNDB_PLACEMENT_TOOLBOX_HINT
 unset ROUNDB_REASON_GATE ROUNDB_REMEMBER_REASON ROUNDB_PLACEMENT_OUTSIDE_HOMES

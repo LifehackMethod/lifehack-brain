@@ -74,6 +74,11 @@ fi
 OUT="$(printf '%s' "$OUT" | grep -v '^$' | head -12)"
 [ -n "$OUT" ] || exit 0
 printf '%s\n' "${ALL[@]}" >> "$FLAGGED"; mkdir -p "$DIR"; echo $((N + 1)) > "$CNT"
+NLINES=$(printf '%s\n' "$OUT" | grep -c .)
+if [ "$NLINES" -gt 1 ] && roundb_on eot_do_all; then   # Round C practice: with two findings a session fixed the first and skipped the listing line; number them and say ALL
+  OUT="$(printf '%s\n' "$OUT" | awk 'NF{n++; printf "(%d) %s\n", n, $0}')"
+  OUT="DO ALL $NLINES OF THESE before you finish (this check will not ask again):"$'\n'"$OUT"
+fi
 ESC=1; roundb_on eot_escape_scoped && ! printf '%s' "$OUT" | grep -q 'REFUSED' && ESC=0   # Round C practice: a list-only stop must not show the escapes (a session took '# not-wired-yet' instead of listing the file)
 { echo "END-OF-TURN CHECK: a file you created this turn needs fixing before you finish. (Runs once per turn; it will not ask again.)"
   printf '%s\n' "$OUT"

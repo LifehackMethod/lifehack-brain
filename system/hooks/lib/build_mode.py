@@ -745,13 +745,14 @@ def tool_hint_ranked(code, hint):
     """placement_hint_ranked: the file NAME and the opening of its content pick the tools (the first 1500 chars of code share too many common words and
     the right tool, e.g. the one Gmail reader, fell out of the top 5). A name match counts triple; at most 3 tools, each with a score of 2 or more."""
     path, _, content = hint.partition(" ")
-    name_t = _toks(re.sub(r"[^A-Za-z]+", " ", os.path.splitext(os.path.basename(path))[0]))
-    head_t = _toks(content[:500])
+    GEN = {"fetch", "write", "check", "run", "sync", "read", "tool", "build"}   # a generic verb in a file name is not evidence of the same job
+    name_t = _toks(re.sub(r"[^A-Za-z]+", " ", os.path.splitext(os.path.basename(path))[0])) - {w[:5] for w in GEN}
+    head_t = _toks(content[:500]) - {w[:5] for w in GEN}
     scored = []
     for line in _open(os.path.join(code, "system", "register", "toolbox.md")):
         m = re.match(r"- `/(shared/[^`]+)` · (.*)", line)
         if m:
-            tn = _toks(re.sub(r"[^A-Za-z]+", " ", os.path.splitext(os.path.basename(m.group(1)))[0]))
+            tn = _toks(re.sub(r"[^A-Za-z]+", " ", os.path.splitext(os.path.basename(m.group(1)))[0])) - {w[:5] for w in GEN}
             td = _toks(m.group(2))
             n = 3 * len(name_t & tn) + 2 * len(name_t & td) + 2 * len(head_t & tn) + len(head_t & td)
             if n >= 2 and re.search(r"\b(THE|ONE)\b|sanctioned", m.group(2)):

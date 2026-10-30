@@ -130,4 +130,10 @@ mkfile "$HOME/pondproj/four.py" $'print(4)\n'; rec u10 p1 Write "$(Jw "$HOME/pon
 ROUNDB_OWN_LIST_UNHOMED=on ROUNDB_EOT_ESCAPE_SCOPED=on stop u10 p1; R="$(reason)"; printf '%s' "$R" | grep -q "four.py" && ! printf '%s' "$R" | grep -q "Escapes" && ok "scoped ON: list-only stop has no Escapes line" || bad "ON still shows escapes: $R"
 mkfile "$WORK/fetch-esc.sh" "$BADSH"; rec u11 p1 Write "$(Jw "$WORK/fetch-esc.sh")" create
 ROUNDB_EOT_ESCAPE_SCOPED=on stop u11 p1; R="$(reason)"; printf '%s' "$R" | grep -q "Escapes" && ok "scoped ON: a failure-hiding stop keeps its Escapes line" || bad "escapes lost on REFUSED: $R"
+echo "== eot_do_all =="
+mkfile "$WORK/fetch-two.sh" "$BADSH"; rec u12 p1 Write "$(Jw "$WORK/fetch-two.sh")" create
+ROUNDB_EOT_DO_ALL=off stop u12 p1; R="$(reason)"; printf '%s' "$R" | grep -q "DO ALL" && bad "OFF numbered" || ok "do_all OFF: unchanged"
+mkfile "$WORK/fetch-three.sh" "$BADSH"; mkfile "$HOME/pondproj/five.py" $'print(5)\n'
+rec u13 p1 Write "$(Jw "$WORK/fetch-three.sh")" create; rec u13 p1 Write "$(Jw "$HOME/pondproj/five.py")" create
+ROUNDB_OWN_LIST_UNHOMED=on ROUNDB_EOT_DO_ALL=on stop u13 p1; R="$(reason)"; printf '%s' "$R" | grep -q "DO ALL [0-9] OF THESE" && printf '%s' "$R" | grep -q "(2) " && ok "do_all ON: two findings are numbered with a DO ALL header" || bad "not numbered: $R"
 echo; echo "passed=$pass failed=$fail"; [ "$fail" = 0 ]
