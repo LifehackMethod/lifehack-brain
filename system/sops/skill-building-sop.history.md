@@ -6,7 +6,7 @@ base_commit: "a5e968d  (git -C ~/lifehack-v2 log -1 --format=%h -- system/sops/s
 base_file: "system/sops/skill-building-sop.md, 3065 lines at that commit"
 created: 2026-10-30
 status: "V2 copy, to be merged into main with the SOP"
-sibling_files: "Enver-only material from the same SOP is in skill-building-operator-notes.md (ClaudeOps), not here."
+sibling_files: "(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)"
 ---
 
 # Skill-building SOP: history log
@@ -21,15 +21,7 @@ Each entry below is one passage removed from the SOP on 2026-10-30: CUT (retired
 - Reason: Front-matter list of source records (change/provenance note); the SOP keeps its own evidence tags.
 - Original lines: 15-21
 
-```
-sources:
-  - system/sops/skill-building-sop.md@v1 (git history)                 # v1 — every law preserved, re-ranked
-  - system/research/2026-07-12-skill-sop-ontrack-convergence.md        # [R]  12-agent blind convergence
-  - records/research/2026-07-19-step-prompt-injection-craft.md         # [R2] step-prompt convergence
-  - records/research/2026-07-25-code-vs-llm-enforcement-split.md       # [C]  6-agent crowd convergence
-  - records/research/2026-07-25-skill-dissection-findings.md           # [C]  6 trusted repos, code-level
-  - skill-irl-findings.md (your personal code folder, not shipped)     # [M]  our own measured runs
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ## 2026-10-30 · CUT · lines 70-72 · Struck: 'Compliance is a stack'
 
@@ -78,46 +70,7 @@ sources:
 - Reason: Three 'not in this repository' note blocks and closing warning: wrong about 19 of the 37 files they list, and they point at Enver's private notes. Includes the note about the renamed `cal-weekly` skill.
 - Original lines: 129-166
 
-```
-> ## NOTE — WHAT THIS PAGE CITES THAT IS NOT IN THIS REPOSITORY
->
-> **⛔ Nothing marked ⛔ below is coming** — the lesson's evidence is in the lesson; the path was only ever
-> the filing location of the original write-up. These bullets are load-bearing for `system/tools/citation_lint.py`
-> (a marker accounts for its paths file-wide): correct a bullet, never delete one. Full original prose → `ARCHIVE-2026-09-05.md` § "NOTE blocks — full original text".
->
-> - ⛔ `records/research/2026-07-25-code-vs-llm-enforcement-split.md` · `state/debt-ledger.md` · `state/projects/lifehack-cowork/brief.md` · `state/projects/cowork-bulk-ingestion/brief.md` · `state/projects/huddle/huddle-skill/brief.md` · `state/projects/infrastructure/lifehack-correct-architecture/brief.md` · `state/projects/ingest-skill/brief.md` · `state/projects/project-system/brief.md` · `state/projects/security/security-hardening/brief.md` · `state/projects/security/sentinel-gateway/records/2026-07-03-reader-actor-enforcement-proof.md` · `state/projects/skill-builder/brief.md` · `state/projects/skill-system/brief.md` · `state/projects/translator-voice/brief.md` — records in the author's own notes folder, cited as where a lesson was
->   learned. Not in any repository, and not needed: the evidence is in the rule.
-
-> ## NOTE — THE `[M]` MEASUREMENTS WERE TAKEN UNDER A FORMER SKILL NAME
->
-> `[M]` evidence here was measured 2026-07 against the skill then named `cal-weekly` on the `cal` desk; the desk
-> was renamed `cal` → `planning` on 2026-08-14/15 and every citation updated to `planning-weekly`. The runs behind
-> the numbers are unchanged, nothing was re-measured; the HUD persona `Cal` is a character name, deliberately not renamed. Full text → `ARCHIVE-2026-09-05.md` § "NOTE blocks — full original text".
-
-> ## NOTE — WHAT THIS PAGE POINTS AT THAT IS NOT IN THIS REPOSITORY
->
-> - ⛔ **Evidence in the author's own notes** — every lesson here cites the project record where it
->   was learned, and those live under a personal notes folder, not in any repository: `records/2026-07-13-translator-voice-debug-history.md` · `records/decision/2026-06-04-design-lifehack-skill.md` · `records/decision/2026-06-27-numbers-integrity-enforcement.md` · `records/decision/2026-07-02-plans-backup-hole-postmortem.md` · `records/decision/2026-07-13-scratchpad-in-brief.md` · `records/decision/2026-07-13-statusbar-hud-build.md` · `records/decision/2026-07-28-model-efficiency-plan-abandoned.md` · `records/decisions/2026-07-17-claudegate-two-way-overwrite.md` · `records/insight/2026-08-01-agent-name-discards-report.md` · `records/insight/2026-08-05-the-code-llm-seam.md` · `records/log/2026-05-30-datagate-websearch-automation.md` · `records/log/2026-05-31-lifehack-v2-audit.md` · `records/log/2026-06-03-relay-ghost-root-cause-fix.md` · `records/log/2026-06-07-overmyshoulder-dev-browser-root-cause.md` · `records/logs/2026-05-26-cross-machine-sync-infrastructure.md` · `records/reference/2026-07-12-stage2-email-interpret-method.md` · and 13 more of the same kind.
->   The lesson is complete without them; the path was the filing location of the original write-up.
-> - ✅ **The shared-primitives library — SIX OF THESE HAVE SINCE LANDED, and this line was corrected
->   rather than left to rot.** `system/parts/` now exists here and holds
->   `forbidden_content.py` · `move_aside.py` · `residue_scrub.py` (with the shipping lane) and
->   `order_lint.py` · `phase_gate.py` · `section_present.py` (with `/skill-builder`). Every citation of
->   those six on this page now resolves, and `system/parts/run_selftests.sh` gates them.
-> - ⛔ **The rest of that library is still not here** — `system/parts/README.md` · `system/parts/accrual_gate.py` · `system/parts/bounded_input.py` · `system/parts/capture_gate_selftest.py` · `system/parts/completeness_receipt.py` · `system/parts/fanout_budget.py` · `system/parts/fanout_completeness.py` · `system/parts/fanout_gate.py` · `system/parts/identifier_redaction.py` · `system/parts/map_carry_receipt.py` · `system/parts/precondition_gate.py` · `system/parts/routing_evals.py` · `system/parts/voted_judge.py` · `system/parts/write_ledger.py`
-> - ⛔ **Tools from the donor system** — `system/tools/checkin_open.py` · `system/tools/conformance-lab/t5_grade.py` · `system/tools/fanout-lab/` · `system/tools/gauge_check.py` · `system/tools/health_line.py` · `system/tools/ingest_coverage.py` · `system/tools/ingest_setdiff.py` · `system/tools/new-skill.sh` · `system/tools/section_archive.py` · `system/tools/skill_promise_check.py` · `system/tools/skill_promise_sweep.py`
-> - ⛔ **Hooks from the donor system** — `system/hooks/guard_agent_return_channel.sh` · `system/hooks/mirror_plans.sh` · `system/hooks/scratch_capture_gate.sh`
-> - ✅ **The shipping lane has since landed** — `system/shipping-lane/judge.py` and `system/shipping-lane/scrub.py` are both here now, with `/ship`. 
->   ⛔ Line numbers cited elsewhere on this page against the donor's copies of those two files will
->   not match, because both were rewritten so their rules come from the reader's own identity file
->   rather than the author's name.
-> - ⛔ **Other documents** — `.claude/skills/extension/` · `.claude/skills/invocation/` · `shared/tools/intake_reader.py` · `system/factory/emit_gate.py` · `system/factory/extract_clauses.py` · `system/factory/route_to_part.py` · `system/reference/settings.json` · `system/security-canon.md` · `system/sops/skill-irl-findings.md`
->
-> ⚠ **A STALE ABSENCE-LIST IS WORSE THAN NONE** — it tells a reader not to bother looking for a file that is right
-> there; this block was wrong in ten places the day `/ship` and `/skill-builder` landed. `system/tools/citation_lint.py`
-> catches exactly this; re-run it after anything crosses. Why `system/parts/` is the big one → `ARCHIVE-2026-09-05.md` § "NOTE blocks — full original text".
-
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ## 2026-10-30 · CUT · lines 210 · Leftover DRAFT evidence note
 
@@ -126,9 +79,7 @@ sources:
 - Reason: Leftover italic 'DRAFT, built on the assumption...' note, with a pointer to Enver's private notes.
 - Original lines: 210
 
-```
-> *DRAFT, built on the assumption that the orchestrator-v2 rig validates. Evidence: `state/projects/orchestrator-v2/brief.md` ⛔ (owner's notes) §2 and §4. Tiers: OBSERVED = seen in the rig with a receipt; CANDIDATE = one skill, awaits the week-long /save test and a second skill on a card (per [P2]).*
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ## 2026-10-30 · CUT · lines 212-221 · Hospital comparison (Part 0)
 
@@ -669,57 +620,7 @@ blind judge v1 described.
 
 - Destination note: **belongs with the planning skill's own records** (COMPASS P-37). Kept here until that skill's element page or history exists.
 
-```
-### From the `/autoplan` rebuild, 2026-09-04 → 05 — the plan format's first execution against itself
-
-Evidence: `~/lifehack-brain` branch `V2` (19 commits). **This section is the only home for these candidates** — no scratch copy exists elsewhere.
-⛔ `plans/standalone-autoplan-rebuild.plan.md` — the plan and its `.done.md` live in the operator's notes folder, never in a repository; cited as where the receipts are, not as something this repo carries.
-~~**Status: Phase 6 unbuilt, live run not yet made.**~~ — **CORRECTED 2026-09-05 (nav claudeops-1a): Phase 6 IS built** (cards 6.1–6.15 retired, 34 commits on `V2`, unpushed). **The live run is still not made**, so per canon §5.2 none of these is distilled from a finished run and [P2] still governs promotion.
-
-*(Tiers below in the frame's vocabulary: Tier 1–2 = OBSERVED with receipt · Tier 3 = CANDIDATE · Tier 4 = CANDIDATE, weak.)*
-
-**Tier 1 — mechanisms; a script can enforce each; the author had read the relevant rule and broke it anyway.**
-- **A field a script consumes is written in the script's grammar, and the writer is refused, not warned.** 7 of 8 `Verify:` lines read correctly to a human and failed a machine re-run. AUTHORITATIVE · refuted if a constrained format still fails to re-run at a real rate.
-- **A checker's "could not determine" never resolves to pass.** A fallback to "shell exited 0" on a `; echo $?` command retired a card whose check printed 2 against a stated 0. ~~AUTHORITATIVE~~ OBSERVED ×2 (one build, two operators, two mechanisms — not REPRODUCED until a different build) · Law 1b's no-outcome member applied to the verifier.
-  **Extended 2026-09-05, clause → whole scan:** "found nothing" and "did not finish looking" must never render identically — at clause, card, or scan level. A scan killed mid-run (timeout, recursion, exception) exits non-zero with an explicit INCOMPLETE and never an empty finding list; it states EXAMINED beside FOUND ("0 regressions across 27 cards" is checkable; "0 regressions" is not). Receipt: the regression gate went blind on retirement (commit `3bd635f`; fix `65238c6`); a cold window saw "2 regressions across 29 cards examined" with the self-referential cards printed as EXCLUDED. Canon §1.3.
-
-> v2 receipt (orchestrator-v2): the scorer prints examined beside found on every line (`examined=30 runs=10 pass=30 fail=0 waiting=0 out_of_order=0`). OBSERVED.
-
-- **A verifier is also work, and any checker over "all finished work" will enumerate itself.** CANDIDATE (one build). Mechanical form: exclude its own entry and say so in the output; a self-exemption is honest only when visible. Its own check is the natural way to prove it works, so the recursion is what a well-written card produces, not an accident. *Open question, recorded not dressed up: this passed a destruction probe and a selectivity probe and was still wrong, because the property did not exist until acceptance — no pre-acceptance verification could have caught it.*
-- **A parser that silently skips what it does not recognise is a fail-open.** An id regex dropped 5 of 15 cards and reported clean; a command allowlist dropped a clause and the card passed on the rest. Count examined vs present. AUTHORITATIVE, 2 instances · canon §5.6 for tokenizers.
-- **Any session-level list beside a plan file is a second tracker.** The harness task queue diverged from the plan's cards inside the build fixing two-tracker failures. AUTHORITATIVE, 1 instance.
-- **A verify runs as written, by a stranger, with nothing to substitute.** `<copy>` reached the shell as a redirect and a verify PASSED on it. AUTHORITATIVE.
-
-- **A failure to run must not be able to equal a legal answer.** A check expected exit 2 from a linter; the linter was not found at the path, that failure also exits 2, and the check PASSED by coincidence. OBSERVED · `retired-reverify.md` card 2.3 · canon §5.6 sharpened.
-- **A retired check un-passes itself.** Three retired cards failed their own checks after later cards moved the files; nothing re-runs a retired check. OBSERVED · canon §1.3 sharpened; card 6.10 builds the regression gate.
-- **An exit code read after a pipe is the pipe's.** `cmd | head; echo $?` reports `head`'s. Two operators hit it in one build. OBSERVED ×2.
-
-**Tier 2 — principles; true and receipted; process, not code.**
-- Retiring a finished task preserves the amendment, not only the final form; second-resolution backup names collided (8 → 2 files). AUTHORITATIVE.
-- When a checker refuses one item, run it against every item before fixing any — the mechanical form of §5.13. Four rounds of one-at-a-time; six more waiting. AUTHORITATIVE.
-- The monitor re-runs the verify and never grades from the actor's report (LAW 3 at the nav/build seam). Three instances in one session. AUTHORITATIVE.
-- Cold verification is a gate before the human, not a postmortem after. One cold pass caught a builder-certified false pass. AUTHORITATIVE.
-- A size floor set by the party being measured measures nothing during the build (canon §4.1 for budgets). AUTHORITATIVE.
-- A guard matching a MENTION blocks the fix for the thing it guards. New instance of a ledgered class. AUTHORITATIVE.
-
-**Tier 3 — investigate; n=1 or awaiting the live run.**
-- The control for a defect fixture is the same file with defects repaired, generated not hand-kept — never a different clean file (colliding ids manufactured false positives).
-- Build order and verify order differ; a checker says NOT-YET, not FAILED, when the verify-dependency is unmet. WORKING THEORY.
-- Blind ANGLE panels are not the PERSONA councils [A13] warns against: 11/11 hit, 0 false positives, canon §4.11 conditions met, [B23] agrees. WORKING THEORY until the live run.
-- Code and reviewer lenses catch disjoint defect classes (32 vs 8, no overlap). AUTHORITATIVE-local, n=1.
-
-**Tier 4 — recommendation.**
-- Do not write size estimates into task text (3 for 3 wrong by 2–3×, same direction).
-- Reading the doctrine does not inoculate — Law 5's knows-but-violates, measured on the author. A confirmation, not a finding.
-
-**AWAITING VALIDATION — added 2026-09-05 by nav claudeops-1a, deliberately NOT promoted.**
-*Enver's instruction: these get built and tested first; promote only after the fix is proven. Neither is doctrine and neither may be cited as one.*
-
-- **A `Verify:` that compares against a bare literal freezes a value the system computes.** Write it computed-against-computed instead — `test "$(A)" = "$(B)"` rather than `= "17"`. ⚠ **The rule already existed one altitude up and nobody had applied it here**: §V.4a's *"a number without its instrument recorded beside it is not evidence — and a result that a reader cannot re-derive from the file is not a result."* Grepped 2026-09-05: zero occurrences connecting that rule to a plan card's `Verify:` slot. Receipt: 3 of 27 retired cards (2.4, 4.4, 6.8) fail their own `Verify:` today, all three because a later card moved a count they had frozen; ~57 count-comparisons exist across the retired set, so those three are the visible edge. The grammar ALREADY accepts the invariant form — measured, not assumed: a card whose Verify compares two computed values lints rc 0 and parses and runs under `plan_retire`. **CANDIDATE, NOT YET VALIDATED — the rewrite has not been built or tested.** Refuted if invariant-form Verifies prove vacuous, i.e. they pass while the artefact is genuinely broken; that is the probe that must run before this is promoted.
-
-- **A checker whose own acceptance criterion invokes the checker becomes self-referential the moment its card is retired, and fails SILENT.** Receipt: card 6.10's `Verify:` invoked `plan_retire --regressions`; the scan re-runs every retired card's Verify, so on retirement it began invoking itself, hit the 120s subprocess timeout uncaught, and emitted no findings. Measured: the scan reported zero `REGRESSION` lines while card 2.4's Verify independently returned rc 1; an hour earlier the same scan reported four, with nothing repaired in between. ⚠ The companion claim that it *exited 0* was **asserted and never measured** — struck, see [P3]/A14. Fix built and verified (`65238c6`): self-exclusion stated in the output, `INCOMPLETE` + exit 3 on abnormal termination, and an examined-count beside the found-count. **OBSERVED ×1, one build — per [P2] a different build promotes; this is not that.** ⚠ **The property did not exist until acceptance**: this code passed a real destruction probe AND a selectivity probe and was still wrong. No rule is offered for that; it is recorded as an open question, not dressed up as a finding.
-
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ## 2026-10-30 · CUT · lines 3058-3065 · Done to-do list
 
@@ -736,12 +637,12 @@ Evidence: `~/lifehack-brain` branch `V2` (19 commits). **This section is the onl
 - **LAW 3** wants the clause "nor from the actor's report." **§III.9** wants the companion "fail once → sweep siblings." **§VI.1** wants the diagnosis-gate exception: a BUILD card carries less, by design.
 - **§III.5** "<500 lines" and canon §5.1 "~1,000 words" never meet; state which governs.
 - **This file's voice**: §VI.4 says avoid ALL-CAPS MUST/NEVER walls; the file is dense with them. Harness facts stay rules; doctrine reads as principle.
-- **Two copies of this file exist (private ClaudeOps, public lifehack-brain), they differ, and `separation-manifest.md:287` calls them byte-identical.** One home, or a comparison that runs.
+- (verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 ```
 
 ## 2026-10-30 · MOVE · to the operator notes (not repeated here)
 
-These passages went verbatim, with the date, to the Enver-only file `skill-building-operator-notes.md`:
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 - lines 720-727: Policy risk on the headless row
 - lines 731-760: Headless-in-cron measurements
@@ -842,10 +743,7 @@ updated_at: 2026-08-15
 
 ### FIX original · lines 126-127
 
-```
-> intent was lost.*** ⇒ **LAW 2 tells you which SEAM leaked. This frame tells you whether your LAYERS were ever
-> real.** ⛔ *Evidence: `state/projects/canonical-housecleaning/records/2026-09-11-layered-enforcement-composition.md` (Brain, not this repo).*
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### FIX original · lines 171
 
@@ -861,9 +759,7 @@ updated_at: 2026-08-15
 
 ### FIX original · lines 177
 
-```
-1. The card and runner here are a bash prototype: cards are `id | kind | what | check` lines and the runner is about 150 lines of shell (see `<notes>/state/projects/orchestrator-v2/rig/`). It is not a product.
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### FIX original · lines 192
 
@@ -1154,9 +1050,7 @@ what the one above misses, and the design is to **stack** them, sized to the sta
 
 ### FIX original · lines 1009
 
-```
-first thing reached for. *(Receipts: `V2` commits 2026-09-04; `<notes>/state/autoplan-rebuild/`.)*
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### FIX original · lines 1017
 
@@ -1268,18 +1162,11 @@ known-good, or it isn't trusted — Law 4.3 applied to our own tools). The law b
 
 ### FIX original · lines 1174-1175
 
-```
-> Method and provenance: `records/research/2026-09-05-failure-mode-census.md` ⛔ (owner's notes). Receipts:
-> `state/failure-census-2026-09-05/` ⛔ (owner's notes). Canon §16 carries the same modes as principles;
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### FIX original · lines 1262-1264
 
-```
-  2026-09-07 amendment). Receipt: `state/experiments/coordinator/mode-15-draft.md` ⛔ (records in the owner's
-  notes) and `state/experiments/coordinator/defects-2026-09-07.md` ⛔ (records in the owner's notes) rows 10-11
-  (fix landed as commit `d6a1afa`). ·
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### FIX original · lines 1323
 
@@ -1586,10 +1473,7 @@ This is Law 5's position bullet applied to placement: recall of a mid-context in
 
 ### FIX original · lines 2271-2272
 
-```
-~~> **REFINED 2026-09-05 (solutions audit, `records/research/2026-09-05-durable-solutions-audit.md` ⛔ owner's notes):** the
-> per-step prompt is *a habit, not a solution.* Inside `/checkin`, already built per-step, prose-backed steps were skipped~~
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### FIX original · lines 2276
 
@@ -1823,6 +1707,7 @@ to make this reusable doctrine rather than one project's finding.** Two laws, in
 
 ### FIX original · lines 2956-2958
 
+⛔ historical text as it was; `system/sops/skill-irl-findings.md` was never shipped.
 ```
 **Living intake.** `system/sops/skill-irl-findings.md` is where new observations land first, append-only,
 chronological, tagged TESTER / SKILL / METHOD. When a finding is seen enough to be durably true, it graduates
@@ -1831,6 +1716,7 @@ here and gets marked. Companion for operational specifics: `skill-building-field
 
 ### FIX original · lines 2970-2974
 
+⛔ historical text as it was; `system/sops/skill-irl-findings.md` was never shipped.
 ```
 > The frontmatter names `system/sops/skill-irl-findings.md` as where observations land before they graduate
 > into this file. **That file does not exist in either repository (checked 2026-09-05).** Until it does,
@@ -1865,303 +1751,203 @@ Reason per entry. Verbatim text removed or replaced from the edited SOP.
 
 ### validation fix 2026-10-30 · edited line 1078 · private repo name and counts removed (leak)
 
-```
-  `origin/V2`; `ClaudeOps`: 21 local, `main` 14 ahead. · **Field remedy (RESEARCHED):** `fetch.prune=true` plus
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1096 · private repo name removed (leak)
 
-```
-  — direct branch-content audit, private `egjokaj/ClaudeOps`, 2026-09-08: 20 `ship/*`/`land/*` branches, 211
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1400 · private window name removed
 
-```
-  re-run by this window~~ receipt named: claudeops-1a's transcript audit, entry A10 — four `rc=` values in one
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 2589 · private window name removed
 
-```
-**THE SCOPE FAILURE — added 2026-09-05 by nav claudeops-1a at Enver's instruction. CANDIDATE, NOT VALIDATED.**
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 962 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  → *Research pass 2026-09-05:* **No field remedy** — class-level liveness/reachability sweeps exist for conventional code, none for hooks/skills/tools → experiment (unused-parts-drifting-copies). ⛔ (records in the owner's notes) · Category: **architectural** (canon §16 mode 1, 2026-09-08 retrofit) · **CANDIDATE** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; no field remedy, never held here)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 966 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  → *Research pass 2026-09-05:* **Field remedy (RESEARCHED):** independent output-shape/baseline verification + heartbeat monitoring — emerging-to-strong (n8n community forum) (lying-signals-text-guards). ⛔ (records in the owner's notes) ✅ ADOPTED (right-size audit 2026-09-05) · Category: **architectural** (canon §16 mode 2, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; field remedy also noted)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 975 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  → *Research pass 2026-09-05:* **No field remedy** — generate-from-source is proven for docs/config, not for arbitrary duplicated facts in a harness repo → experiment (unused-parts-drifting-copies). ⛔ (records in the owner's notes) · Category: **both** (canon §16 mode 3, 2026-09-08 retrofit) · **CANDIDATE** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; no field remedy, never held here)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 979 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  → *Research pass 2026-09-05 (second pass, the five modes):* **Field remedy (RESEARCHED):** checker independent in author, code path, and data source from what it checks — strong, decades-old cross-industry convergence (verification-not-by-the-actor; Skalse 2022 / ISO segregation-of-duties). ✅ ADOPTED (right-size audit, second pass, 2026-09-05) ⛔ (records in the owner's notes) · Category: **architectural** (canon §16 mode 4, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; field remedy also noted)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 985 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  → *Research pass 2026-09-05 (second pass, the five modes):* **No field remedy** — field's answer (plan-first/spec-gating) is the same prose-ceremony shape that already failed 7x locally; METR's RCT shows added process can cost without payoff → experiment (premises-and-numbers-checked-first). ⛔ (records in the owner's notes) · Category: **operational** (canon §16 mode 5, 2026-09-08 retrofit) · **CANDIDATE** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; no field remedy, never held here)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 989 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  → *Research pass 2026-09-05:* **No field remedy** — artifact-over-summary is exactly what local already tried at one site and it fails partially applied → experiment (values-that-did-not-travel). ⛔ (records in the owner's notes) ✅ ADOPTED (right-size audit 2026-09-05) — the field's strongest mechanism; PARTIAL here, see canon §12.c · Category: **operational** (canon §16 mode 6, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; field remedy also noted)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 993 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  → *Research pass 2026-09-05:* **Field remedy (RESEARCHED):** layered guard — typed parsing + narrow regex triage + semantic classifier — strong (arXiv:2506.10597, IEEE S&P 2026) (lying-signals-text-guards). ⛔ (records in the owner's notes) ✅ ADOPTED (right-size audit 2026-09-05) · Category: **architectural** (canon §16 mode 7, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; field remedy also noted)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 997 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  → *Research pass 2026-09-05 (second pass, the five modes):* **Field remedy (RESEARCHED):** never trust a worker's self-produced proof — poll a pre-agreed, orchestrator-checked landmark fixed before delegation — strong (verification-not-by-the-actor; hexisteme.github.io postmortem). ✅ ADOPTED (right-size audit, second pass, 2026-09-05) ⛔ (records in the owner's notes) · Category: **operational** (canon §16 mode 8, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; field remedy also noted)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1003 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  → *Research pass 2026-09-05 (second pass, the five modes):* **No field remedy** — reproducibility science's recompute-from-source norm is off-domain inference only; the STALE benchmark confirms detecting stale facts is unsolved → experiment (premises-and-numbers-checked-first). ⛔ (records in the owner's notes) · Category: **operational** (canon §16 mode 9, 2026-09-08 retrofit) · **CANDIDATE** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; no field remedy, never held here)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1007 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  → *Research pass 2026-09-05:* **Field remedy (RESEARCHED):** fail-loud unique-context-anchored search/replace, optionally hash-augmented — strong (wuu73.org cross-tool survey) (wrong-target-edited-or-run). ⛔ (records in the owner's notes) ✅ ADOPTED (right-size audit 2026-09-05) · Category: **both** (canon §16 mode 10, 2026-09-08 retrofit) · **RESEARCHED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; field remedy, never held here)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1011 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  → *Research pass 2026-09-05 (second pass, the five modes):* **Field remedy (RESEARCHED):** move must-always rules into deterministic hooks/tool gates, keep prose for judgment calls only — strong, three independent communities converge (rules-with-teeth; Claude Code hooks docs). ✅ ADOPTED — a receipt on hook-plane doctrine and point-of-need injection (2026-09-05) ⛔ (records in the owner's notes) · Category: **architectural** (canon §16 mode 11, 2026-09-08 retrofit) · **RESEARCHED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; field remedy, never held here)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1017 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  → *Research pass 2026-09-05:* **No field remedy** — content-addressed/hash verification matches local's own one-pair fix, but no source generalizes it to a harness's full file set → experiment (wrong-target-edited-or-run). ⛔ (records in the owner's notes) · Category: **architectural** (canon §16 mode 12, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; no field remedy)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1021 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  → *Research pass 2026-09-05:* **No field remedy** — consumer-driven contract testing is mature for microservices, never adapted to LLM output anywhere → experiment (values-that-did-not-travel). ⛔ (records in the owner's notes)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1105 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-> **Right-size audit, 2026-09-05** *(Enver's rule is in THE FRAME; record: `records/research/2026-09-05-remedy-right-size-audit.md` ⛔ owner's notes).*
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1171 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  `state/projects/security/security-hardening/brief.md:44-77` → `exit 2`.
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1173 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  level** — measured, no effect. `NO-DATE` · `state/projects/skill-system/brief.md:122-136` → abandoned.
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1176 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  `state/projects/skill-system/brief.md:302-407` → put trigger text in `description:`. *(This SOP's §III.3
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1181 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  `state/projects/skill-system/brief.md:302-407` → always double-quote `description:`.
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1184 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  `2026-05-30` · `state/projects/security/security-hardening/brief.md:44-77` → `INPUT=$(cat)`.
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1187 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  `state/projects/ingest-skill/brief.md:147-172` → spawn as plain background agents. **Fired live again
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1199 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  prose gates." `NO-DATE` · `state/projects/lifehack-cowork/brief.md:280-298` → external bash
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1204 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  · `state/projects/infrastructure/lifehack-correct-architecture/brief.md:351-390` → a slim
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1209 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  `state/projects/translator-voice/brief.md:97-122` → a word/section budget instead of a rule.
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1233 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  `state/projects/cowork-bulk-ingestion/brief.md:83-87` → sonnet + ≥10k-char slice.
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1250 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  `state/projects/skill-system/brief.md` (wave B1) → kept four separate lens agents.
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1253 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  reported output. `2026-08-05` · `state/projects/skill-system/brief.md` (wave S) → abandoned as a speed
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1256 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  worse** wall-clock. `2026-08-04` · `state/projects/skill-system/brief.md:409-473` → kept the fan-out.
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1259 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  tokens at roughly 100x the input price. `2026-08-04` · `state/projects/skill-system/brief.md:409-473` →
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1268 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  deterministic test"). `2026-07-29` · `state/projects/skill-system/brief.md:1349-1351` → killed,
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1273 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  bed") already state (cross-ref). `NO-DATE` · `state/projects/ingest-skill/brief.md:147-172` → verify
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1288 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  `2026-08-05` · `state/projects/skill-system/brief.md` (wave B1) → rewrite the dispatch as "you personally
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1301 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  cross-ref only, not restated. `2026-08-04` · `state/projects/ingest-skill/brief.md:147-172` → converted to
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1305 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  written to prevent. `2026-08-04` · `state/projects/ingest-skill/brief.md:147-172` → guidance that carries
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1309 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  · `state/projects/ingest-skill/brief.md:147-172` → plain reflowing text.
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1312 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  `state/projects/skill-builder/brief.md:100-110` → the grid stays the LLM's own completeness check.
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1315 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  `state/projects/skill-builder/brief.md:100-110` → ask for the outcome in their own words first.
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1345 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  restated. `NO-DATE` · `state/projects/project-system/brief.md:91` → LLM-judgment section matching.
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1347 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  silently, no single source of truth. `NO-DATE (LOG-01)` · `state/projects/lifehack-cowork/brief.md:280-298`
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1350 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  attackers hide payloads in the exemption. `NO-DATE` · `state/projects/ingest-skill/brief.md:147-172` → the
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1354 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  `NO-DATE (commit 76c6a80)` · `state/projects/skill-builder/brief.md:100-110` → fold the doctrine into the
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1359 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  that already had 3 of 4 lanes done." `NO-DATE` · `state/projects/skill-system/brief.md:122-136` → not
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1363 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  `state/projects/huddle/huddle-skill/brief.md:58-86` → every participant and the chair runs in a background
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1368 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  `NO-DATE` · `state/projects/translator-voice/brief.md:97-122` → killed outright.
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1372 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  `state/projects/translator-voice/brief.md:97-122` → kept the concrete prompt.
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1375 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-  the recurring class was adopted by 3 of 15 tools. `2026-08-08` · `state/projects/project-system/brief.md`
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1709 · dead private pointer stripped (owner's notes / state/projects citation); date and lesson kept
 
-```
-`state/projects/security/sentinel-gateway/records/2026-07-03-reader-actor-enforcement-proof.md`. The same
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### validation fix 2026-10-30 · edited line 1227 · sentence Enver never approved (new pass/fail wording)
 
@@ -2279,9 +2065,7 @@ Reason: only the stochastic-environment sentence may be labelled a Rule, so othe
 
 ### label/pointer fix 2026-10-30 · line 438 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
-```
-> membership half was independently corroborated by `records/research/2026-07-25-code-vs-llm-enforcement-split.md`
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### label/pointer fix 2026-10-30 · line 530 (before edit) · rule label to principle wording (only the stochastic-environment sentence stays a Rule)
 
@@ -2303,9 +2087,7 @@ down is exactly the thicket the rule above is warning about. **But note what tha
 
 ### label/pointer fix 2026-10-30 · line 812 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
-```
-> *Outside caveat, 2026-09-05, RESEARCHED — `records/research/2026-09-05-code-llm-interaction-modalities.md`:*
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### label/pointer fix 2026-10-30 · line 905 (before edit) · rule label to principle wording (only the stochastic-environment sentence stays a Rule)
 
@@ -2315,21 +2097,15 @@ down is exactly the thicket the rule above is warning about. **But note what tha
 
 ### label/pointer fix 2026-10-30 · line 962 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
-```
-  → *Research pass 2026-09-05:* **No field remedy** — class-level liveness/reachability sweeps exist for conventional code, none for hooks/skills/tools → experiment (unused-parts-drifting-copies). · Category: **architectural** (canon §16 mode 1, 2026-09-08 retrofit) · **CANDIDATE** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; no field remedy, never held here)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### label/pointer fix 2026-10-30 · line 966 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
-```
-  → *Research pass 2026-09-05:* **Field remedy (RESEARCHED):** independent output-shape/baseline verification + heartbeat monitoring — emerging-to-strong (n8n community forum) (lying-signals-text-guards). ✅ ADOPTED (right-size audit 2026-09-05) · Category: **architectural** (canon §16 mode 2, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; field remedy also noted)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### label/pointer fix 2026-10-30 · line 975 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
-```
-  → *Research pass 2026-09-05:* **No field remedy** — generate-from-source is proven for docs/config, not for arbitrary duplicated facts in a harness repo → experiment (unused-parts-drifting-copies). · Category: **both** (canon §16 mode 3, 2026-09-08 retrofit) · **CANDIDATE** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; no field remedy, never held here)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### label/pointer fix 2026-10-30 · line 977 (before edit) · rule label to principle wording (only the stochastic-environment sentence stays a Rule)
 
@@ -2339,69 +2115,47 @@ down is exactly the thicket the rule above is warning about. **But note what tha
 
 ### label/pointer fix 2026-10-30 · line 979 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
-```
-  → *Research pass 2026-09-05 (second pass, the five modes):* **Field remedy (RESEARCHED):** checker independent in author, code path, and data source from what it checks — strong, decades-old cross-industry convergence (verification-not-by-the-actor; Skalse 2022 / ISO segregation-of-duties). ✅ ADOPTED (right-size audit, second pass, 2026-09-05) · Category: **architectural** (canon §16 mode 4, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; field remedy also noted)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### label/pointer fix 2026-10-30 · line 985 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
-```
-  → *Research pass 2026-09-05 (second pass, the five modes):* **No field remedy** — field's answer (plan-first/spec-gating) is the same prose-ceremony shape that already failed 7x locally; METR's RCT shows added process can cost without payoff → experiment (premises-and-numbers-checked-first). · Category: **operational** (canon §16 mode 5, 2026-09-08 retrofit) · **CANDIDATE** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; no field remedy, never held here)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### label/pointer fix 2026-10-30 · line 989 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
-```
-  → *Research pass 2026-09-05:* **No field remedy** — artifact-over-summary is exactly what local already tried at one site and it fails partially applied → experiment (values-that-did-not-travel). ✅ ADOPTED (right-size audit 2026-09-05) — the field's strongest mechanism; PARTIAL here, see canon §12.c · Category: **operational** (canon §16 mode 6, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; field remedy also noted)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### label/pointer fix 2026-10-30 · line 993 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
-```
-  → *Research pass 2026-09-05:* **Field remedy (RESEARCHED):** layered guard — typed parsing + narrow regex triage + semantic classifier — strong (arXiv:2506.10597, IEEE S&P 2026) (lying-signals-text-guards). ✅ ADOPTED (right-size audit 2026-09-05) · Category: **architectural** (canon §16 mode 7, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; field remedy also noted)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### label/pointer fix 2026-10-30 · line 997 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
-```
-  → *Research pass 2026-09-05 (second pass, the five modes):* **Field remedy (RESEARCHED):** never trust a worker's self-produced proof — poll a pre-agreed, orchestrator-checked landmark fixed before delegation — strong (verification-not-by-the-actor; hexisteme.github.io postmortem). ✅ ADOPTED (right-size audit, second pass, 2026-09-05) · Category: **operational** (canon §16 mode 8, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; field remedy also noted)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### label/pointer fix 2026-10-30 · line 1003 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
-```
-  → *Research pass 2026-09-05 (second pass, the five modes):* **No field remedy** — reproducibility science's recompute-from-source norm is off-domain inference only; the STALE benchmark confirms detecting stale facts is unsolved → experiment (premises-and-numbers-checked-first). · Category: **operational** (canon §16 mode 9, 2026-09-08 retrofit) · **CANDIDATE** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; no field remedy, never held here)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### label/pointer fix 2026-10-30 · line 1007 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
-```
-  → *Research pass 2026-09-05:* **Field remedy (RESEARCHED):** fail-loud unique-context-anchored search/replace, optionally hash-augmented — strong (wuu73.org cross-tool survey) (wrong-target-edited-or-run). ✅ ADOPTED (right-size audit 2026-09-05) · Category: **both** (canon §16 mode 10, 2026-09-08 retrofit) · **RESEARCHED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; field remedy, never held here)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### label/pointer fix 2026-10-30 · line 1011 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
-```
-  → *Research pass 2026-09-05 (second pass, the five modes):* **Field remedy (RESEARCHED):** move must-always rules into deterministic hooks/tool gates, keep prose for judgment calls only — strong, three independent communities converge (rules-with-teeth; Claude Code hooks docs). ✅ ADOPTED — a receipt on hook-plane doctrine and point-of-need injection (2026-09-05) · Category: **architectural** (canon §16 mode 11, 2026-09-08 retrofit) · **RESEARCHED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; field remedy, never held here)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### label/pointer fix 2026-10-30 · line 1017 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
-```
-  → *Research pass 2026-09-05:* **No field remedy** — content-addressed/hash verification matches local's own one-pair fix, but no source generalizes it to a harness's full file set → experiment (wrong-target-edited-or-run). · Category: **architectural** (canon §16 mode 12, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; no field remedy)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### label/pointer fix 2026-10-30 · line 1022 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
-```
- · Category: **architectural** (canon §16 mode 13, 2026-09-08 retrofit) · **OBSERVED** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; held partially here; no field remedy)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### label/pointer fix 2026-10-30 · line 1030 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
-```
-  census; canon §16 mode 14 is the same.* · Category: **operational** (canon §16 mode 14, 2026-09-08 retrofit) · **Field remedy (RESEARCHED):** structural substitution over debiasing — name a concrete low-context reader and test against them directly; minimal, self-contained units, dynamically curated for an LLM reader rather than statically front-loaded (`records/research/2026-09-08-mode-14-reader-holds-no-state.md`). · **CANDIDATE** (derived 2026-09-07 from `records/research/2026-09-05-durable-solutions-audit.md` and the 2026-09-05 research pass; Enver's ruling 2026-09-06; nothing watched)
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### label/pointer fix 2026-10-30 · line 1039 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
@@ -2411,9 +2165,7 @@ down is exactly the thicket the rule above is warning about. **But note what tha
 
 ### label/pointer fix 2026-10-30 · line 1040 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
-```
-  (`records/research/2026-09-08-mode-15-instrument-refuses-truth.md`). ·
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### label/pointer fix 2026-10-30 · line 1052 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
@@ -2423,9 +2175,7 @@ down is exactly the thicket the rule above is warning about. **But note what tha
 
 ### label/pointer fix 2026-10-30 · line 1053 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
-```
-  (`records/research/2026-09-08-mode-16-written-word-outranks-live.md`). · **CANDIDATE** (derived
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### label/pointer fix 2026-10-30 · line 1065 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
@@ -2435,9 +2185,7 @@ down is exactly the thicket the rule above is warning about. **But note what tha
 
 ### label/pointer fix 2026-10-30 · line 1066 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
-```
-  (`records/research/2026-09-08-mode-17-observation-hardened-into-rule.md`). · **CANDIDATE** (derived
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### label/pointer fix 2026-10-30 · line 1081 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
@@ -2447,9 +2195,7 @@ down is exactly the thicket the rule above is warning about. **But note what tha
 
 ### label/pointer fix 2026-10-30 · line 1082 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
-```
-  (`records/research/2026-09-08-mode-18-mirror-rot.md`). · **CANDIDATE** (derived 2026-09-07 from canon §16 mode
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### label/pointer fix 2026-10-30 · line 1101 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
@@ -2459,9 +2205,7 @@ down is exactly the thicket the rule above is warning about. **But note what tha
 
 ### label/pointer fix 2026-10-30 · line 1102 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
-```
-  (`records/research/2026-09-08-mode-19-delivery-packaging-as-stranded-work.md`). · **CANDIDATE** (derived 2026-09-08 from canon §16 mode 19;
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### label/pointer fix 2026-10-30 · line 1138 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
@@ -2663,9 +2407,7 @@ down is exactly the thicket the rule above is warning about. **But note what tha
 
 ### label/pointer fix 2026-10-30 · line 1884 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept
 
-```
-> **What outside research adds (2026-09-05, RESEARCHED — `records/research/2026-09-05-multi-step-execution-enforcement.md`):**
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### label/pointer fix 2026-10-30 · line 1955 (before edit) · rule label to principle wording (only the stochastic-environment sentence stays a Rule)
 
@@ -2693,22 +2435,22 @@ down is exactly the thicket the rule above is warning about. **But note what tha
 
 ### label/pointer fix 2026-10-30 · line 2564 (before edit) · private notes-folder pointer stripped (dead for students); date and lesson kept (line was only a pointer)
 
-```
-Records: `records/research/2026-09-05-code-llm-interaction-modalities.md` · `…-multi-step-execution-enforcement.md`.
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ## 2026-10-30 — citation path fix (FIX, factual)
 Reason: these four paths were previously accounted for by the cut "not in this repository" lists; corrected to where the files actually live.
 
-Original line 498:
+Original line 498: ⛔ historical text as it was; these paths are not current.
 ```
+⛔ historical text as it was; `system/tools/section_archive.py` is not shipped in the plugin.
 | 1 | `system/tools/section_archive.py` | Shipped a heading-guessing regex whose match decided **what gets archived immediately before a deletion** — judgment in code, at the highest-stakes point. It also could not win: the brief fleet is genuinely non-standard, and the first widening matched `## CURRENT STATE NOTES`, a DIFFERENT section. **The ruling:** *"don't make the tool do fuzzy matching, that should belong to the llm. we've got a lot of briefs and they don't have standardized sections."* ⇒ now `--heading "<exact>"` or `--start/--end`, and **a near-miss is REFUSED, never resolved to something close.** |
 ```
-Original line 499:
+Original line 499: ⛔ historical text as it was; these paths are not current.
 ```
+⛔ historical text as it was; `system/tools/checkin_open.py` is not shipped in the plugin.
 | 2 | `system/tools/checkin_open.py` | Scanned a whole brief for a marker character to find its three status lines. Returned **`PARTIAL-RUNGS 6`** on its own project's brief, because **three lines of ordinary prose elsewhere in the file merely MENTIONED that character while describing this very tool.** ⭐ **It matched its own description.** Its sibling `gauge_check.py` did NOT have the bug — for one reason: it is scoped to the section and does not go looking. |
 ```
-Original line 1338:
+Original line 1338: ⛔ historical text as it was; these paths are not current.
 ```
   `2026-07-13` · `system/sops/build-sop.md`; `state/debt-ledger.md` `[GUARD-HOOKSOP-FALSE-POSITIVE]` → match
 ```
@@ -2718,8 +2460,8 @@ Original line 1703:
 ```
 
 
-## 2026-10-30 · MOVE · to skill-building-operator-notes.md (ClaudeOps)
-- Reason: operator-only material (Enver's machine and setup), moved verbatim to ClaudeOps system/sops/skill-building-operator-notes.md; copied here too so the move is on record (archive-before-cut).
+## 2026-10-30 · MOVE · to the operator's private notes
+- Reason: (verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### MOVE original · lines 720-727 · POLICY RISK on the headless row
 ```
@@ -2734,189 +2476,10 @@ very row depends on is exactly that bet. Policy moves faster than architecture. 
 ```
 
 ### MOVE original · lines 728-760 · MEASURED 2026-08-05: headless in cron
-```
-> v2 note: held for the week-long test
-
-
-**MEASURED 2026-08-05 — the two things that break HEADLESS in cron, and the house already fixed both:**
-- ⛔ **PATH.** `claude` lives at `~/.local/bin/claude`, which is **NOT on cron's PATH**
-  (`/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin`). A bare `claude` in a cron script returns
-  **`command not found`**. *(Same family as build-sop's `/usr/sbin/scutil` trap.)*
-  ✅ **FIX, and it is already the house pattern** — verified in `archivist-run.lib.sh:34`,
-  two scheduled runners in the donor system: an **absolute `CLAUDE_BIN`**, with one of them
-  own comment saying it outright — *"CLAUDE_BIN is absolute — no PATH dependency."*
-- ⛔ **AUTH.** With the absolute path but a stripped env, `claude -p` returns
-  **`Not logged in · Please run /login`** — measured. ✅ **FIX, also already the house pattern:** the
-  `TOKEN_FILE="$HOME/.config/lifehack/claude-oauth-token"` those same three runners use.
-  ⛔ **DO NOT HAND-ROLL THAT CHECK — it now lives in exactly one place:** `require_claude_token`
-  in **`system/tools/claude-auth.lib.sh`** (`source` it, then `require_claude_token "<job>" || exit 75`).
-  **Why the prohibition is this blunt:** the check *was* hand-rolled five times, every copy carrying
-  its own literal `exit 3`, which `system/jobs.md`'s exit-code table classes as a REAL
-  FAILURE — so on a fresh install, where the token file legitimately does not exist yet, three ticks
-  tripped Pulse's 3-strike breaker and permanently auto-disabled the runner. It was fixed **twice**,
-  in two of the five, and stayed broken in the other three, because **a fix applied to a copy does
-  not reach the other copies.** The correct code is **75** (stood down, counted `skipped`), and the
-  stand-down is always NAMED out loud — per this repo's ABSENT-SUBJECT rule, "I could not look" must
-  never be spelled the same way as "I looked and it was fine."
-- ⛔ **SCHEMA — PATH+AUTH fixed still doesn't buy you a valid shape.** `claude -p --json-schema` does
-  **NOT** guarantee schema-valid output — Anthropic states this outright in GitHub issue
-  `anthropics/claude-code#9058` (open). Issue `#23265` adds a reproducible cold-start bug (first call
-  returns null / exit 1) and a hang (exit 124) when nested inside a running Claude Code session via the
-  Bash tool — independently confirming this house's own rule that a subagent shelling `claude -p`
-  double-nests. **If a hard schema guarantee is needed, the Messages API's `output_config.format`
-  (constrained decoding, GA) is the only surface that provides one — not this flag.**
-
-> **v2 (orchestrator-v2, 2026-10-28):** Qualification, not refutation: a nested `claude -p` from inside a live Claude Code session ran **10/10** (n01–n10, Claude Code 2.1.312), with and without unsetting `CLAUDECODE` / `CLAUDE_CODE_ENTRYPOINT` (5 + 5, all passing). The hang/double-nest hazard above is kept; re-check it per version. *(OBSERVED — brief §2 Rung 2.)*
-
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### MOVE original · lines 1609-1744 · LOCAL recorded history, entries A1-B36
-```
-### LOCAL — recorded history, binds nothing
-
-Failed **for us, in our circumstances** — not a general law. Kept as the "has this been tried?" lookup even
-though none of these bind a future build.
-
-- **[A1]** Tried: regex pattern-matching on user prompts to detect when math needs mechanical computation.
-  Failed: 24/24 plain-English math prompts missed — no operator or keyword to match. `2026-06-27` ·
-  `records/decision/2026-06-27-numbers-integrity-enforcement.md` → declare-intent model (finance desks
-  auto-arm, `/calculate` elsewhere, tight regex as backstop only).
-- **[A2]** Tried: a per-turn LLM classifier (`claude -p --model haiku`) on every UserPromptSubmit to decide
-  "does this need math?" Failed: measured ~6.0-6.2s **cold-start** latency (CLI boot, not inference) —
-  unacceptable in a synchronous per-turn hook. `2026-06-27` ·
-  `records/decision/2026-06-27-numbers-integrity-enforcement.md` → declare-intent model.
-- **[A3]** Tried: a Stop/block gate halting on ungrounded arithmetic. Failed: a hook cannot distinguish a
-  number the model **computed** from one it **read** — provenance is invisible in text, so it would
-  false-fire constantly. `2026-06-27` · `records/decision/2026-06-27-numbers-integrity-enforcement.md` → no
-  blocking gate.
-- **[A6]** Tried: relying on `~/.claude/plans/` with no backup lane. Failed: a plan built on the second machine was
-  unreachable from the primary machine while travelling — the dir had been a Drive symlink until 2026-06-16, then reverted to
-  native-local with no replacement. `2026-07-02` ·
-  `records/decision/2026-07-02-plans-backup-hole-postmortem.md` → `system/hooks/mirror_plans.sh` +
-  its plan-recovery counterpart on the pull side.
-- **[A8]** Tried: merging plan file + scratchpad + brief into ONE file. Failed: "sync hell" — machine-local vs
-  Drive copies must agree, silent drift; pre-mortem returned four D grades. `2026-07-13` ·
-  `records/decision/2026-07-13-scratchpad-in-brief.md` → scratchpad as a section in the brief.
-- **[A9]** Tried: a cross-session discoverability layer for the scratchpad. Failed: overbuild — "a scratchpad
-  only exists within a project, so a cold session with no project has no scratchpad to find." `2026-07-13` ·
-  `records/decision/2026-07-13-scratchpad-in-brief.md` → nothing.
-- **[A10]** Tried: adopting `ccstatusline` for the terminal HUD. Failed: ~53k-line React/ink app with a large
-  unvettable dependency tree. `2026-07-13` · `records/decision/2026-07-13-statusbar-hud-build.md` → a
-  hand-built ~90-line bar.
-- **[A11]** Tried: populating the live status bar with FABRICATED demo data to show a finished preview.
-  Failed: broke trust — the reader caught the fabrication. `2026-07-13` ·
-  `records/decision/2026-07-13-statusbar-hud-build.md` → mock previews via piped JSON, never faking live
-  state.
-- **[A14]** Tried: deferring aesthetics/component-design/accessibility to external plugin skills. Failed:
-  dead pointers to tools the user doesn't use; live "which tool owns this?" confusion. `2026-06-04` ·
-  `records/decision/2026-06-04-design-lifehack-skill.md` → one comprehensive skill.
-- **[A15]** Tried: building design-lifehack as a slash COMMAND rather than a SKILL. Failed: reversed once
-  auto-invocation became a hard requirement. `2026-06-04` ·
-  `records/decision/2026-06-04-design-lifehack-skill.md` → built as a skill.
-- **[A16]** Tried: lifting the content of 73 downloaded `DESIGN.md` brand specs into the constraint kit.
-  Failed: "it's all the easy part... the last mile is absent in all 73." `2026-06-04` ·
-  `records/decision/2026-06-04-design-lifehack-skill.md` → steal the container, author the craft rules
-  ourselves.
-- **[A17]** Tried: two separate constraint-kit files (dashboard vs marketing). Failed: unnecessary
-  duplication. `2026-06-04` · `records/decision/2026-06-04-design-lifehack-skill.md` → one file, profile
-  toggle.
-- **[A18]** Tried: a "clear the gate" reset command + growth/archiving for ClaudeGate. Failed: moot — the
-  overwrite design means the file never grows. `2026-07-17` ·
-  `records/decisions/2026-07-17-claudegate-two-way-overwrite.md` → every write overwrites.
-- **[A19]** Tried: two separate files (inbox + outbox) for the ClaudeGate slot. Failed: rejected — one file so
-  the exchange lives in one place. `2026-07-17` ·
-  `records/decisions/2026-07-17-claudegate-two-way-overwrite.md` → one file.
-- **[A20]** Tried: an APPEND-style running transcript for ClaudeGate. Failed: rejected — "it overwrites, it
-  doesn't accumulate" was the design intent. `2026-07-17` ·
-  `records/decisions/2026-07-17-claudegate-two-way-overwrite.md` → overwrite-only slot.
-- **[A23]** Tried: running the dev-browser relay in STANDALONE mode for the overmyshoulder skill — ⛔ that skill does not ship (ruled 2026-08-14); this entry is kept as HISTORY, not as a live pointer. Failed: standalone
-  has no extension endpoint — the skill silently presented a headless browser's own tabs as the user's
-  real Chrome. `2026-06-07` · `records/log/2026-06-07-overmyshoulder-dev-browser-root-cause.md` → enforce
-  extension mode always.
-- **[A24]** Tried: relying on the extension's default tab model to read the user's current tab. Failed: it
-  never attaches to pre-existing tabs — Playwright saw zero tabs even in correct mode. "A design gap, not a
-  config error." `2026-06-07` · `records/log/2026-06-07-overmyshoulder-dev-browser-root-cause.md` →
-  `chrome.debugger.attach` on demand.
-- **[A25]** Tried: trusting the relay's `extensionConnected` flag as a liveness signal. Failed: it was a
-  **null-check, not a liveness check** — reported true during a cycling ghost state. `2026-06-03` ·
-  `records/log/2026-06-03-relay-ghost-root-cause-fix.md` → `extensionIsHealthy()` with a keepalive timestamp.
-- **[A26]** Tried: "latest socket wins" for a new extension WebSocket connection. Failed: an overnight ghost
-  socket caused an infinite "Extension connection replaced" loop. `2026-06-03` ·
-  `records/log/2026-06-03-relay-ghost-root-cause-fix.md` → healthy-current-wins + a stale-socket reaper.
-- **[A27]** Tried: direct-CDP (`--remote-debugging-port`) as a drop-in for the extension bridge. Failed:
-  Chrome won't open the debug port on a running instance and profile-locks the user-data-dir, forcing a
-  cloned profile that reintroduces the CAPTCHA penalty. `2026-06-03` ·
-  `records/log/2026-06-03-relay-ghost-root-cause-fix.md` → kept the custom bridge.
-- **[A28]** Tried: a fresh/dedicated Chrome profile for automated search. Failed: reintroduces bot-detection /
-  CAPTCHA penalty. `2026-06-03` · `records/log/2026-06-03-relay-ghost-root-cause-fix.md` → ride the user's
-  real warm profile via the extension bridge.
-- **[A38]** Tried: launchd LaunchAgents for scheduled bootstrap jobs on both machines. Failed: blocked by
-  macOS Full Disk Access — "Operation not permitted" on the Drive path. `2026-05-26` ·
-  `records/logs/2026-05-26-cross-machine-sync-infrastructure.md` → cron.
-  **CLOSED 2026-10-27 (Sprint 0):** from a LaunchAgent, screen unlocked, locked, and lid-closed-then-opened,
-  Drive writes, `claude -p` with the token file and gws with the file keyring all worked; a run missed in sleep
-  fired once on wake. launchd is usable; cron is no longer the only answer.
-- **[A41]** Tried: `guard_harness_writeback.sh` / `guard_harness_write` deriving "this repo" from `$0`. Failed: a window running the plugin FROM the V2 checkout blocks every edit there, so building from a V2-launched window is impossible. `2026-10-27` → build from a window running the installed plugin. OPEN.
-- **[A42]** Tried: trusting `write_v2` (`email_summary_sync.py --write-v2`) exit 0. Failed: it exits 0 on a HARD-STOP and when every label lists 0 threads. `2026-10-27` → the wrapper's output check catches it.
-- **[A43]** Tried: `--limit` as a cap on a sweep run. Failed: it did not stop the cold-sweep, so a capped run would have cold-marked the whole store. `2026-10-27` → fixed (e9150b9).
-- **[A44]** Tried: a watchdog `sleep` in the draft wrapper. Failed: it was orphaned on every run. `2026-10-27` → fixed in 1.2.
-
-> v2 receipt (orchestrator-v2): the same orphan-lock family showed in the rig — a hard kill (SIGKILL, k05) left the mkdir lock. OBSERVED.
-
-- **[A45]** Tried: deferring quiet-hours texts and flushing them only from `pulse.sh`. Failed: with Pulse off, overnight down-texts were never delivered. `2026-10-27` → fixed 2.5a: every wrapper run flushes.
-- **[A46]** Tried: a daily push cap of 3 counted per source `job-run`. Failed: one cap shared by all jobs, and recoveries counted against it. `2026-10-27` → fixed 2.5b: per job, recoveries exempt.
-- **[A47]** Tried: `guard_git_push_signpost.sh` reading the SESSION cwd. Failed: it ignores the `cd`/`-C` target, so it labelled a public push "ClaudeOps (PRIVATE)". `2026-10-27` → read the push target's own repo. OPEN.
-- **[A48]** Tried: cancelling a hand run mid-flight. Failed: it orphaned both the wrapper lock and the runner's inner lock; stale locks self-clear only after watchdog + 300 s. `2026-10-27` → wait out the clear, or remove both locks. OPEN, low.
-
-> v2 receipt (orchestrator-v2): confirmed on the rig runner (k05, SIGKILL leaves the lock; resume stands down rc 75 for up to 1500s; removed by hand). OBSERVED.
-
-> **v2 (audit, 2026-10-28):** Stage 3 fix (OBSERVED): the lock now records its owner pid. A dead owner's lock is stolen at once; a live owner still gets rc 75. The 1500s wait described above was the pre-fix behaviour.
-
-- **NEW RULE — lock behaviour on a kill, and the stale-steal trade-off.** A hard kill (SIGKILL) leaves the mkdir lock until stale-steal (1500s); a normal close (SIGHUP) releases it; the live cron runner has the same pattern. The 1500s stale-steal window is a **deliberate trade-off** (a shorter window risks stealing a live run's lock; a longer one delays resume) — name it, do not hide it. *(OBSERVED — brief §4 Stage 2 finding 2.)*
-
-> **v2 (audit, 2026-10-28):** Stage 3 fix (OBSERVED): the lock now records its owner pid. A dead owner's lock is stolen at once; a live owner still gets rc 75. The 1500s wait described above was the pre-fix behaviour.
-
-- **[B2]** Tried: a status-bar write-GUARD hook on `statusline.sh` blocking python/bash writes. Failed:
-  false-positived on legitimate work. `NO-DATE` · `state/projects/project-system/brief.md:170` → edit
-  `statusline.sh` with the Edit tool only + an inline warning comment, no hook.
-- **[B3]** Tried: a journal `kind:` tag for event-type slicing. Failed: grep on desk|slug + body text already
-  gave per-subject retrieval with zero maintenance. `2026-07-14` ·
-  `state/projects/project-system/brief.md:133` → grep retrieval.
-- **[B5]** Tried: a junk pre-filter before human review during corpus ingestion. Failed: would discard content
-  before a human ever saw it — violates "never eliminate unseen." `NO-DATE` ·
-  `state/projects/cowork-bulk-ingestion/brief.md:61-65` → no pre-filter.
-- **[B6]** Tried: prose-only save gates instead of mechanically enforced ones. Failed: reason not recorded in
-  the source beyond "don't re-try." `NO-DATE` · `state/projects/cowork-bulk-ingestion/brief.md:140` → not
-  named.
-- **[B10]** Tried: one-tap efficiency / a gamified item count as the ingest skill's goal. Failed: "robs the
-  user of the reward (reflection = being understood)." `NO-DATE` · `state/projects/ingest-skill/brief.md:147-172`
-  → goal reframed around reflection.
-- **[B17]** Tried: splitting `/ingest` into two auto-chained skills (miner + filer). Failed: reversed — "the
-  filer's job shrank to one phase and the handoff itself was where information was being lost." `2026-08-05`
-  · `state/projects/ingest-skill/brief.md:182-183` → reversed into one skill.
-- **[B32]** Tried: a blocking/code-verified gate in v1 of the `/build` doctrine router. Failed: would halt
-  background builds. `2026-06-20` ·
-  `state/projects/infrastructure/lifehack-correct-architecture/brief.md:351-390` → advisory v1 + a hook as a
-  named future seam.
-- **[B34]** Tried: a background watch loop for huddle "breadcrumbs." Failed: writes to a file the human can't
-  see — "kills the live feed." `NO-DATE` · `state/projects/huddle/huddle-skill/brief.md:58-86` → `coord-wait`
-  — foreground streaming with early exit.
-- **[B35]** Tried: writing detailed implementation plans inside the live huddle. Failed: "makes sessions go
-  solo/silent/slow → they time out + watch-loop." `NO-DATE` ·
-  `state/projects/huddle/huddle-skill/brief.md:58-86` → huddle aligns scope only; plans written after, solo.
-- **[B36]** Tried: letting participants self-declare "done" as the huddle exit signal. Failed: sessions kept
-  bumping out prematurely. `NO-DATE` · `state/projects/huddle/huddle-skill/brief.md:58-86` → "done" is a
-  revocable alignment vote; only the coordinator closes the room.
-
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
 
 ### MOVE original · lines 2724-2730 · v2 audit 2026-10-28: testing hygiene
-```
-> **v2 (audit, 2026-10-28):** Testing hygiene (OBSERVED, orchestrator-v2 rig):
-- Never point a live schedule at a throwaway rig (the cron runner's /tmp lock is shared).
-- Experiments live under the notes folder, because the harness-write guard refuses writes inside the installed tree.
-- Keep bulk test output OFF Google Drive: the rig wrote 17,832 files / 41M and Drive sync choked; it was moved to ~/lifehack-scratch/.
-- In plan Verify lines use $HOME, never `~` inside quotes (it does not expand; 6 Stage 4/5 Verify lines would always have failed).
-- Use a fake claude (scripted bad modes) for cheap abuse testing of the runner; real claude only for small controls (38 calls).
-
-```
+(verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
