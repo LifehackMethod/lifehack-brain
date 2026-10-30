@@ -275,6 +275,42 @@ for c in "bash -c \"echo x > $SOPF\"" "sh -c 'echo x > $SOPF'" "eval \"echo x > 
   b_block "$c" "$c"; done
 unset ROUNDB_FC_SHELL_OVERWRITE
 
+echo "-- fc_canon_replace: a whole-file Write over an EXISTING canon file or SOP asks the person (guard_canon_write.sh)"
+CW="$HOOKS/guard_canon_write.sh"; CD="$S/cw"; mkdir -p "$CD/notes/state/demo/canon" "$CD/code/system/sops"
+CEX="$CD/notes/state/demo/canon/current.md"; CNEW="$CD/notes/state/demo/canon/brand-new.md"; CEMPTY="$CD/notes/state/demo/canon/empty.md"
+SEX="$CD/code/system/sops/pond-sop.md"; SNEW="$CD/code/system/sops/new-sop.md"; PLN="$CD/code/system/plain.md"
+printf -- '- line one\n- line two\n' > "$CEX"; : > "$CEMPTY"; printf '# pond sop\n' > "$SEX"; echo plain > "$PLN"
+cwfire() {  # cwfire <tool> <path> <content-or-new_string>
+  CT="$1" CP="$2" CC="$3" python3 -c 'import json,os; t=os.environ["CT"]; k="new_string" if t=="Edit" else "content"; i={"file_path":os.environ["CP"],k:os.environ["CC"]}; i.update({"old_string":"line two"} if t=="Edit" else {}); print(json.dumps({"session_id":"cw1","tool_name":t,"tool_input":i}))' > "$S/cw.json"
+  HOME="$S/home" bash "$CW" < "$S/cw.json" >"$OUTF" 2>"$ERRF"; RC=$?
+}
+c_allow() { cwfire "$2" "$3" "$4"; if [ $RC -eq 0 ] && ! grep -q '"permissionDecision": "ask"' "$OUTF"; then ok; else bad "CANON-ALLOW $1 (rc=$RC $(head -c 160 "$OUTF" "$ERRF"))"; fi; }
+c_ask() { cwfire "$2" "$3" "$4"; if [ $RC -eq 0 ] && grep -q '"permissionDecision": "ask"' "$OUTF" && grep -q 'WHY:' "$OUTF" && grep -q 'WAY THROUGH:' "$OUTF" && grep -q 'RULE:' "$OUTF"; then ok; else bad "CANON-ASK $1 (rc=$RC $(head -c 160 "$OUTF" "$ERRF"))"; fi; }
+for mode in off on; do
+  export ROUNDB_FC_CANON_REPLACE=$mode
+  echo "   $mode: ALLOW first"
+  c_allow "$mode Edit of canon"             Edit  "$CEX"   "- line two, better"
+  c_allow "$mode Write: new canon file"     Write "$CNEW"  "- a new line"
+  c_allow "$mode Write over EMPTY canon"    Write "$CEMPTY" "- first line"
+  c_allow "$mode Write: new SOP file"       Write "$SNEW"  "# new sop"
+  c_allow "$mode Write: ordinary file"      Write "$PLN"   "replaced"
+  c_allow "$mode Edit of an SOP"            Edit  "$SEX"   "# pond sop, edited"
+  if [ "$mode" = off ]; then
+    c_allow "off Write over existing canon"  Write "$CEX" "# replaced"
+    c_allow "off Write over existing SOP"    Write "$SEX" "# replaced"
+  else
+    c_ask "on Write over existing canon"     Write "$CEX" "# replaced"
+    c_ask "on Write over existing canon, big" Write "$CEX" "$(python3 -c 'print("- a line\n"*40)')"
+    c_ask "on Write over existing SOP"       Write "$SEX" "# replaced"
+    c_ask "on NotebookEdit-style whole write" NotebookEdit "$CEX" "# replaced"
+  fi
+done
+# the content rails still deny first
+export ROUNDB_FC_CANON_REPLACE=on
+cwfire Write "$CEX" "$(python3 -c 'print("x"*3300)')"; if [ $RC -eq 2 ]; then ok; else bad "ON oversize canon Write still denies (rc=$RC)"; fi
+cwfire Write "$CEX" "expires: 2027"; if [ $RC -eq 2 ]; then ok; else bad "ON expiry canon Write still denies (rc=$RC)"; fi
+unset ROUNDB_FC_CANON_REPLACE
+
 echo
 echo "fine-china guards: $P passed, $F failed"
 [ "$F" -eq 0 ]

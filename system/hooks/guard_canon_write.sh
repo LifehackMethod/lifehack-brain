@@ -20,6 +20,17 @@ trap 'lhb_journal_fire "$?" "guard_canon_write.sh" "PreToolUse" "Bash|Write|Edit
 # SIGNPOST: what canon is for lives in `system/knowledge-altitude.md` and `docs/data-layout.md`.
 #      Change the rule there first; do not weaken this guard to get one write through.
 # FAIL_POSTURE: closed — unparseable input denies.
+# REPLACE-WHOLE (Round C, switch fc_canon_replace in system/hooks/roundB.conf, OFF = unchanged; Enver's ruling
+#      2026-10-30: "Canon files are among the most important to protect in our system. They will absolutely need
+#      to stop and get approval before replacing them whole cloth."): when ON, a Write (or NotebookEdit) whose
+#      target is an EXISTING, non-empty canon file -- or an existing SOP (a .md under system/sops/) -- ASKS the
+#      person first, through the harness's own permission prompt (permissionDecision "ask"), which only the person
+#      can answer. An Edit (targeted change), an append, and a NEW file stay free (the content rails above still
+#      apply to canon). SOPs ride this same rule: guard_harness_write only walls the harness tree off from
+#      students; the maintainer's V2 sandbox is allowed through it, so a whole-file Write over an SOP had no ask.
+# WHO-COULD-THIS-BREAK: a session or generator that rewrites a whole canon/SOP file from scratch (a /save that
+#      regenerates canon, a build that re-emits an SOP). WAY-THROUGH: make the change with the Edit tool (targeted)
+#      or append; for a true rewrite, show the person what changes and press yes on the prompt.
 # UPDATED: 2026-08-15 (T9.5d — added the ALLOW-path speed bump: an allowed canon write now emits
 #      hookSpecificOutput.additionalContext, a loud non-blocking notice at the moment of write. See
 #      the block comment at the ALLOW_CANON case below for why that field and not plain stdout.)
@@ -175,12 +186,25 @@ path_cmp = _wf.winfold(path)
 # always-loaded file out of a guard whose entire argument is "always-loaded costs are paid forever"
 # would have shipped the guard with its main target missing.
 in_canon_dir = "/canon/" in path_cmp
+# fc_canon_replace: a whole-file Write over something that already exists (canon, or an SOP .md) asks the person.
+_tool = (d.get("tool_name") or "")
+_whole = _tool in ("Write", "NotebookEdit") and os.environ.get("CANON_REPLACE") == "1"
+_is_sop = "/system/sops/" in path_cmp and path_cmp.endswith(".md")
+def _exists_nonempty(pp):
+    try:
+        return os.path.isfile(pp) and os.path.getsize(pp) > 0
+    except OSError:
+        return False
 # basename via the folded copy, not os.path.basename(path): on Windows this python3 may be the
 # MSYS build, whose posixpath.basename does not recognise "\\" at all and would return the whole
 # path unchanged, so is_root_canon would never fire on a backslash-native path either.
 is_root_canon = path_cmp.rsplit("/", 1)[-1] == "canon.md"
 if not (in_canon_dir or is_root_canon):
-    print("ALLOW_NONE"); sys.exit()
+    if _whole and _is_sop and _exists_nonempty(path):
+        print("ASK_REPLACE|SOP|" + path)
+    else:
+        print("ALLOW_NONE")
+    sys.exit()
 
 MAX_CHARS = 3200
 if len(content) > MAX_CHARS:
@@ -192,6 +216,8 @@ stale = ["shelf-life:", "shelf_life:", "expires:", "tier: snapshot",
 hit = next((s for s in stale if s in low), None)
 if hit:
     print("BLOCK_STALE|" + hit); sys.exit()
+if _whole and _exists_nonempty(path):
+    print("ASK_REPLACE|canon|" + path); sys.exit()
 print("ALLOW_CANON|" + path + "|" + str(len(content)))
 PY
 )
@@ -199,12 +225,28 @@ PY
 # GUARD_LIB: same convention as guard_gmail_send.sh's use of lib/gws_guard.py -- resolved once
 # here, by $0's own directory, and handed into the python block above via the environment.
 _CANON_LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib/winpath_fold.py"
-RESULT=$(printf '%s' "$INPUT" | GUARD_LIB="$_CANON_LIB" python3 -c "$PYCHECK")
+_CANON_REPLACE=0
+{ . "$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib/roundb.sh" && roundb_on fc_canon_replace && _CANON_REPLACE=1; } 2>/dev/null
+RESULT=$(printf '%s' "$INPUT" | GUARD_LIB="$_CANON_LIB" CANON_REPLACE="$_CANON_REPLACE" python3 -c "$PYCHECK")
 
 R="WHAT CANON IS: the few things that stay true, small enough that every session can afford to carry them. Two tests, and a line has to pass both. (1) Will this still be true in six months, with no expiry date attached? If it has a date on it, it is a record, not canon. (2) Can a completely fresh session read this line ALONE, with no other context, and act on it correctly? If it needs the conversation around it, it is not finished. Everything else goes in records/, dated — nothing is lost, it is just pulled when it is relevant instead of carried always. SOURCE: system/knowledge-altitude.md + docs/data-layout.md."
 
 case "$RESULT" in
   ALLOW_NONE) exit 0 ;;
+  ASK_REPLACE*)
+    # The harness's own permission prompt: only the person can answer it (a model cannot type past it, unlike
+    # a retry token). The Write proceeds only on their yes; there is no override flag to add.
+    _T="${RESULT#ASK_REPLACE|}"; _KIND="${_T%%|*}"; _APATH="${_T#*|}"
+    _KIND="$_KIND" _APATH="$_APATH" python3 -c "
+import json, os
+k, p = os.environ['_KIND'], os.environ['_APATH']
+r = (f'ASK FIRST (canon guard): this Write would REPLACE THE WHOLE {k} file {p}, which already exists. '
+     f'WHY: canon and SOPs are the most protected files in the system; replacing one whole-cloth throws away every line in it without anyone looking at what goes. '
+     f'WAY THROUGH: answer yes here only if the person wants the entire file rewritten; otherwise use the Edit tool for a targeted change, or append. '
+     f'RULE: system/hooks/guard_canon_write.sh (switch fc_canon_replace in system/hooks/roundB.conf; Enver ruling 2026-10-30).')
+print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permissionDecision': 'ask', 'permissionDecisionReason': r}}))
+"
+    exit 0 ;;
   BLOCK_NOLIB*)
     _LIBPATH="${RESULT#BLOCK_NOLIB|}"
     printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: guard_canon_write could not load lib/winpath_fold.py (looked for it at '${_LIBPATH}'), the path-form normaliser this guard's canon classification depends on -- failing closed rather than guessing whether this write targets canon. REDIRECT: confirm system/hooks/lib/winpath_fold.py exists and is readable, then retry.\"}" >&2
