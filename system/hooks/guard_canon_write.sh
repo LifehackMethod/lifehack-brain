@@ -79,6 +79,17 @@ trap 'lhb_journal_fire "$?" "guard_canon_write.sh" "PreToolUse" "Bash|Write|Edit
 
 INPUT=$(cat)
 
+# fc_archive_before_cut (Round C 4, switch in system/hooks/roundB.conf, OFF = unchanged): an Edit/Write that REMOVES 40+ characters from an
+# SOP or canon file is refused unless the removed text is already in <name>.history.md beside it (dated, with a reason). The deny names
+# the exact pad_archive.py cutlog command to log it first. Logic and threshold: lib/cut_receipt.py.
+# WHO-COULD-THIS-BREAK: a session or the maintainer condensing, deduplicating or rewording an SOP/canon file without logging what left.
+# WAY-THROUGH: run the cutlog command the deny prints (a local append, no GitHub needed), then retry the same edit.
+_CUT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
+if { . "$_CUT_DIR/lib/roundb.sh" && roundb_on fc_archive_before_cut; } 2>/dev/null && [ -f "$_CUT_DIR/lib/cut_receipt.py" ]; then
+  printf '%s' "$INPUT" | python3 "$_CUT_DIR/lib/cut_receipt.py"
+  [ $? -eq 2 ] && exit 2
+fi
+
 # ── THE THIRD DOOR, and this one is handled DIFFERENTLY from the other two guards — read why.
 # The rails below are about CONTENT: how big the write is, and whether it carries an expiry marker.
 # Through Write/Edit the content arrives as a field and can be measured. Through a shell command it

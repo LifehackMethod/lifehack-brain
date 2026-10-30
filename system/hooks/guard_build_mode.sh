@@ -65,7 +65,7 @@ if [ "$go" -eq 0 ]; then
     esac
   fi
   if [ "$go" -eq 0 ]; then   # Round C 4 (fc_shell_overwrite): a command that names an SOP or canon file
-    case "$BODY" in *sops/*|*canon*) { . "${_lhb_dir}/lib/roundb.sh" && roundb_on fc_shell_overwrite && go=1; } 2>/dev/null ;; esac
+    case "$BODY" in *sops/*|*canon*) { . "${_lhb_dir}/lib/roundb.sh" && { roundb_on fc_shell_overwrite || roundb_on fc_archive_before_cut; } && go=1; } 2>/dev/null ;; esac
   fi
   if [ "$go" -eq 0 ]; then   # placement rule 4 (switch placement_outside_homes): new code can be anywhere, so let the engine look
     case "$BODY" in *.sh*|*.py*|*SKILL.md*) { . "${_lhb_dir}/lib/roundb.sh" && roundb_on placement_outside_homes && go=1; } 2>/dev/null ;; esac

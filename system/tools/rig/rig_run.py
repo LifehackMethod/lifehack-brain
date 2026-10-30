@@ -83,6 +83,9 @@ def build_fixture():
     open(F["CODE"] + "/shared/paths.py", "w", encoding="utf-8").write("X = 1\n")
     for s in ("skill-building", "jobs", "hook", "desk-building"):
         open(F["CODE"] + "/system/sops/%s-sop.md" % s, "w", encoding="utf-8").write("# %s\n" % s)
+    open(F["CODE"] + "/system/sops/pond-sop.md", "w", encoding="utf-8").write(     # a fictional SOP long enough for the archive-before-cut cases
+        "# Pond SOP\n\nThe heron stands on the east bank of the pond every morning, and the rule is that nobody feeds it before the bell.\n\n"
+        "Frogs are counted twice a week, once at dusk and once before dawn, and the two counts are written in the green ledger.\n")
     open(F["CODE"] + "/system/jobs.md", "w", encoding="utf-8").write("| id | cmd |\n")
     open(F["CODE"] + "/hooks/hooks.json", "w", encoding="utf-8").write('{"hooks":{}}\n')
     open(F["CODE"] + "/system/hooks/guard_x.sh", "w", encoding="utf-8").write("#!/bin/bash\nexit 0\n")

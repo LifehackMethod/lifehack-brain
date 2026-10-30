@@ -154,7 +154,7 @@ def bash_ops(cmd, cwd, _depth=0):
         toks = list(lex)
     except ValueError:
         return []
-    shell_ow = _roundb("fc_shell_overwrite")
+    shell_ow = _roundb("fc_shell_overwrite") or _roundb("fc_archive_before_cut")   # in-place edits are overwrites; the second switch needs them seen too
     segs, cur = [], []
     for t in toks:
         if t and set(t) <= set(";&|\n()") :
@@ -533,6 +533,19 @@ def main_inner():
             pk = protected_doc(t, code)
             if pk:
                 denies.append(("gate-hard", None, shell_overwrite_message(t, pk)))
+        if tool == "Bash" and exists and w["verb"] in OVERWRITE_VERBS and not w.get("append") and _roundb("fc_archive_before_cut") \
+                and not os.path.basename(t).endswith(".history.md"):
+            # Round C 4 (fc_archive_before_cut): a shell overwrite of an SOP/canon file removes whatever the new content lacks. A heredoc
+            # redirect/tee carries its new content; cp/mv/sed -i/truncate do not, so they are treated as removing the whole file.
+            try:
+                import cut_receipt
+                cur = _open(t).read()
+                newc = w["content"] if w["verb"] in (">", "tee") and w.get("content") else ""
+                cmsg = cut_receipt.check_cut(t, cur, newc, code)
+                if cmsg:
+                    denies.append(("gate-hard", None, cmsg))
+            except Exception as e:
+                warn("archive-before-cut check failed (%s); allowing" % e)
         base = os.path.basename(t)
         # ---- check 3: placement (new files only, never hard)
         if not exists and w["verb"] != "mkdir":

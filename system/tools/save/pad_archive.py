@@ -567,8 +567,70 @@ def cmd_clear(brief, heading=None):
 
 
 # --------------------------------------------------------------------------- cli
+# --------------------------------------------------------------------------- cutlog (Round C, fc_archive_before_cut)
+HISTORY_SUFFIX = ".history.md"
 
-USAGE = ("usage: pad_archive.py archive|verify|state|clear <brief> "
+
+def history_path(doc):
+    """skill-building-sop.md -> skill-building-sop.history.md, in the same folder."""
+    d, base = os.path.split(os.path.abspath(doc))
+    stem = base[:-3] if base.endswith(".md") else base
+    return os.path.join(d, stem + HISTORY_SUFFIX)
+
+
+def cmd_cutlog(doc, reason, start=None, end=None, text_file=None):
+    """Copy a passage VERBATIM into <doc>.history.md (date + reason), read it back, print RECEIPT.
+    The passage is lines start..end-1 of the doc (1-indexed, like `archive`), or the contents of --text-file.
+    guard_archive_before_cut (hooks/lib/cut_receipt.py) accepts a cut only if each removed passage is in this file."""
+    reason = (reason or "").strip()
+    if not reason:
+        print("ERROR: --reason is required (why is this text leaving the SOP?)", file=sys.stderr)
+        return 2
+    if text_file is not None:
+        body, err = read_text(text_file, "passage")
+    else:
+        if start is None or end is None:
+            print("ERROR: give --start N --end M (lines of the doc) or --text-file F", file=sys.stderr)
+            return 2
+        full, err = read_text(doc, "doc")
+        body = None
+        if err is None:
+            ls = full.split("\n")
+            if not (1 <= start < end <= len(ls) + 1):
+                print(f"ERROR: --start/--end outside the doc ({len(ls)} lines)", file=sys.stderr)
+                return 2
+            body = "\n".join(ls[start - 1:end - 1])
+    if err is not None:
+        print_cannot_read(err)
+        return CANNOT_READ
+    if not body.strip():
+        print("ERROR: the passage is empty", file=sys.stderr)
+        return 2
+    hist = history_path(doc)
+    fence = "~~~~"
+    while fence in body:
+        fence += "~"
+    day = datetime.date.today().isoformat()
+    block = f"\n## {day} - reason: {' '.join(reason.split())}\n\n{fence}\n{body}\n{fence}\n"
+    try:
+        new_file = not os.path.exists(hist)
+        with open(hist, "a", encoding="utf-8") as f:
+            if new_file:
+                f.write(f"# History log for {os.path.basename(doc)}\n\nText cut or moved out of the SOP, copied verbatim first. Append-only.\n")
+            f.write(block)
+        with open(hist, encoding="utf-8") as fh:
+            back = fh.read()
+    except OSError as e:
+        print(f"ERROR: history append/readback failed: {e}", file=sys.stderr)
+        return 2
+    if block not in back:
+        print("ERROR: readback failed - passage not found after append", file=sys.stderr)
+        return 2
+    print(f"RECEIPT {sha(body)} history={hist}")
+    return 0
+
+
+USAGE = ("usage: pad_archive.py archive|verify|state|clear|cutlog <brief> "
          "[--heading \"## 2. CURRENT STATE\" | --start N --end M]")
 
 
@@ -582,12 +644,18 @@ def build_argparser():
         if verb == "archive":
             s.add_argument("--start", type=int, help="1-indexed first line of the section")
             s.add_argument("--end", type=int, help="1-indexed line AFTER the section")
+    c = sub.add_parser("cutlog")
+    c.add_argument("brief")
+    c.add_argument("--reason", required=True)
+    c.add_argument("--start", type=int)
+    c.add_argument("--end", type=int)
+    c.add_argument("--text-file")
     return p
 
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    if not argv or argv[0] not in ("archive", "verify", "state", "clear"):
+    if not argv or argv[0] not in ("archive", "verify", "state", "clear", "cutlog"):
         print(USAGE, file=sys.stderr)
         return 2
     try:
@@ -597,6 +665,8 @@ def main(argv=None):
 
     if args.command == "archive":
         return cmd_archive(args.brief, args.heading, args.start, args.end)
+    if args.command == "cutlog":
+        return cmd_cutlog(args.brief, args.reason, args.start, args.end, args.text_file)
     if args.command == "verify":
         return cmd_verify(args.brief, args.heading)
     if args.command == "state":
