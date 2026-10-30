@@ -80,7 +80,7 @@ def main():
         sys.stderr.write("is_copy: cannot read the register (%s); shared-tool half skipped\n" % e)
         shared = {}
     shared_txt = {sp: t for sp in shared.values() for t in [read(os.path.join(top, sp.lstrip("/")))] if t is not None}
-    newset = set(new)
+    newset = set(new) | {n[len(top) + 1:] for n in new if n.startswith(top + os.sep)}   # --files mode holds absolute paths; rulebooks are repo-relative (a new SOP was flagged as a copy of itself)
     rulebooks = []
     sopdir = os.path.join(top, "system", "sops")
     if os.path.isdir(sopdir):

@@ -88,6 +88,16 @@ class T(unittest.TestCase):
         sh(self.r, "git", "add", "-A")
         self.assertEqual(self.run_check().returncode, 0)
 
+    def test_files_mode_new_sop_not_a_copy_of_itself(self):
+        # practice-round bug: in --files mode a NEW file in system/sops was compared with itself and refused
+        f = os.path.join(CODE, "system", "sops", "zz-unit-test-only-sop.md")
+        try:
+            open(f, "w", encoding="utf-8").write("# a brand new rulebook\nkeep calm\n")
+            p = subprocess.run([sys.executable, CHECK, "--files", f], cwd=CODE, capture_output=True, text=True)
+            self.assertEqual(p.returncode, 0, p.stderr)
+        finally:
+            os.path.exists(f) and os.remove(f)
+
     def test_real_repo_nothing_staged(self):
         p = subprocess.run([sys.executable, CHECK], cwd=CODE, capture_output=True, text=True)
         if sh(CODE, "git", "diff", "--cached", "--quiet").returncode == 0:
