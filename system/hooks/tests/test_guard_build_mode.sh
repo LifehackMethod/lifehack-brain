@@ -251,6 +251,7 @@ for c in "echo x >> $SOP" "echo x | tee -a $SOP" "echo x | tee --append $CANF" "
          "echo x > $CODE/system/sops/brand-new-sop.md" "echo 'cat > $SOP' > /tmp/lh-so-note.txt" "echo x >> $CANF"; do
   fire so1 Bash "$(J command "$c")"; want 0 "ON: allowed: $c"; silent "so allow"; done
 fire so1 Edit "$(J file_path "$SOP" old_string a new_string b)"; want 0 "ON: Edit tool on an SOP: untouched by this guard"; silent "so edit"
+export ROUNDB_FC_CANON_ASK_TEXT=off   # these cases assert the OLD text; the new text has its own cases below
 # BLOCK
 for c in "echo x > $SOP" "echo x >| $SOP" "echo x | tee $SOP" "cp $CODE/system/notes-plain.md $SOP" "mv $CODE/system/notes-plain.md $SOP" \
          "sed -i 's/a/b/' $SOP" "sed -i '' 's/a/b/' $SOP" "sed -i.bak -e 's/a/b/' $SOP" "sed -ni 'p' $SOP" "truncate -s 0 $SOP" \
@@ -258,5 +259,23 @@ for c in "echo x > $SOP" "echo x >| $SOP" "echo x | tee $SOP" "cp $CODE/system/n
   fire so2 Bash "$(J command "$c")"; want 2 "ON: blocked, every time: ${c%%$'\n'*}" "WAY THROUGH: make the change with the Edit tool"; done
 fire so2 Bash "$(J command "echo x > $SOP")"; want 2 "ON: identical retry blocked again" "(an SOP) in place"
 fire so2 Bash "$(J command "echo x > $CANF")"; want 2 "ON: canon named in the text" "a canon file"
-unset ROUNDB_FC_SHELL_OVERWRITE
+unset ROUNDB_FC_SHELL_OVERWRITE ROUNDB_FC_CANON_ASK_TEXT
+# ---- Round C post-exam F04: fc_canon_ask_text (canon block text). Same block, same cases; only the words differ.
+export ROUNDB_FC_SHELL_OVERWRITE=on ROUNDB_FC_CANON_ASK_TEXT=off
+fire so3 Bash "$(J command "echo x > $CANF")"; want 2 "OFF: canon block text unchanged" "make the change with the Edit tool"
+export ROUNDB_FC_CANON_ASK_TEXT=on
+fire so3 Bash "$(J command "echo x > $CANF")"; want 2 "ON: canon block says show the diff and ask" "Show the person the diff"
+fire so3 Bash "$(J command "cp $CODE/system/notes-plain.md $CANF")"; want 2 "ON: canon cp block says do not switch tools" "do NOT switch to another tool"
+fire so3 Bash "$(J command "echo x > $SOP")"; want 2 "ON: an SOP block keeps the old text" "make the change with the Edit tool"
+fire so3 Bash "$(J command "echo x >> $CANF")"; want 0 "ON: appending to canon still allowed"
+unset ROUNDB_FC_CANON_ASK_TEXT ROUNDB_FC_SHELL_OVERWRITE
+# ---- Round C post-exam B16: code_shebang (placement stops treat an extensionless #! file as code)
+export ROUNDB_PLACEMENT_OUTSIDE_HOMES=on ROUNDB_CODE_SHEBANG=off
+fire sb1 Write "$(J file_path "$HOME/odd-widget/bin/standup" content $'#!/bin/bash\necho hi')"; want 0 "shebang OFF: extensionless script outside homes: silent"; silent "shebang off"
+export ROUNDB_CODE_SHEBANG=on
+fire sb2 Write "$(J file_path "$HOME/odd-widget/bin/readme" content 'plain words, no shebang')"; want 0 "shebang ON: extensionless file without #!: silent"; silent "no shebang"
+fire sb2 Write "$(J file_path "$PCODE/bin/standup" content $'#!/bin/bash\necho hi')"; want 0 "shebang ON: extensionless script in the personal folder: allowed"; silent "shebang home"
+fire sb3 Write "$(J file_path "$HOME/odd-widget/bin/standup" content $'#!/bin/bash\necho hi')"; want 2 "shebang ON: extensionless #! script outside homes: placement stop" "personal code folder"
+fire sb4 Bash "$(J command "cat > $HOME/odd-widget/bin/standup2 <<'EOT'"$'\n#!/bin/bash\necho hi\nEOT')"; want 2 "shebang ON: Bash heredoc to an extensionless #! script: placement stop" "personal code folder"
+unset ROUNDB_PLACEMENT_OUTSIDE_HOMES ROUNDB_CODE_SHEBANG
 echo "passed=$pass failed=$fail"; [ "$fail" -eq 0 ]

@@ -56,7 +56,24 @@ def _project_skills_on():
         sys.path.pop(0)
 
 
-def is_tool(rel):
+def _shebang_file_on(path, base):
+    """Switch code_shebang (system/hooks/roundB.conf): True for an extensionless file whose first line is #!."""
+    if "." in base:
+        return False
+    try:
+        sys.path.insert(0, os.path.join(HERE, "..", "..", "system", "hooks", "lib"))
+        from roundb import roundb_on
+        if not roundb_on("code_shebang"):
+            return False
+        with open(path, "rb") as fh:
+            return fh.read(2) == b"#!"
+    except Exception:
+        return False
+    finally:
+        sys.path.pop(0)
+
+
+def is_tool(rel, full=None):
     parts = rel.strip("/").split("/")
     base = parts[-1]
     proj_claude = _project_skills_on() and any(parts[i] == ".claude" and i + 1 < len(parts) and parts[i + 1] in ("skills", "agents") for i in range(len(parts))) and not rel.startswith(os.path.expanduser("~/.claude") + os.sep)   # placement_project_skills
@@ -64,6 +81,8 @@ def is_tool(rel):
         return False
     if base == "SKILL.md":
         return True
+    if not base.endswith((".py", ".sh")) and _shebang_file_on(full or rel, base):   # code_shebang: an extensionless file that opens with #!
+        return not base.startswith(".") and not base.startswith("test_")
     if not base.endswith((".py", ".sh")) or base.startswith("test_") or re.search(r"_tests?\.(py|sh)$", base):
         return False
     return not base.startswith(".")
@@ -167,7 +186,7 @@ def check(paths):
     have, out = listed(root), []
     for p in paths:
         k = rel_key(root, p)
-        if k and os.path.isfile(p) and is_tool(k) and k not in have and k != "/" + LIST_NAME:
+        if k and os.path.isfile(p) and is_tool(k, p) and k not in have and k != "/" + LIST_NAME:
             out.append((p, k))
     return out
 

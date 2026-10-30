@@ -270,6 +270,11 @@ def load_placement(code):
                 rules[f[0]] = (f[1], [x.strip() for x in f[2].split(",")], f[3])
     return rules
 
+def shebang_code(base, content):
+    """Switch code_shebang: an extensionless file whose first line is a shebang (#!) is CODE (Round C post-exam B16)."""
+    return bool(content) and "." not in base and content.lstrip("\ufeff").startswith("#!") and _roundb("code_shebang")
+
+
 def outside_homes_target(t, code, notes):
     """Placement rule 4. -> the resolved personal code folder when file t sits outside EVERY home, else None.
     Homes: the harness repo, the notes folder, the personal code folder. Never fires (None) when: the switch
@@ -338,6 +343,12 @@ def protected_doc(t, code):
 
 
 def shell_overwrite_message(t, kind):
+    if kind == "canon" and _roundb("fc_canon_ask_text"):   # Round C post-exam F04: do not point at another tool that does the same replacement
+        return ("BLOCKED: this shell command overwrites a canon file (%s) in place. WHY: canon is the person's own settled rules; replacing it whole, "
+                "by ANY tool (cp, redirect, sed -i, or Edit/Write used to make it identical to a draft), skips their review. "
+                "WAY THROUGH: do NOT switch to another tool to land the same replacement. Show the person the diff between the current file and the draft, "
+                "ASK them whether to apply it, and wait for their answer; apply only the parts they approve. Appending (>> or tee -a) is fine. "
+                "RULE: system/hooks/guard_build_mode.sh header (fc_shell_overwrite, fc_canon_ask_text)." % os.path.basename(t))
     return ("BLOCKED: this shell command overwrites %s (%s) in place. WHY: a redirect, tee, cp/mv, sed -i or truncate rewrites the whole "
             "file with no review, and the Edit tool's guards (and for canon its size and expiry checks) cannot see it. Appending (>> or tee -a) is fine. "
             "WAY THROUGH: make the change with the Edit tool, which the existing guard governs, or ask the person to make it. "
@@ -582,7 +593,8 @@ def main_inner():
                     warn("placement list unusable (%s); skipped" % e)
                     placement = {}
             for rname, (zone, pats, pmsg) in placement.items():
-                if not any(fnmatch.fnmatch(base, x) for x in pats):
+                if not any(fnmatch.fnmatch(base, x) for x in pats) \
+                        and not (("*.sh" in pats) and shebang_code(base, w["content"])):
                     continue
                 if zone == "notes":
                     hit = bool(notes) and under(t, notes) and not under(t, code)

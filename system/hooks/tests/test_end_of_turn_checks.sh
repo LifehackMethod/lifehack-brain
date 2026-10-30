@@ -122,6 +122,17 @@ rm -f "$HOME/.config/lifehack/placement.conf"; rm -f "$HOME/.config/lifehack/per
 mkfile "$HOME/pondproj/two.py" $'print(2)\n'; rec u8 p1 Write "$(Jw "$HOME/pondproj/two.py")" create
 ROUNDB_OWN_LIST_UNHOMED=on stop u8 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "no personal code folder: silent by design" || bad "flagged with no folder: $OUT"
 echo "$PC" > "$HOME/.config/lifehack/personal-code"
+echo "== code_shebang (Round C post-exam B16): extensionless file with #! counts as code =="
+mkfile "$HOME/pondproj/bin/standup" $'#!/bin/bash\necho standup\n'; rec sb1 p1 Write "$(Jw "$HOME/pondproj/bin/standup")" create
+mkfile "$HOME/pondproj/bin/plainfile" $'just text, no shebang\n'; rec sb1 p1 Write "$(Jw "$HOME/pondproj/bin/plainfile")" create
+ROUNDB_CODE_SHEBANG=off ROUNDB_OWN_LIST_UNHOMED=on stop sb1 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "shebang OFF: extensionless script outside homes not flagged" || bad "flagged while OFF: $OUT"
+rec sb2 p1 Write "$(Jw "$HOME/pondproj/bin/plainfile")" create; ROUNDB_CODE_SHEBANG=on ROUNDB_OWN_LIST_UNHOMED=on stop sb2 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "shebang ON: extensionless file WITHOUT #! stays silent" || bad "no-shebang flagged: $OUT"
+rec sb3 p1 Write "$(Jw "$HOME/pondproj/bin/standup")" create; ROUNDB_CODE_SHEBANG=on ROUNDB_OWN_LIST_UNHOMED=on stop sb3 p1; R="$(reason)"
+printf '%s' "$OUT" | grep -q '"decision": *"block"' && printf '%s' "$R" | grep -qF "standup" && ok "shebang ON: stray extensionless script blocked (unhomed)" || bad "shebang stray not blocked: $OUT $ERR"
+mkfile "$PC/bin/launcher" $'#!/bin/bash\necho go\n'; rec sb4 p1 Write "$(Jw "$PC/bin/launcher")" create
+ROUNDB_CODE_SHEBANG=off stop sb4 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "shebang OFF: unlisted extensionless script in personal folder: silent" || bad "OFF own-list: $OUT"
+rec sb5 p1 Write "$(Jw "$PC/bin/launcher")" create; ROUNDB_CODE_SHEBANG=on stop sb5 p1
+printf '%s' "$OUT" | grep -q '"decision": *"block"' && ok "shebang ON: unlisted extensionless script in personal folder: own-list stop" || bad "ON own-list miss: $OUT $ERR"
 
 echo "== eot_escape_scoped =="
 mkfile "$HOME/pondproj/three.py" $'print(3)\n'; rec u9 p1 Write "$(Jw "$HOME/pondproj/three.py")" create

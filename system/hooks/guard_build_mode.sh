@@ -70,6 +70,9 @@ if [ "$go" -eq 0 ]; then
   if [ "$go" -eq 0 ]; then   # placement rule 4 (switch placement_outside_homes): new code can be anywhere, so let the engine look
     case "$BODY" in *.sh*|*.py*|*SKILL.md*) { . "${_lhb_dir}/lib/roundb.sh" && roundb_on placement_outside_homes && go=1; } 2>/dev/null ;; esac
   fi
+  if [ "$go" -eq 0 ]; then   # code_shebang: an extensionless script names none of the above, but its content opens with #!
+    case "$BODY" in *'#!'*) { . "${_lhb_dir}/lib/roundb.sh" && roundb_on code_shebang && go=1; } 2>/dev/null ;; esac
+  fi
 fi
 [ "$go" -eq 1 ] || exit 0
 PY="${_lhb_dir}/lib/build_mode.py"
