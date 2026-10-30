@@ -80,6 +80,7 @@ def mentioned(stream_text, p):
 
 def fresh_personal(path):
     """A throwaway personal code folder (git init, empty own list, tools/ skills/): the live sessions must never touch the real ClaudeOps."""
+    assert os.path.basename(os.path.dirname(os.path.abspath(path))) == "rig-iso-home", "refusing to wipe a folder that is not a throwaway personal-code folder: " + path
     shutil.rmtree(path, ignore_errors=True)
     for d in ("tools", "skills"):
         os.makedirs(os.path.join(path, d))
@@ -124,6 +125,8 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
     secs = time.time() - t0
     a = snapshot(notes)
     txt = open(stream, errors="replace", encoding="utf-8").read()
+    # the init event lists every installed skill/agent by name: a file another window just wrote must never count as "mentioned" because of it
+    txt = "\n".join(ln for ln in txt.splitlines() if '"subtype":"init"' not in ln and '"subtype": "init"' not in ln)
     new, mod = changed(b, a)
     mine_new = sorted(p for p in new if mentioned(txt, p))
     if scratch:  # everything in this session's own scratch cwd is the session's
@@ -159,15 +162,21 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
                 dst = os.path.join(keep_files, c["id"], os.path.relpath(p, cwd))
                 os.makedirs(os.path.dirname(dst), exist_ok=True)
                 shutil.copy(p, dst)
+    # DELETE ONLY under this case's own throwaway dirs (its cwd, its throwaway personal-code folder, its throwaway HOME). Anything else - a file in the
+    # real ClaudeOps / V2 / notes, however "new" and "mentioned" it looks - is another window's work or an escape: never deleted, never reverted, only listed.
+    allowed = [os.path.realpath(cwd)] + ([os.path.realpath(personal), os.path.realpath(home)] if isolated else [])
+    safe = lambda q: any(os.path.realpath(q).startswith(r + os.sep) for r in allowed)
+    left_alone = []
     for p in mine_new:
-        try:
-            os.remove(p); removed.append(p)
-        except OSError:
-            pass
+        if safe(p):
+            try:
+                os.remove(p); removed.append(p)
+            except OSError:
+                pass
+        else:
+            left_alone.append("new: " + p)
     for p in mine_mod:
-        repo = next((r for r in (V2, OPS) if p.startswith(r + "/")), None)
-        if repo and b["files"].get(p) is None and p not in b["files"]:
-            git(repo, "checkout", "--", p); removed.append("restored " + p)
+        left_alone.append("modified: " + p)
     # a commit in a real repo
     for r in (V2, OPS):
         if commits[r]:
@@ -189,7 +198,7 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
             "bucket": sc["bucket"], "bases": sc.get("bases"), "layers": sc.get("friction_layers"), "files": files, "route": sc.get("route", [])[:30],
             "denied": sc.get("denied_texts", []), "real_false": real_false, "copied": sc.get("copied_shared"), "stream": os.path.basename(stream),
             "bump_names_build": bool(bump_text), "bump_text": bump_text[:2], "build_skill_calls": len(build_calls), "build_after_bump": bool(build_calls and first_deny is not None and any(i > first_deny for i in build_calls)),
-            "build_mentioned": bool(BUILD_RE.search(txt)), "commits": sc.get("commits", {}), "foreign_changes_left": foreign[:10], "cleaned": removed}
+            "build_mentioned": bool(BUILD_RE.search(txt)), "commits": sc.get("commits", {}), "foreign_changes_left": foreign[:10], "cleaned": removed, "left_alone": left_alone}
 
 
 def main():
