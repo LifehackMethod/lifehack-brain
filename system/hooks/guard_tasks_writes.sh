@@ -16,8 +16,10 @@ trap 'lhb_journal_fire "$?" "guard_tasks_writes.sh" "PreToolUse" "Bash" 2>/dev/n
 #      <notes>/config/cal.md — `python3 shared/cal_config.py` prints what is on file.
 # SIGNPOST: which list is protected is YOUR setting, not this repo's — <notes>/config/cal.md,
 #      documented in INSTALL.md under the Google sit-down. Change it there, never here.
-# FAIL_POSTURE: closed — an unresolvable target, an unreadable verb, or an unparseable command is
-#      refused. An unknown is never read as permission.
+# FAIL_POSTURE: closed once a command naming gws is in hand — an unresolvable target, an unreadable verb, or an
+#      unparseable command is refused (lib/tasks_guard.py), and a missing parser blocks. DELIBERATELY OPEN
+#      before that point: an unreadable hook payload, or a command naming no such binary, exits 0 — this hook
+#      fronts EVERY Bash command, so denying there would wall the session off from the shell.
 # UPDATED: 2026-08-14 (the decision moved OUT of this file into a real parser — see below)
 # ─────────────────────────────────────────────────────────────────────────────
 # PreToolUse hook (matcher: Bash). This file is now a THIN WRAPPER. It reads the payload, loads the

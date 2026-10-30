@@ -5,7 +5,7 @@ trap 'lhb_journal_fire "$?" "guard_disable_model_invocation.sh" "PreToolUse" "Wr
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # WHY: the operator retired `disable-model-invocation` FLEET-WIDE on 2026-08-06 ("I want all of my
 #      skills to be able to invoke each other. It's a guard that I don't feel that I need." —
-#      authority: user, system/sops/skill-building-sop.md:605-622). THE SAME DAY, a build
+#      authority: user, system/sops/skill-building-sop.md §III.1, bullet "disable-model-invocation IS RETIRED FLEET-WIDE"). THE SAME DAY, a build
 #      session re-installed the flag on skills/skill-builder/SKILL.md anyway — not malice, but
 #      the PLAN it was executing still cited the retired SOP clause as authority. A doctrine
 #      change recorded only in prose does not stop a session working off a stale plan; nothing
@@ -27,7 +27,7 @@ trap 'lhb_journal_fire "$?" "guard_disable_model_invocation.sh" "PreToolUse" "Wr
 #      DESTRUCTIVE ACT instead: a confirm-gate at the destructive step (see skills/ship/SKILL.md
 #      push_gate), a PreToolUse hook (system/hook-contract.md), or a SAFE-HALT the skill's own
 #      prose cannot skip.
-# SIGNPOST: system/sops/skill-building-sop.md:605-622 — the operator's 2026-08-06 ruling, authority:
+# SIGNPOST: system/sops/skill-building-sop.md §III.1 ("Classify it FIRST: skill, or command?", bullet "disable-model-invocation IS RETIRED FLEET-WIDE") — the operator's 2026-08-06 ruling, authority:
 #      user. Changing this back is a doctrine call, not a build session's judgment: it needs a
 #      fresh, explicit ruling from the operator, recorded the same way, before this guard is touched.
 # FAIL_POSTURE: degrade-safe (declared exception to hook-sop.md §3.2's fail-closed default) — this
@@ -114,7 +114,7 @@ reason = (
     "what it DOES. Put the guard on the DESTRUCTIVE ACT instead: a confirm-gate at the "
     "destructive step (see skills/ship/SKILL.md push_gate), a PreToolUse hook "
     "(system/hook-contract.md), or a SAFE-HALT the skill's own prose cannot skip. RULE: "
-    "system/sops/skill-building-sop.md:605-622 -- changing this back needs a fresh explicit "
+    "system/sops/skill-building-sop.md §III.1 (the bullet 'disable-model-invocation IS RETIRED FLEET-WIDE') -- changing this back needs a fresh explicit "
     "ruling from the operator, not a build session's judgment."
 )
 sys.stderr.write(json.dumps({"decision": "block", "reason": reason}) + "\n")

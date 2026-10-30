@@ -19,7 +19,7 @@ trap 'lhb_journal_fire "$?" "guard_organism_map.sh" "PreToolUse" "Write" 2>/dev/
 #      SHIPPED files described the organism tree as write-guarded while nothing guarded it —
 #      `manual.md` (4 occurrences) and 5 `elements/*.md` (archivist · claude-md-pyramid ·
 #      hook-plane · label-checker · pulse-cron), counted with grep rather than by hand.
-#      `map-format-specs.md` §6.4 was the ONE file that described the guarantee and then honestly
+#      `map-format-specs.md` §6 (item 4, the write-guard clause) was the ONE file that described the guarantee and then honestly
 #      admitted it was unenforced here — which is why the gap was findable at all. A protection that is
 #      DOCUMENTED BUT ABSENT is the exact defect class this migration kept finding, and the house
 #      rule ratified the same day (`T9.11b`, `system/build-rules-index.md`) names it.
@@ -40,8 +40,8 @@ trap 'lhb_journal_fire "$?" "guard_organism_map.sh" "PreToolUse" "Write" 2>/dev/
 #      `python3 system/tools/organism/label_checker.py write-labels` to recompute them; never
 #      hand-write a LIVE. If a whole file genuinely must be regenerated, do it through Bash with a
 #      human OK, which is deliberate and visible in a way a tool call is not.
-# SIGNPOST: the RULE lives in `system/organism/map-format-specs.md` §6.4 (the write-guard clause)
-#      and the maintenance contract at the top of `system/organism/manual.md`. Change what is
+# SIGNPOST: the RULE lives in `system/organism/map-format-specs.md` §6 item 4 (the write-guard clause;
+#      items 2-3 there carry the same-commit and git-tracked rules). Change what is
 #      protected THERE, with sign-off from the person who owns this repository, then update this
 #      guard and its registration in `.claude/settings.json`. Hook mechanics:
 #      `system/hook-contract.md`; the decision layer: `system/sops/hook-sop.md`.
@@ -94,7 +94,7 @@ _HOOKDIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd -P)"
 . "$_HOOKDIR/lib/winpath_fold.sh" 2>/dev/null || deny '{"decision":"block","reason":"BLOCKED: guard_organism_map could not load lib/winpath_fold.sh, the path-form normaliser its repo-root comparison depends on -- failing CLOSED. REDIRECT: confirm system/hooks/lib/winpath_fold.sh exists and is readable, then retry."}'
 REPO="${CLAUDE_PROJECT_DIR:-${_HOOKDIR%/system/hooks}}"
 
-INPUT=$(cat 2>/dev/null) || deny '{"decision":"block","reason":"BLOCKED: guard_organism_map could not read its input, so it is failing closed. WHY: this guard stands over system/organism/ — the description this repository keeps of its own attack surface, and the ground truth the honesty-label checker grades against. An unreadable payload and a harmless one must never look the same. REDIRECT: retry the write; author the map with surgical Edits (old_string -> new_string), which are allowed and are the normal authoring path. RULE: system/organism/map-format-specs.md section 6.4 + the maintenance contract atop system/organism/manual.md."}'
+INPUT=$(cat 2>/dev/null) || deny '{"decision":"block","reason":"BLOCKED: guard_organism_map could not read its input, so it is failing closed. WHY: this guard stands over system/organism/ — the description this repository keeps of its own attack surface, and the ground truth the honesty-label checker grades against. An unreadable payload and a harmless one must never look the same. REDIRECT: retry the write; author the map with surgical Edits (old_string -> new_string), which are allowed and are the normal authoring path. RULE: system/organism/map-format-specs.md section 6 item 4 (the write-guard clause; items 2-3 carry the same-commit and git-tracked rules)."}'
 
 export _ORG_REPO="$REPO"
 
@@ -121,7 +121,7 @@ except Exception:
 " 2>/dev/null)
 EOF2
 
-[ "$TOOL" = "__ERR__" ] && deny '{"decision":"block","reason":"BLOCKED: guard_organism_map could not parse the tool call, so it is failing closed. WHY: this guard stands over system/organism/ — the description this repository keeps of its own attack surface, and the ground truth the honesty-label checker grades against. A payload it cannot inspect must not pass. REDIRECT: retry the write; author the map with surgical Edits (old_string -> new_string), which are allowed and are the normal authoring path. RULE: system/organism/map-format-specs.md section 6.4 + the maintenance contract atop system/organism/manual.md."}'
+[ "$TOOL" = "__ERR__" ] && deny '{"decision":"block","reason":"BLOCKED: guard_organism_map could not parse the tool call, so it is failing closed. WHY: this guard stands over system/organism/ — the description this repository keeps of its own attack surface, and the ground truth the honesty-label checker grades against. A payload it cannot inspect must not pass. REDIRECT: retry the write; author the map with surgical Edits (old_string -> new_string), which are allowed and are the normal authoring path. RULE: system/organism/map-format-specs.md section 6 item 4 (the write-guard clause; items 2-3 carry the same-commit and git-tracked rules)."}'
 
 # Not a full-content Write -> nothing for this guard to say. Edits fall out here even if the
 # registration is ever widened past matcher=Write.
@@ -141,7 +141,7 @@ case "$FP" in
   "$REPO_REAL"/system/organism/manual.md \
   |"$REPO_REAL"/system/organism/map-format-specs.md \
   |"$REPO_REAL"/system/organism/elements/*.md)
-    deny "{\"decision\":\"block\",\"reason\":\"BLOCKED: a wholesale Write (full-file overwrite) of the self-schematic map — ${FP#$REPO_REAL/}. WHY: system/organism/ is the description this repository keeps of its OWN attack surface AND the ground truth the honesty-label checker (system/tools/organism/label_checker.py) grades every guard against. Nothing downstream re-reads it, so one full-content overwrite could replace the whole map, or flip every maturity label to LIVE, in a single shot — and the system would go on reporting itself healthy while blind to itself. REDIRECT: author the map with SURGICAL Edits (old_string -> new_string). Edits are ALLOWED and are the normal authoring path — this guard is registered on the Write matcher only, so an Edit never reaches it. Maturity labels are machine-owned: run: python3 system/tools/organism/label_checker.py write-labels -- to recompute them, never hand-write a LIVE. If a whole file genuinely must be regenerated, do it through Bash with a human OK. RULE: system/organism/map-format-specs.md section 6.4 (the write-guard clause) + the maintenance contract atop system/organism/manual.md. To change what is protected, change it THERE with sign-off, then update this guard and its registration in .claude/settings.json.\"}"
+    deny "{\"decision\":\"block\",\"reason\":\"BLOCKED: a wholesale Write (full-file overwrite) of the self-schematic map — ${FP#$REPO_REAL/}. WHY: system/organism/ is the description this repository keeps of its OWN attack surface AND the ground truth the honesty-label checker (system/tools/organism/label_checker.py) grades every guard against. Nothing downstream re-reads it, so one full-content overwrite could replace the whole map, or flip every maturity label to LIVE, in a single shot — and the system would go on reporting itself healthy while blind to itself. REDIRECT: author the map with SURGICAL Edits (old_string -> new_string). Edits are ALLOWED and are the normal authoring path — this guard is registered on the Write matcher only, so an Edit never reaches it. Maturity labels are machine-owned: run: python3 system/tools/organism/label_checker.py write-labels -- to recompute them, never hand-write a LIVE. If a whole file genuinely must be regenerated, do it through Bash with a human OK. RULE: system/organism/map-format-specs.md section 6 item 4 (the write-guard clause; items 2-3 carry the same-commit and git-tracked rules). To change what is protected, change it THERE with sign-off, then update this guard and its registration in .claude/settings.json.\"}"
     ;;
 esac
 

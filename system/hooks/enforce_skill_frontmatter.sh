@@ -91,7 +91,7 @@ def deny(reason):
            " unparseable frontmatter (often an unquoted value containing ': ') silently falls back to the body"
            " heading. REDIRECT: scaffold with `bash <repo>/system/tools/new-skill.sh <name>`;"
            " double-quote any description containing ': '; split a >500-line file into reference files."
-           " RULE: system/sops/skill-building-sop.md §0.5 + docs/skill-conformance.md — edit there + get"
+           " RULE: system/sops/skill-building-sop.md §III.3 (description frontmatter) + §III.6 (the frontmatter guard hook) + docs/skill-conformance.md — edit there + get"
            " sign-off to change, then update this guard.")
     sys.stderr.write(msg + "\n")
     sys.exit(2)
