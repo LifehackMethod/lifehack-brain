@@ -13,6 +13,7 @@ import fnmatch, json, os, re, shlex, sys
 GENERIC_FIXED = {"__init__.py", "utils.py", "util.py", "helpers.py", "config.py", "common.py", "constants.py",
                  "main.py", "base.py", "types.py", "setup.py", "common.sh", "lib.sh", "utils.sh"}
 HOME = os.path.expanduser("~")
+SKILL_DIR_RX = re.compile(r"(^|/)\.claude/skills(/|$)")
 STATE = os.path.join(HOME, ".claude", "run", "build-mode")
 
 
@@ -154,7 +155,7 @@ def bash_ops(cmd, cwd, _depth=0):
         toks = list(lex)
     except ValueError:
         return []
-    shell_ow = _roundb("fc_shell_overwrite") or _roundb("fc_archive_before_cut")   # in-place edits are overwrites; the second switch needs them seen too
+    shell_ow = _roundb("fc_shell_overwrite") or _roundb("fc_archive_before_cut") or _roundb("skill_edit_ask")   # in-place edits are overwrites; the second switch needs them seen too
     segs, cur = [], []
     for t in toks:
         if t and set(t) <= set(";&|\n()") :
@@ -523,6 +524,21 @@ def main_inner():
         return 0
     if not writes:
         return 0
+
+    if _roundb("skill_edit_ask"):
+        sk = [w["target"] for w in writes if SKILL_DIR_RX.search(w["target"].replace("\\", "/"))]
+        if sk:
+            # Enver's ruling 2026-10-30: a human in the loop for every skill edit. A harness ASK (the real Yes/No dialog);
+            # headless runs turn it into a refusal. Not a flat deny: the person can say yes.
+            msg = ("ASK FIRST: this %s a skill (%s). Enver's rule: no AI session changes a skill (any folder named .claude/skills/, "
+                   "user-level or in a project) without his Yes. WHY: a skill is standing instructions that run in every later session, so an "
+                   "unreviewed edit changes behaviour everywhere, silently. WHO-COULD-THIS-BREAK: any session or script that builds or fixes a "
+                   "skill (skill-builder, a /save that patches a skill). WAY-THROUGH: press Yes on this prompt if you want the change; in a "
+                   "headless run, stop and tell the person which skill file you want to change and why, and let them make or approve it. "
+                   "RULE: switch skill_edit_ask in system/hooks/roundB.conf." % ("writes to" if tool == "Bash" else "edits", sk[0]))
+            print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "ask",
+                                                      "permissionDecisionReason": msg}}))
+            return 0
 
     shared_dir = os.path.join(code, "shared")
     placement = None

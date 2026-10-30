@@ -4,6 +4,7 @@
 # PreToolUse payload, under a temp HOME. It asserts the exit code AND reads the printed text.
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 HOOK="$HERE/guard_build_mode.sh"
+export ROUNDB_SKILL_EDIT_ASK=off   # the skill-edit ask has its own suite (test_skill_edit_ask.sh); these cases test the speed bump
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
 export HOME="$T/home"; CODE="$T/code"; NOTES="$T/notes"
 mkdir -p "$HOME/.config/lifehack" "$CODE/shared/notify" "$CODE/system/register" "$CODE/system/sops" "$CODE/system/hooks" "$CODE/hooks" \
