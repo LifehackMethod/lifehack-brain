@@ -229,7 +229,9 @@ def score(a):
     denies = [r for r in rows if r.get("decision") in ("deny", "signpost") and r.get("hook") not in a.ignore_hook]
     layers = sorted({r.get("hook") for r in denies})
     wm = [re.compile(x) for x in a.wrong_move]
-    denied_calls = [c for c in calls if c["is_error"] and DENY_TEXT.search(c["result"] or "")]
+    # a TEST-RIG FENCE deny (rig_fence.py, 2026-10-31) is the rig's own wall, not a product guard: it is never a "denied call" for scoring (listed apart as fence_denies)
+    fence_denies = [c for c in calls if c["is_error"] and "TEST-RIG FENCE" in (c["result"] or "")]
+    denied_calls = [c for c in calls if c["is_error"] and DENY_TEXT.search(c["result"] or "") and "TEST-RIG FENCE" not in (c["result"] or "")]
     false_alarms = [c for c in denied_calls if wm and not any(w.search(json.dumps(c["input"])) for w in wm)]
     # per-case flag (live.registration_forbidden / --registration-forbidden): the prompt itself forbade the registering step, so obeying it is not a defect
     # STUDENT view (Enver's ruling R-B5, 2026-10-30): registered = listed in the person's OWN list in their personal code folder, for a student too.
@@ -246,7 +248,7 @@ def score(a):
         bucket = "RIGHT_FIRST_TIME_UNREAD"      # correct result, no friction, but it skipped the reading: luck, not route
     return {"session_id": sid, "bucket": bucket, "bases": {"read_toolbox": read_toolbox, "read_sop": read_sop, "used_shared": used_shared,
             "registered": registered, "registration_deferred": deferred, "registered_in_shared": registered_in_shared, "right_home": right_home, "home_by": home_by}, "friction_layers": layers, "deny_rows": len(denies), "denied_calls": len(denied_calls),
-            "false_alarms": len(false_alarms), "denied_texts": [(c["name"], (c["input"].get("command") or c["input"].get("file_path") or "")[:100], (c["result"] or "")[:160]) for c in denied_calls], "copied_shared": copied, "files": files, "tool_calls": len(calls), "first_build_call": first_build,
+            "false_alarms": len(false_alarms), "fence_denies": [(c["name"], (c["input"].get("command") or c["input"].get("file_path") or "")[:100]) for c in fence_denies], "denied_texts": [(c["name"], (c["input"].get("command") or c["input"].get("file_path") or "")[:100], (c["result"] or "")[:160]) for c in denied_calls], "copied_shared": copied, "files": files, "tool_calls": len(calls), "first_build_call": first_build,
             "route": [(c["name"], (c["input"].get("command") or c["input"].get("file_path") or c["input"].get("pattern") or "")[:90]) for c in calls][:40]}
 
 

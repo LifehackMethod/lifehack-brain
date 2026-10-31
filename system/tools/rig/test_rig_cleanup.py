@@ -27,7 +27,8 @@ def main():
         os.environ["PATH"] = bindir + os.pathsep + os.environ["PATH"]
         lf.V2, lf.OPS = v2, ops
         case = {"id": "t1", "live": {"prompt": "x", "sop": [], "shared_ref": [], "wrong_re": [], "kind": "build"}}
-        r = lf.run_one(case, notes, work, scratch)
+        base = os.path.join(t, "base-settings.json"); open(base, "w").write("{}")   # run_one now builds the fenced copy of a base settings file
+        r = lf.run_one(case, notes, work, scratch, settings=base)
         assert os.path.exists(foreign), "the foreign file was deleted"
         assert not any(foreign in c for c in r["cleaned"]), r["cleaned"]
         print("test_rig_cleanup: ok")

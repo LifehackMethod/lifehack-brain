@@ -11,7 +11,7 @@ USAGE: rig_live_free.py run --cases cases/meal-roundA-live.jsonl --label L [--on
                  to <label>-files/<id>/ before removal. Without it the cwd is ClaudeOps (Round A behaviour).
   --env K=V:     extra environment for the headless child only (e.g. ROUNDB_BACK_DOOR=on); hooks inherit it.
 """
-import argparse, glob, hashlib, json, os, re, shutil, subprocess, sys, tempfile, time
+import argparse, glob, hashlib, json, os, re, shlex, shutil, subprocess, sys, tempfile, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -160,6 +160,11 @@ def selftest():
         assert not os.path.exists(os.path.join(ev, ".claude", "settings.json")) and setting_sources(ev) == "user,project,local"
         st = os.path.join(t, "st"); os.makedirs(st); open(os.path.join(st, ".rig-student"), "w").close()
         assert not install_enver_brief(st, fake) and not os.path.exists(os.path.join(st, ".claude", "CLAUDE.md")) and setting_sources(st) == "project,local"
+        # the fence: the child's settings carry rig_fence.py as an EXTRA PreToolUse hook; the base file is not changed
+        base = os.path.join(t, "base.json"); json.dump({"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "echo product"}]}]}}, open(base, "w"))
+        fs = json.load(open(fence_settings(base, os.path.join(t, "fenced.json"))))
+        cmds = [h["command"] for g in fs["hooks"]["PreToolUse"] for h in g["hooks"]]
+        assert cmds[0] == "echo product" and "rig_fence.py" in cmds[1] and len(cmds) == 2 and json.load(open(base))["hooks"]["PreToolUse"][0]["hooks"][0]["command"] == "echo product", cmds
         print("rig_live_free selftest: ok")
     finally:
         shutil.rmtree(t, ignore_errors=True)
@@ -228,6 +233,20 @@ def make_priv_fixture(cwd, repo_name):
     w("README.md", "my working folder\nWritten up by Quillfeather, contact quill@quillfeather.example.invalid\n"); r("commit", "-qam", "add contact line")
 
 
+def fence_settings(base_path, out_path):
+    """TEST-RIG FENCE (2026-10-31, after the Round D exam wrote a real ~/.claude/skills file): a copy of the base --settings file with ONE extra PreToolUse hook,
+    rig_fence.py, which denies a write/delete/move aimed at the REAL home or real notes outside the throwaway dirs. Rig-only: the product hooks, the real
+    ~/.claude/settings.json and the base file are not touched. Returns out_path."""
+    with open(base_path, encoding="utf-8") as f:
+        d = json.load(f)
+    hk = d.setdefault("hooks", {}).setdefault("PreToolUse", [])
+    hk.append({"matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash|Read|Glob|Grep",
+               "hooks": [{"type": "command", "command": "python3 -I " + shlex.quote(os.path.join(HERE, "rig_fence.py"))}]})
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(d, f)
+    return out_path
+
+
 def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model="sonnet", settings=None):  # allow-silence: the exam runs live sessions on the Sonnet tier by ruling (plan 3b.4 redesign); this is the tier alias handed to claude --model, not a pinned model id
     L = c["live"]
     stream = os.path.join(work, c["id"] + ".stream.jsonl")
@@ -256,8 +275,12 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
     for k, v in (("{HOME}", home), ("{CWD}", cwd), ("{V2}", V2), ("{PERSONAL}", personal)):
         prompt = prompt.replace(k, v)
     prompt += L.get("suffix", SUFFIX)
+    fence_log = os.path.join(work, c["id"] + ".fence.jsonl")
+    env.update(RIG_FENCE_REAL_HOME=os.path.realpath(os.path.expanduser("~")), RIG_FENCE_REAL_NOTES=os.path.realpath(notes), RIG_FENCE_LOG=fence_log,
+               RIG_FENCE_ALLOW=":".join(p for p in (os.path.realpath(scratch) if scratch else cwd, os.path.realpath(home)) if p))
+    settings = fence_settings(settings or os.path.join(OPS, "system/desktop-launchers/v2/lab-settings.json"), os.path.join(work, c["id"] + ".settings.json"))
     cmd = ["claude", "-p", prompt, "--model", model, "--permission-mode", "bypassPermissions", "--setting-sources", setting_sources(home), "--plugin-dir", V2,
-           "--settings", settings or os.path.join(OPS, "system/desktop-launchers/v2/lab-settings.json"), "--output-format", "stream-json", "--verbose"]
+           "--settings", settings, "--output-format", "stream-json", "--verbose"]
     b = snapshot(notes)
     t0 = time.time()
     err = ""
@@ -344,7 +367,7 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
     bump_text = [c2["result"][:300] for c2 in calls if c2["is_error"] and re.search(r"toolbox|/build", c2["result"] or "")]
     return {"id": c["id"], "kind": L["kind"], "prompt": L["prompt"], "secs": round(secs), "turns": turns, "cost": cost, "err": e2 or err if (e2 or turns is None) else "",
             "bucket": sc["bucket"], "bases": sc.get("bases"), "layers": sc.get("friction_layers"), "files": files, "route": sc.get("route", [])[:30],
-            "denied": sc.get("denied_texts", []), "real_false": real_false, "copied": sc.get("copied_shared"), "stream": os.path.basename(stream),
+            "denied": sc.get("denied_texts", []), "fence_denies": sc.get("fence_denies", []), "real_false": real_false, "copied": sc.get("copied_shared"), "stream": os.path.basename(stream),
             "bump_names_build": bool(bump_text), "bump_text": bump_text[:2], "build_skill_calls": len(build_calls), "build_after_bump": bool(build_calls and first_deny is not None and any(i > first_deny for i in build_calls)),
             "build_mentioned": bool(BUILD_RE.search(txt)), "commits": sc.get("commits", {}), "foreign_changes_left": foreign[:10], "cleaned": removed, "left_alone": left_alone}
 
@@ -430,7 +453,7 @@ def main():
             out.append(r)
             print(r["id"], r["bucket"], r["turns"], r["secs"], r["commits"] or "", flush=True)
             open(os.path.join(res_dir, "%s-%s-live.jsonl" % (stamp, a.label)), "w", encoding="utf-8").write("\n".join(json.dumps(x) for x in out) + "\n")
-            for f in glob.glob(work + "/*.stream.jsonl"):
+            for f in glob.glob(work + "/*.stream.jsonl") + glob.glob(work + "/*.fence.jsonl"):
                 shutil.copy(f, keep)
     finally:
         shutil.rmtree(work, ignore_errors=True)
