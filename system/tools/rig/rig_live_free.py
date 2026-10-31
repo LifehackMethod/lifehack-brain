@@ -360,6 +360,7 @@ def main():
     ap.add_argument("--scratch")
     ap.add_argument("--student", action="store_true", help="run as a student who finished the normal setup (bootstrap.py): own throwaway notes + personal code folder + pointers, no GitHub, none of Enver's files (rig_student.make_student_home)")
     ap.add_argument("--env", action="append", default=[])
+    ap.add_argument("--resume", action="store_true", help="continue the newest results file for --label, skipping cases already finished (survives an interrupted run)")
     a = ap.parse_args()
     if a.cmd == "selftest":
         return selftest()
@@ -412,16 +413,25 @@ def main():
     work = tempfile.mkdtemp(prefix="riglive-")
     out, desks0 = [], sorted(os.listdir(os.path.join(notes, "desks")))
     res_dir = os.path.join(notes, "state/projects/v2/records/rig-results")
+    # resume: a run cut short (laptop sleep) picks up the label's newest results file and skips finished cases
+    stamp = time.strftime("%Y-%m-%d")
+    prior = sorted(glob.glob(os.path.join(res_dir, "*-%s-live.jsonl" % a.label)))
+    if a.resume and prior:
+        stamp = os.path.basename(prior[-1])[:10]
+        out = [json.loads(l) for l in open(prior[-1], encoding="utf-8") if l.strip()]
+        done = {x["id"] for x in out}
+        cases = [c for c in cases if c["id"] not in done]
+        print("resume: %d done, %d left" % (len(done), len(cases)), flush=True)
+    keep = os.path.join(res_dir, "%s-%s-streams" % (stamp, a.label))
+    os.makedirs(keep, exist_ok=True)
     try:
         for c in cases:
-            r = run_one(c, notes, work, a.scratch, dict(e.split("=", 1) for e in a.env), os.path.join(res_dir, "%s-%s-files" % (time.strftime("%Y-%m-%d"), a.label)), a.model, a.settings)
+            r = run_one(c, notes, work, a.scratch, dict(e.split("=", 1) for e in a.env), os.path.join(res_dir, "%s-%s-files" % (stamp, a.label)), a.model, a.settings)
             out.append(r)
             print(r["id"], r["bucket"], r["turns"], r["secs"], r["commits"] or "", flush=True)
-            open(os.path.join(res_dir, "%s-%s-live.jsonl" % (time.strftime("%Y-%m-%d"), a.label)), "w", encoding="utf-8").write("\n".join(json.dumps(x) for x in out) + "\n")
-        keep = os.path.join(res_dir, "%s-%s-streams" % (time.strftime("%Y-%m-%d"), a.label))
-        os.makedirs(keep, exist_ok=True)
-        for f in glob.glob(work + "/*.stream.jsonl"):
-            shutil.copy(f, keep)
+            open(os.path.join(res_dir, "%s-%s-live.jsonl" % (stamp, a.label)), "w", encoding="utf-8").write("\n".join(json.dumps(x) for x in out) + "\n")
+            for f in glob.glob(work + "/*.stream.jsonl"):
+                shutil.copy(f, keep)
     finally:
         shutil.rmtree(work, ignore_errors=True)
     if envd["HOME"].endswith("rig-iso-home"):
