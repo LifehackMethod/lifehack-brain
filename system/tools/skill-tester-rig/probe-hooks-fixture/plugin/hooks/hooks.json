@@ -1,0 +1,1 @@
+{"hooks":{"PreToolUse":[{"matcher":"Read","hooks":[{"type":"command","command":"bash ingest_gate_enforce.sh"}]}]}}

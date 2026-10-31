@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "deny": [
+      "AskUserQuestion",
+      "Bash",
+      "Edit",
+      "Write",
+      "NotebookEdit",
+      "WebFetch",
+      "WebSearch",
+      "Task",
+      "Agent",
+      "Grep",
+      "Glob",
+      "Read(~/lifehack-scratch/skill-tester-rig/seeds/**)",
+      "Read(~/lifehack-scratch/skill-tester-rig/plans/**)",
+      "Read(~/lifehack-v2/system/tools/skill-tester-rig/**)",
+      "Read(/{{SCRATCH}}/seeds/**)",
+      "Read(/{{SCRATCH}}/plans/**)",
+      "Read(/{{RIG}}/**)"
+    ]
+  }
+}
