@@ -1,0 +1,17 @@
+# canary card — 12 boring steps that cannot be faked. Format (October rig): id | kind | what | check
+# Paths are relative to the rig root (skill-tester-rig/). The runner exports RUN_DIR (absolute, under
+# ~/lifehack-scratch/skill-tester-rig/) and CANARY_SEED. Contract: canary/SPEC.md. Reference: canary/expected.py.
+#@ chatty: s3 s6 s10
+#@ human-menu: yes no
+s1 | code | python3 canary/code/s1.py "$RUN_DIR" | bash checks/code.sh "$RUN_DIR" 1
+s2 | ai | canary/prompts/s2.md | bash checks/ai.sh "$RUN_DIR" 2
+s3 | ai | canary/prompts/s3.md | bash checks/ai.sh "$RUN_DIR" 3
+s4 | human | canary/prompts/s4.md | bash checks/human.sh "$RUN_DIR" 4
+s5 | ai | canary/prompts/s5.md | bash checks/ai.sh "$RUN_DIR" 5
+s6 | ai | canary/prompts/s6.md | bash checks/ai.sh "$RUN_DIR" 6
+s7 | code | python3 canary/code/s7.py "$RUN_DIR" | bash checks/code.sh "$RUN_DIR" 7
+s8 | ai | canary/prompts/s8.md | bash checks/ai.sh "$RUN_DIR" 8
+s9 | human | canary/prompts/s9.md | bash checks/human.sh "$RUN_DIR" 9
+s10 | ai | canary/prompts/s10.md | bash checks/ai.sh "$RUN_DIR" 10
+s11 | ai | canary/prompts/s11.md | bash checks/ai.sh "$RUN_DIR" 11
+s12 | ai | canary/prompts/s12.md | bash checks/ai.sh "$RUN_DIR" 12
