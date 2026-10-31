@@ -1548,8 +1548,7 @@ ls .claude/skills/ingest/SKILL.md && echo "the skill is here"
 sh ~/.config/lifehack/install-note.sh step "STEP 5"
 ```
 
-⛔ **Do NOT symlink anything into `~/.claude/`.** Symlinks are Mac-coupled and this has to work on
-Windows too.
+**Symlinks into `~/.claude/` are allowed and recommended, not prescribed.** Best practice: the real skill folder lives in Google Drive, with a symlink to it in `~/.claude/skills/`; each computer makes its link once. Windows may arrange this differently. This is how a business shares its own skills with its people (through Google Drive, not through the plugin). Separate thing, unchanged: the pre-commit check still refuses symlinks tracked inside a git repo.
 
 > ⛔ **If `git clone` refuses because the folder is not empty**, do NOT `git init` it and do NOT merge by
 > hand. Find out what is in there first:

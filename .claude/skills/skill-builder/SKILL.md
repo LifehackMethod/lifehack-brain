@@ -23,6 +23,8 @@ updated_at: 2026-08-06
 
 **Starting this skill is a deliberate act** — it opens hours of work across several sessions.
 
+**Where the built skill goes (Enver, 2026-10-31):** a personal skill is built in `~/.claude/skills/<name>/` by default, without asking; say where you put it. The skill's own scripts live inside that skill folder.
+
 ## Paths (set once)
 
 ```bash

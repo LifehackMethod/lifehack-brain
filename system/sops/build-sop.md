@@ -33,6 +33,8 @@ authority: user
 > how `/build` gets smarter over time. ⛔ The map that registered its home in the system this came
 > from does not ship — it was an index of one person's folders. This file's home is this path.
 
+> **One-off scripts (Enver, 2026-10-31):** when you answer with a one-off script or tool, offer to keep it. A kept script goes in the person's ONE personal code folder (not split by desk; `desks/<desk>/` only for a tool that truly serves one desk).
+
 ## General — applies to every build
 - **Prove the cheap, risky integration with a synthetic input BEFORE the expensive run.** When a build has a
   step you're unsure of that's *cheap* to test (an API call, an upload, a permission, a path) and a *costly*

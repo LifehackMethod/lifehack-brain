@@ -8,7 +8,7 @@ maturity_label: PARTIAL·gap (honor)
 generated_from:
   - CLAUDE.md (## The shape of the thing — the four-homes summary this element expands)
   - system/organism/manual.md (THE THREE COMPROMISES §1 — the git/Drive lifecycle this element expands)
-  - INSTALL.md (the AI Brain setup authority; the no-symlink-into-~/.claude rule)
+  - INSTALL.md (the AI Brain setup authority; the note that symlinks into ~/.claude are allowed, not prescribed)
   - .claude/settings.json (hook registration — the only confirmed hook-registration surface, this repo)
   - system/hook-contract.md (hooks: registration file + the portability statement about absolute paths)
   - system/hooks/guard_write_paths.sh (the live guard over new writes under ~/.claude/skills and /commands)
@@ -194,12 +194,7 @@ looks — and that folder syncs nowhere. Nothing about this is a defect in the A
 is a structural gap between "where discovery looks" and "where anything is backed up," and no folder
 choice closes it.
 
-**And it cannot be closed by a symlink either.** `INSTALL.md` states plainly: *"⛔ Do NOT symlink
-anything into `~/.claude/`. Symlinks are Mac-coupled and this has to work on Windows too."* Symlinking
-`~/.claude/skills/<name>` out to a Drive-backed folder — the obvious workaround — is exactly the move
-that rule forecloses, and for a real reason, not caution for its own sake: a symlink is a filesystem
-feature that behaves differently (or not at all) across operating systems, and this product ships to
-both.
+**A symlink can close it, but it is a choice, not a requirement.** Symlinks into `~/.claude/` are allowed and recommended, not prescribed (Enver, 2026-10-31). Best practice: the real skill folder lives in Google Drive and `~/.claude/skills/<name>` is a symlink to it; each computer makes its link once; Windows may arrange it differently. This is how a business shares its own skills (through Google Drive, not the plugin). Not to be confused with the pre-commit refusal of symlinks tracked inside a git repo, which is unchanged.
 
 **⇒ The actionable instruction, since the product does not do this for you today: back up
 `~/.claude/` yourself** — by whatever mechanism you already use to back up the rest of your machine.
@@ -351,7 +346,7 @@ all, which is a harder edge than the other three kinds (skills/agents/commands a
 **TARGET.**
 1. **Resolve the `guard_write_paths.sh` redirect-message inconsistency** — either the message is
    updated to point at `~/.claude/<kind>/<name>/` as a real folder (matching the 12 already-live
-   skills and the no-symlink rule), or the guard's rationale for blocking is revisited. Not resolved
+   skills; symlinks are allowed but not required), or the guard's rationale for blocking is revisited. Not resolved
    here on purpose — a live guard and a documented rule disagreeing is a finding to sit with, not
    something this element should quietly patch.
 2. **Determine, by testing rather than reading, whether `.claude/settings.local.json` (⛔ gitignored
@@ -389,7 +384,7 @@ COMPLEMENTS  two-machine-residency · that element's parity model is for THIS re
 GUARDED-BY   guard_write_paths.sh  · PreToolUse Write|Edit blocks a NEW file written directly under
                                      ~/.claude/skills/ or ~/.claude/commands/, with a redirect
                                      message that names a different repo's clone path and recommends
-                                     symlinking — a real, live inconsistency with the no-symlink rule
+                                     symlinking — a symlink recommendation that is now consistent with the 2026-10-31 ruling
                                      this element documents rather than resolves (see EDGE CASE 1 /
                                      GATES) [hook]
 ```
