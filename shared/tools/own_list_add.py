@@ -56,6 +56,18 @@ def _project_skills_on():
         sys.path.pop(0)
 
 
+def _native_skills_on():
+    """Switch skills_native_home (system/hooks/roundB.conf): personal skills belong in ~/.claude/skills/<name>/, the only place Claude loads them from."""
+    try:
+        sys.path.insert(0, os.path.join(HERE, "..", "..", "system", "hooks", "lib"))
+        from roundb import roundb_on
+        return roundb_on("skills_native_home")
+    except Exception:
+        return False
+    finally:
+        sys.path.pop(0)
+
+
 def _shebang_file_on(path, base):
     """Switch code_shebang (system/hooks/roundB.conf): True for an extensionless file whose first line is #!."""
     if "." in base:
@@ -124,7 +136,10 @@ def unhomed_check(paths):
             if not pc or t in have:
                 continue
             name = os.path.basename(t)
-            sug = os.path.join(pc, "skills", os.path.basename(os.path.dirname(t)), name) if name == "SKILL.md" else os.path.join(pc, "tools", name)
+            if name == "SKILL.md" and _native_skills_on():   # Round D A.2: Claude loads personal skills only from ~/.claude/skills/<name>/
+                sug = os.path.join(os.path.expanduser("~"), ".claude", "skills", os.path.basename(os.path.dirname(t)), name)
+            else:
+                sug = os.path.join(pc, "skills", os.path.basename(os.path.dirname(t)), name) if name == "SKILL.md" else os.path.join(pc, "tools", name)
             out.append((t, pc, sug, any(build_mode.under(t, k) for k in kept)))
         return out
     except Exception as e:  # degrade-safe: never wedge a turn
@@ -225,6 +240,8 @@ def main(argv):
         for t, pc, sug, kept in unhomed_check(argv[2:]):
             if kept:
                 print("%s stays here by your choice; list it: python3 \"%s\" --keep \"%s\"" % (t, os.path.abspath(__file__), t))
+            elif sug.startswith(os.path.join(os.path.expanduser("~"), ".claude", "skills") + os.sep):   # Round D A.2: Claude's own skills folder needs no list entry
+                print("%s is outside all your homes: a personal skill belongs in %s (Claude loads skills only from ~/.claude/skills/<name>/); move it there with its own scripts and tell the person where it is." % (t, sug))
             else:
                 print("%s is outside all your homes: move it to %s, then run: %s" % (t, sug, cmd_for(sug)))
         return 0

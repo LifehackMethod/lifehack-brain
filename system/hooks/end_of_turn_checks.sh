@@ -2,6 +2,7 @@
 # LHB fire-journal (B4.1): observes only; never alters this hook's decision/exit/stdout/stderr.
 _lhb_src="${BASH_SOURCE[0]}"; case "$_lhb_src" in */*) _lhb_dir="${_lhb_src%/*}" ;; *) _lhb_dir=. ;; esac; . "$_lhb_dir/lib/journal.sh" 2>/dev/null || lhb_journal_fire() { :; }
 trap 'lhb_journal_fire "$?" "end_of_turn_checks.sh" "Stop" "" 2>/dev/null || true' EXIT
+. "$_lhb_dir/lib/watch_gate.sh" 2>/dev/null && watch_gate end_of_turn_checks.sh --shadow-only  # Round D B.5: watch-only mode (no-op unless mode=watch / LIFEHACK_WATCH=1)
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # WHY: v2 plan 3b.3 pieces 1+2 (the back door + "your own list"). Students never commit, so the four commit checks
 #      never run for them; and a tool built in the personal code folder was "unregistered" in 12 of 12 live sessions.
@@ -29,6 +30,12 @@ trap 'lhb_journal_fire "$?" "end_of_turn_checks.sh" "Stop" "" 2>/dev/null || tru
 # ─────────────────────────────────────────────────────────────────────────────
 . "$_lhb_dir/lib/roundb.sh" 2>/dev/null || roundb_on() { return 1; }
 DOOR=0; OWN=0; UNH=0; roundb_on back_door && DOOR=1; roundb_on own_list && OWN=1; roundb_on own_list_unhomed && UNH=1
+# Round D A.6: the person may switch the where-to-save list checks off (placement_user_off); fine-china guards have no such switch
+PO=0; roundb_on placement_user_off && PO=1
+if [ "$PO" = 1 ]; then
+  [ "$OWN" = 1 ] && python3 "$_lhb_dir/lib/placement_off.py" off own-list && OWN=0
+  [ "$UNH" = 1 ] && python3 "$_lhb_dir/lib/placement_off.py" off unhomed && UNH=0
+fi
 [ "$DOOR$OWN$UNH" = "000" ] && exit 0
 IFS= read -r -d '' P || true
 re_sid='"session_id"[[:space:]]*:[[:space:]]*"([A-Za-z0-9_-]+)"'; re_pid='"prompt_id"[[:space:]]*:[[:space:]]*"([A-Za-z0-9_-]+)"'
@@ -65,11 +72,11 @@ if [ "$DOOR" = 1 ]; then
 fi
 if [ "$OWN" = 1 ]; then
   o="$(python3 "$HAR/shared/tools/own_list_add.py" --check "${ALL[@]}" 2>/dev/null)"
-  [ -n "$o" ] && OUT+="$(printf '%s\n' "$o" | cut -c1-600 | head -6)"$'\n'
+  [ -n "$o" ] && { OUT+="$(printf '%s\n' "$o" | cut -c1-600 | head -6)"$'\n'; [ "$PO" = 1 ] && OUT+="$(python3 "$_lhb_dir/lib/placement_off.py" stop own-list)"$'\n'; }
 fi
 if [ "$UNH" = 1 ]; then
   o="$(python3 "$HAR/shared/tools/own_list_add.py" --unhomed "${ALL[@]}" 2>/dev/null)"
-  [ -n "$o" ] && OUT+="$(printf '%s\n' "$o" | cut -c1-700 | head -6)"$'\n'
+  [ -n "$o" ] && { OUT+="$(printf '%s\n' "$o" | cut -c1-700 | head -6)"$'\n'; [ "$PO" = 1 ] && OUT+="$(python3 "$_lhb_dir/lib/placement_off.py" stop unhomed)"$'\n'; }
 fi
 OUT="$(printf '%s' "$OUT" | grep -v '^$' | head -12)"
 [ -n "$OUT" ] || exit 0

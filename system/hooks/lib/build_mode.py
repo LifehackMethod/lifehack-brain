@@ -14,6 +14,7 @@ GENERIC_FIXED = {"__init__.py", "utils.py", "util.py", "helpers.py", "config.py"
                  "main.py", "base.py", "types.py", "setup.py", "common.sh", "lib.sh", "utils.sh"}
 HOME = os.path.expanduser("~")
 ASK_OUT = []
+CHECK_OF = {}   # deny message -> where-to-save check name (Round D A.6 repeat-stop counting)
 SKILL_DIR_RX = re.compile(r"(^|/)\.claude/skills(/|$)")
 STATE = os.path.join(HOME, ".claude", "run", "build-mode")
 
@@ -156,7 +157,7 @@ def bash_ops(cmd, cwd, _depth=0):
         toks = list(lex)
     except ValueError:
         return []
-    shell_ow = _roundb("fc_shell_overwrite") or _roundb("fc_archive_before_cut") or _roundb("skill_edit_ask")   # in-place edits are overwrites; the second switch needs them seen too
+    shell_ow = _roundb("fc_shell_overwrite") or _roundb("fc_archive_before_cut") or _roundb("skill_edit_ask") or _roundb("fc_user_sop_ask") or _roundb("fc_db_delete_ask")   # in-place edits are overwrites; the second switch needs them seen too
     segs, cur = [], []
     for t in toks:
         if t and set(t) <= set(";&|\n()") :
@@ -266,9 +267,29 @@ def load_placement(code):
             f = ln.split("\t")
             if len(f) == 2 and f[1].strip() == "off":
                 rules.pop(f[0], None)
+            elif len(f) == 2 and f[0].strip() == "off" and _roundb("placement_user_off"):   # Round D A.6: `off<TAB><check>`; only placement checks, never a fine-china guard
+                if f[1].strip() in _placement_off().PLACEMENT_CHECKS:
+                    rules.pop(f[1].strip(), None)
             elif len(f) >= 4:
                 rules[f[0]] = (f[1], [x.strip() for x in f[2].split(",")], f[3])
     return rules
+
+def _placement_off():
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    try:
+        import placement_off
+        return placement_off
+    finally:
+        sys.path.pop(0)
+
+
+def _stop_hint(check):
+    """Round D A.6: count one emitted stop of this where-to-save check; from the 3rd on, how to switch it off + the warning."""
+    try:
+        return _placement_off().note_stop(check)
+    except Exception:
+        return ""
+
 
 def shebang_code(base, content):
     """Switch code_shebang: an extensionless file whose first line is a shebang (#!) is CODE (Round C post-exam B16)."""
@@ -420,7 +441,7 @@ def remember_folder(code, folder, reason):
     """Append `kept<TAB><folder><TAB><date> reason: <text>` (one folder per line) to ~/.config/lifehack/placement.conf,
     the exact shape own_list_add.kept_folders() reads. Skips a folder that is already kept."""
     import datetime
-    if os.path.realpath(folder) in kept_folders_of(code):
+    if os.path.realpath(folder) in kept_folders_of(code) or os.environ.get("LIFEHACK_WATCH_SHADOW") == "1":
         return False
     path = personal_conf()
     try:
@@ -442,7 +463,11 @@ def gate_message(t, pc, why_weak, remember, hint_tools):
         parts.append("BLOCKED: that reason was refused (%s)." % why_weak)
     else:
         parts.append("BLOCKED: new code in %s, which is outside all three homes (harness repo, notes folder, personal code folder)." % os.path.dirname(t))
-    parts.append("WHERE IT BELONGS: your personal code folder, %s. Write the file there." % pc)
+    if _roundb("skills_native_home") and os.path.basename(t) == "SKILL.md":   # Round D A.2: Claude loads personal skills only from ~/.claude/skills
+        parts.append("WHERE IT BELONGS: ~/.claude/skills/%s/SKILL.md. Claude loads personal skills only from ~/.claude/skills/<name>/, so build it THERE without asking, "
+                     "put the skill's own scripts inside that same folder, and tell the person where it is." % (os.path.basename(os.path.dirname(t)) or "<name>"))
+    else:
+        parts.append("WHERE IT BELONGS: your personal code folder, %s%s. Write the file there." % (pc, " (ONE folder for all your standalone scripts, not one per desk)" if _roundb("skills_native_home") else ""))
     parts.append("OR, if it has to live here, state a real reason (what this folder is for and why the file cannot go in the personal code folder) "
                  "and retry. EXACT SYNTAX: a line containing  lifehack-place: <your reason>  as a comment: in a .sh/.py file `# lifehack-place: <your reason>`; "
                  "in a SKILL.md/.md file `<!-- lifehack-place: <your reason> -->`; in a shell command put `# lifehack-place: <your reason>` at the end of the command. "
@@ -538,7 +563,8 @@ def main_inner():
         return 0
 
     if _roundb("skill_edit_ask"):
-        sk = [w["target"] for w in writes if SKILL_DIR_RX.search(w["target"].replace("\\", "/"))]
+        sk = [w["target"] for w in writes if SKILL_DIR_RX.search(w["target"].replace("\\", "/"))
+              and not (_roundb("skills_native_home") and not os.path.exists(w["target"]) and under(w["target"], os.path.join(os.path.realpath(HOME), ".claude", "skills")))]   # Round D A.2: a NEW personal skill is built without asking
         if sk:
             # Enver's ruling 2026-10-30: a human in the loop for every skill edit. A harness ASK (the real Yes/No dialog);
             # headless runs turn it into a refusal. Not a flat deny: the person can say yes.
@@ -611,6 +637,18 @@ def main_inner():
                 elif zone.startswith("worktree:"):   # a `git worktree add` path must sit under one of these homes
                     hit = w["verb"] == "worktree" and not any(under(t, os.path.realpath(os.path.expanduser(r))) or "/.claude/worktrees/" in t
                                                               for r in zone[9:].split(","))
+                elif zone == "pc-skills":   # Round D A.2: a SKILL.md under <personal code folder>/skills/ is never loaded by Claude
+                    hit = False
+                    if _roundb("skills_native_home"):
+                        try:
+                            sys.path.insert(0, os.path.join(code, "shared"))
+                            import personal_code_root
+                            _s, _pc = personal_code_root.resolve_personal_code_root()
+                            hit = bool(_pc) and under(t, os.path.join(os.path.realpath(_pc), "skills"))
+                        except Exception:
+                            hit = False
+                        finally:
+                            sys.path.pop(0)
                 elif zone == "outside-homes":   # 4th rule: new code outside every home (switch placement_outside_homes)
                     hit = False
                     pc = outside_homes_target(t, code, notes)
@@ -641,7 +679,9 @@ def main_inner():
                                     ht = ("\nShared tools that may already do this:" + ht) if ht else ""
                                 except Exception:
                                     ht = ""
-                            denies.append(("gate-hard", None, gate_message(t, pc, why if reason else "", _roundb("remember_reason"), ht)))
+                            _gm = gate_message(t, pc, why if reason else "", _roundb("remember_reason"), ht)
+                            CHECK_OF[_gm] = "code-outside-homes"
+                            denies.append(("gate-hard", None, _gm))
                             hit = False
                 if hit:
                     ht = ""
@@ -730,7 +770,7 @@ def main_inner():
     # hard blocks win and never write state
     for kind, key, msg in denies:
         if kind in ("copy-hard", "gate-hard"):
-            sys.stderr.write(msg + "\n")
+            sys.stderr.write(msg + (_stop_hint(CHECK_OF[msg]) if msg in CHECK_OF else "") + "\n")
             return 2
 
     # once-per-session items: first one not yet seen is denied (and marked); all marked together
@@ -754,9 +794,10 @@ def main_inner():
     masked = sibling_certain_deny(tool, writes, code, sid)
     out = []
     for kind, key, msg, mk in fresh:
-        if not masked:
+        if not masked and os.environ.get("LIFEHACK_WATCH_SHADOW") != "1":
             _open(mk, "w").close()
-        out.append(msg if msg else bump_message(kind, code, " ".join(
+        hint = _stop_hint(key[6:]) if kind == "placement" else ""
+        out.append((msg + hint) if msg else bump_message(kind, code, " ".join(
             "%s %s" % (w["target"], (w.get("content") or "")[:1500]) for w in writes)))
     sys.stderr.write("\n".join(out) + "\n")
     return 2
