@@ -10,7 +10,7 @@ exit 0); never blocks. Each piece has its own switch in roundB.conf (all OFF = p
   fc_user_sop_ask       write over / edit / delete / move away an EXISTING SOP of the person (a .md in a sops/ folder or named *sop*.md)
                         outside the plugin tree (the plugin's own SOPs are covered by the harness-write and shell-overwrite guards).
                         New files and appends (>>) pass.
-  fc_placement_conf_ask ANY AI write (Write/Edit/redirect/tee/cp/sed -i/append, even a new file) to ~/.config/lifehack/placement.conf,
+  fc_placement_conf_ask (also roundB.conf, the plugin's switch file: an AI must not switch a guard off) ANY AI write (Write/Edit/redirect/tee/cp/sed -i/append, even a new file) to ~/.config/lifehack/placement.conf,
                         the user's own override file. Only a person's Yes changes it.
 These have NO off switch of the user's kind: placement.conf is never read here.
 Fail posture: any internal error prints nothing (allow).
@@ -67,7 +67,9 @@ def is_user_sop(t, code):
 
 
 def is_conf(t):
-    return t == os.path.realpath(os.path.join(HOME, ".config", "lifehack", "placement.conf")) or t.endswith("/.config/lifehack/placement.conf")
+    """placement.conf (the person's override file) or roundB.conf (the plugin's switch file: the AI must not switch guards off itself, P-54)."""
+    return (t == os.path.realpath(os.path.join(HOME, ".config", "lifehack", "placement.conf")) or t.endswith("/.config/lifehack/placement.conf")
+            or t.endswith("/system/hooks/roundB.conf"))
 
 
 def gitignored(d):
@@ -147,11 +149,14 @@ def expand(arg, cwd):
     return [os.path.realpath(a)]
 
 
+CONF_RX = re.compile(r"placement\.conf|roundB\.conf")
+
+
 def check_bash(cmd, cwd, code):
     sw_db, sw_dir, sw_sop, sw_conf = on("fc_db_delete_ask"), on("fc_folder_delete_ask"), on("fc_user_sop_ask"), on("fc_placement_conf_ask")
-    if sw_conf and "placement.conf" in cmd:
+    if sw_conf and CONF_RX.search(cmd):
         if conf_write_in_bash(cmd, cwd):
-            ask("ASK FIRST: this command changes ~/.config/lifehack/placement.conf, the person's own override file (it switches Lifehack's where-to-save checks off). "
+            ask("ASK FIRST: this command changes ~/.config/lifehack/placement.conf or the plugin's roundB.conf, the files that switch Lifehack's checks and guards off. "
                 "Only the person decides that. WAY-THROUGH: press Yes only if the person asked for exactly this change; otherwise stop and tell them which line "
                 "they can add themselves. RULE: switch fc_placement_conf_ask in system/hooks/roundB.conf.")
     segs = split_segments(cmd)
@@ -212,11 +217,11 @@ def check_bash(cmd, cwd, code):
 
 def conf_write_in_bash(cmd, cwd):
     """True when the command writes (not only reads) placement.conf."""
-    if re.search(r">>?\s*['\"]?[^\s|;&]*placement\.conf", cmd) or re.search(r"\btee\b[^|;&]*placement\.conf", cmd):
+    if re.search(r">>?\s*['\"]?[^\s|;&]*(placement|roundB)\.conf", cmd) or re.search(r"\btee\b[^|;&]*(placement|roundB)\.conf", cmd):
         return True
     for w in split_segments(cmd):
         v = os.path.basename(w[0])
-        if not any("placement.conf" in a for a in w[1:]):
+        if not any(CONF_RX.search(a) for a in w[1:]):
             continue
         if v in ("cat", "grep", "egrep", "head", "tail", "less", "more", "ls", "wc", "stat", "diff", "file", "awk", "sort", "bat", "cut", "nl", "md5", "shasum", "test", "["):
             continue
@@ -261,7 +266,7 @@ def main_inner():
             return
         t = resolve(fp, cwd)
         if on("fc_placement_conf_ask") and is_conf(t):
-            ask("ASK FIRST: this writes ~/.config/lifehack/placement.conf, the person's own override file (it switches Lifehack's where-to-save checks off). "
+            ask("ASK FIRST: this writes ~/.config/lifehack/placement.conf or the plugin's roundB.conf, the files that switch Lifehack's checks and guards off. "
                 "Only the person decides that. WAY-THROUGH: press Yes only if the person asked for exactly this change; otherwise tell them which line they can add themselves. "
                 "RULE: switch fc_placement_conf_ask in system/hooks/roundB.conf.")
         elif on("fc_user_sop_ask") and is_user_sop(t, code) and os.path.isfile(t):

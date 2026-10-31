@@ -437,6 +437,47 @@ def kept_folders_of(code):
         sys.path.pop(0)
 
 
+DATA_EXT = (".csv", ".tsv", ".json", ".jsonl", ".ndjson", ".yaml", ".yml", ".toml", ".xml", ".xlsx", ".xls", ".ods", ".parquet", ".ini", ".sql")
+DATA_THROWAWAY = {"node_modules", "__pycache__", ".venv", "venv", "dist", "build", ".cache", "scratch", "scratchpad", "tmp", ".tmp", ".git"}
+DATA_RECENT_SECONDS = 600
+
+
+def data_file_target(t):
+    """Round D miss fix (D-F12/F13, switch fc_shell_overwrite): True for an EXISTING, non-empty data file (csv tsv json jsonl yaml yml toml xml
+    xlsx xls ods parquet ini sql, or a .env file) that a shell overwrite would replace. NOT data files: anything in a temp folder (outside the home),
+    a throwaway folder (node_modules build dist .venv scratch tmp ...), a git-IGNORED path, a new or empty file, a file touched in the last 10 minutes
+    (this session's own scratch output), the plugin's roundB.conf (the conf guard owns it)."""
+    import time, subprocess
+    base = os.path.basename(t).lower()
+    if not (base.endswith(DATA_EXT) or base == ".env" or base.startswith(".env.")):
+        return False
+    try:
+        st = os.stat(t)
+    except OSError:
+        return False
+    if not os.path.isfile(t) or st.st_size == 0 or time.time() - st.st_mtime < DATA_RECENT_SECONDS:
+        return False
+    rs = ["/tmp", "/private/tmp", "/var/folders", "/private/var/folders", os.path.realpath(os.environ.get("TMPDIR", "/tmp"))]
+    if any(under(t, r) for r in rs) and not under(t, os.path.realpath(os.path.expanduser("~"))):
+        return False
+    if any(p in DATA_THROWAWAY for p in t.split("/")):
+        return False
+    try:
+        if subprocess.run(["git", "-C", os.path.dirname(t) or "/", "check-ignore", "-q", t], capture_output=True, timeout=5).returncode == 0:
+            return False
+    except Exception:
+        pass
+    return True
+
+
+def data_overwrite_ask(t):
+    return json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "ask", "permissionDecisionReason":
+        "ASK FIRST: this shell command overwrites a data file (%s) in place. A data file (spreadsheet, csv, json, yaml...) is fine china: the rows it holds "
+        "do not come back from a redirect, tee, cp/mv, sed -i or truncate. WAY-THROUGH: press Yes only if the person asked for this file to be replaced and a copy exists; "
+        "otherwise copy it first, append (>> or tee -a), or write the new result to a NEW file and tell the person. Do not switch to another tool to land the "
+        "same replacement. RULE: switch fc_shell_overwrite in system/hooks/roundB.conf." % t}})
+
+
 def remember_folder(code, folder, reason):
     """Append `kept<TAB><folder><TAB><date> reason: <text>` (one folder per line) to ~/.config/lifehack/placement.conf,
     the exact shape own_list_add.kept_folders() reads. Skips a folder that is already kept."""
@@ -467,7 +508,7 @@ def gate_message(t, pc, why_weak, remember, hint_tools):
         parts.append("WHERE IT BELONGS: ~/.claude/skills/%s/SKILL.md. Claude loads personal skills only from ~/.claude/skills/<name>/, so build it THERE without asking, "
                      "put the skill's own scripts inside that same folder, and tell the person where it is." % (os.path.basename(os.path.dirname(t)) or "<name>"))
     else:
-        parts.append("WHERE IT BELONGS: your personal code folder, %s%s. Write the file there." % (pc, " (ONE folder for all your standalone scripts, not one per desk)" if _roundb("skills_native_home") else ""))
+        parts.append("WHERE IT BELONGS: your personal code folder, %s%s. Write the file there." % (pc, " (ONE folder for all your standalone scripts, not one per desk; desks/<desk>/ in the notes folder only for something that truly serves one desk, and only when the person said it is just for that desk)" if _roundb("skills_native_home") else ""))
     parts.append("OR, if it has to live here, state a real reason (what this folder is for and why the file cannot go in the personal code folder) "
                  "and retry. EXACT SYNTAX: a line containing  lifehack-place: <your reason>  as a comment: in a .sh/.py file `# lifehack-place: <your reason>`; "
                  "in a SKILL.md/.md file `<!-- lifehack-place: <your reason> -->`; in a shell command put `# lifehack-place: <your reason>` at the end of the command. "
@@ -596,6 +637,8 @@ def main_inner():
             pk = protected_doc(t, code)
             if pk:
                 denies.append(("gate-hard", None, shell_overwrite_message(t, pk)))
+            elif data_file_target(t):
+                ASK_OUT.append(data_overwrite_ask(t))
         if tool == "Bash" and exists and w["verb"] in OVERWRITE_VERBS and not w.get("append") and _roundb("fc_archive_before_cut") \
                 and not os.path.basename(t).endswith(".history.md"):
             # Round C 4 (fc_archive_before_cut): a shell overwrite of an SOP/canon file removes whatever the new content lacks. A heredoc

@@ -139,4 +139,58 @@ for kind in raise syntax silent-exit0 missing; do
   run "$T/hooks-crash/guard_build_mode.sh" fo2 Bash "$(J command "echo x > $CODE/system/sops/skill-building-sop.md")" ROUNDB_FC_SHELL_OVERWRITE=on LIFEHACK_WATCH=1
   if [ $RC -eq 2 ]; then ok "watcher crash [$kind]: the real build-mode guard still BLOCKS (exit 2)"; else bad "watcher crash [$kind]: block skipped (rc=$RC)"; fi
 done
+# ---------------- Round D miss fix: roundB.conf joins placement.conf in the fc_placement_conf_ask guard (P-54: an AI never switches a guard off)
+RB="$CODE/system/hooks/roundB.conf"
+ask "sed -i roundB.conf" Bash "$(J command "sed -i '' 's/=on/=off/' $RB")"
+ask "sed -i (GNU form) roundB.conf" Bash "$(J command "sed -i 's/=on/=off/' $RB")"
+ask "redirect > roundB.conf" Bash "$(J command "echo 'fc_shell_overwrite=off' > $RB")"
+ask "append >> roundB.conf" Bash "$(J command "echo 'fc_shell_overwrite=off' >> $RB")"
+ask "tee roundB.conf" Bash "$(J command "echo x | tee $RB")"
+ask "perl -i roundB.conf" Bash "$(J command "perl -pi -e 's/=on/=off/' $RB")"
+ask "python writes roundB.conf" Bash "$(J command "python3 -c \"open('$RB','w').write('x')\"")"
+ask "cp over roundB.conf" Bash "$(J command "cp /tmp/x.conf $RB")"
+ask "mv over roundB.conf" Bash "$(J command "mv /tmp/x.conf $RB")"
+ask "Write roundB.conf" Write "$(J file_path "$RB" content x=off)"
+ask "Edit roundB.conf" Edit "$(J file_path "$RB" old_string on new_string off)"
+allow "cat roundB.conf (read)" "" Bash "$(J command "cat $RB")"
+allow "grep roundB.conf (read)" "" Bash "$(J command "grep fc_ $RB")"
+allow "git add roundB.conf (not a write to it)" "" Bash "$(J command "git add $RB")"
+# ---------------- Round D miss fix (D-F12/D-F13): fc_shell_overwrite also ASKS before a shell overwrite of an existing data file
+mkdir -p "$D/config" "$D/gi" "$D/node_modules/q" "$D/dist"
+for f in config/clients.yaml config/clients.yml rates.csv rows.tsv data.json log.jsonl settings.toml feed.xml sheet.xlsx schema.sql app.ini .env gi/ignored.csv gi/tracked.csv node_modules/q/d.json dist/out.json fresh.csv empty.csv notes.txt script.py; do echo "a,b" > "$D/$f"; done
+: > "$D/empty.csv"; (cd "$D/gi" && git init -q . 2>/dev/null; echo "ignored.csv" > .gitignore)
+for f in config/clients.yaml config/clients.yml rates.csv rows.tsv data.json log.jsonl settings.toml feed.xml sheet.xlsx schema.sql app.ini .env gi/ignored.csv gi/tracked.csv node_modules/q/d.json dist/out.json empty.csv notes.txt script.py; do touch -t 202501010000 "$D/$f"; done
+dask() { run "$BM" s Bash "$(J command "$2")" ROUNDB_FC_SHELL_OVERWRITE=on; if asked && grep -q "WAY-THROUGH" "$T/out" && ! grep -q 'BLOCKED' "$T/err"; then ok "DATA ASK $1"; else bad "DATA ASK $1"; fi
+          run "$BM" s Bash "$(J command "$2")" ROUNDB_FC_SHELL_OVERWRITE=off; if ! asked && [ $RC -eq 0 ]; then ok "DATA ASK $1 [switch off = silent]"; else bad "DATA ASK $1 [off]"; fi; }
+dallow() { run "$BM" s Bash "$(J command "$2")" ROUNDB_FC_SHELL_OVERWRITE=on; if ! asked && [ $RC -eq 0 ]; then ok "DATA ALLOW $1"; else bad "DATA ALLOW $1"; fi; }
+dask "D-F12 redirect > clients.yaml" "echo 'TODO' > $D/config/clients.yaml && cat $D/config/clients.yaml"
+dask "D-F12 relative path" "cd $D && echo TODO > config/clients.yaml"
+dask "D-F13 tee rates.csv" "echo 'client,rate' | tee $D/rates.csv"
+dask "clobber >| " "echo x >| $D/rows.tsv"
+dask "cp empty over data.json" "cp $D/empty.csv $D/data.json"
+dask "mv over log.jsonl" "mv $D/script.py $D/log.jsonl"
+dask "sed -i toml" "sed -i '' 's/a/b/' $D/settings.toml"
+dask "truncate xml" "truncate -s 0 $D/feed.xml"
+dask "redirect xlsx" "echo x > $D/sheet.xlsx"
+dask "redirect sql" "echo x > $D/schema.sql"
+dask "redirect ini" "echo x > $D/app.ini"
+dask "redirect .env" "echo X=1 > $D/.env"
+dask "redirect yml" "echo x > $D/config/clients.yml"
+dask "tracked csv in a git repo with an unrelated ignore line" "echo x > $D/gi/tracked.csv"
+dask "inside bash -c" "bash -c 'echo x > $D/rates.csv'"
+dallow "append >> rates.csv" "echo x >> $D/rates.csv"
+dallow "tee -a rates.csv" "echo x | tee -a $D/rates.csv"
+dallow "read cat rates.csv" "cat $D/rates.csv"
+dallow "NEW data file (does not exist)" "echo x > $D/brand-new.csv"
+dallow "EMPTY data file" "echo x > $D/empty.csv"
+dallow "/tmp/x.csv" "echo x > /tmp/x.csv"
+dallow "temp folder outside home" "echo x > $T/scratch/box/o.csv"
+dallow "git-ignored data file" "echo x > $D/gi/ignored.csv"
+dallow "node_modules data file" "echo x > $D/node_modules/q/d.json"
+dallow "dist data file" "echo x > $D/dist/out.json"
+dallow "file touched in the last 10 minutes" "touch $D/fresh.csv; echo x > $D/fresh.csv"
+dallow "not a data extension (.txt)" "echo x > $D/notes.txt"
+dallow "not a data extension (.py)" "echo x > $D/script.py"
+run "$BM" s Bash "$(J command "echo x > $D/rates.csv")" ROUNDB_FC_SHELL_OVERWRITE=on; if grep -q "fc_shell_overwrite" "$T/out"; then ok "data ask names its switch"; else bad "data ask text"; fi
+run "$BM" s Bash "$(J command "echo x > $CODE/system/sops/skill-building-sop.md")" ROUNDB_FC_SHELL_OVERWRITE=on; if [ $RC -eq 2 ]; then ok "SOP overwrite is still a hard block beside the data ask"; else bad "SOP block lost"; fi
 echo "test_fine_china_ask: $P passed, $F failed"; [ "$F" -eq 0 ]

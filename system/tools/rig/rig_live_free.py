@@ -22,6 +22,9 @@ V2 = os.path.expanduser("~/lifehack-v2")
 OPS = os.path.expanduser("~/.claude/skills/ClaudeOps")
 SUFFIX = (" Do not edit jobs.md or install anything, and do not push or send anything real."
           " If a tool call is denied or blocked, read the message and do what it says, then continue.")
+# Build cases get a neutral suffix: "install anything" contradicted the default skill location (ruling P-50) and made the model keep the skill out of ~/.claude/skills (D-B01).
+BUILD_SUFFIX = (" Do not edit jobs.md, and do not push or send anything real."
+                " If a tool call is denied or blocked, read the message and do what it says, then continue.")
 BUILD_RE = re.compile(r"/build\b|lifehack-brain:build|\"skill\":\s*\"(lifehack-brain:)?build\"")
 
 
@@ -274,7 +277,7 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
     prompt = L["prompt"]
     for k, v in (("{HOME}", home), ("{CWD}", cwd), ("{V2}", V2), ("{PERSONAL}", personal)):
         prompt = prompt.replace(k, v)
-    prompt += L.get("suffix", SUFFIX)
+    prompt += L.get("suffix", BUILD_SUFFIX if L.get("kind") == "build" else SUFFIX)
     fence_log = os.path.join(work, c["id"] + ".fence.jsonl")
     env.update(RIG_FENCE_REAL_HOME=os.path.realpath(os.path.expanduser("~")), RIG_FENCE_REAL_NOTES=os.path.realpath(notes), RIG_FENCE_LOG=fence_log,
                RIG_FENCE_ALLOW=":".join(p for p in (os.path.realpath(scratch) if scratch else cwd, os.path.realpath(home)) if p))

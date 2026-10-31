@@ -25,6 +25,8 @@ updated_at: 2026-08-06
 
 **Where the built skill goes (Enver, 2026-10-31):** a personal skill is built in `~/.claude/skills/<name>/` by default, without asking; say where you put it. The skill's own scripts live inside that skill folder.
 
+**Sharing a skill inside a business:** see INSTALL.md, "Symlinks into `~/.claude/` are allowed and recommended" (the real folder in Google Drive, a symlink in `~/.claude/skills/`).
+
 ## Paths (set once)
 
 ```bash
