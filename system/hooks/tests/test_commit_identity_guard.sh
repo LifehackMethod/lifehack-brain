@@ -205,6 +205,27 @@ fa "fa: git status after cd stays allowed" 0 'cd ~/bad; git status'
 fa 'fa: newline separates (var, then git -C)' 0 $'R=$HOME/good\ngit -C "$R" commit -m x'
 fa 'fa: newline separates (cd bad)' 2 $'cd ~/good\ncd ~/bad\ngit commit -m x'
 
+echo "── Round D post-verdict: commit_identity_optional (no ship identity yet -> a first local commit is allowed) ──"
+EMPTY_BRAIN="$SANDBOX/empty-brain"; mkdir -p "$EMPTY_BRAIN"
+# runsw <label> <rc> <command> <brain> <plugin_root> <switch on|off>
+runsw() {
+  local label="$1" exp="$2" cmd="$3" brain="$4" plugin_root="$5" sw="$6" got out
+  out=$(python3 -c "
+import json,sys
+print(json.dumps({'tool_name':'Bash','tool_input':{'command':sys.argv[1]}}))" "$cmd" 2>/dev/null \
+    | env -i HOME="$SANDBOX" PATH="$PATH" LIFEHACK_ROOT="$brain" CLAUDE_PLUGIN_ROOT="$plugin_root" ROUNDB_COMMIT_IDENTITY_OPTIONAL="$sw" \
+        bash "$plugin_root/system/hooks/guard_commit_identity.sh" 2>&1 >/dev/null)
+  got=$?
+  if [ "$got" = "$exp" ]; then ok; else bad "$label" "expected exit $exp, got $got — $out"; fi
+}
+runsw "[on]  empty notes root, no user.email -> ALLOW"   0 "git -C $PLAIN_REPO_NOEMAIL commit -m x" "$EMPTY_BRAIN" "$REPO_ROOT" on
+runsw "[off] empty notes root, no user.email -> DENY"    2 "git -C $PLAIN_REPO_NOEMAIL commit -m x" "$EMPTY_BRAIN" "$REPO_ROOT" off
+runsw "[on]  identity file present, mismatched email -> DENY" 2 "git -C $PLAIN_REPO_BADID commit -m x" "$BRAIN" "$REPO_ROOT" on
+runsw "[on]  identity file present, no user.email -> DENY"    2 "git -C $PLAIN_REPO_NOEMAIL commit -m x" "$BRAIN" "$REPO_ROOT" on
+runsw "[on]  brain root unresolvable, no user.email -> DENY (fail closed)" 2 "git -C $PLAIN_REPO_NOEMAIL commit -m x" "$BRAIN" "$NO_BRAIN_PLUGIN" on
+runsw "[on]  push path unaffected (no user.email)"  0 "git -C $PLAIN_REPO_NOEMAIL push origin main" "$EMPTY_BRAIN" "$REPO_ROOT" on
+runsw "[off] push path unaffected (no user.email)"  0 "git -C $PLAIN_REPO_NOEMAIL push origin main" "$EMPTY_BRAIN" "$REPO_ROOT" off
+
 echo
 if [ "$fail" = 0 ]; then echo "RESULT: $pass passed, 0 failed."; echo "COMMIT IDENTITY GUARD GREEN"; exit 0
 else echo "RESULT: $pass passed, $fail failed."; exit 1; fi

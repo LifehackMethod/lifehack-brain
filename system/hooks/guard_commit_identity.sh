@@ -1,6 +1,7 @@
 #!/bin/bash
 # LHB fire-journal (B4.1): observes only; never alters this hook's decision/exit/stdout/stderr.
 _lhb_src="${BASH_SOURCE[0]}"; case "$_lhb_src" in */*) _lhb_dir="${_lhb_src%/*}" ;; *) _lhb_dir=. ;; esac; . "$_lhb_dir/lib/journal.sh" 2>/dev/null || lhb_journal_fire() { :; }
+. "$_lhb_dir/lib/roundb.sh" 2>/dev/null || roundb_on() { return 1; }  # Round D post-verdict: commit_identity_optional switch
 trap 'lhb_journal_fire "$?" "guard_commit_identity.sh" "PreToolUse" "Bash" 2>/dev/null || true' EXIT
 #
 # ══════════════════════════════════════════════════════════════════════════════
@@ -249,6 +250,20 @@ case "$VERDICT" in
 
     _user_email=$(git -C "$_target" config user.email 2>/dev/null)
     if [ -z "$_user_email" ]; then
+      # Round D post-verdict (commit_identity_optional): COMMIT only. A person who has never set up a ship
+      # identity (no <brain>/config/ship-identity.md) is not publishing yet, so a first local commit is allowed.
+      # An unresolvable brain root, or a present identity file, stays exactly as before (fail-closed).
+      if roundb_on commit_identity_optional; then
+        _o_script="$_target/shared/brain_root.py"
+        [ -f "$_o_script" ] || _o_script="${CLAUDE_PLUGIN_ROOT:-${_HOOKDIR%/system/hooks}}/shared/brain_root.py"
+        if [ -f "$_o_script" ]; then
+          _o_brain=$(python3 "$_o_script" --quiet 2>/dev/null)
+          if [ -n "$_o_brain" ] && [ -d "$_o_brain" ] && [ ! -e "$_o_brain/config/ship-identity.md" ]; then
+            printf '%s\n' "no ship identity set (only needed if you publish); commit allowed" >&2
+            exit 0
+          fi
+        fi
+      fi
       _deny "🛑 COMMIT IDENTITY (blocked): $_repo_name has no git config user.email set. WHY: an unattributed commit is exactly the failure this guard exists to prevent. REDIRECT: run 'git -C $_target config user.email you@example.com' with the address listed in your Brain's config/ship-identity.md, then retry. FAIL_POSTURE: closed."
     fi
 

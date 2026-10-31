@@ -1,6 +1,7 @@
 #!/bin/bash
 # LHB fire-journal (B4.1): observes only; never alters this hook's decision/exit/stdout/stderr.
 _lhb_src="${BASH_SOURCE[0]}"; case "$_lhb_src" in */*) _lhb_dir="${_lhb_src%/*}" ;; *) _lhb_dir=. ;; esac; . "$_lhb_dir/lib/journal.sh" 2>/dev/null || lhb_journal_fire() { :; }
+. "$_lhb_dir/lib/roundb.sh" 2>/dev/null || roundb_on() { return 1; }  # Round D post-verdict: skills_native_write switch
 trap 'lhb_journal_fire "$?" "guard_write_paths.sh" "PreToolUse" "Write|Edit" 2>/dev/null || true' EXIT
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # WHY: the guards in this folder are the only things standing between an agent and the calendar,
@@ -261,6 +262,15 @@ if [[ "$FILE_PATH" == "$CLAUDE_DIR/skills/"* || "$FILE_PATH" == "$HOME/.claude/s
     fi
     if [[ -n "$REPO_ROOT" ]]; then
         exit 0   # resolves inside a real git working tree with a configured remote -> will be committed + synced
+    fi
+    # Round D post-verdict (skills_native_write, P-50): a NEW file of a NEW personal skill under the REAL
+    # ~/.claude/skills/ is allowed (Claude loads skills from there). NOT allowed: an existing file, anything
+    # inside any git repo (remote or not), commands/. (A symlink out of skills/ resolves outside this zone and never reaches here.)
+    if [[ -z "$REPO_ROOT" && "$FILE_PATH" == "$HOME/.claude/skills/"* && ! -e "$RESOLVED" ]] && roundb_on skills_native_write; then
+        _sk_anc="$RESOLVED"; while [[ ! -d "$_sk_anc" && "$_sk_anc" != "/" ]]; do _sk_anc="$(dirname "$_sk_anc")"; done
+        if ! git -C "$_sk_anc" rev-parse --show-toplevel >/dev/null 2>&1; then
+            exit 0
+        fi
     fi
     printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: this path does not resolve inside a git repository with a configured remote ($RESOLVED). WHY: a ~/.claude/skills or /commands entry only syncs when what it points at (or is) is a real git working tree with a remote -- anything else left here becomes a real ORPHAN file that is never committed and never syncs to the other machine (CLAUDE-DIR-WRITE-LEAK). REDIRECT: author it inside a real git repo with a configured remote (e.g. \$_SELF_REPO/.claude/skills/<name>/, or any other cloned repo that has 'git remote' set), then place or symlink ~/.claude/skills/<name> there. Code-vs-content + sync: docs/architecture.md -> Code Residency and Git Sync.\"}" >&2
     exit 2

@@ -102,13 +102,35 @@ run_home "same real repo, its OWN system/hooks/ -> still DENIED (regression chec
   2 "$TMPHOME/.claude/skills/ClaudeOps/system/hooks/guard_egress.sh" "$TMPHOME"
 
 mkdir -p "$TMPHOME/.claude/skills/orphan-skill"
-run_home "brand-new dir, no git repo at all -> DENY (true positive: genuine orphan)" \
+# pinned OFF: the skills_native_write switch (tested below) deliberately allows this exact new-skill shape when ON.
+ROUNDB_SKILLS_NATIVE_WRITE=off run_home "brand-new dir, no git repo at all -> DENY (true positive: genuine orphan)" \
   2 "$TMPHOME/.claude/skills/orphan-skill/SKILL.md" "$TMPHOME"
 
 mkdir -p "$TMPHOME/.claude/skills/no-remote-repo"
 git -C "$TMPHOME/.claude/skills/no-remote-repo" init -q
 run_home "real git repo but NO remote configured -> DENY (still an orphan for sync purposes)" \
   2 "$TMPHOME/.claude/skills/no-remote-repo/notes.md" "$TMPHOME"
+
+echo "── Round D post-verdict: skills_native_write (new personal skill in ~/.claude/skills) ─"
+# Six cases x switch {on, off}. ON allows only the first two. Fixture: throwaway HOME (TMPHOME).
+mkdir -p "$TMPHOME/.claude/skills/old-skill" "$TMPHOME/outside-nongit" "$TMPHOME/.claude/skills/gitlocal"
+echo old > "$TMPHOME/.claude/skills/old-skill/SKILL.md"
+git -C "$TMPHOME/.claude/skills/gitlocal" init -q
+ln -sfn "$TMPHOME/outside-nongit" "$TMPHOME/.claude/skills/escape"
+ln -sfn "$TMPHOME/.claude/skills/ClaudeOps" "$TMPHOME/.claude/skills/opslink"
+for sw in on off; do
+  want_new=0; [ "$sw" = off ] && want_new=2
+  export ROUNDB_SKILLS_NATIVE_WRITE=$sw
+  run_home "[$sw] new SKILL.md in a new skill folder"          $want_new "$TMPHOME/.claude/skills/fresh-skill/SKILL.md" "$TMPHOME"
+  run_home "[$sw] new scripts/x.sh in a new skill folder"      $want_new "$TMPHOME/.claude/skills/fresh-skill2/scripts/x.sh" "$TMPHOME"
+  run_home "[$sw] EXISTING file stays blocked"                 2 "$TMPHOME/.claude/skills/old-skill/SKILL.md" "$TMPHOME"
+  run_home "[$sw] file in a git repo without remote stays blocked" 2 "$TMPHOME/.claude/skills/gitlocal/new.md" "$TMPHOME"
+  run_home "[$sw] new file under a ClaudeOps symlink stays blocked" 2 "$TMPHOME/.claude/skills/opslink/system/hooks/x.sh" "$TMPHOME"
+  # FILE_PATH is realpath-resolved first, so a symlink out of skills/ lands OUTSIDE this zone: the guard's
+  # standing scope ("everything else is allowed") applies and the switch changes nothing (0 on and off).
+  run_home "[$sw] symlink escaping to a non-git dir: outside the zone, unchanged by the switch" 0 "$TMPHOME/.claude/skills/escape/SKILL.md" "$TMPHOME"
+done
+unset ROUNDB_SKILLS_NATIVE_WRITE
 
 echo "── what this guard deliberately does NOT do (see the scope note) ────────"
 # These are ASSERTIONS, not gaps. Changing them is the product decision named at the top.
