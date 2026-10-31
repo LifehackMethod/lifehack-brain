@@ -9,7 +9,36 @@ GITHOOK layers (removed): precommit:*, register-gate, citation-lint, gitleaks, l
 INPUT: a saved results .jsonl (rig_meal.py layout: grade, deniers, case.weight). Output: counts today vs student, unweighted and weighted.
 Run: python3 system/tools/rig/rig_student.py RESULTS.jsonl [--json]
 """
-import json, sys, re
+import json, sys, re, os, shutil, subprocess
+
+
+def make_student_home(iso, real_home, v2):
+    """Build a throwaway HOME for a student who FINISHED the plugin's normal setup (INSTALL.md STEP 7.2 = system/tools/bootstrap.py), and nothing else.
+    Why (Round D root cause, 2026-10-31): the Round C student HOME had only the code-root + brain-root pointers. Without a personal-code pointer
+    or ~/lifehack-personal-code the placement guards cannot name a destination and stay silent BY DESIGN (build_mode.outside_homes_target), so the
+    0/6 was a setup the test never did, not a guard failure.
+    Makes: <iso>/.config/lifehack/{code-root (to the plugin), brain-root (to a THROWAWAY notes folder inside iso)}, then runs the real bootstrap.py
+    with HOME=iso, which creates the notes skeleton, ~/lifehack-personal-code (git init) and the personal-code pointer. Empty ~/.claude/skills (what
+    Claude has by default). NOT made: any GitHub login/remote, git identity, placement.conf, Enver's CLAUDE.md or settings, any real pointer or
+    token file (the login token is returned to the caller to pass by env). Refuses a non-throwaway path. -> the oauth token string or None."""
+    iso = os.path.abspath(iso)
+    if os.path.basename(iso) != "rig-iso-home" or os.path.realpath(iso) == os.path.realpath(real_home):
+        sys.exit("REFUSED: not a throwaway student HOME: " + iso)
+    shutil.rmtree(iso, ignore_errors=True)
+    notes = os.path.join(iso, "rig-iso-notes")
+    for d in (os.path.join(iso, ".config", "lifehack"), os.path.join(iso, ".claude", "skills"), notes):
+        os.makedirs(d)
+    cfg = os.path.join(iso, ".config", "lifehack")
+    open(os.path.join(cfg, "code-root"), "w", encoding="utf-8").write(v2 + "\n")
+    open(os.path.join(cfg, "brain-root"), "w", encoding="utf-8").write(notes + "\n")
+    open(os.path.join(iso, ".rig-student"), "w", encoding="utf-8").write("student who ran bootstrap.py\n")
+    env = {k: v for k, v in os.environ.items() if k not in ("LIFEHACK_ROOT",)}
+    env["HOME"] = iso
+    p = subprocess.run([sys.executable, os.path.join(v2, "system", "tools", "bootstrap.py"), "--root", notes], env=env, capture_output=True, text=True, timeout=60)
+    if p.returncode != 0 or not os.path.isfile(os.path.join(cfg, "personal-code")):
+        sys.exit("make_student_home: bootstrap.py did not finish: " + (p.stdout + p.stderr)[-400:])
+    tok = os.path.join(real_home, ".config", "lifehack", "claude-oauth-token")
+    return re.sub(r"\s+", "", open(tok, encoding="utf-8").read()) if os.path.exists(tok) else None
 
 GITHOOK = re.compile(r"^(precommit:|register-gate$|citation-lint$|gitleaks$|leakage-scan$|personal-notes$|pre-commit|pre-push)")
 SAVED = ("caught", "caught-other-layer")

@@ -78,10 +78,16 @@ def mentioned(stream_text, p):
     return p in stream_text or (os.path.basename(p) in stream_text and len(os.path.basename(p)) > 4)
 
 
-def fresh_personal(path):
-    """A throwaway personal code folder (git init, empty own list, tools/ skills/): the live sessions must never touch the real ClaudeOps."""
+def fresh_personal(path, student=False):
+    """A throwaway personal code folder (git init, empty own list, tools/ skills/): the live sessions must never touch the real ClaudeOps.
+    student=True: exactly what bootstrap.py leaves a real student - an EMPTY folder with `git init` (no tools/, skills/, own list yet; the first
+    kept tool creates the list)."""
     assert os.path.basename(os.path.dirname(os.path.abspath(path))) == "rig-iso-home", "refusing to wipe a folder that is not a throwaway personal-code folder: " + path
     shutil.rmtree(path, ignore_errors=True)
+    if student:
+        os.makedirs(path)
+        subprocess.run(["git", "init", "-q", path], capture_output=True)
+        return
     for d in ("tools", "skills"):
         os.makedirs(os.path.join(path, d))
     open(os.path.join(path, "register.jsonl"), "w", encoding="utf-8").close()
@@ -110,6 +116,26 @@ def isolate_notes(envd, real_notes):
     return made
 
 
+def install_enver_brief(iso, real_home):
+    """Enver setup (not --student): put the TEXT of Enver's real ~/.claude/CLAUDE.md (his "ask when unclear" brief) into the throwaway HOME's
+    .claude/CLAUDE.md. Read-only on the real file; nothing else (no settings.json, no memory) is copied. run_one then adds `user` to --setting-sources
+    when this file exists, so the child loads it. Returns True if installed."""
+    src = os.path.join(real_home, ".claude", "CLAUDE.md")
+    if not os.path.isfile(src) or os.path.exists(os.path.join(iso, ".rig-student")):
+        return False
+    os.makedirs(os.path.join(iso, ".claude"), exist_ok=True)
+    with open(src, encoding="utf-8") as f:
+        txt = f.read()
+    with open(os.path.join(iso, ".claude", "CLAUDE.md"), "w", encoding="utf-8") as f:
+        f.write(txt)
+    return True
+
+
+def setting_sources(home):
+    """`user` only when the throwaway HOME holds the Enver brief (never for the student setup); the HOME is throwaway, so `user` reads nothing real."""
+    return "user,project,local" if os.path.isfile(os.path.join(os.path.expanduser(home), ".claude", "CLAUDE.md")) and not os.path.exists(os.path.join(os.path.expanduser(home), ".rig-student")) else "project,local"
+
+
 def selftest():
     import tempfile
     real = rm.notes_root()
@@ -125,6 +151,15 @@ def selftest():
             raise AssertionError("did not refuse the real notes root")
         except SystemExit as x:
             assert "REFUSED" in str(x), x
+        # Enver setup carries the brief + `user` source; student setup carries neither; no settings.json is ever copied
+        fake = os.path.join(t, "realhome"); os.makedirs(os.path.join(fake, ".claude"))
+        open(os.path.join(fake, ".claude", "CLAUDE.md"), "w").write("ASK WHEN UNCLEAR MARKER\n")
+        open(os.path.join(fake, ".claude", "settings.json"), "w").write("{}")
+        ev = os.path.join(t, "ev"); os.makedirs(ev)
+        assert install_enver_brief(ev, fake) and open(os.path.join(ev, ".claude", "CLAUDE.md")).read() == "ASK WHEN UNCLEAR MARKER\n"
+        assert not os.path.exists(os.path.join(ev, ".claude", "settings.json")) and setting_sources(ev) == "user,project,local"
+        st = os.path.join(t, "st"); os.makedirs(st); open(os.path.join(st, ".rig-student"), "w").close()
+        assert not install_enver_brief(st, fake) and not os.path.exists(os.path.join(st, ".claude", "CLAUDE.md")) and setting_sources(st) == "project,local"
         print("rig_live_free selftest: ok")
     finally:
         shutil.rmtree(t, ignore_errors=True)
@@ -214,13 +249,14 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
     except OSError:
         personal = os.path.join(home, "lifehack-personal-code")
     isolated = home.endswith("rig-iso-home") and os.path.exists(ptr)
+    student_home = os.path.exists(os.path.join(home, ".rig-student"))   # set by rig_student.make_student_home (--student)
     if isolated:
-        fresh_personal(personal)   # per session, so one session's files never count for the next
+        fresh_personal(personal, student=student_home)   # per session, so one session's files never count for the next
     prompt = L["prompt"]
     for k, v in (("{HOME}", home), ("{CWD}", cwd), ("{V2}", V2), ("{PERSONAL}", personal)):
         prompt = prompt.replace(k, v)
     prompt += L.get("suffix", SUFFIX)
-    cmd = ["claude", "-p", prompt, "--model", model, "--permission-mode", "bypassPermissions", "--setting-sources", "project,local", "--plugin-dir", V2,
+    cmd = ["claude", "-p", prompt, "--model", model, "--permission-mode", "bypassPermissions", "--setting-sources", setting_sources(home), "--plugin-dir", V2,
            "--settings", settings or os.path.join(OPS, "system/desktop-launchers/v2/lab-settings.json"), "--output-format", "stream-json", "--verbose"]
     b = snapshot(notes)
     t0 = time.time()
@@ -256,6 +292,9 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
     files = [p for p in mine_new + [m for m in mine_mod if not m.endswith(ls.CODE_EXT)] if os.path.isfile(p)]
     if isolated:   # what the session put into the throwaway personal folder (its own list and tools) is its product
         files += sorted(os.path.join(dp, f) for dp, dn, fs in os.walk(personal) if ".git" not in dp.split(os.sep) for f in fs
+                        if os.path.getsize(os.path.join(dp, f)) > 0)
+        # ruling A.2 (2026-10-31): a personal skill belongs in ~/.claude/skills/<name>/ - in the throwaway HOME that is its product too
+        files += sorted(os.path.join(dp, f) for dp, dn, fs in os.walk(os.path.join(home, ".claude", "skills")) for f in fs
                         if os.path.getsize(os.path.join(dp, f)) > 0)
     ns = argparse.Namespace(stream=stream, desk="/nonexistent/no-desk", sid=None, journal=os.path.join(home, ".claude/run/fire-journal.jsonl"), code_root=rm.ROOT,
                             sop=L["sop"], shared_ref=L["shared_ref"], register_file=[], personal_root=(personal if isolated else None), enver_home=(personal if isolated else None), home_prefix=[], wrong_move=L["wrong_re"], ignore_hook=[], json=True, files=files, registration_forbidden=bool(L.get("registration_forbidden")), student=bool(L.get("student")))
@@ -319,6 +358,7 @@ def main():
     ap.add_argument("--model", default="sonnet", help="model tier for the live sessions (Round C exam: sonnet, in bypassPermissions mode like most students)")
     ap.add_argument("--settings", help="settings file for the child (default: lab-settings.json). Practice rounds pass a copy without Enver's own Edit(.claude/skills/**) deny, which a student does not have")
     ap.add_argument("--scratch")
+    ap.add_argument("--student", action="store_true", help="run as a student who finished the normal setup (bootstrap.py): own throwaway notes + personal code folder + pointers, no GitHub, none of Enver's files (rig_student.make_student_home)")
     ap.add_argument("--env", action="append", default=[])
     a = ap.parse_args()
     if a.cmd == "selftest":
@@ -329,6 +369,15 @@ def main():
     # other pieces write under ~/.claude. Unless the caller passes its own throwaway HOME (the student pass does), build one here.
     envd = dict(e.split("=", 1) for e in a.env)
     real_home = os.path.realpath(os.path.expanduser("~"))
+    if a.student and "HOME" in envd:
+        sys.exit("REFUSED: --student builds its own throwaway HOME; do not pass --env HOME=")
+    if a.student:
+        import rig_student
+        iso = os.path.join(real_home, "rig-iso-home")
+        tok = rig_student.make_student_home(iso, real_home, V2)
+        envd["HOME"] = iso
+        if tok and "CLAUDE_CODE_OAUTH_TOKEN" not in envd and "CLAUDE_CODE_OAUTH_TOKEN" not in os.environ:
+            envd["CLAUDE_CODE_OAUTH_TOKEN"] = tok
     if "HOME" not in envd:
         iso = os.path.join(real_home, "rig-iso-home")
         shutil.rmtree(iso, ignore_errors=True)
@@ -345,6 +394,7 @@ def main():
         fresh_personal(pcdir)
         open(os.path.join(iso, ".config", "lifehack", "personal-code"), "w", encoding="utf-8").write(pcdir + "\n")
         envd["HOME"] = iso
+        install_enver_brief(iso, real_home)
     if os.path.realpath(os.path.expanduser(envd["HOME"])) == real_home:
         sys.exit("REFUSED: the live sessions would run with the real HOME (%s); use a throwaway HOME" % real_home)
     real_ops = os.path.realpath(OPS)
