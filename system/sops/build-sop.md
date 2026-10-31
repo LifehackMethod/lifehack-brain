@@ -332,7 +332,7 @@ authority: user
 
 ## Domain — background / scheduled runners
 
-> ⚠ **SCHEDULED RUNNERS ARE OWNED BY `system/sops/jobs-sop.md` (2026-10-30).** Its rules win wherever they differ from a bullet below: one launchd job per `yes` row, the check lives in the row, the door and the rig enforce them. This section is kept as the lessons learned on the old interval scheduler.
+> ⚠ **SCHEDULED RUNNERS ARE OWNED BY `system/sops/cron-jobs-sop.md` (2026-10-30).** Its rules win wherever they differ from a bullet below: one launchd job per `yes` row, the check lives in the row, the door and the rig enforce them. This section is kept as the lessons learned on the old interval scheduler.
 >
 > ⚠ **THE SCHEDULER AND DASHBOARD NAMED BELOW ARE NOT PART OF THIS REPO.** These entries were learned
 > on one particular interval scheduler and one particular status page, neither of which ships here.
@@ -359,7 +359,7 @@ authority: user
 - **Don't run the same Drive-stateful cron on two machines at once** — no cross-machine lock; gate to one.
 - ~~**An INTERVAL scheduler cannot pin a job to a clock or calendar time.** It fires when `now − last_run ≥
   interval_seconds`, nothing more. A job that must hit a wall-clock moment (4am daily · Friday-EOB · 1st-of-month ·
-  Jan-1) needs a DEDICATED CRONTAB LINE, not an interval entry.~~ *(2026-10-30: superseded → `jobs-sop.md` §4 "The chain": launchd runs one LaunchAgent per `yes` row, an interval is a whole-hour divisor of 86400 or a multiple of 86400, and `--if-overdue` enforces the real interval; no crontab line. 2026-06-10, building a daily-digest cron.)*
+  Jan-1) needs a DEDICATED CRONTAB LINE, not an interval entry.~~ *(2026-10-30: superseded → `cron-jobs-sop.md` §4 "The chain": launchd runs one LaunchAgent per `yes` row, an interval is a whole-hour divisor of 86400 or a multiple of 86400, and `--if-overdue` enforces the real interval; no crontab line. 2026-06-10, building a daily-digest cron.)*
 - **A cadence/day-windowed cron job cannot be monitored by exit code and staleness alone.** "Correctly skipped"
   and "never fired" are both exit 0 plus silence, and time-based staleness reads CORRECT silence as BROKEN —
   a Wednesday-only runner flags STALE roughly 3 days in 7 with zero missed runs. **A windowed job must emit

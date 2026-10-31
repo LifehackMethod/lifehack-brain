@@ -65,7 +65,7 @@ elements/<slug>.md, the exhaustive source. If this map is your only source, you 
            pushes only; a CRITICAL page (sentinel DANGER, dead monitor) BYPASSES it and WILL wake you.
 ~ Mac: launchd -> ~/.config/lifehack/code-root -> job-run.sh. Linux/Windows: pulse.sh + cron. ONE row per
   job in `system/jobs.md`; the door (install-schedulers.sh) refuses a row that breaks the rules.
-@ (you add a job) the rules for any cron job | jobs-sop.md (system/sops/) — one row, a content check, the
+@ (you add a job) the rules for any cron job | cron-jobs-sop.md (system/sops/) — one row, a content check, the
   door. read it before adding or changing any scheduled job.
 NOT BUILT — admissions, not omissions. knowing now beats inferring a connection that isn't there:
 - one subject's records agreeing with another's (a billing row becoming taxable income). no general
@@ -95,7 +95,7 @@ All in `system/sops/`. Open the one that matches the job; each is the owner of i
 - `desk-building-sop.md` — use when creating or changing a desk (the one canonical statement of its shape).
 - `google-sheet-sop.md` — use when building, editing or writing to any Google Sheet.
 - `hook-sop.md` — use when deciding whether and how to add a hook that enforces a rule.
-- `jobs-sop.md` — use when adding, changing, switching on or debugging a scheduled job.
+- `cron-jobs-sop.md` — use when adding, changing, switching on or debugging a scheduled job.
 - `plan-sharpening-sop.md` — use when sharpening a plan: the thinking beats shared by `/autoplan` and `/checkin`.
 - `recovery-runbook.md` — use when cold-restoring after a machine, repo or auth failure (Part 1 is general, for everyone; Part 2 is optional, for a GitHub-backed setup).
 - `skill-building-sop-extract.md` — use when you need the one extract (a model cannot report its own compliance) the core skills cite.

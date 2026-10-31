@@ -19,10 +19,11 @@ trap 'lhb_journal_fire "$?" "inject_sop_before_build.sh" "UserPromptSubmit" "" 2
 # REDIRECT: N/A (non-blocking).
 # SIGNPOST: The TRIGGER TABLE in this script IS the rule. SOPs pointed at live in
 #           system/sops/{skill-building-playbook,hook-sop,desk-building-sop,
-#           google-sheet-sop,design-process-sop,jobs-sop}.md. To add a 7th SOP:
+#           google-sheet-sop,design-process-sop,cron-jobs-sop}.md. To add a 7th SOP:
 #           add one row to the TABLE list below. Hook doctrine: system/hook-contract.md.
 # UPDATED: 2026-07-11 (new — SOP build-time pointer injector; council-scoped KISS)
 # UPDATED: 2026-10-29 (v2 2.4) — also points at system/register/toolbox.md and /build.
+# UPDATED: 2026-10-31 (Enver) — jobs-sop.md renamed cron-jobs-sop.md ("jobs" was too general).
 # UPDATED: 2026-10-29 (self-monitoring 5.8) — the cron row points at system/sops/jobs-sop.md, which
 #          replaces the donor-only cron-safety.md (never shipped here).
 # PORTED: 2026-08-13 from claudeops-config — the TABLE's SOP paths are unchanged (repo-relative,
@@ -61,7 +62,7 @@ TABLE = [
     (r"desks?",                                     "system/sops/desk-building-sop.md",       "desk"),
     (r"(?:google\s+)?sheets?|spreadsheets?",        "system/sops/google-sheet-sop.md",        "Google Sheet"),
     (r"dashboards?|views?|screens?",                "system/sops/design-process-sop.md",      "dashboard / view"),
-    (r"crons?|scheduled\s+(?:job|task)s?|timers?",  "system/sops/jobs-sop.md",                "cron job"),
+    (r"crons?|scheduled\s+(?:job|task)s?|timers?",  "system/sops/cron-jobs-sop.md",           "cron job"),
     (r"(?:email|mail|inbox|corpus)\s+(?:ingest\w*|read(?:er|ing)?|process(?:or|ing)?|backlog)|ingest(?:ion|or)?\s+(?:skill|desk|pipeline|reader|hook|pass)",
                                                     "system/information-ingestion-interpretation.md", "email / information ingestion reader"),
 ]

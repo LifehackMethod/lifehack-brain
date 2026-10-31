@@ -1,4 +1,4 @@
-# job-texts.txt -- ALL the wording of the texts that reach the owner's phone (self-monitoring 5.14; rule: jobs-sop.md section 14).
+# job-texts.txt -- ALL the wording of the texts that reach the owner's phone (self-monitoring 5.14; rule: cron-jobs-sop.md section 14).
 # One line per text:  <key> = <text>.  Edit the words here; no code changes. A new kind of text is added here, in the same voice.
 # Placeholders: {name} = the job's plain name (system/job-names.txt, "Your <plain name>"); {last_ok} and {since} = a time like
 # "2:10 PM", "yesterday 2:10 PM" or "Tuesday 8 AM".

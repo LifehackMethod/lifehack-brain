@@ -179,12 +179,12 @@ in a browser tab.
   after showing the person whose sheet it is the exact before and after.
 
 ## gws sheets syntax (current — `/opt/homebrew/bin/gws`)
-- Read: ~~`gws sheets spreadsheets values get --params '{"spreadsheetId":"<ID>","range":"_LLM_GUIDE!A:Z"}'`~~ *(2026-10-30: a raw `values get` is refused — `ingest_gate_enforce.sh` blocks it in a session and the job door blocks it in a runner, `jobs-sop.md` §7.)* The allowed way: `python3 <repo>/system/tools/safe_sheets.py <spreadsheet-id> '_LLM_GUIDE!A:Z'` — it sanitizes every cell, scans for injection and fails closed; exit 1 means spans were flagged and neutralised, so read the stderr list.
+- Read: ~~`gws sheets spreadsheets values get --params '{"spreadsheetId":"<ID>","range":"_LLM_GUIDE!A:Z"}'`~~ *(2026-10-30: a raw `values get` is refused — `ingest_gate_enforce.sh` blocks it in a session and the job door blocks it in a runner, `cron-jobs-sop.md` §7.)* The allowed way: `python3 <repo>/system/tools/safe_sheets.py <spreadsheet-id> '_LLM_GUIDE!A:Z'` — it sanitizes every cell, scans for injection and fails closed; exit 1 means spans were flagged and neutralised, so read the stderr list.
   ⚠ *Open gap (2026-10-30, read from `guard_sheet_writes.sh:143-148`, not fire-tested):* that guard records its "this window read the guide" marker only from a command shaped like `gws sheets ... values get`, which the door refuses, so a write after a `safe_sheets.py` read may still be asked to read the guide first. Unresolved; it belongs to the guard, not this page.
 - Metadata (tab list): `gws sheets spreadsheets get --params '{"spreadsheetId":"<ID>"}'`
 - Append (normal write): `gws sheets spreadsheets values append --params '{...}'`
 - ~~Always `2>/dev/null` when parsing gws JSON — it writes progress chatter there and it will corrupt
-  your parse.~~ *(2026-10-30: never silence a fetch, write or push in a runner — `jobs-sop.md` §7 refuses `2>/dev/null` there, and an error you cannot see reads as "nothing new". The allowed way: send stderr to a file, `2>"$TMP/gws.err"`, parse stdout only, and read the file if the call fails.)* `system/gws-contract.md` has the quoting and error-code patterns; see the Pointers section at the bottom.
+  your parse.~~ *(2026-10-30: never silence a fetch, write or push in a runner — `cron-jobs-sop.md` §7 refuses `2>/dev/null` there, and an error you cannot see reads as "nothing new". The allowed way: send stderr to a file, `2>"$TMP/gws.err"`, parse stdout only, and read the file if the call fails.)* `system/gws-contract.md` has the quoting and error-code patterns; see the Pointers section at the bottom.
 
 ## The workflow (any sheet build)
 1. **Identify the sheet + read its `_LLM_GUIDE`** (satisfies `guard_sheet_writes`).

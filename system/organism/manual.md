@@ -635,7 +635,7 @@ detector jobs (system-health, sentinel-health, planning-health, backlog-health, 
 jobs) are RETIRED with their runners; the incident ledger and fault grader are on hold, not deleted. Built 2026-10-29
 (self-monitoring 5.10): a failed text retries until it is confirmed sent; a job that keeps standing down texts once;
 every run checks the other jobs and texts once for one that is not running. Every text is written for a person
-(`system/sops/jobs-sop.md` section 14).
+(`system/sops/cron-jobs-sop.md` section 14).
 
 **The row contract.** Every row carries, besides its name, switch, interval and command: an `outcome` (one sentence:
 what a good run leaves behind), a `check` (`<path> ~ <ERE>`: the file must be newer than this run's start AND some line
@@ -681,7 +681,7 @@ and must name every one exactly, or the gate refuses to trust the rig. It does n
 
 ### How to add a job (Mac) — step by step
 
-> **This recipe now lives in one place: `system/sops/jobs-sop.md`, section 11 "Add a job (the recipe)"** (2026-10-30). Follow that, not the steps below. The steps below were marked OUT OF DATE on 2026-10-27 (self-monitoring 5.1–5.3: the check now lives in the ROW, not in `job-run.sh`; every row needs the five contract fields; the door refuses a non-conforming row; a model is reached through `run_model`, not `ingest-run.lib.sh`) and are kept struck through for the record only.
+> **This recipe now lives in one place: `system/sops/cron-jobs-sop.md`, section 11 "Add a job (the recipe)"** (2026-10-30). Follow that, not the steps below. The steps below were marked OUT OF DATE on 2026-10-27 (self-monitoring 5.1–5.3: the check now lives in the ROW, not in `job-run.sh`; every row needs the five contract fields; the door refuses a non-conforming row; a model is reached through `run_model`, not `ingest-run.lib.sh`) and are kept struck through for the record only.
 
 1. ~~**Write the command.** A stand-alone shell command or runner script (`system/tools/<job>-run.sh`). It must exit 0 only
    on real success, 75 if it is simply not configured, 2 for a transient failure, anything else for a failure. Reach a

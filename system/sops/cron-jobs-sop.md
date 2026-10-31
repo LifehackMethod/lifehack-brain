@@ -1,6 +1,6 @@
 ---
 topic: [system-architecture]
-id: system-playbook-jobs-sop
+id: system-playbook-cron-jobs-sop
 title: "Jobs SOP: how a scheduled job is added, checked and switched on"
 record_type: playbook
 status: active
