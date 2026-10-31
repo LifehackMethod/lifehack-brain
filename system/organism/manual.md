@@ -125,7 +125,7 @@ one has all three — they just do not look like the textbook.
   hook is executable policy written in bash, and the running session is the interpreter. The
   logic is not all in files, and that is intentional — it is what makes the system adaptable
   without a deploy.
-  ⚠ **That sentence — "the running session is the interpreter" — is developed further, and its tension with `skill-building-sop.md:199` (LAW 1) named, in THE CODE/LLM SEAM below.**
+  ⚠ **That sentence — "the running session is the interpreter" — is developed further, and its tension with `skill-building-sop.md` (THE FRAME, the "You are buying FRICTION, not certainty" line; formerly cited as :199) (LAW 1) named, in THE CODE/LLM SEAM below.**
 - **Data** = **deliberately-thin files** on Drive (content) and git (code). **There is NO
   database, BY DESIGN.** Markdown and JSONL that a human can open, diff, and correct beat a
   schema no human will ever query — for a single operator whose data is measured in megabytes,
@@ -190,7 +190,7 @@ everyone's. A scoped directory add stays allowed; it is deliberate. And in a sha
 >
 > **What a reader would otherwise misread:** you will assume the code in this system is the system. It
 > isn't — and the manual already says so, one chapter up: *"the running session is the interpreter."*
-> This chapter develops that sentence. ⚠ **It also sits in tension with `skill-building-sop.md:199`
+> This chapter develops that sentence. ⚠ **It also sits in tension with `skill-building-sop.md` (THE FRAME, the "You are buying FRICTION, not certainty" line; formerly cited as :199)
 > (LAW 1), which says code owns the perimeter and the model works inside it. Both statements are
 > currently live. That tension is real, it is named here on purpose, and resolving it is the operator's call.**
 >
@@ -243,7 +243,7 @@ problem — the evidence in front of you genuinely supports building another mac
 
 **The session appears to be the host. Code appears to be the guest.**
 
-`skill-building-sop.md:199` says *"code owns the mechanical perimeter, the LLM owns judgment inside it"* —
+`skill-building-sop.md` (THE FRAME, the "You are buying FRICTION, not certainty" line; formerly cited as :199) says *"code owns the mechanical perimeter, the LLM owns judgment inside it"* —
 the model inside code's wall. **In this system it may be the reverse:** the session is what runs, and code
 sits inside it waiting to be picked up.
 
@@ -763,6 +763,7 @@ INTEROP:
   SYNCS        gws-plane              · googleapis.com / google.com / gstatic.com / googleusercontent.com are all in egress-allowlist.md; the allowlist entries are what structurally permit gws-plane traffic
   COMPLEMENTS  two-machine-residency  · egress-allowlist.md and egress-allowlist.hosts are git-tracked and travel to both machines via git push/pull; LuLu sync remains manual
   READS        label-checker          · conformance-lab fire-tests guard_egress.sh + enforce_egress_allowlist.sh with synthetic probes to produce the LIVE/PARTIAL verdict; the checker makes LIVE a meaningful claim
+> ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
   GUARDED-BY   guard_egress.sh · enforce_egress_allowlist.sh · ingest_gate_enforce.sh   · the walls that fire here
 
 ## hook-plane · system/hooks/ + settings.json   [PARTIAL]   → elements/hook-plane.md
@@ -1075,6 +1076,7 @@ INTEROP:
   SHARES       project-manager      · skill_anchor.sh + skill_anchor_inject.sh are a direct architectural mirror of pm_flag.sh + pm_persist.sh (flag state manager + UserPromptSubmit injector); same session-key scheme, TTL, degrade-safe posture
   FEEDS        save                 · /save's Step 7b (machine-log) and Step 7c (learnings) record skill-related events when a session runs a skill and then saves
   FEEDS        label-checker        · conformance-lab's multi-phase driver contracts (## Output contract + ✅ phase N complete) are the machine-readable seam conformance.py reads; new-skill.sh --multiphase creates this seam at birth
+> ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
   ~~TRIGGERS     auto_register_skill.sh · a Write or Edit to desks/{desk}/skills/{name}/SKILL.md automatically triggers stub creation; /save may trigger this if it writes a SKILL.md~~ *(2026-10-30: no such hook exists, see the GUARDED-BY note below)*
   CHAINS       skill_anchor.sh → skill_anchor_inject.sh · anchor state manager arms a flag; injector reads it every turn; useless without each other
   READS        system/sops/skill-building-sop.md · canonical doctrine for all skill authoring; the hook's deny message names it explicitly
@@ -1223,6 +1225,7 @@ INTEROP:
   FEEDS        archivist              · system/organism/elements/*.md are the shared store — label-checker stamps computed labels into element files; Archivist's weekly drift-check reads those same files to detect stale entries
   FEEDS        notify-plane           · label-checker exits non-zero (exit 1) on any downgrade; the weekly Archivist cron (TARGET — not yet wired) is the declared caller that turns that non-zero into a phone-ping via notify-plane
   COMPLEMENTS  conformance-lab        · conformance-lab (system/tools/conformance-lab/) also fires hook scripts against payloads via bash stdin; label-checker runs manifest-declared probes for map-honesty; conformance-lab runs adversarial bake-off suites for enforcement-tournament selection; neither reads the other's ground-truth file; neither subsumes the other
+> ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 
 ## build-plan-plane · /autoplan + /build   [LIVE (honor)]   → elements/build-plan-plane.md
 The planning + execution contract — /autoplan structures the plan and /build executes it autonomously; together they enforce Phase → Feature → Task discipline with verified ✅ on every task. Primary behavioral contracts (continuation check, No-Silent-Demotion, Execute→Verify→✅, gear selection, honest close) are [honor]-only skill prose; plan-shape hooks are LIVE but enforce structure only at ExitPlanMode, not execution time.

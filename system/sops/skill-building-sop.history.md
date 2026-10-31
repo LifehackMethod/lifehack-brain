@@ -2483,3 +2483,880 @@ very row depends on is exactly that bet. Policy moves faster than architecture. 
 
 ### MOVE original · lines 2724-2730 · v2 audit 2026-10-28: testing hygiene
 (verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
+
+
+<!-- 2026-10-31 v3 rewrite: entries below were appended by the v3 rewrite of skill-building-sop.md -->
+
+The entries below record every passage removed or replaced while writing the v3 draft (✅ it became the live `skill-building-sop.md` on 2026-10-31; the draft file was archived to `archive/2026-10-31-skill-system-cleanup/system/sops/`) from `system/sops/skill-building-sop.md` (2,723 lines, sha1 e258fb9b at the time; read-only, unchanged). Line numbers are those of that original. Text is verbatim. Instructions applied: `<notes>/state/projects/skill-system/records/2026-10-31-skills-sop-contradictions-and-stale-theory.md` (Enver approved its contradiction findings and junk list, 2026-10-31). Change ledger: `<notes>/state/projects/skill-system/records/2026-10-31-sop-v3-change-ledger.md`.
+
+## 2026-10-31 v3 rewrite — PROPOSED CHANGES block (whole, as it stood) — STALE text, kernel kept at the end of the draft (moved there, HIGH/MEDIUM/OPEN re-tagged to the frame's tiers, rulings applied)
+
+- Date: 2026-10-31
+- Action: MOVE + RE-TIER
+- Original lines: 216-344 (with the blank lines 215 and 345-346, which moved with it)
+- Where it went: the last section of the v3 draft, START/END markers kept
+
+```
+<!-- PROPOSED-CHANGES-2026-10-31 START — written by the skill-system window at Enver's instruction; source: state/projects/skill-system/records/2026-10-31-skills-sop-proposed-changes-DRAFT.md -->
+# PROPOSED CHANGES (2026-10-31) — how a long, multi-step skill should be built
+
+> **Status: PROPOSED, not yet in force.** Written 2026-10-31 from: a dated survey of everything tried since July,
+> an altitude review of it, blind outside research (four angles), and a read of the canon. Where this conflicts
+> with older text in this file, the older text stands until a human rules. Confidence on each point:
+> **HIGH** · **MEDIUM** · **OPEN**.
+
+> **Words used in this section, exactly:**
+> - **Skill** — the one thing a person invokes by name. One skill = one front door.
+> - **Step** — one unit of work *inside* a skill. A step has its own instruction file, the one output file it must
+>   produce, and its own check. A skill contains steps. **A step is not a separate skill.**
+> - **Runner** — the code that hands the model one step at a time, checks each step's output, and writes the record.
+> - **Check** — code that reads a step's output file and says pass or fail.
+
+## 10,000 feet — what is true
+
+**The problem.** A long, multi-step skill runs inside an environment that is unpredictable on every turn. Left
+alone, the model skips steps, says "done" when it isn't, and does whatever looks reasonable. The longer the skill,
+the worse this gets: reliability drops at every step and as the session fills up. *HIGH.*
+
+**The hard half is the check, not the order.** Keeping the model on the right step is solved: code that holds the
+list of steps keeps them in order every time. The hard part is the check after each step — knowing the step was
+done, and done well, from evidence the model can't simply produce. *HIGH.*
+
+**There is no perfect enforcement — only layers of friction.** Each layer catches some slips. Layers only add up
+if they fail in different ways. Use few: one to four per skill. A layer that cries wolf gets bypassed, so an
+inaccurate gate is worse than none. *HIGH.*
+
+**Four principles.**
+1. **The model can't be made to obey.** You can only shape the road it travels. *HIGH.*
+2. **Enforcement only counts if it is on the road.** A tool sitting beside the skill, waiting to be remembered, is
+   not enforcement. The most common failure in this system's history is "built, but nothing calls it." *HIGH.*
+3. **The model never decides it is done.** Something other than the model reads the result and writes the
+   record. *HIGH.*
+4. **Use the smallest thing that works.** Prefer what the platform already provides; keep rules rare; give each
+   rule one home. *HIGH.*
+
+**The layers of friction, strongest first.**
+1. Code holds the list of steps and hands the model one step at a time. *HIGH.*
+2. After each step, code reads what the step actually produced — not just that a file exists — and every check is
+   proven with a planted mistake before it is trusted. *HIGH.*
+3. When the model hands an answer back, it picks from a fixed menu, and one option always means "I couldn't
+   finish." Code checks the answer is on the menu. *HIGH.*
+4. The record of what happened is written by code, never by the model. *HIGH.*
+5. Guards that fire by themselves at the few moments that matter. *HIGH.*
+6. A human gate before any action that can't be undone; code reads the answer and accepts only an explicit
+   yes. *HIGH.*
+7. Written instructions carry the judgment *inside* a step. Softest layer, but real. Prose never proves a step
+   happened. *MEDIUM.*
+
+**What we got wrong — do not retry.**
+- **Measuring before building.** Labs that graded skills before any skill was built correctly produced noise, and
+  their AI judges were not truly independent.
+- **Building instruments beside the road.** Checkers, testers and gates that had to be remembered were not.
+- **Letting the model mark its own work.** Self-written "done" stamps hid every real skip.
+- **Restarting each era.** Earlier work was never connected to later work, so lessons were re-learned.
+
+**What nobody has solved yet.** *OPEN.*
+- How to check a step whose output is a judgment rather than a file.
+- How to give a conversation-shaped skill the same backbone as an assembly-line one.
+- How much is lost at each hand-off between steps, for work where a person talks with the model mid-step.
+
+## 5,000 feet — the parts every long skill needs
+
+**A long skill is a small program that calls the model — not a prompt that hopes the model follows along.** *HIGH.*
+
+**Build a long skill as a sequence of small steps, not one long instruction.** *HIGH.* One long instruction
+degrades; small steps, each with one job, hold. Each step's output file is the next step's input.
+
+**The steps live as separate files inside the one skill's folder.** *MEDIUM — a design choice, ruled by Enver
+2026-10-31; the research supports splitting into steps but did not compare forms.* The person invokes the skill
+once. The runner hands the model one step file at a time. Steps are **not** separate skills, because:
+- the platform cannot make one skill start another, so the model would have to choose to — which is the exact
+  failure being fixed;
+- every separate skill can trigger on its own, out of order.
+A person adapting a skill copies its folder and reorders, swaps, or rewrites individual step files.
+*Considered and set aside:* each step as its own skill, chained by a guard.
+
+**The five parts.**
+1. **The step list** — the steps in order, each marked code, AI, or human, each with its check. No branching and
+   no parallel AI steps inside the list; a fan-out is a code step that holds the fan. *HIGH.*
+2. **The runner** — walks the list, hands the model one step at a time, waits when a person is needed, picks up
+   after a crash, writes the record. Either the platform's own way of holding order plus only what it lacks, or
+   our own — settled by testing, not debate. *MEDIUM.*
+3. **The checks** — one per step; reads content; proven with a planted mistake; looks at evidence the work
+   *caused*, never something the model could simply *write*. *HIGH.*
+4. **The answer menu** — fixed answers plus one meaning "no outcome." *HIGH.*
+5. **The record** — written by code, append-only, refused if cut short. *HIGH.*
+
+**Moving from one step to the next is never left to the model.** *HIGH.* The runner moves to the next step only
+after the current step's check passes. Where a guard is used instead, it refuses the next step until the check
+passes, and every refusal says why and what to do — a bare "no" makes the model hunt for a workaround.
+
+**Where a guard sits matters.** *HIGH.* A guard on the *next action* (starting the next step, or the next write)
+cannot be argued with. A guard at the end of a turn only sends the model a message, which it can read, apologise
+for, and ignore. Every blocking guard has a limit so it cannot loop forever, and a check that fails to *run* must
+never look like a pass.
+
+**Every gate must be able to wait for a person.** *HIGH.* In a conversation-shaped step, the person talks with the
+model in the middle of the step. A gate that cannot represent "waiting for the person" will push the skill
+forward without them — outside teams have seen this approve every stage on its own.
+
+**The skill's world model lives in files, not in the session.** *HIGH.* What the skill has learned so far —
+progress, decisions, what's next — is written to durable files as it goes. When a session fills up, a fresh
+session starts by reading those files; this works better than summarising the old session. Something must hand
+those files to the new session automatically: storing them is not enough, they must be delivered.
+
+**Two kinds of skill, two roads.** *HIGH for the split; OPEN for the conversation road.*
+- **Assembly-line skills** (fixed steps that produce files or records) get the full set: step list, runner, a
+  check per step, record.
+- **Conversation skills** (open dialogue) get a thinner road: a few guards at the moments that matter, a
+  fixed-shape output file at the end of each step, and a check on that file. Heavy scaffolding inside a
+  conversation hurts strong models.
+
+**The shared layer holds every part, once.** *HIGH.* The runner, the checks, the answer menu and the record writer
+live in one shared place. A skill uses them; it never copies them.
+
+**This file shrinks.** *HIGH.* Principles stay short prose. Anything that can be checked becomes a check in the
+shared layer, not a paragraph here.
+
+**What we got wrong at this level.**
+- Two tools doing the same job.
+- The same rules copied into more than one rulebook.
+- Code kept in the notes folder instead of the code repository.
+- Checks that only looked for a file's existence — they passed while the content was wrong.
+
+> **Evidence behind this section** (notes folder, `<notes>/state/projects/skill-system/records/`): `2026-10-31-survey-ideal-skill-architecture.md` · `2026-10-31-architect-read-ideal-skill-architecture.md` · `2026-10-31-structuring-long-multiphase-agent-workflows.md`.
+<!-- PROPOSED-CHANGES-2026-10-31 END -->
+```
+
+## 2026-10-31 v3 rewrite — Frontmatter updated_at / v3_status — STALE text, kernel kept at frontmatter (date bumped)
+
+- Date: 2026-10-31
+- Action: META
+- Original lines: 12
+- Where it went: in place; old date line to history
+
+```
+updated_at: 2026-10-30
+```
+
+## 2026-10-31 v3 rewrite — Route entry §II.3 — SUPERSEDED by COMPASS P-45 (route purpose text only)
+
+- Date: 2026-10-31
+- Action: REFINED
+- Original lines: 47
+- Where it went: in place; old purpose to history
+
+```
+["§II.3", 871, "reliability dial: how much friction to add; escalation path"]
+```
+
+## 2026-10-31 v3 rewrite — Route entry §II.4 — JUNK THEORY (stale count '14 scripts'; `ls system/parts/*.py | wc -l` returns 13 on 2026-10-31)
+
+- Date: 2026-10-31
+- Action: REFINED
+- Original lines: 49
+- Where it went: in place; old purpose to history
+
+```
+["§II.4", 922, "primitives library (system/parts, 14 scripts); patterns worth building"]
+```
+
+## 2026-10-31 v3 rewrite — Route entry §V.2 — JUNK THEORY (route purpose restated the struck 'measure before you enforce' rail)
+
+- Date: 2026-10-31
+- Action: REFINED
+- Original lines: 89
+- Where it went: in place; old purpose to history
+
+```
+["§V.2", 2063, "measure before you add friction"]
+```
+
+## 2026-10-31 v3 rewrite — reader_note — STALE text, kernel kept at reader_note ('read the principles first; diagnose before you fix')
+
+- Date: 2026-10-31
+- Action: REFINED
+- Original lines: 116-123
+- Where it went: in place (same 8 lines); tag definitions point to EVID legend and frame mapping (one home); original to history
+
+```
+  READ ORDER IS THE RANKING. PART I is the physics — five principles you cannot prompt your way around; if you read
+  nothing else, read those. PART II is the toolbox that obeys them. PART III builds a skill start to finish
+  (self-contained — start here if you just need to scaffold). PART IV holds it at runtime. **PART V tells you
+  WHICH DETECTOR TO BUILD and how you would know it still works** — ⭐ read §V.1 BEFORE you build, not after:
+  it is diagnosis, not verification, and *fixing the wrong seam is the single biggest waste in skill work.*
+  PART VI is the earn-it edge cases. Evidence tags: [R]/[R2] = prior multi-agent research maps · [C] = the
+  2026-07-25 crowd-convergence + code-dissection maps · [M] = MEASURED in our own conformance lab, sample stated
+  inline (an [M] claim means "this mechanism demonstrably exists," never "this is the rate").
+```
+
+## 2026-10-31 v3 rewrite — PART 0 banner — 'not the default way' (junk #3) — JUNK THEORY — 'not the default way' as a design statement, overtaken by COMPASS P-7 (2026-10-30) and Enver's 2026-10-31 step-files ruling; tier warning kept
+
+- Date: 2026-10-31
+- Action: STRUCK
+- Original lines: 351
+- Where it went: struck in place; sentence verbatim to history
+
+```
+comes from one prototype rig and awaits the week-long test. It is not the default way to build a skill.
+```
+
+## 2026-10-31 v3 rewrite — PART I intro — 'cannot prompt your way around them' (STALE #4) — STALE text, kernel kept at PART I intro
+
+- Date: 2026-10-31
+- Action: REFINED
+- Original lines: 497
+- Where it went: struck + replaced in place; sentence to history
+
+```
+authorities [C]. **You cannot prompt your way around them.** Everything in PARTS II–VI is downstream of these.
+```
+
+## 2026-10-31 v3 rewrite — Principle 1 — 'enforced by deterministic code' (A10) — STALE text, kernel kept at Principle 1 ('code holds what has a definite shape')
+
+- Date: 2026-10-31
+- Action: REFINED
+- Original lines: 502
+- Where it went: struck + replaced in place; phrase to history
+
+```
+a phase that must finish before the next starts, a write that must land — is enforced by **deterministic code**:
+```
+
+## 2026-10-31 v3 rewrite — Principle 1b HEADLESS cell (junk #4 / A23) — JUNK THEORY — 'HEADLESS can pause for approval: no', disproven by orchestrator-v2 tests p01–p07 on 2026-10-28
+
+- Date: 2026-10-31
+- Action: STRUCK
+- Original lines: 699
+- Where it went: cell rewritten; old row verbatim to history
+
+```
+| **HEADLESS** | a script shells `claude -p` | ✅ yes — **if the script supplies an absolute path to the CLI and its own login token** (cron's environment is stripped) | ⛔ no |
+```
+
+## 2026-10-31 v3 rewrite — Principle 1b HEADLESS v2 note (SUPERSEDED #9) — SUPERSEDED by the rewritten HEADLESS cell (Principle 1b table)
+
+- Date: 2026-10-31
+- Action: SUPERSEDED
+- Original lines: 702
+- Where it went: pointer in place; note verbatim to history
+
+```
+> **v2 (orchestrator-v2, 2026-10-28):** The HEADLESS row's "can pause for approval: ⛔ no" is **superseded**: a headless run CAN pause if the runner stores the question, exits with a distinct waiting code, and resumes on the answer. *(OBSERVED — p01–p07 pause/resume, brief §4 Stage 2. Table row kept as written above because a table cell cannot be struck without breaking the table.)*
+```
+
+## 2026-10-31 v3 rewrite — §II.1 heading — 'in order of preference' (SUPERSEDED #1) — SUPERSEDED by COMPASS P-45 (2026-10-30) — the ordering only
+
+- Date: 2026-10-31
+- Action: SUPERSEDED
+- Original lines: 959
+- Where it went: heading struck + pointer; old heading to history
+
+```
+## §II.1 — The four families (in order of preference)
+```
+
+## 2026-10-31 v3 rewrite — §II.1 REPLACE — 'perfect reliability' (A10) — STALE text, kernel kept at §II.1 REPLACE ('take the job away from the model')
+
+- Date: 2026-10-31
+- Action: REFINED
+- Original lines: 963-964
+- Where it went: struck + replaced; phrase to history
+
+```
+**Pros:** perfect reliability on its territory, cheap, portable,
+debuggable.
+```
+
+## 2026-10-31 v3 rewrite — §II.1 WALL — Stop hooks 'cannot route around' (junk #1 / A4); UNSURE A5 — JUNK THEORY — Stop hooks as 'the only family the model cannot route around', disproven by the documented case in canon §4.6 (outside research dated 2026-09-02)
+
+- Date: 2026-10-31
+- Action: STRUCK
+- Original lines: 974-976
+- Where it went: struck in place + UNSURE note; sentence verbatim to history
+
+```
+that bounce a turn; per-turn injectors. The only family the model genuinely cannot route around. **Cons:** the
+heaviest and least portable — each one registers machine-side and adds harness complexity a student inherits.
+**Reserve for machine-wide invariants** (safety rails, capture gates), not workflow.
+```
+
+## 2026-10-31 v3 rewrite — §II.3 dial body — intro and levels 1–2 (SUPERSEDED #2) + level 3 'reserve' (junk #5 / A7 / A10) — SUPERSEDED by COMPASS P-45 (2026-10-30), kernel kept at §II.3 as an unordered list; the level-3 sentence 'Reserve for genuinely critical, order-of-operations gates' is JUNK THEORY, disproven by PART 0 Stage 4 (2026-10-28) and census [F2]/[F4]
+
+- Date: 2026-10-31
+- Action: SUPERSEDED
+- Original lines: 1003-1012
+- Where it went: pointer + unordered kernel in place; original verbatim to history (two entries)
+
+```
+Use the least friction that **holds**. Level choice IS the right-sizing decision; don't over-gate a low-stakes style
+behavior, don't under-gate a high-stakes structural invariant.
+
+1. **Self-reported marker** ("GATE CLEARED") — *fakeable.* Orientation only, **never a guarantee** (Principle 4.2).
+2. **Required artifact** — the deliverable must literally contain the section/ledger/heading in the required
+   position. Missing is honest; silent is a FAIL. **The workhorse for STRUCTURE — never for a completion claim.**
+   *(Softened 2026-09-05, OBSERVED: a typed `verified-by:` and a typed `Review:` line are both artifacts and both
+   self-attestation — level 1 wearing level 2's clothes. §V.4b.)*
+3. **Code-verified evidence** — a script checks the real world. The only un-fakeable option. Reserve for
+   genuinely critical, order-of-operations gates.
+```
+
+## 2026-10-31 v3 rewrite — §II.3 ESCALATION PATH (SUPERSEDED #2) — SUPERSEDED by COMPASS P-45 (2026-10-30), kernel kept at §II.3's unordered list
+
+- Date: 2026-10-31
+- Action: SUPERSEDED
+- Original lines: 1019-1021
+- Where it went: one-line pointer; original verbatim to history
+
+```
+**The ESCALATION PATH (when a rule keeps losing):** reword ❌ → **binary gate** → **the user-turn boundary**.
+Use the user-turn boundary (the "say go" HARD-STOP) at every real pause point, and **spend it sparingly**: each one
+costs the user a tap, and a skill that stops six times gets skipped entirely.
+```
+
+## 2026-10-31 v3 rewrite — §II.4 — 'deployed into a skill's own scripts/ folder' (A11 / STALE #14) — SUPERSEDED by the shared-layer element (SOP line 187, 2026-10-29) and canon §5.19 — copying parts into each skill
+
+- Date: 2026-10-31
+- Action: REFINED
+- Original lines: 1054-1055
+- Where it went: struck + replaced; phrase to history
+
+```
+Each primitive is a small script, deployed into a skill's own `scripts/` folder by `new-skill.sh` (or run
+in-place from `system/parts/`), with its own **two-sided self-test**
+```
+
+## 2026-10-31 v3 rewrite — §II.4 — parts count 14 (junk #8) — JUNK THEORY — count '14 scripts in system/parts/', wrong on 2026-10-31 (`ls system/parts/*.py | wc -l` returns 13)
+
+- Date: 2026-10-31
+- Action: STRUCK
+- Original lines: 1060
+- Where it went: struck + replaced; sentence to history
+
+```
+The library holds **14** scripts in `system/parts/` plus the self-test runner `run_selftests.sh` that gates them. Verify the count yourself: `ls system/parts/*.py | wc -l` → `14`.
+```
+
+## 2026-10-31 v3 rewrite — §II.4 — file-existence resume (A14) — STALE text, kernel kept at §II.4 ('file-existence resume' kept, 'reliable' struck)
+
+- Date: 2026-10-31
+- Action: REFINED
+- Original lines: 1074-1075
+- Where it went: word struck + note; old line to history
+
+```
+- **File-existence resume** — skip items whose output file already exists. The cheapest reliable checkpoint;
+  it's a filesystem check, not a fragile state-file read.
+```
+
+## 2026-10-31 v3 rewrite — §II.4a coverage figures (junk #7) — JUNK THEORY — coverage figures (~35%, 80 entries, ~150 unmined), out of date since F1–F19 were added from 2026-09-05; nobody re-counted
+
+- Date: 2026-10-31
+- Action: STRUCK
+- Original lines: 1264-1266
+- Where it went: figures struck in place; original to history
+
+```
+> **Coverage: this is ~35% of what's on disk.** Mined 2026-08-07 from ledgers, records, and project briefs;
+> capped at 80 traceable entries by instruction, not by exhaustion — roughly 150 more traceable dead ends
+> exist unmined. **Never read this section as complete**
+```
+
+## 2026-10-31 v3 rewrite — §II.4a 'duplicated by design' — '80 entries' figure (junk #7); A13 UNSURE — JUNK THEORY — figure 'all 80 entries' (out of date); the duplication ruling itself is kept and marked UNSURE
+
+- Date: 2026-10-31
+- Action: UNSURE
+- Original lines: 1273-1275
+- Where it went: figure struck; ruling kept; note added
+
+```
+this file carries the **fullest set — all
+> 80 entries** — because it's the rulebook a skill-build session consults first (§5.2's dead-end check reads
+> this section by name).
+```
+
+## 2026-10-31 v3 rewrite — §II.4a 'pattern underneath all 80' (junk #7) — JUNK THEORY — figure 'all 80' (out of date)
+
+- Date: 2026-10-31
+- Action: STRUCK
+- Original lines: 1277
+- Where it went: figure struck in place
+
+```
+> **The pattern underneath all 80, worth holding before you read the list:**
+```
+
+## 2026-10-31 v3 rewrite — III.1 disable-model-invocation narrative (STALE #16, P-13 history move) — STALE text (dated execution history), kernel kept at III.1 (the ruling, the replaced principle and why it lost, what protects a side-effect skill)
+
+- Date: 2026-10-31
+- Action: REFINED
+- Original lines: 1597-1604
+- Where it went: execution narrative to history; pointer in place
+
+```
+  other. It's a guard that I don't feel that I need."* Executed the same day: the flag came off the last
+  three skills carrying it (`/ship`, `/onboard-probe`, `/world-model-builder`), after `/autoplan`'s removal  ⛔ historical quote — those skills were later retired
+  on 2026-08-04. **The fleet now has zero.**
+  **CONFIRMED TRUE — 2026-08-06, later the same day.** The claim above was false when first written:
+  ✅ `/skill-builder` — which has since landed — still carried the flag, scaffolded that same day
+  from a stale copy of this rule (its own spec cited the pre-retirement text as if it were still live).
+  It was removed the same day.
+  `grep -rn "^disable-model-invocation" skills/*/SKILL.md` now returns zero — the fleet actually has zero.
+```
+
+## 2026-10-31 v3 rewrite — III.1 card + runner line (junk #3 repeat; dedupe with III.4) — JUNK THEORY ('not the default way', overtaken by COMPASS P-7 and the 2026-10-31 ruling) and duplicate — fuller copy kept at §III.4
+
+- Date: 2026-10-31
+- Action: DEDUPE
+- Original lines: 1624
+- Where it went: pointer; original verbatim to history
+
+```
+- **principle (candidate) — hypothetical, not yet validated: for a skill whose step order must hold, a card + runner + record is one candidate shape.** If order matters, consider a card, a runner and a record (see PART 0); it is not the default way to build a skill. *(CANDIDATE.)*
+```
+
+## 2026-10-31 v3 rewrite — III.4 build-first bullet (dedupe -> III.9) — Duplicate — fuller text merged into §III.9 (its build-process home)
+
+- Date: 2026-10-31
+- Action: DEDUPE
+- Original lines: 1722-1726
+- Where it went: pointer; text merged into III.9; original verbatim to history
+
+```
+- **Build first, revise as it breaks — never fake-pass first.** Real life is the test bed: stand the skill up
+  rough, run it, fix it one break at a time (write → test → lock → next). Do **not** try to prototype a long flow
+  by hand before writing it — that dry-run is itself a long session that rots and loses the thread, the very
+  failure this whole SOP exists to prevent. Keep a scratchpad/state-file (§III.6, PART IV) so nothing's lost across
+  the revise cycle. *(A quick hand-walk is fine for a tiny flow; it does not scale to a real one.)*
+```
+
+## 2026-10-31 v3 rewrite — III.4 card + runner line (junk #3 / SUPERSEDED #4) — JUNK THEORY — 'Not the default way to build a flow', overtaken by COMPASS P-7 (2026-10-30) and the 2026-10-31 step-files ruling; tier kept
+
+- Date: 2026-10-31
+- Action: STRUCK
+- Original lines: 1752
+- Where it went: struck in place; sentence to history
+
+```
+an append-only runner-written record (see PART 0). Not the default way to build a flow. *(CANDIDATE.)*
+```
+
+## 2026-10-31 v3 rewrite — III.9 real life is the test bed (dedupe target) — Duplicate — replaced by the fuller merged text in the same place (§III.9)
+
+- Date: 2026-10-31
+- Action: DEDUPE
+- Original lines: 1866-1867
+- Where it went: merged text; III.9's shorter original to history
+
+```
+- **Real life is the test bed** — stand it up rough, run it, fix one break at a time (write → test → lock →
+  next). Do not hand-prototype a long flow before writing it; that dry-run is itself a long session that rots.
+```
+
+## 2026-10-31 v3 rewrite — §IV.8 reconciles note (SUPERSEDED #6 / dedupe with PART 0) — SUPERSEDED by PART 0's decision principle (duplicate; fuller copy kept there)
+
+- Date: 2026-10-31
+- Action: DEDUPE
+- Original lines: 2060
+- Where it went: one-line pointer; copy verbatim to history
+
+```
+> **v2 (audit, 2026-10-28):** reconciled with PART 0 "When NOT to use a card": use a card when step order must hold AND at least one of: the run is long enough that losing progress costs real time/money, a human pause sits mid-run, it spans sessions, or it has more than one ai step. A short job that can simply rerun from scratch gets per-step checks and loud failure, not a card. (CANDIDATE.)
+```
+
+## 2026-10-31 v3 rewrite — §IV.8 'we do not need an engine' note (SUPERSEDED #4) — SUPERSEDED by COMPASS P-7 (2026-10-30) and the PROPOSED CHANGES five parts, kernel kept at §IV.8
+
+- Date: 2026-10-31
+- Action: SUPERSEDED
+- Original lines: 2069
+- Where it went: pointer + kernel; original verbatim to history
+
+```
+> **v2 (orchestrator-v2, 2026-10-28):** We do not need an engine (hypothetical, not yet validated). Any multi-step skill whose order must hold could use a **card** (ordered steps, each with a check), a **runner** (one shared script) and a **record** (append-only, runner-written) — a script, not a workflow engine, and "rigid state machine" is the wrong description of it. *(CANDIDATE: one skill; awaits the week-long /save-on-a-card test and a second skill, per [P2]. Rig: Stage 1 and 2 scorer lines, orchestrator-v2 brief §2/§4.)*
+```
+
+## 2026-10-31 v3 rewrite — OUR OWN BET (STALE #22 / A17) — STALE text, kernel kept at OUR OWN BET ('state lives in a file, and a fresh context reads it')
+
+- Date: 2026-10-31
+- Action: REFINED
+- Original lines: 2141-2142
+- Where it went: struck + split; phrase to history
+
+```
+code-dissection research [C] that grounds PARTS I–III — it rests entirely on our own evidence (planning-weekly, the
+conformance lab) and is **UNPROVEN** until a real multi-phase run is built this way and graded end to end.
+```
+
+## 2026-10-31 v3 rewrite — §V.2 heading (junk #2) + body (STALE #23 / A8) — JUNK THEORY — 'Measure before you enforce' as a rule, struck by Enver on 2026-07-27 (journal); body kernel kept at §V.2
+
+- Date: 2026-10-31
+- Action: STRUCK
+- Original lines: 2193-2195
+- Where it went: heading struck + retitled from the sorted list's kernel; body's first clause struck; originals to history
+
+```
+## §V.2 — Measure before you enforce
+
+You cannot enforce what you haven't measured, and your first delta is probably wrong.
+```
+
+## 2026-10-31 v3 rewrite — §V.6 commission ≠ omission (dedupe with Principle 4.3; STALE #25) — Duplicate — the fold rule's home is Principle 4.3 ('The fold principle')
+
+- Date: 2026-10-31
+- Action: DEDUPE
+- Original lines: 2424-2429
+- Where it went: shortened to pointer; original verbatim to history
+
+```
+**COMMISSION ≠ OMISSION — they are not symmetric evidence.** A quote-verified `violated` is **positive proof the
+thing happened**. A `missed` is only **the absence of a sighting**. When judgments disagree, evidence of
+commission outranks non-observation: a single quote-verified `violated` decides the clause even against a
+majority of `met` votes, because those `met` votes mean "I didn't notice," not "it didn't happen." Guard the
+other side too — a `violated` with **no verifiable quote** gets no such power, or a spurious cry of foul
+dominates instead.
+```
+
+## 2026-10-31 v3 rewrite — §VI.1 beat 1 'no state file, no receipts' (A3 / STALE #27) — STALE text, kernel kept at §VI.1 beat 1 ('one skill by default')
+
+- Date: 2026-10-31
+- Action: REFINED
+- Original lines: 2501
+- Where it went: struck + note; phrase to history
+
+```
+**1. DEFAULT = one skill.** Most flows never need to split. One skill, no state file, no receipts. `[R]`
+```
+
+## 2026-10-31 v3 rewrite — §VI.1 beat 3 'ONE DOOR, MANY ROOMS… auto-chained' (junk #6 / SUPERSEDED #5) — JUNK THEORY — 'ONE DOOR, MANY ROOMS: staged skills… auto-chained', wrong on the mechanism (a skill cannot start another; PART 0 line 375); superseded by Enver's 2026-10-31 step-files ruling
+
+- Date: 2026-10-31
+- Action: STRUCK
+- Original lines: 2509-2510
+- Where it went: struck in place; original to history
+
+```
+**3. When you DO split — ONE DOOR, MANY ROOMS.** One persona, one command, on the **outside** (the human meets
+one voice); staged skills sharing a state file on the **inside**; the seam hidden, auto-chained. The mechanics:
+```
+
+## 2026-10-31 v3 rewrite — §VI.1 hand-state copies (dedupe with §IV.6) — Duplicate — 'hand state, not history' has its fullest copy at §IV.6
+
+- Date: 2026-10-31
+- Action: DEDUPE
+- Original lines: 2515-2517
+- Where it went: one pointer; copies verbatim to history
+
+```
+> **v2 (orchestrator-v2, 2026-10-28):** The runner writes the state; hand a fresh agent the state and its one next step, not the history. *(CANDIDATE.)*
+
+- **principle (candidate) — hand state, not history.** See §IV.6 note and the rule above: the unit of handoff is state plus the one next step. *(CANDIDATE.)*
+```
+
+## 2026-10-31 v3 rewrite — EVIDENCE held list (dedupe into §II.7) — Duplicate — merged into §II.7 (the held hypothesis's home)
+
+- Date: 2026-10-31
+- Action: DEDUPE
+- Original lines: 2666-2676
+- Where it went: pointer; original verbatim to history
+
+```
+**The held list — explicitly NOT doctrine.** Recorded so they aren't lost, and kept **out** of the enforced
+rules so a plausible story can't harden into permanent law before it's earned that:
+- **The demand-class principle.** Rules that demand the model **produce** something appear to hold in prose; rules
+  that demand it **withhold**, **order**, or **count/cover** appear not to. If true, this should drive
+  friction-level choice at design time — potentially the single most useful thing we could know. Currently
+  generated from **n=2 failures on one skill**, reasoning backwards from the answer. Graduates on **Experiment
+  E2**: tag every graded clause by demand-class, measure pass-rate by class.
+- **The compilation-loss ratio.** Direction is certain — skills ship leaner than their specs. Magnitude was
+  measured with mismatched extraction (one side LLM-extracted, the other mechanically extracted) and is
+  untrustworthy as a number. Graduates on **Experiment E1**: re-extract both sides identically, across every
+  phase of one skill.
+```
+
+## 2026-10-31 v3 rewrite — Living intake paragraph (dedupe into §VII) — Duplicate — merged into §VII's opening (the living-intake home)
+
+- Date: 2026-10-31
+- Action: DEDUPE
+- Original lines: 2680-2682
+- Where it went: pointer; text merged into §VII; original to history
+
+```
+**Living intake.** New observations land first in `skill-irl-findings.md` in your personal code folder (not shipped in the plugin): append-only,
+chronological, tagged TESTER / SKILL / METHOD. When a finding is seen enough to be durably true, it graduates
+here and gets marked. Companion for operational specifics: `skill-building-field-notes.md` *(same folder; not shipped in the plugin)*.
+```
+
+## 2026-10-31 v3 rewrite — §VII opening (dedupe target) — Duplicate — replaced in place by the merged fuller text (§VII opening)
+
+- Date: 2026-10-31
+- Action: DEDUPE
+- Original lines: 2688-2689
+- Where it went: merged; original to history
+
+```
+> New findings land first in `skill-irl-findings.md` in the person's personal code folder (not shipped in the plugin).
+> Candidates recorded here instead are clearly marked as such.
+```
+
+## 2026-10-31 v3 rewrite — whole original lines edited in place — STALE text, kernel kept at the same place in the draft (the old words survive inside the edited line, or the line was split around an inserted note; full original lines kept here so nothing exists only as a fragment)
+
+- Date: 2026-10-31
+- Action: REFINED in place (line-level record)
+- Original lines: 16, 47, 49, 89, 351, 353, 497, 878, 963, 964, 985, 1001, 1055, 1060, 1273, 1277, 1716, 1752, 2064, 2090, 2142, 2195
+- Where it went: same place in the draft, edited; see the per-section entries above for the reason of each
+
+```
+[16] route_format: "[section_id, line_in_this_file, purpose]; find a section by grep -n on its heading text or id; generated last, regenerate after any edit"
+[47]   - ["§II.3", 871, "reliability dial: how much friction to add; escalation path"]
+[49]   - ["§II.4", 922, "primitives library (system/parts, 14 scripts); patterns worth building"]
+[89]   - ["§V.2", 2063, "measure before you add friction"]
+[351] > **HYPOTHETICAL, NOT YET VALIDATED: our best thinking so far, not proven.** Everything in this Part (the card, the runner, the record, and the test results below) comes from one prototype rig and awaits the week-long test. It is not the default way to build a skill.
+[353] > The multi-step validation-script work from late October 2026 is the more current thinking; it is to be reconciled with this Part later.
+[497] > authorities [C]. **You cannot prompt your way around them.** Everything in PARTS II–VI is downstream of these.
+[878] This is *why* Principles 1–4 exist. A cold session should know these numbers:
+[963] wrong because the model isn't doing it. **Pros:** perfect reliability on its territory, cheap, portable,
+[964] debuggable. **Cons:** only covers what's mechanizable; over-applied it turns a leading skill into a brittle
+[985] they tell you *which* level of friction the rule needs.
+[1001] ## §II.3 — The reliability dial (how much friction to add — the Verify/Wall dial)
+[1055] in-place from `system/parts/`), with its own **two-sided self-test** (it must catch a known-bad AND pass a
+[1060] The library holds **14** scripts in `system/parts/` plus the self-test runner `run_selftests.sh` that gates them. Verify the count yourself: `ls system/parts/*.py | wc -l` → `14`. A part crosses into a repo when it has a caller, never because it is good.
+[1273] > something."* Do not "clean up" the overlap without his say-so; this file carries the **fullest set — all
+[1277] > **The pattern underneath all 80, worth holding before you read the list:** something reported success while
+[1716]   need it. Most multi-step flows are over-built.
+[1752] - **principle (candidate) (§III.4) — hypothetical, not yet validated: consider card + runner + record** when order must hold: ordered steps of kind code/ai/human, each with a check; one shared runner; an append-only runner-written record (see PART 0). Not the default way to build a flow. *(CANDIDATE.)*
+[2064]    something.
+[2090] - **Earn it.** Per §IV.8's first question: only a multi-stage/leading skill needs a HUD; a one-shot does not —
+[2142] conformance lab) and is **UNPROVEN** until a real multi-phase run is built this way and graded end to end. File
+[2195] You cannot enforce what you haven't measured, and your first delta is probably wrong. `[M]` Across one real
+```
+
+
+<!-- 2026-10-31 v3 review fixes (flattening-hunter review, approved by Enver 2026-10-31): text replaced in skill-building-sop.v3-draft.md, verbatim. Line numbers are the draft's before these fixes. -->
+
+## 2026-10-31 v3 rewrite — THE SEAM kernel note (removed from above the banner) (review fix 1+7) — STALE text, kernel kept at the same place in the draft (review fix)
+
+- Date: 2026-10-31
+- Action: REVIEW FIX 1+7
+- Draft line (before fixes): 419
+- Why: MUST 1 + SHOULD 7: the note read as a directive and sat above the banner; it stated as fact what the banner contests
+
+```
+> **REFINED 2026-10-31 (v3):** kernel — *where an answer can be a fixed set, use one, and always include "no outcome was
+> reached"; code checks the answer is on the list.* The PROPOSED CHANGES "answer menu" is this kernel. The audit
+> suggested moving the July evidence below to the history file; v3 keeps it in place, because the HELD/ERODED tables
+> are the receipts the shape's OBSERVED tier rests on, and the shape statement is carried verbatim by `/autoplan` and `/build`.
+```
+
+## 2026-10-31 v3 rewrite — THE SEAM kernel note (re-placed below the banner) (review fix 1+7b) — STALE text, kernel kept at the same place in the draft (review fix)
+
+- Date: 2026-10-31
+- Action: REVIEW FIX 1+7b
+- Draft line (before fixes): 456
+- Why: MUST 1 + SHOULD 7: softening restored, placed below the banner, consistent with A15
+
+```
+> this section partly re-derived doctrine that was already here, one altitude up.
+```
+
+## 2026-10-31 v3 rewrite — PROPOSED Principle 4 — 'one home' tier (review fix 2) — STALE text, kernel kept at the same place in the draft (review fix)
+
+- Date: 2026-10-31
+- Action: REVIEW FIX 2
+- Draft line (before fixes): 2799
+- Why: MUST 2: [F3] counts the failure; its remedy is unsolved (CANDIDATE in [F3] itself); matches the shared-layer line
+
+```
+*REPRODUCED for "one home" (§II.4a [F3], 177×);
+```
+
+## 2026-10-31 v3 rewrite — §VI.1 beat 1 note — PART 0 conjunction (review fix 3) — STALE text, kernel kept at the same place in the draft (review fix)
+
+- Date: 2026-10-31
+- Action: REVIEW FIX 3
+- Draft line (before fixes): 2497
+- Why: SHOULD 3: restore the AND-condition; drop the not-in-force PROPOSED block as authority
+
+```
+*(REFINED
+2026-10-31 — see history: the PROPOSED CHANGES give every long skill a code-written record and its state in files;
+a short job that can simply rerun from scratch still needs neither — PART 0's decision principle.)*
+```
+
+## 2026-10-31 v3 rewrite — §II.3 human-stop bullet — both halves (review fix 4) — STALE text, kernel kept at the same place in the draft (review fix)
+
+- Date: 2026-10-31
+- Action: REVIEW FIX 4
+- Draft line (before fixes): 930
+- Why: SHOULD 4: original 1019–1021 carried both halves; v3 had kept only 'sparingly'
+
+```
+> - **A human stop** (the "say go" HARD-STOP at a real pause point) is spent **sparingly**: each one costs the user a
+>   tap, and a skill that stops six times gets skipped entirely.
+```
+
+## 2026-10-31 v3 rewrite — §II.3 escalation pointer — both halves (review fix 4b) — STALE text, kernel kept at the same place in the draft (review fix)
+
+- Date: 2026-10-31
+- Action: REVIEW FIX 4b
+- Draft line (before fixes): 940
+- Why: SHOULD 4: pointer matched to the restored bullet
+
+```
+its two kernels — spend a human stop sparingly,
+> and rewording is not the fix — are in the list above.
+```
+
+## 2026-10-31 v3 rewrite — §IV.9 HUD banner — neutral (review fix 5) — STALE text, kernel kept at the same place in the draft (review fix)
+
+- Date: 2026-10-31
+- Action: REVIEW FIX 5
+- Draft line (before fixes): 2050
+- Why: SHOULD 5: banner asserted a supersession nobody ruled
+
+```
+> **SUPERSEDED IN PRINCIPLE 2026-10-31 — text kept because live code depends on it.** COMPASS P-55 ("Guardrails stay
+> only where they earn their place") and §IV.4's 2026-10-28 note (print position from the record, never from the
+> model) supersede the HUD as doctrine. planning-weekly and ingest still paint this line through `skill_hud.sh`, so
+> the mechanics below stay until those skills retire it. The "Earn it" bullet already bars adding a HUD by default.
+```
+
+## 2026-10-31 v3 rewrite — PROPOSED Principle 1 tier — what the census counts (review fix 6a) — STALE text, kernel kept at the same place in the draft (review fix)
+
+- Date: 2026-10-31
+- Action: REVIEW FIX 6a
+- Draft line (before fixes): 2789
+- Why: SHOULD 6: 1,656 includes code failures; say what it counts
+
+```
+*REPRODUCED (the census, 1,656
+   instances; restates THE FRAME's Rule).*
+```
+
+## 2026-10-31 v3 rewrite — PROPOSED Principle 3 tier (review fix 6b) — STALE text, kernel kept at the same place in the draft (review fix)
+
+- Date: 2026-10-31
+- Action: REVIEW FIX 6b
+- Draft line (before fixes): 2796
+- Why: SHOULD 6: outside sources are RESEARCHED; REPRODUCED now names the census entries
+
+```
+*REPRODUCED (Principle 3: outside sources plus local receipts); OBSERVED for the runner writing the record
+   (PART 0 Stage 1).*
+```
+
+## 2026-10-31 v3 rewrite — PROPOSED layer 4 tier (review fix 6c) — STALE text, kernel kept at the same place in the draft (review fix)
+
+- Date: 2026-10-31
+- Action: REVIEW FIX 6c
+- Draft line (before fixes): 2821
+- Why: SHOULD 6: same correction as Principle 3
+
+```
+REPRODUCED for the failure it answers (Principle 3).*
+```
+
+## 2026-10-31 v3 rewrite — PROPOSED 'What we got wrong — do not retry' — tiers (review fix 8a) — STALE text, kernel kept at the same place in the draft (review fix)
+
+- Date: 2026-10-31
+- Action: REVIEW FIX 8a
+- Draft line (before fixes): 2837
+- Why: SHOULD 8: items carried no tier
+
+```
+  with a second, independent check.)*
+- **Building instruments beside the road.** Checkers, testers and gates that had to be remembered were not.
+- **Letting the model mark its own work.** Self-written "done" stamps hid every real skip.
+- **Restarting each era.** Earlier work was never connected to later work, so lessons were re-learned.
+```
+
+## 2026-10-31 v3 rewrite — PROPOSED 'What we got wrong at this level' — tiers (review fix 8b) — STALE text, kernel kept at the same place in the draft (review fix)
+
+- Date: 2026-10-31
+- Action: REVIEW FIX 8b
+- Draft line (before fixes): 2941
+- Why: SHOULD 8: items carried no tier
+
+```
+- Two tools doing the same job.
+- The same rules copied into more than one rulebook. *(⏸ UNSURE: Enver's 2026-08-07 "rather duplication than miss"
+  ruling, §II.4a, is not withdrawn — COMPASS open question (i).)*
+- Code kept in the notes folder instead of the code repository.
+- Checks that only looked for a file's existence — they passed while the content was wrong.
+```
+
+## 2026-10-31 v3 rewrite — Principle 1 — 'strongest friction there is' reworded (review fix N1a) — STALE text, kernel kept at the same place in the draft (review fix)
+
+- Date: 2026-10-31
+- Action: REVIEW FIX N1a
+- Draft line (before fixes): 380
+- Why: NOTE: phrase used 3× for different things; kept once, at §II.1 REPLACE, where the model is not doing the job at all
+
+```
+— the strongest friction there is, never perfect *(REFINED 2026-10-31:
+```
+
+## 2026-10-31 v3 rewrite — §II.3 code-verified bullet and list lead — plain wording, no false 'unordered' (review fix N1b+N2) — STALE text, kernel kept at the same place in the draft (review fix)
+
+- Date: 2026-10-31
+- Action: REVIEW FIX N1b+N2
+- Draft line (before fixes): 917
+- Why: NOTE: 'unordered' was false; dropped
+
+```
+> choice is judgment, not a fixed order* — Enver: "Don't be prescriptive about that." **What stands, unordered:**
+```
+
+## 2026-10-31 v3 rewrite — §II.3 code-verified bullet wording (review fix N1c) — STALE text, kernel kept at the same place in the draft (review fix)
+
+- Date: 2026-10-31
+- Action: REVIEW FIX N1c
+- Draft line (before fixes): 926
+- Why: NOTE: replaced the third use of the 'strongest' phrase; no ranking claim
+
+```
+a script checks the real world: the strongest of the three, never perfect (THE
+>   FRAME; was "the only un-fakeable option").
+```
+
+## 2026-10-31 v3 rewrite — Principle 1b note — 'the one reason' absolute (review fix N3) — STALE text, kernel kept at the same place in the draft (review fix)
+
+- Date: 2026-10-31
+- Action: REVIEW FIX N3
+- Draft line (before fixes): 622
+- Why: NOTE: the note listed a second reason, so 'the one reason' was false
+
+```
+so a version change is the one
+reason to re-check it — and Principle 2's link 5
+```
+
+## 2026-10-31 v3 rewrite — PROPOSED 'one to four' citation (review fix N4) — STALE text, kernel kept at the same place in the draft (review fix)
+
+- Date: 2026-10-31
+- Action: REVIEW FIX N4
+- Draft line (before fixes): 2782
+- Why: NOTE: §II.0 measured components, not layers
+
+```
+RESEARCHED for
+"one to four" (§II.0: fully-equipped agents underperform a well-chosen subset)
+```
+
+## 2026-10-31 v3 rewrite — PROPOSED small-steps citation (review fix N5) — STALE text, kernel kept at the same place in the draft (review fix)
+
+- Date: 2026-10-31
+- Action: REVIEW FIX N5
+- Draft line (before fixes): 2854
+- Why: NOTE: the 68% figure is about density
+
+```
+*RESEARCHED (all four outside angles;
+~68% instruction-following at 500 instructions, Principle 5);
+```
+
+## 2026-10-31 v3 rewrite — PROPOSED CHANGES, Principle 1 tier note — REFINED: one word restored to match THE FRAME's vetted Rule (line 130, "rarely guaranteed")
+```
+1. **The model can't be made to obey.** You can only shape the road it travels. *REPRODUCED that compliance is never
+   guaranteed — the census counts 1,656 recorded failures of every kind, code and prose alike (e.g. [F2] scripts exiting 0
+```
+Changed "never" → "rarely". Flagged by the flattening reviewer's second pass: the fix round had turned the one vetted Rule's "rarely guaranteed" into "never guaranteed".

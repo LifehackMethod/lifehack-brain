@@ -9,11 +9,12 @@ desk: root
 status: active
 authority: user
 created_at: 2026-07-12
-updated_at: 2026-10-30
+updated_at: 2026-10-31
+v3_status: "IN FORCE in the V2 sandbox (Enver, 2026-10-31) — v3 rewrite applying the contradictions-and-stale-theory audit, reviewed for loss and for flattening; the PROPOSED CHANGES section at the end is still PROPOSED, not in force"
 companion: "your personal code folder (not shipped in the plugin): skill-building-field-notes.md"
 living_intake: "your personal code folder (not shipped in the plugin): skill-irl-findings.md"
 history: "system/sops/skill-building-sop.history.md (retired and moved text; never read in normal use)"
-route_format: "[section_id, line_in_this_file, purpose]; find a section by grep -n on its heading text or id; generated last, regenerate after any edit"
+route_format: "⚠ line numbers unverified after v3 (2026-10-31): the v3 draft moved the PROPOSED CHANGES block to the end of the file (grep 'PROPOSED-CHANGES-2026-10-31') and edited sections from PART 0 down, so numbers from P0 down may be off. [section_id, line_in_this_file, purpose]; find a section by grep -n on its heading text or id; generated last, regenerate after any edit"
 start_here:
   - ["Has anyone already tried this and had it fail?", "§II.4a, §II.4b", "grep them before building anything that smells like a retry"]
   - ["The harness did something I did not expect", "§II.4a.1", "measured behaviours of Claude Code itself"]
@@ -44,9 +45,9 @@ route:
   - ["§II.1a", 812, "compliance is overlapping layers of friction, not one level"]
   - ["§II.1", 829, "four families: replace, verify, wall, refresh"]
   - ["§II.2", 852, "why prose fails: five modes"]
-  - ["§II.3", 871, "reliability dial: how much friction to add; escalation path"]
+  - ["§II.3", 871, "reliability dial and escalation path: SUPERSEDED v3 by COMPASS P-45; what each kind of proof can show is kept"]
   - ["§II.3.rules", 907, "name the mechanism and the test; isolate LLM guardrails"]
-  - ["§II.4", 922, "primitives library (system/parts, 14 scripts); patterns worth building"]
+  - ["§II.4", 922, "primitives library (system/parts; 13 .py parts, re-derived 2026-10-31); used in place, never copied; patterns worth building"]
   - ["§II.4a", 952, "DO NOT BUILD: what was tried and failed (grep before building)"]
   - ["§II.4a.census", 954, "census entries [F1..], reproduced"]
   - ["§II.4a.1", 1154, "measured behaviours of Claude Code itself"]
@@ -86,7 +87,7 @@ route:
   - ["IV.bet", 1994, "file-spine / fresh-context-per-phase (unproven)"]
   - ["PV", 2020, "verify the skill"]
   - ["§V.1", 2031, "which detector to build, one per loss-chain link (read before building)"]
-  - ["§V.2", 2063, "measure before you add friction"]
+  - ["§V.2", 2063, "a finding from one instrument is a lead; confirm it with a second, independent check (old heading struck v3)"]
   - ["§V.3", 2072, "a fixture can manufacture a violation the real skill never commits"]
   - ["§V.4", 2082, "verify the verifier"]
   - ["§V.4a", 2099, "blind the graders, never the actors"]
@@ -113,14 +114,14 @@ route:
   - ["§VII", 2556, "living intake: candidates, not doctrine"]
   - ["§VII.research", 2563, "outside-research candidates [R1..R9], scope failure"]
 reader_note: >
-  READ ORDER IS THE RANKING. PART I is the physics — five principles you cannot prompt your way around; if you read
-  nothing else, read those. PART II is the toolbox that obeys them. PART III builds a skill start to finish
-  (self-contained — start here if you just need to scaffold). PART IV holds it at runtime. **PART V tells you
-  WHICH DETECTOR TO BUILD and how you would know it still works** — ⭐ read §V.1 BEFORE you build, not after:
-  it is diagnosis, not verification, and *fixing the wrong seam is the single biggest waste in skill work.*
-  PART VI is the earn-it edge cases. Evidence tags: [R]/[R2] = prior multi-agent research maps · [C] = the
-  2026-07-25 crowd-convergence + code-dissection maps · [M] = MEASURED in our own conformance lab, sample stated
-  inline (an [M] claim means "this mechanism demonstrably exists," never "this is the rate").
+  READ ORDER IS THE RANKING. PART I is what holds in a stochastic environment — five principles prose alone will not
+  get you around, each only as far as its tier says; if you read nothing else, read those. PART II is the toolbox that
+  obeys them. PART III builds a skill start to finish (self-contained — start here if you just need to scaffold). PART
+  IV holds it at runtime. **PART V tells you WHICH DETECTOR TO BUILD and how you would know it still works** — ⭐ read
+  §V.1 BEFORE you build, not after: it is diagnosis, not verification, and *fixing the wrong seam is the single biggest
+  waste in skill work.* PART VI is the earn-it edge cases; the PROPOSED CHANGES block (2026-10-31, not in force) is last.
+  Evidence tags [R]/[R2]/[C]/[M] are defined under EVIDENCE & PROVENANCE and map onto THE FRAME's tiers (its "Mapping
+  onto the tags" line); an [M] claim means "this mechanism demonstrably exists," never "this is the rate". (REFINED v3)
 ---
 
 > # THE FRAME — read before any line below. A near-copy of this text sits atop `system/sops/canonical-principles-sop.md`.
@@ -212,14 +213,13 @@ reader_note: >
 **How to build a Lifehack skill that fires when it should, runs the right flow, obeys its own procedure, and
 holds the line over a long session — without over-building.**
 
-
 # PART 0 — HOLDING STEP ORDER: THE STEP-RUNNER (hypothetical, not yet validated)
 
 > *2026-10-30: the system-wide frame is **layers of friction**, see `canonical-principles-sop.md`, "The layers of friction". A script that holds step order is one more circle of friction, none of them perfect control.*
 >
-> **HYPOTHETICAL, NOT YET VALIDATED: our best thinking so far, not proven.** Everything in this Part (the card, the runner, the record, and the test results below) comes from one prototype rig and awaits the week-long test. It is not the default way to build a skill.
+> **HYPOTHETICAL, NOT YET VALIDATED: our best thinking so far, not proven.** Everything in this Part (the card, the runner, the record, and the test results below) comes from one prototype rig and awaits the week-long test. ~~It is not the default way to build a skill.~~ *(struck 2026-10-31 — see history; superseded by COMPASS P-7, "A step-runner holds order, where order matters", and Enver's 2026-10-31 step-files ruling (PROPOSED CHANGES, end of file). The tier warning above stands: OBSERVED in the rig, not yet REPRODUCED in real use.)*
 >
-> The multi-step validation-script work from late October 2026 is the more current thinking; it is to be reconciled with this Part later.
+> The multi-step validation-script work from late October 2026 is the more current thinking; it is to be reconciled with this Part later. *(v3, 2026-10-31: that work is the PROPOSED CHANGES block, now the last section of this file.)*
 
 ## Read this first (audit, 2026-10-28)
 
@@ -258,6 +258,8 @@ holds the line over a long session — without over-building.**
 
 
 ## A candidate shape for a skill whose step order must hold  *(CANDIDATE; hypothetical, not yet validated)*
+
+> ⏸ UNSURE (2026-10-31): is the PROPOSED CHANGES five-part shape (step list, runner, checks, answer menu, record) ruled in to supersede this card shape — and if so, where does the scorer below go ("examined beside found"), since the five parts have no scorer? Until ruled, COMPASS P-7 governs and this text stands.
 
 1. **Card** — the ordered steps, each of a kind (`code` / `ai` / `human`), each with a check.
 2. **Runner** — one shared script. Delivers one step, runs its check, writes the record, hands over the next.
@@ -333,6 +335,10 @@ holds the line over a long session — without over-building.**
 
 ## §0 — WHAT A GOOD SKILL IS (the portrait — every rule below hangs off these six traits)
 
+> ⏸ UNSURE (2026-10-31), trait 6 only: is a persona still a design principle for V2 skills, now that a long skill is step files run by a runner? (Same question at §VI.3.)
+>
+> **REFINED 2026-10-31 (v3), traits 1–5 — wording kept, two readings updated.** Trait 1's "staged inside" now reads as *step files inside one skill*, not staged skills (Enver's 2026-10-31 ruling; PROPOSED CHANGES). Trait 5's "add only what a test shows you need" keeps THE FRAME's condition beside it: a new irreversible action gets its overlapping layers up front; the brake governs *adding to* a control set that already exists, never the first build (centering frame).
+
 > A good skill is **one warm front door over a disciplined, staged, file-backed machine that leads the user,
 > proves its own work, and spends only the complexity it earns.**
 
@@ -363,12 +369,16 @@ holds the line over a long session — without over-building.**
 
 > **Read this part first.** These five are not house style or preference. They are how LLMs behave — measured in
 > our own lab [M], measured by outside researchers [R][R2], and confirmed by practitioners and primary
-> authorities [C]. **You cannot prompt your way around them.** Everything in PARTS II–VI is downstream of these.
+> authorities [C]. ~~**You cannot prompt your way around them.**~~ **Prompting alone will not get you around them** — each
+> holds as far as its tier above says, and none is a law (THE FRAME: one Rule; everything else a principle). Everything
+> in PARTS II–VI is downstream of these. *(REFINED 2026-10-31: the struck sentence read as absolute; the kernel stands.)*
 
 ## Principle 1 — The Division of Labor: code owns the mechanical perimeter, the LLM owns judgment inside it
 
 Any part of a skill with a **definite shape** — steps that must happen in an order, a set that must be complete,
-a phase that must finish before the next starts, a write that must land — is enforced by **deterministic code**:
+a phase that must finish before the next starts, a write that must land — ~~is enforced by~~ is held by **deterministic code**
+— friction, never perfect control *(REFINED 2026-10-31: canon, 2026-10-29, "Say 'friction,' not
+'enforcement'… nothing here is perfect")*:
 small scripts that check and refuse, not sentences that ask nicely. The LLM is reserved for what code
 structurally cannot do: judgment, synthesis, fuzzy matching, reading a room, holding a conversation.
 
@@ -439,6 +449,15 @@ position is the second, plus the verification machinery in PART V that neither h
 > membership half was independently corroborated by a separate research pass
 > (four blind angles, all blind to Lifehack). **Also note §II.2 already said "gradient leaks, binary holds"** —
 > this section partly re-derived doctrine that was already here, one altitude up.
+>
+> **REFINED 2026-10-31 (v3), placed below this banner on purpose.** What the banner keeps is *ONE observed interface
+> shape, not a claim that it is the only way code and a model can interact* (Enver, 2026-09-05: "here's one method, but
+> it's not the only one"): code hands the model a bounded set of outcomes, the set contains one meaning NO OUTCOME WAS
+> REACHED, and code checks membership. Tier for the shape: OBSERVED. That every hand-back should take this shape is
+> CANDIDATE — the same handling as layer 3 of the PROPOSED CHANGES, whose "answer menu" is this shape. The audit
+> suggested moving the July evidence below to the history file; v3 keeps it in place. This banner disputes parts of
+> that evidence (its headline exhibit, its causal claim); what it keeps from it is the HELD half of the table, the
+> two-sided tell, and the corroborated membership half. The shape statement is carried verbatim by `/autoplan` and `/build`.
 
 Everything above tells you **which side** a piece of work goes on. It does not tell you what the **handoff**
 between the sides is, and that turned out to be where the failures actually live. This section is the answer.
@@ -565,10 +584,10 @@ required"* and the reader reasonably heard *"the LLM runs now."* **I built the l
 | reach | what it is | available in cron? | can pause for approval? |
 |---|---|---|---|
 | **SESSION** | the running model does it, driven by **skill prose** (the `/save` → `pad_archive.py` pattern) | ⛔ **NO** | ✅ yes |
-| **HEADLESS** | a script shells `claude -p` | ✅ yes — **if the script supplies an absolute path to the CLI and its own login token** (cron's environment is stripped) | ⛔ no |
+| **HEADLESS** | a script shells `claude -p` | ✅ yes — **if the script supplies an absolute path to the CLI and its own login token** (cron's environment is stripped) | ✅ yes — **if the runner stores the question, exits with a distinct waiting code, and resumes on the answer** *(OBSERVED, p01–p07, 2026-10-28; the old cell read "⛔ no" — struck 2026-10-31, see history)* |
 | **NONE** | nothing reaches a model | — | — |
 
-> **v2 (orchestrator-v2, 2026-10-28):** The HEADLESS row's "can pause for approval: ⛔ no" is **superseded**: a headless run CAN pause if the runner stores the question, exits with a distinct waiting code, and resumes on the answer. *(OBSERVED — p01–p07 pause/resume, brief §4 Stage 2. Table row kept as written above because a table cell cannot be struck without breaking the table.)*
+> **v3 (2026-10-31):** the HEADLESS cell above now carries the 2026-10-28 finding directly *(OBSERVED — p01–p07 pause/resume, brief §4 Stage 2)*. The note that stood here is superseded by that rewrite — original in history.
 
 - **principle (candidate) — a session-reach step receives its inputs as FILES written by a code step, or it cannot run under a runner.** A step whose reach is SESSION (e.g. `/save` reading the live conversation or armed flags) has nothing to read once a runner owns the order; a code step must first write what it needs to disk. *(CANDIDATE — awaits the week-long /save test.)*
 
@@ -604,6 +623,8 @@ private copy is debt."* **Put the prompt and the vocabulary in ONE file both rea
 **✅ GOOD NEWS, MEASURED, DO NOT RE-DERIVE THIS: `PreToolUse` HOOKS FIRE INSIDE A HEADLESS `claude -p`.**
 Tested by asking a headless haiku to Read a file the ingest gate blocks — it came back **`BLOCKED`**. **The
 security wall travels to the headless path**; a background LLM step is not running outside the guard set.
+*(REFINED 2026-10-31: the measurement stands; it was taken on the 2026-08-05 Claude Code, so a Claude Code version change is a
+reason to re-check it — and so is Principle 2's link 5, which lists modes where hooks do not fire at all, piped and bare.)*
 
 ## Principle 2 — Intent leaks at four seams; diagnose WHICH one before you fix anything
 
@@ -685,6 +706,9 @@ two independent diagnoses.
 phase's required artifacts exist. The model never stamps its own homework. A completion claim is backed by a
 **side-effect check** (does the file exist, does the row read back) — because `[C]` a schema check happily passes
 a well-formed lie.
+> **REFINED 2026-10-31 (v3, A14):** existence alone is not the check — "does the file exist" passed while the content was
+> wrong (PART 0 Stage 4: 8 silently wrong results from non-empty tests). The checker reads the artifact's content; see
+> the 2026-10-28 note below ("Every check tests CONTENT, never presence").
 
 
 - **principle (observed) — the AI never writes the record; only the runner does.** The model produces a step's output file; the runner runs the check and writes the record line. *(OBSERVED — also see §V.9.)*
@@ -741,10 +765,14 @@ Build them in code, or accept you don't have them. These are not "hard" — they
      40% rate.** For anything rarer it could never have seen it, and nobody computed the power before running
      or before quitting. *(Also un-computed: the price. Assumed $116.00; measured $7.81 — a budget CAP read as
      SPEND, 14.9×. **A cap is not a price.**)*
+   - **REFINED 2026-10-31 (v3):** the judges sampled here were the July lab's. Canon §12.f (Enver, 2026-09-06; quoted
+     in full at §II.4a's right-size audit) places them as one layer ranked by independence — and a model may annotate a
+     verdict, never cast the deciding vote.
 
 ## Principle 5 — Prose decays, and the decay is measured
 
-This is *why* Principles 1–4 exist. A cold session should know these numbers:
+This is *why* Principles 1–4 exist. A cold session should know these numbers *(tier: RESEARCHED — every figure below is
+outside research, not measured here; REFINED 2026-10-31)*:
 
 - **Density:** `[C]` the best frontier model follows only **~68%** of instructions at 500 simultaneous
   instructions, with a systematic bias toward instructions given **earlier** in the prompt.
@@ -800,6 +828,11 @@ by an instrument suited to it. This is not a preference — a floor graded by th
 | **(b) Friction** | **provoke the guard and assert** — fire the faithful forbidden action, require it BLOCKED; fire the allowed twin, require it passes | A guard that was never provoked is untested. Its mere presence in `settings.json` proves nothing about whether it fires. |
 | **(c) State** | a **native-id SET-DIFF vs the source** (Principle 4.1) | A model cannot verify completeness against a source it cannot hold — it grades the *claim*. Only a mechanical diff grades the *thing*. |
 
+> **REFINED 2026-10-31 (v3), row (a) only:** "the only instrument" overclaims for the reasoning floor. Per canon §12.f
+> (quoted at §II.4a's right-size audit) verification is layers ranked by independence from the actor, and a model
+> annotates, never decides. For rows (b) and (c) "only" stands: a guard is tested only by provoking it, and
+> completeness only by a set-diff (Principle 4.1).
+
 **The worked failure `[M]`:** a blind judge read a Map built from **241** source items and passed it as "omitting
 nothing"; a set-diff found **20 of 241** traceably covered. The judge was not bad at its job — it was the **wrong
 instrument for a state-floor property**, and it failed confidently.
@@ -825,12 +858,17 @@ checks) had certified · the **wall** layer (guards) refused a leaked personal p
 every layer above had passed. **A hook is the scarce top** — expensive, machine-wide, unbypassable, and never the
 first thing reached for.
 
-## §II.1 — The four families (in order of preference)
+## §II.1 — The four families ~~(in order of preference)~~
+
+> **SUPERSEDED 2026-10-31 (the order only) — see history.** COMPASS P-45 (2026-10-30) replaced the old escalation
+> ladder: *the choice is judgment, not a fixed order* (Enver: "Don't be prescriptive about that"). The four families
+> and their names stand — code and other files cite them — so read the numbers below as labels, not a ranking.
+> Kernel kept: *a rule without a test is a wish* (§II.3, "Three principles").
 
 **1. REPLACE — take the job away from the model.** Anything mechanizable (counting, diffing, date math,
 assembling returns, writing ledger rows) is done *by a script the model merely calls*. The model can't get it
-wrong because the model isn't doing it. **Pros:** perfect reliability on its territory, cheap, portable,
-debuggable. **Cons:** only covers what's mechanizable; over-applied it turns a leading skill into a brittle
+wrong because the model isn't doing it. **Pros:** ~~perfect reliability~~ the strongest friction there is on its territory, never perfect (REFINED
+2026-10-31, THE FRAME), cheap, portable, debuggable. **Cons:** only covers what's mechanizable; over-applied it turns a leading skill into a brittle
 pipeline (Principle 1's fence).
 
 **2. VERIFY — the model works, code inspects, fail-closed.** A 10–60-line checker confirms the required shape,
@@ -840,9 +878,16 @@ what leaves a checkable trace (hence evidence-surfaces, PART III); a too-eager c
 false blocks — Verify is for structure, never for taste.
 
 **3. WALL — hooks the harness fires automatically.** PreToolUse guards that block the action itself; Stop hooks
-that bounce a turn; per-turn injectors. The only family the model genuinely cannot route around. **Cons:** the
-heaviest and least portable — each one registers machine-side and adds harness complexity a student inherits.
-**Reserve for machine-wide invariants** (safety rails, capture gates), not workflow.
+that bounce a turn; per-turn injectors. ~~The only family the model genuinely cannot route around.~~ *(struck
+2026-10-31 — see history; superseded by canon §4.6: a Stop-hook "block" re-injects text and relies on the model
+choosing to comply — a documented case shows a model reading one, apologising, and proceeding; and per-turn
+injectors print and exit 0 (§II.4a [F11]). What survives: a PreToolUse block (exit 2) runs at process level and
+cannot be talked out of — on the paths it covers (THE FRAME: a guard on one path is not a guard on all paths).)*
+**Cons:** the heaviest and least portable — each one registers machine-side and adds harness complexity a student
+inherits. **Reserve for machine-wide invariants** (safety rails, capture gates), not workflow.
+> ⏸ UNSURE (2026-10-31): should guards hold workflow — a guard refusing the next step until its check passes, as
+> the PROPOSED CHANGES allow — or only the runner? Round B (2026-10-30) suggests a guard works only when its refusal
+> gives a reason.
 
 **4. REFRESH — structure through session topology.** Fresh contexts off a file spine; sub-agents to keep raw
 content out of the main window; state re-consolidated at each boundary. **This is the only family that attacks
@@ -851,7 +896,9 @@ DECAY (Principle 2, link 3)** — no gate can. Free, and nothing for a student t
 ## §II.2 — WHY prose instructions fail (the five modes gates defeat)
 
 Principle 5 says prose decays; these are the specific mechanisms, and each one names its own counter. Know them, because
-they tell you *which* level of friction the rule needs.
+they tell you *which* level of friction the rule needs. *(REFINED 2026-10-31: "level" pointed at §II.3's dial, now
+superseded by COMPASS P-45 — read it as which kind of friction. The audit proposed folding this section into Principle 5;
+v3 keeps it here because other entries cite "§II.2" by name.)*
 
 - **The model argues with rules.** If a rule keeps getting negotiated away, **change the mechanism, not the
   wording.** Re-phrasing a rule the model talks itself out of is the single most common wasted fix.
@@ -867,27 +914,37 @@ they tell you *which* level of friction the rule needs.
 - **Distance decays compliance.** Keep the rule **adjacent to the action** it governs. A rule stated once at the top
   of a long file is functionally absent by the time the action happens (Principle 5's edges-not-middle, applied locally).
 
-## §II.3 — The reliability dial (how much friction to add — the Verify/Wall dial)
+## §II.3 — The reliability dial (how much friction to add — the Verify/Wall dial) *(dial and escalation path SUPERSEDED 2026-10-31 — see below)*
 
-Use the least friction that **holds**. Level choice IS the right-sizing decision; don't over-gate a low-stakes style
-behavior, don't under-gate a high-stakes structural invariant.
-
-1. **Self-reported marker** ("GATE CLEARED") — *fakeable.* Orientation only, **never a guarantee** (Principle 4.2).
-2. **Required artifact** — the deliverable must literally contain the section/ledger/heading in the required
-   position. Missing is honest; silent is a FAIL. **The workhorse for STRUCTURE — never for a completion claim.**
-   *(Softened 2026-09-05, OBSERVED: a typed `verified-by:` and a typed `Review:` line are both artifacts and both
-   self-attestation — level 1 wearing level 2's clothes. §V.4b.)*
-3. **Code-verified evidence** — a script checks the real world. The only un-fakeable option. Reserve for
-   genuinely critical, order-of-operations gates.
+> **SUPERSEDED 2026-10-31 — the dial's ordering and the escalation path (originals verbatim in the history file).**
+> COMPASS P-45 (2026-10-30) replaced the old escalation ladder: *the smallest tool for the most conformance; the
+> choice is judgment, not a fixed order* — Enver: "Don't be prescriptive about that." **What stands — descriptions of
+> what each kind of proof can and cannot show, listed for reference, not as a ladder:**
+>
+> - **Right-size by stakes.** Use the least friction that **holds**; don't over-gate a low-stakes style behaviour,
+>   don't under-gate a high-stakes structural invariant.
+> - **A self-reported marker** ("GATE CLEARED") is *fakeable* — orientation only, **never a guarantee** (Principle 4.2).
+> - **A required artifact** — the deliverable literally contains the section/ledger/heading in the required position.
+>   Missing is honest; silent is a FAIL. Good for STRUCTURE, **never for a completion claim** *(softened 2026-09-05,
+>   OBSERVED: a typed `verified-by:` and a typed `Review:` line are both artifacts and both self-attestation — a
+>   marker wearing an artifact's clothes. §V.4b.)*
+> - **Code-verified evidence** — a script checks the real world. Harder to fake than a marker or a typed
+>   artifact, and still not perfect (THE FRAME; was "the only un-fakeable option"). ~~Reserve for genuinely critical, order-of-operations gates.~~
+>   *(struck 2026-10-31 — see history; superseded by PART 0 Stage 4, where every silently wrong result came from a
+>   weak check, and census [F2]/[F4]; the PROPOSED CHANGES put one content check after each step.)*
+> - **A human stop** (the user-turn boundary, the "say go" HARD-STOP): use it **at every real pause point, and spend it
+>   sparingly** — each one costs the user a tap, and a skill that stops six times gets skipped entirely. Both halves
+>   hold at once. It is a gate only if code reads the answer (the
+>   2026-10-28 notes below).
+> - **When a rule keeps losing, rewording is not the fix** — change the mechanism (§II.2; §III.9 "fail twice").
 
 **The BLIND CHAIN (the mechanism behind "blind the arc").** Fetch files one at a time; the next pointer is the
 **last line only**; a **STOP-CHECK at exit** and a **TRIPWIRE at entry** of each link. This is what turns
 "show only the next step" from an instruction into a structure — the model cannot triage across an arc it
 cannot see.
 
-**The ESCALATION PATH (when a rule keeps losing):** reword ❌ → **binary gate** → **the user-turn boundary**.
-Use the user-turn boundary (the "say go" HARD-STOP) at every real pause point, and **spend it sparingly**: each one
-costs the user a tap, and a skill that stops six times gets skipped entirely.
+> *(The ESCALATION PATH that stood here is superseded by COMPASS P-45; its two kernels — use the user-turn boundary at
+> every real pause point and spend it sparingly, and rewording is not the fix — are in the list above. Original in history.)*
 
 > **v2 (orchestrator-v2, 2026-10-28):** A stop is only a gate if code reads the answer and refuses anything but an explicit yes; a "say go" the runner ignores is a speed bump, not a gate (the rig's runner ignored a "no" until fixed; then "no" gave a fail at the step and a stop, "yes" completed). Spend-it-sparingly still stands. *(OBSERVED — brief §4 Stage 2, p06/p07.)*
 
@@ -920,13 +977,17 @@ costs the user a tap, and a skill that stops six times gets skipped entirely.
 
 ## §II.4 — The primitives library (build once, reuse in every skill)
 
-Each primitive is a small script, deployed into a skill's own `scripts/` folder by `new-skill.sh` (or run
-in-place from `system/parts/`), with its own **two-sided self-test** (it must catch a known-bad AND pass a
+Each primitive is a small script, ~~deployed into a skill's own `scripts/` folder by `new-skill.sh` (or run
+in-place from `system/parts/`)~~ used in place from the shared layer, never copied *(REFINED 2026-10-31 — see history;
+superseded by the shared-layer element, line 187 above: "use them, never copy them", written after 68 drifted copies
+were found; census [F3]. ⚠ `system/tools/new-skill.sh` still copies parts into `scripts/` (its `deploy_part`, citing a
+`system/parts/README.md` that is not in the repo — ⏳ unruled: write it or drop the cite, in the cleanup pass) — a code fix outside this file. The travel question is ⏸ at §II.5.)*,
+with its own **two-sided self-test** (it must catch a known-bad AND pass a
 known-good, or it isn't trusted — Principle 4.3 applied to our own tools). The principle behind the tax: **a gate that
 fails open is worse than no gate — because you trust it.** `[M: 4 silent-zero/fail-open bugs in our own
 tooling in one week]` An unverified gate doesn't just miss failures; it *certifies* them.
 
-The library holds **14** scripts in `system/parts/` plus the self-test runner `run_selftests.sh` that gates them. Verify the count yourself: `ls system/parts/*.py | wc -l` → `14`. A part crosses into a repo when it has a caller, never because it is good.
+The library holds ~~**14**~~ **13** scripts in `system/parts/` *(re-derived 2026-10-31 — see history)* plus the self-test runner `run_selftests.sh` that gates them. Verify the count yourself: `ls system/parts/*.py | wc -l` → ~~`14`~~ `13` on 2026-10-31; a count in prose goes stale, so trust the command, not the number ([F9]). A part crosses into a repo when it has a caller, never because it is good.
 
 **Stolen patterns worth building alongside them** `[C]` — none of these resolve to a built artifact; verified
 there is no `.github/` CI config in this repo and `.gitignore` is a single root file, not per-plan. They stay
@@ -940,8 +1001,10 @@ what they are: patterns worth building, not things to reach for today.
 - **Artifact-file handoff for sub-agents** — briefs, reports, and review packages are **files**, never pasted
   conversation history ("never paste accumulated history into later dispatches" — from a documented 42k-char
   dispatch failure). Keeps the controller's context clean and scales fan-out.
-- **File-existence resume** — skip items whose output file already exists. The cheapest reliable checkpoint;
-  it's a filesystem check, not a fragile state-file read.
+- **File-existence resume** — skip items whose output file already exists. The cheapest ~~reliable~~ checkpoint;
+  it's a filesystem check, not a fragile state-file read. *(REFINED 2026-10-31: cheap, but it proves only that a file
+  exists, not that it is whole or right — PART 0 Stage 4's resume accepted a cut-short record (12+3 silently wrong).
+  Pair it with a content check, per Principle 3's 2026-10-28 note.)*
 
 
 - **Plan-scoped workspace dirs** with a self-ignoring `.gitignore` — no cross-run state collision.
@@ -949,6 +1012,11 @@ what they are: patterns worth building, not things to reach for today.
   size caps, orphan files). A backstop under the birth guard.
 
 ## §II.4a — ⭐ DO NOT BUILD — what was tried and failed
+
+> **REFINED 2026-10-31 (v3):** kernel — *one line per dead end: tried / failed / instead; grep this section before
+> building anything that smells like a retry.* The [F] entries also carry census, solutions-audit, research and tier
+> lines; v3 keeps them whole rather than trim their nuance. The phrase "DO NOT BUILD" in this heading is load-bearing
+> (`system/tools/deadend_check.py` greps it).
 
 ### From the failure census, 2026-09-05 — REPRODUCED (15 blind readers · journal + 38 briefs + ledger + doc-vs-disk · every mode 4–6 months, 11–12 of 12 sources · 1,656 cited instances)
 
@@ -1130,8 +1198,9 @@ what they are: patterns worth building, not things to reach for today.
 > demanded (canon §15.18). **Tensions presented, awaiting Enver's routing (canon §12.d–f):** repetition-helps vs
 > "wallpaper" · plan-first as ceremony → 17.6 · model-annotates vs model-gates.
 
-> **Coverage: this is ~35% of what's on disk.** Mined 2026-08-07 from ledgers, records, and project briefs;
-> capped at 80 traceable entries by instruction, not by exhaustion — roughly 150 more traceable dead ends
+> ~~**Coverage: this is ~35% of what's on disk.**~~ *(figures struck 2026-10-31 — see history; never re-counted after
+> the [F] entries were added from 2026-09-05 on — re-count before quoting one.)* The A/B entries were mined 2026-08-07
+> from ledgers, records, and project briefs, capped by instruction, not by exhaustion — more traceable dead ends
 > exist unmined. **Never read this section as complete** — "not listed here" is not "never tried," and
 > treating this list as the full territory would be exactly the self-grading §V.9 already names as an
 > anti-pattern below. Before building something that smells like a retry, grep this section AND the cited
@@ -1139,11 +1208,15 @@ what they are: patterns worth building, not things to reach for today.
 >
 > **Duplicated by design.** This same section, in reduced or full form, also lives in `hook-sop.md` and
 > `build-sop.md` — an explicit ruling, 2026-08-07: *"I would rather have duplication than miss
-> something."* Do not "clean up" the overlap without his say-so; this file carries the **fullest set — all
-> 80 entries** — because it's the rulebook a skill-build session consults first (§5.2's dead-end check reads
+> something."* Do not "clean up" the overlap without his say-so; this file carries the **fullest set** ~~— all
+> 80 entries~~ — because it's the rulebook a skill-build session consults first (§5.2's dead-end check reads
 > this section by name).
+> ⏸ UNSURE (2026-10-31): does COMPASS P-58 narrow this 2026-08-07 ruling — copies inside one self-contained SOP fine,
+> a whole SOP that only repeats others not (COMPASS open question (i): recommended, not ruled)? Until Enver rules,
+> the ruling above stands; the PROPOSED CHANGES lesson "the same rules copied into more than one rulebook" sits beside
+> it, not over it.
 >
-> **The pattern underneath all 80, worth holding before you read the list:** something reported success while
+> **The pattern underneath ~~all 80~~ every entry, worth holding before you read the list:** something reported success while
 > producing **nothing observable**. A logger that captured zero entries under 300+ daily calls. A guard whose
 > deny path exited 0. A warning the model could not see. A judge that flagged nothing across 40 turns. A
 > validator nothing called. A test that passed because it wrote its own exam. Look for that shape — it is the
@@ -1407,6 +1480,10 @@ this stays the complete lookup, marked UNIVERSAL because they bind any build.
 
 ## §II.5 — Packaging: a skill travels
 
+> ⏸ UNSURE (2026-10-31): must a personal skill shared through Google Drive (COMPASS P-52) work without the plugin
+> installed? If yes, this principle and the shared layer's "use them, never copy them" (§II.4) pull opposite ways —
+> `new-skill.sh` copies parts precisely so the gate travels with the skill.
+
 **Design principle:** never let a primitive depend on a hook, a host path, or `settings.json` — or it stops existing the moment the skill travels.
 
 ## §II.6 — Run-vs-read: the folder IS the signal
@@ -1425,6 +1502,15 @@ true, the demand-class should drive the choice of friction level at design time 
 It is consistent with `[R2]` withhold-the-endpoint and §IV barn-sour — corroboration, not proof. Graduates when
 the experiment runs. *(Also held: the compilation-loss RATIO — direction certain, magnitude measured with
 mismatched extraction on the two sides.)*
+
+> **REFINED 2026-10-31 (v3):** untested since July — Experiments E1 and E2 never ran. **Graduates on E2:** tag every
+> graded clause by demand-class, measure pass-rate by class. **The compilation-loss ratio** (direction certain —
+> skills ship leaner than their specs; magnitude measured with one side LLM-extracted, the other mechanically
+> extracted, so untrustworthy as a number) **graduates on E1:** re-extract both sides identically, across every phase
+> of one skill. *(These lines moved here from the EVIDENCE & PROVENANCE held list, which now points here: one home.)*
+> The audit filed this section as SUPERSEDED, since a content check after every step (PROPOSED CHANGES) makes "which
+> rules does prose hold" matter less. v3 keeps it: nothing has tested or refuted it, and `order_lint.py` and
+> `forbidden_content.py` cite it.
 
 ---
 
@@ -1463,14 +1549,11 @@ the thing lives:
 - **Slash-command** — an **explicit one-shot**. Use when it must fire only on demand and has no ordered flow.
 - **⛔ `disable-model-invocation` IS RETIRED FLEET-WIDE — do NOT add it to a new skill.**
   ⚑ **RULING — 2026-08-06:** *"I want all of my skills to be able to invoke each
-  other. It's a guard that I don't feel that I need."* Executed the same day: the flag came off the last
-  three skills carrying it (`/ship`, `/onboard-probe`, `/world-model-builder`), after `/autoplan`'s removal
-  on 2026-08-04. **The fleet now has zero.**
-  **CONFIRMED TRUE — 2026-08-06, later the same day.** The claim above was false when first written:
-  ✅ `/skill-builder` — which has since landed — still carried the flag, scaffolded that same day
-  from a stale copy of this rule (its own spec cited the pre-retirement text as if it were still live).
-  It was removed the same day.
-  `grep -rn "^disable-model-invocation" skills/*/SKILL.md` now returns zero — the fleet actually has zero.
+  other. It's a guard that I don't feel that I need."* *(How it was executed across the fleet, and the same-day
+  correction, moved to history 2026-10-31 per COMPASS P-13; check today's state with
+  `grep -rn "^disable-model-invocation" skills/*/SKILL.md`.)* ⚠ The ruling lets skills invoke each other; it does
+  not make a design safe that *relies* on one skill starting another — the model would have to choose to (PART 0;
+  §VI.1).
   **The principle this REPLACES** (kept visible so nobody reinstates it from memory): *"side-effect skills get
   `disable-model-invocation: true` — if a skill writes, sends, deletes or spends, firing is the human's
   call."* **Why it lost:** it made the flagged skill behave unlike every other skill in the set — for any
@@ -1490,10 +1573,14 @@ true about this system, always). **A skill holds a PROCEDURE** (what to do when 
 fact that keeps getting restated inside skills belongs in CLAUDE.md; a procedure sitting in CLAUDE.md is loading
 into every session for nothing.
 
-- **principle (candidate) — hypothetical, not yet validated: for a skill whose step order must hold, a card + runner + record is one candidate shape.** If order matters, consider a card, a runner and a record (see PART 0); it is not the default way to build a skill. *(CANDIDATE.)*
+- **principle (candidate) — for a skill whose step order must hold:** one home, the card + runner + record line at the
+  end of §III.4 *(deduped 2026-10-31; this copy, including its struck "not the default way to build a skill", is in history)*.
 
 
 ## III.2 — Declare its INTENT (three layers, written before anything else)
+
+> ⏸ UNSURE (2026-10-31): has any session read a skill's Intent block to decide something since July? (The audit
+> counted 68 files that carry or cite one.)
 
 **Why this exists.** In Lifehack the LLM *is* the runtime — a skill doesn't run by blind execution, it runs by a
 fresh session **understanding** what the skill is for and acting on that. A skill that never states its own
@@ -1582,17 +1669,17 @@ Applies Principle 1 (mechanics vs judgment) and Principle 5 (decay) to the shape
 friction:
 
 - **Earn complexity.** Start with the simplest structure that works; add a step or pass only when a test shows you
-  need it. Most multi-step flows are over-built.
+  need it. Most multi-step flows are over-built. *(REFINED 2026-10-31: this and the PROPOSED CHANGES' five parts lean
+  different ways, and both stand. THE FRAME's brake is the reconciliation on offer — a new irreversible action gets
+  its overlapping layers up front; adding to a control set that already exists waits for an incident. Whether the five
+  parts are the first-build shape of every assembly-line skill is not yet ruled.)*
 - **Earn complexity applies to prompt CONTENT too, not just flow. `[R2]`** Heavy, rigid, over-constrained
   step-prompts help WEAK models but **handcuff** capable/reasoning ones (a measured performance *drop* —
   guardrail-to-handcuff, Principle 1) and kill the adaptive follow-up a leading/interrogative skill needs. Minimum-viable
   scaffolding per step — one objective, the key prohibitions, the output contract, then stop — and reserve hard
   structure for the steps that MUST hold. Validate prompt heaviness on live runs, never from theory.
-- **Build first, revise as it breaks — never fake-pass first.** Real life is the test bed: stand the skill up
-  rough, run it, fix it one break at a time (write → test → lock → next). Do **not** try to prototype a long flow
-  by hand before writing it — that dry-run is itself a long session that rots and loses the thread, the very
-  failure this whole SOP exists to prevent. Keep a scratchpad/state-file (§III.6, PART IV) so nothing's lost across
-  the revise cycle. *(A quick hand-walk is fine for a tiny flow; it does not scale to a real one.)*
+- **Build first, revise as it breaks — never fake-pass first.** One home: §III.9, "Real life is the test bed"
+  *(deduped 2026-10-31; the fuller text that stood here moved there)*.
 - **State-first, typed, raw.** Decide the working-state shape up front; store *raw* data, format on demand. An
   in-session scratchpad is **pruned/updated every turn, never append-only** — append-only is context pollution.
   **Generalizes: every maintained surface is either a LOG (append, never overwrite) or a GAUGE (overwrite, never
@@ -1618,7 +1705,9 @@ friction:
   unknown → bubble up.
 - **Light evals, after the fake pass.** 20–50 real cases that define "good"; grade the *outcome*, not the path.
 
-- **principle (candidate) (§III.4) — hypothetical, not yet validated: consider card + runner + record** when order must hold: ordered steps of kind code/ai/human, each with a check; one shared runner; an append-only runner-written record (see PART 0). Not the default way to build a flow. *(CANDIDATE.)*
+- **principle (candidate) (§III.4) — hypothetical, not yet validated: consider card + runner + record** when order must hold: ordered steps of kind code/ai/human, each with a check; one shared runner; an append-only runner-written record (see PART 0). ~~Not the default way to build a flow.~~ *(CANDIDATE. Struck
+  2026-10-31 — see history; superseded by COMPASS P-7, "A step-runner holds order, where order matters", and the
+  2026-10-31 step-files ruling (PROPOSED CHANGES). OBSERVED in the rig, not yet REPRODUCED in real use.)*
 
 
 ## III.5 — Progressive disclosure + layout
@@ -1644,6 +1733,12 @@ what keeps a skill loading lean turn after turn:
   needs.
 
 ## III.6 — Scaffold at birth, not after the fact
+
+> **REFINED 2026-10-31 (v3):** kernel — *a skill is born with its checks wired, not added later.* The tool doing it is
+> moving: COMPASS P-60 (2026-10-31) says the build skill will point at the V2 plan conformance engine. `new-skill.sh`'s
+> multiphase mode moves the *session* between phase files; the PROPOSED CHANGES move a *runner* between step files,
+> with fixes living once in the shared layer. The flywheel's "born immune" claim cannot be checked by a computer
+> (§III.10's worked example).
 
 A skill is easiest to make conformant at the moment it's created — every rule stamped in at birth is a rule that
 never has to be retrofitted or remembered:
@@ -1732,8 +1827,12 @@ Principle 4.2 wearing a gate's clothes, and a fake gate is worse than no gate, b
 
 ## III.9 — Build process: four principles that survived contact
 
-- **Real life is the test bed** — stand it up rough, run it, fix one break at a time (write → test → lock →
-  next). Do not hand-prototype a long flow before writing it; that dry-run is itself a long session that rots.
+- **Real life is the test bed — build first, revise as it breaks, never fake-pass first.** Stand the skill up
+  rough, run it, fix it one break at a time (write → test → lock → next). Do **not** try to prototype a long flow
+  by hand before writing it — that dry-run is itself a long session that rots and loses the thread, the very
+  failure this whole SOP exists to prevent. Keep a scratchpad/state-file (§III.6, PART IV) so nothing's lost across
+  the revise cycle. *(A quick hand-walk is fine for a tiny flow; it does not scale to a real one.)* *(One home since
+  2026-10-31: §III.4's fuller text merged here; §III.4 points here.)*
 - **FAIL ONCE → sweep every sibling before the second fix** *(added 2026-09-05, OBSERVED: four rounds of
   one-card-at-a-time fixes with six more waiting; the mechanical form is a checker's `--all` mode; canon §5.13).*
 - **FAIL TWICE → the architecture is the bug, not the wording.** If a rule breaks, reword it once. If it breaks
@@ -1807,6 +1906,11 @@ that's PART IV (anchoring) and PART V (verification).
 > prose alone can't out-argue them.
 
 ## §IV.1 — Three parties are in the room, and only one of them drifts
+
+> ⏸ UNSURE (2026-10-31), §IV.1–§IV.5 and §IV.7: does the PROPOSED CHANGES design retire the every-turn anchor, or does
+> it stay for conversation skills? Live skills (planning-weekly, ingest) depend on it; canon §4.12 keeps the
+> post-compaction re-anchor, and canon §12.d scopes repetition (same-turn doubling may help; cross-turn repetition
+> becomes wallpaper).
 
 A long interactive skill run has three parties, not two: **the user, the skill, and the session** — and they are
 not the same thing. The skill's SKILL.md can be flawlessly written; the party that drifts is the third one, the
@@ -1926,19 +2030,34 @@ questions decide the mechanism, and both must be asked, not assumed:
 
 > **v2 (orchestrator-v2, 2026-10-28):** Order that must hold is held by a runner, whatever the run's length — a 5-step linear run is a candidate for the card and the runner if its order matters. External state beyond the record is still for long or headless runs. *(CANDIDATE.)*
 
-> **v2 (audit, 2026-10-28):** reconciled with PART 0 "When NOT to use a card": use a card when step order must hold AND at least one of: the run is long enough that losing progress costs real time/money, a human pause sits mid-run, it spans sessions, or it has more than one ai step. A short job that can simply rerun from scratch gets per-step checks and loud failure, not a card. (CANDIDATE.)
+> **v2 (audit, 2026-10-28):** reconciled with PART 0 — the card-or-no-card decision principle has one home, PART 0
+> "When NOT to use a card" *(deduped 2026-10-31; the copy that stood here is in history)*. (CANDIDATE.)
+>
+> *(Question 1 of this list, "Is this run long enough to lose its place?", was cut 2026-10-30 as replaced by the notes
+> above — see history. The PART 0 decision principle now carries it.)*
 
 2. **Does this particular gate MATTER?** Scale the proof to the stakes using Part II §II.3's reliability dial
    (marker → artifact → code-gate). Reach for a code-gate only when running out of order would genuinely break
-   something.
+   something. *(REFINED 2026-10-31: the dial's order is superseded by COMPASS P-45 — see §II.3; the question stands.)*
 
 > **v2 (orchestrator-v2, 2026-10-28):** The runner writes one record line per step as each step finishes (run, step, status, utc, output path, reason); the skill never emits its own receipt, because a receipt the actor emits is the actor grading itself (Principle 3). *(OBSERVED — 10+10 runs, every line runner-written; brief §4 Stage 1.)*
 
 
-> **v2 (orchestrator-v2, 2026-10-28):** We do not need an engine (hypothetical, not yet validated). Any multi-step skill whose order must hold could use a **card** (ordered steps, each with a check), a **runner** (one shared script) and a **record** (append-only, runner-written) — a script, not a workflow engine, and "rigid state machine" is the wrong description of it. *(CANDIDATE: one skill; awaits the week-long /save-on-a-card test and a second skill, per [P2]. Rig: Stage 1 and 2 scorer lines, orchestrator-v2 brief §2/§4.)*
+> **SUPERSEDED 2026-10-31 — pointer (original in history):** the 2026-10-28 card + runner + record note that stood here
+> is superseded by COMPASS P-7 ("A step-runner holds order, where order matters") and the PROPOSED CHANGES five parts.
+> Kernel kept: it is a script, not a workflow engine, and "rigid state machine" is the wrong description of it. Tier
+> kept: CANDIDATE — one skill so far; awaits the week-long /save-on-a-card test and a second skill, per [P2] (rig:
+> Stage 1 and 2 scorer lines, orchestrator-v2 brief §2/§4). Its "we do not need an engine" now sits beside the PROPOSED
+> CHANGES' "the platform's own way of holding order, or our own — settled by testing" (⏸ UNSURE there).
 
 
 ## §IV.9 — Draw the Path Beat on the status bar (a skill's own HUD line)
+
+> ⏸ **Low confidence · superseded in principle · NOT ruled (2026-10-31).** The audit read COMPASS P-55 ("Guardrails
+> stay only where they earn their place") and §IV.4's 2026-10-28 note (print position from the record, never from the
+> model) as superseding the HUD as doctrine. Enver approved only the audit's contradictions and junk list; this item
+> is neither. Two live skills, planning-weekly and ingest, paint this line through `skill_hud.sh`. The text below
+> stands as written. (The "Earn it" bullet already bars adding a HUD by default.)
 
 A leading/multi-stage skill can render its Path Beat on the **status bar** — a line ABOVE the locked Lifehack
 core (`proj · plan · scratch` + the `model · ctx · cost · desk` bar). The status-bar HUD *is* §IV.4's Path Beat
@@ -1956,7 +2075,8 @@ made visible, drawn by the harness instead of the model.
   file). **NEVER** edit `system/statusline.sh`, the core flag files (`pm_flag`/`plan_flag`/`scratch_flag`), or
   `settings.json`'s `statusLine` pointer — `guard_statusline_lock.sh` blocks the Bash routes that would repoint
   or replace the bar. You may only **ADD** a line on top; you cannot modify or remove the locked core.
-- **Earn it.** Per §IV.8's first question: only a multi-stage/leading skill needs a HUD; a one-shot does not —
+- **Earn it.** Per §IV.8's first question *(cut 2026-10-30; the PART 0 decision principle now carries it)*: only a
+  multi-stage/leading skill needs a HUD; a one-shot does not —
   never add a banner by default. Clear on exit; a crashed skill's HUD auto-drops after the 6h freshness guard in
   `statusline.sh`.
 - **CLI-only.** Unlike the Part II §II.4 primitives (skill-local scripts, portable by design), this mechanism is a CLI status-bar feature.
@@ -2007,8 +2127,12 @@ violation to catch, it's a quality curve you avoid walking all the way down by n
 enough to hit it.
 
 **Mark this honestly: it is a bet, not a principle.** It did **not** surface in the 2026-07-25 crowd-convergence or
-code-dissection research [C] that grounds PARTS I–III — it rests entirely on our own evidence (planning-weekly, the
-conformance lab) and is **UNPROVEN** until a real multi-phase run is built this way and graded end to end. File
+code-dissection research [C] that grounds PARTS I–III — ~~it rests entirely on our own evidence (planning-weekly, the
+conformance lab)~~ *(REFINED 2026-10-31 — see history: the bet now has two halves with different evidence. **State lives
+in a file and a fresh context reads it** is RESEARCHED — canon §15.15, "the strongest handoff mechanism found anywhere" —
+and OBSERVED in one rig (k01–k05, below); storing it is not enough, it must be delivered (canon §12.c; §II.4a [F6]).
+**Hiding the later steps from the model** still rests on our own evidence alone and stays confounded (§IV.6, NEEDS
+CONFIRMATION).)* — and the whole is **UNPROVEN** until a real multi-phase run is built this way and graded end to end. File
 it next to Part II §II.7's held hypotheses: consistent with everything we've measured, not yet doctrine.
 
 > v2 receipt (orchestrator-v2): a fresh session resumed from a file and finished the run (kill-and-resume, k01–k05). **OBSERVED, one rig — not REPRODUCED.**
@@ -2059,9 +2183,14 @@ carries 5 of the spec's 28 requirements (82% dropped)" scare compared an LLM-ext
 mechanically-parsed denominator; a matched-method re-diff showed ~95% faithful. A mismatched-extraction delta
 isn't a finding — it's an artifact wearing one's clothes.
 
-## §V.2 — Measure before you enforce
+## §V.2 — ~~Measure before you enforce~~ A finding from one instrument is a lead
 
-You cannot enforce what you haven't measured, and your first delta is probably wrong. `[M]` Across one real
+> ~~Measure before you enforce~~ struck 2026-10-31 — see history; superseded by Enver's 2026-07-27 ruling, which struck
+> that rail ("take the part out of the brief that says don't build enforcement for a gap I haven't seen on a real run…
+> That snuck in without my knowledge"). The body below is a different, sound point and stays (canon §5.2: "One
+> control is an anecdote").
+
+~~You cannot enforce what you haven't measured, and~~ Your first delta is probably wrong. `[M]` Across one real
 verification arc, an apparent count of **39 failures** collapsed to **30**, then to **2 confirmed** as the
 measuring instrument itself got fixed — roughly **37 of 39 "failures" were the tester, not the skill.** This is
 the single strongest argument for distrusting a first-pass delta: before hardening anything against a finding,
@@ -2098,6 +2227,8 @@ suspicion §V.2 asks you to hold toward a first-pass finding.
 ## §V.4a — BLIND THE GRADERS, NEVER THE ACTORS
 
 > **v2 (audit, 2026-10-28):** a fresh reviewer on the same model is not independent (self-preference bias, arXiv 2604.22891); see PART 0 "Where this could be wrong". CANDIDATE.
+> **REFINED 2026-10-31 (v3):** not independent, but still a real layer — canon §12.f (quoted at §II.4a's right-size
+> audit) ranks verification by independence and lets a model annotate a verdict, never be it.
 
 `[M: verified live 2026-07-28; doctrine approved the same day]` §V.4 says the verifier fails like the thing it
 grades. Here is the sharpest instance we have found, because it invalidated results rather than producing an
@@ -2271,6 +2402,8 @@ This is the verification twin of Principle 2: a per-component pass proves the co
   asserts *what arrived*, not just that both ends function.
 - **The cheap version:** assert the receiving side's input is non-empty and well-shaped **before** it acts —
   which is also how an empty capture becomes INCONCLUSIVE instead of a silent "nothing found, all clear."
+  *(REFINED 2026-10-31, A14: cheap, and a floor only — "non-empty" is not a content check; almost-right replies passed a
+  non-empty test 8 times in PART 0 Stage 4. See Principle 3's 2026-10-28 note.)*
 - **Why this bites hardest in verification tooling:** a broken seam in a grader doesn't crash — it produces a
   confident, well-formatted, *wrong* verdict, which is the single most expensive output a tester can emit.
 
@@ -2290,12 +2423,10 @@ weight and different fixes:
 3. **Performance** — it ran, but did the job badly (crammed questions, concluded early, shallow read). The
    quality clause — inherently AI judgment, and the hardest of the three to gate.
 
-**COMMISSION ≠ OMISSION — they are not symmetric evidence.** A quote-verified `violated` is **positive proof the
-thing happened**. A `missed` is only **the absence of a sighting**. When judgments disagree, evidence of
-commission outranks non-observation: a single quote-verified `violated` decides the clause even against a
-majority of `met` votes, because those `met` votes mean "I didn't notice," not "it didn't happen." Guard the
-other side too — a `violated` with **no verifiable quote** gets no such power, or a spurious cry of foul
-dominates instead.
+**COMMISSION ≠ OMISSION — they are not symmetric evidence:** a quote-verified `violated` is **positive proof the
+thing happened**; a `missed` is only **the absence of a sighting**. The fold that follows — one quote-verified
+`violated` decides the clause even against a majority of `met`, and a `violated` with no verifiable quote gets no such
+power — has one home, Principle 4.3's fold principle *(deduped 2026-10-31; the paragraph that stood here is in history)*.
 
 ## §V.7 — The enforceability partition (from v1 §3.5, preserved)
 
@@ -2330,6 +2461,9 @@ says "yes, that's right." Build the lab to sharpen your judgment about what "rig
 substitute for looking.
 
 ## §V.9 — Anti-patterns observed in the wild `[C]`
+
+> **REFINED 2026-10-31:** the star counts cited here and in Principles 1 and 3 (261k★, 13.8k★) date from the
+> 2026-07-25 dissection [C]; read them as of then. The kernel holds (nine files cite "nothing calls it").
 
 From dissecting six trust-gated public skill repos — name these so we never copy them, no matter how popular
 the source:
@@ -2367,7 +2501,11 @@ the source:
 
 Read in three ordered beats, so "don't split" is never misread as a ban.
 
-**1. DEFAULT = one skill.** Most flows never need to split. One skill, no state file, no receipts. `[R]`
+**1. DEFAULT = one skill.** Most flows never need to split. One skill~~, no state file, no receipts~~. *(REFINED
+2026-10-31 — see history: PART 0's decision principle (CANDIDATE) — a card with its runner-written record is warranted
+when step order must hold AND at least one of: the run is long enough that losing progress costs real time or money, a
+human pause sits mid-run, it spans sessions, or it has more than one AI step. A short job that can simply rerun from
+scratch gets per-step checks and loud failure instead.)* `[R]`
 Splitting is the #1 failure site — **~79% of multi-agent failures are handoffs** — and for a same-model setup,
 one long skill often matches a split one on quality while avoiding the handoff risk entirely.
 
@@ -2375,15 +2513,19 @@ one long skill often matches a split one on quality while avoiding the handoff r
 (long/multi-session — it loses the thread, like a full corpus ingest run), **and the seam is clean** (separable
 work, no shared implicit decision the handoff would drop). Neither alone is sufficient.
 
-**3. When you DO split — ONE DOOR, MANY ROOMS.** One persona, one command, on the **outside** (the human meets
-one voice); staged skills sharing a state file on the **inside**; the seam hidden, auto-chained. The mechanics:
+**3. When you DO split.** ~~ONE DOOR, MANY ROOMS~~ *(struck 2026-10-31 — see history; superseded by Enver's 2026-10-31
+ruling: steps are files inside one skill, not separate skills (PROPOSED CHANGES). "Staged skills… auto-chained" was
+wrong on the mechanism: a skill cannot start another, so the chain relied on the model choosing to — PART 0's own
+limit, "the model still has to START the runner", repeated at every seam.)* One persona, one command, on the
+**outside** (the human meets one voice); ~~staged skills sharing a state file on the **inside**; the seam hidden,
+auto-chained~~ step files and a shared state file on the **inside**, a runner moving between them. The mechanics that
+still hold:
 
 - **One persona spans the seam** — the human never feels the handoff.
 - **The shared state file IS the state machine** — read the file, never your recollection; each stage writes
   only its own fields; every field is asserted true on entry to the next stage.
-> **v2 (orchestrator-v2, 2026-10-28):** The runner writes the state; hand a fresh agent the state and its one next step, not the history. *(CANDIDATE.)*
-
-- **principle (candidate) — hand state, not history.** See §IV.6 note and the rule above: the unit of handoff is state plus the one next step. *(CANDIDATE.)*
+> **v2 (orchestrator-v2, 2026-10-28):** the runner writes the state. **Hand state, not history** has one home, §IV.6's
+> note *(deduped 2026-10-31; the two copies that stood here are in history)*. *(CANDIDATE.)*
 
 - **Progress reads from a receipts file, never recall.** Scratch ≠ saved. Ship a cold-restore runbook: read true
   state → skip terminal rows → requeue in-flight rows, idempotently.
@@ -2412,6 +2554,9 @@ one voice); staged skills sharing a state file on the **inside**; the seam hidde
   prohibition: "surface and ask; do not answer or conclude."
 
 ## §VI.3 — Character-with-purpose
+
+> ⏸ UNSURE (2026-10-31): is a persona still a design principle for V2 skills, now that a long skill is step files run by
+> a runner? (Same question at §0 trait 6.)
 
 An identity that **loves the work's virtue**, carries an **unanswerable why** (structurally un-optimizable —
 not a goal that could be satisfied and discarded), and a **fence** that bounds the role (*surveyor, not
@@ -2518,6 +2663,10 @@ the casualty check, because a pass that returns early by seeing less is a scope 
 # EVIDENCE & PROVENANCE
 
 **Tag legend.**
+> **REFINED 2026-10-31 (v3):** these tags map onto THE FRAME's tiers — its "Mapping onto the tags" line is their one
+> home. ⚠ Nearly every `[M]` points at the July conformance lab, whose AI judges the 2026-10-31 survey found not truly
+> independent (canon §12.f places a same-model judge as a real but weaker layer). The tags stay as written; re-tagging
+> each line with a frame tier is owed, not done in v3.
 - `[R]` — the 2026-07-12 12-agent blind convergence map.
 - `[R2]` — the 2026-07-19 step-prompt convergence map.
 - `[M]` — MEASURED in our own conformance lab; sample stated inline. Means **"this mechanism demonstrably
@@ -2533,33 +2682,32 @@ finding ("this class of rule fails X% of the time") needs **real n**, and waits 
 plausible the story.
 
 **The held list — explicitly NOT doctrine.** Recorded so they aren't lost, and kept **out** of the enforced
-rules so a plausible story can't harden into permanent law before it's earned that:
-- **The demand-class principle.** Rules that demand the model **produce** something appear to hold in prose; rules
-  that demand it **withhold**, **order**, or **count/cover** appear not to. If true, this should drive
-  friction-level choice at design time — potentially the single most useful thing we could know. Currently
-  generated from **n=2 failures on one skill**, reasoning backwards from the answer. Graduates on **Experiment
-  E2**: tag every graded clause by demand-class, measure pass-rate by class.
-- **The compilation-loss ratio.** Direction is certain — skills ship leaner than their specs. Magnitude was
-  measured with mismatched extraction (one side LLM-extracted, the other mechanically extracted) and is
-  untrustworthy as a number. Graduates on **Experiment E1**: re-extract both sides identically, across every
-  phase of one skill.
+rules so a plausible story can't harden into permanent law before it's earned that. Both items — the demand-class
+principle and the compilation-loss ratio — and their graduating experiments (E1, E2) have one home, §II.7
+*(deduped 2026-10-31; the list that stood here is in history)*.
 
 ---
 
-**Living intake.** New observations land first in `skill-irl-findings.md` in your personal code folder (not shipped in the plugin): append-only,
-chronological, tagged TESTER / SKILL / METHOD. When a finding is seen enough to be durably true, it graduates
-here and gets marked. Companion for operational specifics: `skill-building-field-notes.md` *(same folder; not shipped in the plugin)*.
+**Living intake.** One home: §VII below *(deduped 2026-10-31; this paragraph merged there)*.
 
 ---
 
 ## §VII — LIVING INTAKE: candidates, not doctrine
 
-> New findings land first in `skill-irl-findings.md` in the person's personal code folder (not shipped in the plugin).
-> Candidates recorded here instead are clearly marked as such.
+> New findings land first in `skill-irl-findings.md` in the person's personal code folder (not shipped in the plugin):
+> append-only, chronological, tagged TESTER / SKILL / METHOD. When a finding is seen enough to be durably true, it
+> graduates into this file and gets marked. Companion for operational specifics: `skill-building-field-notes.md` (same
+> folder; not shipped in the plugin). Candidates recorded here instead are clearly marked as such.
 > Nothing below is a rule. Each carries the canon's confidence tier, its receipt, and what would refute it. **Per Enver 2026-09-05: write principles with
 > their reason; a rule only where it is 100% — a harness fact or a mechanical refusal.**
 
 ### From the two blind research runs, 2026-09-05 — outside evidence, tiered; nothing here is doctrine
+
+> **SUPERSEDED IN PART 2026-10-31 — pointers added, text kept.** Twins in canon §15: [R1] = §15.1 · [R2] = §15.3 ·
+> [R3] = §15.5 · [R4] and [R5] = §15.10 · [R7] = §15.11 (canon's copy also carries the 2026-10-28 step-compliance
+> result) · [R8] = §15.12 · [R9] = §15.2 · [R6]: nearest twin §15.17, not identical. The audit marked this list
+> superseded by canon; v3 keeps it because each entry here carries a cross-reference to this file that canon's twin
+> lacks, and canon is not edited in this rewrite. Untouched since 2026-09-05.
 
 Canon holds the principle-level twins in §15. **Every rate below is single-source and unreplicated** — directions
 converge across independent angles; magnitudes do not yet exist as facts.
@@ -2587,6 +2735,235 @@ converge across independent angles; magnitudes do not yet exist as facts.
   HAL; CSET), no rebuttal. *Outside support for THE FRAME's Rule and for layered friction (§II.1a).*
 
 **THE SCOPE FAILURE — added 2026-09-05 by a session at Enver's instruction. CANDIDATE, NOT VALIDATED.**
+*(2026-10-31 audit: this belongs with plans, not skills. Not moved — v3 edits only this file.)*
 *This one is about the SHAPE of the session, not about any tool in it. It is the most consequential thing this build produced and the least proven.*
 
 - **A verifier good enough to trust will set the backlog, and the loop has no terminating condition.** The shape: build a good detector → it finds a REAL defect → the defect becomes a card, because *"it is genuinely broken"* feels like sufficient justification → building the card extends the detector's reach → repeat. Receipt: original Phase 6 was **5 cards**; this session added **10**. Every one cited a measured defect, none was invented, and **every one passed every quality gate in this file** — measured defect, checkable card, destruction probe. Meanwhile all four clauses of the plan's stated desired outcome measured as MET, and the fourth had been satisfied by card 6.2 that morning. ⚠ **It is not gold-plating and not a perfection loop** — nothing was being polished; the things fixed were genuinely broken. That is precisely why it is invisible from inside: the individual steps were correct and the SEQUENCE was not. **This file could not catch it because every rule in it answers "is this being done right?" and none answers "should this be done at all?"** Quality is fully covered here; scope is not covered at all. Offered as guidance carrying its reason, never as a prescription, per **[B13]** ("prescriptive language on anything but a stated desired outcome... rules outlive their reason and calcify"). Three parts: **(a)** a measured defect is not sufficient justification to schedule work — the question is not *"is this broken?"* but *"does the stated outcome fail without this?"*, and a defect serving no clause is RECORDED, not scheduled; **(b)** expect the over-generation, because it is a property of good verifiers rather than a defect in them — put the stopping rule in the PLAN, never in the verifier; **(c)** ⭐ **the tell, and the most useful part because it is mechanically checkable: when every card in a phase cites a defect found by the previous card, you are in a verifier loop.** CANDIDATE. Refuted if a plan carrying (a) or (c) still over-generates at the same rate, or if applying the stopping rule suppresses a defect that later proves load-bearing — the second is the real risk and nothing here has tested it.
+
+---
+
+
+<!-- PROPOSED-CHANGES-2026-10-31 START — written by the skill-system window at Enver's instruction; source: state/projects/skill-system/records/2026-10-31-skills-sop-proposed-changes-DRAFT.md · v3 2026-10-31: moved here from after the opening frame (it sat at lines 216–344, which broke every line citation below it), re-tiered, rulings applied; original verbatim in skill-building-sop.history.md -->
+# PROPOSED CHANGES (2026-10-31) — how a long, multi-step skill should be built
+
+> **Status: PROPOSED, not yet in force.** Written 2026-10-31 from: a dated survey of everything tried since July,
+> an altitude review of it, blind outside research (four angles), and a read of the canon. Where this conflicts
+> with older text in this file, the older text stands until a human rules. ~~Confidence on each point:
+> **HIGH** · **MEDIUM** · **OPEN**.~~ *(REFINED 2026-10-31, v3: each point now carries THE FRAME's evidence tier —
+> REPRODUCED · RESEARCHED · OBSERVED · CANDIDATE · REFINED — in place of HIGH/MEDIUM/OPEN; where a point rests on both
+> our own results and outside research, it says both. The outside research's disconfirming pass is still owed, so
+> every RESEARCHED tag here is pre-disconfirmation.)*
+>
+> **Rulings applied (Enver, 2026-10-31).** He approved the audit's contradiction findings and its junk list
+> (`<notes>/state/projects/skill-system/records/2026-10-31-skills-sop-contradictions-and-stale-theory.md`), and ruled that
+> steps are files inside one skill, not separate skills. Where the audit found this section right and the older text
+> wrong, the older text was struck or refined in place, pointing here. Where it found the older text right — on proof
+> (A1, A2) and on tiers (A19) — this section was changed instead, and the older caution sits beside the claim. Where it
+> could not decide, a ⏸ UNSURE line names the deciding question. Older text not yet ruled on still stands.
+
+> **Words used in this section, exactly:**
+> - **Skill** — the one thing a person invokes by name. One skill = one front door.
+> - **Step** — one unit of work *inside* a skill. A step has its own instruction file, the one output file it must
+>   produce, and its own check. A skill contains steps. **A step is not a separate skill.**
+> - **Runner** — the code that hands the model one step at a time, checks each step's output, and writes the record.
+> - **Check** — code that reads a step's output file and says pass or fail.
+
+## 10,000 feet — what is true
+
+**The problem.** A long, multi-step skill runs inside an environment that is unpredictable on every turn. Left
+alone, the model skips steps, says "done" when it isn't, and does whatever looks reasonable. The longer the skill,
+the worse this gets: reliability drops at every step and as the session fills up. *REPRODUCED for skipped steps and
+false "done" (§II.4a [F11], 47×; Principle 3); RESEARCHED for reliability falling with length and fill (Principle 5;
+99% per step over 10 steps ≈ 90%).*
+
+**The hard half is the check, not the order.** ~~Keeping the model on the right step is solved: code that holds the
+list of steps keeps them in order every time.~~ Code that holds the list of steps has kept them in order in every
+test so far. *OBSERVED — 20 real runs, 300 simulated days, 38 real-model calls (PART 0); not yet REPRODUCED in real
+use.* ⚠ **Beside it, the older caution stands (PART 0, "not yet validated"):** those tests rule out only high failure
+rates — zero failures in 10 runs does not bound the true rate under ~26%, and canon §0.2: "zero events in 20 runs only
+rules out true rates above ~14%. It is not a measured rate of zero." Real multi-week use is still the bar. The hard
+part is the check after each step — knowing the step was done, and done well, from evidence the model can't simply
+produce. *OBSERVED (PART 0 Stage 4: every wrong outcome traced to step design — weak checks, non-idempotent steps —
+not to the ordering machinery).* *(REFINED 2026-10-31, A1: "solved… every time" claimed more than canon does.)*
+
+**There is no perfect enforcement — only layers of friction.** Each layer catches some slips. Layers only add up
+if they fail in different ways. Use few: one to four per skill. A layer that cries wolf gets bypassed, so an
+inaccurate gate is worse than none. *Rests on THE FRAME's one vetted Rule (a stochastic environment); RESEARCHED for
+"one to four" only as agent components (§II.0 measured components — fully-equipped agents underperform a well-chosen
+subset — not friction layers; applying it to layers is CANDIDATE) and for shadow bypass (§II.1a: 15–40%
+false positives reported, one practitioner source), with local OBSERVED receipts in §II.1a.*
+> ⏸ UNSURE (2026-10-31): "one to four per skill" sits beside seven layers and five parts below. Which four are the
+> usual set?
+
+**Four principles.**
+1. **The model can't be made to obey.** You can only shape the road it travels. *REPRODUCED that compliance is rarely
+   guaranteed — the census counts 1,656 recorded failures of every kind, code and prose alike (e.g. [F2] scripts exiting 0
+   on failure; [F11] prose rules the model must remember, 47×), so it is not a count of model disobedience alone; the
+   statement restates THE FRAME's vetted Rule.*
+2. **~~Enforcement~~ Friction only counts if it is on the road.** A tool sitting beside the skill, waiting to be
+   remembered, is not ~~enforcement~~ friction. The most common failure in this system's history is "built, but
+   nothing calls it." *REPRODUCED (§II.4a [F1], 194×).* *(REFINED 2026-10-31, A10: canon, "Say 'friction,' not
+   'enforcement'.")*
+3. **The model never decides it is done.** Something other than the model reads the result and writes the
+   record. *REPRODUCED for the failure it answers (§II.4a [F4], 133×: a check that takes its verdict
+   from the thing it checks; [F8], 70×: a helper's own account believed); RESEARCHED from outside sources (Principle 3's
+   [C] sources); OBSERVED for the runner writing the record (PART 0 Stage 1).*
+4. **Use the smallest thing that works.** Prefer what the platform already provides; keep rules rare; give each
+   rule one home. *REPRODUCED for the failure it answers (§II.4a [F3], 177×); the remedy (one home) is CANDIDATE; RESEARCHED for "smallest thing" (PART II's opening
+   [C]; THE FRAME's Pareto principle is Enver's ruling); CANDIDATE for "prefer what the platform provides" — untested
+   here (PART 0 dissent; ⏸ UNSURE at the runner below).*
+
+**The layers of friction, strongest first.** *(REFINED 2026-10-31, A6/A9: this list ranks how much friction each
+layer buys, not which to reach for first — the choice is judgment, not a fixed order (COMPASS P-45). THE FRAME's
+brake applies: a new irreversible action gets its overlapping layers up front; adding to a control set that already
+exists waits for an incident.)*
+1. Code holds the list of steps and hands the model one step at a time. *OBSERVED (PART 0 rig); CANDIDATE as a layer
+   in daily operation (canon §0.2).*
+2. After each step, code reads what the step actually produced — not just that a file exists — and every check is
+   proven with a planted mistake before it is trusted. *REPRODUCED for the failures it answers (§II.4a [F2] 166×,
+   [F4] 133×; PART V principle zero); OBSERVED for content over presence (PART 0 Stage 4: 8 silently wrong results
+   from non-empty tests).*
+3. When the model hands an answer back ~~, it picks from a fixed menu~~ and the answer can be a fixed set, it picks from
+   a fixed menu, and one option always means "I couldn't finish." Code checks the answer is on the menu. Where an
+   answer cannot be a form (judgment, writing, taste), code cannot grade it: route it to a separate reviewer or the
+   human (PART 0, idea 2). *OBSERVED for the shape (THE SEAM; PART 0 Stage 2: 5/5 deliberate lies caught) and for the
+   "couldn't finish" member (Principle 1b: an unreachable model returns empty output, exit 127); CANDIDATE that every
+   hand-back must be a menu — Enver, 2026-09-05: "here's one method, but it's not the only one." (REFINED 2026-10-31,
+   A15.)*
+4. The record of what happened is written by code, never by the model. *OBSERVED (PART 0 Stage 1: 10+10 runs, every
+   line runner-written); REPRODUCED for the failure it answers (§II.4a [F4] 133×, [F8] 70×); RESEARCHED from Principle 3's outside sources.*
+5. Guards that fire by themselves at the few moments that matter. *OBSERVED with a condition (Round B, 2026-10-30:
+   guards fired 11 of 12, but sessions simply retried past a bare speed bump — steering held 23% — and a gate that
+   gave its reason worked better); RESEARCHED for the cost side (§II.1a).* ⏸ UNSURE: see "Moving from one step to the
+   next" below.
+6. A human gate before any action that can't be undone; code reads the answer and accepts only an explicit
+   yes. *OBSERVED (p06 "no" stopped, p07 "yes" completed; §II.3's 2026-10-28 notes).*
+7. Written instructions carry the judgment *inside* a step. Softest layer, but real. Prose never proves a step
+   happened. *CANDIDATE for its place in the ranking; REPRODUCED that prose alone does not make a step happen
+   (§II.4a [F11], 47×; §IV.6, J5-144).*
+
+**What we got wrong — do not retry.**
+- **Measuring before building.** Labs that graded skills before any skill was built correctly produced noise, and
+  their AI judges were not truly independent. *(REFINED 2026-10-31, A8/A16: not independent is not useless — a
+  separate window on the same model is a real, weaker layer, and a model annotates, never decides (canon §12.f, quoted
+  at §II.4a's right-size audit). Nor does this lesson retire §V.2: one instrument's finding is still a lead to confirm
+  with a second, independent check.)* *OBSERVED — one survey's reading (2026-10-31 survey record); §V.2's 39 → 2 is one
+  receipt for the noise.*
+- **Building instruments beside the road.** Checkers, testers and gates that had to be remembered were not.
+  *REPRODUCED for the failure (§II.4a [F1], 194×).*
+- **Letting the model mark its own work.** Self-written "done" stamps hid every real skip. *OBSERVED — one survey; the
+  failure class is REPRODUCED (§II.4a [F8], 70×; Principle 3).*
+- **Restarting each era.** Earlier work was never connected to later work, so lessons were re-learned. *OBSERVED — one
+  survey only.*
+
+**What nobody has solved yet.** ~~*OPEN.*~~ *CANDIDATE — open questions; nothing here has been tested.*
+- How to check a step whose output is a judgment rather than a file.
+- How to give a conversation-shaped skill the same backbone as an assembly-line one.
+- How much is lost at each hand-off between steps, for work where a person talks with the model mid-step.
+
+## 5,000 feet — the parts every long skill needs
+
+**A long skill is a small program that calls the model — not a prompt that hopes the model follows along.**
+*OBSERVED for the mechanism (PART 0, "the flip": 20 runs, 0 out of order); RESEARCHED for the direction (outside
+research: reliability treated as a harness property); CANDIDATE as the default way to build (canon §0.2 — PART 0's
+"not yet validated" banner stands beside it).* *(REFINED 2026-10-31, A2: direction and proof are separate questions.)*
+
+**Build a long skill as a sequence of small steps, not one long instruction.** *RESEARCHED (all four outside angles converge on
+decomposition; separately, Principle 5's ~68% at 500 simultaneous instructions is about instruction density, not
+decomposition); OBSERVED that a small step holds only where it carries a
+check with an exit code (§IV.6 REFINED, J5-144).* One long instruction degrades; small steps, each with one job, hold.
+Each step's output file is the next step's input.
+
+**The steps live as separate files inside the one skill's folder.** ~~*MEDIUM — a design choice, ruled by Enver
+2026-10-31; the research supports splitting into steps but did not compare forms.*~~ *Ruled by Enver 2026-10-31 — a
+design choice, not an evidence claim. Evidence: CANDIDATE; the research supports splitting into steps but did not
+compare forms.* The person invokes the skill once. The runner hands the model one step file at a time. Steps are
+**not** separate skills, because:
+- the platform cannot make one skill start another, so the model would have to choose to — which is the exact
+  failure being fixed *(RESEARCHED: Claude Code docs, read 2026-10-31 — no skill chaining)*;
+- every separate skill can trigger on its own, out of order.
+A person adapting a skill copies its folder and reorders, swaps, or rewrites individual step files.
+*Considered and set aside:* each step as its own skill, chained by a guard. *(Enver's 2026-08-06 ruling, §III.1, lets
+skills invoke each other; it does not make a design safe that relies on it.)*
+
+**The five parts.**
+1. **The step list** — the steps in order, each marked code, AI, or human, each with its check. No branching and
+   no parallel AI steps inside the list; a fan-out is a code step that holds the fan. *OBSERVED (PART 0 Stages 1–2,
+   including the 3-way code-held fan-out, 5/5); the no-branching and no-parallel limits are CANDIDATE (PART 0 "When
+   NOT to use a card").*
+2. **The runner** — walks the list, hands the model one step at a time, waits when a person is needed, picks up
+   after a crash, writes the record. Either the platform's own way of holding order plus only what it lacks, or
+   our own — settled by testing, not debate. *CANDIDATE as the choice of runner; the rig's own runner is OBSERVED
+   (PART 0).*
+   > ⏸ UNSURE (2026-10-31): will a test compare the platform's Workflow tool with our runner, or does it stay set
+   > aside (PART 0 dissent: Anthropic-only, AI-authored scripts, same-session resume only)? §IV.8's "we do not need an
+   > engine" (2026-10-28, CANDIDATE) sits beside this.
+3. **The checks** — one per step; reads content; proven with a planted mistake; looks at evidence the work
+   *caused*, never something the model could simply *write*. *As layer 2 above; the caused-not-written test is §V.4b
+   (OBSERVED) and RESEARCHED (Claude Code docs, 2026-10-31: a PreToolUse gate checks content, not authorship).*
+4. **The answer menu** — fixed answers plus one meaning "no outcome," where the answer can be a fixed set. *As layer 3
+   above.*
+5. **The record** — written by code, append-only, refused if cut short. *OBSERVED for code-written and append-only
+   (PART 0 Stage 1); CANDIDATE for "refused if cut short" — Stage 4 found the runner's resume accepted a cut-short
+   record (12+3), and the fix (Principle 1's 2026-10-28 rule 2) has not yet been watched holding.*
+
+**Moving from one step to the next is never left to the model.** *OBSERVED for the runner (PART 0); OBSERVED with a
+condition for a guard (Round B, 2026-10-30: a bare refusal was retried past; a refusal with its reason held better).*
+The runner moves to the next step only after the current step's check passes. Where a guard is used instead, it
+refuses the next step until the check passes, and every refusal says why and what to do — a bare "no" makes the model
+hunt for a workaround.
+> ⏸ UNSURE (2026-10-31): should guards hold workflow at all, or only the runner? §II.1's older "Reserve for
+> machine-wide invariants… not workflow" sits beside this.
+
+**Where a guard sits matters.** A guard on the *next action* (starting the next step, or the next write) cannot be
+argued with *(REPRODUCED as a harness fact — exit 2 blocks, §II.4a cluster 1 — on the paths it covers, per THE
+FRAME)*. A guard at the end of a turn only sends the model a message, which it can read, apologise for, and ignore
+*(RESEARCHED — canon §4.6's documented case; outside research)*. Every blocking guard has a limit so it cannot loop
+forever *(RESEARCHED — outside research: a Stop hook that always blocks loops forever)*, and a check that fails to
+*run* must never look like a pass *(REPRODUCED — §II.4a [F2]; Principle 1b)*.
+
+**Every gate must be able to wait for a person.** *OBSERVED that it can (PART 0: pause and resume, p01–p07);
+RESEARCHED for the failure without it (outside research: a keep-going Stop hook overrode approval gates).* In a
+conversation-shaped step, the person talks with the model in the middle of the step. A gate that cannot represent
+"waiting for the person" will push the skill forward without them — outside teams have seen this approve every stage
+on its own.
+
+**The skill's world model lives in files, not in the session.** *RESEARCHED (canon §15.15; outside research: a reset
+plus a structured handoff beats compaction alone, mostly one vendor's evidence); OBSERVED in one rig (PART 0
+kill-and-resume, k01–k05); REPRODUCED that storing is not delivering (§II.4a [F6], 88×; canon §12.c).* What the skill
+has learned so far — progress, decisions, what's next — is written to durable files as it goes. When a session fills
+up, a fresh session starts by reading those files; this works better than summarising the old session. Something must
+hand those files to the new session automatically: storing them is not enough, they must be delivered. *(This claims
+the state-in-files half of OUR OWN BET, not its hide-the-later-steps half, which stays unproven — §IV.6. REFINED
+2026-10-31, A17.)*
+
+**Two kinds of skill, two roads.** ~~*HIGH for the split; OPEN for the conversation road.*~~ *CANDIDATE for both — the
+split is drawn on paper in PART 0 "When NOT to use a card" (CANDIDATE throughout, nothing run), and the outside
+research found no controlled test on open-ended, human-in-the-loop work.*
+- **Assembly-line skills** (fixed steps that produce files or records) get the full set: step list, runner, a
+  check per step, record.
+- **Conversation skills** (open dialogue) get a thinner road: a few guards at the moments that matter, a
+  fixed-shape output file at the end of each step, and a check on that file. Heavy scaffolding inside a
+  conversation hurts strong models *(RESEARCHED — [R2] guardrail-to-handcuff, Principle 1's fence)*.
+
+**The shared layer holds every part, once.** *REPRODUCED for the failure it answers (§II.4a [F3], 177×); OBSERVED in
+the 68 drifted copies the shared-layer element was written after.* The runner, the checks, the answer menu and the
+record writer live in one shared place. A skill uses them; it never copies them. *(⚠ `new-skill.sh` still copies
+parts — §II.4. ⏸ UNSURE at §II.5: must a skill travel without the plugin?)*
+
+**This file shrinks.** ~~*HIGH.*~~ *CANDIDATE — a direction (COMPASS P-13: high-value and concise; P-58), not an
+evidence claim.* Principles stay short prose. Anything that can be checked becomes a check in the shared layer, not a
+paragraph here.
+
+**What we got wrong at this level.**
+- Two tools doing the same job. *OBSERVED — one survey only.*
+- The same rules copied into more than one rulebook. *OBSERVED — one survey; the failure class is REPRODUCED (§II.4a
+  [F3], 177×).* *(⏸ UNSURE: Enver's 2026-08-07 "rather duplication than miss" ruling, §II.4a, is not withdrawn —
+  COMPASS open question (i).)*
+- Code kept in the notes folder instead of the code repository. *OBSERVED — one survey; Enver ruled the placement
+  (COMPASS P-50).*
+- Checks that only looked for a file's existence — they passed while the content was wrong. *OBSERVED (PART 0 Stage 4:
+  8 silently wrong results from non-empty tests).*
+
+> **Evidence behind this section** (notes folder, `<notes>/state/projects/skill-system/records/`): `2026-10-31-survey-ideal-skill-architecture.md` · `2026-10-31-architect-read-ideal-skill-architecture.md` · `2026-10-31-structuring-long-multiphase-agent-workflows.md`.
+<!-- PROPOSED-CHANGES-2026-10-31 END -->
