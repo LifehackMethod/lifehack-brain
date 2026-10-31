@@ -81,7 +81,7 @@ def build_fixture():
     open(F["CODE"] + "/shared/notify/notify-send.sh", "w", encoding="utf-8").write("#!/bin/bash\n" + body)
     open(F["CODE"] + "/shared/notify/notify-governor.py", "w", encoding="utf-8").write("print('real governor')\n")
     open(F["CODE"] + "/shared/paths.py", "w", encoding="utf-8").write("X = 1\n")
-    for s in ("skill-building", "jobs", "hook", "desk-building"):
+    for s in ("skill-building", "jobs", "cron-jobs", "hook", "desk-building"):   # cron-jobs: jobs-sop.md was renamed cron-jobs-sop.md (cfc100e); without it the SOP-overwrite cases overwrote a file that did not exist and read as SLIPPED
         open(F["CODE"] + "/system/sops/%s-sop.md" % s, "w", encoding="utf-8").write("# %s\n" % s)
     open(F["CODE"] + "/system/sops/pond-sop.md", "w", encoding="utf-8").write(     # a fictional SOP long enough for the archive-before-cut cases
         "# Pond SOP\n\nThe heron stands on the east bank of the pond every morning, and the rule is that nobody feeds it before the bell.\n\n"
