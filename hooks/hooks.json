@@ -188,13 +188,13 @@
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_hook_sop_read.sh\"",
-      "statusMessage": "Checking the hook SOP was read first..."
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_fine_china_ask.sh\"",
+      "statusMessage": "Checking nothing irreplaceable is deleted without asking..."
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_fine_china_ask.sh\"",
-      "statusMessage": "Checking nothing irreplaceable is deleted without asking..."
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_hook_sop_read.sh\"",
+      "statusMessage": "Checking the hook SOP was read first..."
      }
     ],
     "matcher": "Bash|Write|Edit|MultiEdit"
