@@ -168,6 +168,10 @@ UNREGISTERED_OK = {
                             "is stated rather than silent, and so it stops blocking unrelated "
                             "commits while the ruling is open. ⛔ This entry does NOT say the guard "
                             "is correctly unregistered — it says nobody has ruled yet.",
+    "guard_fine_china_ask.sh": "registered in hooks/hooks.json (Round D, 2026-10-31), the plugin "
+                               "manifest a student actually runs — same known gap as "
+                               "guard_harness_writeback.sh: this lint reads only .claude/settings.json "
+                               "and system/hooks/registrations.json, never hooks/hooks.json",
     "guard_harness_writeback.sh": "registered in hooks/hooks.json:319, the plugin manifest a student "
                                   "actually runs, but NOT in .claude/settings.json — so a repo-clone "
                                   "user does not get it, only a plugin install does. This lint reads "
