@@ -430,7 +430,14 @@ def main():
         pc = os.path.realpath(os.path.expanduser(open(pptr, encoding="utf-8").readline().strip()))
         if pc == real_ops or pc.startswith(real_ops + os.sep):
             sys.exit("REFUSED: the personal-code pointer resolves to the real ClaudeOps (%s); live sessions must use a throwaway personal-code folder" % pc)
-    isolate_notes(envd, rm.notes_root())
+    _made = isolate_notes(envd, rm.notes_root())
+    # Round D post-verdict (P06): the Enver setup is the maintainer, whose real notes carry config/ship-identity.md (the allow-list guard_commit_identity.sh reads, fail-closed).
+    # The throwaway notes root had none, so every rig commit was denied "ship-identity.md does not exist" - a rig artifact. Give the Enver setup one listing the fixture repos' own
+    # git identity (exam@example.invalid, rig_live_free.make_fixture). The student setup deliberately gets none: a student has no such file, and that is the real behavior.
+    if _made and not os.path.exists(os.path.join(os.path.expanduser(envd["HOME"]), ".rig-student")):
+        os.makedirs(os.path.join(_made, "config"), exist_ok=True)
+        with open(os.path.join(_made, "config", "ship-identity.md"), "w", encoding="utf-8") as f:
+            f.write("# rig throwaway identity allow-list (maintainer setup)\nexam@example.invalid\n")
     if not a.scratch:
         sys.exit("REFUSED: --scratch is required (without it the session would run inside the real ClaudeOps)")
     a.env = ["%s=%s" % kv for kv in envd.items()]
