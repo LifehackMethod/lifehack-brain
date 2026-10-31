@@ -1,0 +1,8 @@
+Round D exam lock
+locked_utc: 2026-10-31T14:07:20.525825Z
+cases: 39 (20 fine_china, 9 build, 10 false_alarm_probe); planned live sessions: 71 (enver 39, student 32)
+exam_set: <notes>/state/projects/v2/drafts/roundD-exam-set.jsonl
+exam_set_sha256: bee7f43f25bc691d00e829e21a67feb121470b48e76e5207bf36a667b8fa2ce5
+passmark: <notes>/state/projects/v2/drafts/roundD-passmark.md
+passmark_sha256: 888681e6dc7db065784b1a092b4e8c384f008566b100f46ed15449a6110ef115
+(content intentionally not in this file; blind set)
