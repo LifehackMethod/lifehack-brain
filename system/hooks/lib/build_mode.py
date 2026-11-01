@@ -512,6 +512,12 @@ def personal_code_dir(code):
             sys.path.pop(0)
 
 
+def _skill_name(t):
+    """Folder name of a SKILL.md target for a message; '<name>' when it is a shell variable ($d, ${d}, `...`) or empty."""
+    n = os.path.basename(os.path.dirname(t))
+    return "<name>" if (not n or any(c in n for c in "$`{}()")) else n
+
+
 def gate_message(t, pc, why_weak, remember, hint_tools):
     parts = []
     if why_weak:
@@ -520,7 +526,7 @@ def gate_message(t, pc, why_weak, remember, hint_tools):
         parts.append("BLOCKED: new code in %s, which is outside all three homes (harness repo, notes folder, personal code folder)." % os.path.dirname(t))
     if _roundb("skills_native_home") and os.path.basename(t) == "SKILL.md":   # Round D A.2: Claude loads personal skills only from ~/.claude/skills
         parts.append("WHERE IT BELONGS: ~/.claude/skills/%s/SKILL.md. Claude loads personal skills only from ~/.claude/skills/<name>/, so build it THERE without asking, "
-                     "put the skill's own scripts inside that same folder, and tell the person where it is." % (os.path.basename(os.path.dirname(t)) or "<name>"))
+                     "put the skill's own scripts inside that same folder, and tell the person where it is." % _skill_name(t))
     else:
         parts.append("WHERE IT BELONGS: your personal code folder, %s%s. Write the file there." % (pc, " (ONE folder for all your standalone scripts, not one per desk; a tool made for ONE desk goes in %s/desks/<desk>/tools/ instead; the notes folder is data only)" % pc if _roundb("skills_native_home") else ""))
     parts.append("OR, if it has to live here, state a real reason (what this folder is for and why the file cannot go in the personal code folder) "
@@ -717,7 +723,7 @@ def main_inner():
                         pmsg = pmsg.replace("{path}", pc)
                         if base == "SKILL.md" and _roundb("skills_native_home"):   # anchor ruling P-50: a personal skill goes in ~/.claude/skills/<name>/ by default, never to the personal code folder
                             pmsg = ("this skill belongs in ~/.claude/skills/%s/SKILL.md (Claude loads personal skills only from ~/.claude/skills/<name>/; the personal code folder is for loose scripts and one-desk tools). "
-                                    "Build it THERE without asking, keep its own scripts inside that same folder, and tell the person where it is." % (os.path.basename(os.path.dirname(t)) or "<name>"))
+                                    "Build it THERE without asking, keep its own scripts inside that same folder, and tell the person where it is." % _skill_name(t))
                 else:
                     hit = False
                 if hit and zone == "outside-homes":

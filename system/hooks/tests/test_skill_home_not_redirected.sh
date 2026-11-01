@@ -21,4 +21,10 @@ fire s1 "$HOME/work/skills/friday-recap/SKILL.md" "$SK"; chk 2 "SKILL.md outside
 fire s2 "$HOME/work/ping.py" 'print(1)'; chk 2 "loose .py outside homes: still the personal code folder" "this belongs in your personal code folder"
 fire s3 "$HOME/.claude/skills/friday-recap/SKILL.md" "$SK"; fire s3 "$HOME/.claude/skills/friday-recap/SKILL.md" "$SK"; chk 0 "new skill in ~/.claude/skills: not redirected, not asked" "" "Wrong home"
 fire s4 "$HOME/.claude/skills/friday-recap/scripts/run.py" 'print(1)'; chk 0 "script inside a new skill: not redirected" "" "Wrong home"
+# Bash heredoc through a shell variable: the message must not print the literal $d as the folder name
+CMD="d=$HOME/work/skills/meeting-decisions; mkdir -p \"\$d\"; cat > \"\$d/SKILL.md\" <<'EOF'
+x
+EOF"
+ERR="$(python3 -c 'import json,sys; print(json.dumps({"session_id":"s5","cwd":sys.argv[2],"tool_name":"Bash","tool_input":{"command":sys.argv[1]}}))' "$CMD" "$HOME/work" | bash "$HOOK" 2>&1 >/dev/null)"; RC=$?
+chk 2 "Bash heredoc via \$d: stop says <name>, never the literal \$d" "~/.claude/skills/<name>/SKILL.md" '$d/SKILL.md'
 echo "pass=$pass fail=$fail"; [ "$fail" = 0 ]
