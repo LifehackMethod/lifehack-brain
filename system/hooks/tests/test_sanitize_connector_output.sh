@@ -23,6 +23,14 @@ REPO="${HOOKDIR%/system/hooks}"
 
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/conntest.XXXXXX")"
 trap 'rm -rf "$TMP"' EXIT
+# 3b.7 A2: findings now go to the Sentinel ledger (safe_input.route_findings). Every case in this
+# file runs against a THROWAWAY ledger, status file, pause list and ack file, with the push
+# notification disabled — the same variables shared/gate/test_sentinel_response.py uses — so no run
+# of this suite writes the real ledger, pauses a real source, or rings a phone.
+export SENTINEL_LOG="$TMP/sentinel-events.jsonl" SENTINEL_STATUS="$TMP/sentinel.json" \
+       SENTINEL_PAUSE_FILE="$TMP/paused" SENTINEL_ACKED_FP="$TMP/acked.json" \
+       SENTINEL_NOTIFY_DISABLE=1 SENTINEL_QUARANTINE_DISABLE=1
+ledger_lines() { [ -f "$SENTINEL_LOG" ] && grep -c . "$SENTINEL_LOG" || echo 0; }
 pass=0; fail=0
 ok()  { pass=$((pass+1)); }
 bad() { fail=$((fail+1)); echo "  FAIL [$1]: $2"; }
@@ -60,19 +68,36 @@ for shape in '[{"type":"text","text":"Meeting moved to 3pm. Agenda: budget, hiri
   out="$(payload mcp__claude_ai_Gmail__get_message "$shape" | bash "$HOOK")"; rc=$?
   if [ "$rc" = 0 ] && [ -z "$out" ]; then ok; else bad "clean pass-through $shape" "rc=$rc out=$out"; fi
 done
+[ "$(ledger_lines)" = 0 ] && ok || bad "clean results write nothing to the Sentinel ledger" "$(cat "$SENTINEL_LOG" 2>/dev/null | head -c 300)"
 
 echo "-- 2. injection is redacted and swapped in through updatedToolOutput --"
 RESP="$(python3 -c "import json,sys;print(json.dumps([dict(type='text',text='Hi Enver,\nQuarterly numbers attached.\n'+sys.argv[1]+'\nThanks')]))" "$INJ")"
 out="$(payload mcp__claude_ai_Gmail__get_message "$RESP" | bash "$HOOK")"; rc=$?
 [ "$rc" = 0 ] && ok || bad "injection rc" "rc=$rc"
 check_json "gmail injection redacted (list shape kept)" "$out" "isinstance(u,list) and 'REDACTED-FLAGGED' in json.dumps(u) and 'nore all prev' not in json.dumps(u) and 'Quarterly numbers attached' in json.dumps(u) and u[0]['type']=='text'"
+# A2: the findings reached the existing Sentinel ledger, with the connector as the source.
+if python3 - "$SENTINEL_LOG" <<'PY' 2>"$TMP/err"
+import json, sys
+ev = [json.loads(l) for l in open(sys.argv[1], encoding="utf-8") if l.strip()]
+hit = [e for e in ev if e.get("source") == "connector:claude_ai_Gmail" and e.get("item") == "mcp__claude_ai_Gmail__get_message"]
+assert hit, "no ledger event for the Gmail connector: %r" % ev
+assert hit[-1].get("verdict") in ("flag", "danger"), hit[-1]
+assert "vault password" not in json.dumps(hit[-1]), "ledger carries the raw payload text"
+PY
+then ok; else bad "gmail findings written to the Sentinel ledger" "$(head -c 400 "$TMP/err")"; fi
 # Slack (plan A.3: check Slack is covered)
 RESP="$(python3 -c "import json,sys;print(json.dumps(dict(content=[dict(type='text',text='#general: '+sys.argv[1])])))" "$INJ")"
 out="$(payload mcp__claude_ai_Slack__slack_read_channel "$RESP" | bash "$HOOK")"
 check_json "slack injection redacted (dict shape kept)" "$out" "isinstance(u,dict) and 'REDACTED-FLAGGED' in json.dumps(u) and 'nore all prev' not in json.dumps(u)"
+grep -q '"source": "connector:claude_ai_Slack"' "$SENTINEL_LOG" 2>/dev/null && ok || bad "slack findings in the ledger" "$(tail -c 300 "$SENTINEL_LOG" 2>/dev/null)"
+# the real ledger and pause list were never touched by this suite (the env above is honoured)
+case "$(python3 -c "import os,sys; print(os.environ['SENTINEL_LOG'])")" in "$TMP"/*) ok ;; *) bad "ledger isolated" "SENTINEL_LOG not under TMP" ;; esac
 # plain string shape, plugin-bundled server name
 out="$(payload mcp__plugin_some-plugin_db__query "$(python3 -c "import json,sys;print(json.dumps('row 1: '+sys.argv[1]))" "$INJ")" | bash "$HOOK")"
 check_json "plugin server, string shape" "$out" "isinstance(u,str) and 'REDACTED-FLAGGED' in u and 'nore all prev' not in u"
+# A2: a ledger that cannot be written changes nothing about what is emitted (still redacted, never raw, never withheld)
+out="$(payload mcp__claude_ai_Gmail__get_message "$(python3 -c "import json,sys;print(json.dumps('x '+sys.argv[1]))" "$INJ")" | SENTINEL_LOG=/dev/null/no/ledger.jsonl SENTINEL_STATUS=/dev/null/no/s.json bash "$HOOK")"
+check_json "unwritable ledger -> still redacted" "$out" "isinstance(u,str) and 'REDACTED-FLAGGED' in u and 'nore all prev' not in u and 'withheld' not in u"
 # the deny text must also be valid JSON with nothing around it (SOP §4: a malformed one goes dark)
 if printf '%s' "$out" | python3 -c "import json,sys; json.loads(sys.stdin.read())" 2>/dev/null; then ok; else bad "output is one JSON object" "$out"; fi
 

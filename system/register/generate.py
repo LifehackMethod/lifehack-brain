@@ -222,6 +222,11 @@ def build_hooks_doc(rows, form):
         h["command"] = emit_command(row["path"], row["args"], form)
         if row["status"]:
             h["statusMessage"] = row["status"]
+        # 3b.7 A2: optional register field -> Claude Code's command-hook `onFailure` (schema_v1.py
+        # OPTIONAL_TYPE_FIELDS). Emitted only when the row carries it, so every other entry is
+        # byte-identical to before.
+        if row.get("on_failure"):
+            h["onFailure"] = row["on_failure"]
         grp["hooks"].append(h)
     return {"hooks": hooks}
 
@@ -358,11 +363,11 @@ def collapse_group_rows(rows):
             passthrough.append(row)
             continue
         key = (group, row["event"], row["matcher"], row.get("launch_mode"),
-               row.get("if"), row["args"])
+               row.get("if"), row["args"], row.get("on_failure"))
         buckets.setdefault(key, []).append(row)
 
     out = list(passthrough)
-    for (group, event, matcher, launch_mode, if_cond, args), members in buckets.items():
+    for (group, event, matcher, launch_mode, if_cond, args, on_failure), members in buckets.items():
         repos = {m.get("repo") for m in members}
         if len(repos) != 1:
             raise ValueError(
@@ -380,6 +385,7 @@ def collapse_group_rows(rows):
             "repo": repos.pop(),
             "launch_mode": launch_mode,
             "group": group,
+            **({"on_failure": on_failure} if on_failure else {}),
         })
     return out
 

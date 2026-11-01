@@ -15,6 +15,15 @@ stdout, exactly one of:
 
 FAIL CLOSED: never prints the raw text on an error path. The wrapper adds a second layer for the
 cases this file cannot catch itself (python missing, this file missing, a non-zero exit, garbage).
+SENTINEL LEDGER (3b.7 A2): when the scan finds anything, the findings go to the existing Sentinel
+verdict gate through safe_input.route_findings(findings, source, item) — the same call safe_read.py
+makes through safe_input.gate(). source = "connector:<server>" (e.g. connector:claude_ai_Gmail), item
+= the full tool name. That writes the ledger; a DANGER also pauses that source and sends the one
+notification, exactly as for a file or a web page. It runs after the cleaned result is built and the
+alarm is cancelled, and it never decides what is emitted: route_findings never raises (fail-open by
+its own design), and a ledger hiccup cannot turn a redacted result into a raw one or a withheld one.
+Tests isolate it with SENTINEL_LOG / SENTINEL_STATUS / SENTINEL_PAUSE_FILE / SENTINEL_ACKED_FP /
+SENTINEL_NOTIFY_DISABLE=1, the variables sentinel_response.py already reads.
 Test seam: LHB_CONNECTOR_TOOLS_DIR points at a different sanitizer folder (tests only);
 LHB_CONNECTOR_SANITIZE_TIMEOUT sets the alarm in seconds (default 20, well under the harness's
 600 s hook default).
@@ -58,6 +67,7 @@ class _Cleaner:
     def __init__(self, sanitize, no_cap, scan, redact):
         self.sanitize, self.no_cap, self.scan, self.redact = sanitize, no_cap, scan, redact
         self.findings = 0
+        self.found = []                             # every (match, label) pair, for the Sentinel ledger
 
     def text(self, s):
         clean = self.sanitize(s, max_len=self.no_cap, preserve_structure=True)
@@ -68,6 +78,7 @@ class _Cleaner:
             raise TypeError("scanner returned %s, not a list" % type(found).__name__)
         if found:
             self.findings += len(found)
+            self.found.extend(found)
             clean = self.redact(clean, found)
             if not isinstance(clean, str):
                 raise TypeError("redactor returned non-text")
@@ -119,12 +130,18 @@ def main():
             os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "tools"))
         sys.path.insert(0, tools)
         from sanitize import sanitize, NO_CAP          # the existing sanitizer, never a copy
-        from safe_input import scan_for_injection, redact_findings
+        from safe_input import scan_for_injection, redact_findings, route_findings
         c = _Cleaner(sanitize, NO_CAP, scan_for_injection, redact_findings)
         clean = c.walk(resp)
         signal.alarm(0)
         if c.findings:
             clean = _note(clean, c.findings)
+            parts = tool.split("__")
+            server = parts[1] if len(parts) > 2 and parts[1] else "unknown"
+            try:
+                route_findings(c.found, "connector:" + server, tool)
+            except Exception:  # allow-silence: route_findings is fail-open by design; the redacted result below is emitted either way
+                pass
         if clean == resp:
             sys.stdout.write("__PASS__\n")
             return

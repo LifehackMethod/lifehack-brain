@@ -18,7 +18,7 @@ import re
 import sys
 from datetime import date
 
-from schema_v1 import fields_for, UNIT_TYPES, STRICT_UNKNOWN_KEYS, GROUPABLE_HOOK_EVENTS
+from schema_v1 import fields_for, optional_fields_for, UNIT_TYPES, STRICT_UNKNOWN_KEYS, GROUPABLE_HOOK_EVENTS
 
 # S1/K1 (2026-09-16): the register-backed switch's expiry shape. Date REALITY
 # (2026-02-31 is a reject, not a suspension) is checked with fromisoformat in
@@ -61,9 +61,11 @@ def validate_row(row, line_no):
         return errors  # can't check type-specific fields without a valid type
 
     schema = fields_for(unit_type)
+    optional = optional_fields_for(unit_type)   # 3b.7 A2: checked only when the key is present
 
-    # 1. every required (or nullable-but-present) field must be present.
-    for field, (ftype, nullable, extra) in schema.items():
+    # 1. every required (or nullable-but-present) field must be present; an OPTIONAL field
+    #    that is present gets the same type/enum checks.
+    for field, (ftype, nullable, extra) in list(schema.items()) + [kv for kv in optional.items() if kv[0] in row]:
         if field not in row:
             errors.append(f"line {line_no}: missing required field {field!r} (type={unit_type})")
             continue
@@ -166,7 +168,7 @@ def validate_row(row, line_no):
     #    (constraint 0.5): a stray key is either dead weight or an
     #    un-ruled extension, and either way it doesn't belong in v1 silently.
     if STRICT_UNKNOWN_KEYS:
-        allowed_keys = set(schema.keys())
+        allowed_keys = set(schema.keys()) | set(optional.keys())
         unknown = set(row.keys()) - allowed_keys
         if unknown:
             errors.append(f"line {line_no}: unknown field(s) not in schema v1: {sorted(unknown)}")

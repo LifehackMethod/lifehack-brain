@@ -272,9 +272,30 @@ TYPE_FIELDS = {
 # validator's error must name the offending key (see validate_register.py).
 STRICT_UNKNOWN_KEYS = True
 
+# OPTIONAL per-type fields (NEW 2026-11-01, PHASE 3b.7 A2). Unlike every field above, a missing
+# KEY is fine: the field is absent on every row that does not need it, so adding it touched one
+# register row instead of every hook row. Validated exactly like a declared field WHEN present;
+# still a known key for STRICT_UNKNOWN_KEYS.
+#   hook.on_failure: "continue" | "block" -> emitted by generate.py as the command hook's
+#     `onFailure` field. Claude Code's hooks page (code.claude.com/docs/en/hooks, read
+#     2026-11-01), command-hook field table: "onFailure — Whether the action that triggered the
+#     hook goes ahead when the hook fails: "continue" or "block""; "set "onFailure": "block" on a
+#     command or http hook. Requires Claude Code v2.1.295 or later." Hand-curated, like `group`:
+#     harvest.py does not derive it (a fresh harvest drops it; re-apply by hand).
+OPTIONAL_TYPE_FIELDS = {
+    "hook": {
+        "on_failure": (str, False, ("enum", ("continue", "block"))),
+    },
+}
+
 
 def fields_for(unit_type):
     """Return the full {field: (type, nullable, extra)} map for one type."""
     merged = dict(COMMON_FIELDS)
     merged.update(TYPE_FIELDS.get(unit_type, {}))
     return merged
+
+
+def optional_fields_for(unit_type):
+    """Return the {field: (type, nullable, extra)} map of OPTIONAL fields for one type."""
+    return dict(OPTIONAL_TYPE_FIELDS.get(unit_type, {}))

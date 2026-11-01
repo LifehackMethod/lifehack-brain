@@ -112,6 +112,17 @@ would later need to close.
 
 ---
 
+## Optional fields (NEW 2026-11-01, PHASE 3b.7 A2)
+
+`hook.on_failure` (`"continue"` | `"block"`) is the first OPTIONAL field: a missing key is valid, so
+it sits only on the rows that need it (today: `sanitize_connector_output.sh`, `"block"`). When
+present it is validated like any declared field, and `generate.py` emits it as the command hook's
+`onFailure`. Source: code.claude.com/docs/en/hooks (read 2026-11-01), command-hook field table:
+"onFailure — Whether the action that triggered the hook goes ahead when the hook fails:
+"continue" or "block"" (Claude Code v2.1.295+). Hand-curated like `group`: `harvest.py` does not
+derive it. Declared in `schema_v1.py` `OPTIONAL_TYPE_FIELDS`; test
+`system/register/tests/test_on_failure_field.py`.
+
 ## Validator design
 
 `validate_register.py` checks, per row: every schema field for the row's `type` is present with

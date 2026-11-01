@@ -37,7 +37,8 @@
      {
       "type": "command",
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/sanitize_connector_output.sh\"",
-      "statusMessage": "Cleaning what the connector sent back..."
+      "statusMessage": "Cleaning what the connector sent back...",
+      "onFailure": "block"
      }
     ],
     "matcher": "mcp__.*"

@@ -22,10 +22,13 @@ trap 'lhb_journal_fire "$?" "sanitize_connector_output.sh" "PostToolUse" "mcp__.
 # FAIL_POSTURE: closed. Any error — python3 missing, the lib missing, the sanitizer crashing,
 #      timing out (alarm, default 20 s) or returning something that is not text, unparseable input,
 #      the lib printing anything but the expected JSON — replaces the result with a "content
-#      withheld" note. The raw text is never passed on from an error path. Known limit: if bash
-#      itself cannot start this file, the harness treats that as a non-blocking hook error and the
-#      result goes through; onFailure:"block" (Claude Code v2.1.295+) would close that, but
-#      system/register/generate.py does not emit the field yet.
+#      withheld" note. The raw text is never passed on from an error path. The one failure this
+#      file cannot catch — not being started at all (file missing, no bash) — is covered by the
+#      registration: the register row carries on_failure=block, emitted as "onFailure": "block"
+#      (Claude Code v2.1.295+; 3b.7 A2). The hooks page does not say what "block" does on
+#      PostToolUse, where the tool has already run; that is unverified live.
+# LEDGER: findings also go to the existing Sentinel ledger (safe_input.route_findings, source
+#      connector:<server>), the same gate safe_read.py uses; it never changes what is emitted.
 # SIGNPOST: plan <notes>/plans/v2.plan.md PHASE 3b.7 A; logic system/hooks/lib/connector_sanitize.py;
 #      tests system/hooks/tests/test_sanitize_connector_output.sh.
 # ─────────────────────────────────────────────────────────────────────────────
