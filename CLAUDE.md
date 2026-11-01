@@ -118,7 +118,6 @@ installs it. PRIVATE: your personal code folder (named in the one-line file
 `~/.config/lifehack/personal-code`), your own desks and runners, yours alone. NOTES: the AI Brain —
 plans, records, journals, content not code. Address a file by its home's real root. Full picture:
 `system/organism/manual.md` (THREE HOMES) and `system/organism/elements/where-things-live.md`.
-If the person wants a one-off script kept, move it to their personal code folder and list it.
 
 If it is not set, the honest answer is "not set" — **never guess a folder, never fall back to the
 current directory.** Putting someone's AI Brain somewhere they did not choose is the failure this rule
