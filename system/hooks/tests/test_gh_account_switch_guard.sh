@@ -160,6 +160,7 @@ run_case() {
         ${C_OWNER:+LIFEHACK_OWNER_GH_USER="$C_OWNER"} \
         ${C_LHROOT:+LIFEHACK_ROOT="$C_LHROOT"} \
         ${C_OLDOWNER:+"$OLD_OWNER_VAR=$C_OLDOWNER"} \
+        ROUNDB_GH_SWITCH_GUARD="${C_SWITCH:-on}" \
         ${C_PROJDIR:+CLAUDE_PROJECT_DIR="$C_PROJDIR"} \
         bash "$GUARD" </dev/null 2>&1
     )"
@@ -172,6 +173,7 @@ run_case() {
         ${C_OWNER:+LIFEHACK_OWNER_GH_USER="$C_OWNER"} \
         ${C_LHROOT:+LIFEHACK_ROOT="$C_LHROOT"} \
         ${C_OLDOWNER:+"$OLD_OWNER_VAR=$C_OLDOWNER"} \
+        ROUNDB_GH_SWITCH_GUARD="${C_SWITCH:-on}" \
         ${C_PROJDIR:+CLAUDE_PROJECT_DIR="$C_PROJDIR"} \
         bash "$GUARD" <<<"$stdin_payload" 2>&1
     )"
@@ -196,7 +198,7 @@ run_case() {
     ok
   fi
 
-  unset C_CMD C_CWD C_CWD_OMIT C_TOOLNAME C_OWNER C_OLDOWNER C_LHROOT C_PROJDIR C_PROC_CWD \
+  unset C_CMD C_CWD C_CWD_OMIT C_TOOLNAME C_OWNER C_OLDOWNER C_SWITCH C_LHROOT C_PROJDIR C_PROC_CWD \
         C_ZONE C_PTRS C_STDIN_RAW C_STDIN_RAW_SET
 }
 
@@ -310,6 +312,27 @@ run_case "22 gh auth switch; (no --user)" 2 "$DENY_SUBSTR"
 
 C_CMD="gh auth switch --user someone-else"; C_CWD="$REPO"; C_TOOLNAME="Write"
 run_case "23 tool_name=Write (guard ignores tool_name, non-Bash tool still checked)" 2 "$DENY_SUBSTR"
+
+echo "── the gh_switch_guard switch (roundB.conf; Enver 2026-11-01: free switching for now) ─────────────"
+# Every case above ran with ROUNDB_GH_SWITCH_GUARD=on (the guard as built). OFF allows every auth command from
+# every zone: the personal code folder, this repo, the notes root, and a strict (pointer-less) HOME.
+for zone in personal notes codezone; do
+  for cmd in "gh auth switch --user $OWNER" "gh auth switch --user second-account-fixture" "gh auth login"; do
+    C_CMD="$cmd"; C_ZONE="$zone"; C_SWITCH=off
+    run_case "OFF [$zone] $cmd -> allow" 0 "$EMPTY_SENTINEL"
+  done
+done
+for cmd in "gh auth switch --user $OWNER" "gh auth switch --user second-account-fixture" "gh auth login"; do
+  C_CMD="$cmd"; C_CWD="$REPO"; C_SWITCH=off
+  run_case "OFF [this repo] $cmd -> allow" 0 "$EMPTY_SENTINEL"
+  C_CMD="$cmd"; C_CWD="$OUTSIDE_DIR"; C_PTRS="none none"; C_SWITCH=off
+  run_case "OFF [no pointers] $cmd -> allow" 0 "$EMPTY_SENTINEL"
+  C_CMD="$cmd"; C_ZONE=personal; C_SWITCH=on
+  run_case "ON [personal] $cmd -> block (the guard as built)" 2 "$DENY_SUBSTR"
+done
+# the switch is a REAL line in roundB.conf (a comment-spliced line once hid a switch from the live rig)
+grep -qE '^gh_switch_guard=(on|off)$' "$HOOKS/roundB.conf" && ok || bad "roundB.conf has a real line gh_switch_guard=on|off" "missing"
+grep -qE '^gh_switch_guard=off$' "$HOOKS/roundB.conf" && ok || bad "gh_switch_guard ships OFF (Enver 2026-11-01)" "default must be off"
 
 echo "── invariant: gh/git were never actually invoked by the guard, any case ─────────────────"
 if [ -s "$STUB_CALL_LOG" ]; then

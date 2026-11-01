@@ -63,6 +63,14 @@ trap 'lhb_journal_fire "$?" "guard_gh_account_switch.sh" "PreToolUse" "Bash" 2>/
 
 INPUT=$(cat)
 
+# ── ON/OFF (roundB.conf gh_switch_guard; Enver's ruling 2026-11-01) ───────────────────────────────
+# "It should be able to freely switch at the moment until we put the restrictions in in the future. It should
+# be able to freely use either account." OFF = this guard allows every gh auth command, from anywhere. Nothing
+# below is deleted: the zone and owner logic stay in place, inactive, for the launcher-lanes work to revisit.
+# ON = the guard as built. Env ROUNDB_GH_SWITCH_GUARD=on|off wins over the file (lib/roundb.sh).
+. "$_lhb_dir/lib/roundb.sh" 2>/dev/null || roundb_on() { return 1; }
+roundb_on gh_switch_guard || exit 0
+
 PARSED=$(echo "$INPUT" | python3 -c "
 import sys, json
 try:
