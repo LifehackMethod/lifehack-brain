@@ -32,7 +32,7 @@ EOF"
 HD2="cat > rel-fetch.sh <<'EOF'
 $CU x || true
 EOF"
-export ROUNDB_BACK_DOOR=on ROUNDB_OWN_LIST=on
+export ROUNDB_BACK_DOOR=on ROUNDB_OWN_LIST=on ROUNDB_INLINE_KEEP_NUDGE=off   # this matrix tests the file checks only; inline_keep_nudge has its own test
 
 echo "== ALLOW =="
 stop a1 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "no writes: silent exit 0" || bad "no writes not silent: $OUT $ERR"

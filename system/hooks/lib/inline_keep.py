@@ -29,6 +29,36 @@ REMINDER = re.compile(r"<system-reminder>.*?</system-reminder>", re.S)
 LOOPS = re.compile(r"(^|[\s;&|(])(for|while|until)\s|\bxargs\b|-exec\b|\bparallel\b")
 
 
+HEREDOC = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
+WRITES = re.compile(
+    r"(?<![0-9&<>])>>?\|?(?!&)\s*(?!/dev/)[^\s|;&)<>]"   # > file, >> file (not 2>/dev/null, 2>&1, &>)
+    r"|(^|[\s;&|(])(tee|cp|mv|install|rsync|touch)\s|\bsed\s+(-[A-Za-z]*\s+)*-i|\bof=")
+
+
+def skeleton(cmd):
+    """The command itself: heredoc BODIES dropped and quoted text replaced by Q, so a pasted document or a string payload is never
+    measured as command length or pipes, and a '>' inside a quoted string is never read as a redirect."""
+    out, delim = [], None
+    for line in cmd.split("\n"):
+        if delim is not None:
+            if line.strip() == delim:
+                delim = None
+            continue
+        out.append(line)
+        m = HEREDOC.search(line)
+        if m:
+            delim = m.group(2)
+    t = "\n".join(out)
+    t = re.sub(r"'[^']*'", "Q", t)
+    t = re.sub(r'"(?:[^"\\]|\\.)*"', "Q", t)
+    return t
+
+
+def writes_file(cmd):
+    """True when the command itself saves a file: a redirect, tee, cp/mv/install/rsync/touch, sed -i, dd of=."""
+    return bool(WRITES.search(skeleton(cmd)))
+
+
 def has_keep_intent(text):
     for m in KEEP.finditer(text):
         if not NEG.search(text[max(0, m.start() - 24):m.start()]):
@@ -38,6 +68,7 @@ def has_keep_intent(text):
 
 def is_reusable(cmd):
     """Long and reusable = a loop / xargs / find -exec, OR a pipeline of 2+ pipes, OR >= LONG_CHARS on one command."""
+    cmd = skeleton(cmd)
     if len(cmd) >= LONG_CHARS:
         return True
     if LOOPS.search(cmd):
@@ -94,9 +125,9 @@ def analyse(path, saved):
     cmds, wrote = window(last, len(ents))
     if not cmds and has_keep_intent(said) and prev is not None:   # "keep it" said AFTER the command ran
         cmds, wrote = window(prev, last)
-    if wrote or saved:
+    if wrote or saved or any(writes_file(c) for c in cmds):   # a Bash redirect / heredoc / tee / cp / mv that writes a file IS a file saved
         return None
-    cmds = [c for c in cmds if len(c) >= MIN_CHARS]
+    cmds = [c for c in cmds if len(skeleton(c)) >= MIN_CHARS]
     if not cmds:
         return None
     if keep:

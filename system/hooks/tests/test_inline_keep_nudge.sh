@@ -38,8 +38,7 @@ export ROUNDB_INLINE_KEEP_NUDGE=on ROUNDB_BACK_DOOR=off ROUNDB_OWN_LIST=off ROUN
 
 echo "== the switch is a real line =="
 [ "$(grep -cE '^inline_keep_nudge=(on|off)[[:space:]]*$' "$CONF")" = 1 ] && ok "roundB.conf has exactly one real inline_keep_nudge=on|off line" || bad "no real switch line in $CONF"
-grep -qE '^inline_keep_nudge=off[[:space:]]*$' "$CONF" && ok "default is OFF" || bad "default is not off"
-( unset ROUNDB_INLINE_KEEP_NUDGE; . "$HERE/lib/roundb.sh"; roundb_on inline_keep_nudge ) && bad "on with no env, conf default" || ok "roundb_on reads it as off by default"
+( unset ROUNDB_INLINE_KEEP_NUDGE; . "$HERE/lib/roundb.sh"; V="$(sed -n 's/^inline_keep_nudge=//p' "$CONF" | tr -d '[:space:]')"; if roundb_on inline_keep_nudge; then [ "$V" = on ]; else [ "$V" = off ]; fi ) && ok "roundb_on agrees with the conf line" || bad "roundb_on disagrees with the conf line"
 
 echo "== BLOCK once =="
 mk "$T/t1" "how many lines of text are in each file under my Recipes folder? quick answer. oh nice, keep it" "$FIND"
@@ -107,6 +106,26 @@ stop o4 p1 "$T/t6d"; [ -z "$OUT$ERR" ] && ok "single short pipe: not offered" ||
 mk "$T/t6e" "keep it" "$LONG"
 stop o5 p1 "$T/t6e"; printf '%s' "$(reason)" | grep -q "asked to keep" && ok "keep-intent wins over offer wording (block, not offer)" || bad "wrong wording"
 stop o5 p2 "$T/t6e"; [ -z "$OUT" ] && ok "after a keep-block the same command is not offered either" || bad "offer after keep"
+
+echo "== real-use false alarm (2026-11-01): a Bash redirect or heredoc that WRITES a file is a file saved =="
+HD=$'cd /x/notes && cat > plans/launcher-lanes.plan.md <<\'EOF\'\n# plan\nstep one | step two | step three > done\nEOF'
+mk "$T/t8" "write the launcher lanes plan, keep it" "$HD"
+stop h1 p1 "$T/t8"; [ -z "$OUT$ERR" ] && ok "cd <notes> && cat > f <<EOF (the real command shape): silent" || bad "heredoc write flagged: $OUT"
+mk "$T/t8b" "note it down, keep it" 'echo "remember the milk and the eggs" > /x/notes/todo.md'
+stop h2 p1 "$T/t8b"; [ -z "$OUT$ERR" ] && ok "echo > file: silent" || bad "echo redirect flagged: $OUT"
+mk "$T/t8c" "note it down, keep it" "printf 'remember the milk and eggs\\n' >> /x/notes/todo.md"
+stop h3 p1 "$T/t8c"; [ -z "$OUT$ERR" ] && ok "printf >> file: silent" || bad "printf redirect flagged: $OUT"
+LH=$'cat > /x/notes/big.md <<\'EOF\'\n'"$(python3 -c "print('alpha | beta | gamma | delta > epsilon\n' * 40)")"$'EOF'
+mk "$T/t8d" "write the big doc" "$LH"
+stop h4 p1 "$T/t8d"; [ -z "$OUT$ERR" ] && ok "long heredoc that writes a file: silent (no offer either)" || bad "long heredoc flagged: $OUT"
+mk "$T/t8e" "show me the doc" $'cat <<\'EOF\'\n'"$(python3 -c "print('alpha | beta | gamma | delta\n' * 40)")"$'EOF'
+stop h5 p1 "$T/t8e"; [ -z "$OUT$ERR" ] && ok "long heredoc BODY is not measured: no offer for a short command" || bad "heredoc body counted: $OUT"
+mk "$T/t8f" "which lines" 'echo "a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | aa | bb | cc"'
+stop h6 p1 "$T/t8f"; [ -z "$OUT$ERR" ] && ok "quoted text payload is not measured" || bad "quoted payload counted: $OUT"
+mk "$T/t8g" "keep it" "$FIND 2>/dev/null"
+stop h7 p1 "$T/t8g"; blocked && ok "2>/dev/null is not a file write: keep-intent still fires" || bad "2>/dev/null treated as a write"
+mk "$T/t8h" "keep it" "$FIND | sort -n | head -5 2>&1"
+stop h8 p1 "$T/t8h"; blocked && ok "keep-intent + inline pipeline still fires" || bad "pipeline keep missed"
 
 echo "== switch OFF = silent =="
 mk "$T/t7" "keep it" "$FIND"
