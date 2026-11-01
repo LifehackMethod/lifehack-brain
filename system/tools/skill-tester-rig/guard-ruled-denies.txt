@@ -12,3 +12,6 @@
 /private/tmp/cc-socks(/[0-9]+\.sock)?
 # the file-watch capability probe Claude Code writes at startup
 /private/tmp/claude-[0-9]+/fswatch-probe-[^/]*
+# the Harness observability hooks' shared telemetry buffer (ruled claudeops-a0, 2026-11-01, DISCOVERIES "TR2.0b · REAL
+# RUN #1"): a test actor appending to the machine's real telemetry buffer pollutes real observability. Intermittent write.
+/private/tmp/lifehack-observability-buffer\.jsonl
