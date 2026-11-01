@@ -11,7 +11,7 @@ trap 'lhb_journal_fire "$?" "observability_logger.sh" "PostToolUse" "*" 2>/dev/n
 #      audit string.
 # GUARDS: n/a — this is an observability hook, not a guard. It NEVER blocks
 #      (PostToolUse cannot block) and NEVER writes to the notes root on the hot path.
-# REDIRECT: Buffer is /tmp/lifehack-observability-buffer.jsonl. `session_flight_recorder.sh`
+# REDIRECT: Buffer is $HOME/.claude/run/lifehack-observability-buffer.jsonl (override LIFEHACK_OBS_BUFFER). `session_flight_recorder.sh`
 #      (a Stop hook) flushes it to `<notes root>/system/observability/YYYY-MM-DD.jsonl` at
 #      session end, resolved through `shared/brain_root.py` — see that hook for the exact
 #      path. ⚠ CORRECTED 2026-08-15 (T9.7d): this used to deny the repo had any scheduler at all —
@@ -27,7 +27,10 @@ trap 'lhb_journal_fire "$?" "observability_logger.sh" "PostToolUse" "*" 2>/dev/n
 # never writes to the notes root on the hot path (avoids per-call sync latency).
 # Always exits 0.
 
-BUFFER="/tmp/lifehack-observability-buffer.jsonl"
+# 3b.7 D: per-HOME buffer (was a shared /tmp file any other-HOME session could read or delete).
+# Override: LIFEHACK_OBS_BUFFER=<file>. The old /tmp path is never read, written or deleted.
+BUFFER="${LIFEHACK_OBS_BUFFER:-${HOME:-/nonexistent}/.claude/run/lifehack-observability-buffer.jsonl}"
+mkdir -p "$(dirname "$BUFFER")" 2>/dev/null
 ARGS="$(cat)"
 
 # Defensive: empty input → exit 0, write nothing.

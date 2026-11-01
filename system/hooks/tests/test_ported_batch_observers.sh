@@ -23,7 +23,7 @@ REPO="$(cd "$HOOKS/../.." && pwd)"
 
 SANDBOX="$(mktemp -d "${TMPDIR:-/tmp}/lifehack-hooktest.XXXXXX")" || exit 1
 export LIFEHACK_ROOT="$SANDBOX"
-BUFFER="/tmp/lifehack-observability-buffer.jsonl"
+BUFFER="$SANDBOX/obs-buffer.jsonl"; export LIFEHACK_OBS_BUFFER="$BUFFER"   # 3b.7 D: sandboxed buffer, never the real per-HOME one
 
 cleanup() { rm -rf "$SANDBOX"; }
 trap cleanup EXIT

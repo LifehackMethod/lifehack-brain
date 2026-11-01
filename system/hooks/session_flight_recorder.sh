@@ -43,7 +43,10 @@ if [ -n "$ROOT" ]; then
   OBS_DIR="$ROOT/system/observability"
   LEARNINGS="$ROOT/system/learnings.md"
 fi
-OBS_BUFFER="/tmp/lifehack-observability-buffer.jsonl"
+# 3b.7 D: per-HOME buffer (was a shared /tmp file any other-HOME session could read or delete).
+# Override: LIFEHACK_OBS_BUFFER=<file>. The old /tmp path is never read, written or deleted.
+OBS_BUFFER="${LIFEHACK_OBS_BUFFER:-${HOME:-/nonexistent}/.claude/run/lifehack-observability-buffer.jsonl}"
+mkdir -p "$(dirname "$OBS_BUFFER")" 2>/dev/null
 
 # ── Read stdin payload ────────────────────────────────────────────────────────
 INPUT=$(cat 2>/dev/null)
