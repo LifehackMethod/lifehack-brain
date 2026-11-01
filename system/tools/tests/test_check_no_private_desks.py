@@ -139,10 +139,57 @@ class Fixture(unittest.TestCase):
         self.write("system/tools/vendor-read-allowlist.txt", "# %sx and x%s\n" % (PLANT_VENDOR, PLANT_VENDOR))
         self.assertEqual(run(self.d, more=self.NAMES)[0], 0)
 
-    def test_compound_live_identifiers_are_not_matched_as_whole_names(self):
-        # scrub PART 2 is on hold: an env var / legacy path / hook id that merely CONTAINS the name neither fails nor hides.
-        self.write("system/jobs.md", "```jobs\n# %s-config and %s_DRIVE and guard_no_repoint_into_%s\n```\n" % (PLANT_REPO, PLANT_REPO.upper(), PLANT_REPO))
+    def test_compound_live_identifiers_are_matched_as_a_component(self):
+        # scrub PART 2 renamed them all: an env var / legacy path / hook id / lock name that CONTAINS the name is R5.
+        for text in ("%s-config", "%s_DRIVE", "guard_no_repoint_into_%s", "/tmp/%s-job.lock"):
+            name = PLANT_REPO.upper() if text.endswith("_DRIVE") else PLANT_REPO
+            self.write("system/jobs.md", "```jobs\n# " + text % name + "\n```\n")
+            rc, out = run(self.d, more=self.NAMES)
+            self.assertEqual(rc, 1, (text, out))
+            self.assertIn("R5", out)
+            self.assertNotIn(PLANT_REPO, out)
+        # a word that only shares letters with the name is not a component match
+        self.write("system/jobs.md", "```jobs\n# x%sx\n```\n" % PLANT_REPO)
         self.assertEqual(run(self.d, more=self.NAMES)[0], 0)
+
+    def test_r8_live_code_holds_no_name_even_when_the_baseline_lists_it(self):
+        self.write("system/tools/thing.py", "# see %s-config\n" % PLANT_REPO)
+        self.write(cnd.NAME_BASELINE_REL, "1\tsystem/tools/thing.py\n")
+        rc, out = run(self.d, more=self.NAMES)
+        self.assertEqual(rc, 1, out)
+        self.assertIn("system/tools/thing.py: R8 live code holds 1", out)
+        self.assertIn("R8 the name baseline lists live code", out)
+        self.assertNotIn(PLANT_REPO, out)
+        # documentation keeps the shrink-only ratchet
+        self.write("system/tools/thing.py", "# see your personal code folder\n")
+        self.write("docs/old.md", "%s\n" % PLANT_REPO)
+        self.write(cnd.NAME_BASELINE_REL, "1\tdocs/old.md\n")
+        self.assertEqual(run(self.d, more=self.NAMES)[0], 0)
+
+    def test_r8_allows_exactly_one_marked_line_in_the_named_file_only(self):
+        self.write("shared/person_roots.py", "OLD = '%s_GH_USER'  # r8-allow: deprecated owner fallback\n" % PLANT_REPO.upper())
+        self.assertEqual(run(self.d, more=self.NAMES)[0], 0)
+        # a second marked line voids the allowance
+        self.write("shared/person_roots.py", "OLD = '%s_GH_USER'  # r8-allow: x\nNEW = '%s-config'  # r8-allow: y\n" % (PLANT_REPO.upper(), PLANT_REPO))
+        rc, out = run(self.d, more=self.NAMES)
+        self.assertEqual(rc, 1, out)
+        self.assertIn("shared/person_roots.py: R8", out)
+        # the marker means nothing in any other file
+        self.write("shared/person_roots.py", "# nothing private here\n")
+        self.write("shared/other.py", "OLD = '%s_GH_USER'  # r8-allow: deprecated owner fallback\n" % PLANT_REPO.upper())
+        rc, out = run(self.d, more=self.NAMES)
+        self.assertEqual(rc, 1, out)
+        self.assertIn("shared/other.py: R8", out)
+        self.assertNotIn(PLANT_REPO, out)
+
+    def test_write_baseline_never_lists_live_code(self):
+        self.write("docs/old.md", "%s\n" % PLANT_REPO)
+        self.write("system/tools/thing.sh", "# %s\n" % PLANT_REPO)
+        env = dict(os.environ, **self.NAMES)
+        subprocess.run([sys.executable, CHECK, "--root", self.d, "--write-baseline"], env=env, capture_output=True, text=True)
+        body = open(os.path.join(self.d, cnd.NAME_BASELINE_REL), encoding="utf-8").read()
+        self.assertIn("1\tdocs/old.md", body)
+        self.assertNotIn("thing.sh", body)
 
     def test_name_ratchet_allows_baseline_refuses_a_new_mention_and_notes_a_shrink(self):
         self.write("docs/old.md", "%s and %s\n" % (PLANT_REPO, PLANT_REPO))
@@ -234,7 +281,8 @@ class RealNamesScrub(unittest.TestCase):
         self.assertEqual(m.run_kind(self.name), "repo")
         self.assertEqual(m.run_kind(self.name.upper()), "repo")
         self.assertEqual(m.run_kind("_" + self.name), "notes")
-        self.assertEqual(m.run_kind(self.name + "-config"), "")   # a compound live identifier is out of scope (part 2)
+        self.assertEqual(m.run_kind(self.name + "-config"), "repo")   # a compound live identifier is R5 since part 2
+        self.assertEqual(m.run_kind(self.name.upper() + "_DRIVE"), "repo")
 
     def test_real_names_on_a_zero_surface_are_caught_and_redacted(self):
         d = os.path.realpath(tempfile.mkdtemp(prefix="cnd-realnames."))

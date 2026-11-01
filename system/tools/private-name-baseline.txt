@@ -1,47 +1,38 @@
 # private-name-baseline.txt -- written by system/tools/check_no_private_desks.py --write-baseline.
 # <count>\t<path>: how many private repo-name (R5), notes-folder-name (R6) and personal-vendor-name (R7)
 # mentions a tracked file may still hold (a ratchet). A count may only go DOWN; a file not listed may hold none.
-# This list IS the explicit allowlist. It holds (1) older docs, SOPs and archive copies, (2) the live-code
-# files whose rename is scrub PART 2 (ON HOLD, it changes enforcement-hook behaviour): the write-path,
-# gh-account and harness-writeback guards and their tests, the notes-root finder in the reindex tool, the
-# rig and its recorded cases. The names themselves are never written here.
-5	.github/scripts/check_no_internal_leakage.py
-1	archive/2026-10-31-skill-system-cleanup/system/hooks/inject_delegation_standing.sh
-2	archive/2026-10-31-skill-system-cleanup/system/tools/frontmatter_triage.py
-2	archive/2026-10-31-skill-system-cleanup/system/tools/skill_command_check.py
-3	hooks/guard_harness_write.sh
-1	rebuild/conformance-lab/capture.py
-11	system/hooks/guard_gh_account_switch.sh
-11	system/hooks/guard_harness_writeback.sh
-1	system/hooks/guard_no_repoint_into_claudeops.sh
-23	system/hooks/guard_write_paths.sh
-1	system/hooks/roundB.conf
-4	system/hooks/tests/test_desk_tool_placement.sh
-2	system/hooks/tests/test_gh_account_switch_guard.sh
-6	system/hooks/tests/test_no_repoint_into_claudeops_guard.sh
-1	system/hooks/tests/test_push_signpost_cwd_tracking.sh
-13	system/hooks/tests/test_write_paths_guard.sh
+# This list IS the explicit allowlist, and it holds DOCUMENTATION ONLY (*.md, system/sops/, archive/):
+# live code may hold no such name at all (R8), so a code file is never listed. The names are never written here.
+4	.claude/skills/architect/SKILL.md
+1	.claude/skills/architect/references/routing-eval.md
+3	.claude/skills/autoplan/fixtures/scratch/spacey.plan.md
+2	.claude/skills/ingest/SPEC.md
+1	.claude/skills/planning-weekly/audit/2026-07-20-stress-test.md
+3	archive/2026-10-31-skill-system-cleanup/system/hooks/inject_delegation_standing.sh
+4	archive/2026-10-31-skill-system-cleanup/system/tools/frontmatter_triage.py
+8	archive/2026-10-31-skill-system-cleanup/system/tools/skill_command_check.py
+2	archive/2026-10-31-skill-system-cleanup/system/tools/test_skill_command_check.py
+1	system/build-rules-index.md
+1	system/google-policy.md
+1	system/gws-contract.md
+2	system/machine-readiness-checklist.md
+3	system/organism/elements/archivist.md
+6	system/organism/elements/canon.md
+2	system/organism/elements/efficiency.md
+4	system/organism/elements/egress-allowlist-wall.md
 14	system/organism/elements/hook-plane.md
-6	system/organism/elements/skill-system.md
-2	system/parts/precondition_gate.py
-5	system/shipping-lane/rewrite-rules.json
+2	system/organism/elements/label-checker.md
+8	system/organism/elements/skill-system.md
+6	system/organism/manual.md
+1	system/schemas/email-summary-schema.md
+2	system/schemas/ingest-gate-signature.md
+1	system/security-canon.md
+1	system/security-posture-baseline.md
 1	system/sops/agentic-security-sop.md
 2	system/sops/cron-jobs-sop.md
-11	system/sops/recovery-runbook.md
-2	system/tools/citation_lint.py
-1	system/tools/fault_ledger.py
-2	system/tools/obsidian-reindex.sh
-3	system/tools/rig/build_meal_cases.py
-27	system/tools/rig/cases/meal-2026-10-29.jsonl
-12	system/tools/rig/cases/meal-part2-live.jsonl
-12	system/tools/rig/cases/meal-roundA-live.jsonl
-7	system/tools/rig/cases/nibble2-side-roads.jsonl
-12	system/tools/rig/cases/roundC-practice.jsonl
-1	system/tools/rig/cases/signpost-fix-2026-10-30.jsonl
-6	system/tools/rig/rig_live_free.py
-2	system/tools/rig/rig_live_score.py
-3	system/tools/rig/rig_meal.py
-1	system/tools/rig/rig_run.py
-5	system/tools/rig/test_rig_fence.py
-3	system/tools/rig/test_rig_steer_score.py
-3	system/tools/tests/test-510-small.sh
+2	system/sops/desk-building-sop.md
+29	system/sops/recovery-runbook.md
+1	system/sops/translator-rubric.md
+1	system/templates/producer-spec-template.md
+1	system/tools/skill-tester-rig/CONTRACT.md
+1	system/tools/skill-tester-rig/README.md

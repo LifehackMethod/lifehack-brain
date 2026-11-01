@@ -27,13 +27,18 @@ RULES
      hashing, same redaction. R5/R6/R7 are matched on a whole "run" (a maximal [A-Za-z0-9_-] word, so the leading
      underscore of the notes folder is part of it); R7 also matches a run that STARTS with a vendor name up to a
      - or _ (the vendor's script and job names). ZERO tolerance on the ZERO_SURFACES; everywhere else a shrink-only
-     per-file RATCHET in system/tools/private-name-baseline.txt (older docs/SOPs/archive, and the rig fixtures).
-     NOT MATCHED, on purpose: longer identifiers that merely CONTAIN the repo name (an env var, the legacy clone
-     path, hook file ids, branch labels). Those are the live identifiers of scrub PART 2, which is ON HOLD because
-     renaming them changes enforcement-hook behaviour; they are not matched as a whole run, so they neither fail nor
-     hide here. The files that still carry R5/R6 mentions in live code (the write-path, gh-account and
-     harness-writeback guards, the notes-root finder in the reindex tool, the rig) are listed in the baseline with
-     their counts; that baseline IS the explicit allowlist and it can only shrink.
+     per-file RATCHET in system/tools/private-name-baseline.txt (older docs, SOPs and archive copies only).
+     R5 ALSO matches the repo name as a COMPONENT of a longer identifier split on - and _ (an env var, a legacy
+     clone path, a hook file id, a lock name): scrub PART 2 (2026-11-01) renamed every such live identifier, so
+     none may come back.
+  R8 LIVE CODE HOLDS NONE (scrub part 2, 2026-11-01; Enver: "i don't see why anything in the plugin would need
+     [the private repo]"). The plugin knows the person only through two pointers -- the personal code folder and the
+     notes root -- so any R5-R7 name in a file that is not documentation (not *.md, not under system/sops/ or
+     archive/) is a finding, whatever the baseline says. The name baseline may list documentation only; a code file
+     listed there is itself a finding, and --write-baseline never writes one.
+     ONE exception, by ruling (2026-11-01): R8_ALLOW below -- a single line carrying the marker "# r8-allow:" in a
+     named file (the deprecated owner-account fallback in the person-settings resolver). Its names are not counted;
+     a second marked line in that file, or a marked line in any other file, counts like any other mention.
 
 Extra names for a test: env LIFEHACK_PRIVATE_DESK_NAMES="a,b" adds plain words to R2/R3 (never committed).
 
@@ -108,6 +113,8 @@ class Matcher:
                 k = "notes"
             elif word_hash(lr) in REPO_HASHES or lr in self.x_repo:
                 k = "repo"
+            elif any(c and (word_hash(c) in REPO_HASHES or c in self.x_repo) for c in re.split(r"[-_]", lr)):
+                k = "repo"   # R5 as a component: <name>-config, <NAME>_DRIVE, guard_..._<name>, <name>-<job>.lock
             else:
                 cuts = [i for i, ch in enumerate(lr) if ch in "-_" and i > 0] + [len(lr)]
                 for i in cuts:
@@ -133,6 +140,28 @@ def tracked_files(root):
     if r.returncode != 0:
         return None
     return [p for p in r.stdout.decode("utf-8", "replace").split("\0") if p]
+
+
+R8_ALLOW = {"shared/person_roots.py": 1}   # file -> how many "# r8-allow:" lines may carry a name (ruling 2026-11-01)
+R8_MARKER = "# r8-allow:"
+
+
+def r8_allowed_lines(full, rel):
+    """Line numbers whose names are exempt from R5-R7/R8: at most R8_ALLOW[rel] marked lines, else none."""
+    n = R8_ALLOW.get(rel, 0)
+    if not n:
+        return set()
+    try:
+        lines = open(full, encoding="utf-8", errors="replace").read().splitlines()
+    except OSError:
+        return set()
+    marked = {i for i, l in enumerate(lines, 1) if R8_MARKER in l}
+    return marked if len(marked) <= n else set()
+
+
+def is_doc(rel):
+    """Documentation the name baseline may still list (R8): Markdown, the SOPs, the archive."""
+    return rel.endswith(".md") or rel.startswith(("system/sops/", "archive/"))
 
 
 def is_zero_surface(rel):
@@ -191,22 +220,26 @@ def scan(root):
         full = os.path.join(root, rel)
         if os.path.islink(full) or not os.path.isfile(full):
             continue
-        out[rel] = scan_file(full, m)
+        hits, desk, pub, names = scan_file(full, m)
+        allowed = r8_allowed_lines(full, rel)
+        if allowed:
+            drop = [h for h in hits if h[0] in allowed and h[1] in ("repo", "notes", "vendor")]
+            hits = [h for h in hits if h not in drop]
+            names -= len(drop)
+        out[rel] = (hits, desk, pub, names)
     return out
 
 
 def write_name_baseline(root, res):
-    rows = sorted((rel, n) for rel, (_h, _d, _p, n) in res.items() if n and not is_zero_surface(rel))
+    rows = sorted((rel, n) for rel, (_h, _d, _p, n) in res.items() if n and not is_zero_surface(rel) and is_doc(rel))
     p = os.path.join(root, NAME_BASELINE_REL)
     os.makedirs(os.path.dirname(p), exist_ok=True)
     with open(p, "w", encoding="utf-8") as f:
         f.write("# private-name-baseline.txt -- written by system/tools/check_no_private_desks.py --write-baseline.\n"
                 "# <count>\\t<path>: how many private repo-name (R5), notes-folder-name (R6) and personal-vendor-name (R7)\n"
                 "# mentions a tracked file may still hold (a ratchet). A count may only go DOWN; a file not listed may hold none.\n"
-                "# This list IS the explicit allowlist. It holds (1) older docs, SOPs and archive copies, (2) the live-code\n"
-                "# files whose rename is scrub PART 2 (ON HOLD, it changes enforcement-hook behaviour): the write-path,\n"
-                "# gh-account and harness-writeback guards and their tests, the notes-root finder in the reindex tool, the\n"
-                "# rig and its recorded cases. The names themselves are never written here.\n")
+                "# This list IS the explicit allowlist, and it holds DOCUMENTATION ONLY (*.md, system/sops/, archive/):\n"
+                "# live code may hold no such name at all (R8), so a code file is never listed. The names are never written here.\n")
         for rel, n in rows:
             f.write("%d\t%s\n" % (n, rel))
     return len(rows), sum(n for _, n in rows)
@@ -266,7 +299,10 @@ def main(argv=None):
                         {"repo": "private repo name", "notes": "notes-root folder name", "vendor": "personal vendor"}[k]))
             elif zero:
                 problems.append("%s:%d: R2 names a personal desk [REDACTED] on a zero-tolerance surface" % (rel, ln))
-        if not zero:
+        if not zero and names and not is_doc(rel):
+            problems.append("%s: R8 live code holds %d private repo/notes/vendor name mention(s) -- the plugin knows the person "
+                            "only through the personal-code and notes-root pointers; read them, never name the folder" % (rel, names))
+        elif not zero:
             if names > nbase.get(rel, 0):
                 problems.append("%s: R5-R7 holds %d private repo/notes/vendor name mention(s), baseline allows %d -- a NEW "
                                 "mention; say 'your personal code folder' / <notes> / the job, or move it to <personal-code>"
@@ -283,6 +319,9 @@ def main(argv=None):
                             "<personal-code> or reword it" % (rel, desk, base.get(rel, 0)))
         elif desk < base.get(rel, 0):
             shrunk.append(rel)
+    for rel, n in sorted(nbase.items()):
+        if n and not is_doc(rel):
+            problems.append("%s: R8 the name baseline lists live code (allowance %d); only documentation may be listed" % (rel, n))
     if shrunk:
         print("note: %d file(s) now hold fewer mentions than the baseline; shrink it with --write-baseline" % len(shrunk))
     if problems:

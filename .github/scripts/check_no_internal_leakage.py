@@ -5,7 +5,7 @@ WHY THIS EXISTS: migration-audit/08-THIRD-PARTY-INVENTORY.md was authored and co
 directly inside this checkout and pushed to the shared remote. It carried the operator's
 macOS username in absolute paths, a live third-party project hostname, and a map of where
 every credential is stored. Nothing caught it because the project's scrubbing lane
-(claudeops-config/skills/ship, system/shipping-lane/scrub.py) is a MANUAL pipeline that
+(the /ship skill, system/shipping-lane/scrub.py) is a MANUAL pipeline that
 only ever sees files a human explicitly routes through it -- a file authored straight into
 this repo never passes through it. There were no git hooks and no .github/workflows/ at
 all, so nothing server-side ever looked at a commit landing here. This is that check.
@@ -30,7 +30,7 @@ WHAT IT CATCHES (three kinds, deliberately no more):
      identity_rules.py was written to prevent ("no identity file, so the lane has
      nothing personal to look for and would report your own name CLEAN").
      What is NOT reused: refuse-rules.json's "2-private" desk-persona rules (cal / marc /
-     emily / clair / deryl / dobby) name ClaudeOps-internal personas, not the operator,
+     emily / clair / deryl / dobby) name maintainer-internal personas, not the operator,
      and this product ships its OWN generically-named skills with the same one-word slugs
      (.claude/skills/cal-daily/ is real, shipped, unrelated product content) -- reusing
      those rules here would cry wolf on this repo's own normal traffic. Secrets
@@ -346,7 +346,10 @@ GENERIC_CONTENT_PATTERNS = [
         # ⛔ ADDED (2026-10-29, CHECK 4). The private ops repo must not be referenced by its
         # remote URL in public content (a bare owner/name slug in prose is deliberately NOT
         # matched: register-drift.yml already names it in comments; the URL form is the leak-shaped one).
-        "pattern": r"(?i)github\.com[/:][A-Za-z0-9_.-]+/ClaudeOps\b",
+        # The repo NAME is never written here: any GitHub owner/name URL is matched, then kept only
+        # when the name's salted hash is one of check_no_private_desks.py's REPO_HASHES (or a name in
+        # $LIFEHACK_PRIVATE_REPO_NAMES) -- see _names_private_repo() and its three call sites.
+        "pattern": r"(?i)github\.com[/:][A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+",
         "remedy": ("the private ops repo's remote path. It is not public; refer to it by role "
                    "('the private repo'), not by owner/name."),
     },
@@ -491,6 +494,39 @@ def redact_spans(line, rule=None):
     return out
 
 
+# ── the private repo, known only by a salted hash ──────────────────────────────────────────
+# Same salt, same hash and same REPO_HASHES as system/tools/check_no_private_desks.py (imported, never
+# copied, so the two checks can never disagree about which name is private). $LIFEHACK_PRIVATE_REPO_NAMES
+# (comma list) adds names for a test or a second private repo without writing them into the tree.
+def _private_desks_module():
+    import importlib.util
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                        "system", "tools", "check_no_private_desks.py")
+    spec = importlib.util.spec_from_file_location("check_no_private_desks", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+_PD = None
+
+
+def _is_private_repo_word(word):
+    global _PD
+    if _PD is None:
+        _PD = _private_desks_module()
+    w = (word or "").lower()
+    if w.endswith(".git"):
+        w = w[:-4]
+    return bool(w) and (_PD.word_hash(w) in _PD.REPO_HASHES or w in _PD.extra_names("LIFEHACK_PRIVATE_REPO_NAMES"))
+
+
+def _names_private_repo(text):
+    """True when any GitHub owner/name URL in `text` names the private repo (by hash)."""
+    return any(_is_private_repo_word(m.group(1))
+               for m in re.finditer(r"(?i)github\.com[/:][A-Za-z0-9_.-]+/([A-Za-z0-9_.-]+)", text or ""))
+
+
 # The EFFECTIVE rule set = generic + identity. Deliberately None until install_identity_
 # patterns() succeeds, so that every code path that scans content without a personal tier
 # raises instead of quietly scanning with two thirds of the rules. Fail-closed by
@@ -585,7 +621,7 @@ FICTIONAL_FIXTURE_PHRASES = ("whitfield contracting",)
 # word boundaries. Deliberately does NOT match ALL-CAPS acronyms (JSON, SOP, README -- no
 # lowercase run to match) and, because \b requires an actual word/non-word transition
 # (never just "start of substring"), it structurally cannot match a fragment out of a
-# camelCase/PascalCase compound like "GitHub" or "ClaudeOps" -- there is no boundary
+# camelCase/PascalCase compound like "GitHub" or "LifeHack" -- there is no boundary
 # between "t" and "H" for \b to land on, so neither "Git"/"Hub" nor "Claude"/"Ops" can
 # match alone out of those words.
 NAME_SHAPE_RE = re.compile(r"\b[A-Z][a-z]{2,14}\b")
@@ -733,7 +769,7 @@ NAME_HEURISTIC_STOPWORDS = frozenset({
     "january", "february", "march", "april", "may", "june", "july", "august", "september",
     "october", "november", "december",
     # product / platform terms this repo says constantly and are not people
-    "claude", "anthropic", "claudeops", "google", "gmail", "drive", "slack", "python",
+    "claude", "anthropic", "google", "gmail", "drive", "slack", "python",
     "markdown", "github", "opus", "sonnet", "haiku", "wren",  # "wren" also FICTIONAL_FIXTURE
     "dropbox", "script", "apps",  # "cloud-drive client (Dropbox...)" / "not just Apps Script"
     # "doc"/"docs" REMOVED from this blanket list 2026-09-16 (task E1b) -- a flat entry
@@ -795,7 +831,8 @@ def find_name_candidates(line: str, allowed_personas: frozenset) -> list:
         low = token.lower()
         if low in PERSONAL_TRIGGER_WORDS_LOWER:
             continue  # the trigger word itself, not a candidate name next to one
-        if low in NAME_HEURISTIC_STOPWORDS or low in FICTIONAL_FIXTURE_WORDS or low in allowed_personas:
+        if (low in NAME_HEURISTIC_STOPWORDS or low in FICTIONAL_FIXTURE_WORDS or low in allowed_personas
+                or _is_private_repo_word(low)):
             continue
         if low in ("doc", "docs"):
             # narrow, context-gated replacement for the old blanket "doc"/"docs" stopword
@@ -880,7 +917,7 @@ def is_self_referential_fixture_path(path: str) -> bool:
             or any(path.startswith(p) for p in WHOLE_TREE_SELF_REFERENCE_EXCLUDE_PREFIXES))
 
 # --------------------------------------------------------- desk-persona allowlist (derived)
-# ClaudeOps (the private donor system this product migrated out of) named its personal
+# The private donor system this product migrated out of named its personal
 # desks after people -- cal / marc / emily / clair / deryl / dobby. None of those six is a
 # real third party; they are internal role names. But only some of the six survived into
 # THIS product's own shipped skills (some were renamed to generic slugs during migration --
@@ -918,7 +955,7 @@ def git_head_sha() -> str:
 
 
 def derive_reused_desk_personas(tracked_paths) -> set:
-    """Gap 3: which of the six ClaudeOps desk-persona names does THIS product's own
+    """Gap 3: which of the six donor desk-persona names does THIS product's own
     .claude/skills/ tree actually still reuse, right now? Checks path segments AND file
     content (case-insensitive, whole-word) so a rename that keeps the word in prose (like
     cal-daily -> planning-daily, which kept "Cal" as the voice name throughout) still
@@ -999,6 +1036,8 @@ def scan_whole_tree(scan_root_paths=None):
             for rule in content_patterns():
                 m = re.search(rule["pattern"], line)
                 if not m:
+                    continue
+                if rule["id"] == "private-repo-name" and not _names_private_repo(line):
                     continue
                 if rule["id"] == "home-path-generic":
                     # extract the segment right after /Users/ or /home/
@@ -1181,6 +1220,8 @@ def check_added_lines(added_lines):
         for rule in content_patterns():
             if not re.search(rule["pattern"], text):
                 continue
+            if rule["id"] == "private-repo-name" and not _names_private_repo(text):
+                continue
             # Same fixture carve-out scan_whole_tree() already applies (RULED 2026-08-23).
             if rule["id"] == "home-path-generic":
                 seg_match = re.search(r"(?:/Users/|/home/)([A-Za-z0-9._-]+)", text)
@@ -1300,6 +1341,8 @@ def whole_text_hits(text, already):
             if (lineno, rule["id"]) in already:
                 continue
             evidence = text[m.start():m.end()]
+            if rule["id"] == "private-repo-name" and not _names_private_repo(evidence):
+                continue
             if rule["id"] == "home-path-generic":
                 seg_match = re.search(r"(?:/Users/|/home/)([A-Za-z0-9._-]+)", evidence)
                 seg = seg_match.group(1) if seg_match else ""

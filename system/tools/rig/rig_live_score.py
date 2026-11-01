@@ -122,11 +122,25 @@ def list_new_files(desk, since_marker=None):
 
 # ───────────────────────── where the code lives (plan 3b.2 item 10) ─────────────────────────
 # CODE (.sh/.py) must NOT sit in the notes folder (Google Drive): placement.conf denies it. Two answers are accepted:
-#   "enver"        the private ClaudeOps repo: <enver-home>/<desk>/tools/...   (Enver's own setup - one valid answer, NOT the student truth)
+#   "enver"        the maintainer's personal code folder: <enver-home>/<desk>/tools/...   (Enver's own setup - one valid answer, NOT the student truth)
 #   "student-open" any path in a git repo that is not under Google Drive. The student answer is an OPEN design question (plan item 10),
 #                  so any non-Drive repo location is accepted and the score is flagged "open".
 # Docs (README, SKILL.md, ...) may stay in the desk. A session that writes no code at all is judged on the desk files as before.
-ENVER_HOME = os.path.expanduser("~/.claude/skills/ClaudeOps/desks")
+def _personal_desks():
+    """<personal-code>/desks of whoever runs the scorer, from the personal-code pointer (shared/personal_code_root.py)."""
+    shared = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(HERE))), "shared")
+    if shared not in sys.path:
+        sys.path.insert(0, shared)
+    try:
+        import personal_code_root
+        source, path = personal_code_root.resolve_personal_code_root()
+    except Exception:
+        source, path = None, None
+    base = path if source in ("pointer", "default") and path else os.path.join(os.path.expanduser("~"), "lifehack-personal-code")
+    return os.path.join(base, "desks")
+
+
+ENVER_HOME = _personal_desks()
 CODE_EXT = (".sh", ".py")
 
 

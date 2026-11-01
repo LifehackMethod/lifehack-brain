@@ -27,6 +27,7 @@ asserted, at run time, to appear nowhere in the scanner. That assertion is not d
 a test whose fixture collides with real repo content proves nothing about either.
 """
 import json
+import re
 import os
 import subprocess
 import sys
@@ -566,6 +567,27 @@ def main():
                                "--as-path", "docs/doc_body_clean.md"])
         report("the real false positive (doc_case_1's shape) stays NOT flagged (exit 0)",
                rc == 0, "exit {}: {}".format(rc, out.strip()[:300]))
+
+        # ------------------------------------------------- the private repo, by hash only
+        print("\nPRIVATE REPO NAME -- matched by salted hash, never written in the scanner")
+        pr_leak = os.path.join(td, "private_repo_leak.md")
+        with open(pr_leak, "w", encoding="utf-8") as fh:
+            fh.write("clone it from https://github.com/someone/Quillrepo.git first\n")
+        rc, out = run_scanner(["--identity", idf, "--scan-file", pr_leak, "--as-path", "docs/pr_leak.md"],
+                              env={"LIFEHACK_PRIVATE_REPO_NAMES": "quillrepo"})
+        report("a URL naming a private repo -> FLAGGED (exit 1)", rc == 1 and "private-repo-name" in out,
+               "exit {}: {}".format(rc, out.strip()[:300]))
+        rc, out = run_scanner(["--identity", idf, "--scan-file", pr_leak, "--as-path", "docs/pr_leak.md"])
+        report("the same URL when that name is not private -> not flagged by this rule",
+               "private-repo-name" not in out, "exit {}: {}".format(rc, out.strip()[:300]))
+        pub = os.path.join(td, "public_repo.md")
+        with open(pub, "w", encoding="utf-8") as fh:
+            fh.write("the plugin lives at https://github.com/LifehackMethod/lifehack-brain\n")
+        rc, out = run_scanner(["--identity", idf, "--scan-file", pub, "--as-path", "docs/pub.md"],
+                              env={"LIFEHACK_PRIVATE_REPO_NAMES": "quillrepo"})
+        report("a public repo URL -> not flagged", "private-repo-name" not in out,
+               "exit {}: {}".format(rc, out.strip()[:300]))
+        report("the scanner names no private repo", not re.search("claude" + "ops", scanner_src, re.I))
 
     print("")
     if _failures:
