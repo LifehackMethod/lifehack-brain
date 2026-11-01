@@ -55,7 +55,7 @@ count_gates() {  # how many of the known facts does this plan file contain? (ord
 sharpen() {
   local dir=$1
   claude -p --model "$MODEL" <<EOF 2>/dev/null
-You are the reconcile step of ClaudeOps /checkin, followed by its plan-repair step.
+You are the reconcile step of /checkin, followed by its plan-repair step.
 
 Compare the brief against the plan. A tension counts ONLY where acting on one source would mean doing
 DIFFERENT WORK than acting on the other — not merely different wording.

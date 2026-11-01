@@ -36,7 +36,7 @@
 #   4. Machine-token derivation (`system/tools/machine-token.sh`) is excluded from this port —
 #      this product is one machine by design. `MACHINE="local"` is the fixed constant every
 #      other ported store in this repo already uses (`emit_finding.py`, `fault_ledger.py`, ...).
-#   5. `OUT_DIR` moved from `~/.local/share/claudeops/${SUBSYSTEM_NAME}` to
+#   5. `OUT_DIR` moved from `~/.local/share/<personal-code>/${SUBSYSTEM_NAME}` to
 #      `~/.config/lifehack/${SUBSYSTEM_NAME}` — this repo's already-established machine-local
 #      config/state home (see `fault_ledger.py`'s own port note for the same move).
 # ⚠ NOTHING SCHEDULES THIS YET. This repo has no cron/launchd wiring. Running it is a manual

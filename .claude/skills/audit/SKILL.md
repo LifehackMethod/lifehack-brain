@@ -199,7 +199,7 @@ changes.
 
 - **No applier, at any rung.** The user acts on the verdict; the system only proposes it.
 - **No index of any kind** — Lane 3 greps live, every run, forever.
-- **No web lane.** An external-practice question with no ClaudeOps subject is `/research`'s job, not
+- **No web lane.** An external-practice question with no personal-code subject is `/research`'s job, not
   this skill's.
 - **No second council.** This is a three-lane refutation panel, not the 7-lens architecture council —
   if a genuine two-viable-architectures fork is the real question, that's `/architect` COUNCIL mode.

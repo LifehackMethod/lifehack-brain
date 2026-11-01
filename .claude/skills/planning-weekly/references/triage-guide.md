@@ -58,7 +58,7 @@ group-level approval before it commits).
 > Leverage: HIGH — the client presentation is the path to the Monthly Win (new retainer). Urgency: HIGH —
 > meeting is Thursday. Zone: MUST DELIVER → Win candidate.
 
-**Example 2 — ClaudeOps weekly skill build (WIN ZONE)**
+**Example 2 — personal-code weekly skill build (WIN ZONE)**
 > Leverage: HIGH — compounds operational capability (a lever on everything). Urgency: LOW — no external
 > deadline this week. Zone: WIN ZONE → ask the person to assign a specific block (protect it).
 

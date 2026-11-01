@@ -129,21 +129,25 @@ trim() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]
 #       model_ids.py, and any literal passed as --model X / model="X" / MODEL=X: a runner names a TIER and the table turns it into an id, so a retired id can never rot silently.
 #   (h) F7 (slip 56) a runner's `write_status_tile <name>` must pass the row's own id (literal, or a variable the file sets to it).
 #   (g) a desk runner's helper files (.sh/.py/.mjs in the runner's own directory, non-recursive) get the same scan as the runner.
-#   (f) VENDOR READS (2026-10-28 ruling): a row with model=none may make its own logged-in read of Enver's own vendor account
-#       (python `requests`/`urllib`: the cp-utilities portal login, the Emporia SDK) from ONE allowlisted file per desk. The list is
-#       system/tools/vendor-read-allowlist.txt, lines `<job> <file>`; <file> is relative to the job's tools folder (a file F matches when
-#       its path ends in /tools/<job>/<file>). The exemption needs ALL of: the row's name is the listed job, the row's model is exactly
-#       `none`, and the file is the listed one. Anything else (model=small, another file, another job) is refused as before. It
-#       covers only requests/urllib: a raw Gmail read and curl are NEVER a vendor read, for any row.
+#   (f) VENDOR READS (2026-10-28 ruling; list moved to the personal side 2026-11-01): a row with model=none may make its own
+#       logged-in read of the person's own vendor account (python `requests`/`urllib`) from ONE allowlisted file per desk job. The
+#       list is the person's own file, <personal-code>/vendor-read-allowlist.txt (the personal-code pointer; the shared
+#       system/tools/vendor-read-allowlist.txt is empty and is read first), lines `<job> <file>`; <file> is relative to the job's tools
+#       folder (a file F matches when its path ends in /tools/<job>/<file>). The exemption needs ALL of: the row's name is the listed
+#       job, the row's model is exactly `none`, and the file is the listed one. Anything else (model=small, another file, another
+#       job) is refused as before. It covers only requests/urllib: a raw Gmail read and curl are NEVER a vendor read, for any row.
 # TEST SEAMS: LIFEHACK_JOBS_FILE (manifest for --check-row), LIFEHACK_CODE_ROOT (code root), LIFEHACK_DESK_REPO, LIFEHACK_VENDOR_ALLOWLIST.
 DOOR_ALLOWLIST="$CODE_ROOT/system/tools/shared-fetch-allowlist.txt"
 DOOR_VENDOR_ALLOWLIST="${LIFEHACK_VENDOR_ALLOWLIST:-$CODE_ROOT/system/tools/vendor-read-allowlist.txt}"
+# 3b.7 scrub 1: the personal list sits in the personal code folder (see DOOR_DESK below); a test that sets LIFEHACK_VENDOR_ALLOWLIST
+# gets exactly that one list and no personal one (isolated seam).
+DOOR_VENDOR_PERSONAL_OK=1; [ -n "${LIFEHACK_VENDOR_ALLOWLIST:-}" ] && DOOR_VENDOR_PERSONAL_OK=0
 # The desk folder the door allows runners under = your personal code folder (3b.7 B: resolved, never a hard-coded repo path).
 # Unresolved (a student with none) -> a path that cannot exist, so only code-root runners pass.
 DOOR_DESK="${LIFEHACK_DESK_REPO:-$(python3 "$CODE_ROOT/shared/personal_code_root.py" --quiet 2>/dev/null)}"
 [ -n "$DOOR_DESK" ] || DOOR_DESK="$CODE_ROOT/.no-personal-code-folder"
 door_check_row() {   # name enabled outcome check model budget source command -> reasons on stdout; rc 0 = pass
-  DOOR_RULES_DIR="$CODE_ROOT/system/tools" python3 - "${LIFEHACK_CODE_ROOT:-$CODE_ROOT}" "$DOOR_DESK" \
+  DOOR_RULES_DIR="$CODE_ROOT/system/tools" DOOR_VENDOR_PERSONAL_OK="$DOOR_VENDOR_PERSONAL_OK" python3 - "${LIFEHACK_CODE_ROOT:-$CODE_ROOT}" "$DOOR_DESK" \
     "$DOOR_ALLOWLIST" "$DOOR_VENDOR_ALLOWLIST" "$@" <<'DOORPY'
 import os, re, shlex, sys
 code, desk, allow_file, vendor_file, name, enabled, outcome, check, model, budget, source, cmd = sys.argv[1:13]
@@ -237,12 +241,16 @@ except OSError:
     reasons.append(f"shared-fetch allowlist unreadable: {allow_file}")
 vendor = []   # (f) [(job, file)] -- read only when the row is model=none; a missing list simply exempts nothing
 if model.strip() == "none":
-    try:
-        for ln in open(vendor_file, encoding="utf-8"):
-            ln = ln.split("#", 1)[0].split()
-            if len(ln) == 2 and ln[0] == name.strip(): vendor.append(ln[1])
-    except OSError:
-        pass
+    lists = [vendor_file]
+    if os.environ.get("DOOR_VENDOR_PERSONAL_OK") == "1":
+        lists.append(os.path.join(desk, "vendor-read-allowlist.txt"))   # the person's own list, in the personal code folder
+    for lf in lists:
+        try:
+            for ln in open(lf, encoding="utf-8"):
+                ln = ln.split("#", 1)[0].split()
+                if len(ln) == 2 and ln[0] == name.strip(): vendor.append(ln[1])
+        except OSError:
+            pass
 def vendor_exempt(f):
     return any(f.endswith("/tools/%s/%s" % (name.strip(), rel)) for rel in vendor)
 VENDOR_KINDS = ("requests", "urllib")

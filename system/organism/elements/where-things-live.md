@@ -168,7 +168,7 @@ concerned; it simply never loads. So Path-1 machinery of this kind goes in `~/.c
 as a **real folder** — not a preference, one of the places discovery looks — **or is served through the
 plugin cache**, which is populated by the plugin's own install/update mechanism, not by hand-placing
 files. ⛔ The plugin cache is a THIRD HOME, not a substitute resolution path for this repo's own
-skills — nothing here should be read as re-pointing ClaudeOps skills to resolve FROM the plugin cache;
+skills — nothing here should be read as re-pointing personal-code skills to resolve FROM the plugin cache;
 it names a third place the harness looks, full stop.
 
 ⭐ **Evidence this already works, verified this session:** `find ~/.claude/skills -maxdepth 1 -type d`
@@ -309,7 +309,7 @@ copy it out and run it separately, and it will not receive Harness updates.)*
    works (nothing stops a script living there), but forfeits the one reason the AI Brain was the
    better choice — it is not backed up.
 5. ⚠ **ADDED 2026-08-27 (L.B2 audit) — THREE full copies of this system coexist, and this element
-   does not account for that.** Confirmed live this session: `~/.claude/skills/ClaudeOps` (this
+   does not account for that.** Confirmed live this session: `<personal-code>` (this
    repo, the working tree), `~/lifehack-brain` (a second full clone), and the plugin cache
    (`~/.claude/plugins/cache/lifehack-brain/lifehack-brain/0.3.13`, 44 skills) are all present on
    this one machine simultaneously. THE FOUR HOMES table above treats "shared machinery" as a

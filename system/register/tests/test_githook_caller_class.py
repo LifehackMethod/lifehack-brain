@@ -35,7 +35,7 @@ REGISTER_DIR = os.path.dirname(HERE)
 REPO_ROOT = os.path.dirname(os.path.dirname(REGISTER_DIR))
 sys.path.insert(0, REGISTER_DIR)
 
-DEFAULT_PRIVATE_ROOT = os.path.expanduser("~/.claude/skills/ClaudeOps")
+DEFAULT_PRIVATE_ROOT = os.path.join(tempfile.gettempdir(), "no-personal-code-folder")  # a path that does not exist: this test has no personal rows
 
 
 def load_register_rows(path):

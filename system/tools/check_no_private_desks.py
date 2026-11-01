@@ -23,6 +23,18 @@ RULES
      agent are shipped product), but not as personal desk MATERIAL in the job and register files (R4_SURFACES:
      the shared job table, job names, register, toolbox): no desks/<that name>/ path and no <that name>-* job row.
 
+  R5 private repo NAME, R6 notes-root FOLDER name, R7 personal VENDOR names (3b.7 scrub 1, 2026-11-01). Same
+     hashing, same redaction. R5/R6/R7 are matched on a whole "run" (a maximal [A-Za-z0-9_-] word, so the leading
+     underscore of the notes folder is part of it); R7 also matches a run that STARTS with a vendor name up to a
+     - or _ (the vendor's script and job names). ZERO tolerance on the ZERO_SURFACES; everywhere else a shrink-only
+     per-file RATCHET in system/tools/private-name-baseline.txt (older docs/SOPs/archive, and the rig fixtures).
+     NOT MATCHED, on purpose: longer identifiers that merely CONTAIN the repo name (an env var, the legacy clone
+     path, hook file ids, branch labels). Those are the live identifiers of scrub PART 2, which is ON HOLD because
+     renaming them changes enforcement-hook behaviour; they are not matched as a whole run, so they neither fail nor
+     hide here. The files that still carry R5/R6 mentions in live code (the write-path, gh-account and
+     harness-writeback guards, the notes-root finder in the reindex tool, the rig) are listed in the baseline with
+     their counts; that baseline IS the explicit allowlist and it can only shrink.
+
 Extra names for a test: env LIFEHACK_PRIVATE_DESK_NAMES="a,b" adds plain words to R2/R3 (never committed).
 
 USAGE
@@ -46,6 +58,13 @@ DESK_HASHES = {"4e4472bae3bb215ca666ea0d", "ca3aefc66ed62620a24658f1", "632d4888
                "bbf39a91270403330adbf70e", "6712bfa94cfd0c570ca9e6c2", "b432484358fd6929ce8b7af0",
                "82292908676799ed5ff9423a"}
 BASELINE_REL = "system/tools/private-desk-baseline.txt"
+# R5 repo name / R6 notes-root folder name / R7 personal vendors: salted hashes of the lower-cased run (R6 keeps its
+# leading underscore). The vendor list also holds the hyphen spelling.
+REPO_HASHES = {"33feb806d0a6a20c6a91cbc7"}
+NOTES_HASHES = {"7c2fbf8b4a4205f347e5949d"}
+VENDOR_HASHES = {"11bd2c2cb182d7bcd9355c25", "868738888a316daed0018974", "d35c654f707b8d5ab9422cab"}
+NAME_BASELINE_REL = "system/tools/private-name-baseline.txt"
+RUN = re.compile(r"[A-Za-z0-9_-]+")
 ZERO_SURFACES = [
     "system/jobs.md", "system/job-names.txt",
     "system/register/register.jsonl", "system/register/toolbox.md", "system/register/*.py",
@@ -55,6 +74,7 @@ ZERO_SURFACES = [
     "system/tools/tests/job-sim.sh", "system/tools/tests/job-sim-*.sh",
     "system/tools/check_no_private_desks.py", "system/tools/tests/test_check_no_private_desks.py", BASELINE_REL,
     "hooks/hooks.json", ".claude/settings.json", ".github/workflows/*.yml",
+    "system/tools/vendor-read-allowlist.txt", "system/requirements.txt", "system/tools/private-name-baseline.txt",
 ]
 R4_SURFACES = {"system/jobs.md", "system/job-names.txt", "system/register/register.jsonl", "system/register/toolbox.md"}
 PUBLIC_DESK_MATERIAL = re.compile(r"desks/(?:cal|sentinel)/|^\s*(?:cal|sentinel)-[a-z0-9-]+\s*\|", re.I | re.M)
@@ -65,14 +85,38 @@ def word_hash(w):
     return hashlib.sha256((SALT + w.lower()).encode("utf-8")).hexdigest()[:24]
 
 
-def extra_names():
-    return {w.strip().lower() for w in os.environ.get("LIFEHACK_PRIVATE_DESK_NAMES", "").split(",") if w.strip()}
+def extra_names(var="LIFEHACK_PRIVATE_DESK_NAMES"):
+    return {w.strip().lower() for w in os.environ.get(var, "").split(",") if w.strip()}
 
 
 class Matcher:
     def __init__(self):
         self.extra = extra_names()
+        self.x_repo = extra_names("LIFEHACK_PRIVATE_REPO_NAMES")
+        self.x_notes = extra_names("LIFEHACK_PRIVATE_NOTES_NAMES")
+        self.x_vendor = extra_names("LIFEHACK_PRIVATE_VENDOR_NAMES")
         self.cache = {}
+        self.rcache = {}
+
+    def run_kind(self, run):
+        """R5/R6/R7 for one run (see the header): -> "repo" | "notes" | "vendor" | ""."""
+        lr = run.lower()
+        k = self.rcache.get(lr)
+        if k is None:
+            k = ""
+            if lr.startswith("_") and (word_hash(lr) in NOTES_HASHES or lr in self.x_notes):
+                k = "notes"
+            elif word_hash(lr) in REPO_HASHES or lr in self.x_repo:
+                k = "repo"
+            else:
+                cuts = [i for i, ch in enumerate(lr) if ch in "-_" and i > 0] + [len(lr)]
+                for i in cuts:
+                    pre = lr[:i]
+                    if word_hash(pre) in VENDOR_HASHES or pre in self.x_vendor:
+                        k = "vendor"
+                        break
+            self.rcache[lr] = k
+        return k
 
     def kind(self, w):
         lw = w.lower()
@@ -96,17 +140,22 @@ def is_zero_surface(rel):
 
 
 def scan_file(path, m):
-    """-> ([(line_no, kind)], desk_count, public_material_lines)"""
+    """-> ([(line_no, kind)], desk_count, public_material_lines, name_count) -- name_count = R5/R6/R7 mentions"""
     try:
         with open(path, "rb") as f:
             data = f.read()
     except OSError:
-        return [], 0, []
+        return [], 0, [], 0
     if b"\0" in data[:4096]:
-        return [], 0, []   # binary
+        return [], 0, [], 0   # binary
     text = data.decode("utf-8", "replace")
-    hits, desk = [], 0
+    hits, desk, names = [], 0, 0
     for i, line in enumerate(text.splitlines(), 1):
+        for r in RUN.findall(line):
+            k = m.run_kind(r)
+            if k:
+                hits.append((i, k))
+                names += 1
         for w in WORD.findall(line):
             k = m.kind(w)
             if k:
@@ -114,11 +163,11 @@ def scan_file(path, m):
                 if k == "desk":
                     desk += 1
     pub = [text.count("\n", 0, mm.start()) + 1 for mm in PUBLIC_DESK_MATERIAL.finditer(text)]
-    return hits, desk, pub
+    return hits, desk, pub, names
 
 
-def read_baseline(root):
-    p = os.path.join(root, BASELINE_REL)
+def read_baseline(root, rel=BASELINE_REL):
+    p = os.path.join(root, rel)
     base = {}
     if not os.path.exists(p):
         return base
@@ -146,9 +195,27 @@ def scan(root):
     return out
 
 
+def write_name_baseline(root, res):
+    rows = sorted((rel, n) for rel, (_h, _d, _p, n) in res.items() if n and not is_zero_surface(rel))
+    p = os.path.join(root, NAME_BASELINE_REL)
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    with open(p, "w", encoding="utf-8") as f:
+        f.write("# private-name-baseline.txt -- written by system/tools/check_no_private_desks.py --write-baseline.\n"
+                "# <count>\\t<path>: how many private repo-name (R5), notes-folder-name (R6) and personal-vendor-name (R7)\n"
+                "# mentions a tracked file may still hold (a ratchet). A count may only go DOWN; a file not listed may hold none.\n"
+                "# This list IS the explicit allowlist. It holds (1) older docs, SOPs and archive copies, (2) the live-code\n"
+                "# files whose rename is scrub PART 2 (ON HOLD, it changes enforcement-hook behaviour): the write-path,\n"
+                "# gh-account and harness-writeback guards and their tests, the notes-root finder in the reindex tool, the\n"
+                "# rig and its recorded cases. The names themselves are never written here.\n")
+        for rel, n in rows:
+            f.write("%d\t%s\n" % (n, rel))
+    return len(rows), sum(n for _, n in rows)
+
+
 def write_baseline(root, res):
-    rows = sorted((rel, d) for rel, (_h, d, _p) in res.items() if d and not is_zero_surface(rel))
+    rows = sorted((rel, d) for rel, (_h, d, _p, _n) in res.items() if d and not is_zero_surface(rel))
     p = os.path.join(root, BASELINE_REL)
+    os.makedirs(os.path.dirname(p), exist_ok=True)
     with open(p, "w", encoding="utf-8") as f:
         f.write("# private-desk-baseline.txt -- written by system/tools/check_no_private_desks.py --write-baseline.\n"
                 "# <count>\\t<path>: how many personal-desk-name words a tracked file may still hold (rule R3, a ratchet).\n"
@@ -176,21 +243,36 @@ def main(argv=None):
     if a.write_baseline:
         n, total = write_baseline(root, res)
         print("baseline written: %d file(s), %d mention(s) -> %s" % (n, total, BASELINE_REL))
+        n, total = write_name_baseline(root, res)
+        print("baseline written: %d file(s), %d mention(s) -> %s" % (n, total, NAME_BASELINE_REL))
         return 0
     try:
         base = read_baseline(root)
+        nbase = read_baseline(root, NAME_BASELINE_REL)
     except (OSError, ValueError) as e:
-        print("CANNOT EVALUATE: unreadable %s (%s)" % (BASELINE_REL, e))
+        print("CANNOT EVALUATE: unreadable baseline (%s)" % e)
         return 2
     problems, shrunk = [], []
     for rel in sorted(res):
-        hits, desk, pub = res[rel]
+        hits, desk, pub, names = res[rel]
         zero = is_zero_surface(rel)
         for ln, k in hits:
             if k == "handle":
                 problems.append("%s:%d: R1 names the private repo handle [REDACTED]" % (rel, ln))
+            elif k in ("repo", "notes", "vendor"):
+                if zero:
+                    problems.append("%s:%d: %s names the %s [REDACTED] on a zero-tolerance surface" % (
+                        rel, ln, {"repo": "R5", "notes": "R6", "vendor": "R7"}[k],
+                        {"repo": "private repo name", "notes": "notes-root folder name", "vendor": "personal vendor"}[k]))
             elif zero:
                 problems.append("%s:%d: R2 names a personal desk [REDACTED] on a zero-tolerance surface" % (rel, ln))
+        if not zero:
+            if names > nbase.get(rel, 0):
+                problems.append("%s: R5-R7 holds %d private repo/notes/vendor name mention(s), baseline allows %d -- a NEW "
+                                "mention; say 'your personal code folder' / <notes> / the job, or move it to <personal-code>"
+                                % (rel, names, nbase.get(rel, 0)))
+            elif names < nbase.get(rel, 0):
+                shrunk.append(rel)
         if rel in R4_SURFACES:
             for ln in pub:
                 problems.append("%s:%d: R4 personal desk material (desks/cal|sentinel path or job row) in the job/register files" % (rel, ln))
@@ -208,8 +290,8 @@ def main(argv=None):
         for p in problems:
             print("  " + p)
         return 1
-    print("CLEAN: no private repo handle anywhere; no personal desk on the zero-tolerance surfaces; "
-          "no file above its baseline (%d file(s) scanned)" % len(res))
+    print("CLEAN: no private repo handle anywhere; no personal desk, repo name, notes-folder name or vendor on the "
+          "zero-tolerance surfaces; no file above its baselines (%d file(s) scanned)" % len(res))
     return 0
 
 

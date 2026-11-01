@@ -115,7 +115,7 @@ fi
 
 echo
 echo "── variable resolution (FIXCARD-CROSS-PROJECT-WRITE-VAR-PATHS, 2026-09-17) ────────────────"
-# The incident: B="$HOME/.../_ClaudeOps"; cat >> "$B/plans/enforcement-layer.phase-2.plan.md"
+# The incident: B="$HOME/.../<notes>"; cat >> "$B/plans/enforcement-layer.phase-2.plan.md"
 # emitted the LITERAL, unexpanded "$B/plans/..." -- so acking the real absolute path (the only
 # thing a person actually has to paste) could never match the hash of the literal string that was
 # captured. Each case below is phrased so a reverted fix, OR a "fix" that silently resolves-and-

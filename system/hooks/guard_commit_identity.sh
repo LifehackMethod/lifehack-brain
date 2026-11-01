@@ -214,7 +214,7 @@ case "$VERDICT" in
     # "$HOME/repo" or "${HOME}/repo" reaches us as that LITERAL string — `git -C "$_target"` then
     # fails to resolve it and falls through to a false "no git config user.email set" / MISMATCH
     # deny, even when the real repo's identity is fine and on the allow-list (2026-09-16, observed
-    # live: `cd ~/.claude/skills/ClaudeOps && git commit` denied "has no git config user.email
+    # live: `cd <personal-code> && git commit` denied "has no git config user.email
     # set" though that repo's email IS set and allow-listed). Expand using THIS HOOK'S OWN $HOME —
     # never a hard-coded path — before anything below resolves or reports on $_target.
     case "$_target" in

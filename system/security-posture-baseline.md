@@ -73,7 +73,7 @@ is exposed via Tailscale Serve/Funnel.
 ## 5. mcp-surface
 
 **Check:** `claude_desktop_config.json` mcpServers must be `{}`, and no `.mcp.json` must
-exist in the Drive ClaudeOps root.
+exist in the Drive personal-code root.
 
 **Approved-safe baseline (2026-06-18):** `mcpServers: {}` in claude_desktop_config.json.
 No `.mcp.json` in Drive root. The Asana/Gmail/Google Calendar/Drive tools visible in
@@ -113,9 +113,9 @@ same underlying directory as `gws`.
 
 ## 8. launchd-bootstrap
 
-**Check:** `launchctl list` must include `ai.claudeops.bootstrap`.
+**Check:** `launchctl list` must include `ai.<personal-code>.bootstrap`.
 
-**Approved-safe baseline (2026-06-18):** `ai.claudeops.bootstrap` listed (PID `-`, which
+**Approved-safe baseline (2026-06-18):** `ai.<personal-code>.bootstrap` listed (PID `-`, which
 is normal for a periodic launchd job that is not currently running).
 
 **What triggers DRIFT:** The label absent from launchctl output (plist was unloaded).
@@ -125,7 +125,7 @@ is normal for a periodic launchd job that is not currently running).
 ## 9. [DROPPED] git-remote
 
 ⚖ **PORT NOTE:** the donor's check #9 asserted the clone's own git remote was a PRIVATE repo —
-the opposite of what this repo (`~/.claude/skills/ClaudeOps`) is BY DESIGN, since it ships publicly on purpose.
+the opposite of what this repo (`<personal-code>`) is BY DESIGN, since it ships publicly on purpose.
 Not portable without hardcoding the operator's own GitHub handle into a public repo, so it was
 dropped rather than neutered — see `system/tools/security-posture-scan.sh` ⏳ unruled — not yet ported to this repo, own port note.
 The scanner now runs 12 checks, not 13.
@@ -174,7 +174,7 @@ supabase job accidentally flipped on (double-execution).
 
 ## 13. claudeops-perms
 
-**Check:** `~/.config/claudeops` directory perms must be 700 or 750; no file inside
+**Check:** `~/.config/<personal-code>` directory perms must be 700 or 750; no file inside
 may be world-readable (others-read bit set).
 
 **Approved-safe baseline (2026-06-18):** Directory at 0o700. All files non-world-readable:

@@ -64,7 +64,7 @@ own CLI, and the CI workflow).
 ⛔ SECOND CORRECTION 2026-09-15 (same day, after the fix above shipped). This tool refused
 EVERY commit, independent of anything a given commit actually changed: `generate.py`'s exit
 code conflated a PRIVATE target's own broken path (a private-repo hook file legitimately
-deleted on THIS machine's `~/.claude/skills/ClaudeOps` checkout, commit `9aad44f`, with the
+deleted on THIS machine's personal-code checkout, commit `9aad44f`, with the
 committed register not yet refreshed to match) into the SAME exit code this PUBLIC repo's
 commit gate reads. A public commit gate must not depend on the private repo's live disk
 state on whatever machine happens to run it. FIX: `generate.py` gained an additive,
@@ -271,7 +271,7 @@ def main(argv=None):
             # NOT refuse because the PRIVATE repo's checkout on THIS machine
             # is stale or incomplete (this tool does not even pass
             # --private-root -- it relies on generate.py's own default,
-            # `~/.claude/skills/ClaudeOps`, live on whatever machine runs
+            # `<personal-code>`, live on whatever machine runs
             # this hook). A REFUSED private target becomes a named, printed
             # WARN inside generate.py's own report (see gen_text below) --
             # never a reason to block a public commit.

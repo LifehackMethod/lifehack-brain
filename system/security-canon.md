@@ -1,7 +1,7 @@
 ---
 topic: [agent-security]
 record_type: system-canon
-title: ClaudeOps Security Canon
+title: personal-code Security Canon
 version: "1.0"
 created_at: 2026-05-23
 updated_at: 2026-07-04
@@ -10,9 +10,9 @@ authority: system
 loaded_by: root mode, sentinel, any session involving security decisions
 ---
 
-# ClaudeOps Security Canon
+# personal-code Security Canon
 
-Single source of truth for ClaudeOps security posture. Built from two rounds of
+Single source of truth for personal-code security posture. Built from two rounds of
 ChatGPT Deep Research and iterative red-teaming in May 2026. Load this before
 making security decisions. Do not redo the research — it is here.
 

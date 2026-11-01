@@ -10,7 +10,7 @@
 #      call and must NEVER be able to change one. See FAIL_POSTURE.
 # REDIRECT: n/a — nothing is blocked here.
 # SIGNPOST: design + verify recipe in the B4.1 build report (session scratchpad `B4.1-design.md`,
-#      `B4.1-report.md`); the plan is `_ClaudeOps/plans/enforcement-layer.phase-2.plan.md` PHASE B4.
+#      `B4.1-report.md`); the plan is `<notes>/plans/enforcement-layer.phase-2.plan.md` PHASE B4.
 #      Rotation design/verify: `journal-rotation-report.md` (Drive, enforcement-layer project).
 #      Change the field shape or journal path there first, then here.
 # FAIL_POSTURE: SILENT-DEGRADE, deliberately the OPPOSITE of a guard's fail-closed posture. A guard
@@ -200,7 +200,7 @@ lhb_journal_fire() {
     # A record that proves a hook ran but not WHICH VERSION of it makes "the guard is fixed" and
     # "a stale cached guard is still firing" identical in the evidence — the blind spot that makes a
     # correct-but-not-loaded guard indistinguishable from no guard at all.
-    # Resolution MIRRORS ClaudeOps `git_drift_finding.py: resolve_running_plugin_version`, refusals
+    # Resolution MIRRORS the personal-code repo `git_drift_finding.py: resolve_running_plugin_version`, refusals
     # included: ${CLAUDE_PLUGIN_ROOT} first (the harness's own per-hook substitution, authoritative
     # when set), else the inherited PATH. NEVER a glob of the cache dir and never mtime (the dead
     # end that file records as [A12]); several DISTINCT versions in PATH — a process context layered

@@ -1,7 +1,7 @@
 # REBUILD NOTE — conformance-lab/
 
 - **Moved:** ⛔ 2026-10-31, from `system/tools/conformance-lab/` (skill-system cleanup, approved by Enver 2026-10-31).
-- **Ledger:** `_ClaudeOps/state/projects/skill-system/records/2026-10-31-cleanup-ledger.md`
+- **Ledger:** `<notes>/state/projects/skill-system/records/2026-10-31-cleanup-ledger.md`
 
 ## What to salvage
 

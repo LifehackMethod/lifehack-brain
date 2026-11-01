@@ -577,7 +577,7 @@ esac
 # "command not found" and `cut` returns an EMPTY string, collapsing the key to a constant -- the
 # guard then never matches the receipt read_sop.sh wrote, and the result is a PERMANENT DENY.
 # ⚠ THIS HELPER IS IDENTICAL IN system/tools/read_sop.sh AND system/hooks/guard_hook_sop_read.sh
-# (BOTH repos: private ClaudeOps AND public lifehack-brain -- all four copies) AND MUST STAY THAT
+# (BOTH repos: private personal-code AND public lifehack-brain -- all four copies) AND MUST STAY THAT
 # WAY -- one writes the receipt, the other reads it. If they ever compute the key differently,
 # they disagree on every machine lacking shasum. Same rule as hash_key() in
 # guard_cross_project_write.sh (sha1 not sha256, deliberately, so a machine with shasum and one

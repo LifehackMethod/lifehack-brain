@@ -286,10 +286,10 @@ def _roots() -> str:
     if settings.exists():
         blobs.append(settings.read_text(encoding="utf-8", errors="replace"))
     skill_roots = [root for _, root in _skill_roots() if root.exists()]
-    # ⛔⛔ T-session 2026-08-24 — SELF-POISONING FIX. On THIS install, ClaudeOps (REPO) lives
+    # ⛔⛔ T-session 2026-08-24 — SELF-POISONING FIX. On THIS install, the personal-code repo (REPO) lives
     # *inside* `~/.claude/skills/` as a real directory, not a symlink — so `_skill_roots()`'s
     # "personal (~/.claude/skills)" entry does not just find sibling personal skill packages, it
-    # rglobs the ENTIRE ClaudeOps tree A SECOND TIME: `system/organism/elements/*.md`,
+    # rglobs the ENTIRE personal-code tree A SECOND TIME: `system/organism/elements/*.md`,
     # `migration-notes/*.md`, `system/organism/generated/capability-census.md` (this file's OWN
     # `--census` output, `.gitignore`-derived, regenerated every run — see `CENSUS_OUT` below),
     # everything. None of that is a place execution STARTS — it is documentation and prose ABOUT

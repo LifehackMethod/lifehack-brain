@@ -2011,7 +2011,7 @@ VENDOR_REQ = "#!/usr/bin/env python3\nimport requests\nrequests.post('https://po
 VENDOR_REQ_REFUSAL = "raw requests call at desks/books/tools/vjob/vjob_ingest.py:2 \u2014 go through the shared fetch"
 
 
-def vendor_door(model="none", rel="vjob_ingest.py", script_body=VENDOR_REQ, listed="vjob vjob_ingest.py"):
+def vendor_door(model="none", rel="vjob_ingest.py", script_body=VENDOR_REQ, listed="vjob vjob_ingest.py", personal=None):
     """Run the REAL door on a row 'vjob' whose runner (under <desk>/desks/books/tools/vjob/) is `rel` holding `script_body`.
     LIFEHACK_VENDOR_ALLOWLIST points at a throwaway list holding `listed`. -> (rc, stdout)."""
     d = os.path.realpath(tempfile.mkdtemp(prefix="job-sim-vendor."))
@@ -2024,6 +2024,8 @@ def vendor_door(model="none", rel="vjob_ingest.py", script_body=VENDOR_REQ, list
         bud = "0" if model == "none" else "5"
         open(mf, "w").write(f"```jobs\nvjob | yes | 86400 | o. | $HOME/x ~ ^done ok n=[0-9]+$ | {model} | {bud} | none | python3 \"{tools}/{rel}\"\n```\n")
         env = dict(os.environ, LIFEHACK_JOBS_FILE=mf, LIFEHACK_CODE_ROOT=f"{d}/code", LIFEHACK_DESK_REPO=desk, LIFEHACK_VENDOR_ALLOWLIST=al)
+        if personal is not None:   # 3b.7 scrub 1: the person's own list in the personal code folder; the shared seam is NOT set
+            env.pop("LIFEHACK_VENDOR_ALLOWLIST"); open(f"{desk}/vendor-read-allowlist.txt", "w").write(f"# personal\n{personal}\n")
         r = subprocess.run(["bash", f"{ROOT}/system/tools/install-schedulers.sh", "--check-row", "vjob"], env=env, capture_output=True, text=True)
         return r.returncode, r.stdout.strip().replace(desk + "/", "")
     finally:
@@ -2040,7 +2042,12 @@ def vendor_read_door():
              ("none+unlisted-file", dict(rel="other_ingest.py"), 1, "raw requests call at"),
              ("none+other-job-listed", dict(listed="otherjob vjob_ingest.py"), 1, "raw requests call at"),
              ("none+listed+gmail-read", dict(script_body=VENDOR_REQ + '"$GWS" gmail users messages get --params "{}"\n'), 1, "raw gws gmail read call at"),
-             ("none+listed+curl", dict(script_body=VENDOR_REQ + "curl -s https://x.example\n"), 1, "raw curl call at")]
+             ("none+listed+curl", dict(script_body=VENDOR_REQ + "curl -s https://x.example\n"), 1, "raw curl call at"),
+             ("none+listed-in-PERSONAL-file", dict(personal="vjob vjob_ingest.py"), 0, "PASS"),
+             ("small+listed-in-personal-file", dict(model="small", personal="vjob vjob_ingest.py"), 1, "raw requests call at"),
+             ("none+personal-file-lists-other-job", dict(personal="otherjob vjob_ingest.py"), 1, "raw requests call at"),
+             ("none+personal-file-lists-other-file", dict(personal="vjob other_ingest.py"), 1, "raw requests call at"),
+             ("none+no-personal-list-and-empty-shared-list", dict(personal=""), 1, "raw requests call at")]
     for label, kw, want_rc, want_txt in cases:
         rc, out = vendor_door(**kw)
         if rc != want_rc or want_txt not in out:

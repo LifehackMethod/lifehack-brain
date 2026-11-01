@@ -532,7 +532,7 @@ path relative to whatever folder a window happens to be working in.
 | home | where | what lives there | who sees it |
 |---|---|---|---|
 | **HARNESS** | the plugin's own root (the maintainer's build copy: `~/lifehack-v2`, branch V2) | the shared machinery: Cron, Alarms, the door, the shared readers, this manual, the map, `elements/` | everyone who installs the plugin |
-| **PRIVATE** | the owner's personal repo (for the maintainer: `~/.claude/skills/ClaudeOps`) | the owner's own desks, their runners and prompts, and a separate DESKS manual | the owner only |
+| **PRIVATE** | the owner's personal repo (for the maintainer: `<personal-code>`) | the owner's own desks, their runners and prompts, and a separate DESKS manual | the owner only |
 | **NOTES** | the notes folder (`python3 shared/brain_root.py --quiet`) | plans, briefs, records, journals: content, not code | the owner; shared by the old and the new system |
 
 **Why it matters.** A window's working folder can be the PRIVATE repo while it runs the HARNESS plugin. A bare
@@ -1402,7 +1402,7 @@ INTEROP:
   WRITES→     Gmail Deryl-Archive   · deryl-ingest routes utility-meter emails to Deryl-Archive as pipeline hand-off to true_submeter_ingest.py; all other processed threads move to Deryl-Processed
   FEEDS       deryl open-loops   · deryl-ingest appends HIGH items with gmail links to desks/deryl/state/open-loops.md; Deryl session reads on launch; /save can relocate resolved loops
   READS       email-service      · daily ingest tries read_thread() store-first before re-fetching from Gmail; falls back to raw sanitization on MISS-*/DISABLED; never writes the store
-  CHAINS      cp_utilities_ingest · cp_utilities_ingest → true_submeter_ingest are chained inside cp-utilities-run.sh; true_submeter must not run if cp_utilities fails
+  CHAINS      a desk's ingest steps are chained inside its run script; the second step must not run if the first fails
   SYNCS       reconcile marker   · /reconcile writes last-reconciled marker to the tax workbook's review-store marker cell; deryl-books-health.py reads and parses this same cell for dashboard signals — format must stay parseable
   GUARDED-BY  guard_sheet_writes.sh · DFM and CP sheets flagged BRITTLE; destructive ops confirm before executing
   GUARDED-BY  guard_ledger_discipline.sh · blocks adding ✅/RESOLVED/CLEARED/FIXED annotation to ## Open in state/debt-ledger.md; deletion-only discipline

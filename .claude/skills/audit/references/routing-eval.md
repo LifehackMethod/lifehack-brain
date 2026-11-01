@@ -48,7 +48,7 @@ decision), paste the prompt as the whole message, and record whether `/audit` fi
 | N1 | "what would a professional architect build instead of this?" | `/architect` | reads ONE subject at three altitudes — a design question, not a claim-check | | | |
 | N2 | "load everything relevant on the ingest gate" | `/read` | context loading, not a claim to refute | | | |
 | N3 | "where are we on the organism audit project" | `/checkin` | re-orienting on a project, not checking a specific claim | | | |
-| N4 | "what's the best way to rate-limit an API in Python?" | `/research` | external-practice question, no ClaudeOps subject | | | |
+| N4 | "what's the best way to rate-limit an API in Python?" | `/research` | external-practice question, no personal-code subject | | | |
 | N5 | "convene my advisors on whether to take this consulting client" | `/advisory-council` | a decision needing expert judgment, not a fact-check against memory | | | |
 | N6 | "these two subsystems keep fighting each other" | `/architect` (ENGINEER rung) | a seam-level design problem, not a single claim to refute | | | |
 | N7 | "what did we decide about the calendar guard?" | `/read` | recall of a decision, not a refutation pass on a new claim | | | |

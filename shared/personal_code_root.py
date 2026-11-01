@@ -13,7 +13,7 @@ A pointer that IS present but names a folder that is gone is its own outcome, "p
 and it NEVER falls back to the default: silently switching folders would split your history in two.
 Closed outcome set {RESOLVED, POINTER-MISSING, NOT-SET}. Never guesses, never uses the cwd.
 
-For the maintainer the pointer names ClaudeOps (the private desk repo); nothing about that is
+For the maintainer the pointer names a private desk repo; nothing about that is
 special-cased here.
 
 Usage as a library:

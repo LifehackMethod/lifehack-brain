@@ -263,7 +263,7 @@ or a supervised session) is required to act on any proposal.
 **G1 — `guard_write_paths.sh` [blocking hook — PreToolUse Write|Edit]**
 - Registered in `system/reference/settings.json` line 161. **CORRECTED 2026-08-27** (L.B2 audit,
   live test): the citation path is the donor layout — ⛔ this repo has no `system/hooks/registrations.json`
-  (that file is private ClaudeOps tooling, not shipped here). ✅ This repo's live registration surface is
+  (that file is private personal-code tooling, not shipped here). ✅ This repo's live registration surface is
   `hooks/hooks.json`; `guard_write_paths.sh` is registered there (verified: `hooks/hooks.json:123`) and
   the hook itself is genuinely registered and fires.
 - ~~Blocks Write/Edit to paths outside the Drive spine and approved clone subsets.~~
@@ -345,7 +345,7 @@ record, not deleted:
 **G8 — Single-instance lock [race-prevention]**
 - ~~`mkdir /tmp/lifehack-archivist-{audit|deepmine}.lock`~~ **CORRECTED 2026-08-27** (L.B2 audit,
   source read of `archivist-run.lib.sh`): the live lock path is `mkdir /tmp/claudeops-${ARCH_LABEL}.lock`
-  (e.g. `/tmp/claudeops-archivist-audit.lock`) — prefix is `claudeops`, not `lifehack`. (lib lines
+  (e.g. `/tmp/claudeops-archivist-audit.lock`) — prefix is `the personal-code repo`, not `lifehack`. (lib lines
   149–161). Atomic directory creation. Stale-steal after `ARCH_WATCHDOG + 300` seconds. Prevents
   two concurrent runs of the same job. `[honor]`
 

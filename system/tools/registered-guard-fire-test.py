@@ -157,7 +157,7 @@ def enumerate_pretool_guards(reg_data: dict, repo: Path):
         matcher = entry.get("matcher", "*")
         for hk in entry.get("hooks", []):
             cmd = hk.get("command", "")
-            # command is like: bash "$HOME/.claude/skills/ClaudeOps/system/hooks/x.sh" [args]
+            # command is like: bash "<personal-code>/system/hooks/x.sh" [args]
             m = re.search(r'(system/hooks/[A-Za-z0-9_./-]+\.sh)', cmd)
             if not m:
                 continue

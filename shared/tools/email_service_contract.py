@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """email_service_contract.py — Single Source of Truth for email-ingestion decisions (ENF-A).
 
-This module is the BINDING CONTRACT for the ClaudeOps Email Summary service.  Every operational
+This module is the BINDING CONTRACT for the Email Summary service.  Every operational
 constant that governs how email is ingested, which model summarizes it, and who is allowed to
 touch Gmail is declared HERE and only here.  The janitor (email_summary_sync.py) imports these
 constants at startup; if the import fails it hard-stops.

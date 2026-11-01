@@ -382,7 +382,7 @@ def write_note(source, native_id, provisional, *, raw_record=None, content_hash_
 
 # In-process, single-use token registry. A subagent is a SEPARATE OS process importing its own copy of
 # this module, so it cannot see tokens minted in the main session → it structurally cannot stamp
-# human_confirmed. This IS the "main-session-only" wall (ClaudeOps: HITL execution stays in the main loop).
+# human_confirmed. This IS the "main-session-only" wall (the personal-code repo: HITL execution stays in the main loop).
 _MINTED_TOKENS = {}   # token -> (source, native_id)
 _MINTED_PID = None    # the pid that minted — hardens the separate-process subagent boundary
 

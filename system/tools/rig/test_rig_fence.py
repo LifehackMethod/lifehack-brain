@@ -29,7 +29,7 @@ CURL = "cu" + "rl"   # spelled apart so a guard scanning this file's text is not
 # (name, result, expected_deny)
 CASES = [
     ("Write real ~/.claude/skills", fence("Write", {"file_path": RH + "/.claude/skills/friday-recap/SKILL.md", "content": "x"}), True),
-    ("Write real ClaudeOps desk tools", fence("Write", {"file_path": RH + "/.claude/skills/ClaudeOps/desks/money/tools/a.py", "content": "x"}), True),
+    ("Write real ClaudeOps desk tools", fence("Write", {"file_path": RH + "/.claude/skills/ClaudeOps/desks/example/tools/a.py", "content": "x"}), True),
     ("Edit real settings.json", fence("Edit", {"file_path": RH + "/.claude/settings.json", "old_string": "a", "new_string": "b"}), True),
     ("Write real ~/.config/lifehack", fence("Write", {"file_path": RH + "/.config/lifehack/placement.conf", "content": "x"}), True),
     ("Write real notes root", fence("Write", {"file_path": NOTES + "/desks/x.md", "content": "x"}), True),
@@ -39,8 +39,8 @@ CASES = [
     ("Bash mkdir real", B("mkdir -p " + RH + "/.claude/skills/friday-recap"), True),
     ("Bash redirect to real", B("echo hi > " + RH + "/.claude/skills/x.md"), True),
     ("Bash cat heredoc >> real", B("cat >> " + RH + "/.config/lifehack/placement.conf <<'E'\nx=off\nE"), True),
-    ("Bash rm real", B("rm -rf " + RH + "/.claude/skills/ClaudeOps/desks/money"), True),
-    ("Bash rmdir -p real", B("rmdir -p " + RH + "/.claude/skills/ClaudeOps/desks/money/tools 2>/dev/null; ls"), True),
+    ("Bash rm real", B("rm -rf " + RH + "/.claude/skills/ClaudeOps/desks/example"), True),
+    ("Bash rmdir -p real", B("rmdir -p " + RH + "/.claude/skills/ClaudeOps/desks/example/tools 2>/dev/null; ls"), True),
     ("Bash mv into real", B("mv notes.md " + RH + "/Documents/"), True),
     ("Bash cp into real (last arg)", B("cp a.md " + RH + "/.claude/skills/x/"), True),
     ("Bash tee real", B("echo x | tee " + RH + "/.claude/x.md"), True),

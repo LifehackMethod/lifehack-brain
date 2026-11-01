@@ -998,7 +998,7 @@ def lint_hooks(root, findings, counts, scope=None):
         except Exception as e:
             print_cannot_read("%s is not readable JSON (%s)" % (registrations_rel, e))
             return CANNOT_READ
-        # `$HOME/.claude/skills/ClaudeOps/...` per the registrations.json _README: absolute-from-$HOME, no username,
+        # `<personal-code>/...` per the registrations.json _README: absolute-from-$HOME, no username,
         # so it stays safe to publish and still resolves from a session launched anywhere on the box.
         by_source[registrations_rel] = set(re.findall(r"\$HOME/.claude/skills/ClaudeOps/([^\\\"\s]+)", reg_raw))
     # registrations.json not existing is not an error -- it is the public-repo / old-layout case,

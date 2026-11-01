@@ -23,7 +23,7 @@
 #      API round-trip and no folder id to leak. Dropping the upload does not lose the
 #      capability; it follows the skill's OWN already-ported contract instead of the donor's
 #      older one.
-#   3. `~/.config/claudeops/*` paths -> `~/.config/lifehack/*` (this repo's established
+#   3. `~/.config/<personal-code>/*` paths -> `~/.config/lifehack/*` (this repo's established
 #      machine-local config home).
 #
 # Contract — a wrapper sources this file, sets the vars below, then calls run_archivist:

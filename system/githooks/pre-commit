@@ -68,7 +68,7 @@ fi
 #
 # WHY THIS EXISTS HERE NOW: the pre-migration clone's `system/githooks/pre-commit` ran gitleaks;
 # this file, at the same path in the new repo, did not — the migration replaced one hook with the
-# other instead of merging them, so `~/ClaudeOps` briefly had a personal-notes guard and NO secret
+# other instead of merging them, so `~/<personal-code>` briefly had a personal-notes guard and NO secret
 # scanning at all. Ruled 2026-08-22 (`authority: user`, closes Q21/G14 part 2): merge both
 # behaviours, keep FAIL-CLOSED, and pay the cost by shipping gitleaks in the installer (INSTALL.md,
 # T10.D4) rather than by weakening the guard.

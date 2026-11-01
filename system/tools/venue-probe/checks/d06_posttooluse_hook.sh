@@ -9,7 +9,7 @@
 # process output, captured mechanically.
 #
 # WHY THE PATH LOOKS ODD: validate_frontmatter.py only validates paths
-# containing "desks/", "system/", or "_ClaudeOps" (see
+# containing "desks/", "system/", or "<notes>" (see
 # system/tools/validate_frontmatter.py, scope-narrowing block). To trip a
 # REAL advisory while staying entirely inside /tmp (hard safety rule), the
 # scratch file is created at $SCRATCH_DIR/system/<name>.md -- the substring

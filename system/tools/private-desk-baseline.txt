@@ -31,7 +31,6 @@
 1	system/organism/elements/skill-system.md
 2	system/organism/elements/statusline-hud.md
 130	system/organism/manual.md
-2	system/requirements.txt
 3	system/security-posture-baseline.md
 1	system/sops/cron-jobs-sop.md
 5	system/sops/recovery-runbook.md

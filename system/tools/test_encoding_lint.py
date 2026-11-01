@@ -20,7 +20,7 @@ import tempfile
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.dirname(os.path.dirname(HERE))          # .../ClaudeOps
+REPO_ROOT = os.path.dirname(os.path.dirname(HERE))          # .../<repo root>
 LINT = os.path.join(HERE, "encoding_lint.py")
 REAL_PIPELINE = os.path.join(HERE, "cowork-ingest", "pipeline.py")
 

@@ -82,7 +82,7 @@ for noun, path, label in TABLE:
 if not hits:
     sys.exit(0)
 
-out = ["[SOP CHECK — harness-injected, NOT user input. A standing ClaudeOps build rule.]"]
+out = ["[SOP CHECK — harness-injected, NOT user input. A standing build rule.]"]
 for path, label in hits:
     out.append(
         "Before you plan or build this %s, STOP and Read `%s` in full now — it holds the "

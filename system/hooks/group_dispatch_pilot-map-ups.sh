@@ -32,7 +32,7 @@ trap 'lhb_journal_fire "$?" "group_dispatch_pilot-map-ups.sh" "UserPromptSubmit"
 #      (`GROUPABLE_HOOK_EVENTS`), `system/register/generate.py`
 #      (`collapse_group_rows`), and `system/register/schema-v1.md`'s `group`
 #      section. Design + Verify recipe: session scratchpad `B5.2-design.md`;
-#      the plan is `_ClaudeOps/plans/enforcement-layer.phase-2.plan.md`
+#      the plan is `<notes>/plans/enforcement-layer.phase-2.plan.md`
 #      PHASE B5, Feature B5.2. Change the RULE there first, this file only
 #      executes it.
 # FAIL_POSTURE: degrade-safe per member, structurally — a member's failure is

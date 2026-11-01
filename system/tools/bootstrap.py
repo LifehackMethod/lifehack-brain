@@ -138,7 +138,7 @@ def ensure_personal_code(dry_run=False):
 
     Returns a list of plain-English lines. Never overwrites: an existing pointer
     (~/.config/lifehack/personal-code) is left exactly as it is, and when it already names a real folder
-    nothing else is touched (the maintainer's pointer names ClaudeOps; a second folder here would be wrong).
+    nothing else is touched (the maintainer's pointer names a private repo; a second folder here would be wrong).
     Only with NO pointer: make ~/lifehack-personal-code if missing, `git init` it if it has no .git,
     write the pointer. A missing git is a warning, never a failure. Resolution lives in
     shared/personal_code_root.py."""

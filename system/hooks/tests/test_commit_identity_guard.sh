@@ -59,7 +59,7 @@ cp "$REPO_ROOT/shared/brain_root.py" "$HARNESS_REPO_BADID/shared/brain_root.py"
 cp "$REPO_ROOT/system/tools/utf8_stdio.py" "$HARNESS_REPO_BADID/system/tools/utf8_stdio.py"
 
 # A "non-harness" repo — the bug's own reproduction case: no shared/ folder at all, e.g. a
-# private personal repo like ~/.claude/skills/ClaudeOps.
+# private personal repo like <personal-code>.
 PLAIN_REPO="$SANDBOX/plain-repo"
 git_repo "$PLAIN_REPO" "$ALLOWED"
 
@@ -145,7 +145,7 @@ printf '%s' "$MSG" | grep -q "$NO_BRAIN_PLUGIN" && ok || bad "unresolvable names
 
 echo "── ⭐ THE FIX (2026-09-16): shlex.split() does NOT expand ~ or \$HOME — a cd/-C target written
       that way must still resolve to the real repo, not fall through to a false 'no user.email' /
-      mismatch deny (observed live: 'cd ~/.claude/skills/ClaudeOps && git commit' denied though
+      mismatch deny (observed live: 'cd <personal-code> && git commit' denied though
       that repo's email IS on the allow-list) ──"
 
 # Each case below gets its OWN fresh, isolated HOME — a repo at its root plus its own scratch

@@ -31,19 +31,19 @@ trap 'lhb_journal_fire "$?" "mirror_line.sh" "SessionStart" "" 2>/dev/null || tr
 # original four checks never looked backward, so the one drift actually present (`main`
 # 12 behind `origin/main`, 2026-09-08) was invisible to this tool.
 # 5. stray-remotes — any git remote other than `origin`, plus any remote-tracking ref not
-# under `refs/remotes/origin/`. Added M13 — the public workbench carried a `claudeops`
+# under `refs/remotes/origin/`. Added M13 — the public workbench carried a `the personal-code repo`
 # remote (5 refs) and 9 `origin-pr/*` refs with no configured remote at all; M10's other
 # four checks never look at either, and `git remote prune origin` cannot see them because
 # they are not origin's.
 # 6. harness-overlap — ONLY in a two-remote clone, and only when exactly one of the two
 # remotes' URL matches the same public-shaped pattern the push-gate uses
-# (`github\.com[:/]LifehackMethod/`, see ClaudeOps system/shipping-lane/public-remotes.json).
+# (`github\.com[:/]LifehackMethod/`, see personal-code system/shipping-lane/public-remotes.json).
 # Counts paths from `git ls-tree -r --name-only HEAD` whose blob at that path is IDENTICAL
 # (via ONE bulk `git cat-file --batch-check` over both `HEAD:<path>` and
 # `<public-remote>/<default-branch>:<path>` for every path — never a per-path `git rev-parse`
 # loop, which froze three agents for 52 minutes on this project, and never
 # `git log --find-object`, which produced a false positive on this project). Exists because
-# `system/tools/resolution-census.sh` (ClaudeOps) counts symlinks only (`[ -L "$f" ] || continue`)
+# `system/tools/resolution-census.sh` (the personal-code repo) counts symlinks only (`[ -L "$f" ] || continue`)
 # — a real-directory copy is invisible to it, which is how 47 real directories hid in plain
 # sight. That tool can prove the claim FALSE, never TRUE; this segment is the instrument that
 # CAN prove it true. Students have single-remote clones and never see this. Silent whenever:

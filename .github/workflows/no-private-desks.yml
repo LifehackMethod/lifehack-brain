@@ -6,6 +6,9 @@ name: No Private Desks
 # the scheduler and register tools alongside the shared files. This job keeps that material out of the plugin:
 # system/tools/check_no_private_desks.py (rules R1-R4 in its header; the names are carried only as salted hashes and
 # every finding is printed redacted) plus its own test file, which plants a mention and proves it is caught.
+# 3b.7 scrub 1 (2026-11-01) adds R5-R7: the private repo's NAME, the notes-root FOLDER name and personal VENDOR names,
+# hashed the same way, zero tolerance on the job/register/scheduler/workflow surfaces and a shrink-only baseline
+# (system/tools/private-name-baseline.txt) elsewhere.
 
 on:
   pull_request:

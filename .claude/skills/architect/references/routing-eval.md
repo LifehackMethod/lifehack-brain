@@ -52,7 +52,7 @@ decision), paste the prompt as the whole message, and record whether `/architect
 | N5 | "convene my advisory council on whether to buy the house" | `/advisory-council` | a council, but the **wrong cartridge** — not a ClaudeOps-architecture question | | | |
 | N6 | "these two subsystems are fighting each other" | ENGINEER rung | seam-level, one rung below | | | |
 | N7 | "review this code" | ordinary review | implementation, not architecture | | | |
-| N8 | "what's the best way to do X in Python?" | `/research` | an external-practice question with no ClaudeOps subject | | | |
+| N8 | "what's the best way to do X in Python?" | `/research` | an external-practice question with no personal-code subject | | | |
 
 ⚠ **N5 and N6 are the two that matter.** N5 shares almost all of this skill's vocabulary and differs only
 in **domain**; N6 shares the domain and differs only in **altitude**. If either fires, the description is

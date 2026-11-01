@@ -24,7 +24,7 @@ under review — so the session that follows works from the Map, never from raw 
 >
 > ⚠⚠ **PRECISION MATTERS HERE — CORRECTED 2026-08-05.** This block previously also said *"`launchd`
 > cannot read the Drive mount (macOS TCC),"* and that fact — **true of `launchd`** — was being read as
-> *"no scheduled path can ever work."* **FALSE.** ClaudeOps schedules from **`crontab`**, and ~40 pulse
+> *"no scheduled path can ever work."* **FALSE.** the personal-code repo schedules from **`crontab`**, and ~40 pulse
 > jobs read Drive on it every five minutes (`ingest-run.lib.sh:28,65`). ▶ **So a WARMING cron that
 > processes the corpus in the days before a review is legitimate and is being planned** (`W4`) — what
 > stays forbidden is this phase DEPENDING on it.

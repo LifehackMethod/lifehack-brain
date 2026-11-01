@@ -16,7 +16,7 @@ CLONE="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/../.." && pwd)"
 LAUNCHERS="$CLONE/system/desktop-launchers"
 SETTINGS="$CLONE/system/reference/settings.json"
 ISO_VARS=(GOOGLE_WORKSPACE_CLI_CONFIG_DIR GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE GOOGLE_WORKSPACE_CLI_KEYRING_BACKEND)
-# Isolated creds store moved ~/.config/claudeops -> ~/.config/lifehack (this repo's established
+# Isolated creds store moved ~/.config/<personal-code> -> ~/.config/lifehack (this repo's established
 # machine-local config home, per gws-auth.lib.sh's gws_creds_path()); the writer (gws-reauth.sh)
 # and every live reader now agree on the new path, so the audit checks the same one.
 GCREDS="${LIFEHACK_GWS_CREDS_FILE:-$HOME/.config/lifehack/gws-credentials.json}"

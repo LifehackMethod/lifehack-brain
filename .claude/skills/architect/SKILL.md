@@ -42,12 +42,12 @@ advisors run `opus` — the sanctioned exception, scoped to the routed advisors 
 > | `system/tools/findings_reader.py` (step 2b, "HOW IT ACTUALLY FAILS" — Hospital's findings) | SURVEY | ⛔ **not shipped** — Hospital itself hasn't migrated here (donor-only concept). Every SURVEY run should say "no failure history available" per the skill's own instruction, not silently skip the rung. |
 > | `system/tools/architecture_reason.py` (the human-ruling filter, step 2) | SURVEY | ⛔ **not shipped** — the "did the operator already rule on this" pre-check cannot run; a SURVEY here cannot detect and stop on a prior ruling. Real degradation, not a blocker. |
 > | `advisory-council` (the engine, step 3) | COUNCIL | **present** (`.claude/skills/advisory-council/`) — but the specific `claudeops-architecture` cartridge/roster it needs does not exist anywhere in this repo or notes root. |
-> | `system/council-framings.md` (step 3) | COUNCIL | ✅ **here** — corrected from the donor's `_ClaudeOps/councils/framings.md` (a personal-notes path there); at this destination the framing text is a repo-tracked engine file, same as `advisory-council` already reads it. Not what blocks COUNCIL mode — the cartridge/roster row above is. |
+> | `system/council-framings.md` (step 3) | COUNCIL | ✅ **here** — corrected from the donor's `<notes>/councils/framings.md` (a personal-notes path there); at this destination the framing text is a repo-tracked engine file, same as `advisory-council` already reads it. Not what blocks COUNCIL mode — the cartridge/roster row above is. |
 > | `system/tools/emit_recommendation.py`, `fault_proposer.py`'s threshold (steps 5-6) | COUNCIL | ⛔ **not shipped**. |
 >
 > **Verdict: COUNCIL mode is still blocked, but on a narrower basis than first found — its framing
 > file turned out to be a citation error, not a real gap** (see the corrected row above: `advisory-council`
-> reads `system/council-framings.md` here, same as it always did; the donor's `_ClaudeOps/councils/
+> reads `system/council-framings.md` here, same as it always did; the donor's `<notes>/councils/
 > framings.md` path was ported over unchanged, which was wrong). What actually blocks it is the missing
 > `claudeops-architecture` cartridge/roster and `emit_recommendation.py`. **SURVEY mode is portable and
 > will run** — steps 1, 2c, "The read," and the Rails/Verification framing all work as written — but 2a
