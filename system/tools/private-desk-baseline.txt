@@ -7,6 +7,7 @@
 1	.claude/skills/planning-weekly/prompts/council/long-lens-ponzi.md
 15	.github/scripts/check_no_internal_leakage.py
 4	archive/2026-10-31-skill-system-cleanup/system/tools/skill_command_check.py
+2	archive/2026-10-31-skill-system-cleanup/system/tools/test_transcript_outline.py
 6	archive/2026-10-31-skill-system-cleanup/system/tools/transcript_outline.py
 3	system/hooks/tests/test_desk_tool_placement.sh
 18	system/hooks/tests/test_guard_build_mode.sh
@@ -45,4 +46,3 @@
 1	system/tools/safe_sheets.py
 2	system/tools/test_agent_pins.py
 3	system/tools/test_planning_diary_capture.py
-2	system/tools/tests/test_transcript_outline.py

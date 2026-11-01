@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# RETIRED 2026-11-01 pre-merge triage: moved here from system/tools/tests/ with its subject transcript_outline.py (archived by the 2026-10-31 skill-system cleanup). run-all-tests.sh does not run archive/.
 """test_transcript_outline.py — unit tests for transcript_outline.py.
 
 All synthetic: no network, no real transcript files, nothing from the notes tree. Chunk-writing

@@ -197,13 +197,16 @@ class GovernorCase(unittest.TestCase):
 
     # ── the state file itself ─────────────────────────────────────────────────────────────────
 
-    def test_a_corrupt_state_file_does_not_silence_anything(self):
-        """Failing towards SENDING is the right direction here. A state file that cannot be read
-        must never be able to suppress an alert."""
-        with open(self.state, "w") as f:
+    def test_a_corrupt_state_file_is_refused_loudly_not_reset(self):
+        """5.9(e) (replaces the older 'send anyway' test, 2026-11-01 triage): a state file that is present but unreadable is REFUSED and named
+        (exit 3), never 'started fresh' -- a silent reset of the cap and dedup history can flood the phone or go quiet. The file is left as found."""
+        with open(self.state, "w", encoding="utf-8") as f:
             f.write("{ not json")
-        ok, _ = self.ask("scan", "found something", NOTIFY_QUIET_START=0, NOTIFY_QUIET_END=0)
-        self.assertTrue(ok)
+        ok, reason = self.ask("scan", "found something", NOTIFY_QUIET_START=0, NOTIFY_QUIET_END=0)
+        self.assertFalse(ok)
+        self.assertIn("corrupt", reason.lower())
+        with open(self.state, encoding="utf-8") as f:
+            self.assertEqual(f.read(), "{ not json")
 
     def test_a_suppressed_request_is_not_recorded_as_a_send(self):
         """Otherwise a suppression would eat a slot from the day's allowance, and the cap would

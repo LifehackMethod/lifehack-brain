@@ -22,18 +22,22 @@ LIT = [re.compile(p) for p in (
     r"""\b[Mm][Oo][Dd][Ee][Ll]\s*=\s*["']([\w.\-]+)["']""",
     r"""^\s*(?:export\s+)?MODEL\s*=\s*([A-Za-z0-9][\w.\-]*)\s*(?:#.*)?$""")]
 EXEMPT = {"system/tools/model.lib.sh", "shared/tools/model_ids.py"}
+# 2026-11-01 pre-merge triage: system/tools/rig/ holds planted wrong-move FIXTURES (cases that deliberately contain a literal id) -> skipped like tests/.
+# system/tools/skill-tester-rig/ only parses tier flags (small|medium|large|haiku|sonnet|opus): the (1) id pattern is still enforced there, only (2) is skipped.
+FIXTURE_PREFIX = "system/tools/rig/"
+LIT_SKIP_PREFIX = ("system/tools/skill-tester-rig/",)
 hits = []
 for top in ("shared", "system/tools"):
     for dp, dn, fn in os.walk(top):
         dn[:] = [d for d in dn if d not in ("__pycache__", ".git", "tests", "fixtures")]
         for f in fn:
             p = os.path.join(dp, f)
-            if p in EXEMPT: continue
+            if p in EXEMPT or p.startswith(FIXTURE_PREFIX): continue
             try: lines = open(p, encoding="utf-8").read().splitlines()
             except (UnicodeDecodeError, OSError): continue
             for i, ln in enumerate(lines, 1):
                 code = not ln.lstrip().startswith("#")
-                if ID.search(ln) or (code and any(r.search(ln) for r in LIT)):
+                if ID.search(ln) or (code and not p.startswith(LIT_SKIP_PREFIX) and any(r.search(ln) for r in LIT)):
                     hits.append((p, i, ln.strip()[:100]))
 known = [h for h in hits if h[0] in KNOWN]; new = [h for h in hits if h[0] not in KNOWN]
 print("KNOWN hard-coded ids (job not migrated yet; remove each entry as its job migrates):")

@@ -1,4 +1,5 @@
 #!/bin/bash
+# RETIRED 2026-11-01 pre-merge triage: moved from system/hooks/tests/ next to its subject rebuild/guard_step_gate.sh (the hook left system/hooks in the 2026-10-31 cleanup; see rebuild/guard_step_gate.sh.REBUILD-NOTE.md). Bring it back with the hook. run-all-tests.sh does not run rebuild/.
 # test_guard_step_gate.sh — proof of guard_step_gate.sh's own mechanism: generic, register-driven,
 # both PreToolUse and UserPromptExpansion legs, fail-closed on garbage, benign controls untouched.
 #

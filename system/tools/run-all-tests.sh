@@ -30,12 +30,20 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$HERE/../.." && pwd)"
 
 TIMEOUT_SECS="${TEST_TIMEOUT_SECS:-90}"
+# 2026-11-01 pre-merge triage: files that PASS alone but run longer than the default when the machine is loaded (measured alone: rig_selftest 135s).
+# They get SLOW_TIMEOUT_SECS (env, default 300) instead of the default. Add a file here only after timing it alone.
+SLOW_RELPATHS=("system/hooks/tests/test_rig_selftest.sh" "system/hooks/tests/test_fire_journal.sh")
+SLOW_TIMEOUT_SECS="${SLOW_TIMEOUT_SECS:-300}"
+timeout_for() { local i; for i in "${SLOW_RELPATHS[@]}"; do [ "$i" = "$1" ] && { echo "$SLOW_TIMEOUT_SECS"; return; }; done; echo "$TIMEOUT_SECS"; }
 
 # A throwaway data root and a throwaway output buffer, both for this run only.
 RUN_TMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/run-all-tests-root.XXXXXX")"
 OUT="$(mktemp "${TMPDIR:-/tmp}/run-all-tests-out.XXXXXX")"
 trap 'rm -rf "$RUN_TMP_ROOT" "$OUT"' EXIT
 export LIFEHACK_ROOT="$RUN_TMP_ROOT"
+# 2026-11-01 pre-merge triage: tests that run the commit-time leak scan (test_refresh_staged, test_toolbox_staged, test_check_safe_to_ship)
+# REFUSE when the throwaway root has no ship-identity file ("CANNOT EVALUATE"). Give the run a fixture identity: one term that matches nothing real.
+mkdir -p "$RUN_TMP_ROOT/config" && printf 'zz-run-all-fixture-term-matches-nothing\n' > "$RUN_TMP_ROOT/config/ship-identity.md"
 
 # ── files this gate will not run, and why ─────────────────────────────────────────────────────
 # A file goes on this list ONLY when reading its source shows a real outbound network call this
@@ -74,11 +82,12 @@ run_with_timeout() {  # run_with_timeout <secs> <outfile> <cmd...>   ->  return 
   wait "$pid"
 }
 
-# ── discover every test file, deterministically ───────────────────────────────────────────────
+# ── discover every test file, deterministically
+# archive/ and rebuild/ hold RETIRED code (skill-system cleanup 2026-10-31) and their tests; they are not run. A retired test is moved there with a note. ───────────────────────────────────────────────
 FILES=()
 while IFS= read -r f; do
   FILES+=("$f")
-done < <(find "$REPO_ROOT" -path "$REPO_ROOT/.git" -prune -o -type f \( -name 'test_*.py' -o -name 'test_*.sh' \) -print | sort)
+done < <(find "$REPO_ROOT" -path "$REPO_ROOT/.git" -prune -o -path "$REPO_ROOT/archive" -prune -o -path "$REPO_ROOT/rebuild" -prune -o -type f \( -name 'test_*.py' -o -name 'test_*.sh' \) -print | sort)
 
 TOTAL=${#FILES[@]}
 
@@ -130,14 +139,15 @@ for f in "${FILES[@]}"; do
     *) echo "  ⏭ SKIP  $rel (unrecognized extension)"; SKIP=$((SKIP + 1)); SKIPPED_NAMES="$SKIPPED_NAMES $rel"; continue ;;
   esac
 
-  run_with_timeout "$TIMEOUT_SECS" "$OUT" "${cmd[@]}"
+  TSECS="$(timeout_for "$rel")"
+  run_with_timeout "$TSECS" "$OUT" "${cmd[@]}"
   rc=$?
 
   if [ "$rc" -eq 0 ]; then
     echo "  ✔ PASS  $rel"
     PASS=$((PASS + 1))
   elif [ "$rc" -eq 124 ]; then
-    echo "  ✘ TIMEOUT  $rel  (exceeded ${TIMEOUT_SECS}s)"
+    echo "  ✘ TIMEOUT  $rel  (exceeded ${TSECS}s)"
     tail -n 15 "$OUT" | sed 's/^/      /'
     FAIL=$((FAIL + 1)); FAILED_NAMES="$FAILED_NAMES $rel(timeout)"
   else
