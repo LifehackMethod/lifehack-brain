@@ -141,7 +141,7 @@ echo "── later-list: skill_edit_to_ask (existing file of a NON-git personal 
 for _k in skill_edit_to_ask; do
   grep -qE "^${_k}=(on|off)\$" "$HOOKS/roundB.conf" && ok || bad "roundB.conf has a real line ${_k}=on|off" "missing"
 done
-grep -qE "^skill_edit_to_ask=off\$" "$HOOKS/roundB.conf" && ok || bad "skill_edit_to_ask ships OFF" "default must be off"
+grep -qE "^skill_edit_to_ask=on$" "$HOOKS/roundB.conf" && ok || bad "skill_edit_to_ask ships ON (3b.7 C, Enver-approved 2026-11-01)" "default must be on"
 mkdir -p "$TMPHOME/.claude/skills/old-skill/scripts"; echo old > "$TMPHOME/.claude/skills/old-skill/scripts/run.sh"
 for sw in on off; do
   want_exist=0; [ "$sw" = off ] && want_exist=2
