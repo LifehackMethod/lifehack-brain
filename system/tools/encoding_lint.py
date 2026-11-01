@@ -132,6 +132,7 @@ already opens with `encoding="utf-8"` and returns a clean (text, error) pair. Se
 in this repo already use it — importing a fix once does not adopt it everywhere, so this
 lint still exists to catch the calls that were not converted.
 """
+# ⚠ CLEANUP-PASS 2026-10-31: system/factory/ moved to ~/lifehack-v2/archive/2026-10-31-skill-system-cleanup/system/factory/; this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 from __future__ import annotations
 
 import argparse

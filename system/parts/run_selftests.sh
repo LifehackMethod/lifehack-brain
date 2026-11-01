@@ -57,6 +57,7 @@ echo
 #
 # ⚠ THE CHECK CHANGED SHAPE WHEN THIS LIBRARY MOVED, AND THAT IS STATED RATHER THAN HIDDEN.
 # It used to ask a central router (`system/factory/route_to_part.py`) whether it could name
+# ⚠ CLEANUP-PASS 2026-10-31: system/factory/ moved to ~/lifehack-v2/archive/2026-10-31-skill-system-cleanup/system/factory/; this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 # every part. That router is not in this repo and is not coming: these parts are invoked
 # directly, by name, as subprocesses of the shipping-lane scripts. Ported unchanged, the
 # check fails to import the router, correctly refuses to call unknown coverage a pass, and

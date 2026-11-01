@@ -487,6 +487,7 @@ COMPLEMENTS  conformance-lab    · system/hooks/*.sh (shared fire-test target) �
                                    both read the same hook scripts but neither reads the other's
                                    ground-truth file; neither subsumes the other
 ```
+> ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 
 ---
 

@@ -26,6 +26,7 @@ set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/../.." && pwd)"
 FIX="${FIX:-$REPO_ROOT/system/factory/loop-fixtures}"
+# ⚠ CLEANUP-PASS 2026-10-31: system/factory/ moved to ~/lifehack-v2/archive/2026-10-31-skill-system-cleanup/system/factory/; this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 MODEL="${MODEL:-sonnet}"
 # The three facts reality (the SCRATCHPAD) knows that the stale plan does not.
 # ⚠ MATCH ON MEANING, NOT WORD ORDER. First version of this probe searched the literal string

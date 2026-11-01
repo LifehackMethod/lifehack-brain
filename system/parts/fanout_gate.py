@@ -81,6 +81,7 @@ def check(records, expect_count=None, expect_types=None, quiesced=True):
         INCONCLUSIVE (fix the instrument) and never a finding about the skill;
       · the count is DISTINCT `agent_id`s, so duplicates cannot inflate it.
     """
+    # ⚠ CLEANUP-PASS 2026-10-31: system/factory/ moved to ~/lifehack-v2/archive/2026-10-31-skill-system-cleanup/system/factory/; this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
     unidentified = [f"#{i}" for i, r in enumerate(records, 1)
                     if not str(r.get("agent_id") or "").strip()
                     or not str(r.get("agentType") or "").strip()]

@@ -718,6 +718,7 @@ def selftest():
     # --- DIFFERENTIAL vs REAL W30 DATA (not a fabricated fixture, SOP §V.3) -----------
     # The 55 real Gmail message ids from the frozen W30 arc's own source-id set
     # (system/tools/conformance-lab/fixtures/cal-weekly/w30-source-ids.json). This is the
+    # ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
     # same real corpus completeness_receipt.py's own differential self-test uses; the ids
     # are real and frozen, not invented. We do not have a preserved per-map-agent
     # JSONL/meta capture for this run (fanout_seam.py's provenance-dir format exists as
@@ -731,6 +732,7 @@ def selftest():
     _repo_root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
     lab = os.path.join(_repo_root, "system", "tools", "conformance-lab",
                         "fixtures", "cal-weekly")
+    # ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
     spath = os.path.join(lab, "w30-source-ids.json")
     if os.path.isfile(spath):
         import re
@@ -771,6 +773,7 @@ def selftest():
         #   depends on were never ported into this repo and never have been (verified
         #   against full git history, 2026-08-28) -- there is no commit that ever added
         #   system/tools/conformance-lab/fixtures/cal-weekly/w30-source-ids.json. That makes
+        # ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
         #   this a permanent, un-fixable-from-here [FAIL] rather than a real signal, so it is
         #   reported as [SKIP] (excluded from ok/PASS/FAIL) instead -- the same call
         #   run_selftests.sh's own reachability check documents making: "a check that can
@@ -779,6 +782,7 @@ def selftest():
         print("  [SKIP] DIFFERENTIAL vs real W30 data -- "
               "lab fixtures not found (cannot claim real-data validation; "
               "port system/tools/conformance-lab/fixtures/cal-weekly/ to make this live)")
+        # ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 
     print("SELFTEST:", "PASS" if ok else "FAIL")
     return 0 if ok else 1

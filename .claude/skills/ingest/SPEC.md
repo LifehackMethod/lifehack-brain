@@ -1064,6 +1064,7 @@ governing rule.**
 7. **`ingest_setdiff.py` / `ingest_coverage.py`** — built, proven, wired to nothing. Wire, or retire?
    ⚠ **2026-08-08: confirmed accurate for THIS skill, and the name is ambiguous.** Both are wired into
    `conformance-lab/` and `system-health.py`, and cited by a desk-mail lane in the donor system — but
+> ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
    **nothing in `skills/ingest/` or `system/tools/cowork-ingest/` calls either.** Also: `system/tools/` and
    `shared/tools/` each hold a *different* file named `ingest_coverage.py`. Say which one you mean.
 8. ✅ **ANSWERED 2026-08-08 FROM THE EVIDENCE — `flatten` AND `tag` ARE PHASE 1 STEPS. LAW 8 VERDICT: BUILD.**

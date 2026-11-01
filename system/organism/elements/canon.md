@@ -705,9 +705,12 @@ Mixed (live blocking guard + several honor-system edges) → **PARTIAL**.
     `[skill, READS canon/current.md]`
 
 15. **FEEDS conformance-lab · `guard.py` (GUARD-canon probe)**
+> ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
     The conformance-lab `guard.py` fire-tests `guard_canon_write.sh` against a synthetic unblessed write
+> ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
     (expect BLOCK) and a blessed write (expect ALLOW). Shares the canon store only as a probe target.
     `[skill, conformance-lab probe]`
+> ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 
 16. **SYNCS with `/read`'s lazy-canon scope · `canon_conflict_scan.py`**
     The conflict scan (Step 4.6) and `/read`'s lazy-canon load must walk the same canon ladder scope.

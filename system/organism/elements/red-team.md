@@ -163,6 +163,7 @@ All behavioral contracts are prose-only:
 
 **TARGET (design FORK — morning candidate):**
 The skill-sop-audit (2026-07-12, brief.md) identified one deferred action for `/red-team`:
+> ⚠ CLEANUP-PASS 2026-10-31: skill-sop-audit/ moved to N/archive/2026-10-31-skill-system-cleanup/state/projects/skill-sop-audit/; this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 - **Wave 3** of the remediation plan: **recategorize `red-team` as a utility** (not a "leading" skill). The D-grade in the audit was a category artifact — the skill was scored against persona/anchor checks that don't apply to a utility. Recategorizing dissolves the D now (post-remediation). This is a frontmatter/registry change only — note that the scorecard ran against the pre-remediation stub (the §0.5 block, description field, and Adversary posture were added in the same 2026-07-13 wave that executed the review; the score reflects the pre-fix state, not the remediated skill). `state:actionable` per the debt-ledger entry (line 214).
 
 **Known SKILL.md notes:**

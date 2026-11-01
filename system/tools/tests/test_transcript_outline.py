@@ -34,6 +34,7 @@ sys.path.insert(0, _TOOLS_DIR)
 sys.path.insert(0, os.path.join(_ROOT, "shared"))
 
 import transcript_outline as to  # noqa: E402
+# ⚠ CLEANUP-PASS 2026-10-31: transcript_outline.py moved to ~/lifehack-v2/archive/2026-10-31-skill-system-cleanup/system/tools/transcript_outline.py; this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 
 
 def make_transcript(word_count, word="word"):

@@ -22,6 +22,7 @@ set -euo pipefail
 # Resolve the clone root from THIS script's own location (system/tools/new-skill.sh → root is ../..),
 # not a hardcoded absolute path to the repo. This keeps the jig portable — a git worktree's copy writes
 # into that worktree, which is what makes the conformance-lab bake-off's isolation actually work.
+# ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 CODE="$(cd "$(dirname "$0")/../.." && pwd)"
 DESK="root"
 SHAPE="interactive-workflow"
@@ -181,9 +182,12 @@ fi
 # ── BORN-WITH-CONTRACT (F5.1): scaffold N per-phase drivers, each carrying a GRADEABLE-SHAPED contract ──
 # ⚠ CORRECTED 2026-08-15. This block used to promise: "A multi-phase skill IS GRADED by the
 # conformance-lab against its own driver contract... conformance.py grades the skill with ZERO new
+# ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 # code (extract_clauses + slice_phases already read exactly this shape)." THAT WAS FALSE HERE, and
+# ⚠ CLEANUP-PASS 2026-10-31: system/factory/ moved to ~/lifehack-v2/archive/2026-10-31-skill-system-cleanup/system/factory/; this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 # it is the same promise line ~282 below already caveats honestly. Verified this date:
 #   · the conformance-lab in this repo is driver.py + probes/guard.py + rule-registry.md ONLY;
+# ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 #   · per its own rule-registry.md, the built probe is category C (guard-provoke-assert-blocked).
 #     Grading a phase-driver contract is category B (static-parse-bundle) — marked "⛔ not built";
 #   · conformance.py does not exist in this repo, and neither does a slice_phases.
@@ -289,6 +293,7 @@ echo "   Next:"
 echo "   1. Fill every REPLACE in the body (description is already stamped) + delete the guide comments."
 if [ "$MULTIPHASE" -gt 0 ] 2>/dev/null; then
   echo "   1b. Fill each prompts/NN-phaseN.md driver's contract (keep the '✅ phase N complete' marker) — this is the shape conformance-lab grades once it's rebuilt in this repo (T9.8c; not shipped yet — until then, nothing grades it, so review it by hand)."
+  # ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
   echo "   1c. Add real 'forbids' rules to scripts/phase-contract.json as the spec is written — scripts/phase_gate.py + scripts/forbidden_content.py are already wired and passing."
 fi
 echo "   2. Read the doctrine as you build:  system/sops/skill-building-sop.md"

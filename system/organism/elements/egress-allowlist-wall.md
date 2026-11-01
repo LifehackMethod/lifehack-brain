@@ -465,6 +465,7 @@ into the system's liveness monitoring.
 
 **Honest LIVE·gap qualification:** the label holds because the core enforcement path (named URL + Bash +
 registered hooks) is real and fire-tested. The label-checker (`conformance-lab`) fire-tests both
+> ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 `guard_egress.sh` and `enforce_egress_allowlist.sh` with synthetic probes.
 
 **Debt-ledger reconciliation — [EGRESS-WALL-FAILOPEN] (state:actionable, 2026-07-23):** that entry
@@ -566,6 +567,7 @@ is only as current as the last pull. The residency model is the delivery mechani
 side; firewall sync remains manual. `[honor]`
 
 **READS-BY label-checker (conformance-lab)** · `conformance-lab` (the label-checker's probe engine, using
+> ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 `probes/guard.py` and `_verify_guards_manual.py`) fire-tests `guard_egress.sh` and `enforce_egress_allowlist.sh`
 with synthetic allow/block probes to produce the LIVE/PARTIAL verdict. It reads the hook files and the
 allowlist domain set. The checker is what makes LIVE a meaningful claim, not just an authored label. `[honor]`
