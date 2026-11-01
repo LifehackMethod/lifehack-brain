@@ -9,7 +9,7 @@ One verdict line on stdout, tab separated:
   HARD_PRIVATE_CANNOT <detail>  the leakage scan exists but could not run -> fail closed on a remote that is not local
 
 Switches arrive as flags (the bash caller reads roundB.conf); a switch that is OFF skips its whole check, so
-OFF is exactly the old behaviour. Nothing here runs the push, writes anything, or touches the network.
+OFF is exactly the old behaviour. Nothing here runs the push or writes anything. The only network use is an optional `gh repo view` PUBLIC veto (3 s timeout, failure = no veto).
 
 The leakage rules are NOT copied: the scanner at .github/scripts/check_no_internal_leakage.py is imported and its
 own parse_unified_diff / scan_files are called, the way system/githooks/checks/safe_to_ship.py does it.
@@ -96,17 +96,53 @@ def is_networked(url):
     return bool(re.match(r"^(https?|ssh|git)://", url) or re.match(r"^[\w.-]+@[\w.-]+:", url))
 
 
-def is_personal_repo(repo, shared):
-    rc, top = git(repo, "rev-parse", "--show-toplevel")
-    if rc != 0 or not top:
+def _common_dir(folder):
+    """Real path of the git COMMON dir of `folder` (the same for a repo and every linked worktree of it), or ""."""
+    rc, out = git(folder, "rev-parse", "--git-common-dir")
+    out = out.strip()
+    if rc != 0 or not out:
+        return ""
+    if not os.path.isabs(out):
+        out = os.path.join(folder, out)  # git prints it relative to the folder it ran in
+    return os.path.realpath(out)
+
+
+def _gh_says_public(url):
+    """Veto only: True when `gh repo view` positively says this GitHub repo is PUBLIC. Any failure (no gh, no
+    auth, offline, timeout, not a github.com URL) is "no veto" -- the exemption itself is decided by identity."""
+    m = re.search(r"github\.com[/:]([^/\s]+)/([^/\s]+?)(?:\.git)?/?$", url or "")
+    if not m:
+        return False
+    gh = os.environ.get("PUSH_FACTS_GH") or "gh"
+    try:
+        r = subprocess.run([gh, "repo", "view", m.group(1) + "/" + m.group(2), "--json", "visibility", "-q", ".visibility"],
+                           capture_output=True, text=True, timeout=3)
+    except Exception:
+        return False
+    return r.returncode == 0 and r.stdout.strip().upper() == "PUBLIC"
+
+
+def is_personal_repo(repo, shared, url=""):
+    """True when the push folder is the person's personal code repo OR any linked worktree of it.
+    Identity = git COMMON dir (not --show-toplevel, which differs in a worktree). Fail closed: no pointer, a
+    pointer-missing, an unresolvable common dir, the public Lifehack URL, or gh saying PUBLIC -> False."""
+    if PUBLIC_REPO in (url or ""):
+        return False
+    here = _common_dir(repo)
+    if not here:
         return False
     try:
         sys.path.insert(0, shared)
         import personal_code_root
         source, path = personal_code_root.resolve_personal_code_root()
-        return source in ("pointer", "default") and bool(path) and os.path.realpath(path) == os.path.realpath(top)
+        if source not in ("pointer", "default") or not path:
+            return False
+        mine = _common_dir(path)
     except Exception:
         return False
+    if not mine or mine != here:
+        return False
+    return not _gh_says_public(url)
 
 
 def current_branch(repo):
@@ -263,7 +299,13 @@ def main():
     ap.add_argument("--private-on", action="store_true")
     ap.add_argument("--quiet-on", action="store_true")
     ap.add_argument("--local-on", action="store_true")
+    ap.add_argument("--is-personal", action="store_true")  # print "yes" if --repo is the personal repo (or a worktree of it)
+    ap.add_argument("--url", default="")
     a = ap.parse_args()
+    if a.is_personal:
+        if is_personal_repo(a.repo, a.shared, a.url):
+            print("yes")
+        return 0
     try:
         argv = json.loads(base64.b64decode(a.argv_b64).decode("utf-8", "surrogateescape")) if a.argv_b64 else []
         if not isinstance(argv, list):
@@ -289,7 +331,7 @@ def main():
     if a.private_on and remote:
         url = push_url(repo, remote) if named_remote(repo, remote) else remote
         # silent and cheap when there is nothing to leak to: no remote, a local path, or the person's own private repo
-        if is_networked(url) and not is_personal_repo(repo, a.shared):
+        if is_networked(url) and not is_personal_repo(repo, a.shared, url):
             status, lines = leak_scan(repo, p, branch, remote, url, os.path.dirname(os.path.abspath(__file__)))
             if status == "flagged":
                 print("HARD_PRIVATE\t" + " | ".join(lines))

@@ -831,25 +831,16 @@ for r in rows:
     [ -n "$_manifest" ] || _manifest="   UNRESOLVED  -- the refspec parser produced no output; verify manually with git log/diff before pushing."
 
     _push_url=$(git -C "$REPO_DIR" remote get-url --push "$_remote_name" 2>/dev/null)
-    # PRIVATE = the push is FROM the person's personal code folder (shared resolver, realpaths
-    # compared); never a remote-name match. NOT-SET / POINTER-MISSING -> never PRIVATE.
+    # PRIVATE = the push is FROM the person's personal code repo OR a linked worktree of it. Identity is the git
+    # COMMON dir compared by push_facts.py --is-personal (the same test fc_private_push uses), never --show-toplevel
+    # (it differs in a worktree) and never a remote-name match. NOT-SET / POINTER-MISSING / any error -> never PRIVATE.
     # One python call, only reached on a push, and skipped when the remote is already PUBLIC.
     _is_personal=""
     case "$_push_url" in
       *LifehackMethod/lifehack-brain*) ;;
       *)
-        _top=$(git -C "$REPO_DIR" rev-parse --show-toplevel 2>/dev/null)
-        if [ -n "$_top" ]; then
-          _shared="$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd)/shared"
-          _is_personal=$(PCR_SHARED="$_shared" PCR_TOP="$_top" python3 -c '
-import os, sys
-sys.path.insert(0, os.environ["PCR_SHARED"])
-import personal_code_root
-source, path = personal_code_root.resolve_personal_code_root()
-if source in ("pointer", "default") and path and os.path.realpath(path) == os.path.realpath(os.environ["PCR_TOP"]):
-    print("yes")
-' 2>/dev/null)
-        fi
+        _shared="$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd)/shared"
+        _is_personal=$(python3 "$(dirname "$0")/lib/push_facts.py" --repo "$REPO_DIR" --shared "$_shared" --is-personal --url "$_push_url" 2>/dev/null)
         ;;
     esac
     case "$_push_url" in
