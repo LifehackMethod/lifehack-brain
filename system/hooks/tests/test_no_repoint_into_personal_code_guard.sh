@@ -1,6 +1,6 @@
 #!/bin/bash
-# test_no_repoint_into_claudeops_guard.sh — deny-coverage suite for
-# system/hooks/guard_no_repoint_into_claudeops.sh (B6.0 — this guard had NO test anywhere before
+# test_no_repoint_into_personal_code_guard.sh — deny-coverage suite for
+# system/hooks/guard_no_repoint_into_personal_code.sh (B6.0 — this guard had NO test anywhere before
 # this file.)
 #
 # ⚠ ALLOW CASES FIRST — see hook-contract.md.
@@ -10,11 +10,11 @@
 # HYPOTHETICAL tool call; the guard never executes the command it inspects, it only parses it.
 #
 # Invocation form matches the registered one:
-#   bash "${CLAUDE_PROJECT_DIR}/system/hooks/guard_no_repoint_into_claudeops.sh"  (matcher: Bash|Write|Edit)
+#   bash "${CLAUDE_PROJECT_DIR}/system/hooks/guard_no_repoint_into_personal_code.sh"  (matcher: Bash|Write|Edit)
 
 HERE="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
 REPO="$(cd "$HERE/../../.." 2>/dev/null && pwd)"
-GUARD="$REPO/system/hooks/guard_no_repoint_into_claudeops.sh"
+GUARD="$REPO/system/hooks/guard_no_repoint_into_personal_code.sh"
 
 if [ ! -r "$GUARD" ]; then
   echo "MISSING: $GUARD — nothing to test. FAILING CLOSED."
@@ -24,6 +24,11 @@ fi
 SCRATCH="$(mktemp -d "${TMPDIR:-/tmp}/no_repoint_test.XXXXXX")"
 trap 'rm -rf "$SCRATCH"' EXIT
 ERRF="$SCRATCH/stderr.txt"
+# The person's setup, in a throwaway HOME: a personal-code pointer naming a folder that is NOT called anything
+# in particular. The guard must learn the folder from the pointer alone.
+PC="$SCRATCH/hm/my-own-code"
+mkdir -p "$PC/.claude/skills/foo" "$SCRATCH/hm/.config/lifehack" "$SCRATCH/nopointer"
+printf '%s\n' "$PC" > "$SCRATCH/hm/.config/lifehack/personal-code"
 PASSED=0
 FAILED=0
 
@@ -36,7 +41,7 @@ mkjson_write() {  # mkjson_write <file_path> <content>
 }
 
 run_guard() {
-  cat | HOME="$SCRATCH/home" CLAUDE_PROJECT_DIR="$REPO" bash "$GUARD" 2>"$ERRF"
+  cat | HOME="${T_HOME:-$SCRATCH/hm}" CLAUDE_PROJECT_DIR="$REPO" bash "$GUARD" 2>"$ERRF"
 }
 
 allow() {
@@ -84,7 +89,7 @@ print(("missing:" + ",".join(missing) + ";") if missing else "")
   fi
 }
 
-echo "=== guard_no_repoint_into_claudeops.sh — ALLOW cases first ==="
+echo "=== guard_no_repoint_into_personal_code.sh — ALLOW cases first ==="
 
 allow "unrelated Bash command"                "$(mkjson_bash 'ls -la')"
 allow "a symlink op unrelated to skills/agents" "$(mkjson_bash 'ln -s /tmp/a /tmp/b')"
@@ -98,19 +103,19 @@ echo
 echo "=== DENY cases — every distinct protection this guard's header claims ==="
 
 deny "ln -sf re-points a skills symlink at the private repo" \
-  "$(mkjson_bash 'ln -sf /fakebase/ClaudeOps/.claude/skills/foo /fakebase/.claude/skills/foo')" \
+  "$(mkjson_bash "ln -sf $PC/.claude/skills/foo /fakebase/.claude/skills/foo")" \
   "re-point"
 
 deny "ln -s re-points an agents symlink at the private repo" \
-  "$(mkjson_bash 'ln -s /fakebase/ClaudeOps/.claude/agents/bar /fakebase/.claude/agents/bar')" \
+  "$(mkjson_bash "ln -s $PC/.claude/agents/bar /fakebase/.claude/agents/bar")" \
   "re-point"
 
 deny "the same re-point scripted inside a for-loop body" \
-  "$(mkjson_bash 'for f in foo bar; do ln -sf /fakebase/ClaudeOps/.claude/skills/$f /fakebase/.claude/skills/$f; done')" \
+  "$(mkjson_bash "for f in foo bar; do ln -sf $PC/.claude/skills/\$f /fakebase/.claude/skills/\$f; done")" \
   "re-point"
 
 deny "settings.json write registers a hook command inside the private repo" \
-  "$(mkjson_write /tmp/settings.json '{"hooks":{"PreToolUse":[{"hooks":[{"command":"bash /fakebase/ClaudeOps/system/hooks/guard_write_paths.sh"}]}]}}')" \
+  "$(mkjson_write /tmp/settings.json "{\"hooks\":{\"PreToolUse\":[{\"hooks\":[{\"command\":\"bash $PC/system/hooks/guard_write_paths.sh\"}]}]}}")" \
   "re-point"
 
 echo
@@ -120,11 +125,28 @@ allow "variable-held ln pointing at the plugin cache" \
 allow "python one-liner symlink unrelated to skills/agents" \
   "$(mkjson_bash "python3 -c \"import os; os.symlink('/fb/a','/fb/b')\"")"
 deny "ln -s through shell variables re-points a skills symlink at the private repo" \
-  "$(mkjson_bash 'TG=/fb/ClaudeOps/.claude/skills/foo; LK=/fb/.claude/skills/foo; ln -sfn $TG $LK')" \
+  "$(mkjson_bash "TG=$PC/.claude/skills/foo; LK=/fb/.claude/skills/foo; ln -sfn \$TG \$LK")" \
   "re-point"
 deny "python os.symlink one-liner re-points a skills symlink at the private repo" \
-  "$(mkjson_bash "python3 -c \"import os; os.symlink('/fb/ClaudeOps/.claude/skills/foo','/fb/.claude/skills/foo')\"")" \
+  "$(mkjson_bash "python3 -c \"import os; os.symlink('$PC/.claude/skills/foo','/fb/.claude/skills/foo')\"")" \
   "re-point"
+echo
+echo "=== part2: every spelling of the personal code folder, and a fresh install ==="
+deny "settings.json hook command spelled with \$HOME" \
+  "$(mkjson_write /tmp/settings.json '{"hooks":{"PreToolUse":[{"hooks":[{"command":"bash \"$HOME/my-own-code/system/hooks/x.sh\""}]}]}}')" \
+  "re-point"
+deny "ln target spelled with ~" \
+  "$(mkjson_bash 'ln -sfn ~/my-own-code/.claude/skills/foo ~/.claude/skills/foo')" \
+  "re-point"
+allow "a sibling folder that only starts with the same name is not the personal folder" \
+  "$(mkjson_bash "ln -sfn $PC-other/.claude/skills/foo /fb/.claude/skills/foo")"
+T_HOME="$SCRATCH/nopointer" allow "no personal-code pointer: nothing private to re-point at" \
+  "$(mkjson_bash "ln -sfn $PC/.claude/skills/foo /fb/.claude/skills/foo")"
+if grep -qiE 'claude''ops' "$GUARD" "${GUARD%.sh}.py"; then
+  printf "  FAIL  the guard names a private folder\n"; FAILED=$((FAILED + 1))
+else
+  printf "  PASS  the guard names no private folder\n"; PASSED=$((PASSED + 1))
+fi
 echo
 echo "  $PASSED passed, $FAILED failed"
 if [ "$FAILED" -eq 0 ]; then

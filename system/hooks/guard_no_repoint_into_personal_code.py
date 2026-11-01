@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-guard_no_repoint_into_claudeops.py — logic half of the PreToolUse BLOCK guard.
-Invoked by guard_no_repoint_into_claudeops.sh with the raw PreToolUse JSON on stdin.
+guard_no_repoint_into_personal_code.py — logic half of the PreToolUse BLOCK guard.
+Invoked by guard_no_repoint_into_personal_code.sh with the raw PreToolUse JSON on stdin.
 Writes exactly one verdict line to stdout: "ALLOW::<reason>" or "BLOCK::<reason>".
 Never raises past its own top level -- any uncaught condition is caught and turned into
 a BLOCK verdict, because the .sh wrapper treats anything that is not a clean ALLOW:: line
@@ -21,7 +21,41 @@ PLUGIN_ROOT = HOME + "/.claude/plugins/cache/lifehack-brain"
 # (system/sops/hook-sop.md §4 Trap 2). This guard's own source must not contain the
 # literal target-repo name as a bare token that a sibling guard or a future grep-based
 # check could trip on by accident.
-_PRIVATE_REPO_MARKER = "Claude" + "Ops"
+_PRIVATE_REPO_MARKER = "personal code folder"
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_SHARED = os.path.join(os.path.dirname(os.path.dirname(_HERE)), "shared")
+
+
+def _personal_spellings():
+    """Every spelling of the person's personal code folder a command could use: its real path, the pointer's
+    own spelling, and the $HOME / ${HOME} / ~ forms of each. Empty when no personal code folder resolves
+    (a fresh install has nothing private to re-point at, so nothing here can block)."""
+    if _SHARED not in sys.path:
+        sys.path.insert(0, _SHARED)
+    try:
+        import personal_code_root
+        source, root = personal_code_root.resolve_personal_code_root()
+    except Exception:
+        return []
+    if source not in ("pointer", "default") or not root:
+        return []
+    forms = set()
+    for p in {root.rstrip("/"), os.path.realpath(root)}:
+        forms.add(p)
+        if p.startswith(HOME + "/"):
+            rel = p[len(HOME) + 1:]
+            forms.update({"$HOME/" + rel, "${HOME}/" + rel, "~/" + rel})
+    return sorted(forms, key=len, reverse=True)
+
+
+_PERSONAL = None
+
+
+def personal_spellings():
+    global _PERSONAL
+    if _PERSONAL is None:
+        _PERSONAL = _personal_spellings()
+    return _PERSONAL
 
 
 def emit_allow(reason):
@@ -30,6 +64,9 @@ def emit_allow(reason):
 
 
 def emit_block(reason):
+    # The wrapper splices this reason into a JSON string, so it must already be JSON-string safe: a command
+    # value quoted from a settings file carries backslashes and double quotes.
+    reason = reason.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
     print("BLOCK::" + reason)
     sys.exit(0)  # the verdict is communicated via the printed line, not the exit code --
                  # the .sh wrapper is what turns this into exit 2 / exit 0 for the harness.
@@ -42,8 +79,28 @@ def under_guarded_dir(p):
     return (".claude/skills/" in pp) or (".claude/agents/" in pp)
 
 
-def mentions_private_repo(p):
-    return isinstance(p, str) and _PRIVATE_REPO_MARKER in p
+def mentions_private_repo(p, base_dir=None):
+    """Does this path (or command string) point INTO the personal code folder? A spelling only counts when
+    it ends at a path boundary, so a sibling folder whose name merely starts the same way never matches.
+    A relative ln target is also resolved against the link's own folder, the way ln itself resolves it."""
+    if not isinstance(p, str):
+        return False
+    forms = personal_spellings()
+    if not forms:
+        return False
+    for f in forms:
+        i = p.find(f)
+        while i != -1:
+            nxt = p[i + len(f): i + len(f) + 1]
+            if nxt == "" or not re.match(r"[A-Za-z0-9_.-]", nxt):
+                return True
+            i = p.find(f, i + 1)
+    if base_dir and p and not p.startswith(("/", "~", "$")):
+        real = os.path.realpath(os.path.join(base_dir, p))
+        root = forms and os.path.realpath(min((f for f in forms if f.startswith("/")), key=len, default=""))
+        if root and (real == root or real.startswith(root + "/")):
+            return True
+    return False
 
 
 def plugin_equivalent_exists(basename_guess):
@@ -108,7 +165,8 @@ def review_matches(matches):
         if not (link_is_guarded or target_is_guarded):
             continue  # a symlink op that has nothing to do with ~/.claude/skills or ~/.claude/agents
 
-        if mentions_private_repo(target):
+        link_dir = os.path.dirname(linkname.replace("$HOME", HOME).replace("~", HOME, 1).rstrip("/"))
+        if mentions_private_repo(target, link_dir):
             base = os.path.basename(linkname.rstrip("/")) if link_is_guarded else None
             if plugin_equivalent_exists(base):
                 emit_block(
@@ -152,8 +210,10 @@ def handle_write_edit(ti):
             "cannot confirm this isn't a hook-command repoint, denying per fail-closed posture"
         )
 
-    for m in re.finditer(r'"command"\s*:\s*"([^"]*)"', content):
-        val = m.group(1)
+    # A JSON string value may carry escaped quotes (bash \"$HOME/...\" is how real registrations spell a
+    # command), so the value runs to the first UNescaped quote, not the first quote.
+    for m in re.finditer(r'"command"\s*:\s*"((?:[^"\\]|\\.)*)"', content):
+        val = m.group(1).replace('\\"', '"')
         if mentions_private_repo(val):
             mm = re.search(r'\.claude/(skills|agents)/([^/"\\]+)', val)
             base = mm.group(2) if mm else None

@@ -68,8 +68,11 @@ def build_fixture():
     for d in (F["HOME"] + "/.config/lifehack", F["CODE"] + "/shared/notify", F["CODE"] + "/system/register", F["CODE"] + "/system/sops",
               F["CODE"] + "/system/hooks", F["CODE"] + "/hooks", F["CODE"] + "/system/tools", F["DESK"] + "/tools", F["DESK"] + "/records",
               F["DESK"] + "/canon", F["NOTES"] + "/system", F["PLUGINCACHE"] + "/.claude/skills/rigskill",
-              F["HOME"] + "/.claude/skills/ClaudeOps/.claude/skills/rigskill"):
+              F["PC"] + "/.claude/skills/rigskill"):
         os.makedirs(d, exist_ok=True)
+    # The personal-code pointer names the fictional folder from the start (stop cases write the same value), so a guard that
+    # learns the personal code folder from the pointer (guard_no_repoint_into_personal_code) sees it in every replay case.
+    open(F["HOME"] + "/.config/lifehack/personal-code", "w", encoding="utf-8").write(F["PC"] + "\n")
     open(F["HOME"] + "/.config/lifehack/code-root", "w", encoding="utf-8").write(F["CODE"] + "\n")
     for src, dst in ((ROOT + "/shared/brain_root.py", F["CODE"] + "/shared/brain_root.py"),
                      (ROOT + "/system/tools/utf8_stdio.py", F["CODE"] + "/shared/utf8_stdio.py"),
