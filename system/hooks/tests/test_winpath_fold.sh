@@ -81,15 +81,19 @@ EOS
 chmod +x "$STUBDIR/uname"
 
 j() { python3 -c "import json,sys; print(json.dumps({'tool_name':sys.argv[1],'tool_input':json.loads(sys.argv[2])}))" "$1" "$2"; }
+# 3b.7 A (2026-11-01): outside ~/Downloads and ~/Desktop plain reads are trusted, so the "still
+# DENIED" half now uses a throwaway HOME's Downloads; /tmp moved to the ALLOWED half.
+WINHOME="$STUBDIR/home"; mkdir -p "$WINHOME/Downloads"
 irun() {  # label · expected exit · tool · json-input
   local label="$1" exp="$2" got
-  printf '%s' "$(j "$3" "$4")" | env PATH="$STUBDIR:$PATH" bash "$HOOK" >/dev/null 2>&1
+  printf '%s' "$(j "$3" "$4")" | env PATH="$STUBDIR:$PATH" HOME="$WINHOME" bash "$HOOK" >/dev/null 2>&1
   got=$?
   if [ "$got" = "$exp" ]; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL [$label]: expected exit $exp, got $got (forced-Windows run)"; fi
 }
 irun "forced-Windows: in-repo .py still ALLOWED" 0 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/system/hooks/lib/winpath_fold.sh'}))" "$REPO")"
-irun "forced-Windows: /tmp external .md still DENIED" 2 Read '{"file_path":"/tmp/a.md"}'
-irun "forced-Windows: /tmp external .py (no ext branch) still DENIED" 2 Read '{"file_path":"/tmp/README"}'
+irun "forced-Windows: ~/Downloads .md still DENIED" 2 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/Downloads/a.md'}))" "$WINHOME")"
+irun "forced-Windows: ~/Downloads no-ext still DENIED" 2 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/Downloads/README'}))" "$WINHOME")"
+irun "forced-Windows: /tmp .md ALLOWED (trusted since 3b.7 A)" 0 Read '{"file_path":"/tmp/a.md"}'
 
 echo
 echo "RESULT: $pass passed, $fail failed."

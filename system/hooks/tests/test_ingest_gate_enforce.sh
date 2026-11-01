@@ -21,6 +21,10 @@ REPO="${HOOKDIR%/system/hooks}"
 NOTES="$(mktemp -d "${TMPDIR:-/tmp}/gatetest.XXXXXX")"
 trap 'rm -rf "$NOTES"' EXIT
 mkdir -p "$NOTES/memory" "$NOTES/state" "$NOTES/corpus/_unpacked"
+# 3b.7 A: a throwaway HOME. The notes root ($NOTES) CONTAINS it, so every Downloads/Desktop deny
+# below also proves a root sitting ABOVE those folders does not swallow them.
+GH="$NOTES/gatehome"
+mkdir -p "$GH/Downloads/sub" "$GH/Desktop" "$GH/Documents" "$GH/code/proj/docs" "$GH/.claude/run/skill-x" "$GH/personal-code/desks"
 
 pass=0; fail=0
 
@@ -37,6 +41,11 @@ run() {
 }
 check()  { run "$1" "$2" "$(j "$3" "$4")"; }
 checka() { run "$1" "$2" "$(ja "$3" "$4" "$5")"; }
+# fp <path> -> {"file_path": path}; gp <path> [pattern] -> {"pattern":..,"path":path}
+fp() { python3 -c "import json,sys;print(json.dumps(dict(file_path=sys.argv[1])))" "$1"; }
+gp() { python3 -c "import json,sys;print(json.dumps(dict(pattern=(sys.argv[2] if len(sys.argv)>2 else 'x'),path=sys.argv[1])))" "$@"; }
+# checkh: same as check, run with HOME pointed at the throwaway home above.
+checkh() { run "$1" "$2" "$(j "$3" "$4")" HOME="$GH"; }
 
 # The skip-variable NAME is built by concatenation so this fixture never contains the literal
 # assignment pattern it is testing for — otherwise the file is its own tripwire.
@@ -53,12 +62,65 @@ check "Read .xlsx"              2 Read '{"file_path":"/tmp/a.xlsx"}'
 check "Read .csv"               2 Read '{"file_path":"/tmp/a.csv"}'
 check "Read .pdf inside repo"   2 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/docs/a.pdf'}))" "$REPO")"
 
-echo "-- OUTSIDE THE TRUSTED ZONE: redirected, whatever the extension (expect 2) --"
-check "external .txt"           2 Read '{"file_path":"/tmp/a.txt"}'
-check "external .md"            2 Read '{"file_path":"/tmp/a.md"}'
-check "external no extension"   2 Read '{"file_path":"/tmp/README"}'
-check "external .html"          2 Read '{"file_path":"/tmp/a.html"}'
-check "external .eml"           2 Read '{"file_path":"/tmp/a.eml"}'
+echo "-- 3b.7 A: ~/Downloads and ~/Desktop are the only untrusted local folders (expect 2) --"
+checkh "Downloads .md"          2 Read "$(fp "$GH/Downloads/a.md")"
+checkh "Downloads .txt"         2 Read "$(fp "$GH/Downloads/a.txt")"
+checkh "Downloads no extension" 2 Read "$(fp "$GH/Downloads/README")"
+checkh "Downloads .html"        2 Read "$(fp "$GH/Downloads/a.html")"
+checkh "Downloads .eml"         2 Read "$(fp "$GH/Downloads/a.eml")"
+checkh "Downloads subfolder"    2 Read "$(fp "$GH/Downloads/sub/deep.md")"
+checkh "Desktop .md"            2 Read "$(fp "$GH/Desktop/note.md")"
+checkh "Desktop .json"          2 Read "$(fp "$GH/Desktop/export.json")"
+checkh "Grep in Downloads"      2 Grep "$(gp "$GH/Downloads")"
+checkh "Glob in Desktop"        2 Glob "$(gp "$GH/Desktop" '*.md')"
+checkh "Glob abs into Downloads" 2 Glob "$(python3 -c "import json,sys;print(json.dumps(dict(pattern=sys.argv[1]+'/Downloads/**/*.md')))" "$GH")"
+checkh "case-folded ~/DOWNLOADS" 2 Read "$(fp "$GH/DOWNLOADS/a.md")"
+checkh "case-folded ~/desktop"  2 Read "$(fp "$GH/desktop/a.md")"
+checkh "Grep rooted at HOME"    2 Grep "$(gp "$GH")"
+checkh "Grep rooted at /"       2 Grep "$(gp "/")"
+checkh "Downloads .pdf still pdf arm" 2 Read "$(fp "$GH/Downloads/a.pdf")"
+
+echo "-- 3b.7 A: the rest of the person's own machine is trusted for plain reads (expect 0) --"
+checkh "Documents .md"          0 Read "$(fp "$GH/Documents/plan.md")"
+checkh "project repo .md"       0 Read "$(fp "$GH/code/proj/docs/notes.md")"
+checkh "project no extension"   0 Read "$(fp "$GH/code/proj/Makefile")"
+checkh "personal-code .py"      0 Read "$(fp "$GH/personal-code/desks/tool.py")"
+checkh "home dotfile"           0 Read "$(fp "$GH/.zshrc")"
+checkh "~/.claude/run step file" 0 Read "$(fp "$GH/.claude/run/skill-x/step-2.md")"
+checkh "~/.claude/run json"     0 Read "$(fp "$GH/.claude/run/skill-x/state.json")"
+checkh "Grep ~/.claude/run"     0 Grep "$(gp "$GH/.claude/run")"
+checkh "notes root .md"         0 Read "$(fp "$NOTES/state/projects/x/brief.md")"
+checkh "/tmp .md (was external)" 0 Read '{"file_path":"/tmp/a.md"}'
+checkh "/tmp .txt"              0 Read '{"file_path":"/tmp/a.txt"}'
+checkh "/tmp no extension"      0 Read '{"file_path":"/tmp/README"}'
+checkh "Glob rooted at HOME (names only)" 0 Glob "$(gp "$GH" '**/*.md')"
+checkh "Grep in Documents"      0 Grep "$(gp "$GH/Documents")"
+checkh "DownloadsArchive is not Downloads" 0 Read "$(fp "$GH/DownloadsArchive/a.md")"
+checkh "memory/ still carved out" 2 Read "$(fp "$NOTES/memory/x.md")"
+checkh "_unpacked/ still carved out" 2 Read "$(fp "$GH/Documents/_unpacked/chat.md")"
+checkh "csv outside Downloads still csv arm" 2 Read "$(fp "$GH/Documents/a.csv")"
+
+echo "-- 3b.7 A: symlink and traversal escapes into the untrusted folders (expect 2) --"
+printf 'outside\n' > "$GH/Downloads/payload.md"
+ln -s "$GH/Downloads/payload.md" "$GH/Documents/innocent.md" 2>/dev/null
+ln -s "$GH/Downloads" "$GH/code/proj/dl-link" 2>/dev/null
+checkh "symlink in Documents -> Downloads file" 2 Read "$(fp "$GH/Documents/innocent.md")"
+checkh "symlinked dir -> Downloads"            2 Read "$(fp "$GH/code/proj/dl-link/payload.md")"
+checkh "dot-dot traversal into Downloads"      2 Read "$(fp "$GH/Documents/../Downloads/payload.md")"
+# A ~/Downloads that is ITSELF a symlink to somewhere else: its resolved target is untrusted too.
+GH2="$NOTES/gatehome2"; mkdir -p "$GH2" "$NOTES/elsewhere-dl"
+printf 'outside\n' > "$NOTES/elsewhere-dl/p.md"
+ln -s "$NOTES/elsewhere-dl" "$GH2/Downloads" 2>/dev/null
+run "Downloads is a symlink: its target is untrusted" 2 "$(j Read "$(fp "$NOTES/elsewhere-dl/p.md")")" HOME="$GH2"
+# A symlink INSIDE Downloads that points into a trusted folder resolves to the trusted file.
+printf 'mine\n' > "$GH/Documents/mine.md"
+ln -s "$GH/Documents/mine.md" "$GH/Downloads/link-to-mine.md" 2>/dev/null
+checkh "symlink in Downloads -> Documents file" 0 Read "$(fp "$GH/Downloads/link-to-mine.md")"
+
+echo "-- 3b.7 A: a root the person CHOSE inside Desktop stays trusted (expect 0) --"
+mkdir -p "$GH/Desktop/my-notes/state"
+run "notes root inside Desktop" 0 "$(j Read "$(fp "$GH/Desktop/my-notes/state/brief.md")")" HOME="$GH" LIFEHACK_ROOT="$GH/Desktop/my-notes"
+run "notes root = Desktop itself does not trust Desktop" 2 "$(j Read "$(fp "$GH/Desktop/x.md")")" HOME="$GH" LIFEHACK_ROOT="$GH/Desktop"
 
 echo "-- THE CARVE-OUTS: raw material inside a trusted folder (expect 2) --"
 check "notes memory/"           2 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/memory/topic-vocab.md'}))" "$NOTES")"
@@ -97,7 +159,7 @@ check "Glob path = _unpacked dir" 2 Glob "$(python3 -c "import json,sys;print(js
 # to leave the extracted path empty — exit 0, uninspected. The gate now derives the fixed directory
 # prefix (before the first glob metacharacter) and gates on that.
 check "Glob abs pattern, notes"     0 Glob "$(python3 -c "import json,sys;print(json.dumps(dict(pattern=sys.argv[1]+'/state/**/*.md')))" "$NOTES")"
-check "Glob abs pattern, external"  2 Glob "$(python3 -c "import json;print(json.dumps(dict(pattern='/tmp/elsewhere/**/*.md')))")"
+check "Glob abs pattern, /tmp (trusted since 3b.7 A)" 0 Glob "$(python3 -c "import json;print(json.dumps(dict(pattern='/tmp/elsewhere/**/*.md')))")"
 check "Glob abs pattern, _unpacked" 2 Glob "$(python3 -c "import json,sys;print(json.dumps(dict(pattern=sys.argv[1]+'/corpus/_unpacked/**')))" "$NOTES")"
 check "Glob abs pattern, memory/"   2 Glob "$(python3 -c "import json,sys;print(json.dumps(dict(pattern=sys.argv[1]+'/memory/*.md')))" "$NOTES")"
 # NEGATIVE CONTROLS. A relative pattern names no location (cwd semantics, unchanged), and a Grep
@@ -247,16 +309,17 @@ echo "-- FAIL-CLOSED: it cannot read its own input (expect 2) --"
 printf 'not json at all' | bash "$HOOK" >/dev/null 2>&1
 if [ $? = 2 ]; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL [unparseable]: expected deny"; fi
 
-echo "-- SANITY: a notes root of \$HOME is refused, so it cannot swallow the allowlist --"
-# With LIFEHACK_ROOT=$HOME the widening must NOT apply: a file directly in the home directory is
-# still external. Without this rail one bad answer at install trusts the entire machine.
-printf '%s' "$(j Read "$(python3 -c "import json,os;print(json.dumps({'file_path':os.path.expanduser('~/some-download.md')}))")")" \
-  | LIFEHACK_ROOT="$HOME" bash "$HOOK" >/dev/null 2>&1
+echo "-- SANITY: a notes root of \$HOME is refused, so it cannot swallow ~/Downloads --"
+# 3b.7 A: the rest of the home folder is trusted anyway; the rail now matters for the two doors.
+printf '%s' "$(j Read "$(fp "$GH/Downloads/some-download.md")")" \
+  | env HOME="$GH" LIFEHACK_ROOT="$GH" bash "$HOOK" >/dev/null 2>&1
 if [ $? = 2 ]; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL [\$HOME as notes root]: expected deny"; fi
 
-echo "-- SANITY: NO notes root set at all — no widening, and no crash --"
-printf '%s' "$(j Read '{"file_path":"/tmp/a.md"}')" | env -u LIFEHACK_ROOT HOME="$NOTES" bash "$HOOK" >/dev/null 2>&1
-if [ $? = 2 ]; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL [no notes root]: expected deny"; fi
+echo "-- SANITY: NO notes root set at all — no crash, Downloads still a door --"
+printf '%s' "$(j Read "$(fp "$GH/Downloads/a.md")")" | env -u LIFEHACK_ROOT HOME="$GH" bash "$HOOK" >/dev/null 2>&1
+if [ $? = 2 ]; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL [no notes root, Downloads]: expected deny"; fi
+printf '%s' "$(j Read '{"file_path":"/tmp/a.md"}')" | env -u LIFEHACK_ROOT HOME="$GH" bash "$HOOK" >/dev/null 2>&1
+if [ $? = 0 ]; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL [no notes root, /tmp]: expected allow"; fi
 
 echo "-- ⭐ GITHUB #94/#96: notes_root() must fold a Windows path spelling BEFORE testing it --"
 # THE BUG (found 2026-08-23): notes_root()'s case guard tested the RAW, UNFOLDED pointer. _winfold
@@ -367,7 +430,12 @@ echo "-- ⭐ INGEST-GATE-WORKTREE-FIX-CARD: trust by the TARGET FILE's own git i
 # history -- unlike the #95 fixture above (which fakes the .git-file SHAPE precisely to avoid a git
 # subprocess on every call), the new route here only runs \`git\` on the deny path, so there is no
 # reason to fake it and a real repo/worktree is more faithful to what is actually being proven.
-WTFROOT="$(mktemp -d "${TMPDIR:-/tmp}/gatetest-wtfix.XXXXXX")"
+# 3b.7 A (2026-11-01): outside ~/Downloads and ~/Desktop every plain read is trusted, so the
+# worktree route only decides anything INSIDE those two folders. The synthetic checkouts are built
+# under the throwaway HOME's Downloads, and every case runs with that HOME, so each one still
+# proves what it proved before: a real Harness checkout passes, a lookalike or untracked file does not.
+WTFROOT="$(mktemp -d "$GH/Downloads/gatetest-wtfix.XXXXXX")"
+_SAVED_HOME="$HOME"; export HOME="$GH"
 CANON_ORIGIN="https://github.com/LifehackMethod/lifehack-brain.git"
 
 # An outside target that exists BEFORE any symlink points at it, so realpath resolves cleanly.
@@ -435,7 +503,7 @@ NOREPODIR="$WTFROOT/plain-dir"
 mkdir -p "$NOREPODIR"
 printf 'hi\n' > "$NOREPODIR/note.txt"
 NOREPO_PAYLOAD="$(j Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]}))" "$NOREPODIR/note.txt")")"
-run "path outside any repo -> gated"                        2 "$NOREPO_PAYLOAD"
+run "path outside any repo, in Downloads -> gated"          2 "$NOREPO_PAYLOAD"
 
 echo "-- ⭐ LEAD REVIEW 2026-09-17: shape alone is spoofable -- the origin must be the canonical remote --"
 # A hostile repo with the EXACT 3-file shape (a lookalike deliberately mimicking the layout) but an
@@ -488,9 +556,9 @@ run "ssh-form canonical origin (git@github.com:...) -> ALLOW"    0 "$SSH_PAYLOAD
 
 git -C "$MAINCLONE" worktree remove --force "$HARNESSWT" >/dev/null 2>&1
 rm -rf "$WTFROOT"
+export HOME="$_SAVED_HOME"
 # The plugin cache's own files (no .git at all) must stay UNCHANGED by all of the above -- the
-# existing "external .txt"/"external .md"/"external no extension" cases earlier in this suite
-# already prove that end to end and are left unmodified; their tally is part of the RESULT below.
+# "Downloads .md"/"Downloads no extension" cases earlier in this suite prove the door end to end.
 
 echo ""
 echo "RESULT: $pass passed, $fail failed."

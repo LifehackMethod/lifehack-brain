@@ -13,8 +13,9 @@ trap 'lhb_journal_fire "$?" "ingest_gate_enforce.sh" "PreToolUse" "Bash|WebFetch
 #      scans for the injection patterns, and hands back clean text. This hook is the thing that
 #      makes that non-optional: it sits in front of the read tools and refuses the raw path.
 # GUARDS: WebFetch · WebSearch · Read/Grep/Glob of a document type (.pdf .docx .xlsx .csv) ·
-#      Read/Grep/Glob of ANY file outside the trusted zone (see below), whatever its extension ·
-#      a shell command that
+#      Read/Grep/Glob of a file in ~/Downloads or ~/Desktop (the only untrusted LOCAL folders —
+#      see "GUARD THE DOORS, TRUST THE HOUSE" below), whatever its extension · a Grep rooted
+#      ABOVE either of them · a shell command that
 #      pulls a Google Doc / Gmail body / calendar / tasks straight into context · a main-session
 #      read of the sanitized ingest scratch (that belongs to the tool-less reader sub-agent) · a
 #      command that tries to set a *_SKIP_* variable to switch the sanitizer off · a Bash command
@@ -24,6 +25,27 @@ trap 'lhb_journal_fire "$?" "ingest_gate_enforce.sh" "PreToolUse" "Bash|WebFetch
 #      is a redirect, not a wall. Nothing here says "you may not read that."
 # FAIL_POSTURE: closed. Unparseable hook input denies: a gate that cannot read its own input must
 #      not wave a read through.
+#
+# ── GUARD THE DOORS, TRUST THE HOUSE (2026-11-01, PHASE 3b.7 A) ─────────────────────────────
+# For PLAIN local reads the rule is now the other way round from the history below: the person's
+# own machine is trusted, and the only untrusted local folders are ~/Downloads and ~/Desktop —
+# where outside material lands (downloads, attachments, things dragged in). Outside material is
+# scanned at its door (the web/doc/mail arms here, the connector door in
+# sanitize_connector_output.sh), not again every time it moves between folders.
+#   * Untrusted-folder test: the incoming path is already realpath'd (symlinks followed, `..`
+#     collapsed), so a link inside a trusted folder pointing into ~/Downloads is caught. The
+#     folder side is matched in every spelling: $HOME as given, $HOME physical, and the folder's
+#     own resolved target (a ~/Downloads that is itself a symlink). Case-folded, because the Mac
+#     filesystem is case-insensitive and ~/DOWNLOADS is the same folder.
+#   * A root you CHOSE that sits INSIDE one of them (this repo cloned to ~/Desktop, a notes root
+#     under ~/Desktop) is still trusted. A root ABOVE them (a notes root of /Users) is not allowed
+#     to swallow them — that is why this check runs before any root is consulted.
+#   * A Harness checkout inside ~/Downloads still gets the existing worktree route (tracked files,
+#     canonical remote, no symlink escape) — _worktree_trusted below, unchanged.
+#   * Grep rooted ABOVE ~/Downloads or ~/Desktop (e.g. at $HOME) would hand their contents back
+#     line by line, so it is redirected to a narrower path. Glob returns names only and passes.
+# The history below is kept: it explains why each of the three roots was trusted when the zone
+# was an allowlist, and those roots still decide the ordering cases above.
 #
 # ── THE TRUSTED ZONE, and why it is drawn where it is ────────────────────────────────────────
 # Trusted = code and notes that you or this project authored. Untrusted = everything else.
@@ -57,6 +79,17 @@ trap 'lhb_journal_fire "$?" "ingest_gate_enforce.sh" "PreToolUse" "Bash|WebFetch
 #      exactly the "control that forces a routine workaround" this widening exists to prevent, and it
 #      came back in through string formatting. So: both roots go through `pwd -P`, the incoming path
 #      goes through realpath, and the comparison is between two canonical paths.
+# UPDATED: 2026-11-01 (PHASE 3b.7 item A, "guard the doors, trust the house", locked by Enver): the catch-all
+#      "any file outside the trusted zone" arm is GONE. Enver: outside material is scanned when it comes in, and
+#      "stuff that's already on my computer is generally considered safe"; "we don't have to rescan files between
+#      folders". The ONLY untrusted local folders are ~/Downloads and ~/Desktop (canonical path, case-folded, both
+#      $HOME spellings and the folder's own resolved target). A plain Read/Grep/Glob of a text or unknown-type file
+#      anywhere else on the machine passes. <HOME>/.claude/run/** is named explicitly (skills that keep one file
+#      per step read their own previous step). Everything else this gate does for OUTSIDE sources is unchanged:
+#      WebFetch/WebSearch, PDF/DOCX/XLSX/CSV anywhere, Gmail/Doc/Calendar/Tasks pulls, memory/ and _unpacked/,
+#      the item and email-thread stores, the *_SKIP_* check. Connector (MCP) results are handled by the new
+#      PostToolUse door, system/hooks/sanitize_connector_output.sh. No switch (the plan names none).
+#      Fixes the Round D false alarms P02/P07/P08. Tests: system/hooks/tests/test_ingest_gate_enforce.sh.
 # UPDATED: 2026-10-30 (Round C lock-prep A, switch email_reader_block in system/hooks/roundB.conf, OFF = unchanged): the gate also covers WRITTEN code. A Write/Edit/MultiEdit
 #      (and a Bash heredoc/redirect write) of a code file that reads mail itself (imaplib/poplib/Gmail API) or fetches outside content itself
 #      (requests/urllib/httpx/curl in a script) is a HARD deny that names email_fetch.py / safe_fetch.py; the allowlisted shared fetches, test files
@@ -202,6 +235,56 @@ HOME_FOLDED="$(_winfold "$HOME")"
 # matches every absolute path on the machine and silently opens the gate.
 : "${NOTES_ROOT:=/dev/null/no-notes-root-is-set}"
 
+# ── THE ONLY UNTRUSTED LOCAL FOLDERS (PHASE 3b.7 A, 2026-11-01): ~/Downloads and ~/Desktop. One
+# entry per spelling: $HOME as given (folded), $HOME physical, and each folder's own resolved
+# target when it exists (a Downloads folder that is itself a symlink elsewhere).
+_UNTRUSTED_DIRS=""
+for _ud in Downloads Desktop; do
+  _UNTRUSTED_DIRS="$_UNTRUSTED_DIRS
+$HOME_FOLDED/$_ud
+$HOME_P/$_ud"
+  _udp="$(cd "$HOME/$_ud" 2>/dev/null && pwd -P)"
+  [ -n "$_udp" ] && _UNTRUSTED_DIRS="$_UNTRUSTED_DIRS
+$(_winfold "$_udp")"
+done
+_lc() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+# Prints the untrusted folder $1 sits in (or is), returns 0; returns 1 when it is in neither.
+_untrusted_dir_of() {
+  _uf_l="$(_lc "$1")"
+  while IFS= read -r _uf_u; do
+    [ -n "$_uf_u" ] || continue
+    _uf_ul="$(_lc "$_uf_u")"
+    case "$_uf_l" in "$_uf_ul"|"$_uf_ul"/*) printf '%s' "$_uf_u"; return 0 ;; esac
+  done <<UNTRUSTED_EOF
+$_UNTRUSTED_DIRS
+UNTRUSTED_EOF
+  return 1
+}
+# True when $1 is a strict ANCESTOR of an untrusted folder ("/", /Users, $HOME): a Grep there
+# would return their contents.
+_contains_untrusted() {
+  _cu_l="$(_lc "$1")"
+  [ "$_cu_l" = "/" ] && return 0
+  while IFS= read -r _cu_u; do
+    [ -n "$_cu_u" ] || continue
+    case "$(_lc "$_cu_u")" in "$_cu_l"/*) return 0 ;; esac
+  done <<UNTRUSTED_EOF
+$_UNTRUSTED_DIRS
+UNTRUSTED_EOF
+  return 1
+}
+# True when $1 sits under a root the person CHOSE (this repo, the notes root) and that root is
+# itself strictly INSIDE the untrusted folder $2. A root above the folder never counts.
+_chosen_root_inside() {
+  _cr_l="$(_lc "$1")"; _cr_ul="$(_lc "$2")"
+  for _cr_r in "$REPO" "$NOTES_ROOT"; do
+    _cr_rl="$(_lc "$_cr_r")"
+    case "$_cr_rl" in "$_cr_ul"/?*) ;; *) continue ;; esac
+    case "$_cr_l" in "$_cr_rl"|"$_cr_rl"/*) return 0 ;; esac
+  done
+  return 1
+}
+
 set -uo pipefail
 
 deny() { printf '%s\n' "$1" >&2; exit 2; }
@@ -258,6 +341,22 @@ _worktree_trusted() {
       *) return 1 ;;
     esac
   fi
+}
+
+# ── THE LOCAL DOOR (PHASE 3b.7 A). Called for a text or unknown-type Read/Grep/Glob AFTER the
+# memory/ and _unpacked/ carve-outs. Denies (exit 2) a read inside ~/Downloads or ~/Desktop unless
+# a chosen root inside that folder, or the worktree route, vouches for the file; denies a Grep
+# rooted above either folder. Returns normally (caller allows) for everything else.
+_local_door() {
+  if _ld_u="$(_untrusted_dir_of "$FP")"; then
+    _chosen_root_inside "$FP" "$_ld_u" && return 0
+    _worktree_trusted "$FP" && return 0
+    deny '{"decision":"block","reason":"BLOCKED: raw read of a file in ~/Downloads or ~/Desktop. WHY: those two folders are where outside material lands on your machine (downloads, attachments, things dragged in), so a file there has not been through the sanitizer yet. It can carry what a human cannot see: zero-width characters, right-to-left overrides, control codes, and an instruction written to the model rather than to you. REDIRECT: python3 <repo>/system/tools/safe_read.py <path> (sanitize, scan, then clean text). Move the file somewhere else on your machine once you have read it safely, and plain reads of it pass from then on. RULE: everywhere else on your own machine is trusted for plain reads; the two untrusted folders are named in system/hooks/ingest_gate_enforce.sh."}'
+  fi
+  if [ "$TOOL" = "Grep" ] && _contains_untrusted "$FP"; then
+    deny '{"decision":"block","reason":"BLOCKED: a Grep rooted above ~/Downloads or ~/Desktop (for example at your home folder) would return lines from files in those two folders raw. WHY: they are where outside material lands, and it has not been sanitized yet. REDIRECT: point the Grep path at the folder you actually mean (a project, your notes), which is trusted; to read a file in Downloads or Desktop use python3 <repo>/system/tools/safe_read.py <path>. Glob (names only) is not affected. RULE: the two untrusted folders are named in system/hooks/ingest_gate_enforce.sh."}'
+  fi
+  return 0
 }
 
 INPUT=$(cat 2>/dev/null) || deny '{"decision":"block","reason":"BLOCKED: ingest_gate_enforce could not read its input — failing CLOSED."}'
@@ -377,9 +476,9 @@ except Exception: print('')" "$TOOL" 2>/dev/null)
       csv)      deny '{"decision":"block","reason":"BLOCKED: Read on a .csv hands over cells beginning =, +, - or @ — formula injection, executed the moment the file opens in Excel or Sheets. REDIRECT: python3 <repo>/system/tools/safe_csv.py <path>."}' ;;
       txt|md|markdown|mdown|mkd|text)
         # .txt and .md are external-content channels too, but this system reads hundreds of
-        # INTERNAL .md every day — skills, docs, plans, records, canon. So gate only the EXTERNAL
-        # ones, with a fail-closed allowlist: the repo, ~/.claude, and the notes root are trusted;
-        # everything else is not. This is a redirect, not a wall.
+        # INTERNAL .md every day — skills, docs, plans, records, canon. Since 3b.7 A (2026-11-01)
+        # only ~/Downloads and ~/Desktop are treated as outside material (_local_door); the rest
+        # of the machine is trusted. This is a redirect, not a wall.
         #
         # ── EXACT-DIRECTORY MATCHES (N5 half a + its mirror, 2026-08-26). The `/*` patterns
         # match only paths strictly UNDER each root, so a Grep/Glob whose path was EXACTLY the
@@ -393,11 +492,13 @@ except Exception: print('')" "$TOOL" 2>/dev/null)
           # The carve-outs, FIRST because `case` takes the first match.
           "$NOTES_ROOT"/memory|"$NOTES_ROOT"/memory/*|"$REPO"/memory|"$REPO"/memory/*|*/_unpacked|*/_unpacked/*)
             deny '{"decision":"block","reason":"BLOCKED: raw Read of a file under memory/ or _unpacked/. WHY: the rest of these folders is trusted, but this is where raw material lands — an exported chat archive, someone else'"'"'s documents, pasted text — so it is external content sitting inside a trusted folder. That is the whole reason it is gitignored. REDIRECT: python3 <repo>/system/tools/safe_read.py <path> — sanitize, scan, then clean text. RULE: the trusted-zone allowlist lives in system/hooks/ingest_gate_enforce.sh; to change it, edit the allowlist there."}' ;;
-          "$REPO"|"$REPO"/*|"$HOME_FOLDED"/.claude|"$HOME_FOLDED"/.claude/*|"$HOME_P"/.claude|"$HOME_P"/.claude/*|"$NOTES_ROOT"|"$NOTES_ROOT"/*)
+          # <HOME>/.claude/run/** named explicitly (3b.7 A.4): per-step skill state; ~/.claude is never inside Downloads/Desktop.
+          "$HOME_FOLDED"/.claude/run|"$HOME_FOLDED"/.claude/run/*|"$HOME_P"/.claude/run|"$HOME_P"/.claude/run/*|"$HOME_FOLDED"/.claude|"$HOME_FOLDED"/.claude/*|"$HOME_P"/.claude|"$HOME_P"/.claude/*)
             exit 0 ;;
           *)
-            _worktree_trusted "$FP" && exit 0
-            deny '{"decision":"block","reason":"BLOCKED: raw Read of an EXTERNAL .txt/.md file. WHY: text from outside this repo and your own notes can carry what a human cannot see — zero-width characters, right-to-left overrides, control codes, and an instruction written to the model rather than to you. Plain text is not safe text. REDIRECT: python3 <repo>/system/tools/safe_read.py <path> — sanitize, scan, then clean text. RULE: the trusted zone is this repo, ~/.claude, and your notes root; the allowlist lives in system/hooks/ingest_gate_enforce.sh."}' ;;
+            # 3b.7 A: the catch-all external deny is gone; only ~/Downloads and ~/Desktop are doors.
+            _local_door
+            exit 0 ;;
         esac
         ;;
       # ── FAIL-SAFE DEFAULT. An unrecognised extension is UNKNOWN, not safe.
@@ -415,11 +516,13 @@ except Exception: print('')" "$TOOL" 2>/dev/null)
         case "$FP" in
           "$NOTES_ROOT"/memory|"$NOTES_ROOT"/memory/*|"$REPO"/memory|"$REPO"/memory/*|*/_unpacked|*/_unpacked/*)
             deny '{"decision":"block","reason":"BLOCKED: raw Read of a file under memory/ or _unpacked/. WHY: the rest of these folders is trusted, but this is where raw material lands — an exported chat archive, someone else'"'"'s documents, pasted text — so it is external content sitting inside a trusted folder. REDIRECT: python3 <repo>/system/tools/safe_read.py <path>. RULE: the trusted-zone allowlist lives in system/hooks/ingest_gate_enforce.sh."}' ;;
-          "$REPO"|"$REPO"/*|"$HOME_FOLDED"/.claude|"$HOME_FOLDED"/.claude/*|"$HOME_P"/.claude|"$HOME_P"/.claude/*|"$NOTES_ROOT"|"$NOTES_ROOT"/*)
+          "$HOME_FOLDED"/.claude/run|"$HOME_FOLDED"/.claude/run/*|"$HOME_P"/.claude/run|"$HOME_P"/.claude/run/*|"$HOME_FOLDED"/.claude|"$HOME_FOLDED"/.claude/*|"$HOME_P"/.claude|"$HOME_P"/.claude/*)
             exit 0 ;;
           *)
-            _worktree_trusted "$FP" && exit 0
-            deny '{"decision":"block","reason":"BLOCKED: raw Read of an EXTERNAL file whose type this gate does not recognise (.eml .html .ics .vcf .json .xml .log, or no extension at all). WHY: fail-safe defaults — an unrecognised type outside the trusted zone is UNKNOWN, not safe. A .eml or a .html carries exactly the payloads the .pdf and .docx branches above already block. REDIRECT: python3 <repo>/system/tools/safe_read.py <path>. RULE: the trusted zone is this repo, ~/.claude, and your notes root; widen the allowlist in system/hooks/ingest_gate_enforce.sh — do not restore a bare allow here."}' ;;
+            # 3b.7 A: same door as the .txt/.md arm. An unknown type in ~/Downloads or ~/Desktop
+            # (.eml .html .ics .json, no extension) is still redirected to safe_read.py.
+            _local_door
+            exit 0 ;;
         esac
         ;;
     esac
