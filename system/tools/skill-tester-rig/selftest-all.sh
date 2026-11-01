@@ -113,6 +113,10 @@ ff_f07() {
 
 echo "selftest-all: logs $OUT (fake model only, sequential)"
 if [ "${1:-}" = --waits ]; then
+  # A receipt must describe the real rig in the real receipts dir: refuse test overrides (same rule as bite.sh).
+  for v in SKILL_TESTER_RECEIPTS SKILL_TESTER_RECEIPT_RIG; do
+    eval "vv=\${$v:-}"; [ -z "$vv" ] || { echo "WAITS FAILED: $v is set; the --waits run writes the real 'waits' receipt and refuses overrides" >&2; exit 2; }
+  done
   echo "== wait scan"
   N=$((N+1))
   if bash "$RIG/waits_scan.sh" > "$OUT/waits-scan.log" 2>&1; then NOK=$((NOK+1)); echo "  ok   waits-scan $(tail -1 "$OUT/waits-scan.log")"
@@ -122,8 +126,13 @@ if [ "${1:-}" = --waits ]; then
   ff_k1; ff_sentinel; ff_f07
   echo "== selftests that contain waits"
   st_budget; st_guard; st_sentinel; st_inject; st_run; st_bite; st_load
-  if [ -z "$FAILED" ]; then echo "WAITS handshake-only silent-giveup 0 scan fail-first OK"; exit 0; fi
-  echo "WAITS FAILED:$FAILED"; exit 1
+  if [ -z "$FAILED" ]; then RESULT="WAITS handshake-only silent-giveup 0 scan fail-first OK"; RC=0
+  else RESULT="WAITS FAILED:$FAILED"; RC=1; fi
+  # The receipt (TR1.8 Verify) is written by this unguarded orchestrator only after everything above has ended,
+  # whatever the outcome (a FAILED line is a receipt too; it just never matches). Its notice goes to stderr so the
+  # result stays the last stdout line.
+  if ! bash "$RIG/receipt.sh" write waits "$RESULT" 1>&2; then echo "selftest-all: receipt write FAILED" >&2; RC=1; fi
+  echo "$RESULT"; exit "$RC"
 fi
 [ -z "${1:-}" ] || { echo "usage: selftest-all.sh [--waits]" >&2; exit 2; }
 st_status; st_seam; st_budget; st_expected; st_truth; st_checks; st_inject; st_run; st_bite; st_load; st_probe
