@@ -45,6 +45,45 @@ def git(*args, input=None, check=True):
     return r
 
 
+def warn_foreign_rows(staged_reg, names):
+    """WARN (stderr only, never refuses) when the STAGED register differs from HEAD in rows for files this
+    commit does not touch. Typical cause: an earlier REFUSED commit left this tool's rewritten register blob
+    staged in the shared index; its shas then go stale and a later commit would carry them. Added 2026-10-31."""
+    try:
+        r = git("show", "HEAD:" + REG, check=False)
+        if r.returncode != 0:
+            return
+        def by_id(text):
+            out = {}
+            for line in text.split("\n"):
+                if line.strip():
+                    try:
+                        row = json.loads(line)
+                        out[row["id"]] = (line, row)
+                    except (ValueError, KeyError, TypeError):
+                        pass
+            return out
+        head, staged = by_id(r.stdout.decode("utf-8")), by_id(staged_reg)
+        touched = {"/" + n for n in names if n}
+        foreign = []
+        for rid in sorted(set(head) | set(staged)):
+            h, st = head.get(rid), staged.get(rid)
+            if h and st and h[0] == st[0]:
+                continue
+            row = (st or h)[1]
+            if row.get("path") in touched:
+                continue
+            foreign.append(rid)
+        if foreign:
+            print("pre-commit: WARNING: the staged %s differs from HEAD in %d row(s) for files this commit does "
+                  "not touch: %s%s. A refused earlier commit may have left a stale register staged; if these "
+                  "are not yours, run `git restore --staged %s` (or re-stage HEAD's rows) before committing."
+                  % (REG, len(foreign), ", ".join(foreign[:8]), " ..." if len(foreign) > 8 else "", REG),
+                  file=sys.stderr)
+    except Exception:  # noqa: BLE001 -- a warning must never break the commit
+        return
+
+
 def main():
     top = git("rev-parse", "--show-toplevel").stdout.decode().strip()
     os.chdir(top)
@@ -67,6 +106,7 @@ def main():
             by_path[row.get("path")] = (i, row)
 
     names = git("diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z").stdout.decode("utf-8").split("\0")
+    warn_foreign_rows(staged_reg, names)
     hits = [n for n in names if n and "/" + n in by_path]
     if not hits:
         return 0

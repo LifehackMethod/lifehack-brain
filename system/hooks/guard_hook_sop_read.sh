@@ -310,6 +310,13 @@ case "$TOOL_NAME" in
     # `sed -i` target) into TARGETS, printed after the '1'/'0' verdict line -- one extra channel
     # of output from the same parse pass, never a second parser. The regex-fallback path
     # (tokenizer ValueError) still has no resolved target at all, by construction.
+    # 2026-10-31 switch hooksop_pure_reads (roundB.conf; default off = exactly the old behaviour).
+    # ON = (a) a '>' that sits only INSIDE quotes (grep -c '>' f, sed -n '>' f) no longer reads as a redirect --
+    # judged on the raw text with quotes stripped, and only when the quotes balance; (b) a sed whose script
+    # carries a w/W command aimed at the hook plane counts as a write. Anything unparseable keeps old behaviour.
+    _PURE=0
+    . "$_HOOKDIR/lib/roundb.sh" 2>/dev/null && roundb_on hooksop_pure_reads && _PURE=1
+    export _PURE
     _BASH_DETECT=$(printf '%s' "$RAW" | python3 -c "
 import sys, re, shlex
 HOOK = re.compile(r'(system/hooks/|\.claude/hooks/)')
@@ -318,6 +325,16 @@ WRAPPERS = {'sudo','doas','env','command','nohup','time','stdbuf'}
 SEPS = {';','&&','||','|','&'}
 ASSIGN = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*=')
 TARGETS = []
+import os
+PURE = os.environ.get('_PURE') == '1'
+NO_REDIR = False
+if PURE:
+    _raw0 = sys.stdin.read()
+    _stripped = re.sub(r\"'[^']*'|\\\"[^\\\"]*\\\"\", '', _raw0)
+    # confident only when every quote paired off (nothing left) and no unquoted '>' remains
+    NO_REDIR = ('\\'' not in _stripped and '\\\"' not in _stripped and '>' not in _stripped)
+else:
+    _raw0 = None
 
     # ⛔ NO BACKTICKS IN THIS BLOCK: it is a bash DOUBLE-quoted string, so a backtick is live command
     # substitution. A backticked tee example here truncated the migration plan to 28 bytes, 2026-09-16.
@@ -354,6 +371,7 @@ def check(cmd, depth=0):
         # -- redirect: a bare operator token. Quoted text keeps its spaces; an operator cannot.
         for i, t in enumerate(s):
             if ' ' in t: continue
+            if NO_REDIR: break   # pure-read switch: no unquoted '>' exists in the whole command
             m = re.match(r'^[0-9]*>>?\|?(.*)$', t)
             if not m or '>' not in t: continue
             tgt = m.group(1) or (s[i+1] if i+1 < len(s) else '')
@@ -377,6 +395,9 @@ def check(cmd, depth=0):
                 if matched:
                     TARGETS.extend(matched)  # R2-C
                     return True
+            if PURE and any(re.search(r'(^|[^A-Za-z])[wW][ ]*\\S*(system/hooks/|\\.claude/hooks/)', a) for a in args):
+                TARGETS.extend([a for a in args if HOOK.search(a)])
+                return True      # sed w/W command writing into the hook plane
             continue
         if head in WRITE_VERBS:
             matched = [a for a in args if HOOK.search(a)]
@@ -385,7 +406,7 @@ def check(cmd, depth=0):
                 return True
     return False
 
-raw = sys.stdin.read()
+raw = _raw0 if _raw0 is not None else sys.stdin.read()
 try:
     verdict = '1' if check(raw) else '0'
 except Exception:
@@ -583,11 +604,11 @@ _hashcwd() {
 HASHCWD="$(_hashcwd)"
 # CANNOT-DETERMINE, not a silent ALLOW or DENY: with no session id available AND no hashing tool
 # on PATH, the cwd-fallback key would collapse to the constant "cwd-" -- indistinguishable from a
-# real (but wrong) match. Report the distinct outcome instead of guessing. Exit 3 matches this
-# repo's ABSENT-SUBJECT convention (system/hooks/tests/verify-pm-guard.sh, guard_harness_writeback.sh).
+# real (but wrong) match. Report the distinct outcome instead of guessing. Exit 2 (not 3): only exit 2
+# blocks in a PreToolUse hook; the old exit 3 let the write through (fixed 2026-10-31).
 if [ -z "$SID" ] && [ -z "${CLAUDE_CODE_SESSION_ID:-}" ] && [ -z "$HASHCWD" ]; then
   printf '%s\n' "CANNOT-DETERMINE: guard_hook_sop_read has no session_id in the payload, no CLAUDE_CODE_SESSION_ID, and no hashing tool (shasum/python3/openssl) on PATH to derive a cwd-based fallback key. WHY: building a key from an empty hash would collapse every working directory to the same constant key -- an unverified guess, not a real match. REDIRECT: install shasum, python3, or openssl on PATH, or retry once CLAUDE_CODE_SESSION_ID is set. RULE: system/hooks/guard_hook_sop_read.sh header." >&2
-  exit 3
+  exit 2   # 2026-10-31: was exit 3 -- in a PreToolUse hook only exit 2 blocks; 3 is a non-blocking error = silent ALLOW
 fi
 
 KEY="${SID:-${CLAUDE_CODE_SESSION_ID:-cwd-$HASHCWD}}"
@@ -608,7 +629,7 @@ for cand in "$RECEIPT" "$RUN_DIR/hook.cwd-$HASHCWD.receipt"; do
     # never `echo 0` (which would make AGE ~= now, permanently and silently failing the TTL as if
     # the receipt were stale). See FIXED 2026-08-23 note above.
     printf '%s\n' "CANNOT-DETERMINE: guard_hook_sop_read found a receipt at $cand but could not read its modification time with either BSD (stat -f %m) or GNU (stat -c %Y) stat. WHY: treating an unreadable mtime as 0 would silently and permanently fail the TTL check; treating it as ALLOW would be an unverified guess. REDIRECT: this platform's stat is neither BSD- nor GNU-shaped -- report this so the guard can be extended. RULE: system/hooks/guard_hook_sop_read.sh header." >&2
-    exit 3
+    exit 2   # 2026-10-31: was exit 3 (non-blocking = silent ALLOW); fail-closed means exit 2
   fi
   AGE=$(( $(date +%s) - MTIME ))
   [ "$AGE" -lt 43200 ] && FOUND=1 && break
