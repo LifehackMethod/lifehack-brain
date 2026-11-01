@@ -1,4 +1,5 @@
 #!/bin/bash
+. "$(dirname "${BASH_SOURCE[0]}")/pin_roundb_off.sh"
 # test_archive_before_cut.sh -- Round C 4, switch fc_archive_before_cut: a cut from an SOP/canon file needs a verbatim history-log receipt.
 #   Edit/Write/MultiEdit go through guard_canon_write.sh -> lib/cut_receipt.py ; a Bash overwrite goes through guard_build_mode.sh.
 #   ALLOW cases first, then refusals; every refusal also run with the switch OFF (must allow). Fictional pond-themed text only.

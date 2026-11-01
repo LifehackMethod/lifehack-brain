@@ -1,4 +1,5 @@
 #!/bin/bash
+. "$(dirname "${BASH_SOURCE[0]}")/pin_roundb_off.sh"
 # test_write_paths_guard.sh — the guards protecting themselves.
 #
 # ⭐ THE CASE THIS SUITE EXISTS FOR was measured on 2026-08-14: an Edit aimed at
@@ -130,11 +131,43 @@ for sw in on off; do
   # standing scope ("everything else is allowed") applies and the switch changes nothing (0 on and off).
   run_home "[$sw] symlink escaping to a non-git dir: outside the zone, unchanged by the switch" 0 "$TMPHOME/.claude/skills/escape/SKILL.md" "$TMPHOME"
 done
-unset ROUNDB_SKILLS_NATIVE_WRITE
+export ROUNDB_SKILLS_NATIVE_WRITE=off
 # the switches must be REAL lines in roundB.conf (a comment-spliced line once hid skills_native_write from the live rig)
 for _k in skills_native_write commit_identity_optional; do
-  grep -qE "^${_k}=off\$" "$HOOKS/roundB.conf" && ok || bad "roundB.conf has a real line ${_k}=off" "missing"
+  grep -qE "^${_k}=(on|off)\$" "$HOOKS/roundB.conf" && ok || bad "roundB.conf has a real line ${_k}=on|off" "missing"
 done
+
+echo "── later-list: skill_edit_to_ask (existing file of a NON-git personal skill -> the ask, not a block) ─"
+for _k in skill_edit_to_ask; do
+  grep -qE "^${_k}=(on|off)\$" "$HOOKS/roundB.conf" && ok || bad "roundB.conf has a real line ${_k}=on|off" "missing"
+done
+grep -qE "^skill_edit_to_ask=off\$" "$HOOKS/roundB.conf" && ok || bad "skill_edit_to_ask ships OFF" "default must be off"
+mkdir -p "$TMPHOME/.claude/skills/old-skill/scripts"; echo old > "$TMPHOME/.claude/skills/old-skill/scripts/run.sh"
+for sw in on off; do
+  want_exist=0; [ "$sw" = off ] && want_exist=2
+  export ROUNDB_SKILL_EDIT_TO_ASK=$sw ROUNDB_SKILL_EDIT_ASK=on ROUNDB_SKILLS_NATIVE_WRITE=off
+  run_home "[$sw] existing SKILL.md of a non-git skill"            $want_exist "$TMPHOME/.claude/skills/old-skill/SKILL.md" "$TMPHOME"
+  run_home "[$sw] existing script of a non-git skill (Write)"      $want_exist "$TMPHOME/.claude/skills/old-skill/scripts/run.sh" "$TMPHOME" Write
+  run_home "[$sw] NEW file in an existing non-git skill stays blocked (native_write off)" 2 "$TMPHOME/.claude/skills/old-skill/new.md" "$TMPHOME"
+  run_home "[$sw] existing file in a git repo without remote stays blocked" 2 "$TMPHOME/.claude/skills/gitlocal/new.md" "$TMPHOME"
+  run_home "[$sw] existing file in the ClaudeOps repo's system/hooks stays blocked" 2 "$TMPHOME/.claude/skills/ClaudeOps/system/hooks/guard_egress.sh" "$TMPHOME"
+  run_home "[$sw] a file under a ClaudeOps symlink stays blocked"  2 "$TMPHOME/.claude/skills/opslink/system/hooks/x.sh" "$TMPHOME"
+  run_home "[$sw] escaping symlink: outside the zone, unchanged by the switch" 0 "$TMPHOME/.claude/skills/escape/SKILL.md" "$TMPHOME"
+  run_home "[$sw] commands/ existing file stays blocked"           2 "$TMPHOME/.claude/commands/old.md" "$TMPHOME"
+done
+mkdir -p "$TMPHOME/.claude/commands"; echo old > "$TMPHOME/.claude/commands/old.md"
+# ON only works together with skill_edit_ask: with the ask OFF the block stays (never a silent allow)
+export ROUNDB_SKILL_EDIT_TO_ASK=on ROUNDB_SKILL_EDIT_ASK=off
+run_home "[to_ask on, skill_edit_ask off] existing file stays blocked (no silent allow)" 2 "$TMPHOME/.claude/skills/old-skill/SKILL.md" "$TMPHOME"
+# end to end: with the switch ON the whole chain ends in the ASK, not a block
+export ROUNDB_SKILL_EDIT_TO_ASK=on ROUNDB_SKILL_EDIT_ASK=on
+_bm_out="$(python3 -c "
+import json,sys
+print(json.dumps({'session_id':'e2e','cwd':sys.argv[2],'tool_name':'Edit','tool_input':{'file_path':sys.argv[1],'old_string':'old','new_string':'new'}}))" "$TMPHOME/.claude/skills/old-skill/SKILL.md" "$TMPHOME" \
+  | env HOME="$TMPHOME" CLAUDE_PLUGIN_ROOT="$REPO" bash "$HOOKS/guard_build_mode.sh" 2>/dev/null)"
+printf '%s' "$_bm_out" | grep -q '"permissionDecision": "ask"' && ok || bad "end to end: guard_build_mode asks for the existing-skill edit" "no ask in: $(printf '%.150s' "$_bm_out")"
+unset ROUNDB_SKILL_EDIT_TO_ASK ROUNDB_SKILL_EDIT_ASK
+export ROUNDB_SKILLS_NATIVE_WRITE=off
 
 echo "── what this guard deliberately does NOT do (see the scope note) ────────"
 # These are ASSERTIONS, not gaps. Changing them is the product decision named at the top.

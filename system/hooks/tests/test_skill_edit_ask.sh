@@ -1,4 +1,5 @@
 #!/bin/bash
+. "$(dirname "${BASH_SOURCE[0]}")/pin_roundb_off.sh"
 # test_skill_edit_ask.sh -- Round C lock-prep B, switch skill_edit_ask: a write/edit (Write, Edit, MultiEdit, Bash redirect/tee/cp/mv/sed -i)
 # under ANY .claude/skills/ folder draws the harness ASK (permissionDecision "ask", exit 0, JSON on stdout). OFF = no ask.
 # ALLOW cases first. Fictional names. Run: bash system/hooks/tests/test_skill_edit_ask.sh

@@ -12,7 +12,7 @@ T = os.path.realpath(tempfile.mkdtemp(prefix=".rigfence-", dir=RH))   # under th
 SCR = RH + "/rig-exam-scratch"
 ISO = RH + "/rig-iso-home"
 CWD = SCR + "/enver/D-X1"
-NOTES = RH + "/Library/CloudStorage/GoogleDrive-x@example.invalid/My Drive/_Notes"
+NOTES = RH + "/Library/CloudStorage/GoogleDrive-placeholder/My Drive/_Notes"
 ENV = dict(os.environ, RIG_FENCE_REAL_HOME=RH, RIG_FENCE_REAL_NOTES=NOTES, RIG_FENCE_ALLOW=SCR + ":" + ISO, RIG_FENCE_LOG=T + "/fence.jsonl")
 
 
@@ -53,7 +53,7 @@ CASES = [
     ("Bash nested bash -c writes real", B("bash -c 'touch " + RH + "/.claude/x'"), True),
     ("Bash dd of= real", B("dd if=/dev/zero of=" + RH + "/x bs=1 count=1"), True),
     ("Bash fetch -o real", B(CURL + " -o " + RH + "/Downloads/x.html"), True),
-    ("Bash ~otheruser write", B("touch ~envergjokaj/.claude/x"), True),
+    ("Bash ~otheruser write", B("touch ~" + os.path.basename(RH) + "/.claude/x"), True),
     # ---- allowed: in-sandbox actions and reads
     ("Write in cwd", fence("Write", {"file_path": CWD + "/notes/a.md", "content": "x"}), False),
     ("Write relative in cwd", fence("Write", {"file_path": "notes/a.md", "content": "x"}), False),

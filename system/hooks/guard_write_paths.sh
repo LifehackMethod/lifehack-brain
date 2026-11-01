@@ -272,6 +272,18 @@ if [[ "$FILE_PATH" == "$CLAUDE_DIR/skills/"* || "$FILE_PATH" == "$HOME/.claude/s
             exit 0
         fi
     fi
+    # Later-list item (skill_edit_to_ask, default OFF): an AI edit of an EXISTING file in a NON-git personal skill under the REAL
+    # ~/.claude/skills/ is not blocked here; it goes on to build_mode's skill-edit ASK (the harness Yes/No), so it needs skill_edit_ask ON too.
+    # Still blocked: anything inside any git repo (remote or not, so the ClaudeOps symlink and system/hooks), commands/, a path whose
+    # resolved location is not inside the real skills folder (escaping symlinks), and NEW files (skills_native_write decides those).
+    if [[ -z "$REPO_ROOT" && "$FILE_PATH" == "$HOME/.claude/skills/"* && -f "$RESOLVED" ]] && roundb_on skill_edit_to_ask && roundb_on skill_edit_ask; then
+        _sk_real="$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "$HOME/.claude/skills" 2>/dev/null)"
+        _sk_anc="$(dirname "$RESOLVED")"
+        if [[ -n "$_sk_real" && "$RESOLVED" == "$_sk_real/"* && "$RESOLVED" != "$_sk_real/ClaudeOps/"* ]] \
+           && ! git -C "$_sk_anc" rev-parse --show-toplevel >/dev/null 2>&1; then
+            exit 0
+        fi
+    fi
     printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: this path does not resolve inside a git repository with a configured remote ($RESOLVED). WHY: a ~/.claude/skills or /commands entry only syncs when what it points at (or is) is a real git working tree with a remote -- anything else left here becomes a real ORPHAN file that is never committed and never syncs to the other machine (CLAUDE-DIR-WRITE-LEAK). REDIRECT: author it inside a real git repo with a configured remote (e.g. \$_SELF_REPO/.claude/skills/<name>/, or any other cloned repo that has 'git remote' set), then place or symlink ~/.claude/skills/<name> there. Code-vs-content + sync: docs/architecture.md -> Code Residency and Git Sync.\"}" >&2
     exit 2
 fi

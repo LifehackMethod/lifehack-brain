@@ -1,4 +1,5 @@
 #!/bin/bash
+. "$(dirname "${BASH_SOURCE[0]}")/pin_roundb_off.sh"
 # Regression coverage for `system/hooks/guard_git_push_signpost.sh`'s signpost marker.
 #
 # THE BUG (fixed 2026-09-15): this guard is registered TWICE for the same PreToolUse

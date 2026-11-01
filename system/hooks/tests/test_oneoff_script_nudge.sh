@@ -8,6 +8,7 @@ T="$(cd "$(mktemp -d)" && pwd -P)"; trap 'rm -rf "$T"' EXIT
 export HOME="$T/hm"; PC="$T/hm/my-code"; WORK="$T/work"; export LHB_TURN_WRITES_DIR="$T/tw"
 mkdir -p "$HOME/.config/lifehack" "$PC/tools" "$WORK" "$T/work/scratch"; echo "$PC" > "$HOME/.config/lifehack/personal-code"
 unset ROUNDB_BACK_DOOR ROUNDB_OWN_LIST ROUNDB_OWN_LIST_UNHOMED ROUNDB_ONEOFF_SCRIPT_NUDGE
+. "$(dirname "${BASH_SOURCE[0]}")/pin_roundb_off.sh"
 pass=0; fail=0
 ok()  { pass=$((pass+1)); printf '   ok   %s\n' "$1"; }
 bad() { fail=$((fail+1)); printf '  FAIL  %s\n' "$1"; }

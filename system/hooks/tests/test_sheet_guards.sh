@@ -1,4 +1,5 @@
 #!/bin/bash
+. "$(dirname "${BASH_SOURCE[0]}")/pin_roundb_off.sh"
 # test_sheet_guards.sh — the two guards on a spreadsheet used as a database.
 #
 #   guard_sheet_writes.sh           read the sheet's own instructions before writing to it;

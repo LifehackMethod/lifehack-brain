@@ -1,4 +1,5 @@
 #!/bin/bash
+. "$(dirname "${BASH_SOURCE[0]}")/pin_roundb_off.sh"
 # test_git_push_signpost_guard.sh — deny-coverage suite for system/hooks/guard_git_push_signpost.sh
 # (B6.0 — a 14-case test for this guard exists only on the unmerged branch
 #  fix/push-signpost-double-registration, A1.7 — NOT present in this worktree, so this file is new here.)

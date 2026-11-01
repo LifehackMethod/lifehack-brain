@@ -7,6 +7,7 @@ HERE="$(cd "$(dirname "$0")/.." && pwd)"; FC="$HERE/guard_fine_china_ask.sh"; BM
 T="$(cd "$(mktemp -d)" && pwd -P)"; trap 'rm -rf "$T"' EXIT
 export HOME="$T/home"; CODE="$T/code"; NOTES="$T/notes"; PC="$T/pc"
 unset LIFEHACK_WATCH LIFEHACK_WATCH_SHADOW LHB_WATCH_CHILD; for v in $(env | sed -n 's/^\(ROUNDB_[A-Z0-9_]*\)=.*/\1/p'); do unset "$v"; done
+. "$(dirname "${BASH_SOURCE[0]}")/pin_roundb_off.sh"
 mkdir -p "$HOME/.config/lifehack" "$HOME/.claude/skills" "$CODE/shared" "$CODE/system/register" "$CODE/system/sops" "$CODE/system/hooks" "$CODE/hooks" "$NOTES/desks/pond/tools" "$PC" "$HOME/proj/node_modules/x" "$HOME/proj/build" "$HOME/proj/data-folder/sub" "$HOME/proj/emptydir" "$HOME/proj/sops" "$HOME/proj/__pycache__"
 echo "$CODE" > "$HOME/.config/lifehack/code-root"; echo "$PC" > "$HOME/.config/lifehack/personal-code"
 cp "$HERE/../../shared/brain_root.py" "$HERE/../../shared/personal_code_root.py" "$HERE/../tools/utf8_stdio.py" "$CODE/shared/" 2>/dev/null; export LIFEHACK_ROOT="$NOTES"
@@ -102,13 +103,13 @@ BMR sk3 Write "$(J file_path "$NS" content hi)" ROUNDB_SKILL_EDIT_ASK=on ROUNDB_
 if ! asked; then ok "building a NEW personal skill in ~/.claude/skills draws no ask (skills_native_home ON)"; else bad "new skill asked"; fi
 mkdir -p "$HOME/.claude/skills/oldskill"; echo old > "$HOME/.claude/skills/oldskill/SKILL.md"
 BMR sk4 Edit "$(J file_path "$HOME/.claude/skills/oldskill/SKILL.md" old_string old new_string new)" ROUNDB_SKILL_EDIT_ASK=on ROUNDB_SKILLS_NATIVE_HOME=on; if asked; then ok "editing an EXISTING skill still asks"; else bad "existing skill edit lost its ask"; fi
-BMR sk5 Write "$(J file_path "$T/home/Desktop/foo/SKILL.md" content hi)" ROUNDB_PLACEMENT_OUTSIDE_HOMES=on ROUNDB_REASON_GATE=on ROUNDB_SKILLS_NATIVE_HOME=on; if [ $RC -eq 2 ] && grep -q "WHERE IT BELONGS: ~/.claude/skills/foo/SKILL.md" "$T/err"; then ok "outside-homes stop sends a SKILL.md to ~/.claude/skills/<name>/"; else bad "outside-homes skill message: $(head -c 300 "$T/err")"; fi
-BMR sc1 Write "$(J file_path "$T/home/Desktop/foo/tool.py" content 'print(1)')" ROUNDB_PLACEMENT_OUTSIDE_HOMES=on ROUNDB_REASON_GATE=on ROUNDB_SKILLS_NATIVE_HOME=on; if [ $RC -eq 2 ] && grep -q "ONE folder for all your standalone scripts" "$T/err"; then ok "a standalone script is sent to the ONE personal code folder"; else bad "script message"; fi
+BMR sk5 Write "$(J file_path "$HOME/Desktop/foo/SKILL.md" content hi)" ROUNDB_PLACEMENT_OUTSIDE_HOMES=on ROUNDB_REASON_GATE=on ROUNDB_SKILLS_NATIVE_HOME=on; if [ $RC -eq 2 ] && grep -q "WHERE IT BELONGS: ~/.claude/skills/foo/SKILL.md" "$T/err"; then ok "outside-homes stop sends a SKILL.md to ~/.claude/skills/<name>/"; else bad "outside-homes skill message: $(head -c 300 "$T/err")"; fi
+BMR sc1 Write "$(J file_path "$HOME/Desktop/foo/tool.py" content 'print(1)')" ROUNDB_PLACEMENT_OUTSIDE_HOMES=on ROUNDB_REASON_GATE=on ROUNDB_SKILLS_NATIVE_HOME=on; if [ $RC -eq 2 ] && grep -q "ONE folder for all your standalone scripts" "$T/err"; then ok "a standalone script is sent to the ONE personal code folder"; else bad "script message"; fi
 # own_list_add suggestion (A.2)
-mkdir -p "$T/home/Desktop/bar"; echo hi > "$T/home/Desktop/bar/SKILL.md"
-OUT1="$(ROUNDB_SKILLS_NATIVE_HOME=on python3 "$HERE/../../shared/tools/own_list_add.py" --unhomed "$T/home/Desktop/bar/SKILL.md" 2>&1)"
+mkdir -p "$HOME/Desktop/bar"; echo hi > "$HOME/Desktop/bar/SKILL.md"
+OUT1="$(ROUNDB_SKILLS_NATIVE_HOME=on python3 "$HERE/../../shared/tools/own_list_add.py" --unhomed "$HOME/Desktop/bar/SKILL.md" 2>&1)"
 echo "$OUT1" | grep -q ".claude/skills/bar/SKILL.md" && ! echo "$OUT1" | grep -q "pc/skills" && ok "own_list_add --unhomed points a skill at ~/.claude/skills/<name>/" || bad "own_list_add suggestion: $OUT1"
-OUT2="$(python3 "$HERE/../../shared/tools/own_list_add.py" --unhomed "$T/home/Desktop/bar/SKILL.md" 2>&1)"
+OUT2="$(python3 "$HERE/../../shared/tools/own_list_add.py" --unhomed "$HOME/Desktop/bar/SKILL.md" 2>&1)"
 echo "$OUT2" | grep -q "pc/skills/bar" && ok "own_list_add switch OFF = old suggestion" || bad "own_list_add old behaviour: $OUT2"
 # ---------------- WATCH-ONLY mode (B.5)
 WL="$HOME/.claude/run/watch/watch-log.jsonl"; rm -f "$WL"
@@ -121,10 +122,13 @@ run "$BM" w4 Bash "$(J command "echo x > $CODE/system/sops/skill-building-sop.md
 if [ $RC -eq 0 ] && grep -q '"switch": \["fc_shell_overwrite"\]' "$WL" && grep -q '"would_decision": "block"' "$WL"; then ok "watch: a would-be BLOCK (shell overwrite of an SOP) is logged, exit 0, nothing blocked"; else bad "watch block: rc=$RC $(tail -1 "$WL" | head -c 300)"; fi
 run "$BM" w5 Bash "$(J command "echo x > $CODE/system/sops/skill-building-sop.md")" ROUNDB_FC_SHELL_OVERWRITE=on; [ $RC -eq 2 ] && ok "same call without watch is blocked (exit 2)" || bad "enforce baseline for watch"
 # conf-driven watch (no env): copy the hooks to a scratch plugin tree whose roundB.conf has mode=watch + one switch on
-cp -R "$HERE" "$T/hooks-copy"; sed -i.bak 's/^fc_folder_delete_ask=off/fc_folder_delete_ask=on/' "$T/hooks-copy/roundB.conf"; grep -q '^mode=watch' "$T/hooks-copy/roundB.conf" || echo 'mode=watch' >> "$T/hooks-copy/roundB.conf"
+# The copy gets a test-local conf (every switch off, one on, mode=watch), independent of the live roundB.conf; the env pins are cleared for these conf-only runs.
+cp -R "$HERE" "$T/hooks-copy"; sed -i.bak -E 's/^([a-z][a-z0-9_]*)=on[[:space:]]*$/\1=off/; s/^mode=.*/mode=watch/; s/^fc_folder_delete_ask=off/fc_folder_delete_ask=on/' "$T/hooks-copy/roundB.conf"; grep -q '^mode=watch' "$T/hooks-copy/roundB.conf" || echo 'mode=watch' >> "$T/hooks-copy/roundB.conf"
+for v in $(env | sed -n 's/^\(ROUNDB_[A-Z0-9_]*\)=.*/\1/p'); do unset "$v"; done; unset LIFEHACK_WATCH
 rm -f "$WL"; run "$T/hooks-copy/guard_fine_china_ask.sh" w6 Bash "$(J command "rm -rf $D/data-folder")"
 if [ ! -s "$T/out" ] && grep -q fc_folder_delete_ask "$WL" 2>/dev/null; then ok "watch from roundB.conf alone (mode=watch + switch on, no env, no settings.json)"; else bad "conf-driven watch: rc=$RC $(cat "$WL" 2>/dev/null | head -c 200)"; fi
 sed -i.bak 's/^mode=watch/mode=enforce/' "$T/hooks-copy/roundB.conf"; run "$T/hooks-copy/guard_fine_china_ask.sh" w7 Bash "$(J command "rm -rf $D/data-folder")"; asked && ok "mode=enforce: the ask is given" || bad "mode=enforce"
+. "$HERE/tests/pin_roundb_off.sh"
 # FAIL-OPEN CHECK (Round D integrator): the WATCHER crashing must never skip the real guard. Four ways it can die; each time the real guard still asks / blocks.
 for kind in raise syntax silent-exit0 missing; do
   rm -rf "$T/hooks-crash"; cp -R "$HERE" "$T/hooks-crash"
