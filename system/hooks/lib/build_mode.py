@@ -724,6 +724,8 @@ def main_inner():
                         if base == "SKILL.md" and _roundb("skills_native_home"):   # anchor ruling P-50: a personal skill goes in ~/.claude/skills/<name>/ by default, never to the personal code folder
                             pmsg = ("this skill belongs in ~/.claude/skills/%s/SKILL.md (Claude loads personal skills only from ~/.claude/skills/<name>/; the personal code folder is for loose scripts and one-desk tools). "
                                     "Build it THERE without asking, keep its own scripts inside that same folder, and tell the person where it is." % _skill_name(t))
+                            if "/.claude/skills/" in t:   # decision 1 (Enver, 2026-11-01): a project's .claude/skills only when the person said it is for THIS project
+                                pmsg += " Keep it in this project's .claude/skills ONLY if the person said this skill is for this project; then retry the same call and it goes through."
                 else:
                     hit = False
                 if hit and zone == "outside-homes":

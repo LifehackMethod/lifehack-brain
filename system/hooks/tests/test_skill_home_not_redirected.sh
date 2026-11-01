@@ -4,7 +4,7 @@
 # Pins every Round B switch OFF, then turns on exactly the go-live switches that matter here.
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 . "$HERE/tests/pin_roundb_off.sh"
-export ROUNDB_PLACEMENT_OUTSIDE_HOMES=on ROUNDB_SKILLS_NATIVE_HOME=on ROUNDB_SKILLS_NATIVE_WRITE=on ROUNDB_SKILL_EDIT_ASK=on
+export ROUNDB_PLACEMENT_OUTSIDE_HOMES=on ROUNDB_SKILLS_NATIVE_HOME=on ROUNDB_SKILLS_NATIVE_WRITE=on ROUNDB_SKILL_EDIT_ASK=on ROUNDB_PLACEMENT_PROJECT_SKILLS=on
 HOOK="$HERE/guard_build_mode.sh"
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
 CODE="$(cd "$HERE/../.." && pwd)"
@@ -21,6 +21,11 @@ fire s1 "$HOME/work/skills/friday-recap/SKILL.md" "$SK"; chk 2 "SKILL.md outside
 fire s2 "$HOME/work/ping.py" 'print(1)'; chk 2 "loose .py outside homes: still the personal code folder" "this belongs in your personal code folder"
 fire s3 "$HOME/.claude/skills/friday-recap/SKILL.md" "$SK"; fire s3 "$HOME/.claude/skills/friday-recap/SKILL.md" "$SK"; chk 0 "new skill in ~/.claude/skills: not redirected, not asked" "" "Wrong home"
 fire s4 "$HOME/.claude/skills/friday-recap/scripts/run.py" 'print(1)'; chk 0 "script inside a new skill: not redirected" "" "Wrong home"
+# Decision 1 (Enver, 2026-11-01): a NEW skill under a PROJECT's .claude/skills is steered to ~/.claude/skills; the retry (the person said it is for this project) goes through
+fire s6 "$HOME/work/proj/.claude/skills/friday-recap/SKILL.md" "$SK"; chk 2 "project .claude/skills SKILL.md: steered to ~/.claude/skills" "~/.claude/skills/friday-recap/SKILL.md" "belongs in your personal code folder"
+chk 2 "  ... and says when the project folder is right" "ONLY if the person said this skill is for this project" ""
+fire s6 "$HOME/work/proj/.claude/skills/friday-recap/SKILL.md" "$SK"; chk 0 "project .claude/skills: identical retry (confirmed for this project) passes" "" "Wrong home"
+fire s7 "$HOME/.claude/skills/other/SKILL.md" "$SK"; fire s7 "$HOME/.claude/skills/other/SKILL.md" "$SK"; chk 0 "~/.claude/skills new skill unchanged: no stop" "" "Wrong home"
 # Bash heredoc through a shell variable: the message must not print the literal $d as the folder name
 CMD="d=$HOME/work/skills/meeting-decisions; mkdir -p \"\$d\"; cat > \"\$d/SKILL.md\" <<'EOF'
 x
