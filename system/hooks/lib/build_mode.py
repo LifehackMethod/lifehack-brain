@@ -498,6 +498,20 @@ def remember_folder(code, folder, reason):
     return True
 
 
+def personal_code_dir(code):
+    """The personal code folder through the existing pointer (shared/personal_code_root.py), or "" when it does not resolve."""
+    try:
+        sys.path.insert(0, os.path.join(code, "shared"))
+        import personal_code_root
+        _s, pc = personal_code_root.resolve_personal_code_root()
+        return os.path.realpath(pc) if pc and os.path.isdir(pc) else ""
+    except Exception:
+        return ""
+    finally:
+        if sys.path and sys.path[0] == os.path.join(code, "shared"):
+            sys.path.pop(0)
+
+
 def gate_message(t, pc, why_weak, remember, hint_tools):
     parts = []
     if why_weak:
@@ -508,7 +522,7 @@ def gate_message(t, pc, why_weak, remember, hint_tools):
         parts.append("WHERE IT BELONGS: ~/.claude/skills/%s/SKILL.md. Claude loads personal skills only from ~/.claude/skills/<name>/, so build it THERE without asking, "
                      "put the skill's own scripts inside that same folder, and tell the person where it is." % (os.path.basename(os.path.dirname(t)) or "<name>"))
     else:
-        parts.append("WHERE IT BELONGS: your personal code folder, %s%s. Write the file there." % (pc, " (ONE folder for all your standalone scripts, not one per desk; desks/<desk>/ in the notes folder only for something that truly serves one desk, and only when the person said it is just for that desk)" if _roundb("skills_native_home") else ""))
+        parts.append("WHERE IT BELONGS: your personal code folder, %s%s. Write the file there." % (pc, " (ONE folder for all your standalone scripts, not one per desk; a tool made for ONE desk goes in %s/desks/<desk>/tools/ instead; the notes folder is data only)" % pc if _roundb("skills_native_home") else ""))
     parts.append("OR, if it has to live here, state a real reason (what this folder is for and why the file cannot go in the personal code folder) "
                  "and retry. EXACT SYNTAX: a line containing  lifehack-place: <your reason>  as a comment: in a .sh/.py file `# lifehack-place: <your reason>`; "
                  "in a SKILL.md/.md file `<!-- lifehack-place: <your reason> -->`; in a shell command put `# lifehack-place: <your reason>` at the end of the command. "
@@ -674,6 +688,9 @@ def main_inner():
                             except Exception:
                                 names = {}
                         hit = base not in names   # shared-tool names are check 2's business
+                    if hit:   # B07 ruling: a tool for one desk goes in <personal code>/desks/<desk>/tools/ (resolved through the pointer, never hard-coded)
+                        _dpc = personal_code_dir(code)
+                        pmsg = pmsg.replace("{pcdesk}", (_dpc + "/desks/<desk>/tools/") if _dpc else "the desks/<desk>/tools/ folder inside your personal code folder")
                 elif zone.startswith("code:"):
                     rel = os.path.relpath(t, code) if under(t, code) else ""
                     hit = bool(rel) and rel.split(os.sep)[0] in zone[5:].split(",")

@@ -73,7 +73,7 @@ fire s5 Write "$(J file_path "$NOTES/desks/marc/README.md" content "skills/ and 
 fire s5 Write "$(J file_path "$NOTES/desks/marc/records/skills/note.md" content "x")"; want 0 "existing desk, non-skill path: allowed"; silent "desk note"
 fire s5 Edit "$(J file_path "$HERE/guard_build_mode.sh" old_string a new_string b)"; want 0 "edit of an existing file: allowed"
 # ---- check 3: placement
-fire p1 Write "$(J file_path "$NOTES/system/helper.py" content 'print(1)')"; want 2 "code into the notes folder: denied once" "private repo"
+fire p1 Write "$(J file_path "$NOTES/system/helper.py" content 'print(1)')"; want 2 "code into the notes folder: denied once" "desks/<desk>/tools/"
 fire p1 Write "$(J file_path "$NOTES/system/helper.py" content 'print(1)')"; want 0 "code into notes: retry passes"
 fire p1 Write "$(J file_path "$CODE/state/my-note.md" content 'dear diary')"; want 2 "personal note into the harness: denied once" "notes folder"
 fire p1 Write "$(J file_path "$CODE/state/my-note.md" content 'dear diary')"; want 0 "note into harness: retry passes"
@@ -81,7 +81,7 @@ fire p2 Write "$(J file_path "$NOTES/system/snapshot.json" content '{}')"; want 
 fire p2 Write "$(J file_path "$NOTES/system/run.jsonl" content '{}')"; want 0 "jsonl to notes: allowed"; silent "jsonl"
 fire p2 Write "$(J file_path "$CODE/system/tools/newtool.py" content 'print(1)')"; want 0 "normal new code inside the repo: silent"; silent "repo code"
 fire p2 Edit "$(J file_path "$CODE/system/jobs.md" old_string zzz new_string yyy)"; want 0 "normal edit of an existing repo file: silent"; silent "repo edit"
-fire p3 Bash "$(J command "cp $CODE/system/jobs.md $NOTES/system/copy.sh")"; want 2 "bash cp target of code into notes: denied once" "private repo"
+fire p3 Bash "$(J command "cp $CODE/system/jobs.md $NOTES/system/copy.sh")"; want 2 "bash cp target of code into notes: denied once" "desks/<desk>/tools/"
 mv "$CODE/system/hooks/placement.conf" "$CODE/system/hooks/placement.bak"
 fire p4 Write "$(J file_path "$NOTES/system/helper2.py" content 'print(1)')"; want 0 "placement list missing: fail open" "placement list"
 mv "$CODE/system/hooks/placement.bak" "$CODE/system/hooks/placement.conf"
