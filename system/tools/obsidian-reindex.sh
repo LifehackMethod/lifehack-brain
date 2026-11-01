@@ -36,16 +36,9 @@ esac
 die()  { echo "[$JOB] STEP $1 FAILED: $2" >&2; exit "${3:-1}"; }
 note() { echo "[$JOB] $*"; }
 
-# ── Drive spine root: resolved, never typed (the mount dir is named for the account) ─────────────────────────────────
-_drive_root() {
-  if [ -n "${CLAUDEOPS_DRIVE:-}" ]; then printf '%s' "$CLAUDEOPS_DRIVE"; return 0; fi
-  local _m="$HOME/Library/CloudStorage" _c
-  for _c in "$_m"/GoogleDrive-*/"My Drive"/_ClaudeOps; do
-    if [ -d "$_c" ]; then printf '%s' "$_c"; return 0; fi
-  done
-  printf '%s' "$_m/GoogleDrive-UNRESOLVED/My Drive/_ClaudeOps"
-}
-DRIVE="$(_drive_root)"
+# ── the vault is the person's notes root: read from the pointer (shared/brain_root.py), never typed or guessed ───────
+DRIVE="$(python3 "$CODE_ROOT/shared/brain_root.py" --quiet 2>/dev/null)" \
+  || die "notes-root" "no notes root is set (python3 shared/brain_root.py says how to set one)" 2
 DATA_DIR="$HOME/.local/share/obsidian-brain"
 DB="$DATA_DIR/kg.db"
 PRUNE_SCRIPT="$HERE/obsidian-prune-archive.mjs"
@@ -54,7 +47,7 @@ RCPT_DIR="$HOME/.config/lifehack/$JOB"
 RCPT="$RCPT_DIR/last-index.txt"
 
 # ── single-instance lock (shared lib; records the owner pid). 75 = a live run holds it, 1 = corrupt lock ────────────
-LOCKDIR="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/claudeops-${JOB}.lock"
+LOCKDIR="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/lifehack-${JOB}.lock"
 . "$CODE_ROOT/system/tools/runner-lock.lib.sh" || { echo "[$JOB] FATAL: cannot source runner-lock.lib.sh under $CODE_ROOT" >&2; exit 1; }
 runner_lock_acquire "$LOCKDIR" 1800 "$JOB" || exit $?
 OUT=""

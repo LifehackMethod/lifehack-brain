@@ -31,10 +31,10 @@ trap 'lhb_journal_fire "$?" "guard_gh_account_switch.sh" "PreToolUse" "Bash" 2>/
 #    Adding a ninth pattern to this file buys less than it appears to.
 # ══════════════════════════════════════════════════════════════════════════════
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
-# WHY: 2026-08-04 — a ClaudeOps session ran `gh auth login` + `gh auth switch` to get
+# WHY: 2026-08-04 — a maintainer session ran `gh auth login` + `gh auth switch` to get
 #      admin on the NEW student-product repo (LifehackMethod/lifehack-brain). `gh` holds
 #      ONE active account per host, so that flipped the account for EVERY window on the
-#      machine. A parallel session's security check then asked "is <owner>/claudeops-config
+#      machine. A parallel session's security check then asked "is <owner>/<private repo>
 #      private?" and got `Could not resolve to a Repository` — INDISTINGUISHABLE from
 #      "the repo does not exist." It could not tell contained from exposed, and had to
 #      route around gh entirely with an unauthenticated probe. A privacy check that fails
@@ -42,13 +42,15 @@ trap 'lhb_journal_fire "$?" "guard_gh_account_switch.sh" "PreToolUse" "Bash" 2>/
 # GUARDS: any Bash command that MUTATES global `gh` auth state — `gh auth login`,
 #      `gh auth logout`, `gh auth refresh`, and `gh auth switch` to any account that is
 #      not `<the owner account>`. Read-only `gh auth status` is untouched. Blocks ONLY when the session
-#      is working inside the ClaudeOps zone (the clone or the Drive _ClaudeOps spine); a
-#      session launched from the student-product folder is NOT blocked.
+#      is working inside the person's own zone: the notes root, the personal code folder, any code
+#      folder listed in <personal-code>/code-zones.txt, this repo, or the session's project when it
+#      carries system/hooks. All of them come from the two pointers (shared/person_roots.py); none is
+#      typed here. A session launched anywhere else is NOT blocked.
 #      `gh auth switch --user "$OWNER_GH_USER"` is ALLOWED — that is the REPAIR direction, and a
 #      guard that blocks its own recovery path is a trap.
 # REDIRECT: never change global state for a one-off. Pass the token for that single command:
 #      `GH_TOKEN=<lifehack-token> gh repo edit LifehackMethod/lifehack-brain --visibility private`
-#      To restore ClaudeOps state: `gh auth switch --user "$OWNER_GH_USER"` (allowed, not blocked).
+#      To restore the owner account: `gh auth switch --user "$OWNER_GH_USER"` (allowed, not blocked).
 #      If you genuinely need a persistent switch, the USER runs it themselves with `!`.
 # SIGNPOST: the rule lives in system/sops/hook-sop.md (WHEN) + system/hook-contract.md
 #      (mechanics) + the github SOP (local speed bumps at the moment of action, identity among them; it lives in the maintainer's personal code folder, not shipped in the plugin). Incident recorded
@@ -75,14 +77,10 @@ COMMAND=$(printf '%s' "$PARSED" | sed -n '1p')
 SESSION_CWD=$(printf '%s' "$PARSED" | sed -n '2p')
 [ -z "$SESSION_CWD" ] && SESSION_CWD="$PWD"
 
-# --- Is this session inside the ClaudeOps zone? -------------------------------
-CLONE_ROOT="$HOME/claudeops-config"
+# --- Is this session inside the person's own zone? ------------------------------
 # THIS repo's root, resolved the same way guard_organism_map.sh and guard_write_paths.sh already
-# do it -- CLAUDE_PROJECT_DIR (set by the harness) first, falling back to this hook's own on-disk
-# location ($0-relative). NOT a second hardcoded literal: if the checkout moves, or a fresh clone
-# is opened elsewhere, this line keeps resolving correctly without another edit here. Fixes the
-# cutover to ~/ClaudeOps, where CLONE_ROOT alone left the case statement below hitting its
-# `*) exit 0` fallthrough unconditionally for every session running from the new repo.
+# do it -- this hook's own on-disk location ($0-relative) first, CLAUDE_PROJECT_DIR as the
+# fallback. NOT a typed literal: if the checkout moves, this keeps resolving without an edit here.
 _HOOKDIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd -P)"
 # ⛔ PRECEDENCE INVERTED 2026-08-23 (T2.2) -- same defect proven live in guard_write_paths.sh:
 # CLAUDE_PROJECT_DIR is the SESSION'S LAUNCH CWD, not the declaring repo, so preferring it made the
@@ -97,8 +95,8 @@ THIS_REPO_ROOT="${_HOOKDIR%/system/hooks}"
 # is always the plugin's install dir (e.g. ~/.claude/plugins/cache/lifehack-brain/lifehack-brain/
 # 0.3.13/...), which is itself a real repo WITH a system/hooks dir -- so the validity check above
 # passes and THIS_REPO_ROOT silently locks onto the plugin cache instead of ever falling back to
-# CLAUDE_PROJECT_DIR. A session working from any real project then matches none of CLONE_ROOT,
-# DRIVE_ROOT or THIS_REPO_ROOT and falls through the case statement's `*) exit 0`, unguarded.
+# CLAUDE_PROJECT_DIR. A session working from any real project then matches none of the old typed
+# roots or THIS_REPO_ROOT and falls through to `exit 0`, unguarded.
 # Fix: treat CLAUDE_PROJECT_DIR as an ADDITIONAL candidate zone root, not merely a fallback value
 # for THIS_REPO_ROOT -- it is the harness's own record of the session's actual project directory,
 # which is exactly the signal a plugin-distributed copy needs (the T2.2 note above is about a
@@ -110,28 +108,32 @@ PROJECT_DIR_ROOT=""
 if [ -n "${CLAUDE_PROJECT_DIR:-}" ] && [ -d "${CLAUDE_PROJECT_DIR}/system/hooks" ]; then
   PROJECT_DIR_ROOT="$CLAUDE_PROJECT_DIR"
 fi
-# --- Drive spine root: resolved, never typed -------------------------------------
-# The Google Drive mount directory is named `GoogleDrive-<account address>`, so a
-# literal Drive path here would write a real email address into the repo (shipping-lane
-# refuse rules path-drive-cloudstorage / path-drive-account / email-primary).
-# CLAUDEOPS_DRIVE first (this repo's own convention), then glob discovery over the
-# mount; bottoms out at a NON-personal literal. Mirrors the Python `_drive_root()`.
-_claudeops_drive_root() {
-  if [ -n "${CLAUDEOPS_DRIVE:-}" ]; then printf '%s' "$CLAUDEOPS_DRIVE"; return 0; fi
-  local _m="$HOME/Library/CloudStorage" _c
-  for _c in "$_m"/GoogleDrive-*/"My Drive"/_ClaudeOps; do
-    if [ -d "$_c" ]; then printf '%s' "$_c"; return 0; fi
-  done
-  printf '%s' "$_m/GoogleDrive-UNRESOLVED/My Drive/_ClaudeOps"
+# --- The person's own folders: read from the two pointers, never typed -------------
+# LH_NOTES_ROOT / LH_PERSONAL_ROOT / LH_CODE_ZONES (lib/person_roots.sh -> shared/person_roots.py).
+# Empty means "no such zone" on a fresh install; an empty root can never match below.
+LH_NOTES_ROOT=""; LH_PERSONAL_ROOT=""; LH_CODE_ZONES=(); LH_STRICT=1   # strict until the resolver says both pointers are ok
+. "$_lhb_dir/lib/person_roots.sh" 2>/dev/null && lh_person_roots
+_in_zone() {  # _in_zone <dir> : is SESSION_CWD that dir or under it (an empty dir never matches)
+  [ -n "$1" ] && { [ "$SESSION_CWD" = "$1" ] || [[ "$SESSION_CWD" == "$1"/* ]]; }
 }
-# ---------------------------------------------------------------------------------
-DRIVE_ROOT="$(_claudeops_drive_root)"
+# The cwd is compared as given AND as its real path, so a symlinked spelling of a zone still matches.
+_CWD_REAL="$(cd "$SESSION_CWD" 2>/dev/null && pwd -P)"
+_matched=""
+for _cand in "$SESSION_CWD" "$_CWD_REAL"; do
+  [ -n "$_cand" ] || continue
+  _save="$SESSION_CWD"; SESSION_CWD="$_cand"
+  if _in_zone "$LH_NOTES_ROOT" || _in_zone "$LH_PERSONAL_ROOT" || _in_zone "$THIS_REPO_ROOT" || _in_zone "$PROJECT_DIR_ROOT"; then
+    _matched=1
+  else
+    for _z in "${LH_CODE_ZONES[@]}"; do _in_zone "$_z" && _matched=1; done
+  fi
+  SESSION_CWD="$_save"
+done
+# FAIL CLOSED: with a pointer unset or naming a gone folder the person's zones are UNKNOWN, so every cwd counts as
+# one of theirs (the guard blocks a global gh auth change anywhere) instead of quietly guarding nothing.
+[ "${LH_STRICT:-1}" != 0 ] && _matched=1
+[ -n "$_matched" ] || exit 0
 
-case "$SESSION_CWD" in
-  "$CLONE_ROOT"|"$CLONE_ROOT"/*|"$DRIVE_ROOT"|"$DRIVE_ROOT"/*|"$THIS_REPO_ROOT"|"$THIS_REPO_ROOT"/*) ;;
-  "$PROJECT_DIR_ROOT"|"$PROJECT_DIR_ROOT"/*) [ -n "$PROJECT_DIR_ROOT" ] || exit 0 ;;
-  *) exit 0 ;;
-esac
 
 # --- Does the command MUTATE global gh auth state? ----------------------------
 # `gh auth status` (read-only) deliberately NOT matched.
@@ -139,14 +141,15 @@ if ! echo "$COMMAND" | grep -qE '(^|[[:space:]]|/|;|&&|\|\|)gh[[:space:]]+auth[[
   exit 0
 fi
 
-# --- ALLOW the repair direction: switching BACK to the ClaudeOps identity ------
-# The owner account is NOT baked in: it comes from the environment, so no real handle ships.
-# FAIL_POSTURE: closed -- if LIFEHACK_OWNER_GH_USER is unset this allow-case simply does not
-# fire, and the block below stands. Never allow-on-missing-config.
-OWNER_GH_USER="${LIFEHACK_OWNER_GH_USER:-}"
+# --- ALLOW the repair direction: switching BACK to the owner identity ------------
+# The owner account is NOT baked in: it comes from the environment, so no real handle ships. Resolved in
+# shared/person_roots.py (LH_OWNER_GH_USER): $LIFEHACK_OWNER_GH_USER, else a documented deprecated fallback.
+# FAIL_POSTURE: closed -- if no owner is set this allow-case simply does not fire, and the block below
+# stands. Never allow-on-missing-config.
+OWNER_GH_USER="${LH_OWNER_GH_USER:-${LIFEHACK_OWNER_GH_USER:-}}"
 if [ -n "$OWNER_GH_USER" ] && echo "$COMMAND" | grep -qE "gh[[:space:]]+auth[[:space:]]+switch[[:space:]]+.*--user[[:space:]]+${OWNER_GH_USER}([[:space:]]|$|;)"; then
   exit 0
 fi
 
-printf '%s\n' 'BLOCKED: this command MUTATES GLOBAL `gh` auth state from inside a ClaudeOps session. WHY: gh holds ONE active account per host, so switching here silently re-points EVERY open window. On 2026-08-04 exactly this made a parallel privacy check return "Could not resolve to a Repository" — indistinguishable from "does not exist" — so a session could not tell whether claudeops-config was private or public. A security check that fails open and silent is the failure class this system exists to prevent. REDIRECT: do NOT change global state for a one-off — pass the token for that single command instead: `GH_TOKEN=<lifehack-token> gh repo edit LifehackMethod/lifehack-brain --visibility private`. To restore ClaudeOps state, `gh auth switch --user "$OWNER_GH_USER"` is ALLOWED and not blocked. If you truly need a persistent switch, ask the USER to run it themselves with the `!` prefix. RULE: system/sops/hook-sop.md + system/hook-contract.md + the github SOP (kept in the personal code folder of the maintainer, not shipped); incident in state/projects/cowork-migration/brief.md STORY LOG 2026-08-04. Change the rule there with sign-off — never weaken the guard to fit one command.' >&2
+printf '%s\n' 'BLOCKED: this command MUTATES GLOBAL `gh` auth state from inside one of your own folders. WHY: gh holds ONE active account per host, so switching here silently re-points EVERY open window. On 2026-08-04 exactly this made a parallel privacy check return "Could not resolve to a Repository" — indistinguishable from "does not exist" — so a session could not tell whether a private repo was private or public. A security check that fails open and silent is the failure class this system exists to prevent. REDIRECT: do NOT change global state for a one-off — pass the token for that single command instead: `GH_TOKEN=<lifehack-token> gh repo edit LifehackMethod/lifehack-brain --visibility private`. To restore the owner account, `gh auth switch --user "$OWNER_GH_USER"` is ALLOWED and not blocked. If you truly need a persistent switch, ask the USER to run it themselves with the `!` prefix. RULE: system/sops/hook-sop.md + system/hook-contract.md + the github SOP (kept in the personal code folder of the maintainer, not shipped); incident in state/projects/cowork-migration/brief.md STORY LOG 2026-08-04. Change the rule there with sign-off — never weaken the guard to fit one command.' >&2
 exit 2

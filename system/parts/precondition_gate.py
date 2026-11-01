@@ -265,28 +265,24 @@ _NOT_APPLICABLE = """## Phase progress
 
 
 def _drive_root() -> str:
-    """Resolve the Drive spine root instead of typing it.
+    """The person's notes root, read from the pointer (shared/brain_root.py) instead of typed.
 
-    THE MOUNT DIRECTORY NAME IS A PERSONAL IDENTIFIER - Google Drive names its mount
-    `GoogleDrive-<account address>`, so a literal Drive path here writes a real email
-    address into the repo (the shipping lane's `path-drive-cloudstorage` /
-    `path-drive-account` / `email-primary` refuse rules all fire on that shape). Env
-    var first - this repo's own `CLAUDEOPS_DRIVE` convention (emit_finding.py,
-    fault_ledger.py, huddle.py) - then glob discovery over the mount, which replaces
-    that convention's hardcoded fallback (`migration-audit/00-FINDINGS.md` F2.1 records
-    the literal fallback as its non-compliant half). Bottoming out at a NON-personal
-    literal is the accepted shape. Evaluated at import time exactly like the literal it
-    replaces: on a machine without the mount it yields a path that does not exist, which
-    is the old behaviour, not an exception.
+    A typed notes path would carry a personal identifier (a cloud-drive mount is named for its
+    account), and a guessed one goes stale for everyone but its author. NOT-SET yields a path
+    that does not exist, so the selftest's real-fixture leg simply skips, as it always did on a
+    machine without the notes folder.
     """
-    import glob
-    env = os.environ.get("CLAUDEOPS_DRIVE")
-    if env:
-        return env
-    mounts = os.path.join(os.path.expanduser("~"), "Library", "CloudStorage")
-    hits = sorted(glob.glob(os.path.join(mounts, "GoogleDrive-*", "My Drive", "_ClaudeOps")))
-    return hits[0] if hits else os.path.join(
-        mounts, "GoogleDrive-UNRESOLVED", "My Drive", "_ClaudeOps")
+    shared = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "shared")
+    if shared not in sys.path:
+        sys.path.insert(0, shared)
+    try:
+        import brain_root
+        source, path = brain_root.resolve_brain_root()
+    except Exception:
+        source, path = None, None
+    if source in (None, "permission-denied") or not path:
+        return os.path.join(os.path.expanduser("~"), ".lifehack-notes-root-NOT-SET")
+    return path
 
 
 def _real_fixture_path():

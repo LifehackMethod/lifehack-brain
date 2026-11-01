@@ -70,8 +70,8 @@ run "a hook test, new"          0 "$REPO/system/hooks/tests/test_new_thing.sh"
 
 echo "── ⭐ 2026-09-16 fix: ~/.claude/skills/<X> as a REAL git repo, not a symlink ─"
 # 2026-09-15 false positive: guard_write_paths.sh's skills/commands zone used to require the
-# resolved target to land under a HARDCODED clone root ($CLONE_ROOT / $_SELF_REPO). ClaudeOps is
-# a full git repo parked directly at ~/.claude/skills/ClaudeOps -- not a symlink into either
+# resolved target to land under a HARDCODED clone root (a typed clone / $_SELF_REPO). The personal repo is
+# a full git repo parked directly at ~/.claude/skills/<name> -- not a symlink into either
 # hardcoded clone -- so a legitimate write there was denied for a reason that was never actually
 # true (measured 2026-09-10: all 20 live skill folders are real directories, zero symlinks). The
 # fix (ported from commit 91bf573, branch 0R.12-push-guard-resolver) replaces the name-match with
@@ -83,9 +83,9 @@ echo "── ⭐ 2026-09-16 fix: ~/.claude/skills/<X> as a REAL git repo, not a 
 # unresolved $HOME here would silently mismatch every zone check below. cd -P to the PHYSICAL path.
 TMPHOME="$(cd "$(mktemp -d)" && pwd -P)"
 trap 'rm -rf "$TMPHOME"' EXIT
-mkdir -p "$TMPHOME/.claude/skills/ClaudeOps/system/hooks"
-git -C "$TMPHOME/.claude/skills/ClaudeOps" init -q
-git -C "$TMPHOME/.claude/skills/ClaudeOps" remote add origin "https://example.invalid/ClaudeOps.git"
+mkdir -p "$TMPHOME/.claude/skills/personal-repo/system/hooks"
+git -C "$TMPHOME/.claude/skills/personal-repo" init -q
+git -C "$TMPHOME/.claude/skills/personal-repo" remote add origin "https://example.invalid/personal-repo.git"
 
 run_home() {
   local label="$1" exp="$2" path="$3" home="$4" tool="${5:-Edit}" got
@@ -98,9 +98,9 @@ print(json.dumps({'tool_name':sys.argv[2],'tool_input':{'file_path':sys.argv[1]}
 }
 
 run_home "real repo w/ remote, ordinary file -> ALLOW (the false positive, now fixed)" \
-  0 "$TMPHOME/.claude/skills/ClaudeOps/some_test_note.md" "$TMPHOME"
+  0 "$TMPHOME/.claude/skills/personal-repo/some_test_note.md" "$TMPHOME"
 run_home "same real repo, its OWN system/hooks/ -> still DENIED (regression check)" \
-  2 "$TMPHOME/.claude/skills/ClaudeOps/system/hooks/guard_egress.sh" "$TMPHOME"
+  2 "$TMPHOME/.claude/skills/personal-repo/system/hooks/guard_egress.sh" "$TMPHOME"
 
 mkdir -p "$TMPHOME/.claude/skills/orphan-skill"
 # pinned OFF: the skills_native_write switch (tested below) deliberately allows this exact new-skill shape when ON.
@@ -118,7 +118,7 @@ mkdir -p "$TMPHOME/.claude/skills/old-skill" "$TMPHOME/outside-nongit" "$TMPHOME
 echo old > "$TMPHOME/.claude/skills/old-skill/SKILL.md"
 git -C "$TMPHOME/.claude/skills/gitlocal" init -q
 ln -sfn "$TMPHOME/outside-nongit" "$TMPHOME/.claude/skills/escape"
-ln -sfn "$TMPHOME/.claude/skills/ClaudeOps" "$TMPHOME/.claude/skills/opslink"
+ln -sfn "$TMPHOME/.claude/skills/personal-repo" "$TMPHOME/.claude/skills/opslink"
 for sw in on off; do
   want_new=0; [ "$sw" = off ] && want_new=2
   export ROUNDB_SKILLS_NATIVE_WRITE=$sw
@@ -126,7 +126,7 @@ for sw in on off; do
   run_home "[$sw] new scripts/x.sh in a new skill folder"      $want_new "$TMPHOME/.claude/skills/fresh-skill2/scripts/x.sh" "$TMPHOME"
   run_home "[$sw] EXISTING file stays blocked"                 2 "$TMPHOME/.claude/skills/old-skill/SKILL.md" "$TMPHOME"
   run_home "[$sw] file in a git repo without remote stays blocked" 2 "$TMPHOME/.claude/skills/gitlocal/new.md" "$TMPHOME"
-  run_home "[$sw] new file under a ClaudeOps symlink stays blocked" 2 "$TMPHOME/.claude/skills/opslink/system/hooks/x.sh" "$TMPHOME"
+  run_home "[$sw] new file under a personal-repo symlink stays blocked" 2 "$TMPHOME/.claude/skills/opslink/system/hooks/x.sh" "$TMPHOME"
   # FILE_PATH is realpath-resolved first, so a symlink out of skills/ lands OUTSIDE this zone: the guard's
   # standing scope ("everything else is allowed") applies and the switch changes nothing (0 on and off).
   run_home "[$sw] symlink escaping to a non-git dir: outside the zone, unchanged by the switch" 0 "$TMPHOME/.claude/skills/escape/SKILL.md" "$TMPHOME"
@@ -150,8 +150,8 @@ for sw in on off; do
   run_home "[$sw] existing script of a non-git skill (Write)"      $want_exist "$TMPHOME/.claude/skills/old-skill/scripts/run.sh" "$TMPHOME" Write
   run_home "[$sw] NEW file in an existing non-git skill stays blocked (native_write off)" 2 "$TMPHOME/.claude/skills/old-skill/new.md" "$TMPHOME"
   run_home "[$sw] existing file in a git repo without remote stays blocked" 2 "$TMPHOME/.claude/skills/gitlocal/new.md" "$TMPHOME"
-  run_home "[$sw] existing file in the ClaudeOps repo's system/hooks stays blocked" 2 "$TMPHOME/.claude/skills/ClaudeOps/system/hooks/guard_egress.sh" "$TMPHOME"
-  run_home "[$sw] a file under a ClaudeOps symlink stays blocked"  2 "$TMPHOME/.claude/skills/opslink/system/hooks/x.sh" "$TMPHOME"
+  run_home "[$sw] existing file in the personal repo's system/hooks stays blocked" 2 "$TMPHOME/.claude/skills/personal-repo/system/hooks/guard_egress.sh" "$TMPHOME"
+  run_home "[$sw] a file under a personal-repo symlink stays blocked"  2 "$TMPHOME/.claude/skills/opslink/system/hooks/x.sh" "$TMPHOME"
   run_home "[$sw] escaping symlink: outside the zone, unchanged by the switch" 0 "$TMPHOME/.claude/skills/escape/SKILL.md" "$TMPHOME"
   run_home "[$sw] commands/ existing file stays blocked"           2 "$TMPHOME/.claude/commands/old.md" "$TMPHOME"
 done
@@ -168,6 +168,70 @@ print(json.dumps({'session_id':'e2e','cwd':sys.argv[2],'tool_name':'Edit','tool_
 printf '%s' "$_bm_out" | grep -q '"permissionDecision": "ask"' && ok || bad "end to end: guard_build_mode asks for the existing-skill edit" "no ask in: $(printf '%.150s' "$_bm_out")"
 unset ROUNDB_SKILL_EDIT_TO_ASK ROUNDB_SKILL_EDIT_ASK
 export ROUNDB_SKILLS_NATIVE_WRITE=off
+
+echo "── part2: the person's folders come from the two pointers, never a typed name ─"
+# Throwaway HOME with the pointer files a person's setup writes: brain-root (notes) and personal-code,
+# plus <personal-code>/code-zones.txt naming one extra code clone. Nothing here names any real folder.
+PHOME="$(cd "$(mktemp -d)" && pwd -P)"
+mkdir -p "$PHOME/.config/lifehack" "$PHOME/my notes/system/hooks" "$PHOME/mycode" "$PHOME/oldclone/system/hooks" "$PHOME/student-notes"
+printf '%s\n' "$PHOME/my notes" > "$PHOME/.config/lifehack/brain-root"
+printf '%s\n' "$PHOME/mycode" > "$PHOME/.config/lifehack/personal-code"
+printf '# extra code folders\n%s\n\n~/does-not-exist\n' "$PHOME/oldclone" > "$PHOME/mycode/code-zones.txt"
+run_home "notes root (from the pointer, with a space in it) -> ALLOW"   0 "$PHOME/my notes/state/x.md" "$PHOME"
+run_home "notes root system/hooks -> DENY"                              2 "$PHOME/my notes/system/hooks/x.sh" "$PHOME"
+run_home "notes root .git -> DENY"                                      2 "$PHOME/my notes/.git/config" "$PHOME"
+run_home "listed code zone: hooks -> DENY"                              2 "$PHOME/oldclone/system/hooks/x.sh" "$PHOME"
+run_home "listed code zone: agent CONTENT (state/) -> DENY"             2 "$PHOME/oldclone/state/x.md" "$PHOME"
+run_home "listed code zone: desk canon -> DENY"                         2 "$PHOME/oldclone/desks/d/canon/x.md" "$PHOME"
+run_home "listed code zone: code -> ALLOW"                              0 "$PHOME/oldclone/system/tools/t.py" "$PHOME"
+run_home "personal code folder outside ~/.claude: unchanged catch-all"  0 "$PHOME/mycode/state/x.md" "$PHOME"
+MSG="$(python3 -c "import json,sys; print(json.dumps({'tool_name':'Edit','tool_input':{'file_path':sys.argv[1]}}))" "$PHOME/oldclone/records/r.md" \
+  | env CLAUDE_PROJECT_DIR="$REPO" HOME="$PHOME" bash "$GUARD" 2>&1 >/dev/null)"
+printf '%s' "$MSG" | grep -q "notes root" && ok || bad "content deny redirects to the notes root" "$MSG"
+# LIFEHACK_ROOT (the one env name) beats the pointer file, exactly as shared/brain_root.py says
+python3 -c "import json,sys; print(json.dumps({'tool_name':'Edit','tool_input':{'file_path':sys.argv[1]}}))" "$PHOME/student-notes/system/hooks/x.sh" \
+  | env CLAUDE_PROJECT_DIR="$REPO" HOME="$PHOME" LIFEHACK_ROOT="$PHOME/student-notes" bash "$GUARD" >/dev/null 2>&1
+[ "$?" = 2 ] && ok || bad "LIFEHACK_ROOT names the notes root" "its system/hooks should be protected"
+echo "── part2: POINTER ABSENT -> the guard FAILS CLOSED, never quietly permissive ─"
+# The zones come from the pointers. When a pointer is unset or names a gone folder the zones are UNKNOWN, so
+# what the zones protect (hooks, .git, settings, and content inside a code repo) must stay protected EVERYWHERE.
+# Fixture per HOME: a notes folder, a personal code folder, a code clone (git, with remote) the person would list.
+mkhome() {   # mkhome <dir> <notes-pointer: ok|gone|none> <personal-pointer: ok|gone|none>
+  local h="$1"
+  mkdir -p "$h/.config/lifehack" "$h/notes/system/hooks" "$h/code" "$h/clone/system/hooks" "$h/clone/system/tools" "$h/plain"
+  git -C "$h/clone" init -q 2>/dev/null; git -C "$h/clone" remote add origin https://example.invalid/clone.git 2>/dev/null
+  printf '%s\n' "$h/clone" > "$h/code/code-zones.txt"
+  case "$2" in ok) printf '%s\n' "$h/notes" > "$h/.config/lifehack/brain-root" ;; gone) printf '%s\n' "$h/notes-gone" > "$h/.config/lifehack/brain-root" ;; esac
+  case "$3" in ok) printf '%s\n' "$h/code" > "$h/.config/lifehack/personal-code" ;; gone) printf '%s\n' "$h/code-gone" > "$h/.config/lifehack/personal-code" ;; esac
+}
+for combo in "none none" "gone gone" "none ok" "gone ok" "ok none" "ok gone" "ok ok"; do
+  set -- $combo; H="$(cd "$(mktemp -d)" && pwd -P)"; mkhome "$H" "$1" "$2"; tag="[notes=$1 personal=$2]"
+  # what the zones protect today: each is denied whatever the pointers say
+  run_home "$tag notes-folder hook script -> DENY"          2 "$H/notes/system/hooks/x.sh" "$H"
+  run_home "$tag code-clone hook script -> DENY"            2 "$H/clone/system/hooks/x.sh" "$H"
+  run_home "$tag code-clone agent CONTENT (state/) -> DENY" 2 "$H/clone/state/x.md" "$H"
+  run_home "$tag code-clone records/ -> DENY"               2 "$H/clone/records/r.md" "$H"
+  run_home "$tag git internals in a code clone -> DENY"     2 "$H/clone/.git/config" "$H"
+  run_home "$tag ~/.claude/settings.json -> DENY"           2 "$H/.claude/settings.json" "$H"
+  # ordinary work is still not refused (the catch-all stays warn-only)
+  run_home "$tag code in a code clone -> ALLOW"             0 "$H/clone/system/tools/t.py" "$H"
+  run_home "$tag a plain file outside every zone -> ALLOW"  0 "$H/plain/notes.md" "$H"
+  if [ "$combo" != "ok ok" ]; then
+    run_home "$tag a hook script in ANY folder -> DENY (zones unknown)" 2 "$H/plain/system/hooks/x.sh" "$H"
+    MSG="$(python3 -c "import json,sys; print(json.dumps({'tool_name':'Edit','tool_input':{'file_path':sys.argv[1]}}))" "$H/plain/system/hooks/x.sh" \
+      | env CLAUDE_PROJECT_DIR="$REPO" HOME="$H" bash "$GUARD" 2>&1 >/dev/null)"
+    printf '%s' "$MSG" | grep -q "set the pointers" && ok || bad "$tag fail-closed deny names the fix" "$MSG"
+  else
+    run_home "$tag both pointers ok: a hook script in an unrelated folder is the catch-all" 0 "$H/plain/system/hooks/x.sh" "$H"
+  fi
+done
+# LIFEHACK_ROOT naming a gone folder is the same unknown notes root
+H="$(cd "$(mktemp -d)" && pwd -P)"; mkhome "$H" none ok
+python3 -c "import json,sys; print(json.dumps({'tool_name':'Edit','tool_input':{'file_path':sys.argv[1]}}))" "$H/plain/system/hooks/x.sh" \
+  | env CLAUDE_PROJECT_DIR="$REPO" HOME="$H" LIFEHACK_ROOT="$H/nope" bash "$GUARD" >/dev/null 2>&1
+[ "$?" = 2 ] && ok || bad "LIFEHACK_ROOT naming a gone folder fails closed" "expected 2"
+# the guard names no person: no private repo or notes folder name in its code
+grep -qiE 'claude''ops' "$GUARD" && bad "guard names a private folder" "found in $GUARD" || ok
 
 echo "── what this guard deliberately does NOT do (see the scope note) ────────"
 # These are ASSERTIONS, not gaps. Changing them is the product decision named at the top.

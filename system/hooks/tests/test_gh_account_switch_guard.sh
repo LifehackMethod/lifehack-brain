@@ -4,8 +4,8 @@
 #
 # ⚠ ALLOW CASES FIRST — see hook-contract.md.
 #
-# Zone: this guard only fires when the session's `cwd` is inside the ClaudeOps clone, the Drive
-# spine, THIS declaring repo (resolved $0-relative — i.e. this worktree, since the guard script
+# Zone: this guard only fires when the session's `cwd` is inside the person's notes root, personal
+# code folder or a code folder listed in <personal-code>/code-zones.txt (all from the pointers), THIS declaring repo (resolved $0-relative — i.e. this worktree, since the guard script
 # lives under it), or CLAUDE_PROJECT_DIR. We set the payload's "cwd" to this worktree's own root so
 # the guard's zone check passes the same way it would for a real session working here, and also
 # test the OUT-OF-ZONE case explicitly (a real near-miss the header itself documents).
@@ -45,7 +45,7 @@
 # assert exit 2, not 0.
 #
 # Every case runs under a fresh scratch $HOME (env -i, never inherits the real session's HOME,
-# CLAUDE_PROJECT_DIR, LIFEHACK_OWNER_GH_USER or CLAUDEOPS_DRIVE) so no real account state or the
+# CLAUDE_PROJECT_DIR, LIFEHACK_OWNER_GH_USER or LIFEHACK_ROOT) so no real account state or the
 # real ~/.claude/run is ever touched. `gh`/`git` are stubbed on PATH; the guard is expected to
 # call neither (confirmed by R27's read of the source: it decides from command text + env/cwd
 # only) — the stub call log is asserted empty at the end as a standing check on that claim.
@@ -86,14 +86,15 @@ chmod +x "$STUB_BIN/gh" "$STUB_BIN/git"
 # PROJECT_DIR_ROOT only validates when CLAUDE_PROJECT_DIR/system/hooks actually exists on disk.
 FAKE_PROJECT_DIR="$SCRATCH_ROOT/fake-project-dir"
 mkdir -p "$FAKE_PROJECT_DIR/system/hooks"
-# DRIVE_ROOT: set via CLAUDEOPS_DRIVE directly (no glob discovery needed / no real email in a path).
-DRIVE_FIXTURE="$SCRATCH_ROOT/fake-drive-root/_ClaudeOps"
-mkdir -p "$DRIVE_FIXTURE"
+# A notes folder named only through LIFEHACK_ROOT (the one env name brain_root.py reads).
+ENV_NOTES_FIXTURE="$SCRATCH_ROOT/env-notes"
+mkdir -p "$ENV_NOTES_FIXTURE"
 # Outside every zone.
 OUTSIDE_DIR="$SCRATCH_ROOT/outside-project"
 mkdir -p "$OUTSIDE_DIR"
 
 OWNER="lifehack-owner-fixture"
+OLD_OWNER_VAR="$(python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import person_roots; print(person_roots.DEPRECATED_OWNER_VAR)' "$REPO/shared")"   # read from its one home
 
 # ── stable message substrings (never whole messages) ──────────────────────────────────────────
 DENY_SUBSTR='this command MUTATES GLOBAL `gh` auth state'
@@ -122,8 +123,24 @@ run_case() {
 
   case_home="$(mktemp -d "$SCRATCH_ROOT/home.XXXXXX")"
 
-  if [ "${C_CWD_ZONE_CLONE:-0}" = "1" ]; then
-    cwd_val="$case_home/claudeops-config${C_CWD_SUB:-}"
+  # C_ZONE: give this case's HOME the pointer files a person's setup writes, and put the cwd inside one.
+  # C_PTRS: notes/personal pointer states (ok|gone|none, default ok ok) for a case whose cwd is set by C_CWD.
+  if [ -z "${C_ZONE:-}" ] && [ -n "${C_PTRS:-}" ]; then
+    mkdir -p "$case_home/.config/lifehack" "$case_home/my notes" "$case_home/mycode"
+    set -- $C_PTRS
+    case "$1" in ok) printf '%s\n' "$case_home/my notes" > "$case_home/.config/lifehack/brain-root" ;; gone) printf '%s\n' "$case_home/gone" > "$case_home/.config/lifehack/brain-root" ;; esac
+    case "$2" in ok) printf '%s\n' "$case_home/mycode" > "$case_home/.config/lifehack/personal-code" ;; gone) printf '%s\n' "$case_home/gone2" > "$case_home/.config/lifehack/personal-code" ;; esac
+  fi
+  if [ -n "${C_ZONE:-}" ]; then
+    mkdir -p "$case_home/.config/lifehack" "$case_home/my notes/desks/d" "$case_home/mycode" "$case_home/oldclone/system"
+    printf '%s\n' "$case_home/my notes" > "$case_home/.config/lifehack/brain-root"
+    printf '%s\n' "$case_home/mycode" > "$case_home/.config/lifehack/personal-code"
+    printf '%s\n' "$case_home/oldclone" > "$case_home/mycode/code-zones.txt"
+    case "$C_ZONE" in
+      notes)    cwd_val="$case_home/my notes/desks/d" ;;
+      personal) cwd_val="$case_home/mycode" ;;
+      codezone) cwd_val="$case_home/oldclone/system" ;;
+    esac
   else
     cwd_val="${C_CWD:-}"
   fi
@@ -141,7 +158,8 @@ run_case() {
         HOME="$case_home" \
         PATH="$STUB_BIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         ${C_OWNER:+LIFEHACK_OWNER_GH_USER="$C_OWNER"} \
-        ${C_DRIVE:+CLAUDEOPS_DRIVE="$C_DRIVE"} \
+        ${C_LHROOT:+LIFEHACK_ROOT="$C_LHROOT"} \
+        ${C_OLDOWNER:+"$OLD_OWNER_VAR=$C_OLDOWNER"} \
         ${C_PROJDIR:+CLAUDE_PROJECT_DIR="$C_PROJDIR"} \
         bash "$GUARD" </dev/null 2>&1
     )"
@@ -152,7 +170,8 @@ run_case() {
         HOME="$case_home" \
         PATH="$STUB_BIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         ${C_OWNER:+LIFEHACK_OWNER_GH_USER="$C_OWNER"} \
-        ${C_DRIVE:+CLAUDEOPS_DRIVE="$C_DRIVE"} \
+        ${C_LHROOT:+LIFEHACK_ROOT="$C_LHROOT"} \
+        ${C_OLDOWNER:+"$OLD_OWNER_VAR=$C_OLDOWNER"} \
         ${C_PROJDIR:+CLAUDE_PROJECT_DIR="$C_PROJDIR"} \
         bash "$GUARD" <<<"$stdin_payload" 2>&1
     )"
@@ -177,8 +196,8 @@ run_case() {
     ok
   fi
 
-  unset C_CMD C_CWD C_CWD_OMIT C_TOOLNAME C_OWNER C_DRIVE C_PROJDIR C_PROC_CWD \
-        C_CWD_ZONE_CLONE C_CWD_SUB C_STDIN_RAW C_STDIN_RAW_SET
+  unset C_CMD C_CWD C_CWD_OMIT C_TOOLNAME C_OWNER C_OLDOWNER C_LHROOT C_PROJDIR C_PROC_CWD \
+        C_ZONE C_PTRS C_STDIN_RAW C_STDIN_RAW_SET
 }
 
 echo "── ALLOW: non-gh-auth traffic, in and outside the zone (R27 #01-02) ─────────────────────"
@@ -215,6 +234,15 @@ run_case "08 gh auth switch --user OWNER, owner var UNSET -> block (fail closed)
 C_CMD="gh auth switch --user someone-else"; C_CWD="$REPO"; C_OWNER="$OWNER"
 run_case "09 gh auth switch --user someone-else, owner var set to a DIFFERENT user -> block" 2 "$DENY_SUBSTR"
 
+C_CMD="gh auth switch --user $OWNER"; C_CWD="$REPO"; C_OLDOWNER="$OWNER"
+run_case "09b only the DEPRECATED owner var set -> the repair switch to that user is allowed" 0 "$EMPTY_SENTINEL"
+
+C_CMD="gh auth switch --user $OWNER"; C_CWD="$REPO"; C_OWNER="$OWNER"; C_OLDOWNER="someone-else"
+run_case "09c both set -> LIFEHACK_OWNER_GH_USER wins (repair to it allowed)" 0 "$EMPTY_SENTINEL"
+
+C_CMD="gh auth switch --user someone-else"; C_CWD="$REPO"; C_OWNER="$OWNER"; C_OLDOWNER="someone-else"
+run_case "09d both set -> a switch to the deprecated var's user is blocked (the new name wins)" 2 "$DENY_SUBSTR"
+
 echo "── ALLOW: read-only gh auth status (R27 #10, B6.0 #1) ───────────────────────────────────"
 C_CMD="gh auth status"; C_CWD="$REPO"
 run_case "10 gh auth status, in zone -> allow (read-only excluded)" 0 "$EMPTY_SENTINEL"
@@ -241,18 +269,33 @@ C_STDIN_RAW_SET=1; C_STDIN_RAW=''
 run_case "16 empty stdin" 2 "$PARSE_FAIL_SUBSTR"
 
 echo "── DENY: every zone root (R27 #17-18, #21), ALLOW outside all zones (R27 #19) ───────────"
-C_CMD="gh auth switch --user someone-else"; C_CWD_ZONE_CLONE=1
-run_case "17 CLONE_ROOT zone (\$HOME/claudeops-config)" 2 "$DENY_SUBSTR"
+C_CMD="gh auth switch --user someone-else"; C_ZONE=codezone
+run_case "17 a code folder listed in <personal-code>/code-zones.txt" 2 "$DENY_SUBSTR"
 
-C_CMD="gh auth switch --user someone-else"; C_CWD="$DRIVE_FIXTURE"; C_DRIVE="$DRIVE_FIXTURE"
-run_case "18 DRIVE_ROOT zone (CLAUDEOPS_DRIVE)" 2 "$DENY_SUBSTR"
+C_CMD="gh auth switch --user someone-else"; C_ZONE=notes
+run_case "18 the notes root, from the brain-root pointer (path with a space)" 2 "$DENY_SUBSTR"
 
-C_CMD="gh auth switch --user someone-else"; C_CWD="$OUTSIDE_DIR"
-run_case "19 outside all zones -> allow" 0 "$EMPTY_SENTINEL"
+C_CMD="gh auth switch --user someone-else"; C_ZONE=personal
+run_case "18b the personal code folder, from the personal-code pointer" 2 "$DENY_SUBSTR"
+
+C_CMD="gh auth switch --user someone-else"; C_CWD="$ENV_NOTES_FIXTURE"; C_LHROOT="$ENV_NOTES_FIXTURE"
+run_case "18c the notes root named by LIFEHACK_ROOT" 2 "$DENY_SUBSTR"
+
+
+C_CMD="gh auth switch --user someone-else"; C_CWD="$OUTSIDE_DIR"; C_PTRS="ok ok"
+run_case "19 outside all zones (both pointers set) -> allow" 0 "$EMPTY_SENTINEL"
 
 echo "── ALLOW: out-of-zone with a mutating verb itself, B6.0 #4's exact payload shape ────────"
-C_CMD="gh auth login"; C_CWD="$OUTSIDE_DIR"
+C_CMD="gh auth login"; C_CWD="$OUTSIDE_DIR"; C_PTRS="ok ok"
 run_case "19b gh auth login, out-of-zone -> allow (B6.0's own near-miss)" 0 "$EMPTY_SENTINEL"
+
+echo "── FAIL CLOSED: a pointer unset or naming a gone folder -> the zones are unknown -> blocked anywhere ──"
+for ptrs in "none none" "gone gone" "none ok" "ok none" "gone ok" "ok gone"; do
+  C_CMD="gh auth switch --user someone-else"; C_CWD="$OUTSIDE_DIR"; C_PTRS="$ptrs"
+  run_case "19c [$ptrs] a mutation outside every known zone -> block" 2 "$DENY_SUBSTR"
+done
+C_CMD="gh auth status"; C_CWD="$OUTSIDE_DIR"; C_PTRS="none none"
+run_case "19d [none none] read-only gh auth status still allowed" 0 "$EMPTY_SENTINEL"
 
 C_CMD="gh auth switch --user someone-else"; C_PROJDIR="$FAKE_PROJECT_DIR"; C_CWD="$FAKE_PROJECT_DIR"
 run_case "21 PROJECT_DIR_ROOT zone (CLAUDE_PROJECT_DIR, distinct from THIS_REPO_ROOT)" 2 "$DENY_SUBSTR"
