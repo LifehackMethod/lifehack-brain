@@ -122,6 +122,9 @@ EXEMPT_FILES = {
     ".claude/skills/ingest/SPEC.md":
         "banner at :24-27 — it is a build record as well as a spec, and its file references are the "
         "provenance of decisions in the author's own project tree, never part of what ships",
+    "archive/2026-10-31-skill-builder-closed-for-renovation/skill-builder/SPEC.md":
+        "archived byte-identical on 2026-10-31 (closed for renovation, see the README beside this folder); "
+        "its citations describe the tree as it stood when it was written, and it must not be edited",
 }
 
 # Scripts living in system/hooks/ that are NOT registered in settings.json, and correctly so --
