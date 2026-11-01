@@ -26,22 +26,52 @@ trap 'lhb_journal_fire "$?" "end_of_turn_checks.sh" "Stop" "" 2>/dev/null || tru
 # SIGNPOST: rules live in system/githooks/checks/*.py and system/tools/door_rules.py; own-list rule in
 #      shared/tools/own_list_add.py; switches in system/hooks/roundB.conf. Change them there, not here.
 # FAIL_POSTURE: degrade-safe -- a check that crashes is skipped with a stderr line; never wedges a turn.
-# UPDATED: 2026-10-31
+#      switch `inline_keep_nudge` (OFF by default; exam D-B03/D-B04, 2026-11-01): the file checks above have nothing to look at when the
+#          turn ran an INLINE Bash command and wrote no file. (1) the person's words this turn or the turn before show keep-intent
+#          ("keep it", "save that", "I'll reuse this", "make that a script"), the turn ran an inline command, no file was saved ->
+#          BLOCK ONCE: save it as a script in the personal code folder, add it to the own list, restate path + entry.
+#          (2) no keep-intent but the inline command is long and reusable (a loop, find -exec, xargs, 2+ pipes, or >= 120 chars)
+#          -> at most ONE "offer to keep it" per session. Logic: lib/inline_keep.py (real user text only, injected context
+#          stripped); state per session in $DIR/$SID.inlinekeep. Silent when no personal code folder resolves.
+# UPDATED: 2026-11-01
 # ─────────────────────────────────────────────────────────────────────────────
 . "$_lhb_dir/lib/roundb.sh" 2>/dev/null || roundb_on() { return 1; }
-DOOR=0; OWN=0; UNH=0; roundb_on back_door && DOOR=1; roundb_on own_list && OWN=1; roundb_on own_list_unhomed && UNH=1
+DOOR=0; OWN=0; UNH=0; IKN=0; roundb_on inline_keep_nudge && IKN=1; roundb_on back_door && DOOR=1; roundb_on own_list && OWN=1; roundb_on own_list_unhomed && UNH=1
 # Round D A.6: the person may switch the where-to-save list checks off (placement_user_off); fine-china guards have no such switch
 PO=0; roundb_on placement_user_off && PO=1
 if [ "$PO" = 1 ]; then
   [ "$OWN" = 1 ] && python3 "$_lhb_dir/lib/placement_off.py" off own-list && OWN=0
   [ "$UNH" = 1 ] && python3 "$_lhb_dir/lib/placement_off.py" off unhomed && UNH=0
 fi
-[ "$DOOR$OWN$UNH" = "000" ] && exit 0
+[ "$DOOR$OWN$UNH$IKN" = "0000" ] && exit 0
 IFS= read -r -d '' P || true
 re_sid='"session_id"[[:space:]]*:[[:space:]]*"([A-Za-z0-9_-]+)"'; re_pid='"prompt_id"[[:space:]]*:[[:space:]]*"([A-Za-z0-9_-]+)"'
 [[ $P =~ $re_sid ]] || exit 0; SID="${BASH_REMATCH[1]}"
 PID=""; [[ $P =~ $re_pid ]] && PID="${BASH_REMATCH[1]}"
 DIR="${LHB_TURN_WRITES_DIR:-$HOME/.claude/run/turn-writes}"; LIST="$DIR/$SID.list"
+if [ "$IKN" = 1 ] && [[ $P != *'"stop_hook_active":true'* && $P != *'"stop_hook_active": true'* ]]; then
+  # inline_keep_nudge: runs BEFORE the "no file created" exits below, because its whole case is "no file was created"
+  IKSAVED=0; [ -s "$LIST" ] && awk -F'\t' -v p="$PID" '$1 == p {f=1} END {exit !f}' "$LIST" && IKSAVED=1
+  re_tp='"transcript_path"[[:space:]]*:[[:space:]]*"([^"]+)"'; TP=""; [[ $P =~ $re_tp ]] && TP="${BASH_REMATCH[1]}"
+  HARK="$(cd "$_lhb_dir/../.." 2>/dev/null && pwd -P)"
+  if [ -n "$TP" ] && [ -f "$TP" ]; then
+    PCR="$(python3 "$HARK/shared/personal_code_root.py" --quiet 2>/dev/null | head -1)"   # exits 1 / prints nothing when no folder resolves: stay silent, never guess
+    if [ -n "$PCR" ]; then
+      mkdir -p "$DIR" 2>/dev/null
+      IK="$(python3 "$_lhb_dir/lib/inline_keep.py" "$TP" "$IKSAVED" "$DIR/$SID.inlinekeep" 2>/dev/null)"
+      if [ -n "$IK" ]; then
+        IKK="${IK%%$'\t'*}"; IKC="${IK#*$'\t'}"
+        if [ "$IKK" = keep ]; then
+          IKM="END-OF-TURN CHECK: the person asked to keep a command you ran inline, and no file was saved. (Runs once; it will not ask again.)"$'\n'"Save that command as a script in their personal code folder ($PCR/tools/<a-good-name>.sh) and add it to their own list: python3 \"$HARK/shared/tools/own_list_add.py\" <the script path>. Then in your final message restate the path and the list entry."$'\n'"The command: $IKC"
+        else
+          IKM="NOTE (once this session, nothing to fix): you ran a long command inline that looks reusable, and no file was saved."$'\n'"In your final message, offer in ONE line to keep it. If the person says yes: save it as a script in $PCR/tools/<a-good-name>.sh and run: python3 \"$HARK/shared/tools/own_list_add.py\" <the script path>. If no, drop it."$'\n'"The command: $IKC"
+        fi
+        printf '%s\n' "$IKM" | python3 -c 'import json,sys; print(json.dumps({"decision":"block","reason":sys.stdin.read()}))'
+        exit 0
+      fi
+    fi
+  fi
+fi
 [ -s "$LIST" ] || exit 0
 declare -a FILES=(); SEEN=$'\n'     # bash 3.2 (macOS /bin/bash): no associative arrays
 while IFS=$'\t' read -r pid kind path; do

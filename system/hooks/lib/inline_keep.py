@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+"""inline_keep.py -- decide whether the end-of-turn hook should nudge about an INLINE command (switch inline_keep_nudge).
+
+WHY: exam cases D-B03/D-B04 (2026-11-01): the person said "keep it" about a command Claude had run inline (find ... -exec wc -l);
+no file was written, so the file-based own-list check had nothing to inspect. Spec: notes record 2026-11-01-final-miss-analysis.md.
+
+Usage: inline_keep.py <transcript.jsonl> <already_saved 0|1> <state_file>
+Prints nothing (stay silent) or ONE line "keep<TAB>cmd" / "offer<TAB>cmd". Never raises: any error = silent.
+  keep : the person's words (this turn, or the turn just before) show keep-intent, this turn ran an inline Bash command
+         (>= MIN_CHARS), and no file was saved -> block once.
+  offer: no keep-intent, but the inline command is LONG and REUSABLE (is_reusable) -> at most one per session
+         (state_file holds a line "offer" once spent; a line "cmd:<sha>" per command already nudged).
+Only REAL text counts: user entries that are not isMeta, with every <system-reminder>...</system-reminder> span stripped
+(injected context is not what the person said), tool_result blocks ignored.
+"""
+import hashlib
+import json
+import re
+import sys
+
+MIN_CHARS = 20      # below this a command is a glance (ls, pwd, git status), not something to keep
+LONG_CHARS = 120    # a single line this long is something you would not retype
+KEEP = re.compile(
+    r"\b(keep (it|that|this|the command|that command|this command)|save (that|this|it)( command| one)?|"
+    r"i'?ll (reuse|re-use|use) (it|that|this)|reuse (it|that|this)|re-use (it|that|this)|"
+    r"make (that|this|it) a (script|tool)|turn (that|this|it) into a (script|tool))\b", re.I)
+NEG = re.compile(r"\b(don'?t|do not|no need to|not|never|without)\s+(\w+\s+){0,2}$", re.I)
+REMINDER = re.compile(r"<system-reminder>.*?</system-reminder>", re.S)
+LOOPS = re.compile(r"(^|[\s;&|(])(for|while|until)\s|\bxargs\b|-exec\b|\bparallel\b")
+
+
+def has_keep_intent(text):
+    for m in KEEP.finditer(text):
+        if not NEG.search(text[max(0, m.start() - 24):m.start()]):
+            return True
+    return False
+
+
+def is_reusable(cmd):
+    """Long and reusable = a loop / xargs / find -exec, OR a pipeline of 2+ pipes, OR >= LONG_CHARS on one command."""
+    if len(cmd) >= LONG_CHARS:
+        return True
+    if LOOPS.search(cmd):
+        return True
+    return len(re.findall(r"(?<!\|)\|(?!\|)", cmd)) >= 2
+
+
+def real_user_text(entry):
+    if entry.get("type") != "user" or entry.get("isMeta"):
+        return None
+    c = (entry.get("message") or {}).get("content")
+    parts = []
+    if isinstance(c, str):
+        parts = [c]
+    elif isinstance(c, list):
+        if any(isinstance(b, dict) and b.get("type") == "tool_result" for b in c):
+            return None
+        parts = [b.get("text", "") for b in c if isinstance(b, dict) and b.get("type") == "text"]
+    text = REMINDER.sub("", "\n".join(parts)).strip()
+    return text or None
+
+
+def tool_uses(entry):
+    if entry.get("type") != "assistant":
+        return []
+    c = (entry.get("message") or {}).get("content")
+    return [b for b in c if isinstance(b, dict) and b.get("type") == "tool_use"] if isinstance(c, list) else []
+
+
+def analyse(path, saved):
+    ents = []
+    for line in open(path, encoding="utf-8", errors="replace"):
+        try:
+            ents.append(json.loads(line))
+        except Exception:
+            continue
+    users = [i for i, e in enumerate(ents) if real_user_text(e)]
+    if not users:
+        return None
+    last = users[-1]; prev = users[-2] if len(users) > 1 else None
+    said = real_user_text(ents[last]) or ""
+    said_prev = (real_user_text(ents[prev]) or "") if prev is not None else ""
+    keep = has_keep_intent(said) or has_keep_intent(said_prev)
+
+    def window(a, b):
+        cmds, wrote = [], False
+        for e in ents[a + 1:b]:
+            for u in tool_uses(e):
+                if u.get("name") in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
+                    wrote = True
+                elif u.get("name") == "Bash":
+                    cmds.append(str((u.get("input") or {}).get("command", "")))
+        return cmds, wrote
+    cmds, wrote = window(last, len(ents))
+    if not cmds and has_keep_intent(said) and prev is not None:   # "keep it" said AFTER the command ran
+        cmds, wrote = window(prev, last)
+    if wrote or saved:
+        return None
+    cmds = [c for c in cmds if len(c) >= MIN_CHARS]
+    if not cmds:
+        return None
+    if keep:
+        return ("keep", cmds[-1])
+    reus = [c for c in cmds if is_reusable(c)]
+    return ("offer", reus[-1]) if reus else None
+
+
+def main():
+    try:
+        path, saved, state = sys.argv[1], sys.argv[2] == "1", sys.argv[3]
+        r = analyse(path, saved)
+        if not r:
+            return
+        kind, cmd = r
+        sha = "cmd:" + hashlib.sha256(cmd.encode("utf-8", "replace")).hexdigest()[:16]
+        try:
+            seen = open(state, encoding="utf-8").read().split("\n")
+        except OSError:
+            seen = []
+        if sha in seen or (kind == "offer" and "offer" in seen):
+            return
+        with open(state, "a", encoding="utf-8") as f:
+            f.write(sha + "\n" + ("offer\n" if kind == "offer" else ""))
+        print(kind + "\t" + " ".join(cmd.split())[:400])
+    except Exception:
+        return
+
+
+if __name__ == "__main__":
+    main()
