@@ -258,6 +258,7 @@ UNREGISTERED_OK = {
                        "system/hooks/tests/test_checkin_save_seam.sh, including the proven-fail "
                        "(corrupted receipt) case.",
 }
+# ⚠ CLEANUP-PASS 2026-10-31: inject_delegation_standing.sh moved to ~/lifehack-v2/archive/2026-10-31-skill-system-cleanup/system/hooks/inject_delegation_standing.sh; guard_step_gate.sh moved to ~/lifehack-v2/rebuild/guard_step_gate.sh; this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 
 # A backticked `/word` is usually a skill here — but not always, and neither of these is ours to
 # ship: the harness's own commands, and the top of a filesystem path.
