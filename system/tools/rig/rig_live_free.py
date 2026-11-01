@@ -250,7 +250,10 @@ def fence_settings(base_path, out_path):
     return out_path
 
 
-def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model="sonnet", settings=None):  # allow-silence: the exam runs live sessions on the Sonnet tier by ruling (plan 3b.4 redesign); this is the tier alias handed to claude --model, not a pinned model id
+LAST_DRIVE = {}   # case id -> what rig_drive did for the last run of it (read by main to add "drive" to the result row)
+
+
+def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model="sonnet", settings=None, drive_label=None):  # allow-silence: the exam runs live sessions on the Sonnet tier by ruling (plan 3b.4 redesign); this is the tier alias handed to claude --model, not a pinned model id
     L = c["live"]
     stream = os.path.join(work, c["id"] + ".stream.jsonl")
     env = dict(os.environ, LIFEHACK_SANDBOX="V2", **(extra_env or {}))
@@ -279,11 +282,20 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
         prompt = prompt.replace(k, v)
     prompt += L.get("suffix", BUILD_SUFFIX if L.get("kind") == "build" else SUFFIX)
     fence_log = os.path.join(work, c["id"] + ".fence.jsonl")
+    drive_run = None   # rig_drive (2026-11-01): ONE run folder in the dedicated Drive test area, mounted in the throwaway HOME the way Drive for Desktop would be
+    if drive_label:
+        import rig_drive
+        drive_run = rig_drive.make_run_id(drive_label, c["id"])
+        env["RIG_FENCE_RUN_DRIVE"] = rig_drive.begin(drive_run, home)
+        if L.get("drive_fixture") == "invoice-checker":
+            rig_drive.seed_invoice_skill(home)
     env.update(RIG_FENCE_REAL_HOME=os.path.realpath(os.path.expanduser("~")), RIG_FENCE_REAL_NOTES=os.path.realpath(notes), RIG_FENCE_LOG=fence_log,
                RIG_FENCE_ALLOW=":".join(p for p in (os.path.realpath(scratch) if scratch else cwd, os.path.realpath(home)) if p))
     settings = fence_settings(settings or os.path.join(OPS, "system/desktop-launchers/v2/lab-settings.json"), os.path.join(work, c["id"] + ".settings.json"))
     cmd = ["claude", "-p", prompt, "--model", model, "--permission-mode", "bypassPermissions", "--setting-sources", setting_sources(home), "--plugin-dir", V2,
            "--settings", settings, "--output-format", "stream-json", "--verbose"]
+    if L.get("max_budget_usd"):
+        cmd += ["--max-budget-usd", str(L["max_budget_usd"])]
     b = snapshot(notes)
     t0 = time.time()
     err = ""
@@ -294,6 +306,10 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
     except subprocess.TimeoutExpired:
         err = "TIMEOUT"
     secs = time.time() - t0
+    if drive_run:   # end-state capture FIRST (the scorer reads it), then drop the mount, then MOVE the run folder to _archive (never delete)
+        snap = rig_drive.snapshot_end_state(drive_run, os.path.join(work, c["id"] + ".drive-end.json"))
+        rig_drive.unlink_mount(home)
+        LAST_DRIVE[c["id"]] = {"run_id": drive_run, "files": len(snap["files"]), "archived_to": rig_drive.archive(drive_run), "end_state": c["id"] + ".drive-end.json"}
     a = snapshot(notes)
     txt = open(stream, errors="replace", encoding="utf-8").read()
     # the init event lists every installed skill/agent by name: a file another window just wrote must never count as "mentioned" because of it
@@ -385,6 +401,7 @@ def main():
     ap.add_argument("--settings", help="settings file for the child (default: lab-settings.json). Practice rounds pass a copy without Enver's own Edit(.claude/skills/**) deny, which a student does not have")
     ap.add_argument("--scratch")
     ap.add_argument("--student", action="store_true", help="run as a student who finished the normal setup (bootstrap.py): own throwaway notes + personal code folder + pointers, no GitHub, none of Enver's files (rig_student.make_student_home)")
+    ap.add_argument("--drive", action="store_true", help="give each session its own run folder in Drive/Lifehack test area/ (mounted in the throwaway HOME like Drive for Desktop); end state saved as <id>.drive-end.json, folder then moved to _archive/")
     ap.add_argument("--env", action="append", default=[])
     ap.add_argument("--resume", action="store_true", help="continue the newest results file for --label, skipping cases already finished (survives an interrupted run)")
     a = ap.parse_args()
@@ -459,11 +476,12 @@ def main():
     os.makedirs(keep, exist_ok=True)
     try:
         for c in cases:
-            r = run_one(c, notes, work, a.scratch, dict(e.split("=", 1) for e in a.env), os.path.join(res_dir, "%s-%s-files" % (stamp, a.label)), a.model, a.settings)
+            r = run_one(c, notes, work, a.scratch, dict(e.split("=", 1) for e in a.env), os.path.join(res_dir, "%s-%s-files" % (stamp, a.label)), a.model, a.settings, a.label if a.drive else None)
+            r["drive"] = LAST_DRIVE.get(c["id"])
             out.append(r)
             print(r["id"], r["bucket"], r["turns"], r["secs"], r["commits"] or "", flush=True)
             open(os.path.join(res_dir, "%s-%s-live.jsonl" % (stamp, a.label)), "w", encoding="utf-8").write("\n".join(json.dumps(x) for x in out) + "\n")
-            for f in glob.glob(work + "/*.stream.jsonl") + glob.glob(work + "/*.fence.jsonl"):
+            for f in glob.glob(work + "/*.stream.jsonl") + glob.glob(work + "/*.fence.jsonl") + glob.glob(work + "/*.drive-end.json"):
                 shutil.copy(f, keep)
     finally:
         shutil.rmtree(work, ignore_errors=True)

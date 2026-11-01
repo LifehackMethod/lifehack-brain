@@ -6,11 +6,16 @@ WHY: the live exam gives the child a throwaway HOME, but a model that types an a
 WHAT: denies Write/Edit/MultiEdit/NotebookEdit, and a Bash command that writes/deletes/moves/creates, when the target is under the REAL home or the
       REAL notes root and NOT under a throwaway dir the rig allows. Everything else (reads, /tmp, throwaway dirs, other tools) passes. Reads of real
       places are allowed but logged (RIG_FENCE_LOG) so the scorer can list them. The deny text starts "TEST-RIG FENCE" so it is never mistaken for a product guard.
-ENV (set by the rig for the child): RIG_FENCE_REAL_HOME, RIG_FENCE_REAL_NOTES, RIG_FENCE_ALLOW (':'-separated throwaway dirs), RIG_FENCE_LOG (optional).
+ENV (set by the rig for the child): RIG_FENCE_REAL_HOME, RIG_FENCE_REAL_NOTES, RIG_FENCE_ALLOW (':'-separated throwaway dirs), RIG_FENCE_LOG (optional),
+      RIG_FENCE_RUN_DRIVE (optional, 2026-11-01): ONE run folder in the dedicated Drive test area (".../My Drive/Lifehack test area/<run-id>"). Honoured ONLY when it is a direct child of a
+      folder named exactly "Lifehack test area" and is not "_archive"; anything else is ignored (fail closed). Every other Drive path stays fenced (it is under the real home).
+      Path matching ignores letter case and unicode form (Drive for Desktop on a Mac is case-insensitive, so My Drive/_notes IS _Notes).
       Without RIG_FENCE_REAL_HOME the fence does nothing (fail-open: it must never block a product test by accident).
 Exit 2 + stderr message = deny (same shape as the product guards); exit 0 = allow.
 """
-import json, os, re, shlex, sys
+import json, os, re, shlex, sys, unicodedata
+
+DRIVE_AREA = "Lifehack test area"
 
 WRITE_ALL = {"rm", "rmdir", "unlink", "touch", "mkdir", "chmod", "chown", "truncate", "trash", "shred", "ln", "mv", "tee", "mkfifo"}
 WRITE_LAST = {"cp", "rsync", "install", "scp", "ditto"}
@@ -21,15 +26,29 @@ PYWRITE = re.compile(r"""open\([^)]*['"][wax+]|\.write|write_text|write_bytes|sh
 SEG = re.compile(r"\|\||&&|;|\||\n")
 
 
+def fold(s):
+    return unicodedata.normalize("NFC", s).casefold()
+
+
+def run_drive_ok(p):
+    """True when `p` (already realpath'd) is exactly one run folder inside the dedicated test area: a direct child of a dir named DRIVE_AREA, not the archive."""
+    parent, name = os.path.split(p.rstrip(os.sep))
+    return bool(name) and fold(name) != "_archive" and not name.startswith(".") and fold(os.path.basename(parent)) == fold(DRIVE_AREA) and os.path.isdir(p)
+
+
 def cfg():
     rh = os.environ.get("RIG_FENCE_REAL_HOME")
     if not rh:
         return None
-    return (os.path.realpath(rh), [os.path.realpath(p) for p in (os.environ.get("RIG_FENCE_REAL_NOTES") or "").split(":") if p],
-            [os.path.realpath(p) for p in (os.environ.get("RIG_FENCE_ALLOW") or "").split(":") if p])
+    allow = [os.path.realpath(p) for p in (os.environ.get("RIG_FENCE_ALLOW") or "").split(":") if p]
+    rd = os.environ.get("RIG_FENCE_RUN_DRIVE")
+    if rd and run_drive_ok(os.path.realpath(rd)):
+        allow.append(os.path.realpath(rd))
+    return (os.path.realpath(rh), [os.path.realpath(p) for p in (os.environ.get("RIG_FENCE_REAL_NOTES") or "").split(":") if p], allow)
 
 
 def under(p, d):
+    p, d = fold(p), fold(d)
     return p == d or p.startswith(d.rstrip(os.sep) + os.sep)
 
 

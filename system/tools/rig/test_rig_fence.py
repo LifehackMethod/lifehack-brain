@@ -2,7 +2,7 @@
 # not-wired-yet: run by hand to calibrate the TEST-RIG FENCE with known answers; no model call
 """Known-answer calibration for rig_fence.py: real-home write -> deny; throwaway write -> allow; reads allowed; the product guard still fires on its own.
 Each case pipes a PreToolUse payload to the fence as a subprocess (the way claude does) with the RIG_FENCE_* env. Prints N of N; exit 1 on any miss."""
-import json, os, subprocess, sys, tempfile
+import json, os, shlex, subprocess, sys, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FENCE = os.path.join(HERE, "rig_fence.py")
@@ -15,6 +15,16 @@ CWD = SCR + "/enver/D-X1"
 NOTES = RH + "/Library/CloudStorage/GoogleDrive-placeholder/My Drive/_Notes"
 ENV = dict(os.environ, RIG_FENCE_REAL_HOME=RH, RIG_FENCE_REAL_NOTES=NOTES, RIG_FENCE_ALLOW=SCR + ":" + ISO, RIG_FENCE_LOG=T + "/fence.jsonl")
 
+# ---- Drive test area (2026-11-01): a fake Drive tree under T (which sits under the real home, like the real Drive mount does)
+MYD = T + "/Library/CloudStorage/GoogleDrive-faketest/My Drive"
+AREA = MYD + "/Lifehack test area"
+RUN, SIB = AREA + "/run-aaa", AREA + "/run-bbb"
+for _d in (MYD + "/_Notes", MYD + "/other", RUN, SIB, AREA + "/_archive"):
+    os.makedirs(_d, exist_ok=True)
+os.symlink(MYD + "/_Notes", RUN + "/link-to-notes")      # a symlink planted inside the allowed run folder, pointing at a fenced place
+os.symlink(SIB, RUN + "/link-to-sibling")
+ENVD = dict(ENV, RIG_FENCE_REAL_NOTES=MYD + "/_Notes", RIG_FENCE_RUN_DRIVE=RUN)
+
 
 def fence(tool, tin, cwd=CWD, env=ENV):
     p = subprocess.run([sys.executable, "-I", FENCE], input=json.dumps({"tool_name": tool, "tool_input": tin, "cwd": cwd}), capture_output=True, text=True, env=env, timeout=30)
@@ -23,6 +33,13 @@ def fence(tool, tin, cwd=CWD, env=ENV):
 
 def B(cmd):
     return fence("Bash", {"command": cmd})
+
+
+q = shlex.quote
+
+
+def B2(cmd):
+    return fence("Bash", {"command": cmd}, cwd=RUN, env=ENVD)
 
 
 CURL = "cu" + "rl"   # spelled apart so a guard scanning this file's text is not tripped
@@ -55,6 +72,37 @@ CASES = [
     ("Bash fetch -o real", B(CURL + " -o " + RH + "/Downloads/x.html"), True),
     ("Bash ~otheruser write", B("touch ~" + os.path.basename(RH) + "/.claude/x"), True),
     # ---- allowed: in-sandbox actions and reads
+    # ---- Drive test area: everything but the one run folder stays fenced
+    ("Drive: Write My Drive/_Notes/x", fence("Write", {"file_path": MYD + "/_Notes/x", "content": "x"}, env=ENVD), True),
+    ("Drive: Write My Drive/other/x", fence("Write", {"file_path": MYD + "/other/x", "content": "x"}, env=ENVD), True),
+    ("Drive: Write sibling run folder", fence("Write", {"file_path": SIB + "/x", "content": "x"}, env=ENVD), True),
+    ("Drive: Write the test area itself", fence("Write", {"file_path": AREA + "/x", "content": "x"}, env=ENVD), True),
+    ("Drive: Write _archive", fence("Write", {"file_path": AREA + "/_archive/x", "content": "x"}, env=ENVD), True),
+    ("Drive: Bash mv out of run folder to other", B2("mv a " + q(MYD + "/other/a")), True),
+    ("Drive: Bash rm in sibling run", B2("rm " + q(SIB + "/a")), True),
+    ("Drive: .. escape from run folder", fence("Write", {"file_path": RUN + "/../run-bbb/x", "content": "x"}, env=ENVD), True),
+    ("Drive: .. escape to _Notes", fence("Write", {"file_path": RUN + "/../../_Notes/x", "content": "x"}, env=ENVD), True),
+    ("Drive: relative .. escape (cwd = run)", fence("Write", {"file_path": "../../other/x", "content": "x"}, cwd=RUN, env=ENVD), True),
+    ("Drive: Bash cd run then relative .. escape", B2("cd " + q(RUN) + " && touch ../../other/x"), True),
+    ("Drive: write through symlink to _Notes", fence("Write", {"file_path": RUN + "/link-to-notes/x", "content": "x"}, env=ENVD), True),
+    ("Drive: write through symlink to sibling run", fence("Write", {"file_path": RUN + "/link-to-sibling/x", "content": "x"}, env=ENVD), True),
+    ("Drive: Bash redirect through symlink", B2("echo x > " + q(RUN + "/link-to-notes/x")), True),
+    ("Drive: case trick on _Notes", fence("Write", {"file_path": MYD.replace("My Drive", "my drive") + "/_notes/x", "content": "x"}, env=ENVD), True),
+    ("Drive: case trick on other", fence("Write", {"file_path": MYD.upper() + "/OTHER/x", "content": "x"}, env=ENVD), True),
+    ("Drive: case trick on sibling run", fence("Write", {"file_path": AREA.replace("test area", "TEST AREA") + "/RUN-BBB/x", "content": "x"}, env=ENVD), True),
+    ("Drive: run path wrong env (area itself) is ignored", fence("Write", {"file_path": SIB + "/x", "content": "x"}, env=dict(ENVD, RIG_FENCE_RUN_DRIVE=AREA)), True),
+    ("Drive: run path = _archive is ignored", fence("Write", {"file_path": AREA + "/_archive/x", "content": "x"}, env=dict(ENVD, RIG_FENCE_RUN_DRIVE=AREA + "/_archive")), True),
+    ("Drive: run path outside the area is ignored", fence("Write", {"file_path": MYD + "/other/x", "content": "x"}, env=dict(ENVD, RIG_FENCE_RUN_DRIVE=MYD + "/other")), True),
+    ("Drive: run path with ../ out of the area is ignored", fence("Write", {"file_path": MYD + "/other/x", "content": "x"}, env=dict(ENVD, RIG_FENCE_RUN_DRIVE=AREA + "/run-aaa/../../other")), True),
+    ("Drive: no run folder set -> run folder fenced", fence("Write", {"file_path": RUN + "/x", "content": "x"}, env=ENV), True),
+    ("Drive: allowed run folder, Write", fence("Write", {"file_path": RUN + "/skills/invoice-checker/SKILL.md", "content": "x"}, env=ENVD), False),
+    ("Drive: allowed run folder, relative Write", fence("Write", {"file_path": "notes/a.md", "content": "x"}, cwd=RUN, env=ENVD), False),
+    ("Drive: allowed run folder, Bash mkdir + redirect", B2("mkdir -p " + q(RUN + "/team") + " && echo x > " + q(RUN + "/team/a.md")), False),
+    ("Drive: allowed run folder, cp into it", B2("cp a.md " + q(RUN + "/team/")), False),
+    ("Drive: allowed run folder, Bash ln -s a skill into it", B2("ln -s " + q(RUN + "/team/invoice-checker") + " ~/.claude/skills/invoice-checker"), False),
+    ("Drive: allowed run folder, different case spelling", fence("Write", {"file_path": RUN.replace("run-aaa", "RUN-AAA") + "/x", "content": "x"}, env=ENVD), False),
+    ("Drive: allowed run folder via .. that stays inside", fence("Write", {"file_path": RUN + "/a/../b/x", "content": "x"}, env=ENVD), False),
+    ("Drive: reading another Drive path is allowed", fence("Read", {"file_path": MYD + "/other/x"}, env=ENVD), False),
     ("Write in cwd", fence("Write", {"file_path": CWD + "/notes/a.md", "content": "x"}), False),
     ("Write relative in cwd", fence("Write", {"file_path": "notes/a.md", "content": "x"}), False),
     ("Write throwaway personal code", fence("Write", {"file_path": ISO + "/personal-code/tools/a.py", "content": "x"}), False),
