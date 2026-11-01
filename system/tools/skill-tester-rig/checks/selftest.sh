@@ -130,11 +130,12 @@ run_c "$CHECKS/ai.sh" "$SEED" "$STEP";                       expect default-path
 run_c "$CHECKS/ai.sh" "$((SEED + 1))" "$STEP" "$FX/ai/good/canonical.json"; expect other-seed-fails 1
 run_c "$CHECKS/ai.sh" "abc" "$STEP" "$FX/ai/good/canonical.json";           expect seed-unreadable 4 cr
 run_c "$CHECKS/ai.sh" "" "$STEP" "$FX/ai/good/canonical.json";              expect seed-empty 4 cr
-mkdir -p "$T/scr/runs/rid" "$T/scr/seeds"; echo "$SEED" > "$T/scr/seeds/rid"
-OUT="$(cd "$RIG" && env -u CANARY_SEED SKILL_TESTER_SCRATCH="$T/scr" bash "$CHECKS/ai.sh" "$T/scr/runs/rid" "$STEP" "$FX/ai/good/canonical.json" 2>&1)"; RC=$?
+RDX="$(python3 -I "$RIG/run_helper.py" rundir "$T/scr" rid)"   # layout.py (TR2.0b): the run dir inside the actor home
+mkdir -p "$RDX" "$T/scr/seeds"; echo "$SEED" > "$T/scr/seeds/rid"
+OUT="$(cd "$RIG" && env -u CANARY_SEED SKILL_TESTER_SCRATCH="$T/scr" bash "$CHECKS/ai.sh" "$RDX" "$STEP" "$FX/ai/good/canonical.json" 2>&1)"; RC=$?
 expect seed-from-seeds-file 0
 rm -f "$T/scr/seeds/rid"
-OUT="$(cd "$RIG" && env -u CANARY_SEED SKILL_TESTER_SCRATCH="$T/scr" bash "$CHECKS/ai.sh" "$T/scr/runs/rid" "$STEP" "$FX/ai/good/canonical.json" 2>&1)"; RC=$?
+OUT="$(cd "$RIG" && env -u CANARY_SEED SKILL_TESTER_SCRATCH="$T/scr" bash "$CHECKS/ai.sh" "$RDX" "$STEP" "$FX/ai/good/canonical.json" 2>&1)"; RC=$?
 expect seed-absent 4 cr
 run_c "$CHECKS/ai.sh" "$SEED" 4 "$FX/human/good/canonical.json";            expect miswired-ai-on-human-step 4 cr
 run_c "$CHECKS/human.sh" "$SEED" "$STEP" "$FX/ai/good/canonical.json";      expect miswired-human-on-ai-step 4 cr

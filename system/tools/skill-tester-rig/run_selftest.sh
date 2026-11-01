@@ -26,7 +26,8 @@ LOG="$BASE/selftest.log"
 ok()   { echo "  ok   $1"; }
 bad()  { echo "  FAIL $1${2:+: $2}"; FAILS="$FAILS $1"; }
 run()  { bash "$RUNSH" "$@" >>"$LOG" 2>&1; RC=$?; }         # sets RC
-rd()   { echo "$BASE/runs/$1"; }
+rd()   { python3 -I "$RIG/run_helper.py" rundir "$BASE" "$1"; }   # layout.py (TR2.0b)
+ah()   { python3 -I "$RIG/run_helper.py" actorhome "$BASE" "$1"; }
 has_ev()  { grep -qxF -- "$2" "$(rd "$1")/events.log" 2>/dev/null; }
 no_fail_ev() { ! grep -qE '^(CHECK-FAIL|CANNOT-READ|WATCHDOG|MODEL-FAIL|RECORD-|PATH-REFUSED|BUDGET-REFUSED|SEAM-)' "$(rd "$1")/events.log" 2>/dev/null; }
 total()   { python3 "$RIG/truth.py" --run "$1" 2>/dev/null | tail -1; }
@@ -47,22 +48,26 @@ echo "selftest: scratch $BASE (fake model only)"
 echo "== refusals"
 run --run-id ref1 --card canary $ANS
 expect "no --fake/--real -> exit 2" eq "$RC" 2
-expect "no --fake/--real -> nothing created" eval "[ ! -e '$BASE/runs/ref1' ]"
+expect "no --fake/--real -> nothing created" eval "[ ! -e '$(ah ref1)' ]"
 run --fake nonsense --run-id ref2;           expect "unknown fake mode -> 2" eq "$RC" 2
 run --fake good --real --run-id ref3;        expect "--fake + --real -> 2" eq "$RC" 2
 run --fake good --run-id ../x;               expect "bad run-id -> 2" eq "$RC" 2
 run --fake good --run-id sk1 --test-skip-step 5 $ANS
 expect "--test-skip-step without RIG_TEST=1 -> 2" eq "$RC" 2
-expect "--test-skip-step refused -> nothing created" eval "[ ! -e '$BASE/runs/sk1' ]"
+expect "--test-skip-step refused -> nothing created" eval "[ ! -e '$(ah sk1)' ]"
 run --fake good --run-id ea1 --test-exit-after 6 $ANS
 expect "--test-exit-after without RIG_TEST=1 -> 2" eq "$RC" 2
-expect "--test-exit-after refused -> nothing created" eval "[ ! -e '$BASE/runs/ea1' ]"
+expect "--test-exit-after refused -> nothing created" eval "[ ! -e '$(ah ea1)' ]"
 RIG_TEST=1 run --fake good --run-id ea2 --test-exit-after 12 $ANS
 expect "--test-exit-after 12 (out of 0..11) -> 2" eq "$RC" 2
 out="$(bash "$RUNSH" --print-real-cmd 2>&1)"
 mid="$(python3 -I -B -c 'import sys; sys.path.insert(0, sys.argv[1]); from model_ids import model_id; print(model_id("medium"))' "${LIFEHACK_V2:-$HOME/lifehack-v2}/shared/tools")"
-expect "real cmd: -p --output-format json --allowedTools Read --permission-mode bypassPermissions --settings lab-settings" \
-  eval 'printf "%s\n" "$out" | tr "\n" " " | grep -q -- "-u CANARY_SEED -u SKILL_TESTER_SEED claude -p <rendered prompt> --output-format json --model $mid --allowedTools Read --permission-mode bypassPermissions --settings <scratch>/settings/<run-id>.lab-settings.json"'
+expect "real cmd: -p --output-format json --allowedTools Read --permission-mode bypassPermissions --settings lab-settings --plugin-dir <tree>" \
+  eval 'printf "%s\n" "$out" | tr "\n" " " | grep -q -- "claude -p <rendered prompt> --output-format json --model $mid --allowedTools Read --permission-mode bypassPermissions --settings <scratch>/settings/<run-id>.lab-settings.json --plugin-dir $(cd "$RIG/../../.." && pwd -P) "'
+# TR2.0b: the probe-hooks launch shape (actor.lib.sh): seed + leak vars unset BEFORE the sets, throwaway HOME per step,
+# the fire journal inside it, auto-update off
+expect "real cmd: env -u CANARY_SEED -u SKILL_TESTER_SEED ... -u CLAUDE_CONFIG_DIR -u LIFEHACK_ROOT ... before HOME=" \
+  eval 'printf "%s\n" "$out" | tr "\n" " " | grep -q -- "^env -u CANARY_SEED -u SKILL_TESTER_SEED -u CLAUDE_CONFIG_DIR -u LIFEHACK_ROOT -u LHB_JOURNAL_DISABLE -u LIFEHACK_WATCH -u CLAUDE_PLUGIN_ROOT -u CLAUDE_CODE_SESSION_ID .*HOME=<scratch>/actor-home/<run-id> LHB_JOURNAL_PATH=<scratch>/actor-home/<run-id>/.claude/run/fire-journal.jsonl DISABLE_AUTOUPDATER=1 claude -p "'
 expect "real cmd: never --dangerously-skip-permissions" eval '! printf "%s" "$out" | grep -q dangerously'
 expect "lab-settings: deny AskUserQuestion + Read on seeds/plans/rig" python3 -I -B -c '
 import json, sys
@@ -71,14 +76,15 @@ need = ["AskUserQuestion", "Read(~/lifehack-scratch/skill-tester-rig/seeds/**)",
         "Read(~/lifehack-v2/system/tools/skill-tester-rig/**)", "Bash", "Edit", "Write"]
 sys.exit(0 if all(n in d for n in need) else 1)' "$RIG/lab-settings.template.json"
 expect "lab-settings: no committed rendered copy beside the template" eval "[ ! -e '$RIG/lab-settings.json' ]"
-python3 -I -B "$RIG/run_helper.py" render-settings "$RIG/lab-settings.template.json" "$BASE/lab-settings.rendered.json" "$BASE" "$RIG"; r=$?
+mkdir -p "$BASE/ahome-render"
+python3 -I -B "$RIG/run_helper.py" render-settings "$RIG/lab-settings.template.json" "$BASE/lab-settings.rendered.json" "$BASE" "$RIG" "$BASE/ahome-render"; r=$?
 expect "lab-settings: rendered deny list carries the absolute //<scratch>/seeds|plans and //<rig> forms" python3 -I -B -c '
 import json, os, sys
 d = json.load(open(sys.argv[1]))["permissions"]["deny"]
 b, rig = os.path.realpath(sys.argv[2]), os.path.realpath(sys.argv[3])
 need = ["Read(/%s/seeds/**)" % b, "Read(/%s/plans/**)" % b, "Read(/%s/**)" % rig]
 sys.exit(0 if all(n in d for n in need) and not any("{{" in x for x in d) else 1)' "$BASE/lab-settings.rendered.json" "$BASE" "$RIG"
-expect "lab-settings: render refuses a non-absolute scratch (exit 2)" eval "python3 -I -B '$RIG/run_helper.py' render-settings '$RIG/lab-settings.template.json' '$BASE/x.json' rel '$RIG' 2>/dev/null; [ \$? = 2 ] && [ ! -e '$BASE/x.json' ]"
+expect "lab-settings: render refuses a non-absolute scratch (exit 2)" eval "python3 -I -B '$RIG/run_helper.py' render-settings '$RIG/lab-settings.template.json' '$BASE/x.json' rel '$RIG' '$BASE/ahome-render' 2>/dev/null; [ \$? = 2 ] && [ ! -e '$BASE/x.json' ]"
 CANARY_SEED=1 bash "$RIG/fake-claude.sh" -p "x" >/dev/null 2>&1; r=$?
 expect "fake asserts CANARY_SEED unset (rc 3 when present)" eq "$r" 3
 bash "$RIG/fake-claude.sh" -p "x" --dangerously-skip-permissions >/dev/null 2>&1; r=$?
@@ -302,6 +308,39 @@ RIG_TEST=1 RIG_TEST_SEAM_WRITE="$SEAM_STATE_ROOT/rig-leak.md" run --fake good --
 expect "s3 exit 1 + SEAM-DENIED <path>, file absent" eval "[ $RC = 1 ] && has_ev s3 'SEAM-DENIED $SEAM_STATE_ROOT/rig-leak.md' && [ ! -e '$SEAM_STATE_ROOT/rig-leak.md' ]"
 GUARD_TEST_NO_LOG=1 run --fake good --run-id s4 $ANS
 expect "s4 denial log unreadable: exit 1 + SEAM-CANNOT-READ denials" eval "[ $RC = 1 ] && has_ev s4 'SEAM-CANNOT-READ denials'"
+
+echo "== TR2.0b layout (b): one throwaway HOME per run, the run dir inside its .claude; transcript denies"
+expect "lab-settings: rendered deny list carries Read(//<actor home>/.claude/{projects,sessions,session-env}/**)" python3 -I -B -c '
+import json, os, sys
+d = json.load(open(sys.argv[1]))["permissions"]["deny"]
+h = os.path.realpath(sys.argv[2])
+need = ["Read(/%s/.claude/%s/**)" % (h, x) for x in ("projects", "sessions", "session-env")]
+sys.exit(0 if all(n in d for n in need) else 1)' "$BASE/lab-settings.rendered.json" "$BASE/ahome-render"
+expect "layout: g1 run dir = <scratch>/actor-home/g1/.claude/run/skill-tester/g1 (holds record.tsv)" \
+  eval "[ '$(rd g1)' = '$BASE/actor-home/g1/.claude/run/skill-tester/g1' ] && [ -s '$(rd g1)/record.tsv' ]"
+expect "layout: no 'memory' segment in the run dir path" eval "! printf '%s' '$(rd g1)' | grep -q /memory"
+expect "layout: seeds and plans stay OUTSIDE the actor home" eval "[ -f '$BASE/seeds/g1' ] && [ ! -e '$(ah g1)/seeds' ]"
+expect "layout: no legacy \$SCRATCH/runs dir is created" eval "[ ! -e '$BASE/runs' ]"
+echo "== F-M5 plumbing (fake): a nudged step attempts a prior-transcript Read; the deny bites and is named"
+M5T="$(ah m5)/.claude/projects/-skill-tester-prior-m5/prior-s5.jsonl"
+RIG_TEST=1 RIG_NUDGE="s5:$M5T" run --fake good --run-id m5 $ANS
+expect "m5 exit 1 + 'ACTOR-READ-DENIED s5 <transcript>' + RIG-TEST ON; steps still ok=12" \
+  eval "[ $RC = 1 ] && has_ev m5 'ACTOR-READ-DENIED s5 $M5T' && has_ev m5 'RIG-TEST ON' && [ \"\$(total m5)\" = '$T12' ]"
+M5C="$(ah m5c)/.claude/notes/prior-s5.jsonl"
+RIG_TEST=1 RIG_NUDGE="s5:$M5C" run --fake good --run-id m5c $ANS
+expect "m5c control: a nudge at a path NO rule denies -> no ACTOR-READ-DENIED, exit 0 (the projects rule is what bites)" \
+  eval "[ $RC = 0 ] && ! grep -q '^ACTOR-' '$(rd m5c)/events.log'"
+RIG_NUDGE="s5:$M5T" run --fake good --run-id m5n $ANS
+expect "RIG_NUDGE without RIG_TEST=1 -> refused (exit 2)" eq "$RC" 2
+# FAIL-FIRST: a copy of the rig whose template lacks the projects deny -> the same nudge is NOT caught
+FFR="$BASE/rig-ff-m5"; rm -rf "$FFR"; mkdir -p "$FFR"; cp -Rp "$RIG/." "$FFR/"
+grep -v '\.claude/projects/\*\*' "$RIG/lab-settings.template.json" > "$FFR/lab-settings.template.json"
+M5F="$(ah m5ff)/.claude/projects/-skill-tester-prior-m5ff/prior-s5.jsonl"
+RIG_TEST=1 RIG_NUDGE="s5:$M5F" crun "$FFR" --fake good --run-id m5ff $ANS   # crun: SKILL_TESTER_RIG = the copy
+expect "m5ff used the BROKEN copy's settings (no projects deny rendered)" eval "! grep -q '.claude/projects/' '$BASE/settings/m5ff.lab-settings.json'"
+expect "m5ff fail-first: without the projects deny the nudged read is MISSED (no ACTOR-READ-DENIED, exit 0)" \
+  eval "[ $RC = 0 ] && ! grep -q '^ACTOR-READ-DENIED' '$(rd m5ff)/events.log'"
+rm -rf "$FFR"
 
 if [ -z "$FAILS" ]; then
   rm -rf "$BASE"

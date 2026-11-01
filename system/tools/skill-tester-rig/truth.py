@@ -5,8 +5,10 @@
 #    the expected outcome comes from canary/expected.py, the categories are CONTRACT.md §4.)
 """truth.py — the skill-tester-rig ORACLE (card TR1.2). Pure code: no model, no network, no clock.
 
-  truth.py --run <run-id>        RUN_DIR = ${SKILL_TESTER_SCRATCH:-~/lifehack-scratch/skill-tester-rig}/runs/<run-id>
-  truth.py --run-dir PATH        RUN_DIR = PATH (run-id = its basename; seeds looked up two levels up)
+  truth.py --run <run-id>        RUN_DIR = layout.run_dir(${SKILL_TESTER_SCRATCH:-~/lifehack-scratch/skill-tester-rig}, <run-id>)
+                                 = <scratch>/actor-home/<run-id>/.claude/run/skill-tester/<run-id> (TR2.0b)
+  truth.py --run-dir PATH        RUN_DIR = PATH (run-id = its basename; seeds: <scratch>/seeds when PATH is laid out
+                                 by layout.py, else two levels up)
   truth.py --selftest            build synthetic runs, one per category; last line
                                  'SELFTEST 8/8 categories each seen failing' only if every category is caught
                                  and every clean control is all-ok.
@@ -67,6 +69,8 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE / "canary"))
 sys.path.insert(0, os.path.join(os.environ.get("LIFEHACK_V2", os.path.expanduser("~/lifehack-v2")), "shared", "emit"))  # shared layer, used in place
 import expected  # noqa: E402  the one formula (canary/SPEC.md §7)
+sys.path.insert(0, str(HERE))
+import layout  # noqa: E402  the ONE run layout (TR2.0b)
 import verdicts  # noqa: E402  the CANNOT-READ convention, used in place (CONTRACT §0)
 
 CATS = ("ok", "silent_wrong", "double_ran", "stuck", "lost", "skipped", "out_of_order", "false_done")
@@ -280,7 +284,7 @@ class Fake:
 
     def __init__(self, root, run_id, seed=4242, answers="s4=yes,s9=yes"):
         self.root, self.id, self.seed = root, run_id, seed
-        self.dir = root / "runs" / run_id
+        self.dir = pathlib.Path(layout.run_dir(str(root), run_id))   # CONTRACT §1 / layout.py (TR2.0b)
         self.dir.mkdir(parents=True)
         (root / "seeds").mkdir(exist_ok=True)
         (root / "seeds" / run_id).write_text("%d\n" % seed)
@@ -485,10 +489,11 @@ def main(argv):
         return selftest()
     if len(argv) == 2 and argv[0] == "--run":
         s = scratch()
-        return run(s / "runs" / argv[1], argv[1], s / "seeds")
+        return run(pathlib.Path(layout.run_dir(str(s), argv[1])), argv[1], s / "seeds")
     if len(argv) == 2 and argv[0] == "--run-dir":
         d = pathlib.Path(argv[1]).resolve()
-        return run(d, d.name, d.parent.parent / "seeds")
+        sc = layout.scratch_of(str(d))   # laid out by layout.py -> its scratch's seeds; else the legacy two-up rule
+        return run(d, d.name, (pathlib.Path(sc) if sc else d.parent.parent) / "seeds")
     print("usage: truth.py --run <run-id> | --run-dir PATH | --selftest", file=sys.stderr)
     return 2
 

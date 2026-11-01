@@ -249,7 +249,7 @@ probe() {
   # scratch and this rig folder, inside this run's throwaway dir
   SETTINGS="$T/lab-settings.json"
   mkdir -p "$SCRATCH_ROOT" || cannot "scratch-unwritable $SCRATCH_ROOT"
-  python3 -I -B "$RIG/run_helper.py" render-settings "$SETTINGS_TPL" "$SETTINGS" "$SCRATCH_ROOT" "$RIG" \
+  python3 -I -B "$RIG/run_helper.py" render-settings "$SETTINGS_TPL" "$SETTINGS" "$SCRATCH_ROOT" "$RIG" "$PH" \
     || cannot "lab-settings-render-failed $SETTINGS_TPL"
   JOURNAL="$PH/.claude/run/fire-journal.jsonl"   # = journal.sh's default under the throwaway HOME AND LHB_JOURNAL_PATH
   NONCE="NONCE$(od -An -N8 -tx1 /dev/urandom | tr -d ' \n')"

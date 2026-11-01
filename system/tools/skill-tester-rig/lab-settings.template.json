@@ -17,7 +17,13 @@
       "Read(~/lifehack-v2/system/tools/skill-tester-rig/**)",
       "Read(/{{SCRATCH}}/seeds/**)",
       "Read(/{{SCRATCH}}/plans/**)",
-      "Read(/{{RIG}}/**)"
+      "Read(/{{RIG}}/**)",
+      "Read(/{{AHOME}}/.claude/projects/**)",
+      "Read(/{{AHOME}}/.claude/sessions/**)",
+      "Read(/{{AHOME}}/.claude/session-env/**)",
+      "Read(~/.claude/projects/**)",
+      "Read(~/.claude/sessions/**)",
+      "Read(~/.claude/session-env/**)"
     ]
   }
 }

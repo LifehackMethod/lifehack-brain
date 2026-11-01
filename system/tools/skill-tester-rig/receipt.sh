@@ -15,6 +15,9 @@
 #       A previous receipt is KEPT: hard-linked to <gate>.receipt.<UTC stamp> before the new one is renamed over
 #       it (no moment without a receipt, never a silent overwrite). exit 0 written and read back · 1 not written.
 #       ONLY bite.sh --rung N (later ladder.sh) calls this, from its UNGUARDED orchestrator, after the whole run.
+#   receipt.sh write <gate> <result-line> --note <line>
+#       the same, plus <RECEIPTS>/<gate>.note (one line, atomic; TR2.0b: actor-guard's gate caveat). `check` never
+#       reads the note.
 #   receipt.sh check <gate> <expected-line>
 #       stdout is ALWAYS one line, `1` or `0` (never empty: plan_retire reads an empty stdout as the exit code).
 #       `1` only if the receipt exists and is readable, has exactly 4 lines, line 1 == <expected-line> exactly,
@@ -196,7 +199,17 @@ selftest() {
 }
 
 case "${1:-}" in
-  write) [ $# = 3 ] || { echo "usage: receipt.sh write <gate> <result-line>" >&2; exit 2; }
+  write) if [ $# = 5 ] && [ "$4" = --note ]; then
+           # TR2.0b: an optional NOTE beside the receipt (<gate>.note, one line, atomic). The 4-line receipt, and so
+           # `check`, are unchanged; the note carries what a reader must know, e.g. actor-guard's gate caveat
+           do_write "$2" "$3" || exit 1
+           case "$5" in ""|*"
+"*) echo "receipt: the note must be one non-empty line" >&2; exit 1 ;; esac
+           nd="$(realp "$RECEIPTS")" && printf '%s\n' "$5" > "$nd/.$2.note.tmp.$$" && mv -f "$nd/.$2.note.tmp.$$" "$nd/$2.note" \
+             || { echo "receipt: cannot write the note $nd/$2.note" >&2; exit 1; }
+           echo "receipt: wrote note $nd/$2.note" >&2; exit 0
+         fi
+         [ $# = 3 ] || { echo "usage: receipt.sh write <gate> <result-line> [--note <line>]" >&2; exit 2; }
          do_write "$2" "$3"; exit $? ;;
   check) trap '[ -n "$CHECK_SAID" ] || echo 0' EXIT
          [ $# = 3 ] || { say 0; echo "usage: receipt.sh check <gate> <expected-line>" >&2; exit 2; }

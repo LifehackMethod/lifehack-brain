@@ -29,7 +29,8 @@ asking claudeops-a0 (the skill-system window), who asks Enver.
 ## Where things live (provenance)
 
 - **This folder** (`~/lifehack-v2/system/tools/skill-tester-rig/`): rig code only. Local run artefacts
-  (`runs/`, `*.tmp`, `__pycache__/`) are ignored by this folder's own `.gitignore`.
+  (`runs/`, `*.tmp`, `__pycache__/`) are ignored by this folder's own `.gitignore`. Run dirs live in scratch at
+  `<scratch>/actor-home/<run-id>/.claude/run/skill-tester/<run-id>/` (layout.py, TR2.0b).
 - **Scratch output** (`~/lifehack-scratch/skill-tester-rig/`): every run's output, outside any repo and
   never on Google Drive (ruling 6). Override with env `SKILL_TESTER_SCRATCH` (tests only).
 - **Status file** (`~/lifehack-scratch/skill-tester-rig/STATUS.md`): written by `status.sh` —
@@ -49,6 +50,11 @@ asking claudeops-a0 (the skill-system window), who asks Enver.
     is a gate card's fast Verify; only `bite.sh --rung N` writes receipts, to `~/lifehack-scratch/skill-tester-rig-receipts/`)
   - `bash system/tools/skill-tester-rig/guard.sh selftest`: the write guard refuses a guarded write into the receipts folder
   - `bash system/tools/skill-tester-rig/probe-hooks.sh --selftest`: TR0.4 hook probe, fake claude (drop `--selftest` for the real probe)
+  - `bash system/tools/skill-tester-rig/probe-actor-writes.sh --selftest`: TR2.0b write-list census, fake actor (drop
+    `--selftest` for the real census: ONE real cheapest-tier actor, cap $0.25, main window only)
+  - `bash system/tools/skill-tester-rig/actor-guard.sh --selftest`: TR2.0b orchestrator, fake actor (drop `--selftest`
+    for the real gate: census, then one real canary run under the guard with `--plugin-dir`, then the `actor-guard`
+    receipt)
   - `bash system/tools/skill-tester-rig/checks/selftest.sh`: judges the shipped checks against their fixtures
   - `python3 system/tools/skill-tester-rig/checks/fixtures/make_fixtures.py`: regenerates the check fixtures
     when the canary contract changes (then re-run `checks/selftest.sh`)

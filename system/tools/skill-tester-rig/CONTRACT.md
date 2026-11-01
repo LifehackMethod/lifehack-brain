@@ -32,7 +32,17 @@ and SPEC.md disagree, this file wins on the points it names, and SPEC.md gets fi
 
 ```
 SCRATCH = ${SKILL_TESTER_SCRATCH:-~/lifehack-scratch/skill-tester-rig}
-$SCRATCH/runs/<run-id>/            = RUN_DIR (absolute)
+$SCRATCH/actor-home/<run-id>/      = ACTOR_HOME: the actor's throwaway HOME, ONE per run (TR2.0b design (b), ruled
+                                   2026-11-01). Its .claude/{projects,sessions,session-env}/ hold the actor's transcripts;
+                                   the rendered lab settings DENY the actor any Read there (F-M5)
+$ACTOR_HOME/.claude/run/skill-tester/<run-id>/   = RUN_DIR (absolute; layout.py is the ONE definition, run_helper.py
+                                   rundir/actorhome/scratch-of the shell form). The run dir sits in the actor's OWN
+                                   $HOME/.claude because the Harness ingest gate trusts $HOME/.claude (taking $HOME from
+                                   the actor's env) and refused a step file in plain scratch. CAVEAT, stated on every
+                                   receipt and real-run report: the gate trusts step files only because they sit in the
+                                   actor's own $HOME/.claude; in real use the same holds under the real ~/.claude.
+                                   No "memory" segment (the gate excludes memory/). Fake and real runs use this layout
+                                   identically; they differ only in the binary. Seeds and plans stay OUTSIDE ACTOR_HOME.
     step-N.json                    committed step outputs (temp file + rename; written ONLY after the check passes)
     sN.raw.json                    the raw claude/fake JSON for ai steps (cost, turns, model)
     sN.rejected                    the output of a step whose check failed (kept as evidence, never read as a step)
@@ -91,6 +101,8 @@ events.log (runner):
                                 no step begun. RIG_TEST=1 runs on past a refused PLANTED check only, never a refused
                                 default check (a broken default check is a rig defect, not a test path)
   CANNOT-READ sN                a check exited 4, or was missing or crashed (a rig defect; the run stops, exit 1)
+                                ALSO `CANNOT-READ sN denials`: the step's result JSON had a malformed permission_denials
+                                list (TR2.0b); the run is tainted like an ACTOR-*-DENIED line
   WATCHDOG sN                   the model call was killed on timeout (exit 124)
   MODEL-FAIL sN rc=<rc>         the model binary failed (e.g. rc=127)
   RECORD-REFUSED sN row=<k>     a malformed record row was refused on resume
@@ -98,7 +110,7 @@ events.log (runner):
   RERUN sN                      on resume, a step with no valid record row was re-run
   VERSION-CHANGE sN <old> -> <new>   the model id differs from the run's earlier rows (recorded, the run continues)
   PATH-REFUSED <path>           an output path outside $SCRATCH (e.g. Drive) was refused. Written to the CANONICAL
-                                run dir $SCRATCH/runs/<run-id>/events.log, since the refused dir is never created
+                                run dir's events.log (§1, layout.py), since the refused dir is never created
   WAITING sN                    a human step paused (exit 70)
   RIG-TEST ON                   FIRST line of events.log whenever RIG_TEST=1 was set for the invocation (also
                                 RIG_TEST=1 in meta.env). A run with this line is a TEST-PATH run: it can never count as
@@ -114,6 +126,15 @@ events.log (runner):
   SEAM-DENIED <path>            the write guard (§3a) refused a write to <path> (the kernel's resolved path) by a process
                                 of this run. COUNTS like SEAM-LEAK although nothing changed on disk: the attempt is the
                                 leak. Exit becomes 1 if it was 0 or 70
+  SEAM-DENIED-RULED <path>      (TR2.0b ruling, claudeops-a0 2026-11-01) a denial whose path fully matches a regex in
+                                guard-ruled-denies.txt (the cross-session socket /private/tmp/cc-socks/<pid>.sock, the
+                                fswatch probe). The write STAYS DENIED (the file allows nothing); it is named and does
+                                NOT change the exit. Adding a line to that file is a ruling
+  ACTOR-READ-DENIED sN <path>   (TR2.0b, F-M4/F-M5) the actor at step N asked to Read <path> and Claude Code refused it
+                                by the lab settings deny list: one line per `permission_denials` entry with
+                                tool_name Read in the step's result JSON (<path> = its tool_input.file_path, verbatim).
+                                Logged BEFORE the step's check. TAINTS the run: exit becomes 1 if it was 0 or 70
+  ACTOR-TOOL-DENIED sN <tool>   the same for any other tool the actor was refused (e.g. Bash, Write); taints the run
   SEAM-CANNOT-READ snapshot     the pre-run snapshot failed; the run stops before s1, exit 1
   SEAM-CANNOT-READ rc=<rc>      seam.sh verify could not compare (4 snapshot missing/empty, 3 a file could not be hashed);
                                 exit becomes 1 if it was 0 or 70

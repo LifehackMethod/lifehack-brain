@@ -18,6 +18,7 @@ Shared layer = everything under `shared/`. Look here before writing a new tool.
 - `/system/tools/ingest-run.lib.sh` · SHARED scaffold for headless ingest/runner scripts
 - `/system/tools/job-run.sh` · the ONE wrapper every scheduled job runs inside (self-monitoring plan §A, §B.2)
 - `/system/tools/runner-lock.lib.sh` · the ONE single-instance lock every job runner and the job-run.sh wrapper share (self-monitoring 5.9(h) + 5.9(e))
+- `/system/tools/skill-tester-rig/actor.lib.sh` · card TR2.0b of the skill-tester-rig: the ONE headless-actor launch shape
 - `/system/tools/skill-tester-rig/wait.lib.sh` · card TR1.8 of the skill-tester-rig: the ONE recognised handshake helper
 - `/system/tools/status-tile.lib.sh` · THE status-tile emit for shell runners. One copy, many callers
 

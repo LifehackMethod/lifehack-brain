@@ -61,7 +61,7 @@ fp="$(printf '%s' "$last" | sed -n 's/.* fp \([0-9]*\)\/.*/\1/p')"
 [ "$last" = "BITE rung1 caught 0/0 fp 0/5 CLEAN" ] || bad="$bad sentinel-bite-not-clean"
 grep -q '^SUSPICIOUS-AMBIENT' "$LD/p2.out" && bad="$bad suspicious-ambient"
 nctl=0
-for ev in "$LD"/p2/runs/b1-ctl-*/events.log; do
+for ev in "$LD"/p2/actor-home/b1-ctl-*/.claude/run/skill-tester/b1-ctl-*/events.log; do   # layout.py (TR2.0b)
   [ -f "$ev" ] || continue
   nctl=$((nctl+1))
   na=$(grep -c '^SEAM-AMBIENT ' "$ev")
@@ -74,14 +74,16 @@ npr=$(awk -F'\t' '$1=="control" && $7 ~ /sentinel-write=proven/' "$LD/p2/bite.ts
 echo "  (2) controls with a sentinel write proven inside their seam window: $npr/5"
 [ "$npr" = 5 ] || bad="$bad sentinel-write-unproven:$npr/5"
 grep -q 'WAIT-TIMEOUT' "$LD/p2.out" && bad="$bad $(grep -o 'WAIT-TIMEOUT [^|]*' "$LD/p2.out" | head -1 | tr ' ' '-')"
-echo "  (2) planted stand-in write, run $R: exit $prc; events: $(tr '\n' '|' < "$LD/p2s/runs/$R/events.log" 2>/dev/null)"
+P2SRD="$(python3 -I "$RIG/run_helper.py" rundir "$LD/p2s" "$R")"
+echo "  (2) planted stand-in write, run $R: exit $prc; events: $(tr '\n' '|' < "$P2SRD/events.log" 2>/dev/null)"
 [ "$prc" = 1 ] || bad="$bad planted-run-exit-$prc"
-grep -qxF "SEAM-DENIED $STANDIN_R/rig-leak-$R.md" "$LD/p2s/runs/$R/events.log" 2>/dev/null || bad="$bad stand-in-write-not-denied"
+grep -qxF "SEAM-DENIED $STANDIN_R/rig-leak-$R.md" "$P2SRD/events.log" 2>/dev/null || bad="$bad stand-in-write-not-denied"
 [ -e "$STANDIN_R/rig-leak-$R.md" ] && { bad="$bad stand-in-write-LANDED"; rm -f "$STANDIN_R/rig-leak-$R.md"; }
 
 # ── (3) actor needs listed, nothing allowed ahead of the probe ────────────────────────────────────────────────
 DOC="$RIG/GUARD-CLAUDE-WRITES.md"
-rows=$(grep -cE '^\| [0-9]+ \|.*UNVERIFIED · Phase 2 \|$' "$DOC" 2>/dev/null)
+# (TR2.0b: an optional last column "VERIFIED by probe" follows the status column)
+rows=$(grep -cE '^\| [0-9]+ \|.*UNVERIFIED · Phase 2 \|( [^|]* \|)?$' "$DOC" 2>/dev/null)
 echo "  (3) $DOC: ${rows:-0} candidate path rows marked UNVERIFIED · Phase 2"
 [ "${rows:-0}" -ge 10 ] || bad="$bad actor-needs-not-listed"
 bash "$RIG/guard.sh" profile T /x/scratch /x/rig /x/standin | sed -n '/^(allow file-write\*/,/))$/p' | grep -q '\.claude' \

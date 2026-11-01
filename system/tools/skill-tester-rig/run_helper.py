@@ -19,10 +19,15 @@
   day N                            drive.py day(): BASE 2026-11-01 + (N-1) days
   yes-swap IN OUT                  copy a human step file with "answer" set to "yes" (to content-check a "no")
   realpath P                       os.path.realpath (works for paths that do not exist)
-  render-settings TPL OUT SCRATCH RIG
-                                   render lab-settings.template.json -> OUT: every "{{SCRATCH}}" / "{{RIG}}" inside a
-                                   JSON string becomes realpath(SCRATCH) / realpath(RIG) (both must be absolute,
-                                   existing dirs). Written atomically (OUT.partial -> OUT). Exit 2, nothing written, if
+  rundir SCRATCH RUN_ID            layout.py: <scratch>/actor-home/<id>/.claude/run/skill-tester/<id> (TR2.0b)
+  actorhome SCRATCH RUN_ID         layout.py: <scratch>/actor-home/<id>, the run's ONE throwaway HOME
+  scratch-of RUN_DIR               layout.py: the scratch root of a laid-out run dir (exit 1 if not laid out so)
+  ruled-deny FILE PATH             exit 0 iff PATH fully matches a regex line of guard-ruled-denies.txt (TR2.0b ruling)
+  denials RAW                      the result JSON's permission_denials, one "Read<TAB>path" / "<tool><TAB>-" line each
+  render-settings TPL OUT SCRATCH RIG AHOME
+                                   render lab-settings.template.json -> OUT: every "{{SCRATCH}}" / "{{RIG}}" /
+                                   "{{AHOME}}" inside a JSON string becomes realpath(SCRATCH) / realpath(RIG) /
+                                   realpath(AHOME, the run's throwaway HOME) (all absolute, existing dirs). Written atomically (OUT.partial -> OUT). Exit 2, nothing written, if
                                    the template is not JSON, a placeholder is unknown/left over, or no deny list.
   seed                             a fresh random seed 0..999999 (secrets module)
   cost RUN_DIR                     sum of total_cost_usd over RUN_DIR/s*.raw.json ("0" if none)
@@ -34,6 +39,8 @@
                                    Exit 1 (no key, so no caching) if any of them is missing or unreadable.
 """
 import calendar, datetime, glob, hashlib, json, os, re, secrets, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import layout  # noqa: E402  the ONE run layout (TR2.0b)
 
 STATUSES = ("done", "skipped-done", "waiting", "halted")
 # from orchestrator-v2/rig/stress/drive.py @ 2026-10-28  (day(): the fake clock's calendar; nothing else taken)
@@ -136,12 +143,13 @@ def main(a):
         with open(a[2], "w", encoding="utf-8") as fh:
             fh.write(json.dumps(d, separators=(",", ":")) + "\n")
         return 0
-    if cmd == "render-settings" and len(a) == 5:
-        tpl, out, scratch, rig = a[1:5]
-        for label, d in (("SCRATCH", scratch), ("RIG", rig)):
+    if cmd == "render-settings" and len(a) == 6:
+        tpl, out, scratch, rig, ahome = a[1:6]
+        for label, d in (("SCRATCH", scratch), ("RIG", rig), ("AHOME", ahome)):
             if not os.path.isabs(d) or not os.path.isdir(d):
                 print("render-settings: %s must be an absolute existing dir: %r" % (label, d), file=sys.stderr); return 2
-        subs = {"{{SCRATCH}}": os.path.realpath(scratch), "{{RIG}}": os.path.realpath(rig)}
+        subs = {"{{SCRATCH}}": os.path.realpath(scratch), "{{RIG}}": os.path.realpath(rig),
+                "{{AHOME}}": os.path.realpath(ahome)}
         def sub(v):
             if isinstance(v, str):
                 for k, r in subs.items():
@@ -169,6 +177,45 @@ def main(a):
             os.replace(part, out)
         except OSError as e:
             print("render-settings: cannot write %s: %s" % (out, e), file=sys.stderr); return 2
+        return 0
+    if cmd == "ruled-deny" and len(a) == 3:
+        # exit 0 iff PATH fully matches one regex line of the ruled-denies FILE (guard-ruled-denies.txt); 1 otherwise.
+        # An unreadable file or a bad regex is exit 2 (the caller then treats the denial as an ordinary SEAM-DENIED).
+        try:
+            rx = [l.strip() for l in open(a[1], encoding="utf-8") if l.strip() and not l.lstrip().startswith("#")]
+            return 0 if any(re.fullmatch(r, a[2]) for r in rx) else 1
+        except (OSError, re.error) as e:
+            print("ruled-deny: %s" % e, file=sys.stderr); return 2
+    if cmd == "rundir" and len(a) == 3:
+        print(layout.run_dir(a[1], a[2])); return 0
+    if cmd == "actorhome" and len(a) == 3:
+        print(layout.actor_home(a[1], a[2])); return 0
+    if cmd == "scratch-of" and len(a) == 2:
+        s = layout.scratch_of(a[1])
+        if s is None:
+            return 1
+        print(s); return 0
+    if cmd == "denials" and len(a) == 2:
+        # CONTRACT §3 (TR2.0b, F-M4/F-M5): every permission_denials entry of a claude --output-format json result,
+        # one line each: "Read<TAB><file_path>" for a Read, "<tool><TAB>-" for any other tool. A RAW that is not one
+        # JSON object, or has no permission_denials, prints nothing (exit 0); an entry of the wrong shape exits 5.
+        try:
+            with open(a[1], encoding="utf-8", errors="replace") as fh:
+                d = json.loads(fh.read())
+        except (OSError, ValueError):
+            return 0
+        pd = d.get("permission_denials") if isinstance(d, dict) else None
+        if not pd:
+            return 0
+        if not isinstance(pd, list):
+            print("denials: permission_denials is not a list", file=sys.stderr); return 5
+        for e in pd:
+            if not isinstance(e, dict):
+                print("denials: entry is not an object: %r" % (e,), file=sys.stderr); return 5
+            tool = re.sub(r"\s", "", str(e.get("tool_name") or "?")) or "?"
+            inp = e.get("tool_input") if isinstance(e.get("tool_input"), dict) else {}
+            fp = re.sub(r"[\t\n\r]", " ", str(inp.get("file_path") or "")) if tool == "Read" else ""
+            print("%s\t%s" % (tool, fp or "-"))
         return 0
     if cmd == "realpath" and len(a) == 2:
         print(os.path.realpath(a[1])); return 0

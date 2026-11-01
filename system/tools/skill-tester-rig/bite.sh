@@ -88,7 +88,8 @@ sent_watch() {  # sent_watch <run-id> <driver dir> : the per-control sentinel HA
 
 one() {
   local kind="$1" F="$2" k="$3" R="$4" S="$_BITE_S" OUT="$_BITE_OUT"
-  local bp="" PD="$S/plans/$R" RD="$S/runs/$R" L="$S/driver/$R" notes="" rc1="-" rc2="-" trc="-" v="" pf="$F" w c line
+  local bp="" PD="$S/plans/$R" RD L="$S/driver/$R" notes="" rc1="-" rc2="-" trc="-" v="" pf="$F" w c line
+  RD="$(python3 -I "$SRC/run_helper.py" rundir "$S" "$R")"   # layout.py (TR2.0b): the run dir inside the actor home
   local ILOG="$S/driver/$R/inject.log"
   mkdir -p "$L"
   export SKILL_TESTER_SCRATCH="$S"
@@ -213,7 +214,7 @@ bite() {
   local S="$1" TSV="$2" N="$3" NC="$4" FAULTS="$5"
   local OUT="$1/results" JOBS="$1/jobs.txt" t0 t1 f k
   case "$S/" in "$SRC"/*) die "scratch $S is inside src/" ;; esac
-  mkdir -p "$S/runs" "$S/plans" "$S/seeds" "$OUT" || die "cannot create $S"
+  mkdir -p "$S/actor-home" "$S/plans" "$S/seeds" "$OUT" || die "cannot create $S"
   t0=$(date +%s)
   : > "$S/jobs.txt"
   for f in $FAULTS; do
@@ -287,11 +288,12 @@ bite() {
   done
   ctl_n=$(awk -F'\t' '$1=="control"' "$TSV" | wc -l | tr -d ' ')
   # TR1.7 sentinel cross-check over every run's SEAM-AMBIENT lines (see the header)
-  local standin_r tree_r amb_all=0 amb_in=0 amb_ext=0 sus=0 rid ap
+  local standin_r tree_r amb_all=0 amb_in=0 amb_ext=0 sus=0 rid ap rdd
   standin_r="$(python3 -I -B -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$SEAM_STANDIN")"
   tree_r="$(python3 -I -B -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$CANON/notes-standin")"
   for rid in $(awk -F'\t' 'NR>1{print $6}' "$TSV"); do
-    [ -f "$S/runs/$rid/events.log" ] || continue
+    rdd="$(python3 -I "$SRC/run_helper.py" rundir "$S" "$rid")"
+    [ -f "$rdd/events.log" ] || continue
     while IFS= read -r ap; do
       [ -n "$ap" ] || continue
       amb_all=$((amb_all+1))
@@ -307,7 +309,7 @@ bite() {
         *) amb_ext=$((amb_ext+1)) ;;
       esac
     done <<EOF2
-$(sed -n 's/^SEAM-AMBIENT [A-Z]* //p' "$S/runs/$rid/events.log")
+$(sed -n 's/^SEAM-AMBIENT [A-Z]* //p' "$rdd/events.log")
 EOF2
   done
   fp=$((fp+sus))

@@ -29,16 +29,47 @@ prompt=""
 for a in "$@"; do
   [ "$a" = "--dangerously-skip-permissions" ] && { echo "FAKE: refused --dangerously-skip-permissions (ruling 8)" >&2; exit 2; }
 done
-while [ $# -gt 0 ]; do [ "$1" = "-p" ] && { prompt="$2"; shift; }; shift; done
+settings=""
+while [ $# -gt 0 ]; do
+  [ "$1" = "-p" ] && { prompt="$2"; shift; }
+  [ "$1" = "--settings" ] && { settings="$2"; shift; }
+  shift
+done
 head1="$(printf '%s\n' "$prompt" | head -1)"
 step="$(printf '%s' "$head1" | sed -n 's/.*step=s\([0-9]*\).*/\1/p')"
 input="$(printf '%s' "$head1" | sed -n 's/.*input=\([^] ]*\).*/\1/p')"
 mode="${FAKE_MODE:-good}"
 if [ -n "${FAKE_MODE_STEP:-}" ] && [ "${FAKE_MODE_STEP#s}" != "$step" ]; then mode=good; fi
 RIG="$(cd "$(dirname "$0")" && pwd)"
-out() {  # out <result-text> : claude's --output-format json envelope
-  python3 -I -c 'import json,sys; print(json.dumps({"type":"result","subtype":"success","is_error":False,"result":sys.argv[1],"total_cost_usd":0,"num_turns":1,"model":sys.argv[2]}))' \
-    "$1" "${FAKE_MODEL_ID:-fake-model}"
+# TR2.0b F-M5: a prompt carrying `PRIOR-TRANSCRIPT: <path>` makes the fake "attempt" that Read, as a nudged model
+# would. Like Claude Code, it is refused only if the --settings deny list has a Read(...) rule matching the path
+# (`//abs/**` and `~/...` forms; ~ = this process's HOME, the throwaway one). A refusal goes into the envelope's
+# permission_denials; an allowed read changes nothing in the reply (so only the deny can catch it, by name).
+DENIALS="[]"
+tpath="$(printf '%s\n' "$prompt" | sed -n 's/^PRIOR-TRANSCRIPT: //p' | head -1)"
+if [ -n "$tpath" ]; then
+  DENIALS="$(python3 -I -c '
+import fnmatch, json, os, sys
+path, settings = sys.argv[1], sys.argv[2]
+try:
+    deny = json.load(open(settings))["permissions"]["deny"]
+except (OSError, ValueError, KeyError, TypeError):
+    deny = []
+hit = False
+for r in deny:
+    if not (isinstance(r, str) and r.startswith("Read(") and r.endswith(")")):
+        continue
+    pat = r[5:-1]
+    if pat.startswith("//"): pat = pat[1:]
+    elif pat.startswith("~/"): pat = os.path.join(os.environ.get("HOME", "/nonexistent"), pat[2:])
+    else: continue
+    if fnmatch.fnmatchcase(path, pat.replace("**", "*")): hit = True; break
+print(json.dumps([{"tool_name": "Read", "tool_use_id": "fake-1", "tool_input": {"file_path": path}}] if hit else []))
+' "$tpath" "$settings")" || DENIALS="[]"
+fi
+out() {  # out <result-text> : claude's --output-format json envelope (+ permission_denials, TR2.0b)
+  python3 -I -c 'import json,sys; print(json.dumps({"type":"result","subtype":"success","is_error":False,"result":sys.argv[1],"total_cost_usd":0,"num_turns":1,"model":sys.argv[2],"permission_denials":json.loads(sys.argv[3])}))' \
+    "$1" "${FAKE_MODEL_ID:-fake-model}" "$DENIALS"
 }
 case "$mode" in
   empty) exit 0 ;;

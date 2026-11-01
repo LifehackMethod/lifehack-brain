@@ -4,7 +4,7 @@
 usage (through the .sh wrappers, never directly):
     _check.py KIND RUN_DIR N [CANDIDATE]
         KIND       ai | code | human   (must match the card's kind for sN, else CANNOT-READ: miswired)
-        RUN_DIR    the run folder (absolute, under ~/lifehack-scratch/skill-tester-rig/runs/<run-id>)
+        RUN_DIR    the run folder (absolute; layout.py: <scratch>/actor-home/<run-id>/.claude/run/skill-tester/<run-id>)
         N          the step number
         CANDIDATE  optional path of the file to check. Default: RUN_DIR/step-N.json.
                    The runner passes its temp file here so it can check BEFORE it renames the file into

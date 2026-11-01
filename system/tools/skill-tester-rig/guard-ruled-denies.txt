@@ -1,0 +1,14 @@
+# guard-ruled-denies.txt — card TR2.0b: writes the real actor attempts that are RULED to STAY DENIED.
+# Ruling: claudeops-a0, 2026-11-01 (plan DISCOVERIES "TR2.0b · RULED"): "both temp writes (cc-socks socket, fswatch
+# probe) stay DENIED; prove ok=12 with them denied, never widen."
+#
+# This file allows NOTHING. The write guard refuses these writes like any other. It only names them: run.sh's parent
+# logs a matching denial as `SEAM-DENIED-RULED <path>` (the run still passes), and probe-actor-writes.sh classes it
+# `b-ruled` (it does not block the write list). Any denial NOT matched here stays `SEAM-DENIED` and fails the run.
+# Adding a line is a ruling, never a convenience. One Python regex per line, matched against the kernel's resolved
+# path with re.fullmatch; '#' lines and blank lines are ignored.
+#
+# the cross-session socket: an actor registered there could receive real windows' messages
+/private/tmp/cc-socks(/[0-9]+\.sock)?
+# the file-watch capability probe Claude Code writes at startup
+/private/tmp/claude-[0-9]+/fswatch-probe-[^/]*
