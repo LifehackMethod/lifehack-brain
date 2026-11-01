@@ -44,7 +44,12 @@ if ls "$LSR"/skill-tester-rig-fake-real/*/state/rig-leak-* >/dev/null 2>&1; then
 # ── (2) sentinel mini-bite + a planted write into the stand-in ────────────────────────────────────────────────
 bash "$RIG/bite.sh" --mini "$LD/p2" 1 5 none --sentinel > "$LD/p2.out" 2>&1 &
 bp=$!
-w=0; while [ ! -s "$LD/p2/sentinel.log" ] || [ ! -f "$LD/p2/sentinel.pid" ]; do sleep 0.2; w=$((w+1)); [ $w -gt 100 ] && break; done
+# TR1.8 HANDSHAKE (was a 20 s poll that gave up silently): the planted run starts once the sentinel is up and wrote
+. "$RIG/wait.lib.sh" || { echo "SEAM under load FAILED: wait.lib.sh missing"; exit 1; }
+sent_up() { [ -s "$LD/p2/sentinel.log" ] && [ -f "$LD/p2/sentinel.pid" ]; }
+if ! wait_until 30 "seam_load (2) sentinel up and written" sent_up; then
+  echo "WAIT-TIMEOUT seam_load (2) sentinel up and written"; bad="$bad WAIT-TIMEOUT-sentinel-up"
+fi
 R="load-standin-$ID"; mkdir -p "$LD/p2s"
 SEAM_STANDIN="$STANDIN_R" RIG_TEST=1 RIG_TEST_SEAM_WRITE="$STANDIN_R/rig-leak-$R.md" SKILL_TESTER_SCRATCH="$LD/p2s" \
   bash "$RIG/run.sh" --fake good --run-id "$R" $ANS > "$LD/p2-planted.out" 2>&1 </dev/null
@@ -64,6 +69,11 @@ for ev in "$LD"/p2/runs/b1-ctl-*/events.log; do
   [ "$na" -ge 1 ] || bad="$bad control-without-ambient:$(basename "$(dirname "$ev")")"
 done
 [ "$nctl" = 5 ] || bad="$bad controls=$nctl"
+# TR1.8: each control PROVED a sentinel write inside its own seam window (bite.sh's per-control handshake)
+npr=$(awk -F'\t' '$1=="control" && $7 ~ /sentinel-write=proven/' "$LD/p2/bite.tsv" 2>/dev/null | wc -l | tr -d ' ')
+echo "  (2) controls with a sentinel write proven inside their seam window: $npr/5"
+[ "$npr" = 5 ] || bad="$bad sentinel-write-unproven:$npr/5"
+grep -q 'WAIT-TIMEOUT' "$LD/p2.out" && bad="$bad $(grep -o 'WAIT-TIMEOUT [^|]*' "$LD/p2.out" | head -1 | tr ' ' '-')"
 echo "  (2) planted stand-in write, run $R: exit $prc; events: $(tr '\n' '|' < "$LD/p2s/runs/$R/events.log" 2>/dev/null)"
 [ "$prc" = 1 ] || bad="$bad planted-run-exit-$prc"
 grep -qxF "SEAM-DENIED $STANDIN_R/rig-leak-$R.md" "$LD/p2s/runs/$R/events.log" 2>/dev/null || bad="$bad stand-in-write-not-denied"

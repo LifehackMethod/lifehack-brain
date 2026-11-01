@@ -49,11 +49,11 @@ def note(op, p):
     lf.write("%.3f\t%s\t%s\n" % (time.time(), op, p)); lf.flush(); os.fsync(lf.fileno())
 t_end = time.time() + dur if dur else None
 n = 0
-while not stop[0] and (t_end is None or time.time() < t_end):
+while not stop[0] and (t_end is None or time.time() < t_end):  # pacing-loop: the sentinel's write cadence (what it simulates)
     nap = r.uniform(1.0, 3.0)
     t = time.time() + nap
-    while not stop[0] and time.time() < t:
-        time.sleep(min(0.1, max(0.0, t - time.time())))
+    while not stop[0] and time.time() < t:  # pacing-loop: one nap, checked for SIGTERM every 0.1 s
+        time.sleep(min(0.1, max(0.0, t - time.time())))  # pacing: the write interval; controls handshake on the LOG
     if stop[0]:
         break
     have = sorted(f for f in os.listdir(st) if f.startswith("sentinel-") and f.endswith(".md"))

@@ -6,12 +6,16 @@
 #    from the rendered prompt, i.e. exactly what a real model is given, never the seed), wrapped in claude's
 #    --output-format json shape; `almost` drops ONLY the token key; `lossy` drops ONLY the last fact; `garbage` is
 #    a well-formed JSON envelope whose result is not a step (so it is a CHECK-FAIL, never a MODEL-FAIL);
-#    new: the seed-leak assertion, FAKE_DELAY, FAKE_MODEL_ID, and a refusal of --dangerously-skip-permissions.)
+#    new: the seed-leak assertion, the FAKE_WAIT handshake, FAKE_MODEL_ID, and a refusal of
+#    --dangerously-skip-permissions. TR1.8: FAKE_DELAY, a clock, was removed; F-09 uses FAKE_WAIT_FILE now.)
 #
 # fake-claude.sh : no network, no tokens, no clock. CONTRACT.md §5.
 # Env: FAKE_MODE        good|empty|almost|garbage|hang|exit127|lossy   (default good)
 #      FAKE_MODE_STEP   misbehave only when the prompt's step=sN has N == this (default: every call)
-#      FAKE_DELAY / FAKE_DELAY_STEP   sleep FAKE_DELAY s BEFORE reading the input, at that step only (F-09)
+#      FAKE_WAIT_FILE / FAKE_WAIT_STEP   a HANDSHAKE, not a clock (run_selftest s1/s2, bite sentinel controls,
+#                     F-09): at that step, before reading the input, wait until FAKE_WAIT_FILE exists (wait.lib.sh);
+#                     bounded by FAKE_WAIT_SECS (default 30), then stderr `WAIT-TIMEOUT fake actor s<N>: <file>`
+#                     and exit 4 (the run fails loudly as MODEL-FAIL, never silently)
 #      FAKE_MODEL_ID    the reply's "model" field (default fake-model; the version-change injector sets it)
 #      FAKE_VERSION     what --version reports (default 2.1.0)
 # Exit 3 + stderr "FAKE: SEED-LEAK ..." if CANARY_SEED or SKILL_TESTER_SEED is in the environment: the actor
@@ -39,12 +43,15 @@ out() {  # out <result-text> : claude's --output-format json envelope
 case "$mode" in
   empty) exit 0 ;;
   garbage) out '<<<not json at all {{{ result:'; exit 0 ;;
-  hang) exec sleep 3600 ;;
+  hang) exec sleep 3600 ;;   # pacing: the hang stand-in; the watchdog under test must kill it
   exit127) exit 127 ;;
   good|almost|lossy) ;;
   *) echo "FAKE: unknown FAKE_MODE '$mode'" >&2; exit 2 ;;
 esac
-if [ -n "${FAKE_DELAY:-}" ] && [ "${FAKE_DELAY_STEP#s}" = "$step" ]; then sleep "$FAKE_DELAY"; fi
+if [ -n "${FAKE_WAIT_FILE:-}" ] && [ "${FAKE_WAIT_STEP#s}" = "$step" ]; then
+  . "$RIG/wait.lib.sh" || exit 4
+  wait_until "${FAKE_WAIT_SECS:-30}" "fake actor s$step: $FAKE_WAIT_FILE" test -e "$FAKE_WAIT_FILE" || exit 4
+fi
 tok="$(printf '%s' "$prompt" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p' | head -1)"
 if [ -z "$step" ] || [ -z "$input" ] || [ -z "$tok" ]; then out "ERROR fake cannot parse the prompt"; exit 0; fi
 reply="$(python3 -I "$RIG/canary/expected.py" next --step "$step" --prev "$input" --token "$tok" 2>/dev/null)"

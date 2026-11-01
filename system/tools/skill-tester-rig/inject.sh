@@ -79,11 +79,15 @@
 #  R2  F-04        RIG_WATCHDOG_SECS=3 overrides the watchdog; on timeout: kill, `WATCHDOG sN`, exit 124.
 #  R3  F-05        fake exit127 -> `MODEL-FAIL sN rc=127`, exit 1, no step file, no record row.
 #  R4  F-07        RIG_HOLD_BEFORE_RECORD=N:SECS (honoured ONLY with --fake): after step-N.json is committed and
-#                  BEFORE its record row is appended, sleep SECS. The injector waits for `sN\tbegin` in exec.log
-#                  AND step-N.json on disk, then SIGKILLs the runner's group; it verifies afterwards that no valid
-#                  sN row exists (else it reports the planting INVALID, exit 3). Resume: `RERUN sN`, byte-identical.
+#                  BEFORE its record row is appended, write hold-sN.held, then hold up to SECS (a deadline, not a
+#                  clock the injector relies on; on expiry: hold-sN.expired + WAIT-TIMEOUT). TR1.8 HANDSHAKE: the
+#                  injector waits for `sN\tbegin` in exec.log AND hold-sN.held AND step-N.json, then SIGKILLs the
+#                  runner's group; it verifies afterwards that no valid sN row exists and no hold-sN.expired (else
+#                  the planting is INVALID, exit 3). Resume: `RERUN sN`, byte-identical.
 #  R5  F-08        on resume, a malformed row -> `RECORD-REFUSED sN row=<1-based line no>`; re-derive from disk.
-#  R6  F-09        FAKE_DELAY=SECS + FAKE_DELAY_STEP=N: the fake sleeps BEFORE reading step-(N-1).json. In good
+#  R6  F-09        FAKE_WAIT_FILE=plans/R/F-09-planted + FAKE_WAIT_STEP=N (TR1.8 HANDSHAKE, was a FAKE_DELAY
+#                  clock): the fake waits for that file BEFORE reading step-(N-1).json; the injector writes it
+#                  only after the planting (fake deadline FAKE_WAIT_SECS -> WAIT-TIMEOUT, exit 4). In good
 #                  mode, a missing/unparseable prev makes the fake reply (rc 0) with a non-step text, so the
 #                  runner logs CHECK-FAIL, not MODEL-FAIL. The runner does NOT re-verify step-(N-1) after `begin`.
 #  R7  F-10        the runner and the checks read only step-N.json by exact name; stray copies are ignored.
@@ -119,6 +123,7 @@ set -u
 SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 RIG="${SKILL_TESTER_RIG:-$(cd "$(dirname "$0")" && pwd)}"
 HELPER="$RIG/inject/helper.py"
+. "$(dirname "$SELF")/wait.lib.sh" || { echo "inject: wait.lib.sh missing" >&2; exit 2; }   # TR1.8 handshakes
 CANON_ROOT="$HOME/lifehack-scratch/skill-tester-rig"
 SCRATCH="${SKILL_TESTER_SCRATCH:-$CANON_ROOT}"
 DRIVE_PATH_ROOT="/Volumes/GoogleDrive/My Drive/skill-tester-rig"
@@ -143,9 +148,9 @@ F-04|model hangs|run.sh --fake hang + FAKE_MODE_STEP=N + RIG_WATCHDOG_SECS=3|pre
 F-05|model binary missing|run.sh --fake exit127 + FAKE_MODE_STEP=N|pre-run (env)
 F-06|lossy output (facts dropped)|run.sh --fake lossy + FAKE_MODE_STEP=N|pre-run (env)
 F-06b|facts lost AFTER a step was committed|facts-edit: change one fact number in a committed step-N.json of a finished run|between-runs
-F-07|kill after side effect, before record row|kill-sigkill: RIG_HOLD_BEFORE_RECORD=N:5, SIGKILL runner group once exec.log shows sN begin and step-N.json exists; resume|pre-run (env) + mid-run
+F-07|kill after side effect, before record row|kill-sigkill: RIG_HOLD_BEFORE_RECORD=N:60, SIGKILL runner group once exec.log shows sN begin and hold-sN.held + step-N.json exist; resume|pre-run (env) + mid-run
 F-08|record row truncated|record-truncate: cut the sN row of record.tsv to 3 fields + partial 4th; resume|between-runs
-F-09|input file deleted / corrupted / zeroed|input-delete|input-corrupt|input-zero on step-(N-1).json while the fake waits (FAKE_DELAY)|pre-run (env) + mid-run
+F-09|input file deleted / corrupted / zeroed|input-delete|input-corrupt|input-zero on step-(N-1).json while the fake waits (FAKE_WAIT_FILE handshake)|pre-run (env) + mid-run
 F-10|second copy of a step file|second-copy: write a stale "step-N (1).json" beside step-N.json; resume|between-runs
 F-11|check script crashes|check-crash: CHECKS_DIR = scratch wrappers, <kind>.sh SIGSEGVs itself at step N|pre-run (scratch checks copy)
 F-12|check script missing|check-missing: CHECKS_DIR = scratch wrappers without <kind of N>.sh|pre-run (scratch checks copy)
@@ -221,7 +226,7 @@ plan_one() {  # F, N (may be empty), VARIANT, R
       n="${n:-7}"; STEPCOL="s$n"
       key "RERUN s$n"; key "s$n ok"; keyT 12 0 0 0 0 0 0 0
       proto pre-run inject "inject.sh apply $R $F pre-run"
-      proto run1 env "RIG_HOLD_BEFORE_RECORD=$n:5"
+      proto run1 env "RIG_HOLD_BEFORE_RECORD=$n:60"
       proto run1 args "--fake good --run-id $R --card canary $ANS"
       proto mid-run inject-concurrent "inject.sh apply $R $F mid-run"
       proto run1 expect-exit "killed (SIGKILL)"
@@ -243,8 +248,8 @@ plan_one() {  # F, N (may be empty), VARIANT, R
       case "$VARIANT" in zero) key "CHECK-FAIL s$n value" ;; *) key "CHECK-FAIL s$n parse" ;; esac
       key "s$n stuck"; key "s$((n-1)) false_done"; keyT $((n-2)) 0 0 1 0 0 0 1
       proto pre-run inject "inject.sh apply $R $F pre-run"
-      proto run1 env "FAKE_DELAY=3"
-      proto run1 env "FAKE_DELAY_STEP=$n"
+      proto run1 env "FAKE_WAIT_FILE=$pd/F-09-planted"
+      proto run1 env "FAKE_WAIT_STEP=$n"
       proto run1 args "--fake good --run-id $R --card canary $ANS"
       proto mid-run inject-concurrent "inject.sh apply $R $F mid-run"
       proto run1 expect-exit 1
@@ -403,15 +408,11 @@ cmd_plan() {
 # ── apply ───────────────────────────────────────────────────────────────────────────────────────────────────────
 logf() { printf '%s\t%s\t%s\t%s\n' "$(date +%s)" "$F" "$STEPCOL" "$1" >> "$PD/faults.tsv"; }
 envw() { printf '%s\n' "$2" >> "$PD/$1.env"; printf '%s\n' "$2"; }   # envw <run1|run2> K=V
-wait_exec() {  # wait_exec <sN> <begin|end> : until exec.log has that line (INJECT_WAIT_SECS, default 120)
-  local i lim=$(( ${INJECT_WAIT_SECS:-120} * 10 ))
-  i=0
-  while [ $i -lt $lim ]; do
-    awk -F'\t' -v s="$1" -v e="$2" '$2==s && $3==e {f=1} END{exit !f}' "$RD/exec.log" 2>/dev/null && return 0
-    sleep 0.1; i=$((i+1))
-  done
-  return 1
+exec_has() { awk -F'\t' -v s="$1" -v e="$2" '$2==s && $3==e {f=1} END{exit !f}' "$RD/exec.log" 2>/dev/null; }
+wait_exec() {  # wait_exec <sN> <begin|end> : HANDSHAKE until exec.log has that line (INJECT_WAIT_SECS, default 120)
+  wait_until "${INJECT_WAIT_SECS:-120}" "$R exec.log $1 $2" exec_has "$1" "$2"
 }
+not_alive() { ! kill -0 "$1" 2>/dev/null; }
 no_live_runner() {  # refuse a between/post-run planting while any exec.log pid is still alive
   local p
   [ -f "$RD/exec.log" ] || return 0
@@ -475,9 +476,11 @@ cmd_apply() {
     F-07:mid-run)
       guard "$RD"
       wait_exec "s$n" begin || invalid "s$n never began in $RD/exec.log"
-      local i=0 pid pg mypg
-      while [ ! -f "$RD/step-$n.json" ] && [ $i -lt $(( ${INJECT_WAIT_SECS:-120} * 10 )) ]; do sleep 0.1; i=$((i+1)); done
-      [ -f "$RD/step-$n.json" ] || invalid "step-$n.json never appeared (no side effect to kill after)"
+      local pid pg mypg
+      # TR1.8 HANDSHAKE: run.sh writes hold-sN.held after step-N.json is committed and before the sN row
+      wait_until "${INJECT_WAIT_SECS:-120}" "$R hold-s$n.held" test -f "$RD/hold-s$n.held" \
+        || invalid "WAIT-TIMEOUT $R hold-s$n.held (the runner never reached the hold)"
+      [ -f "$RD/step-$n.json" ] || invalid "step-$n.json absent at the hold (no side effect to kill after)"
       pid="$(awk -F'\t' -v s="s$n" '$2==s && $3=="begin"{p=$4} END{print p}' "$RD/exec.log")"
       case "$pid" in ''|*[!0-9]*) invalid "no runner pid in exec.log for s$n" ;; esac
       kill -0 "$pid" 2>/dev/null || invalid "runner pid $pid already gone"
@@ -488,8 +491,8 @@ cmd_apply() {
         for c in $(pgrep -P "$pid"); do pkill -KILL -P "$c" 2>/dev/null; kill -KILL "$c" 2>/dev/null; done
         kill -KILL "$pid" 2>/dev/null; how="SIGKILL pid $pid + children (not a group leader)"
       fi
-      i=0; while kill -0 "$pid" 2>/dev/null && [ $i -lt 50 ]; do sleep 0.1; i=$((i+1)); done
-      kill -0 "$pid" 2>/dev/null && invalid "pid $pid survived SIGKILL"
+      wait_until 5 "$R pid $pid gone after SIGKILL" not_alive "$pid" || invalid "WAIT-TIMEOUT pid $pid survived SIGKILL"
+      [ -e "$RD/hold-s$n.expired" ] && { logf "$how during s$n — INVALID: hold-s$n.expired (the kill missed the hold)"; invalid "WAIT-TIMEOUT $R kill within the s$n hold"; }
       if [ -f "$RD/record.tsv" ] && python3 -I "$HELPER" valid-row "$RD/record.tsv" "$R" "s$n"; then
         logf "$how during s$n — INVALID: a valid s$n record row already existed"; invalid "kill landed after the s$n record row"
       fi
@@ -505,7 +508,8 @@ cmd_apply() {
         zero)    sed -E 's/[0-9]+/0/g' "$f" > "$f.inject.tmp" && mv "$f.inject.tmp" "$f"; what="input-zero: every number in step-$m.json -> 0" ;;
       esac
       awk -F'\t' -v s="s$n" '$2==s && $3=="end"{f=1} END{exit !f}' "$RD/exec.log" && { logf "$what — INVALID: s$n had already ended"; invalid "s$n ended before the planting"; }
-      logf "$what while s$n was running" ;;
+      : > "$PD/F-09-planted"      # TR1.8 HANDSHAKE: releases the fake (FAKE_WAIT_FILE), which reads the input only now
+      logf "$what while s$n was running (fake released by F-09-planted)" ;;
     F-08:between-runs)
       guard "$RD"; no_live_runner; guard "$RD/record.tsv"; [ -f "$RD/record.tsv" ] || invalid "no record.tsv"
       local ln; ln="$(python3 -I "$HELPER" truncate-row "$RD/record.tsv" "s$n")" || invalid "no s$n row to truncate"
@@ -633,8 +637,10 @@ cmd_selftest() {
     r="st-F09-$v"; ij plan $r F-09 --variant $v >/dev/null || fail plan-F09-$v
     world $r --open 5; cp "$S/runs/$r/step-4.json" "$ST/.s4"; snap $r a
     ij apply $r F-09 pre-run >/dev/null || fail apply-F09-pre-$v
-    grep -qx 'FAKE_DELAY_STEP=5' "$S/plans/$r/run1.env" || fail F09-env-$v
+    grep -qx 'FAKE_WAIT_STEP=5' "$S/plans/$r/run1.env" && grep -qx "FAKE_WAIT_FILE=$S/plans/$r/F-09-planted" "$S/plans/$r/run1.env" || fail F09-env-$v
+    [ ! -e "$S/plans/$r/F-09-planted" ] || fail F09-released-before-planting-$v
     ij apply $r F-09 mid-run >/dev/null || fail apply-F09-$v; snap $r b; cmp -s "$ST/.snap.a" "$ST/.snap.b" || fail confine-F09-$v
+    [ -e "$S/plans/$r/F-09-planted" ] || fail F09-fake-never-released-$v
     case $v in
       delete)  [ ! -e "$S/runs/$r/step-4.json" ] || fail F09-delete ;;
       corrupt) [ "$(wc -c < "$S/runs/$r/step-4.json")" -eq $(( $(wc -c < "$ST/.s4") / 2 )) ] || fail F09-corrupt-size
@@ -717,13 +723,18 @@ PY
   cat > "$S/runs/$r/run.sh" <<EOF
 #!/bin/bash
 printf '1\ts7\tbegin\t%s\n' "\$\$" >> "$S/runs/$r/exec.log"
-sleep 0.5; echo '{}' > "$S/runs/$r/step-7.json"; sleep 30
+echo '{}' > "$S/runs/$r/step-7.json"; : > "$S/runs/$r/hold-s7.held"
+sleep 30   # pacing: the stand-in hold's deadline (run.sh's RIG_HOLD_BEFORE_RECORD); the injector kills on hold-s7.held
+: > "$S/runs/$r/hold-s7.expired"; echo "WAIT-TIMEOUT stand-in hold s7" >&2
 EOF
   ij apply $r F-07 pre-run >/dev/null || fail apply-F07-pre
   set -m; bash "$S/runs/$r/run.sh" & local sp=$!; set +m
   ij apply $r F-07 mid-run >/dev/null 2>&1 || fail apply-F07
-  sleep 0.2; kill -0 $sp 2>/dev/null && { fail F07-survived; kill -KILL $sp 2>/dev/null; }
-  wait $sp 2>/dev/null
+  # TR1.8: no `sleep 0.2; kill -0`. wait reaps the stand-in and returns its status: 137 = our SIGKILL landed inside
+  # the hold; anything else means the hold ran out first (WAIT-TIMEOUT, a FAIL by name). Bounded by the 30 s hold.
+  local src; wait $sp 2>/dev/null; src=$?
+  [ "$src" = 137 ] || { echo "WAIT-TIMEOUT F-07 stand-in kill (rc $src)" >&2; fail "F07-not-killed-rc$src"; }
+  [ ! -e "$S/runs/$r/hold-s7.expired" ] || fail F07-hold-expired
 
   # 5. faults.tsv: one well-formed line per planting
   local n_f; n_f="$(cat "$S"/plans/*/faults.tsv 2>/dev/null | awk -F'\t' 'NF==4 && $1~/^[0-9]+$/ && $2~/^F-[0-9][0-9][ab]?$/' | wc -l | tr -d ' ')"

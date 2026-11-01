@@ -48,7 +48,17 @@
 #   (deny file-write* <extra-deny-root>... (with message TAG))  every seam root (state root, skill roots, hooks.json):
 #                               redundant with the default deny when they lie outside scratch, decisive when a test
 #                               points one inside it
+#   (deny file-write* <receipts folder>) ; receipts-deny             the long-gate receipts (receipt.sh dir, and
+#                               `receipt.sh dir default` when a test overrides it): a sibling of scratch, so the
+#                               default deny already refuses it; denied again AFTER the allow (belt and braces), so a
+#                               guarded run or the actor can never mint or alter a receipt
+#
+#   guard.sh selftest           proves the receipts deny: a guarded write into the receipts folder is refused even
+#                               when the scratch allowance is its parent, and into the canonical folder; the same
+#                               profile still writes scratch (control); with the receipts-deny lines stripped the
+#                               write lands (fail-first). Last line 'SELFTEST guard receipts-deny OK'.
 set -u
+HERE="$(cd "$(dirname "$0")" && pwd)"
 
 available() {
   [ -x /usr/bin/sandbox-exec ] || return 1
@@ -70,6 +80,14 @@ profile() {
   echo "  (literal \"/private/tmp\") (regex #\"^/private/tmp/sh-thd-[0-9]+\$\"))"
   echo "(deny file-write* (subpath $(sbq "$standin")) (with message $t))"
   echo "(deny file-write* (subpath $(sbq "$rig")) (with message $t))"
+  # the long-gate receipts folder (receipt.sh): outside scratch, so already refused by the default deny; denied
+  # AGAIN here, after the allow, so no scratch override or later allowance can ever reach it. Both the canonical
+  # folder and a test override (SKILL_TESTER_RECEIPTS) are denied. Unresolvable -> no profile (the run refuses).
+  local rd rdd
+  rdd="$(bash "$HERE/receipt.sh" dir default)" && [ -n "$rdd" ] || { echo "guard: cannot resolve the receipts folder" >&2; return 1; }
+  rd="$(bash "$HERE/receipt.sh" dir)" && [ -n "$rd" ] || { echo "guard: cannot resolve the receipts folder" >&2; return 1; }
+  echo "(deny file-write* (subpath $(sbq "$rdd")) (with message $t)) ; receipts-deny"
+  [ "$rd" = "$rdd" ] || echo "(deny file-write* (subpath $(sbq "$rd")) (with message $t)) ; receipts-deny"
   local r
   for r in "$@"; do
     [ -n "$r" ] || continue
@@ -110,16 +128,55 @@ if not seen_barrier:
 for p in sorted(paths):
     print(p)
 ' "$tag" "$barrier"; then return 0; fi
-    i=$((i+1)); [ "$i" -ge "$wait" ] && return 4
-    sleep 1
+    i=$((i+1)); [ "$i" -ge "$wait" ] && { echo "WAIT-TIMEOUT guard denial log: barrier $barrier not seen in ${wait}s" >&2; return 4; }
+    sleep 1   # pacing: one `log show` per second; the deadline above fails the run by name (SEAM-CANNOT-READ denials)
   done
+}
+
+selftest() {
+  local T RC P TR RCR CR CP bad="" lp la ld
+  T="$HOME/lifehack-scratch/skill-tester-rig/selftest-guard/$(date +%s)-$$"; RC="$T/receipts"
+  mkdir -p "$RC" || { echo "SELFTEST guard FAILED: cannot create $T"; return 1; }
+  available || { echo "SELFTEST guard FAILED: sandbox-exec unavailable"; return 1; }
+  TR="$(bash "$HERE/receipt.sh" dir default)" || { echo "SELFTEST guard FAILED: receipts folder unresolvable"; return 1; }
+  RCR="$(SKILL_TESTER_RECEIPTS="$RC" bash "$HERE/receipt.sh" dir)"
+  P="$T/g.sb"
+  SKILL_TESTER_RECEIPTS="$RCR" profile GSTTAG "$(cd "$T" && pwd -P)" /x/rig /x/standin > "$P" || bad="$bad [profile-failed]"
+  # the receipts denies sit AFTER the allow (last match wins), for both the override and the canonical folder
+  la="$(grep -n '^(allow file-write\*' "$P" | head -1 | cut -d: -f1)"
+  for lp in "$RCR" "$TR"; do
+    ld="$(grep -nF "(subpath $(sbq "$lp"))" "$P" | grep 'receipts-deny$' | head -1 | cut -d: -f1)"
+    [ -n "$ld" ] || { bad="$bad [no-deny:$lp]"; continue; }
+    [ "$ld" -gt "${la:-999999}" ] || bad="$bad [deny-before-allow:$lp]"
+  done
+  # (1) guarded write into the receipts folder, the scratch allowance being its parent
+  /usr/bin/sandbox-exec -f "$P" /bin/bash -c ': > "$1"' _ "$RCR/forged.receipt" > "$T/w1.out" 2>&1
+  if [ -e "$RCR/forged.receipt" ]; then bad="$bad [receipts-write-LANDED]"; else echo "  ok   guarded write into the receipts folder refused"; fi
+  # (2) the canonical receipts folder, under a profile built the way run.sh builds it (canonical scratch allowed)
+  mkdir -p "$TR" "$HOME/lifehack-scratch/skill-tester-rig" || bad="$bad [cannot-create-canonical]"
+  CR="$(cd "$HOME/lifehack-scratch/skill-tester-rig" && pwd -P)"; CP="$T/c.sb"
+  profile GSTTAG "$CR" /x/rig /x/standin > "$CP" || bad="$bad [canonical-profile-failed]"
+  /usr/bin/sandbox-exec -f "$CP" /bin/bash -c ': > "$1"' _ "$TR/.guard-selftest-forged.$$" > "$T/w2.out" 2>&1
+  if [ -e "$TR/.guard-selftest-forged.$$" ]; then rm -f "$TR/.guard-selftest-forged.$$"; bad="$bad [canonical-receipts-write-LANDED]"
+  else echo "  ok   guarded write into the canonical receipts folder refused"; fi
+  # (3) control: the same profile writes scratch
+  /usr/bin/sandbox-exec -f "$P" /bin/bash -c ': > "$1"' _ "$T/control.txt" > "$T/w3.out" 2>&1
+  if [ -f "$T/control.txt" ]; then echo "  ok   control: the same profile writes scratch"; else bad="$bad [control-write-failed]"; fi
+  # (4) fail-first: strip the receipts-deny lines -> the write into the (scratch-nested) folder lands
+  grep -v '; receipts-deny$' "$P" > "$T/nodeny.sb"
+  /usr/bin/sandbox-exec -f "$T/nodeny.sb" /bin/bash -c ': > "$1"' _ "$RCR/forged.receipt" > "$T/w4.out" 2>&1
+  if [ -e "$RCR/forged.receipt" ]; then echo "  ok   fail-first: without the receipts deny the write lands"; else bad="$bad [fail-first-did-not-land]"; fi
+  echo "selftest dir: $T"
+  if [ -z "$bad" ]; then echo "SELFTEST guard receipts-deny OK"; return 0; fi
+  echo "SELFTEST guard FAILED:$bad"; return 1
 }
 
 case "${1:-}" in
   available) available ;;
+  selftest) selftest ;;
   profile) [ $# -ge 5 ] || { echo "usage: guard.sh profile <tag> <scratch> <rig> <standin> [deny-root...]" >&2; exit 2; }
            shift; profile "$@" ;;
   denials) [ $# = 4 ] || { echo "usage: guard.sh denials <tag> <start> <barrier>" >&2; exit 2; }
            denials "$2" "$3" "$4" ;;
-  *) echo "usage: guard.sh available | profile ... | denials <tag> <start> <barrier>" >&2; exit 2 ;;
+  *) echo "usage: guard.sh available | profile ... | denials <tag> <start> <barrier> | selftest" >&2; exit 2 ;;
 esac

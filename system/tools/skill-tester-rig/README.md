@@ -38,8 +38,16 @@ asking claudeops-a0 (the skill-system window), who asks Enver.
 - **Usage:** `status.sh <rung> <run-id> <step> <cost-so-far> <last-event>` · `status.sh selftest`.
 - **Run by hand (on-demand entry points).** Ruling 9: the rig is on-demand, so nothing schedules it. A
   person starts each of these from a terminal (always from a window's Bash, never from a sub-agent):
+  - `bash system/tools/skill-tester-rig/selftest-all.sh`: every rig selftest, sequentially (last line `SELFTEST-ALL OK <n>/<n>`)
+  - `bash system/tools/skill-tester-rig/selftest-all.sh --waits`: TR1.8, the wait scan + fail-first copies + the
+    selftests that wait (last line `WAITS handshake-only silent-giveup 0 scan fail-first OK`)
+  - `bash system/tools/skill-tester-rig/waits_scan.sh [--selftest]`: refuses a bare `sleep` or a poll loop with no
+    `WAIT-TIMEOUT` path; every wait is `wait_until` from `wait.lib.sh` (sourced, never run) or tagged `# pacing: <why>`
   - `bash system/tools/skill-tester-rig/run.sh --selftest`: the runner, fake model only
   - `bash system/tools/skill-tester-rig/bite.sh --selftest`: the fault-injection bite
+  - `bash system/tools/skill-tester-rig/receipt.sh --selftest`: the long-gate receipt (`receipt.sh check <gate> "<line>"`
+    is a gate card's fast Verify; only `bite.sh --rung N` writes receipts, to `~/lifehack-scratch/skill-tester-rig-receipts/`)
+  - `bash system/tools/skill-tester-rig/guard.sh selftest`: the write guard refuses a guarded write into the receipts folder
   - `bash system/tools/skill-tester-rig/probe-hooks.sh --selftest`: TR0.4 hook probe, fake claude (drop `--selftest` for the real probe)
   - `bash system/tools/skill-tester-rig/checks/selftest.sh`: judges the shipped checks against their fixtures
   - `python3 system/tools/skill-tester-rig/checks/fixtures/make_fixtures.py`: regenerates the check fixtures

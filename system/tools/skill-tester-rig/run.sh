@@ -30,7 +30,7 @@
 #   * the actor (real or fake) runs with cwd = RUN_DIR via `env -u CANARY_SEED -u SKILL_TESTER_SEED`; only code
 #     steps, human.py and the checks get CANARY_SEED.
 #   * clock: STRESS_TODAY (YYYY-MM-DD) only. With --fake and no STRESS_TODAY the clock is drive.py day(1).
-#   * test-only knobs (honoured only with --fake): RIG_HOLD_BEFORE_RECORD=N:SECS (F-07), --test-skip-step N
+#   * test-only knobs (honoured only with --fake): RIG_HOLD_BEFORE_RECORD=N:SECS (F-07; writes hold-sN.held, SECS = deadline), --test-skip-step N
 #     (F-14a, also needs RIG_TEST=1; it can only make a run fail), --test-exit-after K (F-20, also needs RIG_TEST=1:
 #     exit 0 right after committing step K, K=0 = before any step — a runner that stops short SILENTLY; only the
 #     oracle can catch it). RIG_WATCHDOG_SECS, CHECKS_DIR, RIG_RUN_DIR as R2/R8/R11.
@@ -269,7 +269,7 @@ else
     [ $? = 9 ] && { ev "GUARD-PROBE-FAILED barrier-write-landed"; bump; }
     : > "$HO_RUN_DIR/guard-denials.txt"
     deny_ok=0
-    if bash "$RIG/guard.sh" denials "$RIG_GUARD_TAG" "$RIG_GUARD_T0" "$barrier" > "$HO_RUN_DIR/.guard-denials.raw" 2>/dev/null; then
+    if bash "$RIG/guard.sh" denials "$RIG_GUARD_TAG" "$RIG_GUARD_T0" "$barrier" > "$HO_RUN_DIR/.guard-denials.raw" 2>> "$HO_RUN_DIR/seam.log"; then
       deny_ok=1
       grep -vxF -e "$STANDIN_R/.seam-guard-probe-$RIG_GUARD_TAG" -e "$GUARD_OUT/.seam-guard-probe-$RIG_GUARD_TAG" \
         "$HO_RUN_DIR/.guard-denials.raw" > "$HO_RUN_DIR/guard-denials.txt"
@@ -500,8 +500,14 @@ commit() {  # <n> <candidate> <status> <model>
   mv -f "$2" "$RUN_DIR/step-$n.json" || { ev "CANNOT-READ s$n"; finish 1; }
   sha="$(sha_of "$RUN_DIR/step-$n.json")"
   if [ -n "$FAKE" ] && [ -n "${RIG_HOLD_BEFORE_RECORD:-}" ] && [ "${RIG_HOLD_BEFORE_RECORD%%:*}" = "$n" ]; then
-    say "RIG_HOLD_BEFORE_RECORD: holding ${RIG_HOLD_BEFORE_RECORD#*:}s between commit and record row of s$n"
-    sleep "${RIG_HOLD_BEFORE_RECORD#*:}"
+    # TR1.8 HANDSHAKE: the held marker tells the killer the hold has begun; the killer acts on the MARKER, never on
+    # a clock. SECS is only the hold's deadline: if nobody killed us by then, the .expired marker + WAIT-TIMEOUT
+    # make the late kill visible (k1 and inject F-07 refuse it), and the run carries on (its row then exists).
+    say "RIG_HOLD_BEFORE_RECORD: holding up to ${RIG_HOLD_BEFORE_RECORD#*:}s between commit and record row of s$n"
+    : > "$RUN_DIR/hold-s$n.held"
+    sleep "${RIG_HOLD_BEFORE_RECORD#*:}"   # pacing: the hold's own deadline; the killer waits on hold-sN.held, not on this
+    : > "$RUN_DIR/hold-s$n.expired"
+    echo "WAIT-TIMEOUT hold s$n: not killed within ${RIG_HOLD_BEFORE_RECORD#*:}s" >&2
   fi
   append_row "$n" "$3" "$sha" "$4"
   xlog "$n" end

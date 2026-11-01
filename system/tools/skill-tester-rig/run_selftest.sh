@@ -17,7 +17,7 @@ export SEAM_STATE_ROOT="$BASE/fake-state" SEAM_SKILL_ROOTS="$BASE/fake-skills" S
 export SEAM_STANDIN="$HOME/lifehack-scratch/skill-tester-rig/notes-standin/selftest-run-$(basename "$BASE")"
 mkdir -p "$SEAM_STATE_ROOT" "$SEAM_SKILL_ROOTS" || { echo "SELFTEST run FAILED: cannot create $BASE"; exit 1; }
 echo state > "$SEAM_STATE_ROOT/a.md"
-unset CANARY_SEED SKILL_TESTER_SEED FAKE_MODE FAKE_MODE_STEP FAKE_DELAY FAKE_DELAY_STEP FAKE_MODEL_ID STRESS_TODAY \
+unset CANARY_SEED SKILL_TESTER_SEED FAKE_MODE FAKE_MODE_STEP FAKE_DELAY FAKE_DELAY_STEP FAKE_WAIT_FILE FAKE_WAIT_STEP FAKE_WAIT_SECS FAKE_MODEL_ID STRESS_TODAY \
       RIG_WATCHDOG_SECS RIG_HOLD_BEFORE_RECORD RIG_RUN_DIR RIG_TEST CHECKS_DIR
 ANS="--answer s4=yes --answer s9=yes"
 FAILS=""
@@ -40,6 +40,7 @@ expect()  { # name cond...
   if "$@"; then ok "$name"; else bad "$name" "$*"; fi
 }
 eq() { [ "$1" = "$2" ]; }
+. "$RIG/wait.lib.sh" || { echo "SELFTEST run FAILED: wait.lib.sh missing"; exit 1; }
 
 echo "selftest: scratch $BASE (fake model only)"
 
@@ -159,12 +160,21 @@ CANARY_SEED=12345 SKILL_TESTER_SEED=678 run --fake good --run-id e1 $ANS
 expect "e1 caller exports the seed vars: run still exit 0, ok=12 (fake exits 3 on a leak)" eval "[ $RC = 0 ] && [ \"\$(total e1)\" = '$T12' ]"
 
 echo "== kill after the side effect, before the record row (F-07)"
-RIG_HOLD_BEFORE_RECORD=7:5 bash "$RUNSH" --fake good --run-id k1 $ANS >>"$LOG" 2>&1 &
+# TR1.8 HANDSHAKE, no clock: run.sh writes hold-s7.held once step-7.json is committed and BEFORE the s7 row; we kill
+# on that marker. The hold's 60 s is only its deadline: a kill that missed it leaves hold-s7.expired (a FAIL by name).
+# Fail-first (selftest-all.sh --waits): a rig COPY whose run.sh never writes the marker must FAIL here with
+# WAIT-TIMEOUT (RIG_K1_WAIT_SECS only shortens that deadline; it can make k1 fail, never pass).
+RIG_HOLD_BEFORE_RECORD=7:60 bash "$RUNSH" --fake good --run-id k1 $ANS >>"$LOG" 2>&1 &
 kp=$!
-i=0; while [ $i -lt 200 ] && ! { [ -f "$(rd k1)/step-7.json" ] && grep -q $'\ts7\tbegin' "$(rd k1)/exec.log" 2>/dev/null; }; do sleep 0.1; i=$((i+1)); done
+k1held() { [ -f "$(rd k1)/hold-s7.held" ] && [ -f "$(rd k1)/step-7.json" ] && grep -q $'\ts7\tbegin' "$(rd k1)/exec.log" 2>/dev/null; }
+K1W="WAIT-TIMEOUT k1 hold-s7.held"
+if wait_until "${RIG_K1_WAIT_SECS:-30}" "k1 hold-s7.held" k1held 2>>"$LOG"; then ok "k1 handshake: hold-s7.held seen before the kill"
+else echo "$K1W"; bad "k1 handshake" "$K1W"; fi
 pg="$(ps -o pgid= -p "$kp" | tr -d ' ')"
 expect "k1 runner leads its own process group" eq "$pg" "$kp"
-kill -KILL -- "-$kp" 2>/dev/null; wait "$kp" 2>/dev/null
+kill -KILL -- "-$kp" 2>/dev/null; wait "$kp" 2>/dev/null; krc=$?
+expect "k1 runner died by SIGKILL (rc 137, got $krc), not by finishing" eq "$krc" 137
+expect "k1 kill landed inside the hold (no hold-s7.expired)" eval "[ ! -e '$(rd k1)/hold-s7.expired' ]"
 expect "k1 no valid s7 row after the kill" eval "! python3 -I '$RIG/run_helper.py' last-valid '$(rd k1)/record.tsv' k1 s7 >/dev/null"
 run --fake good --run-id k1 $ANS
 expect "k1 resume: RERUN s7, exit 0" eval "[ $RC = 0 ] && has_ev k1 'RERUN s7'"
@@ -266,14 +276,25 @@ run --fake good --run-id b1 $ANS
 expect "b1 one-call budget: BUDGET-REFUSED s3, exit 75" eval "[ $RC = 75 ] && has_ev b1 'BUDGET-REFUSED s3'"
 
 echo "== seam change during a run (TR1.7: a writer OUTSIDE the guard is AMBIENT when the guard is on, LEAK when off)"
-( sleep 1; echo leak > "$SEAM_STATE_ROOT/leak.md" ) &
-FAKE_DELAY=3 FAKE_DELAY_STEP=3 run --fake good --run-id s1 $ANS
+# HANDSHAKE, no clock: the writer waits for THIS run's seam snapshot (seam.sh writes it atomically: .partial, then
+# mv), then writes; the fake actor holds step 3 until the written file exists, so the write always lands between
+# snapshot and verify. Both waits are bounded (30 s) and fail the case by name, never silently.
+seam_snap_exists() { ls "$BASE/seam/$1".*.sha >/dev/null 2>&1; }
+seam_writer() {  # seam_writer <run-id> <file to write> <marker>
+  if ! wait_until 30 "$1 seam snapshot" seam_snap_exists "$1" 2>>"$LOG"; then echo "WAIT-TIMEOUT $1 seam snapshot" > "$3"; return 1; fi
+  echo leak > "$2" && echo WROTE > "$3"
+}
+rm -f "$BASE"/seam/s1.*.sha "$BASE"/seam/s2.*.sha "$BASE/s1.handshake" "$BASE/s2.handshake"
+seam_writer s1 "$SEAM_STATE_ROOT/leak.md" "$BASE/s1.handshake" &
+FAKE_WAIT_FILE="$SEAM_STATE_ROOT/leak.md" FAKE_WAIT_STEP=3 run --fake good --run-id s1 $ANS
 wait
+expect "s1 handshake: writer saw the snapshot, then wrote ($(cat "$BASE/s1.handshake" 2>/dev/null))" grep -qx WROTE "$BASE/s1.handshake"
 expect "s1 guard ON: exit 0 + SEAM-AMBIENT ADDED <path>, no SEAM-LEAK" eval "[ $RC = 0 ] && has_ev s1 'SEAM-AMBIENT ADDED $SEAM_STATE_ROOT/leak.md' && ! grep -q '^SEAM-LEAK' '$(rd s1)/events.log' && grep -qx SEAM_GUARD=on '$(rd s1)/meta.env'"
 rm -f "$SEAM_STATE_ROOT/leak.md"
-( sleep 1; echo leak > "$SEAM_STATE_ROOT/leak2.md" ) &
-SEAM_GUARD_DISABLE=1 FAKE_DELAY=3 FAKE_DELAY_STEP=3 run --fake good --run-id s2 $ANS
+seam_writer s2 "$SEAM_STATE_ROOT/leak2.md" "$BASE/s2.handshake" &
+SEAM_GUARD_DISABLE=1 FAKE_WAIT_FILE="$SEAM_STATE_ROOT/leak2.md" FAKE_WAIT_STEP=3 run --fake good --run-id s2 $ANS
 wait
+expect "s2 handshake: writer saw the snapshot, then wrote ($(cat "$BASE/s2.handshake" 2>/dev/null))" grep -qx WROTE "$BASE/s2.handshake"
 expect "s2 guard OFF: exit 1 + SEAM-LEAK ADDED <path>, meta SEAM_GUARD=off:disabled-by-env" eval "[ $RC = 1 ] && has_ev s2 'SEAM-LEAK ADDED $SEAM_STATE_ROOT/leak2.md' && grep -qx SEAM_GUARD=off:disabled-by-env '$(rd s2)/meta.env'"
 rm -f "$SEAM_STATE_ROOT/leak2.md"
 echo "== the rig itself writes seam scope (TR1.7: refused by the guard and named)"

@@ -56,7 +56,7 @@ case "$mode" in
   cachemark)  init; use; J "$LHB_JOURNAL_PATH" "$now" $G deny 2 "root"; res_block; final REFUSED ;;
   noread)     init; final "I will not read files." ;;
   realleak)   init; use; J "$FAKE_REAL_JOURNAL" "$now" $G deny 2; res_block; final REFUSED ;;
-  hang)       init; sleep 600 ;;
+  hang)       init; sleep 600 ;;   # pacing: the hang stand-in; probe-hooks' watchdog must kill it
   *) a "unknown FAKE_PROBE_MODE $mode" ;;
 esac
 exit 0

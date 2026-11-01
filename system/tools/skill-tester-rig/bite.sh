@@ -5,12 +5,15 @@
 #                         every fake-plantable fault in `inject.sh list` (21 rows: F-19 at TR1.7, F-20 2026-10-31),
 #                         n=3 runs each, one fault per run; then 5 clean controls. Last line, exactly:
 #                           BITE rung1 caught <c>/21 fp <f>/5 CLEAN        (c=21 and f=0)
-#                           BITE FAILED caught <c>/21 fp <f>/5             (anything else; the missed list is above it)
+#                           BITE FAILED caught <c>/21 fp <f>/5             (anything else, exit 1; the missed list is above it)
 #                         --sentinel (TR1.7): sentinel.sh writes into THIS bite's own stand-in, OUTSIDE the guard, for
 #                         the WHOLE bite (faults and controls), seed 1729, log <bite scratch>/sentinel.log.
 # STAND-IN ISOLATION (CONTRACT §3b, 2026-10-31): every bite exports SEAM_STANDIN=$CANON/notes-standin/<bite-id>/, so
 #   its runs snapshot ONLY their own stand-in (plus the real roots) and only its own sentinel writes there. Two bites
 #   at once never see each other's sentinel. The guard still denies the whole notes-standin/ tree.
+# RECEIPT: the full gate (`--rung 1`, no dev-subset flags) ends by calling `receipt.sh write rung1 "<final BITE line>"`
+#   from this unguarded script, after the whole bite (see receipt.sh). Its stdout is also kept at
+#   ~/lifehack-scratch/skill-tester-rig/bite-rung1-<bite-id>.out. Exit 3 if the receipt could not be written.
 #   bite.sh --selftest    proves the bite CAN say FAILED (a mini-bite, normal, then with a broken check, then with a
 #                         broken grader). Last line 'SELFTEST bite can-fail OK'.
 #   dev subset (never the gate: denominators shrink so the gate line cannot be produced; results go to
@@ -40,6 +43,12 @@
 #   ANOTHER bite's stand-in (inside notes-standin/ but outside this bite's subtree) is always SUSPICIOUS: it can
 #   never count as clean. Ambient paths OUTSIDE the stand-in tree (the real notes root under load: other windows)
 #   cannot be cross-checked; they are counted apart.
+# SENTINEL HANDSHAKE (TR1.8), every CONTROL under --sentinel: a control must PROVE the sentinel wrote during its own
+#   seam window, else it proves nothing about ambient classification. A watcher waits for that run's seam snapshot,
+#   then for a NEW sentinel.log line, then releases the fake actor, which holds at s3 (FAKE_WAIT_FILE) until then;
+#   so the write lands after the snapshot and before the verify. Either wait running out prints `WAIT-TIMEOUT <what>`
+#   and the control FAILS by that name (counted in fp; the actor is released so the run still ends). The bite's
+#   start also waits (handshake) for the sentinel's first write; no write -> WAIT-TIMEOUT + BITE FAILED, nothing run.
 # Up to 3 runs at once (xargs -P 3). Run ids b1-<fault>-r<k>-<bite-id> (bite-id = epoch-pid; never reused; inject
 # refuses an existing plan). Runs live under ~/lifehack-scratch/skill-tester-rig/bite-r1-<bite-id>/ (never src/).
 # Cost: $0 — fake model only; this script never passes --real and never launches claude.
@@ -49,11 +58,12 @@ export PYTHONDONTWRITEBYTECODE=1
 SRC="$(cd "$(dirname "$0")" && pwd)"
 SELF="$SRC/$(basename "$0")"
 CANON="$HOME/lifehack-scratch/skill-tester-rig"
+. "$SRC/wait.lib.sh" || { echo "bite: wait.lib.sh missing" >&2; exit 2; }   # TR1.8 handshakes
 # nothing inherited may steer a run: these are set per run from plans/<id>/*.env only
 unset RIG_TEST CHECKS_DIR FAKE_MODE_STEP FAKE_DELAY FAKE_DELAY_STEP FAKE_MODEL_ID RIG_WATCHDOG_SECS \
       RIG_HOLD_BEFORE_RECORD RIG_RUN_DIR STRESS_TODAY CANARY_SEED SKILL_TESTER_SEED SKILL_TESTER_RIG CLAUDE_BIN \
       FAKE_MODE BUDGET_WATCHDOG_FLOOR RIG_GUARD_TAG RIG_GUARD_PARENT RIG_GUARD_T0 RIG_GUARD_PROFILE RIG_GUARD_HANDOFF \
-      SEAM_GUARD_DISABLE GUARD_TEST_NO_LOG RIG_TEST_SEAM_WRITE SENTINEL_LOG
+      SEAM_GUARD_DISABLE GUARD_TEST_NO_LOG RIG_TEST_SEAM_WRITE SENTINEL_LOG FAKE_WAIT_FILE FAKE_WAIT_STEP FAKE_WAIT_SECS
 
 die() { echo "bite: $*" >&2; exit 2; }
 CLEAN_TOTAL="TOTAL ok=12 silent_wrong=0 double_ran=0 stuck=0 lost=0 skipped=0 out_of_order=0 false_done=0"
@@ -61,6 +71,21 @@ CLEAN_TOTAL="TOTAL ok=12 silent_wrong=0 double_ran=0 stuck=0 lost=0 skipped=0 ou
 # ── one run (called by xargs): --one <fault|control> <fault-id> <k> <run-id> ──────────────────────────────────
 # reads: _BITE_S (scratch), _BITE_OUT (result dir), _BITE_CHECKS (broken-check override, selftest only),
 #        _BITE_TRUTH (broken-grader override, selftest only)
+snap_of()   { ls "$_BITE_S/seam/$1".*.sha >/dev/null 2>&1; }
+slog_grew() { [ "$(wc -l < "$_BITE_SLOG" | tr -d ' ')" -gt "$1" ]; }
+sent_watch() {  # sent_watch <run-id> <driver dir> : the per-control sentinel HANDSHAKE (TR1.8; see the header)
+  local R="$1" L="$2" n0 sec="${_BITE_SENT_WAIT_SECS:-20}" what
+  what="$R seam snapshot"
+  if wait_until 120 "$what" snap_of "$R" 2>/dev/null; then
+    n0="$(wc -l < "$_BITE_SLOG" | tr -d ' ')"          # counted AFTER the snapshot exists
+    what="$R sentinel write after the snapshot"
+    if wait_until "$sec" "$what" slog_grew "$n0" 2>/dev/null; then : > "$L/sentinel-wrote"; return 0; fi
+  fi
+  echo "WAIT-TIMEOUT $what" | tee "$L/sentinel-watch.timeout" >&2
+  : > "$L/sentinel-wrote"                               # release the actor so the run ends; the control already FAILED
+  return 1
+}
+
 one() {
   local kind="$1" F="$2" k="$3" R="$4" S="$_BITE_S" OUT="$_BITE_OUT"
   local bp="" PD="$S/plans/$R" RD="$S/runs/$R" L="$S/driver/$R" notes="" rc1="-" rc2="-" trc="-" v="" pf="$F" w c line
@@ -92,6 +117,14 @@ one() {
     )
   }
   has pre-run inject && apply pre-run
+  # TR1.8 sentinel handshake for a control (see the header): watcher in the background, actor held at s3 until it
+  local swp="" swrc="-" SWT="$L/sentinel-watch.timeout"
+  if [ "$kind" = control ] && [ "${_BITE_SLOG:-/dev/null}" != /dev/null ]; then
+    rm -f "$L/sentinel-wrote" "$SWT"
+    sent_watch "$R" "$L" &
+    swp=$!
+    export FAKE_WAIT_FILE="$L/sentinel-wrote" FAKE_WAIT_STEP=3 FAKE_WAIT_SECS=$(( ${_BITE_SENT_WAIT_SECS:-20} + 90 ))
+  fi
   if [ -n "$(arg run1)" ]; then
     if has mid-run inject-concurrent; then
       # F-07 plants a SIGKILL: bash's "Killed: 9" job notice goes to the driver log, not the bite's output
@@ -110,6 +143,12 @@ one() {
       "$rc1") ;;
       *) notes="$notes rc1=$rc1(want-$w)" ;;
     esac
+  fi
+  if [ -n "$swp" ]; then
+    wait "$swp"; swrc=$?           # bounded: the watcher's own two deadlines
+    unset FAKE_WAIT_FILE FAKE_WAIT_STEP FAKE_WAIT_SECS
+    if [ "$swrc" = 0 ]; then notes="$notes sentinel-write=proven"
+    else notes="$notes sentinel-write=UNPROVEN"; fi
   fi
   has between-runs inject && apply between-runs
   if [ -n "$(arg run2)" ]; then
@@ -138,6 +177,9 @@ EOF
     printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$kind" "$pf" "$k" "$c" "${miss# | }" "$R" "rc1=$rc1 rc2=$rc2 truth=$trc${notes}" > "$OUT/$R.res"
   else
     local fl=""
+    if [ -n "$swp" ] && [ "$swrc" != 0 ]; then
+      fl="$fl | $(head -1 "$SWT" 2>/dev/null || echo "WAIT-TIMEOUT $R sentinel watcher rc=$swrc")"
+    fi
     grep -qx 'RIG-TEST ON' "$EV" && fl="$fl | REFUSED-AS-CONTROL: RIG-TEST ON"
     local amb=0
     while IFS= read -r line; do
@@ -198,8 +240,14 @@ bite() {
     spid=$!; echo "$spid" > "$S/sentinel.pid"
     trap 'kill -TERM '"$spid"' 2>/dev/null' EXIT
     echo "bite: SENTINEL pid $spid writing into this bite's stand-in $SEAM_STANDIN (outside the guard); log $SLOG" >&2
-    local w=0; while [ ! -s "$SLOG" ] && [ $w -lt 50 ]; do sleep 0.1; w=$((w+1)); done   # its first write lands first
+    # TR1.8 HANDSHAKE: its first write lands before any run starts; none -> the bite FAILS, it never runs blind
+    if ! wait_until "${_BITE_SENT_WAIT_SECS:-20}" "sentinel first write ($SLOG)" test -s "$SLOG"; then
+      kill -TERM "$spid" 2>/dev/null; wait "$spid" 2>/dev/null; trap - EXIT
+      echo "WAIT-TIMEOUT sentinel first write ($SLOG)"
+      echo "BITE FAILED WAIT-TIMEOUT sentinel first write (nothing run)"; return 1
+    fi
   fi
+  export _BITE_SLOG="$SLOG"
   xargs -P 3 -L 1 bash "$SELF" --one < "$JOBS"
   if [ -n "$spid" ]; then kill -TERM "$spid" 2>/dev/null; wait "$spid" 2>/dev/null; rm -f "$S/sentinel.pid"; trap - EXIT; fi
   t1=$(date +%s)
@@ -271,7 +319,7 @@ EOF2
   [ -n "$missed_list" ] && echo "MISSED:$missed_list"
   # a missing control result counts against CLEAN (ctl_n must equal NC)
   if [ "$caught" = "$nf" ] && [ "$fp" = 0 ] && [ "$ctl_n" = "$NC" ]; then echo "BITE rung1 caught $caught/$nf fp $fp/$NC CLEAN"
-  else echo "BITE FAILED caught $caught/$nf fp $fp/$NC"; fi
+  else echo "BITE FAILED caught $caught/$nf fp $fp/$NC"; return 1; fi   # TR1.8: a failed bite exits nonzero
 }
 
 new_id() { echo "$(date +%s)-$$"; }
@@ -281,7 +329,7 @@ case "${1:-}" in
   --rung)
     [ "${2:-}" = 1 ] || die "only --rung 1 exists"
     shift 2
-    for v in _BITE_CHECKS _BITE_TRUTH _BITE_S _BITE_OUT; do
+    for v in _BITE_CHECKS _BITE_TRUTH _BITE_S _BITE_OUT SKILL_TESTER_RECEIPTS SKILL_TESTER_RECEIPT_RIG; do
       eval "[ -z \"\${$v:-}\" ]" || die "$v is set in the environment — overrides exist only inside --selftest (no bypass)"
     done
     ONLY=""; N=3; NC=5
@@ -305,7 +353,20 @@ case "${1:-}" in
     fi
     _BITE_ID="$(new_id)"
     export _BITE_ID _BITE_STATUS_DIR="$CANON" _BITE_CHECKS="" _BITE_TRUTH=""
-    bite "$CANON/bite-r1-$_BITE_ID" "$TSV" "$N" "$NC" "$FAULTS" ;;
+    GATE=1; [ "$TSV" = "$CANON/bite-rung1.tsv" ] || GATE=0
+    mkdir -p "$CANON" || die "cannot create $CANON"
+    BOUT="$CANON/bite-rung1-$_BITE_ID.out"
+    bite "$CANON/bite-r1-$_BITE_ID" "$TSV" "$N" "$NC" "$FAULTS" | tee "$BOUT"
+    BRC=${PIPESTATUS[0]}
+    # LONG-GATE RECEIPT (plan rule 2026-10-31; receipt.sh): written HERE, by this unguarded orchestrator, after the
+    # whole bite has ended, whatever the outcome (a FAILED line is a receipt too; it simply never matches the
+    # card's expected line). Real gate runs only: never a dev subset, never --mini or --selftest.
+    if [ "$GATE" = 1 ]; then
+      RLINE="$(grep -E '^BITE (rung1 caught|FAILED) ' "$BOUT" | tail -1)"
+      [ -n "$RLINE" ] || RLINE="BITE FAILED no result line (bite rc=$BRC)"
+      bash "$SRC/receipt.sh" write rung1 "$RLINE" || { echo "bite: RECEIPT NOT WRITTEN for '$RLINE'" >&2; exit 3; }
+    fi
+    exit "$BRC" ;;
   --mini)
     # TR1.7 selftest-load only (seam_load.sh): bite.sh --mini <dir under $CANON/selftest-load/> <n> <controls>
     # <faults|none> [--sentinel]. Never the gate (its TSV lives in <dir>), never a broken-check/grader override.

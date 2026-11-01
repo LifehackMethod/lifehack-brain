@@ -40,7 +40,7 @@ gt()    { awk -v a="$1" -v b="$2" 'BEGIN{exit !(a+0 > b+0 + 1e-9)}'; }      # fl
 add()   { awk -v a="$1" -v b="$2" 'BEGIN{printf "%.4f", a+b}'; }
 
 
-lock()   { local i=0; while ! mkdir "$BDIR/.lock" 2>/dev/null; do i=$((i+1)); [ $i -gt 100 ] && { say "lock stuck: $BDIR/.lock"; return 1; }; sleep 0.1; done; }
+lock()   { local i=0; while ! mkdir "$BDIR/.lock" 2>/dev/null; do i=$((i+1)); [ $i -gt 100 ] && { echo "WAIT-TIMEOUT budget lock $BDIR/.lock" >&2; say "lock stuck: $BDIR/.lock"; return 1; }; sleep 0.1; done; }
 unlock() { rmdir "$BDIR/.lock" 2>/dev/null; }
 
 # ── open ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -168,7 +168,7 @@ run_watched() {  # <secs> <stdout-file> <wd-flag-file> <cmd…>  → sets RC (12
     ( exec "$@" ) > "$out" </dev/null &
   fi
   local pid=$!
-  ( sleep "$secs"; : > "$wd"; killtree "$pid" ) >/dev/null 2>&1 &
+  ( sleep "$secs"; : > "$wd"; killtree "$pid" ) >/dev/null 2>&1 &   # pacing: the watchdog's own timer, the thing it measures
   WDPID=$!
   wait "$pid"; RC=$?
   stop_wd
@@ -241,7 +241,7 @@ cmd_selftest() {
   $B open st-wd >/dev/null 2>&1
   $B charge st-wd 0.01 1 >/dev/null 2>&1
   t0="$(date +%s)"
-  BUDGET_WATCHDOG_FLOOR=2 $B call st-wd -- bash -c 'sleep 30' >/dev/null 2>&1; rc=$?
+  BUDGET_WATCHDOG_FLOOR=2 $B call st-wd -- bash -c 'sleep 30' >/dev/null 2>&1; rc=$?   # pacing: the hang stand-in the watchdog must kill
   dt=$(( $(date +%s) - t0 ))
   if [ "$rc" = 124 ] && [ "$dt" -lt 15 ] && grep -q $'\t0.01\t1\t' "$BDIR/st-wd.tsv" && grep -q 'call-timeout' "$BDIR/st-wd.tsv"; then
     echo "  ok   watchdog killed hang → 124 in ${dt}s; ledger kept"
