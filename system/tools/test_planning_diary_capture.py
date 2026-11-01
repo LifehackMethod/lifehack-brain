@@ -173,7 +173,7 @@ check("T10 dateless '**DECISION (the person):**' is ignored",
 
 # T11 — the plain dated H2 that names its desk inline.
 by, st = parse(
-    f"## {D} — root — claudeops-correct-architecture — SESSION CONTEXT: residency RESOLVED\n"
+    f"## {D} — root — example-correct-architecture — SESSION CONTEXT: residency RESOLVED\n"
     "body line\n", D)
 check("T11 '## DATE — desk — slug — text' attributes to the desk",
       "root" in by and any("residency RESOLVED" in b for b in by.get("root", [])),

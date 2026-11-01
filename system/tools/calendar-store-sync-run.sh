@@ -46,7 +46,7 @@ STATUS_ARTIFACT="$OUT_DIR/last-run.json"
 WORKLOG="$OUT_DIR/last-write.log"
 mkdir -p "$OUT_DIR" 2>/dev/null || true
 
-LOCKDIR="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/claudeops-${SUBSYSTEM_NAME}.lock"
+LOCKDIR="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/lifehack-${SUBSYSTEM_NAME}.lock"
 . "$CODE_ROOT/system/tools/runner-lock.lib.sh" || { echo "FATAL: cannot source runner-lock.lib.sh" >&2; exit 1; }
 # 5.9(h): the lock records its owner pid. A dead owner's lock is taken at once; a LIVE owner is a stand-down (75), never a 0;
 # a lock that is present but unreadable is refused and named (1).

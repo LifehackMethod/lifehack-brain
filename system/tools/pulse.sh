@@ -9,7 +9,7 @@
 #      ⚠ Do not re-read this paragraph as a present-tense claim that scheduling is missing — that
 #      reading was the single most-copied stale fact in the tree (T9.7d sweep, 2026-08-15).
 #
-# PORTED (2026-08-14) from claudeops-config's system/tools/pulse.sh, generalized under a 2026-08-13
+# PORTED (2026-08-14) from the donor repo's system/tools/pulse.sh, generalized under a 2026-08-13
 # product ruling ("automation ships with its scheduler"). Two structural things were CUT, not
 # translated, because they answer a question this product doesn't have:
 #   - the "which of two machines is in charge" lead-machine preflight + nag (donor pulse.sh:159-172).
@@ -146,7 +146,7 @@ BACKOFF_BASE="${PULSE_BACKOFF_BASE:-3600}"    # first hold: 1h
 BACKOFF_MAX="${PULSE_BACKOFF_MAX:-86400}"     # never wait longer than a day to re-probe
 
 # ── PER-JOB TIME BUDGET (T10.A3 OL-N1 ①) ────────────────────────────────────
-# ROOT CAUSE THIS REPLACES: the donor (claudeops-config) pulse.sh carried ONE flat
+# ROOT CAUSE THIS REPLACES: the donor (the donor repo) pulse.sh carried ONE flat
 # LOCK_STALE_S=3600 covering every job — a single cross-job mkdir-lock whose staleness check, on
 # trip, logged "scheduler HALTED" and left EVERY later job in that cycle undispatched. Measured
 # on the live donor system: fired 6x in 7 days. That is a design bug, not a one-off: one slow job
@@ -157,11 +157,11 @@ BACKOFF_MAX="${PULSE_BACKOFF_MAX:-86400}"     # never wait longer than a day to 
 # the same halt, just via "the loop never gets there" instead of a named lock. `timeout` closes that.
 # PER-JOB mutual exclusion (a DIFFERENT thing from the whole-scheduler lock above, and never
 # reintroduced here) is deliberately NOT this file's job either: it is delegated to each job's own
-# *-run.sh, which already `mkdir`s a `/tmp/claudeops-<job-identity>.lock` before doing real work and
+# *-run.sh, which already `mkdir`s a `/tmp/lifehack-<job-identity>.lock` before doing real work and
 # exits 0 with a logged "another run in progress — skip" when it can't get it (T10.A4, 2026-08-22).
 # That name is derived from JOB IDENTITY, not from which repo launched it, and matches the naming
-# claudeops-config's runners and ingest-run.lib.sh already use — so a job started by THIS scheduler
-# and the SAME job started by claudeops-config's pulse.sh (still cron-registered, unmodified) now
+# the donor repo's runners and ingest-run.lib.sh already use — so a job started by THIS scheduler
+# and the SAME job started by the donor repo's pulse.sh (still cron-registered, unmodified) now
 # contend for the identical lock path and cannot run concurrently, without this file taking a
 # redundant lock of its own (which would self-deadlock against the runner's own mkdir on every
 # dispatch — see the runner files for the actual mechanism). Jobs dispatched WITHOUT a `*-run.sh`

@@ -12,7 +12,7 @@ trap 'lhb_journal_fire "$?" "guard_ledger_discipline.sh" "PreToolUse" "Bash|Writ
 #      CLEARED / FIXED) to the ## Open section. The only legal change to ## Open is DELETION of a line.
 # REDIRECT: to close an item, DELETE its line from ## Open. If it warrants a history note, add a
 #      ONE-LINE dated entry under ## Cleared instead. See the state/debt-ledger.md header.
-# UPDATED: 2026-06-18 (ported 2026-08-13 from claudeops-config — verbatim; the ledger path is
+# UPDATED: 2026-06-18 (ported 2026-08-13 from the donor repo — verbatim; the ledger path is
 #      already matched as a relative suffix, so no path resolution work was needed)
 # SCOPING NOTE: this fires on ALL Write|Edit but guards ONLY debt-ledger.md. On any parse failure
 #      or non-ledger target it exits 0 (allow) — a bug here must NEVER block the whole edit surface;
@@ -20,12 +20,12 @@ trap 'lhb_journal_fire "$?" "guard_ledger_discipline.sh" "PreToolUse" "Bash|Writ
 # ─────────────────────────────────────────────────────────────────────────────
 set -uo pipefail
 INPUT=$(cat)
-export CLAUDEOPS_LEDGER_HOOK_INPUT="$INPUT"
-export CLAUDEOPS_LEDGER_WINFOLD_LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib/winpath_fold.py"
+export LIFEHACK_LEDGER_HOOK_INPUT="$INPUT"
+export LIFEHACK_LEDGER_WINFOLD_LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib/winpath_fold.py"
 python3 <<'PY'
 import os, json, re, sys
 try:
-    data = json.loads(os.environ.get("CLAUDEOPS_LEDGER_HOOK_INPUT", ""))
+    data = json.loads(os.environ.get("LIFEHACK_LEDGER_HOOK_INPUT", ""))
 except Exception:
     sys.exit(0)
 ti = (data.get("tool_input") or {})
@@ -37,7 +37,7 @@ path = (ti.get("file_path") or ti.get("path") or "")
 # Fail closed to the OLD behaviour (plain slash-fold), not to a hard block, if the helper
 # cannot be loaded -- this guard's SCOPING NOTE already treats any lookup failure as allow,
 # so a missing lib degrades gracefully rather than blocking every Write/Edit in the repo.
-_lib = os.environ.get("CLAUDEOPS_LEDGER_WINFOLD_LIB", "")
+_lib = os.environ.get("LIFEHACK_LEDGER_WINFOLD_LIB", "")
 path_cmp = path.replace("\\", "/")
 if _lib and os.path.isfile(_lib):
     try:

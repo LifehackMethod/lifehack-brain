@@ -22,8 +22,8 @@
 #   bash system/tools/read_sop.sh hook      # hook-sop.md + hook-contract.md (the mechanics)
 #   bash system/tools/read_sop.sh --status  # show current receipts, stamp nothing
 #
-# PORTED (T9.7b, 2026-08-15) from claudeops-config: CODE_ROOT was a hardcoded
-# `$HOME/claudeops-config`; it now resolves from this script's own location (git toplevel,
+# PORTED (T9.7b, 2026-08-15) from the donor repo: CODE_ROOT was a hardcoded
+# `the donor clone's folder`; it now resolves from this script's own location (git toplevel,
 # falling back to stripping the known `system/tools` suffix), matching the pattern already
 # used across this repo's ported hooks (e.g. announce_plan_write.sh) — never a hardcoded home.
 set -uo pipefail

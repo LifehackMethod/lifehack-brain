@@ -8,7 +8,7 @@ trap 'lhb_journal_fire "$?" "guard_checkin_needs_project.sh" "PreToolUse+UserPro
 # WHY: `.claude/skills/checkin/SKILL.md` is a whole-file load the moment /checkin is invoked — a gate
 #      written INSIDE the skill runs after that cost is already paid. /checkin compares PLAN vs BRIEF
 #      vs SESSION; with no project armed there is neither, so there is nothing to compare. The original
-#      guard (2026-08-14, ported from claudeops-config commit ee53133) registered ONLY a
+#      guard (2026-08-14, ported from the donor repo commit ee53133) registered ONLY a
 #      PreToolUse(matcher="Skill") leg, which covers just the natural-language path — Claude deciding
 #      to call the Skill tool. Per the official Claude Code hooks reference
 #      (https://code.claude.com/docs/en/hooks, fetched live this session): "a PreToolUse hook matching
@@ -95,7 +95,7 @@ then run /checkin. If you did not, you do not need /checkin: it is an end-of-ses
 project work, not a session opener.
 
 RULE: system/hook-contract.md (deny format) + system/hooks/pm_flag.sh (armed check). Ported from
-claudeops-config 2026-08-14; extended 2026-08-14 to also cover the typed /checkin path, which the
+the donor repo 2026-08-14; extended 2026-08-14 to also cover the typed /checkin path, which the
 first version of this guard missed entirely (see LLM CONTEXT above).
 MSG
   exit 2

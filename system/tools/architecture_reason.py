@@ -565,7 +565,7 @@ def detect_eliminate(ledger: list, skill_dirs: list, skill_status: dict) -> list
 # that proposes 50 architecture changes has proposed none: nobody reads past the third.
 LAB_MARKERS = ("conformance-lab", "fanout-lab", "venue-probe", "cowork-ingest/test_",
                "test_", "_experiment", "bakeoff", "selftest", "stress", "probe", "_manual")
-# ⚠ CLEANUP-PASS 2026-10-31: fanout-lab/ moved to ~/claudeops-config/archive/2026-10-31/system/tools/fanout-lab/ (the claudeops-config copy; no lifehack-v2 copy ever existed); conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
+# ⚠ CLEANUP-PASS 2026-10-31: fanout-lab/ moved to the donor clone/archive/2026-10-31/system/tools/fanout-lab/ (the the donor repo copy; no lifehack-v2 copy ever existed); conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and the donor clone/archive/2026-10-31/system/tools/conformance-lab/ (the donor repo copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 
 
 def _top_bullets(text: str) -> list:

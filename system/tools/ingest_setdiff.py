@@ -2,7 +2,7 @@
 """
 ingest_setdiff.py — the completeness enforcement mechanism for ingestion skills.
 
-PORTED (2026-08-14) from claudeops-config's system/tools/ingest_setdiff.py — a straight copy. This
+PORTED (2026-08-14) from the donor repo's system/tools/ingest_setdiff.py — a straight copy. This
 session's identity grep found zero personal/account content (no DRIVE literal, no hardcoded account),
 and the one path it writes to (`~/.claude/run/...`, a generic per-user Claude Code runtime directory)
 carries no personal identifier. Ported alongside `ingest_coverage.py`, which imports it directly

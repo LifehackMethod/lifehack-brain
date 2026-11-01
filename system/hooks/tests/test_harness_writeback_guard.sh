@@ -105,18 +105,40 @@ deny "a write to a path TRACKED by the public lifehack-brain repo" \
   "tracked in the PUBLIC lifehack-brain repo"
 
 echo
-echo "=== CANNOT-DETERMINE — reported distinctly, never folded into a silent ALLOW ==="
+echo "=== ROLE: no public harness checkout on this machine -> the guard is a NO-OP (every student install) ==="
 
 out=$(printf '%s' "$(mkjson_write "$REPO/system/hooks/guard_write_paths.sh" 'x')" | \
   HOME="$SCRATCH/home" CLAUDE_PLUGIN_ROOT="$REPO" LIFEHACK_BRAIN_ROOT="$SCRATCH/no-such-public-repo" \
   bash "$GUARD" 2>"$ERRF"); rc=$?
-if [ "$rc" -eq 2 ] && grep -q "CANNOT-DETERMINE" "$ERRF"; then
-  printf "  PASS  deny   public repo absent -> CANNOT-DETERMINE, exit 2, never a silent allow\n"
+if [ "$rc" -eq 0 ] && [ ! -s "$ERRF" ] && [ -z "$out" ]; then
+  printf "  PASS  allow  public repo absent -> no-op, exit 0, silent (a student has nothing to write back into)\n"
   PASSED=$((PASSED + 1))
 else
-  printf "  FAIL  deny   public-repo-absent case (rc=%s)\n" "$rc"
+  printf "  FAIL  allow  public-repo-absent case should be a silent no-op (rc=%s)\n" "$rc"
   printf "        stderr: %.300s\n" "$(cat "$ERRF")"
   FAILED=$((FAILED + 1))
+fi
+
+echo
+echo "=== CANNOT-DETERMINE — reported distinctly, never folded into a silent ALLOW ==="
+
+BROKEN="$SCRATCH/broken_public"
+mkdir -p "$BROKEN/.git"
+out=$(printf '%s' "$(mkjson_write "$REPO/system/hooks/guard_write_paths.sh" 'x')" | \
+  HOME="$SCRATCH/home" CLAUDE_PLUGIN_ROOT="$REPO" LIFEHACK_BRAIN_ROOT="$BROKEN" \
+  bash "$GUARD" 2>"$ERRF"); rc=$?
+if [ "$rc" -eq 2 ] && grep -q "CANNOT-DETERMINE" "$ERRF"; then
+  printf "  PASS  deny   public checkout present but unreadable by git -> CANNOT-DETERMINE, exit 2\n"
+  PASSED=$((PASSED + 1))
+else
+  printf "  FAIL  deny   broken-public-checkout case (rc=%s)\n" "$rc"
+  printf "        stderr: %.300s\n" "$(cat "$ERRF")"
+  FAILED=$((FAILED + 1))
+fi
+if grep -qiE 'claude''ops' "$GUARD"; then
+  printf "  FAIL  the guard names a private folder\n"; FAILED=$((FAILED + 1))
+else
+  printf "  PASS  the guard names no private folder\n"; PASSED=$((PASSED + 1))
 fi
 
 echo

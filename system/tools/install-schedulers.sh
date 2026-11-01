@@ -4,7 +4,7 @@
 # the ```crontab``` block in jobs.md -> commit -> run this on a machine -> that machine is
 # current. No hand-editing crontab, one declaration per job, no duplication.
 #
-# PORTED (2026-08-14) from claudeops-config's system/tools/install-schedulers.sh, under a 2026-08-13
+# PORTED (2026-08-14) from the donor repo's system/tools/install-schedulers.sh, under a 2026-08-13
 # product ruling ("automation ships with its scheduler — if it ran on the donor author's laptop, it
 # goes on a student's laptop"). The donor script only ever wrote a macOS/Linux crontab; this product's own
 # INSTALL.md explicitly walks Windows students through a real install (Step 1's own rule: "Darwin

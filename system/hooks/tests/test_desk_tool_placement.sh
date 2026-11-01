@@ -26,13 +26,13 @@ fire a1 Write "$(J file_path "$NOTES/desks/marc/tools/mytool.py" content 'print(
 [ "$RC" = 2 ] && { pass=$((pass+1)); echo "   ok   code in the notes folder is stopped"; } || { fail=$((fail+1)); echo "  FAIL  code in notes not stopped rc=$RC"; }
 has "names the resolved <personal code>/desks/<desk>/tools/" "$PCREAL/desks/<desk>/tools/"
 has "says the notes folder is data only" "data only"
-hasnt "no hard-coded ClaudeOps path" "ClaudeOps"
+hasnt "no hard-coded the private repo path" "the private repo"
 hasnt "old wording (private repo's desks) is gone" "private repo's desks"
 # 2. the personal-code pointer is missing: generic wording, still no hard-coded path
 mv "$HOME/.config/lifehack/personal-code" "$HOME/.config/lifehack/personal-code.bak"
 fire a2 Write "$(J file_path "$NOTES/desks/marc/tools/other.py" content 'print(2)')"
 has "no pointer: points at desks/<desk>/tools/ inside the personal code folder" "desks/<desk>/tools/ folder inside your personal code folder"
-hasnt "no pointer: still no ClaudeOps" "ClaudeOps"
+hasnt "no pointer: still no the private repo" "the private repo"
 mv "$HOME/.config/lifehack/personal-code.bak" "$HOME/.config/lifehack/personal-code"
 # 3. the outside-homes stop names the personal code folder (the reason gate was removed 2026-11-01)
 mkdir -p "$HOME/odd-widget"

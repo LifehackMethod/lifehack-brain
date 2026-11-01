@@ -465,7 +465,7 @@ def selftest():
     # residue) and require a byte-identical residue back.
     # ⚠ DEAD REFERENCE — PRE-EXISTING, NOT INTRODUCED BY THE cal→planning RENAME (verified 2026-08-15).
     # `system/tools/conformance-lab/` EXISTS in this repo but holds only driver.py / probes/ /
-    # ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
+    # ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and the donor clone/archive/2026-10-31/system/tools/conformance-lab/ (the donor repo copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
     # rule-registry.md — there is NO `fixtures/` subtree at all, under either the old `cal-weekly`
     # name or the new one. The w30-* fixtures were never ported here, so the DIFFERENTIAL check below
     # has ALWAYS taken its else-branch and reported [FAIL], meaning this part has never passed
@@ -478,7 +478,7 @@ def selftest():
     _repo = os.environ.get("CLAUDE_PROJECT_DIR") or os.path.abspath(
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
     lab = os.path.join(_repo, "system/tools/conformance-lab/fixtures/planning-weekly")
-    # ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
+    # ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and the donor clone/archive/2026-10-31/system/tools/conformance-lab/ (the donor repo copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
     gpath = os.path.join(lab, "w30-state-grade-p03map.json")
     spath = os.path.join(lab, "w30-source-ids.json")
     if os.path.isfile(gpath) and os.path.isfile(spath):
@@ -506,7 +506,7 @@ def selftest():
         print("  [SKIP] DIFFERENTIAL vs preserved lab grade -- "
               "lab fixtures not found (cannot claim faithful extraction; "
               "port system/tools/conformance-lab/fixtures/planning-weekly/ to make this live)")
-        # ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
+        # ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and the donor clone/archive/2026-10-31/system/tools/conformance-lab/ (the donor repo copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 
     print("SELFTEST:", "PASS" if ok else "FAIL")
     return 0 if ok else 1

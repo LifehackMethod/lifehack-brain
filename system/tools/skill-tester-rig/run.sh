@@ -296,7 +296,7 @@ else
       deny_ok=1
       grep -vxF -e "$STANDIN_R/.seam-guard-probe-$RIG_GUARD_TAG" -e "$GUARD_OUT/.seam-guard-probe-$RIG_GUARD_TAG" \
         "$HO_RUN_DIR/.guard-denials.raw" > "$HO_RUN_DIR/guard-denials.txt"
-      # TR2.0b ruling (claudeops-a0, 2026-11-01): writes listed in guard-ruled-denies.txt (the cross-session socket,
+      # TR2.0b ruling (maintainer-a0, 2026-11-01): writes listed in guard-ruled-denies.txt (the cross-session socket,
       # the fswatch probe) STAY DENIED; they are logged by name as SEAM-DENIED-RULED and do not fail the run. Every
       # other denial is SEAM-DENIED and fails it. Nothing here allows anything: the kernel already refused the write.
       while IFS= read -r p; do

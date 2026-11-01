@@ -22,8 +22,8 @@ trap 'lhb_journal_fire "$?" "announce_plan_write.sh" "UserPromptSubmit" "" 2>/de
 #      (the blocking guard_plan_fork.sh was RETIRED — see its banner). Change the RULE there.
 # FAIL_POSTURE: degrade-safe — any error -> exit 0 silent (never wedge a turn).
 # UPDATED: 2026-07-15 (new — F1.1/F1.2/F1.3)
-# PORTED: 2026-08-13 from claudeops-config — the pm_flag.sh call below was a literal
-#      `~/claudeops-config/...` path; it now resolves from this hook's own location. Everything
+# PORTED: 2026-08-13 from the donor repo — the pm_flag.sh call below was a literal
+#      `the donor clone/...` path; it now resolves from this hook's own location. Everything
 #      else ($HOME/.claude/plans etc.) is the harness's own per-user global state, not
 #      operator-specific, so it is left as $HOME-derived, matching plan_flag.sh's existing baseline.
 # ─────────────────────────────────────────────────────────────────────────────

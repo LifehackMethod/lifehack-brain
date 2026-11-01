@@ -2,7 +2,7 @@
 """
 ingest_coverage.py — the deterministic completeness GATE for ingestion runners.
 
-PORTED (2026-08-14) from claudeops-config's system/tools/ingest_coverage.py. This session's identity
+PORTED (2026-08-14) from the donor repo's system/tools/ingest_coverage.py. This session's identity
 grep found zero personal/account content — the only change from the donor is `NOTIFY`'s path, which
 moved because `notify-send.sh` lives at `shared/notify/notify-send.sh` in this repo, not
 co-located in `system/tools/` (see that file's own port for why).

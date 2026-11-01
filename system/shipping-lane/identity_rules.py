@@ -84,6 +84,10 @@ IDENTITY_ENV = "SHIP_IDENTITY"
 REWRITES_ENV = "SHIP_REWRITES"
 IDENTITY_RELPATH = os.path.join("config", "ship-identity.md")
 REWRITES_RELPATH = os.path.join("config", "ship-rewrites.json")
+# The person's own rewrite rules may also live with their code: <personal-code>/shipping-lane/rewrite-rules.json
+# (found through the personal-code pointer, shared/personal_code_root.py). The plugin ships no rewrite rules of
+# its own: a rename from one person's private names to public ones is that person's data, not the product's.
+PERSONAL_REWRITES_RELPATH = os.path.join("shipping-lane", "rewrite-rules.json")
 
 OK, CANNOT_EVALUATE = 0, 2
 
@@ -200,10 +204,31 @@ def identity_path(notes_root=None):
     return os.path.join(root, IDENTITY_RELPATH)
 
 
-def rewrites_path(notes_root=None):
+def _personal_code_root():
+    """The personal code folder, or None (the pointer is unset or names a missing folder)."""
+    shared = os.path.abspath(os.path.join(HERE, "..", "..", "shared"))
+    if shared not in sys.path:
+        sys.path.insert(0, shared)
+    try:
+        import personal_code_root                             # noqa: E402
+        source, path = personal_code_root.resolve_personal_code_root()
+    except Exception:
+        return None
+    return path if source in ("pointer", "default") else None
+
+
+def rewrites_path(notes_root=None, personal_root=None):
+    """Where the optional rewrite rules are, in order: $SHIP_REWRITES, then
+    <personal-code>/shipping-lane/rewrite-rules.json when that file exists, then
+    <notes>/config/ship-rewrites.json. None when nothing resolves (no rules: legitimate)."""
     env = os.environ.get(REWRITES_ENV)
     if env:
         return env
+    proot = personal_root if personal_root is not None else _personal_code_root()
+    if proot:
+        candidate = os.path.join(proot, PERSONAL_REWRITES_RELPATH)
+        if os.path.isfile(candidate):
+            return candidate
     root = notes_root if notes_root is not None else _notes_root()
     if not root:
         return None
@@ -424,7 +449,7 @@ def selftest():
             report("...and the refusal names the file and how to make one",
                    "WHERE IT GOES" in str(e) and "--write-example" in str(e))
 
-        with open(idf, "w") as fh:
+        with open(idf, "w", encoding="utf-8") as fh:
             fh.write("# only comments\n\n   \n")
         try:
             compose(identity_file=idf)
@@ -434,7 +459,7 @@ def selftest():
             report("...and says why an empty personal tier is the danger",
                    "reports every file clean" in str(e))
 
-        with open(idf, "w") as fh:
+        with open(idf, "w", encoding="utf-8") as fh:
             fh.write("Wren Oakley\nAl\n")
         try:
             compose(identity_file=idf)
@@ -443,7 +468,7 @@ def selftest():
             report("a too-short term refuses rather than being dropped", True)
             report("...naming the offending line", "'Al'" in str(e))
 
-        with open(idf, "w") as fh:
+        with open(idf, "w", encoding="utf-8") as fh:
             fh.write("Wren Oakley\n"
                      "This file is where I keep the terms that must never be published.\n")
         try:
@@ -452,13 +477,13 @@ def selftest():
         except IdentityMissing as e:
             report("a prose line refuses rather than becoming a rule", True)
             report("...and says to comment it out", "'#' at the start" in str(e))
-        with open(idf, "w") as fh:
+        with open(idf, "w", encoding="utf-8") as fh:
             fh.write("Whitfield Contracting Limited Partnership\n")
         rules_ok, _, terms_ok = compose(identity_file=idf)
         report("a genuine four-word business name still compiles", len(terms_ok) == 1)
 
         print("\nCOMPILATION -- three shapes, detected")
-        with open(idf, "w") as fh:
+        with open(idf, "w", encoding="utf-8") as fh:
             fh.write("# mine\nWren Oakley\nOakley\nwoakley\n"
                      "wren.oakley@example.com\nCloudStorage/OakleyDrive\n\nOakley\n")
         rules, path_used, terms = compose(identity_file=idf)
@@ -507,7 +532,7 @@ def selftest():
                    for r in rules if "CloudStorage" in r.get("pattern", "")))
 
         print("\nESCAPING -- a term is a literal, never a regex")
-        with open(idf, "w") as fh:
+        with open(idf, "w", encoding="utf-8") as fh:
             fh.write("C++ Shop\na.b.consulting\n")
         rules2, _, _ = compose(identity_file=idf)
         rx_cpp = re.compile(next(r["pattern"] for r in rules2 if "identity-01" in r["id"]))
@@ -520,13 +545,13 @@ def selftest():
         report("no rewrite file -> an empty list, not an error",
                load_rewrites(os.path.join(td, "nope.json")) == [])
         rwf = os.path.join(notes, REWRITES_RELPATH)
-        with open(rwf, "w") as fh:
+        with open(rwf, "w", encoding="utf-8") as fh:
             json.dump([{"id": "b", "mode": "regex", "pattern": "Proj", "to": "P", "order": 5},
                        {"id": "a", "mode": "regex", "pattern": "ProjX", "to": "PX", "order": 2}], fh)
         rw = load_rewrites(rwf)
         report("declared order is honoured and made 1..N",
                [r["id"] for r in rw] == ["a", "b"] and [r["order"] for r in rw] == [1, 2])
-        with open(rwf, "w") as fh:
+        with open(rwf, "w", encoding="utf-8") as fh:
             json.dump([{"id": "bad", "pattern": "([", "to": "x"}], fh)
         try:
             load_rewrites(rwf)
@@ -534,8 +559,29 @@ def selftest():
         except IdentityMissing:
             report("an uncompilable rewrite pattern refuses", True)
 
+        print("\nREWRITE TIER -- found through the personal-code pointer")
+        pc = os.path.join(td, "personal")
+        os.makedirs(os.path.join(pc, "shipping-lane"))
+        report("no personal file -> falls back to <notes>/config",
+               rewrites_path(notes_root=notes, personal_root=pc) == os.path.join(notes, REWRITES_RELPATH))
+        pfile = os.path.join(pc, PERSONAL_REWRITES_RELPATH)
+        with open(pfile, "w", encoding="utf-8") as fh:
+            json.dump([{"id": "p", "mode": "regex", "pattern": "Mine", "to": "Ours"}], fh)
+        report("a personal rewrite file wins over <notes>/config",
+               rewrites_path(notes_root=notes, personal_root=pc) == pfile)
+        report("the personal rules load", [r["id"] for r in load_rewrites(pfile)] == ["p"])
+        _saved = os.environ.pop(REWRITES_ENV, None)
+        os.environ[REWRITES_ENV] = os.path.join(td, "explicit.json")
+        report("$SHIP_REWRITES still wins over both",
+               rewrites_path(notes_root=notes, personal_root=pc) == os.path.join(td, "explicit.json"))
+        os.environ.pop(REWRITES_ENV)
+        if _saved is not None:
+            os.environ[REWRITES_ENV] = _saved
+        report("the plugin ships no rewrite rules of its own",
+               not os.path.exists(os.path.join(HERE, "rewrite-rules.json")))
+
         print("\nEND TO END -- through the real CLI")
-        with open(idf, "w") as fh:
+        with open(idf, "w", encoding="utf-8") as fh:
             fh.write("Wren Oakley\n")
         out = os.path.join(td, "eff.json")
         import subprocess
@@ -543,7 +589,7 @@ def selftest():
                              "--identity", idf, "--out-refuse", out, "--quiet"]).returncode
         report("CLI with an identity file -> exit 0 and a file", rc == OK and os.path.isfile(out))
         if os.path.isfile(out):
-            with open(out) as fh:
+            with open(out, encoding="utf-8") as fh:
                 eff = json.load(fh)
             report("the written set carries both tiers",
                    any(r["tier"] == "1-secret" for r in eff)
@@ -565,7 +611,8 @@ def main(argv=None):
                     % (IDENTITY_ENV, IDENTITY_RELPATH))
     ap.add_argument("--base", help="the shipped generic rule set (default: %s)" % BASE_RULES)
     ap.add_argument("--rewrites", help="your optional rewrite rules (default: $%s, then "
-                    "<notes>/%s)" % (REWRITES_ENV, REWRITES_RELPATH))
+                    "<personal-code>/%s, then <notes>/%s)" % (REWRITES_ENV, PERSONAL_REWRITES_RELPATH,
+                                                              REWRITES_RELPATH))
     ap.add_argument("--notes-root", help="resolve <notes> as this, instead of asking the resolver")
     ap.add_argument("--out-refuse", help="write the effective refuse rules here")
     ap.add_argument("--out-rewrite", help="write the effective rewrite rules here")

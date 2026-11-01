@@ -1,7 +1,7 @@
 # label_manifest.yaml — the guards this repo's hook layer claims are enforced, + how to
 # FIRE-TEST each one. Read by label_checker.py (organism-audit Feature 1.5).
 #
-# PORTED 2026-08-14 from claudeops-config's system/tools/organism/label_manifest.yaml. This is
+# PORTED 2026-08-14 from the donor repo's system/tools/organism/label_manifest.yaml. This is
 # NOT a straight copy — every entry was checked against THIS repo's ACTUAL system/hooks/ scripts
 # (not assumed from the donor's names), because several hooks were renamed or rewritten with
 # different scope during their own port. See "WHAT CHANGED IN THIS PORT" below before trusting
@@ -16,7 +16,7 @@
 # Payloads are the EXACT JSON Claude Code puts on a hook's stdin. `~`, `$HOME` and `$REPO`
 # expand (label_checker.py exports `REPO` into the environment at import time — see that
 # module's docstring — so a payload can point INSIDE this checkout without hardcoding a clone
-# folder name; the donor manifest assumed the clone always sat at `$HOME/claudeops-config`,
+# folder name; the donor manifest assumed the clone always sat at the donor clone's own folder,
 # which is a personal, single-machine assumption this product cannot make).
 #
 # Violations are INERT — the gate blocks before anything runs, so firing is side-effect-free.
@@ -163,9 +163,9 @@
 #    until `<notes>/config/` is populated — that is the fixture's honest limit, not a bug in
 #    the guard or the checker.**
 #
-# ⚖ ENV VAR RENAME, applied wherever it appeared in a payload: `CLAUDEOPS_SKIP_*` ->
-#    `LIFEHACK_SKIP_*` (ingest_gate_enforce.sh); `CLAUDEOPS_SHEET_CONFIRM` ->
-#    `LIFEHACK_SHEET_CONFIRM` (both sheet guards). `CLAUDEOPS_DRIVE`-style Drive paths were
+# ⚖ ENV VAR RENAME, applied wherever it appeared in a payload: the donor's `<OLD>_SKIP_*` ->
+#    `LIFEHACK_SKIP_*` (ingest_gate_enforce.sh); the donor's `<OLD>_SHEET_CONFIRM` ->
+#    `LIFEHACK_SHEET_CONFIRM` (both sheet guards). Donor Drive-env-style paths were
 #    replaced with synthetic `/tmp/...` paths carrying the same matched PATH SEGMENT
 #    (`state/findings/`, `state/debt-ledger.md`, `canon/`) — every guard tested below matches
 #    on a path SUFFIX/SEGMENT, never a root-anchored absolute path, so a synthetic root proves

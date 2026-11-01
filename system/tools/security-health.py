@@ -2,7 +2,7 @@
 """security-health.py — compose `state/status/_security.json` ⛔ not a repo path — written under
 the resolved AI Brain root (`<brain_root>/state/status/_security.json`, see `resolve_brain_root()`
 below), never committed to this repo — for a Security-tab dashboard
-(PORTED 2026-08-14 from claudeops-config's system/tools/security-health.py).
+(PORTED 2026-08-14 from the donor repo's system/tools/security-health.py).
 
 ALIVENESS-STYLE OWNS THIS COMPOSITION. The lane split: SENTINEL owns the verdicts
 (`shared/gate/sentinel_response.py`) + the sanitization hook + writes `sentinel.json`
@@ -36,7 +36,7 @@ Tile schema (`state/status/_security.json`):
     summary: {updated_at, ok_channels, total_channels} }
 
 WHAT CHANGED IN THIS PORT (generalisation, not a redesign):
-  · `CLONE` was a hardcoded `~/claudeops-config` (the donor repo's OWN folder name on the
+  · `CLONE` was a hardcoded `the donor clone` (the donor repo's OWN folder name on the
     donor's machine) — replaced with `CODE_ROOT`, derived from this script's own location,
     the same pattern every other ported tool in this repo uses.
   · `DRIVE`/`STATUS` moved from a hardcoded personal cloud-drive path to the resolved brain

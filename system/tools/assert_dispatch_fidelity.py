@@ -46,20 +46,20 @@ import re
 import sys
 
 # fanout-lab/arm_lib.py is the ONE shared contract with compose_arm.py (S13.20/S13.21 —
-# ⚠ CLEANUP-PASS 2026-10-31: fanout-lab/ moved to ~/claudeops-config/archive/2026-10-31/system/tools/fanout-lab/ (the claudeops-config copy; no lifehack-v2 copy ever existed); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
+# ⚠ CLEANUP-PASS 2026-10-31: fanout-lab/ moved to the donor clone/archive/2026-10-31/system/tools/fanout-lab/ (the the donor repo copy; no lifehack-v2 copy ever existed); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 # the composer emits exactly what this checker validates). Imported lazily-but-eagerly here
 # (legacy --dispatch-dir-only mode never touches it) so an arm-aware run can never drift from
 # what actually composed the dispatch: same region-splitting code on both sides of the seam.
 # ⚠ REPOINTED IN MIGRATION (T9.7a, 2026-08-15): `system/tools/fanout-lab/` is NOT ported yet
-# ⚠ CLEANUP-PASS 2026-10-31: fanout-lab/ moved to ~/claudeops-config/archive/2026-10-31/system/tools/fanout-lab/ (the claudeops-config copy; no lifehack-v2 copy ever existed); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
+# ⚠ CLEANUP-PASS 2026-10-31: fanout-lab/ moved to the donor clone/archive/2026-10-31/system/tools/fanout-lab/ (the the donor repo copy; no lifehack-v2 copy ever existed); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 # (it lands separately, T9.8c, with fresh fixtures — never copied). Legacy mode (--dispatch-dir
 # with no --arm-spec, the ONLY mode planning-weekly's prompt actually calls) never touches
 # arm_lib, so the import is now OPTIONAL: it succeeds once fanout-lab lands, and until then
-# ⚠ CLEANUP-PASS 2026-10-31: fanout-lab/ moved to ~/claudeops-config/archive/2026-10-31/system/tools/fanout-lab/ (the claudeops-config copy; no lifehack-v2 copy ever existed); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
+# ⚠ CLEANUP-PASS 2026-10-31: fanout-lab/ moved to the donor clone/archive/2026-10-31/system/tools/fanout-lab/ (the the donor repo copy; no lifehack-v2 copy ever existed); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 # arm-aware mode (--arm-spec) fails loud with CANNOT EVALUATE naming the missing module,
 # instead of crashing the whole tool — including legacy mode — at import time.
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "fanout-lab"))
-# ⚠ CLEANUP-PASS 2026-10-31: fanout-lab/ moved to ~/claudeops-config/archive/2026-10-31/system/tools/fanout-lab/ (the claudeops-config copy; no lifehack-v2 copy ever existed); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
+# ⚠ CLEANUP-PASS 2026-10-31: fanout-lab/ moved to the donor clone/archive/2026-10-31/system/tools/fanout-lab/ (the the donor repo copy; no lifehack-v2 copy ever existed); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 try:
     import arm_lib  # noqa: E402
 except ImportError as _arm_lib_import_error:
@@ -322,7 +322,7 @@ def format_substrings(substrings) -> str:
 #
 # WHY: the static table above hardcodes ONE correct coverage-ledger text (the live
 # skills/cal-weekly/prompts/map-agents/*.md wording). The fanout-lab experiment runs ~15
-# ⚠ CLEANUP-PASS 2026-10-31: fanout-lab/ moved to ~/claudeops-config/archive/2026-10-31/system/tools/fanout-lab/ (the claudeops-config copy; no lifehack-v2 copy ever existed); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
+# ⚠ CLEANUP-PASS 2026-10-31: fanout-lab/ moved to the donor clone/archive/2026-10-31/system/tools/fanout-lab/ (the the donor repo copy; no lifehack-v2 copy ever existed); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 # arms that deliberately VARY the coverage ledger (enumerated / declarative-one-line /
 # absent — see compose_arm.py). Graded against the static table, an arm that removes the
 # ledger on purpose would FAIL — not because the arm is wrong, but because the checker
@@ -456,7 +456,7 @@ def run_check_arm_aware(dispatch_dir: str, arm_spec_path: str) -> int:
               "system/tools/fanout-lab/arm_lib.py, which is not present in this tree "
               f"({_ARM_LIB_IMPORT_ERROR}). fanout-lab lands separately (T9.8c); the legacy "
               "--dispatch-dir-only mode (omit --arm-spec) does not need it and is unaffected.")
-        # ⚠ CLEANUP-PASS 2026-10-31: fanout-lab/ moved to ~/claudeops-config/archive/2026-10-31/system/tools/fanout-lab/ (the claudeops-config copy; no lifehack-v2 copy ever existed); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
+        # ⚠ CLEANUP-PASS 2026-10-31: fanout-lab/ moved to the donor clone/archive/2026-10-31/system/tools/fanout-lab/ (the the donor repo copy; no lifehack-v2 copy ever existed); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
         return 2
     try:
         with open(arm_spec_path, encoding="utf-8") as fh:

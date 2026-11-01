@@ -3,7 +3,7 @@
 _lhb_src="${BASH_SOURCE[0]}"; case "$_lhb_src" in */*) _lhb_dir="${_lhb_src%/*}" ;; *) _lhb_dir=. ;; esac; . "$_lhb_dir/../system/hooks/lib/journal.sh" 2>/dev/null || lhb_journal_fire() { :; }
 trap 'lhb_journal_fire "$?" "guard_harness_write.sh" "PreToolUse" "Write|Edit" 2>/dev/null || true' EXIT
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
-# WHY: this ships in the PUBLIC repo (LifehackMethod/lifehack-brain), not ClaudeOps. A student's
+# WHY: this ships in the PUBLIC repo (LifehackMethod/lifehack-brain), not the private repo. A student's
 #      install lands the harness in a folder they control, and nothing stops them saving their own
 #      work, or a customization, straight into that tree. Two DISTINCT ways that goes wrong, and a
 #      student notices NEITHER at the moment it happens:
@@ -32,7 +32,7 @@ trap 'lhb_journal_fire "$?" "guard_harness_write.sh" "PreToolUse" "Write|Edit" 2
 # guard_harness_write.sh — PreToolUse hook (matcher: Write|Edit)
 #
 # ⚠ Ships in hooks/ at the PUBLIC repo root (LifehackMethod/lifehack-brain), NOT under
-#   system/hooks/ — that path is ClaudeOps's own tree and this hook is not a ClaudeOps hand-apply.
+#   system/hooks/ — that path is the private repo's own tree and this hook is not a the private repo hand-apply.
 #   See hooks/hooks.json entry in the deliverable doc for the exact registration.
 
 set -u

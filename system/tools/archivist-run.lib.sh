@@ -124,7 +124,7 @@ run_archivist() {
 
   # 2) SINGLE-INSTANCE LOCK (mkdir atomic; stale-steal after watchdog+buffer).
   local lockdir steal
-  lockdir="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/claudeops-${ARCH_LABEL}.lock"
+  lockdir="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/lifehack-${ARCH_LABEL}.lock"
   steal=$(( ARCH_WATCHDOG + 300 ))
   . "$CODE_ROOT/system/tools/runner-lock.lib.sh" || { _alog "FATAL: cannot source runner-lock.lib.sh"; return 1; }
   # 5.9(h): pid-recording lock; a live owner is a stand-down (75, not the [F2] return 0), a corrupt lock is refused and named (1).

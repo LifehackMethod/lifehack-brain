@@ -3,17 +3,17 @@
 _lhb_src="${BASH_SOURCE[0]}"; case "$_lhb_src" in */*) _lhb_dir="${_lhb_src%/*}" ;; *) _lhb_dir=. ;; esac; . "$_lhb_dir/lib/journal.sh" 2>/dev/null || lhb_journal_fire() { :; }
 trap 'lhb_journal_fire "$?" "guard_harness_writeback.sh" "PreToolUse" "Write|Edit" 2>/dev/null || true' EXIT
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
-# WHY: ClaudeOps is the operator's PRIVATE repo. lifehack-brain (github.com/LifehackMethod/lifehack-brain,
-#      checked out locally at ~/lifehack-brain) is the PUBLIC student harness. ClaudeOps currently
+# WHY: the maintainer's personal code folder is a PRIVATE repo. lifehack-brain (github.com/LifehackMethod/lifehack-brain,
+#      checked out locally at ~/lifehack-brain) is the PUBLIC student harness. The private repo once
 #      contains a duplicated copy of most of the harness, and that duplication is actively being
-#      removed lane by lane (see migration-notes/). Once a harness file's ClaudeOps copy is deleted,
+#      removed lane by lane (see migration-notes/). Once a harness file's private copy is deleted,
 #      NOTHING must be able to write it back — an agent "helpfully" restoring a file it thinks went
 #      missing, or a merge/copy operation reintroducing it, would silently re-create the exact
 #      duplication this migration exists to end. Built as TASK N2 (plan task D3), 2026-08-23.
-# GUARDS: a Write or Edit inside this ClaudeOps checkout whose target path is TRACKED in the public
+# GUARDS: a Write or Edit inside the checkout this hook lives in, whose target path is TRACKED in the public
 #      lifehack-brain repo (i.e. `git ls-files` in ~/lifehack-brain finds it at that same relative
 #      path). That is a harness file — block it. A path lifehack-brain does not track is presumed
-#      personal/private ClaudeOps material — allow it.
+#      personal/private material — allow it.
 # REDIRECT: harness changes belong in ~/lifehack-brain itself (the public repo), on a branch,
 #      offered back as a PR — never written into this private repo. See INSTALL.md and
 #      system/organism/elements/where-things-live.md ("For everyone -> this repo [lifehack-brain],
@@ -51,6 +51,16 @@ trap 'lhb_journal_fire "$?" "guard_harness_writeback.sh" "PreToolUse" "Write|Edi
 #                          verified-clean ALLOW or a verified-harness BLOCK.
 
 INPUT=$(cat)
+
+# ROLE (2026-11-01, scrub part 2): this guard only means something on a machine that MAINTAINS the
+# harness, i.e. one that holds the public harness checkout ($LIFEHACK_BRAIN_ROOT, else ~/lifehack-brain,
+# with a .git). Anywhere else (every student install) there is no public repo to write a harness file
+# back into, so the guard is a NO-OP: exit 0 at once. Before this it failed CLOSED on every student
+# write under the plugin folder ("the public lifehack-brain repo is not present"), which was wrong, not safe.
+BRAIN_ROOT="${LIFEHACK_BRAIN_ROOT:-$HOME/lifehack-brain}"
+if [ ! -d "$BRAIN_ROOT/.git" ]; then
+  exit 0
+fi
 # SANDBOX (2026-10-28, Enver): the maintainer's V2 checkout is a working copy, not a student install.
 # Writes inside it are allowed only when ALL hold: the sandbox is marked (LIFEHACK_SANDBOX=V2 from the V2
 # launchers, OR the local marker file ~/lifehack-v2/.lifehack-sandbox, excluded from git via .git/info/exclude
@@ -72,7 +82,7 @@ except Exception:
   fi
 fi
 
-# ── Resolve THIS repo's root (ClaudeOps), the same $0-relative-first pattern as
+# ── Resolve THIS repo's root (where this hook lives), the same $0-relative-first pattern as
 #    guard_write_paths.sh — CLAUDE_PROJECT_DIR is the session's launch cwd, not necessarily the repo
 #    that declares this hook, so $0's own on-disk location is authoritative and CLAUDE_PROJECT_DIR
 #    is only the fallback.
@@ -81,7 +91,7 @@ _SELF_REPO="${_HOOKDIR%/system/hooks}"
 [ -n "$_SELF_REPO" ] && [ -d "$_SELF_REPO/system/hooks" ] || _SELF_REPO="${CLAUDE_PROJECT_DIR:-}"
 
 if [ -z "$_SELF_REPO" ] || [ ! -d "$_SELF_REPO" ]; then
-  printf '%s\n' '{"decision":"block","reason":"CANNOT-DETERMINE: guard_harness_writeback could not resolve its own ClaudeOps repo root (neither $0-relative nor CLAUDE_PROJECT_DIR resolved to a real directory). WHY: without a repo root there is no way to compute the relative path lifehack-brain would be asked about, so ALLOW would be a guess, not a verified answer. REDIRECT: retry; if this persists the hook install is broken. RULE: system/hooks/guard_harness_writeback.sh header."}' >&2
+  printf '%s\n' '{"decision":"block","reason":"CANNOT-DETERMINE: guard_harness_writeback could not resolve its own repo root (neither $0-relative nor CLAUDE_PROJECT_DIR resolved to a real directory). WHY: without a repo root there is no way to compute the relative path lifehack-brain would be asked about, so ALLOW would be a guess, not a verified answer. REDIRECT: retry; if this persists the hook install is broken. RULE: system/hooks/guard_harness_writeback.sh header."}' >&2
   exit 2
 fi
 
@@ -123,7 +133,7 @@ esac
 
 REL_PATH="${FILE_PATH#"$_SELF_REPO"/}"
 if [ -z "$REL_PATH" ] || [ "$REL_PATH" = "$FILE_PATH" ]; then
-  printf '%s\n' "{\"decision\":\"block\",\"reason\":\"CANNOT-DETERMINE: guard_harness_writeback resolved a target under the ClaudeOps repo root but could not compute a relative path to check against lifehack-brain ($FILE_PATH). RULE: system/hooks/guard_harness_writeback.sh header.\"}" >&2
+  printf '%s\n' "{\"decision\":\"block\",\"reason\":\"CANNOT-DETERMINE: guard_harness_writeback resolved a target under its own repo root but could not compute a relative path to check against lifehack-brain ($FILE_PATH). RULE: system/hooks/guard_harness_writeback.sh header.\"}" >&2
   exit 2
 fi
 
@@ -131,9 +141,7 @@ fi
 #    checkout; the default matches this machine's actual layout (~/lifehack-brain, confirmed to
 #    have origin = github.com/LifehackMethod/lifehack-brain.git this session). Never a hand-typed
 #    path list of FILES — this is the one root path the derivation needs to start from.
-BRAIN_ROOT="${LIFEHACK_BRAIN_ROOT:-$HOME/lifehack-brain}"
-
-if [ ! -d "$BRAIN_ROOT/.git" ]; then
+if [ ! -d "$BRAIN_ROOT/.git" ]; then   # re-checked: the ROLE test above already exited 0 when absent
   printf '%s\n' "{\"decision\":\"block\",\"reason\":\"CANNOT-DETERMINE: the public lifehack-brain repo is not present at $BRAIN_ROOT (no .git there), so guard_harness_writeback cannot ask whether '$REL_PATH' is a harness file. WHY: with no public repo to check against, allowing would be an unverified guess and blocking-as-harness would be an unverified accusation -- neither is honest, so this reports its own outcome instead. REDIRECT: point LIFEHACK_BRAIN_ROOT at a real lifehack-brain checkout, or clone one, then retry. RULE: system/hooks/guard_harness_writeback.sh header (FAIL_POSTURE: closed).\"}" >&2
   exit 2
 fi
@@ -147,7 +155,7 @@ GIT_RC=$?
 
 case "$GIT_RC" in
   0)
-    printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: '$REL_PATH' is tracked in the PUBLIC lifehack-brain repo ($BRAIN_ROOT) -- this write targets a harness file inside the PRIVATE ClaudeOps repo. WHY: ClaudeOps still carries a duplicated copy of most of the harness that is actively being removed (migration-notes/); writing a harness file back here would silently re-create that duplication. REDIRECT: make this change in $BRAIN_ROOT itself, on a branch, offered back as a PR -- never written into ClaudeOps. RULE: system/organism/elements/where-things-live.md ('for everyone -> this repo, on a branch, offered back as a PR'); membership was DERIVED via git ls-files against $BRAIN_ROOT just now, not read from a list.\"}" >&2
+    printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: '$REL_PATH' is tracked in the PUBLIC lifehack-brain repo ($BRAIN_ROOT) -- this write targets a harness file inside the PRIVATE repo. WHY: a private repo may still carry a duplicated copy of most of the harness that is actively being removed (migration-notes/); writing a harness file back here would silently re-create that duplication. REDIRECT: make this change in $BRAIN_ROOT itself, on a branch, offered back as a PR -- never written into the private repo. RULE: system/organism/elements/where-things-live.md ('for everyone -> this repo, on a branch, offered back as a PR'); membership was DERIVED via git ls-files against $BRAIN_ROOT just now, not read from a list.\"}" >&2
     exit 2
     ;;
   1)

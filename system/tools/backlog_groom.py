@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """backlog_groom.py — the Backlog Authority's READ-ONLY engine (PORTED 2026-08-14 from
-claudeops-config's system/tools/backlog_groom.py, organism Window 4).
+the donor repo's system/tools/backlog_groom.py, organism Window 4).
 
 The 4th organ's brain: *"Is the system tracking itself honestly?"* It reads the typed system
 backlog (`<brain>/state/debt-ledger.md`), every desk's `open-loops.md` (enumerated from a

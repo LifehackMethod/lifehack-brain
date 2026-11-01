@@ -8,7 +8,7 @@ WHY: the meal-2 prompts said "add a tool to rigdesk" (a Drive desk), which steer
 SAFETY: never pushes. A commit a session makes in a real repo is reset away (soft) only if HEAD moved and the commit is the session's; reported either way.
 USAGE: rig_live_free.py run --cases cases/meal-roundA-live.jsonl --label L [--only RE] [--scratch DIR] [--env K=V ...]
   --scratch DIR: each session gets its own empty cwd DIR/<case id> (not a repo), files it creates there are scored as its own and copied
-                 to <label>-files/<id>/ before removal. Without it the cwd is ClaudeOps (Round A behaviour).
+                 to <label>-files/<id>/ before removal. Without it the cwd is the real personal code folder (Round A behaviour).
   --env K=V:     extra environment for the headless child only (e.g. ROUNDB_BACK_DOOR=on); hooks inherit it.
 """
 import argparse, glob, hashlib, json, os, re, shlex, shutil, subprocess, sys, tempfile, time
@@ -19,7 +19,21 @@ import rig_meal as rm  # noqa: E402
 import rig_live_score as ls  # noqa: E402
 
 V2 = os.path.expanduser("~/lifehack-v2")
-OPS = os.path.expanduser("~/.claude/skills/ClaudeOps")
+def _real_personal_code():
+    """The REAL personal code folder of whoever runs the rig, read from their pointer (shared/personal_code_root.py)
+    at import time, before any session gets a throwaway HOME. The rig names no person's folder."""
+    shared = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(HERE))), "shared")
+    if shared not in sys.path:
+        sys.path.insert(0, shared)
+    try:
+        import personal_code_root
+        source, path = personal_code_root.resolve_personal_code_root()
+    except Exception:
+        source, path = None, None
+    return path if source in ("pointer", "default") and path else os.path.join(os.path.expanduser("~"), "lifehack-personal-code")
+
+
+OPS = _real_personal_code()   # the real personal code folder: never written by a live session
 SUFFIX = (" Do not edit jobs.md or install anything, and do not push or send anything real."
           " If a tool call is denied or blocked, read the message and do what it says, then continue.")
 # Build cases get a neutral suffix: "install anything" contradicted the default skill location (ruling P-50) and made the model keep the skill out of ~/.claude/skills (D-B01).
@@ -82,7 +96,7 @@ def mentioned(stream_text, p):
 
 
 def fresh_personal(path, student=False):
-    """A throwaway personal code folder (git init, empty own list, tools/ skills/): the live sessions must never touch the real ClaudeOps.
+    """A throwaway personal code folder (git init, empty own list, tools/ skills/): the live sessions must never touch the real personal code folder.
     student=True: exactly what bootstrap.py leaves a real student - an EMPTY folder with `git init` (no tools/, skills/, own list yet; the first
     kept tool creates the list)."""
     assert os.path.basename(os.path.dirname(os.path.abspath(path))) == "rig-iso-home", "refusing to wipe a folder that is not a throwaway personal-code folder: " + path
@@ -353,7 +367,7 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
                 os.makedirs(os.path.dirname(dst), exist_ok=True)
                 shutil.copy(p, dst)
     # DELETE ONLY under this case's own throwaway dirs (its cwd, its throwaway personal-code folder, its throwaway HOME). Anything else - a file in the
-    # real ClaudeOps / V2 / notes, however "new" and "mentioned" it looks - is another window's work or an escape: never deleted, never reverted, only listed.
+    # real personal code folder / V2 / notes, however "new" and "mentioned" it looks - is another window's work or an escape: never deleted, never reverted, only listed.
     allowed = [os.path.realpath(cwd)] + ([os.path.realpath(personal), os.path.realpath(home)] if isolated else [])
     safe = lambda q: any(os.path.realpath(q).startswith(r + os.sep) for r in allowed)
     left_alone = []
@@ -446,7 +460,7 @@ def main():
     if os.path.exists(pptr):
         pc = os.path.realpath(os.path.expanduser(open(pptr, encoding="utf-8").readline().strip()))
         if pc == real_ops or pc.startswith(real_ops + os.sep):
-            sys.exit("REFUSED: the personal-code pointer resolves to the real ClaudeOps (%s); live sessions must use a throwaway personal-code folder" % pc)
+            sys.exit("REFUSED: the personal-code pointer resolves to the real personal code folder (%s); live sessions must use a throwaway personal-code folder" % pc)
     _made = isolate_notes(envd, rm.notes_root())
     # Round D post-verdict (P06): the Enver setup is the maintainer, whose real notes carry config/ship-identity.md (the allow-list guard_commit_identity.sh reads, fail-closed).
     # The throwaway notes root had none, so every rig commit was denied "ship-identity.md does not exist" - a rig artifact. Give the Enver setup one listing the fixture repos' own
@@ -456,7 +470,7 @@ def main():
         with open(os.path.join(_made, "config", "ship-identity.md"), "w", encoding="utf-8") as f:
             f.write("# rig throwaway identity allow-list (maintainer setup)\nexam@example.invalid\n")
     if not a.scratch:
-        sys.exit("REFUSED: --scratch is required (without it the session would run inside the real ClaudeOps)")
+        sys.exit("REFUSED: --scratch is required (without it the session would run inside the real personal code folder)")
     a.env = ["%s=%s" % kv for kv in envd.items()]
     cases = [c for c in rm.load_all(a.cases) if not a.only or re.search(a.only, c["id"])]
     notes = rm.notes_root()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 fault_ledger.py — the durable memory behind this repo's alerting (PORTED 2026-08-14 from
-claudeops-config's system/tools/fault_ledger.py, organism-audit S1.2).
+the donor repo's system/tools/fault_ledger.py, organism-audit S1.2).
 
 THE BUG THIS EXISTS TO KILL
 ---------------------------
@@ -41,14 +41,14 @@ STORES
 
 WHAT CHANGED IN THIS PORT (generalisation, not a redesign)
 ------------------------------------------------------------
-  · STATE_DIR moved from `~/.local/state/claudeops` (donor, machine-local but product-named) to
+  · STATE_DIR moved from `a product-named state folder` (donor, machine-local but product-named) to
     `~/.config/lifehack` — this repo's ALREADY-established machine-local config home (token,
     creds, pause-file, brain-root pointer, `*-last-seen` markers all already live there; see
     `shared/brain_root.py` / `system/hooks/ingest_gate_enforce.sh`'s own docstrings). Not a new
     location — the existing one, extended.
   · The Drive incident mirror (donor: a hardcoded personal Drive-mount path with the account email
     baked into its name, in the mount-point shape macOS uses for Google Drive — env-overridable via
-    `CLAUDEOPS_DRIVE`) now resolves through `shared/brain_root.py`'s
+    the retired Drive env var) now resolves through `shared/brain_root.py`'s
     `resolve_brain_root()` — the ONE root resolver every other ported store in this repo already
     uses (`emit_finding.py`, `emit_recommendation.py`, ...). `INCIDENT_SHARD_DIR` is `None` when
     no root is configured, and every function that touches it treats that exactly like an

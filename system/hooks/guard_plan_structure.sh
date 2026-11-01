@@ -15,7 +15,7 @@ trap 'lhb_journal_fire "$?" "guard_plan_structure.sh" "PreToolUse" "ExitPlanMode
 # REDIRECT: rewrite the plan as Phase → Feature → Task, each task Execute → Verify &
 #      test → mark ✅. Spec: system/sops/architecture-planning-sop.md (★★ ALWAYS)
 #      + the "Planning Output" rule in CLAUDE.md.
-# UPDATED: 2026-06-19 (ported 2026-08-13 from claudeops-config — verbatim; no hardcoded paths
+# UPDATED: 2026-06-19 (ported 2026-08-13 from the donor repo — verbatim; no hardcoded paths
 #      or identifiers, no machine-gate)
 # ─────────────────────────────────────────────────────────────────────────────
 # guard_plan_structure.sh — PreToolUse hook (matcher: ExitPlanMode)

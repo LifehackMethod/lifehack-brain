@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-label_checker.py — the honesty-label checker (PORTED 2026-08-14 from claudeops-config's
+label_checker.py — the honesty-label checker (PORTED 2026-08-14 from the donor repo's
 system/tools/organism/label_checker.py, organism-audit Feature 1.5).
 
 WHAT: For each guard `label_manifest.yaml` CLAIMS is enforced, this FIRES the named hook
@@ -53,7 +53,7 @@ WHAT CHANGED IN THIS PORT (generalisation, not a redesign):
      `.claude/settings.json` (this repo's real, git-tracked settings file).
   2. `REPO` is exported into the process environment right after it is resolved, so a
      manifest payload can write `$REPO/...` instead of a hardcoded clone folder name —
-     the donor manifest assumed the clone sat at `$HOME/claudeops-config`, which is a
+     the donor manifest assumed the clone sat at `the donor clone's folder`, which is a
      personal, single-machine assumption this product cannot make (a student's clone can
      live anywhere, named anything). `expand()` already ran every payload through
      `os.path.expandvars`, so this is additive: any payload written before this change

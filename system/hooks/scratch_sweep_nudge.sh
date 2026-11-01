@@ -20,8 +20,8 @@ trap 'lhb_journal_fire "$?" "scratch_sweep_nudge.sh" "UserPromptSubmit" "" 2>/de
 #           transcript_path (input + cache_creation + cache_read). Change SWITCH_AT if the model window changes.
 # FAIL_POSTURE: degrade-safe — any error / unreadable transcript -> exit 0 silent.
 # UPDATED: 2026-07-15 (F5.4 switch-warning only; F1.5.2 — also fires off the project brief, not just scratch_flag)
-# PORTED: 2026-08-13 from claudeops-config — the scratch_flag.sh / pm_flag.sh calls below were
-#      literal `~/claudeops-config/...` paths; they now resolve from this hook's own location.
+# PORTED: 2026-08-13 from the donor repo — the scratch_flag.sh / pm_flag.sh calls below were
+#      literal `the donor clone/...` paths; they now resolve from this hook's own location.
 # ─────────────────────────────────────────────────────────────────────────────
 set +e
 INPUT="$(cat 2>/dev/null)"

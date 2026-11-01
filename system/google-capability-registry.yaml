@@ -3,7 +3,7 @@
 # This is the policy source. The .md companion (system/google-policy.md) is a human-readable
 # rendering of it — do not treat the two as independent; edit here first.
 #
-# PORTED (T9.7c, 2026-08-15) from claudeops-config, where this file existed but never shipped to
+# PORTED (T9.7c, 2026-08-15) from the donor repo, where this file existed but never shipped to
 # this repo. Generalized: no multi-desk registry (this product has one operator, not several
 # named desks each with their own access model — see the note where that section used to be,
 # below), no hardcoded personal calendar/label ids. Not machine-parsed anywhere in this repo

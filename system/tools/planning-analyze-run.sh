@@ -100,7 +100,7 @@ require_claude_token planning-analyze || exit 75
 load_gws_credentials_optional planning-analyze
 
 # ── single-instance lock ──
-LOCKDIR="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/claudeops-planning-analyze.lock"
+LOCKDIR="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/lifehack-planning-analyze.lock"
 cleanup(){ rm -rf "$LOCKDIR" 2>/dev/null; }
 . "$CODE_ROOT/system/tools/runner-lock.lib.sh" || { echo "FATAL: cannot source runner-lock.lib.sh" >&2; exit 1; }
 # 5.9(h): the lock records its owner pid. A dead owner's lock is taken at once; a LIVE owner is a stand-down (75), never a 0;

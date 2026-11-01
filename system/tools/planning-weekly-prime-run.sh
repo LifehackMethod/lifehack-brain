@@ -28,7 +28,7 @@
 # shared corpus-window call, ad hoc assembly) is fixed here by calling the SAME
 # `item_store_window.py` step Phase 0's own spec names, and a small INLINE assembler (see
 # below — `fanout-lab/assemble_map.py` is a different lane's port and is not assumed present).
-# ⚠ CLEANUP-PASS 2026-10-31: fanout-lab/ moved to ~/claudeops-config/archive/2026-10-31/system/tools/fanout-lab/ (the claudeops-config copy; no lifehack-v2 copy ever existed); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
+# ⚠ CLEANUP-PASS 2026-10-31: fanout-lab/ moved to the donor clone/archive/2026-10-31/system/tools/fanout-lab/ (the the donor repo copy; no lifehack-v2 copy ever existed); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 #
 # KEPT from the donor (X1/X4 — proven, and named PLANNED GOOD by the donor's own header):
 #   - X1 cadence guard: ISO-week idempotency (map.md's own existence — no separate marker
@@ -175,7 +175,7 @@ fi
 load_gws_credentials_optional planning-weekly-prime
 
 # ── single-instance lock ──
-LOCKDIR="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/claudeops-planning-weekly-prime.lock"
+LOCKDIR="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/lifehack-planning-weekly-prime.lock"
 . "$CODE_ROOT/system/tools/runner-lock.lib.sh" || { echo "FATAL: cannot source runner-lock.lib.sh" >&2; exit 1; }
 # 5.9(h): the lock records its owner pid. A dead owner's lock is taken at once; a LIVE owner is a stand-down (75), never a 0;
 # a lock that is present but unreadable is refused and named (1).
@@ -265,7 +265,7 @@ if [ "$LANDED" -eq 0 ]; then
 fi
 
 # ── MINIMAL INLINE assembler. fanout-lab/assemble_map.py (the fuller, validated assembler
-# ⚠ CLEANUP-PASS 2026-10-31: fanout-lab/ moved to ~/claudeops-config/archive/2026-10-31/system/tools/fanout-lab/ (the claudeops-config copy; no lifehack-v2 copy ever existed); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
+# ⚠ CLEANUP-PASS 2026-10-31: fanout-lab/ moved to the donor clone/archive/2026-10-31/system/tools/fanout-lab/ (the the donor repo copy; no lifehack-v2 copy ever existed); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 # ── Phase 0's real fan-out would use) is a DIFFERENT lane's port and is not assumed present
 # ── here — this concatenates each landed lane under its own heading, in the SAME
 # ── map-agents/_map-format.md shape each lane already wrote to, so the day-of review reads a

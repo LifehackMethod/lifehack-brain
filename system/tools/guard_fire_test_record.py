@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Record guard-fire-test PRODUCER LIVENESS into the machine-local fault ledger — NOT the
-guard-test VERDICT (PORTED 2026-08-14 from claudeops-config's
+guard-test VERDICT (PORTED 2026-08-14 from the donor repo's
 system/tools/guard_fire_test_record.py).
 
 Split out of guard-fire-test-run.sh rather than inlined as a heredoc: the runner is built

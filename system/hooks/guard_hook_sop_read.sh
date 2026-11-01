@@ -109,8 +109,8 @@ trap 'lhb_journal_fire "$?" "guard_hook_sop_read.sh" "PreToolUse" "Bash|Write|Ed
 #      argument again. See system/hooks/tests/test_hook_sop_read_guard.sh.). Previously 2026-08-24
 #      (widened matcher intent + added Write/Edit file_path parsing — see FIXED note above).
 #      Previously 2026-08-03.
-# PORTED (T9.7b, 2026-08-15) from claudeops-config: the REDIRECT message and read_sop.sh call
-# below carried a hardcoded `~/claudeops-config/...` path; both now resolve from this hook's
+# PORTED (T9.7b, 2026-08-15) from the donor repo: the REDIRECT message and read_sop.sh call
+# below carried a hardcoded `the donor clone/...` path; both now resolve from this hook's
 # own location (repo-relative), matching the pattern already used by this repo's other ported
 # hooks (announce_plan_write.sh etc.) — never a hardcoded home directory.
 # ─────────────────────────────────────────────────────────────────────────────

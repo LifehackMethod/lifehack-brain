@@ -345,7 +345,7 @@ def main():
     # one payload during this tool's own build and build into this fix.
     os.environ["REPO"] = str(repo)
     if not (repo / ".git").exists() and not (repo / "system").exists():
-        print(f"ABORT — {repo} does not look like a ClaudeOps-shaped repo (no .git, no system/). "
+        print(f"ABORT — {repo} does not look like a harness-shaped repo (no .git, no system/). "
               f"Nothing was tested.", file=sys.stderr)
         sys.exit(2)
 

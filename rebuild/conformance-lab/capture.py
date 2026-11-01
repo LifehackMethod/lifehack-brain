@@ -18,7 +18,7 @@ GROUND TRUTH (verified 2026-07-24 against 71 real on-disk subagents dirs / 2552 
 
   The <cwd-slug> transform (empirically pinned, NO dash-collapse):
     every non-alphanumeric char in the ABSOLUTE cwd -> '-'.
-    e.g. /Users/x/My Drive/_ClaudeOps -> -Users-x-My-Drive--ClaudeOps   (note the '--')
+    e.g. /Users/x/My Drive/<notes> -> -Users-x-My-Drive--the private repo   (note the '--')
 
 PRE-MORTEM (grounded): the naive path-finding is wrong -> a wrong slug = empty
 glob = silent zero-capture. So resolve_subagent_dir() is a NAMED function with its own

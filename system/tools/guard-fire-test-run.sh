@@ -17,7 +17,7 @@
 #      ~/.config/lifehack/guard-fire-test/last-run.json. Ledger row: producer
 #      `guard-fire-test`.
 #
-# ⛔⛔⛔ PORTED 2026-08-14 FROM claudeops-config's system/tools/guard-fire-test-run.sh, AND
+# ⛔⛔⛔ PORTED 2026-08-14 FROM the donor repo's system/tools/guard-fire-test-run.sh, AND
 # SHIPPED UNDER CONSTRUCTION — READ THIS BEFORE TRUSTING A CLEAN RUN.
 #   1. `verify-hooks.sh` — the donor's own combined fire-test + 2 native regression-suite
 #      runner this script calls below — DOES NOT EXIST in this repo (confirmed absent; it is
@@ -51,7 +51,7 @@ OUT_DIR="$HOME/.config/lifehack/${SUBSYSTEM_NAME}"   # machine-local, OUTSIDE th
 STATUS_ARTIFACT="$OUT_DIR/last-run.json"
 mkdir -p "$OUT_DIR" 2>/dev/null || true
 
-LOCKDIR="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/claudeops-${SUBSYSTEM_NAME}.lock"   # LIFEHACK_RUNNER_LOCK_ROOT: TEST-ONLY seam (job-sim.sh)
+LOCKDIR="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/lifehack-${SUBSYSTEM_NAME}.lock"   # LIFEHACK_RUNNER_LOCK_ROOT: TEST-ONLY seam (job-sim.sh)
 . "$CODE_ROOT/system/tools/runner-lock.lib.sh" || { echo "FATAL: cannot source runner-lock.lib.sh" >&2; exit 1; }
 # 5.9(h): the lock records its owner pid. A dead owner's lock is taken at once; a LIVE owner is a stand-down (75), never a 0;
 # a lock that is present but unreadable is refused and named (1).

@@ -520,7 +520,7 @@ def real_snapshot():
     job locks, and the governor's real state file (what notify-governor.py uses with NOTIFY_STATE_FILE unset)."""
     import glob
     snap, paths = {}, set(glob.glob("/tmp/lifehack-job-*.lock"))
-    paths.add("/tmp/claudeops-email-summary-write.lock")
+    paths.add("/tmp/lifehack-email-summary-write.lock")
     gov = os.path.join(os.environ.get("TMPDIR", "/tmp"), "lifehack-notify-state.json")
     paths.update({gov, gov + ".lock", gov + ".tmp"})
     gov = os.path.expanduser("~/.config/lifehack/notify-state.json")   # 5.14(d): the one persistent governor state file
@@ -1379,14 +1379,14 @@ def runner_lock_run(which, pid_kind):
     try:
         if which == "email-summary-write":
             runner = esw_world(d)
-            lock = f"{d}/claudeops-email-summary-write.lock"
+            lock = f"{d}/lifehack-email-summary-write.lock"
         else:
             tools = f"{d}/code/system/tools"; os.makedirs(tools)
             for f in ("guard-fire-test-run.sh", "runner-lock.lib.sh"): shutil.copy(f"{ROOT}/system/tools/{f}", tools)
             for f in ("emit_finding.py", "guard_fire_test_record.py"): open(f"{tools}/{f}", "w").write("import sys\nsys.exit(0)\n")
             open(f"{tools}/verify-hooks.sh", "w").write("echo '14 guard(s) LIVE'; exit 0\n")
             runner = f"{tools}/guard-fire-test-run.sh"
-            lock = f"{d}/claudeops-guard-fire-test.lock"
+            lock = f"{d}/lifehack-guard-fire-test.lock"
         os.makedirs(lock)
         if pid_kind == "live": proc = live_owner(); pid = proc.pid
         else: pid = dead_pid()

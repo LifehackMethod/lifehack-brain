@@ -184,7 +184,7 @@ UNREGISTERED_OK = {
                                   "SHOULD also be in .claude/settings.json is UNDECIDED and not ruled "
                                   "on here. A further open question, also unresolved: an earlier "
                                   "investigation this session found the guard's own logic is written "
-                                  "in terms of protecting a ClaudeOps checkout, which a student running "
+                                  "in terms of protecting a private checkout, which a student running "
                                   "the plugin does not have — so whether it does anything meaningful "
                                   "once shipped is itself an open consideration. Recorded here so the "
                                   "gap is stated rather than silent.",
@@ -693,7 +693,7 @@ def lint_paths_and_skills(root, findings, counts, scope=None):
         # physical line (or one table row's subject cell): the marker was written with ONE of them in
         # mind, and the other rides along, credited with a claim nobody actually made about it. Found
         # 2026-08-24: `system/organism/elements/skill-system.md:62` had exactly this shape -- a
-        # `system/claudeops-schema-brief.md` cited on the same line as an unrelated ✅, absent on disk,
+        # a missing `system/<old-product>-schema-brief.md` cited on the same line as an unrelated ✅, absent on disk,
         # and never independently marked at all.
         #
         # The fix marks every key introduced on the SAME FIRST PHYSICAL LINE as `shared` whenever that
@@ -890,6 +890,25 @@ def lint_paths_and_skills(root, findings, counts, scope=None):
                     counts["declined"] += 1
 
 
+def _personal_rel_to_home():
+    """The personal code folder, spelled relative to $HOME the way registrations.json writes it ("$HOME/<this>/...").
+    Read from the personal-code pointer (shared/personal_code_root.py); no folder of any person is named here. When no
+    personal code folder resolves, or it is outside $HOME, returns a spelling that can match nothing."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    shared = os.path.join(os.path.dirname(os.path.dirname(here)), "shared")
+    if shared not in sys.path:
+        sys.path.insert(0, shared)
+    try:
+        import personal_code_root
+        source, path = personal_code_root.resolve_personal_code_root()
+    except Exception:
+        source, path = None, None
+    home = os.path.expanduser("~")
+    if source in ("pointer", "default") and path and path.startswith(home + os.sep):
+        return path[len(home) + 1:].rstrip("/")
+    return "\0no-personal-code-folder\0"
+
+
 def _load_switch_state(root):
     """Import switch_state.py from THIS lint's own `root` (a lint_hooks() parameter, overridable
     with --root), never from a path fixed to citation_lint.py's own file location. `root` is what
@@ -1000,7 +1019,7 @@ def lint_hooks(root, findings, counts, scope=None):
             return CANNOT_READ
         # `<personal-code>/...` per the registrations.json _README: absolute-from-$HOME, no username,
         # so it stays safe to publish and still resolves from a session launched anywhere on the box.
-        by_source[registrations_rel] = set(re.findall(r"\$HOME/.claude/skills/ClaudeOps/([^\\\"\s]+)", reg_raw))
+        by_source[registrations_rel] = set(re.findall(r"\$HOME/" + re.escape(_personal_rel_to_home()) + r"/([^\\\"\s]+)", reg_raw))
     # registrations.json not existing is not an error -- it is the public-repo / old-layout case,
     # where settings.json alone is the whole story and always was.
 

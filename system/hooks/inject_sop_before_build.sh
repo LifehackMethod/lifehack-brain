@@ -26,9 +26,9 @@ trap 'lhb_journal_fire "$?" "inject_sop_before_build.sh" "UserPromptSubmit" "" 2
 # UPDATED: 2026-10-31 (Enver) — jobs-sop.md renamed cron-jobs-sop.md ("jobs" was too general).
 # UPDATED: 2026-10-29 (self-monitoring 5.8) — the cron row points at system/sops/jobs-sop.md, which
 #          replaces the donor-only cron-safety.md (never shipped here).
-# PORTED: 2026-08-13 from claudeops-config — the TABLE's SOP paths are unchanged (repo-relative,
+# PORTED: 2026-08-13 from the donor repo — the TABLE's SOP paths are unchanged (repo-relative,
 #      not hardcoded), but the `deadend_check.py` invocation named in the last injected line was a
-#      literal `~/claudeops-config/...` path; it now resolves from this hook's own location.
+#      literal `the donor clone/...` path; it now resolves from this hook's own location.
 #      `desk-building-sop.md`, `cron-safety.md` and `system/information-ingestion-interpretation.md`
 #      do not exist yet in this repo — those TABLE rows degrade silently (point at nothing) until
 #      those SOPs land; this is a known, pre-existing gap, not something this port fixed or hid.

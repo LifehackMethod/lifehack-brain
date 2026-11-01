@@ -37,11 +37,11 @@ trap 'lhb_journal_fire "$?" "scratch_capture_gate.sh" "Stop" "" 2>/dev/null || t
 #      Change the RULE in the plan/brief first.
 # FAIL_POSTURE: degrade-safe -- any error -> exit 0 (allow stop, never wedge a turn).
 # UPDATED: 2026-09-04 (sub-agent spawn REMOVED on the operator's ruling; the main window
-#      appends the pad itself. Previously 2026-08-14.) (ported from claudeops-config commits dc9538a + f3db2d0 — the pad
+#      appends the pad itself. Previously 2026-08-14.) (ported from the donor repo commits dc9538a + f3db2d0 — the pad
 #      write moved to a sonnet sub-agent, bounded to three verdicts, and the fired
 #      message trimmed to the instruction only; the reasoning moved into a comment)
-# PORTED: 2026-08-13 from claudeops-config — the scratch_flag.sh / pm_flag.sh calls below were
-#      literal `~/claudeops-config/...` paths; they now resolve from this hook's own location.
+# PORTED: 2026-08-13 from the donor repo — the scratch_flag.sh / pm_flag.sh calls below were
+#      literal `the donor clone/...` paths; they now resolve from this hook's own location.
 #      The state paths ($HOME/.claude/run/scratch-capture etc.) are the harness's own per-user
 #      global state, not operator-specific, so they are left as-is, matching the existing baseline.
 # ─────────────────────────────────────────────────────────────────────────────

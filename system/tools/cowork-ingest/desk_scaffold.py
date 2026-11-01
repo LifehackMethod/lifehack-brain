@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-desk_scaffold.py — one-punch FULL DESK scaffold (PORTED from claudeops-config's
+desk_scaffold.py — one-punch FULL DESK scaffold (PORTED from the donor repo's
 `system/tools/cowork-ingest/desk_scaffold.py`, migration F9.6 "THE DESK PLANE", "born like a deer").
 
 ⚖ The person, `authority: user`, verbatim: *"the new system should have a template and a way of creating

@@ -1,4 +1,4 @@
-# system/desk-registry.yaml — the keystone of the multi-desk model (PORTED from claudeops-config,
+# system/desk-registry.yaml — the keystone of the multi-desk model (PORTED from the donor repo,
 # migration F9.6 "THE DESK PLANE"). One entry per full DESK (see system/sops/desk-building-sop.md for
 # the shape); read by every organ that needs to discover desks by enumeration rather than a hardcoded
 # list — e.g. `backlog_groom.py`'s `load_registry()`. Code-resident (repo) — travels with the clone,

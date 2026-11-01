@@ -20,9 +20,9 @@ CRITICAL: payloads are built via python3 -c / json.dumps — NEVER echo.
 
 House style: stdlib-only · fail-closed exit discipline · stdout contract.
 
-PORTED (T9.8c) from claudeops-config's conformance-lab/probes/guard.py. Changes:
+PORTED (T9.8c) from the donor repo's conformance-lab/probes/guard.py. Changes:
   1. HOOKS_DIR / DRIVE_ROOT resolved relative to this file / through shared/brain_root.py —
-     never a hardcoded ~/claudeops-config or a CloudStorage glob (this repo's data-residency
+     never a hardcoded the donor clone or a CloudStorage glob (this repo's data-residency
      convention, established throughout this migration).
   2. "block_primary_calendar.sh" -> "guard_calendar_writes.sh" — this repo's actual filename
      for the same rule (confirmed: `guard_calendar_writes.sh` exists, `block_primary_calendar.sh`
@@ -47,7 +47,7 @@ The port above was counted as landed but had never once been executed. Its first
   6. `CALBOT_ID` was a hardcoded real Google calendar id belonging to a real person. Deleted;
      the id now comes from the reader's own `<notes>/config/cal.md` via `shared/cal_config.py`.
      With no calendar configured the rule PARKS honestly instead of filing a false red.
-  7. `GUARD-ingest-skip-var` fired the DONOR's `CLAUDEOPS_SKIP_*` variable prefix at a guard that
+  7. `GUARD-ingest-skip-var` fired the DONOR's old `<OLD>_SKIP_*` variable prefix at a guard that
      matches `LIFEHACK_SKIP_*`, and then scored the innocent guard `theater`. Re-aimed.
   8. `_CAL-SUPPLEMENT` renamed `GUARD-calendar-primary` — the driver's registry parser only admits
      `SOP-*` / `GUARD-*` ids, so the old key could never have been dispatched by a sweep.
@@ -369,7 +369,7 @@ RULE_HOOK_MAP = {
     },
 
     # ── ingest_gate_enforce.sh (2/2) — a *_SKIP_* bypass var assignment ─────
-    # ⚖ The first port fired `CLAUDEOPS_SKIP_SAFE_FETCH=1` at this guard and the rebuild's first
+    # ⚖ The first port fired the donor's old skip variable (`<OLD>_SKIP_SAFE_FETCH=1`) at this guard and the rebuild's first
     # real run scored it `theater`. The guard was innocent: this repo's rail matches
     # `LIFEHACK_SKIP_[A-Z_]*=` (ingest_gate_enforce.sh line ~226) — the donor's variable PREFIX
     # travelled with the probe while the guard's did not, so the probe was firing a name nothing

@@ -23,7 +23,7 @@ trap 'lhb_journal_fire "$?" "buried_command_hint.sh" "UserPromptSubmit" "" 2>/de
 # description of what this hook currently does or currently fires on.
 # ──────────────────────────────────────────────────────────────────────────
 # STATUS (2026-08-23): PORTED + REGISTERED (plan task T3.5) into the personal-code repo and
-#      lifehack-brain from the retired claudeops-config donor clone. The operator retired disable-model-invocation
+#      lifehack-brain from the retired the donor repo donor clone. The operator retired disable-model-invocation
 #      FLEET-WIDE on 2026-08-06 (authority: user, system/sops/skill-building-sop.md:605-622:
 #      "I want all of my skills to be able to invoke each other. It's a guard that I don't
 #      feel that I need."). ZERO skills carry the flag today (verified 2026-08-06) — so this
@@ -75,7 +75,7 @@ trap 'lhb_journal_fire "$?" "buried_command_hint.sh" "UserPromptSubmit" "" 2>/de
 set +e
 
 # SKILLS LIVE IN DIFFERENT PLACES PER REPO (measured 2026-08-21):
-#   ~/claudeops-config/skills (57) · ~/<personal-code>/.claude/skills (46) ·
+#   the donor clone/skills (57) · ~/<personal-code>/.claude/skills (46) ·
 #   ~/lifehack-brain/.claude/skills (34)
 # Probe BOTH layouts against the CURRENT project before falling back, or this hook
 # resolves an empty/foreign skill set and silently does nothing in the very repo the

@@ -5,9 +5,9 @@ Deliberately SEPARATE from probes/guard.py: fires slightly-varied payloads at th
 live guards and prints RAW exit codes + output, so a human can eyeball that each
 block is real (and each allow passes for the right reason, not a fail-open).
 
-PORTED (T9.8c) from claudeops-config's conformance-lab/_verify_guards_manual.py. Two
+PORTED (T9.8c) from the donor repo's conformance-lab/_verify_guards_manual.py. Two
 hardcoded personal paths generalized: the hooks dir now resolves relative to THIS file
-(never a hardcoded ~/claudeops-config), and DRIVE resolves through the one shared
+(never a hardcoded the donor clone), and DRIVE resolves through the one shared
 resolver (shared/brain_root.py) — these test payloads only need a DRIVE-SHAPED path
 string to exercise the guards' path-matching, never real content on disk, so a NOT-SET
 data root degrades to a placeholder string rather than aborting.

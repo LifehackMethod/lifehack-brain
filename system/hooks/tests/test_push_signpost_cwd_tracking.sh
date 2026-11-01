@@ -35,7 +35,7 @@
 
 REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)" || exit 1
 GUARD_REL="system/hooks/guard_git_push_signpost.sh"
-PRIVATE_REPO="$HOME/.claude/skills/ClaudeOps"
+PRIVATE_REPO="<personal-code>"
 
 pass=0; fail=0
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/push-signpost-cwd-test.XXXXXX") || exit 1

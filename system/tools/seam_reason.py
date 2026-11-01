@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 seam_reason.py — the 5,000-FT SEAM LANE, Efficiency's second altitude (PORTED 2026-08-14
-from claudeops-config's system/tools/seam_reason.py).
+from the donor repo's system/tools/seam_reason.py).
 
 ── WHAT THIS ANSWERS ────────────────────────────────────────────────────────
 The ground lane (`recommend.py`) asks "is THIS thing broken?". This one asks the question

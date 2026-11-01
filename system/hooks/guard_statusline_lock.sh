@@ -19,7 +19,7 @@ trap 'lhb_journal_fire "$?" "guard_statusline_lock.sh" "PreToolUse" "Bash" 2>/de
 # FAIL_POSTURE: degrade-safe — runs on EVERY Bash call with a narrow scope; on a parse error it
 #           ALLOWS (a blanket deny-all-Bash on a transient glitch is worse than the narrow, low-harm
 #           risk it guards, which guard_write_paths.sh already backstops at the Write/Edit layer).
-# UPDATED: 2026-07-23 (ported 2026-08-13 from claudeops-config — the deny message named
+# UPDATED: 2026-07-23 (ported 2026-08-13 from the donor repo — the deny message named
 #      `system/reference/settings.json`, SOURCE's own settings path, now `.claude/settings.json`
 #      to match this repo's actual path; it also cited a SOURCE-only plan filename
 #      (~/.claude/plans/rosy-swimming-bonbon.md) with no equivalent here, dropped rather than

@@ -29,7 +29,7 @@ MAP_WRONG = {"unwired": "never-connected", "unregistered": "never-registered", "
              "out-of-scope-write": "wrong-home", "wrong-repo": "wrong-home", "none": None, "leak": "other", "weaken-guard": "other"}
 MAP_ROAD = {"write-tool": "write-tool", "edit-tool": "edit-tool", "git": "git-or-install", "git-C": "git-or-install", "commit": "git-or-install",
             "other": "other", "ordinary": "other", "read-tool": "other", "grep-tool": "other", "glob-tool": "other"}   # every bash-*, var-path, one-line-script, direct-bash road -> shell-command (below)
-MAP_LANDS = {"harness-system": "harness", "github": "github", "notes-desk": "desk", "notes-records": "claudeops", "notes-state": "claudeops",
+MAP_LANDS = {"harness-system": "harness", "github": "github", "notes-desk": "desk", "notes-records": "notes", "notes-state": "notes",
              "scheduler": "scheduler", "outside-any-root": "other", "other": "other"}
 MAP_ACTOR = {"careless": "careless", "clever": "clever", "correct": None}
 MAP_FRIC = {"all-on": "all-on", "no-layer-existed": "no-layer-existed", "switched-off": "switched-off", "not-loaded": "not-loaded"}
@@ -352,7 +352,7 @@ def nibble2():
     return out
 
 
-LIVE_HOME = {"accept": ["enver: private repo ~/.claude/skills/ClaudeOps/desks/<desk>/tools/", "student: any non-Drive git-repo location (OPEN - plan 3b.2 item 10, not decided)"],
+LIVE_HOME = {"accept": ["enver: private repo <personal-code>/desks/<desk>/tools/", "student: any non-Drive git-repo location (OPEN - plan 3b.2 item 10, not decided)"],
              "never": "code (.sh/.py) in the notes (Drive) desk", "student_answer": "open"}
 
 

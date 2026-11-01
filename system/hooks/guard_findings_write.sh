@@ -44,7 +44,7 @@ trap 'lhb_journal_fire "$?" "guard_findings_write.sh" "PreToolUse" "Bash|Write|E
 #      change what is protected: edit this guard, get sign-off, then update its settings.json
 #      registration — see system/hook-contract.md.
 # FAIL_POSTURE: closed — an unparseable payload DENIES.
-# UPDATED: 2026-08-14 (ported from claudeops-config's guard_findings_write.sh; scope narrowed to
+# UPDATED: 2026-08-14 (ported from the donor repo's guard_findings_write.sh; scope narrowed to
 #      state/findings/ ONLY because neither emit_recommendation.py nor any recommendations/
 #      concept existed in this repo at port time — confirmed absent that session). SAME DAY,
 #      LATER PASS: that assumption is now STALE. system/tools/emit_recommendation.py exists and
@@ -60,7 +60,7 @@ trap 'lhb_journal_fire "$?" "guard_findings_write.sh" "PreToolUse" "Bash|Write|E
 #           state/recommendations/ cases.
 #        2. THE VARIABLE-PATH RESOLVER IS OPTIONAL HERE, NOT ASSUMED. The donor imports
 #           `hook_path_resolve.expand()` from its own sibling `system/tools/` (a path-in-a-shell-
-#           variable defeater) via a hardcoded `~/claudeops-config/system/tools` sys.path entry.
+#           variable defeater) via a hardcoded `the donor clone/system/tools` sys.path entry.
 #           That module does not exist in this repo yet (out of scope for this porting pass — it
 #           lives in system/tools/, not system/hooks/). The sys.path entry below now resolves
 #           relative to THIS repo (via ${CLAUDE_PROJECT_DIR}, falling back to this script's own

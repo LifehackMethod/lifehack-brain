@@ -6,7 +6,7 @@
 # watchdog-bounded launch. This is that plumbing, factored out once so a future runner script is a
 # few lines of POLICY (what prompt, what model, what to check first) sourcing a few lines of PLUMBING.
 #
-# PORTED (2026-08-14) from claudeops-config's system/tools/ingest-run.lib.sh — that repo's donor
+# PORTED (2026-08-14) from the donor repo's system/tools/ingest-run.lib.sh — that repo's donor
 # comment called this file "the worst hardcode in the tree": it carried a literal absolute-path
 # CLAUDE_BIN under a specific person's home directory, not even $HOME-relative, plus a Drive path
 # under that same account. Both are fixed below. Three pieces were DROPPED rather than ported,
@@ -212,7 +212,7 @@ ingest_load_auth() {     # FULL auth (claude + gws)
 # buffer) in case a prior run was hard-killed and never cleaned up after itself.
 _INGEST_LOCKDIR=""
 ingest_acquire_lock() {
-  local job="$1"; _INGEST_LOCKDIR="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/claudeops-${job}.lock"
+  local job="$1"; _INGEST_LOCKDIR="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/lifehack-${job}.lock"
   . "${CODE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}/system/tools/runner-lock.lib.sh" || { echo "[$job] FATAL: cannot source runner-lock.lib.sh" >&2; exit 1; }
   # 5.9(h): the lock records its owner pid; a dead owner is taken at once, a LIVE one is a stand-down (75, never the [F2] exit 0).
   runner_lock_acquire "$_INGEST_LOCKDIR" 1500 "$job" || { _rc=$?; _INGEST_LOCKDIR=""; exit "$_rc"; }

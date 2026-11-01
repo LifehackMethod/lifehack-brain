@@ -72,14 +72,14 @@ def main():
     r = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "rig_live_free.py"), "run", "--cases", "/nonexistent.jsonl",
                         "--label", "t", "--only", "NOMATCH", "--env", "HOME=" + os.path.expanduser("~")], capture_output=True, text=True)
     assert r.returncode != 0 and "REFUSED" in (r.stdout + r.stderr), r
-    # ...and with a pointer at the real ClaudeOps, or without --scratch
+    # ...and with a pointer at the real personal code folder, or without --scratch
     import tempfile as _tf
     h = _tf.mkdtemp()
     os.makedirs(os.path.join(h, ".config", "lifehack"))
-    open(os.path.join(h, ".config", "lifehack", "personal-code"), "w", encoding="utf-8").write(os.path.expanduser("~/.claude/skills/ClaudeOps") + "\n")
+    open(os.path.join(h, ".config", "lifehack", "personal-code"), "w", encoding="utf-8").write(__import__("rig_live_free").OPS + "\n")
     base = [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "rig_live_free.py"), "run", "--cases", "/nonexistent.jsonl", "--label", "t", "--only", "NOMATCH"]
     r2 = subprocess.run(base + ["--scratch", h, "--env", "HOME=" + h], capture_output=True, text=True)
-    assert r2.returncode != 0 and "real ClaudeOps" in (r2.stdout + r2.stderr), r2
+    assert r2.returncode != 0 and "real personal code folder" in (r2.stdout + r2.stderr), r2
     r3 = subprocess.run(base, capture_output=True, text=True)
     assert r3.returncode != 0 and "--scratch is required" in (r3.stdout + r3.stderr), r3
     # Round C lock-prep B: a harness ASK before a skill write. Headless it is a refusal; "asked, never wrote it" is the CORRECT outcome of a skill task

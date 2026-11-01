@@ -6,7 +6,7 @@ VALIDATES at write time (envelope present + typed; declared required payload fie
 ATOMICALLY (tmp → os.replace). A malformed tile fails LOUD here at the source — never silently at the
 dashboard (the failure mode a status-tile-architecture review named as the worst).
 
-PORTED (2026-08-15) from claudeops-config's `system/tools/emit_status.py` — verbatim in behavior. It was
+PORTED (2026-08-15) from the donor repo's `system/tools/emit_status.py` — verbatim in behavior. It was
 already fully generic on arrival: no hardcoded paths (the caller passes `out_path`), no desk names, no
 Drive/Google assumptions, stdlib only, and it never touches `brain_root` itself (every consumer resolves
 its own tile path first and hands this module the finished path). Nothing needed loosening for F8.6.

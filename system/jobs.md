@@ -348,7 +348,7 @@ pulse             | */5 * * * *      | PATH=$HOME/.local/bin:/opt/homebrew/bin:/
 
 Every command above resolves the repo location through the `$LIFEHACK_CODE_ROOT` environment
 variable rather than a hardcoded path (the donor's equivalent file hardcoded
-`$HOME/claudeops-config` into nearly every job's command string — the single largest generalization
+its own clone folder into nearly every job's command string — the single largest generalization
 item its own port audit found). `install-schedulers.sh` sets this variable when it writes the
 crontab/Task-Scheduler entry (derived from its own script location at install time), so the value is
 always "wherever THIS clone actually is," never a guess. If you invoke `pulse.sh` by hand instead of

@@ -315,11 +315,11 @@ def live_case(c, notes, model, claude_bin, workdir):
     stream = os.path.join(workdir, c["id"] + ".stream.jsonl")
     env = dict(os.environ, LIFEHACK_SANDBOX="V2")
     cmd = [claude_bin, "-p", prompt, "--model", model, "--dangerously-skip-permissions", "--setting-sources", "project,local", "--plugin-dir", os.path.expanduser("~/lifehack-v2"),
-           "--settings", os.path.expanduser("~/.claude/skills/ClaudeOps/system/desktop-launchers/v2/lab-settings.json"), "--output-format", "stream-json", "--verbose"]
+           "--settings", os.path.join(personal_code(), "system/desktop-launchers/v2/lab-settings.json"), "--output-format", "stream-json", "--verbose"]
     t0 = time.time()
     try:
         with open(stream, "w", encoding="utf-8") as f:
-            p = subprocess.run(cmd, cwd=os.path.expanduser("~/.claude/skills/ClaudeOps"), env=env, stdout=f, stderr=subprocess.PIPE, text=True, timeout=900, stdin=subprocess.DEVNULL)
+            p = subprocess.run(cmd, cwd=personal_code(), env=env, stdout=f, stderr=subprocess.PIPE, text=True, timeout=900, stdin=subprocess.DEVNULL)
         err = p.stderr[-200:]
     except subprocess.TimeoutExpired:
         err = "TIMEOUT"
@@ -362,7 +362,7 @@ def live_case(c, notes, model, claude_bin, workdir):
 def run_live(cases, label, model="haiku"):  # allow-silence: rig case text that plants the wrong move on purpose
     notes = notes_root()
     work = tempfile.mkdtemp(prefix="riglive-")
-    before = {r: sh(["git", "-C", r, "status", "--porcelain"], r, os.environ.copy())[1] for r in (ROOT, os.path.expanduser("~/.claude/skills/ClaudeOps"))}
+    before = {r: sh(["git", "-C", r, "status", "--porcelain"], r, os.environ.copy())[1] for r in (ROOT, personal_code())}
     res = []
     try:
         for c in cases:

@@ -1,5 +1,5 @@
 # guard-ruled-denies.txt — card TR2.0b: writes the real actor attempts that are RULED to STAY DENIED.
-# Ruling: claudeops-a0, 2026-11-01 (plan DISCOVERIES "TR2.0b · RULED"): "both temp writes (cc-socks socket, fswatch
+# Ruling: maintainer-a0, 2026-11-01 (plan DISCOVERIES "TR2.0b · RULED"): "both temp writes (cc-socks socket, fswatch
 # probe) stay DENIED; prove ok=12 with them denied, never widen."
 #
 # This file allows NOTHING. The write guard refuses these writes like any other. It only names them: run.sh's parent
@@ -12,6 +12,6 @@
 /private/tmp/cc-socks(/[0-9]+\.sock)?
 # the file-watch capability probe Claude Code writes at startup
 /private/tmp/claude-[0-9]+/fswatch-probe-[^/]*
-# the Harness observability hooks' shared telemetry buffer (ruled claudeops-a0, 2026-11-01, DISCOVERIES "TR2.0b · REAL
+# the Harness observability hooks' shared telemetry buffer (ruled maintainer-a0, 2026-11-01, DISCOVERIES "TR2.0b · REAL
 # RUN #1"): a test actor appending to the machine's real telemetry buffer pollutes real observability. Intermittent write.
 /private/tmp/lifehack-observability-buffer\.jsonl

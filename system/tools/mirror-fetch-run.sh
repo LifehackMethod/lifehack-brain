@@ -21,7 +21,7 @@ JOB="mirror-fetch"
 # Single-instance lock, inline (5.7): this job needs nothing from ingest-run.lib.sh but its lock, and that library
 # carries the Gmail pre-flight, which the door (install-schedulers.sh --check-row) refuses to see inside a job that
 # never touches Gmail. Contention is a STAND-DOWN (75), never exit 0 — exit 0 on a skip is the [F2] shape.
-LOCKDIR="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/claudeops-${JOB}.lock"
+LOCKDIR="${LIFEHACK_RUNNER_LOCK_ROOT:-/tmp}/lifehack-${JOB}.lock"
 . "$CODE_ROOT/system/tools/runner-lock.lib.sh" || { echo "FATAL: cannot source runner-lock.lib.sh" >&2; exit 1; }
 # 5.9(h): the lock records its owner pid. A dead owner's lock is taken at once; a LIVE owner is a stand-down (75), never a 0;
 # a lock that is present but unreadable is refused and named (1).
