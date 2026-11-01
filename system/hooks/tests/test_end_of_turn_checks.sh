@@ -122,25 +122,15 @@ rm -f "$HOME/.config/lifehack/placement.conf"; rm -f "$HOME/.config/lifehack/per
 mkfile "$HOME/pondproj/two.py" $'print(2)\n'; rec u8 p1 Write "$(Jw "$HOME/pondproj/two.py")" create
 ROUNDB_OWN_LIST_UNHOMED=on stop u8 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "no personal code folder: silent by design" || bad "flagged with no folder: $OUT"
 echo "$PC" > "$HOME/.config/lifehack/personal-code"
-echo "== code_shebang (Round C post-exam B16): extensionless file with #! counts as code =="
+echo "== code_shebang REMOVED 2026-11-01 (never fired): extensionless #! files are not code =="
 mkfile "$HOME/pondproj/bin/standup" $'#!/bin/bash\necho standup\n'; rec sb1 p1 Write "$(Jw "$HOME/pondproj/bin/standup")" create
 mkfile "$HOME/pondproj/bin/plainfile" $'just text, no shebang\n'; rec sb1 p1 Write "$(Jw "$HOME/pondproj/bin/plainfile")" create
-ROUNDB_CODE_SHEBANG=off ROUNDB_OWN_LIST_UNHOMED=on stop sb1 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "shebang OFF: extensionless script outside homes not flagged" || bad "flagged while OFF: $OUT"
-rec sb2 p1 Write "$(Jw "$HOME/pondproj/bin/plainfile")" create; ROUNDB_CODE_SHEBANG=on ROUNDB_OWN_LIST_UNHOMED=on stop sb2 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "shebang ON: extensionless file WITHOUT #! stays silent" || bad "no-shebang flagged: $OUT"
-rec sb3 p1 Write "$(Jw "$HOME/pondproj/bin/standup")" create; ROUNDB_CODE_SHEBANG=on ROUNDB_OWN_LIST_UNHOMED=on stop sb3 p1; R="$(reason)"
-printf '%s' "$OUT" | grep -q '"decision": *"block"' && printf '%s' "$R" | grep -qF "standup" && ok "shebang ON: stray extensionless script blocked (unhomed)" || bad "shebang stray not blocked: $OUT $ERR"
+ROUNDB_OWN_LIST_UNHOMED=on stop sb1 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "extensionless script outside homes not flagged" || bad "flagged: $OUT"
 mkfile "$PC/bin/launcher" $'#!/bin/bash\necho go\n'; rec sb4 p1 Write "$(Jw "$PC/bin/launcher")" create
-ROUNDB_CODE_SHEBANG=off stop sb4 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "shebang OFF: unlisted extensionless script in personal folder: silent" || bad "OFF own-list: $OUT"
-rec sb5 p1 Write "$(Jw "$PC/bin/launcher")" create; ROUNDB_CODE_SHEBANG=on stop sb5 p1
-printf '%s' "$OUT" | grep -q '"decision": *"block"' && ok "shebang ON: unlisted extensionless script in personal folder: own-list stop" || bad "ON own-list miss: $OUT $ERR"
-
-echo "== eot_escape_scoped =="
+stop sb4 p1; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "unlisted extensionless script in personal folder: silent" || bad "own-list: $OUT"
+echo "== Escapes line (always shown; eot_escape_scoped REMOVED 2026-11-01) =="
 mkfile "$HOME/pondproj/three.py" $'print(3)\n'; rec u9 p1 Write "$(Jw "$HOME/pondproj/three.py")" create
-ROUNDB_OWN_LIST_UNHOMED=on ROUNDB_EOT_ESCAPE_SCOPED=off stop u9 p1; R="$(reason)"; printf '%s' "$R" | grep -q "Escapes" && ok "scoped OFF: list-only stop still shows Escapes (today)" || bad "OFF changed: $R"
-mkfile "$HOME/pondproj/four.py" $'print(4)\n'; rec u10 p1 Write "$(Jw "$HOME/pondproj/four.py")" create
-ROUNDB_OWN_LIST_UNHOMED=on ROUNDB_EOT_ESCAPE_SCOPED=on stop u10 p1; R="$(reason)"; printf '%s' "$R" | grep -q "four.py" && ! printf '%s' "$R" | grep -q "Escapes" && ok "scoped ON: list-only stop has no Escapes line" || bad "ON still shows escapes: $R"
-mkfile "$WORK/fetch-esc.sh" "$BADSH"; rec u11 p1 Write "$(Jw "$WORK/fetch-esc.sh")" create
-ROUNDB_EOT_ESCAPE_SCOPED=on stop u11 p1; R="$(reason)"; printf '%s' "$R" | grep -q "Escapes" && ok "scoped ON: a failure-hiding stop keeps its Escapes line" || bad "escapes lost on REFUSED: $R"
+ROUNDB_OWN_LIST_UNHOMED=on stop u9 p1; R="$(reason)"; printf '%s' "$R" | grep -q "Escapes" && ok "list-only stop still shows Escapes" || bad "Escapes missing: $R"
 echo "== eot_do_all =="
 mkfile "$WORK/fetch-two.sh" "$BADSH"; rec u12 p1 Write "$(Jw "$WORK/fetch-two.sh")" create
 ROUNDB_EOT_DO_ALL=off stop u12 p1; R="$(reason)"; printf '%s' "$R" | grep -q "DO ALL" && bad "OFF numbered" || ok "do_all OFF: unchanged"

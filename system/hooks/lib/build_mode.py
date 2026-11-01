@@ -291,11 +291,6 @@ def _stop_hint(check):
         return ""
 
 
-def shebang_code(base, content):
-    """Switch code_shebang: an extensionless file whose first line is a shebang (#!) is CODE (Round C post-exam B16)."""
-    return bool(content) and "." not in base and content.lstrip("\ufeff").startswith("#!") and _roundb("code_shebang")
-
-
 def outside_homes_target(t, code, notes):
     """Placement rule 4. -> the resolved personal code folder when file t sits outside EVERY home, else None.
     Homes: the harness repo, the notes folder, the personal code folder. Never fires (None) when: the switch
@@ -376,11 +371,6 @@ def shell_overwrite_message(t, kind):
             "RULE: system/hooks/guard_build_mode.sh header (fc_shell_overwrite)." % (os.path.basename(t), "an SOP" if kind == "sop" else "a canon file"))
 
 
-# ---------------------------------------------------------------- reason gate (Round C 1+2)
-REASON_RX = re.compile(r"lifehack-place:[ \t]*([^\n]*)")
-REASON_MARKER = "# lifehack-place: <your reason>"
-
-
 def _roundb(name):
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     try:
@@ -390,36 +380,6 @@ def _roundb(name):
         return False
     finally:
         sys.path.pop(0)
-
-
-def stated_reason(blob):
-    """-> (reason, blob_without_the_marker). The marker is `lifehack-place: <reason>` anywhere on a line: a
-    comment in the file content (Write/Edit) or at the end of the shell command (Bash). Trailing quote/comment
-    closers (`-->`, a quote) are stripped."""
-    m = REASON_RX.search(blob or "")
-    if not m:
-        return "", blob or ""
-    r = re.sub(r"\s*(?:-->|\*/)\s*$", "", m.group(1)).strip().strip("\"'`").strip()
-    return r, REASON_RX.sub("", blob)   # EVERY marker line goes: two files in one command carry the same reason, and the second copy made a real reason 'only repeat the code'
-
-
-def weak_reason_of(reason, code, code_root_dir):
-    """Reuse system/tools/door_rules.weak_reason (imported, not copied). -> '' if real, why-junk string if not,
-    None if the checker cannot be loaded (caller falls back to today's speed bump)."""
-    tools = os.path.join(code_root_dir, "system", "tools")
-    sys.path.insert(0, tools)
-    try:
-        import door_rules
-        return door_rules.weak_reason(reason, code)
-    except Exception as e:
-        warn("door_rules.weak_reason unavailable (%s); reason gate skipped" % e)
-        return None
-    finally:
-        sys.path.pop(0)
-
-
-def personal_conf():
-    return os.path.join(HOME, ".config", "lifehack", "placement.conf")
 
 
 def kept_folders_of(code):
@@ -478,26 +438,6 @@ def data_overwrite_ask(t):
         "same replacement. RULE: switch fc_shell_overwrite in system/hooks/roundB.conf." % t}})
 
 
-def remember_folder(code, folder, reason):
-    """Append `kept<TAB><folder><TAB><date> reason: <text>` (one folder per line) to ~/.config/lifehack/placement.conf,
-    the exact shape own_list_add.kept_folders() reads. Skips a folder that is already kept."""
-    import datetime
-    if os.path.realpath(folder) in kept_folders_of(code) or os.environ.get("LIFEHACK_WATCH_SHADOW") == "1":
-        return False
-    path = personal_conf()
-    try:
-        have = _open(path).read()
-    except OSError:
-        have = ""
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    line = "kept\t%s\t%s reason: %s\n" % (folder, datetime.date.today().isoformat(), reason.replace("\t", " ").replace("\n", " "))
-    with _open(path, "a") as fh:
-        if have and not have.endswith("\n"):
-            fh.write("\n")
-        fh.write(line)
-    return True
-
-
 def personal_code_dir(code):
     """The personal code folder through the existing pointer (shared/personal_code_root.py), or "" when it does not resolve."""
     try:
@@ -517,29 +457,6 @@ def _skill_name(t):
     n = os.path.basename(os.path.dirname(t))
     return "<name>" if (not n or any(c in n for c in "$`{}()")) else n
 
-
-def gate_message(t, pc, why_weak, remember, hint_tools):
-    parts = []
-    if why_weak:
-        parts.append("BLOCKED: that reason was refused (%s)." % why_weak)
-    else:
-        parts.append("BLOCKED: new code in %s, which is outside all three homes (harness repo, notes folder, personal code folder)." % os.path.dirname(t))
-    if _roundb("skills_native_home") and os.path.basename(t) == "SKILL.md":   # Round D A.2: Claude loads personal skills only from ~/.claude/skills
-        parts.append("WHERE IT BELONGS: ~/.claude/skills/%s/SKILL.md. Claude loads personal skills only from ~/.claude/skills/<name>/, so build it THERE without asking, "
-                     "put the skill's own scripts inside that same folder, and tell the person where it is." % _skill_name(t))
-    else:
-        parts.append("WHERE IT BELONGS: your personal code folder, %s%s. Write the file there." % (pc, " (ONE folder for all your standalone scripts, not one per desk; a tool made for ONE desk goes in %s/desks/<desk>/tools/ instead; the notes folder is data only)" % pc if _roundb("skills_native_home") else ""))
-    parts.append("OR, if it has to live here, state a real reason (what this folder is for and why the file cannot go in the personal code folder) "
-                 "and retry. EXACT SYNTAX: a line containing  lifehack-place: <your reason>  as a comment: in a .sh/.py file `# lifehack-place: <your reason>`; "
-                 "in a SKILL.md/.md file `<!-- lifehack-place: <your reason> -->`; in a shell command put `# lifehack-place: <your reason>` at the end of the command. "
-                 "Filler (\"needed\", \"todo\") or a restatement of the filename is refused. A retry with no reason is stopped again.")
-    if remember:
-        parts.append("A real reason is remembered for this folder in ~/.config/lifehack/placement.conf, so you are not asked again for it.")
-    parts.append("RULE: system/hooks/placement.conf (code-outside-homes).")
-    if hint_tools and _roundb("placement_hint_ranked"):   # lead with the reuse demand: sessions skimmed a trailing list and wrote their own Gmail/phone code
-        return ("FIRST, before anything else: these shared tools may already do this job. If one does, call it from your file (by its path) instead of writing the same thing again:"
-                + hint_tools.split(":", 1)[1] + "\n" + " ".join(parts))
-    return " ".join(parts) + hint_tools
 
 # ---------------------------------------------------------------- the decision
 def sop_receipt_valid(sid):
@@ -682,8 +599,7 @@ def main_inner():
                     warn("placement list unusable (%s); skipped" % e)
                     placement = {}
             for rname, (zone, pats, pmsg) in placement.items():
-                if not any(fnmatch.fnmatch(base, x) for x in pats) \
-                        and not (("*.sh" in pats) and shebang_code(base, w["content"])):
+                if not any(fnmatch.fnmatch(base, x) for x in pats):
                     continue
                 if zone == "notes":
                     hit = bool(notes) and under(t, notes) and not under(t, code)
@@ -730,30 +646,7 @@ def main_inner():
                     hit = False
                 if hit and zone == "outside-homes":
                     if any(under(t, f) for f in kept_folders_of(code)):
-                        hit = False   # the person already gave a reason for this folder (remember_reason)
-                    elif _roundb("reason_gate"):
-                        blob = ti.get("command", "") if tool == "Bash" else w["content"]
-                        reason, rest = stated_reason(blob)
-                        why = weak_reason_of(reason, "%s %s" % (t, rest), code) if reason else ""
-                        if reason and why == "":
-                            hit = False   # a stated, real reason: this one passes
-                            if _roundb("remember_reason"):
-                                try:
-                                    remember_folder(code, os.path.dirname(t), reason)
-                                except Exception as e:
-                                    warn("could not remember the reason (%s)" % e)
-                        elif why is not None:   # no reason, or a junk one: stop EVERY time, never once-per-session
-                            ht = ""
-                            if _roundb("placement_toolbox_hint"):
-                                try:
-                                    ht = tool_hint(code, "%s %s" % (t, (w["content"] or "")[:1500]))
-                                    ht = ("\nShared tools that may already do this:" + ht) if ht else ""
-                                except Exception:
-                                    ht = ""
-                            _gm = gate_message(t, pc, why if reason else "", _roundb("remember_reason"), ht)
-                            CHECK_OF[_gm] = "code-outside-homes"
-                            denies.append(("gate-hard", None, _gm))
-                            hit = False
+                        hit = False   # the person listed this folder as kept (a hand-written `kept` line)
                 if hit:
                     ht = ""
                     if _roundb("placement_toolbox_hint"):   # Round C silent-miss cause D: show the shared tool to reuse

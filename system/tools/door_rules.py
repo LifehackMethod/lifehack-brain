@@ -30,7 +30,7 @@ CALLEES = [("fetch", re.compile(r"(?<![\w/.-])(?:gws|curl|wget)\b|\$\{?GWS\w*\}?
 # The fire-journal boilerplate (system/hooks/lib/journal.sh contract): `. lib/journal.sh 2>/dev/null || lhb_journal_fire() { :; }` and the
 # `trap 'lhb_journal_fire ... 2>/dev/null || true' EXIT` line. Silent on purpose (the journal must never change a hook's own output).
 JOURNAL_IDIOM = re.compile(r"lhb_journal_fire")
-# "A real reason, or fix it" (Round C 3, switch allow_silence_reason): what an escape comment (`# allow-silence:`, `# empty-ok:`,
+# "A real reason, or fix it" (Round C 3, switch allow_silence_reason, REMOVED 2026-11-01: this helper has no caller now): what an escape comment (`# allow-silence:`, `# empty-ok:`,
 # `# not-wired-yet:`) must carry before it exempts anything. A reason is JUNK when it is short, only filler/placeholder words, or only
 # repeats the code it sits on. Pure function; the callers read the switch.
 JUNK_WORDS = frozenset("""todo tbd fixme ok okay fine needed need needs reason reasons because intentional intended on purpose ignore ignored

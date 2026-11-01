@@ -21,13 +21,8 @@ trap 'lhb_journal_fire "$?" "guard_build_mode.sh" "PreToolUse" "Bash|Write|Edit|
 #      personal notes into the harness repo) gets the speed bump once per rule per session. Never hard.
 #      The list: system/hooks/placement.conf (+ optional ~/.config/lifehack/placement.conf). Data files
 #      (.json/.jsonl/.csv, logs) are never listed, so always allowed.
-#      Round C reason_gate (roundB.conf): placement rule code-outside-homes no longer lets an identical retry through.
-#      It passes only with a stated reason: a line `lifehack-place: <reason>` as a comment in the file content, or at the end
-#      of the Bash command (`<!-- lifehack-place: <reason> -->` in .md). Junk is refused (system/tools/door_rules.weak_reason).
-#      remember_reason: a valid reason appends `kept TAB <folder> TAB <date> reason: <text>` (one folder
-#      per line; read back by shared/tools/own_list_add.kept_folders) to ~/.config/lifehack/placement.conf; that folder and below are never asked again. Both OFF = the once-per-session bump.
-# WHO-COULD-THIS-BREAK (reason_gate): anyone creating a script outside the three homes, such as a student sketching in ~/Desktop or Enver in a throwaway folder. WAY-THROUGH: write it in the personal code folder, or add `# lifehack-place: <real reason>` to the file or command and retry.
-# WHO-COULD-THIS-BREAK (remember_reason): nobody is blocked by it; it can only make a later file in a remembered folder pass silently. WAY-THROUGH: delete that `kept` line from ~/.config/lifehack/placement.conf to be asked again.
+#      A folder the person listed by hand as `kept TAB <folder>` in ~/.config/lifehack/placement.conf (read by shared/tools/own_list_add.kept_folders)
+#      is never asked about again for code-outside-homes. (The reason gate and remember_reason switches were removed 2026-11-01: they never fired.)
 #      Round C fc_shell_overwrite: a Bash overwrite (`>`, `>|`, `tee` without -a, cp/mv/install/rsync onto, `sed -i`, `truncate`) of an
 #      EXISTING SOP (a .md in the rulebook folders of build_mode_sops.conf) or canon file is a HARD block (exit 2). `>>` and `tee -a` pass.
 #      Round C gap closure: the same check reads through `bash -c`/`sh -c`/`eval`, `env`/`exec`/`nohup`/`time` prefixes, and `dd of=` (oflag=append passes).
@@ -74,9 +69,6 @@ if [ "$go" -eq 0 ]; then
   fi
   if [ "$go" -eq 0 ]; then   # placement rule 4 (switch placement_outside_homes): new code can be anywhere, so let the engine look
     case "$BODY" in *.sh*|*.py*|*SKILL.md*) { . "${_lhb_dir}/lib/roundb.sh" && roundb_on placement_outside_homes && go=1; } 2>/dev/null ;; esac
-  fi
-  if [ "$go" -eq 0 ]; then   # code_shebang: an extensionless script names none of the above, but its content opens with #!
-    case "$BODY" in *'#!'*) { . "${_lhb_dir}/lib/roundb.sh" && roundb_on code_shebang && go=1; } 2>/dev/null ;; esac
   fi
 fi
 [ "$go" -eq 1 ] || exit 0

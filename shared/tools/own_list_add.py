@@ -68,23 +68,6 @@ def _native_skills_on():
         sys.path.pop(0)
 
 
-def _shebang_file_on(path, base):
-    """Switch code_shebang (system/hooks/roundB.conf): True for an extensionless file whose first line is #!."""
-    if "." in base:
-        return False
-    try:
-        sys.path.insert(0, os.path.join(HERE, "..", "..", "system", "hooks", "lib"))
-        from roundb import roundb_on
-        if not roundb_on("code_shebang"):
-            return False
-        with open(path, "rb") as fh:
-            return fh.read(2) == b"#!"
-    except Exception:
-        return False
-    finally:
-        sys.path.pop(0)
-
-
 def is_tool(rel, full=None):
     parts = rel.strip("/").split("/")
     base = parts[-1]
@@ -93,8 +76,6 @@ def is_tool(rel, full=None):
         return False
     if base == "SKILL.md":
         return True
-    if not base.endswith((".py", ".sh")) and _shebang_file_on(full or rel, base):   # code_shebang: an extensionless file that opens with #!
-        return not base.startswith(".") and not base.startswith("test_")
     if not base.endswith((".py", ".sh")) or base.startswith("test_") or re.search(r"_tests?\.(py|sh)$", base):
         return False
     return not base.startswith(".")
@@ -103,7 +84,7 @@ def is_tool(rel, full=None):
 def kept_folders():
     """Folders the person KEPT on purpose: lines `kept<TAB><folder>[<TAB>reason]` in ~/.config/lifehack/placement.conf
     (the personal override file; load_placement ignores 2/3-field lines, so these are harmless there). One place to
-    change if the remember_reason helper settles on another format."""
+    change if the format of a hand-written `kept` line changes."""
     out = []
     try:
         for ln in open(os.path.join(os.path.expanduser("~"), ".config", "lifehack", "placement.conf"), encoding="utf-8"):

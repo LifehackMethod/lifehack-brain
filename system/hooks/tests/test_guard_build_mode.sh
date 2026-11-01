@@ -134,76 +134,34 @@ fire o2 Write "$(J file_path "$HOME/.claude/scratch/ping.py" content 'print(1)')
 touch "$HOME/odd-widget/existing.py"
 fire o2 Edit "$(J file_path "$HOME/odd-widget/existing.py" old_string a new_string b)"; want 0 "ON: edit of an EXISTING file: allowed"; silent "existing"
 # ON, the bump
-# These four assert the placement text of whichever reason_gate state is live (env wins, else roundB.conf): OFF = the old once-per-session
-# speed bump (a retry passes); ON = the reason gate (stopped every time until the call carries a reason). Neither is weakened.
-GATE_NOW="${ROUNDB_REASON_GATE:-$(sed -n 's/^reason_gate=//p' "$HERE/roundB.conf" | head -1)}"
-if [ "$GATE_NOW" = on ]; then
-  fire o3 Write "$(J file_path "$HOME/odd-widget/ping.py" content 'print(1)')"; want 2 "ON+gate ON: new .py in an odd folder: stopped" "lifehack-place: <your reason>"
-  fire o3 Write "$(J file_path "$HOME/odd-widget/ping.py" content 'print(1)')"; want 2 "ON+gate ON: identical retry is stopped again" "lifehack-place: <your reason>"
-  fire o3 Write "$(J file_path "$HOME/odd-widget/other.sh" content 'echo')"; want 2 "ON+gate ON: second file, same session: stopped too" "lifehack-place: <your reason>"
-  fire o4 Bash "$(J command "echo hi > $HOME/odd-widget/run.sh")"; want 2 "ON+gate ON: Bash redirect to new .sh outside homes: stopped" "end of the command"
-else
-  fire o3 Write "$(J file_path "$HOME/odd-widget/ping.py" content 'print(1)')"; want 2 "ON: new .py in an odd folder: denied once" "this belongs in your personal code folder: $PCREAL"
-  fire o3 Write "$(J file_path "$HOME/odd-widget/ping.py" content 'print(1)')"; want 0 "ON: identical retry passes"
-  fire o3 Write "$(J file_path "$HOME/odd-widget/other.sh" content 'echo')"; want 0 "ON: second file, same session: passes (once per rule)"
-  fire o4 Bash "$(J command "echo hi > $HOME/odd-widget/run.sh")"; want 2 "ON: Bash redirect to new .sh outside homes: denied once" "personal code folder: $PCREAL"
-fi
+# The bump is once per session per rule (the reason gate was removed 2026-11-01: it never fired).
+fire o3 Write "$(J file_path "$HOME/odd-widget/ping.py" content 'print(1)')"; want 2 "ON: new .py in an odd folder: denied once" "this belongs in your personal code folder: $PCREAL"
+fire o3 Write "$(J file_path "$HOME/odd-widget/ping.py" content 'print(1)')"; want 0 "ON: identical retry passes"
+fire o3 Write "$(J file_path "$HOME/odd-widget/other.sh" content 'echo')"; want 0 "ON: second file, same session: passes (once per rule)"
+fire o4 Bash "$(J command "echo hi > $HOME/odd-widget/run.sh")"; want 2 "ON: Bash redirect to new .sh outside homes: denied once" "personal code folder: $PCREAL"
 # unresolved personal code folder: no bump
 mv "$HOME/.config/lifehack/personal-code" "$HOME/.config/lifehack/personal-code.bak"
 fire o5 Write "$(J file_path "$HOME/odd-widget/ping3.py" content 'print(1)')"; want 0 "ON: personal folder unresolved: no bump"; silent "unresolved"
 mv "$HOME/.config/lifehack/personal-code.bak" "$HOME/.config/lifehack/personal-code"
 unset ROUNDB_PLACEMENT_OUTSIDE_HOMES
-# ---- Round C 1+2: the reason gate (reason_gate) and remembering the folder (remember_reason). Fictional paths.
+# ---- the reason gate and remember_reason were REMOVED 2026-11-01 (never fired). Only today's once-per-session bump remains; a `kept` line is hand-written.
 mkdir -p "$CODE/system/tools" "$HOME/gadget-lab/sub" "$HOME/other-lab"
-cp "$HERE/../tools/door_rules.py" "$CODE/system/tools/"
 GOOD="throwaway prototype kept beside its sample recordings, not a tool anyone reuses"
 PCONF="$HOME/.config/lifehack/placement.conf"
 export ROUNDB_PLACEMENT_OUTSIDE_HOMES=on
-# OFF: today's speed bump exactly (a good reason changes nothing, the retry passes, nothing remembered)
-export ROUNDB_REASON_GATE=off ROUNDB_REMEMBER_REASON=off
-fire g0 Write "$(J file_path "$HOME/gadget-lab/a.py" content "# lifehack-place: $GOOD"$'\nprint(1)')"; want 2 "gate OFF: still the once-per-session bump" "Retry the same call and it goes through"
-fire g0 Write "$(J file_path "$HOME/gadget-lab/a.py" content "# lifehack-place: $GOOD"$'\nprint(1)')"; want 0 "gate OFF: identical retry passes"
-fire g0 Write "$(J file_path "$HOME/gadget-lab/b.py" content 'print(2)')"; want 0 "gate OFF: second file same session passes"
-grep -q '^kept' "$PCONF" 2>/dev/null && { fail=$((fail+1)); echo "  FAIL  OFF wrote a remembered folder"; } || { pass=$((pass+1)); echo "   ok   OFF: nothing remembered"; }
-# ON (gate only), ALLOW cases first
-export ROUNDB_REASON_GATE=on
-fire g1 Write "$(J file_path "$PCODE/tools/ok.py" content 'print(1)')"; want 0 "gate ON: new code in the personal code folder: allowed"; silent "gate pc"
-fire g1 Write "$(J file_path "$HOME/gadget-lab/data.json" content '{}')"; want 0 "gate ON: data file: allowed"; silent "gate json"
-fire g1 Write "$(J file_path "$HOME/gadget-lab/c.py" content "# lifehack-place: $GOOD"$'\nprint(1)')"; want 0 "gate ON: Write with a real reason: passes first time"; silent "gate reason write"
-touch "$HOME/gadget-lab/c.py"
-fire g1 Edit "$(J file_path "$HOME/gadget-lab/c.py" old_string a new_string b)"; want 0 "gate ON: edit of an existing file: allowed"
-fire g1 Bash "$(J command "echo hi > $HOME/gadget-lab/d.sh  # lifehack-place: $GOOD")"; want 0 "gate ON: Bash with a real reason: passes"; silent "gate reason bash"
-fire g1 Bash "$(J command "cat > $HOME/gadget-lab/e.sh <<'EOT'"$'\n# lifehack-place: '"$GOOD"$'\necho hi\nEOT')"; want 0 "gate ON: heredoc carrying the reason line: passes"; silent "gate reason heredoc"
-[ "$(grep -c '^kept' "$PCONF" 2>/dev/null)" = 0 ] && { pass=$((pass+1)); echo "   ok   remember OFF: no folder written"; } || { fail=$((fail+1)); echo "  FAIL  remember OFF wrote a folder"; }
-# ON, the stops (every time, never once-per-session)
-fire g2 Write "$(J file_path "$HOME/other-lab/f.py" content 'print(1)')"; want 2 "gate ON: no reason: stopped" "lifehack-place: <your reason>"
-for x in "$PCREAL" "personal code folder" '<!-- lifehack-place: <your reason> -->' "end of the command"; do printf '%s' "$ERR" | grep -Fq -- "$x" && { pass=$((pass+1)); echo "   ok   deny text has: $x"; } || { fail=$((fail+1)); echo "  FAIL  deny text lacks: $x"; }; done
-fire g2 Write "$(J file_path "$HOME/other-lab/f.py" content 'print(1)')"; want 2 "gate ON: the IDENTICAL retry is stopped again" "lifehack-place"
-fire g2 Write "$(J file_path "$HOME/other-lab/f.py" content $'# lifehack-place: todo\nprint(1)')"; want 2 "gate ON: junk reason refused" "reason was refused"
-fire g2 Write "$(J file_path "$HOME/other-lab/f.py" content $'# lifehack-place: needed because needed\nprint(1)')"; want 2 "gate ON: filler reason refused" "reason was refused"
-fire g2 Write "$(J file_path "$HOME/other-lab/f.py" content $'# lifehack-place: other lab f py\nprint(1)')"; want 2 "gate ON: reason that only repeats the path refused" "reason was refused"
-fire g2 Bash "$(J command "echo hi > $HOME/other-lab/g.sh")"; want 2 "gate ON: Bash with no reason: stopped" "end of the command"
-fire g2 Bash "$(J command "echo hi > $HOME/other-lab/g.sh  # lifehack-place: ok")"; want 2 "gate ON: Bash junk reason: refused" "reason was refused"
-grep -q '^kept' "$PCONF" 2>/dev/null && { fail=$((fail+1)); echo "  FAIL  a refused reason was remembered"; } || { pass=$((pass+1)); echo "   ok   refused reasons never remembered"; }
-# remember_reason ON: the folder is added to the person's own file, in the readable allow format
-export ROUNDB_REMEMBER_REASON=on
-fire g3 Write "$(J file_path "$HOME/gadget-lab/sub/h.py" content "# lifehack-place: $GOOD"$'\nprint(1)')"; want 0 "remember ON: real reason passes"; silent "remember pass"
-grep -Fq "kept	$(cd "$HOME" && pwd -P)/gadget-lab/sub	" "$PCONF" && { pass=$((pass+1)); echo "   ok   folder written to the personal placement.conf"; } || { fail=$((fail+1)); echo "  FAIL  folder not remembered"; }
-awk -F'\t' '$1=="kept" {n++; if (NF<3 || substr($2,1,1)!="/") bad=1} END {exit !(n==1 && !bad)}' "$PCONF" && { pass=$((pass+1)); echo "   ok   one line: kept TAB absolute folder TAB date+reason"; } || { fail=$((fail+1)); echo "  FAIL  remembered line malformed"; }
-grep -Fq 'code-in-notes' "$PCONF" && { pass=$((pass+1)); echo "   ok   existing personal lines kept"; } || { fail=$((fail+1)); echo "  FAIL  existing personal lines lost"; }
-fire g4 Write "$(J file_path "$HOME/gadget-lab/sub/i.py" content 'print(1)')"; want 0 "remember ON: same folder, no reason, fresh session: allowed"; silent "remembered"
-fire g4 Write "$(J file_path "$HOME/gadget-lab/sub/deeper/j.sh" content 'echo')"; want 0 "remember ON: a folder below it: allowed"; silent "remembered below"
-fire g4 Write "$(J file_path "$HOME/gadget-lab/k.py" content 'print(1)')"; want 2 "remember ON: the PARENT folder is not covered" "lifehack-place"
-fire g4 Write "$(J file_path "$HOME/other-lab/f.py" content 'print(1)')"; want 2 "remember ON: another folder still asked" "lifehack-place"
-fire g5 Bash "$(J command "echo hi > $HOME/other-lab/l.sh  # lifehack-place: $GOOD")"; want 0 "remember ON: Bash reason passes"
-fire g5 Write "$(J file_path "$HOME/other-lab/m.py" content 'print(1)')"; want 0 "remember ON: Bash reason remembered its folder"; silent "bash remembered"
-cnt="$(grep -c '^kept' "$PCONF")"; fire g5 Bash "$(J command "echo hi > $HOME/other-lab/n.sh  # lifehack-place: $GOOD")"; [ "$(grep -c '^kept' "$PCONF")" = "$cnt" ] && { pass=$((pass+1)); echo "   ok   no duplicate line for a folder already remembered"; } || { fail=$((fail+1)); echo "  FAIL  duplicate remembered line"; }
-# one command writing TWO files, each carrying the same real reason: the second copy must not make the reason "only repeat the code"
-mkdir -p "$HOME/two-lab"
-fire g9 Bash "$(J command $'cat > '"$HOME"$'/two-lab/a.py <<EOF\n# lifehack-place: '"$GOOD"$'\nprint(1)\nEOF\ncat > '"$HOME"$'/two-lab/b.py <<EOF\n# lifehack-place: '"$GOOD"$'\nprint(2)\nEOF')"; want 0 "gate ON: two files, same real reason in both, passes"; silent "two files one reason"
+fire g0 Write "$(J file_path "$HOME/gadget-lab/a.py" content "# lifehack-place: $GOOD"$'\nprint(1)')"; want 2 "a stated reason changes nothing: still the once-per-session bump" "Retry the same call and it goes through"
+fire g0 Write "$(J file_path "$HOME/gadget-lab/a.py" content "# lifehack-place: $GOOD"$'\nprint(1)')"; want 0 "identical retry passes"
+fire g0 Write "$(J file_path "$HOME/gadget-lab/b.py" content 'print(2)')"; want 0 "second file same session passes"
+grep -q '^kept' "$PCONF" 2>/dev/null && { fail=$((fail+1)); echo "  FAIL  the hook wrote a remembered folder"; } || { pass=$((pass+1)); echo "   ok   nothing is ever remembered by the hook"; }
+# a hand-written `kept` line still silences that folder and below, never its parent
+printf 'kept\t%s\n' "$(cd "$HOME" && pwd -P)/gadget-lab/sub" >> "$PCONF"
+fire g4 Write "$(J file_path "$HOME/gadget-lab/sub/i.py" content 'print(1)')"; want 0 "hand-written kept folder: allowed"; silent "kept"
+fire g4 Write "$(J file_path "$HOME/gadget-lab/sub/deeper/j.sh" content 'echo')"; want 0 "a folder below it: allowed"; silent "kept below"
+fire g4 Write "$(J file_path "$HOME/gadget-lab/k.py" content 'print(1)')"; want 2 "the PARENT folder is not covered" "personal code folder"
+fire g5 Write "$(J file_path "$HOME/other-lab/f.py" content 'print(1)')"; want 2 "another folder still asked" "personal code folder"
 # ---- Round C (silent-miss causes C + D): SKILL.md rides the placement rule; placement_toolbox_hint shows the shared tool
 mkdir -p "$HOME/skill-lab" "$HOME/notify-lab"
-export ROUNDB_PLACEMENT_OUTSIDE_HOMES=on ROUNDB_REASON_GATE=off ROUNDB_PLACEMENT_TOOLBOX_HINT=off
+export ROUNDB_PLACEMENT_OUTSIDE_HOMES=on ROUNDB_PLACEMENT_TOOLBOX_HINT=off
 fire t1 Write "$(J file_path "$PCODE/tools/x/SKILL.md" content "name: x")"; want 0 "SKILL.md in the personal code folder: allowed"; silent "skill pc"
 fire t1 Write "$(J file_path "$HOME/skill-lab/SKILL.md" content $'---\nname: x\n---')"; want 2 "SKILL.md outside every home: bump" "personal code folder"
 fire t2 Write "$(J file_path "$HOME/notify-lab/phone_alert.py" content 'send a phone alert')"; want 2 "hint OFF: placement bump" "personal code folder"
@@ -211,26 +169,22 @@ printf '%s' "$ERR" | grep -Fq "notify-send.sh" && { fail=$((fail+1)); echo "  FA
 export ROUNDB_PLACEMENT_TOOLBOX_HINT=on
 fire t3 Write "$(J file_path "$HOME/notify-lab/phone_alert.py" content 'send a phone alert')"; want 2 "hint ON: placement bump" "Shared tools that may already do this"
 printf '%s' "$ERR" | grep -Fq "shared/notify/notify-send.sh" && { pass=$((pass+1)); echo "   ok   hint ON: names notify-send.sh"; } || { fail=$((fail+1)); echo "  FAIL  hint ON lacks notify-send.sh"; }
-export ROUNDB_REASON_GATE=on
-fire t4 Write "$(J file_path "$HOME/skill-lab/SKILL.md" content $'---\nname: x\n---\n<!-- lifehack-place: '"$GOOD"$' -->')"; want 0 "gate ON: SKILL.md with the html-comment reason passes"; silent "skill reason"
-# switch-aware: with placement_hint_ranked ON (env, or on in roundB.conf) the hint is worded "these shared tools may already do this job" (the ranked text, tested below)
-if [ "${ROUNDB_PLACEMENT_HINT_RANKED:-$(sed -n 's/^placement_hint_ranked=//p' "$HERE/roundB.conf")}" = on ]; then HINT_TXT="these shared tools may already do this job"; else HINT_TXT="Shared tools that may already do this"; fi
-fire t5 Write "$(J file_path "$HOME/notify-lab/phone_alert2.py" content 'send a phone alert')"; want 2 "gate ON + hint ON: gate stop" "$HINT_TXT"
+HINT_TXT="Shared tools that may already do this"
+fire t5 Write "$(J file_path "$HOME/notify-lab/phone_alert2.py" content 'send a phone alert')"; want 2 "hint ON: placement stop" "$HINT_TXT"
 # placement_hint_ranked: the hint leads the message and is picked by file name + opening (the one Gmail reader surfaces for a gmail script)
 export ROUNDB_PLACEMENT_HINT_RANKED=off
-fire t6 Write "$(J file_path "$HOME/notify-lab/phone_alert3.py" content 'send a phone alert')"; want 2 "ranked OFF: gate stop (today)" "Shared tools that may already do this"
+fire t6 Write "$(J file_path "$HOME/notify-lab/phone_alert3.py" content 'send a phone alert')"; want 2 "ranked OFF: placement stop (today)" "Shared tools that may already do this"
 export ROUNDB_PLACEMENT_HINT_RANKED=on
-fire t7 Write "$(J file_path "$HOME/notify-lab/phone_alert4.py" content 'send a phone alert')"; want 2 "ranked ON: gate stop leads with the reuse demand" "FIRST, before anything else"
+fire t7 Write "$(J file_path "$HOME/notify-lab/phone_alert4.py" content 'send a phone alert')"; want 2 "ranked ON: placement stop names the shared tool" "Shared tools that may already do this"
 printf '%s' "$ERR" | grep -Fq "shared/notify/notify-send.sh" && { pass=$((pass+1)); echo "   ok   ranked ON: names notify-send.sh"; } || { fail=$((fail+1)); echo "  FAIL  ranked ON lacks notify-send.sh"; }
-fire t8 Write "$(J file_path "$HOME/notify-lab/zzz_unrelated_thing.py" content 'print(1)')"; want 2 "ranked ON: no tool match still stops with the reason rule" "lifehack-place"
-printf '%s' "$ERR" | grep -Fq "FIRST, before anything else" && { fail=$((fail+1)); echo "  FAIL  ranked ON invented a hint"; } || { pass=$((pass+1)); echo "   ok   ranked ON: no match = no hint block"; }
-fire t9 Write "$(J file_path "$HOME/notify-lab/fetch-pond.sh" content 'download the pond level into pond.txt')"; want 2 "ranked ON: a generic verb in the name is not a tool match" "lifehack-place"
-printf '%s' "$ERR" | grep -Fq "FIRST, before anything else" && { fail=$((fail+1)); echo "  FAIL  generic fetch name drew a hint"; } || { pass=$((pass+1)); echo "   ok   ranked ON: fetch-pond.sh draws no tool hint"; }
-fire t10 Write "$(J file_path "$HOME/notify-lab/newest_threads.py" content $'"""List the subjects of the newest Gmail threads. Read-only IMAP, fetches headers"""')"; want 2 "ranked ON: gmail script gate stop" "FIRST, before anything else"
+fire t8 Write "$(J file_path "$HOME/notify-lab/zzz_unrelated_thing.py" content 'print(1)')"; want 2 "ranked ON: no tool match still stops" "personal code folder"
+printf '%s' "$ERR" | grep -Fq "Shared tools that may already do this" && { fail=$((fail+1)); echo "  FAIL  ranked ON invented a hint"; } || { pass=$((pass+1)); echo "   ok   ranked ON: no match = no hint block"; }
+fire t9 Write "$(J file_path "$HOME/notify-lab/fetch-pond.sh" content 'download the pond level into pond.txt')"; want 2 "ranked ON: a generic verb in the name is not a tool match" "personal code folder"
+printf '%s' "$ERR" | grep -Fq "Shared tools that may already do this" && { fail=$((fail+1)); echo "  FAIL  generic fetch name drew a hint"; } || { pass=$((pass+1)); echo "   ok   ranked ON: fetch-pond.sh draws no tool hint"; }
+fire t10 Write "$(J file_path "$HOME/notify-lab/newest_threads.py" content $'"""List the subjects of the newest Gmail threads. Read-only IMAP, fetches headers"""')"; want 2 "ranked ON: gmail script placement stop" "Shared tools that may already do this"
 printf '%s' "$ERR" | grep -Fq "shared/tools/email_fetch.py" && { pass=$((pass+1)); echo "   ok   ranked ON: the sanctioned Gmail reader is named"; } || { fail=$((fail+1)); echo "  FAIL  ranked ON missed email_fetch for a gmail script"; }
 # placement_project_skills: <project>/.claude/skills/ is the person's own code (placement + list), ~/.claude stays Claude's own space
 mkdir -p "$HOME/proj-lab/.claude/skills/pp"
-export ROUNDB_REASON_GATE=off
 export ROUNDB_PLACEMENT_PROJECT_SKILLS=off
 fire t11 Write "$(J file_path "$HOME/proj-lab/.claude/skills/pp/SKILL.md" content $'---\nname: pp\n---')"; printf '%s' "$ERR" | grep -Fq "personal code folder" && { fail=$((fail+1)); echo "  FAIL  project skills OFF drew the placement stop"; } || { pass=$((pass+1)); echo "   ok   project skills OFF: no placement stop (today)"; }
 export ROUNDB_PLACEMENT_PROJECT_SKILLS=on
@@ -239,7 +193,7 @@ fire t13 Write "$(J file_path "$HOME/.claude/skills/qq/SKILL.md" content $'---\n
 unset ROUNDB_PLACEMENT_PROJECT_SKILLS
 unset ROUNDB_PLACEMENT_HINT_RANKED
 unset ROUNDB_PLACEMENT_TOOLBOX_HINT
-unset ROUNDB_REASON_GATE ROUNDB_REMEMBER_REASON ROUNDB_PLACEMENT_OUTSIDE_HOMES
+unset ROUNDB_PLACEMENT_OUTSIDE_HOMES
 # ---- Round C 4: a shell overwrite of an SOP or canon (fc_shell_overwrite). Fictional files.
 SOP="$CODE/system/sops/skill-building-sop.md"; mkdir -p "$NOTES/state/demo/canon"; CANF="$NOTES/state/demo/canon/current.md"
 echo "- line one" > "$CANF"; echo "# plain" > "$CODE/system/notes-plain.md"
@@ -271,13 +225,10 @@ fire so3 Bash "$(J command "cp $CODE/system/notes-plain.md $CANF")"; want 2 "ON:
 fire so3 Bash "$(J command "echo x > $SOP")"; want 2 "ON: an SOP block keeps the old text" "make the change with the Edit tool"
 fire so3 Bash "$(J command "echo x >> $CANF")"; want 0 "ON: appending to canon still allowed"
 unset ROUNDB_FC_CANON_ASK_TEXT ROUNDB_FC_SHELL_OVERWRITE
-# ---- Round C post-exam B16: code_shebang (placement stops treat an extensionless #! file as code)
-export ROUNDB_PLACEMENT_OUTSIDE_HOMES=on ROUNDB_CODE_SHEBANG=off
-fire sb1 Write "$(J file_path "$HOME/odd-widget/bin/standup" content $'#!/bin/bash\necho hi')"; want 0 "shebang OFF: extensionless script outside homes: silent"; silent "shebang off"
-export ROUNDB_CODE_SHEBANG=on
-fire sb2 Write "$(J file_path "$HOME/odd-widget/bin/readme" content 'plain words, no shebang')"; want 0 "shebang ON: extensionless file without #!: silent"; silent "no shebang"
-fire sb2 Write "$(J file_path "$PCODE/bin/standup" content $'#!/bin/bash\necho hi')"; want 0 "shebang ON: extensionless script in the personal folder: allowed"; silent "shebang home"
-fire sb3 Write "$(J file_path "$HOME/odd-widget/bin/standup" content $'#!/bin/bash\necho hi')"; want 2 "shebang ON: extensionless #! script outside homes: placement stop" "personal code folder"
-fire sb4 Bash "$(J command "cat > $HOME/odd-widget/bin/standup2 <<'EOT'"$'\n#!/bin/bash\necho hi\nEOT')"; want 2 "shebang ON: Bash heredoc to an extensionless #! script: placement stop" "personal code folder"
-unset ROUNDB_PLACEMENT_OUTSIDE_HOMES ROUNDB_CODE_SHEBANG
+# ---- code_shebang REMOVED 2026-11-01 (never fired): an extensionless #! file is NOT code for the placement stops
+export ROUNDB_PLACEMENT_OUTSIDE_HOMES=on
+fire sb1 Write "$(J file_path "$HOME/odd-widget/bin/standup" content $'#!/bin/bash\necho hi')"; want 0 "extensionless script outside homes: silent"; silent "shebang"
+fire sb2 Write "$(J file_path "$PCODE/bin/standup" content $'#!/bin/bash\necho hi')"; want 0 "extensionless script in the personal folder: allowed"; silent "shebang home"
+fire sb4 Bash "$(J command "cat > $HOME/odd-widget/bin/standup2 <<'EOT'"$'\n#!/bin/bash\necho hi\nEOT')"; want 0 "Bash heredoc to an extensionless #! script: silent"; silent "shebang bash"
+unset ROUNDB_PLACEMENT_OUTSIDE_HOMES
 echo "passed=$pass failed=$fail"; [ "$fail" -eq 0 ]

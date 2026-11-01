@@ -26,8 +26,6 @@ sys.path.insert(0, os.path.normpath(os.path.join(HERE, "..", "..", "register")))
 import caller_lint as cl  # noqa: E402
 sys.path.insert(0, os.path.normpath(os.path.join(HERE, "..", "..", "tools")))
 sys.path.insert(0, os.path.normpath(os.path.join(HERE, "..", "..", "hooks", "lib")))
-from door_rules import weak_reason  # noqa: E402
-from roundb import roundb_on  # noqa: E402
 
 WIRING = {"hooks.json", "settings.json", "settings.local.json", "registrations.json"}
 MARKER = re.compile(r"not-wired-yet:\s*(\S.*)")
@@ -110,7 +108,7 @@ def check(root, files=None):
         added = ["A\t" + os.path.realpath(f)[len(rootp):] for f in files if os.path.realpath(f).startswith(rootp) and os.path.isfile(f)]
     else:
         added = git(root, "diff", "--cached", "--name-status", "--diff-filter=A").splitlines()
-    refused, warned, junk = [], [], {}
+    refused, warned = [], []
     for ln in added:
         parts = ln.split("\t")
         if len(parts) < 2:
@@ -122,12 +120,6 @@ def check(root, files=None):
         body = staged_text(root, path)
         mk = MARKER.search("\n".join(body.splitlines()[:20]))
         if mk:
-            weak = weak_reason(mk.group(1), os.path.basename(path)) if roundb_on("allow_silence_reason") else ""
-            if weak:   # Round C 3: a junk reason does not exempt (OFF = old behaviour)
-                refused.append(path)
-                junk[path] = (f"its not-wired-yet reason is {weak}; say why nothing calls it yet and what will, "
-                              "e.g. `# not-wired-yet: run by hand for the monthly audit; the cadence job is a later step`")
-                continue
             warned.append(path)
             continue
         if k == "skill":
@@ -139,7 +131,7 @@ def check(root, files=None):
         if not called(root, path):
             refused.append(path)
     for p in refused:
-        print(f'connected: REFUSED {p}: ' + (junk[p] if p in junk else 'nothing calls this — wire it (hooks.json / a caller) or mark "# not-wired-yet: <why>"'))
+        print(f'connected: REFUSED {p}: ' + ('nothing calls this — wire it (hooks.json / a caller) or mark "# not-wired-yet: <why>"'))
         print("FINDING " + json.dumps({"check": "connected", "path": p, "decision": "deny"}), file=sys.stderr)
     for p in warned:
         print(f"connected: warn {p}: marked not-wired-yet (allowed)")

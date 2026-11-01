@@ -34,12 +34,10 @@ fire a2 Write "$(J file_path "$NOTES/desks/marc/tools/other.py" content 'print(2
 has "no pointer: points at desks/<desk>/tools/ inside the personal code folder" "desks/<desk>/tools/ folder inside your personal code folder"
 hasnt "no pointer: still no ClaudeOps" "ClaudeOps"
 mv "$HOME/.config/lifehack/personal-code.bak" "$HOME/.config/lifehack/personal-code"
-# 3. the outside-homes gate message (reason gate on) separates desk tools from no-desk scripts
+# 3. the outside-homes stop names the personal code folder (the reason gate was removed 2026-11-01)
 mkdir -p "$HOME/odd-widget"
-export ROUNDB_PLACEMENT_OUTSIDE_HOMES=on ROUNDB_REASON_GATE=on ROUNDB_SKILLS_NATIVE_HOME=on
+export ROUNDB_PLACEMENT_OUTSIDE_HOMES=on ROUNDB_SKILLS_NATIVE_HOME=on
 fire a3 Write "$(J file_path "$HOME/odd-widget/ping.py" content 'print(1)')"
-has "gate: loose personal code folder named for no-desk scripts" "$PCREAL"
-has "gate: desk tools go to <personal code>/desks/<desk>/tools/" "$PCREAL/desks/<desk>/tools/"
-has "gate: notes folder is data only" "the notes folder is data only"
-hasnt "gate: old 'only when the person said' wording is gone" "only when the person said"
+has "stop: personal code folder named" "$PCREAL"
+hasnt "stop: old 'only when the person said' wording is gone" "only when the person said"
 echo "passed=$pass failed=$fail"; [ "$fail" -eq 0 ]
