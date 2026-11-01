@@ -612,7 +612,7 @@ def resolves_in_plugin_skill(path):
     fails -- exactly like a fabricated `skills/totally-fake-xyz-123/SKILL.md`.
 
     GLOB-AWARE, to match `resolves()`'s own handling -- a citation such as
-    `.claude/skills/skill-builder/scripts/**` or `skills/planning-weekly/prompts/council/*.md`
+    `.claude/skills/professor/scripts/**` or `skills/planning-weekly/prompts/council/*.md`
     names every file under a directory, not one literal name; `resolves()` already treats a `*` in
     the repo-path case as a glob, and a skill that happens to live one plugin-cache hop away
     deserves the identical treatment, not a stricter one just because of where it resolves.

@@ -18,7 +18,7 @@ intermediate level, and even build upon it at the most advanced level."*
 **Role:** a companion you come back to, not a course you graduate from. It infers what someone needs
 from their own first sentence, answers from the live system rather than a written inventory that can
 go stale, and hands off to the skill that actually owns the deeper job — `/ingest` for personal
-material, `/skill-builder` for building a new skill — instead of re-implementing either.
+material — instead of re-implementing it.
 
 # Professor
 
@@ -97,9 +97,7 @@ they already have a rough prompt, a system instruction, or a half-built skill fr
   that file is already doing a job for this system, so read it with them before overwriting it; prefer
   folding their material in over replacing it outright.
 - A **skill or prompt that does one specific thing** becomes its own folder under `.claude/skills/`,
-  same shape as everything already there. `/skill-builder` — the build case, below — is the actual
-  tool for turning a rough prompt into a working skill; send them there rather than hand-writing
-  frontmatter in this conversation.
+  same shape as everything already there — see the build case, below.
 - Their **own notes structure**, if they had one, is a judgment call, not a rule: point them at
   `docs/data-layout.md` so they can see the shape this system expects (`data/`, `desks/`, `records/`,
   `canon.md`…) and let them decide what maps across and what starts fresh.
@@ -206,9 +204,8 @@ checked — "I just read the skills folder" — never "this is everything it can
 Someone who wants a bespoke addition — their own skill, their own tweak — without breaking what
 updates depend on. This case is mostly routing, not new content:
 
-- **A new skill, or fixing or improving one that already exists** → `/skill-builder`. It interviews
-  them and carries the work all the way to something built and tested; it is not built here, in this
-  conversation.
+- **A new skill, or fixing or improving one that already exists** → just build it, the normal way,
+  in the default place.
 - **"Will an update wipe out what I add?"** → `UPDATE.md` covers exactly what an update touches (the
   files git already tracks) and what it never touches (`data/`, and anything git doesn't know about).
   Point them at it rather than re-deriving the answer from scratch each time.

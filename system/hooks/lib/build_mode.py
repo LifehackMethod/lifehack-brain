@@ -612,7 +612,7 @@ def main_inner():
             msg = ("ASK FIRST: this %s a skill (%s). Enver's rule: no AI session changes a skill (any folder named .claude/skills/, "
                    "user-level or in a project) without his Yes. WHY: a skill is standing instructions that run in every later session, so an "
                    "unreviewed edit changes behaviour everywhere, silently. WHO-COULD-THIS-BREAK: any session or script that builds or fixes a "
-                   "skill (skill-builder, a /save that patches a skill). WAY-THROUGH: press Yes on this prompt if you want the change; in a "
+                   "skill (a skill build, a /save that patches a skill). WAY-THROUGH: press Yes on this prompt if you want the change; in a "
                    "headless run, stop and tell the person which skill file you want to change and why, and let them make or approve it. "
                    "RULE: switch skill_edit_ask in system/hooks/roundB.conf." % ("writes to" if tool == "Bash" else "edits", sk[0]))
             # Printed by main() only if nothing else denies: the other checks below (placement, copy, speed bump) still run, because
