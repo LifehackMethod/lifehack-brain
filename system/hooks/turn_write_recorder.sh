@@ -22,7 +22,7 @@ trap 'lhb_journal_fire "$?" "turn_write_recorder.sh" "PostToolUse" "Write|Edit|N
 # UPDATED: 2026-10-30
 # ─────────────────────────────────────────────────────────────────────────────
 . "$_lhb_dir/lib/roundb.sh" 2>/dev/null || roundb_on() { return 1; }
-roundb_on back_door || roundb_on own_list || roundb_on own_list_unhomed || exit 0
+roundb_on back_door || roundb_on own_list || roundb_on own_list_unhomed || roundb_on oneoff_script_nudge || exit 0
 IFS= read -r -d '' P || true
 [ -n "$P" ] || exit 0
 
