@@ -277,7 +277,7 @@ def main(argv=None):
     p.add_argument("--public-root", default=REPO_ROOT_FROM_SCRIPT,
                    help="public repo root (default: this script's own repo, three dirs up)")
     p.add_argument("--private-root", default=DEFAULT_PRIVATE_ROOT,
-                   help="private repo root (default: ~/.claude/skills/ClaudeOps)")
+                   help="personal code folder (default: the one shared/personal_code_root.py resolves)")
     p.add_argument("--exemptions", default=DEFAULT_EXEMPTIONS_PATH,
                    help=f"exemption file (default: {DEFAULT_EXEMPTIONS_PATH})")
     p.add_argument("--severity", choices=("warn", "refuse"), default="warn",
@@ -287,6 +287,10 @@ def main(argv=None):
     public_root = os.path.abspath(args.public_root)
     private_root = os.path.abspath(os.path.expanduser(args.private_root))
     rows = _load_register_file(args.register)
+    import personal_register  # 3b.7 B: a personal tool is registered in the personal register, not an omission
+    rows, _pw = personal_register.with_personal(rows, private_root, args.register)
+    for w in _pw:
+        print(f"WARN {w}", file=sys.stderr)
 
     result = run(rows, public_root, private_root, args.exemptions, args.severity)
     print(f"omission_check.py — {args.register}")

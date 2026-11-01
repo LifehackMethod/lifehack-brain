@@ -18,7 +18,7 @@ health_line.py — the ONE-LINE job-health line printed first in every session.
 #      5. otherwise                          -> "jobs: <n> OK"
 #      Never raises, never exits nonzero. On an internal error: "job health: could not read (<reason>)".
 #      Pure stdlib, local files only (no Drive, no subprocess): finishes in a few ms.
-# INPUTS: ENABLED rows of the ```jobs block in system/jobs.md (name | enabled | interval | outcome | check | model | budget | source | cmd;
+# INPUTS: ENABLED rows of the ```jobs block in system/jobs.md plus <personal-code>/jobs.md (shared/jobs_manifest.py) (name | enabled | interval | outcome | check | model | budget | source | cmd;
 #      '#' = comment; parsed the same way job-run.sh's awk does). Period = 3rd column, seconds.
 #      Overrides (for fixtures): argv[1]=state dir, argv[2]=manifest; or env LIFEHACK_JOBS_STATE_DIR /
 #      LIFEHACK_JOBS_MANIFEST. Defaults: ~/.config/lifehack/state/jobs and <script>/../jobs.md.
@@ -148,7 +148,17 @@ def main() -> int:
         manifest = (sys.argv[2] if len(sys.argv) > 2 else os.environ.get("LIFEHACK_JOBS_MANIFEST")
                     or os.environ.get("LIFEHACK_JOBS_FILE")
                     or os.path.join(CODE_ROOT, "system", "jobs.md"))
-        line = compute(state, manifest, now)
+        join_note = ""
+        if len(sys.argv) <= 2 and not os.environ.get("LIFEHACK_JOBS_MANIFEST"):
+            # 3b.7 B: the shared table plus <personal-code>/jobs.md (personal wins on a clash), the same join every
+            # scheduler entry point reads. A join failure keeps the shared table.
+            try:
+                sys.path.insert(0, os.path.join(CODE_ROOT, "shared"))
+                import jobs_manifest
+                manifest = jobs_manifest.effective_manifest(manifest)
+            except Exception as e:
+                join_note = f" (personal jobs not read: {type(e).__name__})"
+        line = compute(state, manifest, now) + join_note
     except BaseException as e:  # fail-soft: never raise, never non-zero
         line = f"job health: could not read ({type(e).__name__}: {e})"
     line = " ".join(str(line).split())

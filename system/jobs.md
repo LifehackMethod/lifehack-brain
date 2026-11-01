@@ -168,8 +168,13 @@ That severity difference is real, so the loop stays with its callers.
 #
 # 2026-10-27 self-monitoring Sprint 1: only email-summary-write is enabled; rows below set off (were yes), restored in later sprints.
 # 2026-10-27 self-monitoring 3.1: the watcher rows (system-health, sentinel-health, planning-health, backlog-health,
-# fault-proposer, item-store-freshness, email-summary-freshness, helm-keepalive, marc-deadman, clair-health,
-# deryl-books-health, dobby-health, recommend) were removed with their runners; git history has them.
+# fault-proposer, item-store-freshness, email-summary-freshness, helm-keepalive and the per-desk health watchers) were
+# removed with their runners; git history has them.
+#
+# 3b.7 B (2026-11-01): PERSONAL jobs (a person's own desks and scripts) do not live in this shared table. They go in
+# <personal-code>/jobs.md (same nine columns, its own ```jobs block) with their plain names in <personal-code>/job-names.txt.
+# Every scheduler entry point (pulse.sh, job-run.sh, install-schedulers.sh, health_line.py, pulse-park.sh) reads this table
+# PLUS that one through shared/jobs_manifest.py; on a name clash the personal row wins, with a warning. No personal file = none.
 #
 #
 # ── The next three refresh Google-backed stores (calendar item-store, tasks item-store, v2 email
@@ -271,68 +276,6 @@ planning-weekly-prime | off | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHAC
 # to PARTIAL would sit invisible until a human happened to run it by hand. Weekly cadence
 # matches the runner's own STALE_AFTER_HOURS=192 (168h weekly + 24h slack) header.
 guard-fire-test | off | 604800 | Every guard was fire-tested this week and the verdict (GREEN or a named downgrade) reached the findings store, so a weakened guard shows on the session line. | ~/.config/lifehack/guard-fire-test/last-run.json ~ "verdict":"[GD][A-Z]+","named":"[^"]+" | none | 0 | none | bash "$LIFEHACK_CODE_ROOT/system/tools/guard-fire-test-run.sh"
-#
-# marc-health: Marc's market-data health chain. MIGRATED 2026-10-27 (self-monitoring 5.5 + 5.7), row OFF. The runner is DESK code: it
-# lives in the private ClaudeOps repo (desks/marc/tools/marc-health/, origin egjokaj/ClaudeOps), reached as $HOME/.claude/skills/ClaudeOps/...
-# (the door allows runners under that repo and refuses any pinned clone path). Every feed read goes through safe_fetch.py with the
-# Level-2 domain allowlist ON; its ONE AI call (the daily voice read) goes through run_model, tier small; it never pushes (job-run alerts).
-# The check reads the receipt the runner writes after verifying the snapshot it just refreshed (the Drive path itself cannot be written here).
-marc-health | off | 7200 | Marc's market snapshot is refreshed from the public feeds through the safe fetch every cycle, with the SPY and VIX core read verified fresh and the daily voice read written, so Marc's weekly reads never start on a stale price feed. | ~/.config/lifehack/marc-health/health-note.txt ~ ^marc-health ok .* core_ok=1 | small | 3 | web | bash "$HOME/.claude/skills/ClaudeOps/desks/marc/tools/marc-health/marc-health-run.sh"
-#
-# marc-weekly: eight-researcher weekly deep-read fan-out. CORRECTED 2026-08-26 (verified this
-# session): "Missing runner" was wrong — runner exists in the Brain at
-# desks/marc/tools/marc-weekly/marc-weekly-run.sh. It self-gates to Sat/Sun only (DOW guard); a
-# by-hand run today (Wed) hit a pre-existing single-instance lock and exited 0 clean before
-# reaching the DOW check — a real, safe stand-down, not a fabricated pass.
-marc-weekly | waiting-on-port | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/marc/tools/marc-weekly/marc-weekly-run.sh"
-#
-# marc-wednesday: mid-week light scan (donor notes a live false-all-clear defect carried forward,
-# not fixed by this port). CORRECTED 2026-08-26 (verified this session): "Missing runner" was
-# wrong — runner exists in the Brain at desks/marc/tools/marc-wednesday/marc-wednesday-run.sh.
-# ⛔ NOT RUN THIS SESSION: this job is genuinely due today (its own due-window includes today, and
-# its marker is behind the current ISO week) — invoking it would fire a real multi-source LLM
-# research fan-out (real token spend), not a dry no-op. UNVERIFIED-BY-DESIGN, not confirmed working.
-marc-wednesday | off | 86400 | Marc's mid-week scan ran once this ISO week and recorded one verdict, QUIET or MATERIAL, against the live levels, so a material shift is never missed between the Saturday reads. | ~/.config/lifehack/marc-wednesday/last-run.txt ~ ^marc-wednesday ok week=[0-9]{4}-W[0-9]{2} verdict=[QM][A-Z]+ at=[0-9]{4}- | medium | 2 | none | bash "$HOME/.claude/skills/ClaudeOps/desks/marc/tools/marc-wednesday/marc-wednesday-run.sh"
-#
-# clair-billing: billing/client detail emit + cadence-nudge push. CORRECTED 2026-08-26 (verified
-# this session): "Missing runner" was wrong — runner exists in the Brain at
-# desks/clair/tools/clair-billing/clair-billing-run.sh. RUN THIS SESSION: exit 0 — wrote its two
-# signal files (read-only on Google + local writes only); the push-due branch correctly
-# self-deduped, so no new phone notification fired.
-clair-billing | waiting-on-port | 21600 | TBD | TBD | TBD | 0 | TBD | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/clair/tools/clair-billing/clair-billing-run.sh"
-#
-# deryl-ingest: Deryl desk light daily email doorman. CORRECTED 2026-08-26 (verified this
-# session): "Missing runner" was wrong — runner exists in the Brain at
-# desks/deryl/tools/deryl-ingest/deryl-ingest-run.sh. RUN THIS SESSION (supervised, as its own
-# header prescribes): `MAX_EMAILS=2 DRY_RUN=1` — exit 0, no new mail, cheap exit (no claude, no
-# tokens). The command below is the sanctioned live shape; its own header still says this row is
-# registered disabled until the Huddle-2 staged live test proves the reader/actor split — that
-# prerequisite is separate from "does the runner exist."
-deryl-ingest | waiting-on-port | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/deryl/tools/deryl-ingest/deryl-ingest-run.sh"
-#
-# cp-utilities: property utilities ingest chain (utility portal + submeter). CORRECTED 2026-08-26
-# (verified this session): "Missing runner" was wrong — runner exists in the Brain at
-# desks/deryl/tools/cp-utilities/cp-utilities-run.sh. RUN THIS SESSION: `CP_DRYRUN=1` — exit 0,
-# both ingest scripts ran --dry-run cleanly, reconcile=OK, ZERO writes. Its own header still lists
-# two unmet prerequisites (keychain env-fallback code, Enver's one-time utility-portal keychain export)
-# before a live run is safe.
-cp-utilities | waiting-on-port | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/deryl/tools/cp-utilities/cp-utilities-run.sh"
-#
-# emporia: carriage-house electric submeter ingest. CORRECTED 2026-08-26 (verified this session):
-# "Missing runner" was wrong — runner exists in the Brain at desks/deryl/tools/emporia/
-# emporia-run.sh. RUN THIS SESSION: `EMPORIA_DRYRUN=1` — exit 0, ran --dry-run cleanly, plausible
-# reading, ZERO writes. Its own header still lists the same two open prerequisites as cp-utilities.
-emporia | waiting-on-port | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/deryl/tools/emporia/emporia-run.sh"
-#
-# emily-breakdown: Emily desk audition-ingest cron slot. CORRECTED 2026-08-26 (verified this
-# session): "Missing runner" was wrong — runner exists in the Brain at
-# desks/emily/tools/emily-breakdown/emily-breakdown-run.sh. RUN THIS SESSION: `DRY_RUN=1` — exit 0,
-# BUT surfaced a separate real defect: this runner hardcodes a stale `CODE_ROOT` path from a
-# superseded clone location that does not match any actual live clone — the dry-run diagnostic
-# confirmed both the skill file and notify-send.sh resolved to [exists: NO] under that hardcoded
-# path. Genuine wiring defect in the Brain-resident runner itself, out of this row's scope to fix.
-# ⚠ enable-recommend NO until that path is corrected.
-emily-breakdown | waiting-on-port | 300 | TBD | TBD | TBD | 0 | TBD | bash "$(python3 "$LIFEHACK_CODE_ROOT/shared/brain_root.py" --quiet)/desks/emily/tools/emily-breakdown/emily-breakdown-run.sh"
 #
 # token-burn-mine: cost-trend Hospital finding mined from the existing transcript corpus.
 # CORRECTED 2026-08-26 (verified this session): "Missing runner" was wrong — it exists, parked at

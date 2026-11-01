@@ -34,6 +34,8 @@ set -uo pipefail   # NOT -e: we want to control every exit path explicitly
 
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CONFIG="${LIFEHACK_JOBS_FILE:-${PULSE_CONFIG:-$CODE_ROOT/system/jobs.md}}"
+# 3b.7 B: a personal job (<personal-code>/jobs.md) is a real row too: read the same joined table pulse.sh reads.
+[ -f "$CONFIG" ] && { [ -n "${LIFEHACK_PERSONAL_JOBS_FILE:-}" ] || { [ -z "${LIFEHACK_PERSONAL_JOBS_FILE+x}" ] && [ -z "${LIFEHACK_JOBS_FILE:-}${PULSE_CONFIG:-}" ]; }; } && { _JM="$(python3 "$CODE_ROOT/shared/jobs_manifest.py" --manifest "$CONFIG")" && [ -n "$_JM" ] && CONFIG="$_JM"; }
 
 _ROOT_LINE="$(python3 "$CODE_ROOT/shared/brain_root.py" --quiet 2>/dev/null)"
 NOTES_ROOT="${_ROOT_LINE:-}"

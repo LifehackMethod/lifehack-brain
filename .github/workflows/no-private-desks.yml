@@ -1,0 +1,39 @@
+name: No Private Desks
+
+# WHY THIS EXISTS (3b.7 B, 2026-11-01): the shared plugin must not name the maintainer's personal desks or private
+# repo (Enver: the plugin "should not name my private repo or my desk"). Personal jobs, register rows and desk scripts
+# live in each person's personal code folder (<personal-code>/jobs.md, register.jsonl, desks/<desk>/tools/), read by
+# the scheduler and register tools alongside the shared files. This job keeps that material out of the plugin:
+# system/tools/check_no_private_desks.py (rules R1-R4 in its header; the names are carried only as salted hashes and
+# every finding is printed redacted) plus its own test file, which plants a mention and proves it is caught.
+
+on:
+  pull_request:
+    branches:
+      - V2
+  push:
+    branches:
+      - V2
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  no-private-desks:
+    name: the plugin names no personal desk and no private repo handle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check the tree
+        run: python3 system/tools/check_no_private_desks.py
+
+      - name: Test the check (a planted mention must fail)
+        run: python3 system/tools/tests/test_check_no_private_desks.py -v

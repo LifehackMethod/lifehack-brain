@@ -41,6 +41,8 @@ CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"   # this script'
 # Task-Scheduler entries, which run outside this process entirely and can't inherit an export).
 export LIFEHACK_CODE_ROOT="$CODE_ROOT"
 CONFIG="${LIFEHACK_JOBS_FILE:-${PULSE_CONFIG:-$CODE_ROOT/system/jobs.md}}"        # the manifest — always CODE-resident
+# 3b.7 B: plus <personal-code>/jobs.md when it exists (shared/jobs_manifest.py prints the joined copy; personal wins on a clash).
+[ -f "$CONFIG" ] && { [ -n "${LIFEHACK_PERSONAL_JOBS_FILE:-}" ] || { [ -z "${LIFEHACK_PERSONAL_JOBS_FILE+x}" ] && [ -z "${LIFEHACK_JOBS_FILE:-}${PULSE_CONFIG:-}" ]; }; } && { _JM="$(python3 "$CODE_ROOT/shared/jobs_manifest.py" --manifest "$CONFIG")" && [ -n "$_JM" ] && CONFIG="$_JM"; }
 # STATE is machine-local — losing it just means every job looks "never run" and re-fires next cycle
 # (safe, see the breaker comment above). It must NOT be keyed off the calling shell's $TMPDIR: on
 # macOS, cron's environment has no TMPDIR (falls back to /tmp), while an interactive Terminal gets a

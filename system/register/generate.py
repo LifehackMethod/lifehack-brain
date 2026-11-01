@@ -99,8 +99,12 @@ import sys
 # cache root live" (harvest.py's own CLI defaults and derivation logic).
 from schema_v1 import UNIT_TYPES  # noqa: F401  (re-exported for callers/tests)
 from validate_register import validate_row
-from harvest import REPO_ROOT_FROM_SCRIPT, DEFAULT_PRIVATE_ROOT, cache_root_for, short_sha
+from harvest import REPO_ROOT_FROM_SCRIPT, DEFAULT_PRIVATE_ROOT, cache_root_for, short_sha, _home_relative
+# 3b.7 B: the private registrations file spells its commands from the personal code folder ($HOME-relative);
+# set per run by generate() from its private_root, never a hard-coded repo path.
+_REG_PREFIX = _home_relative(DEFAULT_PRIVATE_ROOT)
 import switch_state  # S1/K1 — shared register-backed switch semantics
+import personal_register  # 3b.7 B — the personal register (<personal-code>/register.jsonl)
 import omission_check  # Feature B1.4 — the omission check, a sibling module this
                        # generator calls; see omission_check.py for the design.
 import caller_lint  # Feature B1.5 — the caller lint, a sibling module this generator
@@ -192,7 +196,7 @@ def emit_command(rel, args, form):
     elif form == "plugin":
         cmd = f'bash "${{CLAUDE_PLUGIN_ROOT}}{rel}"'
     elif form == "registrations":
-        cmd = f'bash "$HOME/.claude/skills/ClaudeOps{rel}"'
+        cmd = f'bash "{_REG_PREFIX}{rel}"'
     elif form == "user":
         cmd = f'bash "{rel}"'
     else:
@@ -477,7 +481,24 @@ def generate(register_path, out_dir, public_root, private_root, cache_root,
     computation — the public wiring drift check this tool exists for must not
     fail because someone else's private-repo checkout is stale or absent on
     this machine."""
+    global _REG_PREFIX
+    _REG_PREFIX = _home_relative(private_root)
     entries = load_register(register_path)
+
+    # 3b.7 B: the private rows live in the person's own register now, not the master. Join them here so the
+    # private wiring targets (registrations / user) keep their source and the omission check and caller lint
+    # see the whole picture. A malformed personal row is skipped with a WARN; it never refuses the run.
+    personal_warnings = []
+    _prows, _pw = personal_register.load_personal_rows(private_root, register_path)
+    personal_warnings.extend(_pw)
+    _base = max([ln for ln, _, _ in entries] or [0])
+    for _i, _row in enumerate(_prows, start=1):
+        _errs = validate_row(_row, _base + _i)
+        if _errs:
+            personal_warnings.append("personal register row %s fails schema v1, skipped: %s"
+                                     % (_row.get("id"), "; ".join(_errs)))
+            continue
+        entries.append((_base + _i, _row, None))
 
     problems = schema_check(entries)
     if problems:
@@ -632,7 +653,7 @@ def generate(register_path, out_dir, public_root, private_root, cache_root,
             "path": final_path, "doc": doc, "blocking": _blocking(repo_filter),
         })
 
-    warnings = cache_divergence_warnings(hook_rows, public_root, cache_root)
+    warnings = personal_warnings + cache_divergence_warnings(hook_rows, public_root, cache_root)
 
     dedup_in_effect, dedup_stale = dedup_identity_status(hook_rows, dedup)
 
@@ -741,7 +762,7 @@ def report(result):
 
     if result["warnings"]:
         lines.append("")
-        lines.append("WARNINGS (cache-divergence, non-blocking):")
+        lines.append("WARNINGS (personal register / cache-divergence, non-blocking):")
         for w in result["warnings"]:
             lines.append(f"  {w}")
 
@@ -924,7 +945,7 @@ def main(argv=None):
                         "script's own repo, three directories up)")
     p.add_argument("--private-root", default=DEFAULT_PRIVATE_ROOT,
                    help="private repo root, for resolving private hook paths "
-                        "(default: ~/.claude/skills/ClaudeOps)")
+                        "(default: your personal code folder, shared/personal_code_root.py)")
     p.add_argument("--cache-root", default=None,
                    help="platform plugin cache root, read-only, for the cache-divergence "
                         "warning only (default: derived from <public-root>/.claude-plugin/"

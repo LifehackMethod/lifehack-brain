@@ -70,7 +70,10 @@ esac
 
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # TEST-ONLY seams (self-monitoring 2.0): LIFEHACK_JOBS_FILE and LIFEHACK_STATE_DIR. Inert when unset.
-MANIFEST="${LIFEHACK_JOBS_FILE:-$CODE_ROOT/system/jobs.md}"
+# 3b.7 B: the table read is the shared one PLUS <personal-code>/jobs.md (shared/jobs_manifest.py; personal wins on a clash).
+# MANIFEST is resolved just below the log redirect, so a join warning lands in this run's log, never in launch.err.
+MANIFEST_SHARED="${LIFEHACK_JOBS_FILE:-$CODE_ROOT/system/jobs.md}"
+MANIFEST="$MANIFEST_SHARED"
 STATE="${LIFEHACK_STATE_DIR:-$HOME/.config/lifehack/state}/jobs/$JOB"
 mkdir -p "$STATE/errors" || exit 1
 
@@ -88,6 +91,7 @@ RUNLOG="$STATE/run.current"
 : > "$RUNLOG"
 exec 3>&2   # the real stderr, kept for the run-time refusal line (3.4b)
 exec >>"$RUNLOG" 2>&1
+{ [ -n "${LIFEHACK_PERSONAL_JOBS_FILE:-}" ] || { [ -z "${LIFEHACK_PERSONAL_JOBS_FILE+x}" ] && [ -z "${LIFEHACK_JOBS_FILE:-}${PULSE_CONFIG:-}" ]; }; } && _JM="$(python3 "$CODE_ROOT/shared/jobs_manifest.py" --manifest "$MANIFEST_SHARED")" && [ -n "$_JM" ] && MANIFEST="$_JM"
 
 # TEST-ONLY seam LIFEHACK_FAKE_NOW (epoch seconds; inert unless all digits). When set: every "now" and age
 # computation reads it, and files whose MTIME is a clock (last-success, last-run, alerted) are stamped to it.

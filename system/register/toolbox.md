@@ -64,6 +64,7 @@ Shared layer = everything under `shared/`. Look here before writing a new tool.
 
 - `/shared/brain_root.py` · THE one root variable. Every data path in this system resolves through here
 - `/shared/cal_config.py` · the one place a calendar or task-list identifier is read from
+- `/shared/jobs_manifest.py` · the ONE reader that joins the shared job table with YOUR personal one
 - `/shared/paths.py` · every machine-shaped path in this system, answered in ONE place
 - `/shared/personal_code_root.py` · where YOUR personal code lives (desk runners, prompts, your own scripts)
 - `/shared/registry.py` · resolve a project slug to the files that belong to it
@@ -75,16 +76,8 @@ Defined in `system/jobs.md`, run through `system/tools/job-run.sh`.
 - `archivist-audit` · every 7d · enabled: off · runs `archivist-audit-run.sh`
 - `archivist-deepmine` · every 4d · enabled: off · runs `archivist-deepmine-run.sh`
 - `calendar-store-sync` · every 1d · enabled: off · runs `calendar-store-sync-run.sh`
-- `clair-billing` · every 6h · enabled: waiting-on-port · runs `clair-billing-run.sh`
-- `cp-utilities` · every 1d · enabled: waiting-on-port · runs `cp-utilities-run.sh`
-- `deryl-ingest` · every 1d · enabled: waiting-on-port · runs `deryl-ingest-run.sh`
 - `email-summary-write` · every 3h · enabled: yes · runs `email-summary-write-run.sh`
-- `emily-breakdown` · every 5min · enabled: waiting-on-port · runs `emily-breakdown-run.sh`
-- `emporia` · every 1d · enabled: waiting-on-port · runs `emporia-run.sh`
 - `guard-fire-test` · every 7d · enabled: off · runs `guard-fire-test-run.sh`
-- `marc-health` · every 2h · enabled: off · runs `marc-health-run.sh`
-- `marc-wednesday` · every 1d · enabled: off · runs `marc-wednesday-run.sh`
-- `marc-weekly` · every 1d · enabled: waiting-on-port · runs `marc-weekly-run.sh`
 - `mirror-fetch` · every 1h · enabled: off · runs `mirror-fetch-run.sh`
 - `obsidian-reindex` · every 6h · enabled: off · runs `obsidian-reindex.sh`
 - `planning-diary` · every 1d · enabled: off · runs `planning-diary-run.sh`

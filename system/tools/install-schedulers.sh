@@ -98,6 +98,9 @@ set -uo pipefail
 
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 MANIFEST="${LIFEHACK_JOBS_FILE:-${PULSE_CONFIG:-$CODE_ROOT/system/jobs.md}}"
+# 3b.7 B: plus <personal-code>/jobs.md when it exists (shared/jobs_manifest.py prints the joined copy; personal wins on a clash,
+# with a warning). Only the ```jobs``` block is joined; the ```crontab``` block stays the shared file's own.
+[ -f "$MANIFEST" ] && { [ -n "${LIFEHACK_PERSONAL_JOBS_FILE:-}" ] || { [ -z "${LIFEHACK_PERSONAL_JOBS_FILE+x}" ] && [ -z "${LIFEHACK_JOBS_FILE:-}${PULSE_CONFIG:-}" ]; }; } && { _JM="$(python3 "$CODE_ROOT/shared/jobs_manifest.py" --manifest "$MANIFEST")" && [ -n "$_JM" ] && MANIFEST="$_JM"; }
 MODE="${1:---dry-run}"
 BEGIN="# >>> LIFEHACK SCHEDULERS (managed by install-schedulers.sh — do not edit by hand) >>>"
 END="# <<< LIFEHACK SCHEDULERS <<<"
@@ -112,8 +115,8 @@ trim() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]
 # prints PASS or the refusal reasons (one per line) and exits 0 / 1 (2 = no such row). The rules:
 #   (a) outcome, check, model, budget, source are all present and not `TBD`; model is none|small|medium|large;
 #       budget is an integer > 0 unless model=none.
-#   (b) every script the command runs resolves (after $LIFEHACK_CODE_ROOT / $HOME expansion) under the code root or the
-#       private desk repo, and the command pins no absolute code path (a home-folder clone, a plugin cache) instead of
+#   (b) every script the command runs resolves (after $LIFEHACK_CODE_ROOT / $HOME expansion) under the code root or your
+#       personal code folder (shared/personal_code_root.py; LIFEHACK_DESK_REPO overrides it), and the command pins no absolute code path (a home-folder clone, a plugin cache) instead of
 #       $LIFEHACK_CODE_ROOT.
 #   (c) a static scan of those scripts, of what they source, and of the python/bash scripts they invoke, finds no raw
 #       Gmail READ / Calendar READ / Sheets-values-get / curl / urllib / requests call. Only the files in
@@ -135,8 +138,12 @@ trim() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]
 # TEST SEAMS: LIFEHACK_JOBS_FILE (manifest for --check-row), LIFEHACK_CODE_ROOT (code root), LIFEHACK_DESK_REPO, LIFEHACK_VENDOR_ALLOWLIST.
 DOOR_ALLOWLIST="$CODE_ROOT/system/tools/shared-fetch-allowlist.txt"
 DOOR_VENDOR_ALLOWLIST="${LIFEHACK_VENDOR_ALLOWLIST:-$CODE_ROOT/system/tools/vendor-read-allowlist.txt}"
+# The desk folder the door allows runners under = your personal code folder (3b.7 B: resolved, never a hard-coded repo path).
+# Unresolved (a student with none) -> a path that cannot exist, so only code-root runners pass.
+DOOR_DESK="${LIFEHACK_DESK_REPO:-$(python3 "$CODE_ROOT/shared/personal_code_root.py" --quiet 2>/dev/null)}"
+[ -n "$DOOR_DESK" ] || DOOR_DESK="$CODE_ROOT/.no-personal-code-folder"
 door_check_row() {   # name enabled outcome check model budget source command -> reasons on stdout; rc 0 = pass
-  DOOR_RULES_DIR="$CODE_ROOT/system/tools" python3 - "${LIFEHACK_CODE_ROOT:-$CODE_ROOT}" "${LIFEHACK_DESK_REPO:-$HOME/.claude/skills/ClaudeOps}" \
+  DOOR_RULES_DIR="$CODE_ROOT/system/tools" python3 - "${LIFEHACK_CODE_ROOT:-$CODE_ROOT}" "$DOOR_DESK" \
     "$DOOR_ALLOWLIST" "$DOOR_VENDOR_ALLOWLIST" "$@" <<'DOORPY'
 import os, re, shlex, sys
 code, desk, allow_file, vendor_file, name, enabled, outcome, check, model, budget, source, cmd = sys.argv[1:13]
@@ -216,7 +223,7 @@ for e in scripts:
     if "$" in e:
         reasons.append(f"unresolvable variable in runner path: {e}")
     elif not (under(os.path.realpath(e), code) or under(os.path.realpath(e), desk)):
-        reasons.append(f"runner outside the code root and the private desk repo: {e}")
+        reasons.append(f"runner outside the code root and your personal code folder: {e}")
     elif not os.path.isfile(e):
         reasons.append(f"runner script does not exist: {e}")   # 5.10(5): a row whose command file is gone can never run
 
@@ -349,7 +356,7 @@ door_check_named() {   # name manifest
 }
 if [ "${1:-}" = "--check-row" ]; then
   [ -n "${2:-}" ] || { echo "usage: install-schedulers.sh --check-row <name>" >&2; exit 2; }
-  door_check_named "$2" "${LIFEHACK_JOBS_FILE:-$MANIFEST}"
+  door_check_named "$2" "$MANIFEST"
   exit $?
 fi
 DOOR_REFUSED=0

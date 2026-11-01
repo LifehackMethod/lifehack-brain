@@ -2,9 +2,15 @@
 """harvest.py — the register's HARVESTER (Feature B1.2, enforcement-layer Phase 2 plan).
 
 Promotes the harvest half of `records/2026-09-13-phase-1/t2_generation.py` (T2, Phase 1) into a
-real tool: walks disk + wiring sources across BOTH repos (public V2 checkout + the private
-`egjokaj/ClaudeOps` checkout) and emits a schema-v1 JSONL register (`schema_v1.py` /
-`validate_register.py`, both in this folder — Feature B1.1).
+real tool: walks disk + wiring sources across BOTH repos (the public plugin checkout + the person's own
+personal code folder, found through `shared/personal_code_root.py`) and emits a schema-v1 JSONL register
+(`schema_v1.py` / `validate_register.py`, both in this folder — Feature B1.1).
+
+⛔ 3b.7 B (2026-11-01): the MASTER register holds PUBLIC rows only. Every `repo: "private"` row (a personal
+tool, skill, hook registration, git hook, or a personal scheduled job from `<personal-code>/jobs.md`) goes to
+the person's OWN register, `<personal-code>/register.jsonl` (`personal_register.py`), and only when asked:
+`--personal-out [PATH]`. Without it the private rows are counted and NOT written anywhere, so a scratch run
+(a test, CI) can never touch a real personal folder.
 
 Five unit classes (schema v1's `UNIT_TYPES`):
 
@@ -24,7 +30,8 @@ Five unit classes (schema v1's `UNIT_TYPES`):
               rule).
   scheduled — one row per line of the public repo's `system/jobs.md` ```jobs``` block.
               All scheduled rows share one `path` (the manifest itself) — Enver's Ruling 5,
-              schema-v1.md.
+              schema-v1.md. PLUS (3b.7 B) one `repo: "private"` row per line of the personal
+              `<personal-code>/jobs.md`, id `scheduled:private:<name>`, path `/jobs.md`.
   githook   — NEW, K2 (2026-09-16): one row per git-hook SCRIPT under `system/githooks/` in
               either repo (activated via `git config core.hooksPath system/githooks`, a wiring
               surface none of the six `hook` surfaces above cover). Closes the register's
@@ -43,10 +50,11 @@ re-executing their measurement.
 
 Usage:
     python3 harvest.py [--public-root PATH] [--private-root PATH] [--cache-root PATH]
-                        [--no-cache] [--out FILE]
+                        [--no-cache] [--out FILE] [--personal-out [FILE]]
 
 Defaults: --public-root = the repo containing this script (three directories up from
-`system/register/harvest.py`) · --private-root = `~/.claude/skills/ClaudeOps` · --cache-root =
+`system/register/harvest.py`) · --private-root = your personal code folder
+(`shared/personal_code_root.py`) · --personal-out with no FILE = `<private-root>/register.jsonl` · --cache-root =
 derived from `<public-root>/.claude-plugin/plugin.json`'s own `version` field (never hardcoded —
 T2's own hardcoded `0.3.20` was a portability wart this tool does not repeat). `--no-cache` skips
 the two cache surfaces entirely (useful for a scratch/planted-fixture run that has no matching
@@ -65,11 +73,12 @@ import sys
 
 import switch_state  # S1/K1 — sibling module, one shared semantics for the
                      # register-backed switch (see switch_state.py's docstring)
+import personal_register  # 3b.7 B — where the personal rows live
 
 THIS_FILE = os.path.abspath(__file__)
 # system/register/harvest.py -> repo root is three levels up.
 REPO_ROOT_FROM_SCRIPT = os.path.dirname(os.path.dirname(os.path.dirname(THIS_FILE)))
-DEFAULT_PRIVATE_ROOT = os.path.expanduser("~/.claude/skills/ClaudeOps")
+DEFAULT_PRIVATE_ROOT = personal_register.default_private_root()   # 3b.7 B: resolved, never a hard-coded repo path
 
 TEST_DIR = re.compile(r"/tests?/", re.I)
 SCRIPT_EXTS = (".sh", ".py")
@@ -143,6 +152,16 @@ def base_row(unit_id, unit_type, repo, path, exists, sha):
 # ---------------------------------------------------------------------------
 # type: hook — the six wiring surfaces (T2's harvest, promoted verbatim in shape)
 # ---------------------------------------------------------------------------
+def _home_relative(path):
+    """`$HOME/<rest>` for a path under the home folder (how a private registrations.json spells its own commands),
+    else the absolute path."""
+    home = os.path.expanduser("~")
+    path = os.path.abspath(path)
+    if path == home or path.startswith(home.rstrip("/") + "/"):
+        return "$HOME" + path[len(home):]
+    return path
+
+
 def hook_surfaces(public_root, private_root, cache_root):
     """(surface, path, declared_repo, command-prefix-this-surface-declares) — same six as T2's
     `SURFACES`, generalized to take repo roots as arguments instead of T2's hardcoded `~/lifehack-
@@ -153,7 +172,7 @@ def hook_surfaces(public_root, private_root, cache_root):
         ("settings", f"{public_root}/.claude/settings.json", "public", "${CLAUDE_PROJECT_DIR}"),
         ("plugin", f"{public_root}/hooks/hooks.json", "public", "${CLAUDE_PLUGIN_ROOT}"),
         ("registrations", f"{private_root}/system/hooks/registrations.json", "private",
-         "$HOME/.claude/skills/ClaudeOps"),
+         _home_relative(private_root)),
         ("user", f"{home}/.claude/settings.json", "private", None),
     ]
     if cache_root:
@@ -241,7 +260,7 @@ def harvest_hooks(public_root, private_root, cache_root):
                 rel, args = f"UNPARSED:{cmd[:60]}", ""
             if rel.startswith("UNPARSED"):
                 home_repo = declared_repo
-            elif prefix == "$HOME/.claude/skills/ClaudeOps":
+            elif surface == "registrations":   # the personal folder's own wiring file (3b.7 B: no hard-coded repo path)
                 home_repo = "private"
             else:
                 home_repo = "public"
@@ -528,13 +547,21 @@ JOBS_BLOCK_RE = re.compile(r"```jobs\r?\n(.*?)\r?\n```", re.S)
 
 
 def harvest_scheduled(public_root):
-    manifest = os.path.join(public_root, "system", "jobs.md")
+    return _harvest_manifest(public_root, os.path.join(public_root, "system", "jobs.md"), "public")
+
+
+def harvest_personal_scheduled(private_root):
+    """3b.7 B: the person's own jobs (`<personal-code>/jobs.md`, same format) as repo=private rows."""
+    return _harvest_manifest(private_root, personal_register.personal_jobs_path(private_root), "private")
+
+
+def _harvest_manifest(root, manifest, repo):
     rows = []
     if not os.path.isfile(manifest):
         return rows
     with open(manifest, encoding="utf-8") as f:
         text = f.read()
-    path = to_repo_path(public_root, manifest)
+    path = to_repo_path(root, manifest)
     exists = True
     sha = short_sha(manifest)
     for block in JOBS_BLOCK_RE.findall(text):
@@ -545,7 +572,7 @@ def harvest_scheduled(public_root):
             # jobs.md grew from 4 columns to 9 on 2026-10-27 (self-monitoring 5.1: name | enabled |
             # interval | outcome | check | model | budget | source | command). `command` is LAST
             # because it may contain `|`, so split at most 8 times and take the final field. The old
-            # `split("|", 3)` put columns 4-9 into `command` (the marc-health "stale register" diff
+            # `split("|", 3)` put columns 4-9 into `command` (the first AI job's "stale register" diff
             # that kept the register-drift check red from 10-23: a harvest bug, not stale data).
             parts = [p.strip() for p in line.split("|", 8)]
             if len(parts) == 9:
@@ -560,8 +587,8 @@ def harvest_scheduled(public_root):
             except ValueError:
                 interval_seconds = None
             row = base_row(
-                unit_id=f"scheduled:{name}", unit_type="scheduled", repo="public", path=path,
-                exists=exists, sha=sha,
+                unit_id=f"scheduled:{name}" if repo == "public" else f"scheduled:private:{name}",
+                unit_type="scheduled", repo=repo, path=path, exists=exists, sha=sha,
             )
             row.update({
                 "schedule_name": name,
@@ -668,15 +695,22 @@ def harvest_all(public_root, private_root, cache_root):
     rows.extend(harvest_tools(public_root, private_root))
     rows.extend(harvest_skills(public_root, private_root))
     rows.extend(harvest_scheduled(public_root))
+    rows.extend(harvest_personal_scheduled(private_root))
     rows.extend(harvest_githooks(public_root, private_root))
     rows.sort(key=_sort_key)
     return rows
 
 
+def split_rows(rows):
+    """3b.7 B: -> (public rows for the master register, private rows for the personal register)."""
+    return ([r for r in rows if r.get("repo") == "public"],
+            [r for r in rows if r.get("repo") != "public"])
+
+
 HAND_CURATED = ("needs", "returns", "group")
 
 
-def merge_into_register(fresh_rows, register_path):
+def merge_into_register(fresh_rows, register_path, repo="public"):
     """The SAFE way to refresh the committed register (v2 1.3): add rows for new files, refresh
     sha/description/command of existing non-hook rows, keep every hook row exactly as committed
     (a hook row's only source is the wiring files themselves, so a fresh harvest cannot reproduce
@@ -687,7 +721,9 @@ def merge_into_register(fresh_rows, register_path):
     fresh = {r["id"]: r for r in fresh_rows}
     out, dropped = [], []
     for old in committed:
-        if old["type"] == "hook":
+        if old.get("repo") != repo:
+            dropped.append(old["id"])   # 3b.7 B: a private row never stays in the master (and vice versa)
+        elif old["type"] == "hook":
             out.append(old)
         elif old["id"] in fresh:
             new = dict(fresh[old["id"]])
@@ -715,7 +751,11 @@ def main(argv=None):
     p.add_argument("--public-root", default=REPO_ROOT_FROM_SCRIPT,
                    help="public repo root (default: this script's own repo)")
     p.add_argument("--private-root", default=DEFAULT_PRIVATE_ROOT,
-                   help="private repo root (default: ~/.claude/skills/ClaudeOps)")
+                   help="personal code folder (default: the one shared/personal_code_root.py resolves)")
+    p.add_argument("--personal-out", nargs="?", const="", default=None, metavar="FILE",
+                   help="ALSO write the private rows to FILE (no FILE: <private-root>/register.jsonl). With "
+                        "--update-register the personal file is refreshed the same safe way. Without this flag "
+                        "the private rows are only counted, never written.")
     p.add_argument("--cache-root", default=None,
                    help="platform plugin cache root (default: derived from "
                         "<public-root>/.claude-plugin/plugin.json's version)")
@@ -738,6 +778,7 @@ def main(argv=None):
         cache_root = cache_root_for(public_root)
 
     rows = harvest_all(public_root, private_root, cache_root)
+    rows, private_rows = split_rows(rows)   # 3b.7 B: the master is public-only
 
     # S1/K1 (2026-09-16) — carry the register-backed switch's declarations
     # forward from the COMMITTED register (never the --out path: CI harvests
@@ -775,8 +816,13 @@ def main(argv=None):
         f"skill={by_type.get('skill', 0)} scheduled={by_type.get('scheduled', 0)} "
         f"githook={by_type.get('githook', 0)}) "
         f"· broken (exists=false): {broken} "
-        f"· public={public_root} private={private_root} cache={cache_root or '(none)'}"
+        f"· public={public_root} private={private_root} cache={cache_root or '(none)'} "
+        f"· personal rows: {len(private_rows)}"
     )
+    personal_out = None
+    if args.personal_out is not None:
+        personal_out = os.path.abspath(os.path.expanduser(args.personal_out or
+                                                          personal_register.personal_register_path(private_root)))
 
     if args.update_register:
         merged, added, dropped = merge_into_register(rows, args.update_register)
@@ -788,13 +834,39 @@ def main(argv=None):
             print(f"  + {i}")
         for i in dropped:
             print(f"  - {i}")
+        if personal_out:
+            _write_personal(private_rows, personal_out, update=True)
     elif args.out:
         with open(args.out, "w", encoding="utf-8") as f:
             write_jsonl(rows, f)
         print(summary)
+        if personal_out:
+            _write_personal(private_rows, personal_out, update=False)
     else:
         write_jsonl(rows, sys.stdout)
         print(summary, file=sys.stderr)
+        if personal_out:
+            _write_personal(private_rows, personal_out, update=False, stream=sys.stderr)
+    if private_rows and not personal_out:
+        print(f"  NOTE — {len(private_rows)} personal row(s) were NOT written (the master register is public-only); "
+              f"add --personal-out to refresh {personal_register.personal_register_path(private_root)}",
+              file=sys.stderr)
+
+
+def _write_personal(private_rows, path, update, stream=None):
+    """Write (or, with update=True and an existing file, safely refresh) the personal register."""
+    stream = stream or sys.stdout
+    if update and os.path.isfile(path):
+        merged, added, dropped = merge_into_register(private_rows, path, repo="private")
+    else:
+        merged, added, dropped = sorted(private_rows, key=_sort_key), [r["id"] for r in private_rows], []
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        write_jsonl(merged, f)
+    os.replace(tmp, path)
+    print(f"harvest.py personal register — {path}: {len(merged)} rows · added {len(added)} · dropped {len(dropped)}",
+          file=stream)
 
 
 if __name__ == "__main__":

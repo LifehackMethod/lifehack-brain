@@ -49,7 +49,7 @@ name: Register Drift (full generator, with caller lint)
 # real to read. Skipping it removes a check that would otherwise report a permanent, meaningless
 # "cache missing" finding on every run.
 #
-# WHY NO PRIVATE-REPO ROOT: the private `egjokaj/ClaudeOps` checkout does not exist on this
+# WHY NO PRIVATE-REPO ROOT: no personal code folder (a private repo) exists on this
 # runner (by design — constraint 0.5, "no secrets in any shared store", and the private repo is
 # never pushed anywhere public). `harvest.py`'s tool/skill/hook walks already treat a missing
 # root as empty rather than erroring (`os.path.isdir` guards — see harvest.py's own code), so
@@ -88,7 +88,7 @@ jobs:
         # any real drift, for THREE separate reasons (all confirmed by actually running these
         # commands in an isolated detached worktree with no private-repo checkout and an empty
         # $HOME — see ci-register-freshness-fix.md):
-        #   1. PRIVATE ROWS. This runner has no `egjokaj/ClaudeOps` checkout and no populated
+        #   1. PRIVATE ROWS. This runner has no personal code folder checkout and no populated
         #      ~/.claude (by design — constraint 0.5, "no secrets in any shared store"; see this
         #      workflow's own header comment, "WHY NO PRIVATE-REPO ROOT"). `harvest.py`'s
         #      `os.path.isdir` guards make a missing private root harvest as EMPTY rather than
@@ -227,7 +227,7 @@ jobs:
 
       - name: Generate WITH the caller lint (warn-level report), from the COMMITTED register, and install into this checkout
         # --targets public (B3.2 second fix, 2026-09-15): the private
-        # egjokaj/ClaudeOps checkout does not exist on this runner at all, so
+        # personal code folder (a private repo) does not exist on this runner at all, so
         # EVERY private-repo hook row's own path resolves as "broken" here —
         # that must never fail this job (a public-repo drift check), only be
         # named as a WARN in the log. Same additive, backward-compatible flag

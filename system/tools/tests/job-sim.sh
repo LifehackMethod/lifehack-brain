@@ -560,9 +560,9 @@ def main():
         rows.append(("bad-row", bad_row()))
         rows.append(("mirror-fetch-contract", receipt_contract("mirror-fetch")))   # 5.7
         rows.append(("guard-fire-test-contract", receipt_contract("guard-fire-test")))   # 5.7
-        rows.append(("marc-health-contract", receipt_contract("marc-health")))   # 5.7 (the first AI job: small tier, one call)
+        rows.append(("sim-ai-small-contract", receipt_contract("sim-ai-small")))   # 5.7 shape (an AI job: small tier, one call); 3b.7 B fixture row
         rows.append(("obsidian-reindex-contract", receipt_contract("obsidian-reindex")))   # Sprint 5 item 3 (no AI)
-        rows.append(("marc-wednesday-contract", receipt_contract("marc-wednesday")))   # Sprint 5 item 3 (medium tier, one call)
+        rows.append(("sim-ai-medium-contract", receipt_contract("sim-ai-medium")))   # Sprint 5 item 3 shape (medium tier, one call); 3b.7 B fixture row
         rows.append(("force-flag", force_flag()))   # 5.7
         rows.extend(model_scenarios())   # 5.3
         rows.extend((n, f.result()) for n, f in nfut)   # 5.9
@@ -908,16 +908,28 @@ RECEIPTS = {   # job -> (a receipt line a SUCCESSFUL real run writes, one a run 
                         '{"subsystem":"guard-fire-test","rc":0,"ts":"2026-11-02T12:00:00Z","stale_after_h":192}'),   # 5.9(b): the bad receipt is the OLD shape -- an exit code and no verdict
     "obsidian-reindex": ("obsidian-reindex ok index_rc=0 prune_rc=0 db_bytes=591396864",
                          "obsidian-reindex FAIL index_rc=1 prune_rc=0 db_bytes=0"),
-    "marc-wednesday": ("marc-wednesday ok week=2026-W45 verdict=QUIET at=2026-11-04T12:00:00Z",
-                       "marc-wednesday FAIL week=? verdict=? at=? :: model call failed"),
-    "marc-health": ("marc-health ok fetched_at=2026-11-02T12:00:00+00:00 tickers=19 fred=13 errors=0 core_ok=1 tile_rc=0",
-                    "marc-health FAIL fetched_at=? tickers=0 fred=0 errors=0 core_ok=0 tile_rc=1 :: snapshot unreadable"),
+    "sim-ai-medium": ("sim-ai-medium ok week=2026-W45 verdict=QUIET at=2026-11-04T12:00:00Z",
+                      "sim-ai-medium FAIL week=? verdict=? at=? :: model call failed"),
+    "sim-ai-small": ("sim-ai-small ok fetched_at=2026-11-02T12:00:00+00:00 items=19 errors=0 core_ok=1 tile_rc=0",
+                     "sim-ai-small FAIL fetched_at=? items=0 errors=0 core_ok=0 tile_rc=1 :: snapshot unreadable"),
 }
-CONTRACT_MODEL = {"marc-health": ("small", "3", 1), "marc-wednesday": ("medium", "2", 1)}   # job -> (row model, row budget, model calls one run makes); default none/0/0
+CONTRACT_MODEL = {"sim-ai-small": ("small", "3", 1), "sim-ai-medium": ("medium", "2", 1)}   # job -> (row model, row budget, model calls one run makes); default none/0/0
+# 3b.7 B: the first AI-tier rows (small, web; medium, none) were personal desk jobs, so they moved out of the shared table into the
+# person's own <personal-code>/jobs.md. Their SHAPE is kept here as fixture rows with the same columns, so the AI-tier contract
+# (a real check regex, the tier's model call counted, last-run model=<tier>) is still proven on every machine, students included.
+FIXTURE_ROWS = {
+    "sim-ai-small": ["sim-ai-small", "off", "7200", "A snapshot is refreshed from the public feeds through the safe fetch, with the core read verified fresh.",
+                     "~/.config/lifehack/sim-ai-small/health-note.txt ~ ^sim-ai-small ok .* core_ok=1", "small", "3", "web",
+                     'bash "$LIFEHACK_CODE_ROOT/system/tools/tests/job-sim-receipt-stub.sh"'],
+    "sim-ai-medium": ["sim-ai-medium", "off", "86400", "The mid-week scan ran once this ISO week and recorded one verdict, QUIET or MATERIAL.",
+                      "~/.config/lifehack/sim-ai-medium/last-run.txt ~ ^sim-ai-medium ok week=[0-9]{4}-W[0-9]{2} verdict=[QM][A-Z]+ at=[0-9]{4}-",
+                      "medium", "2", "none", 'bash "$LIFEHACK_CODE_ROOT/system/tools/tests/job-sim-receipt-stub.sh"'],
+}
 
 
 def real_row(job):
-    """The job's REAL row from system/jobs.md, as a list of nine trimmed columns."""
+    """The job's REAL row from system/jobs.md, as a list of nine trimmed columns (a FIXTURE_ROWS job: its fixture row)."""
+    if job in FIXTURE_ROWS: return list(FIXTURE_ROWS[job])
     inb = False
     for ln in open(f"{ROOT}/system/jobs.md", encoding="utf-8").read().splitlines():
         if ln.strip() == "```jobs": inb = True; continue
@@ -1996,15 +2008,15 @@ BITES.append(("j", "a 90000 s interval (not whole days) on an enabled row", "int
 
 # ───── Sprint 5 item 4: vendor reads (model=none + ONE allowlisted file per job) ─────
 VENDOR_REQ = "#!/usr/bin/env python3\nimport requests\nrequests.post('https://portal.example/login')\n"
-VENDOR_REQ_REFUSAL = "raw requests call at desks/deryl/tools/vjob/vjob_ingest.py:2 \u2014 go through the shared fetch"
+VENDOR_REQ_REFUSAL = "raw requests call at desks/books/tools/vjob/vjob_ingest.py:2 \u2014 go through the shared fetch"
 
 
 def vendor_door(model="none", rel="vjob_ingest.py", script_body=VENDOR_REQ, listed="vjob vjob_ingest.py"):
-    """Run the REAL door on a row 'vjob' whose runner (under <desk>/desks/deryl/tools/vjob/) is `rel` holding `script_body`.
+    """Run the REAL door on a row 'vjob' whose runner (under <desk>/desks/books/tools/vjob/) is `rel` holding `script_body`.
     LIFEHACK_VENDOR_ALLOWLIST points at a throwaway list holding `listed`. -> (rc, stdout)."""
     d = os.path.realpath(tempfile.mkdtemp(prefix="job-sim-vendor."))
     try:
-        desk = f"{d}/desk"; tools = f"{desk}/desks/deryl/tools/vjob"
+        desk = f"{d}/desk"; tools = f"{desk}/desks/books/tools/vjob"
         os.makedirs(tools); os.makedirs(f"{d}/code/system/tools")
         open(f"{tools}/{rel}", "w").write(script_body)
         al = f"{d}/vendor-allow.txt"; open(al, "w").write(f"# test list\n{listed}\n")

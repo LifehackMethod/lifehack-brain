@@ -82,7 +82,9 @@ import sys
 THIS_FILE = os.path.abspath(__file__)
 # system/register/caller_lint.py -> repo root is three levels up (harvest.py's own convention).
 REPO_ROOT_FROM_SCRIPT = os.path.dirname(os.path.dirname(os.path.dirname(THIS_FILE)))
-DEFAULT_PRIVATE_ROOT = os.path.expanduser("~/.claude/skills/ClaudeOps")
+sys.path.insert(0, os.path.dirname(THIS_FILE))
+import personal_register  # noqa: E402  3b.7 B — the personal register + the resolved personal code folder
+DEFAULT_PRIVATE_ROOT = personal_register.default_private_root()
 
 GOVERNED_DIRS = ["system/hooks", "system/tools"]
 SCRIPT_EXTS = (".sh", ".py")
@@ -225,10 +227,12 @@ def scheduled_text_evidence(governed_and_exempt, repo_roots, ev):
 
     sched_texts = []
     for repo, root in repo_roots.items():
-        p = os.path.join(root, "system/jobs.md")
-        if os.path.exists(p):
-            with open(p, encoding="utf-8", errors="replace") as f:
-                sched_texts.append((f"{repo}:jobs.md", f.read()))
+        # the shared table lives at system/jobs.md; a personal one at <personal-code>/jobs.md (3b.7 B)
+        for rel in ("system/jobs.md", "jobs.md") if repo == "private" else ("system/jobs.md",):
+            p = os.path.join(root, rel)
+            if os.path.exists(p):
+                with open(p, encoding="utf-8", errors="replace") as f:
+                    sched_texts.append((f"{repo}:{rel}", f.read()))
     try:
         cron = subprocess.run(["crontab", "-l"], capture_output=True, text=True).stdout
         cron = "\n".join(l for l in cron.splitlines() if not l.lstrip().startswith("#"))
@@ -327,7 +331,7 @@ def skill_evidence(governed, repo_roots, home_root, ev):
                     skill_files.append((repo, os.path.join(dp, f)))
     sk_root = os.path.join(home_root, ".claude", "skills")
     for dp, dn, fn in os.walk(sk_root):
-        dn[:] = [d for d in dn if d != "ClaudeOps"]
+        dn[:] = [d for d in dn if os.path.realpath(os.path.join(dp, d)) != os.path.realpath(repo_roots.get("private", "") or "/nonexistent")]
         for f in fn:
             if f.endswith(".md"):
                 skill_files.append(("installed", os.path.join(dp, f)))
@@ -566,6 +570,9 @@ def main(argv=None):
     args = p.parse_args(argv)
 
     rows = load_register_rows(args.register)
+    rows, _pw = personal_register.with_personal(rows, os.path.abspath(os.path.expanduser(args.private_root)), args.register)
+    for w in _pw:
+        print(f"WARN {w}", file=sys.stderr)
     result = lint_register(
         rows, args.public_root, args.private_root,
         cache_root=args.cache_root, home_root=args.home_root,

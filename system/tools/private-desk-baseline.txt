@@ -1,0 +1,49 @@
+# private-desk-baseline.txt -- written by system/tools/check_no_private_desks.py --write-baseline.
+# <count>\t<path>: how many personal-desk-name words a tracked file may still hold (rule R3, a ratchet).
+# These are older docs, SOPs and archive copies cleaned outside 3b.7 B. A count may only go DOWN; a file
+# not listed may hold none. The names themselves are never written here.
+2	.claude/agents/archivist.md
+1	.claude/skills/planning-weekly/prompts/04-council.md
+1	.claude/skills/planning-weekly/prompts/council/long-lens-ponzi.md
+15	.github/scripts/check_no_internal_leakage.py
+4	archive/2026-10-31-skill-system-cleanup/system/tools/skill_command_check.py
+6	archive/2026-10-31-skill-system-cleanup/system/tools/transcript_outline.py
+3	system/hooks/tests/test_desk_tool_placement.sh
+18	system/hooks/tests/test_guard_build_mode.sh
+12	system/organism/elements/archivist.md
+10	system/organism/elements/backlog-authority.md
+16	system/organism/elements/canon.md
+10	system/organism/elements/claude-md-pyramid.md
+2	system/organism/elements/compute-mechanically-gate.md
+9	system/organism/elements/council-engine.md
+3	system/organism/elements/egress-allowlist-wall.md
+17	system/organism/elements/email-service.md
+2	system/organism/elements/grand-central.md
+15	system/organism/elements/gws-plane.md
+41	system/organism/elements/health-invariants.md
+9	system/organism/elements/hook-plane.md
+7	system/organism/elements/ingest-run-lib.md
+1	system/organism/elements/item-store.md
+54	system/organism/elements/journal.md
+30	system/organism/elements/notify-plane.md
+7	system/organism/elements/safe-reader-plane.md
+2	system/organism/elements/sentinel.md
+1	system/organism/elements/skill-system.md
+2	system/organism/elements/statusline-hud.md
+130	system/organism/manual.md
+2	system/requirements.txt
+3	system/security-posture-baseline.md
+1	system/sops/cron-jobs-sop.md
+5	system/sops/recovery-runbook.md
+8	system/sops/skill-building-sop.history.md
+35	system/sops/skill-building-sop.md
+2	system/tools/architecture_reason.py
+2	system/tools/job-fetch-hosts.txt
+1	system/tools/obsidian-prune-archive.mjs
+3	system/tools/organism/label_manifest.yaml
+1	system/tools/planning-weekly-prime-run.sh
+2	system/tools/rig/test_rig_cleanup.py
+1	system/tools/safe_sheets.py
+2	system/tools/test_agent_pins.py
+3	system/tools/test_planning_diary_capture.py
+2	system/tools/tests/test_transcript_outline.py
