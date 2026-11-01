@@ -55,6 +55,10 @@ asking claudeops-a0 (the skill-system window), who asks Enver.
   - `bash system/tools/skill-tester-rig/actor-guard.sh --selftest`: TR2.0b orchestrator, fake actor (drop `--selftest`
     for the real gate: census, then one real canary run under the guard with `--plugin-dir`, then the `actor-guard`
     receipt)
+  - `bash system/tools/skill-tester-rig/ladder.sh --selftest`: TR2.1 rung-2 ladder, fake model only (last line
+    `SELFTEST ladder <n>/<n> ALL OK`). The real ladder (main window only): `ladder.sh --rung 2 --n 3 --model sonnet`
+    (3 real canary runs on the mid tier via `xargs -P 3`, rows in `<scratch>/ladder-results.tsv`, a fresh file per
+    ladder with the previous one kept as `.prev-<stamp>`, then the `rung2` receipt). `--dry-run` prints the plan only
   - `bash system/tools/skill-tester-rig/checks/selftest.sh`: judges the shipped checks against their fixtures
   - `python3 system/tools/skill-tester-rig/checks/fixtures/make_fixtures.py`: regenerates the check fixtures
     when the canary contract changes (then re-run `checks/selftest.sh`)

@@ -5,7 +5,7 @@
 #   selftest-all.sh            runs every rig selftest SEQUENTIALLY (never in parallel: several share scratch and the
 #                              guard's log): status · seam · budget (exit 75 = healthy) · expected · truth · checks ·
 #                              inject · run · bite · seam selftest-load · probe-hooks · probe-actor-writes ·
-#                              actor-guard · receipt · guard · sentinel ·
+#                              actor-guard · ladder · receipt · guard · sentinel ·
 #                              waits-scan. One `ok`/`FAIL` line each; last line exactly
 #                                SELFTEST-ALL OK <n>/<n>     or     SELFTEST-ALL FAILED <k>/<n>: <names>
 #   selftest-all.sh --waits    TR1.8's Verify: the wait scan, the scan watched failing, the FAIL-FIRST cases, and the
@@ -58,6 +58,7 @@ st_load()    { one seam-load 0 "SEAM under load denied 1/1 named ambient-only fp
 st_probe()   { one probe-hooks 0 - bash "$RIG/probe-hooks.sh" --selftest; }
 st_paw()     { one probe-actor-writes 0 "SELFTEST probe-actor-writes 7/7 ALL OK" bash "$RIG/probe-actor-writes.sh" --selftest; }
 st_ag()      { one actor-guard 0 "SELFTEST actor-guard 29/29 ALL OK" bash "$RIG/actor-guard.sh" --selftest; }
+st_ladder()  { one ladder  0 "SELFTEST ladder 69/69 ALL OK" bash "$RIG/ladder.sh" --selftest; }
 st_receipt() { one receipt 0 "SELFTEST receipt OK" bash "$RIG/receipt.sh" --selftest; }
 st_guard()   { one guard   0 "SELFTEST guard receipts-deny OK" bash "$RIG/guard.sh" selftest; }
 st_sentinel(){ one sentinel 0 "SELFTEST sentinel OK" bash "$RIG/sentinel.sh" selftest; }
@@ -139,6 +140,7 @@ if [ "${1:-}" = --waits ]; then
 fi
 [ -z "${1:-}" ] || { echo "usage: selftest-all.sh [--waits]" >&2; exit 2; }
 st_status; st_seam; st_budget; st_expected; st_truth; st_checks; st_inject; st_run; st_bite; st_load; st_probe; st_paw; st_ag
+st_ladder
 st_receipt; st_guard; st_sentinel; st_wscan
 if [ -z "$FAILED" ]; then echo "SELFTEST-ALL OK $NOK/$N"; exit 0; fi
 echo "SELFTEST-ALL FAILED $((N-NOK))/$N:$FAILED"; exit 1
