@@ -16,6 +16,10 @@ rec() { python3 -c 'import json,sys; d={"session_id":sys.argv[1],"prompt_id":sys
 # stop <session> <prompt> [active]  -> OUT (stdout), ERR (stderr), RC
 stop() { python3 -c 'import json,sys; print(json.dumps({"session_id":sys.argv[1],"prompt_id":sys.argv[2],"hook_event_name":"Stop","stop_hook_active":sys.argv[3]=="true","last_assistant_message":"done"}))' "$1" "$2" "${3:-false}" 2>/dev/null | bash "$EOT" >"$T/o" 2>"$T/e"; RC=$?; OUT="$(cat "$T/o")"; ERR="$(cat "$T/e")"; }
 reason() { printf '%s' "$OUT" | python3 -c 'import json,sys; print(json.load(sys.stdin)["reason"])' 2>/dev/null; }
+# 2b (2026-11-01): EVERY blocking stop must ask the session to restate, in its final message, where things now are (path + own-list entry).
+eval "$(declare -f stop | sed '1s/^stop /stop_raw /')"
+stop() { stop_raw "$@"; if printf '%s' "$OUT" | grep -q '"decision": *"block"'; then
+  printf '%s' "$(reason)" | grep -q "RESTATE WHERE THINGS NOW ARE" && ok "stop $1: asks the session to restate where things are" || bad "stop $1: no RESTATE-where-things-are instruction"; fi; }
 Jw() { python3 -c 'import json,sys; print(json.dumps({"file_path":sys.argv[1],"content":"x"}))' "$1"; }
 Jb() { python3 -c 'import json,sys; print(json.dumps({"command":sys.argv[1]}))' "$1"; }
 mkfile() { mkdir -p "$(dirname "$1")"; printf '%s' "$2" > "$1"; }

@@ -88,6 +88,7 @@ if [ "$NLINES" -gt 1 ] && roundb_on eot_do_all; then   # Round C practice: with 
 fi
 { echo "END-OF-TURN CHECK: a file you created this turn needs fixing before you finish. (Runs once per turn; it will not ask again.)"
   printf '%s\n' "$OUT"
-  echo "Escapes, only if intended: '# allow-silence: <why>' on the flagged line; '# not-wired-yet: <why>' in the file header. Rules: system/githooks/checks/*.py, shared/tools/own_list_add.py; switches: system/hooks/roundB.conf."; } \
+  echo "Escapes, only if intended: '# allow-silence: <why>' on the flagged line; '# not-wired-yet: <why>' in the file header. Rules: system/githooks/checks/*.py, shared/tools/own_list_add.py; switches: system/hooks/roundB.conf."
+  echo "In your FINAL message, RESTATE WHERE THINGS NOW ARE: the full path of each file you created or moved, and its own-list entry (or say it is not listed)."; } \
   | python3 -c 'import json,sys; print(json.dumps({"decision":"block","reason":sys.stdin.read()}))'
 exit 0
