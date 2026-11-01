@@ -131,6 +131,10 @@ for sw in on off; do
   run_home "[$sw] symlink escaping to a non-git dir: outside the zone, unchanged by the switch" 0 "$TMPHOME/.claude/skills/escape/SKILL.md" "$TMPHOME"
 done
 unset ROUNDB_SKILLS_NATIVE_WRITE
+# the switches must be REAL lines in roundB.conf (a comment-spliced line once hid skills_native_write from the live rig)
+for _k in skills_native_write commit_identity_optional; do
+  grep -qE "^${_k}=off\$" "$HOOKS/roundB.conf" && ok || bad "roundB.conf has a real line ${_k}=off" "missing"
+done
 
 echo "── what this guard deliberately does NOT do (see the scope note) ────────"
 # These are ASSERTIONS, not gaps. Changing them is the product decision named at the top.
