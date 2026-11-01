@@ -150,7 +150,8 @@ def decide(inp, c):
         p = ti.get("file_path") or ti.get("notebook_path") or ""
         if blocked(p, cwd, c):
             return ("TEST-RIG FENCE (not a product guard): this session is a rig test running in a throwaway sandbox; %s is a REAL file location outside the sandbox. "
-                    "Write it inside your working folder or the throwaway personal code folder instead." % p), notes
+                    "Write it inside your working folder or the throwaway personal code folder instead. A personal SKILL goes in the throwaway home's own skills folder: %s/.claude/skills/<name>/ "
+                    "(your $HOME), not the real /Users path." % (p, os.path.expanduser("~"))), notes
     elif tool == "Bash":
         tg, _ = bash_targets(ti.get("command", ""), cwd)
         for tgt, wcwd in tg:

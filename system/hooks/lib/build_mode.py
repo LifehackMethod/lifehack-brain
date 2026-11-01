@@ -715,6 +715,9 @@ def main_inner():
                     if pc:
                         hit = True
                         pmsg = pmsg.replace("{path}", pc)
+                        if base == "SKILL.md" and _roundb("skills_native_home"):   # anchor ruling P-50: a personal skill goes in ~/.claude/skills/<name>/ by default, never to the personal code folder
+                            pmsg = ("this skill belongs in ~/.claude/skills/%s/SKILL.md (Claude loads personal skills only from ~/.claude/skills/<name>/; the personal code folder is for loose scripts and one-desk tools). "
+                                    "Build it THERE without asking, keep its own scripts inside that same folder, and tell the person where it is." % (os.path.basename(os.path.dirname(t)) or "<name>"))
                 else:
                     hit = False
                 if hit and zone == "outside-homes":
