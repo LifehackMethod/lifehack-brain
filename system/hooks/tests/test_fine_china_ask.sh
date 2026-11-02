@@ -257,6 +257,19 @@ xallow "python rmtree of a temp folder" "python3 -c \"import shutil; shutil.rmtr
 xallow "python rmtree of an empty folder" "python3 -c \"import shutil; shutil.rmtree('notes/emptyfolder')\""
 xallow "rm -r of a SYMLINK to a folder (removes the link only)" "rm -r linkdir"
 xallow "rmdir of an empty folder" "rmdir notes/emptyfolder"
+# regenerable build/dependency folders (coordinator ruling (c)): exact FINAL segment never asks; a look-alike name still asks
+for r in build node_modules dist .venv target; do mkdir -p "$X/$r/sub" "$X/proj/$r/sub"; echo x > "$X/$r/sub/f"; echo x > "$X/proj/$r/sub/f"; done
+mkdir -p "$X/build-notes" "$X/notes/build-log" "$X/notes/target-list"; echo n > "$X/build-notes/n.md"; echo n > "$X/notes/build-log/l.md"; echo n > "$X/notes/target-list/t.md"
+xallow "regenerable: rm -rf build" "rm -rf build"
+xallow "regenerable: rm -rf build/ (trailing slash)" "rm -rf build/"
+xallow "regenerable: rm -rf ./node_modules" "rm -rf ./node_modules"
+xallow "regenerable: cd proj && rm -rf dist" "cd proj && rm -rf dist"
+xallow "regenerable: cd proj && rm -rf target (final segment)" "cd proj && rm -rf target"
+xallow "regenerable: python shutil.rmtree('.venv')" "python3 -c \"import shutil; shutil.rmtree('.venv')\""
+xask "look-alike: rm -r build-notes (not an exact name)" "rm -r build-notes"
+xask "look-alike: rm -r notes/build-log" "rm -r notes/build-log"
+xask "look-alike: cd notes && rm -r target-list" "cd notes && rm -r target-list"
+xask "still: rm -r 2024-sabbatical after cd" "cd notes && rm -r 2024-sabbatical"
 # the switch is a real line in roundB.conf, read through lib/roundb.py; the env var wins over it
 grep -qx 'fc_folder_delete_ask=on' "$HERE/roundB.conf" && ok "roundB.conf carries the real line fc_folder_delete_ask=on" || bad "roundB.conf line missing"
 LV="$(env -u ROUNDB_FC_FOLDER_DELETE_ASK python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); from roundb import roundb_on; print(roundb_on("fc_folder_delete_ask"))' "$HERE/lib")"

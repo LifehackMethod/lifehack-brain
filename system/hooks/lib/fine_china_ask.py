@@ -95,8 +95,15 @@ def gitignored(d):
         return False
 
 
+# Coordinator ruling (c), 2026-11-02: well-known REGENERABLE build/dependency folders never ask when they are the folder
+# being deleted (FINAL path segment, exact name). `target` is final-segment only: as a whole-path segment it is too common a word.
+REGENERABLE = {"node_modules", "__pycache__", ".venv", "venv", "dist", "build", "target", ".cache", ".pytest_cache", ".next", "coverage"}
+
+
 def throwaway_dir(d):
     parts = d.split("/")
+    if os.path.basename(d.rstrip("/")) in REGENERABLE:
+        return True
     if any(p in THROWAWAY for p in parts):
         return True
     if tmpish(d) or any(under(d, os.path.join(HOME, ".claude", s)) for s in ("run", "projects", "cache", "shell-snapshots", "plugins/cache")):
