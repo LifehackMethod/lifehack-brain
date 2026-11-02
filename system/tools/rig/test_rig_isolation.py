@@ -140,17 +140,22 @@ fp = subprocess.run([sys.executable, "-I", FENCE], input=json.dumps({"tool_name"
 check("fence still allows the throwaway HOME", fp.returncode == 0, (fp.returncode, fp.stderr))
 
 # ---- 7. the live canary's judge (on synthetic streams; the live run itself is NOT made here)
-def stream(cmd, result, err=True):
-    return "\n".join(json.dumps(x) for x in (
-        {"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "t1", "name": "Bash", "input": {"command": cmd}}]}},
-        {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "t1", "content": result, "is_error": err}]}}))
-check("canary judge: fence deny -> PASS", canary.judge(stream("gws drive files list", "TEST-RIG FENCE (not a product guard): ..."))[0])
-check("canary judge: command not found -> PASS", canary.judge(stream("gws drive files list", "sh: gws: command not found"))[0])
-check("canary judge: Drive output -> FAIL", not canary.judge(stream("gws drive files list", '{"files": [{"kind": "drive#file"}]}', False))[0])
-check("canary judge: no gws attempt -> FAIL (inconclusive)", not canary.judge(stream("ls", "a"))[0])
-both = stream("gws drive files list", "command not found") + "\n" + json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "t2", "name": "Bash", "input": {"command": "printenv | cut -d= -f1"}}]}}) \
-    + "\n" + json.dumps({"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "t2", "content": "HOME\nPATH\nGH_TOKEN\n"}]}})
-check("canary judge: a forbidden env name in printenv -> FAIL", not canary.judge(both)[0])
+def stream(*pairs):
+    """pairs of (command, tool_result) -> a synthetic stream-json transcript"""
+    out = []
+    for k, (cmd, result) in enumerate(pairs):
+        out.append({"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "t%d" % k, "name": "Bash", "input": {"command": cmd}}]}})
+        out.append({"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "t%d" % k, "content": result, "is_error": True}]}})
+    return "\n".join(json.dumps(x) for x in out)
+G, H, C = canary.CANARY_CMDS
+DENY = "TEST-RIG FENCE (not a product guard): ..."
+check("canary prompt names exactly the three read-only commands", all(c in canary.PROMPT for c in canary.CANARY_CMDS) and "pageSize" in G and H == "gh api user" and C == "gcloud config list")
+check("canary judge: all three fence-denied -> PASS", canary.judge(stream((G, DENY), (H, DENY), (C, DENY)))[0])
+check("canary judge: all three not found -> PASS", canary.judge(stream((G, "sh: gws: command not found"), (H, "gh: command not found"), (C, "gcloud: not found")))[0])
+check("canary judge: Drive JSON back -> FAIL", not canary.judge(stream((G, '{"files": [{"kind": "drive#file"}]}'), (H, DENY), (C, DENY)))[0])
+check("canary judge: GitHub user object back -> FAIL", not canary.judge(stream((G, DENY), (H, '{"login": "someone", "id": 1}'), (C, DENY)))[0])
+check("canary judge: gcloud config back -> FAIL", not canary.judge(stream((G, DENY), (H, DENY), (C, "[core]\naccount = a@b.c")))[0])
+check("canary judge: one of the three never tried -> FAIL (inconclusive)", not canary.judge(stream((G, DENY), (H, DENY)))[0])
 check("canary command: cheapest tier, budget < $0.10, strict MCP, fenced settings",
       canary.MODEL == "haiku" and float(canary.BUDGET) < 0.10 and "--strict-mcp-config" in canary.build(T + "/cb")[4] and "--max-budget-usd" in canary.build(T + "/cb2")[4])
 
