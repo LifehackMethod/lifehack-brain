@@ -157,7 +157,7 @@ def bash_ops(cmd, cwd, _depth=0):
         toks = list(lex)
     except ValueError:
         return []
-    shell_ow = _roundb("fc_shell_overwrite") or _roundb("fc_archive_before_cut") or _roundb("skill_edit_ask") or _roundb("fc_user_sop_ask") or _roundb("fc_db_delete_ask")   # in-place edits are overwrites; the second switch needs them seen too
+    shell_ow = _roundb("fc_shell_overwrite") or _roundb("fc_archive_before_cut") or _roundb("skill_edit_ask") or _roundb("fc_user_sop_ask") or _roundb("fc_db_delete_ask") or _roundb("fc_claudemd_ask") or _roundb("fc_claudemd_plugin_copy")   # in-place edits are overwrites; the second switch needs them seen too
     segs, cur = [], []
     for t in toks:
         if t and set(t) <= set(";&|\n()") :

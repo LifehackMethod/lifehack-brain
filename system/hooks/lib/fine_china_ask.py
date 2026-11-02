@@ -12,6 +12,16 @@ exit 0); never blocks. Each piece has its own switch in roundB.conf (all OFF = p
                         New files and appends (>>) pass.
   fc_placement_conf_ask (also roundB.conf, the plugin's switch file: an AI must not switch a guard off) ANY AI write (Write/Edit/redirect/tee/cp/sed -i/append, even a new file) to ~/.config/lifehack/placement.conf,
                         the user's own override file. Only a person's Yes changes it.
+  fc_claudemd_ask       (2026-11-01, plan PHASE 3b.8 item 5a) a Write/Edit/MultiEdit, or a Bash write (redirect, append, tee, sed -i, cp/mv onto it), to an
+                        EXISTING file named CLAUDE.md, anywhere. The ask carries a short diff (Write/Edit) so the person sees what changes.
+                        A brand-new CLAUDE.md (nothing to lose) and reads (cat, grep, Read) never ask.
+  fc_claudemd_plugin_copy (5b) the same write aimed at the plugin's OWN CLAUDE.md copy (under ~/.claude/plugins, or the plugin root) on a machine that is
+                        NOT the maintainer's self-repo: the ask says it is replaced on the next update and to use ~/.claude/CLAUDE.md. Works alone or with
+                        fc_claudemd_ask (then this message replaces the general one for that file). Maintainer self-repo = the plugin root is a code
+                        zone listed in <personal-code>/code-zones.txt (shared/person_roots.py), or LIFEHACK_SANDBOX=V2, or a git work tree outside ~/.claude/plugins.
+  claudemd_len_advisory (5c) NOT an ask: when a Write/Edit/MultiEdit leaves a CLAUDE.md over 200 lines (and it grows, or crosses 200), hand the model one
+                        advisory line (PreToolUse additionalContext, no permission decision). 200 is the official Claude Code figure ("target under 200
+                        lines per CLAUDE.md file", code.claude.com/docs/en/memory). Bash writes are not measured.
 These have NO off switch of the user's kind: placement.conf is never read here.
 Fail posture: any internal error prints nothing (allow).
 """
@@ -26,6 +36,8 @@ THROWAWAY = {"node_modules", "__pycache__", ".venv", "venv", "env", "dist", "bui
 SQL_TOOLS = {"sqlite3", "psql", "mysql", "mariadb", "dropdb", "duckdb", "sqlcipher", "mongosh", "mongo", "python", "python3", "node", "ruby"}
 SQL_RX = re.compile(r"\bDROP\s+(TABLE|DATABASE|SCHEMA)\b|\bTRUNCATE\s+(TABLE\s+)?\w|\bDELETE\s+FROM\s+[\w\.\"`\[\]]+\s*(;|\"|'|\)|$)", re.I)
 OUT = []
+ADV = []
+CLAUDEMD_MAX_LINES = 200
 
 
 def on(name):
@@ -232,6 +244,120 @@ def conf_write_in_bash(cmd, cwd):
     return False
 
 
+def is_claudemd(t):
+    return os.path.basename(t).lower() == "claude.md"
+
+
+def plugins_dir():
+    return os.path.realpath(os.path.join(HOME, ".claude", "plugins"))
+
+
+def maintainer_self_repo(code):
+    """True when the plugin root is the maintainer's own working checkout (not an installed copy): listed as a code zone in
+    <personal-code>/code-zones.txt, or the V2 sandbox tag, or a git work tree outside ~/.claude/plugins."""
+    if not code or under(code, plugins_dir()):
+        return False
+    if os.environ.get("LIFEHACK_SANDBOX") == "V2":
+        return True
+    try:
+        sd = os.path.join(code, "shared")
+        if sd not in sys.path:
+            sys.path.insert(0, sd)
+        import person_roots
+        if code in person_roots.code_zones():
+            return True
+    except Exception as e:
+        sys.stderr.write("guard_fine_china_ask: code-zones lookup skipped (%s)\n" % e)   # then the .git test below decides
+    return os.path.exists(os.path.join(code, ".git"))
+
+
+def plugin_copy_msg(t):
+    return ("ASK FIRST: %s is the plugin's own CLAUDE.md, and it is replaced on the next update, so an edit here is lost. "
+            "WAY-THROUGH: put your own rules in your own ~/.claude/CLAUDE.md instead (it is yours and updates never touch it); press Yes only if the person "
+            "asked for this file itself to change. RULE: switch fc_claudemd_plugin_copy in system/hooks/roundB.conf." % t)
+
+
+def claudemd_msg(t, how):
+    return ("ASK FIRST: this %s a CLAUDE.md (%s). A CLAUDE.md is the person's standing instructions, loaded into every session: fine china. "
+            "WAY-THROUGH: show the person the change (diff below when available) and press Yes only if they asked for it; otherwise stop and tell them what you wanted to change. "
+            "RULE: switch fc_claudemd_ask in system/hooks/roundB.conf." % (how, t))
+
+
+def claudemd_verdict(t, how, code, diff=""):
+    """Ask text for a write to an existing CLAUDE.md, or None."""
+    if not is_claudemd(t) or not os.path.isfile(t):
+        return None
+    plugin_copy = under(t, plugins_dir()) or bool(code and under(t, code) and not maintainer_self_repo(code))
+    if plugin_copy and on("fc_claudemd_plugin_copy"):
+        return plugin_copy_msg(t)
+    if on("fc_claudemd_ask"):
+        return claudemd_msg(t, how) + ((" DIFF: " + diff) if diff else "")
+    return None
+
+
+def short_diff(t, tool, ti):
+    import difflib
+    try:
+        if tool == "Write":
+            old = open(t, encoding="utf-8", errors="replace").read().splitlines()
+            new = (ti.get("content") or "").splitlines()
+            d = [l for l in difflib.unified_diff(old, new, "before", "after", lineterm="", n=0)]
+        else:
+            edits = ti.get("edits") if tool == "MultiEdit" else [ti]
+            d = []
+            for e in edits or []:
+                d += ["-" + l for l in (e.get("old_string") or "").splitlines()] + ["+" + l for l in (e.get("new_string") or "").splitlines()]
+        txt = " / ".join(x[:120] for x in d)
+        return txt[:700] + (" ...(cut)" if len(txt) > 700 else "")
+    except Exception:
+        return ""
+
+
+def resulting_text(t, tool, ti):
+    """-> (old_text, new_text) of the file after the tool runs, or None when it cannot be worked out."""
+    try:
+        old = open(t, encoding="utf-8", errors="replace").read() if os.path.isfile(t) else ""
+        if tool == "Write":
+            return old, ti.get("content") or ""
+        new = old
+        for e in (ti.get("edits") if tool == "MultiEdit" else [ti]) or []:
+            o, n = e.get("old_string") or "", e.get("new_string") or ""
+            if not o or o not in new:
+                return None
+            new = new.replace(o, n) if e.get("replace_all") else new.replace(o, n, 1)
+        return old, new
+    except Exception:
+        return None
+
+
+def length_advisory(t, tool, ti):
+    if not on("claudemd_len_advisory") or not is_claudemd(t):
+        return
+    r = resulting_text(t, tool, ti)
+    if not r:
+        return
+    n_old, n_new = len(r[0].splitlines()), len(r[1].splitlines())
+    if n_new > CLAUDEMD_MAX_LINES and (n_old <= CLAUDEMD_MAX_LINES or n_new > n_old):
+        ADV.append("%s will be %d lines after this edit. Claude Code's own guidance is to keep each CLAUDE.md under %d lines (longer files use more context and "
+                   "reduce adherence). Advisory only; consider moving the parts that matter for only some work into path-scoped rules or a skill. "
+                   "Switch claudemd_len_advisory in system/hooks/roundB.conf." % (t, n_new, CLAUDEMD_MAX_LINES))
+
+
+def claudemd_bash(cmd, cwd, code):
+    if not (on("fc_claudemd_ask") or on("fc_claudemd_plugin_copy")) or "claude.md" not in cmd.lower():
+        return
+    try:
+        import build_mode
+        for o in build_mode.bash_ops(cmd, cwd):
+            if o["verb"] in ("worktree", "mkdir", "touch", "ln"):
+                continue
+            m = claudemd_verdict(o.get("target", ""), "writes to", code)
+            if m:
+                ask(m)
+    except Exception as e:
+        sys.stderr.write("guard_fine_china_ask: claudemd parse skipped (%s)\n" % e)
+
+
 def db_msg(t):
     return ("ASK FIRST: this deletes or empties a local database file (%s). A database is fine china: once it is gone, what it held may not come back. "
             "WAY-THROUGH: press Yes only if the person asked for this and a copy exists; otherwise stop and tell them which file you wanted to remove. "
@@ -271,8 +397,14 @@ def main_inner():
                 "RULE: switch fc_placement_conf_ask in system/hooks/roundB.conf.")
         elif on("fc_user_sop_ask") and is_user_sop(t, code) and os.path.isfile(t):
             ask(sop_msg(t, "replaces" if tool == "Write" else "edits"))
+        if is_claudemd(t):
+            m = claudemd_verdict(t, "replaces" if tool == "Write" else "edits", code, short_diff(t, tool, ti) if on("fc_claudemd_ask") else "")
+            if m:
+                ask(m)
+            length_advisory(t, tool, ti)
     elif tool == "Bash":
         check_bash(ti.get("command", ""), cwd, code)
+        claudemd_bash(ti.get("command", ""), cwd, code)
 
 
 def main():
@@ -281,8 +413,13 @@ def main():
     except BaseException as e:
         sys.stderr.write("guard_fine_china_ask: internal error (%s: %s); allowing\n" % (type(e).__name__, e))
         return 0
-    if OUT:
-        print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "ask", "permissionDecisionReason": " | ".join(dict.fromkeys(OUT))[:1800]}}))
+    if OUT or ADV:
+        h = {"hookEventName": "PreToolUse"}
+        if OUT:
+            h.update(permissionDecision="ask", permissionDecisionReason=" | ".join(dict.fromkeys(OUT))[:1800])
+        if ADV:
+            h["additionalContext"] = " ".join(dict.fromkeys(ADV))[:1500]
+        print(json.dumps({"hookSpecificOutput": h}))
     return 0
 
 

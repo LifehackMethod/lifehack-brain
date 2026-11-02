@@ -7,7 +7,7 @@ trap 'lhb_journal_fire "$?" "guard_fine_china_ask.sh" "PreToolUse" "Bash|Write|E
 # WHY: Round D rulings A.1 + A.6 (Enver, 2026-10-31): deleting a local database, deleting a whole folder, and changing the
 #      person's OWN SOP files are fine china (Round C misses F08, F09, F11). The protection is an ASK, never a block.
 #      The user's override file ~/.config/lifehack/placement.conf may only be changed with a real human Yes.
-# GUARDS: PreToolUse Bash|Write|Edit|MultiEdit. Four pieces, each behind its own switch in system/hooks/roundB.conf (OFF = does nothing):
+# GUARDS: PreToolUse Bash|Write|Edit|MultiEdit. Seven pieces (the last three, 2026-11-01: fc_claudemd_ask, fc_claudemd_plugin_copy, claudemd_len_advisory (advisory, no ask)), each behind its own switch in system/hooks/roundB.conf (OFF = does nothing):
 #      fc_db_delete_ask, fc_folder_delete_ask, fc_user_sop_ask, fc_placement_conf_ask. Engine and exact rules: lib/fine_china_ask.py header.
 #      Throwaway folders (node_modules, build, dist, .venv, __pycache__, temp, scratchpads, git-ignored, empty) never ask.
 # REDIRECT: it is an ASK (harness permissionDecision "ask"); nobody is stuck. Headless runs turn it into a refusal: stop and tell the person.
@@ -16,10 +16,10 @@ trap 'lhb_journal_fire "$?" "guard_fine_china_ask.sh" "PreToolUse" "Bash|Write|E
 # SIGNPOST: logic in lib/fine_china_ask.py; tests in tests/test_fine_china_ask.sh.
 # LIMITS: Bash is matched as text; a delete built from a $VARIABLE, a script run by name, or `git clean` is not seen.
 # FAIL_POSTURE: open on any internal error (stderr line), because it sits in front of every Bash command.
-# UPDATED: 2026-10-31
+# UPDATED: 2026-11-01 (CLAUDE.md protections) · 2026-10-31
 # ─────────────────────────────────────────────────────────────────────────────
 . "$_lhb_dir/lib/roundb.sh" 2>/dev/null || exit 0
-roundb_on fc_db_delete_ask || roundb_on fc_folder_delete_ask || roundb_on fc_user_sop_ask || roundb_on fc_placement_conf_ask || exit 0
+roundb_on fc_db_delete_ask || roundb_on fc_folder_delete_ask || roundb_on fc_user_sop_ask || roundb_on fc_placement_conf_ask || roundb_on fc_claudemd_ask || roundb_on fc_claudemd_plugin_copy || roundb_on claudemd_len_advisory || exit 0
 IFS= read -r -d '' PAYLOAD || true
 [ -n "$PAYLOAD" ] || exit 0
 printf '%s' "$PAYLOAD" | python3 "$_lhb_dir/lib/fine_china_ask.py" || echo "guard_fine_china_ask: engine failed; allowing" >&2
