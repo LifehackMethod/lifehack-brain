@@ -159,6 +159,25 @@ _job_health_line() {
 
 _job_health_line   # FIRST line of output, ahead of every "=== Session context" header below
 
+# ── TEAM-SHARED SKILLS CHECK — Drive skill sharing (approved design 2026-11-01, SIMPLE build) ──
+# WHY THIS LIVES HERE, NOT A NEW HOOK: same reasoning as the CAP_CHECK block below — this hook
+# already fires every session, so ONE call site, no fourth part watching a third part. It sits
+# BEFORE the brain-root resolution on purpose: team skill sharing is independent of the notes
+# root, and the "no subject folders yet" exit further down must not skip it (the fresh-install
+# path is exactly the one a new team member is on). The switch (team_skill_verify in
+# roundB.conf, DEFAULT OFF) is read INSIDE team_skills.py --session-check, through lib/roundb.py
+# like every other switch, so OFF = exactly today's behaviour: this call runs, prints nothing,
+# costs a python startup. SILENCE IS THE HEALTHY STATE: with the switch on, a session prints one
+# line per BROKEN/MISSING/changed-for-the-worse shared skill only. FAIL-SOFT, ALWAYS: same
+# contract as CAP_CHECK — guarded by -r first and `|| true` besides; no nonzero exit from here
+# ever escapes (a session must never fail to start because a shared skill drifted). The check
+# never touches the Drive copy; on a failed re-scan it drops the local LINK only.
+TEAM_CHECK="$REPO/shared/tools/team_skills.py"
+if [ -r "$TEAM_CHECK" ]; then
+  TEAM_OUT="$("$PY" "$TEAM_CHECK" --session-check 2>/dev/null || true)"
+  [ -n "$TEAM_OUT" ] && { echo ""; printf '%s\n' "$TEAM_OUT"; }
+fi
+
 # The one resolver. NOT-SET is a real answer and is reported as one; it is never guessed around.
 ROOT="$("$PY" "$REPO/shared/brain_root.py" --quiet 2>/dev/null)"
 RC=$?

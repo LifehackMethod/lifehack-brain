@@ -75,13 +75,13 @@ class PersonRootsCase(unittest.TestCase):
 
     def test_status_unset_when_nothing_names_a_folder(self):
         rc, out = self.run_cli("--shell")
-        self.assertEqual(self.status(out), {"NOTES_STATUS": "unset", "PERSONAL_STATUS": "unset"})
+        self.assertEqual(self.status(out), {"NOTES_STATUS": "unset", "PERSONAL_STATUS": "unset", "TEAM_STATUS": "unset"})
 
     def test_status_missing_when_a_pointer_names_a_gone_folder(self):
         self.pointer("brain-root", os.path.join(self.home, "gone-notes"))
         self.pointer("personal-code", os.path.join(self.home, "gone-code"))
         rc, out = self.run_cli("--shell")
-        self.assertEqual(self.status(out), {"NOTES_STATUS": "missing", "PERSONAL_STATUS": "missing"})
+        self.assertEqual(self.status(out), {"NOTES_STATUS": "missing", "PERSONAL_STATUS": "missing", "TEAM_STATUS": "unset"})
         self.assertEqual(out[0], "NOTES=")
 
     def test_status_missing_when_the_env_names_a_gone_folder(self):
@@ -92,7 +92,7 @@ class PersonRootsCase(unittest.TestCase):
         self.pointer("brain-root", self.mk("n"))
         self.pointer("personal-code", self.mk("c"))
         rc, out = self.run_cli("--shell")
-        self.assertEqual(self.status(out), {"NOTES_STATUS": "ok", "PERSONAL_STATUS": "ok"})
+        self.assertEqual(self.status(out), {"NOTES_STATUS": "ok", "PERSONAL_STATUS": "ok", "TEAM_STATUS": "unset"})
 
     def owner(self, out):
         return next(l.split("=", 1)[1] for l in out if l.startswith("OWNER_GH_USER="))

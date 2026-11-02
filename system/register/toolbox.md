@@ -59,6 +59,7 @@ Shared layer = everything under `shared/`. Look here before writing a new tool.
 - `/shared/tools/own_list_add.py` · your OWN list of your OWN tools (Round B piece 2, "your own list")
 - `/shared/tools/store_date_index.py` · sidecar DATE INDEX for the three item stores (Phase 8 Lane C / S8.4)
 - `/shared/tools/tasks_store_sync.py` · mechanical writer for the durable Tasks item store (Phase G-2)
+- `/shared/tools/team_skills.py` · share personal skills with a team through a Google Drive folder (approved design 2026-11-01, SIMPLE build)
 
 ## Paths and roots
 
@@ -71,6 +72,7 @@ Shared layer = everything under `shared/`. Look here before writing a new tool.
 - `/shared/person_roots.py` · the ONLY way plugin code learns where a person's own folders are
 - `/shared/personal_code_root.py` · where YOUR personal code lives (desk runners, prompts, your own scripts)
 - `/shared/registry.py` · resolve a project slug to the files that belong to it
+- `/shared/team_skills_root.py` · where the TEAM's shared-skills Drive folder lives (approved design 2026-11-01, SIMPLE build: file-system only, a local Drive-for-Desktop…
 
 ## Scheduled jobs
 

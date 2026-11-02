@@ -93,6 +93,27 @@ def personal_status():
     return "missing" if source in ("pointer-missing", "pointer", "default") else "unset"
 
 
+def team_skills_root():
+    """Real path of the team shared-skills folder (shared/team_skills_root.py), or "" (not set, or the
+    pointer names a folder that is not there). Empty means "no such zone" — a caller never guesses."""
+    try:
+        import team_skills_root as tsr
+        source, path = tsr.resolve_team_skills_root()
+    except Exception:
+        return ""
+    return os.path.realpath(path) if source == "pointer" and _usable(path) else ""
+
+def team_status():
+    """ok | unset | missing for the team shared-skills folder (see team_skills_root.py)."""
+    if team_skills_root():
+        return "ok"
+    try:
+        import team_skills_root as tsr
+        source, _path = tsr.resolve_team_skills_root()
+    except Exception:
+        return "missing"
+    return "missing" if source == "pointer-missing" else "unset"
+
 def owner_gh_user():
     """The person's own GitHub account (the one a repair `gh auth switch --user` may go back to), from the environment:
     $LIFEHACK_OWNER_GH_USER, else the DEPRECATED old name below (a maintainer setting that predates the generic
@@ -136,6 +157,8 @@ def main(argv=None):
     print("PERSONAL_STATUS=" + personal_status())
     for z in code_zones(personal):
         print("ZONE=" + z)
+    print("TEAM=" + team_skills_root())
+    print("TEAM_STATUS=" + team_status())
     print("OWNER_GH_USER=" + owner_gh_user())
     return 0
 
