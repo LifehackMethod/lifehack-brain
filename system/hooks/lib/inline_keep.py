@@ -11,7 +11,11 @@ Prints nothing (stay silent) or ONE line "keep<TAB>cmd" / "offer<TAB>cmd". Never
   offer: no keep-intent, but the inline command is LONG and REUSABLE (is_reusable) -> at most one per session
          (state_file holds a line "offer" once spent; a line "cmd:<sha>" per command already nudged).
 Only REAL text counts: user entries that are not isMeta, with every <system-reminder>...</system-reminder> span stripped
-(injected context is not what the person said), tool_result blocks ignored.
+(injected context is not what the person said), tool_result blocks ignored. Also skipped (plan item 15, 2026-11-02):
+compaction summaries (isCompactSummary / isVisibleInTranscriptOnly -- they quote OLD words back), and any row whose origin.kind
+is not "human" (task notifications arrive as type "user" with origin.kind "task-notification" and NO isMeta; cross-session
+peer messages are origin.kind "peer" and already isMeta). A row with NO origin field still counts: older Claude Code builds,
+slash-command rows and interrupt rows carry none, and those are the person's own doing.
 """
 import hashlib
 import json
@@ -20,10 +24,22 @@ import sys
 
 MIN_CHARS = 20      # below this a command is a glance (ls, pwd, git status), not something to keep
 LONG_CHARS = 120    # a single line this long is something you would not retype
+# "keep it/this/that" is keep-intent ONLY when the phrase ENDS there (plan item 15, 2026-11-02: Enver's "keep this on track so
+# just keep it on track" was read as "keep this command"). Rule: after the pronoun come zero or more KEEP_TAIL words (please,
+# thanks, too, then, around, handy, saved, "as a script/tool/...", "for later/next time/..."), then a BOUNDARY: end of text, a
+# newline, punctuation, or a new clause starting with "and"/"but". Anything else continues the phrase -- "keep it on track",
+# "keep it working/going/up/short/simple", "keep that in mind" -- and is an idiom, not keep-intent. An explicit object noun
+# ("keep the command", "keep that one", "keep this script") always counts. The rule is an allowlist on purpose: a missed
+# keep costs one un-nudged turn; a false keep blocks the person's turn with a request they never made.
+KEEP_TAIL = (r"(?:\s+(?:please|pls|thanks|thank you|ok|okay|too|then|around|handy|somewhere|saved"
+             r"|as (?:a |an |my )?(?:script|tool|command|file|snippet|one)"
+             r"|for (?:later|next time|the future|reuse|re-use|me|now)))*")
+KEEP_END = r"(?:[ \t]*(?:$|\n|[.,!?;:)\]\"'\u2014\u2013\u2026-])|\s+(?:and|but)\b)"
 KEEP = re.compile(
-    r"\b(keep (it|that|this|the command|that command|this command)|save (that|this|it)( command| one)?|"
+    r"\b(keep (?:the|that|this) (?:command|one|script|snippet|pipeline|line)\b|keep (?:it|that|this)(?=" + KEEP_TAIL + KEEP_END + r")|"
+    r"(?:save (that|this|it)( command| one)?|"
     r"i'?ll (reuse|re-use|use) (it|that|this)|reuse (it|that|this)|re-use (it|that|this)|"
-    r"make (that|this|it) a (script|tool)|turn (that|this|it) into a (script|tool))\b", re.I)
+    r"make (that|this|it) a (script|tool)|turn (that|this|it) into a (script|tool))\b)", re.I)
 NEG = re.compile(r"\b(don'?t|do not|no need to|not|never|without)\s+(\w+\s+){0,2}$", re.I)
 REMINDER = re.compile(r"<system-reminder>.*?</system-reminder>", re.S)
 LOOPS = re.compile(r"(^|[\s;&|(])(for|while|until)\s|\bxargs\b|-exec\b|\bparallel\b")
@@ -78,6 +94,11 @@ def is_reusable(cmd):
 
 def real_user_text(entry):
     if entry.get("type") != "user" or entry.get("isMeta"):
+        return None
+    if entry.get("isCompactSummary") or entry.get("isVisibleInTranscriptOnly"):   # a summary quotes old words back
+        return None
+    origin = entry.get("origin")
+    if origin is not None and (not isinstance(origin, dict) or origin.get("kind") != "human"):   # not typed by the person
         return None
     c = (entry.get("message") or {}).get("content")
     parts = []

@@ -127,6 +127,57 @@ stop h7 p1 "$T/t8g"; blocked && ok "2>/dev/null is not a file write: keep-intent
 mk "$T/t8h" "keep it" "$FIND | sort -n | head -5 2>&1"
 stop h8 p1 "$T/t8h"; blocked && ok "keep-intent + inline pipeline still fires" || bad "pipeline keep missed"
 
+echo "== plan item 15 (2026-11-02): idioms, compaction summaries and rows the person did not type =="
+# The real false alarm: Enver typed "keep this on track so just keep it on track" and the hook asked him to save a command.
+# PLAIN is >= MIN_CHARS but not reusable, so a wrong keep-read is the ONLY way any of these silent cases can block.
+N=0
+mk "$T/i1" "keep this on track so just keep it on track" "$PLAIN"
+stop i1 p1 "$T/i1"; [ -z "$OUT$ERR" ] && ok "Enver's exact 'keep this on track so just keep it on track': silent" || bad "idiom read as keep: $OUT"
+mk "$T/i2" "keep it working" "$PLAIN"
+stop i2 p1 "$T/i2"; [ -z "$OUT$ERR" ] && ok "'keep it working': silent" || bad "idiom read as keep: $OUT"
+for IDI in "keep it going" "keep it up" "keep it short" "keep it simple" "ok keep it on track, then count the lines"; do
+  mk "$T/i3" "$IDI" "$PLAIN"; N=$((N+1)); stop "i3n$N" p1 "$T/i3"; [ -z "$OUT$ERR" ] && ok "idiom '$IDI': silent" || bad "idiom '$IDI' read as keep: $OUT"
+done
+# rows <file> <spec>... : one transcript from row specs. h:<text> human-typed (real origin shape), n:<text> task notification
+# (real shape: origin.kind task-notification, NO isMeta), c:<text> compaction summary (isCompactSummary + isVisibleInTranscriptOnly),
+# v:<text> isVisibleInTranscriptOnly only, o:<kind>:<text> any other origin kind without isMeta, b:<cmd> a Bash run + its result.
+rows() { python3 - "$@" <<'PY'
+import json, sys
+L = []
+for s in sys.argv[2:]:
+    k, _, t = s.partition(":")
+    u = {"type": "user", "message": {"role": "user", "content": t}}
+    if k == "h": u["origin"] = {"kind": "human"}; L.append(u)
+    elif k == "n": u["origin"] = {"kind": "task-notification"}; u["message"]["content"] = "<task-notification>\n<status>completed</status>\n<result>" + t + "</result>\n</task-notification>"; L.append(u)
+    elif k == "c": u["isCompactSummary"] = True; u["isVisibleInTranscriptOnly"] = True; L.append(u)
+    elif k == "v": u["isVisibleInTranscriptOnly"] = True; L.append(u)
+    elif k == "o": kind, _, t2 = t.partition(":"); u["origin"] = {"kind": kind}; u["message"]["content"] = t2; L.append(u)
+    elif k == "b":
+        L.append({"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "b1", "name": "Bash", "input": {"command": t}}]}})
+        L.append({"type": "user", "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "b1", "content": "12 lines"}]}})
+    L.append({"type": "assistant", "message": {"content": [{"type": "text", "text": "ok"}]}})
+open(sys.argv[1], "w").write("\n".join(json.dumps(x) for x in L) + "\n")
+PY
+}
+rows "$T/i4" "h:how many lines in each file under Recipes?" "b:$PLAIN" "n:Agent finished. The person said keep it, so keep it."
+stop i4 p1 "$T/i4"; [ -z "$OUT$ERR" ] && ok "task-notification row containing 'keep it': silent" || bad "task notification read as the person: $OUT"
+rows "$T/i5" "c:This session is being continued. Summary: the person said keep it about the count command." "h:how many lines in each file under Recipes?" "b:$PLAIN"
+stop i5 p1 "$T/i5"; [ -z "$OUT$ERR" ] && ok "compaction-summary row containing 'keep it': silent" || bad "compaction summary read as the person: $OUT"
+rows "$T/i5b" "v:earlier the person said keep it" "h:how many lines in each file under Recipes?" "b:$PLAIN"
+stop i5b p1 "$T/i5b"; [ -z "$OUT$ERR" ] && ok "isVisibleInTranscriptOnly row containing 'keep it': silent" || bad "transcript-only row read as the person: $OUT"
+rows "$T/i5c" "h:how many lines in each file under Recipes?" "b:$PLAIN" "o:some-future-kind:keep it"
+stop i5c p1 "$T/i5c"; [ -z "$OUT$ERR" ] && ok "any non-human origin kind without isMeta: silent" || bad "non-human origin read as the person: $OUT"
+# still fires
+mk "$T/i6" "how many lines of text are in each file under my Recipes folder? quick answer. oh nice, keep it" "$FIND"
+stop i6 p1 "$T/i6"; printf '%s' "$(reason)" | grep -q "asked to keep" && ok "D-B04 exact prompt: still 'keep'" || bad "D-B04 lost: $OUT"
+rows "$T/i7" "h:how many lines of text are in each file under my Recipes folder? quick answer" "b:$FIND" "h:keep it"
+stop i7 p1 "$T/i7"; printf '%s' "$(reason)" | grep -q "asked to keep" && ok "D-B03 (prompt, inline run, then 'keep it'; real human origin): still 'keep'" || bad "D-B03 lost: $OUT"
+rows "$T/i7b" "h:how many lines in each file under Recipes?" "b:$PLAIN" "n:Agent finished." "h:keep it"
+stop i7b p1 "$T/i7b"; printf '%s' "$(reason)" | grep -q "asked to keep" && ok "'keep it' after a task notification: still 'keep' (notification skipped, not a barrier)" || bad "keep after notification lost: $OUT"
+for KP in "keep it" "save that" "keep it please" "keep it as a script" "keep it for later" "Keep it!" "keep that command" "keep it, and run it again tomorrow"; do
+  mk "$T/i8" "$KP" "$PLAIN"; N=$((N+1)); stop "i8n$N" p1 "$T/i8"; printf '%s' "$(reason)" | grep -q "asked to keep" && ok "'$KP': still 'keep'" || bad "'$KP' lost: $OUT"
+done
+
 echo "== switch OFF = silent =="
 mk "$T/t7" "keep it" "$FIND"
 ROUNDB_INLINE_KEEP_NUDGE=off stop f1 p1 "$T/t7"; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "switch off: keep-intent case silent" || bad "acted while OFF: $OUT"
