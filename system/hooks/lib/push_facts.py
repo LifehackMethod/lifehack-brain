@@ -7,6 +7,10 @@ One verdict line on stdout, tab separated:
   HARD_FORCE <detail>           fc_force_push: a force push of any spelling
   HARD_PRIVATE <detail>         fc_private_push: outgoing commits carry private material (existing leakage scan)
   HARD_PRIVATE_CANNOT <detail>  the leakage scan exists but could not run -> fail closed on a remote that is not local
+  WARN_PRIVATE <next> <b64>     fc_private_push with --private-mode warn (2026-11-02 ruling): the scan FLAGGED the outgoing commits,
+                                but the push is allowed. <next> is the verdict the push would otherwise get (NORMAL|QUIET); <b64> is
+                                base64 JSON {remote, url, refs, range, commits, findings} for the caller's warning + log (lib/push_warn.py).
+                                HARD_PRIVATE_CANNOT is unchanged in warn mode: a scan that could not run is still a stop.
 
 Switches arrive as flags (the bash caller reads roundB.conf); a switch that is OFF skips its whole check, so
 OFF is exactly the old behaviour. Nothing here runs the push or writes anything. The only network use is an optional `gh repo view` PUBLIC veto (3 s timeout, failure = no veto).
@@ -242,8 +246,8 @@ def outgoing_commits(repo, src, remote, url):
     return [c for c in out.split("\n") if c] if rc == 0 else []
 
 
-def leak_scan(repo, p, branch, remote, url, hooks_lib):
-    """-> ("clean"|"flagged"|"cannot"|"skip", [lines])."""
+def leak_scan(repo, p, branch, remote, url, hooks_lib, facts=None):
+    """-> ("clean"|"flagged"|"cannot"|"skip", [lines]). facts (a dict), when given, gets "refs" and "commits" (full SHAs)."""
     scanner_dir = os.path.normpath(os.path.join(hooks_lib, "..", "..", "..", ".github", "scripts"))
     if not os.path.isfile(os.path.join(scanner_dir, "check_no_internal_leakage.py")):
         return "skip", []  # not shipped here (a plugin install): nothing to run, stay quiet
@@ -256,6 +260,9 @@ def leak_scan(repo, p, branch, remote, url, hooks_lib):
         for c in outgoing_commits(repo, src, remote, url):
             if c not in commits:
                 commits.append(c)
+    if facts is not None:
+        facts["refs"] = [[s, d] for s, d in pairs]
+        facts["commits"] = list(commits)
     if not commits:
         return "clean", []
     sys.path.insert(0, scanner_dir)
@@ -297,6 +304,7 @@ def main():
     ap.add_argument("--shared", default="")
     ap.add_argument("--force-on", action="store_true")
     ap.add_argument("--private-on", action="store_true")
+    ap.add_argument("--private-mode", default="block", choices=("block", "warn"))  # roundB.conf fc_private_push_mode
     ap.add_argument("--quiet-on", action="store_true")
     ap.add_argument("--local-on", action="store_true")
     ap.add_argument("--is-personal", action="store_true")  # print "yes" if --repo is the personal repo (or a worktree of it)
@@ -328,17 +336,31 @@ def main():
         if rc == 0 and any(ln.strip().startswith("+") for ln in out.split("\n")):
             print("HARD_FORCE\ta + refspec in remote.%s.push config" % remote)
             return 0
+    warn = None
     if a.private_on and remote:
         url = push_url(repo, remote) if named_remote(repo, remote) else remote
         # silent and cheap when there is nothing to leak to: no remote, a local path, or the person's own private repo
         if is_networked(url) and not is_personal_repo(repo, a.shared, url):
-            status, lines = leak_scan(repo, p, branch, remote, url, os.path.dirname(os.path.abspath(__file__)))
-            if status == "flagged":
+            facts = {}
+            status, lines = leak_scan(repo, p, branch, remote, url, os.path.dirname(os.path.abspath(__file__)), facts)
+            if status == "flagged" and a.private_mode == "warn":
+                # warn mode (2026-11-02 ruling): same scan, push allowed; the caller shows + logs the findings (fail closed there)
+                commits = facts.get("commits", [])
+                rng = ", ".join("%s/%s..%s" % (remote, d, s) for s, d in facts.get("refs", []))
+                warn = {"remote": remote, "url": url, "refs": facts.get("refs", []), "range": rng,
+                        "commits": commits[:50], "commit_count": len(commits), "findings": lines}
+            elif status == "flagged":
                 print("HARD_PRIVATE\t" + " | ".join(lines))
                 return 0
             if status == "cannot":
                 print("HARD_PRIVATE_CANNOT\t" + " | ".join(lines))
                 return 0
+    if warn is not None:
+        nxt = "NORMAL"
+        if a.quiet_on and plain_and_tracked(repo, p, branch, remote):
+            nxt = "QUIET"
+        print("WARN_PRIVATE\t%s\t%s" % (nxt, base64.b64encode(json.dumps(warn).encode("utf-8", "surrogateescape")).decode("ascii")))
+        return 0
     if a.local_on and remote and not (p["force"] or p["plus"] or p["mirror"] or p["delete"]):
         # fc_local_push_quiet: a push to a folder on this same machine (a bare repo, a backup copy) cannot reach anyone: no signpost
         url = push_url(repo, remote) if named_remote(repo, remote) else remote

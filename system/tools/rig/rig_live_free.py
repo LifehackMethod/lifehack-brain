@@ -20,6 +20,7 @@ import rig_meal as rm  # noqa: E402
 import rig_live_score as ls  # noqa: E402
 import rig_isolation as isol  # noqa: E402  (not `iso`: main() uses that name for the throwaway HOME path)
 import rig_sandbox as sandbox  # noqa: E402  (kernel layer: every actor runs under sandbox-exec; record rig-actor-sandbox)
+import rig_rulings  # noqa: E402  (standing rulings: a case scored NOT-EVALUATED, e.g. push scan warn mode 2026-11-02)
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "shared"))
 import disk_preflight  # noqa: E402  (THE disk-low preflight, shared/disk_preflight.py)
 import rig_config_isolation as cfgiso  # noqa: E402  (rig dirs outside the real home; student config preflight; record rig-config-isolation)
@@ -506,8 +507,9 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
     first_deny = next((c2["i"] for c2 in calls if c2["is_error"] and ls.DENY_TEXT.search(c2["result"] or "")), None)
     build_calls = [c2["i"] for c2 in calls if c2["name"] == "Skill" and "build" in json.dumps(c2["input"]).lower()]
     bump_text = [c2["result"][:300] for c2 in calls if c2["is_error"] and re.search(r"toolbox|/build", c2["result"] or "")]
+    ruling = rig_rulings.not_evaluated(c["id"])   # a standing ruling (e.g. push scan warn mode, 2026-11-02): scored NOT-EVALUATED, never FAIL
     return {"id": c["id"], "kind": L["kind"], "prompt": L["prompt"], "secs": round(secs), "turns": turns, "cost": cost, "err": e2 or err if (e2 or turns is None) else "",
-            "bucket": sc["bucket"], "bases": sc.get("bases"), "layers": sc.get("friction_layers"), "files": files, "route": sc.get("route", [])[:30],
+            "bucket": "NOT-EVALUATED" if ruling else sc["bucket"], "bucket_raw": sc["bucket"], "ruling": ruling, "bases": sc.get("bases"), "layers": sc.get("friction_layers"), "files": files, "route": sc.get("route", [])[:30],
             "denied": sc.get("denied_texts", []), "fence_denies": sc.get("fence_denies", []), "real_false": real_false, "copied": sc.get("copied_shared"), "stream": os.path.basename(stream),
             "bump_names_build": bool(bump_text), "bump_text": bump_text[:2], "build_skill_calls": len(build_calls), "build_after_bump": bool(build_calls and first_deny is not None and any(i > first_deny for i in build_calls)),
             "build_mentioned": bool(BUILD_RE.search(txt)), "commits": sc.get("commits", {}), "foreign_changes_left": foreign[:10], "cleaned": removed, "left_alone": left_alone,

@@ -10,3 +10,14 @@ roundb_on() {
   fi
   [ "$val" = "on" ]
 }
+# A VALUED line (not on|off), e.g. fc_private_push_mode=block|warn: roundb_val <name> prints the value (env ROUNDB_<NAME> wins), or nothing.
+roundb_val() {
+  local name="$1" var val conf
+  var="ROUNDB_$(printf '%s' "$name" | tr '[:lower:]' '[:upper:]')"
+  val="${!var:-}"
+  if [ -z "$val" ]; then
+    conf="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/roundB.conf"
+    val="$(sed -n "s/^${name}=//p" "$conf" 2>/dev/null | tail -1 | tr -d '[:space:]')"
+  fi
+  printf '%s' "$val" | tr -d '[:space:]'
+}

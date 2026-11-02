@@ -16,7 +16,8 @@ bad() { F=$((F+1)); echo "FAIL: $1"; }
 git_q() { git -C "$1" -c user.email=t@example.invalid -c user.name=t "${@:2}" >/dev/null 2>&1; }
 bashjson() { T="$1" python3 -c 'import os,json; print(json.dumps({"tool_name":"Bash","tool_input":{"command":os.environ["T"]}}))'; }
 PUSHW="pu""sh"
-ENVS="ROUNDB_FC_FORCE_PUSH=on ROUNDB_FC_PRIVATE_PUSH=on ROUNDB_FC_PLAIN_PUSH_QUIET=on ROUNDB_FC_LOCAL_PUSH_QUIET=on SHIP_IDENTITY=$S/ident.txt"
+# fc_private_push_mode pinned to block: g1/g5 assert the leaky-push HARD STOP (warn mode: test_push_scan_warn.sh)
+ENVS="ROUNDB_FC_FORCE_PUSH=on ROUNDB_FC_PRIVATE_PUSH=on ROUNDB_FC_PRIVATE_PUSH_MODE=block ROUNDB_FC_PLAIN_PUSH_QUIET=on ROUNDB_FC_LOCAL_PUSH_QUIET=on SHIP_IDENTITY=$S/ident.txt"
 echo "fictional-secret-term-pond" > "$S/ident.txt"
 PRIV_URL="https://github.com/fictional-org/pond-private.git"
 PUB_URL="https://github.com/LifehackMethod/lifehack-brain.git"

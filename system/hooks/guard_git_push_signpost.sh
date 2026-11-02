@@ -133,6 +133,13 @@ trap 'lhb_journal_fire "$?" "guard_git_push_signpost.sh" "PreToolUse" "Bash" 2>/
 # WHO-COULD-THIS-BREAK: nobody is blocked by this one; it only removes a speed bump, so the risk is a push that
 #      wanted the manifest not getting it. WAY-THROUGH: turn fc_plain_push_quiet off to get the first-push signpost back;
 #      a force push, a new branch, a diverged branch or any non-tracking refspec still gets the signpost or a hard stop.
+#      fc_private_push_mode=block|warn (2026-11-02, Enver's ruling; no line = block): WARN = the same scan still runs on a
+#      public-remote push, but a FLAGGED push is ALLOWED: the findings reach Claude at this step (PreToolUse
+#      additionalContext, no permission decision), one JSON line per finding is appended to <notes>/state/push-warnings.log
+#      (notes root from shared/person_roots.py; lib/push_warn.py), and end_of_turn_checks.sh holds the turn until Claude
+#      reports each to the person. Cannot write the log (or the per-session marker) -> BLOCK, saying why. A scan that
+#      cannot run (HARD_PRIVATE_CANNOT) stays a HARD STOP in both modes. The first-push signpost still fires first (it
+#      carries the findings too); the warning is logged when the hook ALLOWS the push.
 #      ROUND C GAP CLOSURE (fc_force_push, fc_private_push; OFF = unchanged): the push is also read THROUGH `bash -c`/`sh -c`/
 #      `eval`, an `env`/`VAR=x`/`command`/`exec`/`nohup` prefix and a subshell paren (lib/git_target_resolver.py candidates() +
 #      skip_prefix()); `git <alias>` where the alias expands to a push (read with one `git config --get alias.<n>`, only
@@ -328,6 +335,28 @@ PUSH_ARGV_B64="$_REST3"
 # existence-checking has always belonged to the caller). Either one refuses
 # rather than falling through to the identity/print block below, which is
 # exactly the block that would otherwise name a confident, wrong repo.
+# fc_private_push_mode=warn: the push is being ALLOWED and the scan flagged it. Log every finding (lib/push_warn.py) and
+# hand Claude the warning as additionalContext, then exit 0. The log or marker cannot be written -> BLOCK (exit 2), saying why.
+_push_warn_allow() {
+  local _o _rc _shared
+  _shared="$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd)/shared"
+  _o=$(printf '%s' "$INPUT" | python3 "$(dirname "$0")/lib/push_warn.py" log --warn-b64 "$PUSH_WARN_B64" --repo "$REPO_DIR" --shared "$_shared" 2>/dev/null)
+  _rc=$?
+  if [ "$_rc" -eq 0 ] && [ -n "$_o" ]; then
+    printf '%s\n' "$_o"
+    exit 0
+  fi
+  [ -n "$_o" ] || _o="push_warn.py failed (exit $_rc) with no reason"
+  {
+    printf 'HARD STOP (push guard, warn mode): the leakage scan flagged this push, and warn mode lets it through ONLY when the finding is written down -- and it could not be: %s\n' "$_o"
+    printf 'FOUND: %s\n' "$(python3 "$(dirname "$0")/lib/push_warn.py" text --warn-b64 "$PUSH_WARN_B64" 2>/dev/null | tr '\n' '|' | cut -c1-600)"
+    printf 'WHY: a warning nobody can find later is the same as no warning; so an unloggable warning falls back to the block.\n'
+    printf 'WAY THROUGH: make <notes>/state/push-warnings.log writable (the notes root comes from shared/person_roots.py), or remove the flagged material, or the person runs the push themselves: ! %s\n' "$(printf '%s' "$CMD_B64" | base64 -d 2>/dev/null)"
+    printf 'RULE: system/hooks/guard_git_push_signpost.sh + lib/push_warn.py (fc_private_push_mode in system/hooks/roundB.conf).\n'
+  } >&2
+  exit 2
+}
+
 _refuse_unresolved() {
   printf '📍 PUSH · cannot determine the target repo\n' >&2
   # FIXED 2026-10-30 (fix-signpost): fail toward CAUTION. An unresolved repo is never
@@ -406,10 +435,14 @@ case "$VERDICT" in
     # A HARD STOP exits 2 on EVERY attempt -- no once-per-session marker, so a retry cannot pass it. Way
     # through: the person runs the push themselves in their own terminal (`! git push ...`), which no hook sees.
     . "$(dirname "$0")/lib/roundb.sh" 2>/dev/null
-    _fc_force=""; _fc_priv=""; _fc_quiet=""
+    _fc_force=""; _fc_priv=""; _fc_quiet=""; PUSH_WARN_B64=""
     if type roundb_on >/dev/null 2>&1; then
       roundb_on fc_force_push && _fc_force="--force-on"
       roundb_on fc_private_push && _fc_priv="--private-on"
+      # fc_private_push_mode (2026-11-02 ruling): warn | block; no line or any other value = block (the old hard stop)
+      if [ -n "$_fc_priv" ] && type roundb_val >/dev/null 2>&1 && [ "$(roundb_val fc_private_push_mode)" = "warn" ]; then
+        _fc_priv="--private-on --private-mode warn"
+      fi
       roundb_on fc_plain_push_quiet && _fc_quiet="--quiet-on"
       roundb_on fc_local_push_quiet && _fc_quiet="$_fc_quiet --local-on"
     fi
@@ -448,6 +481,10 @@ case "$VERDICT" in
           exit 2 ;;
         QUIET)
           exit 0 ;;   # fc_plain_push_quiet: an ordinary push the branch tracks -- nothing unusual to signpost
+        WARN_PRIVATE)
+          # fc_private_push_mode=warn: the scan flagged the push, and it is allowed. detail = <next verdict>\t<base64 facts>
+          PUSH_WARN_B64="${_fc_detail#*$'\t'}"
+          [ "${_fc_detail%%$'\t'*}" = "QUIET" ] && _push_warn_allow ;;   # would have been quiet: log, tell Claude, allow
       esac
     fi
 
@@ -491,6 +528,7 @@ case "$VERDICT" in
     if mkdir "$_bump" 2>/dev/null; then
       : # first sighting of this exact push in this session -- fall through and signpost
     elif [ -d "$_bump" ]; then
+      [ -n "$PUSH_WARN_B64" ] && _push_warn_allow   # warn mode: log + tell Claude, then allow (or block if it cannot log)
       exit 0   # already signposted (this copy or a racing sibling copy) -- allow
     fi
     # else: mkdir failed for some other reason (e.g. $HOME/.claude unwritable)
@@ -861,6 +899,10 @@ for r in rows:
       printf '   Not sure which repo this belongs in? STOP and ask. Never guess harness vs personal.\n'
       printf '   WHY: "by push time I just approve, because I cant tell whats in it" -- this is the fix. Identity above was read from the real git remote, not guessed.\n'
       printf '   (run the same push again to proceed -- this fires once per distinct push in a session)\n'
+      if [ -n "$PUSH_WARN_B64" ]; then
+        printf '   ⚠ LEAKAGE SCAN (warn mode): the outgoing commits were flagged. Re-running lets the push through, and each finding is logged and must be reported to the person:\n'
+        python3 "$(dirname "$0")/lib/push_warn.py" text --warn-b64 "$PUSH_WARN_B64" 2>/dev/null | sed 's/^/     - /'
+      fi
     } >&2
     exit 2
     ;;

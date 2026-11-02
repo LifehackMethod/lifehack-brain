@@ -6,4 +6,5 @@ for _pin_n in $(sed -nE 's/^([a-z][a-z0-9_]*)=(on|off)[[:space:]]*$/\1/p' "$_PIN
   export "ROUNDB_$(printf '%s' "$_pin_n" | tr '[:lower:]' '[:upper:]')=off"
 done
 export LIFEHACK_WATCH=0
+export ROUNDB_FC_PRIVATE_PUSH_MODE=block   # the valued line (2026-11-02): pinned to the old behaviour too; warn mode has its own test
 unset _pin_n _PIN_CONF

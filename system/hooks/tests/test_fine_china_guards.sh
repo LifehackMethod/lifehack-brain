@@ -116,12 +116,13 @@ p_pass() { push "$2" "$3" "${@:4}"; if [ $RC -eq 0 ]; then ok; else bad "PASS $1
 p_sign() { push "$2" "$3" "${@:4}"; if [ $RC -eq 2 ] && grep -q "PUSH ·" "$ERRF" && ! grep -q "HARD STOP" "$ERRF"; then ok; else bad "SIGNPOST $1 (rc=$RC $(head -c 160 "$ERRF"))"; fi; }
 p_hard() { push "$2" "$3" "${@:4}"; if [ $RC -eq 2 ] && grep -q "HARD STOP" "$ERRF" && grep -q "WHY:" "$ERRF" && grep -q "WAY THROUGH:" "$ERRF" && grep -q "RULE:" "$ERRF"; then ok; else bad "HARD $1 (rc=$RC $(head -c 200 "$ERRF"))"; fi; }
 for i in $(seq 1 90); do mkdir -p "$S/h$i/.claude"; done
+# fc_private_push_mode is pinned to block here: these are the hard-stop assertions (warn mode: test_push_scan_warn.sh)
 OFF="ROUNDB_FC_FORCE_PUSH=off ROUNDB_FC_PRIVATE_PUSH=off ROUNDB_FC_PLAIN_PUSH_QUIET=off"
 FORCE="ROUNDB_FC_FORCE_PUSH=on ROUNDB_FC_PRIVATE_PUSH=off ROUNDB_FC_PLAIN_PUSH_QUIET=off"
-PRIV="ROUNDB_FC_FORCE_PUSH=off ROUNDB_FC_PRIVATE_PUSH=on ROUNDB_FC_PLAIN_PUSH_QUIET=off SHIP_IDENTITY=$S/ident.txt"
-PRIVX="ROUNDB_FC_FORCE_PUSH=off ROUNDB_FC_PRIVATE_PUSH=on ROUNDB_FC_PLAIN_PUSH_QUIET=off SHIP_IDENTITY=$S/no-such-identity.txt"
+PRIV="ROUNDB_FC_FORCE_PUSH=off ROUNDB_FC_PRIVATE_PUSH=on ROUNDB_FC_PRIVATE_PUSH_MODE=block ROUNDB_FC_PLAIN_PUSH_QUIET=off SHIP_IDENTITY=$S/ident.txt"
+PRIVX="ROUNDB_FC_FORCE_PUSH=off ROUNDB_FC_PRIVATE_PUSH=on ROUNDB_FC_PRIVATE_PUSH_MODE=block ROUNDB_FC_PLAIN_PUSH_QUIET=off SHIP_IDENTITY=$S/no-such-identity.txt"
 QUIET="ROUNDB_FC_FORCE_PUSH=off ROUNDB_FC_PRIVATE_PUSH=off ROUNDB_FC_PLAIN_PUSH_QUIET=on"
-ALL="ROUNDB_FC_FORCE_PUSH=on ROUNDB_FC_PRIVATE_PUSH=on ROUNDB_FC_PLAIN_PUSH_QUIET=on SHIP_IDENTITY=$S/ident.txt"
+ALL="ROUNDB_FC_FORCE_PUSH=on ROUNDB_FC_PRIVATE_PUSH=on ROUNDB_FC_PRIVATE_PUSH_MODE=block ROUNDB_FC_PLAIN_PUSH_QUIET=on SHIP_IDENTITY=$S/ident.txt"
 
 echo "-- push, ALL OFF (= today): force push gets only the signpost, plain push gets the signpost"
 p_sign "OFF force"        "$S/priv" "$OFF" --force origin main

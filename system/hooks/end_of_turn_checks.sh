@@ -33,7 +33,16 @@ trap 'lhb_journal_fire "$?" "end_of_turn_checks.sh" "Stop" "" 2>/dev/null || tru
 #          (2) no keep-intent but the inline command is long and reusable (a loop, find -exec, xargs, 2+ pipes, or >= 120 chars)
 #          -> at most ONE "offer to keep it" per session. Logic: lib/inline_keep.py (real user text only, injected context
 #          stripped); state per session in $DIR/$SID.inlinekeep. Silent when no personal code folder resolves.
-# UPDATED: 2026-11-01
+#      push warnings (fc_private_push_mode=warn, Enver's ruling 2026-11-02): when guard_git_push_signpost.sh ALLOWED a push the
+#          leakage scan flagged, it left <turn-writes>/<session>.pushwarn (one JSON line per finding, also in
+#          <notes>/state/push-warnings.log). While any of them is not yet reported -- its id absent from the final assistant
+#          message -- this BLOCKS at end of turn, listing one line per finding to report (lib/push_warn.py eot). Reported ids
+#          leave the marker; an empty marker is removed. It runs whatever the other switches say and also when
+#          stop_hook_active is true (it repeats until reported). Anti-stuck: after 3 blocks in a turn with nothing
+#          reported it lets that turn end, logs "UNREPORTED after 3 asks" to push-warnings.log and keeps the marker,
+#          so each later turn nudges once more until reported. Never silently dropped.
+#          Its text rides along with any other end-of-turn block in the same message.
+# UPDATED: 2026-11-02
 # ─────────────────────────────────────────────────────────────────────────────
 . "$_lhb_dir/lib/roundb.sh" 2>/dev/null || roundb_on() { return 1; }
 DOOR=0; OWN=0; UNH=0; IKN=0; roundb_on inline_keep_nudge && IKN=1; roundb_on back_door && DOOR=1; roundb_on own_list && OWN=1; roundb_on own_list_unhomed && UNH=1
@@ -43,12 +52,16 @@ if [ "$PO" = 1 ]; then
   [ "$OWN" = 1 ] && python3 "$_lhb_dir/lib/placement_off.py" off own-list && OWN=0
   [ "$UNH" = 1 ] && python3 "$_lhb_dir/lib/placement_off.py" off unhomed && UNH=0
 fi
-[ "$DOOR$OWN$UNH$IKN" = "0000" ] && exit 0
 IFS= read -r -d '' P || true
 re_sid='"session_id"[[:space:]]*:[[:space:]]*"([A-Za-z0-9_-]+)"'; re_pid='"prompt_id"[[:space:]]*:[[:space:]]*"([A-Za-z0-9_-]+)"'
 [[ $P =~ $re_sid ]] || exit 0; SID="${BASH_REMATCH[1]}"
 PID=""; [[ $P =~ $re_pid ]] && PID="${BASH_REMATCH[1]}"
 DIR="${LHB_TURN_WRITES_DIR:-$HOME/.claude/run/turn-writes}"; LIST="$DIR/$SID.list"
+# push warnings (fc_private_push_mode=warn): unreported findings of a push this session made -> PWMSG (empty = nothing owed)
+PWMSG=""; [ -s "$DIR/$SID.pushwarn" ] && PWMSG="$(printf '%s' "$P" | LHB_TURN_WRITES_DIR="$DIR" python3 "$_lhb_dir/lib/push_warn.py" eot)"
+_block() { python3 -c 'import json,sys; print(json.dumps({"decision":"block","reason":sys.stdin.read()}))'; }
+_done() { [ -n "$PWMSG" ] && printf '%s\n' "$PWMSG" | _block; exit 0; }   # every exit below goes through here, so a push warning is never skipped
+[ "$DOOR$OWN$UNH$IKN" = "0000" ] && _done
 if [ "$IKN" = 1 ] && [[ $P != *'"stop_hook_active":true'* && $P != *'"stop_hook_active": true'* ]]; then
   # inline_keep_nudge: runs BEFORE the "no file created" exits below, because its whole case is "no file was created"
   IKSAVED=0; [ -s "$LIST" ] && awk -F'\t' -v p="$PID" '$1 == p {f=1} END {exit !f}' "$LIST" && IKSAVED=1
@@ -66,13 +79,13 @@ if [ "$IKN" = 1 ] && [[ $P != *'"stop_hook_active":true'* && $P != *'"stop_hook_
         else
           IKM="NOTE (once this session, nothing to fix): you ran a long command inline that looks reusable, and no file was saved."$'\n'"In your final message, offer in ONE line to keep it. If the person says yes: save it as a script in $PCR/tools/<a-good-name>.sh and run: python3 \"$HARK/shared/tools/own_list_add.py\" <the script path>. If no, drop it."$'\n'"The command: $IKC"
         fi
-        printf '%s\n' "$IKM" | python3 -c 'import json,sys; print(json.dumps({"decision":"block","reason":sys.stdin.read()}))'
+        { printf '%s\n' "$IKM"; [ -n "$PWMSG" ] && printf '\n%s\n' "$PWMSG"; } | _block
         exit 0
       fi
     fi
   fi
 fi
-[ -s "$LIST" ] || exit 0
+[ -s "$LIST" ] || _done
 declare -a FILES=(); SEEN=$'\n'     # bash 3.2 (macOS /bin/bash): no associative arrays
 while IFS=$'\t' read -r pid kind path; do
   [ "$pid" = "$PID" ] && [ "$kind" = new ] && [ -f "$path" ] && case "$SEEN" in *$'\n'"$path"$'\n'*) ;; *) SEEN+="$path"$'\n'; FILES+=("$path") ;; esac
@@ -80,16 +93,16 @@ done < "$LIST"
 # drop this turn's rows (they are consumed whatever happens next); an emptied list is removed
 awk -F'\t' -v p="$PID" '$1 != p' "$LIST" > "$LIST.tmp" 2>/dev/null && mv "$LIST.tmp" "$LIST" 2>/dev/null
 [ -s "$LIST" ] || rm -f "$LIST" 2>/dev/null
-[[ $P == *'"stop_hook_active":true'* || $P == *'"stop_hook_active": true'* ]] && exit 0   # already asked once this turn
-[ "${#FILES[@]}" -gt 0 ] || exit 0
-CNT="$DIR/$SID.asked"; N=0; [ -f "$CNT" ] && read -r N < "$CNT"; [ "${N:-0}" -ge 3 ] && exit 0
+[[ $P == *'"stop_hook_active":true'* || $P == *'"stop_hook_active": true'* ]] && _done   # already asked once this turn
+[ "${#FILES[@]}" -gt 0 ] || _done
+CNT="$DIR/$SID.asked"; N=0; [ -f "$CNT" ] && read -r N < "$CNT"; [ "${N:-0}" -ge 3 ] && _done
 FLAGGED="$DIR/$SID.flagged"
 declare -a ALL=() CODE=()
 for f in "${FILES[@]}"; do  # empty-ok: FILES was checked non-empty just above
   grep -qxF "$f" "$FLAGGED" 2>/dev/null && continue
   ALL+=("$f"); case "$f" in *.sh|*.py) CODE+=("$f") ;; esac
 done
-[ "${#ALL[@]}" -gt 0 ] || exit 0
+[ "${#ALL[@]}" -gt 0 ] || _done
 HAR="$(cd "$_lhb_dir/../.." 2>/dev/null && pwd -P)"; CH="$HAR/system/githooks/checks"; OUT=""
 run() { local o rc; o="$(python3 "$CH/$1" --files "${@:2}" 2>&1)"; rc=$?
         if [ "$rc" -eq 1 ]; then OUT+="$(printf '%s\n' "$o" | grep -E 'REFUSED' | grep -v '^FINDING ' | cut -c1-400 | head -6)"$'\n'
@@ -109,7 +122,7 @@ if [ "$UNH" = 1 ]; then
   [ -n "$o" ] && { OUT+="$(printf '%s\n' "$o" | cut -c1-700 | head -6)"$'\n'; [ "$PO" = 1 ] && OUT+="$(python3 "$_lhb_dir/lib/placement_off.py" stop unhomed)"$'\n'; }
 fi
 OUT="$(printf '%s' "$OUT" | grep -v '^$' | head -12)"
-[ -n "$OUT" ] || exit 0
+[ -n "$OUT" ] || _done
 printf '%s\n' "${ALL[@]}" >> "$FLAGGED"; mkdir -p "$DIR"; echo $((N + 1)) > "$CNT"
 NLINES=$(printf '%s\n' "$OUT" | grep -c .)
 if [ "$NLINES" -gt 1 ] && roundb_on eot_do_all; then   # Round C practice: with two findings a session fixed the first and skipped the listing line; number them and say ALL
@@ -119,6 +132,7 @@ fi
 { echo "END-OF-TURN CHECK: a file you created this turn needs fixing before you finish. (Runs once per turn; it will not ask again.)"
   printf '%s\n' "$OUT"
   echo "Escapes, only if intended: '# allow-silence: <why>' on the flagged line; '# not-wired-yet: <why>' in the file header. Rules: system/githooks/checks/*.py, shared/tools/own_list_add.py; switches: system/hooks/roundB.conf."
-  echo "In your FINAL message, RESTATE WHERE THINGS NOW ARE: the full path of each file you created or moved, and its own-list entry (or say it is not listed)."; } \
-  | python3 -c 'import json,sys; print(json.dumps({"decision":"block","reason":sys.stdin.read()}))'
+  echo "In your FINAL message, RESTATE WHERE THINGS NOW ARE: the full path of each file you created or moved, and its own-list entry (or say it is not listed)."
+  [ -n "$PWMSG" ] && printf '\n%s\n' "$PWMSG"; } \
+  | _block
 exit 0
