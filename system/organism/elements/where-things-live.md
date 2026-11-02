@@ -326,7 +326,7 @@ copy it out and run it separately, and it will not receive Harness updates.)*
 **Purpose.** Before this element, the system named two boxes — the repo and the AI Brain — and said
 where a person's own *content* goes. It never said where a person's own *machinery* goes, and one
 sentence actively said the wrong thing (that everything they write lives in the AI Brain — false for
-anything the harness has to discover). `skill-builder` ships on day one and invites exactly this
+anything the harness has to discover). `skill-builder` (closed for renovation 2026-10-31) ships on day one and invites exactly this
 question; this element is the answer, organized around the one question — **who is this for** — that
 a builder always already knows.
 

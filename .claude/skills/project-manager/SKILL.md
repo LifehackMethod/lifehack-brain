@@ -221,7 +221,5 @@ If not, the doc is not done.
 | `system/hooks/pm_persist.sh` | re-injects the armed project every turn | ✅ here |
 | `system/tools/project-manager/check_slug_folder.py` | audits folder-name/slug drift | ✅ here |
 | `system/schemas/project-doc-schema.md` | the full brief schema | ✅ here |
-| `system/sops/build-conductor-sop.md` | the build doctrine `ANCHOR.md` points at | ✅ here |
-| `system/sops/design-process-sop.md` | design builds only | ✅ here |
 | `system/tools/save/pad_archive.py` | archives a section and proves it landed, before anything is cleared | ✅ here |
 | `docs/data-layout.md` | where everything under `$DATA` goes | ✅ here |

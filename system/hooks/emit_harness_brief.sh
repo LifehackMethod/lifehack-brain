@@ -4,7 +4,7 @@ _lhb_src="${BASH_SOURCE[0]}"; case "$_lhb_src" in */*) _lhb_dir="${_lhb_src%/*}"
 trap 'lhb_journal_fire "$?" "emit_harness_brief.sh" "SessionStart" "" 2>/dev/null || true' EXIT
 #
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
-# WHY: measured on a live plugin install 2026-09-09 — the Harness shipped a 213-line standing
+# WHY: measured on a live plugin install 2026-09-09 — the Harness shipped a ~~213-line~~ (236 lines as of 2026-11-02; was 213 when measured 2026-09-09) standing
 #      brief (CLAUDE.md at this repo's root) that NO SESSION EVER SAW. Claude Code auto-loads
 #      CLAUDE.md from the folder you opened, its ancestors, and ~/.claude/ — a plugin's own
 #      CLAUDE.md is in none of those places, and `.claude-plugin/plugin.json` has no key that

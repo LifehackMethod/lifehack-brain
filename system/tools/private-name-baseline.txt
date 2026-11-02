@@ -28,11 +28,6 @@
 2	system/schemas/ingest-gate-signature.md
 1	system/security-canon.md
 1	system/security-posture-baseline.md
-1	system/sops/agentic-security-sop.md
-2	system/sops/cron-jobs-sop.md
-2	system/sops/desk-building-sop.md
-29	system/sops/recovery-runbook.md
-1	system/sops/translator-rubric.md
 1	system/templates/producer-spec-template.md
 1	system/tools/skill-tester-rig/CONTRACT.md
 1	system/tools/skill-tester-rig/README.md

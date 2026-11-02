@@ -2487,7 +2487,7 @@ very row depends on is exactly that bet. Policy moves faster than architecture. 
 
 <!-- 2026-10-31 v3 rewrite: entries below were appended by the v3 rewrite of skill-building-sop.md -->
 
-The entries below record every passage removed or replaced while writing the v3 draft (✅ it became the live `skill-building-sop.md` on 2026-10-31; the draft file was archived to `archive/2026-10-31-skill-system-cleanup/system/sops/`) from `system/sops/skill-building-sop.md` (2,723 lines, sha1 e258fb9b at the time; read-only, unchanged). Line numbers are those of that original. Text is verbatim. Instructions applied: `<notes>/state/projects/skill-system/records/2026-10-31-skills-sop-contradictions-and-stale-theory.md` (Enver approved its contradiction findings and junk list, 2026-10-31). Change ledger: `<notes>/state/projects/skill-system/records/2026-10-31-sop-v3-change-ledger.md`.
+The entries below record every passage removed or replaced while writing the v3 draft (`✅` it became the live `skill-building-sop.md` on 2026-10-31; the draft file was archived to `archive/2026-10-31-skill-system-cleanup/system/sops/` ⛔ (not kept in git)) from `system/sops/skill-building-sop.md` (2,723 lines, sha1 e258fb9b at the time; read-only, unchanged). Line numbers are those of that original. Text is verbatim. Instructions applied: `<notes>/state/projects/skill-system/records/2026-10-31-skills-sop-contradictions-and-stale-theory.md` (Enver approved its contradiction findings and junk list, 2026-10-31). Change ledger: `<notes>/state/projects/skill-system/records/2026-10-31-sop-v3-change-ledger.md`.
 
 ## 2026-10-31 v3 rewrite — PROPOSED CHANGES block (whole, as it stood) — STALE text, kernel kept at the end of the draft (moved there, HIGH/MEDIUM/OPEN re-tagged to the frame's tiers, rulings applied)
 
@@ -3360,3 +3360,114 @@ RESEARCHED for
    guaranteed — the census counts 1,656 recorded failures of every kind, code and prose alike (e.g. [F2] scripts exiting 0
 ```
 Changed "never" → "rarely". Flagged by the flattening reviewer's second pass: the fix round had turned the one vetted Rule's "rarely guaranteed" into "never guaranteed".
+
+## 2026-10-31 · FIX · skill-builder pointers tagged "closed for renovation"
+
+- Date: 2026-10-31
+- Action: FIX
+- Original line: 827 (V2 HEAD f68268b)
+- Reason: "Enver 2026-10-31 archived skill-builder, closed for renovation; relayed by coordinator"
+
+```
+| **(a) Reasoning** | a **blind, K-voted LLM judge** (Principle 4.3 fold) | The property is prose-shaped — no script can read for intent. But a single sample lies, so the verdict is voted and fail-closed. ⚠ **AMENDED 2026-08-07** (the rulebook was over-prescriptive here, not the swarm; amended in place, the rule survives): K-voting earns its cost **wherever a missed finding is expensive and a false negative would be invisible** — a completeness or security clause nobody will re-check by hand; **a single blind pass is enough** where a miss is cheap to catch downstream or the property is low-stakes. The reason is Principle 4.3's own measurement `[M: 2 runs, 4 clauses]`: one clause judged five times on byte-identical input returned `violated · violated · violated · violated · met`. Counter-evidence that a second pass earns its keep, not noise: this skill-builder's own tension swarm, 2026-08-06 — of 42 candidates, 17 surfaced blind on the first pass, +3 more on a second look, 25 rejected, and **those 3 were unreachable on the first pass — 15% of every finding came from re-reading.** ⚠ **"Blind" is a claim you must MEASURE, not assume — see §V.4a.** A judge launched from a neutral cwd is *not* blind; `claude -p` auto-discovers `~/.claude/CLAUDE.md` from anywhere. |
+```
+Changed: added "(closed for renovation 2026-10-31)" after skill-builder.
+
+- Date: 2026-10-31
+- Action: FIX
+- Original line: 1383 (V2 HEAD f68268b)
+- Reason: "Enver 2026-10-31 archived skill-builder, closed for renovation; relayed by coordinator"
+
+```
+- **[B18]** Tried: designing skill-builder around making the human learn the machinery (3x4 grid, tiers, step
+```
+Changed: added "(closed for renovation 2026-10-31)" after skill-builder.
+
+
+## 2026-11-02 · MOVE · B02 "Where a personal skill is built" · to the first screen
+
+- Date: 2026-11-02
+- Action: MOVE — B02 moved from line 334 (just above "## §0 — WHAT A GOOD SKILL IS") to line 216, right after the opening intro ("How to build a Lifehack skill …") and before "# PART 0". A one-line pointer replaces it at the old spot (now line 338): `*(moved to the top of this page 2026-11-02)*`
+- Reason: decision 18 (Enver, 2026-10-31) — B02 and B05 sit together on the first screen.
+- Reason: D-B01 (Enver via coordinator, 2026-10-31) — approval of the placement.
+- Original line: 334 (V2 origin/V2 5df16e0; the file is unchanged there since c2ea04d)
+
+```
+> **Where a personal skill is built (Enver, 2026-10-31):** by default in `~/.claude/skills/<name>/`, without asking; say where it was put. The skill's own scripts live inside that skill folder.
+```
+
+## 2026-11-02 · MOVE · B05 "One-off scripts" · from build-sop.md to the first screen of this file
+
+- Date: 2026-11-02
+- Action: MOVE — B05 copied verbatim from `system/sops/build-sop.md` line 36 (origin/V2 5df16e0) to line 218 of this file, directly under B02. build-sop.md retires whole in this batch, so this is a move, not a copy; the line leaves with build-sop.md.
+- Reason: decision 18 (Enver, 2026-10-31) — B02 and B05 sit together on the first screen.
+- Reason: D-B01 (Enver via coordinator, 2026-10-31) — approval of the move.
+- Original: system/sops/build-sop.md, line 36 (origin/V2 5df16e0)
+
+```
+> **One-off scripts (Enver, 2026-10-31):** when you answer with a one-off script or tool, offer to keep it. A kept script goes in the person's ONE personal code folder (not split by desk; `desks/<desk>/` only for a tool that truly serves one desk).
+```
+
+## 2026-11-02 · REFINE · B02 · D-B02 folded in as a principle
+
+- Date: 2026-11-02
+- Action: REFINE — one sentence appended to B02 (B02's own words kept intact). Written as a principle, not a rule: no MUST/NEVER.
+- Reason: D-B02 (Enver, 2026-10-31), relayed by the coordinator: a plain "build me a skill" means Claude builds it the way it normally would, as if skill-builder weren't there; skill-builder runs only when someone invokes it by name, and it is closed for renovation (archived 2026-10-31).
+- Reason: decision 18 (Enver, 2026-10-31); D-B01 (Enver via coordinator, 2026-10-31).
+
+Old text (verbatim):
+```
+> **Where a personal skill is built (Enver, 2026-10-31):** by default in `~/.claude/skills/<name>/`, without asking; say where it was put. The skill's own scripts live inside that skill folder.
+```
+Added text (verbatim):
+```
+A plain "build me a skill" is built the usual way, as if skill-builder weren't there; skill-builder (archived 2026-10-31, closed for renovation) runs only when invoked by name.
+```
+New text (verbatim, line 216):
+```
+> **Where a personal skill is built (Enver, 2026-10-31):** by default in `~/.claude/skills/<name>/`, without asking; say where it was put. The skill's own scripts live inside that skill folder. A plain "build me a skill" is built the usual way, as if skill-builder weren't there; skill-builder (archived 2026-10-31, closed for renovation) runs only when invoked by name.
+```
+
+## 2026-11-02 · FIX · "Duplicated by design" note (about line 1213) · stale present tense
+
+- Date: 2026-11-02
+- Action: FIX
+- Reason: VALIDATION-FINAL fix 12: build-sop.md was retired 2026-10-31, so "also lives in ... build-sop.md" was a false present-tense claim.
+
+Old text (verbatim):
+```
+> **Duplicated by design.** This same section, in reduced or full form, also lives in `hook-sop.md` and
+> `build-sop.md` — an explicit ruling, 2026-08-07: *"I would rather have duplication than miss
+```
+New text:
+```
+> **Duplicated by design.** This same section, in reduced or full form, also lives in `hook-sop.md` (and lived in
+> `build-sop.md` ⛔, retired 2026-10-31) — an explicit ruling, 2026-08-07: *"I would rather have duplication than miss
+```
+
+## 2026-11-02 · FIX · DO NOT BUILD entry [GUARD-HOOKSOP-FALSE-POSITIVE] (about line 1417) · retired-file marker
+
+- Date: 2026-11-02
+- Action: FIX
+- Reason: VALIDATION-FINAL fix 3 (D11): the cited `system/sops/build-sop.md` is retired in this batch; a ⛔ marker is added so the citation lint passes. No other word changed.
+
+Old text (verbatim):
+```
+  `2026-07-13` · `system/sops/build-sop.md`; `<notes>/state/debt-ledger.md` `[GUARD-HOOKSOP-FALSE-POSITIVE]` → match
+```
+New text:
+```
+  `2026-07-13` · `system/sops/build-sop.md` ⛔ (retired 2026-10-31); `<notes>/state/debt-ledger.md` `[GUARD-HOOKSOP-FALSE-POSITIVE]` → match
+```
+
+## 2026-11-02 · FIX · this file's own intro paragraph · citation markers
+
+- Date: 2026-11-02
+- Action: FIX
+- Reason: VALIDATION-FINAL fix 5: the intro's `✅` is quoted and the archive folder (not kept in git) gets a ⛔ marker, so the citation lint passes. No other word changed.
+
+Old text: identical to the new text below, except that the `✅` was bare (not in backticks) and the closing ` ⛔ (not kept in git)` was absent. It is not repeated as a block, because a bare `✅` beside that archive path is the very line the citation lint refuses.
+New text:
+```
+(`✅` it became the live `skill-building-sop.md` on 2026-10-31; the draft file was archived to `archive/2026-10-31-skill-system-cleanup/system/sops/` ⛔ (not kept in git))
+```

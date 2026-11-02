@@ -88,8 +88,7 @@ at each pass boundary** (see Gears below). It accumulates their answers so later
 **deleted in Pass 5** (`05-act`, the final beat) by the clerk.
 
 ## Gears & background workers (keep the conversation fast)
-The interrogation must never freeze while a write happens. So the work runs in two gears (Lifehack gear model —
-`system/sops/build-conductor-sop.md`):
+The interrogation must never freeze while a write happens. So the work runs in two gears (Lifehack gear model; its doc was retired and archived 2026-10-31):
 - **Gear 1 — the conversation (Passes 0–4):** the interrogation, the gates, every approval — runs HERE, in the main
   session, human-in-the-loop. Never offloaded.
 - **Gear 2 — the writes (background sonnet sub-agents):** decided, already-confirmed I/O is fanned out so the main

@@ -13,7 +13,7 @@ trap 'lhb_journal_fire "$?" "guard_plan_structure.sh" "PreToolUse" "ExitPlanMode
 #      BEFORE the user sees the approval dialog. Features optional for small plans;
 #      Phase + Task + Verify are the non-negotiables.
 # REDIRECT: rewrite the plan as Phase → Feature → Task, each task Execute → Verify &
-#      test → mark ✅. Spec: system/sops/architecture-planning-sop.md (★★ ALWAYS)
+#      test → mark ✅. Spec: system/sops/plan-template.md (the plan spec; ~~architecture-planning-sop.md~~ retired 2026-10-31)
 #      + the "Planning Output" rule in CLAUDE.md.
 # UPDATED: 2026-06-19 (ported 2026-08-13 from the donor repo — verbatim; no hardcoded paths
 #      or identifiers, no machine-gate)
@@ -44,7 +44,7 @@ echo "$PLAN" | grep -qi 'task'   || miss="${miss}Task "
 echo "$PLAN" | grep -qi 'verif'  || miss="${miss}Verify "
 
 if [ -n "$miss" ]; then
-  printf '%s\n' '{"decision":"block","reason":"BLOCKED: plan is missing required structure ('"$miss"'). WHY: Lifehack plans must be Phase -> Feature -> Task, each task Execute -> Verify & test -> mark done (a task is NOT done until its verify passes), per the Planning Output rule in CLAUDE.md. REDIRECT: rewrite the plan in that hierarchy (Features optional for small plans; Phase + Task + Verify are required) before calling ExitPlanMode. Spec: system/sops/architecture-planning-sop.md (star-star ALWAYS)."}' >&2
+  printf '%s\n' '{"decision":"block","reason":"BLOCKED: plan is missing required structure ('"$miss"'). WHY: Lifehack plans must be Phase -> Feature -> Task, each task Execute -> Verify & test -> mark done (a task is NOT done until its verify passes), per the Planning Output rule in CLAUDE.md. REDIRECT: rewrite the plan in that hierarchy (Features optional for small plans; Phase + Task + Verify are required) before calling ExitPlanMode. Spec: system/sops/plan-template.md."}' >&2
   exit 2
 fi
 exit 0

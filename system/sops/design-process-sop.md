@@ -9,13 +9,15 @@ version: v1
 authority: user
 ---
 
+> **WORK IN PROGRESS — this is a work in progress; it's not yet a fully functioning or a finished SOP. Disconnected 2026-10-31 until it is picked up again and validated.**
+
 # Design Process SOP
 
 > The operating doctrine for agent-driven design work: how to build a design system the agent
 > won't wobble against, how to iterate fast without drifting, and when to reach for a generation
 > tool vs. implement directly. Promoted from the grammar-layer research (2026-06-22); **living v1 —
 > refined from each real rep, not frozen.** Loaded by the design skill; companion to
-> `build-conductor-sop.md` (orchestration). Full basis: `records/context/2026-06-22-design-process-sop-draft.md`.
+> the build-conductor SOP (orchestration; retired and archived 2026-10-31). Full basis: `records/context/2026-06-22-design-process-sop-draft.md`.
 
 ## Core thesis
 

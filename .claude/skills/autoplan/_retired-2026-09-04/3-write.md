@@ -93,8 +93,8 @@ task to read as standalone.
   in, **name it in the frame** — *"this is fan-out-shaped; say the word to run it that way"* — and plan
   it as gear-2s.
 
-Full gear doctrine: `system/sops/build-conductor-sop.md`. Plan shape:
-`system/sops/architecture-planning-sop.md`. **Follow them; do not restate them.**
+Full gear doctrine: `system/sops/build-conductor-sop.md`. Plan shape: ⛔ retired 2026-11-02 (kept in the private archive)
+`system/sops/architecture-planning-sop.md`. **Follow them; do not restate them.** ⛔ retired 2026-11-02 (kept in the private archive)
 
 ## Step 6 — The efficiency pass
 

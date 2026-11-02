@@ -176,5 +176,4 @@ Every verdict comes from a tool's exit code, never from your reading — **quote
 | `system/tools/checkin/board_check.py` | check 5, the stale-queue check | ✅ here |
 | `system/schemas/project-doc-schema.md` | the brief's sections and the compaction procedure | ✅ here |
 | `system/work-altitude-doctrine.md` | how a rung is composed | ✅ here |
-| `system/sops/plan-sharpening-sop.md` | the shared world-model load and the session mining | ✅ here |
-| `system/sops/architecture-planning-sop.md` | the shape a planned task must carry | ✅ here |
+| `system/sops/plan-template.md` | the shape a planned task must carry | ✅ here |

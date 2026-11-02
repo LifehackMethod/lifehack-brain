@@ -166,7 +166,7 @@ authority: user
 ## DO NOT BUILD / DO NOT RETRY — what was tried at the code/LLM seam and failed *(section opened 2026-09-05 by ruling; grows over time)*
 
 > Proven failures at the seam, with receipts, so no build re-tries them from first principles. Same shape as
-> the registers in `system/sops/skill-building-sop.md` §II.4a and `build-sop.md`; `deadend_check.py` matches
+> the registers in `system/sops/skill-building-sop.md` §II.4a/b; `deadend_check.py` matches
 > on the heading phrase. Each entry: tried · failed · date · source · replacement · tier. **Never complete.**
 > Principle-level twins: canon §10a.
 
@@ -192,8 +192,8 @@ authority: user
 # Build Rules-of-Engagement Index
 
 > **Which build doc is which (2026-10-29):** three docs, three jobs; read the one that matches your question.
-> - `system/sops/build-sop.md` - the do's and don'ts of *executing* a build (hard-won lessons, grown over time).
-> - `system/sops/build-conductor-sop.md` - how one lead *orchestrates* a parallel or multi-agent build.
+> - ~~`system/sops/build-sop.md`~~ *(retired 2026-10-31, unvalidated; not used by anything in V2)*
+> - ~~`system/sops/build-conductor-sop.md`~~ ⛔ *(retired 2026-10-31; archived outside the plugin)*
 > - `system/build-rules-index.md` - the *router*: what to read before building, by kind of thing built.
 
 > Read by the `/build` skill's **Step 0** gate. Maps **what you're building** → the **binding docs**
@@ -212,14 +212,11 @@ authority: user
 - `[PARTIAL §x]` — only section x confirmed current.
 
 ## ALWAYS — every build, regardless of type
-- ✅ `system/sops/build-sop.md` — hard-won build do's: a general section that applies to everything, and
-  a domain section for scheduled/background work. It carries the `DO NOT BUILD` register that
-  `system/tools/deadend_check.py` searches, which is the part worth reading before you build anything.
-  `[VERIFIED 2026-06-20]`
-- `system/sops/architecture-planning-sop.md` — the **Phase → Feature → Task** discipline every plan/build follows. `[VERIFIED 2026-06-20]`
-- `system/sops/build-conductor-sop.md` — the **four gears**: when to run the work yourself and when to fan it out to sub-agents, and how to run each. `[VERIFIED 2026-06-22]`
+- ~~`system/sops/build-sop.md`~~ *(retired 2026-10-31, unvalidated; `deadend_check.py` now searches the `DO NOT BUILD` register in `system/sops/skill-building-sop.md` §II.4a/b; dead ends B34–B36 had no other home)*
+- `system/sops/plan-template.md` — the **Phase → Feature → Task** discipline every plan/build follows. *(content verified 2026-06-20 as part of architecture-planning-sop)*
+- ~~`system/sops/build-conductor-sop.md` — the **four gears**: when to run the work yourself and when to fan it out to sub-agents, and how to run each. `[VERIFIED 2026-06-22]`~~ ⛔ *(retired 2026-10-31; archived outside the plugin)*
 
-> **Why the conductor SOP is ALWAYS and not a routing row** *(moved here 2026-07-28)*. It used to sit in the
+> *(2026-10-31: the conductor SOP was retired; this note is kept as history.)* **Why the conductor SOP is ALWAYS and not a routing row** *(moved here 2026-07-28)*. It used to sit in the
 > table below under *"an orchestrated / parallel build."* That was circular — the doc that tells you to
 > delegate was reachable only once you had already decided to delegate, and Step 0 classifies by **artifact**
 > ("hook? skill? cron?"), never by shape, so an ordinary build never matched the row. Measured 2026-07-28: in
@@ -236,20 +233,20 @@ a session can rule itself OUT of rules that do not bind it — **the index below
 never removes them**, and a build carrying rules it does not need is slower and, worse, learns to skim them.
 
 1. **CONVERSATION — no artifact.** A brainstorm, a question, an exploration; nothing is being built.
-   **NO build SOP binds.** Not `build-sop.md`, not `architecture-planning-sop.md`, not the conductor.
+   **NO build SOP binds.** Not `plan-template.md`, not the (retired) conductor.
    Stated explicitly so nobody drags a build gate into a thinking session.
 2. **CODE-ONLY PRODUCT — the LLM is scaffolding and is ABSENT at runtime.** You are using Claude to build
    a thing that then runs without a model in it (a spreadsheet whose logic is all formulas; a pure script,
    a hook, a migration). Ordinary engineering rules apply, plus whatever
-   domain row matches below. **the skill-building SOP (which travels with `skill-builder`, not this release) does NOT bind** — there is no runtime
+   domain row matches below. **the skill-building SOP (which travels with `skill-builder` (closed for renovation 2026-10-31), not this release) does NOT bind** — there is no runtime
    model to keep on-frame, so every law about prose decay, judgment fences, and drift is inert here.
 3. **LLM-ONLY PRODUCT — a prose skill with no code behind it.** There is nothing to gate, so most of
    the skill-building SOP's enforcement toolbox is **inert — do not manufacture gates for
-   something with no mechanical surface.** **prose decay (`system/sops/skill-building-sop-extract.md`) is the whole
+   something with no mechanical surface.** **prose decay (`system/sops/skill-building-sop.md`) is the whole
    risk**, and §II.1's **REFRESH** family (`:249` — fresh contexts working off a file spine) is the only
    one of the four families that touches decay. Read those two; skip the rest of PART II.
 4. **HYBRID — code and the LLM in one running product, meant to work together.** ⭐ **A SEAM EXISTS.**
-   The full skill-building SOP binds (it travels with `skill-builder`), **plus THE CODE/LLM SEAM** — what the handoff between
+   The full skill-building SOP binds (it travels with `skill-builder` (closed for renovation 2026-10-31)), **plus THE CODE/LLM SEAM** — what the handoff between
    the two halves has to be made of. **You do not need to fetch it:** the rule is carried inline, verbatim,
    in `/autoplan` STEP 2 and `/build` Step 0 (a pointer nobody follows is not a rule).
    The evidence behind it lives in the author's own notes and does not ship; the rule above is the
@@ -274,13 +271,12 @@ A build can also be multiple types below. This question, though, has exactly one
 |---|---|---|
 | **a hook** | `system/sops/hook-sop.md` | ✅ here |
 | **a hook — the mechanics half** | `system/hook-contract.md` | ✅ here |
-| **a skill** | `system/sops/skill-building-sop-extract.md` | ✅ here — LAW 4.2, the one rule the core skills cite |
 | **a skill — the whole SOP** | `system/sops/skill-building-sop.md` | ✅ here — all 2,300 lines, with a banner naming what it cites that is not |
 | **memory, a doc, or a where-does-this-live decision** | `docs/data-layout.md` · `system/knowledge-altitude.md` | data-layout ✅ here; knowledge-altitude lands in T1.14 |
-| **a design, dashboard or interface** | `system/sops/design-process-sop.md` | ✅ here |
+| **a design, dashboard or interface** | `system/sops/design-process-sop.md` | (work in progress, disconnected 2026-10-31) |
 | **anything security-touching** | the security wall docs | land in Phase 2 |
 | **a Google interaction** | the Google policy docs | land in Phase 2 |
-| **an orchestrated / parallel build** | *(promoted to ALWAYS above — every build reads the conductor SOP, not just this one)* | — |
+| **an orchestrated / parallel build** | ~~*(promoted to ALWAYS above — every build reads the conductor SOP, not just this one)*~~ *(conductor SOP retired 2026-10-31)* | — |
 
 > ## ⚖ ROWS THAT ARE NOT HERE, AND WHY — a named absence beats a silent one
 >

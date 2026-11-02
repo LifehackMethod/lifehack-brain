@@ -31,7 +31,7 @@ elements/<slug>.md, the exhaustive source. If this map is your only source, you 
 @ /read    what did I decide months ago, and why | journal.md canon.md
 @ /ingest  turn a pile of my own material into a folder structure I can work from | world-model-ingestion.md
 @ /project-manager   re-open a project I left | project-manager.md pm-flag.md
-@ /autoplan          re-sharpen the plan as reality drifts from it | build-plan-plane.md
+@ /autoplan          re-sharpen the plan as reality drifts from it (under construction) | build-plan-plane.md
 @ /build             execute the plan, our way | build-plan-plane.md
 @ /checkin           catch a delta between plan and brief | project-manager.md — near the END, not an opener
 @ /build             CHANGE WHAT A SKILL DOES | skill-system.md — to merely record the decision, /save above
@@ -64,7 +64,7 @@ elements/<slug>.md, the exhaustive source. If this map is your only source, you 
 @ (config) push alerts, rate limits, quiet hours | notify-plane.md — quiet hours 22:00-07:00 silences NORMAL
            pushes only; a CRITICAL page (sentinel DANGER, dead monitor) BYPASSES it and WILL wake you.
 ~ Mac: launchd -> ~/.config/lifehack/code-root -> job-run.sh. Linux/Windows: pulse.sh + cron. ONE row per
-  job in `system/jobs.md`; the door (install-schedulers.sh) refuses a row that breaks the rules.
+  job: shared jobs in `system/jobs.md`, your own in `<personal-code>/jobs.md`, read alongside; the door (install-schedulers.sh) refuses a row that breaks the rules.
 @ (you add a job) the rules for any cron job | cron-jobs-sop.md (system/sops/) — one row, a content check, the
   door. read it before adding or changing any scheduled job.
 NOT BUILT — admissions, not omissions. knowing now beats inferring a connection that isn't there:
@@ -85,22 +85,18 @@ NOT BUILT — admissions, not omissions. knowing now beats inferring a connectio
 
 All in `system/sops/`. Open the one that matches the job; each is the owner of its topic.
 
-- `agentic-security-sop.md` — use when opening a new path that reads outside content or acts on a person's behalf.
-- `architecture-planning-sop.md` — use when a fuzzy "build X / fix this" must become a scoped plan for plan mode.
-- `build-conductor-sop.md` — use when running a parallel or orchestrated build, with helpers in gears.
-- `build-sop.md` — use when executing a build: the hard-won do's and don'ts (loaded by `/build`).
+- `plan-template.md` — use for the shape a plan must come back in (the plan spec).
+- `build-conformance-sop.md` — use before adding or changing a guard, check or test, or when a build landed somewhere wrong: how conformance works here, what's proven, and how we know (in progress).
 - `canonical-principles-sop.md` — use when you need the merged principles behind the system, in force in V2 (layers of friction).
-- `deck-design-system.md` — use when building a presentation: house rules only; the design system itself lives outside this plugin.
-- `design-process-sop.md` — use when designing a dashboard or UI with an agent.
+- `design-process-sop.md` — WORK IN PROGRESS, disconnected 2026-10-31 until it is picked up again and validated.
 - `desk-building-sop.md` — use when creating or changing a desk (the one canonical statement of its shape).
 - `google-sheet-sop.md` — use when building, editing or writing to any Google Sheet.
 - `hook-sop.md` — use when deciding whether and how to add a hook that enforces a rule.
 - `cron-jobs-sop.md` — use when adding, changing, switching on or debugging a scheduled job.
-- `plan-sharpening-sop.md` — use when sharpening a plan: the thinking beats shared by `/autoplan` and `/checkin`.
-- `recovery-runbook.md` — use when cold-restoring after a machine, repo or auth failure (Part 1 is general, for everyone; Part 2 is optional, for a GitHub-backed setup).
-- `skill-building-sop-extract.md` — use when you need the one extract (a model cannot report its own compliance) the core skills cite.
+- `plan-sharpening-sop.md` — WORK IN PROGRESS, disconnected 2026-10-31 until it is picked up again and validated.
+- `recovery-runbook.md` — use when cold-restoring after a machine, repo or auth failure (Part 1 is general, for everyone).
 - `skill-building-sop.md` — use when building, fixing or testing a skill (long; read the part you need).
-- `translator-rubric.md` — use when writing to the person: the one source for the translator voice.
+- `translator-rubric.md` — WORK IN PROGRESS, disconnected 2026-10-31 until it is picked up again and validated (the translator voice source).
 
 ## The shape of the thing
 
@@ -209,7 +205,7 @@ Any plan you produce — plan mode or not — opens with a **FRAME block** (desi
 constraints · out-of-scope) and then returns as **Phase → Feature → Task**; every task runs
 **Execute → Verify & test → mark done**, and is not done until its verify actually passes. Show the
 plan before executing it. Features are optional for a small plan; Phase, Task and Verify are not.
-Detail, including the full plan spec: `system/sops/architecture-planning-sop.md` (Stage 8).
+Detail, including the full plan spec: `system/sops/plan-template.md`.
 
 ## Breadcrumbs during long work
 

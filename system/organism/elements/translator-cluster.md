@@ -11,7 +11,7 @@ generated_from:
   - .claude/skills/summarize/SKILL.md (v1.0)
   # - system/hooks/simplify_anchor_inject.sh ⛔ DELETED 2026-08-05 — see the banner below  # absent here (checked 2026-10-30)
   # - system/hooks/translator_gate.sh (v7.1; updated 2026-07-13)  # absent here (checked 2026-10-30)
-  - system/sops/translator-rubric.md (updated 2026-07-15)  # was system/translator-rubric.md (moved) [2026-10-30]
+  - system/sops/translator-rubric.md (updated 2026-07-15)  # was system/translator-rubric.md (moved) [2026-10-30]  # work in progress, disconnected 2026-10-31
   # - output-styles/simplify.md  # absent here (checked 2026-10-30)
   # - system/reference/settings.json (hook registration lines 367-375, 438-446)  # absent here (checked 2026-10-30)
   - state/debt-ledger.md (TRANSLATOR-GATE-RIP, TRANSLATOR-OUTPUTSTYLE-SECOND-MACHINE)
@@ -561,7 +561,7 @@ from this repo's root; `save` ships from the installed plugin at `.claude/skills
 CITATIONS banner for the fuller line-count history); `system/organism/elements/save.md` line 758
 (check_detail, Step 8 two-pass voice-seed `[honor]`).
 
-**3. KEYS-OFF `system/translator-rubric.md` — the shared contract hub.**
+**3. KEYS-OFF `system/translator-rubric.md` — the shared contract hub.** *(2026-10-31: the rubric is work in progress, disconnected until picked up again and validated.)*
 All five cluster components (3 skills + 2 hooks) key off this file as the authority on what
 "translator voice" means. A rubric edit must propagate to: `simplify_anchor_inject.sh` (all
 10 variants), `output-styles/simplify.md` (baseline voice), and the three skills' SKILL.md

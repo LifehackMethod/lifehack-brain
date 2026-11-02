@@ -66,7 +66,7 @@ prevent. **Never trim that clause for brevity.**
 they *may* challenge the reference material if they cite a reason — was considered and **rejected**. A
 permission clause leaves the reference material sitting as a ceiling and asks advisors to climb over it;
 the novice framing converts the same document into a **floor** in one sentence. That is what
-`system/sops/skill-building-sop-extract.md` demands of any seed — frame it as a claim to DEFEAT, not a
+`system/sops/skill-building-sop.md` demands of any seed — frame it as a claim to DEFEAT, not a
 draft to polish — and it matters because anchoring runs **22–61%**, and simply making a model aware of
 an anchor does not remove it.
 

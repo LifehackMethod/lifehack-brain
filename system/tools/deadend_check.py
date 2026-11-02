@@ -66,14 +66,14 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 
-# The three hosts. It was ruled on 2026-08-07 that this section is DUPLICATED BY DESIGN across them
+# The hosts (THREE until 2026-10-31, when build-sop.md was retired; now two). It was ruled on 2026-08-07 that this section is DUPLICATED BY DESIGN across them
 # (*"I would rather have duplication than miss something"*), and that the copies are NOT required
 # to stay identical — each is scoped to its own domain, and `skill-building-sop.md` carries the
 # fullest set. ⇒ we search ALL THREE and de-duplicate on the entry text, rather than trusting any
 # one of them to be complete. ⛔ Do not "helpfully" narrow this to one file.
 SOPS = (
     ("skill-building-sop", REPO / "system" / "sops" / "skill-building-sop.md"),
-    ("build-sop",          REPO / "system" / "sops" / "build-sop.md"),
+    # ("build-sop",       REPO / "system" / "sops" / "build-sop.md"),  # RETIRED 2026-10-31 (Enver): most entries are in skill-building-sop.md II.4a/b; dead ends B34-B36 had no other home
     ("hook-sop",           REPO / "system" / "sops" / "hook-sop.md"),
 )
 
@@ -613,7 +613,7 @@ def _selftest():
 
     all_e, missing = entries()
     print(f"  parsed {len(all_e)} dead-end entries from {len(SOPS) - len(missing)}/{len(SOPS)} SOPs")
-    ck("all three SOP sections were found and read", not missing)
+    ck("all SOP sections were found and read (two since build-sop retired 2026-10-31; was three)", not missing)
     ck("parsed a substantial corpus (>= 40 entries)", len(all_e) >= 40)
     ck("every entry carries a source path + line",
        all(e["path"] and isinstance(e["line"], int) for e in all_e))

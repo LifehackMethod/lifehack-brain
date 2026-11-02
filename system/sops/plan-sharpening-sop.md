@@ -8,6 +8,8 @@ status: active
 authority: user
 ---
 
+> **WORK IN PROGRESS — this is a work in progress; it's not yet a fully functioning or a finished SOP. Disconnected 2026-10-31 until it is picked up again and validated.**
+
 # Plan-Sharpening SOP
 
 > This SOP holds the **thinking beats** shared by `/autoplan` (STEP 0.5, STEP 2, STEP 3) and `/checkin`
@@ -219,7 +221,7 @@ The shape a plan must come back in — the `FRAME` block, `Phase → Feature →
 `PARALLEL LANES`, gear tags with a named model on every delegated task, `SAFE-HALT`, `DEFERRED`, and
 `⚠ CUT` — is owned by two other documents, not this one:
 
-- `system/sops/architecture-planning-sop.md` → `## ★★ ALWAYS — the plan spec the HANDOFF must carry`
+- ~~`system/sops/architecture-planning-sop.md` → `## ★★ ALWAYS — the plan spec the HANDOFF must carry`~~ ⛔ *(2026-10-31: moved)* `system/sops/plan-template.md`
 - `skills/autoplan/SKILL.md` → STEP 5
 
 **Read one of those when you need the write spec itself.** Duplicating it here would create the exact

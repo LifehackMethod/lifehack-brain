@@ -48,9 +48,9 @@ trap 'lhb_journal_fire "$?" "guard_git_add_class.sh" "PreToolUse" "Bash" 2>/dev/
 # REDIRECT: Stage the files you actually changed, by explicit path —
 #           `git add system/tools/foo.py system/hooks/bar.sh`. A scoped directory add
 #           (`git add system/tools/organism/`) is deliberate and still allowed.
-# SIGNPOST: system/sops/build-sop.md -> "A CONCURRENT window's broad `git add`/`commit -a`
-#           will sweep up YOUR in-progress files". To change this rule, edit that SOP
-#           entry and get sign-off — do not weaken the hook alone.
+# SIGNPOST: this header is the rule. (~~system/sops/build-sop.md~~ was retired 2026-10-31; its entry "A CONCURRENT
+#           window's broad `git add`/`commit -a` will sweep up YOUR in-progress files" is archived, not live.)
+#           To change this rule, get sign-off — do not weaken the hook alone.
 # FAIL_POSTURE: closed
 # UPDATED: 2026-07-28
 # ─────────────────────────────────────────────────────────────────────────────
@@ -157,7 +157,7 @@ print('|'.join(sorted(set(bad))))
 " 2>/dev/null)
 
 if [ -n "$VERDICT" ]; then
-  printf '%s\n' "BLOCKED: whole-tree git staging ($VERDICT). WHY: this clone can be open in several concurrent Claude windows at once, so an everything-add is never 'my changes' — it is everyone's. On the donor system this hook was ported from, exactly this swept a 388-line file and an 11-line file from another window into an unrelated docs commit and pushed it; the owning window's git status then showed its own new file as already-tracked-and-clean, which reads like the edit never happened. REDIRECT: stage what you actually changed, by explicit path — 'git add system/tools/foo.py system/hooks/bar.sh'. A scoped directory add ('git add system/tools/') is deliberate and still allowed. To see only YOUR work here, diff against the commit you expect, not against HEAD. RULE: system/sops/build-sop.md -> 'A CONCURRENT window's broad git add/commit -a will sweep up YOUR in-progress files'; edit that entry + get sign-off to change this." >&2
+  printf '%s\n' "BLOCKED: whole-tree git staging ($VERDICT). WHY: this clone can be open in several concurrent Claude windows at once, so an everything-add is never 'my changes' — it is everyone's. On the donor system this hook was ported from, exactly this swept a 388-line file and an 11-line file from another window into an unrelated docs commit and pushed it; the owning window's git status then showed its own new file as already-tracked-and-clean, which reads like the edit never happened. REDIRECT: stage what you actually changed, by explicit path — 'git add system/tools/foo.py system/hooks/bar.sh'. A scoped directory add ('git add system/tools/') is deliberate and still allowed. To see only YOUR work here, diff against the commit you expect, not against HEAD. RULE: this guard's own header (system/hooks/guard_git_add_class.sh) states it; get sign-off to change this." >&2
   exit 2
 fi
 

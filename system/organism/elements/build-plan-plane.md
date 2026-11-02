@@ -8,9 +8,7 @@ maturity_label: LIVE (honor)
 generated_from:
   - .claude/skills/build/SKILL.md
   # - commands/autoplan.md  # absent here (checked 2026-10-30)
-  - system/sops/architecture-planning-sop.md
-  - system/sops/build-sop.md
-  - system/sops/build-conductor-sop.md
+  - system/sops/plan-template.md
   - system/build-rules-index.md
   - system/hooks/guard_plan_structure.sh
   - system/hooks/inject_sop_before_build.sh
@@ -66,9 +64,9 @@ authority: user
 
 ### OVERVIEW
 
-The **build-plan-plane** is the two-skill planning-and-execution harness: `/autoplan` (the planning front-end) and `/build` (the execution engine), bound by a shared contract: every plan is `Phase → Feature → Task` with a runnable `Verify` on every task, and no task is ✅ until its verify passes. Five hooks wire mechanical enforcement around the contract's entry and exit points; a parallel cluster of plan-management hooks keeps plans visible and durable. The two SOPs (`architecture-planning-sop.md`, `build-sop.md`) and the conductor (`build-conductor-sop.md`) are the runtime rule-books; the `build-rules-index.md` is the single routing table `/build` consults to know WHICH rules bind any given build.
+The **build-plan-plane** is the two-skill planning-and-execution harness: `/autoplan` (the planning front-end) and `/build` (the execution engine), bound by a shared contract: every plan is `Phase → Feature → Task` with a runnable `Verify` on every task, and no task is ✅ until its verify passes. Five hooks wire mechanical enforcement around the contract's entry and exit points; a parallel cluster of plan-management hooks keeps plans visible and durable. The runtime rule-books were `architecture-planning-sop.md`, `build-sop.md` and the conductor (`build-conductor-sop.md`), all retired 2026-10-31 (only the plan template survives, as `plan-template.md`) ⛔; the `build-rules-index.md` is the single routing table `/build` consults to know WHICH rules bind any given build.
 
-**Upstream: `architecture-planning-sop.md`** is the scoping front-end that produces a vetted handoff prompt; that prompt is pasted into plan mode as `/autoplan`'s input. The SOP itself does NOT write a plan and does NOT build. This element covers what happens AFTER the handoff lands in `/autoplan`.
+**Upstream: `architecture-planning-sop.md` [retired 2026-10-31] (only the plan template survives, as `plan-template.md`)** is the scoping front-end that produces a vetted handoff prompt; that prompt is pasted into plan mode as `/autoplan`'s input. The SOP itself does NOT write a plan and does NOT build. This element covers what happens AFTER the handoff lands in `/autoplan`.
 
 **Note on naming:** the `plan-integrity-cluster` element covers the hooks that enforce the plan's structural contract at `ExitPlanMode` (`guard_plan_structure.sh`, `plan_flag.sh`). This element describes those hooks as seams but does not duplicate their full mechanics — cross-reference `elements/plan-integrity-cluster.md` (UNVERIFIED — element not yet authored as of 2026-07-24).
 
@@ -119,11 +117,11 @@ Every plan `/autoplan` emits MUST carry:
 
 2. **Read the index:** `$HOME/lifehack-brain/system/build-rules-index.md`. It maps build-type → binding docs. Paths relative to clone root `~/lifehack-brain/` — never Drive copies (legacy, being retired). `[skill]`
 
-3. **FETCH the binding docs — read the actual files, do NOT rely on memory.** Always read the two ALWAYS docs (`build-sop.md` + `architecture-planning-sop.md`), then the docs for every matched row. A doc tagged `[UNVERIFIED]` may be stale — read it, but carry the caveat. `[skill]`
+3. **FETCH the binding docs — read the actual files, do NOT rely on memory.** Always read the ALWAYS doc (`plan-template.md`; `build-sop.md` retired 2026-10-31), then the docs for every matched row. A doc tagged `[UNVERIFIED]` may be stale — read it, but carry the caveat. `[skill]`
 
 4. **Emit ONE `ORIENTATION:` block** before building: build type(s) detected · each doc fetched (with its trust tag) · the one-line binding constraint from each. One block, at the top only. `[skill]`
 
-5. **Then build.** When a build teaches a durable reusable lesson, append it to `build-sop.md`; when it teaches a new binding rule or build-type, update `build-rules-index.md`. `[skill]`
+5. **Then build.** When a build teaches a durable reusable lesson, ~~append it to `build-sop.md`~~ (retired 2026-10-31; no new home chosen yet); when it teaches a new binding rule or build-type, update `build-rules-index.md`. `[skill]`
 
 > The Step-0 gate is **advisory** in v1 — an ORIENTATION block, not a code-gate. The hook `inject_sop_before_build.sh` (UserPromptSubmit, non-blocking) fires a pointer when a build-verb + tracked noun appears, landing ~84% coverage. The debt item `[BUILD-RULES-GATE]` tracks the escalation to a blocking gate if advisory proves skippable. `(BUILD-RULES-GATE)`
 
@@ -131,7 +129,7 @@ Every plan `/autoplan` emits MUST carry:
 
 **Execution discipline:**
 
-Execute against a `Phase → Feature → Task` plan — never a flat task list. If no such plan exists yet, get one first (the Planning Output rule in `CLAUDE.md` + `architecture-planning-sop.md`).
+Execute against a `Phase → Feature → Task` plan — never a flat task list. If no such plan exists yet, get one first (the Planning Output rule in `CLAUDE.md` + `plan-template.md`).
 
 Every task runs `Execute → Verify & test → mark ✅` — a task is NOT done until its verify passes. `[honor]` (The plan-structure hook fires at plan-creation time; the verify discipline during execution is honor.)
 
@@ -154,7 +152,7 @@ Every task runs `Execute → Verify & test → mark ✅` — a task is NOT done 
 
 **Subagent model selection:** all subagents = **sonnet**, never opus. This is the global rule AND the `/build`-specific rule. Gear-4 workflow `agent()` calls inherit the session model (opus) by default — MUST pin `model: 'sonnet'` (haiku for pure read-only) on EVERY call or it silently burns opus at fleet scale. `[honor]`
 
-**The four gears** (the conductor's routing table — `/build` re-decides gear per task):
+**The four gears** (the retired conductor SOP's routing table, kept here as history — `/build` re-decides gear per task):
 
 | Gear | Fires when | What it is |
 |---|---|---|
@@ -173,16 +171,13 @@ Before reporting a build complete, **reconcile against the plan** — walk every
 
 ### SUPPORTING SOPs
 
-**`build-sop.md`** (`system/sops/build-sop.md`) — Hard-won build doctrine, loaded on-demand by `/build` Step 0. Contains:
-- General do's (apply to EVERY build): prove cheap integration BEFORE expensive run; prove live ONCE before automating; backup crown-jewel files before editing; no blanket-sed renaming refs across journal/diary/records (fix a wrong one by hand, visibly — only `canon/` is immutable, 2026-08-14 the operator ruling); SOP for bulk archive/drain/migration (loss-impossible protocol); batch LLM work (~10–15 items per call, NOT once-per-item); test hooks with faithful JSON not echo; no silent demotion carries into execution — the close must be honest.
-- Domain sections: background/cron runners (Pulse `*-run.sh`) — machine-gate, exit codes, retry, emit modes, atomic writes, `verify-connections.py`.
-- **Living doc pattern**: builds append new lessons here; it is how `/build` gets smarter over time.
+**`build-sop.md`** [retired 2026-10-31] — was: hard-won build doctrine, previously described here as loaded by `/build` Step 0. Not used by anything in V2; no longer loaded. Its former contents are no longer described here.
 
-**`architecture-planning-sop.md`** (`system/sops/architecture-planning-sop.md`) — Scoping front-end: fuzzy idea → vetted architecture doc-set (TRD/SAD) → Stage-8 handoff prompt. Three tiers by blast radius: Tier 1 (quick/reversible), Tier 2 (standard feature), Tier 3 (load-bearing multi-subsystem). Powers `/advisory-council` (Stages 1, 4, 6). Output is a handoff prompt, NOT a plan. **This SOP does NOT write a plan and does NOT build anything** — that is downstream in `/autoplan` → `/build`.
+**`architecture-planning-sop.md`** (`system/sops/architecture-planning-sop.md`) — only the plan template survives, as `plan-template.md`; the rest ⛔ retired 2026-10-31 (archived outside the plugin) — Scoping front-end: fuzzy idea → vetted architecture doc-set (TRD/SAD) → Stage-8 handoff prompt. Three tiers by blast radius: Tier 1 (quick/reversible), Tier 2 (standard feature), Tier 3 (load-bearing multi-subsystem). Powers `/advisory-council` (Stages 1, 4, 6). Output is a handoff prompt, NOT a plan. **This SOP does NOT write a plan and does NOT build anything** — that is downstream in `/autoplan` → `/build`.
 
-**`build-conductor-sop.md`** (`system/sops/build-conductor-sop.md`) — The operating mode `project-manager` arms for any orchestrated build. Defines the four gears in full, the two altitudes (Build Lead vs Observation Deck — conflating them is the swamp entry point), the large-build flow (plan-first → decompose by surface → lock data contracts BEFORE parallel writes → fan out → merge gate → worker loop), and coordinator discipline ("stay at altitude; lead from research/facts, not from the user's momentary mood"). The worker loop: execute → verify against ground truth (run it / render it / read the real output — NOT the code, NOT a self-report) → fix → repeat, ~5-iteration cap.
+**`build-conductor-sop.md`** ⛔ (retired 2026-10-31; archived outside the plugin) — was: the operating mode `project-manager` arms for any orchestrated build. Defines the four gears in full, the two altitudes (Build Lead vs Observation Deck — conflating them is the swamp entry point), the large-build flow (plan-first → decompose by surface → lock data contracts BEFORE parallel writes → fan out → merge gate → worker loop), and coordinator discipline ("stay at altitude; lead from research/facts, not from the user's momentary mood"). The worker loop: execute → verify against ground truth (run it / render it / read the real output — NOT the code, NOT a self-report) → fix → repeat, ~5-iteration cap.
 
-**`build-rules-index.md`** (`system/build-rules-index.md`) — The routing table `/build` consults in Step 0. Maps build-type → binding docs + trust tags (`[VERIFIED date]` / `[UNVERIFIED]` / `[PARTIAL §x]`). Two ALWAYS rows (build-sop + architecture-planning-sop) plus domain rows (hook, skill, desk, cron, memory/doc, gws, security, email-ingest, Google Sheet, architecture, orchestrated build, design/dashboard). The **single place to update** when docs move or get verified — `/build` never hardcodes paths.
+**`build-rules-index.md`** (`system/build-rules-index.md`) — The routing table `/build` consults in Step 0. Maps build-type → binding docs + trust tags (`[VERIFIED date]` / `[UNVERIFIED]` / `[PARTIAL §x]`). ALWAYS rows (originally build-sop + architecture-planning-sop; now `plan-template.md`) plus domain rows (hook, skill, desk, cron, memory/doc, gws, security, email-ingest, Google Sheet, architecture, orchestrated build, design/dashboard). The **single place to update** when docs move or get verified — `/build` never hardcodes paths.
 
 ---
 
@@ -202,7 +197,7 @@ Plan-shape enforcement hooks (`guard_plan_structure.sh`, `plan_flag.sh`, `announ
 | Plan ledger (no active brief) | `~/.claude/run/plan-ledger.md` | `announce_plan_write.sh` | human / `/read` |
 | Plans, the durable copy | `<notes>/plans/<name>.md` — flat, one copy, mirrored nowhere (`docs/data-layout.md` lines 201, 241) | `/autoplan` (a plan is written or sharpened) | `/build`, `/checkin`, `/read`, human |
 | Build-rules index | `~/lifehack-brain/system/build-rules-index.md` | human (maintained by convention) | `/build` Step 0 |
-| Build SOPs | `system/sops/build-sop.md` · `build-conductor-sop.md` · `architecture-planning-sop.md` | human + `/build` (build-sop.md append) | `/build` Step 0 |
+| Build SOPs | `plan-template.md` (the conductor SOP was retired 2026-10-31) | human | `/build` Step 0 |
 
 ---
 
@@ -223,17 +218,17 @@ Plan-shape enforcement hooks (`guard_plan_structure.sh`, `plan_flag.sh`, `announ
 
 ```
 READS       build-rules-index    · /build Step 0 reads it to resolve which docs bind the build
-READS       architecture-planning-sop · /autoplan prose directives; /build Step 0 ALWAYS doc
-READS       build-sop            · /build Step 0 ALWAYS doc; appended to when build teaches a lesson
-READS       build-conductor-sop  · /build Step 0 (orchestrated/parallel builds); defines gears
+READS       architecture-planning-sop [retired 2026-10-31] · /autoplan prose directives; /build Step 0 ALWAYS doc
+READS       ~~build-sop~~ [retired 2026-10-31]
+READS       ~~build-conductor-sop~~ [retired 2026-10-31]
 FEEDS       project-manager      · /build files unbuilt tasks to OPEN LOOPS via project-manager at honest close
 CHAINS      project-manager      · /autoplan re-anchors via pm_flag.sh; plan's FRAME feeds the project brief
 FEEDS       plan-integrity-cluster · guard_plan_structure + plan_flag are the plan-integrity seam hooks (cross-reference)
 READS       pm-flag              · /autoplan Step 0 reads pm_flag.sh status to re-anchor; announce_plan_write reads pm_flag.sh status for brief path (to write NEW plan pointer to brief's ## SCRATCHPAD)
-WRITES→     durable memory (/save) · build lessons append to build-sop.md (the skill's own living memory)
+WRITES→     durable memory (/save) · build-sop.md retired 2026-10-31
 GUARDED-BY  guard_plan_structure.sh · blocks ExitPlanMode if Phase/Task/Verify absent
 GUARDED-BY  inject_sop_before_build.sh · injects SOP pointer (advisory, non-blocking) at UserPromptSubmit
-COMPLEMENTS advisory-council     · architecture-planning-sop.md (Stages 1/4/6) invokes /advisory-council for blind review; /build does not invoke it directly
+COMPLEMENTS advisory-council     · architecture-planning-sop.md [retired 2026-10-31] (Stages 1/4/6) invokes /advisory-council for blind review; /build does not invoke it directly
 COMPLEMENTS checkin              · /checkin re-arms plan_flag.sh via `plan_flag.sh set <path>` so a resumed window shows its plan
 COMPLEMENTS read                 · /read arms plan_flag.sh on resume (same set call as /checkin)
 ```

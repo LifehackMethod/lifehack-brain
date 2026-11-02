@@ -18,8 +18,8 @@ trap 'lhb_journal_fire "$?" "guard_agent_return_channel.sh" "PreToolUse" "Agent"
 #      tool result automatically. If the agent genuinely must be addressable (agent-team
 #      coordination), keep name: AND instruct it in the prompt to return its FULL text via
 #      SendMessage to main.
-# SIGNPOST: The rule is codified in system/sops/build-sop.md (the subagent return-channel
-#      lesson). Change it there and get sign-off; do not edit this guard to work around a block.
+# SIGNPOST: The rule is codified in system/sops/skill-building-sop.md section II.4a.1 [B11] (the subagent return-channel
+#      lesson; ~~build-sop.md~~ retired 2026-10-31). Change it there and get sign-off; do not edit this guard to work around a block.
 # FAIL_POSTURE: closed — per hook-sop.md 3.2 and hook-contract.md, a BLOCK guard that cannot
 #      parse its input DENIES. An unknown is never read as permission.
 # UPDATED: 2026-08-20 (jq replaced by python3 — see the ⛔ note below; FAIL_POSTURE unchanged)
@@ -36,7 +36,7 @@ trap 'lhb_journal_fire "$?" "guard_agent_return_channel.sh" "PreToolUse" "Agent"
 # only the "parser itself is absent" failure mode is removed.
 # guard_agent_return_channel.sh — PreToolUse hook (matcher: Agent)
 
-DENY='{"decision":"block","reason":"BLOCKED: this Agent spawn passes name= but its prompt states no delivery contract. WHY: a NAMED agent is an addressable teammate with a mailbox, and its final response text is DISCARDED when it finishes. Measured on the donor system this hook was ported from: 249 named spawns returned a payload 0 times; 1,714 unnamed spawns returned one every time. Note that run_in_background:false does NOT help — name overrides it. REDIRECT: remove the name: parameter and the full report comes back automatically as the tool result. If the agent must be addressable for agent-team coordination, keep name: and add an explicit instruction to its prompt to return its FULL text via SendMessage to main. RULE: system/sops/build-sop.md (subagent return channel) — change the rule there with sign-off, never by editing this guard."}'
+DENY='{"decision":"block","reason":"BLOCKED: this Agent spawn passes name= but its prompt states no delivery contract. WHY: a NAMED agent is an addressable teammate with a mailbox, and its final response text is DISCARDED when it finishes. Measured on the donor system this hook was ported from: 249 named spawns returned a payload 0 times; 1,714 unnamed spawns returned one every time. Note that run_in_background:false does NOT help — name overrides it. REDIRECT: remove the name: parameter and the full report comes back automatically as the tool result. If the agent must be addressable for agent-team coordination, keep name: and add an explicit instruction to its prompt to return its FULL text via SendMessage to main. RULE: system/sops/skill-building-sop.md section II.4a.1 [B11] (subagent return channel) — change the rule there with sign-off, never by editing this guard."}'
 
 deny() { printf '%s\n' "$DENY" >&2; exit 2; }
 

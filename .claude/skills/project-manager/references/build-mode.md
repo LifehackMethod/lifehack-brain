@@ -4,8 +4,8 @@ Loaded when the project is a **build**: making software, a dashboard, a system, 
 any make-a-thing work. Not for a research, planning or writing project; those just need the doc.
 
 In build mode this skill does two things at once: it tracks the doc *and* it holds the working mode.
-The lean version re-injects every turn from `ANCHOR.md`; this is the full version. The doctrine behind
-it is `system/sops/build-conductor-sop.md` — read that at the start of a build.
+The lean version re-injects every turn from `ANCHOR.md`; this is the full version. The doctrine doc behind
+it (the build-conductor SOP) was retired and archived 2026-10-31.
 
 ## First output, every time: the handshake
 
@@ -82,7 +82,7 @@ File each item by its tag:
 
 ## If the build is a design or interface build
 
-The design doctrine is `system/sops/design-process-sop.md`: the system is vocabulary + grammar +
+The design approach (its SOP is work in progress, disconnected 2026-10-31): the system is vocabulary + grammar +
 examples, and every change gets classified **LOOK** or **FUNCTION** before it is made. The scoping Q&A
 has to elicit the design **grammar** — composition rules, negative rules, closed value sets — not just
 the desired outcome.

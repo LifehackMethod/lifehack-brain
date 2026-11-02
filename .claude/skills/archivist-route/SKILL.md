@@ -42,7 +42,7 @@ home candidates; the human picks; the caller writes. (Part of `archivist-rebuild
    mechanic? an OS-wide rule?). Subject, not surface keywords.
 3. **Match MOST-SPECIFIC first** (the home ladder — the Territory Map now spans ALL homes, not just canon):
    - **Is it a how-to / recipe / gotcha rather than an always-true RULE? → a PLAYBOOK home** (e.g.
-     `system/sops/build-sop.md`), NOT canon. (added P6)
+     `system/sops/canonical-principles-sop.md`), NOT canon. (added P6)
    - else a PROJECT canon whose purpose covers the subject → rank it #1 (scoped homes win — that's the whole point);
    - else the DESK whose job covers it → desk canon;
    - else `<notes>/records/canon` (root) for genuinely OS-wide rules.
@@ -94,6 +94,6 @@ review command that does not exist. Write the queue, say where it is, and stop. 
 
 | what | where | status |
 |---|---|---|
-| the build doctrine it cites | `system/sops/build-sop.md` | shipped |
+| the build-lessons home it cites | `system/sops/canonical-principles-sop.md` | shipped |
 
 Everything else it touches is in your notes, not in this repo.

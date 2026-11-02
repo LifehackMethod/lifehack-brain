@@ -14,6 +14,7 @@ allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, Task, Agent]
 created_at: 2026-07-28
 updated_at: 2026-09-04
 ---
+> **UNDER CONSTRUCTION (Enver, 2026-10-31): autoplan is under construction and not working well; don't rely on it.**
 
 ## Intent (§0.5)
 **User outcome:** a plan built on what the system *actually looks like right now*, written into the ONE
@@ -121,7 +122,7 @@ is how a plan gets written against a picture three sessions stale.
 
 Nothing enforces a read. So every read this skill makes ends in a one-line **orientation receipt**
 naming what was read and what was absent — a skipped read and a read that found nothing look identical
-unless the read announces itself. *(src: system/sops/plan-sharpening-sop.md:231-243)*
+unless the read announces itself. *(src: system/sops/plan-sharpening-sop.md:231-243 — that SOP is work in progress, disconnected 2026-10-31)*
 
 **Five blocks, in order:**
 1. **FRAME first, deliberately** — whatever you read first becomes the lens; anchoring runs 22–61% and
@@ -246,7 +247,7 @@ Re-read your draft against the frame's desired outcome. Five checks; the fourth 
 5. **A task may cite a ruling only where that ruling states its verdict, its date and its author.**
    "See §X" is not a citation if §X still asks the question — that asserts a decision never given and
    spends the human's authority. When you record a ruling, write those three at the site.
-   *(src: system/sops/architecture-planning-sop.md:59-72)*
+   *(src: system/sops/plan-template.md)*
 
 ## Step 4 — Stop, when stopping is the right answer
 
@@ -351,7 +352,7 @@ or writes, or one consumes the other's output. Nothing else. Independence is the
 what you must justify — name the reason beside every gate, and if you cannot, the tasks are independent.
 
 **Lock the data contracts before parallel writes** — agree the shape each lane reads and emits first;
-skipping this is the #1 regret of parallel builds. *(src: system/sops/build-conductor-sop.md:193-194)*
+skipping this is the #1 regret of parallel builds.
 
 Draw it plainly, per phase, and **name the file each task writes** — that is what makes the gate
 checkable by whoever executes it:
@@ -378,12 +379,12 @@ read as standalone.
 - **gear-3** is a team wave: several independent surfaces that must coordinate — ~7× tokens, only on
   "use agent teams". **gear-4** is a scripted fan-out: dozens-to-hundreds of independent items, or a
   repeatable cross-checked pass worth codifying as a rerunnable script — up to ~16 concurrent / 1,000
-  total, only on "use a workflow". *(src: system/sops/build-conductor-sop.md:70-71)*
+  total, only on "use a workflow".
 - **gear-4's three guardrails:** every `agent()` call sets `model: 'sonnet'` (haiku for pure read-only)
   or it burns opus at fleet scale · read-only, no mid-run sign-off — anything needing approval, or any
   human-domain / Google write, stays gear-1; the pattern is *workflow does the read-only legwork → lead
   surfaces it → human approves → write happens in the main loop*, and for staged sign-off run each stage
-  as its own workflow · opt-in only. *(src: system/sops/build-conductor-sop.md:162-169)*
+  as its own workflow · opt-in only.
 - If the shape fits gear-3/4 but nobody opted in, **name it in the frame** — *"this is fan-out-shaped;
   say the word"* — and plan it as gear-2s.
 

@@ -3,81 +3,53 @@ id: system-playbook-hook-sop
 title: "Hook SOP — when & how to reach for a hook (the decision layer)"
 record_type: playbook
 created_at: 2026-06-17
-updated_at: 2026-06-17
+updated_at: 2026-10-31
 status: active
 authority: user
-sources:
-  - system/research/2026-06-17-skill-anchoring-hooks-consensus.md
-  - system/research/2026-06-17-agent-procedure-enforcement-consensus.md
-  - "an architecture council, 2026-06-17"
-reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live in system/hook-contract.md — this never repeats them. The single front door: it POINTS, it does not duplicate. Keep it ONE page."
+reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live in system/hook-contract.md — where this page restates a mechanic, the copies must agree with hook-contract.md. The single front door: it POINTS, it does not duplicate. Keep it concise."
+history: "system/sops/hook-sop.history.md (retired and moved text; never read in normal use)"
+route_format: "[section, line_in_this_file, purpose]; find a section by grep -n on its heading text; generated last, regenerate after any edit"
+route:
+  - ["§1", 28, "when a hook is worth building at all: the two reasons, the smallest tool, what not to hook"]
+  - ["§2", 35, "which of the three kinds: BLOCK, INJECT, OBSERVE"]
+  - ["§3", 41, "the three build principles the mechanics doc omits: channel law, fail-closed, lean injection"]
+  - ["§3.2", 43, "fail postures: closed, degrade-safe, or open with its reason"]
+  - ["§4", 46, "prove it fires: read the message, test through the registered entry point, deploy and restart"]
+  - ["DO NOT BUILD", 73, "what was tried and failed, grouped by the failure it teaches (read by deadend_check.py)"]
+  - ["§5", 195, "the front door: pointers to the mechanics and the other homes"]
 ---
 
 # Hook SOP — when & how to reach for a hook
 
-> ## NOTE — WHAT THIS PAGE CITES THAT IS NOT IN THIS REPOSITORY
->
-> This page earns its length by naming the exact record where each lesson was learned. Those records
-> live in the author's own notes folder, not in any repository, and they are named here rather than
-> discovered one dead link at a time.
->
-> **⛔ None of it is coming**, and none of it is needed: where a rule cites one, the evidence is IN
-> the rule. The path was only ever the filing location of the original write-up.
->
-> - ⛔ `records/2026-07-13-translator-voice-debug-history.md` · `records/decision/2026-06-27-numbers-integrity-enforcement.md` · `records/log/2026-05-30-datagate-websearch-automation.md` · `state/debt-ledger.md` · `state/projects/project-system/brief.md` · `state/projects/security/security-hardening/brief.md` · `state/projects/skill-builder/records/2026-08-07-dead-end-harvest.md` · `state/projects/translator-voice/brief.md`
-
-> **This doc owns WHEN to build a hook and WHICH kind. It does NOT repeat the mechanics — `system/hook-contract.md` owns those.** It is the single **front door** for hooks: it POINTS at the canonical homes, never copies them. Keep it short — if it grows into a second mechanics manual, it has failed. (Council-ratified 2026-06-17; diverge→argue→converge.)
+> **This doc owns WHEN to build a hook and WHICH kind. `system/hook-contract.md` owns the mechanics; where this doc restates one, the copies must agree with `hook-contract.md`.** It is the single **front door** for hooks: it POINTS at the canonical homes, never copies them. Keep it concise — if it grows into a second mechanics manual, it has failed. (Council-ratified 2026-06-17; diverge→argue→converge.)
 
 > **Shared tools:** `system/organism/elements/shared-layer.md` — common tools exist once in `shared/` (list: `system/register/toolbox.md`); use them, never copy them.
 
-> NOTE — **WHAT THIS PAGE POINTS AT THAT IS NOT IN THIS REPOSITORY.** A front door is only as good as the
-> rooms behind it, so the missing rooms are named here rather than discovered by a reader who goes
-> looking. This block is the whole list.
->
-> - ✅ **`system/hook-contract.md` has landed** — the mechanics half of this page: exit codes, stdin
->   parsing, the deny format, registration, the deploy checklist. The pair is complete.
->   ⚠ It was rewritten on the way in: the version it came from described hook scripts symlinked out of
->   a clone across two machines, and every one of those sentences was wrong here.
-> - ✅ **`/calculate` has arrived**, with the two scripts the §3 story is about:
->   `system/hooks/numbers_flag.sh` (the switch) and `system/hooks/inject_compute_mechanically.sh`
->   (the per-turn half). (`/websearch` arrived before it.)
-> **Not shipped — where a §3 story cites one of these, the story's evidence is in the story; the
-> pointer was only ever the filing location of the original write-up:**
->
-> - ⛔ `docs/architecture.md` — the author's own map of their whole system.
-> - ~~⛔ `docs/skill-conformance.md` — their conformance checker's rulebook.~~ *(2026-10-30: it IS shipped, at `docs/skill-conformance.md`; §5 points to it.)*
-> - ⛔ `system/reference/settings.json` — one machine's symlink source, which the single-machine
->   model here made meaningless. Registration lives in `.claude/settings.json` and travels by `git pull`. *(2026-10-30: for a plugin install the live guard list is `hooks/hooks.json`, which uses `${CLAUDE_PLUGIN_ROOT}`; `.claude/settings.json` is the project-folder list.)*
-> - ✅ `system/sops/build-sop.md` has landed, carrying the `DO NOT BUILD` register that
->   `system/tools/deadend_check.py` searches. Its section on scheduled runners names a scheduler and
->   a dashboard that are NOT here, and says so where it does.
-
 ## §1 — When to reach for a hook at all
 - A hook is for a **hard invariant that must survive model drift + compaction** — justified by EITHER **(a)** a real past incident, OR **(b)** a catastrophic-**silent** failure on an unrecoverable surface (auth/credentials · the wrong calendar · a destructive write · the wrong machine). *"It would be nice to enforce"* is **not** justification.
-- **Climb the escalation ladder first — a hook is the LAST rung:** instruction (CLAUDE.md) → a binary gate inside a skill → the user-turn boundary → a hook. Don't open with the heaviest tool.
+- **Use the smallest tool that gets the compliance** — an instruction in CLAUDE.md, a gate inside a skill, the user-turn boundary, or a hook. A hook is the strongest, so it must earn its place (the two reasons above). Don't open with the heaviest tool.
 - **A rule that isn't a hook is a wish** — but the inverse holds: a *preference* forced into a hook becomes wallpaper. Style/tone/"usually do X" live in CLAUDE.md or a skill.
+- **A guard that reads a shell command as text is a speed bump; the controls that held were on typed tools** (measured 2026-08-14).
 - **DO NOT hook:** style/tone; anything needing judgment over conversation *state* (→ a skill gate or an Archivist sweep, a stateless hook can't do it); a speculative rule with no incident behind it.
 
 ## §2 — Which of the three kinds
 - **BLOCK** — `PreToolUse`, deny + non-zero exit. Use when **the act itself must not happen** (destructive / irreversible / wrong-target).
-- **INJECT** — `UserPromptSubmit`, plain stdout + exit 0. Use to **re-ground the model every turn without stopping it** (the anchor / project-manager pattern).
+- **INJECT** — `UserPromptSubmit`, plain stdout + exit 0. Use to **re-ground the model as often as it is needed (every turn for a skill's lean anchor; once, and again after compaction, for the project-manager line) without stopping it** (the anchor / project-manager pattern).
 - **OBSERVE** — `PostToolUse`, always exit 0. Use to **record or warn** — it structurally *cannot* block.
-- **Mis-pick = failure:** a BLOCK used for guidance is a wall with no door; an INJECT used for a hard rule is a wish dressed as enforcement. Decide by: *must this be STOPPED, or REMINDED?*
+- **Mis-pick = failure:** a BLOCK used for guidance stops with no way forward; an INJECT used for a hard rule is a wish dressed as a guard. Decide by: *must this be STOPPED, or REMINDED?*
 
-## §3 — The three build rules the mechanics doc omits
-1. **Channel law (the landmine):** an INJECT hook delivers via **plain `echo`/stdout + `exit 0`** — **NEVER** the `systemMessage` JSON field (silently dropped: the hook reports success and nothing reaches the model). A BLOCK denies via the **working** channel — deny text + `exit 2` (the honored block signal). Mirror `pm_persist.sh` (inject) and ~~`block_primary_calendar.sh`~~ `guard_calendar_writes.sh` (block) *(2026-10-30: `block_primary_calendar.sh` is not in this repo; `guard_calendar_writes.sh` is the shipped calendar block hook, exit 2 on deny, registered in `hooks/hooks.json`)*.
-2. **Fail-closed:** on ANY error (can't read stdin / parse fails) a **narrow, single-target** BLOCK hook **denies** — never `exit 0`/allow-on-error. *(Scope, 2026-10-30: fail-closed applies to what a guard is FOR — `canonical-principles-sop.md` "Fail-closed applies to what a guard is FOR". A broad matcher (`Bash`, `Write|Edit`) is **degrade-safe** instead: on an internal error it exits 0 and says so on stderr, or a malformed payload walls the session off from the shell; see `guard_build_mode.sh` `FAIL_POSTURE`. The in-process scan gate in `agentic-security-sop.md` Step 5 is a third case and fails open on purpose.)* Declare it as one `# FAIL_POSTURE: closed|degrade-safe` line in the LLM-CONTEXT block (a declared intent, not a new enforced field).
+## §3 — The three build principles the mechanics doc omits
+1. **Channel law (the landmine):** an INJECT hook delivers via **plain `echo`/stdout + `exit 0`** — **NEVER** the `systemMessage` JSON field (silently dropped: the hook reports success and nothing reaches the model). A BLOCK denies via the **working** channel — deny text + `exit 2` (the honored block signal). Mirror `pm_persist.sh` (inject) and `guard_calendar_writes.sh` (block).
+2. **Fail-closed:** on ANY error (can't read stdin / parse fails) a **narrow, single-target** BLOCK hook **denies** — never `exit 0`/allow-on-error. *(Scope, 2026-10-30: fail-closed applies to what a guard is FOR — `canonical-principles-sop.md` "Fail-closed applies to what a guard is FOR". A broad matcher (`Bash`, `Write|Edit`) is **degrade-safe** instead: on an internal error it exits 0 and says so on stderr, or a malformed payload walls the session off from the shell; see `guard_build_mode.sh` `FAIL_POSTURE`. The in-process scan gate (`shared/gate/ingest_gate.py`) is a third case: by default it refuses a read it cannot check, except email, which stays open because it is only ever flagged, never quarantined; setting `INGEST_GATE_POSTURE=warn` makes every read it cannot check fail open (the instant revert).)* Declare it as one `# FAIL_POSTURE: closed|degrade-safe` line, or `open` with its reason, as `enforce_egress_allowlist.sh` does, in the LLM-CONTEXT block (a declared intent, not a new enforced field).
 3. **Lean / anti-wallpaper (inject only):** injected text ≤ ~150 tokens, **active-recall** (make the model RESTATE its frame, not re-read an identical block that becomes wallpaper), a hard char-ceiling, and an escape path. Re-anchor hardest at **post-compaction**.
 
-## §4 — Prove it fires (not optional)
+## §4 — Prove it fires
 
 > **★ WATCHING IT FIRE CATCHES WHAT PAYLOAD TESTS CANNOT — AND A WRONG REDIRECT IS WORSE THAN NO
-> REDIRECT.** (2026-08-05, T18.6b.) A guard was extended to a second store and passed **13 synthetic
-> payloads** — both stores blocked, reads untouched, three false-positive cases correctly ignored. Then
-> it was fired for real, and the **deny message named only the ORIGINAL store and redirected to the wrong
-> writer**: a session blocked while writing to the NEW store would have been sent to fix the wrong thing.
-> Every payload test passed because they only ever asserted the **exit code**, and the deny TEXT is the
-> half a human actually reads. **A hook's job is to RE-TEACH the boundary, not merely wall it** (see the
+> REDIRECT.** (2026-08-05, T18.6b; the full story is in the history log.) A guard extended to a second store passed **13 synthetic
+> payloads**, then fired for real, and its **deny message named only the ORIGINAL store and redirected to the
+> wrong writer**. Every payload test passed because they only ever asserted the **exit code**, and the deny TEXT is the
+> half a human actually reads. **A hook's job is to RE-TEACH the boundary, not merely block it** (see the
 > SIGNPOST rule in `hook-contract.md`) — so a wrong redirect actively misroutes, where a missing one at
 > least fails obviously. **How to apply:** after any hook change, trigger the block **through the real
 > harness** and *read the message it prints*, not just its return code. **And re-parse the deny JSON
@@ -85,13 +57,15 @@ reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live i
 >
 > **⚠ TWO TRAPS THAT MAKE A HEALTHY GUARD LOOK BROKEN — both hit on 2026-08-05.**
 > **(1) EXERCISE A HOOK THROUGH ITS REGISTERED ENTRY POINT, NEVER ITS LOGIC SIBLING.** Several guards are
-> a `.sh` wrapper around a `.py`. `enforce_egress_allowlist.sh:19` **exports `ALLOWLIST_FILE`**, which the
-> `.py` reads; invoking the `.py` directly leaves it unset, so it opens `''`, throws, and **fails OPEN
+> a `.sh` wrapper around a `.py`. In the original system, the `.sh` wrapper exported `ALLOWLIST_FILE`, which
+> the `.py` read; invoking the `.py` directly left it unset, so it opened `''`, threw, and **failed OPEN
 > (`rc=0`)**. For several minutes the evidence read *"the egress wall allows a real off-allowlist host."*
-> It does not. ⇒ *suspect the test first* — now paid out **ten** times on this project.
+> It does not. *(In this repository the `.py` finds its own list, so this exact trap is gone; the lesson
+> stands.)* ⇒ *suspect the test first* — now paid out **ten** times on this project (as counted by
+> 2026-08-11, not re-checked).
 > **(2) A COMMAND-STRING GUARD BLOCKS ITS OWN DOCUMENTATION.** The same guard blocked the very commands
 > writing its fix, because the docstring **quoted** the attack it defends against. Same class as the
-> 2026-07-13 status-bar guard that blocked its own build's commit (`build-sop.md`). Workaround when
+> 2026-07-13 status-bar guard that blocked its own build's commit (`build-sop.md` *(retired 2026-10-31)*). Workaround when
 > authoring: assemble the trigger tokens from fragments so no literal appears in the command.
 - A hook you haven't **watched block/inject in a live attempt is not a control** — an echo-pipe test proves only that the script didn't crash, not that the harness honored it.
 - **Deploying it:** both halves are files in this repo — the script at `system/hooks/`, the registration, a row in `system/register/register.jsonl` (`system/register/generate.py` generates `hooks/hooks.json` and `.claude/settings.json` from it) — so both travel by `git pull` and neither is re-done by hand. ⛔ **Then RESTART.** The harness reads `settings.json` at session start, so a newly registered hook does nothing at all in the window that registered it, and the only symptom is silence. That is the single commonest reason a correct hook appears not to work. (→ `system/hook-contract.md`, Deploy & Verify.)
@@ -103,7 +77,7 @@ reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live i
 > retired rule got re-installed TWICE in one day because no session could ask "has this already been
 > tried?" **Do not "helpfully" de-duplicate this across the three SOPs** — each copy is scoped to that
 > SOP's own domain and the copies are not required to stay identical. This copy carries the **hook-domain**
-> entries only, harvested from `state/projects/skill-builder/records/2026-08-07-dead-end-harvest.md`
+> entries only, harvested from a 2026-08-07 dead-end harvest
 > (80 entries; this SOP owns the subset below).
 >
 > **The pattern underneath every entry:** something reported success while producing nothing observable —
@@ -114,19 +88,18 @@ reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live i
 **Grouped by the failure they teach, not by date. Where §1–§5 above already state the rule, these are its
 dated INCIDENTS — evidence, not a restatement.**
 
-### exit 0 on a BLOCK hook is a silent ALLOW (§3 rule 1, "Channel law" — already stated; these are its incidents)
+### exit 0 on a BLOCK hook is a silent ALLOW (§3 principle 1, "Channel law" — already stated; these are its incidents)
 - **Tried:** `block_primary_calendar.sh`'s `deny()` written to `exit 0` on both its failure paths → **failed:**
   exit 0 = ALLOW — calendar-write protection was silently non-functional the whole time it was in this
   state. `2026-05-31` (found) / `2026-06-01` (fixed) · an audit record →
-  replaced by `deny()` corrected to `exit 2`. **UNIVERSAL** (this is the same script §3 cites by name as
-  the canonical BLOCK example — it did not start out correct).
+  replaced by `deny()` corrected to `exit 2`. **UNIVERSAL** (this is the script §3 cited by name as
+  the canonical BLOCK example until 2026-10-30 — it did not start out correct).
 - **Tried:** a PreToolUse-style hook's `deny()` using `exit 0` → **failed:** fails OPEN — the block JSON
-  prints but the write still executes. `2026-06-17` · `state/projects/security/security-hardening/brief.md:44-77`
+  prints but the write still executes. `2026-06-17` · a project brief
   → replaced by `exit 2`. **UNIVERSAL**
 - **Tried:** a WARNING-ONLY PreToolUse hook (`guard_web_search.sh`) that printed a caution before an
   unsanctioned WebSearch, then `exit 0`'d → **failed:** "exit 0 hooks are invisible to the model" — the
-  warning was security theater the model never saw. `2026-05-30` ·
-  `records/log/2026-05-30-datagate-websearch-automation.md` → replaced by a hard block (`exit 2`) with a
+  warning was security theater the model never saw. `2026-05-30` · a log record → replaced by a hard block (`exit 2`) with a
   redirect to `/websearch`. **UNIVERSAL** — a structural fact about the harness, not this hook.
 
 ### a hook's payload comes in on STDIN, never `$1` / `$ARGUMENTS` (mechanics live in `hook-contract.md` per §5 below; these are the incidents that taught it)
@@ -137,56 +110,56 @@ dated INCIDENTS — evidence, not a restatement.**
   `$(cat)`. **UNIVERSAL**
 - **Tried:** using the `$ARGUMENTS` token in `settings.json` to pass stdin content into a hook → **failed:**
   Claude Code delivers hook input via STDIN, not as `$1`. `2026-05-30` ·
-  `state/projects/security/security-hardening/brief.md:44-77` → replaced by `INPUT=$(cat)`. **UNIVERSAL**
+  a project brief → replaced by `INPUT=$(cat)`. **UNIVERSAL**
 
 ### a guard that matches a keyword/string, not the real target (§4 Trap 2 — already stated in brief; this is that same incident, with the fix it taught)
 - **Tried:** a guard hook grepping a Bash command STRING for keywords (`settings.json` + `statusLine`) →
   **failed:** false-positived on any command merely MENTIONING both words — including its own build's git
   commit message (this is the "2026-07-13 status-bar guard" §4 already references by name). `2026-07-13` ·
-  `system/sops/build-sop.md`; `state/debt-ledger.md` `[GUARD-HOOKSOP-FALSE-POSITIVE]` → replaced by
+  `system/sops/build-sop.md` ⛔ (retired 2026-10-31); a debt-ledger entry → replaced by
   matching the write-TO-TARGET pattern, not the bare keyword; later hardened with shlex tokenization so a
   literal-in-a-string can't trip it. **UNIVERSAL**
 
-### a static per-turn INJECT anchor becomes wallpaper (§3 rule 3, anti-wallpaper — already stated; these are its incidents, plus the upstream cause)
+### a static per-turn INJECT anchor becomes wallpaper (§3 principle 3, anti-wallpaper — already stated; these are its incidents, plus the upstream cause)
 - **Tried:** state the desired response voice ONCE in always-loaded CLAUDE.md → **failed:** the rule faded
   — models skip preambles by default and guidance decayed over a long/resumed session (CLAUDE.md loads
-  only at session start). `2026-06-08` · `records/2026-07-13-translator-voice-debug-history.md` → replaced
+  only at session start). `2026-06-08` · a debug-history record → replaced
   by a firmer rewrite + a dedicated SOP, later a per-turn reinforcement. **UNIVERSAL**
 - **Tried:** an always-on Output Style as the session-start voice baseline → **failed:** "loads once at
   start -> same decay" — didn't hold across a resumed session. `2026-06-27` ·
-  `records/2026-07-13-translator-voice-debug-history.md` → replaced by a rotating per-turn anchor hook.
+  a debug-history record → replaced by a rotating per-turn anchor hook.
   **UNIVERSAL**
 - **Tried:** a STATIC per-turn anchor hook re-asserting the same voice-rule block every turn → **failed:**
   "became wallpaper" — the model tuned it out. `2026-06-28` ·
-  `records/2026-07-13-translator-voice-debug-history.md` → replaced by a rotating anchor (5 variants,
+  a debug-history record → replaced by a rotating anchor (5 variants,
   active recall). **UNIVERSAL**
 
 ### an LLM-in-the-loop hook is too slow or too unreliable to gate a turn on (not yet stated elsewhere in this SOP)
 - **Tried:** a per-turn LLM classifier (`claude -p --model haiku`) on every UserPromptSubmit to decide "does
   this need math?" → **failed:** ~6.0–6.2s COLD-START latency (CLI boot, not inference) — unacceptable in a
   synchronous per-turn hook; no API key available for a sub-second call instead. `2026-06-27` ·
-  `records/decision/2026-06-27-numbers-integrity-enforcement.md` → replaced by a declare-intent model
+  a decision record → replaced by a declare-intent model
   (finance desks auto-arm, `/calculate` elsewhere, regex only as backstop). **LOCAL**
 - **Tried:** a Stop-hook LLM "bounce judge" that regenerates a reply failing a quality check → **failed:**
   killed three ways — self-critique degrades the output it's judging; latency measured 6s → 47–61s per call
   (CLI boot); and across ~30–40 live turns the grader flagged ZERO real violations (a rubber stamp —
-  cheap-judge true-negative rate is structurally under 30%, Jain et al. NeurIPS 2025). `2026-07-12/13` and
-  recorded again from the project brief · `records/2026-07-13-translator-voice-debug-history.md` and
-  `state/projects/translator-voice/brief.md:97-122` → replaced by a 3-layer plan (output-style + examples,
+  cheap-judge true-negative rate was under 30% in one study, Jain et al. NeurIPS 2025). `2026-07-12/13` and
+  recorded again from the project brief · a debug-history record and
+  a project brief → replaced by a 3-layer plan (output-style + examples,
   a parked grader, a planned local classifier) — the Stop-hook judge itself was killed outright.
   **UNIVERSAL**
 
 ### a hook can't do judgment over conversation state — don't hook it (§1's "DO NOT hook" line — already stated; these are its incidents)
 - **Tried:** a Stop/block gate halting on ungrounded arithmetic → **failed:** a hook cannot distinguish a
   number the model COMPUTED from one it READ — provenance is invisible in text, so it would false-fire
-  constantly. `2026-06-27` · `records/decision/2026-06-27-numbers-integrity-enforcement.md` → replaced by
+  constantly. `2026-06-27` · a decision record → replaced by
   no blocking gate at all. **LOCAL**
 - **Tried:** a status-bar write-GUARD hook on `statusline.sh` blocking python/bash writes to it → **failed:**
-  false-positived on legitimate work. `NO-DATE` · `state/projects/project-system/brief.md:170` → replaced
+  false-positived on legitimate work. `NO-DATE` · a project brief → replaced
   by editing `statusline.sh` with the Edit tool only, plus an inline warning comment — no hook at all.
   **LOCAL**
 
-### prose is not enforcement — the reason a hook exists at all (adjacent to §1's "a rule that isn't a hook is a wish"; recorded here because it is the harvest entry that most directly evidences it)
+### prose is not a guard — the reason a hook exists at all (adjacent to §1's "a rule that isn't a hook is a wish"; recorded here because it is the harvest entry that most directly evidences it)
 - **Tried:** polite prompt instructions used as an enforcement gate inside a skill → **failed:** "the AI
   reasons past prose gates." `NO-DATE` (LOG-04) · a project brief →
   replaced by an external mechanical check (`test -f GATE.ok || exit 1`), not skill prose — the same
@@ -195,8 +168,8 @@ dated INCIDENTS — evidence, not a restatement.**
 ### building a detector answers a delivery problem, not a detection problem (not yet stated elsewhere in this SOP)
 - **Tried:** answering a DELIVERY problem by building DETECTORS. **Failed:** 863 lines shipped in one day,
   **ZERO with a caller**, while 10 existing per-turn injectors sat unused; the shared module built to end
-  the recurring class was adopted by 3 of 15 tools. `2026-08-08` · `state/projects/project-system/brief.md`
-  → replaced by one line in an injection that already fires. **8th recorded instance of build-with-no-caller
+  the recurring class was adopted by 3 of 15 tools (as counted on 2026-08-08, not re-checked). `2026-08-08` · a project brief
+  → replaced by one line in an injection that already fires. **8th recorded instance (as counted on 2026-08-08, not re-checked) of build-with-no-caller
   in this system** (prior: `compose_reflection` · `judge.py`/`push_gate.py` — *"I built the lock and never
   built the key"* · `check_screens.py` · 4 unused shared primitives). See **THE CODE SPIRAL**,
   `system/build-rules-index.md`. **UNIVERSAL**
@@ -219,9 +192,9 @@ dated INCIDENTS — evidence, not a restatement.**
   replaced by the tier table `system/tools/model.lib.sh` (`MODEL_ID_SMALL/MEDIUM/LARGE`; Python reads it via
   `shared/tools/model_ids.py` `model_id(tier)`), the only files allowed an id. **UNIVERSAL**
 
-## §5 — The front door (pointers — one home each, zero duplication)
+## §5 — The front door (pointers — one home each; where restated, copies must agree with `hook-contract.md`)
 - **Mechanics** (exit codes · stdin parsing · deny format · registration · the **Deploy & Verify
   checklist**) → ✅ `system/hook-contract.md`
-- **Injector arm/clear/TTL lifecycle + WHEN a skill arms its anchor** → ~~the skill-building SOP §4~~ *(2026-10-30: the SOP has no §4 → `system/sops/skill-building-sop.md` PART IV, §IV.3 "a lean anchor fires every turn" and §IV.7)*
+- **Injector arm/clear/TTL lifecycle + WHEN a skill arms its anchor** → `system/sops/skill-building-sop.md` PART IV, §IV.3 "a lean anchor fires every turn" and §IV.7
 - **Is-this-hook-well-built conformance check** (the LLM-CONTEXT block audit) → `docs/skill-conformance.md`
-- **The catalog of enforced rules / fitness functions** → ~~`docs/architecture.md`~~ *(2026-10-30: not shipped, as the preface above says; the live list of enforced rules is `hooks/hooks.json`, and each guard's own header says what it blocks and why)*
+- **The catalog of enforced rules / fitness functions** → the live list is `hooks/hooks.json` (generated from `system/register/register.jsonl`); each guard's own header says what it blocks and why

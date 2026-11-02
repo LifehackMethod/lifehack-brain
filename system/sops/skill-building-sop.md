@@ -213,6 +213,10 @@ reader_note: >
 **How to build a Lifehack skill that fires when it should, runs the right flow, obeys its own procedure, and
 holds the line over a long session — without over-building.**
 
+> **Where a personal skill is built (Enver, 2026-10-31):** by default in `~/.claude/skills/<name>/`, without asking; say where it was put. The skill's own scripts live inside that skill folder. A plain "build me a skill" is built the usual way, as if skill-builder weren't there; skill-builder (archived 2026-10-31, closed for renovation) runs only when invoked by name.
+
+> **One-off scripts (Enver, 2026-10-31):** when you answer with a one-off script or tool, offer to keep it. A kept script goes in the person's ONE personal code folder (not split by desk; `desks/<desk>/` only for a tool that truly serves one desk).
+
 # PART 0 — HOLDING STEP ORDER: THE STEP-RUNNER (hypothetical, not yet validated)
 
 > *2026-10-30: the system-wide frame is **layers of friction**, see `canonical-principles-sop.md`, "The layers of friction". A script that holds step order is one more circle of friction, none of them perfect control.*
@@ -331,7 +335,7 @@ holds the line over a long session — without over-building.**
 ---
 
 
-> **Where a personal skill is built (Enver, 2026-10-31):** by default in `~/.claude/skills/<name>/`, without asking; say where it was put. The skill's own scripts live inside that skill folder.
+*(moved to the top of this page 2026-11-02)*
 
 ## §0 — WHAT A GOOD SKILL IS (the portrait — every rule below hangs off these six traits)
 
@@ -824,7 +828,7 @@ by an instrument suited to it. This is not a preference — a floor graded by th
 
 | Floor | The only instrument that can verify it | Why nothing else works |
 |---|---|---|
-| **(a) Reasoning** | a **blind, K-voted LLM judge** (Principle 4.3 fold) | The property is prose-shaped — no script can read for intent. But a single sample lies, so the verdict is voted and fail-closed. ⚠ **AMENDED 2026-08-07** (the rulebook was over-prescriptive here, not the swarm; amended in place, the rule survives): K-voting earns its cost **wherever a missed finding is expensive and a false negative would be invisible** — a completeness or security clause nobody will re-check by hand; **a single blind pass is enough** where a miss is cheap to catch downstream or the property is low-stakes. The reason is Principle 4.3's own measurement `[M: 2 runs, 4 clauses]`: one clause judged five times on byte-identical input returned `violated · violated · violated · violated · met`. Counter-evidence that a second pass earns its keep, not noise: this skill-builder's own tension swarm, 2026-08-06 — of 42 candidates, 17 surfaced blind on the first pass, +3 more on a second look, 25 rejected, and **those 3 were unreachable on the first pass — 15% of every finding came from re-reading.** ⚠ **"Blind" is a claim you must MEASURE, not assume — see §V.4a.** A judge launched from a neutral cwd is *not* blind; `claude -p` auto-discovers `~/.claude/CLAUDE.md` from anywhere. |
+| **(a) Reasoning** | a **blind, K-voted LLM judge** (Principle 4.3 fold) | The property is prose-shaped — no script can read for intent. But a single sample lies, so the verdict is voted and fail-closed. ⚠ **AMENDED 2026-08-07** (the rulebook was over-prescriptive here, not the swarm; amended in place, the rule survives): K-voting earns its cost **wherever a missed finding is expensive and a false negative would be invisible** — a completeness or security clause nobody will re-check by hand; **a single blind pass is enough** where a miss is cheap to catch downstream or the property is low-stakes. The reason is Principle 4.3's own measurement `[M: 2 runs, 4 clauses]`: one clause judged five times on byte-identical input returned `violated · violated · violated · violated · met`. Counter-evidence that a second pass earns its keep, not noise: this skill-builder's (closed for renovation 2026-10-31) own tension swarm, 2026-08-06 — of 42 candidates, 17 surfaced blind on the first pass, +3 more on a second look, 25 rejected, and **those 3 were unreachable on the first pass — 15% of every finding came from re-reading.** ⚠ **"Blind" is a claim you must MEASURE, not assume — see §V.4a.** A judge launched from a neutral cwd is *not* blind; `claude -p` auto-discovers `~/.claude/CLAUDE.md` from anywhere. |
 | **(b) Friction** | **provoke the guard and assert** — fire the faithful forbidden action, require it BLOCKED; fire the allowed twin, require it passes | A guard that was never provoked is untested. Its mere presence in `settings.json` proves nothing about whether it fires. |
 | **(c) State** | a **native-id SET-DIFF vs the source** (Principle 4.1) | A model cannot verify completeness against a source it cannot hold — it grades the *claim*. Only a mechanical diff grades the *thing*. |
 
@@ -1206,8 +1210,8 @@ what they are: patterns worth building, not things to reach for today.
 > anti-pattern below. Before building something that smells like a retry, grep this section AND the cited
 > briefs directly.
 >
-> **Duplicated by design.** This same section, in reduced or full form, also lives in `hook-sop.md` and
-> `build-sop.md` — an explicit ruling, 2026-08-07: *"I would rather have duplication than miss
+> **Duplicated by design.** This same section, in reduced or full form, also lives in `hook-sop.md` (and lived in
+> `build-sop.md` ⛔, retired 2026-10-31) — an explicit ruling, 2026-08-07: *"I would rather have duplication than miss
 > something."* Do not "clean up" the overlap without his say-so; this file carries the **fullest set** ~~— all
 > 80 entries~~ — because it's the rulebook a skill-build session consults first (§5.2's dead-end check reads
 > this section by name).
@@ -1380,7 +1384,7 @@ what they are: patterns worth building, not things to reach for today.
 - **[B15]** Tried: boxed ASCII decision screens / an 8-basket grid / mockup-driven visual design for a
   chat-based skill. Failed: "a bridge too far" — the box itself is what forced text truncation. `2026-08-04`
   → plain reflowing text.
-- **[B18]** Tried: designing skill-builder around making the human learn the machinery (3x4 grid, tiers, step
+- **[B18]** Tried: designing skill-builder (closed for renovation 2026-10-31) around making the human learn the machinery (3x4 grid, tiers, step
   types). Failed: "they shouldn't need to know what the process is." `NO-DATE`
   → the grid stays the LLM's own completeness check.
 - **[B19]** Tried: opening a skill-building session by showing the human the full spec template. Failed: "I
@@ -1410,7 +1414,7 @@ this stays the complete lookup, marked UNIVERSAL because they bind any build.
   `statusLine`). Failed: false-positived on any command merely **mentioning** both words — including its own
   build's git commit message. **This is the status-bar guard PART I's "THE DIVISION INSIDE A SINGLE TOOL"
   section already cites by name as one of three logged instances** (cross-ref, §I) — not restated.
-  `2026-07-13` · `system/sops/build-sop.md`; `<notes>/state/debt-ledger.md` `[GUARD-HOOKSOP-FALSE-POSITIVE]` → match
+  `2026-07-13` · `system/sops/build-sop.md` ⛔ (retired 2026-10-31); `<notes>/state/debt-ledger.md` `[GUARD-HOOKSOP-FALSE-POSITIVE]` → match
   the write-TO-TARGET pattern, later hardened with shlex tokenization.
 - **[B1]** Tried: regex/fuzzy heading-matching in the brief archiver to find a section. Failed: "finding a
   section is the LLM's judgment, not a regex's." **This is the exact rule PART I's "FINDING is fuzzy;

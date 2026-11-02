@@ -313,17 +313,8 @@ let a cartridge sit orphaned outside its project, unaware of that project's arch
 | `references/training-wheels.md` | Applet / static / functional tiers | Safe-default presets: type scale, spacing steps, layout skeletons |
 | `references/example-output.md` | When teach-back fires | The golden example: shape + voice for translating lay words |
 | `references/discovery-sop.md` | Discovery / build / diagnosis | The 6-stage discovery interview · the Information-Hierarchy Pass · the SOP-Compliance Contract |
-| **`system/sops/deck-design-system.md`** | **ANY Google Slides / presentation work — READ FIRST, before building a single slide** | The HOUSE DECK SYSTEM: the template ID to `files.copy` (never `presentations.create()`), locked tokens (teal/cream/acid palette · Public Sans 116/36/22/18/8), the tiered pattern library (Core 10 + Specialist 10 + the 26 cut), the negative grammar rules, the build workflow, and what the Slides API can/cannot do |
 
 Never chain references (no reference file that points to another reference file — one level deep only).
-
-### Presentations / Google Slides — a hard entry gate
-
-**If the artifact is a slide deck, STOP and read `system/sops/deck-design-system.md` before anything else.**
-It is a binary prerequisite, exactly like Gate B. It carries the house template ID, the locked tokens, the
-tiered layout grammar, and the API's real limits. **Building a deck without it reproduces the 2026-08-01
-failure**: three decks built and discarded, because design cannot be authored via the Slides API — it can only
-be inherited by copying a themed template.
 
 ### Mode + grounding (CRITIQUE vs BUILD)
 
@@ -425,7 +416,7 @@ weight — the primary metric needs ~2× the type scale,"* not *"layout is confu
 - **You own the build (one window does design + build):** proceed — apply changes, preserving the skin; change
   skeleton, not aesthetic.
 - **A separate build owner exists:** stop at the ranked direction; save it to the binder; hand off. If unclear, ask one line.
-- **Generation tool vs build-in-agent (where to iterate the visuals).** EXISTING system + codebase (internal tool, solo) → iterate visuals **directly here** with the design system as always-on context (the default — what this skill does). GREENFIELD / brand-heavy / non-coder / fast-exploration → generate & iterate in an **external AI design tool first** (Stitch / Figma / v0), eject at ~70%, then implement here with the system always-on. **Always hand over the SYSTEM (tokens + grammar + examples), NEVER the generated code (throwaway).** Full doctrine: `system/sops/design-process-sop.md`.
+- **Generation tool vs build-in-agent (where to iterate the visuals).** EXISTING system + codebase (internal tool, solo) → iterate visuals **directly here** with the design system as always-on context (the default — what this skill does). GREENFIELD / brand-heavy / non-coder / fast-exploration → generate & iterate in an **external AI design tool first** (Stitch / Figma / v0), eject at ~70%, then implement here with the system always-on. **Always hand over the SYSTEM (tokens + grammar + examples), NEVER the generated code (throwaway).**
 - **Record completion by SUB-SCOPE, never a bare "done."** Mark each agreed screen/component **built / stub /
   omitted**; a partial build is logged as "**partial — N of M built**" and that is what `/save` records — partial
   must never read as full. Definition-of-done = every locked element passes the Conformance gate.
@@ -451,7 +442,6 @@ for this session. A 12h TTL backstops it if a session forgets.
 | the hook that injects it | `system/hooks/skill_anchor_inject.sh` | ✅ here |
 | arming a project so `/save` and `/read` route to it | `system/hooks/pm_flag.sh` | ✅ here |
 | rendering a page so you can LOOK at it | `system/tools/render_shot.sh` | ✅ here — needs Chrome; verified on macOS only |
-| the slide-deck entry gate | `system/sops/deck-design-system.md` | ✅ here |
 | the notes-folder resolver | `shared/brain_root.py` | ✅ here |
 | the extended FRESH-EYES council | `/advisory-council` | ✅ here |
 | your cartridges, binders and design folders | `<notes>/state/projects/{slug}/design/` | ⛔ never ships — they are yours, one per dashboard |

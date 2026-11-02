@@ -14,7 +14,7 @@ generated_from:
   - system/hooks/plan_flag.sh
   # - system/reference/settings.json  # absent here (checked 2026-10-30)
   - CLAUDE.md §"Planning Output"
-  - system/sops/architecture-planning-sop.md
+  - system/sops/plan-template.md
   - state/debt-ledger.md (lines 84–85, 146, 349, 369, 419)
   - records/research/2026-07-15-agent-plan-file-management.md
 created_at: 2026-07-24
@@ -104,7 +104,7 @@ ExitPlanMode event fires
 
 #### Block message (verbatim excerpt)
 
-> "BLOCKED: plan is missing required structure (${miss}). WHY: Lifehack plans must be Phase -> Feature -> Task, each task Execute -> Verify & test -> mark done (a task is NOT done until its verify passes), per the Planning Output rule in CLAUDE.md. REDIRECT: rewrite the plan in that hierarchy (Features optional for small plans; Phase + Task + Verify are required) before calling ExitPlanMode. Spec: system/sops/architecture-planning-sop.md (star-star ALWAYS)."
+> "BLOCKED: plan is missing required structure (${miss}). WHY: Lifehack plans must be Phase -> Feature -> Task, each task Execute -> Verify & test -> mark done (a task is NOT done until its verify passes), per the Planning Output rule in CLAUDE.md. REDIRECT: rewrite the plan in that hierarchy (Features optional for small plans; Phase + Task + Verify are required) before calling ExitPlanMode. Spec: system/sops/plan-template.md."
 
 #### Doctrine backstop
 
@@ -201,7 +201,7 @@ then build something better for having read it.
 | `hooks?` | `system/sops/hook-sop.md` | hook |
 | `desks?` | `system/sops/desk-building-sop.md` | desk |
 | `(?:google\s+)?sheets?\|spreadsheets?` | `system/sops/google-sheet-sop.md` | Google Sheet |
-| `dashboards?\|views?\|screens?` | `system/sops/design-process-sop.md` | dashboard / view |
+| `dashboards?\|views?\|screens?` | `system/sops/design-process-sop.md` (work in progress, disconnected 2026-10-31) | dashboard / view |
 | `crons?\|scheduled\s+(?:job\|task)s?\|timers?` | `system/sops/cron-safety.md` | cron job |
 | email / ingest compound pattern | `system/information-ingestion-interpretation.md` | email / information ingestion reader |
 

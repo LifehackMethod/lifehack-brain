@@ -34,7 +34,6 @@
 130	system/organism/manual.md
 3	system/security-posture-baseline.md
 1	system/sops/cron-jobs-sop.md
-5	system/sops/recovery-runbook.md
 8	system/sops/skill-building-sop.history.md
 35	system/sops/skill-building-sop.md
 2	system/tools/architecture_reason.py

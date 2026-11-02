@@ -185,7 +185,7 @@ COMPLEMENTS   advisory-council   · conceptually parallel adversarial mode; advi
 COMPLEMENTS   research           · /research maps convergence (what experts do); /red-team attacks
                                    the plan (does ours survive); run /research first, /red-team second
                                    when both are needed
-CHAINS        architecture-planning-sop · the SOP uses /advisory-council in pre-mortem mode at
+CHAINS        architecture-planning-sop [retired 2026-10-31] · the SOP uses /advisory-council in pre-mortem mode at
                                    Stage 4 (architecture-planning-sop.md line 91) rather than
                                    /red-team directly; for Quick/Standard tier builds, a "30-sec
                                    self-pre-mortem" (line 27) is the lightweight substitute; /red-team

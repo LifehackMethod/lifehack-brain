@@ -190,7 +190,7 @@ in a browser tab.
 1. **Identify the sheet + read its `_LLM_GUIDE`** (satisfies `guard_sheet_writes`).
 2. **Design to Principle #1** — push math into formulas / Apps Script; the LLM only orchestrates + folds.
 3. **Append, don't overwrite** — never touch a formula/`🔒` cell without explicit confirm.
-4. **Back up first** for any non-append change (build-sop: crown-jewel backup before editing).
+4. **Back up first** for any non-append change (build-sop *(retired 2026-10-31)*: crown-jewel backup before editing).
 5. New sheet → use the `google-sheet` skill (Kickoff mode) so it's born conformant (`_LLM_GUIDE` tab
    opening with its **PURPOSE block** (#1a) + the **body guidelines** that apply (#1b), `🔒` headers,
    per-tab purpose lines, a `_LOG` tab (#3), and the **error sweep + `_CHECKS` self-check layer** (#4)).
@@ -257,4 +257,4 @@ Use **open-ended ranges** (`A4:A`, `4:50`) not a hardcoded ceiling — an all-pe
 silently ignores rows 14+ (the exact trap in the same tab). *(2026-06-09, FC tenant-billing misbill — property,
 tenant detail, and dollar figures in this example are invented for anonymity, not the real incident's actual
 specifics; do not "restore" them. The generalised guard-testing lesson — "never test a status string by
-substring" — is in `build-sop.md`.)*
+substring" — is in `build-sop.md` *(retired 2026-10-31)*.)*

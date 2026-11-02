@@ -14,7 +14,7 @@ generated_from:
   - .claude/skills/planning-weekly/prompts/04-council.md
   - .claude/skills/planning-weekly/prompts/council/_member-format.md
   # - skills/marc-checkin/SKILL.md (lines 79–87)  # absent here (checked 2026-10-30)
-  - system/sops/architecture-planning-sop.md (lines 59–104, 139)
+  - system/sops/architecture-planning-sop.md [retired 2026-10-31] (lines 59–104, 139)
   - system/hooks/plan_flag.sh (lines 94–96)
   - $DRIVE/councils/registry.md
 created_at: 2026-07-24
@@ -104,7 +104,7 @@ Use `/council` for the known five desks; use `/advisory-council` for everything 
 **`/advisory-council`** fires on:
 - Explicit `/advisory-council`
 - "convene my X council" / "advisory board" / "what would my advisors say"
-- Any invocation from `architecture-planning-sop.md` Stages 1, 4, and 6
+- Any invocation from `architecture-planning-sop.md [retired 2026-10-31]` Stages 1, 4, and 6
 - `marc-checkin` Stage 2 when the operator says yes (SKILL.md line 83)
 - `planning-weekly` Phase 4 (`04-council.md` — built ON the advisory-council engine)
 
@@ -432,7 +432,7 @@ system. A confused `/save` route to `councils/<slug>/council.md` would corrupt t
 
 ### INTEROP SEAMS
 
-**1. `architecture-planning-sop` TRIGGERS `/advisory-council` at Stages 1, 4, and 6.**
+**1. `architecture-planning-sop` [retired 2026-10-31] TRIGGERS `/advisory-council` at Stages 1, 4, and 6.**
 (architecture-planning-sop.md lines 69–104)
 The SOP calls `/advisory-council` three times over a single project council, using the same roster
 cartridge across all three stages: Stage 1 for independent review; Stage 4 for pre-mortem
@@ -509,7 +509,7 @@ but deferred (parked / monitoring) — not blocking daily use.
 - **check_detail:** No hooks registered for either skill (settings.json grep returned zero council entries
   — confirmed 2026-07-24). All behavioral contracts are honor-system (`[honor]`) or structural (isolated
   subagent context). LIVE: both skills fire and the core protocols run in production (advisory-council
-  engine in planning-weekly Phase 4 and architecture-planning-sop Stages 1/4/6; /council in cross-desk
+  engine in planning-weekly Phase 4 and architecture-planning-sop [retired 2026-10-31] Stages 1/4/6; /council in cross-desk
   sessions). `·gap`: (1) opus/sonnet pins are prose-only with documented drift risk (debt-ledger
   `[COUNCIL-MODEL-DRIFT-GUARD]`, parked); (2) settled-ground card unvalidated in production (monitoring);
   (3) advisor isolation structural but not hook-verified; (4) no cartridge write-guard. A tip-only

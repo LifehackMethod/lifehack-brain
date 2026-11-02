@@ -3,6 +3,9 @@
 _lhb_src="${BASH_SOURCE[0]}"; case "$_lhb_src" in */*) _lhb_dir="${_lhb_src%/*}" ;; *) _lhb_dir=. ;; esac; . "$_lhb_dir/lib/journal.sh" 2>/dev/null || lhb_journal_fire() { :; }
 trap 'lhb_journal_fire "$?" "buried_command_hint.sh" "UserPromptSubmit" "" 2>/dev/null || true' EXIT
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
+# UPDATED: 2026-10-31 (Enver) — 9a: report blocks (<summary>/<task-notification>/<result>/<output>) are stripped before
+#      matching. 9b: the STATUS/WHY/GUARDS text below is STALE and is struck by the CORRECTION block that follows it
+#      (2026-08-23): this hook is live, registered in hooks/hooks.json, and fires on ANY skill's buried slash command.
 # ── CORRECTION (2026-08-23, lifehack-brain port, phase G2/G3) ───────────────
 # The STATUS line immediately below, and everything through "not rely on it
 # having stayed silently registered," is STALE and self-contradicting: it
@@ -134,6 +137,11 @@ except Exception:
 
 names = sorted(set(names))
 if not names:
+    sys.exit(0)
+
+# 9a (2026-10-31, Enver): ignore text inside background-report blocks. Same strip as lib/ups_triggers.py (_prose).
+prompt = re.sub(r"<(summary|task-notification|result|output)\b[^>]*>.*?(?:</\1>|$)", " ", prompt, flags=re.S | re.I)
+if not prompt.strip():
     sys.exit(0)
 
 # Blank out fenced blocks and inline-backtick spans so a QUOTED command never fires.

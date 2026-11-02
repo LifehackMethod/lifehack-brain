@@ -167,7 +167,7 @@ Operations: `arm <path> <skill>`, `clear`, `status` (30-minute TTL — ephemeral
 
 **The critical rule:** edit `system/statusline.sh` via the **Edit tool ONLY, never via Bash writes** (`echo >`, `cat <<EOF >`, `tee`, `sed -i`, `cp`). The Edit tool preserves the file's existing mode bits; Bash redirects and overwrites do not — they write a new inode with default `0644`, which strips `+x`.
 
-This was a REAL INCIDENT on 2026-07-14 (documented in the `statusline.sh` file header, L5–9). The rule is codified in `system/sops/build-sop.md` (currently a bullet under `## General` — the `§4c` titled section referenced by `[INGEST-SKILL-SOP-4C]` in the debt-ledger was never written; treat as a forward-reference until that section is drafted) and enforced by `guard_statusline_lock.sh`.
+This was a REAL INCIDENT on 2026-07-14 (documented in the `statusline.sh` file header, L5–9). The rule is codified in `build-sop.md` *(retired 2026-10-31; no longer in the plugin)* (was a bullet under `## General` — the `§4c` titled section referenced by `[INGEST-SKILL-SOP-4C]` in the debt-ledger was never written; treat as a forward-reference until that section is drafted) and enforced by `guard_statusline_lock.sh`.
 
 **Symlink note:** `~/.claude/statusline.sh` → `system/statusline.sh` (the clone). The symlink was placed at `git` clone / machine-setup time. The `settings.json` pointer targets the symlink path (`$HOME/.claude/statusline.sh`); the canonical editable file is `system/statusline.sh` in the git clone.
 
@@ -249,7 +249,7 @@ is the one invariant a regression test exists specifically to guard.
 
 **Target:**
 - `plan_flag.sh record` keyed off a session-specific signal (not mtime) so CROSSWIRE is eliminated in multi-window sessions. See debt-ledger `[STATUSLINE-PLAN-CROSSWIRE]`.
-- The execute-bit / Edit-tool doctrine (currently a `## General` bullet in `build-sop.md`; forward-referenced as `§4c` in `[INGEST-SKILL-SOP-4C]`) written as a proper titled section and mirrored into `skill-building-playbook.md`. See debt-ledger `[INGEST-SKILL-SOP-4C]`.
+- The execute-bit / Edit-tool doctrine (currently a `## General` bullet in `build-sop.md` *(retired 2026-10-31)*; forward-referenced as `§4c` in `[INGEST-SKILL-SOP-4C]`) written as a proper titled section and mirrored into `skill-building-playbook.md`. See debt-ledger `[INGEST-SKILL-SOP-4C]`.
 
 ---
 

@@ -364,7 +364,7 @@ failure rate was invisible."*
 reasoning from LINEAGE was wrong."*
 
 **An artifact only the real work could produce.** `pad_archive`'s receipt — three projects, never shown to
-lose data. `skill-builder` independently replacing self-declared phase completion with a required
+lose data. `skill-builder` (closed for renovation 2026-10-31) independently replacing self-declared phase completion with a required
 artifact, **explicitly borrowing `save_step_ledger.py`.**
 
 **And three smaller ones:** stating the denominator · **admitting the gap out loud — a gap-admission note
@@ -1233,17 +1233,17 @@ The planning + execution contract — /autoplan structures the plan and /build e
 
 INTEROP:
   READS       build-rules-index  · /build Step 0 reads system/build-rules-index.md to resolve which docs bind the build type
-  READS       architecture-planning-sop · /autoplan prose directives; /build Step 0 ALWAYS doc — scoping front-end that produces the vetted handoff prompt
-  READS       build-sop          · /build Step 0 ALWAYS doc; appended to when a build teaches a durable lesson (living doc)
-  READS       build-conductor-sop · /build Step 0 for orchestrated/parallel builds; defines the four gears + worker loop
+  READS       architecture-planning-sop [retired 2026-10-31] · /autoplan prose directives; /build Step 0 ALWAYS doc — scoping front-end that produces the vetted handoff prompt
+  READS       ~~build-sop~~ [retired 2026-10-31]
+  READS       ~~build-conductor-sop~~ [retired 2026-10-31]
   FEEDS       project-manager    · /build files unbuilt tasks to OPEN LOOPS via project-manager at honest close
   CHAINS      project-manager    · /autoplan re-anchors via pm_flag.sh; plan's FRAME feeds the project brief
   FEEDS       plan-integrity-cluster · guard_plan_structure + plan_flag are the plan-integrity seam hooks — full per-hook mechanics cross-referenced there
   READS       pm-flag            · /autoplan Step 0 reads pm_flag.sh status to re-anchor; announce_plan_write reads pm_flag.sh status for brief path to write NEW plan pointer to brief's SCRATCHPAD
-  WRITES→     durable memory (/save) · build lessons append to build-sop.md (skill's own living memory); ⛔ CORRECTED 2026-08-25: plans do NOT mirror to Drive — mirror_plans.sh does not exist, see elements/hook-plane.md §E2
+  WRITES→     durable memory (/save) · build-sop.md retired 2026-10-31; ⛔ CORRECTED 2026-08-25: plans do NOT mirror to Drive — mirror_plans.sh does not exist, see elements/hook-plane.md §E2
   GUARDED-BY  guard_plan_structure.sh · blocks ExitPlanMode if Phase/Task/Verify absent
   GUARDED-BY  inject_sop_before_build.sh · injects SOP pointer (advisory, non-blocking) at UserPromptSubmit on build-verb + tracked noun
-  COMPLEMENTS advisory-council   · architecture-planning-sop.md Stages 1/4/6 invokes /advisory-council for blind review; /build does not invoke it directly
+  COMPLEMENTS advisory-council   · architecture-planning-sop.md [retired 2026-10-31] Stages 1/4/6 invokes /advisory-council for blind review; /build does not invoke it directly
   COMPLEMENTS checkin            · /checkin re-arms plan_flag.sh via plan_flag.sh set <path> so a resumed window shows its plan
   COMPLEMENTS read               · /read arms plan_flag.sh on resume (same set call as /checkin)
 
@@ -1318,7 +1318,7 @@ INTEROP:
 Two skills sharing one blind-diverge → argue → converge protocol — /advisory-council runs a swappable roster cartridge (any subject, any desk) with advisors on opus; /council runs the five named desk lenses (cross-life decisions only) on sonnet. The engine is fixed; the advisors are the cartridge. No hooks registered for either skill — entire behavioral surface is honor-system.
 
 INTEROP:
-  TRIGGERS    architecture-planning-sop · SOP calls /advisory-council at Stages 1, 4, and 6 using the same roster cartridge; SOP's own subagents stay sonnet, only the advisors run opus
+  TRIGGERS    architecture-planning-sop [retired 2026-10-31] · SOP calls /advisory-council at Stages 1, 4, and 6 using the same roster cartridge; SOP's own subagents stay sonnet, only the advisors run opus
   TRIGGERS    planning-weekly    · planning-weekly Phase 4 IS the advisory-council engine — dispatches 6 member files as the advisor roster, running blind-diverge → argue → converge; members run opus
   TRIGGERS    marc-checkin       · marc-checkin Stage 2 optionally invokes /advisory-council on the market-analysis council (sonnet-locked, cost exception); never auto-summoned
   READS       pm-flag            · /advisory-council reads pm_flag.sh status + plan_flag.sh path at Stage 0 to build the settled-ground card from active brief and plan
@@ -1333,7 +1333,7 @@ Three-skill cluster + two hooks that continuously re-assert a shared voice contr
 INTEROP:
   COMPLEMENTS all-response-outputs      · ⛔ simplify_anchor_inject.sh was DELETED 2026-08-05 (failed experiment — fired EVERY turn, not 1-in-10). The per-turn voice re-anchor NO LONGER EXISTS; ~~translator_gate.sh (Stop) still grades finished replies.~~ *(2026-10-30: `translator_gate.sh` is not in `system/hooks/` and is not registered; `system/sops/translator-rubric.md` says NOT PORTED.)* This line claimed a live control for 9 days after it was switched off — §19's founding specimen. Was: fires before EVERY turn across every desk, skill, and agent — the voice contract for the entire system
   CHAINS      save                      · /save Step 8 continuation handoff specifies a two-pass DRAFT → /explain re-render as its voice-seed; the only place a translator skill is a REQUIRED intermediate step in another skill's flow
-  KEYS-OFF    ~~system/translator-rubric.md~~ `system/sops/translator-rubric.md` *(2026-10-30: moved)* · all five cluster components (3 skills + 2 hooks) key off this file as the authority on translator voice; rubric edit must propagate to all five — propagation is honor-system
+  KEYS-OFF    ~~system/translator-rubric.md~~ `system/sops/translator-rubric.md` *(2026-10-30: moved)* · all five cluster components (3 skills + 2 hooks) key off this file as the authority on translator voice; rubric edit must propagate to all five — propagation is honor-system ⚠ 2026-10-31: the rubric is work in progress, disconnected until picked up again and validated.
   ~~SYNCS       output-styles/simplify.md · session-startup voice baseline; simplify_anchor_inject.sh is the per-turn re-anchor; both implement the same rubric criteria — out-of-sync means baseline and injection diverge mid-session~~ *(2026-10-30: `output-styles/simplify.md` is not in this repo (archived 2026-07-28) and `simplify_anchor_inject.sh` was deleted 2026-08-05; `system/sops/translator-rubric.md` is the only live copy)*
   COMPLEMENTS distill                   · /summarize explicitly routes full-thread or multi-turn distillations to /distill; complementary non-redundant tools for different scopes
 
@@ -1343,7 +1343,7 @@ Surface the glaring errors in a plan before they get expensive — no nitpicking
 INTEROP:
   COMPLEMENTS  advisory-council     · advisory-council's Argue stage runs its own structured red-team round (advisor-vs-advisor over anonymized snapshot) — it does NOT call /red-team the skill; the two are distinct mechanisms for the same impulse
   COMPLEMENTS  research-web-plane   · /research maps convergence (what experts do); /red-team attacks the plan (does ours survive); run /research first, /red-team second when both are needed
-  CHAINS       architecture-planning-sop · the SOP uses /advisory-council in pre-mortem mode at Stage 4 rather than /red-team directly; /red-team is the available utility for an ad-hoc pre-mortem outside the SOP formal gate — INFERRED
+  CHAINS       architecture-planning-sop [retired 2026-10-31] · the SOP uses /advisory-council in pre-mortem mode at Stage 4 rather than /red-team directly; /red-team is the available utility for an ad-hoc pre-mortem outside the SOP formal gate — INFERRED
   COMPLEMENTS  council              · /council (convergence) and /red-team (critique) are orthogonal; run council to generate options, /red-team to punch holes in the winning option — UNVERIFIED
 
 ## emily-desk · new Emily-Ingest mail | /emily-* skills   [LIVE·gap [provisional]]   → elements/emily-desk.md

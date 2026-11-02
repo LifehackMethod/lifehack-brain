@@ -128,7 +128,7 @@ eyeballed — see this session's verify output.)*
 > Persisted ≠ locked: this is **the most recent best current thinking**, and a later session or the skill-tester
 > may still rewrite anything that is not an outcome or one of the three hard invariants (§8's prescription box).
 
-**What this run ratified.** `/ingest` was put back through `/skill-builder` because it was never built with it.
+**What this run ratified.** `/ingest` was put back through `/skill-builder` (closed for renovation 2026-10-31) because it was never built with it.
 The chain reached BUILDER PHASE 3 (steps). Ratified, with the author in the chair, by explicit A/B fork each time:
 
 | # | Ratified | Where it now lives |

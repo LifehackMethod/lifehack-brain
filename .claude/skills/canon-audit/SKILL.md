@@ -157,7 +157,7 @@ id · source-check(canon-audit/{D|J|R|spine|source|fit|time}) · detail · propo
 
 ## Self-improvement (observe-then-codify)
 
-This skill is expected to be imperfect at first and to sharpen across real reps. **After each real run**, if it missed or misclassified something, append a dated line to **§ Calibration log** below and bump `version:` in the frontmatter. Mirror `build-sop.md`'s self-extending pattern — the calibration log is the living memory of what this skill learned from real desks.
+This skill is expected to be imperfect at first and to sharpen across real reps. **After each real run**, if it missed or misclassified something, append a dated line to **§ Calibration log** below and bump `version:` in the frontmatter. Mirror a self-extending pattern — the calibration log is the living memory of what this skill learned from real desks.
 
 ## Calibration log
 

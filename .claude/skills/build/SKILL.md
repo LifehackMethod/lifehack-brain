@@ -78,4 +78,4 @@ bash "<base directory>/scripts/build_run.sh" <plan.md>
 - Research plan (no code, no artifact): the deliverable is the finding. Never manufacture an artifact to
   look done; Door 3 is NOT APPLICABLE, said with that reason.
 
-Excuses for skipping a step: see `system/sops/build-conductor-sop.md`.
+(The excuses list lived in the build-conductor SOP, retired and archived 2026-10-31.)

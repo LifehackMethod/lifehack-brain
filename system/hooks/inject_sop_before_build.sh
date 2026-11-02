@@ -32,6 +32,15 @@ trap 'lhb_journal_fire "$?" "inject_sop_before_build.sh" "UserPromptSubmit" "" 2
 #      `desk-building-sop.md`, `cron-safety.md` and `system/information-ingestion-interpretation.md`
 #      do not exist yet in this repo — those TABLE rows degrade silently (point at nothing) until
 #      those SOPs land; this is a known, pre-existing gap, not something this port fixed or hid.
+# UPDATED: 2026-10-31 (Enver) — (a) text inside <summary>/<task-notification>/<result>/<output>
+#      blocks is stripped before matching (same strip as lib/ups_triggers.py); (b) stale header lines struck
+#      below, not deleted; (c) the injected tag no longer names the operator's private repo; (d) the design-process row is
+#      disconnected (that SOP is work in progress).
+# STALE as of 2026-10-31 (struck, kept as history): ~~"one of six recurring things"~~ and ~~"SOPs pointed at live in
+#      ...design-process-sop...  To add a 7th SOP"~~ — the table has had 7 rows since the ingestion row, and the
+#      dashboard row is now disconnected, so 6 live rows; ~~"replaces the donor-only cron-safety.md"~~ and the
+#      PORTED note's list of missing SOPs is out of date: desk-building-sop.md now exists. ~~"all three SOPs"~~ in the DO NOT BUILD line:
+#      build-sop.md was retired 2026-10-31, so deadend_check.py now reads the entries in skill-building-sop.md and hook-sop.md.
 # FAIL_POSTURE: degrade-safe (any error -> exit 0 silently)
 # ─────────────────────────────────────────────────────────────────────────────
 set +e
@@ -54,6 +63,11 @@ except Exception:
     sys.exit(0)
 if not prompt:
     sys.exit(0)
+# 9a (2026-10-31, Enver): ignore text inside background-report blocks. Same strip as
+# lib/ups_triggers.py (_prose), so a <task-notification> that merely CONTAINS "build a skill" cannot fire this.
+prompt = re.sub(r"<(summary|task-notification|result|output)\b[^>]*>.*?(?:</\1>|$)", " ", prompt, flags=re.S | re.I)
+if not prompt.strip():
+    sys.exit(0)
 
 # TRIGGER TABLE — (noun-regex, sop-path, human-label). Add a row to extend.
 TABLE = [
@@ -61,7 +75,8 @@ TABLE = [
     (r"hooks?",                                     "system/sops/hook-sop.md",                "hook"),
     (r"desks?",                                     "system/sops/desk-building-sop.md",       "desk"),
     (r"(?:google\s+)?sheets?|spreadsheets?",        "system/sops/google-sheet-sop.md",        "Google Sheet"),
-    (r"dashboards?|views?|screens?",                "system/sops/design-process-sop.md",      "dashboard / view"),
+    # DISCONNECTED 2026-10-31 (Enver, decision 5): design-process-sop.md is work in progress, not validated; row kept here as history.
+    # (r"dashboards?|views?|screens?",                "system/sops/design-process-sop.md",      "dashboard / view"),
     (r"crons?|scheduled\s+(?:job|task)s?|timers?",  "system/sops/cron-jobs-sop.md",           "cron job"),
     (r"(?:email|mail|inbox|corpus)\s+(?:ingest\w*|read(?:er|ing)?|process(?:or|ing)?|backlog)|ingest(?:ion|or)?\s+(?:skill|desk|pipeline|reader|hook|pass)",
                                                     "system/information-ingestion-interpretation.md", "email / information ingestion reader"),
@@ -99,7 +114,7 @@ DEADEND = os.environ.get("DEADEND_CHECK_PATH") or "deadend_check.py"
 out.append(
     ("THEN, BEFORE YOU BUILD IT, ASK WHETHER IT ALREADY FAILED: run "
     "`python3 %s \"<what you are about to "
-    "build, in plain words>\"` — it searches every DO NOT BUILD entry across all three SOPs "
+    "build, in plain words>\"` — it searches every DO NOT BUILD entry across the SOPs that carry one "
     "and returns ONLY the matching ones with file:line. It is one command and a few lines of "
     "output, not another document. A NO-MATCH is NOT an all-clear — coverage is ~35%% of what "
     "is on disk, and the tool says so on every empty result.") % DEADEND
