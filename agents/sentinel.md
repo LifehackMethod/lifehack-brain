@@ -27,8 +27,8 @@ what this repo actually has:
    ingest/read adapters (`ingest_gate_enforce.sh`, `email_service_read.py`,
    `item_store_read.py`) and quarantines what they flag. It is live in this
    repo independent of this file.
-3. **Health tiles** — `system/tools/sentinel-health.py` +
-   `system/tools/sentinel-health-run.sh`. Status reporting, not protection.
+3. **Health tiles** — ⛔ retired 2026-10-27 (`0088c24`, the watcher machinery): `system/tools/sentinel-health.py` +
+   ⛔ retired with it: `system/tools/sentinel-health-run.sh`. Status reporting, not protection.
 
 Three. The honest count was never five — that was an unverified claim
 carried forward from an earlier draft, not a fourth and fifth component that
@@ -51,8 +51,8 @@ Inspect and report on, all resolved relative to this repo's own root
 (never a hardcoded home directory):
 
 - This repository's own tree: `system/`, `shared/`, `.claude/`, `agents/`,
-  `desks/*/` (if any desks are scaffolded yet — `system/desk-registry.yaml`
-  once it exists, otherwise enumerate `desks/*/` directly)
+  `desks/*/` (if any desks are scaffolded yet — your desk list, `<notes>/desks/desk-registry.yaml`
+  (`python3 <plugin>/shared/desk_list.py --path`), if it exists, otherwise enumerate `desks/*/` directly)
 - `.claude/settings.json`, `.claude/agents/**`, `.claude/skills/**`
 - `~/.claude.json` — global Claude config, if present: scan for embedded
   credentials and MCP server inventory
@@ -125,7 +125,7 @@ passing, and the summary must say which happened.
 
 - [ ] MCP surface: check `.mcp.json` (workspace, if present) and `~/.claude.json` (global) for server entries; for each, record name, command/URL, args, and classify transport as `stdio-local` (lowest risk), `http-local` (medium — HTTP to localhost), or `networked` (high — flag prominently); note data sensitivity per service (high: email/calendar/drive/device-control; medium: task lists; low: notes)
 - [ ] Root permissions inventory: list every Read/Edit/Write grant and MCP tool permission in `.claude/settings.json`, noting effective scope (e.g. "Edit on all of `system/**`")
-- [ ] Per-desk permissions inventory: for each desk under `desks/*/` (read the list from `system/desk-registry.yaml` if it exists, otherwise glob the directory — **never hardcode a desk name in this file**), check for a desk-level `.claude/settings.json`; if present, note its schema and any grants; if absent, note that it inherits root permissions and flag if that's broader than the desk plausibly needs
+- [ ] Per-desk permissions inventory: for each desk under `desks/*/` (read the list from your desk list, `<notes>/desks/desk-registry.yaml`, if it exists, otherwise glob the directory — **never hardcode a desk name in this file**), check for a desk-level `.claude/settings.json`; if present, note its schema and any grants; if absent, note that it inherits root permissions and flag if that's broader than the desk plausibly needs
 
 ## Output Format
 

@@ -27,7 +27,7 @@ requests==2.32.5
 # vault-related.py, vault-theme-map.py — numeric clustering / cosine similarity
 numpy==2.0.2
 
-# backlog_groom.py, system-health.py — lazy YAML parse of desk-registry.yaml
+# backlog_groom.py via shared/desk_list.py — lazy YAML parse of your desk list (<notes>/desks/desk-registry.yaml)
 # (not yet installed on either machine; lazy import so tools run without it but registry
 # reads fall back gracefully — install to enable full desk-list resolution)
 PyYAML==6.0.2

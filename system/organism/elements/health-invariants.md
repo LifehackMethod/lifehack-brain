@@ -130,8 +130,8 @@ this fabrication.
   fabrication as the Trigger line above; there is no lead-machine concept in this repo
   (`docs/data-layout.md:215`). The `READS grand-central` row further down this document (INTEROP
   table) repeats this same false claim and needs the identical correction.
-- `system/desk-registry.yaml` — desk fleet definition; the drift cop reads it every sweep
-  (`system-health.py:381`). Code-resident (clone).
+- ⛔ removed from the plugin 2026-11-02: ~~`system/desk-registry.yaml` — desk fleet definition; the drift cop reads it every sweep
+  (`system-health.py:381`). Code-resident (clone).~~ ⚠ CORRECTED 2026-11-02 (desk list to notes): `system-health.py` and its desk-fleet drift cop (`assess_registry`) do not exist in this repo or in any personal code folder — this describes the donor system. The only readers of the desk list are `backlog_groom.py` and `planning-diary-capture.py`, through `shared/desk_list.py`; the list itself moved out of the plugin to the person's notes, `<notes>/desks/desk-registry.yaml`.
 - `~/.config/lifehack/sentinel-paused-sources` — machine-local Sentinel containment list; read
   every sweep to surface PAUSED-BY-SENTINEL state (`system-health.py:218–226`).
 

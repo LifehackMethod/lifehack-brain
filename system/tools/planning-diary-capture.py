@@ -114,16 +114,14 @@ _FALLBACK_DESKS = set()
 
 
 def _known_desks():
+    # The desk list is the person's own (<notes>/desks/desk-registry.yaml, via shared/desk_list.py);
+    # the plugin ships none. No list -> no desks -> only 'root'.
     desks = set()
     try:
-        reg = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "desk-registry.yaml")
-        with open(reg, encoding="utf-8") as f:
-            for ln in f:
-                m = re.match(r"^\s*-\s*desk_id:\s*(\S+)", ln)
-                if m:
-                    desks.add(m.group(1).strip().strip('"\''))
+        import desk_list                                                     # shared/desk_list.py
+        desks = desk_list.desk_ids()
     except Exception:
-        pass
+        desks = set()
     return (desks or _FALLBACK_DESKS) | {"root"}  # 'root' is the shell, not a registry desk
 
 

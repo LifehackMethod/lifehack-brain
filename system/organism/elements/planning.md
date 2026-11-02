@@ -82,7 +82,7 @@ this explicitly).
 | the weekly cadence | `.claude/skills/planning-weekly/SKILL.md` (+ ANCHOR + 17 prompt beats + 4 map-agents + 9 leverage angles + 6 council members) | ships · **UNDER CONSTRUCTION, never run end to end here** |
 | the mid-week map priming cron | `system/tools/planning-weekly-prime-run.sh` + its row in `system/jobs.md` | ships · scheduled · never LIVE-fired end to end |
 | the diary (capture + rollups) | `system/tools/planning-diary-capture.py` · `system/tools/planning-diary-rollup.py` · `system/tools/planning-diary-run.sh` | ships · scheduled (one row drives five cadences) |
-| the read-only calendar health check | `system/tools/planning-health.py` | ships · scheduled · no `*-run.sh` wrapper (no lock, no buzz) |
+| the read-only calendar health check | `system/tools/planning-health.py` | ⛔ retired 2026-10-27 (`0088c24`, the watcher machinery) · was: scheduled, no `*-run.sh` wrapper |
 | the overnight raw-vault pull | `system/tools/planning-vault-run.sh` → `system/tools/planning-vault-pull.py` | ships · **NO scheduler row** — see GAPS |
 | the weekly deep pull + its analysis | `system/tools/planning-vault-weekly-run.sh` → `system/tools/planning-window-to-vault.py` → `system/tools/planning-weekly-analyze-run.sh` | ships · **NO scheduler row** — see GAPS |
 | the overnight analysis panel | `system/tools/planning-analyze-run.sh` (+ its four lens briefs in `system/tools/planning-analysis/`) | ships · **NO scheduler row** — see GAPS |
@@ -114,7 +114,7 @@ correctly so:**
   carried forward verbatim inside `planning-diary-capture.py` itself.
 
 ⛔ **THERE IS NO `desks/` TREE IN THIS REPOSITORY, AND THERE IS NOT MEANT TO BE.**
-`system/desk-registry.yaml` ships **empty** (`desks: []`) by design — a fresh install has no desks,
+The plugin ships **no** desk list (it is the person's, `<notes>/desks/desk-registry.yaml`) — a fresh install has no desks,
 and a full desk is promoted by hand through `system/sops/desk-building-sop.md`. All planning
 **content** lives under the reader's own notes root, resolved through `shared/brain_root.py`, and is
 never committed. Verified by directory listing this session: no `desks/` at the repository root.
@@ -554,7 +554,7 @@ runners have no scheduler row. `·gap` for the MCP bypass in GAPS #3. `(honor)` 
   fixture exists for a skill's conversational discipline. What is REAL, verified by reading the
   artifacts this session: both skill trees ship whole; twelve tools ship under `system/tools/`; three
   rows exist in `system/jobs.md` (`planning-weekly-prime`, `planning-diary`, `planning-health`);
-  `system/desk-registry.yaml` ships empty by design. What is HONOR-ONLY: the interrogative law, the
+  no desk list ships (it is the person's own, in their notes). What is HONOR-ONLY: the interrogative law, the
   blind chain, the one-dataset rail, the rolling roundup, mark-inference, and
   never-write-synchronously. What is UNPROVEN: any end-to-end run of either skill in this repository.
   Real walls on the write path plus a shipped, unproven conversational layer ⇒ **PARTIAL**; `·gap`

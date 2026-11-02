@@ -1124,6 +1124,7 @@ INTEROP:
   FEEDS        system-health sweeper  · system-health.py emits _system-health.json which Helm surfaces as the System tab passthrough via build_state()
   TRIGGERS     sentinel-health.py · archivist-placements.py · archivist-lean.py   · the sweeper calls these as child processes on each run (graceful, non-blocking)
   READS        desk-registry.yaml     · system-health.py derives DESKS and drift-cop checks from the registry; load_registry() is graceful (returns [] on failure)
+  ⚠ CORRECTED 2026-11-02 (desk list to notes): `system-health.py` and its desk-fleet drift cop (`assess_registry`) do not exist in this repo or in any personal code folder — this describes the donor system. The only readers of the desk list are `backlog_groom.py` and `planning-diary-capture.py`, through `shared/desk_list.py`; the list itself moved out of the plugin to the person's notes, `<notes>/desks/desk-registry.yaml`.
   FEEDS        health_invariants.py   · invoked by system-health.py; checks substrate integrity and ~~appends to state/health.jsonl~~ ⚠ CORRECTED 2026-09-01 (#61): emits findings through `emit_finding()` only — verified this session, `system/tools/health_invariants.py` has zero references to `health.jsonl`. The old append was deleted (see line ~1222, same correction, T15.19 `fe56626`); this line was the stale half.
   KEYS-OFF     jobs.md        · system-health.py loads job intervals from the same config Aliveness dispatches from (CODE_ROOT, not Drive — avoids stale job-list drift)
   CHAINS       emily-emit.py          · POST /api/emily/dismiss calls _reemit_emily() which runs emily-emit.py to rebuild emily.json from the store; the next /api/state poll reflects it
@@ -1207,10 +1208,10 @@ Reads the typed system backlog (~0-LLM in steady state) and emits an honest DECO
 INTEROP:
   READS    save              · triages off the type:/state: stamps /save writes onto debt-ledger rows; /save Steps 7c.5 and 7c.6 are the SOLE structured writer for debt-ledger ## Open
   FEEDS    helm              · backlog-health.py emits state/status/backlog.json; Helm Backlog tab reads it; work_count/work_noun (= actionable_debt) drive the KPI strip
-  READS    open-loops        · groomer reads every desk's open-loops.md enumerated from system/desk-registry.yaml; _dupes() enforces one-home-per-item by detecting cross-file slug conflicts
+  READS    open-loops        · groomer reads every desk's open-loops.md enumerated from the person's desk list (<notes>/desks/desk-registry.yaml, via shared/desk_list.py); _dupes() enforces one-home-per-item by detecting cross-file slug conflicts
   COMPLEMENTS  health-authority  · Health Authority answers "is the system RUNNING right?" (runtime); Backlog Authority answers "is the system TRACKING ITSELF right?" (backlog hygiene) — symmetric sibling organs, two tabs, no overlap
   COMPLEMENTS  archivist     · Archivist curates KNOWLEDGE; Backlog Authority curates WORK TRACKING — different data, different question; must not be conflated
-  KEYS-OFF     desk-registry · groomer reads system/desk-registry.yaml for open_loops_path + backlog_mode; a desk missing from the registry is silently excluded
+  KEYS-OFF     desk-registry · groomer reads the person's desk list (<notes>/desks/desk-registry.yaml, via shared/desk_list.py; the plugin ships none) for open_loops_path + backlog_mode; a desk missing from the list is excluded, and a broken list is reported with its real error
   KEYS-OFF     pulse-cron    · Pulse fires backlog-health-run.sh on a 6h interval; require_primary gate ensures single Drive writer
   GUARDED-BY   guard_ledger_discipline   · PreToolUse Write|Edit: blocks adding ✅/RESOLVED/CLEARED/FIXED annotation to ## Open — enforces deletion-not-annotation discipline structurally
 

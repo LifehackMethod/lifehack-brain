@@ -22,15 +22,17 @@ Measured against the donor's own 9 real desks (2026-08-15, `desks/*` on the Driv
 `projects/` exists in 8 of 9 (all but one) — added to the scaffold below. `views/` exists in 7 of 9 —
 NOT universal, so it is opt-in here (`--views yes`), never created by default.
 
-It writes the folder skeleton + stub files ONLY. It does NOT: edit the keystone
-`system/desk-registry.yaml` (prints the block to paste — a hand-maintained code file), nor create the
-per-machine `.claude/settings.json` (machine-local). Refuses to clobber an existing desk.
+It writes the folder skeleton + stub files ONLY. It does NOT: edit your desk list
+`<notes>/desks/desk-registry.yaml` (it prints the entry to add by hand — the list is yours, in your notes
+folder, read through `shared/desk_list.py`; the plugin ships none), nor create the per-machine
+`.claude/settings.json` (machine-local). Refuses to clobber an existing desk, in a preview too, and
+refuses a desk name that is not a plain slug (lowercase letters, digits, `-` or `_`).
 
 Usage:
   desk_scaffold.py --drive-root <notes root> --desk <slug> --purpose "<one line>" \\
       [--reads-external yes|no] [--views yes|no] [--dry-run]
 """
-import argparse, os, sys, datetime
+import argparse, os, re, sys, datetime
 
 
 STUB = {
@@ -46,14 +48,20 @@ STUB = {
                             "updated_at: {d}\nstatus: active\nauthority: skill\n---\n\n# Open loops\n\n_(none yet)_\n"),
     "_registry.md": ("---\ntopic: [desk-registry]\ntitle: {Desk} — folder registry\nrecord_type: registry\n"
                      "desk: {desk}\ncreated_at: {d}\nupdated_at: {d}\nstatus: active\nauthority: skill\n---\n\n"
-                     "# {Desk} registry\n\n## Active state files\n- `state/current.md`\n- `state/open-loops.md`\n"
-                     "- `canon/current.md`\n\n## Active records\n_(none yet)_\n"),
+                     "# {Desk} registry\n\n## Starter files\n- `CLAUDE.md`\n- `_registry.md`\n"
+                     "- `canon/current.md`\n- `canon/purpose.md`\n- `state/current.md`\n- `state/open-loops.md`\n"
+                     "\n## Active records\n_(none yet)_\n"),
     "CLAUDE.md": ("# {Desk} — desk identity\n\n**Purpose:** {purpose}\n\n**Read order:** `canon/current.md` → "
                   "`state/current.md` → `state/open-loops.md`.\n\n**Scope:** {desk}-domain work only; route "
-                  "other subjects to their desk.\n\n**Write rules:** canon = human-blessed only (guard_canon_write "
-                  "protects it); records = dated; state = session-significant changes.\n\n**Memory routing:** "
+                  "other subjects to their desk.\n\n**Write rules:** canon = human-blessed only (`/save` stops "
+                  "and shows you each canon line before it writes; guard_canon_write only keeps canon small and "
+                  "free of expiring facts); records = dated; state = session-significant changes.\n\n"
+                  "**Memory routing:** "
                   "durable→canon (human promotes) · dated finding→records/ · where-we-are→state/current.md.\n"),
 }
+# A desk name is a plain slug: it becomes a folder under desks/, so `..`, `/` and the like must never get through.
+SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
+DESK_LIST_REL = "desks/desk-registry.yaml"
 # Core shape — always created. `views/` is opt-in (measured NOT universal; see module docstring).
 DIRS = ["canon", "state", "records", "sources/inbox", "projects"]
 OPTIONAL_DIRS = {"views": "views"}
@@ -72,8 +80,11 @@ def main():
     a = ap.parse_args()
 
     desk = a.desk.strip().lower()
+    if not SLUG_RE.match(desk):
+        sys.exit(f"REFUSED: desk name {a.desk!r} is not a plain slug — use lowercase letters, digits, "
+                 "'-' or '_' (starting with a letter or digit, at most 64 characters).")
     base = os.path.join(a.drive_root, "desks", desk)
-    if not a.dry_run and os.path.exists(base):
+    if os.path.lexists(base):
         sys.exit(f"REFUSED: desk '{desk}' already exists at {base} — will not clobber.")
 
     dirs = list(DIRS)
@@ -102,20 +113,20 @@ def main():
     print(f"OK: scaffolded desk '{desk}' at {base}")
     print("   folders:", ", ".join(dirs))
     print("   files  :", ", ".join(STUB.keys()))
+    desk_list = os.path.join(a.drive_root, DESK_LIST_REL)
     print("\n── NEXT (2 hand steps the jig deliberately does NOT auto-do) ──")
-    print(f"1. Append to system/desk-registry.yaml (code file — paste this block):\n")
+    print(f"1. Add this desk to YOUR desk list, {desk_list} (in your notes, not the plugin).")
+    print("   If that file does not exist yet, create it with the two lines `schema_version: 2` and `desks:`.")
+    print("   Then add this entry under `desks:` (if the line reads `desks: []`, change it to `desks:` first):\n")
     print(f"""  - desk_id: {desk}
-    health_producer: null
-    pulse_slot: null
     open_loops_path: desks/{desk}/state/open-loops.md
     purpose_path: desks/{desk}/canon/purpose.md
-    status_tile_path: null
     reads_external: {a.reads_external}
     backlog_mode: register
-    conformant: false
-    notes: "Scaffolded by desk_scaffold.py {d}. No cron/tile yet."\n""")
+    notes: "Scaffolded by desk_scaffold.py {d}."\n""")
     print("2. Per machine: a desk needs its own .claude/settings.json only if it launches its own")
-    print("   session — add that by hand when wiring the desk to Pulse.")
+    print("   session — add that by hand. A desk's scheduled jobs are rows in the job list")
+    print("   (system/sops/cron-jobs-sop.md), not settings in the desk list.")
     print("\nShape source & procedure: system/sops/desk-building-sop.md (the ONE canonical desk-shape doc)")
     print("Sibling tool: system/tools/cowork-ingest/folder_scaffold.py — the LIGHT knowledge-folder")
     print("scaffold /ingest uses by default. This tool is the separate, later, deliberate promotion act.")

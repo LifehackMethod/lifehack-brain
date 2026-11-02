@@ -105,7 +105,7 @@ Three distinct input sources, all read-only:
    desks", "Cleared" — never counted as backlog items.
 
 2. **`$DRIVE/desks/{desk}/state/open-loops.md`** — each desk's chore/idea backlog,
-   enumerated from `system/desk-registry.yaml` via `backlog_mode` field, NOT a hardcoded
+   enumerated from the person's desk list (`<notes>/desks/desk-registry.yaml`, via `shared/desk_list.py`) via `backlog_mode` field, NOT a hardcoded
    list (`backlog_groom.py` line 234). Path comes from the registry's `open_loops_path`
    field verbatim (never derived from `desk_id`). Two desk modes:
    - **`register`** (cal, deryl/books) — waiting items are NOT flagged stale (externally-blocked
@@ -291,7 +291,7 @@ report). This is the groomer's catch for any miss.
 | `$DRIVE/state/debt-ledger.md` | READ (groomer) | `backlog_groom.py` | none (read-only) |
 | `$DRIVE/state/open-loops.md` (swamp) | READ (groomer) | `backlog_groom.py` | none (read-only) |
 | `$DRIVE/desks/*/state/open-loops.md` | READ (groomer) | `backlog_groom.py` | none (read-only) |
-| `system/desk-registry.yaml` | READ (desk enumeration) | `backlog_groom.py` | none (read-only) |
+| `<notes>/desks/desk-registry.yaml` (the person's desk list) | READ (desk enumeration, via `shared/desk_list.py`) | `backlog_groom.py` | none (read-only) |
 | `$DRIVE/state/status/backlog.json` | WRITE (tile) | `backlog-health.py` via `emit_status` | none (single writer) |
 | `$DRIVE/state/debt-ledger.md ## Open` | WRITE (entries) | `/save` Steps 7c.5, 7c.6 | `guard_ledger_discipline.sh` [hook] |
 | `$DRIVE/state/debt-ledger.md ## Cleared` | WRITE (history notes) | `/save` Step 7c.6 | `guard_ledger_discipline.sh` [hook] |
@@ -357,7 +357,7 @@ in the tile. The drain procedure (Window-4 Phase 5 per `backlog-health.py` tile 
 built skill or scheduled job. It requires a full supervised session.
 
 **GAP-4 — `backlog_mode` in desk-registry is human-maintained with no validation.**
-The groomer's staleness logic pivots on `backlog_mode: register | queue` from `system/desk-registry.yaml`.
+The groomer's staleness logic pivots on `backlog_mode: register | queue` from the person's desk list (`<notes>/desks/desk-registry.yaml`).
 If a new desk is added without the correct `backlog_mode`, it defaults to `queue` (the Python fallback
 at `backlog_groom.py` line 234: `mode = d.get("backlog_mode") or "queue"`), which may generate false
 stale-suspects for a register-mode desk.
@@ -380,7 +380,7 @@ The Helm demo (`helm/demo/fixtures/state/status/backlog.json`) carries a separat
 can silently drift from the live tile shape. (Known gap: `[HELM-DEMO-DRIFT]` in the ledger.)
 
 **3. `backlog-authority` READS `open-loops`** — desk open-loops as secondary backlog.
-The groomer reads every desk's `open-loops.md` enumerated from `system/desk-registry.yaml`.
+The groomer reads every desk's `open-loops.md` enumerated from the person's desk list (`<notes>/desks/desk-registry.yaml`).
 `open-loops` is the desk-level chore/idea backlog; the root ledger is the system-level backlog.
 The groomer's `_dupes()` function enforces the "one home per item" rule by detecting cross-file
 slug conflicts and proposing that the root ledger copy wins.
@@ -392,8 +392,8 @@ deletion-not-annotation on `## Open`. Registered alongside `guard_write_paths.sh
 PreToolUse hook block (settings.json lines 158–175).
 
 **5. `desk-registry` KEYS-OFF → `backlog-authority`.**
-The groomer's desk enumeration reads `system/desk-registry.yaml` for `open_loops_path` and
-`backlog_mode`. The registry is code-resident (not Drive). Adding a desk without the correct
+The groomer's desk enumeration reads the person's desk list (`<notes>/desks/desk-registry.yaml`, via `shared/desk_list.py`) for
+`open_loops_path` and `backlog_mode`. The list lives in the person's notes, not the plugin (moved 2026-11-02). Adding a desk without the correct
 registry entry silently excludes that desk's loops from the tile.
 
 **6. `backlog-authority` COMPLEMENTS `health-authority`.**

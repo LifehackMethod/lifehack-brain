@@ -761,7 +761,7 @@ not new invention — `/ingest` was under-specified against them).*
   human review, not by age, repetition, or machine confidence."*
 - ⛔ **NO DATABASE, BY DESIGN** (organism `manual.md:114-130`) — the data tier is *"deliberately-thin files on
   Drive and git."* ⇒ **C1's compaction engine may not propose a store.** Files only.
-- **`system/desk-registry.yaml:2-8`, verbatim, because the paraphrase loses the force:** *"HAND-MAINTAINED:
+- **`system/desk-registry.yaml:2-8` (that file was removed 2026-11-02; the desk list is now the person's own, `<notes>/desks/desk-registry.yaml`), verbatim, because the paraphrase loses the force:** *"HAND-MAINTAINED:
   append one entry per new desk BY HAND. The folder SCAFFOLD is now one-punch… it PRINTS the block to paste
   here (**still hand-appended by design: the registry is a conscious act, read by every organ**)."* And the
   per-desk `_registry.md` disclaims itself: *"maintained manually and may drift from actual disk state.

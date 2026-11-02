@@ -6,13 +6,13 @@ A knowledge folder is a strict SUBSET of a desk — NOT a new format. `/ingest` 
 per confirmed branch of the human's world-model tree: "we're doing folders versus desks" (verbatim, ruled
 2026-08-08). It writes ONLY `canon/current.md`, `canon/purpose.md`, and an empty `records/` — the sibling of
 `desk_scaffold.py` (which builds the full, heavier DESK shape: `state/`, `views/`, `sources/inbox/`,
-`_registry.md`, `CLAUDE.md`, plus a hand-paste block for `system/desk-registry.yaml`). None of that belongs
+`_registry.md`, `CLAUDE.md`, plus an entry to add by hand to your desk list, `<notes>/desks/desk-registry.yaml`). None of that belongs
 here: "PHASE 4 generates canon/current.md + canon/purpose.md + records/ and NOTHING ELSE — no
 desk-registry.yaml entry, no CLAUDE.md, no health_producer, no pulse_slot, no status_tile_path. Promotion to
 a real DESK is a separate, deliberate human act, later, if a folder earns it." (`skills/ingest/SPEC.md` §5c
 C2). `desk_scaffold.py` stays the tool for that later promotion — it is not touched or superseded by this one.
 
-It writes the folder skeleton + two stub files ONLY. It does NOT touch `system/desk-registry.yaml`, does NOT
+It writes the folder skeleton + two stub files ONLY. It does NOT touch your desk list (`<notes>/desks/desk-registry.yaml`), does NOT
 touch `$DRIVE/system/project-registry.md` (findability for a new knowledge folder is a separate, human/archivist
 decision — see the tool's own stdout note), and does NOT create any per-machine symlink. Refuses to clobber an
 existing folder, and refuses any `--topic` slug not already in the closed vocabulary

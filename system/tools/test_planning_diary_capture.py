@@ -23,7 +23,7 @@ WHAT IT LOCKS
    T16-T20 used to read the OPERATOR'S REAL JOURNAL at the resolved notes root and assert on
    strings from one person's actual 2026-08-02 ("PHASE 7 CLOSED", "SKILL-FACTORY DETOUR", "SPY").
    Three separate ways that was wrong, all of which a shipped repo eats:
-     · A fresh clone has NO journal — data/ is empty and system/desk-registry.yaml ships `desks: []`.
+     · A fresh clone has NO journal — data/ is empty and the plugin ships no desk list at all (the list is the person's, in their notes).
        The case went red on every install, forever, on a test nobody could green without the
        author's personal history. A permanently-red gate is a gate everybody learns to ignore.
      · Even WITH a journal, those assertion strings are one person's history. Nobody else's
@@ -222,7 +222,7 @@ check("T15 H2 block stops at the next heading",
 
 # T21 — the H3 form (155 of these in the corpus): '### SESSION CONTEXT — DATE — slug', where the
 #       only desk signal is the slug's conventional desk- prefix. Uses 'root' rather than a named
-#       desk: KNOWN_DESKS is read from system/desk-registry.yaml with an EMPTY fallback (the donor's
+#       desk: KNOWN_DESKS is read from the person's desk list (shared/desk_list.py) with an EMPTY fallback (the donor's
 #       fallback hardcoded that operator's seven personal desk names, which is exactly the residency
 #       leak this migration removed — see planning-diary-capture.py's _FALLBACK_DESKS comment) plus a
 #       hardcoded 'root'. 'root' is therefore the only desk id guaranteed present on any install,
@@ -288,8 +288,8 @@ check("T25 slug-less '- DATE | desk | event' row is captured",
 # because keeping the date keeps the story attached to the case. The CONTENT is invented for
 # this file and is nobody's history: see the HERMETIC banner at the top for why that had to
 # change. The desk ids are the portable ones — 'root' is the only id guaranteed present on any
-# install (KNOWN_DESKS falls back to {'root'} when desk-registry.yaml ships empty, which it
-# does), and entry ROWS carry their desk verbatim so any name works there; only HEADING
+# install (KNOWN_DESKS falls back to {'root'} when there is no desk list, which the sandboxed
+# notes root guarantees), and entry ROWS carry their desk verbatim so any name works there; only HEADING
 # attribution needs the registry, which is why the heading cases below use root.
 # ---------------------------------------------------------------------------
 FD = "2026-08-02"

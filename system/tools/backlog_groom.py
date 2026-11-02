@@ -32,13 +32,10 @@ this port, verified against the live schema file in this repo):
   explicitly NOT counted as broken. This is the antidote to an undifferentiated total.
 
 Stdlib + PyYAML only. Graceful: any parse/registry failure degrades that source to empty, never
-crashes. ⚠ CORRECTED 2026-08-15 (F9.7d stale-claim sweep): this paragraph used to say the desk
-registry did not exist in this repo. `system/desk-registry.yaml` landed via F9.6 "THE DESK PLANE"
-and `load_registry()` reads it correctly. It currently ships with `desks: []` — empty by design
-for a fresh install (see the registry file's own header) — so the registry source degrades to
-`[]` today for the ordinary reason (no desks registered yet), not because the file or the
-multi-desk model is absent. Once a desk is appended via `system/sops/desk-building-sop.md`, this
-source populates with no code change here.
+crashes. The desk list is the PERSON's, not the plugin's (2026-11-02, "desk list to notes"): it lives
+at `<notes>/desks/desk-registry.yaml` and is read through `shared/desk_list.py`. The plugin ships no
+desk list. No list means no desks (a fresh install); a list that is there but broken is reported with
+its real error and the sweep carries on ledger-only.
 
 WHAT CHANGED IN THIS PORT (generalisation, not a redesign):
   · `LEDGER`/`SWAMP` moved from a hardcoded personal Drive path to the resolved brain root
@@ -46,13 +43,8 @@ WHAT CHANGED IN THIS PORT (generalisation, not a redesign):
     ported store in this repo already uses. With no root configured, both paths are `None`
     and every parser degrades to an empty result exactly as it already does for a missing
     file — no new failure mode, no crash.
-  · `REGISTRY` still names `system/desk-registry.yaml` (code-resident, like the donor). ⚠
-    CORRECTED 2026-08-15: this bullet used to say the file was absent and the degrade was
-    permanent. F9.6 "THE DESK PLANE" landed the registry; `load_registry()` reads it. It ships
-    with `desks: []` (empty by design for a fresh install), so `load_registry()` returns `[]`
-    today because there are zero registered desks, not because the file or the concept is
-    missing — the same graceful-degrade path, now taken for the ordinary reason instead of a
-    permanent one.
+  · The desk list moved out of the code (2026-11-02) into the person's notes folder,
+    `<notes>/desks/desk-registry.yaml`, read via `shared/desk_list.py` (see `load_registry()`).
 
 Every finding this emits goes through `emit_finding.py` (imported by reference, exactly like
 every other Hospital detector in this repo) — the general finding contract proven to
@@ -67,8 +59,7 @@ There was no prior write path to delete here — `build_report()` has always bee
 import json, os, re, sys, time
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-CODE_ROOT = os.path.abspath(os.path.join(_HERE, "..", ".."))  # clone (registry is code-resident)
-REGISTRY = f"{CODE_ROOT}/system/desk-registry.yaml"
+CODE_ROOT = os.path.abspath(os.path.join(_HERE, "..", ".."))  # the plugin clone
 
 # ── WHERE THE LEDGER/SWAMP LIVE — resolved through the ONE brain-root resolver, never
 # guessed. The donor hardcoded a personal cloud-drive path here. ──
@@ -124,29 +115,20 @@ def iso(epoch):
 
 
 def load_registry():
-    """[desk-entry dicts] from desk-registry.yaml (CODE_ROOT). Graceful: [] on ANY failure — a
-    missing/broken registry (or absent PyYAML) degrades the sweep to ledger-only, never crashes.
-
-    ⚠ CORRECTED 2026-08-15 (F9.7d): this docstring used to say `system/desk-registry.yaml` did
-    not exist in this repo. It landed via F9.6 "THE DESK PLANE" and is read correctly — verified
-    live this session (`load_registry()` parses it via PyYAML, `desks:` key present). It ships
-    with `desks: []` on a fresh install, so this still returns `[]` today, but for the ordinary
-    reason (zero desks registered) rather than an absent file — the same `except Exception` path
-    a corrupt registry would take, just not the path actually taken right now. `build_report()`
-    below is fully correct either way: with zero desk sources today, or with real ones once a
-    desk is appended per `system/sops/desk-building-sop.md`."""
+    """[desk-entry dicts] from the person's desk list (`<notes>/desks/desk-registry.yaml`, via
+    `shared/desk_list.py`). No list -> [] quietly (no desks). A list that cannot be read -> [] plus
+    a WARNING naming the REAL cause (a YAML error, a wrong shape, or PyYAML missing) -- never a
+    guess. Never crashes: the sweep degrades to ledger-only."""
     try:
-        import yaml
-        with open(REGISTRY) as f:
-            data = yaml.safe_load(f) or {}
-        return data.get("desks", []) or []
-    except Exception as _e:  # made VISIBLE 2026-08-28 -- was a silent degrade
-        __import__("sys").stderr.write(
-        "WARNING [backlog_groom]: PyYAML is missing under this interpreter (%s) -- "
-        "registry-derived results are DEGRADED and INCOMPLETE, not clean. "
-        "Pin to /usr/bin/python3 (see system/requirements.txt).\n" % __import__("sys").executable)
-        __import__("sys").stderr.write("  cause: %r\n" % (_e,))
+        import desk_list                                # shared/desk_list.py
+        desks, err = desk_list.load_desks()
+    except Exception as _e:
+        desks, err = [], "the desk list reader failed: %s: %s" % (type(_e).__name__, _e)
+    if err:
+        sys.stderr.write("WARNING [backlog_groom]: %s -- desk-derived results are DEGRADED and "
+                         "INCOMPLETE, not clean.\n" % err)
         return []
+    return desks
 
 
 def _slug(text):

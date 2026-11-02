@@ -220,7 +220,7 @@ their location from the repo root, so a different layout breaks them.
 | Referenced | Why it is not here |
 |---|---|
 | the topic vocabulary | It is **yours**, not ours. Both PHASE 4 gates — `folder_scaffold.py` and `pipeline.py topic-check` — look for `memory/topic-vocab.md` beside your material, and refuse with instructions rather than inventing one. A taxonomy of your life shipped by someone else is worse than none. |
-| `system/desk-registry.yaml` · `desk_scaffold.py` | ⛔ **not shipped.** Promoting a folder to a full desk is a separate, deliberate act, later. PHASE 4 makes plain knowledge folders and nothing else. |
+| the desk list (`<notes>/desks/desk-registry.yaml`, yours, never shipped) · `desk_scaffold.py` | ⛔ **not part of an ingest.** Promoting a folder to a full desk is a separate, deliberate act, later. PHASE 4 makes plain knowledge folders and nothing else. |
 | `skill-building-sop.md` | The author's own SOP for building skills. Cited for single rules; it is not part of running an ingest. |
 | `skills/ingest-filer/SKILL.md` | ⛔ Gone by design. A skill that stopped existing on 2026-08-05 when the filer folded back in as `phases/4-place.md`. Historical mentions only. |
 | `3-world-map.md` | Deliberately **not built** — see the note near the end of this file. The stale name is kept on purpose. |
