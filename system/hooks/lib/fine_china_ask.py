@@ -32,6 +32,8 @@ exit 0); never blocks. Each piece has its own switch in roundB.conf (all OFF = p
                         (is_db), the person's SOP, a plugin SOP or canon file (build_mode.protected_doc), a data file (build_mode.data_file_target:
                         existing, non-empty, not git-ignored, not touched in the last 10 minutes), a CLAUDE.md. Relative paths resolve through the
                         command's own cd chain. Temp, scratch, throwaway and regenerable folders never ask; new files never ask.
+                        A python overwrite of a plugin SOP or canon file is NOT asked here: guard_build_mode hard-blocks it with the
+                        shell-overwrite message (fc_python_canon_block, coordinator ruling 2026-11-02: same action, same verdict).
   fc_write_overwrite_ask (D-F12/F13) a Write-tool full overwrite of an EXISTING data file or database (same fc_file_kind test); the ask carries a
                         short diff. Edit (a change of some lines) never asks; an identical rewrite never asks.
 These have NO off switch of the user's kind: placement.conf is never read here.
@@ -600,6 +602,33 @@ def py_file_msg(t, kind, op):
             "Do not switch to another tool to land the same change. RULE: switch %s in system/hooks/roundB.conf." % (verb, what, t, why, sw))
 
 
+def py_overwrite_targets(cmd, cwd):
+    """-> [existing file] that python code this command EXECUTES would overwrite (op 'over' / 'over-dst'), cd chains followed.
+    Used by build_mode (fc_python_canon_block) to give an SOP/canon target the shell-overwrite hard block."""
+    out = []
+    for _w, scwd, py in walk(cmd, cwd):
+        for body in py:
+            for p, op in py_file_ops(body):
+                if op not in ("over", "over-dst") or p is None or (scwd is None and not os.path.isabs(os.path.expanduser(p))):
+                    continue
+                t = resolve(p, scwd or "/")
+                if os.path.isfile(t) and not os.path.islink(t):
+                    out.append(t)
+    return out
+
+
+def blocked_elsewhere(t, op, code):
+    """True when guard_build_mode hard-blocks this python overwrite (SOP/canon, fc_python_canon_block): no ask is added on top."""
+    if op not in ("over", "over-dst") or not (on("fc_shell_overwrite") and on("fc_python_canon_block")) or not code:
+        return False
+    try:
+        import build_mode
+        return bool(build_mode.protected_doc(t, code))
+    except Exception as e:
+        sys.stderr.write("guard_fine_china_ask: protected-doc test skipped (%s)\n" % e)
+        return False
+
+
 def check_py_files(py_bodies, scwd, code):
     sw_del, sw_over = on("fc_python_delete_ask"), on("fc_python_rewrite_ask")
     if not (sw_del or sw_over):
@@ -612,7 +641,7 @@ def check_py_files(py_bodies, scwd, code):
                 continue
             t = resolve(p, scwd or "/")
             k = fc_file_kind(t, code)
-            if k:
+            if k and not blocked_elsewhere(t, op, code):
                 ask(py_file_msg(t, k, op))
 
 

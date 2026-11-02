@@ -380,4 +380,39 @@ done
 runy Bash "$(JC "python3 -c \"import os; os.remove('Orchard/ledger.sqlite')\"")" -u ROUNDB_FC_PYTHON_DELETE_ASK; asked && ok "D-F01 python asks from the conf line alone" || bad "conf-driven python delete"
 runy Bash "$(JC "python3 -c \"open('rates.csv','w').write('x')\"")" -u ROUNDB_FC_PYTHON_REWRITE_ASK; asked && ok "D-F13 python asks from the conf line alone" || bad "conf-driven python rewrite"
 runy Write "$(J file_path "$Y/config/clients.yaml" content TODO)" -u ROUNDB_FC_WRITE_OVERWRITE_ASK; asked && ok "D-F12 Write asks from the conf line alone" || bad "conf-driven write overwrite"
+# ---------------- 2026-11-02 coordinator ruling (fc_python_canon_block): a PYTHON overwrite of canon / a plugin SOP is a hard BLOCK,
+# the same block path (guard_build_mode, exit 2) and message as the shell overwrite. Other python writes keep their behaviour.
+PSOP="$CODE/system/sops/skill-building-sop.md"; touch -t 202501010000 "$PSOP"
+runb() { # runb <command> [VAR=val ...]   guard_build_mode, session cwd = $Y
+  local cmd="$1"; shift
+  python3 -c 'import json,sys; print(json.dumps({"session_id":"b","cwd":sys.argv[1],"tool_name":"Bash","tool_input":{"command":sys.argv[2]}}))' "$Y" "$cmd" | env "$@" bash "$BM" >"$T/out" 2>"$T/err"; RC=$?; }
+CB="ROUNDB_FC_SHELL_OVERWRITE=on ROUNDB_FC_PYTHON_CANON_BLOCK=on"
+pblock() { # pblock <name> <command> <kind-text>: blocks with the shell-overwrite message; fc_python_canon_block OFF = no block
+  runb "$2" $CB; if [ $RC -eq 2 ] && grep -q "BLOCKED: this shell command overwrites" "$T/err" && grep -q "$3" "$T/err"; then ok "PY BLOCK $1"; else bad "PY BLOCK $1 :: $(head -c 200 "$T/err")"; fi
+  runb "$2" ROUNDB_FC_SHELL_OVERWRITE=on ROUNDB_FC_PYTHON_CANON_BLOCK=off; if [ $RC -eq 0 ]; then ok "PY BLOCK $1 [fc_python_canon_block off = no block]"; else bad "PY BLOCK $1 [off] rc=$RC"; fi; }
+pnoblock() { runb "$2" $CB; if [ $RC -eq 0 ] && ! grep -q "BLOCKED" "$T/err"; then ok "PY NO-BLOCK $1"; else bad "PY NO-BLOCK $1 :: rc=$RC $(head -c 200 "$T/err")"; fi; }
+pblock "open(...,'w') over a canon file" "python3 -c \"open('$CN/voice.md','w').write('x')\"" "a $CN file"
+pblock "Path.write_text over a canon file (heredoc)" "python3 - <<'PY'
+from pathlib import Path
+Path('$CN/voice.md').write_text('x')
+PY" "a $CN file"
+pblock "os.replace onto a canon file" "python3 -c \"import os; os.replace('draft.md', '$CN/voice.md')\"" "a $CN file"
+pblock "open(...,'w') over a plugin SOP (absolute)" "python3 -c \"open('$PSOP','w').write('x')\"" "an SOP"
+pblock "cd into the plugin sops folder, then python rewrites an SOP" "cd $CODE/system/sops && python3 -c \"open('skill-building-sop.md','w').write('x')\"" "an SOP"
+# the same python canon overwrite: fine_china_ask adds no ask on top of the block (switch on), and keeps its ask when the block switch is off
+runy Bash "$(JC "python3 -c \"open('$CN/voice.md','w').write('x')\"")" $ALL $NEW3 $CB; ! asked && ok "no fine-china ask on top of the python $CN block" || bad "double verdict on python $CN overwrite"
+runy Bash "$(JC "python3 -c \"open('$CN/voice.md','w').write('x')\"")" $ALL $NEW3 ROUNDB_FC_SHELL_OVERWRITE=on ROUNDB_FC_PYTHON_CANON_BLOCK=off; asked && ok "block switch off: the python $CN overwrite keeps the fine-china ask" || bad "python $CN ask lost with block off"
+# other python writes keep their existing behaviour: no block from build_mode, and fine_china_ask still asks where it did
+pnoblock "python rewrites a data file (rates.csv)" "python3 -c \"open('rates.csv','w').write('x')\""
+runy Bash "$(JC "python3 -c \"open('rates.csv','w').write('x')\"")" $ALL $NEW3 $CB; asked && ok "data-file python rewrite still ASKS with the block switch on" || bad "data ask lost"
+pnoblock "python rewrites the person's own SOP (not a plugin SOP)" "python3 -c \"open('sops/onboarding.md','w').write('x')\""
+runy Bash "$(JC "python3 -c \"open('sops/onboarding.md','w').write('x')\"")" $ALL $NEW3 $CB; asked && ok "person-SOP python rewrite still ASKS with the block switch on" || bad "person SOP ask lost"
+pnoblock "python writes a NEW file in the $CN folder" "python3 -c \"open('$CN/new-draft.md','w').write('x')\""
+pnoblock "python reads a $CN file" "python3 -c \"print(open('$CN/voice.md').read())\""
+pnoblock "python deletes a $CN file (a delete, not an overwrite: unchanged)" "python3 -c \"import os; os.remove('$CN/voice.md')\""
+pnoblock "non-executed heredoc mentions the $CN overwrite" "cat > fix.py <<'PY'
+open('$CN/voice.md','w').write('x')
+PY"
+grep -qx "fc_python_canon_block=on" "$HERE/roundB.conf" && ok "roundB.conf carries the real line fc_python_canon_block=on" || bad "roundB.conf line fc_python_canon_block missing"
+runb "python3 -c \"open('$CN/voice.md','w').write('x')\"" -u ROUNDB_FC_SHELL_OVERWRITE -u ROUNDB_FC_PYTHON_CANON_BLOCK; [ $RC -eq 2 ] && ok "python $CN overwrite blocks from the conf lines alone" || bad "conf-driven python $CN block rc=$RC"
 echo "test_fine_china_ask: $P passed, $F failed"; [ "$F" -eq 0 ]

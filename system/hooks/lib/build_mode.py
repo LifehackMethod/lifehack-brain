@@ -566,6 +566,19 @@ def main_inner():
         for o in bash_ops(ti.get("command", ""), cwd):
             o["old"] = ""; o["full"] = o["verb"] in (">", "tee", "cp", "mv", "install", "rsync")
             writes.append(o)
+        # 2026-11-02 coordinator ruling (fc_python_canon_block): a PYTHON overwrite (open(p,'w'), write_text, os.replace/shutil.move/copy onto,
+        # os.truncate, in an executed -c / heredoc body) of an SOP or canon file gets the SAME hard block and message as the shell overwrite.
+        # Same action, same verdict; otherwise python is a route-around. Targets come from fine_china_ask (walk() + py_file_ops, cd chains followed).
+        if _roundb("fc_shell_overwrite") and _roundb("fc_python_canon_block"):
+            try:
+                import fine_china_ask
+                for pt in fine_china_ask.py_overwrite_targets(ti.get("command", ""), cwd):
+                    pk = protected_doc(pt, code)
+                    if pk:
+                        sys.stderr.write(shell_overwrite_message(pt, pk) + "\n")
+                        return 2
+            except Exception as e:
+                warn("python overwrite check skipped (%s); allowing" % e)
     else:
         return 0
     if not writes:

@@ -23,6 +23,7 @@ trap 'lhb_journal_fire "$?" "guard_build_mode.sh" "PreToolUse" "Bash|Write|Edit|
 #      (.json/.jsonl/.csv, logs) are never listed, so always allowed.
 #      A folder the person listed by hand as `kept TAB <folder>` in ~/.config/lifehack/placement.conf (read by shared/tools/own_list_add.kept_folders)
 #      is never asked about again for code-outside-homes. (The reason gate and remember_reason switches were removed 2026-11-01: they never fired.)
+#      2026-11-02 fc_python_canon_block (with fc_shell_overwrite): a PYTHON overwrite of an SOP/canon file in an executed -c/heredoc body gets the same hard block and message.
 #      Round C fc_shell_overwrite: a Bash overwrite (`>`, `>|`, `tee` without -a, cp/mv/install/rsync onto, `sed -i`, `truncate`) of an
 #      EXISTING SOP (a .md in the rulebook folders of build_mode_sops.conf) or canon file is a HARD block (exit 2). `>>` and `tee -a` pass.
 #      Round C gap closure: the same check reads through `bash -c`/`sh -c`/`eval`, `env`/`exec`/`nohup`/`time` prefixes, and `dd of=` (oflag=append passes).
