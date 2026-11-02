@@ -21,7 +21,7 @@
 #      worse than no logging shim. Rotation inherits this exactly: a rotation that fails (read-only
 #      dir, a rotated file that can't be deleted, a lost lock race) degrades to "the journal keeps
 #      growing a bit past its cap this cycle," never to a changed decision, never to a leaked byte.
-# UPDATED: 2026-09-19
+# UPDATED: 2026-11-02 (the decision note: asks journal as "ask") · 2026-09-19
 # ─────────────────────────────────────────────────────────────────────────────
 #
 # Contract for callers (every system/hooks/*.sh entry point + system/tools/mirror_line.sh):
@@ -54,10 +54,19 @@
 #                 UserPromptSubmit/SessionStart/Stop/etc.) — a hook registered under more than one
 #                 event (one case: guard_checkin_needs_project.sh) carries both, "+"-joined.
 #   matcher     — the registered matcher string if any (e.g. "Bash", "Write|Edit"), else ""
-#   decision    — derived from event + exit code only (see lhb_journal_decision below); this is a
-#                 best-effort classification, not a re-parse of the guard's own deny JSON — the
-#                 journal never re-reads a hook's stdout/stderr, because touching that stream at all
-#                 is the one thing this file must never do.
+#   decision    — derived from event + exit code (see lhb_journal_fire below). The journal never
+#                 re-reads a hook's stdout/stderr, because touching that stream at all is the one
+#                 thing this file must never do.
+#                 SUPERSEDED IN PART 2026-11-02 (journal-records-ask): exit code alone wrote every ASK
+#                 (exit 0 + permissionDecision "ask" on stdout) as "allow" -- 15,413 rows, not one ask.
+#                 An ask emitter now ALSO leaves a copy of the JSON it printed in $LHB_JOURNAL_NOTE
+#                 (lib/journal_note.py note(), or lhb_journal_note below); for a PreToolUse exit 0 the
+#                 trap parses that copy: permissionDecision ask -> "ask", allow -> "allow",
+#                 deny -> "deny", decision block -> "deny", no decision key -> "allow", anything it
+#                 cannot parse -> "unknown". Exit 2 is "deny" whatever the note says (it is the
+#                 honored block). No note -> as before. PreToolUse values are therefore
+#                 allow | ask | deny | unknown | error. Older readers that keep a closed set will see
+#                 "ask"/"unknown" as unrecognised; fire_journal_query.py knows both.
 #   exit_code   — the real, unmodified "$?" the caller's trap captured
 #   session_id  — from $CLAUDE_CODE_SESSION_ID if the platform set it (env var, not a stdin re-parse
 #                 — free, no subprocess); sanitized to [A-Za-z0-9_-] before going in the JSON line
@@ -142,6 +151,49 @@
 # `--since`/`--until`, which works identically across rotated shards (they carry real `ts` values
 # same as the live file).
 
+# ── The decision note (2026-11-02, journal-records-ask) ─────────────────────────────────────────
+# Runs ONCE, when a hook sources this file: names this hook process's note file and exports it so
+# the hook's python engines inherit it. Builtins only (`[ -e ]`), so zero forks unless a STALE note
+# exists -- a note left by a killed process whose pid this one now reuses -- which is removed so it
+# can never be read as this fire's decision. Nothing here prints; the file still ends on a function
+# definition, so the caller's `. journal.sh || fallback` never sees a non-zero status from it.
+if [ "${LHB_JOURNAL_DISABLE:-}" = "1" ]; then
+    LHB_JOURNAL_NOTE=""
+else
+    _lhb_jnp="${LHB_JOURNAL_PATH:-${HOME:-/tmp}/.claude/run/fire-journal.jsonl}"
+    _lhb_jnd="${_lhb_jnp%/*}"; [ "$_lhb_jnd" = "$_lhb_jnp" ] && _lhb_jnd="."
+    case "$_lhb_jnd" in /*) ;; *) _lhb_jnd="${PWD:-.}/$_lhb_jnd" ;; esac
+    LHB_JOURNAL_NOTE="$_lhb_jnd/.fire-note.$$"
+    if [ -e "$LHB_JOURNAL_NOTE" ]; then rm -f -- "$LHB_JOURNAL_NOTE" 2>/dev/null; fi
+    unset _lhb_jnp _lhb_jnd
+fi
+export LHB_JOURNAL_NOTE
+
+lhb_journal_note() {
+    # $1 = the exact decision JSON the hook just printed to stdout. Call it AFTER the print, as
+    # `lhb_journal_note "$J" 2>/dev/null` (the redirect also hides "command not found" if this
+    # library failed to load). Silent, always returns 0.
+    [ -n "${LHB_JOURNAL_NOTE:-}" ] || return 0
+    printf '%s' "${1:-}" 2>/dev/null >"$LHB_JOURNAL_NOTE"
+    return 0
+}
+
+lhb_journal__value() {
+    # $1 = JSON text, $2 = key. Sets the CALLER's _jv: "" when the key is absent, the string value
+    # when it is `"key": "value"`, "?" when the key is there but its value is not a plain string.
+    # Bash pattern matching only -- no fork. Keys are this file's own literals, never user text.
+    local _r
+    _jv=""
+    case "$1" in *"\"$2\""*) ;; *) return 0 ;; esac
+    _r="${1#*\"$2\"}"
+    _r="${_r#"${_r%%[![:space:]]*}"}"
+    case "$_r" in :*) _r="${_r#:}" ;; *) _jv="?"; return 0 ;; esac
+    _r="${_r#"${_r%%[![:space:]]*}"}"
+    case "$_r" in \"*) _r="${_r#\"}"; _jv="${_r%%\"*}" ;; *) _jv="?" ;; esac
+    [ -n "$_jv" ] || _jv="?"
+    return 0
+}
+
 lhb_journal_fire() {
     # $1=exit_code $2=hook-name $3=event $4=matcher (all optional; every use below is defaulted)
     if [ "${LHB_JOURNAL_DISABLE:-}" = "1" ]; then
@@ -150,6 +202,7 @@ lhb_journal_fire() {
 
     local _rc _hook _event _matcher _journal _dir _base _ts _decision _sid _tsfile _tsrefresh _cached_ts _cached_n _cached_ev
     local _pv _psrc _pcand _pseen _pn _prest _pe _lself _pd _pj _pl _pver _pharn _pi
+    local _note _nj _nl _jv
 
     _rc="${1:-}"
     _hook="${2:-unknown}"
@@ -185,6 +238,44 @@ lhb_journal_fire() {
             if [ "$_rc" = "0" ]; then _decision="allow"; else _decision="deny"; fi
             ;;
     esac
+
+    # The decision note (see "The decision note" above): read, consume, and -- for a PreToolUse
+    # exit 0 only -- let it say what the hook really decided. Builtins only, plus one `rm` that
+    # runs only when a note exists (an ask/notice fire, never the common allow path).
+    _note="${LHB_JOURNAL_NOTE:-}"
+    if [ -n "$_note" ] && [ -f "$_note" ]; then
+        _nj=""
+        while IFS= read -r _nl || [ -n "$_nl" ]; do _nj="$_nj$_nl "; done 2>/dev/null <"$_note"
+        rm -f -- "$_note" 2>/dev/null
+        case "$_event" in
+            PreToolUse*)
+                if [ "$_rc" = "0" ]; then
+                    _nj="${_nj#"${_nj%%[![:space:]]*}"}"
+                    _nj="${_nj%"${_nj##*[![:space:]]}"}"
+                    case "$_nj" in
+                        '{'*'}')
+                            lhb_journal__value "$_nj" permissionDecision
+                            case "$_jv" in
+                                ask) _decision="ask" ;;
+                                allow) _decision="allow" ;;
+                                deny) _decision="deny" ;;
+                                "")
+                                    lhb_journal__value "$_nj" decision
+                                    case "$_jv" in
+                                        block) _decision="deny" ;;
+                                        approve|"") _decision="allow" ;;
+                                        *) _decision="unknown" ;;
+                                    esac
+                                    ;;
+                                *) _decision="unknown" ;;
+                            esac
+                            ;;
+                        *) _decision="unknown" ;;
+                    esac
+                fi
+                ;;
+        esac
+    fi
 
     _sid="${CLAUDE_CODE_SESSION_ID:-}"
     _sid="${_sid//[^A-Za-z0-9_-]/}"

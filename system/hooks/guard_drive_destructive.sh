@@ -61,7 +61,9 @@ KIND="${V%%$'\t'*}"; DETAIL="${V#*$'\t'}"
 
 ask() {   # ask <what> <why-line>: the harness asks the PERSON (reaches them even under bypass interactively; headless it is a refusal the session sees)
   R="ASK FIRST (Drive guard): $1 WHY: $2 WAY THROUGH: the person answers yes to the prompt that appears; never retry with a marker or another route. RULE: system/hooks/guard_drive_destructive.sh (fc_sheet_file_delete, fc_drive_bulk_delete)."
-  python3 -c 'import json,sys; print(json.dumps({"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":sys.argv[1]}}))' "$R"
+  python3 -c 'import json,os,sys; s=json.dumps({"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":sys.argv[1]}}); print(s)
+try: open(os.environ["LHB_JOURNAL_NOTE"], "w").write(s)  # fire journal records the ask (lib/journal.sh); after the print, never changes it
+except Exception: pass' "$R"
   exit 0
 }
 

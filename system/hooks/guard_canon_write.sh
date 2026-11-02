@@ -256,7 +256,12 @@ r = (f'ASK FIRST (canon guard): this Write would REPLACE THE WHOLE {k} file {p},
      f'WHY: canon and SOPs are the most protected files in the system; replacing one whole-cloth throws away every line in it without anyone looking at what goes. '
      f'WAY THROUGH: answer yes here only if the person wants the entire file rewritten; otherwise use the Edit tool for a targeted change, or append. '
      f'RULE: system/hooks/guard_canon_write.sh (switch fc_canon_replace in system/hooks/roundB.conf; Enver ruling 2026-10-30).')
-print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permissionDecision': 'ask', 'permissionDecisionReason': r}}))
+s = json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permissionDecision': 'ask', 'permissionDecisionReason': r}})
+print(s)
+try:  # fire journal records the ask (lib/journal.sh); after the print, never changes it
+    open(os.environ['LHB_JOURNAL_NOTE'], 'w').write(s)
+except Exception:
+    pass
 "
     exit 0 ;;
   BLOCK_NOLIB*)

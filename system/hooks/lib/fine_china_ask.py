@@ -1058,7 +1058,13 @@ def main():
             h.update(permissionDecision="ask", permissionDecisionReason=" | ".join(dict.fromkeys(OUT))[:1800])
         if ADV:
             h["additionalContext"] = " ".join(dict.fromkeys(ADV))[:1500]
-        print(json.dumps({"hookSpecificOutput": h}))
+        s = json.dumps({"hookSpecificOutput": h})
+        print(s)
+        try:  # fire journal: record the real decision (ask), after the print; can never change it (lib/journal_note.py)
+            import journal_note
+            journal_note.note(s)
+        except Exception:  # allow-silence: fire-journal observer only, a failed note must never change the hook
+            pass
     return 0
 
 

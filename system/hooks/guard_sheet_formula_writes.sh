@@ -35,7 +35,9 @@ trap 'lhb_journal_fire "$?" "guard_sheet_formula_writes.sh" "PreToolUse" "Bash" 
 # and is already required by every other hook here.
 CONFIRM_MARK="LIFEHACK_SHEET_CONFIRM=1"
 ask_json() {   # the harness asks the PERSON; a token typed into the command is not approval
-  python3 -c 'import json,sys; print(json.dumps({"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":sys.argv[1]}}))' "$1"
+  python3 -c 'import json,os,sys; s=json.dumps({"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":sys.argv[1]}}); print(s)
+try: open(os.environ["LHB_JOURNAL_NOTE"], "w").write(s)  # fire journal records the ask (lib/journal.sh); after the print, never changes it
+except Exception: pass' "$1"
 }
 . "$_lhb_dir/lib/roundb.sh" 2>/dev/null && roundb_on fc_ask_not_token && ASK_MODE=1 || ASK_MODE=0
 # token honoured only if the switch is off (old behaviour) or the launcher itself set LIFEHACK_REVIEWED_JOB=1 (a model cannot set the hook's own environment)

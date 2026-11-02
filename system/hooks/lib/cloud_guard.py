@@ -349,8 +349,14 @@ def main():
         sys.stderr.write("guard_cloud_destructive: internal error (%s: %s); allowing\n" % (type(e).__name__, e))
         return 0
     if OUT:
-        print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "ask",
-                                                 "permissionDecisionReason": " | ".join(dict.fromkeys(OUT))[:1800]}}))
+        s = json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "ask",
+                                               "permissionDecisionReason": " | ".join(dict.fromkeys(OUT))[:1800]}})
+        print(s)
+        try:  # fire journal: record the real decision (ask), after the print; can never change it (lib/journal_note.py)
+            import journal_note
+            journal_note.note(s)
+        except Exception:  # allow-silence: fire-journal observer only, a failed note must never change the hook
+            pass
     return 0
 
 

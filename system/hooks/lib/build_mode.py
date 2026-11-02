@@ -903,6 +903,12 @@ def main():
         return 0
     if ASK_OUT and rc in (0, None):
         print(ASK_OUT[0])
+        try:  # fire journal: record the real decision (ask), after the print; can never change it (lib/journal_note.py)
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            import journal_note
+            journal_note.note(ASK_OUT[0])
+        except Exception:  # allow-silence: fire-journal observer only, a failed note must never change the hook
+            pass
     return rc if rc in (0, 2) else 0
 
 

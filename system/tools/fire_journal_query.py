@@ -19,7 +19,9 @@ so it stays reconcilable against whatever B4.1 actually ships, are listed after 
                               alias: "hook_name", "name"
     event        (required)  the hook event (e.g. "PreToolUse", "UserPromptSubmit").
                               alias: "event_name", "hook_event"
-    decision     (required)  one of: allow, deny, signpost, inject, none.
+    decision     (required)  one of: allow, ask, deny, signpost, inject, none, unknown.
+                              (ask/unknown since 2026-11-02: journal.sh reads an ask hook's decision
+                              note -- exit 0 + permissionDecision ask is "ask", an unparseable note "unknown".)
                               aliases tolerated and folded in: block/blocked/denied -> deny,
                               allowed -> allow, injected -> inject, signposted -> signpost.
     exit_code    (required)  the hook's process exit code (int, or a numeric string).
@@ -60,10 +62,11 @@ import time
 
 DEFAULT_JOURNAL = os.path.join(os.path.expanduser("~"), ".claude", "run", "fire-journal.jsonl")
 
-DECISIONS = ("allow", "deny", "signpost", "inject", "none")
+DECISIONS = ("allow", "ask", "deny", "signpost", "inject", "none", "unknown")
 DECISION_ALIASES = {
     "block": "deny", "blocked": "deny", "denied": "deny",
     "allowed": "allow",
+    "asked": "ask",
     "injected": "inject",
     "signposted": "signpost",
     "n/a": "none", "na": "none", "": "none",
@@ -282,11 +285,13 @@ def percentile(sorted_vals, pct):
 
 
 class Bucket:
-    __slots__ = ("fires", "allow", "deny", "signpost", "inject", "none", "durations")
+    __slots__ = ("fires", "allow", "ask", "deny", "signpost", "inject", "none", "unknown", "durations")
 
     def __init__(self):
         self.fires = 0
         self.allow = 0
+        self.ask = 0
+        self.unknown = 0
         self.deny = 0
         self.signpost = 0
         self.inject = 0
@@ -307,10 +312,12 @@ class Bucket:
             "name": name,
             "fires": self.fires,
             "allow": self.allow,
+            "ask": self.ask,
             "deny": self.deny,
             "signpost": self.signpost,
             "inject": self.inject,
             "none": self.none,
+            "unknown": self.unknown,
             "median_ms": round(med, 3) if med is not None else None,
             "p95_ms": round(p95, 3) if p95 is not None else None,
             "duration_samples": len(durs),
@@ -438,7 +445,7 @@ def coverage_gap(registered_names, journal_hook_names):
 
 # ── rendering ────────────────────────────────────────────────────────────────────────────────
 
-TABLE_COLS = ("name", "fires", "allow", "deny", "signpost", "inject", "none", "median_ms", "p95_ms")
+TABLE_COLS = ("name", "fires", "allow", "ask", "deny", "signpost", "inject", "none", "unknown", "median_ms", "p95_ms")
 TABLE_HEADERS = ("NAME", "FIRES", "ALLOW", "DENY", "SIGNPOST", "INJECT", "NONE", "MEDIAN_MS", "P95_MS")
 
 
