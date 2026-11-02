@@ -22,7 +22,7 @@ scan via system/tools/safe_input.py on every text file; no symlinks inside the t
 frontmatter), and the vetted tree's sha256 is PINNED in the ledger — `verify`/`update`/the
 session check re-hash and re-vet on every change.
 
-Subcommands: question · set · status · share · unshare · use · update · verify · remove ·
+Subcommands: question · discover · set · status · share (--no-link: the person declines the link) · unshare · use · update · verify · remove ·
 --session-check (the SessionStart check, gated by the roundB switch team_skill_verify, default OFF).
 `share` is dry-run by default; --yes after the person says yes.
 """
@@ -211,6 +211,64 @@ def _notes_root():
     return os.path.realpath(path) if source not in (None, "permission-denied") and path else None
 
 
+TEAM_MARKER = ".lifehack-team-skills"   # sits in a team folder `set team` accepted, so a teammate's `discover` finds it
+DEFAULT_TEAM_DIRNAME = "Team skills"
+
+
+def drive_mounts():
+    """Every local Drive-for-Desktop 'My Drive' folder of THIS person (macOS: ~/Library/CloudStorage/GoogleDrive-*/My Drive;
+    Windows best-effort: <letter>:/My Drive). Read-only, one glob, never a walk (walking a synced drive can hang)."""
+    import glob
+    hits = glob.glob(os.path.join(os.path.expanduser("~"), "Library", "CloudStorage", "GoogleDrive-*", "My Drive"))
+    if os.name == "nt":
+        hits += [p for p in ("%s:\\My Drive" % c for c in "DEFGHIJ") if os.path.isdir(p)]
+    return sorted(h for h in hits if os.path.isdir(h))
+
+
+def discover_candidates(mounts):
+    """Folders at depth <= 2 under each mount that hold TEAM_MARKER or are named like a team/skills folder. No recursion."""
+    out = []
+    for m in mounts:
+        level = [m]
+        for _depth in (1, 2):
+            nxt = []
+            for parent in level:
+                try:
+                    names = sorted(os.listdir(parent))
+                except OSError:
+                    continue
+                for n in names:
+                    p = os.path.join(parent, n)
+                    if n.startswith(".") or not os.path.isdir(p) or os.path.islink(p):
+                        continue
+                    nxt.append(p)
+                    low = n.lower()
+                    if os.path.isfile(os.path.join(p, TEAM_MARKER)) or "skill" in low or "team" in low:
+                        out.append(p)
+            level = nxt
+    return out
+
+
+def cmd_discover(_a):
+    mounts = drive_mounts()
+    if not mounts:
+        print("no Google Drive folder found on this computer (Drive for Desktop puts it under "
+              "~/Library/CloudStorage/GoogleDrive-<account>/My Drive). Install Drive for Desktop, or ask the "
+              "person for the folder path, then: set team <folder>")
+        return 1
+    print("Google Drive on this computer:")
+    for m in mounts:
+        print("  " + m)
+    cands = discover_candidates(mounts)
+    if cands:
+        print("folders that look like a team skills folder:")
+        for i, c in enumerate(cands, 1):
+            print("  %d. %s%s" % (i, c, "  (already a team folder)" if os.path.isfile(os.path.join(c, TEAM_MARKER)) else ""))
+    suggestion = os.path.join(mounts[0], DEFAULT_TEAM_DIRNAME)
+    print("Pick one with the person, or make a new one:  set team \"%s\" --create" % suggestion)
+    return 0
+
+
 def cmd_set(a):
     mode = a.mode.strip().lower()
     if mode not in ("team", "solo"):
@@ -228,19 +286,30 @@ def cmd_set(a):
         print("REFUSED: 'team' needs the folder. Ask the person which Drive folder the team shares "
               "skills through, then: set team <folder>")
         return 2
-    if not os.path.isdir(folder):
-        print("REFUSED: %s is not a folder. Pick the team's Drive folder (the local Drive-for-Desktop "
-              "mount) and run set again." % folder)
-        return 2
+    folder = os.path.abspath(folder)
     notes = _notes_root()
     if notes:
         real = os.path.realpath(folder)
-        if real == notes or real.startswith(notes + os.sep):
-            print("REFUSED: %s is inside your notes root (%s). The brain is never shared — pick a "
-                  "team folder OUTSIDE the notes root." % (folder, notes))
+        if real == notes or real.startswith(notes + os.sep) or notes.startswith(real.rstrip(os.sep) + os.sep):
+            print("REFUSED: %s is, holds, or sits inside your notes root (%s). The brain is never shared — pick a "
+                  "team folder OUTSIDE the notes root (for example a new 'Team skills' folder)." % (folder, notes))
+            return 2
+    if not os.path.isdir(folder):
+        if a.create and os.path.isdir(os.path.dirname(folder)):
+            os.mkdir(folder)
+            print("made the folder %s" % folder)
+        else:
+            print("REFUSED: %s is not a folder. Pick the team's Drive folder (run: discover), or add --create "
+                  "to make it (its parent must already exist)." % folder)
             return 2
     with open(os.path.join(_cfg_dir(), "team-skills"), "w", encoding="utf-8") as f:
         f.write(folder + "\n")
+    try:
+        if not os.path.exists(os.path.join(folder, TEAM_MARKER)):
+            with open(os.path.join(folder, TEAM_MARKER), "w", encoding="utf-8") as f:
+                f.write("Lifehack team skills folder: shared skills live in skills/<name>/\n")
+    except OSError:
+        pass
     print("saved: team-sharing=team, team-skills=%s" % folder)
     print("To share Drive access itself, do it in the Drive website: give teammates 'Viewer' if "
           "they only use skills, 'Editor' if they also add skills. This tool never changes Drive sharing.")
@@ -254,8 +323,9 @@ def _team_root_or_die():
             print("REFUSED: the team folder pointer names a folder that is not there (%s). "
                   "Fix the line in %s." % (path, team_skills_root.pointer_path()))
         else:
-            print("REFUSED: no team folder is set. Run: python3 %s question, then set team <folder>."
-                  % os.path.abspath(__file__))
+            print("REFUSED: no team folder is set yet. Find the Drive folder: python3 %s discover   then: "
+                  "set team <folder> [--create]   (if the person has not said whether they share with a team, ask: %s)"
+                  % (os.path.abspath(__file__), QUESTION))
         return None
     if team_skills_root.sharing_mode() != "team":
         print("REFUSED: team-sharing is not 'team' (solo or unset). Nothing shares.")
@@ -327,8 +397,15 @@ def cmd_share(a):
             return 3
     plan = os.path.join(team, "skills", a.name)
     if not a.yes:
-        print("DRY-RUN (nothing moved). Would: copy %s -> %s, back up the local folder to %s, "
-              "then link it. Run again with --yes after the person says yes." % (src, plan, backup_root()))
+        if a.no_link:
+            print("DRY-RUN (nothing moved). Would: copy %s -> %s (the shared copy). Your local folder stays as it is "
+                  "(a separate copy, not live). Run again with --yes --no-link after the person says yes." % (src, plan))
+        else:
+            print("DRY-RUN (nothing moved). Would: copy %s -> %s (the shared copy), move your local folder to the backup "
+                  "%s, and put a link at %s pointing to the Drive copy (best practice: your edits and the team's stay one "
+                  "copy; each computer makes its link once). The link is OPTIONAL: the person may decline it "
+                  "(--no-link keeps the local folder as a separate copy). Run again with --yes after the person says yes."
+                  % (src, plan, backup_root(), src))
         return 0
     os.makedirs(os.path.join(team, "skills"), exist_ok=True)
     shutil.copytree(src, plan, symlinks=False)
@@ -340,6 +417,10 @@ def cmd_share(a):
     with open(os.path.join(plan, MARKER_NAME), "w", encoding="utf-8") as f:
         f.write(json.dumps({"shared_by": os.environ.get("USER", "unknown"), "when": _now(),
                             "tree_sha256": tree_sha256(plan)}, indent=1) + "\n")
+    if a.no_link:
+        print("shared '%s' (no link, as asked): Drive copy %s; your local folder %s is unchanged and is now a SEPARATE "
+              "copy (edits to one do not reach the other). Teammates run `use` to link the Drive copy." % (a.name, plan, src))
+        return 0
     return _finish_share(a.name, src, plan, tree_sha256(plan), scripts, a)
 
 
@@ -424,6 +505,8 @@ def _check_row(row, rehash):
         return "shared skill '%s' is broken (its team folder is gone or unsynced) — link removed" % name
     if not rehash:
         return None
+    if not os.path.isdir(row["target"]):   # copy mode, team copy unreachable: keep the local copy, say so
+        return "shared skill '%s': the team copy %s is not reachable (unsynced?) — your local copy was left as it is" % (name, row["target"])
     current = tree_sha256(row["target"])
     if current == row.get("sha256"):
         return None
@@ -432,10 +515,15 @@ def _check_row(row, rehash):
         if os.path.islink(link):
             os.unlink(link)
         else:
+            os.makedirs(backup_root(), exist_ok=True)
             shutil.move(link, os.path.join(backup_root(), "%s-%s" % (name, _now())))
         drop_row(name)
         return ("shared skill '%s' CHANGED and failed the re-scan — link removed, Drive copy "
                 "untouched. Why: %s" % (name, "; ".join(problems[:3])))
+    if not os.path.islink(link):   # copy mode (Windows fallback): a copy is not live, so re-copy the vetted version
+        os.makedirs(backup_root(), exist_ok=True)
+        shutil.move(link, os.path.join(backup_root(), "%s-%s" % (name, _now())))
+        shutil.copytree(row["target"], link, symlinks=False)
     upsert_row(dict(row, sha256=current))
     return "teammate updated '%s' (change passed the scan; pinned the new version)" % name
 
@@ -475,7 +563,10 @@ def cmd_session_check(_a):
     if not on:
         return 0
     for row in read_ledger():
-        r = _check_row(row, rehash=True)
+        try:   # fail-soft PER ROW: one bad row never hides the others, and never fails a session start
+            r = _check_row(row, rehash=True)
+        except Exception as e:
+            r = "could not check '%s' (%s: %s)" % (row.get("name", "?"), type(e).__name__, e)
         if r:
             print("shared skill problem: " + r)
     return 0
@@ -483,9 +574,13 @@ def cmd_session_check(_a):
 
 def cmd_remove(a):
     rows = read_ledger()
-    names = [r["name"] for r in rows] if a.all else [a.name]
-    if not a.all and a.name not in names:
-        print("REFUSED: '%s' is not a tool-made link (only links in %s are ever removed)." % a.name)
+    if not a.all and not a.name:
+        print("REFUSED: name a shared skill, or pass --all.")
+        return 2
+    listed = [r["name"] for r in rows]
+    names = listed if a.all else [a.name]
+    if not a.all and a.name not in listed:
+        print("REFUSED: '%s' is not a tool-made link (only links in %s are ever removed)." % (a.name, ledger_path()))
         return 2
     for n in names:
         link = os.path.join(skills_home(), n)
@@ -533,11 +628,15 @@ def main(argv=None):
     ap.add_argument("--session-check", action="store_true", help="the SessionStart check: silent unless a shared skill is broken/missing/changed-bad")
     sub = ap.add_subparsers(dest="cmd")
     s = sub.add_parser("question", help="print the one setup question, verbatim"); s.set_defaults(fn=cmd_question)
-    s = sub.add_parser("set", help="store the answer (team <folder> | solo)")
-    s.add_argument("mode"); s.add_argument("folder", nargs="?"); s.set_defaults(fn=cmd_set)
+    s = sub.add_parser("discover", help="list this computer's Google Drive folders and likely team folders (read-only)")
+    s.set_defaults(fn=cmd_discover)
+    s = sub.add_parser("set", help="store the answer (team <folder> [--create] | solo)")
+    s.add_argument("mode"); s.add_argument("folder", nargs="?"); s.add_argument("--create", action="store_true")
+    s.set_defaults(fn=cmd_set)
     s = sub.add_parser("status", help="what is shared right now"); s.set_defaults(fn=cmd_status)
     s = sub.add_parser("share", help="share one of your skills (dry-run by default)")
     s.add_argument("name"); s.add_argument("--yes", action="store_true"); s.add_argument("--replace", action="store_true")
+    s.add_argument("--no-link", action="store_true", help="the person declined the link: copy to Drive, leave the local folder as it is")
     s.set_defaults(fn=cmd_share)
     s = sub.add_parser("unshare", help="replace the link with a real local copy")
     s.add_argument("name"); s.add_argument("--retire", action="store_true"); s.set_defaults(fn=cmd_unshare)

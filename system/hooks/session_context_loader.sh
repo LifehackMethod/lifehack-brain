@@ -165,15 +165,20 @@ _job_health_line   # FIRST line of output, ahead of every "=== Session context" 
 # BEFORE the brain-root resolution on purpose: team skill sharing is independent of the notes
 # root, and the "no subject folders yet" exit further down must not skip it (the fresh-install
 # path is exactly the one a new team member is on). The switch (team_skill_verify in
-# roundB.conf, DEFAULT OFF) is read INSIDE team_skills.py --session-check, through lib/roundb.py
-# like every other switch, so OFF = exactly today's behaviour: this call runs, prints nothing,
-# costs a python startup. SILENCE IS THE HEALTHY STATE: with the switch on, a session prints one
+# roundB.conf, DEFAULT OFF) is read HERE first through lib/roundb.sh, so OFF = exactly today's
+# behaviour: no python call, nothing printed (team_skills.py --session-check reads it again via
+# lib/roundb.py, belt and braces). SILENCE IS THE HEALTHY STATE: with the switch on, a session prints one
 # line per BROKEN/MISSING/changed-for-the-worse shared skill only. FAIL-SOFT, ALWAYS: same
 # contract as CAP_CHECK — guarded by -r first and `|| true` besides; no nonzero exit from here
 # ever escapes (a session must never fail to start because a shared skill drifted). The check
 # never touches the Drive copy; on a failed re-scan it drops the local LINK only.
 TEAM_CHECK="$REPO/shared/tools/team_skills.py"
-if [ -r "$TEAM_CHECK" ]; then
+_team_on=1
+if [ -r "$REPO/system/hooks/lib/roundb.sh" ]; then
+  # shellcheck source=/dev/null
+  . "$REPO/system/hooks/lib/roundb.sh" 2>/dev/null && { roundb_on team_skill_verify || _team_on=0; }
+fi
+if [ "$_team_on" = 1 ] && [ -r "$TEAM_CHECK" ]; then
   TEAM_OUT="$("$PY" "$TEAM_CHECK" --session-check 2>/dev/null || true)"
   [ -n "$TEAM_OUT" ] && { echo ""; printf '%s\n' "$TEAM_OUT"; }
 fi

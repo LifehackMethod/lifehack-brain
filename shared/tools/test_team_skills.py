@@ -376,6 +376,8 @@ class WindowsFallbackCase(Base):
     os.symlink monkeypatched — no Windows machine needed, no real Drive touched."""
 
     def test_copy_fallback_when_symlink_raises(self):
+        old_home = os.environ.get("HOME")
+        self.addCleanup(os.environ.__setitem__, "HOME", old_home) if old_home else None   # never leak the fake HOME into later tests
         os.environ["HOME"] = os.path.realpath(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, os.environ["HOME"], True)
         home = os.environ["HOME"]
@@ -408,6 +410,92 @@ class WindowsFallbackCase(Base):
             rows = [json.loads(l) for l in f if l.strip()]
         self.assertEqual(rows[0]["mode"], "copy")
         self.assertIn("copied", " ".join(msgs).lower())
+
+
+class VerifyFixesCase(Base):
+    """Added in verification (2026-11-02): each fails on GLM's fab7f77 and passes now.
+    The 'Drive' is a FAKE mount under this test's own temp HOME (HOME/Library/CloudStorage/...)."""
+
+    def fake_mount(self):
+        m = os.path.join(self.home, "Library", "CloudStorage", "GoogleDrive-test", "My Drive")
+        os.makedirs(m)
+        return m
+
+    def test_discover_lists_the_mount_and_suggests_a_team_folder(self):
+        m = self.fake_mount()
+        os.makedirs(os.path.join(m, "Team skills"))
+        os.makedirs(os.path.join(m, "Photos"))
+        rc, out, err = self.run_tool("discover")
+        self.assertEqual(rc, 0, out + err)
+        self.assertIn(m, out)
+        self.assertIn("1. " + os.path.join(m, "Team skills"), out)
+        self.assertNotIn(os.path.join(m, "Photos"), out)
+
+    def test_set_create_makes_folder_and_marker(self):
+        m = self.fake_mount()
+        folder = os.path.join(m, "Team skills")
+        rc, out, err = self.run_tool("set", "team", folder, "--create")
+        self.assertEqual(rc, 0, out + err)
+        self.assertTrue(os.path.isfile(os.path.join(folder, ".lifehack-team-skills")))
+        self.assertEqual(open(os.path.join(self.cfg, "team-skills"), encoding="utf-8").read().strip(), folder)
+
+    def test_set_refuses_a_folder_that_holds_the_notes_root(self):
+        m = self.fake_mount()
+        notes = os.path.join(m, "_brain")
+        os.makedirs(notes)
+        rc, out, err = self.run_tool("set", "team", m, LIFEHACK_ROOT=notes)
+        self.assertNotEqual(rc, 0)
+        self.assertFalse(os.path.exists(os.path.join(self.cfg, "team-skills")))
+
+    def test_share_no_link_copies_and_leaves_local_folder(self):
+        self.set_team()
+        make_skill(self.skills, "invoice-checker")
+        rc, out, err = self.run_tool("share", "invoice-checker", "--yes", "--no-link")
+        self.assertEqual(rc, 0, out + err)
+        local = os.path.join(self.skills, "invoice-checker")
+        self.assertTrue(os.path.isdir(local) and not os.path.islink(local))
+        self.assertTrue(os.path.isfile(os.path.join(self.team, "skills", "invoice-checker", "SKILL.md")))
+        self.assertEqual(self.ledger_rows(), [])
+
+    def test_dry_run_says_the_link_is_optional(self):
+        self.set_team()
+        make_skill(self.skills, "invoice-checker")
+        rc, out, _ = self.run_tool("share", "invoice-checker")
+        self.assertIn("OPTIONAL", out)
+
+    def test_remove_unlisted_name_refuses_cleanly(self):
+        rc, out, err = self.run_tool("remove", "nope")
+        self.assertEqual(rc, 2, err)
+        self.assertNotIn("Traceback", err)
+        rc, out, err = self.run_tool("remove")
+        self.assertEqual(rc, 2, err)
+        self.assertNotIn("Traceback", err)
+
+    def test_session_check_one_bad_row_does_not_hide_the_next(self):
+        self.set_team()
+        with open(self.ledger, "w", encoding="utf-8") as f:
+            f.write(json.dumps({"target": "/nowhere"}) + "\n")   # malformed: no name
+            f.write(json.dumps({"name": "gone", "target": os.path.join(self.team, "skills", "gone"),
+                                "sha256": "x" * 64, "mode": "symlink"}) + "\n")
+        os.symlink(os.path.join(self.team, "skills", "gone"), os.path.join(self.skills, "gone"))
+        rc, out, err = self.run_tool("--session-check", ROUNDB_TEAM_SKILL_VERIFY="on")
+        self.assertEqual(rc, 0, err)
+        self.assertIn("'gone'", out)
+
+    def test_copy_mode_benign_change_recopies_local(self):
+        self.set_team()
+        d = make_skill(os.path.join(self.team, "skills"), "mate")
+        local = os.path.join(self.skills, "mate")
+        shutil.copytree(d, local)
+        sys.path.insert(0, os.path.join(HERE, ".."))
+        import team_skills
+        with open(self.ledger, "w", encoding="utf-8") as f:
+            f.write(json.dumps({"name": "mate", "target": d, "sha256": team_skills.tree_sha256(d), "mode": "copy"}) + "\n")
+        with open(os.path.join(d, "SKILL.md"), "a", encoding="utf-8") as f:
+            f.write("\nA second plain line.\n")
+        rc, out, err = self.run_tool("update")
+        self.assertEqual(rc, 0, err)
+        self.assertIn("second plain line", open(os.path.join(local, "SKILL.md"), encoding="utf-8").read())
 
 
 if __name__ == "__main__":
