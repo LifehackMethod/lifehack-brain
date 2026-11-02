@@ -47,7 +47,7 @@ authority: user
 
 ## One manifest, two schedulers
 
-Both read the same file, the ```jobs block of `system/jobs.md` (rows `name | enabled | interval
+Both read the same table, the ```jobs block of `system/jobs.md` joined with the person's `<personal-code>/jobs.md` through `shared/jobs_manifest.py` (rows `name | enabled | interval
 seconds | command`; `system/jobs.md:146-147`). Which mechanism acts depends on the OS, decided in
 `install-schedulers.sh:107-118` (Darwin = mac, Linux = linux, anything else = windows).
 

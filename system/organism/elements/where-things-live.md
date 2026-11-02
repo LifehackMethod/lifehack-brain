@@ -131,6 +131,8 @@ flip) rather than a private fork (a setting, one flip from public).
 
 ### THE FOUR HOMES
 
+*Which layer notices when something lands in the wrong home: `system/sops/build-conformance-sop.md` §1.*
+
 | Home | Whose | Who can see it | Survives what |
 |---|---|---|---|
 | **Shared machinery** | shared | public git (this repo) | replaced wholesale, every `git pull` |

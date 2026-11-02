@@ -405,7 +405,7 @@ The residency decision table (in resolution order):
 
 ### CATEGORY B — PostToolUse ADVISORIES (never block; always exit 0)
 
-PostToolUse hooks fire AFTER the tool completes. The harness executes them after the call and uses their stderr output as advisory context. They CANNOT block. All correctly exit 0.
+PostToolUse hooks fire AFTER the tool completes. The harness executes them after the call and uses their stderr output as advisory context. They CANNOT block. All correctly exit 0. ⚠ CORRECTED 2026-11-02: one PostToolUse hook can now change what the model sees: `sanitize_connector_output.sh` (matcher `mcp__.*`) swaps a connector's output for a cleaned copy, and withholds it if the cleaner fails.
 > **⚠ CORRECTED 2026-08-27, lb2-controls.md claim 75 — only 2 of the 5 hooks this category names actually
 > exist and are registered.** Confirmed by dumping the live plugin-cache `hooks.json` PostToolUse group:
 > `validate_on_write.sh` (matcher `Write|Edit`, B2 below) and `observability_logger.sh` (matcher `*`, B4
@@ -758,7 +758,7 @@ FEEDS `rating-capture` · `rating_capture.sh` writes `system/learnings-signals.j
 
 1. **`rating-capture`** (`rating_capture.sh` + `system/learnings-signals.jsonl` + `system/learnings/` store): the UserPromptSubmit feedback-capture loop. Writes a durable quality-signal log that is not named as a standalone element. Could be a full element or folded into the `helm` observability element.
 
-2. **`conformance-lab`** (`system/tools/conformance-lab/` — `bakeoff.py`, `probes/guard.py`, `driver.py`): the adversarial fire-test harness that proves hooks are not theater. Distinct from `label_checker.py` (which checks registration + fires single probes); the lab runs adversarial probe suites and was the source of the 2026-07-23 guard_statusline_lock fix. Currently folded under `label-checker` in the ranked list but does significantly more work. Worth splitting into its own element.
+2. **`conformance-lab`** (`system/tools/conformance-lab/` — `bakeoff.py`, `probes/guard.py`, `driver.py`): the adversarial fire-test harness that proves hooks are not theater. Distinct from `label_checker.py` (which checks registration + fires single probes); the lab runs adversarial probe suites and was the source of the 2026-07-23 guard_statusline_lock fix. Currently folded under `label-checker` in the ranked list but does significantly more work. Worth splitting into its own element. ⛔ moved to rebuild/conformance-lab/ (884c3c0, 2026-10-31)
 
 ---
 

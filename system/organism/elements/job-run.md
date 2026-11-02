@@ -53,7 +53,7 @@ no queue flush, no other-job check) (`:13-16`, `:324`).
    the log and it is cleared (`:101-105`). `PATH` is extended and, from `job-fetch-hosts.txt`,
    `SAFE_FETCH_ALLOWLIST` is exported so a scheduled job's web reads are sealed to that host list
    (`:78-82`).
-2. **Row lookup.** The job's row in the ```jobs block of `system/jobs.md` (awk on the fence;
+2. **Row lookup.** The job's row in the ```jobs block of `system/jobs.md` or the person's `<personal-code>/jobs.md`, joined by `shared/jobs_manifest.py` (⚠ CORRECTED 2026-11-02; the line numbers below predate it) (awk on the fence;
    `name | enabled | interval | outcome | check | model | budget | source | command`, command last)
    (`:332-342`). No row: exit 1 (`:341`). The `model` column becomes `MODEL_TIER` (default `none`), `budget`
    becomes `JOB_RUN_BUDGET`, and a per-run calls file `calls.current` is created (`:349-354`). A

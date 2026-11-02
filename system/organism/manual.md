@@ -532,8 +532,8 @@ path relative to whatever folder a window happens to be working in.
 | home | where | what lives there | who sees it |
 |---|---|---|---|
 | **HARNESS** | the plugin's own root (the maintainer's build copy: `~/lifehack-v2`, branch V2) | the shared machinery: Cron, Alarms, the door, the shared readers, this manual, the map, `elements/` | everyone who installs the plugin |
-| **PRIVATE** | the owner's personal repo (for the maintainer: `<personal-code>`) | the owner's own desks, their runners and prompts, and a separate DESKS manual | the owner only |
-| **NOTES** | the notes folder (`python3 shared/brain_root.py --quiet`) | plans, briefs, records, journals: content, not code | the owner; shared by the old and the new system |
+| **PRIVATE** | the owner's personal repo (for the maintainer: `<personal-code>`) | the owner's own desks, their runners and prompts, their own job list and tool list (`jobs.md`, `register.jsonl`, read alongside the plugin's), and a separate DESKS manual | the owner only |
+| **NOTES** | the notes folder (`python3 shared/brain_root.py --quiet`) | plans, briefs, records, journals, the owner's desk list (`desks/desk-registry.yaml`): content, not code | the owner; shared by the old and the new system |
 
 **Why it matters.** A window's working folder can be the PRIVATE repo while it runs the HARNESS plugin. A bare
 `system/organism/manual.md` then opens the private DESKS manual, not this one. So harness prose points at this
@@ -542,6 +542,8 @@ manual and `elements/` through the plugin's own root, the same way the session h
 **The three rules.** (1) One file, one home: no file exists in two homes; a duplicate is resolved to one, and the
 loser is archived, never deleted. (2) Harness paths are always resolved from the plugin root. (3) The harness never
 changes a note's format in a way an older copy of the system cannot read: the NOTES home is shared.
+
+**How a build conforms to all this, and how we know:** `system/sops/build-conformance-sop.md`.
 
 ---
 
@@ -667,7 +669,7 @@ that job's skill is built. Other outside reads have their own shared readers on 
 through `system/tools/safe_sheets.py`, web pages through `safe_fetch.py` (its domain allowlist is armed for scheduled
 jobs only, from `system/tools/job-fetch-hosts.txt`), web search through `safe_search_api.sh`.
 
-**The ONE-ROW-PER-JOB rule.** Every job is exactly one row of the ```jobs block in `system/jobs.md`
+**The ONE-ROW-PER-JOB rule.** Every job is exactly one row of a ```jobs block: `system/jobs.md` for the shared jobs, `<personal-code>/jobs.md` for a person's own, joined by `shared/jobs_manifest.py`
 (`name | enabled | interval_seconds | outcome | check | model | budget | source | command`). One row = one launchd agent = one state folder = one output check. Never
 chain two unrelated jobs into one row's command, and never schedule a job anywhere else (no private crontab line, no
 hand-written plist): the row is the only place a job exists, and the installer generates everything else from it.

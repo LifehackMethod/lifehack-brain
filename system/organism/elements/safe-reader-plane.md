@@ -333,6 +333,8 @@ the janitor writes `<notes>/state/email-summary/threads-v2/`.
 
 #### `safe_read.py` — external plain text / Markdown file reader
 
+⚠ CORRECTED 2026-11-02: locally, only `~/Downloads` and `~/Desktop` are untrusted now (`system/hooks/ingest_gate_enforce.sh`); a person's other files read normally. The "trusted zone" wording below is the older rule.
+
 **Purpose:** sanitized reader for external `.txt` / `.md` files — files outside the trusted zone
 (the clone `~/lifehack-brain`, `~/.claude`, the Drive `Lifehack` spine). Internal files (skills,
 docs, plans, records, canon) still use the `Read` tool directly.
