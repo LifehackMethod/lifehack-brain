@@ -18,6 +18,8 @@ exit 0); never blocks. Each piece has its own switch in roundB.conf (all OFF = p
   fc_claudemd_ask       (2026-11-01, plan PHASE 3b.8 item 5a) a Write/Edit/MultiEdit, or a Bash write (redirect, append, tee, sed -i, cp/mv onto it), to an
                         EXISTING file named CLAUDE.md, anywhere. The ask carries a short diff (Write/Edit) so the person sees what changes.
                         A brand-new CLAUDE.md (nothing to lose) and reads (cat, grep, Read) never ask.
+                        (2026-11-02) also a shell rm / unlink / shred / trash, or mv of the file, of an EXISTING CLAUDE.md outside a
+                        throwaway/temp path, as the python delete already did.
   fc_claudemd_plugin_copy (5b) the same write aimed at the plugin's OWN CLAUDE.md copy (under ~/.claude/plugins, or the plugin root) on a machine that is
                         NOT the maintainer's self-repo: the ask says it is replaced on the next update and to use ~/.claude/CLAUDE.md. Works alone or with
                         fc_claudemd_ask (then this message replaces the general one for that file). Maintainer self-repo = the plugin root is a code
@@ -689,6 +691,15 @@ def shell_file_msg(t, kind, verb):
             "Do not switch to another tool to land the same change. RULE: switch fc_shell_delete_ask in system/hooks/roundB.conf." % (verb, what, t, why))
 
 
+def claudemd_delete_verdict(t, how, code):
+    """2026-11-02 (coordinator-approved, parity with the python delete): a shell rm / unlink / shred / trash, or mv of the file, of an
+    EXISTING CLAUDE.md asks in the fc_claudemd_ask family (claudemd_verdict: the plugin-copy text where it applies). Throwaway and temp
+    paths never ask (fc_file_kind); a CLAUDE.md that does not exist never asks."""
+    if not is_claudemd(t) or fc_file_kind(t, code) != "claudemd":
+        return None
+    return claudemd_verdict(t, how, code)
+
+
 def check_bash(cmd, cwd, code):
     sw_db, sw_dir, sw_sop, sw_conf = on("fc_db_delete_ask"), on("fc_folder_delete_ask"), on("fc_user_sop_ask"), on("fc_placement_conf_ask")
     sw_sdel = on("fc_shell_delete_ask")
@@ -713,6 +724,8 @@ def check_bash(cmd, cwd, code):
                         ask(sop_msg(t, "deletes"))
                     elif sw_sdel and v != "rmdir" and shell_fc_kind(t, code):
                         ask(shell_file_msg(t, shell_fc_kind(t, code), "deletes"))
+                    elif v != "rmdir" and claudemd_delete_verdict(t, "deletes", code):   # 2026-11-02: fc_claudemd_ask family, parity with python
+                        ask(claudemd_delete_verdict(t, "deletes", code))
                     elif sw_dir and ((v == "rm" and recursive) or v == "rmdir") and not (os.path.islink(raw) and not a.endswith("/")) \
                             and folder_at_risk(t):
                         ask(dir_msg(t) + (" (via rmdir)" if v == "rmdir" else ""))
@@ -727,7 +740,7 @@ def check_bash(cmd, cwd, code):
                 for t, _raw in _plain(a, scwd):
                     if folder_at_risk(t):
                         ask(dir_msg(t) + " (via find -delete / -exec rm)")
-        elif v in ("mv",) and (sw_sop or sw_sdel):
+        elif v in ("mv",):
             src = [a for a in args if not a.startswith("-")][:-1]
             for s in src:
                 for t in expand(s, scwd or cwd):
@@ -735,6 +748,8 @@ def check_bash(cmd, cwd, code):
                         ask(sop_msg(t, "moves away"))
                     elif sw_sdel and shell_fc_kind(t, code):   # any mv of the file counts, a same-folder rename too (as the SOP mv and python os.rename do)
                         ask(shell_file_msg(t, shell_fc_kind(t, code), "moves away"))
+                    elif claudemd_delete_verdict(t, "moves away", code):
+                        ask(claudemd_delete_verdict(t, "moves away", code))
         elif v in SQL_TOOLS and sw_db and SQL_RX.search(" ".join(w)):
             ask("ASK FIRST: this command drops or empties data in a local database (%s). A database is fine china: what it held may not come back. "
                 "WAY-THROUGH: press Yes only if the person asked for exactly this and a copy exists; otherwise stop and tell them what you wanted to delete. "

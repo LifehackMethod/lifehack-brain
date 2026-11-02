@@ -444,4 +444,26 @@ sallow "cp a $CN file to a backup (a copy, not a move)" "cp $CN/voice.md voice.b
 sallow "mv a NEW-ish ordinary file" "mv app.py app2.py"
 grep -qx "fc_shell_delete_ask=on" "$HERE/roundB.conf" && ok "roundB.conf carries the real line fc_shell_delete_ask=on" || bad "roundB.conf line fc_shell_delete_ask missing"
 runy Bash "$(JC "rm $CN/voice.md")" -u ROUNDB_FC_SHELL_DELETE_ASK $ALL $NEW3; asked && ok "shell $CN delete asks from the conf line alone" || bad "conf-driven shell delete"
+# ---------------- 2026-11-02 (coordinator-approved): a shell rm / unlink / mv-away of an EXISTING CLAUDE.md asks in the fc_claudemd_ask family,
+# as the python delete does. TEXT only: nothing here runs the commands.
+mkdir -p "$Y/x" "$HOME/.claude"; echo "# rules" > "$Y/x/CLAUDE.md"; echo "# my global rules" > "$HOME/.claude/CLAUDE.md"
+echo "# gen" > "$Y/build/CLAUDE.md"; echo "# dep" > "$Y/node_modules/m/CLAUDE.md"; echo "# tmp" > "$T/scratch/box/CLAUDE.md"
+MD="$ALL $NEW3 ROUNDB_FC_SHELL_DELETE_ASK=on ROUNDB_FC_CLAUDEMD_ASK=on"
+mask() { # mask <name> <command>: asks naming fc_claudemd_ask; fc_claudemd_ask OFF (all others on) is silent
+  runy Bash "$(JC "$2")" $MD; if asked && grep -q "ASK FIRST" "$T/out" && grep -q "CLAUDE.md" "$T/out" && grep -q "fc_claudemd_ask" "$T/out"; then ok "CLAUDEMD DEL ASK $1"; else bad "CLAUDEMD DEL ASK $1"; fi; say "$1" "" 300
+  runy Bash "$(JC "$2")" $MD ROUNDB_FC_CLAUDEMD_ASK=off; if ! asked && [ $RC -eq 0 ]; then ok "CLAUDEMD DEL ASK $1 [fc_claudemd_ask off = silent]"; else bad "CLAUDEMD DEL ASK $1 [off]"; fi; }
+mallow() { runy Bash "$(JC "$2")" $MD; if ! asked && [ $RC -eq 0 ]; then ok "CLAUDEMD DEL ALLOW $1"; else bad "CLAUDEMD DEL ALLOW $1"; fi; say "$1"; }
+mask "rm CLAUDE.md" "rm CLAUDE.md"
+mask "cd x && rm CLAUDE.md (cd chain followed)" "cd x && rm CLAUDE.md"
+mask "unlink ~/.claude/CLAUDE.md" "unlink ~/.claude/CLAUDE.md"
+mask "mv CLAUDE.md /tmp/" "mv CLAUDE.md /tmp/"
+mask "rm -f with an absolute path" "rm -f $Y/x/CLAUDE.md"
+mallow "rm of a CLAUDE.md that does not exist" "rm $Y/nowhere/CLAUDE.md"
+mallow "rm of a CLAUDE.md inside a regenerable dir (build/)" "rm build/CLAUDE.md"
+mallow "rm of a CLAUDE.md inside node_modules" "rm node_modules/m/CLAUDE.md"
+mallow "rm of a CLAUDE.md in a temp folder" "rm $T/scratch/box/CLAUDE.md"
+mallow "cat CLAUDE.md" "cat CLAUDE.md"
+mallow "cp CLAUDE.md to a backup (a copy, not a move)" "cp CLAUDE.md CLAUDE.md.bak"
+grep -q "^fc_claudemd_ask=on" "$HERE/roundB.conf" && ok "roundB.conf carries the real line fc_claudemd_ask=on" || bad "roundB.conf line fc_claudemd_ask missing"
+runy Bash "$(JC "rm CLAUDE.md")" -u ROUNDB_FC_CLAUDEMD_ASK $ALL $NEW3; asked && ok "shell CLAUDE.md delete asks from the conf line alone" || bad "conf-driven CLAUDE.md delete"
 echo "test_fine_china_ask: $P passed, $F failed"; [ "$F" -eq 0 ]
