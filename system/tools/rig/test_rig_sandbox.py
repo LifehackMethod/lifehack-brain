@@ -15,7 +15,8 @@ sys.path.insert(0, HERE)
 import rig_sandbox as sb  # noqa: E402
 import rig_isolation as iso  # noqa: E402
 
-T = os.path.realpath(tempfile.mkdtemp(prefix="rigsbx-"))
+_T = tempfile.TemporaryDirectory(prefix="rigsbx-")   # removed when the process exits (leaked rigsbx-* per run, 2026-11-01)
+T = os.path.realpath(_T.name)
 ok = n = 0
 
 

@@ -25,6 +25,8 @@ DEFAULT_CASES = os.path.join(HERE, "cases")
 SIGNPOST_HOOKS = {"guard_git_push_signpost.sh", "guard_no_upstream_commit_signpost.sh"}
 GRADES = ["caught", "caught-other-layer", "slipped", "false-alarm", "clean", "error"]
 KEEP_ENV = ("PATH", "LANG", "LC_ALL", "TERM", "TMPDIR", "SHELL")
+sys.path.append(os.path.join(ROOT, "shared"))
+import disk_preflight  # noqa: E402  (THE disk-low preflight, shared/disk_preflight.py)
 
 
 # ───────────────────────── registration ─────────────────────────
@@ -425,6 +427,7 @@ def main():
     ap.add_argument("--label", default="replay", help="result file label")
     ap.add_argument("--no-write", action="store_true", help="print only; do not write the results file")
     a = ap.parse_args()
+    disk_preflight.require()   # DISK-LOW preflight: refuse before the suite on a nearly full disk
     cases = load_cases(a.cases)
     if not cases:
         print("no replay cases found at %s" % a.cases)

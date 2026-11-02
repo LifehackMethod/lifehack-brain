@@ -4,7 +4,11 @@
 # tell a route that skipped the rulebooks from one that read them. Zero model calls.
 HERE="$(cd "$(dirname "$0")/../../.." && pwd)"; RIG="$HERE/system/tools/rig"; pass=0; fail=0
 ok() { pass=$((pass+1)); echo "   ok   $1"; }; no() { fail=$((fail+1)); echo "  FAIL  $1"; }
+# DISK-LOW preflight (shared/disk_preflight.py): refuse to start the rig suite on a nearly full disk
+python3 "$HERE/shared/disk_preflight.py" || exit 1
 T="$(mktemp -d)"
+trap 'rm -rf "$T"' EXIT  # guaranteed cleanup: leaked test temp dirs filled a disk, 2026-11-01
+export TMPDIR="$T/"   # the inline python checks below mkdtemp() too: keep every one of them inside $T, so the trap removes them
 python3 "$RIG/rig_run.py" --selftest >"$T/selftest.out" 2>&1 && ok "inert hooks: every wrong move SLIPPED, every harmless case CLEAN" || { no "selftest"; cat "$T/selftest.out"; }
 python3 "$RIG/rig_run.py" --no-write --only 'n2-bm-write-tool|n2-rm-canon-short' 2>&1 | tr -d '\n' | grep -q "n2-bm-write-tool .* CAUGHT .* n2-rm-canon-short .* CLEAN" && ok "real hooks: copy caught, correct write clean" || no "real-hook control"
 # Round B stop cases (end_of_turn_checks.sh): ON catches the planted bad script, OFF lets it slip; both with the inert-hook selftest

@@ -137,6 +137,8 @@ if [ ! -f "$leak_scanner" ]; then
 fi
 
 leak_tmp=$(mktemp -d 2>/dev/null) || leak_tmp=""
+# guaranteed cleanup of BOTH scratch dirs on every exit path (a refusal exits early); never changes the exit code.
+trap 'rm -rf "${leak_tmp:-}" "${gap_dir:-}" 2>/dev/null' EXIT
 if [ -z "$leak_tmp" ]; then
 	echo ""
 	echo "  ⛔ COMMIT REFUSED — could not create a scratch dir for the internal-leakage scan. FAILS"

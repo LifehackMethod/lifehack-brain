@@ -5,7 +5,8 @@ HERE="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
 REPO="$(cd "$HERE/../../.." 2>/dev/null && pwd)"
 GUARD="$REPO/system/hooks/guard_hook_sop_read.sh"
 REALPY="$(command -v python3)"
-T=$(mktemp -d) || exit 1; T=$(cd "$T" && pwd -P) || exit 1
+T=$(mktemp -d) || exit 1; trap 'rm -rf "$T"' EXIT  # guaranteed cleanup: leaked test temp dirs filled a disk, 2026-11-01
+T=$(cd "$T" && pwd -P) || exit 1
 case "$T" in /private/var/folders/*|/private/tmp/*|/tmp/*|/var/folders/*) ;; *) echo "bad T=$T"; exit 1;; esac
 PASSED=0; FAILED=0
 ok() { echo "  PASS  $1"; PASSED=$((PASSED+1)); }

@@ -106,6 +106,8 @@ LASTBUCKET="$(grep '^bucket=' "$SFILE" 2>/dev/null | cut -d= -f2-)"; [ -n "$LAST
 
 # ── extract the current SCRATCHPAD section (fallback: whole file), write it out ─
 CURSEC_FILE="$(mktemp)"
+# guaranteed cleanup on EVERY exit path (a Stop hook runs every turn: a missed rm leaks one tmp.* per turn). Same journal call, same exit code.
+trap '_lhb_rc=$?; rm -f "$CURSEC_FILE" 2>/dev/null; lhb_journal_fire "$_lhb_rc" "scratch_capture_gate.sh" "Stop" "" 2>/dev/null || true' EXIT
 python3 -c "
 import sys,re
 p='$PAD'

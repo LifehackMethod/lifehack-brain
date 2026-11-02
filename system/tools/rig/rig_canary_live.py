@@ -22,6 +22,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import rig_isolation as iso  # noqa: E402
 import rig_sandbox as sandbox  # noqa: E402
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "shared"))
+import disk_preflight  # noqa: E402  (THE disk-low preflight, shared/disk_preflight.py)
 
 V2 = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 MODEL = "haiku"   # allow-silence: the cheapest tier alias handed to claude --model for a sub-$0.10 canary, not a pinned model id
@@ -121,6 +123,8 @@ def evidence(stream_text):
 def main():
     if len(sys.argv) < 2 or sys.argv[1] not in ("run", "--dry-run"):
         sys.exit(__doc__)
+    if sys.argv[1] == "run":
+        disk_preflight.require()   # DISK-LOW preflight: refuse before the live session on a nearly full disk
     tmp = os.path.realpath(tempfile.mkdtemp(prefix="rig-canary-"))
     try:
         env, dropped, linked, missing, cmd, cwd, home, settings, roots = build(tmp)

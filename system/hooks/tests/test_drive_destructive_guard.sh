@@ -11,6 +11,7 @@ for f in "$DRIVE" "$FIX" "$LIB/gws_guard.py"; do [ -f "$f" ] || { echo "CANNOT R
 . "$HERE/pin_roundb_off.sh"
 # Temp folder is left for the OS temp sweep (this test deletes nothing).
 S="$(mktemp -d "${TMPDIR:-/tmp}/ddg.XXXXXX")"
+trap 'rm -rf "$S"' EXIT  # guaranteed cleanup: leaked test temp dirs filled a disk, 2026-11-01
 P=0; F=0; OUTF="$S/out"; ERRF="$S/err"
 mkdir -p "$S/bin" "$S/marks" "$S/home"
 printf '%s\n' '#!/bin/bash' 'case "$*" in' \

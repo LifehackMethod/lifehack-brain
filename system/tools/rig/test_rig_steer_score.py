@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # not-wired-yet: run by hand: python3 test_rig_steer_score.py (fictional fixtures only; no model, no network)
 import json, os, sys, tempfile
+# every temp dir this file makes lives inside ONE TemporaryDirectory, removed when the process exits (leaked test temp dirs filled a disk, 2026-11-01)
+_SCRATCH = tempfile.TemporaryDirectory(prefix="rig-steer-test-")
+tempfile.tempdir = _SCRATCH.name
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 import rig_steer_score as ss
 

@@ -35,11 +35,16 @@ def git(cwd, *args, **kw):
     return subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, env=ENV, **kw)
 
 
+# every clone made, so the runner below can remove it in a finally (a 50-60 MB refresh-clone-* per test leaked and filled a disk, 2026-11-01)
+_CLONES = []
+
+
 def make_clone():
     parent = os.environ.get("REFRESH_TEST_SCRATCH") or tempfile.gettempdir()
     os.makedirs(parent, exist_ok=True)
     d = tempfile.mkdtemp(prefix="refresh-clone-", dir=parent)
     shutil.rmtree(d)
+    _CLONES.append(d)
     r = subprocess.run(["git", "clone", "-q", "--no-hardlinks", REPO_ROOT, d], capture_output=True, text=True, env=ENV)
     assert r.returncode == 0, r.stderr
     for rel in OVERLAY:
@@ -217,4 +222,7 @@ if __name__ == "__main__":
             except Exception as e:  # noqa: BLE001
                 failed += 1
                 print("FAIL %s: %s" % (name, e))
+            finally:
+                while _CLONES:
+                    shutil.rmtree(_CLONES.pop(), ignore_errors=True)
     sys.exit(1 if failed else 0)

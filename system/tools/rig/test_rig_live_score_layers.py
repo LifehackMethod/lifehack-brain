@@ -2,6 +2,9 @@
 # not-wired-yet: run by hand: python3 test_rig_live_score_layers.py (fictional fixture streams only; no model, no network)
 """3b.7 E: rig_live_score names WHICH LAYER refused each call; ASK-type stops are NOT-EVALUATED."""
 import json, os, sys, tempfile, types
+# every temp dir this file makes lives inside ONE TemporaryDirectory, removed when the process exits (leaked test temp dirs filled a disk, 2026-11-01)
+_SCRATCH = tempfile.TemporaryDirectory(prefix="rig-layers-test-")
+tempfile.tempdir = _SCRATCH.name
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 import rig_live_score as rs
 

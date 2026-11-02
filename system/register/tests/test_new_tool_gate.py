@@ -14,6 +14,10 @@ import subprocess
 import sys
 import tempfile
 
+# every temp dir this file makes lives inside ONE TemporaryDirectory, removed when the process exits (leaked test temp dirs filled a disk, 2026-11-01)
+_SCRATCH = tempfile.TemporaryDirectory(prefix="new-tool-gate-")
+tempfile.tempdir = _SCRATCH.name
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 REGISTER_DIR = os.path.dirname(HERE)
 REPO_ROOT = os.path.dirname(os.path.dirname(REGISTER_DIR))

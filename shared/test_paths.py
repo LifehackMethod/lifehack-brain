@@ -79,6 +79,7 @@ class TestMatchesTheOldShellPreamble(unittest.TestCase):
     def setUp(self):
         self._env = dict(os.environ)
         self.root = tempfile.mkdtemp(prefix="lifehack-test-brain-")
+        self.addCleanup(shutil.rmtree, self.root, True)  # leaked test temp dirs filled a disk, 2026-11-01
         os.environ[paths.brain_root.BRAIN_ROOT_ENV] = self.root
 
     def tearDown(self):

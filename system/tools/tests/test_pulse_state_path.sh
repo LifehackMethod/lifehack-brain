@@ -20,6 +20,7 @@ PULSE="$HERE/pulse.sh"
 # from the real notes root (NOTES_ROOT resolution is untouched by this fix and irrelevant to it).
 SANDBOX="$(mktemp -d "${TMPDIR:-/tmp}/pulsestatetest.XXXXXX")"
 trap 'rm -rf "$SANDBOX"' EXIT
+# every per-case dir below is made INSIDE $SANDBOX so this one trap removes it (they used to leak, 10 per run; 2026-11-01)
 cat > "$SANDBOX/empty-config.md" <<'EOF'
 ```crontab
 ```
@@ -33,7 +34,7 @@ check() { if [ "$2" = "$3" ]; then pass=$((pass+1)); else fail=$((fail+1)); echo
 # job) — a real migration firing mid-assertion would make the FIRST line of output "migrated state
 # ..." instead of the heartbeat line these checks grep for. Isolate with a throwaway HOME (so
 # cache_dir() lands in a sandbox) AND point both old-location envs at paths that never exist.
-H12="$(mktemp -d "${TMPDIR:-/tmp}/pulsehome12.XXXXXX")"
+H12="$(mktemp -d "$SANDBOX/pulsehome12.XXXXXX")"
 
 # 1) Interactive-shaped env (a real per-user TMPDIR set) vs cron-shaped env (TMPDIR unset) must
 #    resolve to the IDENTICAL default state path.
@@ -62,8 +63,8 @@ check "explicit PULSE_STATE override still wins" "$state_override" "state=$overr
 # cache or real /tmp state.
 
 # 3) A populated OLD cron-location file migrates into the new location, breaker keys intact.
-H3="$(mktemp -d "${TMPDIR:-/tmp}/pulsehome3.XXXXXX")"
-OLDCRON3="$(mktemp -d "${TMPDIR:-/tmp}/pulseold3.XXXXXX")/old-cron-state.json"
+H3="$(mktemp -d "$SANDBOX/pulsehome3.XXXXXX")"
+OLDCRON3="$(mktemp -d "$SANDBOX/pulseold3.XXXXXX")/old-cron-state.json"
 cat > "$OLDCRON3" <<'EOF'
 {"system-health": 1787574041, "fails:system-health": 0, "disabled:bootstrap-sync": 1, "retry_at:bootstrap-sync": 1787835869, "trips:bootstrap-sync": 3}
 EOF
@@ -78,9 +79,9 @@ check "migration carries retry_at:bootstrap-sync breaker key" "$retry_val" "1787
 check "old cron-location file left in place (copy, never move)" "$old_survived3" "yes"
 
 # 4) When BOTH old locations exist, /tmp (cron's real one) wins over the interactive copy.
-H4="$(mktemp -d "${TMPDIR:-/tmp}/pulsehome4.XXXXXX")"
-OLDCRON4="$(mktemp -d "${TMPDIR:-/tmp}/pulseoldcron4.XXXXXX")/cron-state.json"
-OLDINT4="$(mktemp -d "${TMPDIR:-/tmp}/pulseoldint4.XXXXXX")/interactive-state.json"
+H4="$(mktemp -d "$SANDBOX/pulsehome4.XXXXXX")"
+OLDCRON4="$(mktemp -d "$SANDBOX/pulseoldcron4.XXXXXX")/cron-state.json"
+OLDINT4="$(mktemp -d "$SANDBOX/pulseoldint4.XXXXXX")/interactive-state.json"
 echo '{"marker": "from-cron"}' > "$OLDCRON4"
 echo '{"marker": "from-interactive"}' > "$OLDINT4"
 HOME="$H4" _PULSE_OLD_CRON_STATE="$OLDCRON4" _PULSE_OLD_INTERACTIVE_STATE="$OLDINT4" \
@@ -90,8 +91,8 @@ marker4="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('
 check "when both old locations exist, /tmp (cron) wins" "$marker4" "from-cron"
 
 # 5) Idempotence: running twice must NOT let stale old-location data clobber fresh new-location state.
-H5="$(mktemp -d "${TMPDIR:-/tmp}/pulsehome5.XXXXXX")"
-OLDCRON5="$(mktemp -d "${TMPDIR:-/tmp}/pulseold5.XXXXXX")/old-cron-state.json"
+H5="$(mktemp -d "$SANDBOX/pulsehome5.XXXXXX")"
+OLDCRON5="$(mktemp -d "$SANDBOX/pulseold5.XXXXXX")/old-cron-state.json"
 echo '{"marker": "stale-old-value"}' > "$OLDCRON5"
 HOME="$H5" _PULSE_OLD_CRON_STATE="$OLDCRON5" _PULSE_OLD_INTERACTIVE_STATE="/nonexistent-interactive-state.json" \
   PULSE_CONFIG="$SANDBOX/empty-config.md" bash "$PULSE" --status >/dev/null 2>&1
@@ -114,8 +115,8 @@ check "second run is idempotent — does not clobber fresh state with stale old 
 # 6) Fail-safe: if the copy step itself fails, the cycle must refuse to run rather than proceed as
 #    though state were fresh (a bad source path — e.g. unreadable/absent — is simulated by pointing
 #    the "old cron" location at a directory, which `cp` (no -r) refuses to copy).
-H6="$(mktemp -d "${TMPDIR:-/tmp}/pulsehome6.XXXXXX")"
-BADSRC6="$(mktemp -d "${TMPDIR:-/tmp}/pulsebadsrc6.XXXXXX")"   # a directory, not a file — cp fails
+H6="$(mktemp -d "$SANDBOX/pulsehome6.XXXXXX")"
+BADSRC6="$(mktemp -d "$SANDBOX/pulsebadsrc6.XXXXXX")"   # a directory, not a file — cp fails
 HOME="$H6" _PULSE_OLD_CRON_STATE="$BADSRC6" _PULSE_OLD_INTERACTIVE_STATE="/nonexistent-interactive-state.json" \
   PULSE_CONFIG="$SANDBOX/empty-config.md" bash "$PULSE" --status >/dev/null 2>&1
 rc6=$?

@@ -18,7 +18,7 @@ watch_gate() {
   # FAIL-OPEN FOR THE WATCHER ONLY: the watcher hands its result back through files; if it crashes, never starts, or leaves no `done` file, the REAL
   # hook below this call runs normally (enforce behaviour) with its stdin restored. A fine-china guard must never be skipped by a watcher fault.
   local t; t="$(mktemp -d 2>/dev/null)" || return 0
-  cat > "$t/in" 2>/dev/null || { exec 0< /dev/null; return 0; }
+  cat > "$t/in" 2>/dev/null || { rm -rf "$t"; exec 0< /dev/null; return 0; }   # allow-silence: watcher-only fail-open (see FAIL-OPEN note above); the real guard still runs
   LHB_WATCH_OUT="$t" python3 "$d/lib/watch_run.py" "$@" < "$t/in" >/dev/null 2>"$t/crash"
   if [ -f "$t/done" ] && [ -f "$t/rc" ]; then
     cat "$t/out" 2>/dev/null; cat "$t/err" >&2 2>/dev/null

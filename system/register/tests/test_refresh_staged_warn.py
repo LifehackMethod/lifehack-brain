@@ -44,7 +44,9 @@ def check(name, cond):
     fails += 0 if cond else 1
 
 
-parent = os.environ.get("REFRESH_TEST_SCRATCH") or tempfile.gettempdir()
+# every temp dir this file makes lives inside ONE TemporaryDirectory, removed when the process exits (leaked test temp dirs filled a disk, 2026-11-01)
+_SCRATCH = tempfile.TemporaryDirectory(prefix="warn-", dir=os.environ.get("REFRESH_TEST_SCRATCH") or None)
+parent = _SCRATCH.name
 # 1. stale register staged, commit touches only b.sh -> row for a.sh differs -> WARN, exit 0
 d, base = make(parent)
 open(os.path.join(d, REG), "w", encoding="utf-8").write("\n".join([row("hook:a", "/system/hooks/a.sh", "STALE000"), base[1]]) + "\n")

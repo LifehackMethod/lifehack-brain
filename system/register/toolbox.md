@@ -64,6 +64,7 @@ Shared layer = everything under `shared/`. Look here before writing a new tool.
 
 - `/shared/brain_root.py` · THE one root variable. Every data path in this system resolves through here
 - `/shared/cal_config.py` · the one place a calendar or task-list identifier is read from
+- `/shared/disk_preflight.py` · THE disk-low preflight: refuse to START a rig/exam run or the full test suite on a nearly full disk
 - `/shared/jobs_manifest.py` · the ONE reader that joins the shared job table with YOUR personal one
 - `/shared/paths.py` · every machine-shaped path in this system, answered in ONE place
 - `/shared/person_roots.py` · the ONLY way plugin code learns where a person's own folders are

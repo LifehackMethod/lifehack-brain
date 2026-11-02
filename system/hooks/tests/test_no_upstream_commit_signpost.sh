@@ -41,15 +41,16 @@ GUARD_REL="system/hooks/guard_no_upstream_commit_signpost.sh"
 GUARD_PATH="$REPO_ROOT/$GUARD_REL"
 
 pass=0; fail=0
-TMP_DIRS=()
-cleanup() { for d in "${TMP_DIRS[@]}"; do rm -rf "$d" 2>/dev/null; done; }
-trap cleanup EXIT
+# ONE parent scratch dir, made HERE in the main shell, removed on exit. (The old per-call TMP_DIRS+=() ran inside
+# $(new_repo)/$(new_home) command substitutions -- subshells -- so the main shell's list stayed empty and every
+# no-upstream-test.* dir leaked: 648 of them on 2026-11-01.)
+TEST_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/no-upstream-test.XXXXXX") || exit 1
+trap 'rm -rf "$TEST_ROOT"' EXIT
 
 new_home() {
   local d
-  d=$(mktemp -d "${TMPDIR:-/tmp}/no-upstream-test.XXXXXX") || exit 1
+  d=$(mktemp -d "$TEST_ROOT/home.XXXXXX") || exit 1
   mkdir -p "$d/.claude"
-  TMP_DIRS+=("$d")
   printf '%s' "$d"
 }
 
@@ -57,8 +58,7 @@ new_home() {
 # tracked (upstream = origin/main). Prints the working clone's absolute path.
 new_repo() {
   local base bare work
-  base=$(mktemp -d "${TMPDIR:-/tmp}/no-upstream-test.XXXXXX") || exit 1
-  TMP_DIRS+=("$base")
+  base=$(mktemp -d "$TEST_ROOT/repo.XXXXXX") || exit 1
   bare="$base/origin.git"
   work="$base/work"
   git init --quiet --bare "$bare" >/dev/null 2>&1
@@ -98,7 +98,7 @@ echo "── 1. chained 'checkout -b' + commit, -C form ────────
 REPO1=$(new_repo)
 HOME1=$(new_home)
 PAY1=$(payload "git -C $REPO1 checkout -b newb && git -C $REPO1 commit -m x")
-ERR1=$(mktemp "${TMPDIR:-/tmp}/no-upstream-test.XXXXXX")
+ERR1=$(mktemp "$TEST_ROOT/err.XXXXXX")
 invoke "$PAY1" "$HOME1" "sess-1" >/dev/null 2>"$ERR1"; c=$?
 want_deny "$c" "chained checkout -b + commit (-C form) fires"
 if grep -q "newb" "$ERR1"; then pass=$((pass+1)); printf '   ok   deny text names the new branch (newb)\n'

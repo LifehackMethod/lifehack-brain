@@ -78,6 +78,7 @@ EOF
 run_half() {
   local name=$1 dir=$2 expect=$3   # expect = SHARPEN | NOCHANGE
   local tmp; tmp=$(mktemp -d) || die "mktemp failed"
+  _LP_TMP="$tmp"; trap 'rm -rf "${_LP_TMP:-}"' EXIT   # a die() below exits before the rm at the end of this function: never leak the dir (2026-11-01)
   cp "$dir/brief.md" "$dir/plan.md" "$tmp/" || die "copy failed"
 
   local before after out tensions newplan

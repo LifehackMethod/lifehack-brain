@@ -157,6 +157,7 @@ EXIT CODES (the parts-library house contract)
 from __future__ import annotations
 
 import argparse
+import atexit
 import contextlib
 import json
 import os
@@ -457,7 +458,10 @@ def bind_rule_files(refuse=None, rewrite=None, identity=None, workdir=None):
         import identity_rules                                # noqa: E402
     except ImportError as e:
         raise CannotEvaluate("identity_rules.py is not importable: {}".format(e))
-    wd = workdir or tempfile.mkdtemp(prefix="scrub-rules-")
+    wd = workdir
+    if not wd:   # our own scratch: removed at process exit (the rule files are read until then); leaked scrub-rules-* per run, 2026-11-01
+        wd = tempfile.mkdtemp(prefix="scrub-rules-")
+        atexit.register(shutil.rmtree, wd, True)
     try:
         rp, wp, ip, n = identity_rules.effective_rule_files(wd, identity_file=identity)
     except identity_rules.IdentityMissing as e:

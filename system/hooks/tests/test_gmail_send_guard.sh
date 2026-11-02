@@ -27,6 +27,7 @@ GUARD="$(cd "$HERE/.." 2>/dev/null && pwd)/guard_gmail_send.sh"
 # rc=1 on the GitHub Actions Linux runner while staying green on a macOS laptop. Spelling the
 # template explicitly works identically on both.
 ERRF="$(mktemp "${TMPDIR:-/tmp}/gmailsendguard.XXXXXX")"
+trap 'rm -f "$ERRF"' EXIT  # guaranteed cleanup: leaked test temp dirs filled a disk, 2026-11-01
 PASSED=0
 FAILED=0
 

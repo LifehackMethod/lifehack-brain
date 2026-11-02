@@ -1,4 +1,4 @@
-import os, subprocess, sys, tempfile, unittest
+import os, shutil, subprocess, sys, tempfile, unittest
 CHK = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "checks", "safe_to_ship.py")
 
 
@@ -9,6 +9,7 @@ def sh(cwd, *a):
 class T(unittest.TestCase):
     def repo(self):
         d = tempfile.mkdtemp(prefix="chk4-")
+        self.addCleanup(shutil.rmtree, d, True)  # leaked chk*-* scratch repos filled a disk, 2026-11-01
         sh(d, "git", "init", "-q")
         sh(d, "git", "config", "user.email", "t@t"); sh(d, "git", "config", "user.name", "t")
         self.w(d, "README.md", "x\n"); sh(d, "git", "add", "-A"); sh(d, "git", "commit", "-qm", "i")

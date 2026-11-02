@@ -5,6 +5,7 @@ Run:  python3 system/tools/test_safe_sheets.py
 """
 import json
 import os
+import shutil
 import stat
 import sys
 import tempfile
@@ -12,7 +13,10 @@ import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-os.environ.setdefault("LIFEHACK_ROOT", tempfile.mkdtemp(prefix="safe-sheets-root-"))
+# setdefault() would mkdtemp EVEN WHEN the root is already set, and nothing removed it: make one only when needed, and let it clean itself up
+if not os.environ.get("LIFEHACK_ROOT"):
+    _ROOT_TMP = tempfile.TemporaryDirectory(prefix="safe-sheets-root-")
+    os.environ["LIFEHACK_ROOT"] = _ROOT_TMP.name
 import safe_sheets  # noqa: E402
 
 SID = "1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789"
@@ -21,6 +25,7 @@ SID = "1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789"
 class SafeSheetsCase(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="safe-sheets-")
+        self.addCleanup(shutil.rmtree, self.tmp, True)  # leaked safe-sheets-* filled a disk, 2026-11-01
         self.shim = os.path.join(self.tmp, "gws")
         self.old = safe_sheets.GWS
         safe_sheets.GWS = self.shim

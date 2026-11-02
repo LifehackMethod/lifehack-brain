@@ -11,7 +11,7 @@ USAGE: rig_live_free.py run --cases cases/meal-roundA-live.jsonl --label L [--on
                  to <label>-files/<id>/ before removal. Without it the cwd is the real personal code folder (Round A behaviour).
   --env K=V:     extra environment for the headless child only (e.g. ROUNDB_BACK_DOOR=on); hooks inherit it.
 """
-import argparse, glob, hashlib, json, os, re, shlex, shutil, subprocess, sys, tempfile, time
+import argparse, atexit, glob, hashlib, json, os, re, shlex, shutil, subprocess, sys, tempfile, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -19,6 +19,8 @@ import rig_meal as rm  # noqa: E402
 import rig_live_score as ls  # noqa: E402
 import rig_isolation as isol  # noqa: E402  (not `iso`: main() uses that name for the throwaway HOME path)
 import rig_sandbox as sandbox  # noqa: E402  (kernel layer: every actor runs under sandbox-exec; record rig-actor-sandbox)
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "shared"))
+import disk_preflight  # noqa: E402  (THE disk-low preflight, shared/disk_preflight.py)
 
 V2 = os.path.expanduser("~/lifehack-v2")
 def _real_personal_code():
@@ -440,6 +442,7 @@ def main():
         return selftest()
     if not a.cases or not a.label:
         sys.exit("run needs --cases and --label")
+    disk_preflight.require([a.scratch])   # DISK-LOW preflight: refuse before ANY session on a nearly full disk (shared/disk_preflight.py)
     # SAFETY (coordinator, 2026-10-30): live sessions NEVER run with the real HOME - remember_reason writes ~/.config/lifehack/placement.conf and
     # other pieces write under ~/.claude. Unless the caller passes its own throwaway HOME (the student pass does), build one here.
     envd = dict(e.split("=", 1) for e in a.env)
@@ -493,6 +496,7 @@ def main():
     cases = [c for c in rm.load_all(a.cases) if not a.only or re.search(a.only, c["id"])]
     notes = rm.notes_root()
     work = tempfile.mkdtemp(prefix="riglive-")
+    atexit.register(shutil.rmtree, work, True)   # guaranteed even when a step before the try/finally below raises (leaked riglive-* filled a disk, 2026-11-01)
     # PREFLIGHT (2026-11-02): the whole run is refused before ANY session if the actor env would carry a cloud CLI or a credential name
     pf_path, pf_linked, pf_missing = isol.make_private_path(os.path.join(work, "actor-bin"))
     pf_env, pf_dropped = isol.build_actor_env(os.environ, dict(envd, **isol.fence_env(real_home, [notes], [a.scratch, envd["HOME"]], notes_roots=REAL_NOTES_ROOTS)),

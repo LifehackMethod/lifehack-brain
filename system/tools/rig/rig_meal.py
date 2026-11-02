@@ -27,6 +27,8 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 sys.path.insert(0, HERE)
 import rig_run  # noqa: E402
 import rig_student  # noqa: E402
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "shared"))
+import disk_preflight  # noqa: E402  (THE disk-low preflight, shared/disk_preflight.py)
 
 DEFAULT_CASES = os.path.join(HERE, "cases", "meal-2026-10-29.jsonl")
 CHECKS = ("connected", "hides_failure", "is_copy", "safe_to_ship")
@@ -59,11 +61,15 @@ class Arena:
     """One master clone of the V2 checkout (committed HEAD only) + a scratch identity file. Cases clone from it with hardlinks."""
     def __init__(self):
         self.T = tempfile.mkdtemp(prefix="rigmeal-")
-        os.makedirs(self.T + "/home", exist_ok=True)
-        open(self.T + "/ident.txt", "w", encoding="utf-8").write("zzrigsecretname\n")
-        rc, out = sh(["git", "clone", "-q", ROOT, self.T + "/master"], self.T, base_env(self.T))
-        if rc:
-            raise SystemExit("master clone failed: " + out[-300:])
+        try:   # a failed set-up must not leave the arena behind (callers only close() an arena they got back; leaked rigmeal-* filled a disk, 2026-11-01)
+            os.makedirs(self.T + "/home", exist_ok=True)
+            open(self.T + "/ident.txt", "w", encoding="utf-8").write("zzrigsecretname\n")
+            rc, out = sh(["git", "clone", "-q", ROOT, self.T + "/master"], self.T, base_env(self.T))
+            if rc:
+                raise SystemExit("master clone failed: " + out[-300:])
+        except BaseException:
+            shutil.rmtree(self.T, ignore_errors=True)
+            raise
         self.n = 0
 
     def clone(self):
@@ -612,6 +618,7 @@ def main():
         report(os.path.join(d, day + "-base.jsonl"), sorted(glob.glob(os.path.join(d, day + "-meal-off-*.jsonl"))), out, a.wall)
         print("wrote", out)
         return 0
+    disk_preflight.require()   # DISK-LOW preflight: refuse before any clone or session on a nearly full disk
     cases = load_all(a.cases)
     if a.only:
         cases = [c for c in cases if re.search(a.only, c["id"])]

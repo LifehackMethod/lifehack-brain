@@ -45,6 +45,11 @@ import subprocess
 import sys
 import tempfile
 
+# every temp dir this file (and the scrub.py it runs) makes lives inside ONE TemporaryDirectory, removed when the process exits (leaked test temp dirs filled a disk, 2026-11-01)
+_SCRATCH = tempfile.TemporaryDirectory(prefix="line-boundary-test-")
+tempfile.tempdir = _SCRATCH.name
+os.environ["TMPDIR"] = _SCRATCH.name
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.realpath(os.path.join(HERE, "..", ".."))
 SCRUB = os.path.join(HERE, "scrub.py")

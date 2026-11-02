@@ -13,6 +13,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 CHECK = os.path.join(os.path.dirname(HERE), "checks", "hides_failure.py")
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
 FAILS = []
+# every scratch repo lives under ONE TemporaryDirectory, removed when the script exits (leaked chk2-* filled a disk, 2026-11-01)
+_SCRATCH = tempfile.TemporaryDirectory(prefix="chk2-")
 
 
 def sh(cwd, *a):
@@ -20,7 +22,7 @@ def sh(cwd, *a):
 
 
 def new_repo():
-    d = tempfile.mkdtemp(prefix="chk2-")
+    d = tempfile.mkdtemp(prefix="repo-", dir=_SCRATCH.name)
     for c in (["git", "init", "-q"], ["git", "config", "user.email", "t@t"], ["git", "config", "user.name", "t"]):
         sh(d, *c)
     return d

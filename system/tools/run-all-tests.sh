@@ -116,6 +116,10 @@ case "${1:-}" in
     ;;
 esac
 
+# DISK-LOW preflight (shared/disk_preflight.py, after --help/--list so a probe never trips it): refuse to start a full
+# suite on a nearly full disk -- it fails half-way in confusing ways and adds to the pile. LH_DISK_MIN_GB overrides 5 GB.
+"$PY" "$REPO_ROOT/shared/disk_preflight.py" "$RUN_TMP_ROOT" || exit 1
+
 PASS=0; FAIL=0; SKIP=0
 FAILED_NAMES=""
 SKIPPED_NAMES=""

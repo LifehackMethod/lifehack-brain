@@ -9,6 +9,10 @@ import sys
 import tempfile
 import unittest
 
+# every temp dir this file makes lives inside ONE TemporaryDirectory, removed when the process exits (leaked test temp dirs filled a disk, 2026-11-01)
+_SCRATCH = tempfile.TemporaryDirectory(prefix="toolbox-test-")
+tempfile.tempdir = _SCRATCH.name
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 REGISTER_DIR = os.path.dirname(HERE)
 sys.path.insert(0, REGISTER_DIR)

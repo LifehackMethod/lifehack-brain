@@ -9,7 +9,8 @@ G="$HOOKS/guard_cloud_destructive.sh"; LIB="$HOOKS/lib"
 for f in "$G" "$LIB/cloud_guard.py"; do [ -f "$f" ] || { echo "CANNOT RUN: $f"; exit 1; }; done
 . "$HERE/pin_roundb_off.sh"
 # Temp folder is left for the OS temp sweep (this test deletes nothing).
-S="$(mktemp -d "${TMPDIR:-/tmp}/cdg.XXXXXX")"; mkdir -p "$S/home"
+S="$(mktemp -d "${TMPDIR:-/tmp}/cdg.XXXXXX")"; trap 'rm -rf "$S"' EXIT  # guaranteed cleanup: leaked test temp dirs filled a disk, 2026-11-01
+mkdir -p "$S/home"
 P=0; F=0; OUTF="$S/out"; ERRF="$S/err"
 
 bashjson() { T="$1" python3 -c 'import os,json; print(json.dumps({"tool_name":"Bash","tool_input":{"command":os.environ["T"]},"cwd":"/tmp"}))'; }

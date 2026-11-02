@@ -14,6 +14,7 @@ reader output, or with output that names the chat but carries no gist, the pile 
 
 import json
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -27,6 +28,7 @@ CHAT = "Projects__Thing__Note.txt"
 class ScanEvidenceCase(unittest.TestCase):
     def setUp(self):
         self.work = tempfile.mkdtemp(prefix="lifehack-scanev-")
+        self.addCleanup(shutil.rmtree, self.work, True)  # leaked lifehack-scanev-* filled a disk, 2026-11-01
         # ⛔ HARDCODED ON PURPOSE, AND IT MUST STAY HARDCODED. This is the name 2-scan.md:51 tells
         # the model to write (`RAW="$COWORK_WORK/raw-scan-$BASKET"`), so this line is the WRITER's
         # side of the contract and the only reason this file can catch a mismatch.
