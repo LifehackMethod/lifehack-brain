@@ -2969,5 +2969,25 @@ paragraph here.
 - Checks that only looked for a file's existence — they passed while the content was wrong. *OBSERVED (PART 0 Stage 4:
   8 silently wrong results from non-empty tests).*
 
+**What the test rig found (2026-11-01 → 11-02).** *OBSERVED — one synthetic 12-step skill, real headless Claude Code
+sessions; record: the skill-tester-rig plan's DISCOVERIES, `<notes>/plans/skill-tester-rig.plan.md`.*
+- **A step's answer goes through a structured channel, not free text.** Ruled by Enver 2026-11-02. A stronger model
+  asked for "only one line of JSON" printed its working first in 8 of 8 runs; naming the rejection and asking again
+  (2 retries) changed nothing, as the same reply came back byte for byte. With the platform's structured output
+  (`--json-schema`) it passed 3 of 3, right first time on 24 of 24 steps. So: structured output, plus at most 2 retries
+  that name the format fault, for format faults only. A wrong answer is never retried, and a retry never hints at the
+  expected value. *(This is Principle 4, "prefer what the platform provides", proven.)*
+- **Say where step files live:** under `~/.claude/run/<skill>/`. The harness's read guard trusts that zone; a skill
+  whose step 2 reads step 1's file from anywhere else is refused.
+- **A sub-session is not isolated by a throwaway HOME.** Claude Code walks up from its working folder and loads every
+  parent's .claude/CLAUDE.md file, skills and agents, so a test session under the home folder loaded the owner's
+  personal brief and skills. It also inherits the whole parent environment (logins, tool paths) unless told
+  otherwise. Isolate with: an exact tool set (`--tools`, not an allow rule), an environment built from an allow-list,
+  a working folder outside the home tree, and a per-run check that fails if anything from the real home loaded.
+- **A refusal that names the fault is necessary but not enough.** It keeps a model from hunting for workarounds,
+  but it does not make a model change a habit. The channel has to make the wrong shape impossible.
+- **Waits:** a wait on a *person* has no time limit, but it must be visible and never auto-advance. A wait on a
+  *program* has a limit, and a timeout is a failure. *(Ruled by Enver 2026-11-01.)*
+
 > **Evidence behind this section** (notes folder, `<notes>/state/projects/skill-system/records/`): `2026-10-31-survey-ideal-skill-architecture.md` · `2026-10-31-architect-read-ideal-skill-architecture.md` · `2026-10-31-structuring-long-multiphase-agent-workflows.md`.
 <!-- PROPOSED-CHANGES-2026-10-31 END -->
