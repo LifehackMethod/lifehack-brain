@@ -33,6 +33,11 @@ def main():
         os.environ.update(GOOGLE_WORKSPACE_CLI_CONFIG_DIR="/nonexistent/gws-cron", GH_TOKEN="fake", AWS_PROFILE="fake")
         os.environ["PATH"] = bindir + os.pathsep + os.environ["PATH"]
         lf.V2, lf.OPS = v2, ops
+
+        class _PassSandbox:   # run_one refuses without a sandbox since 2026-11-02 (rig-actor-sandbox); this test checks cleanup + env scrub, not the kernel layer (test_rig_sandbox.py does)
+            def case(self, name, allow_write, cwd, settings_path, write_denied, notes_roots, env):
+                return (lambda cmd: cmd), env
+        lf.SBX = _PassSandbox()
         case = {"id": "t1", "live": {"prompt": "x", "sop": [], "shared_ref": [], "wrong_re": [], "kind": "build"}}
         base = os.path.join(t, "base-settings.json"); open(base, "w", encoding="utf-8").write("{}")   # run_one now builds the fenced copy of a base settings file
         home = os.path.join(t, "rig-iso-home"); os.makedirs(home)   # run_one refuses the real HOME since 2026-11-02 (rig-cred-isolation)

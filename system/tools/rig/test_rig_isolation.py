@@ -60,9 +60,11 @@ leaked = [k for k in env if k.startswith(("GOOGLE", "GWS", "CLOUDSDK", "GH_", "G
 check("no GOOGLE_/GWS_/CLOUDSDK_/GH_/GITHUB_/AWS_/AZURE_/RCLONE_ name reaches the actor", not leaked, leaked)
 check("SSH agent socket, other tokens, foreign API keys dropped", not ({"SSH_AUTH_SOCK", "OPENAI_API_KEY", "MY_SERVICE_TOKEN", "CLAUDE_PLUGIN_ROOT"} & set(env)), sorted(env))
 check("no value in the actor env holds a parent credential path", not any(".config/gws" in v or "creds.json" in v or "rclone.conf" in v for v in env.values()))
-check("a parent value pointing into the real home (SHELL) is dropped", "SHELL" not in env and "SHELL" in dropped)
+check("SHELL is never inherited: the rig fixes /bin/bash (a parent zsh would write temp files outside the sandbox)", env.get("SHELL") == "/bin/bash")
 check("unknown parent names (EDITOR, XPC_SERVICE_NAME) are dropped: allowlist, not denylist", "EDITOR" not in env and "XPC_SERVICE_NAME" not in env)
-check("kept: TERM LANG TMPDIR USER + proxy", all(env.get(k) == PARENT[k] for k in ("TERM", "LANG", "TMPDIR", "USER", "HTTPS_PROXY")))
+check("kept: TERM LANG USER", all(env.get(k) == PARENT[k] for k in ("TERM", "LANG", "USER")))
+check("narrowed: parent TMPDIR, proxies, CA paths and ANTHROPIC_BASE_URL never pass (the rig sets its own proxy and temp dir)",
+      not ({"TMPDIR", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "SSL_CERT_FILE", "ANTHROPIC_BASE_URL", "COLORTERM"} & set(env)), sorted(env))
 check("HOME is the throwaway, PATH is the private one", env["HOME"] == AHOME and env["PATH"] == path)
 check("Claude OAuth token kept; Anthropic API key dropped while the token is set", env.get("CLAUDE_CODE_OAUTH_TOKEN") == "oauth-fake" and "ANTHROPIC_API_KEY" not in env and "ANTHROPIC_API_KEY" in dropped)
 e2, _ = iso.build_actor_env({k: v for k, v in PARENT.items() if k != "CLAUDE_CODE_OAUTH_TOKEN"}, {}, home=AHOME, path=path, real_home=RH)

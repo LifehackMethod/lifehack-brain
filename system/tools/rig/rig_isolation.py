@@ -32,9 +32,14 @@ REQUIRED_BINS = ("claude", "python3", "git")
 SYSTEM_DIRS = ("/usr/bin", "/bin", "/usr/sbin", "/sbin")   # SIP-protected on macOS: nothing can be installed into them, so no cloud CLI lives there
 
 # ---- environment ------------------------------------------------------------------------------------------------------------------
-PARENT_KEEP = ("TERM", "COLORTERM", "LANG", "LC_ALL", "LC_CTYPE", "TZ", "TMPDIR", "USER", "LOGNAME", "SHELL")
-NET_KEEP = ("HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "no_proxy", "all_proxy",
-            "NODE_EXTRA_CA_CERTS", "SSL_CERT_FILE", "SSL_CERT_DIR", "REQUESTS_CA_BUNDLE", "ANTHROPIC_BASE_URL")
+# Narrowed 2026-11-02 (record rig-actor-sandbox; per-name reasons in drafts/rig-actor-sandbox-layer-design.md §4):
+#  kept     TERM LANG LC_ALL LC_CTYPE TZ USER LOGNAME - harmless, and python/git behave the same as in a real session
+#  dropped  COLORTERM (cosmetic); TMPDIR (the shared /var/folders temp: the rig sets a per-run one); SHELL (the rig fixes /bin/bash: without it
+#           the Bash tool used zsh, whose temp files land outside the sandbox's allowed set); every parent proxy and CA variable (the rig points
+#           the proxy at its own allowlist proxy; NO_PROXY=* would silently bypass it; CA paths can point into the real home);
+#           ANTHROPIC_BASE_URL (it redirects claude's API traffic - WITH the token - to any host).
+PARENT_KEEP = ("TERM", "LANG", "LC_ALL", "LC_CTYPE", "TZ", "USER", "LOGNAME")
+NET_KEEP = ()
 AUTH_TOKEN = "CLAUDE_CODE_OAUTH_TOKEN"
 AUTH_KEY = "ANTHROPIC_API_KEY"   # passed only when no OAuth token is set, so the token is the one credential (same rule as the skill-tester rig)
 RIG_PREFIXES = ("ROUNDB_", "LH_", "LHB_", "LIFEHACK_", "RIG_FENCE_", "RIG_DRIVE_")   # the rig's own switches (ROUNDB_FC_ASK_NOT_TOKEN is a switch, not a token)
@@ -45,7 +50,7 @@ FORBIDDEN_NAMES = ("SSH_AUTH_SOCK", "GPG_AGENT_INFO", "KUBECONFIG", "DOCKER_CONF
 SECRETY = re.compile(r"TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|API_?KEY|PRIVATE_KEY|ACCESS_KEY|_AUTH$|^AUTH_|COOKIE|SESSION_KEY", re.I)
 # Fixed values every actor gets: no system git config (macOS ships credential.helper=osxkeychain there, which would hand a real GitHub token to
 # any https push), no git password prompt, and ssh that offers no key and asks nothing.
-ACTOR_FIXED = {"LIFEHACK_SANDBOX": "V2", "GIT_CONFIG_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0", "DISABLE_AUTOUPDATER": "1",
+ACTOR_FIXED = {"LIFEHACK_SANDBOX": "V2", "GIT_CONFIG_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0", "DISABLE_AUTOUPDATER": "1", "SHELL": "/bin/bash",
                "GIT_SSH_COMMAND": "ssh -F /dev/null -o IdentitiesOnly=yes -o IdentityFile=/dev/null -o IdentityAgent=none -o BatchMode=yes"}
 
 

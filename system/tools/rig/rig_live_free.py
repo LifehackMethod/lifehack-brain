@@ -18,6 +18,7 @@ sys.path.insert(0, HERE)
 import rig_meal as rm  # noqa: E402
 import rig_live_score as ls  # noqa: E402
 import rig_isolation as isol  # noqa: E402  (not `iso`: main() uses that name for the throwaway HOME path)
+import rig_sandbox as sandbox  # noqa: E402  (kernel layer: every actor runs under sandbox-exec; record rig-actor-sandbox)
 
 V2 = os.path.expanduser("~/lifehack-v2")
 def _real_personal_code():
@@ -259,6 +260,7 @@ def fence_settings(base_path, out_path):
 
 
 LAST_DRIVE = {}   # case id -> what rig_drive did for the last run of it (read by main to add "drive" to the result row)
+SBX = None   # the run's rig_sandbox.Sandbox (proven sandbox-exec + allowlist proxy), entered in main before any case; run_one refuses without it
 REAL_NOTES_ROOTS = []   # the real notes root(s) from the parent's pointer (shared/person_roots.py), resolved ONCE in main before any env is scrubbed
 
 
@@ -313,6 +315,17 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
            "--settings", settings, "--strict-mcp-config", "--output-format", "stream-json", "--verbose"]
     if L.get("max_budget_usd"):
         cmd += ["--max-budget-usd", str(L["max_budget_usd"])]
+    # SECOND LAYER (2026-11-02): the whole actor runs under sandbox-exec. Writes: only this case's scratch, the throwaway HOME and (Drive cases)
+    # the one run folder; network: only the allowlist proxy. The per-case canary must pass first, or the case is refused (never run unsandboxed).
+    if SBX is None:
+        sys.exit("REFUSED: case %s has no actor sandbox (rig_sandbox.Sandbox not entered)" % c["id"])
+    env["TMPDIR"] = os.path.join(home, "tmp")
+    os.makedirs(env["TMPDIR"], exist_ok=True)
+    roots = REAL_NOTES_ROOTS or isol.real_notes_roots()
+    allow = [os.path.realpath(scratch) if scratch else os.path.realpath(cwd), os.path.realpath(home)] + ([env["RIG_FENCE_RUN_DRIVE"]] if drive_run else [])
+    denied = sandbox.standard_write_denied(os.path.realpath(os.path.expanduser("~")), roots, V2, rig_drive.area() if drive_run else None)
+    sbwrap, env = SBX.case(c["id"], allow, cwd, settings, denied, roots, env)
+    cmd = sbwrap(cmd)
     b = snapshot(notes)
     t0 = time.time()
     err = ""
@@ -506,16 +519,20 @@ def main():
         print("resume: %d done, %d left" % (len(done), len(cases)), flush=True)
     keep = os.path.join(res_dir, "%s-%s-streams" % (stamp, a.label))
     os.makedirs(keep, exist_ok=True)
+    global SBX
     try:
+        SBX = sandbox.Sandbox(work, protect=[V2]).__enter__()   # refuses the whole run if sandbox-exec is missing or does not enforce
         for c in cases:
             r = run_one(c, notes, work, a.scratch, dict(e.split("=", 1) for e in a.env), os.path.join(res_dir, "%s-%s-files" % (stamp, a.label)), a.model, a.settings, a.label if a.drive else None)
             r["drive"] = LAST_DRIVE.get(c["id"])
             out.append(r)
             print(r["id"], r["bucket"], r["turns"], r["secs"], r["commits"] or "", flush=True)
             open(os.path.join(res_dir, "%s-%s-live.jsonl" % (stamp, a.label)), "w", encoding="utf-8").write("\n".join(json.dumps(x) for x in out) + "\n")
-            for f in glob.glob(work + "/*.stream.jsonl") + glob.glob(work + "/*.fence.jsonl") + glob.glob(work + "/*.drive-end.json") + glob.glob(work + "/*.isolation.json"):
+            for f in glob.glob(work + "/*.stream.jsonl") + glob.glob(work + "/*.fence.jsonl") + glob.glob(work + "/*.drive-end.json") + glob.glob(work + "/*.isolation.json") + glob.glob(work + "/*.sandbox.json"):
                 shutil.copy(f, keep)
     finally:
+        if SBX:
+            SBX.__exit__(None, None, None)
         shutil.rmtree(work, ignore_errors=True)
     if envd["HOME"].endswith("rig-iso-home"):
         shutil.rmtree(envd["HOME"], ignore_errors=True)
