@@ -175,6 +175,10 @@ UNREGISTERED_OK = {
                                "manifest a student actually runs — same known gap as "
                                "guard_harness_writeback.sh: this lint reads only .claude/settings.json "
                                "and system/hooks/registrations.json, never hooks/hooks.json",
+    "guard_cloud_destructive.sh": "registered in hooks/hooks.json on PreToolUse Bash (D-F11, 2026-11-02), "
+                                  "generated from its system/register/register.jsonl row exactly like "
+                                  "guard_fine_china_ask.sh — same known gap: this lint never reads "
+                                  "hooks/hooks.json",
     "guard_harness_writeback.sh": "registered in hooks/hooks.json:319, the plugin manifest a student "
                                   "actually runs, but NOT in .claude/settings.json — so a repo-clone "
                                   "user does not get it, only a plugin install does. This lint reads "

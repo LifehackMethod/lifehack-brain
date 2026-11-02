@@ -138,11 +138,186 @@ UNPARSEABLE = '\x00UNPARSEABLE\x00'
 # the opposite: the body undergoes the same parameter/command substitution a double-quoted
 # string would, so it can genuinely execute something and must stay visible.
 _HEREDOC_OP = re.compile(r"<<-?[ \t]*(['\"])(\w+)\1")
+# D-F11 (2026-11-02): any heredoc operator, quoted or not (never a <<< here-string).
+_HEREDOC_ANY = re.compile(r"(?<!<)<<-?(?!<)[ \t]*(['\"]?)(\w+)\1")
+
+# ⛔ D-F11 (2026-11-01, a sandbox session trashed 899 real Drive files): "a quoted heredoc body is
+# inert" is true only when the SHELL consumes it (cat > f, tee f). When the heredoc is the stdin of
+# an INTERPRETER that has no script argument (`python3 -I - <<'E'`, `node <<'E'`, `bash <<'E'`), the
+# body IS the program, and blanking it hid the whole bulk-trash loop from every gws guard.
+# Behind the switch gws_exec_heredoc in roundB.conf (env ROUNDB_GWS_EXEC_HEREDOC wins). OFF = the old
+# behaviour, byte for byte. One sink list for the whole module (git_target_resolver.py keeps its own
+# first-word-only copy for git; this one also finds the sink after `cd /tmp && ...`).
+EXEC_SINKS = {"python", "python2", "python3", "pypy", "pypy3", "node", "nodejs", "deno", "bun", "ruby",
+              "perl", "php", "bash", "sh", "zsh", "dash", "ksh", "fish", "osascript", "rscript", "ssh",
+              "source", "."}
+_PYVER = re.compile(r"^(?:python|pypy)\d+(?:\.\d+)*$")
+# Per interpreter family: (flags that put the program in an ARGUMENT -- then stdin is only data,
+# flags that consume the next word as their value -- so that word is not a script path).
+_FAMILY_FLAGS = {
+    "py": ({"-c", "-m"}, {"-W", "-X"}),
+    "sh": ({"-c"}, {"-o", "-O"}),
+    "node": ({"-e", "--eval", "-p", "--print"}, {"-r", "--require", "--import", "--loader"}),
+    "ruby": ({"-e"}, {"-r", "-I"}),
+    "perl": ({"-e", "-E"}, {"-I"}),
+    "php": ({"-r"}, set()),
+    "osascript": ({"-e"}, set()),
+    "rscript": ({"-e"}, set()),
+}
 
 
-def _strip_quoted_heredocs(cmd):
+def _family(word):
+    if word in ("python", "python2", "python3", "pypy", "pypy3") or _PYVER.match(word):
+        return "py"
+    if word in ("bash", "sh", "zsh", "dash", "ksh", "fish"):
+        return "sh"
+    if word in ("node", "nodejs", "deno", "bun"):
+        return "node"
+    return word
+# Shell keywords that may precede a real command word (`do gws ...`, `then gws ...`). D-F11 shape J.
+_KEYWORDS = {"do", "then", "else", "if", "elif", "while", "until", "!", "{", "(", "time"}
+# An interpreter run with its program in -c / -e: the body is code.
+_INTERP_CODE = re.compile(
+    r"(?:^|[\s;&|(`])(?:[\w./~-]*/)?(?:python[\d.]*|pypy[\d.]*|node|nodejs|deno|bun|ruby|perl|php|osascript)"
+    r"(?:\s+-[A-Za-z]+)*?\s+(?:-c|-e|-E|--eval|-p)\s+(?P<body>\"(?:[^\"\\]|\\.)*\"|'[^']*')")
+
+
+def exec_heredoc_on():
+    """The gws_exec_heredoc switch (roundB.conf; env ROUNDB_GWS_EXEC_HEREDOC overrides). Any error -> off."""
+    try:
+        here = __import__("os").path.dirname(__import__("os").path.abspath(__file__))
+        if here not in sys.path:
+            sys.path.insert(0, here)
+        from roundb import roundb_on
+        return roundb_on("gws_exec_heredoc")
+    except Exception:
+        return False
+
+
+def _cmd_word(toks):
+    """Strip assignments, wrapper words and shell keywords; return (basename of the command word, rest)."""
+    toks = list(toks)
+    while toks and (_ASSIGN.match(toks[0]) or _debinary(toks[0]) in _WRAPPER or toks[0] in _KEYWORDS):
+        w = toks.pop(0)
+        if _debinary(w) == "env":
+            while toks and (toks[0].startswith("-") or _ASSIGN.match(toks[0])):
+                toks.pop(0)
+    if not toks:
+        return "", []
+    return _debinary(toks[0]).rsplit("/", 1)[-1].lower(), toks[1:]
+
+
+def _is_sink(word):
+    return word in EXEC_SINKS or bool(_PYVER.match(word))
+
+
+def _runs_stdin(word, args):
+    """True when interpreter `word` with `args` executes its STDIN (no script argument, no -c/-e)."""
+    if not _is_sink(word):
+        return False
+    if word in ("ssh", "source", "."):
+        # ssh with no remote command runs stdin in the remote shell; `source /dev/stdin` runs it here.
+        if word == "ssh":
+            return True
+        return bool(args) and args[0] in ("/dev/stdin", "-")
+    code_flags, value_flags = _FAMILY_FLAGS.get(_family(word), (set(), set()))
+    skip = False
+    for a in args:
+        if skip:
+            skip = False
+            continue
+        if re.match(r"^(?:\d*[<>]|&)", a):
+            continue  # a redirection (<<'E', >out, 2>&1), not an argument
+        if a in ("-", "-s", "--"):
+            return True
+        if a in code_flags:
+            return False
+        if a.startswith("-"):
+            skip = a in value_flags
+            continue
+        return False  # a script path: the heredoc is that script's stdin, i.e. data
+    return True
+
+
+def _heredoc_executed(cmd, op_start, op_end):
+    """Is the heredoc whose operator spans [op_start, op_end) fed to an interpreter that runs it?
+    Reads the statement holding the operator (the text after the last ; && || | & on the operator's
+    line) and, for `cat <<'E' | python3 -`, the first statement piped after it on the same line."""
+    ls = cmd.rfind("\n", 0, op_start) + 1
+    le = cmd.find("\n", op_end)
+    le = len(cmd) if le == -1 else le
+    before = re.sub(r"^[\s$(`{!]+", "", _STMT.split(cmd[ls:op_start])[-1])
+    after_line = cmd[op_end:le]
+    m = re.match(r"([^;&|]*)", after_line)
+    own_after = m.group(1) if m else ""
+    word, args = _cmd_word(before.lstrip("({ ").split() + own_after.split())
+    if _runs_stdin(word, args):
+        return True
+    pm = re.match(r"[^;&|]*\|(?!\|)\s*([^;&|]*)", after_line)
+    if pm:
+        w2, a2 = _cmd_word(pm.group(1).split())
+        if _runs_stdin(w2, a2):
+            return True
+    return False
+
+
+_SUBST = re.compile(r"\$\((?:[^()]|\([^()]*\))*\)|`[^`]*`")
+
+
+def _heredocs(cmd):
+    """Yield (op_match, quoted, body_start, body_end, resume) for every heredoc with a closing line."""
+    i = 0
+    for m in _HEREDOC_ANY.finditer(cmd):
+        if m.start() < i:
+            continue
+        delim = m.group(2)
+        nl = cmd.find('\n', m.end())
+        if nl == -1:
+            continue
+        term_re = re.compile(r'\n[ \t]*' + re.escape(delim) + r'[ \t]*(?=\n|$)')
+        tm = term_re.search(cmd, nl)
+        if not tm:
+            continue
+        yield m, bool(m.group(1)), nl + 1, tm.start() + 1, tm.start() + 1
+        i = tm.start() + 1
+
+
+def executed_heredoc_bodies(cmd):
+    """The bodies of every heredoc an interpreter EXECUTES (quoted or not). Used by the guards that
+    must read embedded code even when gws_exec_heredoc is off (cloud_guard)."""
+    cmd = cmd.replace('\\\n', ' ')
+    return [cmd[bs:be] for m, q, bs, be, _ in _heredocs(cmd) if _heredoc_executed(cmd, m.start(), m.end())]
+
+
+def exec_bodies(cmd, exec_aware=None):
+    """Every piece of text this command EXECUTES as code besides its own shell statements:
+    sh -c / bash -c / eval bodies (always), and -- with gws_exec_heredoc on (or exec_aware=True) --
+    python/node/ruby/perl/php/osascript -c|-e bodies and interpreter-executed heredoc bodies."""
+    if exec_aware is None:
+        exec_aware = exec_heredoc_on()
+    out = []
+    for m in _EXECWRAP.finditer(cmd):
+        inner = m.group('body') or m.group('body2')
+        if inner:
+            out.append(inner.strip('\'"'))
+    if exec_aware:
+        for m in _INTERP_CODE.finditer(cmd):
+            b = m.group("body")
+            out.append(b[1:-1].replace('\\"', '"') if b.startswith('"') else b[1:-1])
+        out.extend(executed_heredoc_bodies(cmd))
+    return out
+
+
+def _strip_quoted_heredocs(cmd, exec_aware=None):
     """Blank the BODY of every heredoc introduced with a QUOTED delimiter, leaving everything
     else (including the operator line and any UNQUOTED-delimiter heredoc) untouched.
+
+    ⛔ D-F11 (2026-11-02), with gws_exec_heredoc ON (or exec_aware=True): a heredoc that an
+    INTERPRETER executes (see _heredoc_executed) is never blanked, quoted or not -- its body is the
+    program. A heredoc that is only DATA (cat > f <<EOF, tee f <<'EOF') is blanked whether quoted or
+    not; for an UNQUOTED data heredoc the $(...) and backtick substitutions the shell WOULD run are
+    kept visible, one per line, and only the prose around them is blanked.
+    OFF: the docstring below, unchanged.
 
     WHY THIS EXISTS: measured 2026-09-15 -- writing an ordinary project brief via
     `tee brief.md <<'EOF' ... EOF` whose prose happened to mention, in backticks separated by
@@ -159,6 +334,25 @@ def _strip_quoted_heredocs(cmd):
     while an unquoted-delimiter heredoc (which CAN execute a `$(...)`/backtick substitution
     inside its body) is left fully visible to every check below, unchanged.
     """
+    if exec_aware is None:
+        exec_aware = exec_heredoc_on()
+    if exec_aware:
+        out = []
+        i = 0
+        for m, quoted, bs, be, resume in _heredocs(cmd):
+            out.append(cmd[i:bs])
+            body = cmd[bs:be]
+            if _heredoc_executed(cmd, m.start(), m.end()):
+                out.append(body)                                         # the program: keep it all
+            elif quoted:
+                out.append(''.join(c if c == '\n' else ' ' for c in body))  # inert data
+            else:
+                keep = [s.group(0) for s in _SUBST.finditer(body)]       # what the shell WOULD run
+                blank = ''.join(c if c == '\n' else ' ' for c in body)
+                out.append(('\n'.join(keep) + '\n' + blank) if keep else blank)
+            i = resume
+        out.append(cmd[i:])
+        return ''.join(out)
     out = []
     i = 0
     for m in _HEREDOC_OP.finditer(cmd):
@@ -193,7 +387,7 @@ def _list_items(span_text):
     return items
 
 
-def _classify(toks, out):
+def _classify(toks, out, kw=False):
     """Shared classifier: strip assignment/wrapper prefixes, then decide whether this token
     list is a recognised gws invocation, an unresolved (nonliteral) one, or neither. Used
     identically for real shell-split segments and for tokens read out of an interpreter-built
@@ -201,7 +395,9 @@ def _classify(toks, out):
     point: the difference between this repo's two prior fixes and this one is that earlier
     fixes taught the parser a new SHAPE to read; this keeps the decision itself in exactly
     one place."""
-    while toks and (_ASSIGN.match(toks[0]) or _debinary(toks[0]) in _WRAPPER):
+    # kw (D-F11 shape J, gws_exec_heredoc ON): a shell keyword before the command word (`do gws ...`,
+    # `then gws ...`) is stripped too -- `for f in ...; do gws drive files update ...; done` runs gws.
+    while toks and (_ASSIGN.match(toks[0]) or _debinary(toks[0]) in _WRAPPER or (kw and toks[0] in _KEYWORDS)):
         toks.pop(0)
     if not toks:
         return
@@ -218,16 +414,105 @@ def _debinary(tok):
     return tok.replace("'", '').replace('"', '').replace('\\', '')
 
 
-def gws_segments(cmd):
+# D-F11 shape C: a shell string handed to a shell-running call in another language.
+_SHELL_CALL = re.compile(
+    r"\b(?:system|popen|run|call|check_call|check_output|Popen|getoutput|getstatusoutput|exec|execSync|spawnSync)"
+    r"\s*\(\s*[fbrFBR]?(%s)" % _QUOTED)
+
+
+def _shell_string_literals(cmd):
+    """The decoded text of every quoted literal passed as the FIRST argument of a shell-running call
+    (subprocess.run/call/Popen/check_output, os.system/popen, execSync ...) that begins with the gws
+    binary. `print("gws drive ...")` is not such a call and is never returned."""
+    out = []
+    # Raw text first (a Python string literal holding \" escapes), then the shell-unescaped text (the same
+    # call written inside an outer shell double quote, python3 -c "...").
+    for text in (cmd, cmd.replace('\\"', '"').replace("\\'", "'")):
+        for m in _SHELL_CALL.finditer(text):
+            lit = m.group(1)[1:-1].replace('\\"', '"').replace("\\'", "'")
+            if re.match(r"\s*(?:[\w./~-]*/)?gws\s", lit) and lit not in out:
+                out.append(lit)
+    return out
+
+
+def _match_close(text, i):
+    """Index just past the bracket that closes text[i] ('[' or '('), skipping quoted strings; len(text) if none."""
+    pairs = {"[": "]", "(": ")", "{": "}"}
+    stack = []
+    j = i
+    n = len(text)
+    while j < n:
+        c = text[j]
+        if c in "'\"`":
+            k = j + 1
+            while k < n and text[k] != c:
+                k += 2 if text[k] == "\\" else 1
+            j = k + 1
+            continue
+        if c in pairs:
+            stack.append(pairs[c])
+        elif stack and c == stack[-1]:
+            stack.pop()
+            if not stack:
+                return j + 1
+        elif c == "\n" and not stack:
+            return j
+        j += 1
+    return n
+
+
+def gws_calls(cmd, exec_aware=None):
+    """VERB-PROXIMITY reader (D-F11 defect 2). For every interpreter-built argv that names the gws
+    binary as a quoted literal followed by a comma, return (tokens, span_text) where span_text is the
+    WHOLE call (the bracket or paren that holds the argv, to its close) and tokens are EVERY quoted
+    literal in it, in order -- not only the leading comma-run, which stops at the first json.dumps(...)
+    or `'%s' % fid` and so dropped `--json ... trashed`. UNPARSEABLE is appended when any part of the
+    span is not a quoted literal (a variable, a function call), so callers can tell "read in full" from
+    "read in part". Additive: gws_segments() and verdict() are unchanged by this function."""
+    if exec_aware is None:
+        exec_aware = exec_heredoc_on()
+    cmd = _strip_quoted_heredocs(cmd.replace('\\\n', ' '), exec_aware)
+    argv_cmd = cmd.replace('\\"', '"').replace("\\'", "'")
+    out = []
+    seen = set()
+    for m in _SOLO_GWS_QUOTE.finditer(argv_cmd):
+        if not _BINARY.match(_debinary(m.group(2))):
+            continue
+        b = m.start() - 1
+        while b >= 0 and argv_cmd[b] in " \t":
+            b -= 1
+        if b >= 0 and argv_cmd[b] in "[(":
+            start = b
+            end = _match_close(argv_cmd, b)
+        else:
+            start = m.start()
+            nl = argv_cmd.find("\n", m.end())
+            end = len(argv_cmd) if nl == -1 else nl
+        if (start, end) in seen:
+            continue
+        seen.add((start, end))
+        span = argv_cmd[start:end]
+        toks = _list_items(span)
+        rest = re.sub(_QUOTED, " ", span)
+        if re.search(r"[A-Za-z_$]", rest):
+            toks = toks + [UNPARSEABLE]
+        out.append((toks, span))
+    return out
+
+
+def gws_segments(cmd, exec_aware=None):
     """Every shell statement that actually INVOKES the gws binary, as a token list.
 
     Substitutions are RETAINED in the tokens so has_nonliteral() can still see them.
+    exec_aware: None = read the gws_exec_heredoc switch; True/False forces it (cloud_guard, tests).
     """
+    if exec_aware is None:
+        exec_aware = exec_heredoc_on()
     # A backslash-newline is REMOVED BY THE SHELL before the command runs, so the
     # wrapped form and the joined form execute identically -- but every guard saw a
     # different string and all four missed it (second audit, 2026-08-14). Join first.
     cmd = cmd.replace('\\\n', ' ')
-    cmd = _strip_quoted_heredocs(cmd)
+    cmd = _strip_quoted_heredocs(cmd, exec_aware)
     out = []
     # `bash -c "..."`, `sh -c "..."` and `eval "..."` EXECUTE their argument. Parse it.
     # A heredoc that merely WRITES the same words does not execute them and is left
@@ -236,7 +521,14 @@ def gws_segments(cmd):
     for m in _EXECWRAP.finditer(cmd):
         inner = m.group('body') or m.group('body2')
         if inner:
-            out.extend(gws_segments(inner.strip('\'"')))
+            out.extend(gws_segments(inner.strip('\'"'), exec_aware))
+    if exec_aware:
+        # D-F11 shape C: a SHELL STRING handed to the shell from inside executed code
+        # (subprocess.run("gws drive files update ..." % fid, shell=True), os.system("gws ...")) is a
+        # command. Any quoted literal in the command whose text starts with the gws binary is parsed
+        # as shell. A string that merely mentions gws mid-sentence is not.
+        for lit in _shell_string_literals(cmd):
+            out.extend(gws_segments(lit, exec_aware))
     for stmt in _STMT.split(cmd):
         s = stmt.strip()
         if not s:
@@ -252,7 +544,7 @@ def gws_segments(cmd):
         # fails closed on. See _classify()'s own docstring for why this is now one function
         # instead of duplicated inline logic split across this branch and the argv-list branch
         # added below.
-        _classify(toks, out)
+        _classify(toks, out, exec_aware)
         # FIX 2: a gws inside $( ) or backticks is still a real invocation.
         for m in _NESTED.finditer(s):
             out.append(m.group(1).split())
@@ -291,7 +583,7 @@ def gws_segments(cmd):
         tail = argv_cmd[m.end():m.end() + 2].lstrip()
         if tail.startswith(','):
             toks = toks + [UNPARSEABLE]
-        _classify(toks, out)
+        _classify(toks, out, exec_aware)
 
     # BACKSTOP: a lone quoted 'gws' immediately followed by a comma that the comma-run pass above
     # did not already turn into a resolved segment (its neighbour in the list was not itself a
@@ -465,7 +757,25 @@ def _selftest():
         ("/opt/homebrew/bin/gws gmail users threads trash --id 18abc", 'gmail', 'BLOCK'),
         ("gws gmail users threads untrash --id 18abc", 'gmail', 'PASS'),
         ("gws gmail users threads modify --id 18abc --add-label-ids L1", 'gmail', 'PASS'),
-        ("python3 - <<'EOF'\nopen('/tmp/p','w').write('gws gmail users threads trash')\nEOF", 'gmail', 'PASS'),
+        # ⛔ D-F11 (2026-11-02): this case used to be pinned PASS ("writing prose"), but its subject is an
+        # INTERPRETER run on stdin -- the shape that hid an 899-file Drive trash loop. With gws_exec_heredoc
+        # ON the body is code and is read; the prose-only version moves to `cat > f <<'EOF'` below (PASS).
+        ("python3 - <<'EOF'\nimport subprocess\nsubprocess.run(['gws','gmail','users','threads','trash','--id','18abc'])\nEOF", 'gmail', 'BLOCK'),
+        ("cat > brief.md <<'EOF'\nsubprocess.run(['gws','gmail','users','threads','trash','--id','18abc'])\nEOF", 'gmail', 'PASS'),
+        ("cat > brief.md <<EOF\nsubprocess.run(['gws','gmail','users','threads','trash','--id','18abc'])\nEOF", 'gmail', 'PASS'),
+        # the sink after `cd /tmp &&` (git_target_resolver's first-word-only check misses this)
+        ("cd /tmp && python3 -I - <<'E'\nimport subprocess\nsubprocess.run(['gws','gmail','users','threads','trash','--id','x'])\nE", 'gmail', 'BLOCK'),
+        # a heredoc piped into an interpreter
+        ("cat <<'E' | python3 -\nimport subprocess\nsubprocess.run(['gws','gmail','users','threads','trash','--id','x'])\nE", 'gmail', 'BLOCK'),
+        # a heredoc that is the stdin of a SCRIPT (python3 tool.py <<'E') is that script's data
+        ("python3 tool.py <<'E'\nsubprocess.run(['gws','gmail','users','threads','trash','--id','x'])\nE", 'gmail', 'PASS'),
+        # node -e body; a shell string run by subprocess(shell=True) inside an executed heredoc
+        ("node -e \"require('child_process').execFileSync('gws',['gmail','users','threads','trash','--id','x'])\"", 'gmail', 'BLOCK'),
+        ("python3 - <<'E'\nimport subprocess\nsubprocess.run(\"gws gmail users threads trash --id %s\" % t, shell=True)\nE", 'gmail', 'BLOCK'),
+        # `do gws ...` inside a shell for-loop is a real gws statement
+        ("for t in a b; do gws gmail users threads trash --id $t; done", 'gmail', 'BLOCK'),
+        # a print() of the same words inside executed code is prose, not a shell call
+        ("python3 - <<'E'\nprint('gws gmail users threads trash is guarded')\nE", 'gmail', 'PASS'),
         # scope: deleting a LABEL is not deleting mail -- must stay allowed
         ("gws gmail users labels delete --id L1", 'gmail', 'PASS'),
         # but a hidden scope word is UNKNOWN and must fail closed
@@ -524,15 +834,45 @@ def _selftest():
     ]
     gmail_d = ['delete', 'batchDelete', 'trash']
     gmail_s = ['modify', 'untrash', 'list', 'get']
+    import os
+    saved = os.environ.get('ROUNDB_GWS_EXEC_HEREDOC')
     bad = 0
-    for cmd, svc, want in cases:
-        d, s = (gmail_d, gmail_s) if svc == 'gmail' else (D, S)
-        req = ['messages', 'threads'] if svc == 'gmail' else None
-        got = verdict(cmd, svc, d, s, req)
-        ok = got == want
-        bad += (not ok)
-        print("  [%s] %-5s %s" % ('PASS' if ok else 'FAIL', got, cmd.splitlines()[0][:66]))
-    print("\n%d checks, %d failed" % (len(cases), bad))
+    total = 0
+
+    def run(cases, sw):
+        nonlocal bad, total
+        os.environ['ROUNDB_GWS_EXEC_HEREDOC'] = sw
+        for cmd, svc, want in cases:
+            d, s = (gmail_d, gmail_s) if svc == 'gmail' else (D, S)
+            req = ['messages', 'threads'] if svc == 'gmail' else None
+            got = verdict(cmd, svc, d, s, req)
+            ok = got == want
+            bad += (not ok)
+            total += 1
+            print("  [%s] %-5s sw=%-3s %s" % ('PASS' if ok else 'FAIL', got, sw, cmd.splitlines()[0][:60]))
+
+    try:
+        # The main table runs with gws_exec_heredoc ON (the shipped value).
+        run(cases, 'on')
+        # OFF = the old behaviour: an interpreter-executed quoted heredoc body is blanked again.
+        run([("python3 - <<'EOF'\nimport subprocess\nsubprocess.run(['gws','gmail','users','threads','trash','--id','18abc'])\nEOF", 'gmail', 'PASS'),
+             ("cat > brief.md <<'EOF'\nsubprocess.run(['gws','gmail','users','threads','trash','--id','18abc'])\nEOF", 'gmail', 'PASS'),
+             ("gws gmail users threads trash --id 18abc", 'gmail', 'BLOCK')], 'off')
+        # D-F11 defect 2: the proximity reader keeps `trashed` attached after json.dumps(...) / '%s' % fid.
+        os.environ['ROUNDB_GWS_EXEC_HEREDOC'] = 'on'
+        for body in ("subprocess.run(['gws','drive','files','update','--params',json.dumps({'fileId':f['id']}),'--json',json.dumps({'trashed':True})])",
+                     "subprocess.run(['gws','drive','files','update','--params','{\"fileId\":\"%s\"}' % fid,'--json','{\"trashed\":true}'])"):
+            calls = gws_calls("python3 - <<'E'\n" + body + "\nE")
+            ok = bool(calls) and 'update' in calls[0][0] and re.search(r"trashed\W{0,6}true", calls[0][1], re.I) is not None
+            bad += (not ok)
+            total += 1
+            print("  [%s] gws_calls keeps trashed: %s" % ('PASS' if ok else 'FAIL', body[:60]))
+    finally:
+        if saved is None:
+            os.environ.pop('ROUNDB_GWS_EXEC_HEREDOC', None)
+        else:
+            os.environ['ROUNDB_GWS_EXEC_HEREDOC'] = saved
+    print("\n%d checks, %d failed" % (total, bad))
     return 1 if bad else 0
 
 

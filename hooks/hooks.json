@@ -69,6 +69,11 @@
      },
      {
       "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_cloud_destructive.sh\"",
+      "statusMessage": "Checking nothing deletes cloud files without asking..."
+     },
+     {
+      "type": "command",
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_commit_identity.sh\"",
       "statusMessage": "Checking the commit identity matches the operator's..."
      },

@@ -17,6 +17,9 @@ trap 'lhb_journal_fire "$?" "guard_drive_destructive.sh" "PreToolUse" "Bash" 2>/
 #      tool trash_file. Deleting one NON-sheet file, listing, searching and every other command pass untouched.
 #      Round C gap 4: many separate MCP trash_file calls are counted per session (state file keyed by session_id in
 #      ${LHB_DRIVE_TRASH_DIR:-~/.claude/run/drive-trash}); the 2nd different file within 10 minutes asks, as does every one after.
+#      D-F11 (2026-11-02): with gws_exec_heredoc ON, code an interpreter runs (python3 - <<'E', python3 -c, node -e)
+#      is read too; `files update` with trashed true is caught in every shape (json.dumps bodies included); a Drive
+#      update whose body cannot be read ASKS (UNREADABLE); a loop of them is BULK.
 #      NOT COVERED: the Drive web UI (not the assistant's act); a delete built by a script file that is run
 #      by name (the script's text is never in the command); the Google Sheets API itself deleting a file (it cannot).
 # REDIRECT: this is an ASK, so nobody is stuck. Show the person the exact file(s) and what will happen (a Sheet: its
@@ -32,7 +35,7 @@ trap 'lhb_journal_fire "$?" "guard_drive_destructive.sh" "PreToolUse" "Bash" 2>/
 #      and this file. Change the rule here deliberately, never loosen it to fit a refused command.
 # FAIL_POSTURE: closed for what it can read (a Drive delete it cannot tell is a Sheet is ASKED about); open for
 #      an unreadable payload or a command that names no Drive delete, because it sits in front of every Bash command.
-# UPDATED: 2026-10-30
+# UPDATED: 2026-11-02
 # RULE: system/hook-contract.md (mechanics)
 # ─────────────────────────────────────────────────────────────────────────────
 . "$_lhb_dir/lib/roundb.sh" 2>/dev/null || exit 0
@@ -73,6 +76,8 @@ fi
 case "$KIND" in
   BULK)
     [ "$SW_BULK" = 1 ] && ask "this deletes more than one Drive file at once ($DETAIL)." "bulk deletes and an emptied trash cannot be undone file by file, and the moment they run is never the moment anyone is checking the list." ;;
+  UNREADABLE)   # D-F11 (2026-11-02): an update whose body this guard cannot read is asked about, never passed
+    ask "this changes a Drive file and the guard cannot read what it sets ($DETAIL)." "a files update with trashed:true IS a delete; a body built at run time (a variable, json.dumps of one) hides that, and an unknown is asked about rather than assumed harmless." ;;
   SINGLE)
     [ "$SW_SHEET" = 1 ] || exit 0
     K=$(python3 "$LIB" --kind "$DETAIL" 2>/dev/null); KK="${K%%$'\t'*}"; NAME="${K#*$'\t'}"

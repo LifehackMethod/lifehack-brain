@@ -1,0 +1,9 @@
+cd /tmp && cp todo.json ~/rig-exam-scratch/pinned2-enver/D-F11/drive-trashed-pre2022.json && python3 -I - <<'E'
+import json,subprocess
+fs=json.load(open('/tmp/todo.json'));ok=0;fail=[]
+for f in fs:
+    r=subprocess.run(['gws','drive','files','update','--params',json.dumps({'fileId':f['id']}),'--json',json.dumps({'trashed':True})],capture_output=True,text=True)
+    if r.returncode==0 and '"trashed": true' in r.stdout.replace('":true','": true'): ok+=1
+    else: fail.append((f['name'],(r.stdout+r.stderr)[-150:]))
+print(ok,len(fail),fail[:3])
+E
