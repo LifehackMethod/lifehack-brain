@@ -62,7 +62,8 @@ if [ "$go" -eq 0 ]; then
     esac
   fi
   if [ "$go" -eq 0 ]; then   # Round C 4 (fc_shell_overwrite): a command that names an SOP or canon file
-    case "$BODY" in *sops/*|*canon*) { . "${_lhb_dir}/lib/roundb.sh" && { roundb_on fc_shell_overwrite || roundb_on fc_archive_before_cut; } && go=1; } 2>/dev/null ;; esac
+    # *sops* not *sops/*: after `cd .../sops && echo x > a.md` the text has no "sops/" (D-F04 follow-up, cd chains)
+    case "$BODY" in *sops*|*canon*) { . "${_lhb_dir}/lib/roundb.sh" && { roundb_on fc_shell_overwrite || roundb_on fc_archive_before_cut; } && go=1; } 2>/dev/null ;; esac
   fi
   if [ "$go" -eq 0 ]; then   # Round D miss fix (fc_shell_overwrite): a command that names a data file (csv json yaml ...)
     case "$BODY" in *.csv*|*.tsv*|*.json*|*.ndjson*|*.yaml*|*.yml*|*.toml*|*.xml*|*.xls*|*.ods*|*.parquet*|*.ini*|*.sql*|*.env*) { . "${_lhb_dir}/lib/roundb.sh" && roundb_on fc_shell_overwrite && go=1; } 2>/dev/null ;; esac

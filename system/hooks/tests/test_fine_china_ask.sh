@@ -278,4 +278,14 @@ python3 -c 'import json,sys; print(json.dumps({"session_id":"c","cwd":sys.argv[1
   | env -u ROUNDB_FC_FOLDER_DELETE_ASK bash "$FC" >"$T/out" 2>"$T/err"; RC=$?
 asked && ok "D-F04 asks from the conf line alone (env var unset)" || bad "conf-driven D-F04: $(head -c 200 "$T/out")"
 runx "$X" "cd $X/notes && rm -r 2024-sabbatical" ROUNDB_FC_FOLDER_DELETE_ASK=off; ! asked && ok "ROUNDB_FC_FOLDER_DELETE_ASK=off overrides the conf line" || bad "env override"
+# ---------------- D-F04 follow-up: build_mode.bash_ops resolves overwrite targets through the command's own cd chain (fc_shell_overwrite)
+# The old code resolved every target against the session cwd; "D-F12 relative path" above only passed because its cd was a no-op.
+touch -t 202501010000 "$D/config/clients.yaml" "$D/rates.csv"
+dask "cd sub && redirect > file (cd chain followed)" "cd config && echo TODO > clients.yaml"
+dask "cd sub && tee file" "cd config; echo x | tee clients.yml"
+dask "cd .. && cd back, then redirect" "cd config && cd .. && echo x > rates.csv"
+dallow "a subshell cd does not leak: (cd config) && echo x > clients.yaml" "(cd config) && echo x > clients.yaml"
+dallow "cd sub && redirect to a NEW file there" "cd config && echo x > brand-new.yaml"
+run "$BM" s Bash "$(J command "cd $CODE/system/sops && echo x > skill-building-sop.md")" ROUNDB_FC_SHELL_OVERWRITE=on
+if [ $RC -eq 2 ]; then ok "SOP overwrite reached through cd is still a hard block"; else bad "SOP overwrite via cd not blocked (rc=$RC)"; fi
 echo "test_fine_china_ask: $P passed, $F failed"; [ "$F" -eq 0 ]

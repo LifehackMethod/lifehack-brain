@@ -142,6 +142,21 @@ def inplace_targets(verb, a):
     return files
 
 
+def _cd_dest(words, cwd):
+    """Where a cd/pushd leaves the shell; None = cannot know (cd -, a variable, popd)."""
+    v = os.path.basename(words[0])
+    if v == "popd":
+        return None
+    args = [a for a in words[1:] if not (a.startswith("-") and a != "-")]
+    if not args:
+        return os.path.realpath(HOME) if v == "cd" else None
+    a = args[0]
+    if a == "-" or "`" in a or "$" in a.replace("$HOME", "").replace("${HOME}", ""):
+        return None
+    a = os.path.expandvars(os.path.expanduser(a))
+    return os.path.realpath(a if os.path.isabs(a) else os.path.join(cwd, a))
+
+
 def bash_ops(cmd, cwd, _depth=0):
     """-> list of dicts {verb, target, srcs, content}. Verbs only at segment start; a mention inside a
     quoted string is a single token and never a verb. Heredoc body (after <<) is kept as content."""
@@ -158,15 +173,31 @@ def bash_ops(cmd, cwd, _depth=0):
     except ValueError:
         return []
     shell_ow = _roundb("fc_shell_overwrite") or _roundb("fc_archive_before_cut") or _roundb("skill_edit_ask") or _roundb("fc_user_sop_ask") or _roundb("fc_db_delete_ask") or _roundb("fc_claudemd_ask") or _roundb("fc_claudemd_plugin_copy")   # in-place edits are overwrites; the second switch needs them seen too
-    segs, cur = [], []
+    segs, cur, seps = [], [], []
     for t in toks:
         if t and set(t) <= set(";&|\n()") :
-            segs.append(cur); cur = []
+            segs.append(cur); seps.append(t); cur = []
         else:
             cur.append(t)
     segs.append(cur)
     ops = []
-    for seg in segs:
+    # D-F04 follow-up (2026-11-02): each command's targets resolve in the cwd its own cd/pushd chain left it in, not the
+    # session cwd (`cd sub && echo x > data.csv` writes sub/data.csv). ( ) restores the cwd; a cd inside a pipeline is
+    # ignored; a cd we cannot follow (cd -, $VAR, popd) falls back to the session cwd, which is the old behaviour.
+    session_cwd, stack = cwd, []
+    for si, seg in enumerate(segs):
+        if si > 0:
+            for ch in seps[si - 1]:
+                if ch == "(":
+                    stack.append(cwd)
+                elif ch == ")" and stack:
+                    cwd = stack.pop()
+        _cdw = [w for w in seg if not re.fullmatch(r"\w+=.*", w)]
+        if _cdw and os.path.basename(_cdw[0]) in ("cd", "pushd", "popd"):
+            in_pipe = (si > 0 and seps[si - 1] in ("|", "|&")) or (si < len(seps) and seps[si] in ("|", "|&"))
+            if not in_pipe:
+                cwd = _cd_dest(_cdw, cwd) or session_cwd
+            continue
         # redirects
         words, i, redir, appends = [], 0, [], []
         while i < len(seg):
