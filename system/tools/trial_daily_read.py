@@ -13,7 +13,14 @@ READ-ONLY. It reads existing logs and writes exactly one file, <notes>/state/pro
 SOURCES (each one optional; a source that is missing is NAMED in the page, never silently skipped):
   fire journal   ~/.claude/run/fire-journal.jsonl + rotated shards (system/hooks/lib/journal.sh; read through
                  fire_journal_query.discover_journal_files). Gives BLOCKS (PreToolUse exit 2) and hook ERRORS
-                 (exit not 0/2/3). It does NOT show asks: an ask hook exits 0, so it journals as "allow".
+                 (exit not 0/2/3), and since journal-records-ask (2026-11-02) ASKS: decision "ask" (an ask hook
+                 exits 0; journal.sh reads the decision JSON the hook left). Rows written before that fix say
+                 "allow" and stay allows. Rows with decision "unknown" (decision JSON unparseable) are listed apart.
+                 NO DOUBLE COUNT: a journal ask and a transcript ask share no id (the journal has no tool_use id and
+                 the transcript names the hook by its statusMessage), so they are matched on SESSION + TOOL (the
+                 transcript's tool must fit the journal row's matcher) + TIME within MATCH_WINDOW_S, nearest first,
+                 each transcript ask used once (and a hook name, when the transcript gives a script name, must
+                 agree). A matched journal ask is the same ask; only unmatched ones are added, as journal-only.
   transcripts    ~/.claude/projects/*/<session>.jsonl. A PLANNED ask is a PreToolUse hook_success attachment whose
                  stdout carries permissionDecision "ask" (the fine-china, canon, Drive, Sheet and cloud asks). The
                  answer is read from that tool call's tool_result: rejected text = No, any other result = Yes,
@@ -49,6 +56,7 @@ REJECTED_RE = re.compile(r"doesn't want to proceed|tool use was rejected", re.I)
 RULE_RE = re.compile(r"RULE: switch (\w+)")
 HOOK_BLOCK_RE = re.compile(r"PreToolUse:\w+ hook error")
 HOOK_NAME_RE = re.compile(r"([A-Za-z0-9_\-]+\.(?:sh|py))")
+MATCH_WINDOW_S = 30   # a journal ask and a transcript ask further apart than this are two different asks
 SCRATCH_RE = re.compile(r"^(/tmp/|/private/tmp/|/private/var/folders/|/var/folders/)|/[^/]*scratch[^/]*(/|$)", re.I)  # allow-silence: path TEXT matched to label where a logged new file landed; this creates no temp file
 
 
@@ -96,6 +104,7 @@ def journal_section(journal, start, end):
     files = fjq.discover_journal_files(journal)
     blocks, errors, sessions = collections.Counter(), collections.Counter(), collections.defaultdict(set)
     harness = collections.Counter()
+    asks, unknown = [], collections.Counter()
     n = 0
     for p in files:
         try:
@@ -119,7 +128,13 @@ def journal_section(journal, start, end):
                     harness[o.get("harness") or "?"] += 1
                 elif rc not in (0, 2, 3):
                     errors[(hook, rc)] += 1
-    return {"files": len(files), "rows": n, "blocks": blocks, "errors": errors, "sessions": sessions, "harness": harness}
+                dec = str(o.get("decision") or "").strip().lower()
+                if str(ev or "").startswith("PreToolUse") and rc == 0 and dec == "ask":
+                    asks.append({"ts": ts, "hook": hook, "matcher": str(o.get("matcher") or ""), "session": o.get("session_id")})
+                elif dec == "unknown":
+                    unknown[hook] += 1
+    return {"files": len(files), "rows": n, "blocks": blocks, "errors": errors, "sessions": sessions, "harness": harness,
+            "asks": sorted(asks, key=lambda x: x["ts"]), "unknown": unknown}
 
 
 # ───────────────────────── 2. transcripts: asks + popups ─────────────────────────
@@ -156,7 +171,7 @@ def transcript_section(projects, start, end):
                         hso = {}
                     if hso.get("permissionDecision") == "ask":
                         ask_by_id[att.get("toolUseID")] = {"ts": ts, "session": sid, "reason": hso.get("permissionDecisionReason", ""),
-                                                           "label": att.get("command") or att.get("hookName")}
+                                                           "label": att.get("command") or att.get("hookName"), "hook_name": att.get("hookName")}
                     continue
                 msg = o.get("message")
                 if not isinstance(msg, dict) or not isinstance(msg.get("content"), list):
@@ -195,6 +210,45 @@ def transcript_section(projects, start, end):
                 u = uses.get(tid) or {}
                 popups.append({"ts": r["ts"], "session": u.get("session"), "tool": u.get("tool"), "input": u.get("input")})
     return {"files": seen_files, "asks": sorted(asks, key=lambda x: x["ts"]), "popups": sorted(popups, key=lambda x: x["ts"])}
+
+
+def _tool_fits(matcher, tool):
+    if not matcher or not tool:
+        return True
+    for m in matcher.split("|"):
+        try:
+            if re.fullmatch(m, tool):
+                return True
+        except re.error:
+            if m == tool:
+                return True
+    return False
+
+
+def match_journal_asks(jasks, tasks):
+    """-> (matched count, [journal asks no transcript ask accounts for]). Key: session + tool + time (see SOURCES)."""
+    used, matched, only = set(), 0, []
+    for ja in jasks:
+        best = None
+        for i, a in enumerate(tasks):
+            if i in used or a.get("ts") is None or a.get("session") != ja["session"]:
+                continue
+            hn = str(a.get("hook_name") or "")
+            tool = a.get("tool") or (hn.split(":", 1)[1] if ":" in hn else "")
+            if not _tool_fits(ja["matcher"], tool):
+                continue
+            named = HOOK_NAME_RE.findall(str(a.get("label") or ""))
+            if named and named[-1] != ja["hook"]:
+                continue
+            d = abs(a["ts"] - ja["ts"])
+            if d <= MATCH_WINDOW_S and (best is None or d < best[0]):
+                best = (d, i)
+        if best:
+            used.add(best[1])
+            matched += 1
+        else:
+            only.append(ja)
+    return matched, only
 
 
 def call_text(tool, ti):
@@ -350,10 +404,12 @@ def build(journal, projects, turn_writes, notes, hours, now, fa_module, hs=None)
              datetime.datetime.fromtimestamp(end).strftime("%Y-%m-%d %H:%M"), hours), ""]
     asks, popups = T["asks"], T["popups"]
     ans = collections.Counter(a["answer"] for a in asks)
+    j_matched, j_only = match_journal_asks(J["asks"], asks)
     L += ["## Popups (COMPASS P-72)", "",
           "| | count | answered |", "|---|---|---|",
           "| PLANNED asks (our hooks chose to ask) | %d | Yes %d · No %d · no answer seen %d · blocked by a hook %d |" % (
               len(asks), ans["Yes"], ans["No"], ans["no answer seen"], ans["blocked by a hook"]),
+          "| PLANNED asks seen only in the fire journal (no transcript has them) | %d | answer not visible in the journal |" % len(j_only),
           "| UNPLANNED popups (nobody chose them) | %d (lower bound) | No %d · a Yes leaves no trace |" % (len(popups), len(popups)), ""]
     L += ["## Asks fired and how answered", ""]
     if asks:
@@ -365,6 +421,16 @@ def build(journal, projects, turn_writes, notes, hours, now, fa_module, hs=None)
             L.append("- … +%d more" % (len(asks) - 40))
     else:
         L.append("- none")
+    if J["asks"]:
+        L += ["", "Fire journal: %d asks in window; %d matched a transcript ask (same session, same tool, within %d s), %d journal-only." % (
+            len(J["asks"]), j_matched, MATCH_WINDOW_S, len(j_only))]
+        L += ["- %s · %s · **journal only** · session %s" % (hhmm(a["ts"]), a["hook"], a["session"] or "?") for a in j_only[:30]]
+        if len(j_only) > 30:
+            L.append("- … +%d more" % (len(j_only) - 30))
+    else:
+        L += ["", "Fire journal: 0 asks in window."]
+    L.append("Journal rows with decision unknown (the hook's decision JSON could not be parsed): " +
+             (", ".join("%s ×%d" % kv for kv in J["unknown"].most_common()) if J["unknown"] else "none"))
     L += ["", "### Unplanned popups seen (answered No)", ""]
     L += ["- %s · %s `%s`" % (hhmm(p["ts"]), p.get("tool") or "?", call_text(p.get("tool"), p.get("input"))) for p in popups[:30]] or ["- none"]
     L += ["", "## Blocks", ""]

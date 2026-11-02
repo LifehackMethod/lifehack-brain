@@ -189,5 +189,70 @@ class DailyRead(unittest.TestCase):
         self.assertEqual({k: v for k, v in after.items() if k in before}, before)
 
 
+class JournalAskFixture(Fixture):
+    """The same transcripts, plus fire-journal ASK rows (journal.sh records decision "ask" since journal-records-ask)."""
+    def __init__(self):
+        super().__init__()
+        t = NOW - 600
+        FC, ANY = "guard_fine_china_ask.sh", "Bash|Write|Edit|MultiEdit"
+        jl(self.journal, [
+            {"ts": NOW - 40, "hook": "guard_a.sh", "event": "PreToolUse", "decision": "allow", "exit_code": 0, "session_id": "s1"},
+            # pre-fix row: an ask that exited 0 and was journaled "allow" -- must stay an allow, never be re-read as an ask
+            {"ts": t + 71, "hook": FC, "event": "PreToolUse", "matcher": ANY, "decision": "allow", "exit_code": 0, "session_id": "s1"},
+            # matches transcript ask t1 (same session, Bash in the matcher, 0.5 s apart)
+            {"ts": int(t + 1), "hook": FC, "event": "PreToolUse", "matcher": ANY, "decision": "ask", "exit_code": 0, "session_id": "s1"},
+            # matches t4 (t5 is 10 s away; the nearest wins and each transcript ask is used once)
+            {"ts": int(t + 61), "hook": FC, "event": "PreToolUse", "matcher": ANY, "decision": "ask", "exit_code": 0, "session_id": "s1"},
+            # journal-only: another session at the same moment as t2 -- the session is part of the key
+            {"ts": int(t + 21), "hook": FC, "event": "PreToolUse", "matcher": ANY, "decision": "ask", "exit_code": 0, "session_id": "s2"},
+            # journal-only: right session, but no transcript ask within 30 s
+            {"ts": int(t + 300), "hook": "guard_sheet_writes.sh", "event": "PreToolUse", "matcher": "Bash", "decision": "ask", "exit_code": 0, "session_id": "s1"},
+            # journal-only: a session with no transcript at all (headless)
+            {"ts": NOW - 30, "hook": "guard_cloud_destructive.sh", "event": "PreToolUse", "matcher": "Bash", "decision": "ask", "exit_code": 0, "session_id": "s9"},
+            # journal-only would be wrong here: right session and time as t1, but a Write-only hook cannot be t1's Bash ask
+            {"ts": int(t + 1), "hook": "guard_organism_map.sh", "event": "PreToolUse", "matcher": "Write", "decision": "ask", "exit_code": 0, "session_id": "s1"},
+            # outside the window
+            {"ts": NOW - 90000, "hook": FC, "event": "PreToolUse", "matcher": ANY, "decision": "ask", "exit_code": 0, "session_id": "s1"},
+            # the journal could not parse the hook's decision JSON
+            {"ts": NOW - 20, "hook": "guard_odd.sh", "event": "PreToolUse", "matcher": "Bash", "decision": "unknown", "exit_code": 0, "session_id": "s1"},
+        ])
+
+
+class JournalAsks(unittest.TestCase):
+    """trial-read-journal-ask: journal asks counted, merged with transcript asks without double counting, unknown shown apart."""
+    @classmethod
+    def setUpClass(cls):
+        cls.F = JournalAskFixture()
+        cls.page = cls.F.build()
+
+    def test_transcript_row_unchanged(self):
+        # the 5 transcript asks are still 5: the 2 journal asks that match them are NOT added on top
+        self.assertIn("| PLANNED asks (our hooks chose to ask) | 5 | Yes 2 · No 1 · no answer seen 1 · blocked by a hook 1 |", self.page)
+
+    def test_journal_only_asks_counted_once(self):
+        self.assertIn("| PLANNED asks seen only in the fire journal (no transcript has them) | 4 | answer not visible in the journal |", self.page)
+        self.assertIn("Fire journal: 6 asks in window; 2 matched a transcript ask (same session, same tool, within 30 s), 4 journal-only.", self.page)
+
+    def test_journal_only_asks_listed(self):
+        self.assertRegex(self.page, r"guard_cloud_destructive.sh · \*\*journal only\*\* · session s9")
+        self.assertRegex(self.page, r"guard_sheet_writes.sh · \*\*journal only\*\* · session s1")
+        self.assertRegex(self.page, r"guard_fine_china_ask.sh · \*\*journal only\*\* · session s2")
+        self.assertRegex(self.page, r"guard_organism_map.sh · \*\*journal only\*\* · session s1")
+
+    def test_unknown_shown_separately(self):
+        self.assertIn("Journal rows with decision unknown (the hook's decision JSON could not be parsed): guard_odd.sh ×1", self.page)
+
+    def test_pre_fix_allow_rows_stay_allows(self):
+        # the pre-fix row (decision allow, exit 0) is neither an ask nor an unknown: 6 asks exactly, one unknown
+        self.assertNotIn("7 asks in window", self.page)
+        self.assertNotIn("guard_a.sh ×", self.page)
+
+    def test_no_journal_asks_says_none(self):
+        page = Fixture().build()   # the old-style journal: no ask rows at all
+        self.assertIn("Fire journal: 0 asks in window.", page)
+        self.assertIn("| PLANNED asks seen only in the fire journal (no transcript has them) | 0 |", page)
+        self.assertIn("Journal rows with decision unknown (the hook's decision JSON could not be parsed): none", page)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)
