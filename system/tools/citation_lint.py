@@ -179,6 +179,10 @@ UNREGISTERED_OK = {
                                   "generated from its system/register/register.jsonl row exactly like "
                                   "guard_fine_china_ask.sh — same known gap: this lint never reads "
                                   "hooks/hooks.json",
+    # temporary: forwards for windows opened before 2026-11-01; remove once all pre-11-01 windows are restarted.
+    # The old-name forwarding shim for guard_no_repoint_into_personal_code.sh: windows opened before the rename call it
+    # by path from their cached hook config, so it is deliberately absent from every wiring file.
+    "guard_no_repoint_into_claudeops.sh": "temporary forwarding shim, deliberately unregistered",  # r8-allow: temporary: forwards for windows opened before 2026-11-01; remove once all pre-11-01 windows are restarted
     "guard_harness_writeback.sh": "registered in hooks/hooks.json:319, the plugin manifest a student "
                                   "actually runs, but NOT in .claude/settings.json — so a repo-clone "
                                   "user does not get it, only a plugin install does. This lint reads "

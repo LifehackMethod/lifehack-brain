@@ -142,7 +142,10 @@ def tracked_files(root):
     return [p for p in r.stdout.decode("utf-8", "replace").split("\0") if p]
 
 
-R8_ALLOW = {"shared/person_roots.py": 1}   # file -> how many "# r8-allow:" lines may carry a name (ruling 2026-11-01)
+R8_ALLOW = {"shared/person_roots.py": 1,   # file -> how many "# r8-allow:" lines may carry a name (ruling 2026-11-01)
+            # temporary: forwards for windows opened before 2026-11-01; remove once all pre-11-01 windows are restarted
+            # (the one UNREGISTERED_OK key naming the old-name repoint-guard forwarding shim).
+            "system/tools/citation_lint.py": 1}
 R8_MARKER = "# r8-allow:"
 
 
