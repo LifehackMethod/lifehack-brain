@@ -276,6 +276,16 @@ def main():
             report("home-path-generic does not fire on a {} alone".format(label), rc == 0,
                    "exit {}".format(rc))
 
+        # the ONE exempt segment, both ways (2026-11-02): the macOS Shared folder passes; any other name, a
+        # look-alike, a lower-case spelling, and a real home path on the same line as Shared all still fire
+        rc, out = scan_line("RIG_ROOT = '" + "/Users/" + "Shared/lifehack-rig'", "neg_users_shared")
+        report("home-path-generic does not fire on the macOS Shared folder", rc == 0, "exit {}: {}".format(rc, out.strip()[:300]))
+        for shape, label in (("/Users/" + "kestrelwood/Desktop", "name"), ("/Users/" + "SharedStuff/x", "lookalike"),
+                             ("/Users/" + "shared/x", "lowercase"), ("/Users/" + "Shared/x and /Users/" + "kestrelwood/y", "both")):
+            rc, out = scan_line("cd " + shape, "pos_home_" + label)
+            report("home-path-generic still fires on a {}".format(label), rc == 1 and "home-path-generic" in out,
+                   "exit {}: {}".format(rc, out.strip()[:300]))
+
         # ---------------------------------- 3c. the billing-word heuristic: stems, not words
         #
         # WHY: system/tools/emit_status.py shipped a real desk's real receivables total in a

@@ -239,7 +239,12 @@ GENERIC_CONTENT_PATTERNS = [
         # while the identical line already in the tree is not. Left alone on purpose: closing
         # it means LOOSENING a blocking rule, which is the opposite of the change this pass
         # was making, and the per-PR strictness has never actually bitten anyone.
-        "pattern": r"(?:/Users/|/home/)[A-Za-z0-9._-]+",
+        # ⭐ ONE EXEMPT SEGMENT (2026-11-02, record rig-config-isolation): the Shared folder is the macOS
+        # system folder every account can write, not an account, and the same path on every Mac
+        # (the live rig keeps its run dirs there, outside every home). EXACTLY that segment:
+        # a look-alike (SharedX), the lower-case spelling and every other name still fire, and a
+        # line holding the Shared folder AND a real home path still fires on the real one.
+        "pattern": r"(?:/Users/(?!Shared(?![A-Za-z0-9._-]))|/home/)[A-Za-z0-9._-]+",
         "remedy": (
             "an absolute home-folder path -- the segment right after /Users/ or /home/ "
             "IS someone's account name, and the path does not exist on any other "
@@ -1041,7 +1046,7 @@ def scan_whole_tree(scan_root_paths=None):
                     continue
                 if rule["id"] == "home-path-generic":
                     # extract the segment right after /Users/ or /home/
-                    seg_match = re.search(r"(?:/Users/|/home/)([A-Za-z0-9._-]+)", line)
+                    seg_match = re.search(r"(?:/Users/(?!Shared(?![A-Za-z0-9._-]))|/home/)([A-Za-z0-9._-]+)", line)
                     seg = seg_match.group(1) if seg_match else ""
                     if seg.lower() in FICTIONAL_FIXTURE_USERNAMES:
                         continue  # allowlisted fixture path -- see FICTIONAL_FIXTURE_USERNAMES
@@ -1224,7 +1229,7 @@ def check_added_lines(added_lines):
                 continue
             # Same fixture carve-out scan_whole_tree() already applies (RULED 2026-08-23).
             if rule["id"] == "home-path-generic":
-                seg_match = re.search(r"(?:/Users/|/home/)([A-Za-z0-9._-]+)", text)
+                seg_match = re.search(r"(?:/Users/(?!Shared(?![A-Za-z0-9._-]))|/home/)([A-Za-z0-9._-]+)", text)
                 seg = seg_match.group(1) if seg_match else ""
                 if seg.lower() in FICTIONAL_FIXTURE_USERNAMES:
                     continue
