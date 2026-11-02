@@ -46,7 +46,7 @@ bad()  { fail=$((fail+1)); echo "  FAIL [$1]: $2"; }
 
 # Runs the loader against the sandbox and captures BOTH streams plus the exit code.
 runit() {
-  OUT="$(env HOME="$SANDBOX" LIFEHACK_ROOT="${1:-$NOTES}" bash "$LOADER" 2>&1)"
+  OUT="$(env HOME="$SANDBOX" LIFEHACK_ROOT="${1:-$NOTES}" LIFEHACK_DESK="${LOADER_DESK:-}" bash "$LOADER" 2>&1)"
   RC=$?
 }
 says()    { printf '%s' "$OUT" | grep -q "$1"; }
@@ -67,21 +67,26 @@ says "one L" && ok || bad "root canon with no subjects yet" "the day-one case dr
 saysnot "^No subject folders yet — nothing standing to load\." && ok || bad "day-one wording" "still claims nothing to load"
 mv "$SANDBOX/desks-parked" "$NOTES/desks"
 
-echo "── the subject folders ────────────────────────────────────────────────────"
+echo "── the subject folders, DESK-SCOPED (P-71) ───────────────────────────────"
+# P-71 (2026-11-02): a desk window loads only that desk's knowledge. A session in the lamps desk
+# gets lamps' canon and NOTHING from money; the no-desk case is covered by the dedicated suite
+# test_session_context_loader_desk_scope.sh. Select the desk with the same signal the loader reads.
 printf 'Prefer warm bulbs, 2700K.\n' > "$NOTES/desks/lamps/canon/current.md"
 printf 'The tax year ends in April.\n' > "$NOTES/desks/money/canon/current.md"
-runit
+LOADER_DESK=lamps runit
 says "2700K"       && ok || bad "subject canon loaded" "lamps missing"
-says "ends in April" && ok || bad "subject canon loaded" "money missing"
+! says "ends in April" && ok || bad "P-71: other desks must not load" "money canon leaked into a lamps session"
 says "one L"       && ok || bad "root canon still loaded alongside subjects" "root dropped"
-says "2 subject folder" && ok || bad "the count" "did not report two folders"
+says "lamps (this session's desk)" && ok || bad "the desk is named" "did not say which desk loaded"
+unset LOADER_DESK
 
 echo "── the ceiling announces itself rather than dropping the tail quietly ─────"
 python3 -c "print('x'*400)" > "$NOTES/desks/lamps/canon/current.md"
 python3 -c "print('y'*400)" > "$NOTES/desks/money/canon/current.md"
-OUT="$(env HOME="$SANDBOX" LIFEHACK_ROOT="$NOTES" SESSION_CONTEXT_CHAR_CEIL=500 bash "$LOADER" 2>&1)"
+OUT="$(env HOME="$SANDBOX" LIFEHACK_ROOT="$NOTES" LIFEHACK_DESK=lamps SESSION_CONTEXT_CHAR_CEIL=300 bash "$LOADER" 2>&1)"
 says "STOPPED HERE" && ok || bad "ceiling" "truncated without saying so — the worst outcome"
-says "NOT loaded"   && ok || bad "ceiling" "did not name what was left out"
+says "NOT loaded" && ok || bad "ceiling" "did not name what was left out"
+! says "yyyy" && ok || bad "ceiling: P-71" "another desk's canon loaded under the ceiling"
 printf 'Prefer warm bulbs, 2700K.\n' > "$NOTES/desks/lamps/canon/current.md"
 printf 'The tax year ends in April.\n' > "$NOTES/desks/money/canon/current.md"
 
@@ -153,10 +158,11 @@ else
   printf 'good money notes\n' > "$NOTES/desks/money/canon/current.md"
   printf 'should not leak either\n' > "$NOTES/desks/lamps/canon/current.md"
   chmod 000 "$NOTES/desks/lamps/canon/current.md"
-  runit
+  LOADER_DESK=lamps runit
   says "COULD NOT READ" && says "lamps" && ok || bad "unreadable subject canon" "no visible failure message naming lamps"
-  says "good money notes" && ok || bad "unreadable subject canon" "the OTHER, readable subject stopped loading too"
+  says "one L" && ok || bad "unreadable subject canon" "the OTHER, readable context (root canon) stopped loading too"
   saysnot "should not leak either" && ok || bad "unreadable subject canon" "leaked content despite chmod 000"
+  unset LOADER_DESK
   [ "$RC" = 0 ] && ok || bad "unreadable subject canon: exit code" "expected 0, got $RC"
   chmod 644 "$NOTES/desks/lamps/canon/current.md"
   printf 'Prefer warm bulbs, 2700K.\n' > "$NOTES/desks/lamps/canon/current.md"

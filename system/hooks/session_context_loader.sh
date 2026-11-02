@@ -9,7 +9,8 @@ trap 'lhb_journal_fire "$?" "session_context_loader.sh" "SessionStart" "" 2>/dev
 #      memory. This SessionStart hook puts the standing-true floor in front of every session without
 #      anyone having to think to search for it.
 # GUARDS: Nothing — this is a context loader, not a blocker. It never stops a session.
-# REDIRECT: N/A (non-blocking). Reads <data root>/canon.md and <data root>/desks/*/canon/current.md,
+# REDIRECT: N/A (non-blocking). Reads <data root>/canon.md (always) and, for the ONE desk this
+# session is in (cwd under <root>/desks/<desk>/ or $LIFEHACK_DESK), that desk's canon/current.md —
 #      resolved through shared/brain_root.py. Set the data root with: python3 (or python) shared/brain_root.py --set <path>
 #      Also invokes `system/tools/health_line.py <ledger>` (see _findings_banner() below) once ROOT is
 #      resolved, to render the Hospital/Efficiency findings banner nothing else was calling.
@@ -35,6 +36,10 @@ trap 'lhb_journal_fire "$?" "session_context_loader.sh" "SessionStart" "" 2>/dev
 #      No exit code changed — every path is still `exit 0`.
 #      2026-10-27: writes ~/.config/lifehack/code-root, the pointer every scheduled job's launch
 #      line reads to find job-run.sh (self-monitoring plan §B.1). Silent and fail-soft, no exit change.
+# 2026-11-02 (COMPASS P-71, decision 2g): the standing floor is now DESK-SCOPED — at most ONE
+# desk's canon loads (the desk named by $LIFEHACK_DESK, else the desk the cwd is inside), never
+# every desk's. No desk signal and a cwd outside every desk loads no desk canon at all.
+# No exit code changed — every path in this file is still `exit 0`.
 #      2026-08-14: wired in system/tools/health_line.py (_findings_banner()) — see the note below the
 #      "Deliberately NOT ported" paragraph for why this is not a reversal of that exclusion.
 #      2026-08-14: two more suppressed reads fixed (an existing-but-unreadable canon.md or subject
@@ -263,88 +268,104 @@ if [ -s "$TELOS_FILE" ]; then
   fi
 fi
 
-# ── The standing floor: one canon file per subject folder ────────────────────────────────────────
+# ── The standing floor, DESK-SCOPED (COMPASS P-71, decision 2g — fixed 2026-11-02) ────────────────
 # /ingest PHASE 4 builds <root>/desks/<subject>/canon/current.md — "the things that stay true" — and
-# that is what belongs in front of every session. Dated records are NOT loaded: they are retrieved on
-# demand, and loading them all is how a context window fills with last month's noise.
-# WINDOWS PATH FOLD: ROOT is the unfolded output of `brain_root.py --quiet`, which on Windows is
-# backslash-native (drive letter, users folder, account). Bash's glob engine cannot expand that AT ALL -- it treats `\`
-# as an escape character, not a directory separator -- so without this the glob below would
-# silently match zero files and the standing-canon load would report "No subject folders yet" on
-# every single Windows session, regardless of what actually exists on disk.
-# See system/hooks/lib/winpath_fold.sh. Degrade-safe fallback (identity) matches this whole file's
-# never-blocks posture. Folded ONLY for the glob root: SUBJECT below is read back out of $f, the
-# glob's own match, whose wildcard portion keeps the real on-disk case regardless of this fold
-# (confirmed: Windows' filesystem is case-insensitive, so the lowercased root still opens the real
-# directory, and bash substitutes the wildcard from the actual directory-entry name it read).
-. "$REPO/system/hooks/lib/winpath_fold.sh" 2>/dev/null || _winfold() { printf '%s' "$1"; }
-ROOT_GLOB="$(_winfold "$ROOT")"
-shopt -s nullglob 2>/dev/null
-CANON=("$ROOT_GLOB"/desks/*/canon/current.md)
-shopt -u nullglob 2>/dev/null
+# that is what belongs in front of a session working in that desk. Dated records are NOT loaded:
+# they are retrieved on demand, and loading them all is how a context window fills with last month's
+# noise.
+# ⭐ P-71 (COMPASS, 2026-11-02): "A desk window loads only that desk's knowledge; that separation is
+# the point of the folder schema." Until this block, a glob here loaded EVERY desk's canon into EVERY
+# session — the exact opposite of that design, and the thing this fix removes. Now: the shared root
+# canon above always loads, and AT MOST ONE desk's canon loads — the desk named by the explicit
+# signal $LIFEHACK_DESK (the same self-identity env shared/tools/email_convert.py and
+# system/tools/safe_input.py already read), else the desk the cwd is actually inside
+# (<root>/desks/<desk>/...). No signal and a cwd outside every desk means NO desk canon — a session
+# started in the plugin repo is in nobody's desk, and loading everyone's is the bug, not a fallback.
+# A missing desk list cannot crash this block: the desk is inferred from the folder schema itself,
+# never from desk-registry.yaml (desk_list.py stays the one reader of THAT file; desks can exist on
+# disk long before any registry does, so the registry is neither needed nor consulted here).
+# realpath on both sides (in Python, not the shell glob engine) so a symlinked cwd meets the real
+# desk path, and Windows backslash-native roots work the same day they did not for a bash glob.
+DESK="$("$PY" - "$ROOT" <<'_DESK_EOF'
+import os, sys
+root = os.path.realpath(sys.argv[1])
+desk = (os.environ.get("LIFEHACK_DESK") or "").strip()
+if desk:
+    # a desk name must be ONE path component — anything else is a malformed signal, not a desk
+    if desk in (".", "..") or "/" in desk or os.sep in desk:
+        print("missing:" + desk)
+        sys.exit(0)
+else:
+    cwd = os.path.realpath(os.getcwd())
+    prefix = os.path.join(root, "desks") + os.sep
+    if cwd.startswith(prefix):
+        first = cwd[len(prefix):].split(os.sep)[0]
+        if first:
+            desk = first
+if not desk:
+    sys.exit(0)
+if os.path.isdir(os.path.join(root, "desks", desk)):
+    print(desk)
+else:
+    print("missing:" + desk)
+_DESK_EOF
+)"
+case "$DESK" in
+  missing:*)
+    _bad="${DESK#missing:}"
+    echo ""
+    echo "!! DESK NOT FOUND: '$_bad' names no folder under $ROOT/desks/ — no desk canon loaded this session."
+    DESK=""
+    ;;
+esac
 
-# ── NESTED CANON — make the miss LOUD, never silent (Issue #96-§5) ───────────────────────────────
-# ⭐ THE GAP: the glob just above reaches exactly one level -- desks/<desk>/canon/current.md. A desk
-# directory can also contain a NESTED subject folder with its OWN canon/current.md
-# (desks/<desk>/<nested>/canon/current.md), and that file is invisible to the glob -- today it is
-# skipped with no trace at all. ⛔ The fix is NOT a recursive glob (withdrawn -- a deeper glob changes
-# what gets LOADED, and on-demand sub-agent loading for a nested subject is V2 scope, out of bounds
-# here). This block changes nothing about what loads; it only prints the path of anything the glob
-# above would silently miss, so the gap is visible instead of silent.
-for _d in "$ROOT_GLOB"/desks/*/; do
-  [ -d "$_d" ] || continue
+# ── NESTED CANON — make the miss LOUD, never silent (Issue #96-§5), for THIS desk only ────────────
+# ⭐ THE GAP: the one-level reach above loads desks/<desk>/canon/current.md, but a desk directory can
+# also contain a NESTED subject folder with its OWN canon/current.md (desks/<desk>/<nested>/canon/
+# current.md), invisible to this loader. ⛔ The fix is NOT a recursive load (withdrawn — sub-agent
+# loading for a nested subject is V2 scope). This block changes nothing about what loads; it prints
+# the path of anything that would be silently missed, so the gap stays visible instead of silent.
+if [ -n "$DESK" ]; then
   while IFS= read -r _nested; do
-    echo "!! NESTED CANON NOT LOADED (one-level glob above does not reach it): $_nested"
-  done < <(find "$_d" -mindepth 3 -type f -name current.md -path "*/canon/current.md" 2>/dev/null)
-done
-
-if [ "${#CANON[@]}" -eq 0 ]; then
-  echo ""
-  echo "No subject folders yet — nothing standing to load beyond the above. Run /ingest to build them,"
-  echo "or just start working and /save will make them as it goes."
-  echo "=== end session context ==="
-  exit 0
+    echo "!! NESTED CANON NOT LOADED (one level does not reach it): $_nested"
+  done < <(find "$ROOT/desks/$DESK" -mindepth 3 -type f -name current.md -path "*/canon/current.md" 2>/dev/null)
 fi
 
-echo ""
-echo "Standing notes from ${#CANON[@]} subject folder(s):"
-SHOWN=0
-for f in "${CANON[@]}"; do
-  SUBJECT="$(basename "$(dirname "$(dirname "$f")")")"
-  if [ ! -s "$f" ]; then
-    continue   # genuinely empty — a legitimate, quiet state, not an error
-  fi
-  # Same reasoning as the root canon above: `-s` already proved non-empty, so an empty read here
-  # means the file could not be read (permissions), not that it had nothing to say. One unreadable
-  # subject must not silently drop out of a list that still names the OTHER subjects it loaded —
-  # say which one failed and keep going.
-  BODY="$(cat "$f" 2>/dev/null)"
+if [ -z "$DESK" ]; then
+  echo ""
+  echo "No desk this session — the cwd is not inside a desk folder and \$LIFEHACK_DESK is unset, so no"
+  echo "desk canon was loaded (P-71: a desk window loads only that desk's knowledge). The shared root"
+  echo "canon above still loads. Open a session inside <notes>/desks/<desk>/ to load that desk's canon."
+elif [ ! -s "$ROOT/desks/$DESK/canon/current.md" ]; then
+  echo ""
+  echo "Desk '$DESK' has no canon/current.md yet — nothing standing to load for it. Run /ingest or"
+  echo "/save in that desk to write one. No other desk's canon was loaded (P-71)."
+else
+  DESK_CANON="$ROOT/desks/$DESK/canon/current.md"
+  # Same reasoning as the root canon above: `-s` already proved non-empty, so an empty read means
+  # the file could not be read (permissions), not that it had nothing to say. Say so; don't skip.
+  BODY="$(cat "$DESK_CANON" 2>/dev/null)"
   if [ -z "$BODY" ]; then
     echo ""
-    echo "!! COULD NOT READ $f ($SUBJECT) — it exists and is non-empty, but the read returned nothing (check permissions). Skipped."
-    continue
+    echo "!! COULD NOT READ $DESK_CANON ($DESK) — it exists and is non-empty, but the read returned nothing (check permissions). Desk canon NOT loaded this session."
+  else
+    LEN=${#BODY}
+    # ⚠ CEILING, and it announces itself. Measured on the system this came from: an unbounded canon
+    # emit reached 62 KB in ONE session start. Silently dropping the tail would be worse than the
+    # flood — a session would believe it had the whole floor. So: stop, and say what was left out.
+    if [ $(( TOTAL + LEN )) -gt "$CEIL" ]; then
+      echo ""
+      echo "!! STOPPED HERE — ${CEIL} characters is the ceiling, and the desk canon for '$DESK' was"
+      echo "!! NOT loaded. You do NOT have the whole picture this session. Read it directly, or raise"
+      echo "!! SESSION_CONTEXT_CHAR_CEIL."
+    else
+      TOTAL=$(( TOTAL + LEN ))
+      echo ""
+      echo "--- $DESK (this session's desk) ---"
+      printf '%s\n' "$BODY"
+    fi
   fi
-  LEN=${#BODY}
-  # ⚠ CEILING, and it announces itself. Measured on the system this came from: an unbounded canon
-  # emit reached 62 KB in ONE session start. Silently dropping the tail would be worse than the
-  # flood — a session would believe it had the whole floor. So: stop, and say what was left out.
-  if [ $(( TOTAL + LEN )) -gt "$CEIL" ]; then
-    REMAINING=$(( ${#CANON[@]} - SHOWN ))
-    echo ""
-    echo "!! STOPPED HERE — ${CEIL} characters is the ceiling and $REMAINING more subject folder(s) were"
-    echo "!! NOT loaded. You do NOT have the whole picture this session. Read them directly, or raise"
-    echo "!! SESSION_CONTEXT_CHAR_CEIL. Not loaded:"
-    for g in "${CANON[@]:$SHOWN}"; do
-      echo "!!   $(basename "$(dirname "$(dirname "$g")")")  ($g)"
-    done
-    break
-  fi
-  TOTAL=$(( TOTAL + LEN ))
-  SHOWN=$(( SHOWN + 1 ))
-  echo ""
-  echo "--- $SUBJECT ---"
-  printf '%s\n' "$BODY"
-done
+fi
 
 # ── SKILL CAPABILITY CHECK — T3.7(c) wiring ───────────────────────────────────────────────────
 # WHY THIS LIVES HERE, NOT A NEW DETECTOR: system/build-rules-index.md's code-spiral rule says
