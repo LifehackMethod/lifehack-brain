@@ -8,7 +8,8 @@ status: in-progress
 authority: user
 created_at: 2026-11-02
 updated_at: 2026-11-02
-purpose: "What was learned building the harness's layers of friction: how the harness behaves, which layers exist and what each catches, what is proven and what is not, and how to add, test or remove a layer without fooling yourself. The validated successor to the old build SOP (system/sops/build-sop.md, retiring)."
+purpose: "What was learned building the harness's layers of friction: how the harness behaves, which layers exist and what each catches, what is proven and what is not, and how to add, test or remove a layer without fooling yourself. A new document, written from scratch."
+supersedes: "Every earlier build SOP, including system/sops/build-sop.md, which is retired. Where they differ, this document wins."
 read_when: "Before adding or changing a guard, a check or a test; when a build landed somewhere wrong; when a test says the system is broken; when a session asks 'is there already friction for this?'"
 relations: "The canonical principles SOP (system/sops/canonical-principles-sop.md) holds the laws of physics for a stochastic harness. The skill-building SOP (system/sops/skill-building-sop.md) is the birth procedure for one skill. This SOP sits between them: how conformance is actually produced here, with receipts. The owner's own principles live in their notes (COMPASS), not in the plugin."
 evidence_words: "MEASURED = a scored run or a direct test, with a record. SEEN = happened in real use and was written down at the time. REASONED = argued, not yet tested. Canon's tiers map roughly: MEASURED ≈ AUTHORITATIVE, SEEN ≈ OBSERVED, REASONED ≈ RECOMMENDATION."
