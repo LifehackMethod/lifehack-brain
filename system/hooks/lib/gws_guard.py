@@ -308,7 +308,46 @@ def exec_bodies(cmd, exec_aware=None):
     return out
 
 
-def _strip_quoted_heredocs(cmd, exec_aware=None):
+# A body that names the gws binary as a word, or a Google API (heredoc-quiet-fix, 2026-11-02). Same word
+# test as guard_tasks_writes.sh's pre-filter, plus googleapis / googleapiclient.
+GWS_MENTION = re.compile(r"(?:^|[^A-Za-z0-9_.-])gws(?:[^A-Za-z0-9_-]|$)|googleapis|googleapiclient")
+_SHELL_SINKS = {"bash", "sh", "zsh", "dash", "ksh", "fish", "ssh", "source", "."}
+
+
+def shell_view(cmd):
+    """The command as SHELL text for a shell tokenizer (tasks_guard's shlex): every heredoc body is blanked --
+    a body is data, or code in another language, never shell -- EXCEPT a body a SHELL executes (bash <<'E'),
+    which is shell and stays. An unquoted data body keeps its $(...) / backtick substitutions, one per line.
+    WHY (heredoc-quiet-fix, 2026-11-02): shlex over a python heredoc whose prose said "Enver's ... gws"
+    raised on the lone apostrophe, and the tasks guard refused the whole command as unparseable. That
+    happened before D-F11 too (measured at d00f672); it was a reader bug, not a property of the command.
+    Not switched: no heredoc body was ever shell text unless a shell ran it."""
+    cmd = cmd.replace('\\\n', ' ')
+    out = []
+    i = 0
+    for m, quoted, bs, be, resume in _heredocs(cmd):
+        out.append(cmd[i:bs])
+        body = cmd[bs:be]
+        ls = cmd.rfind("\n", 0, m.start()) + 1
+        before = re.sub(r"^[\s$(`{!]+", "", _STMT.split(cmd[ls:m.start()])[-1])
+        word, args = _cmd_word(before.split())
+        pm = re.match(r"[^;&|\n]*\|(?!\|)\s*([^;&|\n]*)", cmd[m.end():])
+        w2 = _cmd_word(pm.group(1).split())[0] if pm else ""
+        shell_runs = (word in _SHELL_SINKS and _runs_stdin(word, args)) or (w2 in _SHELL_SINKS)
+        blank = ''.join(c if c == '\n' else ' ' for c in body)
+        if shell_runs:
+            out.append(body)
+        elif not quoted:
+            keep = [s.group(0) for s in _SUBST.finditer(body)]
+            out.append(('\n'.join(keep) + '\n' + blank) if keep else blank)
+        else:
+            out.append(blank)
+        i = resume
+    out.append(cmd[i:])
+    return ''.join(out)
+
+
+def _strip_quoted_heredocs(cmd, exec_aware=None, mention=None):
     """Blank the BODY of every heredoc introduced with a QUOTED delimiter, leaving everything
     else (including the operator line and any UNQUOTED-delimiter heredoc) untouched.
 
@@ -336,13 +375,18 @@ def _strip_quoted_heredocs(cmd, exec_aware=None):
     """
     if exec_aware is None:
         exec_aware = exec_heredoc_on()
+    if mention is None:
+        mention = GWS_MENTION
     if exec_aware:
         out = []
         i = 0
         for m, quoted, bs, be, resume in _heredocs(cmd):
             out.append(cmd[i:bs])
             body = cmd[bs:be]
-            if _heredoc_executed(cmd, m.start(), m.end()):
+            # heredoc-quiet-fix (2026-11-02): an executed body is read only when it names the tool this reader
+            # is about (gws / a Google API by default). A python heredoc that edits a plan file is the
+            # person's own code, not a gws call; with no mention it is treated like data below.
+            if _heredoc_executed(cmd, m.start(), m.end()) and mention.search(body):
                 out.append(body)                                         # the program: keep it all
             elif quoted:
                 out.append(''.join(c if c == '\n' else ' ' for c in body))  # inert data

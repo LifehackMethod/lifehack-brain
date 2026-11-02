@@ -42,6 +42,8 @@ import re
 import shlex
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # lib/gws_guard.py (shell_view, heredoc reader)
+
 # Verbs that only ever READ. Everything else — including a verb nobody has invented yet — is
 # treated as a write. This is the inversion that the text guard eventually reached too: recognise
 # what is safe and refuse the rest, never list what is dangerous.
@@ -132,6 +134,21 @@ def split_statements(command: str):
     `a ; b` is two statements. Returns None if the line cannot be tokenized at all, which is a
     refusal, never a pass.
     """
+    # heredoc-quiet-fix (2026-11-02): shlex reads SHELL text only. A heredoc body is data, or code in another
+    # language (python3 - <<'EOF'), never shell unless a shell runs it -- and a lone apostrophe in such a body
+    # ("Enver's note ... gws") made shlex raise, so a plan edit was refused as unparseable. shell_view() blanks
+    # every body except one a shell executes. The argv-list scan below reads the code view instead: data
+    # heredocs blanked, an EXECUTED body kept when it names gws -- so a real subprocess gws call in a
+    # python heredoc is still judged. If the shared parser cannot load, the old raw text is used for both.
+    shell_text, code_text = command, command
+    try:
+        import gws_guard
+        shell_text = gws_guard.shell_view(command)
+        code_text = gws_guard._strip_quoted_heredocs(command, True)
+    except Exception as e:
+        # the old raw-text reading stays in force (stricter, never looser); say so instead of hiding it
+        sys.stderr.write("tasks guard: shared heredoc reader unavailable (%s: %s); reading the raw command\n"
+                         % (type(e).__name__, e))
     try:
         # ⚠ A NEWLINE IS A SEPARATOR, AND shlex TREATS IT AS WHITESPACE BY DEFAULT — so two lines
         # silently merged into one token list, and a delete on the second line hid behind the read
@@ -139,7 +156,7 @@ def split_statements(command: str):
         # makes it a token, which is what it is. Doing this INSIDE shlex rather than splitting the
         # string on newlines first is the whole point: a newline inside a quoted note stays part of
         # that note, so a multi-line task body is not mistaken for a second statement.
-        lex = shlex.shlex(command, posix=True, punctuation_chars="();<>|&\n")
+        lex = shlex.shlex(shell_text, posix=True, punctuation_chars="();<>|&\n")
         lex.whitespace_split = True
         lex.whitespace = " \t\r"
         tokens = list(lex)
@@ -161,7 +178,7 @@ def split_statements(command: str):
     # _argv_list_statements()'s own docstring) is invisible to the shlex-based split above --
     # its delimiters are commas and quotes, not the whitespace/punctuation shlex tokenises on.
     # Add each one it finds as its own extra statement, judged by the exact same pipeline.
-    statements.extend(_argv_list_statements(command))
+    statements.extend(_argv_list_statements(code_text))
     return statements
 
 

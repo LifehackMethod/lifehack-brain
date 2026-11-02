@@ -134,14 +134,21 @@ def classify_bash(cmd):
         elif not stmts:
             stmts = call_stmts
     texts = [cmd] + (gws_guard.exec_bodies(cmd, aware) if aware else _bodies(cmd)[1:])
+    # heredoc-quiet-fix (2026-11-02): RAW is a SHELL-text backstop (do gws ..., xargs ... gws ...). With the parser
+    # switch on it reads shell text only -- shell_view() plus sh -c / eval bodies -- never python/node code, whose
+    # quoting (''' blocks, Enver's) the shell-quote blanking misreads, so plan prose naming "gws drive files update
+    # with trashed" was asked about. Real calls inside code are found by gws_segments / gws_calls above.
+    raw_texts = ([gws_guard.shell_view(raw_cmd)] + _bodies(cmd)[1:]) if aware else texts
     loop = False
     raw_hits = 0
-    for body in texts:
+    for body in raw_texts:
         unq = _unquote_keep_trashed(body)
         for m in RAW.finditer(unq):
             raw_hits += 1
         if RAW.search(unq) and LOOP.search(unq):
             loop = True
+    for body in texts:
+        unq = _unquote_keep_trashed(body)
         if aware and (stmts or unreadable) and (LOOP.search(unq) or CODE_LOOP.search(unq)):
             loop = True   # D-F11: the loop is in the executed code, around a call the parser found
     if not stmts and not raw_hits and not unreadable:

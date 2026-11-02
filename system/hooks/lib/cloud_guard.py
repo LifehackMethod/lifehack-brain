@@ -51,6 +51,10 @@ QUOTED = re.compile(gws_guard._QUOTED)
 TRASHED = re.compile(r"trashed\W{0,6}(?:true|1)\b", re.I)
 GOOGLE_HOST = re.compile(r"(?:^|[/@.\s'\"])(?:[\w-]+\.)*googleapis\.com\b", re.I)
 GOOGLE_DESTRUCTIVE_PATH = re.compile(r"/trash\b|emptyTrash|batchDelete|/permissions\b", re.I)
+# heredoc-quiet-fix (2026-11-02): an executed heredoc body is read only when it names something this guard is about;
+# a python heredoc that edits a plan file stays inert.
+CLOUD_MENTION = re.compile(r"(?:^|[^A-Za-z0-9_.-])(?:gws|gcloud|gsutil|rclone|aws|curl|wget)(?:[^A-Za-z0-9_-]|$)|googleapis|"
+                           r"googleapiclient|\.(?:files|drives|permissions|messages|threads|events)\(\)|\b(?:requests|httpx)\b")
 LIB_RULES = [
     (re.compile(r"\.(?:files|drives)\(\)\s*\.\s*(?:delete|emptyTrash)\s*\("), "a Drive delete through the Google API client"),
     (re.compile(r"\.files\(\)\s*\.\s*update\s*\([^)]*trashed", re.S), "a Drive trash (files().update trashed) through the Google API client"),
@@ -80,7 +84,7 @@ def _base(t):
 def _shell_texts(cmd):
     """The shell text this command runs: itself (inert heredoc bodies blanked, EXECUTED ones kept), sh -c / eval
     bodies, and shell strings handed to subprocess/os.system from executed code."""
-    vis = gws_guard._strip_quoted_heredocs(cmd, True)
+    vis = gws_guard._strip_quoted_heredocs(cmd, True, CLOUD_MENTION)
     texts = [vis]
     for m in gws_guard._EXECWRAP.finditer(vis):
         inner = m.group("body") or m.group("body2")
@@ -311,7 +315,7 @@ def scan(cmd):
 
 
 def scope(cmd):
-    vis = gws_guard._strip_quoted_heredocs(cmd.replace("\\\n", " "), True)
+    vis = gws_guard._strip_quoted_heredocs(cmd.replace("\\\n", " "), True, CLOUD_MENTION)
     unq = "\n".join(QUOTED.sub(" ", t) for t in [vis] + gws_guard.exec_bodies(vis, True))
     if LOOP.search(unq):
         return "in a loop: an unknown number of items"
