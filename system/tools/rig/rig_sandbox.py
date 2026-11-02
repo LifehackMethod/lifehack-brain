@@ -97,8 +97,9 @@ def personal_config_paths(real_home_dir=None):
     layer. Existing paths only (a subpath rule on a missing path proves nothing in the canary)."""
     rh = real_home_dir or real_home()
     c = os.path.join(rh, ".claude")
-    names = ["CLAUDE.md", "skills", "agents", "hooks"] + sorted(n for n in (os.listdir(c) if os.path.isdir(c) else []) if re.match(r"settings.*\.json$", n))
-    return [p for p in [os.path.join(c, n) for n in names] + [os.path.join(rh, ".claude.json")] if os.path.lexists(p)]
+    import rig_config_isolation as ci   # errno-based: a DENIED path raises here (refuse), only ENOENT counts as absent
+    names = ["CLAUDE.md", "skills", "agents", "hooks"] + sorted(n for n in ci.listdir_or_empty(c) if re.match(r"settings.*\.json$", n))
+    return [p for p in [os.path.join(c, n) for n in names] + [os.path.join(rh, ".claude.json")] if ci.present(p)]
 
 
 def write_profile(text, path):

@@ -85,8 +85,21 @@ if have_sbx:
     check("with the read-deny every decoy config path is EPERM", out1.count("EPERM") == len(targets) and "MARK" not in out1, out1)
     spec = sb.canary_spec(os.path.join(T, "cn"), 1, [], [T], ["/x"], "n", real_home_dir=D, escapes=False, read_denied_extra=pcp)
     check("the canary is asked to prove every student read-deny (C8)", all(p in spec["read_denied"] for p in pcp), spec["read_denied"])
+    # the skill-tester gotcha: under a kernel read-deny, os.path.lexists says ABSENT; present() must refuse (raise), not skip
+    GOT = ("import sys,os; sys.path.insert(0, %r); import rig_config_isolation as ci\np = sys.argv[1]\nprint('LEXISTS', os.path.lexists(p))\n"
+           "try:\n print('PRESENT', ci.present(p))\nexcept OSError as e:\n print('RAISED', e.errno)\n"
+           "try:\n print('LISTDIR', ci.listdir_or_empty(p))\nexcept OSError as e:\n print('LRAISED', e.errno)\n") % HERE
+    prof = sb.write_profile(sb.profile([T], T, 1, real_home_dir=D, read_deny=pcp), os.path.join(T, "got.sb"))
+    g = subprocess.run(sb.wrap([sys.executable, "-I", "-c", GOT, os.path.join(D, ".claude", "skills")], prof), capture_output=True, text=True, timeout=60).stdout
+    check("FAIL-FIRST gotcha: under the kernel deny os.path.lexists reports the skills dir ABSENT", "LEXISTS False" in g, g)
+    check("present()/listdir_or_empty() RAISE on the denied dir (never 'absent, skip')", "RAISED" in g and "LRAISED" in g and "PRESENT" not in g, g)
 else:
     print("skip kernel read-deny (no sandbox-exec)")
+check("present(): a missing path is absent (ENOENT)", ci.present(os.path.join(T, "nope")) is False and ci.listdir_or_empty(os.path.join(T, "nope")) == [])
+check("present(): an existing path is present", ci.present(os.path.join(D, ".claude", "CLAUDE.md")))
+CTL = os.path.join(T, "run", "CLAUDE.md")
+check("FAIL-FIRST logger: control file missing from the log -> refused", ci.logger_problems([], CTL))
+check("logger: control file in the log -> proven", ci.logger_problems([CTL], CTL) == [])
 
 # ---- 4. the personal-load detector, fail-first --------------------------------------------------------------------------------------
 NAMES = ci.personal_names(D)
@@ -118,24 +131,30 @@ check("student plugin-only settings: only the rig fence hook, nothing personal",
 # ---- 5. live, zero spend: the real claude binary, network cut ----------------------------------------------------------------------
 claude = shutil.which("claude")
 if claude and have_sbx and os.environ.get("RIG_CFG_SKIP_LIVE") != "1":
-    def live(tag, cwd, read_deny=()):
+    def live(tag, cwd, read_deny=(), log_dir=None):
         iso = os.path.join(T, "iso-" + tag)
         os.makedirs(os.path.join(iso, ".claude"), exist_ok=True)
         os.makedirs(cwd, exist_ok=True)
-        il = os.path.join(T, tag + ".il.jsonl")
+        w(os.path.join(cwd, "CLAUDE.md"), "control\n")   # the logger's positive control, as in rig_live_free.config_preflight
+        ld = log_dir or iso
+        os.makedirs(ld, exist_ok=True)
+        il = os.path.join(ld, tag + ".il.jsonl")
         st = ci.il_settings(None, os.path.join(T, tag + ".settings.json"), il)
-        prof = sb.write_profile(sb.profile([iso, cwd, T], cwd, ci.DEAD_PORT, real_home_dir=D, read_deny=read_deny), os.path.join(T, tag + ".sb"))
+        prof = sb.write_profile(sb.profile([iso, cwd], cwd, ci.DEAD_PORT, real_home_dir=D, read_deny=read_deny), os.path.join(T, tag + ".sb"))
         env = ci.dead_net_env({"HOME": iso, "PATH": "/usr/bin:/bin", "SHELL": "/bin/bash", "TMPDIR": T, "DISABLE_AUTOUPDATER": "1",
                                "CLAUDE_CODE_OAUTH_TOKEN": "sk-ant-oat01-offline-probe-not-a-token", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"})
         cmd = sb.wrap([os.path.realpath(claude), "-p", "hi", "--model", "haiku", "--setting-sources", "project,local", "--settings", st,
                        "--strict-mcp-config", "--output-format", "stream-json", "--verbose"], prof)
         init, hooks, instr = ci.probe(cmd, cwd, env, os.path.join(T, tag + ".stream.jsonl"), il)
-        return init, ci.findings(init, hooks, instr, open(st, encoding="utf-8").read(), D, [iso, cwd], NAMES), instr
+        return init, ci.logger_problems(instr, os.path.join(cwd, "CLAUDE.md")) + ci.findings(init, hooks, instr, open(st, encoding="utf-8").read(), D, [iso, cwd], NAMES), instr
     i0, f0, in0 = live("under", os.path.join(D, "rig-exam-scratch", "case"))
     check("FAIL-FIRST live: cwd under the decoy home loads its CLAUDE.md + skill + agent (walk-up)",
           i0 is not None and any("CLAUDE.md" in x for x in f0) and any(SK in x for x in f0) and any(AG in x for x in f0), (f0, in0))
     i1, f1, _ = live("outside", os.path.join(T, "shared-rig", "case"))
     check("live: cwd OUTSIDE the home -> init present, nothing personal", i1 is not None and f1 == [], f1)
+    i3, f3, _ = live("unwritable-log", os.path.join(T, "shared-rig", "case3"), log_dir=os.path.join(T, "not-allowed"))
+    check("FAIL-FIRST live: a log the sandbox will not let the hook write -> refused (not 'no instructions')",
+          i3 is not None and any("logger not proven" in x for x in f3), f3)
     i2, f2, _ = live("denied", os.path.join(D, "rig-exam-scratch", "case2"), read_deny=sb.personal_config_paths(D))
     check("live: cwd under the home BUT kernel read-denied -> claude still runs (init), nothing personal", i2 is not None and f2 == [], f2)
 else:

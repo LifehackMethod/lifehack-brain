@@ -72,8 +72,11 @@ def main():
     assert ss.stop_fires(sf)[0][1] == "end_of_turn_checks.sh#own_list"
     # safety: the live runner refuses to start with the real HOME
     import subprocess
+    import shutil as _sh0, rig_config_isolation as _ci0
+    lbl0 = "_selftest-steer-home-%d" % os.getpid()   # main() makes RIG_ROOT/<label> before it refuses: a throwaway label, removed below
     r = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "rig_live_free.py"), "run", "--cases", "/nonexistent.jsonl",
-                        "--label", "t", "--only", "NOMATCH", "--env", "HOME=" + os.path.expanduser("~")], capture_output=True, text=True)
+                        "--label", lbl0, "--only", "NOMATCH", "--env", "HOME=" + os.path.expanduser("~")], capture_output=True, text=True)
+    _sh0.rmtree(os.path.join(_ci0.RIG_ROOT, lbl0), ignore_errors=True)
     assert r.returncode != 0 and "REFUSED" in (r.stdout + r.stderr), r
     # ...and with a pointer at the real personal code folder, or a scratch/HOME under the real home or a temp dir (rig-config-isolation:
     # Claude Code loads every ancestor's .claude, so rig dirs live under rig_config_isolation.RIG_ROOT, outside the home)

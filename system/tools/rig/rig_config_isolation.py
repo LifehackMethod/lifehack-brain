@@ -27,6 +27,25 @@ BAD_PREFIXES = ("/tmp", "/private", "/var")
 DEAD_PORT = 1   # nothing listens on localhost:1 and the actor sandbox only opens the proxy port: no request can leave
 
 
+def present(p):
+    """errno-based existence (2026-11-02, the skill-tester rig's gotcha): os.path.exists/lexists/isdir return False on a path the kernel or
+    the file mode DENIES, so a walker would record a denied root as absent and pass silently. ONLY ENOENT/ENOTDIR mean absent; any other
+    error (EPERM, EACCES...) is raised, so the caller refuses instead of skipping."""
+    try:
+        os.lstat(p)
+        return True
+    except (FileNotFoundError, NotADirectoryError):
+        return False
+
+
+def listdir_or_empty(p):
+    """os.listdir, [] ONLY when the dir is absent (ENOENT/ENOTDIR); a denied dir raises."""
+    try:
+        return os.listdir(p)
+    except (FileNotFoundError, NotADirectoryError):
+        return []
+
+
 def _under(p, root):
     p, root = os.path.realpath(p), os.path.realpath(root)
     return p == root or p.startswith(root.rstrip(os.sep) + os.sep)
@@ -79,17 +98,19 @@ def personal_names(real_home):
     c = os.path.join(real_home, ".claude")
     out = {"skills": set(), "agents": set(), "skill_dirs": set()}
     sk = os.path.join(c, "skills")
-    for n in (os.listdir(sk) if os.path.isdir(sk) else []):
+    for n in listdir_or_empty(sk):
         out["skill_dirs"].add(n)
         out["skills"].add(n)
         nm = _frontmatter_name(os.path.join(sk, n, "SKILL.md"))
         if nm:
             out["skills"].add(nm)
     cm = os.path.join(c, "commands")
-    for dp, _, fs in (os.walk(cm) if os.path.isdir(cm) else []):
+    def _raise(e):
+        raise e
+    for dp, _, fs in (os.walk(cm, onerror=_raise) if present(cm) else []):
         out["skills"].update(f[:-3] for f in fs if f.endswith(".md"))
     ag = os.path.join(c, "agents")
-    for f in (os.listdir(ag) if os.path.isdir(ag) else []):
+    for f in listdir_or_empty(ag):
         if f.endswith(".md"):
             out["agents"].add(f[:-3])
             nm = _frontmatter_name(os.path.join(ag, f))
@@ -165,6 +186,14 @@ def findings(init, hooks, instructions, settings_text, real_home, allowed_roots,
     return probs
 
 
+def logger_problems(instr, control):
+    """The InstructionsLoaded logger must PROVE it could write: the control instructions file (a CLAUDE.md the probe puts in the run's own
+    cwd) must be in its log. A log the sandbox kept from being written reads as "no instructions loaded"; that silent pass is refused."""
+    if not any(os.path.realpath(p) == os.path.realpath(control) for p in instr):
+        return ["instructions logger not proven: the control file %s is not in its log (log unwritable or the hook did not run)" % control]
+    return []
+
+
 def il_settings(base_settings_path, out_path, log_path):
     """A copy of the case settings with an InstructionsLoaded hook that appends each payload to log_path."""
     d = json.load(open(base_settings_path, encoding="utf-8")) if base_settings_path else {}
@@ -197,7 +226,7 @@ def probe(cmd, cwd, env, stream_path, il_log, timeout=40):
             p.wait()
     init, hooks = read_events(stream_path)
     paths = []
-    if os.path.exists(il_log):
+    if present(il_log):   # absent is fine HERE only because logger_problems() demands the control entry
         for ln in open(il_log, encoding="utf-8", errors="replace"):
             try:
                 paths.append(json.loads(ln).get("file_path"))

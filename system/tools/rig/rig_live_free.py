@@ -305,15 +305,24 @@ def fence_settings(base_path, out_path):
 CONFIG_PROBED = []   # non-empty once the student config preflight passed this run
 
 
-def config_preflight(cid, work, cwd, env, sbwrap, mkcmd, settings, allowed_roots, personal, student):
+def config_preflight(cid, work, cwd, env, sbwrap, mkcmd, settings, allowed_roots, personal, student, home):
     """STUDENT, zero spend: run the exact actor command (same sandbox, same env) with the network cut and an InstructionsLoaded logger, and
     REFUSE the run if anything personal loads (skills, agents, instructions, memory, hooks, settings). What the probe's hooks leave in the
     case cwd / throwaway personal folder is removed again so the first real session starts clean."""
     before = {os.path.join(dp, f) for dp, _, fs in os.walk(cwd) for f in fs}
-    il = os.path.join(work, cid + ".config-probe.il.jsonl")
+    # the log lives in the throwaway HOME: the actor sandbox lets the hook write ONLY there / the scratch (the work dir is not writable to it,
+    # which made an earlier version read "no instructions" from a log the kernel never let it write). A control CLAUDE.md in the cwd must
+    # show up in the log, or the logger is unproven and the run is refused.
+    il = os.path.join(home, ".rig-config-probe", cid + ".il.jsonl")
+    os.makedirs(os.path.dirname(il), exist_ok=True)
+    control = os.path.join(cwd, "CLAUDE.md")
+    if not os.path.lexists(control):
+        with open(control, "w", encoding="utf-8") as f:
+            f.write("rig config-probe control file (removed after the probe)\n")
     pst = cfgiso.il_settings(settings, os.path.join(work, cid + ".config-probe.settings.json"), il)
     init, hooks, instr = cfgiso.probe(sbwrap(mkcmd("hi", pst)), cwd, cfgiso.dead_net_env(env), os.path.join(work, cid + ".config-probe.stream.jsonl"), il)
-    probs = cfgiso.findings(init, hooks, instr, open(settings, encoding="utf-8").read(), os.path.realpath(os.path.expanduser("~")), allowed_roots)
+    probs = cfgiso.logger_problems(instr, control) + cfgiso.findings(init, hooks, instr, open(settings, encoding="utf-8").read(), os.path.realpath(os.path.expanduser("~")), allowed_roots)
+    shutil.rmtree(os.path.dirname(il), ignore_errors=True)
     with open(os.path.join(work, cid + ".config-probe.json"), "w", encoding="utf-8") as f:
         json.dump({"problems": probs, "instructions": instr, "skills": (init or {}).get("skills"), "agents": (init or {}).get("agents"),
                    "hooks": [h.get("hook_name") for h in hooks]}, f, indent=1)
@@ -402,7 +411,7 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
     cmd = sbwrap(cmd)
     allowed_roots = [cwd, os.path.realpath(scratch) if scratch else cwd, home, V2, work]
     if student_home and not CONFIG_PROBED:   # zero-spend preflight, once per run, BEFORE the first paid session
-        config_preflight(c["id"], work, cwd, env, sbwrap, mkcmd, settings, allowed_roots, personal if isolated else None, student_home)
+        config_preflight(c["id"], work, cwd, env, sbwrap, mkcmd, settings, allowed_roots, personal if isolated else None, student_home, home)
     b = snapshot(notes)
     t0 = time.time()
     err = ""
