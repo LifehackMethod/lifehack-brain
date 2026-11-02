@@ -344,7 +344,80 @@ SBX = None   # the run's rig_sandbox.Sandbox (proven sandbox-exec + allowlist pr
 REAL_NOTES_ROOTS = []   # the real notes root(s) from the parent's pointer (shared/person_roots.py), resolved ONCE in main before any env is scrubbed
 
 
+CASE_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*")
+
+
+def check_case_id(cid):
+    """2026-11-02 (rig-safe-id-journal): the case id becomes a path piece that is rmtree'd (<scratch>/<id> in run_one, the dirname of
+    <HOME>/.rig-config-probe/<id>.il.jsonl in config_preflight). Anything but a plain name ("", "..", "a/b", "../x") is REFUSED. -> cid."""
+    if not isinstance(cid, str) or not CASE_ID_RE.fullmatch(cid) or ".." in cid:
+        sys.exit("REFUSED: case id %r is not a plain name (letters, digits, _ . -, starting with a letter or digit, no '..'); "
+                 "it is used as a folder name that is deleted" % (cid,))
+    return cid
+
+
+JOURNAL_REL = os.path.join(".claude", "run", "fire-journal.jsonl")
+
+
+def _journal_files(home):
+    """The live fire journal in this HOME and its rotated shards (<path>.<epoch>.<pid>, renamed by journal.sh), oldest first, live last."""
+    import fire_journal_query as fjq   # via rig_live_score's sys.path (system/tools)
+    return fjq.discover_journal_files(os.path.join(home, JOURNAL_REL))
+
+
+def journal_mark(home):
+    """Before a case: {path: size} of every journal file in the throwaway HOME. The HOME is shared by every case of a run, so the
+    journal ACCUMULATES; this mark lets journal_slice keep only what this case appended."""
+    out = {}
+    for p in _journal_files(home):
+        try:
+            out[p] = os.path.getsize(p)
+        except OSError:
+            pass
+    return out
+
+
+def journal_slice(home, mark, out_path):
+    """After a case: write to out_path only the bytes appended since `mark`. A rotation during the case renames the live file to a NEW shard
+    name: that shard continues from the old live size, later shards and the live file are wholly this case's. Nothing appended -> no file."""
+    live = os.path.join(home, JOURNAL_REL)
+    files = _journal_files(home)
+    new_shards = [p for p in files if p != live and p not in mark]
+    chunks = []
+    for p in files:
+        if p in mark and p != live:
+            start = mark[p]                                       # an old shard: only what grew past the mark (normally nothing)
+        elif new_shards and p == new_shards[0]:
+            start = mark.get(live, 0)                             # the first new shard is the renamed live file: continue from its mark
+        elif p == live and not new_shards:
+            start = mark.get(live, 0)                             # no rotation: the live file continues from the mark
+        else:
+            start = 0                                             # written wholly during this case
+        try:
+            with open(p, "rb") as f:
+                f.seek(start)
+                chunks.append(f.read())
+        except OSError:
+            pass
+    data = b"".join(chunks)
+    if data:
+        with open(out_path, "wb") as f:
+            f.write(data)
+    return len(data)
+
+
+EVIDENCE_GLOBS = ("*.config-probe.json", "*.stream.jsonl", "*.fence.jsonl", "*.drive-end.json", "*.isolation.json", "*.sandbox.json", "*.fire-journal.jsonl")
+
+
+def copy_evidence(work, keep):
+    """After each case: copy the per-case evidence files from the work dir into the per-label streams folder (`keep`)."""
+    for g in EVIDENCE_GLOBS:
+        for f in glob.glob(os.path.join(work, g)):
+            shutil.copy(f, keep)
+
+
 def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model="sonnet", settings=None, drive_label=None):  # allow-silence: the exam runs live sessions on the Sonnet tier by ruling (plan 3b.4 redesign); this is the tier alias handed to claude --model, not a pinned model id
+    check_case_id(c.get("id"))   # FIRST: the id is rmtree'd below (scratch cwd) and in config_preflight (probe dir)
     L = c["live"]
     stream = os.path.join(work, c["id"] + ".stream.jsonl")
     # 2026-11-02 (rig-cred-isolation): the rig's OWN choices for this actor; the actor env is built from these by ALLOWLIST below (rig_isolation),
@@ -417,6 +490,7 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
     allowed_roots = [cwd, os.path.realpath(scratch) if scratch else cwd, home, V2, work]
     if student_home and not CONFIG_PROBED:   # zero-spend preflight, once per run, BEFORE the first paid session
         config_preflight(c["id"], work, cwd, env, sbwrap, mkcmd, settings, allowed_roots, personal if isolated else None, student_home, home)
+    jmark = journal_mark(home)   # the HOME's fire journal is shared by every case: keep only what this session appends
     b = snapshot(notes)
     t0 = time.time()
     err = ""
@@ -427,6 +501,7 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
     except subprocess.TimeoutExpired:
         err = "TIMEOUT"
     secs = time.time() - t0
+    journal_slice(home, jmark, os.path.join(work, c["id"] + ".fire-journal.jsonl"))   # copied to the streams folder by copy_evidence
     if drive_run:   # end-state capture FIRST (the scorer reads it), then drop the mount, then MOVE the run folder to _archive (never delete)
         snap = rig_drive.snapshot_end_state(drive_run, os.path.join(work, c["id"] + ".drive-end.json"))
         rig_drive.unlink_mount(home)
@@ -654,8 +729,7 @@ def main():
             out.append(r)
             print(r["id"], r["bucket"], r["turns"], r["secs"], r["commits"] or "", flush=True)
             open(os.path.join(res_dir, "%s-%s-live.jsonl" % (stamp, a.label)), "w", encoding="utf-8").write("\n".join(json.dumps(x) for x in out) + "\n")
-            for f in glob.glob(work + "/*.config-probe.json") + glob.glob(work + "/*.stream.jsonl") + glob.glob(work + "/*.fence.jsonl") + glob.glob(work + "/*.drive-end.json") + glob.glob(work + "/*.isolation.json") + glob.glob(work + "/*.sandbox.json"):
-                shutil.copy(f, keep)
+            copy_evidence(work, keep)   # streams, fence/isolation/sandbox logs, drive end state, config probe, and the per-case fire-journal slice
     finally:
         if SBX:
             SBX.__exit__(None, None, None)
