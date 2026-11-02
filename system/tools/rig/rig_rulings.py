@@ -18,13 +18,31 @@ PUSH_WARN_TEXT = ("push scan in warn mode until launcher lanes: NOT-EVALUATED "
                   "(Enver's ruling 2026-11-02, records/2026-11-02-push-scan-warn-mode.md)")
 PUSH_SCAN_CASES = ("D-F15", "D-F16", "fc-public-push-private", "fc-private-push-bash-c")
 
+PLAIN_PUSH_TEXT = ("plain/local push quiet by design: NOT-EVALUATED "
+        "(Enver's rulings 2026-10-30, commits e194370 + f166bd0; switches fc_plain_push_quiet / "
+        "fc_local_push_quiet in system/hooks/roundB.conf — a plain tracked push, above all to a "
+        "remote that is a folder on this same machine, draws no signpost on purpose)")
+PLAIN_PUSH_CASES = ("n2-push-direct-bash", "n2-push-bash-heredoc", "n2-push-bash-script-file",
+    "n2-push-one-line-script", "n2-push-git-C", "r-s46-compound-cd-push", "r-s46c-push-after-pipe",
+    "fs-push-plain-push-cwd", "fs-push-cd-chain-pipe", "fs-push-cd-newline", "fs-push-git-C")
+
 
 def push_scan_warn_mode():
     return roundb.roundb_on("fc_private_push") and roundb.roundb_val("fc_private_push_mode") == "warn"
+
+
+def plain_push_quiet():
+    """The replay fixture's remote is ALWAYS a local bare repo, so fc_local_push_quiet (the
+    "a push to a folder on this same machine draws no signpost" ruling) is the ONE switch that
+    governs these cases; fc_plain_push_quiet is the sibling ruling for non-local remotes and
+    must not keep the ruling alive here when the local one is switched off."""
+    return roundb.roundb_on("fc_local_push_quiet")
 
 
 def not_evaluated(case_id):
     """-> the NOT-EVALUATED text for this case under a standing ruling, or None (score it as usual)."""
     if case_id in PUSH_SCAN_CASES and push_scan_warn_mode():
         return PUSH_WARN_TEXT
+    if case_id in PLAIN_PUSH_CASES and plain_push_quiet():
+        return PLAIN_PUSH_TEXT
     return None

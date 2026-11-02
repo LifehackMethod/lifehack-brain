@@ -12,7 +12,10 @@ trap 'lhb_journal_fire "$?" "guard_ledger_discipline.sh" "PreToolUse" "Bash|Writ
 #      CLEARED / FIXED) to the ## Open section. The only legal change to ## Open is DELETION of a line.
 # REDIRECT: to close an item, DELETE its line from ## Open. If it warrants a history note, add a
 #      ONE-LINE dated entry under ## Cleared instead. See the state/debt-ledger.md header.
-# UPDATED: 2026-06-18 (ported 2026-08-13 from the donor repo — verbatim; the ledger path is
+# UPDATED: 2026-11-02 (a non-object tool_input / payload crashed the hook with exit 1, an ERROR,
+#      where the SCOPING NOTE below promises allow — found by the observation-check layer_firing signal;
+#      pinned in system/hooks/tests/test_ledger_discipline.sh) · 2026-06-18 (ported 2026-08-13
+#      from the donor repo — verbatim; the ledger path is
 #      already matched as a relative suffix, so no path resolution work was needed)
 # SCOPING NOTE: this fires on ALL Write|Edit but guards ONLY debt-ledger.md. On any parse failure
 #      or non-ledger target it exits 0 (allow) — a bug here must NEVER block the whole edit surface;
@@ -28,7 +31,16 @@ try:
     data = json.loads(os.environ.get("LIFEHACK_LEDGER_HOOK_INPUT", ""))
 except Exception:
     sys.exit(0)
-ti = (data.get("tool_input") or {})
+# SHAPE (2026-11-02, observation-check layer_firing red "exit_code 1"): real traffic has been seen with
+# tool_input as a plain string (and a non-object top level is equally possible) -- data.get /
+# ti.get then raise AttributeError and the hook exits 1, an ERROR, on a hook whose SCOPING
+# NOTE above promises allow-on-any-parse-failure. Any shape that is not an object is "no
+# ledger target we can see": allow (exit 0), never crash.
+if not isinstance(data, dict):
+    sys.exit(0)
+ti = data.get("tool_input")
+if not isinstance(ti, dict):
+    ti = {}
 path = (ti.get("file_path") or ti.get("path") or "")
 # WINDOWS FOLD: tool_input's path arrives backslash-native (and possibly drive-lettered /
 # mixed-case) on Windows, so a bare endswith("state/debt-ledger.md") would silently never
