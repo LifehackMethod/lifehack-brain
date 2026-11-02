@@ -25,6 +25,15 @@ exit 0); never blocks. Each piece has its own switch in roundB.conf (all OFF = p
   claudemd_len_advisory (5c) NOT an ask: when a Write/Edit/MultiEdit leaves a CLAUDE.md over 200 lines (and it grows, or crosses 200), hand the model one
                         advisory line (PreToolUse additionalContext, no permission decision). 200 is the official Claude Code figure ("target under 200
                         lines per CLAUDE.md file", code.claude.com/docs/en/memory). Bash writes are not measured.
+  fc_python_delete_ask  (2026-11-02, direct-hook exam D-F01/F08/F20) python os.remove / os.unlink / Path.unlink, or os.rename / os.replace /
+                        shutil.move / Path.rename AWAY, of an existing fine-china FILE, in an executed -c / heredoc / `-` body (walk() reads them).
+  fc_python_rewrite_ask (D-F09/F13) python open(p,'w'), Path.write_text/write_bytes/open('w'), os.truncate, or a move/replace/copy ONTO an
+                        existing fine-china file. A fine-china file (fc_file_kind) is only what the existing pieces already protect: a database
+                        (is_db), the person's SOP, a plugin SOP or canon file (build_mode.protected_doc), a data file (build_mode.data_file_target:
+                        existing, non-empty, not git-ignored, not touched in the last 10 minutes), a CLAUDE.md. Relative paths resolve through the
+                        command's own cd chain. Temp, scratch, throwaway and regenerable folders never ask; new files never ask.
+  fc_write_overwrite_ask (D-F12/F13) a Write-tool full overwrite of an EXISTING data file or database (same fc_file_kind test); the ask carries a
+                        short diff. Edit (a change of some lines) never asks; an identical rewrite never asks.
 These have NO off switch of the user's kind: placement.conf is never read here.
 Fail posture: any internal error prints nothing (allow).
 """
@@ -358,7 +367,7 @@ def _final_cwd(prefix, cwd):
 # python forms that remove a folder: shutil.rmtree(x), os.removedirs(x), os.rmdir(x), Path(x).rmdir(), <var>.rmdir()
 _PY_CALL = re.compile(r"(?P<fn>(?:\bshutil\s*\.\s*)?(?<![\w.])rmtree|\bshutil\s*\.\s*rmtree|\bos\s*\.\s*removedirs|\bos\s*\.\s*rmdir)\s*\(\s*(?P<arg>[^,)]*(?:\([^()]*\))?[^,)]*)")
 _PY_PATH_RMDIR = re.compile(r"(?P<expr>(?:\bpathlib\s*\.\s*)?\bPath\s*\((?:[^()]|\([^()]*\))*\)|\b[A-Za-z_]\w*)\s*\.\s*rmdir\s*\(\s*\)")
-_PY_ASSIGN = re.compile(r"^\s*(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>[^\n;]+)", re.M)
+_PY_ASSIGN = re.compile(r"(?:^|;)\s*(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>[^\n;]+)", re.M)
 _PY_STR = re.compile(r"""^[rRbBuUfF]{0,2}(?:'([^'\\]*)'|"([^"\\]*)")$""")
 
 
@@ -449,6 +458,172 @@ def _plain(a, cwd):
     return [(r, r) for r in res]
 
 
+# ---------------------------------------------------------------- 2026-11-02 (direct-hook exam route-arounds D-F01/F08/F09/F12/F13/F20)
+# The same fine-china FILES that `rm` / a shell overwrite already ask about were reachable by switching tool: python os.remove /
+# open(p,'w') in an executed -c or heredoc body (walk() above returns those bodies, via gws_guard's executed-heredoc reading), and a
+# Write-tool full overwrite of a data file. One definition of a fine-china file, built only from the existing ones; no new kinds.
+_PY_FILE_FN = re.compile(r"(?<![\w.])(?:(?P<mod>os|shutil|io|pathlib)\s*\.\s*)?(?P<fn>remove|unlink|rename|renames|replace|move|copy|copy2|copyfile|truncate|open)\s*\(")
+_PY_METHOD = re.compile(r"(?P<expr>(?:\bpathlib\s*\.\s*)?\bPath\s*\((?:[^()]|\([^()]*\))*\)|(?<![\w.])[A-Za-z_]\w*)\s*\.\s*(?P<fn>unlink|rename|replace|write_text|write_bytes|open)\s*\(")
+_PY_MODFN = {("os", "remove"): "del", ("os", "unlink"): "del", ("os", "rename"): "mv", ("os", "renames"): "mv", ("os", "replace"): "mv",
+             ("shutil", "move"): "mv", ("shutil", "copy"): "cp", ("shutil", "copy2"): "cp", ("shutil", "copyfile"): "cp",
+             ("os", "truncate"): "trunc", (None, "open"): "open", ("io", "open"): "open"}
+
+
+def _py_args(code, open_paren):
+    """-> ([positional exprs], {kw: expr}) of the call whose '(' is at code[open_paren]."""
+    g = _gws()
+    end = g._match_close(code, open_paren) if g else code.find(")", open_paren) + 1
+    inner = code[open_paren + 1:max(end - 1, open_paren + 1)]
+    pos, kw = [], {}
+    for a in _split_top(inner, ","):
+        km = re.match(r"\s*([A-Za-z_]\w*)\s*=(?!=)\s*(.*)$", a, re.S)
+        if km:
+            kw[km.group(1)] = km.group(2).strip()
+        elif a.strip():
+            pos.append(a.strip())
+    return pos, kw
+
+
+def py_file_ops(code):
+    """-> [(path or None, op)] for every python call in `code` that deletes, moves away or rewrites a FILE.
+    op: 'del' (os.remove/unlink, Path.unlink), 'away' (the SOURCE of os.rename/replace, shutil.move, Path.rename/replace),
+    'over' (open(p,'w'), Path.write_text/write_bytes/open('w'), os.truncate, and the DESTINATION of a move/replace/copy)."""
+    names, pathobj = {}, set()
+    for m in _PY_ASSIGN.finditer(code):
+        v = _py_value(m.group("expr"), names)
+        if v is not None:
+            names[m.group("name")] = v
+            if re.match(r"\s*(?:pathlib\s*\.\s*)?Path\s*\(|.*\bPath\s*\.\s*home\s*\(", m.group("expr")):
+                pathobj.add(m.group("name"))
+    from_os = {x.strip() for grp in re.findall(r"\bfrom\s+os\s+import\s+([\w, ]+)", code) for x in grp.split(",")}
+    found = []
+
+    def mode_writes(pos, kw, i):
+        md = kw.get("mode") or (pos[i] if len(pos) > i else "")
+        sm = _PY_STR.match(md.strip()) if md else None
+        return bool(sm) and "w" in (sm.group(1) if sm.group(1) is not None else sm.group(2))
+
+    for m in _PY_FILE_FN.finditer(code):
+        mod, fn = m.group("mod"), m.group("fn")
+        if mod is None and fn in from_os and fn in ("remove", "unlink", "rename", "replace", "truncate"):
+            mod = "os"
+        if mod is None and fn != "open":
+            continue
+        kind = _PY_MODFN.get((mod, fn)) if mod != "pathlib" else None
+        if not kind:
+            continue
+        pos, kw = _py_args(code, m.end() - 1)
+        if not pos and kind != "open":
+            continue
+        val = lambda e: _py_value(e, names)
+        if kind == "del":
+            found.append((val(pos[0]), "del"))
+        elif kind in ("mv", "cp"):
+            if kind == "mv":
+                found.append((val(pos[0]), "away"))
+            if len(pos) > 1:
+                found.append((val(pos[1]), "over-dst"))
+        elif kind == "trunc":
+            found.append((val(pos[0]), "over"))
+        elif kind == "open" and pos and mode_writes(pos, kw, 1):
+            found.append((val(pos[0]), "over"))
+    for m in _PY_METHOD.finditer(code):
+        ex, fn = m.group("expr"), m.group("fn")
+        if ex in ("os", "shutil", "io", "pathlib", "sys", "self"):
+            continue
+        is_path = ex.lstrip().startswith(("Path", "pathlib")) or ex in pathobj
+        if not is_path and not (ex in names and fn in ("unlink", "write_text", "write_bytes")):
+            continue   # s.replace('a','b') on a str, f.open() on something unknown: not a path call
+        p = _py_value(ex, names)
+        pos, kw = _py_args(code, m.end() - 1)
+        if fn == "unlink":
+            found.append((p, "del"))
+        elif fn in ("rename", "replace"):
+            found.append((p, "away"))
+            if pos:
+                found.append((_py_value(pos[0], names), "over-dst"))
+        elif fn in ("write_text", "write_bytes"):
+            found.append((p, "over"))
+        elif fn == "open" and mode_writes(pos, kw, 0):
+            found.append((p, "over"))
+    return found
+
+
+FC_KIND_TEXT = {
+    "db": ("a local database file", "once it is gone, what it held may not come back"),
+    "sop": ("the person's own SOP", "it is their standing procedure"),
+    "canon": ("a canon file", "it is the person's own settled rules"),
+    "data": ("a data file (spreadsheet, csv, json, yaml...)", "the rows it holds do not come back"),
+    "claudemd": ("a CLAUDE.md", "it is the person's standing instructions, loaded into every session"),
+}
+
+
+def fc_file_kind(t, code):
+    """-> 'db' | 'sop' | 'canon' | 'data' | 'claudemd' | '' for an EXISTING file. Only the existing definitions: is_db (as rm asks),
+    is_user_sop, build_mode.protected_doc (plugin SOP / canon), build_mode.data_file_target (as the shell-overwrite ask), CLAUDE.md.
+    Throwaway never counts: temp folders, a throwaway/regenerable folder segment, ~/.claude/run|projects|cache, roundB/placement.conf
+    (the conf guard owns those)."""
+    if not os.path.isfile(t) or os.path.islink(t) or tmpish(t) or is_conf(t):
+        return ""
+    if any(p in THROWAWAY for p in t.split("/")[:-1]) or os.path.basename(os.path.dirname(t)) in REGENERABLE:
+        return ""
+    if any(under(t, os.path.join(HOME, ".claude", s)) for s in ("run", "projects", "cache", "shell-snapshots", "plugins/cache")):
+        return ""
+    if is_claudemd(t):
+        return "claudemd"
+    try:
+        import build_mode
+        pk = build_mode.protected_doc(t, code) if code else ""
+    except Exception as e:
+        sys.stderr.write("guard_fine_china_ask: protected-doc test skipped (%s)\n" % e)
+        build_mode, pk = None, ""
+    if pk:
+        return pk
+    if is_user_sop(t, code):
+        return "sop"
+    if is_db(t):
+        return "db"
+    try:
+        if build_mode and build_mode.data_file_target(t):
+            return "data"
+    except Exception as e:
+        sys.stderr.write("guard_fine_china_ask: data-file test skipped (%s)\n" % e)
+    return ""
+
+
+def py_file_msg(t, kind, op):
+    what, why = FC_KIND_TEXT[kind]
+    verb = {"del": "deletes", "away": "moves away", "over": "rewrites", "over-dst": "writes over"}[op]
+    sw = "fc_python_delete_ask" if op in ("del", "away") else "fc_python_rewrite_ask"
+    return ("ASK FIRST: this python command %s %s (%s). It is fine china: %s, and python does not use the Trash or keep a copy. "
+            "WAY-THROUGH: press Yes only if the person asked for exactly this and a copy exists; otherwise stop and tell them which file and what you wanted to do. "
+            "Do not switch to another tool to land the same change. RULE: switch %s in system/hooks/roundB.conf." % (verb, what, t, why, sw))
+
+
+def check_py_files(py_bodies, scwd, code):
+    sw_del, sw_over = on("fc_python_delete_ask"), on("fc_python_rewrite_ask")
+    if not (sw_del or sw_over):
+        return
+    for body in py_bodies:
+        for p, op in py_file_ops(body):
+            if p is None or (scwd is None and not os.path.isabs(os.path.expanduser(p))):
+                continue   # an argument we cannot read is not judged (LIMIT; folder rmtree keeps its own over-ask)
+            if not (sw_del if op in ("del", "away") else sw_over):
+                continue
+            t = resolve(p, scwd or "/")
+            k = fc_file_kind(t, code)
+            if k:
+                ask(py_file_msg(t, k, op))
+
+
+def write_overwrite_msg(t, kind, diff):
+    what, why = FC_KIND_TEXT[kind]
+    return ("ASK FIRST: this Write replaces the whole of %s that already exists (%s). It is fine china: %s. "
+            "WAY-THROUGH: press Yes only if the person asked for this file to be replaced and a copy exists; otherwise change only the lines that need it "
+            "with Edit, or write the new result to a NEW file and tell the person. Do not switch to another tool to land the same replacement. "
+            "RULE: switch fc_write_overwrite_ask in system/hooks/roundB.conf.%s" % (what, t, why, (" DIFF: " + diff) if diff else ""))
+
+
 def check_bash(cmd, cwd, code):
     sw_db, sw_dir, sw_sop, sw_conf = on("fc_db_delete_ask"), on("fc_folder_delete_ask"), on("fc_user_sop_ask"), on("fc_placement_conf_ask")
     if sw_conf and CONF_RX.search(cmd):
@@ -494,6 +669,8 @@ def check_bash(cmd, cwd, code):
             ask("ASK FIRST: this command drops or empties data in a local database (%s). A database is fine china: what it held may not come back. "
                 "WAY-THROUGH: press Yes only if the person asked for exactly this and a copy exists; otherwise stop and tell them what you wanted to delete. "
                 "RULE: switch fc_db_delete_ask in system/hooks/roundB.conf." % SQL_RX.search(" ".join(w)).group(0).strip())
+        if py_bodies:   # 2026-11-02: python file deletes / rewrites (fc_python_delete_ask, fc_python_rewrite_ask)
+            check_py_files(py_bodies, scwd, code)
         if sw_dir and py_bodies:
             for body in py_bodies:
                 for p, kind in py_deletes(body):
@@ -696,6 +873,15 @@ def main_inner():
                 "RULE: switch fc_placement_conf_ask in system/hooks/roundB.conf.")
         elif on("fc_user_sop_ask") and is_user_sop(t, code) and os.path.isfile(t):
             ask(sop_msg(t, "replaces" if tool == "Write" else "edits"))
+        elif tool == "Write" and on("fc_write_overwrite_ask"):   # 2026-11-02 (D-F12/F13): a Write over an existing data file / database
+            k = fc_file_kind(t, code)
+            if k in ("data", "db"):
+                try:
+                    same = open(t, encoding="utf-8", errors="replace").read() == (ti.get("content") or "")
+                except OSError:
+                    same = False
+                if not same:
+                    ask(write_overwrite_msg(t, k, short_diff(t, tool, ti)))
         if is_claudemd(t):
             m = claudemd_verdict(t, "replaces" if tool == "Write" else "edits", code, short_diff(t, tool, ti) if on("fc_claudemd_ask") else "")
             if m:
