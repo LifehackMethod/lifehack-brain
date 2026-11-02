@@ -3,7 +3,10 @@
 exit 0); never blocks. Each piece has its own switch in roundB.conf (all OFF = prints nothing):
   fc_db_delete_ask      deleting a local database file (.db .sqlite .sqlite3 .db3 .duckdb .mdb .accdb), or an obvious
                         DROP TABLE/DATABASE, TRUNCATE, or DELETE FROM <t> with no WHERE through sqlite3/psql/mysql/dropdb/duckdb.
-  fc_folder_delete_ask  rm -r / rm -rf (and python rmtree, find -delete) of a whole folder. Throwaway folders never ask:
+  fc_folder_delete_ask  rm -r/-R/-rf/--recursive, rmdir, find <dir> -delete / -exec rm, and python shutil.rmtree / os.removedirs /
+                        os.rmdir / Path(..).rmdir() in an executed -c or heredoc body, of a whole folder that is not empty.
+                        The REAL target is judged: cd/pushd chains are followed (D-F04, 2026-11-02), a heredoc that is only
+                        data is never read as commands, a symlink is not its folder. Throwaway folders never ask:
                         node_modules __pycache__ .venv venv dist build .cache .pytest_cache .next .tox .mypy_cache coverage,
                         anything under /tmp, /var/folders, $TMPDIR, a scratchpad/scratch folder, ~/.claude/run|projects|cache,
                         a git-IGNORED folder, an empty folder, or a folder that does not exist.
@@ -163,6 +166,281 @@ def expand(arg, cwd):
 
 CONF_RX = re.compile(r"placement\.conf|roundB\.conf")
 
+# ---------------------------------------------------------------- D-F04 (2026-11-02): follow cd, read executed code
+# The incident: `cd <exam>/notes && rm -r 2024-sabbatical` with the session cwd one level up. The old loop resolved every
+# argument against the SESSION cwd, so the target became <exam>/2024-sabbatical, which does not exist, and was skipped.
+# walk() returns (words, cwd) per simple command with cd/pushd chains followed, ( ) subshells restored, a cd inside a
+# pipeline ignored, redirections not taken for commands, and heredoc BODIES removed from the shell text (a heredoc that
+# is only data never looks like a command; one an interpreter runs is returned separately for py_deletes / a shell walk).
+_HD_SINK_PY = re.compile(r"^(?:python|pypy)[\d.]*$")
+_HD_SINK_SH = {"bash", "sh", "zsh", "dash", "ksh"}
+
+
+def _gws():
+    try:
+        import gws_guard
+        return gws_guard
+    except Exception:
+        return None
+
+
+def _heredoc_split(cmd):
+    """-> (cmd with every heredoc body cut out, [(op_start_in_stripped_cmd, body, family)]). family: 'py' | 'sh' | None
+    (None = data, or an interpreter we do not read). Without gws_guard: (cmd, []) = old behaviour."""
+    g = _gws()
+    if g is None:
+        return cmd, []
+    cmd = cmd.replace("\\\n", " ")
+    out, bodies, last = [], [], 0
+    try:
+        for m, _q, bs, be, _r in g._heredocs(cmd):
+            fam = None
+            if g._heredoc_executed(cmd, m.start(), m.end()):
+                ls = cmd.rfind("\n", 0, m.start()) + 1
+                le = cmd.find("\n", m.end()); le = len(cmd) if le == -1 else le
+                before = re.sub(r"^[\s$(`{!]+", "", g._STMT.split(cmd[ls:m.start()])[-1])
+                w, _a = g._cmd_word(before.lstrip("({ ").split())
+                if not w:
+                    pm = re.match(r"[^;&|]*\|(?!\|)\s*([^;&|]*)", cmd[m.end():le])
+                    w, _a = g._cmd_word(pm.group(1).split()) if pm else ("", [])
+                elif not g._runs_stdin(w, _a):
+                    pm = re.match(r"[^;&|]*\|(?!\|)\s*([^;&|]*)", cmd[m.end():le])
+                    w, _a = g._cmd_word(pm.group(1).split()) if pm else (w, _a)
+                fam = "py" if _HD_SINK_PY.match(w) else ("sh" if w in _HD_SINK_SH else None)
+            pos = sum(len(x) for x in out) + (m.start() - last)   # where the << operator lands in the stripped text
+            out.append(cmd[last:bs])
+            bodies.append((pos, cmd[bs:be], fam))
+            nl = cmd.find("\n", be)            # the terminator line goes too (its newline stays)
+            last = len(cmd) if nl == -1 else nl
+    except Exception:
+        return cmd, []
+    out.append(cmd[last:])
+    return "".join(out), bodies
+
+
+def _cd_dest(words, cwd):
+    """Where a cd/pushd leaves the shell; None = cannot know (cd -, a variable, popd)."""
+    v = os.path.basename(words[0])
+    if v == "popd":
+        return None
+    args = [a for a in words[1:] if not (a.startswith("-") and a != "-")]
+    if not args:
+        return os.path.realpath(HOME) if v == "cd" else None
+    a = args[0]
+    if a == "-" or "`" in a or "$" in a.replace("$HOME", "").replace("${HOME}", ""):
+        return None
+    a = os.path.expandvars(os.path.expanduser(a))
+    if not os.path.isabs(a):
+        if cwd is None:
+            return None
+        a = os.path.join(cwd, a)
+    return os.path.realpath(a)
+
+
+def walk(cmd, cwd, depth=0):
+    """-> [(words, cwd, py_bodies)] per simple command, cd chains followed. py_bodies: python code this command runs."""
+    shell, bodies = _heredoc_split(cmd) if depth < 4 else (cmd, [])
+    lex = shlex.shlex(shell, posix=True, punctuation_chars="();<>|&\n")
+    lex.whitespace = " \t\r"
+    lex.whitespace_split = True
+    try:
+        toks = list(lex)
+    except ValueError:
+        return []
+    items, cur, skip = [], [], False
+    for t in toks:
+        if skip:
+            skip = False; continue
+        if t and set(t) <= set(";&|\n()<>"):
+            if ("<" in t or ">" in t) and not set(t) & set(";|\n()"):
+                if cur and cur[-1].isdigit():
+                    cur.pop()   # the fd number of 2>/dev/null, not an argument
+                skip = True     # the redirect target / fd / heredoc delimiter is not an argument
+                continue
+            items.append(("seg", cur)); cur = []
+            items.append(("sep", t))
+        else:
+            cur.append(t)
+    items.append(("seg", cur))
+    out, stack, cwd_now = [], [], cwd
+    segs = [i for i, it in enumerate(items) if it[0] == "seg"]
+    for idx, (kind, val) in enumerate(items):
+        if kind == "sep":
+            for ch in val:
+                if ch == "(":
+                    stack.append(cwd_now)
+                elif ch == ")" and stack:
+                    cwd_now = stack.pop()
+            continue
+        s = list(val)
+        while s and (re.fullmatch(r"\w+=.*", s[0]) or os.path.basename(s[0]) in ("sudo", "command", "env", "exec", "nohup", "time", "nice", "xargs", "builtin")
+                     or (s[0].startswith("-") and len(s) > 1)):
+            s = s[1:]
+        if not s:
+            continue
+        prev_sep = items[idx - 1][1] if idx > 0 else None
+        next_sep = items[idx + 1][1] if idx + 1 < len(items) else None
+        in_pipe = prev_sep in ("|", "|&") or next_sep in ("|", "|&")
+        v = os.path.basename(s[0])
+        if v in ("cd", "pushd", "popd"):
+            if not in_pipe:
+                cwd_now = _cd_dest(s, cwd_now)
+            continue
+        body, py = None, []
+        if v in _HD_SINK_SH:
+            for k in range(1, len(s) - 1):
+                if re.fullmatch(r"-[A-Za-z]*c[A-Za-z]*", s[k]):
+                    body = s[k + 1]; break
+        elif v == "eval":
+            body = " ".join(s[1:])
+        elif _HD_SINK_PY.match(v):
+            for k in range(1, len(s) - 1):
+                if s[k] == "-c" or re.fullmatch(r"-[A-Za-z]*c", s[k]):
+                    py.append(s[k + 1]); break
+        if body is not None and depth < 3:
+            out.extend(walk(body, cwd_now, depth + 1))
+        else:
+            out.append((s, cwd_now, py))
+    # executed heredoc bodies: the cwd is the one in force where the << operator sits
+    for pos, text, fam in bodies:
+        if fam is None:
+            continue
+        hcwd = _final_cwd(shell[:pos], cwd)
+        if fam == "py":
+            out.append((["python3", "-"], hcwd, [text]))
+        elif depth < 3:
+            out.extend(walk(text, hcwd, depth + 1))
+    return out
+
+
+def _final_cwd(prefix, cwd):
+    """The shell cwd after running `prefix` (cd chains only)."""
+    lex = shlex.shlex(prefix, posix=True, punctuation_chars="();<>|&\n")
+    lex.whitespace = " \t\r"
+    lex.whitespace_split = True
+    try:
+        toks = list(lex)
+    except ValueError:
+        return cwd
+    segs, cur, seps = [], [], []
+    for t in toks:
+        if t and set(t) <= set(";&|\n()") :
+            segs.append(cur); seps.append(t); cur = []
+        elif t and set(t) <= set("<>&"):
+            continue
+        else:
+            cur.append(t)
+    segs.append(cur)
+    stack, now = [], cwd
+    for i, s in enumerate(segs):
+        if i > 0:
+            for ch in seps[i - 1]:
+                if ch == "(":
+                    stack.append(now)
+                elif ch == ")" and stack:
+                    now = stack.pop()
+        while s and (re.fullmatch(r"\w+=.*", s[0]) or s[0] in ("builtin", "command")):
+            s = s[1:]
+        if s and os.path.basename(s[0]) in ("cd", "pushd", "popd"):
+            in_pipe = (i > 0 and seps[i - 1] == "|") or (i < len(seps) and seps[i] == "|")
+            if not in_pipe:
+                now = _cd_dest(s, now)
+    return now
+
+
+# python forms that remove a folder: shutil.rmtree(x), os.removedirs(x), os.rmdir(x), Path(x).rmdir(), <var>.rmdir()
+_PY_CALL = re.compile(r"(?P<fn>(?:\bshutil\s*\.\s*)?(?<![\w.])rmtree|\bshutil\s*\.\s*rmtree|\bos\s*\.\s*removedirs|\bos\s*\.\s*rmdir)\s*\(\s*(?P<arg>[^,)]*(?:\([^()]*\))?[^,)]*)")
+_PY_PATH_RMDIR = re.compile(r"(?P<expr>(?:\bpathlib\s*\.\s*)?\bPath\s*\((?:[^()]|\([^()]*\))*\)|\b[A-Za-z_]\w*)\s*\.\s*rmdir\s*\(\s*\)")
+_PY_ASSIGN = re.compile(r"^\s*(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>[^\n;]+)", re.M)
+_PY_STR = re.compile(r"""^[rRbBuUfF]{0,2}(?:'([^'\\]*)'|"([^"\\]*)")$""")
+
+
+def _py_value(expr, names, depth=0):
+    """A python expression -> the path string it names, or None. Literals, os.path.expanduser/join, Path(...), Path.home(),
+    a / b, and names bound to one of those earlier in the same body."""
+    e = expr.strip().rstrip(")").strip() if expr.strip().count(")") > expr.strip().count("(") else expr.strip()
+    if depth > 4 or not e:
+        return None
+    m = _PY_STR.match(e)
+    if m:
+        s = m.group(1) if m.group(1) is not None else m.group(2)
+        return None if e[:1] in "fF" and "{" in s else s
+    if re.fullmatch(r"[A-Za-z_]\w*", e):
+        return names.get(e)
+    if re.fullmatch(r"(?:pathlib\s*\.\s*)?Path\s*\.\s*home\s*\(\s*\)", e):
+        return HOME
+    if "/" in e and not _PY_STR.match(e):
+        parts = _split_top(e, "/")
+        if len(parts) > 1:
+            vals = [_py_value(p, names, depth + 1) for p in parts]
+            return None if any(v is None for v in vals) else os.path.join(*vals)
+    m = re.fullmatch(r"(?:(?:pathlib\s*\.\s*)?Path|os\s*\.\s*path\s*\.\s*(?:expanduser|abspath|realpath|join)|str)\s*\((.*)\)\s*(?:\.\s*(?:expanduser|resolve|absolute)\s*\(\s*\))*", e, re.S)
+    if m:
+        inner = _split_top(m.group(1), ",")
+        vals = [_py_value(p, names, depth + 1) for p in inner if p.strip()]
+        if not vals or any(v is None for v in vals):
+            return None
+        return os.path.expanduser(os.path.join(*vals))
+    return None
+
+
+def _split_top(s, sep):
+    parts, depth, cur, q = [], 0, "", None
+    for ch in s:
+        if q:
+            cur += ch
+            if ch == q:
+                q = None
+            continue
+        if ch in "'\"":
+            q = ch
+        elif ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        if ch == sep and depth == 0:
+            parts.append(cur); cur = ""
+        else:
+            cur += ch
+    parts.append(cur)
+    return parts
+
+
+def py_deletes(code):
+    """-> [(path or None, kind)] for every folder-removing call in python `code`. None = the argument could not be read."""
+    names = {}
+    for m in _PY_ASSIGN.finditer(code):
+        v = _py_value(m.group("expr"), names)
+        if v is not None:
+            names[m.group("name")] = v
+    found = []
+    for m in _PY_CALL.finditer(code):
+        kind = "rmtree" if "rmtree" in m.group("fn") else ("removedirs" if "removedirs" in m.group("fn") else "rmdir")
+        found.append((_py_value(m.group("arg"), names), kind))
+    for m in _PY_PATH_RMDIR.finditer(code):
+        ex = m.group("expr")
+        if ex in ("os", "shutil"):
+            continue
+        found.append((_py_value(ex, names), "Path.rmdir"))
+    return found
+
+
+def folder_at_risk(t):
+    """The real target is a folder with something in it, and not a throwaway one."""
+    return os.path.isdir(t) and not throwaway_dir(t)
+
+
+def _plain(a, cwd):
+    """-> [(resolved, raw)] for one shell argument (raw kept so a symlink is seen as a symlink)."""
+    if cwd is None and not os.path.isabs(os.path.expanduser(a)):
+        return []
+    res = expand(a, cwd or "/")
+    if len(res) == 1 and not any(c in a for c in "*?["):
+        raw = os.path.expandvars(os.path.expanduser(a))
+        raw = raw if os.path.isabs(raw) else os.path.join(cwd or "/", raw)
+        return [(res[0], raw)]
+    return [(r, r) for r in res]
+
 
 def check_bash(cmd, cwd, code):
     sw_db, sw_dir, sw_sop, sw_conf = on("fc_db_delete_ask"), on("fc_folder_delete_ask"), on("fc_user_sop_ask"), on("fc_placement_conf_ask")
@@ -171,43 +449,57 @@ def check_bash(cmd, cwd, code):
             ask("ASK FIRST: this command changes ~/.config/lifehack/placement.conf or the plugin's roundB.conf, the files that switch Lifehack's checks and guards off. "
                 "Only the person decides that. WAY-THROUGH: press Yes only if the person asked for exactly this change; otherwise stop and tell them which line "
                 "they can add themselves. RULE: switch fc_placement_conf_ask in system/hooks/roundB.conf.")
-    segs = split_segments(cmd)
-    for w in segs:
+    for w, scwd, py_bodies in walk(cmd, cwd):   # D-F04: each command is judged in the cwd its own cd chain left it in
         v = os.path.basename(w[0])
         args = [a for a in w[1:]]
         if v in ("rm", "unlink", "shred", "trash", "rmdir"):
             flags = "".join(a for a in args if a.startswith("-") and not a.startswith("--"))
             recursive = bool(re.search(r"[rR]", flags)) or "--recursive" in args
             for a in [x for x in args if not x.startswith("-")]:
-                for t in expand(a, cwd):
+                for t, raw in _plain(a, scwd):
                     if not os.path.exists(t) and not os.path.islink(t):
                         continue
                     if sw_db and is_db(t) and os.path.isfile(t) and not tmpish(t) and not any(p in THROWAWAY for p in t.split("/")):
                         ask(db_msg(t))
                     elif sw_sop and is_user_sop(t, code) and os.path.isfile(t):
                         ask(sop_msg(t, "deletes"))
-                    elif sw_dir and v == "rm" and recursive and os.path.isdir(t) and not throwaway_dir(t):
-                        ask(dir_msg(t))
-        elif v == "find" and sw_dir and ("-delete" in args or ("-exec" in args and "rm" in args)):
+                    elif sw_dir and ((v == "rm" and recursive) or v == "rmdir") and not (os.path.islink(raw) and not a.endswith("/")) \
+                            and folder_at_risk(t):
+                        ask(dir_msg(t) + (" (via rmdir)" if v == "rmdir" else ""))
+        elif v == "find" and sw_dir and ("-delete" in args or any(x in ("-exec", "-execdir", "-ok", "-okdir") and k + 1 < len(args)
+                                                                 and os.path.basename(args[k + 1]) in ("rm", "rmdir") for k, x in enumerate(args))):
+            roots = []
             for a in args:
                 if a.startswith("-") or a in ("(", "!"):
                     break
-                for t in expand(a, cwd):
-                    if os.path.isdir(t) and not throwaway_dir(t):
-                        ask(dir_msg(t) + " (via find -delete)")
+                roots.append(a)
+            for a in roots or ["."]:
+                for t, _raw in _plain(a, scwd):
+                    if folder_at_risk(t):
+                        ask(dir_msg(t) + " (via find -delete / -exec rm)")
         elif v in ("mv",) and sw_sop:
             src = [a for a in args if not a.startswith("-")][:-1]
             for s in src:
-                for t in expand(s, cwd):
+                for t in expand(s, scwd or cwd):
                     if is_user_sop(t, code) and os.path.isfile(t):
                         ask(sop_msg(t, "moves away"))
         elif v in SQL_TOOLS and sw_db and SQL_RX.search(" ".join(w)):
             ask("ASK FIRST: this command drops or empties data in a local database (%s). A database is fine china: what it held may not come back. "
                 "WAY-THROUGH: press Yes only if the person asked for exactly this and a copy exists; otherwise stop and tell them what you wanted to delete. "
                 "RULE: switch fc_db_delete_ask in system/hooks/roundB.conf." % SQL_RX.search(" ".join(w)).group(0).strip())
-        elif v.startswith("python") and sw_dir and re.search(r"rmtree\(", " ".join(w)):
-            ask("ASK FIRST: this python command deletes a whole folder tree (rmtree). Folders are fine china: it does not go to the Trash. "
-                "WAY-THROUGH: press Yes only if the person asked for it; otherwise name the folder to them first. RULE: switch fc_folder_delete_ask.")
+        if sw_dir and py_bodies:
+            for body in py_bodies:
+                for p, kind in py_deletes(body):
+                    if p is None:
+                        if kind == "rmtree":   # unreadable argument: the old ask, kept (an ASK guard may over-ask here; never under-ask)
+                            ask("ASK FIRST: this python command deletes a whole folder tree (rmtree). Folders are fine china: it does not go to the Trash. "
+                                "WAY-THROUGH: press Yes only if the person asked for it; otherwise name the folder to them first. RULE: switch fc_folder_delete_ask in system/hooks/roundB.conf.")
+                        continue
+                    if scwd is None and not os.path.isabs(os.path.expanduser(p)):
+                        continue
+                    t = resolve(p, scwd or "/")
+                    if folder_at_risk(t):
+                        ask(dir_msg(t) + " (via python %s)" % kind)
     # redirect-truncate / overwrite of a database or SOP, and cp/mv/sed -i onto an SOP (build_mode.bash_ops reads these)
     try:
         import build_mode

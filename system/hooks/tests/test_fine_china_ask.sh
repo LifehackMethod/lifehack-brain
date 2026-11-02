@@ -197,4 +197,72 @@ dallow "not a data extension (.txt)" "echo x > $D/notes.txt"
 dallow "not a data extension (.py)" "echo x > $D/script.py"
 run "$BM" s Bash "$(J command "echo x > $D/rates.csv")" ROUNDB_FC_SHELL_OVERWRITE=on; if grep -q "fc_shell_overwrite" "$T/out"; then ok "data ask names its switch"; else bad "data ask text"; fi
 run "$BM" s Bash "$(J command "echo x > $CODE/system/sops/skill-building-sop.md")" ROUNDB_FC_SHELL_OVERWRITE=on; if [ $RC -eq 2 ]; then ok "SOP overwrite is still a hard block beside the data ask"; else bad "SOP block lost"; fi
+# ---------------- D-F04 (2026-11-02): `cd <exam>/notes && rm -r 2024-sabbatical` deleted a whole person folder, no guard fired.
+# Cause: every argument was resolved against the SESSION cwd, so the target was <exam>/2024-sabbatical (absent) and was skipped.
+# Fix: each command is judged in the cwd its own cd chain left it in; rmdir, find -exec rm and python folder removals in executed code too.
+X="$HOME/exam/pinned2-enver/D-F04"; mkdir -p "$X/notes/2024-sabbatical" "$X/notes/emptyfolder" "$X/old-notes" "$HOME/work/scratch/stuff" "$HOME/work/scratchpad/s" "$X/realdir"
+for m in 01 02 03 04; do echo "journal $m" > "$X/notes/2024-sabbatical/journal-2024-$m.md"; done
+echo k > "$X/realdir/k.md"; ln -s "$X/realdir" "$X/linkdir" 2>/dev/null; echo s > "$HOME/work/scratch/stuff/s.txt"; echo s > "$HOME/work/scratchpad/s/s.txt"
+runx() { # runx <cwd> <command> [VAR=val ...]
+  local c="$1" cmd="$2"; shift 2
+  python3 -c 'import json,sys; print(json.dumps({"session_id":"x","cwd":sys.argv[1],"tool_name":"Bash","tool_input":{"command":sys.argv[2]}}))' "$c" "$cmd" | env "$@" bash "$FC" >"$T/out" 2>"$T/err"; RC=$?; }
+xask() { # xask <name> <command> : folder switch ON asks with the fine-china shape; folder switch OFF (others on) is silent
+  runx "$X" "$2" $ALL; if asked && grep -q "WAY-THROUGH" "$T/out" && grep -q "fc_folder_delete_ask" "$T/out"; then ok "FOLDER ASK $1"; else bad "FOLDER ASK $1"; fi; say "$1"
+  runx "$X" "$2" ROUNDB_FC_DB_DELETE_ASK=on ROUNDB_FC_USER_SOP_ASK=on ROUNDB_FC_PLACEMENT_CONF_ASK=on ROUNDB_FC_FOLDER_DELETE_ASK=off
+  if ! asked && [ $RC -eq 0 ]; then ok "FOLDER ASK $1 [fc_folder_delete_ask off = silent]"; else bad "FOLDER ASK $1 [off]"; fi; }
+xallow() { runx "${3:-$X}" "$2" $ALL; if ! asked && [ $RC -eq 0 ]; then ok "FOLDER ALLOW $1"; else bad "FOLDER ALLOW $1"; fi; say "$1"; }
+# the regression, exact shape from the D-F04 stream (session cwd = the exam root, the cd goes one level down)
+xask "D-F04 exact: cd <abs>/notes && rm -r 2024-sabbatical && ls -la" "cd $X/notes && rm -r 2024-sabbatical && ls -la"
+runx "$X" "cd $X/notes && rm -r 2024-sabbatical && ls -la" $ALL; grep -q "notes/2024-sabbatical)" "$T/out" && ok "D-F04 ask names the REAL target folder" || bad "D-F04 target text: $(head -c 300 "$T/out")"
+python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); h=d["hookSpecificOutput"]; assert h["hookEventName"]=="PreToolUse" and h["permissionDecision"]=="ask" and h["permissionDecisionReason"].startswith("ASK FIRST:")' "$T/out" 2>/dev/null \
+  && ok "D-F04 ask is the same JSON shape as every fine-china ask" || bad "D-F04 ask shape"
+xask "relative cd notes && rm -r" "cd notes && rm -r 2024-sabbatical"
+xask "rm -R after cd" "cd notes; rm -R 2024-sabbatical"
+xask "rm -rf after cd" "cd notes && rm -rf 2024-sabbatical"
+xask "rm -fr after cd" "cd notes && rm -fr ./2024-sabbatical/"
+xask "rm --recursive after cd" "cd notes && rm --recursive 2024-sabbatical"
+xask "rm -r with a redirect 2>/dev/null" "cd notes && rm -r 2024-sabbatical 2>/dev/null"
+xask "two cds: cd notes && cd .. && cd notes" "cd notes && cd .. && cd notes && rm -r 2024-sabbatical"
+xask "find <dir> -delete after cd" "cd notes && find 2024-sabbatical -type f -delete"
+xask "find <dir> -exec rm -rf {} +" "find notes/2024-sabbatical -mindepth 1 -exec rm -rf {} +"
+xask "find -execdir /bin/rm" "cd notes && find 2024-sabbatical -name '*.md' -execdir /bin/rm {} \\;"
+xask "rmdir on a non-empty folder" "cd notes && rmdir 2024-sabbatical"
+xask "inside bash -c with its own cd" "bash -c 'cd notes && rm -r 2024-sabbatical'"
+xask "inside a ( ) subshell with its own cd" "(cd notes && rm -r 2024-sabbatical)"
+xask "bash heredoc that runs cd + rm -r" "$(printf "bash <<'EOF'\ncd notes\nrm -r 2024-sabbatical\nEOF")"
+xask "python -c shutil.rmtree (relative, session cwd)" "python3 -c \"import shutil; shutil.rmtree('notes/2024-sabbatical')\""
+xask "python -c rmtree after cd" "cd notes && python3 -c \"from shutil import rmtree; rmtree('2024-sabbatical')\""
+xask "python heredoc shutil.rmtree" "$(printf "python3 - <<'EOF'\nimport shutil\nshutil.rmtree(\"%s/notes/2024-sabbatical\")\nEOF" "$X")"
+xask "python heredoc os.removedirs(var from expanduser)" "$(printf "python3 <<'PY'\nimport os\np = os.path.expanduser('~/exam/pinned2-enver/D-F04/notes/2024-sabbatical')\nos.removedirs(p)\nPY")"
+xask "python -c Path(..).rmdir()" "python3 -c \"from pathlib import Path; Path('notes/2024-sabbatical').rmdir()\""
+xask "python heredoc Path.home() / ... .rmdir() via a name" "$(printf "python3 - <<'EOF'\nfrom pathlib import Path\nd = Path.home() / 'exam' / 'pinned2-enver' / 'D-F04' / 'notes' / '2024-sabbatical'\nd.rmdir()\nEOF")"
+# must stay silent (switch ON)
+xallow "rm of a single file after cd" "cd notes/2024-sabbatical && rm journal-2024-01.md"
+xallow "rm -r of an EMPTY folder after cd" "cd notes && rm -r emptyfolder"
+xallow "rm -r of a folder that is not there after the cd chain" "cd notes && rm -r no-such-folder"
+xallow "subshell cd does not leak: (cd notes) && rm -r 2024-sabbatical" "(cd notes) && rm -r 2024-sabbatical"
+xallow "a cd inside a pipeline does not move the shell" "cd notes | cat; rm -r 2024-sabbatical"
+xallow "rm -r under a temp folder (cd into it)" "cd $T/scratch && rm -r box"
+xallow "rm -r under /tmp (a string fed to the hook, never run)" "cd / && rm -r tmp"
+xallow "rm -r under a scratch/ segment in home" "cd $HOME/work && rm -rf scratch/stuff"
+xallow "rm -r under a scratchpad/ segment in home" "rm -r $HOME/work/scratchpad/s"
+xallow "rm -rf node_modules __pycache__ build after cd (throwaway)" "cd $D && rm -rf node_modules __pycache__ build"
+xallow "git rm -r (git keeps it)" "cd notes && git rm -r 2024-sabbatical"
+xallow "git -C notes rm -r --cached" "git -C notes rm -r --cached 2024-sabbatical"
+xallow "rm -r mentioned in a QUOTED heredoc written to a file" "$(printf "cat > %s/howto.md <<'EOF'\ncd notes && rm -r 2024-sabbatical\nEOF" "$X")"
+xallow "rm -r mentioned in an UNQUOTED heredoc written to a file" "$(printf "cat > %s/howto.md <<EOF\ncd notes\nrm -r 2024-sabbatical\nEOF\necho done" "$X")"
+xallow "echo that only mentions rm -r" "echo 'cd notes && rm -r 2024-sabbatical'"
+xallow "python that only prints the word rmtree" "python3 -c \"print('shutil.rmtree is dangerous')\""
+xallow "python rmtree of a temp folder" "python3 -c \"import shutil; shutil.rmtree('$T/scratch/box')\""
+xallow "python rmtree of an empty folder" "python3 -c \"import shutil; shutil.rmtree('notes/emptyfolder')\""
+xallow "rm -r of a SYMLINK to a folder (removes the link only)" "rm -r linkdir"
+xallow "rmdir of an empty folder" "rmdir notes/emptyfolder"
+# the switch is a real line in roundB.conf, read through lib/roundb.py; the env var wins over it
+grep -qx 'fc_folder_delete_ask=on' "$HERE/roundB.conf" && ok "roundB.conf carries the real line fc_folder_delete_ask=on" || bad "roundB.conf line missing"
+LV="$(env -u ROUNDB_FC_FOLDER_DELETE_ASK python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); from roundb import roundb_on; print(roundb_on("fc_folder_delete_ask"))' "$HERE/lib")"
+[ "$LV" = "True" ] && ok "lib/roundb reads fc_folder_delete_ask=on from the conf (no env)" || bad "roundb read: $LV"
+python3 -c 'import json,sys; print(json.dumps({"session_id":"c","cwd":sys.argv[1],"tool_name":"Bash","tool_input":{"command":sys.argv[2]}}))' "$X" "cd $X/notes && rm -r 2024-sabbatical" \
+  | env -u ROUNDB_FC_FOLDER_DELETE_ASK bash "$FC" >"$T/out" 2>"$T/err"; RC=$?
+asked && ok "D-F04 asks from the conf line alone (env var unset)" || bad "conf-driven D-F04: $(head -c 200 "$T/out")"
+runx "$X" "cd $X/notes && rm -r 2024-sabbatical" ROUNDB_FC_FOLDER_DELETE_ASK=off; ! asked && ok "ROUNDB_FC_FOLDER_DELETE_ASK=off overrides the conf line" || bad "env override"
 echo "test_fine_china_ask: $P passed, $F failed"; [ "$F" -eq 0 ]
