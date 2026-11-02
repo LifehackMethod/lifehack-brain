@@ -154,6 +154,31 @@ def install_enver_brief(iso, real_home):
     return True
 
 
+HOOK_REF = re.compile(r"\$HOME/(\.claude/[A-Za-z0-9._/-]+)")
+ENVER_HOOK_COPIES = []   # rel paths install_enver_hooks copied into the throwaway HOME: rig setup, never a session's product
+
+
+def install_enver_hooks(iso, real_home, settings_path):
+    """Enver setup (2026-11-02, coordinator option (b)): copy ONLY the scripts the lab settings file names as "$HOME/.claude/..." (its
+    SessionStart, PreToolUse, UserPromptSubmit hooks and status line) into the throwaway HOME at the same relative path, read-only, so his
+    setup's hooks run as in his real windows instead of erroring "No such file". Each was checked self-contained (the one import,
+    emit_finding, comes from the plugin). Nothing else is copied; a referenced path outside ~/.claude or missing is skipped. -> [rel paths]."""
+    if not settings_path or not os.path.isfile(settings_path) or os.path.exists(os.path.join(iso, ".rig-student")):
+        return []
+    rels = sorted(set(HOOK_REF.findall(open(settings_path, encoding="utf-8").read())))
+    done = []
+    for rel in rels:
+        src = os.path.realpath(os.path.join(real_home, rel))
+        if ".." in rel.split("/") or not src.startswith(os.path.realpath(os.path.join(real_home, ".claude")) + os.sep) or not os.path.isfile(src):
+            continue
+        dst = os.path.join(iso, rel)
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        shutil.copyfile(src, dst)
+        os.chmod(dst, 0o444)
+        done.append(rel)
+    return done
+
+
 def setting_sources(home):
     """`user` only when the throwaway HOME holds the Enver brief (never for the student setup); the HOME is throwaway, so `user` reads nothing real."""
     return "user,project,local" if os.path.isfile(os.path.join(os.path.expanduser(home), ".claude", "CLAUDE.md")) and not os.path.exists(os.path.join(os.path.expanduser(home), ".rig-student")) else "project,local"
@@ -183,6 +208,20 @@ def selftest():
         assert not os.path.exists(os.path.join(ev, ".claude", "settings.json")) and setting_sources(ev) == "user,project,local"
         st = os.path.join(t, "st"); os.makedirs(st); open(os.path.join(st, ".rig-student"), "w").close()
         assert not install_enver_brief(st, fake) and not os.path.exists(os.path.join(st, ".claude", "CLAUDE.md")) and setting_sources(st) == "project,local"
+        # option (b): only the scripts the settings name are copied, read-only, same relative path; never for the student
+        w = lambda q, t: (os.makedirs(os.path.dirname(q), exist_ok=True), open(q, "w", encoding="utf-8").write(t))
+        w(os.path.join(fake, ".claude", "skills", "priv", "system", "hooks", "a.sh"), "echo a\n")
+        w(os.path.join(fake, ".claude", "skills", "priv", "system", "hooks", "not-named.sh"), "echo x\n")
+        w(os.path.join(fake, ".claude", "skills", "priv", "SKILL.md"), "private\n")
+        lab = os.path.join(t, "lab.json")
+        json.dump({"hooks": {"SessionStart": [{"hooks": [{"type": "command", "command": 'bash "$HOME/.claude/skills/priv/system/hooks/a.sh"'},
+                                                         {"type": "command", "command": 'bash "$HOME/.claude/skills/priv/missing.sh"'},
+                                                         {"type": "command", "command": 'bash "$HOME/.claude/../.ssh/x"'}]}]}}, open(lab, "w", encoding="utf-8"))
+        got = install_enver_hooks(ev, fake, lab)
+        cp = os.path.join(ev, ".claude", "skills", "priv", "system", "hooks", "a.sh")
+        assert got == [".claude/skills/priv/system/hooks/a.sh"] and open(cp, encoding="utf-8").read() == "echo a\n" and not os.access(cp, os.W_OK), got
+        assert not os.path.exists(os.path.join(ev, ".claude", "skills", "priv", "SKILL.md")) and not os.path.exists(os.path.join(ev, ".claude", "skills", "priv", "system", "hooks", "not-named.sh"))
+        assert install_enver_hooks(st, fake, lab) == [] and not os.path.exists(os.path.join(st, ".claude", "skills", "priv"))
         # the fence: the child's settings carry rig_fence.py as an EXTRA PreToolUse hook; the base file is not changed
         base = os.path.join(t, "base.json"); json.dump({"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "echo product"}]}]}}, open(base, "w"))
         fs = json.load(open(fence_settings(base, os.path.join(t, "fenced.json"))))
@@ -409,8 +448,9 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
         files += sorted(os.path.join(dp, f) for dp, dn, fs in os.walk(personal) if ".git" not in dp.split(os.sep) for f in fs
                         if os.path.getsize(os.path.join(dp, f)) > 0)
         # ruling A.2 (2026-10-31): a personal skill belongs in ~/.claude/skills/<name>/ - in the throwaway HOME that is its product too
+        copies = {os.path.join(home, r) for r in ENVER_HOOK_COPIES}   # the rig's read-only hook copies are setup, not product
         files += sorted(os.path.join(dp, f) for dp, dn, fs in os.walk(os.path.join(home, ".claude", "skills")) for f in fs
-                        if os.path.getsize(os.path.join(dp, f)) > 0)
+                        if os.path.getsize(os.path.join(dp, f)) > 0 and os.path.join(dp, f) not in copies)
     ns = argparse.Namespace(stream=stream, desk="/nonexistent/no-desk", sid=None, journal=os.path.join(home, ".claude/run/fire-journal.jsonl"), code_root=rm.ROOT,
                             sop=L["sop"], shared_ref=L["shared_ref"], register_file=[], personal_root=(personal if isolated else None), enver_home=(personal if isolated else None), home_prefix=[], wrong_move=L["wrong_re"], ignore_hook=[], json=True, files=files, registration_forbidden=bool(L.get("registration_forbidden")), student=bool(L.get("student")))
     try:
@@ -519,6 +559,8 @@ def main():
         open(os.path.join(iso, ".config", "lifehack", "personal-code"), "w", encoding="utf-8").write(pcdir + "\n")
         envd["HOME"] = iso
         install_enver_brief(iso, real_home)
+        ENVER_HOOK_COPIES[:] = install_enver_hooks(iso, real_home, a.settings or os.path.join(OPS, "system/desktop-launchers/v2/lab-settings.json"))
+        print("enver setup: copied %d hook script(s) the lab settings name, read-only: %s" % (len(ENVER_HOOK_COPIES), " ".join(ENVER_HOOK_COPIES)), flush=True)
     if os.path.realpath(os.path.expanduser(envd["HOME"])) == real_home:
         sys.exit("REFUSED: the live sessions would run with the real HOME (%s); use a throwaway HOME" % real_home)
     if cfgiso.rig_dir_problems(envd["HOME"], real_home):

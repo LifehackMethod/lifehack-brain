@@ -20,9 +20,8 @@ WHAT:
 """
 import json, os, re, subprocess, time
 
-# macOS's Shared folder sits beside the user homes (its parent is the homes' parent): outside every user's home, writable by every user.
-# Claude Code's walk-up from here reaches only the Shared folder and the homes' parent, never a user's own .claude.
-RIG_ROOT = os.path.join(os.path.dirname(os.path.realpath(os.path.expanduser("~"))), "Shared", "lifehack-rig")
+RIG_ROOT = "/Users/Shared/lifehack-rig"   # the macOS Shared folder: outside every user's home, writable by every user; Claude Code's
+                                           # walk-up from here reaches only /Users/Shared and /Users, never a user's own .claude
 BAD_SEGMENTS = ("tmp", "scratch", "scratchpad")
 BAD_PREFIXES = ("/tmp", "/private", "/var")
 DEAD_PORT = 1   # nothing listens on localhost:1 and the actor sandbox only opens the proxy port: no request can leave
