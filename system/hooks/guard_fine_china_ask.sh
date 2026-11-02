@@ -11,6 +11,7 @@ trap 'lhb_journal_fire "$?" "guard_fine_china_ask.sh" "PreToolUse" "Bash|Write|E
 #      fc_db_delete_ask, fc_folder_delete_ask, fc_user_sop_ask, fc_placement_conf_ask. Engine and exact rules: lib/fine_china_ask.py header.
 #      2026-11-02 (direct-hook exam route-arounds): fc_python_delete_ask, fc_python_rewrite_ask (python os.remove / open(p,'w') of a fine-china file
 #      in an executed -c or heredoc body) and fc_write_overwrite_ask (a Write over an existing data file or database).
+#      fc_shell_delete_ask (delete parity): shell rm/unlink/mv-away of a canon file, plugin SOP or data file asks, as python does.
 #      Throwaway folders (node_modules, build, dist, .venv, __pycache__, temp, scratchpads, git-ignored, empty) never ask.
 # REDIRECT: it is an ASK (harness permissionDecision "ask"); nobody is stuck. Headless runs turn it into a refusal: stop and tell the person.
 # WHO-COULD-THIS-BREAK: a session or script that cleans a real folder, drops a table, or rewrites a person's SOP; a headless run has nobody to answer.
@@ -21,7 +22,7 @@ trap 'lhb_journal_fire "$?" "guard_fine_china_ask.sh" "PreToolUse" "Bash|Write|E
 # UPDATED: 2026-11-02 (python file deletes/rewrites, Write overwrite of data) · 2026-11-01 (CLAUDE.md protections) · 2026-10-31
 # ─────────────────────────────────────────────────────────────────────────────
 . "$_lhb_dir/lib/roundb.sh" 2>/dev/null || exit 0
-roundb_on fc_db_delete_ask || roundb_on fc_folder_delete_ask || roundb_on fc_user_sop_ask || roundb_on fc_placement_conf_ask || roundb_on fc_claudemd_ask || roundb_on fc_claudemd_plugin_copy || roundb_on claudemd_len_advisory || roundb_on fc_python_delete_ask || roundb_on fc_python_rewrite_ask || roundb_on fc_write_overwrite_ask || exit 0
+roundb_on fc_db_delete_ask || roundb_on fc_folder_delete_ask || roundb_on fc_user_sop_ask || roundb_on fc_placement_conf_ask || roundb_on fc_claudemd_ask || roundb_on fc_claudemd_plugin_copy || roundb_on claudemd_len_advisory || roundb_on fc_python_delete_ask || roundb_on fc_python_rewrite_ask || roundb_on fc_write_overwrite_ask || roundb_on fc_shell_delete_ask || exit 0
 IFS= read -r -d '' PAYLOAD || true
 [ -n "$PAYLOAD" ] || exit 0
 printf '%s' "$PAYLOAD" | python3 "$_lhb_dir/lib/fine_china_ask.py" || echo "guard_fine_china_ask: engine failed; allowing" >&2

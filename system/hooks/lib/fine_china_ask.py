@@ -34,6 +34,9 @@ exit 0); never blocks. Each piece has its own switch in roundB.conf (all OFF = p
                         command's own cd chain. Temp, scratch, throwaway and regenerable folders never ask; new files never ask.
                         A python overwrite of a plugin SOP or canon file is NOT asked here: guard_build_mode hard-blocks it with the
                         shell-overwrite message (fc_python_canon_block, coordinator ruling 2026-11-02: same action, same verdict).
+  fc_shell_delete_ask   (2026-11-02, delete parity) a shell rm / unlink / shred / trash, or mv of the file (a same-folder rename too), of an existing
+                        canon file, plugin SOP or data file: the same fc_file_kind test python deletes use. Inside the plugin tree a file is
+                        judged by its path relative to the code root (only SOP / canon / CLAUDE.md count there).
   fc_write_overwrite_ask (D-F12/F13) a Write-tool full overwrite of an EXISTING data file or database (same fc_file_kind test); the ask carries a
                         short diff. Edit (a change of some lines) never asks; an identical rewrite never asks.
 These have NO off switch of the user's kind: placement.conf is never read here.
@@ -565,7 +568,24 @@ def fc_file_kind(t, code):
     is_user_sop, build_mode.protected_doc (plugin SOP / canon), build_mode.data_file_target (as the shell-overwrite ask), CLAUDE.md.
     Throwaway never counts: temp folders, a throwaway/regenerable folder segment, ~/.claude/run|projects|cache, roundB/placement.conf
     (the conf guard owns those)."""
-    if not os.path.isfile(t) or os.path.islink(t) or tmpish(t) or is_conf(t):
+    if not os.path.isfile(t) or os.path.islink(t) or is_conf(t):
+        return ""
+    if code and under(t, code) and t != code:
+        # The plugin's OWN tree (2026-11-02, delete parity): judged by its path INSIDE the code root, so a checkout or install that
+        # happens to sit in a temp or cache folder (~/.claude/plugins/cache, a scratchpad worktree) still protects its SOPs and canon.
+        # Only SOP / canon / CLAUDE.md count here: the plugin's json/jsonl files are code, governed by the harness guards.
+        rel = t[len(code.rstrip("/")) + 1:].split("/")
+        if any(p in THROWAWAY for p in rel[:-1]) or (len(rel) > 1 and rel[-2] in REGENERABLE):
+            return ""
+        if is_claudemd(t):
+            return "claudemd"
+        try:
+            import build_mode
+            return build_mode.protected_doc(t, code) or ""
+        except Exception as e:
+            sys.stderr.write("guard_fine_china_ask: protected-doc test skipped (%s)\n" % e)
+            return ""
+    if tmpish(t):
         return ""
     if any(p in THROWAWAY for p in t.split("/")[:-1]) or os.path.basename(os.path.dirname(t)) in REGENERABLE:
         return ""
@@ -653,8 +673,25 @@ def write_overwrite_msg(t, kind, diff):
             "RULE: switch fc_write_overwrite_ask in system/hooks/roundB.conf.%s" % (what, t, why, (" DIFF: " + diff) if diff else ""))
 
 
+def shell_fc_kind(t, code):
+    """fc_shell_delete_ask (2026-11-02, coordinator ruling (a), delete parity with python): the kinds a shell rm/unlink/mv-away now asks
+    about that it did not before: canon, a plugin SOP, a data file. (Databases and the person's SOPs already ask through their own pieces.)"""
+    k = fc_file_kind(t, code)
+    return k if k in ("canon", "sop", "data") and not is_user_sop(t, code) else ""
+
+
+def shell_file_msg(t, kind, verb):
+    what, why = FC_KIND_TEXT[kind]
+    if kind == "sop":
+        what, why = "an SOP of the plugin", "it is a standing procedure every session follows"
+    return ("ASK FIRST: this command %s %s (%s). It is fine china: %s, and rm/unlink/mv do not use the Trash or keep a copy. "
+            "WAY-THROUGH: press Yes only if the person asked for exactly this and a copy exists; otherwise stop and tell them which file and what you wanted to do. "
+            "Do not switch to another tool to land the same change. RULE: switch fc_shell_delete_ask in system/hooks/roundB.conf." % (verb, what, t, why))
+
+
 def check_bash(cmd, cwd, code):
     sw_db, sw_dir, sw_sop, sw_conf = on("fc_db_delete_ask"), on("fc_folder_delete_ask"), on("fc_user_sop_ask"), on("fc_placement_conf_ask")
+    sw_sdel = on("fc_shell_delete_ask")
     if sw_conf and CONF_RX.search(cmd):
         if conf_write_in_bash(cmd, cwd):
             ask("ASK FIRST: this command changes ~/.config/lifehack/placement.conf or the plugin's roundB.conf, the files that switch Lifehack's checks and guards off. "
@@ -674,6 +711,8 @@ def check_bash(cmd, cwd, code):
                         ask(db_msg(t))
                     elif sw_sop and is_user_sop(t, code) and os.path.isfile(t):
                         ask(sop_msg(t, "deletes"))
+                    elif sw_sdel and v != "rmdir" and shell_fc_kind(t, code):
+                        ask(shell_file_msg(t, shell_fc_kind(t, code), "deletes"))
                     elif sw_dir and ((v == "rm" and recursive) or v == "rmdir") and not (os.path.islink(raw) and not a.endswith("/")) \
                             and folder_at_risk(t):
                         ask(dir_msg(t) + (" (via rmdir)" if v == "rmdir" else ""))
@@ -688,12 +727,14 @@ def check_bash(cmd, cwd, code):
                 for t, _raw in _plain(a, scwd):
                     if folder_at_risk(t):
                         ask(dir_msg(t) + " (via find -delete / -exec rm)")
-        elif v in ("mv",) and sw_sop:
+        elif v in ("mv",) and (sw_sop or sw_sdel):
             src = [a for a in args if not a.startswith("-")][:-1]
             for s in src:
                 for t in expand(s, scwd or cwd):
-                    if is_user_sop(t, code) and os.path.isfile(t):
+                    if sw_sop and is_user_sop(t, code) and os.path.isfile(t):
                         ask(sop_msg(t, "moves away"))
+                    elif sw_sdel and shell_fc_kind(t, code):   # any mv of the file counts, a same-folder rename too (as the SOP mv and python os.rename do)
+                        ask(shell_file_msg(t, shell_fc_kind(t, code), "moves away"))
         elif v in SQL_TOOLS and sw_db and SQL_RX.search(" ".join(w)):
             ask("ASK FIRST: this command drops or empties data in a local database (%s). A database is fine china: what it held may not come back. "
                 "WAY-THROUGH: press Yes only if the person asked for exactly this and a copy exists; otherwise stop and tell them what you wanted to delete. "

@@ -415,4 +415,33 @@ open('$CN/voice.md','w').write('x')
 PY"
 grep -qx "fc_python_canon_block=on" "$HERE/roundB.conf" && ok "roundB.conf carries the real line fc_python_canon_block=on" || bad "roundB.conf line fc_python_canon_block missing"
 runb "python3 -c \"open('$CN/voice.md','w').write('x')\"" -u ROUNDB_FC_SHELL_OVERWRITE -u ROUNDB_FC_PYTHON_CANON_BLOCK; [ $RC -eq 2 ] && ok "python $CN overwrite blocks from the conf lines alone" || bad "conf-driven python $CN block rc=$RC"
+# ---------------- 2026-11-02 coordinator ruling (a), delete parity (fc_shell_delete_ask): a SHELL rm / unlink / mv-away of a canon file,
+# a plugin SOP or a fine-china data file ASKS, as the python delete does. Throwaway / temp / regenerable paths stay silent.
+mkdir -p "$Y/notes/$CN"; echo "# x" > "$Y/notes/$CN/x.md"; touch -t 202501010000 "$Y/notes/$CN/x.md"
+SD="$ALL $NEW3 ROUNDB_FC_SHELL_DELETE_ASK=on"
+sask() { # sask <name> <command>: asks naming fc_shell_delete_ask; that switch OFF (all others on) is silent
+  runy Bash "$(JC "$2")" $SD; if asked && grep -q "ASK FIRST" "$T/out" && grep -q "WAY-THROUGH" "$T/out" && grep -q "fc_shell_delete_ask" "$T/out"; then ok "SHELL DEL ASK $1"; else bad "SHELL DEL ASK $1"; fi; say "$1" "" 300
+  runy Bash "$(JC "$2")" $SD ROUNDB_FC_SHELL_DELETE_ASK=off; if ! asked && [ $RC -eq 0 ]; then ok "SHELL DEL ASK $1 [fc_shell_delete_ask off = silent]"; else bad "SHELL DEL ASK $1 [off]"; fi; }
+sallow() { runy Bash "$(JC "$2")" $SD; if ! asked && [ $RC -eq 0 ]; then ok "SHELL DEL ALLOW $1"; else bad "SHELL DEL ALLOW $1"; fi; say "$1"; }
+sask "rm $CN/voice.md" "rm $CN/voice.md"
+sask "cd <notes> && rm $CN/x.md (cd chain followed)" "cd $Y/notes && rm $CN/x.md"
+sask "unlink <plugin SOP>" "unlink $PSOP"
+sask "rm -f <plugin SOP> after cd into the plugin sops folder" "cd $CODE/system/sops && rm -f skill-building-sop.md"
+sask "mv $CN/voice.md /tmp/" "mv $CN/voice.md /tmp/"
+sask "rm rates.csv" "rm rates.csv"
+sask "rm -f config/clients.yaml" "rm -f config/clients.yaml"
+sask "mv within the same $CN folder (a rename counts: same as the SOP mv and python os.rename)" "mv $CN/voice.md $CN/voice-old.md"
+sask "bash -c 'rm rates.csv'" "bash -c 'rm rates.csv'"
+sallow "rm of a throwaway file (scratch/old.csv)" "rm scratch/old.csv"
+sallow "rm inside a regenerable dir (build/out.json)" "rm build/out.json"
+sallow "rm inside node_modules" "rm node_modules/m/p.json"
+sallow "rm of a data file in a temp folder" "rm $T/scratch/box/data.csv"
+sallow "rm of a data file touched in the last 10 minutes" "rm fresh2.csv"
+sallow "rm of an ordinary code file" "rm app.py"
+sallow "rm of a file that does not exist" "rm $CN/gone.md"
+sallow "cat a $CN file" "cat $CN/voice.md"
+sallow "cp a $CN file to a backup (a copy, not a move)" "cp $CN/voice.md voice.bak"
+sallow "mv a NEW-ish ordinary file" "mv app.py app2.py"
+grep -qx "fc_shell_delete_ask=on" "$HERE/roundB.conf" && ok "roundB.conf carries the real line fc_shell_delete_ask=on" || bad "roundB.conf line fc_shell_delete_ask missing"
+runy Bash "$(JC "rm $CN/voice.md")" -u ROUNDB_FC_SHELL_DELETE_ASK $ALL $NEW3; asked && ok "shell $CN delete asks from the conf line alone" || bad "conf-driven shell delete"
 echo "test_fine_china_ask: $P passed, $F failed"; [ "$F" -eq 0 ]
