@@ -35,7 +35,7 @@ def main():
         lf.V2, lf.OPS = v2, ops
 
         class _PassSandbox:   # run_one refuses without a sandbox since 2026-11-02 (rig-actor-sandbox); this test checks cleanup + env scrub, not the kernel layer (test_rig_sandbox.py does)
-            def case(self, name, allow_write, cwd, settings_path, write_denied, notes_roots, env, read_deny=()):
+            def case(self, name, allow_write, cwd, settings_path, write_denied, notes_roots, env, read_deny=(), home_read=None):
                 return (lambda cmd: cmd), env
         lf.SBX = _PassSandbox()
         case = {"id": "t1", "live": {"prompt": "x", "sop": [], "shared_ref": [], "wrong_re": [], "kind": "build"}}
@@ -51,6 +51,17 @@ def main():
         assert rd("child-which.txt").strip() == "NONE", "gws/gh resolved in the actor"
         assert "GOOGLE_WORKSPACE_CLI_CONFIG_DIR" in r["env_dropped"] and "claude" in r["actor_bins"], (r["env_dropped"], r["actor_bins"])
         print("test_rig_cleanup: actor env scrubbed (dropped %d names), gws/gh not found, parent bin dir not on PATH" % len(r["env_dropped"]))
+        # 2026-11-02 rig-validity-fix: --plugin-dir (default = the old hardcoded ~/lifehack-v2) so pinned runs need no path-pinning wrapper
+        ap = lf.build_parser()
+        assert ap.parse_args(["run"]).plugin_dir == os.path.expanduser("~/lifehack-v2"), "default --plugin-dir changed"
+        assert ap.parse_args(["run", "--plugin-dir", v2]).plugin_dir == v2
+        assert lf.set_plugin_dir(v2) == os.path.realpath(v2) and lf.V2 == os.path.realpath(v2), lf.V2
+        try:
+            lf.set_plugin_dir(os.path.join(t, "no-such-plugin")); refused = False
+        except SystemExit as e:
+            refused = "REFUSED" in str(e)
+        assert refused, "a missing --plugin-dir was not refused"
+        print("test_rig_cleanup: --plugin-dir default unchanged, override sets the rig's plugin dir, a missing dir is refused")
         print("test_rig_cleanup: ok")
     finally:
         shutil.rmtree(t, ignore_errors=True)

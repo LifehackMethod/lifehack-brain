@@ -29,7 +29,27 @@ FORBIDDEN_BINS = ("gws", "gcloud", "gsutil", "gh", "aws", "az", "rclone", "gdriv
 # /usr/bin or /bin, which stay on PATH after the shim.
 ACTOR_BINS = ("claude", "python3", "git", "jq", "gitleaks", "timeout", "gtimeout")
 REQUIRED_BINS = ("claude", "python3", "git")
-SYSTEM_DIRS = ("/usr/bin", "/bin", "/usr/sbin", "/sbin")   # SIP-protected on macOS: nothing can be installed into them, so no cloud CLI lives there
+SYSTEM_DIRS = ("/usr/bin", "/bin", "/usr/sbin", "/sbin")
+# 2026-11-02 (record rig-validity-fix, bug 1): macOS /usr/bin/mktemp IGNORES $TMPDIR - it asks confstr(_CS_DARWIN_USER_TEMP_DIR), the shared
+# /var/folders/../T dir the actor sandbox never allows - so any hook's bare `mktemp` failed (the Enver setup's copied guard_gh_pr_merge.sh
+# then failed CLOSED on every Bash call). Probed: claude passes the rig's TMPDIR to hooks unchanged; only mktemp ignored it. This wrapper,
+# first on the actor PATH, adds `-p "$TMPDIR"` when the call names no template and no -p of its own; anything explicit passes through.
+MKTEMP_SHIM = """#!/bin/sh
+# rig actor shim (rig_isolation.MKTEMP_SHIM): make mktemp honour $TMPDIR (macOS mktemp uses the shared /var/folders T dir otherwise)
+[ -n "$TMPDIR" ] || exec /usr/bin/mktemp "$@"
+skip=""
+for a in "$@"; do
+  if [ -n "$skip" ]; then skip=""; continue; fi
+  case "$a" in
+    -p*|--tmpdir*) exec /usr/bin/mktemp "$@" ;;
+    -t) skip=1 ;;
+    -*) ;;
+    *) exec /usr/bin/mktemp "$@" ;;
+  esac
+done
+exec /usr/bin/mktemp -p "$TMPDIR" "$@"
+"""
+SHIM_SCRIPTS = {"mktemp": MKTEMP_SHIM}   # SIP-protected on macOS: nothing can be installed into them, so no cloud CLI lives there
 
 # ---- environment ------------------------------------------------------------------------------------------------------------------
 # Narrowed 2026-11-02 (record rig-actor-sandbox; per-name reasons in drafts/rig-actor-sandbox-layer-design.md §4):
@@ -108,7 +128,8 @@ def build_actor_env(parent, extra, home=None, path=None, real_home=None):
 
 
 def make_private_path(bindir, parent_path=None):
-    """Create (idempotent) `bindir` holding symlinks to ACTOR_BINS resolved on the parent's PATH; -> (PATH string, {name: target}, [missing]).
+    """Create (idempotent) `bindir` holding symlinks to ACTOR_BINS resolved on the parent's PATH, plus the rig's SHIM_SCRIPTS (mktemp);
+    -> (PATH string, {name: target}, [missing]).
     A name that resolves to a forbidden binary (a symlink called python3 that is really gws, say) is refused. The PATH is bindir + SYSTEM_DIRS."""
     parent_path = parent_path if parent_path is not None else os.environ.get("PATH", "")
     search = ":".join(d for d in parent_path.split(":") if d and os.path.realpath(d) != os.path.realpath(bindir))
@@ -127,8 +148,16 @@ def make_private_path(bindir, parent_path=None):
             os.unlink(ln)
         os.symlink(tgt, ln)
         linked[name] = tgt
+    for name, body in SHIM_SCRIPTS.items():   # the rig's own wrapper scripts: rewritten from this text whenever they differ (never trusted)
+        sp = os.path.join(bindir, name)
+        if os.path.islink(sp) or (os.path.lexists(sp) and open(sp, encoding="utf-8", errors="replace").read() != body):
+            os.unlink(sp)
+        if not os.path.lexists(sp):
+            with open(sp, "w", encoding="utf-8") as f:
+                f.write(body)
+            os.chmod(sp, 0o555)
     for name in os.listdir(bindir):   # anything else in the shim (planted, or left from an older list) is a defect
-        if name not in linked:
+        if name not in linked and name not in SHIM_SCRIPTS:
             raise SystemExit("REFUSED: unexpected entry in the actor shim %s: %s" % (bindir, name))
     return ":".join([bindir] + list(SYSTEM_DIRS)), linked, missing
 

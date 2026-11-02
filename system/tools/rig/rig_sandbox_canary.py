@@ -111,6 +111,34 @@ def main(spec_path):
         fn = (lambda p=p: os.listdir(p)) if os.path.isdir(p) else (lambda p=p: open(p, "rb").read(1))
         ok, det = must_eperm(fn)
         out("C8.%d" % i, "read denied: " + p, ok, det)
+    # C10 (STUDENT, rig-validity-fix bug 2): the real home is read-denied. Judged by errno: lexists() on a denied path is False, so only EPERM
+    # counts as denied and ENOENT (decoy missing) is NOT ok. Controls: every re-allowed path must still read.
+    hr = s.get("home_read")
+    if hr:
+        ok, det = must_eperm(lambda: open(hr["decoy"], "rb").read(1))
+        out("C10.decoy", "decoy under the real home unreadable: " + hr["decoy"], ok, det)
+        ok, det = must_eperm(lambda: os.listdir(hr["home"]))
+        out("C10.home-list", "real home cannot be listed: " + hr["home"], ok, det)
+        for i, p in enumerate(hr.get("controls", [])):
+            try:
+                try:
+                    os.listdir(p)
+                except NotADirectoryError:
+                    open(p, "rb").read(1)
+                out("C10.control.%d" % i, "re-allowed path readable (control): " + p, True)
+            except OSError as x:
+                out("C10.control.%d" % i, "re-allowed path readable (control): " + p, False, os.strerror(x.errno) if x.errno else repr(x))
+    # C11 (rig-validity-fix bug 1): a stand-in hook run the way claude runs hooks (bash <script>, this same actor env) can mktemp, and the
+    # files land inside an allowed dir (macOS mktemp ignores TMPDIR without the rig's shim, and the shared T dir is not writable here).
+    if s.get("hook_standin"):
+        try:
+            p = subprocess.run(["/bin/bash", s["hook_standin"]], capture_output=True, text=True, timeout=30)
+            made = p.stdout.split()
+            inside = len(made) == 2 and all(any(m.startswith(os.path.realpath(a) + os.sep) for a in s.get("write_allowed", [])) for m in made)
+            out("C11.mktemp", "stand-in hook: mktemp + mktemp -d work inside an allowed dir", p.returncode == 0 and inside,
+                "rc=%s made=%s err=%s" % (p.returncode, made, p.stderr.strip()[:150]))
+        except (OSError, subprocess.TimeoutExpired) as x:
+            out("C11.mktemp", "stand-in hook: mktemp + mktemp -d work inside an allowed dir", False, repr(x))
     e = s.get("escapes") or {}
     if e.get("security"):
         rc, det = run([e["security"], "show-keychain-info"])

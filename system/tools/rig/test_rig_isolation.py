@@ -78,7 +78,19 @@ check("dropped list carries names only (no value text)", not any("ghp_fake" in d
 
 # ---- 2. private PATH
 shim = sorted(os.listdir(T + "/actor-bin"))
-check("shim holds only the allowlisted binaries", set(shim) <= set(iso.ACTOR_BINS) and {"claude", "python3", "git"} <= set(shim), shim)
+check("shim holds only the allowlisted binaries (+ the rig's own mktemp wrapper)",
+      set(shim) <= set(iso.ACTOR_BINS) | set(getattr(iso, "SHIM_SCRIPTS", ())) and {"claude", "python3", "git"} <= set(shim), shim)
+# 2026-11-02 (record rig-validity-fix, bug 1): macOS /usr/bin/mktemp IGNORES $TMPDIR (it asks confstr(_CS_DARWIN_USER_TEMP_DIR), the shared
+# /var/folders/../T), so a hook's bare `mktemp` failed closed under the sandbox even with TMPDIR set. The shim's mktemp must honour TMPDIR.
+MT = T + "/mt-tmpdir"
+os.makedirs(MT)
+r = subprocess.run(["/bin/sh", "-c", 'f=$(mktemp) && d=$(mktemp -d) && g=$(mktemp -t pfx) && echo "$f $d $g"'], env={"PATH": path, "TMPDIR": MT},
+                   capture_output=True, text=True)
+got = r.stdout.split()
+check("shim mktemp: bare `mktemp`, `mktemp -d` and `mktemp -t pfx` land in $TMPDIR (not the shared /var/folders T dir)",
+      r.returncode == 0 and len(got) == 3 and all(g.startswith(MT + "/") for g in got), (r.returncode, r.stdout, r.stderr))
+r = subprocess.run(["/bin/sh", "-c", "mktemp %s/explicit.XXXXXX" % T], env={"PATH": path, "TMPDIR": MT}, capture_output=True, text=True)
+check("shim mktemp: an explicit template is honoured exactly as given", r.returncode == 0 and r.stdout.startswith(T + "/explicit."), (r.stdout, r.stderr))
 check("shim holds none of " + "/".join(iso.FORBIDDEN_BINS), not (set(shim) & set(iso.FORBIDDEN_BINS)), shim)
 check("PATH = shim + system folders only (no brew dir)", path.split(":") == [T + "/actor-bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"], path)
 evil = T + "/evilbin"; os.makedirs(evil); os.symlink(BREW + "/gws", evil + "/python3"); os.symlink(BREW + "/gws", evil + "/claude")
@@ -91,6 +103,13 @@ except SystemExit as x:
     planted = "unexpected entry" in str(x)
 check("a binary planted in the shim makes the next build refuse", planted)
 os.unlink(T + "/actor-bin/gws")
+if os.path.exists(T + "/actor-bin/mktemp"):
+    os.unlink(T + "/actor-bin/mktemp")
+    os.symlink(BREW + "/gws", T + "/actor-bin/mktemp")   # a planted/replaced mktemp is rewritten from the rig's own text, never trusted
+    iso.make_private_path(T + "/actor-bin", PARENT["PATH"])
+check("a mktemp planted as a symlink is replaced by the rig's own wrapper on the next build",
+      os.path.isfile(T + "/actor-bin/mktemp") and not os.path.islink(T + "/actor-bin/mktemp") and "/usr/bin/mktemp" in open(T + "/actor-bin/mktemp", encoding="utf-8").read(),
+      "no shim mktemp")
 
 # ---- 3. CANARY (no cost): an actor running `gws drive files list` under the actor env
 r = subprocess.run(["/bin/sh", "-c", "gws drive files list"], env=env, capture_output=True, text=True, cwd=T)

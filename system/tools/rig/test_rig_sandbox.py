@@ -50,17 +50,20 @@ ENV, _dropped = iso.build_actor_env(os.environ, {"TMPDIR": mk("allowed", "rig-is
 
 
 def run_case(tag, mutate=lambda s: s, write_denied=None, notes=None, proxy_allow=(sb.API_HOST,), sandbox_exec=sb.SANDBOX_EXEC, escapes=True,
-             allow=None):
-    """Generate the real profile, apply `mutate` to a COPY, run the real preflight. -> problems list."""
+             allow=None, env_over=None, home_read=None):
+    """Generate the real profile, apply `mutate` to a COPY, run the real preflight. -> problems list.
+    home_read: the student real-home read-deny (rig-validity-fix bug 2), aimed at a FAKE home under the temp root."""
     work = mk("work", tag)
     proxy, port = sb.start_proxy(os.path.join(work, "proxy.jsonl"), allow=proxy_allow)
     try:
         run = os.path.join(work, "canary")
-        text = sb.profile(allow if allow is not None else [HOME, CASE], CASE, port, protect=[PROTECT], decoy=os.path.join(run, "decoy"))
+        kw = {"home_read": home_read} if home_read is not None else {}
+        text = sb.profile(allow if allow is not None else [HOME, CASE], CASE, port, protect=[PROTECT], decoy=os.path.join(run, "decoy"), **kw)
         prof = sb.write_profile(mutate(text), os.path.join(work, "actor.sb"))
         env = dict(ENV, **sb.actor_net_env(port))
+        env.update(env_over or {})
         probs, _lines = sb.preflight(env, prof, port, DENIED + [PROTECT] if write_denied is None else write_denied,
-                                     [HOME, CASE], NOTES if notes is None else notes, CASE, run, sandbox_exec, escapes=escapes)
+                                     [HOME, CASE], NOTES if notes is None else notes, CASE, run, sandbox_exec, escapes=escapes, **kw)
         return probs
     finally:
         sb.stop_proxy(proxy)
@@ -164,6 +167,68 @@ check("profile: claude temp dir writable only under this case's own slug",
 check("standard_write_denied(): includes the shared claude temp dir and the real Drive mount root",
       tmpd in sb.standard_write_denied(sb.real_home(), [], V2) and os.path.join(sb.real_home(), "Library", "CloudStorage")
       in sb.standard_write_denied(sb.real_home(), [], V2) or not os.path.isdir(tmpd))
+
+# ---- 2026-11-02 rig-validity-fix, BUG 1: a hook's bare `mktemp` must work inside the sandbox (C11). macOS /usr/bin/mktemp ignores $TMPDIR
+#      (it asks confstr for the shared /var/folders/../T dir, which the profile never allows), so the Enver setup's copied guard hook failed
+#      closed on EVERY Bash call. The canary runs a stand-in hook script the way claude runs hooks (bash <script>, the actor env) and needs
+#      mktemp / mktemp -d to land inside an allowed dir.
+p = run_case("c11-good")
+check("C11: the good setup passes, and the canary now REQUIRES the stand-in hook mktemp check", not p and "C11.mktemp" in sb.REQUIRED_EXTRA_IDS, p)
+check("FAIL-FIRST C11: actor PATH without the rig's mktemp wrapper (stock /usr/bin/mktemp) -> C11 catches it",
+      caught(run_case("c11-nowrap", env_over={"PATH": ":".join(iso.SYSTEM_DIRS)}), "C11"))
+check("FAIL-FIRST C11: TMPDIR outside every allowed dir -> C11 catches it",
+      caught(run_case("c11-badtmp", env_over={"TMPDIR": DENIED[0]}), "C11"))
+
+# ---- BUG 2: STUDENT profile only - the real home is read-denied (a student `find /` listed the runner's own files), with exact re-allows
+#      for what the actor really needs inside it (claude's own binary + symlink chain, the plugin dir when it lives there). Proven on a FAKE
+#      home: the decoy read must be EPERM (judged by errno), the home listing EPERM, every re-allow readable (control).
+FH = mk("fake-user-home")
+os.makedirs(os.path.join(FH, ".local", "bin"), exist_ok=True)
+os.makedirs(os.path.join(FH, ".local", "share", "claude", "versions"), exist_ok=True)
+exe(os.path.join(FH, ".local", "share", "claude", "versions", "9.9.9"), "#!/bin/sh\necho fake-claude\n")
+if not os.path.lexists(os.path.join(FH, ".local", "bin", "claude")):
+    os.symlink("../share/claude/versions/9.9.9", os.path.join(FH, ".local", "bin", "claude"))
+PLUG = mk("fake-user-home", "lifehack-v2")
+with open(os.path.join(PLUG, "plugin.txt"), "w", encoding="utf-8") as f:
+    f.write("plugin\n")
+with open(os.path.join(FH, "private.txt"), "w", encoding="utf-8") as f:
+    f.write("the runner's own file\n")
+HR = sb.student_home_read(FH, {"claude": os.path.join(FH, ".local", "bin", "claude"), "python3": sys.executable}, [PLUG, "/opt/nowhere-else"])
+check("student_home_read: the real home is resolved at run time and denied; claude's symlink chain re-allowed as literals; the plugin dir as a subpath; nothing outside the home",
+      HR["home"] == FH and set(HR["literal"]) == {os.path.join(FH, ".local", "bin", "claude"), os.path.join(FH, ".local", "share", "claude", "versions", "9.9.9")}
+      and HR["subpath"] == [PLUG], HR)
+check("student_home_read: real home comes from the machine when not given (never hard-coded)", sb.student_home_read(None, {}, [])["home"] == sb.real_home())
+txt = sb.profile([HOME, CASE], CASE, 1, home_read=HR)
+lines = txt.splitlines()
+dh = [i for i, l in enumerate(lines) if l.startswith('(deny file-read* (subpath %s)' % sb._q(FH))]
+check("profile: the home read-deny comes AFTER (allow default) and the write allows, the re-allows after it, the credential denies last",
+      dh and dh[0] > lines.index("(allow default)") and dh[0] > lines.index("(allow file-write*") and lines[dh[0] + 1].startswith("(allow file-read*")
+      and lines.index("(deny file-read*") > dh[0] + 1, txt)
+check("profile: no home read-deny unless asked (the Enver setup is unchanged)", "fake-user-home" not in sb.profile([HOME, CASE], CASE, 1))
+p = run_case("home-good", home_read=HR)
+check("home read-deny: decoy under the home EPERM, home listing EPERM, every re-allow readable -> preflight passes", not p, p)
+check("FAIL-FIRST home: no home read-deny line -> C10 catches the readable decoy",
+      caught(run_case("home-nodeny", drop_line('(deny file-read* (subpath %s)' % sb._q(FH)), home_read=HR), "C10"))
+check("FAIL-FIRST home: the whole home re-allowed after the deny -> C10 catches it",
+      caught(run_case("home-reopen", lambda s: s.replace("(allow file-read*", "(allow file-read* (subpath %s)" % sb._q(FH), 1), home_read=HR), "C10"))
+check("FAIL-FIRST home: re-allows dropped (claude's binary would be unreadable) -> the C10 control catches it",
+      caught(run_case("home-noallow", drop_line("(allow file-read*"), home_read=HR), "C10"))
+
+# ---- this machine (zero spend): under the real-home read-deny, the REAL claude binary still starts through the actor shim, and without the
+#      re-allows it would not (so the re-allows are needed, not decoration)
+_rp, _rl, _rm = iso.make_private_path(mk("work", "real-shim"))
+_rhr = sb.student_home_read(None, _rl, [V2])
+if _rl.get("claude") and _rhr["literal"]:
+    def _ver(hr):
+        prof = sb.write_profile(sb.profile([HOME, CASE], CASE, 1, home_read=hr), os.path.join(T, "work", "real-shim.sb"))
+        q = subprocess.run(sb.wrap(["claude", "--version"], prof), env=dict(ENV, PATH=_rp, HOME=HOME), capture_output=True, text=True, timeout=60)
+        return q.returncode, (q.stdout + q.stderr).strip()[:200]
+    rc_ok, out_ok = _ver(_rhr)
+    check("real machine: `claude --version` runs under the real-home read-deny with the re-allows", rc_ok == 0 and "Claude Code" in out_ok, (rc_ok, out_ok))
+    rc_no, out_no = _ver(dict(_rhr, literal=[], subpath=[]))
+    check("FAIL-FIRST real machine: the same deny WITHOUT the re-allows stops claude (the re-allows are load-bearing)", rc_no != 0, (rc_no, out_no))
+else:
+    print("skip real-machine claude check (claude not under the real home here)")
 
 # ---- condition 1 on a fake Drive tree (always) and on the REAL mount (--real-drive)
 area = mk("fake-mydrive", "Lifehack test area")

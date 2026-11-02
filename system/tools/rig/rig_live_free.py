@@ -26,6 +26,7 @@ import disk_preflight  # noqa: E402  (THE disk-low preflight, shared/disk_prefli
 import rig_config_isolation as cfgiso  # noqa: E402  (rig dirs outside the real home; student config preflight; record rig-config-isolation)
 
 V2 = os.path.expanduser("~/lifehack-v2")
+V2_DEFAULT = V2   # --plugin-dir default (the pre-flag behaviour)
 def _real_personal_code():
     """The REAL personal code folder of whoever runs the rig, read from their pointer (shared/personal_code_root.py)
     at import time, before any session gets a throwaway HOME. The rig names no person's folder."""
@@ -407,8 +408,11 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
     roots = REAL_NOTES_ROOTS or isol.real_notes_roots()
     allow = [os.path.realpath(scratch) if scratch else os.path.realpath(cwd), os.path.realpath(home)] + ([env["RIG_FENCE_RUN_DRIVE"]] if drive_run else [])
     denied = sandbox.standard_write_denied(os.path.realpath(os.path.expanduser("~")), roots, V2, rig_drive.area() if drive_run else None)
-    # STUDENT: the real home's own Claude config is kernel read-denied too (rig_sandbox.personal_config_paths); the canary proves each deny
-    sbwrap, env = SBX.case(c["id"], allow, cwd, settings, denied, roots, env, read_deny=sandbox.personal_config_paths() if student_home else ())
+    # STUDENT: the real home's own Claude config is kernel read-denied too (rig_sandbox.personal_config_paths); the canary proves each deny.
+    # 2026-11-02 (rig-validity-fix bug 2): and the WHOLE real home, re-allowing only claude's binary chain, the plugin dir, the rig source and
+    # the Drive run folder when they live there (rig_sandbox.student_home_read); the canary proves the decoy is EPERM and the controls read.
+    kw = {"home_read": sandbox.student_home_read(None, linked, [V2, rm.ROOT] + ([env["RIG_FENCE_RUN_DRIVE"]] if drive_run else []))} if student_home else {}
+    sbwrap, env = SBX.case(c["id"], allow, cwd, settings, denied, roots, env, read_deny=sandbox.personal_config_paths() if student_home else (), **kw)
     cmd = sbwrap(cmd)
     allowed_roots = [cwd, os.path.realpath(scratch) if scratch else cwd, home, V2, work]
     if student_home and not CONFIG_PROBED:   # zero-spend preflight, once per run, BEFORE the first paid session
@@ -516,7 +520,16 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
             "env_dropped": dropped, "actor_bins": sorted(linked)}
 
 
-def main():
+def set_plugin_dir(p):
+    """--plugin-dir (2026-11-02, rig-validity-fix): the plugin the sessions load AND the repo the rig snapshots/protects. -> its realpath."""
+    global V2
+    if not os.path.isdir(p):
+        sys.exit("REFUSED: --plugin-dir %s is not a directory" % p)
+    V2 = os.path.realpath(p)
+    return V2
+
+
+def build_parser():
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["run", "selftest"])
     ap.add_argument("--cases")
@@ -529,7 +542,15 @@ def main():
     ap.add_argument("--drive", action="store_true", help="give each session its own run folder in Drive/Lifehack test area/ (mounted in the throwaway HOME like Drive for Desktop); end state saved as <id>.drive-end.json, folder then moved to _archive/")
     ap.add_argument("--env", action="append", default=[])
     ap.add_argument("--resume", action="store_true", help="continue the newest results file for --label, skipping cases already finished (survives an interrupted run)")
-    a = ap.parse_args()
+    ap.add_argument("--plugin-dir", default=V2_DEFAULT, help="plugin the sessions load (default %(default)s). A pinned run passes a detached worktree; the "
+                    "throwaway HOME's code-root pointer then names it too, so no wrapper is needed to pin the plugin")
+    return ap
+
+
+def main():
+    a = build_parser().parse_args()
+    pinned = os.path.realpath(a.plugin_dir) != os.path.realpath(V2_DEFAULT)
+    set_plugin_dir(a.plugin_dir) if pinned else None
     if a.cmd == "selftest":
         return selftest()
     if not a.cases or not a.label:
@@ -565,6 +586,8 @@ def main():
         tok = os.path.join(real_home, ".config", "lifehack", "claude-oauth-token")   # a changed HOME loses the login: hand the child the token
         if os.path.exists(tok) and "CLAUDE_CODE_OAUTH_TOKEN" not in envd and "CLAUDE_CODE_OAUTH_TOKEN" not in os.environ:
             envd["CLAUDE_CODE_OAUTH_TOKEN"] = re.sub(r"\s+", "", open(tok, encoding="utf-8").read())
+        if pinned:   # the code-root pointer must name the plugin the session loads, not whatever the runner's own pointer says
+            open(os.path.join(iso, ".config", "lifehack", "code-root"), "w", encoding="utf-8").write(V2 + "\n")
         pcdir = os.path.join(iso, "personal-code")
         fresh_personal(pcdir)
         open(os.path.join(iso, ".config", "lifehack", "personal-code"), "w", encoding="utf-8").write(pcdir + "\n")

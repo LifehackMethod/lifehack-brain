@@ -11,6 +11,8 @@ WHAT the profile allows (everything else of its kind is refused):
                 Bash-tool task dir keyed to THIS case's cwd, and the few /dev and bash here-doc files a0's write guard proved necessary.
                 The plugin root, the actor settings file and the profile itself are re-denied AFTER the allow (last matching rule wins).
      reads    - default allow, EXCEPT cloud/GitHub/ssh credentials, the saved Claude token file and the keychain (paths + daemons).
+                STUDENT setup only (2026-11-02, record rig-validity-fix): the whole real home is read-denied too (a student `find /`
+                listed the runner's own files), with exact re-allows for what the actor needs there (student_home_read).
      network  - only 127.0.0.1:<proxy port>. rig_proxy.py (outside the sandbox) tunnels only to api.anthropic.com:443. SBPL cannot filter
                 by host name; that is why the allowlist lives in the proxy. Proxy dead = no network (fails closed).
      escapes  - Apple Events, LaunchServices (open/Terminal) and the keychain daemons are refused.
@@ -56,10 +58,38 @@ def real_home():
     return os.path.realpath(os.path.expanduser("~"))
 
 
-def profile(allow_write, cwd, proxy_port, protect=(), real_home_dir=None, decoy=None, uid=None, read_deny=()):
+def student_home_read(real_home_dir, linked, dirs):
+    """STUDENT setup (record rig-validity-fix, bug 2) -> {"home", "literal", "subpath"}: deny reading the real home (resolved here, at run
+    time), re-allow EXACTLY what the actor needs inside it. Found by probing: claude runs from ~/.local/bin/claude -> ~/.local/share/claude/
+    versions/<v> (one Mach-O), so each link of every shim binary's symlink chain under the home is re-allowed as a LITERAL path; `dirs`
+    (the plugin dir, the rig's own source, a Drive run folder) are re-allowed as subpaths when they live under the home. A claude installed
+    some other way (e.g. a node package under ~/.nvm) would fail to start -> the config preflight / canary control refuses the run (closed)."""
+    rh = os.path.realpath(real_home_dir) if real_home_dir else real_home()
+    under = lambda p: p == rh or p.startswith(rh + os.sep)
+    lit, sub = [], []
+    for t in (linked or {}).values():
+        p, seen = os.path.abspath(t), 0
+        while seen < 40:
+            seen += 1
+            parent = os.path.realpath(os.path.dirname(p))
+            p = os.path.join(parent, os.path.basename(p))   # the link itself, with its directory resolved (the kernel matches real paths)
+            if under(p) and p not in lit:
+                lit.append(p)
+            if not os.path.islink(p):
+                break
+            p = os.path.join(os.path.dirname(p), os.readlink(p))
+    for d in dirs or ():
+        if d and under(os.path.realpath(d)) and os.path.realpath(d) not in sub:
+            sub.append(os.path.realpath(d))
+    return {"home": rh, "literal": lit, "subpath": sub}
+
+
+def profile(allow_write, cwd, proxy_port, protect=(), real_home_dir=None, decoy=None, uid=None, read_deny=(), home_read=None):
     """-> SBPL text. allow_write: the run's own dirs (realpaths). protect: re-denied after the allow (plugin root, settings, profile).
     decoy: a scratch-path fake credential tree the canary reads to prove the read rules on any machine.
-    read_deny: extra paths the actor must not read (student setup: the real home's own Claude config, see personal_config_paths)."""
+    read_deny: extra paths the actor must not read (student setup: the real home's own Claude config, see personal_config_paths).
+    home_read: student_home_read() -> the whole home read-denied AFTER (allow default) and the write allows, the exact re-allows after that,
+    and the credential denies after both (last matching rule wins: a re-allow can never re-open a credential)."""
     rh = real_home_dir or real_home()
     uid = os.getuid() if uid is None else uid
     w = ["(version 1)", ";; rig actor sandbox (rig_sandbox.py). LAST MATCHING RULE WINS: a deny that must beat an allow comes AFTER it.",
@@ -72,6 +102,11 @@ def profile(allow_write, cwd, proxy_port, protect=(), real_home_dir=None, decoy=
           '  (regex #"^/private/tmp/claude-%d/%s(/|$)"))' % (uid, _rx(case_slug(cwd)))]
     if protect:
         w.append("(deny file-write* %s (with message \"%s\"))" % (" ".join("(subpath %s)" % _q(os.path.realpath(p)) for p in protect), TAG))
+    if home_read:
+        w += ["", "(deny file-read* (subpath %s) (with message \"%s\"))" % (_q(home_read["home"]), TAG)]
+        allows = ["(literal %s)" % _q(p) for p in home_read.get("literal", ())] + ["(subpath %s)" % _q(p) for p in home_read.get("subpath", ())]
+        if allows:
+            w.append("(allow file-read* %s)" % " ".join(allows))
     w += ["", "(deny file-read*"]
     for s in CRED_SUBPATHS:
         w.append("  (subpath %s)" % _q(os.path.join(rh, s)))
@@ -181,7 +216,19 @@ def scheduler_state():
     return {"crontab": _state(["/usr/bin/crontab", "-l"]), "atq": _state(["/usr/bin/atq"]), "launchctl": _state(["/bin/launchctl", "list"])}
 
 
-def canary_spec(run, port, write_denied, write_allowed, notes_roots, nonce, real_home_dir=None, escapes=True, read_denied_extra=()):
+HOOK_STANDIN = """#!/bin/bash
+# rig canary stand-in hook (rig_sandbox.canary_spec): does what the Enver setup's guard_gh_pr_merge.sh does first - a bare mktemp
+f=$(mktemp) || exit 3
+d=$(mktemp -d) || exit 4
+echo "$f"
+echo "$d"
+rm -f "$f"
+rmdir "$d"
+"""
+REQUIRED_EXTRA_IDS = ("C11.mktemp",)   # always required (rig-validity-fix); C10.* added when the spec carries a home read-deny
+
+
+def canary_spec(run, port, write_denied, write_allowed, notes_roots, nonce, real_home_dir=None, escapes=True, read_denied_extra=(), home_read=None):
     """The checks the in-sandbox canary runs. run: a scratch dir OUTSIDE every allowed dir (decoy, probe plist, sentinel live there)."""
     rh = real_home_dir or real_home()
     decoy = os.path.join(run, "decoy")
@@ -202,7 +249,16 @@ def canary_spec(run, port, write_denied, write_allowed, notes_roots, nonce, real
         f.write('<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" '
                 '"http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>Label</key><string>%s</string>'
                 '<key>ProgramArguments</key><array><string>/usr/bin/true</string></array></dict></plist>\n' % label)
-    return {"nonce": nonce, "write_denied": list(write_denied), "write_allowed": list(write_allowed),
+    standin = os.path.join(run, "hook-standin.sh")
+    with open(standin, "w", encoding="utf-8") as f:
+        f.write(HOOK_STANDIN)
+    hr = None
+    if home_read:   # the decoy lives UNDER the denied home (made outside the sandbox, removed by preflight); controls = every re-allow
+        hdecoy = os.path.join(home_read["home"], ".lh-rig-canary-decoy-%s" % nonce)
+        with open(hdecoy, "w", encoding="utf-8") as f:
+            f.write("rig canary decoy: must be unreadable inside the student sandbox\n")
+        hr = {"home": home_read["home"], "decoy": hdecoy, "controls": list(home_read.get("literal", ())) + list(home_read.get("subpath", ()))}
+    return {"nonce": nonce, "write_denied": list(write_denied), "write_allowed": list(write_allowed), "hook_standin": standin, "home_read": hr,
             "direct_hosts": [["1.1.1.1", 443], ["www.googleapis.com", 443], ["github.com", 443]],
             "proxy": {"port": port, "denied": ["www.googleapis.com:443", "github.com:443", "example.com:443"], "allowed": [API_HOST]},
             "read_denied": reads, "notes_roots": list(notes_roots),
@@ -226,7 +282,13 @@ def judge(lines, spec, before, after):
     need = ["C0"] + ["C1.%d" % i for i in range(len(spec["write_denied"]))] + ["C4.%d" % i for i in range(len(spec["write_allowed"]))] \
         + ["C5.%d" % i for i in range(len(spec["direct_hosts"]))] + ["C6.%d" % i for i in range(len(spec["proxy"]["denied"]))] \
         + ["C7.%d" % i for i in range(len(spec["proxy"]["allowed"]))] + ["C8.%d" % i for i in range(len(spec["read_denied"]))] \
-        + (["C9.keychain", "C9.appleevent", "C9.launchservices", "C9.crontab", "C9.at", "C9.lc-submit", "C9.lc-load", "C9.lc-bootstrap"] if spec["escapes"] else [])
+        + (["C9.keychain", "C9.appleevent", "C9.launchservices", "C9.crontab", "C9.at", "C9.lc-submit", "C9.lc-load", "C9.lc-bootstrap"] if spec["escapes"] else []) \
+        + list(REQUIRED_EXTRA_IDS)
+    hr = spec.get("home_read")
+    if hr:
+        need += ["C10.decoy", "C10.home-list"] + ["C10.control.%d" % i for i in range(len(hr["controls"]))]
+        if not hr["controls"]:
+            probs.append("C10 MISSING: no re-allowed control path (a deny of the whole home with nothing re-allowed is unproven)")
     for i in need:
         if i not in got:
             probs.append("%s MISSING: the canary never reported it (crashed or not sandboxed as expected)" % i)
@@ -248,12 +310,14 @@ def judge(lines, spec, before, after):
     return probs
 
 
-def preflight(cmd_prefix_env, profile_path, port, write_denied, write_allowed, notes_roots, cwd, run, sandbox_exec=SANDBOX_EXEC, escapes=True, read_denied_extra=()):
+def preflight(cmd_prefix_env, profile_path, port, write_denied, write_allowed, notes_roots, cwd, run, sandbox_exec=SANDBOX_EXEC, escapes=True, read_denied_extra=(),
+              home_read=None):
     """Run the canary through wrap() with the actor's exact env; -> (problems, lines). run: the canary dir, OUTSIDE every allowed dir;
     its decoy/ subdir must be the profile's decoy (read-denied), the spec beside it stays readable."""
     nonce = secrets.token_hex(4)
     os.makedirs(run, exist_ok=True)
-    spec = canary_spec(run, port, write_denied, write_allowed, notes_roots, nonce, escapes=escapes, read_denied_extra=read_denied_extra)   # escapes=False only in tests that run UNsandboxed on purpose
+    spec = canary_spec(run, port, write_denied, write_allowed, notes_roots, nonce, escapes=escapes, read_denied_extra=read_denied_extra,
+                       home_read=home_read)   # escapes=False only in tests that run UNsandboxed on purpose
     sp = os.path.join(run, "spec.json")
     with open(sp, "w", encoding="utf-8") as f:
         json.dump(spec, f)
@@ -268,6 +332,8 @@ def preflight(cmd_prefix_env, profile_path, port, write_denied, write_allowed, n
     time.sleep(1)
     after = scheduler_state()
     probs = judge(lines, spec, before, after)
+    if spec.get("home_read") and os.path.lexists(spec["home_read"]["decoy"]):   # outside the sandbox: remove exactly the decoy we made
+        os.unlink(spec["home_read"]["decoy"])
     if not lines:
         probs.insert(0, "canary produced no output (stderr: %s)" % (err or "")[:300])
     _cleanup_launchd(spec["_outside"]["label"], after)
@@ -310,15 +376,17 @@ class Sandbox:
     def __exit__(self, *a):
         stop_proxy(self.proxy)
 
-    def case(self, name, allow_write, cwd, settings_path, write_denied, notes_roots, env, read_deny=()):
+    def case(self, name, allow_write, cwd, settings_path, write_denied, notes_roots, env, read_deny=(), home_read=None):
         """-> (wrapped-command builder, env). Writes the profile, runs the preflight, refuses the case if anything fails.
-        read_deny: extra read-denied paths (student setup); the canary proves each one is refused (C8)."""
+        read_deny: extra read-denied paths (student setup); the canary proves each one is refused (C8).
+        home_read: student_home_read() (student setup): the real home read-denied with exact re-allows; the canary proves it (C10)."""
         prof = os.path.join(self.workdir, name + ".sb")
         protect = self.protect + [settings_path, prof]
         run = os.path.join(self.workdir, "canary-" + name)
-        write_profile(profile(allow_write, cwd, self.port, protect=protect, decoy=os.path.join(run, "decoy"), read_deny=read_deny), prof)
+        write_profile(profile(allow_write, cwd, self.port, protect=protect, decoy=os.path.join(run, "decoy"), read_deny=read_deny, home_read=home_read), prof)
         env = dict(env, **actor_net_env(self.port))
-        probs, lines = preflight(env, prof, self.port, write_denied, allow_write, notes_roots, cwd, run, self.sandbox_exec, read_denied_extra=read_deny)
+        probs, lines = preflight(env, prof, self.port, write_denied, allow_write, notes_roots, cwd, run, self.sandbox_exec, read_denied_extra=read_deny,
+                                 home_read=home_read)
         require(probs, lines, os.path.join(self.workdir, name + ".sandbox.json"), where="case " + name)
         return (lambda cmd: wrap(cmd, prof, self.sandbox_exec)), env
 
