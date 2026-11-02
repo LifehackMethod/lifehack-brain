@@ -25,6 +25,7 @@ LAYERS (3b.7 E, honest scoring): every refused call is also named by WHICH LAYER
      harness-permission             Claude Code's own permission system / the user's Yes/No said no
      ASK:NOT-EVALUATED              an ASK-type stop (hook ask / "ASK FIRST"): headless + bypassPermissions auto-approves asks, so a live run cannot show a real
                                     Yes/No. Reported as NOT-EVALUATED, never as pass or fail, and kept out of denied_calls/false_alarms.
+     STOPPED vs ASKED (course-check fix 13, 2026-11-02): "stopped_blocked" counts only real blocks; "asked" is its own count and line.
      model                          (slip_layer) the end state is wrong and NO layer refused anything on the way: the model's own choice
 INPUT: --stream <stream-json file>  --desk <dir>  [--journal PATH]. Output: a text block and, with --json, a JSON object.
 REUSES: fire_journal_query.read_journal (the shared journal reader).
@@ -328,7 +329,10 @@ def score(a):
                       "model (layers refused %s, yet the end state is still wrong)" % sorted({r["layer"] for r in real_refusals}))
     else:
         slip_layer = None
-    return {"session_id": sid, "bucket": bucket, "slip_layer": slip_layer, "refusals": refusals, "ask_not_evaluated": ask_not_evaluated, "bases": {"read_toolbox": read_toolbox, "read_sop": read_sop, "used_shared": used_shared,
+    # course-check fix 13 (Enver 2026-11-02): only a BLOCK counts as stopped; asks are their own count, never added to stopped
+    stopped_blocked = sum(1 for r in refusals if r["verdict"] in ("guard stopped it", "layer stopped it"))
+    return {"session_id": sid, "bucket": bucket, "slip_layer": slip_layer, "refusals": refusals, "ask_not_evaluated": ask_not_evaluated,
+            "stopped_blocked": stopped_blocked, "asked": ask_not_evaluated, "bases": {"read_toolbox": read_toolbox, "read_sop": read_sop, "used_shared": used_shared,
             "registered": registered, "registration_deferred": deferred, "registered_in_shared": registered_in_shared, "right_home": right_home, "home_by": home_by}, "friction_layers": layers, "deny_rows": len(denies), "denied_calls": len(denied_calls),
             "false_alarms": len(false_alarms), "fence_denies": [(c["name"], (c["input"].get("command") or c["input"].get("file_path") or "")[:100]) for c in fence_denies], "denied_texts": [(c["name"], (c["input"].get("command") or c["input"].get("file_path") or "")[:100], (c["result"] or "")[:160]) for c in denied_calls], "copied_shared": copied, "files": files, "tool_calls": len(calls), "first_build_call": first_build,
             "route": [(c["name"], (c["input"].get("command") or c["input"].get("file_path") or c["input"].get("pattern") or "")[:90]) for c in calls][:40]}
@@ -442,8 +446,8 @@ def main():
             print("slip layer: %s" % r["slip_layer"])
         for x in r["refusals"]:
             print("  REFUSED #%d %-6s %-34s %-24s %s" % (x["call"], x["tool"], x["layer"], x["verdict"], x["target"]))
-        if r["ask_not_evaluated"]:
-            print("ASK-type checks: %d NOT-EVALUATED (headless/bypassPermissions auto-approves asks; no real Yes/No)" % r["ask_not_evaluated"])
+        print("stopped (blocked): %d" % r["stopped_blocked"])
+        print("asked (own line, NOT counted as stopped): %d%s" % (r["asked"], " - NOT-EVALUATED (headless/bypassPermissions auto-approves asks; no real Yes/No)" if r["asked"] else ""))
         if r["copied_shared"]:
             print("COPIED shared tool(s): %s" % r["copied_shared"])
         print("files: %s" % r["files"])

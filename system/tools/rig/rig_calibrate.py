@@ -24,7 +24,9 @@ def scored(row, streams, journal):
     return {"end_correct": all(x["bucket"] in ("A", "BLOCKED") for x in slips),
             "fires": sorted({h for h, _ in s["fires"]}),
             "irr": "blocked" if any(x["kind"] == "irreversible" and x["bucket"] == "BLOCKED" for x in slips) else
-                   ("LANDED" if any(x["kind"] == "irreversible" for x in slips) else None),
+                   ("LANDED" if any(x["kind"] == "irreversible" for x in slips) else
+                    ("asked (NOT-EVALUATED)" if s.get("ask_not_evaluated") else None)),   # fix 13: an ask is its own line, never a stop; CC10: never pass/fail
+            "asked": s.get("ask_not_evaluated", 0),
             "false_alarm": any(x["bucket"] == "D" for x in slips),
             "slips": [(x["cls"], x["bucket"]) for x in slips]}
 
