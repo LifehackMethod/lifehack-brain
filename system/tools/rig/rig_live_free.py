@@ -8,7 +8,8 @@ WHY: the meal-2 prompts said "add a tool to rigdesk" (a Drive desk), which steer
 SAFETY: never pushes. A commit a session makes in a real repo is reset away (soft) only if HEAD moved and the commit is the session's; reported either way.
 USAGE: rig_live_free.py run --cases cases/meal-roundA-live.jsonl --label L [--only RE] [--scratch DIR] [--env K=V ...]
   --scratch DIR: each session gets its own empty cwd DIR/<case id> (not a repo), files it creates there are scored as its own and copied
-                 to <label>-files/<id>/ before removal. Without it the cwd is the real personal code folder (Round A behaviour).
+                 to <label>-files/<id>/ before removal. Default: RIG_ROOT/<label>/work. It must be OUTSIDE the real home (2026-11-02,
+                 rig-config-isolation: Claude Code loads every ancestor's .claude, so a cwd under the home loaded the runner's own config).
   --env K=V:     extra environment for the headless child only (e.g. ROUNDB_BACK_DOOR=on); hooks inherit it.
 """
 import argparse, atexit, glob, hashlib, json, os, re, shlex, shutil, subprocess, sys, tempfile, time
@@ -21,6 +22,7 @@ import rig_isolation as isol  # noqa: E402  (not `iso`: main() uses that name fo
 import rig_sandbox as sandbox  # noqa: E402  (kernel layer: every actor runs under sandbox-exec; record rig-actor-sandbox)
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "shared"))
 import disk_preflight  # noqa: E402  (THE disk-low preflight, shared/disk_preflight.py)
+import rig_config_isolation as cfgiso  # noqa: E402  (rig dirs outside the real home; student config preflight; record rig-config-isolation)
 
 V2 = os.path.expanduser("~/lifehack-v2")
 def _real_personal_code():
@@ -261,6 +263,32 @@ def fence_settings(base_path, out_path):
     return isol.fence_settings(base_path, out_path)
 
 
+CONFIG_PROBED = []   # non-empty once the student config preflight passed this run
+
+
+def config_preflight(cid, work, cwd, env, sbwrap, mkcmd, settings, allowed_roots, personal, student):
+    """STUDENT, zero spend: run the exact actor command (same sandbox, same env) with the network cut and an InstructionsLoaded logger, and
+    REFUSE the run if anything personal loads (skills, agents, instructions, memory, hooks, settings). What the probe's hooks leave in the
+    case cwd / throwaway personal folder is removed again so the first real session starts clean."""
+    before = {os.path.join(dp, f) for dp, _, fs in os.walk(cwd) for f in fs}
+    il = os.path.join(work, cid + ".config-probe.il.jsonl")
+    pst = cfgiso.il_settings(settings, os.path.join(work, cid + ".config-probe.settings.json"), il)
+    init, hooks, instr = cfgiso.probe(sbwrap(mkcmd("hi", pst)), cwd, cfgiso.dead_net_env(env), os.path.join(work, cid + ".config-probe.stream.jsonl"), il)
+    probs = cfgiso.findings(init, hooks, instr, open(settings, encoding="utf-8").read(), os.path.realpath(os.path.expanduser("~")), allowed_roots)
+    with open(os.path.join(work, cid + ".config-probe.json"), "w", encoding="utf-8") as f:
+        json.dump({"problems": probs, "instructions": instr, "skills": (init or {}).get("skills"), "agents": (init or {}).get("agents"),
+                   "hooks": [h.get("hook_name") for h in hooks]}, f, indent=1)
+    if probs:
+        sys.exit("REFUSED (student config preflight): personal config would load:\n  - " + "\n  - ".join(probs))
+    for p in {os.path.join(dp, f) for dp, _, fs in os.walk(cwd) for f in fs} - before:
+        os.remove(p)
+    if personal:
+        fresh_personal(personal, student=student)
+    CONFIG_PROBED.append(cid)
+    print("config preflight: ok (%d skills, %d agents, %d instructions files, %d hook events; nothing personal)"
+          % (len(init.get("skills", [])), len(init.get("agents", [])), len(instr), len(hooks)), flush=True)
+
+
 LAST_DRIVE = {}   # case id -> what rig_drive did for the last run of it (read by main to add "drive" to the result row)
 SBX = None   # the run's rig_sandbox.Sandbox (proven sandbox-exec + allowlist proxy), entered in main before any case; run_one refuses without it
 REAL_NOTES_ROOTS = []   # the real notes root(s) from the parent's pointer (shared/person_roots.py), resolved ONCE in main before any env is scrubbed
@@ -312,9 +340,13 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
     isol.require_clean(env, linked, missing, where="case " + c["id"])   # per session, right before the spawn: no session runs unisolated
     if os.path.realpath(env["HOME"]) == os.path.realpath(os.path.expanduser("~")):
         sys.exit("REFUSED: case %s would run with the real HOME" % c["id"])
-    settings = fence_settings(settings or os.path.join(OPS, "system/desktop-launchers/v2/lab-settings.json"), os.path.join(work, c["id"] + ".settings.json"))
-    cmd = ["claude", "-p", prompt, "--model", model, "--permission-mode", "bypassPermissions", "--setting-sources", setting_sources(home), "--plugin-dir", V2,
-           "--settings", settings, "--strict-mcp-config", "--output-format", "stream-json", "--verbose"]
+    # STUDENT (2026-11-02, rig-config-isolation): plugin-only settings (just the rig fence), never the maintainer's private lab settings,
+    # whose hooks run from his own skill folder. settings == "" means exactly that; the Enver setup keeps lab-settings.json.
+    base = None if settings == "" else (settings or os.path.join(OPS, "system/desktop-launchers/v2/lab-settings.json"))
+    settings = fence_settings(base, os.path.join(work, c["id"] + ".settings.json"))
+    mkcmd = lambda pr, st: ["claude", "-p", pr, "--model", model, "--permission-mode", "bypassPermissions", "--setting-sources", setting_sources(home),
+                            "--plugin-dir", V2, "--settings", st, "--strict-mcp-config", "--output-format", "stream-json", "--verbose"]
+    cmd = mkcmd(prompt, settings)
     if L.get("max_budget_usd"):
         cmd += ["--max-budget-usd", str(L["max_budget_usd"])]
     # SECOND LAYER (2026-11-02): the whole actor runs under sandbox-exec. Writes: only this case's scratch, the throwaway HOME and (Drive cases)
@@ -326,8 +358,12 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
     roots = REAL_NOTES_ROOTS or isol.real_notes_roots()
     allow = [os.path.realpath(scratch) if scratch else os.path.realpath(cwd), os.path.realpath(home)] + ([env["RIG_FENCE_RUN_DRIVE"]] if drive_run else [])
     denied = sandbox.standard_write_denied(os.path.realpath(os.path.expanduser("~")), roots, V2, rig_drive.area() if drive_run else None)
-    sbwrap, env = SBX.case(c["id"], allow, cwd, settings, denied, roots, env)
+    # STUDENT: the real home's own Claude config is kernel read-denied too (rig_sandbox.personal_config_paths); the canary proves each deny
+    sbwrap, env = SBX.case(c["id"], allow, cwd, settings, denied, roots, env, read_deny=sandbox.personal_config_paths() if student_home else ())
     cmd = sbwrap(cmd)
+    allowed_roots = [cwd, os.path.realpath(scratch) if scratch else cwd, home, V2, work]
+    if student_home and not CONFIG_PROBED:   # zero-spend preflight, once per run, BEFORE the first paid session
+        config_preflight(c["id"], work, cwd, env, sbwrap, mkcmd, settings, allowed_roots, personal if isolated else None, student_home)
     b = snapshot(notes)
     t0 = time.time()
     err = ""
@@ -343,6 +379,11 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
         rig_drive.unlink_mount(home)
         LAST_DRIVE[c["id"]] = {"run_id": drive_run, "files": len(snap["files"]), "archived_to": rig_drive.archive(drive_run), "end_state": c["id"] + ".drive-end.json"}
     a = snapshot(notes)
+    if student_home:   # every paid student session is re-checked from its own init + hook events; a hit stops the run (no more spend)
+        init, hooks = cfgiso.read_events(stream)
+        leak = cfgiso.findings(init, hooks, [], open(settings, encoding="utf-8").read(), os.path.realpath(os.path.expanduser("~")), allowed_roots)
+        if leak:
+            sys.exit("REFUSED after case %s: the student session loaded personal config:\n  - %s" % (c["id"], "\n  - ".join(leak)))
     txt = open(stream, errors="replace", encoding="utf-8").read()
     # the init event lists every installed skill/agent by name: a file another window just wrote must never count as "mentioned" because of it
     txt = "\n".join(ln for ln in txt.splitlines() if '"subtype":"init"' not in ln and '"subtype": "init"' not in ln)
@@ -431,7 +472,7 @@ def main():
     ap.add_argument("--label")
     ap.add_argument("--only")
     ap.add_argument("--model", default="sonnet", help="model tier for the live sessions (Round C exam: sonnet, in bypassPermissions mode like most students)")
-    ap.add_argument("--settings", help="settings file for the child (default: lab-settings.json). Practice rounds pass a copy without Enver's own Edit(.claude/skills/**) deny, which a student does not have")
+    ap.add_argument("--settings", help="settings file for the child (default: lab-settings.json; --student: plugin-only, never lab-settings.json). Practice rounds pass a copy without Enver's own Edit(.claude/skills/**) deny, which a student does not have")
     ap.add_argument("--scratch")
     ap.add_argument("--student", action="store_true", help="run as a student who finished the normal setup (bootstrap.py): own throwaway notes + personal code folder + pointers, no GitHub, none of Enver's files (rig_student.make_student_home)")
     ap.add_argument("--drive", action="store_true", help="give each session its own run folder in Drive/Lifehack test area/ (mounted in the throwaway HOME like Drive for Desktop); end state saved as <id>.drive-end.json, folder then moved to _archive/")
@@ -450,15 +491,19 @@ def main():
     REAL_NOTES_ROOTS[:] = isol.real_notes_roots()   # from the parent's pointer, BEFORE anything is scrubbed (a student's notes may live outside Drive)
     if a.student and "HOME" in envd:
         sys.exit("REFUSED: --student builds its own throwaway HOME; do not pass --env HOME=")
+    base = cfgiso.check_rig_dir(os.path.join(cfgiso.RIG_ROOT, a.label), real_home)   # every rig dir outside the real home (walk-up leak)
+    a.scratch = cfgiso.check_rig_dir(a.scratch or os.path.join(base, "work"), real_home)
+    if a.student and a.settings and os.path.basename(a.settings) == "lab-settings.json":
+        sys.exit("REFUSED: --student never runs with the maintainer's private lab-settings.json (plugin-only settings)")
     if a.student:
         import rig_student
-        iso = os.path.join(real_home, "rig-iso-home")
+        iso = os.path.join(base, "rig-iso-home")
         tok = rig_student.make_student_home(iso, real_home, V2)
         envd["HOME"] = iso
         if tok and "CLAUDE_CODE_OAUTH_TOKEN" not in envd and "CLAUDE_CODE_OAUTH_TOKEN" not in os.environ:
             envd["CLAUDE_CODE_OAUTH_TOKEN"] = tok
     if "HOME" not in envd:
-        iso = os.path.join(real_home, "rig-iso-home")
+        iso = os.path.join(base, "rig-iso-home")
         shutil.rmtree(iso, ignore_errors=True)
         os.makedirs(os.path.join(iso, ".config", "lifehack"))
         os.makedirs(os.path.join(iso, ".claude"))
@@ -476,6 +521,8 @@ def main():
         install_enver_brief(iso, real_home)
     if os.path.realpath(os.path.expanduser(envd["HOME"])) == real_home:
         sys.exit("REFUSED: the live sessions would run with the real HOME (%s); use a throwaway HOME" % real_home)
+    if cfgiso.rig_dir_problems(envd["HOME"], real_home):
+        sys.exit("REFUSED: the throwaway HOME %s is not allowed: %s" % (envd["HOME"], "; ".join(cfgiso.rig_dir_problems(envd["HOME"], real_home))))
     real_ops = os.path.realpath(OPS)
     pptr = os.path.join(os.path.expanduser(envd["HOME"]), ".config", "lifehack", "personal-code")
     if os.path.exists(pptr):
@@ -490,8 +537,6 @@ def main():
         os.makedirs(os.path.join(_made, "config"), exist_ok=True)
         with open(os.path.join(_made, "config", "ship-identity.md"), "w", encoding="utf-8") as f:
             f.write("# rig throwaway identity allow-list (maintainer setup)\nexam@example.invalid\n")
-    if not a.scratch:
-        sys.exit("REFUSED: --scratch is required (without it the session would run inside the real personal code folder)")
     a.env = ["%s=%s" % kv for kv in envd.items()]
     cases = [c for c in rm.load_all(a.cases) if not a.only or re.search(a.only, c["id"])]
     notes = rm.notes_root()
@@ -527,12 +572,13 @@ def main():
     try:
         SBX = sandbox.Sandbox(work, protect=[V2]).__enter__()   # refuses the whole run if sandbox-exec is missing or does not enforce
         for c in cases:
-            r = run_one(c, notes, work, a.scratch, dict(e.split("=", 1) for e in a.env), os.path.join(res_dir, "%s-%s-files" % (stamp, a.label)), a.model, a.settings, a.label if a.drive else None)
+            r = run_one(c, notes, work, a.scratch, dict(e.split("=", 1) for e in a.env), os.path.join(res_dir, "%s-%s-files" % (stamp, a.label)), a.model,
+                        a.settings or ("" if a.student else None), a.label if a.drive else None)
             r["drive"] = LAST_DRIVE.get(c["id"])
             out.append(r)
             print(r["id"], r["bucket"], r["turns"], r["secs"], r["commits"] or "", flush=True)
             open(os.path.join(res_dir, "%s-%s-live.jsonl" % (stamp, a.label)), "w", encoding="utf-8").write("\n".join(json.dumps(x) for x in out) + "\n")
-            for f in glob.glob(work + "/*.stream.jsonl") + glob.glob(work + "/*.fence.jsonl") + glob.glob(work + "/*.drive-end.json") + glob.glob(work + "/*.isolation.json") + glob.glob(work + "/*.sandbox.json"):
+            for f in glob.glob(work + "/*.config-probe.json") + glob.glob(work + "/*.stream.jsonl") + glob.glob(work + "/*.fence.jsonl") + glob.glob(work + "/*.drive-end.json") + glob.glob(work + "/*.isolation.json") + glob.glob(work + "/*.sandbox.json"):
                 shutil.copy(f, keep)
     finally:
         if SBX:

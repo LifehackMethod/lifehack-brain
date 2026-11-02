@@ -56,9 +56,10 @@ def real_home():
     return os.path.realpath(os.path.expanduser("~"))
 
 
-def profile(allow_write, cwd, proxy_port, protect=(), real_home_dir=None, decoy=None, uid=None):
+def profile(allow_write, cwd, proxy_port, protect=(), real_home_dir=None, decoy=None, uid=None, read_deny=()):
     """-> SBPL text. allow_write: the run's own dirs (realpaths). protect: re-denied after the allow (plugin root, settings, profile).
-    decoy: a scratch-path fake credential tree the canary reads to prove the read rules on any machine."""
+    decoy: a scratch-path fake credential tree the canary reads to prove the read rules on any machine.
+    read_deny: extra paths the actor must not read (student setup: the real home's own Claude config, see personal_config_paths)."""
     rh = real_home_dir or real_home()
     uid = os.getuid() if uid is None else uid
     w = ["(version 1)", ";; rig actor sandbox (rig_sandbox.py). LAST MATCHING RULE WINS: a deny that must beat an allow comes AFTER it.",
@@ -78,6 +79,8 @@ def profile(allow_write, cwd, proxy_port, protect=(), real_home_dir=None, decoy=
         w.append('  (regex #"^%s/%s")' % (_rx(rh), r))
     if decoy:
         w.append("  (subpath %s)" % _q(os.path.realpath(decoy)))
+    for p in read_deny:
+        w.append("  (subpath %s)" % _q(os.path.realpath(p)))
     w.append('  (with message "%s"))' % TAG)
     w.append("(deny mach-lookup %s (with message \"%s\"))" % (" ".join("(global-name %s)" % _q(n) for n in MACH_DENY), TAG))
     w.append('(deny appleevent-send (with message "%s"))' % TAG)
@@ -85,6 +88,17 @@ def profile(allow_write, cwd, proxy_port, protect=(), real_home_dir=None, decoy=
           '(allow network-outbound (remote tcp "localhost:%d"))' % int(proxy_port),
           '(allow network-outbound (remote unix-socket (path-literal "/private/var/run/mDNSResponder")))', ""]
     return "\n".join(w)
+
+
+def personal_config_paths(real_home_dir=None):
+    """The real home's OWN Claude config a student actor must never load (2026-11-02, record rig-config-isolation): Claude Code walks UP from
+    the cwd and loads every ancestor's .claude/CLAUDE.md, skills and agents (proven by a dead-network probe), so a run dir anywhere under the
+    real home handed students the owner's brief and skills. The rig dirs now live outside the home; these kernel read-denies are the second
+    layer. Existing paths only (a subpath rule on a missing path proves nothing in the canary)."""
+    rh = real_home_dir or real_home()
+    c = os.path.join(rh, ".claude")
+    names = ["CLAUDE.md", "skills", "agents", "hooks"] + sorted(n for n in (os.listdir(c) if os.path.isdir(c) else []) if re.match(r"settings.*\.json$", n))
+    return [p for p in [os.path.join(c, n) for n in names] + [os.path.join(rh, ".claude.json")] if os.path.lexists(p)]
 
 
 def write_profile(text, path):
@@ -166,7 +180,7 @@ def scheduler_state():
     return {"crontab": _state(["/usr/bin/crontab", "-l"]), "atq": _state(["/usr/bin/atq"]), "launchctl": _state(["/bin/launchctl", "list"])}
 
 
-def canary_spec(run, port, write_denied, write_allowed, notes_roots, nonce, real_home_dir=None, escapes=True):
+def canary_spec(run, port, write_denied, write_allowed, notes_roots, nonce, real_home_dir=None, escapes=True, read_denied_extra=()):
     """The checks the in-sandbox canary runs. run: a scratch dir OUTSIDE every allowed dir (decoy, probe plist, sentinel live there)."""
     rh = real_home_dir or real_home()
     decoy = os.path.join(run, "decoy")
@@ -177,6 +191,7 @@ def canary_spec(run, port, write_denied, write_allowed, notes_roots, nonce, real
     for s in CRED_SUBPATHS:
         if os.path.exists(os.path.join(rh, s)):
             reads.append(os.path.join(rh, s))
+    reads += [p for p in read_denied_extra if os.path.exists(p)]
     cfg = os.path.join(rh, ".config")
     if os.path.isdir(cfg):
         reads += [os.path.join(cfg, n) for n in sorted(os.listdir(cfg)) if n.startswith("gws")]
@@ -232,12 +247,12 @@ def judge(lines, spec, before, after):
     return probs
 
 
-def preflight(cmd_prefix_env, profile_path, port, write_denied, write_allowed, notes_roots, cwd, run, sandbox_exec=SANDBOX_EXEC, escapes=True):
+def preflight(cmd_prefix_env, profile_path, port, write_denied, write_allowed, notes_roots, cwd, run, sandbox_exec=SANDBOX_EXEC, escapes=True, read_denied_extra=()):
     """Run the canary through wrap() with the actor's exact env; -> (problems, lines). run: the canary dir, OUTSIDE every allowed dir;
     its decoy/ subdir must be the profile's decoy (read-denied), the spec beside it stays readable."""
     nonce = secrets.token_hex(4)
     os.makedirs(run, exist_ok=True)
-    spec = canary_spec(run, port, write_denied, write_allowed, notes_roots, nonce, escapes=escapes)   # escapes=False only in tests that run UNsandboxed on purpose
+    spec = canary_spec(run, port, write_denied, write_allowed, notes_roots, nonce, escapes=escapes, read_denied_extra=read_denied_extra)   # escapes=False only in tests that run UNsandboxed on purpose
     sp = os.path.join(run, "spec.json")
     with open(sp, "w", encoding="utf-8") as f:
         json.dump(spec, f)
@@ -294,14 +309,15 @@ class Sandbox:
     def __exit__(self, *a):
         stop_proxy(self.proxy)
 
-    def case(self, name, allow_write, cwd, settings_path, write_denied, notes_roots, env):
-        """-> (wrapped-command builder, env). Writes the profile, runs the preflight, refuses the case if anything fails."""
+    def case(self, name, allow_write, cwd, settings_path, write_denied, notes_roots, env, read_deny=()):
+        """-> (wrapped-command builder, env). Writes the profile, runs the preflight, refuses the case if anything fails.
+        read_deny: extra read-denied paths (student setup); the canary proves each one is refused (C8)."""
         prof = os.path.join(self.workdir, name + ".sb")
         protect = self.protect + [settings_path, prof]
         run = os.path.join(self.workdir, "canary-" + name)
-        write_profile(profile(allow_write, cwd, self.port, protect=protect, decoy=os.path.join(run, "decoy")), prof)
+        write_profile(profile(allow_write, cwd, self.port, protect=protect, decoy=os.path.join(run, "decoy"), read_deny=read_deny), prof)
         env = dict(env, **actor_net_env(self.port))
-        probs, lines = preflight(env, prof, self.port, write_denied, allow_write, notes_roots, cwd, run, self.sandbox_exec)
+        probs, lines = preflight(env, prof, self.port, write_denied, allow_write, notes_roots, cwd, run, self.sandbox_exec, read_denied_extra=read_deny)
         require(probs, lines, os.path.join(self.workdir, name + ".sandbox.json"), where="case " + name)
         return (lambda cmd: wrap(cmd, prof, self.sandbox_exec)), env
 

@@ -35,7 +35,7 @@ def main():
         lf.V2, lf.OPS = v2, ops
 
         class _PassSandbox:   # run_one refuses without a sandbox since 2026-11-02 (rig-actor-sandbox); this test checks cleanup + env scrub, not the kernel layer (test_rig_sandbox.py does)
-            def case(self, name, allow_write, cwd, settings_path, write_denied, notes_roots, env):
+            def case(self, name, allow_write, cwd, settings_path, write_denied, notes_roots, env, read_deny=()):
                 return (lambda cmd: cmd), env
         lf.SBX = _PassSandbox()
         case = {"id": "t1", "live": {"prompt": "x", "sop": [], "shared_ref": [], "wrong_re": [], "kind": "build"}}
