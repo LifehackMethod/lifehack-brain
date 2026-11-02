@@ -5,7 +5,7 @@ record_type: canon
 desk: root
 topic: [system-architecture, llm-engineering]
 created_at: 2026-09-02
-updated_at: 2026-11-01
+updated_at: 2026-11-02
 status: active
 authority: user
 confidence: CONFIRMED
@@ -466,7 +466,7 @@ tool, with a different word. Receipt: 2026-11-01, an exam session moved 899 real
 through a script body the Drive guard didn't parse (records/2026-11-02-rig-real-drive-write-audit.md).
 **For anything irreversible, pair the text guard with a layer that takes the ability away** — no
 credentials in reach, a system-level lock, network limits — because those don't depend on recognising
-anything. AUTHORITATIVE. *(Added 2026-11-01, approved by Enver.)*
+anything. AUTHORITATIVE. *(Added 2026-11-01, approved by Enver.)* **Isolation is a claim until a deliberate attempt to breach it has been seen to fail; a wall assumed is a wall absent.** *(Added 2026-11-02, approved by Enver; same receipt.)*
 
 - **4.6 (v2, 2026-10-28) — OBSERVED:** content, not presence. A check validates the value (shape, range, a re-derived number) and not merely that a file or key is there.
 
