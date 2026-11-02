@@ -10,12 +10,36 @@ ENV (set by the rig for the child): RIG_FENCE_REAL_HOME, RIG_FENCE_REAL_NOTES, R
       RIG_FENCE_RUN_DRIVE (optional, 2026-11-01): ONE run folder in the dedicated Drive test area (".../My Drive/Lifehack test area/<run-id>"). Honoured ONLY when it is a direct child of a
       folder named exactly "Lifehack test area" and is not "_archive"; anything else is ignored (fail closed). Every other Drive path stays fenced (it is under the real home).
       Path matching ignores letter case and unicode form (Drive for Desktop on a Mac is case-insensitive, so My Drive/_notes IS _Notes).
-      Without RIG_FENCE_REAL_HOME the fence does nothing (fail-open: it must never block a product test by accident).
+      RIG_FENCE_DENY (2026-11-02): ':'-separated HARD-deny roots (the real ~/Library/CloudStorage and every real notes root, from rig_isolation.fence_env).
+      They beat RIG_FENCE_ALLOW; only the one RIG_FENCE_RUN_DRIVE folder is honoured inside them. <real home>/Library/CloudStorage is always added.
+      WHY: the 2026-10-30 meal-part2 sessions wrote into a real Drive desk because that launcher (rig_meal.live_case) ran with no fence at all, and
+      an allow-listed throwaway dir under a Drive mount would have opened the same hole here.
+COMMANDS (2026-11-02, after a sandbox actor trashed 899 real Drive files with gws): a Bash command that runs a cloud/GitHub CLI (FORBIDDEN_BINS) is
+      denied wherever it hides: plain, by full path, after env/sudo/xargs/timeout, inside bash -c / eval, in a here-doc line, as a quoted argv element
+      of a python/node subprocess call, `open -a Terminal ...`, plus keychain/credential reads (security find-*-password, git credential fill).
+      A Write/Edit of a SCRIPT whose text runs one is denied too (write-then-run). The command checks hold even without RIG_FENCE_REAL_HOME:
+      the fence is only ever installed by the rig. A string match can be dodged; the real controls are rig_isolation's env allowlist + private PATH.
+FAIL CLOSED (2026-11-02): an internal error now DENIES (it used to allow).
 Exit 2 + stderr message = deny (same shape as the product guards); exit 0 = allow.
 """
 import json, os, re, shlex, sys, unicodedata
 
 DRIVE_AREA = "Lifehack test area"
+DENY_BIN = ("gws", "gcloud", "gsutil", "gh", "aws", "az", "rclone", "gdrive")   # keep in step with rig_isolation.FORBIDDEN_BINS
+_BINS = "|".join(DENY_BIN)
+# a quoted string that IS a forbidden binary (or a path to one), optionally followed by its arguments: 'gws'  "gws drive files list"  '/opt/x/bin/gh'
+QUOTED_BIN = re.compile(r"""(['"])(?:[^'"\s]*/)?(%s)(?:\s[^'"]*)?\1""" % _BINS)
+# any path that ends in a forbidden binary: /opt/homebrew/bin/gws, ./gh, ~/sdk/bin/gcloud
+PATH_BIN = re.compile(r"""(?:^|[\s'"=:(`;|&])(?:[^\s'"`;|&()]*/)(%s)(?=$|[\s'"`;|&)\]])""" % _BINS)
+# commands that run their arguments as another command: a forbidden name as ANY of their words is a run of it
+RUNNERS = {"xargs", "find", "env", "exec", "command", "nohup", "time", "timeout", "gtimeout", "nice", "sudo", "watch", "eval", "parallel", "open",
+           "osascript", "which", "type", "whereis", "sh", "bash", "zsh", "dash", "ksh", "fish", "script", "caffeinate", "launchctl", "at", "batch",
+           "stdbuf", "unbuffer", "doas", "arch", "su", "chroot", "screen", "tmux", "nq", "entr"}
+PREFIX = {"sudo", "command", "exec", "time", "nohup", "env", "nice", "caffeinate", "stdbuf", "unbuffer", "arch", "doas", "builtin", "noglob", "!", "{", "("}
+TERMINAL_APPS = re.compile(r"^(terminal|iterm2?|script editor|automator|warp|kitty|alacritty|ghostty|wezterm|hyper|shortcuts)(\.app)?$", re.I)
+SCRIPTISH = re.compile(r"\.(command|tool|sh|bash|zsh|scpt|applescript|workflow|app|py)$", re.I)
+KEYCHAIN = {"find-generic-password", "find-internet-password", "dump-keychain", "export", "unlock-keychain", "find-certificate", "show-keychain-info"}
+SCRIPT_EXT = re.compile(r"(\.(sh|bash|zsh|command|tool|py|js|mjs|cjs|ts|rb|pl|php|applescript|scpt)|(^|/)[^./]+)$", re.I)
 
 WRITE_ALL = {"rm", "rmdir", "unlink", "touch", "mkdir", "chmod", "chown", "truncate", "trash", "shred", "ln", "mv", "tee", "mkfifo"}
 WRITE_LAST = {"cp", "rsync", "install", "scp", "ditto"}
@@ -37,14 +61,18 @@ def run_drive_ok(p):
 
 
 def cfg():
+    """-> (real_home, real_notes, allow, deny, run_drive) or None when RIG_FENCE_REAL_HOME is unset (write checks off; command checks stay on)."""
     rh = os.environ.get("RIG_FENCE_REAL_HOME")
     if not rh:
         return None
+    rh = os.path.realpath(rh)
     allow = [os.path.realpath(p) for p in (os.environ.get("RIG_FENCE_ALLOW") or "").split(":") if p]
     rd = os.environ.get("RIG_FENCE_RUN_DRIVE")
-    if rd and run_drive_ok(os.path.realpath(rd)):
-        allow.append(os.path.realpath(rd))
-    return (os.path.realpath(rh), [os.path.realpath(p) for p in (os.environ.get("RIG_FENCE_REAL_NOTES") or "").split(":") if p], allow)
+    run = os.path.realpath(rd) if rd and run_drive_ok(os.path.realpath(rd)) else None
+    if run:
+        allow.append(run)
+    deny = [os.path.realpath(p) for p in (os.environ.get("RIG_FENCE_DENY") or "").split(":") if p] + [os.path.join(rh, "Library", "CloudStorage")]
+    return (rh, [os.path.realpath(p) for p in (os.environ.get("RIG_FENCE_REAL_NOTES") or "").split(":") if p], allow, deny, run)
 
 
 def under(p, d):
@@ -54,7 +82,7 @@ def under(p, d):
 
 def blocked(path, cwd, c):
     """True when `path` is a REAL place the fence protects (under the real home or real notes root, and not under an allowed throwaway dir)."""
-    rh, notes, allow = c
+    rh, notes, allow, deny, run = c
     if not path or path.startswith("$") or "`" in path:
         return False                      # an unresolved shell variable: cannot judge; the rig's calibration covers the literal-path leak
     if path.startswith("~"):
@@ -65,6 +93,10 @@ def blocked(path, cwd, c):
     if not os.path.isabs(path):
         path = os.path.join(cwd, path)
     p = os.path.realpath(os.path.normpath(path))
+    if run and under(p, run):
+        return False                      # the one Drive test-area run folder rig_drive made for this session
+    if any(under(p, d) for d in deny):
+        return True                       # hard deny (real Drive mounts, real notes roots): no allow-listed dir can open these
     if any(under(p, a) for a in allow):
         return False
     return under(p, rh) or any(under(p, n) for n in notes)
@@ -161,10 +193,101 @@ def bash_targets(cmd, cwd, depth=0):
     return out, cwd
 
 
+CMD_SEG = re.compile(r"\|\||&&|;|\||\n|\$\(|`|<\(|>\(")
+
+
+def _strip_prefix(t):
+    """Drop leading VAR=val words and wrappers (env -i, sudo -u x, timeout 5, nice -n 5 ...) so t[0] is the command that really runs."""
+    while t:
+        w = t[0]
+        if re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", w) or w in PREFIX:
+            t = t[1:]
+            while t and t[0].startswith("-"):           # wrapper options (env -i, sudo -E, nice -n 5)
+                t = t[2:] if t[0] in ("-u", "-n", "-g", "-C", "-S", "-P") and len(t) > 1 else t[1:]
+            continue
+        if os.path.basename(w) in ("timeout", "gtimeout"):
+            t = t[1:]
+            while t and (t[0].startswith("-") or re.match(r"^\d+[smhd]?$", t[0])):
+                t = t[1:]
+            continue
+        break
+    return t
+
+
+def bin_hit(cmd, depth=0):
+    """-> a short description of the forbidden CLI / credential read this Bash command would run, or None."""
+    m = QUOTED_BIN.search(cmd) or PATH_BIN.search(cmd)
+    if m:
+        return "%s (as %s)" % (m.group(m.lastindex), m.group(0).strip()[:80])
+    for seg in CMD_SEG.split(cmd):
+        seg = seg.strip().lstrip("({!").strip()
+        if not seg:
+            continue
+        try:
+            t = shlex.split(seg, comments=True)
+        except ValueError:
+            t = seg.replace("'", " ").replace('"', " ").split()
+        t = _strip_prefix([w for w in t if not re.match(r"^\d*[<>]", w)])
+        if not t:
+            continue
+        name = os.path.basename(t[0])
+        if name in DENY_BIN:
+            return name
+        args = t[1:]
+        if name in RUNNERS and any(os.path.basename(a) in DENY_BIN for a in args):
+            return next(os.path.basename(a) for a in args if os.path.basename(a) in DENY_BIN) + " (run through " + name + ")"
+        if name in ("bash", "sh", "zsh", "dash", "ksh") and depth < 3:
+            for i, a in enumerate(args):
+                if re.match(r"^-[a-zA-Z]*c[a-zA-Z]*$", a) and i + 1 < len(args):
+                    h = bin_hit(args[i + 1], depth + 1)
+                    if h:
+                        return h
+        if name == "eval" and depth < 3:
+            h = bin_hit(" ".join(args), depth + 1)
+            if h:
+                return h
+        if name == "open":
+            apps = [args[i + 1] for i, a in enumerate(args) if a in ("-a", "-b") and i + 1 < len(args)]
+            if any(TERMINAL_APPS.match(os.path.basename(x)) or "terminal" in x.lower() or "iterm" in x.lower() for x in apps) \
+                    or any(SCRIPTISH.search(a) for a in args if not a.startswith("-")):
+                return "open %s (runs a shell outside the session)" % " ".join(args)[:80]
+        if name == "security" and args and args[0] in KEYCHAIN:
+            return "security %s (keychain credential read)" % args[0]
+        if name == "git" and ("credential" in args or any(a.startswith("credential-") for a in args)):
+            return "git credential (credential read)"
+        if name.startswith("git-credential"):
+            return name + " (credential read)"
+    return None
+
+
+def script_runs_bin(path, text):
+    """True when a Write/Edit puts a script on disk whose text runs a forbidden CLI (write it, then run it): a line whose command is one, or a quoted argv/command string."""
+    if not text or not (SCRIPT_EXT.search(path or "") or text.lstrip().startswith("#!")):
+        return False
+    if QUOTED_BIN.search(text) or PATH_BIN.search(text):
+        return True
+    return any(bin_hit(ln) for ln in text.splitlines() if ln.strip() and not ln.strip().startswith("#"))
+
+
+def cmd_deny_msg(what):
+    return ("TEST-RIG FENCE (not a product guard): this session is a rig test running in a throwaway sandbox, and it may not run cloud, GitHub or "
+            "credential tools (%s). These would reach the REAL accounts of the person running the test. Do the task without them, or say it needs them." % what)
+
+
 def decide(inp, c):
-    """-> (deny_message or None, [real reads noted])"""
+    """-> (deny_message or None, [real reads noted]). c may be None (no RIG_FENCE_REAL_HOME): then only the command checks run."""
     tool, ti, cwd = inp.get("tool_name", ""), inp.get("tool_input") or {}, inp.get("cwd") or os.getcwd()
     notes = []
+    if tool == "Bash":
+        h = bin_hit(ti.get("command", "") or "")
+        if h:
+            return cmd_deny_msg(h), notes
+    if tool in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
+        body = ti.get("content") or ti.get("new_string") or ti.get("new_source") or " ".join((e or {}).get("new_string", "") for e in (ti.get("edits") or []))
+        if script_runs_bin(ti.get("file_path") or ti.get("notebook_path") or "", body):
+            return cmd_deny_msg("a script that calls one of them"), notes
+    if c is None:
+        return None, notes
     if tool in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
         p = ti.get("file_path") or ti.get("notebook_path") or ""
         if blocked(p, cwd, c):
@@ -186,14 +309,13 @@ def decide(inp, c):
 
 
 def main():
-    c = cfg()
-    if c is None:
-        return 0
+    inp = {}
     try:
+        c = cfg()
         inp = json.load(sys.stdin)
         msg, notes = decide(inp, c)
-    except Exception:
-        return 0                          # fail open: a fence bug must never change a product result
+    except Exception as e:                # fail CLOSED (2026-11-02): a fence that cannot judge must not wave a call through
+        msg, notes = "TEST-RIG FENCE (not a product guard): the rig fence could not check this call (%s), so it is denied. Try a simpler command." % type(e).__name__, []
     lg = os.environ.get("RIG_FENCE_LOG")
     if lg and (msg or notes):
         try:

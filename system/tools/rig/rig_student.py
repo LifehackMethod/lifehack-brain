@@ -32,9 +32,17 @@ def make_student_home(iso, real_home, v2):
     open(os.path.join(cfg, "code-root"), "w", encoding="utf-8").write(v2 + "\n")
     open(os.path.join(cfg, "brain-root"), "w", encoding="utf-8").write(notes + "\n")
     open(os.path.join(iso, ".rig-student"), "w", encoding="utf-8").write("student who ran bootstrap.py\n")
-    env = {k: v for k, v in os.environ.items() if k not in ("LIFEHACK_ROOT",)}
-    env["HOME"] = iso
-    p = subprocess.run([sys.executable, os.path.join(v2, "system", "tools", "bootstrap.py"), "--root", notes], env=env, capture_output=True, text=True, timeout=60)
+    # 2026-11-02 (rig-cred-isolation): bootstrap runs with the ALLOWLIST env (rig_isolation), not a copy of the launcher's: the copy carried the
+    # real gws credential paths into the student setup. PATH is a private shim (python3, git, ...) + the system folders; no LIFEHACK_ROOT.
+    import tempfile
+    import rig_isolation
+    shim = tempfile.mkdtemp(prefix="rig-student-bin-")
+    try:
+        path, _linked, _missing = rig_isolation.make_private_path(os.path.join(shim, "bin"))
+        env, _dropped = rig_isolation.build_actor_env(os.environ, {}, home=iso, path=path)
+        p = subprocess.run([sys.executable, os.path.join(v2, "system", "tools", "bootstrap.py"), "--root", notes], env=env, capture_output=True, text=True, timeout=60)
+    finally:
+        shutil.rmtree(shim, ignore_errors=True)
     if p.returncode != 0 or not os.path.isfile(os.path.join(cfg, "personal-code")):
         sys.exit("make_student_home: bootstrap.py did not finish: " + (p.stdout + p.stderr)[-400:])
     tok = os.path.join(real_home, ".config", "lifehack", "claude-oauth-token")

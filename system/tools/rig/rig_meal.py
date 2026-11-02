@@ -304,6 +304,12 @@ NUDGE = re.compile(r"read .*sop|Looks like you're|building a|read_sop|toolbox", 
 
 
 def live_case(c, notes, model, claude_bin, workdir):
+    """RETIRED 2026-11-02 (rig-cred-isolation). This is the launcher the 2026-10-30 meal-part2 sessions ran through: it made desks/rigdesk INSIDE the
+    real notes root (a Drive mount), started `claude -p` with the real HOME, a copy of the whole launcher env (real gws credential paths, a PATH
+    with gws) and --dangerously-skip-permissions, and installed NO fence - so twelve sessions wrote into the real Drive desk and nothing could have
+    stopped them. It has also raised NameError since scrub 2c (personal_code() is not defined here). Live cases run through rig_live_free.py, which
+    builds a throwaway HOME + notes root, an allowlist env, a private PATH and the fence. The body below is kept only as the record of the old shape."""
+    raise SystemExit("REFUSED: rig_meal live mode is retired (it ran sessions unfenced against the real notes root). Use rig_live_free.py run --scratch DIR.")
     import rig_live_score as ls
     desk = os.path.join(notes, "desks", "rigdesk")
     if os.path.exists(desk):

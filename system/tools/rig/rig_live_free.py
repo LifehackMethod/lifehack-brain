@@ -17,6 +17,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import rig_meal as rm  # noqa: E402
 import rig_live_score as ls  # noqa: E402
+import rig_isolation as isol  # noqa: E402  (not `iso`: main() uses that name for the throwaway HOME path)
 
 V2 = os.path.expanduser("~/lifehack-v2")
 def _real_personal_code():
@@ -127,7 +128,7 @@ def isolate_notes(envd, real_notes):
         for d in ("desks", "state/projects", "records"):
             os.makedirs(os.path.join(made, d), exist_ok=True)
         envd["LIFEHACK_ROOT"] = made
-    got = child_notes_root(dict(os.environ, **envd))
+    got = child_notes_root(isol.build_actor_env(os.environ, envd)[0])   # probe with the env the actor will really get (allowlist, not the launcher's own)
     if got is None or got == os.path.realpath(real_notes):
         sys.exit("REFUSED: the child's notes root resolves to %s (the real notes root is %s); live sessions must use a throwaway notes root" % (got, os.path.realpath(real_notes)))
     return made
@@ -254,23 +255,19 @@ def fence_settings(base_path, out_path):
     """TEST-RIG FENCE (2026-10-31, after the Round D exam wrote a real ~/.claude/skills file): a copy of the base --settings file with ONE extra PreToolUse hook,
     rig_fence.py, which denies a write/delete/move aimed at the REAL home or real notes outside the throwaway dirs. Rig-only: the product hooks, the real
     ~/.claude/settings.json and the base file are not touched. Returns out_path."""
-    with open(base_path, encoding="utf-8") as f:
-        d = json.load(f)
-    hk = d.setdefault("hooks", {}).setdefault("PreToolUse", [])
-    hk.append({"matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash|Read|Glob|Grep",
-               "hooks": [{"type": "command", "command": "python3 -I " + shlex.quote(os.path.join(HERE, "rig_fence.py"))}]})
-    with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(d, f)
-    return out_path
+    return isol.fence_settings(base_path, out_path)
 
 
 LAST_DRIVE = {}   # case id -> what rig_drive did for the last run of it (read by main to add "drive" to the result row)
+REAL_NOTES_ROOTS = []   # the real notes root(s) from the parent's pointer (shared/person_roots.py), resolved ONCE in main before any env is scrubbed
 
 
 def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model="sonnet", settings=None, drive_label=None):  # allow-silence: the exam runs live sessions on the Sonnet tier by ruling (plan 3b.4 redesign); this is the tier alias handed to claude --model, not a pinned model id
     L = c["live"]
     stream = os.path.join(work, c["id"] + ".stream.jsonl")
-    env = dict(os.environ, LIFEHACK_SANDBOX="V2", **(extra_env or {}))
+    # 2026-11-02 (rig-cred-isolation): the rig's OWN choices for this actor; the actor env is built from these by ALLOWLIST below (rig_isolation),
+    # never dict(os.environ, ...) - that copy handed the actor the real gws credential paths and a PATH with gws on it.
+    env = dict(extra_env or {})
     cwd = OPS
     if scratch:
         cwd = os.path.join(scratch, c["id"])
@@ -303,11 +300,17 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
         env["RIG_FENCE_RUN_DRIVE"] = rig_drive.begin(drive_run, home)
         if L.get("drive_fixture") == "invoice-checker":
             rig_drive.seed_invoice_skill(home)
-    env.update(RIG_FENCE_REAL_HOME=os.path.realpath(os.path.expanduser("~")), RIG_FENCE_REAL_NOTES=os.path.realpath(notes), RIG_FENCE_LOG=fence_log,
-               RIG_FENCE_ALLOW=":".join(p for p in (os.path.realpath(scratch) if scratch else cwd, os.path.realpath(home)) if p))
+    env.update(isol.fence_env(os.path.expanduser("~"), [notes], (os.path.realpath(scratch) if scratch else cwd, os.path.realpath(home)), fence_log,
+                             notes_roots=REAL_NOTES_ROOTS or isol.real_notes_roots()))
+    path, linked, missing = isol.make_private_path(os.path.join(work, "actor-bin"))
+    env, dropped = isol.build_actor_env(os.environ, env, home=home, path=path)
+    isol.write_log(os.path.join(work, c["id"] + ".isolation.json"), dropped, linked, missing, isol.preflight(env, linked, missing))
+    isol.require_clean(env, linked, missing, where="case " + c["id"])   # per session, right before the spawn: no session runs unisolated
+    if os.path.realpath(env["HOME"]) == os.path.realpath(os.path.expanduser("~")):
+        sys.exit("REFUSED: case %s would run with the real HOME" % c["id"])
     settings = fence_settings(settings or os.path.join(OPS, "system/desktop-launchers/v2/lab-settings.json"), os.path.join(work, c["id"] + ".settings.json"))
     cmd = ["claude", "-p", prompt, "--model", model, "--permission-mode", "bypassPermissions", "--setting-sources", setting_sources(home), "--plugin-dir", V2,
-           "--settings", settings, "--output-format", "stream-json", "--verbose"]
+           "--settings", settings, "--strict-mcp-config", "--output-format", "stream-json", "--verbose"]
     if L.get("max_budget_usd"):
         cmd += ["--max-budget-usd", str(L["max_budget_usd"])]
     b = snapshot(notes)
@@ -402,7 +405,8 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
             "bucket": sc["bucket"], "bases": sc.get("bases"), "layers": sc.get("friction_layers"), "files": files, "route": sc.get("route", [])[:30],
             "denied": sc.get("denied_texts", []), "fence_denies": sc.get("fence_denies", []), "real_false": real_false, "copied": sc.get("copied_shared"), "stream": os.path.basename(stream),
             "bump_names_build": bool(bump_text), "bump_text": bump_text[:2], "build_skill_calls": len(build_calls), "build_after_bump": bool(build_calls and first_deny is not None and any(i > first_deny for i in build_calls)),
-            "build_mentioned": bool(BUILD_RE.search(txt)), "commits": sc.get("commits", {}), "foreign_changes_left": foreign[:10], "cleaned": removed, "left_alone": left_alone}
+            "build_mentioned": bool(BUILD_RE.search(txt)), "commits": sc.get("commits", {}), "foreign_changes_left": foreign[:10], "cleaned": removed, "left_alone": left_alone,
+            "env_dropped": dropped, "actor_bins": sorted(linked)}
 
 
 def main():
@@ -427,6 +431,7 @@ def main():
     # other pieces write under ~/.claude. Unless the caller passes its own throwaway HOME (the student pass does), build one here.
     envd = dict(e.split("=", 1) for e in a.env)
     real_home = os.path.realpath(os.path.expanduser("~"))
+    REAL_NOTES_ROOTS[:] = isol.real_notes_roots()   # from the parent's pointer, BEFORE anything is scrubbed (a student's notes may live outside Drive)
     if a.student and "HOME" in envd:
         sys.exit("REFUSED: --student builds its own throwaway HOME; do not pass --env HOME=")
     if a.student:
@@ -475,6 +480,19 @@ def main():
     cases = [c for c in rm.load_all(a.cases) if not a.only or re.search(a.only, c["id"])]
     notes = rm.notes_root()
     work = tempfile.mkdtemp(prefix="riglive-")
+    # PREFLIGHT (2026-11-02): the whole run is refused before ANY session if the actor env would carry a cloud CLI or a credential name
+    pf_path, pf_linked, pf_missing = isol.make_private_path(os.path.join(work, "actor-bin"))
+    pf_env, pf_dropped = isol.build_actor_env(os.environ, dict(envd, **isol.fence_env(real_home, [notes], [a.scratch, envd["HOME"]], notes_roots=REAL_NOTES_ROOTS)),
+                                             home=envd["HOME"], path=pf_path)
+    print("isolation: actor PATH = %s (shim: %s)" % (pf_path, ", ".join("%s->%s" % kv for kv in sorted(pf_linked.items()))), flush=True)
+    print("isolation: dropped %d env names (values never logged): %s" % (len(pf_dropped), " ".join(pf_dropped)), flush=True)
+    print("isolation: real notes roots hard-denied: %s" % (" ".join(REAL_NOTES_ROOTS) or "(none resolved)"), flush=True)
+    try:
+        isol.require_clean(pf_env, pf_linked, pf_missing, where="run preflight")
+    except SystemExit:
+        shutil.rmtree(work, ignore_errors=True)
+        raise
+    print("isolation: preflight ok (no %s on the actor PATH, no forbidden env name)" % "/".join(isol.FORBIDDEN_BINS), flush=True)
     out, desks0 = [], sorted(os.listdir(os.path.join(notes, "desks")))
     res_dir = os.path.join(notes, "state/projects/v2/records/rig-results")
     # resume: a run cut short (laptop sleep) picks up the label's newest results file and skips finished cases
@@ -495,7 +513,7 @@ def main():
             out.append(r)
             print(r["id"], r["bucket"], r["turns"], r["secs"], r["commits"] or "", flush=True)
             open(os.path.join(res_dir, "%s-%s-live.jsonl" % (stamp, a.label)), "w", encoding="utf-8").write("\n".join(json.dumps(x) for x in out) + "\n")
-            for f in glob.glob(work + "/*.stream.jsonl") + glob.glob(work + "/*.fence.jsonl") + glob.glob(work + "/*.drive-end.json"):
+            for f in glob.glob(work + "/*.stream.jsonl") + glob.glob(work + "/*.fence.jsonl") + glob.glob(work + "/*.drive-end.json") + glob.glob(work + "/*.isolation.json"):
                 shutil.copy(f, keep)
     finally:
         shutil.rmtree(work, ignore_errors=True)

@@ -24,6 +24,7 @@ for _d in (MYD + "/_Notes", MYD + "/other", RUN, SIB, AREA + "/_archive"):
 os.symlink(MYD + "/_Notes", RUN + "/link-to-notes")      # a symlink planted inside the allowed run folder, pointing at a fenced place
 os.symlink(SIB, RUN + "/link-to-sibling")
 ENVD = dict(ENV, RIG_FENCE_REAL_NOTES=MYD + "/_Notes", RIG_FENCE_RUN_DRIVE=RUN)
+OUTN = os.path.realpath(tempfile.mkdtemp(prefix="rigfence-student-notes-"))   # a notes root OUTSIDE the home and CloudStorage (a student's plain folder)
 
 
 def fence(tool, tin, cwd=CWD, env=ENV):
@@ -129,6 +130,57 @@ CASES = [
     ("Bash ~ is the throwaway HOME", B("mkdir -p ~/.claude/skills/x && touch ~/.claude/skills/x/SKILL.md"), False),
     ("Bash write to /dev/null and /tmp", B("ls > /dev/null 2>&1; echo x > /tmp/y.txt"), False),
     ("Bash unresolved variable target", B("T=$(mktemp -d) && printf a > \"$T/a.jpg\" && mkdir \"$T/sub\""), False),
+    # ---- 2026-11-02 command denylist (a sandbox actor trashed 899 real Drive files with gws): every hiding place must deny
+    ("CMD gws plain (the canary)", B("gws drive files list"), True),
+    ("CMD gws full path", B("/opt/homebrew/bin/gws drive files list"), True),
+    ("CMD gws after env + VAR=", B("env -i FOO=1 gws drive files list"), True),
+    ("CMD gws after VAR= only", B("GOOGLE_WORKSPACE_CLI_CONFIG_DIR=/x gws auth status"), True),
+    ("CMD gws in bash -c", B("bash -c 'gws drive files list'"), True),
+    ("CMD gws in sh -lc", B("sh -lc \"gws drive files update --params x\""), True),
+    ("CMD gws in eval", B("eval \"gws drive files list\""), True),
+    ("CMD gws after && and in $( )", B("cd /tmp && echo $(gws drive files list)"), True),
+    ("CMD gws through xargs", B("cat ids.txt | xargs -n1 gws drive files delete --params"), True),
+    ("CMD gws through timeout", B("timeout 30 gws drive files list"), True),
+    ("CMD gws through find -exec", B("find . -name x -exec gws drive files list \\;"), True),
+    ("CMD gws in a bash here-doc line", B("bash <<'E'\necho start\ngws drive files list\nE"), True),
+    ("CMD gws in python subprocess list (the D-F11 shape)", B("cd /tmp && python3 -I - <<'E'\nimport json,subprocess\nfor f in fs:\n    r=subprocess.run(['gws','drive','files','update','--params',json.dumps({'fileId':f['id']})],capture_output=True)\nE"), True),
+    ("CMD gws in python os.system string", B("python3 -c \"import os; os.system('gws drive files list')\""), True),
+    ("CMD gws in node execSync", B("node -e \"require('child_process').execSync('gws drive files list')\""), True),
+    ("CMD gws via shutil.which lookup", B("python3 -c \"import shutil; print(shutil.which('gws'))\""), True),
+    ("CMD command -v gws", B("command -v gws"), True),
+    ("CMD which gh", B("which gh"), True),
+    ("CMD gh repo view", B("gh repo view"), True),
+    ("CMD gcloud", B("gcloud auth list"), True),
+    ("CMD gsutil", B("gsutil ls gs://x"), True),
+    ("CMD aws", B("aws s3 ls"), True),
+    ("CMD az", B("az account show"), True),
+    ("CMD rclone", B("rclone lsd drive:"), True),
+    ("CMD gdrive", B("gdrive files list"), True),
+    ("CMD sudo -u x gh", B("sudo -u someone gh auth status"), True),
+    ("CMD open -a Terminal script", B("open -a Terminal ./run.command"), True),
+    ("CMD open a .command file", B("open /tmp/x.command"), True),
+    ("CMD osascript do shell script gws", B("osascript -e 'do shell script \"gws drive files list\"'"), True),
+    ("CMD keychain read", B("security find-generic-password -s gws -w"), True),
+    ("CMD git credential fill", B("printf 'host=github.com\\n' | git credential fill"), True),
+    ("WRITE a script that calls gws", fence("Write", {"file_path": CWD + "/clean.sh", "content": "#!/bin/sh\nfor i in $(cat ids); do\n  gws drive files update --params $i\ndone\n"}), True),
+    ("WRITE a python script with ['gws', ...]", fence("Write", {"file_path": CWD + "/clean.py", "content": "import subprocess\nsubprocess.run(['gws','drive','files','list'])\n"}), True),
+    ("CMD no RIG_FENCE env still denies gws", fence("Bash", {"command": "gws drive files list"}, env={k: v for k, v in os.environ.items() if not k.startswith("RIG_FENCE")}), True),
+    # ---- allowed look-alikes (no false alarm on ordinary work)
+    ("CMD git push origin gh-pages (not gh)", B("cd " + CWD + " && git push origin gh-pages"), False),
+    ("CMD grep for the word gws in notes", B("grep -rn gws notes/ | head"), False),
+    ("CMD ls a ghost dir", B("ls ghost/ awsome/ azure-notes/"), False),
+    ("WRITE a README that mentions gws in prose", fence("Write", {"file_path": CWD + "/README.md", "content": "We stopped using gws for this.\n"}), False),
+    # ---- 2026-11-02 hard deny: real ~/Library/CloudStorage and real notes roots beat the allow list
+    ("HARD real ~/Library/CloudStorage Write", fence("Write", {"file_path": RH + "/Library/CloudStorage/GoogleDrive-x/My Drive/_Notes/desks/d/README.md", "content": "x"}), True),
+    ("HARD CloudStorage even when allow-listed", fence("Write", {"file_path": RH + "/Library/CloudStorage/GoogleDrive-x/My Drive/desk/a.txt", "content": "x"},
+                                                          env=dict(ENV, RIG_FENCE_ALLOW=ENV["RIG_FENCE_ALLOW"] + ":" + RH + "/Library/CloudStorage/GoogleDrive-x/My Drive")), True),
+    ("HARD Bash mkdir under CloudStorage", B("mkdir -p '" + RH + "/Library/CloudStorage/GoogleDrive-x/My Drive/_Notes/desks/rig2/tools'"), True),
+    ("HARD notes root OUTSIDE CloudStorage (RIG_FENCE_DENY), allow-listed too",
+     fence("Write", {"file_path": OUTN + "/desks/rig2/tools/a.py", "content": "x"}, env=dict(ENV, RIG_FENCE_DENY=OUTN, RIG_FENCE_ALLOW=ENV["RIG_FENCE_ALLOW"] + ":" + OUTN)), True),
+    ("HARD Bash write into the outside notes root", fence("Bash", {"command": "echo x > " + q(OUTN + "/desks/a.md")}, env=dict(ENV, RIG_FENCE_DENY=OUTN)), True),
+    ("HARD reading the outside notes root stays allowed", fence("Read", {"file_path": OUTN + "/desks/a.md"}, env=dict(ENV, RIG_FENCE_DENY=OUTN)), False),
+    ("HARD the one Drive run folder still allowed under CloudStorage-style deny", fence("Write", {"file_path": RUN + "/x", "content": "x"}, env=dict(ENVD, RIG_FENCE_DENY=MYD)), False),
+    ("HARD a sibling run folder under the deny root stays denied", fence("Write", {"file_path": SIB + "/x", "content": "x"}, env=dict(ENVD, RIG_FENCE_DENY=MYD)), True),
 ]
 
 
@@ -157,14 +209,17 @@ def main():
     print("\n".join(rows))
     n = len(CASES)
     rc, _ = fence("Write", {"file_path": RH + "/.claude/skills/x.md", "content": "x"}, env={k: v for k, v in os.environ.items() if not k.startswith("RIG_FENCE")})
-    n += 1; ok += rc == 0; print("%s no RIG_FENCE env -> fence does nothing (rc %d)" % ("ok  " if rc == 0 else "MISS", rc))
+    n += 1; ok += rc == 0; print("%s no RIG_FENCE env -> write checks off (rc %d); command checks stay on (case above)" % ("ok  " if rc == 0 else "MISS", rc))
+    p = subprocess.run([sys.executable, "-I", FENCE], input="{not json", capture_output=True, text=True, env=ENV, timeout=30)
+    good = p.returncode == 2 and p.stderr.startswith("TEST-RIG FENCE")
+    n += 1; ok += good; print("%s fence FAILS CLOSED on an input it cannot judge (rc %d)" % ("ok  " if good else "MISS", p.returncode))
     pg = product_guard_independent()
     if pg:
         prc, perr, (frc, ferr) = pg
         good = prc == 2 and "TEST-RIG FENCE" not in perr and frc == 2 and ferr.startswith("TEST-RIG FENCE")
         n += 1; ok += good
         print("%s product guard fires on its own (rc %d, no fence text) and the fence also denies with its own text" % ("ok  " if good else "MISS", prc))
-    import shutil; shutil.rmtree(T, ignore_errors=True)   # only the dir this run made
+    import shutil; shutil.rmtree(T, ignore_errors=True); shutil.rmtree(OUTN, ignore_errors=True)   # only the dirs this run made
     print("FENCE CALIBRATION: %d of %d" % (ok, n))
     return 0 if ok == n else 1
 
