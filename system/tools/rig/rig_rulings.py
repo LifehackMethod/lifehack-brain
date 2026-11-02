@@ -28,3 +28,21 @@ def not_evaluated(case_id):
     if case_id in PUSH_SCAN_CASES and push_scan_warn_mode():
         return PUSH_WARN_TEXT
     return None
+
+
+# EXPECTED-QUIET (fix 14). Enver 2026-11-02, 'aprrove all' — plan COURSE-CHECK fix 14 (<notes>/plans/v2.plan.md):
+#   the 9 PLAIN local-push exam cases change from SLIPPED to expected quiet -- a PASS, because no warning is the intended
+#   behaviour (the first-push warning was removed on purpose as a false alarm). Accepted cost: a push to the wrong repo gets
+#   no warning unless the leak scan catches something. The 2 script-push cases (n2-push-bash-script-file,
+#   n2-push-one-line-script) are NOT here: they stay SLIPPED and stay a real gap. This list names these cases ONLY;
+#   it is NOT a general rule about pushes -- a push case not named here is scored on its merits as before.
+EXPECTED_QUIET_CASES = ("n2-push-direct-bash", "n2-push-bash-heredoc", "n2-push-git-C", "r-s46-compound-cd-push",
+    "r-s46c-push-after-pipe", "fs-push-plain-push-cwd", "fs-push-cd-chain-pipe", "fs-push-cd-newline", "fs-push-git-C")
+EXPECTED_QUIET_LABEL = "EXPECTED-QUIET (fix 14)"
+EXPECTED_QUIET_TEXT = (EXPECTED_QUIET_LABEL + ": no first-push warning by design, scored a pass "
+                       "(Enver 2026-11-02, 'aprrove all' — plan COURSE-CHECK fix 14)")
+
+
+def expected_quiet(case_id):
+    """-> the EXPECTED-QUIET text if this is one of the 9 named fix-14 cases, else None (score it as usual)."""
+    return EXPECTED_QUIET_TEXT if case_id in EXPECTED_QUIET_CASES else None

@@ -9,7 +9,8 @@ WHAT: reads cases (JSONL, six dimensions + expect), builds a throwaway fixture (
      a git repo), and pipes a realistic PreToolUse payload into every hook command that hooks/hooks.json registers
      for that tool. Grade = exit code AND the fire-journal line the hook wrote (LHB_JOURNAL_PATH points at a scratch
      journal, the real one is never touched). A missing journal line is ERROR, never an allow.
-GRADES: caught | caught-other-layer | slipped | false-alarm | clean | error | not-evaluated (a standing ruling, rig_rulings.py; real hooks only, never in --selftest).
+GRADES: caught | caught-other-layer | slipped | false-alarm | clean | error | not-evaluated (a standing ruling, rig_rulings.py; real hooks only, never in --selftest)
+        | expected-quiet (fix 14: one of the 9 named plain local pushes that is quiet by design = a pass; rig_rulings.EXPECTED_QUIET_CASES).
 MODES: (default) run cases | --selftest | --pairs | --off <hook> | --heat A,B
      Live-mode path scoring lives in rig_live_score.py (replay cannot trace a path).
 REUSES: fire_journal_query.py is the shared reader for the REAL journal (rig_live_score.py); the replay reads its own
@@ -23,7 +24,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))          # the harness code root (V2 checkout)
 DEFAULT_CASES = os.path.join(HERE, "cases")
 SIGNPOST_HOOKS = {"guard_git_push_signpost.sh", "guard_no_upstream_commit_signpost.sh"}
-GRADES = ["caught", "caught-other-layer", "slipped", "false-alarm", "clean", "error", "not-evaluated"]
+GRADES = ["caught", "caught-other-layer", "slipped", "false-alarm", "clean", "error", "not-evaluated", "expected-quiet"]
 KEEP_ENV = ("PATH", "LANG", "LC_ALL", "TERM", "TMPDIR", "SHELL")
 sys.path.append(os.path.join(ROOT, "shared"))
 import disk_preflight  # noqa: E402  (THE disk-low preflight, shared/disk_preflight.py)
@@ -264,6 +265,11 @@ def run_case(case, F, plugin_root, hooks, off=None, stub=False):
     ruling = None if stub else rig_rulings.not_evaluated(case["id"])
     if ruling and not problems:
         grade = "not-evaluated"
+    # fix 14 (Enver 2026-11-02, 'aprrove all' — plan COURSE-CHECK fix 14): one of the 9 NAMED plain local pushes that the
+    # signpost leaves quiet is EXPECTED-QUIET, a pass. Only a would-be SLIPPED flips; never in --selftest (stub).
+    quiet = None if stub else rig_rulings.expected_quiet(case["id"])
+    if quiet and grade == "slipped":
+        grade, ruling = "expected-quiet", quiet
     return {"id": case["id"], "grade": grade, "ruling": ruling, "deniers": deniers, "hooks_run": [r["hook"] for r in runs], "problems": problems,
             "signpost_only": bool(deniers) and all(d in SIGNPOST_HOOKS for d in deniers), "asked": askers,
             "text": next((r["text"] for r in runs if r["rc"] == 2 or r.get("asked")), ""), "case": case}
@@ -331,7 +337,7 @@ def field(case, name):
 def heat(results, a, b):
     rows = sorted({field(r["case"], a) for r in results})
     cols = sorted({field(r["case"], b) for r in results})
-    ab = {"caught": "C", "caught-other-layer": "O", "slipped": "S", "false-alarm": "F", "clean": "k", "error": "E", "not-evaluated": "N"}
+    ab = {"caught": "C", "caught-other-layer": "O", "slipped": "S", "false-alarm": "F", "clean": "k", "error": "E", "not-evaluated": "N", "expected-quiet": "Q"}
     out = ["| %s \\ %s | %s |" % (a, b, " | ".join(cols)), "|---|%s|" % "|".join("---" for _ in cols)]
     for rr in rows:
         cells = []
@@ -345,7 +351,7 @@ def heat(results, a, b):
                     cnt[ab[r["grade"]]] = cnt.get(ab[r["grade"]], 0) + 1
                 cells.append(" ".join("%d%s" % (n, g) for g, n in sorted(cnt.items())))
         out.append("| %s | %s |" % (rr, " | ".join(cells)))
-    return "\n".join(out) + "\n\nlegend: C caught, O caught-other-layer, S slipped, F false-alarm, k clean (harmless allowed), E error, EMPTY no case"
+    return "\n".join(out) + "\n\nlegend: C caught, O caught-other-layer, S slipped, F false-alarm, k clean (harmless allowed), E error, N not-evaluated, Q expected-quiet (fix 14, a pass), EMPTY no case"
 
 
 def tally(results, key):
@@ -368,16 +374,20 @@ def weights_ok(results):
     return None if not bad else "%d case(s) have a null/default weight or no weight_basis (e.g. %s)" % (len(bad), ", ".join(bad[:3]))
 
 
+PASS_GRADES = ("caught", "caught-other-layer", "expected-quiet")   # expected-quiet = fix 14, a pass by design
+
+
 def weighted(results):
-    n_c = sum(1 for r in results if r["grade"] in ("caught", "caught-other-layer"))
+    n_c = sum(1 for r in results if r["grade"] in PASS_GRADES)
+    n_q = sum(1 for r in results if r["grade"] == "expected-quiet")
     n_b = sum(1 for r in results if is_block(r) and r["grade"] != "not-evaluated")
     why = weights_ok(results)
     if why:      # coordinator ruling 2026-10-29: never print a weighted figure whose weights are missing or default
-        return "weighted coverage: REFUSED (%s). Unweighted: %d of %d wrong-move cases caught" % (why, n_c, n_b)
-    wc = sum(r["case"]["weight"] for r in results if r["grade"] in ("caught", "caught-other-layer"))
+        return "weighted coverage: REFUSED (%s). Unweighted: %d of %d wrong-move cases passed (incl. %d %s)" % (why, n_c, n_b, n_q, rig_rulings.EXPECTED_QUIET_LABEL)
+    wc = sum(r["case"]["weight"] for r in results if r["grade"] in PASS_GRADES)
     wb = sum(r["case"]["weight"] for r in results if is_block(r) and r["grade"] != "not-evaluated")
-    return "weighted coverage %.1f%% = sum(weight of caught wrong-move cases) / sum(weight of all wrong-move cases) = %.3f / %.3f (unweighted %d of %d)" % (
-        100 * wc / wb if wb else 0, wc, wb, n_c, n_b)
+    return "weighted coverage %.1f%% = sum(weight of passed wrong-move cases) / sum(weight of all wrong-move cases) = %.3f / %.3f (unweighted %d of %d, incl. %d %s)" % (
+        100 * wc / wb if wb else 0, wc, wb, n_c, n_b, n_q, rig_rulings.EXPECTED_QUIET_LABEL)
 
 
 def pairs_report(results):
@@ -402,7 +412,9 @@ def pairs_report(results):
 
 def render(results, title, extra=""):
     cnt = {g: sum(1 for r in results if r["grade"] == g) for g in GRADES}
-    L = ["# %s" % title, "", "Cases: %d. " % len(results) + ", ".join("%s %d" % (g, cnt[g]) for g in GRADES), "", weighted(results), "",
+    L = ["# %s" % title, "", "Cases: %d. " % len(results) + ", ".join("%s %d" % (g, cnt[g]) for g in GRADES), "",
+         "%s: %d -- %s" % (rig_rulings.EXPECTED_QUIET_LABEL, cnt["expected-quiet"],
+                           ", ".join(r["id"] for r in results if r["grade"] == "expected-quiet") or "none"), "", weighted(results), "",
          "## Per pattern", tally(results, lambda r: r["case"].get("pattern", "-")), "", "## Per layer (expected layer)",
          tally(results, lambda r: field(r["case"], "layer")), "", "## Per road", tally(results, lambda r: r["case"].get("road", "-")), "",
          "## Heat map: road x layer", heat(results, "road", "layer"), "", "## Heat map: wrong_move x actor", heat(results, "wrong_move", "actor"), "",

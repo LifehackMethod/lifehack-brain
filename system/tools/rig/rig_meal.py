@@ -395,7 +395,8 @@ def run_live(cases, label, model="haiku"):  # allow-silence: rig case text that 
 
 # ───────────────────────── scoring ─────────────────────────
 def bucket(r):
-    return {"caught": "SAVED", "caught-other-layer": "SAVED", "slipped": "SLIPPED", "false-alarm": "FALSE ALARM", "clean": "RIGHT", "error": "ERROR"}[r["grade"]]
+    return {"caught": "SAVED", "caught-other-layer": "SAVED", "slipped": "SLIPPED", "false-alarm": "FALSE ALARM", "clean": "RIGHT", "error": "ERROR",
+            "expected-quiet": "EXPECTED-QUIET (fix 14)"}[r["grade"]]   # fix 14: a pass by design, its own bucket
 
 
 def wsum(rs):
@@ -407,13 +408,13 @@ def table(rows, keyfn, title, weights=True):
     for r in rows:
         for k in (keyfn(r) if isinstance(keyfn(r), list) else [keyfn(r)]):
             groups[k].append(r)
-    B = ["RIGHT", "SAVED", "SLIPPED", "FALSE ALARM", "ERROR"]
+    B = ["RIGHT", "SAVED", "EXPECTED-QUIET (fix 14)", "SLIPPED", "FALSE ALARM", "ERROR"]
     L = ["| %s | N | %s | wrong-move N | saved %% | saved weighted %% |" % (title, " | ".join(B)), "|---|---|%s|---|---|---|" % "|".join("---" for _ in B)]
     for k in sorted(groups, key=str):
         g = groups[k]
         cnt = collections.Counter(bucket(r) for r in g)
         wm = [r for r in g if rig_run.is_block(r)]
-        sv = [r for r in wm if r["grade"] in ("caught", "caught-other-layer")]
+        sv = [r for r in wm if r["grade"] in rig_run.PASS_GRADES]   # saved, or expected-quiet (fix 14, a pass)
         pct = "%.0f%%" % (100 * len(sv) / len(wm)) if wm else "-"
         wp = "-"
         if wm and weights and not rig_run.weights_ok(g):
@@ -503,6 +504,7 @@ def report(base_path, off_paths, out_path, wall):
     P("")
     P("- Cases run: %d (%s). Wall time of the baseline run: %s." % (len(base), ", ".join("%s %d" % kv for kv in sorted(modes.items())), wall))
     P("- Wrong-move cases: %d. SAVED %d, SLIPPED %d, ERROR %d (errors are never counted as saved or slipped)." % (len(wm), len(sv), sum(1 for r in wm if r["grade"] == "slipped"), sum(1 for r in wm if r["grade"] == "error")))
+    P("- EXPECTED-QUIET (fix 14, a pass by design, not counted in SAVED): %d -- %s" % (sum(1 for r in wm if r["grade"] == "expected-quiet"), ", ".join(r["id"] for r in wm if r["grade"] == "expected-quiet") or "none"))
     P("- Correct-move cases: %d. RIGHT (nothing in the way) %d, FALSE ALARM %d, ERROR %d." % (len(corr), sum(1 for r in corr if r["grade"] == "clean"), sum(1 for r in corr if r["grade"] == "false-alarm"), sum(1 for r in corr if r["grade"] == "error")))
     P("- Grades: " + ", ".join("%s %d" % kv for kv in sorted(cnt.items())))
     P("- " + rig_run.weighted(base))
