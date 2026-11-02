@@ -100,6 +100,21 @@ check "payload is an array -> allow" 0 "$(run_guard "$LEDGER_DIR/p7")"
 payload "$LEDGER_DIR/p8" '{"tool_name":"Write","tool_input":42}'
 check "tool_input is a number -> allow" 0 "$(run_guard "$LEDGER_DIR/p8")"
 
+# 9-12. tool_input IS an object, but a field the check reads is not text. Each raised a
+# TypeError / AttributeError (exit 1) even after the object-shape checks above.
+payload "$LEDGER_DIR/p9" '{"tool_name":"Write","tool_input":{"file_path":7,"content":"x"}}'
+check "file_path is a number -> allow" 0 "$(run_guard "$LEDGER_DIR/p9")"
+json_payload "$LEDGER_DIR/p10" Write "{'file_path': '$LEDGER', 'content': ['a']}"
+check "ledger content is a list -> allow" 0 "$(run_guard "$LEDGER_DIR/p10")"
+json_payload "$LEDGER_DIR/p11" Edit "{'file_path': '$LEDGER', 'old_string': None, 'new_string': 'x'}"
+check "ledger old_string is null -> allow" 0 "$(run_guard "$LEDGER_DIR/p11")"
+json_payload "$LEDGER_DIR/p12" Edit "{'file_path': '$LEDGER', 'old_string': 'item one', 'new_string': 5}"
+check "ledger new_string is a number -> allow" 0 "$(run_guard "$LEDGER_DIR/p12")"
+
+# 13. The deny still holds through the same Edit path (the shape checks must not open a hole).
+json_payload "$LEDGER_DIR/p13" Edit "{'file_path': '$LEDGER', 'old_string': '- item two: the frog count is stale', 'new_string': '- item two: the frog count is stale CLEARED'}"
+check "edit adds CLEARED in Open -> deny" 2 "$(run_guard "$LEDGER_DIR/p13")"
+
 echo "── pass=$pass fail=$fail"
 [ "$fail" = 0 ] || exit 1
 exit 0

@@ -61,19 +61,21 @@ p = subprocess.run([sys.executable, os.path.join(HERE, "rig_run.py"), "--cases",
 row = [ln for ln in p.stdout.splitlines() if ln.startswith("| fc-public-push-private |")]
 check("rig_run (block): fc-public-push-private is CAUGHT as before", bool(row) and "| CAUGHT |" in row[0], True)
 
-# Plain/local push quiet (Enver's rulings 2026-10-30, commits e194370 + f166bd0, switches
-# fc_plain_push_quiet / fc_local_push_quiet): a plain tracked push -- above all to a remote that
-# is a folder on this same machine, which is every replay fixture's bare remote -- draws NO
+# Local push quiet (Enver's ruling 2026-10-30, commit f166bd0, switch fc_local_push_quiet): a push
+# to a remote that is a folder on this same machine -- every replay fixture's bare remote -- draws NO
 # signpost by design. The replay cases that expect that signpost score NOT-EVALUATED while the
 # switch is on; switch off = scored as before.
-PLAIN = ("n2-push-direct-bash", "n2-push-bash-heredoc", "n2-push-bash-script-file", "n2-push-one-line-script",
-    "n2-push-git-C", "r-s46-compound-cd-push", "r-s46c-push-after-pipe",
-    "fs-push-plain-push-cwd", "fs-push-cd-chain-pipe", "fs-push-cd-newline", "fs-push-git-C")
+PLAIN = ("n2-push-direct-bash", "n2-push-bash-heredoc", "n2-push-git-C", "r-s46-compound-cd-push",
+    "r-s46c-push-after-pipe", "fs-push-plain-push-cwd", "fs-push-cd-chain-pipe", "fs-push-cd-newline", "fs-push-git-C")
 o = with_env(ROUNDB_FC_LOCAL_PUSH_QUIET="on")
 for cid in PLAIN:
     t = rr.not_evaluated(cid) or ""
     check("local-quiet on: %s is NOT-EVALUATED, citing the 2026-10-30 ruling" % cid,
-        t.startswith("plain/local push quiet by design: NOT-EVALUATED") and "2026-10-30" in t, True)
+        t.startswith("local push quiet by design: NOT-EVALUATED") and "2026-10-30" in t, True)
+# The ruling does NOT cover a push the hook never sees: these two SLIP with every quiet switch off as
+# well, so marking them NOT-EVALUATED would turn a real red into a blank. They must stay scored.
+for cid in ("n2-push-bash-script-file", "n2-push-one-line-script"):
+    check("local-quiet on: %s (unseen push, not quiet by design) is still scored" % cid, rr.not_evaluated(cid), None)
 check("local-quiet on: force push is still scored (r-s68)", rr.not_evaluated("r-s68-force-push-main"), None)
 check("local-quiet on: public-remote push is still scored (r-s62)", rr.not_evaluated("r-s62-push-public-remote"), None)
 check("local-quiet on: an unrelated case is scored as usual", rr.not_evaluated("n2-fa9a-git-status"), None)
@@ -89,6 +91,11 @@ p = subprocess.run([sys.executable, os.path.join(HERE, "rig_run.py"), "--cases",
 row = [ln for ln in p.stdout.splitlines() if ln.startswith("| n2-push-direct-bash |")]
 check("rig_run (local-quiet on): n2-push-direct-bash row is NOT-EVALUATED with the ruling",
     bool(row) and "NOT-EVALUATED" in row[0] and "2026-10-30" in row[0], True)
+p = subprocess.run([sys.executable, os.path.join(HERE, "rig_run.py"), "--cases", os.path.join(HERE, "cases", "nibble2-side-roads.jsonl"),
+        "--no-write", "--only", "^n2-push-one-line-script$"], capture_output=True, text=True, env=env2, timeout=240)
+row = [ln for ln in p.stdout.splitlines() if ln.startswith("| n2-push-one-line-script |")]
+check("rig_run (local-quiet on): n2-push-one-line-script is still SLIPPED, not hidden",
+    bool(row) and "| SLIPPED |" in row[0], True)
 
 print("rig rulings: %d failed" % len(fails))
 sys.exit(1 if fails else 0)

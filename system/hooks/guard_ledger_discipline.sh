@@ -12,11 +12,13 @@ trap 'lhb_journal_fire "$?" "guard_ledger_discipline.sh" "PreToolUse" "Bash|Writ
 #      CLEARED / FIXED) to the ## Open section. The only legal change to ## Open is DELETION of a line.
 # REDIRECT: to close an item, DELETE its line from ## Open. If it warrants a history note, add a
 #      ONE-LINE dated entry under ## Cleared instead. See the state/debt-ledger.md header.
-# UPDATED: 2026-11-02 (a non-object tool_input / payload crashed the hook with exit 1, an ERROR,
-#      where the SCOPING NOTE below promises allow — found by the observation-check layer_firing signal;
-#      pinned in system/hooks/tests/test_ledger_discipline.sh) · 2026-06-18 (ported 2026-08-13
-#      from the donor repo — verbatim; the ledger path is
-#      already matched as a relative suffix, so no path resolution work was needed)
+# UPDATED: 2026-11-02 (any payload the check could not read — tool_input not an object, a path,
+#      content, old_string or new_string that is not text — crashed the python with exit 1, an ERROR,
+#      where the SCOPING NOTE below promises allow. Now every unexpected shape and any exception
+#      exits 0; only the real deny exits 2. Found by the observation check's layer_firing signal
+#      (exit_code 1); pinned in system/hooks/tests/test_ledger_discipline.sh) · 2026-06-18 (ported
+#      2026-08-13 from the donor repo — verbatim; the ledger path is already matched as a relative
+#      suffix, so no path resolution work was needed)
 # SCOPING NOTE: this fires on ALL Write|Edit but guards ONLY debt-ledger.md. On any parse failure
 #      or non-ledger target it exits 0 (allow) — a bug here must NEVER block the whole edit surface;
 #      it can only ever miss a ledger check (the Health Authority + human still backstop that).
@@ -27,52 +29,6 @@ export LIFEHACK_LEDGER_HOOK_INPUT="$INPUT"
 export LIFEHACK_LEDGER_WINFOLD_LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib/winpath_fold.py"
 python3 <<'PY'
 import os, json, re, sys
-try:
-    data = json.loads(os.environ.get("LIFEHACK_LEDGER_HOOK_INPUT", ""))
-except Exception:
-    sys.exit(0)
-# SHAPE (2026-11-02, observation-check layer_firing red "exit_code 1"): real traffic has been seen with
-# tool_input as a plain string (and a non-object top level is equally possible) -- data.get /
-# ti.get then raise AttributeError and the hook exits 1, an ERROR, on a hook whose SCOPING
-# NOTE above promises allow-on-any-parse-failure. Any shape that is not an object is "no
-# ledger target we can see": allow (exit 0), never crash.
-if not isinstance(data, dict):
-    sys.exit(0)
-ti = data.get("tool_input")
-if not isinstance(ti, dict):
-    ti = {}
-path = (ti.get("file_path") or ti.get("path") or "")
-# WINDOWS FOLD: tool_input's path arrives backslash-native (and possibly drive-lettered /
-# mixed-case) on Windows, so a bare endswith("state/debt-ledger.md") would silently never
-# match there and this guard would enforce nothing. Fold a COMPARISON copy only -- `path`
-# itself stays the original spelling because it is used below to actually open the file.
-# Fail closed to the OLD behaviour (plain slash-fold), not to a hard block, if the helper
-# cannot be loaded -- this guard's SCOPING NOTE already treats any lookup failure as allow,
-# so a missing lib degrades gracefully rather than blocking every Write/Edit in the repo.
-_lib = os.environ.get("LIFEHACK_LEDGER_WINFOLD_LIB", "")
-path_cmp = path.replace("\\", "/")
-if _lib and os.path.isfile(_lib):
-    try:
-        import importlib.util
-        _spec = importlib.util.spec_from_file_location("winpath_fold", _lib)
-        _wf = importlib.util.module_from_spec(_spec)
-        _spec.loader.exec_module(_wf)
-        path_cmp = _wf.winfold(path)
-    except Exception:
-        pass                              # fall back to the plain slash-fold above
-if not path_cmp.endswith("state/debt-ledger.md"):
-    sys.exit(0)                          # only the canonical ledger is guarded
-try:
-    cur = open(path, encoding="utf-8").read()
-except Exception:
-    cur = ""
-if ti.get("content") is not None:        # Write (full overwrite)
-    new = ti["content"]
-elif "new_string" in ti:                 # Edit
-    o, n = ti.get("old_string", ""), ti.get("new_string", "")
-    new = cur.replace(o, n) if ti.get("replace_all") else cur.replace(o, n, 1)
-else:
-    sys.exit(0)
 FORBIDDEN = re.compile(r"✅|\b(RESOLVED|CLEARED|FIXED)\b")
 def open_section(text):
     lines, start = text.splitlines(), None
@@ -89,7 +45,64 @@ def open_section(text):
     return out
 def count(text):
     return sum(1 for ln in open_section(text) if FORBIDDEN.search(ln))
-if count(new) > count(cur):
+def verdict():
+    """-> 2 (deny: the edit ADDS an annotation to ## Open) or 0 (allow). Any shape this cannot read is 0."""
+    try:
+        data = json.loads(os.environ.get("LIFEHACK_LEDGER_HOOK_INPUT", ""))
+    except Exception:
+        return 0
+    # SHAPE (2026-11-02, observation check layer_firing red "exit_code 1"): a payload whose top level or
+    # tool_input is not an object, or whose path/content/old_string/new_string is not text, used to raise
+    # (AttributeError / TypeError) and exit 1. None of those is a ledger write this guard can read: allow.
+    if not isinstance(data, dict):
+        return 0
+    ti = data.get("tool_input")
+    if not isinstance(ti, dict):
+        return 0
+    path = ti.get("file_path") or ti.get("path") or ""
+    if not isinstance(path, str):
+        return 0
+    # WINDOWS FOLD: tool_input's path arrives backslash-native (and possibly drive-lettered /
+    # mixed-case) on Windows, so a bare endswith("state/debt-ledger.md") would silently never
+    # match there and this guard would enforce nothing. Fold a COMPARISON copy only -- `path`
+    # itself stays the original spelling because it is used below to actually open the file.
+    # Fail closed to the OLD behaviour (plain slash-fold), not to a hard block, if the helper
+    # cannot be loaded -- this guard's SCOPING NOTE already treats any lookup failure as allow,
+    # so a missing lib degrades gracefully rather than blocking every Write/Edit in the repo.
+    _lib = os.environ.get("LIFEHACK_LEDGER_WINFOLD_LIB", "")
+    path_cmp = path.replace("\\", "/")
+    if _lib and os.path.isfile(_lib):
+        try:
+            import importlib.util
+            _spec = importlib.util.spec_from_file_location("winpath_fold", _lib)
+            _wf = importlib.util.module_from_spec(_spec)
+            _spec.loader.exec_module(_wf)
+            path_cmp = _wf.winfold(path)
+        except Exception:
+            pass                              # fall back to the plain slash-fold above
+    if not isinstance(path_cmp, str) or not path_cmp.endswith("state/debt-ledger.md"):
+        return 0                              # only the canonical ledger is guarded
+    try:
+        cur = open(path, encoding="utf-8").read()
+    except Exception:
+        cur = ""
+    if ti.get("content") is not None:        # Write (full overwrite)
+        new = ti["content"]
+    elif "new_string" in ti:                 # Edit
+        o, n = ti.get("old_string") or "", ti.get("new_string") or ""
+        if not isinstance(o, str) or not isinstance(n, str):
+            return 0
+        new = cur.replace(o, n) if ti.get("replace_all") else cur.replace(o, n, 1)
+    else:
+        return 0
+    if not isinstance(new, str):
+        return 0
+    return 2 if count(new) > count(cur) else 0
+try:
+    rc = verdict()
+except Exception:                            # SCOPING NOTE: a bug here must never be an ERROR (exit 1)
+    rc = 0
+if rc == 2:
     deny = ('{"decision":"block","reason":"BLOCKED: this edit ADDS a status-annotation '
             '(✅/RESOLVED/CLEARED/FIXED) line to the ## Open section of state/debt-ledger.md. '
             'WHY: annotate-in-place is exactly what made the debt list GROW +29 in 4 days — '
@@ -97,6 +110,5 @@ if count(new) > count(cur):
             'DELETE its line from ## Open; if it needs a history note, add a one-line dated entry '
             'under ## Cleared instead."}')
     print(deny, file=sys.stderr)
-    sys.exit(2)
-sys.exit(0)
+sys.exit(rc)
 PY

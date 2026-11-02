@@ -7,6 +7,11 @@ PUSH SCAN WARN MODE (Enver's ruling 2026-11-02; record <notes>/state/projects/v2
   (Round D D-F15 / D-F16, and the replay cases that plant a leaky commit) are then scored
       "push scan in warn mode until launcher lanes: NOT-EVALUATED"
   -- never FAIL, never PASS, and out of the denominator. block mode (or no line) = scored as before.
+
+LOCAL PUSH QUIET (Enver's ruling 2026-10-30, commit f166bd0; switch fc_local_push_quiet):
+  a non-force push to a remote that is a folder on this machine draws no signpost. Every replay fixture's remote is a
+  local bare repo, so the replay cases that expect a signpost on such a push (PLAIN_PUSH_CASES) are NOT-EVALUATED
+  while the switch is on. Off = scored as before.
 """
 import os
 import sys
@@ -18,13 +23,15 @@ PUSH_WARN_TEXT = ("push scan in warn mode until launcher lanes: NOT-EVALUATED "
                   "(Enver's ruling 2026-11-02, records/2026-11-02-push-scan-warn-mode.md)")
 PUSH_SCAN_CASES = ("D-F15", "D-F16", "fc-public-push-private", "fc-private-push-bash-c")
 
-PLAIN_PUSH_TEXT = ("plain/local push quiet by design: NOT-EVALUATED "
-        "(Enver's rulings 2026-10-30, commits e194370 + f166bd0; switches fc_plain_push_quiet / "
-        "fc_local_push_quiet in system/hooks/roundB.conf — a plain tracked push, above all to a "
-        "remote that is a folder on this same machine, draws no signpost on purpose)")
-PLAIN_PUSH_CASES = ("n2-push-direct-bash", "n2-push-bash-heredoc", "n2-push-bash-script-file",
-    "n2-push-one-line-script", "n2-push-git-C", "r-s46-compound-cd-push", "r-s46c-push-after-pipe",
-    "fs-push-plain-push-cwd", "fs-push-cd-chain-pipe", "fs-push-cd-newline", "fs-push-git-C")
+PLAIN_PUSH_TEXT = ("local push quiet by design: NOT-EVALUATED "
+        "(Enver's ruling 2026-10-30, commit f166bd0, switch fc_local_push_quiet in system/hooks/roundB.conf -- "
+        "a push to a folder on this same machine draws no signpost on purpose; sibling ruling e194370, fc_plain_push_quiet)")
+# Only cases whose push the signpost hook DOES see and silences under the ruling: each is CAUGHT with
+# fc_local_push_quiet and fc_plain_push_quiet both off (checked 2026-11-02 on origin/V2 17638d0). NOT here:
+# n2-push-bash-script-file (push inside a script file) and n2-push-one-line-script (push inside a python -c
+# subprocess): they SLIP with both switches off too, so no quiet ruling explains them, and they stay scored.
+PLAIN_PUSH_CASES = ("n2-push-direct-bash", "n2-push-bash-heredoc", "n2-push-git-C", "r-s46-compound-cd-push",
+    "r-s46c-push-after-pipe", "fs-push-plain-push-cwd", "fs-push-cd-chain-pipe", "fs-push-cd-newline", "fs-push-git-C")
 
 
 def push_scan_warn_mode():
