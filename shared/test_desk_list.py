@@ -38,6 +38,19 @@ desks:
 """
 # The exact breakage 6a measured: an entry pasted under `desks: []`.
 BROKEN = "schema_version: 2\ndesks: []\n  - desk_id: alpha\n    backlog_mode: queue\n"
+# Exactly the entry desk_scaffold.py prints for a person to paste (quoted notes, yes/no, a comment).
+SCAFFOLDED = """schema_version: 2
+desks:   # one entry per full desk
+  - desk_id: lamps
+    open_loops_path: desks/lamps/state/open-loops.md
+    purpose_path: desks/lamps/canon/purpose.md
+    reads_external: no
+    backlog_mode: register
+    notes: "Scaffolded by desk_scaffold.py 2026-11-02. #1"
+"""
+SCAFFOLDED_PARSED = [{"desk_id": "lamps", "open_loops_path": "desks/lamps/state/open-loops.md",
+                      "purpose_path": "desks/lamps/canon/purpose.md", "reads_external": False,
+                      "backlog_mode": "register", "notes": "Scaffolded by desk_scaffold.py 2026-11-02. #1"}]
 
 
 class Base(unittest.TestCase):
@@ -64,7 +77,22 @@ class Base(unittest.TestCase):
         us = site.getusersitepackages() if site.ENABLE_USER_SITE else ""
         if us and os.path.isdir(us):
             e["PYTHONPATH"] = os.pathsep.join(p for p in (us, e.get("PYTHONPATH", "")) if p)
+        if self.MODE == "none":
+            # A student without PyYAML, on ANY interpreter: a stub `yaml` first on the path that refuses
+            # to import, exactly as a missing package does.
+            stub = os.path.join(self.tmp, "no-yaml")
+            os.makedirs(stub, exist_ok=True)
+            with open(os.path.join(stub, "yaml.py"), "w", encoding="utf-8") as f:
+                f.write("raise ImportError('No module named yaml (test stub)')\n")
+            e["PYTHONPATH"] = os.pathsep.join(p for p in (stub, e.get("PYTHONPATH", "")) if p)
         return e
+
+    # "yaml" = PyYAML present (skipped when this interpreter has none); "none" = PyYAML absent.
+    MODE = "yaml"
+
+    def need_mode(self):
+        if self.MODE == "yaml" and not HAVE_YAML:
+            self.skipTest("PyYAML not installed under this interpreter")
 
     def run_py(self, *args):
         return subprocess.run([sys.executable] + list(args), env=self.env(), capture_output=True, text=True,
@@ -93,34 +121,40 @@ class Reader(Base):
     def test_plugin_ships_no_list(self):
         self.assertFalse(os.path.exists(os.path.join(ROOT, "system", "desk-registry.yaml")))
 
-    @unittest.skipUnless(HAVE_YAML, "PyYAML not installed under this interpreter")
     def test_good_list_is_read(self):
+        self.need_mode()
         self.write("desks/desk-registry.yaml", GOOD)
         r = self.run_py(DESK_LIST, "--check")
         self.assertEqual(r.returncode, 0, r.stdout)
         self.assertIn("2 desk(s)", r.stdout)
+        self.assertNotIn("PyYAML", r.stdout)
 
-    @unittest.skipUnless(HAVE_YAML, "PyYAML not installed under this interpreter")
     def test_broken_list_reports_the_real_error(self):
+        self.need_mode()
         self.write("desks/desk-registry.yaml", BROKEN)
         r = self.run_py(DESK_LIST, "--check")
         self.assertEqual(r.returncode, 1)
         self.assertIn("cannot be read", r.stdout)
         self.assertNotIn("PyYAML is not installed", r.stdout)
 
-    @unittest.skipUnless(HAVE_YAML, "PyYAML not installed under this interpreter")
     def test_wrong_shape_is_named(self):
+        self.need_mode()
         self.write("desks/desk-registry.yaml", "desks: alpha\n")
         r = self.run_py(DESK_LIST, "--check")
         self.assertEqual(r.returncode, 1)
-        self.assertIn("not a list", r.stdout)
+        self.assertIn("ERROR", r.stdout)
+        self.assertIn("desks:", r.stdout)
 
-    @unittest.skipIf(HAVE_YAML, "this case is for an interpreter WITHOUT PyYAML")
-    def test_without_pyyaml_the_message_says_so(self):
-        self.write("desks/desk-registry.yaml", GOOD)
-        r = self.run_py(DESK_LIST, "--check")
-        self.assertEqual(r.returncode, 1)
-        self.assertIn("PyYAML is not installed", r.stdout)
+    def test_scaffold_printed_entry_reads_identically(self):
+        """The entry desk_scaffold.py tells a person to paste must read the same either way."""
+        self.need_mode()
+        self.write("desks/desk-registry.yaml", SCAFFOLDED)
+        code = ("import sys, json; sys.path.insert(0, %r); import desk_list; d, e = desk_list.load_desks(); "
+                "print(json.dumps([d, e], sort_keys=True))" % HERE)
+        r = self.run_py("-c", code)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        import json
+        self.assertEqual(json.loads(r.stdout), [SCAFFOLDED_PARSED, None])
 
     def test_env_seam_empty_means_no_list(self):
         self.write("desks/desk-registry.yaml", GOOD)
@@ -128,6 +162,24 @@ class Reader(Base):
         e["LIFEHACK_DESK_LIST"] = ""
         r = subprocess.run([sys.executable, DESK_LIST, "--path"], env=e, capture_output=True, text=True)
         self.assertEqual(r.stdout, "")
+
+
+class ReaderNoYaml(Reader):
+    """Every Reader case again, with PyYAML absent: a student with a desk must get their desks."""
+    MODE = "none"
+
+    def test_malformed_lines_give_a_real_error(self):
+        for bad, why in ((BROKEN, "line 3"),
+                         ("desks:\n\t- desk_id: a\n", "tab"),
+                         ("desks:\n  - desk_id: [a, b]\n", "full YAML"),
+                         ("desks:\n  - desk_id: \"a\n", "unclosed"),
+                         ("desks:\n  - desk_id: a\n    open_loops_path desks/a\n", "line 3")):
+            self.write("desks/desk-registry.yaml", bad)
+            r = self.run_py(DESK_LIST, "--check")
+            self.assertEqual(r.returncode, 1, (bad, r.stdout))
+            self.assertIn("cannot be read", r.stdout)
+            self.assertIn(why, r.stdout)
+            self.assertNotIn("PyYAML is not installed", r.stdout)
 
 
 class DeskFolder(Base):
@@ -147,16 +199,39 @@ class DeskFolder(Base):
         self.assertEqual(self.lookup("taxes"), "None|None")
 
     def test_desk_id_maps_to_its_folder(self):
+        self.need_mode()
         self.write("desks/desk-registry.yaml", self.MAPPED)
         self.assertEqual(self.lookup("taxes"), "money|None")
         self.assertEqual(self.lookup("lamps"), "lamps|None")
         self.assertEqual(self.lookup("ghost"), "None|None")
 
-    @unittest.skipUnless(HAVE_YAML, "PyYAML not installed under this interpreter")
     def test_broken_list_returns_the_real_error(self):
+        self.need_mode()
         self.write("desks/desk-registry.yaml", BROKEN)
         out = self.lookup("alpha")
         self.assertTrue(out.startswith("None|") and "cannot be read" in out, out)
+
+
+class DeskFolderNoYaml(DeskFolder):
+    MODE = "none"
+
+
+class DeskIdsNoYaml(Base):
+    MODE = "none"
+
+    def ids(self):
+        code = "import sys; sys.path.insert(0, %r); import desk_list; print(sorted(desk_list.desk_ids()))" % HERE
+        r = self.run_py("-c", code)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return r.stdout.strip()
+
+    def test_ids_read_without_pyyaml(self):
+        self.write("desks/desk-registry.yaml", GOOD)
+        self.assertEqual(self.ids(), "['alpha', 'beta']")
+
+    def test_broken_list_still_yields_ids_leniently(self):
+        self.write("desks/desk-registry.yaml", BROKEN)
+        self.assertEqual(self.ids(), "['alpha']")
 
 
 class BacklogGroom(Base):

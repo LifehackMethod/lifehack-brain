@@ -9,7 +9,7 @@ that person's notes folder, beside the desks it names:
 <notes> is found through `shared/person_roots.py` (which reads `shared/brain_root.py`); nothing here names
 anyone's folder. A missing list means "no desks": a new student has nothing to set up, and every reader
 (backlog_groom.py, planning-diary-capture.py) simply sees zero desks. A list that is THERE but cannot be read
-is different: `load_desks()` returns the real reason (a YAML error, a wrong shape, PyYAML missing), so a
+is different: `load_desks()` returns the real reason (a YAML error, a wrong shape, a bad line), so a
 reader can say what is actually wrong instead of guessing.
 
 An entry's fields (only the first three are read by any tool today):
@@ -59,24 +59,122 @@ def resolve_desk_list(env=None):
     return p if os.path.isfile(p) else None
 
 
+_KEY = r"[A-Za-z_][A-Za-z0-9_]*"
+_TOP_RE = re.compile(r"^(%s):(?:\s+(.*))?$" % _KEY)
+_ITEM_RE = re.compile(r"^(\s+)-\s+(%s):(?:\s+(.*))?$" % _KEY)
+_FIELD_RE = re.compile(r"^(\s+)(%s):(?:\s+(.*))?$" % _KEY)
+
+
+def _scalar(raw):
+    """One YAML-ish scalar, the way yaml.safe_load would read it for this list's simple values."""
+    v = (raw or "").strip()
+    if v[:1] in ("'", '"'):
+        q = v[0]
+        end = v.find(q, 1)
+        if end < 0:
+            raise ValueError("unclosed %s quote" % q)
+        rest = v[end + 1:].strip()
+        if rest and not rest.startswith("#"):
+            raise ValueError("text after a quoted value: %r" % rest)
+        return v[1:end]
+    if " #" in v:
+        v = v.split(" #", 1)[0].rstrip()
+    elif v.startswith("#"):
+        v = ""
+    if v in ("", "~", "null", "Null", "NULL"):
+        return None
+    low = v.lower()
+    if low in ("yes", "true", "on"):
+        return True
+    if low in ("no", "false", "off"):
+        return False
+    if re.fullmatch(r"[-+]?\d+", v):
+        return int(v)
+    if v[:1] in ("[", "{", "&", "*", "!", "|", ">"):
+        raise ValueError("%r needs full YAML (flow/anchor/block syntax), not the simple desk-list shape" % v)
+    return v
+
+
+def _parse_simple(text):
+    """The ONE PyYAML-free reader of the simple desk-list shape:
+
+        schema_version: 2
+        desks:
+          - desk_id: alpha
+            open_loops_path: desks/alpha/state/open-loops.md
+
+    -> (data, None) or (None, "line N: <what is wrong>"). Anything outside that shape is a real error
+    naming the line, never a guess."""
+    data, entries, cur, item_indent, in_desks = {}, None, None, None, False
+    for n, line in enumerate(text.splitlines(), 1):
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        if "\t" in line[:len(line) - len(line.lstrip())]:
+            return None, "line %d: a tab in the indentation (YAML allows spaces only)" % n
+        try:
+            m = _TOP_RE.match(line)
+            if m:
+                key, raw = m.group(1), (m.group(2) or "").strip()
+                raw = "" if raw.startswith("#") else raw.split(" #", 1)[0].strip()
+                if key == "desks":
+                    if raw not in ("", "[]"):
+                        return None, "line %d: `desks:` must be followed by a list of entries, not %r" % (n, raw)
+                    entries, cur, item_indent = [], None, None
+                    in_desks = raw == ""        # `desks: []` is an empty, CLOSED list
+                    data["desks"] = entries
+                else:
+                    data[key] = _scalar(m.group(2))
+                    in_desks = False
+                continue
+            m = _ITEM_RE.match(line)
+            if m:
+                if not in_desks:
+                    return None, ("line %d: a `- %s:` entry outside an open `desks:` list (an entry pasted "
+                                  "under `desks: []`? change it to `desks:`)" % (n, m.group(2)))
+                if item_indent is not None and len(m.group(1)) != item_indent:
+                    return None, "line %d: this entry is indented differently from the ones above it" % n
+                item_indent = len(m.group(1))
+                cur = {m.group(2): _scalar(m.group(3))}
+                entries.append(cur)
+                continue
+            m = _FIELD_RE.match(line)
+            if m and in_desks and cur is not None and len(m.group(1)) > item_indent:
+                cur[m.group(2)] = _scalar(m.group(3))
+                continue
+        except ValueError as e:
+            return None, "line %d: %s" % (n, e)
+        return None, "line %d is not in the simple desk-list shape: %r" % (n, line.strip()[:60])
+    return data, None
+
+
 def load_desks(env=None):
     """-> (desks, error). desks is a list of entry dicts; error is None or a one-line real reason.
-    No list -> ([], None). A list that cannot be read -> ([], "<what is wrong>"). Never raises."""
+    No list -> ([], None). A list that cannot be read -> ([], "<what is wrong>"). Never raises.
+    PyYAML is used when it is installed; without it the simple-shape reader above reads the list, so a
+    student with no PyYAML gets their desks, not an error."""
     path = resolve_desk_list(env)
     if not path:
         return [], None
     try:
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+    except (OSError, UnicodeDecodeError) as e:
+        return [], "the desk list %s cannot be read: %s: %s" % (path, type(e).__name__, " ".join(str(e).split()))
+    try:
         import yaml
     except ImportError:
-        return [], "PyYAML is not installed under %s, so %s cannot be read (see system/requirements.txt)" % (
-            sys.executable, path)
-    try:
-        with open(path, encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-    except Exception as e:
-        msg = " ".join(str(e).split())
-        return [], "the desk list %s cannot be read: %s: %s" % (path, type(e).__name__, msg)
-    if data is None:
+        yaml = None
+    if yaml is not None:
+        try:
+            data = yaml.safe_load(text)
+        except Exception as e:
+            msg = " ".join(str(e).split())
+            return [], "the desk list %s cannot be read: %s: %s" % (path, type(e).__name__, msg)
+    else:
+        data, err = _parse_simple(text)
+        if err:
+            return [], "the desk list %s cannot be read: %s" % (path, err)
+    if data is None or data == {}:
         return [], None
     if not isinstance(data, dict):
         return [], "the desk list %s is not a mapping (found %s); expected `desks:` at the top" % (
@@ -91,10 +189,13 @@ def load_desks(env=None):
 
 
 def desk_ids(env=None):
-    """The desk_id values, read line by line (no PyYAML needed). Empty set when there is no list."""
+    """The desk_id values. Empty set when there is no list. Read through load_desks(); if the list is
+    malformed, the old lenient line scan still recovers the ids (planning-diary-capture.py only needs
+    names, and a broken list must not hide them from it)."""
+    desks, err = load_desks(env)
+    if not err:
+        return {str(d.get("desk_id")).strip() for d in desks if d.get("desk_id") not in (None, "")}
     path = resolve_desk_list(env)
-    if not path:
-        return set()
     out = set()
     try:
         with open(path, encoding="utf-8") as f:
@@ -102,47 +203,21 @@ def desk_ids(env=None):
                 m = _ID_RE.match(ln)
                 if m:
                     out.add(m.group(1).strip().strip("\"'"))
-    except (OSError, UnicodeDecodeError):
+    except (OSError, UnicodeDecodeError, TypeError):
         return set()
     return out
-
-
-_PATH_RE = re.compile(r"^\s+(purpose_path|open_loops_path):\s*(\S+)")
 
 
 def desk_folder(desk_id, env=None):
     """-> (folder, error). The folder name under <notes>/desks/ that the list says desk `desk_id` lives in,
     read from its purpose_path / open_loops_path (`desks/<folder>/...`). No list, or no such desk_id ->
-    (None, None). Never raises. Works WITHOUT PyYAML (a session-start hook calls this, and many
-    interpreters, CI's included, have none): with PyYAML the list is parsed properly and a broken list
-    returns its real error; without it the list is read line by line, the same way desk_ids() reads it."""
-    path = resolve_desk_list(env)
-    if not path or not desk_id:
+    (None, None); a broken list -> (None, its real error). Never raises; needs no PyYAML (the
+    session-start loader calls this)."""
+    if not desk_id:
         return None, None
-    try:
-        import yaml  # noqa: F401
-        have_yaml = True
-    except ImportError:
-        have_yaml = False
-    if have_yaml:
-        entries, err = load_desks(env)
-        if err:
-            return None, err
-    else:
-        entries, cur = [], None
-        try:
-            with open(path, encoding="utf-8") as f:
-                for ln in f:
-                    m = _ID_RE.match(ln)
-                    if m:
-                        cur = {"desk_id": m.group(1).strip().strip("\"'")}
-                        entries.append(cur)
-                        continue
-                    m = _PATH_RE.match(ln)
-                    if m and cur is not None:
-                        cur[m.group(1)] = m.group(2).strip().strip("\"'")
-        except (OSError, UnicodeDecodeError) as e:
-            return None, "the desk list %s cannot be read: %s" % (path, type(e).__name__)
+    entries, err = load_desks(env)
+    if err:
+        return None, err
     for d in entries:
         if str(d.get("desk_id") or "").strip() != desk_id:
             continue
