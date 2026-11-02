@@ -159,6 +159,48 @@ ask "Edit roundB.conf" Edit "$(J file_path "$RB" old_string on new_string off)"
 allow "cat roundB.conf (read)" "" Bash "$(J command "cat $RB")"
 allow "grep roundB.conf (read)" "" Bash "$(J command "grep fc_ $RB")"
 allow "git add roundB.conf (not a write to it)" "" Bash "$(J command "git add $RB")"
+# ---------------- 2026-11-02 real-use false alarm: a READ-ONLY command that names the conf asked. Only a command that can WRITE it asks now.
+PCF="$HOME/.config/lifehack/placement.conf"
+allow "EXACT real-use shape: cd && ls *.conf; cat roundB.conf || find -name roundB.conf ..." "" Bash "$(J command "cd ~/lifehack-v2 && ls system/hooks/*.conf; cat system/hooks/roundB.conf || find . -name 'roundB.conf' ...")"
+allow "same shape against the real code root" "" Bash "$(J command "cd $CODE && ls system/hooks/*.conf; cat system/hooks/roundB.conf || find . -name 'roundB.conf' 2>/dev/null | head")"
+allow "head / tail / less / wc / diff / sed -n roundB.conf" "" Bash "$(J command "head $RB; tail -5 $RB; less $RB; wc -l $RB; diff $RB $PCF; sed -n 1,5p $RB")"
+allow "find -name placement.conf -exec grep" "" Bash "$(J command "find $HOME -name placement.conf -exec grep off {} +")"
+allow "echo / printf only NAME the conf" "" Bash "$(J command "echo 'no roundB.conf here'; printf '%s\n' $RB")"
+allow "read-only python -c open(conf).read()" "" Bash "$(J command "python3 -c \"print(open('$RB').read())\"")"
+allow "read-only python heredoc" "" Bash "$(J command "python3 - <<'PY'
+print(open('$PCF').read())
+PY")"
+allow "cp FROM the conf to a backup" "" Bash "$(J command "cp $RB /tmp/roundB.conf.bak")"
+allow "cat the conf into another file" "" Bash "$(J command "cat $RB > $D/copy.txt")"
+allow "redirect to a different file that shares the name" "" Bash "$(J command "echo x > /tmp/roundB.conf")"
+allow "a DATA heredoc that only mentions a conf write" "" Bash "$(J command "cat <<'EOF' > $D/notes.txt
+echo x >> $RB
+EOF")"
+allow "cd elsewhere, then write a file named placement.conf there" "" Bash "$(J command "cd /tmp && echo x > placement.conf")"
+ask "tee -a roundB.conf" Bash "$(J command "echo x | tee -a $RB")"
+ask "install onto roundB.conf" Bash "$(J command "install -m 644 /tmp/x.conf $RB")"
+ask "ln -sf onto roundB.conf" Bash "$(J command "ln -sf /tmp/x.conf $RB")"
+ask "truncate roundB.conf" Bash "$(J command "truncate -s 0 $RB")"
+ask "dd of=roundB.conf" Bash "$(J command "dd if=/tmp/x.conf of=$RB")"
+ask "python Path.write_text roundB.conf" Bash "$(J command "python3 -c \"from pathlib import Path; Path('$RB').write_text('x')\"")"
+ask "python heredoc open(conf,'a')" Bash "$(J command "python3 - <<'PY'
+open('$PCF','a').write('off\tx')
+PY")"
+ask "python on stdin from a piped heredoc" Bash "$(J command "cat <<'PY' | python3
+open('$RB','w').write('x')
+PY")"
+ask "heredoc whose target is the conf" Bash "$(J command "cat > $RB <<'EOF'
+fc_shell_overwrite=off
+EOF")"
+ask "write after a data heredoc in the same command" Bash "$(J command "cat <<'EOF' > $D/n.txt
+x
+EOF
+echo y >> $RB")"
+ask "cd chain: cd ~/.config/lifehack && echo >> placement.conf" Bash "$(J command "cd ~/.config/lifehack && echo 'off	x' >> placement.conf")"
+ask "cd chain: cd x && cd hooks && sed -i roundB.conf" Bash "$(J command "cd $CODE/system && cd hooks && sed -i '' 's/=on/=off/' roundB.conf")"
+ask "cd chain: python relative open(..,'w')" Bash "$(J command "cd $HOME/.config && python3 -c \"open('lifehack/placement.conf','w').write('x')\"")"
+ask "cd chain: bash -c redirect" Bash "$(J command "cd $HOME/.config/lifehack && bash -c 'echo x > placement.conf'")"
+ask "rm roundB.conf (a guard file gone is a guard off)" Bash "$(J command "rm $RB")"
 # ---------------- Round D miss fix (D-F12/D-F13): fc_shell_overwrite also ASKS before a shell overwrite of an existing data file
 mkdir -p "$D/config" "$D/gi" "$D/node_modules/q" "$D/dist"
 for f in config/clients.yaml config/clients.yml rates.csv rows.tsv data.json log.jsonl settings.toml feed.xml sheet.xlsx schema.sql app.ini .env gi/ignored.csv gi/tracked.csv node_modules/q/d.json dist/out.json fresh.csv empty.csv notes.txt script.py; do echo "a,b" > "$D/$f"; done

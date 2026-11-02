@@ -14,7 +14,8 @@ exit 0); never blocks. Each piece has its own switch in roundB.conf (all OFF = p
                         outside the plugin tree (the plugin's own SOPs are covered by the harness-write and shell-overwrite guards).
                         New files and appends (>>) pass.
   fc_placement_conf_ask (also roundB.conf, the plugin's switch file: an AI must not switch a guard off) ANY AI write (Write/Edit/redirect/tee/cp/sed -i/append, even a new file) to ~/.config/lifehack/placement.conf,
-                        the user's own override file. Only a person's Yes changes it.
+                        the user's own override file. Only a person's Yes changes it. (2026-11-02) Bash asks only when the command can WRITE
+                        the file (conf_write_in_bash: real targets, cd chains followed); naming it in ls/cat/grep/find/echo or read-only python never asks.
   fc_claudemd_ask       (2026-11-01, plan PHASE 3b.8 item 5a) a Write/Edit/MultiEdit, or a Bash write (redirect, append, tee, sed -i, cp/mv onto it), to an
                         EXISTING file named CLAUDE.md, anywhere. The ask carries a short diff (Write/Edit) so the person sees what changes.
                         A brand-new CLAUDE.md (nothing to lose) and reads (cat, grep, Read) never ask.
@@ -491,10 +492,11 @@ def _py_args(code, open_paren):
     return pos, kw
 
 
-def py_file_ops(code):
+def py_file_ops(code, append=False):
     """-> [(path or None, op)] for every python call in `code` that deletes, moves away or rewrites a FILE.
     op: 'del' (os.remove/unlink, Path.unlink), 'away' (the SOURCE of os.rename/replace, shutil.move, Path.rename/replace),
-    'over' (open(p,'w'), Path.write_text/write_bytes/open('w'), os.truncate, and the DESTINATION of a move/replace/copy)."""
+    'over' (open(p,'w'), Path.write_text/write_bytes/open('w'), os.truncate, and the DESTINATION of a move/replace/copy).
+    append=True also counts open modes 'a', 'x' and '+' as 'over' (fc_placement_conf_ask: an append is a write there)."""
     names, pathobj = {}, set()
     for m in _PY_ASSIGN.finditer(code):
         v = _py_value(m.group("expr"), names)
@@ -508,7 +510,7 @@ def py_file_ops(code):
     def mode_writes(pos, kw, i):
         md = kw.get("mode") or (pos[i] if len(pos) > i else "")
         sm = _PY_STR.match(md.strip()) if md else None
-        return bool(sm) and "w" in (sm.group(1) if sm.group(1) is not None else sm.group(2))
+        return bool(sm) and bool(set("wax+" if append else "w") & set(sm.group(1) if sm.group(1) is not None else sm.group(2)))
 
     for m in _PY_FILE_FN.finditer(code):
         mod, fn = m.group("mod"), m.group("fn")
@@ -788,19 +790,86 @@ def check_bash(cmd, cwd, code):
         sys.stderr.write("guard_fine_china_ask: parse skipped (%s)\n" % e)
 
 
-def conf_write_in_bash(cmd, cwd):
-    """True when the command writes (not only reads) placement.conf."""
-    if re.search(r">>?\s*['\"]?[^\s|;&]*(placement|roundB)\.conf", cmd) or re.search(r"\btee\b[^|;&]*(placement|roundB)\.conf", cmd):
-        return True
-    for w in split_segments(cmd):
-        v = os.path.basename(w[0])
-        if not any(CONF_RX.search(a) for a in w[1:]):
-            continue
-        if v in ("cat", "grep", "egrep", "head", "tail", "less", "more", "ls", "wc", "stat", "diff", "file", "awk", "sort", "bat", "cut", "nl", "md5", "shasum", "test", "["):
-            continue
-        if v in ("rm", "mv", "cp", "install", "ln", "truncate", "dd", "tee", "rsync", "sed", "perl", "python", "python3", "ruby", "node", "bash", "sh", "zsh", "printf", "echo", "touch", "ed", "ex", "vi", "vim", "nano", "chmod"):
-            if v == "sed" and not any(re.fullmatch(r"-[A-Za-z]*i\S*", a) for a in w[1:]):
-                continue
+_CONF_SHELL_WRITES = (">", "tee", "cp", "mv", "install", "ln", "rsync", "dd")   # build_mode.bash_ops verbs that land ON a target
+_CONF_NAME = re.compile(r"(^|/)(placement|roundB)\.conf$")
+
+
+def _conf_hit(arg, scwd):
+    """An argument that names the conf. A cd we cannot follow (scwd None) or a $VAR we cannot expand: judged by the name (over-ask, never under-ask)."""
+    if scwd is None and not os.path.isabs(os.path.expanduser(arg)):
+        return bool(_CONF_NAME.search(arg))
+    ts = expand(arg, scwd)
+    if not ts and ("$" in arg or "`" in arg):
+        return bool(_CONF_NAME.search(arg))
+    return any(is_conf(t) for t in ts)
+
+
+def conf_write_in_bash(cmd, cwd, depth=0):
+    """True when the command can WRITE placement.conf / roundB.conf: a redirect (> >>) or tee onto it, cp/mv/install/ln/rsync/dd onto it,
+    sed -i / perl -i / truncate / ed of it, rm/unlink or mv of it away, a python open(...,'w'|'a'|'x'|'+') / write_text / os.replace onto it
+    in an executed -c, heredoc or stdin body, a heredoc whose target is the conf. Reads never ask (2026-11-02 real-use false alarm: a
+    `cat roundB.conf || find . -name roundB.conf` asked because the old test matched the NAME next to a verb list).
+    Shared parsers only: walk() (cd chains, heredoc bodies cut, executed bodies read), build_mode.bash_ops (redirect/tee/cp/mv/ln targets,
+    cd chains followed), build_mode.inplace_targets (sed -i / truncate), py_file_ops (python writes)."""
+    import build_mode
+    shell, bodies = _heredoc_split(cmd)
+    # 1. redirects, tee, cp/mv/install/ln/rsync/dd ONTO it. Heredoc bodies are already cut, so the << operator goes too
+    #    (bash_ops would otherwise read everything after it as heredoc text and drop the commands that follow).
+    for o in build_mode.bash_ops(re.sub(r"(?<!<)<<-?\s*(['\"]?)\w+\1", " ", shell), cwd):
+        if o.get("verb") in _CONF_SHELL_WRITES and is_conf(o.get("target", "")):
+            return True
+    # 2. per command, in the cwd its own cd chain left it in (walk also reads bash -c / eval / executed heredoc bodies)
+    for w, scwd, py in walk(cmd, cwd):
+        v, a = os.path.basename(w[0]), w[1:]
+        files = []
+        if v in ("sed", "truncate"):
+            files = build_mode.inplace_targets(v, a)
+        elif v == "perl" and any(re.fullmatch(r"-[A-Za-z]*i\S*", x) for x in a):
+            skip, script = False, False
+            for x in a:
+                if skip:
+                    skip = False; continue
+                if x in ("-e", "-E"):
+                    skip = script = True; continue
+                if x.startswith("-") and len(x) > 1:
+                    if re.fullmatch(r"-[A-Za-z]*[eE]", x):
+                        skip = script = True
+                    continue
+                files.append(x)
+            if not script:
+                files = files[1:]
+        elif v in ("rm", "unlink", "shred", "trash", "ed", "ex"):
+            files = [x for x in a if not x.startswith("-")]
+        elif v == "mv":
+            files = [x for x in a if not x.startswith("-")][:-1]   # moved AWAY (onto it is step 1)
+        elif v == "dd":
+            files = [x[3:] for x in a if x.startswith("of=")]
+        elif v == "tee":
+            files = [x for x in a if not x.startswith("-")]
+        if any(_conf_hit(f, scwd) for f in files):
+            return True
+        for body in py:
+            for p, op in py_file_ops(body, append=True):
+                if p is None:
+                    if CONF_RX.search(body):
+                        return True   # a write whose path we cannot read, in code that names the conf: ask (never under-ask)
+                    continue
+                if _conf_hit(p, scwd):
+                    return True
+    # 3. redirects inside a bash -c / eval body: walk() reads the body's words but drops its redirects, so the body is judged
+    #    again whole. walk(..., 3) returns the bash -c / eval command itself (its depth limit) with the cwd in force there.
+    if depth < 3:
+        for w, scwd, _py in walk(cmd, cwd, 3):
+            v = os.path.basename(w[0])
+            if v in _HD_SINK_SH:
+                for k in range(1, len(w) - 1):
+                    if re.fullmatch(r"-[A-Za-z]*c[A-Za-z]*", w[k]) and conf_write_in_bash(w[k + 1], scwd or cwd, depth + 1):
+                        return True
+            elif v == "eval" and conf_write_in_bash(" ".join(w[1:]), scwd or cwd, depth + 1):
+                return True
+    # 4. redirects inside a heredoc body that a shell executes
+    for pos, text, fam in bodies:
+        if fam == "sh" and depth < 3 and conf_write_in_bash(text, _final_cwd(shell[:pos], cwd) or cwd, depth + 1):
             return True
     return False
 
