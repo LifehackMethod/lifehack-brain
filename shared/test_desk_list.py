@@ -130,6 +130,35 @@ class Reader(Base):
         self.assertEqual(r.stdout, "")
 
 
+class DeskFolder(Base):
+    """desk_folder(): the session-start loader maps a $LIFEHACK_DESK desk_id to its folder through this.
+    Must work with or without PyYAML (it runs at every session start)."""
+    MAPPED = ("schema_version: 2\ndesks:\n  - desk_id: taxes\n    open_loops_path: desks/money/state/open-loops.md\n"
+              "    backlog_mode: register\n  - desk_id: lamps\n    purpose_path: desks/lamps/canon/purpose.md\n")
+
+    def lookup(self, desk_id):
+        code = ("import sys; sys.path.insert(0, %r); import desk_list; f, e = desk_list.desk_folder(%r); "
+                "print('%%s|%%s' %% (f, e))" % (HERE, desk_id))
+        r = self.run_py("-c", code)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return r.stdout.strip()
+
+    def test_no_list_is_none_not_a_crash(self):
+        self.assertEqual(self.lookup("taxes"), "None|None")
+
+    def test_desk_id_maps_to_its_folder(self):
+        self.write("desks/desk-registry.yaml", self.MAPPED)
+        self.assertEqual(self.lookup("taxes"), "money|None")
+        self.assertEqual(self.lookup("lamps"), "lamps|None")
+        self.assertEqual(self.lookup("ghost"), "None|None")
+
+    @unittest.skipUnless(HAVE_YAML, "PyYAML not installed under this interpreter")
+    def test_broken_list_returns_the_real_error(self):
+        self.write("desks/desk-registry.yaml", BROKEN)
+        out = self.lookup("alpha")
+        self.assertTrue(out.startswith("None|") and "cannot be read" in out, out)
+
+
 class BacklogGroom(Base):
     def test_no_list_no_desks_no_crash(self):
         rep, err = self.groom()

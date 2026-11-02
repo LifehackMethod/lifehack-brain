@@ -9,7 +9,9 @@
 #   3. the shared root canon still loads in both;
 #   4. a missing desk list (no desk-registry.yaml) -> no crash, still exit 0.
 # Plus: the explicit $LIFEHACK_DESK signal selects the desk; a desk name with no folder is a LOUD
-# miss, not a silent one; the nested-canon warning (Issue #96-§5) still fires for the chosen desk.
+# miss, not a silent one; the nested-canon warning (Issue #96-§5) still fires for the chosen desk;
+# LIFEHACK_DESK=root means no desk; a desk_id that is not a folder name is mapped through the desk
+# list (shared/desk_list.py); an unreadable desk list is named, never a crash.
 #
 # Run: bash system/hooks/tests/test_session_context_loader_desk_scope.sh (exit 0 = all pass)
 #
@@ -101,6 +103,38 @@ says "NESTED CANON NOT LOADED" && ok || bad "nested canon" "no warning for the n
 says "nested-subject" && ok || bad "nested canon: names it" "the warning did not name the nested folder"
 runin "$NOTES/desks/alpha"
 saysnot "NESTED CANON NOT LOADED" && ok || bad "nested canon: scoped" "a nested warning fired for a desk with none"
+
+echo "── LIFEHACK_DESK=root is safe_input.py's no-desk default, not a missing desk"
+OUT="$(cd "$SANDBOX" && env -u CLAUDE_PLUGIN_ROOT -u LIFEHACK_DESK_LIST \
+      HOME="$SANDBOX" LIFEHACK_ROOT="$NOTES" LIFEHACK_DESK=root bash "$LOADER" 2>&1)"; RC=$?
+saysnot "DESK NOT FOUND" && ok || bad "root sentinel" "LIFEHACK_DESK=root reported as a missing desk"
+says "No desk this session" && ok || bad "root sentinel: wording" "did not say no desk canon was loaded"
+says "one L" && ok || bad "root sentinel: shared canon" "root canon dropped"
+
+echo "── a desk_id that is not a folder name is mapped through the desk list ───"
+LIST="$SANDBOX/desk-registry.yaml"
+printf 'schema_version: 2\ndesks:\n  - desk_id: taxes\n    open_loops_path: desks/beta/state/open-loops.md\n    purpose_path: desks/beta/canon/purpose.md\n' > "$LIST"
+OUT="$(cd "$SANDBOX" && env -u CLAUDE_PLUGIN_ROOT HOME="$SANDBOX" LIFEHACK_ROOT="$NOTES" \
+      LIFEHACK_DESK_LIST="$LIST" LIFEHACK_DESK=taxes bash "$LOADER" 2>&1)"; RC=$?
+says "ends in April" && ok || bad "desk list mapping" "desk_id 'taxes' -> desks/beta did not load beta's canon"
+saysnot "2700K" && ok || bad "desk list mapping: A must not load" "alpha canon leaked"
+saysnot "DESK NOT FOUND" && ok || bad "desk list mapping: no false miss" "a listed desk_id reported as missing"
+[ "$RC" = 0 ] && ok || bad "desk list mapping: exit code" "expected 0, got $RC"
+
+echo "── an UNREADABLE desk list is said out loud, never a crash ───────────────"
+printf 'schema_version: 2\ndesks: []\n  - desk_id: alpha\n' > "$LIST"
+OUT="$(cd "$SANDBOX" && env -u CLAUDE_PLUGIN_ROOT HOME="$SANDBOX" LIFEHACK_ROOT="$NOTES" \
+      LIFEHACK_DESK_LIST="$LIST" LIFEHACK_DESK=taxes bash "$LOADER" 2>&1)"; RC=$?
+says "DESK NOT FOUND" && ok || bad "broken desk list" "an unmapped desk_id under a broken list was silent"
+# With PyYAML the list is parsed properly and the REAL error is named; without it (CI) the list is
+# read line by line, and 'taxes' simply is not in it.
+if python3 -c 'import yaml' 2>/dev/null; then
+  says "desk list could not be read" && ok || bad "broken desk list: named" "a broken list was not named"
+fi
+says "one L" && ok || bad "broken desk list: shared canon" "root canon dropped"
+saysnot "ends in April" && ok || bad "broken desk list: nothing loads" "a desk loaded from a broken list"
+[ "$RC" = 0 ] && ok || bad "broken desk list: exit code" "expected 0, got $RC"
+says "=== end session context ===" && ok || bad "broken desk list: completes" "loader did not finish"
 
 echo ""
 echo "RESULT: $pass passed, $fail failed."

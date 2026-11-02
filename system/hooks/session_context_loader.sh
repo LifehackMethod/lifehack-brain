@@ -281,41 +281,71 @@ fi
 # system/tools/safe_input.py already read), else the desk the cwd is actually inside
 # (<root>/desks/<desk>/...). No signal and a cwd outside every desk means NO desk canon — a session
 # started in the plugin repo is in nobody's desk, and loading everyone's is the bug, not a fallback.
-# A missing desk list cannot crash this block: the desk is inferred from the folder schema itself,
-# never from desk-registry.yaml (desk_list.py stays the one reader of THAT file; desks can exist on
-# disk long before any registry does, so the registry is neither needed nor consulted here).
+# A missing desk list cannot crash this block: the cwd case is inferred from the folder schema
+# itself, and the desk list (<notes>/desks/desk-registry.yaml, read only via shared/desk_list.py) is
+# consulted ONLY to map a $LIFEHACK_DESK desk_id that is not itself a folder name — see below.
 # realpath on both sides (in Python, not the shell glob engine) so a symlinked cwd meets the real
 # desk path, and Windows backslash-native roots work the same day they did not for a bash glob.
-DESK="$("$PY" - "$ROOT" <<'_DESK_EOF'
+# ✎ 2026-11-02 (verify pass): $LIFEHACK_DESK carries a desk_id, and the desk list (read ONLY through
+# shared/desk_list.py) is where a desk_id meets its folder — desk_scaffold.py makes them equal, but
+# backlog_groom.py reads open_loops_path "VERBATIM — never derived from desk_id", so they may differ.
+# So: a desk_id that is not itself a folder is looked up in the list (purpose_path/open_loops_path
+# = desks/<folder>/...). A MISSING list is not an error (no desks listed; folder inference still
+# works); an UNREADABLE list is said out loud. "root" is safe_input.py's own no-desk default, so it
+# means no desk here too, not DESK NOT FOUND.
+DESK="$("$PY" - "$ROOT" "$REPO/shared" <<'_DESK_EOF'
 import os, sys
 root = os.path.realpath(sys.argv[1])
 desk = (os.environ.get("LIFEHACK_DESK") or "").strip()
+if desk == "root":
+    desk = ""
+def bad_name(d):
+    return d in (".", "..") or "/" in d or "\\" in d or os.sep in d
+def isdesk(d):
+    return bool(d) and not bad_name(d) and os.path.isdir(os.path.join(root, "desks", d))
 if desk:
     # a desk name must be ONE path component — anything else is a malformed signal, not a desk
-    if desk in (".", "..") or "/" in desk or os.sep in desk:
+    if bad_name(desk):
         print("missing:" + desk)
         sys.exit(0)
-else:
-    cwd = os.path.realpath(os.getcwd())
-    prefix = os.path.join(root, "desks") + os.sep
-    if cwd.startswith(prefix):
-        first = cwd[len(prefix):].split(os.sep)[0]
-        if first:
-            desk = first
-if not desk:
+    if isdesk(desk):
+        print(desk)
+        sys.exit(0)
+    # not a folder name: ask the desk list of this person (shared/desk_list.py, the ONE reader of it)
+    try:
+        sys.path.insert(0, sys.argv[2])
+        import desk_list
+        folder, err = desk_list.desk_folder(desk)   # PyYAML-free; never raises
+    except Exception as e:
+        folder, err = None, "%s: %s" % (type(e).__name__, e)
+    if err:
+        print("listerr:" + desk + "|" + " ".join(str(err).split()))
+        sys.exit(0)
+    print(folder if isdesk(folder or "") else "missing:" + desk)
     sys.exit(0)
-if os.path.isdir(os.path.join(root, "desks", desk)):
-    print(desk)
-else:
-    print("missing:" + desk)
+# no signal: the desk the cwd is actually inside. normcase so a case-insensitive (Windows) path
+# still matches; the folder NAME is read from the un-folded cwd so it keeps its on-disk case.
+cwd = os.path.realpath(os.getcwd())
+prefix = os.path.join(root, "desks") + os.sep
+if os.path.normcase(cwd).startswith(os.path.normcase(prefix)):
+    first = cwd[len(prefix):].split(os.sep)[0]
+    if isdesk(first):
+        print(first)
 _DESK_EOF
 )"
 case "$DESK" in
   missing:*)
     _bad="${DESK#missing:}"
     echo ""
-    echo "!! DESK NOT FOUND: '$_bad' names no folder under $ROOT/desks/ — no desk canon loaded this session."
-    DESK=""
+    echo "!! DESK NOT FOUND: \$LIFEHACK_DESK='$_bad' names no folder under $ROOT/desks/ and no desk_id in your desk list — no desk canon loaded this session."
+    DESK=""; _DESK_SAID=1
+    ;;
+  listerr:*)
+    _rest="${DESK#listerr:}"
+    echo ""
+    echo "!! DESK NOT FOUND: \$LIFEHACK_DESK='${_rest%%|*}' is not a folder under $ROOT/desks/, and your desk list could not be read to look it up: ${_rest#*|}"
+    echo "!! No desk canon loaded this session."
+    DESK=""; _DESK_SAID=1
     ;;
 esac
 
@@ -331,9 +361,11 @@ if [ -n "$DESK" ]; then
   done < <(find "$ROOT/desks/$DESK" -mindepth 3 -type f -name current.md -path "*/canon/current.md" 2>/dev/null)
 fi
 
-if [ -z "$DESK" ]; then
+if [ -z "$DESK" ] && [ -n "${_DESK_SAID:-}" ]; then
+  :   # the DESK NOT FOUND line above already said why no desk canon loaded; the shared canon still did
+elif [ -z "$DESK" ]; then
   echo ""
-  echo "No desk this session — the cwd is not inside a desk folder and \$LIFEHACK_DESK is unset, so no"
+  echo "No desk this session — the cwd is not inside a desk folder and \$LIFEHACK_DESK names none, so no"
   echo "desk canon was loaded (P-71: a desk window loads only that desk's knowledge). The shared root"
   echo "canon above still loads. Open a session inside <notes>/desks/<desk>/ to load that desk's canon."
 elif [ ! -s "$ROOT/desks/$DESK/canon/current.md" ]; then

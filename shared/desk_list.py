@@ -107,6 +107,52 @@ def desk_ids(env=None):
     return out
 
 
+_PATH_RE = re.compile(r"^\s+(purpose_path|open_loops_path):\s*(\S+)")
+
+
+def desk_folder(desk_id, env=None):
+    """-> (folder, error). The folder name under <notes>/desks/ that the list says desk `desk_id` lives in,
+    read from its purpose_path / open_loops_path (`desks/<folder>/...`). No list, or no such desk_id ->
+    (None, None). Never raises. Works WITHOUT PyYAML (a session-start hook calls this, and many
+    interpreters, CI's included, have none): with PyYAML the list is parsed properly and a broken list
+    returns its real error; without it the list is read line by line, the same way desk_ids() reads it."""
+    path = resolve_desk_list(env)
+    if not path or not desk_id:
+        return None, None
+    try:
+        import yaml  # noqa: F401
+        have_yaml = True
+    except ImportError:
+        have_yaml = False
+    if have_yaml:
+        entries, err = load_desks(env)
+        if err:
+            return None, err
+    else:
+        entries, cur = [], None
+        try:
+            with open(path, encoding="utf-8") as f:
+                for ln in f:
+                    m = _ID_RE.match(ln)
+                    if m:
+                        cur = {"desk_id": m.group(1).strip().strip("\"'")}
+                        entries.append(cur)
+                        continue
+                    m = _PATH_RE.match(ln)
+                    if m and cur is not None:
+                        cur[m.group(1)] = m.group(2).strip().strip("\"'")
+        except (OSError, UnicodeDecodeError) as e:
+            return None, "the desk list %s cannot be read: %s" % (path, type(e).__name__)
+    for d in entries:
+        if str(d.get("desk_id") or "").strip() != desk_id:
+            continue
+        for key in ("purpose_path", "open_loops_path"):
+            parts = str(d.get(key) or "").replace("\\", "/").split("/")
+            if len(parts) > 2 and parts[0] == "desks" and parts[1] not in ("", ".", ".."):
+                return parts[1], None
+    return None, None
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if argv == ["--path"]:
