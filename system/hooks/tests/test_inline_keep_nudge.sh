@@ -199,6 +199,10 @@ for KP in "I'll use it" "I'll use it." "I'll use it again" "I'll use it later" "
   mk "$T/u2" "$KP" "$PLAIN"; N=$((N+1)); stop "u2n$N" p1 "$T/u2"; printf '%s' "$(reason)" | grep -q "asked to keep" && ok "'$KP': still 'keep'" || bad "'$KP' lost: $OUT"
 done
 
+echo "== curly apostrophes (phones and Mac smart punctuation) read the same as straight ones =="
+mk "$T/c1" "I’ll use it" "$PLAIN"; stop c1 p1 "$T/c1"; printf '%s' "$(reason)" | grep -q "asked to keep" && ok "curly 'I’ll use it': 'keep'" || bad "curly I'll use it lost: $OUT"
+mk "$T/c2" "don’t keep it" "$PLAIN"; stop c2 p1 "$T/c2"; [ -z "$OUT$ERR" ] && ok "curly 'don’t keep it': silent" || bad "curly negation missed: $OUT"
+
 echo "== switch OFF = silent =="
 mk "$T/t7" "keep it" "$FIND"
 ROUNDB_INLINE_KEEP_NUDGE=off stop f1 p1 "$T/t7"; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "switch off: keep-intent case silent" || bad "acted while OFF: $OUT"

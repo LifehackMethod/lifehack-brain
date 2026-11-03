@@ -94,6 +94,7 @@ def writes_file(cmd):
 
 
 def has_keep_intent(text):
+    text = text.replace("’", "'").replace("‘", "'")   # smart punctuation: KEEP and NEG are written with straight apostrophes
     for m in KEEP.finditer(text):
         if not NEG.search(text[max(0, m.start() - 24):m.start()]):
             return True
