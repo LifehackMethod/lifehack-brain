@@ -158,13 +158,35 @@ def install_enver_brief(iso, real_home):
 
 HOOK_REF = re.compile(r"\$HOME/(\.claude/[A-Za-z0-9._/-]+)")
 ENVER_HOOK_COPIES = []   # rel paths install_enver_hooks copied into the throwaway HOME: rig setup, never a session's product
+ENVER_TMP_REWRITES = {}  # rel -> {"/tmp/<file>": [new path, count]}: how each Enver hook COPY differs from the real script (rig D-P06)
+# a literal /tmp/<file> in a shell CODE line; not ${TMPDIR:-/tmp}/.., not /private/tmp/.., not part of a longer path or word
+TMP_LITERAL = re.compile(r"(?<![\w./${}:-])/tmp/[A-Za-z0-9._-]+")  # allow-silence: names /tmp/ to FIND it in copied Enver hooks (rig D-P06); writes nothing there
+
+
+def map_tmp_paths(text, tmp_dir):
+    """Rig D-P06 (pinned4, 2026-11-02): the actor sandbox denies writes under /private/tmp, so a copied Enver hook that writes a hardcoded
+    /tmp/<file> (guard_hook_syntax.sh's bash -n stderr) crashed and falsely blocked commits; real machines are unaffected. Map each such  # allow-silence: names /tmp/ to FIND it in copied Enver hooks (rig D-P06); writes nothing there
+    literal in a code line (comments untouched) to <tmp_dir>/<file>, inside the throwaway HOME the sandbox lets the actor write.
+    -> (new text, {"/tmp/<file>": [new path, count]}). Only the copy is ever passed here; the real script is never modified."""  # allow-silence: names /tmp/ to FIND it in copied Enver hooks (rig D-P06); writes nothing there
+    hits, out = {}, []
+    for ln in text.splitlines(True):
+        if not ln.lstrip().startswith("#"):
+            def sub(m):
+                new = os.path.join(tmp_dir, m.group(0)[len("/tmp/"):])  # allow-silence: names /tmp/ to FIND it in copied Enver hooks (rig D-P06); writes nothing there
+                hits.setdefault(m.group(0), [new, 0])[1] += 1
+                return new
+            ln = TMP_LITERAL.sub(sub, ln)
+        out.append(ln)
+    return "".join(out), hits
 
 
 def install_enver_hooks(iso, real_home, settings_path):
     """Enver setup (2026-11-02, coordinator option (b)): copy ONLY the scripts the lab settings file names as "$HOME/.claude/..." (its
     SessionStart, PreToolUse, UserPromptSubmit hooks and status line) into the throwaway HOME at the same relative path, read-only, so his
     setup's hooks run as in his real windows instead of erroring "No such file". Each was checked self-contained (the one import,
-    emit_finding, comes from the plugin). Nothing else is copied; a referenced path outside ~/.claude or missing is skipped. -> [rel paths]."""
+    emit_finding, comes from the plugin). Nothing else is copied; a referenced path outside ~/.claude or missing is skipped. -> [rel paths].
+    Rig D-P06: a copied SHELL script's literal /tmp/<file> paths are mapped to <iso>/tmp/<file> (map_tmp_paths), recorded in ENVER_TMP_REWRITES."""  # allow-silence: names /tmp/ to FIND it in copied Enver hooks (rig D-P06); writes nothing there
+    ENVER_TMP_REWRITES.clear()
     if not settings_path or not os.path.isfile(settings_path) or os.path.exists(os.path.join(iso, ".rig-student")):
         return []
     rels = sorted(set(HOOK_REF.findall(open(settings_path, encoding="utf-8").read())))
@@ -176,6 +198,15 @@ def install_enver_hooks(iso, real_home, settings_path):
         dst = os.path.join(iso, rel)
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         shutil.copyfile(src, dst)
+        if dst.endswith(".sh"):   # .py copies are left byte-for-byte: git_drift_finding.py's "/tmp/" is a path test, not a file it writes
+            tmp_dir = os.path.join(iso, "tmp")   # == run_one's actor TMPDIR, inside the throwaway HOME (an allowed write root)
+            with open(dst, encoding="utf-8") as f:
+                txt, hits = map_tmp_paths(f.read(), tmp_dir)
+            if hits:
+                os.makedirs(tmp_dir, exist_ok=True)
+                with open(dst, "w", encoding="utf-8") as f:
+                    f.write(txt)
+                ENVER_TMP_REWRITES[rel] = hits
         os.chmod(dst, 0o444)
         done.append(rel)
     return done
@@ -670,6 +701,9 @@ def main():
         install_enver_brief(iso, real_home)
         ENVER_HOOK_COPIES[:] = install_enver_hooks(iso, real_home, a.settings or os.path.join(OPS, "system/desktop-launchers/v2/lab-settings.json"))
         print("enver setup: copied %d hook script(s) the lab settings name, read-only: %s" % (len(ENVER_HOOK_COPIES), " ".join(ENVER_HOOK_COPIES)), flush=True)
+        for rel, hits in sorted(ENVER_TMP_REWRITES.items()):   # rig D-P06: the only way a copy differs from the real script
+            print("enver setup: %s copy rewrote %d /tmp path(s) (%d occurrence(s)) into the throwaway HOME: %s" % (
+                rel, len(hits), sum(c for _, c in hits.values()), "; ".join("%s -> %s x%d" % (k, v[0], v[1]) for k, v in sorted(hits.items()))), flush=True)
     if os.path.realpath(os.path.expanduser(envd["HOME"])) == real_home:
         sys.exit("REFUSED: the live sessions would run with the real HOME (%s); use a throwaway HOME" % real_home)
     if cfgiso.rig_dir_problems(envd["HOME"], real_home):
