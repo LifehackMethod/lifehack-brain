@@ -124,7 +124,8 @@ if [ "$OWN" = 1 ]; then
   [ -n "$o" ] && { OUT+="$(printf '%s\n' "$o" | cut -c1-600 | head -6)"$'\n'; [ "$PO" = 1 ] && OUT+="$(python3 "$_lhb_dir/lib/placement_off.py" stop own-list)"$'\n'; }
 fi
 if [ "$UNH" = 1 ]; then
-  o="$(python3 "$HAR/shared/tools/own_list_add.py" --unhomed "${ALL[@]}" 2>/dev/null)"
+  re_tp='"transcript_path"[[:space:]]*:[[:space:]]*"([^"]+)"'; TP=""; [[ $P =~ $re_tp ]] && TP="${BASH_REMATCH[1]}"   # the desk route reads the person's latest prompt
+  o="$(LHB_TRANSCRIPT="$TP" python3 "$HAR/shared/tools/own_list_add.py" --unhomed "${ALL[@]}" 2>/dev/null)"
   [ -n "$o" ] && { OUT+="$(printf '%s\n' "$o" | cut -c1-700 | head -6)"$'\n'; [ "$PO" = 1 ] && OUT+="$(python3 "$_lhb_dir/lib/placement_off.py" stop unhomed)"$'\n'; }
 fi
 OUT="$(printf '%s' "$OUT" | grep -v '^$' | head -12)"

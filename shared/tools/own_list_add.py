@@ -120,7 +120,8 @@ def unhomed_check(paths):
             if name == "SKILL.md" and _native_skills_on():   # Round D A.2: Claude loads personal skills only from ~/.claude/skills/<name>/
                 sug = os.path.join(os.path.expanduser("~"), ".claude", "skills", os.path.basename(os.path.dirname(t)), name)
             else:
-                sug = os.path.join(pc, "skills", os.path.basename(os.path.dirname(t)), name) if name == "SKILL.md" else os.path.join(pc, "tools", name)
+                desk = build_mode._named_desk(t, os.environ.get("LHB_TRANSCRIPT"), notes) if _route_sign_on() else None   # exam D-B07 r3: same rule and route as the stop's sign
+                sug = os.path.join(pc, "skills", os.path.basename(os.path.dirname(t)), name) if name == "SKILL.md" else os.path.join(pc, "desks", desk, "tools", name) if desk else os.path.join(pc, "tools", name)
             out.append((t, pc, sug, any(build_mode.under(t, k) for k in kept)))
         return out
     except Exception as e:  # degrade-safe: never wedge a turn

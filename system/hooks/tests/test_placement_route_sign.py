@@ -360,6 +360,35 @@ try:
     stops = chain_stops("deskroutew", "Write", {"file_path": DESK_DEST, "content": "print(1)\n"})
     check(not stops, "the desk route by the Write tool: chain clean", repr(stops))
 
+    print("-- 2d. the end-of-turn message names the same desk route, by the same rule")
+
+    def end_of_turn(path, tp=None, **over):
+        n[0] += 1
+        sid, tw = "eot%d" % n[0], os.path.join(T, "tw")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("print(1)\n")
+        os.makedirs(tw, exist_ok=True)
+        with open(os.path.join(tw, sid + ".list"), "w", encoding="utf-8") as f:
+            f.write("p1\tnew\t%s\n" % path)
+        p = json.dumps({"session_id": sid, "prompt_id": "p1", "hook_event_name": "Stop", "stop_hook_active": False, "transcript_path": tp or ""})
+        r = subprocess.run(["bash", os.path.join(HOOKS, "end_of_turn_checks.sh")], input=p, capture_output=True, text=True, env=env(**over), cwd=WORK)
+        os.unlink(path)
+        return r.stdout
+
+    out = end_of_turn(LOOSE, said(PROMPT))
+    check("move it to " + DESK_DEST in out and 'own_list_add.py\\" \\"%s' % DESK_DEST in out, "the prompt names the desk: move it to the desk's tools folder, and list that", out)
+    out = end_of_turn(R3_PATH)
+    check("move it to " + DESK_DEST in out, "the path names the desk, no transcript", out)
+    out = end_of_turn(LOOSE, said("write a command-line thing that totals receipts"))
+    check("move it to " + TOOLS_DEST in out, "a no-desk tool keeps tools/", out)
+    out = end_of_turn(LOOSE)
+    check("move it to " + TOOLS_DEST in out, "no transcript: tools/", out)
+    out = end_of_turn(LOOSE, said("totals for my money desk and my travel desk"))
+    check("move it to " + TOOLS_DEST in out, "two desks: no guess, tools/", out)
+    out = end_of_turn(R3_PATH, said(PROMPT), ROUNDB_PLACEMENT_ROUTE_SIGN="off")
+    check("move it to " + TOOLS_DEST in out, "switch OFF: the old tools/ text", out)
+
     print("-- 3. harmless work is not newly stopped")
     HARMLESS = [
         ("Write", {"file_path": TARGET, "content": "print(1)"}, "a tool already in the personal code folder"),
