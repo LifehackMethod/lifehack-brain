@@ -4,10 +4,20 @@
 # replay (system/tools/rig) run the SAME code.
 #   python3 ups_triggers.py save   < prompt text      -> prints 1 if the prompt asks to save, else 0
 #   python3 ups_triggers.py num    < prompt text      -> prints 1 if the typed prose has a real number/calculation
+#   python3 ups_triggers.py machine < prompt text     -> prints 1 if the text is a peer message or task notification, not the person
 #   add --json to read the hook's stdin JSON ({"prompt": ...}) instead of raw text.
 # Used by: system/hooks/save_routing_hint.sh (save), system/hooks/inject_compute_mechanically.sh (num, arm 3 only).
 # FAIL_POSTURE: any error prints 0 (silent), exit 0. A missed hint costs a small loss; a stuck turn costs a large one.
 import re
+
+# ---------- not the person (2026-11-02) ----------
+# The harness delivers cross-session peer messages and task notifications through UserPromptSubmit as if typed. Transcript rows carry
+# origin.kind for these; the prompt text is what a hook is sure to have, so this reads how the harness STARTS them. Anchored at the start:
+# a person who merely mentions or quotes the tags later in a message still counts.
+MACHINE_LEAD = re.compile(r"\s*(?:Another Claude session sent a message:\s*<cross-session-message\b|<task-notification\b)")
+
+def not_the_person(p):
+    return bool(MACHINE_LEAD.match(p))
 
 # ---------- save-routing (cut 4) ----------
 # Imperative save intent only: "save" as the first word of a sentence, "save this/that/it/...", "/save" used as a
@@ -100,6 +110,6 @@ if __name__ == "__main__":
         raw = sys.stdin.read()
         if "--json" in sys.argv:
             raw = (json.loads(raw or "{}").get("prompt") or "")
-        print(1 if (new_save(raw) if mode == "save" else new_num(raw)) else 0)
+        print(1 if (not_the_person(raw) if mode == "machine" else new_save(raw) if mode == "save" else new_num(raw)) else 0)
     except Exception:
         print(0)

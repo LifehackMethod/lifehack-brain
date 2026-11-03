@@ -104,7 +104,7 @@ TTL_HOURS="${PM_TTL_HOURS:-$(_pm_default_ttl)}"
 
 INPUT="$(cat 2>/dev/null)"
 # THE HUMAN'S RAW WORDS. This is the whole reason the override lives in THIS file: the `prompt`
-# field is written by the person and by nothing else. A session cannot fire a UserPromptSubmit
+# field is the person's words, except that the harness also delivers peer messages and task notifications through it; those issue no grant (below). A session cannot fire a UserPromptSubmit
 # event, cannot choose this text, and cannot reach it — so a token derived from it is a token the
 # model cannot mint for itself. Everything else a session could touch (a flag, an env var, an
 # argument, a file) is the model authorising the model.
@@ -172,7 +172,15 @@ fi
 # do. The tighter fix, if it ever earns one, is asking the harness for a confirmation, not more regex.
 GRANTF="$HOME/.claude/run/pm/override-$KEY.grant"
 _OVR_RE='(override|unlock)[[:space:]]+(the[[:space:]]+)?((project|pm|brief|plan)[[:space:]]+)?(lock|arming)|(switch|change|re-?point|point|move|re-?arm)[[:space:]]+(the[[:space:]]+)?(armed[[:space:]]+)?(project|brief|plan)[[:space:]]+to[[:space:]]|(switch|change|move|re-?point|re-?arm)[[:space:]]+to[[:space:]]+(the[[:space:]]+)?(project|brief|plan)[[:space:]]|write[[:space:]]+(to|into)[[:space:]]+(this|that|the)[[:space:]]+other[[:space:]]+(project|plan|brief)|arm[[:space:]]+[^[:space:]]{1,60}[[:space:]]+instead'
-if [ -n "$PROMPT" ] && printf '%s' "$PROMPT" | grep -qiE "$_OVR_RE" 2>/dev/null; then
+# 2026-11-02: a peer's message or a helper's report is not the human speaking, so it issues no grant; it falls through to the
+# elif like any message that does not re-authorise, so a pending grant still expires. The check failing to answer counts as not the person.
+_NOT_PERSON=0
+case "$INPUT" in
+  *cross-session-message*|*task-notification*)
+    [ "$(printf '%s' "$INPUT" | python3 "$_pm_hookdir/lib/ups_triggers.py" machine --json 2>/dev/null)" = "0" ] || _NOT_PERSON=1
+    ;;
+esac
+if [ "$_NOT_PERSON" = 0 ] && [ -n "$PROMPT" ] && printf '%s' "$PROMPT" | grep -qiE "$_OVR_RE" 2>/dev/null; then
   # Quote the match PLUS the word that follows it. Several of the forms above end on "to ", so the
   # bare match reads "switch the project to " — and the one thing a person needs to see quoted back
   # is the name they said. This is for the human's eyes only; pm_flag.sh never parses it.
