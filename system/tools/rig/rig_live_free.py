@@ -12,7 +12,8 @@ USAGE: rig_live_free.py run --cases cases/meal-roundA-live.jsonl --label L [--on
                  rig-config-isolation: Claude Code loads every ancestor's .claude, so a cwd under the home loaded the runner's own config).
   --env K=V:     extra environment for the headless child only (e.g. ROUNDB_BACK_DOOR=on); hooks inherit it.
 EVIDENCE: each case leaves <id>.end-state.json in the streams folder (plan fix 23(c)): the throwaway personal folder's own list, file manifest, small text
-          copies, what THIS case changed, and before/after sha256 of the fixture originals. Limits and any capture error are stated in the file.
+          copies, what THIS case changed, and before/after sha256 of the fixture originals; and the same for the throwaway HOME's ~/.claude/skills, reset to its fixture
+          state at each case's start (rig hook copies out, seeded skills marked seeded). Limits and any capture error are stated in the file.
 """
 import argparse, atexit, collections, glob, hashlib, json, os, re, shlex, shutil, stat, subprocess, sys, tempfile, time
 
@@ -442,7 +443,7 @@ def journal_slice(home, mark, out_path):
 
 OWN_LIST_NAME = "register.jsonl"             # same name as shared/tools/own_list_add.py LIST_NAME
 END_STATE_TEXT_FILE_MAX = 64 * 1024          # a text file larger than this is hashed and listed, not copied
-END_STATE_TEXT_TOTAL_MAX = 2 * 1024 * 1024   # copies stop here for one case; the evidence folder lives in the notes
+END_STATE_TEXT_TOTAL_MAX = 2 * 1024 * 1024   # copies stop here for one folder in one case (personal folder, skills folder); the evidence folder lives in the notes
 END_STATE_OWN_LIST_MAX = 1024 * 1024         # the own list is the point of the capture, so it gets its own larger limit
 END_STATE_MAX_FILES = 5000                   # a manifest stops here and says so (a session's node_modules must not bloat the evidence)
 
@@ -518,13 +519,91 @@ def own_list_read(personal):
             "text_exact": text.encode("utf-8") == cut, "truncated": len(data) > END_STATE_OWN_LIST_MAX}
 
 
-def end_state_mark(personal, fixture_cwd):
+def _skills_root(home):
+    return os.path.join(home, ".claude", "skills")
+
+
+def _hook_copy_rels():
+    """The rig's own hook copies (ENVER_HOOK_COPIES), relative to the skills folder: rig setup, never a session's product."""
+    prefix = os.path.join(".claude", "skills") + os.sep
+    return {r[len(prefix):] for r in ENVER_HOOK_COPIES if r.startswith(prefix)}
+
+
+def skills_tree(home, errors):
+    """tree_manifest of the HOME's skills folder, without the rig's hook copies."""
+    tree = tree_manifest(_skills_root(home), errors)
+    copies = _hook_copy_rels()
+    tree["files"] = {p: e for p, e in tree["files"].items() if p not in copies}
+    return tree
+
+
+def fresh_skills(home, aside):
+    """At a case's fresh start: put the throwaway HOME's skills folder back to its fixture state, the hook copies alone, so one session's skill is not there for the next.
+    Guarded like fresh_personal: only the rig's own home, never through a link. Moves to `aside` (the rig's work dir, outside the session's HOME) rather than deleting.
+    Seeding comes after this. -> what was moved, relative to the skills folder."""
+    real_home = os.path.realpath(home)
+    assert os.path.basename(real_home) == "rig-iso-home", "refusing to clear skills in a folder that is not the rig's throwaway HOME: " + home
+    root = _skills_root(home)
+    assert os.path.realpath(root) == _skills_root(real_home), "refusing a skills folder that leads out of the throwaway HOME: " + root
+    if not os.path.isdir(root):
+        return []
+    keep, moved = _hook_copy_rels(), []
+    def move(rel):
+        dst = os.path.join(aside, rel)
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        shutil.move(os.path.join(root, rel), dst)
+        moved.append(rel)
+    for name in sorted(os.listdir(root)):
+        q = os.path.join(root, name)
+        if name in keep:
+            continue
+        if os.path.islink(q) or not os.path.isdir(q) or not any(k.startswith(name + os.sep) for k in keep):
+            move(name)
+            continue
+        for dp, dn, fs in os.walk(q):   # a folder holding hook copies: everything but the copies
+            for f in sorted(fs + [d for d in dn if os.path.islink(os.path.join(dp, d))]):
+                rel = os.path.relpath(os.path.join(dp, f), root)
+                if rel not in keep:
+                    move(rel)
+    return moved
+
+
+def _fresh_skills_soft(home, aside, isolated):
+    """-> {"cleared", "seeded", "errors"}, the case's start-of-case skills record, read by write_end_state. A failed reset is recorded: the credit below is per case either way."""
+    start = {"cleared": [], "seeded": [], "errors": []}
+    if isolated:
+        try:
+            start["cleared"] = fresh_skills(home, aside)
+        except Exception as e:
+            start["errors"].append("skills reset: %r" % (e,))
+    return start
+
+
+def _seed_noting(home, seed, start):
+    """Run a fixture's skill seeding and note what it put there, so the evidence shows it as seeded, not built. A failing seed still raises, as it always did; only the note is soft."""
+    errs = start["errors"]
+    try:
+        before = skills_tree(home, errs)["files"]
+    except Exception as e:
+        before = None
+        errs.append("skills before the seed: %r" % (e,))
+    seed(home)
+    if before is not None:
+        try:
+            d = tree_delta(before, skills_tree(home, errs)["files"])
+            start["seeded"] = sorted(d["added"] + d["modified"])
+        except Exception as e:
+            errs.append("skills after the seed: %r" % (e,))
+
+
+def end_state_mark(personal, fixture_cwd, home=None):
     """Before a case: the personal folder's manifest and own list, and the fixture originals' manifest (fixture_cwd None: the case has no fixture). A caller's
     own HOME keeps its personal folder from case to case and the isolated setup wipes it at each case's start, so end state alone cannot say what THIS case did;
     the mark is taken after the wipe, like journal_mark. A part that fails is left out and its error kept: write_end_state then claims no delta from it."""
     mark = {"errors": []}
     for key, fn in (("personal", lambda: tree_manifest(personal, mark["errors"])), ("own_list", lambda: own_list_read(personal)),
-                    ("fixture", lambda: tree_manifest(fixture_cwd, mark["errors"]) if fixture_cwd else None)):
+                    ("fixture", lambda: tree_manifest(fixture_cwd, mark["errors"]) if fixture_cwd else None),
+                    ("skills", lambda: skills_tree(home, mark["errors"]) if home else None)):
         try:
             mark[key] = fn()
         except Exception as e:
@@ -532,25 +611,25 @@ def end_state_mark(personal, fixture_cwd):
     return mark
 
 
-def _mark_soft(personal, fixture_cwd):
+def _mark_soft(personal, fixture_cwd, home=None):
     """end_state_mark that cannot fail the case. -> a mark; on a failure, one holding only the error."""
     try:
-        return end_state_mark(personal, fixture_cwd)
+        return end_state_mark(personal, fixture_cwd, home)
     except Exception as e:
         return {"errors": ["before the case: %r" % (e,)]}
 
 
-def _text_copies(personal, rels, entries, errors):
-    """-> (copies {rel: text}, not_copied {rel: reason}) for the files this case added or modified; the own list is kept apart."""
+def _text_copies(personal, rels, entries, errors, apart=OWN_LIST_NAME):
+    """-> (copies {rel: text}, not_copied {rel: reason}) for the files this case added or modified; `apart` (the own list) is kept apart."""
     copies, skipped, total = {}, {}, 0
     for rel in rels:
         entry = entries.get(rel) or {}
-        if rel == OWN_LIST_NAME or entry.get("type") != "file":
+        if rel == apart or entry.get("type") != "file":
             continue
         if entry.get("size", 0) > END_STATE_TEXT_FILE_MAX:
             skipped[rel] = "over the %d byte limit" % END_STATE_TEXT_FILE_MAX
         elif total + entry.get("size", 0) > END_STATE_TEXT_TOTAL_MAX:
-            skipped[rel] = "over the case's %d byte total" % END_STATE_TEXT_TOTAL_MAX
+            skipped[rel] = "over the folder's %d byte total" % END_STATE_TEXT_TOTAL_MAX
         else:
             try:
                 data = _read_capped(os.path.join(personal, rel), END_STATE_TEXT_FILE_MAX + 1)
@@ -613,7 +692,32 @@ def _capture_fixture(state, mark, fixture_cwd):
     fo.update(before=was, after={p: cur.get(p) for p in was}, changed=d["modified"], removed=d["removed"], added=d["added"], complete=before["complete"] and now["complete"])
 
 
-def write_end_state(mark, personal, fixture_cwd, out_path, isolated=None):
+def _capture_skills(state, mark, home, start):
+    """The HOME's skills folder: what THIS case changed (the mark is taken after the reset and any seeding), its manifest, and small text copies. Status of a file:
+    added / modified by this case, seeded by its fixture, or a leftover from before it (only when the reset failed, or in a caller's own HOME)."""
+    sk = {"root": _skills_root(home), "delta": None, "delta_complete": False, "manifest": None, "text_files": {}, "not_copied": {}, "leftovers_present": None,
+          "leftovers_cleared": start.get("cleared", []), "seeded": start.get("seeded", []), "hook_copies_excluded": sorted(_hook_copy_rels())}
+    state["skills"] = sk
+    now = skills_tree(home, state["errors"])
+    before = mark.get("skills")
+    delta = tree_delta(before["files"], now["files"]) if before else None
+    sk["delta"] = delta
+    sk["delta_complete"] = bool(before and before["complete"] and now["complete"])
+    if before:
+        sk["leftovers_present"] = sorted(set(before["files"]) - set(sk["seeded"]))
+    def status(p):
+        if not delta:
+            return "unknown"
+        if p in delta["added"] or p in delta["modified"]:
+            return "added" if p in delta["added"] else "modified"
+        return "seeded" if p in sk["seeded"] else "leftover"
+    sk["manifest"] = [dict(e, path=p, status=status(p)) for p, e in sorted(now["files"].items())]
+    # no baseline: nothing can be called this case's, so every text file is copied rather than none
+    changed = (delta["added"] + delta["modified"]) if delta else sorted(now["files"])
+    sk["text_files"], sk["not_copied"] = _text_copies(_skills_root(home), changed, now["files"], state["errors"], apart=None)
+
+
+def write_end_state(mark, personal, fixture_cwd, out_path, isolated=None, home=None, skill_start=None):
     """After a case, before any cleanup: write the personal folder's end state and the fixture hashes to out_path. FAIL-SOFT: never raises and never touches the
     case's score. Each part fails alone, every error lands in "errors" there and in the returned summary ({"file", "errors"}), which goes on the result row, so
     even an evidence file that cannot be written leaves a trace."""
@@ -632,7 +736,18 @@ def write_end_state(mark, personal, fixture_cwd, out_path, isolated=None):
         _capture_fixture(state, mark, fixture_cwd)
     except Exception as e:
         errors.append("fixture originals: %r" % (e,))
-    summary = {"file": os.path.basename(out_path), "errors": errors}
+    skills_changed = None   # None: no complete delta, so run_one cannot tell what this case built
+    if home:
+        errors.extend((skill_start or {}).get("errors") or [])
+        try:
+            _capture_skills(state, mark, home, skill_start or {})
+            if state["skills"]["delta_complete"]:
+                skills_changed = sorted(state["skills"]["delta"]["added"] + state["skills"]["delta"]["modified"])
+        except Exception as e:
+            errors.append("skills folder: %r" % (e,))
+        if skills_changed is None:
+            errors.append("skills: no complete delta, so the credit falls back to every skill in the folder (rig's own home only)")
+    summary = {"file": os.path.basename(out_path), "errors": errors, "skills_changed": skills_changed}
     try:
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=1, sort_keys=True)
@@ -740,6 +855,7 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
     student_home = os.path.exists(os.path.join(home, ".rig-student"))   # set by rig_student.make_student_home (--student)
     if isolated:
         fresh_personal(personal, student=student_home)   # per session, so one session's files never count for the next
+    skill_start = _fresh_skills_soft(home, os.path.join(work, "skills-aside", c["id"]), isolated)   # likewise the skills folder, before any seeding below
     prompt = L["prompt"]
     for k, v in (("{HOME}", home), ("{CWD}", cwd), ("{V2}", V2), ("{PERSONAL}", personal)):
         prompt = prompt.replace(k, v)
@@ -751,7 +867,7 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
         drive_run = rig_drive.make_run_id(drive_label, c["id"])
         env["RIG_FENCE_RUN_DRIVE"] = rig_drive.begin(drive_run, home)
         if L.get("drive_fixture") == "invoice-checker":
-            rig_drive.seed_invoice_skill(home)
+            _seed_noting(home, rig_drive.seed_invoice_skill, skill_start)
     env.update(isol.fence_env(os.path.expanduser("~"), [notes], (os.path.realpath(scratch) if scratch else cwd, os.path.realpath(home)), fence_log,
                              notes_roots=REAL_NOTES_ROOTS or isol.real_notes_roots()))
     path, linked, missing = isol.make_private_path(os.path.join(work, "actor-bin"))
@@ -789,7 +905,7 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
         config_preflight(c["id"], work, cwd, env, sbwrap, mkcmd, settings, allowed_roots, personal if isolated else None, student_home, home)
     jmark = journal_mark(home)   # the HOME's fire journal is shared by every case: keep only what this session appends
     fixture_cwd = cwd if scratch and L.get("fixture") else None   # never the real personal folder (cwd without a scratch)
-    emark = _mark_soft(personal, fixture_cwd)   # after the wipe and the config probe: the end state is compared with this
+    emark = _mark_soft(personal, fixture_cwd, home)   # after the wipe, the seeding and the config probe: the end state is compared with this
     b = snapshot(notes)
     t0 = time.time()
     err = ""
@@ -801,7 +917,7 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
         err = "TIMEOUT"
     secs = time.time() - t0
     journal_slice(home, jmark, os.path.join(work, c["id"] + ".fire-journal.jsonl"))   # copied to the streams folder by copy_evidence
-    end_state = write_end_state(emark, personal, fixture_cwd, os.path.join(work, c["id"] + ".end-state.json"), isolated)   # also copied by copy_evidence; never fails the case
+    end_state = write_end_state(emark, personal, fixture_cwd, os.path.join(work, c["id"] + ".end-state.json"), isolated, home, skill_start)   # also copied by copy_evidence; never fails the case
     fence_saved = save_fence_evidence(fence_log, env["TMPDIR"], work, c["id"], stream)   # also copied by copy_evidence; never fails the case
     if drive_run:   # end-state capture FIRST (the scorer reads it), then drop the mount, then MOVE the run folder to _archive (never delete)
         snap = rig_drive.snapshot_end_state(drive_run, os.path.join(work, c["id"] + ".drive-end.json"))
@@ -837,10 +953,15 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
     if isolated:   # what the session put into the throwaway personal folder (its own list and tools) is its product
         files += sorted(os.path.join(dp, f) for dp, dn, fs in os.walk(personal) if ".git" not in dp.split(os.sep) for f in fs
                         if os.path.getsize(os.path.join(dp, f)) > 0)
-        # ruling A.2 (2026-10-31): a personal skill belongs in ~/.claude/skills/<name>/ - in the throwaway HOME that is its product too
-        copies = {os.path.join(home, r) for r in ENVER_HOOK_COPIES}   # the rig's read-only hook copies are setup, not product
-        files += sorted(os.path.join(dp, f) for dp, dn, fs in os.walk(os.path.join(home, ".claude", "skills")) for f in fs
-                        if os.path.getsize(os.path.join(dp, f)) > 0 and os.path.join(dp, f) not in copies)
+        # ruling A.2 (2026-10-31): a personal skill belongs in ~/.claude/skills/<name>/ - in the throwaway HOME that is its product too, but only what THIS case changed:
+        # the folder outlives the case, so a leftover or a seeded skill is not this session's work
+        if end_state.get("skills_changed") is not None:
+            built = (os.path.join(_skills_root(home), r) for r in end_state["skills_changed"])
+            files += sorted(q for q in built if os.path.isfile(q) and os.path.getsize(q) > 0)
+        else:   # capture failed (recorded in the evidence): the walk the rig always did, so a capture error cannot cost the case its skill
+            copies = {os.path.join(home, r) for r in ENVER_HOOK_COPIES}   # the rig's read-only hook copies are setup, not product
+            files += sorted(os.path.join(dp, f) for dp, dn, fs in os.walk(_skills_root(home)) for f in fs
+                            if os.path.getsize(os.path.join(dp, f)) > 0 and os.path.join(dp, f) not in copies)
     ns = argparse.Namespace(stream=stream, desk="/nonexistent/no-desk", sid=None, journal=os.path.join(home, ".claude/run/fire-journal.jsonl"), code_root=rm.ROOT,
                             sop=L["sop"], shared_ref=L["shared_ref"], register_file=[], personal_root=(personal if isolated else None), enver_home=(personal if isolated else None), home_prefix=[], wrong_move=L["wrong_re"], ignore_hook=[], json=True, files=files, registration_forbidden=bool(L.get("registration_forbidden")), student=bool(L.get("student")))
     try:
