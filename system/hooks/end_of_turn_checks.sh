@@ -33,6 +33,8 @@ trap 'lhb_journal_fire "$?" "end_of_turn_checks.sh" "Stop" "" 2>/dev/null || tru
 #          (2) no keep-intent but the inline command is long and reusable (a loop, find -exec, xargs, 2+ pipes, or >= 120 chars)
 #          -> at most ONE "offer to keep it" per session. Logic: lib/inline_keep.py (real user text only, injected context
 #          stripped); state per session in $DIR/$SID.inlinekeep. Silent when no personal code folder resolves.
+#          2026-11-02: the offer carries the session's last message and asks for it back in full plus the one line, because the
+#          message written after a block replaces it as the final message.
 #      push warnings (fc_private_push_mode=warn, Enver's ruling 2026-11-02): when guard_git_push_signpost.sh ALLOWED a push the
 #          leakage scan flagged, it left <turn-writes>/<session>.pushwarn (one JSON line per finding, also in
 #          <notes>/state/push-warnings.log). While any of them is not yet reported -- its id absent from the final assistant
@@ -77,7 +79,11 @@ if [ "$IKN" = 1 ] && [[ $P != *'"stop_hook_active":true'* && $P != *'"stop_hook_
         if [ "$IKK" = keep ]; then
           IKM="END-OF-TURN CHECK: the person asked to keep a command you ran inline, and no file was saved. (Runs once; it will not ask again.)"$'\n'"Save that command as a script in their personal code folder ($PCR/tools/<a-good-name>.sh) and add it to their own list: python3 \"$HARK/shared/tools/own_list_add.py\" <the script path>. Then in your final message restate the path and the list entry."$'\n'"The command: $IKC"
         else
-          IKM="NOTE (once this session, nothing to fix): you ran a long command inline that looks reusable, and no file was saved."$'\n'"In your final message, offer in ONE line to keep it. If the person says yes: save it as a script in $PCR/tools/<a-good-name>.sh and run: python3 \"$HARK/shared/tools/own_list_add.py\" <the script path>. If no, drop it."$'\n'"The command: $IKC"
+          # A block makes the session write a NEW final message, and that one REPLACES what it just said (pinned4b D-B08: the Drive path and the
+          # link offer were gone, and most offers lost a path). So the note hands the message back and asks for it whole, plus the one line.
+          IKL="$(printf '%s' "$P" | python3 "$_lhb_dir/lib/inline_keep.py" --last-message 2>/dev/null)"
+          IKM="NOTE (once this session, nothing to fix): you ran a long command inline that looks reusable, and no file was saved."$'\n'"Your next message replaces the one you just wrote as your final message, so keep everything you already said: repeat that message in full, with where things landed and any offer you made. Do not shorten it. Then add ONE line at the end: offer in ONE line to keep the command. If the person says yes: save it as a script in $PCR/tools/<a-good-name>.sh and run: python3 \"$HARK/shared/tools/own_list_add.py\" <the script path>. If no, drop it."$'\n'"The command: $IKC"
+          [ -n "$IKL" ] && IKM+=$'\n\n'"Your message so far, to repeat:"$'\n'"$IKL"
         fi
         { printf '%s\n' "$IKM"; [ -n "$PWMSG" ] && printf '\n%s\n' "$PWMSG"; } | _block
         exit 0

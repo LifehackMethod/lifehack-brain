@@ -107,6 +107,51 @@ mk "$T/t6e" "keep it" "$LONG"
 stop o5 p1 "$T/t6e"; printf '%s' "$(reason)" | grep -q "asked to keep" && ok "keep-intent wins over offer wording (block, not offer)" || bad "wrong wording"
 stop o5 p2 "$T/t6e"; [ -z "$OUT" ] && ok "after a keep-block the same command is not offered either" || bad "offer after keep"
 
+echo "== the offer ADDS to the final message (exam D-B08, pinned4b: the rewrite after this note lost the Drive path and the link offer) =="
+# mkfinal <file> <final text> : one turn with a long command, ending in a real closing message
+mkfinal() { python3 - "$1" "$2" "$LONG" <<'PY'
+import json, sys
+f, text, cmd = sys.argv[1:4]
+L = [{"type": "user", "message": {"role": "user", "content": "my team all need this skill, share it with them"}},
+     {"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "t1", "name": "Bash", "input": {"command": cmd}}]}},
+     {"type": "user", "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "t1", "content": "ok"}]}},
+     {"type": "assistant", "message": {"content": [{"type": "text", "text": text}]}}]
+open(f, "w").write("\n".join(json.dumps(x) for x in L) + "\n")
+PY
+}
+SAID='The skill is in `My Drive/Team skills/skills/invoice-checker/`. It costs "$5" to keep.
+If you want the optional link from ~/.claude/skills into the Drive copy, I can run that next.'
+mkfinal "$T/t6f" "$SAID"
+stop o6 p1 "$T/t6f"; R="$(reason)"
+blocked && ok "D-B08 shape: the note still fires once" || bad "D-B08 shape: no note: $OUT $ERR"
+printf '%s' "$R" | grep -qF 'My Drive/Team skills/skills/invoice-checker/' && ok "the note carries where it landed, word for word" || bad "the Drive path is not in the note: $R"
+printf '%s' "$R" | grep -qF 'optional link from ~/.claude/skills into the Drive copy' && ok "the note carries the offer already made" || bad "the link offer is not in the note: $R"
+printf '%s' "$R" | grep -qF '"$5"' && ok "quotes and dollars in the message survive" || bad "message text was mangled: $R"
+printf '%s' "$R" | grep -qi 'repeat .*in full' && ok "the note says to repeat the message in full" || bad "the note does not say to repeat it: $R"
+printf '%s' "$R" | grep -qi 'replaces' && ok "the note says why: the next message replaces this one" || bad "the note does not say the next message replaces it: $R"
+printf '%s' "$R" | grep -q "offer in ONE line" && ok "the one-line keep offer is still asked for" || bad "keep offer gone: $R"
+printf '%s' "$R" | grep -q "own_list_add.py" && ok "the save route is still named" || bad "save route gone: $R"
+# the payload's own last message wins over the transcript (same order as lib/push_warn.py)
+python3 -c 'import json,sys; print(json.dumps({"session_id":"o7","prompt_id":"p1","transcript_path":sys.argv[1],"hook_event_name":"Stop","stop_hook_active":False,"last_assistant_message":"Landed at PAYLOAD-PLACE."}))' "$T/t6f" | bash "$EOT" >"$T/o" 2>"$T/e"; OUT="$(cat "$T/o")"
+printf '%s' "$(reason)" | grep -qF 'PAYLOAD-PLACE' && ok "the payload's last message is the one carried" || bad "payload message ignored: $OUT"
+# a very long message is cut, not dropped, and the note stays valid JSON
+mkfinal "$T/t6g" "FIRST-LINE-HERE $(printf 'x%.0s' $(seq 1 9000))"
+stop o8 p1 "$T/t6g"; R="$(reason)"
+printf '%s' "$R" | grep -qF 'FIRST-LINE-HERE' && [ "${#R}" -lt 6000 ] && ok "a very long message: carried from its start and capped" || bad "long message: ${#R} chars"
+# a turn with no closing text: still the plain note, no empty quote
+mk "$T/t6h" "which words" "$LONG"
+python3 - "$T/t6h" <<'PY'
+import json, sys
+L = [json.loads(x) for x in open(sys.argv[1])][:-1]
+open(sys.argv[1], "w").write("\n".join(json.dumps(x) for x in L) + "\n")
+PY
+stop o9 p1 "$T/t6h"; R="$(reason)"
+blocked && ! printf '%s' "$R" | grep -q "Your message so far" && printf '%s' "$R" | grep -q "offer in ONE line" && ok "no closing text: the note without a quote" || bad "empty quote: $R"
+# D-B03/D-B04 keep-intent: its message is untouched
+mk "$T/t6i" "keep it" "$LONG"
+stop o10 p1 "$T/t6i"; R="$(reason)"
+printf '%s' "$R" | grep -q "restate the path and the list entry" && ! printf '%s' "$R" | grep -q "Your message so far" && ok "keep-intent message unchanged" || bad "keep message changed: $R"
+
 echo "== real-use false alarm (2026-11-01): a Bash redirect or heredoc that WRITES a file is a file saved =="
 HD=$'cd /x/notes && cat > plans/launcher-lanes.plan.md <<\'EOF\'\n# plan\nstep one | step two | step three > done\nEOF'
 mk "$T/t8" "write the launcher lanes plan, keep it" "$HD"

@@ -5,6 +5,7 @@ WHY: exam cases D-B03/D-B04 (2026-11-01): the person said "keep it" about a comm
 no file was written, so the file-based own-list check had nothing to inspect. Spec: notes record 2026-11-01-final-miss-analysis.md.
 
 Usage: inline_keep.py <transcript.jsonl> <already_saved 0|1> <state_file>
+       inline_keep.py --last-message   < the Stop payload   -> prints the session's last message (capped), for the offer to hand back
 Prints nothing (stay silent) or ONE line "keep<TAB>cmd" / "offer<TAB>cmd". Never raises: any error = silent.
   keep : the person's words (this turn, or the turn just before) show keep-intent, this turn ran an inline Bash command
          (>= MIN_CHARS), and no file was saved -> block once.
@@ -24,6 +25,7 @@ import sys
 
 MIN_CHARS = 20      # below this a command is a glance (ls, pwd, git status), not something to keep
 LONG_CHARS = 120    # a single line this long is something you would not retype
+LAST_MESSAGE_CHARS = 4000   # what the offer hands back; a session's closing message is well under this
 # "keep it/this/that" is keep-intent ONLY when the phrase ENDS there (plan item 15, 2026-11-02: Enver's "keep this on track so
 # just keep it on track" was read as "keep this command"). Rule: after the pronoun come zero or more KEEP_TAIL words (please,
 # thanks, too, then, around, handy, saved, "as a script/tool/...", "for later/next time/..."), then a BOUNDARY: end of text, a
@@ -176,8 +178,18 @@ def analyse(path, saved):
     return ("offer", reus[-1]) if reus else None
 
 
+def last_message():
+    """Same order as push_warn.py: the payload's last_assistant_message, else the last assistant text in the transcript."""
+    from push_warn import last_assistant_text
+    text = (last_assistant_text(json.loads(sys.stdin.read() or "{}")) or "").strip()
+    return text[:LAST_MESSAGE_CHARS] + (" [cut here: the rest is in your message above; repeat it too]" if len(text) > LAST_MESSAGE_CHARS else "")
+
+
 def main():
     try:
+        if sys.argv[1:2] == ["--last-message"]:
+            print(last_message())
+            return
         path, saved, state = sys.argv[1], sys.argv[2] == "1", sys.argv[3]
         r = analyse(path, saved)
         if not r:
