@@ -178,6 +178,19 @@ for KP in "keep it" "save that" "keep it please" "keep it as a script" "keep it 
   mk "$T/i8" "$KP" "$PLAIN"; N=$((N+1)); stop "i8n$N" p1 "$T/i8"; printf '%s' "$(reason)" | grep -q "asked to keep" && ok "'$KP': still 'keep'" || bad "'$KP' lost: $OUT"
 done
 
+echo "== fix 15b (2026-11-02): a capitalised next word starts a new sentence, so the keep phrase has ended =="
+# The rig sends D-B04 as ONE -p prompt with BUILD_SUFFIX glued on with no punctuation: "...oh nice, keep it Do not edit ...".
+RIGSUF=" Do not edit jobs.md, and do not push or send anything real. If a tool call is denied or blocked, read the message and do what it says, then continue."
+grep -qF '" Do not edit jobs.md, and do not push or send anything real."' "$HERE/../tools/rig/rig_live_free.py" && grep -qF '" If a tool call is denied or blocked, read the message and do what it says, then continue."' "$HERE/../tools/rig/rig_live_free.py" && ok "RIGSUF matches rig_live_free.py BUILD_SUFFIX" || bad "RIGSUF drifted from rig_live_free.py BUILD_SUFFIX"
+mk "$T/j1" "how many lines of text are in each file under my Recipes folder? quick answer. oh nice, keep it$RIGSUF" "$FIND"
+stop j1 p1 "$T/j1"; printf '%s' "$(reason)" | grep -q "asked to keep" && ok "D-B04 exact prompt + rig suffix: 'keep'" || bad "D-B04 + rig suffix lost: $OUT"
+for KP in "keep it I'll reuse it" "keep it i'll reuse it" "keep it Please" "keep it I might need it again"; do
+  mk "$T/j2" "$KP" "$PLAIN"; N=$((N+1)); stop "j2n$N" p1 "$T/j2"; printf '%s' "$(reason)" | grep -q "asked to keep" && ok "'$KP': 'keep'" || bad "'$KP' lost: $OUT"
+done
+for IDI in "keep this on track so just keep it on track" "keep it working" "keep it going" "Keep it On track" "keep it short" "keep it brief" "Keep it Short" "Keep it Working"; do
+  mk "$T/j3" "$IDI" "$PLAIN"; N=$((N+1)); stop "j3n$N" p1 "$T/j3"; [ -z "$OUT$ERR" ] && ok "idiom '$IDI': silent" || bad "idiom '$IDI' read as keep: $OUT"
+done
+
 echo "== switch OFF = silent =="
 mk "$T/t7" "keep it" "$FIND"
 ROUNDB_INLINE_KEEP_NUDGE=off stop f1 p1 "$T/t7"; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "switch off: keep-intent case silent" || bad "acted while OFF: $OUT"

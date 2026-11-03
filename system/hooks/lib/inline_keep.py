@@ -31,10 +31,17 @@ LONG_CHARS = 120    # a single line this long is something you would not retype
 # "keep it working/going/up/short/simple", "keep that in mind" -- and is an idiom, not keep-intent. An explicit object noun
 # ("keep the command", "keep that one", "keep this script") always counts. The rule is an allowlist on purpose: a missed
 # keep costs one un-nudged turn; a false keep blocks the person's turn with a request they never made.
+# Fix 15b (2026-11-02): a next word that starts with a CAPITAL letter also ends the phrase -- a new sentence or clause typed
+# without punctuation ("keep it I'll reuse it"; the rig's D-B04 prompt "...keep it Do not edit jobs.md ..."). The capital test
+# is case-SENSITIVE ((?-i:...)) inside an otherwise case-insensitive pattern, and the idiom words below never count even
+# capitalised, so "Keep it On track" / "Keep it Short" stay silent.
+KEEP_IDIOM = (r"(?:on|up|going|working|running|moving|short|simple|brief|light|clean|tidy|quiet|together|in|off|down|"
+              r"safe|real|tight|low|small|alive)\b")
 KEEP_TAIL = (r"(?:\s+(?:please|pls|thanks|thank you|ok|okay|too|then|around|handy|somewhere|saved"
              r"|as (?:a |an |my )?(?:script|tool|command|file|snippet|one)"
              r"|for (?:later|next time|the future|reuse|re-use|me|now)))*")
-KEEP_END = r"(?:[ \t]*(?:$|\n|[.,!?;:)\]\"'\u2014\u2013\u2026-])|\s+(?:and|but)\b)"
+KEEP_END = (r"(?:[ \t]*(?:$|\n|[.,!?;:)\]\"'\u2014\u2013\u2026-])|\s+(?:and|but)\b"
+            r"|\s+(?!" + KEEP_IDIOM + r")(?-i:[A-Z]))")
 KEEP = re.compile(
     r"\b(keep (?:the|that|this) (?:command|one|script|snippet|pipeline|line)\b|keep (?:it|that|this)(?=" + KEEP_TAIL + KEEP_END + r")|"
     r"(?:save (that|this|it)( command| one)?|"
