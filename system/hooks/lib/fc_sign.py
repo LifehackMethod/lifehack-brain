@@ -228,9 +228,40 @@ def first(signs, payload, masked=False):
     return taken[0][1] + ((" The same goes for: " + ", ".join(extra) + ".") if extra else "")
 
 
+def canon_write_first(payload):
+    """The sign on a whole-file Write over canon or a plugin SOP, BEFORE archive-before-cut (live sample, 2026-11-03: in 8 of 12 canon sessions the cut stop fired
+    first, and the session logged a cut that never happened). Same test as guard_canon_write's ASK_REPLACE. -> the sign, or None."""
+    if payload.get("tool_name") != "Write" or not on("fc_canon_replace"):
+        return None
+    path = (payload.get("tool_input") or {}).get("file_path") or ""
+    if not path:
+        return None
+    if not os.path.isabs(path):
+        path = os.path.join(payload.get("cwd") or os.getcwd(), path)
+    try:
+        if not os.path.isfile(path) or os.path.getsize(path) == 0:
+            return None
+    except OSError:
+        return None
+    cmp_ = path.replace("\\", "/")
+    if "/canon/" in cmp_ or os.path.basename(cmp_) == "canon.md":
+        if _ROUTE_PROPOSED.search(os.path.basename(cmp_)):
+            return None
+        return first([("canon", path, canon_replace(path))], payload)
+    if "/system/sops/" in cmp_ and cmp_.endswith(".md"):
+        return first([("sops", path, sop(path))], payload)
+    return None
+
+
 def main(argv):
     try:
         payload = json.loads(sys.stdin.read() or "{}")
+        if argv[1] == "--canon-write":
+            msg = canon_write_first(payload)
+            if msg:
+                sys.stderr.write(msg + "\n")
+                return 2
+            return 0
         text = argv[3]
         if text.startswith("@"):   # a sign by name: @canon_replace uses the target; @drive:what uses the words after the colon; @sheet_formula takes nothing
             name, _, arg = text[1:].partition(":")

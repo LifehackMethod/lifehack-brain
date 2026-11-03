@@ -86,6 +86,12 @@ INPUT=$(cat)
 # WHO-COULD-THIS-BREAK: a session or the maintainer condensing, deduplicating or rewording an SOP/canon file without logging what left.
 # WAY-THROUGH: run the cutlog command the deny prints (a local append, no GitHub needed), then retry the same edit.
 _CUT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
+# The street sign comes BEFORE archive-before-cut (lib/fc_sign.py): a session told to log a cut logs it, even when the replace it was about to make never happens.
+case "$INPUT" in
+  *'"tool_name":"Write"'*|*'"tool_name": "Write"'*)
+    printf '%s' "$INPUT" | python3 "$_CUT_DIR/lib/fc_sign.py" --canon-write
+    [ $? -eq 2 ] && exit 2 ;;
+esac
 if { . "$_CUT_DIR/lib/roundb.sh" && roundb_on fc_archive_before_cut; } 2>/dev/null && [ -f "$_CUT_DIR/lib/cut_receipt.py" ]; then
   printf '%s' "$INPUT" | python3 "$_CUT_DIR/lib/cut_receipt.py"
   [ $? -eq 2 ] && exit 2
@@ -152,6 +158,14 @@ if [ "$(printf '%s' "$_CANON_TOOL" | sed -n '1p')" = "Bash" ]; then
             ;;
         esac
         _cc_cmp="$(_winfold "$_cc")"
+        # The canon sign's own route, in Bash too: a sign must not name a path this door then refuses (plan fix 23(d), fc_sign_canon).
+        case "$_cc_cmp" in
+          *.proposed.md|*.PROPOSED.MD) { . "$_CW_DIR/lib/roundb.sh" && roundb_on fc_sign_canon; } 2>/dev/null && continue ;;
+        esac
+        # The door reads a cp's source as a write target too. Copying canon onto its own draft is the same route: the source is not written.
+        case "$_CANON_CMD" in
+          *cp*"$_cc"*.proposed.md*) { . "$_CW_DIR/lib/roundb.sh" && roundb_on fc_sign_canon; } 2>/dev/null && continue ;;
+        esac
         case "$_cc_cmp" in
           */canon/*|*/canon.md|canon.md)
             printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: this Bash command writes to a canon file (${_cc}). WHY: canon carries two content rails — a size limit and an expiry-marker check — and both need to READ the content being written. Through the Write tool the content is a field this guard can measure; inside a shell command it is a heredoc or a pipe, and measuring it there would be a guess. A size rail that guesses is worse than none: it either blocks correct work or waves through the thing it exists to stop. So this door is closed rather than guessed at. REDIRECT: make this edit with the Write or Edit tool and the rails will run properly. If the content is generated, write it to a scratch file first, read it, then Write it. RULE: system/knowledge-altitude.md, and this hook's header.\"}" >&2

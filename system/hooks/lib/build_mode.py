@@ -676,6 +676,27 @@ def main_inner():
                 warn("python overwrite check skipped (%s); allowing" % e)
     else:
         return 0
+    if tool == "Bash" and _roundb("fc_var_targets") and _roundb("fc_shell_overwrite"):
+        # lib/shell_vars.py: an overwrite through a variable this command set. The literal hard checks above stay literal, so this is a sign, then an ask, never a new hard block.
+        import shell_vars
+        sub = shell_vars.substitute(ti.get("command", ""))
+        if sub != ti.get("command", ""):
+            import fc_sign
+            seen = {w["target"] for w in writes}
+            for o in bash_ops(sub, cwd):
+                t = o.get("target", "")
+                if t in seen or not os.path.exists(t) or o.get("verb") not in OVERWRITE_VERBS or o.get("append"):
+                    continue
+                pk = protected_doc(t, code)
+                if pk:
+                    ASK_OUT.append(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "ask", "permissionDecisionReason":
+                        "ASK FIRST: this shell command overwrites %s through a variable. WAY-THROUGH: press Yes only if the person asked for exactly this; otherwise show them the change and wait. "
+                        "RULE: switch fc_var_targets in system/hooks/roundB.conf." % t}}))
+                    DATA_SIGNS.append(fc_sign.kind_sign(t, pk, True))
+                elif data_file_target(t):
+                    ASK_OUT.append(data_overwrite_ask(t))
+                    DATA_SIGNS.append(fc_sign.kind_sign(t, "data", True))
+
     if not writes:
         return 0
 

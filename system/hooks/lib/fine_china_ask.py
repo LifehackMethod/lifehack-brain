@@ -1058,8 +1058,12 @@ def main_inner():
                 ask(m, claudemd_sign(t, code) if tool == "Write" else None)   # ruling (c): Edit is upkeep
             length_advisory(t, tool, ti)
     elif tool == "Bash":
-        check_bash(ti.get("command", ""), cwd, code)
-        claudemd_bash(ti.get("command", ""), cwd, code)
+        cmd = ti.get("command", "")
+        if on("fc_var_targets"):   # a path in a variable this command set is judged at its real path (lib/shell_vars.py); one it did not set stays as today
+            import shell_vars
+            cmd = shell_vars.substitute(cmd)
+        check_bash(cmd, cwd, code)
+        claudemd_bash(cmd, cwd, code)
 
 
 def sign_masked():

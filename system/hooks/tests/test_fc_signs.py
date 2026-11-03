@@ -21,7 +21,7 @@ import unittest
 TESTS = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.realpath(os.environ.get("FC_SIGNS_REPO") or os.path.dirname(os.path.dirname(os.path.dirname(TESTS))))
 SHEET = "A" * 44
-SWITCHES = ["fc_sign_sops", "fc_sign_canon", "fc_sign_claudemd", "fc_sign_data", "fc_sign_db", "fc_sign_folder", "fc_sign_drive", "fc_sign_conf", "fc_sign_sheet_guide"]
+SWITCHES = ["fc_var_targets", "fc_sign_sops", "fc_sign_canon", "fc_sign_claudemd", "fc_sign_data", "fc_sign_db", "fc_sign_folder", "fc_sign_drive", "fc_sign_conf", "fc_sign_sheet_guide"]
 RANK = {"block": 4, "deny": 3, "ask": 2}
 
 
@@ -283,6 +283,10 @@ class Routes(Base):
                 with self.subTest(c=c):
                     self.assertPasses(*self.B(c))
         self.assertPasses(*self.B("cat canon/voice.md | sed s/Warm/Short/ > canon/voice.proposed.md"))
+        for core in ("printf 'x\\n' > %s/canon/voice.proposed.md" % self.cwd, "cp -- %s/canon/voice.md %s/canon/old.proposed.md" % (self.cwd, self.cwd)):   # the sign names the absolute path
+            for c in self.shapes(core):
+                with self.subTest(c=c):
+                    self.assertPasses(*self.B(c))
 
     def test_data_route_every_shape_after_the_sign(self):
         self.assertSign(self.call(*self.W("rates.csv", "x,y\n")), "rates.new.csv")
@@ -372,6 +376,127 @@ class SheetGuide(Base):
         self.assertEqual(self.call(*self.B(self.reader()), sheet_marks=m, off=off)[0], "allow")
         self.assertEqual(self.call(*self.B(self.APPEND), sheet_marks=m, off=off)[0], "block")   # the old missing marker
         self.assertEqual(self.call(*self.B(self.GET + " && " + self.APPEND), sheet_marks=self.marks() + "x", off=off)[0], "allow")   # the old hole
+
+
+class VarTargets(Base):
+    """A path held in a variable set in the same command (live sample, 2026-11-03: f=~/.config/lifehack/placement.conf; printf ... >> "$f" switched a check off with no sign and no ask)."""
+    CONF = "~/.config/lifehack/placement.conf"
+    LINE = "printf 'off\\tx\\n'"
+
+    def setUp(self):
+        super().setUp()
+        p = os.path.join(self.home, ".config", "lifehack", "placement.conf")
+        with open(p, "w", encoding="utf-8") as f:
+            f.write("# mine\n")
+
+    def fresh(self, n):
+        self.sid = self.sid[:-6] + "%06d" % n
+
+    def test_switch_file_every_shape(self):
+        D = "~/.config/lifehack"
+        shapes = ["f=%s; %s >> \"$f\"" % (self.CONF, self.LINE), "f=%s; %s > \"$f\"" % (self.CONF, self.LINE), "f=%s && %s >> \"${f}\"" % (self.CONF, self.LINE),
+                  "f=%s\n%s >> \"$f\"" % (self.CONF, self.LINE), "export f=%s; %s >> \"$f\"" % (self.CONF, self.LINE), "f=\"$HOME/.config/lifehack/placement.conf\"; %s >> \"$f\"" % self.LINE,
+                  "f=%s; %s | tee -a \"$f\"" % (self.CONF, self.LINE), "f=%s; sed -i '' '1d' \"$f\"" % self.CONF, "f=%s; cp readme.md \"$f\"" % self.CONF, "f=%s; mv readme.md \"$f\"" % self.CONF,
+                  "f=%s; python3 -c \"open('$f','a').write('x')\"" % self.CONF, "D=%s; cd \"$D\" && %s >> placement.conf" % (D, self.LINE), "D=%s; %s >> \"$D/placement.conf\"" % (D, self.LINE),
+                  "d=~/.config; f=$d/lifehack/placement.conf; %s >> \"$f\"" % self.LINE]
+        for i, c in enumerate(shapes):
+            with self.subTest(c=c):
+                self.fresh(700000 + i)
+                self.assertSign(self.call(*self.B(c)), "exact line")
+                self.assertEqual(self.call(*self.B(c))[0], "ask")
+
+    def test_an_assignment_inside_an_if_is_still_stopped(self):
+        # guard_canon_write's existing stop on a bare unresolved variable already refuses this shape, and stays as it is.
+        r = self.call(*self.B("if true; then f=%s; %s >> \"$f\"; fi" % (self.CONF, self.LINE)))
+        self.assertEqual(r[0], "block", r)
+
+    def test_a_command_after_a_shell_keyword_is_read(self):
+        for i, (c, need) in enumerate((("if [ -d Archive-2023 ]; then rm -rf Archive-2023; fi", "_archive"), ("for i in 1; do rm pantry.db; done", "ask whether they want it"),
+                                       ("if true; then echo no; else rm rates.csv; fi", "ask the person"), ("if true; then cp readme.md %s/rates.csv; fi" % self.cwd, "rates.new.csv"))):
+            with self.subTest(c=c):
+                self.fresh(300000 + i)
+                self.assertSign(self.call(*self.B(c)), need)
+                self.assertEqual(self.call(*self.B(c))[0], "ask")
+
+    def test_every_sign_group_through_a_variable(self):
+        cases = [("f=sops/mornings-sop.md; rm \"$f\"", "ask the person"), ("f=canon/voice.md; rm \"$f\"", "ask the person"), ("f=Thistledown/CLAUDE.md; rm \"$f\"", "ask the person"),
+                 ("f=rates.csv; rm \"$f\"", "ask the person"), ("f=rates.csv; printf 'a\\n' > \"$f\"", "rates.new.csv"), ("f=rates.csv; truncate -s 0 \"$f\"", "rates.new.csv"),
+                 ("f=pantry.db; rm \"$f\"", "ask whether they want it"), ("f=pantry.db; : > \"$f\"", "ask whether they want it"), ("d=Archive-2023; rm -rf \"$d\"", "_archive"),
+                 ("D=%s; cd \"$D\" && rm -rf Archive-2023" % self.cwd, "_archive"), ("D=%s; rm -rf \"$D/Archive-2023\"" % self.cwd, "_archive"), ("for d in Archive-2023; do rm -rf \"$d\"; done", "_archive"),
+                 ("f=%s/rates.csv; python3 -c \"open('$f','w').write('')\"" % self.cwd, "rates.new.csv")]
+        for i, (c, need) in enumerate(cases):
+            with self.subTest(c=c):
+                self.fresh(600000 + i)
+                self.assertSign(self.call(*self.B(c)), need)
+                self.assertEqual(self.call(*self.B(c))[0], "ask")
+
+    def test_canon_or_sop_shell_overwrite_through_a_variable_is_a_sign_not_a_new_block(self):
+        for i, (rel, need) in enumerate((("sops/mornings-sop.md", "ask the person"),)):
+            self.fresh(500000 + i)
+            c = "f=%s/%s; printf 'x\\n' > \"$f\"" % (self.cwd, rel)
+            self.assertSign(self.call(*self.B(c)), need)
+            self.assertEqual(self.call(*self.B(c))[0], "ask")
+
+    def test_near_misses_stay_as_they_were(self):
+        calls = ["f=%s; cat \"$f\"" % self.CONF, "f=%s; grep off \"$f\"" % self.CONF, "f=rates.csv; wc -l \"$f\"", "f=rates.csv; printf 'a\\n' >> \"$f\"", "x=1; echo \"$x\" > note.txt",
+                 "f=pantry.db; echo '$f' > note.txt", "f=pantry.db; echo \"\\$f\" > note.txt", "rm -rf \"$NOT_SET_ANYWHERE/x\"", "D=$(pwd); rm -rf \"$D/nothing-here\"", "f=readme.md; rm \"$f\"",
+                 "f=brand-new.csv; printf 'a\\n' > \"$f\"", "d=node_modules; rm -rf \"$d\"", "f=pantry.db; ls -la \"$f\"", "f=pantry.db FOO=1 true; echo done"]
+        for c in calls:
+            with self.subTest(c=c):
+                on = self.call(*self.B(c))
+                self.assertNotIn("STOP.", " ".join(m for _h, _d, m in on[1]), on)
+
+    def test_a_variable_this_command_does_not_set_behaves_as_today(self):
+        for c in ("rm -rf \"$SOMEDIR\"/x", "f=$(cat list.txt); rm -rf \"$f\"", "f=`cat list.txt`; rm -rf \"$f\"", "for d in a b; do rm -rf \"$d\"; done"):
+            with self.subTest(c=c):
+                a, b = self.call(*self.B(c)), self.call(*self.B(c), off=SWITCHES + ["fc_var_targets"])
+                self.assertEqual(a[0], b[0], (a, b))
+
+    def test_the_routes_pass_through_a_variable_too(self):
+        for i, c in enumerate(("A=_archive; mkdir -p \"$A\" && mv -- Archive-2023 \"$A/\"", "T=rates.new.csv; head -1 rates.csv > \"$T\"", "T=old.new.csv; printf 'a\\n' > \"$T\"", "P=%s/canon/old.proposed.md; printf 'x\\n' > \"$P\"" % self.cwd)):
+            with self.subTest(c=c):
+                self.fresh(400000 + i)
+                self.assertEqual(self.call(*self.B(c))[0], "allow")
+
+    def test_off_pins_the_old_hole(self):
+        c = "f=%s; %s >> \"$f\"" % (self.CONF, self.LINE)
+        self.assertEqual(self.call(*self.B(c), off=["fc_var_targets"])[0], "allow")
+
+
+class SignBeforeCut(Base):
+    """Live sample, 2026-11-03: in 8 of 12 canon sessions archive-before-cut fired first, and the session logged a cut that never happened."""
+
+    def long_canon(self):
+        self.w("canon/long.md", "# Voice\n" + "A line of the person's own settled voice that would be lost in a replace. " * 4 + "\n")
+        past = time.time() - 86400
+        os.utime(os.path.join(self.cwd, "canon/long.md"), (past, past))
+
+    def test_the_sign_comes_first_and_leaves_no_history(self):
+        self.long_canon()
+        tool, tin = self.W("canon/long.md", "# Voice\nShort.\n")
+        m = self.assertSign(self.call(tool, tin), "long.proposed.md")
+        self.assertNotIn("cutlog", m)
+        self.assertFalse(os.path.exists(os.path.join(self.cwd, "canon", "long.history.md")))
+
+    def test_off_and_second_attempt_get_archive_before_cut_as_today(self):
+        self.long_canon()
+        tool, tin = self.W("canon/long.md", "# Voice\nShort.\n")
+        off = self.call(tool, tin, off=["fc_sign_canon"])
+        self.assertEqual(off[0], "block")
+        self.assertIn("cutlog", " ".join(x[2] for x in off[1]))
+        self.assertSign(self.call(tool, tin))
+        second = self.call(tool, tin)
+        self.assertEqual(second[0], "block")
+        self.assertIn("cutlog", " ".join(x[2] for x in second[1]))
+
+    def test_an_edit_that_cuts_still_goes_to_archive_before_cut(self):
+        self.long_canon()
+        p = os.path.join(self.cwd, "canon/long.md")
+        with open(p, encoding="utf-8") as f:
+            text = f.read()
+        r = self.call("Edit", {"file_path": p, "old_string": text[8:], "new_string": "x", "replace_all": False})
+        self.assertEqual(r[0], "block")
+        self.assertIn("cutlog", " ".join(x[2] for x in r[1]))
 
 
 class Fixtures(unittest.TestCase):
