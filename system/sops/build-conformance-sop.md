@@ -7,9 +7,11 @@ desk: root
 status: in-progress
 authority: user
 created_at: 2026-11-02
-updated_at: 2026-11-02
+updated_at: 2026-11-03
+what_changed: "Lessons from the final exam and the sign tests added; ten stale claims corrected; do-not-retry, tensions and where-the-proof-stands added, shaped on canon's sections."
 purpose: "What was learned building the harness's layers of friction: how the harness behaves, which layers exist and what each catches, what is proven and what is not, and how to add, test or remove a layer without fooling yourself. A new document, written from scratch."
 supersedes: "Every earlier build SOP, including system/sops/build-sop.md, which is retired. Where they differ, this document wins."
+sections: "0 read this first · 1 where things go · 2 fine china · 3 reading · 4 how the harness behaves · 5 adding and removing a layer · 6 testing · 6a where the proof stands · 7 helpers and windows · 8 what didn't work · 9 from the old build SOP · 10 open · 11 tensions · 12 rule candidates"
 read_when: "Before adding or changing a guard, a check or a test; when a build landed somewhere wrong; when a test says the system is broken; when a session asks 'is there already friction for this?'"
 relations: "The canonical principles SOP (system/sops/canonical-principles-sop.md) holds the laws of physics for a stochastic harness. The skill-building SOP (system/sops/skill-building-sop.md) is the birth procedure for one skill. This SOP sits between them: how conformance is actually produced here, with receipts. The owner's own principles live in their notes (COMPASS), not in the plugin."
 evidence_words: "MEASURED = a scored run or a direct test, with a record. SEEN = happened in real use and was written down at the time. REASONED = argued, not yet tested. Canon's tiers map roughly: MEASURED ≈ AUTHORITATIVE, SEEN ≈ OBSERVED, REASONED ≈ RECOMMENDATION."
@@ -17,9 +19,11 @@ evidence_words: "MEASURED = a scored run or a direct test, with a record. SEEN =
 
 # Build Conformance — v1 (IN PROGRESS)
 
-> **Status:** in progress. Written by the coordinating session of the V2 build (2026-10-29 to 2026-11-02) while the work was fresh,
-> then kept current as the real-life trial reports. Items are marked by how they are known (see the evidence words above). Nearly all of
-> this is observed principle. The bar for a **rule** here is very high: tested in the rig AND observed over time. Where this document
+> **Status:** in progress. Written by the coordinating session of the V2 build (2026-10-29 to 2026-11-03) while the work was fresh.
+> The harness is being reorganized around a three-tier architecture, so parts of this will change; what's proposed for that isn't here until it's proven, apart from one decision noted in §2.
+>
+> **Words used here.** The *owner*: the person who maintains the plugin, and the operator. The *rig*: the test setup, where real AI sessions run sealed in a sandbox. The *final exam*: one set of those sessions on one locked version, scored by independent graders. A *fence*: a test-only guard that keeps those sessions away from real accounts. *Bypass*: running with permission prompts switched off. A *speed bump*: a first attempt refused with a message, where a later try gets through or gets an ask. *Launcher lanes*: a later step, for someone who pushes to several repositories, where each desktop shortcut locks a window to one push destination. A *keep question*: a line asking whether to save a command the person ran as a script. Items are marked by how they are known (see the evidence words above). Nearly all of
+> this is observed principle. The bar for a **rule** here is very high: it has to be true in theory, seen to be true, and true durably in practice over time, and true in the way it's prescriptively worded (§12). Where this document
 > says "must", read it as "every time we skipped this, it cost us"; the only law is the one it inherits from canon: *this is a
 > stochastic environment, not a rules-based one.*
 >
@@ -29,26 +33,30 @@ evidence_words: "MEASURED = a scored run or a direct test, with a record. SEEN =
 ## 0. Read this first
 
 1. **Conformance is produced by the harness, not by the reader.** The old build SOP was a long rulebook injected into every build. A session ignored it, read part of it, or pulled all of it into context and drowned. Nothing it said acted on its own. V2 moved the lessons into the harness as layers of friction: hooks that run before an action, checks that run at the end of a turn or at commit time, and a few locks that remove an ability outright. Those act whether or not anyone read anything. This document explains those layers; it is not itself one of them. (SEEN)
-2. **Most of what looked like the model failing was our own layers fighting it.** The first full exam failed on builds. The main cause was a guard refusing the very folder the owner had ruled skills belong in. The rest was an interview skill that stopped the build to ask questions, and a test fence that steered sessions to the wrong folder. Working with the model's defaults moved builds from 2 of 9 to 6 of 7. When a build goes wrong, ask first which layer did it. (MEASURED: Round D final; pinned re-run 2)
-3. **Score the end state.** What counts is that the thing ended up built, in the right place, and listed where the person will find it again. Mistakes along the way are a cost, not the verdict. (MEASURED, owner's ruling)
-4. **Say what was tested and what was not, in the same breath as the number.** "20 of 20 listed shapes stopped; shapes not on the list are not covered; the push case is not evaluated" is a result. "Fine china passed" is not. This document's own numbers follow that form.
+2. **Most of what looked like the model failing was our own layers fighting it.** The first full exam failed on builds. The main cause was a guard refusing the very folder the owner had ruled skills belong in. The rest was an interview skill that stopped the build to ask questions, and a test fence that steered sessions to the wrong folder. Working with the model's defaults moved builds from 2 of 9 to 6 of 7. When a build goes wrong, ask first which layer did it. (MEASURED: two scored exams)
+3. **Score the end state.** What counts is that the thing ended up built, in the right place, and listed where the person will find it again. A skill in Claude's own skills folder counts as listed, because Claude already finds it. Mistakes along the way are a cost, not the verdict. (MEASURED, owner's ruling)
+4. **Say what was tested and what was not, in the same breath as the number.** "20 of 20 listed shapes got a hook response; shapes not on the list are not covered; the push case is not evaluated" is a result. "Fine china passed" is not. This document's own numbers follow that form.
 5. **Overlapping circles, not a stack.** Layers count separately only if they fail differently. Three text-matching guards in a row are one layer. The centre of the Venn diagram, where several different kinds of layer overlap, is compliance. (canonical principles; MEASURED on the cloud incident below)
+6. **The gap is reach more than obedience.** A **sign** is a refusal on a first attempt that gives one specific instruction, such as "Don't delete this. Move it to the archive folder and tell the person." On the real hooks, 85 of 86 sessions that met a sign followed it, and none simply repeated the action. So there's no live evidence of what a repeat gets. At hook level the second try falls to an ask, which passes silently in bypass: a sign steers, it doesn't hold. The remaining build misses were sessions no stop reached, or that a stop sent the wrong way. So when a build goes wrong, look first for where nothing fired, before rewording anything. This is for one-step actions; long multi-step skill work has shown much lower follow rates, so don't carry this over without testing. (MEASURED: 108 sessions, one commit, student setup, Haiku and Sonnet; cloud-account signs not re-run; not repeated over time)
+7. **A rule in a document may never reach a session.** The rule for where a desk's tool goes sat in rulebooks the sessions never opened. All 9 passes of that case, across four commits, came after a stop caught a wrong first aim. So when you're relying on something being known, ask when it reaches the session and what delivers it. A session that really is pointed at a document can use it, so this is about reach, not about documents being useless. (MEASURED: one case, 12 runs)
+8. **Friction is aimed at a blind model or an accident, not a determined user.** A clear stop helps a model that doesn't know what it's touching; someone determined gets through anyway. Weigh a new layer against that. (owner's ruling)
 
 ## 1. Where things go, and the layer that notices
 
 The harness knows a person through two pointers only: their notes folder (content, never code) and their personal code folder. Nothing in the shared plugin names anyone. Within that, each kind of thing has one home, and one or more layers notice when it lands elsewhere.
 
-1. **A personal skill** goes in Claude's own skills folder, `~/.claude/skills/<name>/`, with its scripts inside that folder. Nothing asks first; the final message says where it went. *Notices:* the placement guard at write time (it steers a skill written into a project's `.claude/skills` back to the person's own folder unless the person said it was for that project), and the end-of-turn check that refuses to end a turn with a new skill file nowhere listed. (MEASURED: student skill builds went from 0 of 2 to 2 of 2 once the steer existed)
+1. **A personal skill** goes in Claude's own skills folder, `~/.claude/skills/<name>/`, with its scripts inside that folder. Nothing asks first; the final message says where it went. *Notices:* the placement guard at write time (it steers a skill written into a project's `.claude/skills` back to the person's own folder unless the person said it was for that project), and the end-of-turn check that refuses to end a turn with a new skill file nowhere listed. A skill in Claude's own folder needs no listing (owner's ruling). (MEASURED: student skill builds went from 0 of 2 to 2 of 2 once the steer existed)
 2. **A one-off script the person wants to keep** goes in the personal code folder and onto the person's own list. *Notices:* the end-of-turn check for an unhomed `.py`/`.sh`; and, when a long inline command ran and nothing was saved, a once-per-session offer to keep it, with a stop if the person said "keep it" and nothing was saved. (MEASURED: both "keep it" cases that failed before now land)
-3. **Code that serves one desk** goes in the personal code folder under `desks/<desk>/tools/`; the desk's notes stay in the notes folder. *Notices:* the placement guard's desk clause. (MEASURED: the one desk-tool case lands)
+3. **Code that serves one desk** goes in the personal code folder under `desks/<desk>/tools/`; the desk's notes stay in the notes folder. *Notices:* the placement guard's desk clause, and a sign added for loose tools (§0.6). (MEASURED: the one desk-tool case landed 2 of 3 runs at each of the last two commits. A miss leaves a working, listed tool in the wrong folder, and the session says where it is. The added sign fired in none of the three re-runs, so it shows no measured benefit.)
 4. **A shared tool** goes in the plugin's shared layer, once, with a row in the shared register; a desk uses it and never copies it. *Notices:* the pre-commit registration gate refuses a commit that adds a tool with no row; the register-drift check refuses a row whose hash no longer matches its file. (SEEN: a week's tools once went unregistered; the gate exists because of it)
 5. **Scheduled jobs, the person's tools and the person's desks** are listed in the person's own files, read alongside the plugin's shared lists: `jobs.md` and `register.jsonl` in the personal code folder, `desks/desk-registry.yaml` in the notes folder, beside the desks it names. The plugin ships no example list, because an example reads as an instruction. *Why:* an entry inside the plugin is wiped by the next plugin update, and a shared plugin is effectively public. *Notices:* a CI check refuses any private name in shipped code. (MEASURED: the check runs on every push)
-6. **Sharing a skill with a team** means its files live in a team Google Drive folder, linked into the skills folder. *Status:* designed and approved, not built; the two build cases that need it fail until it is. (REASONED)
+6. **Sharing a skill with a team** means its files live in a team Google Drive folder, linked into the skills folder. *Status:* built. The two build cases that need it pass on folder placement, one of them by giving the Drive plan and asking what the skill should do, with no skill built. No second account exists, so a coworker really using a shared skill is untested. (MEASURED, with that remainder)
 7. **Sharing a skill across machines or a business goes through Drive, not through the plugin.** A link from Drive into the skills folder is encouraged as a practice, not insisted on. (owner's ruling)
+8. **A student who never finished setup** meets none of these stops, because the personal code folder they steer to doesn't exist. Three sessions built a working tool with no home, and nothing told them. (MEASURED: one small check)
 
 ## 2. Fine china: the asks
 
-Fine china is the owner's name for the hard-to-recover things: SOPs, canon, the person's own SOPs, spreadsheets, data files and databases, whole folders, every `CLAUDE.md`, and anything in a cloud account. The layer is an **ask**, not a wall: the action stops once, the person sees the exact change, and a yes lets it through. Walls are reserved for canon and plugin SOPs being overwritten wholesale, by any tool.
+Fine china is the owner's name for the hard-to-recover things: SOPs, canon, the person's own SOPs, spreadsheets, data files and databases, whole folders, every `CLAUDE.md`, and anything in a cloud account. The layer is an **ask**, not a wall: the action stops once, and a yes lets it through. Don't count on the person seeing it: in the owner's working assumption everyone runs in bypass, where a plain-shell ask ran with no prompt in the cases tested, and whether one shows varies by action. Most asks now carry a sign (§0.6), and the sign is what steers the session. Walls are reserved for canon and plugin SOPs being overwritten wholesale, by any tool. Decided 2026-11-03, not yet built: writing into shared plugin code gets a hard block with a sign, with administrators as the one exception.
 
 What is covered, as of 2026-11-02 (MEASURED by the direct hook exam, both setups):
 1. Overwrites by shell redirect, `tee`, `sed -i`, Python rewrites, and the Write tool.
@@ -58,11 +66,11 @@ What is covered, as of 2026-11-02 (MEASURED by the direct hook exam, both setups
 
 What stays quiet on purpose: throwaway paths (temp and scratch folders), regenerable folders (`node_modules`, `__pycache__`, `.venv`, `dist`, `build`, caches), a data file touched in the last ten minutes, and the person's ordinary notes (an open question).
 
-The exam result at 2026-11-02: operator setup 20 of 20 listed cases stopped, 38 of 38 harmful calls, 45 of 45 route-arounds; student setup 16 of 16, 25 of 25, 45 of 45; zero false alarms on the 10 and 7 ordinary tasks. **Remainder:** the push cases (a private commit reaching the public repo) are not evaluated while the push scan is in warning mode; shapes not on the list are not covered; and a direct hook exam shows that a guard fires on a shape, not that a person was protected in a real session.
+The exam result at 2026-11-02: operator setup 20 of 20 listed cases got a response from a hook, 38 of 38 harmful calls, 45 of 45 route-arounds; student setup 16 of 16, 25 of 25, 45 of 45; zero false alarms on the 10 and 7 ordinary tasks. "A response" isn't "stopped". Split by what the hook did, in a later direct exam, before the signs landed: operator 4 blocked and 14 asked of 20, with the 2 push cases passing on repeat with a warning; student 2 blocked and 14 asked of 16; route-arounds 7 blocked and 38 asked of 45. Stopping every case stays the long-term aim, reached through layers of friction. **Remainder:** the push cases (a private commit reaching the public repo) are not evaluated while the push scan is in warning mode; shapes not on the list are not covered; and a direct hook exam shows that a guard fires on a shape, not that a person was protected in a real session.
 
 ## 3. Reading: guard the doors, trust the house
 
-Anything that arrives from outside the machine is cleaned before the model reads it: web pages and searches, connector output (mail, chat, calendar, documents), PDFs, office files and spreadsheets. Inside the machine, a person's own files read normally; only Downloads and Desktop are untrusted, because that is where outside files land without passing a door. (MEASURED: the five false alarms this replaced, all on a person's own project notes, fire 0 of 5 now; a Downloads read is redirected to the cleaner and a planted line in it is caught)
+Anything that arrives from outside the machine is cleaned before the model reads it: web pages and searches, connector output (mail, chat, calendar, documents), PDFs, office files and spreadsheets. Inside the machine, a person's own files read normally; only Downloads and Desktop are untrusted, because that is where outside files land without passing a door. The exception today: `.csv`, `.pdf`, `.docx` and `.xlsx` are refused wherever they sit, which stopped reads of a person's own data file in 8 of 12 sessions that used one. Each refusal redirects to a cleaner. The `.csv` refusal is the likely false alarm, and the only one measured; it's logged, not fixed. (MEASURED: the five false alarms this replaced, all on a person's own project notes, fire 0 of 5 now; a Downloads read is redirected to the cleaner and a planted line in it is caught)
 
 The connector door is a hook that runs after any connector tool and swaps its output for a cleaned copy, for connectors added later too. If the cleaner itself fails, the content is withheld, never passed raw. **Remainder:** the live check on a real mailbox has not been run; the behaviour is proven by unit tests only, because a test harness that loads no connectors cannot see it.
 
@@ -86,7 +94,7 @@ The facts the layers above are built around. Most were learned the hard way.
 ### 4b. Sessions, configuration and the machine
 12. **Claude loads configuration from every parent folder.** Starting in a folder loads the `.claude` instructions, skills and agents of every folder above it. A swapped home folder and `CLAUDE_CONFIG_DIR` do not stop this; a working folder outside the home does, as does a kernel read-deny. (MEASURED by a zero-cost probe)
 13. **A throwaway home folder does not isolate logged-in tools.** A child session inherits the environment and the PATH, including where a command-line tool keeps its login. (SEEN: the cloud incident)
-14. **Permission asks cannot be observed headless.** They are auto-denied or auto-approved, so no test can see a person answer one. Most fine-china protection works by asking, so a live rig cannot measure it directly; 27 of 37 fine-china sessions in one run were not evaluable for this reason. (MEASURED)
+14. **Permission asks cannot be observed headless.** They are auto-denied or auto-approved, so no test can see a person answer one. Most fine-china protection works by asking, so a live rig cannot measure the ask itself; 27 of 37 fine-china sessions in one run were not evaluable for this reason. It can measure a sign on the first attempt, which is how the sign results in §0.6 were taken. (MEASURED)
 15. **Windows keep the hook list they started with.** After a hook is renamed or retired, older windows print harmless "file not found" errors and run without it until restarted. A forwarding shim at the old name bridges the gap. (SEEN)
 16. **Windows run what is on disk, not what is on GitHub.** After a landing from a worktree, the shared checkout is behind, and every window on the machine runs the old version until it is fast-forwarded. (SEEN)
 17. **The vendor's own delete-safety popups fire even with all permissions on,** and they wait for a human. Commands written without `rm` and without packed one-liners avoid them; leftover throwaway files can be moved instead. (SEEN)
@@ -105,10 +113,15 @@ The facts the layers above are built around. Most were learned the hard way.
 28. Some probes are visible to the person: `open x.command` raises a dialog every run; `lsappinfo front` is a quiet substitute. (MEASURED)
 29. The vendor's own Bash sandbox wraps only Bash (not the Write tool or hooks), can write a shared per-user temp folder by default, and in bypass mode lets unlisted hosts through unless a strict allowlist is set. (MEASURED)
 
+### 4d. Hooks, added later
+30. **Test a hook on what it really receives.** A fix for peer messages passed its tests, built on text copied from a transcript, and failed live, because hooks receive different text. The second fix was proven live. (MEASURED)
+31. **If a stop doesn't match what you're doing, say so and report it, rather than working around it (§7.4).** A sentence that merely mentioned a protected file stopped harmless commands several times in one session; §4.8 is the cause. (SEEN)
+32. **A path in a shell variable slipped past guards twice.** One case could switch a check off. When a guard can't resolve a variable, what it does next matters. (MEASURED)
+
 ## 5. Adding, keeping and removing a layer
 
 1. **Add a layer because an incident or a measured miss demanded it,** never because the frame permits it. Of sixteen switches added in three days, five came from consistency or approval rather than a miss; they are kept and flagged as pruning candidates. (MEASURED by audit)
-2. **A new layer lands behind a switch, off.** It goes on when a direct test or a live case shows it changes an outcome, or when it closes a measured hole. Six switches that never fired in any run were deleted; a nudge that proved redundant once the other layers were on stayed off. (MEASURED)
+2. **A new layer lands behind a switch, off.** It goes on when a direct test or a live case shows it changes an outcome, or when it closes a measured hole. Six switches that never fired in any run were deleted; a nudge that proved redundant once the other layers were on stayed off. (MEASURED) We didn't always hold to this: in one night's build misses, switches went on before their measurement, and the desk-tool sign is on with no measured benefit. They're on record so the owner can turn any off. (SEEN)
 3. **Prefer a different kind of layer over a third copy of the same kind.** After the cloud incident the rig got credential isolation and a kernel lock, not another pattern. (canonical principles; SEEN)
 4. **Same action, same verdict.** If the shell is asked, Python is asked; if the shell is blocked, the write tool is blocked. Any gap between tools is a route-around waiting to be found; three such gaps were closed in one night. (MEASURED)
 5. **Test both directions, and keep the exemptions honest.** A guard that stops the bad case and also stops `rm -rf build/` in a project is a false-alarm factory; the regenerable list exists for that.
@@ -117,19 +130,22 @@ The facts the layers above are built around. Most were learned the hard way.
 8. **Prose layers are pointed at, not relied on.** `CLAUDE.md` may point to where things live; it enforces nothing. A line added there as enforcement was reverted the same day in favour of a code check. (SEEN, owner's ruling)
 9. **Fix the class, not the instance.** When a `cd` blind spot was found in one guard, the same blind spot was in the overwrite guard; both were fixed in the same pass. (MEASURED)
 10. **Land one change at a time onto the shared branch, from one window,** with the hooks on and never `--no-verify`. Two commits at once share one index; a refused commit leaves a half-staged file behind for the next one to sweep up. (SEEN, twice in one day)
+11. **Layers go lightest first:** a sign, then a reason gate (the session can proceed only by stating why), then a hard block (refused every time, kept for a few particular things), then a popup (a box the person must answer, used sparingly because it can hang an unattended session for hours). Add the next only where the lighter one fails. (owner's ruling; the sign MEASURED, the reason gate and popup not)
+12. **A wrong sign gets obeyed too.** Because a sign is followed, its mistakes are carried out faithfully. One named the wrong folder and a session went there; a test's stand-in sign named a route its hook refused; an older stop firing first left false history in 8 of 12 sessions, then in 0 of 12 once the order was fixed. Check the route the sign names, in every shell shape, and which stop fires first. Tuning wording to pass one test isn't this: that teaches to the test. (MEASURED, repeated in the rig)
+13. **A fix can remove a stop.** A change meant to stop false alarms probably removed the only stop on the desk-tool case, and a new miss appeared, though it might have failed anyway. So after a fix, look at what else the stop was doing. (the miss MEASURED, one exam; the cause REASONED from code, not replayed)
 
 ## 6. Testing conformance without fooling yourself
 
 1. **Isolation is not real until a deliberate attempt to break it has been seen to fail.** We assumed a test wall held, and it did not. Now: no credentials in the environment, a private PATH, a kernel lock around the whole actor, a pre-run check that fails if anything can be reached, and a read-only canary that tries. (SEEN, then MEASURED)
 2. **Never aim destructive tasks at a machine with live logins** unless the ability has been removed underneath. A guard alone is not enough. (SEEN)
 3. **A check needs a control that must show up.** An isolation preflight reported "nothing personal loaded" while writing its log somewhere it could not see; planting a known file that must appear exposed it. Deliberately broken copies of a fence must fail its tests. (MEASURED)
-4. **One frozen version, nothing landing mid-run, every result tied to the commit.** A run on a mixed tree gave a muddled result nobody could use. (SEEN)
+4. **One frozen version, nothing landing mid-run, every result tied to the commit.** A run on a mixed tree gave a muddled result nobody could use. Results don't combine across commits either, because a fix elsewhere can change them (§5.13). (SEEN, MEASURED)
 5. **An independent scorer that never saw the briefs,** scoring from the rules and transcripts only. The one self-scored run was not trusted. (SEEN)
 6. **Match the instrument to the question.** Direct hook runs are cheap and exact for "does this guard fire on this shape", but they do not find route-arounds nobody listed, and both of the worst real holes were found live. Live runs fit builds and false alarms. Only real use shows a person answering a real ask. (MEASURED, REASONED)
 7. **Say which layer refused.** Every scored failure names the layer: the test fence, a named guard, the vendor's own check, or the model. A guard's refusal is never recorded as a model failure. (MEASURED)
 8. **Student results count only from a clean setup.** Everything before the isolation fix loaded the operator's personal skills and hooks; those results are void. A student run now refuses to start if any personal path loads, and a planted control file must appear. (MEASURED)
 9. **Run tests from a real folder, never a throwaway one.** The throwaway exemption is silent and turns fine china off; a whole run was voided this way. (MEASURED)
-10. **The test setup can quietly become the project.** Every fence was justified, and rig work still ran about one to one with product work. Ask of each new piece whether it buys a measurement of the outcome. (MEASURED by audit)
+10. **The test setup can quietly become the project.** Every fence was justified, and rig work still ran about one to one with product work. Ask of each new piece whether it buys a measurement of the outcome. When a rig problem shows up, ask whether it would change the answer to the real question. Some did: a sandbox faking command failures, and sessions seeing other runs. Others don't: a fence that missed 9 of 94 shapes was left, because the layers behind it held. The lowest altitude always has another flaw, and fixing it feels responsible. (MEASURED by audit; owner's ruling: don't test the tester)
 11. **Tests clean up and check for disk first.** Leftover temp folders from parallel suites filled the disk and froze every window; runners now refuse to start below 5 GB free. (SEEN)
 12. **When a test says the system is broken, suspect the test first,** and that cuts both ways, including against a helper's report. (carried from the old SOP; SEEN again here on the silent-fence run)
 13. **Prove it on a real specimen, never only a synthetic one;** and for anything a human sees, the acceptance test is the real invocation path. (carried from the old SOP)
@@ -137,6 +153,22 @@ The facts the layers above are built around. Most were learned the hard way.
 15. **A count is only as good as the shape you searched for, so write the shape down.** (carried from the old SOP)
 16. **n=1 resolves nothing; grade on output, not the clock.** (carried from the old SOP, measured there)
 17. **A correctly scoped narrow finding, read broadly, is as dangerous as a wrong one.** State the full set a claim is about and which members were checked. (carried from the old SOP)
+18. **Three runs can show a miss exists, not that it's gone,** and a miss is only "leftover" once someone has read why it happened. The desk-tool case ran 2, 3, 2 and 2 of 3 across four commits. One failure first called normal variation turned out to be a bug. (MEASURED, one case)
+19. **Telling graders what's noise can blind them.** A "known noise" note hid a backstop that had recorded no Bash writes in 71 sessions. Give graders the rules and the evidence, not your explanation. (SEEN, one audit)
+20. **Read results by importance, not just by count.** Tag each case for likelihood and for what's at stake before the run, and don't show the tags to graders. A reader then names each failure's cause: rig, product or model. Sort them from fix now to accept, plus what can't be tested. And show the close calls: 17 of 39 passes in the final exam were graders' close calls. (MEASURED, one exam; owner's ruling)
+21. **Check a summary sentence the way you check a number.** The final exam's report said those 17 were "all on wording". Re-reading the grades, 11 touched the outcome. Every count in that report held up; the sentence didn't. (MEASURED)
+22. **Set the numbers and the scorer before running. If the scorer proves wrong, keep both figures.** One run reads 10 of 12 frozen and 12 of 12 by hand, and both stay on record. (MEASURED, repeated)
+23. **Evidence is the cost.** In the final exam, graders were about $32 of $37, at list prices. One fresh grader per case from full evidence is what made the result trustworthy, and shortening it would have given up that trust here. An estimate of unmeasured work ran from $3.42 to a measured $76; the one estimate from measured figures, about $40, held. A limit invented from a guess can throw away value. (MEASURED, one exam; owner's ruling)
+24. **State what the exam can't see.** A coworker really using a shared skill, a real plugin install or update, long conversations with more than one prompt, vague requests (most prompts are specific), other models (sessions ran on Sonnet), and a person's real machine. For anything load-bearing here, decide on another check, such as one real person trying it, before redesigning the rig. (MEASURED by what ran; owner's ruling)
+
+## 6a. Where the proof stands (2026-11-03)
+
+Not one score: these come from different commits. Today's numbers describe today's harness and won't carry over to a restructured one; the method does.
+1. **Final exam, one locked commit, 40 live sessions, one fresh independent grader each:** builds operator 8 of 9 cases, student 8 of 8; false alarms 0 of 10 and 0 of 7. The one miss is the desk-tool case, 1 run of 3. It met the pass mark, on a thin margin: one explained miss per setup is allowed, and 6 passes of the team-skill case rest on a stated reading, that a full Drive plan plus one question about what the skill does passes, with no skill built. Zero false alarms rests on a reading: three sessions in two cases had a one-line keep question that a literal "any ask" rule would fail, and the owner's allowance for one informational line names only one of those cases. No case reads a data file, so this doesn't clear the §3 refusal.
+2. **Signs on the real hooks:** 85 of 86 followed, 108 sessions, one-step actions.
+3. **Free replay of false-alarm commands through old and new hooks:** 155 calls, no new stops. It can't exercise a sign that needs a prompt naming a desk, so whether that sign false-fires is unproven.
+4. **Fine china asks and blocks:** direct hook exam, not part of the final exam; its signs are item 2. A direct exam shows a guard fires on a shape, not that a person was protected.
+**Over time: nothing.** A planned two-week real-life trial was dropped. So nothing here meets the bar for a rule, and the cost accepted is less real-world checking before students get this.
 
 ## 7. Working with helpers and across windows
 
@@ -149,19 +181,25 @@ The facts the layers above are built around. Most were learned the hard way.
 7. **Ask helpers to report deviations, not hide them.** "I chose X against the brief because Y" was right each time it happened here. (SEEN)
 8. **A cheap model told to try three denied commands often stops after the first denial,** so judge a canary by what it attempted, in a mode where total failure is harmless. (MEASURED)
 9. **Never hand a human a code fence to paste when a script and one line will do;** never launch a watchable run detached; quote every Drive path (the root contains a space). (carried from the old SOP)
-10. **Bulk model work is batched, many items per call, never looped once per item.** (carried from the old SOP, measured there)
+10. **Bulk model work is usually batched, many items per call.** (carried from the old SOP, measured there) Not when each item needs its own full evidence and independent judgment, like exam grading, where one grader per case is what we trust (§6.23).
 
 ## 8. What we tried that did not work
 
 1. **Text as enforcement,** including one line in `CLAUDE.md`, added by mistake and reverted. (SEEN)
 2. **Interviewing a person who asked for a skill.** It stopped the build. The skill is archived, closed for renovation; a plain request gets a normal build. (MEASURED)
-3. **Speed bumps that pass on retry.** They slow a push and do not steer it; the push case passed on the third attempt. (MEASURED)
+3. **A speed bump whose message says to retry.** It slows a push and does not steer it; the push case passed on the third attempt. That message told the session to retry, so this says nothing against speed bumps in general: one with a specific instruction steers (§0.6). (MEASURED)
 4. **A trusted-folders list needing one-time approvals.** More machinery than a short untrusted list, for the same protection. (REASONED)
 5. **Guardrails with no measured effect.** Six never fired and were deleted. (MEASURED)
 6. **Bundling a rule change with the thing it permits.** The scanner could not approve its own exemption. (SEEN)
 7. **Treating "it has a hook" as "it is protected".** The hook was there for the cloud case; the command was written a way it did not read. (SEEN)
 8. **Testing the wall by assuming it.** (SEEN)
 9. **Blanket-rewriting history to fix a reference.** Journals and records are history; fix live references by hand, visibly. (carried from the old SOP)
+10. **Testing the tester.** A test rig pulls attention to its lowest altitude, where there's always another flaw to fix: re-running sign tests to fix our own stand-in hook, testing a fence whose misses the layers behind it caught. (owner's ruling; SEEN)
+11. **Grouping cases or shortening graders' evidence to save money.** Groups of ten were estimated to cost more and pairs about the same; shortened evidence cost far less and gave up trust. (estimate; owner's ruling)
+12. **Calling something closed before seeing it work in a real window** (§4.30). (SEEN)
+13. **Changing every ask to a hard block.** Withdrawn: lighter layers first (§5.11). (owner's ruling)
+14. **Crediting someone with a ruling that has no source.** Nine push cases were labelled that way, and it was removed. (SEEN)
+15. **A typed yes in chat standing in for a popup.** It would make bypass effectively off. (owner's ruling)
 
 ## 9. Carried over from the old build SOP (de-risking a build)
 
@@ -178,4 +216,19 @@ The old SOP's domain notes about scheduled runners stay with the cron rulebook. 
 
 ## 10. Open as of this draft
 
-The two push cases and all push limits wait for the launcher-lanes step. The live mailbox check for the connector door. The Drive sharing build. Whether ordinary notes are fine china, and how broad folder-delete asks should be. Whether a desk session should load only its own desk's knowledge (the design says so; the loader does not yet). The real-life trial, which is the only instrument that can see a person answer a real ask.
+The two push cases and all push limits wait for the launcher-lanes step. A student's push today is a hard stop rather than warning mode, which seems to conflict with "all repos stay open". The live mailbox check for the connector door. Whether ordinary notes are fine china, and how broad folder-delete asks should be. A session in a desk folder now loads only that desk's knowledge; loading across desks is deferred. Only real use can show a person answering a real ask: the planned real-life trial was dropped, and that cost was accepted.
+
+## 11. Tensions, kept as tensions
+
+1. **Signs versus long work.** Signs steer almost every time on one-step actions, while long multi-step skill work follows much less. Whether a sign asking a session to go back and repair something works isn't known.
+2. **Reach versus reading.** Rules that only live in documents often don't reach a session (§0.7), yet a window that read a whole brief and plan did well where one that skimmed failed. Both are true.
+3. **Measure, and don't test the tester.** Isolation isn't real until it's been seen to fail (§6.1), and rig work can quietly become the project (§6.10). The test is whether a piece changes the answer to the real question.
+4. **Layers versus least code.** Each layer earned its place on a measured miss, and every layer is also shared code that can false-alarm. The owner's rule of thumb: the least shared code with the most efficacy.
+
+## 12. Rule candidates
+
+A principle may become a rule only if it's true in theory, seen to be true, and true durably in practice over time, and only if it holds in the exact way a rule would prescribe it. Worded as a rule, something true can become untrue, so this list stays short, and nothing here is a rule yet. All of these have been held for days or weeks, not over time; that's what's missing.
+
+1. **Text doesn't enforce anything.** True in theory: a stochastic model can ignore what it reads. Seen: the old build rulebook, and a line added to `CLAUDE.md` as enforcement (§0.1, §5.8). It's the strongest candidate, and it's already the owner's ruling for `CLAUDE.md`.
+2. **Don't aim a destructive test at a machine with live logins unless the ability has been removed underneath.** True in theory: a guard only stops what it recognises (§4.1). Seen: 899 real cloud files reached the bin in a test, all recovered (§6.2).
+3. **One locked version per scored result.** True in theory: a change mid-run means the score describes nothing that exists. Seen: a muddled mixed-tree run, and a fix elsewhere changing a result (§6.4, §5.13).
