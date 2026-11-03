@@ -312,8 +312,8 @@ class TestHookAsks(unittest.TestCase):
     def test_dropped_on_one_line_with_names(self):
         lines = [l for l in self.page.splitlines() if l.startswith("Test-hook asks left out of these counts:")]
         self.assertEqual(len(lines), 1, self.page)
-        self.assertIn("6 (", lines[0])    # 4 from transcripts + 2 from the journal
-        self.assertIn("fakehook.sh 3", lines[0])
+        self.assertIn("4 (", lines[0])    # from transcripts; journal rows have their own line (JournalRowSources)
+        self.assertIn("fakehook.sh 2", lines[0])
         self.assertIn("askhook.sh 1", lines[0])
 
     def test_real_page_says_none_dropped(self):
@@ -321,6 +321,47 @@ class TestHookAsks(unittest.TestCase):
 
     def test_a_refused_test_ask_is_still_not_an_unplanned_popup(self):
         self.assertEqual(self.row(self.page, "UNPLANNED popups"), self.row(self.base, "UNPLANNED popups"))
+
+
+class JournalRowSources(unittest.TestCase):
+    """Rows from an old plugin or a test run leave the counts, per reason, on one line; a row with no marker stays, labelled unknown."""
+    @classmethod
+    def setUpClass(cls):
+        F = Fixture()
+        base = {"event": "PreToolUse", "decision": "deny", "exit_code": 2, "matcher": "Bash", "session_id": "s5"}
+        real = "/Users/x/lifehack-v2"
+        rows = [
+            dict(base, ts=NOW - 30, hook="guard_live.sh", run="live", plugin_version="0.4.1", plugin_src=real),
+            dict(base, ts=NOW - 29, hook="guard_oldrow.sh", plugin_version="0.4.0", plugin_src=real),                  # no marker: unknown
+            dict(base, ts=NOW - 28, hook="guard_oldplugin.sh", run="live", plugin_version="0.3.36", plugin_src=real),
+            dict(base, ts=NOW - 27, hook="guard_oldplugin.sh", plugin_version="0.3.36", plugin_src="root"),
+            dict(base, ts=NOW - 26, hook="guard_marked.sh", run="test", plugin_version="0.4.1", plugin_src=real),
+            dict(base, ts=NOW - 25, hook="plain.sh", plugin_version="0.4.1", plugin_src=real),
+            dict(base, ts=NOW - 24, hook="guard_copy.sh", plugin_version="0.4.1", plugin_src="/private/tmp/any/scratchpad/wt-x"),
+            dict(base, ts=NOW - 23, hook="guard_copy.sh", plugin_version="0.4.1", plugin_src="/var/folders/ab/T/tmp.1"),
+        ]
+        jl(F.journal, rows)
+        cls.page = F.build()
+
+    def test_only_live_and_unknown_count_as_blocks(self):
+        self.assertIn("guard_live.sh", self.page)
+        self.assertIn("guard_oldrow.sh", self.page)
+        for gone in ("guard_oldplugin.sh", "guard_marked.sh", "plain.sh", "guard_copy.sh"):
+            self.assertNotIn(gone, self.page)
+
+    def test_dropped_per_reason_on_one_line(self):
+        lines = [l for l in self.page.splitlines() if l.startswith("Journal rows left out")]
+        self.assertEqual(len(lines), 1, self.page)
+        for part in ("old plugin version 2", "test run 1", "test hook 1", "scratch copy 2", "no run marker, counted, could be test or live: 1"):
+            self.assertIn(part, lines[0])
+
+    def test_helper_reads_the_real_row_shapes(self):
+        import fire_journal_query as fjq
+        self.assertEqual(fjq.row_source({"hook": "g.sh", "plugin_version": "0.3.36"}), "old-plugin")
+        self.assertEqual(fjq.row_source({"hook": "g.sh", "plugin_version": "0.10.0", "run": "live"}), "live")
+        self.assertEqual(fjq.row_source({"hook": "g.sh", "plugin_version": ""}), "unknown")
+        self.assertEqual(fjq.row_source({"hook": "g.sh"}), "unknown")
+        self.assertEqual(fjq.row_source({"hook": "/x/fakehook.sh", "run": "live"}), "test-hook")
 
 
 if __name__ == "__main__":

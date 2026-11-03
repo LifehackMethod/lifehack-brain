@@ -446,6 +446,17 @@ LHB_JOURNAL_PATH="$AJ" bash -c ". '$LIB'; lhb_journal_fire 0 t.sh PreToolUse Bas
 case "$(cat "$AJ")" in *'"ts":1000000000,'*) bad "age: 2-field legacy sidecar reused a stale ts";; *) ok "age: legacy 2-field sidecar is refreshed, not trusted";; esac
 
 # ---------------------------------------------------------------------------
+echo "── a test run says so: run live / test ─────"
+# ---------------------------------------------------------------------------
+RJ="$SCRATCH/run.jsonl"
+rm -f "$RJ"; env -u LHB_TEST_RUN LHB_JOURNAL_PATH="$RJ" bash -c ". '$LIB'; lhb_journal_fire 0 t.sh PreToolUse Bash"
+case "$(cat "$RJ")" in *'"run":"live"'*) ok "run: no LHB_TEST_RUN -> live";; *) bad "run: live missing: $(cat "$RJ")";; esac
+rm -f "$RJ"; LHB_TEST_RUN=1 LHB_JOURNAL_PATH="$RJ" bash -c ". '$LIB'; lhb_journal_fire 0 t.sh PreToolUse Bash"
+case "$(cat "$RJ")" in *'"run":"test"'*) ok "run: LHB_TEST_RUN set -> test";; *) bad "run: test missing: $(cat "$RJ")";; esac
+if python3 -c 'import json,sys; json.loads(sys.stdin.read())' <"$RJ" 2>/dev/null; then ok "run: line is valid JSON"; else bad "run: line is not valid JSON"; fi
+if grep -q '^export LHB_TEST_RUN=' "$(dirname "$LIB")/../../tools/run-all-tests.sh"; then ok "run: run-all-tests.sh exports LHB_TEST_RUN"; else bad "run: run-all-tests.sh does not export LHB_TEST_RUN"; fi
+
+# ---------------------------------------------------------------------------
 echo ""
 echo "=== $pass passed, $fail failed ==="
 [ "$fail" -eq 0 ]

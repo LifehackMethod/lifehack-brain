@@ -236,6 +236,10 @@ def journal_stops(journal, since, now, stats):
                     continue
                 if not (since <= rec["ts"] <= now):
                     continue
+                src = fjq.row_source(obj)   # read side only: an old plugin or a test run is not the trial (see fjq.row_source)
+                stats["sources"][src] = stats["sources"].get(src, 0) + 1
+                if src in fjq.LEFT_OUT:
+                    continue
                 if rec["session_id"]:
                     sessions.add(rec["session_id"])
                 if "PreToolUse" not in rec["event"]:
@@ -358,7 +362,7 @@ def false_alarm_list(journal=DEFAULT_JOURNAL, hours=24, now=None, projects_root=
     now = time.time() if now is None else now
     since = now - hours * 3600
     projects_root = os.path.expanduser(projects_root)
-    stats = {"journal_files": 0, "stops_seen": 0, "unjudged": 0, "malformed": 0}
+    stats = {"journal_files": 0, "stops_seen": 0, "unjudged": 0, "malformed": 0, "sources": {}, "test_hook_asks": 0}
     jstops, sessions = journal_stops(journal, since, now, stats)
     tx = {sid: session_stops(projects_root, sid) for sid in sorted(sessions)}
 
@@ -393,6 +397,9 @@ def false_alarm_list(journal=DEFAULT_JOURNAL, hours=24, now=None, projects_root=
             if a["id"] in seen or a["ts"] is None or not (since <= a["ts"] <= now):
                 continue
             seen.add(a["id"])
+            if os.path.basename(str(a["hook"])) in fjq.TEST_HOOKS:
+                stats["test_hook_asks"] += 1
+                continue
             stats["stops_seen"] += 1
             if a["id"] in t["uses"]:
                 tool, inp = t["uses"][a["id"]]
@@ -420,7 +427,8 @@ def render_markdown(items, now=None, hours=24):
     st = getattr(items, "stats", None)
     if st:
         L += ["", "Read: %d journal file(s); %d stop(s) seen; %d could not be judged (no transcript match); %d malformed journal line(s)." % (
-            st["journal_files"], st["stops_seen"], st["unjudged"], st["malformed"])]
+            st["journal_files"], st["stops_seen"], st["unjudged"], st["malformed"]),
+              fjq.left_out_line(st.get("sources", {})), "Test-hook asks left out: %d." % st.get("test_hook_asks", 0)]
     return "\n".join(L)
 
 

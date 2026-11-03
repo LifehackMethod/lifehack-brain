@@ -144,6 +144,36 @@ def main():
           all(h in md for h in ("guard_commit_identity.sh", "guard_fine_china.sh", "guard_canon_write.sh")) and "2 could not be judged" in md, md)
     check("old record outside the window not listed", not any(i["hook"] == "guard_old.sh" for i in items), items)
 
+    # ── 2b. rows from an old plugin or a test run are not the trial; a row with no marker stays, labelled ─
+    sdir = tempfile.mkdtemp(prefix="fa-src-"); sj = os.path.join(sdir, "fire.jsonl"); spd = os.path.join(sdir, "projects")
+    r = {"event": "PreToolUse", "decision": "deny", "exit_code": 2, "matcher": "Read", "session_id": "live-sess"}
+    src_rows = [dict(r, ts=NOW - 60, hook="guard_live.sh", run="live", plugin_version="0.4.1", plugin_src="/Users/x/lifehack-v2"),
+                dict(r, ts=NOW - 59, hook="guard_nomark.sh", plugin_version="0.4.0", plugin_src="/Users/x/lifehack-v2"),
+                dict(r, ts=NOW - 58, hook="guard_oldplugin.sh", run="live", plugin_version="0.3.36", plugin_src="root"),
+                dict(r, ts=NOW - 57, hook="guard_marked.sh", run="test", plugin_version="0.4.1", plugin_src="/Users/x/lifehack-v2"),
+                dict(r, ts=NOW - 56, hook="plain.sh", plugin_version="0.4.1", plugin_src="/Users/x/lifehack-v2"),
+                dict(r, ts=NOW - 55, hook="guard_copy.sh", plugin_version="0.4.1", plugin_src="/private/tmp/any/scratchpad/wt-x"),
+                # a session seen ONLY through an old plugin's row: its transcript is not read either
+                dict(r, ts=NOW - 54, hook="guard_oldplugin.sh", plugin_version="0.3.36", plugin_src="root", session_id="old-sess")]
+    with open(sj, "w", encoding="utf-8") as f:
+        for row in src_rows:
+            f.write(json.dumps(row) + "\n")
+    transcript(spd, "live-sess", [("call", "k1", "Bash", {"command": "ls -la"}, NOW - 50), ("ask", "k1", "/private/tmp/any/fakehook.sh", NOW - 49)])
+    transcript(spd, "old-sess", [("call", "o1", "Bash", {"command": "ls -la"}, NOW - 50), ("ask", "o1", "/plug/system/hooks/guard_old_only.sh", NOW - 49)])
+    src = fa.false_alarm_list(journal=sj, hours=24, now=NOW, projects_root=spd)
+    hooks = {i["hook"] for i in src}
+    check("live and unmarked rows stay listed", {"guard_live.sh", "guard_nomark.sh"} <= hooks, hooks)
+    check("old plugin, test run, test hook and scratch copy rows are gone",
+          not hooks & {"guard_oldplugin.sh", "guard_marked.sh", "plain.sh", "guard_copy.sh"}, hooks)
+    check("a test hook's transcript ask is not listed", "fakehook.sh" not in hooks, hooks)
+    check("a session seen only through an old plugin is not read", "guard_old_only.sh" not in hooks, hooks)
+    out = fa.render_markdown(src, now=NOW)
+    line = [l for l in out.splitlines() if l.startswith("Journal rows left out")]
+    check("left-out counts on one line", len(line) == 1, out)
+    for part in ("old plugin version 2", "test run 1", "test hook 1", "scratch copy 1", "no run marker, counted, could be test or live: 1"):
+        check("left-out line says: " + part, bool(line) and part in line[0], line)
+    check("test-hook asks left out of the transcripts, counted", "Test-hook asks left out: 1" in out, out)
+
     # ── 3. a missing journal never raises ─────────────────────────────────────────────────
     empty = fa.false_alarm_list(journal=os.path.join(jdir, "nope.jsonl"), hours=24, now=NOW, projects_root=pdir)
     check("missing journal -> empty list, stats say 0 files", list(empty) == [] and empty.stats["journal_files"] == 0, empty.stats)

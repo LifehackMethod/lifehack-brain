@@ -277,6 +277,12 @@ lhb_journal_fire() {
         esac
     fi
 
+    # WHICH KIND OF RUN: "test" when the test runner said so (run-all-tests.sh exports LHB_TEST_RUN), else "live". A session id cannot
+    # say this: a test inherits its window's CLAUDE_CODE_SESSION_ID. A row with no "run" field predates this line. Read side:
+    # fire_journal_query.row_source. COST: one parameter test, zero forks.
+    local _prun="live"
+    [ -n "${LHB_TEST_RUN:-}" ] && _prun="test"
+
     _sid="${CLAUDE_CODE_SESSION_ID:-}"
     _sid="${_sid//[^A-Za-z0-9_-]/}"
 
@@ -452,8 +458,8 @@ lhb_journal_fire() {
     # "Permission denied" bash prints on a failed open is swallowed instead of leaking to the real
     # caller's stderr. Verified empirically — the reverse order leaks the message. This is exactly
     # the kind of stray byte the FAIL_POSTURE note above promises never happens.
-    printf '{"ts":%s,"hook":"%s","event":"%s","matcher":"%s","decision":"%s","exit_code":%s,"session_id":"%s","plugin_version":"%s","plugin_src":"%s","harness":"%s"}\n' \
-        "$_ts" "$_hook" "$_event" "$_matcher" "$_decision" "$_rc" "$_sid" "$_pv" "$_psrc" "$_pharn" 2>/dev/null >>"$_journal"
+    printf '{"ts":%s,"hook":"%s","event":"%s","matcher":"%s","decision":"%s","exit_code":%s,"session_id":"%s","run":"%s","plugin_version":"%s","plugin_src":"%s","harness":"%s"}\n' \
+        "$_ts" "$_hook" "$_event" "$_matcher" "$_decision" "$_rc" "$_sid" "$_prun" "$_pv" "$_psrc" "$_pharn" 2>/dev/null >>"$_journal"
 
     # Rotation/cap check — best-effort, see the header block above. Wrapped in its own
     # `2>/dev/null` and never allowed to influence this function's own (already-fixed) return 0.

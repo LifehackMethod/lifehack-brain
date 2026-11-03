@@ -145,6 +145,42 @@ class Malformed(ValueError):
         self.reason = reason
 
 
+# ── which rows are the trial ─────────────────────────────────────────────────────────────────
+# Read side only: nothing here changes the journal. Every marker is one the row carries; never a burst or a session pattern (a test
+# inherits its window's session id). GAP: a row from before "run" existed, from a live-looking copy, cannot be told apart: "unknown".
+TEST_HOOKS = {"fakehook.sh", "askhook.sh", "capture_probe.sh", "plain.sh"}   # test fixtures, none a real hook
+SCRATCH_RE = re.compile(r"^(/tmp/|/private/tmp/|/private/var/folders/|/var/folders/)|/[^/]*scratch[^/]*(/|$)", re.I)  # allow-silence: path TEXT matched to label where it sits, never opened
+V2_FIRST_VERSION = (0, 4, 0)
+LEFT_OUT = ("old-plugin", "test-run", "test-hook", "scratch-copy")
+LEFT_OUT_LABELS = {"old-plugin": "old plugin version", "test-run": "test run", "test-hook": "test hook", "scratch-copy": "scratch copy"}
+
+
+def _version_tuple(v):
+    m = re.match(r"(\d+)\.(\d+)\.(\d+)", str(v or ""))
+    return tuple(int(x) for x in m.groups()) if m else None
+
+
+def row_source(obj):
+    """A raw journal row -> old-plugin | test-run | test-hook | scratch-copy (all left out of trial counts) | live | unknown (no marker)."""
+    ver = _version_tuple(obj.get("plugin_version"))
+    if ver is not None and ver < V2_FIRST_VERSION:
+        return "old-plugin"
+    run = obj.get("run")
+    if run == "test":
+        return "test-run"
+    if os.path.basename(str(obj.get("hook") or "")) in TEST_HOOKS:
+        return "test-hook"
+    if SCRATCH_RE.search(str(obj.get("plugin_src") or "")):
+        return "scratch-copy"
+    return "live" if run == "live" else "unknown"
+
+
+def left_out_line(sources):
+    """One line for a page: what left the counts, per reason, and what stayed without a marker."""
+    return "Journal rows left out (read side only, the raw journal is untouched): %s; no run marker, counted, could be test or live: %d." % (
+        ", ".join("%s %d" % (LEFT_OUT_LABELS[k], sources.get(k, 0)) for k in LEFT_OUT), sources.get("unknown", 0))
+
+
 def normalize_line(obj):
     """A parsed JSON value -> a canonical record dict, or raises Malformed(reason)."""
     if not isinstance(obj, dict):

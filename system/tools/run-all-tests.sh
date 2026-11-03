@@ -41,6 +41,7 @@ RUN_TMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/run-all-tests-root.XXXXXX")"
 OUT="$(mktemp "${TMPDIR:-/tmp}/run-all-tests-out.XXXXXX")"
 trap 'rm -rf "$RUN_TMP_ROOT" "$OUT"' EXIT
 export LIFEHACK_ROOT="$RUN_TMP_ROOT"
+export LHB_TEST_RUN=1   # lib/journal.sh writes "run":"test" on every row this run causes, so the trial's readers can leave them out
 # 2026-11-01 pre-merge triage: tests that run the commit-time leak scan (test_refresh_staged, test_toolbox_staged, test_check_safe_to_ship)
 # REFUSE when the throwaway root has no ship-identity file ("CANNOT EVALUATE"). Give the run a fixture identity: one term that matches nothing real.
 mkdir -p "$RUN_TMP_ROOT/config" && printf 'zz-run-all-fixture-term-matches-nothing\n' > "$RUN_TMP_ROOT/config/ship-identity.md"
