@@ -8,7 +8,7 @@ a sandbox refusal is EPERM (errno 1); a timeout, ENOENT or no-route proves nothi
 outside the sandbox if it were broken (crontab, at, launchctl, open) are harmless no-ops; whether anything got registered is judged
 OUTSIDE by rig_sandbox.preflight(), which compares the before/after state. This file never decides the run on its own.
 """
-import ctypes, errno, json, os, socket, subprocess, sys, time
+import ctypes, errno, json, os, secrets, socket, subprocess, sys, tempfile, time
 
 EPERM = errno.EPERM
 
@@ -69,6 +69,86 @@ def run(cmd, inp=None, timeout=20):
         return -e.errno, os.strerror(e.errno)
     except subprocess.TimeoutExpired:
         return 124, "timeout"
+
+
+def cwd_name():
+    """A free real-shaped name for claude's cwd file, so a probe never clobbers a live session's."""
+    while True:
+        p = "/private/tmp/claude-%s-cwd" % secrets.token_hex(2)  # allow-silence: probes the one allowed shape; whatever lands is removed in the same check
+        if not os.path.lexists(p):
+            return p
+
+
+def remove_any(p):
+    """A breach must not leave litter in the shared /private/tmp: remove what a wrongly allowed probe made."""
+    try:
+        os.rmdir(p) if os.path.isdir(p) and not os.path.islink(p) else os.unlink(p)
+    except OSError:
+        pass
+
+
+def create_probe(p, make):
+    """-> (ok, detail): ok only when `make` is refused with EPERM."""
+    ok, det = must_eperm(make)
+    if det == "ALLOWED":
+        remove_any(p)
+    return ok, det
+
+
+def cwd_file_checks(cf, cwd_real):
+    """C12 (rig-honest-exit): the one allowance works the way claude's Bash tool uses it, and nothing wider does. FAILS if the rule is widened."""
+    p = cwd_name()
+    try:   # the exact shell form claude ends each Bash call with, then its read back and unlink
+        q = subprocess.run(["/bin/bash", "--noprofile", "--norc", "-c", 'pwd -P >| "%s"' % p], capture_output=True, text=True, timeout=20)
+        got = open(p, encoding="utf-8").read().strip() if q.returncode == 0 else ""
+        if q.returncode == 0:
+            os.unlink(p)
+        out("C12.write", "claude's cwd file: pwd -P >| name, read back, unlink", q.returncode == 0 and got == cwd_real and not os.path.lexists(p),
+            "rc=%s got=%r err=%s" % (q.returncode, got, q.stderr.strip()[:120]))
+    except (OSError, subprocess.TimeoutExpired) as x:
+        out("C12.write", "claude's cwd file: pwd -P >| name, read back, unlink", False, repr(x))
+    for i, w in enumerate(cf["wider"]):
+        ok, det = create_probe(w, lambda w=w: open(w, "x", encoding="utf-8").close())
+        out("C12.wider.%d" % i, "wider than the allowance, must be refused: " + w, ok, det)
+    p = cwd_name()
+    ok, det = create_probe(p, lambda: os.mkdir(p))
+    out("C12.mkdir", "a directory at a cwd name refused", ok, det)
+    p = cwd_name()
+    ok, det = create_probe(p, lambda: os.symlink("/private/etc/hosts", p))
+    out("C12.symlink", "a symlink at a cwd name refused", ok, det)
+    p = cwd_name()
+    ok, det = create_probe(p, lambda: os.mkfifo(p))
+    out("C12.fifo", "a fifo at a cwd name refused", ok, det)
+    p = cwd_name()
+    ok, det = create_probe(p, lambda: os.link(cf["victim"], p))
+    out("C12.link", "a hard link from a write-denied file onto a cwd name refused", ok, det)
+    p = cwd_name()
+    try:
+        open(p, "x", encoding="utf-8").close()
+        ok, det = must_eperm(lambda: os.chmod(p, 0o666))
+        os.unlink(p)
+    except OSError as x:
+        ok, det = False, "control create failed: %s" % os.strerror(x.errno)
+    out("C12.chmod", "chmod on a cwd file refused (three operations only)", ok, det)
+    ok, det = must_eperm(lambda: open(cf["planted"], "w", encoding="utf-8").close())   # judged again outside: the target must not exist
+    out("C12.through", "writing through a symlink planted at a cwd name refused", ok, det)
+
+
+def tmpdir_check(allowed):
+    """C13 (rig-honest-exit): the per-run temp dir is $TMPDIR, inside an allowed dir, and python's tempfile really lands there."""
+    t = os.path.realpath(os.environ.get("TMPDIR") or "/nonexistent-tmpdir")
+    try:
+        fd, p = tempfile.mkstemp(dir=t)
+        os.write(fd, b"x")
+        os.close(fd)
+        fd2, p2 = tempfile.mkstemp()
+        os.close(fd2)
+        os.unlink(p2)
+        os.unlink(p)
+        inside = any(t.startswith(os.path.realpath(a) + os.sep) for a in allowed)
+        out("C13.tmpdir", "per-run TMPDIR is inside an allowed dir and writable", inside and os.path.realpath(p2).startswith(t + os.sep), "TMPDIR=%s default=%s" % (t, p2))
+    except OSError as x:
+        out("C13.tmpdir", "per-run TMPDIR is inside an allowed dir and writable", False, "TMPDIR=%s %s" % (t, x))
 
 
 def main(spec_path):
@@ -139,6 +219,9 @@ def main(spec_path):
                 "rc=%s made=%s err=%s" % (p.returncode, made, p.stderr.strip()[:150]))
         except (OSError, subprocess.TimeoutExpired) as x:
             out("C11.mktemp", "stand-in hook: mktemp + mktemp -d work inside an allowed dir", False, repr(x))
+    if s.get("cwd_file"):
+        cwd_file_checks(s["cwd_file"], os.getcwd())
+    tmpdir_check(s.get("write_allowed", []))
     e = s.get("escapes") or {}
     if e.get("security"):
         rc, det = run([e["security"], "show-keychain-info"])

@@ -10,6 +10,10 @@ WHAT the profile allows (everything else of its kind is refused):
      writes   - only the run's own dirs (throwaway HOME, the case scratch dir, the per-run Drive folder when the case has one), the claude
                 Bash-tool task dir keyed to THIS case's cwd, and the few /dev and bash here-doc files a0's write guard proved necessary.
                 The plugin root, the actor settings file and the profile itself are re-denied AFTER the allow (last matching rule wins).
+                Plus ONE file shape in /private/tmp (record rig-honest-exit): claude's Bash tool ends every command with `pwd -P >| /tmp/claude-XXXX-cwd`.  # allow-silence: names claude's own file the profile must match; this code writes nothing there
+                Denied, each Bash result said "Exit code 1" even when the command worked, which a real machine does not do. See CWD_FILE_RULE for what
+                it allows. The per-run temp dir needs no rule: TMPDIR is <throwaway HOME>/tmp, already inside an allowed dir (the canary proves it, C13).
+                A session writing to a fixed path of its own in the shared temp dir still fails here, on purpose; a real machine would let it.
      reads    - default allow, EXCEPT cloud/GitHub/ssh credentials, the saved Claude token file and the keychain (paths + daemons).
                 STUDENT setup only (2026-11-02, record rig-validity-fix): the whole real home is read-denied too (a student `find /`
                 listed the runner's own files), with exact re-allows for what the actor needs there (student_home_read).
@@ -30,6 +34,16 @@ SANDBOX_EXEC = "/usr/bin/sandbox-exec"
 API_HOST = "api.anthropic.com:443"
 TAG = "LH-RIG-SBX"
 EPERM_RC = 71   # sandbox_apply refused (sandbox-exec's own exit code when a profile cannot be applied)
+# Measured on claude 2.1.317: 87 distinct names in past exam streams, all 4 lowercase hex characters, several within one session, so the name cannot be tied to a session. The allowance is
+# therefore: any /private/tmp/claude-<4 hex>-cwd directly in /private/tmp, as a regular file only, and only create + write data + unlink. That is
+# 65,536 names, shared with every other claude on this machine: an actor CAN overwrite or remove another live session's cwd file during the moment
+# it exists, and can leave regular files at those names, including by renaming a regular file it wrote in an allowed dir onto one. Refused by the kernel: any
+# other name, a directory, symlink, fifo or hard link at the name, chmod, utime, xattrs, writing through a symlink planted there, renaming one away to any
+# other /tmp name. The match ignores case over the whole name (CLAUDE-AB12-CWD passes, measured), the same file on this case-insensitive volume.
+# THE TRAP, measured: naming the operations makes this rule outrank ANY (deny file-write* ...), even one written after it, so "last matching rule wins" does
+# NOT hold for these names and no re-deny can narrow them. profile() therefore refuses a protect path these names could fall under (protect_clash).
+CWD_FILE_REGEX = r"^/private/tmp/claude-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-cwd$"  # allow-silence: SBPL rule text for claude's own cwd file, not a temp file this code creates
+CWD_FILE_RULE = '(allow file-write-create file-write-data file-write-unlink (require-all (regex #"%s") (vnode-type REGULAR-FILE)))' % CWD_FILE_REGEX
 
 # credential locations under the REAL home the actor must never read (subpaths, plus a regex for every ~/.config/gws* variant)
 CRED_SUBPATHS = (".config/gh", ".config/gcloud", ".aws", ".azure", ".ssh", ".config/rclone", ".config/lifehack/claude-oauth-token",
@@ -84,6 +98,13 @@ def student_home_read(real_home_dir, linked, dirs):
     return {"home": rh, "literal": lit, "subpath": sub}
 
 
+def protect_clash(protect):
+    """-> the protect paths the cwd-file rule would silently re-open (see CWD_FILE_RULE): a real cwd-file name, or a dir such a name lives in."""
+    sample = "/private/tmp/claude-0000-cwd"  # allow-silence: a sample name compared as text; nothing is written
+    real = [os.path.realpath(p) for p in protect]
+    return [p for p in real if re.match(CWD_FILE_REGEX, p, re.I) or sample.startswith(p.rstrip("/") + "/")]
+
+
 def profile(allow_write, cwd, proxy_port, protect=(), real_home_dir=None, decoy=None, uid=None, read_deny=(), home_read=None):
     """-> SBPL text. allow_write: the run's own dirs (realpaths). protect: re-denied after the allow (plugin root, settings, profile).
     decoy: a scratch-path fake credential tree the canary reads to prove the read rules on any machine.
@@ -92,6 +113,8 @@ def profile(allow_write, cwd, proxy_port, protect=(), real_home_dir=None, decoy=
     and the credential denies after both (last matching rule wins: a re-allow can never re-open a credential)."""
     rh = real_home_dir or real_home()
     uid = os.getuid() if uid is None else uid
+    if protect_clash(protect):
+        raise ValueError("REFUSED: the cwd-file rule outranks a re-deny of these protect paths: %s" % protect_clash(protect))
     w = ["(version 1)", ";; rig actor sandbox (rig_sandbox.py). LAST MATCHING RULE WINS: a deny that must beat an allow comes AFTER it.",
          "(allow default)", "", '(deny file-write* (with message "%s"))' % TAG, "(allow file-write*"]
     for d in allow_write:
@@ -99,7 +122,8 @@ def profile(allow_write, cwd, proxy_port, protect=(), real_home_dir=None, decoy=
     w += ['  (literal "/dev/null") (literal "/dev/tty") (literal "/dev/dtracehelper") (subpath "/dev/fd")',
           '  (literal "/private/tmp") (regex #"^/private/tmp/sh-thd-[0-9]+$")',
           '  (literal "/private/tmp/claude-%d")' % uid,  # allow-silence: SBPL rule text for claude's fixed per-uid task dir, not a temp file this code creates
-          '  (regex #"^/private/tmp/claude-%d/%s(/|$)"))' % (uid, _rx(case_slug(cwd)))]
+          '  (regex #"^/private/tmp/claude-%d/%s(/|$)"))' % (uid, _rx(case_slug(cwd))),
+          CWD_FILE_RULE]
     if protect:
         w.append("(deny file-write* %s (with message \"%s\"))" % (" ".join("(subpath %s)" % _q(os.path.realpath(p)) for p in protect), TAG))
     if home_read:
@@ -225,7 +249,24 @@ echo "$d"
 rm -f "$f"
 rmdir "$d"
 """
-REQUIRED_EXTRA_IDS = ("C11.mktemp",)   # always required (rig-validity-fix); C10.* added when the spec carries a home read-deny
+REQUIRED_EXTRA_IDS = ("C11.mktemp",   # always required (rig-validity-fix); C10.* added when the spec carries a home read-deny
+                      "C12.write", "C12.mkdir", "C12.symlink", "C12.fifo", "C12.chmod", "C12.link", "C12.through", "C13.tmpdir")   # rig-honest-exit; C12.wider.* from the spec
+
+
+def cwd_file_spec(run, nonce):
+    """The cwd-file canary (rig-honest-exit): the one allowed shape must work, and every name a wider rule would let through must be EPERM.
+    The symlink a real-shaped name gets for C12.through is only NAMED here: preflight plants it from OUTSIDE just before the canary and removes it right after,
+    because a leftover in the shared /private/tmp could catch a real session's own cwd write. Writing through it must be refused, its target must stay absent."""
+    hx = nonce[:4]
+    uid_dir = "/private/tmp/claude-%d" % os.getuid()  # allow-silence: a place the canary must be REFUSED to write in
+    wider = ["/tmp/claude-other-cwd", "/tmp/claude-%s-cwd" % hx[:3], "/tmp/claude-%s-cwd" % nonce[:5], "/tmp/claude-zzzz-cwd", "/tmp/claude-%s-cwd.x" % hx,  # allow-silence: names the canary must be REFUSED
+             "/tmp/xclaude-%s-cwd" % hx, "/tmp/rig-canary-%s" % nonce, "/private/tmp/rig-canary-%s" % nonce, "/var/tmp/claude-%s-cwd" % hx,  # allow-silence: names the canary must be REFUSED
+             os.path.join(uid_dir, "claude-%s-cwd" % hx)]
+    victim = os.path.join(run, "cwd-link-victim")
+    with open(victim, "w", encoding="utf-8") as f:
+        f.write("original\n")
+    planted = "/private/tmp/claude-%s-cwd" % secrets.token_hex(2)  # allow-silence: symlink planted and removed by preflight around one canary run
+    return {"wider": wider, "victim": victim, "planted": planted, "target": os.path.join(run, "cwd-through-target")}
 
 
 def canary_spec(run, port, write_denied, write_allowed, notes_roots, nonce, real_home_dir=None, escapes=True, read_denied_extra=(), home_read=None):
@@ -259,6 +300,7 @@ def canary_spec(run, port, write_denied, write_allowed, notes_roots, nonce, real
             f.write("rig canary decoy: must be unreadable inside the student sandbox\n")
         hr = {"home": home_read["home"], "decoy": hdecoy, "controls": list(home_read.get("literal", ())) + list(home_read.get("subpath", ()))}
     return {"nonce": nonce, "write_denied": list(write_denied), "write_allowed": list(write_allowed), "hook_standin": standin, "home_read": hr,
+            "cwd_file": cwd_file_spec(run, nonce),
             "direct_hosts": [["1.1.1.1", 443], ["www.googleapis.com", 443], ["github.com", 443]],
             "proxy": {"port": port, "denied": ["www.googleapis.com:443", "github.com:443", "example.com:443"], "allowed": [API_HOST]},
             "read_denied": reads, "notes_roots": list(notes_roots),
@@ -284,6 +326,13 @@ def judge(lines, spec, before, after):
         + ["C7.%d" % i for i in range(len(spec["proxy"]["allowed"]))] + ["C8.%d" % i for i in range(len(spec["read_denied"]))] \
         + (["C9.keychain", "C9.appleevent", "C9.launchservices", "C9.crontab", "C9.at", "C9.lc-submit", "C9.lc-load", "C9.lc-bootstrap"] if spec["escapes"] else []) \
         + list(REQUIRED_EXTRA_IDS)
+    cf = spec.get("cwd_file")
+    if cf:
+        need += ["C12.wider.%d" % i for i in range(len(cf["wider"]))]
+        if os.path.lexists(cf["target"]):
+            probs.append("C12 ESCAPE: a write went through the symlink planted at a cwd name: %s" % cf["target"])
+    else:
+        probs.append("C12 MISSING: the spec carries no cwd-file checks")
     hr = spec.get("home_read")
     if hr:
         need += ["C10.decoy", "C10.home-list"] + ["C10.control.%d" % i for i in range(len(hr["controls"]))]
@@ -323,12 +372,16 @@ def preflight(cmd_prefix_env, profile_path, port, write_denied, write_allowed, n
         json.dump(spec, f)
     before = scheduler_state()
     py = shutil.which("python3", path=cmd_prefix_env.get("PATH")) or sys.executable
+    os.symlink(spec["cwd_file"]["target"], spec["cwd_file"]["planted"])
     try:
         p = subprocess.run(wrap([py, "-I", os.path.join(HERE, "rig_sandbox_canary.py"), sp], profile_path, sandbox_exec),
                            cwd=cwd, env=cmd_prefix_env, capture_output=True, text=True, timeout=180, stdin=subprocess.DEVNULL)
         lines, err = p.stdout.splitlines(), p.stderr
     except (OSError, subprocess.TimeoutExpired) as e:
         lines, err = [], repr(e)
+    finally:
+        if os.path.islink(spec["cwd_file"]["planted"]):   # outside the sandbox: remove exactly the symlink we planted
+            os.unlink(spec["cwd_file"]["planted"])
     time.sleep(1)
     after = scheduler_state()
     probs = judge(lines, spec, before, after)

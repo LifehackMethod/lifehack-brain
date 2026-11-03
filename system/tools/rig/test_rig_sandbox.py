@@ -7,7 +7,7 @@ a temp root, never the real home or Drive. Tests that run unsandboxed on purpose
 --real-drive  also proves condition 1 on the REAL Drive mount: a write inside a fresh "Lifehack test area/<run-id>/" works, one folder up
               (the test area itself, and My Drive) is refused by the kernel. The run folder is MOVED to _archive afterwards, never deleted.
 Prints N of N; exit 1 on any miss."""
-import os, stat, subprocess, sys, tempfile, time
+import os, secrets, stat, subprocess, sys, tempfile, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 V2 = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
@@ -229,6 +229,116 @@ if _rl.get("claude") and _rhr["literal"]:
     check("FAIL-FIRST real machine: the same deny WITHOUT the re-allows stops claude (the re-allows are load-bearing)", rc_no != 0, (rc_no, out_no))
 else:
     print("skip real-machine claude check (claude not under the real home here)")
+
+# ---- 2026-11-02 rig-honest-exit: claude's Bash tool ends every command with `pwd -P >| /tmp/claude-XXXX-cwd`. Denied, every Bash result said
+#      "Exit code 1" even when the command worked (real machine: exit 0), so exit codes in the exam were not honest. The allowance is ONE file
+#      shape, regular files only, three operations only; the per-run temp dir is TMPDIR inside the throwaway HOME and needs no rule of its own.
+CWD_RX = '(regex #"^/private/tmp/claude-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-cwd$")'
+HEXNAME = "/tmp/claude-%s-cwd" % secrets.token_hex(2)  # allow-silence: the exact name shape claude's Bash tool writes; the probes below remove what lands
+
+
+def in_profile(tag, code, *args, mutate=lambda s: s, protect=(PROTECT,), cwd=None):
+    """Run python `code` under the real profile text (mutated copy if asked). -> stdout. Exit status is printed by the code itself."""
+    work = mk("work", tag)
+    prof = sb.write_profile(mutate(sb.profile([HOME, CASE], CASE, 1, protect=list(protect))), os.path.join(work, "p.sb"))
+    q = subprocess.run(sb.wrap([sys.executable, "-I", "-c", code] + list(args), prof), cwd=cwd or CASE, env=ENV, capture_output=True, text=True, timeout=60)
+    return q.stdout.strip() + q.stderr.strip()[-200:]
+
+
+ERRNO = ("import errno,os,sys\ndef t(fn):\n try:\n  fn()\n  print('ALLOWED')\n except OSError as e:\n  print(errno.errorcode.get(e.errno))\n")
+CREATE = ERRNO + ("def c():\n open(sys.argv[1],'w').close()\n os.unlink(sys.argv[1])\nt(c)\n")
+CLOBBER = ("import subprocess,sys,os\nr=subprocess.run(['/bin/bash','--noprofile','--norc','-c','pwd -P >| \"%s\"' % sys.argv[1]],capture_output=True,text=True)\n"
+           "print('rc=%d' % r.returncode, r.stderr.strip()[:120])\nif r.returncode==0:\n print('read=' + open(sys.argv[1]).read().strip())\n os.unlink(sys.argv[1])\n print('gone=%s' % (not os.path.lexists(sys.argv[1])))\n")
+out = in_profile("cwd-clobber", CLOBBER, HEXNAME)
+check("cwd file: claude's own `pwd -P >| /tmp/claude-XXXX-cwd`, the read back and the unlink all work under the real profile",
+      "rc=0" in out and ("read=" + CASE) in out and "gone=True" in out, out)
+out = in_profile("cwd-tmpdir", "import tempfile,os\nfd,p=tempfile.mkstemp()\nos.write(fd,b'x')\nos.close(fd)\nprint(p)\nos.unlink(p)\n")
+check("per-run temp dir: python tempfile follows TMPDIR into the throwaway HOME and writes there", out.startswith(ENV["TMPDIR"] + os.sep), out)
+for name in ("/tmp/rig-plain-" + secrets.token_hex(3), "/private/tmp/rig-plain-" + secrets.token_hex(3), "/tmp/claude-other-cwd", "/tmp/claude-abc-cwd", "/tmp/claude-abcde-cwd",
+             "/tmp/claude-zzzz-cwd", "/tmp/claude-ab12-cwd.x", "/tmp/xclaude-ab12-cwd", "/var/tmp/claude-ab12-cwd", "/private/tmp/claude-%d/claude-ab12-cwd" % os.getuid()):  # allow-silence: names the sandbox must REFUSE; nothing lands
+    out = in_profile("cwd-wide", CREATE, name)
+    check("still denied: %s -> EPERM" % name, out == "EPERM", out)
+for label, code in (("a directory", "os.mkdir(sys.argv[1]); os.rmdir(sys.argv[1])"), ("a symlink", "os.symlink('/private/etc/hosts', sys.argv[1]); os.unlink(sys.argv[1])"),
+                    ("a fifo", "os.mkfifo(sys.argv[1]); os.unlink(sys.argv[1])")):
+    out = in_profile("cwd-kind", ERRNO + "def f():\n " + code.replace("; ", "\n ") + "\nt(f)\n", "/tmp/claude-%s-cwd" % secrets.token_hex(2))  # allow-silence: must be REFUSED, and the probe unlinks it if a broken profile lets it land
+    check("cwd name, regular files only: %s at that name -> EPERM" % label, out == "EPERM", out)
+own = "/tmp/claude-%s-cwd" % secrets.token_hex(2)  # allow-silence: the probe's own file, unlinked in the same breath
+out = in_profile("cwd-ops", ERRNO + "open(sys.argv[1],'w').close()\nt(lambda: os.chmod(sys.argv[1],0o666))\nos.unlink(sys.argv[1])\n", own)
+check("cwd file, three operations only: chmod on it -> EPERM", out == "EPERM", out)
+victim = os.path.join(mk("cwd-victim"), "write-denied-file")
+with open(victim, "w", encoding="utf-8") as f:
+    f.write("original\n")
+out = in_profile("cwd-link", ERRNO + "t(lambda: os.link(sys.argv[1],sys.argv[2]))\n", victim, "/tmp/claude-%s-cwd" % secrets.token_hex(2))  # allow-silence: must be REFUSED
+check("cwd name: a hard link from a write-denied file onto it -> EPERM (no write door by inode)", out == "EPERM" and open(victim, encoding="utf-8").read() == "original\n", out)
+target = os.path.join(mk("cwd-victim"), "must-stay-absent")
+planted = "/private/tmp/claude-%s-cwd" % secrets.token_hex(2)  # allow-silence: symlink made and removed by this test, proves writes resolve to the target
+os.symlink(target, planted)
+try:
+    out = in_profile("cwd-through", ERRNO + "t(lambda: open(sys.argv[1],'w').close())\n", planted)
+finally:
+    os.unlink(planted)
+check("cwd name: a symlink already planted there -> writing through it is EPERM, the kernel judges the target", out == "EPERM" and not os.path.lexists(target), out)
+# ORDER, the marked trap, measured: the rule names its operations, and that outranks ANY (deny file-write* ...), even one written after it. So no re-deny can
+# narrow these names, and profile() refuses a protect path they could fall under rather than let a re-deny look as if it worked.
+PNAME = "/private/tmp/claude-%s-cwd" % secrets.token_hex(2)  # allow-silence: a name this test tries to re-deny; the probe unlinks what lands
+_later_deny = lambda s: s + '\n(deny file-write* (subpath "%s"))\n' % PNAME
+out = in_profile("cwd-order", CREATE, PNAME, mutate=_later_deny)
+check("order, measured: a later (deny file-write* (subpath NAME)) does NOT beat the cwd rule (why profile() refuses it)", out == "ALLOWED" and CWD_RX in sb.profile([HOME], CASE, 1), out)
+out = in_profile("cwd-order2", CREATE, PNAME, mutate=lambda s: s + '\n(deny file-write-create (subpath "%s"))\n' % PNAME)
+check("order, control: the same deny naming file-write-create does beat it (the probe can see a deny)", out == "EPERM", out)
+
+
+def _refuses(protect):
+    try:
+        sb.profile([HOME], CASE, 1, protect=protect)
+        return False
+    except ValueError as e:
+        return "REFUSED" in str(e)
+
+
+check("profile() refuses a protect path that IS a cwd name", _refuses([PNAME]))
+check("profile() refuses a protect path a cwd name lives under (/private/tmp)", _refuses([PROTECT, "/private/tmp"]))
+check("profile() takes an ordinary protect path, one that only looks close", not _refuses([PROTECT, "/private/tmp/claude-other-cwd", "/private/tmp/claude-%d" % os.getuid()]))  # allow-silence: text compared only
+out = in_profile("cwd-protect", CREATE, os.path.join(PROTECT, "x"))
+check("protect still holds under the new rule: a file in the re-denied plugin dir -> EPERM", out == "EPERM", out)
+
+# the planted symlink lives only for one canary run: a leftover in the shared /private/tmp could catch a real session's own cwd write (found live: a direct
+# canary_spec caller left one behind). So building a spec plants nothing, and a full preflight leaves none of its names behind.
+_spec = sb.canary_spec(mk("work", "cwd-spec"), 1, [], [CASE], ["/x"], "aabbccdd", escapes=False)
+_planted = _spec.get("cwd_file", {}).get("planted")
+check("canary_spec only names the planted symlink, it does not make it", _planted and not os.path.lexists(_planted), _planted)
+if _planted and os.path.islink(_planted):
+    os.unlink(_planted)   # a spec that really planted it must not leave it behind
+
+
+def _cwd_names():
+    return {n for n in os.listdir("/private/tmp") if n.startswith("claude-") and n.endswith("-cwd")}  # allow-silence: lists the shared temp dir to prove the preflight leaves nothing
+
+
+_before_names = _cwd_names()
+p = run_case("cwd-litter")
+_left = [n for n in _cwd_names() - _before_names if os.path.islink(os.path.join("/private/tmp", n))]  # allow-silence: reads the listing above
+check("preflight leaves no symlink at a cwd name behind", not p and not _left, (p, _left))
+
+# the preflight itself must now carry these checks, and each widened COPY of the profile must make it FAIL by name
+p = run_case("cwd-good")
+check("preflight: the good profile passes with the C12 and C13 checks required", not p and "C12.write" in sb.REQUIRED_EXTRA_IDS and "C13.tmpdir" in sb.REQUIRED_EXTRA_IDS, p)
+_widen = lambda new: (lambda s: s.replace(CWD_RX, new) if CWD_RX in s else s)
+check("FAIL-FIRST C12: the cwd rule dropped -> C12.write catches it", caught(run_case("cwd-b1", lambda s: "\n".join(l for l in s.splitlines() if CWD_RX not in l)), "C12.write"))
+check("FAIL-FIRST C12: all of /private/tmp opened -> C12.wider catches it",
+      caught(run_case("cwd-b2", _widen('(subpath "/private/tmp")')), "C12.wider"))
+check("FAIL-FIRST C12: the name's tail left open (claude-XXXX-cwd*) -> C12.wider catches it",
+      caught(run_case("cwd-b3", _widen('(regex #"^/private/tmp/claude-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-cwd")')), "C12.wider"))
+check("FAIL-FIRST C12: any name between claude- and -cwd -> C12.wider catches it",
+      caught(run_case("cwd-b4", _widen('(regex #"^/private/tmp/claude-.*-cwd$")')), "C12.wider"))
+check("FAIL-FIRST C12: the regular-file filter removed -> C12.symlink catches it",
+      caught(run_case("cwd-b5", lambda s: s.replace("(require-all %s (vnode-type REGULAR-FILE))" % CWD_RX, CWD_RX)), "C12.symlink", "C12.mkdir", "C12.fifo"))
+check("FAIL-FIRST C12: every write operation instead of the three -> C12.chmod catches it",
+      caught(run_case("cwd-b6", lambda s: s.replace("(allow file-write-create file-write-data file-write-unlink ", "(allow file-write* ")), "C12.chmod"))
+check("FAIL-FIRST C13: TMPDIR outside every allowed dir -> C13 catches it", caught(run_case("cwd-b7", env_over={"TMPDIR": DENIED[0]}), "C13"))
+check("FAIL-FIRST C13: TMPDIR under an allowed dir but missing on disk -> C13 catches it",
+      caught(run_case("cwd-b8", env_over={"TMPDIR": os.path.join(HOME, "tmp-never-made")}), "C13"))
+
 
 # ---- condition 1 on a fake Drive tree (always) and on the REAL mount (--real-drive)
 area = mk("fake-mydrive", "Lifehack test area")
