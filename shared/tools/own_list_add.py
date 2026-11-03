@@ -210,7 +210,21 @@ def add(paths):
     return rc
 
 
+def _route_sign_on():
+    """Switch placement_route_sign (system/hooks/roundB.conf): the stop names this tool, so `own_list_add.py -- PATH` must work too."""
+    try:
+        sys.path.insert(0, os.path.join(HERE, "..", "..", "system", "hooks", "lib"))
+        from roundb import roundb_on
+        return roundb_on("placement_route_sign")
+    except Exception:
+        return False
+    finally:
+        sys.path.pop(0)
+
+
 def main(argv):
+    if "--" in argv and _route_sign_on():
+        argv = [a for a in argv if a != "--"]
     if len(argv) >= 2 and argv[1] == "--root":
         r = root_or_none()
         print("%s\n%s" % (r, os.path.join(r, LIST_NAME)) if r else "NOT-SET")

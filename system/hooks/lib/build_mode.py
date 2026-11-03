@@ -483,6 +483,49 @@ def personal_code_dir(code):
             sys.path.pop(0)
 
 
+SHELL_CHARS = "$`{}()"
+
+
+def _var_target(t, cmd):
+    """placement_route_sign: a target written through a variable set in the same command (D=/x; mv f "$D/a.py") -> the real path, so the
+    right route is not stopped as if "$D" were a folder in the cwd. A variable with no absolute value here stays as it was."""
+    m = re.search(r"\$\{?([A-Za-z_]\w*)\}?(/.*)?$", t)
+    if not m:
+        return t
+    vals = re.findall(r"(?:^|[;&|\n])\s*" + m.group(1) + r"=(\"[^\"]*\"|'[^']*'|[^\s;&|]+)", cmd)
+    val = os.path.expanduser(vals[-1].strip("\"'")) if vals else ""
+    if not val.startswith("/") or "$" in val:
+        return t
+    return os.path.realpath(val + (m.group(2) or ""))
+
+
+def _route_sign(t, pc):
+    """placement_route_sign (exam D-B06): the stop names the one right route: this path, this list command, never a repeat of the call.
+    The list tool is named from THIS plugin (as end_of_turn_checks.sh does), so the printed command always exists."""
+    tool = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "shared", "tools", "own_list_add.py")
+    name = os.path.basename(t)
+    name = "<file name>" if any(c in name for c in SHELL_CHARS) else name
+    here = "<this file>" if any(c in t for c in SHELL_CHARS) else t
+    dest = os.path.join(pc, "skills", _skill_name(t), name) if name == "SKILL.md" else os.path.join(pc, "tools", name)
+    return ("Do not write it here. Put the file at %s (the Write tool, or mkdir -p that folder first in Bash), then run: python3 \"%s\" \"%s\". Tell the person where it is. "
+            "Only if the person named this folder for this file: write it there as they asked (this stop shows once per session per rule), then run: python3 \"%s\" --keep \"%s\". "
+            % (dest, tool, dest, tool, here))
+
+
+def _placement_step(zone, t, route, code, notes):
+    """placement_route_sign: what a placement stop tells the session to do next, per zone."""
+    if zone == "outside-homes":
+        return route   # empty for a personal skill: its message already names ~/.claude/skills/<name>/
+    if zone == "notes":
+        pc = personal_code_dir(code)
+        return _route_sign(t, pc) if pc else "Do not write it here. "
+    if zone.startswith("code:") and notes:
+        return "Do not write it here. Put the file at %s. " % os.path.join(notes, os.path.relpath(t, code))
+    if zone.startswith("worktree:"):
+        return "Do not add it at this path; use that command. "
+    return "Do not write it here. "
+
+
 def _skill_name(t):
     """Folder name of a SKILL.md target for a message; '<name>' when it is a shell variable ($d, ${d}, `...`) or empty."""
     n = os.path.basename(os.path.dirname(t))
@@ -645,6 +688,7 @@ def main_inner():
             for rname, (zone, pats, pmsg) in placement.items():
                 if not any(fnmatch.fnmatch(base, x) for x in pats):
                     continue
+                route, rt = "", t
                 if zone == "notes":
                     hit = bool(notes) and under(t, notes) and not under(t, code)
                     if hit:
@@ -677,7 +721,9 @@ def main_inner():
                             sys.path.pop(0)
                 elif zone == "outside-homes":   # 4th rule: new code outside every home (switch placement_outside_homes)
                     hit = False
-                    pc = outside_homes_target(t, code, notes)
+                    if tool == "Bash" and "$" in t and _roundb("placement_route_sign"):
+                        rt = _var_target(t, ti.get("command", ""))
+                    pc = outside_homes_target(rt, code, notes)
                     if pc:
                         hit = True
                         pmsg = pmsg.replace("{path}", pc)
@@ -685,11 +731,14 @@ def main_inner():
                             pmsg = ("this skill belongs in ~/.claude/skills/%s/SKILL.md (Claude loads personal skills only from ~/.claude/skills/<name>/; the personal code folder is for loose scripts and one-desk tools). "
                                     "Build it THERE without asking, keep its own scripts inside that same folder, and tell the person where it is." % _skill_name(t))
                             if "/.claude/skills/" in t:   # decision 1 (Enver, 2026-11-01): a project's .claude/skills only when the person said it is for THIS project
-                                pmsg += " Keep it in this project's .claude/skills ONLY if the person said this skill is for this project; then retry the same call and it goes through."
+                                pmsg += (" Keep it in this project's .claude/skills ONLY if the person said this skill is for this project; "
+                                         + ("then write it there as they asked." if _roundb("placement_route_sign") else "then retry the same call and it goes through."))
+                        elif _roundb("placement_route_sign"):
+                            route = _route_sign(rt, pc)
                 else:
                     hit = False
                 if hit and zone == "outside-homes":
-                    if any(under(t, f) for f in kept_folders_of(code)):
+                    if any(under(rt, f) for f in kept_folders_of(code)):
                         hit = False   # the person listed this folder as kept (a hand-written `kept` line)
                 if hit:
                     ht = ""
@@ -699,9 +748,11 @@ def main_inner():
                             ht = ("\nShared tools that may already do this:" + ht) if ht else ""
                         except Exception:
                             ht = ""
+                    step = (_placement_step(zone, rt, route, code, notes) if _roundb("placement_route_sign")
+                            else "Retry the same call and it goes through; this stop happens once per session per rule. ")
                     denies.append(("placement", "place-" + rname,
-                                   "Wrong home? %s Retry the same call and it goes through; this stop happens once per session per rule. "
-                                   "RULE: system/hooks/placement.conf (%s).%s" % (pmsg, rname, ht)))
+                                   "Wrong home? %s %s"
+                                   "RULE: system/hooks/placement.conf (%s).%s" % (pmsg, step, rname, ht)))
         # ---- clause B1: cp/mv/rsync whose SOURCE is under <code>/shared/ -> HARD
         for s in w["srcs"]:
             if w["verb"] in ("cp", "mv", "rsync") and under(s, shared_dir) and not under(t, code):
@@ -734,7 +785,9 @@ def main_inner():
                            % (base, sp, sp, sp, shared_dir))
                     if is_generic(base):
                         denies.append(("copy-generic", "copy-" + re.sub(r"[^A-Za-z0-9_.-]", "_", base),
-                                       "HOLD: " + msg + " If this is a genuinely desk-local file that only shares the name, retry the same call and it goes through (this stop happens once per name per session)."))
+                                       "HOLD: " + msg + (" Only if this is a genuinely desk-local file that only shares the name: write it there as planned (this stop shows once per name per session)."
+                                                         if _roundb("placement_route_sign") else
+                                                         " If this is a genuinely desk-local file that only shares the name, retry the same call and it goes through (this stop happens once per name per session).")))
                     else:
                         denies.append(("copy-hard", None, "BLOCKED: " + msg))
         # ---- clause A: building something new
@@ -887,6 +940,11 @@ def bump_message(kind, code, hint=""):
         tools = tool_hint(code, hint)
     except Exception:
         tools = ""
+    if _roundb("placement_route_sign"):   # exam D-B06: the route, never a repeat of the call
+        return ("Looks like you're building a %s. Read %s and system/register/toolbox.md now, then build it where you were building it; never copy a shared tool. "
+                "(/build runs the same read-list and checks the result.)%s\n"
+                "This stop shows once per session per kind. RULE: system/hooks/build_mode_sops.conf."
+                % (kind, where, ("\nShared tools that may already do this:" + tools) if tools else ""))
     return ("Looks like you're building a %s. Stop and run /build for this: it hands you the read-list and checks the result. "
             "Or read %s and system/register/toolbox.md first; never copy a shared tool.%s\n"
             "Retry the same call and it goes through (once per session per kind). RULE: system/hooks/build_mode_sops.conf."

@@ -68,6 +68,8 @@ fire s4 Write "$(J file_path "$NOTES/desks/marc/tools/notify-governor.py" conten
 fire s4 Write "$(J file_path "$NOTES/desks/marc/tools/notify-governor.py" content $'#!/usr/bin/env python3\nimport os, sys\nS = "$(cat ~/.config/lifehack/code-root)/shared/notify/notify-governor.py"\nos.execv(sys.executable, [sys.executable, S] + sys.argv[1:])\n')"; want 0 "5-line wrapper naming the shared path: allowed"
 fire s4 Write "$(J file_path "$NOTES/desks/marc/tools/notify-send.sh" content "# wraps-shared: /shared/notify/notify-send.sh"$'\n'"$FULL")"; want 0 "wraps-shared marker: allowed"
 fire s5 Write "$(J file_path "$NOTES/desks/marc/tools/paths.py" content "X = 1")"; want 2 "generic paths.py: denied once" "HOLD"
+printf '%s' "$ERR" | grep -qiE "retry|same call|goes through" && { fail=$((fail+1)); echo "  FAIL  generic-name HOLD still says retry"; } || { pass=$((pass+1)); echo "   ok   generic-name HOLD names the route, no retry"; }
+mkdir -p "$NOTES/desks/pond/tools"; ROUNDB_PLACEMENT_ROUTE_SIGN=off fire s5offb Write "$(J file_path "$NOTES/desks/pond/tools/paths.py" content "X = 1")"; want 2 "placement_route_sign OFF: generic HOLD keeps the old text" "retry the same call"
 fire s5 Write "$(J file_path "$NOTES/desks/marc/tools/paths.py" content "X = 1")"; want 0 "generic paths.py: retry passes"
 fire s5 Write "$(J file_path "$NOTES/desks/marc/README.md" content "skills/ and desks are nice")"; want 0 "ordinary README edit: allowed"; silent "README"
 fire s5 Write "$(J file_path "$NOTES/desks/marc/records/skills/note.md" content "x")"; want 0 "existing desk, non-skill path: allowed"; silent "desk note"
@@ -149,7 +151,7 @@ mkdir -p "$CODE/system/tools" "$HOME/gadget-lab/sub" "$HOME/other-lab"
 GOOD="throwaway prototype kept beside its sample recordings, not a tool anyone reuses"
 PCONF="$HOME/.config/lifehack/placement.conf"
 export ROUNDB_PLACEMENT_OUTSIDE_HOMES=on
-fire g0 Write "$(J file_path "$HOME/gadget-lab/a.py" content "# lifehack-place: $GOOD"$'\nprint(1)')"; want 2 "a stated reason changes nothing: still the once-per-session bump" "Retry the same call and it goes through"
+fire g0 Write "$(J file_path "$HOME/gadget-lab/a.py" content "# lifehack-place: $GOOD"$'\nprint(1)')"; want 2 "a stated reason changes nothing: still the once-per-session bump" "Do not write it here"
 fire g0 Write "$(J file_path "$HOME/gadget-lab/a.py" content "# lifehack-place: $GOOD"$'\nprint(1)')"; want 0 "identical retry passes"
 fire g0 Write "$(J file_path "$HOME/gadget-lab/b.py" content 'print(2)')"; want 0 "second file same session passes"
 grep -q '^kept' "$PCONF" 2>/dev/null && { fail=$((fail+1)); echo "  FAIL  the hook wrote a remembered folder"; } || { pass=$((pass+1)); echo "   ok   nothing is ever remembered by the hook"; }

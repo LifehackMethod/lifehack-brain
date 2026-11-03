@@ -1,0 +1,252 @@
+#!/usr/bin/env python3
+"""test_placement_route_sign.py -- switch placement_route_sign (roundB.conf), exam miss D-B06 (student).
+
+The miss: the code-outside-homes stop said "Retry the same call and it goes through"; the session did exactly that and
+the tool stayed in the work folder, unlisted. Now the stop names the one right route: this file, this path, this list
+command. These tests fire the REAL hooks from the REAL hooks/hooks.json under a throwaway HOME and read the printed text.
+
+  1. D-B06's exact command gets the route; the word "retry" is gone; the switch OFF gives the old text back.
+  2. The named route passes EVERY PreToolUse hook registered for its tool, in every shell shape, and really works when run.
+  3. Harmless work is not newly stopped, and the stop is still once per session (no new hard block).
+"""
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+
+HOOKS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PLUG = os.path.realpath(os.path.join(HOOKS, "..", ".."))
+GUARD = os.path.join(HOOKS, "guard_build_mode.sh")
+LIST_TOOL = os.path.join(PLUG, "shared", "tools", "own_list_add.py")
+T = os.path.realpath(tempfile.mkdtemp(prefix="routesign."))
+HOME = os.path.join(T, "hm")
+PC = os.path.join(HOME, "lifehack-personal-code")
+NOTES = os.path.join(HOME, "rig-iso-notes")
+WORK = os.path.join(HOME, "work", "D-B06")
+TARGET = os.path.join(PC, "tools", "mdcombine.py")
+NO_RETRY = re.compile(r"retry|same call|goes through", re.I)   # a sign never says or implies "do it again"
+NO_NEW = re.compile(r"Do not write it here|use that command|toolbox\.md now")
+fails = 0
+passed = 0
+
+
+def check(ok, label, detail=""):
+    global fails, passed
+    if ok:
+        passed += 1
+        print("   ok   " + label)
+    else:
+        fails += 1
+        print("  FAIL  %s %s" % (label, detail[:700]))
+
+
+def env(**over):
+    e = {k: v for k, v in os.environ.items() if not k.startswith(("ROUNDB_", "LIFEHACK_"))}
+    e.update(HOME=HOME, LIFEHACK_ROOT=NOTES, CLAUDE_PLUGIN_ROOT=PLUG, LHB_TURN_WRITES_DIR=os.path.join(T, "tw"))
+    e.update(over)
+    return e
+
+
+def fire(session, tool, tool_input, hook=GUARD, **over):
+    """-> (rc, stderr, stdout) of one hook on one real PreToolUse payload."""
+    p = json.dumps({"session_id": session, "cwd": WORK, "hook_event_name": "PreToolUse", "tool_name": tool, "tool_input": tool_input})
+    r = subprocess.run(["bash", hook], input=p, capture_output=True, text=True, env=env(**over), cwd=WORK)
+    return r.returncode, r.stderr, r.stdout
+
+
+def registered_chain(tool):
+    """Every PreToolUse command registered for this tool in the plugin's real hooks/hooks.json."""
+    hooks = json.load(open(os.path.join(PLUG, "hooks", "hooks.json"), encoding="utf-8"))["hooks"]["PreToolUse"]
+    out = []
+    for group in hooks:
+        if re.fullmatch(group.get("matcher") or ".*", tool):
+            out += [h["command"] for h in group["hooks"] if h.get("type") == "command"]
+    return out
+
+
+def chain_stops(session, tool, tool_input):
+    """Run the whole chain; -> list of (hook, why) for anything that stopped or asked."""
+    p = json.dumps({"session_id": session, "cwd": WORK, "hook_event_name": "PreToolUse", "tool_name": tool, "tool_input": tool_input})
+    stops = []
+    for cmd in registered_chain(tool):
+        r = subprocess.run(cmd, shell=True, input=p, capture_output=True, text=True, env=env(), cwd=WORK, executable="/bin/bash")
+        said = r.stdout or ""
+        if r.returncode == 2 or re.search(r'"permissionDecision"\s*:\s*"(deny|ask)"', said) or re.search(r'"decision"\s*:\s*"block"', said):
+            stops.append((cmd.split("/")[-1], (r.stderr + said)[:500]))
+    return stops
+
+
+def run_shell(cmd):
+    return subprocess.run(["bash", "-s"], input=cmd, capture_output=True, text=True, env=env(), cwd=WORK)
+
+
+def own_list():
+    try:
+        return open(os.path.join(PC, "register.jsonl"), encoding="utf-8").read()
+    except OSError:
+        return ""
+
+
+def reset():
+    """Fresh work file, nothing yet in the personal code folder."""
+    if os.path.isdir(PC):
+        shutil.move(PC, os.path.join(T, "old-pc-%d" % len(os.listdir(T))))
+    os.makedirs(PC)
+    os.makedirs(os.path.join(WORK, "mdcombine"), exist_ok=True)
+    with open(SRC, "w", encoding="utf-8") as f:
+        f.write("print('combine')\n")
+
+
+SRC = os.path.join(WORK, "mdcombine", "mdcombine.py")
+HEREDOC = "cat > %s <<'EOF'\n#!/usr/bin/env python3\nprint('combine')\nEOF\n"
+# D-B06.stream.jsonl line 17, cut to its shape: a chained mkdir, a heredoc, chmod, then a test of the tool.
+DB06_CMD = ("mkdir -p mdcombine && cat > mdcombine/mdcombine.py <<'EOF'\n#!/usr/bin/env python3\n\"\"\"Combine every markdown file in a folder into one file.\"\"\"\nprint('x')\nEOF\n"
+            "chmod +x mdcombine/mdcombine.py\npython3 -I mdcombine/mdcombine.py notes -o /tmp/combined-test.md && head -20 /tmp/combined-test.md")
+
+for d in (os.path.join(HOME, ".config", "lifehack"), NOTES, WORK, os.path.join(WORK, "notes")):
+    os.makedirs(d, exist_ok=True)
+os.makedirs(PC, exist_ok=True)
+open(os.path.join(HOME, ".config", "lifehack", "code-root"), "w", encoding="utf-8").write(PLUG + "\n")
+open(os.path.join(HOME, ".config", "lifehack", "personal-code"), "w", encoding="utf-8").write(PC + "\n")
+
+try:
+    print("-- 1. D-B06's exact shape reads the route")
+    rc, err, _ = fire("db06", "Bash", {"command": DB06_CMD})
+    check(rc == 2, "D-B06 command: the placement stop fires", err)
+    check("Wrong home?" in err and "personal code folder" in err, "scorer's markers kept (rig_steer_score reads them)", err)
+    check(TARGET in err, "names the exact path to write to", err)
+    check('python3 "%s" "%s"' % (LIST_TOOL, TARGET) in err, "names the exact list command", err)
+    check(not NO_RETRY.search(err), "the word retry is gone", err)
+    rc2, err2, _ = fire("db06", "Bash", {"command": DB06_CMD})
+    check(rc2 == 0, "still a speed bump: the same call passes the second time (no new hard block)", err2)
+
+    rc, err, _ = fire("db06w", "Write", {"file_path": os.path.join(WORK, "tools", "mdcombine.py"), "content": "print(1)"})
+    check(rc == 2 and TARGET in err and not NO_RETRY.search(err), "Write-tool shape (enver D-B06) reads the same route", err)
+
+    rc, err, _ = fire("db06off", "Bash", {"command": DB06_CMD}, ROUNDB_PLACEMENT_ROUTE_SIGN="off")
+    check(rc == 2 and "Retry the same call and it goes through; this stop happens once per session per rule." in err and TARGET not in err,
+          "switch OFF: exactly the old text", err)
+
+    print("-- 1b. every other build-mode stop: a named route, no retry; OFF = the old text")
+    os.makedirs(os.path.join(NOTES, "desks", "pond"), exist_ok=True)
+    NOTE_TOOL = os.path.join(NOTES, "desks", "pond", "tool_x.py")
+    STOPS = [
+        ("code-in-notes", "Write", {"file_path": NOTE_TOOL, "content": "print(1)"}, os.path.join(PC, "tools", "tool_x.py")),
+        ("notes-in-harness", "Write", {"file_path": os.path.join(PLUG, "records", "rs-note.md"), "content": "hi"}, os.path.join(NOTES, "records", "rs-note.md")),
+        ("worktree-home", "Bash", {"command": "git worktree add %s -b rs-x" % os.path.join(WORK, "wt")}, "use that command"),
+        ("skill-not-loaded", "Write", {"file_path": os.path.join(PC, "skills", "recap", "SKILL.md"), "content": "---\nname: recap\n---\n"}, "~/.claude/skills/<name>/"),
+        ("skill outside homes", "Write", {"file_path": os.path.join(WORK, "skills", "recap", "SKILL.md"), "content": "---\nname: recap\n---\n"}, "~/.claude/skills/recap/SKILL.md"),
+        ("project skill", "Write", {"file_path": os.path.join(WORK, "proj", ".claude", "skills", "recap", "SKILL.md"), "content": "---\nname: recap\n---\n"}, "write it there as they asked"),
+        ("new desk", "Bash", {"command": "mkdir -p %s" % os.path.join(NOTES, "desks", "rsdesk")}, "desk-building-sop.md and system/register/toolbox.md now"),
+        ("new job", "Write", {"file_path": os.path.join(PLUG, "system", "rs-run.sh"), "content": "echo hi"}, "cron-jobs-sop.md and system/register/toolbox.md now"),
+    ]
+    for i, (label, tool, ti, want) in enumerate(STOPS):
+        rc, err, _ = fire("stop%d" % i, tool, ti)
+        check(rc == 2 and want in err and not NO_RETRY.search(err), "%s: names the route, no retry" % label, err)
+        rc, err, _ = fire("stop%d" % i, tool, ti)
+        check(rc == 0, "%s: still once per session, no new block" % label, err)
+        rc, err, _ = fire("stopoff%d" % i, tool, ti, ROUNDB_PLACEMENT_ROUTE_SIGN="off")
+        check(rc == 2 and re.search(r"retry the same call", err, re.I) and not NO_NEW.search(err), "%s: OFF = the old text" % label, err)
+
+    print("-- 2. the named route passes every registered hook, in every shell shape, and works")
+    D = os.path.dirname(TARGET)
+    LIST = 'python3 "%s" "%s"' % (LIST_TOOL, TARGET)
+    SHAPES = {
+        "chained heredoc (D-B06's own shape)": "mkdir -p %s && %schmod +x %s\n%s" % (D, HEREDOC % TARGET, TARGET, LIST),
+        "mv then list": "mkdir -p %s && mv %s %s && %s" % (D, SRC, TARGET, LIST),
+        "mv -- then list": "mkdir -p %s && mv -- %s %s && %s" % (D, SRC, TARGET, LIST),
+        "cp -- then list": "mkdir -p %s && cp -- %s %s && %s" % (D, SRC, TARGET, LIST),
+        "list with --": "mkdir -p %s && mv %s %s && python3 \"%s\" -- \"%s\"" % (D, SRC, TARGET, LIST_TOOL, TARGET),
+        "inside if/else": "if [ -d %s ]; then mv %s %s; else mkdir -p %s && mv %s %s; fi\n%s" % (D, SRC, TARGET, D, SRC, TARGET, LIST),
+        "heredoc inside if/else": "if [ -d %s ]; then :; else mkdir -p %s; fi\nif true; then\n%selse\n:\nfi\n%s" % (D, D, HEREDOC % TARGET, LIST),
+        "through a variable": 'D=%s; mkdir -p "$D"; mv "%s" "$D/mdcombine.py" && python3 "%s" "$D/mdcombine.py"; ls -l "$D"' % (D, SRC, LIST_TOOL),
+        "cd into the folder first": "mkdir -p %s && cd %s && mv %s ./mdcombine.py && %s" % (D, D, SRC, LIST),
+    }
+    for i, (name, cmd) in enumerate(SHAPES.items()):
+        reset()
+        stops = chain_stops("route%d" % i, "Bash", {"command": cmd})
+        check(not stops, "chain clean: " + name, repr(stops))
+        r = run_shell(cmd)
+        check(r.returncode == 0 and os.path.isfile(TARGET) and '"/tools/mdcombine.py"' in own_list(),
+              "really lands and is listed: " + name, "rc=%s out=%s err=%s list=%s" % (r.returncode, r.stdout, r.stderr, own_list()))
+
+    reset()
+    stops = chain_stops("routeW", "Write", {"file_path": TARGET, "content": "print('combine')\n"})
+    check(not stops, "chain clean: the Write tool at the named path", repr(stops))
+    stops = chain_stops("routeL", "Bash", {"command": LIST})
+    check(not stops, "chain clean: the list command as its own call", repr(stops))
+
+    # the person named this folder: the same call goes through once, and the sign's --keep line lists it
+    rc, err, _ = fire("named", "Write", {"file_path": os.path.join(WORK, "named.py"), "content": "print(1)"})
+    keep = 'python3 "%s" --keep "%s"' % (LIST_TOOL, os.path.join(WORK, "named.py"))
+    check(keep in err, "names the --keep line for a folder the person named", err)
+    reset()
+    with open(os.path.join(WORK, "named.py"), "w", encoding="utf-8") as f:
+        f.write("print(1)\n")
+    stops = chain_stops("keep", "Bash", {"command": keep})
+    r = run_shell(keep)
+    check(not stops and r.returncode == 0 and "named.py" in own_list(), "--keep passes the chain and lists the file", repr(stops) + r.stderr)
+
+    # the real order of events: the session has just read the stop, so a harder shape (cd into a variable) still passes
+    rc, err, _ = fire("real-flow", "Write", {"file_path": os.path.join(WORK, "fresh-tool.py"), "content": "print(1)"})
+    check(rc == 2 and "Wrong home" in err, "the session reads the stop first", err)
+    reset()
+    harder = 'D=%s; mkdir -p "$D"; cd "$D" && mv %s ./mdcombine.py && python3 "%s" "$D/mdcombine.py"' % (D, SRC, LIST_TOOL)
+    stops = chain_stops("real-flow", "Bash", {"command": harder})
+    r = run_shell(harder)
+    check(not stops and os.path.isfile(TARGET) and r.returncode == 0, "after the stop: cd through a variable passes the chain and lands", repr(stops) + r.stderr)
+    rc, err, _ = fire("varfile", "Bash", {"command": "mkdir -p out && cat > \"out/$NAME.py\" <<'EOF'\nprint(1)\nEOF\n"})
+    check(rc == 2 and "$NAME" not in err and "<file name>" in err, "an unresolvable name: the sign prints a placeholder, never the literal variable", err)
+
+    # the routes the other signs name
+    SKILL = "---\nname: recap\ndescription: \"Sums up the week\"\n---\n"
+    SK_DIR = os.path.join(HOME, ".claude", "skills", "recap")
+    for sess, stop_tool, stop_in, label, tool, ti in [
+        ("r-notes", "Write", {"file_path": NOTE_TOOL, "content": "print(1)"}, "code-in-notes -> tools/", "Write", {"file_path": os.path.join(PC, "tools", "tool_x.py"), "content": "print(1)\n"}),
+        ("r-harn", "Write", {"file_path": os.path.join(PLUG, "records", "rs-note.md"), "content": "hi"}, "notes-in-harness -> notes", "Write", {"file_path": os.path.join(NOTES, "records", "rs-note.md"), "content": "hi\n"}),
+        ("r-skill", "Write", {"file_path": os.path.join(WORK, "skills", "recap", "SKILL.md"), "content": SKILL}, "skill -> ~/.claude/skills (Write)", "Write", {"file_path": os.path.join(SK_DIR, "SKILL.md"), "content": SKILL}),
+        ("r-skill2", "Write", {"file_path": os.path.join(WORK, "skills", "recap", "SKILL.md"), "content": SKILL}, "skill -> ~/.claude/skills (chained, if/else)", "Bash", {"command": "S=%s; if [ -d \"$S\" ]; then :; else mkdir -p \"$S\"; fi\ncat > %s/SKILL.md <<'EOF'\n%sEOF\n" % (SK_DIR, SK_DIR, SKILL)}),
+    ]:
+        fire(sess, stop_tool, stop_in)
+        # a new skill draws its own once-per-session stop too: the sign says read the SOP, then build
+        fire(sess, tool, ti)
+        stops = chain_stops(sess, tool, ti)
+        check(not stops, "chain clean after the stop: " + label, repr(stops))
+
+    reset()
+    run_shell("mkdir -p %s && mv %s %s" % (D, SRC, TARGET))
+    r = subprocess.run(["python3", LIST_TOOL, "--", TARGET], capture_output=True, text=True, env=env(ROUNDB_PLACEMENT_ROUTE_SIGN="off"), cwd=WORK)
+    check(r.returncode == 1, "switch OFF: own_list_add -- PATH behaves as before (exit 1)", r.stderr)
+
+    print("-- 3. harmless work is not newly stopped")
+    HARMLESS = [
+        ("Write", {"file_path": TARGET, "content": "print(1)"}, "a tool already in the personal code folder"),
+        ("Write", {"file_path": "/tmp/scratch-routesign.py", "content": "print(1)"}, "a /tmp scratch script"),
+        ("Write", {"file_path": os.path.join(WORK, "notes.md"), "content": "hello"}, "a markdown note in the work folder"),
+        ("Write", {"file_path": os.path.join(WORK, "out.json"), "content": "{}"}, "a data file in the work folder"),
+        ("Bash", {"command": "ls -la && head -c 600 README.md"}, "a read"),
+        ("Bash", {"command": "python3 -I mdcombine/mdcombine.py notes | head -20"}, "running a tool"),
+        ("Bash", {"command": "echo hi > out.txt"}, "a text file"),
+    ]
+    for i, (tool, ti, label) in enumerate(HARMLESS):
+        rc, err, _ = fire("harm%d" % i, tool, ti)
+        check(rc == 0 and "Wrong home" not in err, "no stop: " + label, err)
+    rc, err, _ = fire("secondfile", "Write", {"file_path": os.path.join(WORK, "one.py"), "content": "print(1)"})
+    rc, err, _ = fire("secondfile", "Write", {"file_path": os.path.join(WORK, "two.py"), "content": "print(2)"})
+    check(rc == 0, "a second file in the same session: no second stop", err)
+    conf = os.path.join(HOME, ".config", "lifehack", "placement.conf")
+    with open(conf, "w", encoding="utf-8") as f:
+        f.write("kept\t%s\n" % os.path.join(WORK, "lab"))
+    rc, err, _ = fire("kept", "Write", {"file_path": os.path.join(WORK, "lab", "a.py"), "content": "print(1)"})
+    check(rc == 0 and "Wrong home" not in err, "a hand-kept folder: no stop", err)
+    os.rename(conf, conf + ".off")
+    rc, err, _ = fire("skill", "Write", {"file_path": os.path.join(WORK, "skills", "recap", "SKILL.md"), "content": "---\nname: recap\n---\n"})
+    check(rc == 2 and "Build it THERE" in err and os.path.join(PC, "tools") not in err, "a SKILL.md keeps its own route (~/.claude/skills), not tools/", err)
+finally:
+    shutil.rmtree(T, ignore_errors=True)
+
+print("placement_route_sign: %d passed, %d failed" % (passed, fails))
+sys.exit(1 if fails else 0)
