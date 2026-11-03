@@ -5,7 +5,7 @@ record_type: canon
 desk: root
 topic: [system-architecture, llm-engineering]
 created_at: 2026-09-02
-updated_at: 2026-11-02
+updated_at: 2026-11-03
 status: active
 authority: user
 confidence: CONFIRMED
@@ -35,15 +35,15 @@ route:
   - ["§6", 781, "learning, refutation, choosing not to build, secrets"]
   - ["§7", 809, "what a cold reader can and cannot trust: citations, saved work, recency, discriminators, tests, backlogs"]
   - ["§8", 880, "one-line practices"]
-  - ["§9", 930, "Enver's rulings, including the GitHub and shipping rulings"]
-  - ["§10", 973, "claims retracted; do not carry forward"]
-  - ["§10a", 1007, "approaches proven not to work, with receipts"]
-  - ["§11", 1047, "corrections to earlier answers"]
-  - ["§12", 1057, "unresolved or resolved tensions, kept visible"]
-  - ["§14", 1137, "where the evidence lives"]
-  - ["§15", 1143, "research candidates, held, bind nothing"]
-  - ["§16", 1304, "the failure-mode census: 19 recurring failures, ranked, with tiers"]
-  - ["§17", 1427, "experiments: proposed and run, with dated ground results"]
+  - ["§9", 931, "Enver's rulings, including the GitHub and shipping rulings"]
+  - ["§10", 974, "claims retracted; do not carry forward"]
+  - ["§10a", 1008, "approaches proven not to work, with receipts"]
+  - ["§11", 1049, "corrections to earlier answers"]
+  - ["§12", 1059, "unresolved or resolved tensions, kept visible"]
+  - ["§14", 1140, "where the evidence lives"]
+  - ["§15", 1146, "research candidates, held, bind nothing"]
+  - ["§16", 1307, "the failure-mode census: 21 recurring failures, ranked, with tiers"]
+  - ["§17", 1435, "experiments: proposed and run, with dated ground results"]
 ---
 
 # Canonical principles — the merged canon — v2 (in force in the V2 sandbox)
@@ -924,6 +924,7 @@ compaction makes re-derivation the default failure. WORKING THEORY → validatio
   "API limit" (like most platform errors) is 3+ distinct failure modes with 3+ distinct fixes; get the
   exact error string and reproduction conditions first. *(Old canon 2026-06-11-debugging-discipline.md —
   origin: the huddle API-limit 429 re-investigated from scratch three times.)*
+- **Climb a larger test rig by nibble, bite and full meal.** About 1 real run, then a few, then the full size, looking and fixing between each, because first tests are expected to be wrong and each size teaches the next. Small runs never count as final numbers. *(Enver, 2026-11-03. Receipts: the first real nibble found a lockdown blocking Claude itself for $0.0007, and a $95.18 night then reached every rung; a skill-evaluation tool proven on 9 real targets before any plumbing. Good for learning fast; it doesn't fix aim.)* **REPRODUCED.**
 
 ---
 
@@ -1041,6 +1042,7 @@ only that record would re-claim several.
   assumed **$116.00**, measured **$7.81**, because a `--max-budget-usd` safety cap was read as spend
   (**14.9×**). → **State the detectable rate and the trial count before running · report `pass@k`, never a
   boolean · price from a measured run, never from a cap** (§5.7a). **OBSERVED.**
+- **[DNR7]** Tried: freezing an instrument, declaring it finished and banning further work on it, as the cure for effort drifting into the instrument. Failed 2026-07-25 to 08-04: the Conformance Lab was frozen and back within ten days as the door tester and fan-out lab, "ONE machine under three names" (journal 2026-08); a measurement freeze was also relaxed. → See mode 20 and its fixes. **OBSERVED.**
 
 ---
 
@@ -1100,6 +1102,7 @@ only that record would re-claim several.
   deciding vote — it annotates, and the human or the code decides. *Principle 3 (SOP) says only that the actor may not declare
   its own work done; a different window checking is Principle 3 working as written, not a collision — 12.f as first drafted
   read Principle 3 as broader than it is.*
+- **12.i Prove the tester vs "don't test the tester".** §5 says to test the tester first, the frame says to build the failing state first, and V2's brief rules out "testing the tester". A cold reader sees a contradiction. Both are true: a tester has to work, and proving that must not become the work (mode 20). One question separates them: could the next real run go ahead without this fix?
 
 Automating away pain lets the real fix be deprioritised forever · Reducing alerts to fight fatigue risks
 under-alerting (EEMUA 191, ISA-18.2) · A watchdog can substitute for correctness discipline · *"A
@@ -1341,6 +1344,10 @@ The evidence behind these principles lives in the builder's notes.
 
 19. **Delivery packaging misread as stranded work** (1 — 2026-09-08, one repo; no census). A staging branch is a delivery vehicle, not a line of development: `git rev-list main..<branch>` measures reachability, and in a two-repo world reachability and value come apart — the content went to the OTHER repo, so it is simultaneously "not on main" and fully delivered, and every tool reports the first and stays silent on the second. Receipt, the private repo, 2026-09-08: 20 `ship/*` and `land/*` branches · 211 commits absent from `main` · ~142 shared between any two (one pile forked twenty ways) · they carry `.claude-plugin/plugin.json` and `marketplace.json`, which private `main` has never held (`git ls-tree main --name-only .claude-plugin/` empty); the content is live on the public repo and has diverged since. Enver's reading was "our work is getting stranded" — the truth: it shipped and the packaging was left. Failure-path: a large `main..branch` count read as stranded work; the natural remedy (merge) is exactly backwards. Detection, mechanical: for any branch with a large count, `git diff --name-only main...<branch>` for paths this repo is not supposed to hold — one such path means it delivered elsewhere; confirm in the destination BY CONTENT, never by SHA. Method note from its discovery, worth the line: when a count is confusing, stop counting and look at what the thing contains — one out-of-place path told everything the counts could not. **Interaction with mode 18, and this is the dangerous part: mode 18's (Mirror Rot) cleanup instinct is what makes mode 19 dangerous — a window tidying branches under 18 reaches for MERGE on exactly the branches 19 says must be DELETED, and merging imports the other repo's content into this one, the separation violation the whole migration exists to undo.** See also mode 18 (Mirror Rot) and the GitHub SOP's **[G17]**. Remedy: delete, never merge; upstream, a shipping lane that creates a staging branch deletes it on successful delivery. · **CANDIDATE** (derived 2026-09-08 from a direct branch-content audit; nothing watched) · **category:** architectural (the shipping lane keeps packaging it should delete) WITH an operational half (the reader's instinct to merge on a large count). **Field remedy: none found 2026-09-08** — no literature names this exact conflation. Two structural analogs converge on recording delivery as commit-graph data rather than branch-state inference (`git subtree --rejoin`; Copybara/Dagster revision-ID trailers), but neither directly solves it, and at least one tool's own default (Copybara's "blessed path") takes the opposite view (RESEARCHED).
 
+20. **Drifting down to testing the tester** (four documented episodes July–November 2026, and by Enver's account dozens of times; no census). We build a test rig to serve a larger goal. Then the work drifts to low altitude: sessions start testing and perfecting the tester, and stop using it to reach that goal. Each fix is honest and provable, so it feels like progress, and nothing signals the drift. **A tester still has to work, so ask whether the next real run could go ahead without this fix. If it could, run it.** **Fixes:** open each plan with three altitudes, so every session can see what the tester is for: the real question, what must be true to answer it, and the mechanics that serve those two (working case by case, not yet proven over time). Climb by nibble, bite and full meal. Read what runs actually did, not only the scoreboard. · **OBSERVED** (added 2026-11-03 on Enver's ruling; episodes: cadence-skills detour, Conformance Lab, canonical-housecleaning, skill-system rig; self-reported, clustered where measuring is the job). Counter-case: hardening has also caught silent passes and a judge about 20% random, so this is about drift, never about skipping proof. Mode 21 is one cause of this drift. Experiment: 17.28.
+
+21. **Low-altitude pull** (by Enver's account, repeatedly, over long sessions and multi-window builds; no census). All work happens at ground level, so doing the work pulls attention toward ground level. As a session goes on, the middle and top altitudes fade from its context, and the human ends up holding them and pushing them back in. **It also travels up a chain of command.** We assume influence only flows down: a coordinator sets direction, a build window manages it, and sub-agents execute. But a sub-agent only knows the ground, so its reports only describe the ground. Those reports are most of what the levels above it see, so they gradually pull the coordinator down too. It's like a CEO whose only information comes from reports written by people who can see only their own task: nobody means any harm, yet the CEO's picture slowly narrows to what those reports contain. **What helps:** the harness re-injects three altitudes into a session every so often, which seems to work well in a single window. It doesn't address the chain: a sub-agent doesn't get them, and its reports still come up ground-level. **Candidate fixes, untested:** carry three altitudes through a plan, with the real question at the top and a line at each phase or step saying how that step serves it, so a build window has them at the moment it prepares work. It can pass them to a sub-agent in full, or let them shape the prompt it writes. Reports should say what a result means for the level above, not just what happened. A coordinator should re-read the goal before acting on a report. · **OBSERVED** (added 2026-11-03 on Enver's ruling; rests on his account and one session's experience, journals not yet searched). Mode 20 is its costliest known example. Experiment: 17.28.
+
 **v2 step-runner verdict (orchestrator-v2, 2026-10-28) — OBSERVED in a fault-injection harness only, not validated by multi-week use.** Does the one-step-at-a-time runner (§0.2) help with each mode? YES / PARTLY / NO:
 1. Built, then never called — PARTLY (a card step is called by the runner; an unwired card is not)
 2. A failure that exits zero — PARTLY (a code check on content catches it; rc 0 alone never advances)
@@ -1362,6 +1369,7 @@ The evidence behind these principles lives in the builder's notes.
 18. Mirror Rot — NO
 19. Delivery packaging misread as stranded work — NO
 **Tally of the 19:** 3 YES (modes 6, 11, 14) · 7 PARTLY (1, 2, 4, 8, 9, 13, 16; mode 8 is counted PARTLY because its YES covers self-report only) · 9 NO (3, 5, 7, 10, 12, 15, 17, 18, 19). **Also:** drift — YES (a step carries no memory to fade) · rationalisation — PARTLY · the follow-follow spiral — YES.
+**Modes 20 and 21, added 2026-11-03, are outside that tally:** NO to both. A runner holds the order of steps; it doesn't ask whether the tester still serves the goal, or carry the altitudes to a worker.
 **The other modes still rely on the other layers.** This is one layer's verdict, not a replacement for hooks, checks or review.
 
 **Solutions audit, 2026-09-05** *(three angles: the record · the disk · the documents; five readers, one synthesis;
@@ -1433,7 +1441,7 @@ zero-byte reads at exit 0, dataless files, paths with spaces; four instances, on
 > An experiment earns a fix its tier. Ground — one question, arms, a positive and a negative control, measured by artifact — earns OBSERVED. Persisting the fix and running it through blind sessions that were not trying to make it hold earns VALIDATED. A mode's line moves to fixed only after a fresh session audits the fix against the map, the manual and the elements — in a personal productivity system intended to work this way over years, would this hold? — and Enver rules. A fix is fixed when a session with zero state can pick it up from what is persisted and it holds. One window owns one mode; windows report to the coordinator only; the coordinator re-runs every result before believing it. A fix's PERSISTENCE also sits on a scale, weakest to strongest: prose-asked-nicely (a rule the model must remember and re-apply live, unenforced) → speed-bump / redundant-signal / second-check (a real mechanism that raises the cost of the failure or catches it after the fact, but can still be bypassed or ignored on some path) → structurally-impossible-on-every-path (the failure literally cannot occur, on every path, not merely the one tested). This is a scale, not a works/doesn't-work binary — a fix earns the rung the evidence on disk actually supports, and most fixes in this harness sit partway up it, holding on some paths and not others. Where no perfect structural fix exists — and for most of the nineteen modes, none yet does — layered redundancy at the middle rung is the best available fix and a legitimate, rankable outcome in its own right, not a failure to have found the top one.
 >
 > **INDEX — mode → entry** *(added 2026-09-07, card 5.1; one line, so a window finds its own entry in one grep):*
-> **1**→17.11 · **2**→17.12 · **3**→17.13 · **4**→17.14 · **5**→17.6 *(companion arm: 17.5)* · **6**→17.15 · **7**→17.2 · **8**→17.16 · **9**→17.17 · **10**→17.18 · **11**→17.1 · **12**→17.19 · **13**→17.20 · **14**→17.21 · **15**→17.22 · **16**→17.23 · **17**→17.24 · **18**→17.25 · **19**→17.26 — and 17.3, 17.4, 17.7, 17.8, 17.9, 17.10 belong to no single mode and no window owns them.
+> **1**→17.11 · **2**→17.12 · **3**→17.13 · **4**→17.14 · **5**→17.6 *(companion arm: 17.5)* · **6**→17.15 · **7**→17.2 · **8**→17.16 · **9**→17.17 · **10**→17.18 · **11**→17.1 · **12**→17.19 · **13**→17.20 · **14**→17.21 · **15**→17.22 · **16**→17.23 · **17**→17.24 · **18**→17.25 · **19**→17.26 — and 17.3, 17.4, 17.7, 17.8, 17.9, 17.10 belong to no single mode and no window owns them. · **20**, **21**→17.28
 >
 > **How to read a mode entry.** Each mode entry carries seven labelled parts, in this order. **Question** — one variable, nothing else moving. **Arms** — each differs from the control in exactly one thing. **Artifact** — the command whose output decides the verdict; the coordinator's `--verify NN` re-run executes this exact command and diffs its own output against what the window quoted, so a command that does not run is a defect in the entry, not a task for the window to improvise around. **Controls** — positive (the planted failure), negative (the clean twin), and the prior run already on disk where one exists. **Persistence** — the delivery shape the fix would be persisted through at 5,000 ft. **Moves** — which §16 line and which SOP `[F-n]` line moves, and to which word. **Pre-registered pass/fail** — the verdict rule, written before anything runs, in the closed vocabulary `fires` · `theater` · `error` · `dark` · `unscored`, categorical and never a rate.
 >
@@ -1709,3 +1717,11 @@ zero-byte reads at exit 0, dataless files, paths with spaces; four instances, on
   **Moves** — §15.29 from **RESEARCHED** toward **OBSERVED** on a `fires`.
   **Pre-registered pass/fail** — `fires` if over at least four scheduled runs Enver reads the output, acts on it at least once, and any failure is noticed by him within one cycle. `theater` if the job runs but the output goes unread. `fails` if a failure goes unnoticed for more than one cycle, or a watcher has to be added to trust it. `dark` if the scheduler cannot run the job in this environment. `unscored` if fewer than four runs complete.
 
+- **17.28 Does carrying three altitudes through a plan keep work on the goal over time? — MODES 20 and 21 (drifting down to testing the tester; low-altitude pull).** *(Written 2026-11-03 by Enver's instruction; working case by case, nothing yet shown over time.)*
+  **Question** — When a plan opens with the real question, what must be true to answer it, and the mechanics that serve those two, and each step says how it serves them, do sessions and the workers under them keep aiming at the goal over weeks, instead of drifting to the ground?
+  **Arms** — plans carrying the opening against comparable plans without it, across projects, over at least several weeks.
+  **Artifact** — read from the record: time since the last real run, share of commits to the tester against commits using it, how often Enver has to restate the question, whether a blind session given the plan names the real question unprompted, and whether subordinate reports say what a result means for the level above.
+  **Controls** — *positive:* a plan known to have drifted, such as the rig plan before 2026-11-02, should read as drifted on these measures. *negative:* a plan aimed at a real-world endpoint should read as on track.
+  **Persistence** — the plan template and audit, if it earns its place; it's prose a model reads, so by §0.1 a preference until shown otherwise, and altitude lines alone have not prevented this before.
+  **Moves** — mode 20's top fix up the ladder, and into `plan-template.md` if it holds.
+  **Pre-registered pass/fail** — `fires` if plans with the opening show materially fewer drift episodes than those without. `theater` if they drift the same. `dark` if the measures can't tell.
