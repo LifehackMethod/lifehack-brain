@@ -208,6 +208,9 @@ def main(spec_path):
                 out("C10.control.%d" % i, "re-allowed path readable (control): " + p, True)
             except OSError as x:
                 out("C10.control.%d" % i, "re-allowed path readable (control): " + p, False, os.strerror(x.errno) if x.errno else repr(x))
+        for i, p in enumerate(hr.get("probe_denied", [])):
+            ok, det = must_eperm(lambda p=p: os.listdir(p))
+            out("C10.probe.%d" % i, "cannot be listed: " + p, ok, det)
     # C11 (rig-validity-fix bug 1): a stand-in hook run the way claude runs hooks (bash <script>, this same actor env) can mktemp, and the
     # files land inside an allowed dir (macOS mktemp ignores TMPDIR without the rig's shim, and the shared T dir is not writable here).
     if s.get("hook_standin"):
@@ -219,6 +222,15 @@ def main(spec_path):
                 "rc=%s made=%s err=%s" % (p.returncode, made, p.stderr.strip()[:150]))
         except (OSError, subprocess.TimeoutExpired) as x:
             out("C11.mktemp", "stand-in hook: mktemp + mktemp -d work inside an allowed dir", False, repr(x))
+    # C14 (rig-blind-runs): a read of a sibling run's folder (and task dir) is EPERM, the rig root and task dir cannot be listed; this run's own folder reads
+    rb = s.get("rig_blind")
+    if rb:
+        for i, p in enumerate(rb["denied"]):
+            ok, det = must_eperm(lambda p=p: os.listdir(p))
+            out("C14.denied.%d" % i, "read of a sibling run / listing that names one DENIED: " + p, ok, det)
+        for i, p in enumerate(rb["allowed"]):
+            ok, det = must_eperm(lambda p=p: os.listdir(p))
+            out("C14.own.%d" % i, "read of this run's own folder ALLOWED: " + p, det == "ALLOWED", det)
     if s.get("cwd_file"):
         cwd_file_checks(s["cwd_file"], os.getcwd())
     tmpdir_check(s.get("write_allowed", []))

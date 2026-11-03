@@ -50,7 +50,7 @@ ENV, _dropped = iso.build_actor_env(os.environ, {"TMPDIR": mk("allowed", "rig-is
 
 
 def run_case(tag, mutate=lambda s: s, write_denied=None, notes=None, proxy_allow=(sb.API_HOST,), sandbox_exec=sb.SANDBOX_EXEC, escapes=True,
-             allow=None, env_over=None, home_read=None):
+             allow=None, env_over=None, home_read=None, blind=None):
     """Generate the real profile, apply `mutate` to a COPY, run the real preflight. -> problems list.
     home_read: the student real-home read-deny (rig-validity-fix bug 2), aimed at a FAKE home under the temp root."""
     work = mk("work", tag)
@@ -58,6 +58,7 @@ def run_case(tag, mutate=lambda s: s, write_denied=None, notes=None, proxy_allow
     try:
         run = os.path.join(work, "canary")
         kw = {"home_read": home_read} if home_read is not None else {}
+        kw.update({"blind": blind} if blind is not None else {})
         text = sb.profile(allow if allow is not None else [HOME, CASE], CASE, port, protect=[PROTECT], decoy=os.path.join(run, "decoy"), **kw)
         prof = sb.write_profile(mutate(text), os.path.join(work, "actor.sb"))
         env = dict(ENV, **sb.actor_net_env(port))
@@ -338,6 +339,64 @@ check("FAIL-FIRST C12: every write operation instead of the three -> C12.chmod c
 check("FAIL-FIRST C13: TMPDIR outside every allowed dir -> C13 catches it", caught(run_case("cwd-b7", env_over={"TMPDIR": DENIED[0]}), "C13"))
 check("FAIL-FIRST C13: TMPDIR under an allowed dir but missing on disk -> C13 catches it",
       caught(run_case("cwd-b8", env_over={"TMPDIR": os.path.join(HOME, "tmp-never-made")}), "C13"))
+
+
+# ---- rig-blind-runs (2026-11-03): a session reads its own run dirs and no other run or test artifact, through the real Sandbox.case entry
+import shutil  # noqa: E402
+import rig_config_isolation as ci  # noqa: E402
+FS = mk("fake-shared")
+FR = mk("fake-shared", "lifehack-rig")
+BNEIGH = mk("fake-shared", "rep-b07-tmp")
+BH, BC, BSIB = mk("fake-shared", "lifehack-rig", "this-run", "rig-iso-home"), mk("fake-shared", "lifehack-rig", "this-run", "work", "case"), mk("fake-shared", "lifehack-rig", "other-run", "u1")
+BWORK = mk("work")
+os.makedirs(os.path.join(BH, "tmp"), exist_ok=True)
+for q in (os.path.join(BSIB, "stream.jsonl"), os.path.join(BC, "own.txt")):
+    open(q, "w", encoding="utf-8").close()
+BTASKS = "/private/tmp/claude-%d" % os.getuid()  # allow-silence: claude's per-uid task dir; the other-session folder below is made and removed by this test
+BTSIB = os.path.join(BTASKS, "-Users-someone-else-rigsbx-test-" + secrets.token_hex(3))
+os.makedirs(BTSIB, exist_ok=True)
+BUT = os.path.realpath(subprocess.check_output(["/usr/bin/getconf", "DARWIN_USER_TEMP_DIR"], text=True).strip())
+_keep_root, ci.RIG_ROOT = ci.RIG_ROOT, FR
+try:
+    with sb.Sandbox(BWORK, protect=[]) as _s:
+        _w, _e = _s.case("blind", [BH, BC], BC, os.path.join(T, "no-settings.json"), DENIED, NOTES, dict(ENV, TMPDIR=os.path.join(BH, "tmp")))
+        _rc = lambda *c: subprocess.run(_w(list(c)), cwd=BC, env=_e, capture_output=True, text=True, timeout=30)
+        for _name, _cmd in (("a sibling run's file", ("/bin/cat", os.path.join(BSIB, "stream.jsonl"))), ("a sibling run's folder", ("/bin/ls", BSIB)), ("the rig root listing", ("/bin/ls", FR)),
+                            ("the rig root's parent listing", ("/bin/ls", FS)), ("a neighbour of the rig root", ("/bin/ls", BNEIGH)), ("another session's task dir", ("/bin/ls", BTSIB)),
+                            ("the per-uid task dir listing", ("/bin/ls", BTASKS)), ("the shared temp dir listing", ("/bin/ls", "/private/tmp")), ("the per-user temp dir listing", ("/bin/ls", BUT))):  # allow-silence: read probes only
+            check("blind: %s is refused" % _name, "not permitted" in _rc(*_cmd).stderr)
+        _f = _rc("/usr/bin/find", FS, BTASKS, "/private/tmp", BUT)  # allow-silence: read probe only
+        _ft = _f.stdout + _f.stderr
+        check("blind: find names no other run", not any(x in _ft for x in ("other-run", "rep-b07-tmp", "lifehack-rig/this-run", os.path.basename(BTSIB))), _ft[:400])
+        check("blind: this run's own folder still reads (control)", _rc("/bin/cat", os.path.join(BC, "own.txt")).returncode == 0)
+        check("blind: the rig root still stats, so mkdir -p and realpath work from the run folder (control)", _rc("/usr/bin/stat", FR).returncode == 0)
+        check("blind: mkdir -p inside the run folder works (control)", _rc("/bin/mkdir", "-p", os.path.join(BC, "x", "y")).returncode == 0)
+        _g = _rc("/usr/bin/git", "--version")
+        check("blind: /usr/bin/git prints no xcrun cache error (control)", _g.returncode == 0 and "cache file" not in _g.stderr, _g.stderr[:200])
+        check("blind: claude gets its own temp dir, or it dies at startup on the refused per-uid dir", _e.get("CLAUDE_CODE_TMPDIR") == os.path.join(BH, "tmp"), _e.get("CLAUDE_CODE_TMPDIR"))
+        check("blind: a here-doc through bash still works (control)", _rc("/bin/bash", "--noprofile", "--norc", "-c", "cat <<E\nhi\nE\n").stdout.strip() == "hi")
+except SystemExit as x:
+    check("blind: the real Sandbox.case preflight passes with the rule on", False, x)
+finally:
+    ci.RIG_ROOT = _keep_root
+    shutil.rmtree(BTSIB, ignore_errors=True)
+BL = sb.blind_read([BH, BC, HOME, CASE, BWORK], FR) if hasattr(sb, "blind_read") else None
+check("blind_read: a dir under the rig root counts as its top folder there, once; a dir outside the root stays itself",
+      bool(BL) and os.path.join(FR, "this-run") in BL["own"] and BH not in BL["own"] and BC not in BL["own"] and CASE in BL["own"], BL)
+_bk = {"blind": BL}
+_good = run_case("blind-good", **_bk) if BL else ["no blind_read"]
+check("blind: the canary passes on the good profile", not _good, _good)
+_unsub = lambda p: (lambda s: s.replace("(subpath %s)" % sb._q(p), '(subpath "/nonexistent-rig")'))
+if BL:
+    # the fake parent sits inside the real per-user temp dir, so that deny must go too or it still covers the fake tree; the text check pins the parent's own deny
+    check("blind: the deny line names the rig root's parent, the shared temp dir and the per-user temp dir", all("(subpath %s)" % sb._q(q) in next(l for l in sb.profile([HOME], CASE, 1, blind=BL).splitlines() if l.startswith("(deny file-read* (subpath")) for q in (FS, "/private/tmp", BUT)))  # allow-silence: text check, nothing is written
+    for _tag, _mut, _name in (("noshared", lambda s: _unsub(FS)(_unsub(BUT)(s)), "no deny on the rig root's parent or the temp dir around the fake tree"), ("noown", _unsub(os.path.join(FR, "this-run")), "own folder not re-allowed"),
+                              ("notmp", _unsub("/private/tmp"), "the shared temp dir left readable"), ("noutmp", _unsub(BUT), "the per-user temp dir left readable")):  # allow-silence: a profile mutation, nothing is written
+        check("FAIL-FIRST blind: %s -> C14 catches it" % _name, caught(run_case("blind-" + _tag, _mut, **_bk), "C14"))
+_lf = open(os.path.join(HERE, "rig_live_free.py"), encoding="utf-8").read()
+check("rig_live_free: the real home is read-denied in every setup, not only the student's", "student_home_read(None, linked" in _lf and 'else [])} if student_home else {}' not in _lf)
+_pr = sb.student_home_read(None, {}, [])["probe_denied"]
+check("student_home_read: ~/worktrees, ~/rig-exam-scratch and CloudStorage go to the canary when present", all(p.startswith(sb.real_home() + os.sep) for p in _pr) and len(_pr) >= 1, _pr)
 
 
 # ---- condition 1 on a fake Drive tree (always) and on the REAL mount (--real-drive)

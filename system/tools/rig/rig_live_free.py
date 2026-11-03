@@ -897,7 +897,8 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
     # STUDENT: the real home's own Claude config is kernel read-denied too (rig_sandbox.personal_config_paths); the canary proves each deny.
     # 2026-11-02 (rig-validity-fix bug 2): and the WHOLE real home, re-allowing only claude's binary chain, the plugin dir, the rig source and
     # the Drive run folder when they live there (rig_sandbox.student_home_read); the canary proves the decoy is EPERM and the controls read.
-    kw = {"home_read": sandbox.student_home_read(None, linked, [V2, rm.ROOT] + ([env["RIG_FENCE_RUN_DRIVE"]] if drive_run else []))} if student_home else {}
+    # 2026-11-03 (rig-blind-runs): the Enver setup too; its brief and hook scripts are copies in the throwaway HOME, so nothing it loads lives in the real home but these.
+    kw = {"home_read": sandbox.student_home_read(None, linked, [V2, rm.ROOT] + ([env["RIG_FENCE_RUN_DRIVE"]] if drive_run else []))}
     sbwrap, env = SBX.case(c["id"], allow, cwd, settings, denied, roots, env, read_deny=sandbox.personal_config_paths() if student_home else (), **kw)
     cmd = sbwrap(cmd)
     allowed_roots = [cwd, os.path.realpath(scratch) if scratch else cwd, home, V2, work]
