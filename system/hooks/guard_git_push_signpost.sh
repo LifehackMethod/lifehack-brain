@@ -124,7 +124,7 @@ trap 'lhb_journal_fire "$?" "guard_git_push_signpost.sh" "PreToolUse" "Bash" 2>/
 #      imported not copied) is a HARD STOP. No remote, a local-path remote, or no scanner shipped = silent, no work.
 # WHO-COULD-THIS-BREAK: a collaborator pushing a commit the scan flags wrongly (a fixture path, a quoted example) is
 #      stopped, and so is anyone whose operator-identity file is missing (the scan cannot run, and a scan that did
-#      not run is not a pass). WAY-THROUGH: remove or reword the flagged lines, restore the identity file, or the
+#      not run is not a pass). WAY-THROUGH: remove or reword the flagged lines, or the
 #      person reviews the finding and runs the push themselves with `! git push ...`. Students with no remote never see it.
 #      fc_plain_push_quiet: WHY the signpost fired on a plain `git push origin main` -- it fires on the FIRST sighting
 #      of every push, whether or not anything is unusual, because its job is to show the manifest once. It is
@@ -475,7 +475,8 @@ case "$VERDICT" in
             printf 'HARD STOP (push guard): this pushes to a remote other people can read, and the leakage scan could not run, so nothing proves the commits are clean.\n'
             printf 'DETAIL: %s\n' "$_fc_detail"
             printf 'WHY: an unchecked push to a public remote cannot be taken back; a scan that did not run is not a scan that passed.\n'
-            printf 'WAY THROUGH: restore the scan (the operator-identity file named in .github/scripts/check_no_internal_leakage.py --help), or the person runs the push themselves after checking: ! %s\n' "$_fc_cmd"
+            printf 'WAY THROUGH: the person runs this push themselves, if they mean to, in their own terminal: ! %s\n' "$_fc_cmd"
+            printf 'Do not work around this stop: no other command, script or remote. Tell the person and leave the choice with them.\n'
             printf 'RULE: system/hooks/guard_git_push_signpost.sh (switch fc_private_push in system/hooks/roundB.conf).\n'
           } >&2
           exit 2 ;;

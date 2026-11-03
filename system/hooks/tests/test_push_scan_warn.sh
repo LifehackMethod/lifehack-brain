@@ -148,6 +148,11 @@ push "$S/leaky" blk2 "$BOGUS" origin main
 echo "-- both modes: a scan that cannot run is a stop; a force push is a hard stop"
 push "$S/leaky" cant1 "$WARNX" origin main
 [ $RC -eq 2 ] && grep -q "leakage scan could not run" "$ERRF" && ok "warn mode: HARD_PRIVATE_CANNOT still a HARD STOP" || bad "cannot (rc=$RC $(head -c 200 "$ERRF"))"
+CC1=$RC; cp "$ERRF" "$S/cant.err"; push "$S/leaky" cant1 "$WARNX" origin main; CC2=$RC
+[ "$CC1" = 2 ] && [ "$CC2" = 2 ] && ok "scan cannot run: rc 2 on the first attempt and again on the retry" || bad "cannot attempts: rc $CC1 then $CC2"
+grep -qF "the person runs this push themselves, if they mean to, in their own terminal: ! git $PUSHW origin main" "$S/cant.err" && ok "cannot message: names the one route, the person's own ! git $PUSHW" || bad "cannot message lacks the route: $(cat "$S/cant.err")"
+grep -q "Do not work around this stop" "$S/cant.err" && ok "cannot message: tells the AI not to work around it" || bad "cannot message lacks the do-not-work-around line"
+grep -q "WAY THROUGH: restore" "$S/cant.err" && bad "cannot message still says restore" || ok "cannot message: no 'restore' route"
 push "$S/leaky" force1 "$WARN" --force origin main
 [ $RC -eq 2 ] && grep -q "HARD STOP (push guard): this is a force push" "$ERRF" && ok "warn mode: force push still a HARD STOP" || bad "force (rc=$RC)"
 
