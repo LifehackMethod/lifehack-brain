@@ -499,14 +499,14 @@ def _var_target(t, cmd):
     return os.path.realpath(val + (m.group(2) or ""))
 
 
-def _route_sign(t, pc):
+def _route_sign(t, pc, desk=None):
     """placement_route_sign (exam D-B06): the stop names the one right route: this path, this list command, never a repeat of the call.
     The list tool is named from THIS plugin (as end_of_turn_checks.sh does), so the printed command always exists."""
     tool = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "shared", "tools", "own_list_add.py")
     name = os.path.basename(t)
     name = "<file name>" if any(c in name for c in SHELL_CHARS) else name
     here = "<this file>" if any(c in t for c in SHELL_CHARS) else t
-    dest = os.path.join(pc, "skills", _skill_name(t), name) if name == "SKILL.md" else os.path.join(pc, "tools", name)
+    dest = os.path.join(pc, "skills", _skill_name(t), name) if name == "SKILL.md" else os.path.join(pc, "desks", desk, "tools", name) if desk else os.path.join(pc, "tools", name)
     return ("Do not write it here. Put the file at %s (the Write tool, or mkdir -p that folder first in Bash), then run: python3 \"%s\" \"%s\". Tell the person where it is. "
             "Only if the person named this folder for this file: write it there as they asked (this stop shows once per session per rule), then run: python3 \"%s\" --keep \"%s\". "
             % (dest, tool, dest, tool, here))
@@ -518,7 +518,8 @@ def _placement_step(zone, t, route, code, notes):
         return route   # empty for a personal skill: its message already names ~/.claude/skills/<name>/
     if zone == "notes":
         pc = personal_code_dir(code)
-        return _route_sign(t, pc) if pc else "Do not write it here. "
+        desk = re.search(r"/desks/([^/]+)/", t[len(notes):]) if notes and under(t, notes) else None   # B07 ruling: a one-desk tool goes in <personal code>/desks/<desk>/tools/
+        return _route_sign(t, pc, desk.group(1) if desk else None) if pc else "Do not write it here. "
     if zone.startswith("code:") and notes:
         return "Do not write it here. Put the file at %s. " % os.path.join(notes, os.path.relpath(t, code))
     if zone.startswith("worktree:"):
@@ -677,8 +678,11 @@ def main_inner():
             except Exception as e:
                 warn("archive-before-cut check failed (%s); allowing" % e)
         base = os.path.basename(t)
+        # placement_route_sign: a target through a variable set in this command (D=...; cat > $D/a.py) is judged at its real path by the placement rules and the build stop,
+        # right home quiet, wrong home stopped. The hard checks above and below keep reading the literal target: this adds no hard block.
+        rt = _var_target(t, ti.get("command", "")) if tool == "Bash" and "$" in t and _roundb("placement_route_sign") else t
         # ---- check 3: placement (new files only, never hard)
-        if not exists and w["verb"] != "mkdir":
+        if not os.path.exists(rt) and w["verb"] != "mkdir":
             if placement is None:
                 try:
                     placement = load_placement(code)
@@ -688,16 +692,16 @@ def main_inner():
             for rname, (zone, pats, pmsg) in placement.items():
                 if not any(fnmatch.fnmatch(base, x) for x in pats):
                     continue
-                route, rt = "", t
+                route = ""
                 if zone == "notes":
-                    hit = bool(notes) and under(t, notes) and not under(t, code)
+                    hit = bool(notes) and under(rt, notes) and not under(rt, code)
                     if hit:
                         if names is None:
                             try:
                                 names = shared_names(code)
                             except Exception:
                                 names = {}
-                        hit = base not in names   # shared-tool names are check 2's business
+                        hit = base not in names or rt != t   # shared-tool names are check 2's business (it reads the literal target, so a variable's target stays here)
                     if hit:   # B07 ruling: a tool for one desk goes in <personal code>/desks/<desk>/tools/ (resolved through the pointer, never hard-coded)
                         _dpc = personal_code_dir(code)
                         pmsg = pmsg.replace("{pcdesk}", (_dpc + "/desks/<desk>/tools/") if _dpc else "the desks/<desk>/tools/ folder inside your personal code folder")
@@ -714,15 +718,13 @@ def main_inner():
                             sys.path.insert(0, os.path.join(code, "shared"))
                             import personal_code_root
                             _s, _pc = personal_code_root.resolve_personal_code_root()
-                            hit = bool(_pc) and under(t, os.path.join(os.path.realpath(_pc), "skills"))
+                            hit = bool(_pc) and under(rt, os.path.join(os.path.realpath(_pc), "skills"))
                         except Exception:
                             hit = False
                         finally:
                             sys.path.pop(0)
                 elif zone == "outside-homes":   # 4th rule: new code outside every home (switch placement_outside_homes)
                     hit = False
-                    if tool == "Bash" and "$" in t and _roundb("placement_route_sign"):
-                        rt = _var_target(t, ti.get("command", ""))
                     pc = outside_homes_target(rt, code, notes)
                     if pc:
                         hit = True
@@ -791,6 +793,8 @@ def main_inner():
                     else:
                         denies.append(("copy-hard", None, "BLOCKED: " + msg))
         # ---- clause A: building something new
+        if rt != t and w["verb"] != "mkdir":
+            t, exists, base = rt, os.path.exists(rt), os.path.basename(rt)
         if exists:
             kind = None
             if w["verb"] in ("Edit", "MultiEdit", "Write") and (base in ("hooks.json", "settings.json", "settings.local.json")) \

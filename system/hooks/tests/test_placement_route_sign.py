@@ -134,7 +134,7 @@ try:
     os.makedirs(os.path.join(NOTES, "desks", "pond"), exist_ok=True)
     NOTE_TOOL = os.path.join(NOTES, "desks", "pond", "tool_x.py")
     STOPS = [
-        ("code-in-notes", "Write", {"file_path": NOTE_TOOL, "content": "print(1)"}, os.path.join(PC, "tools", "tool_x.py")),
+        ("code-in-notes", "Write", {"file_path": NOTE_TOOL, "content": "print(1)"}, os.path.join(PC, "desks", "pond", "tools", "tool_x.py")),
         ("notes-in-harness", "Write", {"file_path": os.path.join(PLUG, "records", "rs-note.md"), "content": "hi"}, os.path.join(NOTES, "records", "rs-note.md")),
         ("worktree-home", "Bash", {"command": "git worktree add %s -b rs-x" % os.path.join(WORK, "wt")}, "use that command"),
         ("skill-not-loaded", "Write", {"file_path": os.path.join(PC, "skills", "recap", "SKILL.md"), "content": "---\nname: recap\n---\n"}, "~/.claude/skills/<name>/"),
@@ -205,7 +205,7 @@ try:
     SKILL = "---\nname: recap\ndescription: \"Sums up the week\"\n---\n"
     SK_DIR = os.path.join(HOME, ".claude", "skills", "recap")
     for sess, stop_tool, stop_in, label, tool, ti in [
-        ("r-notes", "Write", {"file_path": NOTE_TOOL, "content": "print(1)"}, "code-in-notes -> tools/", "Write", {"file_path": os.path.join(PC, "tools", "tool_x.py"), "content": "print(1)\n"}),
+        ("r-notes", "Write", {"file_path": NOTE_TOOL, "content": "print(1)"}, "code-in-notes -> the desk's tools/", "Write", {"file_path": os.path.join(PC, "desks", "pond", "tools", "tool_x.py"), "content": "print(1)\n"}),
         ("r-harn", "Write", {"file_path": os.path.join(PLUG, "records", "rs-note.md"), "content": "hi"}, "notes-in-harness -> notes", "Write", {"file_path": os.path.join(NOTES, "records", "rs-note.md"), "content": "hi\n"}),
         ("r-skill", "Write", {"file_path": os.path.join(WORK, "skills", "recap", "SKILL.md"), "content": SKILL}, "skill -> ~/.claude/skills (Write)", "Write", {"file_path": os.path.join(SK_DIR, "SKILL.md"), "content": SKILL}),
         ("r-skill2", "Write", {"file_path": os.path.join(WORK, "skills", "recap", "SKILL.md"), "content": SKILL}, "skill -> ~/.claude/skills (chained, if/else)", "Bash", {"command": "S=%s; if [ -d \"$S\" ]; then :; else mkdir -p \"$S\"; fi\ncat > %s/SKILL.md <<'EOF'\n%sEOF\n" % (SK_DIR, SK_DIR, SKILL)}),
@@ -220,6 +220,65 @@ try:
     run_shell("mkdir -p %s && mv %s %s" % (D, SRC, TARGET))
     r = subprocess.run(["python3", LIST_TOOL, "--", TARGET], capture_output=True, text=True, env=env(ROUNDB_PLACEMENT_ROUTE_SIGN="off"), cwd=WORK)
     check(r.returncode == 1, "switch OFF: own_list_add -- PATH behaves as before (exit 1)", r.stderr)
+
+    print("-- 2b. a target through a variable is judged at its real path: right homes quiet, wrong homes stopped (exam D-B07)")
+    MONEY = os.path.join(NOTES, "desks", "money", "tools")
+    os.makedirs(os.path.dirname(MONEY), exist_ok=True)
+    TOTAL_DEST = os.path.join(PC, "desks", "money", "tools", "receipts_total.py")
+    # D-B07.stream.jsonl line 25 (pinned5b), cut to its shape: unquoted $D, a heredoc, then a test of the tool
+    DB07_CMD = ("D=%s; mkdir -p $D\ncat > $D/receipts_total.py <<'EOF'\n#!/usr/bin/env python3\n\"\"\"Total one month's receipts from a CSV.\"\"\"\nprint('x')\nEOF\n"
+                "python3 -I $D/receipts_total.py data/r.csv; echo \"exit=$?\"" % MONEY)
+    rc, err, _ = fire("db07", "Bash", {"command": DB07_CMD})
+    check(rc == 2 and "code-in-notes" in err, "D-B07 command: the notes-folder stop fires", err)
+    check(TOTAL_DEST in err and 'python3 "%s" "%s"' % (LIST_TOOL, TOTAL_DEST) in err, "D-B07: names the desk's tools folder in the personal code folder, and the list command", err)
+    check(not NO_RETRY.search(err), "D-B07: no retry", err)
+    rc, err, _ = fire("db07", "Bash", {"command": DB07_CMD})
+    check(rc == 0, "D-B07: still once per session, no new hard block", err)
+    rc, err, _ = fire("db07off", "Bash", {"command": DB07_CMD}, ROUNDB_PLACEMENT_ROUTE_SIGN="off")
+    check(rc == 2 and "Retry the same call" in err, "D-B07: switch OFF = the old stop and text", err)
+    rc, err, _ = fire("db07w", "Write", {"file_path": os.path.join(MONEY, "receipts_total.py"), "content": "print(1)"})
+    check(rc == 2 and TOTAL_DEST in err, "D-B07's Write route reads the same sign", err)
+
+    reset()
+    QUIET = {
+        "mv, quoted": 'D=%s; mkdir -p "$D"; mv "%s" "$D/mdcombine.py"' % (D, SRC),
+        "mv, unquoted": "D=%s; mkdir -p $D; mv %s $D/mdcombine.py" % (D, SRC),
+        "mv, braces": 'D=%s; mv "%s" "${D}/mdcombine.py"' % (D, SRC),
+        "mv, into the folder": 'D=%s; mv "%s" "$D/"' % (D, SRC),
+        "heredoc": "D=%s; mkdir -p $D\ncat > $D/fresh_tool.py <<'EOF'\nprint(1)\nEOF\n" % D,
+        "a scratch folder": "D=/tmp/routesign-x; mkdir -p $D\ncat > $D/a.py <<'EOF'\nprint(1)\nEOF\n",
+        "a data file in notes": "D=%s; cat > $D/month.csv <<'EOF'\na,b\nEOF\n" % MONEY,
+        "making a new desk folder (as before)": 'D=%s; mkdir -p "$D"' % os.path.join(NOTES, "desks", "rsnew"),
+    }
+    for i, (name, cmd) in enumerate(QUIET.items()):
+        rc, err, _ = fire("quiet%d" % i, "Bash", {"command": cmd})
+        check(rc == 0 and not err.strip(), "quiet: right destination through a variable, " + name, err)
+    os.makedirs(MONEY, exist_ok=True)
+    with open(os.path.join(MONEY, "old_tool.py"), "w", encoding="utf-8") as f:
+        f.write("print(0)\n")
+    rc, err, _ = fire("quietold", "Bash", {"command": "D=%s; cat >> $D/old_tool.py <<'EOF'\nprint(1)\nEOF\n" % MONEY})
+    check(rc == 0 and "Wrong home" not in err, "quiet: an EXISTING file in notes through a variable (placement is for new files, as with Write)", err)
+    os.unlink(os.path.join(MONEY, "old_tool.py"))
+
+    STILL = [
+        ("a SKILL.md in the personal code folder's skills/", "D=%s; cat > $D/SKILL.md <<'EOF'\nx\nEOF\n" % os.path.join(PC, "skills", "recap"), "never from your personal code folder"),
+        ("a new hook", "D=%s; cat > $D/rs_new.sh <<'EOF'\necho hi\nEOF\n" % HOOKS, "building a hook"),
+        ("a new job", "D=%s; cat > $D/rs-run.sh <<'EOF'\necho hi\nEOF\n" % os.path.join(PLUG, "system"), "building a job"),
+        ("a shared tool's name in notes", "D=%s; cat > $D/own_list_add.py <<'EOF'\nprint(1)\nEOF\n" % MONEY, "Wrong home"),
+        ("a variable with no value here", "cat > $UNSET_DIR/tool.py <<'EOF'\nprint(1)\nEOF\n", "personal code folder"),
+    ]
+    for i, (name, cmd, want) in enumerate(STILL):
+        rc, err, _ = fire("still%d" % i, "Bash", {"command": cmd})
+        check(rc == 2 and want in err and not NO_RETRY.search(err), "stopped: through a variable, " + name, err)
+
+    reset()
+    DD = os.path.dirname(TOTAL_DEST)
+    route = "D=%s; mkdir -p $D\ncat > $D/receipts_total.py <<'EOF'\nprint(1)\nEOF\npython3 \"%s\" \"$D/receipts_total.py\"" % (DD, LIST_TOOL)
+    stops = chain_stops("db07route", "Bash", {"command": route})
+    r = run_shell(route)
+    check(not stops and r.returncode == 0 and '"/desks/money/tools/receipts_total.py"' in own_list(), "D-B07's named route passes the chain, lands and is listed", repr(stops) + r.stderr + own_list())
+    stops = chain_stops("db07routew", "Write", {"file_path": TOTAL_DEST, "content": "print(1)\n"})
+    check(not stops, "D-B07's named route by the Write tool: chain clean", repr(stops))
 
     print("-- 3. harmless work is not newly stopped")
     HARMLESS = [
