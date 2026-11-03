@@ -377,6 +377,13 @@ def cmd_share(a):
     if dst is not None:
         ours, theirs = tree_sha256(src), tree_sha256(dst)
         if ours == theirs:
+            if a.no_link:   # the person declined the link: running this again must not take that back
+                print("the team copy of '%s' is already identical. Nothing changed: Drive copy %s; your local folder %s stays a separate copy." % (a.name, dst, src))
+                return 0
+            if not a.yes:   # a dry run never moves anything
+                print("DRY-RUN (nothing moved). The team copy of '%s' is already identical. Would: move your local folder to the backup %s "
+                      "and put a link at %s pointing to the Drive copy. Run again with --yes after the person says yes." % (a.name, backup_root(), src))
+                return 0
             print("the team copy of '%s' is already identical — relinking only" % a.name)
             return _finish_share(a.name, src, dst, ours, scripts, a)
         print("CONFLICT: the team folder already has '%s', and it is DIFFERENT. Nothing was changed." % a.name)

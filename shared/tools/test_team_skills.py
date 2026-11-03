@@ -447,6 +447,19 @@ class VerifyFixesCase(Base):
         self.assertNotEqual(rc, 0)
         self.assertFalse(os.path.exists(os.path.join(self.cfg, "team-skills")))
 
+    def test_a_repeat_or_dry_run_never_moves_the_folder_once_the_copy_is_identical(self):
+        self.set_team()
+        make_skill(self.skills, "invoice-checker")
+        src = os.path.join(self.skills, "invoice-checker")
+        for extra in (["--yes", "--no-link"], ["--yes", "--no-link"], ["--no-link"], []):   # the real share, a repeat, two dry runs
+            rc, out, err = self.run_tool("share", "invoice-checker", *extra)
+            self.assertEqual(rc, 0, out + err)
+            self.assertFalse(os.path.islink(src), "share %s moved the person's folder: %s" % (extra, out))
+            self.assertTrue(os.path.isfile(os.path.join(src, "SKILL.md")))
+        rc, out, err = self.run_tool("share", "invoice-checker", "--yes")   # the person says yes to the link: that still works
+        self.assertEqual(rc, 0, out + err)
+        self.assertTrue(os.path.islink(src), "--yes with an identical copy links it")
+
     def test_share_no_link_copies_and_leaves_local_folder(self):
         self.set_team()
         make_skill(self.skills, "invoice-checker")
