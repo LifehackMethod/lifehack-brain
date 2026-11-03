@@ -1,4 +1,5 @@
 #!/bin/bash
+unset LIFEHACK_ROOT   # run-all-tests.sh exports a throwaway root; the guard would then read it instead of this test's own pointer files. The case that needs a root passes its own value.
 . "$(dirname "${BASH_SOURCE[0]}")/pin_roundb_off.sh"
 # test_write_paths_guard.sh — the guards protecting themselves.
 #
