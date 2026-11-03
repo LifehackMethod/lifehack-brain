@@ -470,11 +470,43 @@ class VerifyFixesCase(Base):
         self.assertTrue(os.path.isfile(os.path.join(self.team, "skills", "invoice-checker", "SKILL.md")))
         self.assertEqual(self.ledger_rows(), [])
 
-    def test_dry_run_says_the_link_is_optional(self):
+    def test_dry_run_recommends_the_link_and_the_person_can_decline(self):   # COMPASS P-53: recommended, not prescribed
         self.set_team()
         make_skill(self.skills, "invoice-checker")
         rc, out, _ = self.run_tool("share", "invoice-checker")
-        self.assertIn("OPTIONAL", out)
+        self.assertIn("recommended", out)
+        self.assertIn("best practice", out)
+        self.assertIn("not required", out)
+        self.assertIn("can decline", out)
+        self.assertIn("--no-link", out)
+        self.assertNotIn("OPTIONAL", out)
+
+    def test_no_link_result_still_recommends_the_link_and_changes_nothing_local(self):
+        self.set_team()
+        make_skill(self.skills, "invoice-checker")
+        rc, out, err = self.run_tool("share", "invoice-checker", "--yes", "--no-link")
+        self.assertEqual(rc, 0, out + err)
+        self.assertNotIn("as asked", out, "the session may not have asked the person yet")
+        self.assertIn("recommended", out)
+        self.assertIn("not required", out)
+        local = os.path.join(self.skills, "invoice-checker")
+        self.assertTrue(os.path.isdir(local) and not os.path.islink(local), "--no-link never links")
+
+    def test_discover_with_nothing_to_pick_names_one_folder_and_no_question(self):
+        m = self.fake_mount()
+        os.makedirs(os.path.join(m, "Photos"))
+        rc, out, err = self.run_tool("discover")
+        self.assertEqual(rc, 0, out + err)
+        self.assertNotIn("with the person", out)
+        self.assertIn('set team "%s" --create' % os.path.join(m, "Team skills"), out)
+        self.assertIn("team_skills.py", out, "the command works as printed")
+
+    def test_discover_with_a_real_choice_still_leaves_it_to_the_person(self):
+        m = self.fake_mount()
+        os.makedirs(os.path.join(m, "Team photos"))
+        rc, out, err = self.run_tool("discover")
+        self.assertEqual(rc, 0, out + err)
+        self.assertIn("with the person", out)
 
     def test_remove_unlisted_name_refuses_cleanly(self):
         rc, out, err = self.run_tool("remove", "nope")

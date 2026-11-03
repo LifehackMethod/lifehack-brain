@@ -214,11 +214,14 @@ def route_text():
         lines.append("1. %s share <skill-name> --yes --no-link   (team folder already set: %s)" % (t, os.path.realpath(path)))
     else:
         lines.append("1. %s discover" % t)
-        lines.append('2. %s set team "<the folder discover marks as already a team folder, else the new folder it suggests>" --create' % t)
+        lines.append('2. %s set team "<the folder discover marks or suggests>" --create' % t)
         lines.append("3. %s share <skill-name> --yes --no-link" % t)
-        lines.append("If discover finds no Drive, ask them for the folder's path.")
-    lines.append("The skill must be in ~/.claude/skills/<skill-name>/. Not there yet: build it there first.")
-    lines.append("Final message: say where the Drive copy is, and offer once, as optional, the link from ~/.claude/skills to it:")
+        lines.append("No Drive found: ask for the folder's path.")
+    first = "" if ready else "do steps 1 and 2 anyway, "
+    lines.append("Skill not in ~/.claude/skills/<skill-name>/ yet: %sbuild it there if you know what it does; if not, "
+                 "end with the plan (folder, commands, link) and one question: what it should do." % first)
+    lines.append("Final message: where the Drive copy is, and recommend once a link to it from ~/.claude/skills: best practice, "
+                 "not required; one copy, so edits reach everyone; each computer once; they can decline. On yes:")
     lines.append("%s share <skill-name> --yes" % t)
     return "\n".join(lines)
 
@@ -291,7 +294,10 @@ def cmd_discover(_a):
         for i, c in enumerate(cands, 1):
             print("  %d. %s%s" % (i, c, "  (already a team folder)" if os.path.isfile(os.path.join(c, TEAM_MARKER)) else ""))
     suggestion = os.path.join(mounts[0], DEFAULT_TEAM_DIRNAME)
-    print("Pick one with the person, or make a new one:  set team \"%s\" --create" % suggestion)
+    if cands:   # a real choice: which folder is the team's is the person's call
+        print("Pick one with the person, or make a new one:  set team \"%s\" --create" % suggestion)
+    else:       # nothing to choose between
+        print("No team folder yet. Make this one:  python3 \"%s\" set team \"%s\" --create" % (os.path.abspath(__file__), suggestion))
     return 0
 
 
@@ -435,8 +441,8 @@ def cmd_share(a):
                   "(a separate copy, not live). Run again with --yes --no-link after the person says yes." % (src, plan))
         else:
             print("DRY-RUN (nothing moved). Would: copy %s -> %s (the shared copy), move your local folder to the backup "
-                  "%s, and put a link at %s pointing to the Drive copy (best practice: your edits and the team's stay one "
-                  "copy; each computer makes its link once). The link is OPTIONAL: the person may decline it "
+                  "%s, and put a link at %s pointing to the Drive copy (recommended, best practice but not required: your "
+                  "edits and the team's stay one copy; each computer makes its link once). The person can decline it "
                   "(--no-link keeps the local folder as a separate copy). Run again with --yes after the person says yes."
                   % (src, plan, backup_root(), src))
         return 0
@@ -451,8 +457,9 @@ def cmd_share(a):
         f.write(json.dumps({"shared_by": os.environ.get("USER", "unknown"), "when": _now(),
                             "tree_sha256": tree_sha256(plan)}, indent=1) + "\n")
     if a.no_link:
-        print("shared '%s' (no link, as asked): Drive copy %s; your local folder %s is unchanged and is now a SEPARATE "
-              "copy (edits to one do not reach the other). Teammates run `use` to link the Drive copy." % (a.name, plan, src))
+        print("shared '%s' (no link): Drive copy %s; your local folder %s is unchanged and is now a SEPARATE "
+              "copy (edits to one do not reach the other). Teammates run `use` to link the Drive copy. The link is recommended, "
+              "not required: to make it on this computer, share again with --yes." % (a.name, plan, src))
         return 0
     return _finish_share(a.name, src, plan, tree_sha256(plan), scripts, a)
 
@@ -670,7 +677,7 @@ def main(argv=None):
     s = sub.add_parser("status", help="what is shared right now"); s.set_defaults(fn=cmd_status)
     s = sub.add_parser("share", help="share one of your skills (dry-run by default)")
     s.add_argument("name"); s.add_argument("--yes", action="store_true"); s.add_argument("--replace", action="store_true")
-    s.add_argument("--no-link", action="store_true", help="the person declined the link: copy to Drive, leave the local folder as it is")
+    s.add_argument("--no-link", action="store_true", help="copy to Drive, leave the local folder as it is (the link is recommended, not required; the person can decline it)")
     s.set_defaults(fn=cmd_share)
     s = sub.add_parser("unshare", help="replace the link with a real local copy")
     s.add_argument("name"); s.add_argument("--retire", action="store_true"); s.set_defaults(fn=cmd_unshare)

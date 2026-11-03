@@ -151,6 +151,23 @@ class Trigger(Base):
         self.assertNotRegex(out, r"(?i)\bretry\b|try again")
         self.assertLess(len(out.replace(TOOL, "T")), 800, "lean injection (hook SOP section 3): the words, not counting the tool's path")
 
+    def test_the_sign_recommends_the_link_and_keeps_the_right_to_decline(self):   # COMPASS P-53
+        for s in (D_B08, D_B09):
+            out = self.hook(s)
+            self.assertIn("recommend", out)
+            self.assertIn("best practice", out)
+            self.assertIn("not required", out)
+            self.assertIn("decline", out)
+            self.assertNotIn("as optional", out)
+            self.assertNotRegex(out, r"(?i)\b(?:must|have to|need to|required to)\s+(?:\w+\s+){0,2}(?:link|symlink|install)")
+            self.assertIn("--no-link", out, "the first share still leaves the person's folder alone")
+
+    def test_a_skill_that_does_not_exist_yet_still_gets_one_route(self):   # pinned5b D-B09: both setups stopped after discover and asked
+        out = self.hook(D_B09)
+        self.assertIn("steps 1 and 2 anyway", out)
+        self.assertIn("what it should do", out)
+        self.assertRegex(out, r"(?i)the plan")
+
     def test_switch_line_is_in_the_conf_with_its_comment(self):
         conf = open(os.path.join(HOOKS, "roundB.conf"), encoding="utf-8").read().split("\n")
         i = [n for n, l in enumerate(conf) if l.startswith("team_share_route=")]
