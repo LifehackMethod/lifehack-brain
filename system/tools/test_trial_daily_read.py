@@ -254,5 +254,74 @@ class JournalAsks(unittest.TestCase):
         self.assertIn("Journal rows with decision unknown (the hook's decision JSON could not be parsed): none", page)
 
 
+class TestHookFixture(Fixture):
+    """The same logs, plus asks raised by test hooks (seen in the real logs 2026-11-02: fakehook.sh, askhook.sh, from scratch paths)."""
+    def __init__(self):
+        super().__init__()
+        t = NOW - 500
+
+        def cmd_ask(tid, when, command):
+            a = ask(tid, when, "Test hook asks.")
+            a["attachment"]["command"] = command
+            return a
+        jl(os.path.join(self.projects, "-proj", "s9.jsonl"), [
+            use("f1", t, "mv a.txt sub/"), cmd_ask("f1", t + 1, "/private/tmp/any/scratchpad/askvis/fakehook.sh"), result("f1", t + 2, "moved"),
+            use("f2", t + 10, "mv b.txt sub/"), cmd_ask("f2", t + 11, "bash /home/x/fakehook.sh"), result("f2", t + 12, REJ, err=True),
+            use("a1", t + 20, "mv c.txt sub/"), cmd_ask("a1", t + 21, "/private/tmp/any/silentask/askhook.sh"), result("a1", t + 22, "moved"),
+            use("p1", t + 30, "mv d.txt sub/"), cmd_ask("p1", t + 31, "/tmp/some-probe/whatever.sh"), result("p1", t + 32, "moved"),
+            # a REAL hook, by its plugin path: must stay counted
+            use("r1", t + 40, "rm -r reeds"), cmd_ask("r1", t + 41, "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_fine_china_ask.sh\""), result("r1", t + 42, "done"),
+        ])
+        with open(self.journal, "a", encoding="utf-8") as f:
+            for row in (
+                {"ts": NOW - 30, "hook": "fakehook.sh", "event": "PreToolUse", "matcher": "Bash", "decision": "ask", "exit_code": 0, "session_id": "h1"},
+                {"ts": NOW - 29, "hook": "guard_write_paths.sh", "event": "PreToolUse", "matcher": "Bash", "decision": "ask", "exit_code": 0, "session_id": "h2",
+                 "plugin_src": "/private/tmp/any/scratchpad/wt-x"},
+                {"ts": NOW - 28, "hook": "guard_cloud_destructive.sh", "event": "PreToolUse", "matcher": "Bash", "decision": "ask", "exit_code": 0, "session_id": "h3",
+                 "plugin_src": "/Users/x/lifehack-v2"},
+            ):
+                f.write(json.dumps(row) + "\n")
+
+
+class TestHookAsks(unittest.TestCase):
+    """Test hooks are not the trial: their asks leave every count, and the page says how many left, on one line."""
+    @classmethod
+    def setUpClass(cls):
+        cls.base = Fixture().build()
+        cls.page = TestHookFixture().build()
+
+    @staticmethod
+    def row(page, label):
+        return next(l for l in page.splitlines() if l.startswith("| " + label))
+
+    def planned(self, page):
+        return int(self.row(page, "PLANNED asks (our hooks chose to ask)").split("|")[2])
+
+    def test_only_the_real_ask_is_added(self):
+        self.assertEqual(self.planned(self.page), self.planned(self.base) + 1)
+
+    def test_journal_only_count_keeps_only_the_real_row(self):
+        self.assertIn("| PLANNED asks seen only in the fire journal (no transcript has them) | 1 |", self.page)
+        self.assertIn("Fire journal: 1 asks in window", self.page)
+
+    def test_test_hooks_are_not_listed(self):
+        for name in ("fakehook.sh", "askhook.sh", "whatever.sh"):
+            self.assertNotIn("· %s ·" % name, self.page)
+        self.assertNotIn("By rule: fakehook", self.page)
+
+    def test_dropped_on_one_line_with_names(self):
+        lines = [l for l in self.page.splitlines() if l.startswith("Test-hook asks left out of these counts:")]
+        self.assertEqual(len(lines), 1, self.page)
+        self.assertIn("6 (", lines[0])    # 4 from transcripts + 2 from the journal
+        self.assertIn("fakehook.sh 3", lines[0])
+        self.assertIn("askhook.sh 1", lines[0])
+
+    def test_real_page_says_none_dropped(self):
+        self.assertIn("Test-hook asks left out of these counts: 0", self.base)
+
+    def test_a_refused_test_ask_is_still_not_an_unplanned_popup(self):
+        self.assertEqual(self.row(self.page, "UNPLANNED popups"), self.row(self.base, "UNPLANNED popups"))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

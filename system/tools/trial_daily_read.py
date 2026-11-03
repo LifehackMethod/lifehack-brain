@@ -32,6 +32,9 @@ SOURCES (each one optional; a source that is missing is NAMED in the page, never
                  kept when the file's birth time (else the list's mtime) falls in the window. Grouped by home.
   flight log     <notes>/system/flight-log.jsonl (session_flight_recorder.sh): sessions, tool calls, files written.
   observability  <notes>/system/observability/<YYYY-MM-DD>.jsonl: tool calls per tool / desk.
+TEST HOOKS: an ask raised by a test hook is not the trial. Left out of every ask count, with the number and names on one line of
+  the page: a hook named in TEST_HOOKS (fakehook.sh, askhook.sh, capture_probe.sh, plain.sh: test fixtures, none a real hook), a
+  transcript ask whose hook command runs a script from a scratch or temp path, a journal ask whose plugin_src is one.
 FALSE ALARMS: the hook point is false_alarms_section(), which calls system/tools/false_alarm_daily.py
   (false_alarm_list + render_markdown) when that file is present. It lands separately; until then the section
   says so.
@@ -57,6 +60,8 @@ RULE_RE = re.compile(r"RULE: switch (\w+)")
 HOOK_BLOCK_RE = re.compile(r"PreToolUse:\w+ hook error")
 HOOK_NAME_RE = re.compile(r"([A-Za-z0-9_\-]+\.(?:sh|py))")
 MATCH_WINDOW_S = 30   # a journal ask and a transcript ask further apart than this are two different asks
+TEST_HOOKS = {"fakehook.sh", "askhook.sh", "capture_probe.sh", "plain.sh"}
+SCRIPT_PATH_RE = re.compile(r"/[^\s\"']+\.(?:sh|py)\b")
 SCRATCH_RE = re.compile(r"^(/tmp/|/private/tmp/|/private/var/folders/|/var/folders/)|/[^/]*scratch[^/]*(/|$)", re.I)  # allow-silence: path TEXT matched to label where a logged new file landed; this creates no temp file
 
 
@@ -130,7 +135,8 @@ def journal_section(journal, start, end):
                     errors[(hook, rc)] += 1
                 dec = str(o.get("decision") or "").strip().lower()
                 if str(ev or "").startswith("PreToolUse") and rc == 0 and dec == "ask":
-                    asks.append({"ts": ts, "hook": hook, "matcher": str(o.get("matcher") or ""), "session": o.get("session_id")})
+                    asks.append({"ts": ts, "hook": hook, "matcher": str(o.get("matcher") or ""), "session": o.get("session_id"),
+                                 "plugin_src": str(o.get("plugin_src") or "")})
                 elif dec == "unknown":
                     unknown[hook] += 1
     return {"files": len(files), "rows": n, "blocks": blocks, "errors": errors, "sessions": sessions, "harness": harness,
@@ -223,6 +229,37 @@ def _tool_fits(matcher, tool):
             if m == tool:
                 return True
     return False
+
+
+def test_hook_of_transcript_ask(a):
+    """-> the test hook's name when this transcript ask came from a test hook, else None."""
+    label = str(a.get("label") or "")
+    names = HOOK_NAME_RE.findall(label)
+    if names and names[-1] in TEST_HOOKS:
+        return names[-1]
+    for path in SCRIPT_PATH_RE.findall(label):
+        if SCRATCH_RE.search(path):
+            return os.path.basename(path)
+    return None
+
+
+def test_hook_of_journal_ask(a):
+    """-> the hook's name when this journal ask came from a test hook or a plugin copy in a scratch path, else None."""
+    if a["hook"] in TEST_HOOKS or SCRATCH_RE.search(a.get("plugin_src") or ""):
+        return a["hook"]
+    return None
+
+
+def split_test_asks(asks, which):
+    """-> (the asks to count, Counter of dropped test hooks)."""
+    keep, dropped = [], collections.Counter()
+    for a in asks:
+        name = which(a)
+        if name:
+            dropped[name] += 1
+        else:
+            keep.append(a)
+    return keep, dropped
 
 
 def match_journal_asks(jasks, tasks):
@@ -402,7 +439,10 @@ def build(journal, projects, turn_writes, notes, hours, now, fa_module, hs=None)
          "Window: %s to %s (%dh). Read-only; built by system/tools/trial_daily_read.py." % (
              datetime.datetime.fromtimestamp(start).strftime("%Y-%m-%d %H:%M"),
              datetime.datetime.fromtimestamp(end).strftime("%Y-%m-%d %H:%M"), hours), ""]
-    asks, popups = T["asks"], T["popups"]
+    asks, dropped = split_test_asks(T["asks"], test_hook_of_transcript_ask)
+    J["asks"], j_dropped = split_test_asks(J["asks"], test_hook_of_journal_ask)
+    dropped += j_dropped
+    popups = T["popups"]
     ans = collections.Counter(a["answer"] for a in asks)
     j_matched, j_only = match_journal_asks(J["asks"], asks)
     L += ["## Popups (COMPASS P-72)", "",
@@ -410,7 +450,9 @@ def build(journal, projects, turn_writes, notes, hours, now, fa_module, hs=None)
           "| PLANNED asks (our hooks chose to ask) | %d | Yes %d · No %d · no answer seen %d · blocked by a hook %d |" % (
               len(asks), ans["Yes"], ans["No"], ans["no answer seen"], ans["blocked by a hook"]),
           "| PLANNED asks seen only in the fire journal (no transcript has them) | %d | answer not visible in the journal |" % len(j_only),
-          "| UNPLANNED popups (nobody chose them) | %d (lower bound) | No %d · a Yes leaves no trace |" % (len(popups), len(popups)), ""]
+          "| UNPLANNED popups (nobody chose them) | %d (lower bound) | No %d · a Yes leaves no trace |" % (len(popups), len(popups)), "",
+          "Test-hook asks left out of these counts: %d%s" % (sum(dropped.values()), " (%s)" % ", ".join(
+              "%s %d" % kv for kv in dropped.most_common()) if dropped else ""), ""]
     L += ["## Asks fired and how answered", ""]
     if asks:
         by_rule = collections.Counter(a["rule"] for a in asks)
