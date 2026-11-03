@@ -100,6 +100,10 @@ COMMAND=$(printf '%s' "$COMMAND" | perl -0pe 's/\\\n/ /g' 2>/dev/null || printf 
 # A mere mention costs nothing — the real checks below decide, and they are what should decide.
 printf '%s' "$COMMAND" | grep -qE "(^|[^A-Za-z0-9_.-])gws([^A-Za-z0-9_-]|$)|bin/gws" 2>/dev/null || exit 0
 printf '%s' "$COMMAND" | grep -qE "(^|[[:space:],'\"\\\\])sheets([[:space:],'\"\\\\]|$)" 2>/dev/null || exit 0
+# ONLY WORDS, NOTHING RUNS THEM (2026-11-02, plan fix 23(c)); the same shared check as guard_sheet_writes.sh, or a grep
+# for the write's words stays refused here. Exit 8 alone means silent; anything else is judged as before.
+printf '%s' "$COMMAND" | python3 "$_lhb_dir/lib/gws_guard.py" --service sheets --mention-only >/dev/null 2>&1
+[ $? -eq 8 ] && exit 0
 # Explicit human-approved bypass.
 printf '%s' "$COMMAND" | grep -qF "$CONFIRM_MARK" 2>/dev/null && token_ok && exit 0
 

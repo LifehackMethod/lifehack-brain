@@ -121,6 +121,11 @@ COMMAND=$(printf '%s' "$COMMAND" | perl -0pe 's/\\\n/ /g' 2>/dev/null || printf 
 # A mere mention costs nothing — the real checks below decide, and they are what should decide.
 printf '%s' "$COMMAND" | grep -qE "(^|[^A-Za-z0-9_.-])gws([^A-Za-z0-9_-]|$)|bin/gws" 2>/dev/null || exit 0
 printf '%s' "$COMMAND" | grep -qE "(^|[[:space:],'\"])sheets([[:space:],'\"]|$)" 2>/dev/null || exit 0
+# ONLY WORDS, NOTHING RUNS THEM (2026-11-02, plan fix 23(c)): the two gates above are deliberately loose, and a
+# command that passed them but matched no read fell through to the guide refusal below, so a local sed and grep were
+# refused as a blind write. Exit 8 alone means silent; anything else, a crash included, is judged as before.
+printf '%s' "$COMMAND" | python3 "$_lhb_dir/lib/gws_guard.py" --service sheets --mention-only >/dev/null 2>&1
+[ $? -eq 8 ] && exit 0
 printf '%s' "$COMMAND" | grep -qF "$CONFIRM_MARK" 2>/dev/null && token_ok && exit 0
 
 # ── THE INDIRECTION CATCH ──────────────────────────────────────────────────────

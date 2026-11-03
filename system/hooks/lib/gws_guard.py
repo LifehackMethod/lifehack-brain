@@ -781,6 +781,168 @@ def verdict_reason(cmd, service, destructive, safe, require_any=None, write_verb
     return "PASS", None
 
 
+# ── MENTION-ONLY (false alarm found 2026-11-02, plan fix 23(c)) ───────────────────────────────────
+# guard_sheet_writes.sh refused `sed ... home/gws.log ... && grep -n "sheets\|gws" f` as a blind write:
+# its two loose word gates passed, nothing matched a read, and it fell through to the guide refusal.
+# Those gates stay, because they are what catches a binary or service word hidden from the parser.
+# This answers one narrower question, and only ever answers it when it can prove it: do the words appear
+# ONLY in text that nothing runs? Anything it cannot prove keeps the old behaviour, so an unknown is still
+# judged. Additive: verdict() and every other guard are untouched.
+# Tools that only read or print their arguments. A tool that can run a program (awk, find, xargs, sort
+# --compress-program) is deliberately absent. git only for the listed subcommands: `git -c alias.x=!...` runs one.
+_INERT_WORDS = {"grep", "egrep", "fgrep", "rg", "sed", "cat", "head", "tail", "wc", "ls", "nl", "cut", "tr",
+                "tee", "echo", "printf", "cd", "pwd", "diff", "basename", "dirname", "stat", "file", "true"}
+_INERT_GIT = {"commit", "log", "diff", "show", "grep", "status", "add"}
+_STATEMENT_RUNS = re.compile(r"\$\(|`|<\(|>\(")                          # a substitution runs, wherever it sits
+# GNU sed's e command and s///e flag run a program; its w command and s///w flag write a file.
+_SED_RUNS = re.compile(r"""(?:^|[\s;{}'"/\d])[ew]\s+\S|[/|#,:@!][gpiImM\d]*[ew][gpiImM\d]*(?:['"\s;}]|$)""")
+_DISCARD = re.compile(r"\d*>&\d+|&?\d*>+\s*/dev/null")
+_BIN_TOKEN = r"(?:(?:^|[^A-Za-z0-9_.-])gws|bin/gws)"
+_SEP = r"[\s,'\"\\]+"
+_OPS = (r"(?:spreadsheets|values|developermetadata|sheets|update|batchupdate\w*|append|clear|batchclear\w*|delete"
+        r"|get|batchget\w*|metadata|create|copyto|\+\w+|\$|`)")
+
+
+def _shell_statements(cmd):
+    """Split on ; && || | & newline OUTSIDE quotes. Returns [(text, unquoted_text, piped_on)], or None when the
+    quoting does not balance: then the command cannot be read, and the caller must not claim anything about it.
+    _STMT cannot do this job: it splits `grep "a\\|b"` inside the quotes, by design, for a different question."""
+    out = []
+    buf, bare = [], []
+    q = None
+    i, n = 0, len(cmd)
+
+    def flush(piped):
+        text = "".join(buf).strip()
+        if text:
+            out.append((text, "".join(bare), piped))
+        del buf[:], bare[:]
+
+    while i < n:
+        c = cmd[i]
+        if q:
+            buf.append(c)
+            if c == "\\" and q == '"' and i + 1 < n:
+                buf.append(cmd[i + 1])
+                i += 2
+                continue
+            if c == q:
+                q = None
+            i += 1
+            continue
+        if c == "\\" and i + 1 < n:
+            buf.append(cmd[i:i + 2])
+            i += 2
+            continue
+        if c in "'\"":
+            q = c
+            buf.append(c)
+            i += 1
+            continue
+        two = cmd[i:i + 2]
+        if two in ("&&", "||"):
+            flush(False)
+            i += 2
+            continue
+        if c == "&" and (cmd[i - 1:i] == ">" or cmd[i + 1:i + 2] == ">"):
+            buf.append(c)
+            bare.append(c)
+            i += 1
+            continue
+        if c in ";\n&":
+            flush(False)
+            i += 1
+            continue
+        if c == "|":
+            flush(True)
+            i += 1
+            continue
+        buf.append(c)
+        bare.append(c)
+        i += 1
+    if q:
+        return None
+    flush(False)
+    return out
+
+
+def _inert(text):
+    """Does this one statement only read or print its words?"""
+    if _STATEMENT_RUNS.search(text):
+        return False
+    word, args = _cmd_word(text.lstrip("({ ").rstrip(") }").split())
+    if word == "git":
+        # git grep -O and --open-files-in-pager run the program they are given
+        return bool(args) and args[0] in _INERT_GIT and not re.search(r"\s(?:-O|--open-files-in-pager)", text)
+    if word not in _INERT_WORDS:
+        return False
+    if word == "sed" and _SED_RUNS.search(text):
+        return False
+    if word == "rg" and "--pre" in text:
+        return False
+    return True
+
+
+def live_text(cmd):
+    """The command with every part blanked that provably runs nothing. Returns it whole when unsure: quoting that
+    does not balance, a heredoc handed to anything not inert (`python3 runner.py <<'E'` may run its stdin), or a part
+    that could run what an inert part wrote or piped (`echo ... > run.sh; ./run.sh`, `grep ... | sh`). An
+    interpreter-executed heredoc body is always kept, whatever the switch says."""
+    cmd = cmd.replace('\\\n', ' ')
+    blanked = _strip_quoted_heredocs(cmd, True, re.compile(r""))
+    stmts = _shell_statements(blanked)
+    if stmts is None:
+        return cmd
+    closers = {m.group(2) for m, _q, _bs, _be, _r in _heredocs(cmd)}     # a heredoc's closing line is not a command
+    flags = [_inert(s[0]) or s[0] in closers for s in stmts]
+    anything_else = not all(flags)
+    for idx, ((text, bare, piped), inert) in enumerate(zip(stmts, flags)):
+        if not inert:
+            if "<<" in bare:
+                return cmd
+            continue
+        if piped and idx + 1 < len(stmts) and not flags[idx + 1]:
+            return cmd                                  # an inert part feeds something that is not inert
+        word = _cmd_word(text.lstrip("({ ").split())[0]
+        writes = ">" in _DISCARD.sub(" ", bare) or word == "tee" or (word == "sed" and re.search(r"\s-[a-zA-Z]*i", text))
+        if writes and anything_else:
+            return cmd                                 # it may have just written the thing that runs
+    return "\n".join(s[0] for s, inert in zip(stmts, flags) if not inert)
+
+
+def mention_only(cmd, service):
+    """True ONLY when `service` and the gws binary appear solely as words nothing runs. False = judge it."""
+    for body in exec_bodies(cmd.replace('\\\n', ' '), True):
+        # code that runs and names both is judged whole: a list can be built in ways no reader follows
+        if re.search(_BIN_TOKEN + r"(?:[^A-Za-z0-9_-]|$)", body) and re.search(r"\b%s\b" % re.escape(service), body):
+            return False
+    live = live_text(cmd)
+    for toks in gws_segments(live, True):
+        # a call to another service with nothing hidden is not this guard's; one hiding a word might be
+        if has_nonliteral(toks) or re.search(r"\b%s\b" % re.escape(service), " ".join(toks)):
+            return False
+    svc = re.escape(service)
+    if re.search(_BIN_TOKEN + _SEP + svc + _SEP + _OPS, live, re.I):
+        return False                                    # the call's shape, inside another tool's arguments
+    if re.search(r"\b(?:spreadsheets|values)" + _SEP + _OPS, live, re.I):
+        return False                                    # its tail, with the binary held somewhere else
+    stmts = _shell_statements(live)
+    if stmts is None:
+        return False
+    names_both = re.search(_BIN_TOKEN, cmd) and re.search(r"\b%s\b" % svc, cmd)
+    for text, _bare, _p in stmts:
+        word, args = _cmd_word(text.lstrip("({ ").split())
+        if not names_both:
+            continue
+        if _NONLIT.search(word) or (word in ("eval", "bash", "sh", "zsh", "dash", "ksh") and _NONLIT.search(text)):
+            return False                                # the binary or the whole call can be hiding in the variable
+        # An interpreter given flags before anything else: a clustered -Ic or -lc hides its code from exec_bodies.
+        # `python3 tool.py "prose"` starts with a script path, and that script's argument is only an argument.
+        if _is_sink(word) and args and args[0].startswith("-"):
+            return False
+    return True
+
+
 def _selftest():
     ID = 'TESTFAKESHEETID0000000000000000000000000000'
     D = ['clear', 'batchclear', 'delete']
@@ -911,6 +1073,19 @@ def _selftest():
             bad += (not ok)
             total += 1
             print("  [%s] gws_calls keeps trashed: %s" % ('PASS' if ok else 'FAIL', body[:60]))
+        # Plan fix 23(c): only words nothing runs is True; anything that could run stays False, so it is judged.
+        for cmd, want in (("grep -n 'gws sheets spreadsheets values update' doc.md", True),
+                          ("sed -i '' 's|home/gws.log, ||' f && grep -n \"sheets\\|gws\" f", True),
+                          ("gws sheets spreadsheets values update --params x", False),
+                          ("cd x && gws sheets spreadsheets values update --params x", False),
+                          ("grep -n sheets f; gws sheets spreadsheets values update --params x", False),
+                          ("grep -h 'gws sheets spreadsheets values clear' cmds | sh", False),
+                          ("python3 - <<'E'\nparts = 'gws sheets'.split()\nrun(parts)\nE", False),
+                          ("echo 'gws sheets' 'unbalanced", False)):
+            got = mention_only(cmd, 'sheets')
+            bad += (got != want)
+            total += 1
+            print("  [%s] mention_only=%s %s" % ('PASS' if got == want else 'FAIL', got, cmd.splitlines()[0][:50]))
     finally:
         if saved is None:
             os.environ.pop('ROUNDB_GWS_EXEC_HEREDOC', None)
@@ -937,11 +1112,17 @@ def main():
     ap.add_argument('--reason-only', action='store_true',
                      help='print WHY verdict() would say BLOCK (unresolved_operation / destructive '
                           '/ unresolved_target / none), then exit 0. Never gates anything itself.')
+    # A query, not a gate: exit 8 means "only words, nothing runs them". Any other exit, a crash included, means
+    # the caller carries on and judges the command as it always did.
+    ap.add_argument('--mention-only', action='store_true',
+                    help='exit 8 when the gws binary and --service appear only as text nothing runs, else exit 0')
     a = ap.parse_args()
     if a.selftest:
         sys.exit(_selftest())
     if not a.service:
         ap.error('--service is required')
+    if a.mention_only:
+        sys.exit(8 if mention_only(sys.stdin.read(), a.service) else 0)
     d = [x for x in a.destructive.split(',') if x]
     s = [x for x in a.safe.split(',') if x]
     r = [x for x in getattr(a, 'require_any').split(',') if x]

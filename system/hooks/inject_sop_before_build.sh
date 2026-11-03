@@ -41,6 +41,8 @@ trap 'lhb_journal_fire "$?" "inject_sop_before_build.sh" "UserPromptSubmit" "" 2
 #      dashboard row is now disconnected, so 6 live rows; ~~"replaces the donor-only cron-safety.md"~~ and the
 #      PORTED note's list of missing SOPs is out of date: desk-building-sop.md now exists. ~~"all three SOPs"~~ in the DO NOT BUILD line:
 #      build-sop.md was retired 2026-10-31, so deadend_check.py now reads the entries in skill-building-sop.md and hook-sop.md.
+# UPDATED: 2026-11-02 (plan fix 23(c)) — the Google Sheet row fires only when the verb governs the sheet; see
+#      sheet_is_the_object below. The other rows are unchanged.
 # FAIL_POSTURE: degrade-safe (any error -> exit 0 silently)
 # ─────────────────────────────────────────────────────────────────────────────
 set +e
@@ -85,12 +87,50 @@ TABLE = [
 # Build/creation verbs. "new" included so "a new skill" (no verb) still fires.
 VERBS = r"build|building|built|make|making|made|creat(?:e|ing)|writ(?:e|ing)|author|construct|design|add|adding|new|scaffold|set\s+up|spin\s+up|put\s+together|draft"
 
+# GOOGLE SHEET ROW ONLY (2026-11-02, plan fix 23(c)): the word "sheet" is everyday English, and the proximity test
+# above fired on "write a cheat sheet" and "write up why the sheet guard blocked me". This only ever takes a fire
+# away. It keeps one when the verb really governs the sheet: nothing between them ends the clause or changes the
+# subject, the word before is not half of another compound, and the word after does not make it a modifier.
+NOT_A_WORKBOOK = {"cheat", "crib", "call", "balance", "term", "rap", "fact", "tip", "lyric", "style", "spec",
+                  "bed", "baking", "cookie", "one", "sign-in", "sign-up", "signin", "signup", "answer", "charge"}
+GAP_BREAKS = {"why", "if", "because", "saying", "says", "said", "sure", "whether", "when", "where", "how", "what",
+              "which", "who", "while", "after", "before", "since", "though", "but", "not", "no", "about",
+              "regarding", "up", "mention", "mentions", "mentioned", "mentioning", "explain", "explains", "that"}
+AFTER_OK = {"for", "of", "to", "with", "that", "which", "from", "in", "on", "at", "and", "or", "so", "called", "named",
+            "where", "per", "by", "as", "now", "today", "tomorrow", "please", "first", "next", "then", "too",
+            "my", "our", "the", "a", "i", "we", "you", "this"}
+def sheet_is_the_object(text, noun):
+    for m in re.finditer(r"\b(?:%s)\b" % noun, text):
+        before = list(re.finditer(r"\b(?:%s)\b" % VERBS, text[:m.start()]))
+        if not before:
+            continue
+        gap = text[before[-1].end():m.start()]
+        if re.search(r"[,.;:!?()]", gap):
+            continue
+        words = gap.split()
+        if len(words) > 4:
+            continue
+        if words and words[-1].rstrip("-") in NOT_A_WORKBOOK:
+            continue
+        if any(w in GAP_BREAKS for w in words[:-1]) or (words and words[-1] in GAP_BREAKS - {"that"}):
+            continue
+        rest = text[m.end():]
+        if rest[:1] in ("-", "_"):
+            continue
+        nxt = re.match(r"\s+([a-z][\w-]*)", rest)
+        if nxt and nxt.group(1) not in AFTER_OK and not nxt.group(1).endswith("ing"):
+            continue
+        return True
+    return False
+
 low = prompt.lower()
 hits, seen = [], set()
 for noun, path, label in TABLE:
     # a build-verb within ~3 words before the noun (optionally through an article)
     pat = r"\b(?:%s)\b(?:\W+\w+){0,3}\W+(?:a\s|an\s|the\s|some\s|new\s|another\s)?(?:%s)\b" % (VERBS, noun)
     if re.search(pat, low) and path not in seen:
+        if label == "Google Sheet" and not sheet_is_the_object(low, noun):
+            continue
         hits.append((path, label))
         seen.add(path)
 
