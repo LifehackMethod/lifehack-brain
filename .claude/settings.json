@@ -66,6 +66,18 @@
         "matcher": "mcp__.*"
       }
     ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/turn_write_recorder.sh\"",
+            "statusMessage": "Noting files written..."
+          }
+        ],
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash"
+      }
+    ],
     "PreToolUse": [
       {
         "hooks": [
