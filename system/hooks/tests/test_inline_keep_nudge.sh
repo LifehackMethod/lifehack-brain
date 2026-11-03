@@ -191,6 +191,14 @@ for IDI in "keep this on track so just keep it on track" "keep it working" "keep
   mk "$T/j3" "$IDI" "$PLAIN"; N=$((N+1)); stop "j3n$N" p1 "$T/j3"; [ -z "$OUT$ERR" ] && ok "idiom '$IDI': silent" || bad "idiom '$IDI' read as keep: $OUT"
 done
 
+echo "== plan fix 23(c) (2026-11-02): 'I'll use it to/for ...' about something else is not keep-intent =="
+for IDI in "I'll use it to keep it on track" "I'll use it to count my recipes" "I'll use it for the report" "I'll use it in the report" "I'll use it To keep it on track" "I'll use that file" "I'll use this instead of the old one"; do
+  mk "$T/u1" "$IDI" "$PLAIN"; N=$((N+1)); stop "u1n$N" p1 "$T/u1"; [ -z "$OUT$ERR" ] && ok "'$IDI': silent" || bad "'$IDI' read as keep: $OUT"
+done
+for KP in "I'll use it" "I'll use it." "I'll use it again" "I'll use it later" "i'll use it again next week" "I'll use it for later" "I'll use it as a script" "I'll use that one again" "I'll use this command" "I'll use it, thanks" "I'll reuse it to count my recipes"; do
+  mk "$T/u2" "$KP" "$PLAIN"; N=$((N+1)); stop "u2n$N" p1 "$T/u2"; printf '%s' "$(reason)" | grep -q "asked to keep" && ok "'$KP': still 'keep'" || bad "'$KP' lost: $OUT"
+done
+
 echo "== switch OFF = silent =="
 mk "$T/t7" "keep it" "$FIND"
 ROUNDB_INLINE_KEEP_NUDGE=off stop f1 p1 "$T/t7"; [ "$RC" = 0 ] && [ -z "$OUT$ERR" ] && ok "switch off: keep-intent case silent" || bad "acted while OFF: $OUT"

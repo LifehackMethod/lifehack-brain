@@ -42,10 +42,21 @@ KEEP_TAIL = (r"(?:\s+(?:please|pls|thanks|thank you|ok|okay|too|then|around|hand
              r"|for (?:later|next time|the future|reuse|re-use|me|now)))*")
 KEEP_END = (r"(?:[ \t]*(?:$|\n|[.,!?;:)\]\"'\u2014\u2013\u2026-])|\s+(?:and|but)\b"
             r"|\s+(?!" + KEEP_IDIOM + r")(?-i:[A-Z]))")
+# "I'll use it/that/this" (plan fix 23(c), 2026-11-02): same shape as "keep it". "use" is a far commoner verb than "reuse", and
+# "I'll use it to keep it on track" / "I'll use it for the report" / "I'll use that file" are about something else. So it counts
+# only when the phrase ENDS there, after zero or more USE_TAIL words about using it again (again, later, next time, "for later",
+# "as a script", ...), or with an explicit object noun ("I'll use that one", "I'll use this command"). A following "to"/"for"
+# never ends the phrase, even capitalised. "I'll reuse it" stays unconditional: the verb itself says it.
+USE_TAIL = (r"(?:\s+(?:again|later|next time|the next time|tomorrow|next week|next month|every day|every week|every time|often|"
+            r"regularly|a lot|all the time|sometime|someday|in future|in the future|please|pls|thanks|thank you|ok|okay|too|then"
+            r"|as (?:a |an |my )?(?:script|tool|command|file|snippet|one)"
+            r"|for (?:later|next time|the future|reuse|re-use)))*")
 KEEP = re.compile(
     r"\b(keep (?:the|that|this) (?:command|one|script|snippet|pipeline|line)\b|keep (?:it|that|this)(?=" + KEEP_TAIL + KEEP_END + r")|"
+    r"i'?ll use (?:that|this) (?:command|one|script|snippet|pipeline|line)\b|"
+    r"i'?ll use (?:it|that|this)(?=" + USE_TAIL + r"(?!\s+(?:to|for)\b)" + KEEP_END + r")|"
     r"(?:save (that|this|it)( command| one)?|"
-    r"i'?ll (reuse|re-use|use) (it|that|this)|reuse (it|that|this)|re-use (it|that|this)|"
+    r"i'?ll (reuse|re-use) (it|that|this)|reuse (it|that|this)|re-use (it|that|this)|"
     r"make (that|this|it) a (script|tool)|turn (that|this|it) into a (script|tool))\b)", re.I)
 NEG = re.compile(r"\b(don'?t|do not|no need to|not|never|without)\s+(\w+\s+){0,2}$", re.I)
 REMINDER = re.compile(r"<system-reminder>.*?</system-reminder>", re.S)
