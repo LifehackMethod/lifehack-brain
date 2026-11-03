@@ -11,8 +11,10 @@ USAGE: rig_live_free.py run --cases cases/meal-roundA-live.jsonl --label L [--on
                  to <label>-files/<id>/ before removal. Default: RIG_ROOT/<label>/work. It must be OUTSIDE the real home (2026-11-02,
                  rig-config-isolation: Claude Code loads every ancestor's .claude, so a cwd under the home loaded the runner's own config).
   --env K=V:     extra environment for the headless child only (e.g. ROUNDB_BACK_DOOR=on); hooks inherit it.
+EVIDENCE: each case leaves <id>.end-state.json in the streams folder (plan fix 23(c)): the throwaway personal folder's own list, file manifest, small text
+          copies, what THIS case changed, and before/after sha256 of the fixture originals. Limits and any capture error are stated in the file.
 """
-import argparse, atexit, glob, hashlib, json, os, re, shlex, shutil, subprocess, sys, tempfile, time
+import argparse, atexit, collections, glob, hashlib, json, os, re, shlex, shutil, stat, subprocess, sys, tempfile, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -437,7 +439,209 @@ def journal_slice(home, mark, out_path):
     return len(data)
 
 
-EVIDENCE_GLOBS = ("*.config-probe.json", "*.stream.jsonl", "*.fence.jsonl", "*.drive-end.json", "*.isolation.json", "*.sandbox.json", "*.fire-journal.jsonl")
+OWN_LIST_NAME = "register.jsonl"             # same name as shared/tools/own_list_add.py LIST_NAME
+END_STATE_TEXT_FILE_MAX = 64 * 1024          # a text file larger than this is hashed and listed, not copied
+END_STATE_TEXT_TOTAL_MAX = 2 * 1024 * 1024   # copies stop here for one case; the evidence folder lives in the notes
+END_STATE_OWN_LIST_MAX = 1024 * 1024         # the own list is the point of the capture, so it gets its own larger limit
+END_STATE_MAX_FILES = 5000                   # a manifest stops here and says so (a session's node_modules must not bloat the evidence)
+
+
+def _read_capped(path, limit):
+    """-> up to limit bytes of a REGULAR file, never following a link or blocking on a fifo. Raises OSError otherwise."""
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(fd, "rb") as f:
+        if not stat.S_ISREG(os.fstat(f.fileno()).st_mode):
+            raise OSError("not a regular file: " + path)
+        return f.read(limit)
+
+
+def _sha256_file(path):
+    h = hashlib.sha256()
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(fd, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def tree_manifest(root, errors):
+    """-> {"files": {rel: entry}, "complete": bool} for root, .git internals out, links never followed. An entry is {"type": "file", "size", "sha256"}
+    (sha256 None and a line in `errors` when unreadable), {"type": "symlink", "target"} or {"type": "other"} (a fifo or socket, never opened)."""
+    files, complete = {}, True
+    if not os.path.isdir(root):
+        return {"files": files, "complete": complete}
+    for dp, dn, fs in os.walk(root, onerror=lambda e: errors.append("walk: %s" % e)):
+        dn[:] = sorted(d for d in dn if d != ".git")
+        for name in sorted(dn + [f for f in fs if f != ".git"]):
+            q = os.path.join(dp, name)
+            rel = os.path.relpath(q, root)
+            try:
+                st = os.lstat(q)
+                if stat.S_ISDIR(st.st_mode):
+                    continue
+                if len(files) >= END_STATE_MAX_FILES:
+                    complete = False
+                    errors.append("manifest of %s stopped at %d files" % (root, END_STATE_MAX_FILES))
+                    return {"files": files, "complete": complete}
+                if stat.S_ISLNK(st.st_mode):
+                    files[rel] = {"type": "symlink", "target": os.readlink(q)}
+                elif stat.S_ISREG(st.st_mode):
+                    files[rel] = {"type": "file", "size": st.st_size, "sha256": None}
+                    files[rel]["sha256"] = _sha256_file(q)
+                else:
+                    files[rel] = {"type": "other"}
+            except OSError as e:
+                errors.append("%s: %s" % (rel, e))
+                files.setdefault(rel, {"type": "unreadable"})
+    return {"files": files, "complete": complete}
+
+
+def tree_delta(before, after):
+    """-> what changed between two tree_manifest "files" dicts."""
+    return {"added": sorted(set(after) - set(before)), "modified": sorted(p for p in after if p in before and after[p] != before[p]),
+            "removed": sorted(set(before) - set(after))}
+
+
+def own_list_read(personal):
+    """-> the own list's state (exists, size, sha256, text, text_exact, truncated). A link is reported, never followed; a missing list is not an error
+    (a student's list does not exist until the first kept tool)."""
+    q = os.path.join(personal, OWN_LIST_NAME)
+    if not os.path.lexists(q):
+        return {"path": OWN_LIST_NAME, "exists": False}
+    if os.path.islink(q):
+        return {"path": OWN_LIST_NAME, "exists": True, "symlink": os.readlink(q)}
+    data = _read_capped(q, END_STATE_OWN_LIST_MAX + 1)
+    cut = data[:END_STATE_OWN_LIST_MAX]
+    text = cut.decode("utf-8", errors="replace")
+    return {"path": OWN_LIST_NAME, "exists": True, "size": os.path.getsize(q), "sha256": _sha256_file(q), "text": text,
+            "text_exact": text.encode("utf-8") == cut, "truncated": len(data) > END_STATE_OWN_LIST_MAX}
+
+
+def end_state_mark(personal, fixture_cwd):
+    """Before a case: the personal folder's manifest and own list, and the fixture originals' manifest (fixture_cwd None: the case has no fixture). A caller's
+    own HOME keeps its personal folder from case to case and the isolated setup wipes it at each case's start, so end state alone cannot say what THIS case did;
+    the mark is taken after the wipe, like journal_mark. A part that fails is left out and its error kept: write_end_state then claims no delta from it."""
+    mark = {"errors": []}
+    for key, fn in (("personal", lambda: tree_manifest(personal, mark["errors"])), ("own_list", lambda: own_list_read(personal)),
+                    ("fixture", lambda: tree_manifest(fixture_cwd, mark["errors"]) if fixture_cwd else None)):
+        try:
+            mark[key] = fn()
+        except Exception as e:
+            mark["errors"].append("before the case, %s: %r" % (key, e))
+    return mark
+
+
+def _mark_soft(personal, fixture_cwd):
+    """end_state_mark that cannot fail the case. -> a mark; on a failure, one holding only the error."""
+    try:
+        return end_state_mark(personal, fixture_cwd)
+    except Exception as e:
+        return {"errors": ["before the case: %r" % (e,)]}
+
+
+def _text_copies(personal, rels, entries, errors):
+    """-> (copies {rel: text}, not_copied {rel: reason}) for the files this case added or modified; the own list is kept apart."""
+    copies, skipped, total = {}, {}, 0
+    for rel in rels:
+        entry = entries.get(rel) or {}
+        if rel == OWN_LIST_NAME or entry.get("type") != "file":
+            continue
+        if entry.get("size", 0) > END_STATE_TEXT_FILE_MAX:
+            skipped[rel] = "over the %d byte limit" % END_STATE_TEXT_FILE_MAX
+        elif total + entry.get("size", 0) > END_STATE_TEXT_TOTAL_MAX:
+            skipped[rel] = "over the case's %d byte total" % END_STATE_TEXT_TOTAL_MAX
+        else:
+            try:
+                data = _read_capped(os.path.join(personal, rel), END_STATE_TEXT_FILE_MAX + 1)
+                if b"\0" in data:
+                    skipped[rel] = "binary"
+                    continue
+                copies[rel] = data.decode("utf-8")
+                total += len(data)
+            except UnicodeDecodeError:
+                skipped[rel] = "not UTF-8 text"
+            except OSError as e:
+                errors.append("copy %s: %s" % (rel, e))
+    return copies, skipped
+
+
+def _capture_personal(state, mark, personal):
+    errors = state["errors"]
+    now = tree_manifest(personal, errors)
+    before = mark.get("personal")
+    delta = tree_delta(before["files"], now["files"]) if before else None
+    state["delta"] = delta
+    state["delta_complete"] = bool(before and before["complete"] and now["complete"])
+    status = {}
+    for key, word in (("added", "added"), ("modified", "modified")):
+        status.update({p: word for p in (delta or {}).get(key, [])})
+    state["manifest"] = [dict(e, path=p, status=status.get(p, "unchanged" if delta else "unknown")) for p, e in sorted(now["files"].items())]
+    # no baseline: nothing can be called this case's, so every text file is copied rather than none
+    changed = (delta["added"] + delta["modified"]) if delta else sorted(now["files"])
+    state["text_files"], state["not_copied"] = _text_copies(personal, changed, now["files"], errors)
+
+
+def _capture_own_list(state, mark, personal):
+    now = own_list_read(personal)
+    state["own_list"] = now
+    was = mark.get("own_list")
+    if was is None:
+        now["new_lines"] = now["removed_lines"] = None    # no baseline: claim nothing
+        return
+    now["existed_before"] = was.get("exists", False)
+    a = collections.Counter(was.get("text", "").splitlines())
+    b = collections.Counter(now.get("text", "").splitlines())
+    now["new_lines"] = list((b - a).elements())
+    now["removed_lines"] = list((a - b).elements())
+
+
+def _capture_fixture(state, mark, fixture_cwd):
+    before = mark.get("fixture")
+    if not fixture_cwd:
+        state["fixture_originals"] = None
+        return
+    fo = {"before": None, "after": None, "changed": None, "removed": None, "added": None}
+    state["fixture_originals"] = fo
+    now = tree_manifest(fixture_cwd, state["errors"])
+    if before is None:
+        state["errors"].append("fixture originals: no before-hashes, so nothing is compared")
+        return
+    hashes = lambda files: {p: e.get("sha256") or e.get("target") for p, e in files.items()}
+    d = tree_delta(before["files"], now["files"])
+    was, cur = hashes(before["files"]), hashes(now["files"])
+    fo.update(before=was, after={p: cur.get(p) for p in was}, changed=d["modified"], removed=d["removed"], added=d["added"], complete=before["complete"] and now["complete"])
+
+
+def write_end_state(mark, personal, fixture_cwd, out_path, isolated=None):
+    """After a case, before any cleanup: write the personal folder's end state and the fixture hashes to out_path. FAIL-SOFT: never raises and never touches the
+    case's score. Each part fails alone, every error lands in "errors" there and in the returned summary ({"file", "errors"}), which goes on the result row, so
+    even an evidence file that cannot be written leaves a trace."""
+    errors = list((mark or {}).get("errors") or [])
+    state = {"personal_root": personal, "isolated": isolated, "errors": errors,
+             "limits": {"text_file_max_bytes": END_STATE_TEXT_FILE_MAX, "text_total_max_bytes": END_STATE_TEXT_TOTAL_MAX,
+                        "own_list_max_bytes": END_STATE_OWN_LIST_MAX, "manifest_max_files": END_STATE_MAX_FILES},
+             "own_list": None, "manifest": None, "delta": None, "delta_complete": False, "text_files": {}, "not_copied": {}, "fixture_originals": None}
+    mark = mark or {}
+    for label, fn in (("personal folder", _capture_personal), ("own list", _capture_own_list)):
+        try:
+            fn(state, mark, personal)
+        except Exception as e:
+            errors.append("%s: %r" % (label, e))
+    try:
+        _capture_fixture(state, mark, fixture_cwd)
+    except Exception as e:
+        errors.append("fixture originals: %r" % (e,))
+    summary = {"file": os.path.basename(out_path), "errors": errors}
+    try:
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(state, f, indent=1, sort_keys=True)
+    except Exception as e:
+        errors.append("evidence not written: %r" % (e,))
+        summary["file"] = None
+    return summary
+
+
+EVIDENCE_GLOBS = ("*.config-probe.json", "*.stream.jsonl", "*.fence.jsonl", "*.drive-end.json", "*.isolation.json", "*.sandbox.json", "*.fire-journal.jsonl", "*.end-state.json")
 
 
 def copy_evidence(work, keep):
@@ -522,6 +726,8 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
     if student_home and not CONFIG_PROBED:   # zero-spend preflight, once per run, BEFORE the first paid session
         config_preflight(c["id"], work, cwd, env, sbwrap, mkcmd, settings, allowed_roots, personal if isolated else None, student_home, home)
     jmark = journal_mark(home)   # the HOME's fire journal is shared by every case: keep only what this session appends
+    fixture_cwd = cwd if scratch and L.get("fixture") else None   # never the real personal folder (cwd without a scratch)
+    emark = _mark_soft(personal, fixture_cwd)   # after the wipe and the config probe: the end state is compared with this
     b = snapshot(notes)
     t0 = time.time()
     err = ""
@@ -533,6 +739,7 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
         err = "TIMEOUT"
     secs = time.time() - t0
     journal_slice(home, jmark, os.path.join(work, c["id"] + ".fire-journal.jsonl"))   # copied to the streams folder by copy_evidence
+    end_state = write_end_state(emark, personal, fixture_cwd, os.path.join(work, c["id"] + ".end-state.json"), isolated)   # also copied by copy_evidence; never fails the case
     if drive_run:   # end-state capture FIRST (the scorer reads it), then drop the mount, then MOVE the run folder to _archive (never delete)
         snap = rig_drive.snapshot_end_state(drive_run, os.path.join(work, c["id"] + ".drive-end.json"))
         rig_drive.unlink_mount(home)
@@ -623,7 +830,7 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
             "denied": sc.get("denied_texts", []), "fence_denies": sc.get("fence_denies", []), "real_false": real_false, "copied": sc.get("copied_shared"), "stream": os.path.basename(stream),
             "bump_names_build": bool(bump_text), "bump_text": bump_text[:2], "build_skill_calls": len(build_calls), "build_after_bump": bool(build_calls and first_deny is not None and any(i > first_deny for i in build_calls)),
             "build_mentioned": bool(BUILD_RE.search(txt)), "commits": sc.get("commits", {}), "foreign_changes_left": foreign[:10], "cleaned": removed, "left_alone": left_alone,
-            "env_dropped": dropped, "actor_bins": sorted(linked)}
+            "env_dropped": dropped, "actor_bins": sorted(linked), "end_state": end_state}
 
 
 def set_plugin_dir(p):
