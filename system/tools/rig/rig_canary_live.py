@@ -55,7 +55,7 @@ def build(tmp):
     tok = iso.oauth_token(real_home)
     if tok:
         extra[iso.AUTH_TOKEN] = tok
-    extra = dict(extra, **iso.fence_env(real_home, notes_roots, [cwd, home], os.path.join(tmp, "canary.fence.jsonl")))
+    extra = dict(extra, **iso.fence_env(real_home, notes_roots, [cwd, home], os.path.join(home, ".rig-fence", "canary.fence.jsonl")))
     path, linked, missing = iso.make_private_path(os.path.join(tmp, "actor-bin"))
     env, dropped = iso.build_actor_env(os.environ, extra, home=home, path=path)
     if SANDBOX_ONLY:   # NO fence hook: the kernel layer alone

@@ -22,6 +22,7 @@ import rig_meal as rm  # noqa: E402
 import rig_live_score as ls  # noqa: E402
 import rig_isolation as isol  # noqa: E402  (not `iso`: main() uses that name for the throwaway HOME path)
 import rig_sandbox as sandbox  # noqa: E402  (kernel layer: every actor runs under sandbox-exec; record rig-actor-sandbox)
+import rig_fence  # noqa: E402  (only its LOG_FAILED_NAME; the fence itself runs as a hook)
 import rig_rulings  # noqa: E402  (standing rulings: a case scored NOT-EVALUATED, e.g. push scan warn mode 2026-11-02)
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "shared"))
 import disk_preflight  # noqa: E402  (THE disk-low preflight, shared/disk_preflight.py)
@@ -641,7 +642,68 @@ def write_end_state(mark, personal, fixture_cwd, out_path, isolated=None):
     return summary
 
 
-EVIDENCE_GLOBS = ("*.config-probe.json", "*.stream.jsonl", "*.fence.jsonl", "*.drive-end.json", "*.isolation.json", "*.sandbox.json", "*.fire-journal.jsonl", "*.end-state.json")
+EVIDENCE_GLOBS = ("*.config-probe.json", "*.stream.jsonl", "*.fence.jsonl", "*.fence-log-failed.jsonl", "*.drive-end.json", "*.isolation.json", "*.sandbox.json", "*.fire-journal.jsonl",
+                  "*.end-state.json", "proxy.jsonl")   # proxy.jsonl: the whole run's network decisions, so "nothing reached out" can be checked against a record
+
+
+def fence_log_path(home, cid):
+    """The fence runs inside the actor sandbox, so its log must be in an allowed dir: the throwaway HOME (pinned4b's path, in the rig's work dir, was refused and swallowed: 0 logs)."""
+    return os.path.join(home, ".rig-fence", cid + ".fence.jsonl")
+
+
+def _denies_in_stream(stream):
+    n = 0
+    with open(stream, errors="replace", encoding="utf-8") as f:
+        for ln in f:
+            if "TEST-RIG FENCE" not in ln:
+                continue
+            try:
+                m = json.loads(ln).get("message")
+            except ValueError:
+                continue
+            for c in (m.get("content") if isinstance(m, dict) and isinstance(m.get("content"), list) else []):
+                if isinstance(c, dict) and c.get("type") == "tool_result" and "TEST-RIG FENCE" in json.dumps(c.get("content")):
+                    n += 1
+    return n
+
+
+def save_fence_evidence(log, tmpdir, work, cid, stream):
+    """After a case: copy the fence log into the work dir, for copy_evidence, and check it against the stream, which the fence cannot have failed to write. Anything wrong goes on the
+    result row AND in <id>.fence-log-failed.jsonl in the saved evidence. FAIL-SOFT: never raises and never touches the score.
+    -> {"file", "rows", "denies_logged", "denies_in_stream", "problems"}"""
+    out = {"file": None, "rows": 0, "denies_logged": 0, "denies_in_stream": None, "problems": []}
+    records = []
+    try:
+        if os.path.exists(log):
+            with open(log, encoding="utf-8") as f:
+                rows = [json.loads(l) for l in f if l.strip()]
+            out.update(rows=len(rows), denies_logged=sum(1 for r in rows if r.get("deny")), file=cid + ".fence.jsonl")
+            shutil.copy(log, os.path.join(work, cid + ".fence.jsonl"))
+    except (OSError, ValueError) as e:
+        out["problems"].append("fence log unreadable: %r" % (e,))
+    failed = os.path.join(tmpdir, rig_fence.LOG_FAILED_NAME)
+    try:
+        if os.path.exists(failed):
+            with open(failed, encoding="utf-8") as f:
+                records = [l for l in f if l.strip()]
+            os.unlink(failed)   # moved below into this case's evidence: the throwaway HOME is shared by the run's cases
+            out["problems"].append("the sandbox or disk refused %d fence log write(s)" % len(records))
+    except OSError as e:
+        out["problems"].append("fence failure record unreadable: %r" % (e,))
+    try:
+        out["denies_in_stream"] = _denies_in_stream(stream)
+        if out["denies_in_stream"] > out["denies_logged"]:
+            out["problems"].append("%d fence deny(s) in the stream, only %d with a log row: no log row for the rest" % (out["denies_in_stream"], out["denies_logged"]))
+    except OSError as e:
+        out["problems"].append("stream unreadable, so the log could not be checked: %r" % (e,))
+    if out["problems"]:
+        try:
+            with open(os.path.join(work, cid + ".fence-log-failed.jsonl"), "w", encoding="utf-8") as f:
+                f.writelines(records)
+                f.write(json.dumps({"problems": out["problems"]}) + "\n")
+        except OSError as e:
+            out["problems"].append("evidence file could not be written: %r" % (e,))
+    return out
 
 
 def copy_evidence(work, keep):
@@ -682,7 +744,7 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
     for k, v in (("{HOME}", home), ("{CWD}", cwd), ("{V2}", V2), ("{PERSONAL}", personal)):
         prompt = prompt.replace(k, v)
     prompt += L.get("suffix", BUILD_SUFFIX if L.get("kind") == "build" else SUFFIX)
-    fence_log = os.path.join(work, c["id"] + ".fence.jsonl")
+    fence_log = fence_log_path(home, c["id"])
     drive_run = None   # rig_drive (2026-11-01): ONE run folder in the dedicated Drive test area, mounted in the throwaway HOME the way Drive for Desktop would be
     if drive_label:
         import rig_drive
@@ -740,6 +802,7 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
     secs = time.time() - t0
     journal_slice(home, jmark, os.path.join(work, c["id"] + ".fire-journal.jsonl"))   # copied to the streams folder by copy_evidence
     end_state = write_end_state(emark, personal, fixture_cwd, os.path.join(work, c["id"] + ".end-state.json"), isolated)   # also copied by copy_evidence; never fails the case
+    fence_saved = save_fence_evidence(fence_log, env["TMPDIR"], work, c["id"], stream)   # also copied by copy_evidence; never fails the case
     if drive_run:   # end-state capture FIRST (the scorer reads it), then drop the mount, then MOVE the run folder to _archive (never delete)
         snap = rig_drive.snapshot_end_state(drive_run, os.path.join(work, c["id"] + ".drive-end.json"))
         rig_drive.unlink_mount(home)
@@ -830,7 +893,7 @@ def run_one(c, notes, work, scratch=None, extra_env=None, keep_files=None, model
             "denied": sc.get("denied_texts", []), "fence_denies": sc.get("fence_denies", []), "real_false": real_false, "copied": sc.get("copied_shared"), "stream": os.path.basename(stream),
             "bump_names_build": bool(bump_text), "bump_text": bump_text[:2], "build_skill_calls": len(build_calls), "build_after_bump": bool(build_calls and first_deny is not None and any(i > first_deny for i in build_calls)),
             "build_mentioned": bool(BUILD_RE.search(txt)), "commits": sc.get("commits", {}), "foreign_changes_left": foreign[:10], "cleaned": removed, "left_alone": left_alone,
-            "env_dropped": dropped, "actor_bins": sorted(linked), "end_state": end_state}
+            "env_dropped": dropped, "actor_bins": sorted(linked), "end_state": end_state, "fence_log": fence_saved}
 
 
 def set_plugin_dir(p):

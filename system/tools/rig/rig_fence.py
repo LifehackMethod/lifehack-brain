@@ -20,6 +20,9 @@ COMMANDS (2026-11-02, after a sandbox actor trashed 899 real Drive files with gw
       A Write/Edit of a SCRIPT whose text runs one is denied too (write-then-run). The command checks hold even without RIG_FENCE_REAL_HOME:
       the fence is only ever installed by the rig. A string match can be dodged; the real controls are rig_isolation's env allowlist + private PATH.
 FAIL CLOSED (2026-11-02): an internal error now DENIES (it used to allow).
+LOG (2026-11-02, record rig-honest-exit): the fence runs INSIDE the actor sandbox, so RIG_FENCE_LOG must be in an allowed dir. pinned4b kept 0 fence logs because the path was in
+      the rig's work dir and the refused write was swallowed. A refused write now goes to $TMPDIR/rig-fence-log-failed.jsonl with the error and the row; if that is refused too,
+      a "RIG FENCE LOG FAILED" line goes on stderr. The verdict never changes.
 Exit 2 + stderr message = deny (same shape as the product guards); exit 0 = allow.
 """
 import json, os, re, shlex, sys, unicodedata
@@ -48,6 +51,7 @@ GIT_WRITE = {"commit", "push", "add", "rm", "mv", "reset", "clean", "checkout", 
 INTERP = {"python", "python3", "python3.9", "python3.10", "python3.11", "python3.12", "python3.13", "python3.14", "node", "ruby", "perl", "osascript", "php", "deno", "bun"}
 PYWRITE = re.compile(r"""open\([^)]*['"][wax+]|\.write|write_text|write_bytes|shutil\.|os\.(remove|unlink|rename|replace|mkdir|makedirs|rmdir|system|symlink|link)|\.unlink|\.mkdir|\.rename|subprocess|sqlite3|rmtree|fs\.(write|append|unlink|rm|mkdir|rename)|File\.(write|open|delete)|\bunlink\b""")
 SEG = re.compile(r"\|\||&&|;|\||\n")
+LOG_FAILED_NAME = "rig-fence-log-failed.jsonl"   # read by rig_live_free.save_fence_evidence
 
 
 def fold(s):
@@ -308,6 +312,23 @@ def decide(inp, c):
     return None, notes
 
 
+def write_log(lg, row):
+    """-> None, or a line for stderr when neither the log nor the failure record could be written. Never raises: the verdict must not depend on it."""
+    try:
+        os.makedirs(os.path.dirname(lg) or ".", exist_ok=True)
+        with open(lg, "a", encoding="utf-8") as f:
+            f.write(json.dumps(row) + "\n")
+        return None
+    except OSError as e:
+        rec = {"log": lg, "error": str(e), "row": row}
+    try:
+        with open(os.path.join(os.environ.get("TMPDIR") or ".", LOG_FAILED_NAME), "a", encoding="utf-8") as f:
+            f.write(json.dumps(rec) + "\n")
+        return None
+    except OSError as e:
+        return "RIG FENCE LOG FAILED: %s; failure record: %s" % (rec["error"], e)
+
+
 def main():
     inp = {}
     try:
@@ -317,16 +338,12 @@ def main():
     except Exception as e:                # fail CLOSED (2026-11-02): a fence that cannot judge must not wave a call through
         msg, notes = "TEST-RIG FENCE (not a product guard): the rig fence could not check this call (%s), so it is denied. Try a simpler command." % type(e).__name__, []
     lg = os.environ.get("RIG_FENCE_LOG")
-    if lg and (msg or notes):
-        try:
-            with open(lg, "a", encoding="utf-8") as f:
-                f.write(json.dumps({"tool": inp.get("tool_name"), "deny": bool(msg), "read_or_ref": notes, "msg": msg}) + "\n")
-        except OSError:
-            pass
+    log_err = write_log(lg, {"tool": inp.get("tool_name"), "deny": bool(msg), "read_or_ref": notes, "msg": msg}) if lg and (msg or notes) else None
     if msg:
         sys.stderr.write(msg + "\n")
-        return 2
-    return 0
+    if log_err:
+        sys.stderr.write(log_err + "\n")
+    return 2 if msg else 0
 
 
 if __name__ == "__main__":
