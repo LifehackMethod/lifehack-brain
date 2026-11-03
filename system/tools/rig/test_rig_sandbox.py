@@ -373,6 +373,18 @@ try:
         check("blind: mkdir -p inside the run folder works (control)", _rc("/bin/mkdir", "-p", os.path.join(BC, "x", "y")).returncode == 0)
         _g = _rc("/usr/bin/git", "--version")
         check("blind: /usr/bin/git prints no xcrun cache error (control)", _g.returncode == 0 and "cache file" not in _g.stderr, _g.stderr[:200])
+        # exam material (rig-blind-runs part 2): what a session could learn from the plugin it runs under. Real files, real entry point.
+        for _rel in ("system/tools/rig/cases/roundC-exam.jsonl", "system/tools/rig/rig_steer_score.py", "system/tools/rig/rig_live_score.py", "system/tools/rig/build_meal_cases.py",
+                     "system/hooks/tests/test_team_share_route.py", "system/hooks/tests/test_rig_selftest.sh", "shared/tools/test_team_skills.py"):
+            check("exam: %s is refused" % _rel, "not permitted" in _rc("/bin/cat", os.path.join(V2, _rel)).stderr)
+        check("exam: the rig folder cannot be listed", "not permitted" in _rc("/bin/ls", HERE).stderr)
+        check("exam: the hook tests folder cannot be listed", "not permitted" in _rc("/bin/ls", os.path.join(V2, "system", "hooks", "tests")).stderr)
+        _gr = _rc("/usr/bin/grep", "-rlF", "i keep pasting the same weekly status email", V2)
+        check("exam: grep over the whole plugin finds no case prompt", not _gr.stdout.strip(), _gr.stdout[:300])
+        check("exam: rig_fence.py, which the session's own hook runs, still reads (control)", _rc("/bin/cat", os.path.join(HERE, "rig_fence.py")).returncode == 0)
+        _fr = subprocess.run(_w(["python3", "-I", os.path.join(HERE, "rig_fence.py")]), cwd=BC, env=_e, input='{"tool_name":"Read","tool_input":{"file_path":"x"}}', capture_output=True, text=True, timeout=30)
+        check("exam: rig_fence.py still runs as a hook (control)", _fr.returncode == 0, _fr.stderr[:300])
+        check("exam: a product hook file still reads (control)", _rc("/bin/cat", os.path.join(V2, "system", "hooks", "lib", "fc_sign.py")).returncode == 0)
         check("blind: claude gets its own temp dir, or it dies at startup on the refused per-uid dir", _e.get("CLAUDE_CODE_TMPDIR") == os.path.join(BH, "tmp"), _e.get("CLAUDE_CODE_TMPDIR"))
         check("blind: a here-doc through bash still works (control)", _rc("/bin/bash", "--noprofile", "--norc", "-c", "cat <<E\nhi\nE\n").stdout.strip() == "hi")
 except SystemExit as x:
@@ -393,6 +405,8 @@ if BL:
     for _tag, _mut, _name in (("noshared", lambda s: _unsub(FS)(_unsub(BUT)(s)), "no deny on the rig root's parent or the temp dir around the fake tree"), ("noown", _unsub(os.path.join(FR, "this-run")), "own folder not re-allowed"),
                               ("notmp", _unsub("/private/tmp"), "the shared temp dir left readable"), ("noutmp", _unsub(BUT), "the per-user temp dir left readable")):  # allow-silence: a profile mutation, nothing is written
         check("FAIL-FIRST blind: %s -> C14 catches it" % _name, caught(run_case("blind-" + _tag, _mut, **_bk), "C14"))
+    check("FAIL-FIRST exam: the exam deny dropped -> C15 catches it", caught(run_case("exam-nodeny", drop_line("(deny file-read* (subpath %s" % sb._q(HERE)), **_bk), "C15"))
+    check("FAIL-FIRST exam: rig_fence.py not kept readable -> C15 catches it", caught(run_case("exam-nokeep", drop_line("(allow file-read* (literal %s" % sb._q(os.path.join(HERE, "rig_fence.py"))), **_bk), "C15"))
 _lf = open(os.path.join(HERE, "rig_live_free.py"), encoding="utf-8").read()
 check("rig_live_free: the real home is read-denied in every setup, not only the student's", "student_home_read(None, linked" in _lf and 'else [])} if student_home else {}' not in _lf)
 _pr = sb.student_home_read(None, {}, [])["probe_denied"]

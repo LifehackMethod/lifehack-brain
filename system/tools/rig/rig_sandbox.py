@@ -18,7 +18,7 @@ WHAT the profile allows (everything else of its kind is refused):
                 STUDENT setup only (2026-11-02, record rig-validity-fix): the whole real home is read-denied too (a student `find /`
                 listed the runner's own files), with exact re-allows for what the actor needs there (student_home_read).
                 Every setup (record rig-blind-runs): the rig root's parent, the shared temp dir and the per-user temp dir are read-denied, only this run's own dirs re-allowed (blind_read).
-                What a session can still read: the plugin it runs under, INCLUDING system/tools/rig (the exam cases and scorer), because the plugin is what it loads.
+                And the exam material in the plugin it runs under (EXAM_PATHS): cases, scorers, hook tests, git history. Kept readable: only what runs in a session (SESSION_KEEP).
      network  - only 127.0.0.1:<proxy port>. rig_proxy.py (outside the sandbox) tunnels only to api.anthropic.com:443. SBPL cannot filter
                 by host name; that is why the allowlist lives in the proxy. Proxy dead = no network (fails closed).
      escapes  - Apple Events, LaunchServices (open/Terminal) and the keychain daemons are refused.
@@ -35,7 +35,8 @@ KNOWN, ACCEPTED LIMIT (coordinator 2026-11-02, record rig-honest-exit): a litera
 """
 import json, os, re, secrets, shutil, socket, subprocess, sys, tempfile, time
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+HERE = os.path.dirname(os.path.realpath(__file__))
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
 SANDBOX_EXEC = "/usr/bin/sandbox-exec"
 API_HOST = "api.anthropic.com:443"
 TAG = "LH-RIG-SBX"
@@ -108,7 +109,16 @@ def student_home_read(real_home_dir, linked, dirs):
 SYSTEM_LOGS = ("/private/var/log", "/Library/Logs")   # launchd.log names rig run folders, measured 2026-11-03; a session has no need of either
 
 
-def blind_read(run_dirs, rig_root, uid=None):
+# Exam material in a plugin a session runs under (rig-blind-runs part 2). Found by searching every tracked file for every case prompt and wrong_re: the rig folder, the hook tests and one
+# shared test hold them; commit messages name cases. Product hooks only name these paths in comments and path patterns; nothing a session loads reads them.
+EXAM_PATHS = ("system/tools/rig", "system/hooks/tests", "shared/tools/test_team_skills.py", ".git")
+EXAM_PROBES = ("system/tools/rig/cases/roundC-exam.jsonl", "system/tools/rig/rig_steer_score.py", "system/tools/rig/rig_live_score.py", "system/tools/rig", "system/hooks/tests",
+               "system/hooks/tests/test_team_share_route.py", "shared/tools/test_team_skills.py")
+# The ONLY rig files that run inside a session: the fence hook (rig_isolation.fence_settings) and the canary. Neither imports another rig file; neither holds case text or scoring rules.
+SESSION_KEEP = ("rig_fence.py", "rig_sandbox_canary.py")
+
+
+def blind_read(run_dirs, rig_root, uid=None, plugin_roots=()):
     """record rig-blind-runs -> what profile() needs so a session sees no other run or test artifact. Denied: the rig root's whole parent (/Users/Shared), the shared
     temp dir and the per-user temp dir. own = this run's dirs (a dir under the rig root counts as its top folder there); only their ancestors may be stat'ed, never listed."""
     root = os.path.realpath(rig_root)
@@ -116,7 +126,7 @@ def blind_read(run_dirs, rig_root, uid=None):
     own = sorted({top(os.path.realpath(d)) for d in run_dirs})
     ut = os.path.realpath(subprocess.check_output(["/usr/bin/getconf", "DARWIN_USER_TEMP_DIR"], text=True).strip())
     return {"root": root, "shared": os.path.dirname(root), "own": own, "user_temp": ut, "tasks": "/private/tmp/claude-%d" % (os.getuid() if uid is None else uid),  # allow-silence: claude's per-uid task dir, named for a read rule; nothing is written
-            "root_slug": case_slug(root)}
+            "root_slug": case_slug(root), "plugin_roots": [REPO] + [p for p in (os.path.realpath(q) for q in plugin_roots) if p != REPO]}
 
 
 def _stat_only(paths):
@@ -167,6 +177,8 @@ def profile(allow_write, cwd, proxy_port, protect=(), real_home_dir=None, decoy=
               "(allow file-read-metadata %s)" % " ".join("(literal %s)" % _q(p) for p in _stat_only(blind["own"] + [blind["root"] + "/x", blind["tasks"] + "/x", blind["user_temp"] + "/x"])),
               '(allow file-read* %s (literal %s) (regex #"%s") (regex #"^/private/tmp/sh-thd-[0-9]+$"))' % (  # allow-silence: the here-doc shape, as in the write allow above
                   " ".join("(subpath %s)" % _q(p) for p in blind["own"]), _q(os.path.join(blind["user_temp"], "xcrun_db")), CWD_FILE_REGEX)]   # xcrun_db: /usr/bin/git's cache; refused, every git call prints a cache error it never printed before
+        w += ['(deny file-read* %s (with message "%s"))' % (" ".join("(subpath %s)" % _q(os.path.join(r, e)) for r in blind["plugin_roots"] for e in EXAM_PATHS), TAG),   # AFTER the own-dirs allow: the plugin is one of them
+              "(allow file-read* %s)" % " ".join("(literal %s)" % _q(os.path.join(HERE, n)) for n in SESSION_KEEP), "(allow file-read-metadata (literal %s))" % _q(HERE)]
     w += ["", "(deny file-read*"]
     for s in CRED_SUBPATHS:
         w.append("  (subpath %s)" % _q(os.path.join(rh, s)))
@@ -342,7 +354,8 @@ def canary_spec(run, port, write_denied, write_allowed, notes_roots, nonce, real
         for d in made:
             os.makedirs(d)
         rb = {"remove": made, "denied": made + [blind["root"], blind["shared"], blind["tasks"], "/private/tmp", blind["user_temp"]] + [p for p in SYSTEM_LOGS if os.path.isdir(p)],  # allow-silence: read probes only; the canary writes nothing here
-              "allowed": blind["own"]}
+              "allowed": blind["own"], "exam_keep": [os.path.join(HERE, n) for n in SESSION_KEEP],
+              "exam_denied": [p for p in (os.path.join(r, e) for r in blind["plugin_roots"] for e in EXAM_PROBES) if os.path.exists(p)]}
     return {"nonce": nonce, "write_denied": list(write_denied), "write_allowed": list(write_allowed), "hook_standin": standin, "home_read": hr, "rig_blind": rb,
             "cwd_file": cwd_file_spec(run, nonce),
             "direct_hosts": [["1.1.1.1", 443], ["www.googleapis.com", 443], ["github.com", 443]],
@@ -384,7 +397,8 @@ def judge(lines, spec, before, after):
             probs.append("C10 MISSING: no re-allowed control path (a deny of the whole home with nothing re-allowed is unproven)")
     rb = spec.get("rig_blind")
     if rb:
-        need += ["C14.denied.%d" % i for i in range(len(rb["denied"]))] + ["C14.own.%d" % i for i in range(len(rb["allowed"]))]
+        need += ["C14.denied.%d" % i for i in range(len(rb["denied"]))] + ["C14.own.%d" % i for i in range(len(rb["allowed"]))] \
+            + ["C15.denied.%d" % i for i in range(len(rb["exam_denied"]))] + ["C15.keep.%d" % i for i in range(len(rb["exam_keep"]))]
     for i in need:
         if i not in got:
             probs.append("%s MISSING: the canary never reported it (crashed or not sandboxed as expected)" % i)
@@ -483,7 +497,7 @@ class Sandbox:
         read_deny: extra read-denied paths (student setup); the canary proves each one is refused (C8).
         home_read: student_home_read() (student setup): the real home read-denied with exact re-allows; the canary proves it (C10)."""
         import rig_config_isolation as ci
-        blind = blind_read(list(allow_write) + self.protect + [self.workdir], ci.RIG_ROOT)   # workdir: this run's profile, settings and PATH shim
+        blind = blind_read(list(allow_write) + self.protect + [self.workdir], ci.RIG_ROOT, plugin_roots=[p for p in self.protect if os.path.isdir(os.path.join(p, "system", "tools", "rig"))])   # workdir: this run's profile, settings and PATH shim
         prof = os.path.join(self.workdir, name + ".sb")
         protect = self.protect + [settings_path, prof]
         run = os.path.join(self.workdir, "canary-" + name)

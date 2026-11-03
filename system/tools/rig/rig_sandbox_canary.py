@@ -231,6 +231,15 @@ def main(spec_path):
         for i, p in enumerate(rb["allowed"]):
             ok, det = must_eperm(lambda p=p: os.listdir(p))
             out("C14.own.%d" % i, "read of this run's own folder ALLOWED: " + p, det == "ALLOWED", det)
+        for i, p in enumerate(rb["exam_denied"]):   # a real open for a file: listdir on one is ENOTDIR before the sandbox is asked. isdir() is False on a stat-denied path, and that open is EPERM too
+            ok, det = must_eperm((lambda p=p: os.listdir(p)) if os.path.isdir(p) else (lambda p=p: open(p, "rb").read(1)))
+            out("C15.denied.%d" % i, "read of exam material (case file, scorer, test) DENIED: " + p, ok, det)
+        for i, p in enumerate(rb["exam_keep"]):
+            try:
+                open(p, "rb").read(1)
+                out("C15.keep.%d" % i, "rig file a session runs still readable (control): " + p, True)
+            except OSError as x:
+                out("C15.keep.%d" % i, "rig file a session runs still readable (control): " + p, False, os.strerror(x.errno))
     if s.get("cwd_file"):
         cwd_file_checks(s["cwd_file"], os.getcwd())
     tmpdir_check(s.get("write_allowed", []))
