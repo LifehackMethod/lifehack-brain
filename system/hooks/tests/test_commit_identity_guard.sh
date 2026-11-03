@@ -226,6 +226,37 @@ runsw "[on]  brain root unresolvable, no user.email -> DENY (fail closed)" 2 "gi
 runsw "[on]  push path unaffected (no user.email)"  0 "git -C $PLAIN_REPO_NOEMAIL push origin main" "$EMPTY_BRAIN" "$REPO_ROOT" on
 runsw "[off] push path unaffected (no user.email)"  0 "git -C $PLAIN_REPO_NOEMAIL push origin main" "$EMPTY_BRAIN" "$REPO_ROOT" off
 
+echo "── 2026-11-02: commit_identity_no_list (a plugin-only student: git email set, no ship identity file -> an ordinary commit is allowed) ──"
+# A real student's notes, made by the real bootstrap.py: it never creates config/ship-identity.md.
+STUDENT_HOME="$SANDBOX/student-home"; STUDENT_NOTES="$STUDENT_HOME/notes"; mkdir -p "$STUDENT_NOTES"
+env -i HOME="$STUDENT_HOME" PATH="$PATH" python3 "$REPO_ROOT/system/tools/bootstrap.py" --root "$STUDENT_NOTES" >/dev/null 2>&1
+[ ! -e "$STUDENT_NOTES/config/ship-identity.md" ] && [ -f "$STUDENT_NOTES/canon.md" ] && ok || bad "bootstrap fixture" "bootstrap.py did not leave the student shape"
+STUDENT_REPO="$SANDBOX/student-repo"; git_repo "$STUDENT_REPO" "student@example.com"
+NOLIST_ZERO="$SANDBOX/zero-at-brain"; mkdir -p "$NOLIST_ZERO/config"; printf '# no addresses here\n' > "$NOLIST_ZERO/config/ship-identity.md"
+NOLIST_DIR="$SANDBOX/dir-brain"; mkdir -p "$NOLIST_DIR/config/ship-identity.md"
+# runnl <label> <rc> <command> <brain> <plugin_root> <switch on|off> <text the message must carry> -> NLOUT
+runnl() {
+  local label="$1" exp="$2" cmd="$3" brain="$4" plugin_root="$5" sw="$6" must="$7" got
+  NLOUT=$(python3 -c "
+import json,sys
+print(json.dumps({'tool_name':'Bash','tool_input':{'command':sys.argv[1]}}))" "$cmd" 2>/dev/null \
+    | env -i HOME="$SANDBOX" PATH="$PATH" LIFEHACK_ROOT="$brain" CLAUDE_PLUGIN_ROOT="$plugin_root" ROUNDB_COMMIT_IDENTITY_NO_LIST="$sw" \
+        bash "$plugin_root/system/hooks/guard_commit_identity.sh" 2>&1 >/dev/null)
+  got=$?
+  if [ "$got" != "$exp" ]; then bad "$label" "expected exit $exp, got $got — $NLOUT"
+  else case "$NLOUT" in *"$must"*) ok ;; *) bad "$label" "message lacks '$must': $NLOUT" ;; esac; fi
+}
+runnl "[on]  student, email set: commit ALLOWED" 0 "git -C $STUDENT_REPO commit -m x" "$STUDENT_NOTES" "$REPO_ROOT" on "commit allowed"
+case "$NLOUT" in *"$STUDENT_NOTES/config/ship-identity.md"*) ok ;; *) bad "[on] note" "does not name the file: $NLOUT" ;; esac
+case "$NLOUT" in *"the /ship lane"*) ok ;; *) bad "[on] note" "does not name the one route that needs the file: $NLOUT" ;; esac
+case "$NLOUT" in *[Rr]etry*) bad "[on] note" "says retry: $NLOUT" ;; *) ok ;; esac
+runnl "[on]  student, email set: cherry-pick ALLOWED"  0 "git -C $STUDENT_REPO cherry-pick abc" "$STUDENT_NOTES" "$REPO_ROOT" on "commit allowed"
+runnl "[off] student, email set: DENY (the old message)" 2 "git -C $STUDENT_REPO commit -m x" "$STUDENT_NOTES" "$REPO_ROOT" off "does not exist"
+runnl "[on]  list present, wrong email: still DENY"    2 "git -C $PLAIN_REPO_BADID commit -m x" "$BRAIN" "$REPO_ROOT" on "not in the allow-list"
+runnl "[on]  list with zero addresses: still DENY"     2 "git -C $STUDENT_REPO commit -m x" "$NOLIST_ZERO" "$REPO_ROOT" on "zero '@'"
+runnl "[on]  a folder where the list belongs: still DENY" 2 "git -C $STUDENT_REPO commit -m x" "$NOLIST_DIR" "$REPO_ROOT" on "does not exist"
+runnl "[on]  notes folder unresolvable: still DENY"    2 "git -C $STUDENT_REPO commit -m x" "$SANDBOX/no-such-notes" "$NO_BRAIN_PLUGIN" on ""
+
 echo
 if [ "$fail" = 0 ]; then echo "RESULT: $pass passed, 0 failed."; echo "COMMIT IDENTITY GUARD GREEN"; exit 0
 else echo "RESULT: $pass passed, $fail failed."; exit 1; fi

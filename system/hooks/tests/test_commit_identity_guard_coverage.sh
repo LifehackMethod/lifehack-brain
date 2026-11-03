@@ -150,6 +150,7 @@ D5="$(mkcmd git -C "$TARGET_NOEMAIL" commit -m x)"
 deny "no user.email configured at all"       "$D5" "no git config user.email set"
 
 rm -f "$BRAIN/config/ship-identity.md"
+export ROUNDB_COMMIT_IDENTITY_NO_LIST=off   # the old fail-closed deny, pinned; the switch-on route is in test_commit_identity_guard.sh
 D6="$(mkcmd git -C "$TARGET_BAD" commit -m x)"
 deny "identity file itself missing"          "$D6" "does not exist"
 

@@ -61,7 +61,10 @@ trap 'lhb_journal_fire "$?" "guard_commit_identity.sh" "PreToolUse" "Bash" 2>/de
 #      root unresolved, ship-identity.md missing/unreadable, zero "@" lines found in
 #      it, `git config user.email` empty/unreadable, or the hook payload itself not
 #      readable JSON. An unguarded commit is the failure this hook exists to prevent.
-# UPDATED: 2026-09-16
+#      Two switched exceptions, both for a notes folder that resolves and holds NO ship-identity.md: an empty
+#      email (commit_identity_optional) and a set email (commit_identity_no_list, 2026-11-02). There is no list
+#      to compare with; the public-push scan still stops on the missing file.
+# UPDATED: 2026-11-02
 # RULE: system/hook-contract.md (mechanics)
 # ─────────────────────────────────────────────────────────────────────────────
 # guard_commit_identity.sh — PreToolUse hook (matcher: Bash)
@@ -289,6 +292,14 @@ case "$VERDICT" in
 
     _identity_file="$_brain/config/ship-identity.md"
     if [ ! -f "$_identity_file" ]; then
+      # 2026-11-02 (commit_identity_no_list): commit_identity_optional only covered an EMPTY email, so a plugin-only student
+      # (bootstrap.py never makes this file; docs/data-layout.md calls it maintainer-only) with a normal email was blocked on every
+      # ordinary commit, with an instruction to create a file they do not need. No list = nothing to check against.
+      # A folder at that path stays a deny; so does a present file, an empty list and an unresolved notes folder.
+      if [ ! -e "$_identity_file" ] && roundb_on commit_identity_no_list; then
+        printf '%s\n' "commit allowed: $_user_email was not checked, because $_identity_file does not exist. Only the /ship lane needs that file; ordinary commits do not." >&2
+        exit 0
+      fi
       _deny "🛑 COMMIT IDENTITY (blocked): $_identity_file does not exist. WHY: no identity file means no allow-list — an unguarded commit is the failure this hook exists to prevent. REDIRECT: create it (INSTALL.md / the shipping lane already documents the format: one term per line, '#' comments) with at least one email address line, then retry. FAIL_POSTURE: closed."
     fi
 
