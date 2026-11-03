@@ -26,6 +26,10 @@ PROVEN, NOT ASSUMED: preflight() runs rig_sandbox_canary.py through the SAME wra
      refuses the run unless every check passes; scheduler registrations (crontab/at/launchctl) and escape sentinels are judged OUTSIDE.
 KNOWN, ACCEPTED LIMIT (coordinator 2026-11-02): the actor can read its own CLAUDE_CODE_OAUTH_TOKEN from its environment. The worst case is
      spend on the owner's account through api.anthropic.com - the only host the proxy opens - not data loss.
+KNOWN, ACCEPTED LIMIT (coordinator 2026-11-02, record rig-honest-exit): an actor can overwrite or remove another live session's cwd file, because the name
+     (claude-<4 hex>-cwd) cannot be tied to a session. See CWD_FILE_RULE for exactly what it can and cannot do at those names.
+KNOWN, ACCEPTED LIMIT (coordinator 2026-11-02, record rig-honest-exit): a literal /tmp/x fails in the rig where a real machine allows it, so a report must say  # allow-silence: names the path shape this limit is about; this code writes nothing there
+     per session where that shaped a result.
 """
 import json, os, re, secrets, shutil, socket, subprocess, sys, tempfile, time
 
