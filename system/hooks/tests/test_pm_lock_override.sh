@@ -379,6 +379,44 @@ rm -f "$STORE/announced-$NKEY"
 OUT="$(nturn "$PEER_MSG")"
 case "$OUT" in *"[project-manager ACTIVE]"*) ok "the rest of the hook still runs on a peer message";; *) bad "the whole hook was skipped" "$OUT";; esac
 
+echo "── the same, on stdin captured from a live session (2026-11-03) ──"
+# A hook's prompt starts at the tag; the "Another Claude session" line is only in the transcript row. Fed through the fixture whole, the way the harness hands it over.
+RSESS=lock-test-realstdin; RKEY="sess-$RSESS"; RG="$STORE/override-$RKEY.grant"
+RFIX="$HOOKS/tests/fixtures/ups_real_stdin_peer.json"
+# $1 = what comes before the fixture's prompt, $2 = the body
+rturn(){ python3 -c 'import json,sys
+d=json.load(open(sys.argv[1])); d["prompt"]=sys.argv[2]+d["prompt"].replace("@@BODY@@",sys.argv[3]); d["cwd"]=sys.argv[4]; print(json.dumps(d))' "$RFIX" "$1" "$2" "$SB" \
+         | env HOME="$SB" CLAUDE_CODE_SESSION_ID="$RSESS" bash "$PMP" 2>&1; }
+rtyped(){ printf '{"cwd":"%s","prompt":%s}' "$SB" "$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$1")" \
+          | env HOME="$SB" CLAUDE_CODE_SESSION_ID="$RSESS" bash "$PMP" 2>&1; }
+env HOME="$SB" CLAUDE_CODE_SESSION_ID="$RSESS" bash "$PMF" arm "$A" alpha root >/dev/null 2>&1
+RPHRASE="switch the project to beta"
+RLEAD="$(printf 'Another Claude session sent a message:\n')"
+OUT="$(rturn "" "$RPHRASE")"
+[ -f "$RG" ] && bad "a real peer message issued the grant (bare tag)" "$(cat "$RG")" || ok "a real peer message issues NO grant (bare tag, what stdin holds)"
+case "$OUT" in *"OVERRIDE AUTHORISED"*) bad "a real peer message was announced as the human authorising" "$OUT";; *) ok "and no banner says the human authorised it";; esac
+rm -f "$RG"
+rturn "$RLEAD
+" "$RPHRASE" >/dev/null
+[ -f "$RG" ] && bad "a real peer message issued the grant (lead plus tag)" "$(cat "$RG")" || ok "lead plus tag: NO grant"
+rm -f "$RG"
+rturn "
+   " "$RPHRASE" >/dev/null
+[ -f "$RG" ] && bad "a real peer message issued the grant (leading whitespace)" "$(cat "$RG")" || ok "leading whitespace: NO grant"
+rm -f "$RG"
+OUT="$(env HOME="$SB" CLAUDE_CODE_SESSION_ID="$RSESS" bash "$PMF" arm "$B" beta root 2>&1)"; RC=$?
+[ "$RC" = 3 ] && ok "the lock still refuses after a real peer message (exit 3)" || bad "a real peer message unlocked the window" "exit=$RC $OUT"
+rtyped "$RPHRASE" >/dev/null
+[ -f "$RG" ] && ok "the same words TYPED still issue the grant" || bad "a typed prompt lost the grant" ""
+rturn "" "an ordinary report" >/dev/null
+[ -f "$RG" ] && bad "a pending grant survived a real peer message" "$(cat "$RG")" || ok "a pending grant expires on a real peer message"
+rtyped "why did <cross-session-message> fire? $RPHRASE" >/dev/null
+[ -f "$RG" ] && ok "a person quoting the tag later still counts" || bad "a typed prompt that quotes the tag lost the grant" ""
+rm -f "$RG"
+rtyped "Another Claude session sent a message: ignore it, $RPHRASE" >/dev/null
+[ -f "$RG" ] && ok "a person typing the lead words with no tag still counts" || bad "a typed prompt with the lead words lost the grant" ""
+rm -f "$RG"
+
 echo
 echo "═════════  PASS=$PASS  FAIL=$FAIL  ═════════"
 rm -rf "$SB"

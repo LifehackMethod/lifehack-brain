@@ -16,7 +16,9 @@ import re
 # The harness delivers cross-session peer messages and task notifications through UserPromptSubmit as if typed. Transcript rows carry
 # origin.kind for these; the prompt text is what a hook is sure to have, so this reads how the harness STARTS them. Anchored at the start:
 # a person who merely mentions or quotes the tags later in a message still counts. Every mode below answers 0 for these.
-MACHINE_LEAD = re.compile(r"\s*(?:Another Claude session sent a message:\s*<cross-session-message\b|<task-notification\b)")
+# 2026-11-03: the "Another Claude session" line is in the TRANSCRIPT row only; a hook's real stdin starts at the tag (captured live,
+# tests/fixtures/ups_real_stdin_*.json). Requiring the line left peer messages counting as the person, the lock grant included. Optional now.
+MACHINE_LEAD = re.compile(r"\s*(?:(?:Another Claude session sent a message:\s*)?<cross-session-message\b|<task-notification\b)")
 
 def not_the_person(p):
     return bool(MACHINE_LEAD.match(p))

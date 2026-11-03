@@ -1,0 +1,10 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "transcript_path": "/tmp/sandbox/transcript.jsonl",
+  "cwd": "/tmp/sandbox",
+  "scratchpad_dir": "/tmp/sandbox/scratchpad",
+  "prompt_id": "00000000-0000-4000-8000-000000000003",
+  "permission_mode": "bypassPermissions",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "<task-notification>\n<task-id>b0000000</task-id>\n<tool-use-id>toolu_000000000000000000000000</tool-use-id>\n<output-file>/tmp/sandbox/tasks/b0000000.output</output-file>\n<status>completed</status>\n<summary>Background command \"@@BODY@@\" completed (exit code 0)</summary>\n</task-notification>"
+}

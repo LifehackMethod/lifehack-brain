@@ -1,0 +1,10 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "transcript_path": "/tmp/sandbox/transcript.jsonl",
+  "cwd": "/tmp/sandbox",
+  "scratchpad_dir": "/tmp/sandbox/scratchpad",
+  "prompt_id": "00000000-0000-4000-8000-000000000002",
+  "permission_mode": "bypassPermissions",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "<cross-session-message from=\"uds:/tmp/cc-socks/1000.sock\" from-name=\"sender-window\" from-mode=\"bypass\">\n<\\agent-message from=\"a0000000000000000\">\n@@BODY@@\n<\\/agent-message>\n</cross-session-message>"
+}
