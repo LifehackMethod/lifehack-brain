@@ -11,6 +11,8 @@ DRIVE="$HOOKS/guard_drive_destructive.sh"; PUSH="$HOOKS/guard_git_push_signpost.
 for h in "$DRIVE" "$PUSH"; do [ -f "$h" ] || { echo "CANNOT RUN: $h"; exit 1; }; done
 S="$(mktemp -d "${TMPDIR:-/tmp}/fcg.XXXXXX")"; trap 'rm -rf "$S"' EXIT
 P=0; F=0; ERRF="$S/err"; OUTF="$S/out"
+# These cases prove today's ask. Each street sign that sits on top of it has its own test (test_fc_signs.py).
+export ROUNDB_FC_SIGN_DRIVE=off ROUNDB_FC_SIGN_CANON=off ROUNDB_FC_SIGN_SOPS=off
 
 # stub gws: answers `drive files get` from the file id's name
 mkdir -p "$S/bin"

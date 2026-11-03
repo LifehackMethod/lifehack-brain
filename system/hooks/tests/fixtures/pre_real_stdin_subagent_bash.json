@@ -1,0 +1,19 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "transcript_path": "/tmp/sandbox/transcript.jsonl",
+  "cwd": "/tmp/sandbox",
+  "prompt_id": "00000000-0000-4000-8000-000000000002",
+  "permission_mode": "bypassPermissions",
+  "agent_id": "a0000000000000000",
+  "agent_type": "general-purpose",
+  "effort": {
+    "level": "medium"
+  },
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "@@command@@",
+    "description": "@@description@@"
+  },
+  "tool_use_id": "toolu_00000000000000000000000000"
+}

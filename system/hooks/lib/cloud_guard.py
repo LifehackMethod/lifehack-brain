@@ -32,6 +32,7 @@ LIMITS (static text only; a speed bump, not a boundary -- the real boundary is c
   later; an argv built entirely at run time with no literal binary name.
 Fail posture: any internal error prints nothing (allow) plus one stderr line, because it sits in front of every Bash call.
 """
+import io
 import json
 import os
 import re
@@ -42,6 +43,7 @@ sys.path.insert(0, HERE)
 import gws_guard  # noqa: E402
 
 OUT = []
+REASONS = []
 CLIS = {"gcloud", "gsutil", "rclone", "aws", "curl", "wget"}
 GWS_SERVICES = {"drive", "gmail", "calendar", "sheets"}
 RCLONE_VERBS = {"delete", "deletefile", "purge", "rmdir", "rmdirs", "cleanup", "dedupe", "move", "moveto", "sync"}
@@ -334,6 +336,7 @@ def main_inner():
     if not cmd:
         return
     reasons = scan(cmd)
+    REASONS.extend(reasons)
     if reasons:
         OUT.append("ASK FIRST (cloud guard): this runs %s (%s). WHY: a cloud delete, purge, sync or sharing change "
                    "acts on the person's real files with no local copy, and often no undo; the moment it runs is never "
@@ -343,12 +346,26 @@ def main_inner():
 
 
 def main():
+    raw = ""
     try:
+        raw = sys.stdin.read()
+        sys.stdin = io.StringIO(raw)
         main_inner()
     except BaseException as e:
         sys.stderr.write("guard_cloud_destructive: internal error (%s: %s); allowing\n" % (type(e).__name__, e))
         return 0
     if OUT:
+        try:   # street sign (plan fix 23(d), switch fc_sign_drive): the first attempt on this command's targets is refused with the route; every later one gets the ask
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            import fc_sign
+            what = "This runs " + "; ".join(REASONS[:4])
+            sign = fc_sign.first([("drive", " ".join(sorted(REASONS)), fc_sign.drive(what))], json.loads(raw))
+        except Exception as e:
+            sys.stderr.write("guard_cloud_destructive: sign skipped (%s)\n" % e)
+            sign = None
+        if sign:
+            sys.stderr.write(sign + "\n")
+            return 2
         s = json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "ask",
                                                "permissionDecisionReason": " | ".join(dict.fromkeys(OUT))[:1800]}})
         print(s)

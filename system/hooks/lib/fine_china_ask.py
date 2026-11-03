@@ -43,12 +43,15 @@ exit 0); never blocks. Each piece has its own switch in roundB.conf (all OFF = p
   fc_write_overwrite_ask (D-F12/F13) a Write-tool full overwrite of an EXISTING data file or database (same fc_file_kind test); the ask carries a
                         short diff. Edit (a change of some lines) never asks; an identical rewrite never asks.
 These have NO off switch of the user's kind: placement.conf is never read here.
+STREET SIGNS (2026-11-03, plan fix 23(d)): with a group's fc_sign_* switch on, the first attempt on a target in a session is refused with that
+group's sign (lib/fc_sign.py) in place of the ask; every later attempt gets the ask. Edit of a person's SOP or a CLAUDE.md never carries a sign.
 Fail posture: any internal error prints nothing (allow).
 """
 import fnmatch, glob, json, os, re, shlex, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import fc_sign
 HOME = os.path.expanduser("~")
 DB_EXT = (".db", ".sqlite", ".sqlite3", ".db3", ".duckdb", ".mdb", ".accdb", ".sdb")
 THROWAWAY = {"node_modules", "__pycache__", ".venv", "venv", "env", "dist", "build", ".cache", ".pytest_cache", ".next", ".tox",
@@ -57,6 +60,8 @@ SQL_TOOLS = {"sqlite3", "psql", "mysql", "mariadb", "dropdb", "duckdb", "sqlciph
 SQL_RX = re.compile(r"\bDROP\s+(TABLE|DATABASE|SCHEMA)\b|\bTRUNCATE\s+(TABLE\s+)?\w|\bDELETE\s+FROM\s+[\w\.\"`\[\]]+\s*(;|\"|'|\)|$)", re.I)
 OUT = []
 ADV = []
+SIGNS = []
+PAYLOAD = {}
 CLAUDEMD_MAX_LINES = 200
 
 
@@ -135,8 +140,10 @@ def throwaway_dir(d):
     return gitignored(d)
 
 
-def ask(msg):
+def ask(msg, sign=None):
     OUT.append(msg)
+    if sign:
+        SIGNS.append(sign)
 
 
 def split_segments(cmd, depth=0):
@@ -666,7 +673,7 @@ def check_py_files(py_bodies, scwd, code):
             t = resolve(p, scwd or "/")
             k = fc_file_kind(t, code)
             if k and not blocked_elsewhere(t, op, code):
-                ask(py_file_msg(t, k, op))
+                ask(py_file_msg(t, k, op), fc_sign.kind_sign(t, k, op in ("over", "over-dst")))
 
 
 def write_overwrite_msg(t, kind, diff):
@@ -709,7 +716,7 @@ def check_bash(cmd, cwd, code):
         if conf_write_in_bash(cmd, cwd):
             ask("ASK FIRST: this command changes ~/.config/lifehack/placement.conf or the plugin's roundB.conf, the files that switch Lifehack's checks and guards off. "
                 "Only the person decides that. WAY-THROUGH: press Yes only if the person asked for exactly this change; otherwise stop and tell them which line "
-                "they can add themselves. RULE: switch fc_placement_conf_ask in system/hooks/roundB.conf.")
+                "they can add themselves. RULE: switch fc_placement_conf_ask in system/hooks/roundB.conf.", ("conf", "conf", fc_sign.conf()))
     for w, scwd, py_bodies in walk(cmd, cwd):   # D-F04: each command is judged in the cwd its own cd chain left it in
         v = os.path.basename(w[0])
         args = [a for a in w[1:]]
@@ -721,16 +728,16 @@ def check_bash(cmd, cwd, code):
                     if not os.path.exists(t) and not os.path.islink(t):
                         continue
                     if sw_db and is_db(t) and os.path.isfile(t) and not tmpish(t) and not any(p in THROWAWAY for p in t.split("/")):
-                        ask(db_msg(t))
+                        ask(db_msg(t), fc_sign.kind_sign(t, "db", False))
                     elif sw_sop and is_user_sop(t, code) and os.path.isfile(t):
-                        ask(sop_msg(t, "deletes"))
+                        ask(sop_msg(t, "deletes"), fc_sign.kind_sign(t, "sop", False))
                     elif sw_sdel and v != "rmdir" and shell_fc_kind(t, code):
-                        ask(shell_file_msg(t, shell_fc_kind(t, code), "deletes"))
+                        ask(shell_file_msg(t, shell_fc_kind(t, code), "deletes"), fc_sign.kind_sign(t, shell_fc_kind(t, code), False))
                     elif v != "rmdir" and claudemd_delete_verdict(t, "deletes", code):   # 2026-11-02: fc_claudemd_ask family, parity with python
-                        ask(claudemd_delete_verdict(t, "deletes", code))
+                        ask(claudemd_delete_verdict(t, "deletes", code), claudemd_sign(t, code))
                     elif sw_dir and ((v == "rm" and recursive) or v == "rmdir") and not (os.path.islink(raw) and not a.endswith("/")) \
                             and folder_at_risk(t):
-                        ask(dir_msg(t) + (" (via rmdir)" if v == "rmdir" else ""))
+                        ask(dir_msg(t) + (" (via rmdir)" if v == "rmdir" else ""), ("folder", t, fc_sign.folder(t)))
         elif v == "find" and sw_dir and ("-delete" in args or any(x in ("-exec", "-execdir", "-ok", "-okdir") and k + 1 < len(args)
                                                                  and os.path.basename(args[k + 1]) in ("rm", "rmdir") for k, x in enumerate(args))):
             roots = []
@@ -741,21 +748,22 @@ def check_bash(cmd, cwd, code):
             for a in roots or ["."]:
                 for t, _raw in _plain(a, scwd):
                     if folder_at_risk(t):
-                        ask(dir_msg(t) + " (via find -delete / -exec rm)")
+                        ask(dir_msg(t) + " (via find -delete / -exec rm)", ("folder", t, fc_sign.folder(t)))
         elif v in ("mv",):
             src = [a for a in args if not a.startswith("-")][:-1]
             for s in src:
                 for t in expand(s, scwd or cwd):
                     if sw_sop and is_user_sop(t, code) and os.path.isfile(t):
-                        ask(sop_msg(t, "moves away"))
+                        ask(sop_msg(t, "moves away"), fc_sign.kind_sign(t, "sop", False))
                     elif sw_sdel and shell_fc_kind(t, code):   # any mv of the file counts, a same-folder rename too (as the SOP mv and python os.rename do)
-                        ask(shell_file_msg(t, shell_fc_kind(t, code), "moves away"))
+                        ask(shell_file_msg(t, shell_fc_kind(t, code), "moves away"), fc_sign.kind_sign(t, shell_fc_kind(t, code), False))
                     elif claudemd_delete_verdict(t, "moves away", code):
-                        ask(claudemd_delete_verdict(t, "moves away", code))
+                        ask(claudemd_delete_verdict(t, "moves away", code), claudemd_sign(t, code))
         elif v in SQL_TOOLS and sw_db and SQL_RX.search(" ".join(w)):
             ask("ASK FIRST: this command drops or empties data in a local database (%s). A database is fine china: what it held may not come back. "
                 "WAY-THROUGH: press Yes only if the person asked for exactly this and a copy exists; otherwise stop and tell them what you wanted to delete. "
-                "RULE: switch fc_db_delete_ask in system/hooks/roundB.conf." % SQL_RX.search(" ".join(w)).group(0).strip())
+                "RULE: switch fc_db_delete_ask in system/hooks/roundB.conf." % SQL_RX.search(" ".join(w)).group(0).strip(),
+                ("db", "sql:" + SQL_RX.search(" ".join(w)).group(0).strip().lower(), fc_sign.db_sql(SQL_RX.search(" ".join(w)).group(0).strip())))
         if py_bodies:   # 2026-11-02: python file deletes / rewrites (fc_python_delete_ask, fc_python_rewrite_ask)
             check_py_files(py_bodies, scwd, code)
         if sw_dir and py_bodies:
@@ -770,7 +778,7 @@ def check_bash(cmd, cwd, code):
                         continue
                     t = resolve(p, scwd or "/")
                     if folder_at_risk(t):
-                        ask(dir_msg(t) + " (via python %s)" % kind)
+                        ask(dir_msg(t) + " (via python %s)" % kind, ("folder", t, fc_sign.folder(t)))
     # redirect-truncate / overwrite of a database or SOP, and cp/mv/sed -i onto an SOP (build_mode.bash_ops reads these)
     try:
         import build_mode
@@ -783,9 +791,9 @@ def check_bash(cmd, cwd, code):
             ow = o["verb"] in (">", "dd", "tee", "cp", "mv", "install", "rsync", "sed-inplace", "truncate-inplace") and not o.get("append")
             if ow and os.path.exists(t):
                 if sw_sop and is_user_sop(t, code) and os.path.isfile(t):
-                    ask(sop_msg(t, "overwrites"))
+                    ask(sop_msg(t, "overwrites"), fc_sign.kind_sign(t, "sop", True))
                 elif sw_db and is_db(t) and os.path.isfile(t) and not tmpish(t) and o["verb"] in (">", "truncate-inplace", "dd"):
-                    ask(db_msg(t))
+                    ask(db_msg(t), fc_sign.kind_sign(t, "db", True))
     except Exception as e:
         sys.stderr.write("guard_fine_china_ask: parse skipped (%s)\n" % e)
 
@@ -973,6 +981,13 @@ def length_advisory(t, tool, ti):
                    "Switch claudemd_len_advisory in system/hooks/roundB.conf." % (t, n_new, CLAUDEMD_MAX_LINES))
 
 
+def claudemd_sign(t, code):
+    plugin_copy = under(t, plugins_dir()) or bool(code and under(t, code) and not maintainer_self_repo(code))
+    if plugin_copy and on("fc_claudemd_plugin_copy"):
+        return ("claudemd", t, fc_sign.claudemd_plugin(t))
+    return ("claudemd", t, fc_sign.claudemd(t))
+
+
 def claudemd_bash(cmd, cwd, code):
     if not (on("fc_claudemd_ask") or on("fc_claudemd_plugin_copy")) or "claude.md" not in cmd.lower():
         return
@@ -983,7 +998,7 @@ def claudemd_bash(cmd, cwd, code):
                 continue
             m = claudemd_verdict(o.get("target", ""), "writes to", code)
             if m:
-                ask(m)
+                ask(m, claudemd_sign(o.get("target", ""), code))
     except Exception as e:
         sys.stderr.write("guard_fine_china_ask: claudemd parse skipped (%s)\n" % e)
 
@@ -1009,6 +1024,7 @@ def sop_msg(t, what):
 
 def main_inner():
     d = json.loads(sys.stdin.read())
+    PAYLOAD.update(d)
     tool, ti, cwd = d.get("tool_name", ""), d.get("tool_input") or {}, d.get("cwd") or os.getcwd()
     code = None
     try:
@@ -1024,9 +1040,9 @@ def main_inner():
         if on("fc_placement_conf_ask") and is_conf(t):
             ask("ASK FIRST: this writes ~/.config/lifehack/placement.conf or the plugin's roundB.conf, the files that switch Lifehack's checks and guards off. "
                 "Only the person decides that. WAY-THROUGH: press Yes only if the person asked for exactly this change; otherwise tell them which line they can add themselves. "
-                "RULE: switch fc_placement_conf_ask in system/hooks/roundB.conf.")
+                "RULE: switch fc_placement_conf_ask in system/hooks/roundB.conf.", ("conf", "conf", fc_sign.conf()))
         elif on("fc_user_sop_ask") and is_user_sop(t, code) and os.path.isfile(t):
-            ask(sop_msg(t, "replaces" if tool == "Write" else "edits"))
+            ask(sop_msg(t, "replaces" if tool == "Write" else "edits"), fc_sign.kind_sign(t, "sop", True) if tool == "Write" else None)   # ruling (c): Edit is upkeep
         elif tool == "Write" and on("fc_write_overwrite_ask"):   # 2026-11-02 (D-F12/F13): a Write over an existing data file / database
             k = fc_file_kind(t, code)
             if k in ("data", "db"):
@@ -1035,15 +1051,29 @@ def main_inner():
                 except OSError:
                     same = False
                 if not same:
-                    ask(write_overwrite_msg(t, k, short_diff(t, tool, ti)))
+                    ask(write_overwrite_msg(t, k, short_diff(t, tool, ti)), fc_sign.kind_sign(t, k, True))
         if is_claudemd(t):
             m = claudemd_verdict(t, "replaces" if tool == "Write" else "edits", code, short_diff(t, tool, ti) if on("fc_claudemd_ask") else "")
             if m:
-                ask(m)
+                ask(m, claudemd_sign(t, code) if tool == "Write" else None)   # ruling (c): Edit is upkeep
             length_advisory(t, tool, ti)
     elif tool == "Bash":
         check_bash(ti.get("command", ""), cwd, code)
         claudemd_bash(ti.get("command", ""), cwd, code)
+
+
+def sign_masked():
+    """A write into the plugin's hooks folder (roundB.conf) that a sibling hook will certainly deny: only one exit-2 message reaches the model, so do not spend the sign."""
+    try:
+        import build_mode
+        code = build_mode.code_root()
+        ti = PAYLOAD.get("tool_input") or {}
+        ws = [{"target": s[1]} for s in SIGNS if s and s[0] != "conf"]
+        if code and any(s and s[0] == "conf" for s in SIGNS) and "roundB.conf" in (ti.get("file_path") or ti.get("command") or ""):
+            ws.append({"target": os.path.join(code, "system", "hooks", "roundB.conf")})
+        return bool(code) and build_mode.sibling_certain_deny(PAYLOAD.get("tool_name", ""), ws, code, PAYLOAD.get("session_id") or "")
+    except Exception:
+        return False
 
 
 def main():
@@ -1052,6 +1082,14 @@ def main():
     except BaseException as e:
         sys.stderr.write("guard_fine_china_ask: internal error (%s: %s); allowing\n" % (type(e).__name__, e))
         return 0
+    try:
+        sign = fc_sign.first(SIGNS, PAYLOAD, masked=sign_masked()) if SIGNS else None
+    except Exception as e:
+        sys.stderr.write("guard_fine_china_ask: sign skipped (%s)\n" % e)
+        sign = None
+    if sign:
+        sys.stderr.write(sign + "\n")
+        return 2
     if OUT or ADV:
         h = {"hookEventName": "PreToolUse"}
         if OUT:

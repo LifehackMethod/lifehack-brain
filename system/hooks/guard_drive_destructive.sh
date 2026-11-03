@@ -60,6 +60,10 @@ V=$(printf '%s' "$INPUT" | python3 "$LIB" 2>/dev/null)
 KIND="${V%%$'\t'*}"; DETAIL="${V#*$'\t'}"
 
 ask() {   # ask <what> <why-line>: the harness asks the PERSON (reaches them even under bypass interactively; headless it is a refusal the session sees)
+  # plan fix 23(d), switch fc_sign_drive: the first attempt is refused with the route (lib/fc_sign.py); later attempts reach the ask below
+  _W="${1%.}"; _F="$(printf '%s' "${_W:0:1}" | tr '[:lower:]' '[:upper:]')"
+  printf '%s' "$INPUT" | python3 "$_lhb_dir/lib/fc_sign.py" drive "drive:$KIND:$DETAIL" "@drive:${_F}${_W:1}"
+  [ $? -eq 2 ] && exit 2
   R="ASK FIRST (Drive guard): $1 WHY: $2 WAY THROUGH: the person answers yes to the prompt that appears; never retry with a marker or another route. RULE: system/hooks/guard_drive_destructive.sh (fc_sheet_file_delete, fc_drive_bulk_delete)."
   python3 -c 'import json,os,sys; s=json.dumps({"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":sys.argv[1]}}); print(s)
 try: open(os.environ["LHB_JOURNAL_NOTE"], "w").write(s)  # fire journal records the ask (lib/journal.sh); after the print, never changes it

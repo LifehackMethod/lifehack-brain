@@ -14,10 +14,13 @@ trap 'lhb_journal_fire "$?" "guard_sheet_writes.sh" "PreToolUse" "Bash" 2>/dev/n
 #      (2) DESTRUCTIVE writes need an explicit confirmation on top. (3) STRUCTURAL edits (adding or
 #      removing tabs, columns, formatting, protection) are sent to the SOP and the skill first.
 #      Reads ALWAYS pass, so reading the guide is never blocked. Narrow appends pass once read.
-# REDIRECT: read it first —
-#      gws sheets spreadsheets values get --params '{"spreadsheetId":"<ID>","range":"_LLM_GUIDE!A:Z"}'
-#      — then retry. For a destructive op, get an in-the-moment YES from the person whose sheet it is,
-#      then retry with LIFEHACK_SHEET_CONFIRM=1 prefixed.
+# REDIRECT: read it first, alone: python3 <code>/system/tools/safe_sheets.py <ID> '_LLM_GUIDE!A:Z'
+#      (2026-11-03, plan fix 23(d), switch fc_sign_sheet_guide): the raw `values get` this used to name is refused by
+#      ingest_gate_enforce.sh, and the shared reader left no marker, so the stop had no way through. A read and a write
+#      chained in one command used to pass here because the read branch exited first; such a command now leaves no
+#      marker and is judged as a write. OFF = the old text and the old read branch.
+#      For a destructive op, get an in-the-moment YES from the person whose sheet it is. With fc_sign_drive on, the first
+#      attempt is refused with that route (lib/fc_sign.py); later attempts get the ask.
 # SIGNPOST: the rules live in system/sops/google-sheet-sop.md; the design side is the `/google-sheet`
 #      skill. Change what is gated THERE, then update this file.
 # FAIL_POSTURE: closed for a command it can read that names a sheet; open for a payload it cannot
@@ -53,8 +56,11 @@ SEP="[[:space:],'\"]+"
 MARKDIR="${SHEET_LLM_MARKDIR:-$HOME/.claude/run/sheet-llm}"
 TTL=$(( 12 * 3600 ))
 
+. "$_lhb_dir/lib/roundb.sh" 2>/dev/null && roundb_on fc_sign_sheet_guide && SW_GUIDE=1 || SW_GUIDE=0
 deny() {
   if [ "$ASK_MODE" = 1 ] && [ "$SHEET_KIND" != llm ]; then
+    printf '%s' "$INPUT" | python3 "$_lhb_dir/lib/fc_sign.py" drive "sheet:${SIGN_NAME:-sheet_unknown}:$(printf '%s' "$COMMAND" | grep -oE '[A-Za-z0-9_-]{40,}' | head -1)" "@${SIGN_NAME:-sheet_unknown}"
+    [ $? -eq 2 ] && exit 2
     ask_json "ASK FIRST (sheet guard): $1 $2 WAY THROUGH: the person answers yes to the prompt that appears; a marker typed into the command no longer counts. RULE: system/sops/google-sheet-sop.md."
     exit 0
   fi
@@ -65,16 +71,22 @@ deny() {
 }
 deny_llm() {
   SHEET_KIND=llm
+  if [ "$SW_GUIDE" = 1 ]; then   # the stop stays; only its words and its route change (a false route is a bug, coordinator ruling (e))
+    printf "STOP. This window has not read this Google Sheet's _LLM_GUIDE tab, and a write comes after that read. Instead, run this on its own and read the result before you write: python3 %s/system/tools/safe_sheets.py %s '_LLM_GUIDE!A:Z'\n" "$(cd "$_lhb_dir/../.." 2>/dev/null && pwd)" "${SHEET_ID:-<spreadsheet-id>}" >&2
+    exit 2
+  fi
   deny "a write to a Google Sheet before this window read its _LLM_GUIDE tab." \
 "WHY: every sheet this system builds carries a _LLM_GUIDE tab holding its structure, who owns which fact, and its write rules. Writing before reading it is how a working sheet gets quietly broken.
 REDIRECT: read that tab for THIS spreadsheet first — gws sheets spreadsheets values get --params '{\"spreadsheetId\":\"<ID>\",\"range\":\"_LLM_GUIDE!A:Z\"}' — then retry the write. Any read naming the instruction tab counts, and it holds for 12 hours. A reviewed scheduled writer may carry LIFEHACK_SHEET_CONFIRM=1 to bypass."
 }
 deny_destr() {
+  SIGN_NAME=sheet_destructive
   deny "a destructive Google Sheets operation — clear, delete, or mass-overwrite." \
 "WHY: it is irreversible, and the moment it happens is never the moment anyone is being careful.
 REDIRECT: back the sheet up first, show the exact range and tab to the person whose sheet it is, and on their in-the-moment yes retry with LIFEHACK_SHEET_CONFIRM=1 prefixed. Never add the marker without that yes."
 }
 deny_struct() {
+  SIGN_NAME=sheet_structural
   deny "a structural Google Sheets edit — spreadsheets batchUpdate adds or removes tabs, columns, formatting or protected ranges." \
 "WHY: changing a sheet's STRUCTURE, as opposed to appending a row, can break formulas, break the _CHECKS self-check layer, or quietly damage a sheet other things depend on.
 REDIRECT: read system/sops/google-sheet-sop.md, use the /google-sheet skill (Kickoff or Audit) for the architecture rules, back the sheet up, then retry with LIFEHACK_SHEET_CONFIRM=1. Routine value appends never need this."
@@ -108,6 +120,17 @@ except Exception:
 # form or it misses entirely. Falls back to the un-joined text if perl is unavailable (already a
 # dependency elsewhere in this repo's hooks).
 COMMAND=$(printf '%s' "$COMMAND" | perl -0pe 's/\\\n/ /g' 2>/dev/null || printf '%s' "$COMMAND")
+
+# THE SHARED READER'S GUIDE READ COUNTS (2026-11-03, fc_sign_sheet_guide): it is the sanctioned read, and it names no gws, so it never reached the marker
+# below. Only when the command runs no gws at all: a chained write must not earn its own marker.
+if [ "$SW_GUIDE" = 1 ] && printf '%s' "$COMMAND" | grep -qE "python[0-9.]*[[:space:]][^;&|]*safe_sheets\.py[[:space:]]" \
+   && ! printf '%s' "$COMMAND" | grep -qE "(^|[^A-Za-z0-9_.-])gws([^A-Za-z0-9_-]|$)|bin/gws"; then
+  if printf '%s' "$COMMAND" | grep -qiE "_LLM_GUIDE|LLM|README|instructions" 2>/dev/null; then
+    _ID=$(printf '%s' "$COMMAND" | sed -E 's/.*safe_sheets\.py//' | grep -oE '[A-Za-z0-9_-]{40,}' | head -1)   # after the script's name: a long folder name in its path is not the id
+    [ -n "$_ID" ] && { mkdir -p "$MARKDIR" 2>/dev/null; date +%s > "$MARKDIR/$_ID" 2>/dev/null; }
+  fi
+  exit 0
+fi
 
 # ⛔ THE BINARY IS MATCHED AS A TOKEN ANYWHERE, NOT AS THE WORD BESIDE THE SERVICE.
 # Measured 2026-08-14 (system/tools/firetest-binary-indirection.sh): the previous line required a
@@ -158,10 +181,21 @@ if [ $? -eq 7 ]; then
 fi
 
 SHEET_ID=$(printf '%s' "$COMMAND" | grep -oE '[A-Za-z0-9_-]{40,}' | head -1)
+if [ "$SW_GUIDE" = 1 ]; then   # the named id first: `cd <a long folder name> && gws ...` must not read the folder as the sheet
+  _NAMED=$(printf '%s' "$COMMAND" | grep -oE "spreadsheetId[\"':= ]+[A-Za-z0-9_-]{40,}" | grep -oE '[A-Za-z0-9_-]{40,}$' | head -1)
+  [ -n "$_NAMED" ] && SHEET_ID="$_NAMED"
+fi
 MARK="$MARKDIR/$SHEET_ID"
 
+# A READ AND A WRITE IN ONE COMMAND (2026-11-03, plan fix 23(d)): the read branch below exited on the read, so the write in the same command was never judged.
+HAS_WRITE=0
+if [ "$SW_GUIDE" = 1 ]; then
+  printf '%s' "$COMMAND" | python3 "$LIB" --service sheets --names-write --write-verbs update,batchupdate,append,clear,batchclear,delete
+  [ $? -eq 9 ] && HAS_WRITE=1
+fi
+
 # READ branch — matches `sheets spreadsheets values get` and its metadata siblings.
-if printf '%s' "$COMMAND" | grep -qiE "sheets${SEP}(spreadsheets${SEP})?(values${SEP})?(get|batchget|metadata)" 2>/dev/null; then
+if [ "$HAS_WRITE" = 0 ] && printf '%s' "$COMMAND" | grep -qiE "sheets${SEP}(spreadsheets${SEP})?(values${SEP})?(get|batchget|metadata)" 2>/dev/null; then
   # Record the per-sheet marker when the read names the instruction tab.
   if [ -n "$SHEET_ID" ] && printf '%s' "$COMMAND" | grep -qiE "_LLM_GUIDE|LLM|README|instructions" 2>/dev/null; then
     mkdir -p "$MARKDIR" 2>/dev/null; date +%s > "$MARK" 2>/dev/null
@@ -170,7 +204,7 @@ if printf '%s' "$COMMAND" | grep -qiE "sheets${SEP}(spreadsheets${SEP})?(values$
 fi
 
 # Creating a NEW spreadsheet has no existing guide to read and nothing to destroy.
-printf '%s' "$COMMAND" | grep -qiE "sheets${SEP}(spreadsheets${SEP})?create" 2>/dev/null && exit 0
+[ "$HAS_WRITE" = 0 ] && printf '%s' "$COMMAND" | grep -qiE "sheets${SEP}(spreadsheets${SEP})?create" 2>/dev/null && exit 0
 
 NOW=$(date +%s 2>/dev/null); fresh=0
 if [ -n "$SHEET_ID" ] && [ -f "$MARK" ]; then

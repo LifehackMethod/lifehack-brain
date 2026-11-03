@@ -190,6 +190,11 @@ _wf = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_wf)
 path_cmp = _wf.winfold(path)
 
+# The canon sign's own route (plan fix 23(d), fc_sign_canon): <stem>.proposed.md beside canon. The session loader never reads it, so it is not canon,
+# and a route the sign names must not be refused.
+if os.environ.get("CANON_PROPOSED") == "1" and path_cmp.lower().endswith(".proposed.md"):
+    print("ALLOW_NONE"); sys.exit()
+
 # IN SCOPE: anything inside a canon/ directory, and the top-level canon.md.
 # THE SECOND HALF IS NOT IN THE DONOR. It was added here because this repository has a canon file
 # that the donor's path test could not see: `<notes>/canon.md`, the root canon — the one file whose
@@ -239,7 +244,9 @@ PY
 _CANON_LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib/winpath_fold.py"
 _CANON_REPLACE=0
 { . "$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib/roundb.sh" && roundb_on fc_canon_replace && _CANON_REPLACE=1; } 2>/dev/null
-RESULT=$(printf '%s' "$INPUT" | GUARD_LIB="$_CANON_LIB" CANON_REPLACE="$_CANON_REPLACE" python3 -c "$PYCHECK")
+_CANON_PROPOSED=0
+{ roundb_on fc_sign_canon && _CANON_PROPOSED=1; } 2>/dev/null
+RESULT=$(printf '%s' "$INPUT" | GUARD_LIB="$_CANON_LIB" CANON_REPLACE="$_CANON_REPLACE" CANON_PROPOSED="$_CANON_PROPOSED" python3 -c "$PYCHECK")
 
 R="WHAT CANON IS: the few things that stay true, small enough that every session can afford to carry them. Two tests, and a line has to pass both. (1) Will this still be true in six months, with no expiry date attached? If it has a date on it, it is a record, not canon. (2) Can a completely fresh session read this line ALONE, with no other context, and act on it correctly? If it needs the conversation around it, it is not finished. Everything else goes in records/, dated — nothing is lost, it is just pulled when it is relevant instead of carried always. SOURCE: system/knowledge-altitude.md + docs/data-layout.md."
 
@@ -249,6 +256,10 @@ case "$RESULT" in
     # The harness's own permission prompt: only the person can answer it (a model cannot type past it, unlike
     # a retry token). The Write proceeds only on their yes; there is no override flag to add.
     _T="${RESULT#ASK_REPLACE|}"; _KIND="${_T%%|*}"; _APATH="${_T#*|}"
+    # plan fix 23(d): the first attempt is refused with the sign's route (lib/fc_sign.py); later attempts reach the ask below
+    if [ "$_KIND" = canon ]; then _G=canon; _S=@canon_replace; else _G=sops; _S=@sop; fi
+    printf '%s' "$INPUT" | python3 "$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib/fc_sign.py" "$_G" "$_APATH" "$_S"
+    [ $? -eq 2 ] && exit 2
     _KIND="$_KIND" _APATH="$_APATH" python3 -c "
 import json, os
 k, p = os.environ['_KIND'], os.environ['_APATH']

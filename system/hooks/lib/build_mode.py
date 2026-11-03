@@ -14,6 +14,8 @@ GENERIC_FIXED = {"__init__.py", "utils.py", "util.py", "helpers.py", "config.py"
                  "main.py", "base.py", "types.py", "setup.py", "common.sh", "lib.sh", "utils.sh"}
 HOME = os.path.expanduser("~")
 ASK_OUT = []
+PAYLOAD = {}
+DATA_SIGNS = []   # lib/fc_sign.py (plan fix 23(d)): the data sign replaces this ask on the first attempt
 CHECK_OF = {}   # deny message -> where-to-save check name (Round D A.6 repeat-stop counting)
 SKILL_DIR_RX = re.compile(r"(^|/)\.claude/skills(/|$)")
 STATE = os.path.join(HOME, ".claude", "run", "build-mode")
@@ -385,7 +387,8 @@ def protected_doc(t, code):
     if t.endswith(".md") and any(under(t, d) for d in dirs):
         return "sop"
     if "/canon/" in t or os.path.basename(t) == "canon.md":
-        return "canon"
+        import fc_sign
+        return "" if fc_sign.is_proposed(t) else "canon"   # the canon sign's own route: a draft beside canon, never loaded
     return ""
 
 
@@ -441,6 +444,9 @@ def data_file_target(t):
     import time, subprocess
     base = os.path.basename(t).lower()
     if not (base.endswith(DATA_EXT) or base == ".env" or base.startswith(".env.")):
+        return False
+    import fc_sign
+    if fc_sign.is_new_copy(t):   # the data sign's own route: refusing it would make the sign name a route that does not pass
         return False
     try:
         st = os.stat(t)
@@ -616,6 +622,7 @@ def main_inner():
     raw = sys.stdin.read()
     try:
         d = json.loads(raw)
+        PAYLOAD.update(d)
         tool = d.get("tool_name", "")
         ti = d.get("tool_input") or {}
         cwd = d.get("cwd") or os.getcwd()
@@ -708,6 +715,8 @@ def main_inner():
                 denies.append(("gate-hard", None, shell_overwrite_message(t, pk)))
             elif data_file_target(t):
                 ASK_OUT.append(data_overwrite_ask(t))
+                import fc_sign
+                DATA_SIGNS.append(fc_sign.kind_sign(t, "data", True))
         if tool == "Bash" and exists and w["verb"] in OVERWRITE_VERBS and not w.get("append") and _roundb("fc_archive_before_cut") \
                 and not os.path.basename(t).endswith(".history.md"):
             # Round C 4 (fc_archive_before_cut): a shell overwrite of an SOP/canon file removes whatever the new content lacks. A heredoc
@@ -1007,6 +1016,16 @@ def main():
     except BaseException as e:   # FAIL OPEN: any internal error allows
         warn("internal error (%s: %s); allowing" % (type(e).__name__, e))
         return 0
+    if DATA_SIGNS and rc in (0, None):
+        try:
+            import fc_sign
+            sign = fc_sign.first(DATA_SIGNS, PAYLOAD)
+        except Exception as e:
+            warn("sign skipped (%s)" % e)
+            sign = None
+        if sign:
+            sys.stderr.write(sign + "\n")
+            return 2
     if ASK_OUT and rc in (0, None):
         print(ASK_OUT[0])
         try:  # fire journal: record the real decision (ask), after the print; can never change it (lib/journal_note.py)

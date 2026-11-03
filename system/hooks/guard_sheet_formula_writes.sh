@@ -46,6 +46,8 @@ GWS="$(command -v gws 2>/dev/null)"
 
 deny() {
   if [ "$ASK_MODE" = 1 ]; then
+    printf '%s' "$INPUT" | python3 "$_lhb_dir/lib/fc_sign.py" drive "sheet:formula:$(printf '%s' "$COMMAND" | grep -oE '[A-Za-z0-9_-]{40,}' | head -1)" "@sheet_formula"   # plan fix 23(d)
+    [ $? -eq 2 ] && exit 2
     ask_json "ASK FIRST (sheet formula guard): ${1:-this write targets a FORMULA or lock cell on a Google Sheet.} WHY: the sheet computes its own maths and an owner-credential write can silently overwrite a formula. WAY THROUGH: the person answers yes to the prompt that appears; a marker typed into the command no longer counts. RULE: system/sops/google-sheet-sop.md."
     exit 0
   fi
@@ -57,6 +59,8 @@ deny() {
 }
 deny_unknown() {
   if [ "$ASK_MODE" = 1 ]; then
+    printf '%s' "$INPUT" | python3 "$_lhb_dir/lib/fc_sign.py" drive "sheet:sheet_unknown:$(printf '%s' "$COMMAND" | grep -oE '[A-Za-z0-9_-]{40,}' | head -1)" "@sheet_unknown"   # plan fix 23(d)
+    [ $? -eq 2 ] && exit 2
     ask_json "ASK FIRST (sheet formula guard): this gws command hides its operation or target behind a variable, so the guard cannot tell what it does. WAY THROUGH: the person answers yes to the prompt, or the command is rewritten with the operation and target literal."
     exit 0
   fi

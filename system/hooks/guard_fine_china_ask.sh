@@ -19,11 +19,14 @@ trap 'lhb_journal_fire "$?" "guard_fine_china_ask.sh" "PreToolUse" "Bash|Write|E
 # SIGNPOST: logic in lib/fine_china_ask.py; tests in tests/test_fine_china_ask.sh.
 # LIMITS: Bash is matched as text; a delete built from a $VARIABLE, a script run by name, or `git clean` is not seen.
 # FAIL_POSTURE: open on any internal error (stderr line), because it sits in front of every Bash command.
-# UPDATED: 2026-11-02 (python file deletes/rewrites, Write overwrite of data) · 2026-11-01 (CLAUDE.md protections) · 2026-10-31
+# UPDATED: 2026-11-03 (street signs: the first attempt on a target is refused with one route, lib/fc_sign.py, fc_sign_* switches; later attempts ask) · 2026-11-02 (python file deletes/rewrites, Write overwrite of data) · 2026-11-01 (CLAUDE.md protections) · 2026-10-31
 # ─────────────────────────────────────────────────────────────────────────────
 . "$_lhb_dir/lib/roundb.sh" 2>/dev/null || exit 0
 roundb_on fc_db_delete_ask || roundb_on fc_folder_delete_ask || roundb_on fc_user_sop_ask || roundb_on fc_placement_conf_ask || roundb_on fc_claudemd_ask || roundb_on fc_claudemd_plugin_copy || roundb_on claudemd_len_advisory || roundb_on fc_python_delete_ask || roundb_on fc_python_rewrite_ask || roundb_on fc_write_overwrite_ask || roundb_on fc_shell_delete_ask || exit 0
 IFS= read -r -d '' PAYLOAD || true
 [ -n "$PAYLOAD" ] || exit 0
-printf '%s' "$PAYLOAD" | python3 "$_lhb_dir/lib/fine_china_ask.py" || echo "guard_fine_china_ask: engine failed; allowing" >&2
+printf '%s' "$PAYLOAD" | python3 "$_lhb_dir/lib/fine_china_ask.py"
+rc=$?
+[ "$rc" -eq 2 ] && exit 2   # a street sign (lib/fc_sign.py): the first attempt on this target in this session
+[ "$rc" -eq 0 ] || echo "guard_fine_china_ask: engine failed; allowing" >&2
 exit 0

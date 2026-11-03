@@ -910,6 +910,19 @@ def live_text(cmd):
     return "\n".join(s[0] for s, inert in zip(stmts, flags) if not inert)
 
 
+def names_write(cmd, service, verbs):
+    """True when a statement this command really runs calls `service` with a write verb in its operation words. A word in a JSON value, a pipe to grep or a file name does not count."""
+    want = {v.lower() for v in verbs}
+    for toks in gws_segments(live_text(cmd), True):
+        ops = [t.strip('\'",[]').lower() for t in op_chain(toks, service)]
+        for o in ops:
+            if o.startswith("-") or o.startswith("{"):
+                break
+            if o in want:
+                return True
+    return False
+
+
 def mention_only(cmd, service):
     """True ONLY when `service` and the gws binary appear solely as words nothing runs. False = judge it."""
     for body in exec_bodies(cmd.replace('\\\n', ' '), True):
@@ -1116,11 +1129,16 @@ def main():
     # the caller carries on and judges the command as it always did.
     ap.add_argument('--mention-only', action='store_true',
                     help='exit 8 when the gws binary and --service appear only as text nothing runs, else exit 0')
+    # A query, not a gate: exit 9 means a statement in this command really writes (--write-verbs). guard_sheet_writes' read branch asks it (plan fix 23(d)).
+    ap.add_argument('--names-write', action='store_true',
+                    help='exit 9 when a statement this command runs calls --service with one of --write-verbs, else exit 0')
     a = ap.parse_args()
     if a.selftest:
         sys.exit(_selftest())
     if not a.service:
         ap.error('--service is required')
+    if a.names_write:
+        sys.exit(9 if names_write(sys.stdin.read(), a.service, [x for x in a.write_verbs.split(',') if x]) else 0)
     if a.mention_only:
         sys.exit(8 if mention_only(sys.stdin.read(), a.service) else 0)
     d = [x for x in a.destructive.split(',') if x]

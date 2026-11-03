@@ -32,7 +32,7 @@ REPO_ROOT="$(cd "$HERE/../.." && pwd)"
 TIMEOUT_SECS="${TEST_TIMEOUT_SECS:-90}"
 # 2026-11-01 pre-merge triage: files that PASS alone but run longer than the default when the machine is loaded (measured alone: rig_selftest 135s).
 # They get SLOW_TIMEOUT_SECS (env, default 300) instead of the default. Add a file here only after timing it alone.
-SLOW_RELPATHS=("system/hooks/tests/test_rig_selftest.sh" "system/hooks/tests/test_fire_journal.sh")
+SLOW_RELPATHS=("system/hooks/tests/test_rig_selftest.sh" "system/hooks/tests/test_fire_journal.sh" "system/hooks/tests/test_fc_signs.py")   # test_fc_signs measured alone 2026-11-03: 105s, load 3
 SLOW_TIMEOUT_SECS="${SLOW_TIMEOUT_SECS:-300}"
 timeout_for() { local i; for i in "${SLOW_RELPATHS[@]}"; do [ "$i" = "$1" ] && { echo "$SLOW_TIMEOUT_SECS"; return; }; done; echo "$TIMEOUT_SECS"; }
 

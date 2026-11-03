@@ -30,5 +30,8 @@ roundb_on fc_cloud_destructive_ask || exit 0
 IFS= read -r -d '' PAYLOAD || true
 [ -n "$PAYLOAD" ] || exit 0
 printf '%s' "$PAYLOAD" | grep -qiE 'gws|gcloud|gsutil|rclone|aws|curl|wget|googleapis|\.delete|emptyTrash|trashed|(files|drives|permissions|messages|threads|events)\(\)' || exit 0
-printf '%s' "$PAYLOAD" | python3 "$_lhb_dir/lib/cloud_guard.py" || echo "guard_cloud_destructive: engine failed; allowing" >&2
+printf '%s' "$PAYLOAD" | python3 "$_lhb_dir/lib/cloud_guard.py"
+rc=$?
+[ "$rc" -eq 2 ] && exit 2   # a street sign (lib/fc_sign.py, switch fc_sign_drive)
+[ "$rc" -eq 0 ] || echo "guard_cloud_destructive: engine failed; allowing" >&2
 exit 0
