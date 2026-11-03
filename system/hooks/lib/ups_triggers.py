@@ -15,7 +15,7 @@ import re
 # ---------- not the person (2026-11-02) ----------
 # The harness delivers cross-session peer messages and task notifications through UserPromptSubmit as if typed. Transcript rows carry
 # origin.kind for these; the prompt text is what a hook is sure to have, so this reads how the harness STARTS them. Anchored at the start:
-# a person who merely mentions or quotes the tags later in a message still counts.
+# a person who merely mentions or quotes the tags later in a message still counts. Every mode below answers 0 for these.
 MACHINE_LEAD = re.compile(r"\s*(?:Another Claude session sent a message:\s*<cross-session-message\b|<task-notification\b)")
 
 def not_the_person(p):
@@ -170,6 +170,6 @@ if __name__ == "__main__":
         if mode == "machine":
             print(1 if not_the_person(raw) else 0)
         else:
-            print(1 if {"save": new_save, "share": new_share}.get(mode, new_num)(raw) else 0)
+            print(1 if not not_the_person(raw) and {"save": new_save, "share": new_share}.get(mode, new_num)(raw) else 0)
     except Exception:
         print(0)

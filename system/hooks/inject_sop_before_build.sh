@@ -59,6 +59,14 @@ _REPO="$(cd "$_HOOKDIR" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null
 [ -n "$_REPO" ] || _REPO="${_HOOKDIR%/system/hooks}"
 export DEADEND_CHECK_PATH="$_REPO/system/tools/deadend_check.py"
 
+# 2026-11-02: a peer message or task notification is not the person's build request, for every row below and the share route. Live: a peer
+# message quoting "build me a google sheet" fired this in two windows. The case test spares a python start on every other prompt.
+case "$INPUT" in
+  *cross-session-message*|*task-notification*)
+    [ "$(printf '%s' "$INPUT" | python3 "$_HOOKDIR/lib/ups_triggers.py" machine --json 2>/dev/null)" = "1" ] && exit 0
+    ;;
+esac
+
 # team_share_route (roundB.conf; OFF = nothing here runs). The case test spares a python start on every prompt without the word.
 . "$_HOOKDIR/lib/roundb.sh" 2>/dev/null || roundb_on() { return 1; }
 case "$INPUT" in

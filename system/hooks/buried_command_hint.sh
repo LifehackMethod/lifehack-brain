@@ -91,6 +91,12 @@ done
 [ -n "$SKILLS_DIR" ] || exit 0
 
 INPUT="$(cat 2>/dev/null)"
+# 2026-11-02: a peer message or task notification is not the person typing a command (lib/ups_triggers.py machine).
+case "$INPUT" in
+  *cross-session-message*|*task-notification*)
+    [ "$(printf '%s' "$INPUT" | python3 "$REPO/system/hooks/lib/ups_triggers.py" machine --json 2>/dev/null)" = "1" ] && exit 0
+    ;;
+esac
 
 # Degrade-safe: any parse failure below prints nothing and this hook still exits 0 --
 # it must NEVER be the thing that breaks a turn. Runs directly (not nested inside a
