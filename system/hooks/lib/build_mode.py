@@ -512,6 +512,49 @@ def _route_sign(t, pc, desk=None):
             % (dest, tool, dest, tool, here))
 
 
+DESK_NOT = {"standing", "sitting", "sit", "stand", "help", "service", "front", "reception", "writing", "computer", "office", "corner", "hot", "new", "own", "this", "that", "one", "single", "each"}   # a desk you sit at, or no name at all
+
+
+def _desk_word(w):
+    w = w.lower()
+    return None if w in DESK_NOT else w
+
+
+def _named_desk(t, transcript, notes):
+    """placement_route_sign (exam D-B07 r3): the desk a tool belongs to, ONLY when exactly one is really named, else None (the sign then says tools/; never a guess).
+    Named by the target path (desks/<desk>/ or a <desk>-desk folder), or by the person's LATEST real prompt (lib/inline_keep.real_user_text): my/our/the <desk> desk,
+    desks/<desk>, or "<desk> desk" when that folder exists in the notes. Injected context and the model's own words do not count; "not for my X desk" does not either."""
+    found = set()
+    parts = os.path.dirname(t).split("/")
+    for i, seg in enumerate(parts):
+        m = re.fullmatch(r"([A-Za-z0-9]+)[-_]desk", seg)
+        if m and _desk_word(m.group(1)):
+            found.add(_desk_word(m.group(1)))
+        if seg == "desks" and i + 1 < len(parts) and re.fullmatch(r"[A-Za-z0-9_-]+", parts[i + 1]) and _desk_word(parts[i + 1]):
+            found.add(_desk_word(parts[i + 1]))
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import inline_keep
+        said = None
+        if transcript:
+            for line in _open(transcript):
+                try:
+                    said = inline_keep.real_user_text(json.loads(line)) or said
+                except ValueError:
+                    continue
+        for m in re.finditer(r"\b(?:(my|our|the)\s+)?([A-Za-z][A-Za-z0-9_-]*)\s+desk\b|\bdesks/([A-Za-z0-9_-]+)", said or "", re.I):
+            if inline_keep.NEG.search((said or "")[:m.start()]):
+                continue
+            w = _desk_word(m.group(2) or m.group(3))
+            if w and (m.group(1) or m.group(3) or (notes and os.path.isdir(os.path.join(notes, "desks", w)))):
+                found.add(w)
+    except Exception as e:   # degrade-safe: the sign falls back to tools/
+        warn("cannot read the prompt for a desk name (%s); skipped" % e)
+    finally:
+        sys.path.pop(0)
+    return found.pop() if len(found) == 1 else None
+
+
 def _placement_step(zone, t, route, code, notes):
     """placement_route_sign: what a placement stop tells the session to do next, per zone."""
     if zone == "outside-homes":
@@ -577,6 +620,7 @@ def main_inner():
         ti = d.get("tool_input") or {}
         cwd = d.get("cwd") or os.getcwd()
         sid = d.get("session_id") or os.environ.get("CLAUDE_CODE_SESSION_ID") or ""
+        transcript = d.get("transcript_path")
     except Exception as e:
         warn("cannot parse payload (%s); allowing" % e)
         return 0
@@ -736,7 +780,7 @@ def main_inner():
                                 pmsg += (" Keep it in this project's .claude/skills ONLY if the person said this skill is for this project; "
                                          + ("then write it there as they asked." if _roundb("placement_route_sign") else "then retry the same call and it goes through."))
                         elif _roundb("placement_route_sign"):
-                            route = _route_sign(rt, pc)
+                            route = _route_sign(rt, pc, _named_desk(rt, transcript, notes))
                 else:
                     hit = False
                 if hit and zone == "outside-homes":

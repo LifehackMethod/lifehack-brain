@@ -50,9 +50,9 @@ def env(**over):
     return e
 
 
-def fire(session, tool, tool_input, hook=GUARD, **over):
+def fire(session, tool, tool_input, hook=GUARD, transcript_path=None, **over):
     """-> (rc, stderr, stdout) of one hook on one real PreToolUse payload."""
-    p = json.dumps({"session_id": session, "cwd": WORK, "hook_event_name": "PreToolUse", "tool_name": tool, "tool_input": tool_input})
+    p = json.dumps({"session_id": session, "cwd": WORK, "hook_event_name": "PreToolUse", "tool_name": tool, "tool_input": tool_input, "transcript_path": transcript_path})
     r = subprocess.run(["bash", hook], input=p, capture_output=True, text=True, env=env(**over), cwd=WORK)
     return r.returncode, r.stderr, r.stdout
 
@@ -279,6 +279,86 @@ try:
     check(not stops and r.returncode == 0 and '"/desks/money/tools/receipts_total.py"' in own_list(), "D-B07's named route passes the chain, lands and is listed", repr(stops) + r.stderr + own_list())
     stops = chain_stops("db07routew", "Write", {"file_path": TOTAL_DEST, "content": "print(1)\n"})
     check(not stops, "D-B07's named route by the Write tool: chain clean", repr(stops))
+
+    print("-- 2c. the outside-homes sign names the desk only when the prompt or path really names one (exam D-B07 r3)")
+
+    def transcript(*entries):
+        p = os.path.join(T, "transcript-%d.jsonl" % len(os.listdir(T)))
+        with open(p, "w", encoding="utf-8") as f:
+            for role, text, extra in entries:
+                f.write(json.dumps(dict({"type": role, "message": {"role": role, "content": text}}, **extra)) + "\n")
+        return p
+
+    def said(text):
+        return transcript(("user", text, {}))
+
+    TOOLS_DEST = os.path.join(PC, "tools", "month_total.py")
+    DESK_DEST = os.path.join(PC, "desks", "money", "tools", "month_total.py")
+    PROMPT = "make a tool just for my money desk that totals the month's receipts csv"   # the exam prompt
+    R3_PATH = os.path.join(WORK, "money-desk", "month_total.py")   # D-B07.stream.jsonl line 30 (pinned6 r3), the path as sent
+    R3_CONTENT = '#!/usr/bin/env python3\n"""Total one month\'s receipts from a CSV.\n\nUsage: month_total.py RECEIPTS.csv [YYYY-MM]\n"""\nimport csv\n'
+    LOOSE = os.path.join(WORK, "receipts", "month_total.py")
+    n = [0]
+
+    def sign(path, tp=None, **over):
+        n[0] += 1
+        return fire("desk%d" % n[0], "Write", {"file_path": path, "content": R3_CONTENT}, transcript_path=tp, **over)
+
+    rc, err, _ = sign(R3_PATH, said(PROMPT))
+    check(rc == 2 and DESK_DEST in err and 'python3 "%s" "%s"' % (LIST_TOOL, DESK_DEST) in err and TOOLS_DEST not in err, "D-B07 r3's exact call: the sign names the desk's tools folder", err)
+    check(not NO_RETRY.search(err), "D-B07 r3: no retry", err)
+    rc, err, _ = fire("desk%d" % n[0], "Write", {"file_path": R3_PATH, "content": R3_CONTENT}, transcript_path=said(PROMPT))
+    check(rc == 0, "D-B07 r3: what fires is unchanged, once per session", err)
+    rc, err, _ = sign(LOOSE, said(PROMPT))
+    check(rc == 2 and DESK_DEST in err, "the prompt alone names the desk, any folder", err)
+    rc, err, _ = sign(R3_PATH)
+    check(rc == 2 and DESK_DEST in err, "the path alone names the desk, no transcript", err)
+    rc, err, _ = sign(os.path.join(WORK, "desks", "money", "month_total.py"))
+    check(rc == 2 and DESK_DEST in err, "a desks/<desk>/ path names the desk", err)
+    rc, err, _ = sign(LOOSE, said("write it for the money desk please"))
+    check(rc == 2 and DESK_DEST in err, "'the money desk' names it", err)
+    rc, err, _ = sign(LOOSE, said("totals for money desk"))
+    check(rc == 2 and DESK_DEST in err, "no article, but notes/desks/money really exists", err)
+    rc, err, _ = sign(LOOSE, said("totals for pottery desk"))
+    check(rc == 2 and TOOLS_DEST in err, "no article and no such desk folder: no guess, tools/", err)
+
+    rc, err, _ = sign(LOOSE, said("write a command-line thing that totals receipts"))
+    check(rc == 2 and TOOLS_DEST in err and "/desks/" not in err, "a no-desk tool keeps tools/", err)
+    rc, err, _ = sign(LOOSE)
+    check(rc == 2 and TOOLS_DEST in err, "no transcript at all: tools/", err)
+    rc, err, _ = sign(LOOSE, os.path.join(T, "no-such-transcript.jsonl"))
+    check(rc == 2 and TOOLS_DEST in err, "an unreadable transcript: tools/, and no crash", err)
+    for label, words in [
+        ("furniture", "a tool to track my standing desk height"),
+        ("a help desk", "total the tickets from the help desk"),
+        ("'my desk' names nothing", "a total for the receipts on my desk"),
+        ("two desks: no guess", "totals for my money desk and my travel desk"),
+        ("said it is not for the desk", "this is not for my money desk"),
+    ]:
+        rc, err, _ = sign(LOOSE, said(words))
+        check(rc == 2 and TOOLS_DEST in err and "/desks/" not in err, "tools/: " + label, err)
+    rc, err, _ = sign(LOOSE, transcript(("user", PROMPT, {}), ("assistant", "done", {}), ("user", "now a tool that totals receipts", {})))
+    check(rc == 2 and TOOLS_DEST in err, "tools/: an EARLIER prompt named the desk, the latest did not", err)
+    rc, err, _ = sign(LOOSE, transcript(("user", "<system-reminder>my money desk</system-reminder>total the receipts", {})))
+    check(rc == 2 and TOOLS_DEST in err, "tools/: injected context is not what the person said", err)
+    rc, err, _ = sign(LOOSE, transcript(("user", "total the receipts", {}), ("assistant", "for my money desk", {})))
+    check(rc == 2 and TOOLS_DEST in err, "tools/: the model's own words are not the person's", err)
+    rc, err, _ = sign(os.path.join(WORK, "help-desk", "month_total.py"))
+    check(rc == 2 and TOOLS_DEST in err, "tools/: a help-desk folder is not a desk", err)
+    rc, err, _ = sign(os.path.join(WORK, "money-desk", "SKILL.md"), said(PROMPT))
+    check(rc == 2 and "~/.claude/skills/" in err and "/desks/" not in err, "a skill keeps its own route", err)
+    rc, err, _ = sign(R3_PATH, said(PROMPT), ROUNDB_PLACEMENT_ROUTE_SIGN="off")
+    check(rc == 2 and "Retry the same call" in err and DESK_DEST not in err, "switch OFF: the old text", err)
+    rc, err, _ = sign(DESK_DEST, said(PROMPT))
+    check(rc == 0 and "Wrong home" not in err, "the named route itself is not stopped", err)
+
+    reset()
+    route = 'mkdir -p "%s" && mv "%s" "%s" && python3 "%s" "%s"' % (os.path.dirname(DESK_DEST), SRC, DESK_DEST, LIST_TOOL, DESK_DEST)
+    stops = chain_stops("deskroute", "Bash", {"command": route})
+    r = run_shell(route)
+    check(not stops and r.returncode == 0 and '"/desks/money/tools/month_total.py"' in own_list(), "the desk route passes the chain, lands and is listed", repr(stops) + r.stderr + own_list())
+    stops = chain_stops("deskroutew", "Write", {"file_path": DESK_DEST, "content": "print(1)\n"})
+    check(not stops, "the desk route by the Write tool: chain clean", repr(stops))
 
     print("-- 3. harmless work is not newly stopped")
     HARMLESS = [
