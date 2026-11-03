@@ -43,6 +43,9 @@ trap 'lhb_journal_fire "$?" "inject_sop_before_build.sh" "UserPromptSubmit" "" 2
 #      build-sop.md was retired 2026-10-31, so deadend_check.py now reads the entries in skill-building-sop.md and hook-sop.md.
 # UPDATED: 2026-11-02 (plan fix 23(c)) — the Google Sheet row fires only when the verb governs the sheet; see
 #      sheet_is_the_object below. The other rows are unchanged.
+# UPDATED: 2026-11-02 (exam D-B08/D-B09, plan fix 23(c)) -- switch team_share_route: a prompt that asks to get a skill to other people
+#      (lib/ups_triggers.py share) also prints the one route to the team Drive folder (shared/tools/team_skills.py route). Both exam
+#      prompts were silent here, so the sessions zipped the skill or asked how to share it. Inject only, never blocks.
 # FAIL_POSTURE: degrade-safe (any error -> exit 0 silently)
 # ─────────────────────────────────────────────────────────────────────────────
 set +e
@@ -55,6 +58,17 @@ _HOOKDIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
 _REPO="$(cd "$_HOOKDIR" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null)"
 [ -n "$_REPO" ] || _REPO="${_HOOKDIR%/system/hooks}"
 export DEADEND_CHECK_PATH="$_REPO/system/tools/deadend_check.py"
+
+# team_share_route (roundB.conf; OFF = nothing here runs). The case test spares a python start on every prompt without the word.
+. "$_HOOKDIR/lib/roundb.sh" 2>/dev/null || roundb_on() { return 1; }
+case "$INPUT" in
+  *[Ss][Kk][Ii][Ll][Ll]*)
+    if roundb_on team_share_route; then
+      IS_SHARE="$(printf '%s' "$INPUT" | python3 "$_HOOKDIR/lib/ups_triggers.py" share --json 2>/dev/null)"
+      [ "$IS_SHARE" = "1" ] && python3 "$_REPO/shared/tools/team_skills.py" route 2>/dev/null
+    fi
+    ;;
+esac
 
 printf '%s' "$INPUT" | python3 -c '
 import sys, json, re, os

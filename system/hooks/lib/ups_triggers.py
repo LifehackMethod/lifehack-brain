@@ -4,9 +4,11 @@
 # replay (system/tools/rig) run the SAME code.
 #   python3 ups_triggers.py save   < prompt text      -> prints 1 if the prompt asks to save, else 0
 #   python3 ups_triggers.py num    < prompt text      -> prints 1 if the typed prose has a real number/calculation
+#   python3 ups_triggers.py share  < prompt text      -> prints 1 if the prompt asks to get a skill to other people
 #   python3 ups_triggers.py machine < prompt text     -> prints 1 if the text is a peer message or task notification, not the person
 #   add --json to read the hook's stdin JSON ({"prompt": ...}) instead of raw text.
-# Used by: system/hooks/save_routing_hint.sh (save), system/hooks/inject_compute_mechanically.sh (num, arm 3 only).
+# Used by: system/hooks/save_routing_hint.sh (save), system/hooks/inject_compute_mechanically.sh (num, arm 3 only),
+#          system/hooks/inject_sop_before_build.sh (share, switch team_share_route).
 # FAIL_POSTURE: any error prints 0 (silent), exit 0. A missed hint costs a small loss; a stuck turn costs a large one.
 import re
 
@@ -102,6 +104,61 @@ def new_num(p):
             return True   # a short message is the person's own words; in a long one (pasted pages) require their voice
     return False
 
+# ---------- team-share route (exam D-B08/D-B09, plan fix 23(c)) ----------
+# Fires when the person wants a SKILL to reach OTHER PEOPLE. A false alarm costs a stray sign on an unrelated turn, so all three of
+# skill + audience + a giving word must be there, tied together by position, and these stay silent: a skill being built that shares
+# things ("a skill that shares files with my team"), human skills ("communication skills", "the skills they need"), skill as a modifier
+# ("skill matrix", "skill-building SOP"), a refusal ("don't share"), pasted pages (over SHARE_MAX_CHARS), quoted and background-report text.
+SHARE_MAX_CHARS = 1000
+AUD = r"(?:team(?:mates?)?|co-?workers?|colleagues?|staff|employees?|everyone|everybody|(?:whole|entire) (?:company|office|studio|agency|org\w*))"
+GIVE = r"(?:shar(?:e|ing)|send|give|distribute|publish|package|hand out|roll out|get)"
+SHARE_SKILL = re.compile(r"(?<![-\w])(skills?)(?![-\w])")
+HUMAN_SKILL = re.compile(r"\b(?:soft|people|communication|leadership|technical|coding|interview|language|life|writing|presentation|management|negotiation|social|sales|team)\W*$")
+SKILL_MODIFIER = re.compile(r"\s+(?:assessments?|matri(?:x|ces)|gaps?|sets?|levels?|tests?|development|building|trees?|checks?|inventor(?:y|ies)|surveys?)\b")
+SKILL_BEING_BUILT = re.compile(r"\s+(?:that|which|who|so|should|for\s+\w+ing|to\s+(?!(?:my|our|the|all|every|them)\b))")
+GIVE_NEG = re.compile(r"\b(?:don'?t|do not|never|not|without)\s+(?:\w+\s+){0,2}$")
+# "share this skill ...", "give my staff the skill": at least one word between the giving word and "skill" ("a sharing skill" is a kind of skill)
+GIVE_THEN_SKILL = re.compile(r"\b(" + GIVE + r")\s+(?:\S+\s+){1,6}$")
+TO_AUD = re.compile(r"^.{0,40}?\b(?:with|to|for)\s+(?:\w+\s+){0,3}" + AUD + r"\b")
+AVAILABLE_TO_AUD = re.compile(r"^.{0,30}?\b(?:available|accessible)\s+(?:to|for)\s+(?:\w+\s+){0,3}" + AUD + r"\b")
+GIVE_IT_TO_AUD = re.compile(r"\b(?:share|send|give|distribute)\s+(?:it|this|that|them)\s+(?:with|to)\s+(?:\w+\s+){0,3}" + AUD + r"\b")
+GIVE_IT = re.compile(r"\b(?:share|send|give|distribute)\s+(?:it|this|that|them)\b")
+AUD_USE = re.compile(r"(?:\b" + AUD + r"\b.{0,20}\b(?:can|could|able to)\s+(?:all\s+)?|\b(?:can|could)\s+(?:my|our|the)\s+" + AUD + r"\s+(?:all\s+)?)use\s+(?:\S+\s+){1,4}$")
+AUD_ANY = re.compile(r"\b" + AUD + r"\b")
+AUD_IN_GIVE = re.compile(r"\b" + GIVE + r"\s+(?:\w+\s+){0,3}" + AUD + r"\b")
+
+
+def new_share(p):
+    t = re.sub(r"```.*?```", " ", p, flags=re.S)
+    t = re.sub(r"`[^`\n]*`", " ", t)
+    t = re.sub(r"<(summary|task-notification|result|output)\b[^>]*>.*?(?:</\1>|$)", " ", t, flags=re.S | re.I).strip()
+    if not t or len(t) > SHARE_MAX_CHARS:
+        return False
+    t = " ".join(t.lower().split())
+    for m in SHARE_SKILL.finditer(t):
+        before, after = t[max(0, m.start() - 90):m.start()], t[m.end():m.end() + 110]
+        if HUMAN_SKILL.search(before) or SKILL_MODIFIER.match(after):
+            continue
+        give = GIVE_THEN_SKILL.search(before)
+        given = give is not None and not GIVE_NEG.search(before[:give.start()])
+        if m.group(1) == "skills":   # the plural is mostly the human kind: only "share/send my skills with/to the team" counts
+            if given and give.group(1) in ("share", "sharing", "send", "distribute") and TO_AUD.match(after):
+                return True
+            continue
+        if SKILL_BEING_BUILT.match(after):
+            continue
+        if given and (TO_AUD.match(after) or AUD_IN_GIVE.search(before)):     # share this skill with my team / give my staff the skill
+            return True
+        if AVAILABLE_TO_AUD.match(after):                                     # the skill available to my whole staff
+            return True
+        if GIVE_IT_TO_AUD.search(after):                                      # I built this skill, share it with the team
+            return True
+        if AUD_ANY.search(before) and GIVE_IT.search(after):                  # my team needs this skill. share it with them
+            return True
+        if AUD_USE.search(before):                                            # how can my team use this skill
+            return True
+    return False
+
 
 if __name__ == "__main__":
     import sys, json
@@ -110,6 +167,9 @@ if __name__ == "__main__":
         raw = sys.stdin.read()
         if "--json" in sys.argv:
             raw = (json.loads(raw or "{}").get("prompt") or "")
-        print(1 if (not_the_person(raw) if mode == "machine" else new_save(raw) if mode == "save" else new_num(raw)) else 0)
+        if mode == "machine":
+            print(1 if not_the_person(raw) else 0)
+        else:
+            print(1 if {"save": new_save, "share": new_share}.get(mode, new_num)(raw) else 0)
     except Exception:
         print(0)

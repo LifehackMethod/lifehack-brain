@@ -22,7 +22,7 @@ scan via system/tools/safe_input.py on every text file; no symlinks inside the t
 frontmatter), and the vetted tree's sha256 is PINNED in the ledger — `verify`/`update`/the
 session check re-hash and re-vet on every change.
 
-Subcommands: question · discover · set · status · share (--no-link: the person declines the link) · unshare · use · update · verify · remove ·
+Subcommands: route (the sign the prompt hook prints, switch team_share_route) · question · discover · set · status · share (--no-link: the person declines the link) · unshare · use · update · verify · remove ·
 --session-check (the SessionStart check, gated by the roundB switch team_skill_verify, default OFF).
 `share` is dry-run by default; --yes after the person says yes.
 """
@@ -199,6 +199,32 @@ def link_skill(target, link):
 def cmd_question(_a):
     print(QUESTION)
     print("Run: python3 %s set team <folder>   (or: set solo)" % os.path.abspath(__file__))
+    return 0
+
+
+def route_text():
+    """The street sign for someone asked to share a skill: the ONE route, in commands that work as printed. A team folder the person
+    already chose is never asked about or repointed; `solo` or nothing saved gets the first-time route (asking to share IS the new answer)."""
+    t = 'python3 "%s"' % os.path.abspath(__file__)
+    source, path = team_skills_root.resolve_team_skills_root()
+    ready = source == "pointer" and team_skills_root.sharing_mode() == "team"
+    lines = ["[team-share] A skill reaches other people through the team's Google Drive folder. Not a zip, a repo or a plugin. "
+             "They asked, so do it now, one command at a time:"]
+    if ready:
+        lines.append("1. %s share <skill-name> --yes --no-link   (team folder already set: %s)" % (t, os.path.realpath(path)))
+    else:
+        lines.append("1. %s discover" % t)
+        lines.append('2. %s set team "<the folder discover marks as already a team folder, else the new folder it suggests>" --create' % t)
+        lines.append("3. %s share <skill-name> --yes --no-link" % t)
+        lines.append("If discover finds no Drive, ask them for the folder's path.")
+    lines.append("The skill must be in ~/.claude/skills/<skill-name>/. Not there yet: build it there first.")
+    lines.append("Final message: say where the Drive copy is, and offer once, as optional, the link from ~/.claude/skills to it:")
+    lines.append("%s share <skill-name> --yes" % t)
+    return "\n".join(lines)
+
+
+def cmd_route(_a):
+    print(route_text())
     return 0
 
 
@@ -634,6 +660,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="share skills with a team through a Google Drive folder (file-system only)")
     ap.add_argument("--session-check", action="store_true", help="the SessionStart check: silent unless a shared skill is broken/missing/changed-bad")
     sub = ap.add_subparsers(dest="cmd")
+    s = sub.add_parser("route", help="print the one route for sharing a skill, in commands that work as printed"); s.set_defaults(fn=cmd_route)
     s = sub.add_parser("question", help="print the one setup question, verbatim"); s.set_defaults(fn=cmd_question)
     s = sub.add_parser("discover", help="list this computer's Google Drive folders and likely team folders (read-only)")
     s.set_defaults(fn=cmd_discover)
