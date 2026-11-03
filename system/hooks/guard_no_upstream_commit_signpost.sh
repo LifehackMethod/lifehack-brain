@@ -65,12 +65,28 @@ trap 'lhb_journal_fire "$?" "guard_no_upstream_commit_signpost.sh" "PreToolUse" 
 #      git error mid-check) exits 0 SILENT. This is a SPEED BUMP on ordinary
 #      work, not a security boundary; a hook that can throw and block a commit
 #      no one can diagnose is worse than one that occasionally stays quiet.
-# UPDATED: 2026-09-16 (chained checkout -b/switch -c branch resolution — see BRANCH)
+# UPDATED: 2026-11-02 (switch no_upstream_note, see below); 2026-09-16 (chained checkout -b/switch -c branch resolution — see BRANCH)
+# SWITCH no_upstream_note (roundB.conf; exam D-P06, 2026-11-02): this was a REMINDER built as a BLOCK (Enver's word above
+#      is "reminder"; hook-sop §2 calls that a mis-pick). It stopped a commit-and-push the person asked for, with a
+#      message that named no way through: the only way through was the repeat, and only this header said so. ON =
+#      lib/no_upstream_note.py decides and NOTHING is stopped: silent when this same command pushes the branch after
+#      the commit, or the repo has no remote; otherwise one additionalContext note per (session, repo, branch), naming
+#      the one route (say it in the final message). A repeat is no longer a mechanism. Everything above GUARDS, REDIRECT
+#      and the deny below is the OFF behaviour, unchanged.
+# WHO-COULD-THIS-BREAK: nobody is stopped by it. It removes a stop, so the risk is a commit stranded on a branch with no
+#      remote twin that no first-commit stop made anyone think about; the note and the session-start MIRROR line
+#      (mirror_line.sh) still name it. WAY-THROUGH: turn no_upstream_note off to get the old deny-once back.
 # RULE: O3 (lifehack-migration.plan.md) — O2's CLAUDE.md map line (mechanics)
 # ─────────────────────────────────────────────────────────────────────────────
 # guard_no_upstream_commit_signpost.sh — PreToolUse hook (matcher: Bash)
 
 INPUT=$(cat 2>/dev/null)
+
+. "$_lhb_dir/lib/roundb.sh" 2>/dev/null
+if type roundb_on >/dev/null 2>&1 && roundb_on no_upstream_note; then
+  printf '%s' "$INPUT" | python3 "$_lhb_dir/lib/no_upstream_note.py"
+  exit 0
+fi
 
 VERDICT=$(printf '%s' "$INPUT" | python3 -c '
 import sys, json, shlex, os

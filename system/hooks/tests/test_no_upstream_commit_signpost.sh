@@ -1,4 +1,6 @@
 #!/bin/bash
+# These cases pin the OFF behaviour (deny once); test_no_upstream_note.sh covers ON.
+export ROUNDB_NO_UPSTREAM_NOTE=off
 # Regression coverage for `system/hooks/guard_no_upstream_commit_signpost.sh`'s
 # chained-branch resolution (first coverage this guard has ever had -- none existed
 # before this file; git history shows it shipped in f7d146a with no test).

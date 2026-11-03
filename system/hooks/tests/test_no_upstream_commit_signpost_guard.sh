@@ -1,4 +1,6 @@
 #!/bin/bash
+# These cases pin the OFF behaviour (deny once); test_no_upstream_note.sh covers ON.
+export ROUNDB_NO_UPSTREAM_NOTE=off
 # test_no_upstream_commit_signpost_guard.sh — deny-coverage suite for
 # system/hooks/guard_no_upstream_commit_signpost.sh (B6.0 — this guard had NO test anywhere
 # before this file.)
