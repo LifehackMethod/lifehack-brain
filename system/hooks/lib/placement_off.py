@@ -20,6 +20,7 @@ PLACEMENT_CHECKS = {
     "worktree-home": "cleanup and safety of git worktrees (they must not sit inside a repo or your notes)",
     "code-outside-homes": "finding, listing and updating your own scripts later (your own list only sees the personal code folder)",
     "skill-not-loaded": "your skill loading at all (Claude only loads personal skills from ~/.claude/skills)",
+    "desk-tool-loose": "a tool made for one desk staying with that desk",
     "own-list": "your own list of your own tools staying complete",
     "unhomed": "finding your own scripts later",
 }

@@ -78,6 +78,13 @@ case "$INPUT" in
     ;;
 esac
 
+# desk_tool_sign (roundB.conf; OFF = nothing here runs; exam D-B07 r2): remember which real desk the person just named, for guard_build_mode's sign at write time. Prints nothing.
+case "$INPUT" in
+  *[Dd][Ee][Ss][Kk]*)
+    roundb_on desk_tool_sign && printf '%s' "$INPUT" | python3 "$_HOOKDIR/lib/desk_said.py" 2>/dev/null
+    ;;
+esac
+
 printf '%s' "$INPUT" | python3 -c '
 import sys, json, re, os
 

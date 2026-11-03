@@ -505,14 +505,19 @@ def _var_target(t, cmd):
     return os.path.realpath(val + (m.group(2) or ""))
 
 
-def _route_sign(t, pc, desk=None):
+def _route_sign(t, pc, desk=None, loose_ok=False):
     """placement_route_sign (exam D-B06): the stop names the one right route: this path, this list command, never a repeat of the call.
-    The list tool is named from THIS plugin (as end_of_turn_checks.sh does), so the printed command always exists."""
+    The list tool is named from THIS plugin (as end_of_turn_checks.sh does), so the printed command always exists.
+    loose_ok (desk_tool_sign): t is already in a right home for a loose tool, so its way through is a normal listing, not --keep."""
     tool = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "shared", "tools", "own_list_add.py")
     name = os.path.basename(t)
     name = "<file name>" if any(c in name for c in SHELL_CHARS) else name
     here = "<this file>" if any(c in t for c in SHELL_CHARS) else t
     dest = os.path.join(pc, "skills", _skill_name(t), name) if name == "SKILL.md" else os.path.join(pc, "desks", desk, "tools", name) if desk else os.path.join(pc, "tools", name)
+    if loose_ok:
+        return ("Do not write it here. Put the file at %s (the Write tool, or mkdir -p that folder first in Bash), then run: python3 \"%s\" \"%s\". Tell the person where it is. "
+                "Only if this tool is not just for that desk, or the person named this folder for it: write it here as planned (this stop shows once per session per rule), then run: python3 \"%s\" \"%s\". "
+                % (dest, tool, dest, tool, here))
     return ("Do not write it here. Put the file at %s (the Write tool, or mkdir -p that folder first in Bash), then run: python3 \"%s\" \"%s\". Tell the person where it is. "
             "Only if the person named this folder for this file: write it there as they asked (this stop shows once per session per rule), then run: python3 \"%s\" --keep \"%s\". "
             % (dest, tool, dest, tool, here))
@@ -563,7 +568,7 @@ def _named_desk(t, transcript, notes):
 
 def _placement_step(zone, t, route, code, notes):
     """placement_route_sign: what a placement stop tells the session to do next, per zone."""
-    if zone == "outside-homes":
+    if zone in ("outside-homes", "pc-loose"):
         return route   # empty for a personal skill: its message already names ~/.claude/skills/<name>/
     if zone == "notes":
         pc = personal_code_dir(code)
@@ -797,6 +802,15 @@ def main_inner():
                             hit = False
                         finally:
                             sys.path.pop(0)
+                elif zone == "pc-loose":   # desk_tool_sign (exam D-B07 r2): the person named one real desk, and this new tool is going loose (lib/desk_said.py)
+                    hit = False
+                    if _roundb("desk_tool_sign"):
+                        import desk_said
+                        _desk, _pc = desk_said.read(sid), personal_code_dir(code)
+                        if _desk and _pc and (under(rt, os.path.join(_pc, "tools")) or os.path.dirname(rt) == _pc):
+                            hit = True
+                            pmsg = pmsg.replace("{desk}", _desk).replace("{pcdesk}", os.path.join(_pc, "desks", _desk, "tools") + "/")
+                            route = _route_sign(rt, _pc, _desk, loose_ok=True)
                 elif zone == "outside-homes":   # 4th rule: new code outside every home (switch placement_outside_homes)
                     hit = False
                     pc = outside_homes_target(rt, code, notes)
