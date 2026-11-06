@@ -14,7 +14,7 @@ cp "$HERE/../../shared/brain_root.py" "$HERE/../tools/utf8_stdio.py" "$CODE/shar
 cp "$HERE/build_mode_sops.conf" "$HERE/placement.conf" "$CODE/system/hooks/"; mkdir -p "$CODE/state" "$NOTES/system"
 for s in skill-building jobs hook desk-building; do echo "# $s" > "$CODE/system/sops/$s-sop.md"; done
 printf 'echo real notify\n' > "$CODE/shared/notify/notify-send.sh"
-printf '| id | cmd |\n' > "$CODE/system/jobs.md"; echo '{"hooks":{}}' > "$CODE/hooks/hooks.json"
+printf '# jobs\n```jobs\n# name | enabled | interval\n| id | cmd |\n```\n' > "$CODE/system/jobs.md"; echo '{"hooks":{}}' > "$CODE/hooks/hooks.json"
 cat > "$CODE/system/register/register.jsonl" <<'R'
 {"type":"tool","path":"/shared/notify/notify-send.sh"}
 {"type":"tool","path":"/shared/notify/notify-governor.py"}
@@ -233,4 +233,47 @@ fire sb1 Write "$(J file_path "$HOME/odd-widget/bin/standup" content $'#!/bin/ba
 fire sb2 Write "$(J file_path "$PCODE/bin/standup" content $'#!/bin/bash\necho hi')"; want 0 "extensionless script in the personal folder: allowed"; silent "shebang home"
 fire sb4 Bash "$(J command "cat > $HOME/odd-widget/bin/standup2 <<'EOT'"$'\n#!/bin/bash\necho hi\nEOT')"; want 0 "Bash heredoc to an extensionless #! script: silent"; silent "shebang bash"
 unset ROUNDB_PLACEMENT_OUTSIDE_HOMES
+# ---- job rules (owner ruling 2026-11-05): fire on the ACT of adding or changing a job, wherever the job list is.
+# A real row is `name | yes | ...` (no leading pipe). All folders are under $T (mktemp in TMPDIR), HOME is the throwaway one.
+HEADER=$'# jobs\n```jobs\n# name | enabled | interval\n'
+ROW1='alpha | off | 86400 | outcome | f ~ x=[1-9] | none | 0 | none | bash run.sh'
+ROW2='beta | off | 86400 | outcome | f ~ x=[1-9] | none | 0 | none | bash run2.sh'
+printf '%s%s\n```\n' "$HEADER" "$ROW1" > "$PCODE/jobs.md"
+fire j1 Edit "$(J file_path "$PCODE/jobs.md" old_string "$ROW1" new_string "$ROW1"$'\n'"$ROW2")"; want 2 "personal jobs.md: a row added (no leading pipe): stop" "building a job"
+printf '%s' "$ERR" | grep -Fq "cron-jobs-sop.md" && { pass=$((pass+1)); echo "   ok   job message names the cron-jobs SOP"; } || { fail=$((fail+1)); echo "  FAIL  job message lacks cron-jobs-sop.md"; }
+fire j1 Edit "$(J file_path "$PCODE/jobs.md" old_string "$ROW1" new_string "$ROW1"$'\n'"gamma | off | 3600 | o | f ~ x=1 | none | 0 | none | bash g.sh")"; want 0 "second job edit, same session: no stop"
+WT="$T/worktrees/task/repo"; mkdir -p "$WT/tools/alpha"
+printf '%s%s\n```\n' "$HEADER" "$ROW1" > "$WT/jobs.md"
+fire j2 Edit "$(J file_path "$WT/jobs.md" old_string "alpha | off | 86400" new_string "alpha | yes | 86400")"; want 2 "worktree-style jobs.md: a row changed: stop" "building a job"
+printf '%s%s\n```\n' "$HEADER" "$ROW1" > "$WT/jobs.md"
+fire j2b MultiEdit "$(python3 -c 'import json,sys; print(json.dumps({"file_path":sys.argv[1],"edits":[{"old_string":"alpha | off","new_string":"alpha | yes"}]}))' "$WT/jobs.md")"; want 2 "MultiEdit changing a row: stop" "building a job"
+fire j2c Write "$(J file_path "$WT/jobs.md" content "$HEADER$ROW1"$'\n'"$ROW2"$'\n```')"; want 2 "Write adding a row to an existing jobs.md: stop" "building a job"
+mkdir -p "$T/nofence"; printf '# my notes\nname | yes | thing\n' > "$T/nofence/jobs.md"
+fire j3 Edit "$(J file_path "$T/nofence/jobs.md" old_string "name | yes | thing" new_string "name | no | thing")"; want 0 "jobs.md with no jobs fence: no stop"; silent "no fence"
+printf '%s%s\n```\n' "$HEADER" "$ROW1" > "$WT/jobs.md"
+fire j3b Edit "$(J file_path "$WT/jobs.md" old_string "# jobs" new_string "# jobs list")"; want 0 "edit outside the rows (a heading): no stop"; silent "heading"
+fire j3c Edit "$(J file_path "$WT/jobs.md" old_string "# name | enabled | interval" new_string "# name | enabled | interval | more")"; want 0 "edit of a comment line inside the block: no stop"; silent "comment"
+fire j4 Edit "$(J file_path "$CODE/system/jobs.md" old_string '| id | cmd |' new_string $'| id | cmd |\nnewjob | off | 86400 | o | f ~ x=1 | none | 0 | none | bash n.sh')"; want 2 "plugin jobs.md (row without a leading pipe): still a stop" "building a job"
+fire j5 Write "$(J file_path "$WT/tools/alpha/x-run.sh" content '#!/bin/bash')"; want 2 "new tools/<job>/x-run.sh in a repo with jobs.md: stop" "building a job"
+fire j5b Write "$(J file_path "$PCODE/tools/zed/z-run.sh" content '#!/bin/bash')"; want 2 "new *-run.sh in the personal code folder: stop" "building a job"
+mkdir -p "$T/plain/tools/alpha"
+fire j6 Write "$(J file_path "$T/plain/tools/alpha/x-run.sh" content '#!/bin/bash')"; want 0 "tools/<job>/x-run.sh in a repo with NO jobs.md: no stop"; silent "no jobs.md"
+fire j6b Write "$(J file_path "$WT/other/x-run.sh" content '#!/bin/bash')"; want 0 "x-run.sh in a repo with jobs.md but not under tools/<job>/: no stop"; silent "not tools"
+# ---- job edits made through Bash (a speed bump: parsed write targets, plus a text check for what the parser cannot read)
+PYH=$'python3 - <<\'EOF\'\np = "'"$PCODE"$'/jobs.md"\nopen(p, "a").write("gamma | off | 1 | o | f ~ x=1 | none | 0 | none | bash g.sh\\n")\nEOF'
+fire b1 Bash "$(J command "$PYH")"; want 2 "python heredoc writing a personal jobs.md: stop" "building a job"
+printf '%s' "$ERR" | grep -Fq 'install-schedulers.sh --check-row <job>` prints PASS' && { pass=$((pass+1)); echo "   ok   job message has the --check-row sentence"; } || { fail=$((fail+1)); echo "  FAIL  job message lacks the --check-row sentence"; }
+printf '%s' "$ERR" | grep -Fq 'read its first and last lines' && { pass=$((pass+1)); echo "   ok   --check-row sentence is whole"; } || { fail=$((fail+1)); echo "  FAIL  --check-row sentence cut"; }
+fire b1 Bash "$(J command "$PYH")"; want 0 "second job edit, same session (Bash): no stop"
+fire b1 Edit "$(J file_path "$PCODE/jobs.md" old_string "$ROW1" new_string "$ROW1"$'\n'"delta | off | 1 | o | f ~ x=1 | none | 0 | none | bash d.sh")"; want 0 "Edit after a Bash job stop, same session: no stop (one total)"
+mkdir -p "$WT/tools/x"
+fire b2 Bash "$(J command "cd $WT && cat > tools/x/x-run.sh <<EOF
+#!/bin/bash
+EOF")"; want 2 "cat > tools/x/x-run.sh <<EOF in a repo with jobs.md: stop" "building a job"
+printf '%s' "$ERR" | grep -Fq -- "--check-row" && { pass=$((pass+1)); echo "   ok   redirect stop has the --check-row sentence"; } || { fail=$((fail+1)); echo "  FAIL  redirect stop lacks it"; }
+fire b3 Bash "$(J command "sed -n 1,60p $PCODE/jobs.md")"; want 0 "sed -n on jobs.md: no stop"; silent "sed -n"
+fire b4 Bash "$(J command "grep alpha $PCODE/jobs.md 2>/dev/null")"; want 0 "grep jobs.md: no stop"; silent "grep"
+fire b5 Bash "$(J command "sed -i s/alpha/zeta/ $PCODE/jobs.md")"; want 2 "sed -i on jobs.md: stop" "building a job"
+fire b6 Bash "$(J command "bash -c 'echo x >> $PCODE/jobs.md'")"; want 2 "bash -c redirect into jobs.md: stop" "building a job"
+fire b7 Bash "$(J command "echo hi > $T/nofence/jobs.md")"; want 0 "jobs.md with no jobs block: no stop"; silent "no block"
 echo "passed=$pass failed=$fail"; [ "$fail" -eq 0 ]

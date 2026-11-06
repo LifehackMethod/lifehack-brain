@@ -98,6 +98,11 @@ set -uo pipefail
 
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 MANIFEST="${LIFEHACK_JOBS_FILE:-${PULSE_CONFIG:-$CODE_ROOT/system/jobs.md}}"
+# Row origin (2026-11-05): a row is plugin-origin ONLY when the shared manifest IS the plugin's own list, $CODE_ROOT/system/jobs.md
+# (compared by real path), and the row is in the shared block before the personal marker. Any other manifest file (LIFEHACK_JOBS_FILE or
+# PULSE_CONFIG pointing elsewhere, e.g. a branch's jobs.md) is personal-origin. Decided here, before MANIFEST becomes the merged copy.
+DOOR_SHARED_ORIGIN=personal
+[ "$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$MANIFEST")" = "$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$CODE_ROOT/system/jobs.md")" ] && DOOR_SHARED_ORIGIN=plugin
 # 3b.7 B: plus <personal-code>/jobs.md when it exists (shared/jobs_manifest.py prints the joined copy; personal wins on a clash,
 # with a warning). Only the ```jobs``` block is joined; the ```crontab``` block stays the shared file's own.
 [ -f "$MANIFEST" ] && { [ -n "${LIFEHACK_PERSONAL_JOBS_FILE:-}" ] || { [ -z "${LIFEHACK_PERSONAL_JOBS_FILE+x}" ] && [ -z "${LIFEHACK_JOBS_FILE:-}${PULSE_CONFIG:-}" ]; }; } && { _JM="$(python3 "$CODE_ROOT/shared/jobs_manifest.py" --manifest "$MANIFEST")" && [ -n "$_JM" ] && MANIFEST="$_JM"; }
@@ -345,29 +350,110 @@ print("PASS")
 DOORPY
 }
 
+# The last thing a refusal says (2026-11-05): a refusal with no next step sent a fresh window to plain `crontab`. It depends on who can
+# fix the row: a PERSONAL row (after the "# ── personal rows" marker jobs_manifest.py writes) is the person's to bring into line; a PLUGIN
+# row ships with the plugin and an update overwrites any edit. One copy of each text; job-run.sh inherits it through --check-row.
+# Both start with "Rulebook: " (job-sim.sh's door_run strips a first and a last line with that prefix; a --check-row refusal prints it first AND last).
+DOOR_NEXT_STEP_PERSONAL="Rulebook: \`system/sops/cron-jobs-sop.md\`, section \"Bring an existing job into line\". This job isn't in line yet: offer the person, in one short line, to bring it into line. Don't install it by hand."
+DOOR_NEXT_STEP_PLUGIN="Rulebook: \`system/sops/pr-sop.md\`. This job ships with the plugin: tell the person to report it. Don't edit plugin files, and don't copy the job under its own name to fix it."
+DOOR_REFUSED_PERSONAL=0; DOOR_REFUSED_PLUGIN=0
+DOOR_ORIGIN="$DOOR_SHARED_ORIGIN"; DOOR_WALK_ORIGIN="$DOOR_SHARED_ORIGIN"
+# Print each next-step text that applies, once (summaries): personal if a personal row was refused, plugin if a plugin row was.
+door_print_next_steps() {
+  [ "$DOOR_REFUSED_PERSONAL" -eq 0 ] || echo "$DOOR_NEXT_STEP_PERSONAL"
+  [ "$DOOR_REFUSED_PLUGIN" -eq 0 ] || echo "$DOOR_NEXT_STEP_PLUGIN"
+}
+# Origin of a row while walking a jobs block: the block opening resets it to the shared manifest's origin (plugin only for the plugin's own
+# list, see DOOR_SHARED_ORIGIN); the personal marker flips it to personal.
+door_origin_step() {   # line -> sets DOOR_WALK_ORIGIN
+  case "$1" in
+    '```jobs') DOOR_WALK_ORIGIN="$DOOR_SHARED_ORIGIN";;
+    '# ── personal rows (from '*) DOOR_WALK_ORIGIN=personal;;
+  esac
+}
+
+# THE MARK (owner's ruling 2026-11-05): a person may knowingly run their OWN job the door refuses. The row is marked by ONE comment line
+# directly above it, in the personal jobs.md only: `# outside the checker, by choice, YYYY-MM-DD` (a real date; anything else is ignored).
+# jobs_manifest.py keeps personal lines verbatim and in order, so the comment survives the merge. A marked PERSONAL row that the door
+# refuses is accepted with a one-line warning; a mark on a PLUGIN row, or a malformed one, changes nothing.
+DOOR_WALK_MARK=""
+door_valid_date() {   # YYYY-MM-DD -> 0 when it is a real calendar date
+  local y m d dim
+  [[ "$1" =~ ^([0-9]{4})-([0-9]{2})-([0-9]{2})$ ]] || return 1
+  y=$((10#${BASH_REMATCH[1]})); m=$((10#${BASH_REMATCH[2]})); d=$((10#${BASH_REMATCH[3]}))
+  [ "$m" -ge 1 ] && [ "$m" -le 12 ] && [ "$d" -ge 1 ] || return 1
+  case "$m" in 1|3|5|7|8|10|12) dim=31;; 4|6|9|11) dim=30;; *) dim=28; { [ $((y % 400)) -eq 0 ] || { [ $((y % 4)) -eq 0 ] && [ $((y % 100)) -ne 0 ]; }; } && dim=29;; esac
+  [ "$d" -le "$dim" ]
+}
+door_mark_step() {   # line -> DOOR_WALK_MARK is the valid date when this line is a mark, else empty (so a mark counts only for the very next line)
+  DOOR_WALK_MARK=""
+  local d
+  if [[ "$1" =~ ^'# outside the checker, by choice, '([0-9]{4}-[0-9]{2}-[0-9]{2})$ ]]; then
+    d="${BASH_REMATCH[1]}"
+    ! door_valid_date "$d" || DOOR_WALK_MARK="$d"
+  fi
+}
+# Apply a mark to a refusal: args origin mark rc output -> prints the final output; returns the final rc.
+door_apply_mark() {
+  local origin="$1" mark="$2" rc="$3" out="$4"
+  if [ "$rc" -ne 0 ] && [ "$origin" = personal ] && [ -n "$mark" ]; then
+    printf 'outside the checker, by choice (%s): %s\nPASS\n' "$mark" "$(printf '%s\n' "$out" | head -n 1)"
+    return 0
+  fi
+  printf '%s\n' "$out"
+  return "$rc"
+}
+
 # Look a row up by name in a manifest and run the door on it (the --check-row entry point).
 door_check_named() {   # name manifest
-  local want="$1" mf="$2" line n en iv oc ck md bg sr cm found=0 in=0
+  local want="$1" mf="$2" line n en iv oc ck md bg sr cm found=0 in=0 mark _out _rc
+  DOOR_WALK_ORIGIN="$DOOR_SHARED_ORIGIN"; DOOR_WALK_MARK=""
   while IFS= read -r line || [ -n "$line" ]; do
     line="${line%$'\r'}"
-    if [ "$line" = '```jobs' ]; then in=1; continue; fi
+    if [ "$line" = '```jobs' ]; then in=1; door_origin_step "$line"; continue; fi
     if [ "$in" -eq 1 ] && [ "$line" = '```' ]; then in=0; continue; fi
     [ "$in" -eq 1 ] || continue
+    door_origin_step "$line"
+    mark="$DOOR_WALK_MARK"; door_mark_step "$line"
     case "$line" in ''|\#*) continue;; esac
     IFS='|' read -r n en iv oc ck md bg sr cm <<< "$line"
     [ "$(trim "$n")" = "$want" ] || continue
-    found=1
-    door_check_row "$(trim "$n")" "$(trim "$en")" "$(trim "$oc")" "$(trim "$ck")" "$(trim "$md")" "$(trim "$bg")" "$(trim "$sr")" "$(trim "$cm")"
+    found=1; DOOR_ORIGIN="$DOOR_WALK_ORIGIN"
+    _out="$(door_check_row "$(trim "$n")" "$(trim "$en")" "$(trim "$oc")" "$(trim "$ck")" "$(trim "$md")" "$(trim "$bg")" "$(trim "$sr")" "$(trim "$cm")")"; _rc=$?
+    door_apply_mark "$DOOR_WALK_ORIGIN" "$mark" "$_rc" "$_out"
     return $?
   done < "$mf"
-  [ "$found" -eq 1 ] || { echo "no such row: $want" >&2; return 2; }
+  [ "$found" -eq 1 ] || { DOOR_ORIGIN=personal; echo "no such row: $want" >&2; return 2; }   # a missing row is the person's to add
 }
 if [ "${1:-}" = "--check-row" ]; then
   [ -n "${2:-}" ] || { echo "usage: install-schedulers.sh --check-row <name>" >&2; exit 2; }
-  door_check_named "$2" "$MANIFEST"
-  exit $?
+  # The output is captured (with the result and the row's origin appended after it) so a refusal can print its next step FIRST as well
+  # as last: a summary of the output drops the last line, and the top is the part least likely to be dropped. A pass prints as before.
+  _door_cap="$(door_check_named "$2" "$MANIFEST"; printf '\n%s %s' "$?" "$DOOR_ORIGIN")"
+  _door_tail="${_door_cap##*$'\n'}"; _door_out="${_door_cap%$'\n'*}"; _door_out="${_door_out%$'\n'}"
+  _door_rc="${_door_tail%% *}"; DOOR_ORIGIN="${_door_tail#* }"
+  if [ "$_door_rc" -ne 0 ]; then
+    if [ "$DOOR_ORIGIN" = personal ]; then _door_next="$DOOR_NEXT_STEP_PERSONAL"; else _door_next="$DOOR_NEXT_STEP_PLUGIN"; fi
+    echo "$_door_next"
+    [ -z "$_door_out" ] || printf '%s\n' "$_door_out"
+    echo "$_door_next"
+  else
+    [ -z "$_door_out" ] || printf '%s\n' "$_door_out"
+  fi
+  exit "$_door_rc"
 fi
 DOOR_REFUSED=0
+
+# ── 0) personal job places: when the personal code folder resolves AND exists (DOOR_DESK, above), make the places a person's own
+# jobs live in. Creates only what is missing, never overwrites, never creates the folder itself (bootstrap.py does). Prints what it
+# created. A failure is a named warning and the plugin-job install goes on. Not run by --check-row (that exits above, read-only).
+if [ -d "$DOOR_DESK" ]; then
+  if _scaf_out="$(python3 "$CODE_ROOT/shared/tools/personal_jobs_scaffold.py" "$DOOR_DESK" 2>&1)"; then
+    printf '%s\n' "$_scaf_out" | grep '^created:' | sed 's|^|[install-schedulers] personal jobs |'
+  else
+    echo "[install-schedulers] WARNING personal-jobs-scaffold failed for $DOOR_DESK (plugin jobs still install): $_scaf_out" >&2
+  fi
+fi
 
 # ── 1) OS detection — THE SAME RULE this product's own INSTALL.md states to a human installer
 # (Step 1: "Darwin means a Mac. Linux means Linux. Anything else, treat it as Windows.") — one rule,
@@ -411,21 +497,31 @@ install_mac_launchd() {
 
   # --- parse the ```jobs``` block: name | enabled | interval | outcome | check | model | budget | source | command ---
   local -a names=() ivals=()
-  local in=0 fence_seen=0 line name enabled interval cmd reasons
+  local in=0 fence_seen=0 line name enabled interval cmd reasons mark _rc
+  DOOR_WALK_MARK=""
   while IFS= read -r line || [ -n "$line" ]; do
     line="${line%$'\r'}"
-    if [ "$line" = '```jobs' ]; then in=1; fence_seen=1; continue; fi
+    if [ "$line" = '```jobs' ]; then in=1; fence_seen=1; door_origin_step "$line"; continue; fi
     if [ "$in" -eq 1 ] && [ "$line" = '```' ]; then in=0; continue; fi
     [ "$in" -eq 1 ] || continue
+    door_origin_step "$line"
+    mark="$DOOR_WALK_MARK"; door_mark_step "$line"
     case "$line" in ''|\#*) continue;; esac
     IFS='|' read -r name enabled interval _outcome _check _model _budget _source cmd <<< "$line"
     name="$(trim "$name")"; enabled="$(trim "$enabled")"; interval="$(trim "$interval")"
     [ -n "$name" ] || continue
     [ "$enabled" = "yes" ] || continue
     # THE DOOR (5.2): a row that fails it is refused -- reason printed, no plist, non-zero exit at the end.
-    if ! reasons="$(door_check_row "$name" "$enabled" "$(trim "$_outcome")" "$(trim "$_check")" "$(trim "$_model")" "$(trim "$_budget")" "$(trim "$_source")" "$(trim "$cmd")")"; then
+    reasons="$(door_check_row "$name" "$enabled" "$(trim "$_outcome")" "$(trim "$_check")" "$(trim "$_model")" "$(trim "$_budget")" "$(trim "$_source")" "$(trim "$cmd")")"; _rc=$?
+    if [ "$_rc" -ne 0 ] && [ "$DOOR_WALK_ORIGIN" = personal ] && [ -n "$mark" ]; then
+      echo "[install-schedulers] WARNING $name: outside the checker, by choice ($mark): $(printf '%s\n' "$reasons" | head -n 1)" >&2
+      _rc=0
+    fi
+    if [ "$_rc" -ne 0 ]; then
       while IFS= read -r _r; do echo "[install-schedulers] REFUSED $name: $_r" >&2; done <<< "$reasons"
-      DOOR_REFUSED=$((DOOR_REFUSED + 1)); continue
+      DOOR_REFUSED=$((DOOR_REFUSED + 1))
+      if [ "$DOOR_WALK_ORIGIN" = personal ]; then DOOR_REFUSED_PERSONAL=$((DOOR_REFUSED_PERSONAL + 1)); else DOOR_REFUSED_PLUGIN=$((DOOR_REFUSED_PLUGIN + 1)); fi
+      continue
     fi
     names+=("$name"); ivals+=("$interval")
   done < "$MANIFEST"
@@ -449,13 +545,13 @@ install_mac_launchd() {
       bad=1
     fi
   done
-  [ "$bad" -eq 0 ] || { echo "[install-schedulers] nothing was changed." >&2; exit 1; }
+  [ "$bad" -eq 0 ] || { echo "[install-schedulers] nothing was changed." >&2; [ "$DOOR_REFUSED" -eq 0 ] || door_print_next_steps >&2; exit 1; }
 
   echo "[install-schedulers] macOS launchd: ${#names[@]} enabled job(s); agents dir: $la_dir"
   if [ "$apply" -eq 0 ]; then
     for i in "${!names[@]}"; do echo "  WOULD WRITE $la_dir/ai.lifehack.${names[$i]}.plist (every ${ivals[$i]}s)"; done
     echo "[install-schedulers] plan only (re-run with --install to apply)."
-    [ "$DOOR_REFUSED" -eq 0 ] || echo "[install-schedulers] $DOOR_REFUSED enabled row(s) REFUSED by the door." >&2
+    [ "$DOOR_REFUSED" -eq 0 ] || { echo "[install-schedulers] $DOOR_REFUSED enabled row(s) REFUSED by the door." >&2; door_print_next_steps >&2; }
     return 0
   fi
 
@@ -521,7 +617,7 @@ PLIST
     fi
   done
   echo "[install-schedulers] REGISTRATION is not proof it fires: check ~/.config/lifehack/state/jobs/<job>/last-success after the first scheduled run."
-  [ "$DOOR_REFUSED" -eq 0 ] || echo "[install-schedulers] $DOOR_REFUSED enabled row(s) REFUSED by the door -- no plist written for them." >&2
+  [ "$DOOR_REFUSED" -eq 0 ] || { echo "[install-schedulers] $DOOR_REFUSED enabled row(s) REFUSED by the door -- no plist written for them." >&2; door_print_next_steps >&2; }
   [ "$BOOTSTRAP_FAILED" -eq 0 ] || { echo "[install-schedulers] $BOOTSTRAP_FAILED job(s) FAILED to bootstrap -- the install FAILED." >&2; return 1; }
 }
 

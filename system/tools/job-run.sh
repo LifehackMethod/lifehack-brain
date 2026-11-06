@@ -83,6 +83,19 @@ export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:${PATH:-/usr/bin:
 export LIFEHACK_CODE_ROOT="$CODE_ROOT"
 # 5.5 fix: a SCHEDULED job's web reads are sealed to the job host list (safe_fetch.py Level 2, per-run seal). Sessions are not.
 _JH="$(grep -vE '^[[:space:]]*(#|$)' "$CODE_ROOT/system/tools/job-fetch-hosts.txt" 2>/dev/null | tr -d '[:blank:]' | paste -sd, -)"
+# The person's OWN allowed sites: <personal-code>/job-fetch-hosts.txt (same name as the plugin's list, in the personal folder's top
+# level, like vendor-read-allowlist.txt). It only ADDS hosts; the plugin's list above stays first and authoritative. Missing file =
+# nothing added. A file that is there but cannot be read is REFUSED (78 through finish(): an errors/ file, last-run, named on stderr): never run with a silently smaller or larger list.
+# The folder is found the way shared/personal_code_root.py does (pointer line, else the default folder; a pointer to a missing folder
+# means none, never the default), in shell here because a python start per job run measurably slows the job-sim rig.
+# Parity with shared/personal_code_root.py is held by system/tools/tests/test_personal_root_parity.sh (the rules live in personal_root.lib.sh).
+. "$CODE_ROOT/system/tools/personal_root.lib.sh"; personal_root_lookup
+_PF="${_PCR:+$_PCR/job-fetch-hosts.txt}"
+if [ -n "$_PF" ] && { [ -e "$_PF" ] || [ -L "$_PF" ]; }; then
+  _PH="$(grep -vE '^[[:space:]]*(#|$)' "$_PF" 2>/dev/null | tr -d '[:blank:]' | paste -sd, -; exit "${PIPESTATUS[0]}")"; _PRC=$?
+  if [ "$_PRC" -gt 1 ]; then _PF_BAD="$_PF"   # refused below, through finish() (it is defined further down), so it is a failed run with an errors/ file
+  else [ -z "$_PH" ] || _JH="${_JH:+$_JH,}$_PH"; fi
+fi
 [ -n "$_JH" ] && export SAFE_FETCH_ALLOWLIST="$_JH"
 
 # Everything this run prints goes to one capture file, appended to the rolling log at the end.
@@ -335,6 +348,11 @@ finish() {
   exit "$rc"
 }
 
+if [ -n "${_PF_BAD:-}" ]; then
+  echo "job-run: REFUSED: your allowed-websites list cannot be read: $_PF_BAD (fix its permissions or remove it)" | tee /dev/fd/3
+  finish 78 "refused at run time: your allowed-websites list cannot be read: $_PF_BAD"
+fi
+
 # ── 1) the job's row in the manifest's ```jobs block:
 #    name | enabled | interval | outcome | check | model | budget | source | command  (command LAST: it may hold `|`) ──
 ROW="$(awk -v j="$JOB" '
@@ -380,7 +398,10 @@ fi
 #    never a stand-down, and the checker itself being unusable refuses too. One call. An off row has already stood down above and is not checked.
 #    The refusal is a failed run: an errors/ file, the usual two-misses alert, and one fire-journal line (hook job-run:check-row) for the observation rig.
 _door_out="$(bash "$CODE_ROOT/system/tools/install-schedulers.sh" --check-row "$JOB" 2>&1)"; _door_rc=$?
-if [ "$_door_rc" -ne 0 ] || [ "$_door_out" != PASS ]; then
+# Pass = rc 0 AND the LAST line is exactly PASS: a personal copy of a shared row prints a clash warning (stderr, merged by 2>&1) before the
+# verdict, and that warning is not a refusal. The warning lines still go into the refusal text and the log (door: lines) when it does refuse.
+_door_last="${_door_out##*$'\n'}"
+if [ "$_door_rc" -ne 0 ] || [ "$_door_last" != PASS ]; then
   { echo "[job-run] REFUSED $JOB: the job door (install-schedulers.sh --check-row, rc=$_door_rc) refuses this row. Not run."
     printf '%s\n' "$_door_out" | sed 's/^/[job-run]   door: /'; } | tee /dev/fd/3
   { . "$CODE_ROOT/system/hooks/lib/journal.sh" && lhb_journal_fire 1 "job-run:check-row" "job-run" "$JOB"; } 2>/dev/null \

@@ -350,3 +350,9 @@ New text:
 ```
 an unbroken run of them longer than 2 x the interval sends one 'paused' text, and one 'running again' text when it next passes (never for a row that is not `yes`) |
 ```
+
+## 2026-11-05 · ADD · §11a added; personal-folder, refusal and rig edits
+
+- Date: 2026-11-05
+- Action: ADD
+- Reason: §11a added; personal-folder, refusal and rig edits; owner approved in session

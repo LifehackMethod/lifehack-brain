@@ -63,6 +63,13 @@ echo "── B. the A1.4 scenario: ordinary command, CLAUDE_PROJECT_DIR = an UNR
 invoke "$BENIGN_BASH" "$OUTSIDE" >/dev/null 2>&1; want_allow "$?" "benign command, CLAUDE_PROJECT_DIR=outside project"
 
 echo
+echo "── C. variable-path write into the store, CLAUDE_PROJECT_DIR = an UNRELATED project -- must BLOCK ──"
+# Needs hook_path_resolve.expand() (found beside the script). Old code looked in $CLAUDE_PROJECT_DIR/system/tools,
+# so the import failed, the check was off, and this exited 0.
+VARPATH=$(printf '{"tool_input":{"command":"P=state/findings/forged.jsonl\\necho x >> \\"$P\\""}}')
+invoke "$VARPATH" "$OUTSIDE" >/dev/null 2>&1; rc=$?
+if [ "$rc" -eq 2 ]; then pass=$((pass+1)); echo "   ok   variable-path store write blocked from outside project"; else fail=$((fail+1)); printf '  FAIL  variable-path store write (expected exit 2, got %s)\n' "$rc"; fi
+
 printf 'RESULT: %d passed, %d failed.\n' "$pass" "$fail"
 if [ "$fail" -eq 0 ]; then echo "FINDINGS WRITE RESOLVER-SCOPE GREEN (defect already fixed via PR #165 / 053d039, prior to this branch)"; exit 0; fi
 echo "FINDINGS WRITE RESOLVER-SCOPE RED"; exit 1

@@ -370,6 +370,22 @@ def ensure_python3_shim(dry_run=False):
     return verb, detail
 
 
+def scaffold_personal_jobs():
+    """Right after ensure_personal_code: make the job places in the personal folder (shared/tools/personal_jobs_scaffold.py).
+    Creates only what is missing, never overwrites. Returns plain lines; a problem is a named warning, never silent."""
+    import personal_code_root as pcr
+    source, folder = pcr.resolve_personal_code_root()
+    if source not in ("pointer", "default") or not os.path.isdir(folder):
+        return ["personal jobs: WARNING no personal code folder to scaffold (%s); jobs places not made." % (source or "not set")]
+    try:
+        sys.path.insert(0, os.path.join(REPO, "shared", "tools"))
+        import personal_jobs_scaffold as pjs
+        created, _skipped = pjs.scaffold(folder)
+    except Exception as e:  # named, not hidden
+        return ["personal jobs: WARNING the scaffold failed (%s: %s); run python3 shared/tools/personal_jobs_scaffold.py" % (type(e).__name__, e)]
+    return ["personal jobs: created %s" % rel for rel in created] or ["personal jobs: all places already there, left alone"]
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="create the four top-level things nothing else creates")
     ap.add_argument("--root", help="the folder your notes live in (default: the one already chosen)")
@@ -394,6 +410,9 @@ def main(argv=None):
 
     for line in ensure_personal_code(dry_run=a.dry_run):
         print("  " + line)
+    if not a.dry_run:
+        for line in scaffold_personal_jobs():
+            print("  " + line)
 
     # The one machine-shaped thing this step owns besides the folders: making `python3` a real word
     # on Windows, AND making it read files as UTF-8 instead of the machine's default codepage.

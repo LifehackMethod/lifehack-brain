@@ -17,6 +17,7 @@ Shared layer = everything under `shared/`. Look here before writing a new tool.
 - `/system/tools/gws-auth.lib.sh` · THE gws (Google) headless-credential preflight
 - `/system/tools/ingest-run.lib.sh` · SHARED scaffold for headless ingest/runner scripts
 - `/system/tools/job-run.sh` · the ONE wrapper every scheduled job runs inside (self-monitoring plan §A, §B.2)
+- `/system/tools/personal_root.lib.sh` · the shell copy of shared/personal_code_root.py's lookup, sourced by job-run.sh (a python start per job run measurably slows the job-sim rig)
 - `/system/tools/runner-lock.lib.sh` · the ONE single-instance lock every job runner and the job-run.sh wrapper share (self-monitoring 5.9(h) + 5.9(e))
 - `/system/tools/skill-tester-rig/actor.lib.sh` · card TR2.0b of the skill-tester-rig: the ONE headless-actor launch shape
 - `/system/tools/skill-tester-rig/wait.lib.sh` · card TR1.8 of the skill-tester-rig: the ONE recognised handshake helper
@@ -57,6 +58,7 @@ Shared layer = everything under `shared/`. Look here before writing a new tool.
 - `/shared/tools/item_store_read.py` · the ONE read adapter for the v2 item store (Tasks + Calendar)
 - `/shared/tools/item_store_window.py` · the TIME-WINDOW sweep reader over the central library (cadence linchpin)
 - `/shared/tools/own_list_add.py` · your OWN list of your OWN tools (Round B piece 2, "your own list")
+- `/shared/tools/personal_jobs_scaffold.py` · make the places YOUR scheduled jobs are saved, in your own folder, never overwriting
 - `/shared/tools/store_date_index.py` · sidecar DATE INDEX for the three item stores (Phase 8 Lane C / S8.4)
 - `/shared/tools/tasks_store_sync.py` · mechanical writer for the durable Tasks item store (Phase G-2)
 - `/shared/tools/team_skills.py` · share personal skills with a team through a Google Drive folder (approved design 2026-11-01, SIMPLE build)

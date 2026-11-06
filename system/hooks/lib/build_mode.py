@@ -489,7 +489,89 @@ def personal_code_dir(code):
             sys.path.pop(0)
 
 
+def jobs_block_rows(text):
+    """The row lines inside the ```jobs fenced blocks of a jobs.md text. A real row is `name | yes | ...` (it need not
+    start with a pipe); blank lines, # comment lines and lines with no pipe are not rows. -> (has_block, set_of_rows)."""
+    rows, inside, has = set(), False, False
+    for line in (text or "").splitlines():
+        st = line.strip()
+        if not inside:
+            if st.startswith("```jobs"):
+                inside, has = True, True
+        elif st.startswith("```"):
+            inside = False
+        elif st and not st.startswith("#") and "|" in st:
+            rows.add(st)
+    return has, rows
+
+
+def jobs_row_changed(w, t):
+    """True when this Edit, MultiEdit or Write adds or changes a row line inside a ```jobs block of file t (any jobs.md,
+    wherever it lives). Compares the rows before and after: before = the file now, after = the file with the edit applied
+    (a Write's own content). No jobs fence before or after = False."""
+    try:
+        before = _open(t).read() if os.path.isfile(t) else ""
+    except OSError:
+        before = ""
+    if w["verb"] == "Write":
+        after = w["content"] or ""
+    else:
+        after = before
+        for old, new, every in w.get("edits") or []:
+            if old and old in after:
+                after = after.replace(old, new) if every else after.replace(old, new, 1)
+    has_b, rows_b = jobs_block_rows(before)
+    has_a, rows_a = jobs_block_rows(after)
+    return (has_b or has_a) and bool(rows_a - rows_b)
+
+
+def job_run_script_home(t, code, desks):
+    """True when a NEW *-run.sh at t sits where a job's code lives: under the plugin's system/, the desks folder, the
+    personal code folder, or any tools/<job>/ folder of a repo that has a jobs.md at its root (covers worktrees)."""
+    if under(t, os.path.join(code, "system")) or (desks and under(t, desks)):
+        return True
+    pc = personal_code_dir(code)
+    if pc and under(t, pc):
+        return True
+    a = os.path.dirname(t)
+    while a and a != os.path.dirname(a):
+        parent = os.path.dirname(a)
+        if os.path.basename(parent) == "tools" and os.path.isfile(os.path.join(os.path.dirname(parent), "jobs.md")):
+            return True
+        a = parent
+    return False
+
+
 SHELL_CHARS = "$`{}()"
+
+
+JOB_WRITE_SIGN = re.compile(r"""open\([^)]*['"][wa][+b]*['"]|\bwrite\(|write_text|\bsed\s+-[A-Za-z]*i|(?<![0-9&>])>(?![&(]|\s*/dev/null)|\btee\b|\bcp\b|\bmv\b""")
+JOB_FILE_TOKEN = re.compile(r"""[^\s'"=(),;<>|&]*(?:jobs\.md|-run\.sh)(?=$|[\s'"),;<>|&])""")
+
+
+def bash_job_edit(cmd, writes, code, desks, cwd):
+    """True when this Bash command edits a job. Two ways (a SPEED BUMP like the rest of this hook, not a boundary):
+    1. the parsed write targets (bash_ops: redirects, tee, cp/mv, sed -i, dd of=, through bash -c/eval) include a jobs.md that holds
+       a ```jobs block, or a *-run.sh in a job's home (job_run_script_home);
+    2. the command TEXT names such a file (a path ending in jobs.md or -run.sh, same two tests) together with a write sign
+       (open(..,'w'/'a'), write(, write_text, sed -i, >, >>, tee, cp, mv). This catches a python heredoc, which bash_ops cannot parse.
+    cat, sed -n, grep and a bare 2>&1 or >/dev/null do not count. A false fire costs one stop per session."""
+    def is_job_file(t):
+        base = os.path.basename(t)
+        if base == "jobs.md":
+            try:
+                return os.path.isfile(t) and jobs_block_rows(_open(t).read())[0]
+            except OSError:
+                return False
+        return base.endswith("-run.sh") and job_run_script_home(t, code, desks)
+    for w in writes:
+        if w.get("verb") not in ("mkdir", "touch", "worktree") and is_job_file(w["target"]):
+            return True
+    if JOB_WRITE_SIGN.search(cmd):
+        for m in JOB_FILE_TOKEN.finditer(cmd):
+            if is_job_file(resolve(m.group(0), cwd)):
+                return True
+    return False
 
 
 def _var_target(t, cmd):
@@ -660,8 +742,14 @@ def main_inner():
             old = ti.get("old_string", "")
         elif tool == "MultiEdit":
             old = "\n".join(e.get("old_string", "") for e in ti.get("edits", []) or [])
+        if tool == "Edit":
+            edits = [(ti.get("old_string", ""), ti.get("new_string", ""), bool(ti.get("replace_all")))]
+        elif tool == "MultiEdit":
+            edits = [(e.get("old_string", ""), e.get("new_string", ""), bool(e.get("replace_all"))) for e in ti.get("edits", []) or []]
+        else:
+            edits = []
         writes.append({"verb": tool, "target": t, "content": text, "old": old, "srcs": [],
-                       "full": tool == "Write"})
+                       "full": tool == "Write", "edits": edits})
     elif tool == "Bash":
         for o in bash_ops(ti.get("command", ""), cwd):
             o["old"] = ""; o["full"] = o["verb"] in (">", "tee", "cp", "mv", "install", "rsync")
@@ -702,8 +790,8 @@ def main_inner():
                     ASK_OUT.append(data_overwrite_ask(t))
                     DATA_SIGNS.append(fc_sign.kind_sign(t, "data", True))
 
-    if not writes:
-        return 0
+    if not writes and not (tool == "Bash" and bash_job_edit(ti.get("command", ""), writes, code, os.path.join(notes, "desks") if notes else None, cwd)):
+        return 0   # (a Bash command with no parsed write can still be a job edit by its text: python heredoc)
 
     if _roundb("skill_edit_ask"):
         sk = [w["target"] for w in writes if SKILL_DIR_RX.search(w["target"].replace("\\", "/"))
@@ -889,10 +977,8 @@ def main_inner():
                     and '"command"' in w["content"] and '"command"' not in w["old"] \
                     and (under(t, code) or under(t, os.path.join(HOME, ".claude"))):
                 kind = "hook"
-            elif base == "jobs.md" and under(t, code) and w["verb"] in ("Edit", "MultiEdit", "Write"):
-                old_lines = set((w["old"] if not w["full"] else _open(t).read()).splitlines())
-                if any(l.lstrip().startswith("|") and l not in old_lines for l in w["content"].splitlines()):
-                    kind = "job"
+            elif base == "jobs.md" and w["verb"] in ("Edit", "MultiEdit", "Write") and jobs_row_changed(w, t):
+                kind = "job"
             if kind:
                 denies.append((kind, kind, None))
             continue
@@ -900,7 +986,9 @@ def main_inner():
         sk = re.search(r"/skills/([^/]+)/SKILL\.md$", t)
         if sk or (w["verb"] == "mkdir" and os.path.basename(os.path.dirname(t)) == "skills"):
             kind = "skill"
-        elif base.endswith("-run.sh") and (under(t, os.path.join(code, "system")) or (desks and under(t, desks))):
+        elif base.endswith("-run.sh") and job_run_script_home(t, code, desks):
+            kind = "job"
+        elif base == "jobs.md" and w["verb"] == "Write" and jobs_row_changed(w, t):
             kind = "job"
         elif base.endswith(".plist") and "/LaunchAgents/" in t:
             kind = "job"
@@ -916,6 +1004,9 @@ def main_inner():
             pass
         if kind:
             denies.append((kind, kind, None))
+
+    if tool == "Bash" and not any(k == "job" for k, _, _ in denies) and bash_job_edit(ti.get("command", ""), writes, code, desks, cwd):
+        denies.append(("job", "job", None))   # shares the Edit/Write job marker: one job stop per session
 
     if not denies:
         return 0
@@ -1011,6 +1102,7 @@ def tool_hint(code, hint):
 
 
 def bump_message(kind, code, hint=""):
+    extra = (' A job is done only when `bash system/tools/install-schedulers.sh --check-row <job>` prints PASS; run it yourself before you report, and read its first and last lines.' if kind == "job" else "")
     sop, cmd = None, ""
     try:
         for line in _open(os.path.join(code, "system", "hooks", "build_mode_sops.conf")):
@@ -1034,13 +1126,13 @@ def bump_message(kind, code, hint=""):
         tools = ""
     if _roundb("placement_route_sign"):   # exam D-B06: the route, never a repeat of the call
         return ("Looks like you're building a %s. Read %s and system/register/toolbox.md now, then build it where you were building it; never copy a shared tool. "
-                "(/build runs the same read-list and checks the result.)%s\n"
+                "(/build runs the same read-list and checks the result.)%s%s\n"
                 "This stop shows once per session per kind. RULE: system/hooks/build_mode_sops.conf."
-                % (kind, where, ("\nShared tools that may already do this:" + tools) if tools else ""))
+                % (kind, where, extra, ("\nShared tools that may already do this:" + tools) if tools else ""))
     return ("Looks like you're building a %s. Stop and run /build for this: it hands you the read-list and checks the result. "
-            "Or read %s and system/register/toolbox.md first; never copy a shared tool.%s\n"
+            "Or read %s and system/register/toolbox.md first; never copy a shared tool.%s%s\n"
             "Retry the same call and it goes through (once per session per kind). RULE: system/hooks/build_mode_sops.conf."
-            % (kind, where, ("\nShared tools that may already do this:" + tools) if tools else ""))
+            % (kind, where, extra, ("\nShared tools that may already do this:" + tools) if tools else ""))
 
 
 def main():

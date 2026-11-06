@@ -12,6 +12,7 @@ Resolution, exactly, in order (the source string returned is in parentheses):
 A pointer that IS present but names a folder that is gone is its own outcome, "pointer-missing",
 and it NEVER falls back to the default: silently switching folders would split your history in two.
 Closed outcome set {RESOLVED, POINTER-MISSING, NOT-SET}. Never guesses, never uses the cwd.
+A shell copy of these rules lives in system/tools/personal_root.lib.sh (job-run.sh); system/tools/tests/test_personal_root_parity.sh keeps the two equal.
 
 For the maintainer the pointer names a private desk repo; nothing about that is
 special-cased here.
