@@ -91,6 +91,8 @@ _JH="$(grep -vE '^[[:space:]]*(#|$)' "$CODE_ROOT/system/tools/job-fetch-hosts.tx
 # Parity with shared/personal_code_root.py is held by system/tools/tests/test_personal_root_parity.sh (the rules live in personal_root.lib.sh).
 . "$CODE_ROOT/system/tools/personal_root.lib.sh"; personal_root_lookup
 _PF="${_PCR:+$_PCR/job-fetch-hosts.txt}"
+# A row's command may name its runner as "$LIFEHACK_PERSONAL_CODE/tools/<job>/<job>-run.sh" (the door expands the same name).
+if [ -n "$_PCR" ]; then export LIFEHACK_PERSONAL_CODE="$_PCR"; else unset LIFEHACK_PERSONAL_CODE; fi
 if [ -n "$_PF" ] && { [ -e "$_PF" ] || [ -L "$_PF" ]; }; then
   _PH="$(grep -vE '^[[:space:]]*(#|$)' "$_PF" 2>/dev/null | tr -d '[:blank:]' | paste -sd, -; exit "${PIPESTATUS[0]}")"; _PRC=$?
   if [ "$_PRC" -gt 1 ]; then _PF_BAD="$_PF"   # refused below, through finish() (it is defined further down), so it is a failed run with an errors/ file

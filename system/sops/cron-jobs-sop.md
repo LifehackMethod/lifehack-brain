@@ -255,9 +255,9 @@ When the door refuses a personal row, the window says one short line and asks, f
 One scheduler reads two lists: the plugin's `system/jobs.md` and the person's `<personal-code>/jobs.md`. A refusal ends with one of two texts, by the list the row came from. A row is plugin-origin ONLY when it is in the plugin's own list, `$CODE/system/jobs.md` (real paths compared), before the `# ── personal rows (from …) ──` marker. A row after the marker, or read from any other manifest file (`LIFEHACK_JOBS_FILE` or `PULSE_CONFIG` pointing anywhere else, such as a branch's `jobs.md`), is personal; a name in both lists counts as personal (`install-schedulers.sh:104`, `door_origin_step`). For `--check-row` it is the last line; `--install` and the plan-only run print each applicable text once, after the count line, to stderr. The exact wording is PROPOSED (not in P-127), as coded at `install-schedulers.sh:352-353`:
 
 - **Personal row** (`DOOR_NEXT_STEP_PERSONAL`):
-  > Rulebook: `system/sops/cron-jobs-sop.md`, section "Bring an existing job into line". This job isn't in line yet: offer the person, in one short line, to bring it into line. Don't install it by hand.
+  > Rulebook: `system/sops/cron-jobs-sop.md`, section "Bring an existing job into line". This job isn't in line yet: offer the person, in one short line, to bring it into line. Don't install it by hand. The main window runs this check itself and reads this line; never rely on a summary.
 - **Plugin row** (`DOOR_NEXT_STEP_PLUGIN`):
-  > Rulebook: `system/sops/pr-sop.md`. This job ships with the plugin: tell the person to report it. Don't edit plugin files, and don't copy the job under its own name to fix it.
+  > Rulebook: `system/sops/pr-sop.md`. This job ships with the plugin: tell the person to report it. Don't edit plugin files, and don't copy the job under its own name to fix it. The main window runs this check itself and reads this line; never rely on a summary.
 
 **A broken plugin job** (DECIDED, P-127, round 4): "I would just tell them to report it that's it", following the PR rulebook ("assume that there is a pr sop"), `system/sops/pr-sop.md`. No window tells the person to copy the row to fix it: once the plugin fixes the job "they would have two copies of the same job". **DECIDED** (the owner, in session, 2026-11-05, T7): the person reports it on the plugin's GitHub page as an issue, until `system/sops/pr-sop.md` exists; once it does, that rulebook takes over. The window says plainly that the job should be reported, and does not edit it. The refusal for a broken plugin job is "report it", never a copy. **PROPOSED:** this also holds when the fault is inside a plugin runner or shared script that a personal row calls: report it, change nothing in the plugin (P-127 speaks of a broken plugin job, not of a personal row that calls one).
 
@@ -286,7 +286,15 @@ env -i HOME="$HOME" PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr
   bash "$CODE/system/tools/install-schedulers.sh" --check-row <name> 2>&1; echo "rc=$?"
 ```
 
-What this does NOT do: it does not read the branch's runner. A row's command normally names its runner by a fixed path (`bash "$HOME/.claude/skills/ClaudeOps/desks/.../x-run.sh"`), so the door and `job-run.sh` read the main checkout's copy, not the branch's. Today no personal-folder variable fixes that: the door expands only `$LIFEHACK_CODE_ROOT`, `$CODE_ROOT` and `$HOME` in a command (`install-schedulers.sh:206-207`), so `$LIFEHACK_DESK_REPO` in a row is refused as an unresolvable variable (`:233`); `LIFEHACK_DESK_REPO` only moves where the door looks for the personal folder (`:152`); and `job-run.sh` never sets it (it runs `bash -c "$CMD"`, `job-run.sh:515`). **PROPOSED:** make the door expand `$LIFEHACK_DESK_REPO` in a command and have `job-run.sh` export the personal code folder under that name; then the recommended row form would be `bash "$LIFEHACK_DESK_REPO/tools/<job>/<job>-run.sh"`, and a branch check would add `LIFEHACK_DESK_REPO=<worktree>`. Until that is built, a branch check reads the main checkout's runner; the command above checks the row at least.
+The main window runs this check itself and reads the last line; it never relies on a helper's summary of it.
+
+To read the branch's own runner too, write the personal row's command with the personal-folder variable: `bash "$LIFEHACK_PERSONAL_CODE/tools/<job>/<job>-run.sh"`. The door expands `$LIFEHACK_PERSONAL_CODE` to the personal code folder it resolves (the `LIFEHACK_DESK_REPO` seam moves it), and `job-run.sh` exports the same folder (from `personal_root.lib.sh`, the same answer as `shared/personal_code_root.py`) before it runs the command. Rows with a fixed path keep working unchanged. A branch check is then:
+
+```
+LIFEHACK_DESK_REPO=<worktree> LIFEHACK_PERSONAL_JOBS_FILE=<worktree>/jobs.md bash system/tools/install-schedulers.sh --check-row <job>
+```
+
+It reads the branch's `jobs.md` and the branch's runner.
 
 ### The steps, after the person's yes
 

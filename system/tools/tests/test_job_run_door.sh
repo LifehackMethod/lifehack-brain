@@ -50,8 +50,8 @@ for j in tj-bad tj-inline tj-presence tj-notrow tj-tile; do
 done
 ck "a refused row also refused with --force"     "$(run tj-bad --force)" 78
 # The scratch manifest IS the throwaway code root's system/jobs.md, so its rows are plugin-origin: the plugin variant. A personal-origin row (below) gets the personal one.
-NEXT_STEP="Rulebook: \`system/sops/pr-sop.md\`. This job ships with the plugin: tell the person to report it. Don't edit plugin files, and don't copy the job under its own name to fix it."
-NEXT_PERSONAL="Rulebook: \`system/sops/cron-jobs-sop.md\`, section \"Bring an existing job into line\". This job isn't in line yet: offer the person, in one short line, to bring it into line. Don't install it by hand."
+NEXT_STEP="Rulebook: \`system/sops/pr-sop.md\`. This job ships with the plugin: tell the person to report it. Don't edit plugin files, and don't copy the job under its own name to fix it. The main window runs this check itself and reads this line; never rely on a summary."
+NEXT_PERSONAL="Rulebook: \`system/sops/cron-jobs-sop.md\`, section \"Bring an existing job into line\". This job isn't in line yet: offer the person, in one short line, to bring it into line. Don't install it by hand. The main window runs this check itself and reads this line; never rely on a summary."
 ck "run-time refusal carries the next step (first and last line of the door output, so twice)" "$(grep -cF "door: $NEXT_STEP" "$T/stderr")" 2
 ck "--check-row refusal ends with the next step"  "$(bash "$ROOT/system/tools/install-schedulers.sh" --check-row tj-bad | tail -1)" "$NEXT_STEP"
 ck "--check-row refusal starts with the next step" "$(bash "$ROOT/system/tools/install-schedulers.sh" --check-row tj-bad | head -1)" "$NEXT_STEP"
@@ -92,4 +92,21 @@ ck "run-time marker refuses a wrongly named tile" "$(LIFEHACK_JOB_RUN_ID=tj-a CO
 ck "refusal left an errors/ file"                 "$([ -n "$(ls "$LIFEHACK_STATE_DIR/jobs/tj-bad/errors")" ] && echo yes || echo no)" yes
 ck "OFF row (bad runner) still stands down 75"   "$(run tj-off)" 75
 ck "live email-summary-write row passes --check-row" "$(LIFEHACK_JOBS_FILE= LIFEHACK_DESK_REPO= bash "$REAL_ROOT/system/tools/install-schedulers.sh" --check-row email-summary-write)" PASS
+# $LIFEHACK_PERSONAL_CODE in a row: the door expands it to the personal folder (DOOR_DESK); job-run.sh exports it (pointer file -> the scratch desk).
+mkdir -p "$T/wtdesk/tools/pv" "$T/maindesk/tools/pv" "$T/desk/tools/pv" "$HOME/.config/lifehack"
+printf '#!/usr/bin/env bash\necho "ran n=1 pc=$LIFEHACK_PERSONAL_CODE" > "$JOB_SIM_DIR/out"\n' > "$T/desk/tools/pv/r.sh"
+cp "$T/desk/tools/pv/r.sh" "$T/wtdesk/tools/pv/r.sh"
+printf '#!/usr/bin/env bash\npython3 safe_fetch.py http://x || true\necho "ran n=1" > "$JOB_SIM_DIR/out"\n' > "$T/maindesk/tools/pv/r.sh"
+PV='bash "$LIFEHACK_PERSONAL_CODE/tools/pv/r.sh"'
+cat > "$T/pv.md" <<ROWS
+\`\`\`jobs
+tj-pv | yes | 3600 | does a thing | \$JOB_SIM_DIR/out ~ ran n=[1-9] | none | 0 | none | $PV
+\`\`\`
+ROWS
+ck "personal-code row passes the door (clean runner)" "$(LIFEHACK_PERSONAL_JOBS_FILE="$T/pv.md" bash "$ROOT/system/tools/install-schedulers.sh" --check-row tj-pv)" PASS
+ck "personal-code row: worktree clean + main dirty -> PASS (reads the worktree)" "$(LIFEHACK_DESK_REPO="$T/wtdesk" LIFEHACK_PERSONAL_JOBS_FILE="$T/pv.md" bash "$ROOT/system/tools/install-schedulers.sh" --check-row tj-pv)" PASS
+ck "personal-code row: pointed at the dirty folder -> refused" "$(LIFEHACK_DESK_REPO="$T/maindesk" LIFEHACK_PERSONAL_JOBS_FILE="$T/pv.md" bash "$ROOT/system/tools/install-schedulers.sh" --check-row tj-pv >/dev/null; echo $?)" 1
+printf '%s\n' "$T/desk" > "$HOME/.config/lifehack/personal-code"; rm -f "$JOB_SIM_DIR/out"
+ck "personal-code row runs under job-run.sh (rc 0)" "$(LIFEHACK_PERSONAL_JOBS_FILE="$T/pv.md" run tj-pv)" 0
+ck "...with LIFEHACK_PERSONAL_CODE set to the personal folder" "$(cat "$JOB_SIM_DIR/out")" "ran n=1 pc=$(cd "$T/desk" && pwd)"
 [ "$fails" -eq 0 ] && echo "ALL PASS" || { echo "$fails FAILED"; exit 1; }

@@ -181,7 +181,8 @@ else
   echo "notify-send: SEND FAILED — ${err:-curl error}" >&2
   # 5.10(1): the governor already RECORDED this send (dedup identity + daily cap). It never reached the phone, so take the record back --
   # otherwise the caller's retry is suppressed as a duplicate (exit 0) and the text is lost. Best-effort; a failure here is only named.
-  python3 "$GOVERNOR" --unrecord "$SOURCE" "${IDENTITY:-$MESSAGE}" >/dev/null 2>&1 \
-    || echo "notify-send: could not un-record the failed send; a retry may be suppressed as a duplicate" >&2
+  if ! _unrec_err="$(python3 "$GOVERNOR" --unrecord "$SOURCE" "${IDENTITY:-$MESSAGE}" 2>&1 >/dev/null)"; then
+    echo "notify-send: could not un-record the failed send; a retry may be suppressed as a duplicate${_unrec_err:+: $_unrec_err}" >&2
+  fi
   exit 1
 fi

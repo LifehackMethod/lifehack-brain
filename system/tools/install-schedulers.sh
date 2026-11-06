@@ -120,7 +120,7 @@ trim() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]
 # prints PASS or the refusal reasons (one per line) and exits 0 / 1 (2 = no such row). The rules:
 #   (a) outcome, check, model, budget, source are all present and not `TBD`; model is none|small|medium|large;
 #       budget is an integer > 0 unless model=none.
-#   (b) every script the command runs resolves (after $LIFEHACK_CODE_ROOT / $HOME expansion) under the code root or your
+#   (b) every script the command runs resolves (after $LIFEHACK_CODE_ROOT / $LIFEHACK_PERSONAL_CODE / $HOME expansion) under the code root or your
 #       personal code folder (shared/personal_code_root.py; LIFEHACK_DESK_REPO overrides it), and the command pins no absolute code path (a home-folder clone, a plugin cache) instead of
 #       $LIFEHACK_CODE_ROOT.
 #   (c) a static scan of those scripts, of what they source, and of the python/bash scripts they invoke, finds no raw
@@ -204,7 +204,7 @@ def under(p, root):
     return p == root or p.startswith(root.rstrip("/") + "/")
 
 def expand(tok):
-    for k, v in (("LIFEHACK_CODE_ROOT", code), ("CODE_ROOT", code), ("HOME", home)):
+    for k, v in (("LIFEHACK_PERSONAL_CODE", desk), ("LIFEHACK_CODE_ROOT", code), ("CODE_ROOT", code), ("HOME", home)):
         tok = tok.replace("${%s}" % k, v).replace("$%s" % k, v)
     if tok.startswith("~/"): tok = home + tok[1:]
     return tok
@@ -354,8 +354,8 @@ DOORPY
 # fix the row: a PERSONAL row (after the "# ── personal rows" marker jobs_manifest.py writes) is the person's to bring into line; a PLUGIN
 # row ships with the plugin and an update overwrites any edit. One copy of each text; job-run.sh inherits it through --check-row.
 # Both start with "Rulebook: " (job-sim.sh's door_run strips a first and a last line with that prefix; a --check-row refusal prints it first AND last).
-DOOR_NEXT_STEP_PERSONAL="Rulebook: \`system/sops/cron-jobs-sop.md\`, section \"Bring an existing job into line\". This job isn't in line yet: offer the person, in one short line, to bring it into line. Don't install it by hand."
-DOOR_NEXT_STEP_PLUGIN="Rulebook: \`system/sops/pr-sop.md\`. This job ships with the plugin: tell the person to report it. Don't edit plugin files, and don't copy the job under its own name to fix it."
+DOOR_NEXT_STEP_PERSONAL="Rulebook: \`system/sops/cron-jobs-sop.md\`, section \"Bring an existing job into line\". This job isn't in line yet: offer the person, in one short line, to bring it into line. Don't install it by hand. The main window runs this check itself and reads this line; never rely on a summary."
+DOOR_NEXT_STEP_PLUGIN="Rulebook: \`system/sops/pr-sop.md\`. This job ships with the plugin: tell the person to report it. Don't edit plugin files, and don't copy the job under its own name to fix it. The main window runs this check itself and reads this line; never rely on a summary."
 DOOR_REFUSED_PERSONAL=0; DOOR_REFUSED_PLUGIN=0
 DOOR_ORIGIN="$DOOR_SHARED_ORIGIN"; DOOR_WALK_ORIGIN="$DOOR_SHARED_ORIGIN"
 # Print each next-step text that applies, once (summaries): personal if a personal row was refused, plugin if a plugin row was.
