@@ -392,12 +392,19 @@ elif [ -z "$DESK" ]; then
   echo "No desk this session — the cwd is not inside a desk folder and \$LIFEHACK_DESK names none, so no"
   echo "desk canon was loaded (P-71: a desk window loads only that desk's knowledge). The shared root"
   echo "canon above still loads. Open a session inside <notes>/desks/<desk>/ to load that desk's canon."
-elif [ ! -s "$ROOT/desks/$DESK/canon/current.md" ]; then
+elif [ ! -s "$ROOT/desks/$DESK/canon/canon.md" ] && [ ! -s "$ROOT/desks/$DESK/canon/current.md" ]; then
   echo ""
-  echo "Desk '$DESK' has no canon/current.md yet — nothing standing to load for it. Run /ingest or"
-  echo "/save in that desk to write one. No other desk's canon was loaded (P-71)."
+  echo "Desk '$DESK' has no canon/canon.md (or legacy canon/current.md) yet — nothing standing to"
+  echo "load for it. Run /ingest or /save in that desk to write one. No other desk's canon was loaded (P-71)."
 else
-  DESK_CANON="$ROOT/desks/$DESK/canon/current.md"
+  # 2026-11-08 (Enver's ruling): a desk's canon file is canon.md. current.md is the legacy
+  # name from /ingest's scaffold; it still loads if it is all a desk has, but a desk with
+  # both loads canon.md. One canon file per desk, and it is called canon.md.
+  if [ -s "$ROOT/desks/$DESK/canon/canon.md" ]; then
+    DESK_CANON="$ROOT/desks/$DESK/canon/canon.md"
+  else
+    DESK_CANON="$ROOT/desks/$DESK/canon/current.md"
+  fi
   # Same reasoning as the root canon above: `-s` already proved non-empty, so an empty read means
   # the file could not be read (permissions), not that it had nothing to say. Say so; don't skip.
   BODY="$(cat "$DESK_CANON" 2>/dev/null)"
