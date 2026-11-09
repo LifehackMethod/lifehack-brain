@@ -120,12 +120,24 @@ The interrogation must never freeze while a write happens. So the work runs in t
   `agent_calendar` line in `<notes>/config/cal.md`; `system/hooks/guard_calendar_writes.sh` enforces it by
   code and refuses outright if you have not configured one. Your personal calendar is **read-only** — Cal
   can only flag what is on it.
-- **Your goals list is READ-ONLY — with ONE sanctioned write: the day's plan under the day's win.**
-  Everything in the list at `goals_tasklist` is observe-only EXCEPT writing the confirmed dominoes as
-  **subtasks under the one parent task** at `daily_parent_task`. The clerk inserts each confirmed domino
-  as a child of that parent — **never restructures the list, never touches your weekly, monthly or yearly
-  goals or any other item, never deletes.** Propose in Pass 4; the person confirms; the clerk writes the
-  subtasks in Pass 5.
+- **The day's plan is a TIME BLOCK, not a pile of tasks.** The confirmed dominoes go on the agent
+  calendar as ONE block with the items in its description. ⛔ **The Life Map subtask write is OPT-IN** —
+  it happens only if you ask for it by name, in that session. It used to be the default, and that was
+  wrong: a domino is true for one day but a Google Task is permanent and nothing ever ticks it, so the
+  list accreted — one install reached 129 entries with 25 still open from a month earlier, and a cleanup
+  from another Claude surface then closed all of them in one batch, parent included. This also matches
+  the operator-facing rule that small items are one block with items in the notes, never one event or
+  task per item.
+- **Your goals list is READ-ONLY — with ONE sanctioned write, and it is now opt-in: the day's plan under
+  the day's win.** Everything in the list at `goals_tasklist` is observe-only EXCEPT writing the confirmed
+  dominoes as **subtasks under the one parent task** at `daily_parent_task` — **never restructures the
+  list, never touches your weekly, monthly or yearly goals or any other item, never deletes.** Propose in
+  Pass 4; the person confirms; the clerk writes the subtasks in Pass 5.
+  ⚠ **The guard matches the parent's id, never its state.** An insert under a parent that is itself
+  `completed` or `hidden` passes the guard, is accepted by the API, and then renders nowhere you will
+  look. Pass 5 reads the parent back first and falls back to the time block if it is dead. A session
+  cannot revive that parent — a new top-level task in the goals list is refused by design — so only you
+  can untick it, in the Google Tasks UI.
   ✅ **The machine-side half of this IS in this repo, as of 2026-08-14.**
   `system/hooks/guard_tasks_writes.sh` refuses any write to `goals_tasklist` that does not hang from
   `daily_parent_task`, and refuses `delete`/`clear` there outright — carve-out or not, since those are

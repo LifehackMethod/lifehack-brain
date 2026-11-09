@@ -26,10 +26,25 @@ killed). You hand the confirmed ledger to ONE background **clerk** sub-agent, an
      future-dated: `gws calendar events insert --params '{"calendarId":"<AGENT_OPS_ID>"}' --json '{"summary":...,"start":...,"end":...}'`.
    - **TASKS → topical Google Tasks list:** `gws tasks tasks insert --params '{"tasklist":"<LIST_ID>"}' --json '{"title":"..."}'`
      (resolve the list via `gws tasks tasklists list --params '{}'`). New durable to-dos only (dedup already applied).
-   - **DAILY WIN → subtasks under the Life Map Daily Win parent.** Each confirmed domino becomes a child of the
-     `✅ Daily Win:` task: `gws tasks tasks insert --params '{"tasklist":"$(python3 "$ROOT/shared/cal_config.py" --get goals_tasklist)","parent":"$(python3 "$ROOT/shared/cal_config.py" --get daily_parent_task)"}' --json '{"title":"<TAG — move>"}'`.
+   - **DAILY WIN → ONE calendar time block, items in the notes. This is the DEFAULT.** The confirmed dominoes go on
+     the Agent Ops calendar as a single block whose description carries the list, one line per domino — never one
+     entry per item anywhere. ⛔ **Do NOT write them to the Life Map as subtasks unless the person asks for it by
+     name, this session.** Why this is the default and not the other way round: a domino is true for ONE day, but a
+     Google Task is permanent and nothing ever ticks it, so the old subtask default silently accreted — one install
+     reached **129 entries, 25 of them still open from a month earlier**. At that point a cleanup from a DIFFERENT
+     Claude surface (one with Google connector access, outside every hook in this repo) closed the whole list in a
+     single batch and took the `daily_parent_task` parent with it. A day's plan does not belong in a permanent store.
+   - **DAILY WIN → Life Map subtasks: OPT-IN ONLY, and check the parent is alive first.** If the person does ask by
+     name, each confirmed domino becomes a child of the `✅ Daily Win:` task: `gws tasks tasks insert --params '{"tasklist":"$(python3 "$ROOT/shared/cal_config.py" --get goals_tasklist)","parent":"$(python3 "$ROOT/shared/cal_config.py" --get daily_parent_task)"}' --json '{"title":"<TAG — move>"}'`.
      This is the ONE allowed Life Map write — `guard_tasks_writes.sh` passes it BECAUSE it references the Daily Win
      parent. **Never** insert a non-Daily-Win Life Map task, touch the Weekly/Monthly/Yearly Win tasks, or delete anything.
+     ⚠ **PRECONDITION — read the parent back BEFORE writing under it.** The guard matches the parent's **id** only;
+     it never checks the parent's state. So an insert under a parent that is itself `completed` or `hidden` is
+     **allowed by the guard and accepted by the API**, and then renders nowhere the person will ever look. Check with
+     `python3 "$ROOT/system/tools/safe_tasks.py" --redact '{"tasklist":"<GOALS_ID>","showCompleted":true,"showHidden":true}'`
+     — if the parent is completed or hidden, **do not write: say so and fall back to the time block.** Reviving that
+     parent is not something a session can do — creating a new top-level task in the goals list is refused by the
+     guard by design — so only the person can untick it, in the Google Tasks UI.
    - **DURABLE RECORDS → files, not Google.** Findings / decisions / system-debt with no calendar/task home → write to
      `<notes>/desks/cal/records/`, `<notes>/desks/cal/state/`, or root `<notes>/state/tech-debt.md`. These are the items
      that vanished before — they MUST be filed.
@@ -43,10 +58,12 @@ killed). You hand the confirmed ledger to ONE background **clerk** sub-agent, an
      `<notes>/desks/cal/state/raw-vault/<today>/session-scratchpad.md` — **LAST, only after every row is ✅ or ❌-with-reason.**
    - **Return the filled WRITE-LEDGER** — every row ✅ (read-back-confirmed) or ❌-with-reason.
 3. **Relay the receipt.** Present the clerk's returned ledger verbatim: every row ✅ or ❌-with-reason, grouped by bucket
-   (incl. the Daily-Win subtasks now living under the Win). If any ❌, say so plainly and offer to retry that row.
+   (incl. the day's-plan block, and the Daily-Win subtasks only if they were opted into). If any ❌, say so plainly
+   and offer to retry that row.
 
 STOP-CHECK: clerk fired with the full consolidated ledger embedded; every row ✅ (read-back-confirmed) or ❌-with-a-
-stated-reason; Daily-Win subtasks written under the parent; durable records filed; scratchpad deleted **last**; receipt
+stated-reason; the day's plan written as ONE time block (Daily-Win subtasks only if opted into, and only after the
+parent-liveness check); durable records filed; scratchpad deleted **last**; receipt
 relayed. No silent writes, no phantom successes, nothing durable lost.
 
 (End of chain — no NEXT.)
