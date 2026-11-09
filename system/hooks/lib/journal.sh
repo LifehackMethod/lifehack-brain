@@ -264,10 +264,36 @@ lhb_journal_fire() {
         IFS=$'\x1f' read -r _cached_ts _cached_n 2>/dev/null <"$_tsfile"
         case "$_cached_n" in ''|*[!0-9]*) _cached_n=0 ;; esac
         case "$_cached_ts" in ''|*[!0-9]*) _cached_ts="" ;; esac
+        # ⚠ FIXED 2026-11-08 — THIS JOURNAL WENT SILENT FOR SIX WEEKS ON TWO CHARACTERS.
+        # The all-digits `case` above is NOT enough. A value like `09` passes it (every character is
+        # a digit), survives the `[ "$_cached_n" -lt ... ]` test below (`[ -lt ]` parses decimal),
+        # and then kills the arithmetic expansion that writes the counter back:
+        #     $ n=09; echo $((n+1))
+        #     bash: 09: value too great for base (error token is "09")
+        # because arithmetic context reads a leading zero as OCTAL, where `9` is not a digit. The
+        # function aborts on that error BEFORE reaching the append — and, fatally, before the line
+        # that would have rewritten this file. So the bad value is never cleared: every subsequent
+        # fire reads it, crashes identically, and logs nothing. FOREVER. Observed on one install:
+        # `.fire-journal.jsonl.tsstate` held `1790463157\x1f09` and the journal's last line was
+        # 2026-09-26T15:52:37 — six weeks of total silence, while the hooks themselves kept firing
+        # and deciding correctly. A SILENT-DEGRADE contract (see this file's header) makes that
+        # invisible by design: the journal must never break a hook's verdict, so nothing complained.
+        # Forcing base 10 makes any such value HARMLESS AND TRANSIENT — it is normalized on read,
+        # the counter is rewritten, and the cache self-heals on the very next fire.
+        _cached_n=$((10#$_cached_n))
+        # Out-of-range (however it got there) forces the refresh branch rather than trusting it.
+        [ "$_cached_n" -lt 0 ] && _cached_n=0
     fi
 
     if [ -n "$_cached_ts" ] && [ "$_cached_n" -lt "$_tsrefresh" ]; then
         _ts="$_cached_ts"
+        # No lock on this write, deliberately: every fire touches this file, and `mkdir`-style
+        # locking is an external binary — a second fork per fire, which the measured ms ceiling for
+        # this library does not have room for (see the note on `mkdir` further down). An interleaved
+        # write between concurrent fires is therefore still POSSIBLE; it is just no longer
+        # PERMANENT, because the base-10 normalization on read above heals it on the next fire.
+        # Transient corruption on a best-effort journal is an acceptable trade; a permanent blackout
+        # was not.
         printf '%s\x1f%s' "$_ts" "$((_cached_n + 1))" 2>/dev/null >"$_tsfile"
     else
         _ts="$(date +%s 2>/dev/null)"
