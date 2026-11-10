@@ -98,7 +98,7 @@ HOW TO USE THIS TEMPLATE
    JUDGMENT_SPEC, Storage, Tile, Dedup, or Authorization section).
 3. Run the Conformance checklist.
 See filled exemplars: `SKILL.example-producer.md` (LLM-bearing cron-producer) ·
-`SKILL.example-interactive.md` (interactive-workflow). Spec + rationale: `docs/skill-conformance.md`.
+`SKILL.example-interactive.md` (interactive-workflow). Spec + rationale: `system/sops/skill-building-sop.md (Build, step 2)`.
 (Supersedes the pre-runner-standard `system/templates/ingest-skill-template.md` ⛔ — donor spillover,
 parked at system/parked/2026-08-23-donor-spillover/system/templates/ingest-skill-template.md, never
 ported here — this template is what actually superseded it.)

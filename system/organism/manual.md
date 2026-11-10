@@ -1082,7 +1082,7 @@ INTEROP:
   ~~TRIGGERS     auto_register_skill.sh · a Write or Edit to desks/{desk}/skills/{name}/SKILL.md automatically triggers stub creation; /save may trigger this if it writes a SKILL.md~~ *(2026-10-30: no such hook exists, see the GUARDED-BY note below)*
   CHAINS       skill_anchor.sh → skill_anchor_inject.sh · anchor state manager arms a flag; injector reads it every turn; useless without each other
   READS        system/sops/skill-building-sop.md · canonical doctrine for all skill authoring; the hook's deny message names it explicitly
-  SYNCS        docs/skill-conformance.md · frontmatter schema (shape:, emit_diary:, etc.) canonicalized here; changes must land in conformance doc first; hook and scaffolder updated in same commit
+  SYNCS        system/sops/skill-building-sop.md (Build, step 2) · frontmatter schema (shape:, emit_diary:, etc.) canonicalized here; changes must land in conformance doc first; hook and scaffolder updated in same commit
   READS        system/templates/skill-template/SKILL.md · canonical template new-skill.sh was designed from; scaffolder's stamp IS the template's required structure
   GUARDED-BY   enforce_skill_frontmatter.sh · PreToolUse Write — exit-2 BLOCKS non-conformant SKILL.md writes (description + YAML + 500-line cap); Write-only (not Edit)
   GUARDED-BY   skill_anchor_inject.sh · UserPromptSubmit — re-injects lean anchor body every turn when armed; DEGRADE-SAFE

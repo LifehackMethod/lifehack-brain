@@ -125,6 +125,18 @@ EXEMPT_FILES = {
     "archive/2026-10-31-skill-builder-closed-for-renovation/skill-builder/SPEC.md":
         "archived byte-identical on 2026-10-31 (closed for renovation, see the README beside this folder); "
         "its citations describe the tree as it stood when it was written, and it must not be edited",
+    "system/_retired-2026-11-10/skill-building-sop.ARCHIVE-2026-11-10.md":
+        "archived whole on 2026-11-10 (Enver: the skills SOP was written fresh; retired banner at the top); "
+        "its citations describe the tree as it stood when it was written, and it must not be edited",
+    "system/_retired-2026-11-10/skill-building-sop.history.ARCHIVE-2026-11-10.md":
+        "archived whole on 2026-11-10 with the old skills SOP (retired banner at the top); its citations "
+        "describe the tree as it stood when it was written, and it must not be edited",
+    "system/_retired-2026-11-10/skill-conformance.ARCHIVE-2026-11-10.md":
+        "archived whole on 2026-11-10, folded into the new skills SOP (retired banner at the top); its "
+        "citations describe the tree as it stood when it was written, and it must not be edited",
+    "system/sops/skill-building-sop.history.md":
+        "the new skills SOP's history (2026-11-10): it holds superseded wording verbatim, cut-logged "
+        "before each cut, so its quoted citations describe the text as it was, not the tree",
 }
 
 # Scripts living in system/hooks/ that are NOT registered in settings.json, and correctly so --

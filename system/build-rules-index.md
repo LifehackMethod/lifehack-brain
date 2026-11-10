@@ -166,7 +166,7 @@ authority: user
 ## DO NOT BUILD / DO NOT RETRY — what was tried at the code/LLM seam and failed *(section opened 2026-09-05 by ruling; grows over time)*
 
 > Proven failures at the seam, with receipts, so no build re-tries them from first principles. Same shape as
-> the registers in `system/sops/skill-building-sop.md` §II.4a/b; `deadend_check.py` matches
+> the registers in `system/sops/skill-building-sop.md` (Don't Retry) and its archived predecessor's §II.4a/b (`system/_retired-2026-11-10/`); `deadend_check.py` matches
 > on the heading phrase. Each entry: tried · failed · date · source · replacement · tier. **Never complete.**
 > Principle-level twins: canon §10a.
 
@@ -212,7 +212,7 @@ authority: user
 - `[PARTIAL §x]` — only section x confirmed current.
 
 ## ALWAYS — every build, regardless of type
-- ~~`system/sops/build-sop.md`~~ *(retired 2026-10-31, unvalidated; `deadend_check.py` now searches the `DO NOT BUILD` register in `system/sops/skill-building-sop.md` §II.4a/b; dead ends B34–B36 had no other home)*
+- ~~`system/sops/build-sop.md`~~ *(retired 2026-10-31, unvalidated; `deadend_check.py` now searches the skills SOP's Don't Retry section and the archived old SOP's `DO NOT BUILD` register (§II.4a/b, `system/_retired-2026-11-10/`); dead ends B34–B36 had no other home)*
 - `system/sops/plan-template.md` — the **Phase → Feature → Task** discipline every plan/build follows. *(content verified 2026-06-20 as part of architecture-planning-sop)*
 - ~~`system/sops/build-conductor-sop.md` — the **four gears**: when to run the work yourself and when to fan it out to sub-agents, and how to run each. `[VERIFIED 2026-06-22]`~~ ⛔ *(retired 2026-10-31; archived outside the plugin)*
 
@@ -271,7 +271,7 @@ A build can also be multiple types below. This question, though, has exactly one
 |---|---|---|
 | **a hook** | `system/sops/hook-sop.md` | ✅ here |
 | **a hook — the mechanics half** | `system/hook-contract.md` | ✅ here |
-| **a skill — the whole SOP** | `system/sops/skill-building-sop.md` | ✅ here — all 2,300 lines, with a banner naming what it cites that is not |
+| **a skill — the whole SOP** | `system/sops/skill-building-sop.md` | ✅ here — written fresh 2026-11-10 (the old 3,000-line SOP is archived in `system/_retired-2026-11-10/`); some records it cites are not shipped |
 | **memory, a doc, or a where-does-this-live decision** | `docs/data-layout.md` · `system/knowledge-altitude.md` | data-layout ✅ here; knowledge-altitude lands in T1.14 |
 | **a design, dashboard or interface** | `system/sops/design-process-sop.md` | (work in progress, disconnected 2026-10-31) |
 | **anything security-touching** | the security wall docs | land in Phase 2 |

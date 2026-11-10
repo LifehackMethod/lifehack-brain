@@ -79,7 +79,7 @@ authority: user
 > - ⛔ `system/archivist/` — same: a runtime-generated store under the person's own notes folder, never committed.
 > - ⛔ `state/archivist/deepmine-ledger.json` — same: a runtime-generated store under the person's own notes folder, never committed. Together these four account for most of what this file cites.
 > - ⛔ `system/tools/archivist-autoplace-run.sh` — never ported, because it was already gone: the donor DELETED it on 2026-07-28 in the S2.4 retirement sweep, as this file's own generated_from: comment and the TARGET list below both record. The prose describing it is kept as the historical record of a zombie, which is the point of the entry.
-> - ⛔ `docs/architecture.md` — donor structure doc, not ported. What this repo carries instead is docs/data-layout.md (where things live) and docs/skill-conformance.md, which is here and which the same sentence below also names.
+> - ⛔ `docs/architecture.md` — donor structure doc, not ported. What this repo carries instead is docs/data-layout.md (where things live) and system/sops/skill-building-sop.md (Build, step 2), which is here and which the same sentence below also names.
 > - ✅ `system/organism/map-format-specs.md` — **it is here.** *(Was `⏳ unruled` earlier on 2026-08-15; `T9.4c` landed the file the same day, 579 lines, ported from the donor with its `§` numbering preserved so the six existing citations still resolve. Marker flipped rather than left deferring a file that had arrived — a manifest describing the past is one nobody checks against the present.)*
 
 ---
@@ -421,7 +421,7 @@ and prior-findings sweeps):**
 
 3. **Retired-archivist-review callers (~10 refs — DIV-3):** `archivist-review` was retired
    2026-07-11 but ~10 files (the four archivist skills, `docs/architecture.md`,
-   `docs/skill-conformance.md`, `system/knowledge-altitude.md`, `system/jobs.md`,
+   `system/sops/skill-building-sop.md (Build, step 2)`, `system/knowledge-altitude.md`, `system/jobs.md`,
    and others) still name it as their handoff step. These are mis-pointed in live code.
 
 4. **archivist-audit cron status (DIV-4):** last confirmed log is

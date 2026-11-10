@@ -20,7 +20,7 @@ archive/delete/stamp/drain. This mirrors the donor's own tracked gap (`GAP-1` in
 `backlog-authority` organism element: *"the supervised drain path is unbuilt... the groomer
 proposes; there is no built consumer"*) — the port did not close it, and this note exists so the
 next reader finds a stated gap instead of an implied one, the same disclosure shape as
-`[SKILL-CONFORMANCE-PRODUCER-HALF]` in `docs/skill-conformance.md`. Until a drain skill/SOP is
+`[SKILL-CONFORMANCE-PRODUCER-HALF]` in the archived `system/_retired-2026-11-10/skill-conformance.ARCHIVE-2026-11-10.md`. Until a drain skill/SOP is
 written, running `--propose` and acting on it by hand is the only path.
 
 THE TWO-AXIS MODEL (`system/schemas/backlog-entry-schema.md`, frozen v1.0 — unchanged by

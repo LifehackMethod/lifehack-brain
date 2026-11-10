@@ -1,3 +1,6 @@
+> **RETIRED 2026-11-10 by Enver — replaced by the new skills SOP, `system/sops/skill-building-sop.md`. Do not act on
+> this; kept for history.**
+
 # Skill conformance — what a SKILL.md must declare
 
 > **What this is for.** A skill is only useful if the harness can find it and a person can tell what it

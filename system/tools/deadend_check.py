@@ -71,8 +71,14 @@ REPO = Path(__file__).resolve().parents[2]
 # to stay identical — each is scoped to its own domain, and `skill-building-sop.md` carries the
 # fullest set. ⇒ we search ALL THREE and de-duplicate on the entry text, rather than trusting any
 # one of them to be complete. ⛔ Do not "helpfully" narrow this to one file.
+# 2026-11-10: the skills SOP was written fresh (Enver; COMPASS P-122). Its dead ends now sit under
+# "## Don't Retry". The old SOP's DO NOT BUILD register (§II.4a/b, the bulk of the corpus) was
+# archived whole and is still searched here, labelled as the archive, so no known dead end goes
+# un-warned (coordinator ruling, 2026-11-10: point at the new SOP, fall back to the archive).
 SOPS = (
     ("skill-building-sop", REPO / "system" / "sops" / "skill-building-sop.md"),
+    ("skill-building-sop-archive-2026-11-10",
+     REPO / "system" / "_retired-2026-11-10" / "skill-building-sop.ARCHIVE-2026-11-10.md"),
     # ("build-sop",       REPO / "system" / "sops" / "build-sop.md"),  # RETIRED 2026-10-31 (Enver): most entries are in skill-building-sop.md II.4a/b; dead ends B34-B36 had no other home
     ("hook-sop",           REPO / "system" / "sops" / "hook-sop.md"),
 )
@@ -82,8 +88,9 @@ SOPS = (
 # PURPOSE: this is the FIND step, and `checkin_open.py`'s lesson applies — a tighter matcher
 # trades a visible false positive for a silent false negative, and here a silent miss means a
 # dead end goes un-warned. Local extra rulebooks (see `_extra_sops`) register under
-# `DO NOT RETRY`, so the match accepts either phrase.
-_SECTION_RE = re.compile(r"^#{1,4}\s.*DO NOT (?:BUILD|RETRY)", re.I)
+# `DO NOT RETRY`, so the match accepts either phrase. SOPs in the 2026-11-10 template use
+# "## Don't Retry", so that phrase is accepted too.
+_SECTION_RE = re.compile(r"^#{1,4}\s.*(?:DO NOT (?:BUILD|RETRY)|DON['’]T RETRY)", re.I)
 _NEXT_H2_RE = re.compile(r"^##\s")
 
 
@@ -615,6 +622,15 @@ def _selftest():
     print(f"  parsed {len(all_e)} dead-end entries from {len(SOPS) - len(missing)}/{len(SOPS)} SOPs")
     ck("all SOP sections were found and read (two since build-sop retired 2026-10-31; was three)", not missing)
     ck("parsed a substantial corpus (>= 40 entries)", len(all_e) >= 40)
+    # 2026-11-10: the fresh skills SOP's "## Don't Retry" section is read, and the archived
+    # old register is still read beside it.
+    ck("the new skills SOP's Don't Retry entries are read (>= 5)",
+       sum(1 for e in all_e if e["sop"] == "skill-building-sop") >= 5)
+    ck("the archived old skills SOP register is still read (>= 40)",
+       sum(1 for e in all_e if e["sop"] == "skill-building-sop-archive-2026-11-10") >= 40)
+    _new = search("put the next stage prompt in a Stop hook block reason shown on screen")[0]
+    ck("finds a dead end that lives only in the new skills SOP",
+       any(h[2]["sop"] == "skill-building-sop" for h in _new))
     ck("every entry carries a source path + line",
        all(e["path"] and isinstance(e["line"], int) for e in all_e))
 

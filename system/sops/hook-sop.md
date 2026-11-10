@@ -195,6 +195,6 @@ dated INCIDENTS — evidence, not a restatement.**
 ## §5 — The front door (pointers — one home each; where restated, copies must agree with `hook-contract.md`)
 - **Mechanics** (exit codes · stdin parsing · deny format · registration · the **Deploy & Verify
   checklist**) → ✅ `system/hook-contract.md`
-- **Injector arm/clear/TTL lifecycle + WHEN a skill arms its anchor** → `system/sops/skill-building-sop.md` PART IV, §IV.3 "a lean anchor fires every turn" and §IV.7
-- **Is-this-hook-well-built conformance check** (the LLM-CONTEXT block audit) → `docs/skill-conformance.md`
+- **Injector arm/clear/TTL lifecycle + WHEN a skill arms its anchor** → `system/sops/skill-building-sop.md`, Build steps 9 and 14 (the skills SOP was written fresh 2026-11-10; the older detail, §IV.3 and §IV.7, is in `system/_retired-2026-11-10/skill-building-sop.ARCHIVE-2026-11-10.md`)
+- **Is-this-hook-well-built conformance check** (the LLM-CONTEXT block audit) → the LLM Context Block section of `system/hook-contract.md` (the old pointer, the skill conformance checklist, was archived 2026-11-10 to `system/_retired-2026-11-10/`)
 - **The catalog of enforced rules / fitness functions** → the live list is `hooks/hooks.json` (generated from `system/register/register.jsonl`); each guard's own header says what it blocks and why

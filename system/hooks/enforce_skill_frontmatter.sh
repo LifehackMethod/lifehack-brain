@@ -13,8 +13,8 @@ trap 'lhb_journal_fire "$?" "enforce_skill_frontmatter.sh" "PreToolUse" "Write|E
 # REDIRECT: scaffold it right the first time — `bash <repo>/system/tools/new-skill.sh <name>`
 #      stamps a conformant SKILL.md. Add a double-quoted `description:` line; if it contains ': ', quote
 #      the whole value ("... : ..."). Split anything over 500 lines into reference files the skill points to.
-# SIGNPOST: the skill shape is codified in system/sops/skill-building-sop.md (§0 six traits, §0.5 the
-#      3-layer intent model) + docs/skill-conformance.md. To change the rule, edit there + get
+# SIGNPOST: the skill shape is codified in system/sops/skill-building-sop.md (the fresh 2026-11-10 SOP;
+#      Build, steps 1-3). To change the rule, edit there + get
 #      sign-off, then update this guard.
 # UPDATED: 2026-07-28  (S2.3 — the Edit path was DARK)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -91,7 +91,7 @@ def deny(reason):
            " unparseable frontmatter (often an unquoted value containing ': ') silently falls back to the body"
            " heading. REDIRECT: scaffold with `bash <repo>/system/tools/new-skill.sh <name>`;"
            " double-quote any description containing ': '; split a >500-line file into reference files."
-           " RULE: system/sops/skill-building-sop.md §III.3 (description frontmatter) + §III.6 (the frontmatter guard hook) + docs/skill-conformance.md — edit there + get"
+           " RULE: system/sops/skill-building-sop.md (Build, steps 2-3: frontmatter and description) — edit there + get"
            " sign-off to change, then update this guard.")
     sys.stderr.write(msg + "\n")
     sys.exit(2)
