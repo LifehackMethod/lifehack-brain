@@ -29,5 +29,3 @@
 1	system/security-canon.md
 1	system/security-posture-baseline.md
 1	system/templates/producer-spec-template.md
-1	system/tools/skill-tester-rig/CONTRACT.md
-1	system/tools/skill-tester-rig/README.md

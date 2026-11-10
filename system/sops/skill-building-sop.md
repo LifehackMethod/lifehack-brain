@@ -1446,9 +1446,9 @@ this stays the complete lookup, marked UNIVERSAL because they bind any build.
   block were all `head`'s, two coincidentally right → `set -o pipefail`, or capture the command's status before
   the pipe. ~~CANDIDATE until a receipt is named~~ OBSERVED (2026-09-05).
 - **[P4]** Tried: calendar waits in a plan ("watch 48 h", "two quiet weeks"). Failed: a forced test (kickstart, backdated last-success, stubs, the job-sim rig) proves the same thing in minutes. `2026-10-27` · plan §D.7 (the Pareto rule) → force the condition instead of waiting for it.
-- **[P5]** Tried: building the test instead of testing: pass-or-fail wording, approving only stricter changes, phases that had to pass first. Failed: about 18,000 lines, and days before a person or full window was tried. `2026-11-02` · the owner's ruling → a ladder of realism in small sizes, read by importance. SEEN.
-- **[P6]** Tried: treating the AI as an attacker in a test. Failed: lockdowns blocked Claude from starting. `2026-11-02` · THE FRAME → test accidents. SEEN, rig.
-- **[P7]** Tried: a handoff prompt pointing at an earlier step's file; random-word filler. Failed: false results (redoing; classifier stops, suspected). `2026-11-03` → neutral prompt, plain text. SEEN, rig.
+- **[P5]** Tried: building the test instead of testing: pass-or-fail wording, approving only stricter changes, phases that had to pass first. Failed: about 18,000 lines, and days before a person or full window was tried. `2026-11-02` · the owner's ruling → a ladder of realism in small sizes, read by importance.
+- **[P6]** Tried: treating the AI as an attacker in a test. Failed: lockdowns blocked Claude from starting. `2026-11-02` · THE FRAME → test accidents. Not yet re-tested on the new rig.
+- **[P7]** Tried: a handoff prompt pointing at an earlier step's file; random-word filler. Failed: false results (redoing; classifier stops, suspected). `2026-11-03` → neutral prompt, plain text. Not yet re-tested on the new rig.
 - **[P8]** Tried: spot-checks of a proxy; hunting an absolute good-run verdict. Failed: a sliver called graded; a good run 0/34, a lossy one 37/37. `2026-07/08` → grade what it was told to do; a relative tripwire is the most that held. SEEN.
 - **[P9]** Tried: an unpinned core word. Failed: "enforcement" meant different things to Enver and Claude for sessions. `NO-DATE` → pin words early. SEEN.
 - **[P10]** Tried: a stopwatch as a verdict, a probe smaller than its overhead, joining on what the agent wrote. Failed: misleading numbers. `2026-07/08` → join on what code wrote. SEEN.
@@ -1688,7 +1688,7 @@ friction:
 
 - **principle (candidate) (§III.4) — hypothetical, not yet validated: consider card + runner + record** when order must hold: ordered steps of kind code/ai/human, each with a check; one shared runner; an append-only runner-written record (see PART 0). ~~Not the default way to build a flow.~~ *(CANDIDATE. Struck
   2026-10-31 — see history; superseded by the owner's approved principle, "A step-runner holds order, where order matters", and the
-  2026-10-31 step-files ruling (PROPOSED CHANGES). OBSERVED in the rig, not yet REPRODUCED in real use.)*
+  2026-10-31 step-files ruling (PROPOSED CHANGES). OBSERVED in the step-runner rig (PART 0), not yet REPRODUCED in real use.)*
 
 
 ## III.5 — Progressive disclosure + layout
@@ -2211,7 +2211,7 @@ report. **All of that shipped with every unit canary green.**
 The lesson generalizes past this one lab: **a fix is not verified until you re-derive its output from real
 data.** Passing your own unit tests proves the fix does what you told it to; it says nothing about whether that
 was the right thing, or whether some other seam quietly broke. Treat your verification tooling with the same
-suspicion §V.2 asks you to hold toward a first-pass finding. A zero-step run can exit 0; a stopped self-test with no FAIL lines hasn't passed; a fake hang should be as hard to interrupt as the real one. *(2026-11-03, draft · SEEN, rig.)*
+suspicion §V.2 asks you to hold toward a first-pass finding. A test's validity needs a planted control and a failure-to-start count read from the raw log; a summary that says "startup noise" isn't enough. *(2026-11-10: repointed to the new rig's record, the skill-system project record rig-findings-2026-11 (private notes, not shipped) P1. draft · TESTED, one machine.)*
 
 ## §V.4a — BLIND THE GRADERS, NEVER THE ACTORS
 
@@ -2449,9 +2449,9 @@ catch drift and regressions at scale, not to replace the moment a human actually
 says "yes, that's right." Build the lab to sharpen your judgment about what "right" looks like; don't let it
 substitute for looking.
 
-### §V.8a — What a test of following can and can't say *(changed 2026-11-03: new. draft · SEEN, one rig.)*
+### §V.8a — What a test of following can and can't say *(changed 2026-11-10: the old-rig claims removed. draft.)*
 A made-up skill shows what can happen and whether the rig works. It doesn't overturn real runs, and its passing doesn't prove a real skill.
-- **Read a run by hand beside the score.** 1 of 17 was mostly the rig's fault; 13 of 13 hid scorer holes. A control told to skip shows the scorer can see one (once).
+- **A test counts only with a planted control and a failure-to-start count from the raw log.** Seen on the new rig, the skill-system project record rig-findings-2026-11 (private notes, not shipped) P1 (TESTED, one machine).
 - **Who plays the person matters.** Stand-ins drifted, halted runs, or approved a plan they'd never seen. Let code hold the facts; count a person's stop apart from the AI quitting.
 - **Don't steer what you measure.** A prompt pointing at an earlier step's file caused the redoing it seemed to find; a fixture stating the answer can't catch early conclusions.
 - **Say what a pass can't show.** A format-only check, a fake model, a read-only actor and a fresh process per step all test less than they seem.
@@ -2766,7 +2766,7 @@ converge across independent angles; magnitudes do not yet exist as facts.
 <!-- PROPOSED-CHANGES-2026-10-31 START — written at Enver's instruction; source in the project's private notes · v3 2026-10-31: moved here from after the opening frame (it sat at lines 216–344, which broke every line citation below it), re-tiered, rulings applied; original verbatim in skill-building-sop.history.md -->
 # PROPOSED CHANGES (2026-10-31) — how a long, multi-step skill should be built
 
-> **Status (Enver, 2026-11-04): the five parts below are in force as a description, a shape to draw from, and a skill takes only the parts that earn their place. Their evidence is still made-up skills in one rig, the longest test a single run, with no real skill tested. The rest of this section is still proposed.** Written 2026-10-31 from: a dated survey of everything tried since July,
+> **Status (Enver, 2026-11-04): the five parts below are in force as a description, a shape to draw from, and a skill takes only the parts that earn their place. Their evidence is still made-up skills in one rig, with no real skill tested. The rest of this section is still proposed.** Written 2026-10-31 from: a dated survey of everything tried since July,
 > an altitude review of it, blind outside research (four angles), and a read of the canon. Where this conflicts
 > with older text in this file, apart from the five parts, the older text stands until a human rules. ~~Confidence on each point:
 > **HIGH** · **MEDIUM** · **OPEN**.~~ *(REFINED 2026-10-31, v3: each point now carries THE FRAME's evidence tier —
@@ -2802,12 +2802,7 @@ the person showed clearly once. *SEEN: 11 cases to 2026-09-15 as read by one hel
 2026-11-02; no list of the 11 was found, some thin or self-reported, models not recorded, those named mostly /checkin and /save, and
 nothing shows whether they still happen. A shape that goes with failure, not a proven cause.*
 
-⚠ **In these runs (Sonnet, one rig, one author), a made-up skill built to that shape, with no pushing person, did not fail:** 65 of 65 parts as scored across 5 runs (words only, self-written
-marks, exceptions in short text of about 1,150 words, three chores first; 4 runs at about 66% full; 1 read by hand). Separately, a longer one: 25 of 25 steps, one order slip, in one 12-stage run with a
-confused stand-in person and two blind handoffs. *MEASURED, made-up; counts, not rates.* That doesn't overturn the real
-record. It says the shape alone didn't bring on a failure.
-
-> ⏸ UNSURE (2026-11-03): why the two differ. The tests lacked real context, competing work, real judgment, a person who insists,
+> ⏸ UNSURE (2026-11-03): whether that shape alone brings on a failure. Made-up tests lack real context, competing work, real judgment, a person who insists,
 > days between sessions and a typed session, and the real cases don't record a model. What would settle it: a real skill with
 > a recorded skip, a trace per step, skips counted by kind of step in real use; then a check added to one skipped step and
 > the count repeated, with the number of runs chosen first.
@@ -2960,10 +2955,7 @@ skills invoke each other; it does not make a design safe that relies on it.)*
 **Where order must hold, a script can hold the move from one step to the next. It counts only where it actually runs as code; elsewhere the session decides** (the owner's approved principle). *OBSERVED for the runner (PART 0); OBSERVED with a
 condition for a guard (Round B, 2026-10-30: a bare refusal was retried past; a refusal with its reason held better).* *(changed
 2026-11-03: "never left to the model" went past that principle. draft · REASONED.)* Not yet shown: that a runner gets more of a skill done than
-the skill moving itself. Long shipped skills such as `planning-weekly` and `ingest` move themselves with `NEXT` lines; `build` uses a runner (not counted across all skills). A `NEXT` line is a step file's closing pointer to the next file. Where order needn't hold, a skill can move itself with checks (open). No shared skill runner ships yet; `build` has its own. In made-up tests,
-where the person and the rig let a run go on, both ways mostly finished (the rig's fifth test level, later batch: 56 of 57 model
-steps, 6 runs); about a third of runs were cut short, nearly all by the stand-in person or the rig, in both ways. The rest were
-self-moving: a give-up and a skip on a person's claim, a step lost to a classifier stop, an approval it answered itself. What would settle it: one real skill, both ways, counting skips and cost.
+the skill moving itself. Long shipped skills such as `planning-weekly` and `ingest` move themselves with `NEXT` lines; `build` uses a runner (not counted across all skills). A `NEXT` line is a step file's closing pointer to the next file. Where order needn't hold, a skill can move itself with checks (open). No shared skill runner ships yet; `build` has its own. On the new rig, code held the order in 10 of 10 forks of real sessions at about 80% fill (`the skill-system project record rig-findings-2026-11 (private notes, not shipped)` P4, TESTED); no self-moving comparison was run. What would settle it: one real skill, both ways, counting skips and cost.
 The runner moves to the next step only after the current step's check passes. Where a guard is used instead, it
 refuses the next step until the check passes, and every refusal says why and what to do — a bare "no" makes the model
 hunt for a workaround.
@@ -3024,8 +3016,7 @@ paragraph here.
 - Checks that only looked for a file's existence — they passed while the content was wrong. *OBSERVED (PART 0 Stage 4:
   8 silently wrong results from non-empty tests).*
 
-**What the test rig found (2026-11-01 → 11-03).** *Six made-up skills, one rig, headless, a stand-in person; counts, not rates; no
-real skill. Record: the rig plan's DISCOVERIES and the project's run notes (not shipped). draft · MEASURED.*
+**What testing found (2026-11-01 → 11-03).** *Made-up skills, headless, a stand-in person; no real skill. Current rig record: the skill-system project record rig-findings-2026-11 (private notes, not shipped) (project notes, not shipped). draft.*
 - **A step's answer goes through a structured channel, not free text.** Ruled by Enver 2026-11-02. A stronger model
   asked for "only one line of JSON" printed its working first in 8 of 8 runs; naming the rejection and asking again
   (2 retries) changed nothing, as the same reply came back byte for byte. With the platform's structured output

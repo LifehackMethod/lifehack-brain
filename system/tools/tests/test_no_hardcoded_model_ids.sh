@@ -23,9 +23,8 @@ LIT = [re.compile(p) for p in (
     r"""^\s*(?:export\s+)?MODEL\s*=\s*([A-Za-z0-9][\w.\-]*)\s*(?:#.*)?$""")]
 EXEMPT = {"system/tools/model.lib.sh", "shared/tools/model_ids.py"}
 # 2026-11-01 pre-merge triage: system/tools/rig/ holds planted wrong-move FIXTURES (cases that deliberately contain a literal id) -> skipped like tests/.
-# system/tools/skill-tester-rig/ only parses tier flags (small|medium|large|haiku|sonnet|opus): the (1) id pattern is still enforced there, only (2) is skipped.
 FIXTURE_PREFIX = "system/tools/rig/"
-LIT_SKIP_PREFIX = ("system/tools/skill-tester-rig/",)
+LIT_SKIP_PREFIX = ()
 hits = []
 for top in ("shared", "system/tools"):
     for dp, dn, fn in os.walk(top):

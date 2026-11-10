@@ -1,6 +1,0 @@
-runs/
-*.tmp
-__pycache__/
-# rendered actor settings (run.sh / probe-hooks.sh render them from lab-settings.template.json into scratch;
-# a rendered copy carries absolute home paths and must never be committed)
-lab-settings.json
