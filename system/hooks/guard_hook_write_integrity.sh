@@ -11,9 +11,15 @@ trap 'lhb_journal_fire "$?" "guard_hook_write_integrity.sh" "PreToolUse" "Bash|W
 #      when the RESULTING file fails `bash -n` or has a conflict-marker line (^<<<<<<< ^======= ^>>>>>>>).
 #      Repair path stays open: an edit to an already-broken file is allowed if it passes, or strictly
 #      reduces the conflict-marker count.
-#      (2) Bash: git apply|am|cherry-pick|merge and patch are REFUSED when they target the LIVE code root's
-#      hooks (a path arg under <live>/system/hooks, or run from inside the live root via cwd / cd / git -C /
-#      patch -d). Live root = $LIFEHACK_LIVE_ROOT, else $CLAUDE_PLUGIN_ROOT, else this hook's own repo.
+#      (2) Bash: git apply|am|cherry-pick|merge|pull|rebase|revert|stash pop|stash apply and patch are REFUSED
+#      when they target the LIVE code root's hooks. Live root = $LIFEHACK_LIVE_ROOT, else $CLAUDE_PLUGIN_ROOT.
+#      When one of those is NAMED, a path arg under <live>/system/hooks OR running from inside the live root
+#      (cwd / cd / git -C / patch -d) is refused. When NEITHER is set (a settings.json registration), "live" is
+#      only a guess, so ONLY a path argument landing in <this repo>/system/hooks blocks -- never merely where you
+#      are standing, so normal merges/pulls/applies in a clone or worktree work (review finding 4).
+#      `git checkout|restore` is refused only when it pulls a hook in from ANOTHER ref (checkout <ref> -- hook,
+#      restore --source); restoring from the index/HEAD is a repair and stays open. `bash -c '...'`, `sh -lc`
+#      and `eval` strings are scanned too (to depth 4).
 #      Worktrees are untouched: patching a worktree copy is the SANCTIONED route.
 # REDIRECT: change hooks in a worktree, then `bash system/tools/hook_swap.sh <worktree>/system/hooks/<name>.sh`
 #      (bash -n + that hook's test + last-good copy + atomic swap). Rule: system/sops/hook-sop.md section 6.
@@ -105,68 +111,101 @@ def res(tok, base):
     t = os.path.expanduser(tok)
     return rp(t if os.path.isabs(t) else os.path.join(base, t))
 livehooks = os.path.join(live, "system", "hooks")
-MERGEY = {"apply", "am", "cherry-pick", "merge"}
+# EXPLICIT = the live root was NAMED (LIFEHACK_LIVE_ROOT / CLAUDE_PLUGIN_ROOT). Only then may the current
+# directory, `cd` or `git -C` decide anything. With nothing named, "live" is only a guess (the repo this hook lives in, which
+# for a settings.json registration is every clone and worktree you work in), so the ONLY thing that blocks is a path
+# argument that lands in <that repo>/system/hooks -- never merely where you are standing (review finding 4).
+EXPLICIT = bool(os.environ.get("LIFEHACK_LIVE_ROOT") or os.environ.get("CLAUDE_PLUGIN_ROOT"))
+# verbs that can leave conflict markers or half-apply a change into a working tree
+CWDKINDS = {"apply", "am", "cherry-pick", "merge", "pull", "rebase", "revert"}
 def refuse(what):
     deny("`%s` against the LIVE hooks folder (%s). This is how a half-applied patch left conflict markers in a live PreToolUse hook and blocked every window." % (what, live))
-hd = re.search(r"(?<!<)<<-?\s*[\x27\"\\]?[A-Za-z_]", cmd)
-if hd:
-    cmd = cmd[:hd.start()]  # heredoc body is data, not commands
-try:
-    lex = shlex.shlex(cmd, posix=True, punctuation_chars=";&|")
-    lex.whitespace_split = True
-    toks = list(lex)
-except ValueError:
-    toks = None
-if toks is None:
-    if re.search(r"(^|[\s;&|])(git\s+(-\S+\s+(\S+\s+)?)*(apply|am|cherry-pick|merge)|patch)(\s|$)", cmd) and (live in cmd or rawlive in cmd or under(rp(cwd), live)):
-        refuse("git apply/am/cherry-pick/merge/patch (unparsed command)")
-    sys.exit(0)
-cur = rp(cwd)
-segs, seg = [], []
-for t in toks:
-    if t.startswith("<<"):
-        break  # heredoc: everything after is body
-    if set(t) <= set(";&|"):
-        segs.append(seg); seg = []
-    else:
-        seg.append(t)
-segs.append(seg)
-for seg in segs:
-    while seg and (re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", seg[0]) or seg[0] in ("sudo", "command", "exec", "env")):
-        seg = seg[1:]
-    if not seg:
-        continue
-    if seg[0] == "cd" and len(seg) > 1:
-        cur = res(seg[1], cur); continue
-    kind = None; base = cur; args = seg[1:]
-    if seg[0] == "git":
-        i = 1
-        while i < len(seg) and seg[i].startswith("-"):
-            if seg[i] == "-C" and i + 1 < len(seg):
-                base = res(seg[i + 1], base); i += 1
-            elif seg[i] == "-c":
-                i += 1
-            i += 1
-        if i < len(seg) and seg[i] in MERGEY:
-            kind = "git " + seg[i]; args = seg[i + 1:]
-    elif seg[0] == "patch":
-        kind = "patch"
-        for j, a in enumerate(args):
-            if a in ("-d", "--directory") and j + 1 < len(args):
-                base = res(args[j + 1], base)
-    if not kind:
-        continue
-    if under(base, live):
-        refuse(kind + " (run from inside the live root)")
-    for a in args:
-        if a.startswith("-") or not a:
+def lands_in_hooks(a, base):
+    if a.startswith("-") or not a:
+        return False
+    for cand in (a, a.split("=", 1)[-1]):
+        try:
+            if under(res(cand, base), livehooks):
+                return True
+        except Exception:
+            pass
+    return False
+SHELLS = ("bash", "sh", "zsh", "dash", "ksh")
+def scan(cmd, cur, depth=0):
+    hd = re.search(r"(?<!<)<<-?\s*[\x27\"\\]?[A-Za-z_]", cmd)
+    if hd:
+        cmd = cmd[:hd.start()]  # heredoc body is data, not commands
+    try:
+        lex = shlex.shlex(cmd, posix=True, punctuation_chars=";&|")
+        lex.whitespace_split = True
+        toks = list(lex)
+    except ValueError:
+        toks = None
+    if toks is None:
+        if re.search(r"(^|[\s;&|])(git\s+(-\S+\s+(\S+\s+)?)*(apply|am|cherry-pick|merge|pull|rebase|revert|stash\s+(pop|apply))|patch)(\s|$)", cmd) and (live in cmd or rawlive in cmd or (EXPLICIT and under(rp(cwd), live))):
+            refuse("git apply/am/cherry-pick/merge/pull/rebase/revert/stash/patch (unparsed command)")
+        return
+    segs, seg = [], []
+    for t in toks:
+        if t.startswith("<<"):
+            break  # heredoc: everything after is body
+        if set(t) <= set(";&|"):
+            segs.append(seg); seg = []
+        else:
+            seg.append(t)
+    segs.append(seg)
+    for seg in segs:
+        while seg and (re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", seg[0]) or seg[0] in ("sudo", "command", "exec", "env", "nohup", "time")):
+            seg = seg[1:]
+        if not seg:
             continue
-        for cand in (a, a.split("=", 1)[-1]):
-            try:
-                if under(res(cand, base), livehooks):
-                    refuse(kind + " targeting " + a)
-            except Exception:
-                pass
+        if seg[0] == "cd" and len(seg) > 1:
+            cur = res(seg[1], cur); continue
+        if depth < 4:
+            if seg[0] in SHELLS:
+                for j in range(1, len(seg) - 1):
+                    if re.match(r"^-[a-zA-Z]*c[a-zA-Z]*$", seg[j]):
+                        scan(seg[j + 1], cur, depth + 1); break
+            elif seg[0] == "eval" and len(seg) > 1:
+                scan(" ".join(seg[1:]), cur, depth + 1)
+        kind = None; base = cur; args = seg[1:]; cwdrule = True
+        if seg[0] == "git":
+            i = 1
+            while i < len(seg) and seg[i].startswith("-"):
+                if seg[i] == "-C" and i + 1 < len(seg):
+                    base = res(seg[i + 1], base); i += 1
+                elif seg[i] == "-c":
+                    i += 1
+                i += 1
+            sub = seg[i] if i < len(seg) else ""
+            rest = seg[i + 1:]
+            if sub in CWDKINDS:
+                kind = "git " + sub; args = rest
+            elif sub == "stash" and rest and rest[0] in ("pop", "apply"):
+                kind = "git stash " + rest[0]; args = rest[1:]
+            elif sub in ("checkout", "restore"):
+                # restoring a hook from the index/HEAD is a repair; pulling content in from ANOTHER ref is not
+                nonopt = [a for a in rest if not a.startswith("-")]
+                hits = [a for a in nonopt if lands_in_hooks(a, base)]
+                if hits:
+                    other = [a for a in nonopt if a not in hits]
+                    fromref = bool(other) if sub == "checkout" else any(a == "-s" or a.startswith("--source") or re.match(r"^-s.", a) for a in rest)
+                    if fromref:
+                        refuse("git %s <ref> -- %s" % (sub, hits[0]))
+                continue
+        elif seg[0] == "patch":
+            kind = "patch"
+            for j, a in enumerate(args):
+                if a in ("-d", "--directory") and j + 1 < len(args):
+                    base = res(args[j + 1], base)
+        if not kind:
+            continue
+        if EXPLICIT and under(base, live):
+            refuse(kind + " (run from inside the live root)")
+        for a in args:
+            if lands_in_hooks(a, base):
+                refuse(kind + " targeting " + a)
+scan(cmd, rp(cwd))
 sys.exit(0)
 ' 
 rc=$?
