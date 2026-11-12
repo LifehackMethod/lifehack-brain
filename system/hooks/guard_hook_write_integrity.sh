@@ -127,8 +127,8 @@ def lands_in_hooks(a, base):
         try:
             if under(res(cand, base), livehooks):
                 return True
-        except Exception:
-            pass
+        except Exception as e:
+            sys.stderr.write("guard_hook_write_integrity: could not resolve %r (%s); not treated as a hooks path\n" % (cand, e))
     return False
 SHELLS = ("bash", "sh", "zsh", "dash", "ksh")
 def scan(cmd, cur, depth=0):
