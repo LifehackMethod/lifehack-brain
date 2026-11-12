@@ -808,6 +808,28 @@ AUTHORITATIVE → old canon 2026-06-08.
 
 ## 7. THE READER
 
+**7.0 Written text carries no trust metadata — the root condition the rest of this section answers.**
+To the reader, every sentence arrives equally authoritative: fresh or stale, ruled or mused, validated
+or proposed. Age and origin are invisible in the text itself, and a model treats anything written as
+true regardless of who wrote it or when — the "handed down by Moses" failure. Trust is therefore
+**derived, never assumed**: from tier labels and dated receipts where they exist (the confidence
+ladder: an unlabelled claim reads as the highest, so label it), from recency when sources conflict
+(7.4), from re-derivation over self-attestation (7.2) — and a claim carrying none of these reads as a
+proposal, not a fact. AUTHORITATIVE → Enver, 2026-11-06; COMPASS P-130.
+
+**7.0b Prose is where meaning lives; structure is where trust lives.**
+The model reads both prose and structured formats; code reads only exact structure — so a format never serves
+the model, it serves the machine that needs handles (**addressability**). Knowledge is stored in prose (the
+most durable format, the cheapest per unit of meaning, the human's review surface); guarantees are stored in
+structure (checkable, addressable, trustworthy). **Every crossing from prose into structure passes a check**
+— that is the moment untrusted output enters the trusted world; **every crossing from structure into prose is
+free** — a wrong rendering is inert. The underlying asymmetry, his words (2026-11-07): **"LLMs are flexible
+but not really trustable; code is trustable but extremely brittle."** The hybrid uses each only where its
+virtue is needed and its vice is harmless: flexibility where the world varies (judgment, reading, drafting);
+trust where failure is expensive (boundaries, validation, state changes). The durability ladder follows:
+**prose > structured data > code** — store the permanent in the permanent; keep the rottable (code) in one
+rebuildable place, never load-bearing for truth. AUTHORITATIVE → Enver, 2026-11-07; extends §7.0.
+
 **7.1 The system holds more than any one reader can retrieve — and it doesn't care that the reader is a
 machine.** A session said this about itself after `/audit` refuted three of its four rulings using this
 system's own buried records. **Conservation of Familiarity applies to the model reading the canon.** And
