@@ -105,12 +105,12 @@
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_plan_structure.sh",
+      "command": ": hrt guard_plan_structure.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_plan_structure.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_plan_structure.sh; elif [ -f \"$h/guard_plan_structure.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_plan_structure.sh directly, no last-good protection\"; exec bash \"$h/guard_plan_structure.sh\"; else a \"guard_plan_structure.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking plan structure (Phase/Feature/Task)..."
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" plan_flag.sh record",
+      "command": ": hrt plan_flag.sh record; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"plan_flag.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" plan_flag.sh record; elif [ -f \"$h/plan_flag.sh\" ]; then a \"hook_runner.sh is missing or broken; running plan_flag.sh directly, no last-good protection\"; exec bash \"$h/plan_flag.sh\" record; else a \"plan_flag.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Recording the active plan..."
      }
     ]
@@ -120,7 +120,7 @@
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" ingest_gate_enforce.sh",
+      "command": ": hrt ingest_gate_enforce.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"ingest_gate_enforce.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" ingest_gate_enforce.sh; elif [ -f \"$h/ingest_gate_enforce.sh\" ]; then a \"hook_runner.sh is missing or broken; running ingest_gate_enforce.sh directly, no last-good protection\"; exec bash \"$h/ingest_gate_enforce.sh\"; else a \"ingest_gate_enforce.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking where this text came from..."
      }
     ]
@@ -130,12 +130,12 @@
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_write_paths.sh",
+      "command": ": hrt guard_write_paths.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_write_paths.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_write_paths.sh; elif [ -f \"$h/guard_write_paths.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_write_paths.sh directly, no last-good protection\"; exec bash \"$h/guard_write_paths.sh\"; else a \"guard_write_paths.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking this is not a guard editing itself..."
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" enforce_skill_frontmatter.sh",
+      "command": ": hrt enforce_skill_frontmatter.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"enforce_skill_frontmatter.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" enforce_skill_frontmatter.sh; elif [ -f \"$h/enforce_skill_frontmatter.sh\" ]; then a \"hook_runner.sh is missing or broken; running enforce_skill_frontmatter.sh directly, no last-good protection\"; exec bash \"$h/enforce_skill_frontmatter.sh\"; else a \"enforce_skill_frontmatter.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking the skill declares what it is for..."
      },
      {
@@ -150,27 +150,27 @@
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_canon_write.sh",
+      "command": ": hrt guard_canon_write.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_canon_write.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_canon_write.sh; elif [ -f \"$h/guard_canon_write.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_canon_write.sh directly, no last-good protection\"; exec bash \"$h/guard_canon_write.sh\"; else a \"guard_canon_write.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking what is going into the always-loaded layer..."
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_cross_project_write.sh",
+      "command": ": hrt guard_cross_project_write.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_cross_project_write.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_cross_project_write.sh; elif [ -f \"$h/guard_cross_project_write.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_cross_project_write.sh directly, no last-good protection\"; exec bash \"$h/guard_cross_project_write.sh\"; else a \"guard_cross_project_write.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking this belongs to the project you are on..."
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_throughline_write_scope.sh",
+      "command": ": hrt guard_throughline_write_scope.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_throughline_write_scope.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_throughline_write_scope.sh; elif [ -f \"$h/guard_throughline_write_scope.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_throughline_write_scope.sh directly, no last-good protection\"; exec bash \"$h/guard_throughline_write_scope.sh\"; else a \"guard_throughline_write_scope.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking a read-only investigation stays read-only..."
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_ledger_discipline.sh",
+      "command": ": hrt guard_ledger_discipline.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_ledger_discipline.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_ledger_discipline.sh; elif [ -f \"$h/guard_ledger_discipline.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_ledger_discipline.sh directly, no last-good protection\"; exec bash \"$h/guard_ledger_discipline.sh\"; else a \"guard_ledger_discipline.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking debt-ledger discipline..."
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_findings_write.sh",
+      "command": ": hrt guard_findings_write.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_findings_write.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_findings_write.sh; elif [ -f \"$h/guard_findings_write.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_findings_write.sh directly, no last-good protection\"; exec bash \"$h/guard_findings_write.sh\"; else a \"guard_findings_write.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking this doesn't bypass the findings writer..."
      }
     ]
@@ -180,7 +180,7 @@
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_pm_flag_store.sh",
+      "command": ": hrt guard_pm_flag_store.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_pm_flag_store.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_pm_flag_store.sh; elif [ -f \"$h/guard_pm_flag_store.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_pm_flag_store.sh directly, no last-good protection\"; exec bash \"$h/guard_pm_flag_store.sh\"; else a \"guard_pm_flag_store.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking nothing rewrites which project this window is on..."
      }
     ]
@@ -190,57 +190,57 @@
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_egress.sh",
+      "command": ": hrt guard_egress.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_egress.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_egress.sh; elif [ -f \"$h/guard_egress.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_egress.sh directly, no last-good protection\"; exec bash \"$h/guard_egress.sh\"; else a \"guard_egress.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking no secret is going out with this..."
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" enforce_egress_allowlist.sh",
+      "command": ": hrt enforce_egress_allowlist.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"enforce_egress_allowlist.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" enforce_egress_allowlist.sh; elif [ -f \"$h/enforce_egress_allowlist.sh\" ]; then a \"hook_runner.sh is missing or broken; running enforce_egress_allowlist.sh directly, no last-good protection\"; exec bash \"$h/enforce_egress_allowlist.sh\"; else a \"enforce_egress_allowlist.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking where this call is going..."
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_sheet_writes.sh",
+      "command": ": hrt guard_sheet_writes.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_sheet_writes.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_sheet_writes.sh; elif [ -f \"$h/guard_sheet_writes.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_sheet_writes.sh directly, no last-good protection\"; exec bash \"$h/guard_sheet_writes.sh\"; else a \"guard_sheet_writes.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking this sheet's own instructions were read first..."
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_sheet_formula_writes.sh",
+      "command": ": hrt guard_sheet_formula_writes.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_sheet_formula_writes.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_sheet_formula_writes.sh; elif [ -f \"$h/guard_sheet_formula_writes.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_sheet_formula_writes.sh directly, no last-good protection\"; exec bash \"$h/guard_sheet_formula_writes.sh\"; else a \"guard_sheet_formula_writes.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking this write would not land on a formula..."
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_calendar_writes.sh",
+      "command": ": hrt guard_calendar_writes.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_calendar_writes.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_calendar_writes.sh; elif [ -f \"$h/guard_calendar_writes.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_calendar_writes.sh directly, no last-good protection\"; exec bash \"$h/guard_calendar_writes.sh\"; else a \"guard_calendar_writes.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking which calendar this would write to..."
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_tasks_writes.sh",
+      "command": ": hrt guard_tasks_writes.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_tasks_writes.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_tasks_writes.sh; elif [ -f \"$h/guard_tasks_writes.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_tasks_writes.sh directly, no last-good protection\"; exec bash \"$h/guard_tasks_writes.sh\"; else a \"guard_tasks_writes.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking whether this would write to your goals list..."
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_statusline_lock.sh",
+      "command": ": hrt guard_statusline_lock.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_statusline_lock.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_statusline_lock.sh; elif [ -f \"$h/guard_statusline_lock.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_statusline_lock.sh directly, no last-good protection\"; exec bash \"$h/guard_statusline_lock.sh\"; else a \"guard_statusline_lock.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Guarding the status-line pointer..."
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_gws_logout.sh",
+      "command": ": hrt guard_gws_logout.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_gws_logout.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_gws_logout.sh; elif [ -f \"$h/guard_gws_logout.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_gws_logout.sh directly, no last-good protection\"; exec bash \"$h/guard_gws_logout.sh\"; else a \"guard_gws_logout.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking for credential-destroying logout..."
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_git_add_class.sh",
+      "command": ": hrt guard_git_add_class.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_git_add_class.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_git_add_class.sh; elif [ -f \"$h/guard_git_add_class.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_git_add_class.sh directly, no last-good protection\"; exec bash \"$h/guard_git_add_class.sh\"; else a \"guard_git_add_class.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking this stages only what you changed..."
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_gmail_destructive.sh",
+      "command": ": hrt guard_gmail_destructive.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_gmail_destructive.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_gmail_destructive.sh; elif [ -f \"$h/guard_gmail_destructive.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_gmail_destructive.sh directly, no last-good protection\"; exec bash \"$h/guard_gmail_destructive.sh\"; else a \"guard_gmail_destructive.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking nothing would destroy mail you cannot get back..."
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_gmail_send.sh",
+      "command": ": hrt guard_gmail_send.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_gmail_send.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_gmail_send.sh; elif [ -f \"$h/guard_gmail_send.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_gmail_send.sh directly, no last-good protection\"; exec bash \"$h/guard_gmail_send.sh\"; else a \"guard_gmail_send.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking this would not send mail in your name..."
      }
     ]
@@ -250,7 +250,7 @@
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_agent_return_channel.sh",
+      "command": ": hrt guard_agent_return_channel.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_agent_return_channel.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_agent_return_channel.sh; elif [ -f \"$h/guard_agent_return_channel.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_agent_return_channel.sh directly, no last-good protection\"; exec bash \"$h/guard_agent_return_channel.sh\"; else a \"guard_agent_return_channel.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking this helper can hand its work back..."
      }
     ]
@@ -261,7 +261,7 @@
      {
       "type": "command",
       "if": "Skill(checkin)",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_checkin_needs_project.sh",
+      "command": ": hrt guard_checkin_needs_project.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_checkin_needs_project.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_checkin_needs_project.sh; elif [ -f \"$h/guard_checkin_needs_project.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_checkin_needs_project.sh directly, no last-good protection\"; exec bash \"$h/guard_checkin_needs_project.sh\"; else a \"guard_checkin_needs_project.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking a project is armed before /checkin..."
      }
     ]
@@ -271,12 +271,12 @@
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" enforce_multiphase_contract.sh",
+      "command": ": hrt enforce_multiphase_contract.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"enforce_multiphase_contract.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" enforce_multiphase_contract.sh; elif [ -f \"$h/enforce_multiphase_contract.sh\" ]; then a \"hook_runner.sh is missing or broken; running enforce_multiphase_contract.sh directly, no last-good protection\"; exec bash \"$h/enforce_multiphase_contract.sh\"; else a \"enforce_multiphase_contract.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking this phase declares what it must produce..."
      },
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_organism_map.sh",
+      "command": ": hrt guard_organism_map.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_organism_map.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_organism_map.sh; elif [ -f \"$h/guard_organism_map.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_organism_map.sh directly, no last-good protection\"; exec bash \"$h/guard_organism_map.sh\"; else a \"guard_organism_map.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking this would not overwrite the map of itself..."
      }
     ]
@@ -286,7 +286,7 @@
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_hook_sop_read.sh",
+      "command": ": hrt guard_hook_sop_read.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_hook_sop_read.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_hook_sop_read.sh; elif [ -f \"$h/guard_hook_sop_read.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_hook_sop_read.sh directly, no last-good protection\"; exec bash \"$h/guard_hook_sop_read.sh\"; else a \"guard_hook_sop_read.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking the hook SOP was read first..."
      }
     ]
@@ -296,7 +296,7 @@
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_hook_write_integrity.sh",
+      "command": ": hrt guard_hook_write_integrity.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_hook_write_integrity.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_hook_write_integrity.sh; elif [ -f \"$h/guard_hook_write_integrity.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_hook_write_integrity.sh directly, no last-good protection\"; exec bash \"$h/guard_hook_write_integrity.sh\"; else a \"guard_hook_write_integrity.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking this will not leave a hook that cannot run..."
      }
     ]
@@ -306,7 +306,7 @@
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_brief_truncation.sh",
+      "command": ": hrt guard_brief_truncation.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_brief_truncation.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_brief_truncation.sh; elif [ -f \"$h/guard_brief_truncation.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_brief_truncation.sh directly, no last-good protection\"; exec bash \"$h/guard_brief_truncation.sh\"; else a \"guard_brief_truncation.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking this doesn't silently shrink a project brief..."
      }
     ]
@@ -316,7 +316,7 @@
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_disable_model_invocation.sh",
+      "command": ": hrt guard_disable_model_invocation.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_disable_model_invocation.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_disable_model_invocation.sh; elif [ -f \"$h/guard_disable_model_invocation.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_disable_model_invocation.sh directly, no last-good protection\"; exec bash \"$h/guard_disable_model_invocation.sh\"; else a \"guard_disable_model_invocation.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking for the retired disable-model-invocation flag..."
      }
     ]
@@ -326,7 +326,7 @@
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_gh_account_switch.sh",
+      "command": ": hrt guard_gh_account_switch.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_gh_account_switch.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_gh_account_switch.sh; elif [ -f \"$h/guard_gh_account_switch.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_gh_account_switch.sh directly, no last-good protection\"; exec bash \"$h/guard_gh_account_switch.sh\"; else a \"guard_gh_account_switch.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking this doesn't mutate global gh auth state..."
      }
     ]
@@ -336,7 +336,7 @@
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_harness_writeback.sh",
+      "command": ": hrt guard_harness_writeback.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_harness_writeback.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_harness_writeback.sh; elif [ -f \"$h/guard_harness_writeback.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_harness_writeback.sh directly, no last-good protection\"; exec bash \"$h/guard_harness_writeback.sh\"; else a \"guard_harness_writeback.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking this isn't writing a harness file back into the private repo..."
      }
     ]
@@ -346,7 +346,7 @@
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_no_repoint_into_claudeops.sh",
+      "command": ": hrt guard_no_repoint_into_claudeops.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_no_repoint_into_claudeops.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_no_repoint_into_claudeops.sh; elif [ -f \"$h/guard_no_repoint_into_claudeops.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_no_repoint_into_claudeops.sh directly, no last-good protection\"; exec bash \"$h/guard_no_repoint_into_claudeops.sh\"; else a \"guard_no_repoint_into_claudeops.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking this doesn't re-point a symlink into the private repo..."
      }
     ]
@@ -356,7 +356,7 @@
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_commit_identity.sh",
+      "command": ": hrt guard_commit_identity.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_commit_identity.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_commit_identity.sh; elif [ -f \"$h/guard_commit_identity.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_commit_identity.sh directly, no last-good protection\"; exec bash \"$h/guard_commit_identity.sh\"; else a \"guard_commit_identity.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking the commit identity matches the operator's..."
      }
     ]
@@ -366,7 +366,7 @@
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_git_push_signpost.sh",
+      "command": ": hrt guard_git_push_signpost.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_git_push_signpost.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_git_push_signpost.sh; elif [ -f \"$h/guard_git_push_signpost.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_git_push_signpost.sh directly, no last-good protection\"; exec bash \"$h/guard_git_push_signpost.sh\"; else a \"guard_git_push_signpost.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking what this push would actually send..."
      }
     ]
@@ -376,7 +376,7 @@
     "hooks": [
      {
       "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh\" guard_no_upstream_commit_signpost.sh",
+      "command": ": hrt guard_no_upstream_commit_signpost.sh; h=\"${CLAUDE_PLUGIN_ROOT}/system/hooks\"; a() { s=\"${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}\"; mkdir -p \"$s\" 2>/dev/null; printf '{\"alert\":\"hook-runner-unavailable\",\"hook\":\"guard_no_upstream_commit_signpost.sh\",\"what\":\"%s\"}\\n' \"$1\" > \"$s/hooks-alert.json\" 2>/dev/null; echo \"HOOK-RUNNER ALERT: $1\" >&2; }; if [ -r \"$h/hook_runner.sh\" ] && bash -n \"$h/hook_runner.sh\" 2>/dev/null; then exec bash \"$h/hook_runner.sh\" guard_no_upstream_commit_signpost.sh; elif [ -f \"$h/guard_no_upstream_commit_signpost.sh\" ]; then a \"hook_runner.sh is missing or broken; running guard_no_upstream_commit_signpost.sh directly, no last-good protection\"; exec bash \"$h/guard_no_upstream_commit_signpost.sh\"; else a \"guard_no_upstream_commit_signpost.sh is missing and hook_runner.sh is unavailable -- failing CLOSED\"; exit 2; fi",
       "statusMessage": "Checking whether the remote has seen this branch..."
      }
     ]
