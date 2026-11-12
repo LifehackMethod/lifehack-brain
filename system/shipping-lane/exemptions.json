@@ -1,0 +1,112 @@
+[
+  {
+    "path": "system/shipping-lane/fixtures/refuse-fixture.md",
+    "rule_id": "path-home-windows",
+    "reason": "fixture that deliberately holds fake leaks so verify_rules can prove every refuse rule fires; approved by owner 2026-11-12"
+  },
+  {
+    "path": "system/shipping-lane/fixtures/refuse-fixture.md",
+    "rule_id": "path-unc-share",
+    "reason": "fixture that deliberately holds fake leaks so verify_rules can prove every refuse rule fires; approved by owner 2026-11-12"
+  },
+  {
+    "path": "system/shipping-lane/fixtures/refuse-fixture.md",
+    "rule_id": "path-drive-cloudstorage",
+    "reason": "fixture that deliberately holds fake leaks so verify_rules can prove every refuse rule fires; approved by owner 2026-11-12"
+  },
+  {
+    "path": "system/shipping-lane/fixtures/refuse-fixture.md",
+    "rule_id": "path-drive-account",
+    "reason": "fixture that deliberately holds fake leaks so verify_rules can prove every refuse rule fires; approved by owner 2026-11-12"
+  },
+  {
+    "path": "system/shipping-lane/fixtures/refuse-fixture.md",
+    "rule_id": "key-openai",
+    "reason": "fixture that deliberately holds fake leaks so verify_rules can prove every refuse rule fires; approved by owner 2026-11-12"
+  },
+  {
+    "path": "system/shipping-lane/fixtures/refuse-fixture.md",
+    "rule_id": "key-anthropic",
+    "reason": "fixture that deliberately holds fake leaks so verify_rules can prove every refuse rule fires; approved by owner 2026-11-12"
+  },
+  {
+    "path": "system/shipping-lane/fixtures/refuse-fixture.md",
+    "rule_id": "key-github-token",
+    "reason": "fixture that deliberately holds fake leaks so verify_rules can prove every refuse rule fires; approved by owner 2026-11-12"
+  },
+  {
+    "path": "system/shipping-lane/fixtures/refuse-fixture.md",
+    "rule_id": "key-github-pat",
+    "reason": "fixture that deliberately holds fake leaks so verify_rules can prove every refuse rule fires; approved by owner 2026-11-12"
+  },
+  {
+    "path": "system/shipping-lane/fixtures/refuse-fixture.md",
+    "rule_id": "key-google-api",
+    "reason": "fixture that deliberately holds fake leaks so verify_rules can prove every refuse rule fires; approved by owner 2026-11-12"
+  },
+  {
+    "path": "system/shipping-lane/fixtures/refuse-fixture.md",
+    "rule_id": "key-google-oauth",
+    "reason": "fixture that deliberately holds fake leaks so verify_rules can prove every refuse rule fires; approved by owner 2026-11-12"
+  },
+  {
+    "path": "system/shipping-lane/fixtures/refuse-fixture.md",
+    "rule_id": "key-slack",
+    "reason": "fixture that deliberately holds fake leaks so verify_rules can prove every refuse rule fires; approved by owner 2026-11-12"
+  },
+  {
+    "path": "system/shipping-lane/fixtures/refuse-fixture.md",
+    "rule_id": "key-aws",
+    "reason": "fixture that deliberately holds fake leaks so verify_rules can prove every refuse rule fires; approved by owner 2026-11-12"
+  },
+  {
+    "path": "system/shipping-lane/fixtures/refuse-fixture.md",
+    "rule_id": "key-private-block",
+    "reason": "fixture that deliberately holds fake leaks so verify_rules can prove every refuse rule fires; approved by owner 2026-11-12"
+  },
+  {
+    "path": "system/shipping-lane/fixtures/refuse-fixture.md",
+    "rule_id": "key-bearer",
+    "reason": "fixture that deliberately holds fake leaks so verify_rules can prove every refuse rule fires; approved by owner 2026-11-12"
+  },
+  {
+    "path": "system/shipping-lane/fixtures/refuse-fixture.md",
+    "rule_id": "key-assignment",
+    "reason": "fixture that deliberately holds fake leaks so verify_rules can prove every refuse rule fires; approved by owner 2026-11-12"
+  },
+  {
+    "path": "system/shipping-lane/fixtures/refuse-fixture.md",
+    "rule_id": "id-google-drive-url",
+    "reason": "fixture that deliberately holds fake leaks so verify_rules can prove every refuse rule fires; approved by owner 2026-11-12"
+  },
+  {
+    "path": "system/shipping-lane/fixtures/refuse-fixture.md",
+    "rule_id": "id-google-resource-assignment",
+    "reason": "fixture that deliberately holds fake leaks so verify_rules can prove every refuse rule fires; approved by owner 2026-11-12"
+  },
+  {
+    "path": "system/shipping-lane/fixtures/refuse-fixture.md",
+    "rule_id": "id-google-calendar-domain",
+    "reason": "fixture that deliberately holds fake leaks so verify_rules can prove every refuse rule fires; approved by owner 2026-11-12"
+  },
+  {
+    "path": "system/shipping-lane/fixtures/refuse-fixture.md",
+    "rule_id": "id-ntfy-topic",
+    "reason": "fixture that deliberately holds fake leaks so verify_rules can prove every refuse rule fires; approved by owner 2026-11-12"
+  },
+  {
+    "path": "system/shipping-lane/fixtures/refuse-fixture.md",
+    "rule_id": "ip-private-range",
+    "reason": "fixture that deliberately holds fake leaks so verify_rules can prove every refuse rule fires; approved by owner 2026-11-12"
+  },
+  {
+    "path": "system/shipping-lane/fixtures/refuse-fixture.md",
+    "rule_id": "unicode-bidi-control",
+    "reason": "fixture that deliberately holds fake leaks so verify_rules can prove every refuse rule fires; approved by owner 2026-11-12"
+  },
+  {
+    "path": "system/shipping-lane/fixtures/refuse-fixture.md",
+    "rule_id": "unicode-tag-chars",
+    "reason": "fixture that deliberately holds fake leaks so verify_rules can prove every refuse rule fires; approved by owner 2026-11-12"
+  }
+]
