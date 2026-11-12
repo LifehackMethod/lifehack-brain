@@ -14,6 +14,8 @@ note: >
   record shape, validator, and lifecycle states below are otherwise unchanged.
 ---
 
+> **RETIRED 2026-11-12 — replaced by Grand Central (V2). Read for intent only.** The V2 design lives in the maintainer's notes (project `sandboxed-email-ai`).
+
 # Email Service store — schema v2 (faithful de-duplicated thread · DURABLE MEMORY)
 
 > The read-once mirror of email. Single writer = `shared/tools/email_summary_sync.py`; every

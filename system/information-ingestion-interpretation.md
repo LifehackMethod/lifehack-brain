@@ -229,6 +229,8 @@ document in this repo to reconcile it against.
 
 ## 4. Dead ideas — DO NOT RESURRECT
 
+> **RETIRED 2026-11-12 — replaced by Grand Central (V2). Read for intent only (this section only; the security doctrine elsewhere in this file stays in force).** The V2 design lives in the maintainer's notes (project `sandboxed-email-ai`).
+
 | Dead approach | Replaced by | Date · source |
 |---|---|---|
 | LLM (Haiku) **summary** of first+last message only | faithful mechanical de-dup thread, no summary | 2026-07-10 · compaction-research |
