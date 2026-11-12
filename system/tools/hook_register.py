@@ -28,8 +28,8 @@ def render(root_var, name, args=""):
     n = name + tail
     return (
         MARK + n + '; h="' + root_var + '/system/hooks"; '
-        'a() { s="${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}"; mkdir -p "$s" 2>/dev/null; '
-        'printf \'{"alert":"hook-runner-unavailable","hook":"' + name + '","what":"%s"}\\n\' "$1" > "$s/hooks-alert.json" 2>/dev/null; '
+        'a() { s="${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}"; mkdir -p "$s" || echo "could not create $s" >&2; '
+        'printf \'{"alert":"hook-runner-unavailable","hook":"' + name + '","what":"%s"}\\n\' "$1" > "$s/hooks-alert.json" || echo "could not write $s/hooks-alert.json" >&2; '
         'echo "HOOK-RUNNER ALERT: $1" >&2; }; '
         'if [ -r "$h/hook_runner.sh" ] && bash -n "$h/hook_runner.sh" 2>/dev/null; then exec bash "$h/hook_runner.sh" ' + n + '; '
         'elif [ -f "$h/' + name + '" ]; then a "hook_runner.sh is missing or broken; running ' + name + ' directly, no last-good protection"; exec bash "$h/' + name + '"' + tail + '; '

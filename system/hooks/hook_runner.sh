@@ -35,7 +35,7 @@ if good "$t"; then
   fi
   exec bash "$t" "$@"
 fi
-alert() { { mkdir -p "$st"; echo "$ts $1" >> "$st/hooks-alerts.log"; printf '{"alert":"hook-runner","hook":"%s","folder":"%s","at":"%s","what":"%s"}\n' "$name" "$dir" "$ts" "$1" > "$st/hooks-alert.json"; rm -f "$st/hooks-alert.acked"; } 2>/dev/null; echo "HOOK-RUNNER ALERT: $1" >&2; }
+alert() { { mkdir -p "$st"; echo "$ts $1" >> "$st/hooks-alerts.log"; printf '{"alert":"hook-runner","hook":"%s","folder":"%s","at":"%s","what":"%s"}\n' "$name" "$dir" "$ts" "$1" > "$st/hooks-alert.json"; } 2>/dev/null; echo "HOOK-RUNNER ALERT: $1" >&2; }
 tmp="$dir/.$name.restore.$$"; from=""
 if command -v git >/dev/null 2>&1 && git -C "$dir" show "HEAD:./$name" > "$tmp" 2>/dev/null && good "$tmp"; then from="git HEAD"; fi
 if [ -z "$from" ]; then
