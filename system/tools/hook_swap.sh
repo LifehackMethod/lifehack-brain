@@ -9,7 +9,7 @@
 #   2. runs that hook's own test (<candidate dir>/tests/test_<name minus .sh>.sh) against the candidate;
 #      no test file = refuse, unless you say --no-test (it prints that it was skipped);
 #   3. keeps the CURRENT live file as a last-good copy: $LIFEHACK_HOOKS_LASTGOOD
-#      (default ~/.local/state/lifehack/hooks-last-good)/<name>.<UTC ts> -- only if the current file parses
+#      (default ~/.local/state/lifehack/hooks-last-good)/<cksum of the live folder>/<name>.<UTC ts> -- only if the current file parses
 #      (a broken file is never saved as "last good"); keeps the newest 10;
 #   4. swaps atomically: temp file in the SAME directory as the live file, then mv.
 # --live-dir defaults to $CLAUDE_PLUGIN_ROOT/system/hooks, else this script's own repo's system/hooks.
@@ -28,7 +28,7 @@ while [ $# -gt 0 ]; do
 done
 cand="${1:-}"
 [ -n "$cand" ] && [ -f "$cand" ] || { echo "hook_swap: need a candidate hook file (see --help)" >&2; exit 2; }
-cand="$(cd "$(dirname "$cand")" && pwd)/$(basename "$cand")"
+cand="$(cd "$(dirname "$cand")" && pwd -P)/$(basename "$cand")"
 name="$(basename "$cand")"
 case "$name" in *.sh) ;; *) echo "hook_swap: candidate must be a .sh hook" >&2; exit 2 ;; esac
 if [ -z "$live" ]; then
@@ -36,7 +36,7 @@ if [ -z "$live" ]; then
   else live="$(cd "$(dirname "$0")/../hooks" && pwd)"; fi
 fi
 [ -d "$live" ] || { echo "hook_swap: live dir $live does not exist" >&2; exit 2; }
-live="$(cd "$live" && pwd)"
+live="$(cd "$live" && pwd -P)"
 target="$live/$name"
 if [ "$cand" = "$target" ]; then echo "hook_swap: candidate IS the live file -- edit a copy in a worktree instead." >&2; exit 2; fi
 
@@ -54,11 +54,12 @@ else
   rm -f /tmp/hook_swap_test.$$
 fi
 
-lg="${LIFEHACK_HOOKS_LASTGOOD:-${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}/hooks-last-good}"
+lgbase="${LIFEHACK_HOOKS_LASTGOOD:-${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}/hooks-last-good}"
+lg="$lgbase/$(printf '%s' "$live" | cksum | cut -d' ' -f1)"   # per live folder: same key hook_runner.sh uses, so copies never cross folders
 ts="$(date -u +%Y%m%dT%H%M%SZ)"
 if [ -f "$target" ]; then
   if bash -n "$target" 2>/dev/null && ! grep -qE '^(<<<<<<<|=======$|>>>>>>>)' "$target"; then
-    mkdir -p "$lg" && cp "$target" "$lg/.$name.$$" && mv -f "$lg/.$name.$$" "$lg/$name.$ts" || REFUSE "could not save last-good copy"
+    (umask 077; mkdir -p "$lg") && chmod 700 "$lgbase" "$lg" && cp "$target" "$lg/.$name.$$" && mv -f "$lg/.$name.$$" "$lg/$name.$ts" || REFUSE "could not save last-good copy"
     echo "hook_swap: last-good kept: $lg/$name.$ts"
     ls -1r "$lg/$name".2* 2>/dev/null | tail -n +11 | while read -r old; do rm -f "$old"; done
   else
