@@ -17,6 +17,8 @@ shipped generic rules would leave the half that actually protects them unproven.
 - path-home-unix (Linux): the same store on a server sits at /home/woakley/store.
 - path-home-windows: on Windows it is C:\Users\wren\Documents\notes, which no `$HOME`
   substitution can portably rewrite, so it is reported rather than guessed at.
+- path-unc-share: a network share with no drive letter, \\fileserver01\wren-projects\notes, whose
+  share segment is a personal folder and which path-home-windows cannot key on.
 
 ## cloud-drive mounts — the mount name embeds the account
 - path-drive-cloudstorage: mounted at Library/CloudStorage/GoogleDrive-someone/My Drive.

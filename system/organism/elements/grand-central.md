@@ -31,6 +31,8 @@ status: draft
 authority: user
 ---
 
+> **RETIRED 2026-11-12 — replaced by Grand Central (V2). Read for intent only.** The V2 design lives in the maintainer's notes (project `sandboxed-email-ai`).
+
 # grand-central — element detail
 
 > **CITATION BANNER — what this page names that is not a file in this repository** (migration note, 2026-08-15).
