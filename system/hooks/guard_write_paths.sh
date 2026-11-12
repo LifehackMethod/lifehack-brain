@@ -163,6 +163,16 @@ DRIVE_ROOT="$(_claudeops_drive_root)"
 CLAUDE_DIR="$HOME/.claude"
 CLONE_ROOT="$HOME/claudeops-config"
 
+# The hook runner's last-good store and alert files are the SOURCE a broken gate is restored from (and the
+# notice that it happened): a planted copy there becomes the live gate on the next parse failure
+# (hook-safety review 2026-11-12, finding 2). Only hook_runner.sh / hook_swap.sh / hook_alert_ack.sh write here.
+_HSTATE="${LIFEHACK_STATE_DIR:-$HOME/.local/state/lifehack}"
+if [[ "$FILE_PATH" == "$_HSTATE/hooks-last-good/"* || "$FILE_PATH" == "$HOME/.local/state/lifehack/hooks-last-good/"* \
+   || "$FILE_PATH" == "$_HSTATE/hooks-alert"* || "$FILE_PATH" == "$HOME/.local/state/lifehack/hooks-alert"* ]]; then
+    echo '{"decision":"block","reason":"BLOCKED: the hook last-good store and hook alert files are protected. WHY: a copy planted in hooks-last-good/ is restored as the live gate the next time that hook fails to parse. REDIRECT: change a hook in a worktree and bring it across with bash system/tools/hook_swap.sh; acknowledge an alert with bash system/tools/hook_alert_ack.sh. RULE: system/sops/hook-sop.md section 6."}' >&2
+    exit 2
+fi
+
 # Always block hook scripts and settings — these are the guards themselves.
 # settings.local.json added 2026-08-20 (ported from upstream): it decides which hooks run just
 # as much as settings.json does, and was previously unprotected here.

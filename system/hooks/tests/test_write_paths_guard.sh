@@ -122,6 +122,10 @@ python3 -c "import json;print(json.dumps({'tool_name':'Edit','tool_input':{}}))"
   | env CLAUDE_PROJECT_DIR="$REPO" bash "$GUARD" >/dev/null 2>&1
 [ "$?" = 0 ] && ok || bad "no path in payload" "a payload carrying no path names nothing to protect"
 
+echo "── the hook last-good store and alert files are not writable by Write/Edit ──"
+run "Write into the last-good store"  2 "$HOME/.local/state/lifehack/hooks-last-good/123/guard_egress.sh.29991231T000000Z" Write
+run "Write the alert tile"            2 "$HOME/.local/state/lifehack/hooks-alert.json" Write
+
 echo "── the deny a person reads tells them the way through ───────────────────"
 MSG="$(python3 -c "
 import json,sys; print(json.dumps({'tool_name':'Edit','tool_input':{'file_path':sys.argv[1]}}))" \
