@@ -11,7 +11,8 @@ trap 'lhb_journal_fire "$?" "ingest_gate_enforce.sh" "PreToolUse" "Bash|WebFetch
 #      that strips the invisible tricks (zero-width characters, bidi overrides, control codes),
 #      scans for the injection patterns, and hands back clean text. This hook is the thing that
 #      makes that non-optional: it sits in front of the read tools and refuses the raw path.
-# GUARDS: WebFetch · WebSearch · Read/Grep/Glob of a document type (.pdf .docx .xlsx .csv) ·
+# GUARDS: WebFetch · WebSearch · Read/Grep/Glob of a document type (.pdf .docx .xlsx .csv) · Read/Grep/Glob of a raw mail file
+#      (.eml .msg .mbox), even inside the trusted zone ·
 #      Read/Grep/Glob of ANY file outside the trusted zone (see below), whatever its extension ·
 #      a shell command that
 #      pulls a Google Doc / Gmail body / calendar / tasks straight into context · a main-session
@@ -312,6 +313,11 @@ except Exception: print('')" "$TOOL" 2>/dev/null)
       docx|doc) deny '{"decision":"block","reason":"BLOCKED: Read on a .docx hands over hidden runs (Word'"'"'s own w:vanish flag) and near-white text that no reader of the document would ever see. REDIRECT: python3 <repo>/system/tools/safe_docx.py <path>."}' ;;
       xlsx|xls) deny '{"decision":"block","reason":"BLOCKED: Read on a .xlsx hands over hidden sheets, hidden rows, white text and formula payloads. REDIRECT: python3 <repo>/system/tools/safe_xlsx.py <path>."}' ;;
       csv)      deny '{"decision":"block","reason":"BLOCKED: Read on a .csv hands over cells beginning =, +, - or @ — formula injection, executed the moment the file opens in Excel or Sheets. REDIRECT: python3 <repo>/system/tools/safe_csv.py <path>."}' ;;
+      # Raw mail files, denied EVERYWHERE (trusted zone included). Found 2026-11-11 by the Air-Gapped
+      # Email build: without this arm a .eml inside the repo/notes root fell through to the default
+      # arm below and exit 0 -- headers, hidden HTML and encoded parts read raw, never scanned.
+      # Images are deliberately NOT blocked here (documented decision).
+      eml|msg|mbox) deny '{"decision":"block","reason":"BLOCKED: Read on a raw email file (.eml/.msg/.mbox) hands over headers, hidden HTML and encoded parts unsanitised and unscanned. There is no safe .eml reader yet -- refused. REDIRECT: for mail already in the store use python3 <repo>/shared/tools/email_service_read.py; otherwise ask the operator to ingest the message through the Gmail path."}' ;;
       txt|md|markdown|mdown|mkd|text)
         # .txt and .md are external-content channels too, but this system reads hundreds of
         # INTERNAL .md every day — skills, docs, plans, records, canon. So gate only the EXTERNAL

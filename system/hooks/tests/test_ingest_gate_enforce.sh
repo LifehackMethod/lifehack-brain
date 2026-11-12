@@ -53,6 +53,19 @@ check "Read .xlsx"              2 Read '{"file_path":"/tmp/a.xlsx"}'
 check "Read .csv"               2 Read '{"file_path":"/tmp/a.csv"}'
 check "Read .pdf inside repo"   2 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/docs/a.pdf'}))" "$REPO")"
 
+echo "-- RAW MAIL FILES: .eml/.msg/.mbox are never read raw, anywhere (expect 2) --"
+check "Read .eml"               2 Read '{"file_path":"/tmp/x.eml"}'
+check "Read .EML (case)"        2 Read '{"file_path":"/tmp/X.EML"}'
+check "Read .msg"               2 Read '{"file_path":"/tmp/x.msg"}'
+check "Read .mbox"              2 Read '{"file_path":"/tmp/x.mbox"}'
+check "Read .eml inside repo"   2 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/docs/x.eml'}))" "$REPO")"
+check "Read .eml in notes root" 2 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/state/x.eml'}))" "$NOTES")"
+check "Grep on .eml"            2 Grep "$(python3 -c "import json;print(json.dumps(dict(pattern='x',path='/tmp/x.eml')))")"
+echo "-- regression: neighbours of the mail arm (in-repo paths; outside the trusted zone everything is redirected) --"
+check "Read .pdf still blocked" 2 Read '{"file_path":"/tmp/x.pdf"}'
+check "Read .md still allowed (in repo)"  0 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/docs/x.md'}))" "$REPO")"
+check "Read .png still allowed (in repo; images deliberately not blocked)" 0 Read "$(python3 -c "import json,sys;print(json.dumps({'file_path':sys.argv[1]+'/docs/x.png'}))" "$REPO")"
+
 echo "-- OUTSIDE THE TRUSTED ZONE: redirected, whatever the extension (expect 2) --"
 check "external .txt"           2 Read '{"file_path":"/tmp/a.txt"}'
 check "external .md"            2 Read '{"file_path":"/tmp/a.md"}'
