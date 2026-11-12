@@ -142,6 +142,9 @@ for f in "${FILES[@]}"; do
     FAIL=$((FAIL + 1)); FAILED_NAMES="$FAILED_NAMES $rel(timeout)"
   else
     echo "  ✘ FAIL  $rel  (exit $rc)"
+    # Show every failing assertion line, not just the last 15 lines: a long test's
+    # FAIL line is usually far above its summary, and CI logs are all we get.
+    grep -n -E 'FAIL|not ok|✘|✗' "$OUT" | head -n 40 | sed 's/^/      [failing] /'
     tail -n 15 "$OUT" | sed 's/^/      /'
     FAIL=$((FAIL + 1)); FAILED_NAMES="$FAILED_NAMES $rel"
   fi
