@@ -833,6 +833,9 @@ def lint_hooks(root, findings, counts, scope=None):
     # file a person actually has to go edit, not always settings.json even when the drift is elsewhere.
     by_source = {settings_rel: set(re.findall(r"\$\{CLAUDE_PROJECT_DIR\}/([^\\\"\s]+)", raw))}
 
+    # hooks launched through the fail-closed wrapper: `.../system/hooks/hook_runner.sh" <name>.sh` registers system/hooks/<name>.sh
+    by_source[settings_rel] |= {"system/hooks/" + n for n in re.findall(r"hook_runner\.sh\\?\"\s+([A-Za-z0-9_.-]+\.sh)", raw)}
+
     registrations = os.path.join(root, registrations_rel)
     if os.path.exists(registrations):
         try:

@@ -205,3 +205,23 @@ dated INCIDENTS — evidence, not a restatement.**
 - **Injector arm/clear/TTL lifecycle + WHEN a skill arms its anchor** → the skill-building SOP §4
 - **Is-this-hook-well-built conformance check** (the LLM-CONTEXT block audit) → `docs/skill-conformance.md`
 - **The catalog of enforced rules / fitness functions** → `docs/architecture.md`
+
+## §6 — Changing a LIVE hook (never patch in place)
+
+**Why this rule exists.** A live hook that cannot parse exits 2, and for `PreToolUse` exit 2 means *block*. A `git apply --3way` run directly against a live gate conflicted, left conflict markers in it, and every tool in every window was blocked — including the ones needed to repair it. A gate that is broken blocks the repair of the gate.
+
+**The rule.** The folder your plugin runs hooks from (the *live* folder) is read-only to patching tools. Never `git apply`, `git am`, `git cherry-pick`, `git merge`, `patch`, `sed -i` or a raw Write/Edit against it. Change a **copy** — in a worktree — and bring it across with the tool:
+
+    bash system/tools/hook_swap.sh [--live-dir <live>/system/hooks] <worktree>/system/hooks/<name>.sh
+
+It refuses unless the candidate passes `bash -n`, has no conflict markers, and passes that hook's own test (`system/hooks/tests/test_<name>.sh`, run against the candidate). It then saves the current live file as a **last-good copy** (`~/.local/state/lifehack/hooks-last-good/<name>.<UTC time>`, newest 10 kept) and swaps the new one in atomically (temp file in the same folder, then `mv`). Every refusal leaves the live file untouched.
+
+**Three layers, each assuming the one before it failed:**
+
+1. **`hook_swap.sh`** — the sanctioned route; nothing broken gets in.
+2. **`guard_hook_write_integrity.sh`** (PreToolUse, `Bash|Write|Edit|MultiEdit`) — refuses a Write/Edit/MultiEdit to a hook `.sh` whose *resulting* file fails `bash -n` or holds conflict markers (an edit that repairs an already-broken hook is let through), and refuses `git apply|am|cherry-pick|merge` / `patch` aimed at the live root. Exact on typed tools; a speed bump on Bash text (see its KNOWN LIMITS).
+3. **`hook_runner.sh <name>.sh`** — every `PreToolUse` command in `hooks/hooks.json` is launched through it. It runs `bash -n` first. Parses → snapshots a last-good copy if the content changed, then runs the hook. Does not parse → quarantines the broken file (`<name>.broken.<time>`), restores the newest last-good copy that itself parses, writes `hooks-alerts.log` + `hooks-alert.json` in `~/.local/state/lifehack/` and prints an alert, then runs the restored hook. **No good copy → exit 2, fail closed.** It never skips or downgrades a gate; a missing hook file also fails closed (a bare missing file would exit 127, which does not block).
+
+**New PreToolUse hooks** must be registered as `bash "${CLAUDE_PLUGIN_ROOT}/system/hooks/hook_runner.sh" <name>.sh`, never as a bare `bash .../<name>.sh`. Keep `hook_runner.sh` tiny (its test caps it at 60 lines) and change it only through `hook_swap.sh`.
+
+**If you are already locked out** (every tool blocked): from a terminal, `cp ~/.local/state/lifehack/hooks-last-good/<name>.<newest> <live>/system/hooks/<name>` or `git checkout -- system/hooks/<name>` in the live clone. With the runner in place this should happen by itself on the next tool call.
