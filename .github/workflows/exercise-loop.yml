@@ -54,7 +54,7 @@ jobs:
     # ⇒ Zero protection lost.
     if: github.repository == 'LifehackMethod/lifehack-brain'
     name: Aggregate test runner (run-all-tests.sh)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -78,7 +78,7 @@ jobs:
     # ⇒ Zero protection lost.
     if: github.repository == 'LifehackMethod/lifehack-brain'
     name: Smoke check (smoke-check.sh)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
