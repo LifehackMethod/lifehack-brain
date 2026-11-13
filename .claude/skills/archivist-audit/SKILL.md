@@ -51,6 +51,24 @@ each says so in place rather than being quietly deleted.** The subagent performs
    ONE managed file this audit writes — and the ORCHESTRATOR writes it, not the subagent. `.claude/agents/archivist.md`
    pins `tools: Read, Grep, Glob`; it has no Write tool and says so itself. That pinning is deliberate and should stay:
    it is what makes the auditor structurally incapable of touching what it inspects.
+
+   **Walk first, then write.** Before the subagent drafts anything, the orchestrator runs the live walk and hands its
+   output over as ground truth:
+   ```bash
+   ROOT="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && pwd)"
+   python3 "$ROOT/system/tools/territory_walk.py" --root "<notes>"
+   ```
+   ⛔ This step exists because the map used to be edited forward from the previous map and `docs/data-layout.md`
+   with nothing looking at the disk: a folder neither named was never seen, a removed folder stayed listed, and every
+   count was copied from last week. The rebuilt map must therefore:
+   - list **every** home the walk reports — `declared`, `mapped`, `UNMAPPED`, and `tool-config` — and nothing the walk
+     did not report. An `UNMAPPED` folder gets its own row tagged `UNMAPPED` with its first-seen date, never dropped;
+   - move every `MISSING` path out of the body into a short "Removed since last map" note — never carry it forward;
+   - take every count (files and sub-folders per home, projects per subject, archive folders, `.bak` files, packages
+     in a staging folder) from the walk's output. The previous map may supply a home's purpose and `accepts` wording,
+     but any number inside that wording is replaced by the walk's number or deleted;
+   - list dot-folders (an app's own settings folder) under a "Tool config" heading — named, not filed as homes.
+   If the walk exits non-zero, do not regenerate the map: report that the walk failed and leave the old map in place.
 9. **Misplaced-file check Q (P6)** — using the map's `accepts`, flag (HIGH-confidence only, grouped,
    propose-only) any file whose content doesn't match its home, with the proposed correct home. Relocation is never automatic: the proposal goes in the queue and a person rules on it.
 10. ⛔ **REMOVED — content-path drift check.** It flagged a bare relative content path that should
@@ -139,6 +157,7 @@ review command that does not exist. Write the queue, say where it is, and stop. 
 | the pinned auditor agent | `.claude/agents/archivist.md` | shipped — `tools:` pinned, read-only by construction |
 | the notes-root resolver | `shared/brain_root.py` | shipped |
 | the layout it audits against | `docs/data-layout.md` | shipped |
+| the live tree walk check 8 is rebuilt from | `system/tools/territory_walk.py` | shipped |
 | the read guard it checks for | `system/hooks/ingest_gate_enforce.sh` | shipped |
 
 ⛔ **Three of the donor's twelve checks were removed, not ported** — see this file's own
