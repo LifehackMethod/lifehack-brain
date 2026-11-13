@@ -833,6 +833,14 @@ def lint_hooks(root, findings, counts, scope=None):
     # file a person actually has to go edit, not always settings.json even when the drift is elsewhere.
     by_source = {settings_rel: set(re.findall(r"\$\{CLAUDE_PROJECT_DIR\}/([^\\\"\s]+)", raw))}
 
+    # hooks launched through the fail-closed wrapper. Every PreToolUse command is generated from one template
+    # (system/tools/hook_register.py) that starts `: hrt <name>.sh ...` -- that registers system/hooks/<name>.sh --
+    # and names the runner itself. The bare folder text `${CLAUDE_PROJECT_DIR}/system/hooks"` in the template is not a file.
+    by_source[settings_rel].discard("system/hooks")
+    by_source[settings_rel] |= {"system/hooks/" + n for n in re.findall(r": hrt ([A-Za-z0-9_.-]+\.sh)", raw)}
+    if "hook_runner.sh" in raw:
+        by_source[settings_rel].add("system/hooks/hook_runner.sh")
+
     registrations = os.path.join(root, registrations_rel)
     if os.path.exists(registrations):
         try:
