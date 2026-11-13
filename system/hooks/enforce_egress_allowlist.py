@@ -213,6 +213,51 @@ def _bare_hosts(c):
 
 hosts |= _bare_hosts(cmd)
 
+
+# ── UNREADABLE DESTINATIONS (2026-11-13, Enver: "you fix that here"): a network tool whose destination is a
+# shell variable or a substitution -- `curl $URL`, `curl "https://$HOST/x"`, `curl $(cat u)`, `nc $H 443` --
+# names no host this hook can check, so it used to fall through to "no hostname -> allowed", or ride past
+# next to a literal allowed URL in the same command. Found by the round-three canon-files research
+# (lowerbooks run A, tensions-40). Now refused: the destination must be written out. Same argument
+# positions as _bare_hosts, so flag values (-o "$OUT", -H "Authorization: $T") are untouched.
+# Accepted, kept on purpose: `${VAR:-https://allowed.host}` (a literal default URL in the token) is
+# checked by its literal host, as before -- the measured false block noted above.
+def _unreadable_dests(c):
+    out = []
+    for seg in _segments(c):
+        i = 0
+        while i < len(seg) and (seg[i] in _PREFIX or re.match(r'^[A-Za-z_][A-Za-z0-9_]*=', seg[i])):
+            i += 1
+        if i >= len(seg) or os.path.basename(seg[i]) not in _NET_TOOLS:
+            continue
+        skip = False
+        for t in seg[i + 1:]:
+            if skip:
+                skip = False; continue
+            if t.startswith('-'):
+                if t in _VAL_FLAGS:
+                    skip = True
+                continue
+            if not t:
+                continue
+            if '://' in t and re.search(r'://[A-Za-z0-9.\-]+', t) and not re.search(r'://[$`]', t):
+                continue                      # a literal host is in the token; the URL pass checks it
+            if t[0] in '$`' or re.search(r'^[A-Za-z][A-Za-z0-9+.\-]*://[$`]', t):
+                out.append(t)
+    return out
+
+
+_unread = _unreadable_dests(cmd)
+if _unread:
+    sys.stderr.write(
+        "BLOCKED: a raw outbound call whose destination is a variable or a substitution ("
+        + ", ".join(_unread)[:120] + "), so this hook cannot check where it goes. "
+        "WHY: the outbound wall only works on hosts it can read; a destination built at run time is "
+        "exactly how a call would slip past it. REDIRECT: write the full URL out literally (an allowed "
+        "host passes as usual), or read web pages with python3 <repo>/system/tools/safe_fetch.py '<url>'.\n")
+    _log_block(["(unreadable destination)"])
+    sys.exit(2)
+
 if not hosts:                        # a mechanism but no host we can read → allow, and say so
     sys.stderr.write("[egress] an outbound call with no hostname this hook could read — allowed. "
                      "Your OS firewall is the layer that actually holds this line.\n")

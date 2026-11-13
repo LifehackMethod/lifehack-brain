@@ -109,10 +109,20 @@ run "brew"                        "$LIST" 0 "brew install jq"
 run "gws"                         "$LIST" 0 "gws gmail messages list --maxResults 5"
 run "safe_fetch on any page"      "$LIST" 0 "python3 system/tools/safe_fetch.py 'https://some-blog.example.org/post'"
 run "a plain ls"                  "$LIST" 0 "ls -la"
+# unreadable destinations (variable / substitution) are refused; flag values and literal-default URLs are not (2026-11-13)
+run "var destination"             "$LIST" 2 'curl $URL'
+run "var inside URL"              "$LIST" 2 'curl "https://$HOST/x"'
+run "substitution destination"    "$LIST" 2 'curl $(cat u.txt)'
+run "backtick destination"        "$LIST" 2 'curl `cat u`'
+run "nc var host"                 "$LIST" 2 'nc $H 443'
+run "var next to allowed literal" "$LIST" 2 'curl https://api.anthropic.com/v1; curl $X'
+run "var in header value is fine" "$LIST" 0 'curl -H "Authorization: Bearer $TOKEN" https://api.anthropic.com/v1'
+run "var in -o value is fine"     "$LIST" 0 'curl -o "$OUT" https://api.anthropic.com/x'
+run "literal-default URL is fine" "$LIST" 0 'curl ${API_URL:-https://api.anthropic.com}/v1'
 
 echo "── fail-OPEN, and it must SAY so rather than pass silently ───────────────"
-# A mechanism with no readable hostname.
-OUT="$(bpay "curl -s \$MY_URL" | env HOME="$SANDBOX" bash "$LIST" 2>&1 >/dev/null)"; RC=$?
+# A mechanism with no readable hostname (a variable destination is now REFUSED, see above).
+OUT="$(bpay "curl -s --version" | env HOME="$SANDBOX" bash "$LIST" 2>&1 >/dev/null)"; RC=$?
 if [ "$RC" = 0 ] && printf '%s' "$OUT" | grep -q "no hostname"; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL [no readable host]: expected allow WITH a printed reason (rc=$RC, said: $OUT)"; fi
 # An unreadable list.
 OUT="$(bpay "curl https://evil.org" | env HOME="$SANDBOX" ALLOWLIST_FILE="$SANDBOX/nope.md" bash "$LIST" 2>&1 >/dev/null)"; RC=$?
