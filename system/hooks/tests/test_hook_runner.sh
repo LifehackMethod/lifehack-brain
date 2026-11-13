@@ -93,7 +93,7 @@ printf '%s\n' "$WEAK" > "$(LGD)/d.sh.29991231T000000Z"; printf '%s\n' "$WEAK" > 
 printf '%s\n' "$SYNTAX" > "$T/h/d.sh"
 out=$(echo '{}' | bash "$T/h/hook_runner.sh" d.sh 2>&1); rc=$?
 [ "$rc" = 2 ] && echo "$out" | grep -q GATE-DENY && ok || bad "planted-future" "planted copy won: rc=$rc out=$out"
-perm=$(stat -f %Lp "$(LGD)" 2>/dev/null || stat -c %a "$(LGD)"); [ "$perm" = 700 ] && ok || bad "store-mode" "store is mode $perm, want 700"
+perm=$(stat -c %a "$(LGD)" 2>/dev/null || stat -f %Lp "$(LGD)"); [ "$perm" = 700 ] && ok || bad "store-mode" "store is mode $perm, want 700"
 
 echo "── review item 9: store does not grow without bound ──"
 mk; for i in $(seq 1 15); do printf '#!/bin/bash\ncat >/dev/null; echo V%s\n' "$i" > "$T/h/g.sh"; echo '{}' | bash "$T/h/hook_runner.sh" g.sh >/dev/null 2>&1; sleep 1; done
