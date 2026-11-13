@@ -341,3 +341,95 @@ New text:
 ```
   `system/sops/build-sop.md` ⛔ (retired 2026-10-31); a debt-ledger entry → replaced by
 ```
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: hook-sop edit-pass hunk hunk-001, see drafts/hook-sop/applied.md
+
+~~~~
+reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live in system/hook-contract.md — where this page restates a mechanic, the copies must agree with hook-contract.md. The single front door: it POINTS, it does not duplicate. Keep it concise."
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: hook-sop edit-pass hunk hunk-002, see drafts/hook-sop/applied.md
+
+~~~~
+  - ["§3", 41, "the three build principles the mechanics doc omits: channel law, fail-closed, lean injection"]
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: hook-sop edit-pass hunk hunk-003, see drafts/hook-sop/applied.md
+
+~~~~
+  - ["§5", 195, "the front door: pointers to the mechanics and the other homes"]
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: hook-sop edit-pass hunk hunk-004, see drafts/hook-sop/applied.md
+
+~~~~
+> **This doc owns WHEN to build a hook and WHICH kind. `system/hook-contract.md` owns the mechanics; where this doc restates one, the copies must agree with `hook-contract.md`.** It is the single **front door** for hooks: it POINTS at the canonical homes, never copies them. Keep it concise — if it grows into a second mechanics manual, it has failed. (Council-ratified 2026-06-17; diverge→argue→converge.)
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: hook-sop edit-pass hunk hunk-005, see drafts/hook-sop/applied.md
+
+~~~~
+- A hook is for a **hard invariant that must survive model drift + compaction** — justified by EITHER **(a)** a real past incident, OR **(b)** a catastrophic-**silent** failure on an unrecoverable surface (auth/credentials · the wrong calendar · a destructive write · the wrong machine). *"It would be nice to enforce"* is **not** justification.
+- **Use the smallest tool that gets the compliance** — an instruction in CLAUDE.md, a gate inside a skill, the user-turn boundary, or a hook. A hook is the strongest, so it must earn its place (the two reasons above). Don't open with the heaviest tool.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: hook-sop edit-pass hunk hunk-006, see drafts/hook-sop/applied.md
+
+~~~~
+- **BLOCK** — `PreToolUse`, deny + non-zero exit. Use when **the act itself must not happen** (destructive / irreversible / wrong-target).
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: hook-sop edit-pass hunk hunk-007, see drafts/hook-sop/applied.md
+
+~~~~
+- **Mis-pick = failure:** a BLOCK used for guidance stops with no way forward; an INJECT used for a hard rule is a wish dressed as a guard. Decide by: *must this be STOPPED, or REMINDED?*
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: hook-sop edit-pass hunk hunk-008, see drafts/hook-sop/applied.md
+
+~~~~
+1. **Channel law (the landmine):** an INJECT hook delivers via **plain `echo`/stdout + `exit 0`** — **NEVER** the `systemMessage` JSON field (silently dropped: the hook reports success and nothing reaches the model). A BLOCK denies via the **working** channel — deny text + `exit 2` (the honored block signal). Mirror `pm_persist.sh` (inject) and `guard_calendar_writes.sh` (block).
+2. **Fail-closed:** on ANY error (can't read stdin / parse fails) a **narrow, single-target** BLOCK hook **denies** — never `exit 0`/allow-on-error. *(Scope, 2026-10-30: fail-closed applies to what a guard is FOR — `canonical-principles-sop.md` "Fail-closed applies to what a guard is FOR". A broad matcher (`Bash`, `Write|Edit`) is **degrade-safe** instead: on an internal error it exits 0 and says so on stderr, or a malformed payload walls the session off from the shell; see `guard_build_mode.sh` `FAIL_POSTURE`. The in-process scan gate (`shared/gate/ingest_gate.py`) is a third case: by default it refuses a read it cannot check, except email, which stays open because it is only ever flagged, never quarantined; setting `INGEST_GATE_POSTURE=warn` makes every read it cannot check fail open (the instant revert).)* Declare it as one `# FAIL_POSTURE: closed|degrade-safe` line, or `open` with its reason, as `enforce_egress_allowlist.sh` does, in the LLM-CONTEXT block (a declared intent, not a new enforced field).
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: hook-sop edit-pass hunk hunk-009, see drafts/hook-sop/applied.md
+
+~~~~
+> **This section is DUPLICATED BY DESIGN across `hook-sop.md` and the build/skill SOPs**
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: hook-sop edit-pass hunk hunk-010, see drafts/hook-sop/applied.md
+
+~~~~
+> tried?" **Do not "helpfully" de-duplicate this across the three SOPs** — each copy is scoped to that
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: hook-sop edit-pass hunk hunk-011, see drafts/hook-sop/applied.md
+
+~~~~
+### exit 0 on a BLOCK hook is a silent ALLOW (§3 principle 1, "Channel law" — already stated; these are its incidents)
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: hook-sop edit-pass hunk hunk-012, see drafts/hook-sop/applied.md
+
+~~~~
+  a dead end, REFUSED mechanically, not advised against. `2026-10-27` · `system/tools/install-schedulers.sh --check-row`
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: hook-sop edit-pass hunk hunk-013, see drafts/hook-sop/applied.md
+
+~~~~
+  · `shared/tools/intake_reader.py` · REFUSED mechanically, `system/tools/install-schedulers.sh --check-row`
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: hook-sop edit-pass hunk hunk-014, see drafts/hook-sop/applied.md
+
+~~~~
+## §5 — The front door (pointers — one home each; where restated, copies must agree with `hook-contract.md`)
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: hook-sop edit-pass hunk hunk-015, see drafts/hook-sop/applied.md
+
+~~~~
+- **The catalog of enforced rules / fitness functions** → the live list is `hooks/hooks.json` (generated from `system/register/register.jsonl`); each guard's own header says what it blocks and why
+~~~~

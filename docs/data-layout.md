@@ -1,43 +1,53 @@
-# Where things go inside your AI Brain
+# Where things go inside your brain folder
 
-> The map of what goes INSIDE your AI Brain. Every tool in this repo that writes something DURABLE
-> writes it at one of the paths on this page, and gets the AI Brain itself from one place:
+> The map of what goes INSIDE your brain folder: the driver's logbook (knowledge layer: the brain
+> folder, `shared/brain_root.py`). Every tool in this repo that writes something DURABLE
+> writes it at one of the paths on this page, and gets the brain folder itself from one place:
 > `shared/brain_root.py`. (Throwaway scratch is the stated exception — see the last section.)
 > If you are adding a tool and the path you want is not here, the path is wrong or this page is
 > incomplete — resolve that before writing code.
 
-## Where the AI Brain itself lives
+## Where the brain folder itself lives
 
-**Where your AI Brain lives and how it gets set up is covered in `INSTALL.md`, which is the
+**Where your brain folder lives and how it gets set up is covered in `INSTALL.md`, which is the
 authority.** This page does not repeat it. This page is only the shape of what goes inside.
 
-Everywhere below, `<notes>/` is the path placeholder for your AI Brain — whatever
+The brain folder is a local folder first; Google Drive backs it up. Beside the three folders (the
+Lifehack Harness, personal code, and the brain folder) sits a fourth, local folder that is NOT
+synced (for example `~/.local/share/<system>/`): live databases and other files that programs
+rewrite constantly live there, because syncing a live database can corrupt it, and so does
+sensitive raw content, like full email text. Finished backup copies may be placed in the brain
+folder. There is no standing "no database" rule: files are the default for notes, diary, canon and
+tiles, and a database is the right tool where many things must be connected and several jobs write.
+
+Everywhere below, `<brain>/` is the path placeholder for your brain folder — whatever
 `shared/brain_root.py` resolves, and not the current directory, not the repo, not a guess. When it
 is not set, the honest answer is "not set" and the tool refuses.
 
 ## The shape
 
 ```
-<notes>/
-├── canon.md                        the few things that stay true. small on purpose.
+<brain>/                            the root has a desk's shape, plus a few root-only folders
+├── canon/
+│   ├── canon.md                    the few things that stay true. small on purpose.
+│   └── purpose.md                  what this folder is for
+├── records/<type>/                  everything found, decided or written down — see "Types" below
+├── diary/YYYY/MM/DD.md              the dated tree: one entry per day. where things stand is read here.
+├── open-loops.md                    started, not finished
+├── debt-ledger.md                   root only. all known system technical debt: the deferred build list
+├── projects/<slug>/                 one folder per project not started from a desk — see "A project" below
+├── status/<producer>.json           root only. status tiles, one per producer
 ├── system/
 │   ├── journal.md                  append-only. what happened, when, why.
 │   ├── journal/YYYY-MM.md          older months, rotated out of the above
 │   ├── project-registry.md         one row per project — the thing that makes a project findable
 │   └── learnings.md                what the system learned about running itself
-├── state/
-│   ├── projects/<slug>/            one folder per project — see "A project" below
-│   ├── briefs/<slug>.md            older flat briefs. read, never written. see "Two brief shapes".
-│   ├── open-loops.md               started, not finished
-│   ├── debt-ledger.md              known-imperfect, deliberately deferred
-│   └── current.md                  where things stand right now
-├── records/<type>/                  everything found, decided or written down — see "Types" below
 ├── plans/<name>.md                  plans are yours, not the tool's
 ├── config/                          settings that are specific to you (IDs, accounts, rate cards)
 ├── councils/                        rosters of advisors, if you use them
 ├── memory/
 │   └── topic-vocab.md               your subjects, in your words — written by you, never shipped
-└── desks/<subject>/                 one folder per subject, built by `/ingest` from your material
+└── desks/<subject>/                 root only. one folder per subject, built by `/ingest` from your material
     ├── canon/current.md
     ├── canon/purpose.md
     └── records/
@@ -49,7 +59,7 @@ is not set, the honest answer is "not set" and the tool refuses.
 > vocabulary; the fix is in how you talk, and it is already made.
 
 Four of those exist on day one and nothing else does: `system/journal.md`,
-`system/project-registry.md`, the projects folder, and `canon.md` — the last of these shipped **empty
+`system/project-registry.md`, the projects folder, and `canon/canon.md` — the last of these shipped **empty
 of canon lines, carrying only its own purpose**, so a later step has a floor to write onto instead of
 open air. `system/tools/bootstrap.py` makes exactly those and refuses to make more, for the reason
 written at the top of that file: which subjects your life divides into is yours to discover, and a
@@ -57,13 +67,15 @@ starter folder is a guess that teaches itself as the answer.
 
 ## A project
 
-A project is a **folder**, and the folder's name is the project's slug:
+A project is a **folder**, and the folder's name is the project's slug. A project started from inside a
+desk keeps its folder, brief included, in that desk; any other project lives in the root `projects/`.
+The shape is the same at both levels:
 
 ```
-<notes>/state/projects/<slug>/
+<brain>/projects/<slug>/
 ├── brief.md          the living document. one per project, for its whole life, updated in place.
 ├── records/          this project's own findings — kept here, where the project can see them
-└── canon/current.md  what this project has settled
+└── canon/canon.md    what this project has settled
 ```
 
 **Three more files appear beside the brief, written by the tool and never by hand.** They are named
@@ -80,32 +92,25 @@ has one: `pad_archive.py` matches a hash to prove what it is deleting, and an ed
 that match — which is a refusal, not a loss, but it costs you the session's compaction.
 
 **The folder's last path segment must equal the slug.** A category above it is fine
-(`state/projects/infrastructure/<slug>/`); the leaf is not. This stops the drift where a project
+(`projects/infrastructure/<slug>/`); the leaf is not. This stops the drift where a project
 called one thing lives in a folder called another and a cold session finds neither.
 `system/tools/project-manager/check_slug_folder.py` audits it after the fact, and
 `shared/registry.py`'s `format_row()` refuses to write such a row in the first place.
 
-Its row in `<notes>/system/project-registry.md` is five fields, pipe-separated:
+Its row in `<brain>/system/project-registry.md` is five fields, pipe-separated:
 
 ```
 {desk} | {slug} | {display name} | {status} | {path}
 ```
 
 `status` is `active` · `paused` · `complete` · `split → [slug-a, slug-b]`. `{path}` is the folder,
-relative to `<notes>/`. `{desk}` stays in the format because rows written by the author's older system
-carry one; on a fresh install it is `root` and means nothing else.
+relative to `<brain>/`. `{desk}` is the desk the project was started from, or `root` for a project in
+the root `projects/`.
 
-### Two brief shapes, one resolver
+### Where a brief lives
 
-Anything new gets the folder above. But a brief may also exist as a single flat file, because that is
-what this system used to make, and the author's own notes still hold seventeen of them. So resolution
-tries both, in order:
-
-1. The row has a `{path}` → the brief is `<path>/brief.md`.
-2. No `{path}` → `<notes>/state/briefs/<slug>.md`.
-
-Both are readable. **Only the first is ever created.** A half-migrated set of notes must never break
-lookup — that is the whole point of carrying two.
+A brief lives in its project's folder, and nowhere else: the row's `{path}` → the brief is
+`<path>/brief.md`. There is no separate `briefs/` folder.
 
 ## Types of record
 
@@ -126,11 +131,11 @@ Closed means closed: a seventh type is a change to this page, not a judgment cal
 > kind of list. A record type is the system's own filing category — the difference between a decision
 > and a log is the same for everybody. A *topic* is a subject in someone's life, and those are not the
 > same for anybody. That is why one is fixed here and the other one you write yourself
-> (`<notes>/memory/topic-vocab.md`), and why no package ships you a copy of somebody else's.
+> (`<brain>/memory/topic-vocab.md`), and why no package ships you a copy of somebody else's.
 
 ## Canon — two kinds, and they are different
 
-- `<notes>/canon.md` — the top-level file. The handful of things that are true across everything.
+- `<brain>/canon/canon.md` — the top-level file. The handful of things that are true across everything.
   Written only when a person says to. Keep it small; it is read often.
 - `<subject>/canon/current.md` and `canon/purpose.md` — per folder. What `/ingest` builds for each
   subject it finds in your material, and what a project settles about itself. `purpose.md` says what
@@ -141,8 +146,8 @@ the conversation that produced it. If it needs the backstory, it is a record, no
 
 ## The journal
 
-One file, appended to, never edited: `<notes>/system/journal.md`. When it gets long, older months
-move to `<notes>/system/journal/YYYY-MM.md`.
+One file, appended to, never edited: `<brain>/system/journal.md`. When it gets long, older months
+move to `<brain>/system/journal/YYYY-MM.md`.
 
 **Anything reading the journal reads the current file AND the segments.** Reading only the current
 file loses everything older than the last rotation, and it fails *quietly*: the result comes back
@@ -199,7 +204,7 @@ Anything built from the journal carries this, unedited:
 
 ## Plans
 
-`<notes>/plans/<name>.md`. Flat — no subfolders, and specifically **no folder per machine**. A plan is
+`<brain>/plans/<name>.md`. Flat — no subfolders, and specifically **no folder per machine**. A plan is
 a thing you wrote, so it lives with the rest of what you wrote, not in the repo, and it is not mirrored
 anywhere. There is one copy.
 
@@ -211,10 +216,10 @@ the author's live notes on 2026-08-11.
 | the older system | here | why |
 |---|---|---|
 | `records/` types drifted into pairs — `decision/` **and** `decisions/`, `log/` **and** `logs/`, plus `reference/`, `snapshot/`, `briefing`, `summary` | six types, fixed above | the singular/plural fork happened because two documents disagreed and neither was binding. `reference` and `snapshot` fold into `context`; `briefing` folds into `insights`; `summary` folds into `logs`. |
-| `records/canon/` held the root desk's canon (38 files) | no such folder | canon is either the one top-level file or a folder's own `canon/`. A third home was a desk-era artifact. |
+| `records/canon/` held the root desk's canon (38 files) | no such folder | canon is either the one top-level file or a folder's own `canon/`. A third canon folder was a desk-era artifact. |
 | `plans/` split into a folder per machine (five of them, named after their hosts, 359 files) | one flat `plans/` | there is one machine. The two-machine plane is not part of this system. |
 | `<notes>/state/machine-log.md` recorded which machine changed what | gone | same reason. |
-| a desk was a heavy thing — `state/`, `views/`, `sources/inbox/`, its own `CLAUDE.md`, a registry entry, a health producer | `desks/<subject>/` here is the light subset only: `canon/current.md`, `canon/purpose.md`, `records/` | `/ingest` builds the subset and nothing more, on purpose. Promotion to the heavy shape is a deliberate human act, later, if a folder earns it — and that machinery is not in this release. |
+| a desk was a heavy thing — `state/`, `views/`, `sources/inbox/`, its own `CLAUDE.md`, a registry entry, a health producer | a desk is a domain of knowledge plus a short card, and nothing that runs; its shape is set by the in-force desk-building SOP (`system/sops/desk-building-sop.md`), not by this page | everything that runs a desk lives once in the car platform (platform layer: the plugin), and a desk's tools live in the car model (personal code layer: personal code). `/ingest` builds `canon/current.md`, `canon/purpose.md` and `records/` for each subject it finds; for the full shape of a desk, read the desk-building SOP. |
 | the topic vocabulary shipped in the repo | never ships | see the note under Types. It is yours; the tools refuse and teach rather than invent one. |
 | four record types existed for one desk each (`clients`, `billing`, `source-ingests`, `source-summaries`) | not here | they describe one person's work, not a general category. |
 
@@ -224,37 +229,38 @@ The diagram above is the shape; this is the list, so nothing has to be inferred 
 
 | path | who writes it | when |
 |---|---|---|
-| `<notes>/canon.md` | `/save` | only on an explicit go |
-| `<notes>/system/journal.md` | `/save`, `bootstrap.py` | every save |
-| `<notes>/system/journal/YYYY-MM.md` | whatever rotates it | when the journal gets long |
-| `<notes>/system/project-registry.md` | `project-manager`, `bootstrap.py` | a project starts |
-| `<notes>/system/learnings.md` | `/save` | when the system learns something about itself |
-| `<notes>/state/projects/<slug>/brief.md` | `project-manager`, `/checkin`, `/save` | continuously, in place |
-| `<notes>/state/projects/<slug>/records/` | `/save` | a finding belongs to one project |
-| `<notes>/state/projects/<slug>/canon/current.md` | `/save` | a project settles something |
-| `<notes>/state/briefs/<slug>.md` | nothing — **read only** | older notes only |
-| `<notes>/state/open-loops.md` | `/save` | something is started and not finished |
-| `<notes>/state/debt-ledger.md` | `/save`, `/build` | something is knowingly left imperfect |
-| `<notes>/state/current.md` | `/save` | where things stand changes |
-| `<notes>/records/<type>/` | `/save` | a finding belongs to no one project |
-| `<notes>/records/research/` | `/research` | every run |
-| `<notes>/records/insights/throughline/` | `/throughline` | once per run — and it is the ONLY thing that run may write |
-| `<notes>/plans/<name>.md` | `/autoplan` | a plan is written or sharpened |
-| `<notes>/config/` | a person, by hand | account IDs and the like, kept out of the repo |
-| `<notes>/config/numbers-auto-arm` | a person, by hand | optional — subject folders that turn on `/calculate` by themselves |
-| `<notes>/config/ship-identity.md` | the maintainer, by hand | ⛔ **MAINTAINER-ONLY — you do not need this.** The shipping lane exists to keep the maintainer's own private terms out of the public copy of this repo. Nobody else, contributor or not, ever needs to create this file |
-| `<notes>/config/ship-rewrites.json` | a person, by hand | optional — `/ship`'s cosmetic substitutions, which get fixed and reported rather than blocking |
-| `<notes>/councils/` | a person, by hand | if advisor rosters are used |
-| `<notes>/memory/topic-vocab.md` | a person, by hand | your subjects, in your words |
-| `<notes>/desks/<subject>/canon/` | `/ingest` | once per subject it finds |
-| `<notes>/desks/<subject>/records/` | `/ingest` | a stub file per finding it places |
-| `<notes>/desks/<subject>/records/proposals/` | `/ingest` | a canon candidate, awaiting your ruling |
+| `<brain>/canon/canon.md` | `/save` | only on an explicit go |
+| `<brain>/system/journal.md` | `/save`, `bootstrap.py` | every save |
+| `<brain>/system/journal/YYYY-MM.md` | whatever rotates it | when the journal gets long |
+| `<brain>/system/project-registry.md` | `project-manager`, `bootstrap.py` | a project starts |
+| `<brain>/system/learnings.md` | `/save` | when the system learns something about itself |
+| `<brain>/projects/<slug>/brief.md` | `project-manager`, `/checkin`, `/save` | continuously, in place |
+| `<brain>/projects/<slug>/records/` | `/save` | a finding belongs to one project |
+| `<brain>/projects/<slug>/canon/canon.md` | `/save` | a project settles something |
+| a desk's own `projects/<slug>/` (same three paths as above) | `project-manager`, `/checkin`, `/save` | a project is started from inside that desk |
+| `<brain>/open-loops.md` | `/save` | something is started and not finished |
+| `<brain>/diary/YYYY/MM/DD.md` | the diary cron job, at the end of the day | one entry per day, append-only |
+| `<brain>/status/<producer>.json` | each producer, its own tile | overwritten on every run |
+| `<brain>/debt-ledger.md` | `/save`, `/build` | a piece of system technical debt becomes known |
+| `<brain>/records/<type>/` | `/save` | a finding belongs to no one project |
+| `<brain>/records/research/` | `/research` | every run |
+| `<brain>/records/insights/throughline/` | `/throughline` | once per run — and it is the ONLY thing that run may write |
+| `<brain>/plans/<name>.md` | `/autoplan` | a plan is written or sharpened |
+| `<brain>/config/` | a person, by hand | account IDs and the like, kept out of the repo |
+| `<brain>/config/numbers-auto-arm` | a person, by hand | optional — subject folders that turn on `/calculate` by themselves |
+| `<brain>/config/ship-identity.md` | the maintainer, by hand | ⛔ **MAINTAINER-ONLY — you do not need this.** The shipping lane exists to keep the maintainer's own private terms out of the public copy of this repo. Nobody else, contributor or not, ever needs to create this file |
+| `<brain>/config/ship-rewrites.json` | a person, by hand | optional — `/ship`'s cosmetic substitutions, which get fixed and reported rather than blocking |
+| `<brain>/councils/` | a person, by hand | if advisor rosters are used |
+| `<brain>/memory/topic-vocab.md` | a person, by hand | your subjects, in your words |
+| `<brain>/desks/<subject>/canon/` | `/ingest` | once per subject it finds |
+| `<brain>/desks/<subject>/records/` | `/ingest` | a stub file per finding it places |
+| `<brain>/desks/<subject>/records/proposals/` | `/ingest` | a canon candidate, awaiting your ruling |
 
 ## When you add something that writes
 
-1. The path comes from `shared/brain_root.py`. There is no second way to find the AI Brain.
+1. The path comes from `shared/brain_root.py`. There is no second way to find the brain folder.
    **The one exception is scratch** — `shared/paths.py`'s `scratch_dir()` answers from the machine's
-   temp folder instead, on purpose: a regenerable working file does not belong in an AI Brain,
+   temp folder instead, on purpose: a regenerable working file does not belong in a brain folder,
    and the hardcoded `/tmp/...` it replaced does not exist on Windows. Durable state still comes from
    the resolver; if what you are writing survives the run, it is not scratch.
 2. If your path is not on this page, add it here first — in the same change, not afterwards.

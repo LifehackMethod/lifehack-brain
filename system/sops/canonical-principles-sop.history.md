@@ -1040,3 +1040,589 @@ Original line 1530:
 ## 2026-10-30 · FIX · line 1299 private receipts pointer
 - Reason: nothing private in the Harness (P-42).
 (verbatim original moved to the operator's private notes, 2026-10-30, because it is private)
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 001 (applied.md ids)
+
+~~~~
+  - ["frame", 132, "the frame: the stochastic-environment sentence (the one law), evidence tiers, operating rule, keep it small, human in the loop, stateless"]
+  - ["§0", 183, "why an AI differs from code; how a model session really works"]
+  - ["§0.1", 210, "what you are guarding against: drift and rationalisation; a real layer needs neither memory nor agreement; how to count layers"]
+  - ["§0.2", 247, "the step-runner: one more circle of friction, with evidence and what it does not claim"]
+  - ["§0.3", 280, "a picture that helps: the hospital (illustrates friction, does not replace it)"]
+  - ["§1", 296, "the verifier nobody verifies; detection is not the gap; fixes un-fix themselves; the human action after the finding"]
+  - ["§2", 340, "subtract, do not add"]
+  - ["§3", 365, "complicated versus complex; the growth chain; the desk model"]
+  - ["§4", 387, "how models behave: self-report, absence, self-checking, impossibility, rule budget, code versus prose, chains, drift"]
+  - ["§4.6", 445, "code works when it takes away an ability or checks what happened; a hook is two different things"]
+  - ["§5", 524, "how to shape a harness: redundancy, binding the predictable, shedding, heartbeats, guards, handoffs, scope, compliance"]
+  - ["§5.4", 550, "bind what is predictable and catastrophic; the smallest tool that does the job"]
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 002 (applied.md ids)
+
+~~~~
+  - ["§5.20", 763, "compliance is the center of the Venn diagram, not a choice"]
+  - ["§6", 781, "learning, refutation, choosing not to build, secrets"]
+  - ["§7", 809, "what a cold reader can and cannot trust: citations, saved work, recency, discriminators, tests, backlogs"]
+  - ["§8", 880, "one-line practices"]
+  - ["§9", 931, "Enver's rulings, including the GitHub and shipping rulings"]
+  - ["§10", 974, "claims retracted; do not carry forward"]
+  - ["§10a", 1008, "approaches proven not to work, with receipts"]
+  - ["§11", 1049, "corrections to earlier answers"]
+  - ["§12", 1059, "unresolved or resolved tensions, kept visible"]
+  - ["§14", 1140, "where the evidence lives"]
+  - ["§15", 1146, "research candidates, held, bind nothing"]
+  - ["§16", 1307, "the failure-mode census: 21 recurring failures, ranked, with tiers"]
+  - ["§17", 1435, "experiments: proposed and run, with dated ground results"]
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 003 (applied.md ids)
+
+~~~~
+> *(The centering frame. Enver's, sharpened and adopted 2026-09-11. A near-copy leads `system/sops/skill-building-sop.md`; per §12.b the two are kept in agreement by a quarterly human audit, not by construction. ⚠ **That audit is a thing someone must REMEMBER — so by §0.1's own test it is a PREFERENCE, not a layer, and it will drift.** Chosen knowingly anyway: a sync script is one more thing that breaks silently and then needs its own alarm. **Stated so the weakness is owned rather than discovered.**)*
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 004 (applied.md ids)
+
+~~~~
+> here is perfect. Every layer only makes going wrong cost more than going right. Older wording in this
+> file that says "enforcement" means friction, and it gets updated as it's touched.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 005 (applied.md ids)
+
+~~~~
+> September draft (the v3 draft file), the 54-entry collection in the notes-side canon folder
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 006 (applied.md ids)
+
+~~~~
+> **Not the always-loaded layer.** The session loader reads `<notes>/canon.md` and `desks/*/canon/`
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 007 (applied.md ids)
+
+~~~~
+> **Three tiers of confidence; an unlabelled claim reads as the highest.**
+> **AUTHORITATIVE** — tested here, receipt attached. **WORKING THEORY** — outside research; it has not
+> met this system. **RECOMMENDATION** — reasoning only. *Authoritative knowledge carries its receipt
+> or it decays back to theory.* A number never measured here is a theory and is labelled one.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 008 (applied.md ids)
+
+~~~~
+> compressed and read as complete while being incomplete-to-wrong. The evidence lives in the builder's notes (§14).
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 009 (applied.md ids)
+
+~~~~
+> # THE FRAME — read before any line below. A near-copy of this text sits atop `system/sops/skill-building-sop.md`.
+> *(Enver, 2026-09-05. The two copies are kept in agreement
+> by a quarterly human audit, not by construction — Enver's ruling 2026-09-06, §12.b.)*
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 010 (applied.md ids)
+
+~~~~
+> guaranteed. **That sentence is the one law in this document.** Everything else is a principle, and its tier
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 011 (applied.md ids)
+
+~~~~
+> **Every line carries an evidence tier:**
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 012 (applied.md ids)
+
+~~~~
+> **REFINED** — an earlier line changed by evidence; the old text struck, never deleted, with what changed and why.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 013 (applied.md ids)
+
+~~~~
+> and the model stops following any (§4.5). **A rule CODE enforces needs no tier** — it does not depend on
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 014 (applied.md ids)
+
+~~~~
+> **The operating rule under the one law** *(added 2026-09-05 from the failure census, §16 — CANDIDATE as a single
+> sentence, since one synthesis wrote it; the modes beneath it are REPRODUCED, except where a mode's own line says it
+> entered by Enver's ruling rather than by the census):* **nothing counts as
+> existing, done, enforced or true until you have watched it produce an outcome it could not produce if it were
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 015 (applied.md ids)
+
+~~~~
+AUTHORITATIVE → transcript 1185, 1193.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 016 (applied.md ids)
+
+~~~~
+> **THE RULE, true by construction rather than by measurement: A REAL LAYER DEPENDS ON NEITHER MEMORY NOR
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 017 (applied.md ids)
+
+~~~~
+*Record: `records/2026-09-11-layered-enforcement-composition.md`.*
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 018 (applied.md ids)
+
+~~~~
+- §16 and §17 are not compressed; §17 is not moved (moving it to an appendix is a later step).
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 019 (applied.md ids)
+
+~~~~
+**Each hospital word, in its plain name:** walls = hooks · chart = the record (the card and record). The picture's nurse is just part of the old image; it is not a name for the step-runner (§0.2).
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 020 (applied.md ids)
+
+~~~~
+**1.2 Detection was never the gap; being believed was.** Journal 2026-08-05. The Hospital findings system was built so
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 021 (applied.md ids)
+
+~~~~
+rung reproduces the problem one rung higher.** AUTHORITATIVE → journal 2026-08-05.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 022 (applied.md ids)
+
+~~~~
+AUTHORITATIVE → register; transcript 1495.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 023 (applied.md ids)
+
+~~~~
+Nothing inside resists addition; the resistance has to come from you. Ranked above every individual
+finding — *"worth more than the findings, because it predicts them."* It predicts: don't build the debug
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 024 (applied.md ids)
+
+~~~~
+WORKING THEORY, strong locally → transcript 1185.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 025 (applied.md ids)
+
+~~~~
+WORKING THEORY → record 7; transcript 1437–1466.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 026 (applied.md ids)
+
+~~~~
+**The founding instance of this was prose alone.** Before any mechanical enforcement existed, two
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 027 (applied.md ids)
+
+~~~~
+**Only process-level blocks, tool removal and egress control are unconditional; a hook that persuades is
+a stronger request, not a law.** Enforcement is strongest where the model cannot see the check at all.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 028 (applied.md ids)
+
+~~~~
+**A blocking hook is unconditional only for what it recognises.** `[H]` A guard that matches the command's
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 029 (applied.md ids)
+
+~~~~
+through a script body the Drive guard didn't parse (records/2026-11-02-rig-real-drive-write-audit.md).
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 030 (applied.md ids)
+
+~~~~
+unit.** `[U]` `0.90**10 = 0.349`. But ~79% (unverified; likely conflated (research record 2026-09-05)) of multi-agent failures are handoffs. Retries convert a step
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 031 (applied.md ids)
+
+~~~~
+**5.3 Before enforcing a rule, ask whether it was ever followable.** `[U]` Systematic, near-universal
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 032 (applied.md ids)
+
+~~~~
+2026-09-11** — six paired actor-battery firings returned zero and were read as "cannot be induced"; the
+re-analysis is in the builder's notes.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 033 (applied.md ids)
+
+~~~~
+**Every blocking deny must teach.** WHY it blocked and the exact REDIRECT — a path, an ID, a command. A
+bare "no" causes blind retries and workaround-hunting, worse than no hook. ⛔ Deliberately *not* in the
+deny: where the rule lives or how to change it — that invites editing the guardrail.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 034 (applied.md ids)
+
+~~~~
+AUTHORITATIVE → transcript 2209.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 035 (applied.md ids)
+
+~~~~
+**Default to one unit and earn the split:** ~79% (unverified; likely conflated (research record 2026-09-05)) of multi-agent failures are at handoffs; a single
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 037 (applied.md ids)
+
+~~~~
+**5.13 When you fix one instance, sweep for siblings — but stage enforcement.** `[U]` Apple's goto fail:
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 038 (applied.md ids)
+
+~~~~
+existing home and extend it.** Forking creates silent drift: one truth, one home. Two records that agree
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 039 (applied.md ids)
+
+~~~~
+passed. **A hook is the scarce circle** — expensive, machine-wide, unbypassable — never a substitute
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 040 (applied.md ids)
+
+~~~~
+others live — inside the document that teaches mode 3.** *(Canon §5.19: one truth, one home.)*
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 041 (applied.md ids)
+
+~~~~
+cost of reversal. 40 `state:parked` entries exist; the mechanism is built, the ruling is not.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 042 (applied.md ids)
+
+~~~~
+**derived, never assumed**: from tier labels and dated receipts where they exist (the confidence
+ladder: an unlabelled claim reads as the highest, so label it), from recency when sources conflict
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 043 (applied.md ids)
+
+~~~~
+proposal, not a fact. AUTHORITATIVE → Enver, 2026-11-06; COMPASS P-130.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 044 (applied.md ids)
+
+~~~~
+organised. Solve storage first, then retrieval. AUTHORITATIVE → transcript 2106.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 045 (applied.md ids)
+
+~~~~
+outranks a later agent note · an undated source cannot be compared · a restatement is corroboration, not
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 046 (applied.md ids)
+
+~~~~
+- **Sandboxing answers "can it reach." Authorisation is separate** — enforced at the point of action every time, never cached from an upstream check (complete mediation).
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 047 (applied.md ids)
+
+~~~~
+no staged waves · Canon held, nothing promoted · We decided not to build a separate reduced version for the Cowork app; the app's Code tab does what the command-line tool does (paraphrase, unconfirmed) ·
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 048 (applied.md ids)
+
+~~~~
+disputed · **This file supersedes the old collection and the July canon; the old files are retired.**
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 049 (applied.md ids)
+
+~~~~
+**2026-08-04 (authoritative, superseding on conflict):** Shipping to non-technical users — **git is
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 050 (applied.md ids)
+
+~~~~
+folder structure; git *enforces* it at a known version. **Ship public, gate later.** ⛔ Never put a git
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 051 (applied.md ids)
+
+~~~~
+**2026-10-29 (Enver, V2 plan 2.5) — One copy, in the shared layer.** If something should work the same way everywhere, it exists once, in the shared layer. Desks use it; they never copy it.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 052 (applied.md ids)
+
+~~~~
+- **"Mechanical enforcement beats behavioural rules EVERY TIME"** — the absolutism is wrong; enforcement is layered and never 100%, and caps around 40% here. Keep the core (4.6); strike *every time*.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 053 (applied.md ids)
+
+~~~~
+> "not listed" is not "never tried." The build-time twins live in `skill-building-sop.md` §II.4a/§II.4b and
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 054 (applied.md ids)
+
+~~~~
+- **[DNR7]** Tried: freezing an instrument, declaring it finished and banning further work on it, as the cure for effort drifting into the instrument. Failed 2026-07-25 to 08-04: the Conformance Lab was frozen and back within ten days as the door tester and fan-out lab, "ONE machine under three names" (journal 2026-08); a measurement freeze was also relaxed. → See mode 20 and its fixes. **OBSERVED.**
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 055 (applied.md ids)
+
+~~~~
+- **12.b Generate-the-copy vs "rather duplication than miss."** Two of Enver's rulings pull apart: §5.19 one truth one home,
+  and the 2026-08-07 ruling that the do-not-build register is duplicated by design. The offered reconciliation —
+  duplicate by DERIVATION, never by hand — is a candidate, not a ruling. **And the two frames say "identical text sits
+  atop the other document" while a diff shows 188 differing lines of wording drift.** Mode 3, inside the sentence
+  that names mode 3. → Enver rules; then one frame is generated from the other or the claim is struck.
+  **RESOLVED 2026-09-06 (Enver):** no generator. A script that copies one frame into the other is one more thing that
+  breaks silently in the background and then needs its own alarm. The two documents are checked for drift by the human,
+  on a quarterly cadence, as a five-minute job — an accepted limitation of a human-in-the-loop system, and the human's
+  small share of the work under Pareto. The "identical text" claim in the frame is struck and replaced with "a near-copy."
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 056 (applied.md ids)
+
+~~~~
+§5.12 says to give a helper enough to do the job well, and full context is the safe default: ~79% (unverified; likely conflated (research record 2026-09-05)) of multi-agent failures are at
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 057 (applied.md ids)
+
+~~~~
+> before it moves into §0–§8. Full evidence and caveats: the builder's notes (§14).
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 058 (applied.md ids)
+
+~~~~
+  rebuttal found. RESEARCHED. *Outside support for the one law, and for why §5.20's overlapping circles work.*
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 059 (applied.md ids)
+
+~~~~
+  stated without its scope. ⚠ **AND THE METHOD IS A PROXY, stated so nobody promotes it further than it goes:**
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 060 (applied.md ids)
+
+~~~~
+  measurement that would promote it is a count of registered guards that BLOCK versus those that PRINT — do not
+  promote it on a second reading of the same research.** *Record:
+  in the builder's notes.*
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 061 (applied.md ids)
+
+~~~~
+  (2026-10-24, five blind angles; evidence moderate). Detail in the builder's notes.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 062 (applied.md ids)
+
+~~~~
+## 16. THE FAILURE MODES — the census, 2026-09-05 *(REPRODUCED: 15 blind readers · 4 sources · every mode 4–6 months · 11–12 of 12 sources · 1,656 cited instances; method in the builder's notes, §14)*
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 063 (applied.md ids)
+
+~~~~
+> Counts are floors (readers dropped as many again). Full receipts are in the builder's notes.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 064 (applied.md ids)
+
+~~~~
+3. **The copy you didn't count** (177). One fact in several places, no generator; a fix leaves the others live. **Count every copy including the template; derive pointers, never type them.** · **CANDIDATE** (derived 2026-09-07 from the 2026-09-05 durable-solutions audit and the 2026-09-05 research pass; no field remedy, never held here) · **5.3 category (2026-09-07):** CONFIRMED both (draft: both, unchanged) — a build-time cause (a fact copied, no generator) with an operational remedy (Enver's ruling, canon §12.b: sync is a QUARTERLY HUMAN AUDIT, not construction/automation). · **5.3 failure-path:** two independently-maintained "# THE FRAME" copies (canon, skill-building SOP) diverge; a naive "diff non-empty" check drowns a real plant inside 36 lines of pre-existing baseline drift — fix built this run: diff-then-grep-c-for-the-specific-string. NOT ENFORCED by anything structural; a live, undetected branch-checkout gap (SOP's frame exists only on local V2, not on origin/V2 or main) was found during this same run. · **5.3 rung:** prose-asked-nicely — the sync mechanism is a human-run quarterly audit with no structural block (Enver's ruling, canon §12.b), and it has caught at least one already-live drift it hadn't yet run against. · **See also mode 18 (Mirror Rot), added 2026-09-08:** the same root with BRANCHES as the copies — a local clone carrying merged-and-deleted, unpushed and stale-cached refs is a pile of uncounted copies. Split out as its own mode rather than folded in here because its detection is FULLY MECHANICAL where this mode's remedy is a quarterly human audit.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 065 (applied.md ids)
+
+~~~~
+14. **Writing for a reader who holds state** (uncounted — entered by Enver's ruling 2026-09-06, not by the census: six months of daily operation, every instance looks like ordinary writing, none is a crash). When one session hands off to another, or persists knowledge into a system built to act on it later — a brief, a plan, canon, this Harness — the model writes as if the reader will arrive already knowing what this session knew. No reader does. The next session starts from nothing, and the human, across days and a dozen other things, holds far less than the page assumes. The abbreviation, the half-sentence, the bare section number, the pronoun with no antecedent read as clear to the writer and as noise to every reader. **The reader is stateless — could a session that has never seen this conversation read this line alone and act on it correctly?** *The canon-write speed bump already asks this question, on canon alone; nothing asks it anywhere else.* SOP §II.4a [F14]. · **CANDIDATE** (derived 2026-09-07 from the 2026-09-05 durable-solutions audit and the 2026-09-05 research pass; Enver's ruling 2026-09-06; nothing watched) · **First count 2026-09-07 (window 14): 6/6** — a sealed zero-state reader could act on none of the six wave-1 artifacts. · **5.3 category (2026-09-07):** CONFIRMED operational (draft: operational, unchanged) — "could a stateless reader act on this line alone" is a live, per-write discipline question, not a one-time build choice. · **5.3 failure-path:** a write assumes the reader shares this session's accumulated context (bare section numbers, unresolved pronouns, terms defined one document removed); the actual next reader, starting from nothing, cannot resolve it. ENFORCED, narrowly: per §16's own text, only canon's own write speed bump asks this question (SOP §II.4a [F14]) — nothing else does. NOT ENFORCED, confirmed live this run: a sealed stateless reader answered NO on all 7 test files, correctly catching a planted shorthand rewrite but ALSO false-positiving on a genuine, mostly self-contained twin — verdict this run is error, not fires; the mechanism cannot yet distinguish illegitimate shorthand from a legitimate named citation. **Field remedy:** structural substitution over debiasing — name a concrete low-context reader (human or machine) and test against them directly; keep units minimal, self-contained, and, for an LLM reader, dynamically curated rather than statically front-loaded (RESEARCHED). · **5.3 rung:** rung not yet known — "doc line only, no hook or code check ships" (mode-14 result.md), and the mechanism itself errored (false-positived) in this test.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 066 (applied.md ids)
+
+~~~~
+  **Moves** — §16 line **11, "Prose asked nicely" (47)**, and SOP §II.4a **`[F11]`**, from **RESEARCHED to OBSERVED** on a ground `fires`. **VALIDATED only after Phase 8's three blind sessions and Phase 9's audit and Enver's ruling** — never at ground, however clean the result looks.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 067 (applied.md ids)
+
+~~~~
+  **Moves** — §16 line **7, "The guard that is a string matcher" (80)**, and SOP §II.4a **`[F7]`**, gaining a dated **OBSERVED** receipt on a ground `fires`; the line is already OBSERVED, so ground does not advance the word, it only re-evidences it. **VALIDATED only after Phase 8 and Phase 9 and Enver's ruling.**
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 068 (applied.md ids)
+
+~~~~
+  **Moves** — §16 line **5, "Building before looking" (155)**, and SOP §II.4a **`[F5]`**, from **CANDIDATE to OBSERVED** only if 17.6 does not already carry mode 5 to OBSERVED. **VALIDATED only after Phase 8 and Phase 9 and Enver's ruling.** ⚠ Mode 5's count is disputed at source — 155 (`failure-modes-synthesis.md`, B1+B6+B7) versus 106 (`solutions-synthesis.md:654`, B1+B2); both reproduce exactly, and which categories compose the mode is Enver's to settle. Neither number is this experiment's to move.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 069 (applied.md ids)
+
+~~~~
+  **Moves** — §16 line **5, "Building before looking" (155)**, and SOP §II.4a **`[F5]`**, from **CANDIDATE to OBSERVED** on a ground `fires`. **VALIDATED only after Phase 8's three blind sessions, Phase 9's audit, and Enver's ruling.** ⚠ The 155-versus-106 composition dispute noted in 17.5 applies here too and is not this experiment's to settle.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 070 (applied.md ids)
+
+~~~~
+  **Moves** — §16 line **1, "Built, then never called" (194)**, and SOP §II.4a **`[F1]`**, from **CANDIDATE to OBSERVED** on a ground `fires`; §12.a gains its receipt at the same time. **VALIDATED only after Phase 8's three blind sessions, Phase 9's audit, and Enver's ruling.**
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 071 (applied.md ids)
+
+~~~~
+  **Moves** — §16 line **2, "A failure that exits zero" (166)**, and SOP §II.4a **`[F2]`**, gaining a dated **OBSERVED** receipt on a ground `fires`; the line is already OBSERVED, so ground re-evidences the word rather than advancing it. **VALIDATED only after Phase 8 and Phase 9 and Enver's ruling.**
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 072 (applied.md ids)
+
+~~~~
+- **17.13 The two frames, and the instrument that is supposed to catch them drifting — MODE 3 (the copy you didn't count).** *(Written 2026-09-07, card 5.1. Window 3 runs it.)* Enver's ruling (§12.b, 2026-09-06) is that the two frames are kept in agreement by a **quarterly human audit, not by construction**, so what is under test is the audit's instrument, **not a generator** — nothing here builds one.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 073 (applied.md ids)
+
+~~~~
+  **Moves** — §16 line **3, "The copy you didn't count" (177)**, and SOP §II.4a **`[F3]`**, from **CANDIDATE to OBSERVED** on a ground `fires`; §12.b gains a receipt for the quarterly-audit ruling. **VALIDATED only after Phase 8 and Phase 9 and Enver's ruling.**
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 074 (applied.md ids)
+
+~~~~
+  **Moves** — §16 line **4, "The check that certifies itself" (133)**, and SOP §II.4a **`[F4]`**, gaining a dated **OBSERVED** receipt on a ground `fires`; already OBSERVED, so ground re-evidences rather than advances. §11 Q21's disputed-liveness note gains a receipt either way. **VALIDATED only after Phase 8 and Phase 9 and Enver's ruling.**
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 075 (applied.md ids)
+
+~~~~
+  **Moves** — §16 line **6, "The handoff that didn't carry" (88)**, and SOP §II.4a **`[F6]`**, gaining a dated **OBSERVED** receipt on a ground `fires`; already OBSERVED, so ground re-evidences rather than advances, and §12.c gains its receipt. **VALIDATED only after Phase 8 and Phase 9 and Enver's ruling.**
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 076 (applied.md ids)
+
+~~~~
+  **Moves** — §16 line **8, "The delegation seam" (70)**, and SOP §II.4a **`[F8]`**, gaining a dated **OBSERVED** receipt on a ground `fires`; already OBSERVED, so ground re-evidences rather than advances, and §7.3 gains a receipt for the re-run law. **VALIDATED only after Phase 8 and Phase 9 and Enver's ruling.**
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 077 (applied.md ids)
+
+~~~~
+  **Moves** — §16 line **9, "The number nobody re-derived" (55)**, and SOP §II.4a **`[F9]`**, from **CANDIDATE to OBSERVED** on a ground `fires`. **VALIDATED only after Phase 8 and Phase 9 and Enver's ruling.**
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 078 (applied.md ids)
+
+~~~~
+  **Moves** — §16 line **10, "Editing by fragile coordinate" (50)**, and SOP §II.4a **`[F10]`**, from **RESEARCHED to OBSERVED** on a ground `fires`. **VALIDATED only after Phase 8 and Phase 9 and Enver's ruling.**
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 079 (applied.md ids)
+
+~~~~
+  **Moves** — §16 line **12, "The code that ran isn't what you edited" (40)**, and SOP §II.4a **`[F12]`**, gaining a dated **OBSERVED** receipt on a ground `fires`; already OBSERVED, so ground re-evidences rather than advances. **VALIDATED only after Phase 8 and Phase 9 and Enver's ruling.**
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 080 (applied.md ids)
+
+~~~~
+  **Moves** — §16 line **13, "Producer and consumer never agreed" (35)**, and SOP §II.4a **`[F13]`**, gaining a dated **OBSERVED** receipt on a ground `fires`; already OBSERVED, so ground re-evidences rather than advances. **VALIDATED only after Phase 8 and Phase 9 and Enver's ruling.**
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 081 (applied.md ids)
+
+~~~~
+  **Moves** — §16 line **14, "Writing for a reader who holds state" (uncounted)**, and SOP §II.4a **`[F14]`**, from **CANDIDATE to OBSERVED** on a ground `fires` — and, separately from any verdict, the line gains **its first count**, which the coordinator writes beside the mode with Enver's ruling. **VALIDATED only after Phase 8 and Phase 9 and Enver's ruling.**
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 082 (applied.md ids)
+
+~~~~
+  **Moves** — §16 line **15, "the instrument that refuses the truth"**, from **CANDIDATE** on a ground pass. SOP §II.4a **`[F15]`** is PARKED, not moved here: the lifehack-brain working tree is on a branch whose SOP has zero `[F]` entries — that half is not this entry's to close.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 083 (applied.md ids)
+
+~~~~
+  **Moves** — §16 line **16, "The written word outranks the live one"**, from **CANDIDATE** on a ground `fires`. SOP §II.4a `[F16]` is **PARKED**, not moved here: the `~/lifehack-brain` working tree is on branch `build/phase-1h-2026-09-07`, whose SOP has zero `[F]` entries — that half is not this entry's to close.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 084 (applied.md ids)
+
+~~~~
+  **Moves** — §16 line **17, "A true observation hardened into a false rule"**, from **CANDIDATE** on a ground `fires`. SOP §II.4a `[F17]` is **PARKED**, not moved here: the `~/lifehack-brain` working tree is on branch `build/phase-1h-2026-09-07`, whose SOP has zero `[F]` entries — that half is not this entry's to close.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13: CP4/CP11 moved out, approved screen
+
+~~~~
+# Archive, canonical-principles-sop draft (2026-11-12)
+
+Text moved word for word out of the live body by checklist v3. When the draft lands, this goes into `system/sops/canonical-principles-sop.history.md`.
+
+## CP4: the old three-tier confidence list (was the Frame's admission block, frozen L118-121)
+
+> **Three tiers of confidence; an unlabelled claim reads as the highest.**
+> **AUTHORITATIVE** — tested here, receipt attached. **WORKING THEORY** — outside research; it has not
+> met this system. **RECOMMENDATION** — reasoning only. *Authoritative knowledge carries its receipt
+> or it decays back to theory.* A number never measured here is a theory and is labelled one.
+
+## CP11: the Frame's near-copy line and its audit note (frozen L132-134; false since 2026-11-10)
+
+> # THE FRAME — read before any line below. A near-copy of this text sits atop `system/sops/skill-building-sop.md`.
+> *(Enver, 2026-09-05. The two copies are kept in agreement
+> by a quarterly human audit, not by construction — Enver's ruling 2026-09-06, §12.b.)*
+
+## CP11: §12.b, the quarterly two-frames audit (frozen L1088-1096)
+
+- **12.b Generate-the-copy vs "rather duplication than miss."** Two of Enver's rulings pull apart: §5.19 one truth one home,
+  and the 2026-08-07 ruling that the do-not-build register is duplicated by design. The offered reconciliation —
+  duplicate by DERIVATION, never by hand — is a candidate, not a ruling. **And the two frames say "identical text sits
+  atop the other document" while a diff shows 188 differing lines of wording drift.** Mode 3, inside the sentence
+  that names mode 3. → Enver rules; then one frame is generated from the other or the claim is struck.
+  **RESOLVED 2026-09-06 (Enver):** no generator. A script that copies one frame into the other is one more thing that
+  breaks silently in the background and then needs its own alarm. The two documents are checked for drift by the human,
+  on a quarterly cadence, as a five-minute job — an accepted limitation of a human-in-the-loop system, and the human's
+  small share of the work under Pareto. The "identical text" claim in the frame is struck and replaced with "a near-copy."
+
+## CP 1 (add-on 2026-11-13; pre-add-on L54, the centering frame; moved word for word, same kind as CP11)
+
+```
+> *(The centering frame. Enver's, sharpened and adopted 2026-09-11. A near-copy leads `system/sops/skill-building-sop.md`; per §12.b the two are kept in agreement by a quarterly human audit, not by construction. ⚠ **That audit is a thing someone must REMEMBER — so by §0.1's own test it is a PREFERENCE, not a layer, and it will drift.** Chosen knowingly anyway: a sync script is one more thing that breaks silently and then needs its own alarm. **Stated so the weakness is owned rather than discovered.**)*
+```
+
+~~~~

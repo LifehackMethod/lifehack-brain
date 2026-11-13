@@ -6,33 +6,33 @@ this page is the mechanics.
 
 ---
 
-## The LLM Context Block (mandatory on every hook)
+## The LLM Context Block (on every hook)
 
-Every hook must open with this block immediately after the shebang:
+Every hook opens with this block immediately after the shebang:
 
 ```bash
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # WHY: [the incident or failure that created this hook — specific, not generic]
 # GUARDS: [what behavior it blocks and why that behavior was wrong]
 # REDIRECT: [exactly where Claude should go instead — path, calendarId, desk name]
-# SIGNPOST: [the canonical rule doc/file this hook enforces — where the RULE lives + how to change it]
+# SIGNPOST: [the canonical rule doc/file behind this hook — where the RULE lives + what to do instead to comply; a change to this rule goes to the person]
 # UPDATED: [YYYY-MM-DD]
 # ─────────────────────────────────────────────────────────────────────────────
 ```
 
-**REDIRECT must be specific.** "See Lifehack architecture" is not a redirect.
+**REDIRECT is specific.** "See Lifehack architecture" is not a redirect.
 Give Claude the exact path, ID, or command it needs to recover.
 
-**SIGNPOST — mandatory.** A hook's purpose is not just to BLOCK — it is to
+**SIGNPOST — on every hook.** A hook's purpose is not just to BLOCK — it is to
 **RE-TEACH the boundary so a fresh session LEARNS the rule instead of hitting a silent wall.** Every
-hook therefore carries a SIGNPOST: the deny message (and the LLM-context block) must name **where the
-rule is codified** (the canonical doc / contract file) and **how to change it** (edit-there + get
-sign-off), so the blocked session is pointed straight at the source of truth — not merely told "no."
+hook therefore carries a SIGNPOST: the deny message (and the LLM-context block) names **where the
+rule is codified** (the canonical doc / contract file) and **what to do instead to comply** (a change
+to this rule goes to the person), so the blocked session is pointed straight at the source of truth — not merely told "no."
 A block without a signpost is a wall; a block with a signpost is a teacher.
 
-**Deny messages must include WHY + REDIRECT + SIGNPOST inline:**
+**Deny messages include WHY + REDIRECT + SIGNPOST inline:**
 ```bash
-echo '{"decision":"block","reason":"BLOCKED: [what]. WHY: [why]. REDIRECT: [where]. RULE: [the canonical doc/file + how to change it]."}'
+echo '{"decision":"block","reason":"BLOCKED: [what]. WHY: [why]. REDIRECT: [where]. RULE: [the canonical doc/file + what to do instead to comply; a change to this rule goes to the person]."}'
 ```
 
 ---
@@ -50,10 +50,10 @@ Registered under `"PreToolUse"` in settings.json (generated from `system/registe
 Common matchers: `Bash`, `Write|Edit`, `Write`, `Edit`
 
 ### PostToolUse
-Runs AFTER tool execution. Cannot block. Must always exit 0.
+Runs AFTER tool execution. Cannot block. Always exits 0.
 Registered under `"PostToolUse"` in settings.json (generated from `system/register/register.jsonl`).
 
-**Input:** `$ARGUMENTS` as first parameter ($1) — JSON string.
+**Input:** stdin — JSON string (not `$ARGUMENTS`, not `$1`).
 **Output:** advisory only — write to stderr, never exit non-zero to block.
 
 ---
@@ -89,9 +89,9 @@ except:
 ")
 ```
 
-### PostToolUse — extract file path from $ARGUMENTS
+### PostToolUse — extract file path from stdin
 ```bash
-ARGS="$1"
+ARGS="$(cat)"
 FILE_PATH=$(echo "$ARGS" | grep -o '"file_path":"[^"]*"' | cut -d'"' -f4 | head -1)
 ```
 
@@ -102,7 +102,7 @@ FILE_PATH=$(echo "$ARGS" | grep -o '"file_path":"[^"]*"' | cut -d'"' -f4 | head 
 House standard across the live fleet — deny text to **stderr**, then **`exit 2`** (the honored PreToolUse block signal). Verified live (council audit 2026-06-16/17):
 
 ```bash
-DENY='{"decision":"block","reason":"BLOCKED: [what]. WHY: [the incident or rule]. REDIRECT: [specific path or action]. RULE: [canonical doc/file + how to change it]."}'
+DENY='{"decision":"block","reason":"BLOCKED: [what]. WHY: [the incident or rule]. REDIRECT: [specific path or action]. RULE: [canonical doc/file + what to do instead to comply; a change to this rule goes to the person]."}'
 deny() { printf '%s\n' "$DENY" >&2; exit 2; }
 ```
 
@@ -115,45 +115,27 @@ Both work: `exit 2` + stderr (house standard) AND the `{"decision":"block"}` JSO
 | Exit | PreToolUse | PostToolUse |
 |------|-----------|-------------|
 | 0 | Allow — tool runs | Complete — no action |
-| 2 | **Block — deny text on stderr is shown to the model (house standard)** | n/a |
+| 2 | **Block — exit 2 is the block signal; deny text on stderr is shown to the model (house standard)** | n/a |
 | 1 | Block via `{"decision":"block"}` JSON on **stdout** only (also works) | Invalid — do not use |
 
-PostToolUse hooks must always exit 0. Use stderr for warnings. **Fail-closed:** a guard that can't parse its input must DENY (`exit 2`), never `exit 0`.
+PostToolUse hooks always exit 0. Use stderr for warnings. **Fail-closed:** a guard that can't parse its input DENIES (`exit 2`), never `exit 0`.
 
 ---
 
-## settings.json Registration
+## Registration: a register row, fed through generate.py
+
+A hook is registered as one row in `system/register/register.jsonl`, the source. `system/register/generate.py`
+reads the register and writes `hooks/hooks.json` and `.claude/settings.json` from it; neither file is
+edited by hand. A real row, as it stands in the register:
 
 ```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [{
-          "type": "command",
-          "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/{hook-name}.sh\"",
-          "statusMessage": "Checking [what]..."
-        }]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "hooks": [{
-          "type": "command",
-          "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/{hook-name}.sh\" '$ARGUMENTS'",
-          "statusMessage": "Validating [what]..."
-        }]
-      }
-    ]
-  }
-}
+{"args": "", "cost_bytes": null, "cost_ms": null, "event": "PreToolUse", "exists": true, "expiry": null, "group": null, "id": "hook:public:/system/hooks/guard_canon_write.sh@PreToolUse:Bash|Write|Edit", "if": null, "launch_mode": "both", "matcher": "Bash|Write|Edit", "needs": [], "path": "/system/hooks/guard_canon_write.sh", "protects_permissions": [], "repo": "public", "returns": [], "sha": "5ae2d114", "state": "active", "status": "Checking what is going into the always-loaded layer...", "status_conflicts": [], "surfaces": ["plugin", "settings"], "type": "hook"}
 ```
 
-**The file is `.claude/settings.json`, in this repo, and `${CLAUDE_PROJECT_DIR}` expands to the repo
-root.** That is what makes a registration portable: it travels with `git pull` and needs no editing on
-any machine. An absolute path baked into this file works on exactly one computer.
+**The generated command in `.claude/settings.json` starts from `${CLAUDE_PROJECT_DIR}`, which expands to
+the repo root** (the plugin's `hooks/hooks.json` uses `${CLAUDE_PLUGIN_ROOT}`). That is what makes a
+registration portable: it travels with `git pull` and needs no editing on any machine. An absolute
+path baked into either file works on exactly one computer.
 
 ⚠ **`.claude/settings.json` is in this repo's own deny-list** (`Edit(.claude/settings.json)`), so a
 session cannot quietly re-wire its own guards. Editing it is a deliberate act by a person.
@@ -168,14 +150,14 @@ session cannot quietly re-wire its own guards. Editing it is a deliberate act by
 - ⚠ **Do not `chmod 444` them.** The system this came from did, because its hooks were symlinked out
   of a clone into a home directory and read-only was the only protection available. Here git tracks
   the executable bit and nothing else, so a `444` file is just a file you cannot edit without a
-  `chmod` first — friction with no guarantee behind it. The deny-list is the actual control.
+  `chmod` first — friction with no guarantee behind it. The deny-list is one layer of friction.
   ⛔ **CORRECTED 2026-09-16 (R2 Part B):** this `Edit(system/hooks/**)` deny entry is now
   REGISTER-GOVERNED, not a fixed constant — `system/register/register.jsonl`'s
   `guard_hook_sop_read.sh` row carries it in `protects_permissions`, and
   `generate.py`'s `install_into_repo()` REMOVES it from `.claude/settings.json` for the
   duration of a declared, expiring `state=suspended` suspension on that row (and APPENDS
   it back the moment the suspension expires or is lifted — the self-heal is the expiry).
-  "The deny-list is the actual control" above still holds in the everyday case; it is no
+  "The deny-list is one layer of friction" above still holds in the everyday case; it is no
   longer a claim that this specific line can never move.
 
 ---
@@ -250,16 +232,16 @@ to cover before the hook counts as a control.
       that decides whether the hook should exist at all.
 - [ ] Fill in all 5 LLM context fields (WHY · GUARDS · REDIRECT · SIGNPOST · UPDATED) — no blanks
 - [ ] REDIRECT is specific (path / calendarId / desk name), not generic
-- [ ] SIGNPOST names the canonical rule doc/file + how to change it (re-teach, don't just wall)
+- [ ] SIGNPOST names the canonical rule doc/file + what to do instead to comply; a change to this rule goes to the person (re-teach, don't just wall)
 - [ ] Deny message includes WHY + REDIRECT + SIGNPOST (the RULE) inline
 - [ ] Tested locally with an echo pipe — necessary, and nowhere near sufficient
 - [ ] A suite in `system/hooks/tests/`, whose ALLOW cases come first
-- [ ] Registered in `.claude/settings.json`, using `${CLAUDE_PROJECT_DIR}`, in the SAME commit
+- [ ] Registered as a row in `system/register/register.jsonl`, run through `system/register/generate.py`, which writes the plugin's `hooks/hooks.json` (and `.claude/settings.json`), in the SAME commit
 - [ ] Restarted, then watched it fire for real and READ the message
 - [ ] Committed + pushed; `git pull` on the other machine, ~~confirm its settings.json symlink~~, then **watched it fire on both**
   > **⚠ CORRECTED 2026-08-24:** `~/.claude/settings.json` is not a symlink into the repo (measured
   > directly this session: regular file, 15,516 bytes, content differs from the repo's tracked copy —
   > `system/tools/gws-audit.sh` documents this was a deliberate conversion away from a symlink). A
-  > `git pull` does not update it. The real checklist step is: confirm the new/changed registration was
-  > separately installed into the other machine's own `~/.claude/settings.json` (e.g. via
-  > `system/tools/install-guard-registrations.py`), not "confirm its symlink."  ⛔ not shipped to the public subset — private-clone only.
+  > `git pull` does not update it. The real checklist step is: confirm the new/changed registration
+  > reached the other machine by the register-and-generate route (its row in
+  > `system/register/register.jsonl`, run through `system/register/generate.py`), not "confirm its symlink."  ⛔ not shipped to the public subset — private-clone only.

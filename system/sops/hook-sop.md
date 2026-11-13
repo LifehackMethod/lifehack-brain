@@ -6,41 +6,41 @@ created_at: 2026-06-17
 updated_at: 2026-10-31
 status: active
 authority: user
-reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live in system/hook-contract.md — where this page restates a mechanic, the copies must agree with hook-contract.md. The single front door: it POINTS, it does not duplicate. Keep it concise."
+reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live in system/hook-contract.md — where this page restates a mechanic, the copies agree with hook-contract.md. The single front door: it POINTS, it does not duplicate. Keep it concise."
 history: "system/sops/hook-sop.history.md (retired and moved text; never read in normal use)"
 route_format: "[section, line_in_this_file, purpose]; find a section by grep -n on its heading text; generated last, regenerate after any edit"
 route:
   - ["§1", 28, "when a hook is worth building at all: the two reasons, the smallest tool, what not to hook"]
   - ["§2", 35, "which of the three kinds: BLOCK, INJECT, OBSERVE"]
-  - ["§3", 41, "the three build principles the mechanics doc omits: channel law, fail-closed, lean injection"]
+  - ["§3", 41, "the three build principles the mechanics doc omits: the channel, fail-closed, lean injection"]
   - ["§3.2", 43, "fail postures: closed, degrade-safe, or open with its reason"]
   - ["§4", 46, "prove it fires: read the message, test through the registered entry point, deploy and restart"]
   - ["DO NOT BUILD", 73, "what was tried and failed, grouped by the failure it teaches (read by deadend_check.py)"]
-  - ["§5", 195, "the front door: pointers to the mechanics and the other homes"]
+  - ["§5", 195, "the front door: pointers to the mechanics and the other files"]
 ---
 
 # Hook SOP — when & how to reach for a hook
 
-> **This doc owns WHEN to build a hook and WHICH kind. `system/hook-contract.md` owns the mechanics; where this doc restates one, the copies must agree with `hook-contract.md`.** It is the single **front door** for hooks: it POINTS at the canonical homes, never copies them. Keep it concise — if it grows into a second mechanics manual, it has failed. (Council-ratified 2026-06-17; diverge→argue→converge.)
+> **This doc owns WHEN to build a hook and WHICH kind. `system/hook-contract.md` owns the mechanics; where this doc restates one, the copies agree with `hook-contract.md`.** It is the single **front door** for hooks: it POINTS at the canonical files, never copies them. Keep it concise — if it grows into a second mechanics manual, it has failed. (Council-ratified 2026-06-17; diverge→argue→converge.)
 
 > **Shared tools:** `system/organism/elements/shared-layer.md` — common tools exist once in `shared/` (list: `system/register/toolbox.md`); use them, never copy them.
 
 ## §1 — When to reach for a hook at all
-- A hook is for a **hard invariant that must survive model drift + compaction** — justified by EITHER **(a)** a real past incident, OR **(b)** a catastrophic-**silent** failure on an unrecoverable surface (auth/credentials · the wrong calendar · a destructive write · the wrong machine). *"It would be nice to enforce"* is **not** justification.
-- **Use the smallest tool that gets the compliance** — an instruction in CLAUDE.md, a gate inside a skill, the user-turn boundary, or a hook. A hook is the strongest, so it must earn its place (the two reasons above). Don't open with the heaviest tool.
+- A hook is for a **hard invariant that has to survive model drift + compaction** — justified by EITHER **(a)** a real past incident, OR **(b)** a catastrophic-**silent** failure on an unrecoverable surface (auth/credentials · the wrong calendar · a destructive write · the wrong machine). *"It would be nice to enforce"* is **not** justification.
+- **Use the smallest tool that gets the compliance** — an instruction in CLAUDE.md, a gate inside a skill, the user-turn boundary, or a hook. A hook is the strongest, so it has to earn its place (the two reasons above). Don't open with the heaviest tool.
 - **A rule that isn't a hook is a wish** — but the inverse holds: a *preference* forced into a hook becomes wallpaper. Style/tone/"usually do X" live in CLAUDE.md or a skill.
 - **A guard that reads a shell command as text is a speed bump; the controls that held were on typed tools** (measured 2026-08-14).
 - **DO NOT hook:** style/tone; anything needing judgment over conversation *state* (→ a skill gate or an Archivist sweep, a stateless hook can't do it); a speculative rule with no incident behind it.
 
 ## §2 — Which of the three kinds
-- **BLOCK** — `PreToolUse`, deny + non-zero exit. Use when **the act itself must not happen** (destructive / irreversible / wrong-target).
+- **BLOCK** — `PreToolUse`, deny + non-zero exit. Use when **the act itself should not happen** (destructive / irreversible / wrong-target).
 - **INJECT** — `UserPromptSubmit`, plain stdout + exit 0. Use to **re-ground the model as often as it is needed (every turn for a skill's lean anchor; once, and again after compaction, for the project-manager line) without stopping it** (the anchor / project-manager pattern).
 - **OBSERVE** — `PostToolUse`, always exit 0. Use to **record or warn** — it structurally *cannot* block.
-- **Mis-pick = failure:** a BLOCK used for guidance stops with no way forward; an INJECT used for a hard rule is a wish dressed as a guard. Decide by: *must this be STOPPED, or REMINDED?*
+- **Mis-pick = failure:** a BLOCK used for guidance stops with no way forward; an INJECT used for a hard rule is a wish dressed as a guard. Decide by: *should this be STOPPED, or REMINDED?*
 
 ## §3 — The three build principles the mechanics doc omits
-1. **Channel law (the landmine):** an INJECT hook delivers via **plain `echo`/stdout + `exit 0`** — **NEVER** the `systemMessage` JSON field (silently dropped: the hook reports success and nothing reaches the model). A BLOCK denies via the **working** channel — deny text + `exit 2` (the honored block signal). Mirror `pm_persist.sh` (inject) and `guard_calendar_writes.sh` (block).
-2. **Fail-closed:** on ANY error (can't read stdin / parse fails) a **narrow, single-target** BLOCK hook **denies** — never `exit 0`/allow-on-error. *(Scope, 2026-10-30: fail-closed applies to what a guard is FOR — `canonical-principles-sop.md` "Fail-closed applies to what a guard is FOR". A broad matcher (`Bash`, `Write|Edit`) is **degrade-safe** instead: on an internal error it exits 0 and says so on stderr, or a malformed payload walls the session off from the shell; see `guard_build_mode.sh` `FAIL_POSTURE`. The in-process scan gate (`shared/gate/ingest_gate.py`) is a third case: by default it refuses a read it cannot check, except email, which stays open because it is only ever flagged, never quarantined; setting `INGEST_GATE_POSTURE=warn` makes every read it cannot check fail open (the instant revert).)* Declare it as one `# FAIL_POSTURE: closed|degrade-safe` line, or `open` with its reason, as `enforce_egress_allowlist.sh` does, in the LLM-CONTEXT block (a declared intent, not a new enforced field).
+1. **The channel (the landmine):** an INJECT hook delivers via **plain `echo`/stdout + `exit 0`** — **NEVER** the `systemMessage` JSON field (silently dropped: the hook reports success and nothing reaches the model). A BLOCK denies via the **working** channel — deny text + `exit 2` (the honored block signal). Mirror `pm_persist.sh` (inject) and `guard_calendar_writes.sh` (block).
+2. **Fail-closed:** on ANY error (can't read stdin / parse fails) a **narrow, single-target** BLOCK hook **denies** — never `exit 0`/allow-on-error. *(Scope, 2026-10-30: fail-closed applies to what a guard is FOR — `canonical-principles-sop.md` "Fail-closed applies to what a guard is FOR". A broad matcher (`Bash`, `Write|Edit`) is **degrade-safe** instead: on an internal error it exits 0 and says so on stderr, or a malformed payload walls the session off from the shell; see `guard_build_mode.sh` `FAIL_POSTURE`. The in-process scan gate (`shared/gate/ingest_gate.py`) is a third case: by default it refuses a read it cannot check, except email, which stays open because it is only ever flagged, never quarantined; setting `INGEST_GATE_POSTURE=warn` makes every read it cannot check fail open (the instant revert).)* Declare it as one `# FAIL_POSTURE: closed|degrade-safe` line, or `open` with its reason, as `enforce_egress_allowlist.sh` does, in the LLM-CONTEXT block (a declared intent, not a new checked field).
 3. **Lean / anti-wallpaper (inject only):** injected text ≤ ~150 tokens, **active-recall** (make the model RESTATE its frame, not re-read an identical block that becomes wallpaper), a hard char-ceiling, and an escape path. Re-anchor hardest at **post-compaction**.
 
 ## §4 — Prove it fires
@@ -72,10 +72,10 @@ route:
 
 ## DO NOT BUILD — what was tried and failed
 
-> **This section is DUPLICATED BY DESIGN across `hook-sop.md` and the build/skill SOPs**
+> **This section is DUPLICATED BY DESIGN across `hook-sop.md` and the skills SOP**
 > (the operator's ruling, 2026-08-07, verbatim: *"I would rather have duplication than miss something."*) — a
 > retired rule got re-installed TWICE in one day because no session could ask "has this already been
-> tried?" **Do not "helpfully" de-duplicate this across the three SOPs** — each copy is scoped to that
+> tried?" **Do not "helpfully" de-duplicate this across the two SOPs** — each copy is scoped to that
 > SOP's own domain and the copies are not required to stay identical. This copy carries the **hook-domain**
 > entries only, harvested from a 2026-08-07 dead-end harvest
 > (80 entries; this SOP owns the subset below).
@@ -88,7 +88,7 @@ route:
 **Grouped by the failure they teach, not by date. Where §1–§5 above already state the rule, these are its
 dated INCIDENTS — evidence, not a restatement.**
 
-### exit 0 on a BLOCK hook is a silent ALLOW (§3 principle 1, "Channel law" — already stated; these are its incidents)
+### exit 0 on a BLOCK hook is a silent ALLOW (§3 principle 1, "The channel" — already stated; these are its incidents)
 - **Tried:** `block_primary_calendar.sh`'s `deny()` written to `exit 0` on both its failure paths → **failed:**
   exit 0 = ALLOW — calendar-write protection was silently non-functional the whole time it was in this
   state. `2026-05-31` (found) / `2026-06-01` (fixed) · an audit record →
@@ -178,7 +178,7 @@ dated INCIDENTS — evidence, not a restatement.**
 - **Tried:** a job runner or a session making its own raw Gmail, calendar, sheet-values, curl, urllib or requests
   call instead of going through the shared fetch → **failed:** the text arrives unsanitised, unscanned and
   unrecorded, and a desk that holds its own credential can bypass every lock the shared layer carries; this is
-  a dead end, REFUSED mechanically, not advised against. `2026-10-27` · `system/tools/install-schedulers.sh --check-row`
+  a dead end, met by a door, not advised against. `2026-10-27` · `system/tools/install-schedulers.sh --check-row`
   (jobs: refused at install, no plist) and `system/hooks/ingest_gate_enforce.sh` clause (h) (sessions) →
   replaced by the shared fetch (`safe_fetch.py`, `safe_search_api.sh`, the email shared fetch), the only files
   allowed a raw call, listed in `system/tools/shared-fetch-allowlist.txt`. **UNIVERSAL**
@@ -187,14 +187,14 @@ dated INCIDENTS — evidence, not a restatement.**
 - **Tried:** a runner, reader or library naming a model by its literal id (`claude-haiku-4-5...`) instead of a tier
   (`small|medium|large`) → **failed:** the id retires, the call exits 1, and a fail-safe wrapper swallows it. The
   email reader named a retired id, so the danger path had NEVER worked headless and nothing said so; `2026-10-28`
-  · `shared/tools/intake_reader.py` · REFUSED mechanically, `system/tools/install-schedulers.sh --check-row`
+  · `shared/tools/intake_reader.py` · met by a door, `system/tools/install-schedulers.sh --check-row`
   rule (d) (no plist) and `system/tools/tests/test_no_hardcoded_model_ids.sh` (new ids fail the suite) →
   replaced by the tier table `system/tools/model.lib.sh` (`MODEL_ID_SMALL/MEDIUM/LARGE`; Python reads it via
   `shared/tools/model_ids.py` `model_id(tier)`), the only files allowed an id. **UNIVERSAL**
 
-## §5 — The front door (pointers — one home each; where restated, copies must agree with `hook-contract.md`)
+## §5 — The front door (pointers — one file each; where restated, the copies agree with `hook-contract.md`)
 - **Mechanics** (exit codes · stdin parsing · deny format · registration · the **Deploy & Verify
   checklist**) → ✅ `system/hook-contract.md`
 - **Injector arm/clear/TTL lifecycle + WHEN a skill arms its anchor** → `system/sops/skill-building-sop.md`, Build steps 9 and 14 (the skills SOP was written fresh 2026-11-10; the older detail, §IV.3 and §IV.7, is in `system/_retired-2026-11-10/skill-building-sop.ARCHIVE-2026-11-10.md`)
 - **Is-this-hook-well-built conformance check** (the LLM-CONTEXT block audit) → the LLM Context Block section of `system/hook-contract.md` (the old pointer, the skill conformance checklist, was archived 2026-11-10 to `system/_retired-2026-11-10/`)
-- **The catalog of enforced rules / fitness functions** → the live list is `hooks/hooks.json` (generated from `system/register/register.jsonl`); each guard's own header says what it blocks and why
+- **The catalog of coded friction points / fitness functions** → the live list is `hooks/hooks.json` (generated from `system/register/register.jsonl`); each guard's own header says what it blocks and why

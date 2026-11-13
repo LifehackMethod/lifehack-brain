@@ -4,7 +4,7 @@ record_type: system-canon
 title: personal-code Security Canon
 version: "1.0"
 created_at: 2026-05-23
-updated_at: 2026-07-04
+updated_at: 2026-11-02
 status: active
 authority: system
 loaded_by: root mode, sentinel, any session involving security decisions
@@ -38,19 +38,19 @@ surface exists before any attacker touches it.
 
 ### What the Actual Risks Are (Ranked)
 
-1. **LLM instruction compliance drift** — the model follows rules ~90% of the
-   time. The 10% failure rate is the primary risk. More text rules do not close
-   this gap. Only mechanical enforcement does.
+1. **LLM instruction compliance drift** — the model does not always follow
+   written rules. That failure is the primary risk. More text rules do not close
+   this gap. Only mechanical friction (a hook) does.
 
 2. **Prompt injection via ingested content** — email bodies and web pages are
    untrusted content in the same context window as trusted instructions. A
    sophisticated injection doesn't need to look like an instruction.
 
 3. **Self-modification** — a compromised session could overwrite hook scripts
-   or settings, disabling its own guardrails. This is partially addressed
-   but has a known platform limit (see below).
+   or settings, disabling its own guardrails. Guarding the guards (Pre-Req, below) addresses
+   this, within a known platform limit (see below).
 
-4. **Credential exposure / static posture** — handled by Sentinel. Lower
+4. **Credential exposure / static posture** — handled by the Sentinel Auditor. Lower
    ongoing risk because it's checked regularly and the architecture is
    relatively clean.
 
@@ -69,9 +69,9 @@ Use this to reason about ANY new agentic path *before* building defenses.
 
 **Blast radius is the governing variable, not attacker sophistication:** `(autonomous?) × (reversible?) × (actual write scope)`. A manually-run skill that fails visibly on a supervised run ≈ zero blast radius; a cron with calendar+email writes is real. Over-caution (treating a manual tool as if it were live) is itself a failure mode — ground risk in specifics.
 
-**Reader-actor separation (PROVEN 2026-07-03/04 — structural, not behavioral):** the component that READS untrusted text has no tools and no network; the component that ACTS never sees raw text. Pass the reader's output to the actor as **tight TYPED data, never free text** (free-text handoff collapses the separation). In Claude Code: spawn the untrusted-content reader as a tool-less, network-less subagent — a context-isolation guarantee, needs no second model. **Live implementation:** `.claude/agents/ingest-reader.md` (tools: Read only) is the designated reader; `ingest_gate_enforce.sh`'s scratch-dir lock enforces the split mechanically — MAIN-session direct reads of `/tmp/rdr/` + `/tmp/ingest_body/` are denied; sub-agents identified by `agent_id` in hook stdin may read. Proven live across multiple ingestion paths in the system this was ported from; the mechanism is what carries over (the original proof record was a project file on that system's synced drive and does not ship in this repo). **Extension:** a seeded-attack test found calendar + Google Tasks returned raw injection to the controller while email did not (its scratch-lock isolates it). Fixed — `safe_calendar.py`/`safe_tasks.py` **isolate free-text by default** (→ `/tmp/rdr` scratch, `_reader_scratch` pointer on stdout); content-reading skills spawn the reader; modes `--redact` (neutralize spans, used by `planning-vault-pull.py` to close the vault-as-downstream-channel gap) / `--no-isolate` (raw, no-LLM plumbing only).
+**Reader-actor separation (PROVEN 2026-07-03/04 — structural, not behavioral):** the component that READS untrusted text has no tools and no network; the component that ACTS never sees raw text. Pass the reader's output to the actor as **tight TYPED data, never free text** (free-text handoff collapses the separation). In Claude Code: spawn the untrusted-content reader as a tool-less, network-less subagent — a context-isolation guarantee, needs no second model. **Live implementation:** `.claude/agents/ingest-reader.md` (tools: Read only) is the designated reader; `ingest_gate_enforce.sh`'s scratch-dir lock holds the split mechanically — MAIN-session direct reads of `/tmp/rdr/` + `/tmp/ingest_body/` are denied; sub-agents identified by `agent_id` in hook stdin may read. Proven live across multiple ingestion paths in the system this was ported from; the mechanism is what carries over (the original proof record was a project file on that system's synced drive and does not ship in this repo). **Extension:** a seeded-attack test found calendar + Google Tasks returned raw injection to the controller while email did not (its scratch-lock isolates it). Fixed — `safe_calendar.py`/`safe_tasks.py` **isolate free-text by default** (→ `/tmp/rdr` scratch, `_reader_scratch` pointer on stdout); content-reading skills spawn the reader; modes `--redact` (neutralize spans, used by `planning-vault-pull.py` to close the vault-as-downstream-channel gap) / `--no-isolate` (raw, no-LLM plumbing only).
 
-**Escalation model (airport metaphor — how the reader-actor pipeline actually responds):** (1) **Metal-detector regex** = cheap, fast, over-flags — beeps "look here," decides nothing, never blocks on its own. (2) **Tool-less `ingest-reader`** = the JUDGE ("body scanner"): for EACH flagged span only, it decodes the encoding (base64/hex/URL/zero-width) and judges by MEANING — real injection vs. benign encoded content; redacts only real attacks, passes benign spans through unchanged, emits a VERDICT per span (`REAL-ATTACK | BENIGN | NONE`). (3) **The reader's VERDICT — not the raw scanner beep — gates both redaction AND alerting**: only a `REAL-ATTACK` verdict triggers a quarantine or phone notification; a beep that resolves to `BENIGN` is silently cleared. Note: buzz-on-VERDICT (phone alert wired to the ingest-reader output) is a documented FUTURE fix — the structural redaction is live; live alerting still fires on the scan flag as an interim. The reader judges only what-to-redact, never whether-to-act; DANGER-class content hard-quarantines regardless.
+**Escalation model (airport metaphor — how the reader-actor pipeline actually responds):** (1) **Metal-detector regex** = cheap, fast, over-flags — beeps "look here," decides nothing, never blocks on its own. (2) **Tool-less `ingest-reader`** = the JUDGE ("body scanner"): for EACH flagged span only, it decodes the encoding (base64/hex/URL/zero-width) and judges by MEANING — real injection vs. benign encoded content; redacts only real attacks, passes benign spans through unchanged, emits a VERDICT per span (`REAL-ATTACK | BENIGN | NONE`). (3) **The reader's VERDICT — not the raw scanner beep — gates both redaction AND alerting**: only a `REAL-ATTACK` verdict triggers a quarantine or phone notification; a beep that resolves to `BENIGN` is silently cleared. The reader judges only what-to-redact, never whether-to-act; DANGER-class content hard-quarantines regardless.
 
 **Egress is the highest-leverage control:** filtering/allowlisting the *outbound* channel structurally caps exfiltration even if an injection lands — stronger than any input-side scanner (semantic injection lives in meaning, not syntax, so input classifiers stop ~no real attacks while breaking legit content; keep any input heuristic as flag-and-count, never a blocker).
 
@@ -85,26 +85,27 @@ EchoLeak (CVE-2025-32711, a zero-click email-injection) showed personal-scale ag
 
 ## Current Security Architecture
 
-### What Sentinel Covers (Static Posture)
+### What the Sentinel Auditor Covers (Static Posture)
 
-Sentinel is a read-only audit agent. It checks:
+"Sentinel" names the whole inbound security lane. The Sentinel Auditor (`.claude/agents/sentinel.md`)
+is the read-only audit agent within it. It checks:
 - Secret exposure in settings.json and tracked files (high/medium/low confidence)
 - File permissions on `.secrets/` (POSIX bits, with the Drive caveat below)
 - MCP surface inventory (servers, transport type, data sensitivity)
 - Drive/cloud sharing verification, if the install syncs its data folder through one
 - Per-desk permission inventory
 
-**Sentinel does NOT cover:** runtime behavior, prompt injection, write path
-violations, or email access scope enforcement. It is a static snapshot, not a
+**The Sentinel Auditor does NOT cover:** runtime behavior, prompt injection, write path
+violations, or email access scope. It is a static snapshot, not a
 runtime guard.
 
 **Local secrets caveat:** POSIX mode bits are only meaningful for secrets kept in a plain local
 directory. If an install syncs its data folder through a cloud-drive client (Dropbox, Google Drive for
 Desktop, etc.), file permissions on that mount may not reflect real access control — keep secrets in a
-local, non-synced path (this system's own config home is `~/.config/lifehack/`) and treat anything
+local, non-synced path (this system's own config folder is `~/.config/lifehack/`) and treat anything
 under a synced folder as permission-unverifiable.
 
-**Cadence:** review `<notes>/system/logs/sentinel-events.jsonl` and the paused-source list
+**Cadence:** review `<brain>/system/logs/sentinel-events.jsonl` and the paused-source list
 (`~/.config/lifehack/sentinel-paused-sources`) after any new external-content channel is wired in, or
 any new desk is added. ⛔ There is no `/sentinel` audit skill here and none is coming — the mechanical
 gate scripts (`shared/gate/sentinel_response.py`, `shared/gate/sentinel_ack.py`) are the whole
@@ -112,17 +113,19 @@ mechanism, and the review is a thing you do, not a thing you run. No automated s
 review either — ⚠ CORRECTED 2026-08-15: this used to say the repo has no scheduler at all, which
 is no longer true (`system/tools/pulse.sh` is real and several jobs run on it); it is specifically
 this review that has no `jobs.md` row, so its trigger stays manual by construction.
-⚠ The event log is written under YOUR NOTES ROOT, not into this repository — `sentinel_response.py:52`
-resolves it as `{notes root}/system/logs/sentinel-events.jsonl` (falling back to
+⚠ The event log is written under YOUR BRAIN FOLDER, not into this repository — `sentinel_response.py:52`
+resolves it as `{brain folder}/system/logs/sentinel-events.jsonl` (falling back to
 `~/.cache/lifehack-sentinel` when no root is set). It is a record of your own traffic and must never be
 committed.
 
 ### Inbound Channel Inventory
 
-The channels this system treats as untrusted-content inbound, and which adapter sanitizes each one,
-are enumerated in the Attack Surface Coverage table below and in `shared/gate/ingest_gate.py`'s own
-header — that gate is the single shared enforcement point for every channel except email's DANGER
-ceiling (see Layer 1). Treat any channel not listed there as unreviewed, not as cleared.
+Everything coming into the system clears the full airport security scan (the full inbound scan, Sentinel)
+(`shared/gate/ingest_gate.py`): every channel, pasted or dropped material and MCP calls included. The
+channels, and which adapter sanitizes each one, are enumerated in the Attack Surface Coverage table
+below and in `shared/gate/ingest_gate.py`'s own header — that gate is the single shared friction point
+for every channel except email's DANGER ceiling (see Layer 1). Treat any channel not listed there as
+unreviewed, not as cleared.
 
 ### Existing Hooks (as of 2026-07-04, in the system this canon was authored for)
 
@@ -137,23 +140,14 @@ table for WHY a unified gate beats N per-channel hooks, not as a map of this rep
 
 | Hook | Type | Matcher | What It Does | Blocking? |
 |------|------|---------|--------------|-----------|
-| `ingest_gate_enforce.sh` | PreToolUse | Bash\|WebFetch\|WebSearch\|Read | **Unified ingestion gate** — SUBSUMES the 6 per-channel hooks listed below. Enforces: email→`email_convert.py`, docs→`safe_*`, web→`safe_fetch.py`/`safe_search_api.sh`, calendar→`safe_calendar.py`. Fail-closed (non-email internal error → deny; email → FLAG-floored fail-open). **2026-07-04: scratch-dir lock** — denies MAIN-session `Read` of `/tmp/rdr/` + `/tmp/ingest_body/`; sub-agents pass via `agent_id` in hook stdin, structurally enforcing the reader-actor split in both interactive and cron paths. | Yes — fail-closed |
+| `ingest_gate_enforce.sh` | PreToolUse | Bash\|WebFetch\|WebSearch\|Read | **Unified ingestion gate** — SUBSUMES the 6 per-channel hooks listed in this document's archive. Enforces: email→`email_convert.py`, docs→`safe_*`, web→`safe_fetch.py`/`safe_search_api.sh`, calendar→`safe_calendar.py`. Fail-closed (non-email internal error → deny; email → FLAG-floored fail-open). **2026-07-04: scratch-dir lock** — denies MAIN-session `Read` of `/tmp/rdr/` + `/tmp/ingest_body/`; sub-agents pass via `agent_id` in hook stdin, structurally enforcing the reader-actor split in both interactive and cron paths. | Yes — fail-closed |
 | `enforce_egress_allowlist.sh` | PreToolUse | Bash | Blocks outbound Bash calls to hosts not in `system/egress-allowlist.md`; structurally caps exfiltration even if an injection lands. | Yes — fail-closed |
 | `block_primary_calendar.sh` | PreToolUse | Bash | Blocks calendar writes to any calendar except Agent Ops | Yes — fail-closed |
 | `guard_write_paths.sh` | PreToolUse | Write\|Edit | Blocks writes outside Drive spine + approved ~/.claude/ subpaths | Yes — fail-closed |
 | `validate_on_write.sh` | PostToolUse | Write\|Edit | Validates frontmatter on written files | No — advisory only |
 | `auto_register_skill.sh` | PostToolUse | Write | Creates command stubs for desk-level skills | No |
 
-**SUPERSEDED hooks (retired — do NOT register; functionality folded into `ingest_gate_enforce.sh`):**
-
-| Hook | Superseded Date | Notes |
-|------|----------------|-------|
-| `enforce_email_sanitize.sh` | 2026-07-03 | Email branch now in `ingest_gate_enforce.sh` |
-| `sanitize_calendar_reads.sh` | 2026-07-03 | Calendar branch now in `ingest_gate_enforce.sh` |
-| `guard_web_fetch.sh` | 2026-07-03 | WebFetch branch now in `ingest_gate_enforce.sh` |
-| `guard_web_search.sh` | 2026-07-03 | WebSearch branch now in `ingest_gate_enforce.sh` |
-| `guard_file_reads.sh` | 2026-07-03 | Read branch now in `ingest_gate_enforce.sh` |
-| `guard_skip_safe_backdoor.sh` | 2026-07-03 | `CLAUDEOPS_SKIP_*` block now in `ingest_gate_enforce.sh` |
+The retired per-channel hooks table (superseded 2026-07-03, folded into `ingest_gate_enforce.sh`) is in this document's archive; this file is live instruction.
 
 ### Existing Deny Rules (this repo, `.claude/settings.json`)
 
@@ -163,8 +157,8 @@ table for WHY a unified gate beats N per-channel hooks, not as a map of this rep
 **The historical gap this closes:** the system this canon was authored for did NOT protect its
 equivalent of `~/.claude/hooks/**` or `~/.claude/settings.json` themselves — the two files that make
 the hook system work — which is a real hole (a compromised session could Edit its own guardrails away).
-This repo's deny list closes it directly, and `guard_write_paths.sh` (ported) backs it up as a
-PreToolUse guard on the same paths — see that hook's own header for the 2026-08-14 measurement that
+This repo's deny list is one layer of friction against it, among others: `guard_write_paths.sh`
+(ported) backs it up as a PreToolUse guard on the same paths — see that hook's own header for the 2026-08-14 measurement that
 found every Write/Edit-matched hook here at the time waving through an Edit aimed at another hook,
 which is why both layers (deny rule + guard) exist together rather than either alone.
 
@@ -174,7 +168,7 @@ If a launcher runs Claude Code with `--dangerously-skip-permissions`, that bypas
 permission prompts — but **hooks still fire regardless**. A calendar-write guard or any other
 PreToolUse hook works the same whether or not the flag is set.
 
-**Do not remove this flag as a security fix if you use it.** Hooks are the enforcement layer; the
+**Do not remove this flag as a security fix if you use it.** Hooks are the friction layer; the
 permission-prompt system is a backup that isn't needed when hooks are correctly designed. Removing the
 flag only adds interactive prompts to every non-allow-listed operation — it does not add protection a
 correctly-designed hook wasn't already providing.
@@ -197,7 +191,7 @@ content as "untrusted") cannot be done mechanically at the hook level.
 **Implication:** Any scheme that tries to intercept and modify WebFetch or
 WebSearch output before the model sees it requires a wrapper architecture
 (a separate agent that sanitizes content before passing it to the main agent),
-not a hook. This is a future option, not a current one.
+not a hook. The reader-actor split (Governing Lens, above) is that architecture.
 
 ### Deny Rules Do Not Protect Hook Scripts From the Model
 
@@ -254,9 +248,7 @@ restrict write access at the directory/user level instead of removing the execut
 > **This-repo note:** `shared/tools/email_convert.py` (named throughout the blocks below) **landed
 > 2026-08-14** — this note previously said it did not exist here, which was true when written and is
 > not now. It routes through `shared/gate/ingest_gate.py` for the sanitize+scan step, with
-> `shared/tools/email_service_read.py` as the read path. ⚠ Present is not proven: it passes its own
-> 9-case self-test and a hostile fixture flagged correctly, but it has never been run against a real
-> mailbox here. Read the blocks below for the REASONING, not as a map of this repo's files.
+> `shared/tools/email_service_read.py` as the read path. Read the blocks below for the REASONING, not as a map of this repo's files.
 
 **File:** `~/.claude/hooks/ingest_gate_enforce.sh` (PreToolUse; Bash/WebFetch/WebSearch/Read) — the unified gate; its email branch SUBSUMED the retired `enforce_email_sanitize.sh` (2026-07-03).
 
@@ -285,7 +277,7 @@ file-based fallback ready — still applies to any hook that needs launcher-scop
 allowed writes only inside a synced Drive spine plus a couple of skill-dev paths, and refused
 everything else. That wall assumed a two-location split (a code clone plus a separate synced notes
 drive) that does not exist in this repo's model: here there is just this repo, plus wherever the user
-keeps their own notes, resolved through `shared/brain_root.py`. Porting the donor's wall verbatim would
+keeps their brain folder, resolved through `shared/brain_root.py`. Porting the donor's wall verbatim would
 block an agent from writing anywhere the user asked it to outside the repo — a product decision, not a
 security default.
 
@@ -319,12 +311,12 @@ This layer is behavioral.
 **Honestly:** Behavioral. Raises the bar for naive injection. Does not stop
 sophisticated blended injection. Mechanical L0 sanitization (Layer 5) handles
 the hidden Unicode / HTML-encoded payload class. The two-agent AI guard
-architecture (L3 in DataGate terms) remains a future option if threat level
-warrants it.
+architecture (L3 in DataGate terms) is held in reserve for a higher threat
+level.
 
-### Layer 5 — L0 Sanitization (Partially Implemented)
+### Layer 5 — L0 Sanitization
 
-**Status: PARTIALLY IMPLEMENTED** as of 2026-05-30.
+**Status: IMPLEMENTED.**
 
 **Reference implementation:** the L0 sanitizer is fully implemented in `system/tools/sanitize.py` —
 the external reference kit it was originally drafted from is historical and is not part of this repo.
@@ -339,12 +331,9 @@ the external reference kit it was originally drafted from is historical and is n
 | `system/tools/safe_tasks.py` | Google Tasks read — same isolate-default architecture as `safe_calendar.py`. Free-text (task title/notes) → `/tmp/rdr`; stdout = structural fields (id/status/due/parent) + `_reader_scratch` pointer. Same 3 modes. Hook-enforced by `ingest_gate_enforce.sh` (branch e). |
 
 **Wired in:**
-- Email bodies: the donor's `email_convert.py` (L0 sanitize + heuristic injection scan on body text,
-  with an HTML-mail fallback) does not exist in this repo. Its scan logic now runs through the shared
-  `shared/gate/ingest_gate.py` gate; the email READ path is `shared/tools/email_service_read.py`. Treat
-  this paragraph's description of `email_convert.py`'s internals as the donor's design record, not this
-  repo's current code — the HTML-fallback extraction detail has not been re-verified against this
-  repo's actual read path.
+- Email bodies: `shared/tools/email_convert.py` (L0 sanitize + heuristic injection scan on body text,
+  with an HTML-mail fallback). Its scan logic runs through the shared `shared/gate/ingest_gate.py`
+  gate; the email READ path is `shared/tools/email_service_read.py`.
 
 **Wired and enforced:**
 - `safe_fetch.py` — WebFetch hook blocks direct WebFetch, redirects to safe_fetch.py. Tested: 69/69 tests GREEN, benchmark WIRE_IN (AP News: 491k → 8.8k tokens, 98.2% reduction, 111ms overhead).
@@ -356,15 +345,15 @@ the external reference kit it was originally drafted from is historical and is n
 
 | Surface | Mechanical | Behavioral |
 |---------|-----------|-----------|
-| Email bodies (text + HTML) | L0 + injection scan via the shared `shared/gate/ingest_gate.py` gate; reads go through `shared/tools/email_service_read.py`. (Donor-system detail, not re-verified 1:1 against this repo's exact read path — directionally accurate.) | External Content Rule |
+| Email bodies (text + HTML) | L0 + injection scan via the shared `shared/gate/ingest_gate.py` gate; reads go through `shared/tools/email_service_read.py`. | External Content Rule |
 | Calendar reads | `ingest_gate_enforce.sh` → `safe_calendar.py` (isolate-default: free-text → `/tmp/rdr` scratch + `_reader_scratch` pointer) → `ingest-reader` sub-agent | Calendar in External Content Rule |
 | Google Tasks reads | `ingest_gate_enforce.sh` → `safe_tasks.py` (same isolate-default as calendar) → `ingest-reader` sub-agent | External Content Rule |
 | Links in email | WebFetch hook → safe_fetch.py | "No following links" rule |
 | WebFetch (active workflows) | WebFetch hook → safe_fetch.py | External Content Rule |
 | WebSearch | `ingest_gate_enforce.sh` blocks native WebSearch → **Serper API, the only path** (`safe_search_api.sh`, direct Bash, no browser). **No Chrome/dev-browser fallback** — deleted 2026-08-15 (T9.5f); a fallback that cannot run in this repo is worse than none. Spawned sub-agents MUST call `safe_search_api.sh` directly (can't run `/websearch` skill). `/research` fan-out uses the `web-searcher` restricted agent (`.claude/agents/web-searcher.md`, tools: Bash+Read only — structurally forced through the safe stack, cannot bypass). | External Content Rule |
 | PDF/DOCX/CSV/XLSX files | Read hook → safe_pdf/docx/csv/xlsx.py | External Content Rule |
-| External paste (web results, copied text) | safe_input.py (manual invocation) | External Content Rule |
-| Attachments | None yet — a blanket deny needs case-by-case exceptions for legitimate attachment workflows | "No attachment content" rule |
+| External paste (web results, copied text) | the full inbound scan (`shared/gate/ingest_gate.py`) | External Content Rule |
+| Attachments | the full inbound scan (`shared/gate/ingest_gate.py`) | "No attachment content" rule |
 
 ### Named Scope Exceptions
 
@@ -398,17 +387,8 @@ not oversights.
 | Self-modification via Bash | Deny rules + OS perms stop Write/Edit, not Bash redirects | OS-level perms help; separate user is the hard fix |
 | Intra-session trusted-lane contamination | Env var is session-scoped, not workflow-scoped | Accept; split into separate sessions if needed |
 | Behavioral injection (web/email) | L0 strips hidden Unicode/HTML payloads; safe_input.py catches 20 common injection patterns | Heuristic filter has false positives on security-related content |
-| Sophisticated blended injection | L0 handles encoding tricks; safe_input.py catches templated attacks; semantic injection bypasses both | Two-agent AI guard (DataGate L3) is future option |
+| Sophisticated blended injection | L0 handles encoding tricks; safe_input.py catches templated attacks; semantic injection bypasses both | Two-agent AI guard (DataGate L3), held in reserve |
 | Sub-agent env var loss | Platform limitation — hooks in sub-agents may not inherit | Use file-based fallback; document per-agent |
-
----
-
-## The New User Account Option
-
-(Donor-specific: a macOS new-user-account option for isolating this system's file writes, tied to a
-multi-launcher / launchd / synced-Drive setup this repo does not have. Omitted as not applicable to
-this repo's model — the underlying question, "do you need OS-level isolation beyond deny rules and
-guards," still applies to any install; the donor's specific migration checklist does not.)
 
 ---
 
@@ -416,19 +396,19 @@ guards," still applies to any install; the donor's specific migration checklist 
 
 | Trigger | Action |
 |---------|--------|
-| New external-content channel wired in | Review `<notes>/system/logs/sentinel-events.jsonl` for the new channel's first events; confirm it routes through `shared/gate/ingest_gate.py` |
+| New external-content channel wired in | Review `<brain>/system/logs/sentinel-events.jsonl` for the new channel's first events; confirm it routes through `shared/gate/ingest_gate.py` |
 | New desk/skill added | Check it inherits the right hook coverage (write-path, egress, calendar/tasks guards as applicable) |
 | New hook written | Manually test blocking behavior; verify the hook can't be overwritten |
-| Any schema violations fixed | Re-evaluate Layer 4 (`validate_on_write.sh`) blocking activation |
 | Periodically | Run `/archivist-audit`; review this document for staleness |
 
 ---
 
 ## Key Principles
 
-**Mechanical over behavioral.** A rule in CLAUDE.md is followed ~90% of the
-time. A PreToolUse hook that exits non-zero is followed 100% of the time. When
-the failure mode involves security, require mechanical enforcement.
+**Mechanical over behavioral.** A rule in CLAUDE.md is not always followed. A
+hard-block hook (a PreToolUse hook that exits non-zero) is the highest level of
+coded friction inside the stochastic environment. When the failure mode
+involves security, require mechanical friction (a hook).
 
 **Guard the guards first.** Every security layer is worthless if a compromised
 session can overwrite it. Protect hook scripts and settings before building on
@@ -450,7 +430,7 @@ reduce what the model is *capable* of doing, not just what it's *told* to do.
 **Accept the residual.** For a personal home system, you are not defending
 against sophisticated adversaries. Bash-based write gaps and behavioral-only
 injection protection are accepted risks, not failures. The goal is closing the
-10% drift gap on high-stakes operations (email reads, write paths) — not
+drift gap on high-stakes operations (email reads, write paths) — not
 achieving a zero-trust architecture.
 
 ---

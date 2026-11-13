@@ -10,6 +10,8 @@ status: "V2 draft, to be merged with the SOP"
 
 # Cron jobs SOP: history log
 
+⛔ History, quoted as it was: `system/sops/pr-sop.md` is named in old text below and is not in this repo.
+
 Each entry below is one passage removed or reworded in the SOP on 2026-10-31: CUT (retired), MOVE (change note or narrative, history not instruction) or FIX (original wording of a line that was reworded or added to). Line ranges are the line numbers in the base (see `base_file` above). Entries are in original line order. The original is copied word for word inside each fenced block. Decision IDs (1.1 to 4.6, and §7) refer to `cron-jobs-sop--FOR-ENVER.md`, approved as called with its §7 corrections in `cron-jobs-sop--DECISIONS.md` (2026-10-31).
 
 Entries whose body held private material show one line instead of the verbatim block; those originals are kept in the operator's private notes.
@@ -356,3 +358,244 @@ an unbroken run of them longer than 2 x the interval sends one 'paused' text, an
 - Date: 2026-11-05
 - Action: ADD
 - Reason: §11a added; personal-folder, refusal and rig edits; owner approved in session
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-001, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+reader_note: "How it works lives in system/organism/manual.md (CRON AND ALARMS); this file is the HOW-TO. If either disagrees with the code, the code wins."
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-002, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+  - ["§1", 37, "the three layers: alarm clock, envelope, steps; which layer a bug is in"]
+  - ["§2", 51, "the seven principles every job follows, and what holds each one"]
+  - ["§3", 65, "the layer law: what is shared, what is the desk's, where files live"]
+  - ["§4", 74, "the chain from launchd to the text; local state; exit codes; the alert rule"]
+  - ["§5", 101, "the row contract: one row per job, its nine columns"]
+  - ["§6", 123, "the check: path ~ regex, written against the outcome; what the door refuses"]
+  - ["§7", 131, "the door: what it refuses, its limits, reads through the shared fetch"]
+  - ["§8", 151, "state, locks, bookmarks"]
+  - ["§9", 158, "the cost line (last-run) and run_model"]
+  - ["§10", 168, "the rig: job-sim.sh, the bite, a generated scenario per personal job and hand-written receipts for plugin jobs, what it does not cover"]
+  - ["§11", 178, "add a job: the recipe, with a worked example"]
+  - ["§11a", 222, "bring an existing job into line: personal folder, what may change, refusal texts, the steps, running outside the checker"]
+  - ["§12", 343, "the switch-on protocol"]
+  - ["§13", 355, "debugging a job from the session line"]
+  - ["§14", 364, "texts are written for a person; the approved wording"]
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-003, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+**Read this first.** A scheduled job is an alarm clock plus an envelope around something you could run by hand. This SOP owns the alarm clock and the envelope: the **Cron** subsystem (it runs jobs) and the **Alarms** subsystem (it tells you one broke). It does NOT own what happens inside the routine, and nothing in this SOP is a reason to edit a skill. The one exception is a job being brought into line (section 11a): that changes the job's own code, and does not change what the job reads, writes or sends, apart from its own receipt line and exit code (the two allowed fixes are the presence-grade check and the "nothing to do" exit 75). Every path here is in the HARNESS home, resolved from the plugin root (manual, THREE HOMES), never relative to your working folder. `$CODE` below is the harness code root: whatever `$HOME/.config/lifehack/code-root` says. Never type it as a path.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-004, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+- Card or no card is the skills rule, not this SOP's: `system/sops/skill-building-sop.md` PART 0, section "When NOT to use a card", bullet "Decision principle: card or no card". Read it there; do not copy it here. A card is an upgrade, never a prerequisite: a job can be scheduled with its routine as it is.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-005, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+Every job obeys these, carded or not. The door and the rig enforce what code can judge.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-006, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+2. A step that changes something is safe to run twice, or records what it did before acting. Writes to the person's own Google account have no shared writer: the routine calls them directly, so it must make them repeat-safe itself (for example, record each item's message id in a ledger BEFORE the append and skip ids already there; or write in place by a key column). *(Held by nothing yet.)*
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-007, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+5. The runner writes the record. The AI never does. AI steps get only the tools they need (today: read-only; per-job grants scoped to the job's own output folder are ruled, not yet built). The AI can never write job state or a bookmark. *(Held by `run_model` as read-only, `model.lib.sh:22,74`; per-job grants ruled, not built.)*
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-008, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+Also from the skill-building rulebook's dead-end list: "ran" is not "succeeded" (dead end F2, 166 silent failures, as counted in the dead-end list, not re-checked). No job writes job state to Drive: content yes, state no.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-009, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+## 3. The layer law (what is shared, what is the desk's)
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-010, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+- Where files live: shared code in `$CODE` (the public harness). Desk runners, prompts and notes in your personal code folder (find it with `python3 $CODE/shared/personal_code_root.py --quiet`) and the notes folder. Your own scheduled jobs are rows in `<personal-code>/jobs.md`, and their code is in `<personal-code>/tools/<job>/`; never in the plugin, because a plugin update overwrites it. The setup (`bootstrap.py`) makes the personal folder when it is missing, then the places in it; the installer makes those places only when the folder already exists. Neither overwrites anything (section 11a). Never put desk code in the public harness. Never copy a shared file into a desk.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-011, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+One row per job, in a `jobs` block. A job that ships with the plugin is a row in `$CODE/system/jobs.md`. A person's own job is a row in the same format in `<personal-code>/jobs.md` (the plugin ships no such list, and an update would overwrite anything the person put in its own). One scheduler reads both (`shared/jobs_manifest.py`). To change a plugin job, copy it under a NEW name into your own folder: the row goes in your `jobs.md`, its code in `<personal-code>/tools/<new-name>/`, and the new job is yours and not supported by the plugin; the plugin's job keeps running unchanged (section 11a, "Copying a plugin job to change it"; decided by the owner, in session, 2026-11-05). The code still lets a personal row with a plugin row's name win, with a warning that names it; that is not the way to change a plugin job. A broken plugin job is reported: as an issue on the plugin's GitHub page until `system/sops/pr-sop.md` exists, then by that rulebook. A row in your own `jobs.md` that the checker refuses may run outside the checker only when you knowingly chose it and the row carries the mark above it (section 11a, T5).
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-012, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+| source | the shared reader that FEEDS it (what it reads, never what it writes): `gmail`, `web`, `gsheet` or `none`. A job that reads email and writes a Sheet is `gmail`. `gmail` makes job-run load the Google credentials. Today only `gmail` changes anything (it loads the Google login); the door accepts any non-empty word |
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-013, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+`job-run.sh` runs the same test before every run of a `yes` row, and every forced run (an `off` row stands down first), so no run can get around the door.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-014, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+- a raw outside READ (Gmail or Calendar reads, sheets `values get`, `curl`, `urllib`, `requests`) anywhere in the runner, what it sources or invokes, or the helper files beside it. Only files named in `system/tools/shared-fetch-allowlist.txt` may hold one. Never add a desk runner to that list. **Writes** to the owner's own Google account (labels, archive, Sheets, Tasks, Calendar, Docs) are allowed: an accepted risk (ruled 2026-10-28). **One vendor-read exception:** a row whose model is exactly `none` may make its own logged-in read (python `requests` or `urllib` only) of the person's own vendor account from ONE file listed as `<job> <file>` in the person's own `<personal-code>/vendor-read-allowlist.txt` (`<file>` relative to the job's tools folder; the plugin's `system/tools/vendor-read-allowlist.txt` ships empty and is read first). A raw Gmail read and `curl` are never a vendor read. It ends if the row gains an AI step;
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-015, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+`calls` and `secs` are the model calls this run made through `run_model` (0 and 0 for a job with no AI). `ccv=` is the Claude version. To call a model, a runner sources `$LIFEHACK_CODE_ROOT/system/tools/model.lib.sh` and calls `run_model <tier> <prompt-file> <out-file> [marker]`. It maps tier to id from the one table, takes the token, times out (`MODEL_TIMEOUT`, default 600 s), refuses an empty reply or a missing marker, counts the call, and refuses the call that would exceed `budget`. AI steps run with only the tools they need (today read-only, `--allowedTools Read`; per-job grants scoped to the job's own output folder are ruled, not yet built): the runner writes every file and the record, the model returns text. A model failure `run_model` recorded fails the run and is named even if the runner swallowed the return code.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-016, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+- **A person's job needs no scenario written by hand.** The rig reads the merged job list (`shared/jobs_manifest.py`: the plugin's `system/jobs.md` plus `<personal-code>/jobs.md`; on a name clash the personal row is the one tested) and generates one scenario per personal row, named `personal:<job>`. The row's own check is shown to pass on a good receipt line and fail on a wrong one, with a generic stub standing in for the runner (the real command never runs; throwaway home, fake clock, no network). The good line is built from the check's regex, the bad line is one that must not match, and both are verified with the same `grep -E` the runner uses; a regex that cannot be built, or whose every bad candidate matches, is a named failure that says why. The expected model calls are 0 for model `none`, else 1. An optional `<personal-code>/job-sim/<job>.json` with `{"good": "...", "bad": "...", "calls": N}` replaces any key it gives; a malformed file (not JSON, wrong types, an unknown key) is a named failure. It lives in the personal code folder, never in the plugin. A row whose check is `TBD` or empty, or that the door refuses, prints `SKIP personal:<job>: <reason>` and is not a failure: the door is its gate. `off` rows are tested too. The plugin's own jobs (rows in `system/jobs.md`) keep hand-written receipts in `job-sim.sh`, which the plugin maintains (`job-sim.sh:575-583`; not every plugin row has one). A plugin job's scenario duty is therefore unchanged: its receipt is hand-written in `job-sim.sh`, not generated.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-017, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+2. **Decide the layer.** The routine (steps, prompts, verdicts) is a skill, or a script a person can run by hand. If it needs a card, see the card-or-no-card principle in `system/sops/skill-building-sop.md` PART 0 (hypothetical, not yet validated). This job is only the envelope.
+3. **Write a thin runner.** A job of your own lives in your personal code folder, in `<personal-code>/tools/<job>/` (the setup makes `tools/`; the door allows any path under the folder, and the vendor-read line needs the path to end `/tools/<job>/<file>`). A job every installer would want is a change to the plugin and goes through the PR rulebook (`system/sops/pr-sop.md`, not written yet; until it exists, a report is an issue on the plugin's GitHub page, decided by the owner, in session, 2026-11-05), never a direct edit of `$CODE/system/tools/`. Never copy shared files into a desk. Resolve everything from `$LIFEHACK_CODE_ROOT`. Use the shared fetch for any read, `run_model` for any AI call, no silenced errors, exit 75 when there is nothing to do or a lock is held, and write a receipt AFTER verifying the artifact.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-018, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+5. **Run the door** the way `job-run.sh` does, with no session-only settings (command in section 11a, "Check the way the run does") until it prints `rc=0` and the line above it is `PASS` (`job-run.sh:402-406`: exit code 0 and last line `PASS`).
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-019, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+9. **Commit** a personal job's code, row and notes in your own personal code folder, to the person's own repo, never to `$CODE`. A change to a plugin job or a shared tool is a PR (`system/sops/pr-sop.md`, not written yet; until it exists, a report is an issue on the plugin's GitHub page, decided by the owner, in session, 2026-11-05), never a commit to `$CODE` from here. Report what the run proved and what it did not test.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-020, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+**DECIDED** (P-127, round 4): the root problem is "students or subscribers can't use the plugin to save their kron jobs", because an update overwrites the plugin. So the personal code folder holds what a person needs to save their own jobs, mirroring "only ... the stuff that ... would actually need". **PROPOSED:** each piece comes with a template, created when missing and never overwritten (P-127 asks for "a location and all the folders and everything it needs", not for templates).
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-021, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+**DECIDED** (P-127, round 4, the fuller lines): "do we change the nature of the job no we shouldn't change the nature of the job", and "we just want to stay focused on how a kron drop gets made". **PROPOSED:** the reading of that as "a fix does not change what the job reads, writes or sends, apart from its own receipt line and exit code"; P-127 gives neither that wording nor the examples. Two fixes are allowed under it: the presence-grade check fix (the receipt line and the check are made to carry a value that varies) and the "nothing to do" exit 75. **DECIDED** (P-127, round 4): the aim is to "stay in our lane": the shared code correctly divided between the plugin and the personal folder, "saved in conformance", and "enforced when it's on its own". **PROPOSED:** this section adds no new block of its own (P-127 does not say it). What is built today: the job door refuses a row's runner that breaks the rules (`install-schedulers.sh`), and `job-run.sh` runs the same door before each run of a `yes` row and every forced run; the ingest-gate hook refuses raw reads of outside content typed in a session (SOP §7). What is not built: a hard block on writing into shared plugin code, which `build-conformance-sop.md` line 59 lists as decided 2026-11-03 and not yet built, so today nothing hard-blocks a session that edits the plugin (the fine-china layer there is an ask, not a wall). **DECIDED** (P-127, round 3): rewriting a skill is not planned and not prevented; if the person's own conversation goes there, that is fine.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-022, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+When the door refuses a personal row, the window says one short line and asks, for example: "This job isn't in line with the Lifehack checker. Want me to bring it into line?" **DECIDED** (P-127, round 4): the offer is made every time the refusal comes up, as "just the small little lines like, hey, this isn't in conformance", "never a huge block"; a person who asks for the fix without being offered gets the same road (round 1). **PROPOSED:** never a pop-up (P-127 does not say it); the line says that the job's own code changes and what it reads, writes and sends does not. **PROPOSED:** a job the person chose to run outside the checker (below) gets the same one short line. P-127 round 4 says "I do think it could keep offering it" about re-offering a fix in general, and adds "If adding that in makes it harder, then fuck it. We'll just warn them one time and leave it"; it does not name a job already chosen outside the checker, and round 3 dropped a repeated session-start line as annoying. **PROPOSED:** a no leaves everything as it is. When the window asks anything, it gives its best guess.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-023, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+One scheduler reads two lists: the plugin's `system/jobs.md` and the person's `<personal-code>/jobs.md`. A refusal ends with one of two texts, by the list the row came from. A row is plugin-origin ONLY when it is in the plugin's own list, `$CODE/system/jobs.md` (real paths compared), before the `# ── personal rows (from …) ──` marker. A row after the marker, or read from any other manifest file (`LIFEHACK_JOBS_FILE` or `PULSE_CONFIG` pointing anywhere else, such as a branch's `jobs.md`), is personal; a name in both lists counts as personal (`install-schedulers.sh:104`, `door_origin_step`). For `--check-row` it is the last line; `--install` and the plan-only run print each applicable text once, after the count line, to stderr. The exact wording is PROPOSED (not in P-127), as coded at `install-schedulers.sh:352-353`:
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-024, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+**A broken plugin job** (DECIDED, P-127, round 4): "I would just tell them to report it that's it", following the PR rulebook ("assume that there is a pr sop"), `system/sops/pr-sop.md`. No window tells the person to copy the row to fix it: once the plugin fixes the job "they would have two copies of the same job". **DECIDED** (the owner, in session, 2026-11-05, T7): the person reports it on the plugin's GitHub page as an issue, until `system/sops/pr-sop.md` exists; once it does, that rulebook takes over. The window says plainly that the job should be reported, and does not edit it. The refusal for a broken plugin job is "report it", never a copy. **PROPOSED:** this also holds when the fault is inside a plugin runner or shared script that a personal row calls: report it, change nothing in the plugin (P-127 speaks of a broken plugin job, not of a personal row that calls one).
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-025, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+**Copying a plugin job to change it** (DECIDED, the owner, in session, 2026-11-05, T6; and P-127, round 4: a fork carries "you broke it you bought it"): the copy is a NEW job, under a NEW name, in the person's own folder. Its row goes in the person's `jobs.md`, and its code goes in `<personal-code>/tools/<new-name>/`. The new job is the person's own and is not supported by the plugin. The plugin's original job keeps running unchanged. The window does not recommend a same-name copy that replaces the plugin job. The code still lets a personal row with a plugin row's name win, with a warning that names the override (`job-run.sh:402-411`); that is not the way to change a plugin job, and the refusal for a broken plugin job is "report it" (above). The fork warning still stands: the new job will not get plugin fixes, "you broke it, you bought it". **PROPOSED:** the window says that warning in one plain line before the copy is made (the wording is the draft's).
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-026, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+A row is in line only if the check passes as `job-run.sh` runs it (`job-run.sh:402-406`): `2>&1`, exit code 0 and last line `PASS` (a personal copy of a plugin row prints a warning line first), and none of the test seams set (`LIFEHACK_DESK_REPO`, `LIFEHACK_JOBS_FILE`, `PULSE_CONFIG`, `LIFEHACK_PERSONAL_JOBS_FILE`, `LIFEHACK_VENDOR_ALLOWLIST`; the command below does set `LIFEHACK_CODE_ROOT`, to the real root, on purpose). `env -i` approximates launchd's bare environment (`job-run.sh:80-82`).
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-027, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+To check a row that lives on a branch (a worktree's own `jobs.md`), point the checker at that file. A row read from any file other than `$CODE/system/jobs.md` is personal, so a refusal gives the personal text. With `LIFEHACK_JOBS_FILE` set the personal list is not merged in, so the branch's file must hold the row itself. This is a test check, not the "in line" check above (it sets a seam):
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-028, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+5. **The first real test run needs the person's yes** (DECIDED, P-127 round 2: approval first; the rest PROPOSED). Say what a run does for real: the runner's own writes and any model spend; no email bookmark moves and no alert is sent. On the yes: `bash $CODE/system/tools/job-run.sh <name> --force`, then read `last-run` and `log`. Without a yes, report the job as checked and rig-tested, not run.
+6. **Switch on only through the gate** (§12), never by flipping the row. **PROPOSED:** a row already `yes` goes to `off` first (with the person's yes), is fixed, and returns through §12.
+
+**Cannot pass?** Stop, say what refuses it and why, and ask what they want, with your best guess (PROPOSED). Nothing is installed, switched on or loosened meanwhile.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-029, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+| `raw curl / urllib / requests`, web fetch or search | read through `safe_fetch.py` or `safe_search_api.sh`; **a new host goes in `<personal-code>/job-fetch-hosts.txt`** (**PROPOSED:** P-127 round 4 says "we only have to mirror the stuff that ... would actually need" outside the plugin to save a job, and never mentions a hosts list); never add a runner to the allowlist | §7 |
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-030, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+| `silenced <fetch\|write\|push\|model> error at <file>:<line>` (the text in `install-schedulers.sh:314`; the row-command version at `:284` is the row above) | the text names `\|\| true`, `\|\| :` and `2>/dev/null`, but the rule (`door_rules.py:23`) also catches `&>/dev/null` and `>/dev/null 2>&1`: remove any of them from that line, log the failure to stderr and fail the step | §2, §7 |
+| `raw curl to a Google/Gmail API host: go through the shared email tool (shared/tools/email_fetch.py; system/register/toolbox.md) at <file>:<line>` (`door_rules.py:65`, printed at `install-schedulers.sh:326-328`) | read mail through `shared/tools/email_fetch.py`, not `safe_fetch.py` (the curl row above is for other hosts) | §7 |
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-031, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+| a vendor read refused | only model exactly `none`, python `requests`/`urllib` only, on a `<job> <file>` line (`<file>` relative to `tools/<job>/`) in the person's own `vendor-read-allowlist.txt`. **PROPOSED:** add a line only if the person chooses it in their own words | §7 |
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-032, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+4. **No session-start line** (DECIDED, P-127, round 3). **PROPOSED:** the offer line above still applies each time the refusal comes up for such a row (see the offer section: P-127 does not name this case); it is one line, never a block.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-033, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+**What the harness then does** (DECIDED, the owner, in session, 2026-11-05, T5): it installs and runs a marked personal row that the checker refuses, and prints a one-line warning that names the first refusal reason. The code that does this is being built now (`install-schedulers.sh`, `job-run.sh`). The mark does nothing for a row from the plugin's `system/jobs.md`.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-034, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+- COMPASS P-127, round 4 (2026-11-05, cron door window, "approved"; written from plan quotes, not heard directly by the coordinator): (1) root problem and "mirror ... only ... what they need" settle the personal folder section; (2) "I would just tell them to report it", "two copies of the same job", "you broke it you bought it" settle plugin-job reporting and that a fork carries "you broke it you bought it" (the warning itself is PROPOSED); (3) "hey, this isn't in conformance ... never a huge block" settles T2 (one line every time, replacing "do not re-offer"); (4) "stay in our lane ... enforced when it's on its own" gives the aim; T5, T6 and T7 were settled afterwards by the owner, in session, 2026-11-05.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-035, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+- PROPOSED, not in P-127: the exact wording of both refusal texts (code, dated 2026-11-05, no owner named), the example offer line, the fork-warning wording, "a no leaves everything as it is", step 5's details, step 6's `off`-first. DECIDED by the owner, in session, 2026-11-05 (T5, T6, T7): the comment-line form, running a marked job with a one-line warning, a copy of a plugin job as a new-name job, and reporting a broken plugin job on the plugin's GitHub page.
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-036, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+A row flips from `off` to `yes` one job at a time, only at a human gate, on the person's word. **PROPOSED:** a job whose row was `yes` and which has been changed to pass the door goes back to `off` first and comes through this gate again (section 11a, step 6). At the gate:
+~~~~
+
+## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-037, ids in drafts/cron-jobs-sop/applied.md
+
+~~~~
+**Only something that needs the person right now may wake them at night** (today: a dangerous email the security
+~~~~

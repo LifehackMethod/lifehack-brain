@@ -3,31 +3,27 @@ id: system-knowledge-altitude
 title: Knowledge Altitude — where everything belongs (the archivist's placement doctrine)
 record_type: doctrine
 created_at: 2026-06-11
-updated_at: 2026-07-11
+updated_at: 2026-08-31
 status: active
 authority: user
 ---
 
 # Knowledge Altitude
 
-> The law for WHERE a piece of knowledge belongs in the this system tree — across **every artifact type** (canon,
+⛔ Not in this repo: `system/research/2026-06-13-preload-vs-pointer-consensus.md` (an older research note, kept in the operator's records) and `.claude/skills/archivist-review/` (not shipped).
+
+> The doctrine for WHERE a piece of knowledge belongs in this system's folders — across **every artifact type** (canon,
 > skill, project/brief, record, SOP/playbook — or nothing at all). Read by the **archivist** (when it routes
-> inbox items, audits homes, or proposes a split) and by **`/save`**. Lives LOW on purpose — loaded only when
+> inbox items, audits folders, or proposes a split) and by **`/save`**. Lives LOW on purpose — loaded only when
 > this work is happening, never injected into every conversation. (It passes its own test by NOT sitting at the
-> summit.) Plain language by design: a cold session must be able to use it.
+> summit (global `CLAUDE.md`).) Plain language by design: a cold session must be able to use it.
 >
 > **This is the INTENT DOCTRINE applied to knowledge:** every object declares its intent — a purpose for a
-> standing thing, a desired outcome for a bounded one — and altitude is that same law applied to one case,
+> standing thing, a desired outcome for a bounded one — and altitude is that same doctrine applied to one case,
 > *where a piece of knowledge sits.*
-> ✅ The parent law itself is `system/intent-doctrine.md`, which is here. The sentence above is the
+> ✅ The parent doctrine itself is `system/intent-doctrine.md`, which is here. The sentence above is the
 > whole of it that this page needs; read the doctrine when you are deciding what KIND of intent a
 > thing carries.
->
-> ⛔ **`/archivist-review` · `system/archivist/placement-trial-log.md` ·
-> `system/research/2026-06-13-preload-vs-pointer-consensus.md` — not shipped.** The archivist's review
-> command and its probation log belong to a family that stays with the author; §9's probation is
-> therefore a description of how that judgment was earned, not a step you can run. The research record
-> is one of their own findings — the conclusion it supports is stated where it is cited.
 
 ## What canon IS — durability × altitude (the definition)
 
@@ -96,9 +92,9 @@ pyramid is a cost curve, not an aesthetic** — *"anything toward the top of the
 canon than anything at the bottom … push all of our heavy canonical information to the bottom"*: the top is
 thin because it's EXPENSIVE, and everything below it pays.
 
-## 1. The job — first the TYPE of home, then the right spot inside it
+## 1. The job — first the TYPE of folder, then the right spot inside it
 The archivist's real job is bigger than canon: it decides **what KIND of thing a piece of information is, and
-therefore which TYPE of home it wants** — and only then where inside that home it lands. Canon is the most
+therefore which TYPE of folder it wants** — and only then where inside that folder it lands. Canon is the most
 important destination for durable insights, but it is **one type among several.** A new item might really want
 to be:
 
@@ -107,7 +103,7 @@ to be:
 - **a project / brief** — something that belongs to one specific project's state, not the world;
 - **a record** — a fact, number, finding, or event (dated, searchable — NOT a rule);
 - **an SOP / playbook** — a repeatable *procedure*; if no playbook exists to hold it, **propose creating a NEW one**;
-- **nothing** — drop it (an artifact that earns no home anywhere).
+- **nothing** — drop it (an artifact that earns no folder anywhere).
 
 **Records split by SHAPE, not just durability (the operator, 2026-08-05, authority: user).** A record is either a
 **discrete dated item** worth keeping on its own (invented example, ⚠ nobody real, same convention as
@@ -116,18 +112,18 @@ year"*) or **a larger corpus** — the same non-canon material,
 but a body big enough that it's referenced/searched later rather than read whole. Both are records, not
 canon; the split is size/shape, not durability, and neither graduates to canon just by accumulating.
 
-**A home can hold both canon and records at once — they are not competing types (the operator, 2026-08-05, authority:
-user).** Every home is born with a canon file and a stated purpose/intent (§4), but that doesn't make it
+**A folder can hold both canon and records at once — they are not competing types (the operator, 2026-08-05, authority:
+user).** Every folder is born with a canon file and a stated purpose/intent (§4), but that doesn't make it
 canon-only: the same folder routinely also holds `records/` for what matters but isn't durable/general (the
 Durability test, § "What canon IS"). Canon and records are two different admission tests an item can pass, not
-two homes competing for the same item — a single home can and often does serve both doors.
+two folders competing for the same item — a single folder can and often does serve both doors.
 
 The archivist is **responsible for knowing each type's definition** — what belongs in a canon vs a skill vs a
-record vs an SOP — from the architecture (`architecture.md` is the artifact-type inventory; `CLAUDE.md`'s Memory
-/ Persistence-Routing rules distinguish record vs canon vs state; this doctrine + each home's `intent` add the
-admission bar). **Matching the item to the right *type* is the FIRST decision;** which level / which home follows.
+record vs an SOP — from the type list in §1 above (`CLAUDE.md`'s Memory
+/ Persistence-Routing rules distinguish record vs canon vs diary; this doctrine + each folder's `intent` add the
+admission bar). **Matching the item to the right *type* is the FIRST decision;** which level / which folder follows.
 
-**Why this matters now:** the inbox is the **catch-all** — `/save` drops anything whose home is unclear straight
+**Why this matters now:** the inbox is the **catch-all** — `/save` drops anything whose folder is unclear straight
 in, so it fills with mixed, ambiguous stuff *on purpose*. The archivist is the **disambiguator** that sorts it.
 If this doctrine only knew canon, every non-canon save would have nowhere to go.
 
@@ -147,7 +143,7 @@ far more conversations, which is exactly what makes its space precious — *the 
 A canon line belongs at the **highest** level where it can still win its fight for a slot. The difficulty rises
 as you climb; judge each level by its concrete question:
 
-| Level | Difficulty | Home | The plain question it must pass |
+| Level | Difficulty | Folder | The plain question it must pass |
 |---|---|---|---|
 | Global | **Hardest** | global `CLAUDE.md` | **Does this need to shape EVERY conversation, on ANY subject?** |
 | Desk | **Hard** | desk `CLAUDE.md` / desk canon | **Needed in basically every conversation about THIS subject?** (a tax rule fails here — most talk about money is not about tax, so it belongs one level down)  (old: most talk isn't tax.) |
@@ -155,7 +151,7 @@ as you climb; judge each level by its concrete question:
 | Deep | **Easy** | sub-sub canon | **Is this even *about* this topic?** (If yes, let it in — it barely loads, so overload is harmless.) |
 
 Fails the question at a level → it can't win a slot there; **sink it to the next level down and ask again.**
-There is **no numeric score** — the bar is just these plain questions plus the home's stated intent (§4), and
+There is **no numeric score** — the bar is just these plain questions plus the folder's stated intent (§4), and
 the archivist reads and judges. Text + judgment is the whole engine.
 
 **The wording gate — the STANDALONE TEST (applies at EVERY level, and matters most).** Beyond winning its
@@ -186,29 +182,27 @@ just-in-time by `/read`. Pointers are for cross-branch awareness, never for the 
 `system/research/2026-06-13-preload-vs-pointer-consensus.md` — captured 2026-06-13 in the archivist inbox.)
 
 **Findability invariant — no buried treasure (the corollary's other half).** Moving content *down* must never
-move its *findability* down with it. Whenever knowledge is placed into a deeper / specialist home — sunk from a
+move its *findability* down with it. Whenever knowledge is placed into a deeper / specialist folder — sunk from a
 brain file, filed into a project's records, or parked in a playbook — **the domain that would reach for it must
 be able to find it: leave a one-line pointer from where a future session would naturally look.** Leanness relocates
 the *content*; the breadcrumb stays at the point of use. A note no one can locate from its domain is **lost, not
 stored** — a pot of gold with no map. This is the standing answer to the *recall* problem (lean canon controls
 what *loads*; it does nothing for how a cold session *finds* the right slice — retrieval is the hard part). The
 pointer is **part of the placement, not optional cleanup** — see the archivist's findability gate in
-`agents/archivist.md`.
-⛔ `agents/archivist.md` is the donor's path and is not here. The charter itself DID land — it ships as
-`.claude/agents/archivist.md`; only the top-level `agents/` location did not come across (migration note, 2026-08-15).
+`.claude/agents/archivist.md`.
 
-## 4. How a home declares its bar — the INTENT (every type, every home)
-Every home — of **any** type (a canon, a skill folder, a project, a records area, a playbook) — carries an
+## 4. How a folder declares its bar — the INTENT (every type, every folder)
+Every folder — of **any** type (a canon, a skill folder, a project, a records area, a playbook) — carries an
 **`intent`**: one plain-English line stating its admission bar (what it takes to belong here). For canon this is
 the P6 territory-map field `accepts:` **upgraded** from "what belongs" → "the *bar* to belong"; the same idea
 extends to the other types so the router has one consistent thing to read everywhere.
 
-Optionally, a home with a genuinely confusable neighbor adds **ONE near-miss redirect** — the single most
+Optionally, a folder with a genuinely confusable neighbor adds **ONE near-miss redirect** — the single most
 mistakable thing that does NOT belong, and where it goes instead:
 
 ```
-intent:   <plain-English admission bar for this home>
-not:      <the one near-miss> → <its real home>      # OPTIONAL, only where a real seam exists
+intent:   <plain-English admission bar for this folder>
+not:      <the one near-miss> → <its real folder>     # OPTIONAL, only where a real seam exists
 ```
 
 Example (a subject's canon — note that the near-miss points DOWN at what sinks, never sideways at a sibling):
@@ -220,40 +214,42 @@ Example (a subject's canon — note that the near-miss points DOWN at what sinks
 **Rules:**
 - **One near-miss, NEVER an exclusion list.** Lists are infinite, they bloat, they rot, and worse — the LLM
   starts reading "not on the no-list" as "allowed." Name only the *one* boundary that's actually fuzzy.
-- **For an always-on home (global, a desk), the near-miss is usually the VERTICAL sink** — the specialty detail
+- **For an always-on folder (global, a desk), the near-miss is usually the VERTICAL sink** — the specialty detail
   that should drop to a sub-folder *below* — NOT a sibling desk. An always-on canon loads every session, so its
   real bloat risk is holding depth only *some* sessions need; the bar is "high-level backbone + pointers, not depth."
-- A home with no confusable neighbor needs **no `not:` line** at all.
+- A folder with no confusable neighbor needs **no `not:` line** at all.
 - The near-miss doubles as relocation guidance: it tells the archivist where to *send* a misfit.
 
 ## 5. The archivist's jobs under this doctrine (all PROPOSE-ONLY)
 1. **Triage by type** — for each inbox item (and each existing artifact under audit), FIRST decide which TYPE of
-   home it wants (§1). This includes **cull** (it's really a record → route to `records/`; or junk → propose
-   dropping) and **propose a new SOP / skill / project** when a repeatable or self-contained thing has no home yet.
-2. **Place** — within the chosen type, land it in the right home; for **canon**, run it up the levels to the
-   highest where it can win a slot (§2–§3), against the homes' intents. (Uses the router, `skills/archivist-route`.)
-3. **Audit + sink** — periodically re-test EXISTING `CLAUDE.md`/canon lines against their home's intent; flag
+   folder it wants (§1). This includes **cull** (it's really a record → route to `records/`; or junk → propose
+   dropping) and **propose a new SOP / skill / project** when a repeatable or self-contained thing has no folder yet.
+2. **Place** — within the chosen type, land it in the right folder; for **canon**, run it up the levels to the
+   highest where it can win a slot (§2–§3), against the folders' intents. (Uses the router, `skills/archivist-route`.)
+3. **Audit + sink** — periodically re-test EXISTING `CLAUDE.md`/canon lines against their folder's intent; flag
    any that can **no longer win their slot at that level** and should **sink lower.**
-4. **Split** — flag a home grown fat + broad enough to **split** into specialized children (which creates new
+4. **Split** — flag a folder grown fat + broad enough to **split** into specialized children (which creates new
    lower shelves for sinkers). This is the cohesion check **J**, grown up. Pure judgment + J — **no size
    trigger, no math.**
 
-The archivist **never moves anything.** It proposes; the human approves via `/archivist-review`
+The archivist **never moves anything.** It proposes; the human approves via `/archivist-review` (⛔ not shipped)
 (snapshot-first, dependency-gated). Applier, never legislator.
 
-## 6. Authorship — who writes a home's intent
-- **the operator writes the high-tier bars** (global, each desk). Those are *law*; law isn't machine-guessed.
+## 6. Authorship — who writes a folder's intent
+- **the operator writes the high-tier bars** (global, each desk). Those are the operator's own calls; they are never machine-guessed.
 - **The archivist PROPOSES** the low / new / `[INFERRED]` intents for approval.
 
 ## 7. KISS — the hard lines (refuse this complexity)
 - Plain-text intents + LLM judgment. **NO numeric scoring, NO thresholds, NO "preponderance equations."**
+  This ban is about filing (where a piece of knowledge sits); evidence points stay a judged weight, never a
+  computed score.
 - **One near-miss, never an exclusion list.**
-- Type-routing adds **no machinery** — it's the same LLM reading `architecture.md` + each home's `intent` and
-  judging. Dumb core: a flat text inventory of homes + an LLM reading it. No engine beyond a cron + a read.
+- Type-routing adds **no machinery** — it's the same LLM reading §1's type list + each folder's `intent` and
+  judging. Dumb core: a flat text inventory of folders + an LLM reading it. No engine beyond a cron + a read.
 
 ## 8. Self-application
 This doctrine governs the archivist and `/save` — not every conversation — so it does **not** earn the summit.
-Full text lives here (low, on-demand). At most a one-liner in `architecture.md`; a bare pointer (or nothing)
+Full text lives here (low, on-demand). A bare pointer (or nothing)
 in global `CLAUDE.md`. If we ever catch ourselves wanting to paste this into `CLAUDE.md`, that's the doctrine
 failing its own test — don't.
 
@@ -261,10 +257,10 @@ failing its own test — don't.
 While we're still earning trust in the archivist's placement judgment, run a **monitoring period (~1–2 months)**:
 for every triage / place / cull / sink / split it proposes, the archivist writes a **one-line plain-English
 RATIONALE** (which type + level, which intent it matched or failed, what it rejected and why) to a single trial
-log — `system/archivist/placement-trial-log.md`. the operator skims it, catches bad calls, and corrects the intents —
-a real human-in-the-loop feedback signal *on top of* the normal `/archivist-review` approval.
+log. the operator skims it, catches bad calls, and corrects the intents —
+a real human-in-the-loop feedback signal *on top of* the normal `/archivist-review` (⛔ not shipped) approval.
 
-This is **scaffolding, NOT law.** It is one file + one logging step, and **nothing else depends on it.** When
+This is **scaffolding, NOT a standing rule.** It is one file + one logging step, and **nothing else depends on it.** When
 the operator is confident the judgment is good, the whole probation is deleted cleanly — remove the log and the
 logging step; the doctrine and the engine are untouched. Designed from day one to be ripped out, never to
 harden into a permanent layer.
