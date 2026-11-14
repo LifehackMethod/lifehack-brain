@@ -18,9 +18,9 @@ trap 'lhb_journal_fire "$?" "inject_sop_before_build.sh" "UserPromptSubmit" "" 2
 #         skippable in practice). Fires every matching turn (no suppression).
 # REDIRECT: N/A (non-blocking).
 # SIGNPOST: The TRIGGER TABLE in this script IS the rule. SOPs pointed at live in
-#           system/sops/{skill-building-playbook,hook-sop,desk-building-sop,
-#           google-sheet-sop,design-process-sop,cron-jobs-sop}.md. To add a 7th SOP:
-#           add one row to the TABLE list below. Hook doctrine: system/hook-contract.md.
+#           canon/{skill-building-sop,hook-sop,desk-building-sop,cron-jobs-sop}.md and
+#           system/sops/{google-sheet-sop,design-process-sop}.md. To add a 7th SOP:
+#           add one row to the TABLE list below. Hook doctrine: canon/hook-contract.md.
 # UPDATED: 2026-07-11 (new — SOP build-time pointer injector; council-scoped KISS)
 # UPDATED: 2026-10-29 (v2 2.4) — also points at system/register/toolbox.md and /build.
 # UPDATED: 2026-10-31 (Enver) — jobs-sop.md renamed cron-jobs-sop.md ("jobs" was too general).
@@ -102,13 +102,13 @@ if not prompt.strip():
 
 # TRIGGER TABLE — (noun-regex, sop-path, human-label). Add a row to extend.
 TABLE = [
-    (r"skills?",                                    "system/sops/skill-building-sop.md", "skill"),
-    (r"hooks?",                                     "system/sops/hook-sop.md",                "hook"),
-    (r"desks?",                                     "system/sops/desk-building-sop.md",       "desk"),
+    (r"skills?",                                    "canon/skill-building-sop.md", "skill"),
+    (r"hooks?",                                     "canon/hook-sop.md",                "hook"),
+    (r"desks?",                                     "canon/desk-building-sop.md",       "desk"),
     (r"(?:google\s+)?sheets?|spreadsheets?",        "system/sops/google-sheet-sop.md",        "Google Sheet"),
     # DISCONNECTED 2026-10-31 (Enver, decision 5): design-process-sop.md is work in progress, not validated; row kept here as history.
     # (r"dashboards?|views?|screens?",                "system/sops/design-process-sop.md",      "dashboard / view"),
-    (r"crons?|scheduled\s+(?:job|task)s?|timers?",  "system/sops/cron-jobs-sop.md",           "cron job"),
+    (r"crons?|scheduled\s+(?:job|task)s?|timers?",  "canon/cron-jobs-sop.md",           "cron job"),
     (r"(?:email|mail|inbox|corpus)\s+(?:ingest\w*|read(?:er|ing)?|process(?:or|ing)?|backlog)|ingest(?:ion|or)?\s+(?:skill|desk|pipeline|reader|hook|pass)",
                                                     "system/information-ingestion-interpretation.md", "email / information ingestion reader"),
 ]

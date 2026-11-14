@@ -65,7 +65,7 @@ elements/<slug>.md, the exhaustive source. If this map is your only source, you 
            pushes only; a CRITICAL page (sentinel DANGER, dead monitor) BYPASSES it and WILL wake you.
 ~ Mac: launchd -> ~/.config/lifehack/code-root -> job-run.sh. Linux/Windows: pulse.sh + cron. ONE row per
   job: shared jobs in `system/jobs.md`, your own in `<personal-code>/jobs.md`, read alongside; the door (install-schedulers.sh) refuses a row that breaks the rules.
-@ (you add a job) the rules for any cron job | cron-jobs-sop.md (system/sops/) — one row, a content check, the
+@ (you add a job) the rules for any cron job | cron-jobs-sop.md (canon/) — one row, a content check, the
   door. read it before adding or changing any scheduled job.
 NOT BUILT — admissions, not omissions. knowing now beats inferring a connection that isn't there:
 - one subject's records agreeing with another's (a billing row becoming taxable income). no general
@@ -83,7 +83,7 @@ NOT BUILT — admissions, not omissions. knowing now beats inferring a connectio
 
 ## Rulebooks — which SOP for what
 
-All in `system/sops/`. Open the one that matches the job; each is the owner of its topic.
+The approved ones are in `canon/` (see `canon/README.md`); the rest are in `system/sops/`. Open the one that matches the job; each is the owner of its topic.
 
 - `plan-template.md` — use for the shape a plan must come back in (the plan spec).
 - `build-conformance-sop.md` — use before adding or changing a guard, check or test, or when a build landed somewhere wrong: how conformance works here, what's proven, and how we know (in progress).

@@ -7,7 +7,7 @@
 # GUARDS: nothing. It is a TEST, not a hook. It never writes to the arming store.
 # REDIRECT: if a case fails, fix system/hooks/guard_pm_flag_store.sh — never edit this file
 #      to match the guard's current behaviour. The expectations here are the specification.
-# SIGNPOST: system/hooks/guard_pm_flag_store.sh (the guard) · system/sops/hook-sop.md §4
+# SIGNPOST: system/hooks/guard_pm_flag_store.sh (the guard) · canon/hook-sop.md §4
 #      ("a hook you haven't watched block/allow in a live attempt is not a control", and
 #      Trap 2: "a command-string guard blocks its own documentation" — which is exactly why
 #      these cases live in a FILE instead of an inline shell command; the guard denied the

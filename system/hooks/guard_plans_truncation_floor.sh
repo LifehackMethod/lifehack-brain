@@ -42,7 +42,7 @@ trap 'lhb_journal_fire "$?" "guard_plans_truncation_floor.sh" "PreToolUse" "Writ
 #          already exists beside it (`<path>.<UTC timestamp>.preshrink.bak`), made BEFORE
 #          the refusal is emitted, so recovery never depends on the session having backed
 #          up first by hand.
-# SIGNPOST: rule lives in system/sops/hook-sop.md + system/hook-contract.md; the shape is
+# SIGNPOST: rule lives in canon/hook-sop.md + canon/hook-contract.md; the shape is
 #      system/hooks/guard_brief_truncation.sh (three-doors-in, snapshot-not-guess-on-Bash)
 #      and its shared library system/hooks/lib/bash_write_door.sh; the incident is
 #      system/journal.md, 2026-09-16 (both the original entry and same-day correction).
@@ -117,7 +117,7 @@ handle_violation() {
     size_line="this $TOOL would leave $path at $new bytes, below the ${FLOOR_BYTES}-byte floor (was $old bytes)"
   fi
 
-  deny "BLOCKED: $size_line. WHY: on 2026-09-16 a 493 KB plan file (~/.claude/plans/lifehack-migration.plan.md) was flattened to 28 bytes three times in one morning because nothing watched that directory (system/journal.md, 2026-09-16). $backup_line REDIRECT: if this shrink is INTENDED (e.g. archiving a finished plan), set LHB_PLANS_FLOOR_OVERRIDE=$path for this one call and retry -- the override is scoped to this exact path, never a blanket disable. RULE: system/sops/hook-sop.md + system/hook-contract.md; shape: system/hooks/guard_brief_truncation.sh."
+  deny "BLOCKED: $size_line. WHY: on 2026-09-16 a 493 KB plan file (~/.claude/plans/lifehack-migration.plan.md) was flattened to 28 bytes three times in one morning because nothing watched that directory (system/journal.md, 2026-09-16). $backup_line REDIRECT: if this shrink is INTENDED (e.g. archiving a finished plan), set LHB_PLANS_FLOOR_OVERRIDE=$path for this one call and retry -- the override is scoped to this exact path, never a blanket disable. RULE: canon/hook-sop.md + canon/hook-contract.md; shape: system/hooks/guard_brief_truncation.sh."
 }
 
 TOOL=$(printf '%s' "$INPUT" | python3 -c "
@@ -144,9 +144,9 @@ except Exception: print('')
 
   # shellcheck source=lib/bash_write_door.sh
   . "$_HOOKDIR/lib/bash_write_door.sh" 2>/dev/null || \
-    deny "BLOCKED: guard_plans_truncation_floor could not load lib/bash_write_door.sh, so it is failing closed. This command names a path under .claude/plans and the Bash door into that directory is unguarded without the library. REDIRECT: restore system/hooks/lib/bash_write_door.sh from git, then retry. RULE: system/sops/hook-sop.md."
+    deny "BLOCKED: guard_plans_truncation_floor could not load lib/bash_write_door.sh, so it is failing closed. This command names a path under .claude/plans and the Bash door into that directory is unguarded without the library. REDIRECT: restore system/hooks/lib/bash_write_door.sh from git, then retry. RULE: canon/hook-sop.md."  # allow-silence: the loader's stderr is dropped but this deny fails the guard CLOSED
   . "$_HOOKDIR/lib/bwd_sentinel_scope.sh" 2>/dev/null || \
-    deny "BLOCKED: guard_plans_truncation_floor could not load lib/bwd_sentinel_scope.sh, so an unresolved-variable write target cannot be safely narrowed against this guard's scope. REDIRECT: restore system/hooks/lib/bwd_sentinel_scope.sh from git, then retry. RULE: system/sops/hook-sop.md."
+    deny "BLOCKED: guard_plans_truncation_floor could not load lib/bwd_sentinel_scope.sh, so an unresolved-variable write target cannot be safely narrowed against this guard's scope. REDIRECT: restore system/hooks/lib/bwd_sentinel_scope.sh from git, then retry. RULE: canon/hook-sop.md."  # allow-silence: the loader's stderr is dropped but this deny fails the guard CLOSED
 
   # Append-only shapes cannot truncate. Neutralise them, then ask the library again.
   SCRUBBED=$(printf '%s' "$COMMAND" | sed -e 's/>>/ /g' -e 's/tee[[:space:]]\{1,\}-a/tee_append_noop/g')
@@ -154,7 +154,7 @@ except Exception: print('')
   TARGETS=$(bwd_write_targets "$SCRUBBED")
   case "$TARGETS" in
     *__BWD_PARSE_ERROR__*)
-      deny "BLOCKED: guard_plans_truncation_floor could not analyse this command, and it names a path under .claude/plans. WHY: an unparseable command targeting the plans directory is refused rather than guessed at, and no backup can be made because the target path itself could not be determined with confidence. REDIRECT: write the plan file through the Write tool instead, or simplify the command so its target is a literal path. RULE: system/sops/hook-sop.md."
+      deny "BLOCKED: guard_plans_truncation_floor could not analyse this command, and it names a path under .claude/plans. WHY: an unparseable command targeting the plans directory is refused rather than guessed at, and no backup can be made because the target path itself could not be determined with confidence. REDIRECT: write the plan file through the Write tool instead, or simplify the command so its target is a literal path. RULE: canon/hook-sop.md."
       ;;
   esac
   case "$TARGETS" in
@@ -168,14 +168,14 @@ except Exception: print('')
       _PT_RAW=$(printf '%s' "$_PT_LINE" | cut -f3)
       _PT_REM=$(bwd_sentinel_remainder "$_PT_RAW" "${_PT_VAR#\$}")
       if [ -z "$_PT_REM" ]; then
-        deny "BLOCKED: guard_plans_truncation_floor cannot verify this command's write target -- it is JUST an unresolved shell variable (${_PT_VAR:-a shell variable}) with no surrounding path text this guard can rule out, and this command names a path under .claude/plans. REDIRECT: write the plan file through the Write tool instead, or expand ${_PT_VAR:-the variable} by hand before running this command. RULE: system/sops/hook-sop.md."
+        deny "BLOCKED: guard_plans_truncation_floor cannot verify this command's write target -- it is JUST an unresolved shell variable (${_PT_VAR:-a shell variable}) with no surrounding path text this guard can rule out, and this command names a path under .claude/plans. REDIRECT: write the plan file through the Write tool instead, or expand ${_PT_VAR:-the variable} by hand before running this command. RULE: canon/hook-sop.md."
       fi
       # The plans directory's OWN last path segment (default "plans"; LHB_PLANS_DIR can rename
       # it) is the one thing this guard can still check for without the unresolved prefix.
       _PT_PLANS_BASENAME=$(basename "$PLANS_DIR")
       case "$_PT_REM" in
         */"$_PT_PLANS_BASENAME"/*|"$_PT_PLANS_BASENAME"/*)
-          deny "BLOCKED: guard_plans_truncation_floor cannot verify this command's write target -- it builds a path from ${_PT_VAR:-a shell variable}, which this guard could not resolve from earlier in the same command, and what is known of the rest of the path looks like the plans directory. WHY: no backup can be made and no floor can be checked against a target this guard cannot actually resolve. REDIRECT: write the plan file through the Write tool instead, or expand ${_PT_VAR:-the variable} by hand before running this command. RULE: system/sops/hook-sop.md."
+          deny "BLOCKED: guard_plans_truncation_floor cannot verify this command's write target -- it builds a path from ${_PT_VAR:-a shell variable}, which this guard could not resolve from earlier in the same command, and what is known of the rest of the path looks like the plans directory. WHY: no backup can be made and no floor can be checked against a target this guard cannot actually resolve. REDIRECT: write the plan file through the Write tool instead, or expand ${_PT_VAR:-the variable} by hand before running this command. RULE: canon/hook-sop.md."
           ;;
       esac
       ;;
@@ -236,7 +236,7 @@ for line in sys.stdin:
   [ -f "$RESOLVED" ] || exit 0   # a brand-new file cannot be truncated
 
   OLD_SIZE=$(stat -c %s "$RESOLVED" 2>/dev/null || stat -f %z "$RESOLVED" 2>/dev/null || echo "")
-  [ -z "$OLD_SIZE" ] && deny "BLOCKED: guard_plans_truncation_floor could not stat $RESOLVED after identifying it as an overwrite target under the plans directory. REDIRECT: retry; if this persists, check file permissions. RULE: system/sops/hook-sop.md."
+  [ -z "$OLD_SIZE" ] && deny "BLOCKED: guard_plans_truncation_floor could not stat $RESOLVED after identifying it as an overwrite target under the plans directory. REDIRECT: retry; if this persists, check file permissions. RULE: canon/hook-sop.md."
   [ "$OLD_SIZE" -lt "$FLOOR_BYTES" ] && exit 0   # was never substantial -- nothing to protect
 
   # A Bash overwrite's resulting size cannot be known before it runs -- same reasoning
@@ -337,7 +337,7 @@ case "$RESULT" in
   SKIP*|"") exit 0 ;;
   ERROR*)
     msg=$(printf '%s' "$RESULT" | cut -d'|' -f2)
-    deny "BLOCKED: guard_plans_truncation_floor identified a plans-directory file as the write target but could not size the write ($msg). WHY: an unreadable payload and an unsafe one must never look the same once the target is identified. REDIRECT: retry; if this persists, check the file is readable and the JSON payload is well-formed. RULE: system/sops/hook-sop.md."
+    deny "BLOCKED: guard_plans_truncation_floor identified a plans-directory file as the write target but could not size the write ($msg). WHY: an unreadable payload and an unsafe one must never look the same once the target is identified. REDIRECT: retry; if this persists, check the file is readable and the JSON payload is well-formed. RULE: canon/hook-sop.md."
     ;;
   VIOLATION*)
     path=$(printf '%s' "$RESULT" | cut -d'|' -f2)

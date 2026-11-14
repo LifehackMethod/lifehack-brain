@@ -270,7 +270,7 @@ def fire(script_abs: Path, payload, raw_stdin=None) -> tuple:
 def block_verdict(rc: int, out: str, err: str) -> tuple:
     """
     Did this fire actually BLOCK, per the real Claude Code PreToolUse contract
-    (`system/hook-contract.md` -> "Output to block")? Returns (blocked, note).
+    (`canon/hook-contract.md` -> "Output to block")? Returns (blocked, note).
 
     HONORED block signals — either one is a real block:
       · exit 2                      -> deny text on stderr is shown to the model (house standard)

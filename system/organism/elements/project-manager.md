@@ -42,7 +42,7 @@ authority: user
 >
 > ⛔ `state/debt-ledger.md` is the person's own notes, not a repo file. Here it is
 > `<notes>/state/debt-ledger.md`, written by `/save` and `/build` when something is knowingly left imperfect
-> (`docs/data-layout.md`). It is created by use, and never committed.
+> (`canon/data-layout.md`). It is created by use, and never committed.
 
 > **LADDER: ELEMENT (full mechanics). up → manual#project-manager ; ground truth → .claude/skills/project-manager/SKILL.md**
 >

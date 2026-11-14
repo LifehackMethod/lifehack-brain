@@ -543,7 +543,7 @@ manual and `elements/` through the plugin's own root, the same way the session h
 loser is archived, never deleted. (2) Harness paths are always resolved from the plugin root. (3) The harness never
 changes a note's format in a way an older copy of the system cannot read: the NOTES home is shared.
 
-**How a build conforms to all this, and how we know:** `system/sops/build-conformance-sop.md`.
+**How a build conforms to all this, and how we know:** `canon/build-conformance-sop.md`.
 
 ---
 
@@ -554,7 +554,7 @@ changes a note's format in a way an older copy of the system cannot read: the NO
 > rig) and **Alarms** (error handling: the texts, quiet hours, the session-start line, each job's error folder). The
 > old names are retired as subsystem names: "Pulse" survives only as the Linux/Windows scheduler (`pulse.sh`) and in
 > the old file name of the job list (now `system/jobs.md`); "Hospital" now means only the skills SOP's nurse-and-chart picture of how a skill
-> runs its steps (`system/sops/skill-building-sop.md` PART 0), never a subsystem here.
+> runs its steps (`canon/skill-building-sop.md` PART 0), never a subsystem here.
 
 ### CRON — how a job runs
 
@@ -637,7 +637,7 @@ detector jobs (system-health, sentinel-health, planning-health, backlog-health, 
 jobs) are RETIRED with their runners; the incident ledger and fault grader are on hold, not deleted. Built 2026-10-29
 (self-monitoring 5.10): a failed text retries until it is confirmed sent; a job that keeps standing down texts once;
 every run checks the other jobs and texts once for one that is not running. Every text is written for a person
-(`system/sops/cron-jobs-sop.md` section 14).
+(`canon/cron-jobs-sop.md` section 14).
 
 **The row contract.** Every row carries, besides its name, switch, interval and command: an `outcome` (one sentence:
 what a good run leaves behind), a `check` (`<path> ~ <ERE>`: the file must be newer than this run's start AND some line
@@ -683,7 +683,7 @@ and must name every one exactly, or the gate refuses to trust the rig. It does n
 
 ### How to add a job (Mac) — step by step
 
-> **This recipe now lives in one place: `system/sops/cron-jobs-sop.md`, section 11 "Add a job (the recipe)"** (2026-10-30). Follow that, not the steps below. The steps below were marked OUT OF DATE on 2026-10-27 (self-monitoring 5.1–5.3: the check now lives in the ROW, not in `job-run.sh`; every row needs the five contract fields; the door refuses a non-conforming row; a model is reached through `run_model`, not `ingest-run.lib.sh`) and are kept struck through for the record only.
+> **This recipe now lives in one place: `canon/cron-jobs-sop.md`, section 11 "Add a job (the recipe)"** (2026-10-30). Follow that, not the steps below. The steps below were marked OUT OF DATE on 2026-10-27 (self-monitoring 5.1–5.3: the check now lives in the ROW, not in `job-run.sh`; every row needs the five contract fields; the door refuses a non-conforming row; a model is reached through `run_model`, not `ingest-run.lib.sh`) and are kept struck through for the record only.
 
 1. ~~**Write the command.** A stand-alone shell command or runner script (`system/tools/<job>-run.sh`). It must exit 0 only
    on real success, 75 if it is simply not configured, 2 for a transient failure, anything else for a failure. Reach a
@@ -985,7 +985,7 @@ INTEROP:
   FEEDS        security-posture-scan · jobs.md is read by security-posture-scan.sh to verify supabase jobs stay disabled + emily stays enabled
   COMPLEMENTS  notify-plane         · pulse.sh calls notify-send.sh directly for circuit-breaker trips + no-lead nag; all *-run.sh runners channel alerts through notify-send.sh
   COMPLEMENTS  health-deadman-check · launchd watcher (BY DESIGN outside Pulse) watches system-health tile mtime; catches a dead Pulse+health chain that no Pulse job could detect
-  GUARDED-BY   ~~require_primary~~ · **⚠ CORRECTED 2026-08-24: not a real guard.** `require_primary()` has zero definitions anywhere in this repo and `primary-gate.sh` does not exist on disk (grep/find, verified this session). This system has one machine (`docs/data-layout.md:215`); Drive-writing jobs run with no machine gate. Correctly stated in `elements/backlog-authority.md:203-205` and `elements/archivist.md:71-72`; corrected in full in `elements/cron.md`'s GATES section.
+  GUARDED-BY   ~~require_primary~~ · **⚠ CORRECTED 2026-08-24: not a real guard.** `require_primary()` has zero definitions anywhere in this repo and `primary-gate.sh` does not exist on disk (grep/find, verified this session). This system has one machine (`canon/data-layout.md:215`); Drive-writing jobs run with no machine gate. Correctly stated in `elements/backlog-authority.md:203-205` and `elements/archivist.md:71-72`; corrected in full in `elements/cron.md`'s GATES section.
   GUARDED-BY   ingest_acquire_lock  · prevents stacked runs per job; single-instance enforcement in every claude-invoking runner
   GUARDED-BY   circuit breaker (pulse.sh) · auto-disables a job after 3 consecutive non-transient failures; rc=2 never trips it
   GUARDED-BY   ingest_check_paused  · Sentinel danger verdict → human-gated source pause; no auto-resume
@@ -1019,7 +1019,7 @@ INTEROP:
   WRITES→      state/email-summary/threads-v2/   · email_convert.py (via janitor) writes the faithful-thread store
   WRITES→      state/item-store/        · calendar/tasks store syncs write; item_store_read.py adapts reads
   READS        email_service_read.py    · the read adapter for the v2 faithful-thread store (wraps re-scan + refuse-flagged + tool-less-reader routing)
-  KEYS-OFF     system/security-canon.md · reader-actor split contract + channel classification lives there
+  KEYS-OFF     canon/security-canon.md · reader-actor split contract + channel classification lives there
   COMPLEMENTS  websearch               · /websearch skill wraps safe_search_api.sh ~~(primary) + safe_search.sh (Chrome fallback)~~ for interactive sessions
                                         ⚠ **CORRECTED 2026-08-15.** safe_search_api.sh is not "primary" — it is the ONLY search path. There is no Chrome fallback: `safe_search.sh` and the whole dev-browser path were DELETED by ruling (the operator, authority: user — *"Research should never go into Chrome… that's an old leftover thing"*). The file is gone from the tree; verified absent this session. The struck text is left visible because it was true of the donor.
 
@@ -1081,8 +1081,8 @@ INTEROP:
 > ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and ~/claudeops-config/archive/2026-10-31/system/tools/conformance-lab/ (claudeops-config copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
   ~~TRIGGERS     auto_register_skill.sh · a Write or Edit to desks/{desk}/skills/{name}/SKILL.md automatically triggers stub creation; /save may trigger this if it writes a SKILL.md~~ *(2026-10-30: no such hook exists, see the GUARDED-BY note below)*
   CHAINS       skill_anchor.sh → skill_anchor_inject.sh · anchor state manager arms a flag; injector reads it every turn; useless without each other
-  READS        system/sops/skill-building-sop.md · canonical doctrine for all skill authoring; the hook's deny message names it explicitly
-  SYNCS        system/sops/skill-building-sop.md (Build, step 2) · frontmatter schema (shape:, emit_diary:, etc.) canonicalized here; changes must land in conformance doc first; hook and scaffolder updated in same commit
+  READS        canon/skill-building-sop.md · canonical doctrine for all skill authoring; the hook's deny message names it explicitly
+  SYNCS        canon/skill-building-sop.md (Build, step 2) · frontmatter schema (shape:, emit_diary:, etc.) canonicalized here; changes must land in conformance doc first; hook and scaffolder updated in same commit
   READS        system/templates/skill-template/SKILL.md · canonical template new-skill.sh was designed from; scaffolder's stamp IS the template's required structure
   GUARDED-BY   enforce_skill_frontmatter.sh · PreToolUse Write — exit-2 BLOCKS non-conformant SKILL.md writes (description + YAML + 500-line cap); Write-only (not Edit)
   GUARDED-BY   skill_anchor_inject.sh · UserPromptSubmit — re-injects lean anchor body every turn when armed; DEGRADE-SAFE
@@ -1185,9 +1185,9 @@ INTEROP:
   GUARDED-BY   guard_write_paths.sh · PreToolUse Write|Edit — BLOCKS content writes to clone, wrong-zone paths, orphan ~/.claude/skills/ writes; fails CLOSED on unparseable input
   GUARDED-BY   ~~check-content-paths.py~~ · **⚠ CORRECTED 2026-08-24: wrong filename, not a phantom.** No file named `check-content-paths.py` exists anywhere (0 matches, verified this session), but the control it describes is real, just differently named and split across two mechanisms in the actual pre-commit hook, `system/githooks/pre-commit` (read in full this session): (1) a personal-notes path guard (data/, memory/, state/, etc. — the top section of the file) plus (2) a SEPARATE gitleaks secret scan (`GITLEAKS="$(command -v gitleaks || echo /opt/homebrew/bin/gitleaks)"`; fails CLOSED if gitleaks is not installed) plus (3) `check_no_internal_leakage.py` for content-class/operator-identity leakage, also fail-closed. So the CONTROL is live — secrets and content-class files staged for commit genuinely get blocked — but under the path `system/githooks/pre-commit`, not a script called `check-content-paths.py`; that name matches nothing on disk.
   GUARDED-BY   ~~primary-gate.sh~~ · **⚠ CORRECTED 2026-08-24: ⛔ `system/tools/primary-gate.sh` does not exist.**
-               (find . -iname '*primary-gate*' → 0 files, verified this session), and require_primary() has no definition anywhere in the repo. No headless Pulse runner is gated on machine lead-election; this system has one machine (`docs/data-layout.md:215`). See `elements/cron.md`'s corrected GATES section.
+               (find . -iname '*primary-gate*' → 0 files, verified this session), and require_primary() has no definition anywhere in the repo. No headless Pulse runner is gated on machine lead-election; this system has one machine (`canon/data-layout.md:215`). See `elements/cron.md`'s corrected GATES section.
   GUARDED-BY   ~~mirror_plans.sh~~ · **⚠ CORRECTED 2026-08-24: ⛔ `system/hooks/mirror_plans.sh` does not exist.**
-               (0 files, verified this session), and neither does the per-machine plan-sync it describes. Correctly stated in `elements/plan-integrity-cluster.md:160-168`: "There is no fourth hook — this heading is a leftover from the donor." Two-machine plan mirroring is not part of this system (`docs/data-layout.md:215`).
+               (0 files, verified this session), and neither does the per-machine plan-sync it describes. Correctly stated in `elements/plan-integrity-cluster.md:160-168`: "There is no fourth hook — this heading is a leftover from the donor." Two-machine plan mirroring is not part of this system (`canon/data-layout.md:215`).
 
 ## notify-plane · any component calling notify-send.sh   [LIVE [provisional]]   → elements/notify-plane.md
 The single, governor-gated outbound push channel — every Lifehack alarm that reaches the user's phone passes through here and nowhere else. No hooks; structural enforcement by convention (all callers call the script; governor is called unconditionally inside it).
@@ -1260,7 +1260,7 @@ INTEROP:
   READS       plan_flag.sh             · /advisory-council reads plan_flag.sh path subcommand to load the active plan as advisory context before its council run
   READS       plan_flag.sh             · /save Step 8 (Wake Routine handoff) reads plan_flag.sh status to surface the active plan name in the continuation handoff
   SYNCS       ~~mirror_plans.sh~~      · ⛔ CORRECTED 2026-08-25: neither this hook nor its pull-side counterpart exists in this repo — no plan-sync to keep in lockstep; see `elements/plan-integrity-cluster.md` HOOK 4
-  TRIGGERS    inject_sop_before_build.sh · fires before any build of a hook, skill, desk, sheet, dashboard, cron, or ingest pipeline — six domains whose SOPs live in system/sops/; NOT triggered before plan-content work
+  TRIGGERS    inject_sop_before_build.sh · fires before any build of a hook, skill, desk, sheet, dashboard, cron, or ingest pipeline — six domains whose SOPs live in canon/ and system/sops/; NOT triggered before plan-content work
   KEYS-OFF    pm_persist.sh            · pm_persist.sh (project-manager element) refreshes plan_flag.sh's armed_at every turn so the plan flag never TTL-expires mid-session
 
 ## research-web-plane · /research / /websearch   [PARTIAL [provisional]]   → elements/research-web-plane.md
@@ -1358,7 +1358,7 @@ INTEROP:
   WRITES→    durable-memory         · breakdown Google Doc lands in a dated output folder; session.md + breakdowns markdown in desks/emily/state/; Relationship Ledger rows in the Sheet
   GUARDED-BY ingest-gate            · ingest_gate_enforce.sh blocks raw gws format:full body reads; forces email_convert.py path [hook]
   GUARDED-BY calendar-guard         · calendar write hook blocks any event write to primary or non-Agent-Ops calendar [hook]
-  GUARDED-BY ~~primary-gate.sh~~ · **⚠ CORRECTED 2026-08-24: ⛔ `system/tools/primary-gate.sh` does not exist** (0 files, verified this session); `require_primary()` has no definition anywhere in the repo. Emily-desk Drive writes are NOT gated on machine lead-election — this system has one machine (`docs/data-layout.md:215`). See `elements/cron.md`'s corrected GATES section. [was: script]
+  GUARDED-BY ~~primary-gate.sh~~ · **⚠ CORRECTED 2026-08-24: ⛔ `system/tools/primary-gate.sh` does not exist** (0 files, verified this session); `require_primary()` has no definition anywhere in the repo. Emily-desk Drive writes are NOT gated on machine lead-election — this system has one machine (`canon/data-layout.md:215`). See `elements/cron.md`'s corrected GATES section. [was: script]
   CHAINS     safe-reader-plane      · script-reader subagent uses safe_pdf.py; researcher uses safe_search_api.sh (~~Serper primary, Chrome fallback~~ *(2026-10-30: Serper is the ONLY search path; the Chrome fallback was deleted, see the correction above)*); calendar + email free-text isolated via safe_calendar.py / reader-actor subagent
   FEEDS      notify-plane           · buzz via notify-send.sh after successful breakdown (Phase 6)
   READS      pulse-cron             · emily-breakdown-run.sh is a Pulse-managed cron job; Pulse owns cadence + circuit-breaker (3 non-zero → auto-disable + buzz)

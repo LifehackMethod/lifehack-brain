@@ -30,7 +30,7 @@ JOBS_MD = """# My scheduled jobs
 One row per job, inside the block below, nine columns separated by ` | `:
   name | enabled | interval | outcome | check | model | budget | source | command
 `command` is last because it may contain `|`; no other column may. Name your job's runner like this: `bash "$LIFEHACK_PERSONAL_CODE/tools/<job>/<job>-run.sh"` (the checker and the runner both set `$LIFEHACK_PERSONAL_CODE` to this folder, so a branch of this folder is checked against its own runner). The meaning of each column, how to add a row,
-and how to bring a job into line is in the plugin's `system/sops/cron-jobs-sop.md`. Plain names for your jobs go in
+and how to bring a job into line is in the plugin's `canon/cron-jobs-sop.md`. Plain names for your jobs go in
 `job-names.txt` here (`<job> = <plain name>` lines). To change a plugin job, copy it under a NEW name: the copy is yours and the plugin does not support it. A row with a plugin job's own name replacing it is not the way. A broken plugin job is reported (the plugin's GitHub issues, or system/sops/pr-sop.md once it exists).
 
 ```jobs
@@ -61,7 +61,7 @@ named failure. The real job never runs in the rig.
 
 README = """Your scheduled jobs: what goes where (this folder is yours; a plugin update never touches it)
 
-  jobs.md                     your job rows. Format and columns: the plugin's system/sops/cron-jobs-sop.md
+  jobs.md                     your job rows. Format and columns: the plugin's canon/cron-jobs-sop.md
   job-names.txt               optional plain names, `<job> = <plain name>` per line
   job-fetch-hosts.txt         websites your jobs may read, one host per line (added to the plugin's list)
   vendor-read-allowlist.txt   `<job> <file>` lines for vendor reads (only for jobs with model none)

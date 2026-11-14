@@ -12,7 +12,7 @@ confidence: CONFIRMED
 tier: canon
 purpose: "The reasoning layer behind the other SOPs: the best hard-won thinking on working with an AI that is smart, forgetful and not fully reliable. Each entry carries its reason and an evidence tier."
 read_when: "Only when you need the reasoning behind a design choice (for example, why the AI's own report of finishing is not trusted). Not loaded every session; read the section you need, not the whole file."
-history: "system/sops/canonical-principles-sop.history.md (retired and moved text; never read in normal use)"
+history: "canon/canonical-principles-sop.history.md (retired and moved text; never read in normal use)"
 route_format: "[section, line_in_this_file, purpose]; find a section by grep -n on its heading text; generated last, regenerate after any edit"
 route:
   - ["frame.testing", 53, "centering frame: testing asks does it work, security asks what happens when it does not; you buy friction, not certainty"]
@@ -1465,7 +1465,7 @@ zero-byte reads at exit 0, dataless files, paths with spaces; four instances, on
 > **What is deliberately NOT here.** The window's own operating contract — its folder, `status.md` after every step, the self-test that must read `theater` before anything else runs, `result.md`'s six lines, atomic `.tmp`-then-rename writes, every plant on a scratch copy and never the live file, questions held not sent — lives in the builder's operating notes and is not repeated in any entry below; these entries assume it.
 >
 > **Every command below assumes these three shell variables, set first. Paths may contain spaces, so every use is quoted:**
-> `REPO="<code-repo-root>"` · `NOTES="<notes>"` · `SOP="<harness-root>/system/sops/skill-building-sop.md"`. `SCRATCH` is the window's own `<mode-NN validation dir>/`, which it creates.
+> `REPO="<code-repo-root>"` · `NOTES="<notes>"` · `SOP="<harness-root>/canon/skill-building-sop.md"`. `SCRATCH` is the window's own `<mode-NN validation dir>/`, which it creates.
 >
 > ⚠ **No entry below authorises building a tool.** Where a design needs something that does not exist, it says so and names the smallest command instead. A new grader, lab, dashboard or framework is a full block and an escalation, never a build — three labs have already died here at roughly ninety percent complete.
 

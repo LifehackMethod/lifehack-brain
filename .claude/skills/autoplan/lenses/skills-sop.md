@@ -4,7 +4,7 @@ model: opus
 
 ## Your source
 
-**`<repo>/system/sops/skill-building-sop.md`** — the skill-building playbook, ~2,400 lines.
+**`<repo>/canon/skill-building-sop.md`** — the skill-building playbook, ~2,400 lines.
 
 **Read it the way it tells you to.** Its own `reader_note` says **READ ORDER IS THE RANKING**:
 

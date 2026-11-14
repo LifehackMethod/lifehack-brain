@@ -82,7 +82,7 @@ advance.
 
 This repo has no scheduler wired to this file, and none is proposed here.
 Run it by hand: after wiring any new external-content channel, after adding
-a new desk, or whenever you want a current read. `system/security-canon.md`
+a new desk, or whenever you want a current read. `canon/security-canon.md`
 already documents the mechanical half (`sentinel_response.py` /
 `sentinel_ack.py`) as manual-trigger-by-construction — this file is the
 other manual half, the same shape, run the same way.
@@ -111,7 +111,7 @@ Never touch human-side content (records, canon, journal, project briefs) —
 name a file only if it is relevant to a finding; never open it to read the
 content.
 
-**Security canon reference:** `system/security-canon.md` — load it for the
+**Security canon reference:** `canon/security-canon.md` — load it for the
 full threat model and defense architecture before running this. Don't
 re-derive what it already answers.
 

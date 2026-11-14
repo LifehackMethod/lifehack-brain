@@ -10,7 +10,7 @@ generated_from:
   - system/organism/manual.md (THE THREE COMPROMISES §1 — the git/Drive lifecycle this element expands)
   - INSTALL.md (the AI Brain setup authority; the note that symlinks into ~/.claude are allowed, not prescribed)
   - .claude/settings.json (hook registration — the only confirmed hook-registration surface, this repo)
-  - system/hook-contract.md (hooks: registration file + the portability statement about absolute paths)
+  - canon/hook-contract.md (hooks: registration file + the portability statement about absolute paths)
   - system/hooks/guard_write_paths.sh (the live guard over new writes under ~/.claude/skills and /commands)
   - shared/brain_root.py (resolve_brain_root / set_brain_root — how the AI Brain path is found and set)
   - shared/paths.py (scratch_dir — the one deliberate exception that does NOT go to the AI Brain)
@@ -131,7 +131,7 @@ flip) rather than a private fork (a setting, one flip from public).
 
 ### THE FOUR HOMES
 
-*Which layer notices when something lands in the wrong home: `system/sops/build-conformance-sop.md` §1.*
+*Which layer notices when something lands in the wrong home: `canon/build-conformance-sop.md` §1.*
 
 | Home | Whose | Who can see it | Survives what |
 |---|---|---|---|
@@ -269,7 +269,7 @@ copy it out and run it separately, and it will not receive Harness updates.)*
 ### EDGE CASES
 
 1. **Can a hook be Path 1 — a personal hook, living outside the repo?** **Investigated this session,
-   and the honest answer is: not with any documented, confirmed mechanism.** `system/hook-contract.md`
+   and the honest answer is: not with any documented, confirmed mechanism.** `canon/hook-contract.md`
    — this repo's own canonical reference for hook creation — names exactly one registration surface:
    the tracked `.claude/settings.json`, using `${CLAUDE_PROJECT_DIR}` so the registration "travels
    with `git pull`," and states an absolute path baked into that file instead "works on exactly one
@@ -293,7 +293,7 @@ copy it out and run it separately, and it will not receive Harness updates.)*
    `.claude/settings.local.json` (⛔ gitignored by design — absent from a fresh clone), is real and
    does survive a `git pull` — and this repo's own `INSTALL.md` already treats it as legitimately
    "yours" (it is one of the two named
-   exceptions in the pre-delete-and-reclone ownership check) — **but `system/hook-contract.md` never
+   exceptions in the pre-delete-and-reclone ownership check) — **but `canon/hook-contract.md` never
    documents it as a hook-registration surface, and the live copy inspected this session
    (`~/.claude/settings.local.json`) holds only a `permissions` block, no `hooks` key, in current use.**
    **Conclusion, stated plainly rather than papered over: personal hooks have no confirmed legal home

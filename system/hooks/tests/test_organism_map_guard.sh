@@ -17,7 +17,7 @@
 # wrapped a command in backticks, the escaping emitted an invalid JSON escape, and the deny was
 # unparseable — exit 2 fired, an exit-code-only suite scored it PASS, and the message a human reads
 # would have rendered on neither channel. So the last block below re-parses every deny path and
-# asserts WHY / REDIRECT / RULE are present in the text. (`system/sops/hook-sop.md` §4.)
+# asserts WHY / REDIRECT / RULE are present in the text. (`canon/hook-sop.md` §4.)
 #
 # Deny = exit 2 + JSON on stderr. Allow = exit 0.
 # Run: bash system/hooks/tests/test_organism_map_guard.sh   (exit 0 = all pass)

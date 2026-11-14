@@ -112,7 +112,7 @@ WORD_BOUNDARY_R = r"(?![A-Za-z0-9])"
 # ⭐ THE TRAILING "s", AND WHY IT IS WORTH ITS FALSE POSITIVES.
 #
 # Found by running this lane over this repo's own docs rather than by reasoning about it:
-# `docs/data-layout.md` carried the donor author's laptop hostname, and the hostname was his
+# `canon/data-layout.md` carried the donor author's laptop hostname, and the hostname was his
 # first name with an "s" glued on -- the shape macOS produces from "<Name>'s MacBook Air" by
 # default. His own bounded rule could not see it: after the name came an alphanumeric, so the
 # right-hand boundary failed and the term he had listed to protect himself matched nothing.

@@ -5,7 +5,7 @@ approved_by: "Enver on 2026-11-10, via the V2 coordinator"
 last_reviewed: 2026-11-10
 purpose: "Build a skill that keeps doing its job in a real, filling window, by letting code hold what has to hold and showing the person every failure."
 read_when: "You are building, rebuilding or testing a skill, or a skill keeps skipping steps, stalling, or failing where nobody can see it."
-history: "system/sops/skill-building-sop.history.md"
+history: "canon/skill-building-sop.history.md"
 ---
 
 # Building and testing a skill
@@ -408,7 +408,7 @@ history: "system/sops/skill-building-sop.history.md"
 - **Evidence:** the skill tester rig's findings record, 2026-11-05: rig P1-P11 and §1-§8. Enver ruled on 2026-11-10
   that this SOP is a write-up from it, with no canon-files run. The failure census
   of 2026-09-05 and the other real-use lessons cited here: the archived SOP,
-  `system/_retired-2026-11-10/skill-building-sop.ARCHIVE-2026-11-10.md` (with the old SOP's own history file beside it). This SOP's own history starts fresh at `system/sops/skill-building-sop.history.md` (the header's `history:`).
+  `system/_retired-2026-11-10/skill-building-sop.ARCHIVE-2026-11-10.md` (with the old SOP's own history file beside it). This SOP's own history starts fresh at `canon/skill-building-sop.history.md` (the header's `history:`).
 - **Words used here:** canon's shared vocabulary (skill, scaffold, seam), plus:
   - **command** — one prompt behind a slash command: one shot, no steps that have to hold, no state across turns.
   - **shape** — the frontmatter field naming how a skill is used (Build, step 2).

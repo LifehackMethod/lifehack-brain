@@ -66,7 +66,7 @@ The cluster covers four distinct concerns that collectively keep plans durable a
 
 **No durability/backup concern.** The donor had a fifth one — a Stop hook that copied plans to a
 second machine's namespace. It is not here, and nothing replaces it: a plan is one flat file at
-`<notes>/plans/<name>.md`, "not mirrored anywhere. There is one copy" (`docs/data-layout.md` line
+`<notes>/plans/<name>.md`, "not mirrored anywhere. There is one copy" (`canon/data-layout.md` line
 201). The heading above still says "six hooks" from the donor's count; the real count is five.
 
 `pm_persist.sh` (a `project-manager` element hook, NOT part of this cluster) refreshes the plan flag's TTL every turn so it never expires mid-session (`pm_persist.sh` line 49).
@@ -164,14 +164,14 @@ On every user prompt turn, diffs `~/.claude/plans/*.md` against a per-session st
 `system/hooks/mirror_plans.sh` does not exist here, and neither does the recovery script that
 paired with it. Both were two-machine machinery: a Stop hook that rsynced `~/.claude/plans/` into a
 per-hostname folder on a shared drive, and a puller that fetched the *other* machine's copy. This
-system has one machine, so the whole concern is gone — `docs/data-layout.md` line 214: *"there is
+system has one machine, so the whole concern is gone — `canon/data-layout.md` line 214: *"there is
 one machine. The two-machine plane is not part of this system."*
 
 #### What it does
 
 Nothing — there is no hook to run. Plans are durable because they are written where the rest of
 your notes are written: one flat file per plan at `<notes>/plans/<name>.md`, "not mirrored
-anywhere. There is one copy" (`docs/data-layout.md` line 201). Backing that up is the same job as
+anywhere. There is one copy" (`canon/data-layout.md` line 201). Backing that up is the same job as
 backing up everything else you own, and it is not this cluster's concern.
 
 ---
@@ -197,9 +197,9 @@ then build something better for having read it.
 
 | Noun regex | SOP pointed at | Human label |
 |---|---|---|
-| `skills?` | `system/sops/skill-building-sop.md` | skill |
-| `hooks?` | `system/sops/hook-sop.md` | hook |
-| `desks?` | `system/sops/desk-building-sop.md` | desk |
+| `skills?` | `canon/skill-building-sop.md` | skill |
+| `hooks?` | `canon/hook-sop.md` | hook |
+| `desks?` | `canon/desk-building-sop.md` | desk |
 | `(?:google\s+)?sheets?\|spreadsheets?` | `system/sops/google-sheet-sop.md` | Google Sheet |
 | `dashboards?\|views?\|screens?` | `system/sops/design-process-sop.md` (work in progress, disconnected 2026-10-31) | dashboard / view |
 | `crons?\|scheduled\s+(?:job\|task)s?\|timers?` | `system/sops/cron-safety.md` | cron job |
@@ -278,7 +278,7 @@ section presents it as the current dominant behavior when it has been demoted to
 | `~/.claude/run/plan-announce/<key>.state` | announce_plan_write.sh | announce_plan_write.sh (per-turn diff) | Per-session plan-diff seed; never durable |
 | `~/.claude/run/plan-ledger.md` | announce_plan_write.sh (fallback) | Human / recovery | NEW-plan pointer when no pm_flag armed |
 | Active project brief `## SCRATCHPAD` | announce_plan_write.sh (primary) | pm_persist.sh · /save | NEW-plan pointer when pm_flag armed |
-| `<notes>/plans/<name>.md` | `/autoplan` | Human · `/build` · `/checkin` · `/read` | The durable plan. Flat, one copy, mirrored nowhere (`docs/data-layout.md` lines 201, 241) |
+| `<notes>/plans/<name>.md` | `/autoplan` | Human · `/build` · `/checkin` · `/read` | The durable plan. Flat, one copy, mirrored nowhere (`canon/data-layout.md` lines 201, 241) |
 
 ---
 
@@ -291,7 +291,7 @@ COMPLEMENTS project-manager           · plan_flag.sh arms session plan identity
 WRITES→     announce_plan_write       · writes NEW-plan pointer lines into project-manager's owned ## SCRATCHPAD when pm_flag is armed; falls back to plan-ledger.md when not [hook — announce_plan_write.sh lines 76–91]
 READS       plan_flag.sh              · /advisory-council reads plan_flag.sh path subcommand to load the active plan as advisory context before its council run [honor — /advisory-council skill; no hook enforces this read]
 READS       plan_flag.sh              · /save Step 8 (Wake Routine handoff) reads plan_flag.sh status to surface the active plan name in the continuation handoff [honor — /save skill]
-TRIGGERS    inject_sop_before_build   · fires before any build of a hook, skill, desk, sheet, dashboard, cron, or ingest pipeline — the six domains whose SOPs live in system/sops/; NOT triggered before plan-content work (planning SOP is pointed at by guard_plan_structure's block message + CLAUDE.md directly) [hook — UserPromptSubmit exit 0]
+TRIGGERS    inject_sop_before_build   · fires before any build of a hook, skill, desk, sheet, dashboard, cron, or ingest pipeline — the six domains whose SOPs live in canon/ and system/sops/; NOT triggered before plan-content work (planning SOP is pointed at by guard_plan_structure's block message + CLAUDE.md directly) [hook — UserPromptSubmit exit 0]
 KEYS-OFF    pm_persist.sh             · pm_persist.sh (project-manager element) refreshes plan_flag.sh's armed_at every turn so the plan flag never TTL-expires mid-session [hook — pm_persist.sh line 49]
 ```
 
@@ -307,7 +307,7 @@ KEYS-OFF    pm_persist.sh             · pm_persist.sh (project-manager element)
 
 4. **plan_flag.sh `record` path mtime cross-wire** (CONFIRMED debt, `debt-ledger.md` line 84) — see Hook 6 "Known gap." `state: actionable`.
 
-5. **A plan has no second copy** — plans live at `<notes>/plans/<name>.md`, flat, one copy, mirrored nowhere (`docs/data-layout.md` line 201). Nothing in this cluster backs a plan up; if the notes folder is lost, the plans go with it. That is the deliberate posture, not an oversight — but it is worth knowing, because the donor system did have a backup hook and this one does not.
+5. **A plan has no second copy** — plans live at `<notes>/plans/<name>.md`, flat, one copy, mirrored nowhere (`canon/data-layout.md` line 201). Nothing in this cluster backs a plan up; if the notes folder is lost, the plans go with it. That is the deliberate posture, not an oversight — but it is worth knowing, because the donor system did have a backup hook and this one does not.
 
 6. **`/read` does not arm plan_flag** (`debt-ledger.md` line 85) — `state: parked` by the operator decision 2026-07-13.
 

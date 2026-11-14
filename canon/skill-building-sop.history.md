@@ -5,7 +5,7 @@ created_at: 2026-11-10
 
 # Building and testing a skill — history
 
-Superseded wording of `system/sops/skill-building-sop.md` moves here word for word, dated, under a do-not-act note.
+Superseded wording of `canon/skill-building-sop.md` moves here word for word, dated, under a do-not-act note.
 The skills SOP as it stood before 2026-11-10, and its own history file, are archived whole in
 `system/_retired-2026-11-10/`.
 

@@ -56,7 +56,7 @@ each says so in place rather than being quietly deleted.** The subagent performs
 10. ⛔ **REMOVED — content-path drift check.** It flagged a bare relative content path that should
     have been an absolute Drive path. That was the right check for a system with a code clone, a
     separately-synced content root, and no resolver between them. Here there IS a resolver
-    (`shared/brain_root.py`), every skill goes through it, and `docs/data-layout.md` is the list of
+    (`shared/brain_root.py`), every skill goes through it, and `canon/data-layout.md` is the list of
     what writes where. **The real question it was asking — does anything write into the repo that
     belongs in your notes? — is worth keeping**, and this script does not answer it: the pre-commit
     guard that refuses to stage `memory/` or `state/` does, along with that layout page. Rebuilding
@@ -138,7 +138,7 @@ review command that does not exist. Write the queue, say where it is, and stop. 
 |---|---|---|
 | the pinned auditor agent | `.claude/agents/archivist.md` | shipped — `tools:` pinned, read-only by construction |
 | the notes-root resolver | `shared/brain_root.py` | shipped |
-| the layout it audits against | `docs/data-layout.md` | shipped |
+| the layout it audits against | `canon/data-layout.md` | shipped |
 | the read guard it checks for | `system/hooks/ingest_gate_enforce.sh` | shipped |
 
 ⛔ **Three of the donor's twelve checks were removed, not ported** — see this file's own

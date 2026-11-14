@@ -13,7 +13,7 @@ authority: user
 > How this system remembers you across sessions, and keeps that memory from rotting. Loaded on demand,
 > not injected into every session. **Core idea:** a conversation is disposable; anything durable lives
 > in a file. This doc is the reasoning behind the split between the kinds of file; the concrete map of
-> every path is `docs/data-layout.md` — read that one for WHERE something goes, this one for WHY.
+> every path is `canon/data-layout.md` — read that one for WHERE something goes, this one for WHY.
 
 ## 1. The one rule everything else rests on
 

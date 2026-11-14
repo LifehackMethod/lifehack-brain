@@ -43,7 +43,7 @@ counter-pressure: **pointers up high, content down low.** It does for LINES what
 
 ## The doctrine it audits against (read these FIRST, every run)
 - `system/intent-doctrine.md` — the parent law (every object declares its intent).
-- `system/knowledge-altitude.md` — the admission-difficulty model (Global hardest → Deep easy; the air thins as
+- `canon/knowledge-altitude.md` — the admission-difficulty model (Global hardest → Deep easy; the air thins as
   you climb; "pointers up high, content down low").
 - `<notes>/system/archivist/home-intents.md` — the **authored admission bars** (`intent` + optional ONE `not:` near-miss)
   for each home. This is the bar each line is judged against. (Authored law for global + 6 desks; do not second-guess
@@ -100,7 +100,7 @@ This pass is about the layers whose every line is paid for on every load.
 
 ## Reference
 - Formerly consumed by a review skill that has since been retired (SINK folded into its ROUTE/RELOCATE group; SPLIT into SCOPE). Bars:
-  `<notes>/system/archivist/home-intents.md`. Doctrine: `system/knowledge-altitude.md` + `system/intent-doctrine.md`.
+  `<notes>/system/archivist/home-intents.md`. Doctrine: `canon/knowledge-altitude.md` + `system/intent-doctrine.md`.
 - Sibling focused passes: `skills/archivist-deepmine` (mine bodies), the Q misplaced-FILE check (charter). This is
   the misplaced-LINE pass. Plan: `<notes>/state/projects/archivist-rebuild/task_plan.md` (P11).
 - The 2026-06-12 by-hand thinning pass (global 164→51, root 312→85, 6 desks, combined doctrine 422→136) is the
@@ -130,5 +130,5 @@ review command that does not exist. Write the queue, say where it is, and stop. 
 | what | where | status |
 |---|---|---|
 | the intent law it checks against | `system/intent-doctrine.md` | shipped |
-| the altitude law it checks against | `system/knowledge-altitude.md` | shipped — 266 lines |
+| the altitude law it checks against | `canon/knowledge-altitude.md` | shipped — 266 lines |
 | the guards it inventories | `system/hooks/` | shipped |

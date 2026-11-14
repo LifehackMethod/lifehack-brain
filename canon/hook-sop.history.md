@@ -1,9 +1,9 @@
 ---
 title: "Hook SOP: history log"
-what: "Retired and moved text from system/sops/hook-sop.md, kept verbatim and dated so nothing is lost. Never read in normal use."
+what: "Retired and moved text from canon/hook-sop.md, kept verbatim and dated so nothing is lost. Never read in normal use."
 read_in_normal_use: false
-base_commit: "3d5f72b  (git -C ~/lifehack-v2 log -1 --format=%h -- system/sops/hook-sop.md)"
-base_file: "system/sops/hook-sop.md, 227 lines at that commit, plus the earlier approved 2026-10-31 cleanup batch (one-line changes at lines 51, 69 and 94; line count unchanged), which this log's line numbers include"
+base_commit: "3d5f72b  (git -C ~/lifehack-v2 log -1 --format=%h -- canon/hook-sop.md)"
+base_file: "canon/hook-sop.md, 227 lines at that commit, plus the earlier approved 2026-10-31 cleanup batch (one-line changes at lines 51, 69 and 94; line count unchanged), which this log's line numbers include"
 created: 2026-10-31
 status: "V2 draft, to be merged with the SOP"
 ---
@@ -47,7 +47,7 @@ sources:
 - Original lines: 13
 
 ```
-reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live in system/hook-contract.md — this never repeats them. The single front door: it POINTS, it does not duplicate. Keep it ONE page."
+reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live in canon/hook-contract.md — this never repeats them. The single front door: it POINTS, it does not duplicate. Keep it ONE page."
 ```
 
 ## 2026-10-31 · CUT · lines 18-28 · boxed note 'What this page cites that is not in this repository' (and the blank line after it)
@@ -67,7 +67,7 @@ reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live i
 - Original lines: 29
 
 ```
-> **This doc owns WHEN to build a hook and WHICH kind. It does NOT repeat the mechanics — `system/hook-contract.md` owns those.** It is the single **front door** for hooks: it POINTS at the canonical homes, never copies them. Keep it short — if it grows into a second mechanics manual, it has failed. (Council-ratified 2026-06-17; diverge→argue→converge.)
+> **This doc owns WHEN to build a hook and WHICH kind. It does NOT repeat the mechanics — `canon/hook-contract.md` owns those.** It is the single **front door** for hooks: it POINTS at the canonical homes, never copies them. Keep it short — if it grows into a second mechanics manual, it has failed. (Council-ratified 2026-06-17; diverge→argue→converge.)
 ```
 
 ## 2026-10-31 · MOVE · lines 32-53 · boxed note 'What this page points at that is not in this repository' (with the blank line before it)
@@ -83,7 +83,7 @@ reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live i
 > rooms behind it, so the missing rooms are named here rather than discovered by a reader who goes
 > looking. This block is the whole list.
 >
-> - ✅ **`system/hook-contract.md` has landed** — the mechanics half of this page: exit codes, stdin
+> - ✅ **`canon/hook-contract.md` has landed** — the mechanics half of this page: exit codes, stdin
 >   parsing, the deny format, registration, the deploy checklist. The pair is complete.
 >   ⚠ It was rewritten on the way in: the version it came from described hook scripts symlinked out of
 >   a clone across two machines, and every one of those sentences was wrong here.
@@ -313,7 +313,7 @@ reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live i
 - Original lines: 225
 
 ```
-- **Injector arm/clear/TTL lifecycle + WHEN a skill arms its anchor** → ~~the skill-building SOP §4~~ *(2026-10-30: the SOP has no §4 → `system/sops/skill-building-sop.md` PART IV, §IV.3 "a lean anchor fires every turn" and §IV.7)*
+- **Injector arm/clear/TTL lifecycle + WHEN a skill arms its anchor** → ~~the skill-building SOP §4~~ *(2026-10-30: the SOP has no §4 → `canon/skill-building-sop.md` PART IV, §IV.3 "a lean anchor fires every turn" and §IV.7)*
 ```
 
 ## 2026-10-31 · FIX · line 227 · §5 struck architecture pointer
@@ -345,7 +345,7 @@ New text:
 ## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: hook-sop edit-pass hunk hunk-001, see drafts/hook-sop/applied.md
 
 ~~~~
-reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live in system/hook-contract.md — where this page restates a mechanic, the copies must agree with hook-contract.md. The single front door: it POINTS, it does not duplicate. Keep it concise."
+reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live in canon/hook-contract.md — where this page restates a mechanic, the copies must agree with hook-contract.md. The single front door: it POINTS, it does not duplicate. Keep it concise."
 ~~~~
 
 ## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: hook-sop edit-pass hunk hunk-002, see drafts/hook-sop/applied.md
@@ -363,7 +363,7 @@ reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live i
 ## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: hook-sop edit-pass hunk hunk-004, see drafts/hook-sop/applied.md
 
 ~~~~
-> **This doc owns WHEN to build a hook and WHICH kind. `system/hook-contract.md` owns the mechanics; where this doc restates one, the copies must agree with `hook-contract.md`.** It is the single **front door** for hooks: it POINTS at the canonical homes, never copies them. Keep it concise — if it grows into a second mechanics manual, it has failed. (Council-ratified 2026-06-17; diverge→argue→converge.)
+> **This doc owns WHEN to build a hook and WHICH kind. `canon/hook-contract.md` owns the mechanics; where this doc restates one, the copies must agree with `hook-contract.md`.** It is the single **front door** for hooks: it POINTS at the canonical homes, never copies them. Keep it concise — if it grows into a second mechanics manual, it has failed. (Council-ratified 2026-06-17; diverge→argue→converge.)
 ~~~~
 
 ## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: hook-sop edit-pass hunk hunk-005, see drafts/hook-sop/applied.md

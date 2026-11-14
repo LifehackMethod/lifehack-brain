@@ -115,7 +115,7 @@ correctly so:**
 
 ⛔ **THERE IS NO `desks/` TREE IN THIS REPOSITORY, AND THERE IS NOT MEANT TO BE.**
 The plugin ships **no** desk list (it is the person's, `<notes>/desks/desk-registry.yaml`) — a fresh install has no desks,
-and a full desk is promoted by hand through `system/sops/desk-building-sop.md`. All planning
+and a full desk is promoted by hand through `canon/desk-building-sop.md`. All planning
 **content** lives under the reader's own notes root, resolved through `shared/brain_root.py`, and is
 never committed. Verified by directory listing this session: no `desks/` at the repository root.
 

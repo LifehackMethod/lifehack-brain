@@ -51,7 +51,7 @@ done
 ck "a refused row also refused with --force"     "$(run tj-bad --force)" 78
 # The scratch manifest IS the throwaway code root's system/jobs.md, so its rows are plugin-origin: the plugin variant. A personal-origin row (below) gets the personal one.
 NEXT_STEP="Rulebook: \`system/sops/pr-sop.md\`. This job ships with the plugin: tell the person to report it. Don't edit plugin files, and don't copy the job under its own name to fix it. The main window runs this check itself and reads this line; never rely on a summary."
-NEXT_PERSONAL="Rulebook: \`system/sops/cron-jobs-sop.md\`, section \"Bring an existing job into line\". This job isn't in line yet: offer the person, in one short line, to bring it into line. Don't install it by hand. The main window runs this check itself and reads this line; never rely on a summary."
+NEXT_PERSONAL="Rulebook: \`canon/cron-jobs-sop.md\`, section \"Bring an existing job into line\". This job isn't in line yet: offer the person, in one short line, to bring it into line. Don't install it by hand. The main window runs this check itself and reads this line; never rely on a summary."
 ck "run-time refusal carries the next step (first and last line of the door output, so twice)" "$(grep -cF "door: $NEXT_STEP" "$T/stderr")" 2
 ck "--check-row refusal ends with the next step"  "$(bash "$ROOT/system/tools/install-schedulers.sh" --check-row tj-bad | tail -1)" "$NEXT_STEP"
 ck "--check-row refusal starts with the next step" "$(bash "$ROOT/system/tools/install-schedulers.sh" --check-row tj-bad | head -1)" "$NEXT_STEP"

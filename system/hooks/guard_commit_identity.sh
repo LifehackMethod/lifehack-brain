@@ -65,7 +65,7 @@ trap 'lhb_journal_fire "$?" "guard_commit_identity.sh" "PreToolUse" "Bash" 2>/de
 #      email (commit_identity_optional) and a set email (commit_identity_no_list, 2026-11-02). There is no list
 #      to compare with; the public-push scan still stops on the missing file.
 # UPDATED: 2026-11-02
-# RULE: system/hook-contract.md (mechanics)
+# RULE: canon/hook-contract.md (mechanics)
 # ─────────────────────────────────────────────────────────────────────────────
 # guard_commit_identity.sh — PreToolUse hook (matcher: Bash)
 
@@ -293,7 +293,7 @@ case "$VERDICT" in
     _identity_file="$_brain/config/ship-identity.md"
     if [ ! -f "$_identity_file" ]; then
       # 2026-11-02 (commit_identity_no_list): commit_identity_optional only covered an EMPTY email, so a plugin-only student
-      # (bootstrap.py never makes this file; docs/data-layout.md calls it maintainer-only) with a normal email was blocked on every
+      # (bootstrap.py never makes this file; canon/data-layout.md calls it maintainer-only) with a normal email was blocked on every
       # ordinary commit, with an instruction to create a file they do not need. No list = nothing to check against.
       # A folder at that path stays a deny; so does a present file, an empty list and an unresolved notes folder.
       if [ ! -e "$_identity_file" ] && roundb_on commit_identity_no_list; then

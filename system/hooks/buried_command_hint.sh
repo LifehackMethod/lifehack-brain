@@ -27,7 +27,7 @@ trap 'lhb_journal_fire "$?" "buried_command_hint.sh" "UserPromptSubmit" "" 2>/de
 # ──────────────────────────────────────────────────────────────────────────
 # STATUS (2026-08-23): PORTED + REGISTERED (plan task T3.5) into the personal-code repo and
 #      lifehack-brain from the retired the donor repo donor clone. The operator retired disable-model-invocation
-#      FLEET-WIDE on 2026-08-06 (authority: user, system/sops/skill-building-sop.md:605-622:
+#      FLEET-WIDE on 2026-08-06 (authority: user, canon/skill-building-sop.md:605-622:
 #      "I want all of my skills to be able to invoke each other. It's a guard that I don't
 #      feel that I need."). ZERO skills carry the flag today (verified 2026-08-06) — so this
 #      hook's dynamically-discovered trigger set is now permanently empty, and it was removed
@@ -63,7 +63,7 @@ trap 'lhb_journal_fire "$?" "buried_command_hint.sh" "UserPromptSubmit" "" 2>/de
 # REDIRECT: N/A (non-blocking, informational only). The fix for the human is mechanical:
 #      re-send the command as its own message, e.g. a message that is JUST "/autoplan".
 # SIGNPOST: The disable-model-invocation guarantee is RETIRED fleet-wide; its former home
-#      was each skill's own frontmatter. See system/sops/skill-building-sop.md:605-622 for
+#      was each skill's own frontmatter. See canon/skill-building-sop.md:605-622 for
 #      the retirement ruling and system/hooks/guard_disable_model_invocation.sh for the hook
 #      that now keeps it retired. This script still derives its list dynamically from
 #      frontmatter every run, so it needs no further edit to reactivate correctly if the

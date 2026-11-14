@@ -225,5 +225,5 @@ dedup will match this file by slug rather than duplicating it.
 | `system/tools/validate_frontmatter.py` | checks the record before it is trusted | ✅ here |
 | `system/tools/safe_search_api.sh` | the only sanctioned search path | ✅ here — needs a serper.dev key, see INSTALL.md |
 | `system/tools/safe_fetch.py` | the only sanctioned fetch path | ✅ here |
-| `docs/data-layout.md` | where records go | ✅ here |
+| `canon/data-layout.md` | where records go | ✅ here |
 | `/websearch` | the one-fact sibling this skill contrasts itself with | ✅ here |

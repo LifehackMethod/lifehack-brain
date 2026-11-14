@@ -166,7 +166,7 @@ authority: user
 ## DO NOT BUILD / DO NOT RETRY — what was tried at the code/LLM seam and failed *(section opened 2026-09-05 by ruling; grows over time)*
 
 > Proven failures at the seam, with receipts, so no build re-tries them from first principles. Same shape as
-> the registers in `system/sops/skill-building-sop.md` (Don't Retry) and its archived predecessor's §II.4a/b (`system/_retired-2026-11-10/`); `deadend_check.py` matches
+> the registers in `canon/skill-building-sop.md` (Don't Retry) and its archived predecessor's §II.4a/b (`system/_retired-2026-11-10/`); `deadend_check.py` matches
 > on the heading phrase. Each entry: tried · failed · date · source · replacement · tier. **Never complete.**
 > Principle-level twins: canon §10a.
 
@@ -242,7 +242,7 @@ never removes them**, and a build carrying rules it does not need is slower and,
    model to keep on-frame, so every law about prose decay, judgment fences, and drift is inert here.
 3. **LLM-ONLY PRODUCT — a prose skill with no code behind it.** There is nothing to gate, so most of
    the skill-building SOP's enforcement toolbox is **inert — do not manufacture gates for
-   something with no mechanical surface.** **prose decay (`system/sops/skill-building-sop.md`) is the whole
+   something with no mechanical surface.** **prose decay (`canon/skill-building-sop.md`) is the whole
    risk**, and §II.1's **REFRESH** family (`:249` — fresh contexts working off a file spine) is the only
    one of the four families that touches decay. Read those two; skip the rest of PART II.
 4. **HYBRID — code and the LLM in one running product, meant to work together.** ⭐ **A SEAM EXISTS.**
@@ -269,10 +269,10 @@ A build can also be multiple types below. This question, though, has exactly one
 
 | building… | read first (binding) | status |
 |---|---|---|
-| **a hook** | `system/sops/hook-sop.md` | ✅ here |
-| **a hook — the mechanics half** | `system/hook-contract.md` | ✅ here |
-| **a skill — the whole SOP** | `system/sops/skill-building-sop.md` | ✅ here — written fresh 2026-11-10 (the old 3,000-line SOP is archived in `system/_retired-2026-11-10/`); some records it cites are not shipped |
-| **memory, a doc, or a where-does-this-live decision** | `docs/data-layout.md` · `system/knowledge-altitude.md` | data-layout ✅ here; knowledge-altitude lands in T1.14 |
+| **a hook** | `canon/hook-sop.md` | ✅ here |
+| **a hook — the mechanics half** | `canon/hook-contract.md` | ✅ here |
+| **a skill — the whole SOP** | `canon/skill-building-sop.md` | ✅ here — written fresh 2026-11-10 (the old 3,000-line SOP is archived in `system/_retired-2026-11-10/`); some records it cites are not shipped |
+| **memory, a doc, or a where-does-this-live decision** | `canon/data-layout.md` · `canon/knowledge-altitude.md` | data-layout ✅ here; knowledge-altitude lands in T1.14 |
 | **a design, dashboard or interface** | `system/sops/design-process-sop.md` | (work in progress, disconnected 2026-10-31) |
 | **anything security-touching** | the security wall docs | land in Phase 2 |
 | **a Google interaction** | the Google policy docs | land in Phase 2 |
@@ -294,7 +294,7 @@ A build can also be multiple types below. This question, though, has exactly one
 >   its existing rows.
 > - **a spreadsheet** — the sheet-building skill is not in this release.
 > - **an architecture change** — the architecture docs it named describe a system this repo is not.
->   `docs/data-layout.md` is the equivalent that does ship, and it is in the memory row above.
+>   `canon/data-layout.md` is the equivalent that does ship, and it is in the memory row above.
 > - **a mail or corpus reader** — the ingestion doctrine is `/ingest`'s own `SPEC.md`, which ships with
 >   that skill and is read from there.
 > - **the topic vocabulary** — deliberately never shipped. It is the person's own, and no package hands

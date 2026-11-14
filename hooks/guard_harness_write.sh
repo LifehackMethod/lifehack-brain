@@ -24,7 +24,7 @@ trap 'lhb_journal_fire "$?" "guard_harness_write.sh" "PreToolUse" "Write|Edit" 2
 #      NOT-SET message rather than inventing or guessing a path (brain_root.py's own rule: "never a
 #      default, never a fallback, never a guess").
 # SIGNPOST: shared/brain_root.py (the one resolver) + INSTALL.md (where the harness actually lands)
-#      + system/hook-contract.md (this hook's mechanics). Change the rule there first.
+#      + canon/hook-contract.md (this hook's mechanics). Change the rule there first.
 # FAIL_POSTURE: closed — unparseable stdin, an unresolvable path, or any python failure DENIES.
 # UPDATED: 2026-10-28 (sandbox tag: LIFEHACK_SANDBOX=V2 allows writes inside ~/lifehack-v2 on branch V2) · 2026-08-25 (spec draft — see P.A3-public-pr-draft.md for the dry-run evidence this was
 #      built and verified against).
@@ -65,7 +65,7 @@ except Exception:
   fi
 fi
 if [ -z "$INPUT" ]; then
-  deny '{"decision":"block","reason":"BLOCKED: guard_harness_write got no stdin at all, so it cannot tell what is being written or where. Failing closed rather than guessing. RULE: system/hook-contract.md — a guard that cannot parse its input must deny, never allow."}'
+  deny '{"decision":"block","reason":"BLOCKED: guard_harness_write got no stdin at all, so it cannot tell what is being written or where. Failing closed rather than guessing. RULE: canon/hook-contract.md — a guard that cannot parse its input must deny, never allow."}'
 fi
 
 # Locate the harness root the SAME way shared/brain_root.py's harness_root() does: derived from
@@ -78,7 +78,7 @@ if [ -z "$HOOK_DIR" ]; then
 fi
 REPO="$(cd "$HOOK_DIR/.." 2>/dev/null && pwd)"
 if [ -z "$REPO" ] || [ ! -f "$REPO/shared/brain_root.py" ]; then
-  deny '{"decision":"block","reason":"BLOCKED: guard_harness_write expected shared/brain_root.py one directory above hooks/ and did not find it, so it cannot resolve either the harness root or the AI Brain redirect. Failing closed rather than guessing a path. RULE: shared/brain_root.py, system/hook-contract.md."}'
+  deny '{"decision":"block","reason":"BLOCKED: guard_harness_write expected shared/brain_root.py one directory above hooks/ and did not find it, so it cannot resolve either the harness root or the AI Brain redirect. Failing closed rather than guessing a path. RULE: shared/brain_root.py, canon/hook-contract.md."}'
 fi
 
 RESULT=$(REPO="$REPO" printf '%s' "$INPUT" | REPO="$REPO" python3 -c "
@@ -152,7 +152,7 @@ case "$RESULT" in
     exit 0
     ;;
   PARSE_ERROR)
-    deny '{"decision":"block","reason":"BLOCKED: guard_harness_write could not read the tool input or the target path, so it is failing closed. RULE: system/hook-contract.md — an unreadable write and a harmless one must never look the same."}'
+    deny '{"decision":"block","reason":"BLOCKED: guard_harness_write could not read the tool input or the target path, so it is failing closed. RULE: canon/hook-contract.md — an unreadable write and a harmless one must never look the same."}'
     ;;
   BRAIN_ROOT_RESOLVE_ERROR*)
     REL="${RESULT#*|*|}"
@@ -165,7 +165,7 @@ case "$RESULT" in
     else
       WHY="WHY: this edits a file that is already part of the installed harness (${REL}). A customization made in place is exactly what an update or reinstall silently reverts -- your change disappears, and nothing tells you it happened or why."
     fi
-    deny "{\"decision\":\"block\",\"reason\":\"BLOCKED: ${WHY} REDIRECT: this should go in your own AI Brain, not the harness -- but your AI Brain root is NOT SET, so no redirect path can be given. NOT-SET -- no \\\$LIFEHACK_ROOT, no .brain-root pointer in this repo, no persisted ~/.config/lifehack/brain-root, and no legacy Drive folder found. This guard will never guess a folder or fall back to the harness itself. Fix: python3 shared/brain_root.py --set <path> (add --create for a new folder), then retry. RULE: shared/brain_root.py, system/hook-contract.md.\"}"
+    deny "{\"decision\":\"block\",\"reason\":\"BLOCKED: ${WHY} REDIRECT: this should go in your own AI Brain, not the harness -- but your AI Brain root is NOT SET, so no redirect path can be given. NOT-SET -- no \\\$LIFEHACK_ROOT, no .brain-root pointer in this repo, no persisted ~/.config/lifehack/brain-root, and no legacy Drive folder found. This guard will never guess a folder or fall back to the harness itself. Fix: python3 shared/brain_root.py --set <path> (add --create for a new folder), then retry. RULE: shared/brain_root.py, canon/hook-contract.md.\"}"
     ;;
   DENY*)
     _T="${RESULT#DENY|}"; DANGER="${_T%%|*}"; _T2="${_T#*|}"; REL="${_T2%%|*}"; BROOT="${_T2#*|}"
@@ -174,7 +174,7 @@ case "$RESULT" in
     else
       WHY="WHY: this edits a file that is already part of the installed harness (${REL}). A customization made in place is exactly what an update or reinstall silently reverts -- your change disappears, and nothing tells you it happened or why."
     fi
-    deny "{\"decision\":\"block\",\"reason\":\"BLOCKED: ${WHY} REDIRECT: save this in your own AI Brain instead -- ${BROOT} -- which the harness never touches on update. RULE: shared/brain_root.py, system/hook-contract.md.\"}"
+    deny "{\"decision\":\"block\",\"reason\":\"BLOCKED: ${WHY} REDIRECT: save this in your own AI Brain instead -- ${BROOT} -- which the harness never touches on update. RULE: shared/brain_root.py, canon/hook-contract.md.\"}"
     ;;
   *)
     deny '{"decision":"block","reason":"BLOCKED: guard_harness_write ended in a state it does not recognise, so it is failing closed."}'

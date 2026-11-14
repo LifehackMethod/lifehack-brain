@@ -14,7 +14,7 @@ trap 'lhb_journal_fire "$?" "enforce_multiphase_contract.sh" "PreToolUse" "Write
 # REDIRECT: scaffold it right — `bash <repo>/system/tools/new-skill.sh <name> --multiphase N`
 #      stamps each driver with a `## Output contract` + `## do NOT` block + a `✅ phase N complete` marker.
 #      Or add a `## Output contract` section (ending with the `✅ phase N complete` boundary marker) by hand.
-# SIGNPOST: system/sops/skill-building-sop.md (the enforceability partition + 3-failure-type frame) +
+# SIGNPOST: canon/skill-building-sop.md (the enforceability partition + 3-failure-type frame) +
 #      system/tools/new-skill.sh (the `--multiphase` scaffold, whose own comments name this guard by
 #      name as the enforcement it assumes exists — each scaffolded skill gets its own
 #      `scripts/phase_gate.py` that checks a run's artifact against this exact `## Output contract`
@@ -88,7 +88,7 @@ if not re.search(r"^##\s+Output\s+contract\b", content, re.M | re.I):
            " REDIRECT: scaffold with `bash <repo>/system/tools/new-skill.sh <name> --multiphase N`"
            " (stamps a `## Output contract` + `## do NOT` block + a `phase N complete` marker per driver),"
            " or add a `## Output contract` section ending with the boundary marker."
-           " RULE: system/sops/skill-building-sop.md — edit there + get sign-off to change, then update this guard."
+           " RULE: canon/skill-building-sop.md — edit there + get sign-off to change, then update this guard."
            % os.path.basename(path))
     sys.stderr.write(msg + "\n")
     sys.exit(2)

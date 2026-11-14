@@ -99,7 +99,7 @@ they already have a rough prompt, a system instruction, or a half-built skill fr
 - A **skill or prompt that does one specific thing** becomes its own folder under `.claude/skills/`,
   same shape as everything already there — see the build case, below.
 - Their **own notes structure**, if they had one, is a judgment call, not a rule: point them at
-  `docs/data-layout.md` so they can see the shape this system expects (`data/`, `desks/`, `records/`,
+  `canon/data-layout.md` so they can see the shape this system expects (`data/`, `desks/`, `records/`,
   `canon.md`…) and let them decide what maps across and what starts fresh.
 
 **Say it in language that never judges what they built.** "You probably already have something that

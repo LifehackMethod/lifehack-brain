@@ -1,9 +1,9 @@
 ---
 title: "Canonical-principles SOP: history log"
-what: "Retired and moved text from system/sops/canonical-principles-sop.md, kept verbatim and dated so nothing is lost. Never read in normal use."
+what: "Retired and moved text from canon/canonical-principles-sop.md, kept verbatim and dated so nothing is lost. Never read in normal use."
 read_in_normal_use: false
-base_commit: "a5e968d  (git -C ~/lifehack-v2 log -1 --format=%h -- system/sops/canonical-principles-sop.md)"
-base_file: "system/sops/canonical-principles-sop.md, 1713 lines at that commit"
+base_commit: "a5e968d  (git -C ~/lifehack-v2 log -1 --format=%h -- canon/canonical-principles-sop.md)"
+base_file: "canon/canonical-principles-sop.md, 1713 lines at that commit"
 created: 2026-10-30
 status: "V2 copy, to be merged with the SOP"
 ---
@@ -88,7 +88,7 @@ tier: canon
 - Original lines: 100-101
 
 ```
-> # THE FRAME — read before any line below. ~~Identical text~~ A near-copy of this text sits atop `system/sops/skill-building-sop.md`.
+> # THE FRAME — read before any line below. ~~Identical text~~ A near-copy of this text sits atop `canon/skill-building-sop.md`.
 > *(Enver, 2026-09-05. ~~This block is the one place both documents agree by construction.~~ The two copies are kept in agreement
 ```
 
@@ -1079,7 +1079,7 @@ Original line 1530:
 ## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 003 (applied.md ids)
 
 ~~~~
-> *(The centering frame. Enver's, sharpened and adopted 2026-09-11. A near-copy leads `system/sops/skill-building-sop.md`; per §12.b the two are kept in agreement by a quarterly human audit, not by construction. ⚠ **That audit is a thing someone must REMEMBER — so by §0.1's own test it is a PREFERENCE, not a layer, and it will drift.** Chosen knowingly anyway: a sync script is one more thing that breaks silently and then needs its own alarm. **Stated so the weakness is owned rather than discovered.**)*
+> *(The centering frame. Enver's, sharpened and adopted 2026-09-11. A near-copy leads `canon/skill-building-sop.md`; per §12.b the two are kept in agreement by a quarterly human audit, not by construction. ⚠ **That audit is a thing someone must REMEMBER — so by §0.1's own test it is a PREFERENCE, not a layer, and it will drift.** Chosen knowingly anyway: a sync script is one more thing that breaks silently and then needs its own alarm. **Stated so the weakness is owned rather than discovered.**)*
 ~~~~
 
 ## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 004 (applied.md ids)
@@ -1119,7 +1119,7 @@ Original line 1530:
 ## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: canonical-principles-sop hunk 009 (applied.md ids)
 
 ~~~~
-> # THE FRAME — read before any line below. A near-copy of this text sits atop `system/sops/skill-building-sop.md`.
+> # THE FRAME — read before any line below. A near-copy of this text sits atop `canon/skill-building-sop.md`.
 > *(Enver, 2026-09-05. The two copies are kept in agreement
 > by a quarterly human audit, not by construction — Enver's ruling 2026-09-06, §12.b.)*
 ~~~~
@@ -1592,7 +1592,7 @@ folder structure; git *enforces* it at a known version. **Ship public, gate late
 ~~~~
 # Archive, canonical-principles-sop draft (2026-11-12)
 
-Text moved word for word out of the live body by checklist v3. When the draft lands, this goes into `system/sops/canonical-principles-sop.history.md`.
+Text moved word for word out of the live body by checklist v3. When the draft lands, this goes into `canon/canonical-principles-sop.history.md`.
 
 ## CP4: the old three-tier confidence list (was the Frame's admission block, frozen L118-121)
 
@@ -1603,7 +1603,7 @@ Text moved word for word out of the live body by checklist v3. When the draft la
 
 ## CP11: the Frame's near-copy line and its audit note (frozen L132-134; false since 2026-11-10)
 
-> # THE FRAME — read before any line below. A near-copy of this text sits atop `system/sops/skill-building-sop.md`.
+> # THE FRAME — read before any line below. A near-copy of this text sits atop `canon/skill-building-sop.md`.
 > *(Enver, 2026-09-05. The two copies are kept in agreement
 > by a quarterly human audit, not by construction — Enver's ruling 2026-09-06, §12.b.)*
 
@@ -1622,7 +1622,7 @@ Text moved word for word out of the live body by checklist v3. When the draft la
 ## CP 1 (add-on 2026-11-13; pre-add-on L54, the centering frame; moved word for word, same kind as CP11)
 
 ```
-> *(The centering frame. Enver's, sharpened and adopted 2026-09-11. A near-copy leads `system/sops/skill-building-sop.md`; per §12.b the two are kept in agreement by a quarterly human audit, not by construction. ⚠ **That audit is a thing someone must REMEMBER — so by §0.1's own test it is a PREFERENCE, not a layer, and it will drift.** Chosen knowingly anyway: a sync script is one more thing that breaks silently and then needs its own alarm. **Stated so the weakness is owned rather than discovered.**)*
+> *(The centering frame. Enver's, sharpened and adopted 2026-09-11. A near-copy leads `canon/skill-building-sop.md`; per §12.b the two are kept in agreement by a quarterly human audit, not by construction. ⚠ **That audit is a thing someone must REMEMBER — so by §0.1's own test it is a PREFERENCE, not a layer, and it will drift.** Chosen knowingly anyway: a sync script is one more thing that breaks silently and then needs its own alarm. **Stated so the weakness is owned rather than discovered.**)*
 ```
 
 ~~~~

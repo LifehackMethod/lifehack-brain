@@ -211,7 +211,7 @@ their location from the repo root, so a different layout breaks them.
 | `shared/paths.py` | resolves `FLAT`, `ANCHOR` and the scratch dir — used by the Paths block below and by every phase file | ✅ here |
 | `system/hooks/ingest_gate_enforce.sh` | the hook that stops the main session reading the locked scratch (`3-deep-read.md`) — the enforcement half of the reader/actor split | ✅ here, and registered |
 | `system/hooks/guard_canon_write.sh` | ⚖ **NOT the gate this row originally asked for.** It was to enforce "the machine must never write canon" — a rule that was REVERSED on 2026-08-11: canon is now written at its earned altitude, behind a human checkpoint inside the skill. The hook that landed guards the two things that survived that reversal — canon stays SMALL and canon carries no expiry date — and deliberately does NOT check `authority: user`, because a machine can type that line as easily as a person and the check broke `/save`'s own output. Reasoning in the hook's header. | ✅ here, and registered |
-| `system/knowledge-altitude.md` | the too-big/too-small subdivide rules PHASE 3 cites by line | ✅ here |
+| `canon/knowledge-altitude.md` | the too-big/too-small subdivide rules PHASE 3 cites by line | ✅ here |
 | `.claude/skills/read/` | PHASE 4 hands off to it | ✅ here |
 | `.claude/skills/archivist-route/` | PHASE 4 reuses its ranking contract inline rather than rebuilding it | ✅ here |
 

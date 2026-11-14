@@ -22,8 +22,8 @@ trap 'lhb_journal_fire "$?" "emit_harness_brief.sh" "SessionStart" "" 2>/dev/nul
 #      set (it is only set for plugin-registered hooks) and that the session was RESTARTED after
 #      the registration landed.
 # SIGNPOST: the brief itself is CLAUDE.md at this repo's root — ⛔ never paste its content here,
-#      one source and never a copy. The rule for hooks is system/sops/hook-sop.md + the mechanics
-#      in system/hook-contract.md; to change WHETHER this is delivered, edit the registration in
+#      one source and never a copy. The rule for hooks is canon/hook-sop.md + the mechanics
+#      in canon/hook-contract.md; to change WHETHER this is delivered, edit the registration in
 #      hooks/hooks.json and get the maintainer's sign-off.
 # FAIL_POSTURE: open, deliberately. Every failure path exits 0 silently — no plugin root, no
 #      brief, unreadable file. This hook informs; a session that cannot be briefed must still run.

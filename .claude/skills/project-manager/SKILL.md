@@ -45,7 +45,7 @@ DATA="$(python3 "$ROOT/shared/brain_root.py" --quiet)" || {
 ```
 
 `$DATA` is the person's folder, never this one. Every path below is under it. If it is not set, **stop
-and ask** — never fall back to the current directory. Full map: `docs/data-layout.md`.
+and ask** — never fall back to the current directory. Full map: `canon/data-layout.md`.
 
 ## Where the doc lives
 
@@ -222,4 +222,4 @@ If not, the doc is not done.
 | `system/tools/project-manager/check_slug_folder.py` | audits folder-name/slug drift | ✅ here |
 | `system/schemas/project-doc-schema.md` | the full brief schema | ✅ here |
 | `system/tools/save/pad_archive.py` | archives a section and proves it landed, before anything is cleared | ✅ here |
-| `docs/data-layout.md` | where everything under `$DATA` goes | ✅ here |
+| `canon/data-layout.md` | where everything under `$DATA` goes | ✅ here |

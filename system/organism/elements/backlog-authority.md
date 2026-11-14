@@ -205,7 +205,7 @@ done-never-archived candidates AND no duplicate slugs. In practice the board is 
 
 **There is no wrapper runner here.** Pulse invokes the tile producer directly; no
 `backlog-health-run.sh` exists in `system/tools/`, and nothing needs one — the donor's wrapper
-existed to carry a lead-machine gate, and this system has one machine (`docs/data-layout.md`
+existed to carry a lead-machine gate, and this system has one machine (`canon/data-layout.md`
 line 214: *"there is one machine. The two-machine plane is not part of this system"*). There is
 no machine gate, no `require_primary`, and no `<notes>/state/primary-machine` marker; the tile has a
 single writer because there is only ever one writer.

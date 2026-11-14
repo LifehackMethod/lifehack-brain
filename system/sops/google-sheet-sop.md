@@ -230,7 +230,7 @@ in a browser tab.
 ## Pointers
 - Craft (design/audit/tiers/controls): the `google-sheet` skill + `standards.md` / `capabilities.md`.
 - The law this is one application of: compute mechanically, never in the model. `/calculate` arms it for a whole session.
-- Enforcement mechanics: `system/hook-contract.md` and `system/sops/hook-sop.md`.
+- Enforcement mechanics: `canon/hook-contract.md` and `canon/hook-sop.md`.
 - ~~⛔ `system/gws-contract.md` does NOT ship.~~ *(2026-10-30: the file IS in this repo, `system/gws-contract.md`, frontmatter `gws_version: 0.22.3`.)* ⚠ It pins one `gws` version, which is the opposite of what these hooks now do (`command -v gws`, no version assumption), so read it for the quoting and error-code patterns, not for the install path or version.
   Connecting your own account is `INSTALL.md` → "THE GOOGLE-CONNECTED PARTS"; the quoting and
   error-code patterns are visible in the commands throughout this page.

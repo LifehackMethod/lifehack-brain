@@ -54,7 +54,7 @@ sections: "0 read this first · 1 where things go · 2 fine china · 3 reading �
 ## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: build-conformance-sop edit-pass hunk hunk-003, see drafts/build-conformance-sop/applied.md
 
 ~~~~
-relations: "The canonical principles SOP (system/sops/canonical-principles-sop.md) holds the laws of physics for a stochastic harness. The skill-building SOP (system/sops/skill-building-sop.md) is the birth procedure for one skill. This SOP sits between them: how conformance is actually produced here, with receipts. The owner's own principles live in their notes (COMPASS), not in the plugin."
+relations: "The canonical principles SOP (canon/canonical-principles-sop.md) holds the laws of physics for a stochastic harness. The skill-building SOP (canon/skill-building-sop.md) is the birth procedure for one skill. This SOP sits between them: how conformance is actually produced here, with receipts. The owner's own principles live in their notes (COMPASS), not in the plugin."
 ~~~~
 
 ## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: build-conformance-sop edit-pass hunk hunk-004, see drafts/build-conformance-sop/applied.md

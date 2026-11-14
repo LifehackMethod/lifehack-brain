@@ -15,7 +15,7 @@
 #     `require_studio_hardware`) — depended on `machine-token.sh`, which is excluded from this port
 #     by ruling, and on a Drive-synced `state/primary-machine` marker electing one of two machines
 #     as lead. This repo has no such model: "there is one machine. The two-machine plane is not part
-#     of this system." (docs/data-layout.md:214). A gate for a concept that does not exist here is
+#     of this system." (canon/data-layout.md:214). A gate for a concept that does not exist here is
 #     not a gate, it is a function nothing can safely reach.
 #     ⚖ NOTE 2026-08-15 — the two `…_studio_…` names on the line above are DONOR CODE IDENTIFIERS
 #     and are deliberately NOT renamed. They named one of the donor's own machines, from an era
@@ -83,7 +83,7 @@ _INGEST_CFG="$HOME/.config/lifehack"
 
 # ── REACHING THE MODEL — runtime-resolved, no hardcoded user directory ──────────────────────────
 # House standard, already live in this repo (shared/tools/intake_reader.py's CLAUDE_BIN block;
-# documented at system/build-rules-index.md's MODEL-REACH-RULE and system/sops/skill-building-sop.md):
+# documented at system/build-rules-index.md's MODEL-REACH-RULE and canon/skill-building-sop.md):
 # `claude` is commonly installed at ~/.local/bin/claude, which is NOT on a cron/headless PATH. Order:
 # an explicit $CLAUDE_BIN override first (never guessed away) → PATH → a short list of known install
 # locations as a LAST resort → the bare name (so a caller that DOES have it on PATH at call time still

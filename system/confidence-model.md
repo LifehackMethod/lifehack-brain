@@ -30,7 +30,7 @@ machine-confident. Canon earns its trust through the human-in-the-loop gate (`ve
 
 - **No corroboration gate on canon** — it has already passed the harder gate.
 - **Machine NEVER writes canon true.** It proposes; a human approves. (`vetted: true` is human-only.)
-- Placement rules: `system/knowledge-altitude.md` (the canon admission test).
+- Placement rules: `canon/knowledge-altitude.md` (the canon admission test).
 
 ### Layer B — Below Canon (records · insights · Cal entries · machine rollups) = default-skeptical
 
@@ -296,7 +296,7 @@ These existing sources define the vocabulary this model relies on. Cite them; do
 |---|---|
 | Confidence vocab (CONFIRMED/INFERRED/HYPOTHESIS/USER-HYPOTHESIS/UNKNOWN) | `skills/project-manager/SKILL.md` lines 309–316 |
 | Corroboration tier ladder (documented > corroborated > single_signal > manual > inferred) | THIS FILE is now the source. Originally `skills/_archived-location-scan/SKILL.md` ⛔ gone — lines 107–120 (retired 2026-07-12, deleted 2026-07-28; claimed verbatim copy at `state/archive/2026-07-28-s24-retirement-sweep/` NOT found this session in repo or AI Brain — CORRECTED 2026-09-01, unverified) |
-| Canon admission test (the plain-question level ladder) | `system/knowledge-altitude.md` §3 |
-| Temperature model (always-on vs scoped vs on-demand) | ⛔ `system/memory-system.md` §1 — **not shipped.** `docs/data-layout.md` is the map here |
+| Canon admission test (the plain-question level ladder) | `canon/knowledge-altitude.md` §3 |
+| Temperature model (always-on vs scoped vs on-demand) | ⛔ `system/memory-system.md` §1 — **not shipped.** `canon/data-layout.md` is the map here |
 | Frontmatter schema (required fields, record_type canonical list) | `system/schemas/managed-file-frontmatter.md` |
 | The runner-authored denominator (SEAM 4) | `shared/bounded_input.py` — the check, and the measured limits on it |

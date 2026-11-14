@@ -28,7 +28,7 @@ authority: user
 > **RENAMED 2026-10-29 from `alarms.md` (operator's ruling).** This element is **ALARMS**: Bekim's "error handling"
 > component — each job's state and error folder, the ntfy texts `job-run.sh` sends, and the session-start backup line.
 > "Hospital" is no longer a subsystem name; it now means only the skills SOP's nurse-and-chart picture
-> (`system/sops/skill-building-sop.md` PART 0). The old central findings store is retired (2026-10-29). Where the text
+> (`canon/skill-building-sop.md` PART 0). The old central findings store is retired (2026-10-29). Where the text
 > below still says "Hospital", read "Alarms". Sibling: `cron.md` (what runs the jobs).
 
 

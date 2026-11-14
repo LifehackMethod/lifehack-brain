@@ -36,7 +36,7 @@ trap 'lhb_journal_fire "$?" "guard_drive_destructive.sh" "PreToolUse" "Bash" 2>/
 # FAIL_POSTURE: closed for what it can read (a Drive delete it cannot tell is a Sheet is ASKED about); open for
 #      an unreadable payload or a command that names no Drive delete, because it sits in front of every Bash command.
 # UPDATED: 2026-11-02
-# RULE: system/hook-contract.md (mechanics)
+# RULE: canon/hook-contract.md (mechanics)
 # ─────────────────────────────────────────────────────────────────────────────
 . "$_lhb_dir/lib/roundb.sh" 2>/dev/null || exit 0
 roundb_on fc_sheet_file_delete && SW_SHEET=1 || SW_SHEET=0

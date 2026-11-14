@@ -44,7 +44,7 @@ trap 'lhb_journal_fire "$?" "guard_organism_map.sh" "PreToolUse" "Write" 2>/dev/
 #      items 2-3 there carry the same-commit and git-tracked rules). Change what is
 #      protected THERE, with sign-off from the person who owns this repository, then update this
 #      guard and its registration in `.claude/settings.json`. Hook mechanics:
-#      `system/hook-contract.md`; the decision layer: `system/sops/hook-sop.md`.
+#      `canon/hook-contract.md`; the decision layer: `canon/hook-sop.md`.
 # FAIL_POSTURE: closed — an unreadable or unparseable payload DENIES. This hook sees only `Write`,
 #      never every Bash command, so denying on a malformed message costs one retry and cannot wall
 #      off the session.
@@ -58,15 +58,15 @@ trap 'lhb_journal_fire "$?" "guard_organism_map.sh" "PreToolUse" "Write" 2>/dev/
 #      sanctioned writer, and it is the thing this guard redirects people TO.
 # UPDATED: 2026-08-15 (ported from the donor system; scope re-derived against this repo — 42
 #      elements here, not 49; path matching rebuilt on realpath + this repo root rather than a
-#      glob; deny channel confirmed against the house standard in `system/hook-contract.md`)
+#      glob; deny channel confirmed against the house standard in `canon/hook-contract.md`)
 # ─────────────────────────────────────────────────────────────────────────────
 # guard_organism_map.sh — PreToolUse hook (matcher: Write).
 #
 # ── DENY CHANNEL — verified, not assumed. ────────────────────────────────────────────────
-# The house standard here is deny text on STDERR with `exit 2` (`system/hook-contract.md`,
+# The house standard here is deny text on STDERR with `exit 2` (`canon/hook-contract.md`,
 # "Canonical Deny Format"), which is what the live fleet uses — see `guard_canon_write.sh`, whose
 # every deny path is exactly this shape. The dead channel this repo has on record is a PreToolUse
-# hook that prints and then `exit 0`s (`system/sops/hook-sop.md`, the `guard_web_search.sh` entry:
+# hook that prints and then `exit 0`s (`canon/hook-sop.md`, the `guard_web_search.sh` entry:
 # "the warning was security theater the model never saw"). That failure is about the ALLOW path.
 # A BLOCK at `exit 2` is read. `hookSpecificOutput.permissionDecision` is NOT used here:
 # `hook-contract.md` rules it out for the BLOCK case by name, and this hook has no ALLOW notice.
@@ -75,7 +75,7 @@ trap 'lhb_journal_fire "$?" "guard_organism_map.sh" "PreToolUse" "Write" 2>/dev/
 # message wrapped a command in BACKTICKS, and the bash-escaping needed to survive a double-quoted
 # string emitted a literal `\` + backtick into the JSON string -- an invalid escape. json.load()
 # refused it, exit 2 still fired, and the guard would have blocked with a message NEITHER channel
-# could render: silently DARK, exactly the failure `system/sops/hook-sop.md` §4 names ("re-parse
+# could render: silently DARK, exactly the failure `canon/hook-sop.md` §4 names ("re-parse
 # the deny JSON afterwards"). An exit-code-only test scores this a PASS. ⛔ So: no backticks in
 # the deny text, and re-run `python3 -c 'import json,sys; json.load(sys.stdin)'` on the STDERR of
 # every deny path after any edit to this file.

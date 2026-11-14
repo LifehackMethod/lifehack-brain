@@ -161,7 +161,7 @@ CLAUDE_DIR="$HOME/.claude"
 # settings.local.json added 2026-08-20 (ported from upstream): it decides which hooks run just
 # as much as settings.json does, and was previously unprotected here.
 if [[ "$FILE_PATH" == "$CLAUDE_DIR/hooks/"* || "$FILE_PATH" == "$HOME/.claude/hooks/"* ]]; then
-    echo '{"decision":"block","reason":"Write blocked — hook scripts are protected. WHY: Hooks are the enforcement layer; self-modification breaks the guard system. Edit manually: chmod 644 hook, edit, chmod 755. RULE: system/hook-contract.md."}' >&2
+    echo '{"decision":"block","reason":"Write blocked — hook scripts are protected. WHY: Hooks are the enforcement layer; self-modification breaks the guard system. Edit manually: chmod 644 hook, edit, chmod 755. RULE: canon/hook-contract.md."}' >&2
     exit 2
 fi
 
@@ -185,7 +185,7 @@ if [[ -n "$LH_NOTES_ROOT" && "$FILE_PATH" == "$LH_NOTES_ROOT/.git/"* ]]; then
     exit 2
 fi
 if [[ -n "$LH_NOTES_ROOT" && "$FILE_PATH" == "$LH_NOTES_ROOT/system/hooks/"* ]]; then
-    echo '{"decision":"block","reason":"BLOCKED: hook scripts are protected (notes root, system/hooks/). WHY: hooks are the enforcement layer; agent self-modification breaks the guard system. REDIRECT: edit via Bash only — chmod 644 the hook, edit, chmod 755. RULE: system/hook-contract.md."}' >&2
+    echo '{"decision":"block","reason":"BLOCKED: hook scripts are protected (notes root, system/hooks/). WHY: hooks are the enforcement layer; agent self-modification breaks the guard system. REDIRECT: edit via Bash only — chmod 644 the hook, edit, chmod 755. RULE: canon/hook-contract.md."}' >&2
     exit 2
 fi
 
@@ -244,7 +244,7 @@ if [[ "$FILE_PATH" == "$CLAUDE_DIR/skills/"* || "$FILE_PATH" == "$HOME/.claude/s
     # on purpose -- it is already handled globally above, before this zone runs at all, so a tests
     # path never reaches this block in the first place.
     if [[ -n "$REPO_ROOT" && "$RESOLVED" == "$REPO_ROOT/system/hooks/"* ]]; then
-        printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: hook scripts are protected, including when reached through a ~/.claude/skills or /commands symlink ($RESOLVED). WHY: hooks are the enforcement layer; self-modification breaks the guard system regardless of which path was used to reach them. REDIRECT: edit via Bash only -- chmod 644 the hook, edit, chmod 755. RULE: system/hook-contract.md.\"}" >&2
+        printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: hook scripts are protected, including when reached through a ~/.claude/skills or /commands symlink ($RESOLVED). WHY: hooks are the enforcement layer; self-modification breaks the guard system regardless of which path was used to reach them. REDIRECT: edit via Bash only -- chmod 644 the hook, edit, chmod 755. RULE: canon/hook-contract.md.\"}" >&2
         exit 2
     fi
     # ZONE-ESCAPE FIX (found + evidenced 2026-08-28, b3-tests): the carve-out just above only
@@ -255,7 +255,7 @@ if [[ "$FILE_PATH" == "$CLAUDE_DIR/skills/"* || "$FILE_PATH" == "$HOME/.claude/s
     # bug class, same shape, as the system/hooks/ ZONEFIX above -- mirrored here for the other two
     # protected classes.
     if [[ -n "$REPO_ROOT" && "$RESOLVED" == "$REPO_ROOT/.git/"* ]]; then
-        printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: git internals are not hand-editable, including when reached through a ~/.claude/skills or /commands symlink ($RESOLVED). WHY: .git holds the repository own bookkeeping; a hand edit corrupts history regardless of which path was used to reach it. REDIRECT: use git commands via Bash (git add / commit / push), never an editor on .git. RULE: system/hook-contract.md.\"}" >&2
+        printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: git internals are not hand-editable, including when reached through a ~/.claude/skills or /commands symlink ($RESOLVED). WHY: .git holds the repository own bookkeeping; a hand edit corrupts history regardless of which path was used to reach it. REDIRECT: use git commands via Bash (git add / commit / push), never an editor on .git. RULE: canon/hook-contract.md.\"}" >&2
         exit 2
     fi
     if [[ -n "$REPO_ROOT" && ( "$RESOLVED" == "$REPO_ROOT/.claude/settings.json" || "$RESOLVED" == "$REPO_ROOT/.claude/settings.local.json" ) ]]; then
@@ -331,7 +331,7 @@ for _zone in "${LH_CODE_ZONES[@]}"; do
     exit 2
   fi
   if [[ "$FILE_PATH" == "$_zone/system/hooks/"* ]]; then
-    printf '%s\n' '{"decision":"block","reason":"BLOCKED: clone hook scripts are protected. WHY: hooks are the enforcement layer; self-modification breaks the guard system. REDIRECT: edit via Bash only — chmod 644 the hook, edit, chmod 755. RULE: system/hook-contract.md."}' >&2
+    printf '%s\n' '{"decision":"block","reason":"BLOCKED: clone hook scripts are protected. WHY: hooks are the enforcement layer; self-modification breaks the guard system. REDIRECT: edit via Bash only — chmod 644 the hook, edit, chmod 755. RULE: canon/hook-contract.md."}' >&2
     exit 2
   fi
   if [[ "$FILE_PATH" == "$_zone/"* ]]; then
@@ -359,7 +359,7 @@ done
 # a session opened there could not create a single file.
 BRAIN_ROOT="$HOME/lifehack-brain"
 if [[ "$FILE_PATH" == "$BRAIN_ROOT/.git/"* ]]; then
-  printf '%s\n' '{"decision":"block","reason":"BLOCKED: git internals under lifehack-brain/.git/ are not hand-editable. WHY: .git holds the repository own bookkeeping — a hand edit corrupts history and can silently break the student only update path, which is the FATAL error class for this product. REDIRECT: use git commands via Bash (git add / commit / push), never an editor on .git. RULE: system/hook-contract.md; zone added 2026-08-04 — see ~/.claude/plans/cowork-migration.plan.md PHASE 8 T8.1."}' >&2
+  printf '%s\n' '{"decision":"block","reason":"BLOCKED: git internals under lifehack-brain/.git/ are not hand-editable. WHY: .git holds the repository own bookkeeping — a hand edit corrupts history and can silently break the student only update path, which is the FATAL error class for this product. REDIRECT: use git commands via Bash (git add / commit / push), never an editor on .git. RULE: canon/hook-contract.md; zone added 2026-08-04 — see ~/.claude/plans/cowork-migration.plan.md PHASE 8 T8.1."}' >&2
   exit 2
 fi
 # self-protection added 2026-08-20 (ported from upstream — see MERGE NOTE at top of file): this
@@ -367,7 +367,7 @@ fi
 # from inside lifehack-brain could freely rewrite ITS OWN guard fleet. Mirrors the notes-root /
 # code-zone hook blocks above.
 if [[ "$FILE_PATH" == "$BRAIN_ROOT/system/hooks/"* ]]; then
-  printf '%s\n' '{"decision":"block","reason":"BLOCKED: lifehack-brain hook scripts are protected. WHY: hooks are the enforcement layer; self-modification breaks the guard system. REDIRECT: edit via Bash only — chmod 644 the hook, edit, chmod 755. RULE: system/hook-contract.md."}' >&2
+  printf '%s\n' '{"decision":"block","reason":"BLOCKED: lifehack-brain hook scripts are protected. WHY: hooks are the enforcement layer; self-modification breaks the guard system. REDIRECT: edit via Bash only — chmod 644 the hook, edit, chmod 755. RULE: canon/hook-contract.md."}' >&2
   exit 2
 fi
 if [[ "$FILE_PATH" == "$BRAIN_ROOT/.claude/settings.json" || "$FILE_PATH" == "$BRAIN_ROOT/.claude/settings.local.json" ]]; then
@@ -385,7 +385,7 @@ fi
 # every write here fell through to the catch-all and blocked legitimate work in the repo.
 SELF_REPO_ROOT="$_SELF_REPO"
 if [[ "$FILE_PATH" == "$SELF_REPO_ROOT/.git/"* ]]; then
-  printf '%s\n' '{"decision":"block","reason":"BLOCKED: git internals under this repo .git/ are not hand-editable. WHY: .git holds the repository own bookkeeping -- a hand edit corrupts history. REDIRECT: use git commands via Bash (git add / commit / push), never an editor on .git. RULE: system/hook-contract.md; zone added 2026-08-20 -- lifehack-migration Phase 1 Lane B T1.4."}' >&2
+  printf '%s\n' '{"decision":"block","reason":"BLOCKED: git internals under this repo .git/ are not hand-editable. WHY: .git holds the repository own bookkeeping -- a hand edit corrupts history. REDIRECT: use git commands via Bash (git add / commit / push), never an editor on .git. RULE: canon/hook-contract.md; zone added 2026-08-20 -- lifehack-migration Phase 1 Lane B T1.4."}' >&2
   exit 2
 fi
 # self-protection added 2026-08-20 (ported from upstream — see MERGE NOTE at top of file): this is
@@ -394,7 +394,7 @@ fi
 # hook. Without this block, this zone's "allow everything" line let the same thing happen to THIS
 # repo's own guard fleet from inside the repo itself.
 if [[ "$FILE_PATH" == "$SELF_REPO_ROOT/system/hooks/"* ]]; then
-  printf '%s\n' '{"decision":"block","reason":"BLOCKED: this repo hook scripts are protected. WHY: hooks are the enforcement layer; self-modification breaks the guard system. REDIRECT: edit via Bash only — chmod 644 the hook, edit, chmod 755. RULE: system/hook-contract.md."}' >&2
+  printf '%s\n' '{"decision":"block","reason":"BLOCKED: this repo hook scripts are protected. WHY: hooks are the enforcement layer; self-modification breaks the guard system. REDIRECT: edit via Bash only — chmod 644 the hook, edit, chmod 755. RULE: canon/hook-contract.md."}' >&2
   exit 2
 fi
 if [[ "$FILE_PATH" == "$SELF_REPO_ROOT/.claude/settings.json" || "$FILE_PATH" == "$SELF_REPO_ROOT/.claude/settings.local.json" ]]; then

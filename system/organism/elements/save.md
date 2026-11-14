@@ -43,7 +43,7 @@ authority: user
 > written by them. Read every "pick a slug from the controlled vocabulary" instruction below against that file.
 >
 > ⛔ `state/debt-ledger.md` is the person's own notes, not a repo file. Here it is
-> `<notes>/state/debt-ledger.md`, written by `/save` and `/build` (`docs/data-layout.md`) — created by use,
+> `<notes>/state/debt-ledger.md`, written by `/save` and `/build` (`canon/data-layout.md`) — created by use,
 > never committed.
 >
 > ⚠ **CORRECTED 2026-09-01:** the bare `skills/save/SKILL.md` cited just below (at "the skill itself") is
@@ -291,7 +291,7 @@ Imitate `skills/save/SAVE-PANEL-EXEMPLAR.md` ⛔ (does not exist here, in the in
 **TIER 1 — the placement glance (what SC-4 shows FIRST):**
 1. Group by destination bucket; the bucket is a HEADER, printed once.
 2. Order buckets by permanence: CANON first, then RECORDS, CURRENT, then rarer buckets only when something lands there. Bucket meanings: CANON (permanent core truth) · RECORDS (dated note) · CURRENT/STATE (live project state) · JOURNAL (system diary) · DEBT-LOG (loose ends / deferred) · LESSONS (system learnings) · TO-DO (open loop).
-2b. NAME THE CANON ALTITUDE — never the bare word "CANON" when something lands there. Canon lives at several altitudes (`system/knowledge-altitude.md §3`): label as `CANON · global` / `CANON · desk ({desk})` / `CANON · sub-folder ({area})` / `CANON · project ({name})` / `CANON · deep` — the human-readable LEVEL, NOT the file path (the exact path waits for Tier 2). If canon items span more than one altitude, sub-group them by altitude under the CANON header.
+2b. NAME THE CANON ALTITUDE — never the bare word "CANON" when something lands there. Canon lives at several altitudes (`canon/knowledge-altitude.md §3`): label as `CANON · global` / `CANON · desk ({desk})` / `CANON · sub-folder ({area})` / `CANON · project ({name})` / `CANON · deep` — the human-readable LEVEL, NOT the file path (the exact path waits for Tier 2). If canon items span more than one altitude, sub-group them by altitude under the CANON header.
 3. ALWAYS show CANON even when empty — print "— nothing going here this time." so "nothing touches your permanent truths" is stated out loud, never silent. Hide the other empty buckets.
 4. Each item = a GLOBAL number (1..N across the whole panel, in bucket order) + a short bold name + ONE plain sentence. One line; NO path on this glance.
 5. Flag sensitive items with a small `· private` marker on the name line.
@@ -549,7 +549,7 @@ Journal entry format (the ledger row):
 
 The donor logged every machine-local file change to `<notes>/state/machine-log.md` so a *second*
 machine could learn what the first one had touched. Here there is one machine, and that file is
-gone: `docs/data-layout.md` line 215 lists `<notes>/state/machine-log.md` against **"gone"**, for
+gone: `canon/data-layout.md` line 215 lists `<notes>/state/machine-log.md` against **"gone"**, for
 the reason given on line 214 — *"there is one machine. The two-machine plane is not part of this
 system."* The shipped `/save` skill has no Step 7b either; there is nothing to write and nowhere
 to write it. A run goes straight from Step 7 to Step 7c.

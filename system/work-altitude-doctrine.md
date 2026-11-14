@@ -19,7 +19,7 @@ authority: user
 > declares its intent. This is the same law pointed at the *job in front of you*: the work declares which
 > intent it is serving, at three levels of zoom.
 >
-> ⚠ **NOT the same thing as [`knowledge-altitude.md`](knowledge-altitude.md).** That doctrine governs **where
+> ⚠ **NOT the same thing as [`knowledge-altitude.md`](../canon/knowledge-altitude.md).** That doctrine governs **where
 > a piece of knowledge gets FILED** (global canon → desk → sub-folder → deep). This one governs **the zoom
 > level of the WORK you are doing right now.** Same word, two different objects. They share a parent and
 > nothing else.

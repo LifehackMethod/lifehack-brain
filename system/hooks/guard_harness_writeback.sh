@@ -31,7 +31,7 @@ trap 'lhb_journal_fire "$?" "guard_harness_writeback.sh" "PreToolUse" "Write|Edi
 # FAIL_POSTURE: closed. Any state this guard cannot cleanly resolve to ALLOW or BLOCK — the public
 #      repo missing, not a git repo, `git` unusable, the target path unresolvable — DENIES with a
 #      CANNOT-DETERMINE reason on stderr and **exit 2**, never silently folded into exit 0 (allow).
-#      ⚠ CORRECTED 2026-08-26: these sites previously used exit 3. `system/hook-contract.md:115-121`
+#      ⚠ CORRECTED 2026-08-26: these sites previously used exit 3. `canon/hook-contract.md:115-121`
 #      defines ONLY 0 / 1 / 2 -- "exit 3" appears ZERO times in it -- and :121 states "a guard that
 #      can't parse its input must DENY (exit 2), never exit 0". An unrecognised code is not a block,
 #      so every CANNOT-DETERMINE path was FAILING OPEN. Caught by the red-then-green check before

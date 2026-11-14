@@ -56,7 +56,7 @@ trap 'lhb_journal_fire "$?" "guard_gmail_destructive.sh" "PreToolUse" "Bash" 2>/
 #      reach at all is YOUR setting, decided at the sit-down in `INSTALL.md` ("grant only the
 #      scopes you actually intend to use"). To change what is blocked here, change the rule
 #      above deliberately and amend this hook — never loosen the hook to fit a command that was
-#      refused. ⚠ Do NOT read `system/security-canon.md`'s hook table as this rule's home: that
+#      refused. ⚠ Do NOT read `canon/security-canon.md`'s hook table as this rule's home: that
 #      table is a historical record of the donor system's hooks and says so in its own scope note.
 # FAIL_POSTURE: closed — unparseable stdin DENIES (hook-sop.md §3.2). A guard that cannot read
 #      its input must never allow: the cost of a false block is one retry with a label move, and

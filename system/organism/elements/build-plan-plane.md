@@ -121,7 +121,7 @@ Every plan `/autoplan` emits MUST carry:
 
 4. **Emit ONE `ORIENTATION:` block** before building: build type(s) detected · each doc fetched (with its trust tag) · the one-line binding constraint from each. One block, at the top only. `[skill]`
 
-5. **Then build.** When a build teaches a durable reusable lesson, ~~append it to `build-sop.md`~~ (retired 2026-10-31; lessons now go to `system/sops/build-conformance-sop.md`); when it teaches a new binding rule or build-type, update `build-rules-index.md`. `[skill]`
+5. **Then build.** When a build teaches a durable reusable lesson, ~~append it to `build-sop.md`~~ (retired 2026-10-31; lessons now go to `canon/build-conformance-sop.md`); when it teaches a new binding rule or build-type, update `build-rules-index.md`. `[skill]`
 
 > The Step-0 gate is **advisory** in v1 — an ORIENTATION block, not a code-gate. The hook `inject_sop_before_build.sh` (UserPromptSubmit, non-blocking) fires a pointer when a build-verb + tracked noun appears, landing ~84% coverage. The debt item `[BUILD-RULES-GATE]` tracks the escalation to a blocking gate if advisory proves skippable. `(BUILD-RULES-GATE)`
 
@@ -171,7 +171,7 @@ Before reporting a build complete, **reconcile against the plan** — walk every
 
 ### SUPPORTING SOPs
 
-**`build-sop.md`** [retired 2026-10-31] — was: hard-won build doctrine, previously described here as loaded by `/build` Step 0. Not used by anything in V2; no longer loaded. Its former contents are no longer described here. Superseded by `system/sops/build-conformance-sop.md` (2026-11-02).
+**`build-sop.md`** [retired 2026-10-31] — was: hard-won build doctrine, previously described here as loaded by `/build` Step 0. Not used by anything in V2; no longer loaded. Its former contents are no longer described here. Superseded by `canon/build-conformance-sop.md` (2026-11-02).
 
 **`architecture-planning-sop.md`** (`system/sops/architecture-planning-sop.md`) — only the plan template survives, as `plan-template.md`; the rest ⛔ retired 2026-10-31 (archived outside the plugin) — Scoping front-end: fuzzy idea → vetted architecture doc-set (TRD/SAD) → Stage-8 handoff prompt. Three tiers by blast radius: Tier 1 (quick/reversible), Tier 2 (standard feature), Tier 3 (load-bearing multi-subsystem). Powers `/advisory-council` (Stages 1, 4, 6). Output is a handoff prompt, NOT a plan. **This SOP does NOT write a plan and does NOT build anything** — that is downstream in `/autoplan` → `/build`.
 
@@ -195,7 +195,7 @@ Plan-shape enforcement hooks (`guard_plan_structure.sh`, `plan_flag.sh`, `announ
 | Plan-management flag | `~/.claude/run/plan/plan-<key>.flag` | `plan_flag.sh record / set` | `plan_flag.sh status/path`, `system/statusline.sh`, `/advisory-council` |
 | Plan announce state | `~/.claude/run/plan-announce/<key>.state` | `announce_plan_write.sh` | `announce_plan_write.sh` (diff source) |
 | Plan ledger (no active brief) | `~/.claude/run/plan-ledger.md` | `announce_plan_write.sh` | human / `/read` |
-| Plans, the durable copy | `<notes>/plans/<name>.md` — flat, one copy, mirrored nowhere (`docs/data-layout.md` lines 201, 241) | `/autoplan` (a plan is written or sharpened) | `/build`, `/checkin`, `/read`, human |
+| Plans, the durable copy | `<notes>/plans/<name>.md` — flat, one copy, mirrored nowhere (`canon/data-layout.md` lines 201, 241) | `/autoplan` (a plan is written or sharpened) | `/build`, `/checkin`, `/read`, human |
 | Build-rules index | `~/lifehack-brain/system/build-rules-index.md` | human (maintained by convention) | `/build` Step 0 |
 | Build SOPs | `plan-template.md` (the conductor SOP was retired 2026-10-31) | human | `/build` Step 0 |
 

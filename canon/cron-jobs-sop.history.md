@@ -1,9 +1,9 @@
 ---
 title: "Cron jobs SOP: history log"
-what: "Retired and moved text from system/sops/cron-jobs-sop.md, kept verbatim and dated so nothing is lost. Never read in normal use."
+what: "Retired and moved text from canon/cron-jobs-sop.md, kept verbatim and dated so nothing is lost. Never read in normal use."
 read_in_normal_use: false
-base_commit: "cfc100e  (git -C ~/lifehack-v2 log -1 --format=%h -- system/sops/cron-jobs-sop.md)"
-base_file: "system/sops/cron-jobs-sop.md, 251 lines at that commit (no earlier staged batch for this file)"
+base_commit: "cfc100e  (git -C ~/lifehack-v2 log -1 --format=%h -- canon/cron-jobs-sop.md)"
+base_file: "canon/cron-jobs-sop.md, 251 lines at that commit (no earlier staged batch for this file)"
 created: 2026-10-31
 status: "V2 draft, to be merged with the SOP"
 ---
@@ -68,7 +68,7 @@ reader_note: "Self-monitoring task 5.8, written 2026-10-29 from the build window
 - Original lines: 28
 
 ```
-- Card or no card is the skills rule, not this SOP's: `system/sops/skill-building-sop.md` PART 0 ("The Hospital": the nurse-and-chart picture of how a skill runs its steps), section "When NOT to use a card", bullet "Decision rule: card or no card". Read it there; do not copy it here. A card is an upgrade, never a prerequisite: a job can be scheduled with its routine as it is.
+- Card or no card is the skills rule, not this SOP's: `canon/skill-building-sop.md` PART 0 ("The Hospital": the nurse-and-chart picture of how a skill runs its steps), section "When NOT to use a card", bullet "Decision rule: card or no card". Read it there; do not copy it here. A card is an upgrade, never a prerequisite: a job can be scheduled with its routine as it is.
 ```
 
 ## 2026-10-31 · FIX · line 31 · section 2 heading
@@ -253,7 +253,7 @@ The door refuses presence-grade checks (5.9): a regex that tests only an exit co
 
 - Date: 2026-10-31
 - Action: FIX
-- Reason: 2.6 (approved as called, DECISIONS 2026-10-31): "stop and use the skills SOP v2 PART 0 rule" becomes "see the card-or-no-card principle in `system/sops/skill-building-sop.md` PART 0 (hypothetical, not yet validated)"; the old name no longer exists and PART 0 is marked unproven (Enver, 2026-10-30).
+- Reason: 2.6 (approved as called, DECISIONS 2026-10-31): "stop and use the skills SOP v2 PART 0 rule" becomes "see the card-or-no-card principle in `canon/skill-building-sop.md` PART 0 (hypothetical, not yet validated)"; the old name no longer exists and PART 0 is marked unproven (Enver, 2026-10-30).
 - Original lines: 157
 
 ```
@@ -394,7 +394,7 @@ reader_note: "How it works lives in system/organism/manual.md (CRON AND ALARMS);
 ## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-004, ids in drafts/cron-jobs-sop/applied.md
 
 ~~~~
-- Card or no card is the skills rule, not this SOP's: `system/sops/skill-building-sop.md` PART 0, section "When NOT to use a card", bullet "Decision principle: card or no card". Read it there; do not copy it here. A card is an upgrade, never a prerequisite: a job can be scheduled with its routine as it is.
+- Card or no card is the skills rule, not this SOP's: `canon/skill-building-sop.md` PART 0, section "When NOT to use a card", bullet "Decision principle: card or no card". Read it there; do not copy it here. A card is an upgrade, never a prerequisite: a job can be scheduled with its routine as it is.
 ~~~~
 
 ## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-005, ids in drafts/cron-jobs-sop/applied.md
@@ -472,7 +472,7 @@ One row per job, in a `jobs` block. A job that ships with the plugin is a row in
 ## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-017, ids in drafts/cron-jobs-sop/applied.md
 
 ~~~~
-2. **Decide the layer.** The routine (steps, prompts, verdicts) is a skill, or a script a person can run by hand. If it needs a card, see the card-or-no-card principle in `system/sops/skill-building-sop.md` PART 0 (hypothetical, not yet validated). This job is only the envelope.
+2. **Decide the layer.** The routine (steps, prompts, verdicts) is a skill, or a script a person can run by hand. If it needs a card, see the card-or-no-card principle in `canon/skill-building-sop.md` PART 0 (hypothetical, not yet validated). This job is only the envelope.
 3. **Write a thin runner.** A job of your own lives in your personal code folder, in `<personal-code>/tools/<job>/` (the setup makes `tools/`; the door allows any path under the folder, and the vendor-read line needs the path to end `/tools/<job>/<file>`). A job every installer would want is a change to the plugin and goes through the PR rulebook (`system/sops/pr-sop.md`, not written yet; until it exists, a report is an issue on the plugin's GitHub page, decided by the owner, in session, 2026-11-05), never a direct edit of `$CODE/system/tools/`. Never copy shared files into a desk. Resolve everything from `$LIFEHACK_CODE_ROOT`. Use the shared fetch for any read, `run_model` for any AI call, no silenced errors, exit 75 when there is nothing to do or a lock is held, and write a receipt AFTER verifying the artifact.
 ~~~~
 

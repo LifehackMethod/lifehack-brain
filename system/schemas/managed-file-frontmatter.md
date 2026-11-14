@@ -70,9 +70,9 @@ notes: "Additional context"
 
 ## Record types — the closed set
 
-All files under `records/<type>/` use one of these six. **`docs/data-layout.md` is where the set is
+All files under `records/<type>/` use one of these six. **`canon/data-layout.md` is where the set is
 defined; this table restates it so a writer reading the schema does not have to go and look.** If the
-two ever disagree, `docs/data-layout.md` is right and this is stale.
+two ever disagree, `canon/data-layout.md` is right and this is stale.
 
 | Type | Directory | What goes there |
 |------|-----------|-----------------|
@@ -83,7 +83,7 @@ two ever disagree, `docs/data-layout.md` is right and this is stale.
 | `proposals` | `records/proposals/` | something proposed, waiting on a person to rule on it |
 | `research` | `records/research/` | what `/research` writes |
 
-**Closed means closed.** A seventh type is a change to `docs/data-layout.md`, not a judgment call at
+**Closed means closed.** A seventh type is a change to `canon/data-layout.md`, not a judgment call at
 write time.
 
 > ⚖ **Four types were dropped on the way here (2026-08-11), and it is worth saying which.** The table

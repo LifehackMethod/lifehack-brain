@@ -27,12 +27,12 @@ trap 'lhb_journal_fire "$?" "guard_checkin_needs_project.sh" "PreToolUse+UserPro
 # REDIRECT: arm a project first (`pm_flag.sh arm <brief> <slug> <desk>`), or just don't run /checkin —
 #      it is an end-of-session auditor for project work, not an opener.
 # SIGNPOST: `.claude/skills/checkin/SKILL.md` (what it does once armed) · `system/hooks/pm_flag.sh`
-#      (the arm/status verbs this guard reads) · `system/hook-contract.md` (house deny format: stderr
+#      (the arm/status verbs this guard reads) · `canon/hook-contract.md` (house deny format: stderr
 #      text + exit 2, deliberately NOT hookSpecificOutput/permissionDecision — see DENY SHAPE below for
 #      why that still matches the current docs on both events this hook now covers).
 # RELOCATION RISK (T4.2, 2026-08-23): the literal 'checkin' here (CMD_NAME check below) and in
 #      system/hooks/registrations.json's two matchers is EXACT-STRING-ONLY -- the harness matcher
-#      syntax has no wildcard/regex form for a skill name (system/hook-contract.md), so a rename or
+#      syntax has no wildcard/regex form for a skill name (canon/hook-contract.md), so a rename or
 #      relocation of the checkin skill CANNOT be made structurally impossible to silently break this
 #      guard. Run `system/hooks/tests/verify_checkin_matcher_resolves.sh` to catch that drift LOUD
 #      instead of the guard just quietly never firing again.
@@ -53,7 +53,7 @@ trap 'lhb_journal_fire "$?" "guard_checkin_needs_project.sh" "PreToolUse+UserPro
 #     stderr message as the denial reason." (The other valid PreToolUse form is nested
 #     hookSpecificOutput.permissionDecision — top-level decision/reason is DEPRECATED for this event —
 #     but exit-2+stderr is documented as fully equivalent to "deny", and it's what the rest of this
-#     repo's guard fleet already uses; see system/hook-contract.md, which deliberately avoids
+#     repo's guard fleet already uses; see canon/hook-contract.md, which deliberately avoids
 #     hookSpecificOutput.)
 #   - UserPromptExpansion: "A hook that blocks by exiting 2 routes the same way as reason: the block
 #     message shows the stderr text to the user." Same mechanism as PreToolUse's exit-2 path.
@@ -69,7 +69,7 @@ _REPO="$(cd "$_HOOKDIR" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null
 
 # ── fire-log: unconditional, first thing, before any logic ──────────────────────────────────────
 # Proves BOTH matchers are actually live — this project has a measured history of hooks that reported
-# success for months while capturing nothing (system/sops/hook-sop.md, "DO NOT BUILD" section: a
+# success for months while capturing nothing (canon/hook-sop.md, "DO NOT BUILD" section: a
 # marker/logger that silently captured zero real entries despite hundreds of daily calls). It also
 # empirically reveals the real tool_input shape the Skill tool sends on PreToolUse, which the current
 # hooks reference does NOT document anywhere — this closes that gap for free the first time either leg
@@ -94,7 +94,7 @@ REDIRECT: if you meant to work on a project, arm it first --
 then run /checkin. If you did not, you do not need /checkin: it is an end-of-session auditor for
 project work, not a session opener.
 
-RULE: system/hook-contract.md (deny format) + system/hooks/pm_flag.sh (armed check). Ported from
+RULE: canon/hook-contract.md (deny format) + system/hooks/pm_flag.sh (armed check). Ported from
 the donor repo 2026-08-14; extended 2026-08-14 to also cover the typed /checkin path, which the
 first version of this guard missed entirely (see LLM CONTEXT above).
 MSG
@@ -146,7 +146,7 @@ print(str(d.get('command_name') or '').strip().lower())
     ;;
   *)
     # Empty, unparsed, or an event this guard doesn't know about. Fail CLOSED, not open
-    # (system/sops/hook-sop.md §3 rule 2: a BLOCK hook that cannot parse its input must deny, never
+    # (canon/hook-sop.md §3 rule 2: a BLOCK hook that cannot parse its input must deny, never
     # allow-on-error) -- rather than assume which schema applies. This should not happen given the
     # matchers configured in settings.json; if it does, the fire-log line above has the raw input.
     is_armed && exit 0

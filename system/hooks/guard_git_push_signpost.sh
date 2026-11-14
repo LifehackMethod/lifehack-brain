@@ -39,7 +39,7 @@ trap 'lhb_journal_fire "$?" "guard_git_push_signpost.sh" "PreToolUse" "Bash" 2>/
 #      genuinely unsure which repo this belongs in — STOP and ask; never guess harness
 #      vs personal. Then re-run the exact same push.
 # SIGNPOST: the branch/push decision lives in this guard. To change what is gated here,
-#      get sign-off, then update this guard (mechanics: system/hook-contract.md).
+#      get sign-off, then update this guard (mechanics: canon/hook-contract.md).
 # MATCHING: argv STRUCTURE via the SHARED resolver (system/hooks/lib/
 #      git_target_resolver.py, ported 2026-09-10/re-applied for 0.3.23), never a
 #      keyword grep on the command string — a literal "git push" inside a quoted
@@ -111,7 +111,7 @@ trap 'lhb_journal_fire "$?" "guard_git_push_signpost.sh" "PreToolUse" "Bash" 2>/
 #      that still reads as `git push`. SILENT (exit 0) when there is no command to
 #      judge, or the command is a genuinely different git verb.
 # UPDATED: 2026-10-30 (Round C fine-china switches, see ROUND C above)
-# RULE: system/hook-contract.md (mechanics)
+# RULE: canon/hook-contract.md (mechanics)
 # ROUND C (2026-10-30), three switches in roundB.conf, all OFF = the behaviour above, unchanged:
 #      fc_force_push: `git push --force`/`-f`/`--force-with-lease`/`--force-if-includes`/`+refspec`/`--mirror` is a
 #      HARD STOP, not the retryable signpost (exit 2 every time, no marker). Way through: the person runs it
@@ -301,7 +301,7 @@ print("DENY\t" + target + "\t" + cmd_key + "\t" + argv_b64)
 
 case "$VERDICT" in
   PARSE_ERROR|BLOCK_NOLIB|"")
-    printf '%s\n' "BLOCKED (push signpost): the hook payload was unreadable, or the shared repo-matcher library is missing or errored ($_LIB). WHY: failing open would let an unreadable/unmatchable push slip past unseen. REDIRECT: retry the command; if it recurs, restore system/hooks/lib/git_target_resolver.py. RULE: system/hook-contract.md -- FAIL_POSTURE: closed." >&2
+    printf '%s\n' "BLOCKED (push signpost): the hook payload was unreadable, or the shared repo-matcher library is missing or errored ($_LIB). WHY: failing open would let an unreadable/unmatchable push slip past unseen. REDIRECT: retry the command; if it recurs, restore system/hooks/lib/git_target_resolver.py. RULE: canon/hook-contract.md -- FAIL_POSTURE: closed." >&2
     exit 2
     ;;
 esac
@@ -908,7 +908,7 @@ for r in rows:
     exit 2
     ;;
   *)
-    printf '%s\n' "BLOCKED (push signpost): the hook payload itself was not readable JSON. WHY: failing OPEN would let an unreadable push slip past unseen. REDIRECT: retry the command. RULE: system/hook-contract.md -- FAIL_POSTURE: closed." >&2
+    printf '%s\n' "BLOCKED (push signpost): the hook payload itself was not readable JSON. WHY: failing OPEN would let an unreadable push slip past unseen. REDIRECT: retry the command. RULE: canon/hook-contract.md -- FAIL_POSTURE: closed." >&2
     exit 2
     ;;
 esac

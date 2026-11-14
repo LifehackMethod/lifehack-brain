@@ -39,7 +39,7 @@ DATA="$(python3 "$ROOT/shared/brain_root.py" --quiet)" || {
 ```
 
 Everything this skill writes lands under `$DATA`. Never this repo, never the current directory. The
-full map of what goes where: `docs/data-layout.md`.
+full map of what goes where: `canon/data-layout.md`.
 
 ## Hard rules
 
@@ -93,7 +93,7 @@ Ask in order, stop at the first yes.
      it. Visibility beats tidiness.
    - Belongs to no one project → `$DATA/records/<type>/`.
    - `<type>` is one of six, and the set is closed: `context` · `decisions` · `insights` · `logs` ·
-     `proposals` · `research` (`docs/data-layout.md`). Infer it; ask once if genuinely ambiguous.
+     `proposals` · `research` (`canon/data-layout.md`). Infer it; ask once if genuinely ambiguous.
 2. **Is it about the current phase, a blocker, an open item, or the next move?** → **state**.
    - A blocker or open item → `$DATA/state/open-loops.md`.
    - Where things stand → `$DATA/state/current.md`.
@@ -165,7 +165,7 @@ Plus the flag readers (`system/hooks/pm_flag.sh status`, `plan_flag.sh path`), w
 | `system/hooks/save_routing_hint.sh` | tells a session where a bare "save this" goes | ✅ here |
 | `system/tools/save/pm_flag_recover.py` | recovers a project flag that expired mid-session | ✅ here |
 | `system/confidence-model.md` | the tier ladder and the register vocabulary | ✅ here |
-| `system/knowledge-altitude.md` | the canon altitudes the panel names | ✅ here |
+| `canon/knowledge-altitude.md` | the canon altitudes the panel names | ✅ here |
 | `system/schemas/project-doc-schema.md` | the brief's shape, for the sync step | ✅ here |
 | `system/schemas/backlog-entry-schema.md` | the debt-ledger tags | ✅ here |
-| `docs/data-layout.md` | where everything under `$DATA` goes | ✅ here |
+| `canon/data-layout.md` | where everything under `$DATA` goes | ✅ here |

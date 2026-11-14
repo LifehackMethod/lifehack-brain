@@ -9,7 +9,7 @@ authority: user
 created_at: 2026-07-11
 updated_at: 2026-07-12
 tags: [ingestion, interpret, one-gate, sentinel, item-store, dead-ideas, injectable]
-note: The definitive, injectable picture of how information enters this system and how a desk reads it. Point a confused/fresh session here when it starts reinventing ingestion. Security deep-dive = system/security-canon.md; the reader spec = system/ingestion-reader-contract.md.
+note: The definitive, injectable picture of how information enters this system and how a desk reads it. Point a confused/fresh session here when it starts reinventing ingestion. Security deep-dive = canon/security-canon.md; the reader spec = system/ingestion-reader-contract.md.
 ---
 
 # Information Ingestion & Interpretation
@@ -35,7 +35,7 @@ note: The definitive, injectable picture of how information enters this system a
 > tracker here, pointing at a project file (`injection-gate-overblock-handoff.md`) and a component-map doc
 > (`sentinel-build-reference.md`) that lived on that system's own synced drive — neither ships in this
 > repo, and neither is needed here: what follows is not a target this repo is moving toward, it is what
-> the code already does. `system/security-canon.md`'s Attack Surface Coverage section is this repo's
+> the code already does. `canon/security-canon.md`'s Attack Surface Coverage section is this repo's
 > component + channel map.
 
 ---
@@ -76,7 +76,7 @@ explicitly out of its scope).
 
 ### The security stack — runs ONCE here, at intake
 Every item, both modes, passes the full stack before it is stored (the component map is
-`system/security-canon.md`'s Attack Surface Coverage section): **(1)** L0 mechanical scrub
+`canon/security-canon.md`'s Attack Surface Coverage section): **(1)** L0 mechanical scrub
 (`system/tools/sanitize.py` — strip hidden chars / HTML / encoding) → **(2)** regex injection scan
 (`system/tools/safe_input.py` — the **metal detector**: beeps "look here," decides nothing, over-flags
 intentionally) → **(3)** the **tool-less judge reader** (`.claude/agents/ingest-reader.md`, Haiku, no
@@ -111,7 +111,7 @@ for the re-scan-skip half. Re-check the CODE before trusting any status marker i
   the mechanism, not the number.)*
 
 ### Universal scope — every channel, or a NAMED exception (never a silent hole)
-The channel-coverage table lives in `system/security-canon.md`'s Attack Surface Coverage section. The rule
+The channel-coverage table lives in `canon/security-canon.md`'s Attack Surface Coverage section. The rule
 is universal; the two honest edges:
 - **Pasted / typed text in a conversation turn** cannot be gated by a hook (no tool call fires on a chat
   turn). **Closed by convention, via a drop-file:** the operator writes a message into a plain
@@ -153,7 +153,7 @@ Interpret is a *judgment* problem, not a security one.
   tool-less reader" clause is retired at the desk layer — that security step now lives at intake. Desks read
   the cleared store directly.)*
 - **Private WHAT (each desk's identity — do not touch):** what a desk judges FOR and where it FILES. This
-  repo does not ship named desks — `docs/data-layout.md`'s `desks/<subject>/` is one folder per subject,
+  repo does not ship named desks — `canon/data-layout.md`'s `desks/<subject>/` is one folder per subject,
   built by `/ingest` from a person's own material — but the principle holds for any two: a finance-subject
   desk and a career-subject desk read the same store the same way and still judge and file differently.
 
@@ -217,7 +217,7 @@ can't act), and the **egress allowlist guards the exits** (even a landed injecti
 hard-quarantines regardless of verdict. Detection is a speed-bump pointing the scanner at the right spans;
 **safety comes from STRUCTURE**, not from catching every attack.
 
-**Full detail is canonical elsewhere — do not duplicate here:** `system/security-canon.md` (architecture,
+**Full detail is canonical elsewhere — do not duplicate here:** `canon/security-canon.md` (architecture,
 hooks, residual risk, and the component + channel map) · `system/ingestion-reader-contract.md` (the reader
 spec) · enforcement `system/hooks/ingest_gate_enforce.sh`. The founding principles behind this model —
 structure over trust, guard the exits, no-hands reader — are inherited from the system this doc was ported
@@ -271,7 +271,7 @@ document in this repo to reconcile it against.
 
 ## 6. How this doc is loaded
 - **Home:** `system/information-ingestion-interpretation.md` (this file; repo-canonical).
-- **Linked:** `docs/data-layout.md` is this repo's nearest equivalent to a system architecture map. ⛔
+- **Linked:** `canon/data-layout.md` is this repo's nearest equivalent to a system architecture map. ⛔
   The donor's own `docs/architecture.md` describes a system this repo is not — it does not ship here.
 - **Build-time:** wired into `system/hooks/inject_sop_before_build.sh`, which already names this file on an
   ingestion-shaped build prompt — landing this file is what lets that hook's table row resolve instead of
@@ -279,5 +279,5 @@ document in this repo to reconcile it against.
   here today; its own ingestion row points at `/ingest`'s `SPEC.md` instead, and that is a separate,
   narrower doctrine (the archive-intake skill's own mechanics) than this file's broader security/architecture
   picture.
-- **Companion docs:** `system/security-canon.md` (components + channel coverage + hooks + residual risk) ·
+- **Companion docs:** `canon/security-canon.md` (components + channel coverage + hooks + residual risk) ·
   `system/ingestion-reader-contract.md` (the reader spec).

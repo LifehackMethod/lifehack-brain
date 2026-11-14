@@ -82,7 +82,7 @@
 #
 # ⛔ NOT PORTED, ON PURPOSE: the donor's `launchd` block (bootstrap/Supabase plists) and the
 # lead-machine gate that stripped the manifest down to "rows for THIS machine". Neither concept
-# exists here — this repo has one machine (docs/data-layout.md: "the two-machine plane is not part
+# exists here — this repo has one machine (canon/data-layout.md: "the two-machine plane is not part
 # of this system") and nothing in this category's job list needs launchd specifically (the donor's
 # own reasoning for needing it — a launchd agent cannot read a FUSE-mounted cloud-drive folder — does
 # not apply to a plain local `data/` folder). If a future job genuinely needs launchd, that is new
@@ -354,7 +354,7 @@ DOORPY
 # fix the row: a PERSONAL row (after the "# ── personal rows" marker jobs_manifest.py writes) is the person's to bring into line; a PLUGIN
 # row ships with the plugin and an update overwrites any edit. One copy of each text; job-run.sh inherits it through --check-row.
 # Both start with "Rulebook: " (job-sim.sh's door_run strips a first and a last line with that prefix; a --check-row refusal prints it first AND last).
-DOOR_NEXT_STEP_PERSONAL="Rulebook: \`system/sops/cron-jobs-sop.md\`, section \"Bring an existing job into line\". This job isn't in line yet: offer the person, in one short line, to bring it into line. Don't install it by hand. The main window runs this check itself and reads this line; never rely on a summary."
+DOOR_NEXT_STEP_PERSONAL="Rulebook: \`canon/cron-jobs-sop.md\`, section \"Bring an existing job into line\". This job isn't in line yet: offer the person, in one short line, to bring it into line. Don't install it by hand. The main window runs this check itself and reads this line; never rely on a summary."
 DOOR_NEXT_STEP_PLUGIN="Rulebook: \`system/sops/pr-sop.md\`. This job ships with the plugin: tell the person to report it. Don't edit plugin files, and don't copy the job under its own name to fix it. The main window runs this check itself and reads this line; never rely on a summary."
 DOOR_REFUSED_PERSONAL=0; DOOR_REFUSED_PLUGIN=0
 DOOR_ORIGIN="$DOOR_SHARED_ORIGIN"; DOOR_WALK_ORIGIN="$DOOR_SHARED_ORIGIN"

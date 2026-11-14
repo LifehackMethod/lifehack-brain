@@ -26,6 +26,6 @@
 6	system/organism/manual.md
 1	system/schemas/email-summary-schema.md
 2	system/schemas/ingest-gate-signature.md
-1	system/security-canon.md
+1	canon/security-canon.md
 1	system/security-posture-baseline.md
 1	system/templates/producer-spec-template.md

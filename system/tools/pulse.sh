@@ -13,7 +13,7 @@
 # product ruling ("automation ships with its scheduler"). Two structural things were CUT, not
 # translated, because they answer a question this product doesn't have:
 #   - the "which of two machines is in charge" lead-machine preflight + nag (donor pulse.sh:159-172).
-#     This product is single-machine by design (shared/brain_root.py; docs/data-layout.md:214,
+#     This product is single-machine by design (shared/brain_root.py; canon/data-layout.md:214,
 #     "there is one machine"), so a lead election has nothing to elect.
 #   - the machine-namespaced heartbeat mirror (the donor suffixed the heartbeat file with a per-machine
 #     token — _pulse-<machine>.json — so the primary and the second machine's ticks wouldn't clobber

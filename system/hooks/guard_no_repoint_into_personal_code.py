@@ -18,7 +18,7 @@ PLUGIN_ROOT = HOME + "/.claude/plugins/cache/lifehack-brain"
 
 # Assembled from fragments on purpose -- a command-string guard once blocked its own
 # documentation because the docstring quoted the attack it defended against
-# (system/sops/hook-sop.md §4 Trap 2). This guard's own source must not contain the
+# (canon/hook-sop.md §4 Trap 2). This guard's own source must not contain the
 # literal target-repo name as a bare token that a sibling guard or a future grep-based
 # check could trip on by accident.
 _PRIVATE_REPO_MARKER = "personal code folder"

@@ -204,7 +204,7 @@ def fold(runs, evidence, k=None):
 #       it doing damage with untrusted input.                          -> NEVER BARE.
 #     SUBJECT-UNDER-TEST -- a skill being tested must run the FULL stack or you are
 #       testing a fiction.                                             -> NEVER BARE.
-#   This is `system/security-canon.md`'s reader-actor split extended one step: a grader is
+#   This is `canon/security-canon.md`'s reader-actor split extended one step: a grader is
 #   a reader -- isolated AND powerless.
 #
 # DEGRADE AND ANNOUNCE, NEVER SILENTLY.  `--bare` authenticates STRICTLY from

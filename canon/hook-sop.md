@@ -6,8 +6,8 @@ created_at: 2026-06-17
 updated_at: 2026-10-31
 status: active
 authority: user
-reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live in system/hook-contract.md — where this page restates a mechanic, the copies agree with hook-contract.md. The single front door: it POINTS, it does not duplicate. Keep it concise."
-history: "system/sops/hook-sop.history.md (retired and moved text; never read in normal use)"
+reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live in canon/hook-contract.md — where this page restates a mechanic, the copies agree with hook-contract.md. The single front door: it POINTS, it does not duplicate. Keep it concise."
+history: "canon/hook-sop.history.md (retired and moved text; never read in normal use)"
 route_format: "[section, line_in_this_file, purpose]; find a section by grep -n on its heading text; generated last, regenerate after any edit"
 route:
   - ["§1", 28, "when a hook is worth building at all: the two reasons, the smallest tool, what not to hook"]
@@ -21,7 +21,7 @@ route:
 
 # Hook SOP — when & how to reach for a hook
 
-> **This doc owns WHEN to build a hook and WHICH kind. `system/hook-contract.md` owns the mechanics; where this doc restates one, the copies agree with `hook-contract.md`.** It is the single **front door** for hooks: it POINTS at the canonical files, never copies them. Keep it concise — if it grows into a second mechanics manual, it has failed. (Council-ratified 2026-06-17; diverge→argue→converge.)
+> **This doc owns WHEN to build a hook and WHICH kind. `canon/hook-contract.md` owns the mechanics; where this doc restates one, the copies agree with `hook-contract.md`.** It is the single **front door** for hooks: it POINTS at the canonical files, never copies them. Keep it concise — if it grows into a second mechanics manual, it has failed. (Council-ratified 2026-06-17; diverge→argue→converge.)
 
 > **Shared tools:** `system/organism/elements/shared-layer.md` — common tools exist once in `shared/` (list: `system/register/toolbox.md`); use them, never copy them.
 
@@ -68,7 +68,7 @@ route:
 > 2026-07-13 status-bar guard that blocked its own build's commit (`build-sop.md` *(retired 2026-10-31)*). Workaround when
 > authoring: assemble the trigger tokens from fragments so no literal appears in the command.
 - A hook you haven't **watched block/inject in a live attempt is not a control** — an echo-pipe test proves only that the script didn't crash, not that the harness honored it.
-- **Deploying it:** both halves are files in this repo — the script at `system/hooks/`, the registration, a row in `system/register/register.jsonl` (`system/register/generate.py` generates `hooks/hooks.json` and `.claude/settings.json` from it) — so both travel by `git pull` and neither is re-done by hand. ⛔ **Then RESTART.** The harness reads `settings.json` at session start, so a newly registered hook does nothing at all in the window that registered it, and the only symptom is silence. That is the single commonest reason a correct hook appears not to work. (→ `system/hook-contract.md`, Deploy & Verify.)
+- **Deploying it:** both halves are files in this repo — the script at `system/hooks/`, the registration, a row in `system/register/register.jsonl` (`system/register/generate.py` generates `hooks/hooks.json` and `.claude/settings.json` from it) — so both travel by `git pull` and neither is re-done by hand. ⛔ **Then RESTART.** The harness reads `settings.json` at session start, so a newly registered hook does nothing at all in the window that registered it, and the only symptom is silence. That is the single commonest reason a correct hook appears not to work. (→ `canon/hook-contract.md`, Deploy & Verify.)
 
 ## DO NOT BUILD — what was tried and failed
 
@@ -194,7 +194,7 @@ dated INCIDENTS — evidence, not a restatement.**
 
 ## §5 — The front door (pointers — one file each; where restated, the copies agree with `hook-contract.md`)
 - **Mechanics** (exit codes · stdin parsing · deny format · registration · the **Deploy & Verify
-  checklist**) → ✅ `system/hook-contract.md`
-- **Injector arm/clear/TTL lifecycle + WHEN a skill arms its anchor** → `system/sops/skill-building-sop.md`, Build steps 9 and 14 (the skills SOP was written fresh 2026-11-10; the older detail, §IV.3 and §IV.7, is in `system/_retired-2026-11-10/skill-building-sop.ARCHIVE-2026-11-10.md`)
-- **Is-this-hook-well-built conformance check** (the LLM-CONTEXT block audit) → the LLM Context Block section of `system/hook-contract.md` (the old pointer, the skill conformance checklist, was archived 2026-11-10 to `system/_retired-2026-11-10/`)
+  checklist**) → ✅ `canon/hook-contract.md`
+- **Injector arm/clear/TTL lifecycle + WHEN a skill arms its anchor** → `canon/skill-building-sop.md`, Build steps 9 and 14 (the skills SOP was written fresh 2026-11-10; the older detail, §IV.3 and §IV.7, is in `system/_retired-2026-11-10/skill-building-sop.ARCHIVE-2026-11-10.md`)
+- **Is-this-hook-well-built conformance check** (the LLM-CONTEXT block audit) → the LLM Context Block section of `canon/hook-contract.md` (the old pointer, the skill conformance checklist, was archived 2026-11-10 to `system/_retired-2026-11-10/`)
 - **The catalog of coded friction points / fitness functions** → the live list is `hooks/hooks.json` (generated from `system/register/register.jsonl`); each guard's own header says what it blocks and why

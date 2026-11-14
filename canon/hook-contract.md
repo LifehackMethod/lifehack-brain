@@ -1,7 +1,7 @@
 # Hook Contract
 
 Canonical reference for hook creation. Read this before writing any hook. The DECISION layer —
-whether a hook is the right tool at all, and which of the three kinds — is `system/sops/hook-sop.md`;
+whether a hook is the right tool at all, and which of the three kinds — is `canon/hook-sop.md`;
 this page is the mechanics.
 
 ---
@@ -174,7 +174,7 @@ echo '{"tool_input":{"file_path":"/tmp/test.md"}}' | bash system/hooks/guard_can
 
 ⚠ **A pipe test proves the script did not crash. It does not prove the hook is a control** — for that
 you have to watch it fire through the real harness and READ the message it prints. See
-`system/sops/hook-sop.md` §4, and the suites in `system/hooks/tests/`, which are the worked examples
+`canon/hook-sop.md` §4, and the suites in `system/hooks/tests/`, which are the worked examples
 worth copying: every one of them tests the ALLOW cases first, because a guard that blocks ordinary
 work gets unregistered and then guards nothing.
 

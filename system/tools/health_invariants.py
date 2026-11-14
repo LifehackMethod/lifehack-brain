@@ -17,7 +17,7 @@ PORTED (2026-08-14) from the donor repo's system/tools/health_invariants.py. ONE
 rather than translated: the donor's Invariant 4 asked "are BOTH of my two machines reporting a fresh
 heartbeat" — the exact masking-by-omission bug it existed to catch (a second machine silently going
 dark while the dashboard stayed all-green) cannot happen here, because there is exactly one machine
-(docs/data-layout.md: "the two-machine plane is not part of this system"). Per this module's own
+(canon/data-layout.md: "the two-machine plane is not part of this system"). Per this module's own
 header rule, that is DELETED, not repurposed into a same-machine echo of a check two OTHER layers
 already make (system-health.py's own per-job LATE detection, and health-deadman-check.sh watching
 Pulse's overall silence) — padding to a round number of checks is not the discipline this rule asks
@@ -151,7 +151,7 @@ def _git(code_root, *args):
 # ── INVARIANT 1 — hooks present AND LIVE (executable) ───────────────────────────────────────────
 # ⚠ CORRECTED (2026-08-23): this used to test existence + size>0 ONLY, on the premise that hooks
 # ship chmod 444 and are bash-invoked, so an executable bit was never the liveness signal. That
-# premise is FALSE for this repo — system/hook-contract.md is explicit that hook scripts here are
+# premise is FALSE for this repo — canon/hook-contract.md is explicit that hook scripts here are
 # "ordinary tracked files, mode 755" and warns AGAINST chmod 444 ("friction with no guarantee behind
 # it"). Under the old test, a hook shipped git-mode 100644 (non-executable, therefore dead — this is
 # exactly how a hook can ship broken to a fresh student clone even though it ran fine on the

@@ -70,7 +70,7 @@ KEY="${CLAUDE_CODE_SESSION_ID:-cwd-$HASHCWD}"
 # To add a rung: add a case. The gate (guard_hook_sop_read.sh) reads the SAME key names.
 docs_for() {
   case "$1" in
-    hook) printf '%s\n' "$CODE_ROOT/system/sops/hook-sop.md" "$CODE_ROOT/system/hook-contract.md" ;;
+    hook) printf '%s\n' "$CODE_ROOT/canon/hook-sop.md" "$CODE_ROOT/canon/hook-contract.md" ;;
     *)    return 1 ;;
   esac
 }

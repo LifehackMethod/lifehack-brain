@@ -68,7 +68,7 @@ printf '%s' "$COMMAND" | grep -qE "(^|[^A-Za-z0-9_.-])gws([^A-Za-z0-9_-]|$)|bin/
 if [ ! -r "$GUARD_PY" ]; then
   printf 'BLOCKED (tasks guard): the parser this guard depends on is missing.\n' >&2
   printf 'WHY: without system/hooks/lib/tasks_guard.py there is no safe verdict, so nothing is waved through.\n' >&2
-  printf 'REDIRECT: restore that file. RULE: system/hook-contract.md.\n' >&2
+  printf 'REDIRECT: restore that file. RULE: canon/hook-contract.md.\n' >&2
   exit 2
 fi
 

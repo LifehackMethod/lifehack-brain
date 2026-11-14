@@ -11,11 +11,11 @@ already start walking."*
 **A full DESK is a strict SUPERSET of a knowledge folder — not a different format.** The sibling tool
 `folder_scaffold.py` writes the LIGHT subset `/ingest` PHASE 4 generates for every confirmed subject:
 `canon/current.md` + `canon/purpose.md` + `records/`, and nothing else — see that file's own docstring
-and `docs/data-layout.md` §"Deliberate differences", which documents the light shape as the shipped
+and `canon/data-layout.md` §"Deliberate differences", which documents the light shape as the shipped
 default and names THIS tool as the separate, deliberate, later act that promotes a folder to a full
 desk. **Promotion is always a human call — this tool never runs itself.**
 
-The full desk SHAPE is canonical in exactly one place: `system/sops/desk-building-sop.md` §"The shape".
+The full desk SHAPE is canonical in exactly one place: `canon/desk-building-sop.md` §"The shape".
 This tool CREATES that shape deterministically so a desk build is one-punch, not hand-assembled.
 
 Measured against the donor's own 9 real desks (2026-08-15, `desks/*` on the Drive-synced spine):
@@ -126,8 +126,8 @@ def main():
     notes: "Scaffolded by desk_scaffold.py {d}."\n""")
     print("2. Per machine: a desk needs its own .claude/settings.json only if it launches its own")
     print("   session — add that by hand. A desk's scheduled jobs are rows in the job list")
-    print("   (system/sops/cron-jobs-sop.md), not settings in the desk list.")
-    print("\nShape source & procedure: system/sops/desk-building-sop.md (the ONE canonical desk-shape doc)")
+    print("   (canon/cron-jobs-sop.md), not settings in the desk list.")
+    print("\nShape source & procedure: canon/desk-building-sop.md (the ONE canonical desk-shape doc)")
     print("Sibling tool: system/tools/cowork-ingest/folder_scaffold.py — the LIGHT knowledge-folder")
     print("scaffold /ingest uses by default. This tool is the separate, later, deliberate promotion act.")
 

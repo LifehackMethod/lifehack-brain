@@ -103,7 +103,7 @@ printf '%s' "$ABSENT_OUT" | grep -q "ABSENT" && ok || bad "absent receipt verdic
 echo
 echo "── (5) the kill line: NEVER a hook deny, on any of the failure paths above ──"
 
-# The house deny shape (system/hook-contract.md) is stderr text containing 'BLOCKED' + exit code 2.
+# The house deny shape (canon/hook-contract.md) is stderr text containing 'BLOCKED' + exit code 2.
 # This seam must never produce either, on ANY read outcome — good, corrupt, expired, or absent.
 for CASE_SESS in "$SESS2" "$SESS3" "$SESS4"; do
   RC="$(CLAUDE_CODE_SESSION_ID="$CASE_SESS" HOME="$SANDBOX/fakehome" STEP_RECEIPT_TTL_HOURS=0 \

@@ -13,7 +13,7 @@ def sh(cwd, *a):
 class T(unittest.TestCase):
     def setUp(self):
         self.r = tempfile.mkdtemp(prefix="chk3-")
-        for rel in ("shared/notify/notify-send.sh", "shared/paths.py", "system/sops/hook-sop.md"):
+        for rel in ("shared/notify/notify-send.sh", "shared/paths.py", "canon/hook-sop.md"):
             os.makedirs(os.path.dirname(os.path.join(self.r, rel)), exist_ok=True)
             shutil.copy(os.path.join(CODE, rel), os.path.join(self.r, rel))
         os.makedirs(os.path.join(self.r, "system/register"))
@@ -60,14 +60,14 @@ class T(unittest.TestCase):
         self.assertEqual(self.run_check().returncode, 0)
 
     def test_near_duplicate_sop(self):
-        t = open(os.path.join(CODE, "system/sops/hook-sop.md"), encoding="utf-8").read().splitlines()
+        t = open(os.path.join(CODE, "canon/hook-sop.md"), encoding="utf-8").read().splitlines()
         t[3] = "changed line"
         self.put("system/sops/hook-sop-v2.md", "\n".join(t) + "\n")
-        self.refused("system/sops/hook-sop-v2.md", "system/sops/hook-sop.md")
+        self.refused("system/sops/hook-sop-v2.md", "canon/hook-sop.md")
 
     def test_same_name_sop_elsewhere(self):
         self.put("desks/x/hook-sop.md", "# my own\nshort\n")
-        self.refused("desks/x/hook-sop.md", "system/sops/hook-sop.md")
+        self.refused("desks/x/hook-sop.md", "canon/hook-sop.md")
 
     def test_new_sop_passes(self):
         self.put("system/sops/gardening-sop.md", "".join("Unique rule %d about gardening.\n" % i for i in range(30)))

@@ -15,7 +15,7 @@ authority: user
 > **Purpose of this doc:** state the one law — that every object in Lifehack carries its INTENT — so a fresh,
 > memoryless session can act correctly on it. Read when **creating, auditing, or placing ANY object** (folder,
 > desk, canon, project, skill, hook, cron). Lives LOW (it governs how we *design* the OS, not every chat) — and
-> it declares its own purpose right here, eating its own dogfood. **Parent of `system/knowledge-altitude.md`**,
+> it declares its own purpose right here, eating its own dogfood. **Parent of `canon/knowledge-altitude.md`**,
 > which is this same law applied to one case: knowledge placement.
 
 ## 1. The one law
@@ -45,7 +45,7 @@ Project (outcome).
 | Domain folder / desk | standing | PURPOSE | the folder's `purpose.md` / canon header (indexed by the territory map) |
 | Canon home | standing | PURPOSE (its admission `intent`) | `knowledge-altitude.md` + `home-intents.md` |
 | Project | bounded | DESIRED OUTCOME | the brief's **FRAME** |
-| Skill | standing capability (bounded per run) | a **3-layer intent (§0.5)**: user-outcome+bar · role+autonomy-position · per-run outcome (advised) | top of the `SKILL.md` (identity region) + the `description:` carries Layer 1's caller-visible gist; the per-run outcome rides the §4 anchor. Full rule: ✅ `system/sops/skill-building-sop.md` §0.5 |
+| Skill | standing capability (bounded per run) | a **3-layer intent (§0.5)**: user-outcome+bar · role+autonomy-position · per-run outcome (advised) | top of the `SKILL.md` (identity region) + the `description:` carries Layer 1's caller-visible gist; the per-run outcome rides the §4 anchor. Full rule: ✅ `canon/skill-building-sop.md` §0.5 |
 | Hook | standing | PURPOSE — **not just to block, but to re-teach the boundary:** the deny message states WHY + the REDIRECT, so a fresh session *learns the rule* instead of hitting a silent wall | the deny message + `hook-contract.md` WHY/REDIRECT fields |
 | Scheduled job | standing schedule (bounded per run) | PURPOSE | the entry that schedules it |
 

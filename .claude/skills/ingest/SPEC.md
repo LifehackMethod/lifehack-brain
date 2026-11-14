@@ -217,7 +217,7 @@ SUPPOSED to work, for the altitude doctrine and all of this stuff.")*
 ⭐ **THE BAR IS THE IDEAL SYSTEM, NOT THE OBSERVED ONE.** ⛔ A future session must **not** copy the shape of
 The author's own existing `desks/` tree as it stands — he has explicitly disowned it as containing junk.
 The target is the doctrine: the altitude rules **§C3 below** restates in full. *(⚠ [5.2.1], 2026-08-11:
-`system/knowledge-altitude.md` itself is a Lifehack-internal doctrine file — it is NOT shipped in this
+`canon/knowledge-altitude.md` itself is a Lifehack-internal doctrine file — it is NOT shipped in this
 repo, so this no longer names it as something to go open; every test it states is already inlined at
 §C3 and in `pipeline.py`'s `propose_folder_shape()` docstring.)*
 
@@ -342,7 +342,7 @@ informative answer. A blank slot is not."*
 only** — the four sections whose NUMBERS had been silently reused for PHASE 1-4, which is what made the
 original gap dangerous (a reader searching for "§8 Definition of done" landed on "PHASE 2"). Because those
 four numbers are load-bearing elsewhere — `pipeline.py`, `test_pipeline.py`, `scan_collect.py`,
-`check_screens.py`, and `system/sops/skill-building-sop.md` all cite **`SPEC.md §8`** to mean PHASE 2 —
+`check_screens.py`, and `canon/skill-building-sop.md` all cite **`SPEC.md §8`** to mean PHASE 2 —
 **the phase sections were NOT renumbered.** The restored template sections instead live at **§6a-§6d**,
 each explicitly cross-labelled with which template section it answers, so both numbering schemes stay
 simultaneously readable and nothing that already cites "§8" or "§9" meaning a PHASE goes stale.
@@ -450,7 +450,7 @@ which parser fits.
 
 ⛔ **`UNRECOGNISED-FORMAT` is the closed set's no-outcome member — a genuine cannot-do stop, never a quality
 threshold.** It never guesses a parser and never degrades to a best-effort read. **This is a different kind of
-stop than `[B14]`** (`system/sops/skill-building-sop.md:1046` — a hard REFUSING threshold on basket count that
+stop than `[B14]`** (`canon/skill-building-sop.md:1046` — a hard REFUSING threshold on basket count that
 fought the discovery process and blocked the live corpus for hours; the same incident this document records
 further down, at the end of the `❓ OPEN` section: *"was a LIVE BLOCKER for a few hours."*) `[B14]` was wrong to
 refuse, because what it refused on was a matter of degree the phase existed to discover, and it was converted
@@ -732,14 +732,14 @@ A Lifehack knowledge home is: **`canon/`** (a FOLDER) holding **`current.md`** (
 **C3 — THE PLACEMENT DOCTRINE THE TREE MUST OBEY** *(verified 2026-08-08; these are the author's own prior rulings,
 not new invention — `/ingest` was under-specified against them).*
 - ⭐ **THE SPLIT TEST HAS TWO HALVES, and the spec only carried one.** *(the author, 2026-08-05,
-  `authority: user` — restated in full right here, not a pointer into `system/knowledge-altitude.md`,
+  `authority: user` — restated in full right here, not a pointer into `canon/knowledge-altitude.md`,
   which this repo does not ship — [5.2.1], 2026-08-11)*: **too BIG → subdivide (nest)** · **too DIVERSE →
   separate (siblings, not nested)** — *"not that the folder is large, but that two bodies of knowledge
   would actively degrade each other if loaded together."* ⇒ **PHASE 3's folder-shape step must apply
   BOTH.** *"Subdivide where there is enough material"* is the BIG half only, and the DIVERSE half is what
   decides sibling-vs-child.
 - **PLACEMENT IS A COST CURVE** *(restated in full here, not a citation into the unshipped
-  `system/knowledge-altitude.md` — [5.2.1])*: *"A canon fact belongs at the highest
+  `canon/knowledge-altitude.md` — [5.2.1])*: *"A canon fact belongs at the highest
   folder where it is still always-true for everything in that folder — **and no higher**"*; `/read` walks every
   ancestor, so *"anything placed in a parent is paid for by every descendant… the question is not 'what is this
   about' but **'who has to bear the cost of it.'**"* Test: *every child needs it → parent; one branch → that
@@ -894,7 +894,7 @@ of the four may be deleted. "Retire" below means *marked retired and recorded*, 
 | # | Validator | Decision | Reasoning |
 |---|---|---|---|
 | 1 | `system/tools/topic-vocab-lint.py` | **RETIRE from the write-time `topic:` gate; KEEP for its own different job** | Already ruled at §5d item 23: it is a **post-hoc whole-tree scanner** (its own docstring: *"Read-only reporter… run by hand or wire into the archivist coherence sweep"*), the wrong SHAPE for a write-time check. The write-time gate itself is a separate, small build (§5d item 15 — an inline enum check at `4.4`, reusing `pipeline.py:1183`'s `if ftype not in FINDING_TYPES` pattern), **not this file.** The scanner's OWN docstring already names its legitimate job. **OWED:** wire it into the archivist coherence-sweep lane — `system/tools/archivist*` / the `archivist-audit` skill, neither owned by this lane. |
-| 2 | `system/tools/cowork-ingest/check_screens.py` | **WIRE** | ⚠ Checked first, per instruction: **is it the gate task 9.5.5 arms? No — confirmed distinct.** 9.5.5 arms `require_world_map` (`pipeline.py:1233,1339` — the world-map close-gate, a PHASE 3 loss-prevention check on typed findings / folder branch, grepped: no driver passes `--require-world-map`). `check_screens.py` guards a **different** thing entirely: the SCREEN-CONSISTENCY fitness check (F4.2) — action-bar-last + no-machine-jargon on the four decision screens — and its own `JARGON` list still needs a pass against PHASE 2's ratified KEEP/TOSS/EXPLORE verbs (§8), since the anchor itself has no `explore` key yet (§5d item 13). **Zero callers**, independently confirmed by `system/sops/skill-building-sop.md:283` (*"the fourth logged instance of §V.9"*). A jargon/format regression on a human-facing decision screen is a real, already-measured risk class in this file (the truncation defect, the stale six-passes count), and this tool catches it cheaply on a self-built fixture — no live corpus needed. **OWED:** wire it as a pre-flight check — a `test_*` runner, a pre-commit hook, or folded into `test_chain_e2e.sh` — none of which is a file this lane owns. |
+| 2 | `system/tools/cowork-ingest/check_screens.py` | **WIRE** | ⚠ Checked first, per instruction: **is it the gate task 9.5.5 arms? No — confirmed distinct.** 9.5.5 arms `require_world_map` (`pipeline.py:1233,1339` — the world-map close-gate, a PHASE 3 loss-prevention check on typed findings / folder branch, grepped: no driver passes `--require-world-map`). `check_screens.py` guards a **different** thing entirely: the SCREEN-CONSISTENCY fitness check (F4.2) — action-bar-last + no-machine-jargon on the four decision screens — and its own `JARGON` list still needs a pass against PHASE 2's ratified KEEP/TOSS/EXPLORE verbs (§8), since the anchor itself has no `explore` key yet (§5d item 13). **Zero callers**, independently confirmed by `canon/skill-building-sop.md:283` (*"the fourth logged instance of §V.9"*). A jargon/format regression on a human-facing decision screen is a real, already-measured risk class in this file (the truncation defect, the stale six-passes count), and this tool catches it cheaply on a self-built fixture — no live corpus needed. **OWED:** wire it as a pre-flight check — a `test_*` runner, a pre-commit hook, or folded into `test_chain_e2e.sh` — none of which is a file this lane owns. |
 | 3 | `explore_char_slice` (`system/tools/cowork-ingest/tag.py:138-160`) | **WIRE** | Already established at §0a ruling 6 and §8 amendment 4: the slicer is **built**, with its own stated rationale for `EXPLORE_WIN=9,000` / `EXPLORE_TOTAL_CAP=28,000`, and **zero callers** while its siblings (`adaptive_char_slice`, `giant_sample`) are wired at `gate_and_pack.py:137,139`. It is not dead code by accident — it is the **exact mechanism `2.9`'s ratified EXPLORE re-read step needs** (§8 step `2.9`: a larger slice, an 8-12 sentence ask), and no other tool in the file does that job. Retiring it would mean re-deriving the same cap from scratch later. **OWED:** wire it into the `2.9` driver path (`2-scan.md` / `pipeline.py`'s EXPLORE handling) — not owned by this lane. |
 | 4 | The four uncalled test files: `test_chain_e2e.sh` · `test_pipeline.py` · `test_status_gate.py` · `test_ux.py` (`system/tools/cowork-ingest/`) | **WIRE (at least one)** | Confirmed this session: no cron, no CI config, no hook, no `Makefile` / `package.json` runner, and no workflow file anywhere in the repo references any of the four — grepped whole tree; only self-references and this document's own §5d item 6 turn up. This is the §V.9 shape one level up: an entire **test suite** nobody runs is worse than one missing validator, because it is the exact mechanism that would have caught regressions this file already logs by hand (the stale six-passes count, the reversed RECORDS instruction, the mis-cited `wmb_commit`). **Decision is WIRE, not retire** — these test the phase-close gates §6 calls this spec's teeth. **OWED:** register at least `test_pipeline.py` (the broadest) in a CI-equivalent runner or pre-commit hook — no such runner exists today for `cowork-ingest/`, and creating one is outside this lane's file ownership (SPEC.md only). |
 
@@ -1642,7 +1642,7 @@ was `2.4` — see `2.3`'s note)*
 > (action bar last · no machine jargon) as an evidence surface. **It has ZERO callers** — no cron, no Pulse
 > job, no hook, no test invokes it; it runs only if a human types `python3 check_screens.py`. A surface
 > nothing reads is not an evidence surface (§III.8), so the honest answer here is the rendered screen alone.
-> The same false claim was corrected the same day at `system/sops/skill-building-sop.md` LAW 1's evidence
+> The same false claim was corrected the same day at `canon/skill-building-sop.md` LAW 1's evidence
 > table. *(Both found while auditing that table; `build-sop.md` — "a broken claim has usually PROPAGATED,
 > grep the whole system when you find one.")*
 

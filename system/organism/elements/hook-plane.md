@@ -30,7 +30,7 @@ maturity_label: PARTIAL
 # report, 2026-09-15.
 generated_from:
   # - system/reference/settings.json  # absent here (checked 2026-10-30)
-  - system/hook-contract.md
+  - canon/hook-contract.md
   - system/hooks/announce_plan_write.sh
   # - system/hooks/auto_register_skill.sh  # absent here (checked 2026-10-30)
   # - system/hooks/block_primary_calendar.sh  # absent here (checked 2026-10-30)
@@ -104,7 +104,7 @@ authority: user
 >   registry is the plugin-cache `hooks/hooks.json` (50 commands) plus the separate, smaller
 >   `~/.claude/settings.json` (7 commands) — see the Fleet-snapshot correction below.]
 > - ⛔ `state/telos.md` — the person's own notes content, which lives under the notes folder, never a repo file.
->   Notes-folder layout: `docs/data-layout.md`.
+>   Notes-folder layout: `canon/data-layout.md`.
 > - ⛔ `state/pulse-brief.md` — same: the person's own notes content, under the notes folder, never a repo file.
 > - ⛔ `state/debt-ledger.md` — same: the person's own notes content, under the notes folder, never a repo file.
 > - ⛔ `system/flight-log.jsonl` — runtime-generated; never committed.
@@ -158,7 +158,7 @@ The hook-plane's ground truth is a TWO-LAYER artifact:
 **Two-machine dark risk (the hook-contract.md "SKILL-ANCHOR-REG" failure class):** ~~if the `~/.claude/settings.json` or `~/.claude/hooks/` symlinks are broken on one machine, ALL hooks on that machine are silently dark.~~ No hook can self-verify this. Resolution: `[human]` to verify the symlinks on both machines after any settings push.
 > **⚠ CORRECTED 2026-08-24:** `~/.claude/settings.json` is a real file, not a symlink (see the correction under REGISTRATION MECHANICS above), so there is no `~/.claude/settings.json` symlink to break — the real dark-risk on that file is drift: each machine's real, independent copy can silently fall out of sync with the repo's registrations, and no symlink guarantees they match. `~/.claude/hooks/` was already correctly described as a regular directory, not a symlink, elsewhere in this same section.
 
-**Deny-block protocol (house standard per `system/hook-contract.md`):** the canonical blocking signal is JSON on `stderr` + `exit 2`. Also accepted: `{"decision":"block",...}` JSON on `stdout` + `exit 0` (used in Stop hooks — `translator_gate.sh` and `scratch_capture_gate.sh` both use this form; `exit 0` is what the live code does and what works). NOTE: `hook-contract.md`'s exit-code table lists `exit 1` for this case — a possible stale-doc mismatch; the live-code form (`exit 0`) is authoritative. DARK TRAP: JSON on `stderr` + `exit 1` is silently swallowed by the harness — a guard accidentally using that pattern appears to run but never blocks.
+**Deny-block protocol (house standard per `canon/hook-contract.md`):** the canonical blocking signal is JSON on `stderr` + `exit 2`. Also accepted: `{"decision":"block",...}` JSON on `stdout` + `exit 0` (used in Stop hooks — `translator_gate.sh` and `scratch_capture_gate.sh` both use this form; `exit 0` is what the live code does and what works). NOTE: `hook-contract.md`'s exit-code table lists `exit 1` for this case — a possible stale-doc mismatch; the live-code form (`exit 0`) is authoritative. DARK TRAP: JSON on `stderr` + `exit 1` is silently swallowed by the harness — a guard accidentally using that pattern appears to run but never blocks.
 
 **`--dangerously-skip-permissions` bypass:** the `permissions.deny[]` block in `settings.json` is bypassed in headless/non-interactive sessions launched with that flag. PreToolUse hooks are NOT bypassed by it. Therefore the PreToolUse blocking guards — specifically `guard_gws_logout.sh` and ~~`block_primary_calendar.sh`~~ its live successor `guard_calendar_writes.sh` [name corrected 2026-08-27, claim 56] — are the REAL backstops for headless sessions; the `permissions.deny[]` entries for those same operations are a belt-and-suspenders convenience for interactive sessions only.
 > **⚠ NOTE 2026-08-27, lb2-controls.md claims 85/86 — partial tension, not resolved.** In a session

@@ -127,7 +127,7 @@ def validate_file(filepath):
     # Effective required set: system-wide docs (authority: system | archivist) legitimately
     # belong to NO single desk, so `desk` is not required for them — a desk cannot be
     # backfilled onto a system-wide file. (organism-audit d.c 2026-07-21; the "no-desk
-    # exemption" the LLM triage confirmed on system/security-canon.md, google-policy.md, etc.)
+    # exemption" the LLM triage confirmed on canon/security-canon.md, google-policy.md, etc.)
     required = set(REQUIRED_FIELDS)
     _auth = re.search(r'(?m)^authority:\s*(\w+)', frontmatter)
     if _auth and _auth.group(1).lower() in ("system", "archivist"):

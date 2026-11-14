@@ -344,6 +344,6 @@ A gate-pass output: (a)–(f) all at pass or weak, no fails.
 | the arm/clear switch | `system/hooks/throughline_flag.sh` | ✅ here |
 | the write-scope guard it arms | `system/hooks/guard_throughline_write_scope.sh` | ✅ here |
 | the notes-folder resolver | `shared/brain_root.py` | ✅ here |
-| where the findings land | `docs/data-layout.md` | ✅ here |
+| where the findings land | `canon/data-layout.md` | ✅ here |
 | the diary the plot is assembled from | `planning-daily` / `planning-weekly` (+ the `planning-diary` cron) | ✅ here — but empty until a run has actually written one; the heavy-search fallback covers that |
 | a project's brief, canon and journal | under your own notes folder | ⛔ never ships — it is your material |

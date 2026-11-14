@@ -100,4 +100,4 @@ of a tidy-up.
 Do not fight the harness's own plan-saving. When a plan is made, let it save where it normally saves,
 and record a **link to its path** in §7. The doc is the hub that points at the plan, not a second copy
 competing with it. If the plan needs to outlive that location, capture its key bullets in the doc too.
-Plans that the person owns live at `$DATA/plans/` — see `docs/data-layout.md`.
+Plans that the person owns live at `$DATA/plans/` — see `canon/data-layout.md`.

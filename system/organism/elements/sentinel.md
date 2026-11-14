@@ -108,7 +108,7 @@ no scope = the whole checklist (default). Writes an audit `.md` to `{notes root}
 **Cadence is MANUAL BY DESIGN, not a gap** — no scheduler is wired to this file and none is proposed;
 run it by hand after wiring a new external-content channel, after adding a desk, or for a current
 read. That matches the mechanical half (`sentinel_response.py` / `sentinel_ack.py`), which
-`system/security-canon.md` already documents as manual-trigger-by-construction.
+`canon/security-canon.md` already documents as manual-trigger-by-construction.
 
 ⭐ **THE COUNT CORRECTION — Sentinel is THREE things, not five.** An earlier draft asserted *"Sentinel
 is FIVE things, not one"* and then enumerated only three before flagging itself for a disambiguation
@@ -566,7 +566,7 @@ What has changed is the disposition, not the mechanism. `agents/sentinel.md` now
 *"Cadence — Manual By Design, Not A Gap"* section: no scheduler is wired to it and none is proposed;
 it is run by hand after wiring a new external-content channel, after adding a desk, or for a current
 read. This is the same shape as the mechanical half (`sentinel_response.py` / `sentinel_ack.py`),
-which `system/security-canon.md` documents as manual-trigger-by-construction. Reclassify from
+which `canon/security-canon.md` documents as manual-trigger-by-construction. Reclassify from
 `·gap` to BY-DESIGN; the TARGET item that asked for the LaunchAgent to be re-provisioned is withdrawn.
 
 **GAP-5: ~~`agents/sentinel.md` hook manifest covers only ~4 of ~50 hooks.~~ ✅ RESOLVED — the stale

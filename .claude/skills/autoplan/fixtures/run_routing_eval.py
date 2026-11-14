@@ -3,7 +3,7 @@
 
 WHAT: hands routing.json (five SHOULD-FIRE /autoplan prompts, five near-miss BOUNDARY prompts
 that should NOT fire it) and autoplan's own SKILL.md description to routing_evals.py, per the
-CLI it documents in system/sops/skill-building-sop.md:
+CLI it documents in canon/skill-building-sop.md:
     routing_evals.py --cases CASES.json (--description "..." | --description-file F)
                       [--k N] [--model sonnet] [--json] [--selftest]
 
@@ -54,7 +54,7 @@ def main():
         print("This script (fixtures/run_routing_eval.py) is the caller card 6.4 was asked to")
         print("write for it -- system/parts/routing_evals.py itself is out of this card's owned")
         print("scope (fixtures/ + this caller only) and is not mine to author. Flagging rather")
-        print("than fabricating it: see system/sops/skill-building-sop.md's Tier 3 catalog entry,")
+        print("than fabricating it: see canon/skill-building-sop.md's Tier 3 catalog entry,")
         print("which describes it as already built -- it is not, in this checkout.")
         return 1
 

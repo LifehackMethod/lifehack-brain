@@ -34,7 +34,7 @@ authority: user
 > happened to that file AT THIS DESTINATION; none of them changes the description.
 >
 > ⛔ `state/debt-ledger.md` is the person's own notes, not a repo file. Here it is
-> `<notes>/state/debt-ledger.md`, written by `/save` and `/build` (`docs/data-layout.md`) — created by use,
+> `<notes>/state/debt-ledger.md`, written by `/save` and `/build` (`canon/data-layout.md`) — created by use,
 > never committed.
 >
 > ⛔ `state/projects/skill-system/brief.md/brief.md` is not a file anywhere, in either system. It is the

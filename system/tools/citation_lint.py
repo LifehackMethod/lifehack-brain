@@ -134,7 +134,7 @@ EXEMPT_FILES = {
     "system/_retired-2026-11-10/skill-conformance.ARCHIVE-2026-11-10.md":
         "archived whole on 2026-11-10, folded into the new skills SOP (retired banner at the top); its "
         "citations describe the tree as it stood when it was written, and it must not be edited",
-    "system/sops/skill-building-sop.history.md":
+    "canon/skill-building-sop.history.md":
         "the new skills SOP's history (2026-11-10): it holds superseded wording verbatim, cut-logged "
         "before each cut, so its quoted citations describe the text as it was, not the tree",
 }
@@ -430,9 +430,14 @@ def normalise(span):
     return span or None
 
 
+_TOPS_ROOT = None
+
+
 def repo_tops(root):
     """The top-level directories of this repository, read from disk rather than hardcoded — so a
     new one is covered the day it appears, and a renamed one stops being checked the same day."""
+    global _TOPS_ROOT
+    _TOPS_ROOT = root
     return {d for d in os.listdir(root)
             if os.path.isdir(os.path.join(root, d)) and d not in SKIP_DIRS and not d.startswith(".")
             } | {".claude"}
@@ -440,6 +445,12 @@ def repo_tops(root):
 
 def is_repo_path(span, tops):
     head = span.split("/")[0]
+    if head == "canon" and _TOPS_ROOT is not None:
+        # 2026-11-14, the canon-folder move: this repo now HAS a canon/ (the approved rulebooks), but `canon/current.md`,
+        # `canon/purpose.md` are still written relative to a notes folder named in the sentence (see the note below).
+        # So a canon/ citation counts as a repo path only when it is really in this repo's canon/; otherwise it falls
+        # through exactly as it did before canon/ existed here.
+        return os.path.exists(os.path.join(_TOPS_ROOT, span.rstrip("/")))
     return "/" in span and head in tops
 
 
@@ -690,6 +701,11 @@ def lint_paths_and_skills(root, findings, counts, scope=None):
     seen_stale = set()
     for rel in markdown_files(root, scope):
         if rel in EXEMPT_FILES:
+            counts["exempt_files"] += 1
+            continue
+        if rel.startswith("archive/") or (rel.startswith("system/_retired") and "/" in rel[len("system/"):]):
+            # FROZEN RECORDS (2026-11-14, canon-folder move): archive/ and system/_retired*/ hold text that is never
+            # edited; their citations describe the tree as it stood when they were written. Counted, not linted.
             counts["exempt_files"] += 1
             continue
         try:

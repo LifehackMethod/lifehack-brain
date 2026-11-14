@@ -4,7 +4,7 @@
 
 > **Status: IN FORCE** (promoted by Enver, 2026-11-11: "the new one has to go in"; drafted on his word of 2026-11-06: "I think it's about time for us to start a draft and lock this in").
 > Written by the coordinator from Enver's rulings of 2026-11-06 (P-128 to P-132) and the desk-architecture
-> discussion; restructured the same day around the subscriber's journey. This page is `system/sops/desk-building-sop.md`.
+> discussion; restructured the same day around the subscriber's journey. This page is `canon/desk-building-sop.md`.
 > It supersedes the v1 desk SOP, which is archived whole with a banner at
 > `system/_retired-2026-11-13/desk-building-sop.ARCHIVE-2026-11-13.md`. Where this SOP and his words differ, the
 > difference goes to him to settle; it is not settled by a precedence rule.
@@ -135,7 +135,7 @@ command invocation, working in the CLI and the Anthropic app both.
 
 **Fine china protections.** Which of a desk's things get protection A or B is chosen by the person; protection C
 covers every folder; what each protection does is fixed. All three are there "to prevent broad catastrophic events
-from a misguided agent" (`system/sops/build-conformance-sop.md` §2 (the asks) and §5.11 (the friction levels)):
+from a misguided agent" (`canon/build-conformance-sop.md` §2 (the asks) and §5.11 (the friction levels)):
 - **Fine china protection A** — "can't edit it without talking to the human first" (an ask before an edit).
 - **Fine china protection B** — "can't delete it" (no delete). For canon and fine china outside git, protection B is
   a hard block with no override (P-136).

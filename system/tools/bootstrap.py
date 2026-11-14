@@ -19,7 +19,7 @@ It self-heals in use: /save writes a journal line and creates the journal if it 
 project tools create a brief when you start one. But nothing puts the shape there FIRST, so the first
 session of a new install works against a directory that does not look like the system it is part of.
 
-⭐ THE FOURTH THING — the root canon (added 2026-08-11, task 2.1.1). `docs/data-layout.md` and
+⭐ THE FOURTH THING — the root canon (added 2026-08-11, task 2.1.1). `canon/data-layout.md` and
 `shared/registry.py`'s `Project.canon` property already agree on where it lives — `<notes>/canon.md`,
 the plain top-level file, sibling of `desks/<subject>/canon/current.md` but not shaped like it (no
 folder, no separate `purpose.md` — one file, one intent line). Nothing before this created it, so
@@ -47,11 +47,11 @@ sys.path.insert(0, os.path.join(REPO, "shared"))
 JOURNAL = "system/journal.md"
 REGISTRY = "system/project-registry.md"
 # The project folder. A project is a FOLDER named exactly its slug, holding brief.md +
-# records/ + canon/ (docs/data-layout.md). The older flat shape, state/briefs/<slug>.md,
+# records/ + canon/ (canon/data-layout.md). The older flat shape, state/briefs/<slug>.md,
 # stays READABLE forever but is never created — an empty folder nothing writes to teaches
 # a shape that does not exist, which is the exact thing this file refuses to do elsewhere.
 BRIEFS = "state/projects"
-# The root canon — NOT under system/ or state/. `docs/data-layout.md`'s shape diagram and
+# The root canon — NOT under system/ or state/. `canon/data-layout.md`'s shape diagram and
 # `shared/registry.py`'s `Project.canon` (`os.path.join(self.root, "canon.md")` for the rootless
 # case) already agree: it sits directly at the notes root, beside `system/`, `state/`, `desks/` —
 # the one file every one of those folders' canon defers up to. Picking a new path here would

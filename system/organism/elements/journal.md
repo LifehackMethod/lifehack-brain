@@ -38,7 +38,7 @@ authority: user
 > tool writes, and this banner is what corrects it.
 >
 > ⛔ `state/current.md` is the person's own notes too — here it is `<notes>/state/current.md`, written by
-> `/save` when where-things-stand changes (`docs/data-layout.md`). Never committed to this repo.
+> `/save` when where-things-stand changes (`canon/data-layout.md`). Never committed to this repo.
 >
 > ⛔ **PATH E's `marc-sensor.py` and `marc-pulse-journal.py` are donor-system files that never migrated
 > here.** ⚠ ADDED 2026-09-01 (#61): neither file exists anywhere in this repo (verified this session,

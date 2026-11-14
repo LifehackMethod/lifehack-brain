@@ -497,7 +497,7 @@ COMPLEMENTS  egress-allowlist-wall   · safe_fetch.py's _enforce_egress_allowlis
 WRITES→      state/email-summary/threads-v2/   · email_convert.py (via janitor) writes the faithful-thread store
 WRITES→      state/item-store/   · calendar/tasks store syncs write; item_store_read.py adapts reads
 READS        email_service_read.py   · the read adapter for the v2 faithful-thread store (wraps re-scan + refuse-flagged + tool-less-reader routing)
-KEYS-OFF     system/security-canon.md   · reader-actor split contract + channel classification lives there
+KEYS-OFF     canon/security-canon.md   · reader-actor split contract + channel classification lives there
 COMPLEMENTS  /websearch skill   · skill wraps safe_search_api.sh (primary) + safe_search.sh (Chrome fallback) for interactive sessions
 ```
 

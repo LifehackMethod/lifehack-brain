@@ -16,9 +16,15 @@ trap 'lhb_journal_fire "$?" "guard_canon_write.sh" "PreToolUse" "Bash|Write|Edit
 #            expiry date in the always-loaded layer is a fact that will quietly go wrong and keep
 #            being believed. Those belong in records/, dated, retrieved on demand.
 #        (b) OVERSIZED: over 3,200 characters. Derived, not picked — see the rail below.
+# REPO CANON (2026-11-14, canon-folder move, Enver-approved, plans/canon-folder.plan.md D1): a `canon/` folder at the TOP
+#      of a git work tree (V2's canon/, ClaudeOps's canon/) holds the approved rulebooks. Nothing loads it at session
+#      start, and its documents run to 265k characters, so the two rails above (size, expiry) are NOTES rails and do
+#      not apply there. The approval rails do: the whole-file replace ask, archive-before-cut, and the closed Bash door.
+#      Repo canon = a flat file directly in <git-root>/canon/, never under the notes root. Anything not provably repo
+#      canon (notes root unresolved, relative path, nested folder, no .git) keeps the notes rules, the stricter side.
 # REDIRECT: both denials say the same thing in different words — this belongs in records/, where
 #      `/read` pulls it when it is relevant instead of every session paying for it forever.
-# SIGNPOST: what canon is for lives in `system/knowledge-altitude.md` and `docs/data-layout.md`.
+# SIGNPOST: what canon is for lives in `canon/knowledge-altitude.md` and `canon/data-layout.md`.
 #      Change the rule there first; do not weaken this guard to get one write through.
 # FAIL_POSTURE: closed — unparseable input denies.
 # REPLACE-WHOLE (Round C, switch fc_canon_replace in system/hooks/roundB.conf, OFF = unchanged; Enver's ruling
@@ -32,6 +38,7 @@ trap 'lhb_journal_fire "$?" "guard_canon_write.sh" "PreToolUse" "Bash|Write|Edit
 # WHO-COULD-THIS-BREAK: a session or generator that rewrites a whole canon/SOP file from scratch (a /save that
 #      regenerates canon, a build that re-emits an SOP). WAY-THROUGH: make the change with the Edit tool (targeted)
 #      or append; for a true rewrite, show the person what changes and press yes on the prompt.
+# UPDATED: 2026-11-14 (repo-canon branch for the canon-folder move: notes rails skipped for <git-root>/canon/, approval rails kept)
 # UPDATED: 2026-08-15 (T9.5d — added the ALLOW-path speed bump: an allowed canon write now emits
 #      hookSpecificOutput.additionalContext, a loud non-blocking notice at the moment of write. See
 #      the block comment at the ALLOW_CANON case below for why that field and not plain stdout.)
@@ -166,9 +173,14 @@ if [ "$(printf '%s' "$_CANON_TOOL" | sed -n '1p')" = "Bash" ]; then
         case "$_CANON_CMD" in
           *cp*"$_cc"*.proposed.md*) { . "$_CW_DIR/lib/roundb.sh" && roundb_on fc_sign_canon; } 2>/dev/null && continue ;;
         esac
+        _ccd="${_cc%/*}"
+        if [ "${_ccd##*/}" = canon ] && [ -e "${_ccd%/*}/.git" ]; then
+          printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: this Bash command writes to a repo canon file (${_cc}). WHY: canon/ holds the approved rulebooks, and a shell write skips the approval rails: the ask before a whole-file replace and the cut-log of text that leaves. REDIRECT: make the change with the Edit tool (targeted) so those rails run. To move a file in, use git mv on Enver's approval. RULE: canon/README.md, and this hook's header.\"}" >&2
+          exit 2
+        fi
         case "$_cc_cmp" in
           */canon/*|*/canon.md|canon.md)
-            printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: this Bash command writes to a canon file (${_cc}). WHY: canon carries two content rails — a size limit and an expiry-marker check — and both need to READ the content being written. Through the Write tool the content is a field this guard can measure; inside a shell command it is a heredoc or a pipe, and measuring it there would be a guess. A size rail that guesses is worse than none: it either blocks correct work or waves through the thing it exists to stop. So this door is closed rather than guessed at. REDIRECT: make this edit with the Write or Edit tool and the rails will run properly. If the content is generated, write it to a scratch file first, read it, then Write it. RULE: system/knowledge-altitude.md, and this hook's header.\"}" >&2
+            printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: this Bash command writes to a canon file (${_cc}). WHY: canon carries two content rails — a size limit and an expiry-marker check — and both need to READ the content being written. Through the Write tool the content is a field this guard can measure; inside a shell command it is a heredoc or a pipe, and measuring it there would be a guess. A size rail that guesses is worse than none: it either blocks correct work or waves through the thing it exists to stop. So this door is closed rather than guessed at. REDIRECT: make this edit with the Write or Edit tool and the rails will run properly. If the content is generated, write it to a scratch file first, read it, then Write it. RULE: canon/knowledge-altitude.md, and this hook's header.\"}" >&2
             exit 2 ;;
         esac
       done <<EOF
@@ -237,6 +249,31 @@ if not (in_canon_dir or is_root_canon):
         print("ALLOW_NONE")
     sys.exit()
 
+# REPO CANON branch (see header). Approval rails stay; the notes-only size and expiry rails are skipped.
+def _is_repo_canon(pp):
+    pn = pp.replace("\\", "/")
+    if not pn.startswith("/") and not (len(pn) > 2 and pn[1] == ":"):
+        return False                                  # relative path: cannot prove where it lands
+    ci = pn.rfind("/canon/")
+    root, rest = (pn[:ci], pn[ci + 7:]) if ci > 0 else ("", "")
+    if not root or not rest or "/" in rest or not os.path.exists(os.path.join(root, ".git")):
+        return False
+    try:                                              # never the notes: a notes folder kept in git stays notes canon
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_lib))))), "shared"))
+        import brain_root
+        src, nr = brain_root.resolve_brain_root()
+    except Exception:
+        return False
+    if not nr:
+        return False
+    nr = os.path.realpath(nr).replace("\\", "/").rstrip("/")
+    rr = os.path.realpath(root).replace("\\", "/").rstrip("/")
+    return not (rr == nr or rr.startswith(nr + "/") or nr.startswith(rr + "/"))
+if in_canon_dir and not is_root_canon and _is_repo_canon(path):
+    if _whole and _exists_nonempty(path):
+        print("ASK_REPLACE|canon|" + path); sys.exit()
+    print("ALLOW_REPO_CANON|" + path + "|" + str(len(content))); sys.exit()
+
 MAX_CHARS = 3200
 if len(content) > MAX_CHARS:
     print(f"BLOCK_SIZE|{len(content)}|{MAX_CHARS}"); sys.exit()
@@ -262,7 +299,7 @@ _CANON_PROPOSED=0
 { roundb_on fc_sign_canon && _CANON_PROPOSED=1; } 2>/dev/null
 RESULT=$(printf '%s' "$INPUT" | GUARD_LIB="$_CANON_LIB" CANON_REPLACE="$_CANON_REPLACE" CANON_PROPOSED="$_CANON_PROPOSED" python3 -c "$PYCHECK")
 
-R="WHAT CANON IS: the few things that stay true, small enough that every session can afford to carry them. Two tests, and a line has to pass both. (1) Will this still be true in six months, with no expiry date attached? If it has a date on it, it is a record, not canon. (2) Can a completely fresh session read this line ALONE, with no other context, and act on it correctly? If it needs the conversation around it, it is not finished. Everything else goes in records/, dated — nothing is lost, it is just pulled when it is relevant instead of carried always. SOURCE: system/knowledge-altitude.md + docs/data-layout.md."
+R="WHAT CANON IS: the few things that stay true, small enough that every session can afford to carry them. Two tests, and a line has to pass both. (1) Will this still be true in six months, with no expiry date attached? If it has a date on it, it is a record, not canon. (2) Can a completely fresh session read this line ALONE, with no other context, and act on it correctly? If it needs the conversation around it, it is not finished. Everything else goes in records/, dated — nothing is lost, it is just pulled when it is relevant instead of carried always. SOURCE: canon/knowledge-altitude.md + canon/data-layout.md."
 
 case "$RESULT" in
   ALLOW_NONE) exit 0 ;;
@@ -322,7 +359,21 @@ msg = (f'CANON WRITE ALLOWED -- {path} ({clen} chars) is about to be loaded into
        f'in: (1) will this still be true in six months with no expiry attached? (2) can a fresh '
        f'session with zero other context read this line ALONE and act on it correctly? If '
        f'either answer is no, this belongs in records/, dated, not here. '
-       f'RULE: system/knowledge-altitude.md.')
+       f'RULE: canon/knowledge-altitude.md.')
+print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse',
+                                          'permissionDecision': 'allow',
+                                          'additionalContext': msg}}))
+"
+    exit 0 ;;
+  ALLOW_REPO_CANON*)
+    # Repo canon: an approved rulebook. Same speed-bump channel as ALLOW_CANON (allow + additionalContext), true words.
+    _T="${RESULT#ALLOW_REPO_CANON|}"; CPATH="${_T%%|*}"
+    CANON_PATH="$CPATH" python3 -c "
+import json, os
+path = os.environ.get('CANON_PATH', '')
+msg = (f'REPO CANON EDIT ALLOWED -- {path} is an approved rulebook: being in canon/ is the proof the maintainer approved it. '
+       f'A change here needs the maintainer\'s approval, and text that leaves goes to the history beside it first (the cut-log). '
+       f'If that approval is not in hand, stop and ask. RULE: canon/README.md.')
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse',
                                           'permissionDecision': 'allow',
                                           'additionalContext': msg}}))
@@ -333,7 +384,7 @@ print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse',
     exit 2 ;;
   BLOCK_SIZE*)
     _T="${RESULT#BLOCK_SIZE|}"; GOT="${_T%%|*}"; LIM="${_T##*|}"
-    printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: this canon file is ${GOT} characters against a ${LIM}-character rail. WHY: canon is loaded at the start of EVERY session, so its size is a cost paid forever by every conversation, including the ones that have nothing to do with this subject. The session loader stops at 20,000 characters across all your subjects and tells you what it left out — at this rail six subjects fit, and a file this size is starting to crowd the others off the page. A canon file this long is almost always reference material that drifted into the always-on layer. REDIRECT: put it in records/ (dated) and let /read pull it when it is relevant. If it genuinely IS canon, it is too long — cut it to the lines that a fresh session could read alone and act on. RULE: system/knowledge-altitude.md. Raise the rail there, with reason, never to make one write fit. ${R}\"}" >&2
+    printf '%s\n' "{\"decision\":\"block\",\"reason\":\"BLOCKED: this canon file is ${GOT} characters against a ${LIM}-character rail. WHY: canon is loaded at the start of EVERY session, so its size is a cost paid forever by every conversation, including the ones that have nothing to do with this subject. The session loader stops at 20,000 characters across all your subjects and tells you what it left out — at this rail six subjects fit, and a file this size is starting to crowd the others off the page. A canon file this long is almost always reference material that drifted into the always-on layer. REDIRECT: put it in records/ (dated) and let /read pull it when it is relevant. If it genuinely IS canon, it is too long — cut it to the lines that a fresh session could read alone and act on. RULE: canon/knowledge-altitude.md. Raise the rail there, with reason, never to make one write fit. ${R}\"}" >&2
     exit 2 ;;
   BLOCK_STALE*)
     MARK="${RESULT#BLOCK_STALE|}"

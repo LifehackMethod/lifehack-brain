@@ -2,8 +2,8 @@
 """pre-commit check 3, "Is it a copy?" (v2 plan 3b). Refuses a STAGED NEW file that is a second copy of
   (a) a shared tool  -- the register's shared-tool list, distinctive-vs-generic naming and the thin-wrapper
       exemption are REUSED from system/hooks/lib/build_mode.py, not re-implemented here;
-  (b) a rulebook     -- a new *.md named like a system/sops/*-sop.md (or the security canon) or more than
-      80% identical lines to a system/sops/*.md.
+  (b) a rulebook     -- a new *.md named like a canon/ or system/sops/ *-sop.md (or the security canon) or more than
+      80% identical lines to a canon/*.md or system/sops/*.md.
 Only NEW files (added, or renamed while the source still exists). Thin wrappers and _retired-*/archive dirs
 are exempt. Exit 1 on refuse, else 0. Run from inside the repo; reads the index, not the work tree.
 """
@@ -12,7 +12,7 @@ import collections, importlib.util, json, os, re, subprocess, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 THRESH = 0.8
 MIN_LINES = 8          # below this, only an exact match counts as a content copy
-CANON = ("system/security-canon.md",)
+CANON = ("canon/security-canon.md",)
 
 
 def load_bm():
@@ -85,6 +85,9 @@ def main():
     sopdir = os.path.join(top, "system", "sops")
     if os.path.isdir(sopdir):
         rulebooks += ["system/sops/" + f for f in sorted(os.listdir(sopdir)) if f.endswith(".md")]
+    canondir = os.path.join(top, "canon")   # the approved rulebooks moved here 2026-11-14 (canon-folder move)
+    if os.path.isdir(canondir):
+        rulebooks += ["canon/" + f for f in sorted(os.listdir(canondir)) if f.endswith(".md") and f != "README.md" and not f.endswith(".proposed.md")]   # a .proposed.md is the canon sign's draft, never a rulebook
     rulebooks += [c for c in CANON if os.path.isfile(os.path.join(top, c))]
     rulebooks = [r for r in rulebooks if r not in newset]   # only rulebooks that already exist
     findings = []

@@ -60,7 +60,7 @@ trap 'lhb_journal_fire "$?" "guard_gmail_send.sh" "PreToolUse" "Bash" 2>/dev/nul
 #      decided at the sit-down in INSTALL.md ("grant only the scopes you actually intend to
 #      use"). To change what is blocked, change that rule deliberately and amend this hook, then
 #      update its row in system/tools/organism/label_manifest.yaml so the map and the guard
-#      cannot disagree. ⚠ Do NOT read system/security-canon.md hook table as this rule home:
+#      cannot disagree. ⚠ Do NOT read canon/security-canon.md hook table as this rule home:
 #      that table is a historical record of the donor system hooks and says so in its own scope
 #      note.
 # FAIL_POSTURE: closed — unreadable stdin, unparseable JSON, a missing shared parser, or a

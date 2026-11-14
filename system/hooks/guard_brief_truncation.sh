@@ -36,7 +36,7 @@ trap 'lhb_journal_fire "$?" "guard_brief_truncation.sh" "PreToolUse" "Write|Edit
 #      HERE: locate sections by LINE NUMBER with an asserted boundary, or by a
 #      line-anchored regex (^##\s*N\.), never by substring search -- a heading quoted
 #      inside prose is indistinguishable from the heading itself to str.index/.find.
-# SIGNPOST: rule lives in system/sops/hook-sop.md + system/hook-contract.md; the incident
+# SIGNPOST: rule lives in canon/hook-sop.md + canon/hook-contract.md; the incident
 #      is STORY LOG 2026-08-22yy in the cowork-migration brief, and the 2026-08-13x entry
 #      records the first instance of the same shape. Change the thresholds there with the
 #      operator's sign-off, never by loosening this file to fit one write.
@@ -100,7 +100,7 @@ except Exception: print('')
   TARGETS=$(bwd_write_targets "$SCRUBBED")
   case "$TARGETS" in
     *__BWD_PARSE_ERROR__*)
-      deny "BLOCKED: guard_brief_truncation could not analyse this command, and it names a project brief. WHY: on 2026-08-22 an unanchored substring search for a section heading matched the heading QUOTED INSIDE a Story Log entry 2,161 lines earlier, and the rewrite that followed deleted 2,640 lines. An unparseable command targeting a brief is refused rather than guessed at. REDIRECT: write the brief through the Write tool, or through system/tools/save/pad_archive.py, or snapshot first with: cp \"<brief>\" \"<brief>.pre-shrink.bak\" and retry. RULE: system/sops/hook-sop.md."
+      deny "BLOCKED: guard_brief_truncation could not analyse this command, and it names a project brief. WHY: on 2026-08-22 an unanchored substring search for a section heading matched the heading QUOTED INSIDE a Story Log entry 2,161 lines earlier, and the rewrite that followed deleted 2,640 lines. An unparseable command targeting a brief is refused rather than guessed at. REDIRECT: write the brief through the Write tool, or through system/tools/save/pad_archive.py, or snapshot first with: cp \"<brief>\" \"<brief>.pre-shrink.bak\" and retry. RULE: canon/hook-sop.md."
       ;;
   esac
   case "$TARGETS" in
@@ -114,7 +114,7 @@ except Exception: print('')
       _BT_RAW=$(printf '%s' "$_BT_LINE" | cut -f3)
       _BT_REM=$(bwd_sentinel_remainder "$_BT_RAW" "${_BT_VAR#\$}")
       if [ -z "$_BT_REM" ]; then
-        deny "BLOCKED: guard_brief_truncation cannot verify this Bash command's write target -- it is JUST an unresolved shell variable (${_BT_VAR:-a shell variable}) with no surrounding path text this guard can rule out, and this command names a project brief. REDIRECT: use the Write tool, or expand ${_BT_VAR:-the variable} by hand before running this command. RULE: system/sops/hook-sop.md."
+        deny "BLOCKED: guard_brief_truncation cannot verify this Bash command's write target -- it is JUST an unresolved shell variable (${_BT_VAR:-a shell variable}) with no surrounding path text this guard can rule out, and this command names a project brief. REDIRECT: use the Write tool, or expand ${_BT_VAR:-the variable} by hand before running this command. RULE: canon/hook-sop.md."
       fi
       _BT_INSCOPE=$(printf '%s' "$_BT_REM" | python3 -c '
 import sys, re
@@ -122,7 +122,7 @@ PAT = re.compile(r"[^\s\x27\"()]*(?:/projects/[^\s\x27\"()]*/brief\.md|/state/br
 print("yes" if PAT.search(sys.stdin.read()) else "no")
 ')
       if [ "$_BT_INSCOPE" = "yes" ]; then
-        deny "BLOCKED: guard_brief_truncation cannot verify this Bash command's write target -- it builds a path from ${_BT_VAR:-a shell variable}, which this guard cannot resolve from earlier in the same command, and what is known of the rest of the path looks like a project brief. WHY: a resolvable-looking write target that is actually an unexpanded variable is exactly the shape this guard cannot afford to guess at -- see lib/bash_write_door.sh's own FIXCARD-CROSS-PROJECT-WRITE-VAR-PATHS note. REDIRECT: use the Write tool, or expand ${_BT_VAR:-the variable} by hand before running this command. RULE: system/sops/hook-sop.md."
+        deny "BLOCKED: guard_brief_truncation cannot verify this Bash command's write target -- it builds a path from ${_BT_VAR:-a shell variable}, which this guard cannot resolve from earlier in the same command, and what is known of the rest of the path looks like a project brief. WHY: a resolvable-looking write target that is actually an unexpanded variable is exactly the shape this guard cannot afford to guess at -- see lib/bash_write_door.sh's own FIXCARD-CROSS-PROJECT-WRITE-VAR-PATHS note. REDIRECT: use the Write tool, or expand ${_BT_VAR:-the variable} by hand before running this command. RULE: canon/hook-sop.md."
       fi
       ;;
   esac
@@ -165,7 +165,7 @@ for line in sys.stdin:
     if [ "$age" -le "$RECEIPT_MAX_AGE" ] && [ "$bs" -ge "$cs" ]; then exit 0; fi
   fi
 
-  deny "BLOCKED: an OVERWRITE-shaped Bash write to a project brief with no fresh snapshot beside it. TARGET: $HIT. WHY: on 2026-08-22 a sub-agent located a section of this exact kind of file with an unanchored substring search, matched the same heading QUOTED INSIDE a Story Log entry 2,161 lines above the real one, rewrote from that offset, and deleted 2,640 lines -- all of section 5, all of section 6, and the tail of section 4. A shell overwrite cannot be sized before it runs, so it is gated on recoverability instead of on size. Appends (>> and tee -a) are NOT blocked and never reach here. REDIRECT: (1) snapshot -- cp \"$HIT\" \"$HIT.pre-shrink.bak\" -- then retry the identical command; the receipt is honoured for 15 minutes. (2) AND FIX THE LOCATOR: find sections by LINE NUMBER with an asserted boundary, or by a line-anchored regex (^##\\s*N\\.), NEVER by str.index/.find on a heading string -- measured on the live brief, unanchored matching returns 4 hits and anchored returns 1. RULE: system/sops/hook-sop.md; incident: STORY LOG 2026-08-22yy."
+  deny "BLOCKED: an OVERWRITE-shaped Bash write to a project brief with no fresh snapshot beside it. TARGET: $HIT. WHY: on 2026-08-22 a sub-agent located a section of this exact kind of file with an unanchored substring search, matched the same heading QUOTED INSIDE a Story Log entry 2,161 lines above the real one, rewrote from that offset, and deleted 2,640 lines -- all of section 5, all of section 6, and the tail of section 4. A shell overwrite cannot be sized before it runs, so it is gated on recoverability instead of on size. Appends (>> and tee -a) are NOT blocked and never reach here. REDIRECT: (1) snapshot -- cp \"$HIT\" \"$HIT.pre-shrink.bak\" -- then retry the identical command; the receipt is honoured for 15 minutes. (2) AND FIX THE LOCATOR: find sections by LINE NUMBER with an asserted boundary, or by a line-anchored regex (^##\\s*N\\.), NEVER by str.index/.find on a heading string -- measured on the live brief, unanchored matching returns 4 hits and anchored returns 1. RULE: canon/hook-sop.md; incident: STORY LOG 2026-08-22yy."
 fi
 
 # ── typed tools: Write / Edit / MultiEdit -- these we CAN size ───────────────
@@ -221,7 +221,7 @@ else:
     SKIP*|"") exit 0 ;;
     ERROR*)
       msg=$(printf '%s' "$RESULT" | cut -d'|' -f2)
-      deny "BLOCKED: guard_brief_truncation identified a project brief as the write target but could not size the write ($msg), so it is failing closed. WHY: on 2026-08-22 an unsized rewrite of a brief deleted 2,640 lines; an unreadable payload and a safe one must never look the same. REDIRECT: snapshot first -- cp \"<brief>\" \"<brief>.pre-shrink.bak\" -- then retry. RULE: system/sops/hook-sop.md."
+      deny "BLOCKED: guard_brief_truncation identified a project brief as the write target but could not size the write ($msg), so it is failing closed. WHY: on 2026-08-22 an unsized rewrite of a brief deleted 2,640 lines; an unreadable payload and a safe one must never look the same. REDIRECT: snapshot first -- cp \"<brief>\" \"<brief>.pre-shrink.bak\" -- then retry. RULE: canon/hook-sop.md."
       ;;
     SHRINK*)
       removed=$(printf '%s' "$RESULT" | cut -d'|' -f2)
@@ -237,7 +237,7 @@ else:
         if [ "$age" -le "$RECEIPT_MAX_AGE" ] && [ "$bs" -ge "$cur" ]; then exit 0; fi
       fi
 
-      deny "BLOCKED: this $TOOL would remove $removed bytes (${pct}% of $cur) from a project brief, and there is no fresh snapshot beside it. TARGET: $path. WHY: on 2026-08-22 a sub-agent located a section of this exact file with an unanchored substring search, matched the same heading QUOTED INSIDE a Story Log entry 2,161 lines above the real heading, rewrote from that offset, and deleted 2,640 lines -- all of section 5, all of section 6, and the tail of section 4. Threshold is >15% AND >5,000 bytes, so a normal scratchpad compaction (measured 10.4%) never lands here; a shrink this size is either a real graduation or the same bug again. REDIRECT: (1) if this shrink is INTENDED, make it recoverable -- cp \"$path\" \"$path.pre-shrink.bak\" -- then retry the identical write; the receipt is honoured for 15 minutes. (2) if you computed the boundary by searching for a heading STRING, that is the bug: find sections by LINE NUMBER with an asserted boundary, or by a line-anchored regex (^##\\s*N\\.). Measured on the live brief: unanchored matching for the scratchpad heading returns 4 hits, the first 2,161 lines too early; anchored returns exactly 1. RULE: system/sops/hook-sop.md; incident: STORY LOG 2026-08-22yy."
+      deny "BLOCKED: this $TOOL would remove $removed bytes (${pct}% of $cur) from a project brief, and there is no fresh snapshot beside it. TARGET: $path. WHY: on 2026-08-22 a sub-agent located a section of this exact file with an unanchored substring search, matched the same heading QUOTED INSIDE a Story Log entry 2,161 lines above the real heading, rewrote from that offset, and deleted 2,640 lines -- all of section 5, all of section 6, and the tail of section 4. Threshold is >15% AND >5,000 bytes, so a normal scratchpad compaction (measured 10.4%) never lands here; a shrink this size is either a real graduation or the same bug again. REDIRECT: (1) if this shrink is INTENDED, make it recoverable -- cp \"$path\" \"$path.pre-shrink.bak\" -- then retry the identical write; the receipt is honoured for 15 minutes. (2) if you computed the boundary by searching for a heading STRING, that is the bug: find sections by LINE NUMBER with an asserted boundary, or by a line-anchored regex (^##\\s*N\\.). Measured on the live brief: unanchored matching for the scratchpad heading returns 4 hits, the first 2,161 lines too early; anchored returns exactly 1. RULE: canon/hook-sop.md; incident: STORY LOG 2026-08-22yy."
       ;;
   esac
 fi

@@ -7,7 +7,7 @@
 # conformant: this jig stamps the frontmatter + intent block the SOP requires, and the companion hook
 # `enforce_skill_frontmatter.sh` blocks any SKILL.md written without them. Solve it once.
 #
-# RULE / SIGNPOST: the skill shape is codified in system/sops/skill-building-sop.md (§0 six traits, §0.5
+# RULE / SIGNPOST: the skill shape is codified in canon/skill-building-sop.md (§0 six traits, §0.5
 # the 3-layer intent model). Change the template there-and-here together.
 #
 # Usage:  bash system/tools/new-skill.sh <skill-name> --description "<one line>" [--desk <desk>] [--shape <shape>] [--force]
@@ -99,7 +99,7 @@ updated_at: $TODAY
 ---
 
 ## Intent (§0.5)
-<!-- The 3-layer intent model (system/sops/skill-building-sop.md §0.5). Write as prose, not a form.
+<!-- The 3-layer intent model (canon/skill-building-sop.md §0.5). Write as prose, not a form.
      A skill with no declared user-outcome + role is ambiguous — the session guesses. Fill all layers.
      Layer 3 (per-turn anchor) applies to MULTI-TURN skills only; a one-shot/cron skill omits it. -->
 **User outcome:** REPLACE — the human's win in their own terms (what changes for the user, why they asked). End with a **Bar:** in their voice ("it's done when…").
@@ -296,7 +296,7 @@ if [ "$MULTIPHASE" -gt 0 ] 2>/dev/null; then
   # ⚠ CLEANUP-PASS 2026-10-31: conformance-lab/ moved to ~/lifehack-v2/rebuild/conformance-lab/ (V2 copy) and the donor clone/archive/2026-10-31/system/tools/conformance-lab/ (the donor repo copy); this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
   echo "   1c. Add real 'forbids' rules to scripts/phase-contract.json as the spec is written — scripts/phase_gate.py + scripts/forbidden_content.py are already wired and passing."
 fi
-echo "   2. Read the doctrine as you build:  system/sops/skill-building-sop.md"
+echo "   2. Read the doctrine as you build:  canon/skill-building-sop.md"
 echo "   Gates already wired from the parts library (system/parts/):"
 echo "     - scripts/order_lint.py    -- Purpose precedes Rails. Re-check: python3 scripts/order_lint.py --rules scripts/order-rules.json --artifact SKILL.md"
 if [ "$MULTIPHASE" -gt 0 ] 2>/dev/null; then

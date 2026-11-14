@@ -37,7 +37,7 @@ DATA="$(python3 "$ROOT/shared/brain_root.py" --quiet)" || {
   echo "Ask them, then: python3 $ROOT/shared/brain_root.py --set \"<that folder>\" --create"; exit 1; }
 ```
 
-Everything below is under `$DATA`. The layout: `docs/data-layout.md`.
+Everything below is under `$DATA`. The layout: `canon/data-layout.md`.
 
 ## Step 0 — Is a project live?
 
@@ -361,7 +361,7 @@ search `<broader term>` / the journal segments / a different subject?"* **Never 
 | `shared/brain_root.py` | the one resolver for where the notes live | ✅ here |
 | `system/hooks/pm_flag.sh` | which project is live | ✅ here |
 | `system/hooks/session_context_loader.sh` | puts subject canon in context at session start — the reason step 0.6 skips it | ✅ here |
-| `docs/data-layout.md` | where everything under `$DATA` lives | ✅ here |
+| `canon/data-layout.md` | where everything under `$DATA` lives | ✅ here |
 | `system/schemas/project-doc-schema.md` | the brief's section names, for the pickup read | ✅ here |
-| `system/knowledge-altitude.md` | the doctrine behind step 3.9 | ✅ here |
+| `canon/knowledge-altitude.md` | the doctrine behind step 3.9 | ✅ here |
 | `system/confidence-model.md` | the tiers and confidence vocabulary step 5b reads | ✅ here |

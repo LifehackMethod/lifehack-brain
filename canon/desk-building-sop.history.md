@@ -1,9 +1,9 @@
 ---
 title: "Desk-building SOP: history log"
-what: "Retired and moved text from system/sops/desk-building-sop.md, kept verbatim and dated so nothing is lost. Never read in normal use."
+what: "Retired and moved text from canon/desk-building-sop.md, kept verbatim and dated so nothing is lost. Never read in normal use."
 read_in_normal_use: false
-base_commit: "fbb23e9  (git log -1 --format=%h -- system/sops/desk-building-sop.md, on branch V2)"
-base_file: "system/sops/desk-building-sop.md, 101 lines at that commit"
+base_commit: "fbb23e9  (git log -1 --format=%h -- canon/desk-building-sop.md, on branch V2)"
+base_file: "canon/desk-building-sop.md, 101 lines at that commit"
 created: 2026-11-02
 status: "V2 draft, to be merged with the SOP"
 ---
@@ -153,7 +153,7 @@ updated_at: 2026-08-15
 
 - Date: 2026-11-02
 - Action: FIX
-- Reason: Decision 2c (item 1.4), with the pointer: "ONLY if the desk needs it" kept; scheduled jobs are added as rows per `system/sops/cron-jobs-sop.md`; the three settings are left at `null` in the registry block "(no tool reads them today)". "a pure knowledge desk (no cron) … is done at step 2" is kept. A code search on 2026-10-31 found no reader of `health_producer`, `pulse_slot` or `status_tile_path` outside comments and docs; the names come from the old scheduler ("pulse").
+- Reason: Decision 2c (item 1.4), with the pointer: "ONLY if the desk needs it" kept; scheduled jobs are added as rows per `canon/cron-jobs-sop.md`; the three settings are left at `null` in the registry block "(no tool reads them today)". "a pure knowledge desk (no cron) … is done at step 2" is kept. A code search on 2026-10-31 found no reader of `health_producer`, `pulse_slot` or `status_tile_path` outside comments and docs; the names come from the old scheduler ("pulse").
 - Original lines: 85-87
 
 ```
@@ -184,7 +184,7 @@ Draft wording replaced (draft text; the base text of step 2 is in the entry for 
    Deliberately not auto-edited — the registry is read
    by every organ that needs to enumerate desks (e.g. `backlog_groom.py`'s `load_registry()`), and
    hand-maintenance keeps adding a desk a conscious act.
-   A desk's scheduled jobs are added as rows per `system/sops/cron-jobs-sop.md`; leave `health_producer`, `pulse_slot` and `status_tile_path` at
+   A desk's scheduled jobs are added as rows per `canon/cron-jobs-sop.md`; leave `health_producer`, `pulse_slot` and `status_tile_path` at
    `null` in the registry block (no tool reads them today).
 ```
 
@@ -204,7 +204,7 @@ created_at: 2026-07-10
 updated_at: 2026-11-02
 status: active
 authority: user
-history: "system/sops/desk-building-sop.history.md (retired and moved text; never read in normal use)"
+history: "canon/desk-building-sop.history.md (retired and moved text; never read in normal use)"
 route_format: "[section, line_in_this_file, purpose]; find a section by grep -n on its heading text; generated last, regenerate after any edit"
 route:
   - ["heavy shape", 33, "a full desk vs the light knowledge folder /ingest builds"]
@@ -250,10 +250,10 @@ route:
 `/ingest` PHASE 4 writes a **knowledge folder** — the light subset `canon/current.md` +
 `canon/purpose.md` + `records/`, nothing else — via `folder_scaffold.py`. That is the shipped default
 for every subject `/ingest` finds, and it is documented (canonically, for that shape) in
-`docs/data-layout.md`. **A full desk, built by THIS SOP via `desk_scaffold.py`, is a strict superset of
+`canon/data-layout.md`. **A full desk, built by THIS SOP via `desk_scaffold.py`, is a strict superset of
 a knowledge folder, reached only by a separate, deliberate, later human act** — never automatic, never
 run by `/ingest` itself. If you are looking for what a fresh subject gets on day one, that answer lives
-in `docs/data-layout.md`, not here. This page is for promoting one of those folders — or standing up a
+in `canon/data-layout.md`, not here. This page is for promoting one of those folders — or standing up a
 desk directly — once it has earned the heavier shape.
 ~~~~
 
@@ -330,7 +330,7 @@ code folder under `desks/<desk>/tools/`; other standalone scripts live in the pe
    by every organ that needs to enumerate desks (e.g. `backlog_groom.py`), and
    hand-maintenance keeps adding a desk a conscious act.
 3. **Wire to automation ONLY if the desk needs it** — a pure knowledge desk (no cron) is done at step 2.
-   A desk's scheduled jobs are added as rows per `system/sops/cron-jobs-sop.md`.
+   A desk's scheduled jobs are added as rows per `canon/cron-jobs-sop.md`.
 4. **Verify conformance:** every file the scaffold wrote must exist and be non-empty (`views/` and
    `.claude/settings.json` only if you added them); `_registry.md` must list them.
 ~~~~

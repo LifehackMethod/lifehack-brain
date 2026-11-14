@@ -32,7 +32,7 @@ trap 'lhb_journal_fire "$?" "guard_hook_sop_read.sh" "PreToolUse" "Bash|Write|Ed
 # ══════════════════════════════════════════════════════════════════════════════
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # WHY: On 2026-07-28 (organism-audit S2.3) a session edited enforce_skill_frontmatter.sh WITHOUT
-#      reading system/sops/hook-sop.md first. The operator caught it; the system did not. The post-mortem
+#      reading canon/hook-sop.md first. The operator caught it; the system did not. The post-mortem
 #      found TWO controls that both existed and NEITHER could have worked: (1)
 #      inject_sop_before_build.sh is UserPromptSubmit and keys on BUILD-INTENT LANGUAGE IN THE
 #      USER'S PROMPT — it watches what the human TYPES, not what the agent DOES, so it fired once
@@ -56,8 +56,8 @@ trap 'lhb_journal_fire "$?" "guard_hook_sop_read.sh" "PreToolUse" "Bash|Write|Ed
 # GUARDS: (1) a WRITE-SHAPED Bash command targeting system/hooks/ or ~/.claude/hooks/ (chmod with a
 #      numeric mode · sed -i · tee · cp/mv/install into · rm · a > / >> redirect into · truncate ·
 #      dd of=), and (2) a Write/Edit/MultiEdit tool call whose file_path resolves into system/hooks/ or
-#      ~/.claude/hooks/ — in both cases, when NO receipt proves system/sops/hook-sop.md +
-#      system/hook-contract.md were read THIS session. READ-SHAPED Bash commands are deliberately
+#      ~/.claude/hooks/ — in both cases, when NO receipt proves canon/hook-sop.md +
+#      canon/hook-contract.md were read THIS session. READ-SHAPED Bash commands are deliberately
 #      untouched — grep/cat/ls/head/tail/wc, `bash <hook>` (running a hook is how the fire-test fleet
 #      works and must never be blocked), and `git checkout/restore` of a hook (the emergency repair path
 #      back to a known-good state). A Write/Edit under system/hooks/tests/* is likewise untouched — a
@@ -66,7 +66,7 @@ trap 'lhb_journal_fire "$?" "guard_hook_sop_read.sh" "PreToolUse" "Bash|Write|Ed
 #      PRINTS both docs to stdout and stamps the receipt as a side effect, then retry the exact
 #      same command/edit. The receipt cannot be forged into existence without the SOP text passing
 #      through context.
-# SIGNPOST: the RULE lives in system/sops/hook-sop.md (WHEN + WHICH kind) and system/hook-contract.md
+# SIGNPOST: the RULE lives in canon/hook-sop.md (WHEN + WHICH kind) and canon/hook-contract.md
 #      (mechanics + the two-machine Deploy & Verify checklist). To change what is gated, edit those
 #      + get the operator's sign-off (a HUMAN ruling, `authority: user` — not a session's own
 #      judgement), then update this guard and its settings.json registration.
@@ -228,7 +228,7 @@ print(cwd)
 " 2>/dev/null)
 
 if [ -z "$_PARSED" ] || [ "$(printf '%s' "$_PARSED" | sed -n '1p')" = "__ERR__" ]; then
-  printf '%s\n' "BLOCKED: guard_hook_sop_read could not parse its input — failing CLOSED. WHY: this guard protects the enforcement layer (system/hooks/), so an uninspectable payload must not pass. REDIRECT: retry the command/edit; if it persists, inspect the tool call. RULE: system/sops/hook-sop.md + system/hook-contract.md." >&2
+  printf '%s\n' "BLOCKED: guard_hook_sop_read could not parse its input — failing CLOSED. WHY: this guard protects the enforcement layer (system/hooks/), so an uninspectable payload must not pass. REDIRECT: retry the command/edit; if it persists, inspect the tool call. RULE: canon/hook-sop.md + canon/hook-contract.md." >&2
   exit 2
 fi
 
@@ -249,7 +249,7 @@ case "$TOOL_NAME" in
   Write|Edit|MultiEdit)
     # A path that failed to resolve is treated the same as an unparseable payload — never guessed at.
     if [ "$FILE_PATH" = "__PATH_ERR__" ]; then
-      deny 'BLOCKED: guard_hook_sop_read could not resolve this Write/Edit file_path — failing CLOSED. WHY: this guard protects the enforcement layer (system/hooks/), so an uninspectable target must not pass. REDIRECT: retry the edit; if it persists, inspect the tool call. RULE: system/sops/hook-sop.md + system/hook-contract.md.'
+      deny 'BLOCKED: guard_hook_sop_read could not resolve this Write/Edit file_path — failing CLOSED. WHY: this guard protects the enforcement layer (system/hooks/), so an uninspectable target must not pass. REDIRECT: retry the edit; if it persists, inspect the tool call. RULE: canon/hook-sop.md + canon/hook-contract.md.'
     fi
     # Does this edit land in the hook plane at all?
     case "$FILE_PATH" in
@@ -637,4 +637,4 @@ done
 
 [ "$FOUND" -eq 1 ] && exit 0
 
-deny "BLOCKED: this Bash command or Write/Edit call WRITES to the hook plane (system/hooks/) but the hook SOP has not been read this session. WHY: on 2026-07-28 a hook was edited with its rulebook unread — the existing reminder (inject_sop_before_build.sh) keys on the USER prompt, so it fires at session start and is silent at the moment the agent actually edits a hook. Hooks are the enforcement layer: a wrong edit here silently disables a control, and a silently-dark guard is worse than no guard because the map still reports it green. REDIRECT: run \`bash $_REPO/system/tools/read_sop.sh hook\` (it PRINTS hook-sop.md + hook-contract.md and stamps a 12h session receipt as a side effect), then retry this exact command/edit. Reading is the only way to earn the receipt. RULE: system/sops/hook-sop.md (WHEN + which kind) + system/hook-contract.md (mechanics + the two-machine Deploy & Verify checklist) — edit those + get the operator's sign-off (a HUMAN ruling, \`authority: user\`) to change what is gated, then update this guard."
+deny "BLOCKED: this Bash command or Write/Edit call WRITES to the hook plane (system/hooks/) but the hook SOP has not been read this session. WHY: on 2026-07-28 a hook was edited with its rulebook unread — the existing reminder (inject_sop_before_build.sh) keys on the USER prompt, so it fires at session start and is silent at the moment the agent actually edits a hook. Hooks are the enforcement layer: a wrong edit here silently disables a control, and a silently-dark guard is worse than no guard because the map still reports it green. REDIRECT: run \`bash $_REPO/system/tools/read_sop.sh hook\` (it PRINTS hook-sop.md + hook-contract.md and stamps a 12h session receipt as a side effect), then retry this exact command/edit. Reading is the only way to earn the receipt. RULE: canon/hook-sop.md (WHEN + which kind) + canon/hook-contract.md (mechanics + the two-machine Deploy & Verify checklist) — edit those + get the operator's sign-off (a HUMAN ruling, \`authority: user\`) to change what is gated, then update this guard."

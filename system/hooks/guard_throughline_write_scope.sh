@@ -15,7 +15,7 @@ trap 'lhb_journal_fire "$?" "guard_throughline_write_scope.sh" "PreToolUse" "Bas
 #      finish the run first: `bash system/hooks/throughline_flag.sh clear`.
 # SIGNPOST: the write contract is .claude/skills/throughline/SKILL.md -> "Write Target"; the notes
 #      folder is resolved the way shared/brain_root.py resolves it, and the layout is
-#      docs/data-layout.md. Change the destination in all three or in none.
+#      canon/data-layout.md. Change the destination in all three or in none.
 # FAIL_POSTURE: CLOSED while armed, open otherwise. Un-armed sessions are never affected at all.
 # UPDATED: 2026-08-23 (GitHub #95: notes_root() now also tries the repo's own .brain-root pointer
 #      and, when this checkout is a linked git worktree with no pointer of its own, the MAIN
@@ -58,7 +58,7 @@ deny() {
   printf 'BLOCKED (throughline write-scope): %s\n' "$1" >&2
   printf '%s\n' "WHY: /throughline is read-only by contract — it reads a project's whole history and says where it drifted, and an investigator that can edit the evidence is not one. This guard fires only inside an armed run." >&2
   printf '%s\n' "REDIRECT: the one file it may write is <notes>/records/insights/throughline/{target-slug}-{YYYY-MM-DD}.md. To write anything else, end the run first: bash system/hooks/throughline_flag.sh clear" >&2
-  printf '%s\n' "RULE: .claude/skills/throughline/SKILL.md -> 'Write Target', and docs/data-layout.md for where that folder lives." >&2
+  printf '%s\n' "RULE: .claude/skills/throughline/SKILL.md -> 'Write Target', and canon/data-layout.md for where that folder lives." >&2
   exit 2
 }
 

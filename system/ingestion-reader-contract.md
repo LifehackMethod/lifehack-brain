@@ -105,7 +105,7 @@ The reader NEVER recommends a disposition or takes an action — it returns the 
 
 ⛔ **Two donor-only carve-outs do not apply here and are not listed as rows:** an internal-schema
 database integration (no free-text) and a local-network home-automation integration (local origin, low
-reach) — neither integration ships in this repo. See `system/security-canon.md`'s "Named Scope
+reach) — neither integration ships in this repo. See `canon/security-canon.md`'s "Named Scope
 Exceptions" for the same reasoning, stated once rather than repeated per-row. If either kind of
 integration is added later, apply the decision procedure below fresh rather than reviving these rows.
 

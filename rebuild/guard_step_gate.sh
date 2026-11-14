@@ -47,7 +47,7 @@ trap 'lhb_journal_fire "$?" "guard_step_gate.sh" "PreToolUse+UserPromptExpansion
 #      (the two-leg precedent this generalizes) · system/hooks/lib/flag.sh (the step-receipts
 #      mechanic) · system/hooks/step_receipt.sh (the checkin->save seam's OWN direct, non-hook use of
 #      the same flag family — a different consumer of the same library, not a caller of this script)
-#      · system/hook-contract.md (deny format) · system/sops/hook-sop.md (fail-closed rule).
+#      · canon/hook-contract.md (deny format) · canon/hook-sop.md (fail-closed rule).
 # FAIL_POSTURE: closed — any unparsed/unknown event, or a register that fails to parse, denies rather
 #      than allows (hook-sop.md §3 rule 2: "on ANY error a BLOCK hook denies, never exit 0 on error").
 # UPDATED: 2026-09-17 (new — K6, enforcement-layer Phase 2. Deliverable (a) of the K6 card; built,
@@ -101,7 +101,7 @@ step_receipt.sh, flagdir step-receipts) is present and unexpired for this sessio
 REDIRECT: run whichever step is supposed to produce "$3" first, then retry -- or if this looks wrong,
 the precondition is declared on "$2"'s own row in system/register/register.jsonl ("needs").
 
-RULE: K6-DESIGN-SPEC.md (this mechanism's design) + system/hook-contract.md (deny format) +
+RULE: K6-DESIGN-SPEC.md (this mechanism's design) + canon/hook-contract.md (deny format) +
 system/hooks/lib/flag.sh (the step-receipts mechanic this reads).
 MSG
   exit 2
@@ -114,7 +114,7 @@ BLOCKED: guard_step_gate.sh could not evaluate this call and is failing CLOSED, 
 
 WHY: $1
 
-RULE: system/sops/hook-sop.md ("on ANY error a BLOCK hook denies, never exit 0 on error").
+RULE: canon/hook-sop.md ("on ANY error a BLOCK hook denies, never exit 0 on error").
 MSG
   exit 2
 }

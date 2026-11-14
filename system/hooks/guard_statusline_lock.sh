@@ -15,7 +15,7 @@ trap 'lhb_journal_fire "$?" "guard_statusline_lock.sh" "PreToolUse" "Bash" 2>/de
 #         unaffected — this guard only matches the Bash tool and only real write-to-target patterns.
 # REDIRECT: To change the bar legitimately, edit system/statusline.sh via the Edit tool, or change
 #           the pointer in .claude/settings.json with sign-off.
-# SIGNPOST: Rule lives in system/hook-contract.md; change the guard there + get sign-off.
+# SIGNPOST: Rule lives in canon/hook-contract.md; change the guard there + get sign-off.
 # FAIL_POSTURE: degrade-safe — runs on EVERY Bash call with a narrow scope; on a parse error it
 #           ALLOWS (a blanket deny-all-Bash on a transient glitch is worse than the narrow, low-harm
 #           risk it guards, which guard_write_paths.sh already backstops at the Write/Edit layer).
@@ -36,7 +36,7 @@ except Exception:
 [ -z "$COMMAND" ] && exit 0   # degrade-safe: nothing to inspect
 
 deny() {
-  printf '%s\n' '{"decision":"block","reason":"BLOCKED: attempt to repoint/replace the status-line. WHY: the durable HUD (system/statusline.sh via the settings pointer) is locked per the user. REDIRECT: edit system/statusline.sh via the Edit tool, or change the pointer in .claude/settings.json with sign-off. RULE: system/hook-contract.md."}' >&2
+  printf '%s\n' '{"decision":"block","reason":"BLOCKED: attempt to repoint/replace the status-line. WHY: the durable HUD (system/statusline.sh via the settings pointer) is locked per the user. REDIRECT: edit system/statusline.sh via the Edit tool, or change the pointer in .claude/settings.json with sign-off. RULE: canon/hook-contract.md."}' >&2
   exit 2
 }
 

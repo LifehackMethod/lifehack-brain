@@ -65,7 +65,7 @@ Bash/Write/Edit/MultiEdit:
 
 ## Use, don't copy
 
-The rule is `system/sops/canonical-principles-sop.md` §9: "If something should work the same way everywhere, it
+The rule is `canon/canonical-principles-sop.md` §9: "If something should work the same way everywhere, it
 exists once, in the shared layer. Desks use it; they never copy it." Reminders, in the order a builder meets
 them: the harness brief (`CLAUDE.md`, organism map), the prompt hook `inject_sop_before_build.sh` (building
 language points to `toolbox.md` and `/build`), then the guard above at write time. A desk that needs a shared
