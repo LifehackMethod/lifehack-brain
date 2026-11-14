@@ -18,10 +18,10 @@ note: The definitive, injectable picture of how information enters this system a
 > security should work, or tries to resurrect an approach we already killed. This doc outranks any
 > half-remembered pattern.
 >
-> **THE RULE THAT GOVERNS EVERYTHING BELOW — ONE SECURITY GATE, AT INTAKE (the airport model).**
+> **WHAT GOVERNS EVERYTHING BELOW — ONE SECURITY GATE, AT INTAKE (the airport model).**
 > **Every** external input — email, a task, a calendar invite, a PDF, a Word doc, a markdown file, a web
-> page, a Google-Doc export, pasted text, *anything* from outside — passes the **complete** security stack
-> **once, at the door**: mechanical scrub → regex scan → the tool-less redaction reader. The **cleared copy**
+> page, a Google-Doc export, pasted text, *anything* from outside — passes the whole Sentinel pipeline
+> **once, at the door**: mechanical scrub → regex scan → the tool-less judge reader → quarantine. The **cleared copy**
 > is what gets stored. **Once inside, content is TRUSTED — every agent uses it freely, with NO second security
 > check, ever.** One checkpoint, then airside.
 >
@@ -50,22 +50,19 @@ interpretation yet. It runs in **two modes**, and many source types plug into ea
 calendar event. Swallowed whole by the machine, **no human**, on whatever cadence the item-store writers
 are run.
 - Done by the item-store writers `shared/tools/tasks_store_sync.py` and `shared/tools/calendar_store_sync.py`
-  — both ship here and are real, runnable janitors (`--sync`, `--dry-run`, `--self-test`). ⚠
-  **CORRECTED 2026-08-15 (T9.7d stale-claim sweep) — the two sentences this replaces were wrong
-  in two separate, compounding ways.** First: **the email-side writer DOES ship in this repo** —
-  `shared/tools/email_summary_sync.py` is the janitor `shared/tools/email_service_read.py` (the
-  READ adapter) reads from; see `system/schemas/email-summary-schema.md` for the full store
-  contract. Second: **this repo does have a scheduler** — `system/tools/pulse.sh` (the heartbeat
-  daemon) and `system/tools/install-schedulers.sh` (the OS-scheduler installer) both ship, and
-  `system/jobs.md` carries a real `email-summary-write` row (10800s) that calls the
-  janitor. On a fresh install, before `install-schedulers.sh` has been run on a machine, or
-  before a Google account is connected, every email read still returns `MISS-NEW` ("no record
-  for this thread") — that remains the correct, by-design state of an unpopulated store, never a
-  broken adapter; it is just no longer because "nothing populates it," it is because nothing has
-  populated it YET on that particular install.
+  — both ship here and are real, runnable janitors (`--sync`, `--dry-run`, `--self-test`).
+  The email-side writer ships too: `shared/tools/email_summary_sync.py` is the janitor
+  `email_service_read.py` reads from (store contract: `system/schemas/email-summary-schema.md`).
+  Scheduled jobs run them: on a Mac, launchd runs each enabled row of `system/jobs.md` through
+  `system/tools/job-run.sh`; on Linux and Windows `system/tools/pulse.sh` does
+  (`canon/cron-jobs-sop.md` §4). A scheduled job reads mail only through
+  `shared/tools/email_fetch.py` (§7). On a fresh install, before the schedulers are installed or a
+  Google account is connected, every email read returns `MISS-NEW` — the correct state of an
+  empty store, not a broken adapter.
 - Stores a **faithful de-duplicated copy — never a summary**: every message/event/task, chronological,
-  attachments as pointers, with a completeness guard so nothing is silently dropped, under
-  `<notes>/state/email-summary/threads-v2/` + `<notes>/state/item-store/`.
+  attachments as pointers, with a completeness guard so nothing is silently dropped, in
+  the unsynced local data folder beside the notes folder (full email text and constantly-rewritten
+  stores never sync: `canon/data-layout.md`).
 - The store is **durable memory, never a cache — never hard-deleted** (lifecycle active→completed→cold→deep-cold).
 
 **B) The archive (bulk-corpus intake).** A giant one-time pile — years of old chat exports, a document
@@ -79,15 +76,15 @@ Every item, both modes, passes the full stack before it is stored (the component
 `canon/security-canon.md`'s Attack Surface Coverage section): **(1)** L0 mechanical scrub
 (`system/tools/sanitize.py` — strip hidden chars / HTML / encoding) → **(2)** regex injection scan
 (`system/tools/safe_input.py` — the **metal detector**: beeps "look here," decides nothing, over-flags
-intentionally) → **(3)** the **tool-less judge reader** (`.claude/agents/ingest-reader.md`, Haiku, no
-Bash/Write/network) which acts as the **body scanner**: for EACH flagged span ONLY, it **decodes** (base64
+intentionally) → **(3)** the **tool-less judge reader** (`.claude/agents/ingest-reader.md`, cheapest
+tier, Read only) which acts as the **body scanner**: for EACH flagged span ONLY, it **decodes** (base64
 / hex / URL / zero-width) and **judges by meaning** — real injection (a command / "you are now…" /
 exfiltration / prompt-override) vs benign (signing token, tracking hash, ID). It **redacts ONLY real
 attacks**; benign flags are cleared and kept verbatim; everything OUTSIDE a flagged span is carried
 whole/verbatim. The reader's **VERDICT** (REAL-ATTACK | BENIGN | NONE) — not the raw scanner beep — is what
 gates redaction. What lands in the store is the **cleared** copy. **✅ SHIPPED — the reader runs HERE, AT
 INTAKE**, both as the tool-less `ingest-reader` subagent for a controller that holds tools, and as
-`shared/tools/intake_reader.py` (a `claude -p haiku` decode-and-judge caller with the same contract) for a
+`shared/tools/intake_reader.py` (a `claude -p` decode-and-judge caller on the small tier, with no tools, under the same contract) for a
 non-interactive writer like the item-store sync scripts. *(This repo's own code comments carry the same
 build history the donor doc did — `shared/tools/email_service_read.py` still references commit `3e4b37d`
 for the re-scan-skip half. Re-check the CODE before trusting any status marker in a doc, including this one.)*
@@ -96,10 +93,10 @@ for the re-scan-skip half. Re-check the CODE before trusting any status marker i
   redaction. A REAL-ATTACK verdict is **redacted-and-stored** (bad span blacked out, the rest kept and usable).
   A genuinely-DANGER-class item is **hard-quarantined at the door and NOT stored** (reversible Gmail label,
   never deleted, via `shared/gate/sentinel_quarantine.py`).
-- **Alerting gates on verdict, not beep [FUTURE FIX — not built yet]:** only a REAL-ATTACK verdict should
-  trigger a phone-buzz notification (the governed push path here is `shared/notify/notify-send.sh` +
-  `shared/notify/notify-governor.py`). Today the buzz fires on the raw scanner beep, causing notification
-  spam for benign flags. Wiring the buzz to the reader's verdict is a documented future fix.
+- **Alerting follows the reader's verdict:** the phone alert rings unless the reader says BENIGN, so a
+  flag that decodes to harmless is cleared in silence. A REAL-ATTACK verdict in email also pauses the
+  source, sends one critical text and quarantines the message (the governed push path is
+  `shared/notify/notify-send.sh` + `shared/notify/notify-governor.py`).
 - **`reader_applied` marker — LIVE, both halves:** the cleared record carries the flag and read-side
   adapters (`shared/tools/item_store_read.py` / `shared/tools/email_service_read.py`) honour it **twice
   over** — they skip the redundant **re-scan** *and* skip the redundant **isolation**, so a cleared record
@@ -111,8 +108,8 @@ for the re-scan-skip half. Re-check the CODE before trusting any status marker i
   the mechanism, not the number.)*
 
 ### Universal scope — every channel, or a NAMED exception (never a silent hole)
-The channel-coverage table lives in `canon/security-canon.md`'s Attack Surface Coverage section. The rule
-is universal; the two honest edges:
+The channel-coverage table lives in `canon/security-canon.md`'s Attack Surface Coverage section. The requirement
+is universal; the honest edge:
 - **Pasted / typed text in a conversation turn** cannot be gated by a hook (no tool call fires on a chat
   turn). **Closed by convention, via a drop-file:** the operator writes a message into a plain
   text/markdown file, and reading it back is a gated tool call (L0 scrub + injection scan + the Sentinel
@@ -123,12 +120,9 @@ is universal; the two honest edges:
   shape is not what ships here — a per-install team can build the same convention on top of
   `--clear-after` if they want it.
 - **`.txt`/`.md` reads and a Google-Doc export are GATED** — verify in `system/hooks/ingest_gate_enforce.sh`
-  (the trusted-zone allowlist plus the `.txt`/`.md` and `drive files export` arms). **Web fetch/search is a
-  NAMED, ACCEPTED exception** — it is scrubbed (L0) + injection-scanned (`system/tools/safe_input.py`) +
-  egress-capped (`system/hooks/enforce_egress_allowlist.sh`), but not `/tmp/rdr` reader-isolated. By the
-  adopted security posture (structural least-privilege + human-gated actions + EGRESS filtering beat heavy
-  input-side isolation — a finding inherited from the system this doc was ported from), that is sufficient,
-  NOT a gap to close.
+  (the trusted-zone allowlist plus the `.txt`/`.md` and `drive files export` arms). Web fetch and
+  search pass the whole Sentinel pipeline like every other channel: scrub, scan, the tool-less reader,
+  quarantine (approved by Enver, 2026-11-13).
 
 ### Why intake is built this way (stops relitigation)
 - **Faithful copy, never an AI *summary*.** A `/research` pass found LLM summaries fabricate ~25% of named
@@ -158,9 +152,11 @@ Interpret is a *judgment* problem, not a security one.
   desk and a career-subject desk read the same store the same way and still judge and file differently.
 
 ### Right-sizing the model — the "too cheap" lesson (load-bearing)
-- **Verbatim / structural work → Haiku** (the reader returns a clean envelope, no judgment).
-- **Judgment a human relies on → Sonnet.** `/ingest`'s SCAN triage was dropped to Haiku for ~8× savings and
-  Haiku "lost the intuition that recognizes a chat's project + senses a mis-file" → reverted to Sonnet
+- **Verbatim / structural work, and the tool-less reader's narrow decode-and-judge of flagged spans → the
+  cheapest tier.**
+- **Judgment a human relies on → the mid tier.** `/ingest`'s SCAN triage was dropped to the cheapest tier
+  for ~8× savings and it "lost the intuition that recognizes a chat's project + senses a mis-file" →
+  reverted to the mid tier
   (commit `779157c`, 2026-07-11). Savings from bigger batches are durable; savings from a weaker judgment model
   are not. "Shared" ≠ "one model for all."
 
@@ -170,8 +166,7 @@ FOUR phases (a phase is a unit of human attention, not a machine step): **1. SOR
 **2. SCAN** (screen a pile) → **3. DEEP-READ** (the world map) → **4. PLACE** (file it + the root canon —
 folding in what used to be a separate filer's load/schema/confirm steps). The MINER (phases 1–3) never
 files; only phase 4 writes, and only with approval. This is the concrete instance of the canonical producer
-split `ingest → process → emit`. A desk's Stage 2 should follow this shape and swap in its private WHAT.
-**Not yet wired into every desk — the named next build.** *(DEEP-READ reads each keeper WHOLE in one
+split `ingest → process → emit`. Each desk's Stage 2 follows this shape and swaps in its private WHAT. *(DEEP-READ reads each keeper WHOLE in one
 cache-backed pass — below a size ceiling — rather than slicing; a rare giant is sampled head+tail +
 flagged. The `sort-then-read` GATE above is unchanged — that's where the token savings live; whole-read is
 the accuracy mechanism on the survivors. Normative detail: `.claude/skills/ingest/SPEC.md`.)*
@@ -196,7 +191,7 @@ attacks; **(3)** the cleared copy is stored and **everything downstream trusts i
 |---|---|---|---|
 | Regex scan (`system/tools/safe_input.py`) | **Metal detector** | Beeps on anything suspicious — fast, cheap, over-flags intentionally | ❌ No — just "look here" |
 | Tool-less judge reader (`.claude/agents/ingest-reader.md`) | **Body scanner** | For each flagged span: DECODES (base64/hex/URL/zero-width) + JUDGES by meaning (real attack vs benign) | ✅ Yes — REAL-ATTACK / BENIGN / NONE |
-| Quarantine + human review + phone-buzz | **Pat-down / wand / swab** | For genuine DANGER-class content only | ✅ Human |
+| Quarantine + human review | **Pat-down / wand / swab** | DANGER-class content, and a REAL-ATTACK verdict (which also pauses the source and sends one critical text); the phone alert itself rings unless the reader says BENIGN | ✅ Human |
 
 You never confiscate at the mere beep. The metal detector hands off to the body scanner; only a real find
 escalates to the pat-down. Escalating scrutiny — not escalating paranoia.
@@ -207,19 +202,19 @@ Morse). The fix lives in the **READER** (decode-and-judge each flagged span), no
 *(This finding is inherited from the system this doc was ported from; its own research record was a project
 file on that system's synced drive and does not ship here.)*
 
-**Verdict gates alerting:** only a REAL-ATTACK verdict from the reader should notify/phone-buzz. Buzzing
-on the raw scanner beep = spam on every signing link and tracking hash. [Buzz-on-verdict wiring is a FUTURE FIX
-— not built yet; see §1 alerting note.]
+**Verdict gates alerting:** the phone alert rings unless the reader says BENIGN; buzzing on the raw
+scanner beep would mean spam on every signing link and tracking hash. See §1.
 
 **Guardrails — the reader judges WHAT to redact, never WHETHER to act:** the reader has no hands (a hijack
-can't act), and the **egress allowlist guards the exits** (even a landed injection can't exfiltrate — see
-`system/egress-allowlist.md` + `system/hooks/enforce_egress_allowlist.sh`). DANGER-class content still
+can't act), and the **egress allowlist guards the exits** (it narrows where a landed injection can send data;
+the Level 1 hook fails open by design; the hard wall is the operating system's own firewall — point it at
+the same list for a hard outbound wall — see `system/egress-allowlist.md` + `system/hooks/enforce_egress_allowlist.sh`). DANGER-class content still
 hard-quarantines regardless of verdict. Detection is a speed-bump pointing the scanner at the right spans;
 **safety comes from STRUCTURE**, not from catching every attack.
 
 **Full detail is canonical elsewhere — do not duplicate here:** `canon/security-canon.md` (architecture,
 hooks, residual risk, and the component + channel map) · `system/ingestion-reader-contract.md` (the reader
-spec) · enforcement `system/hooks/ingest_gate_enforce.sh`. The founding principles behind this model —
+spec) · the gate hook `system/hooks/ingest_gate_enforce.sh`. The founding principles behind this model —
 structure over trust, guard the exits, no-hands reader — are inherited from the system this doc was ported
 from; its own founding canon file was a project record on that system's synced drive and does not ship
 here. What's in this doc IS the current, updated one-gate stance — there is no separate earlier-stance
@@ -240,16 +235,15 @@ document in this repo to reconcile it against.
 | Mark-read dedup | archive-state dedup | 2026-06-03 |
 | `load_digest()` (v1 read) as the sanctioned read | `shared/tools/email_service_read.py` / `read_thread()` (v2) | 2026-07-10 |
 | Haiku on human-facing judgment ("too cheap") | Sonnet for judgment; Haiku for structural only | 2026-07-11 · `779157c` |
-| Cal's own email poll | retire dead-last; read the shared store | 2026-07-10 |
+| A desk's own email poll | retire dead-last; read the shared store | 2026-07-10 |
 
 ---
 
 ## 5. Built vs. not-built (so this doc can't fake completion)
 - ⚖ **Firehose intake** — **tasks + calendar ship live**: `shared/tools/tasks_store_sync.py` and
   `shared/tools/calendar_store_sync.py` are real, runnable writers, faithful store, never-delete,
-  store-first read. ⛔ **Email's writer does not ship** — `shared/tools/email_service_read.py` is a read
-  adapter for a store a separate, unshipped Gmail-pulling process populates; on a fresh install it serves
-  `MISS-NEW` until one is connected.
+  store-first read. The email writer ships too (`shared/tools/email_summary_sync.py`); on a fresh
+  install the store serves `MISS-NEW` until a Google account is connected and the job has run.
 - ✅ **Archive intake for a personal text corpus** (`/ingest`) — **live.**
 - ✅ **The security stack** (scrub + scan + tool-less reader) — **live, AT INTAKE**, for every channel whose
   writer ships here (tasks, calendar, `/ingest`'s archive path). The mechanism (`shared/tools/intake_reader.py`,
@@ -265,7 +259,6 @@ document in this repo to reconcile it against.
 - ✅ **Channel-gap closures** (`.txt`/`.md` reads, a Google-Doc export, the pasted-text drop-file convention)
   — all GATED in this repo's code today; verify in `system/hooks/ingest_gate_enforce.sh` and
   `system/tools/safe_read.py`. The donor doc tracked these as a still-open phase; here they are shipped.
-- ✗ **Stage-2 thinking-method** wired into every desk (the `/ingest` shape) — the named next build.
 
 ---
 

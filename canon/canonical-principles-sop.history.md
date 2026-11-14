@@ -1626,3 +1626,9 @@ Text moved word for word out of the live body by checklist v3. When the draft la
 ```
 
 ~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-43
+
+~~~~
+> **Not the always-loaded layer.** The session loader reads `<brain>/canon.md` and `desks/*/canon/`
+~~~~

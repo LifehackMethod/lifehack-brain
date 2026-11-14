@@ -199,3 +199,9 @@ move to `<notes>/system/journal/YYYY-MM.md`.
 ~~~~
    temp folder instead, on purpose: a regenerable working file does not belong in an AI Brain,
 ~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-41, F7
+
+~~~~
+| `plans/` split into a folder per machine (five of them, named after their hosts, 359 files) | one flat `plans/` | there is one machine. The two-machine plane is not part of this system. |
+~~~~

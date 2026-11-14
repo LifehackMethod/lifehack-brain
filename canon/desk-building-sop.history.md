@@ -358,3 +358,78 @@ code folder under `desks/<desk>/tools/`; other standalone scripts live in the pe
 `desk_scaffold.py` today only stands up a brand-new `desks/{desk}/`. Leave the seam; do the promotion by
 hand until it earns automation.
 ~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-15, G5-16, G5-17
+
+~~~~
+> Written by the coordinator from Enver's rulings of 2026-11-06 (P-128 to P-132) and the desk-architecture
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-15, G5-16, G5-17
+
+~~~~
+it was never a warranty against choice. (P-132.)
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-15, G5-16, G5-17
+
+~~~~
+├── open-loops.md   ← the debt ledger: to improve, to build, broken, alerts fired
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-15, G5-16, G5-17
+
+~~~~
+└── CLAUDE.md       ← the desk's glasses, in its own file: the seventh item (section 8, point 4)
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-15, G5-16, G5-17
+
+~~~~
+  (P-50); its standalone scripts and tools live in the personal code folder, one folder for the whole person, with
+  `desks/<name>/tools/` only for code that truly serves one desk (P-51). Personal, update-safe, freely changeable;
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-15, G5-16, G5-17
+
+~~~~
+  a hard block with no override (P-136).
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-15, G5-16, G5-17
+
+~~~~
+1. Scaffold (or hand-write) the seven items: canon and purpose (both inside `canon/`), records, diary, open-loops,
+   the card, and the desk's CLAUDE.md (the glasses).
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-15, G5-16, G5-17
+
+~~~~
+*(These five sharpenings came out of the Helm archaeology; they are the two SOPs meeting in the middle of the
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-15, G5-16, G5-17
+
+~~~~
+audiences, two delivery mechanisms. All three layers share a total token budget (P-131), because injected
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-15, G5-16, G5-17
+
+~~~~
+**A desk is a room in your life.** Marc is your money room. Emily is your auditions room. Each room keeps its own
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-15, G5-16, G5-17
+
+~~~~
+**The room has seven shelves, and only three of them matter at first:**
+- **What's true for years** (canon) — the whiskey. "I'm married. My agent is Formation." Changes only in a life
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-15, G5-16, G5-17
+
+~~~~
+  ideas to build, alerts that fired), **the name tag** (the card), and **the glasses** (the desk's CLAUDE.md, below).
+~~~~

@@ -24,7 +24,7 @@ history: "canon/skill-building-sop.history.md"
   test them. It does not cover the content of any particular skill.
 - **How this SOP changes:** only through Enver's ruling; superseded text moves to the archive named in the header.
   This SOP was written fresh after the skill tester rig finished, and older skills are assumed not to meet it
-  (COMPASS P-122).
+  (canon).
 - **Which situation are you in?**
   - Not sure whether it is a skill or a command → The Procedure, "Build a skill", step 1.
   - Building or rebuilding a skill → The Procedure, "Build a skill".
@@ -43,7 +43,7 @@ history: "canon/skill-building-sop.history.md"
 ## Before You Start
 
 - Build on the scaffold: the skill template `system/templates/skill-template/` and the spec sheet
-  `system/templates/producer-spec-template.md` (canon: the products of the harness). Its conformance check runs
+  `system/templates/producer-spec-template.md` (canon: the products of the harness). Its conformance check is
   the checklist in Build, step 2.
 - Use the shared layer first: common tools live once in `shared/`, listed in `system/register/toolbox.md` (canon:
   the platform).

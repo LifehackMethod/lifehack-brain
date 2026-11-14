@@ -5,20 +5,20 @@ title: Intent Doctrine — every object declares why it exists
 record_type: doctrine
 desk: root
 created_at: 2026-06-12
-updated_at: 2026-06-12
+updated_at: 2026-11-14
 status: active
 authority: user
 ---
 
 # Intent Doctrine
 
-> **Purpose of this doc:** state the one law — that every object in Lifehack carries its INTENT — so a fresh,
+> **Purpose of this doc:** state the one principle — that every object in Lifehack carries its INTENT — so a fresh,
 > memoryless session can act correctly on it. Read when **creating, auditing, or placing ANY object** (folder,
 > desk, canon, project, skill, hook, cron). Lives LOW (it governs how we *design* the OS, not every chat) — and
 > it declares its own purpose right here, eating its own dogfood. **Parent of `canon/knowledge-altitude.md`**,
-> which is this same law applied to one case: knowledge placement.
+> which is this same principle applied to one case: knowledge placement.
 
-## 1. The one law
+## 1. The one principle
 **Every object in Lifehack declares its INTENT, because the LLM is the runtime — and an LLM acts by
 *understanding*, not by blind execution.**
 
@@ -43,22 +43,20 @@ Project (outcome).
 | Object | Standing / bounded | Declares | Home of its intent |
 |---|---|---|---|
 | Domain folder / desk | standing | PURPOSE | the folder's `purpose.md` / canon header (indexed by the territory map) |
-| Canon home | standing | PURPOSE (its admission `intent`) | `knowledge-altitude.md` + `home-intents.md` |
+| Canon home | standing | PURPOSE (its admission `intent`) | `knowledge-altitude.md` §4 |
 | Project | bounded | DESIRED OUTCOME | the brief's **FRAME** |
-| Skill | standing capability (bounded per run) | a **3-layer intent (§0.5)**: user-outcome+bar · role+autonomy-position · per-run outcome (advised) | top of the `SKILL.md` (identity region) + the `description:` carries Layer 1's caller-visible gist; the per-run outcome rides the §4 anchor. Full rule: ✅ `canon/skill-building-sop.md` §0.5 |
-| Hook | standing | PURPOSE — **not just to block, but to re-teach the boundary:** the deny message states WHY + the REDIRECT, so a fresh session *learns the rule* instead of hitting a silent wall | the deny message + `hook-contract.md` WHY/REDIRECT fields |
+| Skill | standing capability (bounded per run) | its **Desired Outcome**, stated in the first few lines of the `SKILL.md`, with the `description:` carrying the caller-visible gist | top of the `SKILL.md` (identity region) + the `description:` carries Layer 1's caller-visible gist; the per-run outcome rides the §4 anchor. Full text: `canon/skill-building-sop.md` (Desired Outcome) |
+| Hook | standing | PURPOSE — **not just to block, but to re-teach the boundary:** the deny message states WHY + the REDIRECT, so a fresh session *learns the boundary* instead of hitting a silent wall | the deny message + `hook-contract.md` WHY/REDIRECT fields |
 | Scheduled job | standing schedule (bounded per run) | PURPOSE | the entry that schedules it |
 
 Most of these *already* carry intent (the territory map, brief FRAMEs, hook WHY/REDIRECT, skill descriptions).
-This doctrine names the one law they're all instances of — and makes its **absence a flaggable defect**.
+This doctrine names the one principle they're all instances of — and makes its **absence a flaggable defect**.
 
 ## 4. The folder taxonomy this supersedes
-- **SUPERSEDED (stale):** "a project = its own folder" (flat per-project folders).
-- **THE RULE:** **a folder is a DOMAIN of knowledge — it has a PURPOSE and holds the domain's canon; PROJECTS
-  live *inside* a domain folder, each with its own DESIRED OUTCOME.** Domain (purpose) on the outside; projects
-  (outcomes) nested within.
-- **A CONTAINER ALWAYS TAKES A PURPOSE — never agonize "does it finish?"** A folder is a container of knowledge,
-  so its intent is ALWAYS a purpose: *"the home for everything about X."* You never owe a folder a "done-when." The
+- **A folder is a DOMAIN of knowledge — it has a PURPOSE and holds the domain's canon. PROJECTS live in a
+  `projects/` folder — inside the desk a person launched from, or at the root — each with its own DESIRED OUTCOME.**
+- **A CONTAINER TAKES A PURPOSE — don't agonize "does it finish?"** A folder is a container of knowledge,
+  so its intent is a purpose: *"the home for everything about X."* A folder does not owe a "done-when." The
   DESIRED OUTCOME belongs to a **bounded effort that lives inside** the folder (a build, a deliverable, a goal) — a
   separate layer. **Worked example, which resolves the whole question:** a folder for one ongoing client is a
   *domain folder*, so its intent is a PURPOSE — *"home for everything about working with this client"* — and NOT a
@@ -70,13 +68,11 @@ This doctrine names the one law they're all instances of — and makes its **abs
   near-self-evident and a one-liner is plenty — don't bureaucratize. A container's purpose earns extra words ONLY
   when it adds what the name doesn't: the admission bar / what does NOT belong here (the one near-miss).
 
-That's purpose-vs-outcome applied to the file tree. The desks already work this way; the flat root
-`state/projects/` pile is the debt. This doctrine sets the **rule**; the actual reorg is gated on the
-PARA-migration research, which executes it.
+That's purpose-vs-outcome applied to the file tree. Desks and the root both hold projects this way (`canon/data-layout.md`).
 
-## 5. KISS — intent is never ABSENT, but it's rarely LONG
+## 5. KISS — intent is not ABSENT, and it's rarely LONG
 Don't bureaucratize. An obvious object gets a **one-liner**; the payoff of an explicit intent is highest for the
-ambiguous and the load-bearing. The law is "intent is never *missing*," not "intent is always a paragraph."
+ambiguous and the load-bearing. The principle is "intent is not *missing*," not "intent is a paragraph."
 
 ## 6. How this stays load-bearing (not a doc that gathers dust)
 It is pointed-to from the live system three ways (the wiring is its own build phase — tracked in the

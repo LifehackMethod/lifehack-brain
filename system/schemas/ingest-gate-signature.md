@@ -1,29 +1,29 @@
 ---
 id: root-schema-ingest-gate-signature
-title: "Ingest Gate — frozen call signature (v1.0)"
+title: "Ingest Gate — frozen call signature (v1.1)"
 record_type: schema
 created_at: 2026-06-19
-updated_at: 2026-08-15
+updated_at: 2026-11-14
 status: active
 authority: user
 owners: [ingest-gate]
 note: >
   The frozen call signature `shared/gate/ingest_gate.py` implements. PORTED (T9.7b) from
-  claudeops-config, where this doc was a docstring-only dangle — cited by the implementation's
-  module docstring but never shipped, since claudeops-config never migrated its own schema
+  the donor system's config repo, where this doc was a docstring-only dangle — cited by the implementation's
+  module docstring but never shipped, since that repo never migrated its own schema
   folder for it. Repointed here to the paths this repo actually has: the desk/sentinel-event
-  wiring below describes `shared/gate/sentinel_response.py`, not a multi-desk model this
-  product doesn't have (see `backlog_groom.py`'s own note on that). Implementation may evolve;
+  wiring below describes `shared/gate/sentinel_response.py`, not per-desk credentials (desks exist —
+  subject folders a person builds — but share one set of credentials) (see `backlog_groom.py`'s own note on that). Implementation may evolve;
   this signature does not change without a schema_version bump.
 ---
 
-# Ingest Gate — Frozen Call Signature (v1.0)
+# Ingest Gate — Frozen Call Signature (v1.1)
 
 > **Frozen interface.** `shared/gate/ingest_gate.py` implements this exact signature — see its own
 > module docstring, which cites this file back. The implementation evolves; the frozen call
 > contract does not.
 
-**schema_version: "1.0"**
+**schema_version: "1.1"** (2026-11-13: records the REAL-ATTACK lift of the email FLAG-floor; v1.0 wording in the history log)
 
 ---
 
@@ -46,8 +46,10 @@ def gate(
                             # otherwise this product's single-user identity string)
     source_type: str,      # "email" | "web" | "file" | "calendar" | "api"
     raw_content: str,      # the unsanitized external content to screen
-    message_id: str = "",  # Gmail message id — unlocks quarantine on DANGER (pass "" for non-Gmail)
+    message_id: str = "",  # Gmail message id — unlocks quarantine when a DANGER (non-email) or a REAL-ATTACK email is found
     item: str = "",        # short human-readable identifier for the Sentinel event log
+    preserve_structure: bool = False,  # opt-in DOCUMENT-mode sanitize (2026-08-18, issue #77)
+    reader_verdict: str | None = None, # REAL-ATTACK lifts the email clamp
 ) -> dict:
     """
     Returns:
@@ -73,7 +75,7 @@ Implemented at `shared/gate/ingest_gate.py:gate()`.
 | `desk_id` | `sentinel_response.py --source` | The consuming identity string. |
 | `source_type` | one of `email\|web\|file\|calendar\|api` | Load-bearing for provenance + the email FLAG-floor. |
 | `raw_content` | — | Sanitized by `system/tools/sanitize.py`; scanned by `system/tools/safe_input.py` — both run INSIDE the gate. |
-| `message_id` | `sentinel_response.py --message-id` | Unlocks the Gmail quarantine path; ignored (never passed) for email sources. |
+| `message_id` | `sentinel_response.py --message-id` | Unlocks the Gmail quarantine path; passed for an email judged REAL-ATTACK so the message is quarantined. |
 | `item` | `sentinel_response.py --item` | Short id/subject for the event log, truncated to 120 chars. |
 
 ---
@@ -99,15 +101,17 @@ Written to the coverage breadcrumb ledger (`PROVENANCE_LOG`, resolved under the 
    covered rather than false-flagging a gap.
 4. Findings present → pipe them as JSON to `sentinel_response.py --source {desk_id} --item {item}
    --provenance {tag}` (`--message-id` added for non-email when given; `--flag-only` added for
-   email — the locked invariant below).
-5. Verdict tool exit 2 (DANGER, non-email only) → `{"content": "", "provenance_tag": tag,
+   email unless the reader said REAL-ATTACK — the locked invariant below).
+5. Verdict tool exit 2 (DANGER: non-email, or email judged REAL-ATTACK) → `{"content": "", "provenance_tag": tag,
    "passed": False}`.
 6. Otherwise (FLAG/CLEAN) → `{"content": clean, "provenance_tag": tag, "passed": True}`.
 
 **Posture-controlled since the implementation's own Window 5 cutover** (`INGEST_GATE_POSTURE`,
 default `"enforce"`): on an internal error, a non-email read that can't be gated is DENIED
-(fail-closed); email always fails open (it is FLAG-floored and can never DANGER, so failing it
-open removes zero containment). `INGEST_GATE_POSTURE=warn` reverts every channel to fail-open —
+(fail-closed) and returns `{"content": "", "provenance_tag": tag, "passed": False}`; email fails open and
+returns sanitized text (or "" if sanitizing fails), never raw. The "can never DANGER" reason no longer
+holds since the REAL-ATTACK lift; the reason that remains is that an internal error has no reader
+verdict, so the clamp would hold anyway. `INGEST_GATE_POSTURE=warn` reverts every channel to fail-open —
 the instant-revert lever if enforcement ever regresses a live read. The gate **never raises**
 regardless of posture; see `gate()`'s own docstring for the exact except-branch behavior.
 
@@ -115,13 +119,11 @@ regardless of posture; see `gate()`'s own docstring for the exact except-branch 
 
 ## Locked email invariant (never split from the wire-up commit)
 
-When `source_type == "email"`, findings are constrained to **FLAG, never DANGER**, until a
-provenance-aware classifier ships. This prevents a base64 attachment or a security-newsletter
-snippet from triggering DANGER and quarantining real mail. The gate enforces it by passing
-`--flag-only` to the verdict tool and never returning `passed=False` for email. **This clause is
-part of the frozen contract — relaxing it requires a schema_version bump.** (Wiring email to the
-alarm WITHOUT this constraint would trade a silent false-negative for an auto-quarantine of real
-mail — strictly worse than not gating email at all.)
+When `source_type == "email"`, findings are held at FLAG unless the Read-only reader returns a
+REAL-ATTACK verdict (since 2026-10-27); then the clamp lifts, the verdict tool is called with
+`--reader-verdict REAL-ATTACK` instead of `--flag-only`, and a DANGER returns `passed=False`. No
+verdict, BENIGN or a reader that never ran keeps the clamp, so the scanner alone cannot DANGER an
+email. This relaxation is the v1.1 bump. (The v1.0 clause is in `ingest-gate-signature.history.md`.)
 
 ---
 
@@ -130,5 +132,5 @@ mail — strictly worse than not gating email at all.)
 Callers go through `shared/gate/ingest_gate.py` directly (Python `import` + `gate(...)`) or via its
 CLI (`python3 shared/gate/ingest_gate.py --desk <id> --source-type <type> [--item ...]
 [--message-id ...]`, raw content on stdin, verdict dict as JSON on stdout, exit 0/2 mirroring the
-verdict tool's own convention). There is no separate `ingest-run.lib.sh` shim in this repo — the
-gate module itself is the on-path entry point every channel calls.
+verdict tool's own convention). There is no separate gate shim: `ingest-run.lib.sh` exists, and its
+`ingest_gate_check()` calls this module; the gate module itself is the on-path entry point.

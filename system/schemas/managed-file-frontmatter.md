@@ -4,7 +4,7 @@ title: Managed File Frontmatter Spec (New Model)
 record_type: schema
 desk: shared
 created_at: 2026-03-18
-updated_at: 2026-05-20
+updated_at: 2026-11-14
 status: active
 authority: archivist
 tags: [schema, metadata, stage2-new-model]
@@ -13,7 +13,9 @@ tags: [schema, metadata, stage2-new-model]
 # this system — Managed File Frontmatter Spec
 
 Required frontmatter for all **new managed files** created after 2026-03-24 (new model).
-Legacy files (pre-2026-03-24) are exempt from enforcement.
+The frontmatter check (`validate_frontmatter.py`) reads four of these fields — `record_type`, `desk`,
+`created_at`, `status` — and warns; it does not block (Enver, A1, 2026-11-13). Legacy files
+(pre-2026-03-24) are not checked.
 
 ---
 
@@ -24,7 +26,7 @@ Legacy files (pre-2026-03-24) are exempt from enforcement.
 id: "{desk}-{YYYY-MM-DD}-{slug}"
 title: "Human-readable title"
 record_type: <see record-types below>
-desk: <the owning project's slug, or root>
+desk: <the owning desk's name, or root>
 created_at: YYYY-MM-DD
 updated_at: YYYY-MM-DD
 status: active | draft | archived | superseded
@@ -39,7 +41,7 @@ authority: skill | user | archivist
 | `id` | Stable unique key | `widget-2026-03-25-the-joining-question` |
 | `title` | Human-readable title | `"Grade: The 99ers"` |
 | `record_type` | What kind of record this is | `log` or `decision` or `insight` |
-| `desk` | Which project owns this | `widget` |
+| `desk` | Which desk owns this (a subject folder a person builds; `root` otherwise) | `widget` |
 | `created_at` | Date of creation | `2026-03-25` |
 | `updated_at` | Date of last significant update | `2026-03-26` |
 | `status` | Lifecycle state | `active` |
@@ -94,44 +96,20 @@ write time.
 
 ### State-layer record type: `project-doc`
 
-`state/briefs/` holds **project docs** — living single-source-of-truth documents
-maintained by the `/project-manager` skill (one per project, continuously updated
-in place). They are working state, not `records/` artifacts, so they sit outside
-the `records/` canonical list above and use `record_type: project-doc`.
-
-| Type | Location | Description | Authority |
-|------|----------|-------------|-----------|
-| `project-doc` | `state/briefs/{slug}.md` (or `<your notes>/state/briefs/` for root) | Living project source-of-truth; rehydratable operating state | skill \| user |
+A project's brief is `brief.md` in its project folder — `<brain>/projects/<slug>/` or a desk's
+`projects/<slug>/` (`canon/data-layout.md`, "Where a brief lives"). It uses `record_type: project-doc`.
 
 `id` for a project doc is a stable singleton key `{desk}-{slug}` (no date — the
-doc is continuous, not session-stamped). See `<notes>/state/briefs/README.md`.
+doc is continuous, not session-stamped). See `canon/data-layout.md`.
 
 ---
 
 ## Naming Conventions
 
-| Location | Pattern | Example |
-|----------|---------|---------|
-| `state/projects/{slug}/records/{type}/` | `YYYY-MM-DD-{slug}.md` | `2026-03-25-discovery.md` |
-| `state/projects/{slug}/state/` | fixed names | `current.md`, `open-loops.md` |
-| `state/projects/{slug}/` | `brief.md` (the project doc) | `<notes>/state/projects/widget/brief.md` |
-| `state/projects/{slug}/canon/` | fixed name | `current.md` |
-| `state/projects/{slug}/sources/` | subdirs: `inbox/`, `reference/`, `research/` | `2026-03-25-transcript.md` |
-| `state/projects/{slug}/_registry.md` | fixed name | — |
+Where each file lives, and its name, is `canon/data-layout.md` ("Every path, written out"); if this file
+and that one disagree, data-layout is right. (The old naming table is in `managed-file-frontmatter.history.md`.)
 
 ---
-
-## Desk-Specific Write Rules
-
-### Planning
-
-Every session:
-- `records/daily/{YYYY-MM-DD}.md` — session wrap-up
-- `<notes>/state/current.md` — update live posture
-- `<notes>/state/open-loops.md` — update domino list
-- `records/decisions/{YYYY-MM-DD}-{slug}.md` — only on durable state change
-
-No logs, no insights, no proposals.
 
 ## Status Lifecycle
 

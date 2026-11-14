@@ -2,7 +2,7 @@
 topic: [system-architecture, enforcement-layer]
 title: "The register — schema v1"
 record_type: system-doc
-status: ruled (Enver, 2026-09-15) — schema v1 locked, see "Rulings" section below
+status: ruled (Enver, 2026-09-15) — schema v1 locked: strict about unknown keys, not frozen; later fields arrive as dated addenda, and `schema_v1.py` is the source. See "Rulings" section below
 created_at: 2026-09-15
 ---
 
@@ -34,8 +34,7 @@ below) — v1 is now locked to that ruling.
 
 **Format: JSONL** (one JSON object per line), not YAML. One line per unit means `git diff` shows
 exactly which units changed, sorting is trivial (`sort file.jsonl`), and a line-oriented validator
-never has to parse the whole file to isolate one bad row (open question #5 below — this is the
-one Enver most likely wants to weigh in on).
+never has to parse the whole file to isolate one bad row.
 
 **Validator:** `validate_register.py`, reading rules from `schema_v1.py` (a plain Python dict of
 field definitions — no `jsonschema`/`PyYAML` dependency exists in this repo yet, and pulling one in
@@ -43,11 +42,11 @@ for four field-checks would be the opposite of "files a human can open and fix b
 
 ---
 
-## The four unit classes (B1.1 (a))
+## The five unit classes
 
 Every register row has a `type`: `hook` (system/hooks/, both repos — T2's original set) · `tool`
 (system/tools/, both repos) · `skill` (`.claude/skills/**/SKILL.md`) · `scheduled` (one row of
-`system/jobs.md`'s `jobs` block). This is deliberately not the full T1 caller-ontology
+`system/jobs.md`'s `jobs` block) · `githook` (one row per git-hook script under `system/githooks/`, added 2026-09-16, K2 of the enforcement-layer phase-2 plan). This is deliberately not the full T1 caller-ontology
 (that is Feature B1.5's lint, layered on top later) — it is only "what kind of thing is this," the
 question every other field branches on.
 
@@ -80,7 +79,10 @@ question every other field branches on.
 | `status_conflicts` | list of strings, default `[]` | T2-proven — same key, disagreeing status messages across surfaces. |
 | `if` | nullable string | **Not in T2/B1.1's original shape — found and closed live by Feature B2.2 (2026-09-15).** Claude Code's own hook-entry format carries an OPTIONAL narrowing condition (e.g. `Skill(checkin)` on `guard_checkin_needs_project.sh`'s `PreToolUse`/`matcher=Skill` entry) that T2/B1.1/B1.2/B1.3 never harvested, because nothing before B2.2 ever regenerated the REAL `.claude/settings.json`/`hooks/hooks.json` (B1.3 wrote only to a scratch `--out` dir). The first real write silently dropped it — caught by the repo's own `system/hooks/tests/test_guard_checkin_needs_project.sh` going RED, not by the semantic-diff method, which is why that method (`(event, matcher, command, statusMessage)` tuples) is now `(event, matcher, command, statusMessage, if)` everywhere it's used. Null for every other hook row today. |
 | `launch_mode` | string, **closed enum (4 values)** | **RESTORED 2026-09-15 (Option G) — see the "Addendum" section below for the full history and derivation.** `project` / `plugin` / `both` / `private` — which of the two real public wiring files (`.claude/settings.json` = "project", `hooks/hooks.json` = "plugin") carries this hook registration, or `private` if neither does (a private-repo hook, carried by `registrations`/`user` instead). Harvested mechanically from the row's own `surfaces` (`harvest.py`'s `derive_launch_mode()`) — 0 hand-typed values, required (not nullable): every hook row resolves to exactly one of the four. |
-| `group` | nullable string, **open vocabulary, but legal only on a small non-blocking event allowlist** | **NEW 2026-09-15 (B5.2, "the map pilot") — see the second Addendum below.** Rows sharing one non-null value collapse onto ONE generated wiring entry (`generate.py`'s `collapse_group_rows()`), pointed at a single dispatcher script that runs each member's own body, unmodified, in its own isolated subshell, sequentially. Required-but-nullable, same convention as `if`. HARD-REJECTED by `validate_register.py` (not merely discouraged) on any row whose `event` is outside `schema_v1.GROUPABLE_HOOK_EVENTS` (`UserPromptSubmit`/`SessionStart`/`Notification`) — never a `PreToolUse`/`Stop`/`SubagentStop`/guard row, because collapsing a blocking-capable row into a shared dispatcher would recreate the single-point-of-failure "weakest guard wins" forbids (plan constraint 0.5). |
+| `group` | nullable string, **open vocabulary, but legal only on a small non-blocking event allowlist** | **NEW 2026-09-15 (B5.2, "the map pilot") — see the second Addendum below.** Added by the build (B5.2, 2026-09-15); no ruling of Enver's is quoted for it. Rows sharing one non-null value collapse onto ONE generated wiring entry (`generate.py`'s `collapse_group_rows()`), pointed at a single dispatcher script that runs each member's own body, unmodified, in its own isolated subshell, sequentially. Required-but-nullable, same convention as `if`. HARD-REJECTED by `validate_register.py` (not merely discouraged) on any row whose `event` is outside `schema_v1.GROUPABLE_HOOK_EVENTS` (`UserPromptSubmit`/`SessionStart`/`Notification`) — never a `PreToolUse`/`Stop`/`SubagentStop`/guard row, because collapsing a blocking-capable row into a shared dispatcher would recreate the single-point-of-failure "weakest guard wins" forbids (plan constraint 0.5). The validator checks the event only; it does not check whether a row is a guard (today's four grouped rows hold no `exit 2`). |
+| `state` | enum `active`/`suspended` | NEW 2026-09-16 (S1/K1, the register-backed switch). `active` (the default) = `generate.py` emits the hook normally; `suspended` = `generate.py` omits the row from all generated wiring until `expiry`. Source: Enver's ruling, system/journal.md, 2026-09-16. |
+| `expiry` | nullable string, YYYY-MM-DD | NEW 2026-09-16 (S1/K1). Required when `state` is `suspended` (a suspension with no expiry would be a permanent lift); null when `state` is `active`. The cross-rules live in `validate_register.py`. Source: Enver's ruling, system/journal.md, 2026-09-16. |
+| `protects_permissions` | list of strings | NEW 2026-09-16 (R2 Part B). The `permissions.deny` strings this row's `state`/`expiry` switch owns: `[]` on every hook row except `guard_hook_sop_read.sh`'s, which carries `["Edit(system/hooks/**)"]`. A string may be owned by one row only (checked in `validate_register.py`). Source: Enver's ruling, system/journal.md, 2026-09-16. |
 
 ### `type: tool` — system/tools/ and shared/ units (shared/ added 2026-10-29, v2 1.3; same type, no new fields)
 
@@ -102,7 +104,7 @@ question every other field branches on.
 | `schedule_name` | string | The row's `name` column — jobs.md's own identifier for the job. |
 | `enabled` | string, open vocabulary | jobs.md's own convention: `yes` to run, anything else is a DECLARED disposition (`no`, `parked`, `waiting-on-<thing>`), not just "off." Closing this to an enum would freeze vocabulary a human still writes by hand today — left open on purpose. |
 | `interval_seconds` | nullable int | The row's `interval` column, parsed as-is. |
-| `command` | string | The row's `command` column — the shell command Pulse actually fires. |
+| `command` | string | The row's `command` column — the shell command the scheduler runs inside `system/tools/job-run.sh` (launchd on a Mac; Pulse on Linux and Windows). |
 
 `scheduled` still carries the common `path` field (every type does, see below) — it resolves to
 the shared manifest file (`/system/jobs.md`), since a scheduled row's identity is really
@@ -110,12 +112,19 @@ the shared manifest file (`/system/jobs.md`), since a scheduled row's identity i
 2026-09-15** (Ruling 5, above) — this is documented as intended, not a gap `path` nullability
 would later need to close.
 
+### `type: githook` — one row per git-hook script under `system/githooks/` (added 2026-09-16, K2 of the enforcement-layer phase-2 plan)
+
+| field | type | rationale |
+|---|---|---|
+| `hook_name` | string | The git-hooks filename itself (e.g. `pre-commit`) — deliberately not called `event`, to keep it distinct from the `hook` type's Claude Code event enum; a git hook has no such concept. |
+| `commands` | list of strings | The invocation lines `harvest.py`'s `harvest_githooks()` extracts mechanically from the script's own body — not the whole file text. `caller_lint.py` re-applies its own invocation-vs-mention judgment to each line before crediting a unit. |
+
 ---
 
 ## Optional fields (NEW 2026-11-01, PHASE 3b.7 A2)
 
 `hook.on_failure` (`"continue"` | `"block"`) is the first OPTIONAL field: a missing key is valid, so
-it sits only on the rows that need it (today: `sanitize_connector_output.sh`, `"block"`). When
+it sits only on the rows that need it (today: `sanitize_connector_output.sh`, `"block"`). Added by the build (PHASE 3b.7 A2, ecf3d7e, 2026-11-01); no ruling of Enver's is quoted for it. When
 present it is validated like any declared field, and `generate.py` emits it as the command hook's
 `onFailure`. Source: code.claude.com/docs/en/hooks (read 2026-11-01), command-hook field table:
 "onFailure — Whether the action that triggered the hook goes ahead when the hook fails:
@@ -135,23 +144,9 @@ error names the exact key. Ruled STRICT, permanently, by Enver, 2026-09-15 (Ruli
 
 ---
 
-## Design questions Enver ruled on, 2026-09-15 (history — see "Rulings" above for the verdicts)
+## Design questions Enver ruled on, 2026-09-15
 
-These were the five open questions this doc originally raised at the B1.1 checkpoint. Kept here,
-struck through, as the record of what was actually asked — the "Rulings" section above is the
-verdict each one got; nothing here still applies.
-
-1. ~~`hook.event` — closed enum or open string?~~ **Ruled: CLOSED**, to the documented 33-event
-   Claude Code set (Ruling 1).
-2. ~~`launch_mode` — what closes it, and when?~~ **Ruled: DROPPED from v1 entirely** — not
-   deferred, not left null (Ruling 2). **Then RESTORED the same day** (Option G) — see the
-   "Addendum" section below; this history entry stands as what was asked and answered FIRST, not
-   as the field's final state.
-3. ~~Strict unknown-key rejection — too strict for v1?~~ **Ruled: STRICT stays**, permanently
-   (Ruling 3).
-4. ~~JSONL vs YAML — confirm the call.~~ **Ruled: JSONL**, confirmed (Ruling 4).
-5. ~~`scheduled.path` is forced to double duty — confirm acceptable?~~ **Ruled: KEPT**, documented
-   as intended (Ruling 5).
+The five questions as first asked, struck through, are in `schema-v1.history.md` (moved 2026-11-14); the "Rulings" section above is the verdict each one got.
 
 ---
 
@@ -215,7 +210,7 @@ produces byte-identical `.claude/settings.json` / `hooks/hooks.json`).
 (read / checkin / save / project-manager) 4 always-firing `UserPromptSubmit` inject hooks
 (`announce_plan_write.sh`, `pm_persist.sh`, `save_routing_hint.sh`, `skill_anchor_inject.sh` — all
 matcher `""`, all `launch_mode: "both"`) onto ONE generated load path, per the design scout's
-approved design (session scratchpad `B5.2-design.md`). This is the FIRST field this schema adds
+approved design (session scratchpad `B5.2-design.md`). Added by the build (B5.2, 2026-09-15); no ruling of Enver's is quoted for it. This is the FIRST field this schema adds
 that was not T2-proven or forced by a live regeneration bug — it is a forward-looking chaining/
 grouping primitive, deliberately narrow in scope.
 

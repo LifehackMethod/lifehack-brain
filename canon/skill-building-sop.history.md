@@ -417,3 +417,9 @@ purpose: "Build a skill that keeps doing its job in a real, filling window, by l
 ~~~~
   the old skill conformance checklist archived whole (Enver, 2026-11-10; COMPASS P-122). Older wording: the archive named in
 ~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-13, G5-14
+
+~~~~
+  `system/templates/producer-spec-template.md` (canon: the products of the harness). Its conformance check runs
+~~~~

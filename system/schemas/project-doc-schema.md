@@ -8,7 +8,7 @@
 > **v2 (2026-06-06): a project is now a FOLDER.** See "## v2 — Folder Model" at the
 > bottom. v2 changed only WHERE the brief lives (in its project folder, as `brief.md`)
 > and that each folder carries a tiny `canon.md` loaded lazily along the path.
-> Backward-compatible: flat `state/briefs/{slug}.md` still resolves via the registry.
+> Older flat briefs under `state/briefs/` still resolve via the registry while they are moved; new briefs go in their project's folder.
 >
 > **v3 (2026-07-13): the history consolidation.** The brief SPINE was redesigned — the
 > scattered history sections (DEAD ENDS, ESTABLISHED/WHAT WORKS, DURABLE LOG) collapse into
@@ -20,8 +20,8 @@
 
 ## What a project doc IS
 
-- **One per slug, for the project's whole life.** `state/briefs/{slug}.md`
-  (desk: `state/projects/{slug}/state/briefs/{slug}.md`). Updated IN PLACE, every save,
+- **One per slug, for the project's whole life.** `<brain>/projects/<slug>/brief.md`
+  (a project started from a desk: `<brain>/desks/<desk>/projects/<slug>/brief.md`). Updated IN PLACE, every save,
   every session. NEVER dated/numbered/duplicated.
 - **The distilled "current" face** of the project. The journal is the append-only
   history; this doc is the always-current synthesis that points at everything else.
@@ -45,7 +45,7 @@ semantic (`canon/`) via `/save`.
   source. (Google Drive also keeps file revision history, but that is recoverable only
   through the Drive web UI by the human — NOT restorable from within the tool plane,
   so do not rely on it as an automated backstop. The journal is the one a session can act on.)
-- **HARD RULE — precious info must hit the journal, never live ONLY in the brief.**
+- **Precious info should hit the journal and not live only in the brief.**
   Anything whose loss would hurt (a dead-end, a decision, a key number) must be in
   an append-only home before/as the brief is rewritten.
 
@@ -112,30 +112,28 @@ machine-edited** (in the brief OR the plan).
 > doctrine reads the top rung off this line — so write it as a destination, not a task list. ⚠ It is the
 > project's 10k, not always the *session's*: a standing goal can sit ABOVE every brief (*"we're fixing this
 > skill because we want a machine that builds better skills"*), and that outranks this line when it applies.
-> **This FRAME *is* the project's declared INTENT** (⏳ **UNRULED** — the parent law
-> `system/intent-doctrine.md` is on no ship list; the rule it supplies is the next clause): a project is a BOUNDED
+> **This FRAME *is* the project's declared INTENT** (the parent doctrine,
+> `system/intent-doctrine.md`, supplies the next clause): a project is a BOUNDED
 > object, so its intent is a **DESIRED OUTCOME** (a definition-of-done), not a standing PURPOSE. A brief with no
-> confirmed desired outcome is an object missing its intent — the archivist flags it (check O / check P).
+> confirmed desired outcome is an object missing its intent — the archivist flags it (check O).
 
 ### 2. CURRENT STATE — the DECISION BOARD  *(the live status of every granular decision)*
 The scoreboard a fresh session reads to know where each decision stands RIGHT NOW — so it never re-suggests
 something already settled or killed.
 
-**OPENS WITH THE THREE-ALTITUDE READ (REQUIRED, 2026-08-05 — replaces the old "1–3 lines of live status +
-the very next action").** Same three rungs as `system/work-altitude-doctrine.md`, but ⭐ **▲10,000 is not
+**OPENS WITH THE TWO-RUNG ALTITUDE READ (REQUIRED, 2026-08-05 — replaces the old "1–3 lines of live status +
+the very next action").** Same rungs as `system/work-altitude-doctrine.md`, but ⭐ **▲10,000 is not
 re-derived here — it is a faithful restatement of §1's desired outcome, human-authored and human-only. A
 session may print it or flag it stale against §1; it may never rewrite it, append to it, or dress it in
-position/status language.** Position, status and measurement live at the two rungs beneath it, zoomed two
-ways:
+position/status language.** Position, status and measurement live at the rung beneath it:
 
     ▲ 10,000 — §1's desired outcome, restated (human-authored; a session prints or flags-stale, never rewrites)
     ▲  5,000 — the Phase ▸ Feature / seam / learning we are inside right now
-    ▲ ground — what was last worked on, dated, with an explicit "re-verify before acting on this" note — never phrased as an instruction, since the next reader may arrive after it has gone stale
 
 > ## ⭐⭐ §2 HAS TWO VERBS AND THEY MUST NEVER BE CONFUSED (the operator, 2026-08-06)
 >
-> ### VERB A — ▲5,000 AND ▲GROUND ARE **OVERWRITTEN**. THE OLD READING IS **DELETED**.
-> The session re-derives ▲5,000 and ▲ground at pickup and **replaces** the previous text outright.
+> ### VERB A — ▲5,000 IS **OVERWRITTEN**. THE OLD READING IS **DELETED**.
+> The session re-derives ▲5,000 at pickup and **replaces** the previous text outright.
 > ⛔ **▲10,000 is exempt from Verb A.** It is human-authored, not derived — a session prints it as-is and
 > may flag it stale against §1, but never re-derives, rewrites or replaces it.
 > **NOT archived. NOT graduated to the STORY LOG. NOT compacted. NOT an input to compaction.**
@@ -172,7 +170,7 @@ ways:
 > ## ⛔ §2 HOLDS ONLY NAMED SLOTS. FREE PROSE IS OVERFLOW, BY DEFINITION. (2026-08-06)
 >
 > **The complete legal contents of §2 — nothing else belongs:**
-> 1. **The three-rung altitude block** (`▲ 10,000` · `▲ 5,000` · `▲ ground`) — ▲5,000/▲ground overwritten
+> 1. **The two-rung altitude block** (`▲ 10,000` · `▲ 5,000`) — ▲5,000 overwritten
 >    by verb A; ▲10,000 printed or flagged stale only, never overwritten.
 > 2. **The three decision-board buckets** — `✅ LOCKED` · `⛔ RULED-OUT` · `❓ OPEN` — verb B.
 >
@@ -189,10 +187,12 @@ ways:
 > brief's STORY LOG. *(Measured 2026-08-06: a healthy §2 is 35 lines; the pathological one was 762 lines
 > = 45.3% of its Story Log. 120 leaves ~3.4× headroom over healthy.)* Verb A stops the gauge going stale
 > and verb B stops content accumulating — **but only the ceiling stops §2 growing without bound.**
+> *(`gauge_check.py` checks this ceiling — 120 lines, 25% — with a 40-line floor: a §2 under 40 lines
+> is not held to the 25% check.)*
 >
 > ## ⛔ EXACTLY ONE STATUS SURFACE. REPLACE IT. NEVER APPEND A SECOND. (2026-08-05)
 >
-> **This three-rung block is a GAUGE, not a LOG.** A gauge has one current value and you overwrite it.
+> **This two-rung block is a GAUGE, not a LOG.** A gauge has one current value and you overwrite it.
 > A log accretes. **You UPDATE this block in place. You NEVER add a second status block, under any
 > heading, anywhere in §2** — not `WHERE WE ARE`, not `STATUS`, not "the previous one might still be
 > useful." If the block is stale, FIX IT. If you cannot tell whether it's stale, say so IN the block.
@@ -216,8 +216,6 @@ ways:
 > - **▲ 10,000** — §1's desired outcome, restated. Human-authored; a session prints it or flags it stale,
 >   never composes it.
 > - **▲ 5,000** — which part of the plan this sits inside.
-> - **▲ ground** — what was last worked on and when, plus anything NOT built — dated, carrying its own
->   re-verify instruction, never phrased as a next action.
 >
 > **Still blind-reader legible** — every proper noun gets a clause explaining what it is, full
 > sentences, no fragments. **Short is not terse.**
@@ -228,15 +226,14 @@ ways:
 > it.** Normalising to this shape took §2 from **55 → 25 lines** in one edit. **A bloated gauge is
 > the disease this schema exists to cure; writing one inside the fix is how it survives.**
 
-**Rules:** a. **▲10,000 is a restatement, never a position** — it is a faithful copy of §1's desired
+**What holds:** a. **▲10,000 is a restatement, never a position** — it is a faithful copy of §1's desired
 outcome, human-authored and human-only. A session may PRINT it and may FLAG it as looking stale against
 §1; it may never rewrite it, append to it, or dress it in position/status/measurement language. Position,
 status and measurement belong at ▲5,000 and ▲ground only. b. **Read, don't compose** — the 5,000 comes
 from the live plan, quoted; a rung written from memory is not a rung. c. **A rung with no honest answer
 says so** (`no larger frame` / `no plan armed`) — never invent one to fill the space; the doctrine's
 `NO-FRAME` is a correct answer, and a fabricated rung reads exactly like a real one, which trains the
-reader to skim the block. d. **▲5,000 and ▲ground are machine-maintained** — rewritten every compaction,
-the only two rungs a session may write without asking. ▲10,000 is not machine-maintained: it is human
+reader to skim the block. d. **▲5,000 is rewritten only after the person's yes** (the `/checkin` skill). ▲10,000 is not machine-maintained: it is human
 territory, present in this block only to be printed or flagged, exactly like §1.
 
 Then three buckets, **maintained by compaction off the STORY LOG (§4)**:
@@ -333,8 +330,8 @@ a dead-end, a key number) hits the journal before/as the brief is overwritten.
 ## ⭐ WHO DOES WHAT: `/checkin` DETECTS · `/save` CORRECTS (2026-08-06)
 
 > **`/checkin` = THE AUDIT.** Diffs plan vs brief vs session, runs `gauge_check.py`, REPORTS the counts,
-> and OVERWRITES the altitude block (verb A — no archive needed, nothing to lose). It proposes; the human
-> approves once.
+> proposes the new altitude block and overwrites it only after the person's yes (verb A — no archive
+> needed, nothing to lose).
 >
 > **`/save` = PERSISTENCE.** Copy, verify, file. It keeps verb B's compaction with its receipt gate. **It
 > makes no judgment about whether the filing was any good.**
@@ -367,7 +364,7 @@ a dead-end, a key number) hits the journal before/as the brief is overwritten.
 > kill.) **LOSSLESS by construction:** nothing leaves the pad except through an APPEND-ONLY archive that is
 > written and READ-BACK-VERIFIED *before* anything is cleared, so a mis-sort can never lose data. **SELF-HEALING:**
 > a completeness pass re-checks that durable knowledge actually landed in the STORY LOG and WRITES IN anything
-> that didn't. **Twice-a-session + crown-jewel payload → COST IS IRRELEVANT; buy certainty, not speed**
+> that didn't. **Once a session (at `/save`) + crown-jewel payload → cost matters little; buy certainty, not speed**
 > (the operator 2026-07-20). Design converged with the architecture council (2026-07-20). The heavy whole-brief re-sort,
 > when built, folds into THIS same automatic path — NEVER a separate manual button ("everything is built into the save").
 
@@ -382,10 +379,10 @@ a dead-end, a key number) hits the journal before/as the brief is overwritten.
    exit means a broken prev-hash chain or a missing compaction (# gap) = tamper or a lost block → surface a loud
    `⚠ ARCHIVE INTEGRITY` note to the user. This does NOT block the current compaction (this run's block is safe) —
    it flags HISTORICAL corruption to investigate.
-2. **RECEIPT-GATE (fail-closed).** The clear in step 5 is FORBIDDEN unless step 1 returned **exit 0 + a RECEIPT
+2. **RECEIPT-GATE (fail-closed).** The clear in step 5 does not happen unless step 1 returned **exit 0 + a RECEIPT
    this run**. If the script is not called, errors, or exits non-zero → **DO NOT CLEAR**; write a loud
    `> ⚠ COMPACTION ABORTED {ts} — archive not confirmed; pad left intact` line at the TOP of `## SCRATCHPAD` and
-   surface it to the user. "Not archived = not cleared" — silent-loss is structurally impossible.
+   surface it to the user. "Not archived = not cleared" — the step fails closed when the script is called (a session that skips the call skips the guard: measured 2026-08-02).
 3. **CLASSIFY + GRADUATE each item** into the durable sections (this is the model-judgment step; it is now
    *decoupled* from safety — a wrong call is caught in step 6, never lost):
    - settled decision / **win** → STORY LOG (`STATUS: locked`) + board **✅ LOCKED**; refresh the live-status line.
@@ -402,7 +399,7 @@ a dead-end, a key number) hits the journal before/as the brief is overwritten.
    judge **BY MEANING** whether its durable substance actually landed (reworded ≠ missing). **If a durable item did
    NOT land → WRITE IT INTO the STORY LOG now** (self-heal — do not merely flag). Anything you do flag lands in
    OPEN LOOPS (§5), never a silent log line.
-7. **INDEPENDENT SECOND-PASS audit (option B — the second mind).** Spawn ONE isolated **sonnet** subagent (read-only)
+7. **INDEPENDENT SECOND-PASS audit (option B — the second mind).** Spawn one isolated medium-tier subagent (read-only)
    that compares THIS compaction's archive block (`<brief>.pad-archive.md`, newest block) against the durable
    sections and returns any durable item not represented. The main session WRITES any confirmed miss into the
    STORY LOG. Once-a-session, cheap insurance for crown-jewel knowledge.
@@ -445,32 +442,29 @@ bucket, and every superseded decision still visible with its supersession, so no
 > tiny `canon.md` at each level loaded LAZILY along the path you touch. This solves the
 > two pains the flat-slug system couldn't: (a) "where does this save go?" (the folder
 > answers it) and (b) "a desk's whole canon floods every session" (only the canon on
-> your branch loads). Design + evidence: `state/briefs/knowledge-architecture/`.
+> your branch loads).
 
 ## The structure
 
+The shape is `canon/data-layout.md` ("A project").
+
 ```
-state/projects/{slug}/
-  canon/                      ← desk-wide canon (existing; injected by default)
-  state/                      ← desk state (existing)
-  records/{type}/             ← desk-wide records (existing; backward-compat home)
-  sources/inbox/              ← intake (existing)
-  projects/                   ← NEW: container for this desk's project folders
-    {slug}/
-      brief.md                ← the project doc (schema spine above). MOVED here from state/briefs/{slug}.md
-      canon.md                ← NEW: tiny, always-true-at-this-level facts. PROPOSED not auto-written.
-      records/                ← this project's records (optional; type-subfolders allowed)
-      {work files}            ← loose
-      {sub-project}/          ← OPTIONAL deeper level (e.g. state/projects/coaching/a-client/)
-                                only where a real practice→client structure exists. DEPTH CAP: 3 below desk.
+<brain>/projects/<slug>/      ← a project not started from a desk
+  brief.md                    ← the project doc (schema spine above)
+  records/                    ← this project's own records (type-subfolders allowed)
+  canon/canon.md              ← what this project has settled. PROPOSED not auto-written.
+  {work files}                ← loose
+  {sub-project}/              ← OPTIONAL deeper level, only where a real practice→client structure exists.
+                                DEPTH CAP: 3 below desk.
 ```
 
-Root-level projects (no desk) live at `state/projects/{slug}/` with the same shape.
+A project started from a desk lives at `<brain>/desks/<desk>/projects/<slug>/` with the same shape. A desk
+has no `state/` folder.
 
-## The rules (KISS)
+## What holds (KISS)
 
 1. **Project = folder.** One folder per registered slug. Its `brief.md` is the project doc.
-2. **Depth cap (the one hard rule):** `desk → practice → client`, files below. 2 folder
+2. **Depth cap:** `desk → practice → client`, files below. 2 folder
    levels below the desk's `projects/`, 3 absolute max. **Phases live in the brief, never
    as folders.** An archivist check flags depth > cap.
 3. **`canon.md` per folder = always-true-HERE facts, each SELF-EXPLANATORY.** Every line must pass the standalone test (a cold, zero-context session fully understands it alone); always-on canon is also efficient, scoped canon may be richer. Canon is
@@ -495,7 +489,7 @@ Root-level projects (no desk) live at `state/projects/{slug}/` with the same sha
 ```yaml
 parent: {parent-slug or —}     # the containing project, if nested (was already optional)
 scope: [slug, ...]             # cross-cutting: other registered slugs this note also serves
-path: state/projects/{slug}/projects/{slug}    # OPTIONAL cache of the registry path; registry is source of truth
+path: projects/<slug>    # or desks/<desk>/projects/<slug>; OPTIONAL cache of the registry path; registry is source of truth
 ```
 Backward-compat: these are additive. A doc without them still validates.
 
@@ -516,8 +510,9 @@ Empty canon is fine; bloated canon is the failure.
 
 ## Backward-compatibility contract (the safety invariant)
 
-Until a project is migrated, its brief stays at `state/briefs/{slug}.md` (or
+A brief's home is its project folder (`<brain>/projects/<slug>/brief.md`, or a desk's
+`projects/<slug>/brief.md`). Until a project is migrated, its brief stays at `state/briefs/{slug}.md` (or
 `state/projects/{slug}/state/briefs/{slug}.md`). `/read`, `/save`, `/checkin` resolve a slug
 via the **registry path** if present, else fall back to the legacy `state/briefs/`
 location. This means a partial migration NEVER breaks the live system — both shapes
-resolve. Hard rules (auth, calendar, write-gates) remain in HOOKS, not canon.
+resolve. Hard limits (auth, calendar, write gates) live in hooks, not canon.

@@ -8,6 +8,8 @@ status: active
 authority: user
 ---
 
+> **Superseded; kept until its citers are repointed.** (2026-11-14)
+
 <!-- CODE-SPIRAL-v2 BEGIN -->
 > ~~⚠ **PROVISIONAL — 2026-08-09.** Best current thinking, not doctrine. Full record:
 > it sits in tension with the skill-building SOP's LAW 1 and has not been ruled on.~~
@@ -184,7 +186,7 @@ authority: user
 - **[S4]** Tried: a regression scan over "every finished task's check" with no exclusion for its own entry. Failed:
   on retirement its check re-invoked the scan — recursion, 120 s timeout, uncaught exception, and a report of
   ~~**0 regressions, exit 0**~~ **no REGRESSION lines** (the exit code was asserted, never measured — corrected
-  2026-09-05 by claudeops-1a's transcript audit, A14) while a retired card failed by hand. `2026-09-05` · commit `3bd635f` on `V2`,
+  2026-09-05 by a transcript audit, A14) while a retired card failed by hand. `2026-09-05` · commit `3bd635f` on `V2`,
   card 6.10 → exclude self and say so; abnormal exit is an explicit INCOMPLETE; report EXAMINED beside FOUND.
   OBSERVED.
 <!-- DO-NOT-RETRY-v1 END -->

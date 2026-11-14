@@ -5,16 +5,20 @@ find out about one by hitting a wall.
 
 ## The split, first, because it's the whole point of this page
 
-**Three things are required. The other ten are optional — genuinely optional, not "optional" in the
-way that quietly means "you'll need it eventually."** Get the three required things, install this
-tool, and use it completely. The other ten each unlock exactly one extra feature; skip every one of
+**Two things are required. The other eleven are optional — genuinely optional, not "optional" in the
+way that quietly means "you'll need it eventually."** Get the two required things, install this
+tool, and use it completely. The other eleven each unlock exactly one extra feature; skip every one of
 them and nothing about the core tool notices.
+
+This page assumes you already run Claude Code with your own Claude account; that is the host, not a
+service this package adds. A scheduled job that calls a model also needs a token file
+(`claude setup-token`, saved to `~/.config/lifehack/claude-oauth-token`).
 
 | | Need it to install? | Skip it, and… |
 |---|---|---|
 | **git** | **Yes — always** | you can't get the tool onto your computer at all |
 | **python3, version 3.9+** | **Yes — always** | nothing in the package runs |
-| **Google Drive for desktop, signed in** | **Yes — always** | the install stops partway through, at STEP 7, and cannot finish |
+| Google Drive for desktop, signed in | No | your notes are not backed up to Drive; everything works |
 | Serper (web search) | No | `/websearch` refuses and says so; everything else is fine |
 | pdfplumber | No | opening a `.pdf` fails with a plain "install this" message |
 | python-docx | No | opening a `.docx` fails the same way |
@@ -24,14 +28,14 @@ them and nothing about the core tool notices.
 | `clasp` | No | `/google-sheet` falls back to formulas only — almost never needed |
 | `gh` + a GitHub account | No | you can't use the one-sentence "file a bug" flow yet |
 | Google Chrome | No | `/design-lifehack` screenshots fail; nothing else touched |
-| LuLu (outbound firewall) | No | the two built-in egress speed bumps still run; you skip the one HARD wall of the three (see below) |
+| LuLu (outbound firewall) | No | the built-in raw-command allowlist still runs, and the web seal if you armed it; you skip the one HARD wall of the three (see below) |
 
-**If you only ever get the required three, this tool works, completely, forever.** Everything below
+**If you only ever get the required two, this tool works, completely, forever.** Everything below
 the line is a "come back to this later, if ever" decision — never a "now" decision.
 
 ---
 
-## REQUIRED — all three of these, no way around it
+## REQUIRED — both of these, no way around it
 
 ### git
 
@@ -52,26 +56,23 @@ the line is a "come back to this later, if ever" decision — never a "now" deci
 - **Getting it.** Same as git — `INSTALL.md` checks and installs it for you (Step 3).
 - **Cost.** Free.
 
-### Google Drive for desktop, signed in
-
-- **What it is.** Google's desktop app that mounts your Drive as a regular folder on your computer —
-  this is where your AI Brain lives.
-- **Do you need it?** Yes, always. STEP 7 connects your AI Brain by finding a signed-in Google Drive
-  account on the machine; there's no way past that step without one.
-- **Without it.** The install gets seven steps in — Git installed, Python checked, the Harness cloned,
-  the safety catch on — and then stops there. STEP 7.1 looks for a signed-in Google Drive account,
-  finds none, and the install pauses until you have one. Nothing is broken or lost; it picks back up
-  exactly where it stopped once Drive is installed and signed in.
-- **Getting it.** The free download and sign-in at <https://www.google.com/drive/download/>. Install
-  it like any other application and sign in with the Google account you want your AI Brain to live in.
-- **Cost.** Free.
-
 ---
 
 ## OPTIONAL — skip every one of these today
 
 None of what follows blocks your install or limits the core tool. Each one unlocks exactly one thing.
 Skip it, and that one thing simply doesn't happen yet — nothing else notices, and nothing breaks.
+
+### Backing up your notes — Google Drive for desktop
+
+- **What it is.** Google's desktop app that syncs a folder to your Drive. Your notes folder is a
+  local folder first; Drive backs it up.
+- **Do you need it?** Only if you want that backup (or to share the folder across your own setup).
+- **Without it.** Your notes live in a plain local folder; back them up your own way (Time Machine,
+  dated copies).
+- **Getting it.** The free download and sign-in at <https://www.google.com/drive/download/>. Install
+  it like any other application and sign in with the Google account you want your AI Brain to live in.
+- **Cost.** Free.
 
 ### Web search — a Serper API key
 
@@ -117,9 +118,9 @@ Skip it, and that one thing simply doesn't happen yet — nothing else notices, 
 
 - **What it is.** A doorbell to your phone — a "something happened, go look" push, never the actual
   content of whatever happened.
-- **Do you need it?** Only if you want that push. Nothing else depends on it.
-- **Without it.** Nothing pushes to your phone. Everything that would have notified you still runs;
-  it just doesn't buzz you about it.
+- **Do you need it?** Only if you want that push. Nothing else depends on it to run.
+- **Without it.** Nothing pushes to your phone. Everything still runs — but a scheduled job that
+  breaks is only logged, so nobody is told until you look.
 - **Getting it.** The free **ntfy** app, plus a private topic string you pick yourself — the exact
   steps are in `INSTALL.md`, under **"NOTIFICATIONS ON YOUR PHONE."**
 - **Cost.** Free app. It uses the public `ntfy.sh` service by default, so treat your topic string
@@ -129,8 +130,10 @@ Skip it, and that one thing simply doesn't happen yet — nothing else notices, 
 
 - **What it is.** A command-line tool that talks to Google on your behalf, so this package can read
   your calendar and tasks, read or write a Google Sheet, and — if you grant that scope too — read your
-  Gmail (subjects/senders/dates freely, bodies only through the sanitizer) and move labels. **There is
-  no send or compose capability anywhere in this package**, connected or not.
+  Gmail (subjects/senders/dates freely, bodies only through the safety pipeline), apply labels and
+  archive. **Nothing in this package sends email without your approval**; it may write drafts for you
+  to review. A scheduled job may write to your own account — labels, archive, Sheets, Tasks, Calendar,
+  Docs — within the limits in `canon/cron-jobs-sop.md`.
 - **Do you need it?** Only if you want any of that. Most people setting this up for the first time
   don't need it right away, and each scope is independent — grant Calendar without Gmail, or none of
   it at all.
@@ -197,6 +200,7 @@ for you.**
 
 **Level 1 — the raw-command allowlist (`system/egress-allowlist.md`). ON by default, no setup.** Blocks
 a `curl`/`wget`/raw Python HTTP call from reaching anywhere outside a short approved domain list.
+A destination written as a variable or a command substitution is refused.
 It is a speed bump, not a wall: if it can't parse a command or read its own list, it **fails OPEN** —
 allows the call rather than freezing your shell on an edge case — and it only reads the text of a shell
 command, so a compiled program opening its own connection is invisible to it.
@@ -215,6 +219,10 @@ outside that set is refused before the connection opens.
 - **Half-configured refuses rather than pretends.** Domains listed with the switch still off, or the
   switch on with nothing listed, stops web reads with a message naming the line to fix. That state
   is the one that would otherwise look like protection and provide none.
+- **Scheduled jobs are always sealed.** Whatever the switch says, job-run.sh seals every scheduled
+  job's web reads to the plugin's `system/tools/job-fetch-hosts.txt` plus your own
+  `<personal-code>/job-fetch-hosts.txt`. To let one of your jobs read a new site, add its host to
+  your own list.
 - ⚠ **What it is not.** It governs `safe_fetch.py` only. A raw `curl` is Level 1's business, and a
   compiled program opening its own connection is invisible to both — that is Level 3.
 

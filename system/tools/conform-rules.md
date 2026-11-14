@@ -1,6 +1,7 @@
 # conform-rules — skills-SOP-v2 conformance rules as data
 
 Read by `conform.py`. One line per rule: `id | scope | check | rule | SOP v2 source`. Source = skill-building-sop-v2 draft (line numbers of 2026-10-28).
+⚠ STALE (marked 2026-11-14): these lines cite a draft retired 2026-10-29 by line number; they are being re-derived from `canon/skill-building-sop.md` (2026-11-10). Until then, read every line below as v1 evidence.
 This is ONE layer, not perfect enforcement: code rules catch the common shapes; judge rules are listed for a human reviewer and never pass or fail a verdict alone.
 Scope: ALWAYS rules apply to anything that runs code. ORDERED rules apply on top when step order must hold (a card, or a runner that writes a record).
 NOT APPLICABLE is said out loud with a reason (documents, research, design, one-offs: "no executable code"). A silent pass is a fail.

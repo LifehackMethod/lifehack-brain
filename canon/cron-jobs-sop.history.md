@@ -599,3 +599,102 @@ A row flips from `off` to `yes` one job at a time, only at a human gate, on the 
 ~~~~
 **Only something that needs the person right now may wake them at night** (today: a dangerous email the security
 ~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-25 to G5-36
+
+~~~~
+**Read this first.** A scheduled job is an alarm clock plus an envelope around something you could run by hand. This SOP owns the alarm clock and the envelope: the **Cron** subsystem (it runs jobs) and the **Alarms** subsystem (it tells you one broke). It does NOT own what happens inside the routine, and nothing in this SOP is a reason to edit a skill. The one exception is a job being brought into line (section 11a): that changes the job's own code, and does not change what the job reads, writes or sends, apart from its own receipt line and exit code (the two allowed fixes are the presence-grade check and the "nothing to do" exit 75). Every path here is in the HARNESS folder, resolved from the plugin root (manual, THREE HOMES), never relative to your working folder. `$CODE` below is the harness code root: whatever `$HOME/.config/lifehack/code-root` says. Never type it as a path.
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-25 to G5-36
+
+~~~~
+**DECIDED** (P-127, round 4): the root problem is "students or subscribers can't use the plugin to save their kron jobs", because an update overwrites the plugin. So the personal code folder holds what a person needs to save their own jobs, mirroring "only ... the stuff that ... would actually need".
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-25 to G5-36
+
+~~~~
+**DECIDED** (P-127, round 4, the fuller lines): "do we change the nature of the job no we shouldn't change the nature of the job", and "we just want to stay focused on how a kron drop gets made". **DECIDED** (P-127, round 4): the aim is to "stay in our lane": the shared code correctly divided between the plugin and the personal folder, "saved in conformance", and "enforced when it's on its own". What holds it: the job door refuses a row's runner that breaks the rules (`install-schedulers.sh`), and `job-run.sh` runs the same door before each run of a `yes` row and every forced run; the ingest-gate hook refuses raw reads of outside content typed in a session (SOP §7). Writing into shared plugin code meets a hard block with a sign (`build-conformance-sop.md` §2 (the asks) and §5.11 (the friction levels), decided 2026-11-03); the one exception is the operator's own hands at the terminal, with no administrator-key machinery (P-90's note). **DECIDED** (P-127, round 3): rewriting a skill is not planned and not prevented; if the person's own conversation goes there, that is fine.
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-25 to G5-36
+
+~~~~
+### The window offers, in one line, every time (DECIDED, P-127 rounds 1 and 4)
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-25 to G5-36
+
+~~~~
+When the door refuses a personal row, the window says one short line and asks, for example: "This job isn't in line with the Lifehack checker. Want me to bring it into line?" **DECIDED** (P-127, round 4): the offer is made every time the refusal comes up, as "just the small little lines like, hey, this isn't in conformance", "never a huge block"; a person who asks for the fix without being offered gets the same road (round 1). **DECIDED** (B5, 2026-11-11): every time, as a one-line sign, never a pop-up. When the window asks anything, it gives its best guess.
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-25 to G5-36
+
+~~~~
+**A broken plugin job** (DECIDED, P-127, round 4): "I would just tell them to report it that's it", following the PR rulebook ("assume that there is a pr sop"), `system/sops/pr-sop.md`. No window tells the person to copy the row to fix it: once the plugin fixes the job "they would have two copies of the same job". The window says plainly that the job should be reported, and does not edit it. The refusal for a broken plugin job is "report it", never a copy.
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-25 to G5-36
+
+~~~~
+**Copying a plugin job to change it** (DECIDED, the owner, in session, 2026-11-05, T6; and P-127, round 4: a fork carries "you broke it you bought it"): the copy is a NEW job, under a NEW name, in the person's own folder. Its row goes in the person's `jobs.md`, and its code goes in `<personal-code>/tools/<new-name>/`. The new job is the person's own and is not supported by the plugin. The plugin's original job keeps running unchanged. The window does not recommend a same-name copy that replaces the plugin job. The code still lets a personal row with a plugin row's name win, with a warning that names the override (`job-run.sh`, step 1c, "THE DOOR AT RUN TIME"); that is not the way to change a plugin job, and the refusal for a broken plugin job is "report it" (above). The fork warning still stands: the new job will not get plugin fixes, "you broke it, you bought it".
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-25 to G5-36
+
+~~~~
+5. **The first real test run needs the person's yes** (DECIDED, P-127 round 2: approval first; the PROPOSED details are in section 15).
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-25 to G5-36
+
+~~~~
+### A person may knowingly run their own job outside the checker (DECIDED, P-127, round 3; T5 DECIDED, the owner, in session, 2026-11-05)
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-25 to G5-36
+
+~~~~
+4. **No session-start line** (DECIDED, P-127, round 3). (A PROPOSED line on the offer for such a row is in section 15.)
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-25 to G5-36
+
+~~~~
+- P-127, round 4 (2026-11-05, cron door window, "approved"; written from plan quotes, not heard directly by the coordinator): (1) root problem and "mirror ... only ... what they need" settle the personal folder section; (2) "I would just tell them to report it", "two copies of the same job", "you broke it you bought it" settle plugin-job reporting and that a fork carries "you broke it you bought it" (the warning itself is PROPOSED); (3) "hey, this isn't in conformance ... never a huge block" settles T2 (one line every time, replacing "do not re-offer"); (4) "stay in our lane ... enforced when it's on its own" gives the aim; T5, T6 and T7 were settled afterwards by the owner, in session, 2026-11-05.
+- P-127 round 4, the fuller lines (relayed verbatim by claudeops-ce, now written into P-127): "do we change the nature of the job no we shouldn't change the nature of the job" (the wording of the what-may-change rule is PROPOSED); "I do think it could keep offering it" (re-offering a fix in general; its use for a job chosen outside the checker is PROPOSED); "we only have to mirror the stuff that ... would actually need" (the personal folder; the hosts list is PROPOSED, P-127 never names it).
+- P-127 rounds 1-3: offer in the moment; asking also works; first real run needs approval; best guess when asked; personal jobs are personal code; the outside-the-checker mark; no session-start line; skill rewriting not planned, not prevented.
+- PROPOSED, not in P-127: listed in section 15. DECIDED by the owner, in session, 2026-11-05 (T5, T6, T7): the comment-line form, running a marked job with a one-line warning, a copy of a plugin job as a new-name job, and reporting a broken plugin job on the plugin's GitHub page.
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-25 to G5-36
+
+~~~~
+These lines were PROPOSED in the live text, not ruled. They wait here, word for word, for the person's ruling (P-40).
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-25 to G5-36
+
+~~~~
+- From section 11a, "Where a person's own jobs are saved": **PROPOSED:** each piece comes with a template, created when missing and never overwritten (P-127 asks for "a location and all the folders and everything it needs", not for templates).
+- From section 11a, "What may change, and what may not": **PROPOSED:** the reading of that as "a fix does not change what the job reads, writes or sends, apart from its own receipt line and exit code"; P-127 gives neither that wording nor the examples. Two fixes are allowed under it: the presence-grade check fix (the receipt line and the check are made to carry a value that varies) and the "nothing to do" exit 75.
+- From section 11a, "What may change, and what may not": **PROPOSED:** this section adds no new block of its own (P-127 does not say it).
+- From section 11a, "The window offers": **PROPOSED:** the line says that the job's own code changes and what it reads, writes and sends does not. **PROPOSED:** a job the person chose to run outside the checker (below) gets the same one short line. P-127 round 4 says "I do think it could keep offering it" about re-offering a fix in general, and adds "If adding that in makes it harder, then fuck it. We'll just warn them one time and leave it"; it does not name a job already chosen outside the checker, and round 3 dropped a repeated session-start line as annoying. **PROPOSED:** a no leaves everything as it is.
+- From section 11a, "Whose job decides the refusal": The exact wording is PROPOSED (not in P-127), as coded in `install-schedulers.sh`.
+- From section 11a, "A broken plugin job": **PROPOSED:** this also holds when the fault is inside a plugin runner or shared script that a personal row calls: report it, change nothing in the plugin (P-127 speaks of a broken plugin job, not of a personal row that calls one).
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-25 to G5-36
+
+~~~~
+- From section 11a, the fix table, the web-fetch row: **PROPOSED:** P-127 round 4 says "we only have to mirror the stuff that ... would actually need" outside the plugin to save a job, and never mentions a hosts list.
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-25 to G5-36
+
+~~~~
+- From section 11a, "A person may knowingly run their own job outside the checker", step 4: **PROPOSED:** the offer line above still applies each time the refusal comes up for such a row (see the offer section: P-127 does not name this case); it is one line, never a block.
+- From section 11a, "Sources": PROPOSED, not in P-127: the exact wording of both refusal texts (code, dated 2026-11-05, no owner named), the example offer line, the fork-warning wording, "a no leaves everything as it is", step 5's details, step 6's `off`-first.
+~~~~

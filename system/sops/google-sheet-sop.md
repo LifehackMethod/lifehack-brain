@@ -26,13 +26,14 @@ deterministic code. The design ladder, in order of preference:
 3. **Minimum in the LLM** — the LLM only **reads what the sheet already computed and folds it verbatim**.
    It never re-derives a number at read time.
 
-This is the sheets application of the cross-desk rule in `CLAUDE.md` → ~~*"Compute mechanically, never in
-the model."*~~ *"Arithmetic is computed, never done in your head"* *(2026-10-30: heading renamed; see CLAUDE.md, "Arithmetic is computed, never done in your head")* (Narrow exception: a summary tier a person has explicitly approved for a specific sheet.)
+This is the sheets application of the harness brief's "Arithmetic is computed, never done in your head".
+(Narrow exception: a summary tier a person has explicitly approved for a specific sheet.)
 
 ## Principle #2 — the sheet checks itself; fail loud, never silent (the corollary)
 If Principle #1 says the sheet does the math, this says **the sheet also proves its own math.** Anything you'd
 ever verify by hand becomes a permanent live formula that re-checks on every open — double-entry bookkeeping
-applied to every workbook: *it can't be quietly wrong.* Two non-negotiables:
+applied to every workbook: so it is much harder to be quietly wrong (Principle #2a shows the gap a
+consistency check leaves). Two non-negotiables:
 1. **Fail loud, never silent.** A broken or inconsistent cell must be impossible to miss — the enemy is a
    `#REF!` that renders like real data. Every sheet carries an **error sweep**; every sheet that CALCULATES
    also carries a right-sized **`_CHECKS` tab** that proves its math, rolling up to one **check-engine-light**
@@ -48,12 +49,15 @@ Normal sheet work **APPENDS rows** — it never edits formulas or rewrites compu
 own locks (dropdowns, protected ranges, "warn first") do **NOT** stop a write authenticated as the file
 owner (proven live 2026-06-20) — so the only real guard is on our machine, before the command leaves
 (the hooks below). Billing/financial sheets are **fine china**: read first, append only, never bulk-overwrite.
+A Sheet the person has named fine china is not edited without asking them first; with nobody at the screen
+(a scheduled run) that edit is parked for the morning (`canon/cron-jobs-sop.md` §7,
+`canon/build-conformance-sop.md` §2).
 
 ## Write narrow — never rewrite a whole row over a formula
 A script or API call that reads a whole row/range and writes it back (`getValues` → `setValues`, or a
 full-width `values.update` that spans computed columns) **silently overwrites every formula in that range
 with the static value it happened to be showing.** The formula is gone, the number still looks right, and
-the next appended row comes up blank. **Rule: write ONLY the columns you actually changed** — a menu script
+the next appended row comes up blank. **Write only the columns you changed** — a menu script
 that stamps status/dates touches those columns alone, never the full row. This is the read-modify-write trap
 generalized to any store: update the specific fields you changed, never blind-write a whole record back over
 cells something else owns (a formula, another process, a downstream field).
@@ -112,8 +116,8 @@ The same "orient, don't dictate" test applies: state what's true and where thing
   apply that map** (e.g. `XLOOKUP(key → map.owner)`) so every row is pre-resolved at the data layer. **A
   documented map a reader has to apply by hand is a latent misattribution** — the careful session is fine,
   the careless one isn't. Pair it with a completeness check (zero unmapped / `UNKNOWN` rows). *(Finance ex:
-  stamp each transaction's owner from the card-last4→owner map — don't make a session join by last-4. But the
-  rule is general: any sheet whose rows are typed/owned/classified from a lookup gets the computed column.)*
+  stamp each transaction's owner from the card-last4→owner map — don't make a session join by last-4. But this
+  is general: any sheet whose rows are typed/owned/classified from a lookup gets the computed column.)*
 - **G3 — Write rules + append direction.** What the session may write freely vs. what needs explicit
   sign-off; which way rows grow (top vs. bottom); and any mandatory entry order (out-of-order = orphan/stale rows).
 - **G4 — Route new things to existing homes.** A new metric/insight/row goes to the tab that already owns
@@ -128,8 +132,9 @@ The same "orient, don't dictate" test applies: state what's true and where thing
 - **Human layer:** prefix every formula-only column header with `🔒` (e.g. `🔒 suggested_entity`). Absence
   of `🔒` means the column accepts input. Co-located with the data, impossible to miss.
 - **Machine layer:** the `guard_sheet_formula_writes` hook blocks any owner-API write whose target cell
-  **is a formula (`=…`) or carries `🔒`** — un-fakeable, works even on unlabeled formula cells.
-- The two are complementary: 🔒 signals to a human; the formula-value check is the enforcement.
+  **is a formula (`=…`) or carries `🔒`** — it works even on unlabeled formula cells, except an
+  `ARRAYFORMULA` spill cell (the hook's own header names that edge).
+- The two are complementary: 🔒 signals to a human; the formula-value check is the friction that holds it.
 
 **3. The `_LOG` tab — a light rolling history of what changed.**
 A separate tab named **`_LOG`** carries an abbreviated, newest-on-top history so a fresh session can see what
@@ -153,7 +158,7 @@ pure-read sessions don't.** Best-effort for now — no hook; it rides the same w
 - **Capacity / headroom check.** Where a formula must use a fixed row ceiling, add a check that warns at
   ~85% full — so the sheet flags *before* it silently stops counting new rows. (A hardcoded ceiling that
   fills up is a silent-corruption time-bomb: the numbers just quietly go stale with no error.)
-- **Prefer open-ended ranges over hardcoded ceilings (design rule).** Use `A4:A` / whole-column / dynamic
+- **Prefer open-ended ranges over hardcoded ceilings (design principle).** Use `A4:A` / whole-column / dynamic
   ranges, NOT `A4:A2000` — an open range can't be outgrown. Where a ceiling is genuinely unavoidable
   (perf), pair it with the capacity check above. This eliminates the trap rather than monitoring it.
 - Full taxonomy / alert levels / right-sizing: the `google-sheet` skill → *Internal Control Layer Design*.
@@ -167,10 +172,12 @@ in a browser tab.
   it is not your material, it is a program.
 - **Auth:** `~/.clasprc.json` is a credential → machine-local and gitignored, the same as the `gws` login.
   Never commit it.
+- **Who writes it:** an agent writes, edits or deploys Apps Script, or sets a trigger, only on the
+  person's named instruction (approved by Enver, 2026-11-13).
 - ⚠ Apps Script is optional. Everything above it — formulas, `ARRAYFORMULA`, the check layer — works with
   no clasp installed at all, and most sheets never need it.
 
-## The enforcement layer (the hooks — `system/hooks/`)
+## The friction layer (the hooks — `system/hooks/`)
 - **`system/hooks/guard_sheet_writes.sh`** — blocks any gws sheets WRITE until the sheet's `_LLM_GUIDE`
   tab has been READ this window; destructive ops (clear/delete/mass-overwrite) also need an explicit
   confirmation. Reads always pass, so reading the guide is never blocked.
@@ -179,18 +186,18 @@ in a browser tab.
   after showing the person whose sheet it is the exact before and after.
 
 ## gws sheets syntax (current — `/opt/homebrew/bin/gws`)
-- Read: ~~`gws sheets spreadsheets values get --params '{"spreadsheetId":"<ID>","range":"_LLM_GUIDE!A:Z"}'`~~ *(2026-10-30: a raw `values get` is refused — `ingest_gate_enforce.sh` blocks it in a session and the job door blocks it in a runner, `cron-jobs-sop.md` §7.)* The allowed way: `python3 <repo>/system/tools/safe_sheets.py <spreadsheet-id> '_LLM_GUIDE!A:Z'` — it sanitizes every cell, scans for injection and fails closed; exit 1 means spans were flagged and neutralised, so read the stderr list.
-  ⚠ *Open gap (2026-10-30, read from `guard_sheet_writes.sh:143-148`, not fire-tested):* that guard records its "this window read the guide" marker only from a command shaped like `gws sheets ... values get`, which the door refuses, so a write after a `safe_sheets.py` read may still be asked to read the guide first. Unresolved; it belongs to the guard, not this page.
+- Read: `python3 <repo>/system/tools/safe_sheets.py <spreadsheet-id> '_LLM_GUIDE!A:Z'` — a raw `values get` is refused (`ingest_gate_enforce.sh` in a session, the door in a runner, `canon/cron-jobs-sop.md` §7); safe_sheets sanitizes every cell, scans for injection and fails closed; exit 1 means spans were flagged and neutralised, so read the stderr list. A `safe_sheets.py` read of `_LLM_GUIDE` satisfies `guard_sheet_writes.sh`.
 - Metadata (tab list): `gws sheets spreadsheets get --params '{"spreadsheetId":"<ID>"}'`
 - Append (normal write): `gws sheets spreadsheets values append --params '{...}'`
-- ~~Always `2>/dev/null` when parsing gws JSON — it writes progress chatter there and it will corrupt
-  your parse.~~ *(2026-10-30: never silence a fetch, write or push in a runner — `cron-jobs-sop.md` §7 refuses `2>/dev/null` there, and an error you cannot see reads as "nothing new". The allowed way: send stderr to a file, `2>"$TMP/gws.err"`, parse stdout only, and read the file if the call fails.)* `system/gws-contract.md` has the quoting and error-code patterns; see the Pointers section at the bottom.
+- In a runner, send stderr to a file (`2>"$TMP/gws.err"`), parse stdout only, read the file if the call fails;
+  `2>/dev/null` is refused there (`canon/cron-jobs-sop.md` §7). `system/gws-contract.md` has the quoting and
+  error-code patterns; see the Pointers section at the bottom.
 
 ## The workflow (any sheet build)
 1. **Identify the sheet + read its `_LLM_GUIDE`** (satisfies `guard_sheet_writes`).
 2. **Design to Principle #1** — push math into formulas / Apps Script; the LLM only orchestrates + folds.
 3. **Append, don't overwrite** — never touch a formula/`🔒` cell without explicit confirm.
-4. **Back up first** for any non-append change (build-sop *(retired 2026-10-31)*: crown-jewel backup before editing).
+4. **Back up first** for any non-append change (`canon/build-conformance-sop.md` §5 item 3: back up a hand-edited file before changing it).
 5. New sheet → use the `google-sheet` skill (Kickoff mode) so it's born conformant (`_LLM_GUIDE` tab
    opening with its **PURPOSE block** (#1a) + the **body guidelines** that apply (#1b), `🔒` headers,
    per-tab purpose lines, a `_LOG` tab (#3), and the **error sweep + `_CHECKS` self-check layer** (#4)).
@@ -229,9 +236,9 @@ in a browser tab.
 
 ## Pointers
 - Craft (design/audit/tiers/controls): the `google-sheet` skill + `standards.md` / `capabilities.md`.
-- The law this is one application of: compute mechanically, never in the model. `/calculate` arms it for a whole session.
+- The harness brief's "Arithmetic is computed, never done in your head" is what this applies; `/calculate` arms it for a whole session.
 - Enforcement mechanics: `canon/hook-contract.md` and `canon/hook-sop.md`.
-- ~~⛔ `system/gws-contract.md` does NOT ship.~~ *(2026-10-30: the file IS in this repo, `system/gws-contract.md`, frontmatter `gws_version: 0.22.3`.)* ⚠ It pins one `gws` version, which is the opposite of what these hooks now do (`command -v gws`, no version assumption), so read it for the quoting and error-code patterns, not for the install path or version.
+- `system/gws-contract.md` — the quoting and error-code patterns.
   Connecting your own account is `INSTALL.md` → "THE GOOGLE-CONNECTED PARTS"; the quoting and
   error-code patterns are visible in the commands throughout this page.
 

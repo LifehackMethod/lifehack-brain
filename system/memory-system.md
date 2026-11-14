@@ -15,7 +15,7 @@ authority: user
 > in a file. This doc is the reasoning behind the split between the kinds of file; the concrete map of
 > every path is `canon/data-layout.md` — read that one for WHERE something goes, this one for WHY.
 
-## 1. The one rule everything else rests on
+## 1. The one principle everything else rests on
 
 Nothing said in a session survives past it unless it lands in a file. The chat window is scratch space,
 not memory. A fact worth having next week gets **written down**, to the one place every tool already
@@ -33,12 +33,12 @@ window, loading nothing means starting from zero each time. **How much should it
 fact a person confirmed is not the same as one a session wrote down in passing and nobody checked.
 
 Answered independently: WHEN by *where a fact lives* (below); HOW MUCH by a `confidence:` field
-(`system/confidence-model.md`). A below-canon record can be fresh and low-confidence at once; canon can
+(`system/_retired-2026-11-14/confidence-model.ARCHIVE-2026-11-14.md`). A below-canon record can be fresh and low-confidence at once; canon can
 be old and still fully trusted, because its trust came from a person, not from age.
 
 ### The homes
 
-- **`canon.md`** (top level) and **`<subject>/canon/current.md`** — the few things simply TRUE,
+- **`canon/canon.md`** (top level) and **`<subject>/canon/current.md`** — the few things simply TRUE,
   confirmed by a person, never a session's own guess. The only tier loaded automatically at session
   start (`system/hooks/session_context_loader.sh`), which is why it stays small: every line is paid for
   on every turn, forever. The gate a line has to clear: **can a session with zero other context read it
@@ -46,9 +46,11 @@ be old and still fully trusted, because its trust came from a person, not from a
 - **`records/<type>/`** — everything found, decided or kept that hasn't earned the always-loaded tier.
   Six closed types (`context · decisions · insights · logs · proposals · research`), searched by
   `/read`, never auto-loaded. Most of what you know lives here; canon should look small next to it.
-- **`state/`** — not facts about the world, facts about where things stand: `current.md`,
-  `open-loops.md` (started, not finished), `debt-ledger.md` (knowingly deferred), each project's own
-  `brief.md`. Overwritten in place, which is safe only because of the next item.
+- **Where things stand** — not facts about the world, facts about where things stand: the diary
+  (`diary/YYYY/MM/DD.md`, one entry per day; where things stand is read here), `open-loops.md` at the root
+  (started, not finished), `debt-ledger.md` at the root (all known system technical debt: the deferred
+  build list), and each project's own `projects/<slug>/brief.md` (at the root, or in a desk's `projects/`).
+  Briefs and loops are overwritten in place, which is safe only because of the next item.
 - **`system/journal.md`** — the one place nothing is overwritten. A brief gets rewritten every session;
   the journal is what makes that safe, because a dead end, a decision, or a number that mattered hits it
   *before* the brief that used to hold it gets replaced.

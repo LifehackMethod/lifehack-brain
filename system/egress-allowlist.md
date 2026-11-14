@@ -10,8 +10,10 @@ plus an unrestricted `curl` can do quite a lot. This closes the second half.
 
 **What it governs, and what it does not.** It applies to RAW outbound calls — `curl`, `wget`, `nc`,
 and inline Python HTTP. It does NOT apply to `safe_fetch.py`, which is how ordinary web reading
-happens and which has an allowlist of its own — a separate list, and one that ships OFF until you
-arm it (`system/safe-fetch-allowlist.md`). So researching a topic does not touch this list; only a
+happens and which has lists of its own: for a session, the Level 2 switch
+(`system/safe-fetch-allowlist.md`), which ships off until you arm it; for a scheduled job, always on —
+job-run.sh seals its web reads to `system/tools/job-fetch-hosts.txt` plus your own
+`<personal-code>/job-fetch-hosts.txt`. So researching a topic does not touch this list; only a
 hand-rolled network call does. Package managers, `git` and `gws` do not match the
 pattern either, so normal work is untouched.
 
@@ -45,7 +47,9 @@ serper.dev
 
 ## Two things worth knowing
 
-- **This fails OPEN when it cannot do its job.** If no hostname can be extracted from the command,
+- **This fails OPEN when it cannot do its job.** A destination written as a shell variable or a
+  command substitution is refused (a `${VAR:-https://host}` default is checked by its literal
+  default). If no hostname can be extracted from the command,
   or this file cannot be read, the call is allowed and the reason is printed. That is deliberate:
   the tool layer is a speed bump, and a speed bump that bricks your shell on a parsing edge case
   gets removed. **The fail-closed layer is your operating system's own firewall** — Little Snitch,

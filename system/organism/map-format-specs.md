@@ -4,7 +4,7 @@ title: "Organism map — the format contract (how the map is written)"
 record_type: reference
 desk: root
 created_at: 2026-08-15
-updated_at: 2026-08-15
+updated_at: 2026-11-14
 status: active
 authority: agent
 ---
@@ -16,14 +16,8 @@ authority: agent
 > this file** — the format of the map itself. The other sections are the surrounding contract that
 > other files already cite by section number.
 
-> ⚠ **RECONCILIATION OWED — UNVERIFIED AS OF THIS WRITING.** §2's symbol legend was written from the
-> **port source** (the donor system's live map block), because when this file was authored the map
-> had **not yet landed** in this repo's global `CLAUDE.md` — verified this session by
-> `grep -c "System at a glance"` against it, which returned `0`. The map is being authored by a
-> separate lane from a live directory listing. **The legend in §2.2 must eventually match the landed
-> map BYTE FOR BYTE, and that comparison has not been run.** Whoever lands the map owes that diff.
-> Until then this file is *specified-from-source*, **not** *verified-against-shipped*.
-> ⛔ Do not cite §2 as confirmed.
+> §2.2's legend line matches the landed map byte for byte (checked 2026-11-13). The earlier
+> "reconciliation owed" banner is in `map-format-specs.history.md`.
 
 > **Why the section numbers look gappy.** This file's `§` anchors are load-bearing: files already in
 > this repo cite `map-format-specs.md §0–§1`, `§8.3` and `§8.5` by number. The numbering is therefore
@@ -36,7 +30,7 @@ authority: agent
 
 | # | Altitude / Artifact | Metaphor | File | Loads | Spec |
 |---|---|---|---|---|---|
-| 1 (tip) | **The organism map** | a MAP (schematic) | global `CLAUDE.md` (fenced block) | **EVERY session** | §2 |
+| 1 (tip) | **The organism map** | a MAP (schematic) | the harness brief the plugin delivers (`CLAUDE.md` at the plugin root, a fenced block) | **EVERY session** | §2 |
 | 2 (middle) | **The Manual** | a MANUAL (how-to) | `system/organism/manual.md` | on demand, never auto | §4 |
 | 3 (base) | **Encyclopedia entry** | an ENCYCLOPEDIA | `system/organism/elements/<slug>.md`, one file each | on demand | §1 |
 | 4 (ground) | **The artifact itself** | the live executable | the actual skill / hook / tool | — | — |
@@ -46,9 +40,9 @@ encyclopedia points down to the running code, which is the ground truth.
 
 ---
 
-## §0 — THE CONTENT RULE (what goes at each altitude) — PROVISIONAL
+## §0 — THE CONTENT GUIDE (what goes at each altitude) — PROVISIONAL
 
-> ⚠ **PROVISIONAL — a working rule, not law.** This is the current best rule for deciding *what*
+> ⚠ **PROVISIONAL — current best guidance, not a must.** This is the current best rule for deciding *what*
 > goes at each altitude, and it gets refined **by doing**: author a few real parts, see what the rule
 > gets wrong, revise. Do not over-prescribe from here. §1–§4 lock the *structure* of the artifacts;
 > this §0 is the *content* hypothesis.
@@ -66,21 +60,21 @@ live only at the base, so the tip can go a long time without an edit.
 - **MIDDLE (the manual, §4) — "How do I operate the system, and how does this part work WITH the
   others?"** The interop narrative, the seams, when-to-use-X-vs-Y. Not the internal step list.
 - **BASE (the element entry, §1) — "How does this part actually work inside?"** Full mechanics, the
-  honest enforcement map, every interop seam in detail.
+  honest friction map, every interop seam in detail.
 
 **The escalation ladder is the confusion-resolution path.** A session unsure how its own system works
 reads top-down only as far as it needs: map → manual → element → the live artifact. Each level must
 be **self-sufficient at its depth** and point cleanly to the next. The ladder only works if a level
 actually resolves the confusion the level above it could not.
 
-⚠ **Measured exception:** a tip-only reader can form WRONG beliefs about enforcement posture when an
+⚠ **Measured exception:** a tip-only reader can form WRONG beliefs about how hard a part actually holds when an
 element has documented fail-open gaps — it over-trusts a bare `LIVE`. The `·gap` qualifier (§8.4b) is
 the fix: a side-channel signal that depth is REQUIRED for a safety-posture question, without dragging
 the gap prose up to the tip.
 
 **The element-file DEPTH BAR — EXHAUSTIVE, not merely "enough."** The base entry is the canonical
 store of **every** piece of functionality-related information about the part: every trigger, every
-mode, every step, every store touched, every gate and its honest enforcement, every edge case, every
+mode, every step, every store touched, every gate and how hard it honestly holds, every edge case, every
 interop seam. The bar is **completeness**, not a line count — long is fine if the functionality is
 real. *Register, not scope:* it is exhaustive about behaviour but written as canonical
 **description** (what it does, why, how it connects), not a transcript of the artifact's executable
@@ -112,10 +106,10 @@ The locked format:
   **INTEROP SEAMS** (typed, per §8.3) · **GAPS**.
   - **`GAPS` is REQUIRED** whenever a fail-open bypass is documented in code or in a prior audit. It
     is the **sole** source from which the `·gap` marker is derived (§8.4b) — **no `GAPS` ⇒ no `·gap`.**
-- **An `## AUTO-COMPUTED` block — machine-only.** `maturity_label` · `last_checked` · `check_detail`,
-  written **only** by the label checker.
+- **An `## AUTO-COMPUTED` block — machine-only.** `maturity_label` · `last_checked` · `check_detail` · a pointer to its receipt —
+  written only by the checking code, which writes the receipt (what, when, result). LIVE only with a dated check that watched it work; past its window the label reads "unproven". Per kind: guards by the fire test, tools by a watched live caller, skills by one real run with the person present, desks by tile and diary seen in V2.
 
-⛔ **Never hand-write a maturity label.** Labels are machine-owned; recompute them with the label
+A maturity label must not be hand-written; the checking code writes it with its receipt (approved by Enver, 2026-11-14). Recompute labels with the label
 checker (`system/tools/organism/label_checker.py write-labels`). A hand-written `LIVE` is the exact
 failure the write-guard on this tree exists to prevent.
 
@@ -137,7 +131,7 @@ failure the write-guard on this tree exists to prevent.
 
 ### §2.0 — What the map is
 
-**The map is not a standalone file.** It is a block of text living **inside the global `CLAUDE.md`**,
+**The map is not a standalone file.** It is a block of text living whole inside the harness brief — the plugin's root `CLAUDE.md`, delivered at session start by `system/hooks/emit_harness_brief.sh` — with no per-desk copies,
 under a `## System at a glance — the organism map` heading. It loads on **every session**, which is
 exactly why it is dense and terse: it pays rent in every context window.
 
@@ -171,7 +165,7 @@ regenerable block.
 
 ### §2.2 — The SYMBOL LEGEND
 
-⚠ Subject to the byte-for-byte reconciliation owed at the top of this file. These are the symbols the
+These are the symbols the
 **port source** actually uses, extracted from it rather than recalled:
 
 | Symbol | Meaning | Count in the source block |
@@ -197,7 +191,7 @@ it marks a **nested sub-point** that qualifies the entry above it — a caveat s
 own line. Both uses are live in the source. Do not "unify" them, and do not introduce the nested use
 on a new entry unless the caveat genuinely warrants it.
 
-### §2.3 — The ONE-LINE CRUDE-SIMPLIFICATION RULE
+### §2.3 — The ONE-LINE CRUDE-SIMPLIFICATION LINE
 
 This paragraph sits immediately under the legend. It is **not decoration** — it is the instruction
 that makes every terse line below it safe to read:
@@ -341,17 +335,12 @@ agent sees two parts on one page and assumes something joins them. Each bullet n
 capability plainly and says what you must therefore carry by hand. When a `NOT BUILT` item is later
 built, it **moves up** into the routing entries; it is never simply deleted.
 
-## §3 — [NOT APPLICABLE HERE] Per-desk cheat-sheets
+## §3 — [NOT APPLICABLE] Per-desk map copies
 
-The port source specifies a second fenced block per desk, inside each `desks/{desk}/CLAUDE.md`,
-loading only on that desk's launch.
-
-⛔ **This repo has no `desks/` tree** (verified this session: `ls -d desks` → *No such file or
-directory*). The section number is kept so §4 and §8 do not renumber, and so the absence is a
-recorded admission rather than a silent gap. If a desk layer is ever introduced here, the rule that
-governed it was: an element is desk-altitude **iff** it is relevant only inside that desk and would
-never be used in another; an element shared by *some* desks is duplicated into each, never promoted
-to the system map.
+The map has no per-desk copies: it sits whole in the harness brief. Desks are live — subject folders a
+person builds in their own brain folder (`<brain>/desks/<subject>/`), not in this repo — and carry no
+map block. The section number is kept so §4 and §8 do not renumber. (The old desk-duplication clause is
+in `map-format-specs.history.md`.)
 
 ## §4 — THE MANUAL (the MIDDLE altitude) — `system/organism/manual.md`
 
@@ -368,7 +357,7 @@ measured alternative and it lost two answers outright. Do not treat it as a redu
 **Shape:**
 
 1. **The maintenance + honesty-label rules** — the human-AUTHORED vs machine-AUTO-COMPUTED split, and
-   the LIVE / PARTIAL / TARGET criteria.
+   the LIVE / PARTIAL / DORMANT criteria.
 2. **The ranked element INDEX** — each line `element : [source] · LABEL → elements/<slug>.md`, a
    pointer DOWN. Trivial or dormant parts get **only** this index line (§8.5).
 3. **The connective narrative** — the 5,000-ft "how it all works together" prose, synthesising the
@@ -395,7 +384,7 @@ Three reasons, in the order they mattered:
    reading the payload and one reading the meter; both honest, different questions.
 
 **The map needs no meter: it is human-gated.** The write-guard (§6) blocks a wholesale `Write` to the
-map files, and re-injecting the tip is an explicit human-in-the-loop stop.
+manual, this spec and the element files — not to the harness brief that carries the map, and not Bash writes — and re-injecting the tip is an explicit human-in-the-loop stop.
 
 ⚠ The 800-token rail stops **new** bloat; it does not reduce an existing overage. Large grandfathered
 reference docs predate it. That is a parked decision, not a missing tool.
@@ -405,30 +394,26 @@ reference docs predate it. That is a parked decision, not a missing tool.
 1. **⛔ There is no prescribed box or entry count.** A count cap was explicitly ruled out on
    2026-08-03: what is prescriptive is that the map be **very thin and light and within roughly the
    budget set for it** — the best map that fits. Do **not** re-introduce a count.
-2. **Same-commit rule** — a map file is updated in the **same commit** as the code it cites.
+2. **Same commit** — a map file is updated in the **same commit** as the code it cites.
    Checkable at author time; enforced socially, surfaced mechanically.
 3. **All map files git-tracked** — checkable with `git ls-files`, covering the manual, this spec, and
-   the `CLAUDE.md` that hosts the fenced block. A map file that is not git-tracked cannot be `LIVE`,
+   the plugin's root `CLAUDE.md` (the harness brief) that hosts the fenced block. A map file that is not git-tracked cannot be `LIVE`,
    by the same rule that applies to guards.
 4. **The write-guard** — a PreToolUse hook blocks a **wholesale `Write`** (full-file overwrite) of the
    manual, this spec, and every `elements/*.md`. Surgical `Edit` calls pass through, and that is the
    normal authoring path. The reason is narrow and worth stating: the map is the system's own
    attack-surface description **and** the label checker's ground truth, so a single injected
    instruction must not be able to replace it, or flip every label to `LIVE`, in one shot.
-   ✅ **Status in this repo, 2026-08-15: ENFORCED.** `system/hooks/guard_organism_map.sh` is present,
-   registered in `.claude/settings.json` under `PreToolUse` / `matcher: "Write"`, and was fired through a
+   Status in this repo: watched refusing a `Write`, 2026-08-15. `system/hooks/guard_organism_map.sh` is present,
+   registered by its row in `system/register/register.jsonl`, which `generate.py` writes into `hooks/hooks.json` and `.claude/settings.json` (`PreToolUse` / `matcher: "Write"`), and was fired through a
    real session launched from this repo — it refused a `Write` to `system/organism/elements/` and the deny
    text reached the model in full. A surgical `Edit` to the same path was ALLOWED in the same run, and an
    unrelated `Write` passed untouched. Suite: `system/hooks/tests/test_organism_map_guard.sh` (25 cases,
    ALLOW first). ⚠ Two limits are stated rather than hidden: a Bash write (`>`, `tee`, heredoc) is NOT
    intercepted — that is the deliberate human escape hatch — and `label_checker.py write-labels` writes
    through Python, so it is not intercepted either, which is correct because it is the sanctioned writer.
-   ~~⚠ **Status in this repo: the guard is NOT present here** (verified this session: unruled — absent).
-   The guarantee described in this clause is currently **unenforced locally**. On no ship list, awaiting a
-   decision: a debt, not a pass.~~ ← struck 2026-08-15. It was true when written. The guard had been
-   dropped on the sole ground that `system/organism/` did not exist here; Phase 9 landed the tree the same
-   day, which killed the premise and left a guarantee documented in six shipped files and enforced in none
-   — the defect class house rule `T9.11b` (`system/build-rules-index.md`) is named for. The port closed it.
+   Its label comes from the fire-test receipt.
+   (An earlier, struck status note is in `map-format-specs.history.md`.)
 
 ## §7 — [HISTORICAL] The sign-off gate
 
@@ -443,7 +428,7 @@ been passed; it is not a live blocker.
 > This section supersedes the loose format sketches above for the MAP-line and MANUAL-entry shapes.
 > It is the contract every element author fills.
 
-### §8.1 — The ONE-SLUG rule (what makes it navigable by a machine)
+### §8.1 — ONE slug (what makes it navigable by a machine)
 
 Each element has **ONE slug** — its own handle, lowercase-kebab, drawn from the command / hook / tool
 name. That **same slug** is:
@@ -466,12 +451,8 @@ a gloss; it is not an identifier. The map does not rename the element.
 - **MANUAL:** `> LADDER: MANUAL (how it works together). up → the map ; full mechanics → elements/<slug>.md`
 - **ELEMENT:** `> LADDER: ELEMENT (full mechanics). up → manual#<slug> ; ground truth → the live artifact (generated_from)`
 
-⚠ **Coverage is partial in this repo, measured this session:** ~~31 of the 42 element files carry a
-`LADDER:` line. The remaining 11 do not.~~ ⚠ **CORRECTED 2026-09-01** — re-derived both numbers this
-session: `system/organism/elements/` holds **44** `.md` files (`ls -1 system/organism/elements/ | wc -l`,
-all `.md`, 0 non-`.md`), not 42, and of those, **33** carry a `LADDER:` line
-(`grep -l "LADDER:" system/organism/elements/*.md | wc -l`), leaving **11** that do not — the
-missing-count held, the denominator was stale. Wording also varies slightly (some entries end
+⚠ **Coverage is partial in this repo:** `system/organism/elements/` holds 50 files (49 elements + one
+history file); 37 carry a `LADDER:` line (counted 2026-11-13; re-count at landing). Wording also varies slightly (some entries end
 `→ the live artifacts above` rather than naming `generated_from`). Stated as a finding, not
 retroactively enforced.
 
@@ -510,13 +491,13 @@ each carrying a who-acts marker and, where one exists, the literal command to ty
 
 ### §8.4b — The `·gap` label qualifier
 
-A maturity label states that the **primary** enforcement mechanism fires. It does **not** say "no
+A maturity label states that the **primary** friction mechanism fires. It does **not** say "no
 holes." A cold-session audit found that a tip-only reader reads `LIVE` and **over-trusts** it, missing
 documented fail-open conditions.
 
 **The fix:** append **`·gap`** to the label — on both the map gloss and the manual header — when the
-element has a documented fail-open bypass that would make a tip-only reader misjudge enforcement
-posture. `LIVE·gap` = *"the guard fires on the primary vector AND a documented bypass exists — drill
+element has a documented fail-open bypass that would make a tip-only reader misjudge how hard it
+holds. `LIVE·gap` = *"the guard fires on the primary vector AND a documented bypass exists — drill
 to the element for scope."* The gap **prose** stays in the element file's `GAPS` (§1); the marker is
 only a side-channel "stopping here is not sufficient for a safety-posture question."
 
@@ -530,11 +511,9 @@ only a side-channel "stopping here is not sufficient for a safety-posture questi
   that fires on `Write|Edit` only, so Bash file-writes bypass it by accepted design. Do **not** re-list
   an inherited system-class gap per element, or derive `·gap` from it, unless this element's blast
   radius materially exceeds the system baseline. Otherwise the marker stops discriminating.
-- **The `(honor)` tag:** an optional gloss tag signalling that the element's **primary** behavioural
-  contract — its main path, not a bypass — is prose only, with no blocking hook enforcing it.
-  Distinct from `·gap` (a bypass of an otherwise-enforced path) and orthogonal to LIVE/PARTIAL/TARGET
-  (which measure completeness, not mechanism). Use sparingly, only where the MAIN promise is
-  honour-system.
+- **Prose-only promises:** an element whose main promise is prose only, with nothing holding it, is
+  PARTIAL (the old `(honor)` tag is retired; "LIVE (honor)" is not a legal label). The old paragraph is in
+  `map-format-specs.history.md`.
 
 ⚠ **Scope note, measured:** the winning map format (§2) carries **no label column at all** — its
 entries are goal-phrased routing lines, not `name · LABEL` glosses. So `·gap` and `(honor)` are live
@@ -543,7 +522,7 @@ column is ever reintroduced to the tip, these rules govern it.
 
 ### §8.5 — MANUAL entry format (index line + TYPED INTEROP SEAM LIST)
 
-**Rule: compress WORDS, never SEAMS — every interaction gets a line.**
+**Compress words, not seams — every interaction gets a line.**
 
 Size scales with importance: **critical 30–50 lines · mid 12–20 · trivial = index line + 1–2 seams.**
 Genuinely trivial or dormant parts get **only the index line**, never a `## <slug>` section. Each

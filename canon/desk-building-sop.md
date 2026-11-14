@@ -3,7 +3,7 @@
 ⛔ `.claude/skills/deskname/` is a placeholder example path, not a file in this repo.
 
 > **Status: IN FORCE** (promoted by Enver, 2026-11-11: "the new one has to go in"; drafted on his word of 2026-11-06: "I think it's about time for us to start a draft and lock this in").
-> Written by the coordinator from Enver's rulings of 2026-11-06 (P-128 to P-132) and the desk-architecture
+> Written by the coordinator from Enver's rulings of 2026-11-06 (canon) and the desk-architecture
 > discussion; restructured the same day around the subscriber's journey. This page is `canon/desk-building-sop.md`.
 > It supersedes the v1 desk SOP, which is archived whole with a banner at
 > `system/_retired-2026-11-13/desk-building-sop.ARCHIVE-2026-11-13.md`. Where this SOP and his words differ, the
@@ -50,7 +50,7 @@ through it.
 
 **We birth the healthiest possible baby.** The system gives a person the best option of growing healthy tissue; what
 they choose to do once they're grown is their business. Friction protects against the dumb LLM and the accident —
-it was never a warranty against choice. (P-132.)
+it was never a warranty against choice. (canon.)
 
 ---
 
@@ -65,9 +65,10 @@ desks/<name>/
 │   └── purpose.md  ← why this domain exists (2 lines)
 ├── records/        ← the file cabinet: raw, undated research, search results, big documents
 ├── diary/          ← the dated tree: YYYY/MM/DD.md, one entry per day
-├── open-loops.md   ← the debt ledger: to improve, to build, broken, alerts fired
+├── open-loops.md   ← started, not finished: to improve, to build, broken, alerts fired
 ├── desk.yaml       ← the card: name, canon, diary — nothing else
-└── CLAUDE.md       ← the desk's glasses, in its own file: the seventh item (section 8, point 4)
+├── CLAUDE.md       ← the desk's glasses, in its own file: the seventh item (section 8, point 4)
+└── projects/<slug>/  ← projects started from this desk: each folder holds its brief (same shape as the root `projects/`)
 ```
 
 The card holds only facts no other machinery owns. Jobs are rows in the job list (the door checks them); access
@@ -86,8 +87,8 @@ One pass over the whole stack, from the desk's point of view:
   contains a copy of it.
 - **The tenant (the car model: the personal code layer; the car trim and options: the configuration layer):** the
   desk's skills live in Claude's own folder, `~/.claude/skills/<name>/`
-  (P-50); its standalone scripts and tools live in the personal code folder, one folder for the whole person, with
-  `desks/<name>/tools/` only for code that truly serves one desk (P-51). Personal, update-safe, freely changeable;
+  (canon); its standalone scripts and tools live in the personal code folder, one folder for the whole person, with
+  `desks/<name>/tools/` only for code that truly serves one desk (canon). Personal, update-safe, freely changeable;
   can never break the platform.
 - **The interface (status emission):** the desk's producers emit status notes through the single writer
   (`emit_status.py`); notes self-register by existence in `status/` at the brain folder's root; the card never lists them. What
@@ -138,7 +139,7 @@ covers every folder; what each protection does is fixed. All three are there "to
 from a misguided agent" (`canon/build-conformance-sop.md` §2 (the asks) and §5.11 (the friction levels)):
 - **Fine china protection A** — "can't edit it without talking to the human first" (an ask before an edit).
 - **Fine china protection B** — "can't delete it" (no delete). For canon and fine china outside git, protection B is
-  a hard block with no override (P-136).
+  a hard block with no override (canon).
 - **Fine china protection C** — a speed bump with a sign in front of a mass delete (a whole folder or hundreds of
   files), on any folder, to slow down a possible catastrophic event. It is never a hard block or a pop-up.
 
@@ -164,8 +165,8 @@ default of doubt elsewhere)), the card, and the diary cron. Everything else exis
 ## 7. Ground — how it runs *(the first real desk's run corrects this section — per the house rule, a real proof beats a passing test, and no SOP keeps lessons it hasn't earned)*
 
 **The birth sequence:**
-1. Scaffold (or hand-write) the seven items: canon and purpose (both inside `canon/`), records, diary, open-loops,
-   the card, and the desk's CLAUDE.md (the glasses).
+1. Scaffold (or hand-write) the eight items: canon and purpose (both inside `canon/`), records, diary, open-loops,
+   the card, the desk's CLAUDE.md (the glasses), and `projects/` (for projects started from this desk).
 2. Fill the card — three lines: name, canon, diary.
 3. Write two lines of purpose, two lines of canon. The desk is born walking; everything else accretes.
 4. The door checks it (section 5's list); fix what it names, re-run.
@@ -184,7 +185,7 @@ diary tree at whatever resolution a question needs, cheaply.
 
 ## 8. THE SEAM — what the interface taught the desk (2026-11-06)
 
-*(These five sharpenings came out of the Helm archaeology; they are the two SOPs meeting in the middle of the
+*(These five sharpenings came out of an earlier desk project's archaeology; they are the two SOPs meeting in the middle of the
 mountain. Confidence: high on 1, 2, 3, 5 — restatements of ruled things seen together; point 4 is settled: the
 glasses are their own file.)*
 
@@ -211,7 +212,7 @@ against that rhythm (a TTL). The date axis made mechanical.
 hook, pre-injection; the model never sees it). But the model needs its own day-one note — who this desk is, how
 to talk here, what matters — and that is the per-desk CLAUDE.md, the third layer of the plural CLAUDE.md stack
 (plugin → personal root → desk), injected into the context window as system-prompt material. Two files, two
-audiences, two delivery mechanisms. All three layers share a total token budget (P-131), because injected
+audiences, two delivery mechanisms. All three layers share a total token budget (canon), because injected
 context is paid for every turn — the guard against context bloat. It is its own file, the desk's seventh item, not
 folded into purpose.md (purpose is knowledge and decays slowly; glasses are instructions and decay differently).
 
@@ -226,18 +227,18 @@ complete data model of a desk, and the exact point where the two SOPs shake hand
 
 ## 9. The dummy version — a primer for future readers
 
-**A desk is a room in your life.** Marc is your money room. Emily is your auditions room. Each room keeps its own
+**A desk is a room in your life.** A finance desk is your money room. An auditions desk is your auditions room. Each room keeps its own
 stuff so a conversation about money doesn't drag your headshots into it.
 
-**The room has seven shelves, and only three of them matter at first:**
-- **What's true for years** (canon) — the whiskey. "I'm married. My agent is Formation." Changes only in a life
+**The room has eight shelves, and only three of them matter at first:**
+- **What's true for years** (canon) — the whiskey. "I'm married. My agent is <name>." Changes only in a life
   earthquake, no more than every six months or so.
 - **What happened today** (the diary) — the milk. One short page per day, written by a robot at midnight, never
   edited: what got done, in a few spare lines, with a pointer to where the full story lives.
 - **The raw pile** (records) — the file cabinet. Every search result, every big document, unsorted and undated.
   It's fine that it's a mess; nobody reads it wholesale, they dig when pointed.
 - Plus: **why the room exists** (purpose, two lines), **the to-fix list on the door** (open loops — broken things,
-  ideas to build, alerts that fired), **the name tag** (the card), and **the glasses** (the desk's CLAUDE.md, below).
+  ideas to build, alerts that fired), **the name tag** (the card), **the glasses** (the desk's CLAUDE.md, below), and **the projects shelf** (one folder for each project started in this room).
 
 **The name tag (the card) is three lines: who I am, where my truth lives, where my diary goes.** A robot butler
 reads it, in the split second before you even start talking, and quietly sets the room up for you: the right

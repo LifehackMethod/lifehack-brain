@@ -1,34 +1,29 @@
 ---
 topic: [system-architecture]
-title: "Pulse — Job Definitions"
+title: "Scheduled jobs — the shared job table"
 record_type: system-doc
 status: active
 authority: user
 created_at: 2026-08-14
 ---
 
-# Pulse — Job Definitions
+# Scheduled jobs — the shared job table
 
-Shared job config for the heartbeat daemon (`system/tools/pulse.sh`) and the OS-level scheduler
-installer (`system/tools/install-schedulers.sh`). This file is CODE, not personal data — it lives in
+Shared job table for the scheduler: `install-schedulers.sh` builds one launchd job per enabled row on a
+Mac, each run through `system/tools/job-run.sh`; on Linux and Windows `system/tools/pulse.sh` dispatches
+the rows. This file is CODE, not personal data — it lives in
 the repo, travels with `git pull`, and carries no identifiers of its own (see `system/tools/pulse.sh`
 and every job's own file for how each resolves ITS notes root through `shared/brain_root.py`).
 
-> ⚠ **NEW FILE — did not exist anywhere in this repo before this session.** `pulse.sh` and
-> `install-schedulers.sh` cannot do anything without it; **this is the smallest version that makes
-> both scripts real**, not a full replay of every job the donor system ever scheduled. Other
-> categories' ported runners (ingest, planning's other jobs, archivist, etc.) get their own rows appended
-> here **as their own lane ports them** — this file is shared, additive territory, not owned end-to-
-> end by one lane. See the commented template row at the bottom of the `jobs` block.
+The shared table holds product jobs only; a person's own jobs live in `<personal-code>/jobs.md` (see the
+block header).
 
 ## How it works
 
-> ⚠ **CORRECTED 2026-10-27:** the text below used to say Pulse runs on Mac via `cron`. That is no
-> longer true. **On macOS, scheduled jobs run through launchd:** `install-schedulers.sh --install`
-> writes one `~/Library/LaunchAgents/ai.lifehack.<job>.plist` per row of the `jobs` block whose
-> enabled column is `yes`, and each plist runs that job inside `system/tools/job-run.sh`
-> (`<job> --if-overdue`). Pulse is not involved on a Mac. See the scheduler section of
-> `system/organism/manual.md`. **`pulse.sh` and the `crontab` block apply to Linux and Windows only.**
+On a Mac, `install-schedulers.sh --install` writes one `~/Library/LaunchAgents/ai.lifehack.<job>.plist`
+per row of the `jobs` block whose enabled column is `yes`, and each plist runs that job inside
+`system/tools/job-run.sh` (`<job> --if-overdue`); Pulse is not involved there (see the scheduler section
+of `system/organism/manual.md`). `pulse.sh` and the `crontab` block apply to Linux and Windows only.
 
 On Linux and Windows, `pulse.sh` runs on a schedule (installed by `install-schedulers.sh` — every 5
 minutes via `cron` on Linux, or via Windows Task Scheduler on Windows; see that script's own header
@@ -62,10 +57,11 @@ Comment a line out with a leading `#`.
 
 ### Exit-code contract every job command should honor
 
-> ⚠ **CORRECTED 2026-10-27:** the right-hand column below describes **Pulse** (Linux/Windows). On
-> macOS each job runs inside `system/tools/job-run.sh`, whose contract is: `0` = output check passed ·
-> `75` = stood down · `2` = transient · anything else = failed; the alarm is an ntfy text sent by
-> `job-run.sh`, not a Pulse breaker. The job commands' own exit codes mean the same thing on both.
+On a Mac each job runs inside `system/tools/job-run.sh`, whose contract is: `0` = output check passed ·
+`75` = stood down · `2` = transient · `78` = the door refused the row at run time (counts toward the
+alert) · anything else = failed; the alarm is an ntfy text sent by `job-run.sh`, not a Pulse breaker. The
+right-hand column below is Pulse's (Linux and Windows). The job commands' own exit codes mean the same
+thing on both.
 
 | rc | meaning | counted by Pulse as |
 |---|---|---|
@@ -74,18 +70,16 @@ Comment a line out with a leading `#`.
 | `2` | a transient pre-flight/infra failure (network blip, auth hiccup) | held — never trips the breaker |
 | anything else | a real failure | counted toward the 3-strike circuit breaker |
 
-**Reaching a model from a scheduled job — HARD RULE.** `claude` is not on cron's (or Task
-Scheduler's) PATH — a bare `claude -p ...` in a job command will resolve to nothing and exit 127,
-which prints an EMPTY stdout indistinguishable from "the model ran and found nothing." No job in
-THIS file invokes a model directly today, but if you add one that does, follow the house pattern
-already live in `system/tools/ingest-run.lib.sh` (`CLAUDE_BIN` resolution + the
-`~/.config/lifehack/claude-oauth-token` file) rather than inventing a new one — and treat rc=127 as a
-FAILURE, never as "found nothing."
+**Reaching a model from a scheduled job.** A runner sources `$LIFEHACK_CODE_ROOT/system/tools/model.lib.sh`
+and calls `run_model <tier> ...`; it names a tier, and a literal model id or `--model X` anywhere else is
+refused by the door (`canon/cron-jobs-sop.md` §5, §9). `claude` is not on the scheduler's PATH, so a bare
+`claude -p` exits 127 with empty output: a failed step must not read as "nothing new" (§7). Anything a job
+reads from outside goes through the Sentinel pipeline before a model sees it.
 
 ⛔ **The credential half of that pattern is NOT yours to hand-roll — call
 `require_claude_token` from `system/tools/claude-auth.lib.sh`.** It is the single shared
 implementation of the missing-token preflight, and it returns **75** (this table's "stood down") —
-never 3. History, and the reason the rule is written this strongly: five runners each hand-rolled
+never 3. History, and the reason this is written so strongly: five runners each hand-rolled
 that same check with the same wrong `exit 3`, and the bug was fixed TWICE (archivist-run.lib.sh,
 planning-weekly-prime-run.sh) before anyone noticed three more copies still carried it — a fix to a
 copy reaches only that copy. Usage:
@@ -93,8 +87,9 @@ copy reaches only that copy. Usage:
 (the helper emits the named stand-down line itself; the caller decides how to terminate and whether
 to write a tile first). A stand-down is loud and named — it is never a silent success.
 
-⛔ **Same rule, second credential — gws/Google: call `require_gws_credentials` (or
-`load_gws_credentials_optional`) from `system/tools/gws-auth.lib.sh`.** Sibling of the above, same
+⛔ **Same pattern, second credential — gws/Google.** Google credentials live only in the shared fetch; a
+runner never loads or exports them (`canon/cron-jobs-sop.md` §7). The shared fetch's own preflight is
+`require_gws_credentials` / `load_gws_credentials_optional` in `system/tools/gws-auth.lib.sh`. Sibling of the above, same
 contract, same reason. It went ELEVEN copies deep before being consolidated, and the `exit 3` bug
 was in six of them; three were fixed (calendar-store-sync, tasks-store-sync, email-summary-write)
 while `ingest_load_gws()` in `ingest-run.lib.sh` kept `exit 3` — and unlike those three (latent, no
@@ -153,7 +148,7 @@ That severity difference is real, so the loop stays with its callers.
 # so NO other column may contain a `|` character):
 #   name      job name; also the launchd label fragment and the state folder.
 #   enabled   `yes` runs; any other word is a declared disposition (`off`, `waiting-on-port`, ...).
-#   interval  minimum seconds between runs (macOS: a whole-hour divisor of 86400).
+#   interval  minimum seconds between runs (macOS: a whole-hour divisor of 86400, or a multiple of 86400).
 #   outcome   ONE sentence: what is true after a good run. The `check` is written against it. `TBD` until written.
 #   check     `<path> ~ <extended regex>`, evaluated by job-run.sh after the command exits 0. Passes only if <path>
 #             exists, its mtime is newer than the run start, and some line of it matches the regex (grep -E).
@@ -166,9 +161,9 @@ That severity difference is real, so the loop stays with its callers.
 #             credentials (NEEDS=gws). `TBD` if unset.
 #   command   literal bash (executed as `bash -c`), or a leading-`@` builtin. Everything after the 8th `|` is the command.
 #
-# 2026-10-27 self-monitoring Sprint 1: only email-summary-write is enabled; rows below set off (were yes), restored in later sprints.
+# 2026-10-27 self-monitoring Sprint 1: only email-summary-write was enabled; now off (2026-11-14); rows below set off (were yes), restored in later sprints.
 # 2026-10-27 self-monitoring 3.1: the watcher rows (system-health, sentinel-health, planning-health, backlog-health,
-# fault-proposer, item-store-freshness, email-summary-freshness, helm-keepalive and the per-desk health watchers) were
+# fault-proposer, item-store-freshness, email-summary-freshness, a dashboard keepalive and the per-desk health watchers) were
 # removed with their runners; git history has them.
 #
 # 3b.7 B (2026-11-01): PERSONAL jobs (a person's own desks and scripts) do not live in this shared table. They go in
@@ -177,67 +172,34 @@ That severity difference is real, so the loop stays with its callers.
 # PLUS that one through shared/jobs_manifest.py; on a name clash the personal row wins, with a warning. No personal file = none.
 #
 #
-# ── The next three refresh Google-backed stores (calendar item-store, tasks item-store, v2 email
-#    thread-store) — LIVE as of 2026-08-14, having just cleared the ONE verified defect that kept
-#    them parked. On a MISSING $HOME/.config/lifehack/gws-credentials.json (true for every machine
-#    on day 1 before the one-time `gws auth export` step, and PERMANENTLY true for a student with
-#    no Google account at all — exactly the population this manifest must not fail loudly for)
-#    each runner's "no creds file" branch now does `RC=75; exit 75` — this file's own "stood down,
-#    not a fault" convention, matching planning-health/backlog-health above for the identical "config
-#    not set up yet" case (was `RC=3; exit 3` before this session, which fell into the "anything
-#    else" bucket: 3 consecutive ticks would trip Pulse's circuit breaker and system-health.py's
-#    assess() — system/tools/system-health.py:255-257 — would render the job "DOWN, severity:
-#    error, attention: True" PERMANENTLY, a red Helm tile for a feature a no-Google student will
-#    never configure). SAME SESSION, second half of the fix: each runner's own EXIT trap no longer
-#    fires a `--priority critical` phone push on rc=75 either — a stood-down job silently paging
-#    the phone on every future dispatch would have been WORSE than the red tile this replaces
-#    (critical bypasses quiet hours). Genuine failures (any other non-zero) still page, unchanged.
-#    Flipped `enabled` to `yes` now both halves have landed; intervals are unchanged, sourced from
-#    each runner's own header.
+# ── The next three refresh Google-backed stores (calendar, tasks, the email thread store). A missing or
+#    unusable credential file stands the run down (rc 75), never a fault, and a stood-down run never
+#    pages the phone. All three ship off: outside connections stay off until the person switches them on.
 #
-# calendar-store-sync: refreshes state/item-store/calendar/ via calendar_store_sync.py --sync
-# ~~(mechanical, no claude -p — confirmed)~~ ⛔ STRUCK 2026-09-19, FALSE: it DOES call claude -p.
-# calendar_store_sync.py imports run_intake_judge at :163 and calls it at :548, UNCONDITIONALLY on
-# every item carrying free text (:546) — a real haiku call (intake_reader.py:46,:164-166). The
-# module's own docstring :15 ("No LLM in the write path") is stale and was the source of this error.
-# LIVE — see the note above. Interval matches the runner's
-# own header ("own absence horizon... writers run ~daily", STALE_AFTER_HOURS=30). 1-day cadence.
+# calendar-store-sync: refreshes the calendar item store via calendar_store_sync.py --sync. It calls the
+# intake reader (claude -p, small tier) on every item carrying free text. Daily (the runner's
+# STALE_AFTER_HOURS=30).
 calendar-store-sync | off | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/calendar-store-sync-run.sh"
 #
-# tasks-store-sync: refreshes state/item-store/tasks/ via tasks_store_sync.py --sync ~~(mechanical,
-# no claude -p — confirmed)~~ ⛔ STRUCK 2026-09-19, FALSE: tasks_store_sync.py imports
-# run_intake_judge at :102 and calls it at :391, UNCONDITIONALLY on every task carrying free text.
-# Its own docstring :13 carries the identical stale "No LLM in the write path" wording as calendar.
-# LIVE for the SAME reason as calendar-store-sync immediately above —
-# tasks-store-sync-run.sh shared the identical GWS_CREDS-missing branch and got the identical fix.
-# Interval matches the runner's own header ("writers run ~daily", STALE_AFTER_HOURS=30). 1-day
-# cadence.
+# tasks-store-sync: refreshes the tasks item store via tasks_store_sync.py --sync. It calls the intake
+# reader (claude -p, small tier) on every task carrying free text. Daily (the runner's
+# STALE_AFTER_HOURS=30).
 tasks-store-sync | off | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/tasks-store-sync-run.sh"
 #
-# email-summary-write: refreshes the v2 faithful-thread store (threads-v2/) via
-# email_summary_sync.py --write-v2 ~~(mechanical, no claude -p — confirmed: CLAUDE_BIN is kept but
-# never invoked by the v2 write path; see shared/tools/email_summary_sync.py:114-120)~~
-# ⛔ STRUCK 2026-09-19, FALSE: email_summary_sync.py imports run_intake_judge at :197 and calls it
-# at :832 inside the per-message loop of process_thread_v2(). ⚠ UNLIKE calendar and tasks, email
-# calls the judge CONDITIONALLY — only when scan_for_injection already flagged spans; unflagged
-# bodies reach the store with no model having read them. That asymmetry is unexplained and may be
-# drift rather than design. The cited proof-lines :114-120 describe the RETIRED v1 digest step, and
-# the same file's docstring :19 already lists the decode-and-judge as a live security step. LIVE for
-# the SAME rc=3-vs-rc=75 fix as the two rows above (identical GWS_CREDS-missing branch in
-# email-summary-write-run.sh) — same fix, same session. Interval matches the runner's OWN header,
-# which is explicit: STALE_AFTER_HOURS=4, "just over one 3h cadence, so a SINGLE missed run
-# surfaces on the next tick." 3h cadence.
+# email-summary-write: refreshes the email thread store via email_summary_sync.py --write-v2. It calls
+# the intake reader only on spans the injection scan flagged — the Sentinel pipeline as defined. Every 3h
+# (the runner's STALE_AFTER_HOURS=4).
 # 2026-10-27 (self-monitoring Sprint 1, Enver's ruling): capped at 3 threads per run, enough to prove
 # the scheduled chain without pulling the whole inbox. Remove EMAIL_WRITE_LIMIT=3 to return to full runs.
-email-summary-write | yes | 10800 | Keeps the v2 email thread store current: the run reads at least one Gmail thread and records written plus unchanged threads. | ~/.local/share/lifehack/email-summary-write/last-write.log ~ v2 write DONE.*written=(0 unchanged=)?[1-9].* errors=0$ | small | 30 | gmail | EMAIL_WRITE_LIMIT=3 bash "$LIFEHACK_CODE_ROOT/system/tools/email-summary-write-run.sh"
+email-summary-write | off | 10800 | Keeps the v2 email thread store current: the run reads at least one Gmail thread and records written plus unchanged threads. | ~/.local/share/lifehack/email-summary-write/last-write.log ~ v2 write DONE.*written=(0 unchanged=)?[1-9].* errors=0$ | small | 30 | gmail | EMAIL_WRITE_LIMIT=3 bash "$LIFEHACK_CODE_ROOT/system/tools/email-summary-write-run.sh"
 #
 # ── T9.8b, 2026-08-15 — five rows closing four previously-missing wiring gaps. Each runner was
 #    ported/built THIS session and syntax/dry-path verified (skip branches exercised with real
 #    exit codes); none has been LIVE-fired end-to-end against a real headless claude call as
 #    part of this port (that would spend real tokens against real notes content to "test" a
 #    schedule row — the skip-path verification is the honest substitute). All five are
-#    OS-agnostic: they only ever run because THIS row exists, on either scheduler, since both
-#    invoke pulse.sh identically — see "How it works" above.
+#    OS-agnostic: they only ever run because THIS row exists. On a Mac launchd runs each yes row through
+#    job-run.sh; on Linux and Windows pulse.sh dispatches it — see "How it works" above.
 #
 # planning-diary: planning-diary-capture.py (daily) + planning-diary-rollup.py (weekly/monthly/
 # quarterly/yearly, each period-idempotently self-gated — see planning-diary-run.sh's own header)
@@ -254,10 +216,6 @@ planning-diary | off | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_
 # above). archivist-deepmine's own STAGGER lives inside the wrapper (a notes-durable ledger
 # picks the single most-overdue desk each tick) — the row below just has to tick often enough
 # for that internal stagger to work; 4-day cadence matches the wrapper's own derivation.
-# ⚠ TENSION, flagged not silently resolved: .claude/skills/archivist-deepmine/SKILL.md still
-# says "its scheduled runner does NOT ship... the skill IS the interactive path" — that line
-# predates this port and is now stale; this task's own plan named the missing scheduled leg as
-# the gap to close. The skill file is outside this row's ownership to correct.
 archivist-audit | off | 604800 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/archivist-audit-run.sh"
 archivist-deepmine | off | 345600 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/archivist-deepmine-run.sh"
 #
@@ -276,18 +234,6 @@ planning-weekly-prime | off | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHAC
 # to PARTIAL would sit invisible until a human happened to run it by hand. Weekly cadence
 # matches the runner's own STALE_AFTER_HOURS=192 (168h weekly + 24h slack) header.
 guard-fire-test | off | 604800 | Every guard was fire-tested this week and the verdict (GREEN or a named downgrade) reached the findings store, so a weakened guard shows on the session line. | ~/.config/lifehack/guard-fire-test/last-run.json ~ "verdict":"[GD][A-Z]+","named":"[^"]+" | none | 0 | none | bash "$LIFEHACK_CODE_ROOT/system/tools/guard-fire-test-run.sh"
-#
-# token-burn-mine: cost-trend Hospital finding mined from the existing transcript corpus.
-# CORRECTED 2026-08-26 (verified this session): "Missing runner" was wrong — it exists, parked at
-# system/parked/2026-08-23-donor-spillover/system/tools/token_burn_mine.py (underscore, not
-# hyphen — confirmed this IS why a naive hyphen-only search missed it earlier). RUN THIS SESSION AT
-# ITS PARKED LOCATION (bare): FAILED, exit 1 — missing its `emit_finding` sibling module, which
-# only exists in system/tools/, not in its current parked directory. RE-RUN with
-# `PYTHONPATH="$LIFEHACK_CODE_ROOT/system/tools"` prefixed: exit 0 — mined the transcript corpus
-# cleanly, correct aggregate table, no transcript content leaked. The PYTHONPATH prefix below is a
-# workaround for the parked location, not a fix — once properly wired into system/tools/ (out of
-# this row's scope today) the prefix becomes unnecessary.
-token-burn-mine | waiting-on-port | 86400 | TBD | TBD | TBD | 0 | TBD | PYTHONPATH="$LIFEHACK_CODE_ROOT/system/tools" python3 "$LIFEHACK_CODE_ROOT/system/parked/2026-08-23-donor-spillover/system/tools/token_burn_mine.py"
 #
 # obsidian-reindex: machine-local vault index rebuild (single-instance lock + watchdog in donor).
 # CORRECTED 2026-08-26 (verified this session): "Missing runner" was wrong — the runner exists in
@@ -309,9 +255,8 @@ mirror-fetch | off | 3600 | This clone's remote-tracking refs are freshly fetche
 
 ## The OS-level schedule — installed by `install-schedulers.sh`
 
-> ⚠ **CORRECTED 2026-10-27:** this block is **Linux and Windows only**. macOS does not read it: a Mac
-> installs launchd LaunchAgents built from the `jobs` block (see "How it works" above and
-> `system/organism/manual.md`). The text below originally said "crontab on Mac/Linux".
+> This block is read on Linux and Windows only; a Mac builds its launchd jobs from the ```jobs``` block
+> (see "How it works" and `system/organism/manual.md`).
 >
 > This block is NOT Pulse-dispatched (`pulse.sh` only parses the ```jobs``` block above). It is the
 > versioned source of truth for what the OPERATING SYSTEM's own scheduler runs on Linux/Windows:
@@ -324,8 +269,8 @@ mirror-fetch | off | 3600 | This clone's remote-tracking refs are freshly fetche
 ```crontab
 # name          | schedule           | command
 #
-# pulse: the ONE entry point. Every job in the ```jobs``` block above only ever runs because THIS
-# line exists — install-schedulers.sh treats the row named "pulse" specially on Windows (it launches
+# pulse: the one entry point on Linux and Windows. There, every job in the ```jobs``` block runs only because THIS
+# line exists (a Mac never reads this block) — install-schedulers.sh treats the row named "pulse" specially on Windows (it launches
 # bash.exe against pulse.sh itself, not this row's literal command; see that script). The PATH
 # prefix matters: cron's own PATH is a minimal `/usr/bin:/bin` on most systems, which is missing
 # `/opt/homebrew/bin` (Apple Silicon Homebrew) and `/usr/local/bin` (Intel Homebrew / most Linux

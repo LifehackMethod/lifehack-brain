@@ -100,7 +100,7 @@ route:
 > canon. **Promoted whole by Enver's ruling, 2026-09-02** — the lines
 > were not ratified one by one; each carries its tier and pointer so any one can be re-examined alone.
 >
-> **Not the always-loaded layer.** The session loader reads `<brain>/canon.md` and `desks/*/canon/`
+> **Not the always-loaded layer.** The session loader reads `<brain>/canon/canon.md` and `desks/*/canon/`
 > only. This is a reference shelf, pulled when relevant — which is why length is not a fault here.
 >
 > **Canon is an OBSERVATION, not a rule.** The coding reflex hardens a true observation into a false

@@ -250,3 +250,21 @@ This is a historical record, not live instruction. Moved out of `security-canon.
 | `guard_skip_safe_backdoor.sh` | 2026-07-03 | `CLAUDEOPS_SKIP_*` block now in `ingest_gate_enforce.sh` |
 
 ~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-9, G5-10, G5-12
+
+~~~~
+**Escalation model (airport metaphor — how the reader-actor pipeline actually responds):** (1) **Metal-detector regex** = cheap, fast, over-flags — beeps "look here," decides nothing, never blocks on its own. (2) **Tool-less `ingest-reader`** = the JUDGE ("body scanner"): for EACH flagged span only, it decodes the encoding (base64/hex/URL/zero-width) and judges by MEANING — real injection vs. benign encoded content; redacts only real attacks, passes benign spans through unchanged, emits a VERDICT per span (`REAL-ATTACK | BENIGN | NONE`). (3) **The reader's VERDICT — not the raw scanner beep — gates both redaction AND alerting**: only a `REAL-ATTACK` verdict triggers a quarantine or phone notification; a beep that resolves to `BENIGN` is silently cleared. The reader judges only what-to-redact, never whether-to-act; DANGER-class content hard-quarantines regardless.
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-9, G5-10, G5-12
+
+~~~~
+**Egress is the highest-leverage control:** filtering/allowlisting the *outbound* channel structurally caps exfiltration even if an injection lands — stronger than any input-side scanner (semantic injection lives in meaning, not syntax, so input classifiers stop ~no real attacks while breaking legit content; keep any input heuristic as flag-and-count, never a blocker).
+~~~~
+
+## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-9, G5-10, G5-12
+
+~~~~
+| `enforce_egress_allowlist.sh` | PreToolUse | Bash | Blocks outbound Bash calls to hosts not in `system/egress-allowlist.md`; structurally caps exfiltration even if an injection lands. | Yes — fail-closed |
+~~~~

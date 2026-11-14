@@ -20,10 +20,12 @@ obvious place to put it is `CLAUDE.md`, which is the one place it must not go.
 
 ## Verified behaviour
 
-**It auto-loads.** Measured, not assumed: a sentinel string was written into `CLAUDE.local.md`, a
+**It auto-loads.** Measured once (before 2026-08-20, on an earlier Claude Code version), not
+assumed: a sentinel string was written into `CLAUDE.local.md`, a
 brand-new session was opened, and — before it read any file or ran any tool — it reported the string
 present in its startup context and quoted it back. Claude Code lists it as *"user's private project
-instructions, not checked in"*, loaded alongside `CLAUDE.md`.
+instructions, not checked in"*, loaded alongside `CLAUDE.md`. Re-run the test below after a Claude
+Code update if it matters to you.
 
 **Both files load together**, not one or the other. They stack: the product's file explains the
 machinery, yours says how to work with you.
@@ -45,11 +47,10 @@ it is also its one real limitation:
 | a file in your notes folder | only if a hook loads it | yes | yes, if the folder is synced |
 
 **It does not sync.** It is in the repo, not in your notes folder, so it neither travels on a `git
-pull` nor rides along with a cloud-synced notes folder. **A second machine needs its own copy.**
-
-⚠ **Drift between two machines is silent** — nothing compares them. If you run more than one install,
-keep a copy of the file in your synced notes folder and note its checksum, so a later session can tell
-whether the two have parted company:
+pull` nor rides along with a cloud-synced notes folder. This system is built for one computer. If you
+choose to add a second one as your own layer on top, it needs its own copy, and drift between the two is
+silent — nothing compares them; keep a copy of the file in your synced notes folder and note its
+checksum, so a later session can tell whether the two have parted company:
 
 ```bash
 shasum -a 256 CLAUDE.local.md

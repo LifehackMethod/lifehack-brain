@@ -3,7 +3,6 @@ topic: [gws-auth]
 record_type: system-contract
 title: gws CLI Bash Contract
 version: 1.0
-gws_version: 0.22.3
 created_at: 2026-03-26
 updated_at: 2026-08-15
 status: active
@@ -11,12 +10,14 @@ status: active
 
 # gws CLI Bash Contract
 
-This is the canonical reference for all Google Workspace access in this system. Every tool and
-skill that touches Google uses this contract. Do not improvise — use these patterns exactly.
+This is the reference for gws command patterns (binary, quoting, error codes, examples). What a
+session or job may do with Google is set by `system/google-policy.md` and
+`canon/cron-jobs-sop.md` §7. Do not improvise — use these patterns exactly.
 
-> **PORTED (T9.7c, 2026-08-15)** from claudeops-config, where this doc existed but never shipped
-> to this repo. Generalized: no hardcoded personal calendar/email addresses, no multi-desk
-> plurals — this product is single-user and has no desk model. Calendar/task identifiers are read
+> **PORTED (T9.7c, 2026-08-15)** from the donor system's config repo, where this doc existed but never shipped
+> to this repo. Generalized: no hardcoded personal calendar/email addresses, no per-desk
+> credentials — each install has one person and one Google login; desks are subject folders that
+> person builds, and they share it. Calendar/task identifiers are read
 > from `<notes>/config/cal.md` via `shared/cal_config.py` (see the Calendar section below), never
 > hardcoded, per that module's own stated reason: a baked-in calendar id writes to somebody else's
 > calendar the moment this repo ships to a second person.
@@ -32,7 +33,7 @@ canonical implementation — every wrapper in this repo resolves the binary the 
 **Version check:**
 ```bash
 gws --version
-# should return: gws 0.22.3 (pinned; a mismatch is worth noting, not necessarily blocking)
+# prints the installed version. Nothing here pins one: the hooks and wrappers find gws with `command -v`, with no version assumption.
 ```
 
 ---
@@ -50,17 +51,16 @@ weeks — it treats its credentials as corrupt and AUTO-DELETES `credentials.enc
 auth for EVERY window at once.** An ordinary READ command (`gmail users getProfile`) is enough.
 There is no warning.
 
-**THE DEFENCE — any process that may run unattended, headless, or in a long-lived window MUST
-export the keychain-free isolation vars before touching gws:**
+**THE DEFENCE.** A scheduled job never touches these: Google credentials live only in the shared
+fetch (`shared/tools/email_fetch.py`, `system/tools/safe_sheets.py`), and a runner never exports
+them (`canon/cron-jobs-sop.md` §7). A long-lived or headless interactive run that calls gws
+should export the keychain-free variables first (why: a locked keychain makes gws delete its own
+credentials):
 ```bash
-export GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$HOME/.config/gws-cron"
-export GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE="$HOME/.config/gws/gws-credentials.json"
+export GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$HOME/.config/lifehack"
+export GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE="$HOME/.config/lifehack/gws-credentials.json"
 export GOOGLE_WORKSPACE_CLI_KEYRING_BACKEND=file   # ← the load-bearing one: no keychain to unlock
 ```
-**Anything that calls gws from an unattended context (a scheduled job, a headless run) must
-export these first.** There is no multi-desk launcher fleet in this repo to canonicalize this
-into — if a scheduled runner is added later, wire this export into it once and everything after
-inherits it.
 
 **RE-AUTH — never improvise.** No bare `gws auth login`, no `logout`, no `setup` without the
 person's explicit approval. If a re-auth helper script exists in this repo, use it; if not, stop
@@ -76,16 +76,18 @@ gws <command> 2>/dev/null
 **Never use `2>&1`** when the output will be piped to a JSON parser — it merges the keyring line
 into stdout and corrupts the JSON stream.
 
+In a scheduled runner, never `2>/dev/null`: send stderr to a file (`2>"$TMP/gws.err"`), parse
+stdout only, read the file if the call fails — the door refuses `2>/dev/null` there
+(`canon/cron-jobs-sop.md` §7). The `2>/dev/null` in the examples below is the session form.
+
 **⚠ BUT `2>/dev/null` ALONE IS NOT SAFE — CHECK THE EXIT CODE.** Suppressing stderr also
 suppresses auth failures. **A gws call whose result you act on must test `$?` (or
 `if ! gws …; then`), never trust parsed stdout alone.** Silencing the noise is fine; silencing
 the failure is how a write gets lost without anyone noticing.
 
-**Verify with a REAL call, never with `auth status`.** `auth status` reporting healthy is not
-proof of a working call. Proof is a live request (e.g. `calendar calendarList list`) succeeding.
-
-If `token_valid` is false or `encrypted_credentials_exists` is false → **stop and tell the
-person.** Do not improvise auth repair.
+**Verify with a real call.** A healthy `auth status` proves nothing; a live request (e.g.
+`calendar calendarList list`) succeeding does. A bad `auth status` still counts: if it shows
+`token_valid` false or `encrypted_credentials_exists` false, **stop and tell the person.** Do not improvise auth repair.
 
 **Auth error code:** exit 2. If a command exits 2, auth is broken — stop and report.
 
@@ -116,7 +118,8 @@ person.** Do not improvise auth repair.
    the request reaches the API; in others it passes through.
    - **Safe pattern (default sheet):** use bare ranges without tab name: `"range":"A1:Z100"`
      The API fills the tab name in the response. This is reliable.
-   - **Named tabs (e.g., `Travel!A1`):** fail when called from zsh directly — gws
+   - **Named tabs (e.g., `Travel!A1`):** may fail when called from zsh directly (see above: the
+     behaviour is inconsistent) — gws
      exits 3 ("invalid escape") before the request reaches the API.
    - **Workaround:** call gws via Python subprocess with args passed as a list
      (`shell=False`). The `!` bypasses zsh entirely and reaches the API correctly:
@@ -127,7 +130,7 @@ person.** Do not improvise auth repair.
          capture_output=True, text=True
      )
      ```
-     Do not call named-tab ranges from zsh directly — use Python subprocess instead.
+     Prefer the Python subprocess form for named-tab ranges.
 4. **Shell variable interpolation in params:** use double-quoted JSON with shell vars expanded:
    ```bash
    TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -143,14 +146,17 @@ person.** Do not improvise auth repair.
 **Read commands:** run freely. No confirmation needed.
 
 **Write commands** (insert, update, patch, delete, modify, batchUpdate, append):
-- **Always show the person what will be written before executing**
-- **Wait for explicit confirmation** — do not auto-execute writes
+- **Show the person what will be written, then wait for an explicit yes**
 - **Validate JSON body shape** via `gws schema <service.resource.method>` before submitting
 - **gws has no `--dry-run` flag.** There is no system-level preview mechanism.
   The confirmation model is: show the full command + JSON body → wait for
   explicit "yes" → execute. Schema validation is the only pre-flight check available.
 
-**Never run write commands unattended.**
+**Unattended writes.** A scheduled job may write to the person's own account (labels, archive,
+Sheets, Tasks, Calendar, Docs) with nobody at the screen, inside `canon/cron-jobs-sop.md` §7's
+limits: a Sheet named as fine china is not edited without an ask and is parked for the morning.
+Email is never sent without the person's approval (approved by Enver, 2026-11-13); drafts are
+allowed.
 
 ---
 
@@ -178,6 +184,7 @@ universal sanitizer (`shared/tools/email_convert.py`) — a RAW `gws` body read 
 sanitizer) is blocked globally by `system/hooks/ingest_gate_enforce.sh`. Above this sits the
 Email Service: the sanctioned read is **`email_service_read.py` / `read_thread(thread_id, ...)`**
 — see `system/schemas/email-summary-schema.md`. Single writer = `shared/tools/email_summary_sync.py`.
+A scheduled job reads mail only through `shared/tools/email_fetch.py` (`canon/cron-jobs-sop.md` §7).
 
 - **Metadata-safe (default):** `format:"metadata"` — returns headers only
   (subject, from, to, cc, date, labelIds). Use this by default for any Gmail
@@ -261,7 +268,7 @@ gws gmail users messages modify \
 > spans neutralized — for store/vault paths) · `--no-isolate` (raw, no-LLM plumbing only). A
 > PreToolUse hook (`ingest_gate_enforce.sh`) blocks the raw read.
 >
-> **Writes go to ONE calendar the person made for this system, never `primary`** — enforced by
+> **Writes go to ONE calendar the person made for this system, never `primary`** — held by
 > `system/hooks/guard_calendar_writes.sh` (default-deny: any `gws calendar` write is blocked
 > unless the configured agent calendar's id is named explicitly in the command). The id is not
 > hardcoded anywhere — it is read from `<notes>/config/cal.md` via `shared/cal_config.py`; see
@@ -352,13 +359,15 @@ Requires knowing both old and new parent folder IDs. Confirm both before executi
 gws sheets spreadsheets get --params '{"spreadsheetId":"SPREADSHEET_ID"}'
 ```
 
-**Read values from range (safe — bare range, no tab name):**
+**Read values from a range:**
 ```bash
-gws sheets spreadsheets values get \
-  --params '{"spreadsheetId":"SPREADSHEET_ID","range":"A1:Z100"}' 2>/dev/null
+python3 <repo>/system/tools/safe_sheets.py <spreadsheet-id> 'A1:Z100'
 ```
+It sanitises every cell, scans for injection and fails closed; exit 1 means spans were flagged and
+neutralised (read the stderr list). A raw `values get` is refused: `ingest_gate_enforce.sh` blocks
+it in a session and the door refuses it in a runner (`canon/cron-jobs-sop.md` §7).
 Note: Bare ranges without tab name are the reliable pattern. The API returns
-the full `SheetName!A1:Z100` notation in the response. See quoting rule #3 for
+the full `SheetName!A1:Z100` notation in the response. See quoting item #3 for
 named-tab range limitations.
 
 **Append rows (write — confirm before running):**
@@ -368,7 +377,7 @@ gws sheets spreadsheets values append \
   --json '{"values":[["col1","col2","col3"]]}' 2>/dev/null
 ```
 Note: `A1` as the range anchors append to the first/default sheet. See quoting
-rule #3 for the risks of using tab-qualified ranges like `Travel!A1`.
+item #3 for the risks of using tab-qualified ranges like `Travel!A1`.
 
 **Update values (write — confirm before running):**
 ```bash
@@ -395,10 +404,9 @@ Response includes the new `spreadsheetId`. Pin that ID before any further writes
 
 ### Docs
 
-**Get document (read full content):**
-```bash
-gws docs documents get --params '{"documentId":"DOC_ID"}'
-```
+**Read a document's content:** export it (the Doc export above) and read the exported file
+through `safe_read.py`. Document text is someone else's writing and passes the Sentinel pipeline
+like any other inbound content.
 
 **Create document (write — confirm before running):**
 ```bash

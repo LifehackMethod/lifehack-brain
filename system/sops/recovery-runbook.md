@@ -5,7 +5,7 @@ title: Recovery Runbook — get your personal code and notes back after a failur
 record_type: playbook
 desk: root
 created_at: 2026-06-22
-updated_at: 2026-07-28
+updated_at: 2026-11-14
 status: active
 authority: user
 ---
@@ -35,8 +35,8 @@ authority: user
   pointer if they are missing and never overwrites an existing pointer.
 
 ## 2. Your notes folder
-- Notes in Google Drive: Drive web, right-click, **Version history** or **Restore** (30-day window).
-- Notes in a plain local folder: Time Machine, or dated copies you made yourself.
+- Your notes folder is local first: restore it from Time Machine, or from dated copies you made yourself.
+- If Google Drive backs it up: Drive web, right-click, **Version history** or **Restore** (30-day window).
 - If the notes folder moved, repoint it: `python3 <plugin>/shared/brain_root.py --set <path>`.
 
 ## 3. The plugin

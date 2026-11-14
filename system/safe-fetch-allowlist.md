@@ -2,7 +2,10 @@
 
 This is the switch for the middle of the three outbound levels described in
 `docs/OUTSIDE-SERVICES.md`. **It ships OFF.** Turning it on is a decision this package leaves to you,
-and nothing here turns it on by itself.
+and nothing here turns it on by itself. That is the switch for your sessions. Scheduled jobs are
+sealed whether or not this switch is on: job-run.sh seals every job's web reads to
+`system/tools/job-fetch-hosts.txt` plus your own `<personal-code>/job-fetch-hosts.txt` (add a host to
+your own list, never the plugin's; `canon/cron-jobs-sop.md` §7).
 
 ## What it does when it is on
 
@@ -57,9 +60,9 @@ protection and is not, and a wall you wrongly believe in is worse than one you k
 So it stops rather than quietly waving reads through. The fix is always one line in this file.
 
 ⚠ **A per-run seal beats this file.** If the environment variable `SAFE_FETCH_ALLOWLIST` is set
-(comma-separated base domains), it wins for that one run — that is the hook for a skill that wants to
-seal a single research session to the domains it just searched. Unset, or empty, and this file
-decides. Nothing in this package sets that variable today.
+(comma-separated base domains), it wins for that one run. job-run.sh sets it for every scheduled job (from
+the two `job-fetch-hosts.txt` lists); a skill may also set it to seal one research session to the
+domains it just searched. Unset, or empty, and this file decides.
 
 ## Honest limits
 
