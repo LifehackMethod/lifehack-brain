@@ -474,9 +474,10 @@ OS="${LIFEHACK_TEST_OS_OVERRIDE:-$OS}"
 # Each enabled job gets ~/Library/LaunchAgents/ai.lifehack.<job>.plist whose launch line is
 #   /bin/bash -c 'exec /bin/bash "$(cat "$HOME/.config/lifehack/code-root")/system/tools/job-run.sh" <job> --if-overdue'
 # so no plist carries a code path (the pointer file does). $HOME stays literal for bash to expand.
-# Schedule: StartCalendarInterval derived from the interval; only intervals that are a whole number
-# of hours dividing 86400 are supported, plus whole-day multiples (604800 = weekly: a DAILY trigger, --if-overdue enforces the row's
-# real interval) — anything else FAILS LOUDLY, nothing is touched.
+# Schedule: any whole number of seconds >= 60 (canon cron-jobs-sop L81, owner-approved 2026-11-16). Whole-hour
+# intervals that divide 86400 keep a StartCalendarInterval trigger; whole-day multiples above a day (604800 = weekly)
+# keep a DAILY trigger with --if-overdue enforcing the row's real interval; ANYTHING ELSE (600 s, 5400 s, ...)
+# gets a launchd StartInterval trigger. Below 60 s or a non-number still FAILS LOUDLY, nothing is touched.
 # TEST SEAMS: LAUNCHAGENTS_DIR (default ~/Library/LaunchAgents); LIFEHACK_INSTALL_DRY_RUN=1 writes
 # the plists there but skips every launchctl call (and the state-dir mkdir), printing what it would run.
 # Without --install and without LIFEHACK_INSTALL_DRY_RUN=1 this only prints the plan.
@@ -537,11 +538,12 @@ install_mac_launchd() {
     if ! [[ "$name" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
       echo "[install-schedulers] FATAL: job name '$name' is not a safe launchd label fragment." >&2; bad=1; continue
     fi
-    # whole-hour intervals that divide 86400, OR a multiple of 86400 (weekly 604800 ...): the latter gets a DAILY trigger and
-    # job-run.sh --if-overdue enforces the row's real interval (it compares last-success age to the ROW's period, not the trigger's).
-    if ! [[ "$interval" =~ ^[0-9]+$ ]] || [ "$interval" -lt 3600 ] || [ $((interval % 3600)) -ne 0 ] \
-       || { [ "$interval" -le 86400 ] && [ $((86400 % interval)) -ne 0 ]; } || { [ "$interval" -gt 86400 ] && [ $((interval % 86400)) -ne 0 ]; }; then
-      echo "[install-schedulers] FATAL: job '$name' has interval '$interval'; launchd StartCalendarInterval is only generated for whole-hour intervals that divide 86400 (3600, 7200, 10800, 14400, 21600, 28800, 43200, 86400) or a whole number of days above that (172800, 604800 ...: a daily trigger, the real interval enforced by --if-overdue). Set the row off or extend install_mac_launchd()." >&2
+    # ANY whole number of seconds >= 60 (canon cron-jobs-sop L81, owner-approved 2026-11-16). Whole-hour
+    # intervals that divide 86400 get a StartCalendarInterval trigger; whole-day multiples above a day
+    # (weekly 604800 ...) get a DAILY trigger and job-run.sh --if-overdue enforces the row's real interval
+    # (it compares last-success age to the ROW's period, not the trigger's); anything else gets StartInterval.
+    if ! [[ "$interval" =~ ^[0-9]+$ ]] || [ "$interval" -lt 60 ]; then
+      echo "[install-schedulers] FATAL: job '$name' has interval '$interval'; an interval must be a whole number of seconds >= 60 (canon cron-jobs-sop L81). Non-whole-hour intervals are installed as launchd StartInterval jobs. Set the row off or fix the interval." >&2
       bad=1
     fi
   done
@@ -571,7 +573,7 @@ install_mac_launchd() {
   rm -f "$la_dir"/ai.lifehack.*.plist
 
   # --- write, lint, bootstrap ---
-  local plist hours h launch launch_x cal err
+  local plist hours h launch launch_x cal err sched_xml
   for i in "${!names[@]}"; do
     name="${names[$i]}"; interval="${ivals[$i]}"
     label="ai.lifehack.$name"
@@ -581,10 +583,24 @@ install_mac_launchd() {
     launch="exec /bin/bash \"\$(cat \"\$HOME/.config/lifehack/code-root\")/system/tools/job-run.sh\" $name --if-overdue"
     launch_x="$(_xml_escape "$launch")"
     cal=""
-    local step=$((interval/3600)); [ "$interval" -le 86400 ] || step=24   # > 1 day: a DAILY trigger; --if-overdue holds the real period
-    for ((h=0; h<24; h+=step)); do
-      cal+="    <dict><key>Hour</key><integer>$h</integer><key>Minute</key><integer>0</integer></dict>"$'\n'
-    done
+    if [ "$interval" -le 86400 ] && [ $((interval % 3600)) -eq 0 ] && [ $((86400 % interval)) -eq 0 ]; then
+      local step=$((interval/3600))          # whole-hour interval dividing 86400: an HOURLY-STEP calendar (unchanged)
+      for ((h=0; h<24; h+=step)); do
+        cal+="    <dict><key>Hour</key><integer>$h</integer><key>Minute</key><integer>0</integer></dict>"$'\n'
+      done
+    elif [ "$interval" -gt 86400 ] && [ $((interval % 86400)) -eq 0 ]; then
+      cal+="    <dict><key>Hour</key><integer>0</integer><key>Minute</key><integer>0</integer></dict>"$'\n'
+      # > 1 day: a DAILY trigger; --if-overdue holds the real period (unchanged)
+    fi
+    # anything else (600 s, 5400 s, ...): launchd StartInterval; --if-overdue keeps the launch line honest
+    if [ -n "$cal" ]; then
+      sched_xml="  <key>StartCalendarInterval</key>
+  <array>
+${cal}  </array>"
+    else
+      sched_xml="  <key>StartInterval</key>
+  <integer>$interval</integer>"
+    fi
     cat > "$plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -597,9 +613,7 @@ install_mac_launchd() {
     <string>-c</string>
     <string>$launch_x</string>
   </array>
-  <key>StartCalendarInterval</key>
-  <array>
-${cal}  </array>
+$sched_xml
   <key>RunAtLoad</key><true/>
   <key>StandardErrorPath</key><string>$(_xml_escape "$err")</string>
 </dict>
