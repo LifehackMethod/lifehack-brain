@@ -81,11 +81,10 @@ Defined in `system/jobs.md`, run through `system/tools/job-run.sh`.
 - `archivist-audit` · every 7d · enabled: off · runs `archivist-audit-run.sh`
 - `archivist-deepmine` · every 4d · enabled: off · runs `archivist-deepmine-run.sh`
 - `calendar-store-sync` · every 1d · enabled: off · runs `calendar-store-sync-run.sh`
-- `email-summary-write` · every 3h · enabled: yes · runs `email-summary-write-run.sh`
+- `email-summary-write` · every 3h · enabled: off · runs `email-summary-write-run.sh`
 - `guard-fire-test` · every 7d · enabled: off · runs `guard-fire-test-run.sh`
 - `mirror-fetch` · every 1h · enabled: off · runs `mirror-fetch-run.sh`
 - `obsidian-reindex` · every 6h · enabled: off · runs `obsidian-reindex.sh`
 - `planning-diary` · every 1d · enabled: off · runs `planning-diary-run.sh`
 - `planning-weekly-prime` · every 1d · enabled: off · runs `planning-weekly-prime-run.sh`
 - `tasks-store-sync` · every 1d · enabled: off · runs `tasks-store-sync-run.sh`
-- `token-burn-mine` · every 1d · enabled: waiting-on-port · runs `token_burn_mine.py`
